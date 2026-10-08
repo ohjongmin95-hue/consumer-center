@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<main class="page"><div class="wrap"><div class="form-panel"><h1>기업 답변용 링크 발급</h1><p>이 링크는 이번 화면에서만 표시됩니다. 해당 기업 담당자의 신원을 별도 확인한 후 안전한 경로로 전달하세요.</p><p style="overflow-wrap:anywhere"><strong>{{invite_url}}</strong></p><a class="secondary" href="/admin/case/{{case['id']}}">관리 화면으로 돌아가기</a></div></div></main>{% endblock %}
