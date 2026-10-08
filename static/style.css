@@ -8,3 +8,64 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 @media(max-width:1400px){.top{min-height:112px;padding:30px 28px 22px 36px;gap:42px}.brand{font-size:34px}.section-nav{gap:clamp(15px,2vw,28px)}.section-nav a{font-size:18px}}
 @media(max-width:1050px){.top{padding:24px 26px 0;gap:15px;flex-direction:column;align-items:stretch}.brand{font-size:35px;align-self:flex-start}.section-nav{width:100%;overflow-x:auto;gap:24px;scrollbar-width:thin;padding-bottom:4px}.section-nav a{font-size:19px;padding:18px 0}}
 @media(max-width:680px){main{padding:0 16px 60px}.top{padding:20px 18px 0}.brand{font-size:31px}.section-nav a{font-size:17px}.hero{padding:92px 0 80px}.hero h1{letter-spacing:-1.5px}.primary{max-width:100%;padding:17px 38px}.section{margin-top:38px}.section h2{font-size:22px}.tr{grid-template-columns:minmax(0,1fr) 85px;gap:8px;padding:16px}.tr>*:first-child,.tr>*:last-child{display:none}.report-tools input{width:100%;flex-basis:100%}.report-tools select{flex:1;min-width:0}.list-footer{align-items:flex-start;flex-direction:column;gap:0}.info-wrap{margin:35px auto 0}.info-card{padding:22px}.info-wrap h1,.page-title{font-size:28px}.type-action{align-items:flex-start;flex-direction:column}.page{padding-top:35px}.form-panel{padding:22px 17px}.field textarea{min-height:150px}}
+
+/* Readable reporting guide: clear steps and subject-specific preparation. */
+.guide-page { max-width: 960px; }
+.guide-intro > .eyebrow { display: block; margin-bottom: 12px; }
+.guide-intro > p { color: #626973; font-size: 17px; line-height: 1.8; margin: 16px 0 22px; }
+.guide-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
+.guide-shortcuts a { padding: 9px 15px; border: 1px solid #e6e7e8; border-radius: 8px; background: #fff; font-size: 14px; font-weight: 650; }
+.guide-shortcuts a:hover { border-color: #ef7300; background: #fff7ef; }
+.guide-section { margin-top: 48px; scroll-margin-top: 24px; }
+.guide-section-heading { display: flex; align-items: baseline; gap: 14px; }
+.guide-number { flex-shrink: 0; color: #c45d00; font-size: 16px; font-weight: 850; }
+.guide-section-heading h2 { margin: 0; font-size: 23px; line-height: 1.5; letter-spacing: -.7px; }
+.guide-description { margin: 12px 0 22px; color: #626973; line-height: 1.8; }
+.guide-basics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 0; }
+.guide-basics > div { padding: 24px; background: #fff; border: 1px solid #e6e7e8; border-radius: 12px; }
+.guide-basics dt { font-size: 16px; font-weight: 750; margin-bottom: 10px; }
+.guide-basics dd { margin: 0; color: #626973; font-size: 15px; line-height: 1.8; }
+.guide-tip { padding-left: 14px; border-left: 3px solid #ef7300; margin: 20px 0 0; color: #626973; font-size: 14px; line-height: 1.8; }
+.guide-writing-list { margin: 0; padding: 4px 26px 4px 48px; background: #fff; border: 1px solid #e6e7e8; border-radius: 12px; }
+.guide-writing-list li { padding: 20px 0 20px 5px; border-bottom: 1px solid #eee; line-height: 1.7; }
+.guide-writing-list li:last-child { border: 0; }
+.guide-writing-list li::marker { color: #c45d00; font-weight: 750; }
+.guide-writing-list p { margin: 5px 0 0; color: #626973; font-size: 15px; }
+.guide-example { padding: 26px 28px; margin-top: 16px; border: 1px solid #f2ddc8; background: #fff7ef; border-radius: 12px; }
+.guide-example h3 { margin: 0 0 14px; font-size: 16px; }
+.guide-example h3 span { margin-left: 8px; color: #7a6858; font-size: 12px; font-weight: 500; }
+.guide-example p { margin: 0; color: #5b5148; line-height: 1.9; font-size: 15px; }
+.guide-example .guide-example-request { border-top: 1px solid #f2ddc8; padding-top: 14px; margin-top: 16px; }
+.guide-example-request strong { display: block; color: #9d4c00; margin-bottom: 3px; }
+.guide-evidence { border: 1px solid #e6e7e8; border-radius: 14px; background: #fff; margin: 0; padding: 0 28px; }
+.guide-evidence > div { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 24px; padding: 24px 0; border-bottom: 1px solid #eee; }
+.guide-evidence > div:last-child { border: 0; }
+.guide-evidence dt { justify-self: start; align-self: start; padding: 7px 12px; background: #fff1e3; border-radius: 8px; color: #a34e00; font-size: 14px; font-weight: 750; line-height: 1.6; }
+.guide-evidence dd { margin: 0; font-size: 14px; color: #626973; line-height: 1.8; }
+.guide-evidence dd p { font-size: 15px; color: #363e48; margin: 0 0 7px; }
+.guide-evidence dd > span { color: #a34e00; font-weight: 650; margin-right: 7px; }
+.guide-upload { padding: 24px 28px; margin-top: 18px; border-radius: 12px; background: #f0f1f0; }
+.guide-upload h3 { font-size: 16px; margin: 0 0 12px; }
+.guide-upload ul { margin: 0; padding-left: 19px; color: #626973; font-size: 14px; line-height: 1.9; }
+.guide-upload li + li { margin-top: 8px; }
+.guide-bottom { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid #e6e7e8; padding-top: 32px; margin-top: 44px; }
+.guide-bottom h2 { font-size: 21px; margin: 0 0 10px; }
+.guide-bottom p { font-size: 14px; color: #626973; line-height: 1.8; margin: 0; }
+.guide-bottom .primary { flex-shrink: 0; font-size: 16px; padding: 16px 26px; }
+.guide-disclaimer { color: #777; font-size: 12px; line-height: 1.8; margin: 22px 0 0; }
+@media(max-width:680px) {
+  .guide-intro > p { font-size: 16px; }
+  .guide-section { margin-top: 36px; }
+  .guide-section-heading { gap: 10px; }
+  .guide-section-heading h2 { font-size: 20px; }
+  .guide-basics { grid-template-columns: 1fr; gap: 10px; }
+  .guide-basics > div { padding: 20px; }
+  .guide-description { font-size: 15px; }
+  .guide-writing-list { padding-left: 38px; padding-right: 20px; }
+  .guide-example, .guide-upload { padding: 22px 20px; }
+  .guide-evidence { padding: 0 20px; }
+  .guide-evidence > div { grid-template-columns: 1fr; gap: 12px; padding: 22px 0; }
+  .guide-evidence dt { font-size: 14px; }
+  .guide-bottom { flex-direction: column; align-items: stretch; }
+  .guide-bottom .primary { width: 100%; }
+}
