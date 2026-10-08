@@ -1,0 +1,115 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>소비자신고센터 | SOBORU.</title><style>
+:root{font-family:Pretendard,'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#202630;background:#fafaf9}*{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}header{background:white;border-bottom:1px solid #e9e9e7}.top{max-width:1160px;margin:auto;min-height:91px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 24px}.brand{font-size:30px;letter-spacing:-1.8px;font-weight:850;color:#202630;cursor:pointer}.brand span{color:#ef7300}.by{font-size:12px;color:#777;letter-spacing:.4px;margin-top:1px}nav{display:flex;gap:12px}nav button{background:transparent;border:0;padding:12px 16px;color:#5b6068;font-weight:700;border-radius:8px}nav button.active{background:#fff1e4;color:#df6900}main{max-width:1160px;margin:0 auto;padding:0 24px 90px}.hero{padding:104px 12px 95px;text-align:center;border-bottom:1px solid #eee}.hero h1{font-size:clamp(30px,4.5vw,54px);line-height:1.32;letter-spacing:-2.7px;margin:0 0 34px;font-weight:850}.primary{border:0;background:#ef7300;color:#fff;font-weight:800;border-radius:11px;padding:17px 48px;font-size:20px;box-shadow:0 6px 14px #ef730022}.primary:hover{background:#d96700}.section{margin-top:51px}.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:16px}.section h2{font-size:26px;letter-spacing:-1px;margin:0}.muted{color:#777;font-size:14px}.table{background:#fff;border:1px solid #e6e7e8;border-radius:13px;overflow:hidden}.tr{display:grid;grid-template-columns:80px minmax(0,1fr) 130px 130px;align-items:center;gap:12px;padding:19px 22px;border-bottom:1px solid #f0f0f0;font-size:14px}.tr:last-child{border:0}.tr.heading{background:#f7f7f6;font-weight:750;color:#666}.title-cell{font-size:15px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.status{display:inline-block;background:#fff0df;color:#c66300;border-radius:20px;padding:5px 11px;font-size:12px;font-weight:750;width:max-content}.empty{padding:70px 20px;text-align:center;color:#8b8b8b}.view{display:none}.view.active{display:block}.form-wrap{max-width:760px;margin:65px auto}.form-wrap h1{font-size:34px;letter-spacing:-1.3px;margin:0 0 10px}.form-card{background:white;border:1px solid #e7e7e7;border-radius:14px;padding:34px;margin-top:25px}.field{margin-bottom:24px}.field label{display:block;font-weight:750;margin-bottom:9px}.field input,.field select,.field textarea{width:100%;padding:13px 14px;border:1px solid #d8dadd;border-radius:8px;background:white;outline:none}.field textarea{min-height:180px;resize:vertical}.field input:focus,.field textarea:focus,.field select:focus{border-color:#ef7300;box-shadow:0 0 0 3px #ef73001a}.actions{display:flex;gap:12px;justify-content:flex-end}.secondary{background:white;border:1px solid #d9d9d9;padding:15px 25px;border-radius:10px;font-weight:700}.note{font-size:13px;color:#777;line-height:1.6;margin-top:15px}footer{text-align:center;border-top:1px solid #eee;padding:26px;color:#9b9b9b;font-size:12px}@media(max-width:680px){.top{min-height:76px;padding:14px 18px}.brand{font-size:24px}.top nav{gap:0}nav button{padding:9px;font-size:13px}main{padding:0 16px 60px}.hero{padding:92px 0 80px}.hero h1{letter-spacing:-1.5px}.primary{width:100%;max-width:340px}.section{margin-top:38px}.section h2{font-size:22px}.tr{grid-template-columns:minmax(0,1fr) 78px;gap:8px;padding:16px}.tr>*:first-child,.tr>*:last-child{display:none}.tr.heading{grid-template-columns:minmax(0,1fr) 78px}.form-wrap{margin:35px auto}.form-card{padding:22px 17px}.form-wrap h1{font-size:28px}}
+.hero h1{font-size:clamp(30px,4vw,52px);line-height:1.35;letter-spacing:-1.8px}.brand{font-size:clamp(30px,3vw,40px)}footer{font-weight:650}
+.menu-wrap{position:relative}.menu-toggle{display:flex;align-items:center;gap:7px}.menu-dropdown{display:none;position:absolute;top:calc(100% + 9px);right:0;min-width:220px;background:#fff;border:1px solid #e7e7e7;border-radius:12px;box-shadow:0 14px 36px #1e253019;z-index:10;padding:8px}.menu-dropdown.open{display:block}.menu-dropdown button{display:block;width:100%;text-align:left;padding:13px 15px;border-radius:7px;font-size:14px}.menu-dropdown button:hover{background:#fff3e9;color:#df6900}.info-wrap{max-width:850px;margin:66px auto 90px}.info-wrap h1{font-size:34px;letter-spacing:-1.2px;margin:0 0 12px}.info-intro{color:#68707b;line-height:1.7;margin-bottom:30px}.info-card{background:#fff;border:1px solid #e6e7e8;border-radius:13px;padding:28px 32px;margin:15px 0}.info-card h2{font-size:19px;margin:0 0 12px}.info-card p{line-height:1.8;color:#555f6d;margin:0}.info-card ol{line-height:2;color:#555f6d;padding-left:23px;margin:0}.faq-item{border-bottom:1px solid #e9e9e9;padding:19px 0}.faq-item:last-child{border-bottom:0}.faq-item summary{cursor:pointer;font-weight:750}.faq-item p{padding:13px 0 0}.step-num{display:inline-block;color:#df6900;font-weight:800;margin-right:12px}.info-cta{margin-top:24px}.info-cta .primary{font-size:16px;padding:15px 30px}@media(max-width:680px){.menu-dropdown{right:0}.menu-toggle{font-size:13px}.info-wrap{margin:35px auto}.info-card{padding:22px}.info-wrap h1{font-size:28px}}
+nav{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:3px 5px}nav button{white-space:nowrap;padding:10px 11px;font-size:14px}.top{max-width:1380px}.brand{white-space:nowrap}@media(max-width:950px){.top{flex-direction:column;align-items:flex-start;gap:8px}nav{justify-content:flex-start;width:100%;gap:4px}nav button{font-size:13px;padding:9px 10px}}@media(max-width:500px){.top{padding:14px 16px}nav{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin;padding-bottom:5px}nav button{flex-shrink:0}}
+.section-nav{background:#fff;border-bottom:1px solid #e9e9e7}.section-nav-inner{max-width:1380px;margin:auto;padding:0 24px;display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}.section-nav-inner button{padding:17px 15px;font-size:16px;font-weight:750;border-radius:0;border-bottom:3px solid transparent}.section-nav-inner button.active{background:transparent;color:#df6900;border-bottom-color:#ef7300}@media(max-width:700px){.section-nav-inner{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;gap:4px;padding:0 14px}.section-nav-inner button{font-size:14px;padding:14px 11px;flex-shrink:0}}
+/* Logo and navigation share one balanced header baseline */
+.top{max-width:1380px;min-height:100px;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:38px;padding:17px 28px}
+.top>.section-nav-inner{max-width:none;margin:0;padding:0;display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:3px;min-width:0}
+.top .brand{font-size:clamp(30px,2.7vw,39px);line-height:1.2;letter-spacing:-1.8px;white-space:nowrap}
+.top .section-nav-inner button{font-size:14px;line-height:1.3;padding:13px 10px;border-bottom:2px solid transparent;white-space:nowrap}
+.top .section-nav-inner button.active{border-bottom-color:#ef7300}
+@media(max-width:1100px){.top{gap:16px;padding:16px 22px}.top .brand{font-size:31px}.top .section-nav-inner button{font-size:12px;padding:12px 7px}}
+@media(max-width:790px){.top{display:flex;flex-direction:column;align-items:stretch;gap:13px;padding:17px 16px 0}.top .brand{font-size:31px}.top>.section-nav-inner{width:100%;justify-content:flex-start;overflow-x:auto;gap:4px;padding:0 0 2px;scrollbar-width:thin}.top .section-nav-inner button{font-size:13px;padding:12px 9px;flex-shrink:0}}
+/* Unified, legible navigation typography */
+.top{max-width:1380px;gap:28px}
+.top>.section-nav-inner{gap:4px}
+.top .section-nav-inner button{font-size:16px;font-weight:750;line-height:1.35;padding:13px 10px;letter-spacing:-.45px}
+@media(max-width:1180px){.top{gap:14px;padding:16px 20px}.top .brand{font-size:30px}.top .section-nav-inner button{font-size:15px;padding:12px 7px}}
+@media(max-width:980px){.top{flex-direction:column;align-items:stretch;gap:12px;padding:17px 18px 0}.top>.section-nav-inner{width:100%;justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}.top .section-nav-inner button{font-size:15px;padding:12px 11px;flex-shrink:0}}
+
+/* Reference-inspired spacious single-row masthead, original orange palette */
+header .top{max-width:1800px;width:100%;min-height:112px;padding:20px 48px;gap:48px;flex-direction:row;align-items:center;justify-content:space-between}
+header .brand{font-size:37px;letter-spacing:-2px;white-space:nowrap;line-height:1.25}
+header .top>.section-nav-inner{display:flex;flex:1;min-width:0;justify-content:space-between;align-items:center;gap:12px;overflow:visible;flex-wrap:nowrap}
+header .top .section-nav-inner button{font-size:21px;font-weight:800;letter-spacing:-.9px;line-height:1.3;padding:13px 4px;white-space:nowrap;color:#272b30}
+header .top .section-nav-inner button.active{color:#e77300}
+@media(max-width:1450px){header .top{padding:18px 32px;gap:30px}header .brand{font-size:33px}header .top .section-nav-inner button{font-size:18px}}
+@media(max-width:1120px){header .top{gap:22px;padding:17px 24px}header .brand{font-size:29px}header .top>.section-nav-inner{gap:7px}header .top .section-nav-inner button{font-size:15px}}
+@media(max-width:850px){header .top{flex-direction:column;align-items:stretch;gap:14px;padding:18px 18px 0}header .brand{font-size:30px}header .top>.section-nav-inner{width:100%;justify-content:flex-start;overflow-x:auto;gap:22px;padding-bottom:4px}header .top .section-nav-inner button{font-size:17px;flex-shrink:0;padding:14px 2px}}
+
+/* Screenshot-matched masthead proportions: large wordmark and evenly distributed bold tabs */
+header{background:#fff}
+header .top{max-width:none;width:100%;height:136px;min-height:136px;padding:0 70px;gap:clamp(45px,7vw,145px);display:flex;flex-direction:row;align-items:center;justify-content:space-between}
+header .brand{font-size:clamp(34px,2.3vw,45px);font-weight:850;letter-spacing:-2.5px;line-height:1.15}
+header .top>.section-nav-inner{flex:1;display:flex;justify-content:space-between;align-items:center;gap:clamp(10px,1.4vw,27px);overflow:visible;flex-wrap:nowrap}
+header .top .section-nav-inner button{font-size:clamp(17px,1.35vw,26px);font-weight:850;letter-spacing:-1.15px;line-height:1.3;padding:16px 0;color:#272727;border-radius:0;white-space:nowrap}
+header .top .section-nav-inner button.active{color:#e77300;border-bottom-color:#ef7300}
+@media(max-width:1400px){header .top{height:112px;min-height:112px;padding:0 36px;gap:42px}header .brand{font-size:34px}header .top .section-nav-inner button{font-size:18px}}
+@media(max-width:1050px){header .top{height:auto;min-height:0;padding:24px 26px 0;gap:15px;flex-direction:column;align-items:stretch}header .brand{font-size:35px}header .top>.section-nav-inner{width:100%;justify-content:space-between;overflow-x:auto;gap:24px;scrollbar-width:thin}header .top .section-nav-inner button{font-size:19px;flex-shrink:0;padding:18px 0}}
+@media(max-width:600px){header .top{padding:20px 18px 0}header .brand{font-size:31px}header .top .section-nav-inner button{font-size:17px}}
+/* Five evenly spaced section links, matching reference masthead */
+header .top{gap:clamp(34px,5vw,90px)}
+header .top>.section-nav-inner{flex:0 1 auto;justify-content:flex-end;gap:clamp(20px,2.5vw,46px)}
+header .top .section-nav-inner button{flex:0 0 auto}
+@media(max-width:1400px){header .top>.section-nav-inner{gap:clamp(15px,2vw,28px)}}
+@media(max-width:1050px){header .top>.section-nav-inner{justify-content:flex-start;gap:24px}}
+
+/* Functional content controls, independent from masthead styling */
+.report-tools{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 17px}.report-tools input,.report-tools select{border:1px solid #dedede;background:#fff;border-radius:9px;padding:12px 14px;font-size:15px}.report-tools input{flex:1;min-width:190px}.report-tools select{min-width:150px}.report-link{border:0;background:none;text-align:left;font-weight:700;color:#272b30;padding:0;cursor:pointer}.report-link:hover{color:#ed7900;text-decoration:underline}.detail-card{background:#fff;border:1px solid #e7e7e5;border-radius:14px;padding:30px;margin-top:24px}.detail-card h2{margin:12px 0 22px;font-size:26px;overflow-wrap:anywhere}.detail-card p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}.detail-meta{display:flex;flex-wrap:wrap;gap:12px;color:#70757d;font-size:14px}.type-action{display:flex;justify-content:space-between;align-items:center;gap:20px}.type-action button{border:1px solid #ef7300;border-radius:8px;background:#fff7ee;color:#d96700;font-weight:800;padding:10px 16px;white-space:nowrap}.type-action button:hover{background:#ffedd9}@media(max-width:600px){.type-action{align-items:flex-start;flex-direction:column}.report-tools input,.report-tools select{width:100%}}
+
+/* Keep section navigation aligned to the right across desktop and tablet. */
+header .top > .section-nav-inner {
+  margin-left: auto;
+  justify-content: flex-end;
+  justify-content: safe flex-end;
+}
+@media (min-width: 1051px) {
+  header .top { padding-right: 28px; }
+}
+
+/* Align the wordmark and section labels on the same text baseline. */
+@media (min-width: 1051px) {
+  header .top {
+    align-items: baseline;
+    padding-top: 42px;
+    padding-bottom: 0;
+  }
+  header .top > .section-nav-inner {
+    align-items: baseline;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  header .top .section-nav-inner button {
+    margin: 0;
+    padding-top: 0;
+    padding-bottom: 12px;
+  }
+}
+@media (min-width: 1051px) and (max-width: 1400px) {
+  header .top { padding-top: 30px; }
+}
+</style></head><body><header><div class="top"><div onclick="go('home')" role="button" tabindex="0"><div class="brand"><span>소비자</span>신고센터</div></div><nav class="section-nav-inner"><button id="nav-home" class="active" onclick="go('home')">신고 목록</button><button id="nav-guide" onclick="go('guide')">신고 이용안내</button><button id="nav-process" onclick="go('process')">처리 절차</button><button id="nav-types" onclick="go('types')">신고 유형</button><button id="nav-faq" onclick="go('faq')">자주 묻는 질문</button></nav></div></header><main><section id="home" class="view active"><div class="hero"><h1>여러분의 신고가<br>권익 보호의 시작입니다.</h1><button class="primary" onclick="go('form')">신고하기 →</button></div><div class="section"><div class="section-head"><h2>신고 목록</h2><span class="muted" id="count"></span></div><div class="report-tools"><input id="search-reports" aria-label="신고 제목 검색" placeholder="신고 제목 검색" oninput="render()"><select id="filter-category" aria-label="신고 유형 필터" onchange="render()"><option value="">전체 유형</option><option>환불·교환</option><option>허위·과장광고</option><option>계약·약관</option><option>상품·서비스</option><option>기타</option></select></div><div class="table"><div class="tr heading"><span>번호</span><span>신고 제목</span><span>진행 상태</span><span>접수일</span></div><div id="records"></div></div></div></section><section id="detail-view" class="view"><div class="info-wrap"><button class="secondary" onclick="go('home')">← 신고 목록으로</button><div id="report-detail" class="detail-card"></div></div></section><section id="form" class="view"><div class="form-wrap"><h1>피해 신고하기</h1><div class="muted">피해 내용을 작성해 주세요.</div><form class="form-card" id="report-form"><div class="field"><label for="title">신고 제목</label><input id="title" maxlength="100" placeholder="신고 제목을 입력해 주세요" required></div><div class="field"><label for="category">피해 유형</label><select id="category" required><option value="">선택해 주세요</option><option>환불·교환</option><option>허위·과장광고</option><option>계약·약관</option><option>상품·서비스</option><option>기타</option></select></div><div class="field"><label for="detail">피해 내용</label><textarea id="detail" placeholder="발생한 일을 구체적으로 작성해 주세요" required></textarea></div><div class="field"><label for="proof">증빙 자료 (선택)</label><input type="file" id="proof" accept="image/*,.pdf" multiple></div><div class="actions"><button type="button" class="secondary" onclick="go('home')">취소</button><button type="submit" class="primary" style="font-size:16px;padding:15px 27px">신고 등록</button></div><p class="note">현재 HTML 시안입니다. 입력한 내용은 이 브라우저에만 임시 저장되며 실제 접수·전송되지 않습니다. 첨부파일도 서버에 업로드되지 않습니다.</p></form></div></section><section id="guide" class="view"><div class="info-wrap"><h1>신고 이용안내</h1><p class="info-intro">소비자 피해 경험을 제보할 수 있는 민간 신고 창구입니다.</p><div class="info-card"><h2>신고 대상</h2><p>상품 구매, 환불, 계약, 광고, 서비스 이용 등 소비 과정에서 겪은 피해를 제보할 수 있습니다.</p></div><div class="info-card"><h2>신고 작성 시 참고사항</h2><p>발생 시점과 업체명, 피해 경위, 요청 사항을 구체적으로 작성해 주세요. 주문 내역과 영수증 등 관련 자료가 있으면 사실관계 확인에 도움이 됩니다.</p></div><div class="info-card"><h2>안내 사항</h2><p>본 센터는 정부기관이나 법정 분쟁조정기관이 아닌 민간 플랫폼입니다. 신고 접수만으로 법적 구제 또는 업체 답변이 보장되지는 않습니다.</p></div><div class="info-cta"><button class="primary" onclick="go('form')">신고하기 →</button></div></div></section>
+<section id="process" class="view"><div class="info-wrap"><h1>처리 절차</h1><p class="info-intro">신고 내용의 확인 및 검토 과정에 대한 안내입니다.</p><div class="info-card"><h2><span class="step-num">01</span>신고 접수</h2><p>신고자가 피해 내용을 작성하고 관련 자료를 제출합니다.</p></div><div class="info-card"><h2><span class="step-num">02</span>내용 검토</h2><p>제출된 내용의 사실관계와 자료를 검토합니다. 필요한 경우 추가 자료를 요청할 수 있습니다.</p></div><div class="info-card"><h2><span class="step-num">03</span>후속 검토</h2><p>사안에 따라 업체 의견 확인 또는 취재 여부를 검토할 수 있습니다. 모든 신고가 취재·공개되는 것은 아닙니다.</p></div><p class="note">이 HTML은 기능 시연용으로 실제 검토·처리 시스템과 연결되어 있지 않습니다.</p></div></section>
+<section id="types" class="view"><div class="info-wrap"><h1>신고 유형</h1><p class="info-intro">해당하는 유형을 선택해 피해 내용을 작성할 수 있습니다.</p><div class="info-card"><div class="type-action"><h2>환불·교환</h2><button onclick="reportType('환불·교환')">이 유형으로 신고 →</button></div><p>환불 거부, 교환 지연, 청약철회 관련 피해</p></div><div class="info-card"><div class="type-action"><h2>허위·과장광고</h2><button onclick="reportType('허위·과장광고')">이 유형으로 신고 →</button></div><p>광고 내용과 실제 상품·서비스가 다른 사례</p></div><div class="info-card"><div class="type-action"><h2>계약·약관</h2><button onclick="reportType('계약·약관')">이 유형으로 신고 →</button></div><p>부당한 계약 조건, 위약금, 자동결제 및 해지 문제</p></div><div class="info-card"><div class="type-action"><h2>상품·서비스</h2><button onclick="reportType('상품·서비스')">이 유형으로 신고 →</button></div><p>상품 하자, 서비스 불이행, 고객 응대 관련 피해</p></div><div class="info-cta"><button class="primary" onclick="go('form')">신고하기 →</button></div></div></section>
+<section id="faq" class="view"><div class="info-wrap"><h1>자주 묻는 질문</h1><p class="info-intro">신고 전 확인하면 좋은 내용을 정리했습니다.</p><div class="info-card"><details class="faq-item"><summary>신고하면 바로 해결되나요?</summary><p>신고 접수만으로 환불이나 보상이 확정되지는 않습니다. 내용에 따라 후속 검토가 이루어질 수 있습니다.</p></details><details class="faq-item"><summary>어떤 자료를 첨부하면 좋나요?</summary><p>영수증, 주문 내역, 업체와 주고받은 메시지 등 사실관계를 확인할 수 있는 자료가 도움이 됩니다.</p></details><details class="faq-item"><summary>신고 내용이 공개되나요?</summary><p>실제 운영 시 공개 범위와 개인정보 처리 기준은 별도로 정해야 합니다. 이 시안의 신고 내용은 현재 브라우저에만 저장됩니다.</p></details><details class="faq-item"><summary>공식 분쟁조정이나 피해구제도 가능한가요?</summary><p>이 센터는 법정 피해구제기관이 아닙니다. 공식적인 상담·피해구제는 1372 소비자상담센터 등 관련 기관을 이용해 주세요.</p></details></div></div></section></main><footer>by SOBORU.</footer><script>
+const key='soboru_demo_reports_v1';
+function getReports(){try{const rows=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(rows)?rows:[]}catch{return []}}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){
+ const rows=getReports(),q=document.getElementById('search-reports').value.trim().toLowerCase(),cat=document.getElementById('filter-category').value;
+ const matches=rows.map((r,i)=>({...r,index:i})).filter(r=>(!q||String(r.title).toLowerCase().includes(q))&&(!cat||r.category===cat));
+ document.getElementById('count').textContent=`총 ${matches.length}건`;
+ document.getElementById('records').innerHTML=matches.length?matches.map(r=>`<div class="tr"><span>${rows.length-r.index}</span><span class="title-cell"><button class="report-link" onclick="showReport(${r.index})">${escapeHtml(r.title)}</button></span><span class="status">접수</span><span class="muted">${escapeHtml(r.date)}</span></div>`).join(''):'<div class="empty">표시할 신고 내역이 없습니다.</div>';
+}
+function showReport(i){const r=getReports()[i];if(!r)return;document.getElementById('report-detail').innerHTML=`<div class="detail-meta"><span>${escapeHtml(r.category)}</span><span>접수일 ${escapeHtml(r.date)}</span><span>상태: 접수</span></div><h2>${escapeHtml(r.title)}</h2><p>${escapeHtml(r.detail)}</p><p class="note">이 내용은 현재 브라우저에만 저장된 시연용 데이터입니다.</p>`;go('detail-view')}
+function reportType(cat){go('form');document.getElementById('category').value=cat}
+function go(view){
+ const valid=['home','form','guide','process','types','faq','detail-view'];if(!valid.includes(view))view='home';
+ document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===view));
+ document.getElementById('nav-home').classList.toggle('active',view==='home'||view==='detail-view');
+ ['guide','process','types','faq'].forEach(id=>document.getElementById('nav-'+id).classList.toggle('active',view===id));
+ const hash=view==='home'?'reports':view==='form'?'report':view==='detail-view'?'detail':view;
+ if(location.hash!=='#'+hash)history.pushState(null,'','#'+hash);
+ window.scrollTo(0,0);if(view==='home')render();
+}
+document.getElementById('report-form').addEventListener('submit',e=>{
+ e.preventDefault();const title=document.getElementById('title').value.trim(),detail=document.getElementById('detail').value.trim();if(!title||!detail)return;
+ const rows=getReports();rows.unshift({title,category:document.getElementById('category').value,detail,date:new Date().toLocaleDateString('ko-KR')});
+ try{localStorage.setItem(key,JSON.stringify(rows))}catch{alert('브라우저 저장 공간이 부족해 등록하지 못했습니다.');return}
+ e.target.reset();document.getElementById('search-reports').value='';document.getElementById('filter-category').value='';go('home');
+});
+function route(){const h=location.hash.slice(1),view=h==='report'?'form':['guide','process','types','faq'].includes(h)?h:'home';document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===view));document.getElementById('nav-home').classList.toggle('active',view==='home');['guide','process','types','faq'].forEach(id=>document.getElementById('nav-'+id).classList.toggle('active',view===id));if(view==='home')render()}
+window.addEventListener('hashchange',route);route();
+</script></body></html>
