@@ -69,3 +69,52 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
   .guide-bottom { flex-direction: column; align-items: stretch; }
   .guide-bottom .primary { width: 100%; }
 }
+
+/* Original illustrated evidence guidance; text stays selectable and accessible. */
+.evidence-step-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
+.evidence-step { display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e6e7e8; border-radius: 16px; background: #fff; }
+.evidence-illustration { aspect-ratio: 1 / 1; background-image: url('images/evidence-steps.png'); background-repeat: no-repeat; background-size: 300% 100%; background-color: #fff7ef; }
+.evidence-illustration--whole { background-position: left center; }
+.evidence-illustration--detail { background-position: center center; }
+.evidence-illustration--record { background-position: right center; }
+.evidence-step-copy { display: flex; flex-direction: column; flex: 1; padding: 24px 22px; }
+.evidence-step-label { align-self: flex-start; font-size: 12px; font-weight: 750; color: #aa5100; background: #fff1e3; border-radius: 6px; padding: 5px 9px; }
+.evidence-step h3 { font-size: 19px; line-height: 1.5; letter-spacing: -.6px; margin: 15px 0 10px; }
+.evidence-step p { color: #626973; line-height: 1.8; font-size: 15px; margin: 0 0 20px; }
+.evidence-caption { display: block; margin-top: auto; border-top: 1px solid #eee; padding-top: 14px; font-size: 13px; color: #a34e00; line-height: 1.7; }
+.evidence-reminders { background: #fff7ef; border: 1px solid #f2ddc8; border-radius: 12px; padding: 24px 28px; margin-top: 18px; }
+.evidence-reminders h3 { margin: 0 0 18px; font-size: 17px; }
+.evidence-reminders ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; }
+.evidence-reminders strong { display: block; font-size: 15px; margin-bottom: 8px; color: #985000; }
+.evidence-reminders li > span { display: block; font-size: 14px; line-height: 1.8; color: #62605b; }
+.evidence-topics { border: 1px solid #e6e7e8; background: #fff; border-radius: 14px; overflow: hidden; }
+.evidence-topic + .evidence-topic { border-top: 1px solid #e6e7e8; }
+.evidence-topic summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; padding: 22px 26px; list-style: none; font-weight: 750; }
+.evidence-topic summary::-webkit-details-marker { display: none; }
+.evidence-topic summary:hover { background: #fffaf5; }
+.evidence-topic summary:focus-visible { outline-offset: -4px; }
+.evidence-topic[open] > summary { background: #fff7ef; color: #a34e00; }
+.evidence-topic-action { font-size: 12px; color: #777; font-weight: 500; white-space: nowrap; }
+.evidence-topic-chevron { display: inline-block; font-size: 19px; margin-left: 9px; }
+.evidence-topic[open] .evidence-topic-chevron { transform: rotate(180deg); }
+.evidence-topic-body { padding: 24px 28px 28px; }
+.evidence-topic-body h3 { margin: 0 0 16px; font-size: 18px; line-height: 1.6; }
+.evidence-topic-body ol { margin: 0; padding-left: 22px; line-height: 1.9; font-size: 15px; color: #535d68; }
+.evidence-topic-body li + li { margin-top: 10px; }
+.evidence-topic-body li::marker { color: #b65700; font-weight: 750; }
+.evidence-topic-records { margin-top: 22px; padding: 18px 20px; background: #f7f7f6; border-radius: 9px; font-size: 14px; line-height: 1.8; color: #626973; }
+.evidence-topic-records h4 { color: #343c45; font-size: 14px; margin: 0 0 8px; }
+.evidence-topic-records p { margin: 0 0 8px; }
+.evidence-topic-records > span { color: #a34e00; font-weight: 650; margin-right: 7px; }
+@media(max-width:680px) {
+  .evidence-step-grid { grid-template-columns: 1fr; gap: 20px; }
+  .evidence-illustration { aspect-ratio: 1 / 1; width: min(100%,300px); margin: auto; }
+  .evidence-step { background: #fff; }
+  .evidence-step-copy { padding: 20px 22px 24px; }
+  .evidence-step h3 { font-size: 21px; }
+  .evidence-reminders { padding: 24px 22px; }
+  .evidence-reminders ul { grid-template-columns: 1fr; gap: 20px; }
+  .evidence-topic summary { padding: 20px; }
+  .evidence-topic-body { padding: 20px; }
+  .evidence-topic-records { padding: 16px; }
+}
