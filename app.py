@@ -52,22 +52,33 @@ def home():
     with conn() as db:
         rows=db.execute('SELECT category,subject,status,created FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 60').fetchall()
     public_cases=[dict(cat=r['category'],title=r['subject'],status=r['status'],created=r['created'][:10]) for r in rows]
-    return render_template('index.html',categories=CATEGORIES,public_cases=public_cases)
+    search_query=request.args.get('q','').strip()[:160]
+    selected_category=request.args.get('category','')
+    public_cases=[case for case in public_cases if (not search_query or search_query.casefold() in case['title'].casefold()) and (not selected_category or case['cat']==selected_category)]
+    return render_template('index.html',categories=CATEGORIES,public_cases=public_cases,search_query=search_query,selected_category=selected_category)
+
+@app.route('/guide',defaults={'page':'guide'})
+@app.route('/process',defaults={'page':'process'})
+@app.route('/types',defaults={'page':'types'})
+@app.route('/faq',defaults={'page':'faq'})
+def info_page(page):
+    return render_template('info.html',page=page,categories=CATEGORIES)
+
 @app.route('/report',methods=['GET','POST'])
 def report():
     if request.method=='GET':return render_template('report.html',categories=CATEGORIES, intake_enabled=os.getenv('ENABLE_INTAKE')=='1')
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='신고 접수 준비 중입니다.')
     data={k:request.form.get(k,'').strip() for k in ('category','company','subject','description','request_text','contact')}
     if data['category'] not in CATEGORIES or any(not data[k] for k in ('company','subject','description','request_text')) or not request.form.get('consent'):
-        flash('필수 항목과 개인정보 안내 동의를 확인해 주세요.');return render_template('report.html',categories=CATEGORIES),400
+        flash('필수 항목과 개인정보 안내 동의를 확인해 주세요.');return render_template('report.html',categories=CATEGORIES,intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
     if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150)]):abort(400)
     file=request.files.get('evidence')
     if file and file.filename:
         suffix=Path(secure_filename(file.filename)).suffix.lower()
-        if suffix not in ('.pdf','.png','.jpg','.jpeg','.webp'):flash('첨부는 PDF 또는 이미지 파일만 가능합니다.');return render_template('report.html',categories=CATEGORIES),400
+        if suffix not in ('.pdf','.png','.jpg','.jpeg','.webp'):flash('첨부는 PDF 또는 이미지 파일만 가능합니다.');return render_template('report.html',categories=CATEGORIES,intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
         head=file.stream.read(12);file.stream.seek(0)
         valid=(suffix=='.pdf' and head.startswith(b'%PDF-')) or (suffix=='.png' and head.startswith(b'\x89PNG')) or (suffix in ('.jpg','.jpeg') and head.startswith(b'\xff\xd8')) or (suffix=='.webp' and head[8:12]==b'WEBP')
-        if not valid:flash('첨부파일 형식을 확인해 주세요.');return render_template('report.html',categories=CATEGORIES),400
+        if not valid:flash('첨부파일 형식을 확인해 주세요.');return render_template('report.html',categories=CATEGORIES,intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
     receipt='CJ-'+datetime.datetime.now().strftime('%y%m%d')+'-'+secrets.token_hex(3).upper()
     code=secrets.token_urlsafe(12)
     with conn() as db:
