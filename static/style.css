@@ -118,3 +118,18 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
   .evidence-topic-body { padding: 20px; }
   .evidence-topic-records { padding: 16px; }
 }
+
+/* Larger section labels; mobile navigation shows four complete links. */
+.section-nav a { font-size: clamp(20px, 1.5vw, 24px); }
+@media (max-width: 1050px) {
+  .section-nav a { font-size: 20px; }
+}
+@media (max-width: 680px) {
+  .section-nav { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; align-items: baseline; gap: 4px; overflow: visible; }
+  .section-nav [data-menu="faq"] { display: none; }
+  .section-nav a { font-size: clamp(16px, 4.5vw, 18px); letter-spacing: -.8px; padding: 16px 0 14px; text-align: center; }
+}
+@media (max-width: 360px) {
+  .section-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+  .section-nav a { font-size: 18px; }
+}

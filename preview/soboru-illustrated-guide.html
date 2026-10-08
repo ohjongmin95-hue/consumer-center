@@ -125,6 +125,21 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
   .evidence-topic-body { padding: 20px; }
   .evidence-topic-records { padding: 16px; }
 }
+
+/* Larger section labels; mobile navigation shows four complete links. */
+.section-nav a { font-size: clamp(20px, 1.5vw, 24px); }
+@media (max-width: 1050px) {
+  .section-nav a { font-size: 20px; }
+}
+@media (max-width: 680px) {
+  .section-nav { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; align-items: baseline; gap: 4px; overflow: visible; }
+  .section-nav [data-menu="faq"] { display: none; }
+  .section-nav a { font-size: clamp(16px, 4.5vw, 18px); letter-spacing: -.8px; padding: 16px 0 14px; text-align: center; }
+}
+@media (max-width: 360px) {
+  .section-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+  .section-nav a { font-size: 18px; }
+}
 </style>
 </head>
 <body>
@@ -134,19 +149,19 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
     <nav class="section-nav" aria-label="주요 메뉴">
       
       
-      <a href="https://consumer-center.onrender.com/">신고 목록</a>
+      <a data-menu="home" href="https://consumer-center.onrender.com/">신고 목록</a>
       
       
-      <a href="#" class="active" aria-current="page">신고 이용안내</a>
+      <a data-menu="guide" href="#" class="active" aria-current="page">신고 이용안내</a>
       
       
-      <a href="https://consumer-center.onrender.com/process">처리 절차</a>
+      <a data-menu="process" href="https://consumer-center.onrender.com/process">처리 절차</a>
       
       
-      <a href="https://consumer-center.onrender.com/types">신고 유형</a>
+      <a data-menu="types" href="https://consumer-center.onrender.com/types">신고 유형</a>
       
       
-      <a href="https://consumer-center.onrender.com/faq">자주 묻는 질문</a>
+      <a data-menu="faq" href="https://consumer-center.onrender.com/faq">자주 묻는 질문</a>
       
     </nav>
   </div>
@@ -220,15 +235,7 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
     <p class="guide-description">해당하는 분야를 눌러 확인해 보세요. 모든 자료를 갖출 필요는 없어요. 지금 갖고 있는 것부터 정리해 주세요.</p>
     <div class="evidence-topics">
       <details class="evidence-topic">
-        <summary><span>식품</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>포장과 내용물을 함께 남겨 주세요</h3>
-          <ol><li>제품명·소비기한과 개봉 상태가 보이도록 포장 전체를 찍어 주세요.</li><li>이물이나 변색은 위치가 보이는 사진과 가까운 사진을 각각 남겨 주세요.</li><li>언제 발견했는지, 개봉 전인지 후인지 설명을 덧붙여 주세요. 사진만으로 원인이 확인되는 것은 아닙니다.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매한 날짜와 금액, 이상을 발견한 시점, 개봉 전·후 여부, 피해 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 영수증, 제품·포장 사진, 소비기한 표시</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>쇼핑·유통</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <summary><span>유통</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
         <div class="evidence-topic-body">
           <h3>안내받은 내용과 실제 받은 것을 연결해 주세요</h3>
           <ol><li>상품 설명이나 행사 조건은 업체명과 조건이 보이게 저장해 주세요.</li><li>배송된 상품과 포장, 주문 내역을 함께 남겨 주세요.</li><li>환불·교환을 요청한 날짜와 업체 답변도 정리해 주세요.</li></ol>
@@ -236,15 +243,7 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
         </div>
       </details>
       <details class="evidence-topic">
-        <summary><span>의약품</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>제품 정보와 나타난 변화를 기록해 주세요</h3>
-          <ol><li>제품명과 사용기한이 보이도록 포장을 찍어 주세요.</li><li>사용·복용 시점과 증상이 나타난 시점을 구분해서 적어 주세요.</li><li>증상 사진이나 관련 진료 자료가 있다면 필요한 부분만 정리해 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>제품명, 구입·복용 시점, 이상 증상이 나타난 시점과 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 제품 사진, 처방·진료 자료 중 관련된 부분</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>가전·전자제품</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <summary><span>가전·IT</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
         <div class="evidence-topic-body">
           <h3>고장 부위와 사용 상황을 함께 보여 주세요</h3>
           <ol><li>전체 외관과 모델명을 남긴 뒤, 문제 부위를 가까이 찍어 주세요.</li><li>언제 어떤 작동 중 문제가 생기는지 적고, 화면에 오류가 뜬다면 캡처해 주세요.</li><li>배송 파손이라면 포장 상태도, 수리를 받았다면 수리 내역도 함께 남겨 주세요.</li></ol>
@@ -252,11 +251,15 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
         </div>
       </details>
       <details class="evidence-topic">
-        <summary><span>금융</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <summary><span>서비스</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <div class="evidence-topic-body"><h3>약속한 서비스와 실제 이용 내용을 남겨 주세요</h3><ol><li>예약·계약 당시 안내받은 내용과 이용 날짜를 정리해 주세요.</li><li>제공되지 않은 서비스나 지연·취소된 내용을 구체적으로 적어 주세요.</li><li>환불이나 재이행을 요청한 날짜와 업체 답변을 함께 남겨 주세요.</li></ol><div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>업체명, 예약·계약일, 이용 금액, 약속과 달랐던 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 예약 내역, 계약서, 결제 내역, 업체 답변</div></div>
+      </details>
+      <details class="evidence-topic">
+        <summary><span>통신</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
         <div class="evidence-topic-body">
-          <h3>상품 내용과 실제 청구 내역을 비교할 수 있게</h3>
-          <ol><li>계약서에서 상품명·가입일·관련 보장 또는 수수료 조건이 있는 쪽을 준비해 주세요.</li><li>문서는 겹치지 않게 한 장씩 찍고, 확대했을 때 글자가 읽히는지 확인해 주세요.</li><li>설명받은 내용과 다르다고 생각하는 부분을 짚고, 청구·지급 내역과 업체 답변을 연결해 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>가입일과 상품명, 설명받은 내용, 실제로 발생한 비용이나 피해 금액을 적어 주세요.</p><span>도움이 되는 자료</span> 계약서, 거래 내역, 상담 내용</div>
+          <h3>약속한 요금과 청구된 요금을 함께 남겨 주세요</h3>
+          <ol><li>가입 당시 요금제·혜택·약정 조건을 확인할 수 있는 계약서나 안내 화면을 준비해 주세요.</li><li>청구서에서 문제가 된 항목과 금액을 짚어 주세요.</li><li>품질 문제라면 발생한 장소·시간과 통신사에 문의한 결과를 함께 적어 주세요.</li></ol>
+          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>통신사와 가입 경로, 가입일, 요금제, 약속과 달랐던 요금이나 서비스 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 가입 계약서, 요금 청구서, 상담 내용</div>
         </div>
       </details>
       <details class="evidence-topic">
@@ -268,28 +271,36 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
         </div>
       </details>
       <details class="evidence-topic">
-        <summary><span>게임·디지털 서비스</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <summary><span>금융</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
         <div class="evidence-topic-body">
-          <h3>화면과 결제 내역을 연결해 주세요</h3>
-          <ol><li>서비스명과 문제가 나타난 화면을 캡처하고 발생 시각을 적어 주세요.</li><li>구매한 아이템·상품명과 결제일·금액이 보이는 내역을 준비해 주세요.</li><li>고객센터에 문의한 내용과 답변을 남겨 주세요. 로그인 비밀번호는 넣지 마세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>게임·서비스명, 이용 서버, 결제일과 금액, 구매한 상품이나 아이템, 발생한 문제를 적어 주세요.</p><span>도움이 되는 자료</span> 결제 내역, 오류 화면, 고객센터 답변</div>
+          <h3>상품 내용과 실제 청구 내역을 비교할 수 있게</h3>
+          <ol><li>계약서에서 상품명·가입일·관련 보장 또는 수수료 조건이 있는 쪽을 준비해 주세요.</li><li>문서는 겹치지 않게 한 장씩 찍고, 확대했을 때 글자가 읽히는지 확인해 주세요.</li><li>설명받은 내용과 다르다고 생각하는 부분을 짚고, 청구·지급 내역과 업체 답변을 연결해 주세요.</li></ol>
+          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>가입일과 상품명, 설명받은 내용, 실제로 발생한 비용이나 피해 금액을 적어 주세요.</p><span>도움이 되는 자료</span> 계약서, 거래 내역, 상담 내용</div>
         </div>
       </details>
       <details class="evidence-topic">
-        <summary><span>통신</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <summary><span>식음료</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
         <div class="evidence-topic-body">
-          <h3>약속한 요금과 청구된 요금을 함께 남겨 주세요</h3>
-          <ol><li>가입 당시 요금제·혜택·약정 조건을 확인할 수 있는 계약서나 안내 화면을 준비해 주세요.</li><li>청구서에서 문제가 된 항목과 금액을 짚어 주세요.</li><li>품질 문제라면 발생한 장소·시간과 통신사에 문의한 결과를 함께 적어 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>통신사와 가입 경로, 가입일, 요금제, 약속과 달랐던 요금이나 서비스 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 가입 계약서, 요금 청구서, 상담 내용</div>
+          <h3>포장과 내용물을 함께 남겨 주세요</h3>
+          <ol><li>제품명·소비기한과 개봉 상태가 보이도록 포장 전체를 찍어 주세요.</li><li>이물이나 변색은 위치가 보이는 사진과 가까운 사진을 각각 남겨 주세요.</li><li>언제 발견했는지, 개봉 전인지 후인지 설명을 덧붙여 주세요. 사진만으로 원인이 확인되는 것은 아닙니다.</li></ol>
+          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매한 날짜와 금액, 이상을 발견한 시점, 개봉 전·후 여부, 피해 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 영수증, 제품·포장 사진, 소비기한 표시</div>
         </div>
       </details>
       <details class="evidence-topic">
-        <summary><span>주거·시공</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <summary><span>생활용품</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <div class="evidence-topic-body"><h3>제품 전체와 달라진 부분을 함께 보여 주세요</h3><ol><li>의류·가구·화장품 등 제품명과 구매 내역을 준비해 주세요.</li><li>제품 전체를 찍고, 오염·변형·파손이나 사용 후 나타난 변화는 가까이 찍어 주세요.</li><li>언제부터 문제가 생겼는지, 어떤 방법으로 사용했는지와 업체 답변을 적어 주세요.</li></ol><div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매일, 제품명, 결제 금액, 사용 시점과 피해 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 영수증, 제품·문제 부위 사진, 사용 안내, 교환·수리 내역</div></div>
+      </details>
+      <details class="evidence-topic">
+        <summary><span>건설</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
         <div class="evidence-topic-body">
           <h3>집 안의 위치부터, 하자는 가까이</h3>
           <ol><li>어느 방·벽·천장인지 알 수 있도록 주변과 하자 부위를 함께 찍어 주세요.</li><li>균열·들뜸·누수 흔적은 가까이 찍고 처음 발견한 날짜를 적어 주세요.</li><li>가능하면 보수 전 상태를 남기고, 견적서와 보수를 요청한 기록도 준비해 주세요.</li></ol>
           <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>계약·입주·시공 시점, 하자를 발견한 때와 위치, 업체에 요청한 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 계약서, 하자 부위 사진, 보수 요청 내역</div>
         </div>
+      </details>
+      <details class="evidence-topic">
+        <summary><span>기타</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <div class="evidence-topic-body"><h3>분류가 애매해도 겪은 일을 순서대로 적어 주세요</h3><ol><li>무엇을 구매하거나 어떤 계약을 했는지 먼저 알려 주세요.</li><li>문제를 발견한 시점과 피해 내용, 원하는 해결 방법을 적어 주세요.</li><li>거래 내역과 업체에 문의한 기록 중 관련된 자료를 모아 주세요.</li></ol><div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>업체·상품 또는 서비스명, 거래 날짜와 금액, 피해 경위를 적어 주세요.</p><span>도움이 되는 자료</span> 계약·결제 내역, 관련 사진, 업체 답변</div></div>
       </details>
     </div>
     <aside class="guide-upload">
@@ -306,7 +317,6 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
     <div><h2>준비한 내용을 남겨 주세요</h2><p>접수 후에는 접수번호와 비밀 조회 코드로 진행 상황을 확인할 수 있습니다.</p></div>
     <a class="primary" href="https://consumer-center.onrender.com/report">신고 작성하기 →</a>
   </div>
-  <p class="guide-disclaimer">소비자신고센터는 민간 신고 창구입니다. 신고 접수만으로 환불·보상이나 업체 답변이 보장되지는 않습니다.</p>
 </div>
 </main>
 <footer class="site-footer">by SOBORU.</footer>

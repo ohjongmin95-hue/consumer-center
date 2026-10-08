@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#fafaf9">
   <title>{% block title %}소비자신고센터 | SOBORU.{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='soboru-illustrated-1') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='soboru-nav-2') }}">
 </head>
 <body>
 <header class="site-header">
@@ -14,7 +14,7 @@
     <nav class="section-nav" aria-label="주요 메뉴">
       {% for endpoint, label in [('home','신고 목록'), ('guide','신고 이용안내'), ('process','처리 절차'), ('types','신고 유형'), ('faq','자주 묻는 질문')] %}
       {% set active = (endpoint == 'home' and request.endpoint == 'home') or (request.endpoint == 'info_page' and page == endpoint) %}
-      <a href="{{ url_for('home') if endpoint == 'home' else url_for('info_page', page=endpoint) }}"{% if active %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+      <a data-menu="{{ endpoint }}" href="{{ url_for('home') if endpoint == 'home' else url_for('info_page', page=endpoint) }}"{% if active %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
       {% endfor %}
     </nav>
   </div>
