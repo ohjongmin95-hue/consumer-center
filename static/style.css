@@ -11,7 +11,7 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 
 /* Readable reporting guide: clear steps and subject-specific preparation. */
 .guide-page { max-width: 960px; }
-.guide-intro > .eyebrow { display: block; margin-bottom: 12px; }
+.guide-intro > .eyebrow { display: inline-block; margin-bottom: 14px; padding: 7px 16px; border-radius: 999px; background: #fff1e3; border: 1px solid #ffd2a6; color: #a84e00; font-size: 16px; font-weight: 800; letter-spacing: -.2px; }
 .guide-intro > p { color: #626973; font-size: 17px; line-height: 1.8; margin: 16px 0 22px; }
 .guide-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
 .guide-shortcuts a { padding: 9px 15px; border: 1px solid #e6e7e8; border-radius: 8px; background: #fff; font-size: 14px; font-weight: 650; }

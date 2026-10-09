@@ -28,7 +28,7 @@
       {% if page < pages %}<a href="{{ url_for('home', q=search_query or None, category=selected_category or None, page=page + 1) }}#reports">다음 →</a>{% endif %}
     </nav>
     {% endif %}
-    <div class="list-footer"><p class="note">{{ txt('home.list_note') }}</p><a href="{{ url_for('lookup') }}">{{ txt('home.lookup_link') }}</a></div>
+    <div class="list-footer">{% if txt('home.list_note') %}<p class="note">{{ txt('home.list_note') }}</p>{% else %}<span></span>{% endif %}<a href="{{ url_for('lookup') }}">{{ txt('home.lookup_link') }}</a></div>
   </section>
 </main>
 {% endblock %}
