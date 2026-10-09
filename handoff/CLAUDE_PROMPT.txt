@@ -1,0 +1,12 @@
+첨부한 소비자신고센터(SOBORU.) 프로젝트를 이어서 작업해 주세요.
+먼저 루트의 CLAUDE_HANDOFF.md를 읽고, 기존 Flask 코드를 실행해 현재 화면을 확인하세요.
+새로 만들거나 다른 프레임워크로 바꾸지 말고 현재 디자인·일러스트·기능을 유지한 상태에서 제가 요청하는 부분을 수정해 주세요.
+
+실제 사이트: https://consumer-center.onrender.com/
+GitHub: https://github.com/ohjongmin95-hue/consumer-center
+배포 기준 버전: 931d7967555c44599b5198c7062bbc6b7d1ae38f
+
+실제 화면은 templates/와 static/style.css에 있습니다. static/soboru-functional-pages.html은 예전 시안이며 실제 앱이 아닙니다.
+운영 비밀 값과 데이터는 첨부에 포함되지 않습니다. 현재 실제 접수는 비활성화 상태입니다.
+사용자 요청 사항과 모바일 메뉴, 이용안내 10개 분야, 삭제한 문구를 인계 문서에서 확인해 주세요.
+먼저 기존 테스트 통과와 실행 여부를 알려주고, 이후 제가 요청하는 작업을 이어가 주세요.
