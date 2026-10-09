@@ -149,7 +149,7 @@ MENU_PAGES = [
     ('custom', '직접 입력한 주소'),
 ]
 HOME_BLOCKS = [
-    ('hero', '메인 문구 + 제보하기 버튼'), ('latest_reports', '최근 제보 (실시간)'), ('board_posts', '최근 게시판 글'),
+    ('hero', '메인 문구 + 제보하기 버튼 + 사람들 일러스트'), ('hero_plain', '메인 문구 + 제보하기 버튼 (일러스트 없이)'), ('latest_reports', '최근 제보 (실시간)'), ('board_posts', '최근 게시판 글'),
     ('notice', '공지·안내 박스'), ('process', '처리 절차 요약'), ('faq', '자주 묻는 질문 미리보기'),
 ]
 LEGACY_NAV = [('nav.home', 'reports', '제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),

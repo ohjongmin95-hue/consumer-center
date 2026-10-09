@@ -3,10 +3,14 @@
 {% block content %}
 <main class="home-blocks">
   {% for block in items('home_blocks') %}
-  {% if block.kind == 'hero' %}
-  <section class="hero">
-    <h1>{{ block.title or txt('home.hero_title') }}</h1>
-    <a class="primary" href="{{ block.button_link or url_for('report') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+  {% if block.kind in ('hero', 'hero_plain') %}
+  <section class="hero{% if block.kind == 'hero' %} hero-art{% endif %}">
+    {% if block.kind == 'hero' %}<img class="hero-side hero-side-left" src="{{ url_for('static', filename='img/hero-left.svg') }}" alt="" width="330" height="360">{% endif %}
+    <div class="hero-copy">
+      <h1>{{ block.title or txt('home.hero_title') }}</h1>
+      <a class="primary" href="{{ block.button_link or url_for('report') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+    </div>
+    {% if block.kind == 'hero' %}<img class="hero-side hero-side-right" src="{{ url_for('static', filename='img/hero-right.svg') }}" alt="" width="330" height="360">{% endif %}
   </section>
 
   {% elif block.kind == 'latest_reports' %}{% set n = block_count(block, home_latest()) %}

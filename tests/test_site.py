@@ -57,6 +57,10 @@ class SiteTest(unittest.TestCase):
             self.assertIn('class="section-nav"', response.get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('여러분의 제보가', home)
+        self.assertIn('class="hero hero-art"', home)
+        for side in ('left', 'right'):
+            self.assertIn('img/hero-%s.svg' % side, home)
+            self.assertEqual(self.client.get('/static/img/hero-%s.svg' % side).status_code, 200)
         self.assertIn('href="/report"', home)
         self.assertNotIn('localStorage', home)
         report = self.client.get('/report?category=배송·환불').get_data(as_text=True)
@@ -399,11 +403,15 @@ class SiteTest(unittest.TestCase):
                   'button_label': ['제보하러 가기', '', '', '', ''], 'button_link': ['/report', '', '', '', '']}
         self.assertEqual(admin.post('/admin/lists', data=blocks).status_code, 302)
         home = self.client.get('/').get_data(as_text=True)
-        self.assertLess(home.index('오픈 안내'), home.index('class="hero"'))
+        self.assertLess(home.index('오픈 안내'), home.index('class="hero hero-art"'))
         self.assertIn('<a class="primary" href="/report">제보하러 가기</a>', home)
         self.assertEqual(home.count('class="faq-item"'), 2)
         self.assertIn('class="home-process-steps"', home)
         self.assertNotIn('data-live-list="', home)  # 최근 제보 블록을 뺐음
+        admin.post('/admin/lists', data={**blocks, 'kind': ['notice', 'hero_plain', 'faq', 'process', 'board_posts']})
+        plain = self.client.get('/').get_data(as_text=True)
+        self.assertIn('<section class="hero">', plain)
+        self.assertNotIn('hero-left.svg', plain)
         self.assertEqual(admin.post('/admin/lists', data={**blocks, 'count': ['', '', '두개', '', '']}).status_code, 400)
         self.assertEqual(admin.post('/admin/lists', data={**blocks, 'button_link': ['javascript:x', '', '', '', '']}).status_code, 400)
         admin.post('/admin/lists', data={'_csrf': token, 'list': 'home_blocks', 'kind': ['latest_reports'], 'title': ['지금 들어온 제보'], 'count': ['3'], 'body': [''], 'button_label': [''], 'button_link': ['']})
