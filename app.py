@@ -95,6 +95,15 @@ def block_count(item,default,top=30):
     try:return min(top,max(1,int(item.get('count',''))))
     except ValueError:return default
 app.jinja_env.globals.update(menu_href=menu_href,menu_active=menu_active,block_count=block_count)
+EMPHASIS=re.compile(r'\*\*(.+?)\*\*')
+@app.template_filter('emph')
+def emph(text):
+    # 관리자 글의 **강조**만 <strong>으로 바꾸고 나머지는 모두 이스케이프. 줄바꿈은 <br>.
+    out=EMPHASIS.sub(lambda m:'\0'+m.group(1)+'\1',(text or '').replace('\0','').replace('\1',''))
+    html=str(escape(out)).replace('\0','<strong class="em">').replace('\1','</strong>').replace('\n','<br>')
+    return Markup(html)
+STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']
+app.jinja_env.globals['step_icon']=lambda item,i:item.get('icon') or STEP_ICON_ORDER[i%len(STEP_ICON_ORDER)]
 def txt(key):
     # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
     return Markup('<br>').join(escape(line) for line in g.content.get(key,'').split('\n'))

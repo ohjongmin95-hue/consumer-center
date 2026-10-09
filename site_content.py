@@ -57,7 +57,7 @@ SECTIONS = [
         ('home.hero_button', '제보 버튼', '제보하기 →', {}),
         ('home.latest_title', '메인 최근 제보 제목 (비우면 제목 없이 카드만)', '', OPT),
         ('home.latest_count', '메인에 보여줄 최근 제보 수 (3~20, 4의 배수가 깔끔해요)', '8', {}),
-        ('home.list_title', '제보 목록 페이지 제목', '제보 목록', {}),
+        ('home.list_title', '제보 목록 페이지 제목', '소비자 제보 목록', {}),
         ('home.search_placeholder', '검색창 안내 문구', '제보 제목 검색', {}),
         ('home.empty', '목록이 비었을 때', '표시할 제보 내역이 없습니다.', {}),
         ('home.empty_search', '검색 결과가 없을 때', '검색 조건에 맞는 제보 내역이 없습니다.', {}),
@@ -142,6 +142,15 @@ SECTIONS += [
 _LIST_DEFAULTS = __import__('json').loads(Path(__file__).with_name('list_defaults.json').read_text(encoding='utf-8'))
 REPORT_CATEGORY_DEFAULTS = ['상품·품질', '배송·환불', '구독·결제', '금융·통신', '여행·숙박', '서비스·계약', '개인정보', '기타']
 BOARD_CATEGORY_DEFAULTS = ['경험 공유', '질문해요', '꿀팁', '칭찬해요', '자유']
+PROCESS_ICONS = [('write', '제보 작성 (휴대폰)'), ('search', '검토 (돋보기)'), ('chat', '업체 확인 (말풍선)'), ('scale', '조율 (저울)'),
+                 ('check', '완료 (체크 문서)'), ('bell', '안내 (알림)'), ('shield', '보호 (방패)'), ('call', '상담 (헤드셋)')]
+PROCESS_STEPS = [
+    ('제보 접수', 'write', '피해 내용과 자료를 **온라인으로 제보**하면 접수번호와 조회 코드가 발급돼요.'),
+    ('내용 검토', 'search', '담당자가 **사실관계와 첨부 자료**를 확인해요. 필요하면 추가 자료를 요청해요.'),
+    ('업체 확인', 'chat', '제보자가 동의한 경우 **업체에 내용을 전달**하고 답변을 받아요.'),
+    ('해결 조율', 'scale', '업체 답변을 바탕으로 **해결 방법을 함께 조율**해요. 사안에 따라 취재를 검토할 수 있어요.'),
+    ('결과 안내', 'check', '처리 결과를 **내 제보 조회**에서 안내하고 제보를 마무리해요.'),
+]
 MENU_PAGES = [
     ('reports', '제보 목록'), ('guide', '이용 안내'), ('process', '처리 절차'), ('board', '소비자게시판'),
     ('faq', '자주 묻는 질문'), ('report', '제보하기'), ('lookup', '내 제보 조회'), ('types', '제보 유형'),
@@ -152,7 +161,7 @@ HOME_BLOCKS = [
     ('hero', '메인 문구 + 제보하기 버튼 + 사람들 일러스트'), ('hero_plain', '메인 문구 + 제보하기 버튼 (일러스트 없이)'), ('latest_reports', '최근 제보 (실시간)'), ('board_posts', '최근 게시판 글'),
     ('notice', '공지·안내 박스'), ('process', '처리 절차 요약'), ('faq', '자주 묻는 질문 미리보기'),
 ]
-LEGACY_NAV = [('nav.home', 'reports', '제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
+LEGACY_NAV = [('nav.home', 'reports', '소비자 제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
               ('nav.board', 'board', '소비자게시판'), ('nav.faq', 'faq', '자주 묻는 질문')]
 LISTS = [
     ('menu', '상단 메뉴', '사이트 맨 위 메뉴예요. 이름, 순서, 연결할 페이지를 정할 수 있고 외부 주소(블로그 등)도 넣을 수 있어요.',
@@ -163,7 +172,7 @@ LISTS = [
     ('report_categories', '제보 유형', '제보하기 화면, 제보 목록 필터, 유형 페이지에 쓰여요. 이미 접수된 제보의 유형은 바뀌지 않아요.', [('name', '유형 이름', {})], 1),
     ('board_categories', '소비자게시판 분류', '글쓰기 분류와 게시판 탭에 쓰여요. 6번째부터는 색이 처음부터 반복돼요.', [('name', '분류 이름', {})], 1),
     ('faq', '자주 묻는 질문', '자주 묻는 질문 페이지에 순서대로 보여요.', [('q', '질문', {}), ('a', '답변', ML)], 0),
-    ('process_steps', '처리 절차 단계', '처리 절차 페이지의 단계 카드예요. 번호는 자동으로 매겨져요.', [('title', '단계 이름', {}), ('body', '설명', ML)], 0),
+    ('process_steps', '처리 절차 단계', '처리 절차 페이지와 메인 "처리 절차 요약"의 단계 카드예요. 번호는 자동으로 매겨져요.', [('title', '단계 이름', {}), ('icon', '아이콘', {'choices': PROCESS_ICONS}), ('body', '설명 (**강조할 말**처럼 별표 두 개로 감싸면 주황색으로 강조돼요)', ML)], 0),
     ('guide_basics', '이용 안내 01 · 구매 정보 카드', '"언제, 어디서, 얼마에 구매했나요?" 아래 카드예요.', [('title', '제목', {}), ('body', '설명', ML)], 0),
     ('guide_writing', '이용 안내 02 · 작성 방법', '"겪은 일을 순서대로 알려 주세요" 아래 번호 목록이에요.', [('title', '질문', {}), ('body', '설명', ML)], 0),
     ('guide_topics', '이용 안내 04 · 분야별 준비자료', '분야 이름을 누르면 펼쳐지는 안내예요.', [('name', '분야 이름', {}), ('heading', '펼쳤을 때 제목', {}), ('steps', '준비 순서 (한 줄에 하나씩)', ML), ('info', '함께 적을 정보', ML), ('materials', '도움이 되는 자료', {})], 0),
@@ -175,7 +184,7 @@ LIST_DEFAULTS = {
     'report_categories': [{'name': n} for n in REPORT_CATEGORY_DEFAULTS],
     'board_categories': [{'name': n} for n in BOARD_CATEGORY_DEFAULTS],
     'faq': [{'q': q, 'a': a} for q, a in FAQ_DEFAULTS],
-    'process_steps': [{'title': t, 'body': b} for t, b in PROCESS_DEFAULTS],
+    'process_steps': [{'title': t, 'icon': i, 'body': b} for t, i, b in PROCESS_STEPS],
     **_LIST_DEFAULTS,
 }
 LIST_MAX_ITEMS = 60

@@ -40,7 +40,7 @@
   {% elif block.kind == 'process' %}
   <section class="section home-process" aria-labelledby="process-heading-{{ loop.index }}">
     <div class="section-head"><h2 id="process-heading-{{ loop.index }}">{{ block.title or txt('process.title') }}</h2><a class="see-all" href="{{ url_for('info_page', page='process') }}">자세히 →</a></div>
-    <ol class="home-process-steps">{% for step in items('process_steps') %}<li><span class="step-num">{{ '%02d' % loop.index }}</span><strong>{{ step.title }}</strong>{% if step.body %}<p>{{ step.body }}</p>{% endif %}</li>{% endfor %}</ol>
+    {% include 'process_cards.html' %}
   </section>
 
   {% elif block.kind == 'faq' %}

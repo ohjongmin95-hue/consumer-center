@@ -304,7 +304,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(live.get_data(as_text=True).count('class="case-link"'), self.site.HOME_LATEST)
         page1 = self.client.get('/reports').get_data(as_text=True)
         self.assertEqual(page1.count('class="case-link"'), 20)
-        self.assertIn('aria-current="page">제보 목록</a>', page1)
+        self.assertIn('aria-current="page">소비자 제보 목록</a>', page1)
         page2 = self.client.get('/reports?page=2').get_data(as_text=True)
         self.assertEqual(page2.count('class="case-link"'), 5)
         self.assertIn('공개 제보 00', page2)
@@ -384,7 +384,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('추가했던 다섯번째', faq)
         self.assertEqual(faq.count('class="faq-item"'), 5)
         process = self.client.get('/process').get_data(as_text=True)
-        self.assertEqual(process.count('class="step-num"'), 2)
+        self.assertEqual(process.count('class="process-card"'), 2)
 
     def test_menu_and_home_layout_editing(self):
         admin = self.login_admin()
@@ -412,7 +412,7 @@ class SiteTest(unittest.TestCase):
         self.assertLess(home.index('오픈 안내'), home.index('class="hero hero-art"'))
         self.assertIn('<a class="primary" href="/report">제보하러 가기</a>', home)
         self.assertEqual(home.count('class="faq-item"'), 2)
-        self.assertIn('class="home-process-steps"', home)
+        self.assertIn('class="process-cards"', home)
         self.assertNotIn('data-live-list="', home)  # 최근 제보 블록을 뺐음
         admin.post('/admin/lists', data={**blocks, 'kind': ['notice', 'hero_plain', 'faq', 'process', 'board_posts']})
         plain = self.client.get('/').get_data(as_text=True)
@@ -432,7 +432,21 @@ class SiteTest(unittest.TestCase):
             db.execute("INSERT INTO site_content(key,value,updated) VALUES('nav.faq','FAQ','x')")
         nav = self.client.get('/').get_data(as_text=True)
         self.assertIn('href="/faq">FAQ</a>', nav)
-        self.assertIn('href="/reports">제보 목록</a>', nav)
+        self.assertIn('href="/reports">소비자 제보 목록</a>', nav)
+
+    def test_process_page_cards(self):
+        page = self.client.get('/process').get_data(as_text=True)
+        self.assertEqual(page.count('class="process-card"'), 5)
+        self.assertIn('<span class="pc-step">1단계</span>제보 접수', page)
+        self.assertIn('<strong class="em">온라인으로 제보</strong>', page)
+        self.assertEqual(page.count('class="step-icon"'), 5)
+        admin = self.login_admin()
+        token = self.csrf(admin, '/admin/lists')
+        admin.post('/admin/lists', data={'_csrf': token, 'list': 'process_steps', 'title': ['상담', '끝'], 'icon': ['call', ''], 'body': ['**<i>빠르게</i>** 연락드려요', '']})
+        page = self.client.get('/process').get_data(as_text=True)
+        self.assertEqual(page.count('class="process-card"'), 2)
+        self.assertIn('<strong class="em">&lt;i&gt;빠르게&lt;/i&gt;</strong> 연락드려요', page)
+        self.assertEqual(admin.post('/admin/lists', data={'_csrf': token, 'list': 'process_steps', 'title': ['x'], 'icon': ['rocket'], 'body': ['']}).status_code, 400)
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
