@@ -20,6 +20,8 @@ app.config['MAX_CONTENT_LENGTH']=15*1024*1024
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 CATEGORIES=['상품·품질','배송·환불','구독·결제','금융·통신','여행·숙박','서비스·계약','개인정보','기타']
 STATUSES=['접수','검토 중','추가 확인','기업 답변 대기','조정 진행','종결']
+HOME_PAGE_SIZE=20
+def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
 
 @contextlib.contextmanager
 def conn():
@@ -57,6 +59,8 @@ def txt(key):
     # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
     return Markup('<br>').join(escape(line) for line in g.content.get(key,'').split('\n'))
 app.jinja_env.globals['txt']=txt
+app.jinja_env.globals['STATUSES']=STATUSES
+app.jinja_env.globals['status_step']=status_step
 DOC_VARS={'운영자':'operator.name','대표자':'operator.ceo','이메일':'operator.email','전화':'operator.phone','주소':'operator.address','보호책임자':'operator.privacy_officer','보호책임자연락처':'operator.privacy_contact','시행일':'policy.effective_date'}
 def doc(key):
     # 약관류 본문: "## "는 소제목, "- "는 목록, 빈 줄은 문단 구분. {운영자} 등은 운영자 정보로 치환.
@@ -89,13 +93,25 @@ def headers(resp):
     return resp
 @app.route('/')
 def home():
-    with conn() as db:
-        rows=db.execute('SELECT category,subject,status,created FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 60').fetchall()
-    public_cases=[dict(cat=r['category'],title=r['subject'],status=r['status'],created=r['created'][:10]) for r in rows]
+    # 모든 제보를 번호·분류·단계·접수일로 보여 주고, 제목은 공개 동의와 운영자 승인이 모두 있을 때만 노출.
     search_query=request.args.get('q','').strip()[:160]
     selected_category=request.args.get('category','')
-    public_cases=[case for case in public_cases if (not search_query or search_query.casefold() in case['title'].casefold()) and (not selected_category or case['cat']==selected_category)]
-    return render_template('index.html',categories=CATEGORIES,public_cases=public_cases,search_query=search_query,selected_category=selected_category)
+    if selected_category not in CATEGORIES:selected_category=''
+    page=max(1,request.args.get('page',1,type=int))
+    where=['1=1'];args=[]
+    if selected_category:where.append('category=?');args.append(selected_category)
+    if search_query:
+        where.append("public_consent=1 AND published=1 AND subject LIKE ? ESCAPE '\\'")
+        args.append('%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%')
+    cond=' AND '.join(where)
+    with conn() as db:
+        total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
+        rows=db.execute('SELECT id,category,subject,status,created,public_consent,published FROM cases WHERE '+cond+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[HOME_PAGE_SIZE,(page-1)*HOME_PAGE_SIZE]).fetchall()
+        stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
+    cases=[dict(no=r['id'],cat=r['category'],title=r['subject'] if r['public_consent'] and r['published'] else None,status=r['status'],step=status_step(r['status']),created=r['created'][:10]) for r in rows]
+    summary=dict(total=sum(stats.values()),done=stats.get('종결',0))
+    summary['active']=summary['total']-summary['done']
+    return render_template('index.html',categories=CATEGORIES,cases=cases,total=total,page=page,pages=max(1,-(-total//HOME_PAGE_SIZE)),summary=summary,search_query=search_query,selected_category=selected_category)
 
 @app.route('/guide',defaults={'page':'guide'})
 @app.route('/process',defaults={'page':'process'})

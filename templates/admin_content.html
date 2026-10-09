@@ -23,7 +23,7 @@
     <div class="content-actions">
       <button class="primary" type="submit">{{ title }} 저장</button>
       <button class="secondary" type="submit" name="reset_section" value="{{ sid }}" onclick="return confirm('이 섹션의 문구를 모두 기본값으로 되돌릴까요?')">기본값으로 되돌리기</button>
-      <a class="content-preview" href="{{ {'common': url_for('home'), 'home': url_for('home'), 'operator': url_for('home'), 'report': url_for('report'), 'policy': url_for('policy_page', page='privacy'), 'board': url_for('board')}.get(sid) or url_for('info_page', page=sid) }}" target="_blank" rel="noopener">화면에서 보기 ↗</a>
+      <a class="content-preview" href="{{ {'common': url_for('home'), 'home': url_for('home'), 'operator': url_for('home'), 'report': url_for('report'), 'policy': url_for('policy_page', page='privacy'), 'board': url_for('board'), 'status': url_for('lookup')}.get(sid) or url_for('info_page', page=sid) }}" target="_blank" rel="noopener">화면에서 보기 ↗</a>
     </div>
   </form>
   {% endfor %}

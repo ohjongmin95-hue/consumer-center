@@ -77,6 +77,14 @@ class SiteTest(unittest.TestCase):
         self.assertIn('공개 계약 문의', home)
         for private in ('비공개 접수', '미동의 접수', '비공개 상세 내용', '테스트 업체'):
             self.assertNotIn(private, home)
+        # 모든 제보가 목록에 올라오지만, 승인·동의가 없는 제보는 제목을 가림
+        self.assertEqual(home.count('비공개 제보</span>'), 2)
+        self.assertIn('<dt>전체</dt><dd>4</dd>', home)
+        self.assertIn('class="step-badge">접수</span>', home)
+        filtered_cat = self.client.get('/', query_string={'category': '배송·환불'}).get_data(as_text=True)
+        self.assertEqual(filtered_cat.count('비공개 제보</span>'), 2)
+        self.assertNotIn('공개 계약 문의', filtered_cat)
+        self.assertEqual(self.client.get('/?q=비공개').get_data(as_text=True).count('비공개 제보</span>'), 0)
         filtered = self.client.get('/', query_string={'q': '환불', 'category': '배송·환불'}).get_data(as_text=True)
         self.assertIn('공개 환불 요청', filtered)
         self.assertNotIn('공개 계약 문의', filtered)
@@ -103,6 +111,8 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(self.client, '/lookup')
         response = self.client.post('/lookup', data={'_csrf': token, 'receipt': receipt, 'code': code}, follow_redirects=True)
         self.assertIn('테스트 환불 요청', response.get_data(as_text=True))
+        self.assertIn('aria-current="step"', response.get_data(as_text=True))
+        self.assertIn('현재 단계: 접수', response.get_data(as_text=True))
         admin = self.site.app.test_client()
         token = self.csrf(admin, '/admin/login')
         response = admin.post('/admin/login', data={'_csrf': token, 'password': self.password}, follow_redirects=True)

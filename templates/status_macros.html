@@ -1,0 +1,8 @@
+{# 진행 단계 표시: 목록용 막대(bar)와 조회 화면용 단계 목록(stepper). #}
+{% macro bar(status) %}{% set step = status_step(status) %}<span class="step-bar{% if step == STATUSES|length %} done{% endif %}" title="{{ step }}/{{ STATUSES|length }} 단계"><span class="step-badge">{{ status }}</span><span class="step-dots" aria-hidden="true">{% for s in STATUSES %}<i{% if loop.index <= step %} class="on"{% endif %}></i>{% endfor %}</span></span>{% endmacro %}
+{% macro stepper(status) %}{% set step = status_step(status) %}
+<ol class="stepper" aria-label="진행 단계">
+  {% for s in STATUSES %}<li class="{{ 'done' if loop.index < step else ('now' if loop.index == step else 'todo') }}"{% if loop.index == step %} aria-current="step"{% endif %}><span class="stepper-dot">{{ '✓' if loop.index < step else loop.index }}</span><span class="stepper-label">{{ s }}</span></li>{% endfor %}
+</ol>
+<p class="stepper-desc"><b>현재 단계: {{ status }}</b> {{ txt('status.%d' % step) }}</p>
+{% endmacro %}
