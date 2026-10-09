@@ -370,3 +370,19 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 @media (max-width: 680px) { .visibility-pick { grid-template-columns: 1fr; } }
 .visibility-pick label.vis-option { display: flex; margin: 0; font-weight: 400; }
 .visibility-pick .vis-option input { width: auto; flex-shrink: 0; padding: 0; }
+
+/* Home latest list and full report list page. */
+.section-head h2 { display: flex; align-items: center; gap: 10px; }
+.live-dot { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: #e7f6ec; color: #1d7a43; font-size: 12px; font-weight: 800; letter-spacing: 0; }
+.live-dot::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #2e9d5b; animation: live-pulse 1.6s ease-in-out infinite; }
+@keyframes live-pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .live-dot::before { animation: none; } }
+.see-all { font-size: 14px; font-weight: 750; color: #bd5c00; white-space: nowrap; }
+[data-live-list] > .report-stats, .reports-page > .report-stats { margin-bottom: 12px; }
+.reports-page { padding-top: 14px; }
+.reports-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 40px 0 22px; }
+.reports-head h1 { font-size: 34px; letter-spacing: -1.2px; margin: 0; }
+.reports-head .primary { padding: 13px 22px; font-size: 15px; }
+.pager b { color: #202630; }
+.pager a, .pager b { min-width: 28px; text-align: center; }
+@media (max-width: 680px) { .reports-head h1 { font-size: 26px; } .reports-head .primary { padding: 11px 16px; } }

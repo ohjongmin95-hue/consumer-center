@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}{{ txt('nav.home') }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main>
+  <section class="section reports-page" aria-labelledby="reports-heading">
+    <div class="reports-head"><h1 id="reports-heading">{{ txt('home.list_title') }}</h1><a class="primary" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a></div>
+    <form class="report-tools" method="get" action="{{ url_for('reports') }}" role="search">
+      <input name="q" type="search" aria-label="제보 제목 검색" placeholder="{{ txt('home.search_placeholder') }}" value="{{ search_query }}">
+      <select name="category" aria-label="제보 유형 필터"><option value="">전체 유형</option>{% for category in categories %}<option{% if category == selected_category %} selected{% endif %}>{{ category }}</option>{% endfor %}</select>
+      <button class="search-button" type="submit">검색</button>
+    </form>
+    {% set empty_text = txt('home.empty_search') if search_query or selected_category else txt('home.empty') %}
+    {% include 'report_rows.html' %}
+    {% if pages > 1 %}
+    <nav class="pager" aria-label="페이지">
+      {% if page > 1 %}<a href="{{ url_for('reports', q=search_query or None, category=selected_category or None, page=page - 1) }}">← 이전</a>{% endif %}
+      {% for p in range([1, page - 2]|max, [pages, page + 2]|min + 1) %}{% if p == page %}<b aria-current="page">{{ p }}</b>{% else %}<a href="{{ url_for('reports', q=search_query or None, category=selected_category or None, page=p) }}">{{ p }}</a>{% endif %}{% endfor %}
+      {% if page < pages %}<a href="{{ url_for('reports', q=search_query or None, category=selected_category or None, page=page + 1) }}">다음 →</a>{% endif %}
+    </nav>
+    {% endif %}
+    <div class="list-footer">{% if txt('home.list_note') %}<p class="note">{{ txt('home.list_note') }}</p>{% else %}<span></span>{% endif %}<a href="{{ url_for('lookup') }}">{{ txt('home.lookup_link') }}</a></div>
+  </section>
+</main>
+{% endblock %}

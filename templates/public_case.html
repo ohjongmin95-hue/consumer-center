@@ -4,7 +4,7 @@
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro">
-    <a class="back-link" href="{{ url_for('home') }}#reports">← 제보 목록</a>
+    <a class="back-link" href="{{ url_for('reports') }}">← {{ txt('nav.home') }}</a>
     <p class="public-case-meta"><span class="case-cat">{{ case['category'] }}</span>No. {{ case['id'] }} · 접수일 {{ case['created'][:10] }}</p>
     <h1 class="page-title">{{ subject }}</h1>
     <p>제보 대상 · <b>{{ company }}</b></p>

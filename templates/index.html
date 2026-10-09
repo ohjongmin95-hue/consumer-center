@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% from 'status_macros.html' import bar %}
 {% block content %}
 <main>
   <section class="hero">
@@ -7,28 +6,23 @@
     <a class="primary" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a>
   </section>
   <section class="section" id="reports" aria-labelledby="reports-heading">
-    <div class="section-head"><h2 id="reports-heading">{{ txt('home.list_title') }}</h2>
-      <dl class="report-stats"><div><dt>전체</dt><dd>{{ summary.total }}</dd></div><div><dt>처리 중</dt><dd>{{ summary.active }}</dd></div><div><dt>종결</dt><dd>{{ summary.done }}</dd></div></dl>
-    </div>
-    <form class="report-tools" method="get" action="{{ url_for('home') }}#reports" role="search">
-      <input name="q" type="search" aria-label="제보 제목 검색" placeholder="{{ txt('home.search_placeholder') }}" value="{{ search_query }}">
-      <select name="category" aria-label="제보 유형 필터"><option value="">전체 유형</option>{% for category in categories %}<option{% if category == selected_category %} selected{% endif %}>{{ category }}</option>{% endfor %}</select>
-      <button class="search-button" type="submit">검색</button>
-    </form>
-    <div class="report-table" role="table" aria-label="제보 목록">
-      <div class="tr heading" role="row"><span role="columnheader">번호</span><span role="columnheader">제보 제목</span><span role="columnheader">진행 단계</span><span role="columnheader">접수일</span></div>
-      {% for case in cases %}
-      <div class="tr" role="row"><span role="cell" class="muted">{{ case.no }}</span><span class="title-cell" role="cell"><span class="case-cat">{{ case.cat }}</span>{% if case.title %}<a class="case-link" href="{{ url_for('public_case', case_id=case.no) }}">{{ case.title }}</a>{% else %}<span class="private-title"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 10V7.5a5 5 0 0110 0V10M5.5 10h13v10h-13z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>비밀글</span>{% endif %}</span><span role="cell">{{ bar(case.status) }}</span><span class="muted" role="cell">{{ case.created }}</span></div>
-      {% else %}<div class="empty">{{ txt('home.empty_search') if search_query or selected_category else txt('home.empty') }}</div>{% endfor %}
-    </div>
-    {% if pages > 1 %}
-    <nav class="pager" aria-label="페이지">
-      {% if page > 1 %}<a href="{{ url_for('home', q=search_query or None, category=selected_category or None, page=page - 1) }}#reports">← 이전</a>{% endif %}
-      <span>{{ page }} / {{ pages }}</span>
-      {% if page < pages %}<a href="{{ url_for('home', q=search_query or None, category=selected_category or None, page=page + 1) }}#reports">다음 →</a>{% endif %}
-    </nav>
-    {% endif %}
-    <div class="list-footer">{% if txt('home.list_note') %}<p class="note">{{ txt('home.list_note') }}</p>{% else %}<span></span>{% endif %}<a href="{{ url_for('lookup') }}">{{ txt('home.lookup_link') }}</a></div>
+    <div class="section-head"><h2 id="reports-heading">{{ txt('home.latest_title') }} <span class="live-dot" title="30초마다 자동으로 새로고침돼요">실시간</span></h2><a class="see-all" href="{{ url_for('reports') }}">전체 보기 →</a></div>
+    <div data-live-list aria-live="polite">{% include 'report_rows.html' %}</div>
+    <div class="list-footer">{% if txt('home.list_note') %}<p class="note">{{ txt('home.list_note') }}</p>{% else %}<span></span>{% endif %}<a href="{{ url_for('reports') }}">{{ txt('nav.home') }} 전체 보기 →</a></div>
   </section>
 </main>
+<script>
+  // 최신 제보 목록을 30초마다 다시 불러옵니다. 탭이 숨겨져 있을 때는 건너뜁니다.
+  (function () {
+    var box = document.querySelector('[data-live-list]');
+    if (!box || !window.fetch) return;
+    setInterval(function () {
+      if (document.hidden) return;
+      fetch('{{ url_for('latest_reports') }}', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.text() : null; })
+        .then(function (html) { if (html && html !== box.innerHTML) box.innerHTML = html; })
+        .catch(function () {});
+    }, 30000);
+  })();
+</script>
 {% endblock %}

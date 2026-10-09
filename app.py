@@ -20,7 +20,8 @@ app.config['MAX_CONTENT_LENGTH']=15*1024*1024
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 CATEGORIES=['상품·품질','배송·환불','구독·결제','금융·통신','여행·숙박','서비스·계약','개인정보','기타']
 STATUSES=['접수','검토 중','추가 확인','기업 답변 대기','조정 진행','종결']
-HOME_PAGE_SIZE=20
+HOME_LATEST=8  # 메인 화면에 보여 줄 최신 제보 수
+REPORTS_PAGE_SIZE=20
 def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
 
 @contextlib.contextmanager
@@ -91,9 +92,29 @@ def headers(resp):
     resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
     if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company')):resp.headers['Cache-Control']='no-store'
     return resp
+def report_rows(where='1=1',args=(),limit=20,offset=0):
+    # 모든 제보를 번호·분류·단계·접수일로 보여 주고, 제목은 공개 제보(제보자가 공개 선택, 운영자가 내리지 않음)만 노출.
+    with conn() as db:
+        rows=db.execute('SELECT id,category,subject,status,created,public_consent,published FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
+    return [dict(no=r['id'],cat=r['category'],title=mask_personal(r['subject']) if r['public_consent'] and r['published'] else None,status=r['status'],created=r['created'][:10]) for r in rows]
+def report_summary():
+    with conn() as db:stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
+    total=sum(stats.values());done=stats.get('종결',0)
+    return dict(total=total,done=done,active=total-done)
+
 @app.route('/')
 def home():
-    # 모든 제보를 번호·분류·단계·접수일로 보여 주고, 제목은 공개 동의와 운영자 승인이 모두 있을 때만 노출.
+    return render_template('index.html',cases=report_rows(limit=HOME_LATEST),summary=report_summary())
+
+@app.route('/reports/latest')
+def latest_reports():
+    # 메인 화면이 주기적으로 불러가는 최신 목록 조각 (실시간 갱신용).
+    resp=app.make_response(render_template('report_rows.html',cases=report_rows(limit=HOME_LATEST),summary=report_summary(),live=True))
+    resp.headers['Cache-Control']='no-store'
+    return resp
+
+@app.route('/reports')
+def reports():
     search_query=request.args.get('q','').strip()[:160]
     selected_category=request.args.get('category','')
     if selected_category not in CATEGORIES:selected_category=''
@@ -104,14 +125,8 @@ def home():
         where.append("public_consent=1 AND published=1 AND subject LIKE ? ESCAPE '\\'")
         args.append('%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%')
     cond=' AND '.join(where)
-    with conn() as db:
-        total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
-        rows=db.execute('SELECT id,category,subject,status,created,public_consent,published FROM cases WHERE '+cond+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[HOME_PAGE_SIZE,(page-1)*HOME_PAGE_SIZE]).fetchall()
-        stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
-    cases=[dict(no=r['id'],cat=r['category'],title=mask_personal(r['subject']) if r['public_consent'] and r['published'] else None,status=r['status'],step=status_step(r['status']),created=r['created'][:10]) for r in rows]
-    summary=dict(total=sum(stats.values()),done=stats.get('종결',0))
-    summary['active']=summary['total']-summary['done']
-    return render_template('index.html',categories=CATEGORIES,cases=cases,total=total,page=page,pages=max(1,-(-total//HOME_PAGE_SIZE)),summary=summary,search_query=search_query,selected_category=selected_category)
+    with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
+    return render_template('reports.html',categories=CATEGORIES,cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE),total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
 
 PHONE_RE=re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}')
 EMAIL_RE=re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')

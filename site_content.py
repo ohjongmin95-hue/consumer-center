@@ -49,7 +49,8 @@ SECTIONS = [
     ('home', '메인 화면', [
         ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),
         ('home.hero_button', '제보 버튼', '제보하기 →', {}),
-        ('home.list_title', '목록 제목', '제보 목록', {}),
+        ('home.latest_title', '메인 최신 목록 제목', '최근 제보', {}),
+        ('home.list_title', '제보 목록 페이지 제목', '제보 목록', {}),
         ('home.search_placeholder', '검색창 안내 문구', '제보 제목 검색', {}),
         ('home.empty', '목록이 비었을 때', '표시할 제보 내역이 없습니다.', {}),
         ('home.empty_search', '검색 결과가 없을 때', '검색 조건에 맞는 제보 내역이 없습니다.', {}),

@@ -51,7 +51,7 @@ class SiteTest(unittest.TestCase):
         return re.search(r'name="_csrf" value="([^"]+)"', response.get_data(as_text=True))[1]
 
     def test_navigation_and_real_form(self):
-        for path in ('/', '/guide', '/process', '/types', '/faq', '/report', '/lookup', '/admin/login', '/terms', '/privacy', '/takedown', '/board', '/board/write'):
+        for path in ('/', '/reports', '/guide', '/process', '/types', '/faq', '/report', '/lookup', '/admin/login', '/terms', '/privacy', '/takedown', '/board', '/board/write'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200, path)
             self.assertIn('class="section-nav"', response.get_data(as_text=True))
@@ -81,14 +81,14 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(home.count('비밀글</span>'), 2)
         self.assertIn('<dt>전체</dt><dd>4</dd>', home)
         self.assertIn('class="step-badge">접수</span>', home)
-        filtered_cat = self.client.get('/', query_string={'category': '배송·환불'}).get_data(as_text=True)
+        filtered_cat = self.client.get('/reports', query_string={'category': '배송·환불'}).get_data(as_text=True)
         self.assertEqual(filtered_cat.count('비밀글</span>'), 2)
         self.assertNotIn('공개 계약 문의', filtered_cat)
-        self.assertEqual(self.client.get('/?q=비공개').get_data(as_text=True).count('비밀글</span>'), 0)
-        filtered = self.client.get('/', query_string={'q': '환불', 'category': '배송·환불'}).get_data(as_text=True)
+        self.assertEqual(self.client.get('/reports?q=비공개').get_data(as_text=True).count('비밀글</span>'), 0)
+        filtered = self.client.get('/reports', query_string={'q': '환불', 'category': '배송·환불'}).get_data(as_text=True)
         self.assertIn('공개 환불 요청', filtered)
         self.assertNotIn('공개 계약 문의', filtered)
-        empty = self.client.get('/?q=missing').get_data(as_text=True)
+        empty = self.client.get('/reports?q=missing').get_data(as_text=True)
         self.assertIn('검색 조건에 맞는 제보 내역이 없습니다.', empty)
 
     def test_submission_lookup_admin_and_company_response(self):
@@ -278,6 +278,26 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(self.client, '/report')
         no_choice = self.client.post('/report', data={'_csrf': token, 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'request_text': 'D', 'consent': 'on', 'truth': 'on'})
         self.assertEqual(no_choice.status_code, 400)
+
+    def test_home_shows_latest_and_reports_page_lists_all(self):
+        with self.site.conn() as db:
+            for i in range(25):
+                db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,1,1)',
+                           ('R%d' % i, 'x', '기타', '업체', '공개 제보 %02d' % i, '내용', '요청', '2026-10-09'))
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertEqual(home.count('class="case-link"'), self.site.HOME_LATEST)
+        self.assertIn('공개 제보 24', home)
+        self.assertNotIn('공개 제보 10<', home)
+        self.assertIn('href="/reports">', home)  # 메뉴와 전체 보기 링크
+        live = self.client.get('/reports/latest')
+        self.assertEqual(live.headers['Cache-Control'], 'no-store')
+        self.assertEqual(live.get_data(as_text=True).count('class="case-link"'), self.site.HOME_LATEST)
+        page1 = self.client.get('/reports').get_data(as_text=True)
+        self.assertEqual(page1.count('class="case-link"'), 20)
+        self.assertIn('aria-current="page">제보 목록</a>', page1)
+        page2 = self.client.get('/reports?page=2').get_data(as_text=True)
+        self.assertEqual(page2.count('class="case-link"'), 5)
+        self.assertIn('공개 제보 00', page2)
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
