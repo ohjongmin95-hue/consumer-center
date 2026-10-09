@@ -880,7 +880,8 @@ def staff_login():
         if ok:db.execute("UPDATE staff SET failed=0,locked_until='',last_login=? WHERE id=?",(now(),member['id']))
     if not ok:
         note_attempt('staff');flash('아이디 또는 비밀번호가 맞지 않아요.');return render_template('staff_login.html'),401
-    session.pop('staff_id',None);session['staff_id']=member['id'];session['staff_v']=member['session_ver']
+    # 기자로 로그인하면 같은 브라우저에 남아 있던 관리자 로그인은 끝냄 (관리자 메뉴가 보이지 않도록)
+    session.pop('admin',None);session['staff_id']=member['id'];session['staff_v']=member['session_ver']
     nxt=request.values.get('next','')
     return redirect(nxt if nxt.startswith('/staff') and '//' not in nxt else url_for('staff_home'))
 

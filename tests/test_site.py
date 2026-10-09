@@ -590,6 +590,13 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,share_company) VALUES('CJ-1','x','배송·환불','가게','배송이 안 와요','내용','환불','2026-10-09T10:00:00',1)")
             case_id = db.execute("SELECT id FROM cases WHERE receipt='CJ-1'").fetchone()['id']
+        # 같은 브라우저에서 관리자로 로그인해 있다가 기자로 로그인하면 관리자 메뉴는 사라짐
+        both = self.login_admin()
+        self.post_form(both, '/staff/login', {'login_id': 'minji', 'password': 'staffpass1'})
+        page = both.get('/staff').get_data(as_text=True)
+        self.assertNotIn('사이트 문구', page)
+        self.assertNotIn('기자 계정', page)
+        self.assertEqual(both.get('/admin').status_code, 302)
         staff = self.site.app.test_client()
         self.assertEqual(staff.get('/staff').status_code, 302)
         bad = self.post_form(staff, '/staff/login', {'login_id': 'minji', 'password': 'wrong1234'})
