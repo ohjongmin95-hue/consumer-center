@@ -1,10 +1,10 @@
-{% extends 'console.html' %}
+{% extends layout %}
 {% block title %}{{ case['receipt'] }} | 제보 처리{% endblock %}
 {% block content %}
 <main class="cs-page">
   <div class="cs-crumbs">
-    <a href="{{ url_for('staff_home') }}">← 제보 목록</a>
-    <span class="cs-pn">{% if newer %}<a href="{{ url_for('staff_case', case_id=newer['id']) }}">‹ 다음 제보</a>{% endif %}{% if older %}<a href="{{ url_for('staff_case', case_id=older['id']) }}">이전 제보 ›</a>{% endif %}</span>
+    <a href="{{ url_for(ep.list) }}">← 제보 목록</a>
+    <span class="cs-pn">{% if newer %}<a href="{{ url_for(ep.case, case_id=newer['id']) }}">‹ 다음 제보</a>{% endif %}{% if older %}<a href="{{ url_for(ep.case, case_id=older['id']) }}">이전 제보 ›</a>{% endif %}</span>
   </div>
   <div class="cs-case-head">
     <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {{ case['category'] }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}</p>
@@ -20,7 +20,7 @@
         <h2>원하는 해결 방법</h2>
         <p class="cs-text">{{ case['request_text'] }}</p>
         <h2>첨부파일</h2>
-        {% for f in files %}<p><a class="cs-file" href="{{ url_for('staff_file', file_id=f['id']) }}">⬇ {{ f['original'] }}</a></p>{% else %}<p class="cs-muted">없음</p>{% endfor %}
+        {% for f in files %}<p><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a></p>{% else %}<p class="cs-muted">없음</p>{% endfor %}
       </section>
 
       <section class="cs-panel" id="message">
@@ -61,7 +61,7 @@
         <h2>기업 답변 요청</h2>
         {% if case['share_company'] %}
         <p class="cs-muted">링크를 받은 기업만 이 제보를 보고 답변할 수 있어요. 다시 만들면 이전 링크는 못 써요.{% if invite %} (최근 발급 {{ invite['created'][:10] }}){% endif %}</p>
-        <form method="post" action="{{ url_for('create_invite', case_id=case['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="cs-btn" type="submit">{{ '링크 다시 만들기' if invite else '답변 링크 만들기' }}</button></form>
+        <form method="post" action="{{ url_for(ep.invite, case_id=case['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="cs-btn" type="submit">{{ '링크 다시 만들기' if invite else '답변 링크 만들기' }}</button></form>
         {% else %}<p class="cs-muted">제보자가 기업 전달에 동의하지 않았어요.</p>{% endif %}
       </section>
 

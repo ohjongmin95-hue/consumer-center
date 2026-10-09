@@ -127,7 +127,7 @@ def footer_rows():
     rows=[[(label,g.content.get(key)) for key,label in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-29'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-30'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -162,7 +162,7 @@ def protect():
 @app.after_request
 def headers(resp):
     resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
-    if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company','/login','/signup','/me','/staff')):resp.headers['Cache-Control']='no-store'
+    if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company','/login','/signup','/me','/staff','/reporter')):resp.headers['Cache-Control']='no-store'
     elif session.get('uid') and 'Cache-Control' not in resp.headers:resp.headers['Cache-Control']='private, no-cache'
     return resp
 def report_rows(where='1=1',args=(),limit=20,offset=0):
@@ -248,7 +248,7 @@ app.jinja_env.globals['verification_code']=verification_code
 
 @app.route('/robots.txt')
 def robots_txt():
-    lines=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/latest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
+    lines=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/latest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
     daum=g.content.get('seo.daum_robots','').strip()
     if daum:lines.insert(0,daum if daum.startswith('#') else '#'+daum)
     return app.response_class('\n'.join(lines)+'\n',mimetype='text/plain')
@@ -848,65 +848,35 @@ def load_staff():
     if not member or not member['active'] or member['session_ver']!=session.get('staff_v'):
         session.pop('staff_id',None);session.pop('staff_v',None);return
     g.staff=member
-def actor_name():return g.staff['name'] if g.get('staff') else '대표'
-def staff_or_admin(f):
+
+# 제보 처리 화면은 두 곳에 따로 있음. 같은 기능이지만 주소·화면 틀·로그인이 완전히 분리됨.
+#  - 기자실 /reporter : 소보루 기자 계정 전용. 관리자 로그인으로는 못 들어오고, 관리자 메뉴도 없음.
+#  - 관리자 /admin/reports : 대표 전용. 관리자 화면 안의 한 메뉴.
+AREAS={
+    'reporter':{'layout':'reporter_base.html','list':'reporter_home','case':'reporter_case','file':'reporter_file','invite':'reporter_invite'},
+    'admin':{'layout':'console.html','list':'admin_reports','case':'admin_report','file':'admin_file','invite':'admin_invite'},
+}
+def actor_name():return g.staff['name'] if g.get('area')=='reporter' and g.get('staff') else '대표'
+def reporter_only(f):
     @functools.wraps(f)
     def wrapped(*a,**kw):
-        if not (g.get('staff') or session.get('admin')):return redirect(url_for('staff_login',next=request.full_path.rstrip('?')))
+        if not g.get('staff'):return redirect(url_for('reporter_login',next=request.full_path.rstrip('?')))
+        g.area='reporter'
         return f(*a,**kw)
     return wrapped
+def admin_area(f):
+    @functools.wraps(f)
+    def wrapped(*a,**kw):
+        g.area='admin'
+        return f(*a,**kw)
+    return admin_only(wrapped)
 def log_case(db,case_id,action):
     db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,actor_name(),action,now()))
 def strong_password(pw):return 8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)
 
-@app.route('/staff/login',methods=['GET','POST'])
-def staff_login():
-    if g.staff:return redirect(url_for('staff_home'))
-    if request.method=='GET':return render_template('staff_login.html')
-    login_id=request.form.get('login_id','').strip().lower()[:40];pw=request.form.get('password','')
-    if too_many_attempts('staff'):
-        flash('로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.');return render_template('staff_login.html'),429
-    with conn() as db:
-        member=db.execute('SELECT * FROM staff WHERE login_id=?',(login_id,)).fetchone()
-        if member and member['locked_until'] and member['locked_until']>now():
-            flash(f'비밀번호를 여러 번 틀려 잠시 잠겼어요. {LOGIN_LOCK_MINUTES}분 뒤 다시 시도해 주세요.');return render_template('staff_login.html'),429
-        ok=bool(member) and check_password_hash(member['pw_hash'],pw)
-        if member and not ok:
-            failed=member['failed']+1
-            lock=(datetime.datetime.now()+datetime.timedelta(minutes=LOGIN_LOCK_MINUTES)).isoformat(timespec='seconds') if failed>=LOGIN_LOCK_FAILS else ''
-            db.execute('UPDATE staff SET failed=?,locked_until=? WHERE id=?',(0 if lock else failed,lock,member['id']))
-        if ok and not member['active']:
-            flash('사용이 중지된 계정이에요. 대표에게 문의해 주세요.');return render_template('staff_login.html'),403
-        if ok:db.execute("UPDATE staff SET failed=0,locked_until='',last_login=? WHERE id=?",(now(),member['id']))
-    if not ok:
-        note_attempt('staff');flash('아이디 또는 비밀번호가 맞지 않아요.');return render_template('staff_login.html'),401
-    # 기자로 로그인하면 같은 브라우저에 남아 있던 관리자 로그인은 끝냄 (관리자 메뉴가 보이지 않도록)
-    session.pop('admin',None);session['staff_id']=member['id'];session['staff_v']=member['session_ver']
-    nxt=request.values.get('next','')
-    return redirect(nxt if nxt.startswith('/staff') and '//' not in nxt else url_for('staff_home'))
-
-@app.route('/staff/logout',methods=['POST'])
-def staff_logout():
-    session.pop('staff_id',None);session.pop('staff_v',None)
-    return redirect(url_for('staff_login'))
-
-@app.route('/staff/password',methods=['GET','POST'])
-def staff_password():
-    if not g.staff:return redirect(url_for('staff_login'))
-    if request.method=='POST':
-        cur=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
-        if not check_password_hash(g.staff['pw_hash'],cur):flash('지금 비밀번호가 맞지 않아요.')
-        elif not strong_password(pw):flash('새 비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
-        elif pw!=pw2:flash('새 비밀번호 확인이 일치하지 않아요.')
-        else:
-            with conn() as db:db.execute('UPDATE staff SET pw_hash=?,session_ver=session_ver+1 WHERE id=?',(generate_password_hash(pw),g.staff['id']))
-            session['staff_v']=g.staff['session_ver']+1;flash('비밀번호를 바꿨어요.');return redirect(url_for('staff_home'))
-    return render_template('staff_password.html')
-
-@app.route('/staff')
-@staff_or_admin
-def staff_home():
-    status=request.args.get('status','');q=request.args.get('q','').strip()[:60];mine=request.args.get('mine')=='1' and g.staff
+def reports_list():
+    ep=AREAS[g.area]
+    status=request.args.get('status','');q=request.args.get('q','').strip()[:60];mine=request.args.get('mine')=='1' and g.area=='reporter'
     page=max(1,request.args.get('page',1,type=int))
     where=['1=1'];args=[]
     if status in STATUSES:where.append('status=?');args.append(status)
@@ -920,11 +890,10 @@ def staff_home():
         counts={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
         total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
         cases=db.execute('SELECT id,receipt,category,company,subject,status,created,assignee,public_consent,published,share_company FROM cases WHERE '+cond+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
-    return render_template('staff_home.html',cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total)
+    return render_template('reports_list.html',layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total)
 
-@app.route('/staff/case/<int:case_id>',methods=['GET','POST'])
-@staff_or_admin
-def staff_case(case_id):
+def report_detail(case_id):
+    ep=AREAS[g.area]
     with conn() as db:
         case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if not case:abort(404)
@@ -950,7 +919,7 @@ def staff_case(case_id):
                 db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'센터',msg,now()))
                 log_case(db,case_id,'제보자에게 메시지 보냄')
             else:abort(400)
-            return redirect(url_for('staff_case',case_id=case_id)+('#'+form if form!='settings' else ''))
+            return redirect(url_for(ep['case'],case_id=case_id)+('#'+form if form!='settings' else ''))
         msgs=db.execute('SELECT * FROM messages WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
         files=db.execute('SELECT * FROM attachments WHERE case_id=?',(case_id,)).fetchall()
         notes=db.execute('SELECT * FROM internal_notes WHERE case_id=? ORDER BY id DESC',(case_id,)).fetchall()
@@ -958,33 +927,106 @@ def staff_case(case_id):
         invite=db.execute('SELECT * FROM company_invites WHERE case_id=?',(case_id,)).fetchone()
         staff_names=[r['name'] for r in db.execute('SELECT name FROM staff WHERE active=1 ORDER BY name')]
         neighbors=(db.execute('SELECT id FROM cases WHERE id<? ORDER BY id DESC LIMIT 1',(case_id,)).fetchone(),db.execute('SELECT id FROM cases WHERE id>? ORDER BY id LIMIT 1',(case_id,)).fetchone())
-    return render_template('staff_case.html',case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1])
+    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1])
 
-@app.route('/staff/file/<int:file_id>')
-@staff_or_admin
-def staff_file(file_id):
+def download_file(file_id):
     with conn() as db:f=db.execute('SELECT * FROM attachments WHERE id=?',(file_id,)).fetchone()
     if not f:abort(404)
     return send_file(UPLOAD/f['stored'],as_attachment=True,download_name=f['original'])
 
-@app.route('/staff/invite/<int:case_id>',methods=['POST'])
-@staff_or_admin
-def create_invite(case_id):
+def make_invite(case_id):
+    ep=AREAS[g.area]
     with conn() as db:
         case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if not case:abort(404)
         if not case['share_company']:
-            flash('기업 전달 동의가 없는 제보입니다.');return redirect(url_for('staff_case',case_id=case_id))
+            flash('기업 전달 동의가 없는 제보입니다.');return redirect(url_for(ep['case'],case_id=case_id))
         token=secrets.token_urlsafe(32)
         db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created) VALUES(?,?,?,?)',(case_id,hashlib.sha256(token.encode()).hexdigest(),case['company'],now()))
         log_case(db,case_id,'기업 답변 링크 발급')
-    return render_template('invite_created.html',case=case,invite_url=url_for('company_access',case_id=case_id,token=token,_external=True))
+    return render_template('invite_created.html',layout=ep['layout'],ep=ep,case=case,invite_url=url_for('company_access',case_id=case_id,token=token,_external=True))
+
+# ---- 소보루 기자실 (/reporter) ----
+@app.route('/reporter/login',methods=['GET','POST'])
+def reporter_login():
+    if g.staff:return redirect(url_for('reporter_home'))
+    if request.method=='GET':return render_template('reporter_login.html')
+    login_id=request.form.get('login_id','').strip().lower()[:40];pw=request.form.get('password','')
+    if too_many_attempts('staff'):
+        flash('로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.');return render_template('reporter_login.html'),429
+    with conn() as db:
+        member=db.execute('SELECT * FROM staff WHERE login_id=?',(login_id,)).fetchone()
+        if member and member['locked_until'] and member['locked_until']>now():
+            flash(f'비밀번호를 여러 번 틀려 잠시 잠겼어요. {LOGIN_LOCK_MINUTES}분 뒤 다시 시도해 주세요.');return render_template('reporter_login.html'),429
+        ok=bool(member) and check_password_hash(member['pw_hash'],pw)
+        if member and not ok:
+            failed=member['failed']+1
+            lock=(datetime.datetime.now()+datetime.timedelta(minutes=LOGIN_LOCK_MINUTES)).isoformat(timespec='seconds') if failed>=LOGIN_LOCK_FAILS else ''
+            db.execute('UPDATE staff SET failed=?,locked_until=? WHERE id=?',(0 if lock else failed,lock,member['id']))
+        if ok and not member['active']:
+            flash('사용이 중지된 계정이에요. 대표에게 문의해 주세요.');return render_template('reporter_login.html'),403
+        if ok:db.execute("UPDATE staff SET failed=0,locked_until='',last_login=? WHERE id=?",(now(),member['id']))
+    if not ok:
+        note_attempt('staff');flash('아이디 또는 비밀번호가 맞지 않아요.');return render_template('reporter_login.html'),401
+    session['staff_id']=member['id'];session['staff_v']=member['session_ver']
+    nxt=request.values.get('next','')
+    return redirect(nxt if nxt.startswith('/reporter') and '//' not in nxt else url_for('reporter_home'))
+
+@app.route('/reporter/logout',methods=['POST'])
+def reporter_logout():
+    session.pop('staff_id',None);session.pop('staff_v',None)
+    return redirect(url_for('reporter_login'))
+
+@app.route('/reporter/password',methods=['GET','POST'])
+@reporter_only
+def reporter_password():
+    if request.method=='POST':
+        cur=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
+        if not check_password_hash(g.staff['pw_hash'],cur):flash('지금 비밀번호가 맞지 않아요.')
+        elif not strong_password(pw):flash('새 비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
+        elif pw!=pw2:flash('새 비밀번호 확인이 일치하지 않아요.')
+        else:
+            with conn() as db:db.execute('UPDATE staff SET pw_hash=?,session_ver=session_ver+1 WHERE id=?',(generate_password_hash(pw),g.staff['id']))
+            session['staff_v']=g.staff['session_ver']+1;flash('비밀번호를 바꿨어요.');return redirect(url_for('reporter_home'))
+    return render_template('reporter_password.html')
+
+@app.route('/reporter')
+@reporter_only
+def reporter_home():return reports_list()
+@app.route('/reporter/case/<int:case_id>',methods=['GET','POST'])
+@reporter_only
+def reporter_case(case_id):return report_detail(case_id)
+@app.route('/reporter/file/<int:file_id>')
+@reporter_only
+def reporter_file(file_id):return download_file(file_id)
+@app.route('/reporter/invite/<int:case_id>',methods=['POST'])
+@reporter_only
+def reporter_invite(case_id):return make_invite(case_id)
+
+# ---- 관리자 화면 안의 제보 처리 (/admin/reports) ----
+@app.route('/admin/reports')
+@admin_area
+def admin_reports():return reports_list()
+@app.route('/admin/reports/<int:case_id>',methods=['GET','POST'])
+@admin_area
+def admin_report(case_id):return report_detail(case_id)
+@app.route('/admin/file/<int:file_id>')
+@admin_area
+def admin_file(file_id):return download_file(file_id)
+@app.route('/admin/invite/<int:case_id>',methods=['POST'])
+@admin_area
+def admin_invite(case_id):return make_invite(case_id)
 
 # 예전 주소로 들어와도 새 화면으로 보냄
+@app.route('/staff')
+@app.route('/staff/<path:rest>')
+def staff_moved(rest=''):
+    target={'login':'reporter_login','password':'reporter_password'}.get(rest)
+    if target:return redirect(url_for(target))
+    m=re.fullmatch(r'case/(\d+)',rest)
+    return redirect(url_for('reporter_case',case_id=int(m[1])) if m else url_for('reporter_home'))
 @app.route('/admin/case/<int:case_id>')
-def admin_case_redirect(case_id):return redirect(url_for('staff_case',case_id=case_id))
-@app.route('/admin/file/<int:file_id>')
-def admin_file_redirect(file_id):return redirect(url_for('staff_file',file_id=file_id))
+def admin_case_redirect(case_id):return redirect(url_for('admin_report',case_id=case_id))
 
 @app.route('/admin')
 @admin_only

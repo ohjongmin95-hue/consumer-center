@@ -1,6 +1,6 @@
-{% extends 'console.html' %}
+{% extends layout %}
 {% block title %}제보 목록 | {{ txt('site.name') }}{% endblock %}
-{% macro qs() %}{% set kw = kwargs %}{{ url_for('staff_home', status=kw.get('status', status) or None, q=kw.get('q', q) or None, mine=('1' if kw.get('mine', mine) else None), page=kw.get('page') ) }}{% endmacro %}
+{% macro qs() %}{% set kw = kwargs %}{{ url_for(ep.list, status=kw.get('status', status) or None, q=kw.get('q', q) or None, mine=('1' if kw.get('mine', mine) else None), page=kw.get('page') ) }}{% endmacro %}
 {% block content %}
 <main class="cs-page">
   <div class="cs-head">
@@ -14,7 +14,7 @@
   <nav class="cs-tabs" aria-label="진행 단계별 보기">
     <a href="{{ qs(status='') }}"{% if not status %} class="on"{% endif %}>전체 <b>{{ all_count }}</b></a>
     {% for s in STATUSES %}<a href="{{ qs(status=s) }}"{% if status == s %} class="on"{% endif %}>{{ s }} <b>{{ counts.get(s, 0) }}</b></a>{% endfor %}
-    {% if g.staff %}<a class="cs-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
+    {% if layout == 'reporter_base.html' %}<a class="cs-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
   </nav>
 
   <div class="cs-table-wrap">
@@ -23,9 +23,9 @@
       <tbody>
       {% for c in cases %}
       <tr class="{{ 'is-new' if c['status'] == STATUSES[0] }}">
-        <td class="mono"><a href="{{ url_for('staff_case', case_id=c['id']) }}">{{ c['receipt'] }}</a></td>
+        <td class="mono"><a href="{{ url_for(ep.case, case_id=c['id']) }}">{{ c['receipt'] }}</a></td>
         <td>{{ c['category'] }}</td>
-        <td class="cs-subject"><a href="{{ url_for('staff_case', case_id=c['id']) }}">{% if not c['public_consent'] %}<span class="cs-tag" title="제보자가 비밀글로 접수">비밀</span>{% elif not c['published'] %}<span class="cs-tag" title="운영자가 비공개 처리">비공개</span>{% endif %}{{ c['subject'] }}</a></td>
+        <td class="cs-subject"><a href="{{ url_for(ep.case, case_id=c['id']) }}">{% if not c['public_consent'] %}<span class="cs-tag" title="제보자가 비밀글로 접수">비밀</span>{% elif not c['published'] %}<span class="cs-tag" title="운영자가 비공개 처리">비공개</span>{% endif %}{{ c['subject'] }}</a></td>
         <td>{{ c['company'] }}</td>
         <td><span class="cs-status s{{ status_step(c['status']) }}">{{ c['status'] }}</span></td>
         <td>{{ c['assignee'] or '—' }}</td>

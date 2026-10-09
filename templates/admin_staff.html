@@ -3,7 +3,7 @@
 {% block content %}
 <main class="cs-page">
   <h1 class="cs-title">기자 계정</h1>
-  <p class="cs-lead">기자는 <b>{{ url_for('staff_login', _external=True) }}</b> 에서 로그인해 제보만 확인·처리해요. 사이트 문구, 회원, 게시판 같은 관리자 메뉴는 볼 수 없어요.</p>
+  <p class="cs-lead">기자는 <b>{{ url_for('reporter_login', _external=True) }}</b> 에서 로그인해 제보만 확인·처리해요. 사이트 문구, 회원, 게시판 같은 관리자 메뉴는 볼 수 없어요.</p>
 
   <form class="cs-panel cs-add" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="add">
     <h2>새 기자 추가</h2>

@@ -958,3 +958,29 @@ body.console main.page { max-width: none; padding: 26px 0 0; }
 @media (max-width: 680px) {
   .top-auth { top: 22px; right: 16px; gap: 10px; }
 }
+
+/* ===== 소보루 기자실 (/reporter): separate dark top bar ===== */
+body.newsroom { background: #f4f4f2; }
+.nr-bar { position: sticky; top: 0; z-index: 10; background: #1f2430; color: #fff; }
+.nr-bar-inner { max-width: 1240px; margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center; gap: 28px; }
+.nr-brand { display: flex; align-items: baseline; gap: 8px; color: #fff; white-space: nowrap; }
+.nr-brand:hover { color: #fff; }
+.nr-brand b { font-size: 20px; font-weight: 900; letter-spacing: 1.5px; color: var(--orange); }
+.nr-brand span { font-size: 15px; font-weight: 800; color: #fff; }
+.nr-nav { display: flex; height: 100%; }
+.nr-nav a { display: flex; align-items: center; padding: 0 4px; border-bottom: 3px solid transparent; color: #c9ccd3; font-size: 15px; font-weight: 800; }
+.nr-nav a.on { color: #fff; border-bottom-color: var(--orange); }
+.nr-user { display: flex; align-items: center; gap: 14px; margin-left: auto; font-size: 13px; }
+.nr-name { font-weight: 800; color: #fff; white-space: nowrap; }
+.nr-user a { color: #c9ccd3; white-space: nowrap; }
+.nr-user a:hover { color: #fff; }
+.nr-user form { margin: 0; }
+.nr-user button { border: 1px solid #4a5160; background: transparent; color: #e7e9ee; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.nr-user button:hover { border-color: #8a91a0; }
+.auth-logo.nr-logo { font-size: 30px; font-weight: 900; letter-spacing: 3px; color: var(--orange); }
+@media (max-width: 640px) {
+  .nr-bar-inner { padding: 0 16px; gap: 14px; }
+  .nr-nav { display: none; }
+  .nr-user { gap: 10px; }
+  .nr-user a { display: none; }
+}

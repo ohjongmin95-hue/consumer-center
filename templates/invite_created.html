@@ -1,4 +1,4 @@
-{% extends 'console.html' %}
+{% extends layout %}
 {% block title %}기업 답변 링크 | 제보 처리{% endblock %}
 {% block content %}
 <main class="cs-page cs-narrow">
@@ -6,7 +6,7 @@
   <div class="cs-panel">
     <p>이 링크는 지금 이 화면에서만 보여요. 기업 담당자인지 확인한 뒤 이메일 등 안전한 방법으로 전달해 주세요.</p>
     <p class="cs-link" style="overflow-wrap:anywhere"><strong>{{ invite_url }}</strong></p>
-    <a class="cs-btn" href="{{ url_for('staff_case', case_id=case['id']) }}">제보로 돌아가기</a>
+    <a class="cs-btn" href="{{ url_for(ep.case, case_id=case['id']) }}">제보로 돌아가기</a>
   </div>
 </main>
 {% endblock %}

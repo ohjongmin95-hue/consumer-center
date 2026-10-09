@@ -5,16 +5,16 @@
   <h1 class="cs-title">관리자 홈</h1>
 
   <section class="cs-stats" aria-label="현황">
-    <a href="{{ url_for('staff_home') }}"><span>최근 7일 새 제보</span><b>{{ stats.new_cases }}</b></a>
-    <a href="{{ url_for('staff_home') }}"><span>처리 중인 제보</span><b>{{ stats.open_cases }}</b></a>
+    <a href="{{ url_for('admin_reports') }}"><span>최근 7일 새 제보</span><b>{{ stats.new_cases }}</b></a>
+    <a href="{{ url_for('admin_reports') }}"><span>처리 중인 제보</span><b>{{ stats.open_cases }}</b></a>
     <a href="{{ url_for('admin_members') }}"><span>회원 <small>(7일 +{{ stats.new_members }})</small></span><b>{{ stats.members }}</b></a>
     <a href="{{ url_for('admin_board') }}" class="{{ 'warn' if stats.flagged }}"><span>확인할 게시글·댓글</span><b>{{ stats.flagged }}</b></a>
     <a href="{{ url_for('admin_takedowns') }}" class="{{ 'warn' if stats.takedowns }}"><span>처리할 게시중단 요청</span><b>{{ stats.takedowns }}</b></a>
   </section>
 
   <section class="cs-panel cs-pipeline">
-    <div class="cs-panel-head"><h2>단계별 제보</h2><a href="{{ url_for('staff_home') }}">제보 처리로 →</a></div>
-    <div class="cs-steps">{% for s in STATUSES %}<a href="{{ url_for('staff_home', status=s) }}"><b>{{ counts.get(s, 0) }}</b><span>{{ s }}</span></a>{% endfor %}</div>
+    <div class="cs-panel-head"><h2>단계별 제보</h2><a href="{{ url_for('admin_reports') }}">제보 처리로 →</a></div>
+    <div class="cs-steps">{% for s in STATUSES %}<a href="{{ url_for('admin_reports', status=s) }}"><b>{{ counts.get(s, 0) }}</b><span>{{ s }}</span></a>{% endfor %}</div>
   </section>
 
   <h2 class="cs-subtitle">사이트 관리</h2>

@@ -55,7 +55,7 @@ class SiteTest(unittest.TestCase):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200, path)
             self.assertIn('class="section-nav"', response.get_data(as_text=True))
-        for path in ('/admin/login', '/staff/login'):
+        for path in ('/admin/login', '/reporter/login'):
             self.assertIn('noindex', self.client.get(path).get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('여러분의 제보가', home)
@@ -130,12 +130,12 @@ class SiteTest(unittest.TestCase):
         self.assertIn('관리자 홈', response.get_data(as_text=True))
         with self.site.conn() as db:
             case_id = db.execute('SELECT id FROM cases WHERE receipt=?', (receipt,)).fetchone()['id']
-        path = '/staff/case/' + str(case_id)
+        path = '/admin/reports/' + str(case_id)
         token = self.csrf(admin, path)
         response = admin.post(path, data={'_csrf': token, 'status': '검토 중', 'published': 'on'}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn('테스트 환불 요청', self.client.get('/').get_data(as_text=True))
-        response = admin.post('/staff/invite/' + str(case_id), data={'_csrf': token})
+        response = admin.post('/admin/invite/' + str(case_id), data={'_csrf': token})
         invite = re.search(r'<strong>(http://localhost/company/[^<]+)</strong>', response.get_data(as_text=True))[1]
         company = self.site.app.test_client()
         path = invite.removeprefix('http://localhost')
@@ -590,28 +590,29 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,share_company) VALUES('CJ-1','x','배송·환불','가게','배송이 안 와요','내용','환불','2026-10-09T10:00:00',1)")
             case_id = db.execute("SELECT id FROM cases WHERE receipt='CJ-1'").fetchone()['id']
-        # 같은 브라우저에서 관리자로 로그인해 있다가 기자로 로그인하면 관리자 메뉴는 사라짐
+        # 관리자로 로그인한 브라우저라도 기자실은 기자 로그인 없이는 못 들어가고, 들어가도 관리자 메뉴는 없음
         both = self.login_admin()
-        self.post_form(both, '/staff/login', {'login_id': 'minji', 'password': 'staffpass1'})
-        page = both.get('/staff').get_data(as_text=True)
-        self.assertNotIn('사이트 문구', page)
-        self.assertNotIn('기자 계정', page)
-        self.assertEqual(both.get('/admin').status_code, 302)
+        self.assertIn('/reporter/login', both.get('/reporter').headers['Location'])
+        self.post_form(both, '/reporter/login', {'login_id': 'minji', 'password': 'staffpass1'})
+        page = both.get('/reporter').get_data(as_text=True)
+        self.assertIn('기자실', page)
+        for admin_text in ('사이트 문구', '기자 계정', '메뉴·항목', '회원</a>', '게시판</a>'):
+            self.assertNotIn(admin_text, page)
         staff = self.site.app.test_client()
-        self.assertEqual(staff.get('/staff').status_code, 302)
-        bad = self.post_form(staff, '/staff/login', {'login_id': 'minji', 'password': 'wrong1234'})
+        self.assertEqual(staff.get('/reporter').status_code, 302)
+        bad = self.post_form(staff, '/reporter/login', {'login_id': 'minji', 'password': 'wrong1234'})
         self.assertEqual(bad.status_code, 401)
-        ok = self.post_form(staff, '/staff/login', {'login_id': 'minji', 'password': 'staffpass1'})
-        self.assertEqual(ok.headers['Location'], '/staff')
-        listing = staff.get('/staff').get_data(as_text=True)
+        ok = self.post_form(staff, '/reporter/login', {'login_id': 'minji', 'password': 'staffpass1'})
+        self.assertEqual(ok.headers['Location'], '/reporter')
+        listing = staff.get('/reporter').get_data(as_text=True)
         self.assertIn('배송이 안 와요', listing)
-        self.assertIn('김민지님', listing)
+        self.assertIn('김민지 기자', listing)
         self.assertNotIn('사이트 문구', listing)
         # 직원은 관리자 메뉴에 들어갈 수 없음
         for path in ('/admin', '/admin/content', '/admin/lists', '/admin/members', '/admin/staff', '/admin/board'):
             self.assertEqual(staff.get(path).status_code, 302, path)
             self.assertIn('/admin/login', staff.get(path).headers['Location'])
-        path = '/staff/case/%d' % case_id
+        path = '/reporter/case/%d' % case_id
         token = self.csrf(staff, path)
         staff.post(path, data={'_csrf': token, 'form': 'settings', 'status': '검토 중', 'assignee': '김민지'})
         staff.post(path, data={'_csrf': token, 'form': 'note', 'internal_note': '업체에 확인 필요'})
@@ -621,19 +622,22 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<b>김민지</b>', page)
         self.assertIn('업체에 확인 필요', page)
         self.assertIn('확인 중입니다', page)
-        self.assertIn('내 담당 제보', staff.get('/staff').get_data(as_text=True))
-        self.assertIn('배송이 안 와요', staff.get('/staff?mine=1').get_data(as_text=True))
-        self.assertNotIn('배송이 안 와요', staff.get('/staff?status=종결').get_data(as_text=True))
-        self.assertEqual(staff.get('/admin/case/%d' % case_id).headers['Location'], path)
+        self.assertIn('내 담당 제보', staff.get('/reporter').get_data(as_text=True))
+        self.assertIn('배송이 안 와요', staff.get('/reporter?mine=1').get_data(as_text=True))
+        self.assertNotIn('배송이 안 와요', staff.get('/reporter?status=종결').get_data(as_text=True))
+        self.assertEqual(staff.get('/staff/case/%d' % case_id).headers['Location'], path)
+        self.assertEqual(staff.get('/staff/login').headers['Location'], '/reporter/login')
+        self.assertEqual(staff.get('/admin/reports/%d' % case_id).status_code, 302)
         # 관리자가 계정을 중지하면 바로 로그아웃
         with self.site.conn() as db:
             sid = db.execute("SELECT id FROM staff WHERE login_id='minji'").fetchone()['id']
         admin.post('/admin/staff', data={'_csrf': self.csrf(admin, '/admin/staff'), 'action': 'stop', 'id': sid})
-        self.assertEqual(staff.get('/staff').status_code, 302)
-        stopped = self.post_form(staff, '/staff/login', {'login_id': 'minji', 'password': 'staffpass1'})
+        self.assertEqual(staff.get('/reporter').status_code, 302)
+        stopped = self.post_form(staff, '/reporter/login', {'login_id': 'minji', 'password': 'staffpass1'})
         self.assertEqual(stopped.status_code, 403)
         # 대표(관리자)도 제보 관리 화면을 볼 수 있음
-        self.assertIn('배송이 안 와요', admin.get('/staff').get_data(as_text=True))
+        self.assertIn('배송이 안 와요', admin.get('/admin/reports').get_data(as_text=True))
+        self.assertIn('관리자', admin.get('/admin/reports').get_data(as_text=True))
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
