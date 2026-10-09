@@ -627,3 +627,21 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
   .ft-bottom { flex-direction: column; gap: 4px; }
   .ft-copy { white-space: normal; }
 }
+
+/* Footer v5: readable type, low band — tight vertical rhythm; notice and copyright share a row. */
+.site-footer { margin-top: 48px; }
+.ft-inner { padding: 16px 24px 16px; }
+.ft-top { padding-bottom: 10px; }
+.ft-logo { font-size: 22px; letter-spacing: -1.2px; line-height: 1.2; }
+.ft-links { font-size: 15px; gap: 4px 22px; }
+.ft-info { margin-top: 8px; font-size: 14px; line-height: 1.6; gap: 0 20px; }
+.ft-bottom { flex-wrap: nowrap; margin-top: 4px; }
+.ft-notice { flex: 1; min-width: 0; font-size: 13px; line-height: 1.6; }
+.ft-copy { font-size: 13px; }
+@media (max-width: 960px) { .ft-bottom { flex-wrap: wrap; } }
+@media (max-width: 760px) {
+  .ft-inner { padding: 14px 18px 16px; }
+  .ft-top { gap: 6px; }
+  .ft-links { font-size: 14px; gap: 2px 14px; }
+  .ft-info { font-size: 13px; }
+}
