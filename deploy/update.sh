@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # 최신 코드를 받아 앱을 다시 시작합니다. 사용법: sudo bash /opt/soboru/app/deploy/update.sh
 set -euo pipefail
-BRANCH="${BRANCH:-main}"
+# 기본값: 서버에 현재 설치된 브랜치를 그대로 유지
+BRANCH="${BRANCH:-$(git -C /opt/soboru/app rev-parse --abbrev-ref HEAD)}"
 git -C /opt/soboru/app fetch -q origin "$BRANCH"
 git -C /opt/soboru/app checkout -q -B "$BRANCH" "origin/$BRANCH"
 /opt/soboru/venv/bin/pip install -q -r /opt/soboru/app/requirements.txt
