@@ -582,7 +582,7 @@ class SiteTest(unittest.TestCase):
         admin = self.login_admin()
         home = admin.get('/admin').get_data(as_text=True)
         self.assertIn('관리자 홈', home)
-        self.assertIn('직원 계정', home)
+        self.assertIn('담당자 계정', home)
         token = self.csrf(admin, '/admin/staff')
         weak = admin.post('/admin/staff', data={'_csrf': token, 'action': 'add', 'name': '김민지', 'login_id': 'minji', 'password': 'short'}, follow_redirects=True)
         self.assertIn('8자 이상', weak.get_data(as_text=True))

@@ -1016,7 +1016,7 @@ def admin_staff():
                 elif db.execute('SELECT 1 FROM staff WHERE login_id=?',(login_id,)).fetchone():flash('이미 있는 아이디예요.')
                 else:
                     db.execute('INSERT INTO staff(login_id,name,pw_hash,created) VALUES(?,?,?,?)',(login_id,name,generate_password_hash(pw),now()))
-                    flash(f'{name} 직원 계정을 만들었어요. 아이디와 비밀번호를 직원에게 직접 전달해 주세요.')
+                    flash(f'{name} 담당자 계정을 만들었어요. 아이디와 비밀번호를 직접 전달해 주세요.')
                 return redirect(url_for('admin_staff'))
             sid=request.form.get('id',type=int)
             member=db.execute('SELECT * FROM staff WHERE id=?',(sid,)).fetchone() if sid else None
