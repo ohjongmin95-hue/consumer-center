@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ubuntu 22.04/24.04 서버 한 대에 소비자신고센터를 설치합니다.
+# Ubuntu 22.04/24.04 서버 한 대에 소비자제보센터를 설치합니다.
 # 사용법: sudo bash setup.sh 도메인 이메일   (예: sudo bash setup.sh example.kr me@example.com)
 # 다시 실행해도 안전합니다. 기존 데이터와 설정은 유지됩니다.
 set -euo pipefail
@@ -63,7 +63,7 @@ chown root:soboru "$ENV_FILE"; chmod 640 "$ENV_FILE"
 echo "== 4/6 앱 서비스 등록"
 cat > /etc/systemd/system/soboru.service <<UNIT
 [Unit]
-Description=소비자신고센터
+Description=소비자제보센터
 After=network.target
 
 [Service]
