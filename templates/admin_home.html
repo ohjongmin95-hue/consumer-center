@@ -1,0 +1,31 @@
+{% extends 'console.html' %}
+{% block title %}관리자 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="cs-page">
+  <h1 class="cs-title">관리자 홈</h1>
+
+  <section class="cs-stats" aria-label="현황">
+    <a href="{{ url_for('staff_home') }}"><span>최근 7일 새 제보</span><b>{{ stats.new_cases }}</b></a>
+    <a href="{{ url_for('staff_home') }}"><span>처리 중인 제보</span><b>{{ stats.open_cases }}</b></a>
+    <a href="{{ url_for('admin_members') }}"><span>회원 <small>(7일 +{{ stats.new_members }})</small></span><b>{{ stats.members }}</b></a>
+    <a href="{{ url_for('admin_board') }}" class="{{ 'warn' if stats.flagged }}"><span>확인할 게시글·댓글</span><b>{{ stats.flagged }}</b></a>
+    <a href="{{ url_for('admin_takedowns') }}" class="{{ 'warn' if stats.takedowns }}"><span>처리할 게시중단 요청</span><b>{{ stats.takedowns }}</b></a>
+  </section>
+
+  <section class="cs-panel cs-pipeline">
+    <div class="cs-panel-head"><h2>단계별 제보</h2><a href="{{ url_for('staff_home') }}">제보 관리로 →</a></div>
+    <div class="cs-steps">{% for s in STATUSES %}<a href="{{ url_for('staff_home', status=s) }}"><b>{{ counts.get(s, 0) }}</b><span>{{ s }}</span></a>{% endfor %}</div>
+  </section>
+
+  <h2 class="cs-subtitle">사이트 관리</h2>
+  <div class="cs-cards">
+    <a class="cs-card" href="{{ url_for('admin_content') }}"><b>사이트 문구</b><span>메인·안내 페이지 문구, 약관·처리방침, 검색 등록 코드</span></a>
+    <a class="cs-card" href="{{ url_for('admin_content') }}#section-operator"><b>하단 정보</b><span>상호, 대표, 연락처, 사업자등록번호 등 맨 아래 정보</span></a>
+    <a class="cs-card" href="{{ url_for('admin_lists') }}"><b>메뉴·항목</b><span>메뉴 이름·순서, 메인 화면 구성, 제보 유형, FAQ</span></a>
+    <a class="cs-card" href="{{ url_for('admin_board') }}"><b>게시판</b><span>신고 들어온 글·댓글 숨기기, 삭제</span></a>
+    <a class="cs-card" href="{{ url_for('admin_members') }}"><b>회원</b><span>회원 검색, 이용 정지, 삭제</span></a>
+    <a class="cs-card" href="{{ url_for('admin_takedowns') }}"><b>게시중단 요청</b><span>권리침해 신고 처리 기록</span></a>
+    <a class="cs-card" href="{{ url_for('admin_staff') }}"><b>직원 계정 <small>{{ stats.staff }}명</small></b><span>제보 관리 화면에 들어올 직원 계정 만들기·중지</span></a>
+  </div>
+</main>
+{% endblock %}

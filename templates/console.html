@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{% block title %}관리{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
+</head>
+<body class="console">
+{% set is_admin = session.get('admin') %}
+{% set who = '대표' if is_admin else (g.staff['name'] if g.get('staff') else '') %}
+{% if who %}
+<header class="cs-bar">
+  <div class="cs-bar-inner">
+    <a class="cs-brand" href="{{ url_for('admin') if is_admin else url_for('staff_home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}<em>{{ '관리자' if is_admin else '제보 관리' }}</em></a>
+    <div class="cs-user">
+      <a class="cs-site" href="{{ url_for('home') }}" target="_blank" rel="noopener">사이트 보기 ↗</a>
+      <span class="cs-name">{{ who }}{% if not is_admin %}님{% endif %}</span>
+      <form method="post" action="{{ url_for('logout') if is_admin else url_for('staff_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">로그아웃</button></form>
+    </div>
+  </div>
+  <nav class="cs-nav" aria-label="관리 메뉴"><div class="cs-nav-inner">
+    {% if is_admin %}
+      {% set links = [('admin', '홈'), ('staff_home', '제보 관리'), ('admin_content', '사이트 문구'), ('admin_lists', '메뉴·항목'), ('admin_board', '게시판'), ('admin_members', '회원'), ('admin_takedowns', '게시중단 요청'), ('admin_staff', '직원 계정')] %}
+    {% else %}
+      {% set links = [('staff_home', '제보 목록'), ('staff_password', '비밀번호 변경')] %}
+    {% endif %}
+    {% for ep, label in links %}<a href="{{ url_for(ep) }}"{% if request.endpoint == ep or (ep == 'staff_home' and request.endpoint == 'staff_case') %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+  </div></nav>
+</header>
+{% endif %}
+{% with msgs = get_flashed_messages() %}
+{% if msgs %}<div class="cs-flash" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
+{% endwith %}
+<div class="cs-main">{% block content %}{% endblock %}</div>
+</body>
+</html>

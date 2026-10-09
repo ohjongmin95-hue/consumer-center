@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'console.html' %}
 {% block title %}게시중단 요청 관리 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap">
-  <div class="page-intro"><a href="{{ url_for('admin') }}">← 제보 관리</a><h1 class="page-title">게시중단 요청</h1>
+  <div class="page-intro"><h1 class="page-title">게시중단 요청</h1>
   <p>대상 제보의 공개를 내리려면 해당 제보 관리 화면에서 "공개 중"을 해제하세요. 판단이 어려우면 먼저 비공개로 두고(최대 30일) 제보자 의견을 확인하세요.</p></div>
   {% for r in rows %}
   <form class="form-panel takedown-item" method="post">

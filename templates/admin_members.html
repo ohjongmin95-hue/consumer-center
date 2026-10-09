@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'console.html' %}
 {% block title %}회원 관리 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap">
-  <div class="page-intro"><a href="{{ url_for('admin') }}">← 제보 관리</a><h1 class="page-title">회원 관리</h1>
+  <div class="page-intro"><h1 class="page-title">회원 관리</h1>
     <p>전체 회원 {{ total }}명. 정지하면 바로 로그아웃되고 다시 로그인할 수 없어요. 비밀번호는 암호화되어 있어 운영자도 볼 수 없어요.</p>
     <form class="report-tools" method="get"><input name="q" value="{{ q }}" placeholder="아이디나 닉네임으로 찾기" aria-label="회원 검색"><button class="search-button" type="submit">찾기</button></form>
   </div>

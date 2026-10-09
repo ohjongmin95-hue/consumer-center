@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'console.html' %}
 {% block title %}항목 관리 | {{ txt('site.name') }}{% endblock %}
 {% macro item_fields(fields, item) %}
   {% for name, label, opts in fields %}
@@ -13,8 +13,7 @@
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro admin-head">
-    <a href="{{ url_for('admin') }}">← 제보 관리</a> · <a href="{{ url_for('admin_content') }}">사이트 문구 관리</a>
-    <h1 class="page-title">항목 관리</h1>
+    <h1 class="page-title">메뉴·항목</h1>
     <p>항목을 <b>추가·삭제</b>하고 <b>↑ ↓</b>로 순서를 바꿀 수 있어요. 섹션마다 <b>저장</b>을 눌러야 사이트에 반영돼요. 저장하기 전에 새로고침하면 바뀐 내용이 취소돼요.</p>
   </div>
   <nav class="content-tabs" aria-label="목록 바로가기">{% for key, title, _, _, _ in lists %}<a href="#list-{{ key }}">{{ title }}</a>{% endfor %}</nav>

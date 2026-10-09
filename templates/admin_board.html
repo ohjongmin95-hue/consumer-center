@@ -1,9 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'console.html' %}
 {% block title %}게시판 관리 | {{ txt('site.name') }}{% endblock %}
 {% macro actions(kind, row) %}<form class="inline-actions" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="id" value="{{ row['id'] }}">{% if row['hidden'] %}<button class="secondary" name="action" value="show">다시 보이기</button>{% else %}<button class="secondary" name="action" value="hide">숨기기</button>{% endif %}<button class="secondary danger" name="action" value="delete" onclick="return confirm('완전히 삭제할까요? 되돌릴 수 없어요.')">삭제</button></form>{% endmacro %}
 {% block content %}
 <main class="page"><div class="wrap">
-  <div class="page-intro"><a href="{{ url_for('admin') }}">← 제보 관리</a><h1 class="page-title">게시판 관리</h1>
+  <div class="page-intro"><h1 class="page-title">게시판 관리</h1>
     <p>알림이 {{ threshold }}건 쌓이면 글이 자동으로 숨겨져요. 확인 후 다시 보이게 하거나 삭제하세요.</p>
     <p><a href="{{ url_for('admin_board') }}"{% if flagged %} class="strong-link"{% endif %}>알림·숨김만</a> · <a href="{{ url_for('admin_board', view='all') }}"{% if not flagged %} class="strong-link"{% endif %}>전체 보기</a></p>
   </div>

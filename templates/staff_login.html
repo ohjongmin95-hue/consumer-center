@@ -1,0 +1,17 @@
+{% extends 'console.html' %}
+{% block title %}직원 로그인 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="auth-page">
+  <div class="auth-card">
+    <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
+      <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
+      <h1 class="auth-title">직원 로그인</h1>
+      <input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="직원 아이디" aria-label="직원 아이디" value="{{ request.form.get('login_id','') }}">
+      <input type="password" name="password" maxlength="64" required autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호">
+      <button class="auth-submit" type="submit">로그인</button>
+    </form>
+    <div class="auth-foot auth-foot-one"><span class="auth-foot-note">계정은 대표가 만들어 드려요. 비밀번호를 잊으면 대표에게 문의해 주세요.</span></div>
+  </div>
+</main>
+{% endblock %}
