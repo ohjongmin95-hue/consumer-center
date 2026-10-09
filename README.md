@@ -16,25 +16,23 @@ python -m venv .venv
 신고 접수는 기본적으로 비활성화됩니다. 테스트는 별도의 임시 데이터베이스에서
 접수·조회·관리자 승인·기업 답변과 공개 목록 필터를 검증합니다.
 
-## 기존 Render 서비스 배포
+## 서버 배포 (AWS Lightsail 서울 · Ubuntu)
 
-사이트: https://consumer-center.onrender.com/
+서버 한 대에 앱, SQLite 데이터, 첨부파일, 매일 백업, HTTPS를 함께 둡니다.
 
-Render의 기존 `consumer-center` Web Service에서 아래 항목을 확인합니다.
-새 서비스를 생성할 필요는 없습니다.
+1. Lightsail에서 서울 리전 Ubuntu 24.04 인스턴스를 만들고 고정 IP(Static IP)를 연결합니다.
+   네트워킹 탭 방화벽에 HTTPS(443)를 추가합니다.
+2. 가비아 DNS에 `A @ → 고정 IP`, `A www → 고정 IP` 레코드를 추가합니다.
+3. 브라우저 SSH에서 실행합니다.
 
-- 연결 저장소: `ohjongmin95-hue/consumer-center`
-- 배포 브랜치: `main`
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `gunicorn --workers 1 --bind 0.0.0.0:$PORT app:app`
-- Auto-Deploy가 활성화되어 있으면 `main` 푸시 후 배포됩니다.
-- 자동 배포가 꺼져 있으면 `Manual Deploy → Deploy latest commit`을 사용합니다.
+```sh
+curl -fsSL https://raw.githubusercontent.com/ohjongmin95-hue/consumer-center/main/deploy/setup.sh -o setup.sh
+sudo bash setup.sh 도메인 이메일
+```
 
-배포 완료 후 `/`, `/guide`, `/process`, `/types`, `/faq`, `/report`, `/lookup`을 확인합니다.
-메인 화면에는 “여러분의 신고가 권익 보호의 시작입니다.”와 오른쪽 정렬 메뉴가 표시됩니다.
-
-기존 환경변수와 데이터 저장 경로를 유지하세요. `DATABASE_PATH`와 `UPLOAD_DIR`은
-SQLite 파일과 첨부파일 경로입니다. 실제 접수 데이터를 유지하려면 Render의 영구 저장소를
-사용해야 합니다. 기본 로컬 파일시스템은 재배포 때 유지되지 않을 수 있습니다.
-`ENABLE_INTAKE=1`로 접수를 켜려면 `SECRET_KEY`와 `ADMIN_PASSWORD_HASH`가 필요합니다.
-비밀 값은 Render 환경변수에만 입력하고 Git에 저장하지 않습니다.
+- 관리자 비밀번호를 묻고, 비밀 값은 `/etc/soboru.env`에만 저장합니다.
+- 데이터: `/var/lib/soboru` (DB, 첨부파일, `backups/`에 14일치 매일 백업)
+- DNS가 반영되기 전이면 HTTPS를 건너뜁니다. 반영된 뒤 같은 명령을 다시 실행합니다.
+- 코드 업데이트: `sudo bash /opt/soboru/app/deploy/update.sh`
+- 로그: `sudo journalctl -u soboru -f`
+- 신고 접수는 `/etc/soboru.env`의 `ENABLE_INTAKE=1`로 켜고 `sudo systemctl restart soboru`로 적용합니다.

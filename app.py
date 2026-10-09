@@ -3,6 +3,7 @@ from pathlib import Path
 from flask import Flask, g, render_template, request, redirect, url_for, session, flash, abort, send_file
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
 import site_content
 
@@ -11,6 +12,7 @@ DB=Path(os.getenv('DATABASE_PATH',str(BASE/'cases.sqlite3')))
 UPLOAD=Path(os.getenv('UPLOAD_DIR',str(BASE/'private_uploads')))
 UPLOAD.mkdir(parents=True,exist_ok=True)
 app=Flask(__name__)
+if os.getenv('TRUST_PROXY')=='1':app.wsgi_app=ProxyFix(app.wsgi_app,x_for=1,x_proto=1,x_host=1)
 app.secret_key=os.getenv('SECRET_KEY',secrets.token_hex(32))
 if os.getenv('ENABLE_INTAKE')=='1' and (not os.getenv('SECRET_KEY') or not os.getenv('ADMIN_PASSWORD_HASH')):
     raise RuntimeError('신고 접수를 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
