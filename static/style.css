@@ -605,3 +605,25 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 .ft-inner { position: relative; }
 .ft-con { border-left: 1px solid #e4ddd3; padding-left: 28px; }
 @media (max-width: 760px) { .ft-con { border-left: 0; padding-left: 0; border-top: 1px solid #e4ddd3; padding-top: 16px; } }
+
+/* Footer v4: slim — logo and links on one row, compact info and a single closing line. */
+.site-footer { margin-top: 56px; border-top: 2px solid #ef7300; }
+.ft-inner { display: block; max-width: 1160px; padding: 22px 24px 24px; }
+.ft-top { display: flex; align-items: center; justify-content: space-between; gap: 12px 28px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid #e6dfd5; }
+.ft-logo { font-size: 19px; letter-spacing: -1px; }
+.ft-links { margin: 0; gap: 4px 20px; font-size: 13px; font-weight: 600; }
+.ft-info { display: flex; flex-wrap: wrap; gap: 2px 18px; margin: 12px 0 0; font-size: 12.5px; line-height: 1.7; }
+.ft-info li { display: inline; }
+.ft-bottom { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 24px; margin-top: 8px; }
+.ft-notice { max-width: none; margin: 0; font-size: 12px; line-height: 1.6; }
+.ft-copy { margin: 0; font-size: 12px; white-space: nowrap; }
+.ft-con { border: 0; padding: 0; }
+.to-top { width: 40px; height: 40px; right: 18px; bottom: 18px; }
+@media (max-width: 760px) {
+  .ft-inner { padding: 20px 18px 22px; }
+  .ft-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .ft-links { gap: 4px 14px; font-size: 12.5px; }
+  .ft-info { gap: 0 14px; font-size: 12px; }
+  .ft-bottom { flex-direction: column; gap: 4px; }
+  .ft-copy { white-space: normal; }
+}

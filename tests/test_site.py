@@ -196,9 +196,9 @@ class SiteTest(unittest.TestCase):
         privacy = self.client.get('/privacy').get_data(as_text=True)
         self.assertIn('새 운영사(이하', privacy)
         footer = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<span>이메일. help@example.com</span>', footer)
-        self.assertIn('<span>상호. 새 운영사</span>', footer)
-        self.assertNotIn('<span>팩스.', footer)  # 비어 있는 항목은 표시하지 않음
+        self.assertIn('<li>이메일. help@example.com</li>', footer)
+        self.assertIn('<li>상호. 새 운영사</li>', footer)
+        self.assertNotIn('<li>팩스.', footer)  # 비어 있는 항목은 표시하지 않음
         youth = self.client.get('/youth').get_data(as_text=True)
         self.assertIn('<h1>청소년보호정책</h1>', youth)
         self.assertIn('class="policy-toc"', youth)

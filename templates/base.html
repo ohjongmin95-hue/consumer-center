@@ -15,7 +15,7 @@
   <meta property="og:url" content="{{ request.base_url }}">
   {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='jebo-18') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='jebo-19') }}">
 </head>
 <body>
 <header class="site-header">
@@ -34,8 +34,8 @@
 {% block content %}{% endblock %}
 <footer class="site-footer">
   <div class="ft-inner">
-    <a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>
-    <div class="ft-con">
+    <div class="ft-top">
+      <a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>
       <nav class="ft-links" aria-label="정책 및 안내">
         <a href="{{ url_for('policy_page', page='terms') }}">이용약관</a>
         <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">개인정보 처리방침</a>
@@ -43,8 +43,10 @@
         <a class="ft-point" href="{{ url_for('takedown') }}">권리침해 신고 및 임시조치 안내</a>
         <a href="{{ url_for('lookup') }}">내 제보 조회</a>
       </nav>
-      {% set rows = footer_rows() %}
-      {% if rows %}<ul class="ft-info">{% for row in rows %}<li>{% for label, value in row %}<span>{{ label }}. {{ value }}</span>{% endfor %}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% set rows = footer_rows() %}
+    {% if rows %}<ul class="ft-info">{% for row in rows %}{% for label, value in row %}<li>{{ label }}. {{ value }}</li>{% endfor %}{% endfor %}</ul>{% endif %}
+    <div class="ft-bottom">
       {% if txt('operator.notice') %}<p class="ft-notice">{{ txt('operator.notice') }}</p>{% endif %}
       <p class="ft-copy">{{ txt('footer.text') }}</p>
     </div>
