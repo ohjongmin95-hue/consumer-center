@@ -25,6 +25,7 @@ class SiteTest(unittest.TestCase):
             'SECRET_KEY': secrets.token_hex(32),
             'ADMIN_PASSWORD_HASH': generate_password_hash(cls.password),
             'ENABLE_INTAKE': '1',
+            'ENABLE_BOARD': '1',
             'HTTPS_ONLY': '0',
         })
         cls.env.start()
@@ -41,7 +42,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'takedown_requests'):
+            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'takedown_requests', 'board_votes', 'comments', 'posts'):
                 db.execute('DELETE FROM ' + table)
 
     def csrf(self, client, path):
@@ -50,7 +51,7 @@ class SiteTest(unittest.TestCase):
         return re.search(r'name="_csrf" value="([^"]+)"', response.get_data(as_text=True))[1]
 
     def test_navigation_and_real_form(self):
-        for path in ('/', '/guide', '/process', '/types', '/faq', '/report', '/lookup', '/admin/login', '/terms', '/privacy', '/takedown'):
+        for path in ('/', '/guide', '/process', '/types', '/faq', '/report', '/lookup', '/admin/login', '/terms', '/privacy', '/takedown', '/board', '/board/write'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200, path)
             self.assertIn('class="section-nav"', response.get_data(as_text=True))
@@ -91,7 +92,7 @@ class SiteTest(unittest.TestCase):
         response = self.client.post('/report', data={
             '_csrf': token, 'category': '배송·환불', 'company': '테스트 업체',
             'subject': '테스트 환불 요청', 'description': '테스트 내용',
-            'request_text': '환불 요청', 'consent': 'on', 'truth': 'on', 'public_consent': 'on',
+            'request_text': '환불 요청', 'consent': 'on', 'truth': 'on', 'use_consent': 'on', 'public_consent': 'on',
             'share_company': 'on',
         })
         self.assertEqual(response.status_code, 200)
@@ -178,6 +179,69 @@ class SiteTest(unittest.TestCase):
         privacy = self.client.get('/privacy').get_data(as_text=True)
         self.assertIn('새 운영사(이하', privacy)
         self.assertIn('이메일 help@example.com', self.client.get('/').get_data(as_text=True))
+
+    def post_form(self, client, path, data):
+        token = self.csrf(client, path)
+        return client.post(path, data={'_csrf': token, **data})
+
+    def test_consumer_board(self):
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('>소비자게시판</a>', home)
+        self.assertIn('>이용 안내</a>', home)
+        self.assertNotIn('제보 유형</a>', home)
+        writer = self.site.app.test_client()
+        bad = self.post_form(writer, '/board/write', {'category': '꿀팁', 'nickname': 'a', 'password': '1', 'title': 'x', 'body': 'short', 'agree': 'on'})
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn('닉네임은 2~20자', bad.get_data(as_text=True))
+        bot = self.post_form(writer, '/board/write', {'category': '꿀팁', 'nickname': '소보루', 'password': '1234', 'title': '환불 팁', 'body': '영수증을 꼭 챙기세요. 정말 중요해요.', 'agree': 'on', 'website': 'spam'})
+        self.assertEqual(bot.status_code, 400)
+        made = self.post_form(writer, '/board/write', {'category': '꿀팁', 'nickname': '소보루', 'password': '1234', 'title': '<환불> 팁', 'body': '영수증을 꼭 챙기세요.\n정말 중요해요.', 'agree': 'on'})
+        self.assertEqual(made.status_code, 302)
+        path = made.headers['Location']
+        post_id = int(path.rstrip('/').split('/')[-1])
+        page = writer.get(path).get_data(as_text=True)
+        self.assertIn('&lt;환불&gt; 팁', page)
+        listing = self.client.get('/board?category=꿀팁').get_data(as_text=True)
+        self.assertIn('&lt;환불&gt; 팁', listing)
+        self.assertNotIn('&lt;환불&gt; 팁', self.client.get('/board?category=자유').get_data(as_text=True))
+        self.assertIn('&lt;환불&gt; 팁', self.client.get('/board?q=영수증').get_data(as_text=True))
+        # 공감은 같은 브라우저에서 누르면 켜지고 다시 누르면 꺼짐
+        token = self.csrf(self.client, path)
+        self.client.post(f'/board/{post_id}/like', data={'_csrf': token})
+        other = self.site.app.test_client()
+        token2 = self.csrf(other, path)
+        other.post(f'/board/{post_id}/like', data={'_csrf': token2})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT likes FROM posts WHERE id=?', (post_id,)).fetchone()['likes'], 2)
+        self.client.post(f'/board/{post_id}/like', data={'_csrf': token})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT likes FROM posts WHERE id=?', (post_id,)).fetchone()['likes'], 1)
+        # 댓글과 비밀번호 삭제
+        self.client.post(f'/board/{post_id}/comment', data={'_csrf': token, 'nickname': '이웃', 'password': 'abcd', 'body': '저도 그랬어요'})
+        self.assertIn('저도 그랬어요', self.client.get(path).get_data(as_text=True))
+        with self.site.conn() as db:
+            comment_id = db.execute('SELECT id FROM comments').fetchone()['id']
+            self.assertEqual(db.execute('SELECT comments FROM posts').fetchone()['comments'], 1)
+        self.client.post(f'/board/delete/c/{comment_id}', data={'_csrf': token, 'password': 'wrong'})
+        self.assertIn('저도 그랬어요', self.client.get(path).get_data(as_text=True))
+        self.client.post(f'/board/delete/c/{comment_id}', data={'_csrf': token, 'password': 'abcd'})
+        self.assertNotIn('저도 그랬어요', self.client.get(path).get_data(as_text=True))
+        # 서로 다른 이용자 알림이 기준을 넘으면 자동 숨김, 관리자가 다시 공개
+        for _ in range(self.site.FLAG_HIDE_THRESHOLD):
+            c = self.site.app.test_client()
+            c.post(f'/board/flag/p/{post_id}', data={'_csrf': self.csrf(c, path)})
+        self.assertEqual(self.client.get(path).status_code, 404)
+        admin = self.login_admin()
+        self.assertIn('&lt;환불&gt; 팁', admin.get('/admin/board').get_data(as_text=True))
+        admin.post('/admin/board', data={'_csrf': self.csrf(admin, '/admin/board'), 'kind': 'p', 'id': post_id, 'action': 'show'})
+        self.assertEqual(self.client.get(path).status_code, 200)
+        # 작성자 비밀번호로 글 삭제
+        writer.post(f'/board/delete/p/{post_id}', data={'_csrf': self.csrf(writer, path), 'password': '1234'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM posts').fetchone()[0], 0)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM board_votes').fetchone()[0], 0)
+        with patch.dict(os.environ, {'ENABLE_BOARD': '0'}):
+            self.assertEqual(self.post_form(writer, '/board/write', {}).status_code, 503)
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)

@@ -1,7 +1,7 @@
 import os, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
 from pathlib import Path
 from flask import Flask, g, render_template, request, redirect, url_for, session, flash, abort, send_file
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
@@ -14,8 +14,8 @@ UPLOAD.mkdir(parents=True,exist_ok=True)
 app=Flask(__name__)
 if os.getenv('TRUST_PROXY')=='1':app.wsgi_app=ProxyFix(app.wsgi_app,x_for=1,x_proto=1,x_host=1)
 app.secret_key=os.getenv('SECRET_KEY',secrets.token_hex(32))
-if os.getenv('ENABLE_INTAKE')=='1' and (not os.getenv('SECRET_KEY') or not os.getenv('ADMIN_PASSWORD_HASH')):
-    raise RuntimeError('제보 접수를 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
+if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not os.getenv('SECRET_KEY') or not os.getenv('ADMIN_PASSWORD_HASH')):
+    raise RuntimeError('제보 접수나 게시판을 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
 app.config['MAX_CONTENT_LENGTH']=15*1024*1024
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 CATEGORIES=['상품·품질','배송·환불','구독·결제','금융·통신','여행·숙박','서비스·계약','개인정보','기타']
@@ -42,6 +42,7 @@ with conn() as db:
     if 'assignee' not in cols: db.execute("ALTER TABLE cases ADD COLUMN assignee TEXT DEFAULT ''")
     if 'public_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN public_consent INTEGER NOT NULL DEFAULT 0')
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
+    if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
     db.execute("CREATE TABLE IF NOT EXISTS takedown_requests(id INTEGER PRIMARY KEY,requester TEXT NOT NULL,contact TEXT NOT NULL,target TEXT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT '접수',admin_note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
 TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','기각','처리 완료']
@@ -138,7 +139,7 @@ def report():
     code=secrets.token_urlsafe(12)
     with conn() as db:
         cur=db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,contact,share_company,created) VALUES(?,?,?,?,?,?,?,?,?,?)',(receipt,hashlib.sha256(code.encode()).hexdigest(),data['category'],data['company'],data['subject'],data['description'],data['request_text'],data['contact'],int(bool(request.form.get('share_company'))),datetime.datetime.now().isoformat(timespec='seconds')))
-        db.execute('UPDATE cases SET public_consent=? WHERE id=?',(int(bool(request.form.get('public_consent'))),cur.lastrowid))
+        db.execute('UPDATE cases SET public_consent=?,use_consent=? WHERE id=?',(int(bool(request.form.get('public_consent'))),int(bool(request.form.get('use_consent'))),cur.lastrowid))
         if file and file.filename:
             stored=secrets.token_hex(20)+suffix;file.save(UPLOAD/stored)
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,secure_filename(file.filename)[:180]))
@@ -282,5 +283,183 @@ def company_access(case_id,token):
 def case_logout():
     session.pop('case_id',None)
     return redirect(url_for('home'))
+
+# ---- 소비자게시판 -----------------------------------------------------------
+# 회원가입 없이 닉네임과 삭제용 비밀번호로 글·댓글을 남김. 공감·알리기는 브라우저 세션당 1회.
+BOARD_CATEGORIES=['경험 공유','질문해요','꿀팁','칭찬해요','자유']
+BOARD_PAGE_SIZE=20
+FLAG_HIDE_THRESHOLD=5  # 서로 다른 이용자 알림이 이만큼 쌓이면 자동 숨김 후 운영자 확인
+with conn() as db:
+    db.execute('''CREATE TABLE IF NOT EXISTS posts(id INTEGER PRIMARY KEY,category TEXT NOT NULL,nickname TEXT NOT NULL,pw_hash TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,ip_hash TEXT NOT NULL,created TEXT NOT NULL,hidden INTEGER NOT NULL DEFAULT 0,likes INTEGER NOT NULL DEFAULT 0,comments INTEGER NOT NULL DEFAULT 0,flags INTEGER NOT NULL DEFAULT 0)''')
+    db.execute('''CREATE TABLE IF NOT EXISTS comments(id INTEGER PRIMARY KEY,post_id INTEGER NOT NULL,nickname TEXT NOT NULL,pw_hash TEXT NOT NULL,body TEXT NOT NULL,ip_hash TEXT NOT NULL,created TEXT NOT NULL,hidden INTEGER NOT NULL DEFAULT 0,flags INTEGER NOT NULL DEFAULT 0,FOREIGN KEY(post_id) REFERENCES posts(id))''')
+    db.execute('CREATE TABLE IF NOT EXISTS board_votes(kind TEXT NOT NULL,target TEXT NOT NULL,voter TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(kind,target,voter))')
+    db.execute('CREATE INDEX IF NOT EXISTS comments_post ON comments(post_id)')
+
+def board_enabled():return os.getenv('ENABLE_BOARD')=='1'
+def voter_id():
+    if 'voter' not in session:session['voter']=secrets.token_urlsafe(16)
+    return hashlib.sha256(session['voter'].encode()).hexdigest()
+def ip_hash():
+    # 접속 IP는 원문 대신 서버 비밀키로 만든 해시만 저장 (도배 방지용).
+    return hmac.new(app.secret_key.encode(),(request.remote_addr or '').encode(),'sha256').hexdigest()
+def recent_count(db,table,minutes):
+    since=(datetime.datetime.now()-datetime.timedelta(minutes=minutes)).isoformat(timespec='seconds')
+    return db.execute(f'SELECT COUNT(*) FROM {table} WHERE ip_hash=? AND created>=?',(ip_hash(),since)).fetchone()[0]
+def board_back(post_id=None):
+    nxt=request.form.get('next','')
+    if nxt.startswith('/board') and '//' not in nxt:return redirect(nxt)
+    return redirect(url_for('board_post',post_id=post_id) if post_id else url_for('board'))
+def refresh_comment_count(db,post_id):
+    db.execute('UPDATE posts SET comments=(SELECT COUNT(*) FROM comments WHERE post_id=? AND hidden=0) WHERE id=?',(post_id,post_id))
+
+@app.template_filter('ago')
+def ago(created):
+    try:delta=datetime.datetime.now()-datetime.datetime.fromisoformat(created)
+    except (TypeError,ValueError):return ''
+    s=delta.total_seconds()
+    if s<60:return '방금 전'
+    if s<3600:return f'{int(s//60)}분 전'
+    if s<86400:return f'{int(s//3600)}시간 전'
+    if s<86400*7:return f'{int(s//86400)}일 전'
+    return created[:10].replace('-','.')
+
+@app.route('/board')
+def board():
+    q=request.args.get('q','').strip()[:60];cat=request.args.get('category','')
+    sort='top' if request.args.get('sort')=='top' else 'new'
+    page=max(1,request.args.get('page',1,type=int))
+    where=['hidden=0'];args=[]
+    if cat in BOARD_CATEGORIES:where.append('category=?');args.append(cat)
+    else:cat=''
+    if q:where.append("(title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\')");like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%';args+=[like,like]
+    order='likes DESC,id DESC' if sort=='top' else 'id DESC'
+    with conn() as db:
+        total=db.execute('SELECT COUNT(*) FROM posts WHERE '+' AND '.join(where),args).fetchone()[0]
+        posts=db.execute('SELECT id,category,nickname,title,substr(body,1,160) AS excerpt,likes,comments,created FROM posts WHERE '+' AND '.join(where)+f' ORDER BY {order} LIMIT ? OFFSET ?',args+[BOARD_PAGE_SIZE,(page-1)*BOARD_PAGE_SIZE]).fetchall()
+        week_ago=(datetime.datetime.now()-datetime.timedelta(days=7)).isoformat(timespec='seconds')
+        hot=db.execute('SELECT id,category,title,likes,comments FROM posts WHERE hidden=0 AND likes>0 AND created>=? ORDER BY likes DESC,id DESC LIMIT 3',(week_ago,)).fetchall() if not (q or cat or page>1) else []
+        liked={r['target'] for r in db.execute("SELECT target FROM board_votes WHERE kind='like' AND voter=?",(voter_id(),))}
+    return render_template('board.html',posts=posts,hot=hot,liked=liked,categories=BOARD_CATEGORIES,cat=cat,q=q,sort=sort,page=page,pages=max(1,-(-total//BOARD_PAGE_SIZE)),total=total,enabled=board_enabled())
+
+@app.route('/board/write',methods=['GET','POST'])
+def board_write():
+    if request.method=='POST':
+        if not board_enabled():abort(503,description='게시판 글쓰기 준비 중입니다.')
+        f={k:request.form.get(k,'').strip() for k in ('category','nickname','password','title','body')}
+        errors=[]
+        if request.form.get('website'):abort(400)  # 사람에게는 보이지 않는 칸. 채워져 있으면 자동 등록 프로그램.
+        if f['category'] not in BOARD_CATEGORIES:errors.append('분류를 골라 주세요.')
+        if not 2<=len(f['nickname'])<=20:errors.append('닉네임은 2~20자로 적어 주세요.')
+        if not 4<=len(f['password'])<=30:errors.append('비밀번호는 4~30자로 정해 주세요.')
+        if not 2<=len(f['title'])<=100:errors.append('제목은 2~100자로 적어 주세요.')
+        if not 10<=len(f['body'])<=5000:errors.append('내용은 10~5,000자로 적어 주세요.')
+        if not request.form.get('agree'):errors.append('글쓰기 약속에 동의해 주세요.')
+        with conn() as db:
+            if not errors and recent_count(db,'posts',10)>=3:errors.append('잠시 후 다시 올려 주세요. 10분에 3개까지 쓸 수 있어요.')
+            if errors:
+                for e in errors:flash(e)
+                return render_template('board_write.html',categories=BOARD_CATEGORIES,enabled=True),400
+            cur=db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created) VALUES(?,?,?,?,?,?,?)',(f['category'],f['nickname'],generate_password_hash(f['password']),f['title'],f['body'],ip_hash(),datetime.datetime.now().isoformat(timespec='seconds')))
+        return redirect(url_for('board_post',post_id=cur.lastrowid))
+    return render_template('board_write.html',categories=BOARD_CATEGORIES,enabled=board_enabled())
+
+@app.route('/board/<int:post_id>')
+def board_post(post_id):
+    with conn() as db:
+        post=db.execute('SELECT * FROM posts WHERE id=?',(post_id,)).fetchone()
+        if not post or (post['hidden'] and not session.get('admin')):abort(404)
+        comments=db.execute('SELECT id,nickname,body,created FROM comments WHERE post_id=? AND hidden=0 ORDER BY id',(post_id,)).fetchall()
+        mine={r['kind']+r['target'] for r in db.execute('SELECT kind,target FROM board_votes WHERE voter=?',(voter_id(),))}
+    return render_template('board_post.html',post=post,comments=comments,categories=BOARD_CATEGORIES,liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled())
+
+@app.route('/board/<int:post_id>/like',methods=['POST'])
+def board_like(post_id):
+    if not board_enabled():abort(503)
+    with conn() as db:
+        if not db.execute('SELECT 1 FROM posts WHERE id=? AND hidden=0',(post_id,)).fetchone():abort(404)
+        key=('like','p:%d'%post_id,voter_id())
+        if db.execute('DELETE FROM board_votes WHERE kind=? AND target=? AND voter=?',key).rowcount==0:
+            db.execute('INSERT INTO board_votes(kind,target,voter,created) VALUES(?,?,?,?)',key+(datetime.datetime.now().isoformat(timespec='seconds'),))
+        db.execute("UPDATE posts SET likes=(SELECT COUNT(*) FROM board_votes WHERE kind='like' AND target=?) WHERE id=?",(key[1],post_id))
+    return board_back(post_id)
+
+@app.route('/board/<int:post_id>/comment',methods=['POST'])
+def board_comment(post_id):
+    if not board_enabled():abort(503)
+    if request.form.get('website'):abort(400)
+    nickname=request.form.get('nickname','').strip();password=request.form.get('password','');body=request.form.get('body','').strip()
+    with conn() as db:
+        if not db.execute('SELECT 1 FROM posts WHERE id=? AND hidden=0',(post_id,)).fetchone():abort(404)
+        if not (2<=len(nickname)<=20 and 4<=len(password)<=30 and 1<=len(body)<=1000):
+            flash('닉네임(2~20자), 비밀번호(4~30자), 댓글(1,000자 이내)을 확인해 주세요.');return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
+        if recent_count(db,'comments',2)>=5:
+            flash('잠시 후 다시 남겨 주세요.');return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
+        db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created) VALUES(?,?,?,?,?,?)',(post_id,nickname,generate_password_hash(password),body,ip_hash(),datetime.datetime.now().isoformat(timespec='seconds')))
+        refresh_comment_count(db,post_id)
+    return redirect(url_for('board_post',post_id=post_id)+'#comments')
+
+@app.route('/board/flag/<kind>/<int:item_id>',methods=['POST'])
+def board_flag(kind,item_id):
+    if kind not in ('p','c'):abort(404)
+    table='posts' if kind=='p' else 'comments'
+    with conn() as db:
+        item=db.execute(f'SELECT * FROM {table} WHERE id=? AND hidden=0',(item_id,)).fetchone()
+        if not item:abort(404)
+        target='%s:%d'%(kind,item_id)
+        db.execute('INSERT OR IGNORE INTO board_votes(kind,target,voter,created) VALUES(?,?,?,?)',('flag',target,voter_id(),datetime.datetime.now().isoformat(timespec='seconds')))
+        flags=db.execute("SELECT COUNT(*) FROM board_votes WHERE kind='flag' AND target=?",(target,)).fetchone()[0]
+        db.execute(f'UPDATE {table} SET flags=?,hidden=? WHERE id=?',(flags,int(flags>=FLAG_HIDE_THRESHOLD),item_id))
+        post_id=item_id if kind=='p' else item['post_id']
+        if kind=='c':refresh_comment_count(db,post_id)
+    flash('알려 주셔서 고마워요. 운영자가 확인할게요.')
+    if kind=='p' and flags>=FLAG_HIDE_THRESHOLD:return redirect(url_for('board'))
+    return redirect(url_for('board_post',post_id=post_id))
+
+@app.route('/board/delete/<kind>/<int:item_id>',methods=['POST'])
+def board_delete(kind,item_id):
+    if kind not in ('p','c'):abort(404)
+    with conn() as db:
+        item=db.execute('SELECT * FROM %s WHERE id=?'%('posts' if kind=='p' else 'comments'),(item_id,)).fetchone()
+        if not item:abort(404)
+        post_id=item_id if kind=='p' else item['post_id']
+        if not check_password_hash(item['pw_hash'],request.form.get('password','')):
+            flash('비밀번호가 맞지 않아요.');return redirect(url_for('board_post',post_id=post_id))
+        delete_board_item(db,kind,item_id)
+    flash('삭제했어요.')
+    return redirect(url_for('board') if kind=='p' else url_for('board_post',post_id=post_id)+'#comments')
+
+def delete_board_item(db,kind,item_id):
+    # 작성자·운영자 삭제 모두 원문을 바로 지움 (개인정보 처리방침: 삭제 시 즉시 파기).
+    if kind=='p':
+        ids=[r['id'] for r in db.execute('SELECT id FROM comments WHERE post_id=?',(item_id,))]
+        db.execute('DELETE FROM board_votes WHERE target=?'+' OR target=?'*len(ids),['p:%d'%item_id]+['c:%d'%i for i in ids])
+        db.execute('DELETE FROM comments WHERE post_id=?',(item_id,))
+        db.execute('DELETE FROM posts WHERE id=?',(item_id,))
+    else:
+        post_id=db.execute('SELECT post_id FROM comments WHERE id=?',(item_id,)).fetchone()['post_id']
+        db.execute('DELETE FROM board_votes WHERE target=?',('c:%d'%item_id,))
+        db.execute('DELETE FROM comments WHERE id=?',(item_id,))
+        refresh_comment_count(db,post_id)
+
+@app.route('/admin/board',methods=['GET','POST'])
+@admin_only
+def admin_board():
+    with conn() as db:
+        if request.method=='POST':
+            kind=request.form.get('kind');item_id=request.form.get('id',type=int);action=request.form.get('action')
+            if kind not in ('p','c') or not item_id or action not in ('hide','show','delete'):abort(400)
+            table='posts' if kind=='p' else 'comments'
+            if not db.execute(f'SELECT 1 FROM {table} WHERE id=?',(item_id,)).fetchone():abort(404)
+            if action=='delete':delete_board_item(db,kind,item_id)
+            else:
+                db.execute(f'UPDATE {table} SET hidden=? WHERE id=?',(int(action=='hide'),item_id))
+                if kind=='c':refresh_comment_count(db,db.execute('SELECT post_id FROM comments WHERE id=?',(item_id,)).fetchone()['post_id'])
+            flash({'hide':'숨겼어요.','show':'다시 보이게 했어요.','delete':'삭제했어요.'}[action])
+            return redirect(url_for('admin_board',view=request.args.get('view','')))
+        flagged=request.args.get('view')!='all'
+        cond='WHERE flags>0 OR hidden=1' if flagged else ''
+        posts=db.execute(f'SELECT id,category,nickname,title,body,created,hidden,likes,comments,flags FROM posts {cond} ORDER BY flags DESC,id DESC LIMIT 200').fetchall()
+        comments=db.execute(f'SELECT c.id,c.post_id,c.nickname,c.body,c.created,c.hidden,c.flags,p.title FROM comments c JOIN posts p ON p.id=c.post_id {cond.replace("flags","c.flags").replace("hidden","c.hidden")} ORDER BY c.flags DESC,c.id DESC LIMIT 200').fetchall()
+    return render_template('admin_board.html',posts=posts,comments=comments,flagged=flagged,threshold=FLAG_HIDE_THRESHOLD)
 
 if __name__=='__main__':app.run(debug=False)

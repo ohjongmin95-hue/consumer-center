@@ -35,4 +35,4 @@ sudo bash setup.sh 도메인 이메일
 - DNS가 반영되기 전이면 HTTPS를 건너뜁니다. 반영된 뒤 같은 명령을 다시 실행합니다.
 - 코드 업데이트: `sudo bash /opt/soboru/app/deploy/update.sh`
 - 로그: `sudo journalctl -u soboru -f`
-- 제보 접수는 `/etc/soboru.env`의 `ENABLE_INTAKE=1`로 켜고 `sudo systemctl restart soboru`로 적용합니다.
+- 제보 접수는 `/etc/soboru.env`의 `ENABLE_INTAKE=1`, 소비자게시판 글쓰기는 `ENABLE_BOARD=1`로 켜고 `sudo systemctl restart soboru`로 적용합니다.

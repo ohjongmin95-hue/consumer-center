@@ -54,6 +54,8 @@ TRUST_PROXY=1
 HTTPS_ONLY=0
 # 개인정보 처리방침 등 준비가 끝나면 1로 바꾸고: sudo systemctl restart soboru
 ENABLE_INTAKE=0
+# 소비자게시판 글쓰기·공감·댓글. 켜려면 1로 바꾸고: sudo systemctl restart soboru
+ENABLE_BOARD=0
 CONF
 fi
 chown root:soboru "$ENV_FILE"; chmod 640 "$ENV_FILE"

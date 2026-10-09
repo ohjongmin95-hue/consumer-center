@@ -6,16 +6,16 @@
   <meta name="theme-color" content="#fafaf9">
   {% if request.path.startswith('/admin') %}<meta name="robots" content="noindex,nofollow">{% endif %}
   <title>{% block title %}{{ txt('site.name') }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='jebo-1') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='jebo-2') }}">
 </head>
 <body>
 <header class="site-header">
   <div class="top">
     <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>
     <nav class="section-nav" aria-label="주요 메뉴">
-      {% for endpoint in ['home','guide','process','types','faq'] %}
-      {% set active = (endpoint == 'home' and request.endpoint == 'home') or (request.endpoint == 'info_page' and page == endpoint) %}
-      <a data-menu="{{ endpoint }}" href="{{ url_for('home') if endpoint == 'home' else url_for('info_page', page=endpoint) }}"{% if active %} class="active" aria-current="page"{% endif %}>{{ txt('nav.' ~ endpoint) }}</a>
+      {% for endpoint in ['home','guide','process','board','faq'] %}
+      {% set active = (endpoint == 'home' and request.endpoint == 'home') or (endpoint == 'board' and (request.endpoint or '').startswith('board')) or (request.endpoint == 'info_page' and page == endpoint) %}
+      <a data-menu="{{ endpoint }}" href="{{ url_for(endpoint) if endpoint in ('home', 'board') else url_for('info_page', page=endpoint) }}"{% if active %} class="active" aria-current="page"{% endif %}>{{ txt('nav.' ~ endpoint) }}</a>
       {% endfor %}
     </nav>
   </div>

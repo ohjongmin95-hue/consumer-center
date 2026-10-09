@@ -1,1 +1,83 @@
-{% extends 'base.html' %}{% block title %}{{ txt('report.title') }} | {{ txt('site.name') }}{% endblock %}{% block content %}<main class="page"><div class="wrap"><div class="page-intro"><span class="eyebrow">REPORT</span><h1 class="page-title">{{ txt('report.title') }}</h1>{% if txt('report.intro') %}<p>{{ txt('report.intro') }}</p>{% endif %}</div><div class="form-panel"><form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{csrf_token()}}"><div class="field"><label>제보 유형 <small>*</small></label><select name="category" required><option value="">선택해 주세요</option>{% for x in categories %}<option {% if request.form.get('category', request.args.get('category')) == x %}selected{% endif %}>{{x}}</option>{% endfor %}</select></div><div class="field"><label>업체·서비스명 <small>*</small></label><input name="company" maxlength="120" required placeholder="예: ○○쇼핑몰"></div><div class="field"><label>제보 제목 <small>*</small></label><input name="subject" maxlength="160" required placeholder="피해 내용을 한 줄로 요약해 주세요"></div><div class="field"><label>피해 내용 <small>*</small></label><textarea name="description" maxlength="6000" required placeholder="구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요"></textarea></div><div class="field"><label>원하는 해결 방법 <small>*</small></label><textarea name="request_text" maxlength="3000" required placeholder="환불, 교환, 수리, 설명 요청 등"></textarea></div><div class="field"><label>연락 가능한 이메일 (선택)</label><input name="contact" maxlength="150" placeholder="이메일 주소"><p class="hint">연락처를 적지 않아도 접수번호와 조회 코드로 확인할 수 있습니다.</p></div><div class="field"><label>증빙자료 (선택)</label><input type="file" name="evidence" accept=".pdf,.png,.jpg,.jpeg,.webp"><p class="hint">PDF·JPG·PNG·WEBP 1개, 최대 15MB. 개인정보가 담긴 부분은 가리고 첨부하세요.</p></div><div class="consent-box"><label class="check"><input type="checkbox" name="consent" required><span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label><p class="consent-detail">{{ txt('report.consent_privacy') }}</p><a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">개인정보 처리방침 전문 보기 ↗</a></div><label class="check"><input type="checkbox" name="truth" required><span><b>[필수]</b> {{ txt('report.consent_truth') }} <a class="consent-link" href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">이용약관 ↗</a></span></label><label class="check"><input type="checkbox" name="share_company"><span><b>[선택]</b> {{ txt('report.consent_share') }}</span></label><label class="check"><input type="checkbox" name="public_consent"><span><b>[선택]</b> {{ txt('report.consent_public') }}</span></label><button class="primary" type="submit" {% if not intake_enabled %}disabled title="현재 접수 준비 중"{% endif %} style="width:100%;margin-top:18px">제보 접수하기 ↗</button></form>{% if not intake_enabled %}<div class="alert">현재 제보 접수 기능은 비활성화되어 있습니다. 운영 정책과 보안 검증 후 개시됩니다.</div>{% endif %}</div></div></main>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ txt('report.title') }} | {{ txt('site.name') }}{% endblock %}
+{% macro lines(key) %}{% for line in g.content[key].split('\n') if line.strip() %}<span class="cell-line">{{ line }}</span>{% endfor %}{% endmacro %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><span class="eyebrow">REPORT</span><h1 class="page-title">{{ txt('report.title') }}</h1>{% if txt('report.intro') %}<p>{{ txt('report.intro') }}</p>{% endif %}</div>
+
+  {% if txt('report.notes') %}
+  <details class="must-read" open>
+    <summary><span class="must-read-title">제보 전 꼭 읽어 주세요</span><span class="must-read-toggle" aria-hidden="true"></span></summary>
+    <ul>{% for line in g.content['report.notes'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+
+  <div class="form-panel">
+    <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="field"><label for="r-category">제보 유형 <small>*</small></label><select id="r-category" name="category" required><option value="">선택해 주세요</option>{% for x in categories %}<option {% if request.form.get('category', request.args.get('category')) == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="r-company">업체·서비스명 <small>*</small></label><input id="r-company" name="company" maxlength="120" required placeholder="예: ○○쇼핑몰" value="{{ request.form.get('company','') }}"></div>
+      <div class="field"><label for="r-subject">제보 제목 <small>*</small></label><input id="r-subject" name="subject" maxlength="160" required placeholder="피해 내용을 한 줄로 요약해 주세요" value="{{ request.form.get('subject','') }}"></div>
+      <div class="field"><label for="r-description">피해 내용 <small>*</small></label><textarea id="r-description" name="description" maxlength="6000" required placeholder="구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요">{{ request.form.get('description','') }}</textarea></div>
+      <div class="field"><label for="r-request">원하는 해결 방법 <small>*</small></label><textarea id="r-request" name="request_text" maxlength="3000" required placeholder="환불, 교환, 수리, 설명 요청 등">{{ request.form.get('request_text','') }}</textarea></div>
+      <div class="field"><label for="r-contact">연락 가능한 이메일 (선택)</label><input id="r-contact" name="contact" maxlength="150" placeholder="이메일 주소" value="{{ request.form.get('contact','') }}"><p class="hint">연락처를 적지 않아도 접수번호와 조회 코드로 확인할 수 있습니다.</p></div>
+      <div class="field"><label for="r-evidence">증빙자료 (선택)</label><input id="r-evidence" type="file" name="evidence" accept=".pdf,.png,.jpg,.jpeg,.webp"><p class="hint">PDF·JPG·PNG·WEBP 1개, 최대 15MB. 개인정보가 담긴 부분은 가리고 첨부하세요.</p></div>
+
+      <div class="consents">
+        <h2 class="consents-title">동의 항목</h2>
+        <label class="check consent-all"><input type="checkbox" data-check-all><span>아래 내용에 모두 동의합니다 <em>(선택 항목 포함)</em></span></label>
+
+        <section class="consent-card">
+          <h3><span class="badge-req">필수</span>개인정보 수집·이용</h3>
+          <div class="consent-table" role="table" aria-label="개인정보 수집·이용 내용">
+            <div role="row" class="ct-head"><span role="columnheader">수집 항목</span><span role="columnheader">이용 목적</span><span role="columnheader">보유 기간</span></div>
+            <div role="row"><span role="cell" data-label="수집 항목">{{ lines('report.privacy_items') }}</span><span role="cell" data-label="이용 목적">{{ lines('report.privacy_purpose') }}</span><span role="cell" data-label="보유 기간">{{ lines('report.privacy_period') }}</span></div>
+          </div>
+          <p class="consent-note">{{ txt('report.refusal_note') }} <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">개인정보 처리방침 ↗</a></p>
+          <label class="check"><input type="checkbox" name="consent" required{% if request.form.get('consent') %} checked{% endif %}><span>개인정보 수집·이용에 동의합니다.</span></label>
+        </section>
+
+        <section class="consent-card">
+          <h3><span class="badge-opt">선택</span>제보 내용 기업 전달 (제3자 제공)</h3>
+          <div class="consent-table consent-table-4" role="table" aria-label="제3자 제공 내용">
+            <div role="row" class="ct-head"><span role="columnheader">제공받는 곳</span><span role="columnheader">제공 항목</span><span role="columnheader">목적</span><span role="columnheader">보유 기간</span></div>
+            <div role="row"><span role="cell" data-label="제공받는 곳">{{ lines('report.share_recipient') }}</span><span role="cell" data-label="제공 항목">{{ lines('report.share_items') }}</span><span role="cell" data-label="목적">{{ lines('report.share_purpose') }}</span><span role="cell" data-label="보유 기간">{{ lines('report.share_period') }}</span></div>
+          </div>
+          <p class="consent-note">동의하지 않으면 기업에 전달하지 않아요. 제보 접수에는 영향이 없어요.</p>
+          <label class="check"><input type="checkbox" name="share_company"{% if request.form.get('share_company') %} checked{% endif %}><span>기업 전달에 동의합니다.</span></label>
+        </section>
+
+        <section class="consent-card">
+          <h3><span class="badge-opt">선택</span>공개 목록 표시</h3>
+          <p class="consent-note">{{ txt('report.consent_public') }}</p>
+          <label class="check"><input type="checkbox" name="public_consent"{% if request.form.get('public_consent') %} checked{% endif %}><span>공개 목록 표시에 동의합니다.</span></label>
+        </section>
+
+        <section class="consent-card">
+          <h3><span class="badge-opt">선택</span>제보 내용 활용</h3>
+          <p class="consent-note">{{ txt('report.use_text') }}</p>
+          <label class="check"><input type="checkbox" name="use_consent"{% if request.form.get('use_consent') %} checked{% endif %}><span>제보 내용 활용에 동의합니다.</span></label>
+        </section>
+
+        <section class="consent-card">
+          <h3><span class="badge-req">필수</span>사실 작성 확인</h3>
+          <p class="consent-note">{{ txt('report.consent_truth') }} <a class="consent-link" href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">이용약관 ↗</a></p>
+          <label class="check"><input type="checkbox" name="truth" required{% if request.form.get('truth') %} checked{% endif %}><span>위 내용을 확인했습니다.</span></label>
+        </section>
+      </div>
+
+      <button class="primary" type="submit" {% if not intake_enabled %}disabled title="현재 접수 준비 중"{% endif %} style="width:100%;margin-top:18px">제보 접수하기 ↗</button>
+    </form>
+    {% if not intake_enabled %}<div class="alert">현재 제보 접수 기능은 비활성화되어 있습니다. 운영 정책과 보안 검증 후 개시됩니다.</div>{% endif %}
+  </div>
+</div></main>
+<script>
+  // "모두 동의" 체크박스: 아래 동의 항목을 한 번에 켜고 끕니다.
+  (function () {
+    var all = document.querySelector('[data-check-all]');
+    if (!all) return;
+    var boxes = document.querySelectorAll('.consent-card input[type=checkbox]');
+    all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); });
+    boxes.forEach(function (b) { b.addEventListener('change', function () { all.checked = Array.prototype.every.call(boxes, function (x) { return x.checked; }); }); });
+  })();
+</script>
+{% endblock %}
