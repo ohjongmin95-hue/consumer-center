@@ -78,13 +78,13 @@ class SiteTest(unittest.TestCase):
         for private in ('비공개 접수', '미동의 접수', '비공개 상세 내용', '테스트 업체'):
             self.assertNotIn(private, home)
         # 모든 제보가 목록에 올라오지만, 승인·동의가 없는 제보는 제목을 가림
-        self.assertEqual(home.count('비공개 제보</span>'), 2)
+        self.assertEqual(home.count('비밀글</span>'), 2)
         self.assertIn('<dt>전체</dt><dd>4</dd>', home)
         self.assertIn('class="step-badge">접수</span>', home)
         filtered_cat = self.client.get('/', query_string={'category': '배송·환불'}).get_data(as_text=True)
-        self.assertEqual(filtered_cat.count('비공개 제보</span>'), 2)
+        self.assertEqual(filtered_cat.count('비밀글</span>'), 2)
         self.assertNotIn('공개 계약 문의', filtered_cat)
-        self.assertEqual(self.client.get('/?q=비공개').get_data(as_text=True).count('비공개 제보</span>'), 0)
+        self.assertEqual(self.client.get('/?q=비공개').get_data(as_text=True).count('비밀글</span>'), 0)
         filtered = self.client.get('/', query_string={'q': '환불', 'category': '배송·환불'}).get_data(as_text=True)
         self.assertIn('공개 환불 요청', filtered)
         self.assertNotIn('공개 계약 문의', filtered)
@@ -100,7 +100,7 @@ class SiteTest(unittest.TestCase):
         response = self.client.post('/report', data={
             '_csrf': token, 'category': '배송·환불', 'company': '테스트 업체',
             'subject': '테스트 환불 요청', 'description': '테스트 내용',
-            'request_text': '환불 요청', 'consent': 'on', 'truth': 'on', 'use_consent': 'on', 'public_consent': 'on',
+            'request_text': '환불 요청', 'consent': 'on', 'truth': 'on', 'use_consent': 'on', 'visibility': 'public',
             'share_company': 'on',
         })
         self.assertEqual(response.status_code, 200)
@@ -252,6 +252,32 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(db.execute('SELECT COUNT(*) FROM board_votes').fetchone()[0], 0)
         with patch.dict(os.environ, {'ENABLE_BOARD': '0'}):
             self.assertEqual(self.post_form(writer, '/board/write', {}).status_code, 503)
+
+    def test_public_and_secret_report_pages(self):
+        ids = {}
+        for visibility in ('public', 'secret'):
+            token = self.csrf(self.client, '/report')
+            self.client.post('/report', data={
+                '_csrf': token, 'category': '배송·환불', 'company': '공개 업체', 'subject': visibility + ' 제목',
+                'description': '연락은 010-1234-5678 또는 me@example.com 으로', 'request_text': '환불',
+                'contact': 'secret@example.com', 'consent': 'on', 'truth': 'on', 'visibility': visibility,
+            })
+            with self.site.conn() as db:
+                ids[visibility] = db.execute('SELECT id FROM cases WHERE subject=?', (visibility + ' 제목',)).fetchone()['id']
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('href="/reports/%d">public 제목</a>' % ids['public'], home)
+        self.assertNotIn('secret 제목', home)
+        self.assertEqual(home.count('비밀글</span>'), 1)
+        page = self.client.get('/reports/%d' % ids['public']).get_data(as_text=True)
+        self.assertIn('[전화번호 비공개]', page)
+        self.assertIn('[이메일 비공개]', page)
+        self.assertNotIn('010-1234-5678', page)
+        self.assertNotIn('secret@example.com', page)
+        self.assertIn('공개 업체', page)
+        self.assertEqual(self.client.get('/reports/%d' % ids['secret']).status_code, 404)
+        token = self.csrf(self.client, '/report')
+        no_choice = self.client.post('/report', data={'_csrf': token, 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'request_text': 'D', 'consent': 'on', 'truth': 'on'})
+        self.assertEqual(no_choice.status_code, 400)
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)

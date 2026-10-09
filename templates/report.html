@@ -22,6 +22,11 @@
       <div class="field"><label for="r-contact">연락 가능한 이메일 (선택)</label><input id="r-contact" name="contact" maxlength="150" placeholder="이메일 주소" value="{{ request.form.get('contact','') }}"><p class="hint">연락처를 적지 않아도 접수번호와 조회 코드로 확인할 수 있습니다.</p></div>
       <div class="field"><label for="r-evidence">증빙자료 (선택)</label><input id="r-evidence" type="file" name="evidence" accept=".pdf,.png,.jpg,.jpeg,.webp"><p class="hint">PDF·JPG·PNG·WEBP 1개, 최대 15MB. 개인정보가 담긴 부분은 가리고 첨부하세요.</p></div>
 
+      <fieldset class="field visibility-pick"><legend>공개 설정 <small>*</small></legend>
+        <label class="vis-option"><input type="radio" name="visibility" value="public" required{% if request.form.get('visibility') == 'public' %} checked{% endif %}><span><b>공개</b>{{ txt('report.visibility_public') }}</span></label>
+        <label class="vis-option"><input type="radio" name="visibility" value="secret" required{% if request.form.get('visibility') == 'secret' %} checked{% endif %}><span><b>🔒 비밀글</b>{{ txt('report.visibility_secret') }}</span></label>
+      </fieldset>
+
       <div class="consents">
         <h2 class="consents-title">동의 항목</h2>
         <label class="check consent-all"><input type="checkbox" data-check-all><span>아래 내용에 모두 동의합니다 <em>(선택 항목 포함)</em></span></label>
@@ -46,11 +51,6 @@
           <label class="check"><input type="checkbox" name="share_company"{% if request.form.get('share_company') %} checked{% endif %}><span>기업 전달에 동의합니다.</span></label>
         </section>
 
-        <section class="consent-card">
-          <h3><span class="badge-opt">선택</span>공개 목록 표시</h3>
-          <p class="consent-note">{{ txt('report.consent_public') }}</p>
-          <label class="check"><input type="checkbox" name="public_consent"{% if request.form.get('public_consent') %} checked{% endif %}><span>공개 목록 표시에 동의합니다.</span></label>
-        </section>
 
         <section class="consent-card">
           <h3><span class="badge-opt">선택</span>제보 내용 활용</h3>

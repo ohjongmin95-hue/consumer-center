@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% from 'status_macros.html' import stepper %}
+{% block title %}{{ subject }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro">
+    <a class="back-link" href="{{ url_for('home') }}#reports">← 제보 목록</a>
+    <p class="public-case-meta"><span class="case-cat">{{ case['category'] }}</span>No. {{ case['id'] }} · 접수일 {{ case['created'][:10] }}</p>
+    <h1 class="page-title">{{ subject }}</h1>
+    <p>제보 대상 · <b>{{ company }}</b></p>
+  </div>
+  <div class="form-panel stepper-panel">{{ stepper(case['status']) }}</div>
+  <article class="form-panel public-case">
+    <h2>피해 내용</h2>
+    <p class="public-case-body">{{ description }}</p>
+    <h2>원하는 해결 방법</h2>
+    <p class="public-case-body">{{ request_text }}</p>
+  </article>
+  {% if txt('report.public_notice') %}<p class="public-case-notice">{{ txt('report.public_notice') }} <a href="{{ url_for('takedown') }}">게시중단 요청 →</a></p>{% endif %}
+</div></main>
+{% endblock %}

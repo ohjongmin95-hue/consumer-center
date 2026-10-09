@@ -1,4 +1,4 @@
-import os, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
+import os, re, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
 from pathlib import Path
 from flask import Flask, g, render_template, request, redirect, url_for, session, flash, abort, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -108,10 +108,22 @@ def home():
         total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
         rows=db.execute('SELECT id,category,subject,status,created,public_consent,published FROM cases WHERE '+cond+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[HOME_PAGE_SIZE,(page-1)*HOME_PAGE_SIZE]).fetchall()
         stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
-    cases=[dict(no=r['id'],cat=r['category'],title=r['subject'] if r['public_consent'] and r['published'] else None,status=r['status'],step=status_step(r['status']),created=r['created'][:10]) for r in rows]
+    cases=[dict(no=r['id'],cat=r['category'],title=mask_personal(r['subject']) if r['public_consent'] and r['published'] else None,status=r['status'],step=status_step(r['status']),created=r['created'][:10]) for r in rows]
     summary=dict(total=sum(stats.values()),done=stats.get('종결',0))
     summary['active']=summary['total']-summary['done']
     return render_template('index.html',categories=CATEGORIES,cases=cases,total=total,page=page,pages=max(1,-(-total//HOME_PAGE_SIZE)),summary=summary,search_query=search_query,selected_category=selected_category)
+
+PHONE_RE=re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}')
+EMAIL_RE=re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
+def mask_personal(text):
+    # 공개 화면에서만 전화번호·이메일로 보이는 부분을 가림 (원문은 그대로 보관).
+    return EMAIL_RE.sub('[이메일 비공개]',PHONE_RE.sub('[전화번호 비공개]',text or ''))
+
+@app.route('/reports/<int:case_id>')
+def public_case(case_id):
+    with conn() as db:case=db.execute('SELECT id,category,company,subject,description,request_text,status,created FROM cases WHERE id=? AND public_consent=1 AND published=1',(case_id,)).fetchone()
+    if not case:abort(404)
+    return render_template('public_case.html',case=case,company=mask_personal(case['company']),subject=mask_personal(case['subject']),description=mask_personal(case['description']),request_text=mask_personal(case['request_text']))
 
 @app.route('/guide',defaults={'page':'guide'})
 @app.route('/process',defaults={'page':'process'})
@@ -141,7 +153,7 @@ def report():
     if request.method=='GET':return render_template('report.html',categories=CATEGORIES, intake_enabled=os.getenv('ENABLE_INTAKE')=='1')
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수 준비 중입니다.')
     data={k:request.form.get(k,'').strip() for k in ('category','company','subject','description','request_text','contact')}
-    if data['category'] not in CATEGORIES or any(not data[k] for k in ('company','subject','description','request_text')) or not request.form.get('consent') or not request.form.get('truth'):
+    if data['category'] not in CATEGORIES or any(not data[k] for k in ('company','subject','description','request_text')) or not request.form.get('consent') or not request.form.get('truth') or request.form.get('visibility') not in ('public','secret'):
         flash('필수 항목과 필수 동의를 확인해 주세요.');return render_template('report.html',categories=CATEGORIES,intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
     if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150)]):abort(400)
     file=request.files.get('evidence')
@@ -155,7 +167,8 @@ def report():
     code=secrets.token_urlsafe(12)
     with conn() as db:
         cur=db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,contact,share_company,created) VALUES(?,?,?,?,?,?,?,?,?,?)',(receipt,hashlib.sha256(code.encode()).hexdigest(),data['category'],data['company'],data['subject'],data['description'],data['request_text'],data['contact'],int(bool(request.form.get('share_company'))),datetime.datetime.now().isoformat(timespec='seconds')))
-        db.execute('UPDATE cases SET public_consent=?,use_consent=? WHERE id=?',(int(bool(request.form.get('public_consent'))),int(bool(request.form.get('use_consent'))),cur.lastrowid))
+        public=int(request.form.get('visibility')=='public')
+        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=? WHERE id=?',(public,public,int(bool(request.form.get('use_consent'))),cur.lastrowid))
         if file and file.filename:
             stored=secrets.token_hex(20)+suffix;file.save(UPLOAD/stored)
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,secure_filename(file.filename)[:180]))
