@@ -19,7 +19,7 @@ if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not 
 app.config['MAX_CONTENT_LENGTH']=15*1024*1024
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 STATUSES=['접수','검토 중','추가 확인','기업 답변 대기','조정 진행','종결']
-HOME_LATEST=6  # 메인 화면 최신 제보 수 기본값 (관리자 '메인 화면'에서 3~20으로 변경)
+HOME_LATEST=8  # 메인 화면 최신 제보 수 기본값 (관리자 '메인 화면'에서 3~20으로 변경)
 REPORTS_PAGE_SIZE=20
 def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
 
@@ -134,8 +134,14 @@ def headers(resp):
 def report_rows(where='1=1',args=(),limit=20,offset=0):
     # 모든 제보를 번호·분류·단계·접수일로 보여 주고, 제목은 공개 제보(제보자가 공개 선택, 운영자가 내리지 않음)만 노출.
     with conn() as db:
-        rows=db.execute('SELECT id,category,subject,status,created,public_consent,published FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
-    return [dict(no=r['id'],cat=r['category'],title=mask_personal(r['subject']) if r['public_consent'] and r['published'] else None,status=r['status'],created=r['created'][:10]) for r in rows]
+        rows=db.execute('SELECT id,category,company,subject,status,created,public_consent,published FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
+    today=datetime.date.today().isoformat()
+    def when(created):
+        # 오늘 들어온 제보는 시각(15:48), 그 전은 날짜(10.08)로 짧게 표시.
+        return created[11:16] if created[:10]==today and len(created)>=16 else created[5:10].replace('-','.')
+    return [dict(no=r['id'],cat=r['category'],title=mask_personal(r['subject']) if r['public_consent'] and r['published'] else None,
+                 company=mask_personal(r['company']) if r['public_consent'] and r['published'] else None,
+                 status=r['status'],created=r['created'][:10],when=when(r['created'])) for r in rows]
 def report_summary():
     with conn() as db:stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
     total=sum(stats.values());done=stats.get('종결',0)
@@ -157,7 +163,8 @@ def home():
 def latest_reports():
     # 메인 화면이 주기적으로 불러가는 최신 목록 조각 (실시간 갱신용). n은 블록에 정한 개수.
     n=min(30,max(1,request.args.get('n',home_latest(),type=int)))
-    resp=app.make_response(render_template('report_rows.html',cases=report_rows(limit=n),summary=report_summary(),live=True))
+    template='report_cards.html' if request.args.get('view')=='cards' else 'report_rows.html'
+    resp=app.make_response(render_template(template,cases=report_rows(limit=n),summary=report_summary(),live=True))
     resp.headers['Cache-Control']='no-store'
     return resp
 

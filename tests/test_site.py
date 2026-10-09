@@ -79,12 +79,17 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('공개 환불 요청', home)
         self.assertIn('공개 계약 문의', home)
-        for private in ('비공개 접수', '미동의 접수', '비공개 상세 내용', '테스트 업체'):
+        for private in ('비공개 접수', '미동의 접수', '비공개 상세 내용'):
             self.assertNotIn(private, home)
+        # 메인 카드: 공개 제보만 업체명을 보여 주고, 비공개 제보는 업체명을 가림
+        self.assertEqual(home.count('class="rc-company">테스트 업체<'), 2)
+        self.assertEqual(home.count('class="rc-company">업체 비공개<'), 2)
+        self.assertNotIn('class="report-stats"', home)  # 메인에는 건수·실시간 표시 없음
+        self.assertNotIn('live-dot', home)
         # 모든 제보가 목록에 올라오지만, 승인·동의가 없는 제보는 제목을 가림
-        self.assertEqual(home.count('비밀글</span>'), 2)
-        self.assertIn('<dt>전체</dt><dd>4</dd>', home)
-        self.assertIn('class="step-badge">접수</span>', home)
+        self.assertEqual(home.count('비밀글로 접수된 제보예요'), 2)
+        self.assertIn('<dt>전체</dt><dd>4</dd>', self.client.get('/reports').get_data(as_text=True))
+        self.assertIn('class="rc-status">접수</span>', home)
         filtered_cat = self.client.get('/reports', query_string={'category': '배송·환불'}).get_data(as_text=True)
         self.assertEqual(filtered_cat.count('비밀글</span>'), 2)
         self.assertNotIn('공개 계약 문의', filtered_cat)
@@ -266,7 +271,8 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('href="/reports/%d">public 제목</a>' % ids['public'], home)
         self.assertNotIn('secret 제목', home)
-        self.assertEqual(home.count('비밀글</span>'), 1)
+        self.assertEqual(home.count('비밀글로 접수된 제보예요'), 1)
+        self.assertEqual(self.client.get('/reports').get_data(as_text=True).count('비밀글</span>'), 1)
         page = self.client.get('/reports/%d' % ids['public']).get_data(as_text=True)
         self.assertIn('[전화번호 비공개]', page)
         self.assertIn('[이메일 비공개]', page)
@@ -417,7 +423,9 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/lists', data={'_csrf': token, 'list': 'home_blocks', 'kind': ['latest_reports'], 'title': ['지금 들어온 제보'], 'count': ['3'], 'body': [''], 'button_label': [''], 'button_link': ['']})
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('지금 들어온 제보', home)
-        self.assertIn('data-live-list="/reports/latest?n=3"', home)
+        self.assertIn('data-live-list="/reports/latest?n=3&amp;view=cards"', home)
+        cards = self.client.get('/reports/latest?n=3&view=cards').get_data(as_text=True)
+        self.assertIn('class="report-cards"', cards)
 
     def test_legacy_menu_labels_carry_over(self):
         with self.site.conn() as db:

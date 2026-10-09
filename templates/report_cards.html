@@ -1,0 +1,10 @@
+{# 메인 화면 최근 제보 카드. 실시간 갱신(/reports/latest?view=cards)도 이 조각을 그대로 씀. #}
+<div class="report-cards">
+  {% for case in cases %}{% set step = status_step(case.status) %}
+  <article class="report-card{% if not case.title %} is-secret{% endif %}">
+    <div class="rc-top"><span class="rc-status{% if step == STATUSES|length %} done{% elif step > 1 %} active{% endif %}">{{ case.status }}</span><time datetime="{{ case.created }}">{{ case.when }}</time></div>
+    <h3 class="rc-title">{% if case.title %}<a class="case-link" href="{{ url_for('public_case', case_id=case.no) }}">{{ case.title }}</a>{% else %}<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 10V7.5a5 5 0 0110 0V10M5.5 10h13v10h-13z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>비밀글로 접수된 제보예요{% endif %}</h3>
+    <div class="rc-meta"><span class="rc-cat">{{ case.cat }}</span><span class="rc-company">{{ case.company or '업체 비공개' }}</span></div>
+  </article>
+  {% else %}<div class="empty report-cards-empty">{{ txt('home.empty') }}</div>{% endfor %}
+</div>
