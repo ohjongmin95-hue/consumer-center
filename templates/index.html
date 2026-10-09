@@ -17,7 +17,7 @@
   <section class="section home-reports"{% if heading %} aria-labelledby="reports-heading-{{ loop.index }}"{% else %} aria-label="최근 제보"{% endif %}>
     {% if heading %}<div class="section-head"><h2 id="reports-heading-{{ loop.index }}">{{ heading }}</h2></div>{% endif %}
     <div data-live-list="{{ url_for('latest_reports', n=n, view='cards') }}">{% with cases = report_rows(limit=n) %}{% include 'report_cards.html' %}{% endwith %}</div>
-    <div class="home-reports-more"><a href="{{ url_for('reports') }}">{{ txt('home.list_title') }} 전체 보기 →</a></div>
+    <div class="home-reports-more"><a class="more-link" href="{{ url_for('reports') }}"><span>더보기</span><span class="more-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a></div>
   </section>
 
   {% elif block.kind == 'board_posts' %}{% set posts = recent_posts(block_count(block, 4)) %}
