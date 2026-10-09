@@ -1,6 +1,6 @@
-# 소비자신고센터 · SOBORU.
+# 소비자제보센터 · SOBORU.
 
-Flask와 SQLite로 동작하는 소비자 신고 사이트입니다. 실제 메인 화면은
+Flask와 SQLite로 동작하는 소비자 제보 사이트입니다. 사이트 문구, 운영자 정보, 이용약관, 개인정보 처리방침은 관리자 화면(`/admin/content`)에서 수정합니다. 실제 메인 화면은
 `templates/index.html`, 공통 헤더는 `templates/base.html`, 스타일은
 `static/style.css`에 있습니다. `static/soboru-functional-pages.html`은 별도 HTML 시안입니다.
 
@@ -13,7 +13,7 @@ python -m venv .venv
 .venv/bin/gunicorn --workers 1 --bind 127.0.0.1:8000 app:app
 ```
 
-신고 접수는 기본적으로 비활성화됩니다. 테스트는 별도의 임시 데이터베이스에서
+제보 접수는 기본적으로 비활성화됩니다. 테스트는 별도의 임시 데이터베이스에서
 접수·조회·관리자 승인·기업 답변과 공개 목록 필터를 검증합니다.
 
 ## 서버 배포 (AWS Lightsail 서울 · Ubuntu)
@@ -35,4 +35,4 @@ sudo bash setup.sh 도메인 이메일
 - DNS가 반영되기 전이면 HTTPS를 건너뜁니다. 반영된 뒤 같은 명령을 다시 실행합니다.
 - 코드 업데이트: `sudo bash /opt/soboru/app/deploy/update.sh`
 - 로그: `sudo journalctl -u soboru -f`
-- 신고 접수는 `/etc/soboru.env`의 `ENABLE_INTAKE=1`로 켜고 `sudo systemctl restart soboru`로 적용합니다.
+- 제보 접수는 `/etc/soboru.env`의 `ENABLE_INTAKE=1`로 켜고 `sudo systemctl restart soboru`로 적용합니다.

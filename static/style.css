@@ -146,3 +146,23 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 .field-default { margin: 6px 0 0; color: #8a8f96; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
 .content-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .content-preview { margin-left: auto; font-size: 14px; font-weight: 700; color: #bd5c00; }
+
+/* Footer: policy links and operator information. */
+.site-footer { display: grid; gap: 10px; justify-items: center; padding: 30px 20px 36px; line-height: 1.7; }
+.footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; font-size: 13px; color: #555; }
+.footer-links .strong { font-weight: 800; color: #333; }
+.footer-notice { max-width: 720px; margin: 0; font-size: 12px; font-weight: 500; color: #8a8f96; }
+.footer-info { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 14px; margin: 0; font-size: 12px; font-weight: 500; color: #8a8f96; }
+.footer-info:empty { display: none; }
+.footer-copy { margin: 0; }
+
+/* Policy documents and consent boxes. */
+.policy-doc h2 { font-size: 19px; margin: 34px 0 10px; letter-spacing: -.4px; }
+.policy-doc p, .policy-doc li { color: #4f5660; line-height: 1.85; font-size: 15px; }
+.policy-doc ul { padding-left: 20px; margin: 8px 0; }
+.takedown-guide { margin-bottom: 26px; }
+.consent-box { border: 1px solid #e6e7e8; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; background: #fcfcfb; }
+.consent-box .check { margin: 0; }
+.consent-detail { white-space: pre-line; margin: 8px 0 6px; color: #626973; font-size: 13px; line-height: 1.75; }
+.consent-link { font-size: 13px; font-weight: 700; color: #bd5c00; }
+.takedown-item { margin-bottom: 16px; }

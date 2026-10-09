@@ -1,4 +1,4 @@
-import os, sqlite3, secrets, hashlib, hmac, datetime, functools
+import os, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
 from pathlib import Path
 from flask import Flask, g, render_template, request, redirect, url_for, session, flash, abort, send_file
 from werkzeug.security import check_password_hash
@@ -15,15 +15,19 @@ app=Flask(__name__)
 if os.getenv('TRUST_PROXY')=='1':app.wsgi_app=ProxyFix(app.wsgi_app,x_for=1,x_proto=1,x_host=1)
 app.secret_key=os.getenv('SECRET_KEY',secrets.token_hex(32))
 if os.getenv('ENABLE_INTAKE')=='1' and (not os.getenv('SECRET_KEY') or not os.getenv('ADMIN_PASSWORD_HASH')):
-    raise RuntimeError('신고 접수를 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
+    raise RuntimeError('제보 접수를 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
 app.config['MAX_CONTENT_LENGTH']=15*1024*1024
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 CATEGORIES=['상품·품질','배송·환불','구독·결제','금융·통신','여행·숙박','서비스·계약','개인정보','기타']
 STATUSES=['접수','검토 중','추가 확인','기업 답변 대기','조정 진행','종결']
 
+@contextlib.contextmanager
 def conn():
-    db=sqlite3.connect(DB); db.row_factory=sqlite3.Row
-    return db
+    # 커밋(오류 시 롤백) 후 연결을 닫음. sqlite3 기본 with 문은 연결을 닫지 않음.
+    db=sqlite3.connect(DB,timeout=10); db.row_factory=sqlite3.Row
+    try:
+        with db:yield db
+    finally:db.close()
 
 def init():
     with conn() as db:
@@ -39,6 +43,8 @@ with conn() as db:
     if 'public_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN public_consent INTEGER NOT NULL DEFAULT 0')
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
     db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
+    db.execute("CREATE TABLE IF NOT EXISTS takedown_requests(id INTEGER PRIMARY KEY,requester TEXT NOT NULL,contact TEXT NOT NULL,target TEXT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT '접수',admin_note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
+TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','기각','처리 완료']
 
 def load_content():
     with conn() as db:saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content')}
@@ -50,6 +56,23 @@ def txt(key):
     # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
     return Markup('<br>').join(escape(line) for line in g.content.get(key,'').split('\n'))
 app.jinja_env.globals['txt']=txt
+DOC_VARS={'운영자':'operator.name','대표자':'operator.ceo','이메일':'operator.email','전화':'operator.phone','주소':'operator.address','보호책임자':'operator.privacy_officer','보호책임자연락처':'operator.privacy_contact','시행일':'policy.effective_date'}
+def doc(key):
+    # 약관류 본문: "## "는 소제목, "- "는 목록, 빈 줄은 문단 구분. {운영자} 등은 운영자 정보로 치환.
+    text=g.content.get(key,'')
+    for name,src in DOC_VARS.items():text=text.replace('{'+name+'}',g.content.get(src) or '(운영자 정보 미입력)')
+    out=[];items=[]
+    def flush():
+        if items:out.append(Markup('<ul>')+Markup('').join(Markup('<li>%s</li>')%i for i in items)+Markup('</ul>'));items.clear()
+    for line in text.split('\n'):
+        line=line.strip()
+        if line.startswith('- '):items.append(line[2:]);continue
+        flush()
+        if line.startswith('## '):out.append(Markup('<h2>%s</h2>')%line[3:])
+        elif line:out.append(Markup('<p>%s</p>')%line)
+    flush()
+    return Markup('\n').join(out)
+app.jinja_env.globals['doc']=doc
 
 def csrf():
     if '_csrf' not in session: session['_csrf']=secrets.token_urlsafe(32)
@@ -61,7 +84,7 @@ def protect():
 @app.after_request
 def headers(resp):
     resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
-    if request.path.startswith(('/report','/lookup','/admin','/case')):resp.headers['Cache-Control']='no-store'
+    if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company')):resp.headers['Cache-Control']='no-store'
     return resp
 @app.route('/')
 def home():
@@ -80,13 +103,29 @@ def home():
 def info_page(page):
     return render_template('info.html',page=page,categories=CATEGORIES,faq_slots=site_content.FAQ_SLOTS)
 
+@app.route('/terms',defaults={'page':'terms'})
+@app.route('/privacy',defaults={'page':'privacy'})
+def policy_page(page):
+    return render_template('policy.html',page=page)
+
+@app.route('/takedown',methods=['GET','POST'])
+def takedown():
+    if request.method=='POST':
+        data={k:request.form.get(k,'').strip() for k in ('requester','contact','target','reason')}
+        if any(not v for v in data.values()) or not request.form.get('consent'):
+            flash('모든 항목과 개인정보 수집 동의를 확인해 주세요.');return render_template('takedown.html'),400
+        if any(len(data[k])>limit for k,limit in [('requester',120),('contact',150),('target',300),('reason',5000)]):abort(400)
+        with conn() as db:db.execute('INSERT INTO takedown_requests(requester,contact,target,reason,created) VALUES(?,?,?,?,?)',(data['requester'],data['contact'],data['target'],data['reason'],datetime.datetime.now().isoformat(timespec='seconds')))
+        return render_template('takedown.html',submitted=True)
+    return render_template('takedown.html')
+
 @app.route('/report',methods=['GET','POST'])
 def report():
     if request.method=='GET':return render_template('report.html',categories=CATEGORIES, intake_enabled=os.getenv('ENABLE_INTAKE')=='1')
-    if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='신고 접수 준비 중입니다.')
+    if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수 준비 중입니다.')
     data={k:request.form.get(k,'').strip() for k in ('category','company','subject','description','request_text','contact')}
-    if data['category'] not in CATEGORIES or any(not data[k] for k in ('company','subject','description','request_text')) or not request.form.get('consent'):
-        flash('필수 항목과 개인정보 안내 동의를 확인해 주세요.');return render_template('report.html',categories=CATEGORIES,intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
+    if data['category'] not in CATEGORIES or any(not data[k] for k in ('company','subject','description','request_text')) or not request.form.get('consent') or not request.form.get('truth'):
+        flash('필수 항목과 필수 동의를 확인해 주세요.');return render_template('report.html',categories=CATEGORIES,intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
     if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150)]):abort(400)
     file=request.files.get('evidence')
     if file and file.filename:
@@ -122,7 +161,7 @@ def case_detail():
         if request.method=='POST':
             msg=request.form.get('message','').strip()
             if not msg or len(msg)>3000:abort(400)
-            db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'신고인',msg,datetime.datetime.now().isoformat(timespec='seconds')))
+            db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'제보자',msg,datetime.datetime.now().isoformat(timespec='seconds')))
             return redirect(url_for('case_detail'))
         msgs=db.execute('SELECT * FROM messages WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
     return render_template('case.html',case=case,msgs=msgs)
@@ -182,14 +221,25 @@ def admin_content():
                     continue
                 if key not in request.form:continue
                 value=request.form[key].replace('\r\n','\n').strip()
-                if len(value)>site_content.MAX_LENGTH:abort(400)
+                if len(value)>(site_content.DOC_MAX_LENGTH if field.get('doc') else site_content.MAX_LENGTH):abort(400)
                 if not field.get('multiline'):value=' '.join(value.split())
                 if value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(key,))
                 else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,now))
         flash('기본값으로 되돌렸습니다.' if reset else '문구를 저장했습니다.')
         return redirect(url_for('admin_content',_anchor='section-'+(reset or request.form.get('section',''))))
     with conn() as db:changed={r['key'] for r in db.execute('SELECT key FROM site_content')}
-    return render_template('admin_content.html',sections=site_content.SECTIONS,content=load_content(),changed=changed)
+    return render_template('admin_content.html',sections=site_content.SECTIONS,content=load_content(),changed=changed,policy_hint=site_content.POLICY_HINT)
+@app.route('/admin/takedowns',methods=['GET','POST'])
+@admin_only
+def admin_takedowns():
+    with conn() as db:
+        if request.method=='POST':
+            status=request.form.get('status','')
+            if status not in TAKEDOWN_STATUSES:abort(400)
+            db.execute('UPDATE takedown_requests SET status=?,admin_note=? WHERE id=?',(status,request.form.get('admin_note','').strip()[:3000],request.form.get('id',type=int)))
+            flash('처리 상태를 저장했습니다.');return redirect(url_for('admin_takedowns'))
+        rows=db.execute('SELECT * FROM takedown_requests ORDER BY id DESC LIMIT 200').fetchall()
+    return render_template('admin_takedowns.html',rows=rows,statuses=TAKEDOWN_STATUSES)
 @app.route('/admin/file/<int:file_id>')
 @admin_only
 def admin_file(file_id):
@@ -207,7 +257,7 @@ def create_invite(case_id):
         case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if not case:abort(404)
         if not case['share_company']:
-            flash('기업 전달 동의가 없는 신고입니다.');return redirect(url_for('admin_case',case_id=case_id))
+            flash('기업 전달 동의가 없는 제보입니다.');return redirect(url_for('admin_case',case_id=case_id))
         token=secrets.token_urlsafe(32)
         db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created) VALUES(?,?,?,?)',(case_id,hashlib.sha256(token.encode()).hexdigest(),case['company'],datetime.datetime.now().isoformat(timespec='seconds')))
     return render_template('invite_created.html',case=case,invite_url=url_for('company_access',case_id=case_id,token=token,_external=True))
@@ -225,7 +275,7 @@ def company_access(case_id,token):
             db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'기업 답변',body,datetime.datetime.now().isoformat(timespec='seconds')))
             return redirect(url_for('company_access',case_id=case_id,token=token))
         responses=db.execute("SELECT author,body,created FROM messages WHERE case_id=? AND author='기업 답변' ORDER BY id",(case_id,)).fetchall()
-    # 업체에는 신고인의 연락처, 첨부파일, 내부 메모를 공개하지 않음.
+    # 업체에는 제보자의 연락처, 첨부파일, 내부 메모를 공개하지 않음.
     return render_template('company.html',case=case,responses=responses)
 
 @app.route('/case/logout',methods=['POST'])

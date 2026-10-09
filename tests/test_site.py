@@ -41,7 +41,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content'):
+            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'takedown_requests'):
                 db.execute('DELETE FROM ' + table)
 
     def csrf(self, client, path):
@@ -50,12 +50,12 @@ class SiteTest(unittest.TestCase):
         return re.search(r'name="_csrf" value="([^"]+)"', response.get_data(as_text=True))[1]
 
     def test_navigation_and_real_form(self):
-        for path in ('/', '/guide', '/process', '/types', '/faq', '/report', '/lookup', '/admin/login'):
+        for path in ('/', '/guide', '/process', '/types', '/faq', '/report', '/lookup', '/admin/login', '/terms', '/privacy', '/takedown'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200, path)
             self.assertIn('class="section-nav"', response.get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('여러분의 신고가', home)
+        self.assertIn('여러분의 제보가', home)
         self.assertIn('href="/report"', home)
         self.assertNotIn('localStorage', home)
         report = self.client.get('/report?category=배송·환불').get_data(as_text=True)
@@ -80,7 +80,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('공개 환불 요청', filtered)
         self.assertNotIn('공개 계약 문의', filtered)
         empty = self.client.get('/?q=missing').get_data(as_text=True)
-        self.assertIn('검색 조건에 맞는 신고 내역이 없습니다.', empty)
+        self.assertIn('검색 조건에 맞는 제보 내역이 없습니다.', empty)
 
     def test_submission_lookup_admin_and_company_response(self):
         token = self.csrf(self.client, '/report')
@@ -91,12 +91,12 @@ class SiteTest(unittest.TestCase):
         response = self.client.post('/report', data={
             '_csrf': token, 'category': '배송·환불', 'company': '테스트 업체',
             'subject': '테스트 환불 요청', 'description': '테스트 내용',
-            'request_text': '환불 요청', 'consent': 'on', 'public_consent': 'on',
+            'request_text': '환불 요청', 'consent': 'on', 'truth': 'on', 'public_consent': 'on',
             'share_company': 'on',
         })
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        self.assertIn('신고가 접수됐습니다.', html)
+        self.assertIn('제보가 접수됐습니다.', html)
         receipt = re.search(r'CJ-\d{6}-[A-F0-9]+', html)[0]
         code = re.search(r'overflow-wrap:anywhere">([^<]+)</p>', html)[1]
         token = self.csrf(self.client, '/lookup')
@@ -105,7 +105,7 @@ class SiteTest(unittest.TestCase):
         admin = self.site.app.test_client()
         token = self.csrf(admin, '/admin/login')
         response = admin.post('/admin/login', data={'_csrf': token, 'password': self.password}, follow_redirects=True)
-        self.assertIn('신고 관리', response.get_data(as_text=True))
+        self.assertIn('제보 관리', response.get_data(as_text=True))
         with self.site.conn() as db:
             case_id = db.execute('SELECT id FROM cases WHERE receipt=?', (receipt,)).fetchone()['id']
         path = '/admin/case/' + str(case_id)
@@ -138,16 +138,46 @@ class SiteTest(unittest.TestCase):
         self.assertIn('문구를 저장했습니다.', response.get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('첫 줄<br>&lt;b&gt;둘째 줄&lt;/b&gt;', home)
-        self.assertNotIn('여러분의 신고가', home)
+        self.assertNotIn('여러분의 제보가', home)
         self.assertNotIn('공개에 동의하고 센터의 검토', home)  # optional field left blank hides it
-        self.assertIn('신고하기 →', home)  # required field left blank falls back to default
+        self.assertIn('제보하기 →', home)  # required field left blank falls back to default
         admin.post('/admin/content', data={'_csrf': token, 'section': 'faq', 'faq.q5': '새 질문', 'faq.a5': '새 답변', 'faq.q1': ''})
         faq = self.client.get('/faq').get_data(as_text=True)
         self.assertIn('새 질문', faq)
-        self.assertNotIn('신고하면 바로 해결되나요?', faq)
+        self.assertNotIn('제보하면 바로 해결되나요?', faq)
         admin.post('/admin/content', data={'_csrf': token, 'reset_section': 'home'})
-        self.assertIn('여러분의 신고가', self.client.get('/').get_data(as_text=True))
+        self.assertIn('여러분의 제보가', self.client.get('/').get_data(as_text=True))
         self.assertIn('새 질문', self.client.get('/faq').get_data(as_text=True))
+
+    def test_branding_policies_and_takedown(self):
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('<span>소비자</span>제보센터', home)
+        self.assertIn('href="/privacy"', home)
+        self.assertNotIn('신고', home)
+        privacy = self.client.get('/privacy').get_data(as_text=True)
+        self.assertIn('<h2>1. 개인정보의 처리 목적</h2>', privacy)
+        self.assertIn('소보루(이하', privacy)  # {운영자} placeholder filled from operator info
+        token = self.csrf(self.client, '/report')
+        missing_truth = self.client.post('/report', data={'_csrf': token, 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'request_text': 'D', 'consent': 'on'})
+        self.assertEqual(missing_truth.status_code, 400)
+        token = self.csrf(self.client, '/takedown')
+        self.assertEqual(self.client.post('/takedown', data={'_csrf': token, 'requester': '업체'}).status_code, 400)
+        done = self.client.post('/takedown', data={'_csrf': token, 'requester': '테스트 업체', 'contact': 'a@example.com', 'target': '제목', 'reason': '<b>사실과 다름</b>', 'consent': 'on'})
+        self.assertIn('요청이 접수됐습니다.', done.get_data(as_text=True))
+        admin = self.login_admin()
+        listing = admin.get('/admin/takedowns').get_data(as_text=True)
+        self.assertIn('&lt;b&gt;사실과 다름&lt;/b&gt;', listing)
+        token = self.csrf(admin, '/admin/takedowns')
+        with self.site.conn() as db:
+            request_id = db.execute('SELECT id FROM takedown_requests').fetchone()['id']
+        admin.post('/admin/takedowns', data={'_csrf': token, 'id': request_id, 'status': '임시 비공개', 'admin_note': '확인 중'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT status FROM takedown_requests').fetchone()['status'], '임시 비공개')
+        token = self.csrf(admin, '/admin/content')
+        admin.post('/admin/content', data={'_csrf': token, 'section': 'operator', 'operator.name': '새 운영사', 'operator.email': 'help@example.com'})
+        privacy = self.client.get('/privacy').get_data(as_text=True)
+        self.assertIn('새 운영사(이하', privacy)
+        self.assertIn('이메일 help@example.com', self.client.get('/').get_data(as_text=True))
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)

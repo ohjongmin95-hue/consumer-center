@@ -8,12 +8,12 @@
   <section class="section" id="reports" aria-labelledby="reports-heading">
     <div class="section-head"><h2 id="reports-heading">{{ txt('home.list_title') }}</h2><span class="muted" id="count">총 {{ public_cases|length }}건</span></div>
     <form class="report-tools" method="get" action="{{ url_for('home') }}#reports" role="search">
-      <input name="q" type="search" aria-label="신고 제목 검색" placeholder="{{ txt('home.search_placeholder') }}" value="{{ search_query }}">
-      <select name="category" aria-label="신고 유형 필터"><option value="">전체 유형</option>{% for category in categories %}<option{% if category == selected_category %} selected{% endif %}>{{ category }}</option>{% endfor %}</select>
+      <input name="q" type="search" aria-label="제보 제목 검색" placeholder="{{ txt('home.search_placeholder') }}" value="{{ search_query }}">
+      <select name="category" aria-label="제보 유형 필터"><option value="">전체 유형</option>{% for category in categories %}<option{% if category == selected_category %} selected{% endif %}>{{ category }}</option>{% endfor %}</select>
       <button class="search-button" type="submit">검색</button>
     </form>
-    <div class="report-table" role="table" aria-label="공개 승인된 신고 목록">
-      <div class="tr heading" role="row"><span role="columnheader">번호</span><span role="columnheader">신고 제목</span><span role="columnheader">진행 상태</span><span role="columnheader">접수일</span></div>
+    <div class="report-table" role="table" aria-label="공개 승인된 제보 목록">
+      <div class="tr heading" role="row"><span role="columnheader">번호</span><span role="columnheader">제보 제목</span><span role="columnheader">진행 상태</span><span role="columnheader">접수일</span></div>
       {% for case in public_cases %}
       <div class="tr" role="row"><span role="cell">{{ loop.revindex }}</span><span class="title-cell" role="cell">{{ case.title }}</span><span role="cell"><span class="status">{{ case.status }}</span></span><span class="muted" role="cell">{{ case.created }}</span></div>
       {% else %}<div class="empty">{{ txt('home.empty_search') if search_query or selected_category else txt('home.empty') }}</div>{% endfor %}

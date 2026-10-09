@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% set heading = '이용약관' if page == 'terms' else '개인정보 처리방침' %}
+{% block title %}{{ heading }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main><article class="info-wrap policy-doc">
+  <h1>{{ heading }}</h1>
+  <p class="info-intro">시행일 {{ txt('policy.effective_date') }}</p>
+  {{ doc('policy.' ~ page) }}
+</article></main>
+{% endblock %}

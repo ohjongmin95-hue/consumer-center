@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
-{% block title %}문구 관리 | 소비자신고센터{% endblock %}
+{% block title %}문구 관리 | 소비자제보센터{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro admin-head">
-    <div><a href="{{ url_for('admin') }}">← 신고 관리</a><h1 class="page-title">문구 관리</h1>
+    <div><a href="{{ url_for('admin') }}">← 제보 관리</a><h1 class="page-title">문구 관리</h1>
     <p>저장하면 사이트에 바로 반영됩니다. 기본값이 있는 칸을 비워 저장하면 기본값으로 돌아가고, <strong>선택</strong> 표시가 있는 칸을 비우면 해당 문구가 화면에서 숨겨집니다.</p></div>
   </div>
   <nav class="content-tabs" aria-label="섹션 바로가기">{% for sid, title, _ in sections %}<a href="#section-{{ sid }}">{{ title }}</a>{% endfor %}</nav>
@@ -14,15 +14,16 @@
     {% for key, label, default, opts in items %}
     <div class="field">
       <label for="f-{{ key }}">{{ label }}{% if opts.optional %} <span class="field-tag">선택</span>{% endif %}{% if key in changed %} <span class="field-tag changed">수정됨</span>{% endif %}</label>
-      {% if opts.multiline %}<textarea id="f-{{ key }}" name="{{ key }}" rows="{{ [2, content[key].count('\n') + 2]|max }}" maxlength="2000">{{ content[key] }}</textarea>
+      {% if opts.doc %}<p class="field-default">{{ policy_hint }}</p><textarea id="f-{{ key }}" name="{{ key }}" rows="18" maxlength="30000">{{ content[key] }}</textarea>
+      {% elif opts.multiline %}<textarea id="f-{{ key }}" name="{{ key }}" rows="{{ [2, content[key].count('\n') + 2]|max }}" maxlength="2000">{{ content[key] }}</textarea>
       {% else %}<input id="f-{{ key }}" name="{{ key }}" value="{{ content[key] }}" maxlength="2000">{% endif %}
-      {% if default and content[key] != default %}<p class="field-default">기본값: {{ default }}</p>{% endif %}
+      {% if default and content[key] != default and not opts.doc %}<p class="field-default">기본값: {{ default }}</p>{% endif %}
     </div>
     {% endfor %}
     <div class="content-actions">
       <button class="primary" type="submit">{{ title }} 저장</button>
       <button class="secondary" type="submit" name="reset_section" value="{{ sid }}" onclick="return confirm('이 섹션의 문구를 모두 기본값으로 되돌릴까요?')">기본값으로 되돌리기</button>
-      <a class="content-preview" href="{{ {'common': url_for('home'), 'home': url_for('home')}.get(sid) or url_for('info_page', page=sid) }}" target="_blank" rel="noopener">화면에서 보기 ↗</a>
+      <a class="content-preview" href="{{ {'common': url_for('home'), 'home': url_for('home'), 'operator': url_for('home'), 'report': url_for('report'), 'policy': url_for('policy_page', page='privacy')}.get(sid) or url_for('info_page', page=sid) }}" target="_blank" rel="noopener">화면에서 보기 ↗</a>
     </div>
   </form>
   {% endfor %}
