@@ -1,8 +1,10 @@
 import os, sqlite3, secrets, hashlib, hmac, datetime, functools
 from pathlib import Path
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file
+from flask import Flask, g, render_template, request, redirect, url_for, session, flash, abort, send_file
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
+from markupsafe import Markup, escape
+import site_content
 
 BASE=Path(__file__).parent
 DB=Path(os.getenv('DATABASE_PATH',str(BASE/'cases.sqlite3')))
@@ -34,6 +36,18 @@ with conn() as db:
     if 'assignee' not in cols: db.execute("ALTER TABLE cases ADD COLUMN assignee TEXT DEFAULT ''")
     if 'public_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN public_consent INTEGER NOT NULL DEFAULT 0')
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
+    db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
+
+def load_content():
+    with conn() as db:saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content')}
+    return {k:saved[k] if k in saved and (saved[k] or f.get('optional')) else f['default'] for k,f in site_content.FIELDS.items()}
+@app.before_request
+def content_for_request():
+    if request.endpoint!='static':g.content=load_content()
+def txt(key):
+    # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
+    return Markup('<br>').join(escape(line) for line in g.content.get(key,'').split('\n'))
+app.jinja_env.globals['txt']=txt
 
 def csrf():
     if '_csrf' not in session: session['_csrf']=secrets.token_urlsafe(32)
@@ -62,7 +76,7 @@ def home():
 @app.route('/types',defaults={'page':'types'})
 @app.route('/faq',defaults={'page':'faq'})
 def info_page(page):
-    return render_template('info.html',page=page,categories=CATEGORIES)
+    return render_template('info.html',page=page,categories=CATEGORIES,faq_slots=site_content.FAQ_SLOTS)
 
 @app.route('/report',methods=['GET','POST'])
 def report():
@@ -153,6 +167,27 @@ def admin_case(case_id):
         notes=db.execute('SELECT * FROM internal_notes WHERE case_id=? ORDER BY id DESC',(case_id,)).fetchall()
         invite=db.execute('SELECT * FROM company_invites WHERE case_id=?',(case_id,)).fetchone()
     return render_template('admin_case.html',case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,invite=invite)
+@app.route('/admin/content',methods=['GET','POST'])
+@admin_only
+def admin_content():
+    if request.method=='POST':
+        now=datetime.datetime.now().isoformat(timespec='seconds')
+        reset=request.form.get('reset_section','')
+        with conn() as db:
+            for key,field in site_content.FIELDS.items():
+                if reset:
+                    if field['section']==reset:db.execute('DELETE FROM site_content WHERE key=?',(key,))
+                    continue
+                if key not in request.form:continue
+                value=request.form[key].replace('\r\n','\n').strip()
+                if len(value)>site_content.MAX_LENGTH:abort(400)
+                if not field.get('multiline'):value=' '.join(value.split())
+                if value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(key,))
+                else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,now))
+        flash('기본값으로 되돌렸습니다.' if reset else '문구를 저장했습니다.')
+        return redirect(url_for('admin_content',_anchor='section-'+(reset or request.form.get('section',''))))
+    with conn() as db:changed={r['key'] for r in db.execute('SELECT key FROM site_content')}
+    return render_template('admin_content.html',sections=site_content.SECTIONS,content=load_content(),changed=changed)
 @app.route('/admin/file/<int:file_id>')
 @admin_only
 def admin_file(file_id):

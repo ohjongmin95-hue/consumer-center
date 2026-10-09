@@ -2,13 +2,13 @@
 {% block content %}
 <main>
   <section class="hero">
-    <h1>여러분의 신고가<br>권익 보호의 시작입니다.</h1>
-    <a class="primary" href="{{ url_for('report') }}">신고하기 →</a>
+    <h1>{{ txt('home.hero_title') }}</h1>
+    <a class="primary" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a>
   </section>
   <section class="section" id="reports" aria-labelledby="reports-heading">
-    <div class="section-head"><h2 id="reports-heading">신고 목록</h2><span class="muted" id="count">총 {{ public_cases|length }}건</span></div>
+    <div class="section-head"><h2 id="reports-heading">{{ txt('home.list_title') }}</h2><span class="muted" id="count">총 {{ public_cases|length }}건</span></div>
     <form class="report-tools" method="get" action="{{ url_for('home') }}#reports" role="search">
-      <input name="q" type="search" aria-label="신고 제목 검색" placeholder="신고 제목 검색" value="{{ search_query }}">
+      <input name="q" type="search" aria-label="신고 제목 검색" placeholder="{{ txt('home.search_placeholder') }}" value="{{ search_query }}">
       <select name="category" aria-label="신고 유형 필터"><option value="">전체 유형</option>{% for category in categories %}<option{% if category == selected_category %} selected{% endif %}>{{ category }}</option>{% endfor %}</select>
       <button class="search-button" type="submit">검색</button>
     </form>
@@ -16,9 +16,9 @@
       <div class="tr heading" role="row"><span role="columnheader">번호</span><span role="columnheader">신고 제목</span><span role="columnheader">진행 상태</span><span role="columnheader">접수일</span></div>
       {% for case in public_cases %}
       <div class="tr" role="row"><span role="cell">{{ loop.revindex }}</span><span class="title-cell" role="cell">{{ case.title }}</span><span role="cell"><span class="status">{{ case.status }}</span></span><span class="muted" role="cell">{{ case.created }}</span></div>
-      {% else %}<div class="empty">{{ '검색 조건에 맞는 신고 내역이 없습니다.' if search_query or selected_category else '표시할 신고 내역이 없습니다.' }}</div>{% endfor %}
+      {% else %}<div class="empty">{{ txt('home.empty_search') if search_query or selected_category else txt('home.empty') }}</div>{% endfor %}
     </div>
-    <div class="list-footer"><p class="note">공개에 동의하고 센터의 검토를 거친 신고만 표시됩니다.</p><a href="{{ url_for('lookup') }}">내 신고 조회 →</a></div>
+    <div class="list-footer"><p class="note">{{ txt('home.list_note') }}</p><a href="{{ url_for('lookup') }}">{{ txt('home.lookup_link') }}</a></div>
   </section>
 </main>
 {% endblock %}

@@ -133,3 +133,16 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
   .section-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
   .section-nav a { font-size: 18px; }
 }
+
+/* Admin: editable site copy. */
+.content-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+.content-tabs a { padding: 8px 14px; border: 1px solid #e6e7e8; border-radius: 8px; background: #fff; font-size: 14px; font-weight: 650; }
+.content-section { margin-bottom: 22px; scroll-margin-top: 20px; }
+.content-section h2 { margin: 0 0 24px; font-size: 22px; letter-spacing: -.6px; }
+.content-section .field input, .content-section .field textarea { width: 100%; }
+.content-section .field textarea { min-height: 0; line-height: 1.6; }
+.field-tag { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 6px; background: #f1f1f0; color: #6b6f76; font-size: 12px; font-weight: 700; vertical-align: 1px; }
+.field-tag.changed { background: #fff1e3; color: #b45400; }
+.field-default { margin: 6px 0 0; color: #8a8f96; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+.content-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.content-preview { margin-left: auto; font-size: 14px; font-weight: 700; color: #bd5c00; }

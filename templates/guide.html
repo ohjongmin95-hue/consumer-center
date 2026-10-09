@@ -1,16 +1,16 @@
 <div class="info-wrap guide-page">
   <div class="guide-intro">
-    <span class="eyebrow">신고 전 확인해 주세요</span>
-    <h1>신고 이용안내</h1>
-    <p>어디서부터 써야 할지 막막하신가요?<br>구매 정보, 겪은 일, 원하는 해결 방법을 차례로 적어 주세요.</p>
+    {% if txt('guide.eyebrow') %}<span class="eyebrow">{{ txt('guide.eyebrow') }}</span>{% endif %}
+    <h1>{{ txt('guide.title') }}</h1>
+    {% if txt('guide.intro') %}<p>{{ txt('guide.intro') }}</p>{% endif %}
     <nav class="guide-shortcuts" aria-label="이용안내 목차">
       <a href="#purchase-info">구매 정보</a><a href="#writing-guide">작성 방법</a><a href="#photo-guide">자료 남기는 방법</a><a href="#evidence-guide">분야별 준비자료</a>
     </nav>
   </div>
 
   <section class="guide-section" id="purchase-info" aria-labelledby="purchase-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">01</span><h2 id="purchase-heading">언제, 어디서, 얼마에 구매했나요?</h2></div>
-    <p class="guide-description">서비스를 이용했다면 구매일 대신 계약일이나 가입일을 적어 주세요.</p>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">01</span><h2 id="purchase-heading">{{ txt('guide.s1_title') }}</h2></div>
+    {% if txt('guide.s1_desc') %}<p class="guide-description">{{ txt('guide.s1_desc') }}</p>{% endif %}
     <dl class="guide-basics">
       <div><dt>구매·계약 날짜</dt><dd>영수증이나 주문 내역에 있는 날짜를 확인해 주세요.</dd></div>
       <div><dt>업체·상품 이름</dt><dd>구매한 곳과 상품명, 서비스명 또는 모델명을 적어 주세요.</dd></div>
@@ -20,8 +20,8 @@
   </section>
 
   <section class="guide-section" id="writing-guide" aria-labelledby="writing-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">02</span><h2 id="writing-heading">겪은 일을 순서대로 알려 주세요</h2></div>
-    <p class="guide-description">어려운 표현은 필요 없어요. 아래 세 가지가 드러나면 내용을 이해하기 쉬워집니다.</p>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">02</span><h2 id="writing-heading">{{ txt('guide.s2_title') }}</h2></div>
+    {% if txt('guide.s2_desc') %}<p class="guide-description">{{ txt('guide.s2_desc') }}</p>{% endif %}
     <ol class="guide-writing-list">
       <li><strong>어떤 문제가 있었나요?</strong><p>언제 문제가 생겼는지, 어떤 불편이나 손해를 겪었는지 적어 주세요.</p></li>
       <li><strong>업체에는 무엇을 요청했나요?</strong><p>문의한 날짜, 요청한 내용, 업체의 답변을 적어 주세요. 아직 문의하지 않았다면 그대로 알려 주세요.</p></li>
@@ -35,7 +35,7 @@
   </section>
 
   <section class="guide-section evidence-visual-guide" id="photo-guide" aria-labelledby="photo-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">03</span><h2 id="photo-heading">어떤 자료를 남겨야 할까요?</h2></div>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">03</span><h2 id="photo-heading">{{ txt('guide.s3_title') }}</h2></div>
     <p class="guide-description">세 가지만 기억해 주세요. <strong>전체 모습, 문제 부위, 거래 기록.</strong><br>각 자료가 서로 연결되면 어떤 일이 있었는지 이해하기 쉬워집니다.</p>
     <div class="evidence-step-grid">
       <article class="evidence-step">
@@ -58,8 +58,8 @@
   </section>
 
   <section class="guide-section" id="evidence-guide" aria-labelledby="evidence-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">04</span><h2 id="evidence-heading">내 상황에 맞는 자료를 준비해 주세요</h2></div>
-    <p class="guide-description">해당하는 분야를 눌러 확인해 보세요. 모든 자료를 갖출 필요는 없어요. 지금 갖고 있는 것부터 정리해 주세요.</p>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">04</span><h2 id="evidence-heading">{{ txt('guide.s4_title') }}</h2></div>
+    {% if txt('guide.s4_desc') %}<p class="guide-description">{{ txt('guide.s4_desc') }}</p>{% endif %}
     <div class="evidence-topics">
       <details class="evidence-topic">
         <summary><span>유통</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
@@ -141,7 +141,7 @@
   </section>
 
   <div class="guide-bottom">
-    <div><h2>준비한 내용을 남겨 주세요</h2><p>접수 후에는 접수번호와 비밀 조회 코드로 진행 상황을 확인할 수 있습니다.</p></div>
-    <a class="primary" href="{{ url_for('report') }}">신고 작성하기 →</a>
+    <div><h2>{{ txt('guide.bottom_title') }}</h2>{% if txt('guide.bottom_text') %}<p>{{ txt('guide.bottom_text') }}</p>{% endif %}</div>
+    <a class="primary" href="{{ url_for('report') }}">{{ txt('guide.bottom_button') }}</a>
   </div>
 </div>

@@ -41,7 +41,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases'):
+            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content'):
                 db.execute('DELETE FROM ' + table)
 
     def csrf(self, client, path):
@@ -120,6 +120,34 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(company, path)
         response = company.post(path, data={'_csrf': token, 'response': '테스트 기업 답변'}, follow_redirects=True)
         self.assertIn('테스트 기업 답변', response.get_data(as_text=True))
+
+    def login_admin(self):
+        admin = self.site.app.test_client()
+        token = self.csrf(admin, '/admin/login')
+        admin.post('/admin/login', data={'_csrf': token, 'password': self.password})
+        return admin
+
+    def test_admin_edits_site_copy(self):
+        self.assertEqual(self.client.get('/admin/content').status_code, 302)
+        admin = self.login_admin()
+        token = self.csrf(admin, '/admin/content')
+        response = admin.post('/admin/content', data={
+            '_csrf': token, 'section': 'home',
+            'home.hero_title': '첫 줄\r\n<b>둘째 줄</b>', 'home.list_note': '', 'home.hero_button': '',
+        }, follow_redirects=True)
+        self.assertIn('문구를 저장했습니다.', response.get_data(as_text=True))
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('첫 줄<br>&lt;b&gt;둘째 줄&lt;/b&gt;', home)
+        self.assertNotIn('여러분의 신고가', home)
+        self.assertNotIn('공개에 동의하고 센터의 검토', home)  # optional field left blank hides it
+        self.assertIn('신고하기 →', home)  # required field left blank falls back to default
+        admin.post('/admin/content', data={'_csrf': token, 'section': 'faq', 'faq.q5': '새 질문', 'faq.a5': '새 답변', 'faq.q1': ''})
+        faq = self.client.get('/faq').get_data(as_text=True)
+        self.assertIn('새 질문', faq)
+        self.assertNotIn('신고하면 바로 해결되나요?', faq)
+        admin.post('/admin/content', data={'_csrf': token, 'reset_section': 'home'})
+        self.assertIn('여러분의 신고가', self.client.get('/').get_data(as_text=True))
+        self.assertIn('새 질문', self.client.get('/faq').get_data(as_text=True))
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
