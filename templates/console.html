@@ -13,7 +13,7 @@
 {% if who %}
 <header class="cs-bar">
   <div class="cs-bar-inner">
-    <a class="cs-brand" href="{{ url_for('admin') if is_admin else url_for('staff_home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}<em>{{ '관리자' if is_admin else '제보 처리' }}</em></a>
+    <a class="cs-brand" href="{{ url_for('admin') if is_admin else url_for('staff_home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}<em>{{ '관리자' if is_admin else '소보루 기자' }}</em></a>
     <div class="cs-user">
       <a class="cs-site" href="{{ url_for('home') }}" target="_blank" rel="noopener">사이트 보기 ↗</a>
       <span class="cs-name">{{ who }}{% if not is_admin %}님{% endif %}</span>
