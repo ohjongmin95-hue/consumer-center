@@ -934,3 +934,27 @@ body.console main.page { max-width: none; padding: 26px 0 0; }
   .cs-table-list tr.is-new { box-shadow: inset 3px 0 0 var(--orange); }
   .cs-table-list tr.is-new td:first-child { box-shadow: none; }
 }
+
+/* Header v4: login/signup sit at the far right of the main row (no separate top bar). */
+.top-auth { display: flex; align-items: center; gap: 14px; flex-shrink: 0; padding-left: 22px; margin-left: 4px; border-left: 1px solid #e6e6e4; font-size: 14px; }
+.top-auth a, .top-auth button { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none; color: #6b6f76; font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.top-auth a:hover, .top-auth button:hover { color: #2b3038; }
+.top-auth .util-me { color: #2b3038; font-weight: 700; }
+.top-auth form { margin: 0; }
+@media (min-width: 1051px) {
+  .site-header .top { min-height: 84px; }
+  .site-header .section-nav a { padding: 29px 0 27px; }
+}
+@media (min-width: 1051px) and (max-width: 1240px) {
+  .site-header .top { gap: 24px; }
+  .site-header .section-nav { gap: 22px; }
+  .site-header .section-nav a { font-size: 16px; }
+  .top-auth { padding-left: 16px; gap: 10px; font-size: 13px; }
+}
+@media (max-width: 1050px) {
+  .site-header .top { position: relative; }
+  .top-auth { position: absolute; top: 24px; right: 24px; padding-left: 0; margin: 0; border-left: 0; font-size: 13px; }
+}
+@media (max-width: 680px) {
+  .top-auth { top: 22px; right: 16px; gap: 10px; }
+}
