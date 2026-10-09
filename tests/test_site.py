@@ -299,6 +299,37 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(page2.count('class="case-link"'), 5)
         self.assertIn('공개 제보 00', page2)
 
+    def test_search_engine_support(self):
+        robots = self.client.get('/robots.txt').get_data(as_text=True)
+        self.assertIn('Disallow: /admin', robots)
+        self.assertIn('Sitemap: http://localhost/sitemap.xml', robots)
+        with self.site.conn() as db:
+            db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,1,1)', ('S1', 'x', '기타', '업체', '공개 제목', '공개 본문 내용입니다', '요청', '2026-10-09T10:00:00'))
+            db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,0,0)', ('S2', 'x', '기타', '업체', '비밀 제목', '비밀', '요청', '2026-10-09T10:00:00'))
+            public_id = db.execute("SELECT id FROM cases WHERE receipt='S1'").fetchone()['id']
+            secret_id = db.execute("SELECT id FROM cases WHERE receipt='S2'").fetchone()['id']
+        sitemap = self.client.get('/sitemap.xml')
+        self.assertEqual(sitemap.mimetype, 'application/xml')
+        xml = sitemap.get_data(as_text=True)
+        self.assertIn('<loc>http://localhost/reports/%d</loc><lastmod>2026-10-09</lastmod>' % public_id, xml)
+        self.assertNotIn('/reports/%d<' % secret_id, xml)
+        self.assertNotIn('/admin', xml)
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('<meta name="description" content="소비자 피해를 제보하고', home)
+        self.assertNotIn('naver-site-verification', home)
+        detail = self.client.get('/reports/%d' % public_id).get_data(as_text=True)
+        self.assertIn('<meta name="description" content="공개 본문 내용입니다">', detail)
+        self.assertIn('<meta property="og:title" content="공개 제목 | 소비자제보센터">', detail)
+        admin = self.login_admin()
+        admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'seo',
+            'seo.naver_verification': '<meta name="naver-site-verification" content="abc123naver" />',
+            'seo.google_verification': 'goog-XYZ_789', 'seo.daum_robots': 'DaumWebMasterTool:pin:id'})
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('<meta name="naver-site-verification" content="abc123naver">', home)
+        self.assertIn('<meta name="google-site-verification" content="goog-XYZ_789">', home)
+        self.assertTrue(self.client.get('/robots.txt').get_data(as_text=True).startswith('#DaumWebMasterTool:pin:id'))
+        self.assertIn('noindex', admin.get('/admin').get_data(as_text=True))
+
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
         token = self.csrf(self.client, '/report')

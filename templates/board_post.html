@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% from 'board_macros.html' import heart, bubble, chip %}
 {% block title %}{{ post['title'] }} | {{ txt('board.title') }}{% endblock %}
+{% block description %}{{ post['body']|truncate(150, True, '…') }}{% endblock %}
 {% block content %}
 <main class="board board-detail">
   <a class="back-link" href="{{ url_for('board') }}">← {{ txt('board.title') }}</a>

@@ -4,8 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#fafaf9">
-  {% if request.path.startswith('/admin') %}<meta name="robots" content="noindex,nofollow">{% endif %}
+  {% if request.path.startswith(('/admin', '/case', '/company')) %}<meta name="robots" content="noindex,nofollow">{% endif %}
   <title>{% block title %}{{ txt('site.name') }}{% endblock %}</title>
+  <meta name="description" content="{% filter trim %}{% block description %}{{ txt('seo.description') }}{% endblock %}{% endfilter %}">
+  <link rel="canonical" href="{{ request.base_url }}{% if request.args.get('page', 1)|int > 1 %}?page={{ request.args.get('page', 1)|int }}{% endif %}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ txt('site.name') }}">
+  <meta property="og:title" content="{{ self.title()|trim }}">
+  <meta property="og:description" content="{{ self.description()|trim }}">
+  <meta property="og:url" content="{{ request.base_url }}">
+  {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
+  {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='jebo-6') }}">
 </head>
 <body>

@@ -147,6 +147,31 @@ def public_case(case_id):
 def info_page(page):
     return render_template('info.html',page=page,categories=CATEGORIES,faq_slots=site_content.FAQ_SLOTS)
 
+def verification_code(key):
+    # 관리자 칸에 코드만 넣어도, 사이트가 준 <meta ...> 태그를 통째로 붙여 넣어도 content 값만 꺼내 씀.
+    value=g.content.get(key,'').strip()
+    found=re.search(r'content=["\']([^"\']+)',value)
+    return (found.group(1) if found else value).strip()
+app.jinja_env.globals['verification_code']=verification_code
+
+@app.route('/robots.txt')
+def robots_txt():
+    lines=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /reports/latest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
+    daum=g.content.get('seo.daum_robots','').strip()
+    if daum:lines.insert(0,daum if daum.startswith('#') else '#'+daum)
+    return app.response_class('\n'.join(lines)+'\n',mimetype='text/plain')
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    pages=[(url_for(e,_external=True),None) for e in ('home','reports','board','report','takedown')]
+    pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq','types')]
+    pages+=[(url_for('policy_page',page=p,_external=True),None) for p in ('terms','privacy')]
+    with conn() as db:
+        pages+=[(url_for('public_case',case_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 5000')]
+        pages+=[(url_for('board_post',post_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 5000')]
+    body=''.join('<url><loc>%s</loc>%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '') for u,d in pages)
+    return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
+
 @app.route('/terms',defaults={'page':'terms'})
 @app.route('/privacy',defaults={'page':'privacy'})
 def policy_page(page):

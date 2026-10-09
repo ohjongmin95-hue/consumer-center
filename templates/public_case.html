@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% from 'status_macros.html' import stepper %}
 {% block title %}{{ subject }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ description|truncate(150, True, '…') }}{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro">
