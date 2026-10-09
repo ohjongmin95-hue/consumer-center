@@ -56,6 +56,7 @@ SECTIONS = [
         ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),
         ('home.hero_button', '제보 버튼', '제보하기 →', {}),
         ('home.latest_title', '메인 최신 목록 제목', '최근 제보', {}),
+        ('home.latest_count', '메인에 보여줄 최근 제보 수 (3~20)', '6', {}),
         ('home.list_title', '제보 목록 페이지 제목', '제보 목록', {}),
         ('home.search_placeholder', '검색창 안내 문구', '제보 제목 검색', {}),
         ('home.empty', '목록이 비었을 때', '표시할 제보 내역이 없습니다.', {}),

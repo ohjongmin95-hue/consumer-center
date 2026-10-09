@@ -20,7 +20,7 @@ app.config['MAX_CONTENT_LENGTH']=15*1024*1024
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 CATEGORIES=['상품·품질','배송·환불','구독·결제','금융·통신','여행·숙박','서비스·계약','개인정보','기타']
 STATUSES=['접수','검토 중','추가 확인','기업 답변 대기','조정 진행','종결']
-HOME_LATEST=8  # 메인 화면에 보여 줄 최신 제보 수
+HOME_LATEST=6  # 메인 화면 최신 제보 수 기본값 (관리자 '메인 화면'에서 3~20으로 변경)
 REPORTS_PAGE_SIZE=20
 def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
 
@@ -102,14 +102,18 @@ def report_summary():
     total=sum(stats.values());done=stats.get('종결',0)
     return dict(total=total,done=done,active=total-done)
 
+def home_latest():
+    try:return min(20,max(3,int(g.content.get('home.latest_count',''))))
+    except ValueError:return HOME_LATEST
+
 @app.route('/')
 def home():
-    return render_template('index.html',cases=report_rows(limit=HOME_LATEST),summary=report_summary())
+    return render_template('index.html',cases=report_rows(limit=home_latest()),summary=report_summary())
 
 @app.route('/reports/latest')
 def latest_reports():
     # 메인 화면이 주기적으로 불러가는 최신 목록 조각 (실시간 갱신용).
-    resp=app.make_response(render_template('report_rows.html',cases=report_rows(limit=HOME_LATEST),summary=report_summary(),live=True))
+    resp=app.make_response(render_template('report_rows.html',cases=report_rows(limit=home_latest()),summary=report_summary(),live=True))
     resp.headers['Cache-Control']='no-store'
     return resp
 

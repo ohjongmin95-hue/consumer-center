@@ -6,7 +6,7 @@
     <a class="primary" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a>
   </section>
   <section class="section" id="reports" aria-labelledby="reports-heading">
-    <div class="section-head"><h2 id="reports-heading">{{ txt('home.latest_title') }} <span class="live-dot" title="30초마다 자동으로 새로고침돼요">실시간</span></h2><a class="see-all" href="{{ url_for('reports') }}">전체 보기 →</a></div>
+    <div class="section-head"><h2 id="reports-heading">{{ txt('home.latest_title') }} <span class="live-dot" title="30초마다 자동으로 새로고침돼요">실시간</span></h2></div>
     <div data-live-list aria-live="polite">{% include 'report_rows.html' %}</div>
     <div class="list-footer">{% if txt('home.list_note') %}<p class="note">{{ txt('home.list_note') }}</p>{% else %}<span></span>{% endif %}<a href="{{ url_for('reports') }}">{{ txt('nav.home') }} 전체 보기 →</a></div>
   </section>

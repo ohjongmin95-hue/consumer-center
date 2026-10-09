@@ -288,7 +288,12 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(home.count('class="case-link"'), self.site.HOME_LATEST)
         self.assertIn('공개 제보 24', home)
         self.assertNotIn('공개 제보 10<', home)
-        self.assertIn('href="/reports">', home)  # 메뉴와 전체 보기 링크
+        self.assertIn('href="/reports">', home)  # 메뉴와 하단 전체 보기 링크
+        admin = self.login_admin()
+        admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'home', 'home.latest_count': '4'})
+        self.assertEqual(self.client.get('/').get_data(as_text=True).count('class="case-link"'), 4)
+        admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'home', 'home.latest_count': '이상한값'})
+        self.assertEqual(self.client.get('/').get_data(as_text=True).count('class="case-link"'), self.site.HOME_LATEST)
         live = self.client.get('/reports/latest')
         self.assertEqual(live.headers['Cache-Control'], 'no-store')
         self.assertEqual(live.get_data(as_text=True).count('class="case-link"'), self.site.HOME_LATEST)
