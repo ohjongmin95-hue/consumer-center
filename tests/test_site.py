@@ -42,7 +42,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log'):
+            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings'):
                 db.execute('DELETE FROM ' + table)
 
     def csrf(self, client, path):
@@ -638,6 +638,24 @@ class SiteTest(unittest.TestCase):
         # 대표(관리자)도 제보 관리 화면을 볼 수 있음
         self.assertIn('배송이 안 와요', admin.get('/admin/reports').get_data(as_text=True))
         self.assertIn('관리자', admin.get('/admin/reports').get_data(as_text=True))
+
+    def test_admin_changes_password_in_admin(self):
+        admin = self.login_admin()
+        other = self.login_admin()
+        token = self.csrf(admin, '/admin/password')
+        wrong = admin.post('/admin/password', data={'_csrf': token, 'current': 'nope', 'password': 'NewAdminPass99', 'password2': 'NewAdminPass99'}, follow_redirects=True)
+        self.assertIn('지금 비밀번호가 맞지 않아요', wrong.get_data(as_text=True))
+        short = admin.post('/admin/password', data={'_csrf': token, 'current': self.password, 'password': 'short1', 'password2': 'short1'}, follow_redirects=True)
+        self.assertIn('12자 이상', short.get_data(as_text=True))
+        done = admin.post('/admin/password', data={'_csrf': token, 'current': self.password, 'password': 'NewAdminPass99', 'password2': 'NewAdminPass99'})
+        self.assertEqual(done.headers['Location'], '/admin')
+        self.assertEqual(admin.get('/admin').status_code, 200)  # 바꾼 화면은 그대로 로그인
+        self.assertEqual(other.get('/admin').status_code, 302)  # 다른 기기는 로그아웃
+        fresh = self.site.app.test_client()
+        old = self.post_form(fresh, '/admin/login', {'password': self.password})
+        self.assertNotEqual(old.headers.get('Location'), '/admin')
+        new = self.post_form(fresh, '/admin/login', {'password': 'NewAdminPass99'})
+        self.assertEqual(new.headers['Location'], '/admin')
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)

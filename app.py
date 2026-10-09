@@ -328,23 +328,52 @@ def case_detail():
             return redirect(url_for('case_detail'))
         msgs=db.execute('SELECT * FROM messages WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
     return render_template('case.html',case=case,msgs=msgs)
+# 관리자 비밀번호: 관리자 화면에서 바꾸면 DB에 저장되고, 없으면 처음 설치 때 정한 /etc/soboru.env 값을 씀.
+with conn() as db:db.execute('CREATE TABLE IF NOT EXISTS admin_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
+def admin_setting(key):
+    with conn() as db:row=db.execute('SELECT value FROM admin_settings WHERE key=?',(key,)).fetchone()
+    return row['value'] if row else ''
+def admin_password_hash():return admin_setting('password_hash') or os.getenv('ADMIN_PASSWORD_HASH','')
+def admin_session_ver():return admin_setting('session_ver') or '1'
+
 @app.route('/admin/login',methods=['GET','POST'])
 def admin_login():
     if request.method=='POST':
-        stored=os.getenv('ADMIN_PASSWORD_HASH','')
+        stored=admin_password_hash()
         if too_many_attempts('admin'):
             flash('로그인 시도가 너무 많습니다. 10분 뒤 다시 시도해 주세요.');return render_template('admin_login.html'),429
         if stored and check_password_hash(stored,request.form.get('password','')):
-            session.clear();session['admin']=True;return redirect(url_for('admin'))
+            session.clear();session['admin']=True;session['admin_v']=admin_session_ver();return redirect(url_for('admin'))
         note_attempt('admin')
         flash('로그인에 실패했습니다.')
     return render_template('admin_login.html')
 def admin_only(f):
     @functools.wraps(f)
     def wrapped(*a,**kw):
-        if not session.get('admin'):return redirect(url_for('admin_login'))
+        # 비밀번호를 바꾸면 다른 기기에 남아 있던 관리자 로그인은 끊김
+        if not session.get('admin') or session.get('admin_v')!=admin_session_ver():
+            session.pop('admin',None);session.pop('admin_v',None);return redirect(url_for('admin_login'))
         return f(*a,**kw)
     return wrapped
+
+@app.route('/admin/password',methods=['GET','POST'])
+@admin_only
+def admin_password():
+    if request.method=='POST':
+        cur=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
+        if not check_password_hash(admin_password_hash(),cur):flash('지금 비밀번호가 맞지 않아요.')
+        elif not (12<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):flash('새 비밀번호는 영문과 숫자를 섞어 12자 이상으로 정해 주세요.')
+        elif pw!=pw2:flash('새 비밀번호 확인이 일치하지 않아요.')
+        elif check_password_hash(admin_password_hash(),pw):flash('지금 비밀번호와 다른 비밀번호로 정해 주세요.')
+        else:
+            ver=str(int(admin_session_ver())+1);stamp=datetime.datetime.now().isoformat(timespec='seconds')
+            with conn() as db:
+                for key,value in (('password_hash',generate_password_hash(pw)),('session_ver',ver)):
+                    db.execute('INSERT INTO admin_settings(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,stamp))
+            session['admin_v']=ver
+            flash('관리자 비밀번호를 바꿨어요. 다음 로그인부터 새 비밀번호를 쓰세요.')
+            return redirect(url_for('admin'))
+    return render_template('admin_password.html')
 @app.route('/admin/content',methods=['GET','POST'])
 @admin_only
 def admin_content():

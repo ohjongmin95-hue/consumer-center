@@ -16,6 +16,7 @@
     <div class="cs-user">
       <a class="cs-site" href="{{ url_for('home') }}" target="_blank" rel="noopener">사이트 보기 ↗</a>
       <span class="cs-name">대표</span>
+      <a class="cs-site" href="{{ url_for('admin_password') }}">비밀번호 변경</a>
       <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">로그아웃</button></form>
     </div>
   </div>

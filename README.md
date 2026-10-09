@@ -120,11 +120,8 @@ sudo systemctl restart soboru     # 적용
 
 **관리자 비밀번호 바꾸기**
 
-```sh
-/opt/soboru/venv/bin/python -c "import getpass;from werkzeug.security import generate_password_hash as g;print(g(getpass.getpass('새 비밀번호: ')))"
-```
-
-나온 값을 `/etc/soboru.env`의 `ADMIN_PASSWORD_HASH=` 뒤에 붙여 넣고 `sudo systemctl restart soboru`.
+- 평소: 관리자 화면 오른쪽 위 **비밀번호 변경** → 지금 비밀번호, 새 비밀번호(영문+숫자 12자 이상) 입력. 다른 기기의 관리자 로그인은 자동으로 끊깁니다.
+- 잊어버렸을 때: 서버에 접속해 `sudo bash /opt/soboru/app/deploy/reset-admin-password.sh` 를 실행하고 새 비밀번호를 두 번 입력합니다.
 
 ## 백업과 복원, 서버 옮기기
 
