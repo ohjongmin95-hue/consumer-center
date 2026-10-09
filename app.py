@@ -787,6 +787,9 @@ def login():
     sign_in(user,request.form.get('remember'))
     return redirect(safe_next())
 
+@app.route('/account/help')
+def account_help():return render_template('account_help.html')
+
 @app.route('/logout',methods=['POST'])
 def member_logout():
     session.pop('uid',None);session.pop('uv',None);session.pop('case_id',None)
