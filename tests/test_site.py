@@ -168,9 +168,12 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('<span>소비자</span>제보센터', home)
         self.assertIn('href="/privacy"', home)
-        self.assertNotIn('신고', home)
+        self.assertNotIn('신고센터', home)
+        for link in ('href="/terms"', 'href="/privacy"', 'href="/youth"', '권리침해 신고 및 임시조치 안내'):
+            self.assertIn(link, home)
         privacy = self.client.get('/privacy').get_data(as_text=True)
-        self.assertIn('<h2>1. 개인정보의 처리 목적</h2>', privacy)
+        self.assertIn('<h2 id="sec-1">1. 개인정보의 처리 목적</h2>', privacy)
+        self.assertIn('<a href="#sec-12">12. 개인정보 처리방침의 변경</a>', privacy)
         self.assertIn('소보루(이하', privacy)  # {운영자} placeholder filled from operator info
         token = self.csrf(self.client, '/report')
         missing_truth = self.client.post('/report', data={'_csrf': token, 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'request_text': 'D', 'consent': 'on'})
@@ -192,7 +195,17 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/content', data={'_csrf': token, 'section': 'operator', 'operator.name': '새 운영사', 'operator.email': 'help@example.com'})
         privacy = self.client.get('/privacy').get_data(as_text=True)
         self.assertIn('새 운영사(이하', privacy)
-        self.assertIn('이메일 help@example.com', self.client.get('/').get_data(as_text=True))
+        footer = self.client.get('/').get_data(as_text=True)
+        self.assertIn('<span>이메일. help@example.com</span>', footer)
+        self.assertIn('<span>상호. 새 운영사</span>', footer)
+        self.assertNotIn('<span>팩스.', footer)  # 비어 있는 항목은 표시하지 않음
+        youth = self.client.get('/youth').get_data(as_text=True)
+        self.assertIn('<h1>청소년보호정책</h1>', youth)
+        self.assertIn('class="policy-toc"', youth)
+        self.assertIn('<h2 id="sec-1">', youth)
+        self.assertIn('청소년보호책임자: (운영자 정보 미입력)', youth)
+        admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'operator', 'operator.name': '새 운영사', 'operator.privacy_officer': '홍길동'})
+        self.assertIn('청소년보호책임자: 홍길동', self.client.get('/youth').get_data(as_text=True))  # 비우면 개인정보 보호책임자로 대신 표시
 
     def post_form(self, client, path, data):
         token = self.csrf(client, path)

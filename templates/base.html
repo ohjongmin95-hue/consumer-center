@@ -15,7 +15,7 @@
   <meta property="og:url" content="{{ request.base_url }}">
   {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='jebo-16') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='jebo-17') }}">
 </head>
 <body>
 <header class="site-header">
@@ -33,10 +33,33 @@
 {% endwith %}
 {% block content %}{% endblock %}
 <footer class="site-footer">
-  <nav class="footer-links" aria-label="정책 및 안내"><a href="{{ url_for('policy_page', page='terms') }}">이용약관</a><a class="strong" href="{{ url_for('policy_page', page='privacy') }}">개인정보 처리방침</a><a href="{{ url_for('takedown') }}">게시중단 요청</a><a href="{{ url_for('lookup') }}">내 제보 조회</a></nav>
-  {% if txt('operator.notice') %}<p class="footer-notice">{{ txt('operator.notice') }}</p>{% endif %}
-  <p class="footer-info">{% for key, label in [('operator.name','운영'),('operator.ceo','대표'),('operator.biz_no','사업자등록번호'),('operator.address','주소'),('operator.email','이메일'),('operator.phone','전화'),('operator.privacy_officer','개인정보 보호책임자')] %}{% if txt(key) %}<span>{{ label }} {{ txt(key) }}</span>{% endif %}{% endfor %}</p>
-  <p class="footer-copy">{{ txt('footer.text') }}</p>
+  <div class="ft-inner">
+    <a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>
+    <div class="ft-con">
+      <nav class="ft-links" aria-label="정책 및 안내">
+        <a href="{{ url_for('policy_page', page='terms') }}">이용약관</a>
+        <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">개인정보 처리방침</a>
+        <a href="{{ url_for('policy_page', page='youth') }}">청소년보호정책</a>
+        <a class="ft-point" href="{{ url_for('takedown') }}">권리침해 신고 및 임시조치 안내</a>
+        <a href="{{ url_for('lookup') }}">내 제보 조회</a>
+      </nav>
+      {% set rows = footer_rows() %}
+      {% if rows %}<ul class="ft-info">{% for row in rows %}<li>{% for label, value in row %}<span>{{ label }}. {{ value }}</span>{% endfor %}</li>{% endfor %}</ul>{% endif %}
+      {% if txt('operator.notice') %}<p class="ft-notice">{{ txt('operator.notice') }}</p>{% endif %}
+      <p class="ft-copy">{{ txt('footer.text') }}</p>
+    </div>
+  </div>
+  <button type="button" class="to-top" aria-label="맨 위로" hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 14.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <script>
+    // 맨 위로 버튼: 조금 내려가면 나타나고, 누르면 맨 위로 이동합니다.
+    (function () {
+      var btn = document.querySelector('.to-top');
+      if (!btn) return;
+      var update = function () { btn.hidden = window.scrollY < 400; };
+      window.addEventListener('scroll', update, { passive: true }); update();
+      btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    })();
+  </script>
 </footer>
 </body>
 </html>

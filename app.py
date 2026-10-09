@@ -110,19 +110,35 @@ def txt(key):
 app.jinja_env.globals['txt']=txt
 app.jinja_env.globals['STATUSES']=STATUSES
 app.jinja_env.globals['status_step']=status_step
-DOC_VARS={'운영자':'operator.name','대표자':'operator.ceo','이메일':'operator.email','전화':'operator.phone','주소':'operator.address','보호책임자':'operator.privacy_officer','보호책임자연락처':'operator.privacy_contact','시행일':'policy.effective_date'}
+DOC_VARS={'운영자':'operator.name','대표자':'operator.ceo','이메일':'operator.email','전화':'operator.phone','주소':'operator.address','보호책임자':'operator.privacy_officer','보호책임자연락처':'operator.privacy_contact','청소년보호책임자':'operator.youth_officer','청소년보호책임자연락처':'operator.youth_contact','시행일':'policy.effective_date'}
+DOC_FALLBACK={'operator.youth_officer':'operator.privacy_officer','operator.youth_contact':'operator.privacy_contact'}
+def doc_value(src):
+    return g.content.get(src) or g.content.get(DOC_FALLBACK.get(src,''),'') or '(운영자 정보 미입력)'
+def doc_headings(key):
+    # 목차용: "## " 소제목 목록 (본문 h2의 id와 같은 순서)
+    return [line.strip()[3:] for line in g.content.get(key,'').split('\n') if line.strip().startswith('## ')]
+app.jinja_env.globals['doc_headings']=doc_headings
+FOOTER_ROWS=[[('operator.name','상호'),('operator.ceo','대표'),('operator.address','소재지')],
+             [('operator.phone','전화'),('operator.fax','팩스'),('operator.email','이메일'),('operator.biz_no','사업자등록번호')],
+             [('operator.privacy_officer','개인정보 보호책임자'),('operator.youth_officer','청소년보호책임자')]]
+def footer_rows():
+    # 푸터 사업자 정보: 입력된 항목만, 줄 단위로 묶어서 보여 줌
+    rows=[[(label,g.content.get(key)) for key,label in row if g.content.get(key)] for row in FOOTER_ROWS]
+    return [row for row in rows if row]
+app.jinja_env.globals['footer_rows']=footer_rows
 def doc(key):
     # 약관류 본문: "## "는 소제목, "- "는 목록, 빈 줄은 문단 구분. {운영자} 등은 운영자 정보로 치환.
     text=g.content.get(key,'')
-    for name,src in DOC_VARS.items():text=text.replace('{'+name+'}',g.content.get(src) or '(운영자 정보 미입력)')
-    out=[];items=[]
+    # 긴 이름부터 바꿔야 {청소년보호책임자연락처}가 {보호책임자}로 먼저 잘못 바뀌지 않음
+    for name,src in sorted(DOC_VARS.items(),key=lambda kv:-len(kv[0])):text=text.replace('{'+name+'}',doc_value(src))
+    out=[];items=[];heads=0
     def flush():
         if items:out.append(Markup('<ul>')+Markup('').join(Markup('<li>%s</li>')%i for i in items)+Markup('</ul>'));items.clear()
     for line in text.split('\n'):
         line=line.strip()
         if line.startswith('- '):items.append(line[2:]);continue
         flush()
-        if line.startswith('## '):out.append(Markup('<h2>%s</h2>')%line[3:])
+        if line.startswith('## '):heads+=1;out.append(Markup('<h2 id="sec-%d">%s</h2>')%(heads,line[3:]))
         elif line:out.append(Markup('<p>%s</p>')%line)
     flush()
     return Markup('\n').join(out)
@@ -232,7 +248,7 @@ def robots_txt():
 def sitemap_xml():
     pages=[(url_for(e,_external=True),None) for e in ('home','reports','board','report','takedown')]
     pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq','types')]
-    pages+=[(url_for('policy_page',page=p,_external=True),None) for p in ('terms','privacy')]
+    pages+=[(url_for('policy_page',page=p,_external=True),None) for p in ('terms','privacy','youth')]
     with conn() as db:
         pages+=[(url_for('public_case',case_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 5000')]
         pages+=[(url_for('board_post',post_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 5000')]
@@ -241,6 +257,7 @@ def sitemap_xml():
 
 @app.route('/terms',defaults={'page':'terms'})
 @app.route('/privacy',defaults={'page':'privacy'})
+@app.route('/youth',defaults={'page':'youth'})
 def policy_page(page):
     return render_template('policy.html',page=page)
 

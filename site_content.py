@@ -45,11 +45,14 @@ SECTIONS = [
         ('operator.name', '운영자(상호)', '소보루', {}),
         ('operator.ceo', '대표자', '', OPT),
         ('operator.biz_no', '사업자등록번호', '', OPT),
-        ('operator.address', '주소', '', OPT),
+        ('operator.address', '소재지(주소)', '', OPT),
         ('operator.email', '대표 이메일', '', OPT),
         ('operator.phone', '대표 전화', '', OPT),
+        ('operator.fax', '팩스', '', OPT),
         ('operator.privacy_officer', '개인정보 보호책임자', '', OPT),
         ('operator.privacy_contact', '개인정보 보호책임자 연락처', '', OPT),
+        ('operator.youth_officer', '청소년보호책임자 (비우면 개인정보 보호책임자와 같음)', '', OPT),
+        ('operator.youth_contact', '청소년보호책임자 연락처 (비우면 개인정보 보호책임자 연락처)', '', OPT),
         ('operator.notice', '민간 운영 안내', '소비자제보센터는 민간이 운영하는 소비자 제보 창구로, 국가기관이나 한국소비자원과 관련이 없습니다. 공식 상담과 피해구제는 1372 소비자상담센터(국번 없이 1372)를 이용해 주세요.', OPT_ML),
     ]),
     ('home', '메인 화면', [
@@ -127,14 +130,15 @@ SECTIONS = [
     ]),
 ]
 
-POLICY_HINT = '줄 맨 앞에 "## "를 쓰면 소제목, "- "를 쓰면 목록이 됩니다. {운영자}, {대표자}, {이메일}, {전화}, {주소}, {보호책임자}, {보호책임자연락처}, {시행일}은 운영자 정보로 자동 바뀝니다.'
+POLICY_HINT = '줄 맨 앞에 "## "를 쓰면 소제목(목차에도 표시), "- "를 쓰면 목록이 됩니다. {운영자}, {대표자}, {이메일}, {전화}, {주소}, {보호책임자}, {보호책임자연락처}, {청소년보호책임자}, {청소년보호책임자연락처}, {시행일}은 운영자 정보로 자동 바뀝니다.'
 
 SECTIONS += [
     ('policy', '약관·개인정보 처리방침·게시중단', [
         ('policy.effective_date', '시행일', '2026년 10월 9일', {}),
         ('policy.terms', '이용약관', _policy('terms'), {'multiline': True, 'doc': True}),
         ('policy.privacy', '개인정보 처리방침', _policy('privacy'), {'multiline': True, 'doc': True}),
-        ('policy.takedown', '게시중단 요청 안내', _policy('takedown'), {'multiline': True, 'doc': True}),
+        ('policy.youth', '청소년보호정책', _policy('youth'), {'multiline': True, 'doc': True}),
+        ('policy.takedown', '권리침해 신고 및 임시조치 안내', _policy('takedown'), {'multiline': True, 'doc': True}),
     ]),
 ]
 

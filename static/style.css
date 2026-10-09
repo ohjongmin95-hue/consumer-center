@@ -555,3 +555,36 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 .rc-sample { padding: 2px 8px; border-radius: 6px; background: #f1ece5; color: #8a7a68; font-size: 11px; font-weight: 800; letter-spacing: .5px; }
 .is-sample .rc-progress i.on { background: #f3b87f; }
 .is-sample.is-done .rc-progress i.on { background: #8fcaa4; }
+
+/* Footer v2: dark band with logo, policy links, business info rows and copyright. */
+.site-footer { display: block; margin-top: 60px; padding: 0; background: #2a2f3a; color: #a9afba; border-top: 0; text-align: left; font-weight: 400; }
+.ft-inner { max-width: 1160px; margin: 0 auto; padding: 44px 24px 52px; display: grid; grid-template-columns: 220px 1fr; gap: 28px; }
+.ft-logo { font-size: 26px; font-weight: 850; letter-spacing: -1.6px; color: #d9dde4; line-height: 1.2; }
+.ft-logo span { color: #f2913d; }
+.ft-logo:hover { color: #fff; }
+.ft-links { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 18px; font-size: 15px; font-weight: 600; color: #d9dde4; }
+.ft-links a:hover { color: #fff; }
+.ft-links .ft-strong { color: #fff; font-weight: 800; }
+.ft-links .ft-point { color: #f2913d; font-weight: 700; }
+.ft-links .ft-point:hover { color: #ffb070; }
+.ft-info { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; line-height: 1.7; }
+.ft-info li { display: flex; flex-wrap: wrap; gap: 0 26px; }
+.ft-notice { max-width: 760px; margin: 18px 0 0; font-size: 13px; line-height: 1.7; color: #8d93a0; }
+.ft-copy { margin: 16px 0 0; font-size: 13px; color: #8d93a0; }
+.to-top { position: fixed; right: 22px; bottom: 22px; z-index: 50; display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid #e3e3e0; border-radius: 50%; background: #fff; color: #ef7300; box-shadow: 0 6px 18px rgba(32,38,48,.12); }
+.to-top:hover { background: #ef7300; border-color: #ef7300; color: #fff; }
+.to-top[hidden] { display: none; }
+@media (max-width: 760px) {
+  .ft-inner { grid-template-columns: 1fr; gap: 16px; padding: 34px 20px 40px; }
+  .ft-links { gap: 8px 18px; font-size: 14px; }
+  .ft-info { font-size: 13px; }
+  .ft-info li { gap: 0 16px; }
+  .to-top { right: 14px; bottom: 14px; width: 42px; height: 42px; }
+}
+/* Policy table of contents */
+.policy-toc { margin: 6px 0 28px; padding: 18px 22px; background: #fff; border: 1px solid #ececea; border-radius: 14px; }
+.policy-toc ol { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 24px; }
+.policy-toc a { display: block; font-size: 14px; color: #4f5660; line-height: 1.6; }
+.policy-toc a:hover { color: #bd5c00; }
+.policy-doc h2[id] { scroll-margin-top: 20px; }
+@media (max-width: 680px) { .policy-toc ol { grid-template-columns: 1fr; } }
