@@ -33,11 +33,6 @@ SECTIONS = [
         ('site.name', '사이트 이름 (브라우저 탭 등)', '소비자제보센터', {}),
         ('site.logo_accent', '로고 앞부분 (주황색)', '소비자', OPT),
         ('site.logo_rest', '로고 뒷부분', '제보센터', {}),
-        ('nav.home', '메뉴: 제보 목록', '제보 목록', {}),
-        ('nav.guide', '메뉴: 이용 안내', '이용 안내', {}),
-        ('nav.process', '메뉴: 처리 절차', '처리 절차', {}),
-        ('nav.board', '메뉴: 소비자게시판', '소비자게시판', {}),
-        ('nav.faq', '메뉴: 자주 묻는 질문', '자주 묻는 질문', {}),
         ('footer.text', '푸터 맨 아래 문구', '© SOBORU. All rights reserved.', ML),
     ]),
     ('seo', '검색 노출 (네이버·구글)', [
@@ -147,7 +142,24 @@ SECTIONS += [
 _LIST_DEFAULTS = __import__('json').loads(Path(__file__).with_name('list_defaults.json').read_text(encoding='utf-8'))
 REPORT_CATEGORY_DEFAULTS = ['상품·품질', '배송·환불', '구독·결제', '금융·통신', '여행·숙박', '서비스·계약', '개인정보', '기타']
 BOARD_CATEGORY_DEFAULTS = ['경험 공유', '질문해요', '꿀팁', '칭찬해요', '자유']
+MENU_PAGES = [
+    ('reports', '제보 목록'), ('guide', '이용 안내'), ('process', '처리 절차'), ('board', '소비자게시판'),
+    ('faq', '자주 묻는 질문'), ('report', '제보하기'), ('lookup', '내 제보 조회'), ('types', '제보 유형'),
+    ('home', '홈 (메인 화면)'), ('terms', '이용약관'), ('privacy', '개인정보 처리방침'), ('takedown', '게시중단 요청'),
+    ('custom', '직접 입력한 주소'),
+]
+HOME_BLOCKS = [
+    ('hero', '메인 문구 + 제보하기 버튼'), ('latest_reports', '최근 제보 (실시간)'), ('board_posts', '최근 게시판 글'),
+    ('notice', '공지·안내 박스'), ('process', '처리 절차 요약'), ('faq', '자주 묻는 질문 미리보기'),
+]
+LEGACY_NAV = [('nav.home', 'reports', '제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
+              ('nav.board', 'board', '소비자게시판'), ('nav.faq', 'faq', '자주 묻는 질문')]
 LISTS = [
+    ('menu', '상단 메뉴', '사이트 맨 위 메뉴예요. 이름, 순서, 연결할 페이지를 정할 수 있고 외부 주소(블로그 등)도 넣을 수 있어요.',
+     [('label', '메뉴 이름', {}), ('page', '연결할 페이지', {'choices': MENU_PAGES}), ('url', '직접 입력한 주소 ("직접 입력한 주소"를 골랐을 때만, 예: https://blog.naver.com/...)', {})], 1),
+    ('home_blocks', '메인 화면 구성', '메인 화면에 위에서부터 차례로 보여요. 블록 종류마다 쓰는 칸이 달라요: 제목은 모든 블록, 개수는 최근 제보·게시판 글·질문 미리보기, 내용과 버튼은 공지·안내 박스에 쓰여요. 비운 칸은 기본값을 써요.',
+     [('kind', '블록 종류', {'choices': HOME_BLOCKS}), ('title', '제목', {}), ('count', '보여줄 개수', {}), ('body', '내용', ML),
+      ('button_label', '버튼 글자', {}), ('button_link', '버튼 주소 (예: /report 또는 https://...)', {})], 1),
     ('report_categories', '제보 유형', '제보하기 화면, 제보 목록 필터, 유형 페이지에 쓰여요. 이미 접수된 제보의 유형은 바뀌지 않아요.', [('name', '유형 이름', {})], 1),
     ('board_categories', '소비자게시판 분류', '글쓰기 분류와 게시판 탭에 쓰여요. 6번째부터는 색이 처음부터 반복돼요.', [('name', '분류 이름', {})], 1),
     ('faq', '자주 묻는 질문', '자주 묻는 질문 페이지에 순서대로 보여요.', [('q', '질문', {}), ('a', '답변', ML)], 0),
@@ -156,7 +168,10 @@ LISTS = [
     ('guide_writing', '이용 안내 02 · 작성 방법', '"겪은 일을 순서대로 알려 주세요" 아래 번호 목록이에요.', [('title', '질문', {}), ('body', '설명', ML)], 0),
     ('guide_topics', '이용 안내 04 · 분야별 준비자료', '분야 이름을 누르면 펼쳐지는 안내예요.', [('name', '분야 이름', {}), ('heading', '펼쳤을 때 제목', {}), ('steps', '준비 순서 (한 줄에 하나씩)', ML), ('info', '함께 적을 정보', ML), ('materials', '도움이 되는 자료', {})], 0),
 ]
+_BLANK_BLOCK = {'title': '', 'count': '', 'body': '', 'button_label': '', 'button_link': ''}
 LIST_DEFAULTS = {
+    'menu': [{'label': label, 'page': page, 'url': ''} for _, page, label in LEGACY_NAV],
+    'home_blocks': [dict(_BLANK_BLOCK, kind='hero'), dict(_BLANK_BLOCK, kind='latest_reports')],
     'report_categories': [{'name': n} for n in REPORT_CATEGORY_DEFAULTS],
     'board_categories': [{'name': n} for n in BOARD_CATEGORY_DEFAULTS],
     'faq': [{'q': q, 'a': a} for q, a in FAQ_DEFAULTS],

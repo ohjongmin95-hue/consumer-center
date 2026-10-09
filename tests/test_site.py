@@ -376,6 +376,48 @@ class SiteTest(unittest.TestCase):
         process = self.client.get('/process').get_data(as_text=True)
         self.assertEqual(process.count('class="step-num"'), 2)
 
+    def test_menu_and_home_layout_editing(self):
+        admin = self.login_admin()
+        token = self.csrf(admin, '/admin/lists')
+        menu = {'_csrf': token, 'list': 'menu', 'label': ['게시판', '제보하기', '블로그'], 'page': ['board', 'report', 'custom'], 'url': ['', '', 'https://blog.example.com']}
+        self.assertEqual(admin.post('/admin/lists', data=menu).status_code, 302)
+        home = self.client.get('/').get_data(as_text=True)
+        nav = home[home.index('class="section-nav"'):home.index('</nav>')]
+        self.assertLess(nav.index('>게시판</a>'), nav.index('>제보하기</a>'))
+        self.assertIn('href="https://blog.example.com" target="_blank" rel="noopener">블로그</a>', nav)
+        self.assertNotIn('이용 안내', nav)
+        self.assertIn('href="/board" class="active"', self.client.get('/board').get_data(as_text=True))
+        bad = admin.post('/admin/lists', data={**menu, 'url': ['', '', 'javascript:alert(1)']})
+        self.assertEqual(bad.status_code, 400)
+        self.assertNotIn('javascript:', self.client.get('/').get_data(as_text=True))
+        self.assertEqual(admin.post('/admin/lists', data={**menu, 'page': ['board', 'report', 'nope']}).status_code, 400)
+        # 메인 화면 블록: 순서·종류·개수·버튼
+        blocks = {'_csrf': token, 'list': 'home_blocks',
+                  'kind': ['notice', 'hero', 'faq', 'process', 'board_posts'],
+                  'title': ['오픈 안내', '', '궁금해요', '', ''], 'count': ['', '', '2', '', '3'],
+                  'body': ['소비자제보센터가 문을 열었어요.', '', '', '', ''],
+                  'button_label': ['제보하러 가기', '', '', '', ''], 'button_link': ['/report', '', '', '', '']}
+        self.assertEqual(admin.post('/admin/lists', data=blocks).status_code, 302)
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertLess(home.index('오픈 안내'), home.index('class="hero"'))
+        self.assertIn('<a class="primary" href="/report">제보하러 가기</a>', home)
+        self.assertEqual(home.count('class="faq-item"'), 2)
+        self.assertIn('class="home-process-steps"', home)
+        self.assertNotIn('data-live-list="', home)  # 최근 제보 블록을 뺐음
+        self.assertEqual(admin.post('/admin/lists', data={**blocks, 'count': ['', '', '두개', '', '']}).status_code, 400)
+        self.assertEqual(admin.post('/admin/lists', data={**blocks, 'button_link': ['javascript:x', '', '', '', '']}).status_code, 400)
+        admin.post('/admin/lists', data={'_csrf': token, 'list': 'home_blocks', 'kind': ['latest_reports'], 'title': ['지금 들어온 제보'], 'count': ['3'], 'body': [''], 'button_label': [''], 'button_link': ['']})
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('지금 들어온 제보', home)
+        self.assertIn('data-live-list="/reports/latest?n=3"', home)
+
+    def test_legacy_menu_labels_carry_over(self):
+        with self.site.conn() as db:
+            db.execute("INSERT INTO site_content(key,value,updated) VALUES('nav.faq','FAQ','x')")
+        nav = self.client.get('/').get_data(as_text=True)
+        self.assertIn('href="/faq">FAQ</a>', nav)
+        self.assertIn('href="/reports">제보 목록</a>', nav)
+
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
         token = self.csrf(self.client, '/report')

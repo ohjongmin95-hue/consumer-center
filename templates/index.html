@@ -1,27 +1,65 @@
 {% extends 'base.html' %}
+{% from 'board_macros.html' import heart, bubble %}
 {% block content %}
-<main>
+<main class="home-blocks">
+  {% for block in items('home_blocks') %}
+  {% if block.kind == 'hero' %}
   <section class="hero">
-    <h1>{{ txt('home.hero_title') }}</h1>
-    <a class="primary" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a>
+    <h1>{{ block.title or txt('home.hero_title') }}</h1>
+    <a class="primary" href="{{ block.button_link or url_for('report') }}">{{ block.button_label or txt('home.hero_button') }}</a>
   </section>
-  <section class="section" id="reports" aria-labelledby="reports-heading">
-    <div class="section-head"><h2 id="reports-heading">{{ txt('home.latest_title') }} <span class="live-dot" title="30초마다 자동으로 새로고침돼요">실시간</span></h2></div>
-    <div data-live-list aria-live="polite">{% include 'report_rows.html' %}</div>
-    <div class="list-footer">{% if txt('home.list_note') %}<p class="note">{{ txt('home.list_note') }}</p>{% else %}<span></span>{% endif %}<a href="{{ url_for('reports') }}">{{ txt('nav.home') }} 전체 보기 →</a></div>
+
+  {% elif block.kind == 'latest_reports' %}{% set n = block_count(block, home_latest()) %}
+  <section class="section" id="reports-{{ loop.index }}" aria-labelledby="reports-heading-{{ loop.index }}">
+    <div class="section-head"><h2 id="reports-heading-{{ loop.index }}">{{ block.title or txt('home.latest_title') }} <span class="live-dot" title="30초마다 자동으로 새로고침돼요">실시간</span></h2></div>
+    <div data-live-list="{{ url_for('latest_reports', n=n) }}" aria-live="polite">{% with cases = report_rows(limit=n), summary = report_summary() %}{% include 'report_rows.html' %}{% endwith %}</div>
+    <div class="list-footer">{% if txt('home.list_note') %}<p class="note">{{ txt('home.list_note') }}</p>{% else %}<span></span>{% endif %}<a href="{{ url_for('reports') }}">{{ txt('home.list_title') }} 전체 보기 →</a></div>
   </section>
+
+  {% elif block.kind == 'board_posts' %}{% set posts = recent_posts(block_count(block, 4)) %}
+  <section class="section home-board" aria-labelledby="board-heading-{{ loop.index }}">
+    <div class="section-head"><h2 id="board-heading-{{ loop.index }}">{{ block.title or '소비자게시판 새 글' }}</h2><a class="see-all" href="{{ url_for('board') }}">게시판 가기 →</a></div>
+    {% if posts %}
+    <div class="home-board-grid">
+      {% set names = items('board_categories')|map(attribute='name')|list %}{% for p in posts %}<a class="home-board-card" href="{{ url_for('board_post', post_id=p['id']) }}"><span class="cat-chip cat-{{ names.index(p['category']) % 5 if p['category'] in names else 4 }}">{{ p['category'] }}</span><strong>{{ p['title'] }}</strong><span class="home-board-meta">{{ heart(False) }} {{ p['likes'] }} {{ bubble() }} {{ p['comments'] }} · {{ p['created']|ago }}</span></a>{% endfor %}
+    </div>
+    {% else %}<div class="empty">{{ txt('board.empty') }}</div>{% endif %}
+  </section>
+
+  {% elif block.kind == 'notice' %}
+  <section class="section home-notice">
+    {% if block.title %}<h2>{{ block.title }}</h2>{% endif %}
+    {% if block.body %}<p class="pre-line">{{ block.body }}</p>{% endif %}
+    {% if block.button_label and block.button_link %}<a class="primary" href="{{ block.button_link }}"{% if block.button_link.startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ block.button_label }}</a>{% endif %}
+  </section>
+
+  {% elif block.kind == 'process' %}
+  <section class="section home-process" aria-labelledby="process-heading-{{ loop.index }}">
+    <div class="section-head"><h2 id="process-heading-{{ loop.index }}">{{ block.title or txt('process.title') }}</h2><a class="see-all" href="{{ url_for('info_page', page='process') }}">자세히 →</a></div>
+    <ol class="home-process-steps">{% for step in items('process_steps') %}<li><span class="step-num">{{ '%02d' % loop.index }}</span><strong>{{ step.title }}</strong>{% if step.body %}<p>{{ step.body }}</p>{% endif %}</li>{% endfor %}</ol>
+  </section>
+
+  {% elif block.kind == 'faq' %}
+  <section class="section home-faq" aria-labelledby="faq-heading-{{ loop.index }}">
+    <div class="section-head"><h2 id="faq-heading-{{ loop.index }}">{{ block.title or txt('faq.title') }}</h2><a class="see-all" href="{{ url_for('info_page', page='faq') }}">전체 보기 →</a></div>
+    <div class="info-card">{% for item in items('faq')[:block_count(block, 3)] %}<details class="faq-item"><summary>{{ item.q }}</summary>{% if item.a %}<p class="pre-line">{{ item.a }}</p>{% endif %}</details>{% endfor %}</div>
+  </section>
+  {% endif %}
+  {% endfor %}
 </main>
 <script>
-  // 최신 제보 목록을 30초마다 다시 불러옵니다. 탭이 숨겨져 있을 때는 건너뜁니다.
+  // 최근 제보 블록을 30초마다 다시 불러옵니다. 탭이 숨겨져 있을 때는 건너뜁니다.
   (function () {
-    var box = document.querySelector('[data-live-list]');
-    if (!box || !window.fetch) return;
+    var boxes = document.querySelectorAll('[data-live-list]');
+    if (!boxes.length || !window.fetch) return;
     setInterval(function () {
       if (document.hidden) return;
-      fetch('{{ url_for('latest_reports') }}', { credentials: 'same-origin' })
-        .then(function (r) { return r.ok ? r.text() : null; })
-        .then(function (html) { if (html && html !== box.innerHTML) box.innerHTML = html; })
-        .catch(function () {});
+      boxes.forEach(function (box) {
+        fetch(box.getAttribute('data-live-list'), { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.text() : null; })
+          .then(function (html) { if (html && html !== box.innerHTML) box.innerHTML = html; })
+          .catch(function () {});
+      });
     }, 30000);
   })();
 </script>

@@ -54,7 +54,10 @@ def load_content():
     with conn() as db:saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content')}
     return {k:saved[k] if k in saved and (saved[k] or f.get('optional')) else f['default'] for k,f in site_content.FIELDS.items()}
 def legacy_list(db,key):
-    # 예전에 고정 칸(faq.q1~8, process.step1~4)으로 수정해 둔 값이 있으면 그 내용을 첫 목록으로 씀.
+    # 예전에 고정 칸(faq.q1~8, process.step1~4, nav.*)으로 수정해 둔 값이 있으면 그 내용을 첫 목록으로 씀.
+    if key=='menu':
+        saved={r['key']:r['value'] for r in db.execute("SELECT key,value FROM site_content WHERE key LIKE 'nav.%'")}
+        return [{'label':saved.get(k) or label,'page':page,'url':''} for k,page,label in site_content.LEGACY_NAV] if saved else None
     prefix={'faq':'faq.','process_steps':'process.step'}.get(key)
     if not prefix:return None
     saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content WHERE key LIKE ?',(prefix+'%',))}
@@ -76,6 +79,22 @@ def items(key):return g.lists.get(key,[])
 def report_categories():return [i['name'] for i in items('report_categories')]
 def board_categories():return [i['name'] for i in items('board_categories')]
 app.jinja_env.globals['items']=items
+SAFE_LINK=re.compile(r'^(https?://[^\s<>"]+|/[^\s<>"]*)$')
+def menu_href(item):
+    page=item.get('page','')
+    if page=='custom':return item.get('url','') if SAFE_LINK.match(item.get('url','')) else '#'
+    if page in ('guide','process','faq','types'):return url_for('info_page',page=page)
+    if page in ('terms','privacy'):return url_for('policy_page',page=page)
+    if page in ('reports','board','report','lookup','home','takedown'):return url_for(page)
+    return '#'
+def menu_active(href):
+    # 현재 페이지가 이 메뉴 주소이거나 그 하위 주소(예: /reports/12, /board/3)면 강조.
+    if not href.startswith('/') or href=='#':return False
+    return request.path==href or (href!='/' and request.path.startswith(href.rstrip('/')+'/'))
+def block_count(item,default,top=30):
+    try:return min(top,max(1,int(item.get('count',''))))
+    except ValueError:return default
+app.jinja_env.globals.update(menu_href=menu_href,menu_active=menu_active,block_count=block_count)
 def txt(key):
     # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
     return Markup('<br>').join(escape(line) for line in g.content.get(key,'').split('\n'))
@@ -126,14 +145,19 @@ def home_latest():
     try:return min(20,max(3,int(g.content.get('home.latest_count',''))))
     except ValueError:return HOME_LATEST
 
+def recent_posts(limit):
+    with conn() as db:return db.execute('SELECT id,category,title,likes,comments,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT ?',(limit,)).fetchall()
+app.jinja_env.globals.update(report_rows=report_rows,report_summary=report_summary,recent_posts=recent_posts,home_latest=home_latest)
+
 @app.route('/')
 def home():
-    return render_template('index.html',cases=report_rows(limit=home_latest()),summary=report_summary())
+    return render_template('index.html')
 
 @app.route('/reports/latest')
 def latest_reports():
-    # 메인 화면이 주기적으로 불러가는 최신 목록 조각 (실시간 갱신용).
-    resp=app.make_response(render_template('report_rows.html',cases=report_rows(limit=home_latest()),summary=report_summary(),live=True))
+    # 메인 화면이 주기적으로 불러가는 최신 목록 조각 (실시간 갱신용). n은 블록에 정한 개수.
+    n=min(30,max(1,request.args.get('n',home_latest(),type=int)))
+    resp=app.make_response(render_template('report_rows.html',cases=report_rows(limit=n),summary=report_summary(),live=True))
     resp.headers['Cache-Control']='no-store'
     return resp
 
@@ -345,6 +369,7 @@ def admin_lists():
                 value=value.replace('\r\n','\n').strip()
                 if not opts.get('multiline'):value=' '.join(value.split())
                 if len(value)>site_content.MAX_LENGTH:abort(400)
+                if opts.get('choices') and value and value not in dict(opts['choices']):abort(400)
                 item[name]=value
             if any(item.values()):rows.append(item)
         first=fields[0][0];error=None
@@ -352,6 +377,10 @@ def admin_lists():
         elif any(not r[first] for r in rows):error='"%s" 칸이 비어 있는 항목이 있어요.'%fields[0][1]
         elif len(rows)<minimum:error='%s은(는) 최소 %d개가 있어야 해요.'%(title,minimum)
         elif key.endswith('categories') and len({r[first] for r in rows})!=len(rows):error='같은 이름이 두 번 들어갔어요.'
+        elif key=='menu' and any(not r['label'] or not r['page'] for r in rows):error='메뉴 이름과 연결할 페이지를 모두 정해 주세요.'
+        elif key=='menu' and any(r['page']=='custom' and not SAFE_LINK.match(r['url']) for r in rows):error='직접 입력한 주소는 https:// 또는 / 로 시작해야 해요.'
+        elif key=='home_blocks' and any(r['button_link'] and not SAFE_LINK.match(r['button_link']) for r in rows):error='버튼 주소는 https:// 또는 / 로 시작해야 해요.'
+        elif key=='home_blocks' and any(r['count'] and not r['count'].isdigit() for r in rows):error='보여줄 개수에는 숫자만 넣어 주세요.'
         if error:
             # 입력한 내용을 잃지 않도록 저장하지 않은 상태 그대로 다시 보여 줌.
             flash(title+': '+error);data=load_lists();data[key]=rows

@@ -3,7 +3,8 @@
 {% macro item_fields(fields, item) %}
   {% for name, label, opts in fields %}
   <label class="li-field{% if opts.multiline %} wide{% endif %}"><span>{{ label }}</span>
-    {% if opts.multiline %}<textarea name="{{ name }}" rows="{{ [2, (item.get(name, '')).count('\n') + 2]|max }}" maxlength="2000">{{ item.get(name, '') }}</textarea>
+    {% if opts.choices %}<select name="{{ name }}"><option value="">선택해 주세요</option>{% for value, text in opts.choices %}<option value="{{ value }}"{% if item.get(name) == value %} selected{% endif %}>{{ text }}</option>{% endfor %}</select>
+    {% elif opts.multiline %}<textarea name="{{ name }}" rows="{{ [2, (item.get(name, '')).count('\n') + 2]|max }}" maxlength="2000">{{ item.get(name, '') }}</textarea>
     {% else %}<input name="{{ name }}" value="{{ item.get(name, '') }}" maxlength="2000">{% endif %}
   </label>
   {% endfor %}
