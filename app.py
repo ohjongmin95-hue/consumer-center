@@ -936,7 +936,7 @@ def staff_case(case_id):
                 published=int(bool(request.form.get('published'))) if case['public_consent'] else 0
                 db.execute('UPDATE cases SET status=?,assignee=?,published=? WHERE id=?',(status,assignee,published,case_id))
                 if status!=case['status']:log_case(db,case_id,f"진행 단계 변경: {case['status']} → {status}")
-                if assignee!=(case['assignee'] or ''):log_case(db,case_id,f"담당자: {assignee or '미배정'}")
+                if assignee!=(case['assignee'] or ''):log_case(db,case_id,f"담당 기자: {assignee or '미배정'}")
                 if case['public_consent'] and published!=case['published']:log_case(db,case_id,'공개로 전환' if published else '비공개로 전환')
                 flash('저장했어요.')
             elif form=='note':
@@ -1016,7 +1016,7 @@ def admin_staff():
                 elif db.execute('SELECT 1 FROM staff WHERE login_id=?',(login_id,)).fetchone():flash('이미 있는 아이디예요.')
                 else:
                     db.execute('INSERT INTO staff(login_id,name,pw_hash,created) VALUES(?,?,?,?)',(login_id,name,generate_password_hash(pw),now()))
-                    flash(f'{name} 담당자 계정을 만들었어요. 아이디와 비밀번호를 직접 전달해 주세요.')
+                    flash(f'{name} 기자 계정을 만들었어요. 아이디와 비밀번호를 직접 전달해 주세요.')
                 return redirect(url_for('admin_staff'))
             sid=request.form.get('id',type=int)
             member=db.execute('SELECT * FROM staff WHERE id=?',(sid,)).fetchone() if sid else None

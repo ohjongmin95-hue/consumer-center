@@ -1,12 +1,12 @@
 {% extends 'console.html' %}
-{% block title %}담당자 로그인 | {{ txt('site.name') }}{% endblock %}
+{% block title %}기자 로그인 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="auth-page">
   <div class="auth-card">
     <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
       <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
-      <h1 class="auth-title">담당자 로그인</h1>
+      <h1 class="auth-title">기자 로그인</h1>
       <input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="아이디" aria-label="아이디" value="{{ request.form.get('login_id','') }}">
       <input type="password" name="password" maxlength="64" required autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호">
       <button class="auth-submit" type="submit">로그인</button>
