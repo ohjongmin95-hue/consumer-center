@@ -15,7 +15,7 @@
   <meta property="og:url" content="{{ request.base_url }}">
   {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='jebo-22') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='jebo-23') }}">
 </head>
 <body>
 <header class="site-header">
@@ -55,7 +55,7 @@
       </nav>
     </div>
     {% set rows = footer_rows() %}
-    {% if rows %}<ul class="ft-info">{% for row in rows %}{% for label, value in row %}<li>{{ label }}. {{ value }}</li>{% endfor %}{% endfor %}</ul>{% endif %}
+    {% if rows %}<ul class="ft-info">{% for row in rows %}{% for label, value in row %}<li>{{ label }}. {% if label == '대표' %}{# 대표 이름 첫 글자: 관리자 로그인으로 가는 숨은 링크 #}<a class="ft-quiet" href="{{ url_for('admin_login') }}" rel="nofollow">{{ value[:1] }}</a>{{ value[1:] }}{% else %}{{ value }}{% endif %}</li>{% endfor %}{% endfor %}</ul>{% endif %}
     <div class="ft-bottom">
       {% if txt('operator.notice') %}<p class="ft-notice">{{ txt('operator.notice') }}</p>{% endif %}
       <p class="ft-copy">{{ txt('footer.text') }}</p>

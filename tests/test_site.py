@@ -192,12 +192,13 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertEqual(db.execute('SELECT status FROM takedown_requests').fetchone()['status'], '임시 비공개')
         token = self.csrf(admin, '/admin/content')
-        admin.post('/admin/content', data={'_csrf': token, 'section': 'operator', 'operator.name': '새 운영사', 'operator.email': 'help@example.com'})
+        admin.post('/admin/content', data={'_csrf': token, 'section': 'operator', 'operator.name': '새 운영사', 'operator.ceo': '오민주', 'operator.email': 'help@example.com'})
         privacy = self.client.get('/privacy').get_data(as_text=True)
         self.assertIn('새 운영사(이하', privacy)
         footer = self.client.get('/').get_data(as_text=True)
         self.assertIn('<li>이메일. help@example.com</li>', footer)
         self.assertIn('<li>상호. 새 운영사</li>', footer)
+        self.assertIn('<li>대표. <a class="ft-quiet" href="/admin/login" rel="nofollow">오</a>민주</li>', footer)
         self.assertNotIn('<li>팩스.', footer)  # 비어 있는 항목은 표시하지 않음
         youth = self.client.get('/youth').get_data(as_text=True)
         self.assertIn('<h1>청소년보호정책</h1>', youth)

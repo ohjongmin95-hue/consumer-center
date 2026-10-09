@@ -736,3 +736,8 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
   .auth-body { padding: 40px 24px 28px; }
   .auth-logo { font-size: 28px; }
 }
+
+/* Util bar without the bottom line; quiet footer link. */
+.util-bar { border-bottom: 0; }
+.util-inner a:hover, .util-inner button:hover { text-decoration: none; }
+.ft-info a.ft-quiet, .ft-info a.ft-quiet:hover { color: inherit; text-decoration: none; cursor: text; }
