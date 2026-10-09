@@ -7,7 +7,7 @@
   <a class="back-link" href="{{ url_for('board') }}">← {{ txt('board.title') }}</a>
   <article class="post-full">
     {% if post['hidden'] %}<div class="alert">숨김 처리된 글입니다. 운영자에게만 보입니다.</div>{% endif %}
-    <div class="post-top">{{ chip(post['category'], categories) }}<span class="post-meta">{{ post['nickname'] }} · {{ post['created']|ago }}</span></div>
+    <div class="post-top">{{ chip(post['category'], categories) }}<span class="post-meta">{% if post['user_id'] %}<span class="member-badge">회원</span>{% endif %}{{ post['nickname'] }} · {{ post['created']|ago }}</span></div>
     <h1>{{ post['title'] }}</h1>
     <div class="post-body">{{ post['body'] }}</div>
     <div class="post-full-actions">
@@ -18,9 +18,13 @@
         {% if flagged %}<span class="muted-text">알림 완료</span>{% else %}
         <form method="post" action="{{ url_for('board_flag', kind='p', item_id=post['id']) }}" onsubmit="return confirm('이 글이 부적절하다고 운영자에게 알릴까요?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">부적절한 글 알리기</button></form>
         {% endif %}
+        {% if g.user and post['user_id'] == g.user['id'] %}
+        <form method="post" action="{{ url_for('board_delete', kind='p', item_id=post['id']) }}" onsubmit="return confirm('이 글을 지울까요?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">삭제</button></form>
+        {% elif not post['user_id'] %}
         <details class="delete-box"><summary class="text-btn">삭제</summary>
           <form method="post" action="{{ url_for('board_delete', kind='p', item_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" placeholder="글 비밀번호" required aria-label="글 비밀번호"><button class="secondary" type="submit">삭제하기</button></form>
         </details>
+        {% endif %}
       </div>
     </div>
   </article>
@@ -29,10 +33,11 @@
     <h2 id="comments-heading">{{ bubble() }} 댓글 {{ comments|length }}</h2>
     {% for c in comments %}
     <div class="comment" id="c{{ c['id'] }}">
-      <div class="comment-head"><strong>{{ c['nickname'] }}</strong><span class="post-meta">{{ c['created']|ago }}</span>
+      <div class="comment-head"><strong>{% if c['user_id'] %}<span class="member-badge">회원</span>{% endif %}{{ c['nickname'] }}</strong><span class="post-meta">{{ c['created']|ago }}</span>
         <span class="comment-tools">
           <form method="post" action="{{ url_for('board_flag', kind='c', item_id=c['id']) }}" onsubmit="return confirm('이 댓글이 부적절하다고 알릴까요?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">알리기</button></form>
-          <details class="delete-box"><summary class="text-btn">삭제</summary><form method="post" action="{{ url_for('board_delete', kind='c', item_id=c['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" placeholder="댓글 비밀번호" required aria-label="댓글 비밀번호"><button class="secondary" type="submit">삭제</button></form></details>
+          {% if g.user and c['user_id'] == g.user['id'] %}<form method="post" action="{{ url_for('board_delete', kind='c', item_id=c['id']) }}" onsubmit="return confirm('이 댓글을 지울까요?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">삭제</button></form>
+          {% elif not c['user_id'] %}<details class="delete-box"><summary class="text-btn">삭제</summary><form method="post" action="{{ url_for('board_delete', kind='c', item_id=c['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" placeholder="댓글 비밀번호" required aria-label="댓글 비밀번호"><button class="secondary" type="submit">삭제</button></form></details>{% endif %}
         </span>
       </div>
       <p>{{ c['body'] }}</p>
@@ -42,7 +47,8 @@
     {% if enabled %}
     <form class="comment-form" id="comment-form" method="post" action="{{ url_for('board_comment', post_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
-      <div class="comment-ids"><input name="nickname" maxlength="20" required placeholder="닉네임" aria-label="닉네임"><input type="password" name="password" maxlength="30" required placeholder="삭제용 비밀번호" aria-label="삭제용 비밀번호"></div>
+      {% if g.user %}<p class="member-writer"><span class="member-badge">회원</span><b>{{ g.user['nickname'] }}</b> 이름으로 남겨요.</p>
+      {% else %}<div class="comment-ids"><input name="nickname" maxlength="20" required placeholder="닉네임" aria-label="닉네임"><input type="password" name="password" maxlength="30" required placeholder="삭제용 비밀번호" aria-label="삭제용 비밀번호"></div>{% endif %}
       <textarea name="body" maxlength="1000" required rows="3" placeholder="따뜻한 한마디나 비슷한 경험을 남겨 주세요" aria-label="댓글 내용"></textarea>
       <button class="primary" type="submit">댓글 남기기</button>
     </form>

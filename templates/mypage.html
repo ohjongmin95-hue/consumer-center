@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% from 'status_macros.html' import bar %}
+{% block title %}내 정보 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page member-page"><div class="wrap">
+  <div class="page-intro me-head">
+    <div><span class="eyebrow">MY PAGE</span><h1 class="page-title">{{ g.user['nickname'] }}님</h1>
+      <p class="meta">아이디 {{ g.user['login_id'] }} · 가입일 {{ g.user['created'][:10]|replace('-', '.') }}</p></div>
+    <form method="post" action="{{ url_for('member_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="secondary" type="submit">로그아웃</button></form>
+  </div>
+
+  <div class="me-stats">
+    <a href="#my-reports"><b>{{ cases|length }}</b><span>내 제보</span></a>
+    <a href="#my-posts"><b>{{ posts|length }}</b><span>게시판 글</span></a>
+    <span><b>{{ comment_count }}</b><span>댓글</span></span>
+  </div>
+
+  <section class="form-panel me-section" id="my-reports">
+    <div class="me-section-head"><h2>내 제보</h2><a class="text-link" href="{{ url_for('report') }}">새 제보하기 →</a></div>
+    {% for c in cases %}
+    <a class="me-row" href="{{ url_for('my_case', case_id=c['id']) }}">
+      <span class="me-row-main"><b>{{ c['subject'] }}</b><span class="meta">{{ c['receipt'] }} · {{ c['category'] }} · {{ c['company'] }} · {{ c['created'][:10]|replace('-', '.') }}{% if not (c['public_consent'] and c['published']) %} · 🔒 비공개{% endif %}</span></span>
+      {{ bar(c['status']) }}
+    </a>
+    {% else %}<p class="me-empty">로그인한 상태로 접수한 제보가 여기에 모여요. 로그인 전에 접수한 제보는 <a href="{{ url_for('lookup') }}">접수번호로 조회</a>할 수 있어요.</p>{% endfor %}
+  </section>
+
+  <section class="form-panel me-section" id="my-posts">
+    <div class="me-section-head"><h2>내가 쓴 글</h2><a class="text-link" href="{{ url_for('board_write') }}">글쓰기 →</a></div>
+    {% for p in posts %}
+    <a class="me-row" href="{{ url_for('board_post', post_id=p['id']) }}">
+      <span class="me-row-main"><b>{{ p['title'] }}</b><span class="meta">{{ p['category'] }} · {{ p['created']|ago }} · 공감 {{ p['likes'] }} · 댓글 {{ p['comments'] }}{% if p['hidden'] %} · 숨김 처리됨{% endif %}</span></span>
+    </a>
+    {% else %}<p class="me-empty">아직 쓴 글이 없어요.</p>{% endfor %}
+  </section>
+
+  <section class="form-panel me-section" id="settings">
+    <h2>회원 정보</h2>
+    <form class="me-form" method="post" action="{{ url_for('mypage_edit') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="email">
+      <div class="field"><label for="m-mail">이메일 <span class="opt-tag">선택</span></label><div class="inline-field"><input id="m-mail" type="email" name="email" maxlength="120" value="{{ g.user['email'] }}" placeholder="비밀번호 분실 시 본인 확인용"><button class="secondary" type="submit">저장</button></div></div>
+    </form>
+    <details class="me-details"><summary>비밀번호 바꾸기</summary>
+      <form class="me-form" method="post" action="{{ url_for('mypage_edit') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="password">
+        <div class="field"><label for="m-cur">지금 비밀번호</label><input id="m-cur" type="password" name="current" required autocomplete="current-password"></div>
+        <div class="member-pw">
+          <div class="field"><label for="m-pw">새 비밀번호</label><input id="m-pw" type="password" name="password" minlength="8" maxlength="64" required autocomplete="new-password" placeholder="영문+숫자 8자 이상"></div>
+          <div class="field"><label for="m-pw2">새 비밀번호 확인</label><input id="m-pw2" type="password" name="password2" minlength="8" maxlength="64" required autocomplete="new-password"></div>
+        </div>
+        <button class="secondary" type="submit">비밀번호 바꾸기</button>
+      </form>
+    </details>
+    <details class="me-details" id="withdraw"><summary>회원 탈퇴</summary>
+      <form class="me-form" method="post" action="{{ url_for('withdraw') }}" onsubmit="return confirm('정말 탈퇴할까요? 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <ul class="me-notice">
+          <li>아이디, 닉네임, 이메일 등 회원 정보는 바로 지워져요.</li>
+          <li>회원으로 접수한 제보는 지워지지 않고, 접수번호와 조회 코드로 계속 확인할 수 있어요.</li>
+          <li>게시판 글·댓글을 남겨 두면 작성자가 "탈퇴한 회원"으로 바뀌고, 더는 직접 지울 수 없어요.</li>
+        </ul>
+        <label class="check"><input type="checkbox" name="delete_posts" checked><span>내가 쓴 게시판 글과 댓글도 함께 지울게요.</span></label>
+        <div class="field"><label for="m-out">비밀번호 확인</label><input id="m-out" type="password" name="password" required autocomplete="current-password"></div>
+        <label class="check"><input type="checkbox" name="confirm" required><span>위 내용을 확인했고 탈퇴합니다.</span></label>
+        <button class="secondary danger" type="submit">탈퇴하기</button>
+      </form>
+    </details>
+  </section>
+</div></main>
+{% endblock %}

@@ -43,7 +43,7 @@
     {% for p in posts %}
     <article class="post-card">
       <a class="post-link" href="{{ url_for('board_post', post_id=p['id']) }}">
-        <div class="post-top">{{ chip(p['category'], categories) }}<span class="post-meta">{{ p['nickname'] }} · {{ p['created']|ago }}</span></div>
+        <div class="post-top">{{ chip(p['category'], categories) }}<span class="post-meta">{% if p['user_id'] %}<span class="member-badge">회원</span>{% endif %}{{ p['nickname'] }} · {{ p['created']|ago }}</span></div>
         <h2>{{ p['title'] }}</h2>
         <p class="post-excerpt">{{ p['excerpt'] }}</p>
       </a>

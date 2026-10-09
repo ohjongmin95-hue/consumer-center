@@ -45,6 +45,7 @@ with conn() as db:
     if 'public_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN public_consent INTEGER NOT NULL DEFAULT 0')
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
+    if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
     db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS site_lists(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
     db.execute("CREATE TABLE IF NOT EXISTS takedown_requests(id INTEGER PRIMARY KEY,requester TEXT NOT NULL,contact TEXT NOT NULL,target TEXT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT '접수',admin_note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
@@ -160,7 +161,8 @@ def protect():
 @app.after_request
 def headers(resp):
     resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
-    if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company')):resp.headers['Cache-Control']='no-store'
+    if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company','/login','/signup','/me')):resp.headers['Cache-Control']='no-store'
+    elif session.get('uid') and 'Cache-Control' not in resp.headers:resp.headers['Cache-Control']='private, no-cache'
     return resp
 def report_rows(where='1=1',args=(),limit=20,offset=0):
     # 모든 제보를 번호·분류·단계·접수일로 보여 주고, 제목은 공개 제보(제보자가 공개 선택, 운영자가 내리지 않음)만 노출.
@@ -245,7 +247,7 @@ app.jinja_env.globals['verification_code']=verification_code
 
 @app.route('/robots.txt')
 def robots_txt():
-    lines=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /reports/latest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
+    lines=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/latest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
     daum=g.content.get('seo.daum_robots','').strip()
     if daum:lines.insert(0,daum if daum.startswith('#') else '#'+daum)
     return app.response_class('\n'.join(lines)+'\n',mimetype='text/plain')
@@ -298,7 +300,7 @@ def report():
     with conn() as db:
         cur=db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,contact,share_company,created) VALUES(?,?,?,?,?,?,?,?,?,?)',(receipt,hashlib.sha256(code.encode()).hexdigest(),data['category'],data['company'],data['subject'],data['description'],data['request_text'],data['contact'],int(bool(request.form.get('share_company'))),datetime.datetime.now().isoformat(timespec='seconds')))
         public=int(request.form.get('visibility')=='public')
-        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=? WHERE id=?',(public,public,int(bool(request.form.get('use_consent'))),cur.lastrowid))
+        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=? WHERE id=?',(public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,cur.lastrowid))
         if file and file.filename:
             stored=secrets.token_hex(20)+suffix;file.save(UPLOAD/stored)
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,secure_filename(file.filename)[:180]))
@@ -310,7 +312,7 @@ def lookup():
     with conn() as db:case=db.execute('SELECT * FROM cases WHERE receipt=?',(receipt,)).fetchone()
     if not case or not hmac.compare_digest(case['lookup_hash'],hashlib.sha256(code.encode()).hexdigest()):
         flash('접수번호 또는 조회 코드가 일치하지 않습니다.');return render_template('lookup.html'),401
-    session.clear();session['case_id']=case['id'];return redirect(url_for('case_detail'))
+    session.pop('case_id',None);session['case_id']=case['id'];return redirect(url_for('case_detail'))
 @app.route('/case',methods=['GET','POST'])
 def case_detail():
     case_id=session.get('case_id')
@@ -329,8 +331,11 @@ def case_detail():
 def admin_login():
     if request.method=='POST':
         stored=os.getenv('ADMIN_PASSWORD_HASH','')
+        if too_many_attempts('admin'):
+            flash('로그인 시도가 너무 많습니다. 10분 뒤 다시 시도해 주세요.');return render_template('admin_login.html'),429
         if stored and check_password_hash(stored,request.form.get('password','')):
             session.clear();session['admin']=True;return redirect(url_for('admin'))
+        note_attempt('admin')
         flash('로그인에 실패했습니다.')
     return render_template('admin_login.html')
 def admin_only(f):
@@ -454,7 +459,7 @@ def admin_file(file_id):
     return send_file(UPLOAD/f['stored'],as_attachment=True,download_name=f['original'])
 @app.route('/admin/logout',methods=['POST'])
 @admin_only
-def logout():session.clear();return redirect(url_for('home'))
+def logout():session.pop('admin',None);return redirect(url_for('home'))
 
 @app.route('/admin/invite/<int:case_id>',methods=['POST'])
 @admin_only
@@ -498,9 +503,12 @@ with conn() as db:
     db.execute('''CREATE TABLE IF NOT EXISTS comments(id INTEGER PRIMARY KEY,post_id INTEGER NOT NULL,nickname TEXT NOT NULL,pw_hash TEXT NOT NULL,body TEXT NOT NULL,ip_hash TEXT NOT NULL,created TEXT NOT NULL,hidden INTEGER NOT NULL DEFAULT 0,flags INTEGER NOT NULL DEFAULT 0,FOREIGN KEY(post_id) REFERENCES posts(id))''')
     db.execute('CREATE TABLE IF NOT EXISTS board_votes(kind TEXT NOT NULL,target TEXT NOT NULL,voter TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(kind,target,voter))')
     db.execute('CREATE INDEX IF NOT EXISTS comments_post ON comments(post_id)')
+    for table in ('posts','comments'):
+        if 'user_id' not in {r['name'] for r in db.execute(f'PRAGMA table_info({table})')}:db.execute(f'ALTER TABLE {table} ADD COLUMN user_id INTEGER')
 
 def board_enabled():return os.getenv('ENABLE_BOARD')=='1'
 def voter_id():
+    if g.get('user'):return hashlib.sha256(('member:%d'%g.user['id']).encode()).hexdigest()  # 회원은 기기가 달라도 공감 1회
     if 'voter' not in session:session['voter']=secrets.token_urlsafe(16)
     return hashlib.sha256(session['voter'].encode()).hexdigest()
 def ip_hash():
@@ -539,7 +547,7 @@ def board():
     order='likes DESC,id DESC' if sort=='top' else 'id DESC'
     with conn() as db:
         total=db.execute('SELECT COUNT(*) FROM posts WHERE '+' AND '.join(where),args).fetchone()[0]
-        posts=db.execute('SELECT id,category,nickname,title,substr(body,1,160) AS excerpt,likes,comments,created FROM posts WHERE '+' AND '.join(where)+f' ORDER BY {order} LIMIT ? OFFSET ?',args+[BOARD_PAGE_SIZE,(page-1)*BOARD_PAGE_SIZE]).fetchall()
+        posts=db.execute('SELECT id,category,nickname,user_id,title,substr(body,1,160) AS excerpt,likes,comments,created FROM posts WHERE '+' AND '.join(where)+f' ORDER BY {order} LIMIT ? OFFSET ?',args+[BOARD_PAGE_SIZE,(page-1)*BOARD_PAGE_SIZE]).fetchall()
         week_ago=(datetime.datetime.now()-datetime.timedelta(days=7)).isoformat(timespec='seconds')
         hot=db.execute('SELECT id,category,title,likes,comments FROM posts WHERE hidden=0 AND likes>0 AND created>=? ORDER BY likes DESC,id DESC LIMIT 3',(week_ago,)).fetchall() if not (q or cat or page>1) else []
         liked={r['target'] for r in db.execute("SELECT target FROM board_votes WHERE kind='like' AND voter=?",(voter_id(),))}
@@ -550,6 +558,7 @@ def board_write():
     if request.method=='POST':
         if not board_enabled():abort(503,description='게시판 글쓰기 준비 중입니다.')
         f={k:request.form.get(k,'').strip() for k in ('category','nickname','password','title','body')}
+        if g.user:f['nickname']=g.user['nickname'];f['password']='member'  # 회원은 로그인 정보로 쓰고 지움
         errors=[]
         if request.form.get('website'):abort(400)  # 사람에게는 보이지 않는 칸. 채워져 있으면 자동 등록 프로그램.
         if f['category'] not in board_categories():errors.append('분류를 골라 주세요.')
@@ -563,7 +572,7 @@ def board_write():
             if errors:
                 for e in errors:flash(e)
                 return render_template('board_write.html',categories=board_categories(),enabled=True),400
-            cur=db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created) VALUES(?,?,?,?,?,?,?)',(f['category'],f['nickname'],generate_password_hash(f['password']),f['title'],f['body'],ip_hash(),datetime.datetime.now().isoformat(timespec='seconds')))
+            cur=db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id) VALUES(?,?,?,?,?,?,?,?)',(f['category'],f['nickname'],'' if g.user else generate_password_hash(f['password']),f['title'],f['body'],ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None))
         return redirect(url_for('board_post',post_id=cur.lastrowid))
     return render_template('board_write.html',categories=board_categories(),enabled=board_enabled())
 
@@ -572,7 +581,7 @@ def board_post(post_id):
     with conn() as db:
         post=db.execute('SELECT * FROM posts WHERE id=?',(post_id,)).fetchone()
         if not post or (post['hidden'] and not session.get('admin')):abort(404)
-        comments=db.execute('SELECT id,nickname,body,created FROM comments WHERE post_id=? AND hidden=0 ORDER BY id',(post_id,)).fetchall()
+        comments=db.execute('SELECT id,nickname,body,created,user_id FROM comments WHERE post_id=? AND hidden=0 ORDER BY id',(post_id,)).fetchall()
         mine={r['kind']+r['target'] for r in db.execute('SELECT kind,target FROM board_votes WHERE voter=?',(voter_id(),))}
     return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled())
 
@@ -592,13 +601,14 @@ def board_comment(post_id):
     if not board_enabled():abort(503)
     if request.form.get('website'):abort(400)
     nickname=request.form.get('nickname','').strip();password=request.form.get('password','');body=request.form.get('body','').strip()
+    if g.user:nickname=g.user['nickname'];password='member'
     with conn() as db:
         if not db.execute('SELECT 1 FROM posts WHERE id=? AND hidden=0',(post_id,)).fetchone():abort(404)
         if not (2<=len(nickname)<=20 and 4<=len(password)<=30 and 1<=len(body)<=1000):
             flash('닉네임(2~20자), 비밀번호(4~30자), 댓글(1,000자 이내)을 확인해 주세요.');return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
         if recent_count(db,'comments',2)>=5:
             flash('잠시 후 다시 남겨 주세요.');return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
-        db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created) VALUES(?,?,?,?,?,?)',(post_id,nickname,generate_password_hash(password),body,ip_hash(),datetime.datetime.now().isoformat(timespec='seconds')))
+        db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,?,?,?,?,?,?)',(post_id,nickname,'' if g.user else generate_password_hash(password),body,ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None))
         refresh_comment_count(db,post_id)
     return redirect(url_for('board_post',post_id=post_id)+'#comments')
 
@@ -626,7 +636,8 @@ def board_delete(kind,item_id):
         item=db.execute('SELECT * FROM %s WHERE id=?'%('posts' if kind=='p' else 'comments'),(item_id,)).fetchone()
         if not item:abort(404)
         post_id=item_id if kind=='p' else item['post_id']
-        if not check_password_hash(item['pw_hash'],request.form.get('password','')):
+        own=g.user and item['user_id']==g.user['id']
+        if not own and not (item['pw_hash'] and check_password_hash(item['pw_hash'],request.form.get('password',''))):
             flash('비밀번호가 맞지 않아요.');return redirect(url_for('board_post',post_id=post_id))
         delete_board_item(db,kind,item_id)
     flash('삭제했어요.')
@@ -665,5 +676,200 @@ def admin_board():
         posts=db.execute(f'SELECT id,category,nickname,title,body,created,hidden,likes,comments,flags FROM posts {cond} ORDER BY flags DESC,id DESC LIMIT 200').fetchall()
         comments=db.execute(f'SELECT c.id,c.post_id,c.nickname,c.body,c.created,c.hidden,c.flags,p.title FROM comments c JOIN posts p ON p.id=c.post_id {cond.replace("flags","c.flags").replace("hidden","c.hidden")} ORDER BY c.flags DESC,c.id DESC LIMIT 200').fetchall()
     return render_template('admin_board.html',posts=posts,comments=comments,flagged=flagged,threshold=FLAG_HIDE_THRESHOLD)
+
+# ---- 회원 ------------------------------------------------------------------
+# 아이디·비밀번호 회원가입. 제보와 게시판은 비회원도 그대로 쓸 수 있고, 회원은 내 정보에서 모아 봄.
+# 수집은 최소한으로: 아이디, 비밀번호(암호화), 닉네임, 이메일(선택). 탈퇴하면 바로 지움.
+TERMS_VERSION='2026-10-09'
+LOGIN_LOCK_FAILS=5        # 같은 아이디로 이만큼 틀리면 잠시 잠금
+LOGIN_LOCK_MINUTES=10
+IP_ATTEMPT_LIMIT=20       # 같은 접속지에서 10분 동안 실패 허용 횟수 (회원·관리자 공통)
+app.config['PERMANENT_SESSION_LIFETIME']=datetime.timedelta(days=14)
+LOGIN_ID_RE=re.compile(r'^[a-z0-9_]{4,20}$')
+MEMBER_EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+with conn() as db:
+    db.execute('''CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,login_id TEXT NOT NULL UNIQUE COLLATE NOCASE,pw_hash TEXT NOT NULL,nickname TEXT NOT NULL UNIQUE COLLATE NOCASE,email TEXT NOT NULL DEFAULT '',terms_version TEXT NOT NULL,agreed_at TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active',session_ver INTEGER NOT NULL DEFAULT 1,failed INTEGER NOT NULL DEFAULT 0,locked_until TEXT NOT NULL DEFAULT '',last_login TEXT NOT NULL DEFAULT '',ip_hash TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
+    db.execute('CREATE TABLE IF NOT EXISTS login_attempts(kind TEXT NOT NULL,ip_hash TEXT NOT NULL,created TEXT NOT NULL)')
+    db.execute('CREATE INDEX IF NOT EXISTS login_attempts_ip ON login_attempts(ip_hash,created)')
+
+def members_enabled():return bool(os.getenv('SECRET_KEY'))  # 서버 비밀키가 있어야 로그인 쿠키를 안전하게 씀
+def now():return datetime.datetime.now().isoformat(timespec='seconds')
+def too_many_attempts(kind):
+    since=(datetime.datetime.now()-datetime.timedelta(minutes=10)).isoformat(timespec='seconds')
+    with conn() as db:
+        db.execute('DELETE FROM login_attempts WHERE created<?',(since,))
+        return db.execute('SELECT COUNT(*) FROM login_attempts WHERE kind=? AND ip_hash=? AND created>=?',(kind,ip_hash(),since)).fetchone()[0]>=IP_ATTEMPT_LIMIT
+def note_attempt(kind):
+    with conn() as db:db.execute('INSERT INTO login_attempts(kind,ip_hash,created) VALUES(?,?,?)',(kind,ip_hash(),now()))
+
+@app.before_request
+def load_user():
+    g.user=None
+    uid=session.get('uid')
+    if not uid:return
+    with conn() as db:user=db.execute('SELECT * FROM users WHERE id=?',(uid,)).fetchone()
+    # 탈퇴·정지·비밀번호 변경 뒤에는 예전 로그인 쿠키를 무효로 함.
+    if not user or user['status']!='active' or user['session_ver']!=session.get('uv'):
+        session.pop('uid',None);session.pop('uv',None);return
+    g.user=user
+def member_only(f):
+    @functools.wraps(f)
+    def wrapped(*a,**kw):
+        if not g.user:return redirect(url_for('login',next=request.full_path.rstrip('?')))
+        return f(*a,**kw)
+    return wrapped
+def safe_next(default='home'):
+    nxt=request.values.get('next','')
+    return nxt if nxt.startswith('/') and not nxt.startswith('//') and '\\' not in nxt else url_for(default)
+def sign_in(user,remember):
+    keep={k:session[k] for k in ('admin','voter') if k in session}
+    session.clear();session.update(keep)
+    session['uid']=user['id'];session['uv']=user['session_ver'];session.permanent=bool(remember)
+
+@app.route('/signup',methods=['GET','POST'])
+def signup():
+    if g.user:return redirect(url_for('mypage'))
+    if request.method=='GET':return render_template('signup.html',enabled=members_enabled())
+    if not members_enabled():abort(503,description='회원가입 준비 중입니다.')
+    if request.form.get('website'):abort(400)
+    f={k:request.form.get(k,'').strip() for k in ('login_id','nickname','email')}
+    f['login_id']=f['login_id'].lower();pw=request.form.get('password','');pw2=request.form.get('password2','')
+    errors=[]
+    if not all(request.form.get(k) for k in ('agree_terms','agree_privacy','agree_age')):errors.append('필수 동의 항목을 모두 확인해 주세요.')
+    if not LOGIN_ID_RE.match(f['login_id']):errors.append('아이디는 영문 소문자·숫자·밑줄(_)로 4~20자로 정해 주세요.')
+    if not (8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):errors.append('비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
+    elif pw!=pw2:errors.append('비밀번호 확인이 일치하지 않아요.')
+    elif f['login_id'] and f['login_id'] in pw.lower():errors.append('비밀번호에 아이디를 넣지 말아 주세요.')
+    if not 2<=len(f['nickname'])<=12 or not re.match(r'^[0-9A-Za-z가-힣_]+$',f['nickname']):errors.append('닉네임은 한글·영문·숫자로 2~12자로 정해 주세요.')
+    elif f['nickname'] in ('운영자','관리자','탈퇴한회원') or '운영' in f['nickname'] or '관리자' in f['nickname']:errors.append('사용할 수 없는 닉네임이에요.')
+    if f['email'] and (len(f['email'])>120 or not MEMBER_EMAIL_RE.match(f['email'])):errors.append('이메일 주소를 확인해 주세요.')
+    with conn() as db:
+        if not errors:
+            if db.execute('SELECT 1 FROM users WHERE login_id=?',(f['login_id'],)).fetchone():errors.append('이미 쓰고 있는 아이디예요.')
+            if db.execute('SELECT 1 FROM users WHERE nickname=?',(f['nickname'],)).fetchone():errors.append('이미 쓰고 있는 닉네임이에요.')
+        if not errors:
+            hour_ago=(datetime.datetime.now()-datetime.timedelta(hours=1)).isoformat(timespec='seconds')
+            if db.execute('SELECT COUNT(*) FROM users WHERE ip_hash=? AND created>=?',(ip_hash(),hour_ago)).fetchone()[0]>=3:errors.append('잠시 후 다시 가입해 주세요.')
+        if errors:
+            for e in errors:flash(e)
+            return render_template('signup.html',enabled=True),400
+        cur=db.execute('INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created) VALUES(?,?,?,?,?,?,?,?)',(f['login_id'],generate_password_hash(pw),f['nickname'],f['email'],TERMS_VERSION,now(),ip_hash(),now()))
+        user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
+    sign_in(user,False)
+    flash(f"{user['nickname']}님, 가입을 환영해요!")
+    return redirect(url_for('mypage'))
+
+@app.route('/login',methods=['GET','POST'])
+def login():
+    if g.user:return redirect(safe_next())
+    if request.method=='GET':return render_template('login.html',enabled=members_enabled())
+    if not members_enabled():abort(503)
+    login_id=request.form.get('login_id','').strip().lower()[:40];pw=request.form.get('password','')
+    fail='아이디 또는 비밀번호가 맞지 않아요.'
+    if too_many_attempts('member'):
+        flash('로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.');return render_template('login.html',enabled=True),429
+    with conn() as db:
+        user=db.execute('SELECT * FROM users WHERE login_id=?',(login_id,)).fetchone()
+        if user and user['locked_until'] and user['locked_until']>now():
+            flash(f'비밀번호를 여러 번 틀려 잠시 잠겼어요. {LOGIN_LOCK_MINUTES}분 뒤 다시 시도해 주세요.');return render_template('login.html',enabled=True),429
+        if not user or not check_password_hash(user['pw_hash'],pw):
+            if user:
+                failed=user['failed']+1
+                lock=(datetime.datetime.now()+datetime.timedelta(minutes=LOGIN_LOCK_MINUTES)).isoformat(timespec='seconds') if failed>=LOGIN_LOCK_FAILS else ''
+                db.execute('UPDATE users SET failed=?,locked_until=? WHERE id=?',(0 if lock else failed,lock,user['id']))
+            failed_login=True
+        else:failed_login=False
+        if not failed_login and user['status']!='active':
+            flash('이용이 제한된 계정이에요. 운영자에게 문의해 주세요.');return render_template('login.html',enabled=True),403
+        if not failed_login:db.execute("UPDATE users SET failed=0,locked_until='',last_login=? WHERE id=?",(now(),user['id']))
+    if failed_login:
+        note_attempt('member');flash(fail);return render_template('login.html',enabled=True),401
+    sign_in(user,request.form.get('remember'))
+    return redirect(safe_next())
+
+@app.route('/logout',methods=['POST'])
+def member_logout():
+    session.pop('uid',None);session.pop('uv',None);session.pop('case_id',None)
+    flash('로그아웃했어요.')
+    return redirect(url_for('home'))
+
+@app.route('/me')
+@member_only
+def mypage():
+    with conn() as db:
+        cases=db.execute('SELECT id,receipt,category,company,subject,status,created,public_consent,published FROM cases WHERE user_id=? ORDER BY id DESC LIMIT 100',(g.user['id'],)).fetchall()
+        posts=db.execute('SELECT id,category,title,likes,comments,created,hidden FROM posts WHERE user_id=? ORDER BY id DESC LIMIT 50',(g.user['id'],)).fetchall()
+        comment_count=db.execute('SELECT COUNT(*) FROM comments WHERE user_id=?',(g.user['id'],)).fetchone()[0]
+    return render_template('mypage.html',cases=cases,posts=posts,comment_count=comment_count)
+
+@app.route('/me/case/<int:case_id>')
+@member_only
+def my_case(case_id):
+    with conn() as db:
+        if not db.execute('SELECT 1 FROM cases WHERE id=? AND user_id=?',(case_id,g.user['id'])).fetchone():abort(404)
+    session['case_id']=case_id
+    return redirect(url_for('case_detail'))
+
+@app.route('/me/edit',methods=['POST'])
+@member_only
+def mypage_edit():
+    action=request.form.get('action')
+    with conn() as db:
+        if action=='email':
+            email=request.form.get('email','').strip()
+            if email and (len(email)>120 or not MEMBER_EMAIL_RE.match(email)):flash('이메일 주소를 확인해 주세요.')
+            else:db.execute('UPDATE users SET email=? WHERE id=?',(email,g.user['id']));flash('이메일을 저장했어요.' if email else '이메일을 지웠어요.')
+        elif action=='password':
+            cur_pw=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
+            if not check_password_hash(g.user['pw_hash'],cur_pw):flash('지금 비밀번호가 맞지 않아요.')
+            elif not (8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):flash('새 비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
+            elif pw!=pw2:flash('새 비밀번호 확인이 일치하지 않아요.')
+            else:
+                # 다른 기기에 남은 로그인은 끊고, 지금 화면은 그대로 로그인 유지.
+                db.execute('UPDATE users SET pw_hash=?,session_ver=session_ver+1 WHERE id=?',(generate_password_hash(pw),g.user['id']))
+                session['uv']=g.user['session_ver']+1;flash('비밀번호를 바꿨어요. 다른 기기에서는 다시 로그인해야 해요.')
+        else:abort(400)
+    return redirect(url_for('mypage')+'#settings')
+
+@app.route('/me/withdraw',methods=['POST'])
+@member_only
+def withdraw():
+    if not check_password_hash(g.user['pw_hash'],request.form.get('password','')) or not request.form.get('confirm'):
+        flash('비밀번호와 탈퇴 확인을 다시 확인해 주세요.');return redirect(url_for('mypage')+'#withdraw')
+    with conn() as db:delete_member(db,g.user['id'],bool(request.form.get('delete_posts')))
+    session.pop('uid',None);session.pop('uv',None);session.pop('case_id',None)
+    flash('탈퇴를 마쳤어요. 그동안 함께해 주셔서 고마워요.')
+    return redirect(url_for('home'))
+
+def delete_member(db,uid,delete_posts):
+    # 회원 정보는 바로 지움. 제보는 접수번호·조회 코드로 계속 확인할 수 있도록 회원 연결만 끊음.
+    if delete_posts:
+        for r in db.execute('SELECT id FROM comments WHERE user_id=?',(uid,)).fetchall():delete_board_item(db,'c',r['id'])
+        for r in db.execute('SELECT id FROM posts WHERE user_id=?',(uid,)).fetchall():delete_board_item(db,'p',r['id'])
+    else:
+        for table in ('posts','comments'):db.execute(f"UPDATE {table} SET user_id=NULL,nickname='탈퇴한 회원' WHERE user_id=?",(uid,))
+    db.execute('DELETE FROM board_votes WHERE voter=?',(hashlib.sha256(('member:%d'%uid).encode()).hexdigest(),))
+    db.execute('UPDATE cases SET user_id=NULL WHERE user_id=?',(uid,))
+    db.execute('DELETE FROM users WHERE id=?',(uid,))
+
+@app.route('/admin/members',methods=['GET','POST'])
+@admin_only
+def admin_members():
+    with conn() as db:
+        if request.method=='POST':
+            uid=request.form.get('id',type=int);action=request.form.get('action')
+            if not uid or action not in ('suspend','restore','delete'):abort(400)
+            if not db.execute('SELECT 1 FROM users WHERE id=?',(uid,)).fetchone():abort(404)
+            if action=='delete':delete_member(db,uid,bool(request.form.get('delete_posts')))
+            else:db.execute('UPDATE users SET status=?,session_ver=session_ver+1 WHERE id=?',('suspended' if action=='suspend' else 'active',uid))
+            flash({'suspend':'이용을 정지했어요.','restore':'정지를 풀었어요.','delete':'회원을 삭제했어요.'}[action])
+            return redirect(url_for('admin_members',q=request.args.get('q','')))
+        q=request.args.get('q','').strip()[:40]
+        like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
+        members=db.execute("""SELECT u.id,u.login_id,u.nickname,u.email,u.status,u.created,u.last_login,
+            (SELECT COUNT(*) FROM cases WHERE user_id=u.id) AS n_cases,(SELECT COUNT(*) FROM posts WHERE user_id=u.id) AS n_posts
+            FROM users u WHERE u.login_id LIKE ? ESCAPE '\\' OR u.nickname LIKE ? ESCAPE '\\' ORDER BY u.id DESC LIMIT 300""",(like,like)).fetchall()
+        total=db.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+    return render_template('admin_members.html',members=members,q=q,total=total)
 
 if __name__=='__main__':app.run(debug=False)

@@ -42,7 +42,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts'):
+            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts'):
                 db.execute('DELETE FROM ' + table)
 
     def csrf(self, client, path):
@@ -173,7 +173,7 @@ class SiteTest(unittest.TestCase):
             self.assertIn(link, home)
         privacy = self.client.get('/privacy').get_data(as_text=True)
         self.assertIn('<h2 id="sec-1">1. 개인정보의 처리 목적</h2>', privacy)
-        self.assertIn('<a href="#sec-12">12. 개인정보 처리방침의 변경</a>', privacy)
+        self.assertIn('<a href="#sec-13">13. 개인정보 처리방침의 변경</a>', privacy)
         self.assertIn('소보루(이하', privacy)  # {운영자} placeholder filled from operator info
         token = self.csrf(self.client, '/report')
         missing_truth = self.client.post('/report', data={'_csrf': token, 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'request_text': 'D', 'consent': 'on'})
@@ -478,6 +478,102 @@ class SiteTest(unittest.TestCase):
         admin = self.login_admin()
         admin.post('/admin/lists', data={'_csrf': self.csrf(admin, '/admin/lists'), 'list': 'sample_reports', 'title': [''], 'category': [''], 'company': [''], 'status': ['']})
         self.assertNotIn('is-sample', self.client.get('/').get_data(as_text=True))
+
+    def signup(self, client, login_id='sobo_ru', nickname='소보루', password='butter123', **extra):
+        data = {'login_id': login_id, 'password': password, 'password2': password, 'nickname': nickname,
+                'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on', **extra}
+        return self.post_form(client, '/signup', data)
+
+    def test_signup_requires_consents_and_valid_fields(self):
+        page = self.client.get('/signup').get_data(as_text=True)
+        for text in ('이용약관', '개인정보 수집·이용', '만 14세 이상', '회원 탈퇴 시 즉시 파기', 'data-check-all'):
+            self.assertIn(text, page)
+        self.assertIn('>회원가입</a>', self.client.get('/').get_data(as_text=True))
+        missing = self.signup(self.client, agree_age='')
+        self.assertEqual(missing.status_code, 400)
+        self.assertIn('필수 동의 항목', missing.get_data(as_text=True))
+        weak = self.signup(self.client, password='12345678')
+        self.assertIn('영문과 숫자를 섞어', weak.get_data(as_text=True))
+        self.assertIn('사용할 수 없는 닉네임', self.signup(self.client, nickname='운영자').get_data(as_text=True))
+        made = self.signup(self.client)
+        self.assertEqual(made.status_code, 302)
+        with self.site.conn() as db:
+            user = db.execute('SELECT * FROM users').fetchone()
+        self.assertNotEqual(user['pw_hash'], 'butter123')
+        self.assertEqual(user['terms_version'], self.site.TERMS_VERSION)
+        me = self.client.get('/me').get_data(as_text=True)
+        self.assertIn('소보루님', me)
+        other = self.site.app.test_client()
+        dup = self.signup(other, login_id='SOBO_RU', nickname='다른이름')
+        self.assertIn('이미 쓰고 있는 아이디', dup.get_data(as_text=True))
+        self.assertIn('이미 쓰고 있는 닉네임', self.signup(other, login_id='another', nickname='소보루').get_data(as_text=True))
+
+    def test_login_lock_mypage_and_withdraw(self):
+        self.signup(self.site.app.test_client())
+        self.assertEqual(self.client.get('/me').status_code, 302)
+        for _ in range(self.site.LOGIN_LOCK_FAILS):
+            bad = self.post_form(self.client, '/login', {'login_id': 'sobo_ru', 'password': 'wrong-pass1'})
+            self.assertEqual(bad.status_code, 401)
+        locked = self.post_form(self.client, '/login', {'login_id': 'sobo_ru', 'password': 'butter123'})
+        self.assertEqual(locked.status_code, 429)
+        with self.site.conn() as db:
+            db.execute("UPDATE users SET locked_until=''")
+            db.execute('DELETE FROM login_attempts')
+        ok = self.post_form(self.client, '/login?next=/report', {'login_id': 'sobo_ru', 'password': 'butter123', 'next': '/report'})
+        self.assertEqual(ok.headers['Location'], '/report')
+        evil = self.site.app.test_client()
+        self.signup(evil, login_id='evil_one', nickname='다른사람')
+        # 회원으로 제보하면 내 정보에 모이고, 다른 회원은 열 수 없음
+        report = self.post_form(self.client, '/report', {'category': '배송·환불', 'company': '테스트몰', 'subject': '회원 제보', 'description': '배송이 오지 않았어요.', 'request_text': '환불', 'consent': 'on', 'truth': 'on', 'visibility': 'secret'})
+        self.assertEqual(report.status_code, 200)
+        with self.site.conn() as db:
+            case_id = db.execute("SELECT id FROM cases WHERE subject='회원 제보'").fetchone()['id']
+        me = self.client.get('/me').get_data(as_text=True)
+        self.assertIn('회원 제보', me)
+        self.assertEqual(evil.get(f'/me/case/{case_id}').status_code, 404)
+        self.assertEqual(self.client.get(f'/me/case/{case_id}').headers['Location'], '/case')
+        self.assertIn('회원 제보', self.client.get('/case').get_data(as_text=True))
+        # 회원 글은 비밀번호 없이 쓰고, 본인만 지울 수 있음
+        made = self.post_form(self.client, '/board/write', {'category': '꿀팁', 'title': '회원 글이에요', 'body': '회원으로 쓰는 글입니다. 반가워요.', 'agree': 'on'})
+        post_id = int(made.headers['Location'].rstrip('/').split('/')[-1])
+        page = self.client.get(f'/board/{post_id}').get_data(as_text=True)
+        self.assertIn('<span class="member-badge">회원</span>소보루', page)
+        token = self.csrf(evil, f'/board/{post_id}')
+        evil.post(f'/board/delete/p/{post_id}', data={'_csrf': token, 'password': ''})
+        with self.site.conn() as db:
+            self.assertIsNotNone(db.execute('SELECT 1 FROM posts WHERE id=?', (post_id,)).fetchone())
+        # 비밀번호를 바꾸면 다른 기기 로그인은 끊김
+        second = self.site.app.test_client()
+        self.post_form(second, '/login', {'login_id': 'sobo_ru', 'password': 'butter123'})
+        self.assertEqual(second.get('/me').status_code, 200)
+        token = self.csrf(self.client, '/me')
+        self.client.post('/me/edit', data={'_csrf': token, 'action': 'password', 'current': 'butter123', 'password': 'newbutter45', 'password2': 'newbutter45'})
+        self.assertEqual(self.client.get('/me').status_code, 200)
+        self.assertEqual(second.get('/me').status_code, 302)
+        # 탈퇴: 회원 정보 삭제, 남긴 글은 "탈퇴한 회원", 제보는 연결만 끊김
+        token = self.csrf(self.client, '/me')
+        out = self.client.post('/me/withdraw', data={'_csrf': token, 'password': 'newbutter45', 'confirm': 'on'})
+        self.assertEqual(out.status_code, 302)
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute("SELECT 1 FROM users WHERE login_id='sobo_ru'").fetchone())
+            self.assertEqual(db.execute('SELECT nickname FROM posts WHERE id=?', (post_id,)).fetchone()['nickname'], '탈퇴한 회원')
+            self.assertIsNone(db.execute('SELECT user_id FROM cases WHERE id=?', (case_id,)).fetchone()['user_id'])
+        self.assertIn('>로그인</a>', self.client.get('/').get_data(as_text=True))
+
+    def test_admin_can_suspend_members(self):
+        member = self.site.app.test_client()
+        self.signup(member)
+        self.assertEqual(member.get('/me').status_code, 200)
+        self.post_form(self.client, '/admin/login', {'password': self.password})
+        listing = self.client.get('/admin/members').get_data(as_text=True)
+        self.assertIn('sobo_ru', listing)
+        with self.site.conn() as db:
+            uid = db.execute('SELECT id FROM users').fetchone()['id']
+        token = self.csrf(self.client, '/admin/members')
+        self.client.post('/admin/members', data={'_csrf': token, 'id': uid, 'action': 'suspend'})
+        self.assertEqual(member.get('/me').status_code, 302)
+        blocked = self.post_form(member, '/login', {'login_id': 'sobo_ru', 'password': 'butter123'})
+        self.assertEqual(blocked.status_code, 403)
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)

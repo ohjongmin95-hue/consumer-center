@@ -12,6 +12,8 @@
   </details>
   {% endif %}
 
+  {% if g.user %}<p class="member-strip"><span class="member-badge">회원</span><b>{{ g.user['nickname'] }}</b>님으로 접수돼요. 접수한 제보는 <a href="{{ url_for('mypage') }}">내 정보</a>에서 바로 볼 수 있어요.</p>
+  {% else %}<p class="member-strip">비회원도 제보할 수 있어요. <a href="{{ url_for('login', next=url_for('report')) }}">로그인</a>하면 내 제보를 접수번호 없이 내 정보에서 모아 볼 수 있어요.</p>{% endif %}
   <div class="form-panel">
     <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <div class="field"><label for="r-category">제보 유형 <small>*</small></label><select id="r-category" name="category" required><option value="">선택해 주세요</option>{% for x in categories %}<option {% if request.form.get('category', request.args.get('category')) == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>

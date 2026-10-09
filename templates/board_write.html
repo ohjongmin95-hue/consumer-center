@@ -10,16 +10,20 @@
     <fieldset class="field cat-pick"><legend>분류</legend>
       {% for c in categories %}<label class="cat-radio"><input type="radio" name="category" value="{{ c }}" required{% if request.form.get('category', categories[0]) == c %} checked{% endif %}><span class="cat-chip cat-{{ loop.index0 % 5 }}">{{ c }}</span></label>{% endfor %}
     </fieldset>
+    {% if g.user %}
+    <p class="member-writer"><span class="member-badge">회원</span><b>{{ g.user['nickname'] }}</b> 이름으로 올라가요. 내 정보에서 모아 보고, 비밀번호 없이 지울 수 있어요.</p>
+    {% else %}
     <div class="write-ids">
       <div class="field"><label for="w-nick">닉네임</label><input id="w-nick" name="nickname" maxlength="20" required placeholder="2~20자" value="{{ request.form.get('nickname','') }}"></div>
-      <div class="field"><label for="w-pw">삭제용 비밀번호</label><input id="w-pw" type="password" name="password" maxlength="30" required placeholder="4~30자"><p class="hint">나중에 글을 지울 때 필요해요.</p></div>
+      <div class="field"><label for="w-pw">삭제용 비밀번호</label><input id="w-pw" type="password" name="password" maxlength="30" required placeholder="4~30자"><p class="hint">나중에 글을 지울 때 필요해요. <a href="{{ url_for('login', next=url_for('board_write')) }}">로그인</a>하면 비밀번호 없이 쓸 수 있어요.</p></div>
     </div>
+    {% endif %}
     <div class="field"><label for="w-title">제목</label><input id="w-title" name="title" maxlength="100" required placeholder="어떤 일이 있었는지 한 줄로" value="{{ request.form.get('title','') }}"></div>
     <div class="field"><label for="w-body">내용</label><textarea id="w-body" name="body" maxlength="5000" required placeholder="언제, 어떤 상품이나 서비스에서, 어떤 일이 있었는지 편하게 적어 주세요. 비슷한 일을 겪는 분들에게 큰 도움이 돼요.">{{ request.form.get('body','') }}</textarea></div>
     {% if txt('board.rules') %}
     <div class="board-rules"><h2>글쓰기 약속</h2><ul>{% for line in g.content['board.rules'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul></div>
     {% endif %}
-    <label class="check"><input type="checkbox" name="agree" required><span><b>[필수]</b> 글쓰기 약속과 <a class="consent-link" href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">이용약관</a>을 지키고, 닉네임·비밀번호(암호화 저장)·글 내용 수집에 동의합니다. <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">개인정보 처리방침 ↗</a></span></label>
+    <label class="check"><input type="checkbox" name="agree" required><span><b>[필수]</b> 글쓰기 약속과 <a class="consent-link" href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">이용약관</a>을 지키고, {% if g.user %}글 내용 게시{% else %}닉네임·비밀번호(암호화 저장)·글 내용 수집{% endif %}에 동의합니다. <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">개인정보 처리방침 ↗</a></span></label>
     <button class="primary" type="submit"{% if not enabled %} disabled{% endif %} style="width:100%;margin-top:14px">올리기</button>
   </form>
 </main>
