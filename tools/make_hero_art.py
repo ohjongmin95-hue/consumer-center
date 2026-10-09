@@ -1,180 +1,265 @@
 """메인 화면 양옆 일러스트(static/img/hero-left.svg, hero-right.svg)를 만든다.
 
 사용법: python tools/make_hero_art.py  (저장소 루트에서 실행)
-사람·소품 모양을 바꾸려면 아래 함수를 고친 뒤 다시 실행하면 된다.
+그림체: 상반신 위주로 모여 선 사람들, 피부는 흰 면 + 가는 남색 선, 옷·머리는 단색 면.
+왼쪽은 피해(파손 상자·영수증·환불 거절), 오른쪽은 제보와 해결(확성기·제보 봉투·상담원).
 """
 from pathlib import Path
 
-SKIN = ['#f6c9a8', '#eab48f', '#f9d6bd', '#d99c76', '#f3c1a0']
-INK = '#2b3a55'
+LINE = '#2b3a55'
+ORANGE, APRICOT, SAGE, NAVY, CREAM, HAIR, HAIR2, WHITE = '#ef7300', '#ffc48f', '#8dbf9e', '#2b3a55', '#fff1e3', '#262a36', '#6b3f2a', '#ffffff'
 
 
-def legs(pants, shoe='#1e2a40', skirt=None):
-    if skirt:
-        return (f'<rect x="-17" y="-70" width="13" height="70" rx="6" fill="{SKIN[2]}"/>'
-                f'<rect x="4" y="-70" width="13" height="70" rx="6" fill="{SKIN[2]}"/>'
-                f'<path d="M-34 -100 L34 -100 L42 -58 Q0 -50 -42 -58 Z" fill="{skirt}"/>'
-                f'<ellipse cx="-11" cy="-3" rx="13" ry="6" fill="{shoe}"/><ellipse cx="11" cy="-3" rx="13" ry="6" fill="{shoe}"/>')
-    return (f'<rect x="-21" y="-100" width="18" height="100" rx="9" fill="{pants}"/>'
-            f'<rect x="3" y="-100" width="18" height="100" rx="9" fill="{pants}"/>'
-            f'<ellipse cx="-13" cy="-3" rx="14" ry="6" fill="{shoe}"/><ellipse cx="13" cy="-3" rx="14" ry="6" fill="{shoe}"/>')
+def p(d, fill='none', stroke=None, w=0, extra=''):
+    s = f' stroke="{stroke}" stroke-width="{w}" stroke-linecap="round" stroke-linejoin="round"' if stroke else ''
+    return f'<path d="{d}" fill="{fill}"{s}{extra}/>'
 
 
-def torso(color):
-    return f'<path d="M-36 -178 Q-38 -206 -14 -210 L14 -210 Q38 -206 36 -178 L32 -98 Q0 -92 -32 -98 Z" fill="{color}"/>'
+def poly(pts):
+    return 'M' + ' L'.join(f'{x} {y}' for x, y in pts)
 
 
-def arm(d, color, hand, skin):
-    x, y = hand
-    return (f'<path d="{d}" fill="none" stroke="{color}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>'
-            f'<circle cx="{x}" cy="{y}" r="8" fill="{skin}"/>')
+def tube(pts, w, fill=WHITE):
+    """선으로 테두리를 두른 굵은 팔 (흰 피부 + 가는 외곽선)."""
+    d = poly(pts)
+    return p(d, stroke=LINE, w=w + 3.6) + p(d, stroke=fill, w=w)
 
 
-def head(skin, hair_back='', hair_front='', glasses=False, mood='smile'):
-    face = (f'<circle cx="-9" cy="-246" r="2.8" fill="{INK}"/><circle cx="9" cy="-246" r="2.8" fill="{INK}"/>'
-            f'<circle cx="-16" cy="-236" r="4.5" fill="#f29a7e" opacity=".45"/><circle cx="16" cy="-236" r="4.5" fill="#f29a7e" opacity=".45"/>')
-    face += {
-        'smile': f'<path d="M-6 -235 Q0 -229 6 -235" fill="none" stroke="{INK}" stroke-width="2.6" stroke-linecap="round"/>',
-        'open': f'<path d="M-6 -236 Q0 -226 6 -236 Z" fill="{INK}"/>',
-        'calm': f'<path d="M-5 -234 L5 -234" stroke="{INK}" stroke-width="2.6" stroke-linecap="round"/>',
-    }[mood]
-    if glasses:
-        face += (f'<circle cx="-9" cy="-246" r="7" fill="none" stroke="{INK}" stroke-width="2"/>'
-                 f'<circle cx="9" cy="-246" r="7" fill="none" stroke="{INK}" stroke-width="2"/><path d="M-2 -246 L2 -246" stroke="{INK}" stroke-width="2"/>')
-    return (hair_back + f'<rect x="-8" y="-222" width="16" height="16" rx="5" fill="{skin}"/>'
-            f'<circle cx="0" cy="-246" r="27" fill="{skin}"/>' + hair_front + face)
+def sleeve(pts, color, w=22):
+    return p(poly(pts), stroke=color, w=w)
 
 
-def person(x, y, scale, parts):
-    return f'<g transform="translate({x} {y}) scale({scale})">{"".join(parts)}</g>'
+def hand(x, y, r=8):
+    return f'<circle cx="{x}" cy="{y}" r="{r}" fill="{WHITE}" stroke="{LINE}" stroke-width="1.8"/>'
 
 
-def receipt(x, y, rot=0):
-    return (f'<g transform="translate({x} {y}) rotate({rot})"><path d="M-18 -26 h36 v52 l-6 -4 -6 4 -6 -4 -6 4 -6 -4 -6 4 z" fill="#fff" stroke="#e3cdb8" stroke-width="2"/>'
-            f'<rect x="-11" y="-17" width="22" height="4" rx="2" fill="#ef7300"/><rect x="-11" y="-7" width="16" height="4" rx="2" fill="#e5ddd4"/>'
-            f'<rect x="-11" y="2" width="19" height="4" rx="2" fill="#e5ddd4"/></g>')
+def brows(kind, dx=0):
+    # worry: 안쪽 끝이 올라간 걱정 눈썹, angry: 안쪽 끝이 내려간 속상한 눈썹
+    if kind == 'worry':
+        return p(f'M{-13 + dx} -9 L{-4 + dx} -12', stroke=LINE, w=2) + p(f'M{4 + dx} -12 L{13 + dx} -9', stroke=LINE, w=2)
+    if kind == 'angry':
+        return p(f'M{-13 + dx} -12 L{-4 + dx} -8', stroke=LINE, w=2.2) + p(f'M{4 + dx} -8 L{13 + dx} -12', stroke=LINE, w=2.2)
+    return ''
 
 
-def bubble(x, y, inner, w=64, h=44, tail='left'):
-    tx = x - w / 2 + 14 if tail == 'left' else x + w / 2 - 14
-    return (f'<g><rect x="{x - w / 2}" y="{y - h / 2}" width="{w}" height="{h}" rx="{h / 2}" fill="#fff" stroke="#f6c79c" stroke-width="2.5"/>'
-            f'<path d="M{tx - 6} {y + h / 2 - 2} L{tx} {y + h / 2 + 12} L{tx + 7} {y + h / 2 - 2}" fill="#fff" stroke="#f6c79c" stroke-width="2.5" stroke-linejoin="round"/>'
-            f'<rect x="{tx - 8}" y="{y + h / 2 - 5}" width="16" height="5" fill="#fff"/>{inner}</g>')
+def face(eyes=(-8, 8), y=0, mouth='smile', dx=0):
+    m = {'smile': f'M{-6 + dx} {14 + y} q6 5 12 0', 'open': f'M{-4 + dx} {13 + y} q4 6 8 0 z', 'line': f'M{-4 + dx} {15 + y} l8 0', 'o': '',
+         'sad': f'M{-6 + dx} {17 + y} q6 -5 12 0', 'shout': f'M{-6 + dx} {11 + y} q6 10 12 0 z'}[mouth]
+    out = ''.join(f'<circle cx="{e + dx}" cy="{y}" r="2.3" fill="{LINE}"/>' for e in eyes)
+    out += p(f'M{1 + dx} {4 + y} q4 4 0 7', stroke=LINE, w=1.6)
+    if mouth == 'o':
+        out += f'<ellipse cx="{dx}" cy="{16 + y}" rx="3" ry="3.6" fill="{LINE}"/>'
+    else:
+        out += p(m, fill=LINE if mouth in ('open', 'shout') else 'none', stroke=LINE, w=1.8)
+    return out
 
 
-def bang(x, y):
-    return f'<rect x="{x - 3.5}" y="{y - 13}" width="7" height="17" rx="3.5" fill="#ef7300"/><circle cx="{x}" cy="{y + 10}" r="4" fill="#ef7300"/>'
+def head_shape():
+    return (f'<rect x="-8" y="18" width="16" height="22" fill="{WHITE}" stroke="{LINE}" stroke-width="1.8"/>'
+            f'<ellipse cx="0" cy="0" rx="22" ry="25" fill="{WHITE}" stroke="{LINE}" stroke-width="2"/>')
 
 
-def dots(x, y):
-    return ''.join(f'<circle cx="{x + dx}" cy="{y}" r="4" fill="{INK}"/>' for dx in (-12, 0, 12))
+def torso(color, w=46):
+    return p(f'M{-w} 78 Q{-w - 2} 44 -20 38 L20 38 Q{w + 2} 44 {w} 78 L{w + 6} 330 L{-w - 6} 330 Z', color)
 
 
-def heart(x, y, s=1.0, color='#ef7300'):
-    return f'<path transform="translate({x} {y}) scale({s})" d="M0 12 C-16 2 -16 -12 -7 -12 C-3 -12 -1 -9 0 -7 C1 -9 3 -12 7 -12 C16 -12 16 2 0 12 Z" fill="{color}"/>'
+def group(x, y, s, parts, flip=False):
+    sx = -s if flip else s
+    return f'<g transform="translate({x} {y}) scale({sx} {s})">{"".join(parts)}</g>'
 
 
-def thumb(x, y):
-    return f'<path transform="translate({x} {y})" d="M-9 10 V-2 H-14 V10 Z M-6 10 H8 C11 10 13 7 12 4 L9 -6 C8 -8 6 -9 4 -9 H0 L2 -16 C2 -19 0 -21 -3 -21 L-6 -9 Z" fill="#ef7300"/>'
+# ---- 소품 (선 그림) ----
+def bulb(x, y, s=1.0):
+    rays = ''.join(p(poly([(x + dx * .64 * s, y + dy * .64 * s), (x + dx * s, y + dy * s)]), stroke=LINE, w=2.6) for dx, dy in [(-38, -6), (-28, -30), (0, -42), (28, -30), (38, -6)])
+    return (rays + f'<circle cx="{x}" cy="{y}" r="{19 * s}" fill="#fff4d9" stroke="{LINE}" stroke-width="2.2"/>'
+            + p(f'M{x - 6 * s} {y + 12 * s} L{x - 3 * s} {y - 2 * s} L{x} {y + 4 * s} L{x + 3 * s} {y - 2 * s} L{x + 6 * s} {y + 12 * s}', stroke=ORANGE, w=2.2)
+            + f'<rect x="{x - 9 * s}" y="{y + 16 * s}" width="{18 * s}" height="{13 * s}" rx="{3 * s}" fill="{NAVY}"/>'
+            + p(poly([(x - 9 * s, y + 21 * s), (x + 9 * s, y + 21 * s)]), stroke=WHITE, w=1.6) + p(poly([(x - 9 * s, y + 25 * s), (x + 9 * s, y + 25 * s)]), stroke=WHITE, w=1.6))
 
 
-def check_shield(x, y, s=1.0):
-    return (f'<g transform="translate({x} {y}) scale({s})"><path d="M0 -40 L32 -29 V-4 C32 20 18 36 0 43 C-18 36 -32 20 -32 -4 V-29 Z" fill="#fff" stroke="#ef7300" stroke-width="5" stroke-linejoin="round"/>'
-            f'<path d="M-13 1 L-3 11 L15 -9" fill="none" stroke="#2e9d5b" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g>')
+def bubble(x, y, w, h, inner, tail='left'):
+    tx = x - w / 2 + 18 if tail == 'left' else x + w / 2 - 18
+    tip = tx - 6 if tail == 'left' else tx + 6
+    return (p(f'M{tx - 8} {y + h / 2 - 2} L{tip} {y + h / 2 + 15} L{tx + 8} {y + h / 2 - 2}', WHITE, LINE, 2.2)
+            + f'<rect x="{x - w / 2}" y="{y - h / 2}" width="{w}" height="{h}" rx="{h / 2}" fill="{WHITE}" stroke="{LINE}" stroke-width="2.2"/>'
+            + f'<rect x="{tx - 7}" y="{y + h / 2 - 4}" width="14" height="5" fill="{WHITE}"/>' + inner)
 
 
-def sparkle(x, y, s=1.0, color='#ef7300', op=.55):
-    return f'<path transform="translate({x} {y}) scale({s})" d="M0 -11 L3 -3 L11 0 L3 3 L0 11 L-3 3 L-11 0 L-3 -3 Z" fill="{color}" opacity="{op}"/>'
+def dots3(x, y):
+    return ''.join(f'<circle cx="{x + d}" cy="{y}" r="3.6" fill="{LINE}"/>' for d in (-12, 0, 12))
 
 
-# 1. 영수증을 들고 손을 든 사람 (목소리를 내는 소비자)
-def p_receipt(x, y, s=1.0):
-    sk = SKIN[0]
-    return person(x, y, s, [
-        legs('#2b3a55'), torso('#ef7300'),
-        arm('M30 -192 Q46 -160 30 -140', '#ef7300', (30, -138), sk),
-        arm('M-30 -194 Q-52 -232 -46 -276', '#ef7300', (-46, -280), sk),
-        receipt(-46, -312, -8),
-        head(sk, hair_back='<path d="M-30 -250 C-32 -286 32 -286 30 -250 L34 -196 L-34 -196 Z" fill="#5b3a2c"/>',
-             hair_front='<path d="M-27 -252 C-24 -278 22 -282 28 -252 C14 -262 -6 -266 -27 -252 Z" fill="#5b3a2c"/>', mood='open'),
+def bang(x, y, s=1.0, c=ORANGE):
+    return p(f'M{x - 5 * s} {y - 34 * s} L{x + 7 * s} {y - 34 * s} L{x + 3 * s} {y} L{x - 3 * s} {y} Z', c) + f'<circle cx="{x + .5 * s}" cy="{y + 10 * s}" r="{5 * s}" fill="{c}"/>'
+
+
+def paper(x, y, w, h, rot=0, n=4, fill=WHITE):
+    ls = ''.join(p(poly([(-w / 2 + 6, -h / 2 + 9 + i * 7), (w / 2 - 6 - (i % 2) * 7, -h / 2 + 9 + i * 7)]), stroke=ORANGE if i == 0 else '#9aa6b8', w=2) for i in range(n))
+    return f'<g transform="translate({x} {y}) rotate({rot})"><rect x="{-w / 2}" y="{-h / 2}" width="{w}" height="{h}" rx="3" fill="{fill}" stroke="{LINE}" stroke-width="2"/>{ls}</g>'
+
+
+RED = '#e5484d'
+
+
+def broken_box(x, y, rot=0):
+    return (f'<g transform="translate({x} {y}) rotate({rot})"><rect x="-34" y="-26" width="68" height="50" rx="3" fill="#e3b27c" stroke="{LINE}" stroke-width="2"/>'
+            + p('M-34 -14 L34 -14', stroke=LINE, w=1.6) + f'<rect x="-8" y="-26" width="16" height="12" fill="#f3d3a8"/>'
+            + p('M-6 -14 L2 -2 L-4 6 L6 24', stroke=LINE, w=2.4)
+            + f'<circle cx="20" cy="6" r="9" fill="{ORANGE}"/>' + p('M20 0 L20 7 M20 11 L20 11.5', stroke=WHITE, w=2.6) + '</g>')
+
+
+def receipt_long(x, y, rot=0):
+    zig = ' '.join(f'L{20 - i * 5} {32 + (4 if i % 2 else 0)}' for i in range(9))
+    return (f'<g transform="translate({x} {y}) rotate({rot})">' + p(f'M-20 -34 L20 -34 {zig} Z', WHITE, LINE, 2)
+            + ''.join(p(f'M-13 {-24 + i * 8} L{9 - (i % 2) * 6} {-24 + i * 8}', stroke='#9aa6b8', w=2) for i in range(4))
+            + f'<ellipse cx="0" cy="17" rx="16" ry="8" fill="none" stroke="{RED}" stroke-width="2.4"/>' + p('M-9 17 L9 17', stroke=LINE, w=2.6) + '</g>')
+
+
+def phone_refused(x, y, rot=0):
+    return (f'<g transform="translate({x} {y}) rotate({rot})"><rect x="-15" y="-26" width="30" height="52" rx="6" fill="{NAVY}"/>'
+            f'<rect x="-11" y="-20" width="22" height="38" rx="2" fill="{WHITE}"/><rect x="-8" y="-15" width="13" height="7" rx="3" fill="#dfe4ec"/>'
+            f'<circle cx="2" cy="6" r="8" fill="{RED}"/>' + p('M-1.5 2.5 L5.5 9.5 M5.5 2.5 L-1.5 9.5', stroke=WHITE, w=2.2) + '</g>')
+
+
+def megaphone(x, y, rot=0):
+    waves = ''.join(p(f'M{62 + i * 9} {-14 - i * 4} q8 {14 + i * 4} 0 {28 + i * 8}', stroke=ORANGE, w=2.4) for i in range(3))
+    return (f'<g transform="translate({x} {y}) rotate({rot})">' + p('M0 -8 L50 -24 L50 24 L0 8 Z', ORANGE, LINE, 2)
+            + f'<rect x="48" y="-26" width="8" height="52" rx="3" fill="{NAVY}"/><rect x="-9" y="-8" width="11" height="16" rx="3" fill="{NAVY}"/>'
+            + f'<rect x="14" y="6" width="9" height="20" rx="3" fill="{NAVY}"/>' + waves + '</g>')
+
+
+def envelope(x, y, rot=0):
+    return (f'<g transform="translate({x} {y}) rotate({rot})"><rect x="-26" y="-18" width="52" height="36" rx="3" fill="{WHITE}" stroke="{LINE}" stroke-width="2"/>'
+            + p('M-26 -16 L0 4 L26 -16', stroke=LINE, w=2) + f'<circle cx="14" cy="8" r="9" fill="{ORANGE}"/>'
+            + f'<text x="14" y="11.5" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="800" fill="{WHITE}">제보</text></g>')
+
+
+def squiggle(x, y, c=LINE):
+    return p(f'M{x} {y} q7 -9 14 0 t14 0 t14 0', stroke=c, w=2.2)
+
+
+def ticks(x, y, flip=False, c=LINE):
+    sg = -1 if flip else 1
+    return ''.join(p(poly([(x + sg * a, y + b), (x + sg * (a + 7), y + b + c2)]), stroke=c, w=2.2) for a, b, c2 in [(0, -12, -6), (3, 0, 0), (0, 12, 6)])
+
+
+def spark(x, y, s=1.0, c=ORANGE):
+    return p(f'M{x} {y - 9 * s} L{x + 2.4 * s} {y - 2.4 * s} L{x + 9 * s} {y} L{x + 2.4 * s} {y + 2.4 * s} L{x} {y + 9 * s} L{x - 2.4 * s} {y + 2.4 * s} L{x - 9 * s} {y} L{x - 2.4 * s} {y - 2.4 * s} Z', c)
+
+
+# ---- 사람들 (머리 중심이 원점, 아래로 몸이 이어지고 화면 밖에서 잘림) ----
+def woman_bob_pointing(x, y, s):
+    """단발머리 여성: 남색 재킷 + 흰 칼라, 오른손으로 가운데를 가리키며 이야기."""
+    return group(x, y, s, [
+        p('M-27 -6 Q-29 -36 0 -36 Q29 -36 27 -6 L28 26 L14 26 L14 -4 L-14 -4 L-14 26 L-28 26 Z', HAIR),
+        torso(NAVY, 48),
+        p('M-14 38 L0 66 L14 38 Z', WHITE, LINE, 1.8), p('M-20 40 L-6 90 L-22 140', stroke='#4a5a7a', w=2) + p('M20 40 L6 90 L22 140', stroke='#4a5a7a', w=2),
+        sleeve([(-38, 56), (-46, 114)], NAVY), tube([(-46, 114), (-28, 132)], 12),
+        sleeve([(38, 56), (46, 114)], NAVY), tube([(46, 114), (28, 132)], 12),
+        broken_box(0, 128, -4), hand(-28, 134), hand(28, 132),
+        head_shape(),
+        p('M-23 -8 Q-16 -30 4 -30 Q20 -29 24 -10 Q10 -22 -23 -8 Z', HAIR),
+        brows('worry', 2), face(mouth='sad', dx=2),
     ])
 
 
-# 2. 휴대폰으로 제보하는 사람
-def p_phone(x, y, s=1.0):
-    sk = SKIN[1]
-    return person(x, y, s, [
-        legs('#4b6fa8'), torso('#7cc49a'),
-        '<path d="M-14 -210 L0 -194 L14 -210" fill="none" stroke="#5aa57b" stroke-width="4" stroke-linecap="round"/>',
-        arm('M-30 -192 Q-40 -160 -8 -158', '#7cc49a', (-6, -160), sk),
-        arm('M30 -192 Q42 -164 14 -164', '#7cc49a', (12, -166), sk),
-        f'<rect x="-14" y="-196" width="24" height="40" rx="5" fill="{INK}"/><rect x="-11" y="-192" width="18" height="30" rx="2" fill="#fff7ef"/>'
-        '<rect x="-8" y="-187" width="12" height="3" rx="1.5" fill="#ef7300"/><rect x="-8" y="-180" width="9" height="3" rx="1.5" fill="#f2c9a1"/>',
-        head(sk, hair_front='<path d="M-28 -248 C-30 -280 26 -284 28 -252 C18 -262 -2 -262 -10 -256 C-16 -262 -24 -256 -28 -248 Z" fill="#2b3a55"/>', mood='smile'),
+def man_presenting(x, y, s):
+    """짧은 머리 남성: 세이지 셔츠, 한 손은 손바닥을 펴 보이고 한 손은 서류를 가슴에 듦."""
+    return group(x, y, s, [
+        torso(SAGE, 50),
+        p('M-12 38 L0 54 L12 38', stroke='#5f9677', w=2.4) + p('M0 54 L0 330', stroke='#76aa8b', w=1.6),
+        sleeve([(-40, 56), (-50, 116)], SAGE), tube([(-50, 116), (-14, 126)], 12),
+        sleeve([(40, 56), (50, 118)], SAGE), tube([(50, 118), (18, 126)], 12),
+        receipt_long(2, 100, -4), hand(16, 128), hand(-12, 128),
+        head_shape(),
+        p('M-23 -6 Q-26 -36 2 -37 Q24 -36 23 -12 Q18 -6 16 -14 Q8 -24 -8 -22 Q-18 -20 -23 -6 Z', HAIR),
+        brows('angry', -2), face(mouth='line', dx=-2),
     ])
 
 
-# 3. 쇼핑백을 든 어르신
-def p_elder(x, y, s=1.0):
-    sk = SKIN[2]
-    return person(x, y, s, [
-        legs('#5d6b82'), torso('#f49a7a'),
-        '<path d="M-6 -208 L-6 -100 M6 -208 L6 -100" stroke="#e07f5f" stroke-width="3"/>'
-        '<circle cx="0" cy="-170" r="2.6" fill="#fff"/><circle cx="0" cy="-150" r="2.6" fill="#fff"/><circle cx="0" cy="-130" r="2.6" fill="#fff"/>',
-        arm('M-30 -192 Q-44 -150 -40 -112', '#f49a7a', (-40, -108), sk),
-        '<path d="M-60 -110 h40 l6 52 h-52 z" fill="#ffd2a6"/><path d="M-50 -110 v-8 c0-8 6-12 10-12 s10 4 10 12 v8" fill="none" stroke="#e08a3c" stroke-width="3.5"/>'
-        '<rect x="-50" y="-92" width="30" height="5" rx="2.5" fill="#fff" opacity=".7"/>',
-        arm('M30 -192 Q44 -170 30 -150', '#f49a7a', (28, -148), sk),
-        head(sk, hair_back='<circle cx="0" cy="-276" r="12" fill="#c9ccd3"/>',
-             hair_front='<path d="M-28 -244 C-30 -280 28 -280 28 -244 C24 -258 10 -266 0 -262 C-10 -266 -24 -258 -28 -244 Z" fill="#c9ccd3"/>',
-             glasses=True, mood='smile'),
+def woman_thinking(x, y, s):
+    """포니테일 여성: 살구색 블라우스, 턱에 손을 대고 생각."""
+    return group(x, y, s, [
+        p('M16 -26 Q40 -30 40 2 Q38 22 28 30 Q32 6 18 -8 Z', HAIR2),
+        torso(APRICOT, 44),
+        p('M-8 38 Q0 48 8 38', stroke='#e59e63', w=2.2),
+        sleeve([(36, 56), (52, 100)], APRICOT), tube([(52, 100), (40, 52)], 12), phone_refused(40, 30, 8), hand(40, 52),
+        sleeve([(-36, 56), (-30, 104)], APRICOT), tube([(-30, 104), (-8, 34)], 12), hand(-6, 30, 8.5), tube([(-6, 30), (2, 14)], 4.5),
+        head_shape(),
+        p('M-23 -6 Q-20 -34 2 -34 Q22 -33 23 -10 Q12 -22 -4 -22 Q-16 -20 -23 -6 Z', HAIR2),
+        brows('worry', 3), face(mouth='sad', dx=3),
     ])
 
 
-# 4. 보호 배지를 든 사람 (가운데)
-def p_shield(x, y, s=1.0):
-    sk = SKIN[3]
-    return person(x, y, s, [
-        legs('#2b3a55'), torso('#ffd27a'),
-        arm('M-30 -192 Q-40 -160 -22 -150', '#ffd27a', (-22, -150), sk),
-        arm('M30 -192 Q40 -160 22 -150', '#ffd27a', (22, -150), sk),
-        check_shield(0, -150, 1.05),
-        head(sk, hair_back='<path d="M-28 -252 C-30 -284 30 -284 28 -252 L30 -222 L-30 -222 Z" fill="#1f1b2e"/>',
-             hair_front='<path d="M-27 -250 C-26 -276 26 -280 27 -250 C10 -266 -10 -266 -27 -250 Z" fill="#1f1b2e"/>', mood='smile'),
+def man_paper_up(x, y, s):
+    """곱슬머리 남성: 주황 니트, 서류를 들어 보이며 설명."""
+    return group(x, y, s, [
+        torso(ORANGE, 50),
+        p('M-14 40 Q0 52 14 40', stroke='#cf6200', w=3),
+        sleeve([(-40, 56), (-52, 124)], ORANGE), tube([(-52, 124), (-34, 166)], 12), hand(-32, 170),
+        sleeve([(40, 56), (62, 84)], ORANGE), tube([(62, 84), (36, 34)], 12),
+        megaphone(28, 18, -64), hand(36, 36),
+        head_shape(),
+        ''.join(f'<circle cx="{cx}" cy="{cy}" r="10" fill="{HAIR}"/>' for cx, cy in [(-16, -22), (-4, -30), (10, -28), (20, -16), (-22, -8)]),
+        brows('angry', 3), face(mouth='shout', dx=3),
     ])
 
 
-# 5. 클립보드를 들고 엄지를 든 상담원
-def p_staff(x, y, s=1.0):
-    sk = SKIN[4]
-    return person(x, y, s, [
-        legs('#2b3a55', skirt='#2b3a55'), torso('#8db7ee'),
-        '<path d="M-12 -208 L0 -176 L12 -208" fill="none" stroke="#fff" stroke-width="3"/><rect x="-9" y="-176" width="18" height="22" rx="3" fill="#fff"/><rect x="-6" y="-170" width="12" height="3" rx="1.5" fill="#ef7300"/>',
-        arm('M-30 -192 Q-46 -160 -26 -140', '#8db7ee', (-24, -140), sk),
-        '<rect x="-56" y="-176" width="36" height="48" rx="5" fill="#ffd2a6"/><rect x="-51" y="-169" width="26" height="36" rx="3" fill="#fff"/>'
-        '<path d="M-46 -160 l3 3 6 -6 M-46 -148 l3 3 6 -6" fill="none" stroke="#2e9d5b" stroke-width="2.5" stroke-linecap="round"/><rect x="-44" y="-180" width="12" height="7" rx="3" fill="#2b3a55"/>',
-        arm('M30 -192 Q50 -220 44 -250', '#8db7ee', (44, -254), sk),
-        '<rect x="40" y="-276" width="8" height="16" rx="4" fill="' + sk + '"/>',
-        head(sk, hair_back='<path d="M-30 -250 C-34 -290 34 -290 30 -250 L32 -214 L-32 -214 Z" fill="#7a4b33"/>',
-             hair_front='<path d="M-28 -248 C-24 -282 28 -282 28 -248 C14 -270 -10 -270 -28 -248 Z" fill="#7a4b33"/>', mood='smile'),
+def woman_long_hair(x, y, s):
+    """긴 머리 여성: 남색 니트, 손을 들어 '그렇구나!' 하는 표정."""
+    return group(x, y, s, [
+        p('M-28 -4 Q-30 -38 0 -38 Q30 -38 28 -4 L34 74 L-34 74 Z', HAIR2),
+        torso(NAVY, 46),
+        p('M-10 38 Q0 50 10 38', stroke='#4a5a7a', w=2.4),
+        sleeve([(-38, 56), (-62, 84)], NAVY), tube([(-62, 84), (-70, 30)], 12),
+        envelope(-72, 4, -10), hand(-70, 30),
+        sleeve([(38, 56), (46, 124)], NAVY), tube([(46, 124), (30, 164)], 12), hand(28, 168),
+        head_shape(),
+        p('M-24 -6 Q-18 -32 4 -32 Q22 -30 24 -8 Q4 -20 -24 -6 Z', HAIR2),
+        face(mouth='o', dx=-2),
     ])
+
+
+def man_clipboard(x, y, s):
+    """안경 쓴 상담원: 세이지 카디건 + 흰 셔츠, 체크리스트를 들고 엄지를 세움."""
+    clip = (f'<g transform="translate(-30 104) rotate(-8)"><rect x="-20" y="-28" width="40" height="54" rx="4" fill="{APRICOT}" stroke="{LINE}" stroke-width="2"/>'
+            f'<rect x="-14" y="-20" width="28" height="40" rx="2" fill="{WHITE}"/>'
+            + p('M-9 -10 l4 4 8 -8 M-9 4 l4 4 8 -8', stroke='#2e9d5b', w=2.6) + f'<rect x="-8" y="-32" width="16" height="8" rx="2" fill="{NAVY}"/></g>')
+    return group(x, y, s, [
+        torso(SAGE, 50),
+        p('M-14 38 L0 70 L14 38 Z', WHITE, LINE, 1.8) + p('M0 70 L0 330', stroke='#5f9677', w=2),
+        sleeve([(-40, 56), (-54, 112)], SAGE), clip, tube([(-54, 112), (-36, 120)], 12), hand(-32, 120),
+        sleeve([(40, 56), (66, 86)], SAGE), tube([(66, 86), (70, 50)], 12),
+        p('M62 52 Q60 38 70 38 L72 26 Q78 22 80 30 L78 40 Q86 42 84 52 Z', WHITE, LINE, 1.8),
+        head_shape(),
+        p('M-23 -8 Q-24 -36 0 -36 Q24 -36 23 -8 Q14 -24 0 -24 Q-14 -24 -23 -8 Z', '#8a8f99'),
+        f'<circle cx="-8" cy="0" r="7" fill="none" stroke="{LINE}" stroke-width="2"/><circle cx="8" cy="0" r="7" fill="none" stroke="{LINE}" stroke-width="2"/>' + p('M-1 0 L1 0', stroke=LINE, w=2),
+        face(mouth='smile'),
+    ])
+
+
+CLIP = '<clipPath id="{id}"><rect x="0" y="0" width="360" height="380"/></clipPath>'
 
 
 def side_left():
-    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 360">'
-            '<path d="M20 330 C0 220 60 110 170 100 C280 90 330 190 320 330 Z" fill="#fff1e3"/><ellipse cx="170" cy="338" rx="150" ry="13" fill="#f3dcc6"/>'
-            + sparkle(36, 110, 1.0) + sparkle(290, 70, 1.1) + '<g fill="#ffc994"><circle cx="30" cy="250" r="6"/><circle cx="300" cy="170" r="5"/></g>'
-            + p_receipt(105, 332, 1.0) + p_phone(240, 332, .97)
-            + bubble(160, 46, bang(160, 44), w=52) + bubble(288, 90, dots(288, 90), w=70, tail='right') + '</svg>')
+    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 380">' + '<defs>' + CLIP.format(id='cl') + '</defs><g clip-path="url(#cl)">'
+            + man_presenting(208, 168, .98)
+            + woman_thinking(294, 214, .92)
+            + woman_bob_pointing(96, 196, 1.04)
+            + bubble(282, 92, 76, 40, f'<text x="282" y="99" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="800" fill="{RED}">환불?</text>', tail='left')
+            + bubble(120, 80, 62, 40, dots3(120, 80), tail='right')
+            + ticks(60, 110, flip=True) + squiggle(14, 300) + spark(30, 60, 1.1) + spark(160, 34, .8, APRICOT)
+            + '</g></svg>')
 
 
 def side_right():
-    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 360">'
-            '<path d="M10 330 C0 190 70 100 170 100 C280 100 330 200 320 330 Z" fill="#fff1e3"/><ellipse cx="165" cy="338" rx="155" ry="13" fill="#f3dcc6"/>'
-            + sparkle(40, 80, 1.1) + '<g fill="#ffc994"><circle cx="310" cy="240" r="6"/><circle cx="30" cy="200" r="5"/></g>'
-            + p_elder(70, 332, .9) + p_staff(270, 332, .95) + p_shield(170, 340, 1.0)
-            + bubble(72, 42, heart(72, 43, .9, '#f49a7a'), w=54) + bubble(276, 34, thumb(278, 40), w=54, tail='right') + '</svg>')
-
+    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 380">' + '<defs>' + CLIP.format(id='cr') + '</defs><g clip-path="url(#cr)">'
+            + man_clipboard(66, 214, .96)
+            + woman_long_hair(184, 168, .96)
+            + man_paper_up(282, 206, 1.0)
+            + bang(110, 110, 1.0)
+            + ticks(232, 128) + squiggle(20, 160) + spark(150, 40, 1.1) + spark(30, 90, .9, APRICOT)
+            + '</g></svg>')
 
 
 if __name__ == '__main__':

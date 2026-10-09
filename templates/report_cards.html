@@ -13,5 +13,19 @@
       <time datetime="{{ case.created }}">{{ case.when }}</time>
     </div>
   </article>
-  {% else %}<div class="empty report-cards-empty">{{ txt('home.empty') }}</div>{% endfor %}
+  {% endfor %}
+  {% for sample in sample_fill(cases, n or home_latest()) %}{% set step = status_step(sample.status) %}{% set total = STATUSES|length %}
+  <article class="report-card is-sample{% if step == total %} is-done{% endif %}" aria-label="예시 카드">
+    <div class="rc-body">
+      <div class="rc-head"><span class="rc-cat">{{ sample.category }}</span><span class="rc-sample">예시</span></div>
+      <h3 class="rc-title">{{ sample.title }}</h3>
+      <p class="rc-shop"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M4 9.5c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 2 3s2-1.3 2-3c0 1.7 1.3 3 3 3s3-1.3 3-3M5.5 12v8h13v-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>{{ sample.company }}</span></p>
+    </div>
+    <div class="rc-stub">
+      <span class="rc-progress" aria-hidden="true">{% for s in STATUSES %}<i{% if loop.index <= step %} class="on"{% endif %}></i>{% endfor %}</span>
+      <span class="rc-status">{{ sample.status }}</span>
+    </div>
+  </article>
+  {% endfor %}
+  {% if not cases and not sample_fill(cases, n or home_latest()) %}<div class="empty report-cards-empty">{{ txt('home.empty') }}</div>{% endif %}
 </div>

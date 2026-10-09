@@ -18,7 +18,7 @@ if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not 
     raise RuntimeError('제보 접수나 게시판을 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
 app.config['MAX_CONTENT_LENGTH']=15*1024*1024
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
-STATUSES=['접수','검토 중','추가 확인','기업 답변 대기','조정 진행','종결']
+STATUSES=site_content.STATUSES
 HOME_LATEST=8  # 메인 화면 최신 제보 수 기본값 (관리자 '메인 화면'에서 3~20으로 변경)
 REPORTS_PAGE_SIZE=20
 def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
@@ -162,7 +162,10 @@ def home_latest():
 
 def recent_posts(limit):
     with conn() as db:return db.execute('SELECT id,category,title,likes,comments,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT ?',(limit,)).fetchall()
-app.jinja_env.globals.update(report_rows=report_rows,report_summary=report_summary,recent_posts=recent_posts,home_latest=home_latest)
+def sample_fill(cases,n):
+    # 실제 제보가 n건보다 적으면 남는 자리만 '예시' 카드로 채움 (실제 제보처럼 보이지 않게 템플릿에서 표시).
+    return items('sample_reports')[:max(0,n-len(cases))]
+app.jinja_env.globals.update(report_rows=report_rows,report_summary=report_summary,recent_posts=recent_posts,home_latest=home_latest,sample_fill=sample_fill)
 
 @app.route('/')
 def home():
@@ -173,7 +176,7 @@ def latest_reports():
     # 메인 화면이 주기적으로 불러가는 최신 목록 조각 (실시간 갱신용). n은 블록에 정한 개수.
     n=min(30,max(1,request.args.get('n',home_latest(),type=int)))
     template='report_cards.html' if request.args.get('view')=='cards' else 'report_rows.html'
-    resp=app.make_response(render_template(template,cases=report_rows(limit=n),summary=report_summary(),live=True))
+    resp=app.make_response(render_template(template,cases=report_rows(limit=n),summary=report_summary(),live=True,n=n))
     resp.headers['Cache-Control']='no-store'
     return resp
 

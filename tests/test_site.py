@@ -448,6 +448,24 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<strong class="em">&lt;i&gt;빠르게&lt;/i&gt;</strong> 연락드려요', page)
         self.assertEqual(admin.post('/admin/lists', data={'_csrf': token, 'list': 'process_steps', 'title': ['x'], 'icon': ['rocket'], 'body': ['']}).status_code, 400)
 
+    def test_example_cards_fill_only_empty_slots(self):
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertEqual(home.count('class="report-card is-sample'), self.site.HOME_LATEST)
+        self.assertEqual(home.count('class="rc-sample">예시<'), self.site.HOME_LATEST)
+        with self.site.conn() as db:
+            for i in range(3):
+                db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,1,1)',
+                           ('E%d' % i, 'x', '기타', '업체', '실제 제보 %d' % i, '내용', '요청', '2026-10-09'))
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertEqual(home.count('class="case-link"'), 3)
+        self.assertEqual(home.count('class="report-card is-sample'), self.site.HOME_LATEST - 3)
+        self.assertLess(home.index('실제 제보 2'), home.index('is-sample'))  # 실제 제보가 항상 앞
+        self.assertNotIn('is-sample', self.client.get('/reports').get_data(as_text=True))
+        self.assertEqual(self.client.get('/reports/latest?n=4&view=cards').get_data(as_text=True).count('is-sample'), 1)
+        admin = self.login_admin()
+        admin.post('/admin/lists', data={'_csrf': self.csrf(admin, '/admin/lists'), 'list': 'sample_reports', 'title': [''], 'category': [''], 'company': [''], 'status': ['']})
+        self.assertNotIn('is-sample', self.client.get('/').get_data(as_text=True))
+
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
         token = self.csrf(self.client, '/report')

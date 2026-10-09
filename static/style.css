@@ -475,7 +475,7 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 .rc-progress i { width: 7px; height: 7px; border-radius: 50%; background: #e7e6e3; }
 .rc-progress i.on { background: #ef7300; }
 .is-done .rc-progress i.on { background: #2e9d5b; }
-.rc-status { font-weight: 800; color: #4f5660; }
+.rc-status { font-weight: 800; color: #4f5660; white-space: nowrap; }
 .is-done .rc-status { color: #1d7a43; }
 .rc-stub time { margin-left: auto; color: #a3a7ad; font-weight: 600; font-variant-numeric: tabular-nums; }
 .report-cards-empty { grid-column: 1 / -1; background: #fff; border: 1px dashed #e0e0de; border-radius: 14px; }
@@ -541,3 +541,17 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
   .step-icon { width: 44px; height: 44px; }
   .pc-label { justify-content: flex-start; margin: 0 0 6px; padding: 8px 10px; font-size: 15px; }
 }
+
+/* Hero art v2: the people are cropped at the bottom, so they sit flush on the hero's bottom edge. */
+.hero-art { padding-bottom: 0; }
+.hero-art .hero-copy { padding-bottom: 54px; }
+.hero-side { max-width: 360px; }
+@media (max-width: 980px) { .hero-art { padding-bottom: 0; } .hero-art .hero-copy { padding-bottom: 18px; } .hero-side { max-width: 280px; } }
+
+/* Example cards: fill empty home slots, clearly labeled and visually quieter than real reports. */
+.report-card.is-sample { background: #fdfcfa; box-shadow: none; outline: 1.5px dashed #e6ddd2; outline-offset: -1.5px; }
+.report-card.is-sample::before { opacity: .45; }
+.report-card.is-sample .rc-title { color: #5b6068; }
+.rc-sample { padding: 2px 8px; border-radius: 6px; background: #f1ece5; color: #8a7a68; font-size: 11px; font-weight: 800; letter-spacing: .5px; }
+.is-sample .rc-progress i.on { background: #f3b87f; }
+.is-sample.is-done .rc-progress i.on { background: #8fcaa4; }
