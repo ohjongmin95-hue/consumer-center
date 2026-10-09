@@ -16,7 +16,12 @@ DOMAIN="${DOMAIN#www.}"
 echo "== 1/6 패키지 설치"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -y -q git python3-venv nginx certbot python3-certbot-nginx sqlite3 dnsutils
+# IPv6가 꺼진 서버(네이버 클라우드 등)에서는 nginx 기본 설정의 [::]:80 때문에 설치가 실패하므로 제거 후 마무리합니다.
+if ! apt-get install -y -q git python3-venv nginx certbot python3-certbot-nginx sqlite3 dnsutils; then
+  sed -i '/listen \[::\]/d' /etc/nginx/sites-available/default 2>/dev/null || true
+  dpkg --configure -a
+  apt-get install -y -q git python3-venv nginx certbot python3-certbot-nginx sqlite3 dnsutils
+fi
 
 echo "== 2/6 소스 내려받기 ($BRANCH)"
 id soboru >/dev/null 2>&1 || useradd --system --home /opt/soboru --shell /usr/sbin/nologin soboru
