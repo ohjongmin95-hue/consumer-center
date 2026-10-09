@@ -2,7 +2,7 @@
 {% block title %}권리침해 신고 및 임시조치 안내 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap">
-  <div class="page-intro"><span class="eyebrow">TAKEDOWN REQUEST</span><h1 class="page-title">권리침해 신고 및 임시조치 안내</h1></div>
+  <div class="page-intro"><h1 class="page-title">권리침해 신고 및 임시조치 안내</h1></div>
   {% if submitted %}
   <div class="form-panel"><h2>요청이 접수됐습니다.</h2><p>센터가 내용을 확인한 뒤 입력하신 이메일로 처리 결과를 안내해 드립니다.</p><a class="secondary" href="{{ url_for('home') }}">처음으로</a></div>
   {% else %}

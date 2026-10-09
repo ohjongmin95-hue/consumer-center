@@ -4,7 +4,6 @@
 {% block content %}
 <main><article class="info-wrap policy-doc">
   <h1>{{ heading }}</h1>
-  <p class="info-intro">시행일 {{ txt('policy.effective_date') }}</p>
   {% set heads = doc_headings('policy.' ~ page) %}
   {% if heads|length > 2 %}
   <nav class="policy-toc" aria-label="{{ heading }} 목차">

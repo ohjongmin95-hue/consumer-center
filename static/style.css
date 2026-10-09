@@ -741,3 +741,21 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 .util-bar { border-bottom: 0; }
 .util-inner a:hover, .util-inner button:hover { text-decoration: none; }
 .ft-info a.ft-quiet, .ft-info a.ft-quiet:hover { color: inherit; text-decoration: none; cursor: text; }
+
+/* Signup in the login card layout. */
+.auth-card-wide { max-width: 520px; }
+.auth-foot-one { grid-template-columns: 1fr; }
+.agree-box { margin: 10px 0 6px; border: 1px solid #e6e6e4; border-radius: 10px; overflow: hidden; }
+.agree-all { display: flex; align-items: center; gap: 10px; padding: 15px 16px; background: #f8f7f5; font-size: 15px; font-weight: 800; color: #2b3038; cursor: pointer; }
+.agree-row { border-top: 1px solid #efefed; }
+.agree-row summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 16px; list-style: none; cursor: pointer; }
+.agree-row summary::-webkit-details-marker { display: none; }
+.agree-row label, .agree-plain label { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #4f5660; cursor: pointer; }
+.agree-plain { padding: 13px 16px; }
+.agree-row b { color: #c66300; font-weight: 800; }
+.agree-box input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--orange); }
+.agree-view { flex-shrink: 0; font-size: 13px; color: #8a8f96; text-decoration: underline; text-underline-offset: 3px; }
+.agree-row[open] .agree-view { color: #2b3038; }
+.agree-detail { margin: 0 16px 14px; }
+.agree-detail.consent-scroll { max-height: 180px; }
+.agree-detail .consent-table { margin-bottom: 8px; }

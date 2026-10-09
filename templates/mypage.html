@@ -4,7 +4,7 @@
 {% block content %}
 <main class="page member-page"><div class="wrap">
   <div class="page-intro me-head">
-    <div><span class="eyebrow">MY PAGE</span><h1 class="page-title">{{ g.user['nickname'] }}님</h1>
+    <div><h1 class="page-title">{{ g.user['nickname'] }}님</h1>
       <p class="meta">아이디 {{ g.user['login_id'] }} · 가입일 {{ g.user['created'][:10]|replace('-', '.') }}</p></div>
     <form method="post" action="{{ url_for('member_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="secondary" type="submit">로그아웃</button></form>
   </div>
