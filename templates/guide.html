@@ -12,9 +12,7 @@
     <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">01</span><h2 id="purchase-heading">{{ txt('guide.s1_title') }}</h2></div>
     {% if txt('guide.s1_desc') %}<p class="guide-description">{{ txt('guide.s1_desc') }}</p>{% endif %}
     <dl class="guide-basics">
-      <div><dt>구매·계약 날짜</dt><dd>영수증이나 주문 내역에 있는 날짜를 확인해 주세요.</dd></div>
-      <div><dt>업체·상품 이름</dt><dd>구매한 곳과 상품명, 서비스명 또는 모델명을 적어 주세요.</dd></div>
-      <div><dt>결제한 금액</dt><dd>실제로 낸 금액을 적고, 추가 비용이 있다면 함께 알려 주세요.</dd></div>
+      {% for item in items('guide_basics') %}<div><dt>{{ item.title }}</dt><dd class="pre-line">{{ item.body }}</dd></div>{% endfor %}
     </dl>
     <p class="guide-tip">날짜와 금액은 거래 내용을 확인하는 데 도움이 됩니다. 정확히 기억나지 않으면 ‘○월 초쯤’, ‘약 ○만 원’처럼 표시해 주세요.</p>
   </section>
@@ -23,9 +21,7 @@
     <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">02</span><h2 id="writing-heading">{{ txt('guide.s2_title') }}</h2></div>
     {% if txt('guide.s2_desc') %}<p class="guide-description">{{ txt('guide.s2_desc') }}</p>{% endif %}
     <ol class="guide-writing-list">
-      <li><strong>어떤 문제가 있었나요?</strong><p>언제 문제가 생겼는지, 어떤 불편이나 손해를 겪었는지 적어 주세요.</p></li>
-      <li><strong>업체에는 무엇을 요청했나요?</strong><p>문의한 날짜, 요청한 내용, 업체의 답변을 적어 주세요. 아직 문의하지 않았다면 그대로 알려 주세요.</p></li>
-      <li><strong>어떻게 해결되기를 바라나요?</strong><p>환불, 교환, 수리, 계약 해지 등 원하는 해결 방법을 구체적으로 적어 주세요.</p></li>
+      {% for item in items('guide_writing') %}<li><strong>{{ item.title }}</strong>{% if item.body %}<p class="pre-line">{{ item.body }}</p>{% endif %}</li>{% endfor %}
     </ol>
     <aside class="guide-example" aria-labelledby="example-heading">
       <h3 id="example-heading">이렇게 작성해 보세요 <span>가상의 예시</span></h3>
@@ -61,74 +57,16 @@
     <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">04</span><h2 id="evidence-heading">{{ txt('guide.s4_title') }}</h2></div>
     {% if txt('guide.s4_desc') %}<p class="guide-description">{{ txt('guide.s4_desc') }}</p>{% endif %}
     <div class="evidence-topics">
+      {% for topic in items('guide_topics') %}
       <details class="evidence-topic">
-        <summary><span>유통</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <summary><span>{{ topic.name }}</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
         <div class="evidence-topic-body">
-          <h3>안내받은 내용과 실제 받은 것을 연결해 주세요</h3>
-          <ol><li>상품 설명이나 행사 조건은 업체명과 조건이 보이게 저장해 주세요.</li><li>배송된 상품과 포장, 주문 내역을 함께 남겨 주세요.</li><li>환불·교환을 요청한 날짜와 업체 답변도 정리해 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매한 곳, 주문일과 금액, 광고나 약속과 달랐던 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 주문 내역, 상품 설명·행사 화면, 업체와 나눈 대화</div>
+          {% if topic.heading %}<h3>{{ topic.heading }}</h3>{% endif %}
+          {% if topic.steps %}<ol>{% for line in topic.steps.split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ol>{% endif %}
+          {% if topic.info or topic.materials %}<div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4>{% if topic.info %}<p class="pre-line">{{ topic.info }}</p>{% endif %}{% if topic.materials %}<span>도움이 되는 자료</span> {{ topic.materials }}{% endif %}</div>{% endif %}
         </div>
       </details>
-      <details class="evidence-topic">
-        <summary><span>가전·IT</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>고장 부위와 사용 상황을 함께 보여 주세요</h3>
-          <ol><li>전체 외관과 모델명을 남긴 뒤, 문제 부위를 가까이 찍어 주세요.</li><li>언제 어떤 작동 중 문제가 생기는지 적고, 화면에 오류가 뜬다면 캡처해 주세요.</li><li>배송 파손이라면 포장 상태도, 수리를 받았다면 수리 내역도 함께 남겨 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매일과 구입처, 모델명, 고장 증상, 수리를 받았는지 적어 주세요.</p><span>도움이 되는 자료</span> 영수증, 고장 부위 사진, 수리 내역</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>서비스</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body"><h3>약속한 서비스와 실제 이용 내용을 남겨 주세요</h3><ol><li>예약·계약 당시 안내받은 내용과 이용 날짜를 정리해 주세요.</li><li>제공되지 않은 서비스나 지연·취소된 내용을 구체적으로 적어 주세요.</li><li>환불이나 재이행을 요청한 날짜와 업체 답변을 함께 남겨 주세요.</li></ol><div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>업체명, 예약·계약일, 이용 금액, 약속과 달랐던 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 예약 내역, 계약서, 결제 내역, 업체 답변</div></div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>통신</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>약속한 요금과 청구된 요금을 함께 남겨 주세요</h3>
-          <ol><li>가입 당시 요금제·혜택·약정 조건을 확인할 수 있는 계약서나 안내 화면을 준비해 주세요.</li><li>청구서에서 문제가 된 항목과 금액을 짚어 주세요.</li><li>품질 문제라면 발생한 장소·시간과 통신사에 문의한 결과를 함께 적어 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>통신사와 가입 경로, 가입일, 요금제, 약속과 달랐던 요금이나 서비스 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 가입 계약서, 요금 청구서, 상담 내용</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>자동차</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>차량의 위치와 정비 이력을 함께 남겨 주세요</h3>
-          <ol><li>차량의 어느 부분인지 보이는 사진과 문제 부위의 가까운 사진을 찍어 주세요.</li><li>눈으로 찾기 어려운 부분은 사진 복사본에 표시하고 증상을 설명해 주세요.</li><li>반복 수리나 비용 문제라면 정비 날짜별 명세서·견적서·업체 답변을 모아 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매일, 차종·연식, 구매 금액, 문제가 생긴 시점과 부위, 정비 이력을 적어 주세요.</p><span>도움이 되는 자료</span> 계약서, 정비 명세서, 문제 부위 사진</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>금융</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>상품 내용과 실제 청구 내역을 비교할 수 있게</h3>
-          <ol><li>계약서에서 상품명·가입일·관련 보장 또는 수수료 조건이 있는 쪽을 준비해 주세요.</li><li>문서는 겹치지 않게 한 장씩 찍고, 확대했을 때 글자가 읽히는지 확인해 주세요.</li><li>설명받은 내용과 다르다고 생각하는 부분을 짚고, 청구·지급 내역과 업체 답변을 연결해 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>가입일과 상품명, 설명받은 내용, 실제로 발생한 비용이나 피해 금액을 적어 주세요.</p><span>도움이 되는 자료</span> 계약서, 거래 내역, 상담 내용</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>식음료</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>포장과 내용물을 함께 남겨 주세요</h3>
-          <ol><li>제품명·소비기한과 개봉 상태가 보이도록 포장 전체를 찍어 주세요.</li><li>이물이나 변색은 위치가 보이는 사진과 가까운 사진을 각각 남겨 주세요.</li><li>언제 발견했는지, 개봉 전인지 후인지 설명을 덧붙여 주세요. 사진만으로 원인이 확인되는 것은 아닙니다.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매한 날짜와 금액, 이상을 발견한 시점, 개봉 전·후 여부, 피해 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 영수증, 제품·포장 사진, 소비기한 표시</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>생활용품</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body"><h3>제품 전체와 달라진 부분을 함께 보여 주세요</h3><ol><li>의류·가구·화장품 등 제품명과 구매 내역을 준비해 주세요.</li><li>제품 전체를 찍고, 오염·변형·파손이나 사용 후 나타난 변화는 가까이 찍어 주세요.</li><li>언제부터 문제가 생겼는지, 어떤 방법으로 사용했는지와 업체 답변을 적어 주세요.</li></ol><div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매일, 제품명, 결제 금액, 사용 시점과 피해 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 영수증, 제품·문제 부위 사진, 사용 안내, 교환·수리 내역</div></div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>건설</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>집 안의 위치부터, 하자는 가까이</h3>
-          <ol><li>어느 방·벽·천장인지 알 수 있도록 주변과 하자 부위를 함께 찍어 주세요.</li><li>균열·들뜸·누수 흔적은 가까이 찍고 처음 발견한 날짜를 적어 주세요.</li><li>가능하면 보수 전 상태를 남기고, 견적서와 보수를 요청한 기록도 준비해 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>계약·입주·시공 시점, 하자를 발견한 때와 위치, 업체에 요청한 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 계약서, 하자 부위 사진, 보수 요청 내역</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>기타</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body"><h3>분류가 애매해도 겪은 일을 순서대로 적어 주세요</h3><ol><li>무엇을 구매하거나 어떤 계약을 했는지 먼저 알려 주세요.</li><li>문제를 발견한 시점과 피해 내용, 원하는 해결 방법을 적어 주세요.</li><li>거래 내역과 업체에 문의한 기록 중 관련된 자료를 모아 주세요.</li></ol><div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>업체·상품 또는 서비스명, 거래 날짜와 금액, 피해 경위를 적어 주세요.</p><span>도움이 되는 자료</span> 계약·결제 내역, 관련 사진, 업체 답변</div></div>
-      </details>
+      {% endfor %}
     </div>
     <aside class="guide-upload">
       <h3>첨부하기 전에 확인해 주세요</h3>

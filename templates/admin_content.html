@@ -3,7 +3,7 @@
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro admin-head">
-    <div><a href="{{ url_for('admin') }}">← 제보 관리</a><h1 class="page-title">문구 관리</h1>
+    <div><a href="{{ url_for('admin') }}">← 제보 관리</a> · <a href="{{ url_for('admin_lists') }}">항목 관리 (추가·삭제·순서) →</a><h1 class="page-title">문구 관리</h1>
     <p>저장하면 사이트에 바로 반영됩니다. 기본값이 있는 칸을 비워 저장하면 기본값으로 돌아가고, <strong>선택</strong> 표시가 있는 칸을 비우면 해당 문구가 화면에서 숨겨집니다.</p></div>
   </div>
   <nav class="content-tabs" aria-label="섹션 바로가기">{% for sid, title, _ in sections %}<a href="#section-{{ sid }}">{{ title }}</a>{% endfor %}</nav>

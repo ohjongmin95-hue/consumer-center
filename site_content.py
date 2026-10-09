@@ -17,7 +17,12 @@ FAQ_DEFAULTS = [
     ('제보 내용이 공개되나요?', '제보할 때 공개와 비밀글 중에서 고를 수 있습니다. 공개를 고르면 제목과 내용을 누구나 볼 수 있고, 비밀글은 센터 담당자만 봅니다. 어느 경우든 연락처와 첨부파일은 공개되지 않습니다.'),
     ('공식 분쟁조정이나 피해구제도 가능한가요?', '이 센터는 법정 피해구제기관이 아닙니다. 공식적인 상담·피해구제는 1372 소비자상담센터 등 관련 기관을 이용해 주세요.'),
 ]
-FAQ_SLOTS = 8
+# 예전 고정 칸(faq.q1~, process.step1~)에 저장된 값을 새 목록으로 옮길 때 쓰는 기본값
+PROCESS_DEFAULTS = [
+    ('제보 접수', '제보자가 피해 내용을 작성하고 관련 자료를 제출합니다.'),
+    ('내용 검토', '제출된 내용의 사실관계와 자료를 검토합니다. 필요한 경우 추가 자료를 요청할 수 있습니다.'),
+    ('후속 검토', '사안에 따라 업체 의견 확인 또는 취재 여부를 검토할 수 있습니다. 모든 제보가 취재·공개되는 것은 아닙니다.'),
+]
 
 ML = {'multiline': True}
 OPT = {'optional': True}
@@ -114,14 +119,6 @@ SECTIONS = [
     ('process', '처리 절차', [
         ('process.title', '페이지 제목', '처리 절차', {}),
         ('process.intro', '소개 문구', '제보 내용의 확인 및 검토 과정에 대한 안내입니다.', OPT_ML),
-        ('process.step1_title', '1단계 제목', '제보 접수', OPT),
-        ('process.step1_body', '1단계 설명', '제보자가 피해 내용을 작성하고 관련 자료를 제출합니다.', OPT_ML),
-        ('process.step2_title', '2단계 제목', '내용 검토', OPT),
-        ('process.step2_body', '2단계 설명', '제출된 내용의 사실관계와 자료를 검토합니다. 필요한 경우 추가 자료를 요청할 수 있습니다.', OPT_ML),
-        ('process.step3_title', '3단계 제목', '후속 검토', OPT),
-        ('process.step3_body', '3단계 설명', '사안에 따라 업체 의견 확인 또는 취재 여부를 검토할 수 있습니다. 모든 제보가 취재·공개되는 것은 아닙니다.', OPT_ML),
-        ('process.step4_title', '4단계 제목', '', OPT),
-        ('process.step4_body', '4단계 설명', '', OPT_ML),
         ('process.note', '하단 안내', '접수번호와 비밀 조회 코드로 내 제보의 진행 상황을 확인할 수 있습니다.', OPT_ML),
     ]),
     ('types', '제보 유형', [
@@ -132,13 +129,6 @@ SECTIONS = [
     ('faq', '자주 묻는 질문', [
         ('faq.title', '페이지 제목', '자주 묻는 질문', {}),
         ('faq.intro', '소개 문구', '제보 전 확인하면 좋은 내용을 정리했습니다.', OPT_ML),
-    ] + [
-        item
-        for i in range(FAQ_SLOTS)
-        for item in (
-            (f'faq.q{i + 1}', f'질문 {i + 1}', FAQ_DEFAULTS[i][0] if i < len(FAQ_DEFAULTS) else '', OPT),
-            (f'faq.a{i + 1}', f'답변 {i + 1}', FAQ_DEFAULTS[i][1] if i < len(FAQ_DEFAULTS) else '', OPT_ML),
-        )
     ]),
 ]
 
@@ -152,6 +142,28 @@ SECTIONS += [
         ('policy.takedown', '게시중단 요청 안내', _policy('takedown'), {'multiline': True, 'doc': True}),
     ]),
 ]
+
+# 관리자 '항목 관리'에서 추가·삭제·순서 변경하는 목록: (키, 이름, 설명, 필드[(이름, 라벨, 옵션)], 최소 개수)
+_LIST_DEFAULTS = __import__('json').loads(Path(__file__).with_name('list_defaults.json').read_text(encoding='utf-8'))
+REPORT_CATEGORY_DEFAULTS = ['상품·품질', '배송·환불', '구독·결제', '금융·통신', '여행·숙박', '서비스·계약', '개인정보', '기타']
+BOARD_CATEGORY_DEFAULTS = ['경험 공유', '질문해요', '꿀팁', '칭찬해요', '자유']
+LISTS = [
+    ('report_categories', '제보 유형', '제보하기 화면, 제보 목록 필터, 유형 페이지에 쓰여요. 이미 접수된 제보의 유형은 바뀌지 않아요.', [('name', '유형 이름', {})], 1),
+    ('board_categories', '소비자게시판 분류', '글쓰기 분류와 게시판 탭에 쓰여요. 6번째부터는 색이 처음부터 반복돼요.', [('name', '분류 이름', {})], 1),
+    ('faq', '자주 묻는 질문', '자주 묻는 질문 페이지에 순서대로 보여요.', [('q', '질문', {}), ('a', '답변', ML)], 0),
+    ('process_steps', '처리 절차 단계', '처리 절차 페이지의 단계 카드예요. 번호는 자동으로 매겨져요.', [('title', '단계 이름', {}), ('body', '설명', ML)], 0),
+    ('guide_basics', '이용 안내 01 · 구매 정보 카드', '"언제, 어디서, 얼마에 구매했나요?" 아래 카드예요.', [('title', '제목', {}), ('body', '설명', ML)], 0),
+    ('guide_writing', '이용 안내 02 · 작성 방법', '"겪은 일을 순서대로 알려 주세요" 아래 번호 목록이에요.', [('title', '질문', {}), ('body', '설명', ML)], 0),
+    ('guide_topics', '이용 안내 04 · 분야별 준비자료', '분야 이름을 누르면 펼쳐지는 안내예요.', [('name', '분야 이름', {}), ('heading', '펼쳤을 때 제목', {}), ('steps', '준비 순서 (한 줄에 하나씩)', ML), ('info', '함께 적을 정보', ML), ('materials', '도움이 되는 자료', {})], 0),
+]
+LIST_DEFAULTS = {
+    'report_categories': [{'name': n} for n in REPORT_CATEGORY_DEFAULTS],
+    'board_categories': [{'name': n} for n in BOARD_CATEGORY_DEFAULTS],
+    'faq': [{'q': q, 'a': a} for q, a in FAQ_DEFAULTS],
+    'process_steps': [{'title': t, 'body': b} for t, b in PROCESS_DEFAULTS],
+    **_LIST_DEFAULTS,
+}
+LIST_MAX_ITEMS = 60
 
 FIELDS = {key: {'label': label, 'default': default, 'section': sid, **opts}
           for sid, _, items in SECTIONS for key, label, default, opts in items}

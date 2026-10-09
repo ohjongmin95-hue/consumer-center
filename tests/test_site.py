@@ -42,7 +42,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'takedown_requests', 'board_votes', 'comments', 'posts'):
+            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts'):
                 db.execute('DELETE FROM ' + table)
 
     def csrf(self, client, path):
@@ -152,13 +152,8 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('여러분의 제보가', home)
         self.assertNotIn('공개에 동의하고 센터의 검토', home)  # optional field left blank hides it
         self.assertIn('제보하기 →', home)  # required field left blank falls back to default
-        admin.post('/admin/content', data={'_csrf': token, 'section': 'faq', 'faq.q5': '새 질문', 'faq.a5': '새 답변', 'faq.q1': ''})
-        faq = self.client.get('/faq').get_data(as_text=True)
-        self.assertIn('새 질문', faq)
-        self.assertNotIn('제보하면 바로 해결되나요?', faq)
         admin.post('/admin/content', data={'_csrf': token, 'reset_section': 'home'})
         self.assertIn('여러분의 제보가', self.client.get('/').get_data(as_text=True))
-        self.assertIn('새 질문', self.client.get('/faq').get_data(as_text=True))
 
     def test_branding_policies_and_takedown(self):
         home = self.client.get('/').get_data(as_text=True)
@@ -334,6 +329,52 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<meta name="google-site-verification" content="goog-XYZ_789">', home)
         self.assertTrue(self.client.get('/robots.txt').get_data(as_text=True).startswith('#DaumWebMasterTool:pin:id'))
         self.assertIn('noindex', admin.get('/admin').get_data(as_text=True))
+
+    def test_admin_list_editor(self):
+        self.assertEqual(self.client.get('/admin/lists').status_code, 302)
+        guide = self.client.get('/guide').get_data(as_text=True)
+        self.assertEqual(guide.count('class="evidence-topic"'), 10)
+        self.assertIn('<summary><span>가전·IT</span>', guide)
+        self.assertIn('<dt>결제한 금액</dt>', guide)
+        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 4)
+        admin = self.login_admin()
+        page = admin.get('/admin/lists').get_data(as_text=True)
+        self.assertIn('id="list-guide_topics"', page)
+        token = self.csrf(admin, '/admin/lists')
+        # 항목 순서를 바꾸고, 하나를 지우고, 새로 추가 (빈 항목은 무시)
+        admin.post('/admin/lists', data={'_csrf': token, 'list': 'faq', 'q': ['새 질문', '제보하면 바로 해결되나요?', ''], 'a': ['새 답변\n둘째 줄', '아니요', '']})
+        faq = self.client.get('/faq').get_data(as_text=True)
+        self.assertEqual(faq.count('class="faq-item"'), 2)
+        self.assertLess(faq.index('새 질문'), faq.index('제보하면 바로 해결되나요?'))
+        self.assertNotIn('어떤 자료를 첨부하면 좋나요?', faq)
+        # 제보 유형: 추가한 유형으로 제보 가능, 지운 유형은 거부
+        admin.post('/admin/lists', data={'_csrf': token, 'list': 'report_categories', 'name': ['배송·환불', '중고거래']})
+        report = self.client.get('/report').get_data(as_text=True)
+        self.assertIn('<option >중고거래</option>', report.replace('<option  >', '<option >'))
+        self.assertNotIn('상품·품질', report)
+        token2 = self.csrf(self.client, '/report')
+        base = {'_csrf': token2, 'company': 'A', 'subject': 'B', 'description': 'C', 'request_text': 'D', 'consent': 'on', 'truth': 'on', 'visibility': 'secret'}
+        self.assertEqual(self.client.post('/report', data={**base, 'category': '상품·품질'}).status_code, 400)
+        self.assertEqual(self.client.post('/report', data={**base, 'category': '중고거래'}).status_code, 200)
+        # 잘못된 입력은 저장하지 않고, 입력한 내용을 그대로 다시 보여 줌
+        bad = admin.post('/admin/lists', data={'_csrf': token, 'list': 'board_categories', 'name': ['자유', '자유']})
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn('같은 이름이 두 번', bad.get_data(as_text=True))
+        self.assertEqual(admin.post('/admin/lists', data={'_csrf': token, 'list': 'board_categories', 'name': ['']}).status_code, 400)
+        self.assertIn('꿀팁', self.client.get('/board').get_data(as_text=True))
+        # 기본값으로 되돌리기
+        admin.post('/admin/lists', data={'_csrf': token, 'list': 'faq', 'reset': '1'})
+        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 4)
+
+    def test_legacy_fixed_slots_carry_over(self):
+        with self.site.conn() as db:
+            db.execute("INSERT INTO site_content(key,value,updated) VALUES('faq.q2','바뀐 두번째 질문','x'),('faq.q5','추가했던 다섯번째','x'),('faq.a5','답','x'),('process.step3_title','','x')")
+        faq = self.client.get('/faq').get_data(as_text=True)
+        self.assertIn('바뀐 두번째 질문', faq)
+        self.assertIn('추가했던 다섯번째', faq)
+        self.assertEqual(faq.count('class="faq-item"'), 5)
+        process = self.client.get('/process').get_data(as_text=True)
+        self.assertEqual(process.count('class="step-num"'), 2)
 
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)

@@ -386,3 +386,27 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 .pager b { color: #202630; }
 .pager a, .pager b { min-width: 28px; text-align: center; }
 @media (max-width: 680px) { .reports-head h1 { font-size: 26px; } .reports-head .primary { padding: 11px 16px; } }
+
+/* Admin: list editor. */
+.list-items { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 10px; }
+.list-item { border: 1px solid #e6e7e8; border-radius: 12px; padding: 12px 14px; background: #fcfcfb; }
+.list-item.li-new { border-color: #ffc994; background: #fffaf4; }
+.list-item { position: relative; }
+.li-tools { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
+.li-num { position: absolute; top: 14px; left: 14px; font-weight: 800; color: #bd5c00; }
+.li-btn { border: 1px solid #dedede; background: #fff; border-radius: 7px; padding: 4px 10px; font-size: 13px; font-weight: 700; color: #4f5660; }
+.li-btn:hover { border-color: #ef7300; color: #bd5c00; }
+.li-del { color: #c0392b; border-color: #f0c4be; }
+.li-fields { display: grid; gap: 10px; }
+.li-field { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: #6b6f76; }
+.li-field.wide { grid-column: 1 / -1; }
+.li-field input, .li-field textarea { width: 100%; padding: 9px 11px; border: 1px solid #d8dadd; border-radius: 8px; background: #fff; font-weight: 400; color: #202630; line-height: 1.6; }
+.li-field textarea { resize: vertical; }
+.li-add { margin-bottom: 18px; padding: 10px 16px; font-size: 14px; }
+.li-count { font-size: 14px; color: #8a8f96; font-weight: 600; }
+.pre-line { white-space: pre-line; }
+.compact .list-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; }
+.compact .li-tools { order: 2; margin: 0; }
+.compact .li-num { position: static; min-width: 22px; }
+.compact .li-fields { flex: 1; display: block; }
+.compact .li-field > span { position: absolute; left: -9999px; }

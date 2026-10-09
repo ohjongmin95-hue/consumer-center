@@ -1,4 +1,4 @@
-import os, re, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
+import os, re, json, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
 from pathlib import Path
 from flask import Flask, g, render_template, request, redirect, url_for, session, flash, abort, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -18,7 +18,6 @@ if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not 
     raise RuntimeError('제보 접수나 게시판을 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
 app.config['MAX_CONTENT_LENGTH']=15*1024*1024
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
-CATEGORIES=['상품·품질','배송·환불','구독·결제','금융·통신','여행·숙박','서비스·계약','개인정보','기타']
 STATUSES=['접수','검토 중','추가 확인','기업 답변 대기','조정 진행','종결']
 HOME_LATEST=6  # 메인 화면 최신 제보 수 기본값 (관리자 '메인 화면'에서 3~20으로 변경)
 REPORTS_PAGE_SIZE=20
@@ -47,15 +46,36 @@ with conn() as db:
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
+    db.execute('CREATE TABLE IF NOT EXISTS site_lists(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
     db.execute("CREATE TABLE IF NOT EXISTS takedown_requests(id INTEGER PRIMARY KEY,requester TEXT NOT NULL,contact TEXT NOT NULL,target TEXT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT '접수',admin_note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
 TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','기각','처리 완료']
 
 def load_content():
     with conn() as db:saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content')}
     return {k:saved[k] if k in saved and (saved[k] or f.get('optional')) else f['default'] for k,f in site_content.FIELDS.items()}
+def legacy_list(db,key):
+    # 예전에 고정 칸(faq.q1~8, process.step1~4)으로 수정해 둔 값이 있으면 그 내용을 첫 목록으로 씀.
+    prefix={'faq':'faq.','process_steps':'process.step'}.get(key)
+    if not prefix:return None
+    saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content WHERE key LIKE ?',(prefix+'%',))}
+    if not saved:return None
+    if key=='faq':
+        old=dict(zip(['faq.q%d'%i for i in range(1,9)],[q for q,_ in site_content.FAQ_DEFAULTS]+['']*8))|dict(zip(['faq.a%d'%i for i in range(1,9)],[a for _,a in site_content.FAQ_DEFAULTS]+['']*8))
+        return [{'q':saved.get('faq.q%d'%i,old['faq.q%d'%i]),'a':saved.get('faq.a%d'%i,old['faq.a%d'%i])} for i in range(1,9) if saved.get('faq.q%d'%i,old['faq.q%d'%i])]
+    old={}
+    for i,(t,b) in enumerate(site_content.PROCESS_DEFAULTS,1):old['process.step%d_title'%i]=t;old['process.step%d_body'%i]=b
+    return [{'title':saved.get('process.step%d_title'%i,old.get('process.step%d_title'%i,'')),'body':saved.get('process.step%d_body'%i,old.get('process.step%d_body'%i,''))} for i in range(1,5) if saved.get('process.step%d_title'%i,old.get('process.step%d_title'%i,''))]
+def load_lists():
+    with conn() as db:
+        saved={r['key']:json.loads(r['value']) for r in db.execute('SELECT key,value FROM site_lists')}
+        return {key:saved[key] if key in saved else (legacy_list(db,key) or site_content.LIST_DEFAULTS[key]) for key,*_ in site_content.LISTS}
 @app.before_request
 def content_for_request():
-    if request.endpoint!='static':g.content=load_content()
+    if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
+def items(key):return g.lists.get(key,[])
+def report_categories():return [i['name'] for i in items('report_categories')]
+def board_categories():return [i['name'] for i in items('board_categories')]
+app.jinja_env.globals['items']=items
 def txt(key):
     # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
     return Markup('<br>').join(escape(line) for line in g.content.get(key,'').split('\n'))
@@ -121,7 +141,7 @@ def latest_reports():
 def reports():
     search_query=request.args.get('q','').strip()[:160]
     selected_category=request.args.get('category','')
-    if selected_category not in CATEGORIES:selected_category=''
+    if selected_category not in report_categories():selected_category=''
     page=max(1,request.args.get('page',1,type=int))
     where=['1=1'];args=[]
     if selected_category:where.append('category=?');args.append(selected_category)
@@ -130,7 +150,7 @@ def reports():
         args.append('%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%')
     cond=' AND '.join(where)
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
-    return render_template('reports.html',categories=CATEGORIES,cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE),total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
+    return render_template('reports.html',categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE),total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
 
 PHONE_RE=re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}')
 EMAIL_RE=re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
@@ -149,7 +169,7 @@ def public_case(case_id):
 @app.route('/types',defaults={'page':'types'})
 @app.route('/faq',defaults={'page':'faq'})
 def info_page(page):
-    return render_template('info.html',page=page,categories=CATEGORIES,faq_slots=site_content.FAQ_SLOTS)
+    return render_template('info.html',page=page,categories=report_categories())
 
 def verification_code(key):
     # 관리자 칸에 코드만 넣어도, 사이트가 준 <meta ...> 태그를 통째로 붙여 넣어도 content 값만 꺼내 씀.
@@ -194,19 +214,19 @@ def takedown():
 
 @app.route('/report',methods=['GET','POST'])
 def report():
-    if request.method=='GET':return render_template('report.html',categories=CATEGORIES, intake_enabled=os.getenv('ENABLE_INTAKE')=='1')
+    if request.method=='GET':return render_template('report.html',categories=report_categories(), intake_enabled=os.getenv('ENABLE_INTAKE')=='1')
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수 준비 중입니다.')
     data={k:request.form.get(k,'').strip() for k in ('category','company','subject','description','request_text','contact')}
-    if data['category'] not in CATEGORIES or any(not data[k] for k in ('company','subject','description','request_text')) or not request.form.get('consent') or not request.form.get('truth') or request.form.get('visibility') not in ('public','secret'):
-        flash('필수 항목과 필수 동의를 확인해 주세요.');return render_template('report.html',categories=CATEGORIES,intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
+    if data['category'] not in report_categories() or any(not data[k] for k in ('company','subject','description','request_text')) or not request.form.get('consent') or not request.form.get('truth') or request.form.get('visibility') not in ('public','secret'):
+        flash('필수 항목과 필수 동의를 확인해 주세요.');return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
     if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150)]):abort(400)
     file=request.files.get('evidence')
     if file and file.filename:
         suffix=Path(secure_filename(file.filename)).suffix.lower()
-        if suffix not in ('.pdf','.png','.jpg','.jpeg','.webp'):flash('첨부는 PDF 또는 이미지 파일만 가능합니다.');return render_template('report.html',categories=CATEGORIES,intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
+        if suffix not in ('.pdf','.png','.jpg','.jpeg','.webp'):flash('첨부는 PDF 또는 이미지 파일만 가능합니다.');return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
         head=file.stream.read(12);file.stream.seek(0)
         valid=(suffix=='.pdf' and head.startswith(b'%PDF-')) or (suffix=='.png' and head.startswith(b'\x89PNG')) or (suffix in ('.jpg','.jpeg') and head.startswith(b'\xff\xd8')) or (suffix=='.webp' and head[8:12]==b'WEBP')
-        if not valid:flash('첨부파일 형식을 확인해 주세요.');return render_template('report.html',categories=CATEGORIES,intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
+        if not valid:flash('첨부파일 형식을 확인해 주세요.');return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
     receipt='CJ-'+datetime.datetime.now().strftime('%y%m%d')+'-'+secrets.token_hex(3).upper()
     code=secrets.token_urlsafe(12)
     with conn() as db:
@@ -303,6 +323,47 @@ def admin_content():
         return redirect(url_for('admin_content',_anchor='section-'+(reset or request.form.get('section',''))))
     with conn() as db:changed={r['key'] for r in db.execute('SELECT key FROM site_content')}
     return render_template('admin_content.html',sections=site_content.SECTIONS,content=load_content(),changed=changed,policy_hint=site_content.POLICY_HINT)
+@app.route('/admin/lists',methods=['GET','POST'])
+@admin_only
+def admin_lists():
+    lists={key:(title,desc,fields,minimum) for key,title,desc,fields,minimum in site_content.LISTS}
+    if request.method=='POST':
+        key=request.form.get('list','')
+        if key not in lists:abort(400)
+        title,_,fields,minimum=lists[key]
+        now=datetime.datetime.now().isoformat(timespec='seconds')
+        if request.form.get('reset'):
+            with conn() as db:db.execute('DELETE FROM site_lists WHERE key=?',(key,))
+            flash(title+' 항목을 기본값으로 되돌렸습니다.');return redirect(url_for('admin_lists',_anchor='list-'+key))
+        # 같은 이름의 칸이 항목 순서대로 반복되므로 필드별 getlist를 묶으면 화면 순서 그대로 항목이 됨.
+        columns=[request.form.getlist(name) for name,_,_ in fields]
+        if len({len(c) for c in columns})!=1:abort(400)
+        rows=[]
+        for values in zip(*columns):
+            item={}
+            for (name,_,opts),value in zip(fields,values):
+                value=value.replace('\r\n','\n').strip()
+                if not opts.get('multiline'):value=' '.join(value.split())
+                if len(value)>site_content.MAX_LENGTH:abort(400)
+                item[name]=value
+            if any(item.values()):rows.append(item)
+        first=fields[0][0];error=None
+        if len(rows)>site_content.LIST_MAX_ITEMS:error='항목은 %d개까지 만들 수 있어요.'%site_content.LIST_MAX_ITEMS
+        elif any(not r[first] for r in rows):error='"%s" 칸이 비어 있는 항목이 있어요.'%fields[0][1]
+        elif len(rows)<minimum:error='%s은(는) 최소 %d개가 있어야 해요.'%(title,minimum)
+        elif key.endswith('categories') and len({r[first] for r in rows})!=len(rows):error='같은 이름이 두 번 들어갔어요.'
+        if error:
+            # 입력한 내용을 잃지 않도록 저장하지 않은 상태 그대로 다시 보여 줌.
+            flash(title+': '+error);data=load_lists();data[key]=rows
+            return render_admin_lists(data,focus=key),400
+        with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,json.dumps(rows,ensure_ascii=False),now))
+        flash(title+' 항목을 저장했습니다.')
+        return redirect(url_for('admin_lists',_anchor='list-'+key))
+    return render_admin_lists(load_lists())
+def render_admin_lists(data,focus=None):
+    with conn() as db:changed={r['key'] for r in db.execute('SELECT key FROM site_lists')}
+    return render_template('admin_lists.html',lists=site_content.LISTS,data=data,changed=changed,max_items=site_content.LIST_MAX_ITEMS,focus=focus)
+
 @app.route('/admin/takedowns',methods=['GET','POST'])
 @admin_only
 def admin_takedowns():
@@ -359,7 +420,6 @@ def case_logout():
 
 # ---- 소비자게시판 -----------------------------------------------------------
 # 회원가입 없이 닉네임과 삭제용 비밀번호로 글·댓글을 남김. 공감·알리기는 브라우저 세션당 1회.
-BOARD_CATEGORIES=['경험 공유','질문해요','꿀팁','칭찬해요','자유']
 BOARD_PAGE_SIZE=20
 FLAG_HIDE_THRESHOLD=5  # 서로 다른 이용자 알림이 이만큼 쌓이면 자동 숨김 후 운영자 확인
 with conn() as db:
@@ -402,7 +462,7 @@ def board():
     sort='top' if request.args.get('sort')=='top' else 'new'
     page=max(1,request.args.get('page',1,type=int))
     where=['hidden=0'];args=[]
-    if cat in BOARD_CATEGORIES:where.append('category=?');args.append(cat)
+    if cat in board_categories():where.append('category=?');args.append(cat)
     else:cat=''
     if q:where.append("(title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\')");like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%';args+=[like,like]
     order='likes DESC,id DESC' if sort=='top' else 'id DESC'
@@ -412,7 +472,7 @@ def board():
         week_ago=(datetime.datetime.now()-datetime.timedelta(days=7)).isoformat(timespec='seconds')
         hot=db.execute('SELECT id,category,title,likes,comments FROM posts WHERE hidden=0 AND likes>0 AND created>=? ORDER BY likes DESC,id DESC LIMIT 3',(week_ago,)).fetchall() if not (q or cat or page>1) else []
         liked={r['target'] for r in db.execute("SELECT target FROM board_votes WHERE kind='like' AND voter=?",(voter_id(),))}
-    return render_template('board.html',posts=posts,hot=hot,liked=liked,categories=BOARD_CATEGORIES,cat=cat,q=q,sort=sort,page=page,pages=max(1,-(-total//BOARD_PAGE_SIZE)),total=total,enabled=board_enabled())
+    return render_template('board.html',posts=posts,hot=hot,liked=liked,categories=board_categories(),cat=cat,q=q,sort=sort,page=page,pages=max(1,-(-total//BOARD_PAGE_SIZE)),total=total,enabled=board_enabled())
 
 @app.route('/board/write',methods=['GET','POST'])
 def board_write():
@@ -421,7 +481,7 @@ def board_write():
         f={k:request.form.get(k,'').strip() for k in ('category','nickname','password','title','body')}
         errors=[]
         if request.form.get('website'):abort(400)  # 사람에게는 보이지 않는 칸. 채워져 있으면 자동 등록 프로그램.
-        if f['category'] not in BOARD_CATEGORIES:errors.append('분류를 골라 주세요.')
+        if f['category'] not in board_categories():errors.append('분류를 골라 주세요.')
         if not 2<=len(f['nickname'])<=20:errors.append('닉네임은 2~20자로 적어 주세요.')
         if not 4<=len(f['password'])<=30:errors.append('비밀번호는 4~30자로 정해 주세요.')
         if not 2<=len(f['title'])<=100:errors.append('제목은 2~100자로 적어 주세요.')
@@ -431,10 +491,10 @@ def board_write():
             if not errors and recent_count(db,'posts',10)>=3:errors.append('잠시 후 다시 올려 주세요. 10분에 3개까지 쓸 수 있어요.')
             if errors:
                 for e in errors:flash(e)
-                return render_template('board_write.html',categories=BOARD_CATEGORIES,enabled=True),400
+                return render_template('board_write.html',categories=board_categories(),enabled=True),400
             cur=db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created) VALUES(?,?,?,?,?,?,?)',(f['category'],f['nickname'],generate_password_hash(f['password']),f['title'],f['body'],ip_hash(),datetime.datetime.now().isoformat(timespec='seconds')))
         return redirect(url_for('board_post',post_id=cur.lastrowid))
-    return render_template('board_write.html',categories=BOARD_CATEGORIES,enabled=board_enabled())
+    return render_template('board_write.html',categories=board_categories(),enabled=board_enabled())
 
 @app.route('/board/<int:post_id>')
 def board_post(post_id):
@@ -443,7 +503,7 @@ def board_post(post_id):
         if not post or (post['hidden'] and not session.get('admin')):abort(404)
         comments=db.execute('SELECT id,nickname,body,created FROM comments WHERE post_id=? AND hidden=0 ORDER BY id',(post_id,)).fetchall()
         mine={r['kind']+r['target'] for r in db.execute('SELECT kind,target FROM board_votes WHERE voter=?',(voter_id(),))}
-    return render_template('board_post.html',post=post,comments=comments,categories=BOARD_CATEGORIES,liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled())
+    return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled())
 
 @app.route('/board/<int:post_id>/like',methods=['POST'])
 def board_like(post_id):

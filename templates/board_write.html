@@ -8,7 +8,7 @@
   <form class="form-panel write-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
     <fieldset class="field cat-pick"><legend>분류</legend>
-      {% for c in categories %}<label class="cat-radio"><input type="radio" name="category" value="{{ c }}" required{% if request.form.get('category', '경험 공유') == c %} checked{% endif %}><span class="cat-chip cat-{{ loop.index0 }}">{{ c }}</span></label>{% endfor %}
+      {% for c in categories %}<label class="cat-radio"><input type="radio" name="category" value="{{ c }}" required{% if request.form.get('category', categories[0]) == c %} checked{% endif %}><span class="cat-chip cat-{{ loop.index0 % 5 }}">{{ c }}</span></label>{% endfor %}
     </fieldset>
     <div class="write-ids">
       <div class="field"><label for="w-nick">닉네임</label><input id="w-nick" name="nickname" maxlength="20" required placeholder="2~20자" value="{{ request.form.get('nickname','') }}"></div>
