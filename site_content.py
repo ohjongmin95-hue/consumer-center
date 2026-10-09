@@ -33,7 +33,6 @@ SECTIONS = [
         ('site.name', '사이트 이름 (브라우저 탭 등)', '소비자제보센터', {}),
         ('site.logo_accent', '로고 앞부분 (주황색)', '소비자', OPT),
         ('site.logo_rest', '로고 뒷부분', '제보센터', {}),
-        ('footer.text', '푸터 맨 아래 문구', '© SOBORU. All rights reserved.', ML),
     ]),
     ('seo', '검색 노출 (네이버·구글)', [
         ('seo.description', '사이트 설명 (검색 결과에 보이는 문장)', '소비자 피해를 제보하고 진행 상황을 확인하세요. 비슷한 경험을 나누는 소비자게시판도 있어요.', {}),
@@ -41,8 +40,8 @@ SECTIONS = [
         ('seo.google_verification', '구글 서치 콘솔 소유확인 코드', '', OPT),
         ('seo.daum_robots', '다음 웹마스터도구 robots.txt 줄', '', OPT),
     ]),
-    ('operator', '운영자 정보 (푸터·약관에 표시)', [
-        ('operator.name', '운영자(상호)', '소보루', {}),
+    ('operator', '하단 정보 (푸터): 사업자 정보·저작권 · 약관에도 표시', [
+        ('operator.name', '상호 (운영자)', '소보루', {}),
         ('operator.ceo', '대표자', '', OPT),
         ('operator.biz_no', '사업자등록번호', '', OPT),
         ('operator.address', '소재지(주소)', '', OPT),
@@ -54,6 +53,7 @@ SECTIONS = [
         ('operator.youth_officer', '청소년보호책임자 (비우면 개인정보 보호책임자와 같음)', '', OPT),
         ('operator.youth_contact', '청소년보호책임자 연락처 (비우면 개인정보 보호책임자 연락처)', '', OPT),
         ('operator.notice', '민간 운영 안내', '소비자제보센터는 민간이 운영하는 소비자 제보 창구로, 국가기관이나 한국소비자원과 관련이 없습니다. 공식 상담과 피해구제는 1372 소비자상담센터(국번 없이 1372)를 이용해 주세요.', OPT_ML),
+        ('footer.text', '저작권 문구 (맨 아래)', '© SOBORU. All rights reserved.', ML),
     ]),
     ('home', '메인 화면', [
         ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),

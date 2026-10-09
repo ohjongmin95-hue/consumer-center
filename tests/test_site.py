@@ -59,7 +59,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('여러분의 제보가', home)
         self.assertIn('class="hero hero-art"', home)
         for side in ('left', 'right'):
-            self.assertIn('img/hero-%s.svg' % side, home)
+            self.assertRegex(home, r'img/hero-%s\.svg\?v=\d+' % side)  # 그림이 바뀌면 주소도 바뀌어 캐시된 예전 그림이 보이지 않음
             self.assertEqual(self.client.get('/static/img/hero-%s.svg' % side).status_code, 200)
         self.assertIn('href="/report"', home)
         self.assertNotIn('localStorage', home)

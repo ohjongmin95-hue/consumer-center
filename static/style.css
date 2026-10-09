@@ -588,3 +588,20 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 .policy-toc a:hover { color: #bd5c00; }
 .policy-doc h2[id] { scroll-margin-top: 20px; }
 @media (max-width: 680px) { .policy-toc ol { grid-template-columns: 1fr; } }
+
+/* Footer v3: warm, light band in the site's tone (cream base, navy text, orange accents). */
+.site-footer { background: #f5f1eb; color: #6b6f76; border-top: 3px solid #ef7300; }
+.ft-logo { color: #202630; }
+.ft-logo span { color: #ef7300; }
+.ft-logo:hover { color: #000; }
+.ft-links { color: #3d434b; }
+.ft-links a:hover { color: #bd5c00; }
+.ft-links .ft-strong { color: #202630; }
+.ft-links .ft-point { color: #d16400; }
+.ft-links .ft-point:hover { color: #a94f00; }
+.ft-info { color: #5b6068; }
+.ft-info li + li { border-top: 0; }
+.ft-notice, .ft-copy { color: #8a8f96; }
+.ft-inner { position: relative; }
+.ft-con { border-left: 1px solid #e4ddd3; padding-left: 28px; }
+@media (max-width: 760px) { .ft-con { border-left: 0; padding-left: 0; border-top: 1px solid #e4ddd3; padding-top: 16px; } }

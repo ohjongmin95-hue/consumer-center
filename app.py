@@ -126,6 +126,12 @@ def footer_rows():
     rows=[[(label,g.content.get(key)) for key,label in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
+def asset(filename):
+    # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
+    try:version=int((BASE/'static'/filename).stat().st_mtime)
+    except OSError:version=0
+    return url_for('static',filename=filename,v=version)
+app.jinja_env.globals['asset']=asset
 def doc(key):
     # 약관류 본문: "## "는 소제목, "- "는 목록, 빈 줄은 문단 구분. {운영자} 등은 운영자 정보로 치환.
     text=g.content.get(key,'')
