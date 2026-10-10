@@ -1,6 +1,6 @@
 import os, re, json, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
 from pathlib import Path
-from flask import Flask, g, render_template, request, redirect, url_for, session, flash, abort, send_file
+from flask import Flask, g, has_request_context, render_template, request, redirect, url_for, session, flash, abort, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -52,8 +52,10 @@ with conn() as db:
 TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','기각','처리 완료']
 
 def load_content():
+    # 빈 값으로 저장된 문구는 '지운 문장' (편집 모드의 지우기). 관리자 문구 화면에서 비우면 행이 지워져 기본값으로 돌아감.
     with conn() as db:saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content')}
-    return {k:saved[k] if k in saved and (saved[k] or f.get('optional')) else f['default'] for k,f in site_content.FIELDS.items()}
+    if has_request_context():g.deleted={k for k,v in saved.items() if v==''}
+    return {k:saved[k] if k in saved else f['default'] for k,f in site_content.FIELDS.items()}
 def legacy_list(db,key):
     # 예전에 고정 칸(faq.q1~8, process.step1~4, nav.*)으로 수정해 둔 값이 있으면 그 내용을 첫 목록으로 씀.
     if key=='menu':
@@ -129,7 +131,11 @@ def ed_register(key,raw):
     return list(marks).index(key)
 def ed_wrap(key,value,raw=None):
     # value: 화면에 찍힐 값(문자열 또는 Markup), raw: 고칠 때 보여 줄 원문
-    if not editing() or not str(value):return value
+    if not editing():return value
+    if not str(value):
+        # 지운 문장은 편집 모드에서만 흐리게 보여 줘서 다시 살릴 수 있게 함
+        if key not in g.get('deleted',()):return value
+        value=Markup('<span class="ed-ghost">(지운 문장 · 눌러서 되살리기)</span>');raw=''
     idx=ed_register(key,value if raw is None else raw)
     wrapped=ED_OPEN+str(idx)+ED_SEP
     return Markup(wrapped)+value+Markup(ED_CLOSE) if isinstance(value,Markup) else wrapped+value+ED_CLOSE
@@ -159,7 +165,7 @@ app.jinja_env.globals['txt']=txt
 def ui_text(key,default):
     # 화면 문구: 관리자가 바꾼 값이 있으면 그 값, 없으면 템플릿에 적힌 기본 문구 (site_content.UI_TEXTS 참고)
     content=g.get('content') or {}
-    return content.get(key) or default
+    return content[key] if key in content else default
 def ui(key,default):
     raw=ui_text(key,default)
     return ed_wrap(key,Markup('<br>').join(escape(line) for line in raw.split('\n')),raw)
@@ -201,7 +207,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-38'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-39'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -252,7 +258,7 @@ def edit_mode_markup(resp):
     html=_ED_TAG.sub(lambda m:_ed_strip(m.group(0)),html)
     keys=list(g.get('ed_marks',{}))
     html=_ED_MARK.sub(lambda m:'<span class="ed" data-k="%s">'%escape(keys[int(m.group(1))]),html).replace(ED_CLOSE,'</span>')
-    data={k:{'v':str(v),'label':ed_label(k),'ml':ed_multiline(k)} for k,v in g.get('ed_marks',{}).items()}
+    data={k:{'v':str(v),'label':ed_label(k),'ml':ed_multiline(k),'del':ed_delete_mode(k)} for k,v in g.get('ed_marks',{}).items()}
     html=html.replace('</body>','<script id="ed-data" type="application/json">%s</script></body>'%json.dumps(data,ensure_ascii=False).replace('<','\\u003c'),1)
     resp.set_data(html);resp.headers['Cache-Control']='no-store'
     return resp
@@ -265,6 +271,12 @@ def ed_label(key):
         _,lk,i,field=key.split(':');meta=_list_meta(lk)
         return '%s · %s번째 · %s'%(meta[0],int(i)+1,dict((n,l) for n,l,_ in meta[1]).get(field,field)) if meta else key
     f=site_content.FIELDS.get(key);return f['label'] if f else key
+def ed_delete_mode(key):
+    # 지우기 버튼이 할 일: 'item' 항목째 빼기, 'text' 문장 지우기, '' 지울 수 없음
+    if key.startswith('list:'):
+        _,lk,_,field=key.split(':');meta=_list_meta(lk)
+        return 'item' if meta and field==meta[1][0][0] else 'text'
+    return '' if key in UNDELETABLE else 'text'
 def ed_multiline(key):
     if key.startswith('list:'):
         _,lk,_,field=key.split(':');meta=_list_meta(lk)
@@ -497,6 +509,8 @@ def admin_password():
             flash('관리자 비밀번호를 바꿨어요. 다음 로그인부터 새 비밀번호를 쓰세요.')
             return redirect(url_for('admin'))
     return render_template('admin_password.html')
+# 지우면 사이트가 깨지는 문구 (이름·숫자 설정 등)
+UNDELETABLE={'site.name','site.logo_rest','seo.home_title','home.latest_count','policy.effective_date','home.hero_button'}
 @app.route('/admin/edit-mode',methods=['POST'])
 @admin_only
 def admin_edit_mode():
@@ -524,7 +538,8 @@ def admin_list_remove():
 def admin_inline():
     # 사이트 화면에서 문장 하나를 바로 고칠 때 쓰는 저장 주소. 비우거나 reset이면 기본값으로.
     key=request.form.get('key','');value=request.form.get('value','').replace('\r\n','\n').strip()
-    reset=request.form.get('reset')=='1';stamp=datetime.datetime.now().isoformat(timespec='seconds')
+    reset=request.form.get('reset')=='1';delete=request.form.get('delete')=='1';stamp=datetime.datetime.now().isoformat(timespec='seconds')
+    if delete:value=''
     if key.startswith('list:'):
         try:_,lk,i,field=key.split(':');i=int(i)
         except ValueError:abort(400)
@@ -536,7 +551,7 @@ def admin_inline():
         if not 0<=i<len(rows):abort(404)
         if not opts.get('multiline'):value=' '.join(value.split())
         if len(value)>site_content.MAX_LENGTH:abort(400)
-        if not value and field==fields[0][0]:return {'ok':False,'error':'이 칸은 비울 수 없어요. 항목을 지우려면 관리자 메뉴·항목에서 지워 주세요.'},400
+        if not value and field==fields[0][0]:return {'ok':False,'error':'이 칸은 비울 수 없어요. 항목째 빼려면 지우기를 눌러 주세요.'},400
         rows[i][field]=value
         with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(lk,json.dumps(rows,ensure_ascii=False),stamp))
         return {'ok':True}
@@ -544,8 +559,10 @@ def admin_inline():
     if not field:abort(400)
     if not (field.get('multiline') or field.get('doc')):value=' '.join(value.split())
     if len(value)>(site_content.DOC_MAX_LENGTH if field.get('doc') else site_content.MAX_LENGTH):abort(400)
+    if delete and key in UNDELETABLE:return {'ok':False,'error':'이 문구는 지울 수 없어요. 내용만 바꿔 주세요.'},400
     with conn() as db:
-        if reset or value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(key,))
+        if delete:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,'',stamp))
+        elif reset or value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(key,))
         else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,stamp))
     return {'ok':True}
 

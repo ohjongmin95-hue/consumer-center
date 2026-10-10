@@ -1128,3 +1128,5 @@ body.console { --ad-ink: #1f2430; --ad-sub: #5d636b; --ad-mute: #8a8f96; --ad-li
 .ad-main main.page { padding-top: 0; }
 .ad-main .ad-page, .ad-main .page > .wrap, .ad-main .cs-page { max-width: 1160px !important; }
 body.console .ad-main main.page { padding: 0; }
+.ed-actions .ed-delete { border-color: #f0c4be; color: #c0392b; }
+.ed-ghost { color: #b0b3b8; font-size: .85em; font-style: italic; font-weight: 500; }

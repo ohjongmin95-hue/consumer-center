@@ -806,6 +806,27 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(admin.post('/admin/list-remove', data={'_csrf': token, 'list': 'layout_guide', 'index': 99}).status_code, 404)
         self.assertEqual(self.client.post('/admin/list-remove', data={'_csrf': t, 'list': 'layout_guide', 'index': 0}).status_code, 302)
 
+    def test_delete_text_while_editing(self):
+        admin = self.login_admin()
+        admin.post('/admin/edit-mode', data={'_csrf': self.csrf(admin, '/admin'), 'on': '1'})
+        token = self.csrf(admin, '/report')
+        self.assertIn('"del": "text"', admin.get('/guide').get_data(as_text=True))
+        # 문장 지우기 → 방문자 화면에서 사라지고, 편집 모드에서는 흐린 자리로 남음
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'guide.s1_desc', 'delete': '1'}).get_json()['ok'])
+        self.assertNotIn('구매일 대신 계약일', self.client.get('/guide').get_data(as_text=True))
+        self.assertIn('지운 문장 · 눌러서 되살리기', admin.get('/guide').get_data(as_text=True))
+        admin.post('/admin/inline', data={'_csrf': token, 'key': 'guide.s1_desc', 'reset': '1'})
+        self.assertIn('구매일 대신 계약일', self.client.get('/guide').get_data(as_text=True))
+        # 화면 문구(ui)도 지울 수 있음
+        admin.post('/admin/inline', data={'_csrf': token, 'key': 'report.consent_all', 'delete': '1'})
+        self.assertNotIn('아래 내용에 모두 동의합니다', self.client.get('/report').get_data(as_text=True))
+        # 지우면 안 되는 문구는 거절
+        self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'site.name', 'delete': '1'}).status_code, 400)
+        # 목록의 둘째 칸은 지우기, 첫째 칸은 항목째 빼기로 안내
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:guide_basics:0:body', 'delete': '1'}).get_json()['ok'])
+        self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:guide_basics:0:title', 'delete': '1'}).status_code, 400)
+        self.assertIn('"del": "item"', admin.get('/guide').get_data(as_text=True))
+
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
         token = self.csrf(self.client, '/report')

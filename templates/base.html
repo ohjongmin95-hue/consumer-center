@@ -85,28 +85,42 @@
   <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="0"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button type="submit">편집 끝내기</button></form>
 </div>
 <div class="ed-modal" hidden><form class="ed-box"><p class="ed-label"></p><textarea rows="3"></textarea><p class="ed-msg" role="status"></p>
-  <div class="ed-actions"><button type="button" class="ed-reset">기본 문구로</button><a class="ed-follow" hidden>이 링크로 이동 →</a><span></span><button type="button" class="ed-cancel">취소</button><button type="submit" class="ed-save">저장</button></div></form></div>
+  <div class="ed-actions"><button type="button" class="ed-delete">🗑 지우기</button><button type="button" class="ed-reset">기본 문구로</button><a class="ed-follow" hidden>이 링크로 이동 →</a><span></span><button type="button" class="ed-cancel">취소</button><button type="submit" class="ed-save">저장</button></div></form></div>
 <script>
   (function () {
     var data = null;
     function load() { if (!data) data = JSON.parse((document.getElementById('ed-data') || {}).textContent || '{}'); return data; }
     var modal = document.querySelector('.ed-modal'), area = modal.querySelector('textarea'), label = modal.querySelector('.ed-label'), msg = modal.querySelector('.ed-msg');
     var token = '{{ csrf_token() }}', current = null;
-    var follow = modal.querySelector('.ed-follow');
+    var follow = modal.querySelector('.ed-follow'), delBtn = modal.querySelector('.ed-delete');
     function open(key, link) {
       follow.hidden = !link; if (link) follow.href = link;
       current = key; var d = load()[key] || {v: '', label: key};
+      delBtn.hidden = !d.del; delBtn.textContent = d.del === 'item' ? '🗑 이 항목 빼기' : '🗑 지우기'; delBtn.dataset.mode = d.del || '';
       label.textContent = d.label; area.value = d.v; area.rows = Math.max(d.ml ? 5 : 2, d.v.split('\n').length + 1); msg.textContent = '';
       modal.hidden = false; area.focus();
     }
-    function save(reset) {
-      var body = new FormData(); body.append('_csrf', token); body.append('key', current); body.append('value', area.value); if (reset) body.append('reset', '1');
+    function post(url, fields) {
+      var body = new FormData(); body.append('_csrf', token);
+      Object.keys(fields).forEach(function (k) { body.append(k, fields[k]); });
       msg.textContent = '저장 중…';
-      fetch('{{ url_for('admin_inline') }}', {method: 'POST', body: body, credentials: 'same-origin'})
+      return fetch(url, {method: 'POST', body: body, credentials: 'same-origin'})
         .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
         .then(function (res) { if (res.ok) { location.reload(); } else { msg.textContent = res.error || '저장하지 못했어요. 다시 시도해 주세요.'; } })
         .catch(function () { msg.textContent = '저장하지 못했어요. 다시 시도해 주세요.'; });
     }
+    function save(reset, remove) {
+      var fields = {key: current, value: area.value}; if (reset) fields.reset = '1'; if (remove) fields['delete'] = '1';
+      return post('{{ url_for('admin_inline') }}', fields);
+    }
+    delBtn.addEventListener('click', function () {
+      if (delBtn.dataset.mode === 'item') {
+        var parts = current.split(':');
+        if (confirm('이 항목을 통째로 뺄까요? 관리자 구성 바꾸기에서 다시 넣을 수 있어요.')) post('{{ url_for('admin_list_remove') }}', {list: parts[1], index: parts[2]});
+      } else if (confirm('이 문장을 지울까요? 편집 모드에서 흐린 자리를 눌러 언제든 되살릴 수 있어요.')) {
+        save(false, true);
+      }
+    });
     document.addEventListener('click', function (e) {
       var rm = e.target.closest('.ed-remove');
       if (rm) {
