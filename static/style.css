@@ -1209,3 +1209,7 @@ a.private-title { color: inherit; }
 a.private-title:hover { color: #bd5c00; }
 .public-case-mine { margin: 18px 0 0; }
 @media (max-width: 680px) { .pw-pair { grid-template-columns: 1fr; } }
+.cs-sent { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.cs-sent li { padding: 8px 10px; border-radius: 8px; background: #f3f8f4; }
+.cs-sent li.failed { background: #fdf0ef; }
+.cs-sent span { display: block; color: #7a818b; font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }

@@ -42,7 +42,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings'):
+            for table in ('notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings'):
                 db.execute('DELETE FROM ' + table)
 
     def old_guide(self):
@@ -318,6 +318,54 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(self.client, '/report')
         no_choice = self.client.post('/report', data={'_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on'})
         self.assertEqual(no_choice.status_code, 400)
+
+    def test_reporter_notifications(self):
+        notify = self.site.notify
+        notify.ASYNC = False
+        kakao, mails = [], []
+        base = {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'subject': '알림 테스트 제보', 'description': 'C', 'reporter_name': '김소비',
+                'phone': '010-2222-3333', 'contact': 'me@example.com', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
+        # 설정이 없으면 아무것도 안 보냄
+        with patch.object(notify, 'http_post', side_effect=lambda *a: kakao.append(a) or {}), patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+            self.post_form(self.client, '/report', base)
+        self.assertEqual((kakao, mails), ([], []))
+        keys = {'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_PFID': 'pf', 'KAKAO_TPL_RECEIVED': 'T1', 'KAKAO_TPL_STATUS': 'T2', 'KAKAO_TPL_MESSAGE': 'T3',
+                'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}
+        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: kakao.append(a) or {'statusCode': '2000'}), \
+             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+            self.post_form(self.client, '/report', dict(base, subject='알림 두번째'))
+            self.assertEqual(len(kakao), 1)
+            message = kakao[0][1]['message']
+            self.assertEqual(message['to'], '01022223333')
+            self.assertEqual(message['kakaoOptions']['templateId'], 'T1')
+            self.assertEqual(message['kakaoOptions']['variables']['#{이름}'], '김소비')
+            self.assertTrue(kakao[0][2]['Authorization'].startswith('HMAC-SHA256 apiKey=k, date='))
+            self.assertEqual(mails[0][0], 'me@example.com')
+            self.assertIn('제보가 접수됐습니다', mails[0][2])
+            self.assertIn('http://localhost/lookup', mails[0][2])
+            with self.site.conn() as db:
+                case_id = db.execute("SELECT id FROM cases WHERE subject='알림 두번째'").fetchone()['id']
+            admin = self.login_admin()
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
+            self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T2')
+            self.assertIn('현재 단계: 검토 중', mails[-1][2])
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'message', 'message': '확인 중입니다'})
+            self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T3')
+            self.assertNotIn('확인 중입니다', mails[-1][2])
+            # 실패도 기록되고, 관리자 화면에 보임
+            with patch.object(notify, 'http_post', side_effect=OSError('down')):
+                self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'message', 'message': '두 번째'})
+            page = admin.get('/admin/reports/%d' % case_id).get_data(as_text=True)
+        self.assertIn('카카오톡 켜짐', page)
+        self.assertIn('010****3333', page)
+        self.assertIn('me***@example.com', page)
+        self.assertIn('down', page)
+        with self.site.conn() as db:
+            rows = db.execute('SELECT channel,event,status FROM notifications WHERE case_id=? ORDER BY id', (case_id,)).fetchall()
+        self.assertEqual([tuple(r) for r in rows], [('kakao', 'received', 'sent'), ('email', 'received', 'sent'), ('kakao', 'status', 'sent'), ('email', 'status', 'sent'),
+                                                   ('kakao', 'message', 'sent'), ('email', 'message', 'sent'), ('kakao', 'message', 'failed'), ('email', 'message', 'sent')])
+        notify.ASYNC = True
 
     def test_lookup_with_password(self):
         # 예전 '조회 코드' 안내는 어디에도 안 남음
