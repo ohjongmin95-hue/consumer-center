@@ -172,6 +172,26 @@ REPORT_INDUSTRY_DEFAULTS = [
 BOARD_CATEGORY_DEFAULTS = ['경험 공유', '질문해요', '꿀팁', '칭찬해요', '자유']
 PROCESS_ICONS = [('write', '제보 작성 (휴대폰)'), ('search', '검토 (돋보기)'), ('chat', '업체 확인 (말풍선)'), ('scale', '조율 (저울)'),
                  ('check', '완료 (체크 문서)'), ('bell', '안내 (알림)'), ('shield', '보호 (방패)'), ('call', '상담 (헤드셋)')]
+GUIDE_STEP_ICONS = [('write', '작성 (문서와 펜)'), ('attach', '첨부 (사진과 클립)'), ('ticket', '접수번호 (번호표)'), ('search', '확인 (돋보기)'), ('chat', '대화 (말풍선)'), ('check', '완료 (체크)')]
+GUIDE_STEPS = [('제보 작성', 'write'), ('자료 첨부', 'attach'), ('접수번호 받기', 'ticket'), ('진행 확인', 'search')]
+GUIDE_ART = [('telecom', '통신 (요금제·청구서·위치)'), ('mobile', '휴대폰 (모델명·오류 화면·수리 내역)'), ('appliance', '가전 (제품·계약서·점검일)'),
+             ('car', '자동차 (차량 부위·정비 내역·전후 사진)'), ('food', '식품 (포장·이물·발견 메모)'), ('commerce', '쇼핑 (상품 화면 ≠ 받은 상품·요청일)'),
+             ('fashion', '패션·뷰티 (얼룩·세탁 표시·성분)'), ('travel', '여행 (예약 조건·결항 문자·현장 사진)'), ('platform', '서비스 (구독 화면·지연·해지 신청)'),
+             ('finance', '금융 (약관·한 장씩 촬영·거래 내역)'), ('building', '건설 (방 안 하자·발견일·견적서)'), ('other', '기타 (구매 내역·해결·자료 모음)'), ('', '그림 없음')]
+GUIDE_INDUSTRIES = [
+    ('통신·인터넷', '약속한 요금과 청구된 요금을 비교할 수 있게', ['가입 때 안내받은 요금제·혜택·약정', '청구서의 문제 항목에 표시', '품질 문제는 장소·시간 + 문의 결과'], '가입 계약서, 요금 청구서, 상담 기록'),
+    ('모바일·IT기기', '고장 증상이 눈에 보이게', ['모델명이 보이는 전체 사진 → 문제 부위', '오류 화면은 캡처, 증상은 짧은 영상', '수리를 받았다면 수리 내역'], '구매 영수증, 사진·영상, 수리 내역'),
+    ('가전·렌탈', '제품 상태와 계약 조건을 함께', ['모델명과 문제 부위 사진', '렌탈은 약정 기간·위약금 조건', '방문 점검·수리 기록'], '렌탈 계약서, 제품 사진, 점검·수리 내역'),
+    ('자동차·모빌리티', '차량의 어디인지 + 정비 이력', ['위치가 보이는 사진과 가까운 사진', '정비 날짜별 명세서·견적서', '카셰어링은 이용 전후 사진'], '계약서, 정비 명세서, 차량 사진'),
+    ('식품·외식', '포장과 내용물을 함께', ['제품명·소비기한이 보이게 포장 전체', '이물·변색은 위치 + 가까이', '개봉 전·후, 발견 시점 메모'], '영수증·주문 내역, 제품·포장 사진'),
+    ('유통·커머스', '안내받은 것과 받은 것을 나란히', ['상품 설명·행사 화면 저장', '받은 상품과 포장 사진', '환불·교환 요청일과 답변'], '주문 내역, 상품 설명 화면, 업체 대화'),
+    ('패션·뷰티·리빙', '제품 전체 + 달라진 부분', ['전체 사진과 오염·변형 부위', '사용 방법과 문제가 시작된 때', '화장품은 성분 표시·피부 반응 사진'], '영수증, 제품 사진, 교환·수리 내역'),
+    ('여행·항공·숙박', '예약 조건과 실제 상황', ['예약 확정 화면과 취소 규정', '지연·취소 안내 문자', '현장 사진'], '예약 내역, 결제 내역, 안내 문자'),
+    ('플랫폼·생활서비스', '약속한 서비스와 실제 이용', ['신청·구독 화면과 이용 날짜', '제공 안 된 내용, 지연·취소', '해지·환불 요청 기록'], '신청·결제 내역, 앱 화면 캡처, 상담 기록'),
+    ('금융·보험', '설명받은 내용과 실제 청구·지급', ['상품명·가입일·수수료·보장 조건 쪽', '문서는 한 장씩, 글자가 선명하게', '청구·지급 내역과 업체 답변'], '계약서·약관, 거래 내역, 상담 기록'),
+    ('건설·부동산', '어느 방인지부터, 하자는 가까이', ['방·벽·천장 위치가 보이게 + 가까이', '처음 발견한 날짜', '보수 요청 기록과 견적서'], '계약서, 하자 사진, 보수 요청 내역'),
+    ('기타', '분류가 애매해도 괜찮아요', ['무엇을 사거나 어떤 계약을 했는지', '문제와 원하는 해결 방법', '관련 자료부터 모아서'], '결제 내역, 관련 사진, 업체 답변'),
+]
 PROCESS_STEPS = [
     ('제보 접수', 'write', '피해 내용과 자료를 **온라인으로 제보**하면 접수번호와 조회 코드가 발급돼요.'),
     ('내용 검토', 'search', '담당자가 **사실관계와 첨부 자료**를 확인해요. 필요하면 추가 자료를 요청해요.'),
@@ -216,6 +236,9 @@ LISTS = [
      [('title', '제목', {}), ('category', '분류', {}), ('company', '업체 표시 (예: ○○쇼핑)', {}), ('status', '진행 단계', {'choices': [(s, s) for s in STATUSES]})], 0),
     ('faq', '자주 묻는 질문', '자주 묻는 질문 페이지에 순서대로 보여요.', [('q', '질문', {}), ('a', '답변', ML)], 0),
     ('process_steps', '처리 절차 단계', '처리 절차 페이지와 메인 "처리 절차 요약"의 단계 카드예요. 번호는 자동으로 매겨져요.', [('title', '단계 이름', {}), ('icon', '아이콘', {'choices': PROCESS_ICONS}), ('body', '설명 (**강조할 말**처럼 별표 두 개로 감싸면 주황색으로 강조돼요)', ML)], 0),
+    ('guide_steps', '이용 안내 · 한눈에 보는 제보 방법', '이용 안내 맨 위 단계 카드예요. 번호는 자동으로 매겨져요.', [('title', '단계 이름', {}), ('icon', '아이콘', {'choices': GUIDE_STEP_ICONS})], 0),
+    ('guide_industries', '이용 안내 · 업종별로 이것 위주로', '업종 탭을 누르면 보이는 안내예요. 업종 이름은 제보하기 화면의 업종과 맞춰 두면 좋아요.',
+     [('name', '업종 이름', {}), ('focus', '이것 위주로 (한 문장)', {}), ('points', '챙길 점 (한 줄에 하나씩, 그림의 1·2·3번과 짝)', ML), ('materials', '준비 자료 (쉼표로 구분)', {}), ('image', '그림', {'choices': GUIDE_ART})], 0),
     ('guide_basics', '이용 안내 01 · 구매 정보 카드', '"언제, 어디서, 얼마에 구매했나요?" 아래 카드예요.', [('title', '제목', {}), ('body', '설명', ML)], 0),
     ('guide_writing', '이용 안내 02 · 작성 방법', '"겪은 일을 순서대로 알려 주세요" 아래 번호 목록이에요.', [('title', '질문', {}), ('body', '설명', ML)], 0),
     ('guide_topics', '이용 안내 04 · 분야별 준비자료', '분야 이름을 누르면 펼쳐지는 안내예요.', [('name', '분야 이름', {}), ('heading', '펼쳤을 때 제목', {}), ('steps', '준비 순서 (한 줄에 하나씩)', ML), ('info', '함께 적을 정보', ML), ('materials', '도움이 되는 자료', {})], 0),
@@ -224,8 +247,9 @@ _BLANK_BLOCK = {'title': '', 'count': '', 'body': '', 'button_label': '', 'butto
 
 # 페이지별 섹션 구성: 기본 섹션의 순서를 바꾸거나 빼고, 글 상자·안내 박스를 원하는 곳에 끼워 넣음
 PAGE_SECTIONS = {
-    'guide': ('이용 안내', [('guide_basics', '01 구매 정보 (카드)'), ('guide_writing', '02 작성 방법 (번호 목록 + 예시)'), ('guide_evidence', '03 자료 남기는 방법 (그림 안내)'),
-                           ('guide_topics', '04 분야별 준비자료 (펼침 목록 + 첨부 안내)'), ('guide_bottom', '하단 제보하기 버튼')]),
+    'guide': ('이용 안내', [('guide_steps', '한눈에 보는 제보 방법 (단계 카드)'), ('guide_three', '이 세 가지만 담아 주세요 (만화 3컷 + 팁)'), ('guide_industry', '업종별로 이것 위주로 (업종 탭)'),
+                           ('guide_basics', '(예전) 구매 정보 카드'), ('guide_writing', '(예전) 작성 방법 (번호 목록 + 예시)'), ('guide_evidence', '(예전) 자료 남기는 방법 (그림 안내)'),
+                           ('guide_topics', '(예전) 분야별 준비자료 (펼침 목록 + 첨부 안내)'), ('guide_bottom', '하단 제보하기 버튼')]),
     'process': ('처리 절차', [('process_cards', '처리 절차 단계 카드'), ('process_note', '하단 안내 (내 제보 조회 링크)')]),
     'faq': ('자주 묻는 질문', [('faq_list', '질문 목록')]),
     'types': ('제보 유형', [('types_list', '제보 유형 목록 (유형별 제보 버튼)')]),
@@ -250,6 +274,8 @@ LIST_DEFAULTS = {
     'faq': [{'q': q, 'a': a} for q, a in FAQ_DEFAULTS],
     'sample_reports': [{'title': t, 'category': c, 'company': co, 'status': st} for t, c, co, st in SAMPLE_REPORTS],
     'process_steps': [{'title': t, 'icon': i, 'body': b} for t, i, b in PROCESS_STEPS],
+    'guide_steps': [{'title': t, 'icon': i} for t, i in GUIDE_STEPS],
+    'guide_industries': [{'name': n, 'focus': f, 'points': '\n'.join(p), 'materials': m, 'image': a} for (n, f, p, m), (a, _) in zip(GUIDE_INDUSTRIES, GUIDE_ART)],
     **_LIST_DEFAULTS,
 }
 for _page, (_title, _sections) in PAGE_SECTIONS.items():
@@ -258,6 +284,8 @@ for _blank in LIST_DEFAULTS.values():
     for _row in _blank:
         if 'kind' in _row and _row['kind'] in dict(GENERIC_SECTIONS) | {k: 1 for _, (_, ss) in PAGE_SECTIONS.items() for k, _ in ss}:
             _row.pop('count', None)
+LIST_DEFAULTS['layout_guide'] = [dict(_BLANK_BLOCK, kind=k) for k in ('guide_steps', 'guide_three', 'guide_industry', 'guide_bottom')]
+for _row in LIST_DEFAULTS['layout_guide']:_row.pop('count', None)
 LIST_DEFAULTS['custom_pages'] = []
 LIST_DEFAULTS['report_consents'] = [{'kind': k, 'title': '', 'body': '', 'agree': ''} for k in ('privacy', 'share', 'copyright', 'truth')]
 LIST_MAX_ITEMS = 60

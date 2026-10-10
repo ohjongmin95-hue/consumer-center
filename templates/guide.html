@@ -1,4 +1,10 @@
 {% from 'page_blocks.html' import generic %}
+{% macro cut(n, title, sub, chips) %}<figure>
+  <img src="{{ url_for('static', filename='img/guide-cut%d.svg' % n, v=css_v) }}" alt="" width="300" height="220" loading="lazy">
+  <figcaption><strong>{{ title }}</strong>{% if sub|string %}<small>{{ sub }}</small>{% endif %}<ul class="gd-chips">{% for chip in chips if chip|string %}<li>{{ chip }}</li>{% endfor %}</ul></figcaption>
+</figure>{% endmacro %}
+{% macro tip(title, body) %}{% if title|string %}<div><b>{{ title }}</b>{% if body|string %}<span>{{ body }}</span>{% endif %}</div>{% endif %}{% endmacro %}
+{% set fresh = ('guide_steps', 'guide_three', 'guide_industry') %}
 {% set numbered = {'guide_basics': ('purchase-info', ui('guide.nav1', '구매 정보')), 'guide_writing': ('writing-guide', ui('guide.nav2', '작성 방법')), 'guide_evidence': ('photo-guide', ui('guide.nav3', '자료 남기는 방법')), 'guide_topics': ('evidence-guide', ui('guide.nav4', '분야별 준비자료'))} %}
 {% set layout = page_layout('guide') %}
 <div class="info-wrap guide-page">
@@ -6,15 +12,69 @@
     {% if txt('guide.eyebrow') %}<span class="eyebrow">{{ txt('guide.eyebrow') }}</span>{% endif %}
     <h1>{{ txt('guide.title') }}</h1>
     {% if txt('guide.intro') %}<p>{{ txt('guide.intro') }}</p>{% endif %}
-    <nav class="guide-shortcuts" aria-label="{{ txt('guide.title') }}">
+    {% if layout|selectattr('kind', 'in', numbered)|list %}<nav class="guide-shortcuts" aria-label="{{ txt('guide.title') }}">
       {% for block in layout if block.kind in numbered %}<a href="#{{ numbered[block.kind][0] }}">{{ numbered[block.kind][1] }}</a>{% endfor %}
-    </nav>
+    </nav>{% endif %}
   </div>
 {% set ns = namespace(n=0) %}
 {% for block in layout %}
 {{ ed_remove('layout_guide', loop.index0) }}
-{% if block.kind in numbered %}{% set ns.n = ns.n + 1 %}{% set num = ns.n %}{% endif %}
-{% if block.kind == 'guide_basics' %}
+{% if block.kind in numbered or block.kind in fresh %}{% set ns.n = ns.n + 1 %}{% set num = ns.n %}{% endif %}
+{% if block.kind == 'guide_steps' %}
+  <section class="gd-section" aria-labelledby="gd-steps">
+    <h2 class="gd-head" id="gd-steps"><i>{{ "%02d" % num }}</i>{{ ui('guide.h_steps', '한눈에 보는 제보 방법') }}</h2>
+    <ol class="gd-steps">
+      {% for step in items('guide_steps') %}<li><span class="gd-ic" aria-hidden="true">{{ guide_icon(step.icon) }}</span><b>{{ loop.index }}{{ ui('guide.step_unit', '단계') }}</b><strong>{{ step.title }}</strong></li>{% endfor %}
+    </ol>{{ ed_list('guide_steps') }}
+  </section>
+
+{% elif block.kind == 'guide_three' %}
+  <section class="gd-section" aria-labelledby="gd-three">
+    <h2 class="gd-head" id="gd-three"><i>{{ "%02d" % num }}</i>{{ ui('guide.h_three', '이 세 가지만 담아 주세요') }}</h2>
+    <div class="gd-comic">
+      {{ cut(1, ui('guide.c1_title', '무엇을 샀나요'), ui('guide.c1_sub', '언제 · 어디서 · 얼마에'), [ui('guide.c1_k1', '날짜'), ui('guide.c1_k2', '업체·상품명'), ui('guide.c1_k3', '금액')]) }}
+      {{ cut(2, ui('guide.c2_title', '무슨 일이 있었나요'), ui('guide.c2_sub', '겪은 일을 순서대로'), [ui('guide.c2_k1', '문제'), ui('guide.c2_k2', '업체에 한 요청'), ui('guide.c2_k3', '업체 답변'), ui('guide.c2_k4', '원하는 해결')]) }}
+      {{ cut(3, ui('guide.c3_title', '증거를 남겨요'), ui('guide.c3_sub', '전체 → 가까이 → 기록'), [ui('guide.c3_k1', '전체 모습'), ui('guide.c3_k2', '문제 부위'), ui('guide.c3_k3', '거래 기록')]) }}
+    </div>
+    <div class="gd-tips">
+      {{ tip(ui('guide.t1_title', '고치거나 버리기 전에'), ui('guide.t1_body', '처음 상태를 찍고 날짜를 메모')) }}
+      {{ tip(ui('guide.t2_title', '표시는 복사본에'), ui('guide.t2_body', '동그라미 친 사진 + 원본 보관')) }}
+      {{ tip(ui('guide.t3_title', '대화는 앞뒤까지'), ui('guide.t3_body', '날짜와 요청 내용이 보이게')) }}
+    </div>
+  </section>
+
+{% elif block.kind == 'guide_industry' %}
+  {% set inds = items('guide_industries') %}
+  <section class="gd-section" aria-labelledby="gd-ind">
+    <h2 class="gd-head" id="gd-ind"><i>{{ "%02d" % num }}</i>{{ ui('guide.h_industry', '업종별로 이것 위주로') }}</h2>
+    {% if inds %}
+    <div class="gd-tabs" role="tablist">
+      {% for x in g.lists.get('guide_industries', []) %}<button type="button" role="tab" id="gd-tab-{{ loop.index }}" aria-controls="gd-pane-{{ loop.index }}" aria-selected="{{ 'true' if loop.first else 'false' }}"{% if loop.first %} class="on"{% endif %}>{{ x.name }}</button>{% endfor %}
+    </div>
+    {% for x in inds %}
+    <div class="gd-topic{% if not x.image %} no-art{% endif %}" role="tabpanel" id="gd-pane-{{ loop.index }}" aria-labelledby="gd-tab-{{ loop.index }}"{% if not loop.first %} hidden{% endif %}>
+      {% if x.image %}<img src="{{ url_for('static', filename='img/guide-ind-%s.svg' % x.image, v=css_v) }}" alt="" width="330" height="200" loading="lazy">{% endif %}
+      <div><em>{{ x.name }}</em><h3>{{ x.focus }}</h3>
+        {% if x.points %}<ol class="gd-points"{{ ed_attr('list:guide_industries:%d:points' % loop.index0, x.points) }}>{% for line in x.points.split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ol>{% endif %}
+        {% if x.materials %}<p class="gd-mat-label">{{ ui('guide.ind_materials', '준비 자료') }}</p><ul class="gd-chips"{{ ed_attr('list:guide_industries:%d:materials' % loop.index0, x.materials) }}>{% for m in x.materials.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}{{ ed_list('guide_industries') }}
+    <p class="gd-foot">{{ ui('guide.ind_foot', '모든 자료를 갖출 필요는 없어요. 지금 갖고 있는 것부터 올려 주세요.') }}</p>
+  </section>
+  <script>
+  document.querySelectorAll('.gd-tabs [role=tab]').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.gd-tabs [role=tab]').forEach(function (t) {
+        var on = t === tab; t.classList.toggle('on', on); t.setAttribute('aria-selected', on ? 'true' : 'false');
+        document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+      });
+    });
+  });
+  </script>
+
+{% elif block.kind == 'guide_basics' %}
   <section class="guide-section" id="purchase-info" aria-labelledby="purchase-heading">
     <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="purchase-heading">{{ txt('guide.s1_title') }}</h2></div>
     {% if txt('guide.s1_desc') %}<p class="guide-description">{{ txt('guide.s1_desc') }}</p>{% endif %}
@@ -81,8 +141,8 @@
     <aside class="guide-upload">
       <h3>{{ ui('guide.u_title', '첨부하기 전에 확인해 주세요') }}</h3>
       <ul>
-        <li>{{ ui_rich('guide.u1', '현재는 **PDF·JPG·PNG·WEBP 파일 1개**를 첨부할 수 있습니다. 전체 제출 용량은 15MB 이내로 준비해 주세요.') }}</li>
-        <li>{{ ui_rich('guide.u2', '여러 장은 하나의 PDF로 정리해 주세요. 동영상·녹음 파일은 직접 첨부할 수 없으니, 주요 장면을 이미지로 남기거나 내용을 글로 설명해 주세요.') }}</li>
+        <li>{{ ui_rich('guide.u1', '사진·PDF·동영상(mp4, mov)을 **5개까지, 모두 합쳐 20MB까지** 올릴 수 있어요.') }}</li>
+        <li>{{ ui_rich('guide.u2', '자료가 많으면 여러 장을 하나의 PDF로 묶어 주세요. 녹음 파일은 주요 내용을 글로 적어 주세요.') }}</li>
         <li>{{ ui_rich('guide.u3', '주민등록번호, 계좌·카드번호 등 확인에 필요하지 않은 정보는 가려 주세요. 비밀번호는 적지 마세요.') }}</li>
       </ul>
     </aside>
