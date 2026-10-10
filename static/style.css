@@ -1361,7 +1361,14 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 .group-propose .group-company { line-height: 1.55; }
 .group-propose-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--orange); color: #fff; font-size: 20px; font-weight: 800; }
 
-/* Small "by SOBORU" tucked under the end of the header logo (takes no width, so the menu keeps its room) */
-.site-header .brand { position: relative; }
-.brand .brand-by { position: absolute; right: 1px; top: 100%; margin-top: 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; line-height: 1; color: #a3a8b0; white-space: nowrap; }
-@media (max-width: 680px) { .brand .brand-by { font-size: 9.5px; letter-spacing: .12em; } }
+/* Small "by SOBORU" right after the header logo; the menu tightens a little on mid-size screens to make room */
+.brand .brand-by { margin-left: 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; color: #a3a8b0; white-space: nowrap; }
+@media (min-width: 961px) {
+  .site-header .top { gap: 28px; }
+  .site-header .section-nav { gap: 26px; }
+}
+@media (min-width: 961px) and (max-width: 1180px) {
+  .site-header .section-nav { gap: 22px; }
+}
+@media (max-width: 680px) { .brand .brand-by { margin-left: 6px; font-size: 10px; letter-spacing: .08em; } }
+@media (max-width: 420px) { .site-header .brand { font-size: 24px; } .brand .brand-by { margin-left: 5px; font-size: 9px; } .top-auth { gap: 10px; } }
