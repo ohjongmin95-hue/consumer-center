@@ -486,49 +486,59 @@ class SiteTest(unittest.TestCase):
                 db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
                            ('G%d' % i, 'x', '배송·환불', 'OO쇼핑', subject, '본문 비공개 내용', '환불', '2026-10-09', public, public))
             first, second = [r['id'] for r in db.execute('SELECT id FROM cases ORDER BY id')]
-        # 1) 공개 제보의 '나도 겪었어요': 한 번 누르면 +1, 다시 누르면 취소, 비밀글엔 없음
-        visitor = self.site.app.test_client()
-        page = visitor.get('/reports/%d' % first).get_data(as_text=True)
-        self.assertIn('나도 겪었어요 <b>0</b>', page)
-        visitor.post('/reports/%d/metoo' % first, data={'_csrf': self.csrf(visitor, '/reports/%d' % first)})
-        self.assertIn('나도 겪었어요 <b>1</b>', visitor.get('/reports/%d' % first).get_data(as_text=True))
-        self.site.app.test_client().post('/reports/%d/metoo' % first, data={'_csrf': self.csrf(self.client, '/reports/%d' % first)})
-        self.assertEqual(self.client.post('/reports/%d/metoo' % second, data={'_csrf': self.csrf(self.client, '/report')}).status_code, 404)
-        # 2) 관리자: 후보 확인 → 공동 대응 열기 → 제보 연결
+        # '나도 겪었어요'는 없음. 공개 제보·비밀글 비밀번호 화면 모두 '공동 대응 제안하기'로 안내
+        self.assertNotIn('나도 겪었어요', self.client.get('/reports/%d' % first).get_data(as_text=True))
+        self.assertIn('/groups/new?company=OO', self.client.get('/reports/%d' % first).get_data(as_text=True))
+        self.assertIn('/groups/new?company=OO', self.client.get('/reports/%d/mine' % second).get_data(as_text=True))
+        # 1) 소비자 제안 → 검토 중(제안자·관리자만 보임), 제안자는 첫 참여자
+        proposer = self.site.app.test_client()
+        join = {'name': '박소비', 'phone': '010-3333-4444', 'detail': '9월에 반품했는데 아직 환불이 없어요', 'amount': '약 5만 원', 'consent': 'on'}
+        self.assertEqual(self.post_form(proposer, '/groups/new', dict(join, company='OO쇼핑', title='짧')).status_code, 400)
+        made = self.post_form(proposer, '/groups/new', dict(join, company='OO쇼핑', title='OO쇼핑 반품 후 환불 지연', share_consent='on'))
+        gid = int(made.headers['Location'].rsplit('/', 1)[1])
+        self.assertIn('센터가 제안 내용을 확인하고 있어요', proposer.get('/groups/%d' % gid).get_data(as_text=True))
+        self.assertEqual(self.client.get('/groups/%d' % gid).status_code, 404)
+        self.assertNotIn('OO쇼핑 반품 후 환불 지연', self.client.get('/groups').get_data(as_text=True))
+        # 2) 관리자 확인 → 공개, 제보 연결
         admin = self.login_admin()
-        self.assertIn('OO쇼핑 환불 지연', admin.get('/admin/groups').get_data(as_text=True))
-        created = self.post_form(admin, '/admin/groups', {'title': 'OO쇼핑 반품 후 환불 지연', 'company': 'OO쇼핑', 'summary': '반품 후 2주 넘게 환불이 안 되는 피해'})
-        gid = int(created.headers['Location'].rsplit('/', 1)[1])
+        self.assertIn('소비자 제안', admin.get('/admin/groups').get_data(as_text=True))
+        self.post_form(admin, '/admin/groups/%d' % gid, {'action': 'approve'})
         self.post_form(admin, '/admin/groups/%d' % gid, {'action': 'link', 'case_ids': '%d, %d' % (first, second)})
-        # 3) 공개 페이지: 목록·상세·제보 화면 연결, 비밀글 본문은 안 보임
+        # 3) 공개: 목록·배너·진행 막대(1/50), 같은 업체 제보에서 '같이 참여하기'
         self.assertIn('OO쇼핑 반품 후 환불 지연', self.client.get('/groups').get_data(as_text=True))
         self.assertIn('공동 대응 참여 모집', self.client.get('/reports').get_data(as_text=True))
         group = self.client.get('/groups/%d' % gid).get_data(as_text=True)
-        self.assertIn('OO쇼핑 환불 지연', group)
-        self.assertIn('OO쇼핑 환불 안 돼요', group)
-        self.assertNotIn('본문 비공개 내용', group)
-        self.assertIn('한국소비자원 집단분쟁조정', group)
-        self.assertIn('/groups/%d' % gid, self.client.get('/reports/%d' % first).get_data(as_text=True))
-        # 4) 참여 신청: 필수 동의 없으면 거절, 있으면 접수(선택 동의 기록)
-        join = {'name': '박소비', 'phone': '010-3333-4444', 'detail': '9월에 반품했는데 아직 환불이 없어요', 'amount': '약 5만 원'}
-        self.assertEqual(self.post_form(visitor, '/groups/%d' % gid, join).status_code, 400)
-        self.post_form(visitor, '/groups/%d' % gid, dict(join, consent='on', share_consent='on'))
-        self.post_form(self.site.app.test_client(), '/groups/%d' % gid, dict(join, name='이소비', consent='on'))
-        group = self.client.get('/groups/%d' % gid).get_data(as_text=True)
-        self.assertIn('<b>2</b><span>참여 신청</span>', group)
+        self.assertIn('<b>1</b>명 참여', group)
+        self.assertIn('목표 50명', group)
+        self.assertIn('9월에 반품했는데 아직 환불이 없어요', group)  # 제안 내용이 피해 설명으로
         self.assertNotIn('박소비', group)
+        self.assertNotIn('본문 비공개 내용', group)
+        self.assertIn('같이 참여하기', self.client.get('/reports/%d/mine' % second).get_data(as_text=True))
+        # 4) 다른 소비자 참여: 필수 동의 없으면 거절
+        visitor = self.site.app.test_client()
+        other = dict(join, name='이소비')
+        other.pop('consent')
+        self.assertEqual(self.post_form(visitor, '/groups/%d' % gid, other).status_code, 400)
+        self.post_form(visitor, '/groups/%d' % gid, dict(other, consent='on'))
+        self.assertIn('<b>2</b>명 참여', self.client.get('/groups/%d' % gid).get_data(as_text=True))
         detail = admin.get('/admin/groups/%d' % gid).get_data(as_text=True)
         self.assertIn('박소비', detail)
         self.assertIn('변호사·기관 제공 동의', detail)
         self.assertIn('변호사·기관 제공 미동의', detail)
-        csv_text = admin.get('/admin/groups/%d/members.csv' % gid).get_data(as_text=True)
-        self.assertIn('010-3333-4444', csv_text)
+        self.assertIn('010-3333-4444', admin.get('/admin/groups/%d/members.csv' % gid).get_data(as_text=True))
         self.assertEqual(self.client.get('/admin/groups/%d/members.csv' % gid).status_code, 302)
-        # 5) 종료하면 신청을 받지 않음
-        self.post_form(admin, '/admin/groups/%d' % gid, {'action': 'save', 'title': 'OO쇼핑 반품 후 환불 지연', 'company': 'OO쇼핑', 'summary': '', 'guide': '', 'status': 'closed'})
+        # 5) 목표 인원을 2명으로 바꾸면 '목표 달성', 종료하면 신청 불가
+        self.post_form(admin, '/admin/groups/%d' % gid, {'action': 'save', 'title': 'OO쇼핑 반품 후 환불 지연', 'company': 'OO쇼핑', 'summary': 'x', 'guide': '', 'status': 'open', 'target': '2'})
+        self.assertIn('목표 인원이 모였어요', self.client.get('/groups/%d' % gid).get_data(as_text=True))
+        self.post_form(admin, '/admin/groups/%d' % gid, {'action': 'save', 'title': 'OO쇼핑 반품 후 환불 지연', 'company': 'OO쇼핑', 'summary': 'x', 'guide': '', 'status': 'closed', 'target': '2'})
         late = self.site.app.test_client()
         self.assertIn('지금은 참여 신청을 받지 않아요', late.get('/groups/%d' % gid).get_data(as_text=True))
-        self.assertEqual(late.post('/groups/%d' % gid, data=dict(join, consent='on', _csrf=self.csrf(late, '/report'))).status_code, 400)
+        self.assertEqual(late.post('/groups/%d' % gid, data=dict(join, _csrf=self.csrf(late, '/report'))).status_code, 400)
+        # 6) 반려된 제안은 안 보임
+        made = self.post_form(self.site.app.test_client(), '/groups/new', dict(join, company='XX몰', title='XX몰 나쁜 회사 망해라'))
+        bad = int(made.headers['Location'].rsplit('/', 1)[1])
+        self.post_form(admin, '/admin/groups/%d' % bad, {'action': 'reject'})
+        self.assertEqual(self.client.get('/groups/%d' % bad).status_code, 404)
 
     def test_lookup_with_password(self):
         # 예전 '조회 코드' 안내는 어디에도 안 남음

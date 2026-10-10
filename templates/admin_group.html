@@ -4,10 +4,11 @@
 <main class="cs-page">
   <div class="cs-crumbs"><a href="{{ url_for('admin_groups') }}">← 공동 대응</a><span class="cs-pn"><a href="{{ url_for('group_page', group_id=grp['id']) }}" target="_blank" rel="noopener">사이트에서 보기 ↗</a></span></div>
   <h1 class="cs-title">{{ grp['title'] }}</h1>
+  {% if grp['status'] == 'review' %}<form class="cs-panel grp-review" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><p><b>소비자가 제안한 공동 대응이에요.</b> 업체 이름·제목·피해 설명에 허위·비방·개인정보가 없는지 확인하고 공개해 주세요. 필요하면 오른쪽에서 문구를 다듬은 뒤 공개하세요.</p><div class="cs-row"><button class="cs-btn cs-btn-main" name="action" value="approve">확인했어요 · 공개</button><button class="cs-btn" name="action" value="reject" onclick="return confirm('이 제안을 반려할까요?')">반려</button></div></form>{% endif %}
   <div class="cs-case">
     <div class="cs-col">
       <section class="cs-panel">
-        <h2>참여 신청 <small>{{ members|length }}명 · 관리자만 볼 수 있어요</small>{% if members %}<a class="cs-btn grp-csv" href="{{ url_for('admin_group_csv', group_id=grp['id']) }}">엑셀(CSV) 받기</a>{% endif %}</h2>
+        <h2>참여 신청 <small>{{ members|length }}/{{ grp['target'] }}명 · 관리자만 볼 수 있어요</small>{% if members %}<a class="cs-btn grp-csv" href="{{ url_for('admin_group_csv', group_id=grp['id']) }}">엑셀(CSV) 받기</a>{% endif %}</h2>
         {% for m in members %}
         <div class="cs-msg from-reporter grp-member">
           <div class="cs-msg-head"><b>{{ m['name'] }}</b><span>{{ m['created'][:16]|replace('T', ' ') }}</span></div>
@@ -30,6 +31,7 @@
       <form class="cs-panel cs-card" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="save">
         <h2>설정</h2>
         <div class="field"><label for="g-st">상태</label><select id="g-st" name="status">{% for k, v in statuses.items() %}<option value="{{ k }}"{% if grp['status'] == k %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="g-target">목표 인원</label><input id="g-target" type="number" name="target" min="2" max="100000" required value="{{ grp['target'] }}"></div>
         <div class="field"><label for="g-t">제목</label><input id="g-t" name="title" maxlength="120" required value="{{ grp['title'] }}"></div>
         <div class="field"><label for="g-c">업체</label><input id="g-c" name="company" maxlength="120" required value="{{ grp['company'] }}"></div>
         <div class="field"><label for="g-s">어떤 피해인가요</label><textarea id="g-s" name="summary" maxlength="3000" rows="4">{{ grp['summary'] }}</textarea></div>

@@ -202,8 +202,8 @@ REPORT_INDUSTRY_DEFAULTS = [(n, e) for n, _, e, *_ in INDUSTRIES]
 BOARD_CATEGORY_DEFAULTS = ['경험 공유', '질문해요', '꿀팁', '칭찬해요', '자유']
 PROCESS_ICONS = [('write', '제보 작성 (휴대폰)'), ('search', '검토 (돋보기)'), ('chat', '업체 확인 (말풍선)'), ('scale', '조율 (저울)'),
                  ('check', '완료 (체크 문서)'), ('bell', '안내 (알림)'), ('shield', '보호 (방패)'), ('call', '상담 (헤드셋)')]
-GUIDE_STEP_ICONS = [('write', '작성 (문서와 펜)'), ('attach', '첨부 (사진과 클립)'), ('ticket', '접수번호 (번호표)'), ('lock', '비밀번호 (자물쇠)'), ('search', '확인 (돋보기)'), ('chat', '대화 (말풍선)'), ('check', '완료 (체크)')]
-GUIDE_STEPS = [('제보 작성', 'write'), ('자료 첨부', 'attach'), ('비밀번호 정하기', 'lock'), ('진행 확인', 'search')]
+GUIDE_STEP_ICONS = [('write', '작성 (문서와 펜)'), ('attach', '첨부 (사진과 클립)'), ('ticket', '접수번호 (번호표)'), ('lock', '비밀번호 (자물쇠)'), ('search', '확인 (돋보기)'), ('chat', '대화 (말풍선)'), ('bell', '알림 (종)'), ('check', '완료 (체크)')]
+GUIDE_STEPS = [('제보 작성', 'write'), ('센터 검토', 'search'), ('진행 안내', 'bell'), ('결과 확인', 'check')]
 INDUSTRY_ART = [('food', '식품 (포장·이물·발견 메모)'), ('medical', '의약 (약 봉투·날짜별 사진·소견서)'), ('commerce', '쇼핑 (상품 화면 ≠ 받은 상품·요청일)'),
                 ('appliance', '가전 (오류 화면·모델명·수리 내역)'), ('car', '자동차 (차량 부위·정비 내역·전후 사진)'), ('telecom', '통신 (요금제·청구서·위치)'),
                 ('finance', '금융 (약관·한 장씩 촬영·거래 내역)'), ('game', '게임 (아이템 화면·결제 영수증·이용 제한)'), ('building', '건설 (방 안 하자·발견일·견적서)'),

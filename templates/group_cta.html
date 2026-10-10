@@ -1,0 +1,10 @@
+{# 제보 화면 아래: 같은 업체 공동 대응이 있으면 참여, 없으면 제안. grp, company 필요 #}
+<section class="group-cta">
+  {% if grp %}
+  <div><span class="group-status s-{{ grp['status'] }}">{{ GROUP_STATUSES[grp['status']] }}</span><p><b>{{ grp['title'] }}</b>{{ ui('groups.cta_join_tail', ' 공동 대응이 열려 있어요.') }}</p></div>
+  <a class="secondary" href="{{ url_for('group_page', group_id=grp['id']) }}">{{ ui('groups.cta_join', '같이 참여하기 →') }}</a>
+  {% else %}
+  <div><p><b>{{ ui('groups.cta_q', '같은 피해를 겪은 사람이 더 있을 것 같나요?') }}</b></p><p class="hint">{{ ui('groups.cta_hint', '공동 대응을 제안하면 센터 확인 뒤 공개되고, 같은 피해를 겪은 소비자들이 함께 참여할 수 있어요.') }}</p></div>
+  <a class="secondary" href="{{ url_for('group_new', company=company) }}">{{ ui('groups.cta_new', '공동 대응 제안하기 →') }}</a>
+  {% endif %}
+</section>

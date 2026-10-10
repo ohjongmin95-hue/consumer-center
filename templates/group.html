@@ -9,9 +9,14 @@
     <h1 class="page-title">{{ grp['title'] }}</h1>
     <p>{{ ui('reports.target', '제보 대상') }} · <b>{{ grp['company'] }}</b></p>
   </div>
-  <div class="group-stats">
-    <div><b>{{ n_members }}</b><span>{{ ui('groups.members', '참여 신청') }}</span></div>
-    <div><b>{{ cases|length }}</b><span>{{ ui('groups.cases', '관련 제보') }}</span></div>
+  {% if grp['status'] == 'review' %}<div class="alert">{{ ui('groups.in_review', '센터가 제안 내용을 확인하고 있어요. 공개되면 다른 소비자들이 참여할 수 있어요. 이 화면은 제안한 분에게만 보여요.') }}</div>
+  {% elif grp['status'] == 'rejected' %}<div class="alert">{{ ui('groups.rejected', '이 제안은 공개되지 않았어요. 궁금한 점은 센터로 문의해 주세요.') }}</div>{% endif %}
+  {% set pct = [100, (n_members * 100 // (grp['target'] or 1))]|min %}
+  <div class="group-progress">
+    <p><b>{{ n_members }}</b>{{ ui('groups.people_of', '명 참여') }} <span>/ {{ ui('groups.target', '목표') }} {{ grp['target'] }}{{ ui('groups.people_unit', '명') }}</span>{% if cases %}<em>{{ ui('groups.cases', '관련 제보') }} {{ cases|length }}{{ ui('groups.cases_unit', '건') }}</em>{% endif %}</p>
+    <div class="group-bar"><i style="width:{{ pct }}%"></i></div>
+    {% if n_members >= grp['target'] %}<p class="group-goal">🎉 {{ ui('groups.goal', '목표 인원이 모였어요! 센터가 정식 대응(집단분쟁조정 안내·업체 문의·보도 검토)을 준비해요.') }}</p>
+    {% else %}<p class="group-goal-hint">{{ ui('groups.goal_hint', '목표 인원이 모이면 센터가 정식으로 대응해요.') }} {{ grp['target'] - n_members }}{{ ui('groups.goal_left', '명 남았어요.') }}</p>{% endif %}
   </div>
   {% if grp['summary'] %}<section class="form-panel public-case"><h2>{{ ui('groups.summary', '어떤 피해인가요') }}</h2><p class="public-case-body">{{ grp['summary'] }}</p></section>{% endif %}
   {% if grp['guide'] %}<section class="form-panel public-case group-guide"><h2>{{ ui('groups.guide', '공동 대응 안내') }}</h2><p class="public-case-body">{{ grp['guide'] }}</p></section>{% endif %}

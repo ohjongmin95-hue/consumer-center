@@ -3,14 +3,7 @@
 {% block content %}
 <main class="cs-page">
   <h1 class="cs-title">공동 대응</h1>
-  <p class="cs-lead">같은 업체·같은 피해가 쌓이면 공동 대응을 열어 피해자 참여 신청을 받아요. 사이트 주소는 <b>{{ url_for('groups', _external=True) }}</b> 예요. 센터는 피해자를 모으고 안내만 해요. 변호사 소개비나 수수료는 받지 않아요.</p>
-
-  {% if hot %}
-  <section class="cs-panel">
-    <h2>“나도 겪었어요”가 많은 공개 제보</h2>
-    <ul class="grp-hot">{% for h in hot %}<li><a href="{{ url_for('admin_report', case_id=h['id']) }}">No.{{ h['id'] }} {{ h['subject'] }}</a> <span>{{ h['company'] }}</span> <b>{{ h['n'] }}명</b>{% if h['group_id'] %} <span class="cs-pill on">연결됨</span>{% endif %}</li>{% endfor %}</ul>
-  </section>
-  {% endif %}
+  <p class="cs-lead">소비자가 제안한 공동 대응은 <b>검토 중</b>으로 들어와요. 내용을 확인하고 공개하면 참여 신청을 받아요. 관리자가 직접 열 수도 있어요. 사이트 주소는 <b>{{ url_for('groups', _external=True) }}</b> 예요. 센터는 피해자를 모으고 안내만 해요. 변호사 소개비나 수수료는 받지 않아요.</p>
 
   <form class="cs-panel" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <h2>새 공동 대응 열기</h2>
@@ -25,7 +18,7 @@
       <thead><tr><th>제목</th><th>업체</th><th>상태</th><th>참여</th><th>관련 제보</th><th>연 날</th></tr></thead>
       <tbody>
       {% for gr in group_rows %}
-      <tr data-href="{{ url_for('admin_group', group_id=gr['id']) }}"><td class="cs-subject"><a href="{{ url_for('admin_group', group_id=gr['id']) }}">{{ gr['title'] }}</a></td><td>{{ gr['company'] }}</td><td><span class="cs-status{% if gr['status'] == 'open' %} s1{% elif gr['status'] == 'active' %} s3{% endif %}">{{ statuses[gr['status']] }}</span></td><td><b>{{ gr['n_members'] }}</b>명</td><td>{{ gr['n_cases'] }}건</td><td class="mono">{{ gr['created'][:10] }}</td></tr>
+      <tr data-href="{{ url_for('admin_group', group_id=gr['id']) }}"{% if gr['status'] == 'review' %} class="is-new"{% endif %}><td class="cs-subject"><a href="{{ url_for('admin_group', group_id=gr['id']) }}">{{ gr['title'] }}</a></td><td>{{ gr['company'] }}</td><td><span class="cs-status{% if gr['status'] == 'open' %} s1{% elif gr['status'] == 'active' %} s3{% endif %}">{{ statuses[gr['status']] }}</span>{% if gr['proposed'] %} <small class="cs-muted">소비자 제안</small>{% endif %}</td><td><b>{{ gr['n_members'] }}</b>/{{ gr['target'] }}명{% if gr['n_members'] >= gr['target'] %} <span class="cs-pill on">목표 달성</span>{% endif %}</td><td>{{ gr['n_cases'] }}건</td><td class="mono">{{ gr['created'][:10] }}</td></tr>
       {% else %}<tr><td colspan="6" class="cs-empty">아직 연 공동 대응이 없어요.</td></tr>{% endfor %}
       </tbody>
     </table>
