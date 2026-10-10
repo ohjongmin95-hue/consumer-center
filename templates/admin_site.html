@@ -1,0 +1,42 @@
+{% extends 'console.html' %}
+{% block title %}사이트 편집 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="ad-page">
+  <header class="ad-head"><div><h1>사이트 편집</h1><p>사이트에 보이는 글과 구성을 바꿔요. 대부분은 첫 번째 방법으로 충분해요.</p></div></header>
+
+  <section class="ad-hero">
+    <div>
+      <span class="ad-chip">가장 쉬운 방법</span>
+      <h2>화면에서 바로 고치기</h2>
+      <p>사이트를 그대로 보면서 점선으로 표시된 문장을 누르면 고칠 수 있어요. 필요 없는 섹션이나 동의 항목은 <b>✕ 빼기</b>로 지워요. 아래 막대에서 다른 페이지로 이동할 수 있어요.</p>
+    </div>
+    <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="1"><button class="ad-btn ad-btn-main ad-btn-lg" type="submit">편집 시작하기 →</button></form>
+  </section>
+
+  <div class="ad-grid-3">
+    <a class="ad-card" href="{{ url_for('admin_lists') }}">
+      <h3>구성 바꾸기</h3>
+      <p>메뉴·섹션·FAQ·동의 항목을 <b>추가하거나 순서를 바꿀 때</b>, 새 페이지를 만들 때</p>
+      <span class="ad-link">열기 →</span>
+    </a>
+    <a class="ad-card" href="{{ url_for('admin_content') }}">
+      <h3>숨은 문구·설정</h3>
+      <p>오류 메시지, 입력칸 안내처럼 <b>평소 화면에 안 보이는 문구</b>와 검색 등록 코드를 고칠 때</p>
+      <span class="ad-link">열기 →</span>
+    </a>
+    <a class="ad-card" href="{{ url_for('admin_content') }}#section-operator">
+      <h3>하단 정보</h3>
+      <p>상호, 대표, 주소, 연락처, 사업자등록번호 등 <b>맨 아래 사업자 정보</b>를 고칠 때</p>
+      <span class="ad-link">열기 →</span>
+    </a>
+  </div>
+
+  <section class="ad-panel">
+    <div class="ad-panel-head"><h2>직접 만든 페이지</h2><a class="ad-link" href="{{ url_for('admin_lists') }}#list-custom_pages">새 페이지 만들기 →</a></div>
+    {% for p in custom_pages if p.slug %}
+    <div class="ad-row"><b>{{ p.title }}</b><span class="ad-muted">/p/{{ p.slug }}</span><a class="ad-link" href="{{ url_for('custom_page', slug=p.slug) }}" target="_blank" rel="noopener">보기 ↗</a></div>
+    {% else %}<p class="ad-muted">아직 만든 페이지가 없어요. 소보루 소개, 광고 문의 같은 페이지를 만들어 메뉴에 연결할 수 있어요.</p>{% endfor %}
+  </section>
+  <p class="ad-muted ad-foot">지금까지 바꾼 문구·구성 {{ changed }}곳. 바꾼 곳은 각 화면에서 "기본 문구로"를 눌러 언제든 처음으로 되돌릴 수 있어요.</p>
+</main>
+{% endblock %}

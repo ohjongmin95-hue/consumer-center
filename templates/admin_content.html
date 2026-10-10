@@ -1,10 +1,10 @@
 {% extends 'console.html' %}
-{% block title %}문구 관리 | 소비자제보센터{% endblock %}
+{% block title %}숨은 문구·설정 | 소비자제보센터{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro admin-head">
-    <div><h1 class="page-title">사이트 문구</h1>
-    <p>저장하면 사이트에 바로 반영됩니다. 기본값이 있는 칸을 비워 저장하면 기본값으로 돌아가고, <strong>선택</strong> 표시가 있는 칸을 비우면 해당 문구가 화면에서 숨겨집니다. 사이트에 보이는 버튼·안내·알림 문구도 모두 여기서 바꿀 수 있어요. 일부 안내 문구는 <strong>**굵게**</strong>처럼 별표 두 개로 감싸면 굵게 보여요.</p></div>
+    <div><h1 class="page-title">숨은 문구·설정</h1>
+    <p>사이트의 모든 문구가 모여 있어요. 화면에 보이는 문장은 <a href="{{ url_for('admin_site') }}">사이트 편집</a>에서 고치는 게 쉽고, 여기서는 <b>오류 메시지·입력칸 안내·검색 등록 코드·하단 정보</b>처럼 평소 안 보이는 것을 찾아 고쳐요. 칸을 비우고 저장하면 기본 문구로 돌아가요.</p></div>
   </div>
   <div class="content-search"><input type="search" id="content-search" placeholder="바꾸고 싶은 문구를 검색하세요 (예: 제보 접수하기)" aria-label="문구 검색"><span id="content-search-count" class="meta"></span></div>
   <nav class="content-tabs" aria-label="섹션 바로가기">{% for sid, title, _ in sections %}<a href="#section-{{ sid }}">{{ title }}</a>{% endfor %}</nav>

@@ -201,7 +201,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-35'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-38'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -1251,6 +1251,13 @@ def admin():
             'staff':db.execute('SELECT COUNT(*) FROM staff WHERE active=1').fetchone()[0],
         }
     return render_template('admin_home.html',counts=counts,stats=stats)
+
+@app.route('/admin/site')
+@admin_only
+def admin_site():
+    # 사이트 편집 안내: 화면에서 바로 고치기, 구성 바꾸기, 숨은 문구·설정으로 가는 첫 화면
+    with conn() as db:changed=db.execute('SELECT COUNT(*) FROM site_content').fetchone()[0]+db.execute('SELECT COUNT(*) FROM site_lists').fetchone()[0]
+    return render_template('admin_site.html',changed=changed,custom_pages=g.lists.get('custom_pages',[]))
 
 @app.route('/admin/staff',methods=['GET','POST'])
 @admin_only

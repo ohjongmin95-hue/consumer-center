@@ -1,5 +1,5 @@
 {% extends 'console.html' %}
-{% block title %}항목 관리 | {{ txt('site.name') }}{% endblock %}
+{% block title %}구성 바꾸기 | {{ txt('site.name') }}{% endblock %}
 {% macro item_fields(fields, item) %}
   {% for name, label, opts in fields %}
   <label class="li-field{% if opts.multiline %} wide{% endif %}"><span>{{ label }}</span>
@@ -13,8 +13,8 @@
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro admin-head">
-    <h1 class="page-title">메뉴·항목</h1>
-    <p>항목을 <b>추가·삭제</b>하고 <b>↑ ↓</b>로 순서를 바꿀 수 있어요. 섹션마다 <b>저장</b>을 눌러야 사이트에 반영돼요. 저장하기 전에 새로고침하면 바뀐 내용이 취소돼요.</p>
+    <h1 class="page-title">구성 바꾸기</h1>
+    <p>메뉴·섹션·목록에 항목을 <b>추가</b>하고 <b>↑ ↓</b>로 순서를 바꿔요. 목록마다 <b>저장</b>을 눌러야 반영돼요. 문장만 고칠 때는 <a href="{{ url_for('admin_site') }}">사이트 편집</a>이 더 편해요.</p>
   </div>
   <nav class="content-tabs" aria-label="목록 바로가기">{% for key, title, _, _, _ in lists %}<a href="#list-{{ key }}">{{ title }}</a>{% endfor %}</nav>
   {% for key, title, desc, fields, minimum in lists %}

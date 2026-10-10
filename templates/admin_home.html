@@ -1,33 +1,40 @@
 {% extends 'console.html' %}
-{% block title %}관리자 | {{ txt('site.name') }}{% endblock %}
+{% block title %}관리자 홈 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
-<main class="cs-page">
-  <div class="cs-head"><h1 class="cs-title">관리자 홈</h1>
-    <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="1"><button class="cs-btn cs-btn-main" type="submit">✏️ 사이트에서 바로 고치기</button></form>
-  </div>
+<main class="ad-page">
+  <header class="ad-head">
+    <div><h1>관리자 홈</h1><p>오늘 확인할 일과 사이트 현황이에요.</p></div>
+    <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="1"><button class="ad-btn ad-btn-main" type="submit">✏️ 사이트 편집</button></form>
+  </header>
 
-  <section class="cs-stats" aria-label="현황">
-    <a href="{{ url_for('admin_reports') }}"><span>최근 7일 새 제보</span><b>{{ stats.new_cases }}</b></a>
-    <a href="{{ url_for('admin_reports') }}"><span>처리 중인 제보</span><b>{{ stats.open_cases }}</b></a>
-    <a href="{{ url_for('admin_members') }}"><span>회원 <small>(7일 +{{ stats.new_members }})</small></span><b>{{ stats.members }}</b></a>
-    <a href="{{ url_for('admin_board') }}" class="{{ 'warn' if stats.flagged }}"><span>확인할 게시글·댓글</span><b>{{ stats.flagged }}</b></a>
-    <a href="{{ url_for('admin_takedowns') }}" class="{{ 'warn' if stats.takedowns }}"><span>처리할 게시중단 요청</span><b>{{ stats.takedowns }}</b></a>
+  {% set new_reports = counts.get(STATUSES[0], 0) %}
+  <section class="ad-todo" aria-label="확인할 일">
+    <a class="ad-todo-item{% if new_reports %} is-on{% endif %}" href="{{ url_for('admin_reports', status=STATUSES[0]) }}"><b>{{ new_reports }}</b><span>새로 접수된 제보</span></a>
+    <a class="ad-todo-item{% if stats.flagged %} is-on{% endif %}" href="{{ url_for('admin_board') }}"><b>{{ stats.flagged }}</b><span>신고된 게시글·댓글</span></a>
+    <a class="ad-todo-item{% if stats.takedowns %} is-on{% endif %}" href="{{ url_for('admin_takedowns') }}"><b>{{ stats.takedowns }}</b><span>처리할 게시중단 요청</span></a>
   </section>
 
-  <section class="cs-panel cs-pipeline">
-    <div class="cs-panel-head"><h2>단계별 제보</h2><a href="{{ url_for('admin_reports') }}">제보 처리로 →</a></div>
-    <div class="cs-steps">{% for s in STATUSES %}<a href="{{ url_for('admin_reports', status=s) }}"><b>{{ counts.get(s, 0) }}</b><span>{{ s }}</span></a>{% endfor %}</div>
-  </section>
-
-  <h2 class="cs-subtitle">사이트 관리</h2>
-  <div class="cs-cards">
-    <a class="cs-card" href="{{ url_for('admin_content') }}"><b>사이트 문구</b><span>메인·안내 페이지 문구, 약관·처리방침, 검색 등록 코드</span></a>
-    <a class="cs-card" href="{{ url_for('admin_content') }}#section-operator"><b>하단 정보</b><span>상호, 대표, 연락처, 사업자등록번호 등 맨 아래 정보</span></a>
-    <a class="cs-card" href="{{ url_for('admin_lists') }}"><b>메뉴·항목</b><span>메뉴 이름·순서, 메인 화면 구성, 제보 유형, FAQ</span></a>
-    <a class="cs-card" href="{{ url_for('admin_board') }}"><b>게시판</b><span>신고 들어온 글·댓글 숨기기, 삭제</span></a>
-    <a class="cs-card" href="{{ url_for('admin_members') }}"><b>회원</b><span>회원 검색, 이용 정지, 삭제</span></a>
-    <a class="cs-card" href="{{ url_for('admin_takedowns') }}"><b>게시중단 요청</b><span>권리침해 신고 처리 기록</span></a>
-    <a class="cs-card" href="{{ url_for('admin_staff') }}"><b>기자 계정 <small>{{ stats.staff }}명</small></b><span>제보 처리 화면에 들어올 기자 계정 만들기·중지</span></a>
+  <div class="ad-grid-2">
+    <section class="ad-panel">
+      <div class="ad-panel-head"><h2>제보 현황</h2><a class="ad-link" href="{{ url_for('admin_reports') }}">제보 처리 →</a></div>
+      <div class="ad-kpis">
+        <div><span>최근 7일 접수</span><b>{{ stats.new_cases }}</b></div>
+        <div><span>처리 중</span><b>{{ stats.open_cases }}</b></div>
+      </div>
+      <div class="ad-pipeline">{% for s in STATUSES %}<a href="{{ url_for('admin_reports', status=s) }}"><b>{{ counts.get(s, 0) }}</b><span>{{ s }}</span></a>{% endfor %}</div>
+    </section>
+    <section class="ad-panel">
+      <div class="ad-panel-head"><h2>회원·기자</h2></div>
+      <div class="ad-kpis">
+        <a href="{{ url_for('admin_members') }}"><span>회원</span><b>{{ stats.members }}</b><small>최근 7일 +{{ stats.new_members }}</small></a>
+        <a href="{{ url_for('admin_staff') }}"><span>기자 계정</span><b>{{ stats.staff }}</b><small>사용 중</small></a>
+      </div>
+      <div class="ad-quick">
+        <a class="ad-btn" href="{{ url_for('admin_staff') }}">기자 추가</a>
+        <a class="ad-btn" href="{{ url_for('admin_site') }}">사이트 편집 안내</a>
+        <a class="ad-btn" href="{{ url_for('admin_content') }}#section-operator">하단 정보 수정</a>
+      </div>
+    </section>
   </div>
 </main>
 {% endblock %}

@@ -592,6 +592,11 @@ class SiteTest(unittest.TestCase):
         home = admin.get('/admin').get_data(as_text=True)
         self.assertIn('관리자 홈', home)
         self.assertIn('기자 계정', home)
+        for label in ('사이트 편집', '구성 바꾸기', '숨은 문구·설정', '게시판 신고', '제보 처리'):
+            self.assertIn(label, home)
+        site = admin.get('/admin/site').get_data(as_text=True)
+        self.assertIn('화면에서 바로 고치기', site)
+        self.assertIn('편집 시작하기', site)
         token = self.csrf(admin, '/admin/staff')
         weak = admin.post('/admin/staff', data={'_csrf': token, 'action': 'add', 'name': '김민지', 'login_id': 'minji', 'password': 'short'}, follow_redirects=True)
         self.assertIn('8자 이상', weak.get_data(as_text=True))
