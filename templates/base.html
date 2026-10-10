@@ -28,11 +28,11 @@
     </nav>
     <div class="top-auth">
       {% if g.user %}
-      <a class="util-me" href="{{ url_for('mypage') }}" title="내 정보"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="8.5" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{{ g.user['nickname'] }}님</a>
-      <form method="post" action="{{ url_for('member_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">로그아웃</button></form>
+      <a class="util-me" href="{{ url_for('mypage') }}" title="{{ ui('common.my_info', '내 정보') }}"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="8.5" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{{ g.user['nickname'] }}{{ ui('common.nim', '님') }}</a>
+      <form method="post" action="{{ url_for('member_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">{{ ui('common.logout', '로그아웃') }}</button></form>
       {% else %}
-      <a href="{{ url_for('login', next=request.full_path.rstrip('?')) if request.endpoint not in ('login', 'signup', 'member_logout') else url_for('login') }}">로그인</a>
-      <a href="{{ url_for('signup') }}">회원가입</a>
+      <a href="{{ url_for('login', next=request.full_path.rstrip('?')) if request.endpoint not in ('login', 'signup', 'member_logout') else url_for('login') }}">{{ ui('common.login', '로그인') }}</a>
+      <a href="{{ url_for('signup') }}">{{ ui('common.signup', '회원가입') }}</a>
       {% endif %}
     </div>
   </div>
@@ -46,15 +46,15 @@
     <div class="ft-top">
       <a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>
       <nav class="ft-links" aria-label="정책 및 안내">
-        <a href="{{ url_for('policy_page', page='terms') }}">이용약관</a>
-        <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">개인정보 처리방침</a>
-        <a href="{{ url_for('policy_page', page='youth') }}">청소년보호정책</a>
-        <a class="ft-point" href="{{ url_for('takedown') }}">권리침해 신고 및 임시조치 안내</a>
-        <a href="{{ url_for('lookup') }}">내 제보 조회</a>
+        <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('common.ft_terms', '이용약관') }}</a>
+        <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">{{ ui('common.ft_privacy', '개인정보 처리방침') }}</a>
+        <a href="{{ url_for('policy_page', page='youth') }}">{{ ui('common.ft_youth', '청소년보호정책') }}</a>
+        <a class="ft-point" href="{{ url_for('takedown') }}">{{ ui('common.ft_takedown', '권리침해 신고 및 임시조치 안내') }}</a>
+        <a href="{{ url_for('lookup') }}">{{ ui('common.ft_lookup', '내 제보 조회') }}</a>
       </nav>
     </div>
     {% set rows = footer_rows() %}
-    {% if rows %}<ul class="ft-info">{% for row in rows %}{% for label, value in row %}<li>{{ label }}. {% if label == '대표' %}{# 대표 이름 첫 글자: 관리자 로그인으로 가는 숨은 링크 #}<a class="ft-quiet" href="{{ url_for('admin_login') }}" rel="nofollow">{{ value[:1] }}</a>{{ value[1:] }}{% else %}{{ value }}{% endif %}</li>{% endfor %}{% endfor %}</ul>{% endif %}
+    {% if rows %}<ul class="ft-info">{% for row in rows %}{% for key, label, value in row %}<li>{{ label }}. {% if key == 'operator.ceo' %}{# 대표 이름 첫 글자: 관리자 로그인으로 가는 숨은 링크 #}<a class="ft-quiet" href="{{ url_for('admin_login') }}" rel="nofollow">{{ value[:1] }}</a>{{ value[1:] }}{% else %}{{ value }}{% endif %}</li>{% endfor %}{% endfor %}</ul>{% endif %}
     <div class="ft-bottom">
       {% if txt('operator.notice') %}<p class="ft-notice">{{ txt('operator.notice') }}</p>{% endif %}
       <p class="ft-copy">{{ txt('footer.text') }}</p>

@@ -14,15 +14,15 @@
   </section>
 
   {% elif block.kind == 'latest_reports' %}{% set n = block_count(block, home_latest()) %}{% set heading = block.title or txt('home.latest_title') %}
-  <section class="section home-reports"{% if heading %} aria-labelledby="reports-heading-{{ loop.index }}"{% else %} aria-label="최근 제보"{% endif %}>
+  <section class="section home-reports"{% if heading %} aria-labelledby="reports-heading-{{ loop.index }}"{% else %} aria-label="{{ ui('home.latest_aria', '최근 제보') }}"{% endif %}>
     {% if heading %}<div class="section-head"><h2 id="reports-heading-{{ loop.index }}">{{ heading }}</h2></div>{% endif %}
     <div data-live-list="{{ url_for('latest_reports', n=n, view='cards') }}">{% with cases = report_rows(limit=n) %}{% include 'report_cards.html' %}{% endwith %}</div>
-    <div class="home-reports-more"><a class="more-link" href="{{ url_for('reports') }}"><span>더보기</span><span class="more-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a></div>
+    <div class="home-reports-more"><a class="more-link" href="{{ url_for('reports') }}"><span>{{ ui('home.more', '더보기') }}</span><span class="more-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a></div>
   </section>
 
   {% elif block.kind == 'board_posts' %}{% set posts = recent_posts(block_count(block, 4)) %}
   <section class="section home-board" aria-labelledby="board-heading-{{ loop.index }}">
-    <div class="section-head"><h2 id="board-heading-{{ loop.index }}">{{ block.title or '소비자게시판 새 글' }}</h2><a class="see-all" href="{{ url_for('board') }}">게시판 가기 →</a></div>
+    <div class="section-head"><h2 id="board-heading-{{ loop.index }}">{{ block.title or ui('home.board_title', '소비자게시판 새 글') }}</h2><a class="see-all" href="{{ url_for('board') }}">{{ ui('home.board_link', '게시판 가기 →') }}</a></div>
     {% if posts %}
     <div class="home-board-grid">
       {% set names = items('board_categories')|map(attribute='name')|list %}{% for p in posts %}<a class="home-board-card" href="{{ url_for('board_post', post_id=p['id']) }}"><span class="cat-chip cat-{{ names.index(p['category']) % 5 if p['category'] in names else 4 }}">{{ p['category'] }}</span><strong>{{ p['title'] }}</strong><span class="home-board-meta">{{ heart(False) }} {{ p['likes'] }} {{ bubble() }} {{ p['comments'] }} · {{ p['created']|ago }}</span></a>{% endfor %}
@@ -39,13 +39,13 @@
 
   {% elif block.kind == 'process' %}
   <section class="section home-process" aria-labelledby="process-heading-{{ loop.index }}">
-    <div class="section-head"><h2 id="process-heading-{{ loop.index }}">{{ block.title or txt('process.title') }}</h2><a class="see-all" href="{{ url_for('info_page', page='process') }}">자세히 →</a></div>
+    <div class="section-head"><h2 id="process-heading-{{ loop.index }}">{{ block.title or txt('process.title') }}</h2><a class="see-all" href="{{ url_for('info_page', page='process') }}">{{ ui('home.process_link', '자세히 →') }}</a></div>
     {% include 'process_cards.html' %}
   </section>
 
   {% elif block.kind == 'faq' %}
   <section class="section home-faq" aria-labelledby="faq-heading-{{ loop.index }}">
-    <div class="section-head"><h2 id="faq-heading-{{ loop.index }}">{{ block.title or txt('faq.title') }}</h2><a class="see-all" href="{{ url_for('info_page', page='faq') }}">전체 보기 →</a></div>
+    <div class="section-head"><h2 id="faq-heading-{{ loop.index }}">{{ block.title or txt('faq.title') }}</h2><a class="see-all" href="{{ url_for('info_page', page='faq') }}">{{ ui('home.faq_link', '전체 보기 →') }}</a></div>
     <div class="info-card">{% for item in items('faq')[:block_count(block, 3)] %}<details class="faq-item"><summary>{{ item.q }}</summary>{% if item.a %}<p class="pre-line">{{ item.a }}</p>{% endif %}</details>{% endfor %}</div>
   </section>
   {% endif %}

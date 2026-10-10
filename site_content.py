@@ -72,19 +72,27 @@ SECTIONS = [
         ('report.title', '페이지 제목', '소비자 피해 제보하기', {}),
         ('report.intro', '소개 문구', '', OPT_ML),
         ('report.notes', '제보 전 꼭 읽어 주세요 (한 줄에 하나씩)', '업체명과 제보 유형을 정확히 골라 주시면 더 빨리 확인할 수 있어요.\n공개로 올린 제보는 누구나 볼 수 있어요. 본문에는 이름, 전화번호, 주소 같은 개인정보를 적지 마세요. 연락이 필요하면 이메일 칸만 써 주세요.\n영수증, 계약서, 사진, 업체와 나눈 대화처럼 사실을 확인할 수 있는 자료를 첨부하면 큰 도움이 돼요.\n접수 후 나오는 접수번호와 조회 코드는 꼭 따로 보관해 주세요. 다시 보여 드릴 수 없어요.\n접수된 제보는 직접 고치거나 지울 수 없어요. 삭제를 원하면 운영자 이메일로 요청해 주세요.\n비방, 욕설, 명예를 훼손하는 표현, 광고성 내용은 공개되지 않거나 삭제될 수 있어요.\n상대방의 개인정보를 그대로 드러낸 글은 예고 없이 비공개 처리될 수 있어요.', OPT_ML),
-        ('report.privacy_items', '[필수] 개인정보 수집·이용: 항목', '제보 유형, 업체·서비스명, 제보 제목과 내용, 원하는 해결 방법\n(선택) 이메일, 첨부파일', ML),
-        ('report.privacy_purpose', '[필수] 개인정보 수집·이용: 목적', '제보 접수와 사실관계 확인, 처리 경과 안내', ML),
-        ('report.privacy_period', '[필수] 개인정보 수집·이용: 보유 기간', '제보 처리 종결 후 1년\n(삭제 요청 시 바로 파기)', ML),
-        ('report.refusal_note', '동의 거부 안내', '동의를 거부할 수 있어요. 다만 필수 항목에 동의하지 않으면 제보를 접수할 수 없어요.', ML),
-        ('report.share_recipient', '[선택] 기업 전달: 제공받는 곳', '제보 대상 기업', ML),
-        ('report.share_items', '[선택] 기업 전달: 제공 항목', '제보 제목, 업체명, 피해 내용, 원하는 해결 방법\n(연락처·첨부파일은 전달하지 않아요)', ML),
-        ('report.share_purpose', '[선택] 기업 전달: 목적', '사실관계 확인과 기업 답변 요청', ML),
-        ('report.share_period', '[선택] 기업 전달: 보유 기간', '기업의 답변 처리가 끝날 때까지', ML),
+        ('report.privacy_items', '[필수] 개인정보 수집·이용: 수집 항목', '제보 유형, 업체·서비스명, 제보 제목과 내용, 원하는 해결 방법\n이메일(입력한 경우), 첨부파일', ML),
+        ('report.privacy_purpose', '[필수] 개인정보 수집·이용: 이용 목적', '제보에 따른 본인 확인 및 원활한 의사소통 경로 확보', ML),
+        ('report.privacy_period', '[필수] 개인정보 수집·이용: 보유 기간', '게시글 작성 시로부터 3년', ML),
+        ('report.refusal_note', '[필수] 개인정보 수집·이용: 거부 권리 안내', '위와 같이 개인정보를 수집·이용하는 데 동의를 거부할 권리가 있습니다. 그러나 동의를 거부할 경우 제보 접수 및 일부 서비스 제공을 받으실 수 없습니다.', ML),
+        ('report.share_recipient', '[필수] 개인정보 제3자 제공: 제공받는 자', '제보 대상이 된 해당 사업자', ML),
+        ('report.share_items', '[필수] 개인정보 제3자 제공: 제공 항목', '제보 제목, 업체명, 피해 내용, 원하는 해결 방법', ML),
+        ('report.share_purpose', '[필수] 개인정보 제3자 제공: 이용 목적', '제보(민원)의 처리 및 중재 요청', ML),
+        ('report.share_period', '[필수] 개인정보 제3자 제공: 보유 기간', '게시글 작성 시로부터 3년', ML),
+        ('report.share_refusal', '[필수] 개인정보 제3자 제공: 거부 권리 안내', '위와 같이 개인정보를 제공하는 데 동의를 거부할 권리가 있습니다. 그러나 동의를 거부할 경우 제보 접수 및 일부 서비스 제공을 받으실 수 없습니다.', ML),
         ('report.visibility_public', '공개 설정: 공개 설명', '제목과 내용을 누구나 볼 수 있어요. 업체명도 함께 표시돼요. 연락처와 첨부파일은 공개되지 않아요.', ML),
         ('report.visibility_secret', '공개 설정: 비밀글 설명', '센터 담당자만 볼 수 있어요. 목록에는 비밀글로만 표시돼요.', ML),
         ('report.public_notice', '공개 제보 하단 안내', '이 제보는 제보자 개인의 경험과 주장이며, 센터가 사실관계를 확인한 내용이 아닙니다. 이 글로 권리를 침해받았다면 게시중단을 요청해 주세요.', OPT_ML),
-        ('report.use_text', '[선택] 제보 내용 활용 동의 문구', '보내 주신 글과 사진은 개인정보를 가린 뒤 소비자 피해 예방을 위한 콘텐츠(기사, 카드뉴스, SNS 게시물 등)에 활용될 수 있어요. 동의하지 않아도 제보는 똑같이 접수되고, 동의한 뒤에도 운영자 이메일로 언제든 철회할 수 있어요.', ML),
-        ('report.consent_truth', '[필수] 사실 작성 확인 문구', '사실에 근거해 작성했습니다. 허위 사실이나 타인의 명예를 훼손하는 내용을 적으면 법적 책임이 따를 수 있음을 확인합니다.', ML),
+        ('report.use_text', '[필수] 저작권 동의: 내용', '제보해 주신 글과 사진, 영상은 또 다른 소비자 피해를 막기 위해 제작되는 소보루 기사와 관련 유튜브 및 SNS 콘텐츠 제작에 사용될 수 있습니다. 이러한 저작권 이용에 동의를 거부할 권리가 있습니다. 그러나 동의를 거부할 경우 제보 접수 및 일부 서비스 제공을 받으실 수 없습니다.', ML),
+        ('report.use_withdraw', '[필수] 저작권 동의: 철회 안내 (하단 정보의 대표 이메일이 뒤에 붙어요)', '제공하신 동의를 철회하려면 담당자에게 연락해 주세요. 바로 처리해 드립니다.', ML),
+        ('report.consent_truth', '[필수] 사실 작성 확인: 내용', '사실에 근거해 작성했습니다. 허위 사실이나 타인의 명예를 훼손하는 내용을 적으면 법적 책임이 따를 수 있음을 확인합니다.', ML),
+    ]),
+    ('member', '회원가입·로그인·내 정보', [
+        ('member.privacy_items', '회원가입 개인정보: 수집 항목', '필수: 아이디, 비밀번호(암호화 저장), 닉네임\n선택: 이메일', ML),
+        ('member.privacy_purpose', '회원가입 개인정보: 이용 목적', '회원 식별과 로그인\n내 제보·글 모아 보기\n이메일: 비밀번호 분실 등 문의 시 본인 확인', ML),
+        ('member.privacy_period', '회원가입 개인정보: 보유 기간', '회원 탈퇴 시 즉시 파기\n단, 법령에서 보관을 정한 경우 그 기간까지', ML),
+        ('member.privacy_refusal', '회원가입 개인정보: 거부 권리 안내', '동의하지 않을 수 있으며, 이 경우 회원가입은 할 수 없지만 비회원으로 제보·게시판을 이용할 수 있어요.', ML),
     ]),
     ('guide', '이용 안내', [
         ('guide.eyebrow', '상단 작은 제목', '', OPT),
@@ -207,6 +215,36 @@ LIST_DEFAULTS = {
     **_LIST_DEFAULTS,
 }
 LIST_MAX_ITEMS = 60
+
+# ---- 화면 곳곳의 버튼·안내 문구 ----------------------------------------------
+# 템플릿에 {{ ui('report.submit', '제보 접수하기') }}처럼 적으면, 여기서 그 키와 기본 문구를 찾아
+# 관리자 '사이트 문구'에 자동으로 칸을 만들어 줌. 새 문구를 넣을 때 이 파일을 따로 고칠 필요가 없음.
+import re as _re
+_UI_CALL = _re.compile(r"""\bui(?:_text|_rich)?\(\s*'([a-z0-9_.]+)'\s*,\s*'([^'\n]*)'""")
+UI_GROUPS = {
+    'common': '공통 (헤더·푸터)', 'home': '메인 화면', 'reports': '제보 목록·공개 제보', 'report': '제보하기 화면',
+    'done': '제보 완료 화면', 'lookup': '내 제보 조회', 'guide': '이용 안내', 'process': '처리 절차', 'types': '제보 유형',
+    'faq': '자주 묻는 질문', 'board': '소비자게시판', 'member': '회원가입·로그인·내 정보', 'takedown': '권리침해 신고',
+    'policy': '약관·개인정보 처리방침·게시중단', 'company': '기업 답변 화면', 'msg': '알림 메시지 (입력 오류 등)',
+}
+def _scan_ui():
+    found = {}
+    root = Path(__file__).parent
+    for path in sorted((root / 'templates').glob('*.html')) + [root / 'app.py']:
+        for key, default in _UI_CALL.findall(path.read_text(encoding='utf-8')):
+            found.setdefault(key, default)
+    return found
+UI_TEXTS = _scan_ui()
+_section_ids = {sid for sid, _, _ in SECTIONS}
+for _key, _default in UI_TEXTS.items():
+    _group = _key.split('.')[0]
+    _sid = _group if _group in _section_ids else 'ui_' + _group
+    if _sid not in _section_ids:
+        SECTIONS.append((_sid, UI_GROUPS.get(_group, _group) + ' · 버튼·안내 문구', []))
+        _section_ids.add(_sid)
+    _items = next(items for sid, _, items in SECTIONS if sid == _sid)
+    _label = '화면 문구: ' + (_default if len(_default) <= 40 else _default[:40] + '…')
+    _items.append((_key, _label, _default, ML if len(_default) > 70 else {}))
 
 FIELDS = {key: {'label': label, 'default': default, 'section': sid, **opts}
           for sid, _, items in SECTIONS for key, label, default, opts in items}

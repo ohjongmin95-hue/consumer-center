@@ -5,17 +5,17 @@
   <div class="auth-card">
     <div class="auth-body">
       <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
-      <h1 class="auth-title">아이디·비밀번호 찾기</h1>
-      <p class="auth-text">가입할 때 등록한 이메일로 {% if txt('operator.email') %}<a href="mailto:{{ txt('operator.email') }}"><b>{{ txt('operator.email') }}</b></a>에{% else %}운영자에게{% endif %} 메일을 보내 주세요.</p>
+      <h1 class="auth-title">{{ ui('member.find', '아이디·비밀번호 찾기') }}</h1>
+      <p class="auth-text">{{ ui('member.help_text', '가입할 때 등록한 이메일로 아래 주소에 메일을 보내 주세요.') }}{% if txt('operator.email') %}<br><a href="mailto:{{ txt('operator.email') }}"><b>{{ txt('operator.email') }}</b></a>{% endif %}</p>
       <ul class="auth-list">
-        <li>아이디를 잊었다면: 닉네임과 가입한 날짜(대략)</li>
-        <li>비밀번호를 잊었다면: 아이디</li>
+        <li>{{ ui('member.help_id', '아이디를 잊었다면: 닉네임과 가입한 날짜(대략)') }}</li>
+        <li>{{ ui('member.help_pw', '비밀번호를 잊었다면: 아이디') }}</li>
       </ul>
-      <p class="auth-text auth-sub">가입 이메일과 일치하는지 확인한 뒤 아이디를 알려 드리거나 임시 비밀번호를 보내 드려요. 이메일을 등록하지 않았다면 본인 확인이 어려워 새로 가입해 주셔야 할 수 있어요.</p>
+      <p class="auth-text auth-sub">{{ ui('member.help_note', '가입 이메일과 일치하는지 확인한 뒤 아이디를 알려 드리거나 임시 비밀번호를 보내 드려요. 이메일을 등록하지 않았다면 본인 확인이 어려워 새로 가입해 주셔야 할 수 있어요.') }}</p>
     </div>
     <div class="auth-foot">
-      <a href="{{ url_for('login') }}">로그인</a>
-      <a href="{{ url_for('signup') }}">회원가입</a>
+      <a href="{{ url_for('login') }}">{{ ui('common.login', '로그인') }}</a>
+      <a href="{{ url_for('signup') }}">{{ ui('common.signup', '회원가입') }}</a>
     </div>
   </div>
 </main>

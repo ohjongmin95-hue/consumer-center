@@ -109,6 +109,20 @@ def txt(key):
     # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
     return Markup('<br>').join(escape(line) for line in g.content.get(key,'').split('\n'))
 app.jinja_env.globals['txt']=txt
+def ui_text(key,default):
+    # 화면 문구: 관리자가 바꾼 값이 있으면 그 값, 없으면 템플릿에 적힌 기본 문구 (site_content.UI_TEXTS 참고)
+    content=g.get('content') or {}
+    return content.get(key) or default
+def ui(key,default):
+    return Markup('<br>').join(escape(line) for line in ui_text(key,default).split('\n'))
+app.jinja_env.globals['ui']=ui
+app.jinja_env.globals['ui_text']=ui_text
+def ui_rich(key,default):
+    # **굵게** 표시를 쓸 수 있는 화면 문구
+    text=ui_text(key,default).replace('\0','').replace('\1','')
+    out=EMPHASIS.sub(lambda m:'\0'+m.group(1)+'\1',text)
+    return Markup(str(escape(out)).replace('\0','<strong>').replace('\1','</strong>').replace('\n','<br>'))
+app.jinja_env.globals['ui_rich']=ui_rich
 app.jinja_env.globals['STATUSES']=STATUSES
 app.jinja_env.globals['status_step']=status_step
 DOC_VARS={'운영자':'operator.name','대표자':'operator.ceo','이메일':'operator.email','전화':'operator.phone','주소':'operator.address','보호책임자':'operator.privacy_officer','보호책임자연락처':'operator.privacy_contact','청소년보호책임자':'operator.youth_officer','청소년보호책임자연락처':'operator.youth_contact','시행일':'policy.effective_date'}
@@ -119,15 +133,21 @@ def doc_headings(key):
     # 목차용: "## " 소제목 목록 (본문 h2의 id와 같은 순서)
     return [line.strip()[3:] for line in g.content.get(key,'').split('\n') if line.strip().startswith('## ')]
 app.jinja_env.globals['doc_headings']=doc_headings
-FOOTER_ROWS=[[('operator.name','상호'),('operator.ceo','대표'),('operator.address','소재지')],
-             [('operator.phone','전화'),('operator.fax','팩스'),('operator.email','이메일'),('operator.biz_no','사업자등록번호')],
-             [('operator.privacy_officer','개인정보 보호책임자'),('operator.youth_officer','청소년보호책임자')]]
+FOOTER_ROWS=[['operator.name','operator.ceo','operator.address'],
+             ['operator.phone','operator.fax','operator.email','operator.biz_no'],
+             ['operator.privacy_officer','operator.youth_officer']]
+def footer_label(key):
+    # 푸터 항목 이름도 관리자 '사이트 문구'에서 바꿀 수 있음
+    return {'operator.name':ui_text('common.ft_name','상호'),'operator.ceo':ui_text('common.ft_ceo','대표'),'operator.address':ui_text('common.ft_address','소재지'),
+            'operator.phone':ui_text('common.ft_phone','전화'),'operator.fax':ui_text('common.ft_fax','팩스'),'operator.email':ui_text('common.ft_email','이메일'),
+            'operator.biz_no':ui_text('common.ft_biz_no','사업자등록번호'),'operator.privacy_officer':ui_text('common.ft_privacy_officer','개인정보 보호책임자'),
+            'operator.youth_officer':ui_text('common.ft_youth_officer','청소년보호책임자')}[key]
 def footer_rows():
-    # 푸터 사업자 정보: 입력된 항목만, 줄 단위로 묶어서 보여 줌
-    rows=[[(label,g.content.get(key)) for key,label in row if g.content.get(key)] for row in FOOTER_ROWS]
+    # 푸터 사업자 정보: 입력된 항목만, 줄 단위로 묶어서 보여 줌 (키, 항목 이름, 값)
+    rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-30'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-31'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -275,7 +295,7 @@ def takedown():
     if request.method=='POST':
         data={k:request.form.get(k,'').strip() for k in ('requester','contact','target','reason')}
         if any(not v for v in data.values()) or not request.form.get('consent'):
-            flash('모든 항목과 개인정보 수집 동의를 확인해 주세요.');return render_template('takedown.html'),400
+            flash(ui_text('msg.m01','모든 항목과 개인정보 수집 동의를 확인해 주세요.'));return render_template('takedown.html'),400
         if any(len(data[k])>limit for k,limit in [('requester',120),('contact',150),('target',300),('reason',5000)]):abort(400)
         with conn() as db:db.execute('INSERT INTO takedown_requests(requester,contact,target,reason,created) VALUES(?,?,?,?,?)',(data['requester'],data['contact'],data['target'],data['reason'],datetime.datetime.now().isoformat(timespec='seconds')))
         return render_template('takedown.html',submitted=True)
@@ -286,16 +306,16 @@ def report():
     if request.method=='GET':return render_template('report.html',categories=report_categories(), intake_enabled=os.getenv('ENABLE_INTAKE')=='1')
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수 준비 중입니다.')
     data={k:request.form.get(k,'').strip() for k in ('category','company','subject','description','request_text','contact')}
-    if data['category'] not in report_categories() or any(not data[k] for k in ('company','subject','description','request_text')) or not request.form.get('consent') or not request.form.get('truth') or request.form.get('visibility') not in ('public','secret'):
-        flash('필수 항목과 필수 동의를 확인해 주세요.');return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
+    if data['category'] not in report_categories() or any(not data[k] for k in ('company','subject','description','request_text')) or not all(request.form.get(k) for k in ('consent','share_company','use_consent','truth')) or request.form.get('visibility') not in ('public','secret'):
+        flash(ui_text('msg.report_required','필수 항목과 필수 동의를 모두 확인해 주세요.'));return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
     if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150)]):abort(400)
     file=request.files.get('evidence')
     if file and file.filename:
         suffix=Path(secure_filename(file.filename)).suffix.lower()
-        if suffix not in ('.pdf','.png','.jpg','.jpeg','.webp'):flash('첨부는 PDF 또는 이미지 파일만 가능합니다.');return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
+        if suffix not in ('.pdf','.png','.jpg','.jpeg','.webp'):flash(ui_text('msg.m02','첨부는 PDF 또는 이미지 파일만 가능합니다.'));return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
         head=file.stream.read(12);file.stream.seek(0)
         valid=(suffix=='.pdf' and head.startswith(b'%PDF-')) or (suffix=='.png' and head.startswith(b'\x89PNG')) or (suffix in ('.jpg','.jpeg') and head.startswith(b'\xff\xd8')) or (suffix=='.webp' and head[8:12]==b'WEBP')
-        if not valid:flash('첨부파일 형식을 확인해 주세요.');return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
+        if not valid:flash(ui_text('msg.m03','첨부파일 형식을 확인해 주세요.'));return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
     receipt='CJ-'+datetime.datetime.now().strftime('%y%m%d')+'-'+secrets.token_hex(3).upper()
     code=secrets.token_urlsafe(12)
     with conn() as db:
@@ -312,7 +332,7 @@ def lookup():
     receipt=request.form.get('receipt','').strip().upper();code=request.form.get('code','').strip()
     with conn() as db:case=db.execute('SELECT * FROM cases WHERE receipt=?',(receipt,)).fetchone()
     if not case or not hmac.compare_digest(case['lookup_hash'],hashlib.sha256(code.encode()).hexdigest()):
-        flash('접수번호 또는 조회 코드가 일치하지 않습니다.');return render_template('lookup.html'),401
+        flash(ui_text('msg.m04','접수번호 또는 조회 코드가 일치하지 않습니다.'));return render_template('lookup.html'),401
     session.pop('case_id',None);session['case_id']=case['id'];return redirect(url_for('case_detail'))
 @app.route('/case',methods=['GET','POST'])
 def case_detail():
@@ -544,14 +564,14 @@ def board_write():
         if g.user:f['nickname']=g.user['nickname'];f['password']='member'  # 회원은 로그인 정보로 쓰고 지움
         errors=[]
         if request.form.get('website'):abort(400)  # 사람에게는 보이지 않는 칸. 채워져 있으면 자동 등록 프로그램.
-        if f['category'] not in board_categories():errors.append('분류를 골라 주세요.')
-        if not 2<=len(f['nickname'])<=20:errors.append('닉네임은 2~20자로 적어 주세요.')
-        if not 4<=len(f['password'])<=30:errors.append('비밀번호는 4~30자로 정해 주세요.')
-        if not 2<=len(f['title'])<=100:errors.append('제목은 2~100자로 적어 주세요.')
-        if not 10<=len(f['body'])<=5000:errors.append('내용은 10~5,000자로 적어 주세요.')
-        if not request.form.get('agree'):errors.append('글쓰기 약속에 동의해 주세요.')
+        if f['category'] not in board_categories():errors.append(ui_text('msg.m05','분류를 골라 주세요.'))
+        if not 2<=len(f['nickname'])<=20:errors.append(ui_text('msg.m06','닉네임은 2~20자로 적어 주세요.'))
+        if not 4<=len(f['password'])<=30:errors.append(ui_text('msg.m07','비밀번호는 4~30자로 정해 주세요.'))
+        if not 2<=len(f['title'])<=100:errors.append(ui_text('msg.m08','제목은 2~100자로 적어 주세요.'))
+        if not 10<=len(f['body'])<=5000:errors.append(ui_text('msg.m09','내용은 10~5,000자로 적어 주세요.'))
+        if not request.form.get('agree'):errors.append(ui_text('msg.m10','글쓰기 약속에 동의해 주세요.'))
         with conn() as db:
-            if not errors and recent_count(db,'posts',10)>=3:errors.append('잠시 후 다시 올려 주세요. 10분에 3개까지 쓸 수 있어요.')
+            if not errors and recent_count(db,'posts',10)>=3:errors.append(ui_text('msg.m11','잠시 후 다시 올려 주세요. 10분에 3개까지 쓸 수 있어요.'))
             if errors:
                 for e in errors:flash(e)
                 return render_template('board_write.html',categories=board_categories(),enabled=True),400
@@ -588,9 +608,9 @@ def board_comment(post_id):
     with conn() as db:
         if not db.execute('SELECT 1 FROM posts WHERE id=? AND hidden=0',(post_id,)).fetchone():abort(404)
         if not (2<=len(nickname)<=20 and 4<=len(password)<=30 and 1<=len(body)<=1000):
-            flash('닉네임(2~20자), 비밀번호(4~30자), 댓글(1,000자 이내)을 확인해 주세요.');return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
+            flash(ui_text('msg.m12','닉네임(2~20자), 비밀번호(4~30자), 댓글(1,000자 이내)을 확인해 주세요.'));return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
         if recent_count(db,'comments',2)>=5:
-            flash('잠시 후 다시 남겨 주세요.');return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
+            flash(ui_text('msg.m13','잠시 후 다시 남겨 주세요.'));return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
         db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,?,?,?,?,?,?)',(post_id,nickname,'' if g.user else generate_password_hash(password),body,ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None))
         refresh_comment_count(db,post_id)
     return redirect(url_for('board_post',post_id=post_id)+'#comments')
@@ -608,7 +628,7 @@ def board_flag(kind,item_id):
         db.execute(f'UPDATE {table} SET flags=?,hidden=? WHERE id=?',(flags,int(flags>=FLAG_HIDE_THRESHOLD),item_id))
         post_id=item_id if kind=='p' else item['post_id']
         if kind=='c':refresh_comment_count(db,post_id)
-    flash('알려 주셔서 고마워요. 운영자가 확인할게요.')
+    flash(ui_text('msg.m14','알려 주셔서 고마워요. 운영자가 확인할게요.'))
     if kind=='p' and flags>=FLAG_HIDE_THRESHOLD:return redirect(url_for('board'))
     return redirect(url_for('board_post',post_id=post_id))
 
@@ -621,9 +641,9 @@ def board_delete(kind,item_id):
         post_id=item_id if kind=='p' else item['post_id']
         own=g.user and item['user_id']==g.user['id']
         if not own and not (item['pw_hash'] and check_password_hash(item['pw_hash'],request.form.get('password',''))):
-            flash('비밀번호가 맞지 않아요.');return redirect(url_for('board_post',post_id=post_id))
+            flash(ui_text('msg.m15','비밀번호가 맞지 않아요.'));return redirect(url_for('board_post',post_id=post_id))
         delete_board_item(db,kind,item_id)
-    flash('삭제했어요.')
+    flash(ui_text('msg.m16','삭제했어요.'))
     return redirect(url_for('board') if kind=='p' else url_for('board_post',post_id=post_id)+'#comments')
 
 def delete_board_item(db,kind,item_id):
@@ -718,28 +738,28 @@ def signup():
     f={k:request.form.get(k,'').strip() for k in ('login_id','nickname','email')}
     f['login_id']=f['login_id'].lower();pw=request.form.get('password','');pw2=request.form.get('password2','')
     errors=[]
-    if not all(request.form.get(k) for k in ('agree_terms','agree_privacy','agree_age')):errors.append('필수 동의 항목을 모두 확인해 주세요.')
-    if not LOGIN_ID_RE.match(f['login_id']):errors.append('아이디는 영문 소문자·숫자·밑줄(_)로 4~20자로 정해 주세요.')
-    if not (8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):errors.append('비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
-    elif pw!=pw2:errors.append('비밀번호 확인이 일치하지 않아요.')
-    elif f['login_id'] and f['login_id'] in pw.lower():errors.append('비밀번호에 아이디를 넣지 말아 주세요.')
-    if not 2<=len(f['nickname'])<=12 or not re.match(r'^[0-9A-Za-z가-힣_]+$',f['nickname']):errors.append('닉네임은 한글·영문·숫자로 2~12자로 정해 주세요.')
-    elif f['nickname'] in ('운영자','관리자','탈퇴한회원') or '운영' in f['nickname'] or '관리자' in f['nickname']:errors.append('사용할 수 없는 닉네임이에요.')
-    if f['email'] and (len(f['email'])>120 or not MEMBER_EMAIL_RE.match(f['email'])):errors.append('이메일 주소를 확인해 주세요.')
+    if not all(request.form.get(k) for k in ('agree_terms','agree_privacy','agree_age')):errors.append(ui_text('msg.m17','필수 동의 항목을 모두 확인해 주세요.'))
+    if not LOGIN_ID_RE.match(f['login_id']):errors.append(ui_text('msg.m18','아이디는 영문 소문자·숫자·밑줄(_)로 4~20자로 정해 주세요.'))
+    if not (8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):errors.append(ui_text('msg.m19','비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.'))
+    elif pw!=pw2:errors.append(ui_text('msg.m20','비밀번호 확인이 일치하지 않아요.'))
+    elif f['login_id'] and f['login_id'] in pw.lower():errors.append(ui_text('msg.m21','비밀번호에 아이디를 넣지 말아 주세요.'))
+    if not 2<=len(f['nickname'])<=12 or not re.match(r'^[0-9A-Za-z가-힣_]+$',f['nickname']):errors.append(ui_text('msg.m22','닉네임은 한글·영문·숫자로 2~12자로 정해 주세요.'))
+    elif f['nickname'] in ('운영자','관리자','탈퇴한회원') or '운영' in f['nickname'] or '관리자' in f['nickname']:errors.append(ui_text('msg.m23','사용할 수 없는 닉네임이에요.'))
+    if f['email'] and (len(f['email'])>120 or not MEMBER_EMAIL_RE.match(f['email'])):errors.append(ui_text('msg.m24','이메일 주소를 확인해 주세요.'))
     with conn() as db:
         if not errors:
-            if db.execute('SELECT 1 FROM users WHERE login_id=?',(f['login_id'],)).fetchone():errors.append('이미 쓰고 있는 아이디예요.')
-            if db.execute('SELECT 1 FROM users WHERE nickname=?',(f['nickname'],)).fetchone():errors.append('이미 쓰고 있는 닉네임이에요.')
+            if db.execute('SELECT 1 FROM users WHERE login_id=?',(f['login_id'],)).fetchone():errors.append(ui_text('msg.m25','이미 쓰고 있는 아이디예요.'))
+            if db.execute('SELECT 1 FROM users WHERE nickname=?',(f['nickname'],)).fetchone():errors.append(ui_text('msg.m26','이미 쓰고 있는 닉네임이에요.'))
         if not errors:
             hour_ago=(datetime.datetime.now()-datetime.timedelta(hours=1)).isoformat(timespec='seconds')
-            if db.execute('SELECT COUNT(*) FROM users WHERE ip_hash=? AND created>=?',(ip_hash(),hour_ago)).fetchone()[0]>=3:errors.append('잠시 후 다시 가입해 주세요.')
+            if db.execute('SELECT COUNT(*) FROM users WHERE ip_hash=? AND created>=?',(ip_hash(),hour_ago)).fetchone()[0]>=3:errors.append(ui_text('msg.m27','잠시 후 다시 가입해 주세요.'))
         if errors:
             for e in errors:flash(e)
             return render_template('signup.html',enabled=True),400
         cur=db.execute('INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created) VALUES(?,?,?,?,?,?,?,?)',(f['login_id'],generate_password_hash(pw),f['nickname'],f['email'],TERMS_VERSION,now(),ip_hash(),now()))
         user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
     sign_in(user,False)
-    flash(f"{user['nickname']}님, 가입을 환영해요!")
+    flash(user['nickname']+ui_text('msg.welcome','님, 가입을 환영해요!'))
     return redirect(url_for('mypage'))
 
 @app.route('/login',methods=['GET','POST'])
@@ -748,13 +768,13 @@ def login():
     if request.method=='GET':return render_template('login.html',enabled=members_enabled())
     if not members_enabled():abort(503)
     login_id=request.form.get('login_id','').strip().lower()[:40];pw=request.form.get('password','')
-    fail='아이디 또는 비밀번호가 맞지 않아요.'
+    fail=ui_text('msg.m30','아이디 또는 비밀번호가 맞지 않아요.')
     if too_many_attempts('member'):
-        flash('로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.');return render_template('login.html',enabled=True),429
+        flash(ui_text('msg.m28','로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.'));return render_template('login.html',enabled=True),429
     with conn() as db:
         user=db.execute('SELECT * FROM users WHERE login_id=?',(login_id,)).fetchone()
         if user and user['locked_until'] and user['locked_until']>now():
-            flash(f'비밀번호를 여러 번 틀려 잠시 잠겼어요. {LOGIN_LOCK_MINUTES}분 뒤 다시 시도해 주세요.');return render_template('login.html',enabled=True),429
+            flash(ui_text('msg.locked','비밀번호를 여러 번 틀려 잠시 잠겼어요. 10분 뒤 다시 시도해 주세요.'));return render_template('login.html',enabled=True),429
         if not user or not check_password_hash(user['pw_hash'],pw):
             if user:
                 failed=user['failed']+1
@@ -763,7 +783,7 @@ def login():
             failed_login=True
         else:failed_login=False
         if not failed_login and user['status']!='active':
-            flash('이용이 제한된 계정이에요. 운영자에게 문의해 주세요.');return render_template('login.html',enabled=True),403
+            flash(ui_text('msg.m29','이용이 제한된 계정이에요. 운영자에게 문의해 주세요.'));return render_template('login.html',enabled=True),403
         if not failed_login:db.execute("UPDATE users SET failed=0,locked_until='',last_login=? WHERE id=?",(now(),user['id']))
     if failed_login:
         note_attempt('member');flash(fail);return render_template('login.html',enabled=True),401
@@ -776,7 +796,7 @@ def account_help():return render_template('account_help.html')
 @app.route('/logout',methods=['POST'])
 def member_logout():
     session.pop('uid',None);session.pop('uv',None);session.pop('case_id',None)
-    flash('로그아웃했어요.')
+    flash(ui_text('msg.m31','로그아웃했어요.'))
     return redirect(url_for('home'))
 
 @app.route('/me')
@@ -803,17 +823,17 @@ def mypage_edit():
     with conn() as db:
         if action=='email':
             email=request.form.get('email','').strip()
-            if email and (len(email)>120 or not MEMBER_EMAIL_RE.match(email)):flash('이메일 주소를 확인해 주세요.')
-            else:db.execute('UPDATE users SET email=? WHERE id=?',(email,g.user['id']));flash('이메일을 저장했어요.' if email else '이메일을 지웠어요.')
+            if email and (len(email)>120 or not MEMBER_EMAIL_RE.match(email)):flash(ui_text('msg.m32','이메일 주소를 확인해 주세요.'))
+            else:db.execute('UPDATE users SET email=? WHERE id=?',(email,g.user['id']));flash(ui_text('msg.m37','이메일을 저장했어요.') if email else ui_text('msg.m38','이메일을 지웠어요.'))
         elif action=='password':
             cur_pw=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
-            if not check_password_hash(g.user['pw_hash'],cur_pw):flash('지금 비밀번호가 맞지 않아요.')
-            elif not (8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):flash('새 비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
-            elif pw!=pw2:flash('새 비밀번호 확인이 일치하지 않아요.')
+            if not check_password_hash(g.user['pw_hash'],cur_pw):flash(ui_text('msg.m33','지금 비밀번호가 맞지 않아요.'))
+            elif not (8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):flash(ui_text('msg.m34','새 비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.'))
+            elif pw!=pw2:flash(ui_text('msg.m35','새 비밀번호 확인이 일치하지 않아요.'))
             else:
                 # 다른 기기에 남은 로그인은 끊고, 지금 화면은 그대로 로그인 유지.
                 db.execute('UPDATE users SET pw_hash=?,session_ver=session_ver+1 WHERE id=?',(generate_password_hash(pw),g.user['id']))
-                session['uv']=g.user['session_ver']+1;flash('비밀번호를 바꿨어요. 다른 기기에서는 다시 로그인해야 해요.')
+                session['uv']=g.user['session_ver']+1;flash(ui_text('msg.m36','비밀번호를 바꿨어요. 다른 기기에서는 다시 로그인해야 해요.'))
         else:abort(400)
     return redirect(url_for('mypage')+'#settings')
 
@@ -821,10 +841,10 @@ def mypage_edit():
 @member_only
 def withdraw():
     if not check_password_hash(g.user['pw_hash'],request.form.get('password','')) or not request.form.get('confirm'):
-        flash('비밀번호와 탈퇴 확인을 다시 확인해 주세요.');return redirect(url_for('mypage')+'#withdraw')
+        flash(ui_text('msg.m39','비밀번호와 탈퇴 확인을 다시 확인해 주세요.'));return redirect(url_for('mypage')+'#withdraw')
     with conn() as db:delete_member(db,g.user['id'],bool(request.form.get('delete_posts')))
     session.pop('uid',None);session.pop('uv',None);session.pop('case_id',None)
-    flash('탈퇴를 마쳤어요. 그동안 함께해 주셔서 고마워요.')
+    flash(ui_text('msg.m40','탈퇴를 마쳤어요. 그동안 함께해 주셔서 고마워요.'))
     return redirect(url_for('home'))
 
 def delete_member(db,uid,delete_posts):

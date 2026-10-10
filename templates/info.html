@@ -5,7 +5,7 @@
 {% elif page == 'process' %}
 <div class="info-wrap process-page"><h1>{{ txt('process.title') }}</h1>{% if txt('process.intro') %}<p class="info-intro">{{ txt('process.intro') }}</p>{% endif %}
 {% include 'process_cards.html' %}
-{% if txt('process.note') %}<p class="process-note">{{ txt('process.note') }} <a href="{{ url_for('lookup') }}">내 제보 조회 →</a></p>{% endif %}</div>
+{% if txt('process.note') %}<p class="process-note">{{ txt('process.note') }} <a href="{{ url_for('lookup') }}">{{ ui('process.lookup_link', '내 제보 조회 →') }}</a></p>{% endif %}</div>
 {% elif page == 'types' %}
 <div class="info-wrap"><h1>{{ txt('types.title') }}</h1>{% if txt('types.intro') %}<p class="info-intro">{{ txt('types.intro') }}</p>{% endif %}{% for category in categories %}<div class="info-card type-action"><h2>{{ category }}</h2><a class="type-link" href="{{ url_for('report', category=category) }}">{{ txt('types.link') }}</a></div>{% endfor %}</div>
 {% elif page == 'faq' %}

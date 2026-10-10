@@ -8,12 +8,12 @@
       <h1>{{ txt('board.title') }}</h1>
       {% if txt('board.intro') %}<p>{{ txt('board.intro') }}</p>{% endif %}
     </div>
-    <a class="primary board-write-btn" href="{{ url_for('board_write') }}">✎ 글쓰기</a>
+    <a class="primary board-write-btn" href="{{ url_for('board_write') }}">{{ ui('board.write_btn', '✎ 글쓰기') }}</a>
   </section>
 
   {% if hot %}
   <section class="board-hot" aria-labelledby="hot-heading">
-    <h2 id="hot-heading">이번 주 공감 많은 이야기</h2>
+    <h2 id="hot-heading">{{ ui('board.hot_title', '이번 주 공감 많은 이야기') }}</h2>
     <ol class="hot-list">
       {% for p in hot %}
       <li><a href="{{ url_for('board_post', post_id=p['id']) }}"><span class="hot-rank">{{ loop.index }}</span><span class="hot-body">{{ chip(p['category'], categories) }}<strong>{{ p['title'] }}</strong></span><span class="hot-meta">{{ heart(True) }} {{ p['likes'] }}</span></a></li>
@@ -22,53 +22,53 @@
   </section>
   {% endif %}
 
-  <section class="board-tools" aria-label="글 찾기">
-    <nav class="cat-tabs" aria-label="분류">
-      <a href="{{ url_for('board', sort=sort if sort == 'top' else None, q=q or None) }}"{% if not cat %} class="on" aria-current="true"{% endif %}>전체</a>
+  <section class="board-tools" aria-label="{{ ui('board.find_aria', '글 찾기') }}">
+    <nav class="cat-tabs" aria-label="{{ ui('board.cat_aria', '분류') }}">
+      <a href="{{ url_for('board', sort=sort if sort == 'top' else None, q=q or None) }}"{% if not cat %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
       {% for c in categories %}<a href="{{ url_for('board', category=c, sort=sort if sort == 'top' else None, q=q or None) }}"{% if cat == c %} class="on" aria-current="true"{% endif %}>{{ c }}</a>{% endfor %}
     </nav>
     <div class="board-filter">
-      <div class="sort-toggle" role="group" aria-label="정렬">
-        <a href="{{ url_for('board', category=cat or None, q=q or None) }}"{% if sort == 'new' %} class="on"{% endif %}>최신순</a>
-        <a href="{{ url_for('board', category=cat or None, q=q or None, sort='top') }}"{% if sort == 'top' %} class="on"{% endif %}>공감순</a>
+      <div class="sort-toggle" role="group" aria-label="{{ ui('board.sort_aria', '정렬') }}">
+        <a href="{{ url_for('board', category=cat or None, q=q or None) }}"{% if sort == 'new' %} class="on"{% endif %}>{{ ui('board.sort_new', '최신순') }}</a>
+        <a href="{{ url_for('board', category=cat or None, q=q or None, sort='top') }}"{% if sort == 'top' %} class="on"{% endif %}>{{ ui('board.sort_top', '공감순') }}</a>
       </div>
       <form class="board-search" method="get" role="search">
         {% if cat %}<input type="hidden" name="category" value="{{ cat }}">{% endif %}{% if sort == 'top' %}<input type="hidden" name="sort" value="top">{% endif %}
-        <input type="search" name="q" value="{{ q }}" placeholder="제목·내용 검색" aria-label="게시판 검색"><button type="submit">검색</button>
+        <input type="search" name="q" value="{{ q }}" placeholder="{{ ui('board.search_ph', '제목·내용 검색') }}" aria-label="{{ ui('board.search_aria', '게시판 검색') }}"><button type="submit">{{ ui('reports.search', '검색') }}</button>
       </form>
     </div>
   </section>
 
-  <section class="post-list" aria-label="글 목록">
+  <section class="post-list" aria-label="{{ ui('board.list_aria', '글 목록') }}">
     {% for p in posts %}
     <article class="post-card">
       <a class="post-link" href="{{ url_for('board_post', post_id=p['id']) }}">
-        <div class="post-top">{{ chip(p['category'], categories) }}<span class="post-meta">{% if p['user_id'] %}<span class="member-badge">회원</span>{% endif %}{{ p['nickname'] }} · {{ p['created']|ago }}</span></div>
+        <div class="post-top">{{ chip(p['category'], categories) }}<span class="post-meta">{% if p['user_id'] %}<span class="member-badge">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ p['nickname'] }} · {{ p['created']|ago }}</span></div>
         <h2>{{ p['title'] }}</h2>
         <p class="post-excerpt">{{ p['excerpt'] }}</p>
       </a>
       <div class="post-actions">
         <form method="post" action="{{ url_for('board_like', post_id=p['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
-          <button class="like-btn{% if ('p:%d' % p['id']) in liked %} on{% endif %}" type="submit"{% if not enabled %} disabled{% endif %} aria-pressed="{{ 'true' if ('p:%d' % p['id']) in liked else 'false' }}" aria-label="공감 {{ p['likes'] }}">{{ heart(('p:%d' % p['id']) in liked) }} 공감 {{ p['likes'] }}</button>
+          <button class="like-btn{% if ('p:%d' % p['id']) in liked %} on{% endif %}" type="submit"{% if not enabled %} disabled{% endif %} aria-pressed="{{ 'true' if ('p:%d' % p['id']) in liked else 'false' }}" aria-label="{{ ui('board.like', '공감') }} {{ p['likes'] }}">{{ heart(('p:%d' % p['id']) in liked) }} {{ ui('board.like', '공감') }} {{ p['likes'] }}</button>
         </form>
-        <a class="comment-count" href="{{ url_for('board_post', post_id=p['id']) }}#comments">{{ bubble() }} 댓글 {{ p['comments'] }}</a>
+        <a class="comment-count" href="{{ url_for('board_post', post_id=p['id']) }}#comments">{{ bubble() }} {{ ui('board.comments', '댓글') }} {{ p['comments'] }}</a>
       </div>
     </article>
     {% else %}
     <div class="board-empty">
-      <p>{{ '검색 결과가 없어요.' if q or cat else txt('board.empty') }}</p>
-      {% if not (q or cat) %}<a class="primary" href="{{ url_for('board_write') }}">첫 글 쓰기</a>{% endif %}
+      <p>{{ ui('board.no_results', '검색 결과가 없어요.') if q or cat else txt('board.empty') }}</p>
+      {% if not (q or cat) %}<a class="primary" href="{{ url_for('board_write') }}">{{ ui('board.first_post', '첫 글 쓰기') }}</a>{% endif %}
     </div>
     {% endfor %}
   </section>
 
   {% if pages > 1 %}
-  <nav class="pager" aria-label="페이지">
-    {% if page > 1 %}<a href="{{ url_for('board', category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page - 1) }}">← 이전</a>{% endif %}
+  <nav class="pager" aria-label="page">
+    {% if page > 1 %}<a href="{{ url_for('board', category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page - 1) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}
     <span>{{ page }} / {{ pages }}</span>
-    {% if page < pages %}<a href="{{ url_for('board', category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page + 1) }}">다음 →</a>{% endif %}
+    {% if page < pages %}<a href="{{ url_for('board', category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page + 1) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}
   </nav>
   {% endif %}
-  <p class="board-foot-note">공감과 알리기는 브라우저마다 한 번씩 할 수 있어요. 권리를 침해하는 글은 <a href="{{ url_for('takedown') }}">게시중단 요청</a>으로 알려 주세요.</p>
+  <p class="board-foot-note">{{ ui('board.foot1', '공감과 알리기는 한 번씩 할 수 있어요. 권리를 침해하는 글은') }} <a href="{{ url_for('takedown') }}">{{ ui('board.foot_link', '게시중단 요청') }}</a>{{ ui('board.foot2', '으로 알려 주세요.') }}</p>
 </main>
 {% endblock %}

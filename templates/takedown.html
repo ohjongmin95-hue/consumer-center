@@ -1,20 +1,20 @@
 {% extends 'base.html' %}
-{% block title %}권리침해 신고 및 임시조치 안내 | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ ui('common.ft_takedown', '권리침해 신고 및 임시조치 안내') }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap">
-  <div class="page-intro"><h1 class="page-title">권리침해 신고 및 임시조치 안내</h1></div>
+  <div class="page-intro"><h1 class="page-title">{{ ui('common.ft_takedown', '권리침해 신고 및 임시조치 안내') }}</h1></div>
   {% if submitted %}
-  <div class="form-panel"><h2>요청이 접수됐습니다.</h2><p>센터가 내용을 확인한 뒤 입력하신 이메일로 처리 결과를 안내해 드립니다.</p><a class="secondary" href="{{ url_for('home') }}">처음으로</a></div>
+  <div class="form-panel"><h2>{{ ui('takedown.done_title', '요청이 접수됐습니다.') }}</h2><p>{{ ui('takedown.done_text', '센터가 내용을 확인한 뒤 입력하신 이메일로 처리 결과를 안내해 드립니다.') }}</p><a class="secondary" href="{{ url_for('home') }}">{{ ui('takedown.done_home', '처음으로') }}</a></div>
   {% else %}
   <div class="policy-doc takedown-guide">{{ doc('policy.takedown') }}</div>
   <div class="form-panel">
     <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <div class="field"><label for="t-requester">요청인 이름 또는 업체명 <small>*</small></label><input id="t-requester" name="requester" maxlength="120" required value="{{ request.form.get('requester','') }}"></div>
-      <div class="field"><label for="t-contact">연락받을 이메일 <small>*</small></label><input id="t-contact" type="email" name="contact" maxlength="150" required value="{{ request.form.get('contact','') }}"></div>
-      <div class="field"><label for="t-target">대상 제보·게시글 (제목, 접수번호 또는 글 주소) <small>*</small></label><input id="t-target" name="target" maxlength="300" required value="{{ request.form.get('target','') }}"></div>
-      <div class="field"><label for="t-reason">요청 사유 <small>*</small></label><textarea id="t-reason" name="reason" maxlength="5000" required placeholder="어떤 내용이 어떤 권리를 침해하는지 구체적으로 적어 주세요">{{ request.form.get('reason','') }}</textarea></div>
-      <label class="check"><input type="checkbox" name="consent" required><span><b>[필수]</b> 요청 처리를 위해 이름·업체명, 이메일, 요청 내용을 수집하고 처리 완료 후 1년간 보관하는 데 동의합니다. <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">개인정보 처리방침 ↗</a></span></label>
-      <button class="primary" type="submit" style="width:100%;margin-top:18px">권리침해 신고하기</button>
+      <div class="field"><label for="t-requester">{{ ui('takedown.f_requester', '요청인 이름 또는 업체명') }} <small>*</small></label><input id="t-requester" name="requester" maxlength="120" required value="{{ request.form.get('requester','') }}"></div>
+      <div class="field"><label for="t-contact">{{ ui('takedown.f_contact', '연락받을 이메일') }} <small>*</small></label><input id="t-contact" type="email" name="contact" maxlength="150" required value="{{ request.form.get('contact','') }}"></div>
+      <div class="field"><label for="t-target">{{ ui('takedown.f_target', '대상 제보·게시글 (제목, 접수번호 또는 글 주소)') }} <small>*</small></label><input id="t-target" name="target" maxlength="300" required value="{{ request.form.get('target','') }}"></div>
+      <div class="field"><label for="t-reason">{{ ui('takedown.f_reason', '요청 사유') }} <small>*</small></label><textarea id="t-reason" name="reason" maxlength="5000" required placeholder="{{ ui('takedown.f_reason_ph', '어떤 내용이 어떤 권리를 침해하는지 구체적으로 적어 주세요') }}">{{ request.form.get('reason','') }}</textarea></div>
+      <label class="check"><input type="checkbox" name="consent" required><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('takedown.consent', '요청 처리를 위해 이름·업체명, 이메일, 요청 내용을 수집하고 처리 완료 후 1년간 보관하는 데 동의합니다.') }} <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></span></label>
+      <button class="primary" type="submit" style="width:100%;margin-top:18px">{{ ui('takedown.submit', '권리침해 신고하기') }}</button>
     </form>
   </div>
   {% endif %}

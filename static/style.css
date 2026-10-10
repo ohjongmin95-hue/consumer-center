@@ -984,3 +984,5 @@ body.newsroom { background: #f4f4f2; }
   .nr-user { gap: 10px; }
   .nr-user a { display: none; }
 }
+.content-search { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+.content-search input { flex: 1; max-width: 520px; padding: 11px 14px; border: 1px solid #dddbd6; border-radius: 9px; background: #fff; font-size: 15px; }

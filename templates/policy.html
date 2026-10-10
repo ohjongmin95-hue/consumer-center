@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% set heading = {'terms': '이용약관', 'privacy': '개인정보 처리방침', 'youth': '청소년보호정책'}[page] %}
+{% set heading = {'terms': ui('common.ft_terms', '이용약관'), 'privacy': ui('common.ft_privacy', '개인정보 처리방침'), 'youth': ui('common.ft_youth', '청소년보호정책')}[page] %}
 {% block title %}{{ heading }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main><article class="info-wrap policy-doc">
   <h1>{{ heading }}</h1>
   {% set heads = doc_headings('policy.' ~ page) %}
   {% if heads|length > 2 %}
-  <nav class="policy-toc" aria-label="{{ heading }} 목차">
+  <nav class="policy-toc" aria-label="{{ heading }}">
     <ol>{% for h in heads %}<li><a href="#sec-{{ loop.index }}">{{ h }}</a></li>{% endfor %}</ol>
   </nav>
   {% endif %}
