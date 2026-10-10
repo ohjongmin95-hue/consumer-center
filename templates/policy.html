@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% set heading = {'terms': ui('common.ft_terms', '이용약관'), 'privacy': ui('common.ft_privacy', '개인정보 처리방침'), 'youth': ui('common.ft_youth', '청소년보호정책')}[page] %}
+{% set heading = {'terms': ui('common.ft_terms', '이용약관'), 'privacy': ui('common.ft_privacy', '개인정보 처리방침'), 'youth': ui('common.ft_youth', '청소년보호정책'), 'biz': ui('biz.terms', '기업 회원 이용약관')}[page] %}
 {% block title %}{{ heading }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main><article class="info-wrap policy-doc">

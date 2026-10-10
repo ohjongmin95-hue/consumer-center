@@ -1213,3 +1213,17 @@ a.private-title:hover { color: #bd5c00; }
 .cs-sent li { padding: 8px 10px; border-radius: 8px; background: #f3f8f4; }
 .cs-sent li.failed { background: #fdf0ef; }
 .cs-sent span { display: block; color: #7a818b; font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
+
+/* 기업 회원 */
+.biz-wait { max-width: 640px; }
+.biz-wait p { line-height: 1.7; }
+.biz-signup .cs-panel h2 { margin: 26px 0 14px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 850; color: #c66300; letter-spacing: .02em; }
+.biz-signup .cs-panel h2:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+.biz-brand { display: inline-block; margin-bottom: 18px; font-size: 22px; font-weight: 850; letter-spacing: -1px; color: #1f2329; }
+.biz-brand span { color: var(--orange); }
+.cs-table .biz-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.cs-msg-pub { margin-top: 8px; display: flex; gap: 8px; align-items: center; }
+.company-answers { margin-top: 16px; border-left: 4px solid var(--orange); }
+.company-answer + .company-answer { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.ca-head { display: flex; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
+.ca-head span { color: var(--muted); font-size: 13px; }

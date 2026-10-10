@@ -42,7 +42,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings'):
+            for table in ('company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings'):
                 db.execute('DELETE FROM ' + table)
 
     def old_guide(self):
@@ -366,6 +366,71 @@ class SiteTest(unittest.TestCase):
         self.assertEqual([tuple(r) for r in rows], [('kakao', 'received', 'sent'), ('email', 'received', 'sent'), ('kakao', 'status', 'sent'), ('email', 'status', 'sent'),
                                                    ('kakao', 'message', 'sent'), ('email', 'message', 'sent'), ('kakao', 'message', 'failed'), ('email', 'message', 'sent')])
         notify.ASYNC = True
+
+    def test_company_members(self):
+        notify = self.site.notify
+        notify.ASYNC = False
+        # 1) 기업 가입: 사업자번호 검증번호가 틀리면 거절
+        biz = self.site.app.test_client()
+        form = {'company_name': '주식회사 테스트몰', 'biz_no': '123-45-67890', 'contact_name': '김담당', 'contact_phone': '02-123-4567',
+                'contact_email': 'cs@testmall.co.kr', 'login_id': 'testmall', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'}
+        self.assertEqual(self.post_form(biz, '/biz/signup', form).status_code, 400)
+        self.assertEqual(self.post_form(biz, '/biz/signup', dict(form, biz_no='123-45-67891')).status_code, 302)
+        self.assertIn('가입 신청을 확인하고 있어요', biz.get('/biz').get_data(as_text=True))
+        self.assertEqual(self.post_form(self.site.app.test_client(), '/biz/signup', dict(form, biz_no='1234567891', login_id='other')).status_code, 400)
+        with self.site.conn() as db:
+            company_id = db.execute("SELECT id FROM companies WHERE biz_no='1234567891'").fetchone()['id']
+        # 2) 제보 둘: 기업 전달 동의 / 미동의
+        base = {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': '테스트몰', 'description': '환불이 안 돼요', 'reporter_name': '홍길동',
+                'phone': '010-7777-8888', 'contact': 'reporter@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', dict(base, subject='기업 전달 동의 제보', share_company='on'))
+        self.post_form(self.client, '/report', dict(base, subject='기업 전달 미동의 제보', share_company='on'))
+        with self.site.conn() as db:
+            db.execute("UPDATE cases SET share_company=0 WHERE subject='기업 전달 미동의 제보'")  # 예전 제보처럼 미동의
+            shared = db.execute("SELECT id FROM cases WHERE subject='기업 전달 동의 제보'").fetchone()['id']
+            private = db.execute("SELECT id FROM cases WHERE subject='기업 전달 미동의 제보'").fetchone()['id']
+        # 승인 전에는 제보 화면에 못 들어감
+        self.assertEqual(biz.get('/biz/case/%d' % shared).status_code, 302)
+        # 3) 관리자 승인 → 제보에 연결 (★ 추천), 미동의 제보는 연결 불가
+        admin = self.login_admin()
+        self.assertIn('주식회사 테스트몰', admin.get('/admin/companies').get_data(as_text=True))
+        self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'approve'})
+        self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'aliases', 'aliases': 'TestMall, 테스트 쇼핑'})
+        self.assertIn('★ 주식회사 테스트몰', admin.get('/admin/reports/%d' % shared).get_data(as_text=True))
+        self.post_form(admin, '/admin/reports/%d' % shared, {'form': 'company', 'company_id': company_id})
+        self.assertEqual(self.post_form(admin, '/admin/reports/%d' % private, {'form': 'company', 'company_id': company_id}).status_code, 400)
+        # 4) 기업 화면: 연결된 동의 제보만, 제보자 정보 없음
+        home = biz.get('/biz').get_data(as_text=True)
+        self.assertIn('기업 전달 동의 제보', home)
+        self.assertNotIn('미동의', home)
+        page = biz.get('/biz/case/%d' % shared).get_data(as_text=True)
+        self.assertIn('환불이 안 돼요', page)
+        for secret in ('홍길동', '010-7777-8888', 'reporter@example.com'):
+            self.assertNotIn(secret, page)
+        self.assertEqual(biz.get('/biz/case/%d' % private).status_code, 404)
+        # 5) 답변 → 단계 '조정 진행', 제보자에게 알림, 공개는 운영자 확인 뒤
+        mails = []
+        with patch.dict(os.environ, {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}), \
+             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+            self.post_form(biz, '/biz/case/%d' % shared, {'response': '내일까지 환불 처리하겠습니다.'})
+        self.assertIn('업체가 답변했습니다', mails[-1][2])
+        with self.site.conn() as db:
+            case = db.execute('SELECT status FROM cases WHERE id=?', (shared,)).fetchone()
+            msg = db.execute("SELECT id,public FROM messages WHERE case_id=? AND author='기업 답변'", (shared,)).fetchone()
+        self.assertEqual(case['status'], '조정 진행')
+        self.assertEqual(msg['public'], 0)
+        self.assertIn('답변 완료 <b>1</b>', biz.get('/biz?tab=done').get_data(as_text=True))
+        self.assertNotIn('내일까지 환불', self.client.get('/reports/%d' % shared).get_data(as_text=True))
+        self.post_form(admin, '/admin/reports/%d' % shared, {'form': 'answer_public', 'message_id': msg['id'], 'public': '1'})
+        public = self.client.get('/reports/%d' % shared).get_data(as_text=True)
+        self.assertIn('내일까지 환불 처리하겠습니다.', public)
+        self.assertIn('주식회사 테스트몰', public)
+        # 6) 중지하면 바로 로그아웃
+        self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'stop'})
+        self.assertEqual(biz.get('/biz').status_code, 302)
+        notify.ASYNC = True
+        self.assertIn('기업 회원 이용약관', self.client.get('/biz/terms').get_data(as_text=True))
 
     def test_lookup_with_password(self):
         # 예전 '조회 코드' 안내는 어디에도 안 남음

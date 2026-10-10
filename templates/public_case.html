@@ -17,6 +17,10 @@
     <h2>{{ ui('report.f_request', '원하는 해결 방법') }}</h2>
     <p class="public-case-body">{{ request_text }}</p>
   </article>
+  {% if answers %}<section class="form-panel public-case company-answers">
+    <h2>{{ ui('reports.company_answer', '업체 답변') }}</h2>
+    {% for a in answers %}<div class="company-answer"><p class="ca-head"><b>{{ a['company_name'] or company }}</b><span>{{ a['created'][:10]|replace('-', '.') }}</span></p><p class="public-case-body">{{ a['body'] }}</p></div>{% endfor %}
+  </section>{% endif %}
   <p class="public-case-mine"><a class="secondary" href="{{ url_for('case_open', case_id=case['id']) }}">{{ ui('reports.mine', '내가 쓴 제보라면 · 진행 상황과 답변 보기 →') }}</a></p>
   {% if txt('report.public_notice') %}<p class="public-case-notice">{{ txt('report.public_notice') }} <a href="{{ url_for('takedown') }}">{{ ui('reports.takedown_link', '게시중단 요청 →') }}</a></p>{% endif %}
 </div></main>

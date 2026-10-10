@@ -29,6 +29,8 @@
         <div class="cs-msg {{ 'from-center' if m['author'] == '센터' else ('from-company' if m['author'] == '기업 답변' else 'from-reporter') }}">
           <div class="cs-msg-head"><b>{{ m['author'] }}</b><span>{{ m['created'][:16]|replace('T', ' ') }}</span></div>
           <p>{{ m['body'] }}</p>
+          {% if m['author'] == '기업 답변' and case['public_consent'] %}<form class="cs-inline cs-msg-pub" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="answer_public"><input type="hidden" name="message_id" value="{{ m['id'] }}">
+            {% if m['public'] %}<span class="cs-tag">사이트에 공개 중</span><button class="cs-btn" name="public" value="0">공개 취소</button>{% else %}<button class="cs-btn" name="public" value="1">확인했어요 · 사이트에 공개</button>{% endif %}</form>{% endif %}
         </div>
         {% else %}<p class="cs-muted">아직 메시지가 없어요.</p>{% endfor %}
         <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="message">
@@ -74,6 +76,22 @@
         {% if sent %}<ul class="cs-sent">{% for n in sent %}<li class="{{ n['status'] }}"><b>{{ '카카오톡' if n['channel'] == 'kakao' else '이메일' }}</b> {{ events.get(n['event'], n['event']) }} · {{ n['target'] }} · {{ '보냄' if n['status'] == 'sent' else '실패' }}<span>{{ n['created'][5:16]|replace('T', ' ') }}{% if n['detail'] %} · {{ n['detail'] }}{% endif %}</span></li>{% endfor %}</ul>
         {% else %}<p class="cs-muted">아직 보낸 알림이 없어요.</p>{% endif %}
       </section>
+
+      <form class="cs-panel" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="company">
+        <h2>연결 기업</h2>
+        {% if not case['share_company'] %}<p class="cs-muted">제보자가 기업 전달에 동의하지 않아 기업 회원에게 연결할 수 없어요.</p>
+        {% else %}
+        <p class="cs-muted">{% if linked %}<b>{{ linked['name'] }}</b> 기업 회원 화면에 보이고, 기업이 직접 답변할 수 있어요.{% else %}승인된 기업 회원에 연결하면 그 기업이 직접 답변할 수 있어요.{% endif %}</p>
+        {% if companies %}
+        <div class="field"><select name="company_id" aria-label="연결할 기업">
+          <option value="">연결 안 함</option>
+          {% for c in companies %}<option value="{{ c['id'] }}"{% if linked and linked['id'] == c['id'] %} selected{% endif %}>{{ '★ ' if c['id'] in suggested_ids }}{{ c['name'] }}{% if c['aliases'] %} ({{ c['aliases'] }}){% endif %}</option>{% endfor %}
+        </select></div>
+        {% if suggested_ids and not linked %}<p class="cs-muted">★ 표시는 제보에 적힌 업체 이름과 비슷한 기업이에요.</p>{% endif %}
+        <button class="cs-btn" type="submit">저장</button>
+        {% else %}<p class="cs-muted">아직 승인된 기업 회원이 없어요. <a href="{{ url_for('admin_companies') }}">기업 회원</a>{% if ep.list != 'admin_reports' %}은 대표가 관리해요{% endif %}.</p>{% endif %}
+        {% endif %}
+      </form>
 
       <section class="cs-panel">
         <h2>기업 답변 요청</h2>
