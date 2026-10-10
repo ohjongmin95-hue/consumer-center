@@ -1227,3 +1227,5 @@ a.private-title:hover { color: #bd5c00; }
 .company-answer + .company-answer { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 .ca-head { display: flex; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
 .ca-head span { color: var(--muted); font-size: 13px; }
+.biz .nr-brand b { color: #fff; letter-spacing: -.5px; }
+.biz .nr-brand b em { font-style: normal; color: var(--orange); }
