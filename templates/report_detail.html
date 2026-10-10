@@ -7,7 +7,7 @@
     <span class="cs-pn">{% if newer %}<a href="{{ url_for(ep.case, case_id=newer['id']) }}">‹ 다음 제보</a>{% endif %}{% if older %}<a href="{{ url_for(ep.case, case_id=older['id']) }}">이전 제보 ›</a>{% endif %}</span>
   </div>
   <div class="cs-case-head">
-    <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {{ case['category'] }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}</p>
+    <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ case['category'] }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}</p>
     <h1 class="cs-title">{{ case['subject'] }}</h1>
     <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ status_step(case['status']) }}">{{ case['status'] }}</span></p>
   </div>

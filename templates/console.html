@@ -22,7 +22,7 @@
   'key': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 6l2 2"/>',
   'out': '<path d="M14 4h5v16h-5"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/>',
 }[name]|safe }}</svg>{% endmacro %}
-{% if admin_active() %}
+{% if admin_active() and request.endpoint != 'admin_login' %}
 {% set groups = [
   ('', [('admin', 'home', '홈')]),
   ('운영', [('admin_reports', 'inbox', '제보 처리'), ('admin_members', 'users', '회원'), ('admin_board', 'chat', '게시판 신고'), ('admin_takedowns', 'flag', '게시중단 요청')]),

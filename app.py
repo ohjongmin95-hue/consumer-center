@@ -46,7 +46,7 @@ with conn() as db:
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
-    for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash'):
+    for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash','industry'):
         if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS site_lists(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
@@ -91,6 +91,7 @@ def items(key):
     if not editing() or key not in LIST_DISPLAY_FIELDS:return rows
     return [{k:(ed_wrap('list:%s:%d:%s'%(key,i,k),v) if k in LIST_DISPLAY_FIELDS[key] and v else v) for k,v in row.items()} for i,row in enumerate(rows)]
 def report_categories():return [i['name'] for i in items('report_categories')]
+def report_industries():return [i['name'] for i in items('report_industries')]
 def board_categories():return [i['name'] for i in items('board_categories')]
 app.jinja_env.globals['items']=items
 SAFE_LINK=re.compile(r'^(https?://[^\s<>"]+|/[^\s<>"]*)$')
@@ -429,15 +430,15 @@ def file_ok(suffix,head):
     return ((kind=='pdf' and head.startswith(b'%PDF-')) or (kind=='png' and head.startswith(b'\x89PNG')) or (kind=='jpg' and head.startswith(b'\xff\xd8'))
             or (kind=='webp' and head[8:12]==b'WEBP') or (kind in ('mp4','mov') and head[4:8]==b'ftyp'))
 def report_form(status=200):
-    return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES),status
+    return render_template('report.html',categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES),status
 @app.route('/report',methods=['GET','POST'])
 def report():
     if request.method=='GET':return report_form()
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수 준비 중입니다.')
     if request.form.get('website'):abort(400)  # 사람에게는 안 보이는 칸: 자동 등록 프로그램 차단
-    keys=('category','company','subject','description','request_text','contact','reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group')
+    keys=('industry','category','company','subject','description','request_text','contact','reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group')
     data={k:request.form.get(k,'').strip() for k in keys}
-    if data['category'] not in report_categories() or any(not data[k] for k in ('company','subject','description','request_text','reporter_name','phone')) or not all(request.form.get(k) for k in required_consents()) or request.form.get('visibility') not in ('public','secret'):
+    if data['category'] not in report_categories() or data['industry'] not in report_industries() or any(not data[k] for k in ('company','subject','description','request_text','reporter_name','phone')) or not all(request.form.get(k) for k in required_consents()) or request.form.get('visibility') not in ('public','secret'):
         flash(ui_text('msg.report_required','필수 항목과 필수 동의를 모두 확인해 주세요.'));return report_form(400)
     if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150),('reporter_name',40),('phone',20),('region_sigungu',40),('region_detail',120)]):abort(400)
     if not PHONE_INPUT.match(data['phone']):flash(ui_text('msg.report_phone','전화번호를 확인해 주세요.'));return report_form(400)
@@ -465,8 +466,8 @@ def report():
             flash(ui_text('msg.report_rate','잠시 후 다시 제보해 주세요. 한 시간에 5건까지 접수할 수 있어요.'));return report_form(429)
         cur=db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,contact,share_company,created) VALUES(?,?,?,?,?,?,?,?,?,?)',(receipt,hashlib.sha256(code.encode()).hexdigest(),data['category'],data['company'],data['subject'],data['description'],data['request_text'],data['contact'],int(bool(request.form.get('share_company'))),datetime.datetime.now().isoformat(timespec='seconds')))
         public=int(request.form.get('visibility')=='public')
-        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=? WHERE id=?',
-                   (public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),cur.lastrowid))
+        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=?,industry=? WHERE id=?',
+                   (public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),data['industry'],cur.lastrowid))
         for f,suffix,original in checked:
             stored=secrets.token_hex(20)+suffix;f.save(UPLOAD/stored)
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,original))
@@ -503,6 +504,7 @@ def admin_session_ver():return admin_setting('session_ver') or '1'
 
 @app.route('/admin/login',methods=['GET','POST'])
 def admin_login():
+    if request.method=='GET' and admin_active():return redirect(url_for('admin'))  # 이미 로그인돼 있으면 바로 관리자 홈으로
     if request.method=='POST':
         stored=admin_password_hash()
         if too_many_attempts('admin'):
@@ -657,7 +659,7 @@ def admin_lists():
         if len(rows)>site_content.LIST_MAX_ITEMS:error='항목은 %d개까지 만들 수 있어요.'%site_content.LIST_MAX_ITEMS
         elif any(not r[first] for r in rows):error='"%s" 칸이 비어 있는 항목이 있어요.'%fields[0][1]
         elif len(rows)<minimum:error='%s은(는) 최소 %d개가 있어야 해요.'%(title,minimum)
-        elif key.endswith('categories') and len({r[first] for r in rows})!=len(rows):error='같은 이름이 두 번 들어갔어요.'
+        elif key.endswith(('categories','industries')) and len({r[first] for r in rows})!=len(rows):error='같은 이름이 두 번 들어갔어요.'
         elif key=='menu' and any(not r['label'] or not r['page'] for r in rows):error='메뉴 이름과 연결할 페이지를 모두 정해 주세요.'
         elif key=='menu' and any(r['page']=='custom' and not SAFE_LINK.match(r['url']) for r in rows):error='직접 입력한 주소는 https:// 또는 / 로 시작해야 해요.'
         elif (key=='home_blocks' or key.startswith('layout_')) and any(r['button_link'] and not SAFE_LINK.match(r['button_link']) for r in rows):error='버튼 주소는 https:// 또는 / 로 시작해야 해요.'
@@ -1155,7 +1157,7 @@ def reports_list():
     with conn() as db:
         counts={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
         total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
-        cases=db.execute('SELECT id,receipt,category,company,subject,status,created,assignee,public_consent,published,share_company FROM cases WHERE '+cond+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
+        cases=db.execute('SELECT id,receipt,industry,category,company,subject,status,created,assignee,public_consent,published,share_company FROM cases WHERE '+cond+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
     return render_template('reports_list.html',layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total)
 
 def report_detail(case_id):

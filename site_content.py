@@ -154,6 +154,21 @@ SECTIONS += [
 # 관리자 '항목 관리'에서 추가·삭제·순서 변경하는 목록: (키, 이름, 설명, 필드[(이름, 라벨, 옵션)], 최소 개수)
 _LIST_DEFAULTS = __import__('json').loads(Path(__file__).with_name('list_defaults.json').read_text(encoding='utf-8'))
 REPORT_CATEGORY_DEFAULTS = ['상품·품질', '배송·환불', '구독·결제', '금융·통신', '여행·숙박', '서비스·계약', '개인정보', '기타']
+# 업종: 이름 + 고를 때 옆에 흐리게 보이는 예시
+REPORT_INDUSTRY_DEFAULTS = [
+    ('통신·인터넷', '이동통신, 인터넷·IPTV, 알뜰폰'),
+    ('모바일·IT기기', '스마트폰, 태블릿, 노트북, 웨어러블'),
+    ('가전·렌탈', '생활가전, 정수기·안마의자 렌탈'),
+    ('자동차·모빌리티', '신차·중고차, 타이어·정비, 카셰어링'),
+    ('식품·외식', '가공식품, 건강기능식품, 음식점·배달'),
+    ('유통·커머스', '온라인몰, 대형마트, 홈쇼핑, 방문판매'),
+    ('패션·뷰티·리빙', '의류, 화장품, 가구, 주방용품'),
+    ('여행·항공·숙박', '항공권, 여행상품, 숙박 예약'),
+    ('플랫폼·생활서비스', '택배, 교육, 게임·앱, 구독 서비스'),
+    ('금융·보험', '은행, 증권, 보험, 카드'),
+    ('건설·부동산', '아파트·분양, 인테리어, 임대'),
+    ('기타', ''),
+]
 BOARD_CATEGORY_DEFAULTS = ['경험 공유', '질문해요', '꿀팁', '칭찬해요', '자유']
 PROCESS_ICONS = [('write', '제보 작성 (휴대폰)'), ('search', '검토 (돋보기)'), ('chat', '업체 확인 (말풍선)'), ('scale', '조율 (저울)'),
                  ('check', '완료 (체크 문서)'), ('bell', '안내 (알림)'), ('shield', '보호 (방패)'), ('call', '상담 (헤드셋)')]
@@ -194,6 +209,8 @@ LISTS = [
      [('kind', '블록 종류', {'choices': HOME_BLOCKS}), ('title', '제목', {}), ('count', '보여줄 개수', {}), ('body', '내용', ML),
       ('button_label', '버튼 글자', {}), ('button_link', '버튼 주소 (예: /report 또는 https://...)', {})], 1),
     ('report_categories', '제보 유형', '제보하기 화면, 제보 목록 필터, 유형 페이지에 쓰여요. 이미 접수된 제보의 유형은 바뀌지 않아요.', [('name', '유형 이름', {})], 1),
+    ('report_industries', '제보 업종', '제보하기 화면의 업종 선택 칸이에요. 예시는 고를 때 이름 옆에 흐리게 보여요. 이미 접수된 제보의 업종은 바뀌지 않아요.',
+     [('name', '업종 이름', {}), ('examples', '예시 (예: 이동통신, 인터넷·IPTV)', {})], 1),
     ('board_categories', '소비자게시판 분류', '글쓰기 분류와 게시판 탭에 쓰여요. 6번째부터는 색이 처음부터 반복돼요.', [('name', '분류 이름', {})], 1),
     ('sample_reports', '메인 예시 제보 카드', '실제 제보가 메인 카드 개수보다 적을 때 남는 자리를 "예시" 표시와 함께 채워요. 실제 제보가 늘면 하나씩 빠지고, 목록을 비우면 예시 카드는 나오지 않아요. 제보 목록 페이지에는 나오지 않아요.',
      [('title', '제목', {}), ('category', '분류', {}), ('company', '업체 표시 (예: ○○쇼핑)', {}), ('status', '진행 단계', {'choices': [(s, s) for s in STATUSES]})], 0),
@@ -228,6 +245,7 @@ LIST_DEFAULTS = {
     'menu': [{'label': label, 'page': page, 'url': ''} for _, page, label in LEGACY_NAV],
     'home_blocks': [dict(_BLANK_BLOCK, kind='hero'), dict(_BLANK_BLOCK, kind='latest_reports')],
     'report_categories': [{'name': n} for n in REPORT_CATEGORY_DEFAULTS],
+    'report_industries': [{'name': n, 'examples': e} for n, e in REPORT_INDUSTRY_DEFAULTS],
     'board_categories': [{'name': n} for n in BOARD_CATEGORY_DEFAULTS],
     'faq': [{'q': q, 'a': a} for q, a in FAQ_DEFAULTS],
     'sample_reports': [{'title': t, 'category': c, 'company': co, 'status': st} for t, c, co, st in SAMPLE_REPORTS],
