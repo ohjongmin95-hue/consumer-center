@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>{% block title %}관리자{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('favicon_ico') }}" sizes="48x48">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg', v=css_v) }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png', v=css_v) }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
 </head>
 <body class="console">
