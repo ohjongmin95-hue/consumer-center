@@ -1,0 +1,90 @@
+{% extends layout %}
+{% block title %}{{ case['receipt'] }} | 제보 처리{% endblock %}
+{% block content %}
+<main class="cs-page">
+  <div class="cs-crumbs">
+    <a href="{{ url_for(ep.list) }}">← 제보 목록</a>
+    <span class="cs-pn">{% if newer %}<a href="{{ url_for(ep.case, case_id=newer['id']) }}">‹ 다음 제보</a>{% endif %}{% if older %}<a href="{{ url_for(ep.case, case_id=older['id']) }}">이전 제보 ›</a>{% endif %}</span>
+  </div>
+  <div class="cs-case-head">
+    <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ case['category'] }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}</p>
+    <h1 class="cs-title">{{ case['subject'] }}</h1>
+    <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ status_step(case['status']) }}">{{ case['status'] }}</span></p>
+  </div>
+
+  <div class="cs-case">
+    <div class="cs-col">
+      <section class="cs-panel">
+        <h2>피해 내용</h2>
+        <p class="cs-text">{{ case['description'] }}</p>
+        <h2>원하는 해결 방법</h2>
+        <p class="cs-text">{{ case['request_text'] }}</p>
+        <h2>첨부파일</h2>
+        {% for f in files %}<p><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a></p>{% else %}<p class="cs-muted">없음</p>{% endfor %}
+      </section>
+
+      <section class="cs-panel" id="message">
+        <h2>제보자와 주고받은 메시지</h2>
+        {% for m in msgs %}
+        <div class="cs-msg {{ 'from-center' if m['author'] == '센터' else ('from-company' if m['author'] == '기업 답변' else 'from-reporter') }}">
+          <div class="cs-msg-head"><b>{{ m['author'] }}</b><span>{{ m['created'][:16]|replace('T', ' ') }}</span></div>
+          <p>{{ m['body'] }}</p>
+        </div>
+        {% else %}<p class="cs-muted">아직 메시지가 없어요.</p>{% endfor %}
+        <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="message">
+          <textarea name="message" maxlength="3000" required rows="3" placeholder="제보자에게 보낼 메시지 (제보자가 조회 화면에서 봐요)" aria-label="제보자에게 메시지"></textarea>
+          <button class="cs-btn" type="submit">메시지 보내기</button>
+        </form>
+      </section>
+    </div>
+
+    <aside class="cs-side">
+      <form class="cs-panel" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="settings">
+        <h2>처리</h2>
+        <div class="field"><label for="c-status">진행 단계</label><select id="c-status" name="status">{% for s in statuses %}<option{% if s == case['status'] %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="c-assignee">담당 기자</label><select id="c-assignee" name="assignee"><option value="">미배정</option>{% for n in staff_names %}<option{% if n == case['assignee'] %} selected{% endif %}>{{ n }}</option>{% endfor %}{% if case['assignee'] and case['assignee'] not in staff_names %}<option selected>{{ case['assignee'] }}</option>{% endif %}</select></div>
+        <label class="cs-check"><input type="checkbox" name="published"{% if case['published'] %} checked{% endif %}{% if not case['public_consent'] %} disabled{% endif %}><span>사이트에 공개{% if not case['public_consent'] %} <em>(비밀글이라 공개 불가)</em>{% endif %}</span></label>
+        <button class="cs-btn cs-btn-main" type="submit">저장</button>
+      </form>
+
+      <section class="cs-panel">
+        <h2>제보자 정보·동의</h2>
+        <dl class="cs-dl">
+          <dt>이름</dt><dd>{{ case['reporter_name'] or '—' }}</dd>
+          <dt>전화번호</dt><dd>{% if case['phone'] %}<a href="tel:{{ case['phone'] }}">{{ case['phone'] }}</a>{% else %}—{% endif %}</dd>
+          <dt>이메일</dt><dd>{{ case['contact'] or '—' }}</dd>
+          <dt>지역</dt><dd>{{ [case['region_sido'], case['region_sigungu'], case['region_detail']]|select|join(' ') or '—' }}</dd>
+          <dt>성별·연령</dt><dd>{{ [case['gender'], case['age_group']]|select|join(' · ') or '—' }}</dd>
+          <dt>공개 선택</dt><dd>{{ '공개' if case['public_consent'] else '비밀글' }}</dd>
+          <dt>기업 전달</dt><dd>{{ '동의' if case['share_company'] else '미동의' }}</dd>
+          <dt>내용 활용</dt><dd>{{ '동의' if case['use_consent'] else '미동의' }}</dd>
+        </dl>
+      </section>
+
+      <section class="cs-panel">
+        <h2>기업 답변 요청</h2>
+        {% if case['share_company'] %}
+        <p class="cs-muted">링크를 받은 기업만 이 제보를 보고 답변할 수 있어요. 다시 만들면 이전 링크는 못 써요.{% if invite %} (최근 발급 {{ invite['created'][:10] }}){% endif %}</p>
+        <form method="post" action="{{ url_for(ep.invite, case_id=case['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="cs-btn" type="submit">{{ '링크 다시 만들기' if invite else '답변 링크 만들기' }}</button></form>
+        {% else %}<p class="cs-muted">제보자가 기업 전달에 동의하지 않았어요.</p>{% endif %}
+      </section>
+
+      <section class="cs-panel" id="note">
+        <h2>내부 메모 <small>제보자·기업에게 안 보여요</small></h2>
+        <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="note">
+          <textarea name="internal_note" maxlength="3000" required rows="2" placeholder="메모 남기기" aria-label="내부 메모"></textarea>
+          <button class="cs-btn" type="submit">메모 추가</button>
+        </form>
+        {% for n in notes %}<div class="cs-note"><div class="cs-msg-head"><b>{{ n['author'] or '센터' }}</b><span>{{ n['created'][:16]|replace('T', ' ') }}</span></div><p>{{ n['note'] }}</p></div>{% endfor %}
+      </section>
+
+      {% if logs %}
+      <section class="cs-panel">
+        <h2>처리 기록</h2>
+        <ol class="cs-log">{% for l in logs %}<li><span>{{ l['created'][5:16]|replace('T', ' ')|replace('-', '.') }}</span><b>{{ l['actor'] }}</b> {{ l['action'] }}</li>{% endfor %}</ol>
+      </section>
+      {% endif %}
+    </aside>
+  </div>
+</main>
+{% endblock %}

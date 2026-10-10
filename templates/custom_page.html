@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}{{ raw.title }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main><article class="info-wrap policy-doc custom-page">
+  <h1>{{ page.title }}</h1>
+  <div{{ ed_attr('list:custom_pages:%d:body' % index, raw.body) }}>{{ doc_text(raw.body) }}</div>
+  {{ ed_list('custom_pages') }}
+</article></main>
+{% endblock %}

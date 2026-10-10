@@ -1,1 +1,126 @@
-{% extends 'base.html' %}{% block title %}피해 신고하기 | 소비자신고센터.{% endblock %}{% block content %}<main class="page"><div class="wrap"><div class="page-intro"><span class="eyebrow">REPORT</span><h1 class="page-title">소비자 피해 신고하기</h1><p>필수 정보를 입력하면 접수번호와 비밀 조회 코드가 발급됩니다. 신고 내용은 공개되지 않습니다.</p></div><div class="form-panel"><div class="alert">시범 개발본입니다. 정식 운영 전에는 실제 개인정보·민감한 증빙자료를 입력하지 마세요.</div><form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{csrf_token()}}"><div class="field"><label>신고 유형 <small>*</small></label><select name="category" required><option value="">선택해 주세요</option>{% for x in categories %}<option {% if request.form.get('category', request.args.get('category')) == x %}selected{% endif %}>{{x}}</option>{% endfor %}</select></div><div class="field"><label>업체·서비스명 <small>*</small></label><input name="company" maxlength="120" required placeholder="예: ○○쇼핑몰"></div><div class="field"><label>신고 제목 <small>*</small></label><input name="subject" maxlength="160" required placeholder="피해 내용을 한 줄로 요약해 주세요"></div><div class="field"><label>피해 내용 <small>*</small></label><textarea name="description" maxlength="6000" required placeholder="구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요"></textarea></div><div class="field"><label>원하는 해결 방법 <small>*</small></label><textarea name="request_text" maxlength="3000" required placeholder="환불, 교환, 수리, 설명 요청 등"></textarea></div><div class="field"><label>연락 가능한 이메일 (선택)</label><input name="contact" maxlength="150" placeholder="이메일 주소"><p class="hint">연락처를 적지 않아도 접수번호와 조회 코드로 확인할 수 있습니다.</p></div><div class="field"><label>증빙자료 (선택)</label><input type="file" name="evidence" accept=".pdf,.png,.jpg,.jpeg,.webp"><p class="hint">PDF·JPG·PNG·WEBP 1개, 최대 15MB. 개인정보가 담긴 부분은 가리고 첨부하세요.</p></div><label class="check"><input type="checkbox" name="consent" required><span><b>[필수]</b> 신고 접수와 처리를 위한 입력정보 저장에 동의합니다. 정식 운영 전 상세 개인정보처리방침이 제공돼야 합니다.</span></label><label class="check"><input type="checkbox" name="share_company"><span><b>[선택]</b> 사실관계 확인을 위해 필요한 신고 내용을 해당 기업에 전달하는 데 동의합니다. 동의하지 않으면 기업에 전달하지 않습니다.</span></label><label class="check"><input type="checkbox" name="public_consent"><span><b>[선택]</b> 비식별 검토 후 신고 제목·분류·상태를 공개하는 데 동의합니다.</span></label><button class="primary" type="submit" {% if not intake_enabled %}disabled title="현재 접수 준비 중"{% endif %} style="width:100%;margin-top:18px">신고 접수하기 ↗</button></form>{% if not intake_enabled %}<div class="alert">현재 신고 접수 기능은 비활성화되어 있습니다. 운영 정책과 보안 검증 후 개시됩니다.</div>{% endif %}</div></div></main>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ txt('report.title') }} | {{ txt('site.name') }}{% endblock %}
+{% macro lines(key) %}<span class="cell-lines"{{ ed_attr(key) }}>{% for line in g.content[key].split('\n') if line.strip() %}<span class="cell-line">{{ line }}</span>{% endfor %}</span>{% endmacro %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">{{ txt('report.title') }}</h1>{% if txt('report.intro') %}<p>{{ txt('report.intro') }}</p>{% endif %}</div>
+
+  {% if txt('report.notes') %}
+  <details class="must-read" open>
+    <summary><span class="must-read-title">{{ ui('report.notes_title', '제보 전 꼭 읽어 주세요') }}</span><span class="must-read-toggle" aria-hidden="true"></span></summary>
+    <ul{{ ed_attr('report.notes') }}>{% for line in g.content['report.notes'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+
+  <div class="form-panel">
+    <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <h2 class="form-group-title">{{ ui('report.group_reporter', '제보자 정보') }}</h2>
+      <p class="form-group-note">{{ ui('report.group_reporter_note', '연락처와 개인정보는 공개되지 않고, 제보 확인과 연락에만 쓰여요.') }}</p>
+      <div class="field-row">
+        <div class="field"><label for="r-name">{{ ui('report.f_name', '이름') }} <small>*</small></label><input id="r-name" name="reporter_name" maxlength="40" required autocomplete="name" value="{{ request.form.get('reporter_name','') }}"></div>
+        <div class="field"><label for="r-phone">{{ ui('report.f_phone', '전화번호') }} <small>*</small></label><input id="r-phone" name="phone" type="tel" maxlength="20" required autocomplete="tel" placeholder="{{ ui('report.f_phone_ph', '010-0000-0000') }}" value="{{ request.form.get('phone','') }}"></div>
+      </div>
+      <div class="field"><label for="r-contact">{{ ui('report.f_contact', '이메일 (선택)') }}</label><input id="r-contact" name="contact" type="email" maxlength="150" autocomplete="email" placeholder="{{ ui('report.f_contact_ph', '이메일 주소') }}" value="{{ request.form.get('contact','') }}"><p class="hint">{{ ui('report.f_contact_hint', '진행 상황을 이메일로도 안내받고 싶다면 적어 주세요.') }}</p></div>
+      <div class="field"><label for="r-sido">{{ ui('report.f_region', '지역 (선택)') }}</label>
+        <div class="field-row field-row-3">
+          <select id="r-sido" name="region_sido" aria-label="{{ ui('report.f_sido', '시/도') }}"><option value="">{{ ui('report.f_sido', '시/도') }}</option>{% for x in sido %}<option{% if request.form.get('region_sido') == x %} selected{% endif %}>{{ x }}</option>{% endfor %}</select>
+          <input name="region_sigungu" maxlength="40" placeholder="{{ ui('report.f_sigungu', '시·군·구 (예: 강남구)') }}" aria-label="{{ ui('report.f_sigungu', '시·군·구 (예: 강남구)') }}" value="{{ request.form.get('region_sigungu','') }}">
+          <input name="region_detail" maxlength="120" placeholder="{{ ui('report.f_region_detail', '읍·면·동까지 (선택)') }}" aria-label="{{ ui('report.f_region_detail', '읍·면·동까지 (선택)') }}" value="{{ request.form.get('region_detail','') }}">
+        </div>
+      </div>
+      <div class="field-row">
+        <fieldset class="field"><legend>{{ ui('report.f_gender', '성별 (선택)') }}</legend><div class="radio-row">{% for x in genders %}<label class="radio-pill"><input type="radio" name="gender" value="{{ x }}"{% if request.form.get('gender') == x %} checked{% endif %}><span>{{ x }}</span></label>{% endfor %}</div></fieldset>
+        <div class="field"><label for="r-age">{{ ui('report.f_age', '연령대 (선택)') }}</label><select id="r-age" name="age_group"><option value="">{{ ui('report.f_age_pick', '연령대 선택') }}</option>{% for x in ages %}<option{% if request.form.get('age_group') == x %} selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
+      </div>
+
+      <h2 class="form-group-title">{{ ui('report.group_case', '제보 내용') }}</h2>
+      <div class="field"><label for="r-industry">{{ ui('report.f_industry', '업종') }} <small>*</small></label><select id="r-industry" name="industry" required><option value="">{{ ui('report.f_industry_pick', '업종을 골라 주세요') }}</option>{% for x in industries %}<option value="{{ x.name }}"{% if request.form.get('industry') == x.name %} selected{% endif %}>{{ x.name }}{% if x.examples %} — {{ x.examples }}{% endif %}</option>{% endfor %}</select>{{ ed_list('report_industries') }}</div>
+      <div class="field"><label for="r-category">{{ ui('report.f_category', '제보 유형') }} <small>*</small></label><select id="r-category" name="category" required><option value="">{{ ui('report.f_category_pick', '선택해 주세요') }}</option>{% for x in categories %}<option {% if request.form.get('category', request.args.get('category')) == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="r-company">{{ ui('report.f_company', '업체·서비스명') }} <small>*</small></label><input id="r-company" name="company" maxlength="120" required placeholder="{{ ui('report.f_company_ph', '예: ○○쇼핑몰') }}" value="{{ request.form.get('company','') }}"><p class="hint">{{ ui('report.f_company_hint', '홈페이지 주소 말고 정확한 업체명(상호)을 적어 주세요. 정확할수록 빨리 확인할 수 있어요.') }}</p></div>
+      <div class="field"><label for="r-subject">{{ ui('report.f_subject', '제보 제목') }} <small>*</small></label><input id="r-subject" name="subject" maxlength="160" required placeholder="{{ ui('report.f_subject_ph', '피해 내용을 한 줄로 요약해 주세요') }}" value="{{ request.form.get('subject','') }}"></div>
+      <div class="field"><label for="r-description">{{ ui('report.f_description', '피해 내용') }} <small>*</small></label><textarea id="r-description" name="description" maxlength="6000" required placeholder="{{ ui('report.f_description_ph', '구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요') }}">{{ request.form.get('description','') }}</textarea></div>
+      <div class="field"><label for="r-request">{{ ui('report.f_request', '원하는 해결 방법') }} <small>*</small></label><textarea id="r-request" name="request_text" maxlength="3000" required placeholder="{{ ui('report.f_request_ph', '환불, 교환, 수리, 설명 요청 등') }}">{{ request.form.get('request_text','') }}</textarea></div>
+      <div class="field"><label for="r-evidence">{{ ui('report.f_file', '증빙자료 (선택)') }}</label><input id="r-evidence" type="file" name="evidence" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.mp4,.mov"><p class="hint">{{ ui('report.f_file_hint2', '사진·PDF·동영상(mp4, mov)을 5개까지, 모두 합쳐 20MB까지 올릴 수 있어요. 사진과 동영상이 있으면 더 빠르게 확인할 수 있어요. 개인정보가 담긴 부분은 가리고 올려 주세요.') }}</p><p class="hint file-picked" hidden></p></div>
+
+      <fieldset class="field visibility-pick"><legend>{{ ui('report.f_visibility', '공개 설정') }} <small>*</small></legend>
+        <label class="vis-option"><input type="radio" name="visibility" value="public" required{% if request.form.get('visibility') == 'public' %} checked{% endif %}><span><b>{{ ui('report.vis_public', '공개') }}</b>{{ txt('report.visibility_public') }}</span></label>
+        <label class="vis-option"><input type="radio" name="visibility" value="secret" required{% if request.form.get('visibility') == 'secret' %} checked{% endif %}><span><b>{{ ui('report.vis_secret', '🔒 비밀글') }}</b>{{ txt('report.visibility_secret') }}</span></label>
+      </fieldset>
+
+      <div class="consents">
+        <h2 class="consents-title">{{ ui('report.consents_title', '동의 항목') }}</h2>
+        <label class="check consent-all"><input type="checkbox" data-check-all><span>{{ ui('report.consent_all', '아래 내용에 모두 동의합니다') }}</span></label>
+
+        {% for c in items('report_consents') %}
+        {% if c.kind == 'privacy' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
+          <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ ui('report.c1_title', '개인정보 수집·이용') }}</h3>
+          <div class="consent-table" role="table" aria-label="{{ ui('report.c1_title', '개인정보 수집·이용') }}">
+            <div role="row" class="ct-head"><span role="columnheader">{{ ui('report.c1_col1', '수집 개인정보 항목') }}</span><span role="columnheader">{{ ui('report.c1_col2', '수집·이용 목적') }}</span><span role="columnheader">{{ ui('report.c1_col3', '보유 기간') }}</span></div>
+            <div role="row"><span role="cell" data-label="{{ ui('report.c1_col1', '수집 개인정보 항목') }}">{{ lines('report.privacy_items') }}</span><span role="cell" data-label="{{ ui('report.c1_col2', '수집·이용 목적') }}">{{ lines('report.privacy_purpose') }}</span><span role="cell" data-label="{{ ui('report.c1_col3', '보유 기간') }}">{{ lines('report.privacy_period') }}</span></div>
+          </div>
+          <p class="consent-note">{{ txt('report.refusal_note') }} <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></p>
+          <label class="check"><input type="checkbox" name="consent" required{% if request.form.get('consent') %} checked{% endif %}><span>{{ ui('report.c1_agree', '위와 같이 개인정보를 수집·이용하는 데 동의합니다.') }}</span></label>
+        </section>
+        {% elif c.kind == 'share' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
+          <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ ui('report.c2_title', '개인정보 제3자 제공') }}</h3>
+          <div class="consent-table consent-table-4" role="table" aria-label="{{ ui('report.c2_title', '개인정보 제3자 제공') }}">
+            <div role="row" class="ct-head"><span role="columnheader">{{ ui('report.c2_col1', '제공받는 자') }}</span><span role="columnheader">{{ ui('report.c2_col2', '제공 항목') }}</span><span role="columnheader">{{ ui('report.c2_col3', '이용 목적') }}</span><span role="columnheader">{{ ui('report.c2_col4', '보유 기간') }}</span></div>
+            <div role="row"><span role="cell" data-label="{{ ui('report.c2_col1', '제공받는 자') }}">{{ lines('report.share_recipient') }}</span><span role="cell" data-label="{{ ui('report.c2_col2', '제공 항목') }}">{{ lines('report.share_items') }}</span><span role="cell" data-label="{{ ui('report.c2_col3', '이용 목적') }}">{{ lines('report.share_purpose') }}</span><span role="cell" data-label="{{ ui('report.c2_col4', '보유 기간') }}">{{ lines('report.share_period') }}</span></div>
+          </div>
+          <p class="consent-note">{{ txt('report.share_refusal') }}</p>
+          <label class="check"><input type="checkbox" name="share_company" required{% if request.form.get('share_company') %} checked{% endif %}><span>{{ ui('report.c2_agree', '위와 같이 개인정보를 제공하는 데 동의합니다.') }}</span></label>
+        </section>
+        {% elif c.kind == 'copyright' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
+          <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ ui('report.c3_title', '저작권 동의') }}</h3>
+          <p class="consent-note">{{ txt('report.use_text') }}</p>
+          <p class="consent-note">{{ txt('report.use_withdraw') }}{% if txt('operator.email') %} (<a class="consent-link" href="mailto:{{ txt('operator.email') }}">{{ txt('operator.email') }}</a>){% endif %}</p>
+          <label class="check"><input type="checkbox" name="use_consent" required{% if request.form.get('use_consent') %} checked{% endif %}><span>{{ ui('report.c3_agree', '위와 같은 저작권 이용에 동의합니다.') }}</span></label>
+        </section>
+        {% elif c.kind == 'truth' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
+          <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ ui('report.c4_title', '사실 작성 확인') }}</h3>
+          <p class="consent-note">{{ txt('report.consent_truth') }} <a class="consent-link" href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">{{ ui('report.terms_link', '이용약관 ↗') }}</a></p>
+          <label class="check"><input type="checkbox" name="truth" required{% if request.form.get('truth') %} checked{% endif %}><span>{{ ui('report.c4_agree', '위 내용을 확인했습니다.') }}</span></label>
+        </section>
+        {% elif c.kind == 'custom' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
+          <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ c.title }}</h3>
+          {% if c.body %}<p class="consent-note pre-line">{{ c.body }}</p>{% endif %}
+          <label class="check"><input type="checkbox" name="consent_custom_{{ loop.index0 }}" required{% if request.form.get('consent_custom_%d' % loop.index0) %} checked{% endif %}><span>{{ c.agree or ui('report.custom_agree', '위 내용에 동의합니다.') }}</span></label>
+        </section>
+        {% endif %}
+        {% endfor %}
+        {{ ed_list('report_consents') }}
+      </div>
+
+      <button class="primary" type="submit" {% if not intake_enabled %}disabled title="현재 접수 준비 중"{% endif %} style="width:100%;margin-top:18px">{{ ui('report.submit', '제보 접수하기 ↗') }}</button>
+    </form>
+    {% if not intake_enabled %}<div class="alert">{{ ui('report.disabled', '현재 제보 접수 기능은 비활성화되어 있습니다. 운영 정책과 보안 검증 후 개시됩니다.') }}</div>{% endif %}
+  </div>
+</div></main>
+<script>
+  // "모두 동의" 체크박스: 아래 동의 항목을 한 번에 켜고 끕니다.
+  (function () {
+    var all = document.querySelector('[data-check-all]');
+    if (!all) return;
+    var boxes = document.querySelectorAll('.consent-card input[type=checkbox]');
+    all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); });
+    boxes.forEach(function (b) { b.addEventListener('change', function () { all.checked = Array.prototype.every.call(boxes, function (x) { return x.checked; }); }); });
+  })();
+  // 고른 첨부파일 이름과 크기를 보여 줘요
+  (function () {
+    var input = document.getElementById('r-evidence'), out = document.querySelector('.file-picked');
+    if (!input || !out) return;
+    input.addEventListener('change', function () {
+      var total = 0, names = [];
+      Array.prototype.forEach.call(input.files, function (f) { total += f.size; names.push(f.name); });
+      out.hidden = !names.length;
+      out.textContent = names.length + '개 · ' + (total / 1048576).toFixed(1) + 'MB' + (input.files.length > {{ max_files }} || total > 20971520 ? ' — 5개, 20MB 이하로 골라 주세요' : '') + ' : ' + names.join(', ');
+    });
+  })();
+</script>
+{% endblock %}

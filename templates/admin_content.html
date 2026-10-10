@@ -1,0 +1,52 @@
+{% extends 'console.html' %}
+{% block title %}숨은 문구·설정 | 소비자제보센터{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro admin-head">
+    <div><h1 class="page-title">숨은 문구·설정</h1>
+    <p>사이트의 모든 문구가 모여 있어요. 화면에 보이는 문장은 <a href="{{ url_for('admin_site') }}">사이트 편집</a>에서 고치는 게 쉽고, 여기서는 <b>오류 메시지·입력칸 안내·검색 등록 코드·하단 정보</b>처럼 평소 안 보이는 것을 찾아 고쳐요. 칸을 비우고 저장하면 기본 문구로 돌아가요.</p></div>
+  </div>
+  <div class="content-search"><input type="search" id="content-search" placeholder="바꾸고 싶은 문구를 검색하세요 (예: 제보 접수하기)" aria-label="문구 검색"><span id="content-search-count" class="meta"></span></div>
+  <nav class="content-tabs" aria-label="섹션 바로가기">{% for sid, title, _ in sections %}<a href="#section-{{ sid }}">{{ title }}</a>{% endfor %}</nav>
+  {% for sid, title, items in sections %}
+  <form class="form-panel content-section" id="section-{{ sid }}" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="section" value="{{ sid }}">
+    <h2>{{ title }}</h2>
+    {% for key, label, default, opts in items %}
+    <div class="field">
+      <label for="f-{{ key }}">{{ label }}{% if opts.optional %} <span class="field-tag">선택</span>{% endif %}{% if key in changed %} <span class="field-tag changed">수정됨</span>{% endif %}</label>
+      {% if opts.doc %}<p class="field-default">{{ policy_hint }}</p><textarea id="f-{{ key }}" name="{{ key }}" rows="18" maxlength="30000">{{ content[key] }}</textarea>
+      {% elif opts.multiline %}<textarea id="f-{{ key }}" name="{{ key }}" rows="{{ [2, content[key].count('\n') + 2]|max }}" maxlength="2000">{{ content[key] }}</textarea>
+      {% else %}<input id="f-{{ key }}" name="{{ key }}" value="{{ content[key] }}" maxlength="2000">{% endif %}
+      {% if default and content[key] != default and not opts.doc %}<p class="field-default">기본값: {{ default }}</p>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="content-actions">
+      <button class="primary" type="submit">{{ title }} 저장</button>
+      <button class="secondary" type="submit" name="reset_section" value="{{ sid }}" onclick="return confirm('이 섹션의 문구를 모두 기본값으로 되돌릴까요?')">기본값으로 되돌리기</button>
+      <a class="content-preview" href="{{ {'common': url_for('home'), 'home': url_for('home'), 'operator': url_for('home'), 'report': url_for('report'), 'policy': url_for('policy_page', page='privacy'), 'board': url_for('board'), 'status': url_for('lookup'), 'reports': url_for('reports'), 'seo': url_for('home')}.get(sid) or (url_for('info_page', page=sid) if sid in ('guide', 'process', 'types', 'faq') else url_for('home')) }}" target="_blank" rel="noopener">화면에서 보기 ↗</a>
+    </div>
+  </form>
+  {% endfor %}
+</div></main>
+<script>
+  // 문구 검색: 칸 이름이나 지금 문구에 검색어가 들어간 칸만 보여 줍니다.
+  (function () {
+    var box = document.getElementById('content-search'), count = document.getElementById('content-search-count');
+    if (!box) return;
+    box.addEventListener('input', function () {
+      var q = box.value.trim().toLowerCase(), shown = 0;
+      document.querySelectorAll('.content-section').forEach(function (sec) {
+        var any = false;
+        sec.querySelectorAll('.field').forEach(function (f) {
+          var input = f.querySelector('input, textarea');
+          var hit = !q || f.textContent.toLowerCase().indexOf(q) >= 0 || (input && input.value.toLowerCase().indexOf(q) >= 0);
+          f.hidden = !hit; if (hit) { any = true; shown++; }
+        });
+        sec.hidden = !any;
+      });
+      count.textContent = q ? shown + '개 찾음' : '';
+    });
+  })();
+</script>
+{% endblock %}

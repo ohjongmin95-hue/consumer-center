@@ -1,0 +1,38 @@
+{% extends 'console.html' %}
+{% block title %}기자 계정 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="cs-page">
+  <h1 class="cs-title">기자 계정</h1>
+  <p class="cs-lead">기자는 <b>{{ url_for('reporter_login', _external=True) }}</b> 에서 로그인해 제보만 확인·처리해요. 사이트 문구, 회원, 게시판 같은 관리자 메뉴는 볼 수 없어요.</p>
+
+  <form class="cs-panel cs-add" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="add">
+    <h2>새 기자 추가</h2>
+    <div class="cs-add-row">
+      <input name="name" maxlength="20" required placeholder="이름 (예: 김민지)" aria-label="이름">
+      <input name="login_id" maxlength="20" required pattern="[A-Za-z0-9_]{4,20}" autocapitalize="off" placeholder="아이디 (영문·숫자 4~20자)" aria-label="아이디">
+      <input name="password" type="text" minlength="8" maxlength="64" required autocomplete="off" placeholder="처음 비밀번호 (영문+숫자 8자 이상)" aria-label="처음 비밀번호">
+      <button class="cs-btn cs-btn-main" type="submit">추가</button>
+    </div>
+    <p class="cs-muted">처음 비밀번호를 기자에게 직접 알려 주고, 기자가 로그인한 뒤 바꾸게 해 주세요.</p>
+  </form>
+
+  <div class="cs-table-wrap">
+    <table class="cs-table">
+      <thead><tr><th>이름</th><th>아이디</th><th>상태</th><th>최근 로그인</th><th>비밀번호 재설정</th><th></th></tr></thead>
+      <tbody>
+      {% for m in members %}
+      <tr{% if not m['active'] %} class="is-off"{% endif %}>
+        <td><b>{{ m['name'] }}</b></td><td class="mono">{{ m['login_id'] }}</td>
+        <td>{% if m['active'] %}<span class="cs-status s3">사용 중</span>{% else %}<span class="cs-status">중지</span>{% endif %}</td>
+        <td class="mono">{{ m['last_login'][:16]|replace('T', ' ') or '—' }}</td>
+        <td><form class="cs-inline" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="reset"><input type="hidden" name="id" value="{{ m['id'] }}"><input name="password" type="text" minlength="8" maxlength="64" required autocomplete="off" placeholder="새 비밀번호" aria-label="{{ m['name'] }} 새 비밀번호"><button class="cs-btn" type="submit">변경</button></form></td>
+        <td><form class="cs-inline" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ m['id'] }}">
+          {% if m['active'] %}<button class="cs-btn" name="action" value="stop" onclick="return confirm('{{ m['name'] }} 계정을 중지할까요? 바로 로그아웃돼요.')">중지</button>{% else %}<button class="cs-btn" name="action" value="start">다시 사용</button>{% endif %}
+          <button class="cs-btn cs-btn-danger" name="action" value="delete" onclick="return confirm('{{ m['name'] }} 계정을 삭제할까요?')">삭제</button></form></td>
+      </tr>
+      {% else %}<tr><td colspan="6" class="cs-empty">아직 기자 계정이 없어요. 위에서 추가해 주세요.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</main>
+{% endblock %}

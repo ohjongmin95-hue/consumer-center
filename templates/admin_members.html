@@ -1,0 +1,23 @@
+{% extends 'console.html' %}
+{% block title %}회원 관리 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">회원 관리</h1>
+    <p>전체 회원 {{ total }}명. 정지하면 바로 로그아웃되고 다시 로그인할 수 없어요. 비밀번호는 암호화되어 있어 운영자도 볼 수 없어요.</p>
+    <form class="report-tools" method="get"><input name="q" value="{{ q }}" placeholder="아이디나 닉네임으로 찾기" aria-label="회원 검색"><button class="search-button" type="submit">찾기</button></form>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th>아이디</th><th>닉네임</th><th>이메일</th><th>제보·글</th><th>가입일 / 최근 로그인</th><th>상태</th><th></th></tr>
+    {% for m in members %}
+    <tr>
+      <td>{{ m['login_id'] }}</td><td>{{ m['nickname'] }}</td><td>{{ m['email'] or '-' }}</td><td>{{ m['n_cases'] }} · {{ m['n_posts'] }}</td>
+      <td>{{ m['created'][:10] }}<br><span class="meta">{{ m['last_login'][:16]|replace('T', ' ') or '-' }}</span></td>
+      <td>{% if m['status'] == 'active' %}정상{% else %}<span class="pill">정지</span>{% endif %}</td>
+      <td><form class="inline-actions" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ m['id'] }}">
+        {% if m['status'] == 'active' %}<button class="secondary" name="action" value="suspend" onclick="return confirm('이 회원의 이용을 정지할까요?')">정지</button>{% else %}<button class="secondary" name="action" value="restore">정지 풀기</button>{% endif %}
+        <input type="hidden" name="delete_posts" value="1"><button class="secondary danger" name="action" value="delete" onclick="return confirm('회원과 그 회원의 게시판 글·댓글을 모두 지울까요? 되돌릴 수 없어요.')">삭제</button></form></td>
+    </tr>
+    {% else %}<tr><td colspan="7" class="meta">{{ '찾는 회원이 없어요.' if q else '아직 가입한 회원이 없어요.' }}</td></tr>{% endfor %}
+  </table></div>
+</div></main>
+{% endblock %}

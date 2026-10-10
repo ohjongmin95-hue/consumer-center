@@ -1,0 +1,31 @@
+{# 메인 화면 최근 제보 카드(영수증 모양). 실시간 갱신(/reports/latest?view=cards)도 이 조각을 그대로 씀. #}
+<div class="report-cards">
+  {% for case in cases %}{% set step = status_step(case.status) %}{% set total = STATUSES|length %}
+  <article class="report-card{% if not case.title %} is-secret{% endif %}{% if step == total %} is-done{% endif %}">
+    <div class="rc-body">
+      <div class="rc-head"><span class="rc-cat">{{ case.cat }}</span><span class="rc-no">No.{{ case.no }}</span></div>
+      <h3 class="rc-title">{% if case.title %}<a class="case-link" href="{{ url_for('public_case', case_id=case.no) }}">{{ case.title }}</a>{% else %}<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 10V7.5a5 5 0 0110 0V10M5.5 10h13v10h-13z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>{{ ui('home.card_secret', '비밀글로 접수된 제보예요') }}{% endif %}</h3>
+      <p class="rc-shop"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M4 9.5c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 2 3s2-1.3 2-3c0 1.7 1.3 3 3 3s3-1.3 3-3M5.5 12v8h13v-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span class="rc-company">{{ case.company or ui('home.card_hidden_company', '업체 비공개') }}</span></p>
+    </div>
+    <div class="rc-stub">
+      <span class="rc-progress" aria-label="{{ total }}단계 중 {{ step }}단계">{% for s in STATUSES %}<i{% if loop.index <= step %} class="on"{% endif %}></i>{% endfor %}</span>
+      <span class="rc-status">{{ status_name(case.status) }}</span>
+      <time datetime="{{ case.created }}">{{ case.when }}</time>
+    </div>
+  </article>
+  {% endfor %}
+  {% for sample in sample_fill(cases, n or home_latest()) %}{% set step = status_step(sample.status) %}{% set total = STATUSES|length %}
+  <article class="report-card is-sample{% if step == total %} is-done{% endif %}" aria-label="{{ ui('home.card_sample', '예시') }}">
+    <div class="rc-body">
+      <div class="rc-head"><span class="rc-cat">{{ sample.category }}</span><span class="rc-sample">{{ ui('home.card_sample', '예시') }}</span></div>
+      <h3 class="rc-title">{{ sample.title }}</h3>
+      <p class="rc-shop"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M4 9.5c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 2 3s2-1.3 2-3c0 1.7 1.3 3 3 3s3-1.3 3-3M5.5 12v8h13v-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>{{ sample.company }}</span></p>
+    </div>
+    <div class="rc-stub">
+      <span class="rc-progress" aria-hidden="true">{% for s in STATUSES %}<i{% if loop.index <= step %} class="on"{% endif %}></i>{% endfor %}</span>
+      <span class="rc-status">{{ status_name(sample.status) }}</span>
+    </div>
+  </article>
+  {% endfor %}
+  {% if not cases and not sample_fill(cases, n or home_latest()) %}<div class="empty report-cards-empty">{{ txt('home.empty') }}</div>{% endif %}
+</div>

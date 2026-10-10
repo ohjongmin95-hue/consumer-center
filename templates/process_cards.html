@@ -1,0 +1,11 @@
+{# 처리 절차 단계 카드. 처리 절차 페이지와 메인 "처리 절차 요약" 블록에서 함께 씀. #}
+{% from 'process_icons.html' import step_icon_svg %}
+<ol class="process-cards">
+  {% for step in items('process_steps') %}
+  <li class="process-card">
+    <div class="pc-icon">{{ step_icon_svg(step_icon(step, loop.index0)) }}</div>
+    <h3 class="pc-label"><span class="pc-step">{{ loop.index }}{{ ui('process.card_step', '단계') }}</span>{{ step.title }}</h3>
+    {% if step.body %}<p class="pc-body">{{ step.body|emph }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ol>{{ ed_list('process_steps') }}

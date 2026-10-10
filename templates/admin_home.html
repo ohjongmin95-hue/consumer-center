@@ -1,0 +1,39 @@
+{% extends 'console.html' %}
+{% block title %}관리자 홈 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="ad-page">
+  <header class="ad-head">
+    <div><h1>관리자 홈</h1><p>오늘 확인할 일과 사이트 현황이에요.</p></div>
+  </header>
+
+  {% set new_reports = counts.get(STATUSES[0], 0) %}
+  <section class="ad-todo" aria-label="확인할 일">
+    <a class="ad-todo-item{% if new_reports %} is-on{% endif %}" href="{{ url_for('admin_reports', status=STATUSES[0]) }}"><b>{{ new_reports }}</b><span>새로 접수된 제보</span></a>
+    <a class="ad-todo-item{% if stats.flagged %} is-on{% endif %}" href="{{ url_for('admin_board') }}"><b>{{ stats.flagged }}</b><span>신고된 게시글·댓글</span></a>
+    <a class="ad-todo-item{% if stats.takedowns %} is-on{% endif %}" href="{{ url_for('admin_takedowns') }}"><b>{{ stats.takedowns }}</b><span>처리할 게시중단 요청</span></a>
+  </section>
+
+  <div class="ad-grid-2">
+    <section class="ad-panel">
+      <div class="ad-panel-head"><h2>제보 현황</h2><a class="ad-link" href="{{ url_for('admin_reports') }}">제보 처리 →</a></div>
+      <div class="ad-kpis">
+        <div><span>최근 7일 접수</span><b>{{ stats.new_cases }}</b></div>
+        <div><span>처리 중</span><b>{{ stats.open_cases }}</b></div>
+      </div>
+      <div class="ad-pipeline">{% for s in STATUSES %}<a href="{{ url_for('admin_reports', status=s) }}"><b>{{ counts.get(s, 0) }}</b><span>{{ s }}</span></a>{% endfor %}</div>
+    </section>
+    <section class="ad-panel">
+      <div class="ad-panel-head"><h2>회원·기자</h2></div>
+      <div class="ad-kpis">
+        <a href="{{ url_for('admin_members') }}"><span>회원</span><b>{{ stats.members }}</b><small>최근 7일 +{{ stats.new_members }}</small></a>
+        <a href="{{ url_for('admin_staff') }}"><span>기자 계정</span><b>{{ stats.staff }}</b><small>사용 중</small></a>
+      </div>
+      <div class="ad-quick">
+        <a class="ad-btn" href="{{ url_for('admin_staff') }}">기자 추가</a>
+        <a class="ad-btn" href="{{ url_for('admin_site') }}">사이트 편집 안내</a>
+        <a class="ad-btn" href="{{ url_for('admin_content') }}#section-operator">하단 정보 수정</a>
+      </div>
+    </section>
+  </div>
+</main>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'console.html' %}
+{% block title %}게시중단 요청 관리 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">게시중단 요청</h1>
+  <p>대상 제보의 공개를 내리려면 제보 처리 화면에서 해당 제보의 "사이트에 공개"를 해제하세요. 판단이 어려우면 먼저 비공개로 두고(최대 30일) 제보자 의견을 확인하세요.</p></div>
+  {% for r in rows %}
+  <form class="form-panel takedown-item" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}">
+    <p class="meta">#{{ r['id'] }} · {{ r['created'] }} · <span class="pill">{{ r['status'] }}</span></p>
+    <h3>{{ r['target'] }}</h3>
+    <p><b>요청인</b> {{ r['requester'] }} · <b>이메일</b> {{ r['contact'] }}</p>
+    <p style="white-space:pre-wrap">{{ r['reason'] }}</p>
+    <div class="field"><label>처리 상태</label><select name="status">{% for s in statuses %}<option{% if s == r['status'] %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+    <div class="field"><label>처리 메모 (내부용)</label><textarea name="admin_note" maxlength="3000" rows="3">{{ r['admin_note'] }}</textarea></div>
+    <button class="secondary" type="submit">저장</button>
+  </form>
+  {% else %}<div class="form-panel"><p>접수된 요청이 없습니다.</p></div>{% endfor %}
+</div></main>
+{% endblock %}

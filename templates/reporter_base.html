@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{% block title %}소보루 기자실{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
+</head>
+<body class="console newsroom">
+{# 소보루 기자 전용 화면 틀. 관리자 화면(console.html)과 완전히 따로 씀. #}
+{% if g.get('staff') %}
+<header class="nr-bar">
+  <div class="nr-bar-inner">
+    <a class="nr-brand" href="{{ url_for('reporter_home') }}"><b>SOBORU</b><span>기자실</span></a>
+    <nav class="nr-nav" aria-label="기자실 메뉴"><a href="{{ url_for('reporter_home') }}"{% if request.endpoint != 'reporter_password' %} class="on" aria-current="page"{% endif %}>제보 처리</a></nav>
+    <div class="nr-user">
+      <span class="nr-name">{{ g.staff['name'] }} 기자</span>
+      <a href="{{ url_for('reporter_password') }}">비밀번호 변경</a>
+      <form method="post" action="{{ url_for('reporter_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">로그아웃</button></form>
+    </div>
+  </div>
+</header>
+{% endif %}
+{% with msgs = get_flashed_messages() %}
+{% if msgs %}<div class="cs-flash" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
+{% endwith %}
+<div class="cs-main">{% block content %}{% endblock %}</div>
+</body>
+</html>

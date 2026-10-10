@@ -1,147 +1,100 @@
+{% from 'page_blocks.html' import generic %}
+{% set numbered = {'guide_basics': ('purchase-info', ui('guide.nav1', '구매 정보')), 'guide_writing': ('writing-guide', ui('guide.nav2', '작성 방법')), 'guide_evidence': ('photo-guide', ui('guide.nav3', '자료 남기는 방법')), 'guide_topics': ('evidence-guide', ui('guide.nav4', '분야별 준비자료'))} %}
+{% set layout = page_layout('guide') %}
 <div class="info-wrap guide-page">
   <div class="guide-intro">
-    <span class="eyebrow">신고 전 확인해 주세요</span>
-    <h1>신고 이용안내</h1>
-    <p>어디서부터 써야 할지 막막하신가요?<br>구매 정보, 겪은 일, 원하는 해결 방법을 차례로 적어 주세요.</p>
-    <nav class="guide-shortcuts" aria-label="이용안내 목차">
-      <a href="#purchase-info">구매 정보</a><a href="#writing-guide">작성 방법</a><a href="#photo-guide">자료 남기는 방법</a><a href="#evidence-guide">분야별 준비자료</a>
+    {% if txt('guide.eyebrow') %}<span class="eyebrow">{{ txt('guide.eyebrow') }}</span>{% endif %}
+    <h1>{{ txt('guide.title') }}</h1>
+    {% if txt('guide.intro') %}<p>{{ txt('guide.intro') }}</p>{% endif %}
+    <nav class="guide-shortcuts" aria-label="{{ txt('guide.title') }}">
+      {% for block in layout if block.kind in numbered %}<a href="#{{ numbered[block.kind][0] }}">{{ numbered[block.kind][1] }}</a>{% endfor %}
     </nav>
   </div>
-
+{% set ns = namespace(n=0) %}
+{% for block in layout %}
+{{ ed_remove('layout_guide', loop.index0) }}
+{% if block.kind in numbered %}{% set ns.n = ns.n + 1 %}{% set num = ns.n %}{% endif %}
+{% if block.kind == 'guide_basics' %}
   <section class="guide-section" id="purchase-info" aria-labelledby="purchase-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">01</span><h2 id="purchase-heading">언제, 어디서, 얼마에 구매했나요?</h2></div>
-    <p class="guide-description">서비스를 이용했다면 구매일 대신 계약일이나 가입일을 적어 주세요.</p>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="purchase-heading">{{ txt('guide.s1_title') }}</h2></div>
+    {% if txt('guide.s1_desc') %}<p class="guide-description">{{ txt('guide.s1_desc') }}</p>{% endif %}
     <dl class="guide-basics">
-      <div><dt>구매·계약 날짜</dt><dd>영수증이나 주문 내역에 있는 날짜를 확인해 주세요.</dd></div>
-      <div><dt>업체·상품 이름</dt><dd>구매한 곳과 상품명, 서비스명 또는 모델명을 적어 주세요.</dd></div>
-      <div><dt>결제한 금액</dt><dd>실제로 낸 금액을 적고, 추가 비용이 있다면 함께 알려 주세요.</dd></div>
-    </dl>
-    <p class="guide-tip">날짜와 금액은 거래 내용을 확인하는 데 도움이 됩니다. 정확히 기억나지 않으면 ‘○월 초쯤’, ‘약 ○만 원’처럼 표시해 주세요.</p>
+      {% for item in items('guide_basics') %}<div><dt>{{ item.title }}</dt><dd class="pre-line">{{ item.body }}</dd></div>{% endfor %}
+    </dl>{{ ed_list('guide_basics') }}
+    <p class="guide-tip">{{ ui_rich('guide.s1_tip', '날짜와 금액은 거래 내용을 확인하는 데 도움이 됩니다. 정확히 기억나지 않으면 ‘○월 초쯤’, ‘약 ○만 원’처럼 표시해 주세요.') }}</p>
   </section>
 
+{% elif block.kind == 'guide_writing' %}
   <section class="guide-section" id="writing-guide" aria-labelledby="writing-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">02</span><h2 id="writing-heading">겪은 일을 순서대로 알려 주세요</h2></div>
-    <p class="guide-description">어려운 표현은 필요 없어요. 아래 세 가지가 드러나면 내용을 이해하기 쉬워집니다.</p>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="writing-heading">{{ txt('guide.s2_title') }}</h2></div>
+    {% if txt('guide.s2_desc') %}<p class="guide-description">{{ txt('guide.s2_desc') }}</p>{% endif %}
     <ol class="guide-writing-list">
-      <li><strong>어떤 문제가 있었나요?</strong><p>언제 문제가 생겼는지, 어떤 불편이나 손해를 겪었는지 적어 주세요.</p></li>
-      <li><strong>업체에는 무엇을 요청했나요?</strong><p>문의한 날짜, 요청한 내용, 업체의 답변을 적어 주세요. 아직 문의하지 않았다면 그대로 알려 주세요.</p></li>
-      <li><strong>어떻게 해결되기를 바라나요?</strong><p>환불, 교환, 수리, 계약 해지 등 원하는 해결 방법을 구체적으로 적어 주세요.</p></li>
-    </ol>
+      {% for item in items('guide_writing') %}<li><strong>{{ item.title }}</strong>{% if item.body %}<p class="pre-line">{{ item.body }}</p>{% endif %}</li>{% endfor %}
+    </ol>{{ ed_list('guide_writing') }}
     <aside class="guide-example" aria-labelledby="example-heading">
-      <h3 id="example-heading">이렇게 작성해 보세요 <span>가상의 예시</span></h3>
-      <p>3월 2일 ○○쇼핑몰에서 무선 이어폰을 89,000원에 구매했습니다. 3월 4일 배송받았는데 오른쪽에서 소리가 나지 않았습니다. 다음 날 고객센터에 교환을 요청했지만 아직 답변을 받지 못했습니다.</p>
-      <p class="guide-example-request"><strong>원하는 해결 방법</strong> 정상 제품으로 교환받고 싶습니다.</p>
+      <h3 id="example-heading">{{ ui('guide.ex_title', '이렇게 작성해 보세요') }} <span>{{ ui('guide.ex_tag', '가상의 예시') }}</span></h3>
+      <p>{{ ui_rich('guide.ex_body', '3월 2일 ○○쇼핑몰에서 무선 이어폰을 89,000원에 구매했습니다. 3월 4일 배송받았는데 오른쪽에서 소리가 나지 않았습니다. 다음 날 고객센터에 교환을 요청했지만 아직 답변을 받지 못했습니다.') }}</p>
+      <p class="guide-example-request"><strong>{{ ui('report.f_request', '원하는 해결 방법') }}</strong> {{ ui('guide.ex_request', '정상 제품으로 교환받고 싶습니다.') }}</p>
     </aside>
   </section>
 
+{% elif block.kind == 'guide_evidence' %}
   <section class="guide-section evidence-visual-guide" id="photo-guide" aria-labelledby="photo-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">03</span><h2 id="photo-heading">어떤 자료를 남겨야 할까요?</h2></div>
-    <p class="guide-description">세 가지만 기억해 주세요. <strong>전체 모습, 문제 부위, 거래 기록.</strong><br>각 자료가 서로 연결되면 어떤 일이 있었는지 이해하기 쉬워집니다.</p>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="photo-heading">{{ txt('guide.s3_title') }}</h2></div>
+    <p class="guide-description">{{ ui_rich('guide.s3_desc1', '세 가지만 기억해 주세요. **전체 모습, 문제 부위, 거래 기록.**') }}<br>{{ ui_rich('guide.s3_desc2', '각 자료가 서로 연결되면 어떤 일이 있었는지 이해하기 쉬워집니다.') }}</p>
     <div class="evidence-step-grid">
       <article class="evidence-step">
         <div class="evidence-illustration evidence-illustration--whole" aria-hidden="true"></div>
-        <div class="evidence-step-copy"><span class="evidence-step-label">전체 모습</span><h3>먼저, 무엇인지 보이게</h3><p>제품과 포장을 함께 담아 주세요. 제품명이나 모델명이 보이면 더 좋아요.</p><span class="evidence-caption">제품 전체 + 이름이 보이는 표시</span></div>
+        <div class="evidence-step-copy"><span class="evidence-step-label">{{ ui('guide.e1_label', '전체 모습') }}</span><h3>{{ ui('guide.e1_title', '먼저, 무엇인지 보이게') }}</h3><p>{{ ui_rich('guide.e1_body', '제품과 포장을 함께 담아 주세요. 제품명이나 모델명이 보이면 더 좋아요.') }}</p><span class="evidence-caption">{{ ui('guide.e1_caption', '제품 전체 + 이름이 보이는 표시') }}</span></div>
       </article>
       <article class="evidence-step">
         <div class="evidence-illustration evidence-illustration--detail" aria-hidden="true"></div>
-        <div class="evidence-step-copy"><span class="evidence-step-label">문제 부위</span><h3>다음은, 어디가 문제인지</h3><p>깨짐·변색·누수처럼 문제가 있는 곳을 가까이 찍어 주세요. 흐리지 않은지 확인해 주세요.</p><span class="evidence-caption">위치를 알 수 있는 사진 + 가까운 사진</span></div>
+        <div class="evidence-step-copy"><span class="evidence-step-label">{{ ui('guide.e2_label', '문제 부위') }}</span><h3>{{ ui('guide.e2_title', '다음은, 어디가 문제인지') }}</h3><p>{{ ui_rich('guide.e2_body', '깨짐·변색·누수처럼 문제가 있는 곳을 가까이 찍어 주세요. 흐리지 않은지 확인해 주세요.') }}</p><span class="evidence-caption">{{ ui('guide.e2_caption', '위치를 알 수 있는 사진 + 가까운 사진') }}</span></div>
       </article>
       <article class="evidence-step">
         <div class="evidence-illustration evidence-illustration--record" aria-hidden="true"></div>
-        <div class="evidence-step-copy"><span class="evidence-step-label">거래 기록</span><h3>마지막으로, 약속과 내역</h3><p>영수증, 계약서, 업체 답변을 남겨 주세요. 날짜·금액·약속한 내용이 읽혀야 해요.</p><span class="evidence-caption">문서는 한 장씩, 글자가 선명하게</span></div>
+        <div class="evidence-step-copy"><span class="evidence-step-label">{{ ui('guide.e3_label', '거래 기록') }}</span><h3>{{ ui('guide.e3_title', '마지막으로, 약속과 내역') }}</h3><p>{{ ui_rich('guide.e3_body', '영수증, 계약서, 업체 답변을 남겨 주세요. 날짜·금액·약속한 내용이 읽혀야 해요.') }}</p><span class="evidence-caption">{{ ui('guide.e3_caption', '문서는 한 장씩, 글자가 선명하게') }}</span></div>
       </article>
     </div>
     <div class="evidence-reminders">
-      <h3>자료를 정리할 때는 이렇게</h3>
-      <ul><li><strong>고치거나 버리기 전에</strong><span>가능하면 처음 발견한 상태를 기록하고, 발견한 날짜도 메모해 주세요.</span></li><li><strong>표시는 복사본에</strong><span>문제 부위에 동그라미를 그려도 좋아요. 표시하지 않은 원본도 보관해 주세요.</span></li><li><strong>대화는 앞뒤 내용까지</strong><span>답변 한 줄만 자르기보다 날짜와 요청 내용이 함께 보이게 남겨 주세요.</span></li></ul>
+      <h3>{{ ui('guide.r_title', '자료를 정리할 때는 이렇게') }}</h3>
+      <ul><li><strong>{{ ui('guide.r1_title', '고치거나 버리기 전에') }}</strong><span>{{ ui('guide.r1_body', '가능하면 처음 발견한 상태를 기록하고, 발견한 날짜도 메모해 주세요.') }}</span></li><li><strong>{{ ui('guide.r2_title', '표시는 복사본에') }}</strong><span>{{ ui('guide.r2_body', '문제 부위에 동그라미를 그려도 좋아요. 표시하지 않은 원본도 보관해 주세요.') }}</span></li><li><strong>{{ ui('guide.r3_title', '대화는 앞뒤 내용까지') }}</strong><span>{{ ui('guide.r3_body', '답변 한 줄만 자르기보다 날짜와 요청 내용이 함께 보이게 남겨 주세요.') }}</span></li></ul>
     </div>
   </section>
 
+{% elif block.kind == 'guide_topics' %}
   <section class="guide-section" id="evidence-guide" aria-labelledby="evidence-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">04</span><h2 id="evidence-heading">내 상황에 맞는 자료를 준비해 주세요</h2></div>
-    <p class="guide-description">해당하는 분야를 눌러 확인해 보세요. 모든 자료를 갖출 필요는 없어요. 지금 갖고 있는 것부터 정리해 주세요.</p>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="evidence-heading">{{ txt('guide.s4_title') }}</h2></div>
+    {% if txt('guide.s4_desc') %}<p class="guide-description">{{ txt('guide.s4_desc') }}</p>{% endif %}
     <div class="evidence-topics">
+      {% for topic in items('guide_topics') %}
       <details class="evidence-topic">
-        <summary><span>유통</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
+        <summary><span>{{ topic.name }}</span><span class="evidence-topic-action" aria-hidden="true">{{ ui('guide.topic_open', '확인하기') }} <span class="evidence-topic-chevron">⌄</span></span></summary>
         <div class="evidence-topic-body">
-          <h3>안내받은 내용과 실제 받은 것을 연결해 주세요</h3>
-          <ol><li>상품 설명이나 행사 조건은 업체명과 조건이 보이게 저장해 주세요.</li><li>배송된 상품과 포장, 주문 내역을 함께 남겨 주세요.</li><li>환불·교환을 요청한 날짜와 업체 답변도 정리해 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매한 곳, 주문일과 금액, 광고나 약속과 달랐던 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 주문 내역, 상품 설명·행사 화면, 업체와 나눈 대화</div>
+          {% if topic.heading %}<h3>{{ topic.heading }}</h3>{% endif %}
+          {% if topic.steps %}<ol{{ ed_attr('list:guide_topics:%d:steps' % loop.index0, topic.steps) }}>{% for line in topic.steps.split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ol>{% endif %}
+          {% if topic.info or topic.materials %}<div class="evidence-topic-records"><h4>{{ ui('guide.topic_records', '함께 적을 정보와 준비자료') }}</h4>{% if topic.info %}<p class="pre-line">{{ topic.info }}</p>{% endif %}{% if topic.materials %}<span>{{ ui('guide.topic_materials', '도움이 되는 자료') }}</span> {{ topic.materials }}{% endif %}</div>{% endif %}
         </div>
       </details>
-      <details class="evidence-topic">
-        <summary><span>가전·IT</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>고장 부위와 사용 상황을 함께 보여 주세요</h3>
-          <ol><li>전체 외관과 모델명을 남긴 뒤, 문제 부위를 가까이 찍어 주세요.</li><li>언제 어떤 작동 중 문제가 생기는지 적고, 화면에 오류가 뜬다면 캡처해 주세요.</li><li>배송 파손이라면 포장 상태도, 수리를 받았다면 수리 내역도 함께 남겨 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매일과 구입처, 모델명, 고장 증상, 수리를 받았는지 적어 주세요.</p><span>도움이 되는 자료</span> 영수증, 고장 부위 사진, 수리 내역</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>서비스</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body"><h3>약속한 서비스와 실제 이용 내용을 남겨 주세요</h3><ol><li>예약·계약 당시 안내받은 내용과 이용 날짜를 정리해 주세요.</li><li>제공되지 않은 서비스나 지연·취소된 내용을 구체적으로 적어 주세요.</li><li>환불이나 재이행을 요청한 날짜와 업체 답변을 함께 남겨 주세요.</li></ol><div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>업체명, 예약·계약일, 이용 금액, 약속과 달랐던 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 예약 내역, 계약서, 결제 내역, 업체 답변</div></div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>통신</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>약속한 요금과 청구된 요금을 함께 남겨 주세요</h3>
-          <ol><li>가입 당시 요금제·혜택·약정 조건을 확인할 수 있는 계약서나 안내 화면을 준비해 주세요.</li><li>청구서에서 문제가 된 항목과 금액을 짚어 주세요.</li><li>품질 문제라면 발생한 장소·시간과 통신사에 문의한 결과를 함께 적어 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>통신사와 가입 경로, 가입일, 요금제, 약속과 달랐던 요금이나 서비스 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 가입 계약서, 요금 청구서, 상담 내용</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>자동차</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>차량의 위치와 정비 이력을 함께 남겨 주세요</h3>
-          <ol><li>차량의 어느 부분인지 보이는 사진과 문제 부위의 가까운 사진을 찍어 주세요.</li><li>눈으로 찾기 어려운 부분은 사진 복사본에 표시하고 증상을 설명해 주세요.</li><li>반복 수리나 비용 문제라면 정비 날짜별 명세서·견적서·업체 답변을 모아 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매일, 차종·연식, 구매 금액, 문제가 생긴 시점과 부위, 정비 이력을 적어 주세요.</p><span>도움이 되는 자료</span> 계약서, 정비 명세서, 문제 부위 사진</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>금융</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>상품 내용과 실제 청구 내역을 비교할 수 있게</h3>
-          <ol><li>계약서에서 상품명·가입일·관련 보장 또는 수수료 조건이 있는 쪽을 준비해 주세요.</li><li>문서는 겹치지 않게 한 장씩 찍고, 확대했을 때 글자가 읽히는지 확인해 주세요.</li><li>설명받은 내용과 다르다고 생각하는 부분을 짚고, 청구·지급 내역과 업체 답변을 연결해 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>가입일과 상품명, 설명받은 내용, 실제로 발생한 비용이나 피해 금액을 적어 주세요.</p><span>도움이 되는 자료</span> 계약서, 거래 내역, 상담 내용</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>식음료</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>포장과 내용물을 함께 남겨 주세요</h3>
-          <ol><li>제품명·소비기한과 개봉 상태가 보이도록 포장 전체를 찍어 주세요.</li><li>이물이나 변색은 위치가 보이는 사진과 가까운 사진을 각각 남겨 주세요.</li><li>언제 발견했는지, 개봉 전인지 후인지 설명을 덧붙여 주세요. 사진만으로 원인이 확인되는 것은 아닙니다.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매한 날짜와 금액, 이상을 발견한 시점, 개봉 전·후 여부, 피해 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 영수증, 제품·포장 사진, 소비기한 표시</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>생활용품</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body"><h3>제품 전체와 달라진 부분을 함께 보여 주세요</h3><ol><li>의류·가구·화장품 등 제품명과 구매 내역을 준비해 주세요.</li><li>제품 전체를 찍고, 오염·변형·파손이나 사용 후 나타난 변화는 가까이 찍어 주세요.</li><li>언제부터 문제가 생겼는지, 어떤 방법으로 사용했는지와 업체 답변을 적어 주세요.</li></ol><div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>구매일, 제품명, 결제 금액, 사용 시점과 피해 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 영수증, 제품·문제 부위 사진, 사용 안내, 교환·수리 내역</div></div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>건설</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body">
-          <h3>집 안의 위치부터, 하자는 가까이</h3>
-          <ol><li>어느 방·벽·천장인지 알 수 있도록 주변과 하자 부위를 함께 찍어 주세요.</li><li>균열·들뜸·누수 흔적은 가까이 찍고 처음 발견한 날짜를 적어 주세요.</li><li>가능하면 보수 전 상태를 남기고, 견적서와 보수를 요청한 기록도 준비해 주세요.</li></ol>
-          <div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>계약·입주·시공 시점, 하자를 발견한 때와 위치, 업체에 요청한 내용을 적어 주세요.</p><span>도움이 되는 자료</span> 계약서, 하자 부위 사진, 보수 요청 내역</div>
-        </div>
-      </details>
-      <details class="evidence-topic">
-        <summary><span>기타</span><span class="evidence-topic-action" aria-hidden="true">확인하기 <span class="evidence-topic-chevron">⌄</span></span></summary>
-        <div class="evidence-topic-body"><h3>분류가 애매해도 겪은 일을 순서대로 적어 주세요</h3><ol><li>무엇을 구매하거나 어떤 계약을 했는지 먼저 알려 주세요.</li><li>문제를 발견한 시점과 피해 내용, 원하는 해결 방법을 적어 주세요.</li><li>거래 내역과 업체에 문의한 기록 중 관련된 자료를 모아 주세요.</li></ol><div class="evidence-topic-records"><h4>함께 적을 정보와 준비자료</h4><p>업체·상품 또는 서비스명, 거래 날짜와 금액, 피해 경위를 적어 주세요.</p><span>도움이 되는 자료</span> 계약·결제 내역, 관련 사진, 업체 답변</div></div>
-      </details>
-    </div>
+      {% endfor %}
+    </div>{{ ed_list('guide_topics') }}
     <aside class="guide-upload">
-      <h3>첨부하기 전에 확인해 주세요</h3>
+      <h3>{{ ui('guide.u_title', '첨부하기 전에 확인해 주세요') }}</h3>
       <ul>
-        <li>현재는 <strong>PDF·JPG·PNG·WEBP 파일 1개</strong>를 첨부할 수 있습니다. 전체 제출 용량은 15MB 이내로 준비해 주세요.</li>
-        <li>여러 장은 하나의 PDF로 정리해 주세요. 동영상·녹음 파일은 직접 첨부할 수 없으니, 주요 장면을 이미지로 남기거나 내용을 글로 설명해 주세요.</li>
-        <li>주민등록번호, 계좌·카드번호 등 확인에 필요하지 않은 정보는 가려 주세요. 비밀번호는 적지 마세요.</li>
+        <li>{{ ui_rich('guide.u1', '현재는 **PDF·JPG·PNG·WEBP 파일 1개**를 첨부할 수 있습니다. 전체 제출 용량은 15MB 이내로 준비해 주세요.') }}</li>
+        <li>{{ ui_rich('guide.u2', '여러 장은 하나의 PDF로 정리해 주세요. 동영상·녹음 파일은 직접 첨부할 수 없으니, 주요 장면을 이미지로 남기거나 내용을 글로 설명해 주세요.') }}</li>
+        <li>{{ ui_rich('guide.u3', '주민등록번호, 계좌·카드번호 등 확인에 필요하지 않은 정보는 가려 주세요. 비밀번호는 적지 마세요.') }}</li>
       </ul>
     </aside>
   </section>
 
+{% elif block.kind == 'guide_bottom' %}
   <div class="guide-bottom">
-    <div><h2>준비한 내용을 남겨 주세요</h2><p>접수 후에는 접수번호와 비밀 조회 코드로 진행 상황을 확인할 수 있습니다.</p></div>
-    <a class="primary" href="{{ url_for('report') }}">신고 작성하기 →</a>
+    <div><h2>{{ txt('guide.bottom_title') }}</h2>{% if txt('guide.bottom_text') %}<p>{{ txt('guide.bottom_text') }}</p>{% endif %}</div>
+    <a class="primary" href="{{ url_for('report') }}">{{ txt('guide.bottom_button') }}</a>
   </div>
+{% else %}{{ generic(block, 'guide', loop.index0) }}
+{% endif %}
+{% endfor %}
+{{ ed_list('layout_guide') }}
 </div>

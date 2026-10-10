@@ -1,11 +1,25 @@
 {% extends 'base.html' %}
+{% from 'page_blocks.html' import generic %}
 {% block content %}<main>
 {% if page == 'guide' %}
 {% include 'guide.html' %}
-{% elif page == 'process' %}
-<div class="info-wrap"><h1>처리 절차</h1><p class="info-intro">신고 내용의 확인 및 검토 과정에 대한 안내입니다.</p><div class="info-card"><h2><span class="step-num">01</span>신고 접수</h2><p>신고자가 피해 내용을 작성하고 관련 자료를 제출합니다.</p></div><div class="info-card"><h2><span class="step-num">02</span>내용 검토</h2><p>제출된 내용의 사실관계와 자료를 검토합니다. 필요한 경우 추가 자료를 요청할 수 있습니다.</p></div><div class="info-card"><h2><span class="step-num">03</span>후속 검토</h2><p>사안에 따라 업체 의견 확인 또는 취재 여부를 검토할 수 있습니다. 모든 신고가 취재·공개되는 것은 아닙니다.</p></div><p class="note">접수번호와 비밀 조회 코드로 내 신고의 진행 상황을 확인할 수 있습니다.</p></div>
-{% elif page == 'types' %}
-<div class="info-wrap"><h1>신고 유형</h1><p class="info-intro">해당하는 유형을 선택해 피해 내용을 작성할 수 있습니다.</p>{% for category in categories %}<div class="info-card type-action"><h2>{{ category }}</h2><a class="type-link" href="{{ url_for('report', category=category) }}">이 유형으로 신고 →</a></div>{% endfor %}</div>
-{% elif page == 'faq' %}
-<div class="info-wrap"><h1>자주 묻는 질문</h1><p class="info-intro">신고 전 확인하면 좋은 내용을 정리했습니다.</p><div class="info-card"><details class="faq-item"><summary>신고하면 바로 해결되나요?</summary><p>신고 접수만으로 환불이나 보상이 확정되지는 않습니다. 내용에 따라 후속 검토가 이루어질 수 있습니다.</p></details><details class="faq-item"><summary>어떤 자료를 첨부하면 좋나요?</summary><p>영수증, 주문 내역, 업체와 주고받은 메시지 등 사실관계를 확인할 수 있는 자료가 도움이 됩니다.</p></details><details class="faq-item"><summary>신고 내용이 공개되나요?</summary><p>공개에 동의한 신고 중 센터가 승인한 제목·분류·상태만 목록에 표시됩니다. 상세 내용과 연락처는 공개되지 않습니다.</p></details><details class="faq-item"><summary>공식 분쟁조정이나 피해구제도 가능한가요?</summary><p>이 센터는 법정 피해구제기관이 아닙니다. 공식적인 상담·피해구제는 1372 소비자상담센터 등 관련 기관을 이용해 주세요.</p></details></div></div>
-{% endif %}</main>{% endblock %}
+{% else %}
+<div class="info-wrap{% if page == 'process' %} process-page{% endif %}">
+  <h1>{{ txt(page ~ '.title') }}</h1>{% if txt(page ~ '.intro') %}<p class="info-intro">{{ txt(page ~ '.intro') }}</p>{% endif %}
+  {% for block in page_layout(page) %}
+  {{ ed_remove('layout_' ~ page, loop.index0) }}
+  {% if block.kind == 'process_cards' %}
+  {% include 'process_cards.html' %}
+  {% elif block.kind == 'process_note' %}
+  {% if txt('process.note') %}<p class="process-note">{{ txt('process.note') }} <a href="{{ url_for('lookup') }}">{{ ui('process.lookup_link', '내 제보 조회 →') }}</a></p>{% endif %}
+  {% elif block.kind == 'faq_list' %}
+  <div class="info-card">{% for item in items('faq') %}<details class="faq-item"><summary>{{ item.q }}</summary>{% if item.a %}<p class="pre-line">{{ item.a }}</p>{% endif %}</details>{% endfor %}</div>{{ ed_list('faq') }}
+  {% elif block.kind == 'types_list' %}
+  {% for category in categories %}<div class="info-card type-action"><h2>{{ category }}</h2><a class="type-link" href="{{ url_for('report', category=category) }}">{{ txt('types.link') }}</a></div>{% endfor %}{{ ed_list('report_categories') }}
+  {% else %}{{ generic(block, page, loop.index0) }}
+  {% endif %}
+  {% endfor %}
+  {{ ed_list('layout_' ~ page) }}
+</div>
+{% endif %}
+</main>{% endblock %}

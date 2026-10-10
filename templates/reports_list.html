@@ -1,0 +1,48 @@
+{% extends layout %}
+{% block title %}제보 목록 | {{ txt('site.name') }}{% endblock %}
+{% macro qs() %}{% set kw = kwargs %}{{ url_for(ep.list, status=kw.get('status', status) or None, q=kw.get('q', q) or None, mine=('1' if kw.get('mine', mine) else None), page=kw.get('page') ) }}{% endmacro %}
+{% block content %}
+<main class="cs-page">
+  <div class="cs-head">
+    <h1 class="cs-title">제보 목록</h1>
+    <form class="cs-search" method="get" role="search">
+      {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}{% if mine %}<input type="hidden" name="mine" value="1">{% endif %}
+      <input type="search" name="q" value="{{ q }}" placeholder="접수번호, 제목, 업체로 찾기" aria-label="제보 검색"><button class="cs-btn" type="submit">찾기</button>
+    </form>
+  </div>
+
+  <nav class="cs-tabs" aria-label="진행 단계별 보기">
+    <a href="{{ qs(status='') }}"{% if not status %} class="on"{% endif %}>전체 <b>{{ all_count }}</b></a>
+    {% for s in STATUSES %}<a href="{{ qs(status=s) }}"{% if status == s %} class="on"{% endif %}>{{ s }} <b>{{ counts.get(s, 0) }}</b></a>{% endfor %}
+    {% if layout == 'reporter_base.html' %}<a class="cs-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
+  </nav>
+
+  <div class="cs-table-wrap">
+    <table class="cs-table cs-table-list">
+      <thead><tr><th>접수번호</th><th>유형</th><th>제목</th><th>업체</th><th>단계</th><th>담당 기자</th><th>접수일</th></tr></thead>
+      <tbody>
+      {% for c in cases %}
+      <tr class="{{ 'is-new' if c['status'] == STATUSES[0] }}">
+        <td class="mono"><a href="{{ url_for(ep.case, case_id=c['id']) }}">{{ c['receipt'] }}</a></td>
+        <td>{% if c['industry'] %}{{ c['industry'] }}<br>{% endif %}<small>{{ c['category'] }}</small></td>
+        <td class="cs-subject"><a href="{{ url_for(ep.case, case_id=c['id']) }}">{% if not c['public_consent'] %}<span class="cs-tag" title="제보자가 비밀글로 접수">비밀</span>{% elif not c['published'] %}<span class="cs-tag" title="운영자가 비공개 처리">비공개</span>{% endif %}{{ c['subject'] }}</a></td>
+        <td>{{ c['company'] }}</td>
+        <td><span class="cs-status s{{ status_step(c['status']) }}">{{ c['status'] }}</span></td>
+        <td>{{ c['assignee'] or '—' }}</td>
+        <td class="mono">{{ c['created'][:16]|replace('T', ' ')|replace('-', '.') }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="cs-empty">{{ '조건에 맞는 제보가 없어요.' if q or status or mine else '아직 접수된 제보가 없어요.' }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pages > 1 %}
+  <nav class="pager" aria-label="페이지">
+    {% if page > 1 %}<a href="{{ qs(page=page - 1) }}">← 이전</a>{% endif %}
+    <span>{{ page }} / {{ pages }}</span>
+    {% if page < pages %}<a href="{{ qs(page=page + 1) }}">다음 →</a>{% endif %}
+  </nav>
+  {% endif %}
+</main>
+{% endblock %}

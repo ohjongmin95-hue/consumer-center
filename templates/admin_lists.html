@@ -1,0 +1,72 @@
+{% extends 'console.html' %}
+{% block title %}구성 바꾸기 | {{ txt('site.name') }}{% endblock %}
+{% macro item_fields(fields, item) %}
+  {% for name, label, opts in fields %}
+  <label class="li-field{% if opts.multiline %} wide{% endif %}"><span>{{ label }}</span>
+    {% if opts.choices %}<select name="{{ name }}"><option value="">선택해 주세요</option>{% for value, text in opts.choices %}<option value="{{ value }}"{% if item.get(name) == value %} selected{% endif %}>{{ text }}</option>{% endfor %}</select>
+    {% elif opts.multiline %}<textarea name="{{ name }}" rows="{{ [2, (item.get(name, '')).count('\n') + 2]|max }}" maxlength="2000">{{ item.get(name, '') }}</textarea>
+    {% else %}<input name="{{ name }}" value="{{ item.get(name, '') }}" maxlength="2000">{% endif %}
+  </label>
+  {% endfor %}
+{% endmacro %}
+{% macro item_tools() %}<span class="li-num"></span><div class="li-tools"><button type="button" class="li-btn" data-move="up" aria-label="위로">↑</button><button type="button" class="li-btn" data-move="down" aria-label="아래로">↓</button><button type="button" class="li-btn li-del" data-remove>삭제</button></div>{% endmacro %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro admin-head">
+    <h1 class="page-title">구성 바꾸기</h1>
+    <p>메뉴·섹션·목록에 항목을 <b>추가</b>하고 <b>↑ ↓</b>로 순서를 바꿔요. 목록마다 <b>저장</b>을 눌러야 반영돼요. 문장만 고칠 때는 <a href="{{ url_for('admin_site') }}">사이트 편집</a>이 더 편해요.</p>
+  </div>
+  <nav class="content-tabs" aria-label="목록 바로가기">{% for key, title, _, _, _ in lists %}<a href="#list-{{ key }}">{{ title }}</a>{% endfor %}</nav>
+  {% for key, title, desc, fields, minimum in lists %}
+  <form class="form-panel content-section list-editor{% if fields|length == 1 %} compact{% endif %}" id="list-{{ key }}" method="post" data-max="{{ max_items }}" data-min="{{ minimum }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="list" value="{{ key }}">
+    <h2>{{ title }}{% if key in changed %} <span class="field-tag changed">수정됨</span>{% endif %} <span class="li-count"></span></h2>
+    <p class="field-default">{{ desc }}{% if minimum %} 최소 {{ minimum }}개가 필요해요.{% endif %}</p>
+    <ol class="list-items">
+      {% for item in data[key] %}<li class="list-item">{{ item_tools() }}<div class="li-fields">{{ item_fields(fields, item) }}</div></li>{% endfor %}
+      <li class="list-item li-blank" data-blank>{{ item_tools() }}<div class="li-fields">{{ item_fields(fields, {}) }}</div><p class="field-default">새 항목을 넣으려면 여기에 적어 주세요. 비워 두면 무시돼요.</p></li>
+    </ol>
+    <template data-item-template><li class="list-item li-new">{{ item_tools() }}<div class="li-fields">{{ item_fields(fields, {}) }}</div></li></template>
+    <button type="button" class="secondary li-add" data-add>+ 항목 추가</button>
+    <div class="content-actions">
+      <button class="primary" type="submit">{{ title }} 저장</button>
+      <button class="secondary" type="submit" name="reset" value="1" formnovalidate onclick="return confirm('이 목록을 처음 기본값으로 되돌릴까요?')">기본값으로 되돌리기</button>
+    </div>
+  </form>
+  {% endfor %}
+</div></main>
+<script>
+  // 항목 추가·삭제·순서 변경. 서버는 화면에 놓인 순서 그대로 저장합니다.
+  (function () {
+    document.querySelectorAll('.list-editor').forEach(function (form) {
+      var list = form.querySelector('.list-items');
+      var blank = list.querySelector('[data-blank]');
+      if (blank) blank.remove();  // 스크립트가 동작하면 '+ 항목 추가' 버튼을 씀
+      function renumber() {
+        var rows = list.querySelectorAll('.list-item');
+        rows.forEach(function (li, i) { li.querySelector('.li-num').textContent = (i + 1) + '.'; });
+        form.querySelector('.li-count').textContent = rows.length + '개';
+        form.querySelector('[data-add]').disabled = rows.length >= +form.dataset.max;
+      }
+      form.querySelector('[data-add]').addEventListener('click', function () {
+        var li = form.querySelector('[data-item-template]').content.firstElementChild.cloneNode(true);
+        list.appendChild(li); renumber();
+        var first = li.querySelector('input, textarea'); if (first) first.focus();
+      });
+      list.addEventListener('click', function (e) {
+        var btn = e.target.closest('button'); if (!btn) return;
+        var li = btn.closest('.list-item');
+        if (btn.dataset.move === 'up' && li.previousElementSibling) list.insertBefore(li, li.previousElementSibling);
+        else if (btn.dataset.move === 'down' && li.nextElementSibling) list.insertBefore(li.nextElementSibling, li);
+        else if (btn.hasAttribute('data-remove')) {
+          if (list.children.length <= +form.dataset.min) { alert('최소 ' + form.dataset.min + '개가 있어야 해요.'); return; }
+          li.remove();
+        }
+        renumber();
+      });
+      renumber();
+    });
+    {% if focus %}var f = document.getElementById('list-{{ focus }}'); if (f) f.scrollIntoView();{% endif %}
+  })();
+</script>
+{% endblock %}

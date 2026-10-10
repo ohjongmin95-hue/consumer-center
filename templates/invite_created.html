@@ -1,1 +1,12 @@
-{% extends 'base.html' %}{% block content %}<main class="page"><div class="wrap"><div class="form-panel"><h1>기업 답변용 링크 발급</h1><p>이 링크는 이번 화면에서만 표시됩니다. 해당 기업 담당자의 신원을 별도 확인한 후 안전한 경로로 전달하세요.</p><p style="overflow-wrap:anywhere"><strong>{{invite_url}}</strong></p><a class="secondary" href="/admin/case/{{case['id']}}">관리 화면으로 돌아가기</a></div></div></main>{% endblock %}
+{% extends layout %}
+{% block title %}기업 답변 링크 | 제보 처리{% endblock %}
+{% block content %}
+<main class="cs-page cs-narrow">
+  <h1 class="cs-title">기업 답변 링크를 만들었어요</h1>
+  <div class="cs-panel">
+    <p>이 링크는 지금 이 화면에서만 보여요. 기업 담당자인지 확인한 뒤 이메일 등 안전한 방법으로 전달해 주세요.</p>
+    <p class="cs-link" style="overflow-wrap:anywhere"><strong>{{ invite_url }}</strong></p>
+    <a class="cs-btn" href="{{ url_for(ep.case, case_id=case['id']) }}">제보로 돌아가기</a>
+  </div>
+</main>
+{% endblock %}

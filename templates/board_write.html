@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('board.write_title', '이야기 들려주기') }} | {{ txt('board.title') }}{% endblock %}
+{% block content %}
+<main class="board board-detail">
+  <a class="back-link" href="{{ url_for('board') }}">← {{ txt('board.title') }}</a>
+  <h1 class="page-title">{{ ui('board.write_title', '이야기 들려주기') }}</h1>
+  {% if not enabled %}<div class="alert">{{ ui('board.closed', '게시판 글쓰기는 곧 열려요. 조금만 기다려 주세요.') }}</div>{% endif %}
+  <form class="form-panel write-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <fieldset class="field cat-pick"><legend>{{ ui('board.cat_aria', '분류') }}</legend>
+      {% for c in categories %}<label class="cat-radio"><input type="radio" name="category" value="{{ c }}" required{% if request.form.get('category', categories[0]) == c %} checked{% endif %}><span class="cat-chip cat-{{ loop.index0 % 5 }}">{{ c }}</span></label>{% endfor %}
+    </fieldset>
+    {% if g.user %}
+    <p class="member-writer"><span class="member-badge">{{ ui('board.member_badge', '회원') }}</span><b>{{ g.user['nickname'] }}</b> {{ ui('board.as_member_post', '이름으로 올라가요. 내 정보에서 모아 보고, 비밀번호 없이 지울 수 있어요.') }}</p>
+    {% else %}
+    <div class="write-ids">
+      <div class="field"><label for="w-nick">{{ ui('board.nickname', '닉네임') }}</label><input id="w-nick" name="nickname" maxlength="20" required placeholder="{{ ui('board.nickname_ph', '2~20자') }}" value="{{ request.form.get('nickname','') }}"></div>
+      <div class="field"><label for="w-pw">{{ ui('board.delete_pw', '삭제용 비밀번호') }}</label><input id="w-pw" type="password" name="password" maxlength="30" required placeholder="{{ ui('board.pw_ph', '4~30자') }}"><p class="hint">{{ ui('board.pw_hint1', '나중에 글을 지울 때 필요해요.') }} <a href="{{ url_for('login', next=url_for('board_write')) }}">{{ ui('common.login', '로그인') }}</a>{{ ui('board.pw_hint2', '하면 비밀번호 없이 쓸 수 있어요.') }}</p></div>
+    </div>
+    {% endif %}
+    <div class="field"><label for="w-title">{{ ui('board.f_title', '제목') }}</label><input id="w-title" name="title" maxlength="100" required placeholder="{{ ui('board.f_title_ph', '어떤 일이 있었는지 한 줄로') }}" value="{{ request.form.get('title','') }}"></div>
+    <div class="field"><label for="w-body">{{ ui('board.f_body', '내용') }}</label><textarea id="w-body" name="body" maxlength="5000" required placeholder="{{ ui('board.f_body_ph', '언제, 어떤 상품이나 서비스에서, 어떤 일이 있었는지 편하게 적어 주세요. 비슷한 일을 겪는 분들에게 큰 도움이 돼요.') }}">{{ request.form.get('body','') }}</textarea></div>
+    {% if txt('board.rules') %}
+    <div class="board-rules"><h2>{{ ui('board.rules_title', '글쓰기 약속') }}</h2><ul{{ ed_attr('board.rules') }}>{% for line in g.content['board.rules'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul></div>
+    {% endif %}
+    <label class="check"><input type="checkbox" name="agree" required><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {% if g.user %}{{ ui('board.agree_member', '글쓰기 약속과 이용약관을 지키고, 글 내용 게시에 동의합니다.') }}{% else %}{{ ui('board.agree_guest', '글쓰기 약속과 이용약관을 지키고, 닉네임·비밀번호(암호화 저장)·글 내용 수집에 동의합니다.') }}{% endif %} <a class="consent-link" href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">{{ ui('report.terms_link', '이용약관 ↗') }}</a> <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></span></label>
+    <button class="primary" type="submit"{% if not enabled %} disabled{% endif %} style="width:100%;margin-top:14px">{{ ui('board.submit', '올리기') }}</button>
+  </form>
+</main>
+{% endblock %}

@@ -4,25 +4,149 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#fafaf9">
-  <title>{% block title %}소비자신고센터 | SOBORU.{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='soboru-nav-2') }}">
+  {% if request.path.startswith(('/admin', '/case', '/company', '/me', '/login', '/account')) %}<meta name="robots" content="noindex,nofollow">{% endif %}
+  <title>{% block title %}{{ txt('seo.home_title') or txt('site.name') }}{% endblock %}</title>
+  <meta name="description" content="{% filter trim %}{% block description %}{{ txt('seo.description') }}{% endblock %}{% endfilter %}">
+  <link rel="canonical" href="{{ request.base_url }}{% if request.args.get('page', 1)|int > 1 %}?page={{ request.args.get('page', 1)|int }}{% endif %}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ txt('site.name') }}">
+  <meta property="og:title" content="{{ self.title()|trim }}">
+  <meta property="og:description" content="{{ self.description()|trim }}">
+  <meta property="og:url" content="{{ request.base_url }}">
+  {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
+  {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
 </head>
 <body>
 <header class="site-header">
   <div class="top">
-    <a class="brand" href="{{ url_for('home') }}" aria-label="소비자신고센터 홈"><span>소비자</span>신고센터</a>
+    <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>
     <nav class="section-nav" aria-label="주요 메뉴">
-      {% for endpoint, label in [('home','신고 목록'), ('guide','신고 이용안내'), ('process','처리 절차'), ('types','신고 유형'), ('faq','자주 묻는 질문')] %}
-      {% set active = (endpoint == 'home' and request.endpoint == 'home') or (request.endpoint == 'info_page' and page == endpoint) %}
-      <a data-menu="{{ endpoint }}" href="{{ url_for('home') if endpoint == 'home' else url_for('info_page', page=endpoint) }}"{% if active %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+      {% for item in items('menu') %}{% set href = menu_href(item) %}
+      <a href="{{ href }}"{% if menu_active(href) %} class="active" aria-current="page"{% endif %}{% if item.page == 'custom' and href.startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>
       {% endfor %}
     </nav>
+    <div class="top-auth">
+      {% if g.user %}
+      <a class="util-me" href="{{ url_for('mypage') }}" title="{{ ui('common.my_info', '내 정보') }}"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="8.5" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{{ g.user['nickname'] }}{{ ui('common.nim', '님') }}</a>
+      <form method="post" action="{{ url_for('member_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">{{ ui('common.logout', '로그아웃') }}</button></form>
+      {% else %}
+      <a href="{{ url_for('login', next=request.full_path.rstrip('?')) if request.endpoint not in ('login', 'signup', 'member_logout') else url_for('login') }}">{{ ui('common.login', '로그인') }}</a>
+      <a href="{{ url_for('signup') }}">{{ ui('common.signup', '회원가입') }}</a>
+      {% endif %}
+    </div>
   </div>
 </header>
 {% with msgs = get_flashed_messages() %}
 {% if msgs %}<div class="flash-wrap" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
 {% endwith %}
 {% block content %}{% endblock %}
-<footer class="site-footer">by SOBORU.</footer>
+<footer class="site-footer">
+  <div class="ft-inner">
+    <div class="ft-top">
+      <a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>
+      <nav class="ft-links" aria-label="정책 및 안내">
+        <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('common.ft_terms', '이용약관') }}</a>
+        <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">{{ ui('common.ft_privacy', '개인정보 처리방침') }}</a>
+        <a href="{{ url_for('policy_page', page='youth') }}">{{ ui('common.ft_youth', '청소년보호정책') }}</a>
+        <a class="ft-point" href="{{ url_for('takedown') }}">{{ ui('common.ft_takedown', '권리침해 신고 및 임시조치 안내') }}</a>
+        <a href="{{ url_for('lookup') }}">{{ ui('common.ft_lookup', '내 제보 조회') }}</a>
+      </nav>
+    </div>
+    {% set rows = footer_rows() %}
+    {% if rows %}<ul class="ft-info">{% for row in rows %}{% for key, label, value in row %}<li{{ ed_attr(key) }}>{{ label }}. {% if key == 'operator.ceo' %}{# 대표 이름 첫 글자: 관리자 로그인으로 가는 숨은 링크 #}<a class="ft-quiet" href="{{ url_for('admin_login') }}" rel="nofollow">{{ value[:1] }}</a>{{ value[1:] }}{% else %}{{ value }}{% endif %}</li>{% endfor %}{% endfor %}</ul>{% endif %}
+    <div class="ft-bottom">
+      {% if txt('operator.notice') %}<p class="ft-notice">{{ txt('operator.notice') }}</p>{% endif %}
+      <p class="ft-copy">{{ txt('footer.text') }}</p>
+    </div>
+  </div>
+  <button type="button" class="to-top" aria-label="맨 위로" hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 14.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <script>
+    // 맨 위로 버튼: 조금 내려가면 나타나고, 누르면 맨 위로 이동합니다.
+    (function () {
+      var btn = document.querySelector('.to-top');
+      if (!btn) return;
+      var update = function () { btn.hidden = window.scrollY < 400; };
+      window.addEventListener('scroll', update, { passive: true }); update();
+      btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    })();
+  </script>
+</footer>
+{% if editing() %}
+{# 관리자 편집 모드: 점선으로 표시된 문장을 누르면 바로 고칠 수 있음 #}
+<div class="ed-bar" role="region" aria-label="편집 모드">
+  <span class="ed-bar-title">✏️ 편집 모드</span>
+  <label class="ed-go"><span>페이지 이동</span><select onchange="if (this.value) location.href = this.value" aria-label="고칠 페이지로 이동">
+    <option value="">고칠 페이지 고르기 ▾</option>
+    {% for href, name in [(url_for('home'), '메인 화면'), (url_for('reports'), '제보 목록'), (url_for('info_page', page='guide'), '이용 안내'), (url_for('info_page', page='process'), '처리 절차'), (url_for('info_page', page='faq'), '자주 묻는 질문'), (url_for('info_page', page='types'), '제보 유형'), (url_for('report'), '제보하기'), (url_for('lookup'), '내 제보 조회'), (url_for('board'), '소비자게시판'), (url_for('board_write'), '게시판 글쓰기'), (url_for('signup'), '회원가입'), (url_for('login'), '로그인'), (url_for('account_help'), '아이디·비밀번호 찾기'), (url_for('policy_page', page='terms'), '이용약관'), (url_for('policy_page', page='privacy'), '개인정보 처리방침'), (url_for('policy_page', page='youth'), '청소년보호정책'), (url_for('takedown'), '권리침해 신고')] %}<option value="{{ href }}"{% if request.path == href %} selected{% endif %}>{{ name }}</option>{% endfor %}
+    {% for row in g.lists.get('custom_pages', []) if row.slug %}<option value="{{ url_for('custom_page', slug=row.slug) }}"{% if request.path == url_for('custom_page', slug=row.slug) %} selected{% endif %}>새 페이지: {{ row.title }}</option>{% endfor %}
+  </select></label>
+  <a href="{{ url_for('admin_lists') }}">메뉴·항목</a><a href="{{ url_for('admin_content') }}">사이트 문구 전체</a>
+  <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="0"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button type="submit">편집 끝내기</button></form>
+  <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit" class="ed-bar-out">관리자 로그아웃</button></form>
+</div>
+<div class="ed-modal" hidden><form class="ed-box"><p class="ed-label"></p><textarea rows="3"></textarea><p class="ed-msg" role="status"></p>
+  <div class="ed-actions"><button type="button" class="ed-delete">🗑 지우기</button><button type="button" class="ed-reset">기본 문구로</button><a class="ed-follow" hidden>이 링크로 이동 →</a><span></span><button type="button" class="ed-cancel">취소</button><button type="submit" class="ed-save">저장</button></div></form></div>
+<script>
+  (function () {
+    var data = null;
+    function load() { if (!data) data = JSON.parse((document.getElementById('ed-data') || {}).textContent || '{}'); return data; }
+    var modal = document.querySelector('.ed-modal'), area = modal.querySelector('textarea'), label = modal.querySelector('.ed-label'), msg = modal.querySelector('.ed-msg');
+    var token = '{{ csrf_token() }}', current = null;
+    var follow = modal.querySelector('.ed-follow'), delBtn = modal.querySelector('.ed-delete');
+    function open(key, link) {
+      follow.hidden = !link; if (link) follow.href = link;
+      current = key; var d = load()[key] || {v: '', label: key};
+      delBtn.hidden = !d.del; delBtn.textContent = d.del === 'item' ? '🗑 이 항목 빼기' : '🗑 지우기'; delBtn.dataset.mode = d.del || '';
+      label.textContent = d.label; area.value = d.v; area.rows = Math.max(d.ml ? 5 : 2, d.v.split('\n').length + 1); msg.textContent = '';
+      modal.hidden = false; area.focus();
+    }
+    function post(url, fields) {
+      var body = new FormData(); body.append('_csrf', token);
+      Object.keys(fields).forEach(function (k) { body.append(k, fields[k]); });
+      msg.textContent = '저장 중…';
+      return fetch(url, {method: 'POST', body: body, credentials: 'same-origin'})
+        .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+        .then(function (res) { if (res.ok) { location.reload(); } else { msg.textContent = res.error || '저장하지 못했어요. 다시 시도해 주세요.'; } })
+        .catch(function () { msg.textContent = '저장하지 못했어요. 다시 시도해 주세요.'; });
+    }
+    function save(reset, remove) {
+      var fields = {key: current, value: area.value}; if (reset) fields.reset = '1'; if (remove) fields['delete'] = '1';
+      return post('{{ url_for('admin_inline') }}', fields);
+    }
+    delBtn.addEventListener('click', function () {
+      if (delBtn.dataset.mode === 'item') {
+        var parts = current.split(':');
+        if (confirm('이 항목을 통째로 뺄까요? 관리자 구성 바꾸기에서 다시 넣을 수 있어요.')) post('{{ url_for('admin_list_remove') }}', {list: parts[1], index: parts[2]});
+      } else if (confirm('이 문장을 지울까요? 편집 모드에서 흐린 자리를 눌러 언제든 되살릴 수 있어요.')) {
+        save(false, true);
+      }
+    });
+    document.addEventListener('click', function (e) {
+      var rm = e.target.closest('.ed-remove');
+      if (rm) {
+        e.preventDefault(); e.stopPropagation();
+        if (!confirm('이 항목을 화면에서 뺄까요? 관리자 메뉴·항목에서 다시 넣을 수 있어요.')) return;
+        var body = new FormData(); body.append('_csrf', token); body.append('list', rm.getAttribute('data-list')); body.append('index', rm.getAttribute('data-i'));
+        fetch('{{ url_for('admin_list_remove') }}', {method: 'POST', body: body, credentials: 'same-origin'})
+          .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+          .then(function (res) { if (res.ok) location.reload(); else alert(res.error || '빼지 못했어요. 다시 시도해 주세요.'); });
+        return;
+      }
+      if (e.target.closest('.ed-bar, .ed-modal, .ed-list')) return;
+      var el = e.target.closest('[data-k]');
+      if (!el) return;
+      var a = el.closest('a[href]') || el.querySelector('a[href]');
+      e.preventDefault(); e.stopPropagation(); open(el.getAttribute('data-k'), a && a.getAttribute('href').charAt(0) !== '#' ? a.href : '');
+    }, true);
+    modal.querySelector('form').addEventListener('submit', function (e) { e.preventDefault(); save(false); });
+    modal.querySelector('.ed-reset').addEventListener('click', function () { if (confirm('처음 문구로 되돌릴까요?')) save(true); });
+    modal.querySelector('.ed-cancel').addEventListener('click', function () { modal.hidden = true; });
+    modal.addEventListener('click', function (e) { if (e.target === modal) modal.hidden = true; });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') modal.hidden = true; });
+    document.querySelectorAll('details').forEach(function (d) { d.open = true; });
+  })();
+</script>
+{% endif %}
 </body>
 </html>

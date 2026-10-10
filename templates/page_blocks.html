@@ -1,0 +1,17 @@
+{# 페이지에 끼워 넣는 공용 섹션: 소제목·글 상자·안내 박스 (관리자 '○○ 페이지 구성') #}
+{% macro generic(block, page, idx) %}
+{% if block.kind == 'heading' and block.title %}
+<h2 class="page-heading">{{ block.title }}</h2>
+{% elif block.kind == 'text' %}
+<section class="page-text">
+  {% if block.title %}<h2>{{ block.title }}</h2>{% endif %}
+  {% if block.body %}<p class="pre-line">{{ block.body|emph }}</p>{% endif %}
+</section>
+{% elif block.kind == 'notice' %}
+<section class="home-notice page-notice">
+  {% if block.title %}<h2>{{ block.title }}</h2>{% endif %}
+  {% if block.body %}<p class="pre-line">{{ block.body|emph }}</p>{% endif %}
+  {% if block.button_label and block.button_link %}<a class="primary" href="{{ block.button_link }}"{% if block.button_link.startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ block.button_label }}</a>{% endif %}
+</section>
+{% endif %}
+{% endmacro %}
