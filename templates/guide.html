@@ -13,7 +13,7 @@
     {% if txt('guide.s1_desc') %}<p class="guide-description">{{ txt('guide.s1_desc') }}</p>{% endif %}
     <dl class="guide-basics">
       {% for item in items('guide_basics') %}<div><dt>{{ item.title }}</dt><dd class="pre-line">{{ item.body }}</dd></div>{% endfor %}
-    </dl>
+    </dl>{{ ed_list('guide_basics') }}
     <p class="guide-tip">{{ ui_rich('guide.s1_tip', '날짜와 금액은 거래 내용을 확인하는 데 도움이 됩니다. 정확히 기억나지 않으면 ‘○월 초쯤’, ‘약 ○만 원’처럼 표시해 주세요.') }}</p>
   </section>
 
@@ -22,7 +22,7 @@
     {% if txt('guide.s2_desc') %}<p class="guide-description">{{ txt('guide.s2_desc') }}</p>{% endif %}
     <ol class="guide-writing-list">
       {% for item in items('guide_writing') %}<li><strong>{{ item.title }}</strong>{% if item.body %}<p class="pre-line">{{ item.body }}</p>{% endif %}</li>{% endfor %}
-    </ol>
+    </ol>{{ ed_list('guide_writing') }}
     <aside class="guide-example" aria-labelledby="example-heading">
       <h3 id="example-heading">{{ ui('guide.ex_title', '이렇게 작성해 보세요') }} <span>{{ ui('guide.ex_tag', '가상의 예시') }}</span></h3>
       <p>{{ ui_rich('guide.ex_body', '3월 2일 ○○쇼핑몰에서 무선 이어폰을 89,000원에 구매했습니다. 3월 4일 배송받았는데 오른쪽에서 소리가 나지 않았습니다. 다음 날 고객센터에 교환을 요청했지만 아직 답변을 받지 못했습니다.') }}</p>
@@ -62,12 +62,12 @@
         <summary><span>{{ topic.name }}</span><span class="evidence-topic-action" aria-hidden="true">{{ ui('guide.topic_open', '확인하기') }} <span class="evidence-topic-chevron">⌄</span></span></summary>
         <div class="evidence-topic-body">
           {% if topic.heading %}<h3>{{ topic.heading }}</h3>{% endif %}
-          {% if topic.steps %}<ol>{% for line in topic.steps.split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ol>{% endif %}
+          {% if topic.steps %}<ol{{ ed_attr('list:guide_topics:%d:steps' % loop.index0, topic.steps) }}>{% for line in topic.steps.split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ol>{% endif %}
           {% if topic.info or topic.materials %}<div class="evidence-topic-records"><h4>{{ ui('guide.topic_records', '함께 적을 정보와 준비자료') }}</h4>{% if topic.info %}<p class="pre-line">{{ topic.info }}</p>{% endif %}{% if topic.materials %}<span>{{ ui('guide.topic_materials', '도움이 되는 자료') }}</span> {{ topic.materials }}{% endif %}</div>{% endif %}
         </div>
       </details>
       {% endfor %}
-    </div>
+    </div>{{ ed_list('guide_topics') }}
     <aside class="guide-upload">
       <h3>{{ ui('guide.u_title', '첨부하기 전에 확인해 주세요') }}</h3>
       <ul>

@@ -9,7 +9,7 @@
     </div>
     <div class="rc-stub">
       <span class="rc-progress" aria-label="{{ total }}단계 중 {{ step }}단계">{% for s in STATUSES %}<i{% if loop.index <= step %} class="on"{% endif %}></i>{% endfor %}</span>
-      <span class="rc-status">{{ case.status }}</span>
+      <span class="rc-status">{{ status_name(case.status) }}</span>
       <time datetime="{{ case.created }}">{{ case.when }}</time>
     </div>
   </article>
@@ -23,7 +23,7 @@
     </div>
     <div class="rc-stub">
       <span class="rc-progress" aria-hidden="true">{% for s in STATUSES %}<i{% if loop.index <= step %} class="on"{% endif %}></i>{% endfor %}</span>
-      <span class="rc-status">{{ sample.status }}</span>
+      <span class="rc-status">{{ status_name(sample.status) }}</span>
     </div>
   </article>
   {% endfor %}

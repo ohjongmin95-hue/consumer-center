@@ -54,7 +54,7 @@
       </nav>
     </div>
     {% set rows = footer_rows() %}
-    {% if rows %}<ul class="ft-info">{% for row in rows %}{% for key, label, value in row %}<li>{{ label }}. {% if key == 'operator.ceo' %}{# 대표 이름 첫 글자: 관리자 로그인으로 가는 숨은 링크 #}<a class="ft-quiet" href="{{ url_for('admin_login') }}" rel="nofollow">{{ value[:1] }}</a>{{ value[1:] }}{% else %}{{ value }}{% endif %}</li>{% endfor %}{% endfor %}</ul>{% endif %}
+    {% if rows %}<ul class="ft-info">{% for row in rows %}{% for key, label, value in row %}<li{{ ed_attr(key) }}>{{ label }}. {% if key == 'operator.ceo' %}{# 대표 이름 첫 글자: 관리자 로그인으로 가는 숨은 링크 #}<a class="ft-quiet" href="{{ url_for('admin_login') }}" rel="nofollow">{{ value[:1] }}</a>{{ value[1:] }}{% else %}{{ value }}{% endif %}</li>{% endfor %}{% endfor %}</ul>{% endif %}
     <div class="ft-bottom">
       {% if txt('operator.notice') %}<p class="ft-notice">{{ txt('operator.notice') }}</p>{% endif %}
       <p class="ft-copy">{{ txt('footer.text') }}</p>
@@ -72,5 +72,48 @@
     })();
   </script>
 </footer>
+{% if editing() %}
+{# 관리자 편집 모드: 점선으로 표시된 문장을 누르면 바로 고칠 수 있음 #}
+<div class="ed-bar" role="region" aria-label="편집 모드">
+  <span class="ed-bar-title">✏️ 편집 모드</span><span class="ed-bar-hint">점선으로 표시된 문장을 누르면 바로 고칠 수 있어요</span>
+  <a href="{{ url_for('admin_lists') }}">메뉴·항목</a><a href="{{ url_for('admin_content') }}">사이트 문구 전체</a>
+  <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="0"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button type="submit">편집 끝내기</button></form>
+</div>
+<div class="ed-modal" hidden><form class="ed-box"><p class="ed-label"></p><textarea rows="3"></textarea><p class="ed-msg" role="status"></p>
+  <div class="ed-actions"><button type="button" class="ed-reset">기본 문구로</button><span></span><button type="button" class="ed-cancel">취소</button><button type="submit" class="ed-save">저장</button></div></form></div>
+<script>
+  (function () {
+    var data = null;
+    function load() { if (!data) data = JSON.parse((document.getElementById('ed-data') || {}).textContent || '{}'); return data; }
+    var modal = document.querySelector('.ed-modal'), area = modal.querySelector('textarea'), label = modal.querySelector('.ed-label'), msg = modal.querySelector('.ed-msg');
+    var token = '{{ csrf_token() }}', current = null;
+    function open(key) {
+      current = key; var d = load()[key] || {v: '', label: key};
+      label.textContent = d.label; area.value = d.v; area.rows = Math.max(d.ml ? 5 : 2, d.v.split('\n').length + 1); msg.textContent = '';
+      modal.hidden = false; area.focus();
+    }
+    function save(reset) {
+      var body = new FormData(); body.append('_csrf', token); body.append('key', current); body.append('value', area.value); if (reset) body.append('reset', '1');
+      msg.textContent = '저장 중…';
+      fetch('{{ url_for('admin_inline') }}', {method: 'POST', body: body, credentials: 'same-origin'})
+        .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+        .then(function (res) { if (res.ok) { location.reload(); } else { msg.textContent = res.error || '저장하지 못했어요. 다시 시도해 주세요.'; } })
+        .catch(function () { msg.textContent = '저장하지 못했어요. 다시 시도해 주세요.'; });
+    }
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('.ed-bar, .ed-modal, .ed-list')) return;
+      var el = e.target.closest('[data-k]');
+      if (!el) return;
+      e.preventDefault(); e.stopPropagation(); open(el.getAttribute('data-k'));
+    }, true);
+    modal.querySelector('form').addEventListener('submit', function (e) { e.preventDefault(); save(false); });
+    modal.querySelector('.ed-reset').addEventListener('click', function () { if (confirm('처음 문구로 되돌릴까요?')) save(true); });
+    modal.querySelector('.ed-cancel').addEventListener('click', function () { modal.hidden = true; });
+    modal.addEventListener('click', function (e) { if (e.target === modal) modal.hidden = true; });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') modal.hidden = true; });
+    document.querySelectorAll('details').forEach(function (d) { d.open = true; });
+  })();
+</script>
+{% endif %}
 </body>
 </html>

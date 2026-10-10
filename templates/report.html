@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}{{ txt('report.title') }} | {{ txt('site.name') }}{% endblock %}
-{% macro lines(key) %}{% for line in g.content[key].split('\n') if line.strip() %}<span class="cell-line">{{ line }}</span>{% endfor %}{% endmacro %}
+{% macro lines(key) %}<span class="cell-lines"{{ ed_attr(key) }}>{% for line in g.content[key].split('\n') if line.strip() %}<span class="cell-line">{{ line }}</span>{% endfor %}</span>{% endmacro %}
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro"><h1 class="page-title">{{ txt('report.title') }}</h1>{% if txt('report.intro') %}<p>{{ txt('report.intro') }}</p>{% endif %}</div>
@@ -8,7 +8,7 @@
   {% if txt('report.notes') %}
   <details class="must-read" open>
     <summary><span class="must-read-title">{{ ui('report.notes_title', '제보 전 꼭 읽어 주세요') }}</span><span class="must-read-toggle" aria-hidden="true"></span></summary>
-    <ul>{% for line in g.content['report.notes'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>
+    <ul{{ ed_attr('report.notes') }}>{% for line in g.content['report.notes'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>
   </details>
   {% endif %}
 

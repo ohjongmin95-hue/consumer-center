@@ -684,6 +684,50 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/content', data={'_csrf': token, 'section': 'report', 'reset_section': 'report'})
         self.assertIn('제보 접수하기 ↗', self.client.get('/report').get_data(as_text=True))
 
+    def test_edit_mode_on_the_site(self):
+        admin = self.login_admin()
+        self.assertNotIn('data-k=', admin.get('/guide').get_data(as_text=True))
+        token = self.csrf(admin, '/admin')
+        admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '1'})
+        for path in ('/', '/guide', '/process', '/faq', '/report', '/board', '/signup', '/reports', '/lookup', '/privacy'):
+            page = admin.get(path).get_data(as_text=True)
+            self.assertNotRegex(page, '[\ue000-\ue002]', path)  # 숨은 표시가 남지 않음
+            self.assertIn('data-k=', page, path)
+            self.assertIn('id="ed-data"', page, path)
+            title = re.search(r'<title>(.*?)</title>', page, re.S)[1]
+            self.assertNotIn('<span', title, path)
+            self.assertNotRegex(page, r'(placeholder|aria-label|content)="[^"]*<span', path)
+        guide = admin.get('/guide').get_data(as_text=True)
+        self.assertIn('data-k="list:guide_basics:0:title"', guide)
+        self.assertIn('data-k="list:guide_topics:0:steps"', guide)
+        self.assertIn('href="/admin/lists#list-guide_topics"', guide)
+        # 사이트 화면에서 문장 고치기: 화면 문구, 목록 항목, 진행 단계 이름
+        token = self.csrf(admin, '/guide')
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'guide.u_title', 'value': '첨부 전 체크'}).get_json()['ok'])
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:guide_basics:0:title', 'value': '구매한 날'}).get_json()['ok'])
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'status.n1', 'value': '접수 완료'}).get_json()['ok'])
+        self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:guide_basics:0:title', 'value': ''}).status_code, 400)
+        self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:menu:0:page', 'value': 'x'}).status_code, 400)
+        self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'nope', 'value': 'x'}).status_code, 400)
+        public = self.client.get('/guide').get_data(as_text=True)
+        self.assertIn('첨부 전 체크', public)
+        self.assertIn('구매한 날', public)
+        self.assertNotIn('data-k=', public)
+        self.assertIn('접수 완료', self.client.get('/').get_data(as_text=True))
+        admin.post('/admin/inline', data={'_csrf': token, 'key': 'guide.u_title', 'value': '', 'reset': '1'})
+        self.assertIn('첨부하기 전에 확인해 주세요', self.client.get('/guide').get_data(as_text=True))
+        self.assertEqual(self.client.post('/admin/inline', data={'_csrf': self.csrf(self.client, '/report'), 'key': 'guide.u_title', 'value': 'x'}).status_code, 302)
+        # 처리 절차·FAQ 문구를 고쳐도 단계 카드와 질문 목록은 그대로 유지
+        steps_before = self.client.get('/process').get_data(as_text=True).count('class="process-card"')
+        admin.post('/admin/inline', data={'_csrf': token, 'key': 'process.card_step', 'value': '스텝'})
+        admin.post('/admin/inline', data={'_csrf': token, 'key': 'faq.title', 'value': '궁금해요'})
+        process = self.client.get('/process').get_data(as_text=True)
+        self.assertEqual(process.count('class="process-card"'), steps_before)
+        self.assertIn('1스텝', process)
+        self.assertIn('궁금해요', self.client.get('/faq').get_data(as_text=True))
+        admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '0'})
+        self.assertNotIn('data-k=', admin.get('/guide').get_data(as_text=True))
+
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
         token = self.csrf(self.client, '/report')

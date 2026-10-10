@@ -61,7 +61,9 @@ def legacy_list(db,key):
         return [{'label':saved.get(k) or label,'page':page,'url':''} for k,page,label in site_content.LEGACY_NAV] if saved else None
     prefix={'faq':'faq.','process_steps':'process.step'}.get(key)
     if not prefix:return None
-    saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content WHERE key LIKE ?',(prefix+'%',))}
+    # 예전 고정 칸 이름(faq.q1, process.step1_title 등)만 봄. faq.title 같은 다른 문구는 제외.
+    pattern=re.compile(r'^faq\.[qa]\d+$' if key=='faq' else r'^process\.step\d+_(title|body)$')
+    saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content WHERE key LIKE ?',(prefix+'%',)) if pattern.match(r['key'])}
     if not saved:return None
     if key=='faq':
         old=dict(zip(['faq.q%d'%i for i in range(1,9)],[q for q,_ in site_content.FAQ_DEFAULTS]+['']*8))|dict(zip(['faq.a%d'%i for i in range(1,9)],[a for _,a in site_content.FAQ_DEFAULTS]+['']*8))
@@ -76,7 +78,13 @@ def load_lists():
 @app.before_request
 def content_for_request():
     if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
-def items(key):return g.lists.get(key,[])
+# 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
+LIST_DISPLAY_FIELDS={'menu':('label',),'home_blocks':('title','body','button_label'),'faq':('q','a'),'process_steps':('title','body'),
+    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'sample_reports':('title','company')}
+def items(key):
+    rows=g.lists.get(key,[])
+    if not editing() or key not in LIST_DISPLAY_FIELDS:return rows
+    return [{k:(ed_wrap('list:%s:%d:%s'%(key,i,k),v) if k in LIST_DISPLAY_FIELDS[key] and v else v) for k,v in row.items()} for i,row in enumerate(rows)]
 def report_categories():return [i['name'] for i in items('report_categories')]
 def board_categories():return [i['name'] for i in items('board_categories')]
 app.jinja_env.globals['items']=items
@@ -105,24 +113,63 @@ def emph(text):
     return Markup(html)
 STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']
 app.jinja_env.globals['step_icon']=lambda item,i:item.get('icon') or STEP_ICON_ORDER[i%len(STEP_ICON_ORDER)]
+# ---- 사이트에서 바로 고치기 (관리자 편집 모드) ----------------------------------
+# 편집 모드에서는 문장마다 보이지 않는 표시를 붙여 두었다가, 응답을 내보내기 직전에
+# 본문 글자는 <span data-k="키">로 바꾸고 태그 속성·제목 안의 표시는 지움 (edit_mode_markup).
+ED_OPEN,ED_SEP,ED_CLOSE='\ue000','\ue001','\ue002'
+def editing():
+    if 'editing' not in g:
+        g.editing=bool(session.get('edit_mode') and session.get('admin') and request.endpoint not in (None,'static')
+                       and not request.path.startswith(('/admin','/reporter','/staff')) and session.get('admin_v')==admin_session_ver())
+    return g.editing
+def ed_register(key,raw):
+    marks=g.setdefault('ed_marks',{})
+    marks.setdefault(key,raw)
+    return list(marks).index(key)
+def ed_wrap(key,value,raw=None):
+    # value: 화면에 찍힐 값(문자열 또는 Markup), raw: 고칠 때 보여 줄 원문
+    if not editing() or not str(value):return value
+    idx=ed_register(key,value if raw is None else raw)
+    wrapped=ED_OPEN+str(idx)+ED_SEP
+    return Markup(wrapped)+value+Markup(ED_CLOSE) if isinstance(value,Markup) else wrapped+value+ED_CLOSE
+def ed_attr(key,raw=None):
+    # 여러 줄로 나눠 그리는 문장(목록 등)은 감싸는 태그에 data-k를 붙여 통째로 고침
+    if not editing():return ''
+    ed_register(key,g.content.get(key,'') if raw is None else raw)
+    return Markup(' data-k="%s"'%escape(key))
+app.jinja_env.globals['ed_attr']=ed_attr
+app.jinja_env.globals['editing']=editing
+def ed_list(key):
+    # 목록 아래에 "항목 추가·순서 바꾸기" 바로가기 (편집 모드에서만)
+    if not editing():return ''
+    return Markup('<a class="ed-list" href="%s">＋ 항목 추가·삭제·순서 바꾸기</a>'%url_for('admin_lists',_anchor='list-'+key))
+app.jinja_env.globals['ed_list']=ed_list
 def txt(key):
     # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
-    return Markup('<br>').join(escape(line) for line in g.content.get(key,'').split('\n'))
+    raw=g.content.get(key,'')
+    return ed_wrap(key,Markup('<br>').join(escape(line) for line in raw.split('\n')),raw)
 app.jinja_env.globals['txt']=txt
 def ui_text(key,default):
     # 화면 문구: 관리자가 바꾼 값이 있으면 그 값, 없으면 템플릿에 적힌 기본 문구 (site_content.UI_TEXTS 참고)
     content=g.get('content') or {}
     return content.get(key) or default
 def ui(key,default):
-    return Markup('<br>').join(escape(line) for line in ui_text(key,default).split('\n'))
+    raw=ui_text(key,default)
+    return ed_wrap(key,Markup('<br>').join(escape(line) for line in raw.split('\n')),raw)
 app.jinja_env.globals['ui']=ui
 app.jinja_env.globals['ui_text']=ui_text
 def ui_rich(key,default):
     # **굵게** 표시를 쓸 수 있는 화면 문구
     text=ui_text(key,default).replace('\0','').replace('\1','')
     out=EMPHASIS.sub(lambda m:'\0'+m.group(1)+'\1',text)
-    return Markup(str(escape(out)).replace('\0','<strong>').replace('\1','</strong>').replace('\n','<br>'))
+    return ed_wrap(key,Markup(str(escape(out)).replace('\0','<strong>').replace('\1','</strong>').replace('\n','<br>')),ui_text(key,default))
 app.jinja_env.globals['ui_rich']=ui_rich
+def status_name(status):
+    # 진행 단계 이름 (저장값은 그대로 두고 화면에 보이는 이름만 바꿈)
+    names={STATUSES[0]:lambda:ui('status.n1','접수'),STATUSES[1]:lambda:ui('status.n2','검토 중'),STATUSES[2]:lambda:ui('status.n3','추가 확인'),
+           STATUSES[3]:lambda:ui('status.n4','기업 답변 대기'),STATUSES[4]:lambda:ui('status.n5','조정 진행'),STATUSES[5]:lambda:ui('status.n6','종결')}
+    return names[status]() if status in names else status
+app.jinja_env.globals['status_name']=status_name
 app.jinja_env.globals['STATUSES']=STATUSES
 app.jinja_env.globals['status_step']=status_step
 DOC_VARS={'운영자':'operator.name','대표자':'operator.ceo','이메일':'operator.email','전화':'operator.phone','주소':'operator.address','보호책임자':'operator.privacy_officer','보호책임자연락처':'operator.privacy_contact','청소년보호책임자':'operator.youth_officer','청소년보호책임자연락처':'operator.youth_contact','시행일':'policy.effective_date'}
@@ -147,7 +194,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-31'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-32'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -185,6 +232,37 @@ def headers(resp):
     if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company','/login','/signup','/me','/staff','/reporter')):resp.headers['Cache-Control']='no-store'
     elif session.get('uid') and 'Cache-Control' not in resp.headers:resp.headers['Cache-Control']='private, no-cache'
     return resp
+_ED_TAG=re.compile(r'<[^>]*>')
+_ED_RAW=re.compile(r'(<(title|textarea|option|script|style)\b[^>]*>)(.*?)(</\2>)',re.S|re.I)
+_ED_MARK=re.compile('\ue000(\\d+)\ue001')
+def _ed_strip(text):return _ED_MARK.sub('',text).replace(ED_CLOSE,'')
+@app.after_request
+def edit_mode_markup(resp):
+    if not g.get('editing') or resp.mimetype!='text/html' or resp.direct_passthrough:return resp
+    html=resp.get_data(as_text=True)
+    html=_ED_RAW.sub(lambda m:m.group(1)+_ed_strip(m.group(3))+m.group(4),html)
+    html=_ED_TAG.sub(lambda m:_ed_strip(m.group(0)),html)
+    keys=list(g.get('ed_marks',{}))
+    html=_ED_MARK.sub(lambda m:'<span class="ed" data-k="%s">'%escape(keys[int(m.group(1))]),html).replace(ED_CLOSE,'</span>')
+    data={k:{'v':str(v),'label':ed_label(k),'ml':ed_multiline(k)} for k,v in g.get('ed_marks',{}).items()}
+    html=html.replace('</body>','<script id="ed-data" type="application/json">%s</script></body>'%json.dumps(data,ensure_ascii=False).replace('<','\\u003c'),1)
+    resp.set_data(html);resp.headers['Cache-Control']='no-store'
+    return resp
+def _list_meta(key):
+    for k,title,_,fields,minimum in site_content.LISTS:
+        if k==key:return title,fields,minimum
+    return None
+def ed_label(key):
+    if key.startswith('list:'):
+        _,lk,i,field=key.split(':');meta=_list_meta(lk)
+        return '%s · %s번째 · %s'%(meta[0],int(i)+1,dict((n,l) for n,l,_ in meta[1]).get(field,field)) if meta else key
+    f=site_content.FIELDS.get(key);return f['label'] if f else key
+def ed_multiline(key):
+    if key.startswith('list:'):
+        _,lk,_,field=key.split(':');meta=_list_meta(lk)
+        return bool(meta and dict((n,o) for n,_,o in meta[1]).get(field,{}).get('multiline'))
+    f=site_content.FIELDS.get(key,{});return bool(f.get('multiline') or f.get('doc'))
+
 def report_rows(where='1=1',args=(),limit=20,offset=0):
     # 모든 제보를 번호·분류·단계·접수일로 보여 주고, 제목은 공개 제보(제보자가 공개 선택, 운영자가 내리지 않음)만 노출.
     with conn() as db:
@@ -394,6 +472,44 @@ def admin_password():
             flash('관리자 비밀번호를 바꿨어요. 다음 로그인부터 새 비밀번호를 쓰세요.')
             return redirect(url_for('admin'))
     return render_template('admin_password.html')
+@app.route('/admin/edit-mode',methods=['POST'])
+@admin_only
+def admin_edit_mode():
+    session['edit_mode']=request.form.get('on')=='1'
+    nxt=request.form.get('next','')
+    if session['edit_mode']:return redirect(nxt if nxt.startswith('/') and not nxt.startswith(('//','/admin')) else url_for('home'))
+    return redirect(nxt if nxt.startswith('/') and not nxt.startswith('//') else url_for('admin'))
+
+@app.route('/admin/inline',methods=['POST'])
+@admin_only
+def admin_inline():
+    # 사이트 화면에서 문장 하나를 바로 고칠 때 쓰는 저장 주소. 비우거나 reset이면 기본값으로.
+    key=request.form.get('key','');value=request.form.get('value','').replace('\r\n','\n').strip()
+    reset=request.form.get('reset')=='1';stamp=datetime.datetime.now().isoformat(timespec='seconds')
+    if key.startswith('list:'):
+        try:_,lk,i,field=key.split(':');i=int(i)
+        except ValueError:abort(400)
+        meta=_list_meta(lk)
+        if not meta or field not in dict((n,o) for n,_,o in meta[1]):abort(400)
+        title,fields,_=meta;opts=dict((n,o) for n,_,o in fields)[field]
+        if opts.get('choices') or field in ('url','button_link','count'):abort(400)
+        rows=[dict(r) for r in load_lists()[lk]]
+        if not 0<=i<len(rows):abort(404)
+        if not opts.get('multiline'):value=' '.join(value.split())
+        if len(value)>site_content.MAX_LENGTH:abort(400)
+        if not value and field==fields[0][0]:return {'ok':False,'error':'이 칸은 비울 수 없어요. 항목을 지우려면 관리자 메뉴·항목에서 지워 주세요.'},400
+        rows[i][field]=value
+        with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(lk,json.dumps(rows,ensure_ascii=False),stamp))
+        return {'ok':True}
+    field=site_content.FIELDS.get(key)
+    if not field:abort(400)
+    if not (field.get('multiline') or field.get('doc')):value=' '.join(value.split())
+    if len(value)>(site_content.DOC_MAX_LENGTH if field.get('doc') else site_content.MAX_LENGTH):abort(400)
+    with conn() as db:
+        if reset or value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(key,))
+        else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,stamp))
+    return {'ok':True}
+
 @app.route('/admin/content',methods=['GET','POST'])
 @admin_only
 def admin_content():

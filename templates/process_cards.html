@@ -4,8 +4,8 @@
   {% for step in items('process_steps') %}
   <li class="process-card">
     <div class="pc-icon">{{ step_icon_svg(step_icon(step, loop.index0)) }}</div>
-    <h3 class="pc-label"><span class="pc-step">{{ loop.index }}{{ ui('process.step_suffix', '단계') }}</span>{{ step.title }}</h3>
+    <h3 class="pc-label"><span class="pc-step">{{ loop.index }}{{ ui('process.card_step', '단계') }}</span>{{ step.title }}</h3>
     {% if step.body %}<p class="pc-body">{{ step.body|emph }}</p>{% endif %}
   </li>
   {% endfor %}
-</ol>
+</ol>{{ ed_list('process_steps') }}

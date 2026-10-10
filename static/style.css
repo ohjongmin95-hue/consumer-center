@@ -986,3 +986,27 @@ body.newsroom { background: #f4f4f2; }
 }
 .content-search { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
 .content-search input { flex: 1; max-width: 520px; padding: 11px 14px; border: 1px solid #dddbd6; border-radius: 9px; background: #fff; font-size: 15px; }
+
+/* 관리자 편집 모드 */
+.ed, [data-k] { outline: 1.5px dashed rgba(239,115,0,.55); outline-offset: 2px; border-radius: 3px; cursor: pointer; }
+.ed:hover, [data-k]:hover { outline: 2px solid var(--orange); background: rgba(239,115,0,.08); }
+.ed-list { display: inline-block; margin: 10px 0; padding: 6px 12px; border: 1.5px dashed #2b3038; border-radius: 8px; background: #fff; color: #2b3038; font-size: 13px; font-weight: 800; }
+.ed-bar { position: fixed; left: 50%; bottom: 18px; z-index: 50; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; max-width: calc(100% - 24px); padding: 10px 14px 10px 18px; border-radius: 14px; background: #1f2430; color: #fff; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.ed-bar-title { font-weight: 800; white-space: nowrap; }
+.ed-bar-hint { color: #c9ccd3; }
+.ed-bar a { color: #ffd2a6; font-weight: 700; white-space: nowrap; }
+.ed-bar form { margin: 0; }
+.ed-bar button { border: 0; border-radius: 8px; padding: 8px 12px; background: var(--orange); color: #fff; font-weight: 800; white-space: nowrap; }
+.ed-modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(20,22,28,.45); }
+.ed-modal[hidden] { display: none; }
+.ed-box { width: 100%; max-width: 620px; padding: 20px; border-radius: 14px; background: #fff; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+.ed-label { margin: 0 0 10px; font-size: 13px; font-weight: 800; color: #6b6f76; }
+.ed-box textarea { width: 100%; padding: 12px 14px; border: 1px solid #d8dadd; border-radius: 9px; font-size: 15px; line-height: 1.6; resize: vertical; }
+.ed-box textarea:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px #ef73001a; }
+.ed-msg { min-height: 1.4em; margin: 8px 0 0; font-size: 13px; color: #c0392b; }
+.ed-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.ed-actions span { flex: 1; }
+.ed-actions button { padding: 9px 14px; border: 1px solid #dddbd6; border-radius: 8px; background: #fff; font-weight: 750; }
+.ed-actions .ed-save { border-color: var(--orange); background: var(--orange); color: #fff; }
+.ed-actions .ed-reset { color: #6b6f76; }
+@media (max-width: 680px) { .ed-bar-hint { display: none; } .ed-bar { gap: 10px; font-size: 13px; } }

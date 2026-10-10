@@ -9,5 +9,5 @@
 {% elif page == 'types' %}
 <div class="info-wrap"><h1>{{ txt('types.title') }}</h1>{% if txt('types.intro') %}<p class="info-intro">{{ txt('types.intro') }}</p>{% endif %}{% for category in categories %}<div class="info-card type-action"><h2>{{ category }}</h2><a class="type-link" href="{{ url_for('report', category=category) }}">{{ txt('types.link') }}</a></div>{% endfor %}</div>
 {% elif page == 'faq' %}
-<div class="info-wrap"><h1>{{ txt('faq.title') }}</h1>{% if txt('faq.intro') %}<p class="info-intro">{{ txt('faq.intro') }}</p>{% endif %}<div class="info-card">{% for item in items('faq') %}<details class="faq-item"><summary>{{ item.q }}</summary>{% if item.a %}<p class="pre-line">{{ item.a }}</p>{% endif %}</details>{% endfor %}</div></div>
+<div class="info-wrap"><h1>{{ txt('faq.title') }}</h1>{% if txt('faq.intro') %}<p class="info-intro">{{ txt('faq.intro') }}</p>{% endif %}<div class="info-card">{% for item in items('faq') %}<details class="faq-item"><summary>{{ item.q }}</summary>{% if item.a %}<p class="pre-line">{{ item.a }}</p>{% endif %}</details>{% endfor %}</div>{{ ed_list('faq') }}</div>
 {% endif %}</main>{% endblock %}

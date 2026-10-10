@@ -2,7 +2,9 @@
 {% block title %}관리자 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="cs-page">
-  <h1 class="cs-title">관리자 홈</h1>
+  <div class="cs-head"><h1 class="cs-title">관리자 홈</h1>
+    <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="1"><button class="cs-btn cs-btn-main" type="submit">✏️ 사이트에서 바로 고치기</button></form>
+  </div>
 
   <section class="cs-stats" aria-label="현황">
     <a href="{{ url_for('admin_reports') }}"><span>최근 7일 새 제보</span><b>{{ stats.new_cases }}</b></a>
