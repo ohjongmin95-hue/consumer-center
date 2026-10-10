@@ -230,7 +230,7 @@ MENU_PAGES = [
     ('reports', '제보 목록'), ('guide', '이용 안내'), ('process', '처리 절차'), ('board', '소비자게시판'),
     ('faq', '자주 묻는 질문'), ('report', '제보하기'), ('lookup', '내 제보 조회'), ('types', '제보 유형'),
     ('home', '홈 (메인 화면)'), ('terms', '이용약관'), ('privacy', '개인정보 처리방침'), ('takedown', '게시중단 요청'),
-    ('custom', '직접 입력한 주소'),
+    ('groups', '공동 대응 (집단 피해)'), ('custom', '직접 입력한 주소'),
 ]
 HOME_BLOCKS = [
     ('hero', '메인 문구 + 제보하기 버튼 + 사람들 일러스트'), ('hero_plain', '메인 문구 + 제보하기 버튼 (일러스트 없이)'), ('latest_reports', '최근 제보 (실시간)'), ('board_posts', '최근 게시판 글'),

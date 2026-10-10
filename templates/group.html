@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}{{ grp['title'] }} | {{ ui('groups.title', '공동 대응') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ grp['summary']|truncate(150, True, '…') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro">
+    <a class="back-link" href="{{ url_for('groups') }}">← {{ ui('groups.title', '공동 대응') }}</a>
+    <p class="public-case-meta"><span class="group-status s-{{ grp['status'] }}">{{ statuses[grp['status']] }}</span></p>
+    <h1 class="page-title">{{ grp['title'] }}</h1>
+    <p>{{ ui('reports.target', '제보 대상') }} · <b>{{ grp['company'] }}</b></p>
+  </div>
+  <div class="group-stats">
+    <div><b>{{ n_members }}</b><span>{{ ui('groups.members', '참여 신청') }}</span></div>
+    <div><b>{{ cases|length }}</b><span>{{ ui('groups.cases', '관련 제보') }}</span></div>
+  </div>
+  {% if grp['summary'] %}<section class="form-panel public-case"><h2>{{ ui('groups.summary', '어떤 피해인가요') }}</h2><p class="public-case-body">{{ grp['summary'] }}</p></section>{% endif %}
+  {% if grp['guide'] %}<section class="form-panel public-case group-guide"><h2>{{ ui('groups.guide', '공동 대응 안내') }}</h2><p class="public-case-body">{{ grp['guide'] }}</p></section>{% endif %}
+  <section class="form-panel public-case">
+    <h2>{{ ui('groups.official', '함께 알아 두면 좋은 공식 절차') }}</h2>
+    <ul class="group-official">
+      <li><b>{{ ui('groups.o1_t', '한국소비자원 집단분쟁조정') }}</b> {{ ui('groups.o1_b', '같은 피해를 입은 소비자가 50명 이상이면 한국소비자원에 집단분쟁조정을 신청할 수 있어요.') }}</li>
+      <li><b>{{ ui('groups.o2_t', '1372 소비자상담센터') }}</b> {{ ui('groups.o2_b', '국번 없이 1372로 상담과 피해구제 신청을 안내받을 수 있어요.') }}</li>
+      <li><b>{{ ui('groups.o3_t', '대한법률구조공단') }}</b> {{ ui('groups.o3_b', '국번 없이 132로 무료 법률상담을 받을 수 있어요.') }}</li>
+    </ul>
+  </section>
+  {% if cases %}<section class="group-cases"><h2>{{ ui('groups.cases', '관련 제보') }}</h2>{% set empty_text = '' %}{% set summary = {'total': cases|length, 'active': 0, 'done': 0} %}<div class="hide-stats">{% include 'report_rows.html' %}</div></section>{% endif %}
+  <section class="form-panel" id="join">
+    <h2>{{ ui('groups.join', '참여 신청') }}</h2>
+    {% if grp['status'] == 'open' %}
+    <p class="hint">{{ ui('groups.join_hint', '같은 피해를 겪으셨다면 신청해 주세요. 신청 내용은 센터 담당자만 보고, 진행 상황이 생기면 연락드려요.') }}</p>
+    <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <div class="pw-pair"><div class="field"><label for="g-name">{{ ui('groups.f_name', '이름') }} <small>*</small></label><input id="g-name" name="name" maxlength="40" required value="{{ request.form.get('name','') }}"></div>
+      <div class="field"><label for="g-phone">{{ ui('groups.f_phone', '휴대폰 번호') }} <small>*</small></label><input id="g-phone" name="phone" inputmode="tel" maxlength="20" required value="{{ request.form.get('phone','') }}"></div></div>
+      <div class="pw-pair"><div class="field"><label for="g-email">{{ ui('groups.f_email', '이메일 (선택)') }}</label><input id="g-email" type="email" name="email" maxlength="120" value="{{ request.form.get('email','') }}"></div>
+      <div class="field"><label for="g-amount">{{ ui('groups.f_amount', '피해 금액 (선택)') }}</label><input id="g-amount" name="amount" maxlength="60" placeholder="{{ ui('groups.f_amount_ph', '예: 약 12만 원') }}" value="{{ request.form.get('amount','') }}"></div></div>
+      <div class="field"><label for="g-detail">{{ ui('groups.f_detail', '겪은 피해') }} <small>*</small></label><textarea id="g-detail" name="detail" maxlength="2000" required placeholder="{{ ui('groups.f_detail_ph', '언제, 무엇을 구매·계약했고 어떤 피해를 겪었는지 짧게 적어 주세요') }}">{{ request.form.get('detail','') }}</textarea></div>
+      <label class="check"><input type="checkbox" name="consent" required><span><b>[{{ ui('report.badge_required', '필수') }}]</b> {{ ui('groups.c_privacy', '공동 대응 안내를 위해 이름·연락처·이메일·피해 내용을 수집·이용하는 데 동의합니다. 공동 대응이 끝나면 1년 뒤 지웁니다.') }}</span></label>
+      <label class="check"><input type="checkbox" name="share_consent"><span><b>[{{ ui('groups.optional', '선택') }}]</b> {{ ui('groups.c_share', '공동 대응을 맡게 되는 변호사·기관에 이름·연락처·피해 내용을 전달하는 데 동의합니다. 동의하지 않아도 참여할 수 있어요.') }}</span></label>
+      <button class="primary" type="submit">{{ ui('groups.submit', '참여 신청하기 →') }}</button>
+    </form>
+    {% else %}<p>{{ ui('groups.closed', '지금은 참여 신청을 받지 않아요.') }}</p>{% endif %}
+  </section>
+  <p class="group-note">{{ ui('groups.note', '소비자제보센터는 피해자를 모으고 공식 절차를 안내해요. 변호사를 소개하거나 수수료를 받지 않아요.') }}</p>
+</div></main>
+{% endblock %}

@@ -9,6 +9,7 @@
       <select name="category" aria-label="{{ ui('reports.all_types', '전체 유형') }}"><option value="">{{ ui('reports.all_types', '전체 유형') }}</option>{% for category in categories %}<option{% if category == selected_category %} selected{% endif %}>{{ category }}</option>{% endfor %}</select>
       <button class="search-button" type="submit">{{ ui('reports.search', '검색') }}</button>
     </form>
+    {% if open_groups %}<div class="group-banner">{% for gr in open_groups %}<a href="{{ url_for('group_page', group_id=gr['id']) }}"><span class="group-status s-open">{{ ui('groups.open_badge', '공동 대응 참여 모집') }}</span> {{ gr['title'] }} <small>{{ gr['company'] }}</small></a>{% endfor %}<a class="group-banner-all" href="{{ url_for('groups') }}">{{ ui('groups.all', '전체 보기 →') }}</a></div>{% endif %}
     {% set empty_text = txt('home.empty_search') if search_query or selected_category else txt('home.empty') %}
     {% include 'report_rows.html' %}
     {% if pages > 1 %}
