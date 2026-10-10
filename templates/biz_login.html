@@ -1,0 +1,18 @@
+{% extends 'biz_base.html' %}
+{% block title %}기업 회원 로그인{% endblock %}
+{% block content %}
+<main class="auth-page">
+  <div class="auth-card">
+    <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
+      <p class="auth-logo nr-logo">{{ txt('site.name') }}</p>
+      <h1 class="auth-title">기업 회원 로그인</h1>
+      <p class="auth-note">우리 회사에 들어온 소비자 제보를 확인하고 직접 답변해요.</p>
+      <input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="아이디" aria-label="아이디" value="{{ request.form.get('login_id','') }}">
+      <input type="password" name="password" maxlength="64" required autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호">
+      <button class="auth-submit" type="submit">로그인</button>
+    </form>
+    <div class="auth-foot"><a href="{{ url_for('biz_signup') }}">기업 회원 가입</a><a href="{{ url_for('home') }}">사이트로 가기</a></div>
+  </div>
+</main>
+{% endblock %}

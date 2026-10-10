@@ -227,7 +227,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-50'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-51'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -263,7 +263,7 @@ def protect():
 @app.after_request
 def headers(resp):
     resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
-    if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company','/login','/signup','/me','/staff','/reporter')):resp.headers['Cache-Control']='no-store'
+    if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company','/login','/signup','/me','/staff','/reporter','/biz')):resp.headers['Cache-Control']='no-store'
     elif session.get('uid') and 'Cache-Control' not in resp.headers:resp.headers['Cache-Control']='private, no-cache'
     return resp
 _ED_TAG=re.compile(r'<[^>]*>')
@@ -368,7 +368,9 @@ def mask_personal(text):
 def public_case(case_id):
     with conn() as db:case=db.execute('SELECT id,category,company,subject,description,request_text,status,created FROM cases WHERE id=? AND public_consent=1 AND published=1',(case_id,)).fetchone()
     if not case:abort(404)
-    return render_template('public_case.html',case=case,company=mask_personal(case['company']),subject=mask_personal(case['subject']),description=mask_personal(case['description']),request_text=mask_personal(case['request_text']))
+    with conn() as db:
+        answers=db.execute("SELECT m.body,m.created,co.name AS company_name FROM messages m JOIN cases c ON c.id=m.case_id LEFT JOIN companies co ON co.id=c.company_id WHERE m.case_id=? AND m.author='기업 답변' AND m.public=1 ORDER BY m.id",(case_id,)).fetchall()
+    return render_template('public_case.html',case=case,answers=answers,company=mask_personal(case['company']),subject=mask_personal(case['subject']),description=mask_personal(case['description']),request_text=mask_personal(case['request_text']))
 
 CUSTOM_SLUG=re.compile(r'^[a-z0-9][a-z0-9-]{0,39}$')
 def page_layout(page):
@@ -403,7 +405,7 @@ def favicon_ico():
 
 @app.route('/robots.txt')
 def robots_txt():
-    lines=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/latest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
+    lines=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /biz','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/latest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
     daum=g.content.get('seo.daum_robots','').strip()
     if daum:lines.insert(0,daum if daum.startswith('#') else '#'+daum)
     return app.response_class('\n'.join(lines)+'\n',mimetype='text/plain')
@@ -423,6 +425,7 @@ def sitemap_xml():
 @app.route('/terms',defaults={'page':'terms'})
 @app.route('/privacy',defaults={'page':'privacy'})
 @app.route('/youth',defaults={'page':'youth'})
+@app.route('/biz/terms',defaults={'page':'biz'})
 def policy_page(page):
     return render_template('policy.html',page=page)
 
@@ -1246,6 +1249,20 @@ def report_detail(case_id):
                 note=request.form.get('internal_note','').strip()
                 if not note or len(note)>3000:abort(400)
                 db.execute('INSERT INTO internal_notes(case_id,note,created,author) VALUES(?,?,?,?)',(case_id,note,now(),actor_name()))
+            elif form=='company':
+                cid=request.form.get('company_id',type=int)
+                if cid:
+                    linked=db.execute("SELECT * FROM companies WHERE id=? AND status='active'",(cid,)).fetchone()
+                    if not linked or not case['share_company']:abort(400)
+                    db.execute('UPDATE cases SET company_id=? WHERE id=?',(cid,case_id));log_case(db,case_id,f"기업 연결: {linked['name']}")
+                    flash(f"{linked['name']}에 연결했어요. 기업 담당자 화면에 바로 보여요.")
+                else:
+                    db.execute('UPDATE cases SET company_id=NULL WHERE id=?',(case_id,));log_case(db,case_id,'기업 연결 해제');flash('기업 연결을 해제했어요.')
+            elif form=='answer_public':
+                mid=request.form.get('message_id',type=int);public=int(request.form.get('public')=='1')
+                msg=db.execute("SELECT id FROM messages WHERE id=? AND case_id=? AND author='기업 답변'",(mid,case_id)).fetchone()
+                if not msg or (public and not case['public_consent']):abort(400)
+                db.execute('UPDATE messages SET public=? WHERE id=?',(public,mid));log_case(db,case_id,'기업 답변 사이트 공개' if public else '기업 답변 공개 취소')
             elif form=='lookup_pw':
                 pw=request.form.get('lookup_pw','')
                 if not LOOKUP_PW_MIN<=len(pw)<=30:flash('조회 비밀번호는 4~30자로 정해 주세요.');return redirect(url_for(ep['case'],case_id=case_id))
@@ -1263,10 +1280,14 @@ def report_detail(case_id):
         notes=db.execute('SELECT * FROM internal_notes WHERE case_id=? ORDER BY id DESC',(case_id,)).fetchall()
         logs=db.execute('SELECT * FROM case_log WHERE case_id=? ORDER BY id DESC LIMIT 50',(case_id,)).fetchall()
         sent=db.execute('SELECT * FROM notifications WHERE case_id=? ORDER BY id DESC LIMIT 30',(case_id,)).fetchall()
+        active_companies=db.execute("SELECT * FROM companies WHERE status='active' ORDER BY name").fetchall()
+        linked=db.execute('SELECT * FROM companies WHERE id=?',(case['company_id'],)).fetchone() if case['company_id'] else None
+    suggested=[c for c in active_companies if company_matches(c,case['company'])]
+    with conn() as db:
         invite=db.execute('SELECT * FROM company_invites WHERE case_id=?',(case_id,)).fetchone()
         staff_names=[r['name'] for r in db.execute('SELECT name FROM staff WHERE active=1 ORDER BY name')]
         neighbors=(db.execute('SELECT id FROM cases WHERE id<? ORDER BY id DESC LIMIT 1',(case_id,)).fetchone(),db.execute('SELECT id FROM cases WHERE id>? ORDER BY id LIMIT 1',(case_id,)).fetchone())
-    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()})
+    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,companies=suggested+[c for c in active_companies if c['id'] not in {x['id'] for x in suggested}],suggested_ids={c['id'] for c in suggested},linked=linked,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()})
 
 def download_file(file_id):
     with conn() as db:f=db.execute('SELECT * FROM attachments WHERE id=?',(file_id,)).fetchone()
@@ -1425,5 +1446,191 @@ def admin_staff():
             return redirect(url_for('admin_staff'))
         members=db.execute('SELECT * FROM staff ORDER BY active DESC,id').fetchall()
     return render_template('admin_staff.html',members=members)
+
+# ---- 기업 회원 (/biz) -------------------------------------------------------
+# 기업이 사업자번호로 가입 → 운영자 승인 → 관리자가 제보에 기업을 연결하면, 그 기업 담당자가
+# '기업 전달'에 동의한 제보만 보고 답변함. 제보자 이름·연락처·첨부파일·내부 메모는 기업에 보이지 않음.
+# 공개 제보의 기업 답변은 운영자가 확인한 뒤에만 사이트에 공개.
+COMPANY_STATUSES={'pending':'승인 대기','active':'승인','rejected':'반려','stopped':'중지'}
+ANSWER_STATUS='조정 진행'  # 기업이 처음 답하면 이 단계로 (이미 이후 단계면 그대로)
+with conn() as db:
+    db.execute('''CREATE TABLE IF NOT EXISTS companies(id INTEGER PRIMARY KEY,name TEXT NOT NULL,biz_no TEXT NOT NULL,aliases TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending',contact_name TEXT NOT NULL,contact_phone TEXT NOT NULL,contact_email TEXT NOT NULL,created TEXT NOT NULL,approved TEXT NOT NULL DEFAULT '')''')
+    db.execute('''CREATE TABLE IF NOT EXISTS company_users(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,login_id TEXT NOT NULL UNIQUE COLLATE NOCASE,pw_hash TEXT NOT NULL,name TEXT NOT NULL,session_ver INTEGER NOT NULL DEFAULT 1,failed INTEGER NOT NULL DEFAULT 0,locked_until TEXT NOT NULL DEFAULT '',last_login TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,FOREIGN KEY(company_id) REFERENCES companies(id))''')
+    if 'company_id' not in {r['name'] for r in db.execute('PRAGMA table_info(cases)')}:db.execute('ALTER TABLE cases ADD COLUMN company_id INTEGER')
+    if 'public' not in {r['name'] for r in db.execute('PRAGMA table_info(messages)')}:db.execute('ALTER TABLE messages ADD COLUMN public INTEGER NOT NULL DEFAULT 0')
+
+def biz_no_ok(digits):
+    # 사업자등록번호 10자리 검증번호 확인 (국세청 규칙)
+    if not re.fullmatch(r'\d{10}',digits):return False
+    d=[int(c) for c in digits];w=[1,3,7,1,3,7,1,3,5]
+    total=sum(a*b for a,b in zip(d,w))+d[8]*5//10
+    return (10-total%10)%10==d[9]
+def fmt_biz_no(digits):return f'{digits[:3]}-{digits[3:5]}-{digits[5:]}' if len(digits or '')==10 else digits
+app.jinja_env.filters['biz_no']=fmt_biz_no
+def norm_company(name):
+    name=re.sub(r'\(주\)|㈜|주식회사|\(유\)|유한회사','',name or '')
+    return re.sub(r'[\s\-_.·,()]','',name).lower()
+def company_names(company):return [company['name']]+[a.strip() for a in (company['aliases'] or '').split(',') if a.strip()]
+def company_matches(company,case_company):
+    target=norm_company(case_company)
+    return bool(target) and any(n and (n in target or target in n) for n in map(norm_company,company_names(company)))
+
+@app.before_request
+def load_biz():
+    g.biz_user=None;g.company=None
+    uid=session.get('biz_uid')
+    if not uid:return
+    with conn() as db:
+        user=db.execute('SELECT * FROM company_users WHERE id=?',(uid,)).fetchone()
+        company=db.execute('SELECT * FROM companies WHERE id=?',(user['company_id'],)).fetchone() if user else None
+    if not user or not company or user['session_ver']!=session.get('biz_v') or company['status'] in ('rejected','stopped'):
+        session.pop('biz_uid',None);session.pop('biz_v',None);return
+    g.biz_user=user;g.company=company
+def biz_only(f):
+    @functools.wraps(f)
+    def wrapped(*a,**kw):
+        if not g.get('biz_user'):return redirect(url_for('biz_login',next=request.full_path.rstrip('?')))
+        return f(*a,**kw)
+    return wrapped
+def biz_active(f):
+    @functools.wraps(f)
+    @biz_only
+    def wrapped(*a,**kw):
+        if g.company['status']!='active':return redirect(url_for('biz_home'))
+        return f(*a,**kw)
+    return wrapped
+
+@app.route('/biz/signup',methods=['GET','POST'])
+def biz_signup():
+    if g.biz_user:return redirect(url_for('biz_home'))
+    if request.method=='GET':return render_template('biz_signup.html')
+    f={k:request.form.get(k,'').strip() for k in ('company_name','biz_no','contact_name','contact_phone','contact_email','login_id')}
+    f['login_id']=f['login_id'].lower();biz=re.sub(r'\D','',f['biz_no']);pw=request.form.get('password','')
+    errors=[]
+    if not 2<=len(f['company_name'])<=60:errors.append('회사 이름을 확인해 주세요.')
+    if not biz_no_ok(biz):errors.append('사업자등록번호 10자리를 확인해 주세요.')
+    if not 1<=len(f['contact_name'])<=30:errors.append('담당자 이름을 적어 주세요.')
+    if not PHONE_INPUT.match(f['contact_phone']):errors.append('담당자 연락처를 확인해 주세요.')
+    if len(f['contact_email'])>120 or not MEMBER_EMAIL_RE.match(f['contact_email']):errors.append('담당자 이메일을 확인해 주세요.')
+    if not LOGIN_ID_RE.match(f['login_id']):errors.append('아이디는 영문 소문자·숫자·밑줄로 4~20자로 정해 주세요.')
+    if not strong_password(pw):errors.append('비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
+    elif pw!=request.form.get('password2',''):errors.append('비밀번호 확인이 일치하지 않아요.')
+    if not request.form.get('agree'):errors.append('기업 회원 이용약관에 동의해 주세요.')
+    with conn() as db:
+        if not errors and db.execute("SELECT 1 FROM companies WHERE biz_no=? AND status!='rejected'",(biz,)).fetchone():
+            errors.append('이미 가입 신청된 사업자등록번호예요. 담당자를 추가하려면 센터로 문의해 주세요.')
+        if not errors and db.execute('SELECT 1 FROM company_users WHERE login_id=?',(f['login_id'],)).fetchone():errors.append('이미 있는 아이디예요.')
+        if errors:
+            for e in errors:flash(e)
+            return render_template('biz_signup.html'),400
+        cur=db.execute('INSERT INTO companies(name,biz_no,contact_name,contact_phone,contact_email,created) VALUES(?,?,?,?,?,?)',(f['company_name'],biz,f['contact_name'],f['contact_phone'],f['contact_email'],now()))
+        uid=db.execute('INSERT INTO company_users(company_id,login_id,pw_hash,name,created) VALUES(?,?,?,?,?)',(cur.lastrowid,f['login_id'],generate_password_hash(pw),f['contact_name'],now())).lastrowid
+    session['biz_uid']=uid;session['biz_v']=1
+    return redirect(url_for('biz_home'))
+
+@app.route('/biz/login',methods=['GET','POST'])
+def biz_login():
+    if g.biz_user:return redirect(url_for('biz_home'))
+    if request.method=='GET':return render_template('biz_login.html')
+    login_id=request.form.get('login_id','').strip().lower()[:40];pw=request.form.get('password','')
+    if too_many_attempts('biz'):
+        flash('로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.');return render_template('biz_login.html'),429
+    with conn() as db:
+        user=db.execute('SELECT * FROM company_users WHERE login_id=?',(login_id,)).fetchone()
+        if user and user['locked_until'] and user['locked_until']>now():
+            flash(f'비밀번호를 여러 번 틀려 잠시 잠겼어요. {LOGIN_LOCK_MINUTES}분 뒤 다시 시도해 주세요.');return render_template('biz_login.html'),429
+        ok=bool(user) and check_password_hash(user['pw_hash'],pw)
+        if user and not ok:
+            failed=user['failed']+1
+            lock=(datetime.datetime.now()+datetime.timedelta(minutes=LOGIN_LOCK_MINUTES)).isoformat(timespec='seconds') if failed>=LOGIN_LOCK_FAILS else ''
+            db.execute('UPDATE company_users SET failed=?,locked_until=? WHERE id=?',(0 if lock else failed,lock,user['id']))
+        company=db.execute('SELECT * FROM companies WHERE id=?',(user['company_id'],)).fetchone() if ok else None
+        if ok and company['status'] in ('rejected','stopped'):
+            flash('이용할 수 없는 기업 계정이에요. 센터로 문의해 주세요.');return render_template('biz_login.html'),403
+        if ok:db.execute("UPDATE company_users SET failed=0,locked_until='',last_login=? WHERE id=?",(now(),user['id']))
+    if not ok:
+        note_attempt('biz');flash('아이디 또는 비밀번호가 맞지 않아요.');return render_template('biz_login.html'),401
+    session['biz_uid']=user['id'];session['biz_v']=user['session_ver']
+    nxt=request.values.get('next','')
+    return redirect(nxt if nxt.startswith('/biz') and '//' not in nxt else url_for('biz_home'))
+
+@app.route('/biz/logout',methods=['POST'])
+def biz_logout():
+    session.pop('biz_uid',None);session.pop('biz_v',None)
+    return redirect(url_for('biz_login'))
+
+@app.route('/biz')
+@biz_only
+def biz_home():
+    if g.company['status']!='active':return render_template('biz_home.html',cases=[],tab='',counts={})
+    tab='done' if request.args.get('tab')=='done' else 'todo'
+    with conn() as db:
+        rows=db.execute("""SELECT c.id,c.receipt,c.industry,c.category,c.subject,c.status,c.created,
+            (SELECT COUNT(*) FROM messages m WHERE m.case_id=c.id AND m.author='기업 답변') AS answers
+            FROM cases c WHERE c.company_id=? AND c.share_company=1 ORDER BY c.id DESC LIMIT 300""",(g.company['id'],)).fetchall()
+    counts={'todo':sum(1 for r in rows if not r['answers']),'done':sum(1 for r in rows if r['answers'])}
+    cases=[r for r in rows if bool(r['answers'])==(tab=='done')]
+    return render_template('biz_home.html',cases=cases,tab=tab,counts=counts)
+
+@app.route('/biz/case/<int:case_id>',methods=['GET','POST'])
+@biz_active
+def biz_case(case_id):
+    with conn() as db:
+        case=db.execute('SELECT id,receipt,industry,category,company,subject,description,request_text,status,created,public_consent,published FROM cases WHERE id=? AND company_id=? AND share_company=1',(case_id,g.company['id'])).fetchone()
+        if not case:abort(404)
+        if request.method=='POST':
+            body=request.form.get('response','').strip()
+            if not body or len(body)>5000:flash('답변을 5,000자 이내로 적어 주세요.');return redirect(url_for('biz_case',case_id=case_id))
+            db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'기업 답변',body,now()))
+            db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,g.company['name']+' '+g.biz_user['name'],'기업 답변 등록',now()))
+            if STATUSES.index(case['status'])<STATUSES.index(ANSWER_STATUS):
+                db.execute('UPDATE cases SET status=? WHERE id=?',(ANSWER_STATUS,case_id))
+                db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,'자동',f"진행 단계 변경: {case['status']} → {ANSWER_STATUS}",now()))
+            notify_later(case_id,'company')
+            flash('답변을 등록했어요. 제보자에게 바로 보여요.');return redirect(url_for('biz_case',case_id=case_id))
+        answers=db.execute("SELECT body,created,public FROM messages WHERE case_id=? AND author='기업 답변' ORDER BY id",(case_id,)).fetchall()
+    return render_template('biz_case.html',case=case,answers=answers)
+
+@app.route('/biz/password',methods=['GET','POST'])
+@biz_only
+def biz_password():
+    if request.method=='POST':
+        cur=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
+        if not check_password_hash(g.biz_user['pw_hash'],cur):flash('지금 비밀번호가 맞지 않아요.')
+        elif not strong_password(pw):flash('새 비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
+        elif pw!=pw2:flash('새 비밀번호 확인이 일치하지 않아요.')
+        else:
+            with conn() as db:db.execute('UPDATE company_users SET pw_hash=?,session_ver=session_ver+1 WHERE id=?',(generate_password_hash(pw),g.biz_user['id']))
+            session['biz_v']=g.biz_user['session_ver']+1;flash('비밀번호를 바꿨어요.');return redirect(url_for('biz_home'))
+    return render_template('biz_password.html')
+
+@app.route('/admin/companies',methods=['GET','POST'])
+@admin_only
+def admin_companies():
+    with conn() as db:
+        if request.method=='POST':
+            cid=request.form.get('id',type=int);action=request.form.get('action')
+            company=db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
+            if not company:abort(404)
+            if action in ('approve','reject','stop','start'):
+                status={'approve':'active','start':'active','reject':'rejected','stop':'stopped'}[action]
+                db.execute('UPDATE companies SET status=?,approved=? WHERE id=?',(status,now() if status=='active' and not company['approved'] else company['approved'],cid))
+                if status!='active':db.execute('UPDATE company_users SET session_ver=session_ver+1 WHERE company_id=?',(cid,))
+                flash(f"{company['name']}: {COMPANY_STATUSES[status]}(으)로 바꿨어요.")
+            elif action=='aliases':
+                aliases=', '.join(a.strip() for a in request.form.get('aliases','').split(',') if a.strip())[:300]
+                db.execute('UPDATE companies SET aliases=? WHERE id=?',(aliases,cid));flash(f"{company['name']} 다른 이름을 저장했어요.")
+            elif action=='reset':
+                pw=request.form.get('password','')
+                if not strong_password(pw):flash('새 비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
+                else:
+                    db.execute("UPDATE company_users SET pw_hash=?,session_ver=session_ver+1,failed=0,locked_until='' WHERE company_id=?",(generate_password_hash(pw),cid))
+                    flash(f"{company['name']} 담당자 비밀번호를 바꿨어요. 직접 알려 주세요.")
+            else:abort(400)
+            return redirect(url_for('admin_companies'))
+        companies=db.execute("""SELECT co.*,(SELECT login_id FROM company_users WHERE company_id=co.id ORDER BY id LIMIT 1) AS login_id,
+            (SELECT COUNT(*) FROM cases WHERE company_id=co.id) AS n_cases
+            FROM companies co ORDER BY CASE co.status WHEN 'pending' THEN 0 WHEN 'active' THEN 1 ELSE 2 END,co.id DESC""").fetchall()
+    return render_template('admin_companies.html',companies=companies,statuses=COMPANY_STATUSES)
 
 if __name__=='__main__':app.run(debug=False)

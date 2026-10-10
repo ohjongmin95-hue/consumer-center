@@ -1,0 +1,38 @@
+{% extends 'biz_base.html' %}
+{% block title %}우리 회사 제보{% endblock %}
+{% block content %}
+<main class="cs-page">
+{% if g.company['status'] != 'active' %}
+  <section class="cs-panel biz-wait">
+    <h1 class="cs-title">가입 신청을 확인하고 있어요</h1>
+    <p>센터가 <b>{{ g.company['name'] }}</b>({{ g.company['biz_no']|biz_no }})의 사업자 정보를 확인한 뒤 승인해요. 승인되면 이 화면에서 우리 회사에 들어온 제보를 볼 수 있어요.</p>
+    <p class="cs-muted">확인을 위해 담당자 연락처({{ g.company['contact_phone'] }})나 이메일로 연락드릴 수 있어요.</p>
+  </section>
+{% else %}
+  <div class="cs-head"><h1 class="cs-title">우리 회사 제보</h1></div>
+  <p class="cs-lead">제보자가 기업 전달에 동의한 제보만 보여요. 답변하면 제보자에게 바로 전달되고, 공개 제보의 답변은 센터 확인 뒤 사이트에 함께 공개될 수 있어요.</p>
+  <nav class="cs-tabs" aria-label="답변 여부">
+    <a href="{{ url_for('biz_home') }}"{% if tab == 'todo' %} class="on"{% endif %}>답변 필요 <b>{{ counts.todo }}</b></a>
+    <a href="{{ url_for('biz_home', tab='done') }}"{% if tab == 'done' %} class="on"{% endif %}>답변 완료 <b>{{ counts.done }}</b></a>
+  </nav>
+  <div class="cs-table-wrap">
+    <table class="cs-table cs-table-list">
+      <thead><tr><th>접수번호</th><th>유형</th><th>제목</th><th>단계</th><th>접수일</th></tr></thead>
+      <tbody>
+      {% for c in cases %}
+      <tr>
+        <td class="mono"><a href="{{ url_for('biz_case', case_id=c['id']) }}">{{ c['receipt'] }}</a></td>
+        <td>{% if c['industry'] %}{{ c['industry'] }}<br>{% endif %}<small>{{ c['category'] }}</small></td>
+        <td class="cs-subject"><a href="{{ url_for('biz_case', case_id=c['id']) }}">{{ c['subject'] }}</a></td>
+        <td><span class="cs-status s{{ status_step(c['status']) }}">{{ c['status'] }}</span></td>
+        <td class="mono">{{ c['created'][:10]|replace('-', '.') }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="cs-empty">{{ '답변이 필요한 제보가 없어요.' if tab == 'todo' else '아직 답변한 제보가 없어요.' }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+</main>
+{% endblock %}

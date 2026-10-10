@@ -148,6 +148,7 @@ SECTIONS += [
         ('policy.privacy', '개인정보 처리방침', _policy('privacy'), {'multiline': True, 'doc': True}),
         ('policy.youth', '청소년보호정책', _policy('youth'), {'multiline': True, 'doc': True}),
         ('policy.takedown', '권리침해 신고 및 임시조치 안내', _policy('takedown'), {'multiline': True, 'doc': True}),
+        ('policy.biz', '기업 회원 이용약관', _policy('biz'), {'multiline': True, 'doc': True}),
     ]),
 ]
 

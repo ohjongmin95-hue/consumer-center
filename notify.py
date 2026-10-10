@@ -9,7 +9,7 @@ from email.message import EmailMessage
 from email.utils import formataddr
 
 ASYNC = True  # 테스트에서는 False로 바꿔 바로 실행
-EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변'}
+EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변', 'company': '기업 답변'}
 
 # 이메일 본문. 카카오 템플릿과 같은 내용 + 조회 주소
 EMAIL_TEXT = {
@@ -22,8 +22,11 @@ EMAIL_TEXT = {
     'message': ('[소비자제보센터] 제보에 센터 답변이 등록됐습니다',
                 '{name}님의 제보에 센터 답변이 등록됐습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
                 "답변 내용은 '내 제보 조회'에서 확인해 주세요.\n{link}"),
+    'company': ('[소비자제보센터] 업체가 제보에 답변했습니다',
+                '{name}님의 제보에 업체가 답변했습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
+                "답변 내용은 '내 제보 조회'에서 확인해 주세요.\n{link}"),
 }
-KAKAO_TEMPLATE_ENV = {'received': 'KAKAO_TPL_RECEIVED', 'status': 'KAKAO_TPL_STATUS', 'message': 'KAKAO_TPL_MESSAGE'}
+KAKAO_TEMPLATE_ENV = {'received': 'KAKAO_TPL_RECEIVED', 'status': 'KAKAO_TPL_STATUS', 'message': 'KAKAO_TPL_MESSAGE', 'company': 'KAKAO_TPL_COMPANY'}
 
 
 def env(key):

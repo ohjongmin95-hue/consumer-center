@@ -59,6 +59,7 @@
         <a href="{{ url_for('policy_page', page='youth') }}">{{ ui('common.ft_youth', '청소년보호정책') }}</a>
         <a class="ft-point" href="{{ url_for('takedown') }}">{{ ui('common.ft_takedown', '권리침해 신고 및 임시조치 안내') }}</a>
         <a href="{{ url_for('lookup') }}">{{ ui('common.ft_lookup', '내 제보 조회') }}</a>
+        <a href="{{ url_for('biz_login') }}">{{ ui('common.ft_biz', '기업 회원') }}</a>
       </nav>
     </div>
     {% set rows = footer_rows() %}

@@ -1,0 +1,29 @@
+{% extends 'biz_base.html' %}
+{% block title %}{{ case['receipt'] }}{% endblock %}
+{% block content %}
+<main class="cs-page cs-narrow">
+  <div class="cs-crumbs"><a href="{{ url_for('biz_home') }}">← 우리 회사 제보</a></div>
+  <div class="cs-case-head">
+    <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ case['category'] }} · 접수 {{ case['created'][:10]|replace('-', '.') }}</p>
+    <h1 class="cs-title">{{ case['subject'] }}</h1>
+    <p class="cs-company">제보에 적힌 업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ status_step(case['status']) }}">{{ case['status'] }}</span>{% if case['public_consent'] and case['published'] %} <span class="cs-tag">공개 제보</span>{% endif %}</p>
+  </div>
+  <section class="cs-panel">
+    <h2>피해 내용</h2>
+    <p class="cs-text">{{ case['description'] }}</p>
+    <h2>제보자가 원하는 해결 방법</h2>
+    <p class="cs-text">{{ case['request_text'] }}</p>
+  </section>
+  <section class="cs-panel" id="answer">
+    <h2>우리 회사 답변</h2>
+    {% for a in answers %}
+    <div class="cs-msg from-company"><div class="cs-msg-head"><b>{{ g.company['name'] }}</b><span>{{ a['created'][:16]|replace('T', ' ') }}{% if a['public'] %} · 사이트에 공개됨{% endif %}</span></div><p>{{ a['body'] }}</p></div>
+    {% else %}<p class="cs-muted">아직 답변하지 않았어요.</p>{% endfor %}
+    <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <textarea name="response" maxlength="5000" required rows="6" placeholder="확인한 내용과 해결 방안을 적어 주세요. 제보자에게 바로 전달돼요." aria-label="답변"></textarea>
+      <button class="cs-btn cs-btn-main" type="submit">{{ '추가 답변 보내기' if answers else '답변 보내기' }}</button>
+    </form>
+    <p class="cs-muted">제보자의 이름·연락처·첨부파일은 개인정보 보호를 위해 보이지 않아요. 연락이 필요하면 답변에 회사 고객센터 연락처를 남겨 주세요.{% if case['public_consent'] %} 공개 제보라서, 센터가 확인한 답변은 사이트의 제보 아래에 함께 공개될 수 있어요.{% endif %}</p>
+  </section>
+</main>
+{% endblock %}
