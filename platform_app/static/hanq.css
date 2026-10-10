@@ -563,3 +563,13 @@ body.v2>.foot2{margin-top:auto}
 .want-box span{color:var(--fg3)}
 .mk.row2 b{white-space:nowrap}
 @media (max-width:420px){.mk.row2{gap:6px}.mk .btn.sm{padding:0 10px;font-size:13px}}
+/* 한큐 홈 첫 화면: 가운데 큰 문구 + 버튼 하나 */
+.hero3{display:flex;flex-direction:column;align-items:center;text-align:center;padding-block:120px 96px}
+.hero3 h1{font-size:64px;line-height:1.25;letter-spacing:-.05em;margin:0;font-weight:800;text-wrap:balance}
+.hero3 h1 em{font-style:normal;color:var(--accent)}
+.hero3 p{margin:20px 0 0;font-size:21px;color:var(--fg2)}
+.hero3 .btn{margin-top:40px}
+.btn.lg{height:60px;padding:0 40px;font-size:18px;border-radius:18px}
+.shead.c{justify-content:center;text-align:center;margin-bottom:36px}
+.tiles.six{max-width:960px;margin:0 auto}
+@media (max-width:760px){.hero3{padding-block:64px 48px}.hero3 h1{font-size:38px}.hero3 p{font-size:17px}.hero3 .btn{width:100%}.shead.c{margin-bottom:24px}}
