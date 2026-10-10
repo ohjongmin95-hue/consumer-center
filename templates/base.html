@@ -75,19 +75,26 @@
 {% if editing() %}
 {# 관리자 편집 모드: 점선으로 표시된 문장을 누르면 바로 고칠 수 있음 #}
 <div class="ed-bar" role="region" aria-label="편집 모드">
-  <span class="ed-bar-title">✏️ 편집 모드</span><span class="ed-bar-hint">점선으로 표시된 문장을 누르면 바로 고칠 수 있어요</span>
+  <span class="ed-bar-title">✏️ 편집 모드</span>
+  <label class="ed-go"><span>페이지 이동</span><select onchange="if (this.value) location.href = this.value" aria-label="고칠 페이지로 이동">
+    <option value="">고칠 페이지 고르기 ▾</option>
+    {% for href, name in [(url_for('home'), '메인 화면'), (url_for('reports'), '제보 목록'), (url_for('info_page', page='guide'), '이용 안내'), (url_for('info_page', page='process'), '처리 절차'), (url_for('info_page', page='faq'), '자주 묻는 질문'), (url_for('info_page', page='types'), '제보 유형'), (url_for('report'), '제보하기'), (url_for('lookup'), '내 제보 조회'), (url_for('board'), '소비자게시판'), (url_for('board_write'), '게시판 글쓰기'), (url_for('signup'), '회원가입'), (url_for('login'), '로그인'), (url_for('account_help'), '아이디·비밀번호 찾기'), (url_for('policy_page', page='terms'), '이용약관'), (url_for('policy_page', page='privacy'), '개인정보 처리방침'), (url_for('policy_page', page='youth'), '청소년보호정책'), (url_for('takedown'), '권리침해 신고')] %}<option value="{{ href }}"{% if request.path == href %} selected{% endif %}>{{ name }}</option>{% endfor %}
+    {% for row in g.lists.get('custom_pages', []) if row.slug %}<option value="{{ url_for('custom_page', slug=row.slug) }}"{% if request.path == url_for('custom_page', slug=row.slug) %} selected{% endif %}>새 페이지: {{ row.title }}</option>{% endfor %}
+  </select></label>
   <a href="{{ url_for('admin_lists') }}">메뉴·항목</a><a href="{{ url_for('admin_content') }}">사이트 문구 전체</a>
   <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="0"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button type="submit">편집 끝내기</button></form>
 </div>
 <div class="ed-modal" hidden><form class="ed-box"><p class="ed-label"></p><textarea rows="3"></textarea><p class="ed-msg" role="status"></p>
-  <div class="ed-actions"><button type="button" class="ed-reset">기본 문구로</button><span></span><button type="button" class="ed-cancel">취소</button><button type="submit" class="ed-save">저장</button></div></form></div>
+  <div class="ed-actions"><button type="button" class="ed-reset">기본 문구로</button><a class="ed-follow" hidden>이 링크로 이동 →</a><span></span><button type="button" class="ed-cancel">취소</button><button type="submit" class="ed-save">저장</button></div></form></div>
 <script>
   (function () {
     var data = null;
     function load() { if (!data) data = JSON.parse((document.getElementById('ed-data') || {}).textContent || '{}'); return data; }
     var modal = document.querySelector('.ed-modal'), area = modal.querySelector('textarea'), label = modal.querySelector('.ed-label'), msg = modal.querySelector('.ed-msg');
     var token = '{{ csrf_token() }}', current = null;
-    function open(key) {
+    var follow = modal.querySelector('.ed-follow');
+    function open(key, link) {
+      follow.hidden = !link; if (link) follow.href = link;
       current = key; var d = load()[key] || {v: '', label: key};
       label.textContent = d.label; area.value = d.v; area.rows = Math.max(d.ml ? 5 : 2, d.v.split('\n').length + 1); msg.textContent = '';
       modal.hidden = false; area.focus();
@@ -104,7 +111,8 @@
       if (e.target.closest('.ed-bar, .ed-modal, .ed-list')) return;
       var el = e.target.closest('[data-k]');
       if (!el) return;
-      e.preventDefault(); e.stopPropagation(); open(el.getAttribute('data-k'));
+      var a = el.closest('a[href]') || el.querySelector('a[href]');
+      e.preventDefault(); e.stopPropagation(); open(el.getAttribute('data-k'), a && a.getAttribute('href').charAt(0) !== '#' ? a.href : '');
     }, true);
     modal.querySelector('form').addEventListener('submit', function (e) { e.preventDefault(); save(false); });
     modal.querySelector('.ed-reset').addEventListener('click', function () { if (confirm('처음 문구로 되돌릴까요?')) save(true); });

@@ -1,15 +1,21 @@
+{% from 'page_blocks.html' import generic %}
+{% set numbered = {'guide_basics': ('purchase-info', ui('guide.nav1', '구매 정보')), 'guide_writing': ('writing-guide', ui('guide.nav2', '작성 방법')), 'guide_evidence': ('photo-guide', ui('guide.nav3', '자료 남기는 방법')), 'guide_topics': ('evidence-guide', ui('guide.nav4', '분야별 준비자료'))} %}
+{% set layout = page_layout('guide') %}
 <div class="info-wrap guide-page">
   <div class="guide-intro">
     {% if txt('guide.eyebrow') %}<span class="eyebrow">{{ txt('guide.eyebrow') }}</span>{% endif %}
     <h1>{{ txt('guide.title') }}</h1>
     {% if txt('guide.intro') %}<p>{{ txt('guide.intro') }}</p>{% endif %}
     <nav class="guide-shortcuts" aria-label="{{ txt('guide.title') }}">
-      <a href="#purchase-info">{{ ui('guide.nav1', '구매 정보') }}</a><a href="#writing-guide">{{ ui('guide.nav2', '작성 방법') }}</a><a href="#photo-guide">{{ ui('guide.nav3', '자료 남기는 방법') }}</a><a href="#evidence-guide">{{ ui('guide.nav4', '분야별 준비자료') }}</a>
+      {% for block in layout if block.kind in numbered %}<a href="#{{ numbered[block.kind][0] }}">{{ numbered[block.kind][1] }}</a>{% endfor %}
     </nav>
   </div>
-
+{% set ns = namespace(n=0) %}
+{% for block in layout %}
+{% if block.kind in numbered %}{% set ns.n = ns.n + 1 %}{% set num = ns.n %}{% endif %}
+{% if block.kind == 'guide_basics' %}
   <section class="guide-section" id="purchase-info" aria-labelledby="purchase-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">01</span><h2 id="purchase-heading">{{ txt('guide.s1_title') }}</h2></div>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="purchase-heading">{{ txt('guide.s1_title') }}</h2></div>
     {% if txt('guide.s1_desc') %}<p class="guide-description">{{ txt('guide.s1_desc') }}</p>{% endif %}
     <dl class="guide-basics">
       {% for item in items('guide_basics') %}<div><dt>{{ item.title }}</dt><dd class="pre-line">{{ item.body }}</dd></div>{% endfor %}
@@ -17,8 +23,9 @@
     <p class="guide-tip">{{ ui_rich('guide.s1_tip', '날짜와 금액은 거래 내용을 확인하는 데 도움이 됩니다. 정확히 기억나지 않으면 ‘○월 초쯤’, ‘약 ○만 원’처럼 표시해 주세요.') }}</p>
   </section>
 
+{% elif block.kind == 'guide_writing' %}
   <section class="guide-section" id="writing-guide" aria-labelledby="writing-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">02</span><h2 id="writing-heading">{{ txt('guide.s2_title') }}</h2></div>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="writing-heading">{{ txt('guide.s2_title') }}</h2></div>
     {% if txt('guide.s2_desc') %}<p class="guide-description">{{ txt('guide.s2_desc') }}</p>{% endif %}
     <ol class="guide-writing-list">
       {% for item in items('guide_writing') %}<li><strong>{{ item.title }}</strong>{% if item.body %}<p class="pre-line">{{ item.body }}</p>{% endif %}</li>{% endfor %}
@@ -30,8 +37,9 @@
     </aside>
   </section>
 
+{% elif block.kind == 'guide_evidence' %}
   <section class="guide-section evidence-visual-guide" id="photo-guide" aria-labelledby="photo-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">03</span><h2 id="photo-heading">{{ txt('guide.s3_title') }}</h2></div>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="photo-heading">{{ txt('guide.s3_title') }}</h2></div>
     <p class="guide-description">{{ ui_rich('guide.s3_desc1', '세 가지만 기억해 주세요. **전체 모습, 문제 부위, 거래 기록.**') }}<br>{{ ui_rich('guide.s3_desc2', '각 자료가 서로 연결되면 어떤 일이 있었는지 이해하기 쉬워집니다.') }}</p>
     <div class="evidence-step-grid">
       <article class="evidence-step">
@@ -53,8 +61,9 @@
     </div>
   </section>
 
+{% elif block.kind == 'guide_topics' %}
   <section class="guide-section" id="evidence-guide" aria-labelledby="evidence-heading">
-    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">04</span><h2 id="evidence-heading">{{ txt('guide.s4_title') }}</h2></div>
+    <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="evidence-heading">{{ txt('guide.s4_title') }}</h2></div>
     {% if txt('guide.s4_desc') %}<p class="guide-description">{{ txt('guide.s4_desc') }}</p>{% endif %}
     <div class="evidence-topics">
       {% for topic in items('guide_topics') %}
@@ -78,8 +87,13 @@
     </aside>
   </section>
 
+{% elif block.kind == 'guide_bottom' %}
   <div class="guide-bottom">
     <div><h2>{{ txt('guide.bottom_title') }}</h2>{% if txt('guide.bottom_text') %}<p>{{ txt('guide.bottom_text') }}</p>{% endif %}</div>
     <a class="primary" href="{{ url_for('report') }}">{{ txt('guide.bottom_button') }}</a>
   </div>
+{% else %}{{ generic(block, 'guide', loop.index0) }}
+{% endif %}
+{% endfor %}
+{{ ed_list('layout_guide') }}
 </div>

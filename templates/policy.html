@@ -10,6 +10,6 @@
     <ol>{% for h in heads %}<li><a href="#sec-{{ loop.index }}">{{ h }}</a></li>{% endfor %}</ol>
   </nav>
   {% endif %}
-  {{ doc('policy.' ~ page) }}
+  <div{{ ed_attr('policy.' ~ page) }}>{{ doc('policy.' ~ page) }}</div>
 </article></main>
 {% endblock %}

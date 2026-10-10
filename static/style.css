@@ -1010,3 +1010,14 @@ body.newsroom { background: #f4f4f2; }
 .ed-actions .ed-save { border-color: var(--orange); background: var(--orange); color: #fff; }
 .ed-actions .ed-reset { color: #6b6f76; }
 @media (max-width: 680px) { .ed-bar-hint { display: none; } .ed-bar { gap: 10px; font-size: 13px; } }
+.page-heading { margin: 40px 0 14px; font-size: 22px; letter-spacing: -.6px; }
+.page-text { margin: 22px 0; padding: 22px 26px; border: 1px solid var(--line); border-radius: 13px; background: #fff; }
+.page-text h2 { margin: 0 0 10px; font-size: 19px; }
+.page-text p { margin: 0; color: #555f6d; line-height: 1.8; }
+.page-notice { margin: 22px 0; }
+.custom-page { margin-bottom: 40px; }
+.ed-go { display: flex; align-items: center; gap: 8px; }
+.ed-go span { color: #c9ccd3; white-space: nowrap; }
+.ed-go select { max-width: 200px; padding: 7px 10px; border: 0; border-radius: 8px; background: #fff; color: #23272e; font-weight: 700; }
+.ed-follow { padding: 9px 12px; border-radius: 8px; color: #c66300; font-weight: 800; white-space: nowrap; }
+@media (max-width: 680px) { .ed-go span { display: none; } .ed-go select { max-width: 130px; } .ed-bar a { display: none; } }

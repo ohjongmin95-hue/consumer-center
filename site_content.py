@@ -204,6 +204,23 @@ LISTS = [
     ('guide_topics', '이용 안내 04 · 분야별 준비자료', '분야 이름을 누르면 펼쳐지는 안내예요.', [('name', '분야 이름', {}), ('heading', '펼쳤을 때 제목', {}), ('steps', '준비 순서 (한 줄에 하나씩)', ML), ('info', '함께 적을 정보', ML), ('materials', '도움이 되는 자료', {})], 0),
 ]
 _BLANK_BLOCK = {'title': '', 'count': '', 'body': '', 'button_label': '', 'button_link': ''}
+
+# 페이지별 섹션 구성: 기본 섹션의 순서를 바꾸거나 빼고, 글 상자·안내 박스를 원하는 곳에 끼워 넣음
+PAGE_SECTIONS = {
+    'guide': ('이용 안내', [('guide_basics', '01 구매 정보 (카드)'), ('guide_writing', '02 작성 방법 (번호 목록 + 예시)'), ('guide_evidence', '03 자료 남기는 방법 (그림 안내)'),
+                           ('guide_topics', '04 분야별 준비자료 (펼침 목록 + 첨부 안내)'), ('guide_bottom', '하단 제보하기 버튼')]),
+    'process': ('처리 절차', [('process_cards', '처리 절차 단계 카드'), ('process_note', '하단 안내 (내 제보 조회 링크)')]),
+    'faq': ('자주 묻는 질문', [('faq_list', '질문 목록')]),
+    'types': ('제보 유형', [('types_list', '제보 유형 목록 (유형별 제보 버튼)')]),
+}
+GENERIC_SECTIONS = [('heading', '소제목'), ('text', '글 상자 (제목 + 내용)'), ('notice', '안내 박스 (제목 + 내용 + 버튼)')]
+for _page, (_title, _sections) in PAGE_SECTIONS.items():
+    LISTS.append(('layout_' + _page, _title + ' 페이지 구성',
+                  '위에서부터 차례로 보여요. 기본 섹션은 순서를 바꾸거나 지울 수 있고(문장은 사이트 화면이나 사이트 문구에서 고쳐요), 소제목·글 상자·안내 박스를 원하는 자리에 넣을 수 있어요. 제목·내용·버튼 칸은 소제목·글 상자·안내 박스에만 쓰여요.',
+                  [('kind', '섹션 종류', {'choices': _sections + GENERIC_SECTIONS}), ('title', '제목', {}), ('body', '내용 (**강조할 말**처럼 별표 두 개로 감싸면 강조돼요)', ML),
+                   ('button_label', '버튼 글자', {}), ('button_link', '버튼 주소 (예: /report 또는 https://...)', {})], 0))
+LISTS.append(('custom_pages', '새 페이지', '원하는 페이지를 직접 만들어요. 주소는 consumerjebo.co.kr/p/영문주소 가 되고, 메뉴에 넣으려면 상단 메뉴에서 "직접 입력한 주소"를 고르고 /p/영문주소 를 적어요. 내용은 약관처럼 줄 맨 앞에 "## "를 쓰면 소제목, "- "를 쓰면 목록이 돼요.',
+              [('slug', '영문 주소 (소문자·숫자·하이픈, 예: about)', {}), ('title', '페이지 제목', {}), ('body', '내용', ML)], 0))
 LIST_DEFAULTS = {
     'menu': [{'label': label, 'page': page, 'url': ''} for _, page, label in LEGACY_NAV],
     'home_blocks': [dict(_BLANK_BLOCK, kind='hero'), dict(_BLANK_BLOCK, kind='latest_reports')],
@@ -214,6 +231,13 @@ LIST_DEFAULTS = {
     'process_steps': [{'title': t, 'icon': i, 'body': b} for t, i, b in PROCESS_STEPS],
     **_LIST_DEFAULTS,
 }
+for _page, (_title, _sections) in PAGE_SECTIONS.items():
+    LIST_DEFAULTS['layout_' + _page] = [dict(_BLANK_BLOCK, kind=k) for k, _ in _sections]
+for _blank in LIST_DEFAULTS.values():
+    for _row in _blank:
+        if 'kind' in _row and _row['kind'] in dict(GENERIC_SECTIONS) | {k: 1 for _, (_, ss) in PAGE_SECTIONS.items() for k, _ in ss}:
+            _row.pop('count', None)
+LIST_DEFAULTS['custom_pages'] = []
 LIST_MAX_ITEMS = 60
 
 # ---- 화면 곳곳의 버튼·안내 문구 ----------------------------------------------

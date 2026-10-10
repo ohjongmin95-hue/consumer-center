@@ -80,7 +80,8 @@ def content_for_request():
     if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
 # 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
 LIST_DISPLAY_FIELDS={'menu':('label',),'home_blocks':('title','body','button_label'),'faq':('q','a'),'process_steps':('title','body'),
-    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'sample_reports':('title','company')}
+    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'sample_reports':('title','company'),
+    'custom_pages':('title',),**{'layout_'+p:('title','body','button_label') for p in site_content.PAGE_SECTIONS}}
 def items(key):
     rows=g.lists.get(key,[])
     if not editing() or key not in LIST_DISPLAY_FIELDS:return rows
@@ -142,7 +143,8 @@ app.jinja_env.globals['editing']=editing
 def ed_list(key):
     # 목록 아래에 "항목 추가·순서 바꾸기" 바로가기 (편집 모드에서만)
     if not editing():return ''
-    return Markup('<a class="ed-list" href="%s">＋ 항목 추가·삭제·순서 바꾸기</a>'%url_for('admin_lists',_anchor='list-'+key))
+    label={'home_blocks':'＋ 메인 화면 섹션 추가·삭제·순서 바꾸기','custom_pages':'＋ 새 페이지 만들기·관리'}.get(key) or ('＋ 이 페이지 섹션 추가·삭제·순서 바꾸기' if key.startswith('layout_') else '＋ 항목 추가·삭제·순서 바꾸기')
+    return Markup('<a class="ed-list" href="%s">%s</a>')%(url_for('admin_lists',_anchor='list-'+key),label)
 app.jinja_env.globals['ed_list']=ed_list
 def txt(key):
     # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
@@ -194,16 +196,16 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-32'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-33'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
     except OSError:version=0
     return url_for('static',filename=filename,v=version)
 app.jinja_env.globals['asset']=asset
-def doc(key):
+def doc(key):return doc_text(g.content.get(key,''))
+def doc_text(text):
     # 약관류 본문: "## "는 소제목, "- "는 목록, 빈 줄은 문단 구분. {운영자} 등은 운영자 정보로 치환.
-    text=g.content.get(key,'')
     # 긴 이름부터 바꿔야 {청소년보호책임자연락처}가 {보호책임자}로 먼저 잘못 바뀌지 않음
     for name,src in sorted(DOC_VARS.items(),key=lambda kv:-len(kv[0])):text=text.replace('{'+name+'}',doc_value(src))
     out=[];items=[];heads=0
@@ -218,6 +220,7 @@ def doc(key):
     flush()
     return Markup('\n').join(out)
 app.jinja_env.globals['doc']=doc
+app.jinja_env.globals['doc_text']=doc_text
 
 def csrf():
     if '_csrf' not in session: session['_csrf']=secrets.token_urlsafe(32)
@@ -330,6 +333,18 @@ def public_case(case_id):
     if not case:abort(404)
     return render_template('public_case.html',case=case,company=mask_personal(case['company']),subject=mask_personal(case['subject']),description=mask_personal(case['description']),request_text=mask_personal(case['request_text']))
 
+CUSTOM_SLUG=re.compile(r'^[a-z0-9][a-z0-9-]{0,39}$')
+def page_layout(page):
+    # 페이지 섹션 구성 (관리자 '메뉴·항목' > ○○ 페이지 구성). 순서·삭제·글 상자 추가.
+    return items('layout_'+page)
+app.jinja_env.globals['page_layout']=page_layout
+@app.route('/p/<slug>')
+def custom_page(slug):
+    for i,row in enumerate(g.lists.get('custom_pages',[])):
+        if row.get('slug')==slug:
+            return render_template('custom_page.html',page=items('custom_pages')[i],index=i,raw=row)
+    abort(404)
+
 @app.route('/guide',defaults={'page':'guide'})
 @app.route('/process',defaults={'page':'process'})
 @app.route('/types',defaults={'page':'types'})
@@ -356,6 +371,7 @@ def sitemap_xml():
     pages=[(url_for(e,_external=True),None) for e in ('home','reports','board','report','takedown')]
     pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq','types')]
     pages+=[(url_for('policy_page',page=p,_external=True),None) for p in ('terms','privacy','youth')]
+    pages+=[(url_for('custom_page',slug=r['slug'],_external=True),None) for r in g.lists.get('custom_pages',[]) if r.get('slug')]
     with conn() as db:
         pages+=[(url_for('public_case',case_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 5000')]
         pages+=[(url_for('board_post',post_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 5000')]
@@ -563,7 +579,10 @@ def admin_lists():
         elif key.endswith('categories') and len({r[first] for r in rows})!=len(rows):error='같은 이름이 두 번 들어갔어요.'
         elif key=='menu' and any(not r['label'] or not r['page'] for r in rows):error='메뉴 이름과 연결할 페이지를 모두 정해 주세요.'
         elif key=='menu' and any(r['page']=='custom' and not SAFE_LINK.match(r['url']) for r in rows):error='직접 입력한 주소는 https:// 또는 / 로 시작해야 해요.'
-        elif key=='home_blocks' and any(r['button_link'] and not SAFE_LINK.match(r['button_link']) for r in rows):error='버튼 주소는 https:// 또는 / 로 시작해야 해요.'
+        elif (key=='home_blocks' or key.startswith('layout_')) and any(r['button_link'] and not SAFE_LINK.match(r['button_link']) for r in rows):error='버튼 주소는 https:// 또는 / 로 시작해야 해요.'
+        elif key=='custom_pages' and any(not CUSTOM_SLUG.match(r['slug']) for r in rows):error='영문 주소는 영어 소문자·숫자·하이픈(-)으로 40자 이내로 적어 주세요.'
+        elif key=='custom_pages' and len({r['slug'] for r in rows})!=len(rows):error='같은 영문 주소가 두 번 들어갔어요.'
+        elif key=='custom_pages' and any(not r['title'] for r in rows):error='페이지 제목을 적어 주세요.'
         elif key=='home_blocks' and any(r['count'] and not r['count'].isdigit() for r in rows):error='보여줄 개수에는 숫자만 넣어 주세요.'
         if error:
             # 입력한 내용을 잃지 않도록 저장하지 않은 상태 그대로 다시 보여 줌.

@@ -728,6 +728,48 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '0'})
         self.assertNotIn('data-k=', admin.get('/guide').get_data(as_text=True))
 
+    def test_page_sections_and_custom_pages(self):
+        guide = self.client.get('/guide').get_data(as_text=True)
+        self.assertLess(guide.index('id="purchase-info"'), guide.index('id="photo-guide"'))
+        admin = self.login_admin()
+        token = self.csrf(admin, '/admin/lists')
+        # 이용 안내: 03을 맨 앞으로, 02는 빼고, 글 상자 추가
+        admin.post('/admin/lists', data={'_csrf': token, 'list': 'layout_guide',
+            'kind': ['guide_evidence', 'text', 'guide_basics', 'guide_topics', 'guide_bottom'],
+            'title': ['', '먼저 읽어 주세요', '', '', ''], 'body': ['', '**사진**이 가장 중요해요', '', '', ''],
+            'button_label': ['', '', '', '', ''], 'button_link': ['', '', '', '', '']})
+        guide = self.client.get('/guide').get_data(as_text=True)
+        self.assertNotIn('id="writing-guide"', guide)
+        self.assertLess(guide.index('id="photo-guide"'), guide.index('먼저 읽어 주세요'))
+        self.assertLess(guide.index('먼저 읽어 주세요'), guide.index('id="purchase-info"'))
+        self.assertIn('<strong class="em">사진</strong>', guide)
+        self.assertRegex(guide, r'guide-number" aria-hidden="true">01</span><h2 id="photo-heading">')
+        self.assertNotIn('href="#writing-guide"', guide)
+        # 처리 절차에 안내 박스 추가
+        admin.post('/admin/lists', data={'_csrf': token, 'list': 'layout_process', 'kind': ['notice', 'process_cards'],
+            'title': ['상담 전화', ''], 'body': ['평일 10시~5시', ''], 'button_label': ['제보하기', ''], 'button_link': ['/report', '']})
+        process = self.client.get('/process').get_data(as_text=True)
+        self.assertLess(process.index('상담 전화'), process.index('class="process-cards"'))
+        bad = admin.post('/admin/lists', data={'_csrf': token, 'list': 'layout_faq', 'kind': ['notice'], 'title': ['x'], 'body': [''], 'button_label': ['go'], 'button_link': ['javascript:alert(1)']})
+        self.assertEqual(bad.status_code, 400)
+        # 새 페이지
+        admin.post('/admin/lists', data={'_csrf': token, 'list': 'custom_pages', 'slug': ['about'], 'title': ['소보루 소개'], 'body': ['## 우리는\n- 소비자 편에 섭니다']})
+        page = self.client.get('/p/about').get_data(as_text=True)
+        self.assertIn('<h1>소보루 소개</h1>', page)
+        self.assertIn('<h2 id="sec-1">우리는</h2>', page)
+        self.assertIn('<li>소비자 편에 섭니다</li>', page)
+        self.assertEqual(self.client.get('/p/none').status_code, 404)
+        self.assertIn('/p/about', self.client.get('/sitemap.xml').get_data(as_text=True))
+        self.assertEqual(admin.post('/admin/lists', data={'_csrf': token, 'list': 'custom_pages', 'slug': ['About Us'], 'title': ['x'], 'body': ['y']}).status_code, 400)
+        # 편집 모드: 페이지 이동 목록과 섹션 바로가기
+        admin.post('/admin/edit-mode', data={'_csrf': self.csrf(admin, '/admin'), 'on': '1'})
+        edit = admin.get('/p/about').get_data(as_text=True)
+        self.assertIn('고칠 페이지 고르기', edit)
+        self.assertIn('새 페이지: 소보루 소개', edit)
+        self.assertIn('data-k="list:custom_pages:0:body"', edit)
+        self.assertIn('이 페이지 섹션 추가', admin.get('/process').get_data(as_text=True))
+        self.assertIn('data-k="list:layout_process:0:title"', admin.get('/process').get_data(as_text=True))
+
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
         token = self.csrf(self.client, '/report')
