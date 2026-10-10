@@ -53,7 +53,7 @@ SECTIONS = [
         ('operator.youth_officer', '청소년보호책임자 (비우면 개인정보 보호책임자와 같음)', '', OPT),
         ('operator.youth_contact', '청소년보호책임자 연락처 (비우면 개인정보 보호책임자 연락처)', '', OPT),
         ('operator.notice', '민간 운영 안내', '소비자제보센터는 민간이 운영하는 소비자 제보 창구로, 국가기관이나 한국소비자원과 관련이 없습니다. 공식 상담과 피해구제는 1372 소비자상담센터(국번 없이 1372)를 이용해 주세요.', OPT_ML),
-        ('footer.text', '저작권 문구 (맨 아래)', '© SOBORU. All rights reserved.', ML),
+        ('footer.text', '저작권 문구 (맨 아래)', '© SOBORU All rights reserved.', ML),
     ]),
     ('home', '메인 화면', [
         ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),
