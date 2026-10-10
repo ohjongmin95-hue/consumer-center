@@ -38,7 +38,7 @@ list_defaults.json   이용 안내 페이지 목록의 기본값
 policies/            이용약관·개인정보 처리방침·청소년보호·권리침해 안내 기본 문구
 templates/           화면(HTML). base.html = 공통 머리·바닥글
 static/style.css     디자인 전체
-static/img/          메인 일러스트 (tools/make_hero_art.py로 생성)
+static/img/          메인 일러스트(tools/make_hero_art.py), 이용 안내 만화 3컷(tools/guide_illustrations.py)
 tests/test_site.py   자동 테스트 (임시 DB 사용, 실제 데이터에 영향 없음)
 deploy/setup.sh      새 서버 설치 스크립트
 deploy/update.sh     코드 업데이트 스크립트
@@ -183,6 +183,7 @@ sudo systemctl restart soboru     # 적용
 ## 자주 하는 작업
 
 - **메인 일러스트 다시 만들기**: `python3 tools/make_hero_art.py` → `static/img/`의 SVG가 바뀝니다 (방문자 브라우저 캐시는 자동으로 갱신)
+- **이용 안내 만화 3컷 다시 그리기**: `python3 tools/guide_illustrations.py` → `static/img/guide-cut1~3.svg`가 바뀝니다. 컷 아래 문장, 단계 카드, 업종별 안내는 사이트 편집 모드나 **구성 바꾸기 > 이용 안내 · …**에서 고칩니다.
 - **약관 기본 문구 고치기**: `policies/*.txt` 수정. 단, 관리자에서 직접 고쳐 저장한 적이 있으면 그 내용이 우선합니다
 - **디자인 수정**: `static/style.css`. 수정 후 `app.py`의 `css_v` 숫자를 올리면 방문자에게 바로 반영됩니다
 - **수정 후 확인**: `python3 -m unittest discover -s tests` 가 모두 OK인지 확인한 뒤 올립니다

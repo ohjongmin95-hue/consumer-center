@@ -1149,3 +1149,51 @@ fieldset.field legend { padding: 0; margin-bottom: 9px; font-weight: 750; }
 @media (max-width: 680px) { .field-row, .field-row-3 { grid-template-columns: 1fr; } }
 .ed-bar .ed-bar-out { background: transparent; border: 1px solid #4a5160; color: #e7e9ee; }
 .form-group-title + .field { margin-top: 14px; }
+
+/* 이용 안내 (단계 카드 · 만화 3컷 · 업종 탭) */
+.gd-section { margin-top: 52px; }
+.gd-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 18px; font-size: 22px; letter-spacing: -.7px; }
+.gd-head i { font-style: normal; color: #ef7300; font-size: 15px; font-weight: 850; }
+.gd-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.gd-steps li { position: relative; background: #fff; border: 1px solid #e6e7e8; border-radius: 16px; padding: 24px 12px 20px; text-align: center; }
+.gd-steps li + li::before { content: ''; position: absolute; left: -12px; top: 50%; width: 9px; height: 9px; border-top: 2px solid #d0d3d8; border-right: 2px solid #d0d3d8; transform: translateY(-50%) rotate(45deg); }
+.gd-ic { width: 80px; height: 80px; margin: 0 auto 14px; border-radius: 50%; background: #f5f4f1; display: grid; place-items: center; color: #2b3a55; }
+.gd-ic .o { stroke: #ef7300; }
+.gd-steps b { display: block; font-size: 13px; color: #ef7300; font-weight: 850; margin-bottom: 3px; }
+.gd-steps strong { font-size: 17px; letter-spacing: -.4px; }
+.gd-comic { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.gd-comic figure { margin: 0; background: #fff; border: 1px solid #e6e7e8; border-radius: 16px; overflow: hidden; }
+.gd-comic img { display: block; width: 100%; height: auto; }
+.gd-comic figcaption { padding: 16px 18px 18px; }
+.gd-comic strong { display: block; font-size: 17px; letter-spacing: -.4px; }
+.gd-comic small { display: block; color: #d06500; font-weight: 750; font-size: 13.5px; margin: 3px 0 10px; }
+.gd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gd-chips li { font-size: 13px; padding: 5px 10px; border-radius: 999px; background: #f3f4f5; color: #4b525c; font-weight: 600; }
+.gd-tips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.gd-tips div { padding: 14px 16px; border-left: 3px solid #ef7300; background: #fff; border-radius: 0 10px 10px 0; }
+.gd-tips b { display: block; font-size: 14.5px; }
+.gd-tips span { font-size: 13.5px; color: #6b727c; }
+.gd-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.gd-tabs button { border: 1px solid #dcdee1; background: #fff; border-radius: 999px; padding: 8px 15px; font-size: 14px; font-weight: 650; color: #4b525c; }
+.gd-tabs button:hover { border-color: #ef7300; }
+.gd-tabs button.on { background: #202630; border-color: #202630; color: #fff; }
+.gd-topic { display: grid; grid-template-columns: 1.3fr 1fr; background: #fff; border: 1px solid #e6e7e8; border-radius: 16px; overflow: hidden; }
+.gd-topic[hidden] { display: none; }
+.gd-topic > div { padding: 24px 26px; }
+.gd-topic > div + div { background: #fbfaf8; border-left: 1px solid #eeece8; }
+.gd-topic em { font-style: normal; font-size: 12.5px; font-weight: 850; color: #d06500; }
+.gd-topic h3 { margin: 4px 0 14px; font-size: 19px; letter-spacing: -.5px; }
+.gd-points { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+.gd-points li { display: flex; gap: 9px; font-size: 15px; color: #3d444d; line-height: 1.5; }
+.gd-points li::before { content: ''; flex: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 5px; border: 1px solid #f5c99c; background: #fff4e8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.5l2.5 2.5L13 6.5' fill='none' stroke='%23ef7300' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 18px no-repeat; }
+.gd-topic .gd-chips { margin-top: 10px; }
+.gd-topic .gd-chips li { background: #fff; border: 1px solid #e3e5e8; }
+.gd-foot { margin: 12px 0 0; font-size: 13.5px; color: #7a818b; }
+@media (max-width: 760px) {
+  .gd-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .gd-steps li + li::before { display: none; }
+  .gd-comic, .gd-tips, .gd-topic { grid-template-columns: 1fr; }
+  .gd-topic > div + div { border-left: 0; border-top: 1px solid #eeece8; }
+  .gd-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
+  .gd-tabs button { flex: none; }
+}

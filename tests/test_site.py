@@ -1,5 +1,5 @@
 """Exercise the live templates and existing report flow using an isolated database."""
-import hashlib
+import json, hashlib
 import importlib.util
 import os
 from pathlib import Path
@@ -44,6 +44,13 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             for table in ('internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings'):
                 db.execute('DELETE FROM ' + table)
+
+    def old_guide(self):
+        # 예전 이용 안내 구성(구매 정보·작성 방법·자료·분야별)으로 되돌려 편집 기능을 시험
+        kinds = ['guide_basics', 'guide_writing', 'guide_evidence', 'guide_topics', 'guide_bottom']
+        rows = [{'kind': k, 'title': '', 'body': '', 'button_label': '', 'button_link': ''} for k in kinds]
+        with self.site.conn() as db:
+            db.execute("INSERT OR REPLACE INTO site_lists(key,value,updated) VALUES('layout_guide',?,'x')", (json.dumps(rows),))
 
     def csrf(self, client, path):
         response = client.get(path)
@@ -366,6 +373,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('noindex', admin.get('/admin').get_data(as_text=True))
 
     def test_admin_list_editor(self):
+        self.old_guide()
         self.assertEqual(self.client.get('/admin/lists').status_code, 302)
         guide = self.client.get('/guide').get_data(as_text=True)
         self.assertEqual(guide.count('class="evidence-topic"'), 10)
@@ -672,6 +680,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(new.headers['Location'], '/admin')
 
     def test_every_screen_text_is_editable(self):
+        self.old_guide()
         admin = self.login_admin()
         page = admin.get('/admin/content').get_data(as_text=True)
         for key in ('report.submit', 'common.login', 'board.write_btn', 'member.signup_btn', 'msg.welcome', 'guide.u1'):
@@ -690,6 +699,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('제보 접수하기 ↗', self.client.get('/report').get_data(as_text=True))
 
     def test_edit_mode_on_the_site(self):
+        self.old_guide()
         admin = self.login_admin()
         self.assertNotIn('data-k=', admin.get('/guide').get_data(as_text=True))
         token = self.csrf(admin, '/admin')
@@ -734,6 +744,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('data-k=', admin.get('/guide').get_data(as_text=True))
 
     def test_page_sections_and_custom_pages(self):
+        self.old_guide()
         guide = self.client.get('/guide').get_data(as_text=True)
         self.assertLess(guide.index('id="purchase-info"'), guide.index('id="photo-guide"'))
         admin = self.login_admin()
@@ -807,6 +818,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.post('/admin/list-remove', data={'_csrf': t, 'list': 'layout_guide', 'index': 0}).status_code, 302)
 
     def test_delete_text_while_editing(self):
+        self.old_guide()
         admin = self.login_admin()
         admin.post('/admin/edit-mode', data={'_csrf': self.csrf(admin, '/admin'), 'on': '1'})
         token = self.csrf(admin, '/report')
@@ -826,6 +838,26 @@ class SiteTest(unittest.TestCase):
         self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:guide_basics:0:body', 'delete': '1'}).get_json()['ok'])
         self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:guide_basics:0:title', 'delete': '1'}).status_code, 400)
         self.assertIn('"del": "item"', admin.get('/guide').get_data(as_text=True))
+
+    def test_new_guide_page(self):
+        guide = self.client.get('/guide').get_data(as_text=True)
+        self.assertIn('한눈에 보는 제보 방법', guide)
+        self.assertEqual(guide.count('class="gd-steps"'), 1)
+        self.assertEqual(guide.count('img/guide-cut'), 3)
+        self.assertEqual(guide.count('role="tabpanel"'), 12)
+        self.assertIn('약속한 요금과 청구된 요금을 비교할 수 있게', guide)
+        self.assertEqual(self.client.get('/static/img/guide-cut1.svg').status_code, 200)
+        admin = self.login_admin()
+        admin.post('/admin/edit-mode', data={'_csrf': self.csrf(admin, '/admin'), 'on': '1'})
+        page = admin.get('/guide').get_data(as_text=True)
+        self.assertIn('data-k="list:guide_industries:0:points"', page)
+        self.assertIn('data-k="list:guide_steps:0:title"', page)
+        token = self.csrf(admin, '/report')
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'guide.c2_k4', 'delete': '1'}).get_json()['ok'])
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:guide_industries:0:focus', 'value': '요금 비교가 핵심'}).get_json()['ok'])
+        public = self.client.get('/guide').get_data(as_text=True)
+        self.assertNotIn('원하는 해결</li>', public)
+        self.assertIn('요금 비교가 핵심', public)
 
     def test_admin_session_ends_properly(self):
         admin = self.login_admin()

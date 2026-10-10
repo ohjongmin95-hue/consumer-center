@@ -50,6 +50,10 @@ with conn() as db:
         if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS site_lists(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
+    # 이용 안내 개편: 예전 기본 구성 그대로 저장돼 있으면 지워서 새 기본 구성(단계 카드·만화 3컷·업종 탭)을 쓰게 함
+    row=db.execute("SELECT value FROM site_lists WHERE key='layout_guide'").fetchone()
+    if row and [b.get('kind') for b in json.loads(row[0])]==['guide_basics','guide_writing','guide_evidence','guide_topics','guide_bottom'] and not any(b.get(k) for b in json.loads(row[0]) for k in ('title','body','button_label','button_link')):
+        db.execute("DELETE FROM site_lists WHERE key='layout_guide'")
     db.execute("CREATE TABLE IF NOT EXISTS takedown_requests(id INTEGER PRIMARY KEY,requester TEXT NOT NULL,contact TEXT NOT NULL,target TEXT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT '접수',admin_note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
 TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','기각','처리 완료']
 
@@ -84,7 +88,7 @@ def content_for_request():
     if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
 # 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
 LIST_DISPLAY_FIELDS={'menu':('label',),'home_blocks':('title','body','button_label'),'faq':('q','a'),'process_steps':('title','body'),
-    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'sample_reports':('title','company'),
+    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'guide_steps':('title',),'guide_industries':('focus',),'sample_reports':('title','company'),
     'custom_pages':('title',),'report_consents':('title','body','agree'),**{'layout_'+p:('title','body','button_label') for p in site_content.PAGE_SECTIONS}}
 def items(key):
     rows=g.lists.get(key,[])
@@ -117,6 +121,15 @@ def emph(text):
     out=EMPHASIS.sub(lambda m:'\0'+m.group(1)+'\1',(text or '').replace('\0','').replace('\1',''))
     html=str(escape(out)).replace('\0','<strong class="em">').replace('\1','</strong>').replace('\n','<br>')
     return Markup(html)
+GUIDE_ICONS={  # 이용 안내 단계 카드 아이콘 (주황 선이 포인트)
+    'write':'<rect x="12" y="6" width="22" height="36" rx="4"/><path d="M17 15h12M17 21h12M17 27h7"/><path class="o" d="M30 34l9-9 3 3-9 9h-3z"/>',
+    'attach':'<rect x="6" y="12" width="28" height="24" rx="3"/><circle cx="14" cy="20" r="3"/><path d="M6 32l9-8 6 5 5-4 8 7"/><path class="o" d="M38 14v14a5 5 0 0 1-10 0V12a3 3 0 0 1 6 0v14"/>',
+    'ticket':'<path d="M6 14h36v6a4 4 0 0 0 0 8v6H6v-6a4 4 0 0 0 0-8z"/><path d="M18 14v20" stroke-dasharray="2 4"/><path class="o" d="M24 21h12M24 27h8"/>',
+    'search':'<circle cx="21" cy="21" r="12"/><path d="M30 30l10 10"/><path class="o" d="M15 21l4 4 8-8"/>',
+    'chat':'<path d="M7 9h34v22H20l-9 8v-8H7z"/><path class="o" d="M15 18h18M15 24h11"/>',
+    'check':'<circle cx="24" cy="24" r="17"/><path class="o" d="M16 24l6 6 11-12"/>',
+}
+app.jinja_env.globals['guide_icon']=lambda name:Markup('<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">%s</svg>'%GUIDE_ICONS.get(name,GUIDE_ICONS['write']))
 STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']
 app.jinja_env.globals['step_icon']=lambda item,i:item.get('icon') or STEP_ICON_ORDER[i%len(STEP_ICON_ORDER)]
 # ---- 사이트에서 바로 고치기 (관리자 편집 모드) ----------------------------------
@@ -210,7 +223,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-42'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-43'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
