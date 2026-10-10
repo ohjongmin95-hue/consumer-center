@@ -15,6 +15,9 @@
   <meta property="og:url" content="{{ request.base_url }}">
   {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
+  <link rel="icon" href="{{ url_for('favicon_ico') }}" sizes="48x48">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg', v=css_v) }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png', v=css_v) }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
 </head>
 <body>

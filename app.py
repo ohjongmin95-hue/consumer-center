@@ -393,6 +393,11 @@ def verification_code(key):
     return (found.group(1) if found else value).strip()
 app.jinja_env.globals['verification_code']=verification_code
 
+@app.route('/favicon.ico')
+def favicon_ico():
+    # 브라우저·검색엔진이 주소 맨 앞에서 바로 찾는 탭 아이콘
+    return app.send_static_file('favicon.ico')
+
 @app.route('/robots.txt')
 def robots_txt():
     lines=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/latest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
