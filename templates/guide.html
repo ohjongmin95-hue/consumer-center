@@ -58,7 +58,8 @@
       {% set raw = g.lists.get('guide_industries', [])[loop.index0] %}
       {% set must_raw = raw.must or (raw.points or '').replace('\n', ', ') %}
       <article class="gd-ind" data-ind="{{ loop.index }}">
-        <header><span class="gd-ind-ic" aria-hidden="true">{{ industry_icon(x.icon or x.image) }}</span><div><h3>{{ x.name }}</h3>{% if x.examples %}<small>{{ x.examples }}</small>{% endif %}</div></header>
+        {% set art = raw.icon or raw.image %}{% if art in industry_art %}<img src="{{ url_for('static', filename='img/guide-ind-%s.svg' % art, v=css_v) }}" alt="" width="330" height="200" loading="lazy">{% endif %}
+        <header><h3>{{ x.name }}</h3>{% if x.examples %}<small>{{ x.examples }}</small>{% endif %}</header>
         {% if must_raw %}<p class="gd-ind-label">{{ ui('guide.ind_must', '꼭 적어 주세요') }}</p>
         <ul class="gd-must"{{ ed_attr('list:guide_industries:%d:must' % loop.index0, must_raw) }}>{% for m in must_raw.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul>{% endif %}
         {% if x.materials %}<p class="gd-ind-label">{{ ui('guide.ind_materials', '있으면 좋은 자료') }}</p>

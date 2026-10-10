@@ -1179,13 +1179,12 @@ fieldset.field legend { padding: 0; margin-bottom: 9px; font-weight: 750; }
 .gd-filter button:hover { border-color: #ef7300; }
 .gd-filter button.on { background: #202630; border-color: #202630; color: #fff; }
 .gd-inds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
-.gd-ind { background: #fff; border: 1px solid #e6e7e8; border-top: 3px solid #ef7300; border-radius: 14px; padding: 18px 18px 16px; }
+.gd-ind { background: #fff; border: 1px solid #e6e7e8; border-radius: 14px; padding: 18px 18px 16px; overflow: hidden; }
 .gd-ind[hidden] { display: none; }
-.gd-ind header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.gd-ind-ic { flex: none; width: 46px; height: 46px; border-radius: 12px; background: #fff4e8; color: #2b3a55; display: grid; place-items: center; }
-.gd-ind-ic .o { stroke: #ef7300; }
+.gd-ind > img { display: block; width: calc(100% + 36px); height: auto; margin: -18px -18px 14px; border-radius: 11px 11px 0 0; }
+.gd-ind header { margin-bottom: 4px; }
 .gd-ind h3 { margin: 0; font-size: 17px; letter-spacing: -.5px; }
-.gd-ind header small { display: block; margin-top: 2px; font-size: 12.5px; color: #8a9099; line-height: 1.4; }
+.gd-ind header small { display: block; margin-top: 3px; font-size: 12.5px; color: #8a9099; line-height: 1.4; }
 .gd-ind-label { margin: 12px 0 6px; font-size: 12.5px; font-weight: 850; color: #d06500; }
 .gd-ind-label + .gd-chips { margin-top: 0; }
 .gd-must { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
