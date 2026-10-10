@@ -852,7 +852,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<li>계정 아이디와 서버</li>', guide)
         self.assertEqual(self.client.get('/static/img/guide-cut1.svg').status_code, 200)
         self.assertIn('rel="apple-touch-icon"', guide)
-        for path in ('/favicon.ico', '/static/favicon.svg', '/static/apple-touch-icon.png'):
+        self.assertIn('<meta property="og:image" content="http://localhost/static/og-image.png', guide)
+        for path in ('/favicon.ico', '/static/favicon.svg', '/static/apple-touch-icon.png', '/static/og-image.png'):
             resp = self.client.get(path); self.assertEqual(resp.status_code, 200); resp.close()
         admin = self.login_admin()
         admin.post('/admin/edit-mode', data={'_csrf': self.csrf(admin, '/admin'), 'on': '1'})
