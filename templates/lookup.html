@@ -5,18 +5,12 @@
   <ul class="lookup-list">{% for r in found %}<li><form method="post" action="{{ url_for('lookup_pick', case_id=r['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit"><b>{{ r['subject'] }}</b><span>{{ r['receipt'] }} · {{ r['created'][:10] }} · {{ r['status'] }}</span></button></form></li>{% endfor %}</ul>
 </div>
 {% else %}
-<div class="form-panel"><form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="mode" value="phone">
-  <div class="field"><label for="l-phone">{{ ui('lookup.f_phone', '휴대폰 번호') }}</label><input id="l-phone" name="phone" inputmode="tel" autocomplete="tel" required placeholder="010-1234-5678" value="{{ request.form.get('phone','') if request.form.get('mode') == 'phone' else '' }}"></div>
+<div class="form-panel"><form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="field"><label for="l-phone">{{ ui('lookup.f_phone', '휴대폰 번호') }}</label><input id="l-phone" name="phone" inputmode="tel" autocomplete="tel" required placeholder="010-1234-5678" value="{{ request.form.get('phone','') }}"></div>
   <div class="field"><label for="l-pw">{{ ui('lookup.f_pw', '조회 비밀번호') }}</label><input id="l-pw" type="password" name="password" required autocomplete="current-password"></div>
   <button class="primary" type="submit">{{ ui('lookup.submit', '진행 상황 조회 →') }}</button>
 </form>
 <p class="hint lookup-forgot">{{ ui('lookup.forgot', '비밀번호가 기억나지 않으면 센터로 문의해 주세요. 본인 확인 뒤 새 비밀번호를 정해 드려요.') }}</p>
-<details class="lookup-legacy"{% if legacy %} open{% endif %}><summary>{{ ui('lookup.legacy', '조회 코드를 받으셨나요? (예전 제보)') }}</summary>
-  <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="mode" value="code">
-    <div class="field"><label for="l-receipt">{{ ui('done.receipt', '접수번호') }}</label><input id="l-receipt" name="receipt" required placeholder="CJ-261008-XXXXXX"></div>
-    <div class="field"><label for="l-code">{{ ui('done.code', '비밀 조회 코드') }}</label><input id="l-code" type="password" name="code" required></div>
-    <button class="secondary" type="submit">{{ ui('lookup.submit_code', '조회 코드로 열기') }}</button>
-  </form></details>
 </div>
 {% endif %}
 </div></main>{% endblock %}

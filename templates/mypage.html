@@ -22,7 +22,7 @@
       <span class="me-row-main"><b>{{ c['subject'] }}</b><span class="meta">{{ c['receipt'] }} · {{ c['category'] }} · {{ c['company'] }} · {{ c['created'][:10]|replace('-', '.') }}{% if not (c['public_consent'] and c['published']) %} · 🔒 {{ ui('member.private', '비공개') }}{% endif %}</span></span>
       {{ bar(c['status']) }}
     </a>
-    {% else %}<p class="me-empty">{{ ui('member.no_reports', '로그인한 상태로 접수한 제보가 여기에 모여요. 로그인 전에 접수한 제보는') }} <a href="{{ url_for('lookup') }}">{{ ui('member.no_reports_link', '접수번호로 조회') }}</a>{{ ui('member.no_reports_tail', '할 수 있어요.') }}</p>{% endfor %}
+    {% else %}<p class="me-empty">{{ ui('member.no_reports', '로그인한 상태로 접수한 제보가 여기에 모여요. 로그인 전에 접수한 제보는') }} <a href="{{ url_for('lookup') }}">{{ ui('member.no_reports_link', '내 제보 조회') }}</a>{{ ui('member.no_reports_tail', '에서 휴대폰 번호와 조회 비밀번호로 볼 수 있어요.') }}</p>{% endfor %}
   </section>
 
   <section class="form-panel me-section" id="my-posts">
@@ -53,7 +53,7 @@
       <form class="me-form" method="post" action="{{ url_for('withdraw') }}" onsubmit="return confirm({{ ui_text('member.w_ask', '정말 탈퇴할까요? 되돌릴 수 없어요.')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <ul class="me-notice">
           <li>{{ ui('member.w1', '아이디, 닉네임, 이메일 등 회원 정보는 바로 지워져요.') }}</li>
-          <li>{{ ui('member.w2', '회원으로 접수한 제보는 지워지지 않고, 접수번호와 조회 코드로 계속 확인할 수 있어요.') }}</li>
+          <li>{{ ui('member.w2', '회원으로 접수한 제보는 지워지지 않고, 휴대폰 번호와 조회 비밀번호로 계속 확인할 수 있어요.') }}</li>
           <li>{{ ui('member.w3', '게시판 글·댓글을 남겨 두면 작성자가 “탈퇴한 회원”으로 바뀌고, 더는 직접 지울 수 없어요.') }}</li>
         </ul>
         <label class="check"><input type="checkbox" name="delete_posts" checked><span>{{ ui('member.w_delete_posts', '내가 쓴 게시판 글과 댓글도 함께 지울게요.') }}</span></label>

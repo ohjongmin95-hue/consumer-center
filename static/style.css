@@ -1199,9 +1199,6 @@ fieldset.field legend { padding: 0; margin-bottom: 9px; font-weight: 750; }
 /* 제보 조회 비밀번호 */
 .pw-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .lookup-forgot { margin-top: 16px; }
-.lookup-legacy { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
-.lookup-legacy summary { cursor: pointer; font-size: 14px; font-weight: 700; color: #68707b; }
-.lookup-legacy form { margin-top: 16px; }
 .lookup-h { margin: 0 0 14px; font-size: 19px; }
 .lookup-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .lookup-list button { width: 100%; text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; cursor: pointer; }

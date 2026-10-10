@@ -320,6 +320,9 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(no_choice.status_code, 400)
 
     def test_lookup_with_password(self):
+        # 예전 '조회 코드' 안내는 어디에도 안 남음
+        for path in ('/lookup', '/guide', '/process', '/report', '/terms', '/privacy', '/faq'):
+            self.assertNotIn('조회 코드', self.client.get(path).get_data(as_text=True), path)
         base = {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-5555-1234',
                 'request_text': 'D', 'consent': 'on', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
         # 비밀번호가 없거나 확인이 다르면 접수 안 됨
