@@ -7,6 +7,7 @@
 <div class="info-wrap{% if page == 'process' %} process-page{% endif %}">
   <h1>{{ txt(page ~ '.title') }}</h1>{% if txt(page ~ '.intro') %}<p class="info-intro">{{ txt(page ~ '.intro') }}</p>{% endif %}
   {% for block in page_layout(page) %}
+  {{ ed_remove('layout_' ~ page, loop.index0) }}
   {% if block.kind == 'process_cards' %}
   {% include 'process_cards.html' %}
   {% elif block.kind == 'process_note' %}

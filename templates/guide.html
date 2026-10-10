@@ -12,6 +12,7 @@
   </div>
 {% set ns = namespace(n=0) %}
 {% for block in layout %}
+{{ ed_remove('layout_guide', loop.index0) }}
 {% if block.kind in numbered %}{% set ns.n = ns.n + 1 %}{% set num = ns.n %}{% endif %}
 {% if block.kind == 'guide_basics' %}
   <section class="guide-section" id="purchase-info" aria-labelledby="purchase-heading">

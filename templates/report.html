@@ -31,7 +31,9 @@
         <h2 class="consents-title">{{ ui('report.consents_title', '동의 항목') }}</h2>
         <label class="check consent-all"><input type="checkbox" data-check-all><span>{{ ui('report.consent_all', '아래 내용에 모두 동의합니다') }}</span></label>
 
-        <section class="consent-card">
+        {% for c in items('report_consents') %}
+        {% if c.kind == 'privacy' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
           <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ ui('report.c1_title', '개인정보 수집·이용') }}</h3>
           <div class="consent-table" role="table" aria-label="{{ ui('report.c1_title', '개인정보 수집·이용') }}">
             <div role="row" class="ct-head"><span role="columnheader">{{ ui('report.c1_col1', '수집 개인정보 항목') }}</span><span role="columnheader">{{ ui('report.c1_col2', '수집·이용 목적') }}</span><span role="columnheader">{{ ui('report.c1_col3', '보유 기간') }}</span></div>
@@ -40,8 +42,8 @@
           <p class="consent-note">{{ txt('report.refusal_note') }} <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></p>
           <label class="check"><input type="checkbox" name="consent" required{% if request.form.get('consent') %} checked{% endif %}><span>{{ ui('report.c1_agree', '위와 같이 개인정보를 수집·이용하는 데 동의합니다.') }}</span></label>
         </section>
-
-        <section class="consent-card">
+        {% elif c.kind == 'share' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
           <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ ui('report.c2_title', '개인정보 제3자 제공') }}</h3>
           <div class="consent-table consent-table-4" role="table" aria-label="{{ ui('report.c2_title', '개인정보 제3자 제공') }}">
             <div role="row" class="ct-head"><span role="columnheader">{{ ui('report.c2_col1', '제공받는 자') }}</span><span role="columnheader">{{ ui('report.c2_col2', '제공 항목') }}</span><span role="columnheader">{{ ui('report.c2_col3', '이용 목적') }}</span><span role="columnheader">{{ ui('report.c2_col4', '보유 기간') }}</span></div>
@@ -50,19 +52,28 @@
           <p class="consent-note">{{ txt('report.share_refusal') }}</p>
           <label class="check"><input type="checkbox" name="share_company" required{% if request.form.get('share_company') %} checked{% endif %}><span>{{ ui('report.c2_agree', '위와 같이 개인정보를 제공하는 데 동의합니다.') }}</span></label>
         </section>
-
-        <section class="consent-card">
+        {% elif c.kind == 'copyright' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
           <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ ui('report.c3_title', '저작권 동의') }}</h3>
           <p class="consent-note">{{ txt('report.use_text') }}</p>
           <p class="consent-note">{{ txt('report.use_withdraw') }}{% if txt('operator.email') %} (<a class="consent-link" href="mailto:{{ txt('operator.email') }}">{{ txt('operator.email') }}</a>){% endif %}</p>
           <label class="check"><input type="checkbox" name="use_consent" required{% if request.form.get('use_consent') %} checked{% endif %}><span>{{ ui('report.c3_agree', '위와 같은 저작권 이용에 동의합니다.') }}</span></label>
         </section>
-
-        <section class="consent-card">
+        {% elif c.kind == 'truth' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
           <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ ui('report.c4_title', '사실 작성 확인') }}</h3>
           <p class="consent-note">{{ txt('report.consent_truth') }} <a class="consent-link" href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">{{ ui('report.terms_link', '이용약관 ↗') }}</a></p>
           <label class="check"><input type="checkbox" name="truth" required{% if request.form.get('truth') %} checked{% endif %}><span>{{ ui('report.c4_agree', '위 내용을 확인했습니다.') }}</span></label>
         </section>
+        {% elif c.kind == 'custom' %}
+        <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
+          <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ c.title }}</h3>
+          {% if c.body %}<p class="consent-note pre-line">{{ c.body }}</p>{% endif %}
+          <label class="check"><input type="checkbox" name="consent_custom_{{ loop.index0 }}" required{% if request.form.get('consent_custom_%d' % loop.index0) %} checked{% endif %}><span>{{ c.agree or ui('report.custom_agree', '위 내용에 동의합니다.') }}</span></label>
+        </section>
+        {% endif %}
+        {% endfor %}
+        {{ ed_list('report_consents') }}
       </div>
 
       <button class="primary" type="submit" {% if not intake_enabled %}disabled title="현재 접수 준비 중"{% endif %} style="width:100%;margin-top:18px">{{ ui('report.submit', '제보 접수하기 ↗') }}</button>

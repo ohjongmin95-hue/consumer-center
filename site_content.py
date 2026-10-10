@@ -219,6 +219,9 @@ for _page, (_title, _sections) in PAGE_SECTIONS.items():
                   '위에서부터 차례로 보여요. 기본 섹션은 순서를 바꾸거나 지울 수 있고(문장은 사이트 화면이나 사이트 문구에서 고쳐요), 소제목·글 상자·안내 박스를 원하는 자리에 넣을 수 있어요. 제목·내용·버튼 칸은 소제목·글 상자·안내 박스에만 쓰여요.',
                   [('kind', '섹션 종류', {'choices': _sections + GENERIC_SECTIONS}), ('title', '제목', {}), ('body', '내용 (**강조할 말**처럼 별표 두 개로 감싸면 강조돼요)', ML),
                    ('button_label', '버튼 글자', {}), ('button_link', '버튼 주소 (예: /report 또는 https://...)', {})], 0))
+CONSENT_KINDS = [('privacy', '개인정보 수집·이용'), ('share', '개인정보 제3자 제공 (기업 전달)'), ('copyright', '저작권 동의'), ('truth', '사실 작성 확인'), ('custom', '직접 만든 동의 항목')]
+LISTS.append(('report_consents', '제보하기 동의 항목', '제보하기 화면의 동의 항목이에요. 모두 필수로 받아요. 지우면 화면에서 빠지고 체크하지 않아도 접수돼요. 표와 문장은 사이트 화면이나 사이트 문구에서 고쳐요. "직접 만든 동의 항목"은 아래 제목·내용·체크 문구 칸을 써요. 개인정보 수집·이용 동의는 법상 필요한 경우가 많으니 지우지 않는 걸 권해요.',
+              [('kind', '항목 종류', {'choices': CONSENT_KINDS}), ('title', '제목 (직접 만든 항목만)', {}), ('body', '내용 (직접 만든 항목만)', ML), ('agree', '체크 문구 (직접 만든 항목만)', {})], 0))
 LISTS.append(('custom_pages', '새 페이지', '원하는 페이지를 직접 만들어요. 주소는 consumerjebo.co.kr/p/영문주소 가 되고, 메뉴에 넣으려면 상단 메뉴에서 "직접 입력한 주소"를 고르고 /p/영문주소 를 적어요. 내용은 약관처럼 줄 맨 앞에 "## "를 쓰면 소제목, "- "를 쓰면 목록이 돼요.',
               [('slug', '영문 주소 (소문자·숫자·하이픈, 예: about)', {}), ('title', '페이지 제목', {}), ('body', '내용', ML)], 0))
 LIST_DEFAULTS = {
@@ -238,6 +241,7 @@ for _blank in LIST_DEFAULTS.values():
         if 'kind' in _row and _row['kind'] in dict(GENERIC_SECTIONS) | {k: 1 for _, (_, ss) in PAGE_SECTIONS.items() for k, _ in ss}:
             _row.pop('count', None)
 LIST_DEFAULTS['custom_pages'] = []
+LIST_DEFAULTS['report_consents'] = [{'kind': k, 'title': '', 'body': '', 'agree': ''} for k in ('privacy', 'share', 'copyright', 'truth')]
 LIST_MAX_ITEMS = 60
 
 # ---- 화면 곳곳의 버튼·안내 문구 ----------------------------------------------

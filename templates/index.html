@@ -3,6 +3,7 @@
 {% block content %}
 <main class="home-blocks">
   {% for block in items('home_blocks') %}
+  {{ ed_remove('home_blocks', loop.index0) }}
   {% if block.kind in ('hero', 'hero_plain') %}
   <section class="hero{% if block.kind == 'hero' %} hero-art{% endif %}">
     {% if block.kind == 'hero' %}<img class="hero-side hero-side-left" src="{{ asset('img/hero-left.svg') }}" alt="" width="360" height="380">{% endif %}

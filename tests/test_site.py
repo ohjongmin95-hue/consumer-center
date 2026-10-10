@@ -770,6 +770,37 @@ class SiteTest(unittest.TestCase):
         self.assertIn('이 페이지 섹션 추가', admin.get('/process').get_data(as_text=True))
         self.assertIn('data-k="list:layout_process:0:title"', admin.get('/process').get_data(as_text=True))
 
+    def test_remove_consent_and_sections(self):
+        admin = self.login_admin()
+        admin.post('/admin/edit-mode', data={'_csrf': self.csrf(admin, '/admin'), 'on': '1'})
+        form = admin.get('/report').get_data(as_text=True)
+        self.assertIn('data-list="report_consents" data-i="3"', form)
+        token = self.csrf(admin, '/report')
+        # 사실 작성 확인(4번째) 빼기 → 화면에서 사라지고 체크 없이도 접수
+        self.assertTrue(admin.post('/admin/list-remove', data={'_csrf': token, 'list': 'report_consents', 'index': 3}).get_json()['ok'])
+        public = self.client.get('/report').get_data(as_text=True)
+        self.assertNotIn('사실 작성 확인', public)
+        self.assertNotIn('name="truth"', public)
+        t = self.csrf(self.client, '/report')
+        ok = self.client.post('/report', data={'_csrf': t, 'category': '배송·환불', 'company': 'A', 'subject': '사실확인 없이', 'description': 'C', 'request_text': 'D', 'consent': 'on', 'share_company': 'on', 'use_consent': 'on', 'visibility': 'secret'})
+        self.assertEqual(ok.status_code, 200)
+        # 직접 만든 동의 항목은 필수
+        rows = self.site.load_lists()['report_consents'] + [{'kind': 'custom', 'title': '연락 동의', 'body': '확인 연락을 드릴 수 있어요.', 'agree': '연락에 동의해요.'}]
+        admin.post('/admin/lists', data={'_csrf': token, 'list': 'report_consents', 'kind': [r['kind'] for r in rows], 'title': [r['title'] for r in rows], 'body': [r['body'] for r in rows], 'agree': [r['agree'] for r in rows]})
+        public = self.client.get('/report').get_data(as_text=True)
+        self.assertIn('연락 동의', public)
+        self.assertIn('name="consent_custom_3"', public)
+        base = {'_csrf': t, 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'request_text': 'D', 'consent': 'on', 'share_company': 'on', 'use_consent': 'on', 'visibility': 'secret'}
+        self.assertEqual(self.client.post('/report', data=base).status_code, 400)
+        self.assertEqual(self.client.post('/report', data={**base, 'consent_custom_3': 'on'}).status_code, 200)
+        # 페이지 섹션도 빼기
+        guide = admin.get('/guide').get_data(as_text=True)
+        self.assertIn('data-list="layout_guide" data-i="1"', guide)
+        admin.post('/admin/list-remove', data={'_csrf': token, 'list': 'layout_guide', 'index': 1})
+        self.assertNotIn('id="writing-guide"', self.client.get('/guide').get_data(as_text=True))
+        self.assertEqual(admin.post('/admin/list-remove', data={'_csrf': token, 'list': 'layout_guide', 'index': 99}).status_code, 404)
+        self.assertEqual(self.client.post('/admin/list-remove', data={'_csrf': t, 'list': 'layout_guide', 'index': 0}).status_code, 302)
+
     def test_disabled_intake_and_csrf(self):
         self.assertEqual(self.client.post('/report', data={}).status_code, 400)
         token = self.csrf(self.client, '/report')

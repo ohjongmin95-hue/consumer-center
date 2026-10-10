@@ -108,6 +108,16 @@
         .catch(function () { msg.textContent = '저장하지 못했어요. 다시 시도해 주세요.'; });
     }
     document.addEventListener('click', function (e) {
+      var rm = e.target.closest('.ed-remove');
+      if (rm) {
+        e.preventDefault(); e.stopPropagation();
+        if (!confirm('이 항목을 화면에서 뺄까요? 관리자 메뉴·항목에서 다시 넣을 수 있어요.')) return;
+        var body = new FormData(); body.append('_csrf', token); body.append('list', rm.getAttribute('data-list')); body.append('index', rm.getAttribute('data-i'));
+        fetch('{{ url_for('admin_list_remove') }}', {method: 'POST', body: body, credentials: 'same-origin'})
+          .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+          .then(function (res) { if (res.ok) location.reload(); else alert(res.error || '빼지 못했어요. 다시 시도해 주세요.'); });
+        return;
+      }
       if (e.target.closest('.ed-bar, .ed-modal, .ed-list')) return;
       var el = e.target.closest('[data-k]');
       if (!el) return;

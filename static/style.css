@@ -1021,3 +1021,7 @@ body.newsroom { background: #f4f4f2; }
 .ed-go select { max-width: 200px; padding: 7px 10px; border: 0; border-radius: 8px; background: #fff; color: #23272e; font-weight: 700; }
 .ed-follow { padding: 9px 12px; border-radius: 8px; color: #c66300; font-weight: 800; white-space: nowrap; }
 @media (max-width: 680px) { .ed-go span { display: none; } .ed-go select { max-width: 130px; } .ed-bar a { display: none; } }
+.ed-remove { display: inline-flex; align-items: center; gap: 4px; margin: 6px 0; padding: 5px 10px; border: 1.5px solid #e2a29a; border-radius: 8px; background: #fff; color: #c0392b; font-size: 12px; font-weight: 800; cursor: pointer; }
+.ed-remove:hover { background: #fdecea; }
+.consent-card .ed-remove { float: right; margin: -4px 0 0 8px; }
+.cell-lines { display: block; }

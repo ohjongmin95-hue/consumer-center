@@ -81,7 +81,7 @@ def content_for_request():
 # 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
 LIST_DISPLAY_FIELDS={'menu':('label',),'home_blocks':('title','body','button_label'),'faq':('q','a'),'process_steps':('title','body'),
     'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'sample_reports':('title','company'),
-    'custom_pages':('title',),**{'layout_'+p:('title','body','button_label') for p in site_content.PAGE_SECTIONS}}
+    'custom_pages':('title',),'report_consents':('title','body','agree'),**{'layout_'+p:('title','body','button_label') for p in site_content.PAGE_SECTIONS}}
 def items(key):
     rows=g.lists.get(key,[])
     if not editing() or key not in LIST_DISPLAY_FIELDS:return rows
@@ -146,6 +146,11 @@ def ed_list(key):
     label={'home_blocks':'＋ 메인 화면 섹션 추가·삭제·순서 바꾸기','custom_pages':'＋ 새 페이지 만들기·관리'}.get(key) or ('＋ 이 페이지 섹션 추가·삭제·순서 바꾸기' if key.startswith('layout_') else '＋ 항목 추가·삭제·순서 바꾸기')
     return Markup('<a class="ed-list" href="%s">%s</a>')%(url_for('admin_lists',_anchor='list-'+key),label)
 app.jinja_env.globals['ed_list']=ed_list
+def ed_remove(key,index):
+    # 편집 모드에서 섹션·항목 옆에 붙는 "✕ 빼기" 버튼
+    if not editing():return ''
+    return Markup('<button type="button" class="ed-remove" data-list="%s" data-i="%d">✕ 빼기</button>')%(key,index)
+app.jinja_env.globals['ed_remove']=ed_remove
 def txt(key):
     # 관리자가 입력한 문구는 HTML로 해석하지 않고 줄바꿈만 반영함.
     raw=g.content.get(key,'')
@@ -196,7 +201,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-33'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-35'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -395,12 +400,16 @@ def takedown():
         return render_template('takedown.html',submitted=True)
     return render_template('takedown.html')
 
+CONSENT_FIELDS={'privacy':'consent','share':'share_company','copyright':'use_consent','truth':'truth'}
+def required_consents():
+    # 제보하기 화면에 남아 있는 동의 항목만 필수 (관리자 '제보하기 동의 항목')
+    return [CONSENT_FIELDS.get(r.get('kind'),'consent_custom_%d'%i) for i,r in enumerate(g.lists.get('report_consents',[]))]
 @app.route('/report',methods=['GET','POST'])
 def report():
     if request.method=='GET':return render_template('report.html',categories=report_categories(), intake_enabled=os.getenv('ENABLE_INTAKE')=='1')
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수 준비 중입니다.')
     data={k:request.form.get(k,'').strip() for k in ('category','company','subject','description','request_text','contact')}
-    if data['category'] not in report_categories() or any(not data[k] for k in ('company','subject','description','request_text')) or not all(request.form.get(k) for k in ('consent','share_company','use_consent','truth')) or request.form.get('visibility') not in ('public','secret'):
+    if data['category'] not in report_categories() or any(not data[k] for k in ('company','subject','description','request_text')) or not all(request.form.get(k) for k in required_consents()) or request.form.get('visibility') not in ('public','secret'):
         flash(ui_text('msg.report_required','필수 항목과 필수 동의를 모두 확인해 주세요.'));return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
     if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150)]):abort(400)
     file=request.files.get('evidence')
@@ -495,6 +504,20 @@ def admin_edit_mode():
     nxt=request.form.get('next','')
     if session['edit_mode']:return redirect(nxt if nxt.startswith('/') and not nxt.startswith(('//','/admin')) else url_for('home'))
     return redirect(nxt if nxt.startswith('/') and not nxt.startswith('//') else url_for('admin'))
+
+@app.route('/admin/list-remove',methods=['POST'])
+@admin_only
+def admin_list_remove():
+    # 편집 모드의 "✕ 빼기": 목록(섹션·동의 항목 등)에서 한 줄을 지움
+    key=request.form.get('list','');i=request.form.get('index',type=int)
+    meta=_list_meta(key)
+    if not meta or i is None:abort(400)
+    rows=[dict(r) for r in load_lists()[key]]
+    if not 0<=i<len(rows):abort(404)
+    if len(rows)-1<meta[2]:return {'ok':False,'error':'%s은(는) 최소 %d개가 있어야 해요.'%(meta[0],meta[2])},400
+    rows.pop(i)
+    with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,json.dumps(rows,ensure_ascii=False),datetime.datetime.now().isoformat(timespec='seconds')))
+    return {'ok':True}
 
 @app.route('/admin/inline',methods=['POST'])
 @admin_only
