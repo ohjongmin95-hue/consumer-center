@@ -235,6 +235,7 @@ MENU_PAGES = [
 HOME_BLOCKS = [
     ('hero', '메인 문구 + 제보하기 버튼 + 사람들 일러스트'), ('hero_plain', '메인 문구 + 제보하기 버튼 (일러스트 없이)'), ('latest_reports', '최근 제보 (실시간)'), ('board_posts', '최근 게시판 글'),
     ('notice', '공지·안내 박스'), ('process', '처리 절차 요약'), ('faq', '자주 묻는 질문 미리보기'),
+    ('groups', '진행 중인 공동 대응 (+ 제안하기)'),
 ]
 LEGACY_NAV = [('nav.home', 'reports', '소비자 제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
               ('nav.board', 'board', '소비자게시판'), ('nav.faq', 'faq', '자주 묻는 질문')]
@@ -284,7 +285,7 @@ LISTS.append(('custom_pages', '새 페이지', '원하는 페이지를 직접 �
               [('slug', '영문 주소 (소문자·숫자·하이픈, 예: about)', {}), ('title', '페이지 제목', {}), ('body', '내용', ML)], 0))
 LIST_DEFAULTS = {
     'menu': [{'label': label, 'page': page, 'url': ''} for _, page, label in LEGACY_NAV],
-    'home_blocks': [dict(_BLANK_BLOCK, kind='hero'), dict(_BLANK_BLOCK, kind='latest_reports')],
+    'home_blocks': [dict(_BLANK_BLOCK, kind='hero'), dict(_BLANK_BLOCK, kind='latest_reports'), dict(_BLANK_BLOCK, kind='groups')],
     'report_categories': [{'name': n} for n in REPORT_CATEGORY_DEFAULTS],
     'report_industries': [{'name': n, 'examples': e} for n, e in REPORT_INDUSTRY_DEFAULTS],
     'board_categories': [{'name': n} for n in BOARD_CATEGORY_DEFAULTS],

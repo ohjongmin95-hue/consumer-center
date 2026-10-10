@@ -31,6 +31,27 @@
     {% else %}<div class="empty">{{ txt('board.empty') }}</div>{% endif %}
   </section>
 
+  {% elif block.kind == 'groups' %}{% set grs = home_groups(block_count(block, 3)) %}
+  <section class="section home-groups" aria-labelledby="groups-heading-{{ loop.index }}">
+    <div class="section-head"><h2 id="groups-heading-{{ loop.index }}">{{ block.title or ui('home.groups_title', '진행 중인 공동 대응') }}</h2><a class="see-all" href="{{ url_for('groups') }}">{{ ui('home.groups_link', '전체 보기 →') }}</a></div>
+    <div class="home-groups-grid">
+      {% for gr in grs %}{% set pct = [100, (gr['n_members'] * 100 // (gr['target'] or 1))]|min %}
+      <a class="group-card" href="{{ url_for('group_page', group_id=gr['id']) }}">
+        <span class="group-status s-{{ gr['status'] }}">{{ GROUP_STATUSES[gr['status']] }}</span>
+        <h3>{{ gr['title'] }}</h3>
+        <p class="group-company">{{ gr['company'] }}</p>
+        <div class="group-bar" aria-hidden="true"><i style="width:{{ pct }}%"></i></div>
+        <p class="group-count"><b>{{ gr['n_members'] }}</b>/{{ gr['target'] }}{{ ui('groups.people', '명 참여') }}</p>
+      </a>
+      {% endfor %}
+      <a class="group-card group-propose" href="{{ url_for('group_new') }}">
+        <span class="group-propose-icon" aria-hidden="true">＋</span>
+        <h3>{{ ui('home.groups_new', '공동 대응 제안하기') }}</h3>
+        <p class="group-company">{{ ui('home.groups_new_hint', '같은 피해를 겪은 사람이 더 있을 것 같나요? 제안하면 센터 확인 뒤 공개되고, 함께 참여할 수 있어요.') }}</p>
+      </a>
+    </div>
+  </section>
+
   {% elif block.kind == 'notice' %}
   <section class="section home-notice">
     {% if block.title %}<h2>{{ block.title }}</h2>{% endif %}

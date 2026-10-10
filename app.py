@@ -230,7 +230,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-59'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-60'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -1719,6 +1719,13 @@ with conn() as db:
     gcols={r['name'] for r in db.execute('PRAGMA table_info(damage_groups)')}
     if 'target' not in gcols:db.execute(f'ALTER TABLE damage_groups ADD COLUMN target INTEGER NOT NULL DEFAULT {GROUP_TARGET}')
     if 'proposed' not in gcols:db.execute('ALTER TABLE damage_groups ADD COLUMN proposed INTEGER NOT NULL DEFAULT 0')  # 소비자가 제안한 것
+
+def home_groups(limit):
+    # 메인 화면: 참여 모집·진행 중인 공동 대응 (참여 인원 많은 순)
+    with conn() as db:
+        return db.execute("""SELECT g.*,(SELECT COUNT(*) FROM group_members m WHERE m.group_id=g.id) AS n_members FROM damage_groups g
+            WHERE g.status IN ('open','active') ORDER BY CASE g.status WHEN 'open' THEN 0 ELSE 1 END,n_members DESC,g.id DESC LIMIT ?""",(limit,)).fetchall()
+app.jinja_env.globals['home_groups']=home_groups
 
 def group_for_case(db,case_id,company):
     # 그 제보가 연결된 공동 대응, 없으면 같은 업체 이름의 공개 공동 대응(모집·진행 중)

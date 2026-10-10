@@ -506,6 +506,10 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, '/admin/groups/%d' % gid, {'action': 'link', 'case_ids': '%d, %d' % (first, second)})
         # 3) 공개: 목록·배너·진행 막대(1/50), 같은 업체 제보에서 '같이 참여하기'
         self.assertIn('OO쇼핑 반품 후 환불 지연', self.client.get('/groups').get_data(as_text=True))
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('진행 중인 공동 대응', home)
+        self.assertIn('href="/groups/%d"' % gid, home)
+        self.assertIn('href="/groups/new"', home)
         self.assertIn('공동 대응 참여 모집', self.client.get('/reports').get_data(as_text=True))
         group = self.client.get('/groups/%d' % gid).get_data(as_text=True)
         self.assertIn('<b>1</b>명 참여', group)
