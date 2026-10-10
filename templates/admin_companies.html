@@ -3,7 +3,7 @@
 {% block content %}
 <main class="cs-page">
   <h1 class="cs-title">기업 회원</h1>
-  <p class="cs-lead">기업은 <b>{{ url_for('biz_signup', _external=True) }}</b> 에서 가입을 신청해요. 사업자 정보를 확인한 뒤 승인해 주세요. 승인한 기업은 제보 화면의 <b>연결 기업</b>에서 고를 수 있고, 연결된 제보 중 기업 전달에 동의한 것만 그 기업에 보여요.</p>
+  <p class="cs-lead">기업은 <b>{{ url_for('biz_signup', _external=True) }}</b> 에서 가입을 신청해요. 사업자 정보를 확인한 뒤 승인해 주세요. 승인한 기업은 제보 화면의 <b>연결 기업</b>에서 고를 수 있고, 연결된 제보 중 기업 전달에 동의한 것만 그 기업에 보여요. <b>기업 화면 보기</b>를 누르면 그 기업 담당자가 보는 화면을 그대로 확인할 수 있어요.</p>
   <div class="cs-table-wrap">
     <table class="cs-table">
       <thead><tr><th>회사</th><th>담당자</th><th>상태</th><th>다른 이름 (제보에 적히는 이름)</th><th>담당자 비밀번호</th><th></th></tr></thead>
@@ -18,7 +18,8 @@
         <td><form class="biz-actions" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ c['id'] }}">
           {% if c['status'] == 'pending' %}<button class="cs-btn cs-btn-main" name="action" value="approve">승인</button><button class="cs-btn" name="action" value="reject" onclick="return confirm('{{ c['name'] }} 가입을 반려할까요?')">반려</button>
           {% elif c['status'] == 'active' %}<button class="cs-btn" name="action" value="stop" onclick="return confirm('{{ c['name'] }} 이용을 중지할까요? 바로 로그아웃돼요.')">중지</button>
-          {% else %}<button class="cs-btn" name="action" value="start">다시 승인</button>{% endif %}</form></td>
+          {% else %}<button class="cs-btn" name="action" value="start">다시 승인</button>{% endif %}</form>
+          <form class="biz-actions" method="post" action="{{ url_for('admin_company_preview', company_id=c['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="cs-btn" type="submit">기업 화면 보기</button></form></td>
       </tr>
       {% else %}<tr><td colspan="6" class="cs-empty">아직 가입 신청한 기업이 없어요.</td></tr>{% endfor %}
       </tbody>

@@ -19,10 +19,11 @@
     {% for a in answers %}
     <div class="cs-msg from-company"><div class="cs-msg-head"><b>{{ g.company['name'] }}</b><span>{{ a['created'][:16]|replace('T', ' ') }}{% if a['public'] %} · 사이트에 공개됨{% endif %}</span></div><p>{{ a['body'] }}</p></div>
     {% else %}<p class="cs-muted">아직 답변하지 않았어요.</p>{% endfor %}
+    {% if g.get('biz_preview') %}<p class="cs-muted">대표 미리보기에서는 답변 칸이 닫혀 있어요. 기업 담당자는 여기에 답변을 적어요.</p>{% else %}
     <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <textarea name="response" maxlength="5000" required rows="6" placeholder="확인한 내용과 해결 방안을 적어 주세요. 제보자에게 바로 전달돼요." aria-label="답변"></textarea>
       <button class="cs-btn cs-btn-main" type="submit">{{ '추가 답변 보내기' if answers else '답변 보내기' }}</button>
-    </form>
+    </form>{% endif %}
     <p class="cs-muted">제보자의 이름·연락처·첨부파일은 개인정보 보호를 위해 보이지 않아요. 연락이 필요하면 답변에 회사 고객센터 연락처를 남겨 주세요.{% if case['public_consent'] %} 공개 제보라서, 센터가 확인한 답변은 사이트의 제보 아래에 함께 공개될 수 있어요.{% endif %}</p>
   </section>
 </main>
