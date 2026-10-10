@@ -1,14 +1,14 @@
 {% extends 'base.html' %}{% import '_c.html' as m with context %}
-{% block title %}개인정보 처리방침 · 한큐 민원{% endblock %}
-{% block bar %}{{ m.bar(url_for('home')) }}{% endblock %}
+{% block title %}개인정보 처리방침 · {{ CNAME }}{% endblock %}
+{% block bar %}{{ m.bar() }}{% endblock %}
 {% block body %}
-<h1 class="h1" style="padding:20px 4px">개인정보 처리방침</h1>
-<div class="card stack" style="font-size:15px;gap:18px">
+<div class="narrow"><div class="phead"><div><h1>개인정보 처리방침</h1><p>시범 운영용 초안이에요</p></div></div>
+<div class="panel stack" style="gap:22px">
 <div><b>수집 항목</b><p class="sub" style="font-size:15px">이름, 휴대폰 번호, 이메일(선택), 민원 내용과 첨부 파일, 주문번호(선택)</p></div>
 <div><b>이용 목적</b><p class="sub" style="font-size:15px">민원 접수·처리, 기업 전달(동의한 경우), 진행 상황 안내, 미해결 민원의 공식 절차 안내</p></div>
 <div><b>제공</b><p class="sub" style="font-size:15px">기업 전달에 동의한 경우에만 해당 기업에 민원 내용과 이름·연락처를 제공해요. 기업이 그 밖의 목적으로 쓰는 것은 허용하지 않아요.</p></div>
 <div><b>보관 기간</b><p class="sub" style="font-size:15px">민원 종결 후 3년 보관 후 파기해요. 법령에서 따로 정한 경우는 그 기간을 따라요.</p></div>
-<div><b>언론 독립</b><p class="sub" style="font-size:15px">한큐 민원에 접수된 내용은 SOBORU 언론사 취재에 쓰지 않아요. 기업의 SOBORU Business 이용 여부는 민원 처리와 보도에 영향을 주지 않아요.</p></div>
+<div><b>언론 독립</b><p class="sub" style="font-size:15px">{{ CNAME }}에 접수된 내용은 SOBORU 언론사 취재에 쓰지 않아요. 기업의 SOBORU Business 이용 여부는 민원 처리와 보도에 영향을 주지 않아요.</p></div>
 <div><b>문의</b><p class="sub" style="font-size:15px">개인정보 열람·정정·삭제 요청은 센터로 연락해 주세요.</p></div>
-</div>
+</div></div>
 {% endblock %}

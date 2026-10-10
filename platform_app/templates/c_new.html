@@ -1,7 +1,9 @@
-{% extends 'base.html' %}
-{% block title %}민원 접수 · 한큐 민원{% endblock %}
-{% block bar %}<header class="bar"><div class="col in"><a class="back" id="wBack" href="{{ url_for('home') }}" aria-label="뒤로"></a></div></header>{% endblock %}
+{% extends 'base.html' %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
+{% block title %}접수하기 · {{ CNAME }}{% endblock %}
+{% block bar %}{{ m.bar('new') }}{% endblock %}
 {% block body %}
+<div class="wiz"><div>
+<div class="whead"><a class="back" id="wBack" href="{{ url_for('home') }}" aria-label="뒤로"></a><span class="cap" id="wNum">1 / 5</span></div>
 <div class="prog"><i id="wProg" style="width:20%"></i></div>
 <form method="post" action="{{ url_for('submit') }}" enctype="multipart/form-data" id="wForm" autocomplete="off" novalidate>
 <input type="hidden" name="csrf" value="{{ csrf_token() }}">
@@ -15,8 +17,8 @@
 </section>
 <section class="step" data-step="1">
   <h1 class="h1">어떤 일인가요?</h1>
-  <div class="stack" style="margin-top:28px">{% for c,e in [('배송 조회','🚚'),('교환','🔄'),('반품·환불','💸'),('제품 불량','🧴'),('고객 응대','💬'),('기타','📝')] %}
-  <label class="opt"><input type="radio" name="category" value="{{ c }}" {{ 'checked' if d.category==c }} required><span class="em">{{ e }}</span>{{ c }}</label>{% endfor %}</div>
+  <div class="opts" style="margin-top:28px">{% for c in CATS %}
+  <label class="opt"><input type="radio" name="category" value="{{ c }}" {{ 'checked' if d.category==c }} required>{{ i.cat_icon(c,32) }}{{ c }}</label>{% endfor %}</div>
 </section>
 <section class="step" data-step="2">
   <h1 class="h1">무슨 일이 있었나요?</h1>
@@ -24,13 +26,13 @@
     <input class="inp" name="title" maxlength="80" placeholder="한 줄 요약" value="{{ d.title or '' }}" required>
     <textarea class="inp" name="body" maxlength="3000" minlength="10" placeholder="언제, 무엇을 샀고, 어떤 문제가 있었는지" required>{{ d.body or '' }}</textarea>
     <input class="inp" name="order_no" maxlength="40" placeholder="주문번호 (선택)" value="{{ d.order_no or '' }}">
-    <label class="card" style="padding:16px 18px;display:block"><span class="cap" style="display:block;margin-bottom:8px">사진·PDF (선택, 3개까지)</span><input class="file-in" type="file" name="files" multiple accept="image/*,.pdf"></label>
+    <label class="filebox"><span class="cap" style="display:block;margin-bottom:8px">사진·PDF (선택, 3개까지)</span><input class="file-in" type="file" name="files" multiple accept="image/*,.pdf"></label>
   </div>
 </section>
 <section class="step" data-step="3">
   <h1 class="h1">어떻게 해결되면<br>좋을까요?</h1>
-  <div class="stack" style="margin-top:28px">{% for w,e in [('교환','🔄'),('환불','💸'),('배송 확인','🚚'),('사과·재발 방지','🙏'),('수리·A/S','🛠️'),('기타','📝')] %}
-  <label class="opt"><input type="radio" name="want" value="{{ w }}" {{ 'checked' if d.want==w }} required><span class="em">{{ e }}</span>{{ w }}</label>{% endfor %}</div>
+  <div class="opts" style="margin-top:28px">{% for w,e in [('교환','exchange'),('환불','refund'),('배송 확인','truck'),('사과·재발 방지','chat'),('수리·A/S','gear'),('기타','note')] %}
+  <label class="opt"><input type="radio" name="want" value="{{ w }}" {{ 'checked' if d.want==w }} required>{{ i.icon(e,32) }}{{ w }}</label>{% endfor %}</div>
 </section>
 <section class="step" data-step="4">
   <h1 class="h1">답변 받을 연락처를<br>알려 주세요</h1>
@@ -39,7 +41,7 @@
     <label class="fld"><span>휴대폰 번호</span><input class="inp" name="phone" type="tel" maxlength="20" placeholder="010-0000-0000" value="{{ d.phone or '' }}" required></label>
     <label class="fld"><span>조회 비밀번호 (4자 이상)</span><input class="inp" name="password" type="password" minlength="4" maxlength="40" required></label>
     <label class="fld"><span>이메일 (선택 · 답변 알림)</span><input class="inp" name="email" type="email" maxlength="80" value="{{ d.email or '' }}"></label>
-    <div class="card" style="padding:10px 18px">
+    <div class="agree">
       <label class="check"><input type="checkbox" name="consent" value="1" {{ 'checked' if d.consent }}><span class="bx"></span><span><b>기업에 전달 동의</b><div class="cap">동의하지 않으면 접수만 돼요</div></span></label>
       <div class="hr" style="margin:8px 0"></div>
       <label class="check"><input type="checkbox" name="privacy" value="1" required><span class="bx"></span><span><b>개인정보 수집·이용 동의 (필수)</b><div class="cap"><a class="link" href="{{ url_for('privacy') }}" target="_blank">내용 보기</a></div></span></label>
@@ -47,17 +49,22 @@
   </div>
 </section>
 <div class="cta"><div class="in"><button class="btn" type="submit" id="wNext">다음</button></div></div>
-</form>
+</form></div>
+<aside class="sum"><div class="ph">접수 내용</div>
+<dl><dt>기업</dt><dd id="sCo">–</dd><dt>유형</dt><dd id="sCat">–</dd><dt>요약</dt><dd id="sTitle">–</dd><dt>원하는 해결</dt><dd id="sWant">–</dd></dl>
+<div class="hr"></div>
+<ul class="tips"><li>입점 기업은 담당자에게 바로 전달되고 2일 안에 답변을 받아요</li><li>비입점 기업은 센터가 공식 연락처로 전달을 시도해요</li><li>휴대폰 번호와 조회 비밀번호로 어느 기기에서든 진행을 확인해요</li></ul></aside>
+</div>
 {% endblock %}
 {% block foot %}{% endblock %}
 {% block script %}
 <script>
 (function(){
   // 한 화면에 질문 하나. 스크립트가 없으면 모든 질문이 한 번에 보이고 그대로 접수된다.
-  const steps=[...document.querySelectorAll('.step')],form=document.getElementById('wForm'),next=document.getElementById('wNext'),back=document.getElementById('wBack'),prog=document.getElementById('wProg');
+  const steps=[...document.querySelectorAll('.step')],form=document.getElementById('wForm'),next=document.getElementById('wNext'),back=document.getElementById('wBack'),prog=document.getElementById('wProg'),num=document.getElementById('wNum');
   let i=0;const last=steps.length-1;
   function valid(n){return [...steps[n].querySelectorAll('input,textarea')].every(el=>el.checkValidity());}
-  function show(n){i=n;steps.forEach((s,k)=>s.hidden=k!==n);prog.style.width=((n+1)/steps.length*100)+'%';next.textContent=n===last?'접수하기':'다음';next.disabled=!valid(n);window.scrollTo(0,0);const f=steps[n].querySelector('input:not([type=radio]):not([type=hidden]),textarea');if(f&&n<4)f.focus({preventScroll:true});}
+  function show(n){i=n;steps.forEach((s,k)=>s.hidden=k!==n);prog.style.width=((n+1)/steps.length*100)+'%';num.textContent=(n+1)+' / '+steps.length;next.textContent=n===last?'접수하기':'다음';next.disabled=!valid(n);window.scrollTo(0,0);const f=steps[n].querySelector('input:not([type=radio]):not([type=hidden]),textarea');if(f&&n<4)f.focus({preventScroll:true});}
   form.addEventListener('input',()=>{next.disabled=!valid(i);});
   form.addEventListener('change',e=>{next.disabled=!valid(i);if(e.target.type==='radio'&&i<last)setTimeout(()=>show(i+1),180);});
   form.addEventListener('submit',e=>{if(i<last){e.preventDefault();if(valid(i))show(i+1);}else next.disabled=true;});
@@ -73,6 +80,10 @@
       box.innerHTML=list.filter(c=>c.name!==q).map(c=>'<button type="button" class="rowi" data-id="'+c.id+'"><span class="av">'+esc(c.name[0])+'</span><span class="tx"><div class="t">'+esc(c.name)+'</div></span>'+(c.member?'<span class="tag ok">입점</span>':'<span class="tag gray">비입점</span>')+'</button>').join('');
       box.hidden=!box.innerHTML;box.querySelectorAll('button').forEach(b=>b.onclick=()=>{const c=list.find(x=>String(x.id)===b.dataset.id);picked=c;inp.value=c.name;hid.value=c.id;box.hidden=true;hint();next.disabled=!valid(0);});hint();
     }).catch(()=>{}),200);});
+  // 오른쪽 접수 내용 요약
+  const sv=(id,v)=>{document.getElementById(id).textContent=v||'–';};
+  function sum(){const fd=new FormData(form);sv('sCo',fd.get('company'));sv('sCat',fd.get('category'));sv('sTitle',fd.get('title'));sv('sWant',fd.get('want'));}
+  form.addEventListener('input',sum);form.addEventListener('change',sum);sum();
   const first=steps.findIndex((s,k)=>!valid(k));show(first<0?last:first);
 })();
 </script>

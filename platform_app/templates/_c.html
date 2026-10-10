@@ -1,13 +1,29 @@
-{% macro bar(left='logo') -%}
-<header class="bar"><div class="col in">
-{% if left=='logo' %}<a class="logo" href="{{ url_for('home') }}"><i></i>한큐 민원<small>by SOBORU</small></a>{% else %}<a class="back" href="{{ left }}" aria-label="뒤로"></a>{% endif %}
-<span class="sp"></span><a class="tbtn" href="{{ url_for('mine') }}">내 민원{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a>
+{# 한큐 공용: 상단 메뉴, 상태 표시, 카드, 진행 막대, 기록 #}
+{% import '_i.html' as i %}
+{% macro bar(tab='') -%}
+<header class="gnb"><div class="wrap">
+<a class="logo" href="{{ url_for('home') }}"><i></i>{{ CNAME }}<small>by SOBORU</small></a>
+<nav>
+<a href="{{ url_for('new') }}" class="{{ 'on' if tab=='new' }}">접수하기</a>
+<a href="{{ url_for('mine') }}" class="{{ 'on' if tab=='mine' }}">내 접수{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a>
+<a href="{{ url_for('guide') }}" class="{{ 'on' if tab=='guide' }}">이용 안내</a>
+<a href="{{ url_for('guide') }}#relief">피해구제</a>
+</nav>
+<div class="right"><a class="tbtn hide-m" href="{{ biz_url }}">기업 회원</a><a class="btn sm" href="{{ url_for('new') }}">접수하기</a></div>
 </div></header>
 {%- endmacro %}
-{% macro status_text(c) -%}{% if overdue(c) %}<span class="t-bad">지연</span>{% else %}{{ status_label(c.status)|replace('기업 전달','전달됨')|replace('기업 확인 중','확인 중')|replace('답변·조치 완료','답변 도착') }}{% endif %}{%- endmacro %}
-{% macro tone(c) -%}{{ {'gray':'t-mute','acc':'t-acc','wait':'t-acc','done':'t-ok','bad':'t-bad'}[status_tone(c.status)] }}{%- endmacro %}
+{% macro status_text(c) -%}{% if overdue(c) %}답변 지연{% else %}{{ status_label(c.status)|replace('기업 전달','전달됨')|replace('기업 확인 중','확인 중')|replace('답변·조치 완료','답변 도착') }}{% endif %}{%- endmacro %}
+{% macro tone(c) -%}{{ 't-bad' if overdue(c) else {'gray':'t-mute','acc':'t-acc','wait':'t-acc','done':'t-ok','bad':'t-bad'}[status_tone(c.status)] }}{%- endmacro %}
+{% macro pill(c,biz=False) -%}<span class="pill {{ 'bad' if overdue(c) else {'gray':'gray','acc':'acc','wait':'acc','done':'ok','bad':'bad'}[status_tone(c.status)] }}">{{ status_text(c)|replace('답변 도착','답변 완료') if biz else status_text(c) }}</span>{%- endmacro %}
 {% macro case_row(c,href) -%}
 <a class="rowi" href="{{ href }}"><span class="av">{{ c.company_name[:1] }}</span><span class="tx"><div class="t">{{ c.title }}</div><div class="s">{{ c.company_name }} · {{ fmt(c.created) }}</div></span><span class="st {{ tone(c) }}">{{ status_text(c) }}</span></a>
+{%- endmacro %}
+{% macro case_card(c,href) -%}
+{% set k=step_index(c.status) %}
+<a class="ccard" href="{{ href }}"><div class="row"><span class="av sm">{{ c.company_name[:1] }}</span><span class="co">{{ c.company_name }}</span><span class="sp"></span>{{ pill(c) }}</div>
+<div class="tt">{{ c.title }}</div>
+<div class="mtrack">{% for s in STEPS %}<i class="{{ 'on' if loop.index0<=k }}"></i>{% endfor %}</div>
+<div class="meta"><span>{{ c.category }}</span><span>·</span><span>{{ fmt(c.created) }}</span><span class="sp"></span><span class="no">{{ c.no }}</span></div></a>
 {%- endmacro %}
 {% macro track(c) -%}
 {% set k=step_index(c.status) %}
@@ -17,4 +33,8 @@
 {% macro timeline(ev,c,viewer) -%}
 <ul class="tl">{% for e in ev|reverse %}<li class="{{ e.kind if e.kind in ('co','sys') else 'me' }}"><div><div class="x">{{ e.text }}{% if e.reply %}
 <div class="reply">{{ e.reply }}</div>{% endif %}</div><div class="w">{{ c.company_name if e.kind=='co' else ('나' if viewer=='me' else '소비자') if e.kind=='me' else 'SOBORU' }} · {{ fmt(e.created) }}</div></div></li>{% endfor %}</ul>
+{%- endmacro %}
+{% macro relief() -%}
+<div class="cgrid">{% for ic,t,s,u in [('phone','1372 소비자상담센터','전화 1372 또는 온라인으로 상담해요','https://www.ccn.go.kr'),('building','한국소비자원 피해구제','상담 뒤 피해구제를 신청해요','https://www.kca.go.kr'),('scale','소비자분쟁조정위원회','합의가 안 되면 조정을 요청해요','https://www.kca.go.kr')] %}
+<a class="ccard rl" href="{{ u }}" target="_blank" rel="noopener">{{ i.icon(ic,40) }}<div class="tt">{{ t }}</div><div class="ds">{{ s }}</div></a>{% endfor %}</div>
 {%- endmacro %}

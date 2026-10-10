@@ -1,12 +1,14 @@
-# SOBORU 플랫폼 (한큐 민원 + SOBORU Business)
+# SOBORU 플랫폼 (한큐 + SOBORU Business)
 
 소비자제보센터 홈페이지와 분리된 별도 서비스예요. 같은 서버, 같은 저장소를 쓰지만 DB·주소·서비스가 따로예요.
 
 | 주소 | 서비스 | 누가 |
 |---|---|---|
-| `hanq.consumerjebo.co.kr` | 한큐 민원 | 소비자: 어느 기업이든 접수, 진행 확인, 해결 여부 응답 |
-| `business.consumerjebo.co.kr` | SOBORU Business | 입점 기업: 승인 카드, 전체 민원, 자동 처리 규칙, 설정 |
+| `hanq.consumerjebo.co.kr` | 한큐 | 소비자: 어느 기업이든 접수, 진행 확인, 해결 여부 응답 |
+| `business.consumerjebo.co.kr` | SOBORU Business | 입점 기업: 홈(바로가기·승인 요청·최근 민원), 승인 요청, 전체 민원(검색), 자동 처리, 통계, 설정 |
 | `business.consumerjebo.co.kr/ops` | 운영 | 센터: 기업 가입 승인, 비입점 기업 민원 처리 |
+
+소비자 서비스 이름은 기본값 `한큐`이고, `/etc/soboru-platform.env`의 `CONSUMER_NAME`으로 바꿀 수 있어요.
 
 코드: `platform_app/` (`hanq.py`가 실행 진입점, `core.py` 공통, `consumer.py` 소비자, `business.py` 기업·운영). 테스트: `tests/test_platform.py`.
 

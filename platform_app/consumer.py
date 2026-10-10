@@ -1,4 +1,4 @@
-"""소비자용 '한큐 민원': 어느 기업이든 한곳에서 민원 접수·조회."""
+"""소비자용 '한큐': 어느 기업이든 한곳에서 민원 접수·조회."""
 import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -28,10 +28,23 @@ def mine_rows(limit=None):
 def counts():return {'n_mine':len(my_ids()),'biz_url':core.site_url('biz','/')}
 
 @app.route('/')
-def home():return render_template('c_home.html',rows=mine_rows(3))
+def home():
+    with conn() as db:
+        members=db.execute("SELECT id,name FROM companies WHERE status='active' AND member=1 ORDER BY id DESC LIMIT 8").fetchall()
+        n_members=db.execute("SELECT COUNT(*) FROM companies WHERE status='active' AND member=1").fetchone()[0]
+        n_cases=db.execute('SELECT COUNT(*) FROM cases').fetchone()[0]
+        n_done=db.execute("SELECT COUNT(*) FROM cases WHERE status IN ('answered','resolved')").fetchone()[0]
+    return render_template('c_home.html',rows=mine_rows(3),members=members,n_members=n_members,n_cases=n_cases,n_done=n_done)
 
 @app.route('/new')
-def new():return render_template('c_new.html',d=session.pop('draft',None) or {'consent':True})
+def new():
+    d=session.pop('draft',None) or {'consent':True}
+    if request.args.get('category') in core.CATS:d.setdefault('category',request.args['category'])
+    if request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
+    return render_template('c_new.html',d=d)
+
+@app.route('/guide')
+def guide():return render_template('c_guide.html')
 
 @app.route('/companies')
 def companies():return jsonify(core.search_companies(request.args.get('q','')[:40]))
@@ -82,7 +95,7 @@ def submit():
         else:core.add_event(db,case_id,'sys','비입점 기업이에요. 센터가 공식 연락처로 전달을 시도할게요.' if d['consent'] else '비입점 기업이고 전달 동의가 없어 접수만 했어요.')
         no=db.execute('SELECT no FROM cases WHERE id=?',(case_id,)).fetchone()[0]
     remember(case_id)
-    core.send_mail(d['email'],f'[한큐 민원] 민원이 접수됐어요 ({no})',f"{d['name'] or '고객'}님, 민원이 접수됐어요.\n\n■ 접수번호: {no}\n■ 기업: {co['name']}\n■ 요약: {d['title']}\n\n진행 상황은 휴대폰 번호와 조회 비밀번호로 확인할 수 있어요.\n{core.site_url('me','/mine')}")
+    core.send_mail(d['email'],f'[{core.CNAME}] 접수됐어요 ({no})',f"{d['name'] or '고객'}님, 민원이 접수됐어요.\n\n■ 접수번호: {no}\n■ 기업: {co['name']}\n■ 요약: {d['title']}\n\n진행 상황은 휴대폰 번호와 조회 비밀번호로 확인할 수 있어요.\n{core.site_url('me','/mine')}")
     return redirect(url_for('done',case_id=case_id))
 
 @app.route('/done/<int:case_id>')

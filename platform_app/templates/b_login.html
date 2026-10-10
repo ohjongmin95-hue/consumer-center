@@ -1,11 +1,11 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
 {% block title %}로그인 · SOBORU Business{% endblock %}
-{% block bar %}{{ b.bar('') }}{% endblock %}
+{% block bar %}{{ b.bar('login') }}{% endblock %}
 {% block body %}
-<div class="auth"><h1 class="h1">SOBORU Business<br>로그인</h1><p class="sub">CS 운영, 한큐에</p>
-<form method="post" class="stack" style="margin-top:32px"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
-<input class="inp" name="login_id" type="email" placeholder="이메일" required autocomplete="username">
-<input class="inp" name="password" type="password" placeholder="비밀번호" required autocomplete="current-password">
+<div class="auth panel"><h1 class="h1">로그인</h1><p class="sub">SOBORU Business · CS 운영, 한큐에</p>
+<form method="post" class="stack" style="margin-top:28px"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<label class="fld"><span>이메일</span><input class="inp" name="login_id" type="email" required autocomplete="username"></label>
+<label class="fld"><span>비밀번호</span><input class="inp" name="password" type="password" required autocomplete="current-password"></label>
 <button class="btn full" style="margin-top:8px">로그인</button></form>
 <p class="cap" style="text-align:center;margin-top:24px">처음이신가요? <a class="link" href="{{ url_for('signup') }}">무료로 시작하기</a></p></div>
 {% endblock %}

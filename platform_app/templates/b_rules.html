@@ -1,15 +1,17 @@
-{% extends 'base.html' %}{% import '_b.html' as b with context %}
-{% block width %}wide{% endblock %}
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
+{% block title %}자동 처리 · SOBORU Business{% endblock %}
 {% block bar %}{{ b.bar('rules') }}{% endblock %}
 {% block body %}
-<section style="padding:20px 4px 20px"><h1 class="h1">자동 처리</h1><p class="sub">켜 두면 접수 즉시 처리돼요</p></section>
-<div class="stack">{% for cat in CATS %}{% set r=rs[cat] %}{% set p=PLAYBOOK[cat] %}
-<div class="card" id="r{{ loop.index }}" style="padding:8px 0">
-<div class="rowi"><span class="av em">{{ {'배송 조회':'🚚','교환':'🔄','반품·환불':'💸','제품 불량':'🧴','고객 응대':'💬','기타':'📝'}[cat] }}</span><span class="tx"><div class="t">{{ cat }}</div><div class="s">{{ p.title }}</div></span>
+{% set on=rs.values()|selectattr('auto')|list|length %}
+<div class="phead"><div><h1>자동 처리</h1><p>켜 둔 유형은 접수되는 즉시 추천 조치를 실행하고 답변해요</p></div><span class="pill acc lg">{{ on }}/{{ CATS|length }} 켜짐</span></div>
+<div class="cgrid" id="replies">{% for cat in CATS %}{% set r=rs[cat] %}{% set p=PLAYBOOK[cat] %}
+<div class="rcard{{ ' on' if r.auto }}" id="r{{ loop.index }}">
+<div class="row">{{ i.cat_icon(cat,40) }}<div class="tx"><b>{{ cat }}</b><span>{{ '자동 처리 중' if r.auto else '승인 후 처리' }}</span></div>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}"><input type="hidden" name="auto" value="{{ '0' if r.auto else '1' }}">
 <button class="sw{{ ' on' if r.auto }}" role="switch" aria-checked="{{ 'true' if r.auto else 'false' }}" aria-label="{{ cat }} 자동 처리"></button></form></div>
-<details style="padding:0 22px 14px"><summary class="cap" style="font-size:14px;font-weight:500">답변 문구 · {{ p.steps|join(' → ') }}<span class="chev"></span></summary>
-<form method="post" style="margin-top:12px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
-<textarea class="inp" name="reply" style="min-height:110px;background:var(--fill)">{{ r.reply }}</textarea><button class="btn md gray" style="margin-top:8px">저장</button></form></details>
+<div class="reco"><div class="l">처리 방법</div><div class="r">{{ p.title }}</div><div class="s">{{ p.steps|join(' · ') }}</div></div>
+<details><summary>답변 문구<span class="chev"></span></summary>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
+<textarea class="inp" name="reply">{{ r.reply }}</textarea><button class="btn md gray full">저장</button></form></details>
 </div>{% endfor %}</div>
 {% endblock %}

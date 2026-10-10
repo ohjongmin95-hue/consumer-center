@@ -1,2 +1,2 @@
 {% extends 'base.html' %}
-{% block body %}<div class="empty" style="padding-top:96px"><div style="font-size:48px">🔍</div><h1 class="h2" style="margin-top:16px;color:var(--fg)">{{ msg }}</h1><a class="btn md" href="/" style="margin-top:24px">처음으로</a></div>{% endblock %}
+{% block body %}<div class="auth panel" style="text-align:center"><div style="font-size:44px">🔍</div><h1 class="h2" style="margin-top:12px">{{ msg }}</h1><a class="btn md" href="{{ url_for('home') if site=='me' else url_for('decide') }}" style="margin-top:24px">처음으로</a></div>{% endblock %}

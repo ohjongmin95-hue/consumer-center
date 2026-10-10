@@ -1,16 +1,16 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
-{% block width %}wide{% endblock %}
+{% block title %}설정 · SOBORU Business{% endblock %}
 {% block bar %}{{ b.bar('settings') }}{% endblock %}
 {% block body %}
-<section style="padding:20px 4px 20px"><h1 class="h1">설정</h1></section>
-<div class="two">
-<form class="card stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="h2">회사 정보</div>
-<label class="fld"><span>고객센터 연락처</span><input class="inp" name="contact" maxlength="60" value="{{ co.contact }}"></label>
+<div class="phead"><div><h1>설정</h1><p>{{ co.name }} · {{ co.login_id }}</p></div></div>
+<div class="grid2">
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="ph">회사 정보</div>
+<label class="fld"><span>고객센터 연락처</span><input class="inp" name="contact" maxlength="60" value="{{ co.contact }}" placeholder="1588-0000"></label>
 <label class="fld"><span>새 민원 알림 이메일</span><input class="inp" name="notify_email" type="email" maxlength="80" value="{{ co.notify_email }}"></label>
 <button class="btn md">저장</button></form>
-<form class="card stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="password"><div class="h2">비밀번호</div>
-<input class="inp" name="old" type="password" placeholder="지금 비밀번호" required autocomplete="current-password"><input class="inp" name="new" type="password" placeholder="새 비밀번호 (10자 이상)" minlength="10" required autocomplete="new-password">
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="password"><div class="ph">비밀번호 변경</div>
+<label class="fld"><span>지금 비밀번호</span><input class="inp" name="old" type="password" required autocomplete="current-password"></label>
+<label class="fld"><span>새 비밀번호 (10자 이상)</span><input class="inp" name="new" type="password" minlength="10" required autocomplete="new-password"></label>
 <button class="btn md gray">바꾸기</button></form>
 </div>
-<form method="post" action="{{ url_for('logout') }}" style="text-align:center;margin-top:24px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn">로그아웃</button></form>
 {% endblock %}

@@ -1,4 +1,4 @@
-"""SOBORU 플랫폼(platform_app): 한큐 민원 접수 → 기업 승인·자동 처리 → 소비자 확인, 비입점 처리, 권한."""
+"""SOBORU 플랫폼(platform_app): 한큐 접수 → 기업 승인·자동 처리 → 소비자 확인, 비입점 처리, 권한."""
 import os, re, sys, secrets, tempfile, unittest, importlib
 from pathlib import Path
 from unittest.mock import patch
@@ -59,13 +59,19 @@ class PlatformTest(unittest.TestCase):
     def test_member_flow_pending_approve_and_rate(self):
         b,o,cid=self.signup_and_approve('달빛화장품','dalbit@example.com')
         me=self.client()
-        self.assertIn('민원, 한 번에.',me.get('/').get_data(as_text=True))
+        self.assertIn('한큐에</em> 해결해요',me.get('/').get_data(as_text=True))
         self.assertEqual(me.get('/companies?q=달빛').get_json()[0]['name'],'달빛화장품')
         case_id=self.file_case(me,'달빛화장품','제품 불량',str(cid))
         self.assertIn('까지 답변을 받아요',me.get(f'/done/{case_id}').get_data(as_text=True))
         # 기업: 승인 카드에 보이고, 승인하면 추천 조치 실행 + 답변
         page=b.get('/biz/').get_data(as_text=True)
-        self.assertIn('승인할 민원',page);self.assertIn('무상 교환',page);self.assertIn('달빛화장품',page)
+        self.assertIn('승인할 민원이',page);self.assertIn('무상 교환',page);self.assertIn('달빛화장품',page)
+        self.assertIn('무상 교환',b.get('/biz/pending').get_data(as_text=True))
+        self.assertIn('크림 용기',b.get('/biz/all?q=크림').get_data(as_text=True))
+        self.assertNotIn('크림 용기',b.get('/biz/all?q=없는말').get_data(as_text=True))
+        self.assertIn('최근 8주',b.get('/biz/stats').get_data(as_text=True))
+        self.assertIn('value="제품 불량" checked',me.get('/new?category=제품 불량').get_data(as_text=True))
+        self.assertEqual(me.get('/guide').status_code,200)
         r=self.post(b,f'/biz/case/{case_id}',{'act':'approve'})
         self.assertEqual(r.status_code,302)
         with self.core.conn() as db:c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
