@@ -1,0 +1,42 @@
+{% extends 'base.html' %}{% import '_c.html' as m with context %}
+{% block title %}{{ c.title }} · 한큐 민원{% endblock %}
+{% block bar %}{{ m.bar(url_for('mine')) }}{% endblock %}
+{% block body %}
+{% set heads={'received':'접수했어요','forwarded':'기업에 전달했어요','seen':'기업이 확인하고 있어요','info':'추가 자료가 필요해요','answered':'답변이 도착했어요','resolved':'해결됐어요','unresolved':'아직 해결되지 않았어요'} %}
+{% set last=(ev|selectattr('kind','equalto','co')|selectattr('reply')|list|last) %}
+<section style="padding:16px 4px 24px">
+  <div style="display:flex;gap:8px;align-items:center"><span class="cap">{{ c.company_name }}</span>{% if c.member %}<span class="tag ok">입점</span>{% else %}<span class="tag gray">비입점</span>{% endif %}</div>
+  <h1 class="h1" style="margin-top:6px">{{ '답변이 늦어지고 있어요' if overdue(c) else heads.get(c.status,'접수했어요') }}</h1>
+  {{ m.track(c) }}
+</section>
+<div class="stack">
+{% if last %}<div class="card"><div style="display:flex;align-items:center;gap:10px"><span class="av">{{ c.company_name[:1] }}</span><b>{{ c.company_name }}</b><span class="sp"></span><span class="cap">{{ fmt(last.created) }}</span></div><div class="reply">{{ last.reply }}</div></div>{% endif %}
+{% if c.status=='info' %}
+<form class="card" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="info">
+<div class="h2">자료를 보내 주세요</div><p class="sub" style="font-size:15px">{{ c.info_ask }}</p>
+<textarea class="inp" name="msg" required style="min-height:100px;margin-top:14px"></textarea>
+<input class="file-in" type="file" name="files" multiple accept="image/*,.pdf" style="margin-top:12px">
+<button class="btn md full" style="margin-top:12px">보내기</button></form>{% endif %}
+{% if c.status=='answered' %}
+<form class="card" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="rate">
+<div class="h2">해결됐나요?</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px"><button class="btn md gray" name="v" value="unresolved">아직이에요</button><button class="btn md" name="v" value="resolved">해결됐어요</button></div></form>{% endif %}
+{% if not c.member and c.status in ('received','forwarded','seen') %}
+<div class="card"><div class="h2">비입점 기업이에요</div><p class="sub" style="font-size:15px">{{ '센터가 공식 연락처로 전달하고 회신을 기록해요' if c.consent else '전달 동의가 없어 접수만 했어요' }}</p>
+{% if co and co.contact %}<div class="hint blue" style="margin-top:14px"><span>📞</span><span>고객센터 <b style="user-select:all">{{ co.contact }}</b></span></div>{% endif %}</div>{% endif %}
+{% if c.status=='unresolved' or overdue(c) %}
+<div class="card" style="padding-bottom:8px"><div class="h2">공식 피해구제</div><div style="margin:10px -22px 0">
+{% for e,t,s,u in [('☎️','1372 소비자상담센터','전화 1372 · 온라인 상담','https://www.ccn.go.kr'),('🏛️','한국소비자원 피해구제','상담 후 신청','https://www.kca.go.kr'),('⚖️','소비자분쟁조정위원회','합의가 안 될 때','https://www.kca.go.kr')] %}
+<a class="rowi" href="{{ u }}" target="_blank" rel="noopener"><span class="av em">{{ e }}</span><span class="tx"><div class="t">{{ t }}</div><div class="s">{{ s }}</div></span><span class="chev"></span></a>{% endfor %}
+</div></div>{% endif %}
+<div class="card"><details><summary>민원 내용<span class="chev"></span></summary><div style="margin-top:16px">
+<div style="font-weight:700">{{ c.title }}</div><p style="white-space:pre-wrap;color:var(--fg2);margin:8px 0 16px;font-size:15px">{{ c.body }}</p>
+{% if files %}<div class="files" style="margin-bottom:16px">{% for f in files %}<a href="{{ url_for('case_file',case_id=c.id,file_id=f.id) }}">📎 {{ f.original }}</a>{% endfor %}</div>{% endif %}
+<dl class="kv"><dt>접수번호</dt><dd class="no">{{ c.no }}</dd><dt>유형</dt><dd>{{ c.category }}</dd><dt>원하는 해결</dt><dd>{{ c.want }}</dd>{% if c.member and c.due %}<dt>답변 목표일</dt><dd>{{ fmt_day(c.due) }}</dd>{% endif %}</dl>
+</div></details></div>
+<div class="card"><div class="h2" style="margin-bottom:18px">진행 기록</div>{{ m.timeline(ev,c,'me') }}
+{% if c.status in ('received','forwarded','seen','answered') %}
+<form method="post" enctype="multipart/form-data" style="display:flex;gap:8px;margin-top:8px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="add">
+<input class="inp" name="msg" placeholder="덧붙일 내용" required style="flex:1;min-width:0"><button class="btn md gray" style="flex:none">보내기</button></form>{% endif %}
+</div>
+</div>
+{% endblock %}

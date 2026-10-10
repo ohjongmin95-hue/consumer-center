@@ -1,0 +1,20 @@
+{% macro bar(left='logo') -%}
+<header class="bar"><div class="col in">
+{% if left=='logo' %}<a class="logo" href="{{ url_for('home') }}"><i></i>한큐 민원<small>by SOBORU</small></a>{% else %}<a class="back" href="{{ left }}" aria-label="뒤로"></a>{% endif %}
+<span class="sp"></span><a class="tbtn" href="{{ url_for('mine') }}">내 민원{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a>
+</div></header>
+{%- endmacro %}
+{% macro status_text(c) -%}{% if overdue(c) %}<span class="t-bad">지연</span>{% else %}{{ status_label(c.status)|replace('기업 전달','전달됨')|replace('기업 확인 중','확인 중')|replace('답변·조치 완료','답변 도착') }}{% endif %}{%- endmacro %}
+{% macro tone(c) -%}{{ {'gray':'t-mute','acc':'t-acc','wait':'t-acc','done':'t-ok','bad':'t-bad'}[status_tone(c.status)] }}{%- endmacro %}
+{% macro case_row(c,href) -%}
+<a class="rowi" href="{{ href }}"><span class="av">{{ c.company_name[:1] }}</span><span class="tx"><div class="t">{{ c.title }}</div><div class="s">{{ c.company_name }} · {{ fmt(c.created) }}</div></span><span class="st {{ tone(c) }}">{{ status_text(c) }}</span></a>
+{%- endmacro %}
+{% macro track(c) -%}
+{% set k=step_index(c.status) %}
+<div class="track">{% for s in STEPS %}<i class="{{ 'on' if loop.index0<=k }}"></i>{% endfor %}</div>
+<div class="track-l">{% for s in ['접수','전달','확인','답변','완료'] %}{% if loop.index0==k %}<b>{{ s }}</b>{% else %}<span>{{ s }}</span>{% endif %}{% endfor %}</div>
+{%- endmacro %}
+{% macro timeline(ev,c,viewer) -%}
+<ul class="tl">{% for e in ev|reverse %}<li class="{{ e.kind if e.kind in ('co','sys') else 'me' }}"><div><div class="x">{{ e.text }}{% if e.reply %}
+<div class="reply">{{ e.reply }}</div>{% endif %}</div><div class="w">{{ c.company_name if e.kind=='co' else ('나' if viewer=='me' else '소비자') if e.kind=='me' else 'SOBORU' }} · {{ fmt(e.created) }}</div></div></li>{% endfor %}</ul>
+{%- endmacro %}

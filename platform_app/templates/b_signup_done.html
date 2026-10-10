@@ -1,0 +1,3 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block bar %}{{ b.bar('') }}{% endblock %}
+{% block body %}<div class="auth" style="text-align:center"><div class="done-ic"></div><h1 class="h1">가입 신청했어요</h1><p class="sub">{{ name }} 확인 후 승인되면 이메일로 알려 드려요</p><a class="btn md" href="{{ url_for('login') }}" style="margin-top:28px">로그인 화면으로</a></div>{% endblock %}

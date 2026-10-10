@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% import '_c.html' as m with context %}
+{% block bar %}{{ m.bar() }}{% endblock %}
+{% block body %}
+<section style="padding:36px 4px 8px"><div class="hero-ill">📮</div><h1 class="h1" style="font-size:32px">민원, 한 번에.</h1><p class="sub">어느 기업이든 접수부터 결과까지</p></section>
+<div style="margin-top:28px"><a class="btn full" href="{{ url_for('new') }}">민원 접수하기</a></div>
+{% if rows %}<div class="sec">내 민원</div><div class="rows">{% for c in rows %}{{ m.case_row(c,url_for('case',case_id=c.id)) }}{% endfor %}</div>{% endif %}
+<div class="sec">진행 방식</div>
+<div class="rows">
+{% for e,t,s in [('📨','한 번만 접수','어느 기업이든 여기서'),('⚡','바로 전달','입점 기업은 담당자에게 즉시'),('✅','조치까지 확인','교환·회수·환불 기록'),('⚖️','미해결 시','공식 피해구제 안내')] %}
+<div class="rowi"><span class="av em">{{ e }}</span><span class="tx"><div class="t">{{ t }}</div><div class="s">{{ s }}</div></span></div>{% endfor %}
+</div>
+<div class="sec">기업이신가요?</div>
+<a class="rows rowi" href="{{ biz_url }}" style="padding:12px 22px"><span class="av em">🏢</span><span class="tx"><div class="t">SOBORU Business</div><div class="s">민원 관리와 자동 처리</div></span><span class="chev"></span></a>
+{% endblock %}

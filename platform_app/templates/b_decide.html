@@ -1,0 +1,10 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block width %}wide{% endblock %}
+{% block bar %}{{ b.bar('decide') }}{% endblock %}
+{% block body %}
+<section style="padding:20px 4px 0"><h1 class="h1">{% if pend %}승인할 민원 <span class="t-acc">{{ pend|length }}건</span>{% else %}모두 처리했어요{% endif %}</h1></section>
+{{ b.kpis(k) }}
+{% if pend %}<div class="dgrid">{% for c in pend %}{{ b.dcard(c) }}{% endfor %}</div>
+{% else %}<div class="card empty"><div style="font-size:40px">🎉</div><div style="margin-top:8px">승인할 민원이 없어요</div></div>{% endif %}
+{% endblock %}
+{% block foot %}<footer class="foot"><div class="in"><form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn" style="font-size:13px;color:var(--fg3)">로그아웃</button></form></div></footer>{% endblock %}
