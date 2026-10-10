@@ -4,9 +4,9 @@
 
 | 주소 | 서비스 | 누가 |
 |---|---|---|
-| 소비자용 도메인 (예: `hanq.example.kr`) | 한큐 민원 | 소비자: 어느 기업이든 접수, 진행 확인, 해결 여부 응답 |
-| 기업용 도메인 (예: `business.example.kr`) | SOBORU Business | 입점 기업: 승인 카드, 전체 민원, 자동 처리 규칙, 설정 |
-| 기업용 도메인 `/ops` | 운영 | 센터: 기업 가입 승인, 비입점 기업 민원 처리 |
+| `hanq.consumerjebo.co.kr` | 한큐 민원 | 소비자: 어느 기업이든 접수, 진행 확인, 해결 여부 응답 |
+| `business.consumerjebo.co.kr` | SOBORU Business | 입점 기업: 승인 카드, 전체 민원, 자동 처리 규칙, 설정 |
+| `business.consumerjebo.co.kr/ops` | 운영 | 센터: 기업 가입 승인, 비입점 기업 민원 처리 |
 
 코드: `platform_app/` (`hanq.py`가 실행 진입점, `core.py` 공통, `consumer.py` 소비자, `business.py` 기업·운영). 테스트: `tests/test_platform.py`.
 
@@ -22,9 +22,9 @@
 
 ## 서버에 설치
 
-1. DNS(가비아 등)에서 소비자용·기업용 도메인 두 개를 서버 IP로 연결 (A 레코드)
+1. 가비아 DNS에서 `hanq`, `business` 두 호스트를 consumerjebo.co.kr과 같은 서버 IP로 연결 (A 레코드)
 2. 최신 코드 받기: `sudo bash /opt/soboru/app/deploy/update.sh` (main에 합쳐진 뒤)
-3. 설치: `sudo bash /opt/soboru/app/deploy/platform-setup.sh 소비자용도메인 기업용도메인 이메일`
+3. 설치: `sudo bash /opt/soboru/app/deploy/platform-setup.sh hanq.consumerjebo.co.kr business.consumerjebo.co.kr 이메일`
    - 운영 화면 비밀번호를 물어봐요 (12자 이상)
    - DNS가 반영돼 있으면 HTTPS까지 자동 설정, 아니면 반영 뒤 같은 명령을 다시 실행
 4. 설정 파일 `/etc/soboru-platform.env`: 메일 알림(SMTP), `PLATFORM_MODE=live`(시범 운영 띠 끄기)
