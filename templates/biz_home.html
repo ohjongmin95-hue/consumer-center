@@ -20,7 +20,7 @@
       <thead><tr><th>접수번호</th><th>유형</th><th>제목</th><th>단계</th><th>접수일</th></tr></thead>
       <tbody>
       {% for c in cases %}
-      <tr>
+      <tr data-href="{{ url_for('biz_case', case_id=c['id']) }}">
         <td class="mono"><a href="{{ url_for('biz_case', case_id=c['id']) }}">{{ c['receipt'] }}</a></td>
         <td>{% if c['industry'] %}{{ c['industry'] }}<br>{% endif %}<small>{{ c['category'] }}</small></td>
         <td class="cs-subject"><a href="{{ url_for('biz_case', case_id=c['id']) }}">{{ c['subject'] }}</a></td>

@@ -374,7 +374,7 @@ class SiteTest(unittest.TestCase):
             with patch.object(notify, 'http_post', side_effect=OSError('down')):
                 self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'message', 'message': '두 번째'})
             page = admin.get('/admin/reports/%d' % case_id).get_data(as_text=True)
-        self.assertIn('카카오톡 켜짐', page)
+        self.assertIn('카톡 켜짐', page)
         self.assertIn('010****3333', page)
         self.assertIn('me***@example.com', page)
         self.assertIn('down', page)

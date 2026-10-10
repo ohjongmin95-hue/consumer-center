@@ -58,5 +58,13 @@
 {% with msgs = get_flashed_messages() %}{% if msgs %}<div class="cs-flash" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}{% endwith %}
 <div class="cs-main">{% block content_login %}{{ self.content() }}{% endblock %}</div>
 {% endif %}
+<script>
+  // 목록의 줄 아무 곳이나 눌러도 그 제보가 열림 (글자를 드래그해 고를 때·새 탭 클릭은 그대로)
+  document.addEventListener('click', function (e) {
+    var row = e.target.closest('tr[data-href]');
+    if (!row || e.target.closest('a, button, input, select, textarea, label') || String(window.getSelection())) return;
+    if (e.ctrlKey || e.metaKey) window.open(row.dataset.href, '_blank'); else location.href = row.dataset.href;
+  });
+</script>
 </body>
 </html>

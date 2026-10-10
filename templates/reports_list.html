@@ -22,7 +22,7 @@
       <thead><tr><th>접수번호</th><th>유형</th><th>제목</th><th>업체</th><th>단계</th><th>담당 기자</th><th>접수일</th></tr></thead>
       <tbody>
       {% for c in cases %}
-      <tr class="{{ 'is-new' if c['status'] == STATUSES[0] }}">
+      <tr class="{{ 'is-new' if c['status'] == STATUSES[0] }}" data-href="{{ url_for(ep.case, case_id=c['id']) }}">
         <td class="mono"><a href="{{ url_for(ep.case, case_id=c['id']) }}">{{ c['receipt'] }}</a></td>
         <td>{% if c['industry'] %}{{ c['industry'] }}<br>{% endif %}<small>{{ c['category'] }}</small></td>
         <td class="cs-subject"><a href="{{ url_for(ep.case, case_id=c['id']) }}">{% if not c['public_consent'] %}<span class="cs-tag" title="제보자가 비밀글로 접수">비밀</span>{% elif not c['published'] %}<span class="cs-tag" title="운영자가 비공개 처리">비공개</span>{% endif %}{{ c['subject'] }}</a></td>
