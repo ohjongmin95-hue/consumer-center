@@ -4,7 +4,6 @@
 <main class="ad-page">
   <header class="ad-head">
     <div><h1>관리자 홈</h1><p>오늘 확인할 일과 사이트 현황이에요.</p></div>
-    <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="1"><button class="ad-btn ad-btn-main" type="submit">✏️ 사이트 편집</button></form>
   </header>
 
   {% set new_reports = counts.get(STATUSES[0], 0) %}

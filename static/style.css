@@ -1130,3 +1130,22 @@ body.console { --ad-ink: #1f2430; --ad-sub: #5d636b; --ad-mute: #8a8f96; --ad-li
 body.console .ad-main main.page { padding: 0; }
 .ed-actions .ed-delete { border-color: #f0c4be; color: #c0392b; }
 .ed-ghost { color: #b0b3b8; font-size: .85em; font-style: italic; font-weight: 500; }
+/* 제보 양식: 제보자 정보 묶음 */
+.form-group-title { margin: 6px 0 4px; font-size: 18px; letter-spacing: -.4px; }
+.form-group-title ~ .form-group-title { margin-top: 30px; padding-top: 26px; border-top: 1px solid #eee; }
+.form-group-note { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.field-row-3 { grid-template-columns: 140px 1fr 1.4fr; gap: 8px; }
+.field-row-3 select, .field-row-3 input { width: 100%; padding: 13px 12px; border: 1px solid #d8dadd; border-radius: 8px; background: #fff; }
+fieldset.field { border: 0; padding: 0; margin: 0 0 24px; min-width: 0; }
+fieldset.field legend { padding: 0; margin-bottom: 9px; font-weight: 750; }
+.radio-row { display: flex; gap: 8px; }
+.radio-pill { position: relative; }
+.radio-pill input { position: absolute; opacity: 0; }
+.radio-pill span { display: inline-block; padding: 12px 22px; border: 1px solid #d8dadd; border-radius: 8px; background: #fff; cursor: pointer; }
+.radio-pill input:checked + span { border-color: var(--orange); background: #fff4e8; color: #b85600; font-weight: 800; }
+.radio-pill input:focus-visible + span { outline: 3px solid #ef7300; outline-offset: 2px; }
+.file-picked { color: #b85600; font-weight: 700; }
+@media (max-width: 680px) { .field-row, .field-row-3 { grid-template-columns: 1fr; } }
+.ed-bar .ed-bar-out { background: transparent; border: 1px solid #4a5160; color: #e7e9ee; }
+.form-group-title + .field { margin-top: 14px; }

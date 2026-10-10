@@ -1,4 +1,4 @@
-import os, re, json, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
+import os, re, json, time, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
 from pathlib import Path
 from flask import Flask, g, has_request_context, render_template, request, redirect, url_for, session, flash, abort, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -16,7 +16,7 @@ if os.getenv('TRUST_PROXY')=='1':app.wsgi_app=ProxyFix(app.wsgi_app,x_for=1,x_pr
 app.secret_key=os.getenv('SECRET_KEY',secrets.token_hex(32))
 if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not os.getenv('SECRET_KEY') or not os.getenv('ADMIN_PASSWORD_HASH')):
     raise RuntimeError('제보 접수나 게시판을 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
-app.config['MAX_CONTENT_LENGTH']=15*1024*1024
+app.config['MAX_CONTENT_LENGTH']=22*1024*1024  # 첨부 합계 20MB + 글 내용
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 STATUSES=site_content.STATUSES
 HOME_LATEST=8  # 메인 화면 최신 제보 수 기본값 (관리자 '메인 화면'에서 3~20으로 변경)
@@ -46,6 +46,8 @@ with conn() as db:
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
+    for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash'):
+        if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS site_lists(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
     db.execute("CREATE TABLE IF NOT EXISTS takedown_requests(id INTEGER PRIMARY KEY,requester TEXT NOT NULL,contact TEXT NOT NULL,target TEXT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT '접수',admin_note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
@@ -122,8 +124,8 @@ app.jinja_env.globals['step_icon']=lambda item,i:item.get('icon') or STEP_ICON_O
 ED_OPEN,ED_SEP,ED_CLOSE='\ue000','\ue001','\ue002'
 def editing():
     if 'editing' not in g:
-        g.editing=bool(session.get('edit_mode') and session.get('admin') and request.endpoint not in (None,'static')
-                       and not request.path.startswith(('/admin','/reporter','/staff')) and session.get('admin_v')==admin_session_ver())
+        g.editing=bool(session.get('edit_mode') and request.endpoint not in (None,'static')
+                       and not request.path.startswith(('/admin','/reporter','/staff')) and admin_active())
     return g.editing
 def ed_register(key,raw):
     marks=g.setdefault('ed_marks',{})
@@ -207,7 +209,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-39'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-42'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -416,30 +418,58 @@ CONSENT_FIELDS={'privacy':'consent','share':'share_company','copyright':'use_con
 def required_consents():
     # 제보하기 화면에 남아 있는 동의 항목만 필수 (관리자 '제보하기 동의 항목')
     return [CONSENT_FIELDS.get(r.get('kind'),'consent_custom_%d'%i) for i,r in enumerate(g.lists.get('report_consents',[]))]
+SIDO=['서울','부산','대구','인천','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주']
+GENDERS=['남성','여성']
+AGE_GROUPS=['10대','20대','30대','40대','50대','60대','70대 이상']
+UPLOAD_TYPES={'.pdf':'pdf','.png':'png','.jpg':'jpg','.jpeg':'jpg','.webp':'webp','.mp4':'mp4','.mov':'mov'}
+MAX_FILES=5;MAX_UPLOAD_TOTAL=20*1024*1024
+PHONE_INPUT=re.compile(r'^[0-9+()\- ]{8,20}$')
+def file_ok(suffix,head):
+    kind=UPLOAD_TYPES.get(suffix)
+    return ((kind=='pdf' and head.startswith(b'%PDF-')) or (kind=='png' and head.startswith(b'\x89PNG')) or (kind=='jpg' and head.startswith(b'\xff\xd8'))
+            or (kind=='webp' and head[8:12]==b'WEBP') or (kind in ('mp4','mov') and head[4:8]==b'ftyp'))
+def report_form(status=200):
+    return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES),status
 @app.route('/report',methods=['GET','POST'])
 def report():
-    if request.method=='GET':return render_template('report.html',categories=report_categories(), intake_enabled=os.getenv('ENABLE_INTAKE')=='1')
+    if request.method=='GET':return report_form()
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수 준비 중입니다.')
-    data={k:request.form.get(k,'').strip() for k in ('category','company','subject','description','request_text','contact')}
-    if data['category'] not in report_categories() or any(not data[k] for k in ('company','subject','description','request_text')) or not all(request.form.get(k) for k in required_consents()) or request.form.get('visibility') not in ('public','secret'):
-        flash(ui_text('msg.report_required','필수 항목과 필수 동의를 모두 확인해 주세요.'));return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
-    if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150)]):abort(400)
-    file=request.files.get('evidence')
-    if file and file.filename:
-        suffix=Path(secure_filename(file.filename)).suffix.lower()
-        if suffix not in ('.pdf','.png','.jpg','.jpeg','.webp'):flash(ui_text('msg.m02','첨부는 PDF 또는 이미지 파일만 가능합니다.'));return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
-        head=file.stream.read(12);file.stream.seek(0)
-        valid=(suffix=='.pdf' and head.startswith(b'%PDF-')) or (suffix=='.png' and head.startswith(b'\x89PNG')) or (suffix in ('.jpg','.jpeg') and head.startswith(b'\xff\xd8')) or (suffix=='.webp' and head[8:12]==b'WEBP')
-        if not valid:flash(ui_text('msg.m03','첨부파일 형식을 확인해 주세요.'));return render_template('report.html',categories=report_categories(),intake_enabled=os.getenv('ENABLE_INTAKE')=='1'),400
+    if request.form.get('website'):abort(400)  # 사람에게는 안 보이는 칸: 자동 등록 프로그램 차단
+    keys=('category','company','subject','description','request_text','contact','reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group')
+    data={k:request.form.get(k,'').strip() for k in keys}
+    if data['category'] not in report_categories() or any(not data[k] for k in ('company','subject','description','request_text','reporter_name','phone')) or not all(request.form.get(k) for k in required_consents()) or request.form.get('visibility') not in ('public','secret'):
+        flash(ui_text('msg.report_required','필수 항목과 필수 동의를 모두 확인해 주세요.'));return report_form(400)
+    if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150),('reporter_name',40),('phone',20),('region_sigungu',40),('region_detail',120)]):abort(400)
+    if not PHONE_INPUT.match(data['phone']):flash(ui_text('msg.report_phone','전화번호를 확인해 주세요.'));return report_form(400)
+    if data['contact'] and not MEMBER_EMAIL_RE.match(data['contact']):flash(ui_text('msg.report_email','이메일 주소를 확인해 주세요.'));return report_form(400)
+    if data['region_sido'] not in SIDO:data['region_sido']=''
+    if data['gender'] not in GENDERS:data['gender']=''
+    if data['age_group'] not in AGE_GROUPS:data['age_group']=''
+    files=[f for f in request.files.getlist('evidence') if f and f.filename]
+    if len(files)>MAX_FILES:flash(ui_text('msg.report_files','첨부파일은 5개까지 올릴 수 있어요.'));return report_form(400)
+    total=0;checked=[]
+    for f in files:
+        suffix=Path(f.filename).suffix.lower()
+        head=f.stream.read(12);f.stream.seek(0,2);size=f.stream.tell();f.stream.seek(0);total+=size
+        if suffix not in UPLOAD_TYPES:flash(ui_text('msg.m02','첨부는 사진, PDF, 동영상(mp4·mov) 파일만 가능합니다.'));return report_form(400)
+        if not file_ok(suffix,head):flash(ui_text('msg.m03','첨부파일 형식을 확인해 주세요.'));return report_form(400)
+        # 원래 파일 이름은 한글을 살리되 경로·제어 문자는 지움
+        original=re.sub(r'[\x00-\x1f/\\]','',Path(f.filename.replace('\\','/')).name)[:180] or 'file'+suffix
+        checked.append((f,suffix,original))
+    if total>MAX_UPLOAD_TOTAL:flash(ui_text('msg.report_size','첨부파일은 모두 합쳐 20MB까지 올릴 수 있어요.'));return report_form(400)
     receipt='CJ-'+datetime.datetime.now().strftime('%y%m%d')+'-'+secrets.token_hex(3).upper()
     code=secrets.token_urlsafe(12)
     with conn() as db:
+        hour_ago=(datetime.datetime.now()-datetime.timedelta(hours=1)).isoformat(timespec='seconds')
+        if db.execute('SELECT COUNT(*) FROM cases WHERE ip_hash=? AND created>=?',(ip_hash(),hour_ago)).fetchone()[0]>=5:
+            flash(ui_text('msg.report_rate','잠시 후 다시 제보해 주세요. 한 시간에 5건까지 접수할 수 있어요.'));return report_form(429)
         cur=db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,contact,share_company,created) VALUES(?,?,?,?,?,?,?,?,?,?)',(receipt,hashlib.sha256(code.encode()).hexdigest(),data['category'],data['company'],data['subject'],data['description'],data['request_text'],data['contact'],int(bool(request.form.get('share_company'))),datetime.datetime.now().isoformat(timespec='seconds')))
         public=int(request.form.get('visibility')=='public')
-        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=? WHERE id=?',(public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,cur.lastrowid))
-        if file and file.filename:
-            stored=secrets.token_hex(20)+suffix;file.save(UPLOAD/stored)
-            db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,secure_filename(file.filename)[:180]))
+        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=? WHERE id=?',
+                   (public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),cur.lastrowid))
+        for f,suffix,original in checked:
+            stored=secrets.token_hex(20)+suffix;f.save(UPLOAD/stored)
+            db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,original))
     return render_template('success.html',receipt=receipt,code=code)
 @app.route('/lookup',methods=['GET','POST'])
 def lookup():
@@ -478,16 +508,27 @@ def admin_login():
         if too_many_attempts('admin'):
             flash('로그인 시도가 너무 많습니다. 10분 뒤 다시 시도해 주세요.');return render_template('admin_login.html'),429
         if stored and check_password_hash(stored,request.form.get('password','')):
-            session.clear();session['admin']=True;session['admin_v']=admin_session_ver();return redirect(url_for('admin'))
+            session.clear();session['admin']=True;session['admin_v']=admin_session_ver();session['admin_at']=time.time();session.permanent=False;return redirect(url_for('admin'))
         note_attempt('admin')
         flash('로그인에 실패했습니다.')
     return render_template('admin_login.html')
+ADMIN_IDLE_SECONDS=2*60*60  # 관리자 화면을 2시간 쓰지 않으면 자동 로그아웃
+def end_admin():
+    for k in ('admin','admin_v','admin_at','edit_mode'):session.pop(k,None)
+def admin_active():
+    # 관리자 로그인이 살아 있는지: 비밀번호를 바꿨거나 오래 쓰지 않았으면 끊음
+    if not session.get('admin'):return False
+    if session.get('admin_v')!=admin_session_ver() or time.time()-session.get('admin_at',0)>ADMIN_IDLE_SECONDS:
+        end_admin();return False
+    session['admin_at']=time.time()
+    return True
+app.jinja_env.globals['admin_active']=admin_active
 def admin_only(f):
     @functools.wraps(f)
     def wrapped(*a,**kw):
-        # 비밀번호를 바꾸면 다른 기기에 남아 있던 관리자 로그인은 끊김
-        if not session.get('admin') or session.get('admin_v')!=admin_session_ver():
-            session.pop('admin',None);session.pop('admin_v',None);return redirect(url_for('admin_login'))
+        if not admin_active():
+            flash('관리자 로그인이 끝났어요. 다시 로그인해 주세요.') if request.method=='GET' and request.path!='/admin' else None
+            return redirect(url_for('admin_login'))
         return f(*a,**kw)
     return wrapped
 
@@ -649,7 +690,7 @@ def admin_takedowns():
     return render_template('admin_takedowns.html',rows=rows,statuses=TAKEDOWN_STATUSES)
 @app.route('/admin/logout',methods=['POST'])
 @admin_only
-def logout():session.pop('admin',None);return redirect(url_for('admin_login'))
+def logout():end_admin();return redirect(url_for('admin_login'))
 
 @app.route('/company/<int:case_id>/<token>',methods=['GET','POST'])
 def company_access(case_id,token):
@@ -758,7 +799,7 @@ def board_write():
 def board_post(post_id):
     with conn() as db:
         post=db.execute('SELECT * FROM posts WHERE id=?',(post_id,)).fetchone()
-        if not post or (post['hidden'] and not session.get('admin')):abort(404)
+        if not post or (post['hidden'] and not admin_active()):abort(404)
         comments=db.execute('SELECT id,nickname,body,created,user_id FROM comments WHERE post_id=? AND hidden=0 ORDER BY id',(post_id,)).fetchall()
         mine={r['kind']+r['target'] for r in db.execute('SELECT kind,target FROM board_votes WHERE voter=?',(voter_id(),))}
     return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled())
@@ -900,7 +941,8 @@ def safe_next(default='home'):
     nxt=request.values.get('next','')
     return nxt if nxt.startswith('/') and not nxt.startswith('//') and '\\' not in nxt else url_for(default)
 def sign_in(user,remember):
-    keep={k:session[k] for k in ('admin','voter') if k in session}
+    # 회원 로그인은 관리자 로그인을 이어받지 않음 (로그인 유지 쿠키에 관리자 권한이 남지 않도록)
+    keep={k:session[k] for k in ('voter',) if k in session}
     session.clear();session.update(keep)
     session['uid']=user['id'];session['uv']=user['session_ver'];session.permanent=bool(remember)
 

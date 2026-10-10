@@ -83,6 +83,7 @@
   </select></label>
   <a href="{{ url_for('admin_lists') }}">메뉴·항목</a><a href="{{ url_for('admin_content') }}">사이트 문구 전체</a>
   <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="0"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button type="submit">편집 끝내기</button></form>
+  <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit" class="ed-bar-out">관리자 로그아웃</button></form>
 </div>
 <div class="ed-modal" hidden><form class="ed-box"><p class="ed-label"></p><textarea rows="3"></textarea><p class="ed-msg" role="status"></p>
   <div class="ed-actions"><button type="button" class="ed-delete">🗑 지우기</button><button type="button" class="ed-reset">기본 문구로</button><a class="ed-follow" hidden>이 링크로 이동 →</a><span></span><button type="button" class="ed-cancel">취소</button><button type="submit" class="ed-save">저장</button></div></form></div>

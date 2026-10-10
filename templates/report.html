@@ -14,13 +14,33 @@
 
   <div class="form-panel">
     <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <h2 class="form-group-title">{{ ui('report.group_reporter', '제보자 정보') }}</h2>
+      <p class="form-group-note">{{ ui('report.group_reporter_note', '연락처와 개인정보는 공개되지 않고, 제보 확인과 연락에만 쓰여요.') }}</p>
+      <div class="field-row">
+        <div class="field"><label for="r-name">{{ ui('report.f_name', '이름') }} <small>*</small></label><input id="r-name" name="reporter_name" maxlength="40" required autocomplete="name" value="{{ request.form.get('reporter_name','') }}"></div>
+        <div class="field"><label for="r-phone">{{ ui('report.f_phone', '전화번호') }} <small>*</small></label><input id="r-phone" name="phone" type="tel" maxlength="20" required autocomplete="tel" placeholder="{{ ui('report.f_phone_ph', '010-0000-0000') }}" value="{{ request.form.get('phone','') }}"></div>
+      </div>
+      <div class="field"><label for="r-contact">{{ ui('report.f_contact', '이메일 (선택)') }}</label><input id="r-contact" name="contact" type="email" maxlength="150" autocomplete="email" placeholder="{{ ui('report.f_contact_ph', '이메일 주소') }}" value="{{ request.form.get('contact','') }}"><p class="hint">{{ ui('report.f_contact_hint', '진행 상황을 이메일로도 안내받고 싶다면 적어 주세요.') }}</p></div>
+      <div class="field"><label for="r-sido">{{ ui('report.f_region', '지역 (선택)') }}</label>
+        <div class="field-row field-row-3">
+          <select id="r-sido" name="region_sido" aria-label="{{ ui('report.f_sido', '시/도') }}"><option value="">{{ ui('report.f_sido', '시/도') }}</option>{% for x in sido %}<option{% if request.form.get('region_sido') == x %} selected{% endif %}>{{ x }}</option>{% endfor %}</select>
+          <input name="region_sigungu" maxlength="40" placeholder="{{ ui('report.f_sigungu', '시·군·구 (예: 강남구)') }}" aria-label="{{ ui('report.f_sigungu', '시·군·구 (예: 강남구)') }}" value="{{ request.form.get('region_sigungu','') }}">
+          <input name="region_detail" maxlength="120" placeholder="{{ ui('report.f_region_detail', '읍·면·동까지 (선택)') }}" aria-label="{{ ui('report.f_region_detail', '읍·면·동까지 (선택)') }}" value="{{ request.form.get('region_detail','') }}">
+        </div>
+      </div>
+      <div class="field-row">
+        <fieldset class="field"><legend>{{ ui('report.f_gender', '성별 (선택)') }}</legend><div class="radio-row">{% for x in genders %}<label class="radio-pill"><input type="radio" name="gender" value="{{ x }}"{% if request.form.get('gender') == x %} checked{% endif %}><span>{{ x }}</span></label>{% endfor %}</div></fieldset>
+        <div class="field"><label for="r-age">{{ ui('report.f_age', '연령대 (선택)') }}</label><select id="r-age" name="age_group"><option value="">{{ ui('report.f_age_pick', '연령대 선택') }}</option>{% for x in ages %}<option{% if request.form.get('age_group') == x %} selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
+      </div>
+
+      <h2 class="form-group-title">{{ ui('report.group_case', '제보 내용') }}</h2>
       <div class="field"><label for="r-category">{{ ui('report.f_category', '제보 유형') }} <small>*</small></label><select id="r-category" name="category" required><option value="">{{ ui('report.f_category_pick', '선택해 주세요') }}</option>{% for x in categories %}<option {% if request.form.get('category', request.args.get('category')) == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
-      <div class="field"><label for="r-company">{{ ui('report.f_company', '업체·서비스명') }} <small>*</small></label><input id="r-company" name="company" maxlength="120" required placeholder="{{ ui('report.f_company_ph', '예: ○○쇼핑몰') }}" value="{{ request.form.get('company','') }}"></div>
+      <div class="field"><label for="r-company">{{ ui('report.f_company', '업체·서비스명') }} <small>*</small></label><input id="r-company" name="company" maxlength="120" required placeholder="{{ ui('report.f_company_ph', '예: ○○쇼핑몰') }}" value="{{ request.form.get('company','') }}"><p class="hint">{{ ui('report.f_company_hint', '홈페이지 주소 말고 정확한 업체명(상호)을 적어 주세요. 정확할수록 빨리 확인할 수 있어요.') }}</p></div>
       <div class="field"><label for="r-subject">{{ ui('report.f_subject', '제보 제목') }} <small>*</small></label><input id="r-subject" name="subject" maxlength="160" required placeholder="{{ ui('report.f_subject_ph', '피해 내용을 한 줄로 요약해 주세요') }}" value="{{ request.form.get('subject','') }}"></div>
       <div class="field"><label for="r-description">{{ ui('report.f_description', '피해 내용') }} <small>*</small></label><textarea id="r-description" name="description" maxlength="6000" required placeholder="{{ ui('report.f_description_ph', '구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요') }}">{{ request.form.get('description','') }}</textarea></div>
       <div class="field"><label for="r-request">{{ ui('report.f_request', '원하는 해결 방법') }} <small>*</small></label><textarea id="r-request" name="request_text" maxlength="3000" required placeholder="{{ ui('report.f_request_ph', '환불, 교환, 수리, 설명 요청 등') }}">{{ request.form.get('request_text','') }}</textarea></div>
-      <div class="field"><label for="r-contact">{{ ui('report.f_contact', '연락 가능한 이메일 (선택)') }}</label><input id="r-contact" name="contact" maxlength="150" placeholder="{{ ui('report.f_contact_ph', '이메일 주소') }}" value="{{ request.form.get('contact','') }}"><p class="hint">{{ ui('report.f_contact_hint', '연락처를 적지 않아도 접수번호와 조회 코드로 확인할 수 있습니다.') }}</p></div>
-      <div class="field"><label for="r-evidence">{{ ui('report.f_file', '증빙자료 (선택)') }}</label><input id="r-evidence" type="file" name="evidence" accept=".pdf,.png,.jpg,.jpeg,.webp"><p class="hint">{{ ui('report.f_file_hint', 'PDF·JPG·PNG·WEBP 1개, 최대 15MB. 개인정보가 담긴 부분은 가리고 첨부하세요.') }}</p></div>
+      <div class="field"><label for="r-evidence">{{ ui('report.f_file', '증빙자료 (선택)') }}</label><input id="r-evidence" type="file" name="evidence" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.mp4,.mov"><p class="hint">{{ ui('report.f_file_hint2', '사진·PDF·동영상(mp4, mov)을 5개까지, 모두 합쳐 20MB까지 올릴 수 있어요. 사진과 동영상이 있으면 더 빠르게 확인할 수 있어요. 개인정보가 담긴 부분은 가리고 올려 주세요.') }}</p><p class="hint file-picked" hidden></p></div>
 
       <fieldset class="field visibility-pick"><legend>{{ ui('report.f_visibility', '공개 설정') }} <small>*</small></legend>
         <label class="vis-option"><input type="radio" name="visibility" value="public" required{% if request.form.get('visibility') == 'public' %} checked{% endif %}><span><b>{{ ui('report.vis_public', '공개') }}</b>{{ txt('report.visibility_public') }}</span></label>
@@ -89,6 +109,17 @@
     var boxes = document.querySelectorAll('.consent-card input[type=checkbox]');
     all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); });
     boxes.forEach(function (b) { b.addEventListener('change', function () { all.checked = Array.prototype.every.call(boxes, function (x) { return x.checked; }); }); });
+  })();
+  // 고른 첨부파일 이름과 크기를 보여 줘요
+  (function () {
+    var input = document.getElementById('r-evidence'), out = document.querySelector('.file-picked');
+    if (!input || !out) return;
+    input.addEventListener('change', function () {
+      var total = 0, names = [];
+      Array.prototype.forEach.call(input.files, function (f) { total += f.size; names.push(f.name); });
+      out.hidden = !names.length;
+      out.textContent = names.length + '개 · ' + (total / 1048576).toFixed(1) + 'MB' + (input.files.length > {{ max_files }} || total > 20971520 ? ' — 5개, 20MB 이하로 골라 주세요' : '') + ' : ' + names.join(', ');
+    });
   })();
 </script>
 {% endblock %}

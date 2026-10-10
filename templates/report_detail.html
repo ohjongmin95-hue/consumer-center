@@ -50,7 +50,11 @@
       <section class="cs-panel">
         <h2>제보자 정보·동의</h2>
         <dl class="cs-dl">
-          <dt>연락처</dt><dd>{{ case['contact'] or '없음' }}</dd>
+          <dt>이름</dt><dd>{{ case['reporter_name'] or '—' }}</dd>
+          <dt>전화번호</dt><dd>{% if case['phone'] %}<a href="tel:{{ case['phone'] }}">{{ case['phone'] }}</a>{% else %}—{% endif %}</dd>
+          <dt>이메일</dt><dd>{{ case['contact'] or '—' }}</dd>
+          <dt>지역</dt><dd>{{ [case['region_sido'], case['region_sigungu'], case['region_detail']]|select|join(' ') or '—' }}</dd>
+          <dt>성별·연령</dt><dd>{{ [case['gender'], case['age_group']]|select|join(' · ') or '—' }}</dd>
           <dt>공개 선택</dt><dd>{{ '공개' if case['public_consent'] else '비밀글' }}</dd>
           <dt>기업 전달</dt><dd>{{ '동의' if case['share_company'] else '미동의' }}</dd>
           <dt>내용 활용</dt><dd>{{ '동의' if case['use_consent'] else '미동의' }}</dd>
