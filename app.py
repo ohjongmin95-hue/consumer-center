@@ -227,7 +227,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-53'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-54'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -1477,7 +1477,13 @@ def company_matches(company,case_company):
 
 @app.before_request
 def load_biz():
-    g.biz_user=None;g.company=None;g.biz_preview=False
+    g.biz_user=None;g.company=None;g.biz_preview=False;g.biz_master=False
+    if request.path.startswith('/biz') and session.get('biz_master') and session['biz_master']==admin_setting('biz_master_ver'):
+        # 대표 전용 마스터 계정: 모든 기업 화면을 골라 보기 (보기 전용)
+        g.biz_master=True;g.biz_preview=True;g.biz_user={'id':0,'name':'마스터','session_ver':0,'pw_hash':''}
+        if session.get('biz_master_company'):
+            with conn() as db:g.company=db.execute('SELECT * FROM companies WHERE id=?',(session['biz_master_company'],)).fetchone()
+        return
     if session.get('biz_preview') and request.path.startswith('/biz') and admin_active():
         # 대표(관리자)가 그 기업이 보는 화면을 그대로 확인. 답변·비밀번호 변경은 막음.
         with conn() as db:company=db.execute('SELECT * FROM companies WHERE id=?',(session['biz_preview'],)).fetchone()
@@ -1525,7 +1531,7 @@ def biz_signup():
     with conn() as db:
         if not errors and db.execute("SELECT 1 FROM companies WHERE biz_no=? AND status!='rejected'",(biz,)).fetchone():
             errors.append('이미 가입 신청된 사업자등록번호예요. 담당자를 추가하려면 센터로 문의해 주세요.')
-        if not errors and db.execute('SELECT 1 FROM company_users WHERE login_id=?',(f['login_id'],)).fetchone():errors.append('이미 있는 아이디예요.')
+        if not errors and (db.execute('SELECT 1 FROM company_users WHERE login_id=?',(f['login_id'],)).fetchone() or f['login_id']==admin_setting('biz_master_id')):errors.append('이미 있는 아이디예요.')
         if errors:
             for e in errors:flash(e)
             return render_template('biz_signup.html'),400
@@ -1541,6 +1547,12 @@ def biz_login():
     login_id=request.form.get('login_id','').strip().lower()[:40];pw=request.form.get('password','')
     if too_many_attempts('biz'):
         flash('로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.');return render_template('biz_login.html'),429
+    master_id=admin_setting('biz_master_id')
+    if master_id and login_id==master_id:
+        if not check_password_hash(admin_setting('biz_master_hash'),pw):
+            note_attempt('biz');flash('아이디 또는 비밀번호가 맞지 않아요.');return render_template('biz_login.html'),401
+        session.pop('biz_uid',None);session.pop('biz_master_company',None);session['biz_master']=admin_setting('biz_master_ver')
+        return redirect(url_for('biz_home'))
     with conn() as db:
         user=db.execute('SELECT * FROM company_users WHERE login_id=?',(login_id,)).fetchone()
         if user and user['locked_until'] and user['locked_until']>now():
@@ -1562,12 +1574,18 @@ def biz_login():
 
 @app.route('/biz/logout',methods=['POST'])
 def biz_logout():
-    session.pop('biz_uid',None);session.pop('biz_v',None)
+    for key in ('biz_uid','biz_v','biz_master','biz_master_company'):session.pop(key,None)
     return redirect(url_for('biz_login'))
 
 @app.route('/biz')
 @biz_only
 def biz_home():
+    if g.biz_master and not g.company:
+        with conn() as db:
+            companies=db.execute("""SELECT co.*,(SELECT COUNT(*) FROM cases c WHERE c.company_id=co.id AND c.share_company=1) AS n_cases,
+                (SELECT COUNT(*) FROM cases c WHERE c.company_id=co.id AND c.share_company=1 AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.case_id=c.id AND m.author='기업 답변')) AS n_todo
+                FROM companies co ORDER BY CASE co.status WHEN 'active' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,co.name""").fetchall()
+        return render_template('biz_master.html',companies=companies,statuses=COMPANY_STATUSES)
     if g.company['status']!='active':return render_template('biz_home.html',cases=[],tab='',counts={})
     tab='done' if request.args.get('tab')=='done' else 'todo'
     with conn() as db:
@@ -1619,6 +1637,13 @@ def admin_company_preview(company_id):
         if not db.execute('SELECT 1 FROM companies WHERE id=?',(company_id,)).fetchone():abort(404)
     session['biz_preview']=company_id
     return redirect(url_for('biz_home'))
+@app.route('/biz/master/company',methods=['POST'])
+def biz_master_company():
+    if not g.biz_master:return redirect(url_for('biz_login'))
+    cid=request.form.get('company_id',type=int)
+    if cid:session['biz_master_company']=cid
+    else:session.pop('biz_master_company',None)
+    return redirect(url_for('biz_home'))
 @app.route('/biz/preview/end',methods=['POST'])
 def biz_preview_end():
     session.pop('biz_preview',None)
@@ -1630,6 +1655,20 @@ def admin_companies():
     with conn() as db:
         if request.method=='POST':
             cid=request.form.get('id',type=int);action=request.form.get('action')
+            if action in ('master','master_off'):
+                if action=='master_off':
+                    db.execute("DELETE FROM admin_settings WHERE key IN ('biz_master_id','biz_master_hash','biz_master_ver')");flash('마스터 계정을 껐어요.')
+                else:
+                    mid=request.form.get('master_id','').strip().lower();pw=request.form.get('password','')
+                    if not LOGIN_ID_RE.match(mid):flash('아이디는 영문 소문자·숫자·밑줄로 4~20자로 정해 주세요.')
+                    elif db.execute('SELECT 1 FROM company_users WHERE login_id=?',(mid,)).fetchone():flash('기업 담당자가 이미 쓰는 아이디예요.')
+                    elif not strong_password(pw):flash('비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
+                    elif pw!=request.form.get('password2',''):flash('비밀번호 확인이 일치하지 않아요.')
+                    else:
+                        for key,value in (('biz_master_id',mid),('biz_master_hash',generate_password_hash(pw)),('biz_master_ver',secrets.token_hex(8))):
+                            db.execute('INSERT INTO admin_settings(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,now()))
+                        flash(f'마스터 계정을 저장했어요. 기업 로그인 화면에서 {mid} 로 들어가요.')
+                return redirect(url_for('admin_companies'))
             company=db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
             if not company:abort(404)
             if action in ('approve','reject','stop','start'):
@@ -1651,6 +1690,6 @@ def admin_companies():
         companies=db.execute("""SELECT co.*,(SELECT login_id FROM company_users WHERE company_id=co.id ORDER BY id LIMIT 1) AS login_id,
             (SELECT COUNT(*) FROM cases WHERE company_id=co.id) AS n_cases
             FROM companies co ORDER BY CASE co.status WHEN 'pending' THEN 0 WHEN 'active' THEN 1 ELSE 2 END,co.id DESC""").fetchall()
-    return render_template('admin_companies.html',companies=companies,statuses=COMPANY_STATUSES)
+    return render_template('admin_companies.html',companies=companies,statuses=COMPANY_STATUSES,master_id=admin_setting('biz_master_id'))
 
 if __name__=='__main__':app.run(debug=False)
