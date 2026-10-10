@@ -5,7 +5,7 @@
   <div class="auth-card">
     <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
-      <p class="auth-logo nr-logo">{{ txt('site.name') }}</p>
+      <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
       <h1 class="auth-title">기업 회원 로그인</h1>
       <p class="auth-note">우리 회사에 들어온 소비자 제보를 확인하고 직접 답변해요.</p>
       <input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="아이디" aria-label="아이디" value="{{ request.form.get('login_id','') }}">
