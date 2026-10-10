@@ -116,10 +116,7 @@ def decide():
     return render_template('b_decide.html',pend=pend,recent=rows[:6],k=kpis(rows),counts=counts,cats=by_cat(rows),tab='home')
 
 @app.route('/pending')
-@login_required
-def pending():
-    with conn() as db:rows=my_cases(db,me())
-    return render_template('b_pending.html',pend=[r for r in rows if is_pending(r)],tab='pending')
+def pending():return redirect(url_for('decide'))
 
 @app.route('/all')
 @login_required

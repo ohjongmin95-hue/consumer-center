@@ -13,4 +13,5 @@
 <label class="fld"><span>새 비밀번호 (10자 이상)</span><input class="inp" name="new" type="password" minlength="10" required autocomplete="new-password"></label>
 <button class="btn md gray">바꾸기</button></form>
 </div>
+<form method="post" action="{{ url_for('logout') }}" style="margin-top:24px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md gray">로그아웃</button></form>
 {% endblock %}

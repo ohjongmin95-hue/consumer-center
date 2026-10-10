@@ -1,18 +1,18 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
 {% block title %}{{ c.title }} · SOBORU Business{% endblock %}
-{% block bar %}{{ b.bar('pending' if c.decision=='pending' and c.status in ('forwarded','seen') else 'all') }}{% endblock %}
+{% block bar %}{{ b.bar('all') }}{% endblock %}
 {% block body %}
-<div class="crumb"><a href="{{ url_for('decide') }}">홈</a><span>›</span><a href="{{ url_for('all_cases') }}">전체 민원</a><span>›</span><span class="no">{{ c.no }}</span></div>
-<div class="phead"><div><div class="tagrow"><span class="catc">{{ i.cat_icon(c.category,22) }}{{ c.category }}</span>{{ m.pill(c,True) }}{% if c.decision %}<span class="pill gray">{{ DECISION[c.decision] }}</span>{% endif %}</div><h1>{{ c.title }}</h1></div></div>
+<div class="crumb"><a href="{{ url_for('decide') }}">홈</a><span>›</span><a href="{{ url_for('all_cases') }}">민원</a><span>›</span><span class="no">{{ c.no }}</span></div>
+<div class="phead"><div><div class="tagrow">{{ m.pill(c,True) }}<span class="t-sub">{{ c.category }}</span></div><h1>{{ c.title }}</h1></div></div>
 <div class="cols">
 <div class="stack lg">
-<div class="panel"><div class="ph">민원 내용</div><p class="bodytext">{{ c.body }}</p>
+<div class="panel"><p class="bodytext">{{ c.body }}</p>
 {% if files %}<div class="files">{% for f in files %}<a href="{{ url_for('case_file',case_id=c.id,file_id=f.id) }}">📎 {{ f.original }}</a>{% endfor %}</div>{% endif %}
-<div class="want-box">원하는 해결<b>{{ c.want }}</b></div></div>
+<div class="want-box"><span>원하는 해결</span><b>{{ c.want }}</b></div></div>
 {% set open=c.status not in ('resolved','unresolved') %}
 {% if open and c.decision not in ('approved','auto') %}{{ b.dcard(c,True) }}{% endif %}
 {% if open %}<form class="panel" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="reply">
-<div class="ph">직접 답변</div>
+<div class="ph">답변 쓰기</div>
 <textarea class="inp" name="msg" id="msg" required>{{ rule.reply }}</textarea>
 <div class="quick">{% for t in ['확인 후 오늘 안에 다시 연락드릴게요.','불편을 드려 죄송합니다. 바로 조치하겠습니다.','주문번호를 알려 주시면 빠르게 확인할게요.'] %}<button type="button" data-q="{{ t }}">{{ t }}</button>{% endfor %}</div>
 <button class="btn md" style="margin-top:16px">답변 보내기</button></form>{% endif %}

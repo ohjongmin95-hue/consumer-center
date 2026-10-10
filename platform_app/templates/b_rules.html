@@ -2,16 +2,15 @@
 {% block title %}자동 처리 · SOBORU Business{% endblock %}
 {% block bar %}{{ b.bar('rules') }}{% endblock %}
 {% block body %}
-{% set on=rs.values()|selectattr('auto')|list|length %}
-<div class="phead"><div><h1>자동 처리</h1><p>켜 둔 유형은 접수되는 즉시 추천 조치를 실행하고 답변해요</p></div><span class="pill acc lg">{{ on }}/{{ CATS|length }} 켜짐</span></div>
-<div class="cgrid" id="replies">{% for cat in CATS %}{% set r=rs[cat] %}{% set p=PLAYBOOK[cat] %}
-<div class="rcard{{ ' on' if r.auto }}" id="r{{ loop.index }}">
-<div class="row">{{ i.cat_icon(cat,40) }}<div class="tx"><b>{{ cat }}</b><span>{{ '자동 처리 중' if r.auto else '승인 후 처리' }}</span></div>
+<div class="narrow">
+<div class="phead"><div><h1>자동 처리</h1><p>켜 둔 유형은 접수되면 바로 추천 조치대로 처리하고 답변해요</p></div></div>
+<div class="list">{% for cat in CATS %}{% set r=rs[cat] %}{% set p=PLAYBOOK[cat] %}
+<div class="li" id="r{{ loop.index }}">
+<div class="row">{{ i.cat_icon(cat,36) }}<div class="tx"><b>{{ cat }}</b><span>{{ p.title }}</span></div>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}"><input type="hidden" name="auto" value="{{ '0' if r.auto else '1' }}">
 <button class="sw{{ ' on' if r.auto }}" role="switch" aria-checked="{{ 'true' if r.auto else 'false' }}" aria-label="{{ cat }} 자동 처리"></button></form></div>
-<div class="reco"><div class="l">처리 방법</div><div class="r">{{ p.title }}</div><div class="s">{{ p.steps|join(' · ') }}</div></div>
-<details><summary>답변 문구<span class="chev"></span></summary>
+<details><summary>답변 문구 고치기<span class="chev"></span></summary>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
-<textarea class="inp" name="reply">{{ r.reply }}</textarea><button class="btn md gray full">저장</button></form></details>
-</div>{% endfor %}</div>
+<textarea class="inp" name="reply">{{ r.reply }}</textarea><button class="btn md gray">저장</button></form></details>
+</div>{% endfor %}</div></div>
 {% endblock %}

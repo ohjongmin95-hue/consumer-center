@@ -4,17 +4,17 @@
 <header class="gnb"><div class="wrap">
 <a class="logo" href="{{ url_for('home') }}"><i></i>{{ CNAME }}<small>by SOBORU</small></a>
 <nav>
-<a href="{{ url_for('new') }}" class="{{ 'on' if tab=='new' }}">접수하기</a>
 <a href="{{ url_for('mine') }}" class="{{ 'on' if tab=='mine' }}">내 접수{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a>
 <a href="{{ url_for('guide') }}" class="{{ 'on' if tab=='guide' }}">이용 안내</a>
-<a href="{{ url_for('guide') }}#relief">피해구제</a>
 </nav>
-<div class="right"><a class="tbtn hide-m" href="{{ biz_url }}">기업 회원</a><a class="btn sm" href="{{ url_for('new') }}">접수하기</a></div>
+<div class="right"><a class="btn sm" href="{{ url_for('new') }}">접수하기</a></div>
 </div></header>
 {%- endmacro %}
-{% macro status_text(c) -%}{% if overdue(c) %}답변 지연{% else %}{{ status_label(c.status)|replace('기업 전달','전달됨')|replace('기업 확인 중','확인 중')|replace('답변·조치 완료','답변 도착') }}{% endif %}{%- endmacro %}
+{% set ME_ST={'received':'접수됨','forwarded':'전달됨','seen':'확인 중','info':'자료 필요','answered':'답변 도착','resolved':'해결됨','unresolved':'미해결'} %}
+{% set BIZ_ST={'received':'접수됨','forwarded':'새 민원','seen':'확인함','info':'자료 기다림','answered':'답변 완료','resolved':'해결됨','unresolved':'미해결'} %}
+{% macro status_text(c,biz=False) -%}{% if overdue(c) %}답변 지연{% else %}{{ (BIZ_ST if biz else ME_ST).get(c.status,'') }}{% endif %}{%- endmacro %}
 {% macro tone(c) -%}{{ 't-bad' if overdue(c) else {'gray':'t-mute','acc':'t-acc','wait':'t-acc','done':'t-ok','bad':'t-bad'}[status_tone(c.status)] }}{%- endmacro %}
-{% macro pill(c,biz=False) -%}<span class="pill {{ 'bad' if overdue(c) else {'gray':'gray','acc':'acc','wait':'acc','done':'ok','bad':'bad'}[status_tone(c.status)] }}">{{ status_text(c)|replace('답변 도착','답변 완료') if biz else status_text(c) }}</span>{%- endmacro %}
+{% macro pill(c,biz=False) -%}<span class="pill {{ 'bad' if overdue(c) else {'gray':'gray','acc':'acc','wait':'acc','done':'ok','bad':'bad'}[status_tone(c.status)] }}">{{ status_text(c,biz) }}</span>{%- endmacro %}
 {% macro case_row(c,href) -%}
 <a class="rowi" href="{{ href }}"><span class="av">{{ c.company_name[:1] }}</span><span class="tx"><div class="t">{{ c.title }}</div><div class="s">{{ c.company_name }} · {{ fmt(c.created) }}</div></span><span class="st {{ tone(c) }}">{{ status_text(c) }}</span></a>
 {%- endmacro %}

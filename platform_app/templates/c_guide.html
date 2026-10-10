@@ -2,7 +2,7 @@
 {% block title %}이용 안내 · {{ CNAME }}{% endblock %}
 {% block bar %}{{ m.bar('guide') }}{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>이용 안내</h1><p>{{ CNAME }}은 어느 기업이든 한 곳에서 접수하고 결과까지 확인하는 서비스예요</p></div><a class="btn md" href="{{ url_for('new') }}">접수하기</a></div>
+<div class="phead"><div><h1>이용 안내</h1><p>어느 기업이든 한 번 접수하면 답변과 해결까지 이어서 챙겨요</p></div></div>
 <div class="grid2">
 <div class="panel feature">{{ i.icon('bolt',44) }}<div class="ph">입점 기업</div><p class="sub">SOBORU Business를 쓰는 기업이에요. 담당자 화면으로 바로 전달되고, 답변 목표일은 접수 후 2일이에요. 배송 조회처럼 정해진 유형은 접수 즉시 처리되기도 해요.</p></div>
 <div class="panel feature">{{ i.icon('send',44) }}<div class="ph">비입점 기업</div><p class="sub">센터가 기업의 공식 연락처로 전달을 시도하고 회신을 기록해요. 회신이 없으면 공식 피해구제 절차를 안내해 드려요.</p></div>

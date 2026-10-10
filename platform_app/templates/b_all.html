@@ -1,9 +1,9 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}
-{% block title %}전체 민원 · SOBORU Business{% endblock %}
+{% block title %}민원 · SOBORU Business{% endblock %}
 {% block bar %}{{ b.bar('all') }}{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>전체 민원</h1><p>받은 민원 {{ groups.all|length }}건</p></div>
-<form class="searchbar" method="get"><input type="hidden" name="f" value="{{ fil }}"><input name="q" value="{{ q }}" placeholder="제목, 접수번호, 소비자 이름" aria-label="검색"><button class="btn sm gray">검색</button></form></div>
-<div class="tabs">{% for key,l in [('all','전체'),('open','처리 중'),('done','답변 완료'),('bad','미해결·지연')] %}<a href="{{ url_for('all_cases',f=key,q=q or None) }}" class="{{ 'on' if fil==key }}">{{ l }}<span>{{ groups[key]|length }}</span></a>{% endfor %}</div>
+<div class="phead"><div><h1>민원</h1></div>
+<form class="searchbar" method="get"><input type="hidden" name="f" value="{{ fil }}"><input name="q" value="{{ q }}" placeholder="제목, 소비자 이름, 접수번호" aria-label="검색"><button class="btn sm gray">검색</button></form></div>
+<div class="tabs">{% for key,l in [('all','전체'),('open','처리 중'),('done','답변 완료'),('bad','지연·미해결')] %}<a href="{{ url_for('all_cases',f=key,q=q or None) }}" class="{{ 'on' if fil==key }}">{{ l }}<span>{{ groups[key]|length }}</span></a>{% endfor %}</div>
 {% if rows %}{{ b.case_table(rows,m) }}{% else %}<div class="empty-card"><b>{{ '검색 결과가 없어요' if q else '해당하는 민원이 없어요' }}</b></div>{% endif %}
 {% endblock %}

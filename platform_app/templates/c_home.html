@@ -2,47 +2,24 @@
 {% block title %}{{ CNAME }} · 불편, 한큐에 해결{% endblock %}
 {% block bar %}{{ m.bar() }}{% endblock %}
 {% block main %}
-<section class="band w"><div class="wrap hero2">
-<div><span class="pill acc">어느 기업이든 한 곳에서</span>
+<section class="band w"><div class="wrap hero3">
 <h1>불편한 일,<br><em>한큐에</em> 해결해요</h1>
-<p class="lead2">기업을 찾아 헤맬 필요 없이 여기서 한 번만 접수하세요.<br>전달부터 답변, 조치, 해결 확인까지 이어서 챙겨요.</p>
-<div class="acts"><a class="btn" href="{{ url_for('new') }}">지금 접수하기</a><a class="btn gray" href="{{ url_for('mine') }}">내 접수 확인</a></div>
-<div class="nums"><div><b>{{ n_members }}곳</b><span>바로 전달되는 입점 기업</span></div><div><b>{{ n_cases }}건</b><span>지금까지 접수</span></div><div><b>2일</b><span>입점 기업 답변 목표</span></div></div></div>
-<div class="mock" aria-hidden="true"><span class="mock-cap">이렇게 보여요</span>
-<div class="card mk"><div class="row"><span class="av sm">달</span><b>달빛화장품</b><span class="sp"></span><span class="pill ok">입점</span></div><div class="mt">크림 용기가 깨져서 왔어요</div>
-<div class="track">{% for s in STEPS %}<i class="{{ 'on' if loop.index0<=3 }}"></i>{% endfor %}</div><div class="track-l"><span>접수</span><span>전달</span><span>확인</span><b>답변</b><span>완료</span></div></div>
-<div class="card mk"><div class="row"><span class="av sm acc">{{ i.icon('reply',22) }}</span><b>기업 답변</b><span class="sp"></span><span class="cap">방금</span></div><div class="reply" style="margin-top:10px">불편을 드려 죄송해요. 새 상품을 배송비 없이 오늘 보내 드릴게요.</div></div>
-<div class="card mk row2"><span class="cap">해결됐나요?</span><span class="sp"></span><span class="btn sm gray">아직이에요</span><span class="btn sm">해결됐어요</span></div>
-</div></div></section>
+<p>어느 기업이든 한 번만 접수하세요</p>
+<a class="btn lg" href="{{ url_for('new') }}">접수하기</a>
+</div></section>
 
 <section class="band w tight"><div class="wrap">
-<div class="shead"><h2>어떤 일인가요?</h2><div class="r note"><span>고르면 바로 접수를 시작해요</span></div></div>
-<div class="tiles">{% for cat in CATS %}<a class="tile" href="{{ url_for('new',category=cat) }}"><span class="box">{{ i.cat_icon(cat,48) }}</span><span>{{ cat }}</span></a>{% endfor %}
-<a class="tile" href="{{ url_for('mine') }}"><span class="box">{{ i.icon('search',48) }}</span>{% if n_mine %}<span class="badge">{{ n_mine }}</span>{% endif %}<span>내 접수</span></a>
-<a class="tile" href="{{ url_for('guide') }}#relief"><span class="box">{{ i.icon('scale',48) }}</span><span>피해구제</span></a></div>
+<div class="shead c"><h2>무엇이 불편했나요?</h2></div>
+<div class="tiles six">{% for cat in CATS %}<a class="tile" href="{{ url_for('new',category=cat) }}"><span class="box">{{ i.cat_icon(cat,48) }}</span><span>{{ cat }}</span></a>{% endfor %}</div>
 </div></section>
 
 {% if rows %}<section class="band g"><div class="wrap">
-<div class="shead"><h2><a href="{{ url_for('mine') }}">내 접수</a></h2><div class="r"><a href="{{ url_for('mine') }}">전체보기</a></div></div>
+<div class="shead"><h2>내 접수</h2><div class="r"><a href="{{ url_for('mine') }}">전체보기</a></div></div>
 <div class="cgrid">{% for c in rows %}{{ m.case_card(c,url_for('case',case_id=c.id)) }}{% endfor %}</div></div></section>{% endif %}
 
-<section class="band g"><div class="wrap">
-<div class="shead"><h2>이렇게 진행돼요</h2><div class="r"><a href="{{ url_for('guide') }}">자세히 보기</a></div></div>
-<div class="steps5">{% for ic,t,s in [('note','접수','기업, 유형, 내용, 원하는 해결만 적으면 돼요'),('send','전달','입점 기업은 담당자에게 바로, 비입점 기업은 센터가 전달해요'),('progress','확인','기업이 확인하면 바로 알려 드려요'),('reply','답변·조치','교환, 회수, 환불 같은 조치까지 기록돼요'),('shield','해결 확인','해결됐는지 직접 알려 주시면 마무리돼요')] %}
-<div><span class="k">{{ loop.index }}단계</span>{{ i.icon(ic,40) }}<b>{{ t }}</b><p>{{ s }}</p></div>{% endfor %}</div>
+<section class="band {{ 'w' if rows else 'g' }}"><div class="wrap">
+<div class="shead c"><h2>이렇게 진행돼요</h2></div>
+<div class="steps3">{% for ic,t,s in [('note','한 번만 접수','기업과 불편한 일, 원하는 해결을 적어요'),('reply','기업이 답변','입점 기업은 2일 안에 답변과 조치를 해요'),('shield','해결 확인','해결되지 않으면 공식 피해구제로 안내해요')] %}
+<div>{{ i.icon(ic,44) }}<b>{{ t }}</b><p>{{ s }}</p></div>{% endfor %}</div>
 </div></section>
-
-{% if members %}<section class="band w"><div class="wrap">
-<div class="shead"><h2>바로 전달되는 기업</h2><span class="pill ok">입점</span><div class="r note"><span>담당자에게 즉시 전달하고 2일 안에 답변을 받아요</span></div></div>
-<div class="cofind">{% for co in members %}<a href="{{ url_for('new',company=co.name) }}"><span class="av sm">{{ co.name[:1] }}</span><span class="nm">{{ co.name }}</span><span class="chev"></span></a>{% endfor %}</div>
-</div></section>{% endif %}
-
-<section class="band g"><div class="wrap">
-<div class="shead" id="relief"><h2>답이 없거나 해결되지 않으면</h2><div class="r note"><span>공식 피해구제 절차로 이어 드려요</span></div></div>
-{{ m.relief() }}
-</div></section>
-
-<section class="band w"><div class="wrap"><div class="promo">
-<div>{{ i.icon('building',48) }}<div><b>기업이신가요?</b><span>SOBORU Business에서 민원을 원클릭으로 승인하고 반복 민원은 자동으로 처리하세요</span></div></div>
-<a class="btn" href="{{ biz_url }}">SOBORU Business 시작하기</a></div></div></section>
 {% endblock %}
