@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>{% block title %}기업 회원{% endblock %} | {{ txt('site.name') }}</title>
+  <title>{% block title %}SOBORU Business{% endblock %} | {{ txt('site.name') }}</title>
   <link rel="icon" href="{{ url_for('favicon_ico') }}" sizes="48x48">
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg', v=css_v) }}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png', v=css_v) }}">
@@ -20,8 +20,8 @@
 {% if g.get('biz_user') %}
 <header class="nr-bar">
   <div class="nr-bar-inner">
-    <a class="nr-brand" href="{{ url_for('biz_home') }}"><b>{% if txt('site.logo_accent') %}<em>{{ txt('site.logo_accent') }}</em>{% endif %}{{ txt('site.logo_rest') }}</b><span>기업 회원</span></a>
-    <nav class="nr-nav" aria-label="기업 회원 메뉴"><a href="{{ url_for('biz_home') }}"{% if request.endpoint in ('biz_home', 'biz_case') %} class="on" aria-current="page"{% endif %}>우리 회사 제보</a></nav>
+    <a class="nr-brand" href="{{ url_for('biz_home') }}"><b>{% if txt('site.logo_accent') %}<em>{{ txt('site.logo_accent') }}</em>{% endif %}{{ txt('site.logo_rest') }}</b><span>SOBORU Business</span></a>
+    <nav class="nr-nav" aria-label="기업 회원 메뉴"><a href="{{ url_for('biz_home') }}"{% if request.endpoint in ('biz_home', 'biz_case') %} class="on" aria-current="page"{% endif %}>우리 회사 제보</a>{% if g.company and g.company['status'] == 'active' %}<a href="{{ url_for('biz_inbox') }}"{% if request.endpoint in ('biz_inbox', 'biz_inquiry', 'biz_cs_settings') %} class="on" aria-current="page"{% endif %}>고객 문의{% if biz_cs_waiting %} <b class="nr-count">{{ biz_cs_waiting }}</b>{% endif %}</a>{% endif %}</nav>
     <div class="nr-user">
       <span class="nr-name">{{ g.company['name'] if g.company else '전체 기업' }} · {{ g.biz_user['name'] }}</span>
       {% if not g.get('biz_preview') %}<a href="{{ url_for('biz_password') }}">비밀번호 변경</a>

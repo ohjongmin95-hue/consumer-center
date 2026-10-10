@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}내 문의 확인 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+<div class="page-intro"><h1 class="page-title">내 문의 확인</h1><p>기업 고객센터에 문의할 때 적은 휴대폰 번호와 조회 비밀번호를 넣어 주세요.</p></div>
+{% if found %}
+<div class="form-panel"><h2 class="lookup-h">어떤 문의를 볼까요?</h2>
+  <ul class="lookup-list">{% for r in found %}<li><form method="post" action="{{ url_for('cs_lookup_pick', inq_id=r['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit"><b>{{ r['subject'] }}</b><span>{{ r['company'] }} · {{ r['number'] }} · {{ r['created'][:10] }} · {{ INQ_STATUSES[r['status']] }}</span></button></form></li>{% endfor %}</ul>
+</div>
+{% else %}
+<div class="form-panel"><form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="field"><label for="l-phone">휴대폰 번호</label><input id="l-phone" name="phone" inputmode="tel" autocomplete="tel" required placeholder="010-1234-5678" value="{{ request.form.get('phone','') }}"></div>
+  <div class="field"><label for="l-pw">조회 비밀번호</label><input id="l-pw" type="password" name="password" required autocomplete="current-password"></div>
+  <button class="primary" type="submit">문의 확인 →</button>
+</form>
+<p class="hint lookup-forgot">소비자제보센터에 <b>제보</b>하신 거라면 <a href="{{ url_for('lookup') }}">내 제보 조회</a>에서 확인해 주세요.</p>
+</div>
+{% endif %}
+</div></main>
+{% endblock %}

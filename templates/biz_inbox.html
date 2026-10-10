@@ -1,0 +1,34 @@
+{% extends 'biz_base.html' %}
+{% block title %}고객 문의{% endblock %}
+{% block content %}
+<main class="cs-page">
+  <div class="cs-head"><h1 class="cs-title">고객 문의</h1><a class="cs-btn" href="{{ url_for('biz_cs_settings') }}">문의함 설정</a></div>
+  {% if not g.company['cs_on'] %}
+  <section class="cs-panel biz-cs-off"><h2>문의함이 아직 꺼져 있어요</h2><p>문의 페이지 주소를 정하고 켜면, 고객이 우리 회사 전용 페이지에서 문의할 수 있어요. 홈페이지나 쇼핑몰에 붙일 '문의하기' 버튼도 만들어 드려요.</p><a class="cs-btn cs-btn-main" href="{{ url_for('biz_cs_settings') }}">문의함 켜기 →</a></section>
+  {% else %}
+  <p class="cs-lead">우리 회사 문의 페이지 <a class="mono" href="{{ url_for('cs_page', slug=g.company['cs_slug']) }}" target="_blank" rel="noopener">{{ url_for('cs_page', slug=g.company['cs_slug'], _external=True) }}</a> 로 들어온 문의예요. 공개되지 않고, 고객과 우리 회사만 봐요. 답변 목표는 {{ g.company['cs_days'] }}일이에요.</p>
+  {% endif %}
+  {% if overdue %}<p class="alert biz-overdue">⏰ 답변 목표일이 지난 문의가 <b>{{ overdue }}건</b> 있어요. 목표일이 지나면 고객이 소비자제보센터에 제보로 넘길 수 있어요.</p>{% endif %}
+  <nav class="cs-tabs" aria-label="문의 상태">
+    {% for key, label in INQ_STATUSES.items() %}<a href="{{ url_for('biz_inbox', tab=key) }}"{% if tab == key %} class="on"{% endif %}>{{ label }} <b>{{ counts[key] }}</b></a>{% endfor %}
+  </nav>
+  <div class="cs-table-wrap">
+    <table class="cs-table cs-table-list">
+      <thead><tr><th>문의번호</th><th>유형</th><th>제목</th><th>고객</th><th>{{ '답변 목표' if tab == 'new' else '최근 변경' }}</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+      <tr data-href="{{ url_for('biz_inquiry', inq_id=r['id']) }}">
+        <td class="mono"><a href="{{ url_for('biz_inquiry', inq_id=r['id']) }}">{{ r['number'] }}</a></td>
+        <td>{{ r['category'] }}</td>
+        <td class="cs-subject"><a href="{{ url_for('biz_inquiry', inq_id=r['id']) }}">{{ r['subject'] }}</a>{% if r['resolved'] == 'yes' %} <span class="inq-chip ok">해결됨</span>{% elif r['resolved'] == 'no' %} <span class="inq-chip no">미해결</span>{% endif %}{% if r['case_id'] %} <span class="inq-chip no">제보로 넘어감</span>{% endif %}</td>
+        <td>{{ r['name'] }}</td>
+        <td class="mono">{% if tab == 'new' %}<span class="{{ 'inq-late' if inq_overdue(r) }}">{{ r['due'][:10]|replace('-', '.') }}{% if inq_overdue(r) %} 지남{% endif %}</span>{% else %}{{ r['updated'][:10]|replace('-', '.') }}{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="cs-empty">{{ {'new': '답변을 기다리는 문의가 없어요.', 'answered': '답변 완료한 문의가 없어요.', 'closed': '종결한 문의가 없어요.'}[tab] }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</main>
+{% endblock %}

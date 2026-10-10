@@ -481,6 +481,91 @@ class SiteTest(unittest.TestCase):
         notify.ASYNC = True
         self.assertIn('기업 회원 이용약관', self.client.get('/biz/terms').get_data(as_text=True))
 
+    def test_company_inquiry_box(self):
+        # 기업 가입·승인 → 문의함 설정 → 소비자 비공개 문의 → 기업 답변 → 소비자 평가 → 미해결이면 제보로 넘기기
+        biz = self.site.app.test_client()
+        self.post_form(biz, '/biz/signup', {'company_name': '문의몰', 'biz_no': '2208123455', 'contact_name': '이담당', 'contact_phone': '02-555-1234',
+                                            'contact_email': 'cs@inq.example', 'login_id': 'inqmall', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'})
+        with self.site.conn() as db:
+            company_id = db.execute("SELECT id FROM companies WHERE biz_no='2208123455'").fetchone()['id']
+        self.assertEqual(biz.get('/biz/cs').status_code, 302)  # 승인 전에는 문의함 없음
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'approve'})
+        self.assertIn('문의함이 아직 꺼져 있어요', biz.get('/biz/cs').get_data(as_text=True))
+        self.assertEqual(self.client.get('/cs/inqmall').status_code, 404)
+        settings = {'cs_on': '1', 'cs_slug': 'inqmall', 'cs_intro': '주문 문의는 여기로', 'cs_hours': '평일 10~17시', 'cs_days': '2', 'cs_email': ''}
+        self.assertEqual(self.post_form(biz, '/biz/cs/settings', dict(settings, cs_slug='lookup')).status_code, 400)
+        self.assertEqual(self.post_form(biz, '/biz/cs/settings', settings).status_code, 302)
+        self.assertIn('/cs/inqmall', biz.get('/biz/cs/settings').get_data(as_text=True))
+        page = self.client.get('/cs/inqmall').get_data(as_text=True)
+        self.assertIn('문의몰', page)
+        self.assertIn('주문 문의는 여기로', page)
+        # 소비자 문의 (동의 없으면 거절)
+        customer = self.site.app.test_client()
+        q = {'category': '교환·반품·환불', 'order_no': 'A-100', 'subject': '반품 환불 문의', 'body': '반품했는데 환불이 아직이에요', 'name': '최고객',
+             'phone': '010-2222-3333', 'email': '', 'lookup_pw': '5678', 'lookup_pw2': '5678'}
+        self.assertEqual(self.post_form(customer, '/cs/inqmall', q).status_code, 400)
+        done = self.post_form(customer, '/cs/inqmall', dict(q, consent='on'))
+        self.assertEqual(done.status_code, 200)
+        self.assertIn('Q-', done.get_data(as_text=True))
+        # 문의는 공개 제보 목록에 안 나옴
+        self.assertNotIn('반품 환불 문의', self.client.get('/reports').get_data(as_text=True))
+        with self.site.conn() as db:
+            inq = db.execute("SELECT * FROM inquiries WHERE subject='반품 환불 문의'").fetchone()
+        # 기업 화면: 답변 대기, 메뉴 숫자
+        inbox = biz.get('/biz/cs').get_data(as_text=True)
+        self.assertIn('반품 환불 문의', inbox)
+        self.assertIn('nr-count', inbox)
+        detail = biz.get('/biz/cs/%d' % inq['id']).get_data(as_text=True)
+        self.assertIn('010-2222-3333', detail)
+        self.assertIn('A-100', detail)
+        # 다른 기업은 못 봄
+        other = self.site.app.test_client()
+        self.post_form(other, '/biz/signup', {'company_name': '다른몰', 'biz_no': '1234567891', 'contact_name': '박', 'contact_phone': '02-111-2222',
+                                              'contact_email': 'o@o.example', 'login_id': 'othermall', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'})
+        with self.site.conn() as db:
+            db.execute("UPDATE companies SET status='active' WHERE biz_no='1234567891'")
+        self.assertEqual(other.get('/biz/cs/%d' % inq['id']).status_code, 404)
+        # 답변 전에는 평가·제보 넘기기 없음
+        cpage = customer.get('/cs/inquiry').get_data(as_text=True)
+        self.assertNotIn('문제가 해결됐나요', cpage)
+        self.assertNotIn('소비자제보센터에 제보하기', cpage)
+        # 기업 답변 → 소비자에게 보이고 평가 가능
+        self.post_form(biz, '/biz/cs/%d' % inq['id'], {'action': 'reply', 'response': '확인 후 내일 환불됩니다'})
+        cpage = customer.get('/cs/inquiry').get_data(as_text=True)
+        self.assertIn('확인 후 내일 환불됩니다', cpage)
+        self.assertIn('문제가 해결됐나요', cpage)
+        # 다른 브라우저에서 휴대폰 번호 + 비밀번호로 조회
+        again = self.site.app.test_client()
+        self.assertEqual(self.post_form(again, '/cs/lookup', {'phone': '01022223333', 'password': '0000'}).status_code, 401)
+        self.assertEqual(self.post_form(again, '/cs/lookup', {'phone': '01022223333', 'password': '5678'}).status_code, 302)
+        # 아직이에요 → 제보로 넘기기 → 제보 화면이 채워짐 → 제보하면 문의와 연결
+        self.post_form(customer, '/cs/inquiry', {'action': 'unresolved'})
+        self.assertIn('소비자제보센터에 제보하기', customer.get('/cs/inquiry').get_data(as_text=True))
+        token = self.csrf(customer, '/cs/inquiry')
+        self.assertEqual(customer.post('/cs/inquiry/escalate', data={'_csrf': token}).headers['Location'], '/report')
+        form = customer.get('/report').get_data(as_text=True)
+        self.assertIn('고객센터 문의 내용을 불러왔어요', form)
+        self.assertIn('반품했는데 환불이 아직이에요', form)
+        self.post_form(customer, '/report', {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': '문의몰', 'subject': '반품 환불 문의', 'description': '반품했는데 환불이 아직이에요',
+                                             'request_text': '환불', 'reporter_name': '최고객', 'phone': '010-2222-3333', 'consent': 'on', 'share_company': 'on', 'use_consent': 'on',
+                                             'truth': 'on', 'visibility': 'secret', 'lookup_pw': '5678', 'lookup_pw2': '5678'})
+        with self.site.conn() as db:
+            self.assertIsNotNone(db.execute('SELECT case_id FROM inquiries WHERE id=?', (inq['id'],)).fetchone()['case_id'])
+        self.assertIn('제보로 넘어감', biz.get('/biz/cs?tab=answered').get_data(as_text=True))
+        # 답변 목표일 지난 문의는 기업 화면에 표시되고, 답이 없으면 소비자가 바로 넘길 수 있음
+        late = self.site.app.test_client()
+        self.post_form(late, '/cs/inqmall', dict(q, consent='on', subject='답 없는 문의', phone='010-4444-5555'))
+        with self.site.conn() as db:
+            db.execute("UPDATE inquiries SET due='2000-01-01T00:00:00' WHERE subject='답 없는 문의'")
+        self.assertIn('답변 목표일이 지난 문의가', biz.get('/biz/cs').get_data(as_text=True))
+        self.assertIn('소비자제보센터에 제보하기', late.get('/cs/inquiry').get_data(as_text=True))
+        # 대표 미리보기에서는 답변 못 함, 관리자 목록에 문의 수
+        self.assertIn('고객 문의 2건', admin.get('/admin/companies').get_data(as_text=True))
+        # 문의함을 끄면 페이지가 닫힘
+        self.post_form(biz, '/biz/cs/settings', dict(settings, cs_on=''))
+        self.assertEqual(self.client.get('/cs/inqmall').status_code, 404)
+
     def test_damage_groups(self):
         with self.site.conn() as db:
             for i, (subject, public) in enumerate((('OO쇼핑 환불 지연', 1), ('OO쇼핑 환불 안 돼요', 0))):

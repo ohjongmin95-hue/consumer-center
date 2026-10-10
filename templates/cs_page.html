@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}{{ co['name'] }} 고객센터 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <section class="cs-hero">
+    <p class="cs-hero-kicker">고객센터 <span class="cs-hero-badge">SOBORU Business 입점 기업</span></p>
+    <h1 class="page-title">{{ co['name'] }}</h1>
+    {% if co['cs_intro'] %}<p class="cs-hero-intro">{{ co['cs_intro'] }}</p>{% endif %}
+    <ul class="cs-hero-facts">
+      {% if co['cs_hours'] %}<li><b>운영 시간</b>{{ co['cs_hours'] }}</li>{% endif %}
+      <li><b>답변 목표</b>문의 후 {{ co['cs_days'] }}일 이내</li>
+      <li><b>공개 여부</b>비공개 · {{ co['name'] }}와 문의하신 분만 봐요</li>
+    </ul>
+    <p class="cs-hero-note">이미 문의하셨나요? <a href="{{ url_for('cs_lookup') }}">내 문의 확인하기 →</a></p>
+  </section>
+
+  <div class="form-panel">
+    <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <h2 class="form-group-title">문의 내용</h2>
+      <div class="field"><label>문의 유형 <small>*</small></label>
+        <div class="radio-row cs-cats">{% for x in categories %}<label class="radio-pill"><input type="radio" name="category" value="{{ x }}" required{% if request.form.get('category') == x %} checked{% endif %}><span>{{ x }}</span></label>{% endfor %}</div>
+      </div>
+      <div class="field"><label for="q-order">주문번호 (선택)</label><input id="q-order" name="order_no" maxlength="60" placeholder="주문·예약 번호가 있으면 적어 주세요" value="{{ request.form.get('order_no','') }}"></div>
+      <div class="field"><label for="q-subject">제목 <small>*</small></label><input id="q-subject" name="subject" maxlength="120" required placeholder="문의 내용을 한 줄로 적어 주세요" value="{{ request.form.get('subject','') }}"></div>
+      <div class="field"><label for="q-body">내용 <small>*</small></label><textarea id="q-body" name="body" maxlength="5000" required placeholder="언제, 무엇을 구매·이용했는지와 어떤 도움이 필요한지 적어 주세요">{{ request.form.get('body','') }}</textarea></div>
+      <div class="field"><label for="q-file">사진·파일 (선택)</label><input id="q-file" type="file" name="evidence" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.mp4,.mov"><p class="hint">사진·PDF·동영상을 {{ max_files }}개까지, 모두 합쳐 20MB까지 올릴 수 있어요.</p></div>
+
+      <h2 class="form-group-title">연락받을 정보</h2>
+      <div class="field-row">
+        <div class="field"><label for="q-name">이름 <small>*</small></label><input id="q-name" name="name" maxlength="40" required autocomplete="name" value="{{ request.form.get('name','') }}"></div>
+        <div class="field"><label for="q-phone">휴대폰 번호 <small>*</small></label><input id="q-phone" name="phone" type="tel" maxlength="20" required autocomplete="tel" placeholder="010-0000-0000" value="{{ request.form.get('phone','') }}"></div>
+      </div>
+      <div class="field"><label for="q-email">이메일 (선택)</label><input id="q-email" name="email" type="email" maxlength="150" autocomplete="email" value="{{ request.form.get('email','') }}"><p class="hint">적으면 답변이 오면 이메일로 알려 드려요.</p></div>
+      <div class="field lookup-pw"><label for="q-pw">조회 비밀번호 <small>*</small></label>
+        <div class="pw-pair"><input id="q-pw" type="password" name="lookup_pw" minlength="4" maxlength="30" required autocomplete="new-password" placeholder="4자 이상 (숫자 4자리도 돼요)"><input type="password" name="lookup_pw2" minlength="4" maxlength="30" required autocomplete="new-password" aria-label="조회 비밀번호 확인" placeholder="한 번 더"></div>
+        <p class="hint">휴대폰 번호와 이 비밀번호로 답변을 확인하고 추가 문의를 할 수 있어요.</p></div>
+
+      <div class="consents">
+        <section class="consent-card">
+          <h3><span class="badge-req">필수</span>개인정보 수집·이용 및 제공</h3>
+          <div class="consent-table consent-table-4" role="table" aria-label="개인정보 수집·이용 및 제공">
+            <div role="row" class="ct-head"><span role="columnheader">받는 곳</span><span role="columnheader">항목</span><span role="columnheader">목적</span><span role="columnheader">보유 기간</span></div>
+            <div role="row"><span role="cell" data-label="받는 곳">{{ co['name'] }}<br>소비자제보센터(문의 창구 운영)</span><span role="cell" data-label="항목">이름, 휴대폰 번호, 이메일, 주문번호, 문의 내용, 첨부파일</span><span role="cell" data-label="목적">문의 확인과 답변, 처리 결과 안내</span><span role="cell" data-label="보유 기간">문의 종결 후 1년 (법령에 따라 더 보관해야 하면 그 기간)</span></div>
+          </div>
+          <p class="consent-note">동의하지 않으면 문의를 보낼 수 없어요. 문의 내용은 공개되지 않아요. <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">개인정보 처리방침 ↗</a></p>
+          <label class="check"><input type="checkbox" name="consent" required{% if request.form.get('consent') %} checked{% endif %}><span>위와 같이 개인정보를 수집·이용하고 {{ co['name'] }}에 제공하는 데 동의합니다.</span></label>
+        </section>
+      </div>
+      <button class="primary" type="submit">문의 보내기 →</button>
+    </form>
+  </div>
+  <p class="cs-powered">이 문의 창구는 <b>SOBORU Business</b>로 운영돼요. 기업 답변이 없거나 해결이 안 되면 <a href="{{ url_for('home') }}">소비자제보센터</a>에 제보할 수 있어요.</p>
+</div></main>
+{% endblock %}

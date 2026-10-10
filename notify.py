@@ -141,3 +141,17 @@ def dispatch(conn, case, event, link):
     else:
         run()
     return len(jobs)
+
+
+def send_later(job, done):
+    """job()을 뒤에서 실행하고 done(성공 여부, 실패 이유)로 결과를 알려 줌. 기업 문의함 이메일에 씀."""
+    def run():
+        try:
+            job()
+            done(True, '')
+        except Exception as e:  # 발송 실패는 기록만 하고 처리는 계속
+            done(False, str(e)[:200])
+    if ASYNC:
+        threading.Thread(target=run, daemon=True).start()
+    else:
+        run()

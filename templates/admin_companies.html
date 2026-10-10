@@ -22,7 +22,7 @@
       <tbody>
       {% for c in companies %}
       <tr{% if c['status'] in ('rejected', 'stopped') %} class="is-off"{% endif %}>
-        <td><b>{{ c['name'] }}</b><br><span class="mono">{{ c['biz_no']|biz_no }}</span><br><small class="cs-muted">신청 {{ c['created'][:10] }} · 연결 제보 {{ c['n_cases'] }}건</small></td>
+        <td><b>{{ c['name'] }}</b><br><span class="mono">{{ c['biz_no']|biz_no }}</span><br><small class="cs-muted">신청 {{ c['created'][:10] }} · 연결 제보 {{ c['n_cases'] }}건</small><br><small class="cs-muted">문의함 {% if c['cs_on'] and c['cs_slug'] %}<a href="{{ url_for('cs_page', slug=c['cs_slug']) }}" target="_blank" rel="noopener">켜짐 · /cs/{{ c['cs_slug'] }}</a>{% else %}꺼짐{% endif %} · 고객 문의 {{ c['n_inq'] }}건</small></td>
         <td>{{ c['contact_name'] }}<br><small>{{ c['contact_phone'] }}<br>{{ c['contact_email'] }}<br>아이디 <span class="mono">{{ c['login_id'] or '—' }}</span></small></td>
         <td><span class="cs-status{% if c['status'] == 'active' %} s3{% elif c['status'] == 'pending' %} s1{% endif %}">{{ statuses[c['status']] }}</span></td>
         <td><form class="cs-inline" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="aliases"><input type="hidden" name="id" value="{{ c['id'] }}"><input name="aliases" maxlength="300" value="{{ c['aliases'] }}" placeholder="예: OO몰, OO쇼핑" aria-label="{{ c['name'] }} 다른 이름"><button class="cs-btn" type="submit">저장</button></form></td>

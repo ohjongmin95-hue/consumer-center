@@ -1,0 +1,43 @@
+{% extends 'biz_base.html' %}
+{% block title %}{{ inq['number'] }}{% endblock %}
+{% block content %}
+<main class="cs-page cs-narrow">
+  <div class="cs-crumbs"><a href="{{ url_for('biz_inbox', tab=inq['status']) }}">← 고객 문의</a></div>
+  <div class="cs-case-head">
+    <p class="cs-meta"><span class="mono">{{ inq['number'] }}</span> · {{ inq['category'] }} · 문의 {{ inq['created'][:16]|replace('T', ' ') }}</p>
+    <h1 class="cs-title">{{ inq['subject'] }}</h1>
+    <p class="cs-company"><span class="inq-badge inq-{{ inq['status'] }}">{{ INQ_STATUSES[inq['status']] }}</span>
+      {% if inq['status'] == 'new' %}<span class="{{ 'inq-late' if inq_overdue(inq) }}">답변 목표 {{ inq['due'][:10]|replace('-', '.') }}{% if inq_overdue(inq) %} · 지났어요{% endif %}</span>{% endif %}
+      {% if inq['resolved'] == 'yes' %}<span class="inq-chip ok">고객: 해결됐어요</span>{% elif inq['resolved'] == 'no' %}<span class="inq-chip no">고객: 아직이에요</span>{% endif %}
+      {% if inq['case_id'] %}<span class="inq-chip no">고객이 제보로 넘겼어요</span>{% endif %}</p>
+  </div>
+  <section class="cs-panel">
+    <h2>고객 정보</h2>
+    <dl class="inq-info"><dt>이름</dt><dd>{{ inq['name'] }}</dd><dt>휴대폰</dt><dd>{{ inq['phone'] }}</dd>{% if inq['email'] %}<dt>이메일</dt><dd>{{ inq['email'] }}</dd>{% endif %}{% if inq['order_no'] %}<dt>주문번호</dt><dd class="mono">{{ inq['order_no'] }}</dd>{% endif %}</dl>
+    <p class="cs-muted">고객이 우리 회사에 직접 문의하면서 연락처 제공에 동의했어요. 문의 처리에만 써 주세요.</p>
+  </section>
+  <section class="cs-panel" id="thread">
+    <h2>문의와 답변</h2>
+    <div class="inq-thread">
+      <div class="inq-msg from-customer"><div class="inq-msg-head"><b>{{ inq['name'] }}</b><span>{{ inq['created'][:16]|replace('T', ' ') }}</span></div><p>{{ inq['body'] }}</p>
+        {% if files %}<p class="inq-files">📎 {% for f in files %}<a href="{{ url_for('biz_inquiry_file', file_id=f['id']) }}">{{ f['original'] }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}</div>
+      {% for m in msgs %}
+      <div class="inq-msg {{ 'from-company' if m['author'] == 'company' else 'from-customer' }}"><div class="inq-msg-head"><b>{{ (g.company['name'] ~ ' · ' ~ m['author_name']) if m['author'] == 'company' else inq['name'] }}</b><span>{{ m['created'][:16]|replace('T', ' ') }}</span></div><p>{{ m['body'] }}</p></div>
+      {% endfor %}
+    </div>
+    {% if g.get('biz_preview') %}<p class="cs-muted">미리보기에서는 답변 칸이 닫혀 있어요.</p>
+    {% elif inq['status'] != 'closed' %}
+    <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="reply">
+      <textarea name="response" maxlength="5000" required rows="6" placeholder="고객에게 보낼 답변을 적어 주세요. 바로 전달돼요." aria-label="답변"></textarea>
+      <label class="check inq-close-check"><input type="checkbox" name="close" value="1"><span>답변과 함께 문의를 종결해요</span></label>
+      <button class="cs-btn cs-btn-main" type="submit">답변 보내기</button>
+    </form>
+    <form method="post" class="inq-side-action"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="cs-btn" name="action" value="close" onclick="return confirm('답변 없이 이 문의를 종결할까요?')">답변 없이 종결</button></form>
+    {% else %}
+    <p class="cs-muted">종결한 문의예요.</p>
+    <form method="post" class="inq-side-action"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="cs-btn" name="action" value="reopen">다시 열기</button></form>
+    {% endif %}
+  </section>
+  <section class="cs-panel"><h2>처리 기록</h2><ul class="inq-log">{% for l in logs %}<li><span class="mono">{{ l['created'][:16]|replace('T', ' ') }}</span> {{ l['actor'] }} · {{ l['action'] }}</li>{% endfor %}</ul></section>
+</main>
+{% endblock %}

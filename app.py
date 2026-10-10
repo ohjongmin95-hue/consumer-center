@@ -230,7 +230,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-61'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-62'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -266,7 +266,7 @@ def protect():
 @app.after_request
 def headers(resp):
     resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
-    if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company','/login','/signup','/me','/staff','/reporter','/biz')):resp.headers['Cache-Control']='no-store'
+    if request.path.startswith(('/report','/lookup','/cs','/admin','/case','/takedown','/company','/login','/signup','/me','/staff','/reporter','/biz')):resp.headers['Cache-Control']='no-store'
     elif session.get('uid') and 'Cache-Control' not in resp.headers:resp.headers['Cache-Control']='private, no-cache'
     return resp
 _ED_TAG=re.compile(r'<[^>]*>')
@@ -463,7 +463,7 @@ def file_ok(suffix,head):
     return ((kind=='pdf' and head.startswith(b'%PDF-')) or (kind=='png' and head.startswith(b'\x89PNG')) or (kind=='jpg' and head.startswith(b'\xff\xd8'))
             or (kind=='webp' and head[8:12]==b'WEBP') or (kind in ('mp4','mov') and head[4:8]==b'ftyp'))
 def report_form(status=200):
-    return render_template('report.html',categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES),status
+    return render_template('report.html',pre=session.get('report_prefill') or {},categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES),status
 @app.route('/report',methods=['GET','POST'])
 def report():
     if request.method=='GET':return report_form()
@@ -507,7 +507,7 @@ def report():
         for f,suffix,original in checked:
             stored=secrets.token_hex(20)+suffix;f.save(UPLOAD/stored)
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,original))
-    notify_later(cur.lastrowid,'received')
+    notify_later(cur.lastrowid,'received');link_escalated_case(cur.lastrowid)
     return render_template('success.html',receipt=receipt,case_id=cur.lastrowid)
 LOOKUP_PW_MIN=4
 def notify_later(case_id,event):
@@ -1700,7 +1700,7 @@ def admin_companies():
             else:abort(400)
             return redirect(url_for('admin_companies'))
         companies=db.execute("""SELECT co.*,(SELECT login_id FROM company_users WHERE company_id=co.id ORDER BY id LIMIT 1) AS login_id,
-            (SELECT COUNT(*) FROM cases WHERE company_id=co.id) AS n_cases
+            (SELECT COUNT(*) FROM cases WHERE company_id=co.id) AS n_cases,(SELECT COUNT(*) FROM inquiries WHERE company_id=co.id) AS n_inq
             FROM companies co ORDER BY CASE co.status WHEN 'pending' THEN 0 WHEN 'active' THEN 1 ELSE 2 END,co.id DESC""").fetchall()
     return render_template('admin_companies.html',companies=companies,statuses=COMPANY_STATUSES,master_id=admin_setting('biz_master_id'))
 
@@ -1859,5 +1859,242 @@ def admin_group_csv(group_id):
     resp=app.response_class('﻿'+out.getvalue(),mimetype='text/csv')
     resp.headers['Content-Disposition']=f"attachment; filename=group-{group_id}-members.csv";resp.headers['Cache-Control']='no-store'
     return resp
+
+
+# ---- 기업 전용 문의함 (/cs) -------------------------------------------------
+# 기업이 고객센터를 따로 만들지 않고 쓰는 비공개 1:1 문의 창구. 문의는 그 기업과 소비자만 봄(제보와 별개, 공개 안 함).
+# 답변 목표일이 지나도 답이 없거나 해결이 안 되면 소비자가 원할 때만 제보로 넘길 수 있음.
+# 기업이 유료 기능을 쓰든 말든 제보 처리·공개 판단에는 영향이 없음 (docs/cs_platform.md).
+INQ_STATUSES={'new':'답변 대기','answered':'답변 완료','closed':'종결'}
+INQ_CATEGORIES=['주문·배송','교환·반품·환불','상품 불량·하자','결제·영수증','서비스 이용','기타']
+INQ_DAYS=(1,2,3,5,7)  # 기업이 고르는 답변 목표일
+CS_SLUG_RE=re.compile(r'^[a-z0-9][a-z0-9-]{2,29}$')
+CS_RESERVED={'lookup','inquiry','logout','new','admin','biz','api','help','login','signup','static','report','escalate'}
+with conn() as db:
+    cols={r['name'] for r in db.execute('PRAGMA table_info(companies)')}
+    for col,ddl in (('cs_on','INTEGER NOT NULL DEFAULT 0'),('cs_slug',"TEXT NOT NULL DEFAULT ''"),('cs_intro',"TEXT NOT NULL DEFAULT ''"),('cs_hours',"TEXT NOT NULL DEFAULT ''"),('cs_days','INTEGER NOT NULL DEFAULT 2'),('cs_email',"TEXT NOT NULL DEFAULT ''")):
+        if col not in cols:db.execute(f'ALTER TABLE companies ADD COLUMN {col} {ddl}')
+    db.execute("""CREATE TABLE IF NOT EXISTS inquiries(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,number TEXT UNIQUE NOT NULL,category TEXT NOT NULL,order_no TEXT NOT NULL DEFAULT '',subject TEXT NOT NULL,body TEXT NOT NULL,name TEXT NOT NULL,phone TEXT NOT NULL,email TEXT NOT NULL DEFAULT '',pw_hash TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'new',resolved TEXT NOT NULL DEFAULT '',due TEXT NOT NULL,case_id INTEGER,ip_hash TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,updated TEXT NOT NULL,answered TEXT NOT NULL DEFAULT '',closed TEXT NOT NULL DEFAULT '',FOREIGN KEY(company_id) REFERENCES companies(id))""")
+    db.execute("CREATE TABLE IF NOT EXISTS inquiry_messages(id INTEGER PRIMARY KEY,inquiry_id INTEGER NOT NULL,author TEXT NOT NULL,author_name TEXT NOT NULL DEFAULT '',body TEXT NOT NULL,created TEXT NOT NULL,FOREIGN KEY(inquiry_id) REFERENCES inquiries(id))")
+    db.execute('CREATE TABLE IF NOT EXISTS inquiry_files(id INTEGER PRIMARY KEY,inquiry_id INTEGER NOT NULL,stored TEXT NOT NULL,original TEXT NOT NULL,FOREIGN KEY(inquiry_id) REFERENCES inquiries(id))')
+    db.execute('CREATE TABLE IF NOT EXISTS inquiry_log(id INTEGER PRIMARY KEY,inquiry_id INTEGER NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,created TEXT NOT NULL)')
+    db.execute("CREATE UNIQUE INDEX IF NOT EXISTS companies_cs_slug ON companies(cs_slug) WHERE cs_slug!=''")
+    db.execute('CREATE INDEX IF NOT EXISTS inquiries_company ON inquiries(company_id,status)')
+
+def inq_log(db,inq_id,actor,action):db.execute('INSERT INTO inquiry_log(inquiry_id,actor,action,created) VALUES(?,?,?,?)',(inq_id,actor,action,now()))
+def inq_overdue(inq):return inq['status']=='new' and inq['due']<now()
+def inq_can_escalate(inq,company_answered):
+    # 제보로 넘기기: 답변 목표일이 지나도 기업 답이 없거나, 소비자가 '아직 해결 안 됐어요'를 눌렀거나, 해결 안 된 채 종결됐을 때
+    if inq['case_id']:return False
+    return (not company_answered and inq['due']<now()) or inq['resolved']=='no' or (inq['status']=='closed' and inq['resolved']!='yes')
+app.jinja_env.globals.update(INQ_STATUSES=INQ_STATUSES,inq_overdue=inq_overdue)
+def inq_email_later(to,subject,body,inq_id,what):
+    # 커밋 뒤 이메일을 뒤에서 보내고 결과를 문의 기록에 남김. 메일 설정이 없으면 건너뜀.
+    if not to or not notify.email_ready():return
+    def done(ok,detail):
+        with conn() as db:inq_log(db,inq_id,'알림',f"{what} 이메일 {'발송' if ok else '실패'} ({notify.mask(to)}){' '+detail if detail else ''}")
+    def send(resp):
+        notify.send_later(lambda:notify.send_email(to,subject,body),done)
+        return resp
+    after_this_request(send)
+def cs_company(slug):
+    with conn() as db:co=db.execute("SELECT * FROM companies WHERE cs_slug=? AND cs_on=1 AND status='active'",(slug,)).fetchone()
+    if not co:abort(404)
+    return co
+def biz_inbox_link():return url_for('biz_inbox',_external=True)
+
+@app.route('/cs/<slug>',methods=['GET','POST'])
+def cs_page(slug):
+    co=cs_company(slug)
+    form=lambda code=200:(render_template('cs_page.html',co=co,categories=INQ_CATEGORIES,max_files=MAX_FILES),code)
+    if request.method=='GET':return form()
+    if request.form.get('website'):abort(400)  # 자동 등록 프로그램 차단용 숨은 칸
+    f={k:request.form.get(k,'').strip() for k in ('category','order_no','subject','body','name','phone','email')}
+    pw=request.form.get('lookup_pw','')
+    if f['category'] not in INQ_CATEGORIES or any(not f[k] for k in ('subject','body','name','phone')) or not request.form.get('consent'):
+        flash('필수 항목과 개인정보 동의를 확인해 주세요.');return form(400)
+    if any(len(f[k])>n for k,n in (('order_no',60),('subject',120),('body',5000),('name',40),('phone',20),('email',150))):abort(400)
+    if not PHONE_INPUT.match(f['phone']) or len(phone_digits(f['phone']))<9:flash('휴대폰 번호를 확인해 주세요.');return form(400)
+    if f['email'] and not MEMBER_EMAIL_RE.match(f['email']):flash('이메일 주소를 확인해 주세요.');return form(400)
+    if not LOOKUP_PW_MIN<=len(pw)<=30:flash('조회 비밀번호를 4~30자로 정해 주세요.');return form(400)
+    if pw!=request.form.get('lookup_pw2',''):flash('조회 비밀번호 확인이 맞지 않아요.');return form(400)
+    files=[x for x in request.files.getlist('evidence') if x and x.filename]
+    if len(files)>MAX_FILES:flash(f'첨부파일은 {MAX_FILES}개까지 올릴 수 있어요.');return form(400)
+    total=0;checked=[]
+    for x in files:
+        suffix=Path(x.filename).suffix.lower();head=x.stream.read(12);x.stream.seek(0,2);total+=x.stream.tell();x.stream.seek(0)
+        if suffix not in UPLOAD_TYPES or not file_ok(suffix,head):flash('첨부는 사진, PDF, 동영상(mp4·mov) 파일만 가능해요.');return form(400)
+        checked.append((x,suffix,re.sub(r'[\x00-\x1f/\\]','',Path(x.filename.replace('\\','/')).name)[:180] or 'file'+suffix))
+    if total>MAX_UPLOAD_TOTAL:flash('첨부파일은 모두 합쳐 20MB까지 올릴 수 있어요.');return form(400)
+    number='Q-'+datetime.datetime.now().strftime('%y%m%d')+'-'+secrets.token_hex(3).upper()
+    due=(datetime.datetime.now()+datetime.timedelta(days=co['cs_days'] or 2)).isoformat(timespec='seconds')
+    with conn() as db:
+        hour_ago=(datetime.datetime.now()-datetime.timedelta(hours=1)).isoformat(timespec='seconds')
+        if db.execute('SELECT COUNT(*) FROM inquiries WHERE ip_hash=? AND created>=?',(ip_hash(),hour_ago)).fetchone()[0]>=10:
+            flash('잠시 후 다시 문의해 주세요. 한 시간에 10건까지 보낼 수 있어요.');return form(429)
+        iid=db.execute('INSERT INTO inquiries(company_id,number,category,order_no,subject,body,name,phone,email,pw_hash,due,ip_hash,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                       (co['id'],number,f['category'],f['order_no'],f['subject'],f['body'],f['name'],f['phone'],f['email'],generate_password_hash(pw),due,ip_hash(),now(),now())).lastrowid
+        for x,suffix,original in checked:
+            stored=secrets.token_hex(20)+suffix;x.save(UPLOAD/stored)
+            db.execute('INSERT INTO inquiry_files(inquiry_id,stored,original) VALUES(?,?,?)',(iid,stored,original))
+        inq_log(db,iid,'고객','문의 접수')
+    inq_email_later(co['cs_email'] or co['contact_email'],f"[소비자제보센터] {co['name']} 새 고객 문의가 왔습니다",
+        f"{co['name']} 고객센터에 새 문의가 왔습니다.\n\n■ 문의번호: {number}\n■ 유형: {f['category']}\n■ 제목: {f['subject']}\n■ 답변 목표: {due[:10]}\n\n기업 회원 화면에서 확인하고 답변해 주세요.\n{biz_inbox_link()}",iid,'새 문의 알림')
+    session.pop('inq_ids',None);session['inq_id']=iid
+    return render_template('cs_done.html',co=co,number=number)
+
+@app.route('/cs/lookup',methods=['GET','POST'])
+def cs_lookup():
+    # 휴대폰 번호 + 조회 비밀번호로 내 문의 찾기 (여러 기업에 문의했으면 모두)
+    if request.method=='GET':return render_template('cs_lookup.html')
+    if too_many_attempts('inquiry'):flash('시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.');return render_template('cs_lookup.html'),429
+    digits=phone_digits(request.form.get('phone'));pw=request.form.get('password','');found=[]
+    if len(digits)>=9 and pw:
+        with conn() as db:
+            rows=db.execute('SELECT i.id,i.number,i.subject,i.status,i.created,i.phone,i.pw_hash,co.name AS company FROM inquiries i JOIN companies co ON co.id=i.company_id ORDER BY i.id DESC LIMIT 2000').fetchall()
+        found=[r for r in rows if phone_digits(r['phone'])==digits and check_password_hash(r['pw_hash'],pw)]
+    if not found:note_attempt('inquiry');flash('휴대폰 번호 또는 조회 비밀번호가 맞지 않아요.');return render_template('cs_lookup.html'),401
+    if len(found)==1:session['inq_id']=found[0]['id'];return redirect(url_for('cs_inquiry'))
+    session['inq_ids']=[r['id'] for r in found]
+    return render_template('cs_lookup.html',found=found)
+@app.route('/cs/lookup/<int:inq_id>',methods=['POST'])
+def cs_lookup_pick(inq_id):
+    if inq_id not in session.get('inq_ids',[]):return redirect(url_for('cs_lookup'))
+    session['inq_id']=inq_id;return redirect(url_for('cs_inquiry'))
+
+@app.route('/cs/inquiry',methods=['GET','POST'])
+def cs_inquiry():
+    iid=session.get('inq_id')
+    if not iid:return redirect(url_for('cs_lookup'))
+    with conn() as db:
+        inq=db.execute('SELECT * FROM inquiries WHERE id=?',(iid,)).fetchone()
+        if not inq:session.pop('inq_id',None);return redirect(url_for('cs_lookup'))
+        co=db.execute('SELECT * FROM companies WHERE id=?',(inq['company_id'],)).fetchone()
+        if request.method=='POST':
+            action=request.form.get('action')
+            if action=='message':
+                body=request.form.get('message','').strip()
+                if inq['status']=='closed':flash('종결된 문의예요. 새로 문의해 주세요.')
+                elif not body or len(body)>3000:flash('추가 문의를 3,000자 이내로 적어 주세요.')
+                else:
+                    db.execute('INSERT INTO inquiry_messages(inquiry_id,author,author_name,body,created) VALUES(?,?,?,?,?)',(iid,'customer',inq['name'],body,now()))
+                    db.execute("UPDATE inquiries SET status='new',resolved='',updated=? WHERE id=?",(now(),iid));inq_log(db,iid,'고객','추가 문의')
+                    inq_email_later(co['cs_email'] or co['contact_email'],f"[소비자제보센터] {co['name']} 고객이 추가 문의를 남겼습니다",
+                        f"문의번호 {inq['number']} ({inq['subject']})에 고객이 추가 문의를 남겼습니다.\n\n{biz_inbox_link()}",iid,'추가 문의 알림')
+                    flash('추가 문의를 보냈어요.')
+            elif action in ('resolved','unresolved') and inq['status']!='new':
+                db.execute('UPDATE inquiries SET resolved=?,updated=? WHERE id=?',('yes' if action=='resolved' else 'no',now(),iid))
+                inq_log(db,iid,'고객','해결됐어요' if action=='resolved' else '아직 해결 안 됐어요')
+            return redirect(url_for('cs_inquiry'))
+        msgs=db.execute('SELECT * FROM inquiry_messages WHERE inquiry_id=? ORDER BY id',(iid,)).fetchall()
+        files=db.execute('SELECT original FROM inquiry_files WHERE inquiry_id=? ORDER BY id',(iid,)).fetchall()
+    answered=any(m['author']=='company' for m in msgs)
+    return render_template('cs_inquiry.html',inq=inq,co=co,msgs=msgs,files=files,answered=answered,can_escalate=inq_can_escalate(inq,answered))
+@app.route('/cs/inquiry/escalate',methods=['POST'])
+def cs_escalate():
+    # 해결 안 된 문의를 제보로 넘기기: 제보하기 화면을 문의 내용으로 채워서 엶. 제보를 실제로 보내야 연결됨.
+    iid=session.get('inq_id')
+    if not iid:return redirect(url_for('cs_lookup'))
+    with conn() as db:
+        inq=db.execute('SELECT * FROM inquiries WHERE id=?',(iid,)).fetchone()
+        co=db.execute('SELECT name FROM companies WHERE id=?',(inq['company_id'],)).fetchone() if inq else None
+        answered=bool(inq) and bool(db.execute("SELECT 1 FROM inquiry_messages WHERE inquiry_id=? AND author='company'",(iid,)).fetchone())
+    if not inq or not inq_can_escalate(inq,answered):return redirect(url_for('cs_inquiry'))
+    history=f"\n\n[{co['name']} 고객센터 문의 {inq['number']} · {inq['created'][:10]}]\n"+('업체 답변을 받았지만 해결되지 않았어요.' if answered else f"답변 목표일({inq['due'][:10]})이 지나도록 업체 답변이 없었어요.")
+    session['report_prefill']={'company':co['name'],'subject':inq['subject'],'description':(inq['body']+history)[:6000],'reporter_name':inq['name'],'phone':inq['phone'],'contact':inq['email']}
+    session['escalate_inq']=iid
+    return redirect(url_for('report'))
+def link_escalated_case(case_id):
+    # 제보하기로 넘어온 문의면 제보와 연결해 둠 (같은 브라우저에서 바로 제보했을 때)
+    iid=session.pop('escalate_inq',None);session.pop('report_prefill',None)
+    if not iid:return
+    with conn() as db:
+        if db.execute('UPDATE inquiries SET case_id=?,updated=? WHERE id=? AND case_id IS NULL',(case_id,now(),iid)).rowcount:inq_log(db,iid,'고객','제보로 넘김')
+@app.route('/cs/logout',methods=['POST'])
+def cs_logout():
+    session.pop('inq_id',None);session.pop('inq_ids',None)
+    return redirect(url_for('cs_lookup'))
+
+def biz_cs_ready(f):
+    @functools.wraps(f)
+    @biz_only
+    def wrapped(*a,**kw):
+        if not g.company or g.company['status']!='active':return redirect(url_for('biz_home'))
+        return f(*a,**kw)
+    return wrapped
+@app.route('/biz/cs')
+@biz_cs_ready
+def biz_inbox():
+    tab=request.args.get('tab') if request.args.get('tab') in INQ_STATUSES else 'new'
+    with conn() as db:
+        counts={k:0 for k in INQ_STATUSES}
+        for r in db.execute('SELECT status,COUNT(*) AS n FROM inquiries WHERE company_id=? GROUP BY status',(g.company['id'],)):counts[r['status']]=r['n']
+        order='due' if tab=='new' else 'updated DESC'
+        rows=db.execute(f'SELECT id,number,category,subject,name,status,resolved,due,case_id,created,updated FROM inquiries WHERE company_id=? AND status=? ORDER BY {order} LIMIT 300',(g.company['id'],tab)).fetchall()
+        overdue=db.execute("SELECT COUNT(*) FROM inquiries WHERE company_id=? AND status='new' AND due<?",(g.company['id'],now())).fetchone()[0]
+    return render_template('biz_inbox.html',rows=rows,tab=tab,counts=counts,overdue=overdue)
+@app.route('/biz/cs/<int:inq_id>',methods=['GET','POST'])
+@biz_cs_ready
+def biz_inquiry(inq_id):
+    with conn() as db:
+        inq=db.execute('SELECT * FROM inquiries WHERE id=? AND company_id=?',(inq_id,g.company['id'])).fetchone()
+        if not inq:abort(404)
+        if request.method=='POST':
+            if g.biz_preview:flash('미리보기에서는 답변할 수 없어요.');return redirect(url_for('biz_inquiry',inq_id=inq_id))
+            action=request.form.get('action');who=g.company['name']+' '+g.biz_user['name']
+            if action=='reply':
+                body=request.form.get('response','').strip()
+                if not body or len(body)>5000:flash('답변을 5,000자 이내로 적어 주세요.');return redirect(url_for('biz_inquiry',inq_id=inq_id))
+                close=bool(request.form.get('close'))
+                db.execute('INSERT INTO inquiry_messages(inquiry_id,author,author_name,body,created) VALUES(?,?,?,?,?)',(inq_id,'company',g.biz_user['name'],body,now()))
+                db.execute("UPDATE inquiries SET status=?,answered=CASE WHEN answered='' THEN ? ELSE answered END,closed=?,updated=? WHERE id=?",('closed' if close else 'answered',now(),now() if close else '',now(),inq_id))
+                inq_log(db,inq_id,who,'답변 등록'+(' · 종결' if close else ''))
+                inq_email_later(inq['email'],f"[소비자제보센터] {g.company['name']}에서 문의에 답변했습니다",
+                    f"{inq['name']}님, {g.company['name']}에서 문의에 답변했습니다.\n\n■ 문의번호: {inq['number']}\n■ 제목: {inq['subject']}\n\n답변은 '내 문의 조회'에서 휴대폰 번호와 조회 비밀번호로 확인할 수 있습니다.\n{url_for('cs_lookup',_external=True)}",inq_id,'답변 알림')
+                flash('답변을 보냈어요. 고객에게 바로 보여요.')
+            elif action=='close' and inq['status']!='closed':
+                db.execute("UPDATE inquiries SET status='closed',closed=?,updated=? WHERE id=?",(now(),now(),inq_id));inq_log(db,inq_id,who,'종결');flash('문의를 종결했어요.')
+            elif action=='reopen' and inq['status']=='closed':
+                db.execute("UPDATE inquiries SET status='answered',closed='',updated=? WHERE id=?",(now(),inq_id));inq_log(db,inq_id,who,'종결 취소');flash('문의를 다시 열었어요.')
+            return redirect(url_for('biz_inquiry',inq_id=inq_id))
+        msgs=db.execute('SELECT * FROM inquiry_messages WHERE inquiry_id=? ORDER BY id',(inq_id,)).fetchall()
+        files=db.execute('SELECT id,original FROM inquiry_files WHERE inquiry_id=? ORDER BY id',(inq_id,)).fetchall()
+        logs=db.execute('SELECT * FROM inquiry_log WHERE inquiry_id=? ORDER BY id DESC LIMIT 30',(inq_id,)).fetchall()
+    return render_template('biz_inquiry.html',inq=inq,msgs=msgs,files=files,logs=logs)
+@app.route('/biz/cs/file/<int:file_id>')
+@biz_cs_ready
+def biz_inquiry_file(file_id):
+    with conn() as db:f=db.execute('SELECT f.* FROM inquiry_files f JOIN inquiries i ON i.id=f.inquiry_id WHERE f.id=? AND i.company_id=?',(file_id,g.company['id'])).fetchone()
+    if not f:abort(404)
+    return send_file(UPLOAD/f['stored'],as_attachment=True,download_name=f['original'])
+@app.route('/biz/cs/settings',methods=['GET','POST'])
+@biz_cs_ready
+def biz_cs_settings():
+    co=g.company
+    if request.method=='POST':
+        if g.biz_preview:flash('미리보기에서는 바꿀 수 없어요.');return redirect(url_for('biz_cs_settings'))
+        f={k:request.form.get(k,'').strip() for k in ('cs_slug','cs_intro','cs_hours','cs_email')}
+        f['cs_slug']=f['cs_slug'].lower();days=request.form.get('cs_days',type=int);on=int(bool(request.form.get('cs_on')))
+        errors=[]
+        if not CS_SLUG_RE.match(f['cs_slug']) or f['cs_slug'] in CS_RESERVED:errors.append('문의 페이지 주소는 영문 소문자·숫자·하이픈(-)으로 3~30자로 정해 주세요.')
+        if len(f['cs_intro'])>1000 or len(f['cs_hours'])>100:errors.append('안내 문구는 1,000자, 운영 시간은 100자 이내로 적어 주세요.')
+        if f['cs_email'] and (len(f['cs_email'])>120 or not MEMBER_EMAIL_RE.match(f['cs_email'])):errors.append('알림 받을 이메일을 확인해 주세요.')
+        if days not in INQ_DAYS:errors.append('답변 목표일을 골라 주세요.')
+        with conn() as db:
+            if not errors and db.execute('SELECT 1 FROM companies WHERE cs_slug=? AND id!=?',(f['cs_slug'],co['id'])).fetchone():errors.append('다른 기업이 쓰는 주소예요. 다른 주소를 정해 주세요.')
+            if errors:
+                for e in errors:flash(e)
+                return render_template('biz_cs_settings.html',form=request.form,days=INQ_DAYS),400
+            db.execute('UPDATE companies SET cs_on=?,cs_slug=?,cs_intro=?,cs_hours=?,cs_days=?,cs_email=? WHERE id=?',(on,f['cs_slug'],f['cs_intro'],f['cs_hours'],days,f['cs_email'],co['id']))
+        flash('문의함 설정을 저장했어요.'+(' 이제 고객이 문의할 수 있어요.' if on else ' 문의함은 아직 꺼져 있어요.'));return redirect(url_for('biz_cs_settings'))
+    form={k:co[k] for k in ('cs_on','cs_slug','cs_intro','cs_hours','cs_days','cs_email')}
+    return render_template('biz_cs_settings.html',form=form,days=INQ_DAYS)
+@app.context_processor
+def biz_cs_counts():
+    # 기업 화면 메뉴의 '고객 문의' 옆 숫자 (답변 대기)
+    if not request.path.startswith('/biz') or not g.get('company'):return {}
+    with conn() as db:n=db.execute("SELECT COUNT(*) FROM inquiries WHERE company_id=? AND status='new'",(g.company['id'],)).fetchone()[0]
+    return {'biz_cs_waiting':n}
 
 if __name__=='__main__':app.run(debug=False)

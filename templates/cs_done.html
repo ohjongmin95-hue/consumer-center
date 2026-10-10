@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}문의 접수 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap"><div class="form-panel cs-done">
+  <h1 class="page-title">문의를 보냈어요</h1>
+  <p><b>{{ co['name'] }}</b>에 문의가 전달됐어요. 문의 후 {{ co['cs_days'] }}일 이내 답변을 목표로 해요.</p>
+  <div class="info"><h3>문의번호</h3><p class="cs-number">{{ number }}</p>
+    <p>답변은 <b>내 문의 확인</b>에서 휴대폰 번호와 조회 비밀번호로 볼 수 있어요. 이메일을 적으셨다면 답변이 오면 알려 드려요.</p></div>
+  <div class="cs-done-actions"><a class="primary" href="{{ url_for('cs_inquiry') }}">내 문의 보기 →</a><a class="secondary" href="{{ url_for('cs_page', slug=co['cs_slug']) }}">새 문의 쓰기</a></div>
+</div></div></main>
+{% endblock %}

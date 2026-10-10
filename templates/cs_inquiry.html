@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}{{ inq['subject'] }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro">
+    <p class="cs-crumb">{{ co['name'] }} 고객센터 · {{ inq['number'] }}</p>
+    <h1 class="page-title">{{ inq['subject'] }}</h1>
+    <p><span class="inq-badge inq-{{ inq['status'] }}">{{ INQ_STATUSES[inq['status']] }}</span> {{ inq['category'] }} · 문의일 {{ inq['created'][:10]|replace('-', '.') }}{% if inq['status'] == 'new' %} · 답변 목표 {{ inq['due'][:10]|replace('-', '.') }}{% endif %}</p>
+  </div>
+  <div class="form-panel">
+    <div class="inq-thread">
+      <div class="inq-msg from-customer"><div class="inq-msg-head"><b>나</b><span>{{ inq['created'][:16]|replace('T', ' ') }}</span></div>
+        {% if inq['order_no'] %}<p class="inq-order">주문번호 {{ inq['order_no'] }}</p>{% endif %}<p>{{ inq['body'] }}</p>
+        {% if files %}<p class="inq-files">📎 {% for f in files %}{{ f['original'] }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}</div>
+      {% for m in msgs %}
+      <div class="inq-msg {{ 'from-company' if m['author'] == 'company' else 'from-customer' }}"><div class="inq-msg-head"><b>{{ co['name'] if m['author'] == 'company' else '나' }}</b><span>{{ m['created'][:16]|replace('T', ' ') }}</span></div><p>{{ m['body'] }}</p></div>
+      {% endfor %}
+      {% if not answered %}<p class="inq-wait">{{ co['name'] }}에서 확인하고 있어요. 답변 목표일은 {{ inq['due'][:10]|replace('-', '.') }}이에요.</p>{% endif %}
+    </div>
+
+    {% if inq['status'] != 'new' and not inq['case_id'] %}
+    <div class="inq-rate">
+      {% if inq['resolved'] == 'yes' %}<p>👍 <b>해결됐다고 알려 주셨어요.</b> 감사합니다.</p>
+      {% else %}<p><b>문제가 해결됐나요?</b></p>
+      <form method="post" class="inq-rate-btns"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="secondary{% if inq['resolved'] == 'yes' %} on{% endif %}" name="action" value="resolved">해결됐어요</button><button class="secondary{% if inq['resolved'] == 'no' %} on{% endif %}" name="action" value="unresolved">아직이에요</button></form>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if inq['case_id'] %}<p class="alert">이 문의는 소비자제보센터에 제보로 넘겼어요. 진행 상황은 <a href="{{ url_for('lookup') }}">내 제보 조회</a>에서 확인해 주세요.</p>
+    {% elif can_escalate %}
+    <div class="inq-escalate">
+      <h2>해결이 안 되셨나요?</h2>
+      <p>{% if answered %}업체 답변으로 해결되지 않았다면{% else %}답변 목표일이 지나도 답이 없다면{% endif %} 소비자제보센터에 제보할 수 있어요. 문의 내용을 그대로 옮겨 드려요. 센터가 검토하고, 공개 여부는 직접 고를 수 있어요.</p>
+      <form method="post" action="{{ url_for('cs_escalate') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="primary" type="submit">소비자제보센터에 제보하기 →</button></form>
+    </div>
+    {% endif %}
+
+    {% if inq['status'] != 'closed' %}
+    <form method="post" class="inq-reply"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="message">
+      <div class="field"><label for="i-msg">추가 문의</label><textarea id="i-msg" name="message" maxlength="3000" required placeholder="더 알려 줄 내용이나 궁금한 점을 적어 주세요"></textarea></div>
+      <button class="primary" type="submit">추가 문의 보내기 →</button>
+    </form>
+    {% else %}<p class="meta">종결된 문의예요. 다른 도움이 필요하면 <a href="{{ url_for('cs_page', slug=co['cs_slug']) }}">새로 문의</a>해 주세요.</p>{% endif %}
+    <form method="post" action="{{ url_for('cs_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="secondary" type="submit">확인 끝내기</button></form>
+  </div>
+</div></main>
+{% endblock %}
