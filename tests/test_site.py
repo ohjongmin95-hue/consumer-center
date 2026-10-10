@@ -846,12 +846,11 @@ class SiteTest(unittest.TestCase):
         path = '/reporter/case/%d' % case_id
         token = self.csrf(staff, path)
         staff.post(path, data={'_csrf': token, 'form': 'settings', 'status': '검토 중', 'assignee': '김민지'})
-        staff.post(path, data={'_csrf': token, 'form': 'note', 'internal_note': '업체에 확인 필요'})
         staff.post(path, data={'_csrf': token, 'form': 'message', 'message': '확인 중입니다'})
         page = staff.get(path).get_data(as_text=True)
         self.assertIn('진행 단계 변경: 접수 → 검토 중', page)
         self.assertIn('<b>김민지</b>', page)
-        self.assertIn('업체에 확인 필요', page)
+        self.assertNotIn('내부 메모', page)
         self.assertIn('확인 중입니다', page)
         self.assertIn('내 담당 제보', staff.get('/reporter').get_data(as_text=True))
         self.assertIn('배송이 안 와요', staff.get('/reporter?mine=1').get_data(as_text=True))
