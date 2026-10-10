@@ -573,3 +573,24 @@ body.v2>.foot2{margin-top:auto}
 .shead.c{justify-content:center;text-align:center;margin-bottom:36px}
 .tiles.six{max-width:960px;margin:0 auto}
 @media (max-width:760px){.hero3{padding-block:64px 48px}.hero3 h1{font-size:38px}.hero3 p{font-size:17px}.hero3 .btn{width:100%}.shead.c{margin-bottom:24px}}
+.tile.still{cursor:default}
+.tile.still:hover .box{transform:none;background:var(--bg)}
+.tile.still:hover{color:var(--fg2)}
+/* 기업별 접수 페이지·피해구제 자료·증빙 목록 */
+.av.lg{width:88px;height:88px;font-size:36px;background:var(--accent-soft);color:var(--accent-ink)}
+.doc .kv dd{text-align:left}
+.doc .kv{grid-template-columns:110px 1fr}
+.steps-doc{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;font-size:15px}
+.steps-doc .reply{margin-top:8px}
+.files-doc{margin:0;padding-left:20px;font-size:15px;display:flex;flex-direction:column;gap:6px}
+.files-doc a,.flist a{color:var(--accent-ink);font-weight:500}
+.flist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.flist li{display:flex;flex-direction:column;min-width:0}
+.flist a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.flist span{font-size:13px;color:var(--fg3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media print{
+  .gnb,.foot2,.pilot,.flashes,.noprint{display:none!important}
+  body.v2{background:#fff}
+  .panel{box-shadow:none;padding:0}
+  main.pg{padding:0}
+}

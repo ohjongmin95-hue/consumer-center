@@ -216,7 +216,7 @@ def settings():
                 if email and not EMAIL_RE.match(email):flash('알림 이메일을 확인해 주세요','error')
                 else:db.execute('UPDATE companies SET contact=?,notify_email=? WHERE id=?',(clean(f.get('contact'),60),email,co['id']));flash('저장했어요','ok')
         return redirect(url_for('settings'))
-    return render_template('b_settings.html',tab='settings')
+    return render_template('b_settings.html',tab='settings',link=core.site_url('me','/to/%d'%co['id']))
 
 # ---------- 센터 운영 ----------
 @app.route('/ops/login',methods=['GET','POST'])

@@ -131,6 +131,37 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(c['status'],'received')
         self.assertNotIn('동의 없음',b1.get('/biz/').get_data(as_text=True))
 
+    def test_follow_up_relief_company_page_and_late_notice(self):
+        b,o,cid=self.signup_and_approve('바른가전','barun@example.com')
+        me=self.client()
+        home=me.get('/').get_data(as_text=True)
+        self.assertNotIn('/new?category=',home);self.assertEqual(home.count('>접수하기<'),1)
+        # 기업별 접수 링크: 회사가 미리 채워진 접수 화면
+        self.assertIn('바른가전에 접수하기',me.get(f'/to/{cid}').get_data(as_text=True))
+        self.assertEqual(me.get('/to/99999').status_code,404)
+        self.assertIn('value="바른가전"',me.get(f'/new?company_id={cid}').get_data(as_text=True))
+        self.assertIn(f'/to/{cid}',b.get('/biz/settings').get_data(as_text=True))
+        case_id=self.file_case(me,'바른가전','교환',str(cid),title='세탁기 소음')
+        self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
+        # 답변 목표일이 지나면 한 번만 지연 알림
+        with self.core.conn() as db:db.execute("UPDATE cases SET due='2020-01-01 00:00:00' WHERE id=?",(case_id,))
+        self.assertEqual(self.core.notify_late(),1);self.assertEqual(self.core.notify_late(),0)
+        with self.core.conn() as db:
+            self.assertEqual(db.execute('SELECT late_sent FROM cases WHERE id=?',(case_id,)).fetchone()[0],'2020-01-01 00:00:00')
+        self.assertIn('답변 목표일이 지나',me.get(f'/case/{case_id}').get_data(as_text=True))
+        # 늦어진 민원은 다시 요청 → 승인 대기로 돌아가고 목표일이 새로 잡힘, 24시간 안에는 또 못 함
+        self.assertIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
+        self.post(me,f'/case/{case_id}',{'act':'again','msg':'아직 연락이 없어요'})
+        with self.core.conn() as db:c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+        self.assertEqual((c['status'],c['decision']),('seen','pending'));self.assertGreater(c['due'],'2020-01-01')
+        self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
+        self.assertIn('세탁기 소음',b.get('/biz/').get_data(as_text=True))
+        # 피해구제 자료 정리, 내 증빙 자료
+        page=me.get(f'/case/{case_id}/relief').get_data(as_text=True)
+        self.assertIn('사건 개요',page);self.assertIn('다시 요청: 아직 연락이 없어요',page)
+        self.assertEqual(self.client().get(f'/case/{case_id}/relief').status_code,404)
+        self.assertEqual(me.get('/mine').status_code,200)
+
     def test_submit_validation_keeps_draft(self):
         me=self.client()
         r=self.post(me,'/submit',{'company':'아무회사','category':'교환','title':'제목','body':'짧음','want':'교환','phone':'010-1234-5678','password':'1234','privacy':'1'},'/new')

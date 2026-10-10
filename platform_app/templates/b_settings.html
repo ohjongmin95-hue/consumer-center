@@ -1,8 +1,14 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
 {% block title %}설정 · SOBORU Business{% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했어요';},function(){b.textContent='선택했어요';});};});</script>{% endblock %}
 {% block bar %}{{ b.bar('settings') }}{% endblock %}
 {% block body %}
 <div class="phead"><div><h1>설정</h1><p>{{ co.name }} · {{ co.login_id }}</p></div></div>
+<div class="panel" style="margin-bottom:20px"><div class="ph">우리 회사 접수 링크</div>
+<p class="sub" style="margin:0 0 14px">홈페이지나 쇼핑몰의 고객센터 메뉴에 이 링크를 걸면, 고객 문의가 바로 이 화면으로 들어와요.</p>
+<div class="addline"><input class="inp" id="lnk" value="{{ link }}" readonly><button class="btn md gray" type="button" data-copy="lnk">복사</button></div>
+<details style="margin-top:14px"><summary class="cap" style="font-size:14px;justify-content:flex-start;gap:8px">홈페이지에 버튼으로 넣기<span class="chev"></span></summary>
+<div class="addline" style="margin-top:10px"><input class="inp" id="snip" value='&lt;a href="{{ link }}" target="_blank" rel="noopener"&gt;{{ CNAME }}으로 문의하기&lt;/a&gt;' readonly><button class="btn md gray" type="button" data-copy="snip">복사</button></div></details></div>
 <div class="grid2">
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="ph">회사 정보</div>
 <label class="fld"><span>고객센터 연락처</span><input class="inp" name="contact" maxlength="60" value="{{ co.contact }}" placeholder="1588-0000"></label>
