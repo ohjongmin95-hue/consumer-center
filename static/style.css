@@ -1236,3 +1236,47 @@ a.private-title:hover { color: #bd5c00; }
 .biz-master-off { margin: -6px 0 16px; }
 .title-cell .case-company { margin-left: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }
 .title-cell .private-title svg { margin-right: 4px; vertical-align: -1px; }
+/* 비밀글(제목 공개): 공개 제보와 똑같이 또렷하게, 자물쇠만 작게 */
+.secret-link svg { flex: none; margin-right: 5px; vertical-align: -2px; color: #ef7300; }
+.has-lock .rc-title .secret-link { display: inline; }
+
+/* 제보 처리 화면 오른쪽: 처리 / 기업 / 제보자 세 카드 */
+.cs-side { position: sticky; top: 72px; }
+.cs-card h2 { display: flex; align-items: center; gap: 8px; }
+.cs-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cs-two .field { margin-bottom: 10px; }
+.cs-side .cs-check { margin: 4px 0 14px; }
+.cs-check em { display: block; font-style: normal; font-size: 12px; color: #9a9ea5; }
+.cs-pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 800; background: #f1f2f4; color: #7a818b; }
+.cs-pill.on { background: #e8f6ee; color: #1f8a55; }
+.cs-pill.off { background: #fdf0ef; color: #c2413b; }
+.cs-label { display: block; margin: 0 0 6px; font-size: 13px; font-weight: 750; color: #4b525c; }
+.cs-row { display: flex; gap: 8px; align-items: center; }
+.cs-row select, .cs-row input { flex: 1; min-width: 0; padding: 9px 10px; border: 1px solid #dcdee1; border-radius: 8px; background: #fff; font-size: 14px; }
+.cs-row .cs-btn { flex: none; }
+.cs-row .cs-hint { flex: 1; margin: 0; }
+.cs-hint { margin: 7px 0 0; font-size: 12.5px; line-height: 1.55; color: #8a9099; }
+.cs-divide { margin-top: 14px; padding-top: 14px; border-top: 1px dashed #e6e7e8; }
+.cs-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.cs-chips span { padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #f1f2f4; color: #8a9099; }
+.cs-chips span.on { background: #fff4e8; color: #c66300; }
+.cs-more { margin-top: 10px; border-top: 1px solid #f0f1f3; padding-top: 10px; }
+.cs-more summary { cursor: pointer; font-size: 13.5px; font-weight: 750; color: #4b525c; list-style: none; }
+.cs-more summary::-webkit-details-marker { display: none; }
+.cs-more summary::before { content: '▸'; display: inline-block; width: 14px; color: #b0b4ba; transition: transform .15s; }
+.cs-more[open] summary::before { transform: rotate(90deg); }
+.cs-more summary small { margin-left: 4px; font-weight: 600; color: #9a9ea5; }
+.cs-more > form, .cs-more > ul, .cs-more > p { margin-top: 10px; }
+.cs-logbox summary { cursor: pointer; list-style: none; }
+.cs-logbox summary::-webkit-details-marker { display: none; }
+.cs-logbox summary h2 { margin: 0; }
+.cs-logbox summary h2::after { content: '펼치기'; margin-left: auto; font-size: 12px; font-weight: 700; color: #9a9ea5; }
+.cs-logbox[open] summary h2::after { content: '접기'; }
+.cs-logbox summary h2 { display: flex; align-items: center; gap: 6px; }
+.cs-logbox[open] .cs-log { margin-top: 12px; }
+@media (max-width: 1000px) { .cs-side { position: static; } }
+
+/* 목록: 줄 어디를 눌러도 열림 */
+.cs-table tr[data-href] { cursor: pointer; }
+.cs-hint b { font-size: inherit; color: #4b525c; }
+.cs-side .cs-check > span { color: #2b3038; font-size: 14px; }
