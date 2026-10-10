@@ -1176,8 +1176,8 @@ fieldset.field legend { padding: 0; margin-bottom: 9px; font-weight: 750; }
 .gd-lead { margin: -8px 0 16px; color: #6b727c; font-size: 15px; }
 .gd-inds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .gd-ind { display: flex; flex-direction: column; background: #fff; border: 1px solid #e6e7e8; border-radius: 16px; padding: 18px 20px 18px; }
-.gd-ind header { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; margin-bottom: 2px; border-bottom: 1px solid #f0f1f3; }
-.gd-ind header img { flex: none; width: 148px; height: auto; border-radius: 10px; }
+.gd-ind header { padding-bottom: 14px; margin-bottom: 2px; border-bottom: 1px solid #f0f1f3; }
+.gd-ind header img { display: block; width: 100%; height: auto; border-radius: 12px; margin-bottom: 14px; }
 .gd-ind h3 { margin: 0; font-size: 19px; letter-spacing: -.5px; }
 .gd-ind header small { display: block; margin-top: 5px; font-size: 13px; color: #8a9099; line-height: 1.5; }
 .gd-ind-label { margin: 12px 0 6px; font-size: 12.5px; font-weight: 850; color: #d06500; }
@@ -1194,5 +1194,4 @@ fieldset.field legend { padding: 0; margin-bottom: 9px; font-weight: 750; }
   .gd-steps li + li::before { display: none; }
   .gd-comic, .gd-tips, .gd-inds { grid-template-columns: 1fr; }
   .gd-ind { padding: 16px; }
-  .gd-ind header img { width: 116px; }
 }
