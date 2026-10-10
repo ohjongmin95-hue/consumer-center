@@ -1234,3 +1234,5 @@ a.private-title:hover { color: #bd5c00; }
 .biz-actions + .biz-actions { margin-top: 6px; }
 .biz-todo { color: #c66300; }
 .biz-master-off { margin: -6px 0 16px; }
+.title-cell .case-company { margin-left: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.title-cell .private-title svg { margin-right: 4px; vertical-align: -1px; }

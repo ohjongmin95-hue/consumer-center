@@ -47,6 +47,7 @@ with conn() as db:
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
+    if 'title_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN title_hidden INTEGER NOT NULL DEFAULT 0')  # 비밀글 제목·업체명을 목록에서 숨김(운영자)
     db.execute('CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,channel TEXT NOT NULL,event TEXT NOT NULL,target TEXT NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT \'\',created TEXT NOT NULL)')
     for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash','industry','pw_hash'):
         if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
@@ -227,7 +228,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-54'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-55'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -304,15 +305,17 @@ def ed_multiline(key):
     f=site_content.FIELDS.get(key,{});return bool(f.get('multiline') or f.get('doc'))
 
 def report_rows(where='1=1',args=(),limit=20,offset=0):
-    # 모든 제보를 번호·분류·단계·접수일로 보여 주고, 제목은 공개 제보(제보자가 공개 선택, 운영자가 내리지 않음)만 노출.
+    # 모든 제보를 번호·분류·단계·접수일로 보여 줌. 제목·업체명은 공개 제보(운영자가 내리지 않음)와
+    # 비밀글(운영자가 숨기지 않음)에 보이고, 비밀글은 눌러도 본문 대신 비밀번호 창이 열림.
     with conn() as db:
-        rows=db.execute('SELECT id,category,company,subject,status,created,public_consent,published FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
+        rows=db.execute('SELECT id,category,company,subject,status,created,public_consent,published,title_hidden FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
     today=datetime.date.today().isoformat()
     def when(created):
         # 오늘 들어온 제보는 시각(15:48), 그 전은 날짜(10.08)로 짧게 표시.
         return created[11:16] if created[:10]==today and len(created)>=16 else created[5:10].replace('-','.')
-    return [dict(no=r['id'],cat=r['category'],title=mask_personal(r['subject']) if r['public_consent'] and r['published'] else None,
-                 company=mask_personal(r['company']) if r['public_consent'] and r['published'] else None,
+    def shown(r):return bool(r['published']) if r['public_consent'] else not r['title_hidden']
+    return [dict(no=r['id'],cat=r['category'],secret=not r['public_consent'],title=mask_personal(r['subject']) if shown(r) else None,
+                 company=mask_personal(r['company']) if shown(r) else None,
                  status=r['status'],created=r['created'][:10],when=when(r['created'])) for r in rows]
 def report_summary():
     with conn() as db:stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
@@ -352,7 +355,7 @@ def reports():
     where=['1=1'];args=[]
     if selected_category:where.append('category=?');args.append(selected_category)
     if search_query:
-        where.append("public_consent=1 AND published=1 AND subject LIKE ? ESCAPE '\\'")
+        where.append("((public_consent=1 AND published=1) OR (public_consent=0 AND title_hidden=0)) AND subject LIKE ? ESCAPE '\\'")
         args.append('%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%')
     cond=' AND '.join(where)
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
@@ -538,9 +541,9 @@ def lookup_pick(case_id):
 @app.route('/reports/<int:case_id>/mine',methods=['GET','POST'])
 def case_open(case_id):
     # 목록에서 내 제보를 누르고 조회 비밀번호만 넣으면 진행 상황이 열림
-    with conn() as db:case=db.execute('SELECT id,receipt,subject,public_consent,published,pw_hash FROM cases WHERE id=?',(case_id,)).fetchone()
+    with conn() as db:case=db.execute('SELECT id,receipt,subject,public_consent,published,title_hidden,pw_hash FROM cases WHERE id=?',(case_id,)).fetchone()
     if not case:abort(404)
-    title=case['subject'] if case['public_consent'] and case['published'] else None
+    title=mask_personal(case['subject']) if (case['published'] if case['public_consent'] else not case['title_hidden']) else None
     if request.method=='POST':
         if too_many_attempts('case'):
             flash(ui_text('msg.lookup_rate','시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.'));return render_template('case_open.html',case=case,title=title),429
@@ -1240,7 +1243,9 @@ def report_detail(case_id):
                 if status not in STATUSES:abort(400)
                 assignee=request.form.get('assignee',case['assignee'] or '').strip()[:80]
                 published=int(bool(request.form.get('published'))) if case['public_consent'] else 0
-                db.execute('UPDATE cases SET status=?,assignee=?,published=? WHERE id=?',(status,assignee,published,case_id))
+                title_hidden=0 if case['public_consent'] else int(not request.form.get('show_title'))
+                db.execute('UPDATE cases SET status=?,assignee=?,published=?,title_hidden=? WHERE id=?',(status,assignee,published,title_hidden,case_id))
+                if not case['public_consent'] and title_hidden!=case['title_hidden']:log_case(db,case_id,'목록에서 제목·업체명 숨김' if title_hidden else '목록에 제목·업체명 표시')
                 if status!=case['status']:log_case(db,case_id,f"진행 단계 변경: {case['status']} → {status}");notify_later(case_id,'status')
                 if assignee!=(case['assignee'] or ''):log_case(db,case_id,f"담당 기자: {assignee or '미배정'}")
                 if case['public_consent'] and published!=case['published']:log_case(db,case_id,'공개로 전환' if published else '비공개로 전환')
