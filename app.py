@@ -46,7 +46,7 @@ with conn() as db:
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
-    for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash','industry'):
+    for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash','industry','pw_hash'):
         if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS site_lists(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
@@ -224,7 +224,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-48'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-49'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -461,6 +461,9 @@ def report():
         flash(ui_text('msg.report_required','필수 항목과 필수 동의를 모두 확인해 주세요.'));return report_form(400)
     if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150),('reporter_name',40),('phone',20),('region_sigungu',40),('region_detail',120)]):abort(400)
     if not PHONE_INPUT.match(data['phone']):flash(ui_text('msg.report_phone','전화번호를 확인해 주세요.'));return report_form(400)
+    lookup_pw=request.form.get('lookup_pw','')
+    if not LOOKUP_PW_MIN<=len(lookup_pw)<=30:flash(ui_text('msg.report_pw','조회 비밀번호를 4~30자로 정해 주세요.'));return report_form(400)
+    if lookup_pw!=request.form.get('lookup_pw2',''):flash(ui_text('msg.report_pw2','조회 비밀번호 확인이 맞지 않아요.'));return report_form(400)
     if data['contact'] and not MEMBER_EMAIL_RE.match(data['contact']):flash(ui_text('msg.report_email','이메일 주소를 확인해 주세요.'));return report_form(400)
     if data['region_sido'] not in SIDO:data['region_sido']=''
     if data['gender'] not in GENDERS:data['gender']=''
@@ -478,27 +481,64 @@ def report():
         checked.append((f,suffix,original))
     if total>MAX_UPLOAD_TOTAL:flash(ui_text('msg.report_size','첨부파일은 모두 합쳐 20MB까지 올릴 수 있어요.'));return report_form(400)
     receipt='CJ-'+datetime.datetime.now().strftime('%y%m%d')+'-'+secrets.token_hex(3).upper()
-    code=secrets.token_urlsafe(12)
+    code=secrets.token_urlsafe(12)  # 예전 '접수번호+조회 코드' 방식 칸. 이제 화면에는 안 보이고 비밀번호로 조회함
     with conn() as db:
         hour_ago=(datetime.datetime.now()-datetime.timedelta(hours=1)).isoformat(timespec='seconds')
         if db.execute('SELECT COUNT(*) FROM cases WHERE ip_hash=? AND created>=?',(ip_hash(),hour_ago)).fetchone()[0]>=5:
             flash(ui_text('msg.report_rate','잠시 후 다시 제보해 주세요. 한 시간에 5건까지 접수할 수 있어요.'));return report_form(429)
         cur=db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,contact,share_company,created) VALUES(?,?,?,?,?,?,?,?,?,?)',(receipt,hashlib.sha256(code.encode()).hexdigest(),data['category'],data['company'],data['subject'],data['description'],data['request_text'],data['contact'],int(bool(request.form.get('share_company'))),datetime.datetime.now().isoformat(timespec='seconds')))
         public=int(request.form.get('visibility')=='public')
-        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=?,industry=? WHERE id=?',
-                   (public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),data['industry'],cur.lastrowid))
+        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=?,industry=?,pw_hash=? WHERE id=?',
+                   (public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),data['industry'],generate_password_hash(lookup_pw),cur.lastrowid))
         for f,suffix,original in checked:
             stored=secrets.token_hex(20)+suffix;f.save(UPLOAD/stored)
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,original))
-    return render_template('success.html',receipt=receipt,code=code)
+    return render_template('success.html',receipt=receipt,case_id=cur.lastrowid)
+LOOKUP_PW_MIN=4
+def phone_digits(value):return re.sub(r'\D','',value or '')
+def case_pw_ok(case,pw):return bool(case['pw_hash']) and check_password_hash(case['pw_hash'],pw)
+def open_case(case_id):
+    session.pop('lookup_ids',None);session['case_id']=case_id;return redirect(url_for('case_detail'))
 @app.route('/lookup',methods=['GET','POST'])
 def lookup():
+    # 휴대폰 번호 + 조회 비밀번호로 내 제보 찾기. 예전 제보는 접수번호 + 조회 코드로도 열림.
     if request.method=='GET':return render_template('lookup.html')
-    receipt=request.form.get('receipt','').strip().upper();code=request.form.get('code','').strip()
-    with conn() as db:case=db.execute('SELECT * FROM cases WHERE receipt=?',(receipt,)).fetchone()
-    if not case or not hmac.compare_digest(case['lookup_hash'],hashlib.sha256(code.encode()).hexdigest()):
-        flash(ui_text('msg.m04','접수번호 또는 조회 코드가 일치하지 않습니다.'));return render_template('lookup.html'),401
-    session.pop('case_id',None);session['case_id']=case['id'];return redirect(url_for('case_detail'))
+    if too_many_attempts('case'):
+        flash(ui_text('msg.lookup_rate','시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.'));return render_template('lookup.html'),429
+    if request.form.get('mode')=='code':
+        receipt=request.form.get('receipt','').strip().upper();code=request.form.get('code','').strip()
+        with conn() as db:case=db.execute('SELECT * FROM cases WHERE receipt=?',(receipt,)).fetchone()
+        if not case or not hmac.compare_digest(case['lookup_hash'],hashlib.sha256(code.encode()).hexdigest()):
+            note_attempt('case');flash(ui_text('msg.m04','접수번호 또는 조회 코드가 일치하지 않습니다.'));return render_template('lookup.html',legacy=True),401
+        return open_case(case['id'])
+    digits=phone_digits(request.form.get('phone'));pw=request.form.get('password','')
+    found=[]
+    if len(digits)>=8 and pw:
+        with conn() as db:
+            rows=db.execute("SELECT id,receipt,subject,status,created,phone,pw_hash FROM cases WHERE pw_hash!='' ORDER BY id DESC").fetchall()
+        found=[r for r in rows if phone_digits(r['phone'])==digits and case_pw_ok(r,pw)]
+    if not found:
+        note_attempt('case');flash(ui_text('msg.lookup_fail','휴대폰 번호 또는 조회 비밀번호가 맞지 않아요.'));return render_template('lookup.html'),401
+    if len(found)==1:return open_case(found[0]['id'])
+    session['lookup_ids']=[r['id'] for r in found]
+    return render_template('lookup.html',found=found)
+@app.route('/lookup/<int:case_id>',methods=['POST'])
+def lookup_pick(case_id):
+    if case_id not in session.get('lookup_ids',[]):return redirect(url_for('lookup'))
+    return open_case(case_id)
+@app.route('/reports/<int:case_id>/mine',methods=['GET','POST'])
+def case_open(case_id):
+    # 목록에서 내 제보를 누르고 조회 비밀번호만 넣으면 진행 상황이 열림
+    with conn() as db:case=db.execute('SELECT id,receipt,subject,public_consent,published,pw_hash FROM cases WHERE id=?',(case_id,)).fetchone()
+    if not case:abort(404)
+    title=case['subject'] if case['public_consent'] and case['published'] else None
+    if request.method=='POST':
+        if too_many_attempts('case'):
+            flash(ui_text('msg.lookup_rate','시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.'));return render_template('case_open.html',case=case,title=title),429
+        if case_pw_ok(case,request.form.get('password','')):return open_case(case['id'])
+        note_attempt('case');flash(ui_text('msg.case_pw_fail','조회 비밀번호가 맞지 않아요.'))
+        return render_template('case_open.html',case=case,title=title),401
+    return render_template('case_open.html',case=case,title=title)
 @app.route('/case',methods=['GET','POST'])
 def case_detail():
     case_id=session.get('case_id')
@@ -1200,6 +1240,11 @@ def report_detail(case_id):
                 note=request.form.get('internal_note','').strip()
                 if not note or len(note)>3000:abort(400)
                 db.execute('INSERT INTO internal_notes(case_id,note,created,author) VALUES(?,?,?,?)',(case_id,note,now(),actor_name()))
+            elif form=='lookup_pw':
+                pw=request.form.get('lookup_pw','')
+                if not LOOKUP_PW_MIN<=len(pw)<=30:flash('조회 비밀번호는 4~30자로 정해 주세요.');return redirect(url_for(ep['case'],case_id=case_id))
+                db.execute('UPDATE cases SET pw_hash=? WHERE id=?',(generate_password_hash(pw),case_id))
+                log_case(db,case_id,'조회 비밀번호 새로 설정');flash('조회 비밀번호를 새로 정했어요. 제보자에게 알려 주세요.')
             elif form=='message':
                 msg=request.form.get('message','').strip()
                 if not msg or len(msg)>3000:abort(400)

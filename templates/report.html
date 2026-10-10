@@ -48,6 +48,10 @@
         <label class="vis-option"><input type="radio" name="visibility" value="secret" required{% if request.form.get('visibility') == 'secret' %} checked{% endif %}><span><b>{{ ui('report.vis_secret', '🔒 비밀글') }}</b>{{ txt('report.visibility_secret') }}</span></label>
       </fieldset>
 
+      <div class="field lookup-pw"><label for="r-pw">{{ ui('report.f_pw', '조회 비밀번호') }} <small>*</small></label>
+        <div class="pw-pair"><input id="r-pw" type="password" name="lookup_pw" minlength="4" maxlength="30" required autocomplete="new-password" placeholder="{{ ui('report.f_pw_ph', '4자 이상 (숫자 4자리도 돼요)') }}"><input type="password" name="lookup_pw2" minlength="4" maxlength="30" required autocomplete="new-password" aria-label="{{ ui('report.f_pw2', '조회 비밀번호 확인') }}" placeholder="{{ ui('report.f_pw2', '조회 비밀번호 확인') }}"></div>
+        <p class="hint">{{ ui('report.f_pw_hint', '나중에 제보 목록에서 내 글을 누르거나, 내 제보 조회에서 휴대폰 번호와 함께 넣으면 진행 상황과 답변을 볼 수 있어요. 꼭 기억해 주세요.') }}</p></div>
+
       <div class="consents">
         <h2 class="consents-title">{{ ui('report.consents_title', '동의 항목') }}</h2>
         <label class="check consent-all"><input type="checkbox" data-check-all><span>{{ ui('report.consent_all', '아래 내용에 모두 동의합니다') }}</span></label>
