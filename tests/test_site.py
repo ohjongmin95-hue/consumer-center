@@ -426,6 +426,19 @@ class SiteTest(unittest.TestCase):
         public = self.client.get('/reports/%d' % shared).get_data(as_text=True)
         self.assertIn('내일까지 환불 처리하겠습니다.', public)
         self.assertIn('주식회사 테스트몰', public)
+        # 대표 미리보기: 관리자 로그인으로 그 기업 화면을 보되 답변은 못 함
+        admin.post('/admin/companies/%d/preview' % company_id, data={'_csrf': self.csrf(admin, '/admin')})
+        preview = admin.get('/biz').get_data(as_text=True)
+        self.assertIn('대표 미리보기', preview)
+        self.assertIn('답변 완료 <b>1</b>', preview)
+        admin.post('/biz/case/%d' % shared, data={'_csrf': self.csrf(admin, '/biz/case/%d' % shared), 'response': '미리보기 답변'})
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute("SELECT 1 FROM messages WHERE body='미리보기 답변'").fetchone())
+        admin.post('/biz/preview/end', data={'_csrf': self.csrf(admin, '/admin')})
+        self.assertEqual(admin.get('/biz').status_code, 302)
+        # 관리자가 아니면 미리보기 주소를 눌러도 안 됨
+        self.assertEqual(self.client.post('/admin/companies/%d/preview' % company_id, data={'_csrf': self.csrf(self.client, '/report')}).status_code, 302)
+        self.assertEqual(self.client.get('/biz').status_code, 302)
         # 6) 중지하면 바로 로그아웃
         self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'stop'})
         self.assertEqual(biz.get('/biz').status_code, 302)

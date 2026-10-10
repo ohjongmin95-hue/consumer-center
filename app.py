@@ -227,7 +227,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-52'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-53'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -1477,7 +1477,13 @@ def company_matches(company,case_company):
 
 @app.before_request
 def load_biz():
-    g.biz_user=None;g.company=None
+    g.biz_user=None;g.company=None;g.biz_preview=False
+    if session.get('biz_preview') and request.path.startswith('/biz') and admin_active():
+        # 대표(관리자)가 그 기업이 보는 화면을 그대로 확인. 답변·비밀번호 변경은 막음.
+        with conn() as db:company=db.execute('SELECT * FROM companies WHERE id=?',(session['biz_preview'],)).fetchone()
+        if company:
+            g.company=company;g.biz_preview=True
+            g.biz_user={'id':0,'name':'대표 미리보기','session_ver':0,'pw_hash':''};return
     uid=session.get('biz_uid')
     if not uid:return
     with conn() as db:
@@ -1579,6 +1585,7 @@ def biz_case(case_id):
         case=db.execute('SELECT id,receipt,industry,category,company,subject,description,request_text,status,created,public_consent,published FROM cases WHERE id=? AND company_id=? AND share_company=1',(case_id,g.company['id'])).fetchone()
         if not case:abort(404)
         if request.method=='POST':
+            if g.biz_preview:flash('미리보기에서는 답변할 수 없어요. 기업 담당자 계정으로 답변해요.');return redirect(url_for('biz_case',case_id=case_id))
             body=request.form.get('response','').strip()
             if not body or len(body)>5000:flash('답변을 5,000자 이내로 적어 주세요.');return redirect(url_for('biz_case',case_id=case_id))
             db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'기업 답변',body,now()))
@@ -1594,6 +1601,7 @@ def biz_case(case_id):
 @app.route('/biz/password',methods=['GET','POST'])
 @biz_only
 def biz_password():
+    if g.biz_preview:return redirect(url_for('biz_home'))
     if request.method=='POST':
         cur=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
         if not check_password_hash(g.biz_user['pw_hash'],cur):flash('지금 비밀번호가 맞지 않아요.')
@@ -1603,6 +1611,18 @@ def biz_password():
             with conn() as db:db.execute('UPDATE company_users SET pw_hash=?,session_ver=session_ver+1 WHERE id=?',(generate_password_hash(pw),g.biz_user['id']))
             session['biz_v']=g.biz_user['session_ver']+1;flash('비밀번호를 바꿨어요.');return redirect(url_for('biz_home'))
     return render_template('biz_password.html')
+
+@app.route('/admin/companies/<int:company_id>/preview',methods=['POST'])
+@admin_only
+def admin_company_preview(company_id):
+    with conn() as db:
+        if not db.execute('SELECT 1 FROM companies WHERE id=?',(company_id,)).fetchone():abort(404)
+    session['biz_preview']=company_id
+    return redirect(url_for('biz_home'))
+@app.route('/biz/preview/end',methods=['POST'])
+def biz_preview_end():
+    session.pop('biz_preview',None)
+    return redirect(url_for('admin_companies'))
 
 @app.route('/admin/companies',methods=['GET','POST'])
 @admin_only
