@@ -90,21 +90,30 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('공개 환불 요청', home)
         self.assertIn('공개 계약 문의', home)
-        for private in ('비공개 접수', '미동의 접수', '비공개 상세 내용'):
+        # 비밀글은 제목·업체명만 보이고(눌러도 비밀번호 창), 운영자가 내린 공개 제보와 본문은 안 보임
+        self.assertIn('미동의 접수', home)
+        for private in ('비공개 접수', '비공개 상세 내용'):
             self.assertNotIn(private, home)
-        # 메인 카드: 공개 제보만 업체명을 보여 주고, 비공개 제보는 업체명을 가림
-        self.assertEqual(home.count('class="rc-company">테스트 업체<'), 2)
-        self.assertEqual(home.count('class="rc-company">업체 비공개<'), 2)
+        self.assertEqual(home.count('class="rc-company">테스트 업체<'), 3)
+        self.assertEqual(home.count('class="rc-company">업체 비공개<'), 1)
         self.assertNotIn('class="report-stats"', home)  # 메인에는 건수·실시간 표시 없음
         self.assertNotIn('live-dot', home)
         # 모든 제보가 목록에 올라오지만, 승인·동의가 없는 제보는 제목을 가림
-        self.assertEqual(home.count('비밀글로 접수된 제보예요'), 2)
+        self.assertEqual(home.count('비공개 처리된 제보예요'), 1)
+        self.assertNotIn('비밀글로 접수된 제보예요', home)
         self.assertIn('<dt>전체</dt><dd>4</dd>', self.client.get('/reports').get_data(as_text=True))
         self.assertIn('class="rc-status">접수</span>', home)
         filtered_cat = self.client.get('/reports', query_string={'category': '배송·환불'}).get_data(as_text=True)
-        self.assertEqual(filtered_cat.count('비밀글</a>'), 2)
+        self.assertIn('미동의 접수</a>', filtered_cat)
+        self.assertEqual(filtered_cat.count('비공개</a>'), 1)
         self.assertNotIn('공개 계약 문의', filtered_cat)
-        self.assertEqual(self.client.get('/reports?q=비공개').get_data(as_text=True).count('비밀글</a>'), 0)
+        self.assertNotIn('비공개 접수', self.client.get('/reports?q=비공개').get_data(as_text=True))
+        self.assertIn('미동의 접수', self.client.get('/reports?q=미동의').get_data(as_text=True))
+        # 운영자가 비밀글 제목을 숨기면 목록에서 빠짐
+        with self.site.conn() as db:
+            db.execute("UPDATE cases SET title_hidden=1 WHERE subject='미동의 접수'")
+        self.assertNotIn('미동의 접수', self.client.get('/').get_data(as_text=True))
+        self.assertNotIn('미동의 접수', self.client.get('/reports?q=미동의').get_data(as_text=True))
         filtered = self.client.get('/reports', query_string={'q': '환불', 'category': '배송·환불'}).get_data(as_text=True)
         self.assertIn('공개 환불 요청', filtered)
         self.assertNotIn('공개 계약 문의', filtered)
@@ -305,9 +314,17 @@ class SiteTest(unittest.TestCase):
                 ids[visibility] = db.execute('SELECT id FROM cases WHERE subject=?', (visibility + ' 제목',)).fetchone()['id']
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('href="/reports/%d">public 제목</a>' % ids['public'], home)
-        self.assertNotIn('secret 제목', home)
-        self.assertEqual(home.count('비밀글로 접수된 제보예요'), 1)
-        self.assertEqual(self.client.get('/reports').get_data(as_text=True).count('비밀글</a>'), 1)
+        self.assertIn('href="/reports/%d/mine"' % ids['secret'], home)  # 비밀글은 제목이 보여도 비밀번호 창으로
+        self.assertIn('secret 제목', home)
+        listing = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('secret 제목</a>', listing)
+        self.assertNotIn('연락은 010', listing)  # 비밀글 본문은 목록에 없음
+        # 관리자가 '목록에 제목·업체명 표시'를 끄면 숨김
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'settings', 'status': '접수', 'assignee': ''})
+        self.assertNotIn('secret 제목', self.client.get('/reports').get_data(as_text=True))
+        self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'settings', 'status': '접수', 'assignee': '', 'show_title': 'on'})
+        self.assertIn('secret 제목', self.client.get('/reports').get_data(as_text=True))
         page = self.client.get('/reports/%d' % ids['public']).get_data(as_text=True)
         self.assertIn('[전화번호 비공개]', page)
         self.assertIn('[이메일 비공개]', page)
@@ -484,7 +501,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('href="/reports/%d/mine"' % first['id'], reports)
         visitor = self.site.app.test_client()
         page = visitor.get('/reports/%d/mine' % first['id']).get_data(as_text=True)
-        self.assertNotIn('비밀 제보 하나', page)
+        self.assertNotIn('환불이', page)  # 비밀번호 창에는 제목만, 본문은 없음
         self.assertEqual(self.post_form(visitor, '/reports/%d/mine' % first['id'], {'password': '0000'}).status_code, 401)
         self.assertEqual(visitor.get('/case').status_code, 302)
         opened = self.post_form(visitor, '/reports/%d/mine' % first['id'], {'password': '2580'})

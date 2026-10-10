@@ -46,6 +46,7 @@
         <div class="field"><label for="c-status">진행 단계</label><select id="c-status" name="status">{% for s in statuses %}<option{% if s == case['status'] %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
         <div class="field"><label for="c-assignee">담당 기자</label><select id="c-assignee" name="assignee"><option value="">미배정</option>{% for n in staff_names %}<option{% if n == case['assignee'] %} selected{% endif %}>{{ n }}</option>{% endfor %}{% if case['assignee'] and case['assignee'] not in staff_names %}<option selected>{{ case['assignee'] }}</option>{% endif %}</select></div>
         <label class="cs-check"><input type="checkbox" name="published"{% if case['published'] %} checked{% endif %}{% if not case['public_consent'] %} disabled{% endif %}><span>사이트에 공개{% if not case['public_consent'] %} <em>(비밀글이라 공개 불가)</em>{% endif %}</span></label>
+        {% if not case['public_consent'] %}<label class="cs-check"><input type="checkbox" name="show_title"{% if not case['title_hidden'] %} checked{% endif %}><span>목록에 제목·업체명 표시 <em>(비밀글이라 내용은 안 보여요)</em></span></label>{% endif %}
         <button class="cs-btn cs-btn-main" type="submit">저장</button>
       </form>
 
