@@ -1,0 +1,34 @@
+{% extends 'console.html' %}
+{% block title %}공동 대응 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="cs-page">
+  <h1 class="cs-title">공동 대응</h1>
+  <p class="cs-lead">같은 업체·같은 피해가 쌓이면 공동 대응을 열어 피해자 참여 신청을 받아요. 사이트 주소는 <b>{{ url_for('groups', _external=True) }}</b> 예요. 센터는 피해자를 모으고 안내만 해요. 변호사 소개비나 수수료는 받지 않아요.</p>
+
+  {% if hot %}
+  <section class="cs-panel">
+    <h2>“나도 겪었어요”가 많은 공개 제보</h2>
+    <ul class="grp-hot">{% for h in hot %}<li><a href="{{ url_for('admin_report', case_id=h['id']) }}">No.{{ h['id'] }} {{ h['subject'] }}</a> <span>{{ h['company'] }}</span> <b>{{ h['n'] }}명</b>{% if h['group_id'] %} <span class="cs-pill on">연결됨</span>{% endif %}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  <form class="cs-panel" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h2>새 공동 대응 열기</h2>
+    <div class="cs-two"><div class="field"><label for="g-t">제목</label><input id="g-t" name="title" maxlength="120" required placeholder="예: OO쇼핑 반품 후 환불 지연"></div>
+    <div class="field"><label for="g-c">업체</label><input id="g-c" name="company" maxlength="120" required placeholder="예: OO쇼핑"></div></div>
+    <div class="field"><label for="g-s">어떤 피해인가요 (사이트에 공개돼요)</label><textarea id="g-s" name="summary" maxlength="3000" rows="3" placeholder="사실 위주로 적어 주세요. 단정적인 표현은 피해 주세요."></textarea></div>
+    <button class="cs-btn cs-btn-main" type="submit">열기</button>
+  </form>
+
+  <div class="cs-table-wrap">
+    <table class="cs-table">
+      <thead><tr><th>제목</th><th>업체</th><th>상태</th><th>참여</th><th>관련 제보</th><th>연 날</th></tr></thead>
+      <tbody>
+      {% for gr in group_rows %}
+      <tr data-href="{{ url_for('admin_group', group_id=gr['id']) }}"><td class="cs-subject"><a href="{{ url_for('admin_group', group_id=gr['id']) }}">{{ gr['title'] }}</a></td><td>{{ gr['company'] }}</td><td><span class="cs-status{% if gr['status'] == 'open' %} s1{% elif gr['status'] == 'active' %} s3{% endif %}">{{ statuses[gr['status']] }}</span></td><td><b>{{ gr['n_members'] }}</b>명</td><td>{{ gr['n_cases'] }}건</td><td class="mono">{{ gr['created'][:10] }}</td></tr>
+      {% else %}<tr><td colspan="6" class="cs-empty">아직 연 공동 대응이 없어요.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</main>
+{% endblock %}

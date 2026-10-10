@@ -22,6 +22,7 @@
   'layers': '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
   'text': '<path d="M5 6h14"/><path d="M12 6v13"/><path d="M8 19h8"/>',
   'id': '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 16.5c.6-1.6 1.9-2.5 3.5-2.5s2.9.9 3.5 2.5"/><path d="M15 10h3M15 13h3"/>',
+  'group': '<circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><path d="M13.5 15c.8-.4 1.6-.5 2.5-.5 2.7 0 4.9 1.5 5.5 4.5"/>',
   'building': '<path d="M4 20V6l8-3v17"/><path d="M12 9h8v11"/><path d="M3 20h18"/><path d="M7 9h2M7 13h2M15 13h2M15 16h2"/>',
   'key': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 6l2 2"/>',
   'out': '<path d="M14 4h5v16h-5"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/>',
@@ -29,11 +30,11 @@
 {% if admin_active() and request.endpoint != 'admin_login' %}
 {% set groups = [
   ('', [('admin', 'home', '홈')]),
-  ('운영', [('admin_reports', 'inbox', '제보 처리'), ('admin_companies', 'building', '기업 회원'), ('admin_members', 'users', '회원'), ('admin_board', 'chat', '게시판 신고'), ('admin_takedowns', 'flag', '게시중단 요청')]),
+  ('운영', [('admin_reports', 'inbox', '제보 처리'), ('admin_companies', 'building', '기업 회원'), ('admin_groups', 'group', '공동 대응'), ('admin_members', 'users', '회원'), ('admin_board', 'chat', '게시판 신고'), ('admin_takedowns', 'flag', '게시중단 요청')]),
   ('사이트', [('admin_site', 'edit', '사이트 편집'), ('admin_lists', 'layers', '구성 바꾸기'), ('admin_content', 'text', '숨은 문구·설정')]),
   ('설정', [('admin_staff', 'id', '기자 계정'), ('admin_password', 'key', '비밀번호 변경')]),
 ] %}
-{% set active = {'admin_report': 'admin_reports', 'admin_invite': 'admin_reports'}.get(request.endpoint, request.endpoint) %}
+{% set active = {'admin_report': 'admin_reports', 'admin_invite': 'admin_reports', 'admin_group': 'admin_groups'}.get(request.endpoint, request.endpoint) %}
 <header class="ad-top">
   <a class="ad-brand" href="{{ url_for('admin') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}<em>관리자</em></a>
   <div class="ad-top-right">

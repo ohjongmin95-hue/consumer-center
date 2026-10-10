@@ -107,7 +107,7 @@ def menu_href(item):
     if page=='custom':return item.get('url','') if SAFE_LINK.match(item.get('url','')) else '#'
     if page in ('guide','process','faq','types'):return url_for('info_page',page=page)
     if page in ('terms','privacy'):return url_for('policy_page',page=page)
-    if page in ('reports','board','report','lookup','home','takedown'):return url_for(page)
+    if page in ('reports','board','report','lookup','home','takedown','groups'):return url_for(page)
     return '#'
 def menu_active(href):
     # 현재 페이지가 이 메뉴 주소이거나 그 하위 주소(예: /reports/12, /board/3)면 강조.
@@ -228,7 +228,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-56'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-57'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -359,7 +359,8 @@ def reports():
         args.append('%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%')
     cond=' AND '.join(where)
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
-    return render_template('reports.html',categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE),total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
+    with conn() as db:open_groups=db.execute("SELECT id,title,company FROM damage_groups WHERE status='open' ORDER BY id DESC LIMIT 3").fetchall()
+    return render_template('reports.html',open_groups=open_groups,categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE),total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
 
 PHONE_RE=re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}')
 EMAIL_RE=re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
@@ -372,8 +373,10 @@ def public_case(case_id):
     with conn() as db:case=db.execute('SELECT id,category,company,subject,description,request_text,status,created FROM cases WHERE id=? AND public_consent=1 AND published=1',(case_id,)).fetchone()
     if not case:abort(404)
     with conn() as db:
+        metoo=metoo_count(db,case_id);mine=bool(db.execute("SELECT 1 FROM board_votes WHERE kind='metoo' AND target=? AND voter=?",('c:%d'%case_id,voter_id())).fetchone())
+        grp=db.execute("SELECT g.* FROM damage_groups g JOIN cases c ON c.group_id=g.id WHERE c.id=?",(case_id,)).fetchone()
         answers=db.execute("SELECT m.body,m.created,co.name AS company_name FROM messages m JOIN cases c ON c.id=m.case_id LEFT JOIN companies co ON co.id=c.company_id WHERE m.case_id=? AND m.author='기업 답변' AND m.public=1 ORDER BY m.id",(case_id,)).fetchall()
-    return render_template('public_case.html',case=case,answers=answers,company=mask_personal(case['company']),subject=mask_personal(case['subject']),description=mask_personal(case['description']),request_text=mask_personal(case['request_text']))
+    return render_template('public_case.html',case=case,answers=answers,metoo=metoo,metoo_mine=mine,grp=grp,group_statuses=GROUP_STATUSES,company=mask_personal(case['company']),subject=mask_personal(case['subject']),description=mask_personal(case['description']),request_text=mask_personal(case['request_text']))
 
 CUSTOM_SLUG=re.compile(r'^[a-z0-9][a-z0-9-]{0,39}$')
 def page_layout(page):
@@ -422,6 +425,7 @@ def sitemap_xml():
     with conn() as db:
         pages+=[(url_for('public_case',case_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 5000')]
         pages+=[(url_for('board_post',post_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 5000')]
+        pages+=[(url_for('groups',_external=True),None)]+[(url_for('group_page',group_id=r['id'],_external=True),r['updated'][:10]) for r in db.execute('SELECT id,updated FROM damage_groups ORDER BY id DESC LIMIT 500')]
     body=''.join('<url><loc>%s</loc>%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '') for u,d in pages)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
@@ -1696,5 +1700,119 @@ def admin_companies():
             (SELECT COUNT(*) FROM cases WHERE company_id=co.id) AS n_cases
             FROM companies co ORDER BY CASE co.status WHEN 'pending' THEN 0 WHEN 'active' THEN 1 ELSE 2 END,co.id DESC""").fetchall()
     return render_template('admin_companies.html',companies=companies,statuses=COMPANY_STATUSES,master_id=admin_setting('biz_master_id'))
+
+# ---- 집단 피해 공동 대응 (/groups) -------------------------------------------
+# 같은 업체·같은 피해가 쌓이면 운영자가 공동 대응을 열고 피해자 참여 신청을 받음.
+# 센터는 피해자를 모으고 공식 절차를 안내할 뿐, 변호사를 소개하거나 수수료를 받지 않음(변호사법).
+# 참여자 연락처는 관리자만 보고, 공동 대응을 맡은 변호사·기관 제공은 참여자가 따로 동의한 경우만.
+GROUP_STATUSES={'open':'참여 모집 중','active':'공동 대응 진행 중','closed':'종료'}
+with conn() as db:
+    db.execute('''CREATE TABLE IF NOT EXISTS damage_groups(id INTEGER PRIMARY KEY,title TEXT NOT NULL,company TEXT NOT NULL,summary TEXT NOT NULL DEFAULT '',guide TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'open',created TEXT NOT NULL,updated TEXT NOT NULL)''')
+    db.execute('''CREATE TABLE IF NOT EXISTS group_members(id INTEGER PRIMARY KEY,group_id INTEGER NOT NULL,name TEXT NOT NULL,phone TEXT NOT NULL,email TEXT NOT NULL DEFAULT '',detail TEXT NOT NULL,amount TEXT NOT NULL DEFAULT '',share_consent INTEGER NOT NULL DEFAULT 0,ip_hash TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,FOREIGN KEY(group_id) REFERENCES damage_groups(id))''')
+    if 'group_id' not in {r['name'] for r in db.execute('PRAGMA table_info(cases)')}:db.execute('ALTER TABLE cases ADD COLUMN group_id INTEGER')
+
+def metoo_count(db,case_id):return db.execute("SELECT COUNT(*) FROM board_votes WHERE kind='metoo' AND target=?",('c:%d'%case_id,)).fetchone()[0]
+
+@app.route('/reports/<int:case_id>/metoo',methods=['POST'])
+def report_metoo(case_id):
+    # 공개 제보의 '나도 겪었어요'. 같은 브라우저(회원은 계정)당 한 번, 다시 누르면 취소.
+    with conn() as db:
+        if not db.execute('SELECT 1 FROM cases WHERE id=? AND public_consent=1 AND published=1',(case_id,)).fetchone():abort(404)
+        key=('metoo','c:%d'%case_id,voter_id())
+        if db.execute('DELETE FROM board_votes WHERE kind=? AND target=? AND voter=?',key).rowcount==0:
+            db.execute('INSERT INTO board_votes(kind,target,voter,created) VALUES(?,?,?,?)',key+(now(),))
+    return redirect(url_for('public_case',case_id=case_id)+'#metoo')
+
+@app.route('/groups')
+def groups():
+    with conn() as db:
+        rows=db.execute("""SELECT g.*,(SELECT COUNT(*) FROM group_members m WHERE m.group_id=g.id) AS n_members,
+            (SELECT COUNT(*) FROM cases c WHERE c.group_id=g.id) AS n_cases FROM damage_groups g
+            ORDER BY CASE g.status WHEN 'open' THEN 0 WHEN 'active' THEN 1 ELSE 2 END,g.id DESC""").fetchall()
+    return render_template('groups.html',groups=rows,statuses=GROUP_STATUSES)
+
+@app.route('/groups/<int:group_id>',methods=['GET','POST'])
+def group_page(group_id):
+    with conn() as db:
+        grp=db.execute('SELECT * FROM damage_groups WHERE id=?',(group_id,)).fetchone()
+        if not grp:abort(404)
+        if request.method=='POST':
+            if grp['status']!='open':abort(400)
+            if request.form.get('website'):abort(400)
+            f={k:request.form.get(k,'').strip() for k in ('name','phone','email','detail','amount')}
+            if not (1<=len(f['name'])<=40 and PHONE_INPUT.match(f['phone']) and 5<=len(f['detail'])<=2000 and len(f['amount'])<=60) or not request.form.get('consent'):
+                flash(ui_text('msg.group_required','이름, 연락처, 피해 내용과 개인정보 수집·이용 동의를 확인해 주세요.'))
+            elif f['email'] and (len(f['email'])>120 or not MEMBER_EMAIL_RE.match(f['email'])):flash(ui_text('msg.report_email','이메일 주소를 확인해 주세요.'))
+            elif db.execute('SELECT COUNT(*) FROM group_members WHERE ip_hash=? AND created>=?',(ip_hash(),(datetime.datetime.now()-datetime.timedelta(hours=1)).isoformat(timespec='seconds'))).fetchone()[0]>=5:
+                flash(ui_text('msg.group_rate','잠시 후 다시 신청해 주세요.'))
+            else:
+                db.execute('INSERT INTO group_members(group_id,name,phone,email,detail,amount,share_consent,ip_hash,created) VALUES(?,?,?,?,?,?,?,?,?)',
+                           (group_id,f['name'],f['phone'],f['email'],f['detail'],f['amount'],int(bool(request.form.get('share_consent'))),ip_hash(),now()))
+                flash(ui_text('msg.group_done','참여 신청을 받았어요. 진행 상황이 생기면 남겨 주신 연락처로 안내드릴게요.'))
+                return redirect(url_for('group_page',group_id=group_id)+'#join')
+            return render_template('group.html',grp=grp,statuses=GROUP_STATUSES,n_members=db.execute('SELECT COUNT(*) FROM group_members WHERE group_id=?',(group_id,)).fetchone()[0],cases=report_rows('group_id=?',(group_id,),50)),400
+        n_members=db.execute('SELECT COUNT(*) FROM group_members WHERE group_id=?',(group_id,)).fetchone()[0]
+    return render_template('group.html',grp=grp,statuses=GROUP_STATUSES,n_members=n_members,cases=report_rows('group_id=?',(group_id,),50))
+
+@app.route('/admin/groups',methods=['GET','POST'])
+@admin_only
+def admin_groups():
+    with conn() as db:
+        if request.method=='POST':
+            f={k:request.form.get(k,'').strip() for k in ('title','company','summary')}
+            if not (2<=len(f['title'])<=120 and 1<=len(f['company'])<=120 and len(f['summary'])<=3000):flash('제목과 업체를 적어 주세요.');return redirect(url_for('admin_groups'))
+            gid=db.execute('INSERT INTO damage_groups(title,company,summary,created,updated) VALUES(?,?,?,?,?)',(f['title'],f['company'],f['summary'],now(),now())).lastrowid
+            flash('공동 대응을 열었어요. 관련 제보를 연결하고 안내 문구를 다듬어 주세요.');return redirect(url_for('admin_group',group_id=gid))
+        rows=db.execute("""SELECT g.*,(SELECT COUNT(*) FROM group_members m WHERE m.group_id=g.id) AS n_members,
+            (SELECT COUNT(*) FROM cases c WHERE c.group_id=g.id) AS n_cases FROM damage_groups g ORDER BY g.id DESC""").fetchall()
+        # 공동 대응 후보: '나도 겪었어요'가 쌓인 공개 제보
+        hot=db.execute("""SELECT c.id,c.subject,c.company,c.group_id,COUNT(v.voter) AS n FROM cases c JOIN board_votes v ON v.kind='metoo' AND v.target='c:'||c.id
+            GROUP BY c.id ORDER BY n DESC,c.id DESC LIMIT 10""").fetchall()
+    return render_template('admin_groups.html',group_rows=rows,hot=hot,statuses=GROUP_STATUSES)
+
+@app.route('/admin/groups/<int:group_id>',methods=['GET','POST'])
+@admin_only
+def admin_group(group_id):
+    with conn() as db:
+        grp=db.execute('SELECT * FROM damage_groups WHERE id=?',(group_id,)).fetchone()
+        if not grp:abort(404)
+        if request.method=='POST':
+            action=request.form.get('action')
+            if action=='save':
+                f={k:request.form.get(k,'').strip() for k in ('title','company','summary','guide','status')}
+                if f['status'] not in GROUP_STATUSES or not (2<=len(f['title'])<=120 and 1<=len(f['company'])<=120 and len(f['summary'])<=3000 and len(f['guide'])<=3000):abort(400)
+                db.execute('UPDATE damage_groups SET title=?,company=?,summary=?,guide=?,status=?,updated=? WHERE id=?',(f['title'],f['company'],f['summary'],f['guide'],f['status'],now(),group_id));flash('저장했어요.')
+            elif action=='link':
+                ids=[int(x) for x in re.findall(r'\d+',request.form.get('case_ids',''))][:50]
+                n=0
+                for cid in ids:
+                    if db.execute('UPDATE cases SET group_id=? WHERE id=?',(group_id,cid)).rowcount:
+                        n+=1;db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(cid,'대표',f"공동 대응 연결: {grp['title']}",now()))
+                flash(f'제보 {n}건을 연결했어요.')
+            elif action=='unlink':
+                cid=request.form.get('case_id',type=int)
+                db.execute('UPDATE cases SET group_id=NULL WHERE id=? AND group_id=?',(cid,group_id));flash('연결을 해제했어요.')
+            elif action=='remove_member':
+                db.execute('DELETE FROM group_members WHERE id=? AND group_id=?',(request.form.get('member_id',type=int),group_id));flash('참여 신청을 지웠어요.')
+            else:abort(400)
+            return redirect(url_for('admin_group',group_id=group_id))
+        cases=db.execute('SELECT id,receipt,subject,company,status,public_consent FROM cases WHERE group_id=? ORDER BY id DESC',(group_id,)).fetchall()
+        members=db.execute('SELECT * FROM group_members WHERE group_id=? ORDER BY id DESC',(group_id,)).fetchall()
+    return render_template('admin_group.html',grp=grp,cases=cases,members=members,statuses=GROUP_STATUSES)
+
+@app.route('/admin/groups/<int:group_id>/members.csv')
+@admin_only
+def admin_group_csv(group_id):
+    import csv,io
+    with conn() as db:
+        grp=db.execute('SELECT * FROM damage_groups WHERE id=?',(group_id,)).fetchone()
+        if not grp:abort(404)
+        members=db.execute('SELECT * FROM group_members WHERE group_id=? ORDER BY id',(group_id,)).fetchall()
+    out=io.StringIO();w=csv.writer(out)
+    w.writerow(['신청일','이름','연락처','이메일','피해 금액','피해 내용','변호사·기관 연락처 제공 동의'])
+    for m in members:w.writerow([m['created'][:16].replace('T',' '),m['name'],m['phone'],m['email'],m['amount'],m['detail'],'동의' if m['share_consent'] else '미동의'])
+    resp=app.response_class('﻿'+out.getvalue(),mimetype='text/csv')
+    resp.headers['Content-Disposition']=f"attachment; filename=group-{group_id}-members.csv";resp.headers['Cache-Control']='no-store'
+    return resp
 
 if __name__=='__main__':app.run(debug=False)

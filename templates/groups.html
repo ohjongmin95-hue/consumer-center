@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('groups.title', '공동 대응') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('groups.intro', '같은 업체에서 같은 피해를 겪은 소비자들이 함께 대응해요. 참여 신청을 하면 진행 상황을 안내받을 수 있어요.') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro">
+    <h1 class="page-title">{{ ui('groups.title', '공동 대응') }}</h1>
+    <p>{{ ui('groups.intro', '같은 업체에서 같은 피해를 겪은 소비자들이 함께 대응해요. 참여 신청을 하면 진행 상황을 안내받을 수 있어요.') }}</p>
+  </div>
+  <div class="group-list">
+  {% for gr in groups %}
+    <a class="group-card{% if gr['status'] == 'closed' %} is-closed{% endif %}" href="{{ url_for('group_page', group_id=gr['id']) }}">
+      <span class="group-status s-{{ gr['status'] }}">{{ statuses[gr['status']] }}</span>
+      <h2>{{ gr['title'] }}</h2>
+      <p class="group-company">{{ gr['company'] }}</p>
+      <p class="group-count"><b>{{ gr['n_members'] }}</b>{{ ui('groups.people', '명 참여') }} · {{ ui('groups.cases', '관련 제보') }} {{ gr['n_cases'] }}{{ ui('groups.cases_unit', '건') }}</p>
+    </a>
+  {% else %}
+    <div class="form-panel group-empty"><p>{{ ui('groups.empty', '지금 진행 중인 공동 대응이 없어요. 공개 제보의 “나도 겪었어요”가 많이 쌓이면 센터가 공동 대응을 열어요.') }}</p></div>
+  {% endfor %}
+  </div>
+  <p class="group-note">{{ ui('groups.note', '소비자제보센터는 피해자를 모으고 공식 절차를 안내해요. 변호사를 소개하거나 수수료를 받지 않아요.') }}</p>
+</div></main>
+{% endblock %}

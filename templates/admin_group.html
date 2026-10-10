@@ -1,0 +1,43 @@
+{% extends 'console.html' %}
+{% block title %}{{ grp['title'] }} | 공동 대응{% endblock %}
+{% block content %}
+<main class="cs-page">
+  <div class="cs-crumbs"><a href="{{ url_for('admin_groups') }}">← 공동 대응</a><span class="cs-pn"><a href="{{ url_for('group_page', group_id=grp['id']) }}" target="_blank" rel="noopener">사이트에서 보기 ↗</a></span></div>
+  <h1 class="cs-title">{{ grp['title'] }}</h1>
+  <div class="cs-case">
+    <div class="cs-col">
+      <section class="cs-panel">
+        <h2>참여 신청 <small>{{ members|length }}명 · 관리자만 볼 수 있어요</small>{% if members %}<a class="cs-btn grp-csv" href="{{ url_for('admin_group_csv', group_id=grp['id']) }}">엑셀(CSV) 받기</a>{% endif %}</h2>
+        {% for m in members %}
+        <div class="cs-msg from-reporter grp-member">
+          <div class="cs-msg-head"><b>{{ m['name'] }}</b><span>{{ m['created'][:16]|replace('T', ' ') }}</span></div>
+          <p class="cs-hint">{{ m['phone'] }}{% if m['email'] %} · {{ m['email'] }}{% endif %}{% if m['amount'] %} · 피해 {{ m['amount'] }}{% endif %} · 변호사·기관 제공 {{ '동의' if m['share_consent'] else '미동의' }}</p>
+          <p>{{ m['detail'] }}</p>
+          <form method="post" class="cs-inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="remove_member"><input type="hidden" name="member_id" value="{{ m['id'] }}"><button class="cs-btn" type="submit" onclick="return confirm('{{ m['name'] }} 님의 신청을 지울까요?')">지우기</button></form>
+        </div>
+        {% else %}<p class="cs-muted">아직 참여 신청이 없어요.</p>{% endfor %}
+      </section>
+      <section class="cs-panel">
+        <h2>관련 제보 <small>{{ cases|length }}건</small></h2>
+        {% for c in cases %}<div class="grp-case"><a href="{{ url_for('admin_report', case_id=c['id']) }}"><span class="mono">No.{{ c['id'] }}</span> {{ c['subject'] }}</a> <span class="cs-muted">{{ c['company'] }} · {{ c['status'] }}{% if not c['public_consent'] %} · 비밀글{% endif %}</span>
+          <form method="post" class="cs-inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="unlink"><input type="hidden" name="case_id" value="{{ c['id'] }}"><button class="cs-btn" type="submit">연결 해제</button></form></div>
+        {% else %}<p class="cs-muted">연결된 제보가 없어요.</p>{% endfor %}
+        <form method="post" class="cs-row grp-link"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="link"><input name="case_ids" required placeholder="제보 번호 (예: 12, 15, 18)" aria-label="연결할 제보 번호"><button class="cs-btn" type="submit">연결</button></form>
+        <p class="cs-hint">제보 번호는 목록의 '번호'(No.)예요. 사이트의 공동 대응 페이지에 제보 목록처럼 보여요.</p>
+      </section>
+    </div>
+    <aside class="cs-side">
+      <form class="cs-panel cs-card" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="save">
+        <h2>설정</h2>
+        <div class="field"><label for="g-st">상태</label><select id="g-st" name="status">{% for k, v in statuses.items() %}<option value="{{ k }}"{% if grp['status'] == k %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="g-t">제목</label><input id="g-t" name="title" maxlength="120" required value="{{ grp['title'] }}"></div>
+        <div class="field"><label for="g-c">업체</label><input id="g-c" name="company" maxlength="120" required value="{{ grp['company'] }}"></div>
+        <div class="field"><label for="g-s">어떤 피해인가요</label><textarea id="g-s" name="summary" maxlength="3000" rows="4">{{ grp['summary'] }}</textarea></div>
+        <div class="field"><label for="g-g">공동 대응 안내 (선택)</label><textarea id="g-g" name="guide" maxlength="3000" rows="4" placeholder="예: 한국소비자원 집단분쟁조정 신청을 준비하고 있어요. 신청자가 50명이 되면 함께 접수해요.">{{ grp['guide'] }}</textarea></div>
+        <p class="cs-hint">'참여 모집 중'일 때만 신청을 받아요. 변호사가 맡게 되면 안내에 적을 수 있지만, 특정 변호사를 홍보하거나 수임을 권하는 문구는 피해 주세요.</p>
+        <button class="cs-btn cs-btn-main" type="submit">저장</button>
+      </form>
+    </aside>
+  </div>
+</main>
+{% endblock %}
