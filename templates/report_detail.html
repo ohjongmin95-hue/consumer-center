@@ -69,6 +69,13 @@
       </form>
 
       <section class="cs-panel">
+        <h2>제보자 알림</h2>
+        <p class="cs-muted">접수·단계 변경·센터 메시지 때 자동으로 보내요. 카카오톡 {{ '켜짐' if notify_on.kakao else '꺼짐' }} · 이메일 {{ '켜짐' if notify_on.email else '꺼짐' }}</p>
+        {% if sent %}<ul class="cs-sent">{% for n in sent %}<li class="{{ n['status'] }}"><b>{{ '카카오톡' if n['channel'] == 'kakao' else '이메일' }}</b> {{ events.get(n['event'], n['event']) }} · {{ n['target'] }} · {{ '보냄' if n['status'] == 'sent' else '실패' }}<span>{{ n['created'][5:16]|replace('T', ' ') }}{% if n['detail'] %} · {{ n['detail'] }}{% endif %}</span></li>{% endfor %}</ul>
+        {% else %}<p class="cs-muted">아직 보낸 알림이 없어요.</p>{% endif %}
+      </section>
+
+      <section class="cs-panel">
         <h2>기업 답변 요청</h2>
         {% if case['share_company'] %}
         <p class="cs-muted">링크를 받은 기업만 이 제보를 보고 답변할 수 있어요. 다시 만들면 이전 링크는 못 써요.{% if invite %} (최근 발급 {{ invite['created'][:10] }}){% endif %}</p>

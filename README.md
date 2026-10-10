@@ -45,6 +45,8 @@ deploy/update.sh     코드 업데이트 스크립트
 .env.example         서버 설정값 예시
 preview/             예전 디자인 시안 (사이트에는 쓰이지 않음)
 docs/ROADMAP.md      앞으로 할 일과 아이디어 메모
+docs/notifications.md 제보자 알림(카카오 알림톡·이메일) 켜는 방법과 템플릿 문구
+notify.py            제보자 알림 발송
 ```
 
 실제 데이터(DB, 첨부파일)는 코드와 따로 서버의 `/var/lib/soboru`에 있고, 저장소(GitHub)에는 올라가지 않습니다.

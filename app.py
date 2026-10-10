@@ -1,11 +1,12 @@
 import os, re, json, time, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
 from pathlib import Path
-from flask import Flask, g, has_request_context, render_template, request, redirect, url_for, session, flash, abort, send_file
+from flask import Flask, g, has_request_context, render_template, request, redirect, url_for, session, flash, abort, send_file, after_this_request
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
 import site_content
+import notify
 
 BASE=Path(__file__).parent
 DB=Path(os.getenv('DATABASE_PATH',str(BASE/'cases.sqlite3')))
@@ -46,6 +47,7 @@ with conn() as db:
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
+    db.execute('CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,channel TEXT NOT NULL,event TEXT NOT NULL,target TEXT NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT \'\',created TEXT NOT NULL)')
     for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash','industry','pw_hash'):
         if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('CREATE TABLE IF NOT EXISTS site_content(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
@@ -494,8 +496,17 @@ def report():
         for f,suffix,original in checked:
             stored=secrets.token_hex(20)+suffix;f.save(UPLOAD/stored)
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,original))
+    notify_later(cur.lastrowid,'received')
     return render_template('success.html',receipt=receipt,case_id=cur.lastrowid)
 LOOKUP_PW_MIN=4
+def notify_later(case_id,event):
+    # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 설정이 없으면 아무것도 안 함.
+    link=url_for('lookup',_external=True)
+    def send(resp):
+        with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+        if case:notify.dispatch(conn,case,event,link)
+        return resp
+    after_this_request(send)
 def phone_digits(value):return re.sub(r'\D','',value or '')
 def case_pw_ok(case,pw):return bool(case['pw_hash']) and check_password_hash(case['pw_hash'],pw)
 def open_case(case_id):
@@ -1227,7 +1238,7 @@ def report_detail(case_id):
                 assignee=request.form.get('assignee',case['assignee'] or '').strip()[:80]
                 published=int(bool(request.form.get('published'))) if case['public_consent'] else 0
                 db.execute('UPDATE cases SET status=?,assignee=?,published=? WHERE id=?',(status,assignee,published,case_id))
-                if status!=case['status']:log_case(db,case_id,f"진행 단계 변경: {case['status']} → {status}")
+                if status!=case['status']:log_case(db,case_id,f"진행 단계 변경: {case['status']} → {status}");notify_later(case_id,'status')
                 if assignee!=(case['assignee'] or ''):log_case(db,case_id,f"담당 기자: {assignee or '미배정'}")
                 if case['public_consent'] and published!=case['published']:log_case(db,case_id,'공개로 전환' if published else '비공개로 전환')
                 flash('저장했어요.')
@@ -1244,17 +1255,18 @@ def report_detail(case_id):
                 msg=request.form.get('message','').strip()
                 if not msg or len(msg)>3000:abort(400)
                 db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'센터',msg,now()))
-                log_case(db,case_id,'제보자에게 메시지 보냄')
+                log_case(db,case_id,'제보자에게 메시지 보냄');notify_later(case_id,'message')
             else:abort(400)
             return redirect(url_for(ep['case'],case_id=case_id)+('#'+form if form!='settings' else ''))
         msgs=db.execute('SELECT * FROM messages WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
         files=db.execute('SELECT * FROM attachments WHERE case_id=?',(case_id,)).fetchall()
         notes=db.execute('SELECT * FROM internal_notes WHERE case_id=? ORDER BY id DESC',(case_id,)).fetchall()
         logs=db.execute('SELECT * FROM case_log WHERE case_id=? ORDER BY id DESC LIMIT 50',(case_id,)).fetchall()
+        sent=db.execute('SELECT * FROM notifications WHERE case_id=? ORDER BY id DESC LIMIT 30',(case_id,)).fetchall()
         invite=db.execute('SELECT * FROM company_invites WHERE case_id=?',(case_id,)).fetchone()
         staff_names=[r['name'] for r in db.execute('SELECT name FROM staff WHERE active=1 ORDER BY name')]
         neighbors=(db.execute('SELECT id FROM cases WHERE id<? ORDER BY id DESC LIMIT 1',(case_id,)).fetchone(),db.execute('SELECT id FROM cases WHERE id>? ORDER BY id LIMIT 1',(case_id,)).fetchone())
-    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1])
+    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()})
 
 def download_file(file_id):
     with conn() as db:f=db.execute('SELECT * FROM attachments WHERE id=?',(file_id,)).fetchone()
