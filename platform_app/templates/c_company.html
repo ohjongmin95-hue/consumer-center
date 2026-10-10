@@ -1,0 +1,16 @@
+{% extends 'base.html' %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
+{% block title %}{{ co.name }} 접수 · {{ CNAME }}{% endblock %}
+{% block bar %}{{ m.bar('home') }}{% endblock %}
+{% block main %}
+<section class="band w"><div class="wrap hero3">
+<span class="av lg">{{ co.name[:1] }}</span>
+<h1 style="margin-top:24px">{{ co.name }}</h1>
+<p>{% if member %}담당자에게 바로 전달되고, 2일 안에 답변을 받아요{% else %}SOBORU 센터가 공식 연락처로 전달해 드려요{% endif %}</p>
+<a class="btn lg" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a>
+{% if co.contact %}<p class="cap" style="margin-top:20px">고객센터 {{ co.contact }}</p>{% endif %}
+</div></section>
+<section class="band g"><div class="wrap">
+<div class="steps3">{% for ic,t,s in [('note','한 번만 접수','불편한 일과 원하는 해결을 적어요'),('reply','기업이 답변','답변과 조치를 여기서 확인해요'),('shield','해결 확인','해결되지 않으면 다시 요청하거나 피해구제로 안내해요')] %}
+<div>{{ i.icon(ic,44) }}<b>{{ t }}</b><p>{{ s }}</p></div>{% endfor %}</div>
+</div></section>
+{% endblock %}

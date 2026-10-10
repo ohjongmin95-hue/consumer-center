@@ -7,6 +7,8 @@
 <div>{% if rows %}<div class="cgrid two">{% for c in rows %}{{ m.case_card(c,url_for('case',case_id=c.id)) }}{% endfor %}</div>
 {% else %}<div class="empty-card">{{ i.icon('inbox',56) }}<b>아직 접수한 내역이 없어요</b><span>다른 기기에서 접수했다면 휴대폰 번호로 찾아보세요</span></div>{% endif %}</div>
 <aside class="stack lg side-sticky">
+{% if files %}<div class="panel"><div class="ph">내 증빙 자료<span class="pill gray">{{ files|length }}</span></div>
+<ul class="flist">{% for f in files %}<li><a href="{{ url_for('case_file',case_id=f.case_id,file_id=f.id) }}">{{ f.original }}</a><span>{{ f.title }}</span></li>{% endfor %}</ul></div>{% endif %}
 <form class="panel stack" method="post" action="{{ url_for('lookup') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="ph">휴대폰 번호로 찾기</div>
 <label class="fld"><span>휴대폰 번호</span><input class="inp" name="phone" type="tel" placeholder="010-0000-0000" required></label>
 <label class="fld"><span>조회 비밀번호</span><input class="inp" name="password" type="password" required></label>

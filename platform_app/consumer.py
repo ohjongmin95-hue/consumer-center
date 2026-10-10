@@ -1,5 +1,5 @@
 """소비자용 '한큐': 어느 기업이든 한곳에서 민원 접수·조회."""
-import datetime
+import os, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 import core
@@ -40,7 +40,10 @@ def home():
 def new():
     d=session.pop('draft',None) or {'consent':True}
     if request.args.get('category') in core.CATS:d.setdefault('category',request.args['category'])
-    if request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
+    if request.args.get('company_id','').isdigit():
+        with conn() as db:co=core.company(db,int(request.args['company_id']))
+        if co and co['status'] in ('active','listed'):d.setdefault('company',co['name']);d.setdefault('company_id',co['id']);d['member']=core.active_member(co)
+    elif request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
     return render_template('c_new.html',d=d)
 
 @app.route('/guide')
@@ -106,7 +109,11 @@ def done(case_id):
 
 @app.route('/mine')
 def mine():
-    return render_template('c_mine.html',rows=mine_rows())
+    rows=mine_rows();files=[]
+    if rows:
+        with conn() as db:
+            files=db.execute(f"SELECT f.*,c.title,c.no FROM files f JOIN cases c ON c.id=f.case_id WHERE f.case_id IN ({','.join('?'*len(rows))}) ORDER BY f.id DESC",tuple(r['id'] for r in rows)).fetchall()
+    return render_template('c_mine.html',rows=rows,files=files)
 
 @app.route('/lookup',methods=['POST'])
 def lookup():
@@ -133,6 +140,19 @@ def case(case_id):
                 core.add_event(db,c['id'],'me','해결됐다고 알려 주셨어요.' if v=='resolved' else '아직 해결되지 않았다고 알려 주셨어요.')
                 if v=='unresolved' and c['member']:
                     co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[SOBORU Business] 소비자가 미해결로 응답했어요: {c['title']}",f"소비자가 아직 해결되지 않았다고 알려 왔어요.\n{core.site_url('biz','/case/%d'%c['id'])}")
+            elif act=='again' and core.can_follow_up(db,c):
+                text='다시 요청'+(': '+msg if msg else '했어요.')
+                core.add_event(db,c['id'],'me',text)
+                if c['member'] and c['consent']:
+                    due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))
+                    db.execute("UPDATE cases SET status='seen',decision='pending',due=? WHERE id=?",(due,c['id']))
+                    core.add_event(db,c['id'],'sys',f"{c['company_name']}에 다시 전달했어요. 답변 목표일: {core.fmt_day(due)}")
+                    co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[SOBORU Business] 소비자가 다시 요청했어요: {c['title']}",f"{msg or '아직 해결되지 않았다고 알려 왔어요.'}\n{core.site_url('biz','/case/%d'%c['id'])}")
+                elif c['consent']:
+                    db.execute("UPDATE cases SET status='received' WHERE id=?",(c['id'],))
+                    core.add_event(db,c['id'],'sys','센터가 기업에 다시 전달할게요')
+                    core.send_mail(os.getenv('OPS_EMAIL',''),f"[SOBORU] 비입점 민원 다시 요청: {c['title']}",core.site_url('biz','/ops/case/%d'%c['id']))
+                flash('다시 요청했어요','ok')
             elif act in ('info','add') and msg and c['status'] not in ('resolved','unresolved'):
                 err=core.files_ok(request.files.getlist('files'))
                 if err:flash(err,'error');return redirect(url_for('case',case_id=case_id))
@@ -144,7 +164,23 @@ def case(case_id):
         return redirect(url_for('case',case_id=case_id))
     with conn() as db:
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id'])
-    return render_template('c_case.html',c=c,ev=ev,files=fl,co=co)
+        again=core.can_follow_up(db,c)
+    return render_template('c_case.html',c=c,ev=ev,files=fl,co=co,again=again)
+
+@app.route('/case/<int:case_id>/relief')
+def relief(case_id):
+    """피해구제 신청에 쓸 자료를 한 장으로 정리 (인쇄·복사용)"""
+    c=my_case(case_id)
+    with conn() as db:
+        ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id'])
+    return render_template('c_relief.html',c=c,ev=ev,files=fl,co=co)
+
+@app.route('/to/<int:company_id>')
+def company_page(company_id):
+    """기업별 접수 페이지: 기업 홈페이지·쇼핑몰에서 이 주소로 연결한다"""
+    with conn() as db:co=core.company(db,company_id)
+    if not co or co['status'] not in ('active','listed'):abort(404)
+    return render_template('c_company.html',co=co,member=core.active_member(co))
 
 @app.route('/case/<int:case_id>/file/<int:file_id>')
 def case_file(case_id,file_id):

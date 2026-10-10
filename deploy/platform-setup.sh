@@ -108,6 +108,14 @@ find $DATA/backups -type f -mtime +14 -delete
 BACKUP
 chmod 755 /etc/cron.daily/soboru-platform-backup
 
+cat > /etc/cron.hourly/soboru-platform-late <<'CRON'
+#!/bin/sh
+# 답변 목표일이 지난 민원을 소비자와 기업에 알립니다.
+set -a; . /etc/soboru-platform.env; set +a
+cd /opt/soboru/app/platform_app && runuser -u soboru -- /opt/soboru/venv/bin/python notify_late.py >/dev/null 2>&1
+CRON
+chmod 755 /etc/cron.hourly/soboru-platform-late
+
 echo "== 5/5 HTTPS 인증서"
 MYIP=$(curl -fsS https://checkip.amazonaws.com || true)
 OK=()

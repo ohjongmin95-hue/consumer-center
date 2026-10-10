@@ -76,6 +76,9 @@ def init():
         CREATE TABLE IF NOT EXISTS attempts(key TEXT NOT NULL,created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS mail_log(id INTEGER PRIMARY KEY,target TEXT NOT NULL,subject TEXT NOT NULL,status TEXT NOT NULL,created TEXT NOT NULL);
         ''')
+        # 나중에 더한 칸: 이미 있는 DB에도 붙인다
+        cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
+        if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
 init()
 
 # ---------- 보안 ----------
@@ -158,6 +161,32 @@ def run_playbook(db,c,how):
     if reply:add_event(db,c['id'],'co','답변을 보냈어요.',reply)
     db.execute('UPDATE cases SET status=?,decision=?,info_ask=? WHERE id=?',('answered' if reply else 'seen',how,'',c['id']))
     return bool(reply)
+
+FOLLOW_UP_HOURS=24  # 다시 요청은 하루에 한 번
+def last_follow_up(db,case_id):
+    r=db.execute("SELECT created FROM events WHERE case_id=? AND kind='me' AND text LIKE '다시 요청%' ORDER BY id DESC LIMIT 1",(case_id,)).fetchone()
+    return parse(r['created']) if r else None
+def can_follow_up(db,c):
+    """답변이 늦거나, 답변을 받았지만 해결이 안 됐을 때 기업에 다시 요청할 수 있다."""
+    if not (overdue(c) or c['status'] in ('answered','unresolved')):return False
+    last=last_follow_up(db,c['id'])
+    return not last or now()-last>=datetime.timedelta(hours=FOLLOW_UP_HOURS)
+
+def site_or_blank(kind,path):
+    host=BUSINESS_HOST if kind=='biz' else CONSUMER_HOST
+    return 'https://'+host+path if host else ''
+def notify_late():
+    """답변 목표일이 지난 입점 기업 민원을 소비자와 기업에 한 번씩 알린다. cron에서 부른다."""
+    n=0
+    with conn() as db:
+        for c in db.execute("SELECT * FROM cases WHERE member=1 AND consent=1 AND due!='' AND status IN ('forwarded','seen','info')").fetchall():
+            if not overdue(c) or c['late_sent']==c['due']:continue
+            send_mail(c['email'],f'[{CNAME}] 기업 답변이 늦어지고 있어요',f"{c['company_name']}의 답변이 목표일({fmt_day(c['due'])})을 넘겼어요.\n접수 화면에서 기업에 다시 요청하거나 공식 피해구제 절차를 확인할 수 있어요.\n\n■ 접수번호: {c['no']}\n{site_or_blank('me','/mine')}")
+            co=company(db,c['company_id'])
+            if co:send_mail(co['notify_email'],f"[SOBORU Business] 답변 목표일이 지났어요: {c['title']}",f"소비자에게 답변 지연을 알렸어요. 지금 답변해 주세요.\n{site_or_blank('biz','/case/%d'%c['id'])}")
+            add_event(db,c['id'],'sys','답변 목표일이 지나 소비자와 기업에 알렸어요')
+            db.execute('UPDATE cases SET late_sent=? WHERE id=?',(c['due'],c['id']));n+=1
+    return n
 
 def save_files(db,case_id,uploads,event_id=None):
     saved=0
