@@ -67,6 +67,7 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('여러분의 제보가', home)
         self.assertIn('<title>소비자제보센터</title>', home)
+        self.assertIn('<small class="brand-by">by SOBORU</small>', home)
         self.assertIn('<meta property="og:title" content="소비자제보센터">', home)
         self.assertIn('class="hero hero-art"', home)
         for side in ('left', 'right'):

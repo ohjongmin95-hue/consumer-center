@@ -1370,5 +1370,5 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 @media (min-width: 961px) and (max-width: 1180px) {
   .site-header .section-nav { gap: 22px; }
 }
-/* Phones: 'by SOBORU' drops to its own small line under the logo, right-aligned */
-@media (max-width: 680px) { .brand .brand-by { display: block; margin: 2px 0 0; text-align: right; font-size: 10px; letter-spacing: .1em; line-height: 1; } }
+@media (max-width: 680px) { .brand .brand-by { margin-left: 6px; font-size: 10px; letter-spacing: .08em; } }
+@media (max-width: 420px) { .site-header .brand { font-size: 24px; } .brand .brand-by { margin-left: 5px; font-size: 9px; } .top-auth { gap: 10px; } }
