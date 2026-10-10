@@ -174,6 +174,10 @@ PROCESS_ICONS = [('write', '제보 작성 (휴대폰)'), ('search', '검토 (돋
                  ('check', '완료 (체크 문서)'), ('bell', '안내 (알림)'), ('shield', '보호 (방패)'), ('call', '상담 (헤드셋)')]
 GUIDE_STEP_ICONS = [('write', '작성 (문서와 펜)'), ('attach', '첨부 (사진과 클립)'), ('ticket', '접수번호 (번호표)'), ('search', '확인 (돋보기)'), ('chat', '대화 (말풍선)'), ('check', '완료 (체크)')]
 GUIDE_STEPS = [('제보 작성', 'write'), ('자료 첨부', 'attach'), ('접수번호 받기', 'ticket'), ('진행 확인', 'search')]
+GUIDE_ART = [('telecom', '통신 (요금제·청구서·위치)'), ('mobile', '휴대폰 (모델명·오류 화면·수리 내역)'), ('appliance', '가전 (제품·계약서·점검일)'),
+             ('car', '자동차 (차량 부위·정비 내역·전후 사진)'), ('food', '식품 (포장·이물·발견 메모)'), ('commerce', '쇼핑 (상품 화면 ≠ 받은 상품·요청일)'),
+             ('fashion', '패션·뷰티 (얼룩·세탁 표시·성분)'), ('travel', '여행 (예약 조건·결항 문자·현장 사진)'), ('platform', '서비스 (구독 화면·지연·해지 신청)'),
+             ('finance', '금융 (약관·한 장씩 촬영·거래 내역)'), ('building', '건설 (방 안 하자·발견일·견적서)'), ('other', '기타 (구매 내역·해결·자료 모음)'), ('', '그림 없음')]
 GUIDE_INDUSTRIES = [
     ('통신·인터넷', '약속한 요금과 청구된 요금을 비교할 수 있게', ['가입 때 안내받은 요금제·혜택·약정', '청구서의 문제 항목에 표시', '품질 문제는 장소·시간 + 문의 결과'], '가입 계약서, 요금 청구서, 상담 기록'),
     ('모바일·IT기기', '고장 증상이 눈에 보이게', ['모델명이 보이는 전체 사진 → 문제 부위', '오류 화면은 캡처, 증상은 짧은 영상', '수리를 받았다면 수리 내역'], '구매 영수증, 사진·영상, 수리 내역'),
@@ -234,7 +238,7 @@ LISTS = [
     ('process_steps', '처리 절차 단계', '처리 절차 페이지와 메인 "처리 절차 요약"의 단계 카드예요. 번호는 자동으로 매겨져요.', [('title', '단계 이름', {}), ('icon', '아이콘', {'choices': PROCESS_ICONS}), ('body', '설명 (**강조할 말**처럼 별표 두 개로 감싸면 주황색으로 강조돼요)', ML)], 0),
     ('guide_steps', '이용 안내 · 한눈에 보는 제보 방법', '이용 안내 맨 위 단계 카드예요. 번호는 자동으로 매겨져요.', [('title', '단계 이름', {}), ('icon', '아이콘', {'choices': GUIDE_STEP_ICONS})], 0),
     ('guide_industries', '이용 안내 · 업종별로 이것 위주로', '업종 탭을 누르면 보이는 안내예요. 업종 이름은 제보하기 화면의 업종과 맞춰 두면 좋아요.',
-     [('name', '업종 이름', {}), ('focus', '이것 위주로 (한 문장)', {}), ('points', '챙길 점 (한 줄에 하나씩)', ML), ('materials', '준비 자료 (쉼표로 구분)', {})], 0),
+     [('name', '업종 이름', {}), ('focus', '이것 위주로 (한 문장)', {}), ('points', '챙길 점 (한 줄에 하나씩, 그림의 1·2·3번과 짝)', ML), ('materials', '준비 자료 (쉼표로 구분)', {}), ('image', '그림', {'choices': GUIDE_ART})], 0),
     ('guide_basics', '이용 안내 01 · 구매 정보 카드', '"언제, 어디서, 얼마에 구매했나요?" 아래 카드예요.', [('title', '제목', {}), ('body', '설명', ML)], 0),
     ('guide_writing', '이용 안내 02 · 작성 방법', '"겪은 일을 순서대로 알려 주세요" 아래 번호 목록이에요.', [('title', '질문', {}), ('body', '설명', ML)], 0),
     ('guide_topics', '이용 안내 04 · 분야별 준비자료', '분야 이름을 누르면 펼쳐지는 안내예요.', [('name', '분야 이름', {}), ('heading', '펼쳤을 때 제목', {}), ('steps', '준비 순서 (한 줄에 하나씩)', ML), ('info', '함께 적을 정보', ML), ('materials', '도움이 되는 자료', {})], 0),
@@ -271,7 +275,7 @@ LIST_DEFAULTS = {
     'sample_reports': [{'title': t, 'category': c, 'company': co, 'status': st} for t, c, co, st in SAMPLE_REPORTS],
     'process_steps': [{'title': t, 'icon': i, 'body': b} for t, i, b in PROCESS_STEPS],
     'guide_steps': [{'title': t, 'icon': i} for t, i in GUIDE_STEPS],
-    'guide_industries': [{'name': n, 'focus': f, 'points': '\n'.join(p), 'materials': m} for n, f, p, m in GUIDE_INDUSTRIES],
+    'guide_industries': [{'name': n, 'focus': f, 'points': '\n'.join(p), 'materials': m, 'image': a} for (n, f, p, m), (a, _) in zip(GUIDE_INDUSTRIES, GUIDE_ART)],
     **_LIST_DEFAULTS,
 }
 for _page, (_title, _sections) in PAGE_SECTIONS.items():

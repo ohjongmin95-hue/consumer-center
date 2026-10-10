@@ -52,11 +52,12 @@
       {% for x in g.lists.get('guide_industries', []) %}<button type="button" role="tab" id="gd-tab-{{ loop.index }}" aria-controls="gd-pane-{{ loop.index }}" aria-selected="{{ 'true' if loop.first else 'false' }}"{% if loop.first %} class="on"{% endif %}>{{ x.name }}</button>{% endfor %}
     </div>
     {% for x in inds %}
-    <div class="gd-topic" role="tabpanel" id="gd-pane-{{ loop.index }}" aria-labelledby="gd-tab-{{ loop.index }}"{% if not loop.first %} hidden{% endif %}>
+    <div class="gd-topic{% if not x.image %} no-art{% endif %}" role="tabpanel" id="gd-pane-{{ loop.index }}" aria-labelledby="gd-tab-{{ loop.index }}"{% if not loop.first %} hidden{% endif %}>
+      {% if x.image %}<img src="{{ url_for('static', filename='img/guide-ind-%s.svg' % x.image, v=css_v) }}" alt="" width="330" height="200" loading="lazy">{% endif %}
       <div><em>{{ x.name }}</em><h3>{{ x.focus }}</h3>
-        {% if x.points %}<ul class="gd-points"{{ ed_attr('list:guide_industries:%d:points' % loop.index0, x.points) }}>{% for line in x.points.split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>{% endif %}
+        {% if x.points %}<ol class="gd-points"{{ ed_attr('list:guide_industries:%d:points' % loop.index0, x.points) }}>{% for line in x.points.split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ol>{% endif %}
+        {% if x.materials %}<p class="gd-mat-label">{{ ui('guide.ind_materials', '준비 자료') }}</p><ul class="gd-chips"{{ ed_attr('list:guide_industries:%d:materials' % loop.index0, x.materials) }}>{% for m in x.materials.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul>{% endif %}
       </div>
-      {% if x.materials %}<div><em>{{ ui('guide.ind_materials', '준비 자료') }}</em><ul class="gd-chips"{{ ed_attr('list:guide_industries:%d:materials' % loop.index0, x.materials) }}>{% for m in x.materials.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul></div>{% endif %}
     </div>
     {% endfor %}
     {% endif %}{{ ed_list('guide_industries') }}
