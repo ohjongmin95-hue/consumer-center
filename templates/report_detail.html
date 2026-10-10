@@ -61,6 +61,13 @@
         </dl>
       </section>
 
+      <form class="cs-panel" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="lookup_pw">
+        <h2>조회 비밀번호</h2>
+        <p class="cs-muted">제보자가 비밀번호를 잊었을 때, 본인 확인 뒤 새 비밀번호를 정해 알려 주세요. 원래 비밀번호는 볼 수 없어요.</p>
+        <div class="field"><input name="lookup_pw" minlength="4" maxlength="30" required autocomplete="off" placeholder="새 비밀번호 (4자 이상)"></div>
+        <button class="cs-btn" type="submit">새 비밀번호로 바꾸기</button>
+      </form>
+
       <section class="cs-panel">
         <h2>기업 답변 요청</h2>
         {% if case['share_company'] %}

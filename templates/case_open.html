@@ -1,0 +1,17 @@
+{% extends 'base.html' %}{% block content %}<main class="page"><div class="wrap">
+<div class="page-intro"><a class="back-link" href="{{ url_for('reports') }}">← {{ txt('home.list_title') }}</a>
+  <h1 class="page-title">{% if title %}{{ title }}{% else %}🔒 {{ ui('reports.secret', '비밀글') }}{% endif %}</h1>
+  <p>No. {{ case['id'] }} · {{ ui('case_open.intro', '제보할 때 정한 조회 비밀번호를 넣으면 진행 상황과 답변을 볼 수 있어요.') }}</p></div>
+<div class="form-panel">
+{% if case['pw_hash'] %}
+  <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="field"><label for="o-pw">{{ ui('lookup.f_pw', '조회 비밀번호') }}</label><input id="o-pw" type="password" name="password" required autofocus autocomplete="current-password"></div>
+    <button class="primary" type="submit">{{ ui('case_open.submit', '내 제보 보기 →') }}</button>
+  </form>
+  <p class="hint lookup-forgot">{{ ui('lookup.forgot', '비밀번호가 기억나지 않으면 센터로 문의해 주세요. 본인 확인 뒤 새 비밀번호를 정해 드려요.') }}</p>
+{% else %}
+  <p>{{ ui('case_open.legacy', '이 제보는 접수번호와 조회 코드로 열 수 있어요.') }}</p>
+  <p><a class="secondary" href="{{ url_for('lookup') }}">{{ ui('done.lookup', '내 제보 조회하기 →') }}</a></p>
+{% endif %}
+</div>
+</div></main>{% endblock %}

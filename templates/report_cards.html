@@ -4,7 +4,7 @@
   <article class="report-card{% if not case.title %} is-secret{% endif %}{% if step == total %} is-done{% endif %}">
     <div class="rc-body">
       <div class="rc-head"><span class="rc-cat">{{ case.cat }}</span><span class="rc-no">No.{{ case.no }}</span></div>
-      <h3 class="rc-title">{% if case.title %}<a class="case-link" href="{{ url_for('public_case', case_id=case.no) }}">{{ case.title }}</a>{% else %}<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 10V7.5a5 5 0 0110 0V10M5.5 10h13v10h-13z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>{{ ui('home.card_secret', '비밀글로 접수된 제보예요') }}{% endif %}</h3>
+      <h3 class="rc-title">{% if case.title %}<a class="case-link" href="{{ url_for('public_case', case_id=case.no) }}">{{ case.title }}</a>{% else %}<a class="case-link" href="{{ url_for('case_open', case_id=case.no) }}"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 10V7.5a5 5 0 0110 0V10M5.5 10h13v10h-13z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>{{ ui('home.card_secret', '비밀글로 접수된 제보예요') }}</a>{% endif %}</h3>
       <p class="rc-shop"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 9.5L5.5 4h13L20 9.5M4 9.5h16M4 9.5c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 2 3s2-1.3 2-3c0 1.7 1.3 3 3 3s3-1.3 3-3M5.5 12v8h13v-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span class="rc-company">{{ case.company or ui('home.card_hidden_company', '업체 비공개') }}</span></p>
     </div>
     <div class="rc-stub">
