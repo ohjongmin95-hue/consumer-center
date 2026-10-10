@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}
+{% block title %}운영 · SOBORU{% endblock %}
+{% block width %}wide{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+<section style="padding:20px 4px 0"><h1 class="h1">현황</h1></section>{{ b.kpis(k) }}
+<div class="rows">{% for c in rows %}<a class="rowi" href="{{ url_for('ops_case',case_id=c.id) }}"><span class="av">{{ c.company_name[:1] }}</span><span class="tx"><div class="t">{{ c.title }}</div><div class="s">{{ c.company_name }} · {{ '입점' if c.member else '비입점' }} · {{ fmt(c.created) }}</div></span><span class="st {{ m.tone(c) }}">{{ m.status_text(c) }}</span></a>{% else %}<div class="empty">없어요</div>{% endfor %}</div>
+{% endblock %}

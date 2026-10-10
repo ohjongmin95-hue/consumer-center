@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% import '_c.html' as m with context %}
+{% block title %}내 민원 · 한큐 민원{% endblock %}
+{% block bar %}{{ m.bar(url_for('home')) }}{% endblock %}
+{% block body %}
+<h1 class="h1" style="padding:20px 4px 4px">내 민원</h1>
+{% if rows %}<div class="rows" style="margin-top:20px">{% for c in rows %}{{ m.case_row(c,url_for('case',case_id=c.id)) }}{% endfor %}</div>
+{% else %}<div class="empty">이 기기에서 접수한 민원이 없어요</div>{% endif %}
+<div class="sec">다른 기기에서 접수했나요?</div>
+<form class="card stack" method="post" action="{{ url_for('lookup') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<input class="inp" name="phone" type="tel" placeholder="휴대폰 번호" required><input class="inp" name="password" type="password" placeholder="조회 비밀번호" required>
+<button class="btn md">찾기</button></form>
+{% if rows %}<form method="post" action="{{ url_for('forget') }}" style="text-align:center;margin-top:20px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn" style="font-size:13.5px;color:var(--fg3)">이 기기에서 목록 지우기</button></form>{% endif %}
+{% endblock %}

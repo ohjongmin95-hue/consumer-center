@@ -1,0 +1,10 @@
+{% extends 'base.html' %}{% import '_c.html' as m with context %}
+{% block bar %}{{ m.bar() }}{% endblock %}
+{% block body %}
+<div style="text-align:center;padding-top:24px"><div class="done-ic"></div><h1 class="h1">접수했어요</h1>
+<p class="sub">{% if c.member and c.consent %}{% if c.decision=='auto' %}자동으로 바로 처리됐어요{% else %}{{ fmt_day(c.due) }}까지 답변을 받아요{% endif %}{% elif c.consent %}센터가 기업에 전달을 시도해요{% else %}접수만 해 두었어요{% endif %}</p></div>
+<div class="card" style="margin-top:32px"><dl class="kv"><dt>접수번호</dt><dd class="no"><b>{{ c.no }}</b></dd><dt>기업</dt><dd>{{ c.company_name }}</dd><dt>유형</dt><dd>{{ c.category }}</dd></dl></div>
+<p class="cap" style="text-align:center;margin-top:16px">다른 기기에서는 휴대폰 번호와 조회 비밀번호로 찾을 수 있어요</p>
+<div class="cta"><div class="in"><a class="btn gray" href="{{ url_for('home') }}">닫기</a><a class="btn" href="{{ url_for('case',case_id=c.id) }}">진행 보기</a></div></div>
+{% endblock %}
+{% block foot %}{% endblock %}

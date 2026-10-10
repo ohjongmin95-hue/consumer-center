@@ -3,3 +3,4 @@ __pycache__/
 cases.sqlite3
 private_uploads/
 .venv/
+platform.sqlite3
