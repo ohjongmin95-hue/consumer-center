@@ -1,0 +1,18 @@
+{% extends 'base.html' %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
+{% block title %}이용 안내 · {{ CNAME }}{% endblock %}
+{% block bar %}{{ m.bar('guide') }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>이용 안내</h1><p>{{ CNAME }}은 어느 기업이든 한 곳에서 접수하고 결과까지 확인하는 서비스예요</p></div><a class="btn md" href="{{ url_for('new') }}">접수하기</a></div>
+<div class="grid2">
+<div class="panel feature">{{ i.icon('bolt',44) }}<div class="ph">입점 기업</div><p class="sub">SOBORU Business를 쓰는 기업이에요. 담당자 화면으로 바로 전달되고, 답변 목표일은 접수 후 2일이에요. 배송 조회처럼 정해진 유형은 접수 즉시 처리되기도 해요.</p></div>
+<div class="panel feature">{{ i.icon('send',44) }}<div class="ph">비입점 기업</div><p class="sub">센터가 기업의 공식 연락처로 전달을 시도하고 회신을 기록해요. 회신이 없으면 공식 피해구제 절차를 안내해 드려요.</p></div>
+</div>
+<div class="shead" style="margin-top:56px"><h2>진행 단계</h2></div>
+<div class="steps5 g">{% for ic,t,s in [('note','접수','기업, 유형, 내용, 원하는 해결, 연락처를 적어요'),('send','전달','동의한 경우에만 기업에 전달돼요'),('progress','확인','기업이 내용을 확인했는지 보여 드려요'),('reply','답변·조치','답변과 교환·회수·환불 같은 조치가 기록돼요'),('shield','해결 확인','해결됐는지 알려 주시면 마무리돼요')] %}
+<div><span class="k">{{ loop.index }}단계</span>{{ i.icon(ic,40) }}<b>{{ t }}</b><p>{{ s }}</p></div>{% endfor %}</div>
+<div class="shead" id="relief" style="margin-top:56px"><h2>해결되지 않으면</h2><div class="r note"><span>답변 목표일이 지나거나 미해결로 응답하면 안내해요</span></div></div>
+{{ m.relief() }}
+<div class="shead" style="margin-top:56px"><h2>자주 묻는 질문</h2></div>
+<div class="panel faq">{% for q,a in [('접수하면 기업이 제 연락처를 보나요?','기업 전달에 동의한 경우에만 해당 기업에 이름과 연락처, 접수 내용을 전달해요.'),('다른 기기에서 진행을 볼 수 있나요?','접수할 때 적은 휴대폰 번호와 조회 비밀번호로 내 접수에서 찾을 수 있어요.'),('비용이 드나요?','소비자는 무료로 이용해요.'),('접수 내용이 기사로 나가나요?','아니요. '~CNAME~'에 접수된 내용은 SOBORU 언론 보도에 쓰지 않아요.')] %}
+<details><summary>{{ q }}<span class="chev"></span></summary><p class="sub">{{ a }}</p></details>{% endfor %}</div>
+{% endblock %}

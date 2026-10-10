@@ -1,37 +1,49 @@
+{# SOBORU Business 공용: 상단 메뉴, 지표, 승인 카드 #}
+{% import '_i.html' as i %}
 {% macro bar(tab) -%}
-<header class="bar bizbar"><div class="wide in">
-<a class="logo" href="{{ url_for('decide') }}"><i></i>SOBORU<small class="w">Business</small></a>
-{% if co %}<span class="cap" style="font-weight:500">{{ co.name }}</span>{% endif %}
-<span class="sp"></span>
-{% if co %}<div class="seg">
-<a href="{{ url_for('decide') }}" class="{{ 'on' if tab=='decide' }}">승인{% if n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>
-<a href="{{ url_for('all_cases') }}" class="{{ 'on' if tab=='all' }}">전체</a>
+<header class="gnb"><div class="wrap">
+<a class="logo" href="{{ url_for('decide') if co else url_for('login') }}"><i></i>SOBORU<small class="w">Business</small></a>
+{% if co %}<nav>
+<a href="{{ url_for('decide') }}" class="{{ 'on' if tab=='home' }}">홈</a>
+<a href="{{ url_for('pending') }}" class="{{ 'on' if tab=='pending' }}">승인 요청{% if n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>
+<a href="{{ url_for('all_cases') }}" class="{{ 'on' if tab=='all' }}">전체 민원</a>
 <a href="{{ url_for('rules') }}" class="{{ 'on' if tab=='rules' }}">자동 처리</a>
+<a href="{{ url_for('stats') }}" class="{{ 'on' if tab=='stats' }}">통계</a>
 <a href="{{ url_for('settings') }}" class="{{ 'on' if tab=='settings' }}">설정</a>
-</div>{% endif %}
+</nav>
+<div class="right"><span class="chip"><span class="dot">{{ co.name[:1] }}</span><span class="hide-m">{{ co.name }}</span></span>
+<form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn">로그아웃</button></form></div>
+{% else %}<div class="right">{% if tab=='signup' %}<a class="tbtn" href="{{ url_for('login') }}">로그인</a>{% else %}<a class="btn sm" href="{{ url_for('signup') }}">무료로 시작하기</a>{% endif %}</div>{% endif %}
 </div></header>
 {%- endmacro %}
 {% macro obar(tab,n_signup) -%}
-<header class="bar bizbar"><div class="wide in">
-<a class="logo" href="{{ url_for('ops') }}"><i></i>SOBORU<small class="w">운영</small></a><span class="sp"></span>
-<div class="seg">
-<a href="{{ url_for('ops') }}" class="{{ 'on' if tab=='non' }}">비입점</a>
-<a href="{{ url_for('ops_all') }}" class="{{ 'on' if tab=='all' }}">현황</a>
-<a href="{{ url_for('ops_companies') }}" class="{{ 'on' if tab=='co' }}">기업{% if n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</a>
-</div></div></header>
+<header class="gnb"><div class="wrap">
+<a class="logo" href="{{ url_for('ops') }}"><i></i>SOBORU<small class="w">운영</small></a>
+<nav>
+<a href="{{ url_for('ops') }}" class="{{ 'on' if tab=='non' }}">비입점 민원</a>
+<a href="{{ url_for('ops_all') }}" class="{{ 'on' if tab=='all' }}">전체 현황</a>
+<a href="{{ url_for('ops_companies') }}" class="{{ 'on' if tab=='co' }}">기업 관리{% if n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</a>
+</nav>
+<div class="right"><form method="post" action="{{ url_for('ops_logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn">로그아웃</button></form></div>
+</div></header>
 {%- endmacro %}
 {% macro kpis(k) -%}
-<div class="kpis"><div class="kpi"><span>받은 민원</span><b>{{ k.n }}</b></div><div class="kpi"><span>자동 처리</span><b>{{ k.auto }}<small>%</small></b></div>
-<div class="kpi"><span>해결률</span><b>{% if k.res is none %}–{% else %}{{ k.res }}<small>%</small>{% endif %}</b></div><div class="kpi"><span>지연</span><b class="{{ 't-bad' if k.late }}">{{ k.late }}</b></div></div>
+<div class="kpis"><div class="kpi"><span>받은 민원</span><b>{{ k.n }}<small>건</small></b></div><div class="kpi"><span>자동 처리율</span><b>{{ k.auto }}<small>%</small></b></div>
+<div class="kpi"><span>해결률</span><b>{% if k.res is none %}–{% else %}{{ k.res }}<small>%</small>{% endif %}</b></div><div class="kpi"><span>답변 지연</span><b class="{{ 't-bad' if k.late }}">{{ k.late }}<small>건</small></b></div></div>
 {%- endmacro %}
-{% set EMO={'배송 조회':'🚚','교환':'🔄','반품·환불':'💸','제품 불량':'🧴','고객 응대':'💬','기타':'📝'} %}
 {% macro dcard(c,detail=False) -%}
 {% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}
 <article class="dcard">
-<div class="top"><span class="tag gray">{{ {'배송 조회':'🚚','교환':'🔄','반품·환불':'💸','제품 불량':'🧴','고객 응대':'💬','기타':'📝'}[c.category] }} {{ c.category }}</span>{% if overdue(c) %}<span class="tag bad">지연</span>{% elif c.due %}<span class="cap">~{{ fmt_day(c.due) }}</span>{% endif %}<span class="sp"></span>{% if not detail %}<a class="tbtn" href="{{ url_for('case',case_id=c.id) }}" style="padding:4px 8px;font-size:14px">자세히</a>{% endif %}</div>
-{% if not detail %}<div><div class="tt">{{ c.title }}</div><div class="sm" style="margin-top:4px">{{ c.want }} 원함 · {{ c.body }}</div></div>{% endif %}
-<div class="reco"><div class="l">추천 조치</div><div class="r">{{ p.title }}</div><div class="s">{{ p.steps|join(' → ') }}</div></div>
+<div class="top">{{ i.cat_icon(c.category,22) }}<span class="cat">{{ c.category }}</span><span class="sp"></span>{% if overdue(c) %}<span class="pill bad">지연</span>{% elif c.due %}<span class="pill gray">{{ fmt_day(c.due) }}까지</span>{% endif %}</div>
+{% if not detail %}<a class="body" href="{{ url_for('case',case_id=c.id) }}"><div class="tt">{{ c.title }}</div><div class="sm">{{ c.body }}</div><div class="want">원하는 해결 · <b>{{ c.want }}</b></div></a>{% endif %}
+<div class="reco"><div class="l">추천 조치</div><div class="r">{{ p.title }}</div><div class="s">{{ p.steps|join(' · ') }}</div></div>
 <form method="post" action="{{ url_for('case',case_id=c.id) }}" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <button class="btn md" name="act" value="approve">승인</button><button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form>
 </article>
+{%- endmacro %}
+{% macro case_table(rows,m,href_fn='case',company=False) -%}
+<div class="tbl-wrap"><table class="tbl2"><thead><tr><th class="hm">접수번호</th><th>내용</th>{% if company %}<th class="hm">기업</th>{% endif %}<th class="hm">유형</th><th class="hm">접수일</th><th>상태</th></tr></thead><tbody>
+{% for c in rows %}<tr data-href="{{ url_for(href_fn,case_id=c.id) }}"><td class="hm no t-mute">{{ c.no }}</td><td><a class="ttl" href="{{ url_for(href_fn,case_id=c.id) }}">{{ c.title }}</a></td>{% if company %}<td class="hm">{{ c.company_name }} {% if c.member %}<span class="pill ok">입점</span>{% endif %}</td>{% endif %}
+<td class="hm"><span class="catc">{{ i.cat_icon(c.category,20) }}{{ c.category }}</span></td><td class="hm t-mute">{{ fmt(c.created) }}</td><td>{{ m.pill(c,True) }}</td></tr>{% endfor %}
+</tbody></table></div>
 {%- endmacro %}

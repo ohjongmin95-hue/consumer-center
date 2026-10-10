@@ -1,13 +1,16 @@
-{% extends 'base.html' %}{% import '_c.html' as m with context %}
-{% block title %}내 민원 · 한큐 민원{% endblock %}
-{% block bar %}{{ m.bar(url_for('home')) }}{% endblock %}
+{% extends 'base.html' %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
+{% block title %}내 접수 · {{ CNAME }}{% endblock %}
+{% block bar %}{{ m.bar('mine') }}{% endblock %}
 {% block body %}
-<h1 class="h1" style="padding:20px 4px 4px">내 민원</h1>
-{% if rows %}<div class="rows" style="margin-top:20px">{% for c in rows %}{{ m.case_row(c,url_for('case',case_id=c.id)) }}{% endfor %}</div>
-{% else %}<div class="empty">이 기기에서 접수한 민원이 없어요</div>{% endif %}
-<div class="sec">다른 기기에서 접수했나요?</div>
-<form class="card stack" method="post" action="{{ url_for('lookup') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
-<input class="inp" name="phone" type="tel" placeholder="휴대폰 번호" required><input class="inp" name="password" type="password" placeholder="조회 비밀번호" required>
+<div class="phead"><div><h1>내 접수</h1><p>{% if rows %}이 기기에서 확인한 접수 {{ rows|length }}건{% else %}이 기기에서 접수한 내역이 없어요{% endif %}</p></div><a class="btn md" href="{{ url_for('new') }}">새로 접수하기</a></div>
+<div class="cols">
+<div>{% if rows %}<div class="cgrid two">{% for c in rows %}{{ m.case_card(c,url_for('case',case_id=c.id)) }}{% endfor %}</div>
+{% else %}<div class="empty-card">{{ i.icon('inbox',56) }}<b>아직 접수한 내역이 없어요</b><span>다른 기기에서 접수했다면 오른쪽에서 찾아보세요</span></div>{% endif %}</div>
+<aside class="stack lg side-sticky">
+<form class="panel stack" method="post" action="{{ url_for('lookup') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="ph">다른 기기에서 접수했나요?</div>
+<label class="fld"><span>휴대폰 번호</span><input class="inp" name="phone" type="tel" placeholder="010-0000-0000" required></label>
+<label class="fld"><span>조회 비밀번호</span><input class="inp" name="password" type="password" required></label>
 <button class="btn md">찾기</button></form>
-{% if rows %}<form method="post" action="{{ url_for('forget') }}" style="text-align:center;margin-top:20px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn" style="font-size:13.5px;color:var(--fg3)">이 기기에서 목록 지우기</button></form>{% endif %}
+{% if rows %}<form method="post" action="{{ url_for('forget') }}" style="text-align:center"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn cap">이 기기에서 목록 지우기</button></form>{% endif %}
+</aside></div>
 {% endblock %}

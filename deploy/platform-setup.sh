@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SOBORU 플랫폼(한큐 민원 + SOBORU Business)을 소비자제보센터와 같은 서버에 별도 서비스로 설치합니다.
+# SOBORU 플랫폼(한큐 + SOBORU Business)을 소비자제보센터와 같은 서버에 별도 서비스로 설치합니다.
 # 먼저 setup.sh로 소비자제보센터가 설치돼 있어야 합니다(같은 소스 폴더를 씁니다).
 # 사용법: sudo bash /opt/soboru/app/deploy/platform-setup.sh 소비자용도메인 기업용도메인 이메일
 #   예: sudo bash platform-setup.sh hanq.example.kr business.example.kr me@example.com
@@ -55,7 +55,7 @@ chown root:soboru "$ENV_FILE"; chmod 640 "$ENV_FILE"
 echo "== 3/5 앱 서비스 등록 (soboru-platform)"
 cat > /etc/systemd/system/soboru-platform.service <<UNIT
 [Unit]
-Description=SOBORU 플랫폼 (한큐 민원 + SOBORU Business)
+Description=SOBORU 플랫폼 (한큐 + SOBORU Business)
 After=network.target
 
 [Service]
@@ -119,7 +119,7 @@ if [[ ${#OK[@]} -eq 4 ]]; then
   sed -i 's/^HTTPS_ONLY=.*/HTTPS_ONLY=1/' "$ENV_FILE"
   systemctl restart soboru-platform
   echo; echo "완료"
-  echo "  한큐 민원:        https://$CONSUMER"
+  echo "  한큐:             https://$CONSUMER"
   echo "  SOBORU Business:  https://$BUSINESS"
   echo "  운영 화면:        https://$BUSINESS/ops"
 else

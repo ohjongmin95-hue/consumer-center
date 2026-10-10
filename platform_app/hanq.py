@@ -1,7 +1,7 @@
 """SOBORU 플랫폼 실행 진입점 (gunicorn hanq:app).
 
 주소(도메인)로 서비스를 나눈다.
-  CONSUMER_HOST (예: hanq.example.kr)    → 한큐 민원 (consumer.py)
+  CONSUMER_HOST (예: hanq.example.kr)    → 한큐 (consumer.py)
   BUSINESS_HOST (예: business.example.kr) → SOBORU Business + /ops (business.py)
 주소 설정이 없으면(개발·테스트) /biz 아래를 기업용으로 쓴다.
 """

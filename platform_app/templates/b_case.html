@@ -1,17 +1,25 @@
-{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}
-{% block width %}wide{% endblock %}
-{% block bar %}{{ b.bar('all') }}{% endblock %}
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
+{% block title %}{{ c.title }} · SOBORU Business{% endblock %}
+{% block bar %}{{ b.bar('pending' if c.decision=='pending' and c.status in ('forwarded','seen') else 'all') }}{% endblock %}
 {% block body %}
-<section style="padding:12px 4px 20px"><a class="back" href="{{ url_for('decide') if c.decision=='pending' else url_for('all_cases') }}" aria-label="뒤로"></a>
-<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><span class="tag gray">{{ c.category }}</span><span class="st {{ m.tone(c) }}">{{ m.status_text(c) }}</span>{% if c.decision %}<span class="cap">· {{ DECISION[c.decision] }}</span>{% endif %}</div>
-<h1 class="h1" style="margin-top:8px">{{ c.title }}</h1></section>
-<div class="two"><div class="stack">
-<div class="card"><p style="white-space:pre-wrap;margin:0 0 18px;font-size:15.5px">{{ c.body }}</p>
-{% if files %}<div class="files" style="margin-bottom:16px">{% for f in files %}<a href="{{ url_for('case_file',case_id=c.id,file_id=f.id) }}">📎 {{ f.original }}</a>{% endfor %}</div>{% endif %}
-<dl class="kv"><dt>소비자</dt><dd>{{ c.name or '익명' }}</dd><dt>연락처</dt><dd>{{ fmt_phone(c.phone) }}</dd><dt>원하는 해결</dt><dd>{{ c.want }}</dd>{% if c.order_no %}<dt>주문번호</dt><dd class="no">{{ c.order_no }}</dd>{% endif %}<dt>접수번호</dt><dd class="no">{{ c.no }}</dd>{% if c.due %}<dt>답변 목표일</dt><dd>{{ fmt_day(c.due) }}</dd>{% endif %}</dl></div>
+<div class="crumb"><a href="{{ url_for('decide') }}">홈</a><span>›</span><a href="{{ url_for('all_cases') }}">전체 민원</a><span>›</span><span class="no">{{ c.no }}</span></div>
+<div class="phead"><div><div class="tagrow"><span class="catc">{{ i.cat_icon(c.category,22) }}{{ c.category }}</span>{{ m.pill(c,True) }}{% if c.decision %}<span class="pill gray">{{ DECISION[c.decision] }}</span>{% endif %}</div><h1>{{ c.title }}</h1></div></div>
+<div class="cols">
+<div class="stack lg">
+<div class="panel"><div class="ph">민원 내용</div><p class="bodytext">{{ c.body }}</p>
+{% if files %}<div class="files">{% for f in files %}<a href="{{ url_for('case_file',case_id=c.id,file_id=f.id) }}">📎 {{ f.original }}</a>{% endfor %}</div>{% endif %}
+<div class="want-box">원하는 해결<b>{{ c.want }}</b></div></div>
 {% set open=c.status not in ('resolved','unresolved') %}
 {% if open and c.decision not in ('approved','auto') %}{{ b.dcard(c,True) }}{% endif %}
-{% if open %}<form class="card" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="reply">
-<div class="h2" style="margin-bottom:14px">직접 답변</div><textarea class="inp" name="msg" required>{{ rule.reply }}</textarea><button class="btn md full" style="margin-top:10px">보내기</button></form>{% endif %}
-</div><div class="card"><div class="h2" style="margin-bottom:18px">진행 기록</div>{{ m.timeline(ev,c,'biz') }}</div></div>
+{% if open %}<form class="panel" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="reply">
+<div class="ph">직접 답변</div>
+<textarea class="inp" name="msg" id="msg" required>{{ rule.reply }}</textarea>
+<div class="quick">{% for t in ['확인 후 오늘 안에 다시 연락드릴게요.','불편을 드려 죄송합니다. 바로 조치하겠습니다.','주문번호를 알려 주시면 빠르게 확인할게요.'] %}<button type="button" data-q="{{ t }}">{{ t }}</button>{% endfor %}</div>
+<button class="btn md" style="margin-top:16px">답변 보내기</button></form>{% endif %}
+</div>
+<aside class="stack lg side-sticky">
+<div class="panel"><div class="ph">소비자 정보</div><dl class="kv"><dt>이름</dt><dd>{{ c.name or '익명' }}</dd><dt>연락처</dt><dd>{{ fmt_phone(c.phone) }}</dd>{% if c.order_no %}<dt>주문번호</dt><dd class="no">{{ c.order_no }}</dd>{% endif %}<dt>접수일</dt><dd>{{ fmt(c.created) }}</dd>{% if c.due %}<dt>답변 목표일</dt><dd class="{{ 't-bad' if overdue(c) }}">{{ fmt_day(c.due) }}</dd>{% endif %}</dl></div>
+<div class="panel"><div class="ph">진행 기록</div>{{ m.timeline(ev,c,'biz') }}</div>
+</aside></div>
 {% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-q]').forEach(function(b){b.onclick=function(){var t=document.getElementById('msg');t.value=(t.value.trim()?t.value.trim()+'\n':'')+b.dataset.q;t.focus();};});</script>{% endblock %}

@@ -3,20 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>{% block title %}{{ '한큐 민원' if site=='me' else 'SOBORU Business' }}{% endblock %}</title>
-<meta name="theme-color" content="#f2f4f6">
+<title>{% block title %}{{ CNAME if site=='me' else 'SOBORU Business' }}{% endblock %}</title>
+<meta name="theme-color" content="#ffffff">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2213%22 fill=%22%23f89b00%22/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='hanq.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static',filename='hanq.css') }}?v=2">
 </head>
-<body>
-{% if PILOT %}<div class="pilot">시범 운영 중 · 실제 개인정보는 넣지 마세요</div>{% endif %}
+<body class="v2">
+{% if PILOT %}<div class="pilot">시범 운영 중이에요 · 실제 개인정보는 넣지 마세요</div>{% endif %}
 {% block bar %}{% endblock %}
-<main><div class="{% block width %}col{% endblock %}">
-{% for cat,msg in get_flashed_messages(with_categories=true) %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
-{% block body %}{% endblock %}
-</div></main>
-{% block foot %}<footer class="foot"><div class="in">{% if site=='me' %}<a href="{{ url_for('privacy') }}">개인정보 처리방침</a>{% endif %}<span>© SOBORU</span></div></footer>{% endblock %}
+{% with msgs=get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flashes {% block fwidth %}wrap{% endblock %}">{% for cat,msg in msgs %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+{% block main %}<main class="pg"><div class="{% block width %}wrap{% endblock %}">{% block body %}{% endblock %}</div></main>{% endblock %}
+{% block foot %}{% if site=='me' %}
+<footer class="foot2"><div class="wrap"><span class="logo"><i></i>{{ CNAME }}<small>by SOBORU</small></span>
+<a href="{{ url_for('guide') }}">이용 안내</a><a href="{{ url_for('privacy') }}">개인정보 처리방침</a><a href="{{ biz_url }}">기업 회원</a>
+<p class="note">{{ CNAME }}은 소비자와 기업 사이의 접수·전달·처리 기록을 돕는 SOBORU의 CS 운영 플랫폼이에요. 접수 내용은 SOBORU 언론 보도에 쓰지 않아요.<br>© SOBORU</p></div></footer>
+{% else %}<footer class="foot2"><div class="wrap"><span class="logo"><i></i>SOBORU<small class="w">Business</small></span><span>CS 운영, 한큐에</span><p class="note">기업의 SOBORU Business 이용 여부는 SOBORU 언론 보도에 영향을 주지 않아요.<br>© SOBORU</p></div></footer>{% endif %}{% endblock %}
 {% block script %}{% endblock %}
+<script>document.querySelectorAll('tr[data-href]').forEach(function(r){r.addEventListener('click',function(e){if(!e.target.closest('a,button'))location.href=r.dataset.href;});});</script>
 </body>
 </html>

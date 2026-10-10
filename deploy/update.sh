@@ -7,7 +7,7 @@ git -C /opt/soboru/app fetch -q origin "$BRANCH"
 git -C /opt/soboru/app checkout -q -B "$BRANCH" "origin/$BRANCH"
 /opt/soboru/venv/bin/pip install -q -r /opt/soboru/app/requirements.txt
 systemctl restart soboru
-# SOBORU 플랫폼(한큐 민원 + SOBORU Business)이 설치돼 있으면 같이 다시 시작
+# SOBORU 플랫폼(한큐 + SOBORU Business)이 설치돼 있으면 같이 다시 시작
 [ -f /etc/systemd/system/soboru-platform.service ] && systemctl restart soboru-platform || true
 sleep 2
 systemctl is-active --quiet soboru && echo "업데이트 완료: $(git -C /opt/soboru/app log -1 --format='%h %s')" || { journalctl -u soboru -n 30 --no-pager; exit 1; }

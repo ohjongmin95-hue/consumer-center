@@ -3,7 +3,7 @@
 기업: 가입 → 운영자 승인 → 로그인 → 승인 카드(승인·보류·자료 요청), 전체 민원, 자동 처리 규칙, 설정.
 운영자: 기업 가입 승인, 기업 목록, 비입점 기업 민원 처리(전달 시도·회신 기록·피해구제 안내).
 """
-import os, re, hmac, functools
+import os, re, hmac, functools, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, g
 from werkzeug.security import generate_password_hash, check_password_hash
 import core
@@ -41,7 +41,7 @@ def ops_required(f):
 def ctx():
     co=me();n=0
     if co:
-        with conn() as db:n=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND member=1 AND decision='pending' AND status IN ('forwarded','seen')",(co['id'],)).fetchone()[0]
+        with conn() as db:n=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND member=1 AND consent=1 AND decision='pending' AND status IN ('forwarded','seen')",(co['id'],)).fetchone()[0]
     return {'co':co,'n_pending':n,'is_ops':bool(session.get('ops'))}
 
 def kpis(rows):
@@ -93,29 +93,57 @@ def login():
 def logout():session.pop('co_id',None);return redirect(url_for('login'))
 
 # ---------- 기업 화면 ----------
-def my_cases(db,co):return db.execute('SELECT * FROM cases WHERE company_id=? AND member=1 ORDER BY id DESC',(co['id'],)).fetchall()
+# 기업은 전달에 동의한 민원만 본다
+def my_cases(db,co):return db.execute('SELECT * FROM cases WHERE company_id=? AND member=1 AND consent=1 ORDER BY id DESC',(co['id'],)).fetchall()
 def my_case(db,case_id):
-    c=db.execute('SELECT * FROM cases WHERE id=? AND company_id=? AND member=1',(case_id,me()['id'])).fetchone()
+    c=db.execute('SELECT * FROM cases WHERE id=? AND company_id=? AND member=1 AND consent=1',(case_id,me()['id'])).fetchone()
     if not c:abort(404)
     return c
+
+def is_pending(r):return r['decision']=='pending' and r['status'] in ('forwarded','seen')
+def is_open(r):return r['status'] in ('forwarded','seen','info')
+def by_cat(rows):
+    n=len(rows) or 1
+    return [(cat,cnt,round(cnt/n*100)) for cat in core.CATS for cnt in [sum(r['category']==cat for r in rows)]]
 
 @app.route('/')
 @login_required
 def decide():
     with conn() as db:
-        rows=my_cases(db,me())
-    pend=[r for r in rows if r['decision']=='pending' and r['status'] in ('forwarded','seen')]
-    return render_template('b_decide.html',pend=pend,k=kpis(rows),tab='decide')
+        rows=my_cases(db,me());n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(me()['id'],)).fetchone()[0]
+    pend=[r for r in rows if is_pending(r)]
+    counts={'all':len(rows),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto':n_auto}
+    return render_template('b_decide.html',pend=pend,recent=rows[:6],k=kpis(rows),counts=counts,cats=by_cat(rows),tab='home')
+
+@app.route('/pending')
+@login_required
+def pending():
+    with conn() as db:rows=my_cases(db,me())
+    return render_template('b_pending.html',pend=[r for r in rows if is_pending(r)],tab='pending')
 
 @app.route('/all')
 @login_required
 def all_cases():
-    fil=request.args.get('f','all')
+    fil=request.args.get('f','all');q=clean(request.args.get('q'),40)
     with conn() as db:rows=my_cases(db,me())
-    groups={'all':rows,'open':[r for r in rows if r['status'] in ('forwarded','seen','info')],'done':[r for r in rows if r['status'] in ('answered','resolved')],
+    if q:rows=[r for r in rows if q.lower() in (r['title']+' '+r['no']+' '+(r['name'] or '')+' '+r['body']).lower()]
+    groups={'all':rows,'open':[r for r in rows if is_open(r)],'done':[r for r in rows if r['status'] in ('answered','resolved')],
             'bad':[r for r in rows if r['status']=='unresolved' or core.overdue(r)]}
     if fil not in groups:fil='all'
-    return render_template('b_all.html',groups=groups,fil=fil,rows=groups[fil],tab='all')
+    return render_template('b_all.html',groups=groups,fil=fil,rows=groups[fil],q=q,tab='all')
+
+@app.route('/stats')
+@login_required
+def stats():
+    with conn() as db:rows=my_cases(db,me())
+    n=len(rows) or 1
+    how=[(DEC,cnt,round(cnt/n*100)) for key,DEC in (('auto','자동 처리'),('approved','원클릭 승인'),('direct','직접 답변'),('hold','보류'),('info','자료 요청'),('pending','승인 대기')) for cnt in [sum(r['decision']==key for r in rows)]]
+    today=core.now().date();weeks=[]
+    for w in range(7,-1,-1):
+        end=today-datetime.timedelta(days=7*w);start=end-datetime.timedelta(days=6)
+        weeks.append((f'{start.month}.{start.day}',sum(start.isoformat()<=r['created'][:10]<=end.isoformat() for r in rows)))
+    top=max([c for _,c in weeks] or [0]) or 1
+    return render_template('b_stats.html',k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,top=top,tab='stats')
 
 def notify_consumer(c,subject,text):
     core.send_mail(c['email'],subject,f"{text}\n\n■ 접수번호: {c['no']}\n■ 요약: {c['title']}\n\n{core.site_url('me','/mine')}")
@@ -129,7 +157,7 @@ def case(case_id):
             act=request.form.get('act');open_=c['status'] not in ('resolved','unresolved')
             if not open_:abort(400)
             if act=='approve' and c['decision'] not in ('approved','auto'):
-                if core.run_playbook(db,c,'approved'):notify_consumer(c,'[한큐 민원] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
+                if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
                 flash('승인했어요','ok')
             elif act=='hold':
                 db.execute("UPDATE cases SET decision='hold',status=CASE status WHEN 'forwarded' THEN 'seen' ELSE status END WHERE id=?",(c['id'],))
@@ -137,13 +165,13 @@ def case(case_id):
             elif act=='ask':
                 ask=clean(request.form.get('ask'),300) or ('불량 부분 사진과 주문번호를 보내 주세요.' if c['category']=='제품 불량' else '주문번호와 확인할 수 있는 사진이나 캡처를 보내 주세요.')
                 db.execute("UPDATE cases SET decision='info',status='info',info_ask=? WHERE id=?",(ask,c['id']))
-                core.add_event(db,c['id'],'co','자료 요청: '+ask);notify_consumer(c,'[한큐 민원] 기업이 자료를 요청했어요',ask);flash('자료를 요청했어요','ok')
+                core.add_event(db,c['id'],'co','자료 요청: '+ask);notify_consumer(c,f'[{core.CNAME}] 기업이 자료를 요청했어요',ask);flash('자료를 요청했어요','ok')
             elif act=='reply':
                 msg=clean(request.form.get('msg'),3000)
                 if not msg:flash('답변 내용을 적어 주세요','error')
                 else:
                     db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
-                    core.add_event(db,c['id'],'co','답변을 보냈어요',msg);notify_consumer(c,'[한큐 민원] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.");flash('보냈어요','ok')
+                    core.add_event(db,c['id'],'co','답변을 보냈어요',msg);notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.");flash('보냈어요','ok')
             return redirect(url_for('case',case_id=case_id))
         if c['status']=='forwarded':
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
@@ -235,11 +263,11 @@ def ops_case(case_id):
             elif act=='reply' and clean(request.form.get('msg'),3000):
                 db.execute("UPDATE cases SET status='answered' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'co','기업 회신 (센터 기록)',clean(request.form.get('msg'),3000))
-                notify_consumer(c,'[한큐 민원] 기업 회신이 도착했어요',f"{c['company_name']}의 회신을 센터가 기록했어요.");flash('기록했어요','ok')
+                notify_consumer(c,f'[{core.CNAME}] 기업 회신이 도착했어요',f"{c['company_name']}의 회신을 센터가 기록했어요.");flash('기록했어요','ok')
             elif act=='unresolved':
                 db.execute("UPDATE cases SET status='unresolved' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'sys','기업 회신이 없어 공식 피해구제 절차(1372 소비자상담센터, 한국소비자원)를 안내했어요')
-                notify_consumer(c,'[한큐 민원] 피해구제 절차를 안내해 드려요','기업 회신이 없어 공식 피해구제 절차를 안내해 드려요. 민원 화면에서 확인해 주세요.');flash('안내했어요','ok')
+                notify_consumer(c,f'[{core.CNAME}] 피해구제 절차를 안내해 드려요','기업 회신이 없어 공식 피해구제 절차를 안내해 드려요. 접수 화면에서 확인해 주세요.');flash('안내했어요','ok')
             return redirect(url_for('ops_case',case_id=case_id))
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id'])
     return render_template('o_case.html',c=c,ev=ev,files=fl,cinfo=co,otab='non')
