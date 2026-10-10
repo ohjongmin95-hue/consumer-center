@@ -10,8 +10,7 @@
   </form>
   <p class="hint lookup-forgot">{{ ui('lookup.forgot', '비밀번호가 기억나지 않으면 센터로 문의해 주세요. 본인 확인 뒤 새 비밀번호를 정해 드려요.') }}</p>
 {% else %}
-  <p>{{ ui('case_open.legacy', '이 제보는 접수번호와 조회 코드로 열 수 있어요.') }}</p>
-  <p><a class="secondary" href="{{ url_for('lookup') }}">{{ ui('done.lookup', '내 제보 조회하기 →') }}</a></p>
+  <p>{{ ui('case_open.no_pw', '이 제보는 아직 조회 비밀번호가 없어요. 센터로 문의해 주시면 본인 확인 뒤 비밀번호를 정해 드려요.') }}</p>
 {% endif %}
 </div>
 </div></main>{% endblock %}

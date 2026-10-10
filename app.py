@@ -125,6 +125,7 @@ GUIDE_ICONS={  # 이용 안내 단계 카드 아이콘 (주황 선이 포인트)
     'write':'<rect x="12" y="6" width="22" height="36" rx="4"/><path d="M17 15h12M17 21h12M17 27h7"/><path class="o" d="M30 34l9-9 3 3-9 9h-3z"/>',
     'attach':'<rect x="6" y="12" width="28" height="24" rx="3"/><circle cx="14" cy="20" r="3"/><path d="M6 32l9-8 6 5 5-4 8 7"/><path class="o" d="M38 14v14a5 5 0 0 1-10 0V12a3 3 0 0 1 6 0v14"/>',
     'ticket':'<path d="M6 14h36v6a4 4 0 0 0 0 8v6H6v-6a4 4 0 0 0 0-8z"/><path d="M18 14v20" stroke-dasharray="2 4"/><path class="o" d="M24 21h12M24 27h8"/>',
+    'lock':'<rect x="10" y="21" width="28" height="21" rx="4"/><path d="M16 21v-5a8 8 0 0 1 16 0v5"/><path class="o" d="M24 29v6"/>',
     'search':'<circle cx="21" cy="21" r="12"/><path d="M30 30l10 10"/><path class="o" d="M15 21l4 4 8-8"/>',
     'chat':'<path d="M7 9h34v22H20l-9 8v-8H7z"/><path class="o" d="M15 18h18M15 24h11"/>',
     'check':'<circle cx="24" cy="24" r="17"/><path class="o" d="M16 24l6 6 11-12"/>',
@@ -224,7 +225,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-49'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-50'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -481,7 +482,7 @@ def report():
         checked.append((f,suffix,original))
     if total>MAX_UPLOAD_TOTAL:flash(ui_text('msg.report_size','첨부파일은 모두 합쳐 20MB까지 올릴 수 있어요.'));return report_form(400)
     receipt='CJ-'+datetime.datetime.now().strftime('%y%m%d')+'-'+secrets.token_hex(3).upper()
-    code=secrets.token_urlsafe(12)  # 예전 '접수번호+조회 코드' 방식 칸. 이제 화면에는 안 보이고 비밀번호로 조회함
+    code=secrets.token_urlsafe(12)  # lookup_hash 칸(NOT NULL)을 채우는 값. 조회는 휴대폰 번호 + 조회 비밀번호로 함
     with conn() as db:
         hour_ago=(datetime.datetime.now()-datetime.timedelta(hours=1)).isoformat(timespec='seconds')
         if db.execute('SELECT COUNT(*) FROM cases WHERE ip_hash=? AND created>=?',(ip_hash(),hour_ago)).fetchone()[0]>=5:
@@ -501,16 +502,10 @@ def open_case(case_id):
     session.pop('lookup_ids',None);session['case_id']=case_id;return redirect(url_for('case_detail'))
 @app.route('/lookup',methods=['GET','POST'])
 def lookup():
-    # 휴대폰 번호 + 조회 비밀번호로 내 제보 찾기. 예전 제보는 접수번호 + 조회 코드로도 열림.
+    # 휴대폰 번호 + 조회 비밀번호로 내 제보 찾기
     if request.method=='GET':return render_template('lookup.html')
     if too_many_attempts('case'):
         flash(ui_text('msg.lookup_rate','시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.'));return render_template('lookup.html'),429
-    if request.form.get('mode')=='code':
-        receipt=request.form.get('receipt','').strip().upper();code=request.form.get('code','').strip()
-        with conn() as db:case=db.execute('SELECT * FROM cases WHERE receipt=?',(receipt,)).fetchone()
-        if not case or not hmac.compare_digest(case['lookup_hash'],hashlib.sha256(code.encode()).hexdigest()):
-            note_attempt('case');flash(ui_text('msg.m04','접수번호 또는 조회 코드가 일치하지 않습니다.'));return render_template('lookup.html',legacy=True),401
-        return open_case(case['id'])
     digits=phone_digits(request.form.get('phone'));pw=request.form.get('password','')
     found=[]
     if len(digits)>=8 and pw:
@@ -1126,7 +1121,7 @@ def withdraw():
     return redirect(url_for('home'))
 
 def delete_member(db,uid,delete_posts):
-    # 회원 정보는 바로 지움. 제보는 접수번호·조회 코드로 계속 확인할 수 있도록 회원 연결만 끊음.
+    # 회원 정보는 바로 지움. 제보는 휴대폰 번호·조회 비밀번호로 계속 확인할 수 있도록 회원 연결만 끊음.
     if delete_posts:
         for r in db.execute('SELECT id FROM comments WHERE user_id=?',(uid,)).fetchall():delete_board_item(db,'c',r['id'])
         for r in db.execute('SELECT id FROM posts WHERE user_id=?',(uid,)).fetchall():delete_board_item(db,'p',r['id'])
