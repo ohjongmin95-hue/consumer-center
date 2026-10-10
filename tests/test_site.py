@@ -66,8 +66,8 @@ class SiteTest(unittest.TestCase):
             self.assertIn('noindex', self.client.get(path).get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('여러분의 제보가', home)
-        self.assertIn('<title>소비자제보센터 | SOBORU</title>', home)
-        self.assertIn('<meta property="og:title" content="소비자제보센터 | SOBORU">', home)
+        self.assertIn('<title>소비자제보센터 | 소비자를위한신문</title>', home)
+        self.assertIn('<meta property="og:title" content="소비자제보센터 | 소비자를위한신문">', home)
         self.assertIn('class="hero hero-art"', home)
         for side in ('left', 'right'):
             self.assertRegex(home, r'img/hero-%s\.svg\?v=\d+' % side)  # 그림이 바뀌면 주소도 바뀌어 캐시된 예전 그림이 보이지 않음
