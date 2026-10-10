@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('groups.new_title', '공동 대응 제안하기') }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro">
+    <a class="back-link" href="{{ url_for('groups') }}">← {{ ui('groups.title', '공동 대응') }}</a>
+    <h1 class="page-title">{{ ui('groups.new_title', '공동 대응 제안하기') }}</h1>
+    <p>{{ ui('groups.new_intro', '같은 업체에서 같은 피해를 겪은 사람이 더 있을 것 같다면 제안해 주세요. 센터가 내용을 확인한 뒤 공개하면, 다른 소비자들이 함께 참여할 수 있어요. 제안한 분이 첫 번째 참여자가 돼요.') }}</p>
+  </div>
+  <form class="form-panel" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <h2 class="group-form-h">{{ ui('groups.new_h1', '어떤 공동 대응인가요') }}</h2>
+    <div class="field"><label for="n-company">{{ ui('groups.f_company', '업체 이름') }} <small>*</small></label><input id="n-company" name="company" maxlength="60" required placeholder="{{ ui('report.f_company_ph', '예: ○○쇼핑몰') }}" value="{{ request.values.get('company','') }}"></div>
+    <div class="field"><label for="n-title">{{ ui('groups.f_title', '제목') }} <small>*</small></label><input id="n-title" name="title" maxlength="80" required placeholder="{{ ui('groups.f_title_ph', '예: ○○쇼핑 반품 후 2주 넘게 환불 지연') }}" value="{{ request.form.get('title','') }}"><p class="hint">{{ ui('groups.f_title_hint', '겪은 일을 사실대로 짧게 적어 주세요. 욕설이나 단정적인 비난은 공개되지 않아요.') }}</p></div>
+    <div class="field"><label for="n-detail">{{ ui('groups.f_detail_new', '겪은 피해') }} <small>*</small></label><textarea id="n-detail" name="detail" maxlength="2000" required placeholder="{{ ui('groups.f_detail_ph', '언제, 무엇을 구매·계약했고 어떤 피해를 겪었는지 짧게 적어 주세요') }}">{{ request.form.get('detail','') }}</textarea><p class="hint">{{ ui('groups.f_detail_new_hint', '공개되면 공동 대응 페이지의 “어떤 피해인가요”에 보여요. 이름·연락처는 적지 마세요.') }}</p></div>
+    <h2 class="group-form-h">{{ ui('groups.new_h2', '제안하는 분 (첫 참여자)') }}</h2>
+    <div class="pw-pair"><div class="field"><label for="g-name">{{ ui('groups.f_name', '이름') }} <small>*</small></label><input id="g-name" name="name" maxlength="40" required value="{{ request.form.get('name','') }}"></div>
+    <div class="field"><label for="g-phone">{{ ui('groups.f_phone', '휴대폰 번호') }} <small>*</small></label><input id="g-phone" name="phone" inputmode="tel" maxlength="20" required value="{{ request.form.get('phone','') }}"></div></div>
+    <div class="pw-pair"><div class="field"><label for="g-email">{{ ui('groups.f_email', '이메일 (선택)') }}</label><input id="g-email" type="email" name="email" maxlength="120" value="{{ request.form.get('email','') }}"></div>
+    <div class="field"><label for="g-amount">{{ ui('groups.f_amount', '피해 금액 (선택)') }}</label><input id="g-amount" name="amount" maxlength="60" placeholder="{{ ui('groups.f_amount_ph', '예: 약 12만 원') }}" value="{{ request.form.get('amount','') }}"></div></div>
+    <label class="check"><input type="checkbox" name="consent" required><span><b>[{{ ui('report.badge_required', '필수') }}]</b> {{ ui('groups.c_privacy', '공동 대응 안내를 위해 이름·연락처·이메일·피해 내용을 수집·이용하는 데 동의합니다. 공동 대응이 끝나면 1년 뒤 지웁니다.') }}</span></label>
+    <label class="check"><input type="checkbox" name="share_consent"><span><b>[{{ ui('groups.optional', '선택') }}]</b> {{ ui('groups.c_share', '공동 대응을 맡게 되는 변호사·기관에 이름·연락처·피해 내용을 전달하는 데 동의합니다. 동의하지 않아도 참여할 수 있어요.') }}</span></label>
+    <button class="primary" type="submit">{{ ui('groups.new_submit', '공동 대응 제안하기 →') }}</button>
+  </form>
+  <p class="group-note">{{ ui('groups.note', '소비자제보센터는 피해자를 모으고 공식 절차를 안내해요. 변호사를 소개하거나 수수료를 받지 않아요.') }}</p>
+</div></main>
+{% endblock %}

@@ -21,11 +21,7 @@
     <h2>{{ ui('reports.company_answer', '업체 답변') }}</h2>
     {% for a in answers %}<div class="company-answer"><p class="ca-head"><b>{{ a['company_name'] or company }}</b><span>{{ a['created'][:10]|replace('-', '.') }}</span></p><p class="public-case-body">{{ a['body'] }}</p></div>{% endfor %}
   </section>{% endif %}
-  <section class="metoo-box" id="metoo">
-    <form method="post" action="{{ url_for('report_metoo', case_id=case['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit" class="metoo-btn{% if metoo_mine %} on{% endif %}" aria-pressed="{{ 'true' if metoo_mine else 'false' }}">🙋 {{ ui('reports.metoo', '나도 겪었어요') }} <b>{{ metoo }}</b></button></form>
-    {% if grp %}<a class="metoo-group" href="{{ url_for('group_page', group_id=grp['id']) }}"><span class="group-status s-{{ grp['status'] }}">{{ group_statuses[grp['status']] }}</span> {{ ui('reports.group_link', '이 피해의 공동 대응') }} · {{ grp['title'] }} →</a>
-    {% else %}<p class="metoo-hint">{{ ui('reports.metoo_hint', '같은 피해를 겪었다면 눌러 주세요. 많이 모이면 센터가 공동 대응을 열어요.') }}</p>{% endif %}
-  </section>
+  {% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}
   <p class="public-case-mine"><a class="secondary" href="{{ url_for('case_open', case_id=case['id']) }}">{{ ui('reports.mine', '내가 쓴 제보라면 · 진행 상황과 답변 보기 →') }}</a></p>
   {% if txt('report.public_notice') %}<p class="public-case-notice">{{ txt('report.public_notice') }} <a href="{{ url_for('takedown') }}">{{ ui('reports.takedown_link', '게시중단 요청 →') }}</a></p>{% endif %}
 </div></main>

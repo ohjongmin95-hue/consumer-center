@@ -13,4 +13,5 @@
   <p>{{ ui('case_open.no_pw', '이 제보는 아직 조회 비밀번호가 없어요. 센터로 문의해 주시면 본인 확인 뒤 비밀번호를 정해 드려요.') }}</p>
 {% endif %}
 </div>
+{% with grp = g.case_group, company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}
 </div></main>{% endblock %}
