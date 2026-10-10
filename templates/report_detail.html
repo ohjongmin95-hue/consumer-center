@@ -39,14 +39,6 @@
         </form>
       </section>
 
-      <section class="cs-panel" id="note">
-        <h2>내부 메모 <small>제보자·기업에게 안 보여요</small></h2>
-        <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="note">
-          <textarea name="internal_note" maxlength="3000" required rows="2" placeholder="메모 남기기" aria-label="내부 메모"></textarea>
-          <button class="cs-btn" type="submit">메모 추가</button>
-        </form>
-        {% for n in notes %}<div class="cs-note"><div class="cs-msg-head"><b>{{ n['author'] or '센터' }}</b><span>{{ n['created'][:16]|replace('T', ' ') }}</span></div><p>{{ n['note'] }}</p></div>{% endfor %}
-      </section>
 
       {% if logs %}
       <details class="cs-panel cs-logbox">
