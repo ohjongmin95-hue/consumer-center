@@ -439,6 +439,24 @@ class SiteTest(unittest.TestCase):
         # 관리자가 아니면 미리보기 주소를 눌러도 안 됨
         self.assertEqual(self.client.post('/admin/companies/%d/preview' % company_id, data={'_csrf': self.csrf(self.client, '/report')}).status_code, 302)
         self.assertEqual(self.client.get('/biz').status_code, 302)
+        # 대표 마스터 계정: 관리자에서 만들고, 기업 로그인 화면으로 들어가 모든 기업을 골라 봄 (보기 전용)
+        self.post_form(admin, '/admin/companies', {'action': 'master', 'master_id': 'testmall', 'password': 'master123', 'password2': 'master123'})
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute("SELECT 1 FROM admin_settings WHERE key='biz_master_id'").fetchone())  # 기업 아이디와 겹치면 안 됨
+        self.post_form(admin, '/admin/companies', {'action': 'master', 'master_id': 'boss', 'password': 'master123', 'password2': 'master123'})
+        master = self.site.app.test_client()
+        self.assertEqual(self.post_form(master, '/biz/login', {'login_id': 'boss', 'password': 'wrong1234'}).status_code, 401)
+        self.post_form(master, '/biz/login', {'login_id': 'boss', 'password': 'master123'})
+        self.assertIn('주식회사 테스트몰', master.get('/biz').get_data(as_text=True))
+        master.post('/biz/master/company', data={'_csrf': self.csrf(master, '/biz'), 'company_id': company_id})
+        self.assertIn('기업 전달 동의 제보', master.get('/biz?tab=done').get_data(as_text=True))
+        master.post('/biz/case/%d' % shared, data={'_csrf': self.csrf(master, '/biz/case/%d' % shared), 'response': '마스터 답변'})
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute("SELECT 1 FROM messages WHERE body='마스터 답변'").fetchone())
+        self.assertEqual(self.post_form(self.site.app.test_client(), '/biz/signup', dict(form, biz_no='2208123455', login_id='boss')).status_code, 400)
+        # 비밀번호를 다시 저장하면 이전 마스터 로그인은 끊김
+        self.post_form(admin, '/admin/companies', {'action': 'master', 'master_id': 'boss', 'password': 'master456', 'password2': 'master456'})
+        self.assertEqual(master.get('/biz').status_code, 302)
         # 6) 중지하면 바로 로그아웃
         self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'stop'})
         self.assertEqual(biz.get('/biz').status_code, 302)
