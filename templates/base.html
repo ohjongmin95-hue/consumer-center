@@ -28,7 +28,7 @@
 <body>
 <header class="site-header">
   <div class="top">
-    <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>
+    <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">{{ txt('site.logo_by') }}</small>{% endif %}</a>
     <nav class="section-nav" aria-label="주요 메뉴">
       {% for item in items('menu') %}{% set href = menu_href(item) %}
       <a href="{{ href }}"{% if menu_active(href) %} class="active" aria-current="page"{% endif %}{% if item.page == 'custom' and href.startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>
