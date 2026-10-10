@@ -66,10 +66,10 @@ class PlatformTest(unittest.TestCase):
         # 기업: 승인 카드에 보이고, 승인하면 추천 조치 실행 + 답변
         page=b.get('/biz/').get_data(as_text=True)
         self.assertIn('승인할 민원이',page);self.assertIn('무상 교환',page);self.assertIn('달빛화장품',page)
-        self.assertIn('무상 교환',b.get('/biz/pending').get_data(as_text=True))
+        self.assertEqual(b.get('/biz/pending').status_code,302)
         self.assertIn('크림 용기',b.get('/biz/all?q=크림').get_data(as_text=True))
         self.assertNotIn('크림 용기',b.get('/biz/all?q=없는말').get_data(as_text=True))
-        self.assertIn('최근 8주',b.get('/biz/stats').get_data(as_text=True))
+        self.assertIn('주별 민원',b.get('/biz/stats').get_data(as_text=True))
         self.assertIn('value="제품 불량" checked',me.get('/new?category=제품 불량').get_data(as_text=True))
         self.assertEqual(me.get('/guide').status_code,200)
         r=self.post(b,f'/biz/case/{case_id}',{'act':'approve'})

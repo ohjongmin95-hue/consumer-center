@@ -2,13 +2,12 @@
 {% block title %}통계 · SOBORU Business{% endblock %}
 {% block bar %}{{ b.bar('stats') }}{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>통계</h1><p>받은 민원 전체 기준</p></div></div>
+<div class="phead"><div><h1>통계</h1></div></div>
 {{ b.kpis(k) }}
-<div class="grid2">
-<div class="panel"><div class="ph">최근 8주 접수</div>
+<div class="panel" style="margin-bottom:20px"><div class="ph">주별 민원</div>
 <div class="vbars">{% for lab,cnt in weeks %}<div><b>{{ cnt }}</b><span class="tr"><i style="height:{{ (cnt/top*100)|round|int }}%"></i></span><small>{{ lab }}</small></div>{% endfor %}</div></div>
+<div class="grid2">
 <div class="panel"><div class="ph">유형별</div><div class="bars">{% for cat,cnt,pct in cats %}<div class="barrow"><span>{{ cat }}</span><span class="tr"><i style="width:{{ pct }}%"></i></span><b>{{ cnt }}</b></div>{% endfor %}</div></div>
 <div class="panel"><div class="ph">처리 방식</div><div class="bars">{% for lab,cnt,pct in how %}<div class="barrow"><span>{{ lab }}</span><span class="tr"><i style="width:{{ pct }}%"></i></span><b>{{ cnt }}</b></div>{% endfor %}</div></div>
-<div class="panel"><div class="ph">자동 처리를 늘리면</div><p class="sub">배송 조회·교환·반품처럼 처리 방법이 정해진 유형은 자동 처리를 켜면 접수 즉시 답변이 가요.</p><a class="btn md" href="{{ url_for('rules') }}" style="margin-top:18px">자동 처리 설정</a></div>
 </div>
 {% endblock %}
