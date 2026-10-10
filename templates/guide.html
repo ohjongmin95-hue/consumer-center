@@ -47,19 +47,15 @@
   {% set inds = items('guide_industries') %}
   <section class="gd-section" aria-labelledby="gd-ind">
     <h2 class="gd-head" id="gd-ind"><i>{{ "%02d" % num }}</i>{{ ui('guide.h_industry', '업종별로 꼭 적어 주세요') }}</h2>
-    <p class="gd-lead">{{ ui('guide.ind_lead', '내 피해가 어느 업종인지 골라 보세요. 업종마다 확인에 꼭 필요한 정보가 달라요.') }}</p>
+    <p class="gd-lead">{{ ui('guide.ind_lead', '업종마다 확인에 꼭 필요한 정보가 달라요. 내 피해에 해당하는 업종을 찾아 보세요.') }}</p>
     {% if inds %}
-    <div class="gd-filter" role="group" aria-label="{{ ui('guide.ind_filter', '업종 고르기') }}">
-      <button type="button" class="on" aria-pressed="true" data-ind="all">{{ ui('guide.ind_all', '전체') }}</button>
-      {% for x in g.lists.get('guide_industries', []) %}<button type="button" aria-pressed="false" data-ind="{{ loop.index }}">{{ x.name }}</button>{% endfor %}
-    </div>
     <div class="gd-inds">
     {% for x in inds %}
       {% set raw = g.lists.get('guide_industries', [])[loop.index0] %}
       {% set must_raw = raw.must or (raw.points or '').replace('\n', ', ') %}
-      <article class="gd-ind" data-ind="{{ loop.index }}">
-        {% set art = raw.icon or raw.image %}{% if art in industry_art %}<img src="{{ url_for('static', filename='img/guide-ind-%s.svg' % art, v=css_v) }}" alt="" width="330" height="200" loading="lazy">{% endif %}
-        <header><h3>{{ x.name }}</h3>{% if x.examples %}<small>{{ x.examples }}</small>{% endif %}</header>
+      <article class="gd-ind">
+        {% set art = raw.icon or raw.image %}
+        <header>{% if art in industry_art %}<img src="{{ url_for('static', filename='img/guide-ind-%s.svg' % art, v=css_v) }}" alt="" width="330" height="200" loading="lazy">{% endif %}<div><h3>{{ x.name }}</h3>{% if x.examples %}<small>{{ x.examples }}</small>{% endif %}</div></header>
         {% if must_raw %}<p class="gd-ind-label">{{ ui('guide.ind_must', '꼭 적어 주세요') }}</p>
         <ul class="gd-must"{{ ed_attr('list:guide_industries:%d:must' % loop.index0, must_raw) }}>{% for m in must_raw.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul>{% endif %}
         {% if x.materials %}<p class="gd-ind-label">{{ ui('guide.ind_materials', '있으면 좋은 자료') }}</p>
@@ -71,19 +67,6 @@
     {% endif %}{{ ed_list('guide_industries') }}
     <p class="gd-foot">{{ ui('guide.ind_foot', '모든 자료를 갖출 필요는 없어요. 지금 갖고 있는 것부터 올려 주세요.') }}</p>
   </section>
-  <script>
-  document.querySelectorAll('.gd-filter button').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var pick = btn.getAttribute('data-ind');
-      document.querySelectorAll('.gd-filter button').forEach(function (b) {
-        var on = b === btn; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-      document.querySelectorAll('.gd-ind').forEach(function (card) {
-        card.hidden = pick !== 'all' && card.getAttribute('data-ind') !== pick;
-      });
-    });
-  });
-  </script>
 
 {% elif block.kind == 'guide_basics' %}
   <section class="guide-section" id="purchase-info" aria-labelledby="purchase-heading">
