@@ -46,29 +46,40 @@
 {% elif block.kind == 'guide_industry' %}
   {% set inds = items('guide_industries') %}
   <section class="gd-section" aria-labelledby="gd-ind">
-    <h2 class="gd-head" id="gd-ind"><i>{{ "%02d" % num }}</i>{{ ui('guide.h_industry', '업종별로 이것 위주로') }}</h2>
+    <h2 class="gd-head" id="gd-ind"><i>{{ "%02d" % num }}</i>{{ ui('guide.h_industry', '업종별로 꼭 적어 주세요') }}</h2>
+    <p class="gd-lead">{{ ui('guide.ind_lead', '내 피해가 어느 업종인지 골라 보세요. 업종마다 확인에 꼭 필요한 정보가 달라요.') }}</p>
     {% if inds %}
-    <div class="gd-tabs" role="tablist">
-      {% for x in g.lists.get('guide_industries', []) %}<button type="button" role="tab" id="gd-tab-{{ loop.index }}" aria-controls="gd-pane-{{ loop.index }}" aria-selected="{{ 'true' if loop.first else 'false' }}"{% if loop.first %} class="on"{% endif %}>{{ x.name }}</button>{% endfor %}
+    <div class="gd-filter" role="group" aria-label="{{ ui('guide.ind_filter', '업종 고르기') }}">
+      <button type="button" class="on" aria-pressed="true" data-ind="all">{{ ui('guide.ind_all', '전체') }}</button>
+      {% for x in g.lists.get('guide_industries', []) %}<button type="button" aria-pressed="false" data-ind="{{ loop.index }}">{{ x.name }}</button>{% endfor %}
     </div>
+    <div class="gd-inds">
     {% for x in inds %}
-    <div class="gd-topic{% if not x.image %} no-art{% endif %}" role="tabpanel" id="gd-pane-{{ loop.index }}" aria-labelledby="gd-tab-{{ loop.index }}"{% if not loop.first %} hidden{% endif %}>
-      {% if x.image %}<img src="{{ url_for('static', filename='img/guide-ind-%s.svg' % x.image, v=css_v) }}" alt="" width="330" height="200" loading="lazy">{% endif %}
-      <div><em>{{ x.name }}</em><h3>{{ x.focus }}</h3>
-        {% if x.points %}<ol class="gd-points"{{ ed_attr('list:guide_industries:%d:points' % loop.index0, x.points) }}>{% for line in x.points.split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ol>{% endif %}
-        {% if x.materials %}<p class="gd-mat-label">{{ ui('guide.ind_materials', '준비 자료') }}</p><ul class="gd-chips"{{ ed_attr('list:guide_industries:%d:materials' % loop.index0, x.materials) }}>{% for m in x.materials.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul>{% endif %}
-      </div>
-    </div>
+      {% set raw = g.lists.get('guide_industries', [])[loop.index0] %}
+      {% set must_raw = raw.must or (raw.points or '').replace('\n', ', ') %}
+      <article class="gd-ind" data-ind="{{ loop.index }}">
+        {% set art = raw.icon or raw.image %}{% if art in industry_art %}<img src="{{ url_for('static', filename='img/guide-ind-%s.svg' % art, v=css_v) }}" alt="" width="330" height="200" loading="lazy">{% endif %}
+        <header><h3>{{ x.name }}</h3>{% if x.examples %}<small>{{ x.examples }}</small>{% endif %}</header>
+        {% if must_raw %}<p class="gd-ind-label">{{ ui('guide.ind_must', '꼭 적어 주세요') }}</p>
+        <ul class="gd-must"{{ ed_attr('list:guide_industries:%d:must' % loop.index0, must_raw) }}>{% for m in must_raw.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul>{% endif %}
+        {% if x.materials %}<p class="gd-ind-label">{{ ui('guide.ind_materials', '있으면 좋은 자료') }}</p>
+        <ul class="gd-chips"{{ ed_attr('list:guide_industries:%d:materials' % loop.index0, raw.materials) }}>{% for m in x.materials.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul>{% endif %}
+        {% if x.tip %}<p class="gd-ind-tip">{{ x.tip }}</p>{% endif %}
+      </article>
     {% endfor %}
+    </div>
     {% endif %}{{ ed_list('guide_industries') }}
     <p class="gd-foot">{{ ui('guide.ind_foot', '모든 자료를 갖출 필요는 없어요. 지금 갖고 있는 것부터 올려 주세요.') }}</p>
   </section>
   <script>
-  document.querySelectorAll('.gd-tabs [role=tab]').forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      document.querySelectorAll('.gd-tabs [role=tab]').forEach(function (t) {
-        var on = t === tab; t.classList.toggle('on', on); t.setAttribute('aria-selected', on ? 'true' : 'false');
-        document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+  document.querySelectorAll('.gd-filter button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pick = btn.getAttribute('data-ind');
+      document.querySelectorAll('.gd-filter button').forEach(function (b) {
+        var on = b === btn; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      document.querySelectorAll('.gd-ind').forEach(function (card) {
+        card.hidden = pick !== 'all' && card.getAttribute('data-ind') !== pick;
       });
     });
   });

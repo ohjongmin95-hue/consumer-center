@@ -88,7 +88,7 @@ def content_for_request():
     if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
 # 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
 LIST_DISPLAY_FIELDS={'menu':('label',),'home_blocks':('title','body','button_label'),'faq':('q','a'),'process_steps':('title','body'),
-    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'guide_steps':('title',),'guide_industries':('focus',),'sample_reports':('title','company'),
+    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'guide_steps':('title',),'guide_industries':('name','examples','tip'),'sample_reports':('title','company'),
     'custom_pages':('title',),'report_consents':('title','body','agree'),**{'layout_'+p:('title','body','button_label') for p in site_content.PAGE_SECTIONS}}
 def items(key):
     rows=g.lists.get(key,[])
@@ -129,6 +129,7 @@ GUIDE_ICONS={  # 이용 안내 단계 카드 아이콘 (주황 선이 포인트)
     'chat':'<path d="M7 9h34v22H20l-9 8v-8H7z"/><path class="o" d="M15 18h18M15 24h11"/>',
     'check':'<circle cx="24" cy="24" r="17"/><path class="o" d="M16 24l6 6 11-12"/>',
 }
+app.jinja_env.globals['industry_art']={k for k,_ in site_content.INDUSTRY_ART if k}  # static/img/guide-ind-<이름>.svg 가 있는 그림
 app.jinja_env.globals['guide_icon']=lambda name:Markup('<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">%s</svg>'%GUIDE_ICONS.get(name,GUIDE_ICONS['write']))
 STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']
 app.jinja_env.globals['step_icon']=lambda item,i:item.get('icon') or STEP_ICON_ORDER[i%len(STEP_ICON_ORDER)]
