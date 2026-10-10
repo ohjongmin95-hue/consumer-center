@@ -88,7 +88,7 @@ def content_for_request():
     if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
 # 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
 LIST_DISPLAY_FIELDS={'menu':('label',),'home_blocks':('title','body','button_label'),'faq':('q','a'),'process_steps':('title','body'),
-    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'guide_steps':('title',),'guide_industries':('focus',),'sample_reports':('title','company'),
+    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'guide_steps':('title',),'guide_industries':('name','examples','tip'),'sample_reports':('title','company'),
     'custom_pages':('title',),'report_consents':('title','body','agree'),**{'layout_'+p:('title','body','button_label') for p in site_content.PAGE_SECTIONS}}
 def items(key):
     rows=g.lists.get(key,[])
@@ -129,6 +129,23 @@ GUIDE_ICONS={  # 이용 안내 단계 카드 아이콘 (주황 선이 포인트)
     'chat':'<path d="M7 9h34v22H20l-9 8v-8H7z"/><path class="o" d="M15 18h18M15 24h11"/>',
     'check':'<circle cx="24" cy="24" r="17"/><path class="o" d="M16 24l6 6 11-12"/>',
 }
+INDUSTRY_ICONS={  # 이용 안내 업종 카드 아이콘 (48칸, 주황 선이 포인트)
+    'food':'<path d="M8 22h32a16 16 0 0 1-32 0z"/><path d="M14 40h20"/><path class="o" d="M18 16c0-3 3-3 3-6M26 16c0-3 3-3 3-6"/>',
+    'medical':'<rect x="6" y="16" width="36" height="16" rx="8"/><path d="M24 16v16"/><path class="o" d="M31 21v6M28 24h6"/>',
+    'commerce':'<path d="M6 9h6l4 22h22l4-15H14"/><circle cx="19" cy="38" r="3"/><circle cx="34" cy="38" r="3"/><path class="o" d="M21 22h14"/>',
+    'fashion':'<path d="M17 7l-10 6 4 8 4-2v21h18V19l4 2 4-8-10-6"/><path class="o" d="M17 7a7 7 0 0 0 14 0"/>',
+    'appliance':'<rect x="11" y="5" width="26" height="38" rx="3"/><path d="M11 13h26"/><circle cx="24" cy="28" r="8"/><path class="o" d="M16 9h3M28 9h4"/>',
+    'rental':'<rect x="10" y="6" width="28" height="36" rx="3"/><path d="M16 15h16M16 21h16M16 27h9"/><path class="o" d="M24 36l3 3 6-6"/>',
+    'car':'<path d="M6 30v-6l5-10h26l5 10v6z"/><path d="M6 30v6h6v-6M36 30v6h6v-6"/><path class="o" d="M13 24h4M31 24h4"/>',
+    'telecom':'<path d="M24 26v16"/><path d="M18 42h12"/><circle cx="24" cy="22" r="3"/><path class="o" d="M16 14a11 11 0 0 0 0 16M32 14a11 11 0 0 1 0 16M10 9a19 19 0 0 0 0 26M38 9a19 19 0 0 1 0 26"/>',
+    'finance':'<rect x="5" y="12" width="38" height="25" rx="4"/><path d="M5 19h38"/><path class="o" d="M11 29h10"/>',
+    'game':'<path d="M14 14h20a9 9 0 0 1 9 9v4a7 7 0 0 1-12 5l-2-2H19l-2 2a7 7 0 0 1-12-5v-4a9 9 0 0 1 9-9z"/><path d="M15 20v8M11 24h8"/><path class="o" d="M31 22h.1M35 26h.1" stroke-width="3.5"/>',
+    'travel':'<path d="M21 40l3-14-12 6-4-3 16-12 2-9a2 2 0 0 1 4 0l-1 9 12 9-3 3-9-4-4 15z"/><path class="o" d="M8 42h14"/>',
+    'service':'<path d="M4 18l20-9 20 9-20 9z"/><path d="M12 22v10c0 4 24 4 24 0V22"/><path class="o" d="M44 18v12"/>',
+    'building':'<path d="M6 42h36"/><path d="M10 42V20l14-11 14 11v22"/><path d="M20 42V30h8v12"/><path class="o" d="M16 22h4M28 22h4"/>',
+    'other':'<rect x="8" y="8" width="32" height="32" rx="6"/><path class="o" d="M16 24h.1M24 24h.1M32 24h.1" stroke-width="4"/>',
+}
+app.jinja_env.globals['industry_icon']=lambda name:Markup('<svg viewBox="0 0 48 48" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">%s</svg>'%INDUSTRY_ICONS.get(name,INDUSTRY_ICONS['other']))
 app.jinja_env.globals['guide_icon']=lambda name:Markup('<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">%s</svg>'%GUIDE_ICONS.get(name,GUIDE_ICONS['write']))
 STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']
 app.jinja_env.globals['step_icon']=lambda item,i:item.get('icon') or STEP_ICON_ORDER[i%len(STEP_ICON_ORDER)]
