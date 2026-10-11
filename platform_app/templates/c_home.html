@@ -2,15 +2,13 @@
 {% block title %}{{ CNAME }} · 불편, 한큐에 해결{% endblock %}
 {% block bar %}{{ m.bar('home') }}{% endblock %}
 {% block main %}
-<section class="band w"><div class="wrap hero3">
+<section class="band w"><div class="wrap hero4">
+<div class="tx">
 <h1>불편한 일,<br><em>한큐에</em> 해결해요</h1>
-<p>어느 기업이든 한 번만 접수하세요</p>
+<p>어느 기업이든 한 번만 접수하면<br>기업 답변까지 한곳에서 확인해요</p>
 <a class="btn lg" href="{{ url_for('new') }}">접수하기</a>
-</div></section>
-
-<section class="band w tight"><div class="wrap">
-<div class="shead c"><h2>이런 불편을 접수할 수 있어요</h2></div>
-<div class="tiles six">{% for cat in CATS %}<div class="tile still"><span class="box">{{ i.cat_icon(cat,48) }}</span><span>{{ cat }}</span></div>{% endfor %}</div>
+</div>
+<div class="vis" aria-hidden="true">{% for cat in CATS %}<span class="ic">{{ i.cat_icon(cat,44) }}<em>{{ cat }}</em></span>{% endfor %}</div>
 </div></section>
 
 {% if rows %}<section class="band g"><div class="wrap">
@@ -18,8 +16,8 @@
 <div class="cgrid">{% for c in rows %}{{ m.case_card(c,url_for('case',case_id=c.id)) }}{% endfor %}</div></div></section>{% endif %}
 
 <section class="band {{ 'w' if rows else 'g' }}"><div class="wrap">
-<div class="shead c"><h2>이렇게 진행돼요</h2></div>
+<div class="shead"><h2>이렇게 진행돼요</h2></div>
 <div class="steps3">{% for ic,t,s in [('note','한 번만 접수','기업과 불편한 일, 원하는 해결을 적어요'),('reply','기업이 답변','입점 기업은 2일 안에 답변과 조치를 해요'),('shield','해결 확인','해결되지 않으면 공식 피해구제로 안내해요')] %}
-<div>{{ i.icon(ic,44) }}<b>{{ t }}</b><p>{{ s }}</p></div>{% endfor %}</div>
+<div><span class="num">{{ loop.index }}</span><b>{{ t }}</b><p>{{ s }}</p></div>{% endfor %}</div>
 </div></section>
 {% endblock %}
