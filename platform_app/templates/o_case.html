@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}
-{% block title %}운영 · SOBORU{% endblock %}
+{% block title %}{{ CNAME }} 운영{% endblock %}
 {% block bar %}{{ b.obar(otab,0) }}{% endblock %}
 {% block body %}
 <div class="crumb"><a href="{{ url_for('ops') }}">비입점 민원</a><span>›</span><span class="no">{{ c.no }}</span></div><section class="phead"><div>

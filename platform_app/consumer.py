@@ -151,7 +151,7 @@ def case(case_id):
                 elif c['consent']:
                     db.execute("UPDATE cases SET status='received' WHERE id=?",(c['id'],))
                     core.add_event(db,c['id'],'sys','센터가 기업에 다시 전달할게요')
-                    core.send_mail(os.getenv('OPS_EMAIL',''),f"[SOBORU] 비입점 민원 다시 요청: {c['title']}",core.site_url('biz','/ops/case/%d'%c['id']))
+                    core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 비입점 민원 다시 요청: {c['title']}",core.site_url('biz','/ops/case/%d'%c['id']))
                 flash('다시 요청했어요','ok')
             elif act in ('info','add') and msg and c['status'] not in ('resolved','unresolved'):
                 err=core.files_ok(request.files.getlist('files'))
