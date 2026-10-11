@@ -46,6 +46,9 @@ class PlatformTest(unittest.TestCase):
         self.post(o,'/biz/ops/companies',{'act':'approve','id':cid})
         r=self.post(b,'/biz/login',{'login_id':email,'password':'longpassword1'})
         self.assertEqual(r.status_code,302)
+        # 같은 브라우저에서 운영 화면에 로그인해도 기업 로그인이 풀리지 않는다
+        self.post(b,'/biz/ops/login',{'password':self.ops_pw})
+        self.assertEqual(b.get('/biz/').status_code,200);self.assertEqual(b.get('/biz/ops').status_code,200)
         return b,o,cid
 
     def file_case(self,c,company,cat,company_id='',consent='1',**extra):
