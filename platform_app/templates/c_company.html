@@ -5,7 +5,7 @@
 <section class="band w"><div class="wrap hero3">
 <span class="av lg">{{ co.name[:1] }}</span>
 <h1 style="margin-top:24px">{{ co.name }}</h1>
-<p>{% if member %}담당자에게 바로 전달되고, 2일 안에 답변을 받아요{% else %}SOBORU 센터가 공식 연락처로 전달해 드려요{% endif %}</p>
+<p>{% if member %}담당자에게 바로 전달되고, 2일 안에 답변을 받아요{% else %}{{ CNAME }} 센터가 공식 연락처로 전달해 드려요{% endif %}</p>
 <a class="btn lg" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a>
 {% if co.contact %}<p class="cap" style="margin-top:20px">고객센터 {{ co.contact }}</p>{% endif %}
 </div></section>

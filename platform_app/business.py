@@ -69,7 +69,7 @@ def signup():
                     db.execute("INSERT INTO companies(name,member,status,contact,login_id,pw_hash,biz_no,owner_name,phone,notify_email,created) VALUES(?,0,'pending',?,?,?,?,?,?,?,?)",
                         (d['name'],d['contact'],d['login_id'].lower(),generate_password_hash(pw),digits(d['biz_no']),d['owner_name'],digits(d['phone']),d['login_id'].lower(),core.iso()))
             if not err:
-                core.send_mail(os.getenv('OPS_EMAIL',''),f"[SOBORU] 기업 가입 신청: {d['name']}",f"{d['name']} ({d['owner_name']})이 가입을 신청했어요.\n{core.site_url('biz','/ops/companies')}")
+                core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 기업 가입 신청: {d['name']}",f"{d['name']} ({d['owner_name']})이 가입을 신청했어요.\n{core.site_url('biz','/ops/companies')}")
                 return render_template('b_signup_done.html',name=d['name'])
         flash(err,'error');return render_template('b_signup.html',d=d),400
     return render_template('b_signup.html',d={})

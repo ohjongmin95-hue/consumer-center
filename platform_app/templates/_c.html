@@ -32,7 +32,7 @@
 {%- endmacro %}
 {% macro timeline(ev,c,viewer) -%}
 <ul class="tl">{% for e in ev|reverse %}<li class="{{ e.kind if e.kind in ('co','sys') else 'me' }}"><div><div class="x">{{ e.text }}{% if e.reply %}
-<div class="reply">{{ e.reply }}</div>{% endif %}</div><div class="w">{{ c.company_name if e.kind=='co' else ('나' if viewer=='me' else '소비자') if e.kind=='me' else 'SOBORU' }} · {{ fmt(e.created) }}</div></div></li>{% endfor %}</ul>
+<div class="reply">{{ e.reply }}</div>{% endif %}</div><div class="w">{{ c.company_name if e.kind=='co' else ('나' if viewer=='me' else '소비자') if e.kind=='me' else CNAME }} · {{ fmt(e.created) }}</div></div></li>{% endfor %}</ul>
 {%- endmacro %}
 {% macro relief() -%}
 <div class="cgrid">{% for ic,t,s,u in [('phone','1372 소비자상담센터','전화 1372 또는 온라인으로 상담해요','https://www.ccn.go.kr'),('building','한국소비자원 피해구제','상담 뒤 피해구제를 신청해요','https://www.kca.go.kr'),('scale','소비자분쟁조정위원회','합의가 안 되면 조정을 요청해요','https://www.kca.go.kr')] %}

@@ -16,7 +16,7 @@
 {%- endmacro %}
 {% macro obar(tab,n_signup) -%}
 <header class="gnb"><div class="wrap">
-<a class="logo" href="{{ url_for('ops') }}"><i></i>SOBORU<small class="w">운영</small></a>
+<a class="logo" href="{{ url_for('ops') }}"><i></i>{{ CNAME }}<small class="w">운영</small></a>
 <nav>
 <a href="{{ url_for('ops') }}" class="{{ 'on' if tab=='non' }}">비입점 민원</a>
 <a href="{{ url_for('ops_all') }}" class="{{ 'on' if tab=='all' }}">전체 현황</a>
