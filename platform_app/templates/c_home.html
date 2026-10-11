@@ -1,6 +1,6 @@
 {% extends 'base.html' %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
 {% block title %}{{ CNAME }} · 불편, 한큐에 해결{% endblock %}
-{% block bar %}{{ m.bar() }}{% endblock %}
+{% block bar %}{{ m.bar('home') }}{% endblock %}
 {% block main %}
 <section class="band w"><div class="wrap hero3">
 <h1>불편한 일,<br><em>한큐에</em> 해결해요</h1>
@@ -9,8 +9,8 @@
 </div></section>
 
 <section class="band w tight"><div class="wrap">
-<div class="shead c"><h2>무엇이 불편했나요?</h2></div>
-<div class="tiles six">{% for cat in CATS %}<a class="tile" href="{{ url_for('new',category=cat) }}"><span class="box">{{ i.cat_icon(cat,48) }}</span><span>{{ cat }}</span></a>{% endfor %}</div>
+<div class="shead c"><h2>이런 불편을 접수할 수 있어요</h2></div>
+<div class="tiles six">{% for cat in CATS %}<div class="tile still"><span class="box">{{ i.cat_icon(cat,48) }}</span><span>{{ cat }}</span></div>{% endfor %}</div>
 </div></section>
 
 {% if rows %}<section class="band g"><div class="wrap">

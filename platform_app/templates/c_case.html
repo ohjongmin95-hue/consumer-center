@@ -24,7 +24,10 @@
 {% if not c.member and c.status in ('received','forwarded','seen') %}
 <div class="panel"><div class="ph">비입점 기업이에요</div><p class="sub">{{ '센터가 공식 연락처로 전달하고 회신을 기록해요' if c.consent else '전달 동의가 없어 접수만 해 두었어요' }}</p>
 {% if co and co.contact %}<div class="hint blue" style="margin-top:14px">{{ i.icon('phone',22) }}<span>고객센터 <b style="user-select:all">{{ co.contact }}</b></span></div>{% endif %}</div>{% endif %}
-{% if c.status=='unresolved' or overdue(c) %}<div><div class="shead" style="margin-bottom:16px"><h2 style="font-size:22px">공식 피해구제</h2></div>{{ m.relief() }}</div>{% endif %}
+{% if again %}<form class="panel" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="again">
+<div class="ph" style="margin-bottom:4px">기업에 다시 요청할까요?</div><p class="sub">{{ '답변 목표일이 지났어요. 다시 요청하면 기업에 한 번 더 알려요.' if overdue(c) else '해결되지 않은 내용을 덧붙여 한 번 더 보내요.' }}</p>
+<div class="addline" style="margin-top:14px"><input class="inp" name="msg" maxlength="2000" placeholder="덧붙일 말 (선택)"><button class="btn md">다시 요청</button></div></form>{% endif %}
+{% if c.status=='unresolved' or overdue(c) %}<div><div class="shead" style="margin-bottom:16px"><h2 style="font-size:22px">공식 피해구제</h2><div class="r"><a href="{{ url_for('relief',case_id=c.id) }}">신청 자료 정리하기</a></div></div>{{ m.relief() }}</div>{% endif %}
 <div class="panel"><div class="ph">진행 기록</div>{{ m.timeline(ev,c,'me') }}
 {% if c.status in ('received','forwarded','seen','answered') %}
 <form method="post" enctype="multipart/form-data" class="addline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="add">

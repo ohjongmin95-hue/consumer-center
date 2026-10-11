@@ -1,0 +1,38 @@
+{% extends 'base.html' %}{% import '_c.html' as m with context %}
+{% block title %}피해구제 신청 자료 · {{ CNAME }}{% endblock %}
+{% block bar %}{{ m.bar('mine') }}{% endblock %}
+{% block body %}
+<div class="narrow">
+<div class="crumb noprint"><a href="{{ url_for('mine') }}">내 접수</a><span>›</span><a href="{{ url_for('case',case_id=c.id) }}">{{ c.no }}</a><span>›</span><span>신청 자료</span></div>
+<div class="phead"><div><h1>피해구제 신청 자료</h1><p>1372 소비자상담센터나 한국소비자원에 상담·신청할 때 그대로 쓰세요</p></div>
+<div class="noprint" style="display:flex;gap:8px"><button class="btn md gray" type="button" id="copy">내용 복사</button><button class="btn md" type="button" onclick="window.print()">인쇄·PDF 저장</button></div></div>
+<div class="panel doc" id="doc">
+<div class="ph">사건 개요</div>
+<dl class="kv">
+<dt>접수번호</dt><dd class="no">{{ c.no }}</dd>
+<dt>상대 기업</dt><dd>{{ c.company_name }}{% if co and co.contact %} ({{ co.contact }}){% endif %}</dd>
+<dt>유형</dt><dd>{{ c.category }}</dd>
+{% if c.order_no %}<dt>주문번호</dt><dd class="no">{{ c.order_no }}</dd>{% endif %}
+<dt>처음 접수</dt><dd>{{ fmt(c.created) }}</dd>
+<dt>원하는 해결</dt><dd>{{ c.want }}</dd>
+<dt>현재 상태</dt><dd>{{ m.status_text(c) }}</dd>
+</dl>
+<div class="hr"></div>
+<div class="ph">내용</div>
+<div class="tt2">{{ c.title }}</div>
+<p class="bodytext sm">{{ c.body }}</p>
+<div class="hr"></div>
+<div class="ph">경과</div>
+<ol class="steps-doc">{% for e in ev %}<li><span class="t-mute">{{ fmt(e.created) }}</span> {{ e.text }}{% if e.reply %}<div class="reply">{{ e.reply }}</div>{% endif %}</li>{% endfor %}</ol>
+{% if files %}<div class="hr"></div><div class="ph">증빙 자료</div>
+<ul class="files-doc">{% for f in files %}<li><a href="{{ url_for('case_file',case_id=c.id,file_id=f.id) }}">{{ f.original }}</a></li>{% endfor %}</ul>
+<p class="cap noprint">파일은 눌러서 내려받은 뒤 신청할 때 첨부하세요</p>{% endif %}
+</div>
+<div class="shead noprint" style="margin-top:40px"><h2 style="font-size:22px">어디에 신청하나요?</h2></div>
+<div class="noprint">{{ m.relief() }}</div>
+</div>
+{% endblock %}
+{% block script %}<script>
+document.getElementById('copy').addEventListener('click',function(){var b=this,t=document.getElementById('doc').innerText;
+(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='복사했어요';},function(){var r=document.createRange();r.selectNodeContents(document.getElementById('doc'));var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='선택했어요. 복사하세요';});});
+</script>{% endblock %}

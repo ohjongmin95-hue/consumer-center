@@ -12,7 +12,7 @@
   <h1 class="h1">어느 기업인가요?</h1>
   <div style="margin-top:28px"><input class="big" name="company" id="fCompany" maxlength="60" placeholder="기업이나 쇼핑몰 이름" value="{{ d.company or '' }}" required></div>
   <div class="rows" id="sugg" style="margin-top:16px" hidden></div>
-  <div class="hint ok" id="hMember" style="margin-top:20px" hidden><span>⚡</span><span><b>입점 기업</b> · 담당자에게 바로 전달돼요</span></div>
+  <div class="hint ok" id="hMember" style="margin-top:20px" {{ '' if d.member else 'hidden' }}><span>⚡</span><span><b>입점 기업</b> · 담당자에게 바로 전달돼요</span></div>
   <div class="hint blue" id="hNon" style="margin-top:20px" hidden><span>📮</span><span><b>비입점 기업</b> · 센터가 공식 연락처로 전달을 시도해요</span></div>
 </section>
 <section class="step" data-step="1">

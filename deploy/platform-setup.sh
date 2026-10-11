@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SOBORU 플랫폼(한큐 + SOBORU Business)을 소비자제보센터와 같은 서버에 별도 서비스로 설치합니다.
+# SOBORU 플랫폼(한큐 + 한큐 비즈)을 소비자제보센터와 같은 서버에 별도 서비스로 설치합니다.
 # 먼저 setup.sh로 소비자제보센터가 설치돼 있어야 합니다(같은 소스 폴더를 씁니다).
 # 사용법: sudo bash /opt/soboru/app/deploy/platform-setup.sh 소비자용도메인 기업용도메인 이메일
 #   예: sudo bash platform-setup.sh hanq.example.kr business.example.kr me@example.com
@@ -55,7 +55,7 @@ chown root:soboru "$ENV_FILE"; chmod 640 "$ENV_FILE"
 echo "== 3/5 앱 서비스 등록 (soboru-platform)"
 cat > /etc/systemd/system/soboru-platform.service <<UNIT
 [Unit]
-Description=SOBORU 플랫폼 (한큐 + SOBORU Business)
+Description=SOBORU 플랫폼 (한큐 + 한큐 비즈)
 After=network.target
 
 [Service]
@@ -108,6 +108,14 @@ find $DATA/backups -type f -mtime +14 -delete
 BACKUP
 chmod 755 /etc/cron.daily/soboru-platform-backup
 
+cat > /etc/cron.hourly/soboru-platform-late <<'CRON'
+#!/bin/sh
+# 답변 목표일이 지난 민원을 소비자와 기업에 알립니다.
+set -a; . /etc/soboru-platform.env; set +a
+cd /opt/soboru/app/platform_app && runuser -u soboru -- /opt/soboru/venv/bin/python notify_late.py >/dev/null 2>&1
+CRON
+chmod 755 /etc/cron.hourly/soboru-platform-late
+
 echo "== 5/5 HTTPS 인증서"
 MYIP=$(curl -fsS https://checkip.amazonaws.com || true)
 OK=()
@@ -120,7 +128,7 @@ if [[ ${#OK[@]} -eq 4 ]]; then
   systemctl restart soboru-platform
   echo; echo "완료"
   echo "  한큐:             https://$CONSUMER"
-  echo "  SOBORU Business:  https://$BUSINESS"
+  echo "  한큐 비즈:  https://$BUSINESS"
   echo "  운영 화면:        https://$BUSINESS/ops"
 else
   echo; echo "두 도메인의 DNS가 모두 이 서버를 가리키면 같은 명령을 다시 실행해 주세요. 그때 HTTPS가 설정됩니다."

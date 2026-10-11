@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
-{% block title %}가입 · SOBORU Business{% endblock %}
+{% block title %}가입 · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('signup') }}{% endblock %}
 {% block body %}
 <div class="signup"><div class="pitch"><h1>우리 회사 민원,<br><em>한 곳에서</em> 관리하세요</h1><p>소비자가 {{ CNAME }}에 접수한 우리 회사 민원을 한 화면에서 승인하고 처리해요.</p>

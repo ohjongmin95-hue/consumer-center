@@ -1,8 +1,8 @@
-{# SOBORU Business 공용: 상단 메뉴, 지표, 승인 카드 #}
+{# 기업 서비스 공용: 상단 메뉴, 지표, 승인 카드 #}
 {% import '_i.html' as i %}
 {% macro bar(tab) -%}
 <header class="gnb"><div class="wrap">
-<a class="logo" href="{{ url_for('decide') if co else url_for('login') }}"><i></i>SOBORU<small class="w">Business</small></a>
+<a class="logo" href="{{ url_for('decide') if co else url_for('login') }}"><i></i>{{ CNAME }}<small class="w">비즈</small></a>
 {% if co %}<nav>
 <a href="{{ url_for('decide') }}" class="{{ 'on' if tab=='home' }}">홈{% if n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>
 <a href="{{ url_for('all_cases') }}" class="{{ 'on' if tab=='all' }}">민원</a>

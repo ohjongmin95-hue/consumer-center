@@ -7,7 +7,7 @@
 <a href="{{ url_for('mine') }}" class="{{ 'on' if tab=='mine' }}">내 접수{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a>
 <a href="{{ url_for('guide') }}" class="{{ 'on' if tab=='guide' }}">이용 안내</a>
 </nav>
-<div class="right"><a class="btn sm" href="{{ url_for('new') }}">접수하기</a></div>
+{% if tab!='home' %}<div class="right"><a class="btn sm" href="{{ url_for('new') }}">접수하기</a></div>{% endif %}
 </div></header>
 {%- endmacro %}
 {% set ME_ST={'received':'접수됨','forwarded':'전달됨','seen':'확인 중','info':'자료 필요','answered':'답변 도착','resolved':'해결됨','unresolved':'미해결'} %}

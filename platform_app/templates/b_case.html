@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
-{% block title %}{{ c.title }} · SOBORU Business{% endblock %}
+{% block title %}{{ c.title }} · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('all') }}{% endblock %}
 {% block body %}
 <div class="crumb"><a href="{{ url_for('decide') }}">홈</a><span>›</span><a href="{{ url_for('all_cases') }}">민원</a><span>›</span><span class="no">{{ c.no }}</span></div>
