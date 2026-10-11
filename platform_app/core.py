@@ -1,6 +1,6 @@
 """SOBORU 플랫폼 공통: DB, 처리 규칙(플레이북), 사건 처리 동작, 보안 도우미.
 
-소비자용(한큐)과 기업용(SOBORU Business)이 같은 DB의 같은 사건을 다룬다.
+소비자용(한큐)과 기업용(한큐 비즈)이 같은 DB의 같은 사건을 다룬다.
 홈페이지(소비자제보센터, 저장소 최상위 app.py)와는 DB도 서비스도 따로 쓴다.
 """
 import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, threading
@@ -18,6 +18,7 @@ CONSUMER_HOST=os.getenv('CONSUMER_HOST','').strip().lower()
 BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
 PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'  # 시범 운영: 화면 위에 '실제 개인정보 넣지 마세요' 띠
 CNAME=os.getenv('CONSUMER_NAME','한큐')  # 소비자 서비스 이름 (로고·제목·메일)
+BNAME=os.getenv('BUSINESS_NAME',CNAME+' 비즈')  # 기업 서비스 이름
 MAIL_ASYNC=True  # 테스트에서는 False
 
 CATS=['배송 조회','교환','반품·환불','제품 불량','고객 응대','기타']
@@ -123,7 +124,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,CATS=CATS,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,CNAME=CNAME,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,CATS=CATS,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,CNAME=CNAME,BNAME=BNAME,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
@@ -183,7 +184,7 @@ def notify_late():
             if not overdue(c) or c['late_sent']==c['due']:continue
             send_mail(c['email'],f'[{CNAME}] 기업 답변이 늦어지고 있어요',f"{c['company_name']}의 답변이 목표일({fmt_day(c['due'])})을 넘겼어요.\n접수 화면에서 기업에 다시 요청하거나 공식 피해구제 절차를 확인할 수 있어요.\n\n■ 접수번호: {c['no']}\n{site_or_blank('me','/mine')}")
             co=company(db,c['company_id'])
-            if co:send_mail(co['notify_email'],f"[SOBORU Business] 답변 목표일이 지났어요: {c['title']}",f"소비자에게 답변 지연을 알렸어요. 지금 답변해 주세요.\n{site_or_blank('biz','/case/%d'%c['id'])}")
+            if co:send_mail(co['notify_email'],f"[{BNAME}] 답변 목표일이 지났어요: {c['title']}",f"소비자에게 답변 지연을 알렸어요. 지금 답변해 주세요.\n{site_or_blank('biz','/case/%d'%c['id'])}")
             add_event(db,c['id'],'sys','답변 목표일이 지나 소비자와 기업에 알렸어요')
             db.execute('UPDATE cases SET late_sent=? WHERE id=?',(c['due'],c['id']));n+=1
     return n

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
-{% block title %}설정 · SOBORU Business{% endblock %}
+{% block title %}설정 · {{ BNAME }}{% endblock %}
 {% block script %}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했어요';},function(){b.textContent='선택했어요';});};});</script>{% endblock %}
 {% block bar %}{{ b.bar('settings') }}{% endblock %}
 {% block body %}

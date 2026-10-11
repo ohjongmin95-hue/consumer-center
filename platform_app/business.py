@@ -1,4 +1,4 @@
-"""기업용 SOBORU Business (+ 센터 운영 화면 /ops).
+"""기업용 한큐 비즈 (+ 센터 운영 화면 /ops).
 
 기업: 가입 → 운영자 승인 → 로그인 → 승인 카드(승인·보류·자료 요청), 전체 민원, 자동 처리 규칙, 설정.
 운영자: 기업 가입 승인, 기업 목록, 비입점 기업 민원 처리(전달 시도·회신 기록·피해구제 안내).
@@ -288,7 +288,7 @@ def ops_companies():
                 old=db.execute("SELECT id FROM companies WHERE status='listed' AND lower(name)=lower(?)",(co['name'],)).fetchall()
                 for o in old:db.execute('UPDATE cases SET company_id=? WHERE company_id=?',(co['id'],o['id']));db.execute('DELETE FROM companies WHERE id=?',(o['id'],))
                 db.execute("UPDATE companies SET status='active',member=1 WHERE id=?",(co['id'],))
-                core.send_mail(co['notify_email'],'[SOBORU Business] 가입이 승인됐어요',f"{co['name']}의 SOBORU Business 가입이 승인됐어요.\n{core.site_url('biz','/login')}")
+                core.send_mail(co['notify_email'],f'[{core.BNAME}] 가입이 승인됐어요',f"{co['name']}의 {core.BNAME} 가입이 승인됐어요.\n{core.site_url('biz','/login')}")
                 flash(f"{co['name']} 승인했어요",'ok')
             elif act=='reject' and co and co['status']=='pending':db.execute("UPDATE companies SET status='rejected' WHERE id=?",(co['id'],));flash('반려했어요','ok')
             elif act=='suspend' and co and co['status']=='active':db.execute("UPDATE companies SET status='suspended',member=0 WHERE id=?",(co['id'],));flash('이용을 중지했어요','ok')

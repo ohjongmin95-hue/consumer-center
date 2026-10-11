@@ -92,7 +92,7 @@ def submit():
             core.add_event(db,case_id,'sys',f"{co['name']} 담당 화면으로 전달했어요. 답변 목표일: {core.fmt_day(due)}")
             c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
             if core.rule_for(db,co['id'],d['category'])['auto']:core.run_playbook(db,c,'auto')
-            else:core.send_mail(co['notify_email'],f"[SOBORU Business] 새 민원: {d['title']}",
+            else:core.send_mail(co['notify_email'],f"[{core.BNAME}] 새 민원: {d['title']}",
                 f"{co['name']}에 새 민원이 들어왔어요.\n\n■ 유형: {d['category']}\n■ 요약: {d['title']}\n\n요약과 추천 조치를 보고 승인해 주세요.\n{core.site_url('biz','/')}")
         elif member:core.add_event(db,case_id,'sys','기업 전달에 동의하지 않아 접수만 했어요.')
         else:core.add_event(db,case_id,'sys','비입점 기업이에요. 센터가 공식 연락처로 전달을 시도할게요.' if d['consent'] else '비입점 기업이고 전달 동의가 없어 접수만 했어요.')
@@ -139,7 +139,7 @@ def case(case_id):
                 v=request.form['v'];db.execute('UPDATE cases SET status=? WHERE id=?',(v,c['id']))
                 core.add_event(db,c['id'],'me','해결됐다고 알려 주셨어요.' if v=='resolved' else '아직 해결되지 않았다고 알려 주셨어요.')
                 if v=='unresolved' and c['member']:
-                    co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[SOBORU Business] 소비자가 미해결로 응답했어요: {c['title']}",f"소비자가 아직 해결되지 않았다고 알려 왔어요.\n{core.site_url('biz','/case/%d'%c['id'])}")
+                    co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[{core.BNAME}] 소비자가 미해결로 응답했어요: {c['title']}",f"소비자가 아직 해결되지 않았다고 알려 왔어요.\n{core.site_url('biz','/case/%d'%c['id'])}")
             elif act=='again' and core.can_follow_up(db,c):
                 text='다시 요청'+(': '+msg if msg else '했어요.')
                 core.add_event(db,c['id'],'me',text)
@@ -147,7 +147,7 @@ def case(case_id):
                     due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))
                     db.execute("UPDATE cases SET status='seen',decision='pending',due=? WHERE id=?",(due,c['id']))
                     core.add_event(db,c['id'],'sys',f"{c['company_name']}에 다시 전달했어요. 답변 목표일: {core.fmt_day(due)}")
-                    co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[SOBORU Business] 소비자가 다시 요청했어요: {c['title']}",f"{msg or '아직 해결되지 않았다고 알려 왔어요.'}\n{core.site_url('biz','/case/%d'%c['id'])}")
+                    co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[{core.BNAME}] 소비자가 다시 요청했어요: {c['title']}",f"{msg or '아직 해결되지 않았다고 알려 왔어요.'}\n{core.site_url('biz','/case/%d'%c['id'])}")
                 elif c['consent']:
                     db.execute("UPDATE cases SET status='received' WHERE id=?",(c['id'],))
                     core.add_event(db,c['id'],'sys','센터가 기업에 다시 전달할게요')
@@ -160,7 +160,7 @@ def case(case_id):
                 core.save_files(db,c['id'],request.files.getlist('files'),eid)
                 if act=='info' and c['status']=='info':db.execute("UPDATE cases SET status='seen',decision='pending' WHERE id=?",(c['id'],))
                 if c['member']:
-                    co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[SOBORU Business] 소비자가 내용을 보냈어요: {c['title']}",f"{core.site_url('biz','/case/%d'%c['id'])}")
+                    co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[{core.BNAME}] 소비자가 내용을 보냈어요: {c['title']}",f"{core.site_url('biz','/case/%d'%c['id'])}")
         return redirect(url_for('case',case_id=case_id))
     with conn() as db:
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id'])

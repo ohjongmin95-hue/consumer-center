@@ -7,7 +7,7 @@ git -C /opt/soboru/app fetch -q origin "$BRANCH"
 git -C /opt/soboru/app checkout -q -B "$BRANCH" "origin/$BRANCH"
 /opt/soboru/venv/bin/pip install -q -r /opt/soboru/app/requirements.txt
 systemctl restart soboru
-# SOBORU 플랫폼(한큐 + SOBORU Business)이 설치돼 있으면 같이 다시 시작
+# SOBORU 플랫폼(한큐 + 한큐 비즈)이 설치돼 있으면 같이 다시 시작
 if [ -f /etc/systemd/system/soboru-platform.service ]; then
   systemctl restart soboru-platform
   # 답변 목표일이 지난 민원 알림 (한 시간마다)
