@@ -19,6 +19,16 @@
 <form method="post" class="stack" style="gap:10px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="ship">
 <select class="inp" name="courier" required><option value="">택배사 고르기</option>{% for k in COURIERS %}<option {{ 'selected' if co and co.return_courier==k }}>{{ k }}</option>{% endfor %}<option>기타</option></select>
 <input class="inp" name="tracking" inputmode="numeric" maxlength="30" placeholder="송장번호" required><button class="btn md">송장번호 알리기</button></form>{% endif %}</div>{% endif %}
+{% if refund_case(c) %}<div class="panel"><div class="ph">환불 받을 계좌</div>
+{% if c.refund_status=='done' %}<p class="sub" style="margin:0">{{ c.company_name }}이(가) 환불을 완료했어요. 등록하신 계좌 정보는 지웠어요.</p>
+{% else %}{% if c.refund_status=='requested' %}<p class="sub" style="margin:0 0 14px">{{ c.refund_bank }} {{ mask_account(c.refund_account) }} ({{ c.refund_holder }}) 으로 등록했어요. 바꾸려면 다시 입력해 주세요.</p>
+{% else %}<p class="sub" style="margin:0 0 14px">계좌이체나 무통장으로 결제하셨다면 환불 받을 계좌를 알려 주세요. 카드 결제는 결제 취소로 환불돼서 등록하지 않아도 돼요.</p>{% endif %}
+<form method="post" class="stack" style="gap:10px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="refund">
+<select class="inp" name="bank" required><option value="">은행 고르기</option>{% for k in BANKS %}<option {{ 'selected' if c.refund_bank==k }}>{{ k }}</option>{% endfor %}</select>
+<input class="inp" name="account" inputmode="numeric" maxlength="20" placeholder="계좌번호 (숫자만)" required>
+<input class="inp" name="holder" maxlength="20" placeholder="예금주" value="{{ c.refund_holder or c.name or '' }}" required>
+<button class="btn md">{{ '계좌 바꾸기' if c.refund_status=='requested' else '계좌 등록하기' }}</button>
+<p class="cap" style="margin:0">환불이 끝나면 계좌 정보는 바로 지워요.</p></form>{% endif %}</div>{% endif %}
 {% if c.status=='info' %}
 <form class="panel" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="info">
 <div class="ph">자료를 보내 주세요</div><p class="sub">{{ c.info_ask }}</p>

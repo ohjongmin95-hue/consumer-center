@@ -8,6 +8,7 @@ from pathlib import Path
 from email.message import EmailMessage
 from flask import session, request, abort, g
 from markupsafe import Markup, escape
+import law
 
 BASE=Path(__file__).parent
 DB=Path(os.getenv('PLATFORM_DATABASE_PATH',str(BASE/'platform.sqlite3')))
@@ -46,6 +47,34 @@ PLAYBOOK={
   '고객 응대':{'title':'사과 답변 + 담당자 연락','steps':['사과 답변','담당자 배정','직접 연락'],'reply':'응대 과정에서 불쾌하셨던 점 진심으로 사과드립니다. 담당자가 직접 연락드려 자세히 듣고 바로잡겠습니다.','auto_ok':False},
   '기타':{'title':'담당자 직접 답변','steps':['담당자 배정','직접 답변'],'reply':'','auto_ok':False},
 }
+# 상담창(자동응답): 고객이 편하게 쓴 문장에서 이 단어들을 찾아 유형을 짐작한다. 띄어쓰기는 무시한다.
+# 앞에 있는 유형일수록 같은 점수일 때 우선한다 (불량이면서 반품을 원하는 경우 불량으로).
+INTENTS={
+  '제품 불량':['불량','고장','깨져','깨진','깨졌','파손','찢어','찢긴','망가','작동','안켜','안 켜져','하자','오염','얼룩','누락','빠져있','구멍','터져','녹슬','유통기한','상했'],
+  '반품·환불':['반품','환불','취소','돌려보','반송','마음에안','마음에 들지','변심','필요없','잘못주문','잘못 샀'],
+  '교환':['교환','사이즈','색상','컬러','바꾸','바꿔','작아','커서','너무커','안맞','맞지않','다른걸로'],
+  '배송 조회':['배송','안와','안 왔','안왔','언제와','언제 오','도착','송장','택배','출고','발송','늦어','배달','운송장','못받','아직'],
+  '고객 응대':['응대','불친절','상담원','직원','무시','연락이없','답이없','답변이없','전화를안','태도','기분나'],
+}
+# 상담창에서 유형을 알아들었을 때 먼저 보여 주는 안내. 기업은 자동 처리 화면에서 자기 회사 문구로 바꿀 수 있다.
+CHAT_FAQ={
+  '배송 조회':'배송 상황은 송장번호로 택배사 홈페이지에서 바로 확인할 수 있어요. 송장번호를 모르시거나 배송이 너무 늦어지면 접수해 주세요. 확인해서 알려 드릴게요.',
+  '교환':'사이즈나 색상 교환은 상품을 받은 날부터 7일 안에 신청해 주세요. 상품 태그와 포장은 그대로 두시면 돼요.',
+  '반품·환불':'상품을 받은 날부터 7일 안이면 단순 변심이어도 반품할 수 있어요. 상품이 도착하면 확인 후 결제하신 수단으로 환불해 드려요. 계좌로 결제하셨다면 접수 후 환불 받을 계좌를 등록해 주세요.',
+  '제품 불량':'불편을 드려 죄송해요. 문제가 있는 부분 사진을 함께 접수해 주시면 확인 후 교환이나 환불로 도와드려요. 이때 배송비는 저희가 부담해요.',
+  '고객 응대':'불쾌하셨던 점 죄송해요. 어떤 일이 있었는지 접수해 주시면 담당자가 직접 확인하고 연락드릴게요.',
+  '기타':'궁금하신 내용을 접수해 주시면 담당자가 확인하고 답변드릴게요.',
+}
+def classify(text):
+    """고객 문장 -> 가장 그럴듯한 유형. 아무 단어도 못 찾으면 None."""
+    t=re.sub(r'\s+','',text or '')
+    best,score=None,0
+    for cat,words in INTENTS.items():
+        n=sum(re.sub(r'\s+','',w) in t for w in words)
+        if n>score:best,score=cat,n
+    return best
+COND={'':'항상','within7':'받은 지 7일 이내일 때만'}  # 자동 처리 조건 (교환·반품에만)
+
 STEPS=['접수','기업 전달','기업 확인','답변·조치','결과 확인']
 STATUS={'received':('접수됨','gray',0),'forwarded':('기업 전달','acc',1),'seen':('기업 확인 중','wait',2),'info':('추가 자료 요청','wait',2),
         'answered':('답변·조치 완료','done',3),'resolved':('해결','done',4),'unresolved':('미해결','bad',4)}
@@ -57,6 +86,13 @@ CHANNELS=['전화','쇼핑몰 문의','카카오톡','인스타그램 DM','이�
 # 반품 안내에 쓰는 택배사 소개. 연동은 하지 않고 이름과 공식 홈페이지만 안내한다.
 COURIERS={'CJ대한통운':'https://www.cjlogistics.com','우체국택배':'https://service.epost.go.kr','롯데택배':'https://www.lotteglogis.com',
           '한진택배':'https://www.hanjin.com','로젠택배':'https://www.ilogen.com','GS Postbox 편의점택배':'https://www.cvsnet.co.kr','CU 편의점택배':'https://www.cupost.co.kr'}
+# 환불 계좌: 계좌로 결제한 고객이 등록하면 기업이 직접 입금하고 '환불 완료'를 누른다. 완료하면 계좌 정보는 바로 지운다.
+BANKS=['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','카카오뱅크','토스뱅크','케이뱅크','SC제일은행','iM뱅크(대구)','부산은행','경남은행','광주은행','전북은행','제주은행','새마을금고','신협','우체국','수협은행','KDB산업은행','씨티은행']
+def refund_case(c):
+    """환불 계좌를 받을 수 있는 민원: 입점 기업에 소비자가 직접 접수했고 환불을 원하는 경우."""
+    return bool(c['member'] and not is_direct(c) and (c['category']=='반품·환불' or c['want']=='환불'))
+def mask_account(a):
+    d=digits(a);return ('*'*max(len(d)-4,0))+d[-4:] if d else ''
 RET_STATUS={'guided':'반품 안내함','sent':'소비자 발송','received':'회수 확인'}
 INDUSTRIES=['패션·잡화','뷰티','식품','생활·주방','가전·디지털','가구·인테리어','유아·출산','스포츠·레저','반려동물','도서·문구','서비스','기타']
 TONES={'polite':'정중하게','friendly':'친근하게','brief':'짧고 분명하게'}
@@ -101,7 +137,7 @@ def init():
         # 나중에 더한 칸: 이미 있는 DB에도 붙인다
         cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
-        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking'):
+        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status'):
             if col not in cols:db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         cols={r[1] for r in db.execute('PRAGMA table_info(companies)')}
         for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),
@@ -110,7 +146,11 @@ def init():
         db.executescript('''
         CREATE TABLE IF NOT EXISTS news(id INTEGER PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,source_url TEXT NOT NULL,created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sent_marks(kind TEXT NOT NULL,company_id INTEGER NOT NULL,key TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(kind,company_id,key));
+        CREATE TABLE IF NOT EXISTS chat_log(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,category TEXT NOT NULL,outcome TEXT NOT NULL,created TEXT NOT NULL);
         ''')
+        cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
+        if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')
+        if 'cond' not in cols:db.execute("ALTER TABLE rules ADD COLUMN cond TEXT NOT NULL DEFAULT ''")
 init()
 
 # ---------- 보안 ----------
@@ -155,7 +195,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,INDUSTRIES=INDUSTRIES,TONES=TONES,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
@@ -171,7 +211,15 @@ def search_companies(q,limit=6):
 def rule_for(db,cid,cat):
     r=db.execute('SELECT * FROM rules WHERE company_id=? AND category=?',(cid,cat)).fetchone()
     pb=PLAYBOOK.get(cat,PLAYBOOK['기타'])
-    return {'auto':bool(r and r['auto']),'reply':(r['reply'] if r and r['reply'] is not None else pb['reply'])}
+    return {'auto':bool(r and r['auto']),'reply':(r['reply'] if r and r['reply'] is not None else pb['reply']),
+            'faq':(r['faq'] if r and r['faq'] is not None else CHAT_FAQ.get(cat,CHAT_FAQ['기타'])),'cond':(r['cond'] if r and r['cond'] in COND else '')}
+def auto_ok(db,c):
+    """이 민원을 사람 손 없이 바로 처리해도 되는지: 자동 처리가 켜져 있고, 조건이 있으면 조건도 맞아야 한다."""
+    rule=rule_for(db,c['company_id'],c['category'])
+    if not rule['auto']:return False
+    if rule['cond']=='within7':
+        chk=law.check(c);return bool(chk and chk['within'])
+    return True
 
 # ---------- 사건 ----------
 def new_case_no(db):

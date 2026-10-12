@@ -134,7 +134,7 @@ def all_cases():
     if q:rows=[r for r in rows if q.lower() in (r['title']+' '+r['no']+' '+(r['name'] or '')+' '+r['body']).lower()]
     groups={'all':rows,'open':[r for r in rows if is_open(r)],'done':[r for r in rows if r['status'] in ('answered','resolved')],
             'bad':[r for r in rows if r['status']=='unresolved' or core.overdue(r)],
-            'ret':[r for r in rows if r['ret_status'] in ('guided','sent')]}
+            'ret':[r for r in rows if r['ret_status'] in ('guided','sent') or r['refund_status']=='requested']}
     if fil not in groups:fil='all'
     return render_template('b_all.html',groups=groups,fil=fil,rows=groups[fil],q=q,tab='all')
 
@@ -167,6 +167,11 @@ def case(case_id):
                 db.execute("UPDATE cases SET ret_status='received' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'co','반품 상품 회수를 확인했어요');notify_consumer(c,f'[{core.CNAME}] 보내신 상품이 도착했어요',f"{c['company_name']}이(가) 반품 상품 회수를 확인했어요.")
                 flash('회수 확인을 기록했어요','ok');return redirect(url_for('case',case_id=case_id))
+            if act=='refund_done' and core.refund_case(c) and c['refund_status']!='done':
+                # 환불이 끝나면 계좌 정보는 더 둘 이유가 없으니 바로 지운다
+                db.execute("UPDATE cases SET refund_status='done',refund_bank='',refund_account='',refund_holder='' WHERE id=?",(c['id'],))
+                core.add_event(db,c['id'],'co','환불을 완료했어요');notify_consumer(c,f'[{core.CNAME}] 환불이 완료됐어요',f"{c['company_name']}이(가) 환불을 완료했어요. 입금 내역을 확인해 주세요.")
+                flash('환불 완료를 기록했어요','ok');return redirect(url_for('case',case_id=case_id))
             if not open_:abort(400)
             if act=='approve' and c['decision'] not in ('approved','auto'):
                 if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
@@ -277,10 +282,15 @@ def rules():
             cur=core.rule_for(db,co['id'],cat)
             auto=cur['auto'] if 'auto' not in request.form else request.form['auto']=='1'
             reply=clean(request.form.get('reply'),2000) if 'reply' in request.form else cur['reply']
-            db.execute('INSERT INTO rules(company_id,category,auto,reply) VALUES(?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply',(co['id'],cat,int(auto),reply))
+            faq=clean(request.form.get('faq'),1000) if 'faq' in request.form else cur['faq']
+            cond=request.form.get('cond','') if 'cond' in request.form else cur['cond']
+            if cond not in core.COND or cat not in ('교환','반품·환불'):cond=''
+            db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond) VALUES(?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond',(co['id'],cat,int(auto),reply,faq,cond))
             flash('저장했어요','ok');return redirect(url_for('rules')+('#'+request.form.get('anchor','') if request.form.get('anchor') else ''))
         rs={cat:core.rule_for(db,co['id'],cat) for cat in core.CATS}
-    return render_template('b_rules.html',rs=rs,tab='rules')
+        since=core.now().strftime('%Y-%m-01')
+        chat={o:db.execute('SELECT COUNT(*) FROM chat_log WHERE company_id=? AND outcome=? AND created>=?',(co['id'],o,since)).fetchone()[0] for o in ('asked','solved','filed')}
+    return render_template('b_rules.html',rs=rs,chat=chat,link=core.site_url('me','/to/%d'%co['id']),tab='rules')
 
 @app.route('/settings',methods=['GET','POST'])
 @login_required
