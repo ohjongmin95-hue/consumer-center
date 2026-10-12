@@ -742,8 +742,10 @@ main.pg.split{padding-block:40px 80px}
   main.pg.split{padding-block:16px 48px}
 }
 /* 로그인 화면은 한 화면에 맞춤 */
-body.v2 main.pg.split{padding-block:28px}
-.bsplit{height:calc(100vh - 196px);height:calc(100dvh - 196px);min-height:560px;max-height:740px}
+body.v2 main.pg.split{padding-block:24px;min-height:100vh;min-height:100dvh;display:flex;align-items:center}
+body.v2 main.pg.split>.wrap{width:100%}
+.bsplit .flogo{align-self:center;margin-bottom:28px}
+.bsplit{height:calc(100vh - 48px);height:calc(100dvh - 48px);min-height:560px;max-height:720px}
 .bsplit .brand{padding:48px 52px 0}
 .bsplit .brand h1{font-size:44px;margin-top:20px}
 .bsplit .brand p{font-size:17px;margin-top:16px}
@@ -752,3 +754,4 @@ body.v2 main.pg.split{padding-block:28px}
 .bsplit .form h2{margin-bottom:32px}
 .foot-mini{padding-block:0 20px;font-size:13px;color:var(--fg3);text-align:center}
 @media (max-width:960px){.bsplit{height:auto;max-height:none;min-height:0}.bsplit .brand{padding:36px 24px 0}.bsplit .brand h1{font-size:34px}.bsplit .form{padding:36px 22px 40px}}
+body.v2:has(>.pilot) main.pg.split{min-height:calc(100vh - 34px);min-height:calc(100dvh - 34px)}
