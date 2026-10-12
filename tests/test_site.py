@@ -235,7 +235,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<h1>청소년보호정책</h1>', youth)
         self.assertIn('class="policy-toc"', youth)
         self.assertIn('<h2 id="sec-1">', youth)
-        self.assertIn('청소년보호책임자: (운영자 정보 미입력)', youth)
+        self.assertIn('청소년보호책임자: 오규섭 (대표)', youth)  # 비우면 기본값(대표자)인 개인정보 보호책임자로 표시
+        self.assertIn('연락처: (운영자 정보 미입력)', youth)
         admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'operator', 'operator.name': '새 운영사', 'operator.privacy_officer': '홍길동'})
         self.assertIn('청소년보호책임자: 홍길동', self.client.get('/youth').get_data(as_text=True))  # 비우면 개인정보 보호책임자로 대신 표시
 
@@ -685,7 +686,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(guide.count('class="evidence-topic"'), 10)
         self.assertIn('<summary><span>가전·IT</span>', guide)
         self.assertIn('<dt>결제한 금액</dt>', guide)
-        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 4)
+        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 3)
         admin = self.login_admin()
         page = admin.get('/admin/lists').get_data(as_text=True)
         self.assertIn('id="list-guide_topics"', page)
@@ -713,7 +714,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('꿀팁', self.client.get('/board').get_data(as_text=True))
         # 기본값으로 되돌리기
         admin.post('/admin/lists', data={'_csrf': token, 'list': 'faq', 'reset': '1'})
-        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 4)
+        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 3)
 
     def test_legacy_fixed_slots_carry_over(self):
         with self.site.conn() as db:
@@ -721,7 +722,7 @@ class SiteTest(unittest.TestCase):
         faq = self.client.get('/faq').get_data(as_text=True)
         self.assertIn('바뀐 두번째 질문', faq)
         self.assertIn('추가했던 다섯번째', faq)
-        self.assertEqual(faq.count('class="faq-item"'), 5)
+        self.assertEqual(faq.count('class="faq-item"'), 4)
         process = self.client.get('/process').get_data(as_text=True)
         self.assertEqual(process.count('class="process-card"'), 2)
 

@@ -19,6 +19,10 @@ BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
 PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'  # 시범 운영: 화면 위에 '실제 개인정보 넣지 마세요' 띠
 CNAME=os.getenv('CONSUMER_NAME','한큐')  # 소비자 서비스 이름 (로고·제목·메일)
 BNAME=os.getenv('BUSINESS_NAME','소보루 비즈')  # 기업 서비스 이름
+# 개인정보 처리방침에 적는 운영 주체 (개인정보 보호법 제30조). 보호책임자는 대표자 (같은 법 제31조, 시행령 제32조제2항제2호가목)
+OPERATOR={'name':'소보루','ceo':'오규섭','biz_no':'129-14-81596','address':'서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)'}
+PRIVACY_SINCE='2026년 10월 12일'
+RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 민원은 purge_old()가 파기
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 민원, 운영 등)는 noindex
 INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup'}}
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
@@ -151,7 +155,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,INDUSTRIES=INDUSTRIES,TONES=TONES,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,INDUSTRIES=INDUSTRIES,TONES=TONES,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
@@ -215,6 +219,18 @@ def can_follow_up(db,c):
 def site_or_blank(kind,path):
     host=BUSINESS_HOST if kind=='biz' else CONSUMER_HOST
     return 'https://'+host+path if host else ''
+def purge_old(today=None):
+    """마지막 처리일부터 RETENTION_YEARS년이 지난 민원과 첨부 파일, 같은 기간이 지난 메일 기록을 파기한다. cron에서 부른다."""
+    cut=iso((today or now())-datetime.timedelta(days=365*RETENTION_YEARS));n=0
+    with conn() as db:
+        for c in db.execute('SELECT id FROM cases WHERE updated<?',(cut,)).fetchall():
+            for f in db.execute('SELECT stored FROM files WHERE case_id=?',(c['id'],)).fetchall():
+                try:(UPLOAD/f['stored']).unlink()
+                except FileNotFoundError:pass
+            db.execute('DELETE FROM cases WHERE id=?',(c['id'],));n+=1
+        db.execute('DELETE FROM mail_log WHERE created<?',(cut,))
+    return n
+
 def notify_late():
     """답변 목표일이 지난 입점 기업 민원을 소비자와 기업에 한 번씩 알린다. cron에서 부른다."""
     n=0

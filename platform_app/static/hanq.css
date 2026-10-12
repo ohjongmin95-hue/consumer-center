@@ -881,3 +881,24 @@ body.v2:has(main.cs) .pilot{position:relative}
   .cs-cta>div{max-width:696px}
 }
 .cs-ic .ic{width:26px;height:26px;stroke-width:2.6}
+/* 개인정보 처리방침 */
+.privacy{display:flex;flex-direction:column;gap:28px;font-size:15px;line-height:1.7;color:var(--fg2)}
+.privacy .lead{margin:0;color:var(--fg)}
+.privacy section h2{font-size:17px;color:var(--fg);margin:0 0 8px;letter-spacing:-.02em}
+.privacy section p{margin:0}
+.privacy ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.privacy ul b{color:var(--fg)}
+.privacy .kv{margin:8px 0 0}
+.privacy section p+.kv,.privacy section .kv+p{margin-top:10px}
+.privacy .kv{grid-template-columns:minmax(110px,max-content) 1fr}.privacy .kv dd{text-align:left;color:var(--fg)}
+@media (max-width:640px){.privacy .kv{grid-template-columns:1fr;gap:2px}.privacy .kv dt{margin-top:8px;font-size:13.5px}}
+/* 사업자 정보 (푸터) */
+.opinfo{list-style:none;margin:0;padding:0;flex-basis:100%;display:flex;flex-wrap:wrap;font-size:12.5px;line-height:1.9;color:var(--fg3)}
+.opinfo li{display:inline-flex;align-items:center}
+.opinfo li+li::before{content:'';width:1px;height:10px;background:var(--line);margin:0 10px}
+.foot2 .copy{flex-basis:100%;margin:0;font-size:12.5px;color:var(--fg4)}
+body.v2 .foot2 .opinfo{margin-top:4px}
+.cs-foot{align-items:flex-start}
+.cs-foot>div{min-width:0}
+.cs-foot .opinfo{margin-top:10px;font-size:12px}
+@media (max-width:640px){.opinfo{flex-direction:column;line-height:1.8}.opinfo li+li::before{display:none}}

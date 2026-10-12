@@ -177,6 +177,25 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('Disallow: /ops',me.get('/biz/robots.txt').get_data(as_text=True))
         self.assertNotIn('noindex',self.client().get('/biz/login').get_data(as_text=True))
 
+    def test_privacy_policy_and_purge(self):
+        """처리방침에 법정 항목(운영 주체·보호책임자·위탁·보유 기간)이 있고, 보유 기간이 지난 민원은 첨부 파일까지 파기된다"""
+        import datetime
+        page=self.client().get('/privacy').get_data(as_text=True)
+        for t in ('소보루','오규섭','129-14-81596','논현로 310-1','개인정보 보호책임자','네이버클라우드 주식회사','3년','파기','118'):self.assertIn(t,page)
+        self.assertNotIn('초안',page)
+        me=self.client();old=self.file_case(me,'파기상점','기타',title='오래된 민원');new=self.file_case(me,'파기상점','기타',title='최근 민원')
+        stored='purge-test.txt';(self.core.UPLOAD/stored).write_text('x')
+        long_ago=self.core.iso(self.core.now()-datetime.timedelta(days=365*3+1))
+        with self.core.conn() as db:
+            db.execute('UPDATE cases SET updated=? WHERE id=?',(long_ago,old))
+            db.execute("INSERT INTO files(case_id,stored,original) VALUES(?,?,'a.txt')",(old,stored))
+        self.assertEqual(self.core.purge_old(),1)
+        with self.core.conn() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM cases WHERE id=?',(old,)).fetchone())
+            self.assertIsNone(db.execute('SELECT 1 FROM events WHERE case_id=?',(old,)).fetchone())
+            self.assertIsNotNone(db.execute('SELECT 1 FROM cases WHERE id=?',(new,)).fetchone())
+        self.assertFalse((self.core.UPLOAD/stored).exists())
+
     def test_cs_tools(self):
         """법 기준·응대 가이드·답변 초안·직접 등록·반품 안내/송장·기록·리포트·업종 비교·경보·법 소식"""
         import datetime, json, law, insights

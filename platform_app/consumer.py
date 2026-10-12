@@ -210,7 +210,9 @@ def case_file(case_id,file_id):
     return send_file(core.UPLOAD/f['stored'],download_name=f['original'])
 
 @app.route('/privacy')
-def privacy():return render_template('c_privacy.html')
+def privacy():
+    return render_template('c_privacy.html',op=core.OPERATOR,since=core.PRIVACY_SINCE,years=core.RETENTION_YEARS,contact=os.getenv('PRIVACY_EMAIL') or os.getenv('OPS_EMAIL',''),phone=os.getenv('PRIVACY_PHONE',''),
+        mail_vendor=os.getenv('MAIL_VENDOR',''),ai=bool(os.getenv('ANTHROPIC_API_KEY','').strip()),kakao=core.kakao_ready())
 
 @app.errorhandler(404)
 def nf(e):return render_template('c_error.html',msg='페이지를 찾을 수 없어요.'),404
