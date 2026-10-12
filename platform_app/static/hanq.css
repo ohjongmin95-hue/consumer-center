@@ -831,59 +831,55 @@ aside .kv{font-size:14.5px}
 .chead .btn.gray,.phead .btn.gray,.chead .pill.gray{background:var(--card)}
 .chead .btn.gray:hover,.phead .btn.gray:hover{background:var(--fill2)}
 @media (max-width:760px){.chead{display:block;text-align:left}.chead .tagrow{justify-content:flex-start}.chead .btn.sm{margin-top:16px;height:36px;font-size:14px}.cmeta{font-size:13px}}
-/* ---------- 기업별 고객센터 (/to/<id>) ---------- */
-.cs{min-height:100dvh;padding:0 16px 120px;background:var(--bg)}
-.cs-in{max-width:520px;margin:0 auto}
-.cs-top{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
-.cs-brand{display:flex;align-items:center;gap:8px}.cs-brand img{height:26px;width:auto}.cs-brand small{font-size:15px;font-weight:600;color:var(--fg2)}
-.cs-mine{font-size:15px;font-weight:600;color:var(--fg2);background:var(--card);border-radius:999px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px}
-.cs-hero{padding:28px 4px 24px}
-.cs-co{display:flex;align-items:center;gap:10px}
-.cs-co b{font-size:17px;font-weight:700;letter-spacing:-.02em}
-.cs-av{width:36px;height:36px;border-radius:12px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:16px;font-weight:700;flex:none}
-.cs-hero h1{font-size:28px;line-height:1.35;letter-spacing:-.045em;margin:14px 0 0;font-weight:700;text-wrap:balance}
-.cs-promise{display:flex;align-items:center;gap:7px;margin:10px 0 0;font-size:14.5px;font-weight:600;color:var(--green)}
-.cs-promise.gray{color:var(--fg2)}
-.cs-promise .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
-.ic-wrap{width:44px;height:44px;border-radius:14px;background:var(--accent-soft);display:grid;place-items:center;flex:none}
-.ic-wrap.sm{width:40px;height:40px;border-radius:13px;background:var(--fill)}
-.cs-cats,.cs-rows{background:var(--card);border-radius:24px;padding:8px}
-.cs-cats a,.cs-rows a,.cs-rows .row,.cs-rows summary{display:flex;align-items:center;gap:14px;padding:13px 12px;border-radius:16px;transition:background .15s}
-.cs-cats a:hover,.cs-rows a:hover,.cs-rows summary:hover{background:var(--fill)}
-.cs-cats a:active,.cs-rows a:active{transform:scale(.99)}
-.cs .tx{flex:1;min-width:0;display:flex;flex-direction:column}
-.cs .tx b{font-size:16.5px;font-weight:600;letter-spacing:-.02em}.cs .tx small{font-size:13.5px;color:var(--fg3)}
-.cs-any{display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0 28px;padding:10px;font-size:14.5px;font-weight:600;color:var(--fg3)}
-.cs-any .chev{width:7px;height:7px;margin:0}
-.cs-any:hover{color:var(--fg2)}
-.cs-rows details summary{list-style:none;cursor:pointer}.cs-rows details summary::-webkit-details-marker{display:none}
-.cs-rows details[open] summary .chev{transform:rotate(135deg)}
-.cs-ret{white-space:pre-wrap;font-size:14.5px;color:var(--fg2);background:var(--fill);border-radius:14px;padding:14px 16px;margin:0 12px 12px}
-.cs-cta{position:fixed;left:0;right:0;bottom:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:6}
-.cs-cta .btn{max-width:520px;margin:0 auto;display:flex}
-.cs-foot{display:flex;align-items:center;gap:12px;margin:36px 4px 0;color:var(--fg3);font-size:13px}
-.cs-foot img{height:40px;width:auto;flex:none}.cs-foot p{margin:0;line-height:1.6}.cs-foot a{text-decoration:underline}
+/* ---------- 기업별 고객센터 (/to/<id>) : 흰 바탕, 큰 제목, 목록형 ---------- */
+body:has(main.cs){background:var(--card)}
+.cs{min-height:100dvh;padding-bottom:120px;background:var(--card)}
+.cs-in{max-width:560px;margin:0 auto;padding-inline:20px}
+.cs-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(12px)}
+.cs-top .cs-in{display:flex;align-items:center;justify-content:space-between;height:60px}
+.cs-brand{display:flex;align-items:center;gap:8px}.cs-brand img{height:24px;width:auto}.cs-brand small{font-size:15px;font-weight:600;color:var(--fg2)}
+.cs-mine{font-size:15px;font-weight:600;color:var(--fg2);padding:8px 4px;display:inline-flex;align-items:center;gap:6px}
+.cs-mine:hover{color:var(--fg)}
+.cs-hero{padding:28px 0 32px}
+.cs-av{width:48px;height:48px;border-radius:16px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:21px;font-weight:700}
+.cs-hero h1{font-size:26px;line-height:1.4;letter-spacing:-.04em;margin:20px 0 0;font-weight:700;text-wrap:balance}
+.cs-sub{margin:10px 0 0;font-size:16px;color:var(--fg3)}
+.cs-sub b{color:var(--accent-ink);font-weight:700}
+.cs-sec{padding:4px 0 8px}
+.cs-sec h2{font-size:15px;font-weight:600;color:var(--fg3);margin:0 0 6px;letter-spacing:-.01em}
+.cs-list{margin:0 -12px}
+.cs-list>a,.cs-list>.row,.cs-list summary{display:flex;align-items:center;gap:16px;padding:14px 12px;border-radius:16px;transition:background .15s,transform .1s}
+.cs-list>a:hover,.cs-list summary:hover{background:var(--fill)}
+.cs-list>a:active,.cs-list summary:active{transform:scale(.985)}
+.cs-list .cs-ic{width:44px;height:44px;border-radius:50%;background:var(--fill);color:var(--fg2);display:grid;place-items:center;flex:none}
+.cs-cats .cs-ic{background:var(--accent-soft);color:var(--accent-ink)}
+.cs .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cs .tx b{font-size:17px;font-weight:600;letter-spacing:-.02em;color:var(--fg)}
+.cs .tx small{font-size:14px;color:var(--fg3);font-weight:400}
+.cs-list details summary{list-style:none;cursor:pointer}.cs-list details summary::-webkit-details-marker{display:none}
+.cs-list details summary .chev{transform:rotate(135deg)}.cs-list details[open] summary .chev{transform:rotate(-45deg)}
+.cs-ret{white-space:pre-wrap;font-size:15px;line-height:1.6;color:var(--fg2);background:var(--fill);border-radius:16px;padding:16px 18px;margin:4px 12px 12px 72px}
+.cs-band{height:12px;background:var(--fill);margin:20px 0 24px}
+.cs-cta{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:12px 20px calc(16px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--card) 75%,color-mix(in srgb,var(--card) 0%,transparent))}
+.cs-cta>div{max-width:520px;margin:0 auto}
+.cs-cta .btn{display:flex;height:56px;font-size:17px;border-radius:16px}
+.cs-foot{display:flex;align-items:center;gap:12px;margin:40px 0 0;padding-top:24px;border-top:1px solid var(--line);color:var(--fg3);font-size:13px}
+.cs-foot img{height:36px;width:auto;flex:none}.cs-foot p{margin:0;line-height:1.6}.cs-foot a{text-decoration:underline}
 body.v2:has(main.cs) .pilot{position:relative}
-/* PC: 가운데 한 줄로, 유형은 3칸 타일 */
+/* PC: 가운데 넓은 한 줄, 유형은 두 칸 목록 */
 @media (min-width:1000px){
-  .cs{padding:0 32px 72px}
-  .cs-in{max-width:880px}
-  .cs-top{padding:28px 0}
-  .cs-brand img{height:30px}.cs-brand small{font-size:17px}
-  .cs-hero{padding:48px 0 32px}
-  .cs-co b{font-size:19px}
-  .cs-av{width:42px;height:42px;font-size:18px;border-radius:14px}
-  .cs-hero h1{font-size:42px;margin-top:18px}
-  .cs-promise{font-size:16px;margin-top:14px}
-  .cs-cats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:12px;border-radius:28px}
-  .cs-cats a{flex-direction:column;align-items:flex-start;gap:16px;padding:24px 22px;border-radius:20px}
-  .cs-cats .chev{display:none}
-  .cs-cats .tx b{font-size:18px}.cs-cats .tx small{font-size:14px;margin-top:3px}
-  .cs-any{justify-content:flex-end;margin:10px 0 32px;padding:6px 8px}
-  .cs-rows{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:12px;border-radius:28px;align-items:start}
-  .cs-rows a,.cs-rows .row,.cs-rows summary{padding:16px 14px}
-  .cs-cta{display:none}
-  .cs-foot{margin-top:56px;justify-content:center}
+  .cs-in{max-width:760px;padding-inline:32px}
+  .cs-top .cs-in{height:72px}
+  .cs-brand img{height:28px}.cs-brand small{font-size:17px}
+  .cs-hero{padding:56px 0 40px}
+  .cs-av{width:56px;height:56px;font-size:24px;border-radius:18px}
+  .cs-hero h1{font-size:38px;line-height:1.35}
+  .cs-sub{font-size:18px;margin-top:14px}
+  .cs-sec h2{font-size:16px;margin-bottom:10px}
+  .cs-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px;align-items:start}
+  .cs-list>a,.cs-list>.row,.cs-list summary{padding:18px 16px}
+  .cs-ret{margin:4px 16px 16px}
+  .cs-band{margin:32px 0 32px}
+  .cs-cta>div{max-width:696px}
 }
-.cs .tx small{font-weight:400}
-@media (max-width:999px){.cs-any{display:none}.cs-cats{margin-bottom:12px}}
+.cs-ic .ic{width:26px;height:26px;stroke-width:2.6}
