@@ -1,6 +1,6 @@
 """SOBORU 플랫폼 공통: DB, 처리 규칙(플레이북), 사건 처리 동작, 보안 도우미.
 
-소비자용(한큐)과 기업용(한큐 비즈)이 같은 DB의 같은 사건을 다룬다.
+소비자용(한큐)과 기업용(소보루 비즈)이 같은 DB의 같은 사건을 다룬다.
 홈페이지(소비자제보센터, 저장소 최상위 app.py)와는 DB도 서비스도 따로 쓴다.
 """
 import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, threading
@@ -18,7 +18,7 @@ CONSUMER_HOST=os.getenv('CONSUMER_HOST','').strip().lower()
 BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
 PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'  # 시범 운영: 화면 위에 '실제 개인정보 넣지 마세요' 띠
 CNAME=os.getenv('CONSUMER_NAME','한큐')  # 소비자 서비스 이름 (로고·제목·메일)
-BNAME=os.getenv('BUSINESS_NAME',CNAME+' 비즈')  # 기업 서비스 이름
+BNAME=os.getenv('BUSINESS_NAME','소보루 비즈')  # 기업 서비스 이름
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 민원, 운영 등)는 noindex
 INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'login','signup'}}
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',

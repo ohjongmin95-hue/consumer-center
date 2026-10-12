@@ -1268,6 +1268,14 @@ def report_detail(case_id):
         if not case:abort(404)
         if request.method=='POST':
             form=request.form.get('form','settings')
+            if form=='delete':
+                # 대표(관리자)만: 제보와 딸린 기록·첨부파일을 모두 지움. 되돌릴 수 없음.
+                if g.area!='admin' or request.form.get('confirm')!='1':abort(400)
+                stored=[r['stored'] for r in db.execute('SELECT stored FROM attachments WHERE case_id=?',(case_id,))]
+                for table in ('attachments','messages','internal_notes','case_log','notifications','company_invites'):db.execute(f'DELETE FROM {table} WHERE case_id=?',(case_id,))
+                db.execute('DELETE FROM cases WHERE id=?',(case_id,));db.commit()
+                for name in stored:(UPLOAD/name).unlink(missing_ok=True)
+                flash(f"제보 {case['receipt']}를 삭제했어요.");return redirect(url_for(ep['list']))
             if form=='settings':
                 status=request.form.get('status','')
                 if status not in STATUSES:abort(400)

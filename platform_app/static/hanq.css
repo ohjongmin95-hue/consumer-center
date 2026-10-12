@@ -677,3 +677,12 @@ body.v2 .steps3 p{font-size:18px;line-height:1.55}
   body.v2 .steps3 b{font-size:19px}
   body.v2 .steps3 p{font-size:16px}
 }
+/* 소보루 비즈 로고: 캐릭터 + SOBORU 로고체 + 비즈 */
+.logo.biz{align-items:center;gap:7px}
+.logo.biz img{display:block;width:auto}
+.logo.biz .ch{height:30px}
+.logo.biz .wm{height:17px;margin-right:1px}
+.logo.biz small.w{font-size:16px;font-weight:600;color:var(--fg);transform:translateY(1px)}
+.foot2 .logo.biz .ch{height:24px}
+.foot2 .logo.biz .wm{height:14px}
+.foot2 .logo.biz small.w{font-size:14px}
