@@ -1,10 +1,10 @@
 {% extends 'base.html' %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
-{% block title %}{{ CNAME }} · 불편, 한큐에 해결{% endblock %}
+{% block title %}{{ CNAME }} · 불편한 일, 한 번에 해결{% endblock %}
 {% block bar %}{{ m.bar('home') }}{% endblock %}
 {% block main %}
 <section class="band w"><div class="wrap hero4">
 <div class="tx">
-<h1>불편한 일,<br><em>한큐에</em> 해결해요</h1>
+<h1>불편한 일,<br><em>한 번에</em> 해결해요</h1>
 <p>어느 기업이든 한 번만 접수하면<br>기업 답변까지 한곳에서 확인해요</p>
 <a class="btn lg" href="{{ url_for('new') }}">접수하기</a>
 </div>

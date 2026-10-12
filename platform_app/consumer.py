@@ -1,4 +1,4 @@
-"""소비자용 '한큐': 어느 기업이든 한곳에서 민원 접수·조회."""
+"""소비자용 '소보루 비즈 고객센터': 어느 기업이든 한곳에서 민원 접수·조회."""
 import os, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -26,7 +26,7 @@ def mine_rows(limit=None):
     if not ids:return []
     with conn() as db:return db.execute(f"SELECT * FROM cases WHERE id IN ({','.join('?'*len(ids))}) ORDER BY id DESC"+(f' LIMIT {int(limit)}' if limit else ''),tuple(ids)).fetchall()
 def cs_company():
-    # 기업 고객센터(/to/<id>)로 들어온 소비자에게는 이어지는 화면도 '소보루 비즈 고객센터'로 보여 준다
+    # 기업 고객센터(/to/<id>)로 들어온 소비자는 로고·접수하기가 그 기업으로 이어지게 한다
     cid=session.get('cs')
     if not cid:return None
     with conn() as db:co=core.company(db,cid)
@@ -34,7 +34,7 @@ def cs_company():
 @app.context_processor
 def counts():
     cs=cs_company()
-    return {'n_mine':len(my_ids()),'biz_url':core.site_url('biz','/'),'CS':cs,'BRAND':'소보루 비즈 고객센터' if cs else core.CNAME}
+    return {'n_mine':len(my_ids()),'biz_url':core.site_url('biz','/'),'CS':cs,'BRAND':core.CNAME}
 
 @app.route('/')
 def home():

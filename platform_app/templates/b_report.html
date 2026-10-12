@@ -11,7 +11,7 @@
 <div class="kpi"><span>첫 답변까지</span><b>{% if s.reply_h is none %}–{% else %}{{ s.reply_h }}<small>시간</small>{% endif %}</b></div></div>
 <div class="grid2">
 <div class="panel"><div class="ph">유형별</div><div class="bars">{% for c,n in s.cats %}<div class="barrow"><span>{{ c }}</span><span class="tr"><i style="width:{{ (n/(s.n or 1)*100)|round|int }}%"></i></span><b>{{ n }}</b></div>{% endfor %}</div></div>
-<div class="panel"><div class="ph">받은 곳</div>{% if s.by_channel %}<div class="bars">{% for c,n in s.by_channel %}<div class="barrow"><span>{{ c }}</span><span class="tr"><i style="width:{{ (n/(s.n or 1)*100)|round|int }}%"></i></span><b>{{ n }}</b></div>{% endfor %}</div>{% else %}<p class="cap">이 달에 받은 민원이 없어요</p>{% endif %}</div>
+<div class="panel"><div class="ph">받은 곳</div>{% if s.by_channel %}<div class="bars">{% for c,n in s.by_channel %}<div class="barrow"><span>{{ '고객센터' if c=='한큐' else c }}</span><span class="tr"><i style="width:{{ (n/(s.n or 1)*100)|round|int }}%"></i></span><b>{{ n }}</b></div>{% endfor %}</div>{% else %}<p class="cap">이 달에 받은 민원이 없어요</p>{% endif %}</div>
 </div>
 <div class="panel" style="margin-top:20px"><div class="ph">민원이 많았던 상품</div>{% if s.top_products %}<dl class="kv">{% for p,n in s.top_products %}<dt>{{ p }}</dt><dd>{{ n }}건</dd>{% endfor %}</dl>{% else %}<p class="cap" style="margin:0">상품 이름이 적힌 민원이 없어요</p>{% endif %}
 <p class="cap" style="margin:14px 0 0">답변 목표일을 넘긴 민원 {{ s.late }}건 · 해결률은 소비자가 결과를 알려 준 민원 기준이에요</p></div>

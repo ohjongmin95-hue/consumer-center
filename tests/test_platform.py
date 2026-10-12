@@ -62,7 +62,7 @@ class PlatformTest(unittest.TestCase):
     def test_member_flow_pending_approve_and_rate(self):
         b,o,cid=self.signup_and_approve('달빛화장품','dalbit@example.com')
         me=self.client()
-        self.assertIn('한큐에</em> 해결해요',me.get('/').get_data(as_text=True))
+        self.assertIn('한 번에</em> 해결해요',me.get('/').get_data(as_text=True))
         self.assertEqual(me.get('/companies?q=달빛').get_json()[0]['name'],'달빛화장품')
         case_id=self.file_case(me,'달빛화장품','제품 불량',str(cid))
         self.assertIn('까지 답변을 받아요',me.get(f'/done/{case_id}').get_data(as_text=True))
