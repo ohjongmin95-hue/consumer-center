@@ -1030,3 +1030,11 @@ body:has(.cs2),.cs2,.cs2 .cs-top{background:var(--card)}
 .cs2 .cs-tiles b{color:var(--fg2)}
 .cs2 .cs-cta{background:linear-gradient(to top,var(--card) 70%,color-mix(in srgb,var(--card) 0%,transparent))}
 @media (max-width:760px){.cs2 .cs-tiles a:nth-child(n){background:var(--bg)}.cs2 .cs-tiles a:nth-child(4n+2),.cs2 .cs-tiles a:nth-child(4n+3){background:var(--accent-soft)}}
+/* 링크 페이지 상담창: 회색 대신 연주황 판 + 흰 말풍선 */
+.cs2 .cs-chat .cb{background:var(--accent-soft);border-radius:24px;padding:18px 16px 14px}
+.cs2 .cs-chat .cb-m.bot{background:var(--card);box-shadow:0 1px 4px rgba(178,107,0,.08)}
+.cs2 .cs-chat .cb-chips button,.cs2 .cs-chat .cb-chips a{background:var(--card);border:1px solid #ffdca3;color:var(--accent-ink)}
+.cs2 .cs-chat .cb-chips button:hover{background:#fffaf2;border-color:var(--accent)}
+.cs2 .cs-chat .cb-chips .pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.cs2 .cs-chat .cb-in input{background:var(--card);border:1px solid transparent}
+.cs2 .cs-chat .cb-in button{background:var(--accent);color:#fff}
