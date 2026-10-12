@@ -50,6 +50,9 @@ def kpis(rows):
     return {'n':n,'auto':round(auto/n*100) if n else 0,'res':round(res/rated*100) if rated else None,'late':late}
 
 # ---------- 기업 계정 ----------
+@app.route('/robots.txt')
+def robots():return app.response_class(core.robots_txt('biz',['/ops','/case','/all','/rules','/stats','/settings']),mimetype='text/plain')
+
 @app.route('/signup',methods=['GET','POST'])
 def signup():
     if request.method=='POST':

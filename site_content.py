@@ -41,6 +41,7 @@ SECTIONS = [
         ('seo.naver_verification', '네이버 서치어드바이저 소유확인 코드', '', OPT),
         ('seo.google_verification', '구글 서치 콘솔 소유확인 코드', '', OPT),
         ('seo.daum_robots', '다음 웹마스터도구 robots.txt 줄', '', OPT),
+        ('seo.channels', '연관 채널 주소 (네이버 블로그·인스타그램 등, 한 줄에 하나)', '', OPT_ML),
     ]),
     ('operator', '하단 정보 (푸터): 사업자 정보·저작권 · 약관에도 표시', [
         ('operator.name', '상호 (운영자)', '소보루', {}),
