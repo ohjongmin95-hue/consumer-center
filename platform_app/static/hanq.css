@@ -1018,3 +1018,15 @@ body:has(.cs2){background:var(--bg)}
   .cs-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.cs-tiles a{padding:20px}
   .cs2 .cs-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+/* 기업별 고객센터: 위쪽은 소보루 크림빛, 유형 타일은 연주황 바탕 + 흰 아이콘 원 */
+/* 링크 페이지: 흰 바탕 + 메인 화면처럼 회색·연주황이 번갈아 드는 버튼 */
+body:has(.cs2),.cs2,.cs2 .cs-top{background:var(--card)}
+.cs2 .cs-card{padding-inline:4px}
+.cs2 .cs-tiles a{background:var(--bg);border-radius:24px}
+.cs2 .cs-tiles a:nth-child(even){background:var(--accent-soft)}
+.cs2 .cs-tiles a:hover{filter:brightness(.97)}
+.cs2 .cs-tiles .cs-ic{width:auto;height:auto;background:none;border-radius:0;margin-bottom:12px}
+.cs2 .cs-tiles .cs-ic svg{width:34px;height:34px}
+.cs2 .cs-tiles b{color:var(--fg2)}
+.cs2 .cs-cta{background:linear-gradient(to top,var(--card) 70%,color-mix(in srgb,var(--card) 0%,transparent))}
+@media (max-width:760px){.cs2 .cs-tiles a:nth-child(n){background:var(--bg)}.cs2 .cs-tiles a:nth-child(4n+2),.cs2 .cs-tiles a:nth-child(4n+3){background:var(--accent-soft)}}
