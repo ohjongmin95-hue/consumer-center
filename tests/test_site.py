@@ -545,6 +545,26 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, '/admin/groups/%d' % bad, {'action': 'reject'})
         self.assertEqual(self.client.get('/groups/%d' % bad).status_code, 404)
 
+    def test_admin_deletes_report(self):
+        admin = self.login_admin()
+        stored = 'deltest' + '0' * 33 + '.png'
+        (self.site.UPLOAD / stored).write_bytes(b'x')
+        with self.site.conn() as db:
+            db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created) VALUES('CJ-DEL','x','배송·환불','가게','지울 제보','내용','환불','2026-10-09T10:00:00')")
+            case_id = db.execute("SELECT id FROM cases WHERE receipt='CJ-DEL'").fetchone()['id']
+            db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)', (case_id, stored, 'a.png'))
+            db.execute("INSERT INTO messages(case_id,author,body,created) VALUES(?,'센터','안녕하세요','2026-10-09T10:00:00')", (case_id,))
+        path = '/admin/reports/%d' % case_id
+        self.assertIn('제보 삭제', admin.get(path).get_data(as_text=True))
+        self.assertEqual(self.post_form(admin, path, {'form': 'delete'}).status_code, 400)  # 확인 체크 없이는 안 지움
+        done = self.post_form(admin, path, {'form': 'delete', 'confirm': '1'})
+        self.assertEqual(done.headers['Location'], '/admin/reports')
+        self.assertEqual(admin.get(path).status_code, 404)
+        with self.site.conn() as db:
+            for table in ('attachments', 'messages'):
+                self.assertEqual(db.execute(f'SELECT COUNT(*) FROM {table} WHERE case_id=?', (case_id,)).fetchone()[0], 0)
+        self.assertFalse((self.site.UPLOAD / stored).exists())
+
     def test_lookup_with_password(self):
         # 예전 '조회 코드' 안내는 어디에도 안 남음
         for path in ('/lookup', '/guide', '/process', '/report', '/terms', '/privacy', '/faq'):
@@ -935,6 +955,9 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(staff.get('/staff/case/%d' % case_id).headers['Location'], path)
         self.assertEqual(staff.get('/staff/login').headers['Location'], '/reporter/login')
         self.assertEqual(staff.get('/admin/reports/%d' % case_id).status_code, 302)
+        # 기자는 제보를 삭제할 수 없음
+        self.assertNotIn('제보 삭제', page)
+        self.assertEqual(self.post_form(staff, path, {'form': 'delete', 'confirm': '1'}).status_code, 400)
         # 관리자가 계정을 중지하면 바로 로그아웃
         with self.site.conn() as db:
             sid = db.execute("SELECT id FROM staff WHERE login_id='minji'").fetchone()['id']

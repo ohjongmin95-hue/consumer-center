@@ -144,7 +144,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(me.get('/to/99999').status_code,404)
         self.assertIn('value="바른가전"',me.get(f'/new?company_id={cid}').get_data(as_text=True))
         page=b.get('/biz/settings').get_data(as_text=True)
-        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 한큐 비즈',page);self.assertNotIn('SOBORU Business',page)
+        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 비즈',page);self.assertIn('soboru-wordmark.png',page);self.assertIn('soboru-char.png',page);self.assertNotIn('SOBORU Business',page)
         case_id=self.file_case(me,'바른가전','교환',str(cid),title='세탁기 소음')
         self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
         # 답변 목표일이 지나면 한 번만 지연 알림

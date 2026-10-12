@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SOBORU 플랫폼(한큐 + 한큐 비즈)을 소비자제보센터와 같은 서버에 별도 서비스로 설치합니다.
+# SOBORU 플랫폼(한큐 + 소보루 비즈)을 소비자제보센터와 같은 서버에 별도 서비스로 설치합니다.
 # 먼저 setup.sh로 소비자제보센터가 설치돼 있어야 합니다(같은 소스 폴더를 씁니다).
 # 사용법: sudo bash /opt/soboru/app/deploy/platform-setup.sh 소비자용도메인 기업용도메인 이메일
 #   예: sudo bash platform-setup.sh hanq.example.kr business.example.kr me@example.com
@@ -41,7 +41,7 @@ OPS_EMAIL=$EMAIL
 # pilot: 화면 위에 '시범 운영 중' 띠 표시. 개인정보 처리방침 검토가 끝나면 live로 바꾸고: sudo systemctl restart soboru-platform
 PLATFORM_MODE=pilot
 # 메일 알림(새 민원·답변). 소비자제보센터와 같은 계정을 써도 됩니다.
-# 네이버 서치어드바이저 소유확인 코드 (한큐, 한큐 비즈)
+# 네이버 서치어드바이저 소유확인 코드 (한큐, 소보루 비즈)
 # NAVER_SITE_VERIFICATION=
 # NAVER_SITE_VERIFICATION_BIZ=
 # SMTP_HOST=
@@ -58,7 +58,7 @@ chown root:soboru "$ENV_FILE"; chmod 640 "$ENV_FILE"
 echo "== 3/5 앱 서비스 등록 (soboru-platform)"
 cat > /etc/systemd/system/soboru-platform.service <<UNIT
 [Unit]
-Description=SOBORU 플랫폼 (한큐 + 한큐 비즈)
+Description=SOBORU 플랫폼 (한큐 + 소보루 비즈)
 After=network.target
 
 [Service]
@@ -131,7 +131,7 @@ if [[ ${#OK[@]} -eq 4 ]]; then
   systemctl restart soboru-platform
   echo; echo "완료"
   echo "  한큐:             https://$CONSUMER"
-  echo "  한큐 비즈:  https://$BUSINESS"
+  echo "  소보루 비즈: https://$BUSINESS"
   echo "  운영 화면:        https://$BUSINESS/ops"
 else
   echo; echo "두 도메인의 DNS가 모두 이 서버를 가리키면 같은 명령을 다시 실행해 주세요. 그때 HTTPS가 설정됩니다."
