@@ -5,7 +5,7 @@
 """
 from pathlib import Path
 
-NAVY = '#2b3a55'; ORANGE = '#ef920e'; RED = '#e5484d'; GREY = '#9aa6b8'; LIGHT = '#e9ecf1'
+NAVY = '#2b3a55'; ORANGE = '#ef7300'; RED = '#e5484d'; GREY = '#9aa6b8'; LIGHT = '#e9ecf1'
 SAGE = '#8dbf9e'; PEACH = '#ffc38f'; CREAM = '#fff4e8'; GREEN = '#2f9e6b'
 FONT = "Pretendard,'Noto Sans KR','Apple SD Gothic Neo',sans-serif"
 
