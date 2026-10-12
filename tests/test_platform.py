@@ -65,7 +65,7 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('한 번에</em> 해결해요',me.get('/').get_data(as_text=True))
         self.assertEqual(me.get('/companies?q=달빛').get_json()[0]['name'],'달빛화장품')
         case_id=self.file_case(me,'달빛화장품','제품 불량',str(cid))
-        self.assertIn('까지 답변을 받아요',me.get(f'/done/{case_id}').get_data(as_text=True))
+        self.assertIn('담당자에게 바로 전달됐어요',me.get(f'/done/{case_id}').get_data(as_text=True))
         # 기업: 승인 카드에 보이고, 승인하면 추천 조치 실행 + 답변
         page=b.get('/biz/').get_data(as_text=True)
         self.assertIn('승인할 민원이',page);self.assertIn('무상 교환',page);self.assertIn('달빛화장품',page)
