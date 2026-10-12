@@ -892,13 +892,18 @@ body.v2:has(main.cs) .pilot{position:relative}
 .privacy section p+.kv,.privacy section .kv+p{margin-top:10px}
 .privacy .kv{grid-template-columns:minmax(110px,max-content) 1fr}.privacy .kv dd{text-align:left;color:var(--fg)}
 @media (max-width:640px){.privacy .kv{grid-template-columns:1fr;gap:2px}.privacy .kv dt{margin-top:8px;font-size:13.5px}}
-/* 사업자 정보 (푸터) */
-.opinfo{list-style:none;margin:0;padding:0;flex-basis:100%;display:flex;flex-wrap:wrap;font-size:12.5px;line-height:1.9;color:var(--fg3)}
-.opinfo li{display:inline-flex;align-items:center}
-.opinfo li+li::before{content:'';width:1px;height:10px;background:var(--line);margin:0 10px}
-.foot2 .copy{flex-basis:100%;margin:0;font-size:12.5px;color:var(--fg4)}
-body.v2 .foot2 .opinfo{margin-top:4px}
-.cs-foot{align-items:flex-start}
-.cs-foot>div{min-width:0}
-.cs-foot .opinfo{margin-top:10px;font-size:12px}
-@media (max-width:640px){.opinfo{flex-direction:column;line-height:1.8}.opinfo li+li::before{display:none}}
+/* 푸터: 링크 한 줄 → 사업자 정보 두 줄 → 저작권 */
+.foot2 .wrap{display:block}
+.ft-links{display:flex;flex-wrap:wrap;gap:6px 32px;font-size:15px;font-weight:600}
+.ft-links a{color:var(--fg2)}
+.ft-links a.strong{color:var(--fg);font-weight:700}
+.ft-links a:hover{color:var(--fg)}
+.opinfo{margin-top:18px;font-size:14px;line-height:1.8;color:var(--fg3)}
+.opinfo ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:0 28px}
+.foot2 .copy,.cs-foot .copy{margin:16px 0 0;font-size:13px;color:var(--fg4)}
+body.v2 .foot2{padding-block:32px 40px}
+.cs-foot{display:block;margin:40px 0 0;padding-top:24px;border-top:1px solid var(--line)}
+.cs-foot .ft-links{font-size:14px;gap:4px 24px}
+.cs-foot .opinfo{font-size:13px;margin-top:14px}
+@media (max-width:640px){.ft-links{gap:4px 20px;font-size:14px}.opinfo{font-size:13px}.opinfo ul{gap:0 16px}}
+.cs-foot a{text-decoration:none}
