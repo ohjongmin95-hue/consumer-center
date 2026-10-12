@@ -1,16 +1,30 @@
-{% extends 'base.html' %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
-{% block title %}{{ co.name }} 접수 · {{ CNAME }}{% endblock %}
-{% block bar %}{{ m.bar('home') }}{% endblock %}
+{% extends 'base.html' %}{% import '_i.html' as i %}
+{% block title %}{{ co.name }} 고객센터 · {{ CNAME }}{% endblock %}
+{% block description %}{{ co.name }}에 배송·교환·환불·불량 문의를 바로 접수하고 답변까지 확인해요.{% endblock %}
+{% block bar %}{% endblock %}
 {% block main %}
-<section class="band w"><div class="wrap hero3">
-<span class="av lg">{{ co.name[:1] }}</span>
-<h1 style="margin-top:24px">{{ co.name }}</h1>
-<p>{% if member %}담당자에게 바로 전달되고, 2일 안에 답변을 받아요{% else %}{{ CNAME }} 센터가 공식 연락처로 전달해 드려요{% endif %}</p>
-<a class="btn lg" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a>
-{% if co.contact %}<p class="cap" style="margin-top:20px">고객센터 {{ co.contact }}</p>{% endif %}
+<main class="cs">
+<div class="cs-in">
+<header class="cs-top"><span class="cs-brand"><img src="{{ url_for('static',filename='soboru-logo.png') }}" alt="SOBORU" width="507" height="120"><small>고객센터</small></span>
+<a href="{{ url_for('mine') }}" class="cs-mine">내 접수{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a></header>
+<section class="cs-hero">
+<span class="cs-av">{{ co.name[:1] }}</span>
+<h1>{{ co.name }}<br><em>무엇을 도와드릴까요?</em></h1>
+{% if member %}<p class="cs-promise"><span class="dot"></span>담당자에게 바로 전달돼요 · 답변 목표 {{ REPLY_DAYS }}일</p>
+{% else %}<p class="cs-promise gray"><span class="dot"></span>{{ CNAME }}가 {{ co.name }}의 공식 연락처로 전달해 드려요</p>{% endif %}
+</section>
+<section class="cs-sec"><h2>어떤 일인가요?</h2>
+<div class="cs-cats">{% for cat,sub in [('배송 조회','배송이 안 오거나 늦어요'),('교환','사이즈·색상을 바꾸고 싶어요'),('반품·환불','돌려보내고 환불받고 싶어요'),('제품 불량','고장 나거나 망가져서 왔어요'),('고객 응대','응대가 불편했어요'),('기타','그 밖의 문의')] %}
+<a href="{{ url_for('new',company_id=co.id,category=cat) }}"><span class="ic-wrap">{{ i.cat_icon(cat,30) }}</span><span class="tx"><b>{{ cat }}</b><small>{{ sub }}</small></span><span class="chev"></span></a>{% endfor %}</div></section>
+<section class="cs-sec"><div class="cs-rows">
+<a href="{{ url_for('mine') }}"><span class="ic-wrap sm">{{ i.icon('search',24) }}</span><span class="tx"><b>내 접수 확인하기</b><small>휴대폰 번호와 조회 비밀번호로 진행 상황을 봐요</small></span><span class="chev"></span></a>
+{% if co.contact %}<div class="row"><span class="ic-wrap sm">{{ i.icon('phone',24) }}</span><span class="tx"><b>고객센터 <span style="user-select:all">{{ co.contact }}</span></b><small>전화로 직접 문의할 수도 있어요</small></span></div>{% endif %}
+{% if ret %}<details><summary><span class="ic-wrap sm">{{ i.icon('truck',24) }}</span><span class="tx"><b>반품 보내실 곳</b><small>접수 후 안내에 따라 보내 주세요</small></span><span class="chev"></span></summary><div class="cs-ret">{{ ret }}</div></details>{% endif %}
 </div></section>
-<section class="band g"><div class="wrap">
-<div class="steps3">{% for ic,t,s in [('note','한 번만 접수','불편한 일과 원하는 해결을 적어요'),('reply','기업이 답변','답변과 조치를 여기서 확인해요'),('shield','해결 확인','해결되지 않으면 다시 요청하거나 피해구제로 안내해요')] %}
-<div>{{ i.icon(ic,44) }}<b>{{ t }}</b><p>{{ s }}</p></div>{% endfor %}</div>
-</div></section>
+<section class="cs-how"><h2>접수하면 이렇게 진행돼요</h2>
+<ol><li><b>접수</b><span>1분이면 끝나요</span></li><li><b>{{ '담당자 확인' if member else '센터 전달' }}</b><span>{{ '바로 전달돼요' if member else '공식 연락처로 보내요' }}</span></li><li><b>답변·조치</b><span>알림으로 알려 드려요</span></li></ol></section>
+<div class="cs-cta"><a class="btn full" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a></div>
+<footer class="cs-foot"><img src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96"><p>SOBORU가 접수부터 해결까지 기록해 드려요<br><a href="{{ url_for('privacy') }}">개인정보 처리방침</a> · <a href="{{ url_for('guide') }}">이용 안내</a></p></footer>
+</div></main>
 {% endblock %}
+{% block foot %}{% endblock %}
