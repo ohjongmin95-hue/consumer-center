@@ -50,6 +50,7 @@ SECTIONS = [
         ('operator.email', '대표 이메일', '', OPT),
         ('operator.phone', '대표 전화', '', OPT),
         ('operator.fax', '팩스', '', OPT),
+        ('operator.manager', '관리자 (푸터에 표시)', '오민주', OPT),
         ('operator.privacy_officer', '개인정보 보호책임자', '오규섭 (대표)', OPT),
         ('operator.privacy_contact', '개인정보 보호책임자 연락처', '', OPT),
         ('operator.youth_officer', '청소년보호책임자 (비우면 개인정보 보호책임자와 같음)', '', OPT),

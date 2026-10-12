@@ -216,12 +216,12 @@ def doc_headings(key):
     # 목차용: "## " 소제목 목록 (본문 h2의 id와 같은 순서)
     return [line.strip()[3:] for line in g.content.get(key,'').split('\n') if line.strip().startswith('## ')]
 app.jinja_env.globals['doc_headings']=doc_headings
-FOOTER_ROWS=[['operator.name','operator.ceo','operator.address','operator.phone','operator.fax'],
-             ['operator.email','operator.biz_no','operator.privacy_officer','operator.youth_officer']]
+FOOTER_ROWS=[['operator.name','operator.address'],
+             ['operator.biz_no','operator.manager']]
 def footer_label(key):
     # 푸터 항목 이름도 관리자 '사이트 문구'에서 바꿀 수 있음
     return {'operator.name':ui_text('common.ft_name','상호'),'operator.ceo':ui_text('common.ft_ceo','대표'),'operator.address':ui_text('common.ft_address','소재지'),
-            'operator.phone':ui_text('common.ft_phone','전화'),'operator.fax':ui_text('common.ft_fax','팩스'),'operator.email':ui_text('common.ft_email','이메일'),
+            'operator.manager':ui_text('common.ft_manager','관리자'),'operator.phone':ui_text('common.ft_phone','전화'),'operator.fax':ui_text('common.ft_fax','팩스'),'operator.email':ui_text('common.ft_email','이메일'),
             'operator.biz_no':ui_text('common.ft_biz_no','사업자등록번호'),'operator.privacy_officer':ui_text('common.ft_privacy_officer','개인정보 보호책임자'),
             'operator.youth_officer':ui_text('common.ft_youth_officer','청소년보호책임자')}[key]
 def footer_rows():
