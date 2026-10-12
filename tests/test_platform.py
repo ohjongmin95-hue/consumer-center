@@ -165,6 +165,15 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('사건 개요',page);self.assertIn('다시 요청: 아직 연락이 없어요',page)
         self.assertEqual(self.client().get(f'/case/{case_id}/relief').status_code,404)
         self.assertEqual(me.get('/mine').status_code,200)
+        # 검색 노출: 공개 화면만 색인, 사이트맵에 기업 접수 페이지
+        self.assertNotIn('noindex',home);self.assertIn('<meta name="description"',home)
+        self.assertIn('noindex',me.get(f'/case/{case_id}').get_data(as_text=True))
+        robots=me.get('/robots.txt').get_data(as_text=True)
+        self.assertIn('Disallow: /case',robots);self.assertIn('Sitemap: http://localhost/sitemap.xml',robots)
+        sm=me.get('/sitemap.xml').get_data(as_text=True)
+        self.assertIn(f'<loc>http://localhost/to/{cid}</loc>',sm);self.assertIn('<loc>http://localhost/guide</loc>',sm)
+        self.assertIn('Disallow: /ops',me.get('/biz/robots.txt').get_data(as_text=True))
+        self.assertNotIn('noindex',self.client().get('/biz/login').get_data(as_text=True))
 
     def test_submit_validation_keeps_draft(self):
         me=self.client()

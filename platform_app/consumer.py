@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import core
 from core import conn, clean, digits
+from markupsafe import escape
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
 app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='me')
@@ -174,6 +175,15 @@ def relief(case_id):
     with conn() as db:
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id'])
     return render_template('c_relief.html',c=c,ev=ev,files=fl,co=co)
+
+@app.route('/robots.txt')
+def robots():return app.response_class(core.robots_txt('me',['/case','/mine','/done','/submit','/lookup','/forget','/companies']),mimetype='text/plain')
+@app.route('/sitemap.xml')
+def sitemap():
+    urls=[core.site_url('me',p) for p in ('/','/guide','/new','/privacy')]
+    with conn() as db:urls+=[core.site_url('me','/to/%d'%r['id']) for r in db.execute("SELECT id FROM companies WHERE status IN ('active','listed') ORDER BY id")]
+    body=''.join('<url><loc>%s</loc></url>'%escape(u) for u in urls)
+    return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
 @app.route('/to/<int:company_id>')
 def company_page(company_id):

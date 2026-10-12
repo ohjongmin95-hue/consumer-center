@@ -41,6 +41,9 @@ OPS_EMAIL=$EMAIL
 # pilot: 화면 위에 '시범 운영 중' 띠 표시. 개인정보 처리방침 검토가 끝나면 live로 바꾸고: sudo systemctl restart soboru-platform
 PLATFORM_MODE=pilot
 # 메일 알림(새 민원·답변). 소비자제보센터와 같은 계정을 써도 됩니다.
+# 네이버 서치어드바이저 소유확인 코드 (한큐, 한큐 비즈)
+# NAVER_SITE_VERIFICATION=
+# NAVER_SITE_VERIFICATION_BIZ=
 # SMTP_HOST=
 # SMTP_PORT=465
 # SMTP_USER=

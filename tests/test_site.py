@@ -631,7 +631,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('/reports/%d<' % secret_id, xml)
         self.assertNotIn('/admin', xml)
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<meta name="description" content="소비자 피해를 제보하고', home)
+        self.assertIn('<meta name="description" content="소비자 피해 제보와 처리 과정', home)
         self.assertNotIn('naver-site-verification', home)
         detail = self.client.get('/reports/%d' % public_id).get_data(as_text=True)
         self.assertIn('<meta name="description" content="공개 본문 내용입니다">', detail)
@@ -645,6 +645,18 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<meta name="google-site-verification" content="goog-XYZ_789">', home)
         self.assertTrue(self.client.get('/robots.txt').get_data(as_text=True).startswith('#DaumWebMasterTool:pin:id'))
         self.assertIn('noindex', admin.get('/admin').get_data(as_text=True))
+        # 네이버 RSS 제출용 피드와 채널 정보 마크업
+        rss = self.client.get('/rss.xml')
+        self.assertEqual(rss.mimetype, 'application/rss+xml')
+        feed = rss.get_data(as_text=True)
+        self.assertIn('<link>http://localhost/reports/%d</link>' % public_id, feed)
+        self.assertIn('공개 본문 내용입니다', feed)
+        self.assertNotIn('비밀 제목', feed)
+        self.assertIn('application/rss+xml', home)
+        admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'seo',
+            'seo.channels': 'https://blog.naver.com/soboru\nhttps://www.instagram.com/soboru'})
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('"sameAs": ["https://blog.naver.com/soboru", "https://www.instagram.com/soboru"]', home)
 
     def test_admin_list_editor(self):
         self.old_guide()

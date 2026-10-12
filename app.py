@@ -430,6 +430,29 @@ def sitemap_xml():
     body=''.join('<url><loc>%s</loc>%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '') for u,d in pages)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
+@app.route('/rss.xml')
+def rss_xml():
+    # 네이버 서치어드바이저 "RSS 제출"용: 공개된 최신 제보와 게시글을 본문까지 담는다.
+    def date(ts):
+        try:return datetime.datetime.fromisoformat(ts[:19]).strftime('%a, %d %b %Y %H:%M:%S +0900')
+        except ValueError:return ''
+    items=[]
+    with conn() as db:
+        for r in db.execute('SELECT id,subject,description,created FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 30'):
+            items.append((r['created'],mask_personal(r['subject']),url_for('public_case',case_id=r['id'],_external=True),mask_personal(r['description'])))
+        for r in db.execute('SELECT id,title,body,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 30'):
+            items.append((r['created'],r['title'],url_for('board_post',post_id=r['id'],_external=True),r['body']))
+    items.sort(key=lambda x:x[0],reverse=True)
+    body=''.join('<item><title>%s</title><link>%s</link><guid>%s</guid><description>%s</description>%s</item>'%(escape(t),escape(u),escape(u),escape(d),'<pubDate>%s</pubDate>'%date(c) if date(c) else '') for c,t,u,d in items[:50])
+    home=url_for('home',_external=True)
+    head='<channel><title>%s</title><link>%s</link><description>%s</description><language>ko</language>'%(escape(g.content.get('site.name','')),escape(home),escape(g.content.get('seo.description','')))
+    return app.response_class('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0">'+head+body+'</channel></rss>',mimetype='application/rss+xml')
+
+def channel_links():
+    # 관리자 '검색 노출'에 한 줄에 하나씩 넣은 블로그·인스타그램 등 주소 (네이버 채널 정보 마크업)
+    return [u.strip() for u in g.content.get('seo.channels','').splitlines() if u.strip().startswith(('http://','https://'))]
+app.jinja_env.globals['channel_links']=channel_links
+
 @app.route('/terms',defaults={'page':'terms'})
 @app.route('/privacy',defaults={'page':'privacy'})
 @app.route('/youth',defaults={'page':'youth'})

@@ -19,6 +19,15 @@ BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
 PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'  # 시범 운영: 화면 위에 '실제 개인정보 넣지 마세요' 띠
 CNAME=os.getenv('CONSUMER_NAME','한큐')  # 소비자 서비스 이름 (로고·제목·메일)
 BNAME=os.getenv('BUSINESS_NAME',CNAME+' 비즈')  # 기업 서비스 이름
+# 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 민원, 운영 등)는 noindex
+INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'login','signup'}}
+DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
+             'biz':BNAME+'는 고객 민원을 한 화면에서 승인하고 반복 민원은 자동으로 처리하는 기업용 CS 운영 도구예요.'}
+VERIFY={'me':os.getenv('NAVER_SITE_VERIFICATION',''),'biz':os.getenv('NAVER_SITE_VERIFICATION_BIZ','')}
+def robots_txt(kind,disallow):
+    lines=['User-agent: *','Allow: /']+['Disallow: '+p for p in disallow]
+    if kind=='me':lines+=['','Sitemap: '+site_url(kind,'/sitemap.xml')]
+    return '\n'.join(lines)+'\n'
 MAIL_ASYNC=True  # 테스트에서는 False
 
 CATS=['배송 조회','교환','반품·환불','제품 불량','고객 응대','기타']
@@ -124,7 +133,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,CATS=CATS,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,CNAME=CNAME,BNAME=BNAME,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,CATS=CATS,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
