@@ -909,3 +909,5 @@ body.v2 .foot2{padding-block:16px 18px;font-size:14px}
 .cs-foot .opinfo{font-size:12.5px;margin-top:6px}
 @media (max-width:640px){.ft-top{gap:4px 16px}.ft-links{gap:2px 14px;font-size:13px}.opinfo{font-size:12.5px}.opinfo ul{gap:0 14px}}
 .cs-foot a{text-decoration:none}
+/* 넓은 화면: 로고는 왼쪽·링크는 오른쪽, 사업자 정보는 한 줄로 펼치고 저작권은 오른쪽 끝 */
+@media (min-width:761px){.foot2 .wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:0 24px}.foot2 .ft-top{grid-column:1/-1;justify-content:space-between}.foot2 .opinfo{display:flex;flex-wrap:wrap;gap:0 24px}.foot2 .copy{margin:0;text-align:right}}
