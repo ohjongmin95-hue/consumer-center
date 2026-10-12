@@ -235,7 +235,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<h1>청소년보호정책</h1>', youth)
         self.assertIn('class="policy-toc"', youth)
         self.assertIn('<h2 id="sec-1">', youth)
-        self.assertIn('청소년보호책임자: (운영자 정보 미입력)', youth)
+        self.assertIn('청소년보호책임자: 오규섭 (대표)', youth)  # 비우면 기본값(대표자)인 개인정보 보호책임자로 표시
+        self.assertIn('연락처: (운영자 정보 미입력)', youth)
         admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'operator', 'operator.name': '새 운영사', 'operator.privacy_officer': '홍길동'})
         self.assertIn('청소년보호책임자: 홍길동', self.client.get('/youth').get_data(as_text=True))  # 비우면 개인정보 보호책임자로 대신 표시
 
