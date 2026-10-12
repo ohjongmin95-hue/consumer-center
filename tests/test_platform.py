@@ -124,7 +124,9 @@ class PlatformTest(unittest.TestCase):
         b2,_,cid2=self.signup_and_approve('을회사','b@example.com')
         me=self.client();case_id=self.file_case(me,'갑회사','교환',str(cid1))
         self.assertEqual(b2.get(f'/biz/case/{case_id}').status_code,404)
-        self.assertEqual(self.client().get('/biz/').status_code,302)
+        home=self.client().get('/biz/');self.assertEqual(home.status_code,200);page=home.get_data(as_text=True)
+        self.assertIn('승인 한 번으로',page);self.assertIn('소보루 비즈 로그인',page);self.assertNotIn('noindex',page)
+        self.assertEqual(self.client().get('/biz/all').status_code,302)
         self.assertEqual(self.client().get('/biz/ops').status_code,302)
         # CSRF 없는 요청은 거절
         self.assertEqual(b1.post(f'/biz/case/{case_id}',data={'act':'approve'}).status_code,400)

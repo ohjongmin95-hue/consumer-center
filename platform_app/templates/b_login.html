@@ -1,11 +1,34 @@
-{% extends 'base.html' %}{% import '_b.html' as b with context %}
-{% block title %}로그인 · {{ BNAME }}{% endblock %}
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
+{% block title %}{{ BNAME }} · 고객 민원, 승인 한 번으로{% endblock %}
 {% block bar %}{{ b.bar('login') }}{% endblock %}
-{% block body %}
-<div class="auth panel"><h1 class="h1">로그인</h1><p class="sub">{{ BNAME }} 기업 담당자 로그인</p>
-<form method="post" class="stack" style="margin-top:28px"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
-<label class="fld"><span>이메일</span><input class="inp" name="login_id" type="email" required autocomplete="username"></label>
-<label class="fld"><span>비밀번호</span><input class="inp" name="password" type="password" required autocomplete="current-password"></label>
-<button class="btn full" style="margin-top:8px">로그인</button></form>
-<p class="cap" style="text-align:center;margin-top:24px">처음이신가요? <a class="link" href="{{ url_for('signup') }}">무료로 시작하기</a></p></div>
-{% endblock %}
+{% block main %}<main class="pg split"><div class="wrap">
+<div class="bsplit">
+<section class="brand">
+<span class="tag">기업용 CS 운영 도구</span>
+<h1>고객 민원,<br>승인 한 번으로<br>끝내요</h1>
+<p>요약과 추천 조치가 붙은 민원을 확인하고<br>승인만 누르면 답변과 조치까지 처리돼요.</p>
+<div class="stage" aria-hidden="true">
+<img class="mascot" src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96">
+<div class="ok"><i>✓</i>배송 조회 · 자동으로 답변했어요</div>
+<div class="mock">
+<div class="m-top"><span>{{ i.cat_icon('제품 불량',20) }} 제품 불량</span><span class="pill">2일 안에 답변</span></div>
+<b class="m-tt">크림 용기가 깨져서 왔어요</b>
+<span class="m-want">원하는 해결 · 교환</span>
+<div class="m-reco"><small>추천 조치</small><b>무상 교환 (배송비 업체 부담)</b></div>
+<div class="m-acts"><span class="on">승인</span><span>보류</span><span>자료 요청</span></div>
+</div>
+</div>
+</section>
+<section class="form">
+<span class="who">기업 담당자 전용</span>
+<h2>{{ BNAME }} 로그인</h2>
+<form method="post" action="{{ url_for('login') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<label class="ifld"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><input name="login_id" type="email" required autocomplete="username" placeholder="이메일" aria-label="이메일"></label>
+<label class="ifld"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/></svg><input name="password" type="password" required autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호"></label>
+<button class="btn full">로그인</button>
+</form>
+<div class="links"><span style="color:inherit">처음이신가요?</span><a class="acc" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
+<p class="cap" style="text-align:center;margin-top:12px">비밀번호를 잊었다면 운영팀에 문의해 주세요</p>
+</section>
+</div>
+</div></main>{% endblock %}

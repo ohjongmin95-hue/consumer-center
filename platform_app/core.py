@@ -20,7 +20,7 @@ PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'  # 시범 운영: 화면 위에
 CNAME=os.getenv('CONSUMER_NAME','한큐')  # 소비자 서비스 이름 (로고·제목·메일)
 BNAME=os.getenv('BUSINESS_NAME','소보루 비즈')  # 기업 서비스 이름
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 민원, 운영 등)는 noindex
-INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'login','signup'}}
+INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup'}}
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
              'biz':BNAME+'는 고객 민원을 한 화면에서 승인하고 반복 민원은 자동으로 처리하는 기업용 CS 운영 도구예요.'}
 VERIFY={'me':os.getenv('NAVER_SITE_VERIFICATION',''),'biz':os.getenv('NAVER_SITE_VERIFICATION_BIZ','')}

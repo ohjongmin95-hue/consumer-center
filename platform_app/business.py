@@ -111,8 +111,8 @@ def by_cat(rows):
     return [(cat,cnt,round(cnt/n*100)) for cat in core.CATS for cnt in [sum(r['category']==cat for r in rows)]]
 
 @app.route('/')
-@login_required
 def decide():
+    if not me():return render_template('b_login.html')  # 로그인 전: 소개 + 로그인
     with conn() as db:
         rows=my_cases(db,me());n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(me()['id'],)).fetchone()[0]
     pend=[r for r in rows if is_pending(r)]

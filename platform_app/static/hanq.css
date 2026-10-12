@@ -686,3 +686,58 @@ body.v2 .steps3 p{font-size:18px;line-height:1.55}
 .foot2 .logo.biz .ch{height:24px}
 .foot2 .logo.biz .wm{height:14px}
 .foot2 .logo.biz small.w{font-size:14px}
+/* 소보루 비즈 첫 화면·로그인: 왼쪽 브랜드, 오른쪽 로그인 */
+.bsplit{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);background:var(--card);border-radius:32px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04),0 24px 64px rgba(25,31,40,.08);min-height:640px}
+.bsplit .brand{position:relative;background:linear-gradient(150deg,#ffb229 0%,#f89b00 48%,#e98500 100%);color:#fff;padding:64px 56px 0;display:flex;flex-direction:column;overflow:hidden}
+.bsplit .brand .tag{align-self:flex-start;background:rgba(255,255,255,.22);border-radius:999px;padding:7px 14px;font-size:15px;font-weight:600}
+.bsplit .brand h1{margin:24px 0 0;font-size:52px;line-height:1.25;letter-spacing:-.05em;font-weight:800;text-wrap:balance}
+.bsplit .brand p{margin:20px 0 0;font-size:19px;line-height:1.6;color:rgba(255,255,255,.92)}
+.bsplit .stage{position:relative;margin-top:auto;padding-top:48px;display:flex;justify-content:center}
+.bsplit .stage .mascot{position:absolute;top:4px;left:calc(50% + 120px);width:104px;height:auto;z-index:2}
+.bsplit .stage .mock{width:100%;max-width:400px;border-radius:28px 28px 0 0;border:0;box-shadow:0 -8px 40px rgba(120,60,0,.18);color:#191f28;background:#fff}
+.bsplit .stage .ok{position:absolute;left:24px;top:8px;z-index:2;background:#fff;color:#191f28;border-radius:16px;padding:12px 16px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:0 12px 32px rgba(120,60,0,.2)}
+.bsplit .stage .ok i{width:22px;height:22px;border-radius:50%;background:#12a26a;color:#fff;font-style:normal;display:grid;place-items:center;font-size:13px}
+.bsplit .form{padding:72px 64px;display:flex;flex-direction:column;justify-content:center;align-items:stretch;max-width:520px;width:100%;justify-self:center}
+.bsplit .form .who{align-self:center;background:var(--accent-soft);color:var(--accent-ink);border-radius:999px;padding:6px 14px;font-size:14px;font-weight:700}
+.bsplit .form h2{margin:14px 0 40px;text-align:center;font-size:32px;letter-spacing:-.04em;font-weight:800}
+.bsplit .ifld{display:flex;align-items:center;gap:12px;background:var(--fill);border-radius:16px;padding:0 18px;height:60px;transition:box-shadow .15s}
+.bsplit .ifld:focus-within{box-shadow:0 0 0 2px var(--accent)}
+.bsplit .ifld svg{flex:none;width:22px;height:22px;color:var(--fg3)}
+.bsplit .ifld input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:17px;height:100%}
+.bsplit .ifld input::placeholder{color:var(--fg4)}
+.bsplit form{display:flex;flex-direction:column;gap:12px}
+.bsplit form .btn{height:60px;font-size:18px;margin-top:12px;border-radius:16px}
+.bsplit .links{margin-top:28px;display:flex;justify-content:center;gap:14px;font-size:15px;color:var(--fg3)}
+.bsplit .links a{color:var(--fg2);font-weight:600}
+.bsplit .links a.acc{color:var(--accent-ink)}
+.bsplit .links span{color:var(--line)}
+.mock{position:relative;background:var(--card);border-radius:28px;padding:28px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 16px 48px rgba(25,31,40,.10);border:1px solid var(--line)}
+.mock .m-top{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#4e5968}
+.mock .m-top span:first-child{display:inline-flex;align-items:center;gap:6px}
+.mock .pill{background:#f2f4f6;border-radius:999px;padding:4px 12px;font-weight:600;font-size:13px}
+.mock .m-tt{font-size:22px;letter-spacing:-.03em;margin-top:6px}
+.mock .m-want{font-size:14px;color:#8b95a1}
+.mock .m-reco{background:#fff4e0;border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.mock .m-reco small{font-size:13px;font-weight:700;color:#b36b00}
+.mock .m-reco b{font-size:17px}
+.mock .m-acts{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;margin-top:6px}
+.mock .m-acts span{height:48px;border-radius:14px;background:#f2f4f6;color:#4e5968;font-weight:700;font-size:15px;display:grid;place-items:center}
+.mock .m-acts span.on{background:#f89b00;color:#fff}
+.bsplit>*{min-width:0}
+main.pg.split{padding-block:40px 80px}
+@media (max-width:960px){
+  .bsplit{grid-template-columns:minmax(0,1fr);min-height:0;border-radius:24px}
+  .bsplit .form{justify-self:stretch;max-width:none}
+  .bsplit .brand{padding:40px 28px 0}
+  .bsplit .brand h1{font-size:36px}
+  .bsplit .brand p{font-size:16px}
+  .bsplit .stage{padding-top:32px}
+  .bsplit .stage .mock{max-width:340px;padding:22px}
+  .bsplit .stage .mock .m-tt{font-size:19px}
+  .bsplit .stage .mock .m-acts span{height:42px;font-size:14px}
+  .bsplit .stage .mascot{width:80px;left:auto;right:12px;top:0}
+  .bsplit .stage .ok{display:none}
+  .bsplit .form{padding:40px 24px 44px}
+  .bsplit .form h2{font-size:26px;margin-bottom:28px}
+  main.pg.split{padding-block:16px 48px}
+}
