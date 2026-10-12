@@ -323,26 +323,35 @@ def files_ok(uploads):
     return ''
 
 # ---------- 새 민원 알림 ----------
-def kakao_ready():return bool(os.getenv('SOLAPI_API_KEY') and os.getenv('SOLAPI_API_SECRET') and os.getenv('SOLAPI_PFID') and os.getenv('BIZ_KAKAO_TPL_NEW'))
-def send_kakao(phone,variables):
-    """솔라피로 카카오 알림톡 1건. 문구는 카카오 심사를 받은 템플릿(BIZ_KAKAO_TPL_NEW)과 같아야 한다 -> docs/platform-kakao.md"""
+# 알림톡 템플릿: BIZ_KAKAO_TPL_NEW(기업에 새 민원), CS_KAKAO_TPL_REPLY(소비자에게 기업 답변·진행 알림)
+def kakao_ready(tpl='BIZ_KAKAO_TPL_NEW'):return bool(os.getenv('SOLAPI_API_KEY') and os.getenv('SOLAPI_API_SECRET') and os.getenv('SOLAPI_PFID') and os.getenv(tpl))
+def send_kakao(phone,variables,tpl='BIZ_KAKAO_TPL_NEW',label='새 민원 알림톡'):
+    """솔라피로 카카오 알림톡 1건. 문구는 카카오 심사를 받은 템플릿과 같아야 한다 -> docs/platform.md"""
     phone=digits(phone)
-    if not phone.startswith('01') or not kakao_ready():return
+    if not phone.startswith('01') or not kakao_ready(tpl):return
     def job():
         try:
             date=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds');salt=secrets.token_hex(16)
             sig=hmac.new(os.getenv('SOLAPI_API_SECRET').encode(),(date+salt).encode(),hashlib.sha256).hexdigest()
-            msg={'to':phone,'kakaoOptions':{'pfId':os.getenv('SOLAPI_PFID'),'templateId':os.getenv('BIZ_KAKAO_TPL_NEW'),'disableSms':True,'variables':variables}}
+            msg={'to':phone,'kakaoOptions':{'pfId':os.getenv('SOLAPI_PFID'),'templateId':os.getenv(tpl),'disableSms':True,'variables':variables}}
             if os.getenv('SOLAPI_SENDER'):msg['from']=digits(os.getenv('SOLAPI_SENDER'))
             req=urllib.request.Request('https://api.solapi.com/messages/v4/send',data=json.dumps({'message':msg}).encode(),method='POST',
                 headers={'Content-Type':'application/json','Authorization':f"HMAC-SHA256 apiKey={os.getenv('SOLAPI_API_KEY')}, date={date}, salt={salt}, signature={sig}"})
             with urllib.request.urlopen(req,timeout=15) as r:res=json.loads(r.read().decode() or '{}')
             code=str(res.get('statusCode',''));status='sent' if not code or code in ('2000','3000','4000') else 'failed: '+code
         except Exception as e:status='failed: '+type(e).__name__
-        with conn() as db:db.execute('INSERT INTO mail_log(target,subject,status,created) VALUES(?,?,?,?)',('kakao:'+phone[:3]+'****'+phone[-4:],'새 민원 알림톡',status,iso()))
+        with conn() as db:db.execute('INSERT INTO mail_log(target,subject,status,created) VALUES(?,?,?,?)',('kakao:'+phone[:3]+'****'+phone[-4:],label,status,iso()))
     threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
+def signer(salt):
+    from itsdangerous import URLSafeTimedSerializer
+    return URLSafeTimedSerializer(SECRET,salt=salt)
 def short(text,limit=30):
     text=' '.join((text or '').split());return text if len(text)<=limit else text[:limit-1]+'…'
+def notify_consumer(c,subject,text):
+    """소비자에게 진행 알림: 이메일(적었으면), 그리고 알림톡(CS_KAKAO_TPL_REPLY가 있으면, 접수 때 받은 휴대폰으로)."""
+    if is_direct(c):return  # 직접 등록한 민원은 기업이 원래 채널로 전한다
+    send_mail(c['email'],subject,f"{text}\n\n■ 접수번호: {c['no']}\n■ 요약: {c['title']}\n\n{site_url('me','/mine')}")
+    send_kakao(c['phone'],{'#{회사}':short(c['company_name'],20),'#{내용}':short(text.split('\n')[0],40),'#{접수번호}':c['no'],'#{링크}':site_url('me','/mine')},'CS_KAKAO_TPL_REPLY','소비자 알림톡')
 def notify_company_new(co,c):
     """입점 기업에 새 민원 알림: 이메일, 그리고 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
     link=site_url('biz','/case/%d'%c['id'])

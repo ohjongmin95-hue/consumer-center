@@ -1,0 +1,10 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}비밀번호 {{ '재설정' if reset else '찾기' }} · {{ BNAME }}{% endblock %}
+{% block bar %}{% endblock %}
+{% block foot %}{% endblock %}
+{% block body %}<div class="auth panel"><a class="logo biz" href="{{ url_for('login') }}">{{ b.soboru_logo() }}</a>
+{% if reset %}<h1 class="h1" style="margin-top:20px">새 비밀번호 정하기</h1>
+<form method="post" class="stack" style="margin-top:24px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input class="inp" name="password" type="password" minlength="10" placeholder="새 비밀번호 (10자 이상)" required autocomplete="new-password"><button class="btn full">바꾸기</button></form>
+{% else %}<h1 class="h1" style="margin-top:20px">비밀번호 찾기</h1><p class="sub" style="margin-top:8px">로그인 이메일로 재설정 링크를 보내 드려요</p>
+<form method="post" class="stack" style="margin-top:24px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input class="inp" name="login_id" type="email" placeholder="로그인 이메일" required autocomplete="username"><button class="btn full">링크 받기</button></form>
+<p class="cap" style="text-align:center;margin-top:16px"><a href="{{ url_for('login') }}" style="text-decoration:underline">로그인으로 돌아가기</a></p>{% endif %}</div>{% endblock %}

@@ -31,7 +31,7 @@
 
 <section><h2>5. 처리 위탁</h2>
 <p>서비스 운영을 위해 아래 업체에 개인정보 처리를 맡기고 있어요. 위탁 계약에서 개인정보를 안전하게 다루도록 정하고 관리해요.</p>
-<dl class="kv"><dt>네이버클라우드 주식회사</dt><dd>서버 운영과 데이터 보관</dd>{% if mail_vendor %}<dt>{{ mail_vendor }}</dt><dd>알림 이메일 발송</dd>{% endif %}</dl></section>
+<dl class="kv"><dt>네이버클라우드 주식회사</dt><dd>서버 운영과 데이터 보관</dd>{% if mail_vendor %}<dt>{{ mail_vendor }}</dt><dd>알림 이메일 발송</dd>{% endif %}{% if kakao and kakao_vendor %}<dt>{{ kakao_vendor }}</dt><dd>카카오 알림톡 발송</dd>{% endif %}</dl></section>
 
 <section><h2>6. 파기 절차와 방법</h2>
 <p>보유 기간이 지난 개인정보는 매시간 도는 자동 작업으로 지체 없이 파기해요. 전자 파일은 복원할 수 없는 방법으로 영구 삭제하고, 종이 문서는 파쇄하거나 소각해요.</p></section>

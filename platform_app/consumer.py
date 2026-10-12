@@ -107,7 +107,8 @@ def submit():
             db.execute("UPDATE cases SET status='forwarded',due=?,decision='pending' WHERE id=?",(due,case_id))
             core.add_event(db,case_id,'sys',f"{co['name']} 담당 화면으로 전달했어요")
             c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
-            if core.auto_ok(db,c):core.run_playbook(db,c,'auto')
+            if core.auto_ok(db,c):
+                if core.run_playbook(db,c,'auto'):core.notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{co['name']}이(가) 답변했어요.")
             else:core.notify_company_new(co,c)
         elif member:core.add_event(db,case_id,'sys','기업 전달에 동의하지 않아 접수만 했어요.')
         else:core.add_event(db,case_id,'sys','비입점 기업이에요. 센터가 공식 연락처로 전달을 시도할게요.' if d['consent'] else '비입점 기업이고 전달 동의가 없어 접수만 했어요.')
@@ -140,6 +141,25 @@ def lookup():
     if not found:flash('휴대폰 번호나 조회 비밀번호가 맞지 않아요.','error')
     else:remember(*found);flash(f'민원 {len(found)}건을 찾았어요.','ok')
     return redirect(url_for('mine'))
+
+@app.route('/lookup/mail',methods=['POST'])
+def lookup_mail():
+    """조회 비밀번호를 잊었을 때: 휴대폰 번호와 접수 때 적은 이메일이 맞으면 그 이메일로 바로 여는 링크를 보낸다."""
+    phone=digits(request.form.get('phone',''));email=clean(request.form.get('email'),80).lower()
+    if core.throttled('lookup_mail',limit=5,minutes=30):flash('잠시 후 다시 시도해 주세요.','error');return redirect(url_for('mine'))
+    if not core.mail_ready():flash('지금은 메일을 보낼 수 없어요. 접수한 기업에 문의해 주세요.','error');return redirect(url_for('mine'))
+    with conn() as db:n=db.execute('SELECT COUNT(*) FROM cases WHERE phone=? AND lower(email)=?',(phone,email)).fetchone()[0] if phone and email else 0
+    if n:
+        tok=core.signer('lookup').dumps({'p':phone,'e':email})
+        core.send_mail(email,f'[{core.CNAME}] 내 접수 바로 열기',f"아래 링크를 누르면 이 휴대폰 번호로 접수한 민원 {n}건을 볼 수 있어요. 30분 동안만 열려요.\n{core.site_url('me','/lookup/t/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
+    flash('접수 때 적은 이메일이 맞다면 바로 여는 링크를 보냈어요.','ok');return redirect(url_for('mine'))
+
+@app.route('/lookup/t/<tok>')
+def lookup_token(tok):
+    try:d=core.signer('lookup').loads(tok,max_age=1800)
+    except Exception:flash('링크가 만료됐어요. 다시 요청해 주세요.','error');return redirect(url_for('mine'))
+    with conn() as db:ids=[r['id'] for r in db.execute('SELECT id FROM cases WHERE phone=? AND lower(email)=? ORDER BY id DESC LIMIT 100',(d['p'],d['e']))]
+    remember(*ids);flash(f'민원 {len(ids)}건을 찾았어요.','ok');return redirect(url_for('mine'))
 
 @app.route('/forget',methods=['POST'])
 def forget():session.pop('mine',None);flash('이 기기에서 내 민원 목록을 지웠어요.','ok');return redirect(url_for('mine'))
@@ -266,7 +286,7 @@ def case_file(case_id,file_id):
 @app.route('/privacy')
 def privacy():
     return render_template('c_privacy.html',op=core.OPERATOR,since=core.PRIVACY_SINCE,years=core.RETENTION_YEARS,contact=os.getenv('PRIVACY_EMAIL') or os.getenv('OPS_EMAIL',''),phone=os.getenv('PRIVACY_PHONE',''),
-        mail_vendor=os.getenv('MAIL_VENDOR',''),ai=bool(os.getenv('ANTHROPIC_API_KEY','').strip()),kakao=core.kakao_ready())
+        mail_vendor=os.getenv('MAIL_VENDOR',''),ai=bool(os.getenv('ANTHROPIC_API_KEY','').strip()),kakao=core.kakao_ready() or core.kakao_ready('CS_KAKAO_TPL_REPLY'),kakao_vendor=os.getenv('KAKAO_VENDOR',''))
 
 @app.errorhandler(404)
 def nf(e):return render_template('c_error.html',msg='페이지를 찾을 수 없어요.'),404

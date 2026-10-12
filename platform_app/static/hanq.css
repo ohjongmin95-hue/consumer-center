@@ -945,3 +945,4 @@ body.v2 .foot2{padding-block:16px 18px;font-size:14px}
 .bulk{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
 .home-chat{max-width:640px}.home-chat .sub{margin:4px 0 16px}.home-chat .shead{margin-bottom:0}
 .bulk .btn{background:var(--card)}
+.forgot{margin-top:4px}.forgot summary{font-size:14px;color:var(--fg3);font-weight:500;justify-content:center}

@@ -11,7 +11,7 @@
 <img class="mascot" src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96">
 <div class="ok"><i>✓</i>배송 조회 · 자동으로 답변했어요</div>
 <div class="mock">
-<div class="m-top"><span>{{ i.cat_icon('제품 불량',20) }} 제품 불량</span><span class="pill">2일 안에 답변</span></div>
+<div class="m-top"><span>{{ i.cat_icon('제품 불량',20) }} 제품 불량</span><span class="pill">새 민원</span></div>
 <b class="m-tt">크림 용기가 깨져서 왔어요</b>
 <span class="m-want">원하는 해결 · 교환</span>
 <div class="m-reco"><small>추천 조치</small><b>무상 교환 (배송비 업체 부담)</b></div>
@@ -29,7 +29,7 @@
 <button class="btn full">로그인</button>
 </form>
 <div class="links"><span style="color:inherit">처음이신가요?</span><a class="acc" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
-<p class="cap" style="text-align:center;margin-top:12px">비밀번호를 잊었다면 운영팀에 문의해 주세요</p>
+<p class="cap" style="text-align:center;margin-top:12px"><a href="{{ url_for('forgot') }}" style="text-decoration:underline">비밀번호를 잊었어요</a></p>
 </section>
 </div>
 </div></main>{% endblock %}
