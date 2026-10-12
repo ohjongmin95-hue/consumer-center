@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "소보루 CS",
-    "slug": "soboru-cs",
+    "slug": "soboru",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -46,7 +46,10 @@
     ],
     "scheme": "soborucs",
     "extra": {
-      "apiBase": "https://cs.soboru.co.kr"
+      "apiBase": "https://cs.soboru.co.kr",
+      "eas": {
+        "projectId": "fae7a101-e541-4bdd-98c0-61b0469e2980"
+      }
     }
   }
 }
