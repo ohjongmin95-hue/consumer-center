@@ -1,15 +1,18 @@
-import { Redirect } from 'expo-router';
-import { useState } from 'react';
-import { Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Redirect, router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Footer } from '../components/Footer';
-import { Btn, Field, Notice } from '../components/ui';
+import { Btn, Field, Notice, PwField } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { C } from '../lib/theme';
 
 export default function Login() {
-  const { session, meta, login } = useAuth();
+  const { session, login, lastId } = useAuth();
   const [id, setId] = useState('');
+  useEffect(() => {
+    if (lastId) setId((v) => v || lastId);
+  }, [lastId]);
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -44,16 +47,16 @@ export default function Login() {
           </View>
           <View style={st.form}>
             <Field placeholder="로그인 이메일" value={id} onChangeText={setId} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="username" />
-            <Field placeholder="비밀번호" value={pw} onChangeText={setPw} secureTextEntry autoComplete="password" textContentType="password" onSubmitEditing={submit} returnKeyType="go" />
+            <PwField placeholder="비밀번호" value={pw} onChangeText={setPw} autoComplete="password" textContentType="password" onSubmitEditing={submit} returnKeyType="go" />
             {err ? <Notice text={err} /> : null}
             <Btn title="로그인" onPress={submit} busy={busy} style={{ marginTop: 4 }} />
             <View style={st.links}>
-              <Pressable onPress={() => Linking.openURL(meta?.forgot ?? 'https://biz.soboru.co.kr/forgot')}>
+              <Pressable onPress={() => router.push('/forgot')}>
                 <Text style={st.link}>비밀번호 찾기</Text>
               </Pressable>
               <Text style={st.dot}>·</Text>
-              <Pressable onPress={() => Linking.openURL(meta?.signup ?? 'https://biz.soboru.co.kr/signup')}>
-                <Text style={[st.link, { color: C.accentInk }]}>입점 신청하기</Text>
+              <Pressable onPress={() => router.push('/signup')}>
+                <Text style={[st.link, { color: C.accentInk }]}>가입 신청하기</Text>
               </Pressable>
             </View>
           </View>

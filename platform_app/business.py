@@ -56,28 +56,31 @@ def kpis(rows):
 @app.route('/robots.txt')
 def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset']),mimetype='text/plain')
 
+def signup_apply(f):
+    """가입 신청 검사와 저장. 웹과 앱이 같이 쓴다. (입력값, 오류 문구)를 돌려주고 문구가 비면 신청이 들어간 것이다."""
+    d={k:clean(f.get(k),n) for k,n in (('name',40),('biz_no',20),('owner_name',20),('phone',20),('login_id',80),('contact',60),('industry',20))}
+    if d['industry'] not in core.INDUSTRIES:d['industry']=''
+    pw=f.get('password','');err=''
+    if not d['name']:err='회사 이름을 적어 주세요.'
+    elif len(digits(d['biz_no']))!=10:err='사업자등록번호 10자리를 적어 주세요.'
+    elif not d['owner_name']:err='대표자 이름을 적어 주세요.'
+    elif not EMAIL_RE.match(d['login_id']):err='로그인에 쓸 이메일을 정확히 적어 주세요.'
+    elif len(pw)<10:err='비밀번호는 10자 이상으로 정해 주세요.'
+    elif str(f.get('terms'))not in ('1','True','true'):err='이용약관에 동의해 주세요.'
+    elif core.throttled('signup',limit=5,minutes=60):err='잠시 후 다시 시도해 주세요.'
+    if not err:
+        with conn() as db:
+            if db.execute('SELECT 1 FROM companies WHERE lower(login_id)=lower(?)',(d['login_id'],)).fetchone():err='이미 가입된 이메일이에요.'
+            else:
+                db.execute("INSERT INTO companies(name,member,status,contact,login_id,pw_hash,biz_no,owner_name,phone,notify_email,industry,created) VALUES(?,0,'pending',?,?,?,?,?,?,?,?,?)",
+                    (d['name'],d['contact'],d['login_id'].lower(),generate_password_hash(pw),digits(d['biz_no']),d['owner_name'],digits(d['phone']),d['login_id'].lower(),d['industry'],core.iso()))
+        if not err:core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 기업 가입 신청: {d['name']}",f"{d['name']} ({d['owner_name']})이 가입을 신청했습니다.\n{core.site_url('biz','/ops/companies')}")
+    return d,err
 @app.route('/signup',methods=['GET','POST'])
 def signup():
     if request.method=='POST':
-        f=request.form;d={k:clean(f.get(k),n) for k,n in (('name',40),('biz_no',20),('owner_name',20),('phone',20),('login_id',80),('contact',60),('industry',20))}
-        if d['industry'] not in core.INDUSTRIES:d['industry']=''
-        pw=f.get('password','');err=''
-        if not d['name']:err='회사 이름을 적어 주세요.'
-        elif len(digits(d['biz_no']))!=10:err='사업자등록번호 10자리를 적어 주세요.'
-        elif not d['owner_name']:err='대표자 이름을 적어 주세요.'
-        elif not EMAIL_RE.match(d['login_id']):err='로그인에 쓸 이메일을 정확히 적어 주세요.'
-        elif len(pw)<10:err='비밀번호는 10자 이상으로 정해 주세요.'
-        elif f.get('terms')!='1':err='이용약관에 동의해 주세요.'
-        elif core.throttled('signup',limit=5,minutes=60):err='잠시 후 다시 시도해 주세요.'
-        if not err:
-            with conn() as db:
-                if db.execute('SELECT 1 FROM companies WHERE lower(login_id)=lower(?)',(d['login_id'],)).fetchone():err='이미 가입된 이메일이에요.'
-                else:
-                    db.execute("INSERT INTO companies(name,member,status,contact,login_id,pw_hash,biz_no,owner_name,phone,notify_email,industry,created) VALUES(?,0,'pending',?,?,?,?,?,?,?,?,?)",
-                        (d['name'],d['contact'],d['login_id'].lower(),generate_password_hash(pw),digits(d['biz_no']),d['owner_name'],digits(d['phone']),d['login_id'].lower(),d['industry'],core.iso()))
-            if not err:
-                core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 기업 가입 신청: {d['name']}",f"{d['name']} ({d['owner_name']})이 가입을 신청했습니다.\n{core.site_url('biz','/ops/companies')}")
-                return render_template('b_signup_done.html',name=d['name'])
+        d,err=signup_apply(request.form)
+        if not err:return render_template('b_signup_done.html',name=d['name'])
         flash(err,'error');return render_template('b_signup.html',d=d),400
     return render_template('b_signup.html',d={})
 
@@ -102,16 +105,18 @@ def login():
 def forgot():
     """비밀번호 찾기: 로그인 이메일로 1시간짜리 재설정 링크. 비밀번호가 바뀌면 그 링크는 더 못 쓴다."""
     if request.method=='POST':
-        lid=clean(request.form.get('login_id'),80).lower()
-        if core.throttled('forgot',limit=5,minutes=30):flash('잠시 후 다시 시도해 주세요.','error')
-        elif not core.mail_ready():flash('지금은 메일을 보낼 수 없습니다. 운영팀에 문의해 주세요.','error')
-        else:
-            with conn() as db:co=db.execute("SELECT * FROM companies WHERE login_id=? AND status='active'",(lid,)).fetchone()
-            if co:
-                tok=core.signer('pw').dumps({'id':co['id'],'h':co['pw_hash'][-16:]})
-                core.send_mail(co['login_id'],f'[{core.BNAME}] 비밀번호 재설정',f"아래 링크에서 새 비밀번호를 정해 주세요. 1시간 동안만 열립니다.\n{core.site_url('biz','/reset/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
-            flash('가입된 이메일이라면 재설정 링크를 보냈습니다.','ok');return redirect(url_for('login'))
+        msg,level=send_reset(request.form.get('login_id'));flash(msg,level)
+        if level=='ok':return redirect(url_for('login'))
     return render_template('b_forgot.html')
+def send_reset(login_id):
+    lid=clean(login_id,80).lower()
+    if core.throttled('forgot',limit=5,minutes=30):return '잠시 후 다시 시도해 주세요.','error'
+    if not core.mail_ready():return '지금은 메일을 보낼 수 없습니다. 운영팀에 문의해 주세요.','error'
+    with conn() as db:co=db.execute("SELECT * FROM companies WHERE login_id=? AND status='active'",(lid,)).fetchone()
+    if co:
+        tok=core.signer('pw').dumps({'id':co['id'],'h':co['pw_hash'][-16:]})
+        core.send_mail(co['login_id'],f'[{core.BNAME}] 비밀번호 재설정',f"아래 링크에서 새 비밀번호를 정해 주세요. 1시간 동안만 열립니다.\n{core.site_url('biz','/reset/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
+    return '가입된 이메일이라면 재설정 링크를 보냈습니다.','ok'
 
 @app.route('/reset/<tok>',methods=['GET','POST'])
 def reset(tok):
@@ -185,16 +190,17 @@ def all_cases():
 @app.route('/stats')
 @login_required
 def stats():
-    with conn() as db:
-        rows=my_cases(db,me());cmp=insights.compare(db,me());reply_h=insights.summarize(db,rows)['reply_h']
+    with conn() as db:s=stats_data(db,me())
+    return render_template('b_stats.html',top=max([c for _,c in s['weeks']] or [0]) or 1,tab='stats',**s)
+def stats_data(db,co):
+    rows=my_cases(db,co);cmp=insights.compare(db,co);reply_h=insights.summarize(db,rows)['reply_h']
     n=len(rows) or 1
     how=[(DEC,cnt,round(cnt/n*100)) for key,DEC in (('auto','자동 처리'),('approved','원클릭 승인'),('direct','직접 답변'),('hold','보류'),('info','자료 요청'),('pending','승인 대기')) for cnt in [sum(r['decision']==key for r in rows)]]
     today=core.now().date();weeks=[]
     for w in range(7,-1,-1):
         end=today-datetime.timedelta(days=7*w);start=end-datetime.timedelta(days=6)
         weeks.append((f'{start.month}.{start.day}',sum(start.isoformat()<=r['created'][:10]<=end.isoformat() for r in rows)))
-    top=max([c for _,c in weeks] or [0]) or 1
-    return render_template('b_stats.html',k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,top=top,cmp=cmp,reply_h=reply_h,tab='stats')
+    return dict(k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,cmp=cmp,reply_h=reply_h)
 
 notify_consumer=core.notify_consumer
 
@@ -274,26 +280,29 @@ def record(case_id):
 @login_required
 def new_case():
     """전화·쇼핑몰 문의·DM 등 다른 곳으로 받은 민원을 직접 등록해 같은 화면에서 처리한다."""
-    co=me()
     if request.method=='POST':
-        f=request.form
-        d={k:clean(f.get(k),n) for k,n in (('channel',20),('category',20),('title',BIG),('body',BIG),('want',20),('order_no',40),('product',60),('received_on',10),('name',20),('phone',20),('email',80))}
-        err=''
-        if d['channel'] not in core.CHANNELS:err='어디로 받은 민원인지 골라 주세요.'
-        elif d['category'] not in core.CATS:err='유형을 골라 주세요.'
-        elif not d['title']:err='한 줄 요약을 적어 주세요.'
-        elif not d['body']:err='내용을 적어 주세요.'
-        elif d['want'] not in core.WANTS:err='원하는 해결을 골라 주세요.'
-        elif d['received_on'] and law.days_since(d['received_on']) not in range(0,3651):err='상품 받은 날을 확인해 주세요.'
+        d,err,cid=new_case_apply(me(),request.form)
         if err:flash(err,'error');return render_template('b_new.html',d=d,tab='all'),400
-        with conn() as db:
-            t=core.iso();due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))
-            cur=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
-                VALUES(?,?,?,1,?,?,?,?,?,?,?,?,?,1,'seen','pending',?,?,?,?,?,?)''',(core.new_case_no(db),co['id'],co['name'],d['category'],d['title'],d['body'],d['want'],d['order_no'],
-                d['name'],digits(d['phone']),d['email'],generate_password_hash(secrets.token_hex(16)),due,t,t,d['product'],d['received_on'],d['channel']))
-            core.add_event(db,cur.lastrowid,'sys',f"{d['channel']}(으)로 받은 민원을 직접 등록했어요")
-        flash('등록했습니다','ok');return redirect(url_for('case',case_id=cur.lastrowid))
+        flash('등록했습니다','ok');return redirect(url_for('case',case_id=cid))
     return render_template('b_new.html',d={'channel':request.args.get('channel','전화')},tab='all')
+def new_case_apply(co,f):
+    """직접 등록 검사와 저장(웹·앱 공용). (입력값, 오류 문구, 새 민원 id)."""
+    d={k:clean(f.get(k),n) for k,n in (('channel',20),('category',20),('title',BIG),('body',BIG),('want',20),('order_no',40),('product',60),('received_on',10),('name',20),('phone',20),('email',80))}
+    err=''
+    if d['channel'] not in core.CHANNELS:err='어디로 받은 민원인지 골라 주세요.'
+    elif d['category'] not in core.CATS:err='유형을 골라 주세요.'
+    elif not d['title']:err='한 줄 요약을 적어 주세요.'
+    elif not d['body']:err='내용을 적어 주세요.'
+    elif d['want'] not in core.WANTS:err='원하는 해결을 골라 주세요.'
+    elif d['received_on'] and law.days_since(d['received_on']) not in range(0,3651):err='상품 받은 날을 확인해 주세요.'
+    if err:return d,err,None
+    with conn() as db:
+        t=core.iso();due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))
+        cur=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
+            VALUES(?,?,?,1,?,?,?,?,?,?,?,?,?,1,'seen','pending',?,?,?,?,?,?)''',(core.new_case_no(db),co['id'],co['name'],d['category'],d['title'],d['body'],d['want'],d['order_no'],
+            d['name'],digits(d['phone']),d['email'],generate_password_hash(secrets.token_hex(16)),due,t,t,d['product'],d['received_on'],d['channel']))
+        core.add_event(db,cur.lastrowid,'sys',f"{d['channel']}(으)로 받은 민원을 직접 등록했어요")
+    return d,'',cur.lastrowid
 
 @app.route('/guide')
 @login_required
@@ -332,47 +341,55 @@ def rules():
     co=me()
     with conn() as db:
         if request.method=='POST':
-            cat=request.form.get('category')
-            if cat not in core.CATS:abort(400)
-            cur=core.rule_for(db,co['id'],cat)
-            auto=cur['auto'] if 'auto' not in request.form else request.form['auto']=='1'
-            reply=clean(request.form.get('reply'),2000) if 'reply' in request.form else cur['reply']
-            faq=clean(request.form.get('faq'),1000) if 'faq' in request.form else cur['faq']
-            cond=request.form.get('cond','') if 'cond' in request.form else cur['cond']
-            if cond not in core.COND or cat not in ('교환','반품·환불'):cond=''
-            db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond) VALUES(?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond',(co['id'],cat,int(auto),reply,faq,cond))
+            if not save_rule(db,co,request.form):abort(400)
             flash('저장했습니다','ok');return redirect(url_for('rules')+('#'+request.form.get('anchor','') if request.form.get('anchor') else ''))
         rs={cat:core.rule_for(db,co['id'],cat) for cat in core.CATS}
         since=core.now().strftime('%Y-%m-01')
         chat={o:db.execute('SELECT COUNT(*) FROM chat_log WHERE company_id=? AND outcome=? AND created>=?',(co['id'],o,since)).fetchone()[0] for o in ('asked','solved','filed')}
     return render_template('b_rules.html',rs=rs,chat=chat,link=core.site_url('me','/to/%d'%co['id']),tab='rules')
 
+COND_CATS=('교환','반품·환불')  # 받은 지 7일 조건은 이 두 유형에만
+def save_rule(db,co,f):
+    """유형 하나의 자동 처리 규칙 저장. 보내지 않은 항목은 그대로 둔다."""
+    cat=f.get('category')
+    if cat not in core.CATS:return False
+    cur=core.rule_for(db,co['id'],cat)
+    auto=cur['auto'] if 'auto' not in f else str(f['auto']) in ('1','True','true')
+    reply=clean(f.get('reply'),2000) if 'reply' in f else cur['reply']
+    faq=clean(f.get('faq'),1000) if 'faq' in f else cur['faq']
+    cond=f.get('cond','') if 'cond' in f else cur['cond']
+    if cond not in core.COND or cat not in COND_CATS:cond=''
+    db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond) VALUES(?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond',(co['id'],cat,int(auto),reply,faq,cond))
+    return True
+
 @app.route('/settings',methods=['GET','POST'])
 @login_required
 def settings():
     co=me()
     if request.method=='POST':
-        f=request.form
-        with conn() as db:
-            if f.get('act')=='password':
-                if not check_password_hash(co['pw_hash'],f.get('old','')):flash('지금 비밀번호가 맞지 않습니다','error')
-                elif len(f.get('new',''))<10:flash('새 비밀번호는 10자 이상입니다','error')
-                else:db.execute('UPDATE companies SET pw_hash=? WHERE id=?',(generate_password_hash(f['new']),co['id']));flash('비밀번호를 바꿨습니다','ok')
-            elif f.get('act')=='return':
-                courier=f.get('return_courier','') if f.get('return_courier','') in core.COURIERS else ''
-                db.execute('UPDATE companies SET return_address=?,return_courier=?,return_memo=? WHERE id=?',(clean(f.get('return_address'),200),courier,clean(f.get('return_memo'),300),co['id']));flash('반품 안내를 저장했습니다','ok')
-            elif f.get('act')=='notify':
-                phone=digits(f.get('phone',''))
-                if f.get('kakao')=='1' and not (phone.startswith('01') and 10<=len(phone)<=11):flash('알림톡을 받을 휴대폰 번호를 확인해 주세요','error')
-                else:db.execute('UPDATE companies SET phone=?,kakao=?,report_mail=? WHERE id=?',(phone,int(f.get('kakao')=='1'),int(f.get('report_mail')=='1'),co['id']));flash('알림 설정을 저장했습니다','ok')
-            else:
-                email=clean(f.get('notify_email'),80)
-                industry=f.get('industry','') if f.get('industry','') in core.INDUSTRIES else ''
-                tone=f.get('tone','polite') if f.get('tone') in core.TONES else 'polite'
-                if email and not EMAIL_RE.match(email):flash('알림 이메일을 확인해 주세요','error')
-                else:db.execute('UPDATE companies SET contact=?,notify_email=?,industry=?,tone=? WHERE id=?',(clean(f.get('contact'),60),email,industry,tone,co['id']));flash('저장했습니다','ok')
+        with conn() as db:flash(*save_settings(db,co,request.form))
         return redirect(url_for('settings'))
     return render_template('b_settings.html',tab='settings',link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co))
+
+def save_settings(db,co,f):
+    """설정 저장(웹·앱 공용). act: password·return·notify, 없으면 회사 정보. (문구, 'ok'|'error')를 돌려준다."""
+    on=lambda k:str(f.get(k)) in ('1','True','true')
+    if f.get('act')=='password':
+        if not check_password_hash(co['pw_hash'],f.get('old','')):return '지금 비밀번호가 맞지 않습니다','error'
+        if len(f.get('new',''))<10:return '새 비밀번호는 10자 이상입니다','error'
+        db.execute('UPDATE companies SET pw_hash=? WHERE id=?',(generate_password_hash(f['new']),co['id']));return '비밀번호를 바꿨습니다','ok'
+    if f.get('act')=='return':
+        courier=f.get('return_courier','') if f.get('return_courier','') in core.COURIERS else ''
+        db.execute('UPDATE companies SET return_address=?,return_courier=?,return_memo=? WHERE id=?',(clean(f.get('return_address'),200),courier,clean(f.get('return_memo'),300),co['id']));return '반품 안내를 저장했습니다','ok'
+    if f.get('act')=='notify':
+        phone=digits(f.get('phone',''))
+        if on('kakao') and not (phone.startswith('01') and 10<=len(phone)<=11):return '알림톡을 받을 휴대폰 번호를 확인해 주세요','error'
+        db.execute('UPDATE companies SET phone=?,kakao=?,report_mail=? WHERE id=?',(phone,int(on('kakao')),int(on('report_mail')),co['id']));return '알림 설정을 저장했습니다','ok'
+    email=clean(f.get('notify_email'),80)
+    industry=f.get('industry','') if f.get('industry','') in core.INDUSTRIES else ''
+    tone=f.get('tone','polite') if f.get('tone') in core.TONES else 'polite'
+    if email and not EMAIL_RE.match(email):return '알림 이메일을 확인해 주세요','error'
+    db.execute('UPDATE companies SET contact=?,notify_email=?,industry=?,tone=? WHERE id=?',(clean(f.get('contact'),60),email,industry,tone,co['id']));return '저장했습니다','ok'
 
 # ---------- 센터 운영 ----------
 @app.route('/ops/login',methods=['GET','POST'])
@@ -544,7 +561,7 @@ def api_my_case(db,co,case_id):
 
 @app.route('/api/v1/meta')
 def api_biz_meta():
-    return jsonify(cats=core.CATS,couriers=list(core.COURIERS),operator=core.OPERATOR,name=core.BNAME,
+    return jsonify(cats=core.CATS,couriers=list(core.COURIERS),operator=core.OPERATOR,name=core.BNAME,industries=core.INDUSTRIES,
         signup=core.site_url('biz','/signup'),forgot=core.site_url('biz','/forgot'),privacy=core.site_url('me','/privacy'))
 @app.route('/api/v1/login',methods=['POST'])
 def api_biz_login():
@@ -558,10 +575,13 @@ def api_biz_login():
 @app.route('/api/v1/home')
 def api_biz_home():
     co=api_co()
-    with conn() as db:rows=my_cases(db,co);n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(co['id'],)).fetchone()[0]
+    with conn() as db:
+        rows=my_cases(db,co);n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(co['id'],)).fetchone()[0]
+        warn=insights.alerts(db,co);news=db.execute('SELECT id,title,created FROM news ORDER BY id DESC LIMIT 3').fetchall()
     pend=[r for r in rows if is_pending(r)]
-    return jsonify(company=co_info(co),kpi=kpis(rows),counts={'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto},
-        pending=[biz_summary(r) for r in pend],recent=[biz_summary(r) for r in rows[:6]])
+    return jsonify(company=co_info(co),kpi=kpis(rows),counts={'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows)},
+        pending=[biz_summary(r) for r in pend],recent=[biz_summary(r) for r in rows[:6]],
+        alerts=[dict(kind=w['kind'],label=w['label'],n=w['n'],cats=w['cats']) for w in warn],news=[dict(r) for r in news])
 @app.route('/api/v1/cases')
 def api_biz_cases():
     co=api_co();fil=request.args.get('f','all');q=clean(request.args.get('q'),40)
@@ -618,6 +638,96 @@ def api_biz_logout():
     if t:
         with conn() as db:db.execute('DELETE FROM biz_push WHERE token=? AND company_id=?',(t,co['id']))
     return jsonify(ok=True)
+
+# 앱 안에서 가입 신청·비밀번호 찾기·규칙·통계·설정·응대 가이드까지 (웹으로 나가지 않게)
+@app.route('/api/v1/signup',methods=['POST'])
+def api_biz_signup():
+    d,err=signup_apply(api_form())
+    if err:return jsonify(error=err),400
+    return jsonify(ok=True,name=d['name'],message='가입 신청을 받았습니다. 승인되면 이메일로 알려 드립니다.')
+@app.route('/api/v1/forgot',methods=['POST'])
+def api_biz_forgot():
+    msg,level=send_reset(api_form().get('login_id'))
+    if level!='ok':return jsonify(error=msg),400
+    return jsonify(ok=True,message=msg)
+def rules_json(db,co):
+    since=core.now().strftime('%Y-%m-01')
+    chat={o:db.execute('SELECT COUNT(*) FROM chat_log WHERE company_id=? AND outcome=? AND created>=?',(co['id'],o,since)).fetchone()[0] for o in ('asked','solved','filed')}
+    return dict(rules=[dict(category=cat,cond_ok=cat in COND_CATS,**core.rule_for(db,co['id'],cat)) for cat in core.CATS],
+        conds=[dict(value=k,label=v) for k,v in core.COND.items()],chat=chat,link=core.site_url('me','/to/%d'%co['id']))
+@app.route('/api/v1/rules',methods=['GET','POST'])
+def api_biz_rules():
+    co=api_co()
+    with conn() as db:
+        if request.method=='POST' and not save_rule(db,co,api_form()):return jsonify(error='유형을 확인해 주세요.'),400
+        d=rules_json(db,co)
+    return jsonify(dict(d,message='저장했습니다' if request.method=='POST' else ''))
+@app.route('/api/v1/stats')
+def api_biz_stats():
+    co=api_co()
+    with conn() as db:s=stats_data(db,co)
+    cmp=s['cmp']
+    if cmp and cmp.get('ready'):cmp=dict(ready=True,peers=cmp['peers'],mine={k:cmp['mine'][k] for k in ('n','auto','res','reply_h')},avg=cmp['avg'])
+    return jsonify(kpi=s['k'],reply_h=s['reply_h'],cats=[dict(label=c,n=n,pct=p) for c,n,p in s['cats']],how=[dict(label=c,n=n,pct=p) for c,n,p in s['how']],
+        weeks=[dict(label=w,n=n) for w,n in s['weeks']],compare=cmp)
+def settings_json(co):
+    return dict(name=co['name'],login_id=co['login_id'],contact=co['contact'] or '',notify_email=co['notify_email'] or '',industry=co['industry'] or '',tone=co['tone'] or 'polite',
+        return_address=co['return_address'] or '',return_courier=co['return_courier'] or '',return_memo=co['return_memo'] or '',
+        phone=co['phone'] or '',kakao=bool(co['kakao']),report_mail=bool(co['report_mail']),kakao_ready=core.kakao_ready(),return_guide=core.return_guide(co),
+        industries=core.INDUSTRIES,tones=[dict(value=k,label=v) for k,v in core.TONES.items()],couriers=list(core.COURIERS))
+@app.route('/api/v1/settings',methods=['GET','POST'])
+def api_biz_settings():
+    co=api_co();out={}
+    if request.method=='POST':
+        f=api_form()
+        with conn() as db:msg,level=save_settings(db,co,f);co=core.company(db,co['id'])
+        if level!='ok':return jsonify(error=msg),400
+        out['message']=msg
+        if f.get('act')=='password':out['token']=co_token(co)  # 예전 토큰은 못 쓰게 되니 새 토큰을 준다
+    return jsonify(dict(settings_json(co),**out))
+@app.route('/api/v1/guide')
+def api_biz_guide():
+    api_co()
+    def law_item(ref):
+        c=law.cite(ref);return dict(label=c['label'],title=c['title'],source=c['source'],
+            text='\n'.join(((p['n']+' ') if p['n'] else '')+p['text']+''.join('\n  '+i['n']+'. '+i['text'] for i in p['items']) for p in c['paras']))
+    return jsonify(guide=[dict(id=x['id'],title=x['title'],points=[dict(text=t,label=law.cite(r)['label']) for t,r in x['points']],sample=x['sample'],laws=[law_item(r) for r in x['refs']]) for x in law.GUIDE],
+        kca=law.KCA_STANDARD,sources=law.sources())
+@app.route('/api/v1/new',methods=['GET','POST'])
+def api_biz_new():
+    co=api_co()
+    if request.method=='GET':return jsonify(channels=core.CHANNELS,cats=core.CATS,wants=core.WANTS,hints=core.CAT_HINT)
+    d,err,cid=new_case_apply(co,api_form())
+    if err:return jsonify(error=err),400
+    return jsonify(ok=True,id=cid,message='등록했습니다')
+@app.route('/api/v1/cases/<int:case_id>/record')
+def api_biz_record(case_id):
+    """처리 기록 한 장(HTML). 앱이 PDF로 만들어 저장·공유한다."""
+    co=api_co()
+    with conn() as db:c=api_my_case(db,co,case_id);ev=core.events(db,c['id']);fl=core.case_files(db,c['id'])
+    return jsonify(no=c['no'],html=render_template('b_record.html',c=c,ev=ev,files=fl,laws=law.for_case(c),chk=law.check(c),printed=core.iso(),app=True))
+@app.route('/api/v1/report')
+def api_biz_report():
+    co=api_co();today=datetime.date.today();months=[];y,m=today.year,today.month
+    for _ in range(12):months.append((y,m));y,m=(y,m-1) if m>1 else (y-1,12)
+    try:y,m=map(int,request.args.get('ym','').split('-'));assert (y,m) in months
+    except Exception:y,m=insights.prev_month(today)
+    with conn() as db:s=insights.monthly(db,co,y,m)
+    return jsonify(ym=f'{y}-{m:02d}',months=[f'{a}-{b:02d}' for a,b in months],n=s['n'],prev_n=s['prev_n'],auto=s['auto'],res=s['res'],reply_h=s['reply_h'],late=s['late'],
+        cats=[dict(label=c,n=n) for c,n in s['cats']],top_products=[dict(label=p,n=n) for p,n in s['top_products']],by_channel=[dict(label=c,n=n) for c,n in s['by_channel']],
+        text=insights.report_text(co,s))
+@app.route('/api/v1/news')
+def api_biz_news():
+    api_co()
+    with conn() as db:rows=db.execute('SELECT * FROM news ORDER BY id DESC LIMIT 100').fetchall()
+    return jsonify(news=[dict(id=r['id'],title=r['title'],body=r['body'],source_url=r['source_url'],created=r['created']) for r in rows])
+@app.route('/api/v1/leave',methods=['POST'])
+def api_biz_leave():
+    """회원 탈퇴 요청. 진행 중인 민원 기록이 있어 운영팀이 확인하고 처리한다."""
+    co=api_co()
+    if not check_password_hash(co['pw_hash'],api_form().get('password','')):return jsonify(error='비밀번호가 맞지 않습니다.'),400
+    core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 기업 탈퇴 요청: {co['name']}",f"{co['name']} ({co['login_id']})이 앱에서 탈퇴를 요청했습니다.\n{core.site_url('biz','/ops/companies')}")
+    return jsonify(ok=True,message='탈퇴 요청을 받았습니다. 처리되면 이메일로 알려 드립니다.')
 
 @app.errorhandler(401)
 def unauth(e):

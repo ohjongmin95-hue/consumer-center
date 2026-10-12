@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -104,6 +104,18 @@ export default function HomeTab() {
         <Notice text={err} />
         <Notice text={ok} tone="ok" />
 
+        {(home.alerts ?? []).map((w) => (
+          <Pressable key={w.kind + w.label} onPress={() => router.push(`/cases?q=${encodeURIComponent(w.kind === 'product' ? w.label : '')}`)} style={st.warn}>
+            <Text style={{ fontSize: 18 }}>⚠️</Text>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: C.fg }}>
+                {w.kind === 'product' ? `'${w.label}' 관련 민원이 최근 7일 ${w.n}건` : `${w.label} 민원이 최근 7일 ${w.n}건`}
+              </Text>
+              <Text style={{ fontSize: 13, color: C.fg3 }}>같은 문제가 반복되는지 확인해 보세요 · {w.cats.join(', ')}</Text>
+            </View>
+          </Pressable>
+        ))}
+
         {Object.entries(groups).map(([cat, list]) => (
           <Card key={cat}>
             <View style={st.groupHead}>
@@ -132,6 +144,21 @@ export default function HomeTab() {
           <H2>최근 민원</H2>
           {home.recent.length ? home.recent.map((c) => <CaseRow key={c.id} c={c} />) : <Text style={st.empty}>아직 들어온 민원이 없습니다.</Text>}
         </Card>
+        {home.news?.length ? (
+          <Card style={{ paddingVertical: 14 }}>
+            <Pressable onPress={() => router.push('/news')} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={[st.groupTitle, { flex: 1, fontSize: 17 }]}>법·제도 소식</Text>
+              <Text style={{ fontSize: 14, color: C.fg3 }}>전체 ›</Text>
+            </Pressable>
+            {home.news.map((n) => (
+              <Pressable key={n.id} onPress={() => router.push('/news')} style={{ paddingVertical: 8 }}>
+                <Text style={{ fontSize: 15, color: C.fg2 }} numberOfLines={1}>
+                  {n.title}
+                </Text>
+              </Pressable>
+            ))}
+          </Card>
+        ) : null}
         <Footer />
       </ScrollView>
     </SafeAreaView>
@@ -158,6 +185,7 @@ function SmallBtn({ title, onPress, kind = 'primary' }: { title: string; onPress
 }
 
 const st = StyleSheet.create({
+  warn: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: '#FFF8EC', borderRadius: R.md, padding: 16, marginHorizontal: 16, marginBottom: 12 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 20, paddingTop: 12 },
   wm: { fontSize: 19, fontWeight: '800', color: C.accent, letterSpacing: -0.6 },
   hero: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 20, gap: 8 },
