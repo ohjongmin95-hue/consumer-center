@@ -23,8 +23,8 @@
 {% if co.contact %}<div class="row"><span class="ic-wrap sm">{{ i.icon('phone',24) }}</span><span class="tx"><b>고객센터 <span style="user-select:all">{{ co.contact }}</span></b><small>전화로 직접 문의할 수도 있어요</small></span></div>{% endif %}
 {% if ret %}<details><summary><span class="ic-wrap sm">{{ i.icon('truck',24) }}</span><span class="tx"><b>반품 보내실 곳</b><small>접수 후 안내에 따라 보내 주세요</small></span><span class="chev"></span></summary><div class="cs-ret">{{ ret }}</div></details>{% endif %}
 </div></section>
-<section class="cs-how"><h2>접수하면 이렇게 진행돼요</h2>
-<ol><li><b>접수</b><span>1분이면 끝나요</span></li><li><b>{{ '담당자 확인' if member else '센터 전달' }}</b><span>{{ '바로 전달돼요' if member else '공식 연락처로 보내요' }}</span></li><li><b>답변·조치</b><span>알림으로 알려 드려요</span></li></ol></section>
+<section class="cs-how"><div class="box"><h2>접수하면 이렇게 진행돼요</h2>
+<ol><li><b>접수</b><span>1분이면 끝나요</span></li><li><b>{{ '담당자 확인' if member else '센터 전달' }}</b><span>{{ '바로 전달돼요' if member else '공식 연락처로 보내요' }}</span></li><li><b>답변·조치</b><span>알림으로 알려 드려요</span></li></ol></div></section>
 </div>
 <div class="cs-cta"><a class="btn full" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a></div>
 <footer class="cs-foot"><img src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96"><p>SOBORU가 접수부터 해결까지 기록해 드려요<br><a href="{{ url_for('privacy') }}">개인정보 처리방침</a> · <a href="{{ url_for('guide') }}">이용 안내</a></p></footer>

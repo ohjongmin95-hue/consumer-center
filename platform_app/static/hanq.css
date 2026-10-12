@@ -895,3 +895,18 @@ body.v2:has(main.cs) .pilot{position:relative}
   .cs-cta{display:none}
   .cs-foot{margin-top:56px;justify-content:center}
 }
+/* 진행 안내를 카드 안으로, PC에서 두 열 위아래 끝 맞춤 */
+.cs-how .box{background:var(--card);border-radius:24px;padding:22px 20px 24px}
+.cs-how .box h2{margin:0 0 18px;font-size:16px}
+.cs-how ol{padding:0;background:none;border-radius:0}
+@media (min-width:1000px){
+  .cs-grid{row-gap:16px;margin-top:8px}
+  .cs-hero{padding:0;align-self:start}
+  .cs-more{margin-top:20px}
+  .cs-how{margin-top:0}
+  .cs-catsec{align-self:stretch;display:flex;flex-direction:column;padding:32px}
+  .cs-catsec h2{margin:0 4px 18px}
+  .cs-catsec .cs-cats{flex:1;grid-auto-rows:1fr}
+  .cs-catsec .cs-cats a{min-height:0;justify-content:flex-end}
+  .cs-catsec .cs-cats .ic-wrap{margin-bottom:auto}
+}
