@@ -124,7 +124,9 @@ class PlatformTest(unittest.TestCase):
         b2,_,cid2=self.signup_and_approve('을회사','b@example.com')
         me=self.client();case_id=self.file_case(me,'갑회사','교환',str(cid1))
         self.assertEqual(b2.get(f'/biz/case/{case_id}').status_code,404)
-        self.assertEqual(self.client().get('/biz/').status_code,302)
+        home=self.client().get('/biz/');self.assertEqual(home.status_code,200);page=home.get_data(as_text=True)
+        self.assertIn('승인 한 번으로',page);self.assertIn('소보루 비즈 로그인',page);self.assertNotIn('noindex',page)
+        self.assertEqual(self.client().get('/biz/all').status_code,302)
         self.assertEqual(self.client().get('/biz/ops').status_code,302)
         # CSRF 없는 요청은 거절
         self.assertEqual(b1.post(f'/biz/case/{case_id}',data={'act':'approve'}).status_code,400)
@@ -144,7 +146,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(me.get('/to/99999').status_code,404)
         self.assertIn('value="바른가전"',me.get(f'/new?company_id={cid}').get_data(as_text=True))
         page=b.get('/biz/settings').get_data(as_text=True)
-        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 비즈',page);self.assertIn('soboru-wordmark.png',page);self.assertIn('soboru-char.png',page);self.assertNotIn('SOBORU Business',page)
+        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 비즈',page);self.assertIn('soboru-wordmark.png',page);self.assertIn('soboru-char.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
         case_id=self.file_case(me,'바른가전','교환',str(cid),title='세탁기 소음')
         self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
         # 답변 목표일이 지나면 한 번만 지연 알림

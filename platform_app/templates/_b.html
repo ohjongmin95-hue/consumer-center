@@ -3,7 +3,7 @@
 {% macro soboru_logo() -%}<img class="ch" src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96"><img class="wm" src="{{ url_for('static',filename='soboru-wordmark.png') }}" alt="SOBORU" width="371" height="72"><small class="w">비즈</small>{%- endmacro %}
 {% macro bar(tab) -%}
 <header class="gnb"><div class="wrap">
-<a class="logo biz" href="{{ url_for('decide') if co else url_for('login') }}">{{ soboru_logo() }}</a>
+<a class="logo biz" href="{{ url_for('decide') }}">{{ soboru_logo() }}</a>
 {% if co %}<nav>
 <a href="{{ url_for('decide') }}" class="{{ 'on' if tab=='home' }}">홈{% if n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>
 <a href="{{ url_for('all_cases') }}" class="{{ 'on' if tab=='all' }}">민원</a>
@@ -12,7 +12,7 @@
 </nav>
 <div class="right"><a class="chip{{ ' on' if tab=='settings' }}" href="{{ url_for('settings') }}" title="설정"><span class="dot">{{ co.name[:1] }}</span><span class="hide-m">{{ co.name }}</span></a>
 <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn hide-m">로그아웃</button></form></div>
-{% else %}<div class="right">{% if tab=='signup' %}<a class="tbtn" href="{{ url_for('login') }}">로그인</a>{% else %}<a class="btn sm" href="{{ url_for('signup') }}">무료로 시작하기</a>{% endif %}</div>{% endif %}
+{% else %}<div class="right">{% if tab!='login' %}<a class="tbtn" href="{{ url_for('login') }}">로그인</a>{% endif %}{% if tab!='signup' %}<a class="btn sm" href="{{ url_for('signup') }}">무료로 시작하기</a>{% endif %}</div>{% endif %}
 </div></header>
 {%- endmacro %}
 {% macro obar(tab,n_signup) -%}
