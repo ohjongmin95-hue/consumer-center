@@ -1,9 +1,14 @@
+import { Redirect, Tabs } from 'expo-router';
 import { Platform } from 'react-native';
-import { Tabs } from 'expo-router';
 import { Icon } from '../../components/Icon';
+import { Loading } from '../../components/ui';
+import { useAuth } from '../../lib/auth';
 import { C } from '../../lib/theme';
 
 export default function TabsLayout() {
+  const { ready, session } = useAuth();
+  if (!ready) return <Loading />;
+  if (!session) return <Redirect href="/login" />;
   return (
     <Tabs
       screenOptions={{
@@ -14,8 +19,9 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: '홈', tabBarIcon: () => <Icon name="building" size={24} /> }} />
-      <Tabs.Screen name="mine" options={{ title: '내 접수', tabBarIcon: () => <Icon name="list" size={24} /> }} />
+      <Tabs.Screen name="index" options={{ title: '홈', tabBarIcon: () => <Icon name="shield" size={24} /> }} />
+      <Tabs.Screen name="cases" options={{ title: '전체 민원', tabBarIcon: () => <Icon name="list" size={24} /> }} />
+      <Tabs.Screen name="more" options={{ title: '내 정보', tabBarIcon: () => <Icon name="building" size={24} /> }} />
     </Tabs>
   );
 }

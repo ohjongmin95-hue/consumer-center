@@ -16,7 +16,8 @@ OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 @app.before_request
-def guard():core.check_csrf()
+def guard():
+    if not request.path.startswith('/api/'):core.check_csrf()  # 앱 API는 쿠키 대신 토큰을 쓴다
 app.after_request(core.copy_after_request('biz'))  # 운영 화면에서 고친 문구 적용
 
 def me():
@@ -53,7 +54,7 @@ def kpis(rows):
 
 # ---------- 기업 계정 ----------
 @app.route('/robots.txt')
-def robots():return app.response_class(core.robots_txt('biz',['/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset']),mimetype='text/plain')
+def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset']),mimetype='text/plain')
 
 @app.route('/signup',methods=['GET','POST'])
 def signup():
@@ -197,48 +198,52 @@ def stats():
 
 notify_consumer=core.notify_consumer
 
+def case_act(db,c,form):
+    """기업이 민원에 하는 일(승인·보류·자료 요청·답변·회수 확인·발송·환불 완료). 웹과 앱이 같이 쓴다. -> (안내 문구, ok|error|bad)"""
+    act=form.get('act');open_=c['status'] not in core.FINAL
+    if act=='ret_received' and c['ret_status'] in ('guided','sent'):
+        db.execute("UPDATE cases SET ret_status='received' WHERE id=?",(c['id'],))
+        core.add_event(db,c['id'],'co','반품 상품 회수를 확인했어요');notify_consumer(c,f'[{core.CNAME}] 보내신 상품이 도착했어요',f"{c['company_name']}이(가) 반품 상품 회수를 확인했어요.")
+        return '회수 확인을 기록했습니다','ok'
+    if act=='out_ship' and c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking']:
+        courier=form.get('courier','');tracking=digits(form.get('tracking',''))
+        if (courier not in core.COURIERS and courier!='기타') or not 8<=len(tracking)<=20:return '택배사와 송장번호를 확인해 주세요','error'
+        db.execute('UPDATE cases SET out_courier=?,out_tracking=? WHERE id=?',(courier,tracking,c['id']))
+        core.add_event(db,c['id'],'co',f'새 상품을 보냈어요: {courier} {tracking}')
+        notify_consumer(c,f'[{core.CNAME}] 새 상품을 보냈어요',f"{c['company_name']}이(가) 교환 상품을 보냈어요.\n{courier} 송장번호 {tracking}")
+        return '고객에게 송장번호를 알렸습니다','ok'
+    if act=='refund_done' and core.refund_case(c) and c['refund_status']!='done':
+        # 환불이 끝나면 계좌 정보는 더 둘 이유가 없으니 바로 지운다
+        db.execute("UPDATE cases SET refund_status='done',refund_bank='',refund_account='',refund_holder='' WHERE id=?",(c['id'],))
+        core.add_event(db,c['id'],'co','환불을 완료했어요');notify_consumer(c,f'[{core.CNAME}] 환불이 완료됐어요',f"{c['company_name']}이(가) 환불을 완료했어요. 입금 내역을 확인해 주세요.")
+        return '환불 완료를 기록했습니다','ok'
+    if not open_:return '이미 끝난 민원이에요','bad'
+    if act=='approve' and c['decision'] not in ('approved','auto'):
+        if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
+        return '승인했습니다','ok'
+    if act=='hold':
+        db.execute("UPDATE cases SET decision='hold',status=CASE status WHEN 'forwarded' THEN 'seen' ELSE status END WHERE id=?",(c['id'],))
+        core.add_event(db,c['id'],'sys','보류했어요');return '보류했습니다','ok'
+    if act=='ask':
+        ask=clean(form.get('ask'),300) or ('불량 부분 사진과 주문번호를 보내 주세요.' if c['category']=='제품 불량' else '주문번호와 확인할 수 있는 사진이나 캡처를 보내 주세요.')
+        db.execute("UPDATE cases SET decision='info',status='info',info_ask=? WHERE id=?",(ask,c['id']))
+        core.add_event(db,c['id'],'co','자료 요청: '+ask);notify_consumer(c,f'[{core.CNAME}] 기업이 자료를 요청했어요',ask);return '자료를 요청했습니다','ok'
+    if act=='reply':
+        msg=clean(form.get('msg'),3000)
+        if not msg:return '답변 내용을 적어 주세요','error'
+        db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
+        core.add_event(db,c['id'],'co','답변을 보냈어요',msg);notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.");return '보냈습니다','ok'
+    return '','ok'
+
 @app.route('/case/<int:case_id>',methods=['GET','POST'])
 @login_required
 def case(case_id):
     with conn() as db:
         c=my_case(db,case_id)
         if request.method=='POST':
-            act=request.form.get('act');open_=c['status'] not in core.FINAL
-            if act=='ret_received' and c['ret_status'] in ('guided','sent'):
-                db.execute("UPDATE cases SET ret_status='received' WHERE id=?",(c['id'],))
-                core.add_event(db,c['id'],'co','반품 상품 회수를 확인했어요');notify_consumer(c,f'[{core.CNAME}] 보내신 상품이 도착했어요',f"{c['company_name']}이(가) 반품 상품 회수를 확인했어요.")
-                flash('회수 확인을 기록했습니다','ok');return redirect(url_for('case',case_id=case_id))
-            if act=='out_ship' and c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking']:
-                courier=request.form.get('courier','');tracking=digits(request.form.get('tracking',''))
-                if (courier not in core.COURIERS and courier!='기타') or not 8<=len(tracking)<=20:flash('택배사와 송장번호를 확인해 주세요','error')
-                else:
-                    db.execute('UPDATE cases SET out_courier=?,out_tracking=? WHERE id=?',(courier,tracking,c['id']))
-                    core.add_event(db,c['id'],'co',f'새 상품을 보냈어요: {courier} {tracking}')
-                    notify_consumer(c,f'[{core.CNAME}] 새 상품을 보냈어요',f"{c['company_name']}이(가) 교환 상품을 보냈어요.\n{courier} 송장번호 {tracking}")
-                    flash('고객에게 송장번호를 알렸습니다','ok')
-                return redirect(url_for('case',case_id=case_id))
-            if act=='refund_done' and core.refund_case(c) and c['refund_status']!='done':
-                # 환불이 끝나면 계좌 정보는 더 둘 이유가 없으니 바로 지운다
-                db.execute("UPDATE cases SET refund_status='done',refund_bank='',refund_account='',refund_holder='' WHERE id=?",(c['id'],))
-                core.add_event(db,c['id'],'co','환불을 완료했어요');notify_consumer(c,f'[{core.CNAME}] 환불이 완료됐어요',f"{c['company_name']}이(가) 환불을 완료했어요. 입금 내역을 확인해 주세요.")
-                flash('환불 완료를 기록했습니다','ok');return redirect(url_for('case',case_id=case_id))
-            if not open_:abort(400)
-            if act=='approve' and c['decision'] not in ('approved','auto'):
-                if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
-                flash('승인했습니다','ok')
-            elif act=='hold':
-                db.execute("UPDATE cases SET decision='hold',status=CASE status WHEN 'forwarded' THEN 'seen' ELSE status END WHERE id=?",(c['id'],))
-                core.add_event(db,c['id'],'sys','보류했어요');flash('보류했습니다','ok')
-            elif act=='ask':
-                ask=clean(request.form.get('ask'),300) or ('불량 부분 사진과 주문번호를 보내 주세요.' if c['category']=='제품 불량' else '주문번호와 확인할 수 있는 사진이나 캡처를 보내 주세요.')
-                db.execute("UPDATE cases SET decision='info',status='info',info_ask=? WHERE id=?",(ask,c['id']))
-                core.add_event(db,c['id'],'co','자료 요청: '+ask);notify_consumer(c,f'[{core.CNAME}] 기업이 자료를 요청했어요',ask);flash('자료를 요청했습니다','ok')
-            elif act=='reply':
-                msg=clean(request.form.get('msg'),3000)
-                if not msg:flash('답변 내용을 적어 주세요','error')
-                else:
-                    db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
-                    core.add_event(db,c['id'],'co','답변을 보냈어요',msg);notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.");flash('보냈습니다','ok')
+            msg,level=case_act(db,c,request.form)
+            if level=='bad':abort(400)
+            if msg:flash(msg,level)
             return redirect(url_for('case',case_id=case_id))
         if c['status']=='forwarded':
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
@@ -500,5 +505,125 @@ def ops_copy():
     cat=[x for x in core.copy_catalog() if (not site_f or x[0]==site_f) and (not q or q in x[1]) and (x[0],x[1]) not in done]
     return render_template('o_copy.html',edits=edits,cat=cat[:300],n_cat=len(cat),q=q,site_f=site_f,n_signup=n_pending,otab='copy')
 
+
+# ---------- 사장님 앱 API (/api/v1) ----------
+# 로그인하면 토큰을 준다. 토큰에 비밀번호 해시 끝부분을 넣어 두어서 비밀번호를 바꾸면 예전 토큰은 못 쓴다.
+def co_token(co):return core.signer('app-biz').dumps({'id':co['id'],'h':co['pw_hash'][-16:]})
+def api_co():
+    tok=request.headers.get('Authorization','').removeprefix('Bearer ').strip() or request.args.get('t','')
+    try:d=core.signer('app-biz').loads(tok)
+    except Exception:d=None
+    with conn() as db:co=core.company(db,d.get('id')) if isinstance(d,dict) else None
+    if not co or co['status']!='active' or not co['member'] or co['pw_hash'][-16:]!=d.get('h'):abort(401)
+    g.co=co;return co
+def api_form():return request.get_json(silent=True) or request.form
+def co_info(co):
+    return dict(id=co['id'],name=co['name'],login_id=co['login_id'],link=core.site_url('me','/to/%d'%co['id']))
+def biz_summary(c):
+    return dict(id=c['id'],no=c['no'],category=c['category'],title=c['title'],name=c['name'] or '',status=c['status'],status_label=core.status_label(c['status']),
+        decision=c['decision'],decision_label=core.DECISION.get(c['decision'],''),pending=is_pending(c),overdue=core.overdue(c),due=c['due'],created=c['created'],updated=c['updated'])
+def biz_detail(db,c,co):
+    ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);rule=core.rule_for(db,co['id'],c['category']);pb=core.PLAYBOOK.get(c['category'],core.PLAYBOOK['기타'])
+    tok=co_token(co);url=lambda f:url_for('api_biz_file',case_id=c['id'],file_id=f['id'],t=tok,_external=True)
+    d=biz_summary(c);open_=c['status'] not in core.FINAL
+    d.update(body=c['body'],want=c['want'],order_no=c['order_no'],product=c['product'],received_on=c['received_on'],info_ask=c['info_ask'],
+        phone=core.fmt_phone(c['phone']) if c['phone'] else '',email=c['email'] or '',
+        plan=dict(title=pb['title'],steps=pb['steps'],reply=rule.get('reply') or pb['reply']),
+        ret=dict(status=c['ret_status'],courier=c['ret_courier'],tracking=c['ret_tracking'],out_courier=c['out_courier'],out_tracking=c['out_tracking']),
+        refund=dict(possible=core.refund_case(c),status=c['refund_status'],bank=c['refund_bank'],account=c['refund_account'],holder=c['refund_holder']),
+        events=[dict(id=e['id'],kind=e['kind'],text=e['text'],reply=e['reply'],created=e['created'],files=[dict(id=f['id'],name=f['original'],url=url(f)) for f in fl if f['event_id']==e['id']]) for e in ev],
+        files=[dict(id=f['id'],name=f['original'],url=url(f)) for f in fl],
+        can=dict(approve=open_ and c['decision'] not in ('approved','auto'),hold=open_ and c['decision']!='hold',ask=open_,reply=open_,
+            ret_received=c['ret_status'] in ('guided','sent'),out_ship=c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking'],
+            refund_done=core.refund_case(c) and c['refund_status']!='done'))
+    return d
+def api_my_case(db,co,case_id):
+    c=db.execute('SELECT * FROM cases WHERE id=? AND company_id=? AND member=1 AND consent=1',(case_id,co['id'])).fetchone()
+    if not c:abort(404)
+    return c
+
+@app.route('/api/v1/meta')
+def api_biz_meta():
+    return jsonify(cats=core.CATS,couriers=list(core.COURIERS),operator=core.OPERATOR,name=core.BNAME,
+        signup=core.site_url('biz','/signup'),forgot=core.site_url('biz','/forgot'),privacy=core.site_url('me','/privacy'))
+@app.route('/api/v1/login',methods=['POST'])
+def api_biz_login():
+    f=api_form();lid=clean(f.get('login_id'),80).lower();pw=f.get('password','')
+    if core.throttled('login',limit=10,minutes=10):return jsonify(error='로그인 시도가 너무 많습니다. 10분 뒤에 다시 해 주세요.'),429
+    with conn() as db:co=db.execute('SELECT * FROM companies WHERE login_id=?',(lid,)).fetchone()
+    if not co or not check_password_hash(co['pw_hash'],pw):return jsonify(error='이메일이나 비밀번호가 맞지 않습니다.'),400
+    if co['status']=='pending':return jsonify(error='가입 승인을 기다리고 있습니다. 승인되면 이메일로 알려 드립니다.'),400
+    if co['status']!='active' or not co['member']:return jsonify(error='이용할 수 없는 계정입니다. 센터에 문의해 주세요.'),400
+    return jsonify(token=co_token(co),company=co_info(co))
+@app.route('/api/v1/home')
+def api_biz_home():
+    co=api_co()
+    with conn() as db:rows=my_cases(db,co);n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(co['id'],)).fetchone()[0]
+    pend=[r for r in rows if is_pending(r)]
+    return jsonify(company=co_info(co),kpi=kpis(rows),counts={'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto},
+        pending=[biz_summary(r) for r in pend],recent=[biz_summary(r) for r in rows[:6]])
+@app.route('/api/v1/cases')
+def api_biz_cases():
+    co=api_co();fil=request.args.get('f','all');q=clean(request.args.get('q'),40)
+    with conn() as db:rows=my_cases(db,co)
+    if q:rows=[r for r in rows if q.lower() in (r['title']+' '+r['no']+' '+(r['name'] or '')+' '+r['body']).lower()]
+    groups={'all':rows,'pending':[r for r in rows if is_pending(r)],'open':[r for r in rows if is_open(r)],
+            'done':[r for r in rows if r['status'] in ('answered','resolved','closed','withdrawn')],'bad':[r for r in rows if r['status']=='unresolved' or core.overdue(r)]}
+    return jsonify(cases=[biz_summary(r) for r in groups.get(fil,rows)],counts={k:len(v) for k,v in groups.items()})
+@app.route('/api/v1/cases/<int:case_id>',methods=['GET','POST'])
+def api_biz_case(case_id):
+    co=api_co()
+    with conn() as db:
+        c=api_my_case(db,co,case_id);msg=''
+        if request.method=='POST':
+            msg,level=case_act(db,c,api_form())
+            if level!='ok':return jsonify(error=msg or '처리할 수 없어요.'),400
+        elif c['status']=='forwarded':
+            db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
+        c=api_my_case(db,co,case_id);d=biz_detail(db,c,co)
+    return jsonify(dict(d,message=msg))
+@app.route('/api/v1/cases/<int:case_id>/draft',methods=['POST'])
+def api_biz_draft(case_id):
+    co=api_co()
+    if core.throttled('draft',limit=30,minutes=10):return jsonify(error='잠시 후 다시 시도해 주세요'),429
+    with conn() as db:c=api_my_case(db,co,case_id);res=drafting.draft(db,c,co)
+    return jsonify(res)
+@app.route('/api/v1/cases/<int:case_id>/files/<int:file_id>')
+def api_biz_file(case_id,file_id):
+    co=api_co()
+    with conn() as db:c=api_my_case(db,co,case_id);f=db.execute('SELECT * FROM files WHERE id=? AND case_id=?',(file_id,c['id'])).fetchone()
+    if not f:abort(404)
+    return send_file(core.UPLOAD/f['stored'],download_name=f['original'])
+@app.route('/api/v1/approve_many',methods=['POST'])
+def api_biz_approve_many():
+    co=api_co();cat=api_form().get('category')
+    if cat not in core.CATS:return jsonify(error='유형을 확인해 주세요.'),400
+    n=0
+    with conn() as db:
+        for c in [r for r in my_cases(db,co) if is_pending(r) and r['category']==cat]:
+            if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
+            n+=1
+    return jsonify(approved=n,message=f'{cat} {n}건을 승인했습니다')
+@app.route('/api/v1/push',methods=['POST'])
+def api_biz_push():
+    """사장님 앱 알림 토큰 등록. 같은 휴대폰은 마지막에 로그인한 회사로 옮겨진다."""
+    co=api_co();t=clean(api_form().get('push_token'),200)
+    if not t.startswith('ExponentPushToken['):return jsonify(error='알림 토큰을 확인해 주세요.'),400
+    with conn() as db:db.execute('INSERT INTO biz_push(token,company_id,created) VALUES(?,?,?) ON CONFLICT(token) DO UPDATE SET company_id=excluded.company_id,created=excluded.created',(t,co['id'],core.iso()))
+    return jsonify(ok=True)
+@app.route('/api/v1/logout',methods=['POST'])
+def api_biz_logout():
+    """로그아웃하면 이 휴대폰으로 더는 알림을 보내지 않는다."""
+    co=api_co();t=clean(api_form().get('push_token'),200)
+    if t:
+        with conn() as db:db.execute('DELETE FROM biz_push WHERE token=? AND company_id=?',(t,co['id']))
+    return jsonify(ok=True)
+
+@app.errorhandler(401)
+def unauth(e):
+    if request.path.startswith('/api/'):return jsonify(error='다시 로그인해 주세요.'),401
+    return redirect(url_for('login'))
 @app.errorhandler(404)
-def nf(e):return render_template('c_error.html',msg='페이지를 찾을 수 없어요.'),404
+def nf(e):
+    if request.path.startswith('/api/'):return jsonify(error='찾을 수 없어요.'),404
+    return render_template('c_error.html',msg='페이지를 찾을 수 없어요.'),404
