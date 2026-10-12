@@ -38,6 +38,7 @@ export default function MoreTab() {
           <MenuRow title="월간 리포트" sub="지난달 민원을 한 장으로" onPress={() => router.push('/report')} last />
         </Card>
         <Card style={{ paddingVertical: 4 }}>
+          <MenuRow title="이용 안내" sub="소보루 CS 사용법과 자주 묻는 질문" onPress={() => router.push('/howto')} />
           <MenuRow title="응대 가이드" sub="상황별 법 조항과 예시 답변" onPress={() => router.push('/guide')} />
           <MenuRow title="법·제도 소식" sub="사장님이 알아야 할 바뀐 규정" onPress={() => router.push('/news')} last />
         </Card>

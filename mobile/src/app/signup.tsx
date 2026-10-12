@@ -48,7 +48,7 @@ export default function Signup() {
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 18, gap: 8 }}>
           <Text style={st.h1}>소보루 CS 가입 신청</Text>
-          <Text style={st.p}>신청하면 운영팀이 사업자 정보를 확인하고 승인합니다. 이용료는 없습니다.</Text>
+          <Text style={st.p}>신청하면 운영팀이 사업자 정보를 확인하고 승인합니다. 무료로 시작할 수 있습니다.</Text>
         </View>
         <Card style={{ gap: 14 }}>
           <Field label="회사 이름" value={f.name} onChangeText={set('name')} placeholder="예: 달빛화장품" />

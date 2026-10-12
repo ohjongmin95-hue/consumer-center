@@ -77,6 +77,7 @@ export default function RootLayout() {
           <Stack.Screen name="settings" options={{ title: '회사 정보와 알림 설정' }} />
           <Stack.Screen name="leave" options={{ title: '회원 탈퇴' }} />
           <Stack.Screen name="guide" options={{ title: '응대 가이드' }} />
+          <Stack.Screen name="howto" options={{ title: '이용 안내' }} />
           <Stack.Screen name="news" options={{ title: '법·제도 소식' }} />
           <Stack.Screen name="new" options={{ title: '민원 직접 등록' }} />
         </Stack>
