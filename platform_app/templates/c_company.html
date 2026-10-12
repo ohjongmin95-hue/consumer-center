@@ -3,24 +3,22 @@
 {% block description %}{{ co.name }}에 배송·교환·환불·불량 문의를 바로 접수하고 답변까지 확인해요.{% endblock %}
 {% block bar %}{% endblock %}
 {% block main %}
-<main class="cs">
+<main class="cs cs2">
 <header class="cs-top"><div class="cs-in"><span class="cs-brand"><img class="ch" src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96"><b class="wm">소보루 CS</b></span>
 <a href="{{ url_for('mine') }}" class="cs-mine">내 접수{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a></div></header>
 <div class="cs-in">
 <section class="cs-hero">
+<span class="cs-av" aria-hidden="true">{{ co.name[:1] }}</span>
 <h1>{{ co.name }}에<br>무엇을 도와드릴까요?</h1>
 {% if member %}<p class="cs-sub">담당자에게 바로 전달돼요</p>
 {% else %}<p class="cs-sub">{{ CNAME }}가 {{ co.name }}의 공식 연락처로 전달해 드려요</p>{% endif %}
 </section>
-<section class="cs-sec" aria-label="상담창">{% include "_chat.html" %}</section>
-<section class="cs-sec" style="margin-top:20px"><h2>직접 골라서 접수하기</h2>
-<div class="cs-list cs-cats">{% for cat,sub in [('배송 조회','배송이 안 오거나 늦어요'),('교환','사이즈·색상을 바꾸고 싶어요'),('반품·환불','돌려보내고 환불받고 싶어요'),('제품 불량','고장 나거나 망가져서 왔어요'),('고객 응대','응대가 불편했어요'),('기타','그 밖의 문의')] %}
-<a href="{{ url_for('new',company_id=co.id,category=cat) }}"><span class="cs-ic">{{ i.cat_icon(cat,24) }}</span><span class="tx"><b>{{ cat }}</b><small>{{ sub }}</small></span><span class="chev"></span></a>{% endfor %}</div>
+<section class="cs-card cs-chat" aria-label="상담창">{% include "_chat.html" %}</section>
+<section class="cs-card"><h2>직접 골라서 접수하기</h2>
+<div class="cs-tiles">{% for cat,sub in [('배송 조회','배송이 안 오거나 늦어요'),('교환','사이즈·색상을 바꾸고 싶어요'),('반품·환불','돌려보내고 환불받고 싶어요'),('제품 불량','고장 나거나 망가져서 왔어요'),('고객 응대','응대가 불편했어요'),('기타','그 밖의 문의')] %}
+<a href="{{ url_for('new',company_id=co.id,category=cat) }}"><span class="cs-ic">{{ i.cat_icon(cat,24) }}</span><b>{{ cat }}</b><small>{{ sub }}</small></a>{% endfor %}</div>
 </section>
-</div>
-<div class="cs-band"></div>
-<div class="cs-in">
-<section class="cs-sec"><h2>이런 것도 할 수 있어요</h2>
+<section class="cs-card"><h2>이런 것도 할 수 있어요</h2>
 <div class="cs-list">
 <a href="{{ url_for('mine') }}"><span class="cs-ic">{{ i.icon('search',22) }}</span><span class="tx"><b>내 접수 확인</b><small>진행 상황과 답변을 봐요</small></span><span class="chev"></span></a>
 {% if co.contact %}<div class="row"><span class="cs-ic">{{ i.icon('phone',22) }}</span><span class="tx"><b>전화 문의</b><small style="user-select:all">{{ co.contact }}</small></span></div>{% endif %}

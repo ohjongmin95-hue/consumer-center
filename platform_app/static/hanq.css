@@ -980,3 +980,41 @@ body.v2 .foot2{padding-block:16px 18px;font-size:14px}
 .logo.cs-logo{gap:6px}.logo.cs-logo .ch,.cs-brand .ch{height:28px;width:auto;display:block}
 .logo.cs-logo .wm,.cs-brand .wm{font-size:20px;font-weight:800;letter-spacing:-.04em;color:var(--accent);line-height:1}
 .ft-top .logo.cs-logo .ch{height:22px}.ft-top .logo.cs-logo .wm{font-size:16px}
+
+/* 기업별 고객센터 (/to/<id>): 회색 바탕 + 흰 카드, 유형별 색 타일 */
+body:has(.cs2){background:var(--bg)}
+.cs2{background:var(--bg);min-height:100vh;padding-bottom:110px}
+.cs2 .cs-top{background:color-mix(in srgb,var(--bg) 88%,transparent)}
+.cs2 .cs-hero{padding:20px 4px 24px}
+.cs-co{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.cs-av{width:52px;height:52px;border-radius:18px;margin-bottom:18px;background:linear-gradient(135deg,#ffb84d,var(--accent));color:#fff;display:grid;place-items:center;font-size:22px;font-weight:800;flex:none;box-shadow:0 6px 16px rgba(248,155,0,.25)}
+.cs-co>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cs-co b{font-size:18px;font-weight:700;letter-spacing:-.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cs-badge{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#03b26c;background:#e9f8ef;border-radius:999px;padding:3px 10px}
+.cs-badge i{width:6px;height:6px;border-radius:50%;background:#03b26c}
+.cs-badge.gray{color:var(--fg2);background:var(--card)}
+.cs2 .cs-hero h1{font-size:28px}
+.cs-card{background:var(--card);border-radius:24px;padding:22px 20px;margin-bottom:12px}
+.cs-card h2{font-size:17px;font-weight:700;letter-spacing:-.03em;margin:0 0 14px;color:var(--fg)}
+.cs2 .cb{background:none;padding:0}
+.cs2 .cb-m.bot{background:var(--fill)}
+.cs2 .cb-in input,.cs2 .cb-chips button,.cs2 .cb-chips a{background:var(--fill);border-color:transparent}
+.cs2 .cb-chips .pri{background:var(--accent);color:#fff}
+.cs-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cs-tiles a{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:16px;border-radius:18px;background:var(--fill);transition:transform .1s,background .15s;min-width:0}
+.cs-tiles a:hover{background:var(--fill2)}.cs-tiles a:active{transform:scale(.97)}
+.cs-tiles .cs-ic{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;margin-bottom:10px;background:var(--accent-soft);color:var(--accent-ink)}
+.cs-tiles b{font-size:16px;font-weight:700;letter-spacing:-.03em}
+.cs-tiles small{font-size:13px;color:var(--fg3);line-height:1.45;word-break:keep-all}
+.cs2 .cs-list{margin:0 -8px;display:block}
+.cs2 .cs-list>a,.cs2 .cs-list>.row,.cs2 .cs-list summary{padding:12px 8px}
+.cs2 .cs-ret{margin:4px 8px 8px}
+.cs2 .cs-foot{border-top:0;margin-top:28px;padding:0 4px}
+.cs2 .cs-cta{background:linear-gradient(to top,var(--bg) 70%,color-mix(in srgb,var(--bg) 0%,transparent))}
+@media (min-width:761px){
+  .cs2 .cs-hero{padding:44px 4px 32px}.cs2 .cs-hero h1{font-size:36px}
+  .cs-av{width:60px;height:60px;font-size:26px;border-radius:20px}.cs-co b{font-size:20px}
+  .cs-card{padding:28px 28px;border-radius:28px;margin-bottom:16px}.cs-card h2{font-size:19px;margin-bottom:18px}
+  .cs-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.cs-tiles a{padding:20px}
+  .cs2 .cs-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
