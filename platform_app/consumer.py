@@ -200,7 +200,7 @@ def company_page(company_id):
     """기업별 접수 페이지: 기업 홈페이지·쇼핑몰에서 이 주소로 연결한다"""
     with conn() as db:co=core.company(db,company_id)
     if not co or co['status'] not in ('active','listed'):abort(404)
-    return render_template('c_company.html',co=co,member=core.active_member(co))
+    return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS)
 
 @app.route('/case/<int:case_id>/file/<int:file_id>')
 def case_file(case_id,file_id):

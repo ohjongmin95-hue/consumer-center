@@ -838,3 +838,41 @@ aside .kv{font-size:14.5px}
 .chead .btn.gray,.phead .btn.gray,.chead .pill.gray{background:var(--card)}
 .chead .btn.gray:hover,.phead .btn.gray:hover{background:var(--fill2)}
 @media (max-width:760px){.chead{display:block;text-align:left}.chead .tagrow{justify-content:flex-start}.chead .btn.sm{margin-top:16px;height:36px;font-size:14px}.cmeta{font-size:13px}}
+/* ---------- 기업별 고객센터 (/to/<id>) ---------- */
+.cs{min-height:100dvh;padding:0 16px 120px;background:var(--bg)}
+.cs-in{max-width:520px;margin:0 auto}
+.cs-top{display:flex;align-items:center;justify-content:space-between;padding:18px 4px}
+.cs-brand{display:flex;align-items:center;gap:8px}.cs-brand img{height:26px;width:auto}.cs-brand small{font-size:15px;font-weight:600;color:var(--fg2)}
+.cs-mine{font-size:15px;font-weight:600;color:var(--fg2);background:var(--card);border-radius:999px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px}
+.cs-hero{padding:28px 4px 8px}
+.cs-av{width:56px;height:56px;border-radius:18px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:24px;font-weight:700;box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 30%,transparent)}
+.cs-hero h1{font-size:30px;line-height:1.35;letter-spacing:-.045em;margin:20px 0 0;font-weight:700}
+.cs-hero h1 em{font-style:normal;color:var(--fg2);font-weight:600}
+.cs-promise{display:inline-flex;align-items:center;gap:8px;margin:16px 0 0;font-size:14.5px;font-weight:600;color:var(--green);background:var(--green-soft);border-radius:999px;padding:7px 14px}
+.cs-promise.gray{color:var(--fg2);background:var(--card)}
+.cs-promise .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.cs-sec{margin-top:32px}
+.cs-sec h2,.cs-how h2{font-size:17px;font-weight:700;letter-spacing:-.03em;margin:0 4px 12px;color:var(--fg)}
+.cs-cats,.cs-rows{background:var(--card);border-radius:24px;padding:8px}
+.cs-cats a,.cs-rows a,.cs-rows .row,.cs-rows summary{display:flex;align-items:center;gap:14px;padding:14px 12px;border-radius:16px;transition:background .15s}
+.cs-cats a:hover,.cs-rows a:hover,.cs-rows summary:hover{background:var(--fill)}
+.cs-cats a:active,.cs-rows a:active{transform:scale(.99)}
+.ic-wrap{width:48px;height:48px;border-radius:16px;background:var(--accent-soft);display:grid;place-items:center;flex:none}
+.ic-wrap.sm{width:42px;height:42px;border-radius:14px;background:var(--fill)}
+.cs .tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.cs .tx b{font-size:16.5px;font-weight:600;letter-spacing:-.02em}.cs .tx small{font-size:13.5px;color:var(--fg3)}
+.cs-rows details summary{list-style:none;cursor:pointer}.cs-rows details summary::-webkit-details-marker{display:none}
+.cs-rows details[open] summary .chev{transform:rotate(135deg)}
+.cs-ret{white-space:pre-wrap;font-size:14.5px;color:var(--fg2);background:var(--fill);border-radius:14px;padding:14px 16px;margin:0 12px 12px}
+.cs-how{margin-top:32px}
+.cs-how ol{list-style:none;margin:0;padding:20px;background:var(--card);border-radius:24px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;counter-reset:h}
+.cs-how li{counter-increment:h;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;position:relative}
+.cs-how li::before{content:counter(h);width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-weight:700;font-size:14px;display:grid;place-items:center;margin-bottom:8px}
+.cs-how li+li::after{content:'';position:absolute;top:15px;right:calc(50% + 22px);width:calc(100% - 36px);height:2px;background:var(--fill2)}
+.cs-how b{font-size:15px}.cs-how span{font-size:12.5px;color:var(--fg3)}
+.cs-cta{position:fixed;left:0;right:0;bottom:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:6}
+.cs-cta .btn{max-width:520px;margin:0 auto;display:flex}
+.cs-foot{display:flex;align-items:center;gap:14px;margin:40px 4px 0;color:var(--fg3);font-size:13px}
+.cs-foot img{height:44px;width:auto;flex:none}.cs-foot p{margin:0;line-height:1.6}.cs-foot a{text-decoration:underline}
+body.v2:has(main.cs) .pilot{position:relative}
+@media (min-width:761px){.cs-hero h1{font-size:34px}}

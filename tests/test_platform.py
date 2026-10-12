@@ -242,6 +242,13 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('출처 보기',b.get('/biz/news').get_data(as_text=True))
         r=self.post(o,'/biz/ops/news',{'title':'출처 없음','body':'내용','source_url':''},'/biz/ops/news')
         self.assertNotIn('출처 없음',b.get('/biz/news').get_data(as_text=True))
+        # 화면 점검: 제목 칸에 화면 내용이 섞이거나 템플릿 문법이 그대로 보이면 안 된다
+        for path in ['/biz/','/biz/all','/biz/stats','/biz/report','/biz/guide','/biz/new','/biz/news','/biz/settings','/biz/rules',f'/biz/case/{case_id}',f'/biz/case/{case_id}/record']:
+            page=b.get(path).get_data(as_text=True)
+            title=re.search(r'<title>(.*?)</title>',page,re.S).group(1)
+            self.assertNotIn('<',title,path);self.assertEqual(page.count('<title>'),1,path)
+            self.assertNotIn('{%',page,path);self.assertNotIn('{{',page,path)
+        self.assertEqual(b.get('/biz/stats').get_data(as_text=True).count('같은 업종과 비교'),1)
 
     def test_submit_validation_keeps_draft(self):
         me=self.client()
