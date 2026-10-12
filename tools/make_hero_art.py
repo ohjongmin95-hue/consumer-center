@@ -7,7 +7,7 @@
 from pathlib import Path
 
 LINE = '#2b3a55'
-ORANGE, APRICOT, SAGE, NAVY, CREAM, HAIR, HAIR2, WHITE = '#ef7300', '#ffc48f', '#8dbf9e', '#2b3a55', '#fff1e3', '#262a36', '#6b3f2a', '#ffffff'
+ORANGE, APRICOT, SAGE, NAVY, CREAM, HAIR, HAIR2, WHITE = '#ef920e', '#ffc48f', '#8dbf9e', '#2b3a55', '#fff1e3', '#262a36', '#6b3f2a', '#ffffff'
 
 
 def p(d, fill='none', stroke=None, w=0, extra=''):
