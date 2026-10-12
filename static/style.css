@@ -1267,6 +1267,8 @@ a.private-title:hover { color: #bd5c00; }
 .cs-more[open] summary::before { transform: rotate(90deg); }
 .cs-more summary small { margin-left: 4px; font-weight: 600; color: #9a9ea5; }
 .cs-more > form, .cs-more > ul, .cs-more > p { margin-top: 10px; }
+.cs-check { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; font-size: 13.5px; color: #4b525c; cursor: pointer; }
+.cs-check input { width: 18px; height: 18px; flex: none; margin: 1px 0 0; accent-color: #c0392b; }
 .cs-logbox summary { cursor: pointer; list-style: none; }
 .cs-logbox summary::-webkit-details-marker { display: none; }
 .cs-logbox summary h2 { margin: 0; }

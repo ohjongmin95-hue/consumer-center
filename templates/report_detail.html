@@ -108,7 +108,7 @@
         {% if ep.list == 'admin_reports' %}<details class="cs-more cs-danger">
           <summary>제보 삭제</summary>
           <form method="post" onsubmit="return confirm('이 제보를 삭제할까요? 첨부파일·메시지·메모까지 모두 지워지고 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="delete">
-            <label class="cs-row"><input type="checkbox" name="confirm" value="1" required> 첨부파일·메시지·메모·처리 기록까지 모두 지워지고 되돌릴 수 없어요</label>
+            <label class="cs-check"><input type="checkbox" name="confirm" value="1" required><span>첨부파일·메시지·메모·처리 기록까지 모두 지워지고 되돌릴 수 없다는 걸 확인했어요</span></label>
             <button class="cs-btn cs-btn-danger" type="submit">삭제하기</button></form>
         </details>{% endif %}
       </section>
