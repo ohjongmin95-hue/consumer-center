@@ -25,7 +25,7 @@
 {% if co.contact %}<div class="row"><span class="cs-ic">{{ i.icon('phone',22) }}</span><span class="tx"><b>전화 문의</b><small style="user-select:all">{{ co.contact }}</small></span></div>{% endif %}
 {% if ret %}<details><summary><span class="cs-ic">{{ i.icon('truck',22) }}</span><span class="tx"><b>반품 보내실 곳</b><small>접수 후 안내에 따라 보내 주세요</small></span><span class="chev"></span></summary><div class="cs-ret">{{ ret }}</div></details>{% endif %}
 </div></section>
-<footer class="cs-foot"><img src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96"><div><p>SOBORU가 접수부터 해결까지 기록해 드려요<br><a href="{{ url_for('privacy') }}">개인정보 처리방침</a> · <a href="{{ url_for('guide') }}">이용 안내</a></p>{{ op.opinfo() }}</div></footer>
+<footer class="cs-foot"><nav class="ft-links"><a class="strong" href="{{ url_for('privacy') }}">개인정보 처리방침</a><a href="{{ url_for('guide') }}">이용 안내</a></nav>{{ op.opinfo() }}<p class="copy">© SOBORU</p></footer>
 </div>
 <div class="cs-cta"><div><a class="btn full" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a></div></div>
 </main>
