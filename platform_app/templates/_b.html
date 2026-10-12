@@ -1,6 +1,6 @@
 {# 기업 서비스 공용: 상단 메뉴, 지표, 승인 카드 #}
 {% import '_i.html' as i %}
-{% macro soboru_logo() -%}<img class="ch" src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96"><img class="wm" src="{{ url_for('static',filename='soboru-wordmark.png') }}" alt="SOBORU" width="371" height="72"><small class="w">비즈</small>{%- endmacro %}
+{% macro soboru_logo() -%}<img class="lg" src="{{ url_for('static',filename='soboru-logo.png') }}" alt="SOBORU" width="507" height="120"><small class="w">비즈</small>{%- endmacro %}
 {% macro bar(tab) -%}
 <header class="gnb"><div class="wrap">
 <a class="logo biz" href="{{ url_for('decide') }}">{{ soboru_logo() }}</a>
@@ -9,6 +9,7 @@
 <a href="{{ url_for('all_cases') }}" class="{{ 'on' if tab=='all' }}">민원</a>
 <a href="{{ url_for('rules') }}" class="{{ 'on' if tab=='rules' }}">자동 처리</a>
 <a href="{{ url_for('stats') }}" class="{{ 'on' if tab=='stats' }}">통계</a>
+<a href="{{ url_for('guide') }}" class="{{ 'on' if tab=='guide' }}">응대 가이드</a>
 </nav>
 <div class="right"><a class="chip{{ ' on' if tab=='settings' }}" href="{{ url_for('settings') }}" title="설정"><span class="dot">{{ co.name[:1] }}</span><span class="hide-m">{{ co.name }}</span></a>
 <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn hide-m">로그아웃</button></form></div>
@@ -22,6 +23,7 @@
 <a href="{{ url_for('ops') }}" class="{{ 'on' if tab=='non' }}">비입점 민원</a>
 <a href="{{ url_for('ops_all') }}" class="{{ 'on' if tab=='all' }}">전체 현황</a>
 <a href="{{ url_for('ops_companies') }}" class="{{ 'on' if tab=='co' }}">기업 관리{% if n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</a>
+<a href="{{ url_for('ops_news') }}" class="{{ 'on' if tab=='news' }}">법·제도 소식</a>
 </nav>
 <div class="right"><form method="post" action="{{ url_for('ops_logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn">로그아웃</button></form></div>
 </div></header>
@@ -33,7 +35,7 @@
 {% macro dcard(c,detail=False) -%}
 {% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}
 <article class="dcard">
-{% if not detail %}<a class="body" href="{{ url_for('case',case_id=c.id) }}"><div class="meta">{{ i.cat_icon(c.category,20) }}<span>{{ c.category }}</span><span class="sp"></span>{% if overdue(c) %}<span class="t-bad">답변 지연</span>{% elif c.due %}<span>{{ fmt_day(c.due) }}까지</span>{% endif %}</div><div class="tt">{{ c.title }}</div><div class="want">원하는 해결 {{ c.want }}</div></a>{% endif %}
+{% if not detail %}<a class="body" href="{{ url_for('case',case_id=c.id) }}"><div class="meta">{{ i.cat_icon(c.category,20) }}<span>{{ c.category }}</span><span class="sp"></span>{% if overdue(c) %}<span class="t-bad">답변 지연</span>{% elif c.due %}<span>{{ fmt_day(c.due) }}까지</span>{% endif %}</div><div class="tt">{{ c.title }}</div><div class="want">원하는 해결 {{ c.want }}</div>{{ law_chip(c) }}</a>{% endif %}
 <div class="reco"><div class="l">추천 조치</div><div class="r">{{ p.title }}</div></div>
 <form method="post" action="{{ url_for('case',case_id=c.id) }}" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <button class="btn md" name="act" value="approve">승인</button><button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form>
@@ -44,4 +46,18 @@
 {% for c in rows %}<tr data-href="{{ url_for(href_fn,case_id=c.id) }}"><td><a class="ttl" href="{{ url_for(href_fn,case_id=c.id) }}">{{ c.title }}</a></td>{% if company %}<td class="hm">{{ c.company_name }}{% if not c.member %} <span class="t-mute">· 비입점</span>{% endif %}</td>{% endif %}
 <td class="hm t-sub">{{ c.category }}</td><td class="hm t-mute">{{ fmt(c.created) }}</td><td class="r">{{ m.pill(c,True) }}</td></tr>{% endfor %}
 </tbody></table></div>
+{%- endmacro %}
+
+{# 법 기준: 받은 날 기준 7일(전자상거래법 제17조제1항) 안인지, 직접 등록 채널 #}
+{% macro law_chip(c) -%}
+{% set k=law_check(c) %}{% if k or is_direct(c) %}<div class="lawchips">{% if is_direct(c) %}<span class="pill gray">{{ c.channel }}</span>{% endif %}{% if k %}<span class="pill {{ 'ok' if k.within else 'bad' }}">받은 지 {{ k.days }}일 · 7일 {{ '이내' if k.within else '지남' }}</span>{% endif %}</div>{% endif %}
+{%- endmacro %}
+{# 조문 원문 (law_texts.json 그대로) #}
+{% macro law_text(l) -%}
+<div class="lawtext">{% for p in l.paras %}<p>{% if p.n %}<b>{{ p.n }}</b> {% endif %}{{ p.text }}</p>{% if p['items'] %}<ol>{% for it in p['items'] %}<li><span class="n">{{ it.n }}.</span> {{ it.text }}{% if it.subs %}<ol>{% for sb in it.subs %}<li><span class="n">{{ sb.n }}.</span> {{ sb.text }}</li>{% endfor %}</ol>{% endif %}</li>{% endfor %}</ol>{% endif %}{% endfor %}
+<div class="lawsrc">{{ l.law }} ({{ l.kind }} 제{{ l.no }}호, {{ l.effective }} 시행) · <a href="{{ l.source }}" target="_blank" rel="noopener">국가법령정보센터</a></div></div>
+{%- endmacro %}
+{% macro law_item(l,summary) -%}
+<details class="lawi"><summary><span class="lab">{{ l.label }}<small>{{ l.title }}</small></span><span class="chev"></span></summary>
+{% if summary %}<p class="lsum">{{ summary }}</p>{% endif %}{{ law_text(l) }}</details>
 {%- endmacro %}

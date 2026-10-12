@@ -26,6 +26,8 @@
     <input class="inp" name="title" maxlength="80" placeholder="한 줄 요약" value="{{ d.title or '' }}" required>
     <textarea class="inp" name="body" maxlength="3000" minlength="10" placeholder="언제, 무엇을 샀고, 어떤 문제가 있었는지" required>{{ d.body or '' }}</textarea>
     <input class="inp" name="order_no" maxlength="40" placeholder="주문번호 (선택)" value="{{ d.order_no or '' }}">
+    <input class="inp" name="product" maxlength="60" placeholder="상품 이름 (선택)" value="{{ d.product or '' }}">
+    <label class="fld"><span>상품 받은 날 (선택 · 반품 기간 확인에 써요)</span><input class="inp" name="received_on" type="date" max="{{ today }}" value="{{ d.received_on or '' }}"></label>
     <label class="filebox"><span class="cap" style="display:block;margin-bottom:8px">사진·PDF (선택, 3개까지)</span><input class="file-in" type="file" name="files" multiple accept="image/*,.pdf"></label>
   </div>
 </section>

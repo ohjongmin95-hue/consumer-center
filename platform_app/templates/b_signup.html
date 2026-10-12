@@ -11,6 +11,7 @@
 <label class="fld"><span>대표자</span><input class="inp" name="owner_name" maxlength="20" value="{{ d.owner_name or '' }}" required></label>
 <label class="fld"><span>대표 연락처</span><input class="inp" name="phone" type="tel" maxlength="20" value="{{ d.phone or '' }}"></label>
 <label class="fld"><span>고객센터 연락처 (소비자에게 안내)</span><input class="inp" name="contact" maxlength="60" value="{{ d.contact or '' }}"></label>
+<label class="fld"><span>업종 (선택)</span><select class="inp" name="industry"><option value="">고르기</option>{% for x in INDUSTRIES %}<option {{ 'selected' if d.industry==x }}>{{ x }}</option>{% endfor %}</select></label>
 <label class="fld"><span>로그인 이메일</span><input class="inp" name="login_id" type="email" maxlength="80" value="{{ d.login_id or '' }}" required autocomplete="username"></label>
 <label class="fld"><span>비밀번호 (10자 이상)</span><input class="inp" name="password" type="password" minlength="10" required autocomplete="new-password"></label>
 <div class="agree"><label class="check"><input type="checkbox" name="terms" value="1" required><span class="bx"></span><span><b>이용약관 동의 (필수)</b><div class="cap">민원 처리 결과와 무관하게 보도는 독립적으로 이뤄져요</div></span></label></div>

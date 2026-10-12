@@ -3,7 +3,7 @@
 소비자용(한큐)과 기업용(소보루 비즈)이 같은 DB의 같은 사건을 다룬다.
 홈페이지(소비자제보센터, 저장소 최상위 app.py)와는 DB도 서비스도 따로 쓴다.
 """
-import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, threading
+import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, threading, json, urllib.request, urllib.error
 from pathlib import Path
 from email.message import EmailMessage
 from flask import session, request, abort, g
@@ -48,6 +48,14 @@ STATUS={'received':('접수됨','gray',0),'forwarded':('기업 전달','acc',1),
 OPEN_STATUSES=('received','forwarded','seen','info')
 DECISION={'pending':'승인 대기','approved':'승인됨','auto':'자동 처리','hold':'보류','info':'추가 확인','direct':'직접 답변'}
 REPLY_DAYS=2  # 입점 기업 답변 목표일 (전달 후 n일)
+# 기업이 전화·쇼핑몰 문의 등으로 받은 민원을 직접 등록할 때 고르는 채널 ('한큐'는 소비자가 직접 접수한 것)
+CHANNELS=['전화','쇼핑몰 문의','카카오톡','인스타그램 DM','이메일','기타']
+# 반품 안내에 쓰는 택배사 소개. 연동은 하지 않고 이름과 공식 홈페이지만 안내한다.
+COURIERS={'CJ대한통운':'https://www.cjlogistics.com','우체국택배':'https://service.epost.go.kr','롯데택배':'https://www.lotteglogis.com',
+          '한진택배':'https://www.hanjin.com','로젠택배':'https://www.ilogen.com','GS Postbox 편의점택배':'https://www.cvsnet.co.kr','CU 편의점택배':'https://www.cupost.co.kr'}
+RET_STATUS={'guided':'반품 안내함','sent':'소비자 발송','received':'회수 확인'}
+INDUSTRIES=['패션·잡화','뷰티','식품','생활·주방','가전·디지털','가구·인테리어','유아·출산','스포츠·레저','반려동물','도서·문구','서비스','기타']
+TONES={'polite':'정중하게','friendly':'친근하게','brief':'짧고 분명하게'}
 ALLOWED_EXT={'.jpg','.jpeg','.png','.gif','.webp','.heic','.pdf'}
 MAX_FILES=3
 
@@ -89,6 +97,16 @@ def init():
         # 나중에 더한 칸: 이미 있는 DB에도 붙인다
         cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
+        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking'):
+            if col not in cols:db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
+        cols={r[1] for r in db.execute('PRAGMA table_info(companies)')}
+        for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),
+                         ('return_courier',"TEXT NOT NULL DEFAULT ''"),('return_memo',"TEXT NOT NULL DEFAULT ''"),('kakao',"INTEGER NOT NULL DEFAULT 0"),('report_mail',"INTEGER NOT NULL DEFAULT 1")):
+            if col not in cols:db.execute(f'ALTER TABLE companies ADD COLUMN {col} {kind}')
+        db.executescript('''
+        CREATE TABLE IF NOT EXISTS news(id INTEGER PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,source_url TEXT NOT NULL,created TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS sent_marks(kind TEXT NOT NULL,company_id INTEGER NOT NULL,key TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(kind,company_id,key));
+        ''')
 init()
 
 # ---------- 보안 ----------
@@ -133,7 +151,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,CATS=CATS,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,INDUSTRIES=INDUSTRIES,TONES=TONES,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
@@ -168,9 +186,21 @@ def run_playbook(db,c,how):
     add_event(db,c['id'],'sys',('자동 처리 규칙 실행: ' if how=='auto' else '대표 승인: ')+pb['title'])
     for s in pb['steps']:add_event(db,c['id'],'sys','✓ '+s)
     reply=(rule['reply'] or '').strip()
+    guide=return_guide(company(db,c['company_id'])) if c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status'] else ''
+    if reply and guide:reply+='\n\n'+guide;db.execute("UPDATE cases SET ret_status='guided' WHERE id=?",(c['id'],))
     if reply:add_event(db,c['id'],'co','답변을 보냈어요.',reply)
     db.execute('UPDATE cases SET status=?,decision=?,info_ask=? WHERE id=?',('answered' if reply else 'seen',how,'',c['id']))
     return bool(reply)
+
+def return_guide(co):
+    """설정에 반품 주소가 있으면 소비자에게 보낼 반품 안내 문구. 택배사는 소개만 하고 연동하지 않는다."""
+    if not co or not co['return_address']:return ''
+    lines=['[반품 보내실 곳]',co['return_address']]
+    if co['return_courier'] in COURIERS:lines.append(f"이용 택배사: {co['return_courier']} ({COURIERS[co['return_courier']]})")
+    if co['return_memo']:lines.append(co['return_memo'])
+    lines.append('보내신 뒤 접수 화면에서 택배사와 송장번호를 입력해 주세요.')
+    return '\n'.join(lines)
+def is_direct(c):return bool(c['channel']) and c['channel']!='한큐'  # 기업이 직접 등록한 민원 (소비자는 한큐에서 볼 수 없음)
 
 FOLLOW_UP_HOURS=24  # 다시 요청은 하루에 한 번
 def last_follow_up(db,case_id):
@@ -213,6 +243,34 @@ def files_ok(uploads):
     for f in picked:
         if Path(f.filename).suffix.lower() not in ALLOWED_EXT:return '사진(jpg, png, gif, webp, heic)이나 PDF만 올릴 수 있어요.'
     return ''
+
+# ---------- 새 민원 알림 ----------
+def kakao_ready():return bool(os.getenv('SOLAPI_API_KEY') and os.getenv('SOLAPI_API_SECRET') and os.getenv('SOLAPI_PFID') and os.getenv('BIZ_KAKAO_TPL_NEW'))
+def send_kakao(phone,variables):
+    """솔라피로 카카오 알림톡 1건. 문구는 카카오 심사를 받은 템플릿(BIZ_KAKAO_TPL_NEW)과 같아야 한다 -> docs/platform-kakao.md"""
+    phone=digits(phone)
+    if not phone.startswith('01') or not kakao_ready():return
+    def job():
+        try:
+            date=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds');salt=secrets.token_hex(16)
+            sig=hmac.new(os.getenv('SOLAPI_API_SECRET').encode(),(date+salt).encode(),hashlib.sha256).hexdigest()
+            msg={'to':phone,'kakaoOptions':{'pfId':os.getenv('SOLAPI_PFID'),'templateId':os.getenv('BIZ_KAKAO_TPL_NEW'),'disableSms':True,'variables':variables}}
+            if os.getenv('SOLAPI_SENDER'):msg['from']=digits(os.getenv('SOLAPI_SENDER'))
+            req=urllib.request.Request('https://api.solapi.com/messages/v4/send',data=json.dumps({'message':msg}).encode(),method='POST',
+                headers={'Content-Type':'application/json','Authorization':f"HMAC-SHA256 apiKey={os.getenv('SOLAPI_API_KEY')}, date={date}, salt={salt}, signature={sig}"})
+            with urllib.request.urlopen(req,timeout=15) as r:res=json.loads(r.read().decode() or '{}')
+            code=str(res.get('statusCode',''));status='sent' if not code or code in ('2000','3000','4000') else 'failed: '+code
+        except Exception as e:status='failed: '+type(e).__name__
+        with conn() as db:db.execute('INSERT INTO mail_log(target,subject,status,created) VALUES(?,?,?,?)',('kakao:'+phone[:3]+'****'+phone[-4:],'새 민원 알림톡',status,iso()))
+    threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
+def short(text,limit=30):
+    text=' '.join((text or '').split());return text if len(text)<=limit else text[:limit-1]+'…'
+def notify_company_new(co,c):
+    """입점 기업에 새 민원 알림: 이메일, 그리고 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
+    link=site_url('biz','/case/%d'%c['id'])
+    send_mail(co['notify_email'],f"[{BNAME}] 새 민원: {c['title']}",
+        f"{co['name']}에 새 민원이 들어왔어요.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 추천 조치를 보고 승인해 주세요.\n{link}")
+    if co['kakao']:send_kakao(co['phone'],{'#{회사}':short(co['name'],20),'#{유형}':c['category'],'#{요약}':short(c['title']),'#{링크}':link})
 
 # ---------- 메일 ----------
 def mail_ready():return bool(os.getenv('SMTP_HOST') and os.getenv('SMTP_USER') and os.getenv('SMTP_PASSWORD'))

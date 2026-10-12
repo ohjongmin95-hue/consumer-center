@@ -1,15 +1,18 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
 {% block bar %}{{ b.bar('home') }}{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>{% if pend %}승인할 민원이 <em>{{ pend|length }}건</em> 있어요{% else %}승인할 민원을 모두 처리했어요{% endif %}</h1><p>추천 조치를 확인하고 승인하면 바로 처리돼요</p></div></div>
+<div class="phead"><div><h1>{% if pend %}승인할 민원이 <em>{{ pend|length }}건</em> 있어요{% else %}승인할 민원을 모두 처리했어요{% endif %}</h1><p>추천 조치를 확인하고 승인하면 바로 처리돼요</p></div><a class="btn sm gray" href="{{ url_for('new_case') }}">+ 직접 등록</a></div>
+{% for w in warn %}<a class="warn" href="{{ url_for('all_cases',q=w.label if w.kind=='product' else None,f='all') }}"><span>⚠️</span><span><b>{% if w.kind=='product' %}'{{ w.label }}' 관련 민원이 최근 7일 {{ w.n }}건{% else %}{{ w.label }} 민원이 최근 7일 {{ w.n }}건{% endif %}</b><small>같은 문제가 반복되는지 확인해 보세요 · {{ w.cats|join(', ') }}</small></span></a>{% endfor %}
 <div class="sumrow">
 <a href="{{ url_for('all_cases',f='open') }}"><span>처리 중</span><b>{{ counts.open }}</b></a>
 <a href="{{ url_for('all_cases',f='bad') }}"><span>답변 지연</span><b class="{{ 't-bad' if counts.late }}">{{ counts.late }}</b></a>
 <a href="{{ url_for('stats') }}"><span>해결률</span><b>{% if k.res is none %}–{% else %}{{ k.res }}%{% endif %}</b></a>
-<a href="{{ url_for('rules') }}"><span>자동 처리</span><b>{{ counts.auto }}<small>/6</small></b></a>
+{% if counts.ret %}<a href="{{ url_for('all_cases',f='ret') }}"><span>반품 회수 대기</span><b>{{ counts.ret }}</b></a>{% else %}<a href="{{ url_for('rules') }}"><span>자동 처리</span><b>{{ counts.auto }}<small>/6</small></b></a>{% endif %}
 </div>
 {% if pend %}<div class="cgrid">{% for c in pend %}{{ b.dcard(c) }}{% endfor %}</div>
 {% else %}<div class="empty-card">{{ i.icon('approve',56) }}<b>새로 들어온 민원이 없어요</b><span>새 민원이 오면 이메일로 알려 드려요</span></div>{% endif %}
+{% if news %}<div class="shead" style="margin-top:56px"><h2>법·제도 소식</h2><div class="r"><a href="{{ url_for('news') }}">전체보기</a></div></div>
+<div class="newsrow">{% for n in news %}<a class="panel" href="{{ n.source_url }}" target="_blank" rel="noopener"><span class="cap">{{ fmt_day(n.created) }}</span><b>{{ n.title }}</b></a>{% endfor %}</div>{% endif %}
 {% if recent %}<div class="shead" style="margin-top:56px"><h2>최근 민원</h2><div class="r"><a href="{{ url_for('all_cases') }}">전체보기</a></div></div>
 {{ b.case_table(recent,m) }}{% endif %}
 {% endblock %}

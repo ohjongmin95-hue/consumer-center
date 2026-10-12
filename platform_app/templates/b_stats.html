@@ -1,8 +1,26 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
-{% block title %}통계 · {{ BNAME }}{% endblock %}
-{% block bar %}{{ b.bar('stats') }}{% endblock %}
+{% block title %}통계 · {{ BNAME }}<div class="panel" style="margin-top:20px"><div class="ph">같은 업종과 비교 <span class="cap">최근 90일</span></div>
+{% if not cmp %}<p class="sub" style="margin:0">설정에서 업종을 고르면 같은 업종 평균과 비교해 드려요. <a class="link" href="{{ url_for('settings') }}">업종 고르기</a></p>
+{% elif not cmp.ready %}<p class="sub" style="margin:0">{{ co.industry }} 업종 기업이 {{ cmp.need }}곳 이상 모이면 보여 드려요. 한 회사의 숫자가 드러나지 않게 하려는 거예요. (지금 {{ cmp.have }}곳)</p>
+{% else %}<div class="cmp"><div class="cmph"><span></span><b>우리</b><b>{{ co.industry }} 평균 ({{ cmp.peers }}곳)</b></div>
+<div><span>받은 민원</span><b>{{ cmp.mine.n }}건</b><b>{{ cmp.avg.n }}건</b></div>
+<div><span>자동 처리율</span><b>{{ cmp.mine.auto }}%</b><b>{{ cmp.avg.auto }}%</b></div>
+<div><span>해결률</span><b>{{ '–' if cmp.mine.res is none else cmp.mine.res ~ '%' }}</b><b>{{ '–' if cmp.avg.res is none else cmp.avg.res ~ '%' }}</b></div>
+<div><span>첫 답변까지</span><b>{{ '–' if cmp.mine.reply_h is none else cmp.mine.reply_h ~ '시간' }}</b><b>{{ '–' if cmp.avg.reply_h is none else cmp.avg.reply_h ~ '시간' }}</b></div>
+{% for c,a,b2 in cmp.cats %}{% if a or b2 %}<div><span>{{ c }} 비중</span><b>{{ a }}%</b><b>{{ b2 }}%</b></div>{% endif %}{% endfor %}</div>{% endif %}</div>
+{% endblock %}
+{% block bar %}{{ b.bar('stats') }}<div class="panel" style="margin-top:20px"><div class="ph">같은 업종과 비교 <span class="cap">최근 90일</span></div>
+{% if not cmp %}<p class="sub" style="margin:0">설정에서 업종을 고르면 같은 업종 평균과 비교해 드려요. <a class="link" href="{{ url_for('settings') }}">업종 고르기</a></p>
+{% elif not cmp.ready %}<p class="sub" style="margin:0">{{ co.industry }} 업종 기업이 {{ cmp.need }}곳 이상 모이면 보여 드려요. 한 회사의 숫자가 드러나지 않게 하려는 거예요. (지금 {{ cmp.have }}곳)</p>
+{% else %}<div class="cmp"><div class="cmph"><span></span><b>우리</b><b>{{ co.industry }} 평균 ({{ cmp.peers }}곳)</b></div>
+<div><span>받은 민원</span><b>{{ cmp.mine.n }}건</b><b>{{ cmp.avg.n }}건</b></div>
+<div><span>자동 처리율</span><b>{{ cmp.mine.auto }}%</b><b>{{ cmp.avg.auto }}%</b></div>
+<div><span>해결률</span><b>{{ '–' if cmp.mine.res is none else cmp.mine.res ~ '%' }}</b><b>{{ '–' if cmp.avg.res is none else cmp.avg.res ~ '%' }}</b></div>
+<div><span>첫 답변까지</span><b>{{ '–' if cmp.mine.reply_h is none else cmp.mine.reply_h ~ '시간' }}</b><b>{{ '–' if cmp.avg.reply_h is none else cmp.avg.reply_h ~ '시간' }}</b></div>
+{% for c,a,b2 in cmp.cats %}{% if a or b2 %}<div><span>{{ c }} 비중</span><b>{{ a }}%</b><b>{{ b2 }}%</b></div>{% endif %}{% endfor %}</div>{% endif %}</div>
+{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>통계</h1></div></div>
+<div class="phead"><div><h1>통계</h1>{% if reply_h is not none %}<p>첫 답변까지 중간값 {{ reply_h }}시간</p>{% endif %}</div><a class="btn sm gray" href="{{ url_for('report') }}">월간 리포트</a></div>
 {{ b.kpis(k) }}
 <div class="panel" style="margin-bottom:20px"><div class="ph">주별 민원</div>
 <div class="vbars">{% for lab,cnt in weeks %}<div><b>{{ cnt }}</b><span class="tr"><i style="height:{{ (cnt/top*100)|round|int }}%"></i></span><small>{{ lab }}</small></div>{% endfor %}</div></div>
@@ -10,4 +28,13 @@
 <div class="panel"><div class="ph">유형별</div><div class="bars">{% for cat,cnt,pct in cats %}<div class="barrow"><span>{{ cat }}</span><span class="tr"><i style="width:{{ pct }}%"></i></span><b>{{ cnt }}</b></div>{% endfor %}</div></div>
 <div class="panel"><div class="ph">처리 방식</div><div class="bars">{% for lab,cnt,pct in how %}<div class="barrow"><span>{{ lab }}</span><span class="tr"><i style="width:{{ pct }}%"></i></span><b>{{ cnt }}</b></div>{% endfor %}</div></div>
 </div>
+<div class="panel" style="margin-top:20px"><div class="ph">같은 업종과 비교 <span class="cap">최근 90일</span></div>
+{% if not cmp %}<p class="sub" style="margin:0">설정에서 업종을 고르면 같은 업종 평균과 비교해 드려요. <a class="link" href="{{ url_for('settings') }}">업종 고르기</a></p>
+{% elif not cmp.ready %}<p class="sub" style="margin:0">{{ co.industry }} 업종 기업이 {{ cmp.need }}곳 이상 모이면 보여 드려요. 한 회사의 숫자가 드러나지 않게 하려는 거예요. (지금 {{ cmp.have }}곳)</p>
+{% else %}<div class="cmp"><div class="cmph"><span></span><b>우리</b><b>{{ co.industry }} 평균 ({{ cmp.peers }}곳)</b></div>
+<div><span>받은 민원</span><b>{{ cmp.mine.n }}건</b><b>{{ cmp.avg.n }}건</b></div>
+<div><span>자동 처리율</span><b>{{ cmp.mine.auto }}%</b><b>{{ cmp.avg.auto }}%</b></div>
+<div><span>해결률</span><b>{{ '–' if cmp.mine.res is none else cmp.mine.res ~ '%' }}</b><b>{{ '–' if cmp.avg.res is none else cmp.avg.res ~ '%' }}</b></div>
+<div><span>첫 답변까지</span><b>{{ '–' if cmp.mine.reply_h is none else cmp.mine.reply_h ~ '시간' }}</b><b>{{ '–' if cmp.avg.reply_h is none else cmp.avg.reply_h ~ '시간' }}</b></div>
+{% for c,a,b2 in cmp.cats %}{% if a or b2 %}<div><span>{{ c }} 비중</span><b>{{ a }}%</b><b>{{ b2 }}%</b></div>{% endif %}{% endfor %}</div>{% endif %}</div>
 {% endblock %}

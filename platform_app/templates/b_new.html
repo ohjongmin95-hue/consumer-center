@@ -1,0 +1,27 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}민원 직접 등록 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('all') }}{% endblock %}
+{% block body %}
+<div class="narrow">
+<div class="crumb"><a href="{{ url_for('all_cases') }}">민원</a><span>›</span><span>직접 등록</span></div>
+<div class="phead"><div><h1>민원 직접 등록</h1><p>전화, 쇼핑몰 문의, DM으로 받은 민원도 여기 모아 같은 방식으로 처리해요</p></div></div>
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<div class="fld"><span>어디로 받았나요</span><div class="chips">{% for ch in CHANNELS %}<label class="chipr"><input type="radio" name="channel" value="{{ ch }}" {{ 'checked' if d.channel==ch }} required>{{ ch }}</label>{% endfor %}</div></div>
+<div class="grid2">
+<label class="fld"><span>유형</span><select class="inp" name="category" required><option value="">고르기</option>{% for c in CATS %}<option {{ 'selected' if d.category==c }}>{{ c }}</option>{% endfor %}</select></label>
+<label class="fld"><span>원하는 해결</span><select class="inp" name="want" required><option value="">고르기</option>{% for w in WANTS %}<option {{ 'selected' if d.want==w }}>{{ w }}</option>{% endfor %}</select></label>
+</div>
+<label class="fld"><span>한 줄 요약</span><input class="inp" name="title" maxlength="80" required value="{{ d.title or '' }}" placeholder="예: 받은 니트에 구멍이 있어요"></label>
+<label class="fld"><span>내용</span><textarea class="inp" name="body" maxlength="3000" required placeholder="고객이 말한 내용을 그대로 붙여 넣어도 돼요">{{ d.body or '' }}</textarea></label>
+<div class="grid2">
+<label class="fld"><span>상품 이름 (선택)</span><input class="inp" name="product" maxlength="60" value="{{ d.product or '' }}"></label>
+<label class="fld"><span>상품 받은 날 (선택 · 7일 기간 계산)</span><input class="inp" name="received_on" type="date" value="{{ d.received_on or '' }}"></label>
+<label class="fld"><span>고객 이름 (선택)</span><input class="inp" name="name" maxlength="20" value="{{ d.name or '' }}"></label>
+<label class="fld"><span>연락처 (선택)</span><input class="inp" name="phone" type="tel" maxlength="20" value="{{ d.phone or '' }}"></label>
+<label class="fld"><span>주문번호 (선택)</span><input class="inp" name="order_no" maxlength="40" value="{{ d.order_no or '' }}"></label>
+<label class="fld"><span>이메일 (선택)</span><input class="inp" name="email" type="email" maxlength="80" value="{{ d.email or '' }}"></label>
+</div>
+<p class="cap" style="margin:0">직접 등록한 민원은 고객에게 자동으로 알림이 가지 않아요. 답변은 복사해서 원래 받은 곳으로 보내 주세요.</p>
+<button class="btn md">등록하기</button></form>
+</div>
+{% endblock %}

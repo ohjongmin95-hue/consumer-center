@@ -13,6 +13,21 @@
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="ph">회사 정보</div>
 <label class="fld"><span>고객센터 연락처</span><input class="inp" name="contact" maxlength="60" value="{{ co.contact }}" placeholder="1588-0000"></label>
 <label class="fld"><span>새 민원 알림 이메일</span><input class="inp" name="notify_email" type="email" maxlength="80" value="{{ co.notify_email }}"></label>
+<label class="fld"><span>업종 (같은 업종 평균과 비교할 때 써요)</span><select class="inp" name="industry"><option value="">고르기</option>{% for x in INDUSTRIES %}<option {{ 'selected' if co.industry==x }}>{{ x }}</option>{% endfor %}</select></label>
+<label class="fld"><span>답변 말투 (답변 초안에 써요)</span><select class="inp" name="tone">{% for k,v in TONES.items() %}<option value="{{ k }}" {{ 'selected' if co.tone==k }}>{{ v }}</option>{% endfor %}</select></label>
+<button class="btn md">저장</button></form>
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="notify"><div class="ph">알림</div>
+<label class="fld"><span>알림톡 받을 휴대폰</span><input class="inp" name="phone" type="tel" maxlength="20" value="{{ fmt_phone(co.phone) }}" placeholder="010-0000-0000"></label>
+<label class="check"><input type="checkbox" name="kakao" value="1" {{ 'checked' if co.kakao }}><span class="bx"></span><span><b>새 민원을 카카오 알림톡으로 받기</b><div class="cap">{{ '알림을 누르면 바로 승인 화면이 열려요' if kakao_ready else '알림톡 연결 준비 중이에요. 켜 두면 연결되는 대로 보내 드려요' }}</div></span></label>
+<label class="check"><input type="checkbox" name="report_mail" value="1" {{ 'checked' if co.report_mail }}><span class="bx"></span><span><b>월간 CS 리포트 이메일 받기</b><div class="cap">매달 1일 지난달 리포트를 보내 드려요</div></span></label>
+<button class="btn md">저장</button></form>
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="return"><div class="ph">반품 안내</div>
+<p class="sub" style="margin:0">교환·반품·불량 민원을 승인하면 답변 끝에 이 안내가 붙고, 고객은 접수 화면에서 송장번호를 입력해요.</p>
+<label class="fld"><span>반품 받을 주소</span><input class="inp" name="return_address" maxlength="200" value="{{ co.return_address }}" placeholder="우편번호, 주소, 받는 사람, 연락처"></label>
+<label class="fld"><span>이용하는 택배사</span><select class="inp" name="return_courier"><option value="">안내하지 않음</option>{% for k,u in COURIERS.items() %}<option {{ 'selected' if co.return_courier==k }}>{{ k }}</option>{% endfor %}</select></label>
+<label class="fld"><span>덧붙일 말 (선택)</span><input class="inp" name="return_memo" maxlength="300" value="{{ co.return_memo }}" placeholder="예: 단순 변심 반품은 왕복 배송비 6,000원을 동봉해 주세요"></label>
+{% if guide_preview %}<div class="fld"><span>고객에게 보이는 안내</span><div class="reply" style="white-space:pre-wrap">{{ guide_preview }}</div></div>{% endif %}
+<p class="cap" style="margin:0">택배사와 연동하지는 않아요. 택배사 이름과 공식 홈페이지만 안내해요.</p>
 <button class="btn md">저장</button></form>
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="password"><div class="ph">비밀번호 변경</div>
 <label class="fld"><span>지금 비밀번호</span><input class="inp" name="old" type="password" required autocomplete="current-password"></label>
