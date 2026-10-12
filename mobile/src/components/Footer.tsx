@@ -1,5 +1,6 @@
 // 하단 사업자 정보 (웹 하단과 같은 내용)
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
 import { C } from '../lib/theme';
 
@@ -11,7 +12,7 @@ export function Footer() {
   return (
     <View style={st.wrap}>
       <View style={{ flexDirection: 'row', gap: 16, marginBottom: 12 }}>
-        <Pressable onPress={() => Linking.openURL(meta?.privacy ?? 'https://cs.soboru.co.kr/privacy')}>
+        <Pressable onPress={() => WebBrowser.openBrowserAsync(meta?.privacy ?? 'https://cs.soboru.co.kr/privacy', { toolbarColor: '#FFFFFF' })}>
           <Text style={[st.t, { fontWeight: '700', color: C.fg2 }]}>개인정보 처리방침</Text>
         </Pressable>
       </View>

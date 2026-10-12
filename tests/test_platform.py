@@ -135,6 +135,39 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:db.execute('UPDATE companies SET pw_hash=? WHERE id=?',(generate_password_hash('newpassword99'),cid))
         self.assertEqual(a.get('/biz/api/v1/home',headers=auth).status_code,401)  # 비밀번호를 바꾸면 예전 토큰은 끊긴다
 
+    def test_biz_app_inapp_pages(self):
+        """앱 안 가입 신청·규칙·통계·설정·가이드: 웹과 같은 검사, 비밀번호를 바꾸면 새 토큰을 준다."""
+        a=self.client()
+        self.assertEqual(a.post('/biz/api/v1/signup',json={'name':'앱가입','biz_no':'123','owner_name':'김','login_id':'x@example.com','password':'longpassword1','terms':'1'}).status_code,400)
+        j=a.post('/biz/api/v1/signup',json={'name':'앱가입','biz_no':'1234567890','owner_name':'김사장','login_id':'appjoin@example.com','password':'longpassword1','terms':True}).get_json()
+        self.assertTrue(j['ok'])
+        with self.core.conn() as db:self.assertEqual(db.execute("SELECT status FROM companies WHERE login_id='appjoin@example.com'").fetchone()[0],'pending')
+        self.assertIn('승인을 기다리고',a.post('/biz/api/v1/login',json={'login_id':'appjoin@example.com','password':'longpassword1'}).get_json()['error'])
+        b,o,cid=self.signup_and_approve('설정상점','appset@example.com')
+        tok=a.post('/biz/api/v1/login',json={'login_id':'appset@example.com','password':'longpassword1'}).get_json()['token'];auth={'Authorization':'Bearer '+tok}
+        r=a.get('/biz/api/v1/rules',headers=auth).get_json()
+        self.assertEqual([x['category'] for x in r['rules']],self.core.CATS)
+        r=a.post('/biz/api/v1/rules',headers=auth,json={'category':'배송 조회','auto':True}).get_json()
+        self.assertTrue(next(x for x in r['rules'] if x['category']=='배송 조회')['auto'])
+        self.assertEqual(a.post('/biz/api/v1/rules',headers=auth,json={'category':'없는유형'}).status_code,400)
+        st=a.get('/biz/api/v1/stats',headers=auth).get_json();self.assertEqual(len(st['weeks']),8)
+        s=a.post('/biz/api/v1/settings',headers=auth,json={'act':'return','return_address':'서울시 반품로 1','return_courier':'CJ대한통운'}).get_json()
+        self.assertIn('서울시 반품로 1',s['return_guide'])
+        self.assertEqual(a.post('/biz/api/v1/settings',headers=auth,json={'act':'password','old':'wrong','new':'newpassword99'}).status_code,400)
+        s=a.post('/biz/api/v1/settings',headers=auth,json={'act':'password','old':'longpassword1','new':'newpassword99'}).get_json()
+        self.assertEqual(a.get('/biz/api/v1/settings',headers=auth).status_code,401)
+        self.assertEqual(a.get('/biz/api/v1/settings',headers={'Authorization':'Bearer '+s['token']}).status_code,200)  # 새 토큰으로 계속 쓴다
+        g=a.get('/biz/api/v1/guide',headers={'Authorization':'Bearer '+s['token']}).get_json()
+        self.assertTrue(g['guide'][0]['points'] and g['guide'][0]['laws'][0]['text'])
+        A={'Authorization':'Bearer '+s['token']}
+        self.assertEqual(a.post('/biz/api/v1/new',headers=A,json={'channel':'전화','category':'교환','title':'','body':'x','want':'교환'}).status_code,400)
+        n=a.post('/biz/api/v1/new',headers=A,json={'channel':'전화','category':'교환','title':'사이즈 교환','body':'M을 L로','want':'교환'}).get_json()
+        self.assertEqual(a.get(f"/biz/api/v1/cases/{n['id']}",headers=A).get_json()['title'],'사이즈 교환')
+        rec=a.get(f"/biz/api/v1/cases/{n['id']}/record",headers=A).get_json();self.assertIn('사이즈 교환',rec['html']);self.assertNotIn('window.print',rec['html'])
+        rp=a.get('/biz/api/v1/report',headers=A).get_json();self.assertEqual(len(rp['months']),12);self.assertIn('CS 리포트',rp['text'])
+        self.assertIn('news',a.get('/biz/api/v1/news',headers=A).get_json())
+        self.assertEqual(a.post('/biz/api/v1/leave',headers={'Authorization':'Bearer '+s['token']},json={'password':'newpassword99'}).status_code,200)
+
     def test_member_flow_pending_approve_and_rate(self):
         b,o,cid=self.signup_and_approve('달빛화장품','dalbit@example.com')
         me=self.client()

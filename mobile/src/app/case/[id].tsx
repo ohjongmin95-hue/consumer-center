@@ -1,6 +1,9 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
+import { Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CAT_ICON, Icon } from '../../components/Icon';
 import { Btn, Card, Chips, Field, H2, Loading, Notice, StatusPill } from '../../components/ui';
 import { api, ApiError, BizDetail, fmtDate } from '../../lib/api';
@@ -207,7 +210,7 @@ export default function CaseScreen() {
         {c.files.length ? (
           <View style={{ gap: 6, marginTop: 12 }}>
             {c.files.map((f) => (
-              <Pressable key={f.id} onPress={() => Linking.openURL(f.url)}>
+              <Pressable key={f.id} onPress={() => WebBrowser.openBrowserAsync(f.url)}>
                 <Text style={st.file}>📎 {f.name}</Text>
               </Pressable>
             ))}
@@ -228,7 +231,7 @@ export default function CaseScreen() {
                 </Text>
                 {e.reply ? <Text style={st.evReply}>{e.reply}</Text> : null}
                 {e.files.map((f) => (
-                  <Pressable key={f.id} onPress={() => Linking.openURL(f.url)}>
+                  <Pressable key={f.id} onPress={() => WebBrowser.openBrowserAsync(f.url)}>
                     <Text style={st.file}>📎 {f.name}</Text>
                   </Pressable>
                 ))}
@@ -238,7 +241,40 @@ export default function CaseScreen() {
           ))}
         </View>
       </Card>
+      <View style={{ marginHorizontal: 16 }}>
+        <RecordBtn id={c.id} />
+      </View>
     </ScrollView>
+  );
+}
+
+// 처리 기록 한 장을 PDF로 만들어 저장·공유 (분쟁 조정이나 보관용)
+function RecordBtn({ id }: { id: number }) {
+  const { session } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const go = async () => {
+    if (!session) return;
+    setBusy(true);
+    setErr('');
+    try {
+      const r = await api.record(session.token, id);
+      if (Platform.OS === 'web') await Print.printAsync({ html: r.html });
+      else {
+        const { uri } = await Print.printToFileAsync({ html: r.html });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `민원 처리 기록 ${r.no}`, UTI: 'com.adobe.pdf' });
+      }
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <View style={{ gap: 8 }}>
+      <Notice text={err} flat />
+      <Btn title="처리 기록 PDF로 저장" kind="gray" onPress={go} busy={busy} />
+    </View>
   );
 }
 

@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Footer } from '../../components/Footer';
-import { Btn, Card, H2 } from '../../components/ui';
+import { Btn, Card, H2, MenuRow } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import { C } from '../../lib/theme';
-
-const BIZ = 'https://biz.soboru.co.kr';
 
 export default function MoreTab() {
   const { session, logout } = useAuth();
@@ -30,13 +29,22 @@ export default function MoreTab() {
           <Btn title="링크 공유하기" kind="soft" onPress={() => Share.share({ message: co.link })} />
         </Card>
 
-        <Card style={{ paddingVertical: 8 }}>
-          <Row title="자동 처리 규칙" sub="어떤 민원을 소보루가 바로 처리할지 정합니다" url={`${BIZ}/rules`} />
-          <Row title="처리 통계" sub="자동 처리율, 해결률, 주별 민원 수" url={`${BIZ}/stats`} />
-          <Row title="회사 정보와 알림 설정" sub="연락처, 반품 주소, 알림톡" url={`${BIZ}/settings`} />
-          <Row title="이용 안내" sub="소보루 CS 사용법" url={`${BIZ}/guide`} last />
+        <Card style={{ paddingVertical: 4 }}>
+          <MenuRow title="자동 처리 규칙" sub="어떤 민원을 소보루가 바로 처리할지 정합니다" onPress={() => router.push('/rules')} />
+          <MenuRow title="민원 직접 등록" sub="전화·쇼핑몰 문의·DM으로 받은 민원 올리기" onPress={() => router.push('/new')} last />
         </Card>
-        <Text style={st.note}>위 메뉴는 기업 사이트에서 열립니다. 처음 한 번은 사이트에 로그인해 주세요.</Text>
+        <Card style={{ paddingVertical: 4 }}>
+          <MenuRow title="처리 통계" sub="자동 처리율, 해결률, 주별 민원 수" onPress={() => router.push('/stats')} />
+          <MenuRow title="월간 리포트" sub="지난달 민원을 한 장으로" onPress={() => router.push('/report')} last />
+        </Card>
+        <Card style={{ paddingVertical: 4 }}>
+          <MenuRow title="이용 안내" sub="소보루 CS 사용법과 자주 묻는 질문" onPress={() => router.push('/howto')} />
+          <MenuRow title="응대 가이드" sub="상황별 법 조항과 예시 답변" onPress={() => router.push('/guide')} />
+          <MenuRow title="법·제도 소식" sub="사장님이 알아야 할 바뀐 규정" onPress={() => router.push('/news')} last />
+        </Card>
+        <Card style={{ paddingVertical: 4 }}>
+          <MenuRow title="회사 정보와 알림 설정" sub="연락처, 반품 주소, 알림, 비밀번호" onPress={() => router.push('/settings')} last />
+        </Card>
 
         <View style={{ marginHorizontal: 16, marginTop: 12 }}>
           {sure ? (
@@ -54,28 +62,10 @@ export default function MoreTab() {
   );
 }
 
-function Row({ title, sub, url, last }: { title: string; sub: string; url: string; last?: boolean }) {
-  return (
-    <Pressable onPress={() => Linking.openURL(url)} style={({ pressed }) => [st.row, !last && st.rowLine, pressed && { opacity: 0.6 }]}>
-      <View style={{ flex: 1, gap: 3 }}>
-        <Text style={st.rowTitle}>{title}</Text>
-        <Text style={st.rowSub}>{sub}</Text>
-      </View>
-      <Text style={st.chev}>›</Text>
-    </Pressable>
-  );
-}
-
 const st = StyleSheet.create({
   head: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 18, gap: 4 },
   h1: { fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
   sub: { fontSize: 14, color: C.fg3 },
   p: { fontSize: 15, lineHeight: 23, color: C.fg2, marginBottom: 12 },
   link: { fontSize: 15, fontWeight: '600', color: C.accentInk, backgroundColor: C.accentSoft, borderRadius: 12, padding: 14, marginBottom: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
-  rowLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: C.fg },
-  rowSub: { fontSize: 13, color: C.fg3 },
-  chev: { fontSize: 24, color: C.fg4 },
-  note: { fontSize: 13, color: C.fg3, marginHorizontal: 24, marginTop: 2 },
 });

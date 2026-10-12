@@ -1,6 +1,6 @@
 // 토스처럼 납작하고 둥근 기본 부품. 색은 소보루 주황.
-import { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { ReactNode, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { C, R, STATUS_TONE } from '../lib/theme';
 
@@ -53,6 +53,68 @@ export function Field({ label, hint, ...p }: TextInputProps & { label?: string; 
   );
 }
 
+// 비밀번호 칸: 오른쪽 '보기'로 입력한 글자를 확인
+export function PwField({ label, hint, ...p }: TextInputProps & { label?: string; hint?: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <View style={{ gap: 8 }}>
+      {label ? <Text style={s.label}>{label}</Text> : null}
+      <View>
+        <TextInput placeholderTextColor={C.fg4} autoCapitalize="none" autoCorrect={false} {...p} secureTextEntry={!show} style={[s.input, { paddingRight: 64 }]} />
+        <Pressable onPress={() => setShow(!show)} hitSlop={8} style={s.eye} accessibilityRole="button">
+          <Text style={{ fontSize: 14, fontWeight: '600', color: C.fg3 }}>{show ? '숨기기' : '보기'}</Text>
+        </Pressable>
+      </View>
+      {hint ? <Text style={s.hint}>{hint}</Text> : null}
+    </View>
+  );
+}
+
+export function Toggle({ title, sub, value, onChange, disabled }: { title: string; sub?: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <View style={s.toggle}>
+      <View style={{ flex: 1, gap: 3 }}>
+        <Text style={s.rowTitle}>{title}</Text>
+        {sub ? <Text style={s.rowSub}>{sub}</Text> : null}
+      </View>
+      <Switch value={value} onValueChange={onChange} disabled={disabled} trackColor={{ true: C.accent, false: C.line }} thumbColor="#fff" {...({ activeThumbColor: '#fff' } as object)} />
+    </View>
+  );
+}
+
+export function MenuRow({ title, sub, onPress, last, right }: { title: string; sub?: string; onPress: () => void; last?: boolean; right?: string }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [s.row, !last && s.rowLine, pressed && { opacity: 0.6 }]}>
+      <View style={{ flex: 1, gap: 3 }}>
+        <Text style={s.rowTitle}>{title}</Text>
+        {sub ? <Text style={s.rowSub}>{sub}</Text> : null}
+      </View>
+      {right ? <Text style={{ fontSize: 15, fontWeight: '700', color: C.accentInk, marginRight: 6 }}>{right}</Text> : null}
+      <Text style={s.chev}>›</Text>
+    </Pressable>
+  );
+}
+
+// 가로 막대 하나 (통계)
+export function BarLine({ label, n, pct, max, unit = '건' }: { label: string; n: number; pct?: number; max: number; unit?: string }) {
+  const w = max ? Math.max(2, Math.round((n / max) * 100)) : 0;
+  return (
+    <View style={{ gap: 6, marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 15, color: C.fg2, fontWeight: '600' }}>{label}</Text>
+        <Text style={{ fontSize: 15, color: C.fg, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
+          {n}
+          {unit}
+          {pct !== undefined ? <Text style={{ color: C.fg3, fontWeight: '500' }}> · {pct}%</Text> : null}
+        </Text>
+      </View>
+      <View style={{ height: 8, borderRadius: 4, backgroundColor: C.fill }}>
+        <View style={{ width: `${w}%`, height: 8, borderRadius: 4, backgroundColor: n ? C.accent : 'transparent' }} />
+      </View>
+    </View>
+  );
+}
+
 export function Chips({ items, value, onChange }: { items: string[]; value: string; onChange: (v: string) => void }) {
   return (
     <View style={s.chips}>
@@ -77,10 +139,10 @@ export function StatusPill({ status, label }: { status: string; label: string })
   );
 }
 
-export function Notice({ text, tone = 'error' }: { text: string; tone?: 'error' | 'ok' }) {
+export function Notice({ text, tone = 'error', flat }: { text: string; tone?: 'error' | 'ok'; flat?: boolean }) {
   if (!text) return null;
   return (
-    <View style={[s.notice, { backgroundColor: tone === 'error' ? C.redSoft : C.greenSoft }]}>
+    <View style={[s.notice, flat && { marginHorizontal: 0, marginBottom: 0 }, { backgroundColor: tone === 'error' ? C.redSoft : C.greenSoft }]}>
       <Text style={{ color: tone === 'error' ? C.red : C.green, fontSize: 15, fontWeight: '600' }}>{text}</Text>
     </View>
   );
@@ -109,5 +171,12 @@ export const s = StyleSheet.create({
   chipText: { fontSize: 15, fontWeight: '600', color: C.fg2 },
   pill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   pillText: { fontSize: 13, fontWeight: '700' },
+  eye: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
+  toggle: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+  rowLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
+  rowTitle: { fontSize: 16, fontWeight: '600', color: C.fg },
+  rowSub: { fontSize: 13, lineHeight: 19, color: C.fg3 },
+  chev: { fontSize: 24, color: C.fg4 },
   notice: { borderRadius: R.sm, padding: 14, marginHorizontal: 16, marginBottom: 12 },
 });

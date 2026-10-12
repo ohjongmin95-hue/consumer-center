@@ -2,7 +2,7 @@
   "expo": {
     "name": "소보루 CS",
     "slug": "soboru",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "kr.co.soboru.cs"
+      "package": "kr.co.soboru.cs",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,7 +32,18 @@
         {
           "color": "#F89B00"
         }
-      ]
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ],
+      "expo-sharing",
+      "expo-web-browser"
     ],
     "scheme": "soborucs",
     "extra": {

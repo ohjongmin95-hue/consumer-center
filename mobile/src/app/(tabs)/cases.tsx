@@ -1,5 +1,5 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CaseRow } from '../../components/CaseRow';
@@ -19,7 +19,8 @@ const FILTERS: [string, string][] = [
 export default function CasesTab() {
   const { session, logout } = useAuth();
   const [f, setF] = useState('all');
-  const [q, setQ] = useState('');
+  const param = useLocalSearchParams<{ q?: string }>();
+  const [q, setQ] = useState(param.q ?? '');
   const [rows, setRows] = useState<BizCase[] | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [err, setErr] = useState('');
@@ -40,6 +41,15 @@ export default function CasesTab() {
     },
     [session, f, q, logout],
   );
+  // 홈의 경보를 누르면 그 상품 이름으로 찾은 목록을 연다
+  useEffect(() => {
+    if (param.q !== undefined) {
+      setQ(param.q);
+      setF('all');
+      load('all', param.q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [param.q]);
   useFocusEffect(
     useCallback(() => {
       load();
@@ -49,7 +59,12 @@ export default function CasesTab() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.band }} edges={['top']}>
       <View style={st.head}>
-        <Text style={st.h1}>전체 민원</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={st.h1}>전체 민원</Text>
+          <Pressable onPress={() => router.push('/new')} style={({ pressed }) => [st.add, pressed && { opacity: 0.7 }]} accessibilityRole="button">
+            <Text style={{ color: C.accentInk, fontWeight: '700', fontSize: 14 }}>+ 직접 등록</Text>
+          </Pressable>
+        </View>
         <TextInput
           style={st.search}
           placeholder="고객 이름, 접수번호, 내용으로 찾기"
@@ -106,6 +121,7 @@ export default function CasesTab() {
 }
 
 const st = StyleSheet.create({
+  add: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: C.accentSoft, justifyContent: 'center' },
   head: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 },
   h1: { fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8, paddingHorizontal: 8 },
   search: { height: 48, borderRadius: R.md, backgroundColor: C.card, paddingHorizontal: 16, fontSize: 15, color: C.fg },

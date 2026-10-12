@@ -17,6 +17,20 @@ async function load(): Promise<Session | null> {
     return null;
   }
 }
+const ID_KEY = 'soboru.biz.lastid';
+async function getItem(k: string) {
+  try {
+    return Platform.OS === 'web' ? (globalThis.localStorage?.getItem(k) ?? null) : await SecureStore.getItemAsync(k);
+  } catch {
+    return null;
+  }
+}
+async function setItem(k: string, v: string) {
+  try {
+    if (Platform.OS === 'web') globalThis.localStorage?.setItem(k, v);
+    else await SecureStore.setItemAsync(k, v);
+  } catch {}
+}
 async function save(v: Session | null) {
   try {
     if (Platform.OS === 'web') v ? globalThis.localStorage?.setItem(KEY, JSON.stringify(v)) : globalThis.localStorage?.removeItem(KEY);
@@ -30,6 +44,8 @@ type Auth = {
   meta: Meta | null;
   login: (id: string, pw: string) => Promise<void>;
   logout: () => Promise<void>;
+  setToken: (token: string) => Promise<void>;
+  lastId: string;
 };
 const Ctx = createContext<Auth | null>(null);
 
@@ -37,7 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
+  const [lastId, setLastId] = useState('');
   useEffect(() => {
+    getItem(ID_KEY).then((v) => setLastId(v ?? ''));
     load().then((s) => {
       setSession(s);
       setReady(true);
@@ -49,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const r = await api.login(id, pw);
     const s = { token: r.token, company: r.company };
     await save(s);
+    await setItem(ID_KEY, id);  // 다음에 로그인할 때 이메일을 미리 채운다
+    setLastId(id);
     setSession(s);
     registerPush(s.token);
   }, []);
@@ -59,7 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await save(null);
     setSession(null);
   }, []);
-  const value = useMemo(() => ({ ready, session, meta, login, logout }), [ready, session, meta, login, logout]);
+  // 비밀번호를 바꾸면 서버가 새 토큰을 준다: 로그아웃 없이 계속 쓴다
+  const setToken = useCallback(async (token: string) => {
+    const s = await load();
+    if (!s) return;
+    const n = { ...s, token };
+    await save(n);
+    setSession(n);
+  }, []);
+  const value = useMemo(() => ({ ready, session, meta, login, logout, setToken, lastId }), [ready, session, meta, login, logout, setToken, lastId]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

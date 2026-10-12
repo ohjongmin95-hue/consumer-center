@@ -17,7 +17,7 @@ table{width:100%;border-collapse:collapse}th,td{border:1px solid var(--line);pad
 @media (max-width:700px){.page{margin:12px;padding:24px 18px}.top{flex-direction:column}.top .m{text-align:left}}
 @media print{body{background:#fff}.bar{display:none}.page{margin:0;padding:0;max-width:none;border-radius:0}@page{size:A4;margin:16mm}}
 </style></head><body>
-<div class="bar"><button onclick="window.print()">인쇄 · PDF로 저장</button></div>
+{% if not app %}<div class="bar"><button onclick="window.print()">인쇄 · PDF로 저장</button></div>{% endif %}
 <div class="page">
 <div class="top"><div><h1>민원 처리 기록</h1><div style="color:var(--fg2);margin-top:4px">{{ c.company_name }}</div></div>
 <div class="m">접수번호 {{ c.no }}<br>출력 {{ printed[:16] }}</div></div>
