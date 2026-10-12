@@ -1123,3 +1123,5 @@ body:has(.cs3){background:var(--card)}
   .cs3-more .cs-ic{grid-row:auto;margin-bottom:10px}
   .cs3 .cs-ret{margin:0 24px 24px}
 }
+.cs3-more summary{font-size:16px;font-weight:400;justify-content:normal}
+.cs3-more small{font-weight:400}
