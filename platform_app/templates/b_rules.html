@@ -3,8 +3,8 @@
 {% block bar %}{{ b.bar('rules') }}{% endblock %}
 {% block body %}
 <div class="narrow">
-<div class="phead"><div><h1>자동 처리</h1><p>자동 처리를 켜 두면, 민원이 들어오는 즉시 정해 둔 조치와 답변을 대신 보내 드려요</p></div></div>
-<div class="card chat-sum"><div class="tx"><b>상담창 자동응답</b><span>고객이 <a href="{{ link }}" target="_blank" rel="noopener">고객센터 페이지</a>에서 편하게 물어보면 아래 안내 문구로 바로 답해요</span></div>
+<div class="phead"><div><h1>자동 처리</h1><p>자동 처리를 켜 두면, 민원이 들어오는 즉시 정해 둔 조치와 답변을 대신 보내 드립니다</p></div></div>
+<div class="card chat-sum"><div class="tx"><b>상담창 자동응답</b><span>고객이 <a href="{{ link }}" target="_blank" rel="noopener">고객센터 페이지</a>에서 편하게 물어보면 아래 안내 문구로 바로 답합니다</span></div>
 <dl><div><dt>이번 달 문의</dt><dd>{{ chat.asked }}</dd></div><div><dt>상담창에서 해결</dt><dd>{{ chat.solved }}</dd></div><div><dt>접수로 이어짐</dt><dd>{{ chat.filed }}</dd></div></dl></div>
 <div class="list">{% for cat in CATS %}{% set r=rs[cat] %}{% set p=PLAYBOOK[cat] %}
 <div class="li" id="r{{ loop.index }}">
@@ -13,7 +13,7 @@
 <button class="sw{{ ' on' if r.auto }}" role="switch" aria-checked="{{ 'true' if r.auto else 'false' }}" aria-label="{{ cat }} 자동 처리"></button></form></div>
 {% if cat in ('교환','반품·환불') %}<form method="post" class="cond"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
 <label>자동 처리 조건<select class="inp" name="cond" onchange="this.form.submit()">{% for k,v in COND.items() %}<option value="{{ k }}" {{ 'selected' if r.cond==k }}>{{ v }}</option>{% endfor %}</select></label>
-{% if r.cond=='within7' %}<small>상품 받은 날을 적은 접수 중 7일 이내만 바로 처리하고, 나머지는 승인 대기로 와요</small>{% endif %}</form>{% endif %}
+{% if r.cond=='within7' %}<small>상품 받은 날을 적은 접수 중 7일 이내만 바로 처리하고, 나머지는 승인 대기로 옵니다</small>{% endif %}</form>{% endif %}
 <details><summary>상담창 안내 문구 고치기<span class="chev"></span></summary>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
 <textarea class="inp" name="faq">{{ r.faq }}</textarea><button class="btn md gray">저장</button></form></details>

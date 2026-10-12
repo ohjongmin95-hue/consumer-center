@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="{{ url_for('static',filename='hanq.css') }}?v=34">
 </head>
 <body class="v2">
-{% if PILOT %}<div class="pilot">시범 운영 중이에요 · 실제 개인정보는 넣지 마세요</div>{% endif %}
+{% if PILOT %}<div class="pilot">{% if site=='me' %}시범 운영 중이에요 · 실제 개인정보는 넣지 마세요{% else %}시범 운영 중입니다 · 실제 개인정보는 넣지 마세요{% endif %}</div>{% endif %}
 {% block bar %}{% endblock %}
 {% with msgs=get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flashes {% block fwidth %}wrap{% endblock %}">{% for cat,msg in msgs %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}</div>{% endif %}{% endwith %}
 {% block main %}<main class="pg"><div class="{% block width %}wrap{% endblock %}">{% block body %}{% endblock %}</div></main>{% endblock %}

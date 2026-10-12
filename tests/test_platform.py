@@ -38,7 +38,7 @@ class PlatformTest(unittest.TestCase):
     def signup_and_approve(self,name,email):
         b=self.client()
         r=self.post(b,'/biz/signup',{'name':name,'biz_no':'123-45-67890','owner_name':'대표','phone':'010-1111-2222','contact':'1588-0000','login_id':email,'password':'longpassword1','terms':'1'})
-        self.assertIn('가입 신청했어요',r.get_data(as_text=True))
+        self.assertIn('가입 신청했습니다',r.get_data(as_text=True))
         r=self.post(b,'/biz/login',{'login_id':email,'password':'longpassword1'})
         self.assertIn('승인을 기다리고',r.get_data(as_text=True))
         o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
@@ -219,7 +219,7 @@ class PlatformTest(unittest.TestCase):
         me=self.client();case_id=self.file_case(me,'갑회사','교환',str(cid1))
         self.assertEqual(b2.get(f'/biz/case/{case_id}').status_code,404)
         home=self.client().get('/biz/');self.assertEqual(home.status_code,200);page=home.get_data(as_text=True)
-        self.assertIn('승인 한 번으로',page);self.assertIn('소보루 비즈 로그인',page);self.assertNotIn('noindex',page)
+        self.assertIn('승인 한 번으로',page);self.assertIn('소보루 CS 로그인',page);self.assertNotIn('noindex',page)
         self.assertEqual(self.client().get('/biz/all').status_code,302)
         self.assertEqual(self.client().get('/biz/ops').status_code,302)
         # CSRF 없는 요청은 거절
@@ -240,7 +240,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(me.get('/to/99999').status_code,404)
         self.assertIn('value="바른가전"',me.get(f'/new?company_id={cid}').get_data(as_text=True))
         page=b.get('/biz/settings').get_data(as_text=True)
-        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 비즈',page);self.assertIn('soboru-logo.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
+        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 CS',page);self.assertIn('soboru-logo.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
         case_id=self.file_case(me,'바른가전','교환',str(cid),title='세탁기 소음')
         self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
         # 답변 목표일이 지나면 한 번만 지연 알림

@@ -1,20 +1,20 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
 {% block bar %}{{ b.bar('home') }}{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>{% if pend %}승인할 민원이 <em>{{ pend|length }}건</em> 있어요{% else %}승인할 민원을 모두 처리했어요{% endif %}</h1><p>추천 조치를 확인하고 승인하면 바로 처리돼요</p></div><a class="btn sm gray" href="{{ url_for('new_case') }}">+ 직접 등록</a></div>
+<div class="phead"><div><h1>{% if pend %}승인할 민원이 <em>{{ pend|length }}건</em> 있습니다{% else %}승인할 민원을 모두 처리했습니다{% endif %}</h1><p>처리 방법을 확인하고 승인하면 바로 처리됩니다</p></div><a class="btn sm gray" href="{{ url_for('new_case') }}">+ 직접 등록</a></div>
 {% for w in warn %}<a class="warn" href="{{ url_for('all_cases',q=w.label if w.kind=='product' else None,f='all') }}"><span>⚠️</span><span><b>{% if w.kind=='product' %}'{{ w.label }}' 관련 민원이 최근 7일 {{ w.n }}건{% else %}{{ w.label }} 민원이 최근 7일 {{ w.n }}건{% endif %}</b><small>같은 문제가 반복되는지 확인해 보세요 · {{ w.cats|join(', ') }}</small></span></a>{% endfor %}
 <div class="sumrow">
-<a href="{{ url_for('all_cases',f='open') }}"><span>처리 중</span><b>{{ counts.open }}</b></a>
-<a href="{{ url_for('all_cases',f='bad') }}"><span>답변 지연</span><b class="{{ 't-bad' if counts.late }}">{{ counts.late }}</b></a>
+<a href="{{ url_for('all_cases',f='open') }}"><span>답변할 민원</span><b>{{ counts.open }}</b></a>
+<a href="{{ url_for('all_cases',f='bad') }}"><span>기한 지난 민원</span><b class="{{ 't-bad' if counts.late }}">{{ counts.late }}</b></a>
 <a href="{{ url_for('stats') }}"><span>해결률</span><b>{% if k.res is none %}–{% else %}{{ k.res }}%{% endif %}</b></a>
 {% if counts.ret %}<a href="{{ url_for('all_cases',f='ret') }}"><span>반품 회수 대기</span><b>{{ counts.ret }}</b></a>{% else %}<a href="{{ url_for('rules') }}"><span>자동 처리</span><b>{{ counts.auto }}<small>/6</small></b></a>{% endif %}
 </div>
 <div class="linkbar"><div class="tx"><b>우리 고객센터 링크</b><span id="hLink">{{ link }}</span></div><a class="btn md gray" href="{{ link }}" target="_blank" rel="noopener">열어 보기</a><button class="btn md" type="button" id="hCopy">링크 복사</button></div>
-<script>document.getElementById('hCopy').onclick=function(){var b=this,t=document.getElementById('hLink');(navigator.clipboard?navigator.clipboard.writeText(t.textContent):Promise.reject()).then(function(){b.textContent='복사했어요';setTimeout(function(){b.textContent='링크 복사';},2000);},function(){var r=document.createRange();r.selectNodeContents(t);getSelection().removeAllRanges();getSelection().addRange(r);b.textContent='선택했어요';});};</script>
+<script>document.getElementById('hCopy').onclick=function(){var b=this,t=document.getElementById('hLink');(navigator.clipboard?navigator.clipboard.writeText(t.textContent):Promise.reject()).then(function(){b.textContent='복사했습니다';setTimeout(function(){b.textContent='링크 복사';},2000);},function(){var r=document.createRange();r.selectNodeContents(t);getSelection().removeAllRanges();getSelection().addRange(r);b.textContent='선택했습니다';});};</script>
 {% set groups=[] %}{% for cat in CATS %}{% set n=pend|selectattr('category','equalto',cat)|list|length %}{% if n>=2 %}{% set _=groups.append((cat,n)) %}{% endif %}{% endfor %}
 {% if groups %}<div class="bulk">{% for cat,n in groups %}<form method="post" action="{{ url_for('approve_many') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><button class="btn sm gray">{{ cat }} {{ n }}건 모두 승인</button></form>{% endfor %}</div>{% endif %}
 {% if pend %}<div class="cgrid">{% for c in pend %}{{ b.dcard(c) }}{% endfor %}</div>
-{% else %}<div class="empty-card">{{ i.icon('approve',56) }}<b>새로 들어온 민원이 없어요</b><span>새 민원이 오면 이메일로 알려 드려요</span></div>{% endif %}
+{% else %}<div class="empty-card">{{ i.icon('approve',56) }}<b>새로 들어온 민원이 없습니다</b><span>새 민원이 오면 이메일로 알려 드립니다</span></div>{% endif %}
 {% if news %}<div class="shead" style="margin-top:56px"><h2>법·제도 소식</h2><div class="r"><a href="{{ url_for('news') }}">전체보기</a></div></div>
 <div class="newsrow">{% for n in news %}<a class="panel" href="{{ n.source_url }}" target="_blank" rel="noopener"><span class="cap">{{ fmt_day(n.created) }}</span><b>{{ n.title }}</b></a>{% endfor %}</div>{% endif %}
 {% if recent %}<div class="shead" style="margin-top:56px"><h2>최근 민원</h2><div class="r"><a href="{{ url_for('all_cases') }}">전체보기</a></div></div>

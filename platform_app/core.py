@@ -19,7 +19,7 @@ CONSUMER_HOST=os.getenv('CONSUMER_HOST','').strip().lower()
 BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
 PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'  # 시범 운영: 화면 위에 '실제 개인정보 넣지 마세요' 띠
 CNAME=os.getenv('CONSUMER_NAME','소보루 비즈 고객센터')  # 소비자 서비스 이름 (로고·제목·메일)
-BNAME=os.getenv('BUSINESS_NAME','소보루 비즈')  # 기업 서비스 이름
+BNAME=os.getenv('BUSINESS_NAME','소보루 CS')  # 기업 서비스 이름
 # 개인정보 처리방침에 적는 운영 주체 (개인정보 보호법 제30조). 보호책임자는 대표자 (같은 법 제31조, 시행령 제32조제2항제2호가목)
 OPERATOR={'name':'소보루','ceo':'오규섭','biz_no':'129-14-81596','address':'서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)','manager':'오민주'}
 PRIVACY_SINCE='2026년 10월 12일'
@@ -180,6 +180,7 @@ def digits(s):return ''.join(c for c in s or '' if c.isdigit())
 def mask_phone(p):
     d=digits(p);return d[:3]+'-****-'+d[-4:] if len(d)>=10 else ('****' if d else '')
 def clean(s,limit):return (s or '').strip()[:limit]
+BIG=50000  # 민원 제목·내용은 글자 수 제한 없이 받는다 (아주 큰 입력만 막는 안전선)
 
 # ---------- 표시 도우미 (템플릿 전역) ----------
 def status_label(s):return STATUS.get(s,STATUS['received'])[0]
@@ -301,7 +302,7 @@ def notify_late():
             if not overdue(c) or c['late_sent']==c['due']:continue
             send_mail(c['email'],f'[{CNAME}] 기업 답변이 늦어지고 있어요',f"{c['company_name']}의 답변이 아직 없어요.\n접수 화면에서 기업에 다시 요청하거나 공식 피해구제 절차를 확인할 수 있어요.\n\n■ 접수번호: {c['no']}\n{site_or_blank('me','/mine')}")
             co=company(db,c['company_id'])
-            if co:send_mail(co['notify_email'],f"[{BNAME}] 답변 목표일이 지났어요: {c['title']}",f"소비자에게 답변 지연을 알렸어요. 지금 답변해 주세요.\n{site_or_blank('biz','/case/%d'%c['id'])}")
+            if co:send_mail(co['notify_email'],f"[{BNAME}] 답변 기한이 지났습니다: {c['title']}",f"소비자에게 답변 지연을 알렸습니다. 지금 답변해 주세요.\n{site_or_blank('biz','/case/%d'%c['id'])}")
             add_event(db,c['id'],'sys','답변 목표일이 지나 소비자와 기업에 알렸어요')
             db.execute('UPDATE cases SET late_sent=? WHERE id=?',(c['due'],c['id']));n+=1
     return n
@@ -356,7 +357,7 @@ def notify_company_new(co,c):
     """입점 기업에 새 민원 알림: 이메일, 그리고 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
     link=site_url('biz','/case/%d'%c['id'])
     send_mail(co['notify_email'],f"[{BNAME}] 새 민원: {c['title']}",
-        f"{co['name']}에 새 민원이 들어왔어요.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 추천 조치를 보고 승인해 주세요.\n{link}")
+        f"{co['name']}에 새 민원이 들어왔습니다.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 처리 방법을 보고 승인해 주세요.\n{link}")
     if co['kakao']:send_kakao(co['phone'],{'#{회사}':short(co['name'],20),'#{유형}':c['category'],'#{요약}':short(c['title']),'#{링크}':link})
 
 # ---------- 메일 ----------

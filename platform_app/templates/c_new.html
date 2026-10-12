@@ -23,8 +23,8 @@
 <section class="step" data-step="2">
   <h1 class="h1">무슨 일이 있었나요?</h1>
   <div class="stack" style="margin-top:28px;gap:12px">
-    <input class="inp" name="title" maxlength="80" placeholder="한 줄 요약" value="{{ d.title or '' }}" required>
-    <textarea class="inp" name="body" maxlength="3000" minlength="10" placeholder="언제, 무엇을 샀고, 어떤 문제가 있었는지" required>{{ d.body or '' }}</textarea>
+    <input class="inp" name="title" placeholder="한 줄 요약" value="{{ d.title or '' }}" required>
+    <textarea class="inp" name="body" minlength="10" placeholder="언제, 무엇을 샀고, 어떤 문제가 있었는지" required>{{ d.body or '' }}</textarea>
     <input class="inp" name="order_no" maxlength="40" placeholder="주문번호 (선택)" value="{{ d.order_no or '' }}">
     <input class="inp" name="product" maxlength="60" placeholder="상품 이름 (선택)" value="{{ d.product or '' }}">
     <label class="fld"><span id="rcvLabel">상품 받은 날 (선택 · 반품 기간 확인에 써요)</span><input class="inp" id="rcvOn" name="received_on" type="date" max="{{ today }}" value="{{ d.received_on or '' }}"></label>

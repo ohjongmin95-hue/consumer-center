@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import core, law, insights, drafting
-from core import conn, clean, digits
+from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
 app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',law_check=law.check,is_direct=core.is_direct)
@@ -74,7 +74,7 @@ def signup():
                     db.execute("INSERT INTO companies(name,member,status,contact,login_id,pw_hash,biz_no,owner_name,phone,notify_email,industry,created) VALUES(?,0,'pending',?,?,?,?,?,?,?,?,?)",
                         (d['name'],d['contact'],d['login_id'].lower(),generate_password_hash(pw),digits(d['biz_no']),d['owner_name'],digits(d['phone']),d['login_id'].lower(),d['industry'],core.iso()))
             if not err:
-                core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 기업 가입 신청: {d['name']}",f"{d['name']} ({d['owner_name']})이 가입을 신청했어요.\n{core.site_url('biz','/ops/companies')}")
+                core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 기업 가입 신청: {d['name']}",f"{d['name']} ({d['owner_name']})이 가입을 신청했습니다.\n{core.site_url('biz','/ops/companies')}")
                 return render_template('b_signup_done.html',name=d['name'])
         flash(err,'error');return render_template('b_signup.html',d=d),400
     return render_template('b_signup.html',d={})
@@ -84,11 +84,11 @@ def login():
     if request.method=='GET' and me():return redirect(url_for('decide'))  # 이미 로그인했으면 홈으로
     if request.method=='POST':
         lid=clean(request.form.get('login_id'),80).lower();pw=request.form.get('password','')
-        if core.throttled('login',limit=10,minutes=10):flash('로그인 시도가 너무 많아요. 10분 뒤에 다시 해 주세요.','error');return render_template('b_login.html'),429
+        if core.throttled('login',limit=10,minutes=10):flash('로그인 시도가 너무 많습니다. 10분 뒤에 다시 해 주세요.','error');return render_template('b_login.html'),429
         with conn() as db:co=db.execute('SELECT * FROM companies WHERE login_id=?',(lid,)).fetchone()
-        if not co or not check_password_hash(co['pw_hash'],pw):flash('이메일이나 비밀번호가 맞지 않아요.','error')
-        elif co['status']=='pending':flash('가입 승인을 기다리고 있어요. 승인되면 이메일로 알려 드려요.','error')
-        elif co['status']!='active':flash('이용할 수 없는 계정이에요. 센터에 문의해 주세요.','error')
+        if not co or not check_password_hash(co['pw_hash'],pw):flash('이메일이나 비밀번호가 맞지 않습니다.','error')
+        elif co['status']=='pending':flash('가입 승인을 기다리고 있습니다. 승인되면 이메일로 알려 드립니다.','error')
+        elif co['status']!='active':flash('이용할 수 없는 계정입니다. 센터에 문의해 주세요.','error')
         else:
             ops=session.get('ops');session.clear();session['co_id']=co['id'];session.permanent=True
             if ops:session['ops']=True  # 운영 화면 로그인은 그대로 둔다
@@ -102,13 +102,13 @@ def forgot():
     if request.method=='POST':
         lid=clean(request.form.get('login_id'),80).lower()
         if core.throttled('forgot',limit=5,minutes=30):flash('잠시 후 다시 시도해 주세요.','error')
-        elif not core.mail_ready():flash('지금은 메일을 보낼 수 없어요. 운영팀에 문의해 주세요.','error')
+        elif not core.mail_ready():flash('지금은 메일을 보낼 수 없습니다. 운영팀에 문의해 주세요.','error')
         else:
             with conn() as db:co=db.execute("SELECT * FROM companies WHERE login_id=? AND status='active'",(lid,)).fetchone()
             if co:
                 tok=core.signer('pw').dumps({'id':co['id'],'h':co['pw_hash'][-16:]})
-                core.send_mail(co['login_id'],f'[{core.BNAME}] 비밀번호 재설정',f"아래 링크에서 새 비밀번호를 정해 주세요. 1시간 동안만 열려요.\n{core.site_url('biz','/reset/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
-            flash('가입된 이메일이라면 재설정 링크를 보냈어요.','ok');return redirect(url_for('login'))
+                core.send_mail(co['login_id'],f'[{core.BNAME}] 비밀번호 재설정',f"아래 링크에서 새 비밀번호를 정해 주세요. 1시간 동안만 열립니다.\n{core.site_url('biz','/reset/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
+            flash('가입된 이메일이라면 재설정 링크를 보냈습니다.','ok');return redirect(url_for('login'))
     return render_template('b_forgot.html')
 
 @app.route('/reset/<tok>',methods=['GET','POST'])
@@ -116,13 +116,13 @@ def reset(tok):
     try:d=core.signer('pw').loads(tok,max_age=3600)
     except Exception:d=None
     with conn() as db:co=core.company(db,d['id']) if d else None
-    if not co or co['pw_hash'][-16:]!=d['h']:flash('링크가 만료됐어요. 다시 요청해 주세요.','error');return redirect(url_for('forgot'))
+    if not co or co['pw_hash'][-16:]!=d['h']:flash('링크가 만료되었습니다. 다시 요청해 주세요.','error');return redirect(url_for('forgot'))
     if request.method=='POST':
         pw=request.form.get('password','')
         if len(pw)<10:flash('비밀번호는 10자 이상으로 정해 주세요.','error')
         else:
             with conn() as db:db.execute('UPDATE companies SET pw_hash=? WHERE id=?',(generate_password_hash(pw),co['id']))
-            flash('비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.','ok');return redirect(url_for('login'))
+            flash('비밀번호를 바꿨습니다. 새 비밀번호로 로그인해 주세요.','ok');return redirect(url_for('login'))
     return render_template('b_forgot.html',reset=True)
 
 @app.route('/logout',methods=['POST'])
@@ -163,7 +163,7 @@ def approve_many():
         for c in [r for r in my_cases(db,me()) if is_pending(r) and r['category']==cat]:
             if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
             n+=1
-    flash(f'{cat} {n}건을 승인했어요','ok');return redirect(url_for('decide'))
+    flash(f'{cat} {n}건을 승인했습니다','ok');return redirect(url_for('decide'))
 
 @app.route('/pending')
 def pending():return redirect(url_for('decide'))
@@ -206,7 +206,7 @@ def case(case_id):
             if act=='ret_received' and c['ret_status'] in ('guided','sent'):
                 db.execute("UPDATE cases SET ret_status='received' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'co','반품 상품 회수를 확인했어요');notify_consumer(c,f'[{core.CNAME}] 보내신 상품이 도착했어요',f"{c['company_name']}이(가) 반품 상품 회수를 확인했어요.")
-                flash('회수 확인을 기록했어요','ok');return redirect(url_for('case',case_id=case_id))
+                flash('회수 확인을 기록했습니다','ok');return redirect(url_for('case',case_id=case_id))
             if act=='out_ship' and c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking']:
                 courier=request.form.get('courier','');tracking=digits(request.form.get('tracking',''))
                 if (courier not in core.COURIERS and courier!='기타') or not 8<=len(tracking)<=20:flash('택배사와 송장번호를 확인해 주세요','error')
@@ -214,30 +214,30 @@ def case(case_id):
                     db.execute('UPDATE cases SET out_courier=?,out_tracking=? WHERE id=?',(courier,tracking,c['id']))
                     core.add_event(db,c['id'],'co',f'새 상품을 보냈어요: {courier} {tracking}')
                     notify_consumer(c,f'[{core.CNAME}] 새 상품을 보냈어요',f"{c['company_name']}이(가) 교환 상품을 보냈어요.\n{courier} 송장번호 {tracking}")
-                    flash('고객에게 송장번호를 알렸어요','ok')
+                    flash('고객에게 송장번호를 알렸습니다','ok')
                 return redirect(url_for('case',case_id=case_id))
             if act=='refund_done' and core.refund_case(c) and c['refund_status']!='done':
                 # 환불이 끝나면 계좌 정보는 더 둘 이유가 없으니 바로 지운다
                 db.execute("UPDATE cases SET refund_status='done',refund_bank='',refund_account='',refund_holder='' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'co','환불을 완료했어요');notify_consumer(c,f'[{core.CNAME}] 환불이 완료됐어요',f"{c['company_name']}이(가) 환불을 완료했어요. 입금 내역을 확인해 주세요.")
-                flash('환불 완료를 기록했어요','ok');return redirect(url_for('case',case_id=case_id))
+                flash('환불 완료를 기록했습니다','ok');return redirect(url_for('case',case_id=case_id))
             if not open_:abort(400)
             if act=='approve' and c['decision'] not in ('approved','auto'):
                 if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
-                flash('승인했어요','ok')
+                flash('승인했습니다','ok')
             elif act=='hold':
                 db.execute("UPDATE cases SET decision='hold',status=CASE status WHEN 'forwarded' THEN 'seen' ELSE status END WHERE id=?",(c['id'],))
-                core.add_event(db,c['id'],'sys','보류했어요');flash('보류했어요','ok')
+                core.add_event(db,c['id'],'sys','보류했어요');flash('보류했습니다','ok')
             elif act=='ask':
                 ask=clean(request.form.get('ask'),300) or ('불량 부분 사진과 주문번호를 보내 주세요.' if c['category']=='제품 불량' else '주문번호와 확인할 수 있는 사진이나 캡처를 보내 주세요.')
                 db.execute("UPDATE cases SET decision='info',status='info',info_ask=? WHERE id=?",(ask,c['id']))
-                core.add_event(db,c['id'],'co','자료 요청: '+ask);notify_consumer(c,f'[{core.CNAME}] 기업이 자료를 요청했어요',ask);flash('자료를 요청했어요','ok')
+                core.add_event(db,c['id'],'co','자료 요청: '+ask);notify_consumer(c,f'[{core.CNAME}] 기업이 자료를 요청했어요',ask);flash('자료를 요청했습니다','ok')
             elif act=='reply':
                 msg=clean(request.form.get('msg'),3000)
                 if not msg:flash('답변 내용을 적어 주세요','error')
                 else:
                     db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
-                    core.add_event(db,c['id'],'co','답변을 보냈어요',msg);notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.");flash('보냈어요','ok')
+                    core.add_event(db,c['id'],'co','답변을 보냈어요',msg);notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.");flash('보냈습니다','ok')
             return redirect(url_for('case',case_id=case_id))
         if c['status']=='forwarded':
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
@@ -271,7 +271,7 @@ def new_case():
     co=me()
     if request.method=='POST':
         f=request.form
-        d={k:clean(f.get(k),n) for k,n in (('channel',20),('category',20),('title',80),('body',3000),('want',20),('order_no',40),('product',60),('received_on',10),('name',20),('phone',20),('email',80))}
+        d={k:clean(f.get(k),n) for k,n in (('channel',20),('category',20),('title',BIG),('body',BIG),('want',20),('order_no',40),('product',60),('received_on',10),('name',20),('phone',20),('email',80))}
         err=''
         if d['channel'] not in core.CHANNELS:err='어디로 받은 민원인지 골라 주세요.'
         elif d['category'] not in core.CATS:err='유형을 골라 주세요.'
@@ -286,7 +286,7 @@ def new_case():
                 VALUES(?,?,?,1,?,?,?,?,?,?,?,?,?,1,'seen','pending',?,?,?,?,?,?)''',(core.new_case_no(db),co['id'],co['name'],d['category'],d['title'],d['body'],d['want'],d['order_no'],
                 d['name'],digits(d['phone']),d['email'],generate_password_hash(secrets.token_hex(16)),due,t,t,d['product'],d['received_on'],d['channel']))
             core.add_event(db,cur.lastrowid,'sys',f"{d['channel']}(으)로 받은 민원을 직접 등록했어요")
-        flash('등록했어요','ok');return redirect(url_for('case',case_id=cur.lastrowid))
+        flash('등록했습니다','ok');return redirect(url_for('case',case_id=cur.lastrowid))
     return render_template('b_new.html',d={'channel':request.args.get('channel','전화')},tab='all')
 
 @app.route('/guide')
@@ -335,7 +335,7 @@ def rules():
             cond=request.form.get('cond','') if 'cond' in request.form else cur['cond']
             if cond not in core.COND or cat not in ('교환','반품·환불'):cond=''
             db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond) VALUES(?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond',(co['id'],cat,int(auto),reply,faq,cond))
-            flash('저장했어요','ok');return redirect(url_for('rules')+('#'+request.form.get('anchor','') if request.form.get('anchor') else ''))
+            flash('저장했습니다','ok');return redirect(url_for('rules')+('#'+request.form.get('anchor','') if request.form.get('anchor') else ''))
         rs={cat:core.rule_for(db,co['id'],cat) for cat in core.CATS}
         since=core.now().strftime('%Y-%m-01')
         chat={o:db.execute('SELECT COUNT(*) FROM chat_log WHERE company_id=? AND outcome=? AND created>=?',(co['id'],o,since)).fetchone()[0] for o in ('asked','solved','filed')}
@@ -349,22 +349,22 @@ def settings():
         f=request.form
         with conn() as db:
             if f.get('act')=='password':
-                if not check_password_hash(co['pw_hash'],f.get('old','')):flash('지금 비밀번호가 맞지 않아요','error')
-                elif len(f.get('new',''))<10:flash('새 비밀번호는 10자 이상이에요','error')
-                else:db.execute('UPDATE companies SET pw_hash=? WHERE id=?',(generate_password_hash(f['new']),co['id']));flash('비밀번호를 바꿨어요','ok')
+                if not check_password_hash(co['pw_hash'],f.get('old','')):flash('지금 비밀번호가 맞지 않습니다','error')
+                elif len(f.get('new',''))<10:flash('새 비밀번호는 10자 이상입니다','error')
+                else:db.execute('UPDATE companies SET pw_hash=? WHERE id=?',(generate_password_hash(f['new']),co['id']));flash('비밀번호를 바꿨습니다','ok')
             elif f.get('act')=='return':
                 courier=f.get('return_courier','') if f.get('return_courier','') in core.COURIERS else ''
-                db.execute('UPDATE companies SET return_address=?,return_courier=?,return_memo=? WHERE id=?',(clean(f.get('return_address'),200),courier,clean(f.get('return_memo'),300),co['id']));flash('반품 안내를 저장했어요','ok')
+                db.execute('UPDATE companies SET return_address=?,return_courier=?,return_memo=? WHERE id=?',(clean(f.get('return_address'),200),courier,clean(f.get('return_memo'),300),co['id']));flash('반품 안내를 저장했습니다','ok')
             elif f.get('act')=='notify':
                 phone=digits(f.get('phone',''))
                 if f.get('kakao')=='1' and not (phone.startswith('01') and 10<=len(phone)<=11):flash('알림톡을 받을 휴대폰 번호를 확인해 주세요','error')
-                else:db.execute('UPDATE companies SET phone=?,kakao=?,report_mail=? WHERE id=?',(phone,int(f.get('kakao')=='1'),int(f.get('report_mail')=='1'),co['id']));flash('알림 설정을 저장했어요','ok')
+                else:db.execute('UPDATE companies SET phone=?,kakao=?,report_mail=? WHERE id=?',(phone,int(f.get('kakao')=='1'),int(f.get('report_mail')=='1'),co['id']));flash('알림 설정을 저장했습니다','ok')
             else:
                 email=clean(f.get('notify_email'),80)
                 industry=f.get('industry','') if f.get('industry','') in core.INDUSTRIES else ''
                 tone=f.get('tone','polite') if f.get('tone') in core.TONES else 'polite'
                 if email and not EMAIL_RE.match(email):flash('알림 이메일을 확인해 주세요','error')
-                else:db.execute('UPDATE companies SET contact=?,notify_email=?,industry=?,tone=? WHERE id=?',(clean(f.get('contact'),60),email,industry,tone,co['id']));flash('저장했어요','ok')
+                else:db.execute('UPDATE companies SET contact=?,notify_email=?,industry=?,tone=? WHERE id=?',(clean(f.get('contact'),60),email,industry,tone,co['id']));flash('저장했습니다','ok')
         return redirect(url_for('settings'))
     return render_template('b_settings.html',tab='settings',link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co))
 
@@ -377,7 +377,7 @@ def ops_login():
             co_id=session.get('co_id');session.clear();session['ops']=True
             if co_id:session['co_id']=co_id;session.permanent=True  # 기업 로그인은 그대로 둔다
             return redirect(url_for('ops'))
-        else:flash('비밀번호가 맞지 않아요','error')
+        else:flash('비밀번호가 맞지 않습니다','error')
     return render_template('o_login.html')
 @app.route('/ops/logout',methods=['POST'])
 def ops_logout():session.pop('ops',None);return redirect(url_for('ops_login'))
@@ -408,15 +408,15 @@ def ops_case(case_id):
             if act=='attempt' and c['consent']:
                 ch=request.form.get('channel') if request.form.get('channel') in ('이메일','전화','1:1 문의','우편') else '이메일'
                 db.execute("UPDATE cases SET status='forwarded',attempts=attempts+1 WHERE id=?",(c['id'],))
-                core.add_event(db,c['id'],'sys',f'센터가 {ch}(으)로 기업에 전달했어요');flash('기록했어요','ok')
+                core.add_event(db,c['id'],'sys',f'센터가 {ch}(으)로 기업에 전달했어요');flash('기록했습니다','ok')
             elif act=='reply' and clean(request.form.get('msg'),3000):
                 db.execute("UPDATE cases SET status='answered' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'co','기업 회신 (센터 기록)',clean(request.form.get('msg'),3000))
-                notify_consumer(c,f'[{core.CNAME}] 기업 회신이 도착했어요',f"{c['company_name']}의 회신을 센터가 기록했어요.");flash('기록했어요','ok')
+                notify_consumer(c,f'[{core.CNAME}] 기업 회신이 도착했어요',f"{c['company_name']}의 회신을 센터가 기록했어요.");flash('기록했습니다','ok')
             elif act=='unresolved':
                 db.execute("UPDATE cases SET status='unresolved' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'sys','기업 회신이 없어 공식 피해구제 절차(1372 소비자상담센터, 한국소비자원)를 안내했어요')
-                notify_consumer(c,f'[{core.CNAME}] 피해구제 절차를 안내해 드려요','기업 회신이 없어 공식 피해구제 절차를 안내해 드려요. 접수 화면에서 확인해 주세요.');flash('안내했어요','ok')
+                notify_consumer(c,f'[{core.CNAME}] 피해구제 절차를 안내해 드려요','기업 회신이 없어 공식 피해구제 절차를 안내해 드려요. 접수 화면에서 확인해 주세요.');flash('안내했습니다','ok')
             return redirect(url_for('ops_case',case_id=case_id))
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id'])
     return render_template('o_case.html',c=c,ev=ev,files=fl,cinfo=co,otab='non')
@@ -440,16 +440,16 @@ def ops_companies():
                 old=db.execute("SELECT id FROM companies WHERE status='listed' AND lower(name)=lower(?)",(co['name'],)).fetchall()
                 for o in old:db.execute('UPDATE cases SET company_id=? WHERE company_id=?',(co['id'],o['id']));db.execute('DELETE FROM companies WHERE id=?',(o['id'],))
                 db.execute("UPDATE companies SET status='active',member=1 WHERE id=?",(co['id'],))
-                core.send_mail(co['notify_email'],f'[{core.BNAME}] 가입이 승인됐어요',f"{co['name']}의 {core.BNAME} 가입이 승인됐어요.\n{core.site_url('biz','/login')}")
-                flash(f"{co['name']} 승인했어요",'ok')
-            elif act=='reject' and co and co['status']=='pending':db.execute("UPDATE companies SET status='rejected' WHERE id=?",(co['id'],));flash('반려했어요','ok')
-            elif act=='suspend' and co and co['status']=='active':db.execute("UPDATE companies SET status='suspended',member=0 WHERE id=?",(co['id'],));flash('이용을 중지했어요','ok')
-            elif act=='resume' and co and co['status']=='suspended':db.execute("UPDATE companies SET status='active',member=1 WHERE id=?",(co['id'],));flash('다시 이용할 수 있게 했어요','ok')
-            elif act=='contact' and co:db.execute('UPDATE companies SET contact=? WHERE id=?',(clean(request.form.get('contact'),60),co['id']));flash('저장했어요','ok')
+                core.send_mail(co['notify_email'],f'[{core.BNAME}] 가입이 승인되었습니다',f"{co['name']}의 {core.BNAME} 가입이 승인되었습니다.\n{core.site_url('biz','/login')}")
+                flash(f"{co['name']} 승인했습니다",'ok')
+            elif act=='reject' and co and co['status']=='pending':db.execute("UPDATE companies SET status='rejected' WHERE id=?",(co['id'],));flash('반려했습니다','ok')
+            elif act=='suspend' and co and co['status']=='active':db.execute("UPDATE companies SET status='suspended',member=0 WHERE id=?",(co['id'],));flash('이용을 중지했습니다','ok')
+            elif act=='resume' and co and co['status']=='suspended':db.execute("UPDATE companies SET status='active',member=1 WHERE id=?",(co['id'],));flash('다시 이용할 수 있게 했습니다','ok')
+            elif act=='contact' and co:db.execute('UPDATE companies SET contact=? WHERE id=?',(clean(request.form.get('contact'),60),co['id']));flash('저장했습니다','ok')
             elif act=='add':
                 name=clean(request.form.get('name'),40)
-                if name and not core.find_company(db,name):db.execute("INSERT INTO companies(name,member,status,contact,created) VALUES(?,0,'listed',?,?)",(name,clean(request.form.get('contact'),60),core.iso()));flash('추가했어요','ok')
-                else:flash('이름이 비었거나 이미 있어요','error')
+                if name and not core.find_company(db,name):db.execute("INSERT INTO companies(name,member,status,contact,created) VALUES(?,0,'listed',?,?)",(name,clean(request.form.get('contact'),60),core.iso()));flash('추가했습니다','ok')
+                else:flash('이름이 비었거나 이미 있습니다','error')
             return redirect(url_for('ops_companies'))
         pending=db.execute("SELECT * FROM companies WHERE status='pending' ORDER BY id").fetchall()
         rows=db.execute("SELECT c.*,(SELECT COUNT(*) FROM cases WHERE company_id=c.id) n FROM companies c WHERE status IN ('active','listed','suspended') ORDER BY member DESC,name").fetchall()
@@ -462,7 +462,7 @@ def ops_news():
     with conn() as db:
         if request.method=='POST':
             if request.form.get('act')=='delete' and request.form.get('id','').isdigit():
-                db.execute('DELETE FROM news WHERE id=?',(int(request.form['id']),));flash('지웠어요','ok')
+                db.execute('DELETE FROM news WHERE id=?',(int(request.form['id']),));flash('지웠습니다','ok')
             else:
                 title=clean(request.form.get('title'),120);body=clean(request.form.get('body'),3000);src=clean(request.form.get('source_url'),300)
                 if not title or not body or not src.startswith(('https://','http://')):flash('제목, 내용, 출처 주소(https://…)를 모두 적어 주세요','error')
@@ -471,7 +471,7 @@ def ops_news():
                     if request.form.get('mail')=='1':
                         for co in db.execute("SELECT notify_email FROM companies WHERE status='active' AND member=1").fetchall():
                             core.send_mail(co['notify_email'],f'[{core.BNAME}] 법·제도 소식: {title}',f"{body}\n\n출처: {src}\n{core.site_url('biz','/news')}")
-                    flash('올렸어요','ok')
+                    flash('올렸습니다','ok')
             return redirect(url_for('ops_news'))
         rows=db.execute('SELECT * FROM news ORDER BY id DESC').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
     return render_template('o_news.html',rows=rows,n_signup=n_pending,otab='news')
