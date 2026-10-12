@@ -84,7 +84,8 @@ def login():
         elif co['status']=='pending':flash('가입 승인을 기다리고 있어요. 승인되면 이메일로 알려 드려요.','error')
         elif co['status']!='active':flash('이용할 수 없는 계정이에요. 센터에 문의해 주세요.','error')
         else:
-            session.clear();session['co_id']=co['id'];session.permanent=True
+            ops=session.get('ops');session.clear();session['co_id']=co['id'];session.permanent=True
+            if ops:session['ops']=True  # 운영 화면 로그인은 그대로 둔다
             return redirect(url_for('decide'))
         return render_template('b_login.html'),400
     return render_template('b_login.html')
@@ -224,7 +225,9 @@ def ops_login():
     if request.method=='POST':
         if core.throttled('ops',limit=8,minutes=10):flash('잠시 후 다시 시도해 주세요','error')
         elif OPS_HASH and check_password_hash(OPS_HASH,request.form.get('password','')):
-            session.clear();session['ops']=True;return redirect(url_for('ops'))
+            co_id=session.get('co_id');session.clear();session['ops']=True
+            if co_id:session['co_id']=co_id;session.permanent=True  # 기업 로그인은 그대로 둔다
+            return redirect(url_for('ops'))
         else:flash('비밀번호가 맞지 않아요','error')
     return render_template('o_login.html')
 @app.route('/ops/logout',methods=['POST'])
