@@ -7,8 +7,9 @@
 from pathlib import Path
 
 LINE = '#2b3a55'
-ORANGE, APRICOT, SAGE, NAVY, CREAM, HAIR, HAIR2, WHITE = '#ef920e', '#ffc48f', '#8dbf9e', '#2b3a55', '#fff1e3', '#262a36', '#6b3f2a', '#ffffff'
+ORANGE, APRICOT, SAGE, NAVY, CREAM, HAIR, HAIR2, WHITE = '#ef7300', '#ffc48f', '#8dbf9e', '#2b3a55', '#fff1e3', '#262a36', '#6b3f2a', '#ffffff'
 KNIT, KNIT_LINE = '#7d9bd8', '#5a78bb'  # 옷 색은 브랜드 주황과 겹치지 않게 파란 계열
+TOP, TOP_LINE = '#b9a5dd', '#8f78bd'  # 왼쪽 여성 옷: 연보라
 
 
 def p(d, fill='none', stroke=None, w=0, extra=''):
@@ -179,13 +180,13 @@ def man_presenting(x, y, s):
 
 
 def woman_thinking(x, y, s):
-    """포니테일 여성: 살구색 블라우스, 턱에 손을 대고 생각."""
+    """포니테일 여성: 연보라 블라우스, 턱에 손을 대고 생각."""
     return group(x, y, s, [
         p('M16 -26 Q40 -30 40 2 Q38 22 28 30 Q32 6 18 -8 Z', HAIR2),
-        torso(APRICOT, 44),
-        p('M-8 38 Q0 48 8 38', stroke='#e59e63', w=2.2),
-        sleeve([(36, 56), (52, 100)], APRICOT), tube([(52, 100), (40, 52)], 12), phone_refused(40, 30, 8), hand(40, 52),
-        sleeve([(-36, 56), (-30, 104)], APRICOT), tube([(-30, 104), (-8, 34)], 12), hand(-6, 30, 8.5), tube([(-6, 30), (2, 14)], 4.5),
+        torso(TOP, 44),
+        p('M-8 38 Q0 48 8 38', stroke=TOP_LINE, w=2.2),
+        sleeve([(36, 56), (52, 100)], TOP), tube([(52, 100), (40, 52)], 12), phone_refused(40, 30, 8), hand(40, 52),
+        sleeve([(-36, 56), (-30, 104)], TOP), tube([(-30, 104), (-8, 34)], 12), hand(-6, 30, 8.5), tube([(-6, 30), (2, 14)], 4.5),
         head_shape(),
         p('M-23 -6 Q-20 -34 2 -34 Q22 -33 23 -10 Q12 -22 -4 -22 Q-16 -20 -23 -6 Z', HAIR2),
         brows('worry', 3), face(mouth='sad', dx=3),
