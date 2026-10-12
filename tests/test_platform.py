@@ -181,9 +181,9 @@ class PlatformTest(unittest.TestCase):
         self.post(o,'/biz/ops/copy',{'site':'me','src':'접수하기','dst':'문의 남기기'})
         home=me.get('/').get_data(as_text=True);self.assertIn('>문의 남기기<',home);self.assertNotIn('>접수하기<',home)
         self.assertNotIn('문의 남기기',self.client().get('/biz/login').get_data(as_text=True))  # 기업용에는 적용 안 됨
-        self.post(o,'/biz/ops/copy',{'site':'all','src':'시범 운영 중','act':'hide'})
-        self.assertNotIn('시범 운영 중',me.get('/').get_data(as_text=True))
-        self.assertIn('시범 운영 중',o.get('/biz/ops/copy').get_data(as_text=True))  # 운영 화면은 그대로
+        self.post(o,'/biz/ops/copy',{'site':'all','src':'이용 안내','act':'hide'})
+        self.assertNotIn('이용 안내',me.get('/').get_data(as_text=True))
+        self.assertIn('이용 안내',o.get('/biz/ops/copy').get_data(as_text=True))  # 운영 화면은 그대로
         with self.core.conn() as db:ids=[r[0] for r in db.execute('SELECT id FROM copy_edits')]
         for i in ids:self.post(o,'/biz/ops/copy',{'act':'restore','id':i})
         self.assertIn('>접수하기<',me.get('/').get_data(as_text=True))

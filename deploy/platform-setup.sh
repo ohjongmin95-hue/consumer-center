@@ -45,7 +45,7 @@ TRUST_PROXY=1
 HTTPS_ONLY=0
 # 기업 가입 신청 알림을 받을 운영자 이메일
 OPS_EMAIL=$EMAIL
-# pilot: 화면 위에 '시범 운영 중' 띠 표시. 개인정보 처리방침 검토가 끝나면 live로 바꾸고: sudo systemctl restart soboru-platform
+# 운영 모드(현재 화면 차이 없음)
 PLATFORM_MODE=pilot
 # 메일 알림(새 민원·답변). 소비자제보센터와 같은 계정을 써도 됩니다.
 # 네이버 서치어드바이저 소유확인 코드 (한큐, 소보루 비즈)
