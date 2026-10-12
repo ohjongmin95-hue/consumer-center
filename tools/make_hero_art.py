@@ -8,6 +8,7 @@ from pathlib import Path
 
 LINE = '#2b3a55'
 ORANGE, APRICOT, SAGE, NAVY, CREAM, HAIR, HAIR2, WHITE = '#ef920e', '#ffc48f', '#8dbf9e', '#2b3a55', '#fff1e3', '#262a36', '#6b3f2a', '#ffffff'
+KNIT, KNIT_LINE = '#7d9bd8', '#5a78bb'  # 옷 색은 브랜드 주황과 겹치지 않게 파란 계열
 
 
 def p(d, fill='none', stroke=None, w=0, extra=''):
@@ -192,12 +193,12 @@ def woman_thinking(x, y, s):
 
 
 def man_paper_up(x, y, s):
-    """곱슬머리 남성: 주황 니트, 서류를 들어 보이며 설명."""
+    """곱슬머리 남성: 파란 니트, 서류를 들어 보이며 설명."""
     return group(x, y, s, [
-        torso(ORANGE, 50),
-        p('M-14 40 Q0 52 14 40', stroke='#cf6200', w=3),
-        sleeve([(-40, 56), (-52, 124)], ORANGE), tube([(-52, 124), (-34, 166)], 12), hand(-32, 170),
-        sleeve([(40, 56), (62, 84)], ORANGE), tube([(62, 84), (36, 34)], 12),
+        torso(KNIT, 50),
+        p('M-14 40 Q0 52 14 40', stroke=KNIT_LINE, w=3),
+        sleeve([(-40, 56), (-52, 124)], KNIT), tube([(-52, 124), (-34, 166)], 12), hand(-32, 170),
+        sleeve([(40, 56), (62, 84)], KNIT), tube([(62, 84), (36, 34)], 12),
         megaphone(28, 18, -64), hand(36, 36),
         head_shape(),
         ''.join(f'<circle cx="{cx}" cy="{cy}" r="10" fill="{HAIR}"/>' for cx, cy in [(-16, -22), (-4, -30), (10, -28), (20, -16), (-22, -8)]),
