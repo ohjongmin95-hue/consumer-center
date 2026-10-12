@@ -1123,3 +1123,8 @@ body:has(.cs3){background:var(--card)}
   .cs3-more .cs-ic{grid-row:auto;margin-bottom:10px}
   .cs3 .cs-ret{margin:0 24px 24px}
 }
+.cs3-more summary{font-size:16px;font-weight:400;justify-content:normal}
+.cs3-more small{font-weight:400}
+.cs3-more>.cs3-card,.cs3-more summary{line-height:1.55}.cs3-more b,.cs3-more small{line-height:1.5}
+.cs3-more details.cs3-card{display:block}
+.cs3 .cs-top .cs-in{height:56px}@media (min-width:761px){.cs3 .cs-top .cs-in{height:64px}}

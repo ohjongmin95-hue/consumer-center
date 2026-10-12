@@ -17,7 +17,7 @@ UPLOAD.mkdir(parents=True,exist_ok=True)
 SECRET=os.getenv('SECRET_KEY') or secrets.token_hex(32)
 CONSUMER_HOST=os.getenv('CONSUMER_HOST','').strip().lower()
 BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
-PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'  # 시범 운영: 화면 위에 '실제 개인정보 넣지 마세요' 띠
+PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'
 CNAME=os.getenv('CONSUMER_NAME','소보루 CS')  # 소비자 서비스 이름 (로고·제목·메일)
 BNAME=os.getenv('BUSINESS_NAME','소보루 CS')
 COPY_SITES={'me':'고객센터','biz':'기업용','all':'두 곳 모두'}  # 문구 고치기 적용 범위  # 기업 서비스 이름
