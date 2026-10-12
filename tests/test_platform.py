@@ -174,6 +174,23 @@ class PlatformTest(unittest.TestCase):
         j=me.post('/chat',data={'csrf':tok,'text':'택배가 아직 안 와요'}).get_json()
         self.assertEqual((j['category'],j['faq']),('배송 조회',self.core.CHAT_FAQ['배송 조회']))
 
+    def test_copy_edits_from_ops(self):
+        o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+        page=o.get('/biz/ops/copy?q=접수하기').get_data(as_text=True);self.assertIn('접수하기',page)
+        me=self.client();self.assertIn('>접수하기<',me.get('/').get_data(as_text=True))
+        self.post(o,'/biz/ops/copy',{'site':'me','src':'접수하기','dst':'문의 남기기'})
+        home=me.get('/').get_data(as_text=True);self.assertIn('>문의 남기기<',home);self.assertNotIn('>접수하기<',home)
+        self.assertNotIn('문의 남기기',self.client().get('/biz/login').get_data(as_text=True))  # 기업용에는 적용 안 됨
+        self.post(o,'/biz/ops/copy',{'site':'all','src':'시범 운영 중','act':'hide'})
+        self.assertNotIn('시범 운영 중',me.get('/').get_data(as_text=True))
+        self.assertIn('시범 운영 중',o.get('/biz/ops/copy').get_data(as_text=True))  # 운영 화면은 그대로
+        with self.core.conn() as db:ids=[r[0] for r in db.execute('SELECT id FROM copy_edits')]
+        for i in ids:self.post(o,'/biz/ops/copy',{'act':'restore','id':i})
+        self.assertIn('>접수하기<',me.get('/').get_data(as_text=True))
+        self.post(o,'/biz/ops/copy',{'site':'me','src':'접수하기','dst':'<b>x</b>'})
+        self.assertIn('&lt;b&gt;x&lt;/b&gt;',me.get('/').get_data(as_text=True))  # 고친 문구는 글자로만 들어감
+        with self.core.conn() as db:db.execute('DELETE FROM copy_edits')
+
     def test_password_links_and_consumer_kakao(self):
         sent=[];kakao=[]
         b,o,cid=self.signup_and_approve('비번마켓','pw@example.com')
@@ -240,7 +257,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(me.get('/to/99999').status_code,404)
         self.assertIn('value="바른가전"',me.get(f'/new?company_id={cid}').get_data(as_text=True))
         page=b.get('/biz/settings').get_data(as_text=True)
-        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 CS',page);self.assertIn('soboru-logo.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
+        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 CS',page);self.assertIn('soboru-char.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
         case_id=self.file_case(me,'바른가전','교환',str(cid),title='세탁기 소음')
         self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
         # 답변 목표일이 지나면 한 번만 지연 알림

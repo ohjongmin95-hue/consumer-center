@@ -1,4 +1,4 @@
-"""소비자용 '소보루 비즈 고객센터': 어느 기업이든 한곳에서 민원 접수·조회."""
+"""소비자용 '소보루 CS 고객센터': 어느 기업이든 한곳에서 민원 접수·조회."""
 import os, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -11,6 +11,7 @@ app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='me')
 
 @app.before_request
 def guard():core.check_csrf()
+app.after_request(core.copy_after_request('me'))  # 운영 화면에서 고친 문구 적용
 
 def my_ids():return set(session.get('mine',[]))
 def remember(*ids):session['mine']=sorted(my_ids()|set(ids))[-50:]

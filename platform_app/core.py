@@ -1,6 +1,6 @@
 """SOBORU 플랫폼 공통: DB, 처리 규칙(플레이북), 사건 처리 동작, 보안 도우미.
 
-소비자용(소보루 비즈 고객센터)과 기업용(소보루 비즈)이 같은 DB의 같은 사건을 다룬다.
+소비자용(소보루 CS 고객센터)과 기업용(소보루 CS)이 같은 DB의 같은 사건을 다룬다.
 홈페이지(소비자제보센터, 저장소 최상위 app.py)와는 DB도 서비스도 따로 쓴다.
 """
 import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, threading, json, urllib.request, urllib.error
@@ -18,8 +18,9 @@ SECRET=os.getenv('SECRET_KEY') or secrets.token_hex(32)
 CONSUMER_HOST=os.getenv('CONSUMER_HOST','').strip().lower()
 BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
 PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'  # 시범 운영: 화면 위에 '실제 개인정보 넣지 마세요' 띠
-CNAME=os.getenv('CONSUMER_NAME','소보루 비즈 고객센터')  # 소비자 서비스 이름 (로고·제목·메일)
-BNAME=os.getenv('BUSINESS_NAME','소보루 CS')  # 기업 서비스 이름
+CNAME=os.getenv('CONSUMER_NAME','소보루 CS 고객센터')  # 소비자 서비스 이름 (로고·제목·메일)
+BNAME=os.getenv('BUSINESS_NAME','소보루 CS')
+COPY_SITES={'me':'고객센터','biz':'기업용','all':'두 곳 모두'}  # 문구 고치기 적용 범위  # 기업 서비스 이름
 # 개인정보 처리방침에 적는 운영 주체 (개인정보 보호법 제30조). 보호책임자는 대표자 (같은 법 제31조, 시행령 제32조제2항제2호가목)
 OPERATOR={'name':'소보루','ceo':'오규섭','biz_no':'129-14-81596','address':'서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)','manager':'오민주'}
 PRIVACY_SINCE='2026년 10월 12일'
@@ -149,6 +150,7 @@ def init():
         db.executescript('''
         CREATE TABLE IF NOT EXISTS news(id INTEGER PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,source_url TEXT NOT NULL,created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sent_marks(kind TEXT NOT NULL,company_id INTEGER NOT NULL,key TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(kind,company_id,key));
+        CREATE TABLE IF NOT EXISTS copy_edits(id INTEGER PRIMARY KEY,site TEXT NOT NULL,src TEXT NOT NULL,dst TEXT NOT NULL,created TEXT NOT NULL,UNIQUE(site,src));
         CREATE TABLE IF NOT EXISTS chat_log(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,category TEXT NOT NULL,outcome TEXT NOT NULL,created TEXT NOT NULL);
         ''')
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
@@ -199,7 +201,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
@@ -359,6 +361,52 @@ def notify_company_new(co,c):
     send_mail(co['notify_email'],f"[{BNAME}] 새 민원: {c['title']}",
         f"{co['name']}에 새 민원이 들어왔습니다.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 처리 방법을 보고 승인해 주세요.\n{link}")
     if co['kakao']:send_kakao(co['phone'],{'#{회사}':short(co['name'],20),'#{유형}':c['category'],'#{요약}':short(c['title']),'#{링크}':link})
+
+# ---------- 문구 고치기 (운영 화면 /ops/copy) ----------
+# 운영자가 화면 문구를 바꾸거나 지우면, 페이지를 내보내기 직전에 글자 부분(태그 사이 글자와 입력칸 안내 글)만 바꾼다.
+# 템플릿 파일은 그대로 두므로 언제든 되돌릴 수 있다. 운영 화면(/ops)에는 적용하지 않는다.
+_TEXT=re.compile(r'(<script\b.*?</script>|<style\b.*?</style>|<[^>]*>)|([^<]+)',re.S|re.I)
+_ATTR=re.compile(r'(\s(?:placeholder|aria-label|title|alt)=")([^"]*)(")')
+def copy_edits(site):
+    with conn() as db:
+        rows=db.execute("SELECT src,dst FROM copy_edits WHERE site IN (?,'all')",(site,)).fetchall()
+    esc=lambda t:t.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+    # 긴 문구부터 바꿔서 짧은 문구가 긴 문구 안을 먼저 건드리지 않게
+    return sorted(((esc(r['src']),esc(r['dst'])) for r in rows if r['src']),key=lambda x:-len(x[0]))
+def apply_copy(html,edits):
+    if not edits:return html
+    def sub(t):
+        for a,b in edits:t=t.replace(a,b)
+        return t
+    def tag(m):
+        if m.group(1) is None:return sub(m.group(2))
+        t=m.group(1)
+        if re.match(r'<(script|style)\b',t,re.I):return t
+        return _ATTR.sub(lambda a:a.group(1)+sub(a.group(2))+a.group(3),t)
+    return _TEXT.sub(tag,html)
+def copy_after_request(site):
+    def hook(r):
+        if r.mimetype=='text/html' and not r.direct_passthrough and not request.path.startswith('/ops'):
+            try:edits=copy_edits(site)
+            except Exception:return r
+            if edits:r.set_data(apply_copy(r.get_data(as_text=True),edits))
+        return r
+    return hook
+_TPL_SITE=lambda f:'me' if f.startswith(('c_','_c','_chat')) else 'biz' if f.startswith(('b_','_b')) else 'all' if f=='base.html' else None
+def copy_catalog():
+    """템플릿에 적힌 한글 문구 목록 (운영자가 찾아서 바꿀 수 있게). [(site, 문구, [파일들])]"""
+    tdir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'templates');found={}
+    for f in sorted(os.listdir(tdir)):
+        site=_TPL_SITE(f)
+        if not site:continue
+        src=re.sub(r'<script\b.*?</script>|<style\b.*?</style>|\{#.*?#\}','',open(os.path.join(tdir,f),encoding='utf-8').read(),flags=re.S)
+        parts=[m.group(2) for m in re.finditer(r'(<[^>]*>)|([^<]+)',src) if m.group(2)]
+        parts+=re.findall(r'placeholder="([^"{]+)"',src)
+        for p in parts:
+            for t in re.split(r'\{\{.*?\}\}|\{%.*?%\}',p,flags=re.S):
+                t=' '.join(t.split()).strip(" ·,|/()'")
+                if re.search('[가-힣]',t) and '{' not in t and '}' not in t and len(t)>=2:found.setdefault((site,t),set()).add(f)
+    return sorted(((s,t,sorted(fs)) for (s,t),fs in found.items()),key=lambda x:(x[0]!='me',x[1]))
 
 # ---------- 메일 ----------
 def mail_ready():return bool(os.getenv('SMTP_HOST') and os.getenv('SMTP_USER') and os.getenv('SMTP_PASSWORD'))

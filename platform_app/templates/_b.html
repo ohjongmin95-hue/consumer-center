@@ -1,6 +1,6 @@
 {# 기업 서비스 공용: 상단 메뉴, 지표, 승인 카드 #}
 {% import '_i.html' as i %}
-{% macro soboru_logo() -%}<img class="lg" src="{{ url_for('static',filename='soboru-logo.png') }}" alt="SOBORU" width="507" height="120"><small class="w">CS</small>{%- endmacro %}
+{% macro soboru_logo() -%}<img class="ch" src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96"><span class="wm">소보루 CS</span>{%- endmacro %}
 {% macro bar(tab) -%}
 <header class="gnb"><div class="wrap">
 <a class="logo biz" href="{{ url_for('decide') }}">{{ soboru_logo() }}</a>
@@ -18,12 +18,13 @@
 {%- endmacro %}
 {% macro obar(tab,n_signup) -%}
 <header class="gnb"><div class="wrap">
-<a class="logo" href="{{ url_for('ops') }}"><i></i>{{ CNAME }}<small class="w">운영</small></a>
+<a class="logo" href="{{ url_for('ops') }}"><i></i>{{ BNAME }}<small class="w">운영</small></a>
 <nav>
 <a href="{{ url_for('ops') }}" class="{{ 'on' if tab=='non' }}">비입점 민원</a>
 <a href="{{ url_for('ops_all') }}" class="{{ 'on' if tab=='all' }}">전체 현황</a>
 <a href="{{ url_for('ops_companies') }}" class="{{ 'on' if tab=='co' }}">기업 관리{% if n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</a>
 <a href="{{ url_for('ops_news') }}" class="{{ 'on' if tab=='news' }}">법·제도 소식</a>
+<a href="{{ url_for('ops_copy') }}" class="{{ 'on' if tab=='copy' }}">문구 고치기</a>
 </nav>
 <div class="right"><form method="post" action="{{ url_for('ops_logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn">로그아웃</button></form></div>
 </div></header>

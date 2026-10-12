@@ -1,4 +1,4 @@
-"""기업용 소보루 비즈 (+ 센터 운영 화면 /ops).
+"""기업용 소보루 CS (+ 센터 운영 화면 /ops).
 
 기업: 가입 → 운영자 승인 → 로그인 → 승인 카드(승인·보류·자료 요청), 전체 민원, 자동 처리 규칙, 설정.
 운영자: 기업 가입 승인, 기업 목록, 비입점 기업 민원 처리(전달 시도·회신 기록·피해구제 안내).
@@ -17,6 +17,7 @@ EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 @app.before_request
 def guard():core.check_csrf()
+app.after_request(core.copy_after_request('biz'))  # 운영 화면에서 고친 문구 적용
 
 def me():
     if 'co' not in g:
@@ -475,6 +476,29 @@ def ops_news():
             return redirect(url_for('ops_news'))
         rows=db.execute('SELECT * FROM news ORDER BY id DESC').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
     return render_template('o_news.html',rows=rows,n_signup=n_pending,otab='news')
+
+@app.route('/ops/copy',methods=['GET','POST'])
+@ops_required
+def ops_copy():
+    """문구 고치기: 고객센터·소보루 CS 화면의 문구를 바꾸거나 지운다. 템플릿은 그대로 두고 화면에 내보낼 때만 바꿔서 언제든 되돌릴 수 있다."""
+    q=clean(request.values.get('q'),100);site_f=request.values.get('w','')
+    with conn() as db:
+        if request.method=='POST':
+            act=request.form.get('act')
+            if act=='restore' and request.form.get('id','').isdigit():
+                db.execute('DELETE FROM copy_edits WHERE id=?',(int(request.form['id']),));flash('원래 문구로 되돌렸습니다','ok')
+            else:
+                site=request.form.get('site');src=(request.form.get('src') or '').strip();dst='' if act=='hide' else (request.form.get('dst') or '').strip()
+                if site not in core.COPY_SITES or not src:flash('바꿀 문구와 적용할 곳을 확인해 주세요','error')
+                elif src==dst:flash('바뀐 내용이 없습니다','error')
+                else:
+                    db.execute('INSERT INTO copy_edits(site,src,dst,created) VALUES(?,?,?,?) ON CONFLICT(site,src) DO UPDATE SET dst=excluded.dst,created=excluded.created',(site,src[:2000],dst[:2000],core.iso()))
+                    flash('지웠습니다' if not dst else '바꿨습니다','ok')
+            return redirect(url_for('ops_copy',q=q or None,w=site_f or None))
+        edits=db.execute('SELECT * FROM copy_edits ORDER BY id DESC').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+    done={(e['site'],e['src']) for e in edits}
+    cat=[x for x in core.copy_catalog() if (not site_f or x[0]==site_f) and (not q or q in x[1]) and (x[0],x[1]) not in done]
+    return render_template('o_copy.html',edits=edits,cat=cat[:300],n_cat=len(cat),q=q,site_f=site_f,n_signup=n_pending,otab='copy')
 
 @app.errorhandler(404)
 def nf(e):return render_template('c_error.html',msg='페이지를 찾을 수 없어요.'),404
