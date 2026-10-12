@@ -61,6 +61,46 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(r.status_code,302,r.get_data(as_text=True)[:300])
         return int(r.headers['Location'].rstrip('/').split('/')[-1])
 
+    def test_app_api(self):
+        """소보루 CS 앱 API: 쿠키 없이 민원별 토큰으로 접수·조회·답변 확인·알림 등록."""
+        b,o,cid=self.signup_and_approve('앱테스트상점','apptest@example.com')
+        a=self.client()
+        meta=a.get('/api/v1/meta').get_json();self.assertEqual(meta['cats'][0],{'name':'배송 조회','hint':'배송이 안 오거나 늦어요'})
+        self.assertEqual(a.get('/api/v1/companies?q=앱테스트').get_json()[0]['id'],cid)
+        self.assertTrue(a.get(f'/api/v1/companies/{cid}').get_json()['member'])
+        self.assertEqual(a.post(f'/api/v1/chat/{cid}',json={'text':'택배가 아직 안 왔어요'}).get_json()['category'],'배송 조회')
+        bad=a.post('/api/v1/cases',json={'company':'앱테스트상점','category':'제품 불량','title':'x','body':'짧음'})
+        self.assertEqual(bad.status_code,400);self.assertIn('10자',bad.get_json()['error'])
+        r=a.post('/api/v1/cases',json={'company':'앱테스트상점','company_id':cid,'category':'제품 불량','title':'앱에서 접수','body':'앱으로 접수한 불량 민원 내용이에요.',
+            'want':'교환','phone':'010-5555-6666','password':'abcd','privacy':True,'consent':True})
+        self.assertEqual(r.status_code,201,r.get_data(as_text=True));j=r.get_json();case_id,tok=j['id'],j['token']
+        auth={'Authorization':'Bearer '+tok}
+        d=a.get(f'/api/v1/cases/{case_id}',headers=auth).get_json()
+        self.assertEqual(d['status'],'forwarded');self.assertTrue(d['can']['cancel']);self.assertNotIn('phone',d)
+        self.assertEqual(a.get(f'/api/v1/cases/{case_id}').status_code,404)  # 토큰 없이는 못 연다
+        other=self.file_case(self.client(),'앱테스트상점','기타',str(cid))
+        self.assertEqual(a.get(f'/api/v1/cases/{other}',headers=auth).status_code,404)  # 다른 민원은 못 연다
+        self.assertEqual([c['id'] for c in a.post('/api/v1/mine',json={'tokens':[tok,'garbage']}).get_json()['cases']],[case_id])
+        self.assertEqual(a.post('/api/v1/lookup',json={'phone':'01055556666','password':'nope'}).status_code,404)
+        found=a.post('/api/v1/lookup',json={'phone':'01055556666','password':'abcd'}).get_json()['cases']
+        self.assertEqual(found[0]['id'],case_id);self.assertEqual(a.get(f"/api/v1/cases/{case_id}?t={found[0]['token']}").status_code,200)
+        self.assertEqual(a.post('/api/v1/push',json={'push_token':'nope','tokens':[tok]}).status_code,400)
+        self.assertEqual(a.post('/api/v1/push',json={'push_token':'ExponentPushToken[abc123]','tokens':[tok]}).get_json()['cases'],1)
+        sent=[]
+        class R:
+            def __init__(s,req):sent.append(req)
+            def read(s):return b'{"data":[{"status":"ok"}]}'
+            def __enter__(s):return s
+            def __exit__(s,*x):pass
+        with patch.object(self.core.urllib.request,'urlopen',lambda req,timeout=0:R(req)):
+            self.post(b,f'/biz/case/{case_id}',{'act':'reply','msg':'새 상품으로 보내 드릴게요.'})
+        self.assertTrue(any('exp.host' in q.full_url for q in sent))
+        d=a.get(f'/api/v1/cases/{case_id}',headers=auth).get_json()
+        self.assertEqual(d['status'],'answered');self.assertIn('새 상품으로 보내 드릴게요.',[e['reply'] for e in d['events']])
+        r=a.post(f'/api/v1/cases/{case_id}',headers=auth,json={'act':'rate','v':'resolved'})
+        self.assertEqual(r.get_json()['status'],'resolved')
+        self.assertEqual(a.post(f'/api/v1/cases/{case_id}',headers=auth,json={'act':'ship','courier':'x','tracking':'1'}).status_code,200)  # 반품 안내가 없으면 그냥 무시
+
     def test_member_flow_pending_approve_and_rate(self):
         b,o,cid=self.signup_and_approve('달빛화장품','dalbit@example.com')
         me=self.client()
