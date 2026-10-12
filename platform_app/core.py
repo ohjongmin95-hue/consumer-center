@@ -40,12 +40,12 @@ WANTS=['교환','환불','배송 확인','사과·재발 방지','수리·A/S','
 # 유형별 추천 조치. 승인(또는 자동 처리)하면 steps를 차례로 기록하고 reply를 소비자에게 보낸다.
 # 기업은 자동 처리 규칙 화면에서 reply 문구를 자기 회사 말로 바꿀 수 있다.
 PLAYBOOK={
-  '배송 조회':{'title':'송장 조회 후 배송 현황 안내','steps':['송장 조회','배송 현황 답변','도착 알림 예약'],'reply':'주문하신 상품의 배송 현황을 확인했습니다. 현재 배송 중이며 1~2일 안에 도착 예정입니다. 도착하면 다시 알려드릴게요.','auto_ok':True},
-  '교환':{'title':'교환 접수 + 회수 요청','steps':['교환 접수','회수 요청','새 상품 발송'],'reply':'교환 접수가 완료되었습니다. 택배 기사님이 1~3일 안에 기존 상품을 회수하러 방문하고, 회수가 확인되면 새 상품을 바로 보내드립니다.','auto_ok':True},
-  '반품·환불':{'title':'반품 회수 후 환불','steps':['반품 접수','회수 요청','결제 취소'],'reply':'반품 접수가 완료되었습니다. 상품 회수가 확인되면 결제하신 수단으로 환불해 드립니다. 카드 결제는 영업일 기준 3~5일 걸릴 수 있어요.','auto_ok':True},
-  '제품 불량':{'title':'무상 교환 (배송비 업체 부담)','steps':['불량 확인','무상 교환 접수','새 상품 발송'],'reply':'불편을 드려 죄송합니다. 보내주신 내용으로 불량을 확인했고, 배송비 없이 새 상품으로 교환해 드리겠습니다. 회수 기사님이 1~3일 안에 방문합니다.','auto_ok':False},
-  '고객 응대':{'title':'사과 답변 + 담당자 연락','steps':['사과 답변','담당자 배정','직접 연락'],'reply':'응대 과정에서 불쾌하셨던 점 진심으로 사과드립니다. 담당자가 직접 연락드려 자세히 듣고 바로잡겠습니다.','auto_ok':False},
-  '기타':{'title':'담당자 직접 답변','steps':['담당자 배정','직접 답변'],'reply':'','auto_ok':False},
+  '배송 조회':{'title':'송장 확인 안내','steps':['배송 문의 접수','송장 확인 안내'],'reply':'배송 문의 확인했습니다. 송장번호로 택배사 홈페이지에서 지금 위치를 바로 확인하실 수 있어요. 송장번호를 모르시거나 배송이 멈춰 있으면 이 화면에 주문번호를 남겨 주세요. 확인해서 다시 알려 드릴게요.','auto_ok':True},
+  '교환':{'title':'교환 접수 + 반품 주소 안내','steps':['교환 접수','반품 주소 안내','도착 확인 후 새 상품 발송'],'reply':'교환 접수가 완료되었습니다. 기존 상품을 보내 주시면 도착을 확인한 뒤 새 상품을 바로 보내드릴게요.','auto_ok':True},
+  '반품·환불':{'title':'반품 접수 + 도착 후 환불','steps':['반품 접수','반품 주소 안내','도착 확인 후 환불'],'reply':'반품 접수가 완료되었습니다. 상품을 보내 주시면 도착을 확인한 날부터 3영업일 안에 결제하신 수단으로 환불해 드릴게요. 계좌로 결제하셨다면 이 화면에서 환불 받을 계좌를 등록해 주세요.','auto_ok':True},
+  '제품 불량':{'title':'무상 교환 (배송비 업체 부담)','steps':['불량 확인','무상 교환 접수','반품 주소 안내'],'reply':'불편을 드려 죄송합니다. 보내주신 내용으로 불량을 확인했고, 배송비 없이 새 상품으로 교환해 드리겠습니다. 상품을 보내 주시면 도착을 확인한 뒤 새 상품을 바로 보내드릴게요.','auto_ok':False},
+  '고객 응대':{'title':'사과 답변 + 담당자 연락','steps':['사과 답변','담당자 확인'],'reply':'응대 과정에서 불쾌하셨던 점 진심으로 사과드립니다. 담당자가 직접 연락드려 자세히 듣고 바로잡겠습니다.','auto_ok':False},
+  '기타':{'title':'담당자 직접 답변','steps':['담당자 확인','직접 답변'],'reply':'','auto_ok':False},
 }
 # 상담창(자동응답): 고객이 편하게 쓴 문장에서 이 단어들을 찾아 유형을 짐작한다. 띄어쓰기는 무시한다.
 # 앞에 있는 유형일수록 같은 점수일 때 우선한다 (불량이면서 반품을 원하는 경우 불량으로).
@@ -77,7 +77,10 @@ COND={'':'항상','within7':'받은 지 7일 이내일 때만'}  # 자동 처리
 
 STEPS=['접수','기업 전달','기업 확인','답변·조치','결과 확인']
 STATUS={'received':('접수됨','gray',0),'forwarded':('기업 전달','acc',1),'seen':('기업 확인 중','wait',2),'info':('추가 자료 요청','wait',2),
-        'answered':('답변·조치 완료','done',3),'resolved':('해결','done',4),'unresolved':('미해결','bad',4)}
+        'answered':('답변·조치 완료','done',3),'resolved':('해결','done',4),'unresolved':('미해결','bad',4),
+        'closed':('종료','done',4),'withdrawn':('접수 취소','gray',4)}
+FINAL=('resolved','unresolved','closed','withdrawn')  # 더 처리하지 않는 상태
+CLOSE_DAYS=7  # 답변 후 이 기간 동안 소비자가 아무 응답이 없으면 자동 종료
 OPEN_STATUSES=('received','forwarded','seen','info')
 DECISION={'pending':'승인 대기','approved':'승인됨','auto':'자동 처리','hold':'보류','info':'추가 확인','direct':'직접 답변'}
 REPLY_DAYS=2  # 입점 기업 답변 목표일 (전달 후 n일)
@@ -137,7 +140,7 @@ def init():
         # 나중에 더한 칸: 이미 있는 DB에도 붙인다
         cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
-        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status'):
+        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking'):
             if col not in cols:db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         cols={r[1] for r in db.execute('PRAGMA table_info(companies)')}
         for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),
@@ -195,7 +198,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
@@ -240,6 +243,9 @@ def run_playbook(db,c,how):
     reply=(rule['reply'] or '').strip()
     guide=return_guide(company(db,c['company_id'])) if c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status'] else ''
     if reply and guide:reply+='\n\n'+guide;db.execute("UPDATE cases SET ret_status='guided' WHERE id=?",(c['id'],))
+    elif reply and c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status']:
+        # 반품 주소를 아직 안 정했어도 회수 단계(송장 입력, 회수 확인)는 열어 둔다
+        reply+='\n\n보내실 곳은 따로 안내드릴게요.';db.execute("UPDATE cases SET ret_status='guided' WHERE id=?",(c['id'],))
     if reply:add_event(db,c['id'],'co','답변을 보냈어요.',reply)
     db.execute('UPDATE cases SET status=?,decision=?,info_ask=? WHERE id=?',('answered' if reply else 'seen',how,'',c['id']))
     return bool(reply)
@@ -260,10 +266,18 @@ def last_follow_up(db,case_id):
     return parse(r['created']) if r else None
 def can_follow_up(db,c):
     """답변이 늦거나, 답변을 받았지만 해결이 안 됐을 때 기업에 다시 요청할 수 있다."""
-    if not (overdue(c) or c['status'] in ('answered','unresolved')):return False
+    if not (overdue(c) or c['status'] in ('answered','unresolved','closed')):return False
     last=last_follow_up(db,c['id'])
     return not last or now()-last>=datetime.timedelta(hours=FOLLOW_UP_HOURS)
 
+def close_idle(today=None):
+    """답변 후 CLOSE_DAYS일 동안 소비자가 해결 여부를 알려 주지 않은 민원을 종료한다. cron에서 부른다."""
+    cut=iso((today or now())-datetime.timedelta(days=CLOSE_DAYS));n=0
+    with conn() as db:
+        for c in db.execute("SELECT id FROM cases WHERE status='answered' AND updated<?",(cut,)).fetchall():
+            db.execute("UPDATE cases SET status='closed' WHERE id=?",(c['id'],))
+            add_event(db,c['id'],'sys',f'답변 후 {CLOSE_DAYS}일 동안 응답이 없어 종료했어요. 해결되지 않았다면 다시 요청할 수 있어요.');n+=1
+    return n
 def site_or_blank(kind,path):
     host=BUSINESS_HOST if kind=='biz' else CONSUMER_HOST
     return 'https://'+host+path if host else ''
@@ -285,7 +299,7 @@ def notify_late():
     with conn() as db:
         for c in db.execute("SELECT * FROM cases WHERE member=1 AND consent=1 AND due!='' AND status IN ('forwarded','seen','info')").fetchall():
             if not overdue(c) or c['late_sent']==c['due']:continue
-            send_mail(c['email'],f'[{CNAME}] 기업 답변이 늦어지고 있어요',f"{c['company_name']}의 답변이 목표일({fmt_day(c['due'])})을 넘겼어요.\n접수 화면에서 기업에 다시 요청하거나 공식 피해구제 절차를 확인할 수 있어요.\n\n■ 접수번호: {c['no']}\n{site_or_blank('me','/mine')}")
+            send_mail(c['email'],f'[{CNAME}] 기업 답변이 늦어지고 있어요',f"{c['company_name']}의 답변이 아직 없어요.\n접수 화면에서 기업에 다시 요청하거나 공식 피해구제 절차를 확인할 수 있어요.\n\n■ 접수번호: {c['no']}\n{site_or_blank('me','/mine')}")
             co=company(db,c['company_id'])
             if co:send_mail(co['notify_email'],f"[{BNAME}] 답변 목표일이 지났어요: {c['title']}",f"소비자에게 답변 지연을 알렸어요. 지금 답변해 주세요.\n{site_or_blank('biz','/case/%d'%c['id'])}")
             add_event(db,c['id'],'sys','답변 목표일이 지나 소비자와 기업에 알렸어요')

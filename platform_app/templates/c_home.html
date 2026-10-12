@@ -10,6 +10,7 @@
 </div>
 <div class="vis" aria-hidden="true">{% for cat in CATS %}<span class="ic">{{ i.cat_icon(cat,44) }}<em>{{ cat }}</em></span>{% endfor %}</div>
 </div></section>
+<section class="band"><div class="wrap home-chat"><div class="shead"><h2>먼저 물어보세요</h2></div><p class="sub">편하게 적으면 바로 안내해 드려요. 해결이 안 되면 그대로 접수로 이어져요.</p>{% set co=None %}{% include "_chat.html" %}</div></section>
 
 {% if rows %}<section class="band g"><div class="wrap">
 <div class="shead"><h2>내 접수</h2><div class="r"><a href="{{ url_for('mine') }}">전체보기</a></div></div>

@@ -941,3 +941,7 @@ body.v2 .foot2{padding-block:16px 18px;font-size:14px}
 @keyframes cbIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.cb-m{animation:none}}
 .cb-m,.cb-chips{scroll-margin-bottom:110px}
+.panel.cancel summary{font-size:15px;font-weight:600;color:var(--fg3);justify-content:flex-start;gap:8px}
+.bulk{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.home-chat{max-width:640px}.home-chat .sub{margin:4px 0 16px}.home-chat .shead{margin-bottom:0}
+.bulk .btn{background:var(--card)}

@@ -9,7 +9,7 @@
 <div class="panel"><p style="white-space:pre-wrap;margin:0 0 18px;font-size:15.5px">{{ c.body }}</p>
 {% if files %}<div class="files" style="margin-bottom:16px">{% for f in files %}<a href="{{ url_for('ops_file',case_id=c.id,file_id=f.id) }}">📎 {{ f.original }}</a>{% endfor %}</div>{% endif %}
 <dl class="kv"><dt>소비자</dt><dd>{{ c.name or '익명' }} · {{ fmt_phone(c.phone) }}</dd><dt>공식 연락처</dt><dd>{{ cinfo.contact if cinfo and cinfo.contact else '확인 필요' }}</dd><dt>전달 동의</dt><dd>{{ '동의' if c.consent else '미동의' }}</dd><dt>전달 시도</dt><dd>{{ c.attempts }}회</dd><dt>원하는 해결</dt><dd>{{ c.want }}</dd><dt>접수번호</dt><dd class="no">{{ c.no }}</dd></dl></div>
-{% if not c.member and c.status not in ('resolved','unresolved') %}
+{% if not c.member and c.status not in FINAL %}
 <div class="panel stack"><div class="h2">처리</div>
 <form method="post" style="display:flex;gap:8px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="attempt">
 <select class="inp" name="channel" style="flex:1;min-width:0">{% for ch in ['이메일','전화','1:1 문의','우편'] %}<option>{{ ch }}</option>{% endfor %}</select><button class="btn md" style="flex:none" {{ '' if c.consent else 'disabled' }}>전달 시도 기록</button></form>

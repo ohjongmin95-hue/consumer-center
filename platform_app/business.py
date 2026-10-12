@@ -123,6 +123,19 @@ def decide():
     counts={'all':len(rows),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows)}
     return render_template('b_decide.html',pend=pend,recent=rows[:6],k=kpis(rows),counts=counts,cats=by_cat(rows),warn=warn,news=news,tab='home')
 
+@app.route('/approve_many',methods=['POST'])
+@login_required
+def approve_many():
+    """같은 유형의 승인 대기 민원을 한 번에 승인 (홈의 'n건 모두 승인')."""
+    cat=request.form.get('category')
+    if cat not in core.CATS:abort(400)
+    n=0
+    with conn() as db:
+        for c in [r for r in my_cases(db,me()) if is_pending(r) and r['category']==cat]:
+            if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
+            n+=1
+    flash(f'{cat} {n}건을 승인했어요','ok');return redirect(url_for('decide'))
+
 @app.route('/pending')
 def pending():return redirect(url_for('decide'))
 
@@ -132,7 +145,7 @@ def all_cases():
     fil=request.args.get('f','all');q=clean(request.args.get('q'),40)
     with conn() as db:rows=my_cases(db,me())
     if q:rows=[r for r in rows if q.lower() in (r['title']+' '+r['no']+' '+(r['name'] or '')+' '+r['body']).lower()]
-    groups={'all':rows,'open':[r for r in rows if is_open(r)],'done':[r for r in rows if r['status'] in ('answered','resolved')],
+    groups={'all':rows,'open':[r for r in rows if is_open(r)],'done':[r for r in rows if r['status'] in ('answered','resolved','closed','withdrawn')],
             'bad':[r for r in rows if r['status']=='unresolved' or core.overdue(r)],
             'ret':[r for r in rows if r['ret_status'] in ('guided','sent') or r['refund_status']=='requested']}
     if fil not in groups:fil='all'
@@ -162,11 +175,20 @@ def case(case_id):
     with conn() as db:
         c=my_case(db,case_id)
         if request.method=='POST':
-            act=request.form.get('act');open_=c['status'] not in ('resolved','unresolved')
+            act=request.form.get('act');open_=c['status'] not in core.FINAL
             if act=='ret_received' and c['ret_status'] in ('guided','sent'):
                 db.execute("UPDATE cases SET ret_status='received' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'co','반품 상품 회수를 확인했어요');notify_consumer(c,f'[{core.CNAME}] 보내신 상품이 도착했어요',f"{c['company_name']}이(가) 반품 상품 회수를 확인했어요.")
                 flash('회수 확인을 기록했어요','ok');return redirect(url_for('case',case_id=case_id))
+            if act=='out_ship' and c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking']:
+                courier=request.form.get('courier','');tracking=digits(request.form.get('tracking',''))
+                if (courier not in core.COURIERS and courier!='기타') or not 8<=len(tracking)<=20:flash('택배사와 송장번호를 확인해 주세요','error')
+                else:
+                    db.execute('UPDATE cases SET out_courier=?,out_tracking=? WHERE id=?',(courier,tracking,c['id']))
+                    core.add_event(db,c['id'],'co',f'새 상품을 보냈어요: {courier} {tracking}')
+                    notify_consumer(c,f'[{core.CNAME}] 새 상품을 보냈어요',f"{c['company_name']}이(가) 교환 상품을 보냈어요.\n{courier} 송장번호 {tracking}")
+                    flash('고객에게 송장번호를 알렸어요','ok')
+                return redirect(url_for('case',case_id=case_id))
             if act=='refund_done' and core.refund_case(c) and c['refund_status']!='done':
                 # 환불이 끝나면 계좌 정보는 더 둘 이유가 없으니 바로 지운다
                 db.execute("UPDATE cases SET refund_status='done',refund_bank='',refund_account='',refund_holder='' WHERE id=?",(c['id'],))
@@ -355,7 +377,7 @@ def ops_case(case_id):
         if not c:abort(404)
         if request.method=='POST':
             act=request.form.get('act')
-            if c['member'] or c['status'] in ('resolved','unresolved'):abort(400)
+            if c['member'] or c['status'] in core.FINAL:abort(400)
             if act=='attempt' and c['consent']:
                 ch=request.form.get('channel') if request.form.get('channel') in ('이메일','전화','1:1 문의','우편') else '이메일'
                 db.execute("UPDATE cases SET status='forwarded',attempts=attempts+1 WHERE id=?",(c['id'],))

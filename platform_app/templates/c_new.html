@@ -27,7 +27,7 @@
     <textarea class="inp" name="body" maxlength="3000" minlength="10" placeholder="언제, 무엇을 샀고, 어떤 문제가 있었는지" required>{{ d.body or '' }}</textarea>
     <input class="inp" name="order_no" maxlength="40" placeholder="주문번호 (선택)" value="{{ d.order_no or '' }}">
     <input class="inp" name="product" maxlength="60" placeholder="상품 이름 (선택)" value="{{ d.product or '' }}">
-    <label class="fld"><span>상품 받은 날 (선택 · 반품 기간 확인에 써요)</span><input class="inp" name="received_on" type="date" max="{{ today }}" value="{{ d.received_on or '' }}"></label>
+    <label class="fld"><span id="rcvLabel">상품 받은 날 (선택 · 반품 기간 확인에 써요)</span><input class="inp" id="rcvOn" name="received_on" type="date" max="{{ today }}" value="{{ d.received_on or '' }}"></label>
     <label class="filebox"><span class="cap" style="display:block;margin-bottom:8px">사진·PDF (선택, 3개까지)</span><input class="file-in" type="file" name="files" multiple accept="image/*,.pdf"></label>
   </div>
 </section>
@@ -85,6 +85,10 @@
   const sv=(id,v)=>{document.getElementById(id).textContent=v||'–';};
   function sum(){const fd=new FormData(form);sv('sCo',fd.get('company'));sv('sCat',fd.get('category'));sv('sTitle',fd.get('title'));sv('sWant',fd.get('want'));}
   form.addEventListener('input',sum);form.addEventListener('change',sum);sum();
+  // 교환·반품은 받은 날이 있어야 7일 기간을 확인하고 바로 처리할 수 있어 꼭 받는다
+  function rcv(){const c=new FormData(form).get('category'),need=c==='교환'||c==='반품·환불';const el=document.getElementById('rcvOn');el.required=need;
+    document.getElementById('rcvLabel').textContent=need?'상품 받은 날 (교환·반품 기간 확인에 꼭 필요해요)':'상품 받은 날 (선택 · 반품 기간 확인에 써요)';}
+  form.querySelectorAll('input[name=category]').forEach(r=>r.addEventListener('change',rcv));rcv();
   const first=steps.findIndex((s,k)=>!valid(k));show(first<0?last:first);
 })();
 </script>
