@@ -1021,7 +1021,6 @@ body:has(.cs2){background:var(--bg)}
 /* 기업별 고객센터: 위쪽은 소보루 크림빛, 유형 타일은 연주황 바탕 + 흰 아이콘 원 */
 /* 링크 페이지: 흰 바탕 + 메인 화면처럼 회색·연주황이 번갈아 드는 버튼 */
 body:has(.cs2),.cs2,.cs2 .cs-top{background:var(--card)}
-.cs2 .cs-card{padding-inline:4px}
 .cs2 .cs-tiles a{background:var(--bg);border-radius:24px}
 .cs2 .cs-tiles a:nth-child(even){background:var(--accent-soft)}
 .cs2 .cs-tiles a:hover{filter:brightness(.97)}
@@ -1038,3 +1037,10 @@ body:has(.cs2),.cs2,.cs2 .cs-top{background:var(--card)}
 .cs2 .cs-chat .cb-chips .pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .cs2 .cs-chat .cb-in input{background:var(--card);border:1px solid transparent}
 .cs2 .cs-chat .cb-in button{background:var(--accent);color:#fff}
+/* 링크 페이지 바탕: 아주 연한 아이보리 + 흰 카드 */
+body:has(.cs2),.cs2{background:#fbf8f3}
+.cs2 .cs-top{background:color-mix(in srgb,#fbf8f3 90%,transparent)}
+.cs2 .cs-card{background:var(--card);box-shadow:0 1px 3px rgba(120,80,20,.04),0 6px 20px rgba(120,80,20,.05)}
+.cs2 .cs-chat{padding:10px}
+.cs2 .cs-chat .cb{border-radius:18px}
+.cs2 .cs-cta{background:linear-gradient(to top,#fbf8f3 70%,rgba(251,248,243,0))}
