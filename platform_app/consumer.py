@@ -1,4 +1,4 @@
-"""소비자용 '소보루 CS 고객센터': 어느 기업이든 한곳에서 민원 접수·조회."""
+"""소비자용 '소보루 CS' 고객센터: 어느 기업이든 한곳에서 민원 접수·조회."""
 import os, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash

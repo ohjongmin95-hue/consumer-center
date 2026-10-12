@@ -3,7 +3,7 @@
 {% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
 {% block body %}
 <div class="narrow">
-<div class="phead"><div><h1>문구 고치기</h1><p>{{ CNAME }}와 {{ BNAME }} 화면의 문구를 바꾸거나 지웁니다. 저장하면 바로 반영되고, 언제든 원래 문구로 되돌릴 수 있습니다.</p></div></div>
+<div class="phead"><div><h1>문구 고치기</h1><p>고객용과 기업용 화면의 문구를 바꾸거나 지웁니다. 저장하면 바로 반영되고, 언제든 원래 문구로 되돌릴 수 있습니다.</p></div></div>
 
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="w" value="{{ site_f }}">
 <div class="ph">직접 입력해서 바꾸기</div>
