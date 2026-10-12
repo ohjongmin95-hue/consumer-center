@@ -957,3 +957,10 @@ body.v2 .foot2{padding-block:16px 18px;font-size:14px}
 .home-chat{max-width:640px}.home-chat .sub{margin:4px 0 16px}.home-chat .shead{margin-bottom:0}
 .bulk .btn{background:var(--card)}
 .forgot{margin-top:4px}.forgot summary{font-size:14px;color:var(--fg3);font-weight:500;justify-content:center}
+
+/* 소보루 비즈 홈: 고객센터 링크 바로 복사 */
+.linkbar{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:20px;padding:16px 16px 16px 24px;margin-bottom:28px}
+.linkbar .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.linkbar .tx b{font-size:15px}
+.linkbar .tx span{font-size:14px;color:var(--fg3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;user-select:all}
+@media (max-width:760px){.linkbar{flex-wrap:wrap;padding:18px}.linkbar .tx{flex-basis:100%}.linkbar .btn{flex:1}}

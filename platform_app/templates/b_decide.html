@@ -9,6 +9,8 @@
 <a href="{{ url_for('stats') }}"><span>해결률</span><b>{% if k.res is none %}–{% else %}{{ k.res }}%{% endif %}</b></a>
 {% if counts.ret %}<a href="{{ url_for('all_cases',f='ret') }}"><span>반품 회수 대기</span><b>{{ counts.ret }}</b></a>{% else %}<a href="{{ url_for('rules') }}"><span>자동 처리</span><b>{{ counts.auto }}<small>/6</small></b></a>{% endif %}
 </div>
+<div class="linkbar"><div class="tx"><b>우리 고객센터 링크</b><span id="hLink">{{ link }}</span></div><a class="btn md gray" href="{{ link }}" target="_blank" rel="noopener">열어 보기</a><button class="btn md" type="button" id="hCopy">링크 복사</button></div>
+<script>document.getElementById('hCopy').onclick=function(){var b=this,t=document.getElementById('hLink');(navigator.clipboard?navigator.clipboard.writeText(t.textContent):Promise.reject()).then(function(){b.textContent='복사했어요';setTimeout(function(){b.textContent='링크 복사';},2000);},function(){var r=document.createRange();r.selectNodeContents(t);getSelection().removeAllRanges();getSelection().addRange(r);b.textContent='선택했어요';});};</script>
 {% set groups=[] %}{% for cat in CATS %}{% set n=pend|selectattr('category','equalto',cat)|list|length %}{% if n>=2 %}{% set _=groups.append((cat,n)) %}{% endif %}{% endfor %}
 {% if groups %}<div class="bulk">{% for cat,n in groups %}<form method="post" action="{{ url_for('approve_many') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><button class="btn sm gray">{{ cat }} {{ n }}건 모두 승인</button></form>{% endfor %}</div>{% endif %}
 {% if pend %}<div class="cgrid">{% for c in pend %}{{ b.dcard(c) }}{% endfor %}</div>

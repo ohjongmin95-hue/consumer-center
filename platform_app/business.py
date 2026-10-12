@@ -150,7 +150,7 @@ def decide():
         warn=insights.alerts(db,me());news=db.execute('SELECT * FROM news ORDER BY id DESC LIMIT 3').fetchall()
     pend=[r for r in rows if is_pending(r)]
     counts={'all':len(rows),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows)}
-    return render_template('b_decide.html',pend=pend,recent=rows[:6],k=kpis(rows),counts=counts,cats=by_cat(rows),warn=warn,news=news,tab='home')
+    return render_template('b_decide.html',pend=pend,recent=rows[:6],k=kpis(rows),counts=counts,cats=by_cat(rows),warn=warn,news=news,link=core.site_url('me','/to/%d'%me()['id']),tab='home')
 
 @app.route('/approve_many',methods=['POST'])
 @login_required

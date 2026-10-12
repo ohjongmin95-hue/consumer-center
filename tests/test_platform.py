@@ -114,6 +114,7 @@ class PlatformTest(unittest.TestCase):
         self.post(b,'/biz/rules',{'category':'반품·환불','cond':'within7'})
         me=self.client()
         page=me.get(f'/to/{cid}').get_data(as_text=True);self.assertIn('id="cb"',page)
+        self.assertIn(f'/to/{cid}',b.get('/biz/').get_data(as_text=True))  # 기업 홈에서 바로 복사하는 고객센터 링크
         tok=re.search(r'data-csrf="([^"]+)"',page).group(1)
         j=me.post(f'/chat/{cid}',data={'csrf':tok,'text':'마음에 안 들어서 환불하고 싶어요'}).get_json()
         self.assertEqual((j['category'],j['faq'],j['auto'],j['cond'],j['ask_days']),('반품·환불','우리 회사 반품 안내예요.',True,'within7',True))
@@ -168,6 +169,7 @@ class PlatformTest(unittest.TestCase):
         # 첫 화면은 회사 찾기만 두고 상담창은 기업 페이지에서 (기업 없이 물으면 기본 문구)
         page=me.get('/').get_data(as_text=True);self.assertIn('id="hq"',page);self.assertNotIn('id="cb"',page)
         page=me.get(f'/to/{cid}').get_data(as_text=True);self.assertIn('id="cb"',page)
+        self.assertIn(f'/to/{cid}',b.get('/biz/').get_data(as_text=True))  # 기업 홈에서 바로 복사하는 고객센터 링크
         tok=re.search(r'data-csrf="([^"]+)"',page).group(1)
         j=me.post('/chat',data={'csrf':tok,'text':'택배가 아직 안 와요'}).get_json()
         self.assertEqual((j['category'],j['faq']),('배송 조회',self.core.CHAT_FAQ['배송 조회']))
