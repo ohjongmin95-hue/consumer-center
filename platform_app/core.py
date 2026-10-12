@@ -156,6 +156,8 @@ def init():
         CREATE TABLE IF NOT EXISTS chat_log(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,category TEXT NOT NULL,outcome TEXT NOT NULL,created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS app_push(case_id INTEGER NOT NULL,token TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(case_id,token),
           FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE);
+        CREATE TABLE IF NOT EXISTS biz_push(token TEXT PRIMARY KEY,company_id INTEGER NOT NULL,created TEXT NOT NULL,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
         ''')
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
         if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')
@@ -363,10 +365,16 @@ def notify_consumer(c,subject,text):
 def send_push(case_id,title,body):
     """소보루 CS 앱에서 이 민원을 열어 둔 휴대폰에 알림 (Expo 푸시). 앱을 안 쓰면 아무것도 안 한다."""
     with conn() as db:toks=[r[0] for r in db.execute('SELECT token FROM app_push WHERE case_id=?',(case_id,))]
+    expo_push(toks,title,body,{'case_id':case_id},'app_push')
+def send_biz_push(company_id,title,body,case_id):
+    """사장님 앱에 로그인해 둔 휴대폰에 알림 (새 민원 등). 누르면 그 민원 화면으로."""
+    with conn() as db:toks=[r[0] for r in db.execute('SELECT token FROM biz_push WHERE company_id=?',(company_id,))]
+    expo_push(toks,title,body,{'case_id':case_id},'biz_push')
+def expo_push(toks,title,body,data,table):
     if not toks or os.getenv('APP_PUSH','1')=='0':return
     def job():
         try:
-            msgs=[{'to':t,'title':title,'body':body,'sound':'default','data':{'case_id':case_id}} for t in toks]
+            msgs=[{'to':t,'title':title,'body':body,'sound':'default','data':data} for t in toks]
             req=urllib.request.Request('https://exp.host/--/api/v2/push/send',data=json.dumps(msgs).encode(),method='POST',headers={'Content-Type':'application/json','Accept':'application/json'})
             with urllib.request.urlopen(req,timeout=15) as r:res=json.loads(r.read().decode() or '{}')
             bad=[t for t,d in zip(toks,res.get('data',[])) if d.get('details',{}).get('error')=='DeviceNotRegistered']
@@ -374,7 +382,7 @@ def send_push(case_id,title,body):
         else:status='sent'
         try:
             with conn() as db:
-                db.executemany('DELETE FROM app_push WHERE token=?',[(t,) for t in bad])  # 앱을 지운 휴대폰
+                db.executemany(f'DELETE FROM {table} WHERE token=?',[(t,) for t in bad])  # 앱을 지운 휴대폰
                 db.execute('INSERT INTO mail_log(target,subject,status,created) VALUES(?,?,?,?)',('push:%d대'%len(toks),title,status,iso()))
         except sqlite3.OperationalError:pass  # 부른 쪽이 아직 쓰는 중이면 기록만 건너뛴다
     threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
@@ -384,6 +392,7 @@ def notify_company_new(co,c):
     send_mail(co['notify_email'],f"[{BNAME}] 새 민원: {c['title']}",
         f"{co['name']}에 새 민원이 들어왔습니다.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 처리 방법을 보고 승인해 주세요.\n{link}")
     if co['kakao']:send_kakao(co['phone'],{'#{회사}':short(co['name'],20),'#{유형}':c['category'],'#{요약}':short(c['title']),'#{링크}':link})
+    send_biz_push(co['id'],f"새 민원: {c['category']}",short(c['title']),c['id'])
 
 # ---------- 문구 고치기 (운영 화면 /ops/copy) ----------
 # 운영자가 화면 문구를 바꾸거나 지우면, 페이지를 내보내기 직전에 글자 부분(태그 사이 글자와 입력칸 안내 글)만 바꾼다.

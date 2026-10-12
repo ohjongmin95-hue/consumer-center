@@ -101,6 +101,40 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(r.get_json()['status'],'resolved')
         self.assertEqual(a.post(f'/api/v1/cases/{case_id}',headers=auth,json={'act':'ship','courier':'x','tracking':'1'}).status_code,200)  # 반품 안내가 없으면 그냥 무시
 
+    def test_biz_app_api(self):
+        """사장님 앱 API: 로그인 토큰으로 승인 대기 확인·승인·답변·알림 등록, 비밀번호를 바꾸면 토큰이 끊긴다."""
+        b,o,cid=self.signup_and_approve('사장앱상점','bizapp@example.com')
+        a=self.client()
+        self.assertEqual(a.post('/biz/api/v1/login',json={'login_id':'bizapp@example.com','password':'wrong-password'}).status_code,400)
+        j=a.post('/biz/api/v1/login',json={'login_id':'bizapp@example.com','password':'longpassword1'}).get_json()
+        tok=j['token'];auth={'Authorization':'Bearer '+tok};self.assertEqual(j['company']['id'],cid)
+        self.assertEqual(a.get('/biz/api/v1/home').status_code,401)
+        case_id=self.file_case(self.client(),'사장앱상점','교환',str(cid))
+        h=a.get('/biz/api/v1/home',headers=auth).get_json()
+        self.assertEqual([c['id'] for c in h['pending']],[case_id]);self.assertEqual(h['counts']['pending'],1)
+        d=a.get(f'/biz/api/v1/cases/{case_id}',headers=auth).get_json()
+        self.assertEqual(d['status'],'seen');self.assertTrue(d['can']['approve']);self.assertTrue(d['plan']['reply'])
+        other_b,_,other_cid=self.signup_and_approve('남의상점','other@example.com')
+        other=self.file_case(self.client(),'남의상점','기타',str(other_cid))
+        self.assertEqual(a.get(f'/biz/api/v1/cases/{other}',headers=auth).status_code,404)  # 다른 회사 민원은 못 연다
+        self.assertEqual(a.post(f'/biz/api/v1/cases/{case_id}',headers=auth,json={'act':'reply','msg':''}).status_code,400)
+        d=a.post(f'/biz/api/v1/cases/{case_id}',headers=auth,json={'act':'approve'}).get_json()
+        self.assertEqual(d['decision'],'approved');self.assertEqual(d['message'],'승인했습니다');self.assertFalse(d['can']['approve'])
+        self.assertEqual(a.post('/biz/api/v1/push',headers=auth,json={'push_token':'ExponentPushToken[biz1]'}).get_json(),{'ok':True})
+        sent=[]
+        class R:
+            def __init__(s,req):sent.append(req)
+            def read(s):return b'{"data":[{"status":"ok"}]}'
+            def __enter__(s):return s
+            def __exit__(s,*x):pass
+        with patch.object(self.core.urllib.request,'urlopen',lambda req,timeout=0:R(req)):
+            self.file_case(self.client(),'사장앱상점','기타',str(cid))
+        self.assertTrue(any(b'ExponentPushToken[biz1]' in q.data for q in sent if 'exp.host' in q.full_url))
+        a.post('/biz/api/v1/logout',headers=auth,json={'push_token':'ExponentPushToken[biz1]'})
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM biz_push').fetchone()[0],0)
+        with self.core.conn() as db:db.execute('UPDATE companies SET pw_hash=? WHERE id=?',(generate_password_hash('newpassword99'),cid))
+        self.assertEqual(a.get('/biz/api/v1/home',headers=auth).status_code,401)  # 비밀번호를 바꾸면 예전 토큰은 끊긴다
+
     def test_member_flow_pending_approve_and_rate(self):
         b,o,cid=self.signup_and_approve('달빛화장품','dalbit@example.com')
         me=self.client()
