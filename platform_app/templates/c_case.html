@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
-{% block title %}{{ c.title }} · {{ CNAME }}{% endblock %}
+{% block title %}{{ c.title }} · {{ BRAND }}{% endblock %}
 {% block bar %}{{ m.bar('mine') }}{% endblock %}
 {% block body %}
 {% set heads={'received':'접수했어요','forwarded':'기업에 전달했어요','seen':'기업이 확인하고 있어요','info':'추가 자료가 필요해요','answered':'답변이 도착했어요','resolved':'해결됐어요','unresolved':'아직 해결되지 않았어요'} %}

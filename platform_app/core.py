@@ -1,6 +1,6 @@
 """SOBORU 플랫폼 공통: DB, 처리 규칙(플레이북), 사건 처리 동작, 보안 도우미.
 
-소비자용(한큐)과 기업용(소보루 비즈)이 같은 DB의 같은 사건을 다룬다.
+소비자용(소보루 비즈 고객센터)과 기업용(소보루 비즈)이 같은 DB의 같은 사건을 다룬다.
 홈페이지(소비자제보센터, 저장소 최상위 app.py)와는 DB도 서비스도 따로 쓴다.
 """
 import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, threading, json, urllib.request, urllib.error
@@ -17,7 +17,7 @@ SECRET=os.getenv('SECRET_KEY') or secrets.token_hex(32)
 CONSUMER_HOST=os.getenv('CONSUMER_HOST','').strip().lower()
 BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
 PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'  # 시범 운영: 화면 위에 '실제 개인정보 넣지 마세요' 띠
-CNAME=os.getenv('CONSUMER_NAME','한큐')  # 소비자 서비스 이름 (로고·제목·메일)
+CNAME=os.getenv('CONSUMER_NAME','소보루 비즈 고객센터')  # 소비자 서비스 이름 (로고·제목·메일)
 BNAME=os.getenv('BUSINESS_NAME','소보루 비즈')  # 기업 서비스 이름
 # 개인정보 처리방침에 적는 운영 주체 (개인정보 보호법 제30조). 보호책임자는 대표자 (같은 법 제31조, 시행령 제32조제2항제2호가목)
 OPERATOR={'name':'소보루','ceo':'오규섭','biz_no':'129-14-81596','address':'서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)','manager':'오민주'}
