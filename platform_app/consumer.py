@@ -54,6 +54,10 @@ def new():
         with conn() as db:co=core.company(db,int(request.args['company_id']))
         if co and co['status'] in ('active','listed'):d.setdefault('company',co['name']);d.setdefault('company_id',co['id']);d['member']=core.active_member(co)
     elif request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
+    if request.args.get('body'):  # 상담창에서 쓴 문장을 그대로 이어 쓴다
+        body=clean(request.args['body'],3000);d.setdefault('body',body);d.setdefault('title',core.short(body.split('\n')[0],80))
+        want={'반품·환불':'환불','교환':'교환','배송 조회':'배송 확인','고객 응대':'사과·재발 방지'}.get(d.get('category'))
+        if want:d.setdefault('want',want)
     return render_template('c_new.html',d=d,today=datetime.date.today().isoformat())
 
 @app.route('/guide')
@@ -102,7 +106,7 @@ def submit():
             db.execute("UPDATE cases SET status='forwarded',due=?,decision='pending' WHERE id=?",(due,case_id))
             core.add_event(db,case_id,'sys',f"{co['name']} 담당 화면으로 전달했어요. 답변 목표일: {core.fmt_day(due)}")
             c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
-            if core.rule_for(db,co['id'],d['category'])['auto']:core.run_playbook(db,c,'auto')
+            if core.auto_ok(db,c):core.run_playbook(db,c,'auto')
             else:core.notify_company_new(co,c)
         elif member:core.add_event(db,case_id,'sys','기업 전달에 동의하지 않아 접수만 했어요.')
         else:core.add_event(db,case_id,'sys','비입점 기업이에요. 센터가 공식 연락처로 전달을 시도할게요.' if d['consent'] else '비입점 기업이고 전달 동의가 없어 접수만 했어요.')
@@ -173,6 +177,15 @@ def case(case_id):
                     co=core.company(db,c['company_id'])
                     if co:core.send_mail(co['notify_email'],f"[{core.BNAME}] 소비자가 반품 상품을 보냈어요: {c['title']}",f"{courier} 송장번호 {digits(tracking)}\n{core.site_url('biz','/case/%d'%c['id'])}")
                     flash('송장번호를 알렸어요','ok')
+            elif act=='refund' and core.refund_case(c) and c['refund_status']!='done':
+                bank=request.form.get('bank','');acct=digits(request.form.get('account',''));holder=clean(request.form.get('holder'),20)
+                if bank not in core.BANKS or not 8<=len(acct)<=16 or not holder:flash('은행, 계좌번호, 예금주를 확인해 주세요','error')
+                else:
+                    db.execute("UPDATE cases SET refund_bank=?,refund_account=?,refund_holder=?,refund_status='requested' WHERE id=?",(bank,acct,holder,c['id']))
+                    core.add_event(db,c['id'],'me',f'환불 받을 계좌를 등록했어요: {bank} {core.mask_account(acct)}')
+                    co=core.company(db,c['company_id'])
+                    if co:core.send_mail(co['notify_email'],f"[{core.BNAME}] 고객이 환불 계좌를 등록했어요: {c['title']}",f"{core.site_url('biz','/case/%d'%c['id'])}")
+                    flash('환불 계좌를 등록했어요','ok')
             elif act in ('info','add') and msg and c['status'] not in ('resolved','unresolved'):
                 err=core.files_ok(request.files.getlist('files'))
                 if err:flash(err,'error');return redirect(url_for('case',case_id=case_id))
@@ -211,6 +224,24 @@ def company_page(company_id):
     if not co or co['status'] not in ('active','listed'):abort(404)
     session['cs']=co['id']
     return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS)
+
+@app.route('/chat/<int:company_id>',methods=['POST'])
+def chat(company_id):
+    """상담창(자동응답): 고객 문장이나 고른 버튼 -> 유형과 그 기업의 안내 문구. 사람 손을 거치지 않는다."""
+    with conn() as db:co=core.company(db,company_id)
+    if not co or co['status'] not in ('active','listed'):abort(404)
+    if core.throttled('chat',limit=60,minutes=10):return jsonify(error='잠시 후 다시 시도해 주세요'),429
+    f=request.form
+    if f.get('outcome') in ('solved','filed') and f.get('category') in core.CATS:
+        with conn() as db:db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],f['category'],f['outcome'],core.iso()))
+        return jsonify(ok=True)
+    cat=f.get('category') if f.get('category') in core.CATS else core.classify(clean(f.get('text'),500))
+    if not cat:return jsonify(category=None)
+    member=core.active_member(co)
+    with conn() as db:
+        rule=core.rule_for(db,co['id'],cat) if member else {'auto':False,'cond':'','faq':core.CHAT_FAQ[cat]}
+        db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],cat,'asked',core.iso()))
+    return jsonify(category=cat,faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=member,ask_days=cat in ('교환','반품·환불'))
 
 @app.route('/case/<int:case_id>/file/<int:file_id>')
 def case_file(case_id,file_id):

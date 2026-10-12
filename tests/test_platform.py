@@ -55,6 +55,7 @@ class PlatformTest(unittest.TestCase):
         data={'company':company,'company_id':company_id,'category':cat,'title':extra.get('title','크림 용기가 깨져서 왔어요'),'body':'10월 7일 주문한 크림 용기가 깨져서 도착했어요.',
               'want':'교환','name':'김소비','phone':'010-1234-5678','password':'1234','privacy':'1'}
         if consent:data['consent']='1'
+        if extra.get('received_on'):data['received_on']=extra['received_on']
         r=self.post(c,'/submit',data,'/new')
         self.assertEqual(r.status_code,302,r.get_data(as_text=True)[:300])
         return int(r.headers['Location'].rstrip('/').split('/')[-1])
@@ -100,6 +101,42 @@ class PlatformTest(unittest.TestCase):
         self.post(me,f'/case/{case2}',{'act':'info','msg':'주문번호 A-1'})
         with self.core.conn() as db:c=db.execute('SELECT * FROM cases WHERE id=?',(case2,)).fetchone()
         self.assertEqual((c['status'],c['decision']),('seen','pending'))
+
+    def test_chat_and_conditional_auto(self):
+        import datetime
+        b,o,cid=self.signup_and_approve('상담창마켓','chat@example.com')
+        self.assertEqual(self.core.classify('주문한 게 아직 안 왔어요'),'배송 조회')
+        self.assertEqual(self.core.classify('깨져서 왔어요 환불해 주세요'),'제품 불량')
+        self.assertIsNone(self.core.classify('안녕하세요'))
+        self.post(b,'/biz/rules',{'category':'반품·환불','faq':'우리 회사 반품 안내예요.'})
+        self.post(b,'/biz/rules',{'category':'반품·환불','auto':'1'})
+        self.post(b,'/biz/rules',{'category':'반품·환불','cond':'within7'})
+        me=self.client()
+        page=me.get(f'/to/{cid}').get_data(as_text=True);self.assertIn('id="cb"',page)
+        tok=re.search(r'data-csrf="([^"]+)"',page).group(1)
+        j=me.post(f'/chat/{cid}',data={'csrf':tok,'text':'마음에 안 들어서 환불하고 싶어요'}).get_json()
+        self.assertEqual((j['category'],j['faq'],j['auto'],j['cond'],j['ask_days']),('반품·환불','우리 회사 반품 안내예요.',True,'within7',True))
+        self.assertIsNone(me.post(f'/chat/{cid}',data={'csrf':tok,'text':'안녕'}).get_json()['category'])
+        me.post(f'/chat/{cid}',data={'csrf':tok,'outcome':'solved','category':'반품·환불'})
+        self.assertIn('<dd>1</dd>',b.get('/biz/rules').get_data(as_text=True))
+        # 상담창에서 쓴 문장이 접수 화면에 이어진다
+        self.assertIn('환불하고 싶어요',me.get(f'/new?company_id={cid}&category=반품·환불&body=환불하고 싶어요').get_data(as_text=True))
+        # 조건: 받은 지 7일 이내만 자동 처리, 지났거나 모르면 승인 대기
+        today=datetime.date.today()
+        ok=self.file_case(me,'상담창마켓','반품·환불',company_id=str(cid),received_on=(today-datetime.timedelta(days=2)).isoformat())
+        late=self.file_case(me,'상담창마켓','반품·환불',company_id=str(cid),received_on=(today-datetime.timedelta(days=10)).isoformat())
+        none=self.file_case(me,'상담창마켓','반품·환불',company_id=str(cid))
+        with self.core.conn() as db:d={r['id']:r['decision'] for r in db.execute('SELECT id,decision FROM cases WHERE id IN (?,?,?)',(ok,late,none))}
+        self.assertEqual((d[ok],d[late],d[none]),('auto','pending','pending'))
+        # 환불 계좌: 고객이 등록 -> 기업이 보고 환불 완료 -> 계좌 정보는 지워진다
+        self.assertIn('환불 받을 계좌',me.get(f'/case/{ok}').get_data(as_text=True))
+        self.post(me,f'/case/{ok}',{'act':'refund','bank':'카카오뱅크','account':'3333-01-2345678','holder':'김소비'})
+        self.assertIn('*******5678',me.get(f'/case/{ok}').get_data(as_text=True))
+        self.assertIn('3333012345678',b.get(f'/biz/case/{ok}').get_data(as_text=True))
+        self.post(b,f'/biz/case/{ok}',{'act':'refund_done'})
+        with self.core.conn() as db:r=db.execute('SELECT refund_status,refund_account,refund_holder FROM cases WHERE id=?',(ok,)).fetchone()
+        self.assertEqual(tuple(r),('done','',''))
+        self.assertNotIn('3333012345678',b.get(f'/biz/case/{ok}').get_data(as_text=True))
 
     def test_non_member_ops_flow_and_lookup(self):
         me=self.client()
