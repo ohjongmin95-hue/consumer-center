@@ -1059,3 +1059,67 @@ body:has(.cs2),.cs2{background:#f5f3f0}
 .cs2 .cs-list>a:hover,.cs2 .cs-list summary:hover{background:#f8f6f3}
 .cs2 .cs-cta{background:linear-gradient(to top,#f5f3f0 70%,rgba(245,243,240,0))}
 .cs2 .cs-cta a,.cs2 .cs-cta .btn{border-radius:16px}
+/* 링크 페이지 v3: 위는 흰 바탕 + 큰 아이콘 버튼, 아래는 연회색 영역 + 흰 카드 */
+body:has(.cs3){background:var(--card)}
+.cs3{--band:#f6f7f9;--sq:#f2f4f6;background:var(--band);min-height:100vh;padding-top:0;padding-bottom:110px}
+.cs3 .cs-in{max-width:1000px;padding-inline:20px}
+.cs3 .cs-top{background:var(--card);border-bottom:1px solid var(--line);backdrop-filter:none}
+.cs3 .cs-top .cs-in{height:64px}
+.cs3 .cs-brand .ch{height:26px}.cs3 .cs-brand .wm{font-size:19px}
+.cs3-top{background:var(--card);padding-bottom:36px}
+.cs3 .cs-hero{padding:32px 0 28px}
+.cs3 .cs-hero h1{font-size:28px;line-height:1.38;font-weight:700;letter-spacing:-.045em}
+.cs3 .cs-sub{font-size:16px;color:var(--fg3);margin-top:10px}
+.cs3-h{font-size:20px;font-weight:700;letter-spacing:-.04em;margin:0 0 16px;color:var(--fg)}
+.cs3-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 12px}
+.cs3-grid a{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+.cs3-grid .sq{width:100%;max-width:96px;aspect-ratio:1;border-radius:26px;background:var(--sq);display:grid;place-items:center;transition:transform .12s,filter .15s}
+.cs3-grid a:nth-child(even) .sq{background:var(--accent-soft)}
+.cs3-grid a:hover .sq{filter:brightness(.97)}.cs3-grid a:active .sq{transform:scale(.95)}
+.cs3-grid .sq .ic{width:40px;height:40px}
+.cs3-grid b{font-size:15px;font-weight:500;color:var(--fg2);letter-spacing:-.03em}
+.cs3-band{padding:28px 0 0}
+.cs3-card{background:var(--card);border-radius:20px;box-shadow:0 2px 10px rgba(0,0,0,.05);display:block}
+.cs3 .cs-chat{padding:22px 20px;margin-bottom:36px}
+.cs3 .cb{background:none;padding:0;gap:12px}
+.cs3 .cb-m{font-size:16px;padding:12px 16px;border-radius:20px}
+.cs3 .cb-m.bot{background:var(--sq);color:var(--fg);border-top-left-radius:6px}
+.cs3 .cb-m.me{background:var(--accent);border-top-right-radius:6px}
+.cs3 .cb-chips{gap:8px}
+.cs3 .cb-chips button,.cs3 .cb-chips a{height:38px;padding:0 15px;border:1px solid var(--line);border-radius:19px;background:var(--card);color:var(--fg2);font-weight:600}
+.cs3 .cb-chips button:hover{border-color:var(--accent);color:var(--accent-ink)}
+.cs3 .cb-chips .pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.cs3 .cb-in{gap:8px;margin-top:4px}
+.cs3 .cb-in input{height:52px;border:0;border-radius:26px;background:var(--sq);padding:0 20px;font-size:16px}
+.cs3 .cb-in input:focus{outline:2px solid var(--accent);outline-offset:-2px}
+.cs3 .cb-in button{height:52px;border-radius:26px;background:var(--accent);color:#fff;padding:0 22px;font-size:16px}
+.cs3-more{display:grid;grid-template-columns:1fr;gap:10px}
+.cs3-more>.cs3-card,.cs3-more summary{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center;padding:18px 20px}
+.cs3-more details.cs3-card{padding:0}
+.cs3-more summary{list-style:none;cursor:pointer}.cs3-more summary::-webkit-details-marker{display:none}
+.cs3-more .cs-ic{grid-row:span 2;width:44px;height:44px;border-radius:14px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center}
+.cs3-more b{font-size:17px;font-weight:700;letter-spacing:-.03em;color:var(--fg)}
+.cs3-more small{font-size:14px;color:var(--fg3)}
+.cs3-more a.cs3-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.cs3 .cs-ret{margin:0 20px 18px;background:var(--sq)}
+.cs3 .cs-foot{border-top:0;margin-top:36px;padding:0 0 8px}
+.cs3 .cs-cta{background:linear-gradient(to top,var(--band) 70%,rgba(246,247,249,0));padding-inline:20px}
+.cs3 .cs-cta>div{max-width:360px}
+.cs3 .cs-cta .btn{height:56px;border-radius:28px;font-size:17px;font-weight:700;box-shadow:0 6px 18px rgba(248,155,0,.28)}
+@media (min-width:761px){
+  .cs3 .cs-in{padding-inline:32px}
+  .cs3 .cs-top .cs-in{height:72px}
+  .cs3 .cs-hero{padding:56px 0 40px}.cs3 .cs-hero h1{font-size:36px}
+  .cs3-top{padding-bottom:56px}
+  .cs3-h{font-size:24px;margin-bottom:22px}
+  .cs3-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+  .cs3-grid .sq{max-width:110px;border-radius:30px}
+  .cs3-grid .sq .ic{width:46px;height:46px}
+  .cs3-grid b{font-size:16px}
+  .cs3-band{padding-top:48px}
+  .cs3 .cs-chat{padding:28px;margin-bottom:48px}
+  .cs3-more{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+  .cs3-more>.cs3-card,.cs3-more summary{grid-template-columns:1fr;row-gap:4px;padding:24px}
+  .cs3-more .cs-ic{grid-row:auto;margin-bottom:10px}
+  .cs3 .cs-ret{margin:0 24px 24px}
+}
