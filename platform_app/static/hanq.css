@@ -175,7 +175,7 @@ form.inline{display:inline}
 .tbl{width:100%;border-collapse:collapse;font-size:15px}
 .tbl td,.tbl th{padding:12px 8px;text-align:left;border-top:1px solid var(--line)}
 .tbl th{color:var(--fg3);font-weight:500;border-top:0}
-.pilot{background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:500;text-align:center;padding:5px 16px}
+.pilot{background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:500;text-align:center;padding:7px 16px}
 .seg a{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;padding:7px 14px;font-size:14.5px;font-weight:500;color:var(--fg2);white-space:nowrap}
 .seg a.on{background:var(--card);color:var(--fg);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 @media (max-width:760px){.bizbar .seg a{flex:1}}
@@ -755,7 +755,7 @@ body.v2 main.pg.split>.wrap{width:100%}
 .bsplit .form h2{margin-bottom:32px}
 .foot-mini{padding-block:0 20px;font-size:13px;color:var(--fg3);text-align:center}
 @media (max-width:960px){.bsplit{height:auto;max-height:none;min-height:0}.bsplit .brand{padding:36px 24px 0}.bsplit .brand h1{font-size:34px}.bsplit .form{padding:36px 22px 40px}}
-body.v2:has(>.pilot) main.pg.split{min-height:calc(100vh - 30px);min-height:calc(100dvh - 30px)}
+body.v2:has(>.pilot) main.pg.split{min-height:calc(100vh - 34px);min-height:calc(100dvh - 34px)}
 /* ---------- 법 기준 · 응대 가이드 ---------- */
 .ph .btn.sm{margin-left:auto;height:34px;font-size:13.5px;padding:0 12px;border-radius:10px}
 .lawchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
@@ -1127,3 +1127,4 @@ body:has(.cs3){background:var(--card)}
 .cs3-more small{font-weight:400}
 .cs3-more>.cs3-card,.cs3-more summary{line-height:1.55}.cs3-more b,.cs3-more small{line-height:1.5}
 .cs3-more details.cs3-card{display:block}
+.cs3 .cs-top .cs-in{height:56px}@media (min-width:761px){.cs3 .cs-top .cs-in{height:64px}}
