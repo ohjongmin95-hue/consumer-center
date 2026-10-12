@@ -869,3 +869,44 @@ aside .kv{font-size:14.5px}
 .cs-foot img{height:44px;width:auto;flex:none}.cs-foot p{margin:0;line-height:1.6}.cs-foot a{text-decoration:underline}
 body.v2:has(main.cs) .pilot{position:relative}
 @media (min-width:761px){.cs-hero h1{font-size:34px}}
+/* 고객센터 PC: 왼쪽 회사 소개·진행 안내, 오른쪽 유형 선택 */
+.cs-pcbtn{display:none}
+@media (min-width:1000px){
+  .cs{padding:0 32px 64px}
+  .cs-in{max-width:1120px}
+  .cs-top{padding:28px 0}
+  .cs-brand img{height:30px}.cs-brand small{font-size:17px}
+  .cs-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);grid-template-areas:"hero cats" "more cats" "how cats";column-gap:56px;align-items:start;margin-top:24px}
+  .cs-hero{grid-area:hero;padding:24px 0 0}
+  .cs-hero h1{font-size:44px;line-height:1.3}
+  .cs-av{width:72px;height:72px;border-radius:22px;font-size:30px}
+  .cs-catsec{grid-area:cats;margin-top:0;background:var(--card);border-radius:32px;padding:36px;box-shadow:0 20px 60px rgba(25,31,40,.06)}
+  .cs-catsec h2{font-size:22px;margin:0 4px 20px}
+  .cs-catsec .cs-cats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0;background:none}
+  .cs-catsec .cs-cats a{flex-direction:column;align-items:flex-start;gap:14px;padding:22px;background:var(--bg);border-radius:22px;min-height:150px;position:relative}
+  .cs-catsec .cs-cats a:hover{background:var(--accent-soft)}
+  .cs-catsec .cs-cats .chev{position:absolute;top:28px;right:24px}
+  .cs-catsec .cs-cats .ic-wrap{background:var(--card)}
+  .cs-catsec .tx b{font-size:18px}.cs-catsec .tx small{font-size:14px;margin-top:2px}
+  .cs-pcbtn{display:flex;margin-top:16px;background:var(--fill);color:var(--fg2)}
+  .cs-pcbtn:hover{background:var(--fill2)}
+  .cs-more{grid-area:more;margin-top:32px}
+  .cs-how{grid-area:how}
+  .cs-cta{display:none}
+  .cs-foot{margin-top:56px;justify-content:center}
+}
+/* 진행 안내를 카드 안으로, PC에서 두 열 위아래 끝 맞춤 */
+.cs-how .box{background:var(--card);border-radius:24px;padding:22px 20px 24px}
+.cs-how .box h2{margin:0 0 18px;font-size:16px}
+.cs-how ol{padding:0;background:none;border-radius:0}
+@media (min-width:1000px){
+  .cs-grid{row-gap:16px;margin-top:8px}
+  .cs-hero{padding:0;align-self:start}
+  .cs-more{margin-top:20px}
+  .cs-how{margin-top:0}
+  .cs-catsec{align-self:stretch;display:flex;flex-direction:column;padding:32px}
+  .cs-catsec h2{margin:0 4px 18px}
+  .cs-catsec .cs-cats{flex:1;grid-auto-rows:1fr}
+  .cs-catsec .cs-cats a{min-height:0;justify-content:flex-end}
+  .cs-catsec .cs-cats .ic-wrap{margin-bottom:auto}
+}

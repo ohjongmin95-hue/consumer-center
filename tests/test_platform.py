@@ -242,6 +242,7 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('출처 보기',b.get('/biz/news').get_data(as_text=True))
         r=self.post(o,'/biz/ops/news',{'title':'출처 없음','body':'내용','source_url':''},'/biz/ops/news')
         self.assertNotIn('출처 없음',b.get('/biz/news').get_data(as_text=True))
+        self.assertIn('soboru-favicon.png',self.client().get(f'/to/{cid}').get_data(as_text=True))  # 고객센터 탭 아이콘은 캐릭터
         # 화면 점검: 제목 칸에 화면 내용이 섞이거나 템플릿 문법이 그대로 보이면 안 된다
         for path in ['/biz/','/biz/all','/biz/stats','/biz/report','/biz/guide','/biz/new','/biz/news','/biz/settings','/biz/rules',f'/biz/case/{case_id}',f'/biz/case/{case_id}/record']:
             page=b.get(path).get_data(as_text=True)
