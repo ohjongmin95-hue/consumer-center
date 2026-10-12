@@ -1394,12 +1394,4 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
   .ft-info { font-size: 12.5px; }
   .ft-row { gap: 0 14px; }
 }
-.site-footer { text-align: left; }
-/* 넓은 화면: 로고는 왼쪽·링크는 오른쪽, 사업자 정보는 한 줄로 펼치고 저작권은 오른쪽 끝 */
-@media (min-width: 761px) {
-  .ft-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0 24px; }
-  .ft-top { grid-column: 1 / -1; justify-content: space-between; }
-  .ft-info { display: flex; flex-wrap: wrap; gap: 0 24px; }
-  .ft-bottom { margin-top: 0; text-align: right; }
-}
-@media (max-width: 760px) { .ft-top { justify-content: flex-start; } }
+.site-footer { text-align: left; } .ft-top { justify-content: flex-start; }
