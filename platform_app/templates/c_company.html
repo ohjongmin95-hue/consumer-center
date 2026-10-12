@@ -1,31 +1,26 @@
 {% extends 'base.html' %}{% import '_i.html' as i %}
-{% block title %}{{ co.name }} 고객센터 · {{ CNAME }}{% endblock %}
+{% block title %}{{ co.name }} · 소보루 비즈 고객센터{% endblock %}
 {% block description %}{{ co.name }}에 배송·교환·환불·불량 문의를 바로 접수하고 답변까지 확인해요.{% endblock %}
 {% block bar %}{% endblock %}
 {% block main %}
 <main class="cs">
 <div class="cs-in">
-<header class="cs-top"><span class="cs-brand"><img src="{{ url_for('static',filename='soboru-logo.png') }}" alt="SOBORU" width="507" height="120"><small>고객센터</small></span>
+<header class="cs-top"><span class="cs-brand"><img src="{{ url_for('static',filename='soboru-logo.png') }}" alt="SOBORU" width="507" height="120"><small>비즈 고객센터</small></span>
 <a href="{{ url_for('mine') }}" class="cs-mine">내 접수{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a></header>
-<div class="cs-grid">
 <section class="cs-hero">
-<span class="cs-av">{{ co.name[:1] }}</span>
-<h1>{{ co.name }}<br><em>무엇을 도와드릴까요?</em></h1>
+<div class="cs-co"><span class="cs-av">{{ co.name[:1] }}</span><b>{{ co.name }}</b></div>
+<h1>무엇을 도와드릴까요?</h1>
 {% if member %}<p class="cs-promise"><span class="dot"></span>담당자에게 바로 전달돼요 · 답변 목표 {{ REPLY_DAYS }}일</p>
 {% else %}<p class="cs-promise gray"><span class="dot"></span>{{ CNAME }}가 {{ co.name }}의 공식 연락처로 전달해 드려요</p>{% endif %}
 </section>
-<section class="cs-sec cs-catsec"><h2>어떤 일인가요?</h2>
-<div class="cs-cats">{% for cat,sub in [('배송 조회','배송이 안 오거나 늦어요'),('교환','사이즈·색상을 바꾸고 싶어요'),('반품·환불','돌려보내고 환불받고 싶어요'),('제품 불량','고장 나거나 망가져서 왔어요'),('고객 응대','응대가 불편했어요'),('기타','그 밖의 문의')] %}
-<a href="{{ url_for('new',company_id=co.id,category=cat) }}"><span class="ic-wrap">{{ i.cat_icon(cat,30) }}</span><span class="tx"><b>{{ cat }}</b><small>{{ sub }}</small></span><span class="chev"></span></a>{% endfor %}</div>
-<a class="btn full cs-pcbtn" href="{{ url_for('new',company_id=co.id) }}">유형 고르지 않고 바로 접수하기</a></section>
-<section class="cs-sec cs-more"><div class="cs-rows">
-<a href="{{ url_for('mine') }}"><span class="ic-wrap sm">{{ i.icon('search',24) }}</span><span class="tx"><b>내 접수 확인하기</b><small>휴대폰 번호와 조회 비밀번호로 진행 상황을 봐요</small></span><span class="chev"></span></a>
-{% if co.contact %}<div class="row"><span class="ic-wrap sm">{{ i.icon('phone',24) }}</span><span class="tx"><b>고객센터 <span style="user-select:all">{{ co.contact }}</span></b><small>전화로 직접 문의할 수도 있어요</small></span></div>{% endif %}
-{% if ret %}<details><summary><span class="ic-wrap sm">{{ i.icon('truck',24) }}</span><span class="tx"><b>반품 보내실 곳</b><small>접수 후 안내에 따라 보내 주세요</small></span><span class="chev"></span></summary><div class="cs-ret">{{ ret }}</div></details>{% endif %}
-</div></section>
-<section class="cs-how"><div class="box"><h2>접수하면 이렇게 진행돼요</h2>
-<ol><li><b>접수</b><span>1분이면 끝나요</span></li><li><b>{{ '담당자 확인' if member else '센터 전달' }}</b><span>{{ '바로 전달돼요' if member else '공식 연락처로 보내요' }}</span></li><li><b>답변·조치</b><span>알림으로 알려 드려요</span></li></ol></div></section>
-</div>
+<section class="cs-cats" aria-label="문의 유형">{% for cat,sub in [('배송 조회','배송이 안 오거나 늦어요'),('교환','사이즈·색상을 바꾸고 싶어요'),('반품·환불','돌려보내고 환불받고 싶어요'),('제품 불량','고장 나거나 망가져서 왔어요'),('고객 응대','응대가 불편했어요'),('기타','그 밖의 문의')] %}
+<a href="{{ url_for('new',company_id=co.id,category=cat) }}"><span class="ic-wrap">{{ i.cat_icon(cat,28) }}</span><span class="tx"><b>{{ cat }}</b><small>{{ sub }}</small></span><span class="chev"></span></a>{% endfor %}</section>
+<a class="cs-any" href="{{ url_for('new',company_id=co.id) }}">유형 고르지 않고 바로 접수하기<span class="chev"></span></a>
+<section class="cs-rows" aria-label="그 밖의 도움">
+<a href="{{ url_for('mine') }}"><span class="ic-wrap sm">{{ i.icon('search',22) }}</span><span class="tx"><b>내 접수 확인</b><small>진행 상황과 답변을 봐요</small></span><span class="chev"></span></a>
+{% if co.contact %}<div class="row"><span class="ic-wrap sm">{{ i.icon('phone',22) }}</span><span class="tx"><b style="user-select:all">{{ co.contact }}</b><small>전화로 문의할 수도 있어요</small></span></div>{% endif %}
+{% if ret %}<details><summary><span class="ic-wrap sm">{{ i.icon('truck',22) }}</span><span class="tx"><b>반품 보내실 곳</b><small>접수 후 안내에 따라 보내 주세요</small></span><span class="chev"></span></summary><div class="cs-ret">{{ ret }}</div></details>{% endif %}
+</section>
 <div class="cs-cta"><a class="btn full" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a></div>
 <footer class="cs-foot"><img src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96"><p>SOBORU가 접수부터 해결까지 기록해 드려요<br><a href="{{ url_for('privacy') }}">개인정보 처리방침</a> · <a href="{{ url_for('guide') }}">이용 안내</a></p></footer>
 </div></main>
