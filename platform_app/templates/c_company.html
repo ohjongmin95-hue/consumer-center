@@ -13,7 +13,7 @@
 {% else %}<p class="cs-sub">{{ CNAME }}가 {{ co.name }}의 공식 연락처로 전달해 드려요</p>{% endif %}
 </section>
 <section class="cs3-cats"><h2 class="cs3-h">직접 골라서 접수하기</h2>
-<div class="cs3-grid">{% for cat,sub in [('배송 조회','배송이 안 오거나 늦어요'),('교환','사이즈·색상을 바꾸고 싶어요'),('반품·환불','돌려보내고 환불받고 싶어요'),('제품 불량','고장 나거나 망가져서 왔어요'),('고객 응대','응대가 불편했어요'),('기타','그 밖의 문의')] %}
+<div class="cs3-grid">{% for cat,sub in CAT_HINT.items() %}
 <a href="{{ url_for('new',company_id=co.id,category=cat) }}" title="{{ sub }}"><span class="sq">{{ i.cat_icon(cat,40) }}</span><b>{{ cat }}</b></a>{% endfor %}</div>
 </section>
 </div></div>

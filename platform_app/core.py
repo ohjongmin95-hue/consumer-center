@@ -37,6 +37,8 @@ def robots_txt(kind,disallow):
 MAIL_ASYNC=True  # 테스트에서는 False
 
 CATS=['배송 조회','교환','반품·환불','제품 불량','고객 응대','기타']
+CAT_HINT={'배송 조회':'배송이 안 오거나 늦어요','교환':'사이즈·색상을 바꾸고 싶어요','반품·환불':'돌려보내고 환불받고 싶어요',
+          '제품 불량':'고장 나거나 망가져서 왔어요','고객 응대':'응대가 불편했어요','기타':'그 밖의 문의'}
 WANTS=['교환','환불','배송 확인','사과·재발 방지','수리·A/S','기타']
 # 유형별 추천 조치. 승인(또는 자동 처리)하면 steps를 차례로 기록하고 reply를 소비자에게 보낸다.
 # 기업은 자동 처리 규칙 화면에서 reply 문구를 자기 회사 말로 바꿀 수 있다.
@@ -152,6 +154,8 @@ def init():
         CREATE TABLE IF NOT EXISTS sent_marks(kind TEXT NOT NULL,company_id INTEGER NOT NULL,key TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(kind,company_id,key));
         CREATE TABLE IF NOT EXISTS copy_edits(id INTEGER PRIMARY KEY,site TEXT NOT NULL,src TEXT NOT NULL,dst TEXT NOT NULL,created TEXT NOT NULL,UNIQUE(site,src));
         CREATE TABLE IF NOT EXISTS chat_log(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,category TEXT NOT NULL,outcome TEXT NOT NULL,created TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS app_push(case_id INTEGER NOT NULL,token TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(case_id,token),
+          FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE);
         ''')
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
         if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')
@@ -201,7 +205,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,CAT_HINT=CAT_HINT,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
@@ -355,6 +359,25 @@ def notify_consumer(c,subject,text):
     if is_direct(c):return  # 직접 등록한 민원은 기업이 원래 채널로 전한다
     send_mail(c['email'],subject,f"{text}\n\n■ 접수번호: {c['no']}\n■ 요약: {c['title']}\n\n{site_url('me','/mine')}")
     send_kakao(c['phone'],{'#{회사}':short(c['company_name'],20),'#{내용}':short(text.split('\n')[0],40),'#{접수번호}':c['no'],'#{링크}':site_url('me','/mine')},'CS_KAKAO_TPL_REPLY','소비자 알림톡')
+    send_push(c['id'],c['company_name'],text.split('\n')[0])
+def send_push(case_id,title,body):
+    """소보루 CS 앱에서 이 민원을 열어 둔 휴대폰에 알림 (Expo 푸시). 앱을 안 쓰면 아무것도 안 한다."""
+    with conn() as db:toks=[r[0] for r in db.execute('SELECT token FROM app_push WHERE case_id=?',(case_id,))]
+    if not toks or os.getenv('APP_PUSH','1')=='0':return
+    def job():
+        try:
+            msgs=[{'to':t,'title':title,'body':body,'sound':'default','data':{'case_id':case_id}} for t in toks]
+            req=urllib.request.Request('https://exp.host/--/api/v2/push/send',data=json.dumps(msgs).encode(),method='POST',headers={'Content-Type':'application/json','Accept':'application/json'})
+            with urllib.request.urlopen(req,timeout=15) as r:res=json.loads(r.read().decode() or '{}')
+            bad=[t for t,d in zip(toks,res.get('data',[])) if d.get('details',{}).get('error')=='DeviceNotRegistered']
+        except Exception as e:bad,status=[],'failed: '+type(e).__name__
+        else:status='sent'
+        try:
+            with conn() as db:
+                db.executemany('DELETE FROM app_push WHERE token=?',[(t,) for t in bad])  # 앱을 지운 휴대폰
+                db.execute('INSERT INTO mail_log(target,subject,status,created) VALUES(?,?,?,?)',('push:%d대'%len(toks),title,status,iso()))
+        except sqlite3.OperationalError:pass  # 부른 쪽이 아직 쓰는 중이면 기록만 건너뛴다
+    threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
 def notify_company_new(co,c):
     """입점 기업에 새 민원 알림: 이메일, 그리고 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
     link=site_url('biz','/case/%d'%c['id'])
