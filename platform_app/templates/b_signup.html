@@ -2,8 +2,8 @@
 {% block title %}가입 · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('signup') }}{% endblock %}
 {% block body %}
-<div class="signup"><div class="pitch"><h1>우리 회사 민원,<br><em>한 곳에서</em> 관리하세요</h1><p>소비자가 {{ CNAME }}에 접수한 우리 회사 민원을 한 화면에서 승인하고 처리해요.</p>
-<div class="feats">{% for ic,t,s in [('approve','원클릭 승인','요약과 추천 조치를 보고 승인, 보류, 자료 요청 중 하나만 고르면 돼요'),('bolt','자동 처리','배송 조회·교환·반품처럼 정해진 유형은 접수 즉시 처리해요'),('chart','한눈에 현황','처리율, 해결률, 답변 지연을 바로 확인해요')] %}
+<div class="signup"><div class="pitch"><h1>우리 회사 민원,<br><em>한 곳에서</em> 관리하세요</h1><p>소비자가 {{ CNAME }}에 접수한 우리 회사 민원을 한 화면에서 승인하고 처리합니다.</p>
+<div class="feats">{% for ic,t,s in [('approve','원클릭 승인','요약과 처리 방법을 보고 승인, 보류, 자료 요청 중 하나만 고르면 됩니다'),('bolt','자동 처리','배송 조회·교환·반품처럼 정해진 유형은 접수 즉시 처리합니다'),('chart','한눈에 현황','처리율, 해결률, 기한 지난 민원을 바로 확인합니다')] %}
 <div>{{ i.icon(ic,40) }}<b>{{ t }}</b><span>{{ s }}</span></div>{% endfor %}</div></div>
 <form method="post" class="panel stack" style="gap:14px"><div class="ph">가입 신청</div><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <label class="fld"><span>회사 이름</span><input class="inp" name="name" maxlength="40" value="{{ d.name or '' }}" required></label>
@@ -14,7 +14,7 @@
 <label class="fld"><span>업종 (선택)</span><select class="inp" name="industry"><option value="">고르기</option>{% for x in INDUSTRIES %}<option {{ 'selected' if d.industry==x }}>{{ x }}</option>{% endfor %}</select></label>
 <label class="fld"><span>로그인 이메일</span><input class="inp" name="login_id" type="email" maxlength="80" value="{{ d.login_id or '' }}" required autocomplete="username"></label>
 <label class="fld"><span>비밀번호 (10자 이상)</span><input class="inp" name="password" type="password" minlength="10" required autocomplete="new-password"></label>
-<div class="agree"><label class="check"><input type="checkbox" name="terms" value="1" required><span class="bx"></span><span><b>이용약관 동의 (필수)</b><div class="cap">민원 처리 결과와 무관하게 보도는 독립적으로 이뤄져요</div></span></label></div>
+<div class="agree"><label class="check"><input type="checkbox" name="terms" value="1" required><span class="bx"></span><span><b>이용약관 동의 (필수)</b><div class="cap">민원 처리 결과와 무관하게 보도는 독립적으로 이루어집니다</div></span></label></div>
 <button class="btn full" style="margin-top:8px">가입 신청</button>
-<p class="cap" style="text-align:center;margin-top:8px">이미 가입했나요? <a class="link" href="{{ url_for('login') }}">로그인</a></p></form></div>
+<p class="cap" style="text-align:center;margin-top:8px">이미 가입하셨나요? <a class="link" href="{{ url_for('login') }}">로그인</a></p></form></div>
 {% endblock %}

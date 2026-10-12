@@ -38,7 +38,7 @@ class PlatformTest(unittest.TestCase):
     def signup_and_approve(self,name,email):
         b=self.client()
         r=self.post(b,'/biz/signup',{'name':name,'biz_no':'123-45-67890','owner_name':'대표','phone':'010-1111-2222','contact':'1588-0000','login_id':email,'password':'longpassword1','terms':'1'})
-        self.assertIn('가입 신청했어요',r.get_data(as_text=True))
+        self.assertIn('가입 신청했습니다',r.get_data(as_text=True))
         r=self.post(b,'/biz/login',{'login_id':email,'password':'longpassword1'})
         self.assertIn('승인을 기다리고',r.get_data(as_text=True))
         o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
@@ -114,6 +114,7 @@ class PlatformTest(unittest.TestCase):
         self.post(b,'/biz/rules',{'category':'반품·환불','cond':'within7'})
         me=self.client()
         page=me.get(f'/to/{cid}').get_data(as_text=True);self.assertIn('id="cb"',page)
+        self.assertIn(f'/to/{cid}',b.get('/biz/').get_data(as_text=True))  # 기업 홈에서 바로 복사하는 고객센터 링크
         tok=re.search(r'data-csrf="([^"]+)"',page).group(1)
         j=me.post(f'/chat/{cid}',data={'csrf':tok,'text':'마음에 안 들어서 환불하고 싶어요'}).get_json()
         self.assertEqual((j['category'],j['faq'],j['auto'],j['cond'],j['ask_days']),('반품·환불','우리 회사 반품 안내예요.',True,'within7',True))
@@ -168,9 +169,27 @@ class PlatformTest(unittest.TestCase):
         # 첫 화면은 회사 찾기만 두고 상담창은 기업 페이지에서 (기업 없이 물으면 기본 문구)
         page=me.get('/').get_data(as_text=True);self.assertIn('id="hq"',page);self.assertNotIn('id="cb"',page)
         page=me.get(f'/to/{cid}').get_data(as_text=True);self.assertIn('id="cb"',page)
+        self.assertIn(f'/to/{cid}',b.get('/biz/').get_data(as_text=True))  # 기업 홈에서 바로 복사하는 고객센터 링크
         tok=re.search(r'data-csrf="([^"]+)"',page).group(1)
         j=me.post('/chat',data={'csrf':tok,'text':'택배가 아직 안 와요'}).get_json()
         self.assertEqual((j['category'],j['faq']),('배송 조회',self.core.CHAT_FAQ['배송 조회']))
+
+    def test_copy_edits_from_ops(self):
+        o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+        page=o.get('/biz/ops/copy?q=접수하기').get_data(as_text=True);self.assertIn('접수하기',page)
+        me=self.client();self.assertIn('>접수하기<',me.get('/').get_data(as_text=True))
+        self.post(o,'/biz/ops/copy',{'site':'me','src':'접수하기','dst':'문의 남기기'})
+        home=me.get('/').get_data(as_text=True);self.assertIn('>문의 남기기<',home);self.assertNotIn('>접수하기<',home)
+        self.assertNotIn('문의 남기기',self.client().get('/biz/login').get_data(as_text=True))  # 기업용에는 적용 안 됨
+        self.post(o,'/biz/ops/copy',{'site':'all','src':'시범 운영 중','act':'hide'})
+        self.assertNotIn('시범 운영 중',me.get('/').get_data(as_text=True))
+        self.assertIn('시범 운영 중',o.get('/biz/ops/copy').get_data(as_text=True))  # 운영 화면은 그대로
+        with self.core.conn() as db:ids=[r[0] for r in db.execute('SELECT id FROM copy_edits')]
+        for i in ids:self.post(o,'/biz/ops/copy',{'act':'restore','id':i})
+        self.assertIn('>접수하기<',me.get('/').get_data(as_text=True))
+        self.post(o,'/biz/ops/copy',{'site':'me','src':'접수하기','dst':'<b>x</b>'})
+        self.assertIn('&lt;b&gt;x&lt;/b&gt;',me.get('/').get_data(as_text=True))  # 고친 문구는 글자로만 들어감
+        with self.core.conn() as db:db.execute('DELETE FROM copy_edits')
 
     def test_password_links_and_consumer_kakao(self):
         sent=[];kakao=[]
@@ -217,7 +236,7 @@ class PlatformTest(unittest.TestCase):
         me=self.client();case_id=self.file_case(me,'갑회사','교환',str(cid1))
         self.assertEqual(b2.get(f'/biz/case/{case_id}').status_code,404)
         home=self.client().get('/biz/');self.assertEqual(home.status_code,200);page=home.get_data(as_text=True)
-        self.assertIn('승인 한 번으로',page);self.assertIn('소보루 비즈 로그인',page);self.assertNotIn('noindex',page)
+        self.assertIn('승인 한 번으로',page);self.assertIn('소보루 CS 로그인',page);self.assertNotIn('noindex',page)
         self.assertEqual(self.client().get('/biz/all').status_code,302)
         self.assertEqual(self.client().get('/biz/ops').status_code,302)
         # CSRF 없는 요청은 거절
@@ -238,7 +257,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(me.get('/to/99999').status_code,404)
         self.assertIn('value="바른가전"',me.get(f'/new?company_id={cid}').get_data(as_text=True))
         page=b.get('/biz/settings').get_data(as_text=True)
-        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 비즈',page);self.assertIn('soboru-logo.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
+        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 CS',page);self.assertIn('soboru-char.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
         case_id=self.file_case(me,'바른가전','교환',str(cid),title='세탁기 소음')
         self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
         # 답변 목표일이 지나면 한 번만 지연 알림

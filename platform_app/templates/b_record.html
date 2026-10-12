@@ -35,5 +35,5 @@ table{width:100%;border-collapse:collapse}th,td{border:1px solid var(--line);pad
 <table class="tl">{% for e in ev %}<tr><td>{{ e.created[:16] }}</td><td>{{ {'me':'고객','co':'회사','sys':'시스템'}[e.kind] }} · {{ e.text }}{% if e.reply %}<div class="r">{{ e.reply }}</div>{% endif %}</td></tr>{% endfor %}</table>
 <h2>참고한 법 조항</h2>
 {% for l in laws %}<div class="law"><b>{{ l.label }} ({{ l.title }})</b>{% for p in l.paras %}<p>{% if p.n %}{{ p.n }} {% endif %}{{ p.text }}</p>{% if p['items'] %}<ol>{% for it in p['items'] %}<li value="{{ it.n|int if it.n.isdigit() else loop.index }}">{{ it.text }}</li>{% endfor %}</ol>{% endif %}{% endfor %}<div class="s">{{ l.law }} ({{ l.kind }} 제{{ l.no }}호, {{ l.effective }} 시행) · 출처 국가법령정보센터</div></div>{% endfor %}
-<div class="foot">{{ BNAME }}에서 만든 기록이에요. 내용은 출력 시점 기준이며, 법 조항은 국가법령정보센터 원문을 그대로 옮겼어요.</div>
+<div class="foot">{{ BNAME }}에서 만든 기록입니다. 내용은 출력 시점 기준이며, 법 조항은 국가법령정보센터 원문을 그대로 옮겼습니다.</div>
 </div></body></html>

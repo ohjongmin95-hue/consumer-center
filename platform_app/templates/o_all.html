@@ -3,5 +3,5 @@
 {% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
 {% block body %}
 <div class="phead"><div><h1>전체 현황</h1><p>입점·비입점 전체 접수</p></div></div>{{ b.kpis(k) }}
-{% if rows %}{{ b.case_table(rows,m,'ops_case',True) }}{% else %}<div class="empty-card"><b>아직 접수가 없어요</b></div>{% endif %}
+{% if rows %}{{ b.case_table(rows,m,'ops_case',True) }}{% else %}<div class="empty-card"><b>아직 접수가 없습니다</b></div>{% endif %}
 {% endblock %}

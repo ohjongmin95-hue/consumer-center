@@ -2,7 +2,7 @@
 
 주소(도메인)로 서비스를 나눈다.
   CONSUMER_HOST (예: hanq.example.kr)    → 한큐 (consumer.py)
-  BUSINESS_HOST (예: business.example.kr) → 소보루 비즈 + /ops (business.py)
+  BUSINESS_HOST (예: business.example.kr) → 소보루 CS + /ops (business.py)
 주소 설정이 없으면(개발·테스트) /biz 아래를 기업용으로 쓴다.
 """
 import os, datetime

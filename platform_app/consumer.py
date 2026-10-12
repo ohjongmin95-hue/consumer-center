@@ -1,9 +1,9 @@
-"""소비자용 '소보루 비즈 고객센터': 어느 기업이든 한곳에서 민원 접수·조회."""
+"""소비자용 '소보루 CS 고객센터': 어느 기업이든 한곳에서 민원 접수·조회."""
 import os, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 import core, law
-from core import conn, clean, digits
+from core import conn, clean, digits, BIG
 from markupsafe import escape
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -11,6 +11,7 @@ app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='me')
 
 @app.before_request
 def guard():core.check_csrf()
+app.after_request(core.copy_after_request('me'))  # 운영 화면에서 고친 문구 적용
 
 def my_ids():return set(session.get('mine',[]))
 def remember(*ids):session['mine']=sorted(my_ids()|set(ids))[-50:]
@@ -55,7 +56,7 @@ def new():
         if co and co['status'] in ('active','listed'):d.setdefault('company',co['name']);d.setdefault('company_id',co['id']);d['member']=core.active_member(co)
     elif request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
     if request.args.get('body'):  # 상담창에서 쓴 문장을 그대로 이어 쓴다
-        body=clean(request.args['body'],3000);d.setdefault('body',body);d.setdefault('title',core.short(body.split('\n')[0],80))
+        body=clean(request.args['body'],BIG);d.setdefault('body',body);d.setdefault('title',core.short(body.split('\n')[0],80))
         want={'반품·환불':'환불','교환':'교환','배송 조회':'배송 확인','고객 응대':'사과·재발 방지'}.get(d.get('category'))
         if want:d.setdefault('want',want)
     return render_template('c_new.html',d=d,today=datetime.date.today().isoformat())
@@ -69,7 +70,7 @@ def companies():return jsonify(core.search_companies(request.args.get('q','')[:4
 @app.route('/submit',methods=['POST'])
 def submit():
     f=request.form;ups=request.files.getlist('files')
-    d={k:clean(f.get(k),n) for k,n in (('company',60),('category',20),('title',80),('body',3000),('want',20),('order_no',40),('name',20),('phone',20),('email',80),('product',60),('received_on',10))}
+    d={k:clean(f.get(k),n) for k,n in (('company',60),('category',20),('title',BIG),('body',BIG),('want',20),('order_no',40),('name',20),('phone',20),('email',80),('product',60),('received_on',10))}
     d['consent']=f.get('consent')=='1'
     pw=f.get('password','');err=''
     if not d['company']:err='기업 이름을 적어 주세요.'

@@ -5,16 +5,16 @@
 {% block main %}<main class="pg split"><div class="wrap">
 <div class="bsplit">
 <section class="brand">
-<h1>고객 민원,<br>승인 한 번으로<br>끝내요</h1>
-<p>요약과 추천 조치가 붙은 민원을 확인하고<br>승인만 누르면 답변과 조치까지 처리돼요.</p>
+<h1>고객 민원,<br>승인 한 번으로<br>끝냅니다</h1>
+<p>요약과 처리 방법이 정리된 민원을 확인하고<br>승인만 누르면 답변과 조치까지 처리됩니다.</p>
 <div class="stage" aria-hidden="true">
 <img class="mascot" src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96">
-<div class="ok"><i>✓</i>배송 조회 · 자동으로 답변했어요</div>
+<div class="ok"><i>✓</i>배송 조회 · 자동으로 답변했습니다</div>
 <div class="mock">
 <div class="m-top"><span>{{ i.cat_icon('제품 불량',20) }} 제품 불량</span><span class="pill">새 민원</span></div>
 <b class="m-tt">크림 용기가 깨져서 왔어요</b>
 <span class="m-want">원하는 해결 · 교환</span>
-<div class="m-reco"><small>추천 조치</small><b>무상 교환 (배송비 업체 부담)</b></div>
+<div class="m-reco"><small>처리 방법</small><b>무상 교환 (배송비 업체 부담)</b></div>
 <div class="m-acts"><span class="on">승인</span><span>보류</span><span>자료 요청</span></div>
 </div>
 </div>
@@ -29,7 +29,7 @@
 <button class="btn full">로그인</button>
 </form>
 <div class="links"><span style="color:inherit">처음이신가요?</span><a class="acc" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
-<p class="cap" style="text-align:center;margin-top:12px"><a href="{{ url_for('forgot') }}" style="text-decoration:underline">비밀번호를 잊었어요</a></p>
+<p class="cap" style="text-align:center;margin-top:12px"><a href="{{ url_for('forgot') }}" style="text-decoration:underline">비밀번호 찾기</a></p>
 </section>
 </div>
 </div></main>{% endblock %}

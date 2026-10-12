@@ -60,7 +60,7 @@ def monthly(db,co,y,m):
 
 def report_text(co,s):
     ym=f"{s['y']}년 {s['m']}월"
-    lines=[f"{co['name']}의 {ym} CS 리포트예요.",'',
+    lines=[f"{co['name']}의 {ym} CS 리포트입니다.",'',
            f"■ 받은 민원: {s['n']}건 (지난달 {s['prev_n']}건)",
            f"■ 자동 처리율: {s['auto']}%",
            f"■ 해결률: {'-' if s['res'] is None else str(s['res'])+'%'} (소비자가 결과를 알려 준 민원 기준)",
@@ -124,6 +124,6 @@ def send_alerts(today=None):
                 if db.execute("SELECT 1 FROM sent_marks WHERE kind='alert' AND company_id=? AND key=?",(co['id'],key)).fetchone():continue
                 what=f"'{a['label']}' 관련 민원" if a['kind']=='product' else f"'{a['label']}' 민원"
                 core.send_mail(co['notify_email'],f"[{core.BNAME}] 경보: 최근 7일 {what} {a['n']}건",
-                    f"최근 7일 동안 {what}이 {a['n']}건 들어왔어요. 같은 문제가 반복되는지 확인해 보세요.\n\n{core.site_or_blank('biz','/')}")
+                    f"최근 7일 동안 {what}이 {a['n']}건 들어왔습니다. 같은 문제가 반복되는지 확인해 보세요.\n\n{core.site_or_blank('biz','/')}")
                 db.execute("INSERT INTO sent_marks(kind,company_id,key,created) VALUES('alert',?,?,?)",(co['id'],key,core.iso()));n+=1
     return n
