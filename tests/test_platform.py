@@ -171,6 +171,27 @@ class PlatformTest(unittest.TestCase):
         j=me.post('/chat',data={'csrf':tok,'text':'택배가 아직 안 와요'}).get_json()
         self.assertEqual((j['category'],j['faq']),('배송 조회',self.core.CHAT_FAQ['배송 조회']))
 
+    def test_password_links_and_consumer_kakao(self):
+        sent=[];kakao=[]
+        b,o,cid=self.signup_and_approve('비번마켓','pw@example.com')
+        with patch.object(self.core,'mail_ready',lambda:True),patch.object(self.core,'send_mail',lambda to,sub,body:sent.append((to,body))),\
+             patch.object(self.core,'send_kakao',lambda phone,v,tpl='',label='':kakao.append((phone,tpl,v))):
+            # 기업 비밀번호 재설정
+            x=self.client();self.post(x,'/biz/forgot',{'login_id':'pw@example.com'})
+            link=re.search(r'/reset/(\S+)',sent[-1][1]).group(1)
+            self.post(x,f'/biz/reset/{link}',{'password':'newpassword99'})
+            self.assertEqual(self.post(x,'/biz/login',{'login_id':'pw@example.com','password':'newpassword99'},'/biz/login').status_code,302)
+            self.assertIn('만료',x.get(f'/biz/reset/{link}',follow_redirects=True).get_data(as_text=True))  # 한 번 쓰면 끝
+            # 소비자: 이메일로 내 접수 다시 열기
+            me=self.client();cs=self.file_case(me,'비번마켓','배송 조회',company_id=str(cid))
+            with self.core.conn() as db:db.execute("UPDATE cases SET email='me@example.com' WHERE id=?",(cs,))
+            other=self.client();self.post(other,'/lookup/mail',{'phone':'010-1234-5678','email':'ME@example.com'},'/mine')
+            tok=re.search(r'/lookup/t/(\S+)',sent[-1][1]).group(1)
+            other.get(f'/lookup/t/{tok}');self.assertEqual(other.get(f'/case/{cs}').status_code,200)
+            # 기업 답변이 나가면 소비자에게 알림톡
+            self.post(b,f'/biz/case/{cs}',{'act':'approve'})
+            self.assertTrue(any(t=='CS_KAKAO_TPL_REPLY' and p=='01012345678' for p,t,v in kakao))
+
     def test_non_member_ops_flow_and_lookup(self):
         me=self.client()
         case_id=self.file_case(me,'하루가구','반품·환불',title='의자 회수가 안 돼요')

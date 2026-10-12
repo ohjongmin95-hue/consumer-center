@@ -12,7 +12,12 @@
 <form class="panel stack" method="post" action="{{ url_for('lookup') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="ph">휴대폰 번호로 찾기</div>
 <label class="fld"><span>휴대폰 번호</span><input class="inp" name="phone" type="tel" placeholder="010-0000-0000" required></label>
 <label class="fld"><span>조회 비밀번호</span><input class="inp" name="password" type="password" required></label>
-<button class="btn md">찾기</button></form>
+<button class="btn md">찾기</button>
+<details class="forgot"><summary>조회 비밀번호를 잊었어요</summary>
+<p class="cap" style="margin:8px 0 10px">접수 때 적은 이메일로 바로 여는 링크를 보내 드려요.</p>
+<div class="stack" style="gap:8px"><input class="inp" name="email" type="email" form="fMail" placeholder="접수 때 적은 이메일"><button class="btn md gray" form="fMail">링크 받기</button></div></details></form>
+<form id="fMail" method="post" action="{{ url_for('lookup_mail') }}" hidden><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="phone" id="fMailPhone"></form>
+<script>document.getElementById('fMail').addEventListener('submit',function(){document.getElementById('fMailPhone').value=document.querySelector('form [name=phone]').value;});</script>
 {% if rows %}<form method="post" action="{{ url_for('forget') }}" style="text-align:center"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn cap">이 기기에서 목록 지우기</button></form>{% endif %}
 </aside></div>
 {% endblock %}

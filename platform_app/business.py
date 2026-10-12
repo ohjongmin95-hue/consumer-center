@@ -52,7 +52,7 @@ def kpis(rows):
 
 # ---------- 기업 계정 ----------
 @app.route('/robots.txt')
-def robots():return app.response_class(core.robots_txt('biz',['/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news']),mimetype='text/plain')
+def robots():return app.response_class(core.robots_txt('biz',['/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset']),mimetype='text/plain')
 
 @app.route('/signup',methods=['GET','POST'])
 def signup():
@@ -95,6 +95,35 @@ def login():
             return redirect(url_for('decide'))
         return render_template('b_login.html'),400
     return render_template('b_login.html')
+
+@app.route('/forgot',methods=['GET','POST'])
+def forgot():
+    """비밀번호 찾기: 로그인 이메일로 1시간짜리 재설정 링크. 비밀번호가 바뀌면 그 링크는 더 못 쓴다."""
+    if request.method=='POST':
+        lid=clean(request.form.get('login_id'),80).lower()
+        if core.throttled('forgot',limit=5,minutes=30):flash('잠시 후 다시 시도해 주세요.','error')
+        elif not core.mail_ready():flash('지금은 메일을 보낼 수 없어요. 운영팀에 문의해 주세요.','error')
+        else:
+            with conn() as db:co=db.execute("SELECT * FROM companies WHERE login_id=? AND status='active'",(lid,)).fetchone()
+            if co:
+                tok=core.signer('pw').dumps({'id':co['id'],'h':co['pw_hash'][-16:]})
+                core.send_mail(co['login_id'],f'[{core.BNAME}] 비밀번호 재설정',f"아래 링크에서 새 비밀번호를 정해 주세요. 1시간 동안만 열려요.\n{core.site_url('biz','/reset/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
+            flash('가입된 이메일이라면 재설정 링크를 보냈어요.','ok');return redirect(url_for('login'))
+    return render_template('b_forgot.html')
+
+@app.route('/reset/<tok>',methods=['GET','POST'])
+def reset(tok):
+    try:d=core.signer('pw').loads(tok,max_age=3600)
+    except Exception:d=None
+    with conn() as db:co=core.company(db,d['id']) if d else None
+    if not co or co['pw_hash'][-16:]!=d['h']:flash('링크가 만료됐어요. 다시 요청해 주세요.','error');return redirect(url_for('forgot'))
+    if request.method=='POST':
+        pw=request.form.get('password','')
+        if len(pw)<10:flash('비밀번호는 10자 이상으로 정해 주세요.','error')
+        else:
+            with conn() as db:db.execute('UPDATE companies SET pw_hash=? WHERE id=?',(generate_password_hash(pw),co['id']))
+            flash('비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.','ok');return redirect(url_for('login'))
+    return render_template('b_forgot.html',reset=True)
 
 @app.route('/logout',methods=['POST'])
 def logout():session.pop('co_id',None);return redirect(url_for('login'))
@@ -165,9 +194,7 @@ def stats():
     top=max([c for _,c in weeks] or [0]) or 1
     return render_template('b_stats.html',k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,top=top,cmp=cmp,reply_h=reply_h,tab='stats')
 
-def notify_consumer(c,subject,text):
-    if core.is_direct(c):return  # 직접 등록한 민원은 기업이 원래 채널로 전한다
-    core.send_mail(c['email'],subject,f"{text}\n\n■ 접수번호: {c['no']}\n■ 요약: {c['title']}\n\n{core.site_url('me','/mine')}")
+notify_consumer=core.notify_consumer
 
 @app.route('/case/<int:case_id>',methods=['GET','POST'])
 @login_required
