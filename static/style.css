@@ -1375,20 +1375,23 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 @media (max-width: 680px) { .brand .brand-by { margin-left: 6px; font-size: 10px; letter-spacing: .08em; } }
 @media (max-width: 420px) { .site-header .brand { font-size: 24px; } .brand .brand-by { margin-left: 5px; font-size: 9px; } .top-auth { gap: 10px; } }
 
-/* Footer v6: 링크 한 줄 → 사업자 정보 두 줄 → 저작권. 로고 없이, 항목 사이를 넓게 띄움. */
-.ft-inner { padding: 28px 24px 30px; }
-.ft-top { display: block; padding: 0; border: 0; }
-.ft-links { gap: 6px 36px; font-size: 15px; }
-.ft-info { display: block; margin-top: 20px; font-size: 14px; line-height: 1.75; }
-.ft-row { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0 32px; }
+/* Footer v6: 로고+링크 한 줄 → 사업자 정보 두 줄 → 저작권. 위아래를 얇게. */
+.site-footer { margin-top: 40px; }
+.ft-inner { padding: 14px 24px 14px; }
+.ft-top { display: flex; align-items: center; gap: 8px 28px; flex-wrap: wrap; padding: 0 0 10px; border-bottom: 1px solid #e6dfd5; }
+.ft-logo { font-size: 19px; letter-spacing: -1px; line-height: 1.2; flex: none; }
+.ft-links { gap: 2px 24px; font-size: 14px; }
+.ft-info { display: block; margin-top: 8px; font-size: 13px; line-height: 1.65; }
+.ft-row { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0 24px; }
 .ft-row li { display: inline; }
-.ft-bottom { display: block; margin-top: 20px; }
-.ft-notice { margin: 0 0 6px; }
-.ft-copy { white-space: normal; }
+.ft-bottom { display: block; margin-top: 4px; }
+.ft-notice { margin: 0 0 2px; }
+.ft-copy { white-space: normal; font-size: 12.5px; }
 @media (max-width: 760px) {
-  .ft-inner { padding: 24px 18px 26px; }
-  .ft-links { gap: 4px 20px; font-size: 14px; }
-  .ft-info { margin-top: 16px; font-size: 13px; }
-  .ft-row { gap: 0 18px; }
-  .ft-bottom { margin-top: 16px; }
+  .ft-inner { padding: 14px 18px 16px; }
+  .ft-top { gap: 6px 16px; flex-direction: column; align-items: flex-start; }
+  .ft-links { gap: 2px 14px; font-size: 13px; }
+  .ft-info { font-size: 12.5px; }
+  .ft-row { gap: 0 14px; }
 }
+.site-footer { text-align: left; } .ft-top { justify-content: flex-start; }
