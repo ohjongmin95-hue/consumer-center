@@ -1021,15 +1021,14 @@ body:has(.cs2){background:var(--bg)}
 /* 기업별 고객센터: 위쪽은 소보루 크림빛, 유형 타일은 연주황 바탕 + 흰 아이콘 원 */
 /* 링크 페이지: 흰 바탕 + 메인 화면처럼 회색·연주황이 번갈아 드는 버튼 */
 body:has(.cs2),.cs2,.cs2 .cs-top{background:var(--card)}
-.cs2 .cs-card{padding-inline:4px}
-.cs2 .cs-tiles a{background:var(--bg);border-radius:24px}
+.cs2 .cs-tiles a{background:#f5f3f0;border-radius:24px}
 .cs2 .cs-tiles a:nth-child(even){background:var(--accent-soft)}
 .cs2 .cs-tiles a:hover{filter:brightness(.97)}
 .cs2 .cs-tiles .cs-ic{width:auto;height:auto;background:none;border-radius:0;margin-bottom:12px}
 .cs2 .cs-tiles .cs-ic svg{width:34px;height:34px}
 .cs2 .cs-tiles b{color:var(--fg2)}
 .cs2 .cs-cta{background:linear-gradient(to top,var(--card) 70%,color-mix(in srgb,var(--card) 0%,transparent))}
-@media (max-width:760px){.cs2 .cs-tiles a:nth-child(n){background:var(--bg)}.cs2 .cs-tiles a:nth-child(4n+2),.cs2 .cs-tiles a:nth-child(4n+3){background:var(--accent-soft)}}
+@media (max-width:760px){.cs2 .cs-tiles a:nth-child(n){background:#f5f3f0}.cs2 .cs-tiles a:nth-child(4n+2),.cs2 .cs-tiles a:nth-child(4n+3){background:var(--accent-soft)}}
 /* 링크 페이지 상담창: 회색 대신 연주황 판 + 흰 말풍선 */
 .cs2 .cs-chat .cb{background:var(--accent-soft);border-radius:24px;padding:18px 16px 14px}
 .cs2 .cs-chat .cb-m.bot{background:var(--card);box-shadow:0 1px 4px rgba(178,107,0,.08)}
@@ -1038,3 +1037,25 @@ body:has(.cs2),.cs2,.cs2 .cs-top{background:var(--card)}
 .cs2 .cs-chat .cb-chips .pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .cs2 .cs-chat .cb-in input{background:var(--card);border:1px solid transparent}
 .cs2 .cs-chat .cb-in button{background:var(--accent);color:#fff}
+/* 링크 페이지: 토스처럼 은은한 바탕 + 납작한 흰 카드, 버튼은 소보루 주황 톤 */
+body:has(.cs2),.cs2{background:#f5f3f0}
+.cs2 .cs-top{background:color-mix(in srgb,#f5f3f0 92%,transparent)}
+.cs2 .cs-card{background:var(--card);box-shadow:none;border-radius:28px}
+.cs2 .cs-card h2{font-size:19px;font-weight:700}
+.cs2 .cs-chat .cb{background:none;padding:0;border-radius:0}
+.cs2 .cs-chat .cb-m.bot{background:var(--accent-soft);color:var(--fg);box-shadow:none;border-top-left-radius:6px}
+.cs2 .cs-chat .cb-chips button,.cs2 .cs-chat .cb-chips a{background:#f5f3f0;border:0;color:var(--fg2);height:38px;padding:0 15px;border-radius:12px}
+.cs2 .cs-chat .cb-chips button:hover{background:var(--accent-soft);color:var(--accent-ink)}
+.cs2 .cs-chat .cb-chips .pri{background:var(--accent);color:#fff}
+.cs2 .cs-chat .cb-in input{background:#f5f3f0;border:0;border-radius:14px;height:52px}
+.cs2 .cs-chat .cb-in button{background:var(--accent);color:#fff;border-radius:14px;height:52px;padding:0 20px}
+.cs2 .cs-chat .cb-in button:active{background:var(--accent-press)}
+.cs2 .cs-tiles a{background:#f5f3f0;border-radius:20px}
+.cs2 .cs-tiles .cs-ic{width:44px;height:44px;border-radius:14px;background:var(--card);display:grid;place-items:center}
+.cs2 .cs-tiles .cs-ic svg{width:26px;height:26px}
+.cs2 .cs-tiles a:hover{filter:brightness(.97)}
+.cs2 .cs-tiles b{color:var(--fg)}
+.cs2 .cs-list .cs-ic{background:var(--accent-soft);color:var(--accent-ink);border-radius:14px}
+.cs2 .cs-list>a:hover,.cs2 .cs-list summary:hover{background:#f8f6f3}
+.cs2 .cs-cta{background:linear-gradient(to top,#f5f3f0 70%,rgba(245,243,240,0))}
+.cs2 .cs-cta a,.cs2 .cs-cta .btn{border-radius:16px}
