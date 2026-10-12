@@ -4,7 +4,7 @@
 {% macro bar(tab) -%}
 <header class="gnb"><div class="wrap">
 <a class="logo biz" href="{{ url_for('decide') }}">{{ soboru_logo() }}</a>
-{% if co %}<nav>
+{% if co and tab!='login' %}<nav>
 <a href="{{ url_for('decide') }}" class="{{ 'on' if tab=='home' }}">홈{% if n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>
 <a href="{{ url_for('all_cases') }}" class="{{ 'on' if tab=='all' }}">민원</a>
 <a href="{{ url_for('rules') }}" class="{{ 'on' if tab=='rules' }}">자동 처리</a>

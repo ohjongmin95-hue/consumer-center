@@ -79,6 +79,7 @@ def signup():
 
 @app.route('/login',methods=['GET','POST'])
 def login():
+    if request.method=='GET' and me():return redirect(url_for('decide'))  # 이미 로그인했으면 홈으로
     if request.method=='POST':
         lid=clean(request.form.get('login_id'),80).lower();pw=request.form.get('password','')
         if core.throttled('login',limit=10,minutes=10):flash('로그인 시도가 너무 많아요. 10분 뒤에 다시 해 주세요.','error');return render_template('b_login.html'),429

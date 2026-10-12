@@ -1,6 +1,7 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
 {% block title %}{{ BNAME }} · 고객 민원, 승인 한 번으로{% endblock %}
-{% block bar %}{{ b.bar('login') }}{% endblock %}
+{% block bar %}{% endblock %}
+{% block foot %}{% endblock %}
 {% block main %}<main class="pg split"><div class="wrap">
 <div class="bsplit">
 <section class="brand">
@@ -20,6 +21,7 @@
 </div>
 </section>
 <section class="form">
+<a class="logo biz flogo" href="{{ url_for('decide') }}">{{ b.soboru_logo() }}</a>
 <span class="who">기업 담당자 전용</span>
 <h2>{{ BNAME }} 로그인</h2>
 <form method="post" action="{{ url_for('login') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
