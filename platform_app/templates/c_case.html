@@ -2,7 +2,7 @@
 {% block title %}{{ c.title }} · {{ BRAND }}{% endblock %}
 {% block bar %}{{ m.bar('mine') }}{% endblock %}
 {% block body %}
-{% set heads={'received':'접수했어요','forwarded':'기업에 전달했어요','seen':'기업이 확인하고 있어요','info':'추가 자료가 필요해요','answered':'답변이 도착했어요','resolved':'해결됐어요','unresolved':'아직 해결되지 않았어요'} %}
+{% set heads={'received':'접수했어요','forwarded':'기업에 전달했어요','seen':'기업이 확인하고 있어요','info':'추가 자료가 필요해요','answered':'답변이 도착했어요','resolved':'해결됐어요','unresolved':'아직 해결되지 않았어요','closed':'종료됐어요','withdrawn':'접수를 취소했어요'} %}
 {% set last=(ev|selectattr('kind','equalto','co')|selectattr('reply')|list|last) %}
 <div class="crumb"><a href="{{ url_for('mine') }}">내 접수</a><span>›</span><span class="no">{{ c.no }}</span></div>
 <div class="cols">
@@ -14,6 +14,7 @@
 {% if last %}<div class="panel"><div class="tagrow"><span class="av sm">{{ c.company_name[:1] }}</span><b>{{ c.company_name }}</b><span class="sp"></span><span class="cap">{{ fmt(last.created) }}</span></div><div class="reply">{{ last.reply }}</div></div>{% endif %}
 {% if c.ret_status %}<div class="panel"><div class="ph">반품 보내기</div>
 {% if c.ret_status=='received' %}<p class="sub" style="margin:0">{{ c.company_name }}이(가) 보내신 상품을 받았어요.</p>
+{% if c.out_tracking %}<p class="sub" style="margin:10px 0 0">새 상품을 보냈어요: <b>{{ c.out_courier }} {{ c.out_tracking }}</b>{% if COURIERS.get(c.out_courier) %} · <a class="link" href="{{ COURIERS[c.out_courier] }}" target="_blank" rel="noopener">조회하기</a>{% endif %}</p>{% endif %}
 {% elif c.ret_status=='sent' %}<p class="sub" style="margin:0">{{ c.ret_courier }} {{ c.ret_tracking }} 로 보냈다고 알렸어요. 회사가 받으면 알려 드려요.</p>
 {% else %}<p class="sub" style="margin:0 0 14px">답변의 반품 안내대로 보내신 뒤 택배사와 송장번호를 알려 주세요.</p>
 <form method="post" class="stack" style="gap:10px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="ship">
@@ -41,6 +42,9 @@
 {% if not c.member and c.status in ('received','forwarded','seen') %}
 <div class="panel"><div class="ph">비입점 기업이에요</div><p class="sub">{{ '센터가 공식 연락처로 전달하고 회신을 기록해요' if c.consent else '전달 동의가 없어 접수만 해 두었어요' }}</p>
 {% if co and co.contact %}<div class="hint blue" style="margin-top:14px">{{ i.icon('phone',22) }}<span>고객센터 <b style="user-select:all">{{ co.contact }}</b></span></div>{% endif %}</div>{% endif %}
+{% if c.status in ('received','forwarded','seen','info') %}<details class="panel cancel"><summary>접수 취소하기<span class="chev"></span></summary>
+<form method="post" style="margin-top:12px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="cancel">
+<p class="sub" style="margin:0 0 12px">이미 해결됐거나 잘못 접수했다면 취소해 주세요. 취소하면 기업에도 알려요.</p><button class="btn md gray">접수 취소</button></form></details>{% endif %}
 {% if again %}<form class="panel" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="again">
 <div class="ph" style="margin-bottom:4px">기업에 다시 요청할까요?</div><p class="sub">{{ '답변이 늦어지고 있어요. 다시 요청하면 기업에 한 번 더 알려요.' if overdue(c) else '해결되지 않은 내용을 덧붙여 한 번 더 보내요.' }}</p>
 <div class="addline" style="margin-top:14px"><input class="inp" name="msg" maxlength="2000" placeholder="덧붙일 말 (선택)"><button class="btn md">다시 요청</button></div></form>{% endif %}

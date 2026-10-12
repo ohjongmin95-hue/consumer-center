@@ -2,7 +2,7 @@
 {% block title %}{{ c.title }} · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('all') }}{% endblock %}
 {% block body %}
-{% set open=c.status not in ('resolved','unresolved') %}{% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}
+{% set open=c.status not in FINAL %}{% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}
 <div class="crumb"><a href="{{ url_for('decide') }}">홈</a><span>›</span><a href="{{ url_for('all_cases') }}">민원</a><span>›</span><span class="no">{{ c.no }}</span></div>
 <div class="chead">
 <div class="l"><div class="tagrow">{{ m.pill(c,True) }}<span class="pill gray">{{ c.category }}</span>{% if is_direct(c) %}<span class="pill gray">{{ c.channel }} · 직접 등록</span>{% endif %}</div>
@@ -22,7 +22,11 @@
 <div class="retsteps">{% for k,l in RET_STATUS.items() %}<span class="{{ 'on' if loop.index0<=(RET_STATUS|list).index(c.ret_status) }}">{{ l }}</span>{% endfor %}</div>
 {% if c.ret_tracking %}<dl class="kv" style="margin-top:16px"><dt>택배사</dt><dd>{{ c.ret_courier }}{% if COURIERS.get(c.ret_courier) %} · <a class="link" href="{{ COURIERS[c.ret_courier] }}" target="_blank" rel="noopener">조회하기</a>{% endif %}</dd><dt>송장번호</dt><dd class="no" style="user-select:all">{{ c.ret_tracking }}</dd></dl>
 {% elif c.ret_status=='guided' %}<p class="sub" style="font-size:15px">반품 안내를 보냈어요. 고객이 송장번호를 입력하면 여기에 보여요.{% if is_direct(c) %} 직접 등록한 민원은 고객이 입력할 수 없으니 상품을 받으면 바로 회수 확인을 눌러 주세요.{% endif %}</p>{% endif %}
-{% if c.ret_status in ('guided','sent') %}<form method="post" style="margin-top:16px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="ret_received">회수 확인</button></form>{% endif %}</section>{% endif %}
+{% if c.ret_status in ('guided','sent') %}<form method="post" style="margin-top:16px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="ret_received">회수 확인</button></form>{% endif %}
+{% if c.ret_status=='received' and c.category in ('교환','제품 불량') %}{% if c.out_tracking %}<p class="sub" style="font-size:15px;margin:16px 0 0">새 상품 발송: {{ c.out_courier }} <span class="no">{{ c.out_tracking }}</span></p>
+{% else %}<form method="post" class="addline" style="margin-top:16px;flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="out_ship">
+<select class="inp" name="courier" required style="flex:1 1 160px"><option value="">새 상품 보낸 택배사</option>{% for k in COURIERS %}<option {{ 'selected' if co.return_courier==k }}>{{ k }}</option>{% endfor %}<option>기타</option></select>
+<input class="inp" name="tracking" inputmode="numeric" maxlength="30" placeholder="송장번호" required style="flex:1 1 160px"><button class="btn md">고객에게 알리기</button></form>{% endif %}{% endif %}</section>{% endif %}
 {% if refund_case(c) and c.refund_status %}<section class="panel"><div class="ph">환불</div>
 {% if c.refund_status=='done' %}<p class="sub" style="font-size:15px;margin:0">환불을 완료했어요. 고객 계좌 정보는 지웠어요.</p>
 {% else %}<dl class="kv"><dt>은행</dt><dd>{{ c.refund_bank }}</dd><dt>계좌번호</dt><dd class="no" id="rAcct" style="user-select:all">{{ c.refund_account }}</dd><dt>예금주</dt><dd>{{ c.refund_holder }}</dd></dl>

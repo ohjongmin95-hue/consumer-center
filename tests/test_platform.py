@@ -56,6 +56,7 @@ class PlatformTest(unittest.TestCase):
               'want':'교환','name':'김소비','phone':'010-1234-5678','password':'1234','privacy':'1'}
         if consent:data['consent']='1'
         if extra.get('received_on'):data['received_on']=extra['received_on']
+        elif cat in ('교환','반품·환불'):data['received_on']=__import__('datetime').date.today().isoformat()
         r=self.post(c,'/submit',data,'/new')
         self.assertEqual(r.status_code,302,r.get_data(as_text=True)[:300])
         return int(r.headers['Location'].rstrip('/').split('/')[-1])
@@ -125,9 +126,8 @@ class PlatformTest(unittest.TestCase):
         today=datetime.date.today()
         ok=self.file_case(me,'상담창마켓','반품·환불',company_id=str(cid),received_on=(today-datetime.timedelta(days=2)).isoformat())
         late=self.file_case(me,'상담창마켓','반품·환불',company_id=str(cid),received_on=(today-datetime.timedelta(days=10)).isoformat())
-        none=self.file_case(me,'상담창마켓','반품·환불',company_id=str(cid))
-        with self.core.conn() as db:d={r['id']:r['decision'] for r in db.execute('SELECT id,decision FROM cases WHERE id IN (?,?,?)',(ok,late,none))}
-        self.assertEqual((d[ok],d[late],d[none]),('auto','pending','pending'))
+        with self.core.conn() as db:d={r['id']:r['decision'] for r in db.execute('SELECT id,decision FROM cases WHERE id IN (?,?)',(ok,late))}
+        self.assertEqual((d[ok],d[late]),('auto','pending'))
         # 환불 계좌: 고객이 등록 -> 기업이 보고 환불 완료 -> 계좌 정보는 지워진다
         self.assertIn('환불 받을 계좌',me.get(f'/case/{ok}').get_data(as_text=True))
         self.post(me,f'/case/{ok}',{'act':'refund','bank':'카카오뱅크','account':'3333-01-2345678','holder':'김소비'})
@@ -137,6 +137,39 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:r=db.execute('SELECT refund_status,refund_account,refund_holder FROM cases WHERE id=?',(ok,)).fetchone()
         self.assertEqual(tuple(r),('done','',''))
         self.assertNotIn('3333012345678',b.get(f'/biz/case/{ok}').get_data(as_text=True))
+
+    def test_review_fixes(self):
+        import datetime
+        b,o,cid=self.signup_and_approve('검토마켓','review@example.com')
+        me=self.client()
+        # 자동 답변이 하지 않는 일(기사 방문, 도착 예정일)을 약속하지 않는다
+        for cat,pb in self.core.PLAYBOOK.items():self.assertNotIn('기사님',pb['reply']);self.assertNotIn('도착 예정',pb['reply'])
+        # 교환·반품은 받은 날이 꼭 필요
+        r=self.post(me,'/submit',{'company':'검토마켓','category':'교환','title':'교환','body':'사이즈가 작아서 교환하고 싶어요','want':'교환','phone':'010-1234-5678','password':'1234','privacy':'1','consent':'1'},'/new')
+        self.assertIn('/new',r.headers['Location'])
+        # 고객에게 보이는 기록에 답변 목표일이 없다
+        c1=self.file_case(me,'검토마켓','배송 조회',company_id=str(cid),title='배송이 안 와요')
+        self.assertNotIn('목표일',me.get(f'/case/{c1}').get_data(as_text=True))
+        # 접수 취소
+        self.post(me,f'/case/{c1}',{'act':'cancel'})
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(c1,)).fetchone()[0],'withdrawn')
+        # 같은 유형 한 번에 승인 -> 답변 후 7일 응답 없으면 자동 종료
+        a=self.file_case(me,'검토마켓','배송 조회',company_id=str(cid));bb=self.file_case(me,'검토마켓','배송 조회',company_id=str(cid))
+        self.assertIn('배송 조회 2건 모두 승인',b.get('/biz/').get_data(as_text=True))
+        self.post(b,'/biz/approve_many',{'category':'배송 조회'},'/biz/')
+        with self.core.conn() as db:self.assertEqual({r[0] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)',(a,bb))},{'answered'})
+        self.assertGreaterEqual(self.core.close_idle(self.core.now()+datetime.timedelta(days=8)),2)
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(a,)).fetchone()[0],'closed')
+        # 교환품 발송 송장
+        ex=self.file_case(me,'검토마켓','교환',company_id=str(cid))
+        self.post(b,f'/biz/case/{ex}',{'act':'approve'});self.post(b,f'/biz/case/{ex}',{'act':'ret_received'})
+        self.post(b,f'/biz/case/{ex}',{'act':'out_ship','courier':'CJ대한통운','tracking':'1234-5678-9012'})
+        self.assertIn('새 상품을 보냈어요',me.get(f'/case/{ex}').get_data(as_text=True))
+        # 첫 화면 상담창 (기업 없이 기본 문구)
+        page=me.get('/').get_data(as_text=True);self.assertIn('id="cb"',page)
+        tok=re.search(r'data-csrf="([^"]+)"',page).group(1)
+        j=me.post('/chat',data={'csrf':tok,'text':'택배가 아직 안 와요'}).get_json()
+        self.assertEqual((j['category'],j['faq']),('배송 조회',self.core.CHAT_FAQ['배송 조회']))
 
     def test_non_member_ops_flow_and_lookup(self):
         me=self.client()

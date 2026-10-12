@@ -12,10 +12,7 @@
 {% if member %}<p class="cs-sub">담당자에게 바로 전달돼요</p>
 {% else %}<p class="cs-sub">{{ CNAME }}가 {{ co.name }}의 공식 연락처로 전달해 드려요</p>{% endif %}
 </section>
-<section class="cs-sec" aria-label="상담창"><div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) }}" data-new="{{ url_for('new',company_id=co.id) }}" data-co="{{ co.name }}" data-csrf="{{ csrf_token() }}">
-<div class="cb-log" id="cbLog" aria-live="polite"></div>
-<form class="cb-in" id="cbForm" autocomplete="off"><input id="cbText" maxlength="500" placeholder="예: 주문한 게 아직 안 왔어요" aria-label="문의 내용"><button>보내기</button></form>
-</div></section>
+<section class="cs-sec" aria-label="상담창">{% include "_chat.html" %}</section>
 <section class="cs-sec" style="margin-top:20px"><h2>직접 골라서 접수하기</h2>
 <div class="cs-list cs-cats">{% for cat,sub in [('배송 조회','배송이 안 오거나 늦어요'),('교환','사이즈·색상을 바꾸고 싶어요'),('반품·환불','돌려보내고 환불받고 싶어요'),('제품 불량','고장 나거나 망가져서 왔어요'),('고객 응대','응대가 불편했어요'),('기타','그 밖의 문의')] %}
 <a href="{{ url_for('new',company_id=co.id,category=cat) }}"><span class="cs-ic">{{ i.cat_icon(cat,24) }}</span><span class="tx"><b>{{ cat }}</b><small>{{ sub }}</small></span><span class="chev"></span></a>{% endfor %}</div>
@@ -33,42 +30,6 @@
 </div>
 <div class="cs-cta"><div><a class="btn full" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a></div></div>
 </main>
-<script>
-(function(){
-const box=document.getElementById('cb'),log=document.getElementById('cbLog'),form=document.getElementById('cbForm'),inp=document.getElementById('cbText');
-const CATS={{ CATS|tojson }};let said=[],cat=null,info=null,live=false;
-function show(el){if(live)el.scrollIntoView({block:'nearest',behavior:'smooth'})}
-function bubble(text,who){const d=document.createElement('div');d.className='cb-m '+(who||'bot');d.textContent=text;log.appendChild(d);show(d);return d}
-function chips(list){const w=document.createElement('div');w.className='cb-chips';
-  list.forEach(c=>{let el;if(c.href){el=document.createElement('a');el.href=c.href}else{el=document.createElement('button');el.type='button';el.onclick=()=>{w.remove();c.fn()}}
-    el.textContent=c.label;if(c.pri)el.className='pri';w.appendChild(el)});log.appendChild(w);show(w)}
-function clearChips(){log.querySelectorAll('.cb-chips').forEach(e=>e.remove())}
-function later(fn,ms){const d=bubble('•••','bot dots');setTimeout(()=>{d.remove();fn()},ms||450)}
-function post(data){const fd=new FormData();fd.append('csrf',box.dataset.csrf);for(const k in data)fd.append(k,data[k]);
-  return fetch(box.dataset.url,{method:'POST',body:fd,credentials:'same-origin'}).then(r=>r.json())}
-function catChips(){chips(CATS.map(c=>({label:c,fn:()=>{bubble(c,'me');ask({category:c})}})))}
-function newUrl(){const u=new URL(box.dataset.new,location.href);if(cat)u.searchParams.set('category',cat);if(said.length)u.searchParams.set('body',said.join('\n'));return u.pathname+u.search}
-function endChips(){
-  const file=info&&info.member?(info.auto&&!info.cond?'접수하면 바로 처리돼요':'담당자에게 바로 전달돼요'):'';
-  chips([{label:'접수할게요',pri:true,fn:()=>{post({outcome:'filed',category:cat});bubble('접수할게요','me');later(()=>{bubble((file?file+'. ':'')+'적어 주신 내용을 이어서 쓸 수 있게 해 둘게요.');setTimeout(()=>location.href=newUrl(),700)})}},
-         {label:'해결됐어요',fn:()=>{post({outcome:'solved',category:cat});bubble('해결됐어요','me');later(()=>bubble('도움이 됐다니 다행이에요. 또 궁금한 게 생기면 언제든 적어 주세요.'))}},
-         {label:'다른 걸 물어볼게요',fn:()=>{bubble('다른 걸 물어볼게요','me');said=[];cat=null;later(()=>{bubble('네, 편하게 적어 주세요.');catChips()})}}])}
-function days(){chips([
-  {label:'7일 이내예요',fn:()=>{bubble('7일 이내예요','me');later(()=>{bubble('그럼 단순 변심이어도 신청할 수 있어요. 단순 변심일 때 돌려보내는 배송비는 고객님 부담이에요.'+(info.member&&info.auto?'\n접수하실 때 상품 받은 날을 적어 주시면 바로 처리돼요.':''));endChips()})}},
-  {label:'7일 지났어요',fn:()=>{bubble('7일 지났어요','me');later(()=>{bubble('단순 변심 기간(7일)은 지났어요. 다만 상품이 광고나 주문 내용과 다르면 받은 날부터 3개월, 그 사실을 안 날부터 30일 안에 신청할 수 있어요. 사진과 함께 접수해 주세요.');endChips()})}},
-  {label:'아직 못 받았어요',fn:()=>{bubble('아직 못 받았어요','me');ask({category:'배송 조회'})}}])}
-function ask(data){clearChips();
-  post(data).then(r=>{
-    if(r.error){later(()=>bubble(r.error));return}
-    if(!r.category){later(()=>{bubble('제가 정확히 알아들었는지 모르겠어요. 가장 가까운 걸 골라 주시겠어요?');catChips()});return}
-    cat=r.category;info=r;
-    later(()=>{bubble(cat==='기타'?'네, 확인했어요.':cat+' 문의시군요.');
-      later(()=>{bubble(r.faq);
-        if(r.ask_days)later(()=>{bubble('상품을 받으신 지 7일이 지났나요?');days()});else endChips()},500)});
-  }).catch(()=>later(()=>{bubble('연결이 잠시 불안정해요. 아래에서 직접 골라 접수해 주세요.')}))}
-form.addEventListener('submit',e=>{e.preventDefault();const t=inp.value.trim();if(!t)return;inp.value='';bubble(t,'me');said.push(t);ask({text:t})});
-bubble('안녕하세요, '+box.dataset.co+' 고객센터예요.\n어떤 일인지 편하게 적어 주시거나 아래에서 골라 주세요.');catChips();live=true;
-})();
-</script>
+
 {% endblock %}
 {% block foot %}{% endblock %}
