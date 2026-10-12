@@ -1,0 +1,10 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}법·제도 소식 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('home') }}{% endblock %}
+{% block body %}
+<div class="narrow">
+<div class="phead"><div><h1>법·제도 소식</h1><p>CS에 영향을 주는 법과 제도 변화를 공식 출처와 함께 알려 드려요</p></div></div>
+{% if rows %}<div class="stack lg">{% for n in rows %}<article class="panel"><div class="cap">{{ fmt_day(n.created) }}</div><h2 class="newsh">{{ n.title }}</h2><p class="bodytext sm">{{ n.body }}</p><a class="link" href="{{ n.source_url }}" target="_blank" rel="noopener">출처 보기</a></article>{% endfor %}</div>
+{% else %}<div class="empty-card"><b>아직 올라온 소식이 없어요</b><span>새 소식이 올라오면 홈에서 알려 드려요</span></div>{% endif %}
+</div>
+{% endblock %}

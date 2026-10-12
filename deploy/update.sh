@@ -10,7 +10,7 @@ systemctl restart soboru
 # SOBORU 플랫폼(한큐 + 소보루 비즈)이 설치돼 있으면 같이 다시 시작
 if [ -f /etc/systemd/system/soboru-platform.service ]; then
   systemctl restart soboru-platform
-  # 답변 목표일이 지난 민원 알림 (한 시간마다)
+  # 답변 지연 알림 · 불량 경보 · 월간 리포트 (한 시간마다, 같은 알림은 한 번만)
   cat > /etc/cron.hourly/soboru-platform-late <<'CRON'
 #!/bin/sh
 set -a; . /etc/soboru-platform.env; set +a

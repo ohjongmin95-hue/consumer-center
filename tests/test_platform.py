@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -146,7 +146,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(me.get('/to/99999').status_code,404)
         self.assertIn('value="바른가전"',me.get(f'/new?company_id={cid}').get_data(as_text=True))
         page=b.get('/biz/settings').get_data(as_text=True)
-        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 비즈',page);self.assertIn('soboru-wordmark.png',page);self.assertIn('soboru-char.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
+        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 비즈',page);self.assertIn('soboru-logo.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
         case_id=self.file_case(me,'바른가전','교환',str(cid),title='세탁기 소음')
         self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
         # 답변 목표일이 지나면 한 번만 지연 알림
@@ -176,6 +176,72 @@ class PlatformTest(unittest.TestCase):
         self.assertIn(f'<loc>http://localhost/to/{cid}</loc>',sm);self.assertIn('<loc>http://localhost/guide</loc>',sm)
         self.assertIn('Disallow: /ops',me.get('/biz/robots.txt').get_data(as_text=True))
         self.assertNotIn('noindex',self.client().get('/biz/login').get_data(as_text=True))
+
+    def test_cs_tools(self):
+        """법 기준·응대 가이드·답변 초안·직접 등록·반품 안내/송장·기록·리포트·업종 비교·경보·법 소식"""
+        import datetime, json, law, insights
+        b,o,cid=self.signup_and_approve('보리상점','bori@example.com')
+        # 조문은 law_texts.json 원문 그대로
+        texts=json.loads((ROOT/'platform_app'/'law_texts.json').read_text(encoding='utf-8'))
+        self.assertIn('7일',texts['ecom']['articles']['제17조']['paras'][0]['items'][0]['text'])
+        self.assertEqual(law.cite('ecom:제21조:①:3')['label'],'전자상거래법 제21조 제1항 제3호')
+        page=b.get('/biz/guide').get_data(as_text=True)
+        self.assertIn('응대 가이드',page);self.assertIn(texts['ecom']['articles']['제18조']['paras'][8]['text'],page);self.assertIn('law.go.kr',page)
+        # 설정: 반품 안내, 업종, 알림
+        r=self.post(b,'/biz/settings',{'act':'return','return_address':'서울시 보리로 1, 보리상점 반품담당','return_courier':'CJ대한통운','return_memo':'단순 변심은 배송비 동봉'},'/biz/settings')
+        self.post(b,'/biz/settings',{'contact':'1588-0000','notify_email':'bori@example.com','industry':'식품','tone':'friendly'},'/biz/settings')
+        self.post(b,'/biz/settings',{'act':'notify','phone':'010-2222-3333','kakao':'1','report_mail':'1'},'/biz/settings')
+        with self.core.conn() as db:co=self.core.company(db,cid)
+        self.assertEqual((co['return_courier'],co['industry'],co['tone'],co['kakao']),('CJ대한통운','식품','friendly',1))
+        self.assertIn('이용 택배사: CJ대한통운',b.get('/biz/settings').get_data(as_text=True))
+        # 소비자 접수: 받은 날 → 7일 계산, 상품명
+        me=self.client();recv=(datetime.date.today()-datetime.timedelta(days=3)).isoformat()
+        data={'company':'보리상점','company_id':str(cid),'category':'반품·환불','title':'단순 변심 반품','body':'사이즈가 안 맞아 반품하고 싶어요.','want':'환불',
+              'name':'이소비','phone':'010-5555-6666','password':'1234','privacy':'1','consent':'1','product':'보리차 티백','received_on':recv}
+        r=self.post(me,'/submit',data,'/new');case_id=int(r.headers['Location'].rstrip('/').split('/')[-1])
+        page=b.get(f'/biz/case/{case_id}').get_data(as_text=True)
+        self.assertIn('받은 지 3일째',page);self.assertIn('청약철회 기간 7일 안',page);self.assertIn('전자상거래법 제18조 제9항',page)
+        self.assertIn('받은 지 3일 · 7일 이내',b.get('/biz/').get_data(as_text=True))
+        # 답변 초안: API 키가 없으면 기본 문구
+        os.environ.pop('ANTHROPIC_API_KEY',None)
+        d=self.post(b,f'/biz/case/{case_id}/draft',{},f'/biz/case/{case_id}').get_json()
+        self.assertEqual(d['by'],'template');self.assertIn('7일 이내라 반품',d['text']);self.assertIn('보리상점',d['text'])
+        # 승인하면 반품 안내가 붙고, 소비자가 송장 입력 → 기업이 회수 확인
+        self.post(b,f'/biz/case/{case_id}',{'act':'approve'},f'/biz/case/{case_id}')
+        with self.core.conn() as db:
+            c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone();rep=db.execute("SELECT reply FROM events WHERE case_id=? AND kind='co'",(case_id,)).fetchone()[0]
+        self.assertEqual(c['ret_status'],'guided');self.assertIn('서울시 보리로 1',rep)
+        self.assertIn('송장번호 알리기',me.get(f'/case/{case_id}').get_data(as_text=True))
+        self.post(me,f'/case/{case_id}',{'act':'ship','courier':'CJ대한통운','tracking':'1234-5678-9012'},f'/case/{case_id}')
+        self.assertIn('123456789012',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
+        self.assertIn('단순 변심 반품',b.get('/biz/all?f=ret').get_data(as_text=True))
+        self.post(b,f'/biz/case/{case_id}',{'act':'ret_received'},f'/biz/case/{case_id}')
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT ret_status FROM cases WHERE id=?',(case_id,)).fetchone()[0],'received')
+        # 기록 PDF(인쇄용)
+        page=b.get(f'/biz/case/{case_id}/record').get_data(as_text=True)
+        self.assertIn('민원 처리 기록',page);self.assertIn('window.print()',page);self.assertIn('회수 확인',page)
+        # 직접 등록: 소비자에게 메일 없음, 같은 상품 3건이면 경보
+        for n in range(3):
+            r=self.post(b,'/biz/new',{'channel':'전화','category':'제품 불량','title':f'티백 찢어짐 {n}','body':'티백이 찢어져 왔어요','want':'교환','product':'보리차 티백 ','email':'x@example.com'},'/biz/new')
+            self.assertEqual(r.status_code,302)
+        page=b.get(r.headers['Location']).get_data(as_text=True)
+        self.assertIn('전화 · 직접 등록',page)
+        with self.core.conn() as db:
+            self.assertEqual(len(insights.alerts(db,co)),1)
+        self.assertIn("'보리차 티백' 관련 민원이 최근 7일 4건",b.get('/biz/').get_data(as_text=True))
+        sent=insights.send_alerts();self.assertEqual(insights.send_alerts(),0)  # 하루 한 번
+        self.assertEqual(sent,1)
+        # 월간 리포트·업종 비교
+        today=datetime.date.today()
+        self.assertIn('CS 리포트',b.get(f'/biz/report?ym={today.year}-{today.month:02d}').get_data(as_text=True))
+        self.assertEqual(insights.send_monthly_reports(datetime.date(today.year,today.month,2)),0)
+        self.assertIn('3곳 이상 모이면',b.get('/biz/stats').get_data(as_text=True))
+        # 법 소식: 운영자가 출처와 함께 올림
+        r=self.post(o,'/biz/ops/news',{'title':'전자상거래법 개정 시행','body':'개정 법률이 시행됐어요.','source_url':'https://www.law.go.kr/법령/전자상거래등에서의소비자보호에관한법률'},'/biz/ops/news')
+        self.assertIn('전자상거래법 개정 시행',b.get('/biz/').get_data(as_text=True))
+        self.assertIn('출처 보기',b.get('/biz/news').get_data(as_text=True))
+        r=self.post(o,'/biz/ops/news',{'title':'출처 없음','body':'내용','source_url':''},'/biz/ops/news')
+        self.assertNotIn('출처 없음',b.get('/biz/news').get_data(as_text=True))
 
     def test_submit_validation_keeps_draft(self):
         me=self.client()

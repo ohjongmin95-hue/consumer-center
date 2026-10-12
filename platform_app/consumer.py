@@ -2,7 +2,7 @@
 import os, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-import core
+import core, law
 from core import conn, clean, digits
 from markupsafe import escape
 
@@ -45,7 +45,7 @@ def new():
         with conn() as db:co=core.company(db,int(request.args['company_id']))
         if co and co['status'] in ('active','listed'):d.setdefault('company',co['name']);d.setdefault('company_id',co['id']);d['member']=core.active_member(co)
     elif request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
-    return render_template('c_new.html',d=d)
+    return render_template('c_new.html',d=d,today=datetime.date.today().isoformat())
 
 @app.route('/guide')
 def guide():return render_template('c_guide.html')
@@ -56,7 +56,7 @@ def companies():return jsonify(core.search_companies(request.args.get('q','')[:4
 @app.route('/submit',methods=['POST'])
 def submit():
     f=request.form;ups=request.files.getlist('files')
-    d={k:clean(f.get(k),n) for k,n in (('company',60),('category',20),('title',80),('body',3000),('want',20),('order_no',40),('name',20),('phone',20),('email',80))}
+    d={k:clean(f.get(k),n) for k,n in (('company',60),('category',20),('title',80),('body',3000),('want',20),('order_no',40),('name',20),('phone',20),('email',80),('product',60),('received_on',10))}
     d['consent']=f.get('consent')=='1'
     pw=f.get('password','');err=''
     if not d['company']:err='기업 이름을 적어 주세요.'
@@ -64,6 +64,7 @@ def submit():
     elif not d['title']:err='한 줄 요약을 적어 주세요.'
     elif len(d['body'])<10:err='자세한 내용을 10자 이상 적어 주세요.'
     elif d['want'] not in core.WANTS:err='원하는 해결을 골라 주세요.'
+    elif d['received_on'] and law.days_since(d['received_on']) not in range(0,3651):err='상품 받은 날을 확인해 주세요.'
     elif not 10<=len(digits(d['phone']))<=11:err='휴대폰 번호를 정확히 적어 주세요. 내 민원을 찾을 때 써요.'
     elif len(pw)<4:err='조회 비밀번호를 4자 이상 정해 주세요.'
     elif f.get('privacy')!='1':err='개인정보 수집·이용에 동의해야 접수할 수 있어요.'
@@ -81,9 +82,9 @@ def submit():
             cid=db.execute("INSERT INTO companies(name,member,status,created) VALUES(?,0,'listed',?)",(d['company'],core.iso())).lastrowid
             co=core.company(db,cid)
         member=core.active_member(co);t=core.iso()
-        cur=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,created,updated)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',(core.new_case_no(db),co['id'],co['name'],int(member),d['category'],d['title'],d['body'],d['want'],d['order_no'],
-            d['name'],digits(d['phone']),d['email'],generate_password_hash(pw),int(d['consent']),'received',t,t))
+        cur=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,created,updated,product,received_on,channel)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'한큐')''',(core.new_case_no(db),co['id'],co['name'],int(member),d['category'],d['title'],d['body'],d['want'],d['order_no'],
+            d['name'],digits(d['phone']),d['email'],generate_password_hash(pw),int(d['consent']),'received',t,t,d['product'],d['received_on']))
         case_id=cur.lastrowid
         core.save_files(db,case_id,ups)
         core.add_event(db,case_id,'me','민원을 접수했어요.')
@@ -93,8 +94,7 @@ def submit():
             core.add_event(db,case_id,'sys',f"{co['name']} 담당 화면으로 전달했어요. 답변 목표일: {core.fmt_day(due)}")
             c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
             if core.rule_for(db,co['id'],d['category'])['auto']:core.run_playbook(db,c,'auto')
-            else:core.send_mail(co['notify_email'],f"[{core.BNAME}] 새 민원: {d['title']}",
-                f"{co['name']}에 새 민원이 들어왔어요.\n\n■ 유형: {d['category']}\n■ 요약: {d['title']}\n\n요약과 추천 조치를 보고 승인해 주세요.\n{core.site_url('biz','/')}")
+            else:core.notify_company_new(co,c)
         elif member:core.add_event(db,case_id,'sys','기업 전달에 동의하지 않아 접수만 했어요.')
         else:core.add_event(db,case_id,'sys','비입점 기업이에요. 센터가 공식 연락처로 전달을 시도할게요.' if d['consent'] else '비입점 기업이고 전달 동의가 없어 접수만 했어요.')
         no=db.execute('SELECT no FROM cases WHERE id=?',(case_id,)).fetchone()[0]
@@ -154,6 +154,16 @@ def case(case_id):
                     core.add_event(db,c['id'],'sys','센터가 기업에 다시 전달할게요')
                     core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 비입점 민원 다시 요청: {c['title']}",core.site_url('biz','/ops/case/%d'%c['id']))
                 flash('다시 요청했어요','ok')
+            elif act=='ship' and c['ret_status'] in ('guided','sent'):
+                courier=request.form.get('courier','');tracking=clean(request.form.get('tracking'),30)
+                if courier not in core.COURIERS and courier!='기타':courier=''
+                if not courier or not 8<=len(digits(tracking))<=20:flash('택배사와 송장번호를 확인해 주세요','error')
+                else:
+                    db.execute("UPDATE cases SET ret_status='sent',ret_courier=?,ret_tracking=? WHERE id=?",(courier,digits(tracking),c['id']))
+                    core.add_event(db,c['id'],'me',f'반품 상품을 보냈어요: {courier} {digits(tracking)}')
+                    co=core.company(db,c['company_id'])
+                    if co:core.send_mail(co['notify_email'],f"[{core.BNAME}] 소비자가 반품 상품을 보냈어요: {c['title']}",f"{courier} 송장번호 {digits(tracking)}\n{core.site_url('biz','/case/%d'%c['id'])}")
+                    flash('송장번호를 알렸어요','ok')
             elif act in ('info','add') and msg and c['status'] not in ('resolved','unresolved'):
                 err=core.files_ok(request.files.getlist('files'))
                 if err:flash(err,'error');return redirect(url_for('case',case_id=case_id))

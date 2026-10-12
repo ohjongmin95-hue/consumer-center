@@ -1,0 +1,26 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}응대 가이드 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('guide') }}{% endblock %}
+{% block body %}
+<div class="narrow">
+<div class="phead"><div><h1>응대 가이드</h1><p>자주 받는 민원 상황마다 지켜야 할 법 조항과 예시 답변을 모았어요</p></div></div>
+<div class="hint blue" style="margin-bottom:24px"><span>📘</span><span>조항은 국가법령정보센터 원문을 글자 그대로 옮겼어요. 쉬운 설명과 예시 문구는 이해를 돕기 위한 것이고 법률 자문이 아니에요.</span></div>
+<nav class="gtoc">{% for g in guide %}<a href="#{{ g.id }}">{{ g.title }}</a>{% endfor %}</nav>
+<div class="stack lg">
+{% for g in guide %}<section class="panel gsec" id="{{ g.id }}">
+<h2>{{ g.title }}</h2>
+<div class="ph" style="margin-top:18px">이렇게 확인하세요</div>
+<ul class="gpoints">{% for txt,ref in g.points %}{% set l=cite(ref) %}<li><span>{{ txt }}</span><small>{{ l.label }}</small></li>{% endfor %}</ul>
+<div class="ph">예시 문구</div>
+<div class="gsample-box"><p id="s-{{ g.id }}">{{ g.sample }}</p><button class="btn sm gray" type="button" data-copy-text="s-{{ g.id }}">복사</button></div>
+<div class="ph">관련 조항 원문</div>
+<div class="lawlist">{% for ref in g.refs %}{{ b.law_item(cite(ref),'') }}{% endfor %}</div>
+</section>{% endfor %}
+<section class="panel gsec"><h2>품목별 소비자분쟁해결기준</h2>
+<p class="sub">수리·교환·환불 기준은 공정거래위원회 고시 「소비자분쟁해결기준」의 품목별 기준을 따라요. 소비자기본법 시행령 제8조의 일반적 기준(별표 1)과 품목별 기준은 내용이 길고 자주 바뀌어 여기 옮기지 않았어요. 아래 공식 원문에서 해당 품목을 확인해 주세요.</p>
+<div class="lawlist" style="margin-top:14px">{{ b.law_item(cite('basic:제16조'),'') }}{{ b.law_item(cite('basic_dec:제8조'),'') }}</div>
+<div class="acts2" style="margin-top:14px"><a class="btn md gray" href="{{ kca }}" target="_blank" rel="noopener">소비자분쟁해결기준 원문</a><a class="btn md gray" href="{{ table }}" target="_blank" rel="noopener">시행령 별표 1</a></div></section>
+<div class="panel"><div class="ph">출처</div><ul class="srcs">{% for s in sources %}<li>{{ s.name }} · {{ s.kind }} 제{{ s.no }}호 · {{ s.effective }} 시행 · <a class="link" href="{{ s.source }}" target="_blank" rel="noopener">원문</a></li>{% endfor %}</ul></div>
+</div></div>
+{% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-copy-text]').forEach(function(b){b.onclick=function(){var t=document.getElementById(b.dataset.copyText).textContent;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='복사했어요';},function(){var r=document.createRange();r.selectNodeContents(document.getElementById(b.dataset.copyText));getSelection().removeAllRanges();getSelection().addRange(r);b.textContent='선택했어요';});};});</script>{% endblock %}

@@ -49,6 +49,14 @@ PLATFORM_MODE=pilot
 # SMTP_USER=
 # SMTP_PASSWORD=
 # SMTP_FROM=
+# 답변 초안을 AI로 (없으면 기본 문구로 초안)
+# ANTHROPIC_API_KEY=
+# 새 민원 카카오 알림톡 (솔라피, 템플릿은 docs/platform.md)
+# SOLAPI_API_KEY=
+# SOLAPI_API_SECRET=
+# SOLAPI_PFID=
+# SOLAPI_SENDER=
+# BIZ_KAKAO_TPL_NEW=
 CONF
 else
   sed -i "s/^CONSUMER_HOST=.*/CONSUMER_HOST=$CONSUMER/; s/^BUSINESS_HOST=.*/BUSINESS_HOST=$BUSINESS/" "$ENV_FILE"
