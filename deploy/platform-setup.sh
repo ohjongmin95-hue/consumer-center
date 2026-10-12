@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# SOBORU 플랫폼(한큐 + 소보루 비즈)을 소비자제보센터와 같은 서버에 별도 서비스로 설치합니다.
+# SOBORU 플랫폼(소보루 비즈 고객센터 + 소보루 비즈)을 소비자제보센터와 같은 서버에 별도 서비스로 설치합니다.
 # 먼저 setup.sh로 소비자제보센터가 설치돼 있어야 합니다(같은 소스 폴더를 씁니다).
 # 사용법: sudo bash /opt/soboru/app/deploy/platform-setup.sh 소비자용도메인 기업용도메인 이메일
-#   예: sudo bash platform-setup.sh hanq.example.kr business.example.kr me@example.com
+#   예: sudo bash platform-setup.sh cs.soboru.co.kr biz.soboru.co.kr me@example.com
 # 다시 실행해도 안전합니다. 기존 데이터와 설정은 유지됩니다.
+# 도메인을 바꿀 때도 새 도메인으로 다시 실행하면 됩니다. 예전 주소로 들어오면 새 주소로 넘겨 줘서 이미 나눠 준 링크도 계속 동작합니다.
 set -euo pipefail
 
 CONSUMER="${1:-}"; BUSINESS="${2:-}"; EMAIL="${3:-}"
@@ -19,6 +20,12 @@ chown -R soboru:soboru "$DATA"; chmod 750 "$DATA"
 "$VENV/bin/pip" install -q -r "$APP_DIR/requirements.txt"
 
 echo "== 2/5 설정 파일 ($ENV_FILE)"
+OLD_C=""; OLD_B=""
+if [[ -f $ENV_FILE ]]; then
+  OLD_C=$(sed -n 's/^CONSUMER_HOST=//p' "$ENV_FILE"); OLD_B=$(sed -n 's/^BUSINESS_HOST=//p' "$ENV_FILE")
+fi
+MOVED=0
+[[ ( -n $OLD_C && $OLD_C != "$CONSUMER" ) || ( -n $OLD_B && $OLD_B != "$BUSINESS" ) ]] && MOVED=1
 if [[ ! -f $ENV_FILE ]]; then
   while true; do
     read -rsp "운영 화면 비밀번호(12자 이상): " PW </dev/tty; echo
@@ -60,6 +67,8 @@ PLATFORM_MODE=pilot
 CONF
 else
   sed -i "s/^CONSUMER_HOST=.*/CONSUMER_HOST=$CONSUMER/; s/^BUSINESS_HOST=.*/BUSINESS_HOST=$BUSINESS/" "$ENV_FILE"
+  # 도메인을 바꾸면 새 도메인에 인증서가 붙기 전까지 http로 로그인할 수 있게 둔다 (5단계에서 다시 켬)
+  [[ $MOVED == 1 ]] && sed -i 's/^HTTPS_ONLY=.*/HTTPS_ONLY=0/' "$ENV_FILE"
 fi
 chown root:soboru "$ENV_FILE"; chmod 640 "$ENV_FILE"
 
@@ -88,8 +97,12 @@ systemctl enable -q soboru-platform
 systemctl restart soboru-platform
 
 echo "== 4/5 웹서버(nginx)와 매일 백업"
-if ! grep -q Certbot /etc/nginx/sites-available/soboru-platform 2>/dev/null; then
-cat > /etc/nginx/sites-available/soboru-platform <<NGINX
+NGX=/etc/nginx/sites-available/soboru-platform
+if [[ $MOVED == 1 && -f $NGX ]]; then
+  cp "$NGX" "$NGX.bak-$(date +%Y%m%d%H%M%S)"; echo "도메인 변경: $OLD_C, $OLD_B → $CONSUMER, $BUSINESS (기존 설정은 $NGX.bak-* 로 보관)"
+fi
+if [[ $MOVED == 1 ]] || ! grep -q Certbot "$NGX" 2>/dev/null; then
+cat > "$NGX" <<NGINX
 server {
     listen 80;
     server_name $CONSUMER $BUSINESS;
@@ -104,6 +117,17 @@ server {
     }
 }
 NGINX
+# 예전 도메인으로 들어오면 같은 경로의 새 도메인으로 넘긴다 (이미 나눠 준 기업 고객센터 링크 등).
+# 예전 도메인은 $DATA/old-hosts에 'c 주소'(소비자용)·'b 주소'(기업용)로 쌓아 두고, 설정을 다시 쓸 때마다 모두 넣는다.
+[[ $MOVED == 1 && -n $OLD_C && $OLD_C != "$CONSUMER" ]] && echo "c $OLD_C" >> "$DATA/old-hosts"
+[[ $MOVED == 1 && -n $OLD_B && $OLD_B != "$BUSINESS" ]] && echo "b $OLD_B" >> "$DATA/old-hosts"
+if [[ -f $DATA/old-hosts ]]; then
+  sort -u "$DATA/old-hosts" | while read -r ROLE FROM; do
+    [[ -n $FROM && $FROM != "$CONSUMER" && $FROM != "$BUSINESS" ]] || continue
+    TO=$CONSUMER; [[ $ROLE == b ]] && TO=$BUSINESS
+    printf 'server {\n    listen 80;\n    server_name %s;\n    return 301 http://%s$request_uri;\n}\n' "$FROM" "$TO" >> "$NGX"
+  done
+fi
 fi
 ln -sf /etc/nginx/sites-available/soboru-platform /etc/nginx/sites-enabled/soboru-platform
 nginx -t -q && systemctl reload nginx
@@ -134,13 +158,20 @@ for D in "$CONSUMER" "$BUSINESS"; do
   if [[ -n $MYIP && $(dig +short "$D" A | tail -n1) == "$MYIP" ]]; then OK+=(-d "$D"); else echo "$D 는 아직 이 서버($MYIP)를 가리키지 않아 제외합니다."; fi
 done
 if [[ ${#OK[@]} -eq 4 ]]; then
-  certbot --nginx -n --agree-tos -m "$EMAIL" --redirect --keep-until-expiring "${OK[@]}"
+  # 예전 도메인도 https로 들어왔을 때 넘겨 줄 수 있게 같은 인증서에 넣는다 (아직 이 서버를 가리킬 때만)
+  if [[ -f $DATA/old-hosts ]]; then
+    for D in $(awk '{print $2}' "$DATA/old-hosts" | sort -u); do
+      [[ $D == "$CONSUMER" || $D == "$BUSINESS" ]] && continue
+      [[ -n $MYIP && $(dig +short "$D" A | tail -n1) == "$MYIP" ]] && OK+=(-d "$D")
+    done
+  fi
+  certbot --nginx -n --agree-tos -m "$EMAIL" --redirect --expand --keep-until-expiring "${OK[@]}"
   sed -i 's/^HTTPS_ONLY=.*/HTTPS_ONLY=1/' "$ENV_FILE"
   systemctl restart soboru-platform
   echo; echo "완료"
-  echo "  한큐:             https://$CONSUMER"
-  echo "  소보루 비즈: https://$BUSINESS"
-  echo "  운영 화면:        https://$BUSINESS/ops"
+  echo "  소보루 비즈 고객센터: https://$CONSUMER"
+  echo "  소보루 비즈:          https://$BUSINESS"
+  echo "  운영 화면:            https://$BUSINESS/ops"
 else
   echo; echo "두 도메인의 DNS가 모두 이 서버를 가리키면 같은 명령을 다시 실행해 주세요. 그때 HTTPS가 설정됩니다."
 fi
