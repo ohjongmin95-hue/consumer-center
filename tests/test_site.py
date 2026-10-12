@@ -631,7 +631,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('/reports/%d<' % secret_id, xml)
         self.assertNotIn('/admin', xml)
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<meta name="description" content="소비자 피해를 제보하고', home)
+        self.assertIn('<meta name="description" content="소비자 피해 제보와 처리 과정', home)
         self.assertNotIn('naver-site-verification', home)
         detail = self.client.get('/reports/%d' % public_id).get_data(as_text=True)
         self.assertIn('<meta name="description" content="공개 본문 내용입니다">', detail)
