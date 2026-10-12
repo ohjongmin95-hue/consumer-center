@@ -25,11 +25,20 @@ def mine_rows(limit=None):
     ids=my_ids()
     if not ids:return []
     with conn() as db:return db.execute(f"SELECT * FROM cases WHERE id IN ({','.join('?'*len(ids))}) ORDER BY id DESC"+(f' LIMIT {int(limit)}' if limit else ''),tuple(ids)).fetchall()
+def cs_company():
+    # 기업 고객센터(/to/<id>)로 들어온 소비자에게는 이어지는 화면도 '소보루 비즈 고객센터'로 보여 준다
+    cid=session.get('cs')
+    if not cid:return None
+    with conn() as db:co=core.company(db,cid)
+    return co if co and co['status'] in ('active','listed') else None
 @app.context_processor
-def counts():return {'n_mine':len(my_ids()),'biz_url':core.site_url('biz','/')}
+def counts():
+    cs=cs_company()
+    return {'n_mine':len(my_ids()),'biz_url':core.site_url('biz','/'),'CS':cs,'BRAND':'소보루 비즈 고객센터' if cs else core.CNAME}
 
 @app.route('/')
 def home():
+    session.pop('cs',None)
     with conn() as db:
         members=db.execute("SELECT id,name FROM companies WHERE status='active' AND member=1 ORDER BY id DESC LIMIT 8").fetchall()
         n_members=db.execute("SELECT COUNT(*) FROM companies WHERE status='active' AND member=1").fetchone()[0]
@@ -200,6 +209,7 @@ def company_page(company_id):
     """기업별 접수 페이지: 기업 홈페이지·쇼핑몰에서 이 주소로 연결한다"""
     with conn() as db:co=core.company(db,company_id)
     if not co or co['status'] not in ('active','listed'):abort(404)
+    session['cs']=co['id']
     return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS)
 
 @app.route('/case/<int:case_id>/file/<int:file_id>')
