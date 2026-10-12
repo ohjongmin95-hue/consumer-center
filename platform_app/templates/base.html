@@ -16,7 +16,7 @@
 {% if request.endpoint in ('home','login','decide') and VERIFY[site] %}<meta name="naver-site-verification" content="{{ VERIFY[site] }}">{% endif %}
 <link rel="icon" type="image/png" href="{{ url_for('static',filename='soboru-favicon.png') }}"><link rel="apple-touch-icon" href="{{ url_for('static',filename='soboru-touch.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='hanq.css') }}?v=43">
+<link rel="stylesheet" href="{{ url_for('static',filename='hanq.css') }}?v=44">
 </head>
 <body class="v2">
 {% if PILOT %}<div class="pilot">{% if site=='me' %}시범 운영 중이에요 · 실제 개인정보는 넣지 마세요{% else %}시범 운영 중입니다 · 실제 개인정보는 넣지 마세요{% endif %}</div>{% endif %}
