@@ -803,3 +803,38 @@ select.inp{appearance:auto}
 /* 업종 비교 */
 .cmp>div{display:grid;grid-template-columns:minmax(0,1.2fr) 1fr 1fr;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
 .cmp>div:last-child{border-bottom:0}.cmp>div span{color:var(--fg2)}.cmp .cmph b{font-size:13px;color:var(--fg3);font-weight:500}
+/* ---------- 민원 상세 ---------- */
+.chead{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:6px 0 28px}
+.chead .l{flex:1;min-width:0}
+.chead .tagrow{margin-bottom:12px}
+.chead h1{font-size:30px;line-height:1.3;font-weight:700;letter-spacing:-.045em;margin:0;text-wrap:balance}
+.cmeta{display:flex;flex-wrap:wrap;gap:6px 0;margin-top:10px;font-size:14px;color:var(--fg3)}
+.cmeta span+span::before{content:'';display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--fg4);margin:0 10px 3px;vertical-align:middle}
+.chead .btn.sm .ic{width:18px;height:18px}
+.cols>.stack,.cols>aside.stack{gap:16px}
+body.v2 .cols .panel{padding:26px 28px}
+body.v2 .cols .ph{font-size:18px;margin-bottom:16px}
+.req .who{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.req .who b{display:block;font-size:16px}.req .who small{display:block;font-size:13px;color:var(--fg3)}
+.av.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.req .bodytext{font-size:16.5px}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.facts>div{background:var(--fill);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.facts span{font-size:12.5px;color:var(--fg3)}.facts b{font-size:15px}
+.decide .reco{padding:16px 18px}
+.flow{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px;counter-reset:f}
+.flow li{counter-increment:f;font-size:13.5px;color:var(--fg2);background:var(--card);border-radius:999px;padding:5px 12px 5px 6px;display:flex;align-items:center;gap:6px}
+.flow li::before{content:counter(f);width:18px;height:18px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-size:11px;font-weight:700;display:grid;place-items:center}
+.decide .dact{margin-top:14px}
+.compose textarea.inp{min-height:150px;line-height:1.65}
+.compose .quick{margin-top:12px}
+.compose .quick button.g{background:var(--accent-soft);color:var(--accent-ink)}
+.compose .send{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.compose .send .btn{min-width:140px}
+#draftNote{margin:8px 2px 0}
+aside .kv{font-size:14.5px}
+@media (max-width:760px){.chead h1{font-size:24px}.chead .btn.sm{order:-1;margin-left:auto}.compose .send{flex-direction:column;align-items:stretch}.compose .send .cap{text-align:center}body.v2 .cols .panel{padding:22px 20px}}
+/* 바탕(회색) 위에 놓인 회색 버튼·태그는 흰색으로 */
+.chead .btn.gray,.phead .btn.gray,.chead .pill.gray{background:var(--card)}
+.chead .btn.gray:hover,.phead .btn.gray:hover{background:var(--fill2)}
+@media (max-width:760px){.chead{display:block;text-align:left}.chead .tagrow{justify-content:flex-start}.chead .btn.sm{margin-top:16px;height:36px;font-size:14px}.cmeta{font-size:13px}}

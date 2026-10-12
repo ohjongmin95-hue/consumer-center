@@ -2,40 +2,44 @@
 {% block title %}{{ c.title }} · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('all') }}{% endblock %}
 {% block body %}
+{% set open=c.status not in ('resolved','unresolved') %}{% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}
 <div class="crumb"><a href="{{ url_for('decide') }}">홈</a><span>›</span><a href="{{ url_for('all_cases') }}">민원</a><span>›</span><span class="no">{{ c.no }}</span></div>
-<div class="phead"><div><div class="tagrow">{{ m.pill(c,True) }}<span class="t-sub">{{ c.category }}</span>{% if is_direct(c) %}<span class="pill gray">{{ c.channel }} · 직접 등록</span>{% endif %}</div><h1>{{ c.title }}</h1></div>
-<a class="btn sm gray" href="{{ url_for('record',case_id=c.id) }}" target="_blank">기록 PDF</a></div>
+<div class="chead">
+<div class="l"><div class="tagrow">{{ m.pill(c,True) }}<span class="pill gray">{{ c.category }}</span>{% if is_direct(c) %}<span class="pill gray">{{ c.channel }} · 직접 등록</span>{% endif %}</div>
+<h1>{{ c.title }}</h1>
+<div class="cmeta"><span>{{ fmt(c.created) }} 접수</span>{% if c.due and open %}<span class="{{ 't-bad' if overdue(c) }}">{{ fmt_day(c.due) }}까지 답변{{ ' · 지연' if overdue(c) }}</span>{% endif %}<span class="no">{{ c.no }}</span></div></div>
+<a class="btn sm gray" href="{{ url_for('record',case_id=c.id) }}" target="_blank">{{ i.icon('note',18) }}기록 PDF</a></div>
 <div class="cols">
-<div class="stack lg">
-<div class="panel"><p class="bodytext">{{ c.body }}</p>
+<div class="stack">
+<section class="panel req"><div class="who"><span class="av sm acc">{{ (c.name or '고객')[:1] }}</span><div><b>{{ c.name or '익명' }}</b><small>{{ c.channel if is_direct(c) else CNAME+'로 접수' }} · {{ fmt(c.created) }}</small></div></div>
+<p class="bodytext">{{ c.body }}</p>
 {% if files %}<div class="files">{% for f in files %}<a href="{{ url_for('case_file',case_id=c.id,file_id=f.id) }}">📎 {{ f.original }}</a>{% endfor %}</div>{% endif %}
-<div class="want-box"><span>원하는 해결</span><b>{{ c.want }}</b></div></div>
-{% set open=c.status not in ('resolved','unresolved') %}
-{% if open and c.decision not in ('approved','auto') %}{{ b.dcard(c,True) }}{% endif %}
-{% if c.ret_status %}<div class="panel retbox"><div class="ph">반품 회수</div>
+<div class="facts"><div><span>원하는 해결</span><b>{{ c.want }}</b></div>{% if c.product %}<div><span>상품</span><b>{{ c.product }}</b></div>{% endif %}{% if c.order_no %}<div><span>주문번호</span><b class="no">{{ c.order_no }}</b></div>{% endif %}</div></section>
+{% if open and c.decision not in ('approved','auto') %}<section class="panel decide"><div class="ph">추천 조치</div>
+<div class="reco"><div class="r">{{ p.title }}</div><ol class="flow">{% for st in p.steps %}<li>{{ st }}</li>{% endfor %}{% if rule.reply %}<li>고객에게 답변 보내기</li>{% endif %}</ol></div>
+<form method="post" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="approve">승인하고 처리</button><button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form></section>{% endif %}
+{% if c.ret_status %}<section class="panel"><div class="ph">반품 회수</div>
 <div class="retsteps">{% for k,l in RET_STATUS.items() %}<span class="{{ 'on' if loop.index0<=(RET_STATUS|list).index(c.ret_status) }}">{{ l }}</span>{% endfor %}</div>
-{% if c.ret_tracking %}<dl class="kv" style="margin-top:14px"><dt>택배사</dt><dd>{{ c.ret_courier }}{% if COURIERS.get(c.ret_courier) %} · <a class="link" href="{{ COURIERS[c.ret_courier] }}" target="_blank" rel="noopener">홈페이지에서 조회</a>{% endif %}</dd><dt>송장번호</dt><dd class="no" style="user-select:all">{{ c.ret_tracking }}</dd></dl>
-{% elif c.ret_status=='guided' %}<p class="sub">반품 안내를 보냈어요. 소비자가 송장번호를 입력하면 여기에 보여요.{% if is_direct(c) %} 직접 등록한 민원은 소비자가 입력할 수 없어 받으면 바로 회수 확인을 눌러 주세요.{% endif %}</p>{% endif %}
-{% if c.ret_status in ('guided','sent') %}<form method="post" style="margin-top:14px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="ret_received">회수 확인</button></form>{% endif %}
-</div>{% endif %}
-{% if is_direct(c) and last_reply %}<div class="panel"><div class="ph">{{ c.channel }}(으)로 전할 답변</div><p class="sub" style="margin:0 0 12px">직접 등록한 민원은 소비자에게 자동으로 가지 않아요. 복사해서 원래 받은 곳으로 보내 주세요.</p>
-<textarea class="inp" id="lastReply" readonly>{{ last_reply.reply }}</textarea><button class="btn md gray" type="button" data-copy="lastReply" style="margin-top:10px">복사</button></div>{% endif %}
-{% if open %}<form class="panel" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="reply">
+{% if c.ret_tracking %}<dl class="kv" style="margin-top:16px"><dt>택배사</dt><dd>{{ c.ret_courier }}{% if COURIERS.get(c.ret_courier) %} · <a class="link" href="{{ COURIERS[c.ret_courier] }}" target="_blank" rel="noopener">조회하기</a>{% endif %}</dd><dt>송장번호</dt><dd class="no" style="user-select:all">{{ c.ret_tracking }}</dd></dl>
+{% elif c.ret_status=='guided' %}<p class="sub" style="font-size:15px">반품 안내를 보냈어요. 고객이 송장번호를 입력하면 여기에 보여요.{% if is_direct(c) %} 직접 등록한 민원은 고객이 입력할 수 없으니 상품을 받으면 바로 회수 확인을 눌러 주세요.{% endif %}</p>{% endif %}
+{% if c.ret_status in ('guided','sent') %}<form method="post" style="margin-top:16px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="ret_received">회수 확인</button></form>{% endif %}</section>{% endif %}
+{% if is_direct(c) and last_reply %}<section class="panel"><div class="ph">{{ c.channel }}(으)로 전할 답변</div><p class="sub" style="margin:0 0 12px;font-size:15px">직접 등록한 민원은 고객에게 자동으로 가지 않아요. 복사해서 원래 받은 곳으로 보내 주세요.</p>
+<textarea class="inp" id="lastReply" readonly>{{ last_reply.reply }}</textarea><button class="btn md gray" type="button" data-copy="lastReply" style="margin-top:10px">복사</button></section>{% endif %}
+{% if open %}<form class="panel compose" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="reply">
 <div class="ph">답변 쓰기<button type="button" class="btn sm gray" id="mkDraft" data-url="{{ url_for('draft',case_id=c.id) }}">✨ 초안 만들기</button></div>
 <textarea class="inp" name="msg" id="msg" required>{{ rule.reply }}</textarea>
 <p class="cap" id="draftNote" hidden></p>
-<div class="quick">{% for t in ['확인 후 오늘 안에 다시 연락드릴게요.','불편을 드려 죄송합니다. 바로 조치하겠습니다.','주문번호를 알려 주시면 빠르게 확인할게요.'] %}<button type="button" data-q="{{ t }}">{{ t }}</button>{% endfor %}</div>
-{% if guides %}<details class="gsample"><summary class="cap">응대 가이드 예시 문구 넣기<span class="chev"></span></summary><div class="quick">{% for g in guides %}<button type="button" data-q="{{ g.sample }}">{{ g.title }}</button>{% endfor %}</div></details>{% endif %}
-<button class="btn md" style="margin-top:16px">{{ '답변 기록하기' if is_direct(c) else '답변 보내기' }}</button></form>{% endif %}
+<div class="quick">{% for t in ['확인 후 오늘 안에 다시 연락드릴게요.','불편을 드려 죄송합니다. 바로 조치하겠습니다.','주문번호를 알려 주시면 빠르게 확인할게요.'] %}<button type="button" data-q="{{ t }}">{{ t }}</button>{% endfor %}{% for g in guides %}<button type="button" class="g" data-q="{{ g.sample }}">가이드 · {{ g.title }}</button>{% endfor %}</div>
+<div class="send"><span class="cap">{{ '기록만 남고 고객에게는 가지 않아요' if is_direct(c) else '고객에게 알림이 가요' }}</span><button class="btn md">{{ '답변 기록하기' if is_direct(c) else '답변 보내기' }}</button></div></form>{% endif %}
+<section class="panel"><div class="ph">진행 기록</div>{{ m.timeline(ev,c,'biz') }}</section>
 </div>
-<aside class="stack lg side-sticky">
-<div class="panel"><div class="ph">소비자 정보</div><dl class="kv"><dt>이름</dt><dd>{{ c.name or '익명' }}</dd>{% if c.phone %}<dt>연락처</dt><dd>{{ fmt_phone(c.phone) }}</dd>{% endif %}{% if c.order_no %}<dt>주문번호</dt><dd class="no">{{ c.order_no }}</dd>{% endif %}{% if c.product %}<dt>상품</dt><dd>{{ c.product }}</dd>{% endif %}{% if c.received_on %}<dt>상품 받은 날</dt><dd>{{ c.received_on }}</dd>{% endif %}<dt>접수일</dt><dd>{{ fmt(c.created) }}</dd>{% if c.due %}<dt>답변 목표일</dt><dd class="{{ 't-bad' if overdue(c) }}">{{ fmt_day(c.due) }}</dd>{% endif %}</dl></div>
-<div class="panel"><div class="ph">법 기준<a href="{{ url_for('guide') }}">응대 가이드</a></div>
-{% if chk %}<div class="lawk {{ 'ok' if chk.within else 'bad' }}"><b>받은 지 {{ chk.days }}일째</b><span>{% if chk.within %}청약철회 기간 7일 안이에요 ({{ chk.left }}일 남음){% else %}청약철회 기간 7일이 지났어요. 광고·계약과 다르면 3개월 안까지 가능해요{% endif %}</span></div>
-{% elif c.category in ('교환','반품·환불','제품 불량') %}<p class="cap" style="margin:0 0 10px">상품 받은 날을 알면 7일 기간을 계산해 드려요.</p>{% endif %}
+<aside class="stack side-sticky">
+<section class="panel"><div class="ph">고객 정보</div><dl class="kv"><dt>이름</dt><dd>{{ c.name or '익명' }}</dd>{% if c.phone %}<dt>연락처</dt><dd>{{ fmt_phone(c.phone) }}</dd>{% endif %}{% if c.email %}<dt>이메일</dt><dd>{{ c.email }}</dd>{% endif %}{% if c.received_on %}<dt>상품 받은 날</dt><dd>{{ c.received_on }}</dd>{% endif %}</dl></section>
+<section class="panel"><div class="ph">법 기준<a href="{{ url_for('guide') }}">응대 가이드 ›</a></div>
+{% if chk %}<div class="lawk {{ 'ok' if chk.within else 'bad' }}"><b>받은 지 {{ chk.days }}일째</b><span>{% if chk.within %}청약철회 기간 7일 안이에요 · {{ chk.left }}일 남음{% else %}청약철회 7일이 지났어요. 광고·계약과 다르면 3개월 안까지 가능해요{% endif %}</span></div>
+{% elif c.category in ('교환','반품·환불','제품 불량') %}<p class="cap" style="margin:0 0 12px">상품 받은 날을 알면 7일 기간을 계산해 드려요.</p>{% endif %}
 <div class="lawlist">{% for l in laws %}{{ b.law_item(l,l.summary) }}{% endfor %}</div>
-<p class="cap lawnote">요약은 이해를 돕는 설명이고, 판단은 원문을 기준으로 해 주세요. 법률 자문이 아니에요.</p></div>
-<div class="panel"><div class="ph">진행 기록</div>{{ m.timeline(ev,c,'biz') }}</div>
+<p class="cap lawnote">요약은 이해를 돕는 설명이고, 판단은 원문을 기준으로 해 주세요. 법률 자문이 아니에요.</p></section>
 </aside></div>
 {% endblock %}
 {% block script %}<script>
