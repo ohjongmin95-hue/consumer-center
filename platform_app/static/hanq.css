@@ -594,7 +594,7 @@ body.v2 .gnb .logo{font-size:22px}
 body.v2 .gnb nav{gap:36px}
 body.v2 .gnb nav a{font-size:17px;font-weight:600;color:var(--fg);border-bottom:0;padding-top:0}
 body.v2 .gnb nav a:hover{color:var(--accent-ink)}
-body.v2 .gnb nav a.on{color:var(--fg);font-weight:800}
+body.v2 .gnb nav a.on{color:var(--fg)}
 body.v2 .gnb .btn.sm{height:40px;font-size:15px;padding:0 18px;border-radius:10px}
 body.v2 .band{padding-block:96px}
 body.v2 .band.tight{padding-block:56px}
