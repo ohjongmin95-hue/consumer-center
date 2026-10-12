@@ -841,8 +841,7 @@ body:has(main.cs){background:var(--card)}
 .cs-mine{font-size:15px;font-weight:600;color:var(--fg2);padding:8px 4px;display:inline-flex;align-items:center;gap:6px}
 .cs-mine:hover{color:var(--fg)}
 .cs-hero{padding:28px 0 32px}
-.cs-av{width:48px;height:48px;border-radius:16px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:21px;font-weight:700}
-.cs-hero h1{font-size:26px;line-height:1.4;letter-spacing:-.04em;margin:20px 0 0;font-weight:700;text-wrap:balance}
+.cs-hero h1{font-size:26px;line-height:1.4;letter-spacing:-.04em;margin:0;font-weight:700;text-wrap:balance}
 .cs-sub{margin:10px 0 0;font-size:16px;color:var(--fg3)}
 .cs-sub b{color:var(--accent-ink);font-weight:700}
 .cs-sec{padding:4px 0 8px}
@@ -872,8 +871,7 @@ body.v2:has(main.cs) .pilot{position:relative}
   .cs-top .cs-in{height:72px}
   .cs-brand img{height:28px}.cs-brand small{font-size:17px}
   .cs-hero{padding:56px 0 40px}
-  .cs-av{width:56px;height:56px;font-size:24px;border-radius:18px}
-  .cs-hero h1{font-size:38px;line-height:1.35}
+    .cs-hero h1{font-size:38px;line-height:1.35;margin:0}
   .cs-sub{font-size:18px;margin-top:14px}
   .cs-sec h2{font-size:16px;margin-bottom:10px}
   .cs-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px;align-items:start}
