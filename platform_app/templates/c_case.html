@@ -9,7 +9,7 @@
 <div class="stack lg">
 <div class="panel status-card"><div class="tagrow"><span class="av sm">{{ c.company_name[:1] }}</span><b>{{ c.company_name }}</b>{% if c.member %}<span class="pill ok">입점</span>{% else %}<span class="pill gray">비입점</span>{% endif %}</div>
 <h1>{{ '답변이 늦어지고 있어요' if overdue(c) else heads.get(c.status,'접수했어요') }}</h1>
-{% if c.member and c.due and c.status in ('forwarded','seen') %}<p class="sub">{{ fmt_day(c.due) }}까지 답변을 받아요</p>{% endif %}
+{% if c.member and c.due and c.status in ('forwarded','seen') %}<p class="sub">담당자가 확인하고 있어요</p>{% endif %}
 {{ m.track(c) }}</div>
 {% if last %}<div class="panel"><div class="tagrow"><span class="av sm">{{ c.company_name[:1] }}</span><b>{{ c.company_name }}</b><span class="sp"></span><span class="cap">{{ fmt(last.created) }}</span></div><div class="reply">{{ last.reply }}</div></div>{% endif %}
 {% if c.ret_status %}<div class="panel"><div class="ph">반품 보내기</div>
@@ -42,7 +42,7 @@
 <div class="panel"><div class="ph">비입점 기업이에요</div><p class="sub">{{ '센터가 공식 연락처로 전달하고 회신을 기록해요' if c.consent else '전달 동의가 없어 접수만 해 두었어요' }}</p>
 {% if co and co.contact %}<div class="hint blue" style="margin-top:14px">{{ i.icon('phone',22) }}<span>고객센터 <b style="user-select:all">{{ co.contact }}</b></span></div>{% endif %}</div>{% endif %}
 {% if again %}<form class="panel" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="again">
-<div class="ph" style="margin-bottom:4px">기업에 다시 요청할까요?</div><p class="sub">{{ '답변 목표일이 지났어요. 다시 요청하면 기업에 한 번 더 알려요.' if overdue(c) else '해결되지 않은 내용을 덧붙여 한 번 더 보내요.' }}</p>
+<div class="ph" style="margin-bottom:4px">기업에 다시 요청할까요?</div><p class="sub">{{ '답변이 늦어지고 있어요. 다시 요청하면 기업에 한 번 더 알려요.' if overdue(c) else '해결되지 않은 내용을 덧붙여 한 번 더 보내요.' }}</p>
 <div class="addline" style="margin-top:14px"><input class="inp" name="msg" maxlength="2000" placeholder="덧붙일 말 (선택)"><button class="btn md">다시 요청</button></div></form>{% endif %}
 {% if c.status=='unresolved' or overdue(c) %}<div><div class="shead" style="margin-bottom:16px"><h2 style="font-size:22px">공식 피해구제</h2><div class="r"><a href="{{ url_for('relief',case_id=c.id) }}">신청 자료 정리하기</a></div></div>{{ m.relief() }}</div>{% endif %}
 <div class="panel"><div class="ph">진행 기록</div>{{ m.timeline(ev,c,'me') }}
@@ -53,6 +53,6 @@
 <aside class="stack lg side-sticky">
 <div class="panel"><div class="ph">접수 내용</div><div class="tt2">{{ c.title }}</div><p class="bodytext sm">{{ c.body }}</p>
 {% if files %}<div class="files">{% for f in files %}<a href="{{ url_for('case_file',case_id=c.id,file_id=f.id) }}">📎 {{ f.original }}</a>{% endfor %}</div>{% endif %}
-<div class="hr"></div><dl class="kv"><dt>접수번호</dt><dd class="no">{{ c.no }}</dd><dt>유형</dt><dd>{{ c.category }}</dd><dt>원하는 해결</dt><dd>{{ c.want }}</dd><dt>접수일</dt><dd>{{ fmt(c.created) }}</dd>{% if c.member and c.due %}<dt>답변 목표일</dt><dd>{{ fmt_day(c.due) }}</dd>{% endif %}</dl></div>
+<div class="hr"></div><dl class="kv"><dt>접수번호</dt><dd class="no">{{ c.no }}</dd><dt>유형</dt><dd>{{ c.category }}</dd><dt>원하는 해결</dt><dd>{{ c.want }}</dd><dt>접수일</dt><dd>{{ fmt(c.created) }}</dd></dl></div>
 </aside></div>
 {% endblock %}
