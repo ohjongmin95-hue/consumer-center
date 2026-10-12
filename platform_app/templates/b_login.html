@@ -1,6 +1,7 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
 {% block title %}{{ BNAME }} · 고객 민원, 승인 한 번으로{% endblock %}
 {% block bar %}{{ b.bar('login') }}{% endblock %}
+{% block foot %}<footer class="foot-mini"><div class="wrap">© SOBORU · 기업의 {{ BNAME }} 이용 여부는 SOBORU 언론 보도에 영향을 주지 않아요.</div></footer>{% endblock %}
 {% block main %}<main class="pg split"><div class="wrap">
 <div class="bsplit">
 <section class="brand">

@@ -693,7 +693,7 @@ body.v2 .steps3 p{font-size:18px;line-height:1.55}
 .bsplit .brand h1{margin:24px 0 0;font-size:52px;line-height:1.25;letter-spacing:-.05em;font-weight:800;text-wrap:balance}
 .bsplit .brand p{margin:20px 0 0;font-size:19px;line-height:1.6;color:rgba(255,255,255,.92)}
 .bsplit .stage{position:relative;margin-top:auto;padding-top:48px;display:flex;justify-content:center}
-.bsplit .stage .mascot{position:absolute;top:4px;left:calc(50% + 120px);width:104px;height:auto;z-index:2}
+.bsplit .stage .mascot{position:absolute;top:-4px;left:calc(50% + 150px);width:104px;height:auto;z-index:2}
 .bsplit .stage .mock{width:100%;max-width:400px;border-radius:28px 28px 0 0;border:0;box-shadow:0 -8px 40px rgba(120,60,0,.18);color:#191f28;background:#fff}
 .bsplit .stage .ok{position:absolute;left:24px;top:8px;z-index:2;background:#fff;color:#191f28;border-radius:16px;padding:12px 16px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:0 12px 32px rgba(120,60,0,.2)}
 .bsplit .stage .ok i{width:22px;height:22px;border-radius:50%;background:#12a26a;color:#fff;font-style:normal;display:grid;place-items:center;font-size:13px}
@@ -741,3 +741,14 @@ main.pg.split{padding-block:40px 80px}
   .bsplit .form h2{font-size:26px;margin-bottom:28px}
   main.pg.split{padding-block:16px 48px}
 }
+/* 로그인 화면은 한 화면에 맞춤 */
+body.v2 main.pg.split{padding-block:28px}
+.bsplit{height:calc(100vh - 196px);height:calc(100dvh - 196px);min-height:560px;max-height:740px}
+.bsplit .brand{padding:48px 52px 0}
+.bsplit .brand h1{font-size:44px;margin-top:20px}
+.bsplit .brand p{font-size:17px;margin-top:16px}
+.bsplit .stage{padding-top:40px}
+.bsplit .form{padding:48px 56px}
+.bsplit .form h2{margin-bottom:32px}
+.foot-mini{padding-block:0 20px;font-size:13px;color:var(--fg3);text-align:center}
+@media (max-width:960px){.bsplit{height:auto;max-height:none;min-height:0}.bsplit .brand{padding:36px 24px 0}.bsplit .brand h1{font-size:34px}.bsplit .form{padding:36px 22px 40px}}
