@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
-{% block title %}{{ CNAME }} 운영{% endblock %}
+{% block title %}{{ BNAME }} 운영{% endblock %}
 {% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
 {% block body %}
 {% if pending %}<div class="phead"><div><h1>가입 신청 <span class="t-acc">{{ pending|length }}</span></h1></div></div>
