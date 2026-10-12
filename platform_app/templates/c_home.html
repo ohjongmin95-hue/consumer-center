@@ -5,12 +5,12 @@
 <section class="band w"><div class="wrap hero4">
 <div class="tx">
 <h1>불편한 일,<br><em>한 번에</em> 해결해요</h1>
-<p>어느 기업이든 한 번만 접수하면<br>기업 답변까지 한곳에서 확인해요</p>
-<a class="btn lg" href="{{ url_for('new') }}">접수하기</a>
+<p>회사 이름을 찾으면<br>그 회사 고객센터로 바로 연결해 드려요</p>
+<div class="hsearch"><input class="inp" id="hq" type="search" maxlength="60" placeholder="회사나 쇼핑몰 이름" aria-label="회사나 쇼핑몰 이름" autocomplete="off"><div class="rows" id="hs" hidden></div></div>
+<div class="hacts"><a class="btn lg" href="{{ url_for('new') }}">접수하기</a><a class="btn lg gray" href="{{ url_for('mine') }}">내 접수 확인</a></div>
 </div>
 <div class="vis" aria-hidden="true">{% for cat in CATS %}<span class="ic">{{ i.cat_icon(cat,44) }}<em>{{ cat }}</em></span>{% endfor %}</div>
 </div></section>
-<section class="band"><div class="wrap home-chat"><div class="shead"><h2>먼저 물어보세요</h2></div><p class="sub">편하게 적으면 바로 안내해 드려요. 해결이 안 되면 그대로 접수로 이어져요.</p>{% set co=None %}{% include "_chat.html" %}</div></section>
 
 {% if rows %}<section class="band g"><div class="wrap">
 <div class="shead"><h2>내 접수</h2><div class="r"><a href="{{ url_for('mine') }}">전체보기</a></div></div>
@@ -21,4 +21,16 @@
 <div class="steps3">{% for ic,t,s in [('note','한 번만 접수','기업과 불편한 일, 원하는 해결을 적어요'),('reply','기업이 답변','입점 기업 담당자가 바로 확인하고 답변해요'),('shield','해결 확인','해결되지 않으면 공식 피해구제로 안내해요')] %}
 <div><span class="num">{{ loop.index }}</span><b>{{ t }}</b><p>{{ s }}</p></div>{% endfor %}</div>
 </div></section>
+<script>
+(function(){
+  // 회사 이름으로 찾아 그 회사 고객센터로 바로 보낸다 (입점 전 회사는 접수 화면으로)
+  const inp=document.getElementById('hq'),box=document.getElementById('hs');let t;
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  inp.addEventListener('input',()=>{clearTimeout(t);const q=inp.value.trim();if(!q){box.hidden=true;return;}
+    t=setTimeout(()=>fetch('{{ url_for("companies") }}?q='+encodeURIComponent(q)).then(r=>r.json()).then(list=>{
+      box.innerHTML=list.map(c=>'<a class="rowi" href="'+(c.member?'{{ url_for("company_page",company_id=0) }}'.replace(/0$/,c.id):'{{ url_for("new") }}?company_id='+c.id)+'"><span class="av">'+esc(c.name[0])+'</span><span class="tx"><div class="t">'+esc(c.name)+'</div><div class="s">'+(c.member?'고객센터로 연결':'접수로 이어가기')+'</div></span></a>').join('')
+        +'<a class="rowi" href="{{ url_for("new") }}?company='+encodeURIComponent(q)+'"><span class="tx"><div class="t">찾는 회사가 없어요</div><div class="s">‘'+esc(q)+'’(으)로 바로 접수하기</div></span></a>';
+      box.hidden=false;}).catch(()=>{}),200);});
+})();
+</script>
 {% endblock %}
