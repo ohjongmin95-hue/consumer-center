@@ -13,6 +13,7 @@ app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='me')
 def guard():
     if not request.path.startswith('/api/'):core.check_csrf()  # 앱 API는 쿠키 없이 요청별 토큰으로만 연다
 app.after_request(core.copy_after_request('me'))  # 운영 화면에서 고친 문구 적용
+core.track_template(app)
 
 def my_ids():return set(session.get('mine',[]))
 def remember(*ids):session['mine']=sorted(my_ids()|set(ids))[-50:]

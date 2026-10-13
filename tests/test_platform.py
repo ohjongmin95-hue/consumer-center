@@ -308,12 +308,34 @@ class PlatformTest(unittest.TestCase):
         self.post(o,'/biz/ops/copy',{'site':'all','src':'이용 안내','act':'hide'})
         self.assertNotIn('이용 안내',me.get('/').get_data(as_text=True))
         self.assertIn('이용 안내',o.get('/biz/ops/copy').get_data(as_text=True))  # 운영 화면은 그대로
-        with self.core.conn() as db:ids=[r[0] for r in db.execute('SELECT id FROM copy_edits')]
-        for i in ids:self.post(o,'/biz/ops/copy',{'act':'restore','id':i})
+        # 되돌리기 버튼 없이, 같은 자리에서 다시 고친다 (원래 문구로 저장하면 처음처럼)
+        self.post(o,'/biz/ops/copy',{'site':'me','src':'접수하기','dst':'문의하기'})
+        self.assertIn('>문의하기<',me.get('/').get_data(as_text=True))
+        self.post(o,'/biz/ops/copy',{'site':'me','src':'접수하기','dst':'접수하기'});self.post(o,'/biz/ops/copy',{'site':'all','src':'이용 안내','dst':'이용 안내'})
         self.assertIn('>접수하기<',me.get('/').get_data(as_text=True))
+        j=self.post(o,'/biz/ops/copy',{'site':'me','src':'모든 서비스는 무료로 이용할 수 있어요.','dst':'모두 무료예요.'},headers={'X-Requested-With':'fetch'}).get_json()
+        self.assertTrue(j['ok'] and j['edited']);self.assertIn('모두 무료예요.',me.get('/guide').get_data(as_text=True))
+        # 템플릿 코드 안 문구(자주 묻는 질문)와 응대 가이드 문구도 목록에 나온다
+        self.assertIn('모든 서비스는 무료로',o.get('/biz/ops/copy?q=무료로 이용').get_data(as_text=True))
+        self.assertIn('마음이 바뀌어',o.get('/biz/ops/copy?q=마음이').get_data(as_text=True))
         self.post(o,'/biz/ops/copy',{'site':'me','src':'접수하기','dst':'<b>x</b>'})
         self.assertIn('&lt;b&gt;x&lt;/b&gt;',me.get('/').get_data(as_text=True))  # 고친 문구는 글자로만 들어감
         with self.core.conn() as db:db.execute('DELETE FROM copy_edits')
+
+    def test_visual_move_from_ops(self):
+        o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+        fr=o.get('/biz/ops/visual/frame?p=2');page=fr.get_data(as_text=True)
+        self.assertEqual(fr.headers['X-Frame-Options'],'SAMEORIGIN');self.assertIn('cp-tool-css',page);self.assertIn('"tpl": "c_guide.html"',page)
+        tok=re.search(r'"csrf": "([^"]+)"',page).group(1)
+        sel='body>main:nth-of-type(1)>div:nth-of-type(1)>h1:nth-of-type(1)'
+        j=o.post('/biz/ops/visual/move',data={'csrf':tok,'tpl':'c_guide.html','sel':sel,'dev':'pc','dx':'30','dy':'-8'}).get_json();self.assertTrue(j['ok'])
+        self.assertFalse(o.post('/biz/ops/visual/move',data={'csrf':tok,'tpl':'c_guide.html','sel':'h1{}body','dev':'pc','dx':'1','dy':'1'}).get_json()['ok'])
+        me=self.client();g=me.get('/guide').get_data(as_text=True)
+        self.assertIn('@media (min-width:768px){'+sel+'{position:relative;left:30px;top:-8px}}',g)
+        self.assertNotIn('cp-moves',me.get('/').get_data(as_text=True))  # 다른 화면에는 없음
+        o.post('/biz/ops/visual/move',data={'csrf':tok,'tpl':'c_guide.html','sel':sel,'dev':'pc','dx':'0','dy':'0'})
+        self.assertNotIn('cp-moves',me.get('/guide').get_data(as_text=True))
+        self.assertEqual(self.client().get('/biz/ops/visual').status_code,302)  # 운영자만
 
     def test_password_links_and_consumer_kakao(self):
         sent=[];kakao=[]

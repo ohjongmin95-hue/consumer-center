@@ -1,0 +1,136 @@
+{# 화면 보며 고치기: 운영 화면의 미리보기 안에 붙는 도구 (끌어 옮기기, 맞춤선, 두 번 눌러 글자 고치기) #}
+<style id="cp-tool-css">
+.cp-hover{outline:2px dashed #3182f6!important;outline-offset:3px;cursor:grab}
+.cp-sel{outline:2px solid #3182f6!important;outline-offset:3px;cursor:grab}
+.cp-dragging,.cp-dragging *{cursor:grabbing!important;user-select:none!important}
+.cp-editing{outline:2px solid #f89b00!important;outline-offset:3px;background:rgba(248,155,0,.08)!important;cursor:text!important}
+.cp-guide{position:fixed;background:#ff3d71;z-index:2147483646;pointer-events:none}
+.cp-guide.v{width:1px;top:0;bottom:0}.cp-guide.h{height:1px;left:0;right:0}
+.cp-ui{position:fixed;z-index:2147483647;font:600 13px/1 Pretendard,'Noto Sans KR',sans-serif;letter-spacing:-.02em}
+.cp-bar{display:flex;gap:4px;background:#191f28;border-radius:12px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.cp-bar button{border:0;background:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font:inherit;white-space:nowrap}
+.cp-bar button:hover{background:rgba(255,255,255,.14)}
+.cp-bar span{color:#b0b8c1;padding:8px 6px 8px 8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cp-msg{left:50%;bottom:24px;transform:translateX(-50%);background:#191f28;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;transition:opacity .2s}
+</style>
+<script>
+(function(){
+var C={{ cfg|safe }},DEV=innerWidth>=768?'pc':'m',moves={},cur=null,drag=null,editing=null,guides=[],msgT;
+var st=document.getElementById('cp-moves');
+if(st){try{JSON.parse(st.dataset.moves).forEach(function(m){if(m.dev===DEV)moves[m.sel]={dx:m.dx,dy:m.dy};});}catch(e){}st.remove();}
+function q(s){try{return document.querySelector(s);}catch(e){return null;}}
+function setPos(el,o){el.style.position='relative';el.style.left=o.dx+'px';el.style.top=o.dy+'px';}
+Object.keys(moves).forEach(function(s){var e=q(s);if(e)setPos(e,moves[s]);});
+function path(el){
+  var parts=[];
+  while(el&&el.nodeType===1&&el!==document.body&&el!==document.documentElement){
+    if(el.id&&/^[a-z][a-z0-9_-]*$/.test(el.id)&&document.querySelectorAll('#'+el.id).length===1){parts.unshift('#'+el.id);return parts.join('>');}
+    var t=el.tagName.toLowerCase(),i=1,s=el;while((s=s.previousElementSibling))if(s.tagName===el.tagName)i++;
+    parts.unshift(t+':nth-of-type('+i+')');el=el.parentElement;
+  }
+  return 'body>'+parts.join('>');
+}
+function ownText(el){for(var n=el.firstChild;n;n=n.nextSibling)if(n.nodeType===3&&n.textContent.trim())return true;return false;}
+function isUi(el){return el.closest&&el.closest('.cp-ui');}
+function pick(t){
+  for(var el=t;el&&el.nodeType===1&&el!==document.body;el=el.parentElement){
+    if(isUi(el))return null;
+    if(ownText(el)&&!/^(SCRIPT|STYLE|TEXTAREA|SELECT|OPTION)$/.test(el.tagName))return el;
+  }
+  return null;
+}
+function off(el){var s=path(el);return moves[s]||{dx:0,dy:0};}
+function canMove(el){var p=getComputedStyle(el).position;return p==='static'||p==='relative';}
+function plain(el){for(var n=el.firstChild;n;n=n.nextSibling)if(n.nodeType===1&&n.tagName!=='BR')return false;return true;}
+function norm(t){return t.replace(/\s+/g,' ').trim();}
+function msg(t){var m=document.querySelector('.cp-msg');if(!m){m=document.createElement('div');m.className='cp-ui cp-msg';document.body.appendChild(m);}m.textContent=t;m.style.opacity=1;clearTimeout(msgT);msgT=setTimeout(function(){m.style.opacity=0;},1600);}
+function post(url,data){var f=new FormData();f.append('csrf',C.csrf);for(var k in data)f.append(k,data[k]);
+  return fetch(url,{method:'POST',body:f,headers:{'X-Requested-With':'fetch'},credentials:'same-origin'}).then(function(r){return r.json();}).catch(function(){return {ok:false,msg:'저장하지 못했어요. 다시 해 주세요'};});}
+// 도구 막대
+var bar=document.createElement('div');bar.className='cp-ui cp-bar';bar.hidden=true;
+bar.innerHTML='<span class="cp-xy"></span><button type="button" data-a="edit">글자 고치기</button><button type="button" data-a="reset">원래 자리로</button>';
+document.body.appendChild(bar);
+function showBar(){
+  if(!cur){bar.hidden=true;return;}
+  var r=cur.getBoundingClientRect(),o=off(cur);bar.hidden=false;
+  bar.querySelector('.cp-xy').textContent=(o.dx||o.dy)?('가로 '+o.dx+' · 세로 '+o.dy):'처음 자리';
+  bar.querySelector('[data-a=reset]').hidden=!(o.dx||o.dy);
+  bar.querySelector('[data-a=edit]').hidden=!plain(cur);
+  var top=r.top-bar.offsetHeight-10;if(top<8)top=r.bottom+10;
+  bar.style.top=top+'px';bar.style.left=Math.max(8,Math.min(innerWidth-bar.offsetWidth-8,r.left))+'px';
+}
+function select(el){if(cur)cur.classList.remove('cp-sel');cur=el;if(cur)cur.classList.add('cp-sel');showBar();}
+bar.addEventListener('click',function(e){var a=e.target.dataset.a;if(!a||!cur)return;if(a==='edit')startEdit(cur);if(a==='reset')saveMove(cur,{dx:0,dy:0});});
+function saveMove(el,o){var s=path(el);setPos(el,o);if(o.dx||o.dy)moves[s]=o;else{delete moves[s];el.style.position=el.style.left=el.style.top='';}
+  showBar();post(C.move,{tpl:C.tpl,sel:s,dev:DEV,dx:o.dx,dy:o.dy}).then(function(j){msg(j.msg);});}
+// 마우스 올리면 표시, 링크·버튼은 누르지 않게
+var hov=null;
+document.addEventListener('mouseover',function(e){if(drag||editing)return;var el=pick(e.target);if(hov&&hov!==el)hov.classList.remove('cp-hover');hov=el;if(el&&el!==cur)el.classList.add('cp-hover');},true);
+document.addEventListener('click',function(e){if(isUi(e.target)||editing&&editing.contains(e.target))return;e.preventDefault();e.stopPropagation();},true);
+document.addEventListener('submit',function(e){e.preventDefault();e.stopPropagation();},true);
+// 끌어 옮기기 + 맞춤선
+function clearGuides(){guides.forEach(function(g){g.remove();});guides=[];}
+function guide(kind,v){var g=document.createElement('div');g.className='cp-guide '+kind;g.style[kind==='v'?'left':'top']=v+'px';document.body.appendChild(g);guides.push(g);}
+function snapLines(el){
+  var xs=[innerWidth/2],ys=[],all=document.body.querySelectorAll('*'),n=0;
+  for(var i=0;i<all.length&&n<600;i++){var e=all[i];if(e===el||el.contains(e)||e.contains(el)||isUi(e)||!ownText(e))continue;
+    var r=e.getBoundingClientRect();if(!r.width||r.bottom<-50||r.top>innerHeight+50)continue;n++;
+    xs.push(r.left,r.left+r.width/2,r.right);ys.push(r.top,r.top+r.height/2,r.bottom);}
+  var p=el.parentElement&&el.parentElement.getBoundingClientRect();if(p){xs.push(p.left,p.left+p.width/2,p.right);ys.push(p.top,p.bottom);}
+  return {xs:xs,ys:ys};
+}
+function snap(edges,cands){var best=null;edges.forEach(function(v){cands.forEach(function(c){var d=c-v;if(Math.abs(d)<=6&&(!best||Math.abs(d)<Math.abs(best.d)))best={d:d,at:c};});});return best;}
+document.addEventListener('pointerdown',function(e){
+  if(e.button!==0||isUi(e.target)||editing&&editing.contains(e.target))return;
+  if(editing)finishEdit(true);
+  var el=pick(e.target);select(el);if(!el)return;e.preventDefault();
+  var o=off(el);drag={el:el,x:e.clientX,y:e.clientY,o:o,r:el.getBoundingClientRect(),moved:false,L:null};
+},true);
+document.addEventListener('pointermove',function(e){
+  if(!drag)return;var dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  if(!drag.moved){if(Math.abs(dx)+Math.abs(dy)<4)return;
+    if(!canMove(drag.el)){msg('이 글자는 옮길 수 없어요');drag=null;return;}
+    drag.moved=true;drag.L=snapLines(drag.el);document.documentElement.classList.add('cp-dragging');bar.hidden=true;}
+  var r=drag.r,w=r.width,h=r.height,L=r.left+dx,T=r.top+dy;clearGuides();
+  var sx=snap([L,L+w/2,L+w],drag.L.xs),sy=snap([T,T+h/2,T+h],drag.L.ys);
+  if(sx){dx+=sx.d;guide('v',sx.at);}if(sy){dy+=sy.d;guide('h',sy.at);}
+  drag.now={dx:Math.round(drag.o.dx+dx),dy:Math.round(drag.o.dy+dy)};setPos(drag.el,drag.now);
+},true);
+document.addEventListener('pointerup',function(){
+  if(!drag)return;var d=drag;drag=null;clearGuides();document.documentElement.classList.remove('cp-dragging');
+  if(d.moved&&d.now)saveMove(d.el,d.now);else showBar();
+},true);
+// 방향키로 1px씩 (Shift는 10px)
+var nudgeT;
+document.addEventListener('keydown',function(e){
+  if(editing){if(e.key==='Escape'){e.preventDefault();finishEdit(false);}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finishEdit(true);}return;}
+  if(!cur)return;var k={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+  if(e.key==='Escape'){select(null);return;}
+  if(!k||!canMove(cur))return;e.preventDefault();var s=e.shiftKey?10:1,o=off(cur),n={dx:o.dx+k[0]*s,dy:o.dy+k[1]*s};
+  moves[path(cur)]=n;setPos(cur,n);showBar();clearTimeout(nudgeT);var el=cur;nudgeT=setTimeout(function(){saveMove(el,n);},500);
+},true);
+// 두 번 눌러 글자 고치기
+document.addEventListener('dblclick',function(e){var el=pick(e.target);if(el&&!isUi(e.target)){e.preventDefault();startEdit(el);}},true);
+function lines(el){var a=[];for(var n=el.firstChild;n;n=n.nextSibling)if(n.nodeType===3&&norm(n.textContent))a.push(norm(n.textContent));return a;}
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function startEdit(el){
+  if(!plain(el)){msg('여러 글자가 섞여 있어요. 안쪽 글자를 두 번 눌러 주세요');return;}
+  editing=el;el._cpHtml=el.innerHTML;el._cpWas=lines(el);el.contentEditable='true';el.classList.add('cp-editing');bar.hidden=true;el.focus();
+  var r=document.createRange();r.selectNodeContents(el);var s=getSelection();s.removeAllRanges();s.addRange(r);
+}
+function finishEdit(save){
+  var el=editing;if(!el)return;editing=null;el.removeAttribute('contenteditable');el.classList.remove('cp-editing');
+  var was=el._cpWas,now=el.innerText.split('\n').map(norm).filter(function(t){return t;});
+  if(!save||now.join('\n')===was.join('\n')){el.innerHTML=el._cpHtml;showBar();return;}
+  // 줄(줄바꿈으로 나뉜 글자)마다 따로 저장한다. 줄 수가 달라지면 첫 줄에 모두 넣고 나머지 줄은 지운다.
+  var pairs=[];
+  if(now.length===was.length)was.forEach(function(w,i){if(w!==now[i])pairs.push([w,now[i]]);});
+  else{pairs.push([was[0],now.join(' ')]);was.slice(1).forEach(function(w){pairs.push([w,'']);});now=[now.join(' ')];}
+  el.innerHTML=now.map(esc).join('<br>');showBar();
+  Promise.all(pairs.map(function(p){return post(C.copy,{site:C.site,src:p[0],dst:p[1],shown:'1'});})).then(function(js){
+    var bad=js.filter(function(j){return !j.ok;})[0];msg(bad?bad.msg:'글자를 저장했어요');});
+}
+document.addEventListener('focusout',function(e){if(editing&&e.target===editing)finishEdit(true);},true);
+addEventListener('scroll',function(){if(cur&&!drag)showBar();},true);addEventListener('resize',showBar);
+})();
+</script>

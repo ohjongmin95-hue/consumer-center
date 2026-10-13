@@ -3,7 +3,7 @@
 기업: 가입 → 운영자 승인 → 로그인 → 승인 카드(승인·보류·자료 요청), 전체 요청, 자동 처리 규칙, 설정.
 운영자: 기업 가입 승인, 기업 목록, 비입점 기업 요청 처리(전달 시도·회신 기록·피해구제 안내).
 """
-import os, re, hmac, functools, datetime
+import os, re, hmac, json, functools, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, g, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
@@ -21,6 +21,7 @@ EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 def guard():
     if not request.path.startswith('/api/'):core.check_csrf()  # 앱 API는 쿠키 대신 토큰을 쓴다
 app.after_request(core.copy_after_request('biz'))  # 운영 화면에서 고친 문구 적용
+core.track_template(app)
 
 def me():
     if 'co' not in g:
@@ -510,28 +511,103 @@ def ops_news():
         rows=db.execute('SELECT * FROM news ORDER BY id DESC').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
     return render_template('o_news.html',rows=rows,n_signup=n_pending,otab='news')
 
+COPY_PAGES=[('c_home.html','고객 첫 화면'),('c_new.html','요청 접수'),('c_done.html','접수 완료'),('c_mine.html','내 접수'),('c_case.html','접수 상세'),
+ ('c_company.html','기업별 고객센터'),('c_guide.html','이용 안내'),('c_relief.html','피해구제 안내'),('c_privacy.html','개인정보 처리방침'),('c_error.html','오류 화면'),
+ ('_c.html','고객 공통 메뉴'),('_chat.html','상담 챗봇'),('consumer.py','고객 안내 메시지'),
+ ('b_intro.html','소보루 CS 소개'),('b_login.html','로그인'),('b_signup.html','가입'),('b_signup_done.html','가입 완료'),('b_forgot.html','비밀번호 찾기'),
+ ('b_decide.html','사장님 홈'),('b_all.html','요청 목록'),('b_case.html','요청 상세'),('b_new.html','직접 등록'),('b_rules.html','자동 처리'),('b_stats.html','통계'),
+ ('b_report.html','리포트'),('insights.py','리포트 분석 문구'),('b_guide.html','응대 가이드'),('law.py','응대 가이드 상황별 문구'),('b_news.html','법·제도 소식'),
+ ('b_settings.html','설정'),('b_record.html','처리 기록'),('b_terms.html','약관'),('_b.html','기업 공통 메뉴'),('business.py','기업 안내 메시지'),
+ ('base.html','두 곳 공통'),('core.py','공통 안내 문구')]
+
 @app.route('/ops/copy',methods=['GET','POST'])
 @ops_required
 def ops_copy():
-    """문구 고치기: 고객센터·소보루 CS 화면의 문구를 바꾸거나 지운다. 템플릿은 그대로 두고 화면에 내보낼 때만 바꿔서 언제든 되돌릴 수 있다."""
-    q=clean(request.values.get('q'),100);site_f=request.values.get('w','')
+    """문구 고치기: 고객센터·소보루 CS 화면의 문구를 바꾼다. 템플릿은 그대로 두고 화면에 내보낼 때만 바꾼다.
+    저장하면 그대로 유지되고, 같은 자리에서 언제든 다시 고칠 수 있다."""
+    q=clean(request.values.get('q'),100);pg=request.values.get('pg','')
+    ajax=request.headers.get('X-Requested-With')=='fetch'
     with conn() as db:
         if request.method=='POST':
-            act=request.form.get('act')
-            if act=='restore' and request.form.get('id','').isdigit():
-                db.execute('DELETE FROM copy_edits WHERE id=?',(int(request.form['id']),));flash('원래 문구로 되돌렸습니다','ok')
+            site=request.form.get('site');src=(request.form.get('src') or '').strip();dst=(request.form.get('dst') or '').strip()
+            if site not in core.COPY_SITES or not src:msg,ok='바꿀 문구를 확인해 주세요',False
             else:
-                site=request.form.get('site');src=(request.form.get('src') or '').strip();dst='' if act=='hide' else (request.form.get('dst') or '').strip()
-                if site not in core.COPY_SITES or not src:flash('바꿀 문구와 적용할 곳을 확인해 주세요','error')
-                elif src==dst:flash('바뀐 내용이 없습니다','error')
-                else:
-                    db.execute('INSERT INTO copy_edits(site,src,dst,created) VALUES(?,?,?,?) ON CONFLICT(site,src) DO UPDATE SET dst=excluded.dst,created=excluded.created',(site,src[:2000],dst[:2000],core.iso()))
-                    flash('지웠습니다' if not dst else '바꿨습니다','ok')
-            return redirect(url_for('ops_copy',q=q or None,w=site_f or None))
-        edits=db.execute('SELECT * FROM copy_edits ORDER BY id DESC').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
-    done={(e['site'],e['src']) for e in edits}
-    cat=[x for x in core.copy_catalog() if (not site_f or x[0]==site_f) and (not q or q in x[1]) and (x[0],x[1]) not in done]
-    return render_template('o_copy.html',edits=edits,cat=cat[:300],n_cat=len(cat),q=q,site_f=site_f,n_signup=n_pending,otab='copy')
+                if request.form.get('shown'):  # 화면에서 바로 고친 경우: 보이는 글자가 이미 바꾼 문구면 그 기록을 고친다
+                    prev=db.execute("SELECT site,src FROM copy_edits WHERE dst=? AND site IN (?,'all') ORDER BY site=? DESC LIMIT 1",(src,site,site)).fetchone()
+                    if prev:site,src=prev['site'],prev['src']
+                if dst==src:db.execute('DELETE FROM copy_edits WHERE site=? AND src=?',(site,src))  # 원래 문구와 같으면 바꾼 기록이 필요 없음
+                else:db.execute('INSERT INTO copy_edits(site,src,dst,created) VALUES(?,?,?,?) ON CONFLICT(site,src) DO UPDATE SET dst=excluded.dst,created=excluded.created',(site,src[:2000],dst[:2000],core.iso()))
+                msg,ok=('화면에서 지웠어요' if not dst else '저장했어요'),True
+            if ajax:return jsonify(ok=ok,msg=msg,edited=ok and dst!=src)
+            flash(msg,'ok' if ok else 'error')
+            return redirect(url_for('ops_copy',q=q or None,pg=pg or None))
+        edits={(e['site'],e['src']):e for e in db.execute('SELECT * FROM copy_edits ORDER BY id DESC')}
+        n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+    names=dict(COPY_PAGES);cat=core.copy_catalog();keys={(s,t) for s,t,_ in cat}
+    items=[dict(site=s,src=t,files=fs,dst=edits[(s,t)]['dst'] if (s,t) in edits else t,edited=(s,t) in edits) for s,t,fs in cat]
+    items=[dict(site=s,src=t,files=[],dst=e['dst'],edited=True) for (s,t),e in edits.items() if (s,t) not in keys]+items
+    counts={}
+    for it in items:
+        for f in it['files']:counts[f]=counts.get(f,0)+1
+    pages=[(f,n,counts[f]) for f,n in COPY_PAGES if counts.get(f)]
+    if pg=='edited':items=[it for it in items if it['edited']]
+    elif pg:items=[it for it in items if pg in it['files']]
+    if q:items=[it for it in items if q in it['src'] or q in it['dst']]
+    order={f:i for i,(f,_) in enumerate(COPY_PAGES)}
+    items.sort(key=lambda it:(not it['edited'],min((order.get(f,99) for f in it['files']),default=99)))  # 바꾼 문구 먼저, 그다음 화면 순서대로
+    for it in items:it['where']=', '.join(names.get(f,'') for f in it['files'][:3] if names.get(f)) or core.COPY_SITES[it['site']]
+    return render_template('o_copy.html',items=items[:200],n_items=len(items),pages=pages,n_edited=len(edits),q=q,pg=pg,pg_name=names.get(pg,''),n_signup=n_pending,otab='copy')
+
+
+VISUAL_PAGES=[('me','/','고객 첫 화면',0),('me','/new','요청 접수',0),('me','/guide','이용 안내',0),('me','/mine','내 접수',0),('me','/to/','기업별 고객센터',0),('me','/privacy','개인정보 처리방침',0),
+ ('biz','/','소보루 CS 소개',0),('biz','/login','로그인',0),('biz','/signup','가입',0),('biz','/forgot','비밀번호 찾기',0),('biz','/terms','약관',0),
+ ('biz','/','사장님 홈',1),('biz','/all','요청 목록',1),('biz','/rules','자동 처리',1),('biz','/stats','통계',1),('biz','/report','리포트',1),('biz','/guide','응대 가이드',1),('biz','/news','법·제도 소식',1),('biz','/new','직접 등록',1),('biz','/settings','설정',1)]
+
+def visual_companies():
+    with conn() as db:return db.execute("SELECT id,name FROM companies WHERE status='active' AND member=1 ORDER BY id").fetchall()
+
+@app.route('/ops/visual')
+@ops_required
+def ops_visual():
+    """화면 보며 고치기: 실제 화면을 띄워 놓고 문장을 끌어 옮기거나 두 번 눌러 글자를 고친다."""
+    i=request.args.get('p','0');i=int(i) if i.isdigit() and int(i)<len(VISUAL_PAGES) else 0
+    with conn() as db:n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+    cos=visual_companies();dev='m' if request.args.get('dev')=='m' else 'pc'
+    return render_template('o_visual.html',pages=VISUAL_PAGES,p=i,dev=dev,cos=cos,co_id=request.args.get('co',''),n_signup=n_pending,otab='visual')
+
+@app.route('/ops/visual/frame')
+@ops_required
+def ops_visual_frame():
+    """편집할 화면을 안에서 그려서, 옮기기·고치기 도구를 붙여 내보낸다. 실제 화면과 같은 글자·위치가 보인다."""
+    import consumer
+    i=request.args.get('p','0');i=int(i) if i.isdigit() and int(i)<len(VISUAL_PAGES) else 0
+    site,path,_,need_login=VISUAL_PAGES[i];cos=visual_companies()
+    co=next((c for c in cos if str(c['id'])==request.args.get('co','')),cos[0] if cos else None)
+    if path=='/to/':path='/to/%d'%co['id'] if co else '/'
+    client=(consumer.app if site=='me' else app).test_client()
+    if need_login:
+        if not co:return '<p style="font:16px sans-serif;padding:40px;text-align:center;color:#4e5968">입점한 기업이 있어야 사장님 화면을 볼 수 있어요.</p>'
+        with client.session_transaction() as s:s['co_id']=co['id']
+    r=client.get(path,headers={'X-Cp-Editor':'1'})
+    if r.status_code!=200 or r.mimetype!='text/html':return '<p style="font:16px sans-serif;padding:40px;text-align:center;color:#4e5968">이 화면은 미리 볼 수 없어요.</p>'
+    html=r.get_data(as_text=True);tpl=r.headers.get('X-Cp-Tpl','')
+    cfg=json.dumps(dict(site=site,tpl=tpl,csrf=core.csrf_token(),copy=url_for('ops_copy'),move=url_for('ops_visual_move')),ensure_ascii=False).replace('<','\\u003c')
+    tool=render_template('_visual_tool.html',cfg=cfg)
+    html=html.replace('</body>',tool+'</body>',1) if '</body>' in html else html+tool
+    resp=app.response_class(html,mimetype='text/html');resp.headers['X-Frame-Options']='SAMEORIGIN'
+    return resp
+
+@app.route('/ops/visual/move',methods=['POST'])
+@ops_required
+def ops_visual_move():
+    f=request.form;tpl=(f.get('tpl') or '')[:80];sel=(f.get('sel') or '').strip();dev=f.get('dev')
+    try:dx=max(-2000,min(2000,round(float(f.get('dx','0')))));dy=max(-4000,min(4000,round(float(f.get('dy','0')))))
+    except ValueError:return jsonify(ok=False,msg='위치를 확인해 주세요')
+    if not re.fullmatch(r'[a-z_]+\.html',tpl) or dev not in core.MOVE_MEDIA or not core.MOVE_SEL.match(sel):return jsonify(ok=False,msg='옮길 문장을 다시 골라 주세요')
+    with conn() as db:
+        if dx==0 and dy==0:db.execute('DELETE FROM copy_moves WHERE tpl=? AND sel=? AND dev=?',(tpl,sel,dev))
+        else:db.execute('INSERT INTO copy_moves(tpl,sel,dev,dx,dy,created) VALUES(?,?,?,?,?,?) ON CONFLICT(tpl,sel,dev) DO UPDATE SET dx=excluded.dx,dy=excluded.dy,created=excluded.created',(tpl,sel,dev,dx,dy,core.iso()))
+    return jsonify(ok=True,msg='원래 자리로 옮겼어요' if dx==0 and dy==0 else '위치를 저장했어요')
 
 
 # ---------- 사장님 앱 API (/api/v1) ----------

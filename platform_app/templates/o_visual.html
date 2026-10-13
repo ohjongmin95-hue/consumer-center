@@ -1,0 +1,19 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}화면 보며 고치기 · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+{% set pg=pages[p] %}
+<div class="vz">
+<div class="phead"><div><h1>화면 보며 고치기</h1><p>실제 화면에서 문장을 끌어 옮기고, 두 번 눌러 글자를 고쳐요. 손을 떼는 순간 바로 저장돼요.</p></div></div>
+<form class="vz-ctl" method="get">
+<label class="vz-pick"><span>화면</span><select class="inp" name="p" onchange="this.form.submit()">
+{% for grp,cond in [('고객센터',('me',0)),('소보루 CS · 로그인 전',('biz',0)),('소보루 CS · 사장님 화면',('biz',1))] %}<optgroup label="{{ grp }}">{% for site,path,name,login in pages %}{% if (site,login)==cond %}<option value="{{ loop.index0 }}" {{ 'selected' if loop.index0==p }}>{{ name }}</option>{% endif %}{% endfor %}</optgroup>{% endfor %}
+</select></label>
+{% if (pg[3] or pg[1]=='/to/') and cos %}<label class="vz-pick"><span>기업</span><select class="inp" name="co" onchange="this.form.submit()">{% for c in cos %}<option value="{{ c.id }}" {{ 'selected' if c.id|string==co_id }}>{{ c.name }}</option>{% endfor %}</select></label>{% endif %}
+<div class="seg vz-dev" role="group" aria-label="기기">{% for k,v in [('pc','PC'),('m','모바일')] %}<button class="{{ 'on' if dev==k }}" name="dev" value="{{ k }}">{{ v }}</button>{% endfor %}</div>
+</form>
+<div class="vz-tips"><span><b>끌기</b> 옮기기</span><span><b>두 번 누르기</b> 글자 고치기</span><span><b>방향키</b> 1px씩</span><span><b>Shift + 방향키</b> 10px씩</span><span><b>원래 자리로</b> 위치 처음처럼</span></div>
+<p class="cap vz-note">PC와 모바일은 화면 폭이 달라서 위치를 따로 저장해요. 빨간 선이 나오면 다른 글자와 줄이 맞은 거예요.</p>
+<div class="vz-stage {{ dev }}"><iframe class="vz-frame" title="{{ pg[2] }} 미리보기" src="{{ url_for('ops_visual_frame',p=p,co=co_id or None) }}"></iframe></div>
+</div>
+{% endblock %}
