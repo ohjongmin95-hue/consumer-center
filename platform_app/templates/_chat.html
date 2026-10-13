@@ -1,5 +1,5 @@
 {# 상담창(자동응답). co가 있으면 그 기업의 안내 문구, 없으면 기본 문구로 답한다 #}
-<div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) if co else url_for('chat') }}" data-new="{{ url_for('new',company_id=co.id) if co else url_for('new') }}" data-greet="{{ co.name+' 고객센터예요' if co else CNAME+'예요' }}" data-csrf="{{ csrf_token() }}">
+<div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) if co else url_for('chat') }}" data-new="{{ url_for('new',company_id=co.id) if co else url_for('new') }}" data-track="{{ url_for('track',company_id=co.id) if co else url_for('track') }}" data-greet="{{ co.name+' 고객센터예요' if co else CNAME+'예요' }}" data-csrf="{{ csrf_token() }}">
 <div class="cb-log" id="cbLog" aria-live="polite"></div>
 <form class="cb-in" id="cbForm" autocomplete="off"><input id="cbText" maxlength="500" placeholder="예: 주문한 게 아직 안 왔어요" aria-label="문의 내용"><button>보내기</button></form>
 </div>
@@ -21,7 +21,7 @@ function catChips(){chips(CATS.map(c=>({label:c,fn:()=>{bubble(c,'me');ask({cate
 function newUrl(){const u=new URL(box.dataset.new,location.href);if(cat)u.searchParams.set('category',cat);if(said.length)u.searchParams.set('body',said.join('\n'));return u.pathname+u.search}
 function endChips(){
   const file=info&&info.member?(info.auto&&!info.cond?'접수하면 바로 처리돼요':'담당자에게 바로 전달돼요'):'';
-  chips([{label:'접수할게요',pri:true,fn:()=>{post({outcome:'filed',category:cat});bubble('접수할게요','me');later(()=>{bubble((file?file+'. ':'')+'적어 주신 내용을 이어서 쓸 수 있게 해 둘게요.');setTimeout(()=>location.href=newUrl(),700)})}},
+  chips([...(cat==='배송 조회'?[{label:'송장번호로 바로 조회',pri:true,href:box.dataset.track}]:[]),{label:'접수할게요',pri:cat!=='배송 조회',fn:()=>{post({outcome:'filed',category:cat});bubble('접수할게요','me');later(()=>{bubble((file?file+'. ':'')+'적어 주신 내용을 이어서 쓸 수 있게 해 둘게요.');setTimeout(()=>location.href=newUrl(),700)})}},
          {label:'해결됐어요',fn:()=>{post({outcome:'solved',category:cat});bubble('해결됐어요','me');later(()=>bubble('도움이 됐다니 다행이에요. 또 궁금한 게 생기면 언제든 적어 주세요.'))}},
          {label:'다른 걸 물어볼게요',fn:()=>{bubble('다른 걸 물어볼게요','me');said=[];cat=null;later(()=>{bubble('네, 편하게 적어 주세요.');catChips()})}}])}
 function days(){chips([

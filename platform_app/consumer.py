@@ -71,12 +71,23 @@ def guide():return render_template('c_guide.html')
 def companies():return jsonify(core.search_companies(request.args.get('q','')[:40]))
 
 SUBMIT_FIELDS=(('company',60),('category',20),('title',BIG),('body',BIG),('want',20),('order_no',40),('name',20),('phone',20),('email',80),('product',60),('received_on',10))
+def shape_request(d,reason):
+    """버튼으로 고른 사유와 유형으로 요약·내용·원하는 처리를 채운다. 고객이 긴 글을 안 써도 접수되게."""
+    cat=d['category'];reason=reason if reason in core.REASONS.get(cat,()) else ''
+    if cat in core.WANT_OF and d['want'] not in core.WANTS:d['want']=core.WANT_OF[cat]
+    d['reason']=reason
+    if cat in core.TEXT_CATS and not d['body']:return
+    if reason:d['body']=(reason+('\n'+d['body'] if d['body'] else ''))[:BIG]
+    if not d['title']:d['title']=core.short(f"{cat} · {reason}" if reason else (d['body'].split('\n')[0] if d['body'] else cat),80)
 def submit_check(d,pw,privacy,ups):
     """접수 내용 확인. 문제가 있으면 소비자에게 보일 문장, 없으면 ''."""
     if not d['company']:return '기업 이름을 적어 주세요.'
     if d['category'] not in core.CATS:return '어떤 일인지 골라 주세요.'
+    if d['category'] in core.TEXT_CATS and not d['body']:return '바꿀 내용을 적어 주세요.' if d['category']=='주문 변경' else '요청할 내용을 적어 주세요.'
+    if d['category'] in core.REASONS and not d.get('reason') and len(d['body'])<10:return '사유를 골라 주시거나 내용을 10자 이상 적어 주세요.'
+    if d['category'] not in core.REASONS and len(d['body'])<10:return '자세한 내용을 10자 이상 적어 주세요.'
     if not d['title']:return '한 줄 요약을 적어 주세요.'
-    if len(d['body'])<10:return '자세한 내용을 10자 이상 적어 주세요.'
+    if d['category'] in core.ORDER_CATS and not d['order_no']:return '주문번호를 적어 주세요. 주문을 찾아 처리할 때 꼭 필요해요.'
     if d['want'] not in core.WANTS:return '원하는 해결을 골라 주세요.'
     if d['received_on'] and law.days_since(d['received_on']) not in range(0,3651):return '상품 받은 날을 확인해 주세요.'
     if d['category'] in ('교환','반품·환불') and not d['received_on']:return '상품 받은 날을 알려 주세요. 교환·반품 기간(7일) 확인에 써요.'
@@ -122,7 +133,7 @@ def create_case(d,pw,ups,company_id=''):
 def submit():
     f=request.form;ups=request.files.getlist('files')
     d={k:clean(f.get(k),n) for k,n in SUBMIT_FIELDS}
-    d['consent']=f.get('consent')=='1'
+    d['consent']=f.get('consent')=='1';shape_request(d,clean(f.get('reason'),40))
     err=submit_check(d,f.get('password',''),f.get('privacy')=='1',ups)
     if err:
         flash(err,'error');session['draft']={k:v for k,v in d.items()};return redirect(url_for('new'))
@@ -274,6 +285,23 @@ def company_page(company_id):
     session['cs']=co['id']
     return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS)
 
+@app.route('/track')
+def track():
+    """고객이 택배사와 송장번호로 배송 상태를 바로 조회한다. 요청을 만들지 않고, 조회 내용도 저장하지 않는다."""
+    co=None
+    if request.args.get('company_id','').isdigit():
+        with conn() as db:co=core.company(db,int(request.args['company_id']))
+        if co and co['status'] not in ('active','listed'):co=None
+    courier=request.args.get('courier','');invoice=digits(request.args.get('invoice',''))
+    if courier not in core.COURIERS:courier=co['return_courier'] if co and co['return_courier'] in core.COURIERS and not request.args.get('courier') else ''
+    res=None
+    if request.args.get('invoice') is not None:
+        if not courier:res={'ok':False,'error':'택배사를 골라 주세요.'}
+        elif not 8<=len(invoice)<=20:res={'ok':False,'error':'송장번호를 확인해 주세요. 숫자 8~20자리예요.'}
+        elif core.throttled('track',limit=30,minutes=10):res={'ok':False,'error':'조회가 너무 많아요. 10분 뒤에 다시 해 주세요.'}
+        else:res=tracking_mod.lookup(courier,invoice)
+    return render_template('c_track.html',co=co,courier=courier,invoice=invoice,res=res)
+
 def chat_answer(company_id,f):
     """상담창(자동응답): 고객 문장이나 고른 버튼 -> 유형과 그 기업의 안내 문구. 사람 손을 거치지 않는다.
     기업 없이(첫 화면) 부르면 기본 안내 문구로 답하고 기록은 남기지 않는다. (응답 dict, 상태 코드)"""
@@ -376,7 +404,7 @@ def api_chat(company_id=None):
 def api_submit():
     f=api_form();ups=request.files.getlist('files')
     d={k:clean(str(f.get(k) or ''),n) for k,n in SUBMIT_FIELDS}
-    d['consent']=str(f.get('consent'))in('1','true','True')
+    d['consent']=str(f.get('consent'))in('1','true','True');shape_request(d,clean(str(f.get('reason') or ''),40))
     pw=str(f.get('password',''))
     err=submit_check(d,pw,str(f.get('privacy'))in('1','true','True'),ups)
     if err:return jsonify(error=err),400

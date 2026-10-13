@@ -1,0 +1,23 @@
+{% extends 'base.html' %}{% import '_c.html' as m with context %}{% import '_i.html' as i %}
+{% block title %}배송 조회 · {{ BRAND }}{% endblock %}
+{% block bar %}{{ m.bar('') }}{% endblock %}
+{% block body %}
+<div class="narrow">
+<div class="phead"><div><h1>배송 조회</h1><p>{% if co %}{{ co.name }}에서 보낸 상품의 {% endif %}택배사와 송장번호를 넣으면 지금 어디쯤인지 바로 보여 드려요</p></div></div>
+<form class="panel stack" method="get" action="{{ url_for('track') }}">{% if co %}<input type="hidden" name="company_id" value="{{ co.id }}">{% endif %}
+<label class="fld"><span>택배사</span><select class="inp" name="courier" required><option value="">택배사 고르기</option>{% for k in COURIERS %}<option {{ 'selected' if courier==k }}>{{ k }}</option>{% endfor %}</select></label>
+<label class="fld"><span>송장번호</span><input class="inp" name="invoice" inputmode="numeric" maxlength="30" placeholder="숫자만 넣어 주세요" value="{{ invoice }}" required></label>
+<button class="btn md">조회하기</button>
+<p class="cap" style="margin:0">송장번호는 주문한 쇼핑몰의 주문 내역이나 발송 안내 문자에서 볼 수 있어요.</p></form>
+{% if res %}{% if res.ok %}<section class="panel" style="margin-top:16px"><div class="ph">{{ courier }} <span class="no">{{ invoice }}</span></div>
+<p style="font-size:22px;font-weight:700;margin:0 0 6px">{{ res.status }}</p>
+{% if res.place or res.time %}<p class="sub" style="font-size:15px;margin:0 0 16px">{{ res.place }}{% if res.place and res.time %} · {% endif %}{{ res.time[5:16] if res.time|length>15 else res.time }}</p>{% endif %}
+<div class="retsteps">{% for n,l in [(2,'접수'),(3,'이동 중'),(4,'지점 도착'),(5,'배송 출발'),(6,'완료')] %}<span class="{{ 'on' if res.level>=n }}">{{ l }}</span>{% endfor %}</div>
+{% if res.steps %}<dl class="kv" style="margin-top:18px">{% for st in res.steps %}<dt>{{ st.time[5:16] if st.time|length>15 else st.time }}</dt><dd>{{ st.kind }}{% if st.where %} · {{ st.where }}{% endif %}</dd>{% endfor %}</dl>{% endif %}</section>
+{% else %}<section class="panel" style="margin-top:16px"><p style="margin:0;font-size:15px">{{ res.error }}</p>
+{% if COURIERS.get(courier) %}<p style="margin:10px 0 0"><a class="link" href="{{ COURIERS[courier] }}" target="_blank" rel="noopener">{{ courier }} 홈페이지에서 조회하기</a></p>{% endif %}</section>{% endif %}{% endif %}
+<section class="panel" style="margin-top:16px"><div class="ph">그래도 해결이 안 되나요?</div>
+<p class="sub" style="font-size:15px;margin:0 0 12px">송장번호를 모르거나, 배송이 며칠째 멈춰 있거나, 배송 완료인데 못 받았다면 접수해 주세요. {% if co %}{{ co.name }} 담당자가{% else %}담당자가{% endif %} 확인해서 알려 드려요.</p>
+<a class="btn md gray" href="{{ url_for('new',company_id=co.id if co else None,category='배송 조회') }}">배송 문의 접수하기</a></section>
+</div>
+{% endblock %}
