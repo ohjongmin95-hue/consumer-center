@@ -518,7 +518,7 @@ class SiteTest(unittest.TestCase):
         for secret in ('홍길동', '010-7777-8888', 'reporter@example.com'):
             self.assertNotIn(secret, page)
         self.assertEqual(biz.get('/biz/case/%d' % private).status_code, 404)
-        # 5) 답변 → 단계 '조정 진행', 제보자에게 알림, 공개는 운영자 확인 뒤
+        # 5) 답변 → 단계 '기업 답변 도착', 제보자에게 알림, 공개는 운영자 확인 뒤
         mails = []
         with patch.dict(os.environ, {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}), \
              patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
@@ -527,7 +527,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             case = db.execute('SELECT status FROM cases WHERE id=?', (shared,)).fetchone()
             msg = db.execute("SELECT id,public FROM messages WHERE case_id=? AND author='기업 답변'", (shared,)).fetchone()
-        self.assertEqual(case['status'], '조정 진행')
+        self.assertEqual(case['status'], '기업 답변 도착')
         self.assertEqual(msg['public'], 0)
         self.assertIn('답변 완료 <b>1</b>', biz.get('/biz?tab=done').get_data(as_text=True))
         self.assertNotIn('내일까지 환불', self.client.get('/reports/%d' % shared).get_data(as_text=True))
@@ -573,6 +573,11 @@ class SiteTest(unittest.TestCase):
         self.assertIn('기업 회원 이용약관', self.client.get('/biz/terms').get_data(as_text=True))
 
     def test_damage_groups(self):
+        # 공동 대응은 기본으로 꺼져 있음: 주소는 404, 메인·제보 화면에 안내 없음
+        self.assertEqual(self.client.get('/groups').status_code, 404)
+        self.assertNotIn('공동 대응', self.client.get('/').get_data(as_text=True))
+        self.site.GROUPS_ON = True
+        self.addCleanup(setattr, self.site, 'GROUPS_ON', False)
         with self.site.conn() as db:
             for i, (subject, public) in enumerate((('OO쇼핑 환불 지연', 1), ('OO쇼핑 환불 안 돼요', 0))):
                 db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
