@@ -1,0 +1,11 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}서비스 연동 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('connect') }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>서비스 연동</h1><p>판매처·택배·알림을 소보루 하나로 이어요</p></div></div>
+{% set ST={'on':('연결됨','ok'),'csv':('엑셀로 사용 중','ok'),'ready':('엑셀 올리기','acc'),'soon':('준비 중','gray')} %}
+{% for grp in rows|map(attribute='group')|unique %}<section class="panel conn"><div class="ph">{{ grp }}</div>
+{% for r in rows if r.group==grp %}<div class="crow"><div class="tx"><b>{{ r.name }}</b><span>{{ r.desc }}</span></div>{% if r.href %}<a class="pill {{ ST[r.state][1] }}" href="{{ r.href }}">{{ ST[r.state][0] }}</a>{% else %}<span class="pill {{ ST[r.state][1] }}">{{ ST[r.state][0] }}</span>{% endif %}</div>{% endfor %}
+</section>{% endfor %}
+<p class="t-mute" style="margin-top:16px;font-size:14px">판매처 API 연결(주문 자동 가져오기)은 준비 중이에요. 그전까지는 판매처에서 내려받은 주문 엑셀을 주문·배송 화면에 올리면 돼요.</p>
+{% endblock %}

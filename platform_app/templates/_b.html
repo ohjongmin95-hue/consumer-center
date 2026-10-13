@@ -4,20 +4,19 @@
 {% macro bar(tab) -%}
 <header class="gnb"><div class="wrap">
 <a class="logo biz" href="{{ url_for('decide') }}">{{ soboru_logo() }}</a>
-{% if co and tab!='login' %}<nav>
-<a href="{{ url_for('decide') }}" class="{{ 'on' if tab=='home' }}">홈{% if n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>
-<a href="{{ url_for('all_cases') }}" class="{{ 'on' if tab=='all' }}">요청</a>
-<a href="{{ url_for('orders_page') }}" class="{{ 'on' if tab=='orders' }}">주문</a>
-<a href="{{ url_for('rules') }}" class="{{ 'on' if tab=='rules' }}">자동 처리</a>
-<a href="{{ url_for('stats') }}" class="{{ 'on' if tab=='stats' }}">통계</a>
-<a href="{{ url_for('guide') }}" class="{{ 'on' if tab=='guide' }}">응대 가이드</a>
-</nav>
+{% if co and tab!='login' %}<nav>{{ menu(tab) }}</nav>
 <div class="right"><a class="chip{{ ' on' if tab=='settings' }}" href="{{ url_for('settings') }}" title="설정"><span class="dot">{{ co.name[:1] }}</span><span class="hide-m">{{ co.name }}</span></a>
 <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn hide-m">로그아웃</button></form></div>
 {% else %}{% if tab=='intro' %}<nav class="in-nav" aria-label="소개 메뉴">
 <a href="#feat">기능 소개</a><a href="#auto">자동 처리</a><a href="#law">응대 가이드</a><a href="#stats">통계</a><a href="#steps">시작 방법</a><a href="#app">사장님 앱</a>
 </nav>{% endif %}<div class="right">{% if tab!='login' %}<a class="tbtn" href="{{ url_for('login') }}">로그인</a>{% endif %}{% if tab!='signup' %}<a class="btn sm" href="{{ url_for('signup') }}">무료로 시작하기</a>{% endif %}</div>{% endif %}
 </div></header>
+{% if co and tab not in ('login','intro','signup') %}<nav class="bside" aria-label="사장님 메뉴">{{ menu(tab,True) }}</nav>{% endif %}
+{%- endmacro %}
+{# 사장님 메뉴: 넓은 화면은 왼쪽 세로 메뉴(bside), 좁은 화면은 위쪽 가로 메뉴 #}
+{% macro menu(tab,side=False) -%}
+{% for key,ep,label,ic in [('home','decide','홈','inbox'),('all','all_cases','요청','list'),('approve','approvals','승인할 일','approve'),('orders','orders_page','주문·배송','truck'),('returns','returns','교환·반품','exchange'),('rules','rules','자동 처리','bolt'),('stats','stats','통계','chart'),('guide','guide','응대 가이드','guide'),('connect','connect','서비스 연동','gear')] %}
+<a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{% if side %}{{ i.icon(ic,22) }}{% endif %}<span>{{ label }}</span>{% if key=='approve' and n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>{% endfor %}
 {%- endmacro %}
 {% macro obar(tab,n_signup) -%}
 <header class="gnb"><div class="wrap">
