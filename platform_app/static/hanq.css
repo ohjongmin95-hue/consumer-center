@@ -1282,6 +1282,3 @@ html:has(.intro){scroll-behavior:smooth}
 .pw-steps li{display:grid;grid-template-columns:28px 1fr;column-gap:12px;row-gap:2px;counter-increment:pw}
 .pw-steps li::before{content:counter(pw);grid-row:span 2;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
 .pw-steps b{font-size:16px;font-weight:600;color:var(--fg)}.pw-steps span{font-size:14px;color:var(--fg2);line-height:1.5}
-.pw-contact{margin-top:24px;background:var(--fill);border-radius:14px;padding:6px 16px}
-.pw-contact div{display:flex;align-items:center;gap:12px;padding:10px 0;min-width:0}.pw-contact div+div{border-top:1px solid var(--line)}
-.pw-contact span{font-size:14px;color:var(--fg3);flex:none;width:42px}.pw-contact b{font-weight:600;overflow-wrap:anywhere;min-width:0;flex:1}.pw-contact .tbtn{flex:none;font-size:13px}

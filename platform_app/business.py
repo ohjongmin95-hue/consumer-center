@@ -121,7 +121,7 @@ def forgot():
         msg,level=send_reset(request.form.get('login_id'));flash(msg,level)
         if level=='ok':return redirect(url_for('login'))
     # 메일이 꺼져 있으면 운영팀에 문의하라는 안내 화면 (운영 화면 기업 관리에서 재설정 링크를 만들어 보낸다)
-    return render_template('b_forgot.html',mail=core.mail_ready(),ops_email=os.getenv('OPS_EMAIL',''),ops_phone=os.getenv('OPS_PHONE',''))
+    return render_template('b_forgot.html',mail=core.mail_ready())
 def send_reset(login_id):
     lid=clean(login_id,80).lower()
     if core.throttled('forgot',limit=5,minutes=30):return '잠시 후 다시 시도해 주세요.','error'
