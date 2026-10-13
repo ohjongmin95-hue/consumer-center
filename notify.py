@@ -1,5 +1,6 @@
 """제보자에게 진행 상황 알림 보내기: 카카오 알림톡(솔라피)과 이메일(SMTP).
-새 제보가 들어오면 운영자 휴대폰(ADMIN_ALERT_PHONE)으로 카카오 알림톡(KAKAO_TPL_ADMIN, 없으면 문자)과 메일(ADMIN_ALERT_EMAIL)로 알림.
+새 제보가 들어오면 운영자에게 텔레그램(TELEGRAM_BOT_TOKEN·TELEGRAM_CHAT_ID, 무료), 메일(ADMIN_ALERT_EMAIL),
+카카오 알림톡(ADMIN_ALERT_PHONE·KAKAO_TPL_ADMIN, 없으면 문자)으로 알림.
 
 서버 설정(/etc/soboru.env)에 값이 있을 때만 켜지고, 없으면 조용히 건너뜀.
 보내는 일은 뒤에서(스레드) 처리해서 화면이 느려지지 않게 하고, 결과는 notifications 표에 남김.
@@ -127,6 +128,13 @@ def send_admin_kakao(phone, values):
         raise RuntimeError(f"{status} {result.get('statusMessage', '')}".strip())
 
 
+def send_telegram(chat_id, text):
+    # 텔레그램 봇 메시지 (무료). 봇 토큰은 @BotFather에서 받음
+    result = http_post(f"https://api.telegram.org/bot{env('TELEGRAM_BOT_TOKEN')}/sendMessage", {'chat_id': chat_id, 'text': text, 'disable_web_page_preview': True}, {})
+    if not result.get('ok'):
+        raise RuntimeError(str(result.get('description', 'telegram error'))[:200])
+
+
 def fmt_phone(phone):
     d = digits(phone)
     return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10, 11) else (phone or '-')
@@ -151,6 +159,8 @@ def admin_plan(case, link):
             f"■ 제목: {short(case['subject'], 60)}\n\n관리자 화면에서 확인해 주세요.\n{link}")
     text = f"[소비자제보센터] 새 제보\n{name} {phone}\n{case['receipt']} · {short(case['company'], 15)}\n{short(case['subject'], 30)}"
     jobs = [('admin_email', e, lambda e=e: send_email(e, subject, body)) for e in emails]
+    if env('TELEGRAM_BOT_TOKEN'):
+        jobs += [('admin_telegram', c, lambda c=c: send_telegram(c, body)) for c in env('TELEGRAM_CHAT_ID').replace(' ', '').split(',') if c]
     values = {'receipt': case['receipt'], 'name': name, 'phone': phone, 'company': short(case['company'], 20), 'subject': short(case['subject'])}
     if channel == 'kakao':
         jobs += [('admin_kakao', p, lambda p=p: send_admin_kakao(p, values)) for p in phones]

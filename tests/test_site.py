@@ -424,6 +424,7 @@ class SiteTest(unittest.TestCase):
                 'phone': '010-2222-3333', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
                 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
         keys = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'boss@example.com, ops@example.com',
+                'TELEGRAM_BOT_TOKEN': '123:abc', 'TELEGRAM_CHAT_ID': '-1001',
                 'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_SENDER': '02-123-4567', 'ADMIN_ALERT_PHONE': '010-9999-8888'}
         admin = self.login_admin()
         before = admin.get('/admin/new-cases').get_json()
@@ -434,6 +435,10 @@ class SiteTest(unittest.TestCase):
         self.assertIn('새 제보: 운영자 알림 제보', mails[0][1])
         self.assertIn('/admin/reports/', mails[0][2])
         self.assertIn('김소비 (010-2222-3333)', mails[0][2])
+        self.assertEqual(sms[0][0], 'https://api.telegram.org/bot123:abc/sendMessage')
+        self.assertEqual(sms[0][1]['chat_id'], '-1001')
+        self.assertIn('김소비 (010-2222-3333)', sms[0][1]['text'])
+        del sms[0]
         self.assertEqual(sms[0][1]['message']['to'], '01099998888')
         self.assertEqual(sms[0][1]['message']['from'], '021234567')
         self.assertIn('알림상점', sms[0][1]['message']['text'])
