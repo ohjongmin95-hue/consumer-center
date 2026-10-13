@@ -26,11 +26,11 @@
     {% for cat,rs in REASONS.items() %}<div class="opts reasons" data-cat="{{ cat }}">{% for r in rs %}
     <label class="opt"><input type="radio" name="reason" value="{{ r }}" {{ 'checked' if d.reason==r and d.category==cat }}>{{ r }}</label>{% endfor %}</div>{% endfor %}
     <input type="hidden" name="title" value="{{ d.title or '' }}">
-    <textarea class="inp" name="body" id="askB" placeholder="{{ q[2] }}">{{ d.body or '' }}</textarea>
-    <input class="inp" name="order_no" id="askO" maxlength="40" placeholder="{{ '주문번호 (꼭 적어 주세요)' if d.category in ORDER_CATS else '주문번호 (선택)' }}" value="{{ d.order_no or '' }}" {{ 'required' if d.category in ORDER_CATS }}>
-    <input class="inp" name="product" maxlength="60" placeholder="상품 이름 (선택)" value="{{ d.product or '' }}">
-    <label class="fld"><span id="rcvLabel">상품 받은 날 (선택 · 반품 기간 확인에 써요)</span><input class="inp" id="rcvOn" name="received_on" type="date" max="{{ today }}" value="{{ d.received_on or '' }}"></label>
-    <label class="filebox"><span class="cap" style="display:block;margin-bottom:8px">사진·PDF (선택, 3개까지)</span><input class="file-in" type="file" name="files" multiple accept="image/*,.pdf"></label>
+    <textarea class="inp" data-f="body" name="body" id="askB" placeholder="{{ q[2] }}">{{ d.body or '' }}</textarea>
+    <input class="inp" data-f="order_no" name="order_no" id="askO" maxlength="40" placeholder="{{ '주문번호 (꼭 적어 주세요)' if d.category in ORDER_CATS else '주문번호 (선택)' }}" value="{{ d.order_no or '' }}" {{ 'required' if d.category in ORDER_CATS }}>
+    <input class="inp" data-f="product" name="product" maxlength="60" placeholder="상품 이름 (선택)" value="{{ d.product or '' }}">
+    <label class="fld" data-f="received_on"><span id="rcvLabel">상품 받은 날 (선택 · 반품 기간 확인에 써요)</span><input class="inp" id="rcvOn" name="received_on" type="date" max="{{ today }}" value="{{ d.received_on or '' }}"></label>
+    <label class="filebox" data-f="files"><span class="cap" style="display:block;margin-bottom:8px">사진 (3개까지)</span><input class="file-in" type="file" name="files" multiple accept="image/*,.pdf"></label>
   </div>
 </section>
 <section class="step" data-step="3">
@@ -55,7 +55,7 @@
 <div class="cta"><div class="in"><button class="btn" type="submit" id="wNext">다음</button></div></div>
 </form></div>
 <aside class="sum"><div class="ph">접수 내용</div>
-<dl><dt>기업</dt><dd id="sCo">–</dd><dt>유형</dt><dd id="sCat">–</dd><dt>요약</dt><dd id="sTitle">–</dd><dt>원하는 해결</dt><dd id="sWant">–</dd></dl>
+<dl><dt>기업</dt><dd id="sCo">–</dd><dt>유형</dt><dd id="sCat">–</dd><dt>요약</dt><dd id="sTitle">–</dd><dt>원하는 처리</dt><dd id="sWant">–</dd></dl>
 </aside>
 </div>
 {% endblock %}
@@ -97,13 +97,17 @@
   // 유형마다 요청에 맞는 질문과 예시 (주문 취소·변경은 주문번호가 꼭 필요)
   const ASK={{ ASK|tojson }},OC={{ ORDER_CATS|list|tojson }};
   // 사유 버튼은 고른 유형 것만 보이고, 버튼이 있는 유형은 버튼을 골라야 다음으로 (주문 변경·기타는 내용도 꼭)
-  const TC={{ TEXT_CATS|list|tojson }};
+  const TC={{ TEXT_CATS|list|tojson }};const FIELDS={{ FIELDS|tojson }},KEEP=!!document.getElementById('askB').value.trim();
   function ask(){const c=new FormData(form).get('category'),q=ASK[c]||ASK['기타'],o=document.getElementById('askO'),b=document.getElementById('askB');
     const h=document.getElementById('askH');h.textContent='';q[0].split('\n').forEach((t,k)=>{if(k)h.appendChild(document.createElement('br'));h.appendChild(document.createTextNode(t));});
     let has=false;document.querySelectorAll('.reasons').forEach(g=>{const on=g.dataset.cat===c;has=has||on;g.hidden=!on;g.querySelectorAll('input').forEach(r=>{r.disabled=!on;r.required=on;});});
     b.placeholder=has&&!TC.includes(c)?q[2]+' (선택)':q[2];b.required=!has||TC.includes(c);b.minLength=has?0:10;
     const w=WANT_OF[c];if(w){const r=form.querySelector('input[name=want][value="'+w+'"]');if(r)r.checked=true;}
-    o.required=OC.includes(c);o.placeholder=o.required?'주문번호 (꼭 적어 주세요)':'주문번호 (선택)';next.disabled=!valid(i);}
+    o.required=OC.includes(c);o.placeholder=o.required?'주문번호 (꼭 적어 주세요)':'주문번호 (선택)';
+    // 이 유형에 필요한 칸만 보이고 나머지는 숨긴다 (상담창에서 쓴 글이 있으면 내용 칸은 남긴다)
+    const fs=FIELDS[c]||FIELDS['기타'];document.querySelectorAll('[data-f]').forEach(el=>{const on=fs.includes(el.dataset.f)||(el.dataset.f==='body'&&KEEP);el.hidden=!on;
+      (el.matches('input,textarea')?[el]:[...el.querySelectorAll('input')]).forEach(x=>{x.disabled=!on;});});
+    next.disabled=!valid(i);}
   form.querySelectorAll('input[name=category]').forEach(r=>r.addEventListener('change',ask));ask();
   const first=steps.findIndex((s,k)=>!valid(k));show(first<0?last:first);
 })();

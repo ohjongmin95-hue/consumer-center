@@ -47,10 +47,10 @@ CAT_HINT={'배송 조회':'배송이 안 오거나 늦어요','주문 취소':'�
 ASK={'배송 조회':('어떤 주문의 배송이\n궁금하세요?','예: 10월 7일 주문한 크림이 아직 안 왔어요','주문한 날과 상품, 지금 상황 (송장번호가 있으면 함께)'),
      '주문 취소':('어떤 주문을\n취소할까요?','예: 크림 2개 주문 취소해 주세요','주문한 날과 상품'),
      '주문 변경':('무엇을\n바꿔 드릴까요?','예: 배송지를 회사 주소로 바꿔 주세요','바꿀 내용 (새 주소·수량·옵션)을 정확히 적어 주세요'),
-     '교환':('무엇으로\n바꿔 드릴까요?','예: 사이즈 M을 L로 교환해 주세요','받은 상품과 바꾸고 싶은 사이즈·색상'),
+     '교환':('무엇으로\n바꿔 드릴까요?','예: 사이즈 M을 L로 교환해 주세요','바꾸고 싶은 사이즈·색상'),
      '반품·환불':('어떤 상품을\n반품할까요?','예: 크림 1개 반품하고 환불받고 싶어요','반품할 상품과 이유'),
-     '제품 불량':('어떤 문제가\n있나요?','예: 크림 용기가 깨져서 왔어요','어디가 어떻게 문제인지 적고, 사진을 함께 올려 주시면 빨라요'),
-     '고객 응대':('어떤 점이\n불편하셨나요?','예: 문의에 3일째 답이 없어요','언제, 어떤 응대가 불편하셨는지'),
+     '제품 불량':('어떤 문제가\n있나요?','예: 크림 용기가 깨져서 왔어요','더 알려 주실 내용'),
+     '고객 응대':('어떤 점이\n불편하셨나요?','예: 문의에 3일째 답이 없어요','더 알려 주실 내용'),
      '기타':('무엇을\n도와드릴까요?','한 줄로 요약해 주세요','궁금하거나 요청할 내용을 적어 주세요')}
 ORDER_CATS=('주문 취소','주문 변경')  # 주문번호가 꼭 있어야 처리할 수 있는 유형
 # 접수할 때 버튼으로 고르는 사유. 고르면 긴 글을 안 써도 된다.
@@ -61,6 +61,9 @@ REASONS={'배송 조회':['아직 안 왔어요','배송이 멈춰 있어요','�
          '반품·환불':['단순 변심','상품이 설명과 달라요','다른 상품이 왔어요','배송이 너무 늦어요'],
          '제품 불량':['깨지거나 파손됐어요','작동이 안 돼요','구성품이 빠졌어요','얼룩·오염이 있어요'],
          '고객 응대':['답변이 없어요','응대가 불친절했어요','안내가 틀렸어요']}
+# 유형마다 접수 화면에 보이는 칸. 여기 없는 칸은 숨긴다 (필요한 것만 묻기).
+FIELDS={'배송 조회':('order_no',),'주문 취소':('order_no',),'주문 변경':('order_no','body'),'교환':('order_no','received_on','body'),
+        '반품·환불':('order_no','received_on'),'제품 불량':('files','body'),'고객 응대':('body',),'기타':('body','files')}
 TEXT_CATS=('주문 변경','기타')  # 버튼만으로는 처리할 수 없어 내용을 꼭 적어야 하는 유형
 # 유형만 보면 원하는 처리가 정해지는 경우 (이때는 '원하는 처리' 질문을 건너뛴다)
 WANT_OF={'배송 조회':'배송 확인','주문 취소':'환불','주문 변경':'기타','교환':'교환','반품·환불':'환불','고객 응대':'사과·재발 방지'}
@@ -193,6 +196,7 @@ def init():
           FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,name TEXT NOT NULL,price TEXT NOT NULL DEFAULT '',
           stock TEXT NOT NULL DEFAULT '',info TEXT NOT NULL DEFAULT '',updated TEXT NOT NULL,FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
+        CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS tracks(fid TEXT PRIMARY KEY,case_id INTEGER NOT NULL,kind TEXT NOT NULL,courier TEXT NOT NULL,invoice TEXT NOT NULL,
           level INTEGER NOT NULL DEFAULT 0,place TEXT NOT NULL DEFAULT '',at TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',updated TEXT NOT NULL,
           FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE);
@@ -202,6 +206,19 @@ def init():
         if 'cond' not in cols:db.execute("ALTER TABLE rules ADD COLUMN cond TEXT NOT NULL DEFAULT ''")
         if 'comp' not in cols:db.execute("ALTER TABLE rules ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
 init()
+
+# 외부 서비스 키: 운영 화면에서 넣은 값이 있으면 그것을, 없으면 서버 설정(/etc/soboru-platform.env)을 쓴다.
+SECRETS={'SWEETTRACKER_T_KEY':('택배 조회 키','스마트택배(tracking.sweettracker.co.kr)에서 받은 무료 조회 키(t_key)'),
+         'ANTHROPIC_API_KEY':('AI 상담 키','Anthropic 콘솔(console.anthropic.com)에서 만든 API 키. sk-ant-로 시작해요')}
+def secret(name):
+    try:
+        with conn() as db:r=db.execute('SELECT value FROM settings WHERE key=?',(name,)).fetchone()
+    except Exception:r=None
+    return (r['value'] if r and r['value'] else os.getenv(name,'')).strip()
+def secret_source(name):
+    """'ops'(운영 화면에서 넣음) | 'env'(서버 설정) | ''(없음)"""
+    with conn() as db:r=db.execute('SELECT value FROM settings WHERE key=?',(name,)).fetchone()
+    return 'ops' if r and r['value'] else ('env' if os.getenv(name,'').strip() else '')
 
 # ---------- 보안 ----------
 def csrf_token():
@@ -251,7 +268,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,CAT_HINT=CAT_HINT,ASK=ASK,ORDER_CATS=ORDER_CATS,REASONS=REASONS,TEXT_CATS=TEXT_CATS,WANT_OF=WANT_OF,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,GOOGLE_VERIFY=GOOGLE_VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,CAT_HINT=CAT_HINT,ASK=ASK,ORDER_CATS=ORDER_CATS,REASONS=REASONS,FIELDS=FIELDS,TEXT_CATS=TEXT_CATS,WANT_OF=WANT_OF,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,GOOGLE_VERIFY=GOOGLE_VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None

@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}서비스 키 · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+<div class="narrow">
+<div class="phead"><div><h1>서비스 키</h1><p>받아 온 키를 붙여 넣고 저장하면 바로 적용돼요. 서버 창을 열 필요가 없어요</p></div></div>
+{% for k in keys %}<form class="panel stack" method="post" style="margin-top:16px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="name" value="{{ k.name }}">
+<div class="ph">{{ k.label }}{% if k.source %}<span class="pill">켜짐 · 끝자리 {{ k.tail }}</span>{% else %}<span class="pill gray">꺼짐</span>{% endif %}</div>
+<p class="sub" style="font-size:15px;margin:0">{{ k.hint }}{% if k.source=='env' %} · 지금은 서버 설정에 넣은 키를 쓰고 있어요{% endif %}</p>
+<input class="inp" name="value" autocomplete="off" spellcheck="false" placeholder="{{ '새 키로 바꾸려면 붙여 넣기' if k.source else '키 붙여 넣기' }}" aria-label="{{ k.label }}">
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn md">저장</button>{% if k.source=='ops' %}<button class="btn md gray" name="act" value="delete" formnovalidate>지우기</button>{% endif %}</div></form>{% endfor %}
+</div>
+{% endblock %}

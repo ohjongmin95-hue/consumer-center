@@ -31,7 +31,7 @@ def fallback(c,co,rule_reply,history):
     return '\n'.join(lines)
 
 def ask_claude(c,co,rule_reply,history,samples):
-    key=os.getenv('ANTHROPIC_API_KEY','').strip()
+    key=core.secret('ANTHROPIC_API_KEY')
     if not key:return None
     refs='\n\n'.join(law.plain(r) for r,_ in law.BY_CAT.get(c['category'],[]))
     tone=TONE_HINT.get(co['tone'],TONE_HINT['polite'])
@@ -46,7 +46,7 @@ def ask_claude(c,co,rule_reply,history,samples):
 
 def call(system,messages,model=None,max_tokens=800,timeout=40):
     """Claude에 한 번 묻고 글만 돌려준다. 키가 없거나 실패하면 None."""
-    key=os.getenv('ANTHROPIC_API_KEY','').strip()
+    key=core.secret('ANTHROPIC_API_KEY')
     if not key:return None
     body={'model':model or MODEL,'max_tokens':max_tokens,'system':system,'messages':messages}
     req=urllib.request.Request('https://api.anthropic.com/v1/messages',data=json.dumps(body).encode(),method='POST',

@@ -19,7 +19,7 @@ LEVELS={1:'배송 준비 중',2:'택배사가 상품을 받음',3:'배송 중',4
 KINDS={'ship':'주문 상품','out':'교환 상품','ret':'반품 상품'}
 POLL_DAYS=14  # 등록하고 이 기간이 지나도 배송 완료가 안 되면 더 묻지 않는다
 
-def t_key():return os.getenv('SWEETTRACKER_T_KEY','').strip()
+def t_key():return core.secret('SWEETTRACKER_T_KEY')
 def trace_ready():return bool(os.getenv('SWEETTRACKER_TIER') and os.getenv('SWEETTRACKER_KEY'))
 def ready():return bool(t_key() or trace_ready())
 def fid(case_id,kind):return f'{case_id}-{kind}'

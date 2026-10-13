@@ -26,6 +26,7 @@
 <a href="{{ url_for('ops_all') }}" class="{{ 'on' if tab=='all' }}">전체 현황</a>
 <a href="{{ url_for('ops_companies') }}" class="{{ 'on' if tab=='co' }}">기업 관리{% if n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</a>
 <a href="{{ url_for('ops_news') }}" class="{{ 'on' if tab=='news' }}">법·제도 소식</a>
+<a href="{{ url_for('ops_keys') }}" class="{{ 'on' if tab=='keys' }}">서비스 키</a>
 <a href="{{ url_for('ops_visual') }}" class="{{ 'on' if tab=='visual' }}">화면 보며 고치기</a>
 <a href="{{ url_for('ops_copy') }}" class="{{ 'on' if tab=='copy' }}">문구 고치기</a>
 </nav>

@@ -55,7 +55,7 @@ def parse(text):
     t=(text or '').strip()
     return {'answer':t[:1500],'category':core.classify(t)} if t else None
 
-def ready():return bool(os.getenv('ANTHROPIC_API_KEY','').strip())
+def ready():return bool(core.secret('ANTHROPIC_API_KEY'))
 def answer(co,facts,text,history=None):
     """고객 한마디에 대한 AI 답. facts는 company_facts()로 미리 만든 회사 정보. {'answer','category'} 또는 None (키 없음·실패)."""
     if not ready():return None
