@@ -358,6 +358,19 @@ class PlatformTest(unittest.TestCase):
         # 유형마다 묻는 말이 다르다
         self.assertIn('어떤 주문을<br>취소할까요?',me.get(f'/new?company_id={cid}&category=주문 취소').get_data(as_text=True))
 
+    def test_ops_service_keys(self):
+        """운영 화면에서 택배 조회 키를 넣으면 서버 설정 없이 바로 쓰인다. 화면에는 끝 4자리만."""
+        o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+        trk=sys.modules['tracking']
+        with patch.dict(os.environ,{'SWEETTRACKER_T_KEY':''}):
+            self.assertEqual(trk.t_key(),'')
+            self.post(o,'/biz/ops/keys',{'name':'SWEETTRACKER_T_KEY','value':' abcd1234WXYZ '})
+            self.assertEqual(trk.t_key(),'abcd1234WXYZ')
+            page=o.get('/biz/ops/keys').get_data(as_text=True);self.assertIn('WXYZ',page);self.assertNotIn('abcd1234',page)
+            self.post(o,'/biz/ops/keys',{'name':'SWEETTRACKER_T_KEY','act':'delete'})
+            self.assertEqual(trk.t_key(),'')
+        self.assertNotEqual(self.client().get('/biz/ops/keys').status_code,200)  # 운영자만
+
     def test_courier_tracking_free_key(self):
         """무료 조회 키(t_key): 송장을 넣으면 바로 한 번 묻고, cron(poll)이 다시 물어 단계가 바뀌면 기록한다."""
         b,o,cid=self.signup_and_approve('무료택배마켓','freekey@example.com')

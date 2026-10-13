@@ -349,7 +349,7 @@ def case_file(case_id,file_id):
 @app.route('/privacy')
 def privacy():
     return render_template('c_privacy.html',op=core.OPERATOR,since=core.PRIVACY_SINCE,years=core.RETENTION_YEARS,contact=os.getenv('PRIVACY_EMAIL') or os.getenv('OPS_EMAIL',''),phone=os.getenv('PRIVACY_PHONE',''),
-        mail_vendor=os.getenv('MAIL_VENDOR',''),ai=bool(os.getenv('ANTHROPIC_API_KEY','').strip()),kakao=core.kakao_ready() or core.kakao_ready('CS_KAKAO_TPL_REPLY'),kakao_vendor=os.getenv('KAKAO_VENDOR',''))
+        mail_vendor=os.getenv('MAIL_VENDOR',''),ai=bool(core.secret('ANTHROPIC_API_KEY')),kakao=core.kakao_ready() or core.kakao_ready('CS_KAKAO_TPL_REPLY'),kakao_vendor=os.getenv('KAKAO_VENDOR',''))
 
 # ---------- 소보루 CS 앱 API (/api/v1) ----------
 # 앱은 쿠키를 쓰지 않는다. 접수하거나 조회하면 요청마다 토큰을 받아 휴대폰에 두고, 그 토큰으로만 요청을 연다.

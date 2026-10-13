@@ -617,6 +617,25 @@ def ops_news():
         rows=db.execute('SELECT * FROM news ORDER BY id DESC').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
     return render_template('o_news.html',rows=rows,n_signup=n_pending,otab='news')
 
+@app.route('/ops/keys',methods=['GET','POST'])
+@ops_required
+def ops_keys():
+    """외부 서비스 키: 서버 창을 열지 않고 운영 화면에서 넣고 바꾼다. 화면에는 끝 4자리만 보인다."""
+    if request.method=='POST':
+        name=request.form.get('name')
+        if name not in core.SECRETS:abort(400)
+        val=re.sub(r'\s','',request.form.get('value',''))[:300]
+        with conn() as db:
+            if request.form.get('act')=='delete':db.execute('DELETE FROM settings WHERE key=?',(name,));flash('지웠습니다','ok')
+            elif not val:flash('키를 붙여 넣어 주세요','error')
+            else:
+                db.execute('INSERT INTO settings(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(name,val,core.iso()))
+                flash(f'{core.SECRETS[name][0]}를 저장했습니다. 바로 적용돼요','ok')
+        return redirect(url_for('ops_keys'))
+    keys=[dict(name=k,label=l,hint=h,source=core.secret_source(k),tail=core.secret(k)[-4:]) for k,(l,h) in core.SECRETS.items()]
+    with conn() as db:n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+    return render_template('o_keys.html',keys=keys,n_signup=n_pending,otab='keys')
+
 COPY_PAGES=[('c_home.html','고객 첫 화면'),('c_new.html','요청 접수'),('c_done.html','접수 완료'),('c_mine.html','내 접수'),('c_case.html','접수 상세'),
  ('c_company.html','기업별 고객센터'),('c_guide.html','이용 안내'),('c_relief.html','피해구제 안내'),('c_privacy.html','개인정보 처리방침'),('c_error.html','오류 화면'),
  ('_c.html','고객 공통 메뉴'),('_chat.html','상담 챗봇'),('consumer.py','고객 안내 메시지'),
