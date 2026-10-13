@@ -12,6 +12,7 @@
 {% if c.member and c.due and c.status in ('forwarded','seen') %}<p class="sub">담당자가 확인하고 있어요</p>{% endif %}
 {{ m.track(c) }}</div>
 {% if last %}<div class="panel"><div class="tagrow"><span class="av sm">{{ c.company_name[:1] }}</span><b>{{ c.company_name }}</b><span class="sp"></span><span class="cap">{{ fmt(last.created) }}</span></div><div class="reply">{{ last.reply }}</div></div>{% endif %}
+{{ m.tracks_panel(tracks) }}
 {% if c.ret_status %}<div class="panel"><div class="ph">반품 보내기</div>
 {% if c.ret_status=='received' %}<p class="sub" style="margin:0">{{ c.company_name }}이(가) 보내신 상품을 받았어요.</p>
 {% if c.out_tracking %}<p class="sub" style="margin:10px 0 0">새 상품을 보냈어요: <b>{{ c.out_courier }} {{ c.out_tracking }}</b>{% if COURIERS.get(c.out_courier) %} · <a class="link" href="{{ COURIERS[c.out_courier] }}" target="_blank" rel="noopener">조회하기</a>{% endif %}</p>{% endif %}

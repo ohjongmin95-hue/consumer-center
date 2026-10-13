@@ -9,6 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import csv, io
 import core, law, insights, drafting, chatbot
+import tracking as tracking_mod
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -20,7 +21,7 @@ EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 @app.before_request
 def guard():
-    if not request.path.startswith('/api/'):core.check_csrf()  # 앱 API는 쿠키 대신 토큰을 쓴다
+    if not request.path.startswith(('/api/','/hook/')):core.check_csrf()  # 앱 API는 쿠키 대신 토큰을, 택배 알림은 주소의 서명 토큰을 쓴다
 app.after_request(core.copy_after_request('biz'))  # 운영 화면에서 고친 문구 적용
 core.track_template(app)
 
@@ -224,6 +225,9 @@ def stats_data(db,co):
 
 notify_consumer=core.notify_consumer
 
+def can_ship_track(db,c):
+    """배송 조회 요청에 송장을 넣어 답할 수 있는지: 아직 안 넣었고 끝나지 않은 배송 조회 요청."""
+    return c['category']=='배송 조회' and c['status'] not in core.FINAL and not db.execute("SELECT 1 FROM tracks WHERE fid=?",(tracking_mod.fid(c['id'],'ship'),)).fetchone()
 def case_act(db,c,form):
     """기업이 요청에 하는 일(승인·보류·자료 요청·답변·회수 확인·발송·환불 완료). 웹과 앱이 같이 쓴다. -> (안내 문구, ok|error|bad)"""
     act=form.get('act');open_=c['status'] not in core.FINAL
@@ -235,8 +239,9 @@ def case_act(db,c,form):
         courier=form.get('courier','');tracking=digits(form.get('tracking',''))
         if (courier not in core.COURIERS and courier!='기타') or not 8<=len(tracking)<=20:return '택배사와 송장번호를 확인해 주세요','error'
         db.execute('UPDATE cases SET out_courier=?,out_tracking=? WHERE id=?',(courier,tracking,c['id']))
+        tracking_on=tracking_mod.register(db,c['id'],'out',courier,tracking)
         core.add_event(db,c['id'],'co',f'새 상품을 보냈어요: {courier} {tracking}')
-        notify_consumer(c,f'[{core.CNAME}] 새 상품을 보냈어요',f"{c['company_name']}이(가) 교환 상품을 보냈어요.\n{courier} 송장번호 {tracking}")
+        notify_consumer(c,f'[{core.CNAME}] 새 상품을 보냈어요',f"{c['company_name']}이(가) 교환 상품을 보냈어요.\n{courier} 송장번호 {tracking}"+('\n배송 상태가 바뀌면 알려 드릴게요.' if tracking_on else ''))
         return '고객에게 송장번호를 알렸습니다','ok'
     if act=='refund_done' and core.refund_case(c) and c['refund_status']!='done':
         # 환불이 끝나면 계좌 정보는 더 둘 이유가 없으니 바로 지운다
@@ -244,6 +249,15 @@ def case_act(db,c,form):
         core.add_event(db,c['id'],'co','환불을 완료했어요');notify_consumer(c,f'[{core.CNAME}] 환불이 완료됐어요',f"{c['company_name']}이(가) 환불을 완료했어요. 입금 내역을 확인해 주세요.")
         return '환불 완료를 기록했습니다','ok'
     if not open_:return '이미 끝난 요청이에요','bad'
+    if act=='ship_track' and can_ship_track(db,c):
+        courier=form.get('courier','');tracking=digits(form.get('tracking',''))
+        if (courier not in core.COURIERS and courier!='기타') or not 8<=len(tracking)<=20:return '택배사와 송장번호를 확인해 주세요','error'
+        on=tracking_mod.register(db,c['id'],'ship',courier,tracking)
+        link=core.COURIERS.get(courier,'')
+        msg=f"주문하신 상품은 {courier} 송장번호 {tracking}(으)로 보냈어요."+(' 배송 상태가 바뀌면 이 화면과 알림으로 바로 알려 드릴게요.' if on else (f' 택배사 홈페이지({link})에서 지금 위치를 확인하실 수 있어요.' if link else ''))
+        db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
+        core.add_event(db,c['id'],'co','송장번호를 알렸어요',msg);notify_consumer(c,f'[{core.CNAME}] 송장번호를 알려 드려요',f"{c['company_name']}: {courier} 송장번호 {tracking}")
+        return '고객에게 송장번호를 알렸습니다','ok'
     if act=='approve' and c['decision'] not in ('approved','auto'):
         done=core.run_playbook(db,c,'approved')
         if done is None:return '이 유형은 미리 정한 답변이 없어요. 아래에서 답변을 직접 적어 보내 주세요.','error'
@@ -277,8 +291,9 @@ def case(case_id):
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
             c=my_case(db,case_id)
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);rule=core.rule_for(db,me()['id'],c['category'])
+        tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])];ship_track=can_ship_track(db,c)
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
-    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,
+    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),tab='all')
 
 @app.route('/case/<int:case_id>/draft',methods=['POST'])
@@ -415,6 +430,14 @@ def import_products(db,co,raw):
         else:break
         n+=1
     return (f'{n}개 상품을 저장했습니다','ok') if n else ('저장할 상품이 없어요','error')
+
+@app.route('/hook/trace/<tok>',methods=['POST'])
+def hook_trace(tok):
+    """스마트택배가 배송 상태가 바뀔 때마다 보내는 알림. 주소의 서명 토큰이 맞을 때만 받는다."""
+    d=request.get_json(silent=True)
+    if not isinstance(d,dict):d=request.form.to_dict()
+    ok=tracking_mod.callback(tok,d)
+    return jsonify(code=ok,message='success' if ok else 'fail')
 
 @app.route('/products',methods=['POST'])
 @login_required
@@ -715,7 +738,8 @@ def biz_detail(db,c,co):
         refund=dict(possible=core.refund_case(c),status=c['refund_status'],bank=c['refund_bank'],account=c['refund_account'],holder=c['refund_holder']),
         events=[dict(id=e['id'],kind=e['kind'],text=e['text'],reply=e['reply'],created=e['created'],files=[dict(id=f['id'],name=f['original'],url=url(f)) for f in fl if f['event_id']==e['id']]) for e in ev],
         files=[dict(id=f['id'],name=f['original'],url=url(f)) for f in fl],
-        can=dict(approve=open_ and c['decision'] not in ('approved','auto'),hold=open_ and c['decision']!='hold',ask=open_,reply=open_,
+        tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])],
+        can=dict(ship_track=can_ship_track(db,c),approve=open_ and c['decision'] not in ('approved','auto'),hold=open_ and c['decision']!='hold',ask=open_,reply=open_,
             ret_received=c['ret_status'] in ('guided','sent'),out_ship=c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking'],
             refund_done=core.refund_case(c) and c['refund_status']!='done'))
     return d

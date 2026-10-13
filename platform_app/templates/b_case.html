@@ -18,6 +18,11 @@
 {% if open and c.decision not in ('approved','auto') %}<section class="panel decide"><div class="ph">처리 방법</div>
 <div class="reco"><div class="r">{{ p.title }}</div><ol class="flow">{% for st in p.steps %}<li>{{ st }}</li>{% endfor %}{% if rule.reply %}<li>고객에게 답변 보내기</li>{% endif %}</ol></div>
 <form method="post" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="approve">승인하고 처리</button><button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form></section>{% endif %}
+{{ m.tracks_panel(tracks) }}
+{% if ship_track %}<section class="panel"><div class="ph">송장번호로 답하기</div><p class="sub" style="font-size:15px;margin:0 0 12px">보낸 택배사와 송장번호를 넣으면 고객에게 바로 알리고, 배송 상태가 바뀔 때마다 자동으로 알려 줍니다.</p>
+<form method="post" class="addline" style="flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="ship_track">
+<select class="inp" name="courier" required style="flex:1 1 160px"><option value="">택배사</option>{% for k in COURIERS %}<option {{ 'selected' if co.return_courier==k }}>{{ k }}</option>{% endfor %}<option>기타</option></select>
+<input class="inp" name="tracking" inputmode="numeric" maxlength="30" placeholder="송장번호" required style="flex:1 1 160px"><button class="btn md">고객에게 알리기</button></form></section>{% endif %}
 {% if c.ret_status %}<section class="panel"><div class="ph">반품 회수</div>
 <div class="retsteps">{% for k,l in RET_STATUS.items() %}<span class="{{ 'on' if loop.index0<=(RET_STATUS|list).index(c.ret_status) }}">{{ l }}</span>{% endfor %}</div>
 {% if c.ret_tracking %}<dl class="kv" style="margin-top:16px"><dt>택배사</dt><dd>{{ c.ret_courier }}{% if COURIERS.get(c.ret_courier) %} · <a class="link" href="{{ COURIERS[c.ret_courier] }}" target="_blank" rel="noopener">조회하기</a>{% endif %}</dd><dt>송장번호</dt><dd class="no" style="user-select:all">{{ c.ret_tracking }}</dd></dl>

@@ -3,6 +3,7 @@ import os, re, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 import core, law, chatbot
+import tracking as tracking_mod
 from core import conn, clean, digits, BIG
 from markupsafe import escape
 
@@ -206,6 +207,7 @@ def case_act(c,form,ups):
             else:
                 db.execute("UPDATE cases SET ret_status='sent',ret_courier=?,ret_tracking=? WHERE id=?",(courier,digits(tracking),c['id']))
                 core.add_event(db,c['id'],'me',f'반품 상품을 보냈어요: {courier} {digits(tracking)}')
+                tracking_mod.register(db,c['id'],'ret',courier,digits(tracking))
                 co=core.company(db,c['company_id'])
                 if co:core.send_mail(co['notify_email'],f"[{core.BNAME}] 소비자가 반품 상품을 보냈어요: {c['title']}",f"{courier} 송장번호 {digits(tracking)}\n{core.site_url('biz','/case/%d'%c['id'])}")
                 return '송장번호를 알렸어요','ok'
@@ -244,8 +246,8 @@ def case(case_id):
         return redirect(url_for('case',case_id=case_id))
     with conn() as db:
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id'])
-        again=core.can_follow_up(db,c)
-    return render_template('c_case.html',c=c,ev=ev,files=fl,co=co,again=again)
+        again=core.can_follow_up(db,c);tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])]
+    return render_template('c_case.html',c=c,ev=ev,files=fl,co=co,again=again,tracks=tracks)
 
 @app.route('/case/<int:case_id>/relief')
 def relief(case_id):
@@ -341,13 +343,14 @@ def case_summary(c):
 def case_detail(c):
     with conn() as db:
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id']);again=core.can_follow_up(db,c)
+        tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])]
     tok=case_token(c['id'])
     file_url=lambda f:url_for('api_file',case_id=c['id'],file_id=f['id'],t=tok,_external=True)
     d=case_summary(c)
     d.update(body=c['body'],want=c['want'],order_no=c['order_no'],product=c['product'],received_on=c['received_on'],due=c['due'],info_ask=c['info_ask'],
         overdue=core.overdue(c),contact=co['contact'] if co else '',ret_guide=core.return_guide(co) if co else '',
         ret=dict(status=c['ret_status'],courier=c['ret_courier'],tracking=c['ret_tracking'],out_courier=c['out_courier'],out_tracking=c['out_tracking']),
-        refund=dict(possible=core.refund_case(c),status=c['refund_status'],bank=c['refund_bank'],account=core.mask_account(c['refund_account']),holder=c['refund_holder']),
+        refund=dict(possible=core.refund_case(c),status=c['refund_status'],bank=c['refund_bank'],account=core.mask_account(c['refund_account']),holder=c['refund_holder']),tracks=tracks,
         events=[dict(id=e['id'],kind=e['kind'],text=e['text'],reply=e['reply'],created=e['created'],files=[dict(id=f['id'],name=f['original'],url=file_url(f)) for f in fl if f['event_id']==e['id']]) for e in ev],
         files=[dict(id=f['id'],name=f['original'],url=file_url(f)) for f in fl],
         can=dict(rate=c['status']=='answered',again=bool(again),ship=c['ret_status'] in ('guided','sent'),cancel=c['status'] in core.OPEN_STATUSES,

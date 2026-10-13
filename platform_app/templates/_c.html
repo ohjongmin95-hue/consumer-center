@@ -38,3 +38,7 @@
 <div class="cgrid">{% for ic,t,s,u in [('phone','1372 소비자상담센터','전화 1372 또는 온라인으로 상담해요','https://www.ccn.go.kr'),('building','한국소비자원 피해구제','상담 뒤 피해구제를 신청해요','https://www.kca.go.kr'),('scale','소비자분쟁조정위원회','합의가 안 되면 조정을 요청해요','https://www.kca.go.kr')] %}
 <a class="ccard rl" href="{{ u }}" target="_blank" rel="noopener">{{ i.icon(ic,40) }}<div class="tt">{{ t }}</div><div class="ds">{{ s }}</div></a>{% endfor %}</div>
 {%- endmacro %}
+
+{# 배송 상태 (스마트택배 연동). 연동이 꺼져 있으면 송장번호와 택배사 조회 링크만 #}
+{% macro tracks_panel(tracks) -%}{% if tracks %}<div class="panel"><div class="ph">배송 상태</div><dl class="kv">{% for t in tracks %}<dt>{{ t.label }}</dt>
+<dd>{{ t.courier }} <span class="no">{{ t.invoice }}</span>{% if t.status %} · <b>{{ t.status }}</b>{% if t.place %} · {{ t.place }}{% endif %}{% if t.time %} · {{ t.time[5:16] }}{% endif %}{% elif t.live %} · 확인 중{% endif %}{% if t.link %} · <a class="link" href="{{ t.link }}" target="_blank" rel="noopener">조회하기</a>{% endif %}</dd>{% endfor %}</dl></div>{% endif %}{%- endmacro %}
