@@ -2,7 +2,7 @@
 import os, re, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-import core, law
+import core, law, chatbot
 from core import conn, clean, digits, BIG
 from markupsafe import escape
 
@@ -284,7 +284,18 @@ def chat_answer(company_id,f):
         if co:
             with conn() as db:db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],f['category'],f['outcome'],core.iso()))
         return dict(ok=True),200
-    cat=f.get('category') if f.get('category') in core.CATS else core.classify(clean(f.get('text'),500))
+    text=clean(f.get('text'),500)
+    if co and text and f.get('category') not in core.CATS and core.active_member(co) and chatbot.ready():
+        # 입점 기업 상담창에 고객이 직접 쓴 문장: AI가 회사 정보를 보고 답한다 (실패하면 아래 기본 안내로)
+        with conn() as db:facts=chatbot.company_facts(db,co)
+        ai=chatbot.answer(co,facts,text,f.get('history'))
+        if ai:
+            cat=ai['category']
+            with conn() as db:
+                rule=core.rule_for(db,co['id'],cat or '기타')
+                db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],cat or '기타','asked',core.iso()))
+            return dict(category=cat,answer=ai['answer'],faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=True,ask_days=False),200
+    cat=f.get('category') if f.get('category') in core.CATS else core.classify(text)
     if not cat:return dict(category=None),200
     if not co:return dict(category=cat,faq=core.CHAT_FAQ[cat],auto=False,cond='',member=False,ask_days=cat in ('교환','반품·환불')),200
     member=core.active_member(co)

@@ -72,6 +72,7 @@ export default function RootLayout() {
           <Stack.Screen name="signup" options={{ title: '가입 신청', headerStyle: { backgroundColor: C.band } }} />
           <Stack.Screen name="forgot" options={{ title: '', headerStyle: { backgroundColor: C.card }, contentStyle: { backgroundColor: C.card } }} />
           <Stack.Screen name="rules" options={{ title: '자동 처리 규칙' }} />
+          <Stack.Screen name="products" options={{ title: '상품정보' }} />
           <Stack.Screen name="stats" options={{ title: '처리 통계' }} />
           <Stack.Screen name="report" options={{ title: '월간 리포트' }} />
           <Stack.Screen name="settings" options={{ title: '회사 정보와 알림 설정' }} />
