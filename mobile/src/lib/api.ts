@@ -60,6 +60,8 @@ export type Alert = { kind: 'product' | 'category'; label: string; n: number; ca
 export type NewsItem = { id: number; title: string; body?: string; source_url?: string; created: string };
 export type Rule = { category: string; auto: boolean; reply: string; faq: string; cond: string; cond_ok: boolean };
 export type Rules = { rules: Rule[]; conds: { value: string; label: string }[]; chat: { asked: number; solved: number; filed: number }; link: string; message?: string };
+export type Product = { id: number; name: string; price: string; stock: string; info: string };
+export type Products = { products: Product[]; stocks: { value: string; label: string }[]; ai: boolean; message?: string };
 export type Bar = { label: string; n: number; pct?: number };
 export type Stats = {
   kpi: Kpi;
@@ -117,6 +119,8 @@ export const api = {
   forgot: (login_id: string) => call<{ ok: boolean; message: string }>('/api/v1/forgot', json({ login_id })),
   rules: (t: string) => call<Rules>('/api/v1/rules', {}, t),
   saveRule: (t: string, f: Partial<Rule> & { category: string }) => call<Rules>('/api/v1/rules', json(f), t),
+  products: (t: string) => call<Products>('/api/v1/products', {}, t),
+  saveProduct: (t: string, f: Partial<Product> & { act?: 'delete' }) => call<Products>('/api/v1/products', json(f), t),
   stats: (t: string) => call<Stats>('/api/v1/stats', {}, t),
   report: (t: string, ym = '') => call<Report>('/api/v1/report?ym=' + ym, {}, t),
   settings: (t: string) => call<Settings>('/api/v1/settings', {}, t),

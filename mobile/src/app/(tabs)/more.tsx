@@ -31,6 +31,7 @@ export default function MoreTab() {
 
         <Card style={{ paddingVertical: 4 }}>
           <MenuRow title="자동 처리 규칙" sub="어떤 요청을 소보루가 바로 처리할지 정합니다" onPress={() => router.push('/rules')} />
+          <MenuRow title="상품정보" sub="상담창이 가격·재고·사용법 문의에 답할 때 봅니다" onPress={() => router.push('/products')} />
           <MenuRow title="요청 직접 등록" sub="전화·쇼핑몰 문의·DM으로 받은 요청 올리기" onPress={() => router.push('/new')} last />
         </Card>
         <Card style={{ paddingVertical: 4 }}>

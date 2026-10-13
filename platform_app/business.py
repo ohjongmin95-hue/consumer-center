@@ -7,7 +7,8 @@ import os, re, hmac, json, functools, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, g, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
-import core, law, insights, drafting
+import csv, io
+import core, law, insights, drafting, chatbot
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -367,7 +368,64 @@ def rules():
         rs={cat:core.rule_for(db,co['id'],cat) for cat in core.CATS}
         since=core.now().strftime('%Y-%m-01')
         chat={o:db.execute('SELECT COUNT(*) FROM chat_log WHERE company_id=? AND outcome=? AND created>=?',(co['id'],o,since)).fetchone()[0] for o in ('asked','solved','filed')}
-    return render_template('b_rules.html',rs=rs,chat=chat,link=core.site_url('me','/to/%d'%co['id']),tab='rules')
+        ps=core.products(db,co['id'])
+    return render_template('b_rules.html',rs=rs,chat=chat,link=core.site_url('me','/to/%d'%co['id']),products=ps,STOCKS=core.STOCKS,ai=chatbot.ready(),tab='rules')
+
+# ---------- 상품정보 (상담창 AI가 가격·재고·사용법 문의에 답할 때 본다) ----------
+def save_product(db,co,f):
+    """상품 하나 추가·수정·삭제(웹·앱 공용). (안내 문구, 'ok'|'error')."""
+    pid=f.get('id');pid=int(pid) if str(pid or '').isdigit() else None
+    if pid and not db.execute('SELECT 1 FROM products WHERE id=? AND company_id=?',(pid,co['id'])).fetchone():return '상품을 찾을 수 없습니다','error'
+    if f.get('act')=='delete':
+        if pid:db.execute('DELETE FROM products WHERE id=? AND company_id=?',(pid,co['id']))
+        return '삭제했습니다','ok'
+    cur=db.execute('SELECT * FROM products WHERE id=?',(pid,)).fetchone() if pid else None
+    keep=lambda k,n:clean(f.get(k),n) if k in f or not cur else cur[k]  # 고칠 때 보내지 않은 항목은 그대로 둔다
+    name,price,info=keep('name',60),keep('price',30),keep('info',1000)
+    stock=keep('stock',10);stock=stock if stock in core.STOCKS else ''
+    if not name:return '상품 이름을 적어 주세요','error'
+    if pid:db.execute('UPDATE products SET name=?,price=?,stock=?,info=?,updated=? WHERE id=?',(name,price,stock,info,core.iso(),pid))
+    else:
+        if db.execute('SELECT COUNT(*) FROM products WHERE company_id=?',(co['id'],)).fetchone()[0]>=core.MAX_PRODUCTS:return f'상품은 {core.MAX_PRODUCTS}개까지 등록할 수 있어요','error'
+        db.execute('INSERT INTO products(company_id,name,price,stock,info,updated) VALUES(?,?,?,?,?,?)',(co['id'],name,price,stock,info,core.iso()))
+    return '저장했습니다','ok'
+
+PRODUCT_COLS={'name':('상품명','상품 이름','상품','이름'),'price':('가격','판매가'),'stock':('재고','판매 상태','상태'),'info':('안내','설명','사용법','상품 안내')}
+def import_products(db,co,raw):
+    """엑셀에서 'CSV'로 저장한 상품 목록을 읽어 넣는다. 이름이 같으면 고쳐 쓴다. (안내 문구, 'ok'|'error')."""
+    for enc in ('utf-8-sig','cp949'):
+        try:text=raw.decode(enc);break
+        except UnicodeDecodeError:text=None
+    if text is None:return '파일을 읽지 못했어요. 엑셀에서 CSV(쉼표로 분리)로 저장해 주세요','error'
+    rows=list(csv.reader(io.StringIO(text)))
+    if not rows:return '빈 파일이에요','error'
+    head=[h.strip() for h in rows[0]]
+    idx={k:next((i for i,h in enumerate(head) if h in names),None) for k,names in PRODUCT_COLS.items()}
+    if idx['name'] is None:return '첫 줄에 "상품명" 칸이 있어야 해요','error'
+    have={r['name']:r['id'] for r in core.products(db,co['id'])};n=0
+    for r in rows[1:]:
+        get=lambda k:(r[idx[k]].strip() if idx[k] is not None and idx[k]<len(r) else '')
+        name=get('name')[:60]
+        if not name:continue
+        st=get('stock');stock='품절' if '품절' in st else ('있음' if st else '')
+        vals=(get('price')[:30],stock,get('info')[:1000],core.iso())
+        if name in have:db.execute('UPDATE products SET price=?,stock=?,info=?,updated=? WHERE id=?',vals+(have[name],))
+        elif len(have)<core.MAX_PRODUCTS:
+            cur=db.execute('INSERT INTO products(company_id,name,price,stock,info,updated) VALUES(?,?,?,?,?,?)',(co['id'],name)+vals);have[name]=cur.lastrowid
+        else:break
+        n+=1
+    return (f'{n}개 상품을 저장했습니다','ok') if n else ('저장할 상품이 없어요','error')
+
+@app.route('/products',methods=['POST'])
+@login_required
+def products():
+    co=me()
+    with conn() as db:
+        if request.form.get('act')=='csv':
+            up=request.files.get('file')
+            msg,level=import_products(db,co,up.read(2_000_000)) if up and up.filename else ('파일을 골라 주세요','error')
+        else:msg,level=save_product(db,co,request.form)
+    flash(msg,level);return redirect(url_for('rules')+'#products')
 
 COND_CATS=('교환','반품·환불')  # 받은 지 7일 조건은 이 두 유형에만
 def save_rule(db,co,f):
@@ -771,6 +829,18 @@ def api_biz_rules():
         if request.method=='POST' and not save_rule(db,co,api_form()):return jsonify(error='유형을 확인해 주세요.'),400
         d=rules_json(db,co)
     return jsonify(dict(d,message='저장했습니다' if request.method=='POST' else ''))
+def products_json(db,co):
+    return dict(products=[dict(id=p['id'],name=p['name'],price=p['price'],stock=p['stock'],info=p['info']) for p in core.products(db,co['id'])],
+        stocks=[dict(value=k,label=v) for k,v in core.STOCKS.items()],ai=chatbot.ready())
+@app.route('/api/v1/products',methods=['GET','POST'])
+def api_biz_products():
+    co=api_co();msg=''
+    with conn() as db:
+        if request.method=='POST':
+            msg,level=save_product(db,co,api_form())
+            if level!='ok':return jsonify(error=msg),400
+        d=products_json(db,co)
+    return jsonify(dict(d,message=msg))
 @app.route('/api/v1/stats')
 def api_biz_stats():
     co=api_co()

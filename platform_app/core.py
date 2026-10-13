@@ -164,6 +164,8 @@ def init():
           FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS biz_push(token TEXT PRIMARY KEY,company_id INTEGER NOT NULL,created TEXT NOT NULL,
           FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
+        CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,name TEXT NOT NULL,price TEXT NOT NULL DEFAULT '',
+          stock TEXT NOT NULL DEFAULT '',info TEXT NOT NULL DEFAULT '',updated TEXT NOT NULL,FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
         ''')
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
         if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')
@@ -231,6 +233,10 @@ def search_companies(q,limit=6):
         return [dict(id=r['id'],name=r['name'],member=active_member(r)) for r in db.execute(
             "SELECT * FROM companies WHERE status IN ('active','listed') AND name LIKE ? ESCAPE '\\' ORDER BY member DESC,length(name) LIMIT ?",
             ('%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%',limit))]
+# 상품정보: 상담창 AI가 가격·재고·사용법 문의에 답할 때 본다. 기업이 자동 처리 화면에서 등록한다.
+STOCKS={'':'정하지 않음','있음':'판매 중','품절':'품절'}
+MAX_PRODUCTS=300
+def products(db,cid):return db.execute('SELECT * FROM products WHERE company_id=? ORDER BY name,id',(cid,)).fetchall()
 def rule_for(db,cid,cat):
     r=db.execute('SELECT * FROM rules WHERE company_id=? AND category=?',(cid,cat)).fetchone()
     pb=PLAYBOOK.get(cat,PLAYBOOK['기타'])

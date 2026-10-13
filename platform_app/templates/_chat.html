@@ -6,9 +6,10 @@
 <script>
 (function(){
 const box=document.getElementById('cb'),log=document.getElementById('cbLog'),form=document.getElementById('cbForm'),inp=document.getElementById('cbText');
-const CATS={{ CATS|tojson }};let said=[],cat=null,info=null,live=false;
+const CATS={{ CATS|tojson }};let said=[],hist=[],cat=null,info=null,live=false;
 function show(el){if(live)el.scrollIntoView({block:'nearest',behavior:'smooth'})}
-function bubble(text,who){const d=document.createElement('div');d.className='cb-m '+(who||'bot');d.textContent=text;log.appendChild(d);show(d);return d}
+function bubble(text,who){const d=document.createElement('div');d.className='cb-m '+(who||'bot');d.textContent=text;log.appendChild(d);show(d);
+  if(who!=='bot dots')hist.push({who:who==='me'?'me':'bot',text:text});if(hist.length>12)hist.shift();return d}
 function chips(list){const w=document.createElement('div');w.className='cb-chips';
   list.forEach(c=>{let el;if(c.href){el=document.createElement('a');el.href=c.href}else{el=document.createElement('button');el.type='button';el.onclick=()=>{w.remove();c.fn()}}
     el.textContent=c.label;if(c.pri)el.className='pri';w.appendChild(el)});log.appendChild(w);show(w)}
@@ -32,11 +33,12 @@ function ask(data){clearChips();
     if(r.error){later(()=>bubble(r.error));return}
     if(!r.category){later(()=>{bubble('제가 정확히 알아들었는지 모르겠어요. 가장 가까운 걸 골라 주시겠어요?');catChips()});return}
     cat=r.category;info=r;
+    if(r.answer){later(()=>{bubble(r.answer);endChips()});return}  // AI가 회사 정보를 보고 답한 경우
     later(()=>{bubble(cat==='기타'?'네, 확인했어요.':cat+' 문의시군요.');
       later(()=>{bubble(r.faq);
         if(r.ask_days)later(()=>{bubble('상품을 받으신 지 7일이 지났나요?');days()});else endChips()},500)});
   }).catch(()=>later(()=>{bubble('연결이 잠시 불안정해요. 아래에서 직접 골라 접수해 주세요.')}))}
-form.addEventListener('submit',e=>{e.preventDefault();const t=inp.value.trim();if(!t)return;inp.value='';bubble(t,'me');said.push(t);ask({text:t})});
+form.addEventListener('submit',e=>{e.preventDefault();const t=inp.value.trim();if(!t)return;inp.value='';const h=JSON.stringify(hist);bubble(t,'me');said.push(t);ask({text:t,history:h})});
 bubble('안녕하세요, '+box.dataset.greet+'.\n어떤 일인지 편하게 적어 주시거나 아래에서 골라 주세요.');catChips();live=true;
 })();
 </script>

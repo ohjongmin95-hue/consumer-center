@@ -42,11 +42,17 @@ def ask_claude(c,co,rule_reply,history,samples):
             "인사와 맺음말을 포함해 6문장 이내로, 답변 본문만 출력한다.")
     user=("[요청]\n"+'\n'.join(facts(c))+"\n\n[지금까지 주고받은 내용]\n"+(history or '없음')+
           "\n\n[회사 답변 예시]\n"+(samples or '없음')+"\n\n[이 유형의 기본 조치 문구]\n"+(rule_reply or '없음')+"\n\n[관련 조문]\n"+(refs or '없음'))
-    body={'model':MODEL,'max_tokens':800,'system':system,'messages':[{'role':'user','content':user}]}
+    return call(system,[{'role':'user','content':user}])
+
+def call(system,messages,model=None,max_tokens=800,timeout=40):
+    """Claude에 한 번 묻고 글만 돌려준다. 키가 없거나 실패하면 None."""
+    key=os.getenv('ANTHROPIC_API_KEY','').strip()
+    if not key:return None
+    body={'model':model or MODEL,'max_tokens':max_tokens,'system':system,'messages':messages}
     req=urllib.request.Request('https://api.anthropic.com/v1/messages',data=json.dumps(body).encode(),method='POST',
         headers={'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'})
     try:
-        with urllib.request.urlopen(req,timeout=40) as r:res=json.loads(r.read().decode())
+        with urllib.request.urlopen(req,timeout=timeout) as r:res=json.loads(r.read().decode())
         text=''.join(b.get('text','') for b in res.get('content',[]) if b.get('type')=='text').strip()
         return text or None
     except Exception:return None

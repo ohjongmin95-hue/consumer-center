@@ -227,6 +227,44 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:c=db.execute('SELECT * FROM cases WHERE id=?',(case2,)).fetchone()
         self.assertEqual((c['status'],c['decision']),('seen','pending'))
 
+    def test_products_and_ai_chat(self):
+        """상품정보 등록(웹·CSV·앱)과, 키가 있으면 상담창이 회사 정보로 AI 답변을 하는지."""
+        b,o,cid=self.signup_and_approve('상품마켓','products@example.com')
+        r=self.post(b,'/biz/products',{'name':'보습 크림','price':'29,000원','stock':'있음','info':'하루 두 번 바르세요'},'/biz/rules',follow_redirects=True)
+        self.assertIn('보습 크림',r.get_data(as_text=True))
+        self.assertIn('이름을 적어',self.post(b,'/biz/products',{'name':''},'/biz/rules',follow_redirects=True).get_data(as_text=True))
+        csv_=('상품명,가격,재고,안내\n보습 크림,31000원,품절,\n선크림,18000원,있음,SPF50\n').encode('cp949')
+        from io import BytesIO
+        r=self.post(b,'/biz/products',{'act':'csv','file':(BytesIO(csv_),'p.csv')},'/biz/rules',follow_redirects=True)
+        self.assertIn('2개 상품을 저장',r.get_data(as_text=True))
+        with self.core.conn() as db:ps={p['name']:p for p in self.core.products(db,cid)}
+        self.assertEqual((ps['보습 크림']['price'],ps['보습 크림']['stock'],ps['선크림']['info']),('31000원','품절','SPF50'))
+        # 앱: 목록·수정·삭제, 다른 회사 상품은 못 고친다
+        tok=self.client().post('/biz/api/v1/login',json={'login_id':'products@example.com','password':'longpassword1'}).get_json()['token'];auth={'Authorization':'Bearer '+tok}
+        a=self.client();j=a.get('/biz/api/v1/products',headers=auth).get_json();self.assertEqual(len(j['products']),2)
+        pid=ps['선크림']['id']
+        j=a.post('/biz/api/v1/products',json={'id':pid,'price':'19000원'},headers=auth).get_json();p=[x for x in j['products'] if x['id']==pid][0]
+        self.assertEqual((p['name'],p['price'],p['stock']),('선크림','19000원','있음'))
+        b2,_,_=self.signup_and_approve('남의마켓','other-products@example.com')
+        self.assertIn('찾을 수 없',self.post(b2,'/biz/products',{'id':pid,'act':'delete'},'/biz/rules',follow_redirects=True).get_data(as_text=True))
+        # 키가 없으면 예전처럼 유형 안내
+        me=self.client();page=me.get(f'/to/{cid}').get_data(as_text=True);ctok=re.search(r'data-csrf="([^"]+)"',page).group(1)
+        j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'택배가 아직 안 왔어요'}).get_json()
+        self.assertNotIn('answer',j);self.assertEqual(j['category'],'배송 조회')
+        # 키가 있으면 AI가 회사 정보(상품 포함)를 보고 답한다
+        seen={}
+        def fake(system,messages,**k):seen.update(system=system,messages=messages);return '{"category": null, "answer": "선크림은 19000원이에요."}'
+        with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'test'}),patch.object(sys.modules['drafting'],'call',fake):
+            hist=json.dumps([{'who':'bot','text':'안녕하세요'},{'who':'me','text':'선크림 있어요?'},{'who':'bot','text':'네, 있어요.'}])
+            j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'얼마예요?','history':hist}).get_json()
+        self.assertEqual((j['answer'],j['category']),('선크림은 19000원이에요.',None))
+        self.assertIn('선크림 / 가격 19000원',seen['system']);self.assertIn('보습 크림 / 가격 31000원 / 품절',seen['system'])
+        self.assertEqual([m['role'] for m in seen['messages']],['user','assistant','user']);self.assertEqual(seen['messages'][-1]['content'],'얼마예요?')
+        # AI가 실패하면 기본 안내로 돌아간다
+        with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'test'}),patch.object(sys.modules['drafting'],'call',lambda *a,**k:None):
+            j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'환불하고 싶어요'}).get_json()
+        self.assertNotIn('answer',j);self.assertEqual(j['category'],'반품·환불')
+
     def test_chat_and_conditional_auto(self):
         import datetime
         b,o,cid=self.signup_and_approve('상담창마켓','chat@example.com')
