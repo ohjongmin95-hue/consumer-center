@@ -1,6 +1,7 @@
 // 소보루 CS 색과 간격. 웹(platform_app/static/hanq.css)과 같은 값을 쓴다.
 export const C = {
   accent: '#F89B00',
+  brand: '#652D1C', // 소보루 CS 로고 글자 (로고 이미지의 갈색)
   accentPress: '#E88F00',
   accentSoft: '#FFF4E0',
   accentInk: '#B36B00',

@@ -71,7 +71,7 @@ export default function Login() {
 const st = StyleSheet.create({
   top: { paddingHorizontal: 24, paddingTop: 28, gap: 14 },
   logo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 18 },
-  wm: { fontSize: 22, fontWeight: '800', color: C.accent, letterSpacing: -0.8 },
+  wm: { fontSize: 22, fontWeight: '800', color: C.brand, letterSpacing: -0.8 },
   h1: { fontSize: 28, lineHeight: 38, fontWeight: '700', color: C.fg, letterSpacing: -0.9 },
   sub: { fontSize: 15, lineHeight: 23, color: C.fg3 },
   form: { paddingHorizontal: 24, paddingTop: 32, gap: 12 },

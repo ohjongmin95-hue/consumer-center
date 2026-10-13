@@ -187,7 +187,7 @@ function SmallBtn({ title, onPress, kind = 'primary' }: { title: string; onPress
 const st = StyleSheet.create({
   warn: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: '#FFF8EC', borderRadius: R.md, padding: 16, marginHorizontal: 16, marginBottom: 12 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 20, paddingTop: 12 },
-  wm: { fontSize: 19, fontWeight: '800', color: C.accent, letterSpacing: -0.6 },
+  wm: { fontSize: 19, fontWeight: '800', color: C.brand, letterSpacing: -0.6 },
   hero: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 20, gap: 8 },
   coName: { fontSize: 15, fontWeight: '600', color: C.fg3 },
   h1: { fontSize: 25, lineHeight: 35, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },

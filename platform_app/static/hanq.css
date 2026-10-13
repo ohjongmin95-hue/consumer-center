@@ -2,7 +2,7 @@
 :root{
   color-scheme:light;
   --bg:#f2f4f6; --card:#ffffff; --fg:#191f28; --fg2:#4e5968; --fg3:#8b95a1; --fg4:#b0b8c1; --line:#e5e8eb; --fill:#f2f4f6; --fill2:#e5e8eb;
-  --accent:#f89b00; --accent-press:#e88f00; --accent-soft:#fff4e0; --accent-ink:#b36b00; --on-accent:#ffffff;
+  --accent:#f89b00; --accent-press:#e88f00; --accent-soft:#fff4e0; --accent-ink:#b36b00; --brand:#652D1C; --on-accent:#ffffff;
   --green:#12a26a; --green-soft:#e5f6ee; --red:#f04452; --red-soft:#fdecee; --blue:#3182f6; --blue-soft:#e8f3ff; --knob:#ffffff;
   font-family:Pretendard,'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
 }
@@ -967,7 +967,7 @@ body.v2 .foot2{padding-block:16px 18px;font-size:14px}
 
 /* 소보루 CS 로고: 캐릭터 + 한글 이름, 이름 전체를 같은 주황색으로 */
 .logo.biz .ch{height:30px;width:auto;display:block}
-.logo.biz .wm{font-size:21px;font-weight:800;letter-spacing:-.04em;color:var(--accent);line-height:1}
+.logo.biz .wm{font-size:21px;font-weight:800;letter-spacing:-.04em;color:var(--brand);line-height:1}
 .foot2 .logo.biz .ch{height:24px}
 .foot2 .logo.biz .wm{font-size:17px}
 .auth .logo.biz .ch,.flogo .ch{height:34px}
@@ -978,7 +978,7 @@ body.v2 .foot2{padding-block:16px 18px;font-size:14px}
 .copy-row .acts{display:flex;gap:8px;flex-wrap:wrap}.copy-row .acts .inp{flex:1 1 220px;height:40px;padding:0 12px;font-size:15px;background:var(--fill)}
 /* 소보루 CS 고객센터 로고: 캐릭터 + 한글 이름(주황) + 고객센터 */
 .logo.cs-logo{gap:6px}.logo.cs-logo .ch,.cs-brand .ch{height:28px;width:auto;display:block}
-.logo.cs-logo .wm,.cs-brand .wm{font-size:20px;font-weight:800;letter-spacing:-.04em;color:var(--accent);line-height:1}
+.logo.cs-logo .wm,.cs-brand .wm{font-size:20px;font-weight:800;letter-spacing:-.04em;color:var(--brand);line-height:1}
 .ft-top .logo.cs-logo .ch{height:22px}.ft-top .logo.cs-logo .wm{font-size:16px}
 
 /* 기업별 고객센터 (/to/<id>): 회색 바탕 + 흰 카드, 유형별 색 타일 */
