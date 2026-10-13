@@ -55,7 +55,7 @@ SECTIONS = [
         ('operator.privacy_contact', '개인정보 보호책임자 연락처', '', OPT),
         ('operator.youth_officer', '청소년보호책임자 (비우면 개인정보 보호책임자와 같음)', '', OPT),
         ('operator.youth_contact', '청소년보호책임자 연락처 (비우면 개인정보 보호책임자 연락처)', '', OPT),
-        ('operator.notice', '하단 안내 문구 (비우면 표시 안 함)', '소비자제보센터는 언론사 SOBORU가 운영하는 소비자 제보 창구입니다. 접수된 제보는 업체에 전달하고 취재·보도에 참고하며, 법률 상담·자문, 소송 대리, 변호사 소개는 하지 않습니다. 제보 접수만으로 피해 회복이 보장되지 않습니다.', OPT_ML),
+        ('operator.notice', '하단 안내 문구 (비우면 표시 안 함)', '', OPT_ML),
         ('footer.text', '저작권 문구 (맨 아래)', '© SOBORU All rights reserved.', ML),
     ]),
     ('home', '메인 화면', [
@@ -128,6 +128,7 @@ SECTIONS = [
     ('process', '처리 절차', [
         ('process.title', '페이지 제목', '처리 절차', {}),
         ('process.intro', '소개 문구', '', OPT_ML),
+        ('process.disclaimer', '운영 안내 (페이지 맨 아래, 비우면 숨김)', '소비자제보센터는 언론사 SOBORU가 운영하는 소비자 제보 창구입니다. 접수된 제보는 업체에 전달하고 취재·보도에 참고하며, 법률 상담·자문, 소송 대리, 변호사 소개는 하지 않습니다. 제보 접수만으로 피해 회복이 보장되지 않습니다.', OPT_ML),
         ('process.note', '하단 안내', '휴대폰 번호와 조회 비밀번호로 내 제보의 진행 상황을 확인할 수 있습니다.', OPT_ML),
     ]),
     ('types', '제보 유형', [

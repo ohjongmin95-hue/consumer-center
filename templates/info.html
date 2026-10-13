@@ -22,6 +22,7 @@
   {% else %}{{ generic(block, page, loop.index0) }}
   {% endif %}
   {% endfor %}
+  {% if page == 'process' and txt('process.disclaimer') %}<p class="process-disclaimer"{{ ed_attr('process.disclaimer') }}>{{ txt('process.disclaimer') }}</p>{% endif %}
   {{ ed_list('layout_' ~ page) }}
 </div>
 {% endif %}
