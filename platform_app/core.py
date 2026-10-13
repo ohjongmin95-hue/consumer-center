@@ -156,6 +156,7 @@ def init():
         CREATE TABLE IF NOT EXISTS news(id INTEGER PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,source_url TEXT NOT NULL,created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sent_marks(kind TEXT NOT NULL,company_id INTEGER NOT NULL,key TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(kind,company_id,key));
         CREATE TABLE IF NOT EXISTS copy_edits(id INTEGER PRIMARY KEY,site TEXT NOT NULL,src TEXT NOT NULL,dst TEXT NOT NULL,created TEXT NOT NULL,UNIQUE(site,src));
+        CREATE TABLE IF NOT EXISTS copy_moves(id INTEGER PRIMARY KEY,tpl TEXT NOT NULL,sel TEXT NOT NULL,dev TEXT NOT NULL,dx INTEGER NOT NULL,dy INTEGER NOT NULL,created TEXT NOT NULL,UNIQUE(tpl,sel,dev));
         CREATE TABLE IF NOT EXISTS chat_log(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,category TEXT NOT NULL,outcome TEXT NOT NULL,created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS app_push(case_id INTEGER NOT NULL,token TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(case_id,token),
           FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE);
@@ -399,19 +400,27 @@ def notify_company_new(co,c):
 
 # ---------- 문구 고치기 (운영 화면 /ops/copy) ----------
 # 운영자가 화면 문구를 바꾸거나 지우면, 페이지를 내보내기 직전에 글자 부분(태그 사이 글자와 입력칸 안내 글)만 바꾼다.
-# 템플릿 파일은 그대로 두므로 언제든 되돌릴 수 있다. 운영 화면(/ops)에는 적용하지 않는다.
+# 템플릿 파일은 그대로 둔다. 저장한 문구는 다시 고칠 수 있다. 운영 화면(/ops)에는 적용하지 않는다.
 _TEXT=re.compile(r'(<script\b.*?</script>|<style\b.*?</style>|<[^>]*>)|([^<]+)',re.S|re.I)
 _ATTR=re.compile(r'(\s(?:placeholder|aria-label|title|alt)=")([^"]*)(")')
+_ENT={"'":"(?:'|&#39;|&#x27;)",'"':'(?:"|&#34;|&quot;)','&':'&amp;','<':'&lt;','>':'&gt;'}
+def _copy_pattern(src):
+    """화면 글자에서 문구를 찾는 패턴. 줄바꿈·띄어쓰기 차이와 따옴표가 &#39;로 바뀐 것도 같은 문구로 본다."""
+    out=[]
+    for tok in re.split(r'(\s+)',src.strip()):
+        if not tok:continue
+        out.append(r'\s+' if tok.isspace() else ''.join(_ENT.get(ch) or re.escape(ch) for ch in tok))
+    return re.compile(''.join(out))
 def copy_edits(site):
     with conn() as db:
         rows=db.execute("SELECT src,dst FROM copy_edits WHERE site IN (?,'all')",(site,)).fetchall()
     esc=lambda t:t.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
     # 긴 문구부터 바꿔서 짧은 문구가 긴 문구 안을 먼저 건드리지 않게
-    return sorted(((esc(r['src']),esc(r['dst'])) for r in rows if r['src']),key=lambda x:-len(x[0]))
+    return [(_copy_pattern(r['src']),esc(r['dst'])) for r in sorted(rows,key=lambda r:-len(r['src'])) if r['src'].strip()]
 def apply_copy(html,edits):
     if not edits:return html
     def sub(t):
-        for a,b in edits:t=t.replace(a,b)
+        for a,b in edits:t=a.sub(lambda m:b,t)
         return t
     def tag(m):
         if m.group(1) is None:return sub(m.group(2))
@@ -419,18 +428,53 @@ def apply_copy(html,edits):
         if re.match(r'<(script|style)\b',t,re.I):return t
         return _ATTR.sub(lambda a:a.group(1)+sub(a.group(2))+a.group(3),t)
     return _TEXT.sub(tag,html)
+# 문장 위치 옮기기: 운영 화면(/ops/visual)에서 끌어 옮긴 문장은 화면(템플릿)·요소·기기(PC/모바일)별로 저장해 두고,
+# 페이지를 내보낼 때 <style>로 그만큼 옮긴다. 옆 문장 자리는 그대로 두도록 position:relative로만 옮긴다.
+MOVE_SEL=re.compile(r'^[a-z0-9#>:()\- _]{1,400}$')
+MOVE_MEDIA={'pc':'(min-width:768px)','m':'(max-width:767.98px)'}
+def copy_moves(tpl):
+    with conn() as db:return db.execute('SELECT sel,dev,dx,dy FROM copy_moves WHERE tpl=?',(tpl,)).fetchall()
+def moves_style(rows):
+    css=''.join('@media %s{%s{position:relative;left:%dpx;top:%dpx}}'%(MOVE_MEDIA[r['dev']],r['sel'],r['dx'],r['dy']) for r in rows if r['dev'] in MOVE_MEDIA and MOVE_SEL.match(r['sel']))
+    data=json.dumps([dict(sel=r['sel'],dev=r['dev'],dx=r['dx'],dy=r['dy']) for r in rows],ensure_ascii=False).replace('&','&amp;').replace("'",'&#39;').replace('<','&lt;')
+    return "<style id=\"cp-moves\" data-moves='%s'>%s</style>"%(data,css)
 def copy_after_request(site):
     def hook(r):
         if r.mimetype=='text/html' and not r.direct_passthrough and not request.path.startswith('/ops'):
-            try:edits=copy_edits(site)
+            tpl=g.get('cp_tpl')
+            try:edits=copy_edits(site);moves=copy_moves(tpl) if tpl else []
             except Exception:return r
-            if edits:r.set_data(apply_copy(r.get_data(as_text=True),edits))
+            if edits or moves:
+                html=r.get_data(as_text=True)
+                if edits:html=apply_copy(html,edits)
+                if moves:html=html.replace('</head>',moves_style(moves)+'</head>',1)
+                r.set_data(html)
+            if tpl and request.headers.get('X-Cp-Editor')=='1':r.headers['X-Cp-Tpl']=tpl
         return r
     return hook
+def track_template(app):
+    """이 요청에서 그린 화면(템플릿) 이름을 기억한다. 문장 위치를 화면별로 저장하기 위해."""
+    from flask import template_rendered
+    def rec(sender,template,context,**extra):
+        if 'cp_tpl' not in g:g.cp_tpl=template.name
+    template_rendered.connect(rec,app,weak=False)
 _TPL_SITE=lambda f:'me' if f.startswith(('c_','_c','_chat')) else 'biz' if f.startswith(('b_','_b')) else 'all' if f=='base.html' else None
+_PY_SITE={'consumer.py':'me','business.py':'biz','law.py':'biz','insights.py':'biz','core.py':'all'}
+def _norm(t):return ' '.join(t.split()).strip(" ·,|/()'")
+def _py_texts(path):
+    """파이썬 파일 안의 한글 문구 (안내 메시지, 응대 가이드 등). 설명용 주석 문자열은 뺀다."""
+    import ast
+    tree=ast.parse(open(path,encoding='utf-8').read());docs=set()
+    for n in ast.walk(tree):
+        if isinstance(n,(ast.Module,ast.FunctionDef,ast.ClassDef)) and n.body and isinstance(n.body[0],ast.Expr) and isinstance(getattr(n.body[0],'value',None),ast.Constant):docs.add(id(n.body[0].value))
+        if isinstance(n,ast.JoinedStr):docs.update(id(v) for v in n.values)
+    return [n.value for n in ast.walk(tree) if isinstance(n,ast.Constant) and isinstance(n.value,str) and id(n) not in docs and '\n' not in n.value]
 def copy_catalog():
-    """템플릿에 적힌 한글 문구 목록 (운영자가 찾아서 바꿀 수 있게). [(site, 문구, [파일들])]"""
-    tdir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'templates');found={}
+    """화면에 나오는 한글 문구 목록 (운영자가 찾아서 바꿀 수 있게). [(site, 문구, [파일들])]"""
+    here=os.path.dirname(os.path.abspath(__file__));tdir=os.path.join(here,'templates');found={}
+    def add(site,t,f):
+        t=_norm(t)
+        if re.search('[가-힣]',t) and len(t)>=2 and '{{' not in t and '{%' not in t:found.setdefault((site,t),set()).add(f)
     for f in sorted(os.listdir(tdir)):
         site=_TPL_SITE(f)
         if not site:continue
@@ -439,8 +483,13 @@ def copy_catalog():
         parts+=re.findall(r'placeholder="([^"{]+)"',src)
         for p in parts:
             for t in re.split(r'\{\{.*?\}\}|\{%.*?%\}',p,flags=re.S):
-                t=' '.join(t.split()).strip(" ·,|/()'")
-                if re.search('[가-힣]',t) and '{' not in t and '}' not in t and len(t)>=2:found.setdefault((site,t),set()).add(f)
+                if '{' not in t and '}' not in t:add(site,t,f)
+        # {% for q,a in [('질문','답')] %}처럼 템플릿 코드 안에 적힌 문구
+        for blk in re.findall(r'\{\{.*?\}\}|\{%.*?%\}',src,flags=re.S):
+            for lit in re.findall(r"'((?:[^'\\]|\\.)*)'",blk):add(site,re.sub(r"\\(.)",r"\1",lit),f)
+    for f,site in _PY_SITE.items():
+        for t in _py_texts(os.path.join(here,f)):
+            if len(t)<=600:add(site,t,f)
     return sorted(((s,t,sorted(fs)) for (s,t),fs in found.items()),key=lambda x:(x[0]!='me',x[1]))
 
 # ---------- 메일 ----------
