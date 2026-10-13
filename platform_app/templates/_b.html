@@ -5,13 +5,17 @@
 <header class="gnb"><div class="wrap">
 <a class="logo biz" href="{{ url_for('decide') }}">{{ soboru_logo() }}</a>
 {% if co and tab!='login' %}<nav>{{ menu(tab) }}</nav>
-<div class="right"><a class="chip{{ ' on' if tab=='settings' }}" href="{{ url_for('settings') }}" title="설정"><span class="dot">{{ co.name[:1] }}</span><span class="hide-m">{{ co.name }}</span></a>
+<div class="right"><a class="bell" href="{{ url_for('approvals') }}" aria-label="승인할 일 {{ n_pending or 0 }}건"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>{% if n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a><a class="chip{{ ' on' if tab=='settings' }}" href="{{ url_for('settings') }}" title="설정"><span class="dot">{{ co.name[:1] }}</span><span class="cnm">{{ co.name }}</span></a>
 <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn hide-m">로그아웃</button></form></div>
 {% else %}{% if tab=='intro' %}<nav class="in-nav" aria-label="소개 메뉴">
 <a href="#feat">기능 소개</a><a href="#auto">자동 처리</a><a href="#law">응대 가이드</a><a href="#stats">통계</a><a href="#steps">시작 방법</a><a href="#app">사장님 앱</a>
 </nav>{% endif %}<div class="right">{% if tab!='login' %}<a class="tbtn" href="{{ url_for('login') }}">로그인</a>{% endif %}{% if tab!='signup' %}<a class="btn sm" href="{{ url_for('signup') }}">무료로 시작하기</a>{% endif %}</div>{% endif %}
 </div></header>
 {% if co and tab not in ('login','intro','signup') %}<nav class="bside" aria-label="사장님 메뉴">{{ menu(tab,True) }}</nav>{% endif %}
+{% if co and tab not in ('login','intro','signup') %}<nav class="mbar" aria-label="사장님 아래 메뉴">
+{% for key,ep,label,ic in [('home','decide','홈','inbox'),('all','all_cases','요청','list'),('approve','approvals','승인','approve'),('rules','rules','자동 응대','bolt')] %}<a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{{ i.icon(ic,24) }}<span>{{ label }}</span>{% if key=='approve' and n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>{% endfor %}
+<details><summary>{{ i.icon('list',24) }}<span>전체</span></summary><div class="sheet">{{ menu(tab,True) }}<a href="{{ url_for('settings') }}" class="{{ 'on' if tab=='settings' }}">{{ i.icon('gear',22) }}<span>설정</span></a>
+<form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button>{{ i.icon('user',22) }}<span>로그아웃</span></button></form></div></details></nav>{% endif %}
 {%- endmacro %}
 {# 사장님 메뉴: 넓은 화면은 왼쪽 세로 메뉴(bside), 좁은 화면은 위쪽 가로 메뉴 #}
 {% macro menu(tab,side=False) -%}
