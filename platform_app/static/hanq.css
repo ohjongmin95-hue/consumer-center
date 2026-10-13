@@ -1320,3 +1320,55 @@ body:has(.bside) main.pg,body:has(.bside) .flashes,body:has(.bside) .foot2{margi
 .crow .tx span{font-size:14px;color:var(--fg3)}
 @media (max-width:900px){.hsplit{grid-template-columns:1fr}}
 @media (min-width:1100px){body:has(.bside) .gnb .wrap{max-width:none}}
+/* 사장님 화면(왼쪽 메뉴): 한눈에 들어오게 글자·여백을 줄이고, 모든 페이지 왼쪽 기준선·폭을 맞춘다 */
+@media (min-width:1100px){
+body.v2:has(.bside) main.pg{padding-block:28px 64px}
+body.v2:has(.bside) main.pg>.wrap,body.v2:has(.bside) .flashes{max-width:1360px;margin:0;padding-inline:36px}
+body.v2:has(.bside) .narrow{max-width:960px;margin:0}
+body.v2:has(.bside) .phead{margin-bottom:20px;align-items:center}
+body.v2:has(.bside) .phead h1{font-size:26px;line-height:1.35}
+body.v2:has(.bside) .phead p{font-size:15px;margin-top:4px}
+body.v2:has(.bside) .shead{margin-bottom:14px}
+body.v2:has(.bside) .shead h2{font-size:20px}
+body.v2:has(.bside) .shead .r{font-size:14px}
+body.v2:has(.bside) [style*="margin-top:56px"]{margin-top:32px!important}
+body.v2:has(.bside) .panel{padding:22px 24px;border-radius:18px}
+body.v2:has(.bside) .ph{font-size:17px;margin-bottom:12px}
+body.v2:has(.bside) .sumrow{gap:10px;margin-bottom:16px}
+body.v2:has(.bside) .sumrow a{padding:14px 18px;border-radius:16px;gap:2px}
+body.v2:has(.bside) .sumrow span{font-size:13.5px}
+body.v2:has(.bside) .sumrow b{font-size:24px}
+body.v2:has(.bside) .kpi{padding:14px 18px;border-radius:16px}
+body.v2:has(.bside) .hsplit{gap:12px;margin-bottom:16px}
+body.v2:has(.bside) .drow{padding:10px 0}
+body.v2:has(.bside) .drow .tx b{font-size:15px}
+body.v2:has(.bside) .drow .tx span{font-size:13px}
+body.v2:has(.bside) .hempty{padding:12px 0;font-size:14px}
+body.v2:has(.bside) .brief li{font-size:14.5px}
+body.v2:has(.bside) .tbl2{font-size:15px}
+body.v2:has(.bside) .tbl2 th{font-size:13.5px}
+body.v2:has(.bside) .ccard{padding:20px;gap:10px}
+body.v2:has(.bside) .ccard .tt{font-size:17px}
+body.v2:has(.bside) .li .tx b{font-size:16px}
+body.v2:has(.bside) .li .tx span{font-size:14px}
+body.v2:has(.bside) .kv{font-size:15px}
+body.v2:has(.bside) .sub{font-size:15px}
+body.v2:has(.bside) .foot2{padding-block:28px 36px;font-size:13.5px}
+body.v2:has(.bside) .foot2 .wrap{max-width:1360px;margin:0;padding-inline:36px}
+body.v2:has(.bside) .cgrid{gap:12px}
+body.v2:has(.bside) .dcard{padding:18px 20px;gap:12px;border-radius:18px}
+body.v2:has(.bside) .linkbar{margin-bottom:16px;padding:12px 12px 12px 20px;border-radius:16px}
+body.v2:has(.bside) .tbl2 td{padding:11px 16px}
+body.v2:has(.bside) .tbl2 th{padding:10px 16px}
+body.v2:has(.bside) .btn.md{height:40px;font-size:15px;border-radius:12px}
+body.v2:has(.bside) .rgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:0}
+body.v2:has(.bside) .rgrid .li{display:flex;flex-wrap:wrap;align-content:flex-start;gap:0 18px;padding:16px 22px}
+body.v2:has(.bside) .rgrid .li:nth-child(odd){border-right:1px solid var(--line)}
+body.v2:has(.bside) .rgrid .li>.row,body.v2:has(.bside) .rgrid .li>.cond,body.v2:has(.bside) .rgrid .li>details[open]{flex-basis:100%}
+body.v2:has(.bside) .rgrid .li details{margin:8px 0 0}
+body.v2:has(.bside) .rgrid .li{padding-left:74px}
+body.v2:has(.bside) .rgrid .li>.row{margin-left:-52px;flex-basis:calc(100% + 52px)}
+body.v2:has(.bside) .rgrid .li>.cond{margin-left:0}
+body.v2:has(.bside) .narrow:has(.rgrid){max-width:none}
+body.v2:has(.bside) .list{border-radius:18px}
+}
