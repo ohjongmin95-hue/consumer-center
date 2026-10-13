@@ -60,7 +60,7 @@ def new():
     elif request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
     if request.args.get('body'):  # 상담창에서 쓴 문장을 그대로 이어 쓴다
         body=clean(request.args['body'],BIG);d.setdefault('body',body);d.setdefault('title',core.short(body.split('\n')[0],80))
-        want={'반품·환불':'환불','교환':'교환','배송 조회':'배송 확인','고객 응대':'사과·재발 방지'}.get(d.get('category'))
+        want={'주문 취소':'환불','반품·환불':'환불','교환':'교환','배송 조회':'배송 확인','고객 응대':'사과·재발 방지'}.get(d.get('category'))
         if want:d.setdefault('want',want)
     return render_template('c_new.html',d=d,today=datetime.date.today().isoformat())
 

@@ -302,6 +302,22 @@ class PlatformTest(unittest.TestCase):
         # 교환 새 상품 발송도 같은 방식으로 등록된다
         self.assertEqual(trk.CODES['CJ대한통운'],'04')
 
+    def test_order_cancel_and_change(self):
+        b,o,cid=self.signup_and_approve('주문변경상회','order@example.com')
+        cl=self.core.classify
+        self.assertEqual(cl('어제 산 거 주문 취소하고 싶어요'),'주문 취소')
+        self.assertEqual(cl('배송지 주소 변경 가능한가요'),'주문 변경')
+        self.assertEqual(cl('마음에 안 들어서 반품할게요'),'반품·환불')
+        # 주문 취소: 승인하면 정한 답이 가고, 환불 계좌를 받을 수 있다
+        me=self.client();cs=self.file_case(me,'주문변경상회','주문 취소',str(cid))
+        with self.core.conn() as db:self.assertTrue(self.core.refund_case(db.execute('SELECT * FROM cases WHERE id=?',(cs,)).fetchone()))
+        self.post(b,f'/biz/case/{cs}',{'act':'approve'})
+        self.assertIn('주문 취소 요청 확인했습니다',me.get(f'/case/{cs}').get_data(as_text=True))
+        # 주문 변경: 자동 처리 대상이 아니라 사장님이 확인한다
+        cs2=self.file_case(self.client(),'주문변경상회','주문 변경',str(cid))
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT decision FROM cases WHERE id=?',(cs2,)).fetchone()[0],'pending')
+        self.assertIn('주문 변경',b.get('/biz/rules').get_data(as_text=True))
+
     def test_courier_tracking_free_key(self):
         """무료 조회 키(t_key): 송장을 넣으면 바로 한 번 묻고, cron(poll)이 다시 물어 단계가 바뀌면 기록한다."""
         b,o,cid=self.signup_and_approve('무료택배마켓','freekey@example.com')
