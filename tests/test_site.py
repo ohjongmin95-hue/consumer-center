@@ -433,10 +433,11 @@ class SiteTest(unittest.TestCase):
         self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
         self.assertIn('새 제보: 운영자 알림 제보', mails[0][1])
         self.assertIn('/admin/reports/', mails[0][2])
-        self.assertNotIn('김소비', mails[0][2])
+        self.assertIn('김소비 (010-2222-3333)', mails[0][2])
         self.assertEqual(sms[0][1]['message']['to'], '01099998888')
         self.assertEqual(sms[0][1]['message']['from'], '021234567')
         self.assertIn('알림상점', sms[0][1]['message']['text'])
+        self.assertIn('김소비 010-2222-3333', sms[0][1]['message']['text'])
         # 알림톡 템플릿이 있으면 카카오톡으로 (실패하면 문자로 대신)
         with patch.dict(os.environ, dict(keys, SOLAPI_PFID='pf', KAKAO_TPL_ADMIN='TA')), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'statusCode': '2000'}), \
              patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
@@ -444,6 +445,7 @@ class SiteTest(unittest.TestCase):
         message = sms[-1][1]['message']
         self.assertEqual(message['kakaoOptions']['templateId'], 'TA')
         self.assertEqual(message['kakaoOptions']['variables']['#{제목}'], '카톡 알림 제보')
+        self.assertEqual(message['kakaoOptions']['variables']['#{연락처}'], '010-2222-3333')
         self.assertFalse(message['kakaoOptions']['disableSms'])
         self.assertEqual(message['from'], '021234567')
         del sms[1:], mails[2:]

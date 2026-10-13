@@ -118,13 +118,18 @@ def send_admin_kakao(phone, values):
     # 운영자 알림톡. 템플릿 심사가 끝나기 전이거나 실패하면 발신번호가 있을 때 솔라피가 같은 내용을 문자로 대신 보냄
     message = {'to': phone, 'kakaoOptions': {
         'pfId': env('SOLAPI_PFID'), 'templateId': env('KAKAO_TPL_ADMIN'), 'disableSms': not digits(env('SOLAPI_SENDER')),
-        'variables': {'#{접수번호}': values['receipt'], '#{업체}': values['company'], '#{제목}': values['subject']}}}
+        'variables': {'#{접수번호}': values['receipt'], '#{이름}': values['name'], '#{연락처}': values['phone'], '#{업체}': values['company'], '#{제목}': values['subject']}}}
     if digits(env('SOLAPI_SENDER')):  # 대신 보내는 문자는 솔라피가 템플릿 내용 그대로 씀
         message['from'] = digits(env('SOLAPI_SENDER'))
     result = http_post('https://api.solapi.com/messages/v4/send', {'message': message}, {'Authorization': solapi_auth()})
     status = str(result.get('statusCode', ''))
     if status and status not in ('2000', '3000', '4000'):
         raise RuntimeError(f"{status} {result.get('statusMessage', '')}".strip())
+
+
+def fmt_phone(phone):
+    d = digits(phone)
+    return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10, 11) else (phone or '-')
 
 
 def admin_targets():
@@ -138,14 +143,15 @@ def admin_targets():
 
 
 def admin_plan(case, link):
-    """새 제보 운영자 알림. 제보자 이름·연락처는 넣지 않고 관리자 화면 주소만 줌."""
+    """새 제보 운영자 알림. 제보자 이름·연락처도 함께 보내 바로 연락할 수 있게 함."""
     emails, phones, channel = admin_targets()
+    name, phone = short(case['reporter_name'] or '-', 20), fmt_phone(case['phone'])
     subject = '[소비자제보센터] 새 제보: ' + short(case['subject'])
-    body = (f"새 제보가 들어왔습니다.\n\n■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n■ 업체: {short(case['company'])}\n"
+    body = (f"새 제보가 들어왔습니다.\n\n■ 접수번호: {case['receipt']}\n■ 제보자: {name} ({phone})\n■ 분야: {case['category']}\n■ 업체: {short(case['company'])}\n"
             f"■ 제목: {short(case['subject'], 60)}\n\n관리자 화면에서 확인해 주세요.\n{link}")
-    text = f"[소비자제보센터] 새 제보\n{case['receipt']} · {short(case['company'], 15)}\n{short(case['subject'], 30)}"
+    text = f"[소비자제보센터] 새 제보\n{name} {phone}\n{case['receipt']} · {short(case['company'], 15)}\n{short(case['subject'], 30)}"
     jobs = [('admin_email', e, lambda e=e: send_email(e, subject, body)) for e in emails]
-    values = {'receipt': case['receipt'], 'company': short(case['company'], 20), 'subject': short(case['subject'])}
+    values = {'receipt': case['receipt'], 'name': name, 'phone': phone, 'company': short(case['company'], 20), 'subject': short(case['subject'])}
     if channel == 'kakao':
         jobs += [('admin_kakao', p, lambda p=p: send_admin_kakao(p, values)) for p in phones]
     else:
