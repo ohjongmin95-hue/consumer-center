@@ -18,7 +18,7 @@ const ICONS: Record<string, Shape[]> = {
   shield: [{ t: 'p', d: 'M24 6l15 6v10c0 9-6 16-15 20-9-4-15-11-15-20V12z' }, { t: 'p', d: 'M17 24l5 5 9-10', a: 1 }],
   reply: [{ t: 'p', d: 'M8 11h32v20H22l-8 7v-7H8z' }, { t: 'p', d: 'M15 19h18M15 25h11', a: 1 }],
 };
-export const CAT_ICON: Record<string, string> = { '배송 조회': 'truck', 교환: 'exchange', '반품·환불': 'refund', '제품 불량': 'defect', '고객 응대': 'chat', 기타: 'note' };
+export const CAT_ICON: Record<string, string> = { '배송 조회': 'truck', '주문 취소': 'refund', '주문 변경': 'list', 교환: 'exchange', '반품·환불': 'refund', '제품 불량': 'defect', '고객 응대': 'chat', 기타: 'note' };
 
 export function Icon({ name, size = 28 }: { name: string; size?: number }) {
   const shapes = ICONS[name] ?? ICONS.note;

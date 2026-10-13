@@ -29,5 +29,5 @@
 {% macro icon(name,size=44) -%}
 <svg class="ic" viewBox="0 0 48 48" width="{{ size }}" height="{{ size }}" aria-hidden="true">{{ ICONS.get(name,ICONS['note'])|safe }}</svg>
 {%- endmacro %}
-{% set CAT_ICON={'배송 조회':'truck','교환':'exchange','반품·환불':'refund','제품 불량':'defect','고객 응대':'chat','기타':'note'} %}
+{% set CAT_ICON={'배송 조회':'truck','주문 취소':'hold','주문 변경':'list','교환':'exchange','반품·환불':'refund','제품 불량':'defect','고객 응대':'chat','기타':'note'} %}
 {% macro cat_icon(cat,size=28) -%}{{ icon(CAT_ICON.get(cat,'note'),size) }}{%- endmacro %}
