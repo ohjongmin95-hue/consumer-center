@@ -415,6 +415,22 @@ class PlatformTest(unittest.TestCase):
         bad=self.client();self.post(bad,'/lookup',{'phone':'01012345678','password':'0000'},'/mine')
         self.assertEqual(bad.get(f'/case/{case_id}').status_code,404)
 
+    def test_audit_fixes(self):
+        b,o,cid=self.signup_and_approve('점검상회','check@example.com')
+        # 미리 정한 답변이 없는 유형(기타)은 승인만으로 처리되지 않는다
+        me=self.client();cs=self.file_case(me,'점검상회','기타',str(cid))
+        r=self.post(b,f'/biz/case/{cs}',{'act':'approve'});print(r.status_code,r.headers.get('Location'));page=b.get(r.headers.get('Location') or f'/biz/case/{cs}').get_data(as_text=True)
+        self.assertIn('답변을 직접 적어',page)
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT decision FROM cases WHERE id=?',(cs,)).fetchone()[0],'pending')
+        # 정보 제공에 동의하지 않은 요청에는 환불 계좌 칸이 없다
+        me2=self.client();cs2=self.file_case(me2,'점검상회','반품·환불',str(cid),consent='')
+        with self.core.conn() as db:self.assertFalse(self.core.refund_case(db.execute('SELECT * FROM cases WHERE id=?',(cs2,)).fetchone()))
+        # 앱 API에 배열을 보내도 서버 오류가 나지 않는다
+        self.assertNotEqual(self.client().post('/api/v1/mine',json=[1]).status_code,500)
+        self.assertNotEqual(self.client().post('/biz/api/v1/login',json=[1]).status_code,500)
+        # 오래 열어 둔 화면에서 보내면 우리말 안내
+        r=self.client().post('/biz/login',data={'login_id':'x'});self.assertEqual(r.status_code,400);self.assertIn('새로고침',r.get_data(as_text=True))
+
     def test_access_control(self):
         b1,o,cid1=self.signup_and_approve('갑회사','a@example.com')
         b2,_,cid2=self.signup_and_approve('을회사','b@example.com')

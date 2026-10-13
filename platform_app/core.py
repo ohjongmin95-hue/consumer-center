@@ -100,7 +100,7 @@ COURIERS={'CJ대한통운':'https://www.cjlogistics.com','우체국택배':'http
 BANKS=['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','카카오뱅크','토스뱅크','케이뱅크','SC제일은행','iM뱅크(대구)','부산은행','경남은행','광주은행','전북은행','제주은행','새마을금고','신협','우체국','수협은행','KDB산업은행','씨티은행']
 def refund_case(c):
     """환불 계좌를 받을 수 있는 요청: 입점 기업에 소비자가 직접 접수했고 환불을 원하는 경우."""
-    return bool(c['member'] and not is_direct(c) and (c['category']=='반품·환불' or c['want']=='환불'))
+    return bool(c['member'] and c['consent'] and not is_direct(c) and (c['category']=='반품·환불' or c['want']=='환불'))
 def mask_account(a):
     d=digits(a);return ('*'*max(len(d)-4,0))+d[-4:] if d else ''
 RET_STATUS={'guided':'반품 안내함','sent':'소비자 발송','received':'회수 확인'}
@@ -178,6 +178,11 @@ def check_csrf():
     if request.method=='POST':
         tok=session.get('csrf','')
         if not tok or not hmac.compare_digest(request.form.get('csrf',''),tok):abort(400)
+def bad_request():
+    """영어 'Bad Request' 대신 우리말 안내. 대개 오래 열어 둔 화면에서 보냈을 때."""
+    from flask import jsonify, render_template
+    if request.path.startswith('/api/'):return jsonify(error='요청을 확인해 주세요.'),400
+    return render_template('c_error.html',msg='화면을 오래 열어 두어서 처리하지 못했어요. 새로고침한 뒤 다시 해 주세요.'),400
 def client_key(prefix):
     ip=request.headers.get('X-Forwarded-For',request.remote_addr or '').split(',')[0].strip() if os.getenv('TRUST_PROXY')=='1' else (request.remote_addr or '')
     return prefix+':'+hashlib.sha256((SECRET+ip).encode()).hexdigest()[:24]
@@ -253,6 +258,7 @@ def case_files(db,case_id):return db.execute('SELECT * FROM files WHERE case_id=
 def run_playbook(db,c,how):
     """추천 조치를 실행: 후속 업무를 차례로 기록하고 기업 답변을 남긴다. how: 'auto' | 'approved'"""
     pb=PLAYBOOK.get(c['category'],PLAYBOOK['기타']);rule=rule_for(db,c['company_id'],c['category'])
+    if how=='approved' and not (rule['reply'] or '').strip():return None  # 보낼 답변이 없으면 승인만으로는 처리하지 않는다 (직접 답변해야 함)
     add_event(db,c['id'],'sys',('자동 처리 규칙 실행: ' if how=='auto' else '대표 승인: ')+pb['title'])
     for s in pb['steps']:add_event(db,c['id'],'sys','✓ '+s)
     reply=(rule['reply'] or '').strip()
@@ -314,7 +320,7 @@ def notify_late():
     with conn() as db:
         for c in db.execute("SELECT * FROM cases WHERE member=1 AND consent=1 AND due!='' AND status IN ('forwarded','seen','info')").fetchall():
             if not overdue(c) or c['late_sent']==c['due']:continue
-            send_mail(c['email'],f'[{CNAME}] 기업 답변이 늦어지고 있어요',f"{c['company_name']}의 답변이 아직 없어요.\n접수 화면에서 기업에 다시 요청하거나 공식 피해구제 절차를 확인할 수 있어요.\n\n■ 접수번호: {c['no']}\n{site_or_blank('me','/mine')}")
+            if not is_direct(c):send_mail(c['email'],f'[{CNAME}] 기업 답변이 늦어지고 있어요',f"{c['company_name']}의 답변이 아직 없어요.\n접수 화면에서 기업에 다시 요청하거나 공식 피해구제 절차를 확인할 수 있어요.\n\n■ 접수번호: {c['no']}\n{site_or_blank('me','/mine')}")
             co=company(db,c['company_id'])
             if co:send_mail(co['notify_email'],f"[{BNAME}] 답변 기한이 지났습니다: {c['title']}",f"소비자에게 답변 지연을 알렸습니다. 지금 답변해 주세요.\n{site_or_blank('biz','/case/%d'%c['id'])}")
             add_event(db,c['id'],'sys','답변 목표일이 지나 소비자와 기업에 알렸어요')

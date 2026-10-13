@@ -107,7 +107,8 @@ def login():
         elif co['status']=='pending':flash('가입 승인을 기다리고 있습니다. 승인되면 이메일로 알려 드립니다.','error')
         elif co['status']!='active':flash('이용할 수 없는 계정입니다. 센터에 문의해 주세요.','error')
         else:
-            ops=session.get('ops');session.clear();session['co_id']=co['id'];session.permanent=True
+            ops=session.get('ops');csrf=session.get('csrf');session.clear();session['co_id']=co['id'];session.permanent=True
+            if csrf:session['csrf']=csrf  # 다른 탭에 열어 둔 화면도 그대로 쓸 수 있게
             if ops:session['ops']=True  # 운영 화면 로그인은 그대로 둔다
             return redirect(url_for('decide'))
         return render_template('b_login.html'),400
@@ -181,9 +182,13 @@ def approve_many():
     n=0
     with conn() as db:
         for c in [r for r in my_cases(db,me()) if is_pending(r) and r['category']==cat]:
-            if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
+            done=core.run_playbook(db,c,'approved')
+            if done is None:continue
+            if done:notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
             n+=1
-    flash(f'{cat} {n}건을 승인했습니다','ok');return redirect(url_for('decide'))
+    if n:flash(f'{cat} {n}건을 승인했습니다','ok')
+    else:flash(f'{cat}은(는) 미리 정한 답변이 없어요. 요청을 열어 답변을 직접 적어 주세요.','error')
+    return redirect(url_for('decide'))
 
 @app.route('/pending')
 def pending():return redirect(url_for('decide'))
@@ -238,7 +243,9 @@ def case_act(db,c,form):
         return '환불 완료를 기록했습니다','ok'
     if not open_:return '이미 끝난 요청이에요','bad'
     if act=='approve' and c['decision'] not in ('approved','auto'):
-        if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
+        done=core.run_playbook(db,c,'approved')
+        if done is None:return '이 유형은 미리 정한 답변이 없어요. 아래에서 답변을 직접 적어 보내 주세요.','error'
+        if done:notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
         return '승인했습니다','ok'
     if act=='hold':
         db.execute("UPDATE cases SET decision='hold',status=CASE status WHEN 'forwarded' THEN 'seen' ELSE status END WHERE id=?",(c['id'],))
@@ -410,7 +417,8 @@ def ops_login():
     if request.method=='POST':
         if core.throttled('ops',limit=8,minutes=10):flash('잠시 후 다시 시도해 주세요','error')
         elif OPS_HASH and check_password_hash(OPS_HASH,request.form.get('password','')):
-            co_id=session.get('co_id');session.clear();session['ops']=True
+            co_id=session.get('co_id');csrf=session.get('csrf');session.clear();session['ops']=True
+            if csrf:session['csrf']=csrf
             if co_id:session['co_id']=co_id;session.permanent=True  # 기업 로그인은 그대로 둔다
             return redirect(url_for('ops'))
         else:flash('비밀번호가 맞지 않습니다','error')
@@ -631,7 +639,7 @@ def api_co():
     with conn() as db:co=core.company(db,d.get('id')) if isinstance(d,dict) else None
     if not co or co['status']!='active' or not co['member'] or co['pw_hash'][-16:]!=d.get('h'):abort(401)
     g.co=co;return co
-def api_form():return request.get_json(silent=True) or request.form
+def api_form():j=request.get_json(silent=True);return j if isinstance(j,dict) and j else request.form
 def co_info(co):
     return dict(id=co['id'],name=co['name'],login_id=co['login_id'],link=core.site_url('me','/to/%d'%co['id']))
 def biz_summary(c):
@@ -719,9 +727,11 @@ def api_biz_approve_many():
     n=0
     with conn() as db:
         for c in [r for r in my_cases(db,co) if is_pending(r) and r['category']==cat]:
-            if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
+            done=core.run_playbook(db,c,'approved')
+            if done is None:continue
+            if done:notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
             n+=1
-    return jsonify(approved=n,message=f'{cat} {n}건을 승인했습니다')
+    return jsonify(approved=n,message=f'{cat} {n}건을 승인했습니다' if n else f'{cat}은(는) 미리 정한 답변이 없어요. 요청을 열어 답변을 직접 적어 주세요.')
 @app.route('/api/v1/push',methods=['POST'])
 def api_biz_push():
     """사장님 앱 알림 토큰 등록. 같은 휴대폰은 마지막에 로그인한 회사로 옮겨진다."""
@@ -831,6 +841,8 @@ def api_biz_leave():
 def unauth(e):
     if request.path.startswith('/api/'):return jsonify(error='다시 로그인해 주세요.'),401
     return redirect(url_for('login'))
+@app.errorhandler(400)
+def bad(e):return core.bad_request()
 @app.errorhandler(404)
 def nf(e):
     if request.path.startswith('/api/'):return jsonify(error='찾을 수 없어요.'),404
