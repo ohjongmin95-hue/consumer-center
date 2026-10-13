@@ -1403,3 +1403,9 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 .ft-row li + li::before { content: ""; display: inline-block; width: 1px; height: 10px; background: currentColor; opacity: .35; margin: 0 10px; vertical-align: -1px; }
 .ft-bottom { margin-top: 6px; }
 @media (max-width: 760px) { .ft-row:first-child { flex-direction: column; } .ft-row:first-child li + li::before { display: none; } }
+/* 새 제보 알림: 메뉴 숫자, 화면 아래 알림, 브라우저 알림 버튼 */
+.ad-badge { margin-left: auto; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: #F89B00; color: #fff; font-size: 12px; font-style: normal; font-weight: 800; text-align: center; }
+.ad-toast { position: fixed; right: 20px; bottom: 20px; z-index: 50; display: flex; flex-direction: column; gap: 2px; max-width: 320px; padding: 14px 18px; border-radius: 14px; background: #191f28; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.18); font-size: 14px; }
+.ad-toast span { color: #d1d6db; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-notify-on { padding: 8px 14px; border: 1px solid var(--ad-line); border-radius: 9px; background: #fff; color: var(--ad-ink); font-size: 13px; font-weight: 700; cursor: pointer; }
+.ad-notify-on:disabled { cursor: default; color: var(--ad-sub); }

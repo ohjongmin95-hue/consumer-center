@@ -1,4 +1,5 @@
 """제보자에게 진행 상황 알림 보내기: 카카오 알림톡(솔라피)과 이메일(SMTP).
+새 제보가 들어오면 운영자 휴대폰(ADMIN_ALERT_PHONE)으로 카카오 알림톡(KAKAO_TPL_ADMIN, 없으면 문자)과 메일(ADMIN_ALERT_EMAIL)로 알림.
 
 서버 설정(/etc/soboru.env)에 값이 있을 때만 켜지고, 없으면 조용히 건너뜀.
 보내는 일은 뒤에서(스레드) 처리해서 화면이 느려지지 않게 하고, 결과는 notifications 표에 남김.
@@ -104,6 +105,60 @@ def send_kakao(phone, event, values):
         raise RuntimeError(f"{status} {result.get('statusMessage', '')}".strip())
 
 
+def send_sms(phone, text):
+    # 운영자 알림 문자. 솔라피가 길이에 따라 단문/장문을 알아서 고름. 발신번호(SOLAPI_SENDER)는 솔라피에 등록된 번호여야 함
+    message = {'to': phone, 'from': digits(env('SOLAPI_SENDER')), 'text': text}
+    result = http_post('https://api.solapi.com/messages/v4/send', {'message': message}, {'Authorization': solapi_auth()})
+    status = str(result.get('statusCode', ''))
+    if status and status not in ('2000', '3000', '4000'):
+        raise RuntimeError(f"{status} {result.get('statusMessage', '')}".strip())
+
+
+def send_admin_kakao(phone, values):
+    # 운영자 알림톡. 템플릿 심사가 끝나기 전이거나 실패하면 발신번호가 있을 때 솔라피가 같은 내용을 문자로 대신 보냄
+    message = {'to': phone, 'kakaoOptions': {
+        'pfId': env('SOLAPI_PFID'), 'templateId': env('KAKAO_TPL_ADMIN'), 'disableSms': not digits(env('SOLAPI_SENDER')),
+        'variables': {'#{접수번호}': values['receipt'], '#{이름}': values['name'], '#{연락처}': values['phone'], '#{업체}': values['company'], '#{제목}': values['subject']}}}
+    if digits(env('SOLAPI_SENDER')):  # 대신 보내는 문자는 솔라피가 템플릿 내용 그대로 씀
+        message['from'] = digits(env('SOLAPI_SENDER'))
+    result = http_post('https://api.solapi.com/messages/v4/send', {'message': message}, {'Authorization': solapi_auth()})
+    status = str(result.get('statusCode', ''))
+    if status and status not in ('2000', '3000', '4000'):
+        raise RuntimeError(f"{status} {result.get('statusMessage', '')}".strip())
+
+
+def fmt_phone(phone):
+    d = digits(phone)
+    return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10, 11) else (phone or '-')
+
+
+def admin_targets():
+    """운영자 알림 받을 곳: (이메일 목록, 휴대폰 목록, 휴대폰 채널). 쉼표로 여러 개 적을 수 있음.
+    휴대폰 채널은 알림톡 템플릿(KAKAO_TPL_ADMIN)이 있으면 'kakao', 발신번호만 있으면 'sms'."""
+    emails = [e.strip() for e in env('ADMIN_ALERT_EMAIL').split(',') if '@' in e] if email_ready() else []
+    keys = env('SOLAPI_API_KEY') and env('SOLAPI_API_SECRET')
+    channel = 'kakao' if keys and env('SOLAPI_PFID') and env('KAKAO_TPL_ADMIN') else 'sms' if keys and digits(env('SOLAPI_SENDER')) else ''
+    phones = [digits(p) for p in env('ADMIN_ALERT_PHONE').split(',') if digits(p).startswith('01')] if channel else []
+    return emails, phones, channel
+
+
+def admin_plan(case, link):
+    """새 제보 운영자 알림. 제보자 이름·연락처도 함께 보내 바로 연락할 수 있게 함."""
+    emails, phones, channel = admin_targets()
+    name, phone = short(case['reporter_name'] or '-', 20), fmt_phone(case['phone'])
+    subject = '[소비자제보센터] 새 제보: ' + short(case['subject'])
+    body = (f"새 제보가 들어왔습니다.\n\n■ 접수번호: {case['receipt']}\n■ 제보자: {name} ({phone})\n■ 분야: {case['category']}\n■ 업체: {short(case['company'])}\n"
+            f"■ 제목: {short(case['subject'], 60)}\n\n관리자 화면에서 확인해 주세요.\n{link}")
+    text = f"[소비자제보센터] 새 제보\n{name} {phone}\n{case['receipt']} · {short(case['company'], 15)}\n{short(case['subject'], 30)}"
+    jobs = [('admin_email', e, lambda e=e: send_email(e, subject, body)) for e in emails]
+    values = {'receipt': case['receipt'], 'name': name, 'phone': phone, 'company': short(case['company'], 20), 'subject': short(case['subject'])}
+    if channel == 'kakao':
+        jobs += [('admin_kakao', p, lambda p=p: send_admin_kakao(p, values)) for p in phones]
+    else:
+        jobs += [('admin_sms', p, lambda p=p: send_sms(p, text)) for p in phones]
+    return jobs
+
+
 def plan(case, event, link):
     """보낼 알림 목록을 만듦: [(채널, 받는 곳, 보내는 함수)]. 요청 안에서 부름(DB·주소 정보가 필요)."""
     values = {'name': short(case['reporter_name'] or '제보자', 20), 'receipt': case['receipt'], 'subject': short(case['subject']),
@@ -119,9 +174,9 @@ def plan(case, event, link):
     return jobs
 
 
-def dispatch(conn, case, event, link):
-    """알림을 뒤에서 보내고 결과를 기록. conn은 DB 연결을 여는 함수."""
-    jobs = plan(case, event, link)
+def dispatch(conn, case, event, link, admin_link=None):
+    """알림을 뒤에서 보내고 결과를 기록. conn은 DB 연결을 여는 함수. admin_link가 있으면 운영자에게도 보냄."""
+    jobs = plan(case, event, link) + (admin_plan(case, admin_link) if admin_link else [])
     if not jobs:
         return 0
 

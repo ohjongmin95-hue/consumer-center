@@ -102,7 +102,7 @@
         </details>
         <details class="cs-more"{% if sent and sent[0]['status'] == 'failed' %} open{% endif %}>
           <summary>알림 기록 <small>카톡 {{ '켜짐' if notify_on.kakao else '꺼짐' }} · 메일 {{ '켜짐' if notify_on.email else '꺼짐' }}{% if sent %} · {{ sent|length }}건{% endif %}</small></summary>
-          {% if sent %}<ul class="cs-sent">{% for n in sent %}<li class="{{ n['status'] }}"><b>{{ '카카오톡' if n['channel'] == 'kakao' else '이메일' }}</b> {{ events.get(n['event'], n['event']) }} · {{ n['target'] }} · {{ '보냄' if n['status'] == 'sent' else '실패' }}<span>{{ n['created'][5:16]|replace('T', ' ') }}{% if n['detail'] %} · {{ n['detail'] }}{% endif %}</span></li>{% endfor %}</ul>
+          {% if sent %}<ul class="cs-sent">{% for n in sent %}<li class="{{ n['status'] }}"><b>{{ {'kakao': '카카오톡', 'email': '이메일', 'admin_email': '운영자 메일', 'admin_sms': '운영자 문자', 'admin_kakao': '운영자 카톡'}.get(n['channel'], n['channel']) }}</b> {{ events.get(n['event'], n['event']) }} · {{ n['target'] }} · {{ '보냄' if n['status'] == 'sent' else '실패' }}<span>{{ n['created'][5:16]|replace('T', ' ') }}{% if n['detail'] %} · {{ n['detail'] }}{% endif %}</span></li>{% endfor %}</ul>
           {% else %}<p class="cs-hint">접수·단계 변경·센터 메시지·기업 답변 때 자동으로 보내요. 아직 보낸 알림이 없어요.</p>{% endif %}
         </details>
         {% if ep.list == 'admin_reports' %}<details class="cs-more cs-danger">
