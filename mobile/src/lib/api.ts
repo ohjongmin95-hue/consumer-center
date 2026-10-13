@@ -44,14 +44,15 @@ export type BizDetail = BizCase & {
   events: CaseEvent[];
   files: FileRef[];
   tracks?: Track[];
-  can: { ship_track?: boolean; approve: boolean; hold: boolean; ask: boolean; reply: boolean; ret_received: boolean; out_ship: boolean; refund_done: boolean };
+  comp?: { reco: string; status: string; given: string; examples: string[] };
+  can: { comp?: boolean; ship_track?: boolean; approve: boolean; hold: boolean; ask: boolean; reply: boolean; ret_received: boolean; out_ship: boolean; refund_done: boolean };
   message?: string;
 };
 export type Kpi = { n: number; auto: number; res: number | null; late: number };
 export type Home = {
   company: CompanyInfo;
   kpi: Kpi;
-  counts: { all: number; pending: number; open: number; late: number; auto_rules: number; ret?: number };
+  counts: { all: number; pending: number; open: number; late: number; auto_rules: number; ret?: number; comp?: number };
   pending: BizCase[];
   recent: BizCase[];
   alerts?: Alert[];
@@ -60,7 +61,7 @@ export type Home = {
 
 export type Alert = { kind: 'product' | 'category'; label: string; n: number; cats: string[] };
 export type NewsItem = { id: number; title: string; body?: string; source_url?: string; created: string };
-export type Rule = { category: string; auto: boolean; reply: string; faq: string; cond: string; cond_ok: boolean };
+export type Rule = { category: string; auto: boolean; reply: string; faq: string; cond: string; cond_ok: boolean; comp?: string };
 export type Rules = { rules: Rule[]; conds: { value: string; label: string }[]; chat: { asked: number; solved: number; filed: number }; link: string; message?: string };
 export type Product = { id: number; name: string; price: string; stock: string; info: string };
 export type Products = { products: Product[]; stocks: { value: string; label: string }[]; ai: boolean; message?: string };

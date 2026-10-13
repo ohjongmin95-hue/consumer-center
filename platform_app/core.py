@@ -153,7 +153,7 @@ def init():
         # 나중에 더한 칸: 이미 있는 DB에도 붙인다
         cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
-        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking'):
+        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status'):
             if col not in cols:db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         cols={r[1] for r in db.execute('PRAGMA table_info(companies)')}
         for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),
@@ -179,6 +179,7 @@ def init():
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
         if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')
         if 'cond' not in cols:db.execute("ALTER TABLE rules ADD COLUMN cond TEXT NOT NULL DEFAULT ''")
+        if 'comp' not in cols:db.execute("ALTER TABLE rules ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
 init()
 
 # ---------- 보안 ----------
@@ -250,7 +251,19 @@ def rule_for(db,cid,cat):
     r=db.execute('SELECT * FROM rules WHERE company_id=? AND category=?',(cid,cat)).fetchone()
     pb=PLAYBOOK.get(cat,PLAYBOOK['기타'])
     return {'auto':bool(r and r['auto']),'reply':(r['reply'] if r and r['reply'] is not None else pb['reply']),
-            'faq':(r['faq'] if r and r['faq'] is not None else CHAT_FAQ.get(cat,CHAT_FAQ['기타'])),'cond':(r['cond'] if r and r['cond'] in COND else '')}
+            'faq':(r['faq'] if r and r['faq'] is not None else CHAT_FAQ.get(cat,CHAT_FAQ['기타'])),'cond':(r['cond'] if r and r['cond'] in COND else ''),
+            'comp':(r['comp'] if r else '')}
+
+# 보상: 기업이 유형별로 정해 둔 보상(예: 적립금 3,000원)을 요청마다 추천하고, 사장님이 승인해야 고객에게 간다. 자동으로 주지는 않는다.
+COMP_CATS=('배송 조회','제품 불량','고객 응대')  # 정해 둔 보상이 없어도 보상 칸을 보여 주는 유형 (불만이 큰 유형)
+COMP_EXAMPLES=['적립금 3,000원','다음 주문 10% 할인 쿠폰','왕복 배송비 환불']
+def comp_rules(db,cid):return {r['category']:r['comp'] for r in db.execute("SELECT category,comp FROM rules WHERE company_id=? AND comp!=''",(cid,))}
+def comp_open(c):
+    """보상을 아직 정하지 않았고 정할 수 있는 요청 (고객이 직접 접수했고 철회하지 않음)."""
+    return bool(c['member'] and not c['comp_status'] and c['status']!='withdrawn')
+def comp_pending(c,comps):
+    """정해 둔 보상이 있어 사장님 승인을 기다리는 요청."""
+    return comp_open(c) and bool(comps.get(c['category']))
 def auto_ok(db,c):
     """이 요청을 사람 손 없이 바로 처리해도 되는지: 자동 처리가 켜져 있고, 조건이 있으면 조건도 맞아야 한다."""
     rule=rule_for(db,c['company_id'],c['category'])

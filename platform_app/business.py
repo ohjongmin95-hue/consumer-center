@@ -171,9 +171,9 @@ def decide():
     if not me():return render_template('b_intro.html',app_links=APP_LINKS)  # 로그인 전: 서비스 소개
     with conn() as db:
         rows=my_cases(db,me());n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(me()['id'],)).fetchone()[0]
-        warn=insights.alerts(db,me());news=db.execute('SELECT * FROM news ORDER BY id DESC LIMIT 3').fetchall()
+        warn=insights.alerts(db,me());news=db.execute('SELECT * FROM news ORDER BY id DESC LIMIT 3').fetchall();comps=core.comp_rules(db,me()['id'])
     pend=[r for r in rows if is_pending(r)]
-    counts={'all':len(rows),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows)}
+    counts={'comp':sum(core.comp_pending(r,comps) for r in rows),'all':len(rows),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows)}
     return render_template('b_decide.html',pend=pend,recent=rows[:6],k=kpis(rows),counts=counts,cats=by_cat(rows),warn=warn,news=news,link=core.site_url('me','/to/%d'%me()['id']),tab='home')
 
 @app.route('/approve_many',methods=['POST'])
@@ -200,11 +200,12 @@ def pending():return redirect(url_for('decide'))
 @login_required
 def all_cases():
     fil=request.args.get('f','all');q=clean(request.args.get('q'),40)
-    with conn() as db:rows=my_cases(db,me())
+    with conn() as db:rows=my_cases(db,me());comps=core.comp_rules(db,me()['id'])
     if q:rows=[r for r in rows if q.lower() in (r['title']+' '+r['no']+' '+(r['name'] or '')+' '+r['body']).lower()]
     groups={'all':rows,'open':[r for r in rows if is_open(r)],'done':[r for r in rows if r['status'] in ('answered','resolved','closed','withdrawn')],
             'bad':[r for r in rows if r['status']=='unresolved' or core.overdue(r)],
-            'ret':[r for r in rows if r['ret_status'] in ('guided','sent') or r['refund_status']=='requested']}
+            'ret':[r for r in rows if r['ret_status'] in ('guided','sent') or r['refund_status']=='requested'],
+            'comp':[r for r in rows if core.comp_pending(r,comps)]}
     if fil not in groups:fil='all'
     return render_template('b_all.html',groups=groups,fil=fil,rows=groups[fil],q=q,tab='all')
 
@@ -248,6 +249,16 @@ def case_act(db,c,form):
         db.execute("UPDATE cases SET refund_status='done',refund_bank='',refund_account='',refund_holder='' WHERE id=?",(c['id'],))
         core.add_event(db,c['id'],'co','환불을 완료했어요');notify_consumer(c,f'[{core.CNAME}] 환불이 완료됐어요',f"{c['company_name']}이(가) 환불을 완료했어요. 입금 내역을 확인해 주세요.")
         return '환불 완료를 기록했습니다','ok'
+    if act=='comp' and core.comp_open(c):
+        what=clean(form.get('comp'),100)
+        if not what:return '보상 내용을 적어 주세요','error'
+        db.execute("UPDATE cases SET comp=?,comp_status='given' WHERE id=?",(what,c['id']))
+        core.add_event(db,c['id'],'co','보상: '+what,f'불편을 드려 죄송합니다. 사과의 뜻으로 {what}을(를) 드릴게요.')
+        notify_consumer(c,f'[{core.CNAME}] 보상 안내가 도착했어요',f"{c['company_name']}: {what}")
+        return '보상을 승인하고 고객에게 알렸습니다','ok'
+    if act=='comp_skip' and core.comp_open(c):
+        db.execute("UPDATE cases SET comp_status='skipped' WHERE id=?",(c['id'],))
+        core.add_event(db,c['id'],'sys','보상 없이 처리하기로 했어요');return '보상 없이 처리합니다','ok'
     if not open_:return '이미 끝난 요청이에요','bad'
     if act=='ship_track' and can_ship_track(db,c):
         courier=form.get('courier','');tracking=digits(form.get('tracking',''))
@@ -292,8 +303,9 @@ def case(case_id):
             c=my_case(db,case_id)
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);rule=core.rule_for(db,me()['id'],c['category'])
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])];ship_track=can_ship_track(db,c)
+    comp_show=core.comp_open(c) and (rule['comp'] or c['category'] in core.COMP_CATS)
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
-    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,
+    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),tab='all')
 
 @app.route('/case/<int:case_id>/draft',methods=['POST'])
@@ -461,7 +473,8 @@ def save_rule(db,co,f):
     faq=clean(f.get('faq'),1000) if 'faq' in f else cur['faq']
     cond=f.get('cond','') if 'cond' in f else cur['cond']
     if cond not in core.COND or cat not in COND_CATS:cond=''
-    db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond) VALUES(?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond',(co['id'],cat,int(auto),reply,faq,cond))
+    comp=clean(f.get('comp'),100) if 'comp' in f else cur['comp']
+    db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond,comp) VALUES(?,?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond,comp=excluded.comp',(co['id'],cat,int(auto),reply,faq,cond,comp))
     return True
 
 @app.route('/settings',methods=['GET','POST'])
@@ -739,7 +752,8 @@ def biz_detail(db,c,co):
         events=[dict(id=e['id'],kind=e['kind'],text=e['text'],reply=e['reply'],created=e['created'],files=[dict(id=f['id'],name=f['original'],url=url(f)) for f in fl if f['event_id']==e['id']]) for e in ev],
         files=[dict(id=f['id'],name=f['original'],url=url(f)) for f in fl],
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])],
-        can=dict(ship_track=can_ship_track(db,c),approve=open_ and c['decision'] not in ('approved','auto'),hold=open_ and c['decision']!='hold',ask=open_,reply=open_,
+        comp=dict(reco=rule['comp'],status=c['comp_status'],given=c['comp'],examples=core.COMP_EXAMPLES),
+        can=dict(comp=core.comp_open(c) and bool(rule['comp'] or c['category'] in core.COMP_CATS),ship_track=can_ship_track(db,c),approve=open_ and c['decision'] not in ('approved','auto'),hold=open_ and c['decision']!='hold',ask=open_,reply=open_,
             ret_received=c['ret_status'] in ('guided','sent'),out_ship=c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking'],
             refund_done=core.refund_case(c) and c['refund_status']!='done'))
     return d
@@ -766,17 +780,17 @@ def api_biz_home():
     co=api_co()
     with conn() as db:
         rows=my_cases(db,co);n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(co['id'],)).fetchone()[0]
-        warn=insights.alerts(db,co);news=db.execute('SELECT id,title,created FROM news ORDER BY id DESC LIMIT 3').fetchall()
+        warn=insights.alerts(db,co);news=db.execute('SELECT id,title,created FROM news ORDER BY id DESC LIMIT 3').fetchall();comps=core.comp_rules(db,co['id'])
     pend=[r for r in rows if is_pending(r)]
-    return jsonify(company=co_info(co),kpi=kpis(rows),counts={'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows)},
+    return jsonify(company=co_info(co),kpi=kpis(rows),counts={'comp':sum(core.comp_pending(r,comps) for r in rows),'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows)},
         pending=[biz_summary(r) for r in pend],recent=[biz_summary(r) for r in rows[:6]],
         alerts=[dict(kind=w['kind'],label=w['label'],n=w['n'],cats=w['cats']) for w in warn],news=[dict(r) for r in news])
 @app.route('/api/v1/cases')
 def api_biz_cases():
     co=api_co();fil=request.args.get('f','all');q=clean(request.args.get('q'),40)
-    with conn() as db:rows=my_cases(db,co)
+    with conn() as db:rows=my_cases(db,co);comps=core.comp_rules(db,co['id'])
     if q:rows=[r for r in rows if q.lower() in (r['title']+' '+r['no']+' '+(r['name'] or '')+' '+r['body']).lower()]
-    groups={'all':rows,'pending':[r for r in rows if is_pending(r)],'open':[r for r in rows if is_open(r)],
+    groups={'comp':[r for r in rows if core.comp_pending(r,comps)],'all':rows,'pending':[r for r in rows if is_pending(r)],'open':[r for r in rows if is_open(r)],
             'done':[r for r in rows if r['status'] in ('answered','resolved','closed','withdrawn')],'bad':[r for r in rows if r['status']=='unresolved' or core.overdue(r)]}
     return jsonify(cases=[biz_summary(r) for r in groups.get(fil,rows)],counts={k:len(v) for k,v in groups.items()})
 @app.route('/api/v1/cases/<int:case_id>',methods=['GET','POST'])

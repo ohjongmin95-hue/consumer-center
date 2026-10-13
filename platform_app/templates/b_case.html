@@ -18,6 +18,10 @@
 {% if open and c.decision not in ('approved','auto') %}<section class="panel decide"><div class="ph">처리 방법</div>
 <div class="reco"><div class="r">{{ p.title }}</div><ol class="flow">{% for st in p.steps %}<li>{{ st }}</li>{% endfor %}{% if rule.reply %}<li>고객에게 답변 보내기</li>{% endif %}</ol></div>
 <form method="post" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="approve">승인하고 처리</button><button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form></section>{% endif %}
+{% if comp_show %}<section class="panel"><div class="ph">보상</div><p class="sub" style="font-size:15px;margin:0 0 12px">{% if rule.comp %}정해 둔 보상을 추천합니다. 승인하면 고객에게 사과와 함께 알림이 갑니다.{% else %}보상을 하려면 내용을 적고 승인해 주세요. 자동 처리 화면에서 유형별 보상을 정해 둘 수 있습니다.{% endif %}</p>
+<form method="post" class="addline" style="flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<input class="inp" name="comp" maxlength="100" value="{{ rule.comp }}" placeholder="예: {{ COMP_EXAMPLES[0] }}" aria-label="보상 내용" style="flex:1 1 200px"><button class="btn md" name="act" value="comp">보상 승인</button><button class="btn md gray" name="act" value="comp_skip" formnovalidate>보상 안 함</button></form></section>
+{% elif c.comp_status=='given' %}<section class="panel"><div class="ph">보상</div><p class="sub" style="font-size:15px;margin:0">{{ c.comp }} · 고객에게 알렸습니다</p></section>{% endif %}
 {{ m.tracks_panel(tracks) }}
 {% if ship_track %}<section class="panel"><div class="ph">송장번호로 답하기</div><p class="sub" style="font-size:15px;margin:0 0 12px">보낸 택배사와 송장번호를 넣으면 고객에게 바로 알리고, 배송 상태가 바뀔 때마다 자동으로 알려 줍니다.</p>
 <form method="post" class="addline" style="flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="ship_track">
