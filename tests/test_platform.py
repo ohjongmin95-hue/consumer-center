@@ -340,6 +340,39 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:texts=[e['text'] for e in self.core.events(db,c1)]
         self.assertTrue(any('배송 완료' in t and '서울 강남' in t for t in texts))
 
+    def test_compensation_approval(self):
+        b,o,cid=self.signup_and_approve('보상상회','comp@example.com')
+        self.post(b,'/biz/rules',{'category':'제품 불량','comp':'적립금 3,000원'})
+        self.assertIn('적립금 3,000원',b.get('/biz/rules').get_data(as_text=True))
+        me=self.client();cs=self.file_case(me,'보상상회','제품 불량',str(cid))
+        # 홈과 목록에 보상 승인 대기로 보이고, 요청 화면에 추천 보상이 채워져 있다
+        self.assertIn('보상 승인을 기다리는 요청 1건',b.get('/biz/').get_data(as_text=True))
+        self.assertIn('보상 승인',b.get('/biz/all?f=comp').get_data(as_text=True))
+        self.assertIn('value="적립금 3,000원"',b.get(f'/biz/case/{cs}').get_data(as_text=True))
+        # 승인 전에는 고객에게 보상 안내가 가지 않는다
+        self.assertNotIn('적립금',me.get(f'/case/{cs}').get_data(as_text=True))
+        self.post(b,f'/biz/case/{cs}',{'act':'comp','comp':'적립금 5,000원'})  # 사장님이 고쳐서 승인
+        self.assertIn('적립금 5,000원',me.get(f'/case/{cs}').get_data(as_text=True))
+        with self.core.conn() as db:c=db.execute('SELECT comp,comp_status FROM cases WHERE id=?',(cs,)).fetchone()
+        self.assertEqual((c['comp'],c['comp_status']),('적립금 5,000원','given'))
+        self.assertNotIn('보상 승인을 기다리는',b.get('/biz/').get_data(as_text=True))
+        # 두 번 주지 않는다
+        self.post(b,f'/biz/case/{cs}',{'act':'comp','comp':'적립금 9,000원'})
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT comp FROM cases WHERE id=?',(cs,)).fetchone()[0],'적립금 5,000원')
+        # 보상 안 함
+        cs2=self.file_case(self.client(),'보상상회','제품 불량',str(cid))
+        self.post(b,f'/biz/case/{cs2}',{'act':'comp_skip'})
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT comp_status FROM cases WHERE id=?',(cs2,)).fetchone()[0],'skipped')
+        # 앱 API
+        tok=self.client().post('/biz/api/v1/login',json={'login_id':'comp@example.com','password':'longpassword1'}).get_json()['token']
+        h={'Authorization':'Bearer '+tok}
+        cs3=self.file_case(self.client(),'보상상회','제품 불량',str(cid))
+        self.assertEqual(self.client().get('/biz/api/v1/home',headers=h).get_json()['counts']['comp'],1)
+        d=self.client().get(f'/biz/api/v1/cases/{cs3}',headers=h).get_json()
+        self.assertEqual((d['comp']['reco'],d['can']['comp']),('적립금 3,000원',True))
+        r=self.client().get('/biz/api/v1/rules',headers=h).get_json()
+        self.assertEqual(next(x for x in r['rules'] if x['category']=='제품 불량')['comp'],'적립금 3,000원')
+
     def test_chat_and_conditional_auto(self):
         import datetime
         b,o,cid=self.signup_and_approve('상담창마켓','chat@example.com')

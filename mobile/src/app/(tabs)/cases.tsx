@@ -19,7 +19,7 @@ const FILTERS: [string, string][] = [
 export default function CasesTab() {
   const { session, logout } = useAuth();
   const [f, setF] = useState('all');
-  const param = useLocalSearchParams<{ q?: string }>();
+  const param = useLocalSearchParams<{ q?: string; f?: string }>();
   const [q, setQ] = useState(param.q ?? '');
   const [rows, setRows] = useState<BizCase[] | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -50,6 +50,14 @@ export default function CasesTab() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [param.q]);
+  // 홈의 '보상 승인' 안내를 누르면 그 목록을 연다
+  useEffect(() => {
+    if (param.f) {
+      setF(param.f);
+      load(param.f, q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [param.f]);
   useFocusEffect(
     useCallback(() => {
       load();
@@ -75,7 +83,7 @@ export default function CasesTab() {
           returnKeyType="search"
         />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-          {FILTERS.map(([key, label]) => {
+          {[...FILTERS, ...(counts.comp || f === 'comp' ? ([['comp', '보상 승인']] as [string, string][]) : [])].map(([key, label]) => {
             const on = key === f;
             return (
               <Pressable

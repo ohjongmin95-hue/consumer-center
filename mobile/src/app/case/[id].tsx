@@ -24,6 +24,7 @@ export default function CaseScreen() {
   const [msg, setMsg] = useState('');
   const [courier, setCourier] = useState('');
   const [tracking, setTracking] = useState('');
+  const [comp, setComp] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
@@ -38,6 +39,8 @@ export default function CaseScreen() {
   useEffect(() => {
     load();
   }, [load]);
+  const reco = c?.comp?.reco ?? '';
+  useEffect(() => setComp(reco), [reco]);
 
   const act = async (fields: Record<string, string>) => {
     if (!session) return;
@@ -162,6 +165,25 @@ export default function CaseScreen() {
               <Btn title="고객에게 요청하기" onPress={() => act({ act: 'ask', ask })} busy={busy === 'ask'} />
             </View>
           ) : null}
+        </Card>
+      ) : null}
+
+      {can.comp ? (
+        <Card>
+          <H2>보상</H2>
+          <Text style={st.p}>{c.comp?.reco ? '정해 둔 보상을 추천합니다. 승인하면 고객에게 사과와 함께 알림이 갑니다.' : '보상을 하려면 내용을 적고 승인해 주세요. 자동 처리 규칙에서 유형별 보상을 정해 둘 수 있습니다.'}</Text>
+          <View style={{ gap: 10, marginTop: 8 }}>
+            <Field placeholder={`예: ${c.comp?.examples?.[0] ?? '적립금 3,000원'}`} value={comp} onChangeText={setComp} maxLength={100} />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Btn title="보상 안 함" kind="gray" onPress={() => act({ act: 'comp_skip' })} busy={busy === 'comp_skip'} style={{ flex: 1 }} />
+              <Btn title="보상 승인" onPress={() => act({ act: 'comp', comp })} busy={busy === 'comp'} disabled={!comp.trim()} style={{ flex: 2 }} />
+            </View>
+          </View>
+        </Card>
+      ) : c.comp?.status === 'given' ? (
+        <Card>
+          <H2>보상</H2>
+          <Text style={st.p}>{c.comp.given} · 고객에게 알렸습니다</Text>
         </Card>
       ) : null}
 

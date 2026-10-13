@@ -1283,3 +1283,4 @@ html:has(.intro){scroll-behavior:smooth}
 .pw-steps li{display:grid;grid-template-columns:28px 1fr;column-gap:12px;row-gap:2px;counter-increment:pw}
 .pw-steps li::before{content:counter(pw);grid-row:span 2;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
 .pw-steps b{font-size:16px;font-weight:600;color:var(--fg)}.pw-steps span{font-size:14px;color:var(--fg2);line-height:1.5}
+.li input.comp-in{width:100%;font-size:15px;background:var(--fill)}
