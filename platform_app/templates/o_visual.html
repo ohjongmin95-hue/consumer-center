@@ -13,7 +13,7 @@
 <div class="seg vz-dev" role="group" aria-label="기기">{% for k,v in [('pc','PC'),('m','모바일')] %}<button class="{{ 'on' if dev==k }}" name="dev" value="{{ k }}">{{ v }}</button>{% endfor %}</div>
 </form>
 <div class="vz-tips"><span><b>끌기</b> 옮기기</span><span><b>두 번 누르기</b> 글자 고치기</span><span><b>방향키</b> 1px씩</span><span><b>Shift + 방향키</b> 10px씩</span><span><b>원래 자리로</b> 위치 처음처럼</span></div>
-<p class="cap vz-note">PC와 모바일은 화면 폭이 달라서 위치를 따로 저장해요. 빨간 선이 나오면 다른 글자와 줄이 맞은 거예요.</p>
+<p class="cap vz-note">PC에서 옮기면 모바일도 따라 옮겨져요. 모바일에서 따로 옮기면 모바일만 바뀌어요. 글자 고치기는 PC와 모바일에 함께 적용돼요. 빨간 선이 나오면 다른 글자와 줄이 맞은 거예요.</p>
 <div class="vz-stage {{ dev }}"><iframe class="vz-frame" title="{{ pg[2] }} 미리보기" src="{{ url_for('ops_visual_frame',p=p,co=co_id or None) }}"></iframe></div>
 </div>
 {% endblock %}

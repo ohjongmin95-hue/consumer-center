@@ -331,11 +331,21 @@ class PlatformTest(unittest.TestCase):
         j=o.post('/biz/ops/visual/move',data={'csrf':tok,'tpl':'c_guide.html','sel':sel,'dev':'pc','dx':'30','dy':'-8'}).get_json();self.assertTrue(j['ok'])
         self.assertFalse(o.post('/biz/ops/visual/move',data={'csrf':tok,'tpl':'c_guide.html','sel':'h1{}body','dev':'pc','dx':'1','dy':'1'}).get_json()['ok'])
         me=self.client();g=me.get('/guide').get_data(as_text=True)
-        self.assertIn('@media (min-width:768px){'+sel+'{position:relative;left:30px;top:-8px}}',g)
+        self.assertIn(sel+'{position:relative;left:30px;top:-8px}',g)
+        self.assertIn('@media (max-width:767.98px){'+sel+'{left:calc(30 * 100vw / 1280)}}',g)  # PC에서 옮기면 모바일도 따라감
+        o.post('/biz/ops/visual/move',data={'csrf':tok,'tpl':'c_guide.html','sel':sel,'dev':'m','dx':'4','dy':'2'})
+        g=me.get('/guide').get_data(as_text=True)
+        self.assertIn('@media (max-width:767.98px){'+sel+'{position:relative;left:4px;top:2px}}',g);self.assertNotIn('calc(30',g)  # 모바일에서 따로 옮기면 그 위치
+        o.post('/biz/ops/visual/move',data={'csrf':tok,'tpl':'c_guide.html','sel':sel,'dev':'m','dx':'0','dy':'0','reset':'1'})
         self.assertNotIn('cp-moves',me.get('/').get_data(as_text=True))  # 다른 화면에는 없음
         o.post('/biz/ops/visual/move',data={'csrf':tok,'tpl':'c_guide.html','sel':sel,'dev':'pc','dx':'0','dy':'0'})
         self.assertNotIn('cp-moves',me.get('/guide').get_data(as_text=True))
         self.assertEqual(self.client().get('/biz/ops/visual').status_code,302)  # 운영자만
+        # 색이 섞인 제목도 조각마다 고친다 (화면에서 고친 경우 shown=1)
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'승인 한 번으로','dst':'한 곳에서','shown':'1'})
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'한 곳에서','dst':'바로','shown':'1'})  # 이미 바꾼 글자를 다시 고치면 같은 기록을 고친다
+        self.assertIn('고객 요청,<br>바로<br>끝냅니다',self.client().get('/biz/').get_data(as_text=True))
+        with self.core.conn() as db:db.execute('DELETE FROM copy_edits')
 
     def test_password_links_and_consumer_kakao(self):
         sent=[];kakao=[]
