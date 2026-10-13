@@ -302,6 +302,28 @@ class PlatformTest(unittest.TestCase):
         # 교환 새 상품 발송도 같은 방식으로 등록된다
         self.assertEqual(trk.CODES['CJ대한통운'],'04')
 
+    def test_courier_tracking_free_key(self):
+        """무료 조회 키(t_key): 송장을 넣으면 바로 한 번 묻고, cron(poll)이 다시 물어 단계가 바뀌면 기록한다."""
+        b,o,cid=self.signup_and_approve('무료택배마켓','freekey@example.com')
+        me=self.client();trk=sys.modules['tracking']
+        answers={'111122223333':{'level':3,'lastDetail':{'where':'대전 HUB','timeString':'2026-10-13 08:00:00'}},'999988887777':{'status':False,'code':'104','msg':'운송장 미등록'}}
+        asked=[]
+        def fake(code,invoice):asked.append((code,invoice));return answers.get(invoice,{})  # 다른 테스트의 송장은 빈 답
+        with patch.dict(os.environ,{'SWEETTRACKER_T_KEY':'k'}),patch.object(trk,'get_info',fake):
+            c1=self.file_case(me,'무료택배마켓','배송 조회',str(cid),title='언제 와요')
+            self.post(b,f'/biz/case/{c1}',{'act':'ship_track','courier':'한진택배','tracking':'111122223333'})
+            self.assertEqual(asked,[('05','111122223333')])
+            page=me.get(f'/case/{c1}').get_data(as_text=True);self.assertIn('배송 중',page);self.assertIn('대전 HUB',page)
+            c2=self.file_case(me,'무료택배마켓','배송 조회',str(cid),title='송장이 이상해요')
+            self.post(b,f'/biz/case/{c2}',{'act':'ship_track','courier':'CJ대한통운','tracking':'999988887777'})
+            with self.core.conn() as db:self.assertIn('운송장 미등록',db.execute("SELECT note FROM tracks WHERE fid=?",(f'{c2}-ship',)).fetchone()[0])
+            answers['111122223333']={'level':6,'trackingDetails':[{'where':'서울 강남','timeString':'2026-10-13 15:00:00'}]}
+            asked.clear();self.assertEqual(trk.poll(),1)
+            self.assertIn(('05','111122223333'),asked);self.assertNotIn(('04','999988887777'),asked)  # 조회가 안 되는 송장은 다시 묻지 않는다
+            asked.clear();trk.poll();self.assertNotIn(('05','111122223333'),asked)  # 배송 완료된 송장도 더 묻지 않는다
+        with self.core.conn() as db:texts=[e['text'] for e in self.core.events(db,c1)]
+        self.assertTrue(any('배송 완료' in t and '서울 강남' in t for t in texts))
+
     def test_chat_and_conditional_auto(self):
         import datetime
         b,o,cid=self.signup_and_approve('상담창마켓','chat@example.com')
