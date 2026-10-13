@@ -30,9 +30,11 @@ INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
              'biz':BNAME+'는 고객 민원을 한 화면에서 승인하고 반복 민원은 자동으로 처리하는 기업용 CS 운영 도구예요.'}
 VERIFY={'me':os.getenv('NAVER_SITE_VERIFICATION',''),'biz':os.getenv('NAVER_SITE_VERIFICATION_BIZ','')}
+GOOGLE_VERIFY={'me':os.getenv('GOOGLE_SITE_VERIFICATION',''),'biz':os.getenv('GOOGLE_SITE_VERIFICATION_BIZ','')}
+DAUM_ROBOTS={'me':os.getenv('DAUM_WEBMASTER',''),'biz':os.getenv('DAUM_WEBMASTER_BIZ','')}  # 다음 웹마스터도구가 robots.txt에 넣으라는 줄
 def robots_txt(kind,disallow):
-    lines=['User-agent: *','Allow: /']+['Disallow: '+p for p in disallow]
-    if kind=='me':lines+=['','Sitemap: '+site_url(kind,'/sitemap.xml')]
+    lines=['User-agent: *','Allow: /']+['Disallow: '+p for p in disallow]+['','Sitemap: '+site_url(kind,'/sitemap.xml')]
+    if DAUM_ROBOTS[kind]:lines.insert(0,DAUM_ROBOTS[kind] if DAUM_ROBOTS[kind].startswith('#') else '#'+DAUM_ROBOTS[kind])
     return '\n'.join(lines)+'\n'
 MAIL_ASYNC=True  # 테스트에서는 False
 
@@ -207,7 +209,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,CAT_HINT=CAT_HINT,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,CAT_HINT=CAT_HINT,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,GOOGLE_VERIFY=GOOGLE_VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None

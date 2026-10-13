@@ -13,7 +13,9 @@
 </nav>
 <div class="right"><a class="chip{{ ' on' if tab=='settings' }}" href="{{ url_for('settings') }}" title="설정"><span class="dot">{{ co.name[:1] }}</span><span class="hide-m">{{ co.name }}</span></a>
 <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn hide-m">로그아웃</button></form></div>
-{% else %}<div class="right">{% if tab!='login' %}<a class="tbtn" href="{{ url_for('login') }}">로그인</a>{% endif %}{% if tab!='signup' %}<a class="btn sm" href="{{ url_for('signup') }}">무료로 시작하기</a>{% endif %}</div>{% endif %}
+{% else %}{% if tab=='intro' %}<nav class="in-nav" aria-label="소개 메뉴">
+<a href="#feat">기능 소개</a><a href="#auto">자동 처리</a><a href="#law">응대 가이드</a><a href="#stats">통계</a><a href="#steps">시작 방법</a><a href="#app">사장님 앱</a>
+</nav>{% endif %}<div class="right">{% if tab!='login' %}<a class="tbtn" href="{{ url_for('login') }}">로그인</a>{% endif %}{% if tab!='signup' %}<a class="btn sm" href="{{ url_for('signup') }}">무료로 시작하기</a>{% endif %}</div>{% endif %}
 </div></header>
 {%- endmacro %}
 {% macro obar(tab,n_signup) -%}

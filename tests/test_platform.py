@@ -135,6 +135,16 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:db.execute('UPDATE companies SET pw_hash=? WHERE id=?',(generate_password_hash('newpassword99'),cid))
         self.assertEqual(a.get('/biz/api/v1/home',headers=auth).status_code,401)  # 비밀번호를 바꾸면 예전 토큰은 끊긴다
 
+    def test_biz_search_registration(self):
+        c=self.client()
+        robots=c.get('/biz/robots.txt').get_data(as_text=True)
+        self.assertIn('Sitemap: ',robots);self.assertIn('/sitemap.xml',robots)
+        sm=c.get('/biz/sitemap.xml');self.assertEqual(sm.status_code,200);self.assertIn('/signup</loc>',sm.get_data(as_text=True))
+        with patch.dict(self.core.GOOGLE_VERIFY,{'biz':'g-code'}),patch.dict(self.core.VERIFY,{'biz':'n-code'}),patch.dict(self.core.DAUM_ROBOTS,{'biz':'DaumWebMasterTool:abc'}):
+            home=c.get('/biz/').get_data(as_text=True)
+            self.assertIn('content="g-code"',home);self.assertIn('content="n-code"',home);self.assertIn('SoftwareApplication',home)
+            self.assertTrue(c.get('/biz/robots.txt').get_data(as_text=True).startswith('#DaumWebMasterTool:abc'))
+
     def test_biz_app_inapp_pages(self):
         """앱 안 가입 신청·규칙·통계·설정·가이드: 웹과 같은 검사, 비밀번호를 바꾸면 새 토큰을 준다."""
         a=self.client()
