@@ -123,12 +123,13 @@ def forgot():
 def send_reset(login_id):
     lid=clean(login_id,80).lower()
     if core.throttled('forgot',limit=5,minutes=30):return '잠시 후 다시 시도해 주세요.','error'
-    if not core.mail_ready():return '지금은 메일을 보낼 수 없습니다. 운영팀에 문의해 주세요.','error'
+    if not core.mail_ready():return f'지금은 메일로 보내 드릴 수 없어요. {core.BNAME} 운영팀에 연락하시면 재설정 링크를 바로 보내 드려요.','error'
     with conn() as db:co=db.execute("SELECT * FROM companies WHERE login_id=? AND status='active'",(lid,)).fetchone()
     if co:
-        tok=core.signer('pw').dumps({'id':co['id'],'h':co['pw_hash'][-16:]})
-        core.send_mail(co['login_id'],f'[{core.BNAME}] 비밀번호 재설정',f"아래 링크에서 새 비밀번호를 정해 주세요. 1시간 동안만 열립니다.\n{core.site_url('biz','/reset/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
+        core.send_mail(co['login_id'],f'[{core.BNAME}] 비밀번호 재설정',f"아래 링크에서 새 비밀번호를 정해 주세요. 1시간 동안만 열립니다.\n{reset_link(co)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
     return '가입된 이메일이라면 재설정 링크를 보냈습니다.','ok'
+
+def reset_link(co):return core.site_url('biz','/reset/'+core.signer('pw').dumps({'id':co['id'],'h':co['pw_hash'][-16:]}))
 
 @app.route('/reset/<tok>',methods=['GET','POST'])
 def reset(tok):
@@ -480,6 +481,8 @@ def ops_companies():
             elif act=='reject' and co and co['status']=='pending':db.execute("UPDATE companies SET status='rejected' WHERE id=?",(co['id'],));flash('반려했습니다','ok')
             elif act=='suspend' and co and co['status']=='active':db.execute("UPDATE companies SET status='suspended',member=0 WHERE id=?",(co['id'],));flash('이용을 중지했습니다','ok')
             elif act=='resume' and co and co['status']=='suspended':db.execute("UPDATE companies SET status='active',member=1 WHERE id=?",(co['id'],));flash('다시 이용할 수 있게 했습니다','ok')
+            elif act=='pwlink' and co and co['status']=='active' and co['pw_hash']:
+                flash(f"{co['name']} 비밀번호 재설정 링크예요. 1시간 동안 열려요. 복사해서 사장님께 보내 주세요: {reset_link(co)}",'ok')
             elif act=='contact' and co:db.execute('UPDATE companies SET contact=? WHERE id=?',(clean(request.form.get('contact'),60),co['id']));flash('저장했습니다','ok')
             elif act=='add':
                 name=clean(request.form.get('name'),40)
@@ -529,7 +532,7 @@ def ops_copy():
     ajax=request.headers.get('X-Requested-With')=='fetch'
     with conn() as db:
         if request.method=='POST':
-            site=request.form.get('site');src=(request.form.get('src') or '').strip();dst=(request.form.get('dst') or '').strip()
+            site=request.form.get('site');src=(request.form.get('src') or '').strip();dst='\n'.join(l for l in (' '.join(x.split()) for x in (request.form.get('dst') or '').splitlines()) if l)  # 줄바꿈은 살리고 빈 줄은 뺀다
             if site not in core.COPY_SITES or not src:msg,ok='바꿀 문구를 확인해 주세요',False
             else:
                 if request.form.get('shown'):  # 화면에서 바로 고친 경우: 보이는 글자가 이미 바꾼 문구면 그 기록을 고친다

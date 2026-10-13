@@ -20,4 +20,14 @@ grep -vE '^(SMTP_HOST|SMTP_PORT|SMTP_USER|SMTP_PASSWORD|ADMIN_ALERT_EMAIL)=' "$E
 printf 'SMTP_HOST=%s\nSMTP_PORT=465\nSMTP_USER=%s\nSMTP_PASSWORD=%s\nADMIN_ALERT_EMAIL=%s\n' "$HOST" "$FROM" "$PW" "$TO" >> "$TMP"
 cat "$TMP" > "$ENV_FILE"; rm -f "$TMP"
 systemctl restart soboru
+# 소보루 CS가 설치돼 있으면 같은 메일 계정을 거기에도 넣음 (사장님 비밀번호 찾기·알림 메일)
+PENV=/etc/soboru-platform.env
+if [[ -f $PENV ]]; then
+  TMP=$(mktemp)
+  grep -vE '^#? ?SMTP_(HOST|PORT|USER|PASSWORD|FROM)=' "$PENV" > "$TMP" || true
+  printf 'SMTP_HOST=%s\nSMTP_PORT=465\nSMTP_USER=%s\nSMTP_PASSWORD=%s\n' "$HOST" "$FROM" "$PW" >> "$TMP"
+  cat "$TMP" > "$PENV"; rm -f "$TMP"
+  systemctl restart soboru-platform 2>/dev/null || true
+  echo "소보루 CS에도 같은 메일 계정을 넣었습니다."
+fi
 echo "저장했습니다. 이제 새 제보가 들어오면 $TO 로 메일이 갑니다."

@@ -11,7 +11,7 @@
 {% if c.status=='active' %}<span class="tag ok">입점</span>{% elif c.status=='suspended' %}<span class="tag bad">중지</span>{% else %}<span class="tag gray">비입점</span>{% endif %}
 <form method="post" style="display:flex;gap:6px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ c.id }}">
 {% if c.status=='listed' %}<input class="inp" name="contact" placeholder="공식 연락처" value="{{ c.contact }}" style="padding:8px 10px;font-size:14px;width:150px;background:var(--fill)"><button class="btn md gray" name="act" value="contact" style="height:38px">저장</button>
-{% elif c.status=='active' %}<button class="tbtn" name="act" value="suspend" style="font-size:13px">중지</button>{% else %}<button class="tbtn" name="act" value="resume" style="font-size:13px">재개</button>{% endif %}</form></div>{% else %}<div class="empty">없습니다</div>{% endfor %}</div>
+{% elif c.status=='active' %}{% if c.pw_hash %}<button class="tbtn" name="act" value="pwlink" style="font-size:13px">비밀번호 링크</button>{% endif %}<button class="tbtn" name="act" value="suspend" style="font-size:13px">중지</button>{% else %}<button class="tbtn" name="act" value="resume" style="font-size:13px">재개</button>{% endif %}</form></div>{% else %}<div class="empty">없습니다</div>{% endfor %}</div>
 <form class="panel" method="post" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="add">
 <input class="inp" name="name" placeholder="비입점 기업 이름" maxlength="40" required style="flex:1;min-width:140px"><input class="inp" name="contact" placeholder="공식 연락처" maxlength="60" style="flex:1;min-width:140px"><button class="btn md">추가</button></form>
 {% endblock %}

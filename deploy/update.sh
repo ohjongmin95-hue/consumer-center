@@ -9,7 +9,13 @@ git -C /opt/soboru/app checkout -q -B "$BRANCH" "origin/$BRANCH"
 systemctl restart soboru
 # SOBORU 플랫폼(한큐 + 소보루 비즈)이 설치돼 있으면 같이 다시 시작
 if [ -f /etc/systemd/system/soboru-platform.service ]; then
+  # 소비자제보센터에 넣어 둔 메일 설정을 소보루 CS에도 똑같이 넣음 (비밀번호 찾기·알림 메일)
+  if [ -f /etc/soboru.env ] && [ -f /etc/soboru-platform.env ] && grep -q '^SMTP_HOST=.' /etc/soboru.env && ! grep -q '^SMTP_HOST=.' /etc/soboru-platform.env; then
+    grep -E '^SMTP_(HOST|PORT|USER|PASSWORD|FROM)=' /etc/soboru.env >> /etc/soboru-platform.env
+  fi
   systemctl restart soboru-platform
+  if grep -q '^SMTP_HOST=.' /etc/soboru-platform.env 2>/dev/null; then echo "소보루 CS 메일: 켜져 있어요"
+  else echo "소보루 CS 메일: 꺼져 있어요. 켜려면 set-mail.sh를 한 번 실행해 주세요."; fi
   # 답변 지연 알림 · 불량 경보 · 월간 리포트 (한 시간마다, 같은 알림은 한 번만)
   cat > /etc/cron.hourly/soboru-platform-late <<'CRON'
 #!/bin/sh

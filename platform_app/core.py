@@ -414,20 +414,24 @@ def _copy_pattern(src):
 def copy_edits(site):
     with conn() as db:
         rows=db.execute("SELECT src,dst FROM copy_edits WHERE site IN (?,'all')",(site,)).fetchall()
-    esc=lambda t:t.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
-    # 긴 문구부터 바꿔서 짧은 문구가 긴 문구 안을 먼저 건드리지 않게
-    return [(_copy_pattern(r['src']),esc(r['dst'])) for r in sorted(rows,key=lambda r:-len(r['src'])) if r['src'].strip()]
+    esc=lambda t:t.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&#34;')
+    # 긴 문구부터 바꿔서 짧은 문구가 긴 문구 안을 먼저 건드리지 않게. 고친 문구의 줄바꿈은 화면에서 <br>로 (입력칸 안내 글에서는 띄어쓰기로)
+    return [(_copy_pattern(r['src']),esc(r['dst']).replace('\n','<br>'),esc(' '.join(r['dst'].split()))) for r in sorted(rows,key=lambda r:-len(r['src'])) if r['src'].strip()]
+_GONE='\x00'  # 지운 글자 자리 표시. 지운 줄의 줄바꿈(<br>)도 같이 없애서 빈 줄이 남지 않게 한다
+_GONE_BR=re.compile(r'\x00[ \t\r\n]*<br\s*/?>|<br\s*/?>[ \t\r\n]*\x00',re.I)
 def apply_copy(html,edits):
     if not edits:return html
-    def sub(t):
-        for a,b in edits:t=a.sub(lambda m:b,t)
+    def sub(t,attr=False):
+        for a,b,c in edits:t=a.sub(lambda m:(c if attr else b) or ('' if attr else _GONE),t)
         return t
     def tag(m):
         if m.group(1) is None:return sub(m.group(2))
         t=m.group(1)
         if re.match(r'<(script|style)\b',t,re.I):return t
-        return _ATTR.sub(lambda a:a.group(1)+sub(a.group(2))+a.group(3),t)
-    return _TEXT.sub(tag,html)
+        return _ATTR.sub(lambda a:a.group(1)+sub(a.group(2),True)+a.group(3),t)
+    html=_TEXT.sub(tag,html)
+    if _GONE in html:html=_GONE_BR.sub('',html).replace(_GONE,'')
+    return html
 # 문장 위치 옮기기: 운영 화면(/ops/visual)에서 끌어 옮긴 문장은 화면(템플릿)·요소·기기(PC/모바일)별로 저장해 두고,
 # 페이지를 내보낼 때 <style>로 그만큼 옮긴다. 옆 문장 자리는 그대로 두도록 position:relative로만 옮긴다.
 # PC에서 옮긴 위치는 모바일에도 그대로 따라간다(가로는 화면 폭 비율만큼 줄여서). 모바일에서 따로 옮기면 모바일만 그 위치를 쓴다.
