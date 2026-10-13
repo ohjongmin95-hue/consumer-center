@@ -166,6 +166,9 @@ def init():
           FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,name TEXT NOT NULL,price TEXT NOT NULL DEFAULT '',
           stock TEXT NOT NULL DEFAULT '',info TEXT NOT NULL DEFAULT '',updated TEXT NOT NULL,FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
+        CREATE TABLE IF NOT EXISTS tracks(fid TEXT PRIMARY KEY,case_id INTEGER NOT NULL,kind TEXT NOT NULL,courier TEXT NOT NULL,invoice TEXT NOT NULL,
+          level INTEGER NOT NULL DEFAULT 0,place TEXT NOT NULL DEFAULT '',at TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',updated TEXT NOT NULL,
+          FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE);
         ''')
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
         if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')

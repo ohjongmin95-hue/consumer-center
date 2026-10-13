@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -264,6 +264,43 @@ class PlatformTest(unittest.TestCase):
         with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'test'}),patch.object(sys.modules['drafting'],'call',lambda *a,**k:None):
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'환불하고 싶어요'}).get_json()
         self.assertNotIn('answer',j);self.assertEqual(j['category'],'반품·환불')
+
+    def test_courier_tracking(self):
+        """배송 조회 요청에 송장으로 답하고, 스마트택배 알림(콜백)으로 배송 상태가 바뀌면 기록·알림한다."""
+        b,o,cid=self.signup_and_approve('택배마켓','courier@example.com')
+        me=self.client();case_id=self.file_case(me,'택배마켓','배송 조회',str(cid),title='주문한 게 안 와요')
+        trk=sys.modules['tracking']
+        # 키가 없으면 송장번호와 택배사 조회 링크로 답한다
+        page=b.get(f'/biz/case/{case_id}').get_data(as_text=True);self.assertIn('송장번호로 답하기',page)
+        self.assertIn('확인해 주세요',self.post(b,f'/biz/case/{case_id}',{'act':'ship_track','courier':'CJ대한통운','tracking':'12'},follow_redirects=True).get_data(as_text=True))
+        self.post(b,f'/biz/case/{case_id}',{'act':'ship_track','courier':'CJ대한통운','tracking':'1234-5678-9012'})
+        with self.core.conn() as db:
+            c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone();ev=self.core.events(db,case_id)
+        self.assertEqual(c['status'],'answered');self.assertIn('cjlogistics.com',ev[-1]['reply'])
+        self.assertNotIn('송장번호로 답하기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))  # 한 번만
+        self.assertIn('123456789012',me.get(f'/case/{case_id}').get_data(as_text=True))
+        # 키가 있으면 스마트택배에 등록하고, 콜백으로 상태를 받는다
+        case2=self.file_case(me,'택배마켓','배송 조회',str(cid),title='배송이 늦어요')
+        sent={}
+        def fake_post(path,body):sent.update(path=path,body=body);return {'success':True,'num':body['num'],'fid':body['fid']}
+        with patch.dict(os.environ,{'SWEETTRACKER_TIER':'t','SWEETTRACKER_KEY':'k'}),patch.object(trk,'post',fake_post):
+            self.post(b,f'/biz/case/{case2}',{'act':'ship_track','courier':'롯데택배','tracking':'987654321098'})
+            self.assertIn('확인 중',me.get(f'/case/{case2}').get_data(as_text=True))
+        body=sent['body'];self.assertEqual((sent['path'],body['code'],body['num'],body['fid']),('/add_invoice','08','987654321098',f'{case2}-ship'))
+        hook=body['callback_url'][body['callback_url'].index('/biz/hook/'):]
+        a=self.client()
+        self.assertFalse(a.post(hook.replace('/trace/','/trace/x'),json={'fid':f'{case2}-ship','level':'5'}).get_json()['code'])  # 토큰이 틀리면 거절
+        self.assertFalse(a.post(hook,json={'fid':f'{case_id}-ship','level':'5'}).get_json()['code'])  # 다른 송장 fid도 거절
+        self.assertTrue(a.post(hook,json={'fid':f'{case2}-ship','level':'5','where':'서울 강남','time_trans':'2026-10-13 09:10:00'}).get_json()['code'])
+        self.assertTrue(a.post(hook,data={'fid':f'{case2}-ship','level':'3'}).get_json()['code'])  # 늦게 온 예전 단계는 무시
+        page=me.get(f'/case/{case2}').get_data(as_text=True);self.assertIn('배송 출발',page);self.assertIn('서울 강남',page)
+        with self.core.conn() as db:texts=[e['text'] for e in self.core.events(db,case2)]
+        self.assertEqual(sum('배송 출발' in t for t in texts),1);self.assertFalse(any('배송 중' in t for t in texts))
+        tok=self.client().post('/biz/api/v1/login',json={'login_id':'courier@example.com','password':'longpassword1'}).get_json()['token']
+        d=a.get(f'/biz/api/v1/cases/{case2}',headers={'Authorization':'Bearer '+tok}).get_json()
+        self.assertEqual((d['tracks'][0]['status'],d['can']['ship_track']),('배송 출발',False))
+        # 교환 새 상품 발송도 같은 방식으로 등록된다
+        self.assertEqual(trk.CODES['CJ대한통운'],'04')
 
     def test_chat_and_conditional_auto(self):
         import datetime

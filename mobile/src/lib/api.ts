@@ -27,6 +27,7 @@ export type BizCase = {
   updated: string;
 };
 export type FileRef = { id: number; name: string; url: string };
+export type Track = { kind: string; label: string; courier: string; invoice: string; level: number; status: string; place: string; time: string; done: boolean; note: string; live: boolean; link: string };
 export type CaseEvent = { id: number; kind: 'me' | 'co' | 'sys' | string; text: string; reply: string; created: string; files: FileRef[] };
 export type BizDetail = BizCase & {
   body: string;
@@ -42,7 +43,8 @@ export type BizDetail = BizCase & {
   refund: { possible: boolean; status: string; bank: string; account: string; holder: string };
   events: CaseEvent[];
   files: FileRef[];
-  can: { approve: boolean; hold: boolean; ask: boolean; reply: boolean; ret_received: boolean; out_ship: boolean; refund_done: boolean };
+  tracks?: Track[];
+  can: { ship_track?: boolean; approve: boolean; hold: boolean; ask: boolean; reply: boolean; ret_received: boolean; out_ship: boolean; refund_done: boolean };
   message?: string;
 };
 export type Kpi = { n: number; auto: number; res: number | null; late: number };

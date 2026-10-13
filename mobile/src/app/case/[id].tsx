@@ -165,6 +165,26 @@ export default function CaseScreen() {
         </Card>
       ) : null}
 
+      {c.tracks?.length || can.ship_track ? (
+        <Card>
+          <H2>배송 상태</H2>
+          {(c.tracks ?? []).map((t) => (
+            <Text key={t.kind} style={st.p}>
+              {t.label}: {t.courier} {t.invoice}
+              {t.status ? ` · ${t.status}${t.place ? ' · ' + t.place : ''}${t.time ? ' · ' + t.time.slice(5, 16) : ''}` : t.live ? ' · 확인 중' : ''}
+            </Text>
+          ))}
+          {can.ship_track ? (
+            <View style={{ gap: 10, marginTop: 8 }}>
+              <Text style={st.p}>보낸 택배사와 송장번호를 넣으면 고객에게 바로 알리고, 배송 상태가 바뀔 때마다 자동으로 알려 줍니다.</Text>
+              <Chips items={[...(meta?.couriers ?? []), '기타']} value={courier} onChange={setCourier} />
+              <Field placeholder="송장번호" keyboardType="number-pad" value={tracking} onChangeText={setTracking} />
+              <Btn title="고객에게 송장 알리기" onPress={() => act({ act: 'ship_track', courier, tracking })} busy={busy === 'ship_track'} disabled={!courier || !tracking} />
+            </View>
+          ) : null}
+        </Card>
+      ) : null}
+
       {can.ret_received || can.out_ship || can.refund_done || c.ret.status ? (
         <Card>
           <H2>반품·교환·환불</H2>
