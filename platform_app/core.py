@@ -7,7 +7,7 @@ import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, t
 import html as _html
 from pathlib import Path
 from email.message import EmailMessage
-from flask import session, request, abort, g
+from flask import session, request, abort, g, has_request_context
 from markupsafe import Markup, escape
 import law
 
@@ -574,4 +574,5 @@ def send_mail(to,subject,body):
     threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
 def site_url(kind,path):
     host=BUSINESS_HOST if kind=='biz' else CONSUMER_HOST
+    if not host and not has_request_context():return path  # cron 등 요청 밖에서 주소 설정이 없을 때
     return ('https://'+host if host else request.host_url.rstrip('/')+('/biz' if kind=='biz' and not BUSINESS_HOST else ''))+path
