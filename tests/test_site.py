@@ -445,7 +445,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(message['kakaoOptions']['templateId'], 'TA')
         self.assertEqual(message['kakaoOptions']['variables']['#{제목}'], '카톡 알림 제보')
         self.assertFalse(message['kakaoOptions']['disableSms'])
-        self.assertIn('카톡 알림 제보', message['text'])
+        self.assertEqual(message['from'], '021234567')
         del sms[1:], mails[2:]
         # 상태 변경 같은 다른 알림은 운영자에게 가지 않음
         with self.site.conn() as db:

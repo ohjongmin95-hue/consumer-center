@@ -114,14 +114,13 @@ def send_sms(phone, text):
         raise RuntimeError(f"{status} {result.get('statusMessage', '')}".strip())
 
 
-def send_admin_kakao(phone, values, text):
+def send_admin_kakao(phone, values):
     # 운영자 알림톡. 템플릿 심사가 끝나기 전이거나 실패하면 발신번호가 있을 때 솔라피가 같은 내용을 문자로 대신 보냄
     message = {'to': phone, 'kakaoOptions': {
         'pfId': env('SOLAPI_PFID'), 'templateId': env('KAKAO_TPL_ADMIN'), 'disableSms': not digits(env('SOLAPI_SENDER')),
         'variables': {'#{접수번호}': values['receipt'], '#{업체}': values['company'], '#{제목}': values['subject']}}}
-    if digits(env('SOLAPI_SENDER')):
+    if digits(env('SOLAPI_SENDER')):  # 대신 보내는 문자는 솔라피가 템플릿 내용 그대로 씀
         message['from'] = digits(env('SOLAPI_SENDER'))
-        message['text'] = text
     result = http_post('https://api.solapi.com/messages/v4/send', {'message': message}, {'Authorization': solapi_auth()})
     status = str(result.get('statusCode', ''))
     if status and status not in ('2000', '3000', '4000'):
@@ -148,7 +147,7 @@ def admin_plan(case, link):
     jobs = [('admin_email', e, lambda e=e: send_email(e, subject, body)) for e in emails]
     values = {'receipt': case['receipt'], 'company': short(case['company'], 20), 'subject': short(case['subject'])}
     if channel == 'kakao':
-        jobs += [('admin_kakao', p, lambda p=p: send_admin_kakao(p, values, text)) for p in phones]
+        jobs += [('admin_kakao', p, lambda p=p: send_admin_kakao(p, values)) for p in phones]
     else:
         jobs += [('admin_sms', p, lambda p=p: send_sms(p, text)) for p in phones]
     return jobs
