@@ -160,7 +160,7 @@ def lookup_mail():
     phone=digits(request.form.get('phone',''));email=clean(request.form.get('email'),80).lower()
     if core.throttled('lookup_mail',limit=5,minutes=30):flash('잠시 후 다시 시도해 주세요.','error');return redirect(url_for('mine'))
     if not core.mail_ready():flash('지금은 메일을 보낼 수 없어요. 접수한 기업에 문의해 주세요.','error');return redirect(url_for('mine'))
-    with conn() as db:n=db.execute('SELECT COUNT(*) FROM cases WHERE phone=? AND lower(email)=?',(phone,email)).fetchone()[0] if phone and email else 0
+    with conn() as db:n=db.execute("SELECT COUNT(*) FROM cases WHERE phone=? AND lower(email)=? AND channel IN ('','한큐')",(phone,email)).fetchone()[0] if phone and email else 0
     if n:
         tok=core.signer('lookup').dumps({'p':phone,'e':email})
         core.send_mail(email,f'[{core.CNAME}] 내 접수 바로 열기',f"아래 링크를 누르면 이 휴대폰 번호로 접수한 요청 {n}건을 볼 수 있어요. 30분 동안만 열려요.\n{core.site_url('me','/lookup/t/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
@@ -170,7 +170,7 @@ def lookup_mail():
 def lookup_token(tok):
     try:d=core.signer('lookup').loads(tok,max_age=1800)
     except Exception:flash('링크가 만료됐어요. 다시 요청해 주세요.','error');return redirect(url_for('mine'))
-    with conn() as db:ids=[r['id'] for r in db.execute('SELECT id FROM cases WHERE phone=? AND lower(email)=? ORDER BY id DESC LIMIT 100',(d['p'],d['e']))]
+    with conn() as db:ids=[r['id'] for r in db.execute("SELECT id FROM cases WHERE phone=? AND lower(email)=? AND channel IN ('','한큐') ORDER BY id DESC LIMIT 100",(d['p'],d['e']))]
     remember(*ids);flash(f'요청 {len(ids)}건을 찾았어요.','ok');return redirect(url_for('mine'))
 
 @app.route('/forget',methods=['POST'])
@@ -183,8 +183,9 @@ def case_act(c,form,ups):
         if act=='rate' and c['status']=='answered' and form.get('v') in ('resolved','unresolved'):
             v=form['v'];db.execute('UPDATE cases SET status=? WHERE id=?',(v,c['id']))
             core.add_event(db,c['id'],'me','해결됐다고 알려 주셨어요.' if v=='resolved' else '아직 해결되지 않았다고 알려 주셨어요.')
-            if v=='unresolved' and c['member']:
+            if v=='unresolved' and c['member'] and c['consent']:
                 co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[{core.BNAME}] 소비자가 미해결로 응답했어요: {c['title']}",f"소비자가 아직 해결되지 않았다고 알려 왔어요.\n{core.site_url('biz','/case/%d'%c['id'])}")
+            return ('알려 주셔서 고마워요' if v=='resolved' else '아직 해결되지 않았다고 기록했어요. 아래에서 다시 요청할 수 있어요'),'ok'
         elif act=='again' and core.can_follow_up(db,c):
             text='다시 요청'+(': '+msg if msg else '했어요.')
             core.add_event(db,c['id'],'me',text)
@@ -197,7 +198,7 @@ def case_act(c,form,ups):
                 db.execute("UPDATE cases SET status='received' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'sys','센터가 기업에 다시 전달할게요')
                 core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 비입점 요청 재요청: {c['title']}",core.site_url('biz','/ops/case/%d'%c['id']))
-            return '다시 요청했어요','ok'
+            return ('다시 요청했어요' if c['consent'] else '다시 요청을 남겼어요. 정보 제공에 동의하지 않은 요청이라 기업에는 전달되지 않아요'),'ok'
         elif act=='ship' and c['ret_status'] in ('guided','sent'):
             courier=form.get('courier','');tracking=clean(form.get('tracking'),30)
             if courier not in core.COURIERS and courier!='기타':courier=''
@@ -229,8 +230,9 @@ def case_act(c,form,ups):
             eid=core.add_event(db,c['id'],'me',('추가 자료: ' if act=='info' else '')+msg)
             core.save_files(db,c['id'],ups,eid)
             if act=='info' and c['status']=='info':db.execute("UPDATE cases SET status='seen',decision='pending' WHERE id=?",(c['id'],))
-            if c['member']:
+            if c['member'] and c['consent']:
                 co=core.company(db,c['company_id']);core.send_mail(co['notify_email'],f"[{core.BNAME}] 소비자가 내용을 보냈어요: {c['title']}",f"{core.site_url('biz','/case/%d'%c['id'])}")
+            return ('자료를 보냈어요' if act=='info' else '내용을 더했어요'),'ok'
     return '',''
 
 @app.route('/case/<int:case_id>',methods=['GET','POST'])
@@ -320,7 +322,8 @@ def api_case(case_id):
     c=token_case(tok)
     if not c or c['id']!=case_id or core.is_direct(c):abort(404)
     return c
-def api_form():return request.get_json(silent=True) or request.form
+def api_json():j=request.get_json(silent=True);return j if isinstance(j,dict) else {}  # 배열 같은 엉뚱한 값이 와도 서버 오류 없이
+def api_form():return api_json() or request.form
 def case_summary(c):
     return dict(id=c['id'],no=c['no'],company_id=c['company_id'],company_name=c['company_name'],member=bool(c['member']),category=c['category'],title=c['title'],
         status=c['status'],status_label=core.status_label(c['status']),step=core.step_index(c['status']),created=c['created'],updated=c['updated'])
@@ -376,7 +379,8 @@ def api_lookup():
 @app.route('/api/v1/mine',methods=['POST'])
 def api_mine():
     """휴대폰에 둔 토큰들로 내 요청 목록을 한 번에 받는다. 지워진 요청은 빠진다."""
-    toks=(request.get_json(silent=True) or {}).get('tokens') or []
+    toks=api_json().get('tokens') or []
+    if not isinstance(toks,list):toks=[]
     out=[]
     for t in toks[:100]:
         c=token_case(t if isinstance(t,str) else '')
@@ -400,7 +404,7 @@ def api_file(case_id,file_id):
 @app.route('/api/v1/push',methods=['POST'])
 def api_push():
     """앱 알림 받기: Expo 푸시 토큰을 휴대폰에 둔 요청들에 묶는다."""
-    j=request.get_json(silent=True) or {};push=str(j.get('push_token',''))[:200]
+    j=api_json();push=str(j.get('push_token',''))[:200]
     if not re.fullmatch(r'(Exponent|Expo)PushToken\[[\w-]+\]',push):return jsonify(error='알림 토큰이 올바르지 않아요.'),400
     n=0
     with conn() as db:
@@ -409,6 +413,8 @@ def api_push():
             if c:db.execute('INSERT OR IGNORE INTO app_push(case_id,token,created) VALUES(?,?,?)',(c['id'],push,core.iso()));n+=1
     return jsonify(ok=True,cases=n)
 
+@app.errorhandler(400)
+def bad(e):return core.bad_request()
 @app.errorhandler(404)
 def nf(e):
     if request.path.startswith('/api/'):return jsonify(error='찾을 수 없어요.'),404

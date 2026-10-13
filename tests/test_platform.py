@@ -1,5 +1,5 @@
 """SOBORU 플랫폼(platform_app): 한큐 접수 → 기업 승인·자동 처리 → 소비자 확인, 비입점 처리, 권한."""
-import os, re, sys, secrets, tempfile, unittest, importlib
+import json, os, re, sys, secrets, tempfile, unittest, importlib
 from pathlib import Path
 from unittest.mock import patch
 from werkzeug.security import generate_password_hash
@@ -352,6 +352,23 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('고객 요청,<br>바로<br>끝</',self.client().get('/biz/').get_data(as_text=True))
         with self.core.conn() as db:db.execute('DELETE FROM copy_edits')
 
+    def test_visual_edit_stays_on_its_page(self):
+        o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+        # 화면 보며 고친 글자는 그 화면에서만 (같은 글자가 있는 로그인 화면은 그대로)
+        self.post(o,'/biz/ops/copy',{'site':'biz','tpl':'b_intro.html','src':'승인 한 번으로','dst':'클릭 한 번으로'})
+        self.assertIn('클릭 한 번으로',self.client().get('/biz/').get_data(as_text=True))
+        self.assertIn('<br>승인 한 번으로<br>',self.client().get('/biz/login').get_data(as_text=True))
+        self.assertIn('클릭 한 번으로',o.get('/biz/ops/copy?pg=edited').get_data(as_text=True))
+        # 목록에서 일부 글자를 바꾼 뒤 화면에서 그 줄을 다시 고쳐도 반영된다 (원래 글자로 저장)
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'고객 요청','dst':'우리 요청'})
+        fr=o.get('/biz/ops/visual/frame?p=6').get_data(as_text=True)
+        m=json.loads(re.search(r'<script type="application/json" id="cp-map">(.*?)</script>',fr).group(1))
+        self.assertEqual(m['우리 요청,']['o'],'고객 요청,');self.assertEqual(m['클릭 한 번으로']['o'],'승인 한 번으로')
+        self.post(o,'/biz/ops/copy',{'site':'biz','tpl':'b_intro.html','src':'고객 요청,','dst':'우리 회사 요청,'})
+        h=self.client().get('/biz/').get_data(as_text=True);self.assertIn('<h1>우리 회사 요청,<br>클릭 한 번으로<br>끝냅니다</h1>',h)
+        self.assertNotIn('우리 회사 우리',h)  # 바꾼 글자를 다시 바꾸지 않는다
+        with self.core.conn() as db:db.execute('DELETE FROM copy_edits');db.execute('DELETE FROM copy_page_edits')
+
     def test_password_links_and_consumer_kakao(self):
         sent=[];kakao=[]
         b,o,cid=self.signup_and_approve('비번마켓','pw@example.com')
@@ -397,6 +414,22 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('다음 주 회수 예정입니다.',page)
         bad=self.client();self.post(bad,'/lookup',{'phone':'01012345678','password':'0000'},'/mine')
         self.assertEqual(bad.get(f'/case/{case_id}').status_code,404)
+
+    def test_audit_fixes(self):
+        b,o,cid=self.signup_and_approve('점검상회','check@example.com')
+        # 미리 정한 답변이 없는 유형(기타)은 승인만으로 처리되지 않는다
+        me=self.client();cs=self.file_case(me,'점검상회','기타',str(cid))
+        r=self.post(b,f'/biz/case/{cs}',{'act':'approve'});print(r.status_code,r.headers.get('Location'));page=b.get(r.headers.get('Location') or f'/biz/case/{cs}').get_data(as_text=True)
+        self.assertIn('답변을 직접 적어',page)
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT decision FROM cases WHERE id=?',(cs,)).fetchone()[0],'pending')
+        # 정보 제공에 동의하지 않은 요청에는 환불 계좌 칸이 없다
+        me2=self.client();cs2=self.file_case(me2,'점검상회','반품·환불',str(cid),consent='')
+        with self.core.conn() as db:self.assertFalse(self.core.refund_case(db.execute('SELECT * FROM cases WHERE id=?',(cs2,)).fetchone()))
+        # 앱 API에 배열을 보내도 서버 오류가 나지 않는다
+        self.assertNotEqual(self.client().post('/api/v1/mine',json=[1]).status_code,500)
+        self.assertNotEqual(self.client().post('/biz/api/v1/login',json=[1]).status_code,500)
+        # 오래 열어 둔 화면에서 보내면 우리말 안내
+        r=self.client().post('/biz/login',data={'login_id':'x'});self.assertEqual(r.status_code,400);self.assertIn('새로고침',r.get_data(as_text=True))
 
     def test_access_control(self):
         b1,o,cid1=self.signup_and_approve('갑회사','a@example.com')

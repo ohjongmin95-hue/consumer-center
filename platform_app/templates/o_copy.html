@@ -19,7 +19,7 @@
 <p class="cp-count">{% if pg=='edited' %}바꾼 문구{% elif pg_name %}{{ pg_name }}{% else %}전체 화면{% endif %}{% if q %} · ‘{{ q }}’{% endif %} <b>{{ n_items }}개</b>{% if n_items>200 %}<span> · 앞의 200개만 보여요. 글자를 더 적어 좁혀 보세요</span>{% endif %}</p>
 
 {% if items %}<div class="cp-list">{% for it in items %}
-<form class="cp-item{{ ' edited' if it.edited }}" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="site" value="{{ it.site }}"><input type="hidden" name="src" value="{{ it.src }}"><input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="pg" value="{{ pg }}">
+<form class="cp-item{{ ' edited' if it.edited }}" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="site" value="{{ it.site }}"><input type="hidden" name="src" value="{{ it.src }}">{% if it.tpl %}<input type="hidden" name="tpl" value="{{ it.tpl }}">{% endif %}<input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="pg" value="{{ pg }}">
 <div class="cp-meta"><span class="cp-where">{{ it.where }}</span><span class="pill acc cp-badge">바꿈</span></div>
 <textarea class="cp-text" name="dst" rows="1" aria-label="문구" data-orig="{{ it.dst }}">{{ it.dst }}</textarea>
 <div class="cp-foot"><span class="cp-was">{% if it.edited %}원래 문구 · {{ it.src }}{% endif %}</span><button class="btn sm cp-save" disabled>저장</button></div>

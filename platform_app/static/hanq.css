@@ -1276,3 +1276,5 @@ html:has(.intro){scroll-behavior:smooth}
 .vz-stage.pc .vz-frame{min-width:1024px}
 .vz-stage.m .vz-frame{width:390px;max-width:100%;margin:0 auto;height:780px;border-radius:28px;box-shadow:0 0 0 8px var(--fg)}
 @media (max-width:767.98px){.vz-dev{margin-left:0}.vz-stage{padding:8px;border-radius:18px}}
+.co-act{display:flex;gap:6px;align-items:center}.co-act .inp{width:150px}
+@media (max-width:767.98px){.co-row{flex-wrap:wrap}.co-row .co-act{flex-basis:100%;justify-content:flex-end}.co-row .co-act .inp{flex:1;width:auto;min-width:0}}
