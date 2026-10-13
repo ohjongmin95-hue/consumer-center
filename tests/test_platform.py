@@ -343,7 +343,8 @@ class PlatformTest(unittest.TestCase):
         me=self.client();case_id=self.file_case(me,'갑회사','교환',str(cid1))
         self.assertEqual(b2.get(f'/biz/case/{case_id}').status_code,404)
         home=self.client().get('/biz/');self.assertEqual(home.status_code,200);page=home.get_data(as_text=True)
-        self.assertIn('승인 한 번으로',page);self.assertIn('소보루 CS 로그인',page);self.assertNotIn('noindex',page)
+        self.assertIn('승인 한 번으로',page);self.assertIn('곧 출시',page);self.assertIn('/biz/signup',page);self.assertNotIn('noindex',page)
+        login=self.client().get('/biz/login').get_data(as_text=True);self.assertIn('소보루 CS 로그인',login)
         self.assertEqual(self.client().get('/biz/all').status_code,302)
         self.assertEqual(self.client().get('/biz/ops').status_code,302)
         # CSRF 없는 요청은 거절

@@ -13,6 +13,8 @@ from core import conn, clean, digits, BIG
 app=Flask(__name__,static_folder='static',template_folder='templates')
 app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',law_check=law.check,is_direct=core.is_direct)
 OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
+# 소개 화면의 앱 받기 버튼: 스토어 주소를 서버 설정(.env)에 넣으면 '곧 출시' 대신 버튼이 나온다
+APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 @app.before_request
@@ -151,7 +153,7 @@ def by_cat(rows):
 
 @app.route('/')
 def decide():
-    if not me():return render_template('b_login.html')  # 로그인 전: 소개 + 로그인
+    if not me():return render_template('b_intro.html',app_links=APP_LINKS)  # 로그인 전: 서비스 소개
     with conn() as db:
         rows=my_cases(db,me());n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(me()['id'],)).fetchone()[0]
         warn=insights.alerts(db,me());news=db.execute('SELECT * FROM news ORDER BY id DESC LIMIT 3').fetchall()
