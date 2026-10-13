@@ -1214,3 +1214,10 @@ body:has(.cs3){background:var(--card)}
   .intro br.pc{display:none}
   .in-cta .btn{flex:1;min-width:0}
 }
+
+/* 소개 화면 상단 메뉴: 누르면 해당 설명으로 부드럽게 이동 */
+html:has(.intro){scroll-behavior:smooth}
+.intro section[id]{scroll-margin-top:72px}
+.gnb nav.in-nav a{font-weight:500;font-size:15.5px}
+@media (max-width:760px){.intro section[id]{scroll-margin-top:118px}.gnb nav.in-nav a{font-size:14.5px}}
+@media (prefers-reduced-motion:reduce){html:has(.intro){scroll-behavior:auto}}
