@@ -605,9 +605,10 @@ def ops_visual_move():
     except ValueError:return jsonify(ok=False,msg='위치를 확인해 주세요')
     if not re.fullmatch(r'[a-z_]+\.html',tpl) or dev not in core.MOVE_MEDIA or not core.MOVE_SEL.match(sel):return jsonify(ok=False,msg='옮길 문장을 다시 골라 주세요')
     with conn() as db:
-        if dx==0 and dy==0:db.execute('DELETE FROM copy_moves WHERE tpl=? AND sel=? AND dev=?',(tpl,sel,dev))
+        reset=f.get('reset')=='1' or (dev=='pc' and dx==0 and dy==0)  # 모바일은 0,0도 '처음 자리에 둠'으로 저장 (PC 위치를 안 따라감)
+        if reset:db.execute('DELETE FROM copy_moves WHERE tpl=? AND sel=? AND dev=?',(tpl,sel,dev))
         else:db.execute('INSERT INTO copy_moves(tpl,sel,dev,dx,dy,created) VALUES(?,?,?,?,?,?) ON CONFLICT(tpl,sel,dev) DO UPDATE SET dx=excluded.dx,dy=excluded.dy,created=excluded.created',(tpl,sel,dev,dx,dy,core.iso()))
-    return jsonify(ok=True,msg='원래 자리로 옮겼어요' if dx==0 and dy==0 else '위치를 저장했어요')
+    return jsonify(ok=True,msg=('모바일도 PC 위치를 따라가요' if dev=='m' else '원래 자리로 옮겼어요') if reset else '위치를 저장했어요')
 
 
 # ---------- 사장님 앱 API (/api/v1) ----------

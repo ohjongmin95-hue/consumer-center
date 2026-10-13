@@ -430,12 +430,21 @@ def apply_copy(html,edits):
     return _TEXT.sub(tag,html)
 # 문장 위치 옮기기: 운영 화면(/ops/visual)에서 끌어 옮긴 문장은 화면(템플릿)·요소·기기(PC/모바일)별로 저장해 두고,
 # 페이지를 내보낼 때 <style>로 그만큼 옮긴다. 옆 문장 자리는 그대로 두도록 position:relative로만 옮긴다.
+# PC에서 옮긴 위치는 모바일에도 그대로 따라간다(가로는 화면 폭 비율만큼 줄여서). 모바일에서 따로 옮기면 모바일만 그 위치를 쓴다.
 MOVE_SEL=re.compile(r'^[a-z0-9#>:()\- _]{1,400}$')
 MOVE_MEDIA={'pc':'(min-width:768px)','m':'(max-width:767.98px)'}
+MOVE_PC_W=1280  # PC 기준 폭: 모바일에서는 가로 이동을 (화면 폭/1280)만큼 줄인다
 def copy_moves(tpl):
     with conn() as db:return db.execute('SELECT sel,dev,dx,dy FROM copy_moves WHERE tpl=?',(tpl,)).fetchall()
 def moves_style(rows):
-    css=''.join('@media %s{%s{position:relative;left:%dpx;top:%dpx}}'%(MOVE_MEDIA[r['dev']],r['sel'],r['dx'],r['dy']) for r in rows if r['dev'] in MOVE_MEDIA and MOVE_SEL.match(r['sel']))
+    rows=[r for r in rows if r['dev'] in MOVE_MEDIA and MOVE_SEL.match(r['sel'])];mob={r['sel'] for r in rows if r['dev']=='m'}
+    m=MOVE_MEDIA['m'];css=''
+    for r in rows:
+        if r['dev']=='pc':
+            css+='%s{position:relative;left:%dpx;top:%dpx}'%(r['sel'],r['dx'],r['dy'])
+            if r['sel'] not in mob:css+='@media %s{%s{left:calc(%d * 100vw / %d)}}'%(m,r['sel'],r['dx'],MOVE_PC_W)
+    for r in rows:
+        if r['dev']=='m':css+='@media %s{%s{position:relative;left:%dpx;top:%dpx}}'%(m,r['sel'],r['dx'],r['dy'])
     data=json.dumps([dict(sel=r['sel'],dev=r['dev'],dx=r['dx'],dy=r['dy']) for r in rows],ensure_ascii=False).replace('&','&amp;').replace("'",'&#39;').replace('<','&lt;')
     return "<style id=\"cp-moves\" data-moves='%s'>%s</style>"%(data,css)
 def copy_after_request(site):
