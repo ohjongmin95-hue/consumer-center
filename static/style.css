@@ -286,7 +286,8 @@ main{max-width:1160px;margin:0 auto;padding:0 24px 90px;min-height:calc(100vh - 
 .write-form { margin-top: 18px; }
 .cat-pick { border: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .cat-pick legend { font-weight: 750; margin-bottom: 9px; padding: 0; }
-.cat-radio input { position: absolute; opacity: 0; }
+.cat-radio { position: relative; }
+.cat-radio input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; opacity: 0; }
 .cat-radio .cat-chip { padding: 8px 15px; font-size: 14px; cursor: pointer; border: 2px solid transparent; }
 .cat-radio input:checked + .cat-chip { border-color: currentColor; }
 .cat-radio input:focus-visible + .cat-chip { outline: 3px solid #ef7300; outline-offset: 2px; }
@@ -1411,3 +1412,6 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 .ad-notify-on:disabled { cursor: default; color: var(--ad-sub); }
 /* 처리 절차 맨 아래 운영 안내 (법률 자문 안 함) */
 .process-disclaimer { margin: 32px auto 0; max-width: 640px; padding: 14px 16px; border-radius: 12px; background: #f6f5f2; color: #6b7280; font-size: 13px; line-height: 1.6; text-align: center; }
+
+/* hidden 속성을 준 요소는 항상 숨김 (display를 정한 요소도) */
+[hidden] { display: none !important; }
