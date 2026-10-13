@@ -145,6 +145,13 @@ class PlatformTest(unittest.TestCase):
             self.assertIn('content="g-code"',home);self.assertIn('og-biz.png',home);self.assertIn('content="n-code"',home);self.assertIn('SoftwareApplication',home)
             self.assertTrue(c.get('/biz/robots.txt').get_data(as_text=True).startswith('#DaumWebMasterTool:abc'))
 
+    def test_biz_terms_page(self):
+        c=self.client()
+        t=c.get('/biz/terms');self.assertEqual(t.status_code,200);page=t.get_data(as_text=True)
+        self.assertIn('이용약관',page);self.assertIn('제1조',page);self.assertNotIn('noindex',page)
+        self.assertIn('/biz/terms',c.get('/biz/signup').get_data(as_text=True))
+        self.assertIn('/terms</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True))
+
     def test_biz_app_inapp_pages(self):
         """앱 안 가입 신청·규칙·통계·설정·가이드: 웹과 같은 검사, 비밀번호를 바꾸면 새 토큰을 준다."""
         a=self.client()

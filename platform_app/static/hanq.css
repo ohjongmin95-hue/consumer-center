@@ -1221,6 +1221,10 @@ html:has(.intro){scroll-behavior:smooth}
 .gnb nav.in-nav a{font-weight:500;font-size:15.5px}
 @media (max-width:760px){.intro section[id]{scroll-margin-top:104px}.gnb nav.in-nav a{font-size:14.5px}}
 @media (prefers-reduced-motion:reduce){html:has(.intro){scroll-behavior:auto}}
+
+/* 가입 화면 약관 '보기' 링크 */
+.agree a.see{font-weight:600;font-size:14px;color:var(--fg3);text-decoration:underline;margin-left:4px}
+.terms section h2{font-size:17px}
 /* 휴대폰 상단 바: 로고와 로그인·시작하기 버튼을 한 줄에 (메뉴는 다음 줄) */
 @media (max-width:760px){
   .gnb .logo.biz .ch{height:26px}

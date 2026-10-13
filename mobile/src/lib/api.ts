@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 const configured = (Constants.expoConfig?.extra as { apiBase?: string } | undefined)?.apiBase ?? 'https://biz.soboru.co.kr';
 // 웹 미리보기는 같은 주소의 서버를 쓴다
 export const API_BASE = Platform.OS === 'web' ? '' : configured;
+export const SITE_BASE = configured; // 약관처럼 브라우저로 여는 사장님 사이트 주소
 
 export type Operator = { name: string; ceo: string; biz_no: string; address: string; manager: string };
 export type Meta = { name: string; cats: string[]; industries?: string[]; couriers: string[]; operator: Operator; signup: string; forgot: string; privacy: string };

@@ -14,7 +14,7 @@
 <label class="fld"><span>업종 (선택)</span><select class="inp" name="industry"><option value="">고르기</option>{% for x in INDUSTRIES %}<option {{ 'selected' if d.industry==x }}>{{ x }}</option>{% endfor %}</select></label>
 <label class="fld"><span>로그인 이메일</span><input class="inp" name="login_id" type="email" maxlength="80" value="{{ d.login_id or '' }}" required autocomplete="username"></label>
 <label class="fld"><span>비밀번호 (10자 이상)</span><input class="inp" name="password" type="password" minlength="10" required autocomplete="new-password"></label>
-<div class="agree"><label class="check"><input type="checkbox" name="terms" value="1" required><span class="bx"></span><span><b>이용약관 동의 (필수)</b><div class="cap">민원 처리 결과와 무관하게 보도는 독립적으로 이루어집니다</div></span></label></div>
+<div class="agree"><label class="check"><input type="checkbox" name="terms" value="1" required><span class="bx"></span><span><b>이용약관 동의 (필수)</b> <a class="see" href="{{ url_for('terms') }}" target="_blank" rel="noopener">보기</a><div class="cap">가입 여부는 소비자 민원 처리 결과에 영향을 주지 않습니다</div></span></label></div>
 <button class="btn full" style="margin-top:8px">가입 신청</button>
 <p class="cap" style="text-align:center;margin-top:8px">이미 가입하셨나요? <a class="link" href="{{ url_for('login') }}">로그인</a></p></form></div>
 {% endblock %}

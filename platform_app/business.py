@@ -60,8 +60,12 @@ def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/ca
 
 @app.route('/sitemap.xml')
 def sitemap():
-    body=''.join('<url><loc>%s</loc></url>'%core.site_url('biz',p) for p in ('/','/signup','/login'))
+    body=''.join('<url><loc>%s</loc></url>'%core.site_url('biz',p) for p in ('/','/signup','/login','/terms'))
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
+
+@app.route('/terms')
+def terms():
+    return render_template('b_terms.html',op=core.OPERATOR,since=core.TERMS_SINCE,privacy_url=core.site_url('me','/privacy'))
 
 def signup_apply(f):
     """가입 신청 검사와 저장. 웹과 앱이 같이 쓴다. (입력값, 오류 문구)를 돌려주고 문구가 비면 신청이 들어간 것이다."""

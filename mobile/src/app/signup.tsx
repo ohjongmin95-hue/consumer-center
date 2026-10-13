@@ -1,9 +1,10 @@
 // 가입 신청: 웹과 같은 항목. 신청하면 운영팀이 확인하고 승인 메일을 보낸다.
 import { router } from 'expo-router';
 import { useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Btn, Card, Chips, Field, Notice, PwField } from '../components/ui';
-import { api } from '../lib/api';
+import { api, SITE_BASE } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { C } from '../lib/theme';
 
@@ -68,8 +69,11 @@ export default function Signup() {
         <Pressable onPress={() => setTerms(!terms)} style={st.agree} accessibilityRole="checkbox" accessibilityState={{ checked: terms }}>
           <View style={[st.box, terms && { backgroundColor: C.accent, borderColor: C.accent }]}>{terms ? <Text style={{ color: '#fff', fontWeight: '800' }}>✓</Text> : null}</View>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: C.fg }}>이용약관 동의 (필수)</Text>
-            <Text style={{ fontSize: 13, color: C.fg3 }}>민원 처리 결과와 무관하게 보도는 독립적으로 이루어집니다</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: C.fg }}>
+              이용약관 동의 (필수){'  '}
+              <Text onPress={() => WebBrowser.openBrowserAsync(SITE_BASE + '/terms')} style={{ fontSize: 14, fontWeight: '600', color: C.fg3, textDecorationLine: 'underline' }} accessibilityRole="link">보기</Text>
+            </Text>
+            <Text style={{ fontSize: 13, color: C.fg3 }}>가입 여부는 소비자 민원 처리 결과에 영향을 주지 않습니다</Text>
           </View>
         </Pressable>
         <Notice text={err} />
