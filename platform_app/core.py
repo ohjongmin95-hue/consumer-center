@@ -197,6 +197,12 @@ def init():
         CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,name TEXT NOT NULL,price TEXT NOT NULL DEFAULT '',
           stock TEXT NOT NULL DEFAULT '',info TEXT NOT NULL DEFAULT '',updated TEXT NOT NULL,FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS orders(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,order_no TEXT NOT NULL,channel TEXT NOT NULL DEFAULT '',
+          ordered_on TEXT NOT NULL DEFAULT '',buyer TEXT NOT NULL DEFAULT '',phone TEXT NOT NULL DEFAULT '',address TEXT NOT NULL DEFAULT '',
+          product TEXT NOT NULL DEFAULT '',qty INTEGER NOT NULL DEFAULT 1,amount INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'paid',
+          courier TEXT NOT NULL DEFAULT '',invoice TEXT NOT NULL DEFAULT '',memo TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,updated TEXT NOT NULL,
+          UNIQUE(company_id,order_no),FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
+        CREATE INDEX IF NOT EXISTS orders_phone ON orders(company_id,phone);
         CREATE TABLE IF NOT EXISTS tracks(fid TEXT PRIMARY KEY,case_id INTEGER NOT NULL,kind TEXT NOT NULL,courier TEXT NOT NULL,invoice TEXT NOT NULL,
           level INTEGER NOT NULL DEFAULT 0,place TEXT NOT NULL DEFAULT '',at TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',updated TEXT NOT NULL,
           FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE);
@@ -378,6 +384,7 @@ def purge_old(today=None):
                 except FileNotFoundError:pass
             db.execute('DELETE FROM cases WHERE id=?',(c['id'],));n+=1
         db.execute('DELETE FROM mail_log WHERE created<?',(cut,))
+        db.execute('DELETE FROM orders WHERE updated<?',(cut,))  # 기업이 올린 주문(구매자 정보 포함)도 같은 기간 뒤 파기
     return n
 
 def notify_late():
