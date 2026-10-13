@@ -533,7 +533,12 @@ def ops_copy():
     with conn() as db:
         if request.method=='POST':
             site=request.form.get('site');src=(request.form.get('src') or '').strip();dst='\n'.join(l for l in (' '.join(x.split()) for x in (request.form.get('dst') or '').splitlines()) if l)  # 줄바꿈은 살리고 빈 줄은 뺀다
-            if site not in core.COPY_SITES or not src:msg,ok='바꿀 문구를 확인해 주세요',False
+            tpl=request.form.get('tpl') or ''
+            if site not in core.COPY_SITES or not src or (tpl and (site=='all' or not re.fullmatch(r'[a-z_]+\.html',tpl))):msg,ok='바꿀 문구를 확인해 주세요',False
+            elif tpl:  # 화면 보며 고친 글자: 그 화면에서만 바뀐다
+                if dst==src:db.execute('DELETE FROM copy_page_edits WHERE site=? AND tpl=? AND src=?',(site,tpl,src))
+                else:db.execute('INSERT INTO copy_page_edits(site,tpl,src,dst,created) VALUES(?,?,?,?,?) ON CONFLICT(site,tpl,src) DO UPDATE SET dst=excluded.dst,created=excluded.created',(site,tpl,src[:2000],dst[:2000],core.iso()))
+                msg,ok=('화면에서 지웠어요' if not dst else '저장했어요'),True
             else:
                 if request.form.get('shown'):  # 화면에서 바로 고친 경우: 보이는 글자가 이미 바꾼 문구면 그 기록을 고친다
                     prev=db.execute("SELECT site,src FROM copy_edits WHERE dst=? AND site IN (?,'all') ORDER BY site=? DESC LIMIT 1",(src,site,site)).fetchone()
@@ -545,10 +550,12 @@ def ops_copy():
             flash(msg,'ok' if ok else 'error')
             return redirect(url_for('ops_copy',q=q or None,pg=pg or None))
         edits={(e['site'],e['src']):e for e in db.execute('SELECT * FROM copy_edits ORDER BY id DESC')}
+        page_edits=db.execute('SELECT * FROM copy_page_edits ORDER BY id DESC').fetchall()
         n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
     names=dict(COPY_PAGES);cat=core.copy_catalog();keys={(s,t) for s,t,_ in cat}
     items=[dict(site=s,src=t,files=fs,dst=edits[(s,t)]['dst'] if (s,t) in edits else t,edited=(s,t) in edits) for s,t,fs in cat]
     items=[dict(site=s,src=t,files=[],dst=e['dst'],edited=True) for (s,t),e in edits.items() if (s,t) not in keys]+items
+    items=[dict(site=e['site'],src=e['src'],tpl=e['tpl'],files=[e['tpl']],dst=e['dst'],edited=True,only=True) for e in page_edits]+items  # 화면 보며 고친 글자 (그 화면에서만)
     counts={}
     for it in items:
         for f in it['files']:counts[f]=counts.get(f,0)+1
@@ -558,8 +565,8 @@ def ops_copy():
     if q:items=[it for it in items if q in it['src'] or q in it['dst']]
     order={f:i for i,(f,_) in enumerate(COPY_PAGES)}
     items.sort(key=lambda it:(not it['edited'],min((order.get(f,99) for f in it['files']),default=99)))  # 바꾼 문구 먼저, 그다음 화면 순서대로
-    for it in items:it['where']=', '.join(names.get(f,'') for f in it['files'][:3] if names.get(f)) or core.COPY_SITES[it['site']]
-    return render_template('o_copy.html',items=items[:200],n_items=len(items),pages=pages,n_edited=len(edits),q=q,pg=pg,pg_name=names.get(pg,''),n_signup=n_pending,otab='copy')
+    for it in items:it['where']=(', '.join(names.get(f,'') for f in it['files'][:3] if names.get(f)) or core.COPY_SITES[it['site']])+(' 화면에서만' if it.get('only') else '')
+    return render_template('o_copy.html',items=items[:200],n_items=len(items),pages=pages,n_edited=len(edits)+len(page_edits),q=q,pg=pg,pg_name=names.get(pg,''),n_signup=n_pending,otab='copy')
 
 
 VISUAL_PAGES=[('me','/','고객 첫 화면',0),('me','/new','요청 접수',0),('me','/guide','이용 안내',0),('me','/mine','내 접수',0),('me','/to/','기업별 고객센터',0),('me','/privacy','개인정보 처리방침',0),

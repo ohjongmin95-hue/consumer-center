@@ -144,13 +144,20 @@ function dropLine(n){function br(e,dir){while(e&&e.nodeType===3&&!e.data.trim())
   var b=br(n.nextSibling,'nextSibling')||br(n.previousSibling,'previousSibling');if(b)b.remove();n.data='';}
 function setText(n,v){var ls=v.split('\n');n.data=ls[0];var at=n;ls.slice(1).forEach(function(l){var b=document.createElement('br'),t=document.createTextNode(l);at.after(b,t);at=t;});}
 function fit(t){t.style.height='auto';t.style.height=t.scrollHeight+'px';}
+// 지금 보이는 글자가 원래 어떤 글자였는지 (이미 바꾼 글자를 다시 고칠 때 원래 글자로 저장해야 바뀐다)
+var MAP={};try{MAP=JSON.parse((document.getElementById('cp-map')||{}).textContent||'{}');}catch(e){}
 function finishEdit(save){
   var el=editing;if(!el)return;editing=null;el.classList.remove('cp-editing');
-  var parts=pop._parts,tas=pop.querySelectorAll('textarea'),pairs=[];pop.hidden=true;
-  if(save)parts.forEach(function(x,i){var v=tas[i].value.split('\n').map(norm).filter(function(t){return t;}).join(x.ph?' ':'\n');if(v===x.was)return;pairs.push([x.was,v]);if(x.ph)x.ph.placeholder=v;else if(v)setText(x.n,v);else dropLine(x.n);});
-  showBar();if(!pairs.length)return;
-  Promise.all(pairs.map(function(p){return post(C.copy,{site:C.site,src:p[0],dst:p[1],shown:'1'});})).then(function(js){
-    var bad=js.filter(function(j){return !j.ok;})[0];msg(bad?bad.msg:'글자를 저장했어요');});
+  var parts=pop._parts,tas=pop.querySelectorAll('textarea'),saves={},order=[];pop.hidden=true;
+  if(save)parts.forEach(function(x,i){var v=tas[i].value.split('\n').map(norm).filter(function(t){return t;}).join(x.ph?' ':'\n');if(v===x.was)return;
+    var m=MAP[x.was],src=m?m.o:x.was,s=saves[src];
+    if(!s){s=saves[src]={lines:(m?m.d:x.was).split('\n'),ph:x.ph};order.push(src);}
+    var at=s.lines.indexOf(x.was);if(at<0)s.lines=[v];else s.lines.splice(at,1,v);
+    if(x.ph)x.ph.placeholder=v;else if(v)setText(x.n,v);else dropLine(x.n);});
+  showBar();if(!order.length)return;
+  Promise.all(order.map(function(src){var s=saves[src],dst=s.lines.filter(function(t){return t;}).join(s.ph?' ':'\n');
+    return post(C.copy,{site:C.site,tpl:C.tpl,src:src,dst:dst});})).then(function(js){
+    var bad=js.filter(function(j){return !j.ok;})[0];msg(bad?bad.msg:'이 화면에서만 바꿨어요');});
 }
 pop.addEventListener('click',function(e){var a=e.target.dataset.a;if(a)finishEdit(a==='save');});
 pop.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finishEdit(true);}if(e.key==='Escape'){e.preventDefault();finishEdit(false);}});

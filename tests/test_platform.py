@@ -1,5 +1,5 @@
 """SOBORU 플랫폼(platform_app): 한큐 접수 → 기업 승인·자동 처리 → 소비자 확인, 비입점 처리, 권한."""
-import os, re, sys, secrets, tempfile, unittest, importlib
+import json, os, re, sys, secrets, tempfile, unittest, importlib
 from pathlib import Path
 from unittest.mock import patch
 from werkzeug.security import generate_password_hash
@@ -351,6 +351,23 @@ class PlatformTest(unittest.TestCase):
         self.post(o,'/biz/ops/copy',{'site':'biz','src':'바로','dst':'바로\n끝','shown':'1'})
         self.assertIn('고객 요청,<br>바로<br>끝</',self.client().get('/biz/').get_data(as_text=True))
         with self.core.conn() as db:db.execute('DELETE FROM copy_edits')
+
+    def test_visual_edit_stays_on_its_page(self):
+        o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+        # 화면 보며 고친 글자는 그 화면에서만 (같은 글자가 있는 로그인 화면은 그대로)
+        self.post(o,'/biz/ops/copy',{'site':'biz','tpl':'b_intro.html','src':'승인 한 번으로','dst':'클릭 한 번으로'})
+        self.assertIn('클릭 한 번으로',self.client().get('/biz/').get_data(as_text=True))
+        self.assertIn('<br>승인 한 번으로<br>',self.client().get('/biz/login').get_data(as_text=True))
+        self.assertIn('클릭 한 번으로',o.get('/biz/ops/copy?pg=edited').get_data(as_text=True))
+        # 목록에서 일부 글자를 바꾼 뒤 화면에서 그 줄을 다시 고쳐도 반영된다 (원래 글자로 저장)
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'고객 요청','dst':'우리 요청'})
+        fr=o.get('/biz/ops/visual/frame?p=6').get_data(as_text=True)
+        m=json.loads(re.search(r'<script type="application/json" id="cp-map">(.*?)</script>',fr).group(1))
+        self.assertEqual(m['우리 요청,']['o'],'고객 요청,');self.assertEqual(m['클릭 한 번으로']['o'],'승인 한 번으로')
+        self.post(o,'/biz/ops/copy',{'site':'biz','tpl':'b_intro.html','src':'고객 요청,','dst':'우리 회사 요청,'})
+        h=self.client().get('/biz/').get_data(as_text=True);self.assertIn('<h1>우리 회사 요청,<br>클릭 한 번으로<br>끝냅니다</h1>',h)
+        self.assertNotIn('우리 회사 우리',h)  # 바꾼 글자를 다시 바꾸지 않는다
+        with self.core.conn() as db:db.execute('DELETE FROM copy_edits');db.execute('DELETE FROM copy_page_edits')
 
     def test_password_links_and_consumer_kakao(self):
         sent=[];kakao=[]

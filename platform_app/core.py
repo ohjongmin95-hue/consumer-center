@@ -4,6 +4,7 @@
 홈페이지(소비자제보센터, 저장소 최상위 app.py)와는 DB도 서비스도 따로 쓴다.
 """
 import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, threading, json, urllib.request, urllib.error
+import html as _html
 from pathlib import Path
 from email.message import EmailMessage
 from flask import session, request, abort, g
@@ -156,6 +157,7 @@ def init():
         CREATE TABLE IF NOT EXISTS news(id INTEGER PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,source_url TEXT NOT NULL,created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sent_marks(kind TEXT NOT NULL,company_id INTEGER NOT NULL,key TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(kind,company_id,key));
         CREATE TABLE IF NOT EXISTS copy_edits(id INTEGER PRIMARY KEY,site TEXT NOT NULL,src TEXT NOT NULL,dst TEXT NOT NULL,created TEXT NOT NULL,UNIQUE(site,src));
+        CREATE TABLE IF NOT EXISTS copy_page_edits(id INTEGER PRIMARY KEY,site TEXT NOT NULL,tpl TEXT NOT NULL,src TEXT NOT NULL,dst TEXT NOT NULL,created TEXT NOT NULL,UNIQUE(site,tpl,src));
         CREATE TABLE IF NOT EXISTS copy_moves(id INTEGER PRIMARY KEY,tpl TEXT NOT NULL,sel TEXT NOT NULL,dev TEXT NOT NULL,dx INTEGER NOT NULL,dy INTEGER NOT NULL,created TEXT NOT NULL,UNIQUE(tpl,sel,dev));
         CREATE TABLE IF NOT EXISTS chat_log(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,category TEXT NOT NULL,outcome TEXT NOT NULL,created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS app_push(case_id INTEGER NOT NULL,token TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(case_id,token),
@@ -411,19 +413,42 @@ def _copy_pattern(src):
         if not tok:continue
         out.append(r'\s+' if tok.isspace() else ''.join(_ENT.get(ch) or re.escape(ch) for ch in tok))
     return re.compile(''.join(out))
-def copy_edits(site):
+def _key(t):return ' '.join(_html.unescape(t).split())
+def copy_edits(site,tpl=None):
+    """이 화면에 쓸 바꾼 문구. 화면 보며 고친 글자(page)는 그 화면에서만, 문구 고치기 목록에서 고친 글자(all)는 모든 화면에."""
     with conn() as db:
         rows=db.execute("SELECT src,dst FROM copy_edits WHERE site IN (?,'all')",(site,)).fetchall()
+        page=db.execute('SELECT src,dst FROM copy_page_edits WHERE site=? AND tpl=?',(site,tpl)).fetchall() if tpl else []
     esc=lambda t:t.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&#34;')
-    # 긴 문구부터 바꿔서 짧은 문구가 긴 문구 안을 먼저 건드리지 않게. 고친 문구의 줄바꿈은 화면에서 <br>로 (입력칸 안내 글에서는 띄어쓰기로)
-    return [(_copy_pattern(r['src']),esc(r['dst']).replace('\n','<br>'),esc(' '.join(r['dst'].split()))) for r in sorted(rows,key=lambda r:-len(r['src'])) if r['src'].strip()]
+    # 고친 문구의 줄바꿈은 화면에서 <br>로 (입력칸 안내 글에서는 띄어쓰기로)
+    one=lambda r:(esc(r['dst']).replace('\n','<br>'),esc(' '.join(r['dst'].split())),r['dst'])
+    rows=[r for r in rows if r['src'].strip()]
+    exact={_key(r['src']):one(r) for r in rows}
+    exact.update({_key(r['src']):one(r) for r in page if r['src'].strip()})  # 이 화면에서 고친 것이 먼저
+    rows.sort(key=lambda r:-len(r['src']))  # 긴 문구가 먼저 잡히게
+    part=re.compile('|'.join('(%s)'%_copy_pattern(r['src']).pattern for r in rows)) if rows else None
+    return dict(exact=exact,part=part,parts=[one(r) for r in rows])
 _GONE='\x00'  # 지운 글자 자리 표시. 지운 줄의 줄바꿈(<br>)도 같이 없애서 빈 줄이 남지 않게 한다
 _GONE_BR=re.compile(r'\x00[ \t\r\n]*<br\s*/?>|<br\s*/?>[ \t\r\n]*\x00',re.I)
-def apply_copy(html,edits):
-    if not edits:return html
+def apply_copy(html,edits,seen=None):
+    """글자 조각(태그 사이 글자)이 바꾼 문구와 통째로 같으면 그 조각을 바꾸고, 아니면 안에 든 문구를 한 번에 바꾼다.
+    바꾼 결과를 다시 바꾸지 않는다. seen이 있으면 {화면에 보이는 글자: (원래 글자, 바꾼 문구)}를 모은다(화면 보며 고치기용)."""
+    if not edits or not (edits['exact'] or edits['part']):return html
+    ex,part,parts=edits['exact'],edits['part'],edits['parts']
     def sub(t,attr=False):
-        for a,b,c in edits:t=a.sub(lambda m:(c if attr else b) or ('' if attr else _GONE),t)
-        return t
+        k=_key(t)
+        if not k:return t
+        e=ex.get(k)
+        if e:
+            out=(e[1] if attr else e[0]) or ('' if attr else _GONE)
+            if not attr:out=t[:len(t)-len(t.lstrip())]+out+t[len(t.rstrip()):]
+        elif part:out=part.sub(lambda m:(parts[m.lastindex-1][1] if attr else parts[m.lastindex-1][0]) or ('' if attr else _GONE),t)
+        else:return t
+        if seen is not None and out!=t:
+            shown=_key(out.replace(_GONE,'')) if attr else None
+            d=e[2] if e else _html.unescape(_key(out.replace(_GONE,'')))
+            for line in ([shown] if attr else [x for x in (' '.join(l.split()) for l in d.split('\n')) if x]):seen.setdefault(line,(k,d))
+        return out
     def tag(m):
         if m.group(1) is None:return sub(m.group(2))
         t=m.group(1)
@@ -455,12 +480,16 @@ def copy_after_request(site):
     def hook(r):
         if r.mimetype=='text/html' and not r.direct_passthrough and not request.path.startswith('/ops'):
             tpl=g.get('cp_tpl')
-            try:edits=copy_edits(site);moves=copy_moves(tpl) if tpl else []
+            editor=request.headers.get('X-Cp-Editor')=='1'
+            try:edits=copy_edits(site,tpl);moves=copy_moves(tpl) if tpl else []
             except Exception:return r
-            if edits or moves:
-                html=r.get_data(as_text=True)
-                if edits:html=apply_copy(html,edits)
+            if edits['exact'] or moves or editor:
+                html=r.get_data(as_text=True);seen={} if editor else None
+                html=apply_copy(html,edits,seen)
                 if moves:html=html.replace('</head>',moves_style(moves)+'</head>',1)
+                if editor:  # 화면 보며 고치기: 지금 보이는 글자가 원래 어떤 글자였는지 알려 줘서, 바꾼 글자를 다시 고쳐도 제대로 저장되게
+                    data=json.dumps({k:{'o':o,'d':d} for k,(o,d) in seen.items()},ensure_ascii=False).replace('<','\\u003c')
+                    html=html.replace('</body>','<script type="application/json" id="cp-map">'+data+'</script></body>',1)
                 r.set_data(html)
             if tpl and request.headers.get('X-Cp-Editor')=='1':r.headers['X-Cp-Tpl']=tpl
         return r
