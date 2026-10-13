@@ -1219,5 +1219,14 @@ body:has(.cs3){background:var(--card)}
 html:has(.intro){scroll-behavior:smooth}
 .intro section[id]{scroll-margin-top:72px}
 .gnb nav.in-nav a{font-weight:500;font-size:15.5px}
-@media (max-width:760px){.intro section[id]{scroll-margin-top:118px}.gnb nav.in-nav a{font-size:14.5px}}
+@media (max-width:760px){.intro section[id]{scroll-margin-top:104px}.gnb nav.in-nav a{font-size:14.5px}}
 @media (prefers-reduced-motion:reduce){html:has(.intro){scroll-behavior:auto}}
+/* 휴대폰 상단 바: 로고와 로그인·시작하기 버튼을 한 줄에 (메뉴는 다음 줄) */
+@media (max-width:760px){
+  .gnb .logo.biz .ch{height:26px}
+  .gnb .logo.biz .wm{font-size:18px}
+  .gnb .right{gap:2px}
+  .gnb .right .tbtn{padding:8px;font-size:14px}
+  .gnb .right .btn.sm{height:36px;padding:0 12px;font-size:14px}
+}
+@media (max-width:360px){.gnb .logo.biz .wm{font-size:16px}.gnb .logo.biz .ch{height:22px}}
