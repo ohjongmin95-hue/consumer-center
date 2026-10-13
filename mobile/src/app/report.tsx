@@ -1,4 +1,4 @@
-// 월간 리포트: 달을 고르면 그 달 민원 요약. 문구를 그대로 공유할 수 있다.
+// 월간 리포트: 달을 고르면 그 달 요청 요약. 문구를 그대로 공유할 수 있다.
 import { useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { BarLine, Btn, Card, H2, Loading, Notice, Screen } from '../components/ui';
@@ -38,7 +38,7 @@ export default function ReportScreen() {
       <View style={{ paddingHorizontal: 24, paddingVertical: 14, gap: 6 }}>
         <Text style={st.h1}>{ymLabel(data.ym)} CS 리포트</Text>
         <Text style={st.p}>
-          받은 민원 {data.n}건 · 지난달보다 {diff === 0 ? '같아요' : diff > 0 ? `${diff}건 많아요` : `${-diff}건 적어요`}
+          받은 요청 {data.n}건 · 지난달보다 {diff === 0 ? '같아요' : diff > 0 ? `${diff}건 많아요` : `${-diff}건 적어요`}
         </Text>
       </View>
       <Notice text={err} />
@@ -46,7 +46,7 @@ export default function ReportScreen() {
         <Line label="자동 처리율" v={`${data.auto}%`} />
         <Line label="해결률" v={data.res === null ? '-' : `${data.res}%`} />
         <Line label="첫 답변까지 (중간값)" v={data.reply_h === null ? '-' : `${data.reply_h}시간`} />
-        <Line label="답변 목표일을 넘긴 민원" v={`${data.late}건`} last />
+        <Line label="답변 목표일을 넘긴 요청" v={`${data.late}건`} last />
       </Card>
       <Card>
         <H2>유형별</H2>
@@ -56,7 +56,7 @@ export default function ReportScreen() {
       </Card>
       {data.top_products.length ? (
         <Card>
-          <H2>민원이 많았던 상품</H2>
+          <H2>요청이 많았던 상품</H2>
           {data.top_products.map((p) => (
             <Line key={p.label} label={p.label} v={`${p.n}건`} />
           ))}

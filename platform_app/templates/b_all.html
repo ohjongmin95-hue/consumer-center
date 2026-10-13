@@ -1,9 +1,9 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}
-{% block title %}민원 · {{ BNAME }}{% endblock %}
+{% block title %}요청 · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('all') }}{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>민원</h1></div><a class="btn sm" href="{{ url_for('new_case') }}">+ 직접 등록</a>
+<div class="phead"><div><h1>요청</h1></div><a class="btn sm" href="{{ url_for('new_case') }}">+ 직접 등록</a>
 <form class="searchbar" method="get"><input type="hidden" name="f" value="{{ fil }}"><input name="q" value="{{ q }}" placeholder="제목, 소비자 이름, 접수번호" aria-label="검색"><button class="btn sm gray">검색</button></form></div>
 <div class="tabs">{% for key,l in [('all','전체'),('open','답변 전'),('done','답변 완료'),('bad','지연·미해결'),('ret','반품 회수')] %}<a href="{{ url_for('all_cases',f=key,q=q or None) }}" class="{{ 'on' if fil==key }}">{{ l }}<span>{{ groups[key]|length }}</span></a>{% endfor %}</div>
-{% if rows %}{{ b.case_table(rows,m) }}{% else %}<div class="empty-card"><b>{{ '검색 결과가 없습니다' if q else '해당하는 민원이 없습니다' }}</b></div>{% endif %}
+{% if rows %}{{ b.case_table(rows,m) }}{% else %}<div class="empty-card"><b>{{ '검색 결과가 없습니다' if q else '해당하는 요청이 없습니다' }}</b></div>{% endif %}
 {% endblock %}

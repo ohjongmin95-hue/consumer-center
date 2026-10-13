@@ -2,7 +2,7 @@
 {% block title %}{{ BNAME }} 운영{% endblock %}
 {% block bar %}{{ b.obar(otab,0) }}{% endblock %}
 {% block body %}
-<div class="crumb"><a href="{{ url_for('ops') }}">비입점 민원</a><span>›</span><span class="no">{{ c.no }}</span></div><section class="phead"><div>
+<div class="crumb"><a href="{{ url_for('ops') }}">비입점 요청</a><span>›</span><span class="no">{{ c.no }}</span></div><section class="phead"><div>
 <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><span class="cap">{{ c.company_name }}</span>{% if c.member %}<span class="tag ok">입점</span>{% else %}<span class="tag gray">비입점</span>{% endif %}<span class="st {{ m.tone(c) }}">{{ m.status_text(c) }}</span></div>
 <h1>{{ c.title }}</h1></div></section>
 <div class="cols"><div class="stack lg">

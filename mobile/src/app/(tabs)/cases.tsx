@@ -60,7 +60,7 @@ export default function CasesTab() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.band }} edges={['top']}>
       <View style={st.head}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={st.h1}>전체 민원</Text>
+          <Text style={st.h1}>전체 요청</Text>
           <Pressable onPress={() => router.push('/new')} style={({ pressed }) => [st.add, pressed && { opacity: 0.7 }]} accessibilityRole="button">
             <Text style={{ color: C.accentInk, fontWeight: '700', fontSize: 14 }}>+ 직접 등록</Text>
           </Pressable>
@@ -113,7 +113,7 @@ export default function CasesTab() {
         {rows === null ? (
           <Loading />
         ) : (
-          <Card>{rows.length ? rows.map((c) => <CaseRow key={c.id} c={c} />) : <Text style={st.empty}>해당하는 민원이 없습니다.</Text>}</Card>
+          <Card>{rows.length ? rows.map((c) => <CaseRow key={c.id} c={c} />) : <Text style={st.empty}>해당하는 요청이 없습니다.</Text>}</Card>
         )}
       </ScrollView>
     </SafeAreaView>

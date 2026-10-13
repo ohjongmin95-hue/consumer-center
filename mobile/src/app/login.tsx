@@ -43,7 +43,7 @@ export default function Login() {
             <Text style={st.h1}>
               고객 응대는 <Text style={{ color: C.accent }}>소보루</Text>가,{'\n'}사장님은 확인만
             </Text>
-            <Text style={st.sub}>반복되는 문의는 소보루가 대신 처리합니다.{'\n'}판단이 필요한 민원만 승인해 주세요.</Text>
+            <Text style={st.sub}>반복되는 문의는 소보루가 대신 처리합니다.{'\n'}판단이 필요한 요청만 승인해 주세요.</Text>
           </View>
           <View style={st.form}>
             <Field placeholder="로그인 이메일" value={id} onChangeText={setId} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="username" />

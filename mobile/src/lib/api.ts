@@ -1,4 +1,4 @@
-// 소보루 CS 기업 서버(biz 주소의 /api/v1)와 주고받기. 로그인하면 받은 토큰으로만 우리 회사 민원을 연다.
+// 소보루 CS 기업 서버(biz 주소의 /api/v1)와 주고받기. 로그인하면 받은 토큰으로만 우리 회사 요청을 연다.
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 

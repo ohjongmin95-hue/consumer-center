@@ -62,7 +62,7 @@ class PlatformTest(unittest.TestCase):
         return int(r.headers['Location'].rstrip('/').split('/')[-1])
 
     def test_app_api(self):
-        """소보루 CS 앱 API: 쿠키 없이 민원별 토큰으로 접수·조회·답변 확인·알림 등록."""
+        """소보루 CS 앱 API: 쿠키 없이 요청별 토큰으로 접수·조회·답변 확인·알림 등록."""
         b,o,cid=self.signup_and_approve('앱테스트상점','apptest@example.com')
         a=self.client()
         meta=a.get('/api/v1/meta').get_json();self.assertEqual(meta['cats'][0],{'name':'배송 조회','hint':'배송이 안 오거나 늦어요'})
@@ -71,7 +71,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(a.post(f'/api/v1/chat/{cid}',json={'text':'택배가 아직 안 왔어요'}).get_json()['category'],'배송 조회')
         bad=a.post('/api/v1/cases',json={'company':'앱테스트상점','category':'제품 불량','title':'x','body':'짧음'})
         self.assertEqual(bad.status_code,400);self.assertIn('10자',bad.get_json()['error'])
-        r=a.post('/api/v1/cases',json={'company':'앱테스트상점','company_id':cid,'category':'제품 불량','title':'앱에서 접수','body':'앱으로 접수한 불량 민원 내용이에요.',
+        r=a.post('/api/v1/cases',json={'company':'앱테스트상점','company_id':cid,'category':'제품 불량','title':'앱에서 접수','body':'앱으로 접수한 불량 요청 내용이에요.',
             'want':'교환','phone':'010-5555-6666','password':'abcd','privacy':True,'consent':True})
         self.assertEqual(r.status_code,201,r.get_data(as_text=True));j=r.get_json();case_id,tok=j['id'],j['token']
         auth={'Authorization':'Bearer '+tok}
@@ -79,7 +79,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(d['status'],'forwarded');self.assertTrue(d['can']['cancel']);self.assertNotIn('phone',d)
         self.assertEqual(a.get(f'/api/v1/cases/{case_id}').status_code,404)  # 토큰 없이는 못 연다
         other=self.file_case(self.client(),'앱테스트상점','기타',str(cid))
-        self.assertEqual(a.get(f'/api/v1/cases/{other}',headers=auth).status_code,404)  # 다른 민원은 못 연다
+        self.assertEqual(a.get(f'/api/v1/cases/{other}',headers=auth).status_code,404)  # 다른 요청은 못 연다
         self.assertEqual([c['id'] for c in a.post('/api/v1/mine',json={'tokens':[tok,'garbage']}).get_json()['cases']],[case_id])
         self.assertEqual(a.post('/api/v1/lookup',json={'phone':'01055556666','password':'nope'}).status_code,404)
         found=a.post('/api/v1/lookup',json={'phone':'01055556666','password':'abcd'}).get_json()['cases']
@@ -116,7 +116,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(d['status'],'seen');self.assertTrue(d['can']['approve']);self.assertTrue(d['plan']['reply'])
         other_b,_,other_cid=self.signup_and_approve('남의상점','other@example.com')
         other=self.file_case(self.client(),'남의상점','기타',str(other_cid))
-        self.assertEqual(a.get(f'/biz/api/v1/cases/{other}',headers=auth).status_code,404)  # 다른 회사 민원은 못 연다
+        self.assertEqual(a.get(f'/biz/api/v1/cases/{other}',headers=auth).status_code,404)  # 다른 회사 요청은 못 연다
         self.assertEqual(a.post(f'/biz/api/v1/cases/{case_id}',headers=auth,json={'act':'reply','msg':''}).status_code,400)
         d=a.post(f'/biz/api/v1/cases/{case_id}',headers=auth,json={'act':'approve'}).get_json()
         self.assertEqual(d['decision'],'approved');self.assertEqual(d['message'],'승인했습니다');self.assertFalse(d['can']['approve'])
@@ -194,11 +194,11 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('담당자에게 바로 전달됐어요',me.get(f'/done/{case_id}').get_data(as_text=True))
         # 기업: 승인 카드에 보이고, 승인하면 추천 조치 실행 + 답변
         page=b.get('/biz/').get_data(as_text=True)
-        self.assertIn('승인할 민원이',page);self.assertIn('무상 교환',page);self.assertIn('달빛화장품',page)
+        self.assertIn('승인할 요청이',page);self.assertIn('무상 교환',page);self.assertIn('달빛화장품',page)
         self.assertEqual(b.get('/biz/pending').status_code,302)
         self.assertIn('크림 용기',b.get('/biz/all?q=크림').get_data(as_text=True))
         self.assertNotIn('크림 용기',b.get('/biz/all?q=없는말').get_data(as_text=True))
-        self.assertIn('주별 민원',b.get('/biz/stats').get_data(as_text=True))
+        self.assertIn('주별 요청',b.get('/biz/stats').get_data(as_text=True))
         self.assertIn('value="제품 불량" checked',me.get('/new?category=제품 불량').get_data(as_text=True))
         self.assertEqual(me.get('/guide').status_code,200)
         r=self.post(b,f'/biz/case/{case_id}',{'act':'approve'})
@@ -391,7 +391,7 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:
             self.assertEqual(db.execute('SELECT late_sent FROM cases WHERE id=?',(case_id,)).fetchone()[0],'2020-01-01 00:00:00')
         self.assertIn('답변 목표일이 지나',me.get(f'/case/{case_id}').get_data(as_text=True))
-        # 늦어진 민원은 다시 요청 → 승인 대기로 돌아가고 목표일이 새로 잡힘, 24시간 안에는 또 못 함
+        # 늦어진 요청은 다시 요청 → 승인 대기로 돌아가고 목표일이 새로 잡힘, 24시간 안에는 또 못 함
         self.assertIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
         self.post(me,f'/case/{case_id}',{'act':'again','msg':'아직 연락이 없어요'})
         with self.core.conn() as db:c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
@@ -414,12 +414,12 @@ class PlatformTest(unittest.TestCase):
         self.assertNotIn('noindex',self.client().get('/biz/login').get_data(as_text=True))
 
     def test_privacy_policy_and_purge(self):
-        """처리방침에 법정 항목(운영 주체·보호책임자·위탁·보유 기간)이 있고, 보유 기간이 지난 민원은 첨부 파일까지 파기된다"""
+        """처리방침에 법정 항목(운영 주체·보호책임자·위탁·보유 기간)이 있고, 보유 기간이 지난 요청은 첨부 파일까지 파기된다"""
         import datetime
         page=self.client().get('/privacy').get_data(as_text=True)
         for t in ('소보루','오규섭','129-14-81596','논현로 310-1','개인정보 보호책임자','네이버클라우드 주식회사','3년','파기','118'):self.assertIn(t,page)
         self.assertNotIn('초안',page)
-        me=self.client();old=self.file_case(me,'파기상점','기타',title='오래된 민원');new=self.file_case(me,'파기상점','기타',title='최근 민원')
+        me=self.client();old=self.file_case(me,'파기상점','기타',title='오래된 요청');new=self.file_case(me,'파기상점','기타',title='최근 요청')
         stored='purge-test.txt';(self.core.UPLOAD/stored).write_text('x')
         long_ago=self.core.iso(self.core.now()-datetime.timedelta(days=365*3+1))
         with self.core.conn() as db:
@@ -474,7 +474,7 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:self.assertEqual(db.execute('SELECT ret_status FROM cases WHERE id=?',(case_id,)).fetchone()[0],'received')
         # 기록 PDF(인쇄용)
         page=b.get(f'/biz/case/{case_id}/record').get_data(as_text=True)
-        self.assertIn('민원 처리 기록',page);self.assertIn('window.print()',page);self.assertIn('회수 확인',page)
+        self.assertIn('요청 처리 기록',page);self.assertIn('window.print()',page);self.assertIn('회수 확인',page)
         # 직접 등록: 소비자에게 메일 없음, 같은 상품 3건이면 경보
         for n in range(3):
             r=self.post(b,'/biz/new',{'channel':'전화','category':'제품 불량','title':f'티백 찢어짐 {n}','body':'티백이 찢어져 왔어요','want':'교환','product':'보리차 티백 ','email':'x@example.com'},'/biz/new')
@@ -483,7 +483,7 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('전화 · 직접 등록',page)
         with self.core.conn() as db:
             self.assertEqual(len(insights.alerts(db,co)),1)
-        self.assertIn("'보리차 티백' 관련 민원이 최근 7일 4건",b.get('/biz/').get_data(as_text=True))
+        self.assertIn("'보리차 티백' 관련 요청이 최근 7일 4건",b.get('/biz/').get_data(as_text=True))
         sent=insights.send_alerts();self.assertEqual(insights.send_alerts(),0)  # 하루 한 번
         self.assertEqual(sent,1)
         # 월간 리포트·업종 비교

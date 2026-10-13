@@ -1,4 +1,4 @@
-"""민원 화면과 응대 가이드에 보여 주는 법 조항.
+"""요청 화면과 응대 가이드에 보여 주는 법 조항.
 
 조문 글자는 law_texts.json에서만 가져온다. 이 파일은 국가법령정보센터(law.go.kr) 원문을 그대로 옮긴
 공개 미러(github.com/legalize-kr/legalize-kr)에서 law_extract.py로 뽑은 것이고, 손으로 고쳐 쓰지 않는다.
@@ -37,7 +37,7 @@ def plain(ref):
             for s in i.get('subs',[]):out.append(f"    {s['n']}. {s['text']}")
     return c['label']+' ('+c['title']+')\n'+'\n'.join(out)
 
-# 민원 유형별로 담당자가 먼저 볼 조문. 요약은 원문의 표현을 최대한 그대로 줄였다.
+# 요청 유형별로 담당자가 먼저 볼 조문. 요약은 원문의 표현을 최대한 그대로 줄였다.
 BY_CAT={
   '배송 조회':[('ecom:제15조:①','청약한 날부터 7일 이내(선지급식은 대금 지급일부터 3영업일 이내)에 공급에 필요한 조치를 해야 해요. 공급 시기를 따로 약정했다면 그에 따라요.'),
             ('ecom:제15조:②','공급이 곤란하면 지체 없이 사유를 알리고, 선지급식은 대금 지급일부터 3영업일 이내에 환급하거나 환급에 필요한 조치를 해야 해요.')],
@@ -65,7 +65,7 @@ def days_since(received_on,today=None):
     return ((today or datetime.date.today())-d).days
 
 def check(c,today=None):
-    """민원 한 건의 기간 확인: 받은 날 기준 경과일과 제17조제1항 7일 안인지. 받은 날을 모르면 None."""
+    """요청 한 건의 기간 확인: 받은 날 기준 경과일과 제17조제1항 7일 안인지. 받은 날을 모르면 None."""
     n=days_since(c['received_on'] if 'received_on' in c.keys() else '',today)
     if n is None or n<0 or c['category'] not in RETURN_CATS:return None
     return {'days':n,'within':n<WITHDRAW_DAYS,'left':WITHDRAW_DAYS-n}

@@ -15,7 +15,7 @@ export default function Guide() {
   return (
     <Screen>
       <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14 }}>
-        <Text style={st.p}>자주 받는 민원 상황마다 지켜야 할 법 조항과 예시 답변을 모았습니다. 조항은 국가법령정보센터 원문 그대로이고, 쉬운 설명과 예시 문구는 법률 자문이 아닙니다.</Text>
+        <Text style={st.p}>자주 받는 요청 상황마다 지켜야 할 법 조항과 예시 답변을 모았습니다. 조항은 국가법령정보센터 원문 그대로이고, 쉬운 설명과 예시 문구는 법률 자문이 아닙니다.</Text>
       </View>
       {data.guide.map((g) => (
         <Item key={g.id} g={g} open={open === g.id} onToggle={() => setOpen(open === g.id ? '' : g.id)} />

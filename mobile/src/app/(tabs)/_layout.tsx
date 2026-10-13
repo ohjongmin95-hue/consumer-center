@@ -20,7 +20,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: '홈', tabBarIcon: () => <Icon name="shield" size={24} /> }} />
-      <Tabs.Screen name="cases" options={{ title: '전체 민원', tabBarIcon: () => <Icon name="list" size={24} /> }} />
+      <Tabs.Screen name="cases" options={{ title: '전체 요청', tabBarIcon: () => <Icon name="list" size={24} /> }} />
       <Tabs.Screen name="more" options={{ title: '내 정보', tabBarIcon: () => <Icon name="building" size={24} /> }} />
     </Tabs>
   );

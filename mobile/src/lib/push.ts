@@ -1,4 +1,4 @@
-// 새 민원이 오면 사장님 휴대폰에 알림. EAS 프로젝트(projectId)로 만든 실제 앱에서만 동작한다.
+// 새 요청이 오면 사장님 휴대폰에 알림. EAS 프로젝트(projectId)로 만든 실제 앱에서만 동작한다.
 // Expo Go(미리보기)는 원격 알림을 지원하지 않아서 알림 모듈을 아예 불러오지 않는다.
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
@@ -19,7 +19,7 @@ export async function pushToken(ask = false): Promise<string | null> {
   if (!Notifications || !Device.isDevice) return null;
   try {
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', { name: '새 민원 알림', importance: Notifications.AndroidImportance.HIGH });
+      await Notifications.setNotificationChannelAsync('default', { name: '새 요청 알림', importance: Notifications.AndroidImportance.HIGH });
     }
     let { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted' && ask) status = (await Notifications.requestPermissionsAsync()).status;

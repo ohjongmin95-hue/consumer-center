@@ -30,12 +30,12 @@ export default function MoreTab() {
         </Card>
 
         <Card style={{ paddingVertical: 4 }}>
-          <MenuRow title="자동 처리 규칙" sub="어떤 민원을 소보루가 바로 처리할지 정합니다" onPress={() => router.push('/rules')} />
-          <MenuRow title="민원 직접 등록" sub="전화·쇼핑몰 문의·DM으로 받은 민원 올리기" onPress={() => router.push('/new')} last />
+          <MenuRow title="자동 처리 규칙" sub="어떤 요청을 소보루가 바로 처리할지 정합니다" onPress={() => router.push('/rules')} />
+          <MenuRow title="요청 직접 등록" sub="전화·쇼핑몰 문의·DM으로 받은 요청 올리기" onPress={() => router.push('/new')} last />
         </Card>
         <Card style={{ paddingVertical: 4 }}>
-          <MenuRow title="처리 통계" sub="자동 처리율, 해결률, 주별 민원 수" onPress={() => router.push('/stats')} />
-          <MenuRow title="월간 리포트" sub="지난달 민원을 한 장으로" onPress={() => router.push('/report')} last />
+          <MenuRow title="처리 통계" sub="자동 처리율, 해결률, 주별 요청 수" onPress={() => router.push('/stats')} />
+          <MenuRow title="월간 리포트" sub="지난달 요청을 한 장으로" onPress={() => router.push('/report')} last />
         </Card>
         <Card style={{ paddingVertical: 4 }}>
           <MenuRow title="이용 안내" sub="소보루 CS 사용법과 자주 묻는 질문" onPress={() => router.push('/howto')} />

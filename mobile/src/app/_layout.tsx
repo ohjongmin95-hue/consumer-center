@@ -43,7 +43,7 @@ function Intro() {
 }
 
 export default function RootLayout() {
-  // 새 민원 알림을 누르면 그 민원 화면으로
+  // 새 요청 알림을 누르면 그 요청 화면으로
   useEffect(() => {
     if (!Notifications) return;
     const sub = Notifications.addNotificationResponseReceivedListener((r) => {
@@ -68,7 +68,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false, contentStyle: { backgroundColor: C.card } }} />
-          <Stack.Screen name="case/[id]" options={{ title: '민원 처리' }} />
+          <Stack.Screen name="case/[id]" options={{ title: '요청 처리' }} />
           <Stack.Screen name="signup" options={{ title: '가입 신청', headerStyle: { backgroundColor: C.band } }} />
           <Stack.Screen name="forgot" options={{ title: '', headerStyle: { backgroundColor: C.card }, contentStyle: { backgroundColor: C.card } }} />
           <Stack.Screen name="rules" options={{ title: '자동 처리 규칙' }} />
@@ -79,7 +79,7 @@ export default function RootLayout() {
           <Stack.Screen name="guide" options={{ title: '응대 가이드' }} />
           <Stack.Screen name="howto" options={{ title: '이용 안내' }} />
           <Stack.Screen name="news" options={{ title: '법·제도 소식' }} />
-          <Stack.Screen name="new" options={{ title: '민원 직접 등록' }} />
+          <Stack.Screen name="new" options={{ title: '요청 직접 등록' }} />
         </Stack>
         <Intro />
       </AuthProvider>

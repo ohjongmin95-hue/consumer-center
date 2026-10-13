@@ -806,7 +806,7 @@ select.inp{appearance:auto}
 /* 업종 비교 */
 .cmp>div{display:grid;grid-template-columns:minmax(0,1.2fr) 1fr 1fr;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
 .cmp>div:last-child{border-bottom:0}.cmp>div span{color:var(--fg2)}.cmp .cmph b{font-size:13px;color:var(--fg3);font-weight:500}
-/* ---------- 민원 상세 ---------- */
+/* ---------- 요청 상세 ---------- */
 .chead{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:6px 0 28px}
 .chead .l{flex:1;min-width:0}
 .chead .tagrow{margin-bottom:12px}

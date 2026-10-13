@@ -3,7 +3,7 @@
 {% block bar %}{{ b.bar('guide') }}{% endblock %}
 {% block body %}
 <div class="narrow">
-<div class="phead"><div><h1>응대 가이드</h1><p>자주 받는 민원 상황마다 지켜야 할 법 조항과 예시 답변을 모았습니다</p></div></div>
+<div class="phead"><div><h1>응대 가이드</h1><p>자주 받는 요청 상황마다 지켜야 할 법 조항과 예시 답변을 모았습니다</p></div></div>
 <div class="hint blue" style="margin-bottom:24px"><span>📘</span><span>조항은 국가법령정보센터 원문을 글자 그대로 옮겼습니다. 쉬운 설명과 예시 문구는 이해를 돕기 위한 것이고 법률 자문이 아닙니다.</span></div>
 <nav class="gtoc">{% for g in guide %}<a href="#{{ g.id }}">{{ g.title }}</a>{% endfor %}</nav>
 <div class="stack lg">

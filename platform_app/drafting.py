@@ -35,12 +35,12 @@ def ask_claude(c,co,rule_reply,history,samples):
     if not key:return None
     refs='\n\n'.join(law.plain(r) for r,_ in law.BY_CAT.get(c['category'],[]))
     tone=TONE_HINT.get(co['tone'],TONE_HINT['polite'])
-    system=(f"너는 온라인 쇼핑몰 '{co['name']}'의 고객 상담 담당자다. 고객 민원에 보낼 답변 초안을 한국어로 쓴다.\n"
+    system=(f"너는 온라인 쇼핑몰 '{co['name']}'의 고객 상담 담당자다. 고객 요청에 보낼 답변 초안을 한국어로 쓴다.\n"
             f"말투: {tone}. 아래 '회사 답변 예시'의 말투와 표현을 따라 한다.\n"
             "규칙: 사실로 확인되지 않은 일정·금액·약속은 지어내지 말고 {날짜}처럼 중괄호 자리표시로 남긴다. "
             "법 내용은 아래 '관련 조문'에 있는 것만 쓰고, 조문 번호를 고객에게 길게 늘어놓지 않는다. 고객 탓을 하지 않는다. "
             "인사와 맺음말을 포함해 6문장 이내로, 답변 본문만 출력한다.")
-    user=("[민원]\n"+'\n'.join(facts(c))+"\n\n[지금까지 주고받은 내용]\n"+(history or '없음')+
+    user=("[요청]\n"+'\n'.join(facts(c))+"\n\n[지금까지 주고받은 내용]\n"+(history or '없음')+
           "\n\n[회사 답변 예시]\n"+(samples or '없음')+"\n\n[이 유형의 기본 조치 문구]\n"+(rule_reply or '없음')+"\n\n[관련 조문]\n"+(refs or '없음'))
     body={'model':MODEL,'max_tokens':800,'system':system,'messages':[{'role':'user','content':user}]}
     req=urllib.request.Request('https://api.anthropic.com/v1/messages',data=json.dumps(body).encode(),method='POST',
