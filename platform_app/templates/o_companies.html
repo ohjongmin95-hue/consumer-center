@@ -7,7 +7,7 @@
 <dl class="kv"><dt>사업자번호</dt><dd class="no">{{ c.biz_no[:3] }}-{{ c.biz_no[3:5] }}-{{ c.biz_no[5:] }}</dd><dt>대표자</dt><dd>{{ c.owner_name }}</dd><dt>연락처</dt><dd>{{ c.phone }}</dd><dt>이메일</dt><dd>{{ c.login_id }}</dd><dt>신청</dt><dd>{{ fmt(c.created) }}</dd></dl>
 <form method="post" class="dact" style="grid-template-columns:2fr 1fr"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ c.id }}"><button class="btn md" name="act" value="approve">승인</button><button class="btn md gray" name="act" value="reject">반려</button></form></div>{% endfor %}</div>{% endif %}
 <div class="phead" style="margin-top:40px"><div><h1>기업</h1></div></div>
-<div class="rows">{% for c in rows %}<div class="rowi"><span class="av">{{ c.name[:1] }}</span><span class="tx"><div class="t">{{ c.name }}</div><div class="s">민원 {{ c.n }}건 · {{ c.contact or '연락처 없음' }}</div></span>
+<div class="rows">{% for c in rows %}<div class="rowi"><span class="av">{{ c.name[:1] }}</span><span class="tx"><div class="t">{{ c.name }}</div><div class="s">요청 {{ c.n }}건 · {{ c.contact or '연락처 없음' }}</div></span>
 {% if c.status=='active' %}<span class="tag ok">입점</span>{% elif c.status=='suspended' %}<span class="tag bad">중지</span>{% else %}<span class="tag gray">비입점</span>{% endif %}
 <form method="post" style="display:flex;gap:6px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ c.id }}">
 {% if c.status=='listed' %}<input class="inp" name="contact" placeholder="공식 연락처" value="{{ c.contact }}" style="padding:8px 10px;font-size:14px;width:150px;background:var(--fill)"><button class="btn md gray" name="act" value="contact" style="height:38px">저장</button>

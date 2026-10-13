@@ -1,4 +1,4 @@
-// 민원 직접 등록: 전화·쇼핑몰 문의·DM으로 받은 민원을 앱에 올려 같은 방식으로 처리한다.
+// 요청 직접 등록: 전화·쇼핑몰 문의·DM으로 받은 요청을 앱에 올려 같은 방식으로 처리한다.
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
@@ -33,7 +33,7 @@ export default function NewCase() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen>
         <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14 }}>
-          <Text style={{ fontSize: 15, lineHeight: 23, color: C.fg2 }}>다른 곳으로 받은 민원도 여기 올리면 추천 처리, 답변 초안, 기록 관리를 똑같이 쓸 수 있습니다.</Text>
+          <Text style={{ fontSize: 15, lineHeight: 23, color: C.fg2 }}>다른 곳으로 받은 요청도 여기 올리면 추천 처리, 답변 초안, 기록 관리를 똑같이 쓸 수 있습니다.</Text>
         </View>
         <Card style={{ gap: 12 }}>
           <L t="어디로 받았나요" />

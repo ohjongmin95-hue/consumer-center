@@ -84,7 +84,7 @@ function Return({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void })
   const [f, setF] = useState({ return_address: s.return_address, return_courier: s.return_courier, return_memo: s.return_memo });
   const { busy, msg, save } = useSave(onSaved);
   return (
-    <Section title="반품 안내" sub="반품·교환 민원에 이 주소와 택배사를 고객에게 안내합니다">
+    <Section title="반품 안내" sub="반품·교환 요청에 이 주소와 택배사를 고객에게 안내합니다">
       <Field label="반품 받을 주소" value={f.return_address} onChangeText={(v) => setF({ ...f, return_address: v })} placeholder="예: 서울시 강남구 … 3층 물류팀" />
       <Label>이용 택배사</Label>
       <Chips items={s.couriers} value={f.return_courier} onChange={(v) => setF({ ...f, return_courier: v === f.return_courier ? '' : v })} />
@@ -105,8 +105,8 @@ function Notify({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void })
   const [f, setF] = useState({ phone: s.phone, kakao: s.kakao, report_mail: s.report_mail });
   const { busy, msg, save } = useSave(onSaved);
   return (
-    <Section title="알림" sub="새 민원은 이 앱 알림으로 바로 알려 드립니다">
-      <Toggle title="카카오 알림톡" sub={s.kakao_ready ? '새 민원이 오면 알림톡으로도 알려 드립니다' : '알림톡은 준비 중입니다'} value={f.kakao} onChange={(v) => setF({ ...f, kakao: v })} disabled={!s.kakao_ready && !f.kakao} />
+    <Section title="알림" sub="새 요청은 이 앱 알림으로 바로 알려 드립니다">
+      <Toggle title="카카오 알림톡" sub={s.kakao_ready ? '새 요청이 오면 알림톡으로도 알려 드립니다' : '알림톡은 준비 중입니다'} value={f.kakao} onChange={(v) => setF({ ...f, kakao: v })} disabled={!s.kakao_ready && !f.kakao} />
       {f.kakao ? <Field label="알림톡 받을 휴대폰" value={f.phone} onChangeText={(v) => setF({ ...f, phone: v })} keyboardType="phone-pad" /> : null}
       <Toggle title="월간 리포트 메일" sub="매달 1일 지난달 리포트를 이메일로 보내 드립니다" value={f.report_mail} onChange={(v) => setF({ ...f, report_mail: v })} />
       {msg.t ? <Notice text={msg.t} tone={msg.ok ? 'ok' : 'error'} flat /> : null}

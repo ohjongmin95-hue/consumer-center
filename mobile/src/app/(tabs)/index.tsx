@@ -83,12 +83,12 @@ export default function HomeTab() {
           <Text style={st.coName}>{home.company.name}</Text>
           {home.counts.pending ? (
             <Text style={st.h1}>
-              사장님 확인이 필요한 민원이{'\n'}
+              사장님 확인이 필요한 요청이{'\n'}
               <Text style={{ color: C.accent }}>{home.counts.pending}건</Text> 있어요
             </Text>
           ) : (
             <Text style={st.h1}>
-              지금은 확인할 민원이 없어요.{'\n'}
+              지금은 확인할 요청이 없어요.{'\n'}
               <Text style={{ color: C.accent }}>소보루</Text>가 응대하고 있어요
             </Text>
           )}
@@ -109,7 +109,7 @@ export default function HomeTab() {
             <Text style={{ fontSize: 18 }}>⚠️</Text>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: C.fg }}>
-                {w.kind === 'product' ? `'${w.label}' 관련 민원이 최근 7일 ${w.n}건` : `${w.label} 민원이 최근 7일 ${w.n}건`}
+                {w.kind === 'product' ? `'${w.label}' 관련 요청이 최근 7일 ${w.n}건` : `${w.label} 요청이 최근 7일 ${w.n}건`}
               </Text>
               <Text style={{ fontSize: 13, color: C.fg3 }}>같은 문제가 반복되는지 확인해 보세요 · {w.cats.join(', ')}</Text>
             </View>
@@ -141,8 +141,8 @@ export default function HomeTab() {
         ))}
 
         <Card>
-          <H2>최근 민원</H2>
-          {home.recent.length ? home.recent.map((c) => <CaseRow key={c.id} c={c} />) : <Text style={st.empty}>아직 들어온 민원이 없습니다.</Text>}
+          <H2>최근 요청</H2>
+          {home.recent.length ? home.recent.map((c) => <CaseRow key={c.id} c={c} />) : <Text style={st.empty}>아직 들어온 요청이 없습니다.</Text>}
         </Card>
         {home.news?.length ? (
           <Card style={{ paddingVertical: 14 }}>

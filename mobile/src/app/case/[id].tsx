@@ -262,7 +262,7 @@ function RecordBtn({ id }: { id: number }) {
       if (Platform.OS === 'web') await Print.printAsync({ html: r.html });
       else {
         const { uri } = await Print.printToFileAsync({ html: r.html });
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `민원 처리 기록 ${r.no}`, UTI: 'com.adobe.pdf' });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `요청 처리 기록 ${r.no}`, UTI: 'com.adobe.pdf' });
       }
     } catch (e) {
       setErr((e as Error).message);

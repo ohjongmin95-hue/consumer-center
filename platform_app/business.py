@@ -1,7 +1,7 @@
 """기업용 소보루 CS (+ 센터 운영 화면 /ops).
 
-기업: 가입 → 운영자 승인 → 로그인 → 승인 카드(승인·보류·자료 요청), 전체 민원, 자동 처리 규칙, 설정.
-운영자: 기업 가입 승인, 기업 목록, 비입점 기업 민원 처리(전달 시도·회신 기록·피해구제 안내).
+기업: 가입 → 운영자 승인 → 로그인 → 승인 카드(승인·보류·자료 요청), 전체 요청, 자동 처리 규칙, 설정.
+운영자: 기업 가입 승인, 기업 목록, 비입점 기업 요청 처리(전달 시도·회신 기록·피해구제 안내).
 """
 import os, re, hmac, functools, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, g, jsonify
@@ -147,7 +147,7 @@ def reset(tok):
 def logout():session.pop('co_id',None);return redirect(url_for('login'))
 
 # ---------- 기업 화면 ----------
-# 기업은 전달에 동의한 민원만 본다
+# 기업은 전달에 동의한 요청만 본다
 def my_cases(db,co):return db.execute('SELECT * FROM cases WHERE company_id=? AND member=1 AND consent=1 ORDER BY id DESC',(co['id'],)).fetchall()
 def my_case(db,case_id):
     c=db.execute('SELECT * FROM cases WHERE id=? AND company_id=? AND member=1 AND consent=1',(case_id,me()['id'])).fetchone()
@@ -173,7 +173,7 @@ def decide():
 @app.route('/approve_many',methods=['POST'])
 @login_required
 def approve_many():
-    """같은 유형의 승인 대기 민원을 한 번에 승인 (홈의 'n건 모두 승인')."""
+    """같은 유형의 승인 대기 요청을 한 번에 승인 (홈의 'n건 모두 승인')."""
     cat=request.form.get('category')
     if cat not in core.CATS:abort(400)
     n=0
@@ -216,7 +216,7 @@ def stats_data(db,co):
 notify_consumer=core.notify_consumer
 
 def case_act(db,c,form):
-    """기업이 민원에 하는 일(승인·보류·자료 요청·답변·회수 확인·발송·환불 완료). 웹과 앱이 같이 쓴다. -> (안내 문구, ok|error|bad)"""
+    """기업이 요청에 하는 일(승인·보류·자료 요청·답변·회수 확인·발송·환불 완료). 웹과 앱이 같이 쓴다. -> (안내 문구, ok|error|bad)"""
     act=form.get('act');open_=c['status'] not in core.FINAL
     if act=='ret_received' and c['ret_status'] in ('guided','sent'):
         db.execute("UPDATE cases SET ret_status='received' WHERE id=?",(c['id'],))
@@ -234,7 +234,7 @@ def case_act(db,c,form):
         db.execute("UPDATE cases SET refund_status='done',refund_bank='',refund_account='',refund_holder='' WHERE id=?",(c['id'],))
         core.add_event(db,c['id'],'co','환불을 완료했어요');notify_consumer(c,f'[{core.CNAME}] 환불이 완료됐어요',f"{c['company_name']}이(가) 환불을 완료했어요. 입금 내역을 확인해 주세요.")
         return '환불 완료를 기록했습니다','ok'
-    if not open_:return '이미 끝난 민원이에요','bad'
+    if not open_:return '이미 끝난 요청이에요','bad'
     if act=='approve' and c['decision'] not in ('approved','auto'):
         if core.run_playbook(db,c,'approved'):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
         return '승인했습니다','ok'
@@ -290,17 +290,17 @@ def record(case_id):
 @app.route('/new',methods=['GET','POST'])
 @login_required
 def new_case():
-    """전화·쇼핑몰 문의·DM 등 다른 곳으로 받은 민원을 직접 등록해 같은 화면에서 처리한다."""
+    """전화·쇼핑몰 문의·DM 등 다른 곳으로 받은 요청을 직접 등록해 같은 화면에서 처리한다."""
     if request.method=='POST':
         d,err,cid=new_case_apply(me(),request.form)
         if err:flash(err,'error');return render_template('b_new.html',d=d,tab='all'),400
         flash('등록했습니다','ok');return redirect(url_for('case',case_id=cid))
     return render_template('b_new.html',d={'channel':request.args.get('channel','전화')},tab='all')
 def new_case_apply(co,f):
-    """직접 등록 검사와 저장(웹·앱 공용). (입력값, 오류 문구, 새 민원 id)."""
+    """직접 등록 검사와 저장(웹·앱 공용). (입력값, 오류 문구, 새 요청 id)."""
     d={k:clean(f.get(k),n) for k,n in (('channel',20),('category',20),('title',BIG),('body',BIG),('want',20),('order_no',40),('product',60),('received_on',10),('name',20),('phone',20),('email',80))}
     err=''
-    if d['channel'] not in core.CHANNELS:err='어디로 받은 민원인지 골라 주세요.'
+    if d['channel'] not in core.CHANNELS:err='어디로 받은 요청인지 골라 주세요.'
     elif d['category'] not in core.CATS:err='유형을 골라 주세요.'
     elif not d['title']:err='한 줄 요약을 적어 주세요.'
     elif not d['body']:err='내용을 적어 주세요.'
@@ -312,7 +312,7 @@ def new_case_apply(co,f):
         cur=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
             VALUES(?,?,?,1,?,?,?,?,?,?,?,?,?,1,'seen','pending',?,?,?,?,?,?)''',(core.new_case_no(db),co['id'],co['name'],d['category'],d['title'],d['body'],d['want'],d['order_no'],
             d['name'],digits(d['phone']),d['email'],generate_password_hash(secrets.token_hex(16)),due,t,t,d['product'],d['received_on'],d['channel']))
-        core.add_event(db,cur.lastrowid,'sys',f"{d['channel']}(으)로 받은 민원을 직접 등록했어요")
+        core.add_event(db,cur.lastrowid,'sys',f"{d['channel']}(으)로 받은 요청을 직접 등록했어요")
     return d,'',cur.lastrowid
 
 @app.route('/guide')
@@ -470,7 +470,7 @@ def ops_companies():
             act=request.form.get('act');cid=request.form.get('id','')
             co=core.company(db,int(cid)) if cid.isdigit() else None
             if act=='approve' and co and co['status']=='pending':
-                # 같은 이름의 비입점 기업이 있으면 그 민원을 이 기업으로 옮김 (이후 민원부터 입점 처리)
+                # 같은 이름의 비입점 기업이 있으면 그 요청을 이 기업으로 옮김 (이후 요청부터 입점 처리)
                 old=db.execute("SELECT id FROM companies WHERE status='listed' AND lower(name)=lower(?)",(co['name'],)).fetchall()
                 for o in old:db.execute('UPDATE cases SET company_id=? WHERE company_id=?',(co['id'],o['id']));db.execute('DELETE FROM companies WHERE id=?',(o['id'],))
                 db.execute("UPDATE companies SET status='active',member=1 WHERE id=?",(co['id'],))
@@ -734,7 +734,7 @@ def api_biz_news():
     return jsonify(news=[dict(id=r['id'],title=r['title'],body=r['body'],source_url=r['source_url'],created=r['created']) for r in rows])
 @app.route('/api/v1/leave',methods=['POST'])
 def api_biz_leave():
-    """회원 탈퇴 요청. 진행 중인 민원 기록이 있어 운영팀이 확인하고 처리한다."""
+    """회원 탈퇴 요청. 진행 중인 요청 기록이 있어 운영팀이 확인하고 처리한다."""
     co=api_co()
     if not check_password_hash(co['pw_hash'],api_form().get('password','')):return jsonify(error='비밀번호가 맞지 않습니다.'),400
     core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 기업 탈퇴 요청: {co['name']}",f"{co['name']} ({co['login_id']})이 앱에서 탈퇴를 요청했습니다.\n{core.site_url('biz','/ops/companies')}")

@@ -1,5 +1,5 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><link rel="icon" type="image/png" href="{{ url_for('static',filename='soboru-favicon.png') }}"><title>민원 처리 기록 {{ c.no }}</title>
+<meta name="robots" content="noindex"><link rel="icon" type="image/png" href="{{ url_for('static',filename='soboru-favicon.png') }}"><title>요청 처리 기록 {{ c.no }}</title>
 <style>
 :root{--fg:#191f28;--fg2:#4e5968;--fg3:#8b95a1;--line:#e5e8eb;--acc:#f89b00}
 *{box-sizing:border-box}body{margin:0;background:#f2f4f6;color:var(--fg);font:14px/1.6 -apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif;word-break:keep-all;overflow-wrap:anywhere}
@@ -19,9 +19,9 @@ table{width:100%;border-collapse:collapse}th,td{border:1px solid var(--line);pad
 </style></head><body>
 {% if not app %}<div class="bar"><button onclick="window.print()">인쇄 · PDF로 저장</button></div>{% endif %}
 <div class="page">
-<div class="top"><div><h1>민원 처리 기록</h1><div style="color:var(--fg2);margin-top:4px">{{ c.company_name }}</div></div>
+<div class="top"><div><h1>요청 처리 기록</h1><div style="color:var(--fg2);margin-top:4px">{{ c.company_name }}</div></div>
 <div class="m">접수번호 {{ c.no }}<br>출력 {{ printed[:16] }}</div></div>
-<h2>민원 내용</h2>
+<h2>요청 내용</h2>
 <table><tr><th>유형</th><td>{{ c.category }}</td></tr><tr><th>받은 곳</th><td>{{ c.channel if is_direct(c) else CNAME+' 접수' }}</td></tr><tr><th>요약</th><td>{{ c.title }}</td></tr>
 <tr><th>원하는 해결</th><td>{{ c.want }}</td></tr><tr><th>상태</th><td>{{ status_label(c.status) }}{% if c.decision %} · {{ DECISION.get(c.decision,'') }}{% endif %}</td></tr>
 <tr><th>고객</th><td>{{ c.name or '익명' }}{% if c.phone %} · {{ mask_phone(c.phone) }}{% endif %}</td></tr>

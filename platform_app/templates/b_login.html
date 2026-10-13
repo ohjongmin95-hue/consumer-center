@@ -1,17 +1,17 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
-{% block title %}{{ BNAME }} · 고객 민원, 승인 한 번으로{% endblock %}
+{% block title %}{{ BNAME }} · 고객 요청, 승인 한 번으로{% endblock %}
 {% block bar %}{% endblock %}
 {% block foot %}{% endblock %}
 {% block main %}<main class="pg split"><div class="wrap">
 <div class="bsplit">
 <section class="brand">
-<h1>고객 민원,<br>승인 한 번으로<br>끝냅니다</h1>
-<p>요약과 처리 방법이 정리된 민원을 확인하고<br>승인만 누르면 답변과 조치까지 처리됩니다.</p>
+<h1>고객 요청,<br>승인 한 번으로<br>끝냅니다</h1>
+<p>요약과 처리 방법이 정리된 요청을 확인하고<br>승인만 누르면 답변과 조치까지 처리됩니다.</p>
 <div class="stage" aria-hidden="true">
 <img class="mascot" src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96">
 <div class="ok"><i>✓</i>배송 조회 · 자동으로 답변했습니다</div>
 <div class="mock">
-<div class="m-top"><span>{{ i.cat_icon('제품 불량',20) }} 제품 불량</span><span class="pill">새 민원</span></div>
+<div class="m-top"><span>{{ i.cat_icon('제품 불량',20) }} 제품 불량</span><span class="pill">새 요청</span></div>
 <b class="m-tt">크림 용기가 깨져서 왔어요</b>
 <span class="m-want">원하는 해결 · 교환</span>
 <div class="m-reco"><small>처리 방법</small><b>무상 교환 (배송비 업체 부담)</b></div>

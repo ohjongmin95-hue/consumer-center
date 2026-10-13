@@ -1,4 +1,4 @@
-"""소비자용 '소보루 CS' 고객센터: 어느 기업이든 한곳에서 민원 접수·조회."""
+"""소비자용 '소보루 CS' 고객센터: 어느 기업이든 한곳에서 요청 접수·조회."""
 import os, re, datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -11,7 +11,7 @@ app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='me')
 
 @app.before_request
 def guard():
-    if not request.path.startswith('/api/'):core.check_csrf()  # 앱 API는 쿠키 없이 민원별 토큰으로만 연다
+    if not request.path.startswith('/api/'):core.check_csrf()  # 앱 API는 쿠키 없이 요청별 토큰으로만 연다
 app.after_request(core.copy_after_request('me'))  # 운영 화면에서 고친 문구 적용
 
 def my_ids():return set(session.get('mine',[]))
@@ -78,14 +78,14 @@ def submit_check(d,pw,privacy,ups):
     if d['want'] not in core.WANTS:return '원하는 해결을 골라 주세요.'
     if d['received_on'] and law.days_since(d['received_on']) not in range(0,3651):return '상품 받은 날을 확인해 주세요.'
     if d['category'] in ('교환','반품·환불') and not d['received_on']:return '상품 받은 날을 알려 주세요. 교환·반품 기간(7일) 확인에 써요.'
-    if not 10<=len(digits(d['phone']))<=11:return '휴대폰 번호를 정확히 적어 주세요. 내 민원을 찾을 때 써요.'
+    if not 10<=len(digits(d['phone']))<=11:return '휴대폰 번호를 정확히 적어 주세요. 내 요청을 찾을 때 써요.'
     if len(pw)<4:return '조회 비밀번호를 4자 이상 정해 주세요.'
     if not privacy:return '개인정보 수집·이용에 동의해야 접수할 수 있어요.'
     err=core.files_ok(ups)
     if not err and core.throttled('submit',limit=8,minutes=30):err='짧은 시간에 접수가 너무 많아요. 잠시 후 다시 시도해 주세요.'
     return err
 def create_case(d,pw,ups,company_id=''):
-    """민원을 저장하고 입점 기업이면 바로 전달한다. 웹 접수와 앱 접수가 같이 쓴다. (case_id, 접수번호, 기업)"""
+    """요청을 저장하고 입점 기업이면 바로 전달한다. 웹 접수와 앱 접수가 같이 쓴다. (case_id, 접수번호, 기업)"""
     with conn() as db:
         co=None
         if str(company_id).isdigit():
@@ -101,7 +101,7 @@ def create_case(d,pw,ups,company_id=''):
             d['name'],digits(d['phone']),d['email'],generate_password_hash(pw),int(d['consent']),'received',t,t,d['product'],d['received_on']))
         case_id=cur.lastrowid
         core.save_files(db,case_id,ups)
-        core.add_event(db,case_id,'me','민원을 접수했어요.')
+        core.add_event(db,case_id,'me','요청을 접수했어요.')
         if member and d['consent']:
             due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))
             db.execute("UPDATE cases SET status='forwarded',due=?,decision='pending' WHERE id=?",(due,case_id))
@@ -113,7 +113,7 @@ def create_case(d,pw,ups,company_id=''):
         elif member:core.add_event(db,case_id,'sys','기업 전달에 동의하지 않아 접수만 했어요.')
         else:core.add_event(db,case_id,'sys','비입점 기업이에요. 센터가 공식 연락처로 전달을 시도할게요.' if d['consent'] else '비입점 기업이고 전달 동의가 없어 접수만 했어요.')
         no=db.execute('SELECT no FROM cases WHERE id=?',(case_id,)).fetchone()[0]
-    core.send_mail(d['email'],f'[{core.CNAME}] 접수됐어요 ({no})',f"{d['name'] or '고객'}님, 민원이 접수됐어요.\n\n■ 접수번호: {no}\n■ 기업: {co['name']}\n■ 요약: {d['title']}\n\n진행 상황은 휴대폰 번호와 조회 비밀번호로 확인할 수 있어요.\n{core.site_url('me','/mine')}")
+    core.send_mail(d['email'],f'[{core.CNAME}] 접수됐어요 ({no})',f"{d['name'] or '고객'}님, 요청이 접수됐어요.\n\n■ 접수번호: {no}\n■ 기업: {co['name']}\n■ 요약: {d['title']}\n\n진행 상황은 휴대폰 번호와 조회 비밀번호로 확인할 수 있어요.\n{core.site_url('me','/mine')}")
     return case_id,no,co
 
 @app.route('/submit',methods=['POST'])
@@ -150,7 +150,7 @@ def lookup():
     with conn() as db:
         found=[r['id'] for r in db.execute('SELECT id,lookup_hash FROM cases WHERE phone=? ORDER BY id DESC LIMIT 100',(phone,)) if phone and check_password_hash(r['lookup_hash'],pw)]
     if not found:flash('휴대폰 번호나 조회 비밀번호가 맞지 않아요.','error')
-    else:remember(*found);flash(f'민원 {len(found)}건을 찾았어요.','ok')
+    else:remember(*found);flash(f'요청 {len(found)}건을 찾았어요.','ok')
     return redirect(url_for('mine'))
 
 @app.route('/lookup/mail',methods=['POST'])
@@ -162,7 +162,7 @@ def lookup_mail():
     with conn() as db:n=db.execute('SELECT COUNT(*) FROM cases WHERE phone=? AND lower(email)=?',(phone,email)).fetchone()[0] if phone and email else 0
     if n:
         tok=core.signer('lookup').dumps({'p':phone,'e':email})
-        core.send_mail(email,f'[{core.CNAME}] 내 접수 바로 열기',f"아래 링크를 누르면 이 휴대폰 번호로 접수한 민원 {n}건을 볼 수 있어요. 30분 동안만 열려요.\n{core.site_url('me','/lookup/t/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
+        core.send_mail(email,f'[{core.CNAME}] 내 접수 바로 열기',f"아래 링크를 누르면 이 휴대폰 번호로 접수한 요청 {n}건을 볼 수 있어요. 30분 동안만 열려요.\n{core.site_url('me','/lookup/t/'+tok)}\n\n직접 요청하지 않으셨다면 이 메일은 무시해 주세요.")
     flash('접수 때 적은 이메일이 맞다면 바로 여는 링크를 보냈어요.','ok');return redirect(url_for('mine'))
 
 @app.route('/lookup/t/<tok>')
@@ -170,13 +170,13 @@ def lookup_token(tok):
     try:d=core.signer('lookup').loads(tok,max_age=1800)
     except Exception:flash('링크가 만료됐어요. 다시 요청해 주세요.','error');return redirect(url_for('mine'))
     with conn() as db:ids=[r['id'] for r in db.execute('SELECT id FROM cases WHERE phone=? AND lower(email)=? ORDER BY id DESC LIMIT 100',(d['p'],d['e']))]
-    remember(*ids);flash(f'민원 {len(ids)}건을 찾았어요.','ok');return redirect(url_for('mine'))
+    remember(*ids);flash(f'요청 {len(ids)}건을 찾았어요.','ok');return redirect(url_for('mine'))
 
 @app.route('/forget',methods=['POST'])
-def forget():session.pop('mine',None);flash('이 기기에서 내 민원 목록을 지웠어요.','ok');return redirect(url_for('mine'))
+def forget():session.pop('mine',None);flash('이 기기에서 내 요청 목록을 지웠어요.','ok');return redirect(url_for('mine'))
 
 def case_act(c,form,ups):
-    """소비자가 민원 화면에서 누른 동작(평가·다시 요청·반품 발송·취소·환불 계좌·추가 내용). 웹과 앱이 같이 쓴다. (안내 문장, 'ok'/'error')"""
+    """소비자가 요청 화면에서 누른 동작(평가·다시 요청·반품 발송·취소·환불 계좌·추가 내용). 웹과 앱이 같이 쓴다. (안내 문장, 'ok'/'error')"""
     act=form.get('act');msg=clean(form.get('msg'),2000)
     with conn() as db:
         if act=='rate' and c['status']=='answered' and form.get('v') in ('resolved','unresolved'):
@@ -195,7 +195,7 @@ def case_act(c,form,ups):
             elif c['consent']:
                 db.execute("UPDATE cases SET status='received' WHERE id=?",(c['id'],))
                 core.add_event(db,c['id'],'sys','센터가 기업에 다시 전달할게요')
-                core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 비입점 민원 다시 요청: {c['title']}",core.site_url('biz','/ops/case/%d'%c['id']))
+                core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 비입점 요청 재요청: {c['title']}",core.site_url('biz','/ops/case/%d'%c['id']))
             return '다시 요청했어요','ok'
         elif act=='ship' and c['ret_status'] in ('guided','sent'):
             courier=form.get('courier','');tracking=clean(form.get('tracking'),30)
@@ -308,7 +308,7 @@ def privacy():
         mail_vendor=os.getenv('MAIL_VENDOR',''),ai=bool(os.getenv('ANTHROPIC_API_KEY','').strip()),kakao=core.kakao_ready() or core.kakao_ready('CS_KAKAO_TPL_REPLY'),kakao_vendor=os.getenv('KAKAO_VENDOR',''))
 
 # ---------- 소보루 CS 앱 API (/api/v1) ----------
-# 앱은 쿠키를 쓰지 않는다. 접수하거나 조회하면 민원마다 토큰을 받아 휴대폰에 두고, 그 토큰으로만 민원을 연다.
+# 앱은 쿠키를 쓰지 않는다. 접수하거나 조회하면 요청마다 토큰을 받아 휴대폰에 두고, 그 토큰으로만 요청을 연다.
 def case_token(case_id):return core.signer('app-case').dumps(case_id)
 def token_case(tok):
     try:cid=core.signer('app-case').loads(tok or '')
@@ -374,7 +374,7 @@ def api_lookup():
     return jsonify(cases=[dict(case_summary(r),token=case_token(r['id'])) for r in rows])
 @app.route('/api/v1/mine',methods=['POST'])
 def api_mine():
-    """휴대폰에 둔 토큰들로 내 민원 목록을 한 번에 받는다. 지워진 민원은 빠진다."""
+    """휴대폰에 둔 토큰들로 내 요청 목록을 한 번에 받는다. 지워진 요청은 빠진다."""
     toks=(request.get_json(silent=True) or {}).get('tokens') or []
     out=[]
     for t in toks[:100]:
@@ -398,7 +398,7 @@ def api_file(case_id,file_id):
     return send_file(core.UPLOAD/f['stored'],download_name=f['original'])
 @app.route('/api/v1/push',methods=['POST'])
 def api_push():
-    """앱 알림 받기: Expo 푸시 토큰을 휴대폰에 둔 민원들에 묶는다."""
+    """앱 알림 받기: Expo 푸시 토큰을 휴대폰에 둔 요청들에 묶는다."""
     j=request.get_json(silent=True) or {};push=str(j.get('push_token',''))[:200]
     if not re.fullmatch(r'(Exponent|Expo)PushToken\[[\w-]+\]',push):return jsonify(error='알림 토큰이 올바르지 않아요.'),400
     n=0

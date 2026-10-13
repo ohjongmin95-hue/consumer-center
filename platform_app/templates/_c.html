@@ -11,7 +11,7 @@
 </div></header>
 {%- endmacro %}
 {% set ME_ST={'received':'접수됨','forwarded':'전달됨','seen':'확인 중','info':'자료 필요','answered':'답변 도착','resolved':'해결됨','unresolved':'미해결','closed':'종료','withdrawn':'취소함'} %}
-{% set BIZ_ST={'received':'접수됨','forwarded':'새 민원','seen':'확인함','info':'자료 기다림','answered':'답변 완료','resolved':'해결됨','unresolved':'미해결','closed':'종료','withdrawn':'고객 취소'} %}
+{% set BIZ_ST={'received':'접수됨','forwarded':'새 요청','seen':'확인함','info':'자료 기다림','answered':'답변 완료','resolved':'해결됨','unresolved':'미해결','closed':'종료','withdrawn':'고객 취소'} %}
 {% macro status_text(c,biz=False) -%}{% if overdue(c) %}답변 지연{% else %}{{ (BIZ_ST if biz else ME_ST).get(c.status,'') }}{% endif %}{%- endmacro %}
 {% macro tone(c) -%}{{ 't-bad' if overdue(c) else {'gray':'t-mute','acc':'t-acc','wait':'t-acc','done':'t-ok','bad':'t-bad'}[status_tone(c.status)] }}{%- endmacro %}
 {% macro pill(c,biz=False) -%}<span class="pill {{ 'bad' if overdue(c) else {'gray':'gray','acc':'acc','wait':'acc','done':'ok','bad':'bad'}[status_tone(c.status)] }}">{{ status_text(c,biz) }}</span>{%- endmacro %}

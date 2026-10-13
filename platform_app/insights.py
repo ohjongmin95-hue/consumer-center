@@ -8,14 +8,14 @@ from core import conn
 
 DEFECT_CATS=('제품 불량','교환','반품·환불')
 ALERT_DAYS=7
-ALERT_PRODUCT=3   # 같은 상품 민원이 7일에 3건 이상
-ALERT_CATEGORY=5  # 같은 유형 민원이 7일에 5건 이상
+ALERT_PRODUCT=3   # 같은 상품 요청이 7일에 3건 이상
+ALERT_CATEGORY=5  # 같은 유형 요청이 7일에 5건 이상
 COMPARE_MIN=3     # 같은 업종 다른 기업이 이만큼 있어야 비교를 보여 준다 (한 회사가 드러나지 않게)
 
 def company_cases(db,cid):return db.execute('SELECT * FROM cases WHERE company_id=? AND member=1 AND consent=1 ORDER BY id',(cid,)).fetchall()
 
 def first_reply_hours(db,rows):
-    """민원별 접수부터 기업의 첫 답변(자료 요청 포함)까지 걸린 시간(시간 단위)."""
+    """요청별 접수부터 기업의 첫 답변(자료 요청 포함)까지 걸린 시간(시간 단위)."""
     out={}
     if not rows:return out
     ids=[r['id'] for r in rows]
@@ -61,12 +61,12 @@ def monthly(db,co,y,m):
 def report_text(co,s):
     ym=f"{s['y']}년 {s['m']}월"
     lines=[f"{co['name']}의 {ym} CS 리포트입니다.",'',
-           f"■ 받은 민원: {s['n']}건 (지난달 {s['prev_n']}건)",
+           f"■ 받은 요청: {s['n']}건 (지난달 {s['prev_n']}건)",
            f"■ 자동 처리율: {s['auto']}%",
-           f"■ 해결률: {'-' if s['res'] is None else str(s['res'])+'%'} (소비자가 결과를 알려 준 민원 기준)",
+           f"■ 해결률: {'-' if s['res'] is None else str(s['res'])+'%'} (소비자가 결과를 알려 준 요청 기준)",
            f"■ 첫 답변까지: {'-' if s['reply_h'] is None else '중간값 '+str(s['reply_h'])+'시간'}",
-           f"■ 답변 목표일을 넘긴 민원: {s['late']}건",'','유형별']+[f"  · {c} {n}건" for c,n in s['cats'] if n]
-    if s['top_products']:lines+=['','민원이 많았던 상품']+[f"  · {p} {n}건" for p,n in s['top_products']]
+           f"■ 답변 목표일을 넘긴 요청: {s['late']}건",'','유형별']+[f"  · {c} {n}건" for c,n in s['cats'] if n]
+    if s['top_products']:lines+=['','요청이 많았던 상품']+[f"  · {p} {n}건" for p,n in s['top_products']]
     return '\n'.join(lines)
 
 def send_monthly_reports(today=None):
@@ -100,7 +100,7 @@ def compare(db,co):
             'cats':[(c,share(mine,c),round(sum(share(p,c) for p in peers)/len(peers))) for c in core.CATS]}
 
 def alerts(db,co,today=None):
-    """최근 7일 같은 상품·같은 유형 민원이 몰리면 경보 목록."""
+    """최근 7일 같은 상품·같은 유형 요청이 몰리면 경보 목록."""
     today=today or datetime.date.today();since=(today-datetime.timedelta(days=ALERT_DAYS-1)).isoformat()
     rows=[r for r in company_cases(db,co['id']) if r['created'][:10]>=since]
     out=[];prods={}
@@ -122,7 +122,7 @@ def send_alerts(today=None):
             for a in alerts(db,co,today):
                 key=f"{today.isoformat()}:{a['key']}"
                 if db.execute("SELECT 1 FROM sent_marks WHERE kind='alert' AND company_id=? AND key=?",(co['id'],key)).fetchone():continue
-                what=f"'{a['label']}' 관련 민원" if a['kind']=='product' else f"'{a['label']}' 민원"
+                what=f"'{a['label']}' 관련 요청" if a['kind']=='product' else f"'{a['label']}' 요청"
                 core.send_mail(co['notify_email'],f"[{core.BNAME}] 경보: 최근 7일 {what} {a['n']}건",
                     f"최근 7일 동안 {what}이 {a['n']}건 들어왔습니다. 같은 문제가 반복되는지 확인해 보세요.\n\n{core.site_or_blank('biz','/')}")
                 db.execute("INSERT INTO sent_marks(kind,company_id,key,created) VALUES('alert',?,?,?)",(co['id'],key,core.iso()));n+=1

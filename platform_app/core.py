@@ -25,11 +25,11 @@ COPY_SITES={'me':'고객센터','biz':'기업용','all':'두 곳 모두'}  # 문
 OPERATOR={'name':'소보루','ceo':'오규섭','biz_no':'129-14-81596','address':'서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)','manager':'오민주'}
 PRIVACY_SINCE='2026년 10월 12일'
 TERMS_SINCE='2026년 10월 13일'  # 소보루 CS 기업 회원 이용약관 시행일
-RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 민원은 purge_old()가 파기
-# 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 민원, 운영 등)는 noindex
+RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 요청은 purge_old()가 파기
+# 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 요청, 운영 등)는 noindex
 INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup','terms'}}
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
-             'biz':BNAME+'는 고객 민원을 한 화면에서 승인하고 반복 민원은 자동으로 처리하는 기업용 CS 운영 도구예요.'}
+             'biz':BNAME+'는 고객 요청을 한 화면에서 승인하고 반복 요청은 자동으로 처리하는 기업용 CS 운영 도구예요.'}
 VERIFY={'me':os.getenv('NAVER_SITE_VERIFICATION',''),'biz':os.getenv('NAVER_SITE_VERIFICATION_BIZ','')}
 GOOGLE_VERIFY={'me':os.getenv('GOOGLE_SITE_VERIFICATION',''),'biz':os.getenv('GOOGLE_SITE_VERIFICATION_BIZ','')}
 DAUM_ROBOTS={'me':os.getenv('DAUM_WEBMASTER',''),'biz':os.getenv('DAUM_WEBMASTER_BIZ','')}  # 다음 웹마스터도구가 robots.txt에 넣으라는 줄
@@ -90,7 +90,7 @@ CLOSE_DAYS=7  # 답변 후 이 기간 동안 소비자가 아무 응답이 없�
 OPEN_STATUSES=('received','forwarded','seen','info')
 DECISION={'pending':'승인 대기','approved':'승인됨','auto':'자동 처리','hold':'보류','info':'추가 확인','direct':'직접 답변'}
 REPLY_DAYS=2  # 입점 기업 답변 목표일 (전달 후 n일)
-# 기업이 전화·쇼핑몰 문의 등으로 받은 민원을 직접 등록할 때 고르는 채널 ('한큐'는 소비자가 직접 접수한 것)
+# 기업이 전화·쇼핑몰 문의 등으로 받은 요청을 직접 등록할 때 고르는 채널 ('한큐'는 소비자가 직접 접수한 것)
 CHANNELS=['전화','쇼핑몰 문의','카카오톡','인스타그램 DM','이메일','기타']
 # 반품 안내에 쓰는 택배사 소개. 연동은 하지 않고 이름과 공식 홈페이지만 안내한다.
 COURIERS={'CJ대한통운':'https://www.cjlogistics.com','우체국택배':'https://service.epost.go.kr','롯데택배':'https://www.lotteglogis.com',
@@ -98,7 +98,7 @@ COURIERS={'CJ대한통운':'https://www.cjlogistics.com','우체국택배':'http
 # 환불 계좌: 계좌로 결제한 고객이 등록하면 기업이 직접 입금하고 '환불 완료'를 누른다. 완료하면 계좌 정보는 바로 지운다.
 BANKS=['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','카카오뱅크','토스뱅크','케이뱅크','SC제일은행','iM뱅크(대구)','부산은행','경남은행','광주은행','전북은행','제주은행','새마을금고','신협','우체국','수협은행','KDB산업은행','씨티은행']
 def refund_case(c):
-    """환불 계좌를 받을 수 있는 민원: 입점 기업에 소비자가 직접 접수했고 환불을 원하는 경우."""
+    """환불 계좌를 받을 수 있는 요청: 입점 기업에 소비자가 직접 접수했고 환불을 원하는 경우."""
     return bool(c['member'] and not is_direct(c) and (c['category']=='반품·환불' or c['want']=='환불'))
 def mask_account(a):
     d=digits(a);return ('*'*max(len(d)-4,0))+d[-4:] if d else ''
@@ -191,7 +191,7 @@ def digits(s):return ''.join(c for c in s or '' if c.isdigit())
 def mask_phone(p):
     d=digits(p);return d[:3]+'-****-'+d[-4:] if len(d)>=10 else ('****' if d else '')
 def clean(s,limit):return (s or '').strip()[:limit]
-BIG=50000  # 민원 제목·내용은 글자 수 제한 없이 받는다 (아주 큰 입력만 막는 안전선)
+BIG=50000  # 요청 제목·내용은 글자 수 제한 없이 받는다 (아주 큰 입력만 막는 안전선)
 
 # ---------- 표시 도우미 (템플릿 전역) ----------
 def status_label(s):return STATUS.get(s,STATUS['received'])[0]
@@ -229,7 +229,7 @@ def rule_for(db,cid,cat):
     return {'auto':bool(r and r['auto']),'reply':(r['reply'] if r and r['reply'] is not None else pb['reply']),
             'faq':(r['faq'] if r and r['faq'] is not None else CHAT_FAQ.get(cat,CHAT_FAQ['기타'])),'cond':(r['cond'] if r and r['cond'] in COND else '')}
 def auto_ok(db,c):
-    """이 민원을 사람 손 없이 바로 처리해도 되는지: 자동 처리가 켜져 있고, 조건이 있으면 조건도 맞아야 한다."""
+    """이 요청을 사람 손 없이 바로 처리해도 되는지: 자동 처리가 켜져 있고, 조건이 있으면 조건도 맞아야 한다."""
     rule=rule_for(db,c['company_id'],c['category'])
     if not rule['auto']:return False
     if rule['cond']=='within7':
@@ -270,7 +270,7 @@ def return_guide(co):
     if co['return_memo']:lines.append(co['return_memo'])
     lines.append('보내신 뒤 접수 화면에서 택배사와 송장번호를 입력해 주세요.')
     return '\n'.join(lines)
-def is_direct(c):return bool(c['channel']) and c['channel']!='한큐'  # 기업이 직접 등록한 민원 (소비자는 한큐에서 볼 수 없음)
+def is_direct(c):return bool(c['channel']) and c['channel']!='한큐'  # 기업이 직접 등록한 요청 (소비자는 한큐에서 볼 수 없음)
 
 FOLLOW_UP_HOURS=24  # 다시 요청은 하루에 한 번
 def last_follow_up(db,case_id):
@@ -283,7 +283,7 @@ def can_follow_up(db,c):
     return not last or now()-last>=datetime.timedelta(hours=FOLLOW_UP_HOURS)
 
 def close_idle(today=None):
-    """답변 후 CLOSE_DAYS일 동안 소비자가 해결 여부를 알려 주지 않은 민원을 종료한다. cron에서 부른다."""
+    """답변 후 CLOSE_DAYS일 동안 소비자가 해결 여부를 알려 주지 않은 요청을 종료한다. cron에서 부른다."""
     cut=iso((today or now())-datetime.timedelta(days=CLOSE_DAYS));n=0
     with conn() as db:
         for c in db.execute("SELECT id FROM cases WHERE status='answered' AND updated<?",(cut,)).fetchall():
@@ -294,7 +294,7 @@ def site_or_blank(kind,path):
     host=BUSINESS_HOST if kind=='biz' else CONSUMER_HOST
     return 'https://'+host+path if host else ''
 def purge_old(today=None):
-    """마지막 처리일부터 RETENTION_YEARS년이 지난 민원과 첨부 파일, 같은 기간이 지난 메일 기록을 파기한다. cron에서 부른다."""
+    """마지막 처리일부터 RETENTION_YEARS년이 지난 요청과 첨부 파일, 같은 기간이 지난 메일 기록을 파기한다. cron에서 부른다."""
     cut=iso((today or now())-datetime.timedelta(days=365*RETENTION_YEARS));n=0
     with conn() as db:
         for c in db.execute('SELECT id FROM cases WHERE updated<?',(cut,)).fetchall():
@@ -306,7 +306,7 @@ def purge_old(today=None):
     return n
 
 def notify_late():
-    """답변 목표일이 지난 입점 기업 민원을 소비자와 기업에 한 번씩 알린다. cron에서 부른다."""
+    """답변 목표일이 지난 입점 기업 요청을 소비자와 기업에 한 번씩 알린다. cron에서 부른다."""
     n=0
     with conn() as db:
         for c in db.execute("SELECT * FROM cases WHERE member=1 AND consent=1 AND due!='' AND status IN ('forwarded','seen','info')").fetchall():
@@ -334,10 +334,10 @@ def files_ok(uploads):
         if Path(f.filename).suffix.lower() not in ALLOWED_EXT:return '사진(jpg, png, gif, webp, heic)이나 PDF만 올릴 수 있어요.'
     return ''
 
-# ---------- 새 민원 알림 ----------
-# 알림톡 템플릿: BIZ_KAKAO_TPL_NEW(기업에 새 민원), CS_KAKAO_TPL_REPLY(소비자에게 기업 답변·진행 알림)
+# ---------- 새 요청 알림 ----------
+# 알림톡 템플릿: BIZ_KAKAO_TPL_NEW(기업에 새 요청), CS_KAKAO_TPL_REPLY(소비자에게 기업 답변·진행 알림)
 def kakao_ready(tpl='BIZ_KAKAO_TPL_NEW'):return bool(os.getenv('SOLAPI_API_KEY') and os.getenv('SOLAPI_API_SECRET') and os.getenv('SOLAPI_PFID') and os.getenv(tpl))
-def send_kakao(phone,variables,tpl='BIZ_KAKAO_TPL_NEW',label='새 민원 알림톡'):
+def send_kakao(phone,variables,tpl='BIZ_KAKAO_TPL_NEW',label='새 요청 알림톡'):
     """솔라피로 카카오 알림톡 1건. 문구는 카카오 심사를 받은 템플릿과 같아야 한다 -> docs/platform.md"""
     phone=digits(phone)
     if not phone.startswith('01') or not kakao_ready(tpl):return
@@ -361,16 +361,16 @@ def short(text,limit=30):
     text=' '.join((text or '').split());return text if len(text)<=limit else text[:limit-1]+'…'
 def notify_consumer(c,subject,text):
     """소비자에게 진행 알림: 이메일(적었으면), 그리고 알림톡(CS_KAKAO_TPL_REPLY가 있으면, 접수 때 받은 휴대폰으로)."""
-    if is_direct(c):return  # 직접 등록한 민원은 기업이 원래 채널로 전한다
+    if is_direct(c):return  # 직접 등록한 요청은 기업이 원래 채널로 전한다
     send_mail(c['email'],subject,f"{text}\n\n■ 접수번호: {c['no']}\n■ 요약: {c['title']}\n\n{site_url('me','/mine')}")
     send_kakao(c['phone'],{'#{회사}':short(c['company_name'],20),'#{내용}':short(text.split('\n')[0],40),'#{접수번호}':c['no'],'#{링크}':site_url('me','/mine')},'CS_KAKAO_TPL_REPLY','소비자 알림톡')
     send_push(c['id'],c['company_name'],text.split('\n')[0])
 def send_push(case_id,title,body):
-    """소보루 CS 앱에서 이 민원을 열어 둔 휴대폰에 알림 (Expo 푸시). 앱을 안 쓰면 아무것도 안 한다."""
+    """소보루 CS 앱에서 이 요청을 열어 둔 휴대폰에 알림 (Expo 푸시). 앱을 안 쓰면 아무것도 안 한다."""
     with conn() as db:toks=[r[0] for r in db.execute('SELECT token FROM app_push WHERE case_id=?',(case_id,))]
     expo_push(toks,title,body,{'case_id':case_id},'app_push')
 def send_biz_push(company_id,title,body,case_id):
-    """사장님 앱에 로그인해 둔 휴대폰에 알림 (새 민원 등). 누르면 그 민원 화면으로."""
+    """사장님 앱에 로그인해 둔 휴대폰에 알림 (새 요청 등). 누르면 그 요청 화면으로."""
     with conn() as db:toks=[r[0] for r in db.execute('SELECT token FROM biz_push WHERE company_id=?',(company_id,))]
     expo_push(toks,title,body,{'case_id':case_id},'biz_push')
 def expo_push(toks,title,body,data,table):
@@ -390,12 +390,12 @@ def expo_push(toks,title,body,data,table):
         except sqlite3.OperationalError:pass  # 부른 쪽이 아직 쓰는 중이면 기록만 건너뛴다
     threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
 def notify_company_new(co,c):
-    """입점 기업에 새 민원 알림: 이메일, 그리고 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
+    """입점 기업에 새 요청 알림: 이메일, 그리고 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
     link=site_url('biz','/case/%d'%c['id'])
-    send_mail(co['notify_email'],f"[{BNAME}] 새 민원: {c['title']}",
-        f"{co['name']}에 새 민원이 들어왔습니다.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 처리 방법을 보고 승인해 주세요.\n{link}")
+    send_mail(co['notify_email'],f"[{BNAME}] 새 요청: {c['title']}",
+        f"{co['name']}에 새 요청이 들어왔습니다.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 처리 방법을 보고 승인해 주세요.\n{link}")
     if co['kakao']:send_kakao(co['phone'],{'#{회사}':short(co['name'],20),'#{유형}':c['category'],'#{요약}':short(c['title']),'#{링크}':link})
-    send_biz_push(co['id'],f"새 민원: {c['category']}",short(c['title']),c['id'])
+    send_biz_push(co['id'],f"새 요청: {c['category']}",short(c['title']),c['id'])
 
 # ---------- 문구 고치기 (운영 화면 /ops/copy) ----------
 # 운영자가 화면 문구를 바꾸거나 지우면, 페이지를 내보내기 직전에 글자 부분(태그 사이 글자와 입력칸 안내 글)만 바꾼다.

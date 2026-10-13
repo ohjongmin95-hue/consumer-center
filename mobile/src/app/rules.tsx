@@ -16,14 +16,14 @@ export default function Rules() {
   return (
     <Screen>
       <View style={st.head}>
-        <Text style={st.p}>켜 둔 유형의 민원은 사장님 확인 없이 소보루가 아래 답변으로 바로 처리합니다. 꺼 두면 사장님이 승인한 뒤에 답변합니다.</Text>
+        <Text style={st.p}>켜 둔 유형의 요청은 사장님 확인 없이 소보루가 아래 답변으로 바로 처리합니다. 꺼 두면 사장님이 승인한 뒤에 답변합니다.</Text>
       </View>
       <Card>
         <Text style={st.h2}>이번 달 상담 챗봇</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Stat label="물어본 고객" v={c.asked} />
           <Stat label="챗봇으로 해결" v={c.solved} />
-          <Stat label="민원 접수" v={c.filed} />
+          <Stat label="요청 접수" v={c.filed} />
         </View>
       </Card>
       <Notice text={ok} tone="ok" />
@@ -81,7 +81,7 @@ function RuleCard({ r, conds, token, onSaved }: { r: Rule; conds: { value: strin
       {open ? (
         <View style={{ gap: 12, marginTop: 14 }}>
           <Field label="고객에게 보낼 답변" value={reply} onChangeText={setReply} multiline />
-          <Field label="챗봇이 먼저 안내할 내용" value={faq} onChangeText={setFaq} multiline hint="고객이 민원을 넣기 전에 챗봇이 이 내용으로 먼저 답합니다" />
+          <Field label="챗봇이 먼저 안내할 내용" value={faq} onChangeText={setFaq} multiline hint="고객이 요청을 넣기 전에 챗봇이 이 내용으로 먼저 답합니다" />
           <Notice text={err} flat />
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Btn title="취소" kind="gray" onPress={() => (setOpen(false), setReply(r.reply), setFaq(r.faq))} style={{ flex: 1 }} />

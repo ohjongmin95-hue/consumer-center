@@ -20,16 +20,16 @@ export default function Stats() {
   return (
     <Screen>
       <View style={st.grid}>
-        <Big label="받은 민원" v={`${k.n}건`} />
+        <Big label="받은 요청" v={`${k.n}건`} />
         <Big label="자동 처리율" v={`${k.auto}%`} />
         <Big label="해결률" v={pct(k.res)} />
         <Big label="첫 답변까지" v={hrs(data.reply_h)} />
       </View>
       <Card style={{ paddingVertical: 4 }}>
-        <MenuRow title="월간 리포트" sub="지난달 민원을 한 장으로 정리했습니다" onPress={() => router.push('/report')} last />
+        <MenuRow title="월간 리포트" sub="지난달 요청을 한 장으로 정리했습니다" onPress={() => router.push('/report')} last />
       </Card>
       <Card>
-        <H2>주별 민원</H2>
+        <H2>주별 요청</H2>
         <View style={st.weeks}>
           {data.weeks.map((w) => (
             <View key={w.label} style={{ flex: 1, alignItems: 'center', gap: 6 }}>

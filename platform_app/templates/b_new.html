@@ -1,10 +1,10 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
-{% block title %}민원 직접 등록 · {{ BNAME }}{% endblock %}
+{% block title %}요청 직접 등록 · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('all') }}{% endblock %}
 {% block body %}
 <div class="narrow">
-<div class="crumb"><a href="{{ url_for('all_cases') }}">민원</a><span>›</span><span>직접 등록</span></div>
-<div class="phead"><div><h1>민원 직접 등록</h1><p>전화, 쇼핑몰 문의, DM으로 받은 민원도 여기 모아 같은 방식으로 처리합니다</p></div></div>
+<div class="crumb"><a href="{{ url_for('all_cases') }}">요청</a><span>›</span><span>직접 등록</span></div>
+<div class="phead"><div><h1>요청 직접 등록</h1><p>전화, 쇼핑몰 문의, DM으로 받은 요청도 여기 모아 같은 방식으로 처리합니다</p></div></div>
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <div class="fld"><span>어디로 받으셨나요</span><div class="chips">{% for ch in CHANNELS %}<label class="chipr"><input type="radio" name="channel" value="{{ ch }}" {{ 'checked' if d.channel==ch }} required>{{ ch }}</label>{% endfor %}</div></div>
 <div class="grid2">
@@ -21,7 +21,7 @@
 <label class="fld"><span>주문번호 (선택)</span><input class="inp" name="order_no" maxlength="40" value="{{ d.order_no or '' }}"></label>
 <label class="fld"><span>이메일 (선택)</span><input class="inp" name="email" type="email" maxlength="80" value="{{ d.email or '' }}"></label>
 </div>
-<p class="cap" style="margin:0">직접 등록한 민원은 고객에게 자동으로 알림이 가지 않습니다. 답변은 복사해서 원래 받은 곳으로 보내 주세요.</p>
+<p class="cap" style="margin:0">직접 등록한 요청은 고객에게 자동으로 알림이 가지 않습니다. 답변은 복사해서 원래 받은 곳으로 보내 주세요.</p>
 <button class="btn md">등록하기</button></form>
 </div>
 {% endblock %}
