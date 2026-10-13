@@ -73,7 +73,7 @@ export default function Signup() {
               이용약관 동의 (필수){'  '}
               <Text onPress={() => WebBrowser.openBrowserAsync(SITE_BASE + '/terms')} style={{ fontSize: 14, fontWeight: '600', color: C.fg3, textDecorationLine: 'underline' }} accessibilityRole="link">보기</Text>
             </Text>
-            <Text style={{ fontSize: 13, color: C.fg3 }}>민원 처리 결과와 무관하게 보도는 독립적으로 이루어집니다</Text>
+            <Text style={{ fontSize: 13, color: C.fg3 }}>가입 여부는 소비자 민원 처리 결과에 영향을 주지 않습니다</Text>
           </View>
         </Pressable>
         <Notice text={err} />
