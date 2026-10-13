@@ -416,6 +416,59 @@ class SiteTest(unittest.TestCase):
                                                    ('kakao', 'message', 'sent'), ('email', 'message', 'sent'), ('kakao', 'message', 'failed'), ('email', 'message', 'sent')])
         notify.ASYNC = True
 
+    def test_admin_new_case_alert(self):
+        notify = self.site.notify
+        notify.ASYNC = False
+        sms, mails = [], []
+        base = {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': '알림상점', 'subject': '운영자 알림 제보', 'description': 'C', 'reporter_name': '김소비',
+                'phone': '010-2222-3333', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
+        keys = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'boss@example.com, ops@example.com',
+                'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_SENDER': '02-123-4567', 'ADMIN_ALERT_PHONE': '010-9999-8888'}
+        admin = self.login_admin()
+        before = admin.get('/admin/new-cases').get_json()
+        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'statusCode': '2000'}), \
+             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+            self.post_form(self.client, '/report', base)
+        self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
+        self.assertIn('새 제보: 운영자 알림 제보', mails[0][1])
+        self.assertIn('/admin/reports/', mails[0][2])
+        self.assertNotIn('김소비', mails[0][2])
+        self.assertEqual(sms[0][1]['message']['to'], '01099998888')
+        self.assertEqual(sms[0][1]['message']['from'], '021234567')
+        self.assertIn('알림상점', sms[0][1]['message']['text'])
+        # 알림톡 템플릿이 있으면 카카오톡으로 (실패하면 문자로 대신)
+        with patch.dict(os.environ, dict(keys, SOLAPI_PFID='pf', KAKAO_TPL_ADMIN='TA')), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'statusCode': '2000'}), \
+             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+            self.post_form(self.client, '/report', dict(base, subject='카톡 알림 제보'))
+        message = sms[-1][1]['message']
+        self.assertEqual(message['kakaoOptions']['templateId'], 'TA')
+        self.assertEqual(message['kakaoOptions']['variables']['#{제목}'], '카톡 알림 제보')
+        self.assertFalse(message['kakaoOptions']['disableSms'])
+        self.assertIn('카톡 알림 제보', message['text'])
+        del sms[1:], mails[2:]
+        # 상태 변경 같은 다른 알림은 운영자에게 가지 않음
+        with self.site.conn() as db:
+            case_id = db.execute("SELECT id FROM cases WHERE subject='운영자 알림 제보'").fetchone()['id']
+            last_id = db.execute("SELECT id FROM cases WHERE subject='카톡 알림 제보'").fetchone()['id']
+        # 관리자 화면: 새 제보 확인 주소와 메뉴 숫자
+        after = admin.get('/admin/new-cases').get_json()
+        self.assertEqual(after['latest'], last_id)
+        self.assertEqual(after['count'], before['count'] + 2)
+        self.assertEqual(after['subject'], '카톡 알림 제보')
+        page = admin.get('/admin').get_data(as_text=True)
+        self.assertIn('id="ad-new-badge"', page)
+        self.assertIn('브라우저 알림 켜기', page)
+        self.assertIn('운영자 메일', admin.get('/admin/reports/%d' % case_id).get_data(as_text=True))
+        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {}), \
+             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
+        self.assertEqual(len(mails), 2)
+        self.assertEqual(len(sms), 1)
+        # 로그인 안 했으면 확인 주소는 막힘
+        self.assertEqual(self.site.app.test_client().get('/admin/new-cases').status_code, 401)
+        notify.ASYNC = True
+
     def test_company_members(self):
         notify = self.site.notify
         notify.ASYNC = False

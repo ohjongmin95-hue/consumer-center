@@ -236,7 +236,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-67'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-68'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -540,11 +540,12 @@ def report():
     return render_template('success.html',receipt=receipt,case_id=cur.lastrowid)
 LOOKUP_PW_MIN=4
 def notify_later(case_id,event):
-    # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 설정이 없으면 아무것도 안 함.
+    # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 새 제보면 운영자에게도. 설정이 없으면 아무것도 안 함.
     link=url_for('lookup',_external=True)
+    admin_link=url_for('admin_report',case_id=case_id,_external=True) if event=='received' else None
     def send(resp):
         with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
-        if case:notify.dispatch(conn,case,event,link)
+        if case:notify.dispatch(conn,case,event,link,admin_link)
         return resp
     after_this_request(send)
 def phone_digits(value):return re.sub(r'\D','',value or '')
@@ -632,6 +633,12 @@ def admin_active():
     session['admin_at']=time.time()
     return True
 app.jinja_env.globals['admin_active']=admin_active
+def new_case_info():
+    # 관리자 메뉴의 새 제보 표시: (아직 '접수' 단계인 제보 수, 가장 최근 제보 번호)
+    with conn() as db:
+        row=db.execute('SELECT (SELECT COUNT(*) FROM cases WHERE status=?),(SELECT COALESCE(MAX(id),0) FROM cases)',(STATUSES[0],)).fetchone()
+    return {'count':row[0],'latest':row[1]}
+app.jinja_env.globals['new_case_info']=new_case_info
 def admin_only(f):
     @functools.wraps(f)
     def wrapped(*a,**kw):
@@ -1437,6 +1444,17 @@ def staff_moved(rest=''):
 @app.route('/admin/case/<int:case_id>')
 def admin_case_redirect(case_id):return redirect(url_for('admin_report',case_id=case_id))
 
+@app.route('/admin/new-cases')
+def admin_new_cases():
+    # 관리자 화면이 30초마다 묻는 새 제보 확인. 이 요청은 자동 로그아웃 시간을 늘리지 않음(창을 켜 두기만 해도 계속 로그인되지 않게)
+    if not session.get('admin') or session.get('admin_v')!=admin_session_ver() or time.time()-session.get('admin_at',0)>ADMIN_IDLE_SECONDS:
+        return {'error':'login'},401
+    info=new_case_info()
+    with conn() as db:
+        last=db.execute('SELECT id,subject FROM cases ORDER BY id DESC LIMIT 1').fetchone()
+    info['subject']=last['subject'] if last else ''
+    info['url']=url_for('admin_report',case_id=last['id']) if last else url_for('admin_reports')
+    return info
 @app.route('/admin')
 @admin_only
 def admin():

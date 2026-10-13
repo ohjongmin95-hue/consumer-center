@@ -34,6 +34,7 @@
   ('사이트', [('admin_site', 'edit', '사이트 편집'), ('admin_lists', 'layers', '구성 바꾸기'), ('admin_content', 'text', '숨은 문구·설정')]),
   ('설정', [('admin_staff', 'id', '기자 계정'), ('admin_password', 'key', '비밀번호 변경')]),
 ] %}
+{% set nc = new_case_info() %}
 {% set active = {'admin_report': 'admin_reports', 'admin_invite': 'admin_reports', 'admin_group': 'admin_groups'}.get(request.endpoint, request.endpoint) %}
 <header class="ad-top">
   <a class="ad-brand" href="{{ url_for('admin') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}<em>관리자</em></a>
@@ -46,7 +47,7 @@
   <nav class="ad-side" aria-label="관리 메뉴">
     {% for group, links in groups %}
     <div class="ad-group">{% if group %}<p class="ad-group-title">{{ group }}</p>{% endif %}
-      {% for e, ico, label in links %}<a href="{{ url_for(e) }}"{% if active == e %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span></a>{% endfor %}
+      {% for e, ico, label in links %}<a href="{{ url_for(e) }}"{% if active == e %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span>{% if e == 'admin_reports' %}<em class="ad-badge" id="ad-new-badge"{% if not nc.count %} hidden{% endif %}>{{ nc.count }}</em>{% endif %}</a>{% endfor %}
     </div>
     {% endfor %}
   </nav>
@@ -55,6 +56,36 @@
     {% block content %}{% endblock %}
   </div>
 </div>
+<a class="ad-toast" id="ad-toast" href="{{ url_for('admin_reports') }}" role="status" hidden><b>새 제보가 들어왔습니다</b><span></span></a>
+<script>
+  // 새 제보 알림: 관리자 화면을 켜 두면 30초마다 확인해서 메뉴 숫자, 탭 제목, 화면 알림, (허용했으면) 브라우저 알림으로 알려 줌
+  (function () {
+    var latest = {{ nc.latest }}, title = document.title, badge = document.getElementById('ad-new-badge'), toast = document.getElementById('ad-toast');
+    function check() {
+      fetch('{{ url_for('admin_new_cases') }}', {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        if (!d) return;
+        badge.textContent = d.count; badge.hidden = !d.count;
+        if (d.latest > latest) {
+          latest = d.latest;
+          document.title = '(새 제보) ' + title;
+          toast.href = d.url; toast.querySelector('span').textContent = d.subject; toast.hidden = false;
+          if (window.Notification && Notification.permission === 'granted') {
+            var n = new Notification('새 제보가 들어왔습니다', {body: d.subject, icon: '{{ url_for('static', filename='apple-touch-icon.png') }}', tag: 'new-case'});
+            n.onclick = function () { window.focus(); location.href = d.url; };
+          }
+        }
+      }).catch(function () {});
+    }
+    setInterval(check, 30000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) document.title = title; });
+    var btn = document.getElementById('ad-notify-on');
+    if (btn && window.Notification) {
+      var show = function () { var p = Notification.permission; btn.textContent = p === 'granted' ? '브라우저 알림 켜짐' : p === 'denied' ? '브라우저 알림이 막혀 있어요 (주소창 왼쪽 자물쇠에서 허용)' : '브라우저 알림 켜기'; btn.disabled = p !== 'default'; };
+      show(); btn.hidden = false;
+      btn.addEventListener('click', function () { Notification.requestPermission().then(show); });
+    }
+  })();
+</script>
 {% else %}
 {% with msgs = get_flashed_messages() %}{% if msgs %}<div class="cs-flash" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}{% endwith %}
 <div class="cs-main">{% block content_login %}{{ self.content() }}{% endblock %}</div>
