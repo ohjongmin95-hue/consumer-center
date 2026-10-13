@@ -1,0 +1,36 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}주문 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('orders') }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>주문</h1><p>판매처 주문을 한곳에서 봐요. 고객 요청은 주문번호나 휴대폰 번호로 주문과 자동으로 이어져요</p></div>
+<form class="searchbar" method="get"><input type="hidden" name="g" value="{{ g }}"><input name="q" value="{{ q }}" placeholder="주문번호, 구매자, 상품, 송장, 휴대폰" aria-label="검색"><button class="btn sm gray">검색</button></form></div>
+<div class="cols">
+<div>
+<div class="tabs">{% for key,l,_ in GROUPS %}<a href="{{ url_for('orders_page',g=key,q=q or None) }}" class="{{ 'on' if g==key }}">{{ l }}<span>{{ cnt[key] }}</span></a>{% endfor %}</div>
+{% if rows %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>주문</th><th class="hm">구매자</th><th class="hm">주문일</th><th class="r">상태</th></tr></thead><tbody>
+{% for o in rows %}<tr data-href="{{ url_for('order_page',oid=o.id) }}"><td><a class="ttl" href="{{ url_for('order_page',oid=o.id) }}">{{ o.product or o.order_no }}</a><div class="t-mute no" style="font-size:13px">{{ o.order_no }}{% if o.channel and o.channel!='직접' %} · {{ o.channel }}{% endif %}</div></td>
+<td class="hm t-sub">{{ o.buyer }}</td><td class="hm t-mute">{{ o.ordered_on }}</td><td class="r"><span class="pill {{ 'gray' if o.status in ('delivered','canceled','refunded') else '' }}">{{ OSTATUS[o.status] }}</span></td></tr>{% endfor %}
+</tbody></table></div>{% if rows|length>=500 %}<p class="cap">최근 500건만 보여요. 검색으로 찾아 주세요.</p>{% endif %}
+{% else %}<div class="empty-card"><b>{{ '검색 결과가 없어요' if q else '아직 주문이 없어요' }}</b><span>{{ '' if q else '오른쪽에서 판매처 주문 파일을 올리거나 직접 넣어 주세요' }}</span></div>{% endif %}
+</div>
+<aside class="stack side-sticky">
+<form class="panel stack" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="csv">
+<div class="ph">주문 파일 올리기</div>
+<p class="sub" style="font-size:14px;margin:0">판매처에서 내려받은 주문 엑셀을 'CSV'로 저장해 올려 주세요. 주문번호가 같으면 상태와 송장만 새로 고쳐요.</p>
+<label class="fld"><span>판매처</span><select class="inp" name="channel"><option value="">파일에 적힌 대로</option>{% for ch in OCHANNELS %}<option>{{ ch }}</option>{% endfor %}</select></label>
+<input class="file-in" type="file" name="file" accept=".csv,text/csv" required>
+<button class="btn md">올리기</button>
+<p class="cap" style="margin:0">머리글 예: 주문번호, 주문일, 구매자, 연락처, 주소, 상품명, 옵션, 수량, 결제금액, 택배사, 송장번호, 주문상태. 스마트스토어 엑셀 머리글도 읽어요.</p></form>
+<details class="panel" {{ 'open' if request.args.get('add') }}><summary class="ph" style="cursor:pointer">주문 직접 넣기</summary>
+<form method="post" class="stack" style="margin-top:12px"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<input class="inp" name="order_no" maxlength="60" placeholder="주문번호" required aria-label="주문번호">
+<input class="inp" name="product" maxlength="200" placeholder="상품 (옵션)" aria-label="상품">
+<div style="display:flex;gap:8px"><input class="inp" name="qty" inputmode="numeric" placeholder="수량" aria-label="수량" style="flex:1"><input class="inp" name="amount" inputmode="numeric" placeholder="결제금액" aria-label="결제금액" style="flex:2"></div>
+<input class="inp" name="buyer" maxlength="30" placeholder="구매자" aria-label="구매자">
+<input class="inp" name="phone" type="tel" placeholder="휴대폰 번호" aria-label="휴대폰 번호">
+<input class="inp" name="ordered_on" type="date" aria-label="주문일">
+<select class="inp" name="channel" aria-label="판매처">{% for ch in OCHANNELS %}<option>{{ ch }}</option>{% endfor %}</select>
+<button class="btn md gray">넣기</button></form></details>
+<p class="cap" style="margin:0 4px">구매자 정보는 사장님 화면에서만 보이고, 주문 처리와 고객 응대에만 써요.</p>
+</aside></div>
+{% endblock %}

@@ -10,6 +10,7 @@ import secrets
 import csv, io
 import core, law, insights, drafting, chatbot
 import tracking as tracking_mod
+import orders as orders_mod
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -304,8 +305,9 @@ def case(case_id):
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);rule=core.rule_for(db,me()['id'],c['category'])
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])];ship_track=can_ship_track(db,c)
     comp_show=core.comp_open(c) and (rule['comp'] or c['category'] in core.COMP_CATS)
+    with conn() as db:order=orders_mod.for_case(db,c)
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
-    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,COMP_EXAMPLES=core.COMP_EXAMPLES,
+    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),tab='all')
 
 @app.route('/case/<int:case_id>/draft',methods=['POST'])
@@ -442,6 +444,38 @@ def import_products(db,co,raw):
         else:break
         n+=1
     return (f'{n}개 상품을 저장했습니다','ok') if n else ('저장할 상품이 없어요','error')
+
+# ---------- 주문 장부 ----------
+@app.route('/orders',methods=['GET','POST'])
+@login_required
+def orders_page():
+    co=me();g=request.args.get('g','all');q=clean(request.args.get('q'),40)
+    with conn() as db:
+        if request.method=='POST':
+            if request.form.get('act')=='csv':
+                up=request.files.get('file')
+                msg,level=orders_mod.import_csv(db,co,up.read(5_000_000),request.form.get('channel','')) if up and up.filename else ('파일을 골라 주세요','error')
+                flash(msg,level);return redirect(url_for('orders_page'))
+            msg,level,oid=orders_mod.save(db,co,request.form)
+            flash(msg,level)
+            return redirect(url_for('order_page',oid=oid) if oid else url_for('orders_page',add=1))
+        if g not in dict((k,1) for k,_,_ in orders_mod.GROUPS):g='all'
+        rows=orders_mod.orders(db,co['id'],g,q);cnt=orders_mod.counts(db,co['id'])
+    return render_template('b_orders.html',rows=rows,cnt=cnt,g=g,q=q,GROUPS=orders_mod.GROUPS,OSTATUS=orders_mod.STATUS,OCHANNELS=orders_mod.CHANNELS,tab='orders')
+
+@app.route('/order/<int:oid>',methods=['GET','POST'])
+@login_required
+def order_page(oid):
+    co=me()
+    with conn() as db:
+        o=orders_mod.order(db,co['id'],oid)
+        if not o:abort(404)
+        if request.method=='POST':
+            if request.form.get('act')=='delete':orders_mod.delete(db,co,oid);flash('주문을 지웠어요','ok');return redirect(url_for('orders_page'))
+            msg,level,_=orders_mod.save(db,co,request.form,oid);flash(msg,level)
+            return redirect(url_for('order_page',oid=oid))
+        cs=orders_mod.cases_for(db,o)
+    return render_template('b_order.html',o=o,cs=cs,OSTATUS=orders_mod.STATUS,OCHANNELS=orders_mod.CHANNELS,tab='orders')
 
 @app.route('/hook/trace/<tok>',methods=['POST'])
 def hook_trace(tok):
@@ -898,6 +932,29 @@ def api_biz_products():
             if level!='ok':return jsonify(error=msg),400
         d=products_json(db,co)
     return jsonify(dict(d,message=msg))
+def orders_meta():
+    return dict(groups=[dict(key=k,label=l) for k,l,_ in orders_mod.GROUPS],statuses=[dict(value=k,label=v) for k,v in orders_mod.STATUS.items()],channels=orders_mod.CHANNELS)
+@app.route('/api/v1/orders',methods=['GET','POST'])
+def api_biz_orders():
+    co=api_co();g=request.args.get('g','all');q=clean(request.args.get('q'),40);msg=''
+    with conn() as db:
+        if request.method=='POST':
+            msg,level,oid=orders_mod.save(db,co,api_form())
+            if level!='ok':return jsonify(error=msg),400
+        rows=orders_mod.orders(db,co['id'],g,q);cnt=orders_mod.counts(db,co['id'])
+    return jsonify(orders=[orders_mod.as_dict(o) for o in rows],counts=cnt,message=msg,**orders_meta())
+@app.route('/api/v1/orders/<int:oid>',methods=['GET','POST'])
+def api_biz_order(oid):
+    co=api_co();msg=''
+    with conn() as db:
+        if not orders_mod.order(db,co['id'],oid):abort(404)
+        if request.method=='POST':
+            f=api_form()
+            if f.get('act')=='delete':orders_mod.delete(db,co,oid);return jsonify(ok=True,message='주문을 지웠어요')
+            msg,level,_=orders_mod.save(db,co,f,oid)
+            if level!='ok':return jsonify(error=msg),400
+        o=orders_mod.order(db,co['id'],oid);cs=orders_mod.cases_for(db,o)
+    return jsonify(dict(orders_mod.as_dict(o),cases=[biz_summary(c) for c in cs],message=msg,**orders_meta()))
 @app.route('/api/v1/stats')
 def api_biz_stats():
     co=api_co()

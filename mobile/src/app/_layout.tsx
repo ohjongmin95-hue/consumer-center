@@ -69,6 +69,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false, contentStyle: { backgroundColor: C.card } }} />
           <Stack.Screen name="case/[id]" options={{ title: '요청 처리' }} />
+          <Stack.Screen name="order/[id]" options={{ title: '주문' }} />
           <Stack.Screen name="signup" options={{ title: '가입 신청', headerStyle: { backgroundColor: C.band } }} />
           <Stack.Screen name="forgot" options={{ title: '', headerStyle: { backgroundColor: C.card }, contentStyle: { backgroundColor: C.card } }} />
           <Stack.Screen name="rules" options={{ title: '자동 처리 규칙' }} />

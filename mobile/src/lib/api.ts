@@ -82,6 +82,13 @@ export type Settings = {
 };
 export type LawItem = { label: string; title: string; source: string; text: string };
 export type GuideItem = { id: string; title: string; points: { text: string; label: string }[]; sample: string; laws: LawItem[] };
+export type Order = {
+  id: number; order_no: string; channel: string; ordered_on: string; buyer: string; phone: string; address: string; product: string;
+  qty: number; amount: number; status: string; status_label: string; courier: string; invoice: string; memo: string; link: string; updated: string;
+};
+export type OrdersMeta = { groups: { key: string; label: string }[]; statuses: { value: string; label: string }[]; channels: string[] };
+export type Orders = OrdersMeta & { orders: Order[]; counts: Record<string, number>; message?: string };
+export type OrderDetail = Order & OrdersMeta & { cases: BizCase[]; message?: string };
 export type NewForm = { channels: string[]; cats: string[]; wants: string[]; hints: Record<string, string> };
 
 export class ApiError extends Error {
@@ -133,6 +140,10 @@ export const api = {
   newForm: (t: string) => call<NewForm>('/api/v1/new', {}, t),
   newCase: (t: string, f: Record<string, string>) => call<{ ok: boolean; id: number; message: string }>('/api/v1/new', json(f), t),
   record: (t: string, id: number) => call<{ no: string; html: string }>(`/api/v1/cases/${id}/record`, {}, t),
+  orders: (t: string, g: string, q = '') => call<Orders>(`/api/v1/orders?g=${g}&q=${encodeURIComponent(q)}`, {}, t),
+  addOrder: (t: string, f: Record<string, string>) => call<Orders>('/api/v1/orders', json(f), t),
+  order: (t: string, id: number) => call<OrderDetail>('/api/v1/orders/' + id, {}, t),
+  saveOrder: (t: string, id: number, f: Record<string, string>) => call<OrderDetail>('/api/v1/orders/' + id, json(f), t),
   leave: (t: string, password: string) => call<{ ok: boolean; message: string }>('/api/v1/leave', json({ password }), t),
 };
 

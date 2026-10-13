@@ -7,6 +7,7 @@
 {% if co and tab!='login' %}<nav>
 <a href="{{ url_for('decide') }}" class="{{ 'on' if tab=='home' }}">홈{% if n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>
 <a href="{{ url_for('all_cases') }}" class="{{ 'on' if tab=='all' }}">요청</a>
+<a href="{{ url_for('orders_page') }}" class="{{ 'on' if tab=='orders' }}">주문</a>
 <a href="{{ url_for('rules') }}" class="{{ 'on' if tab=='rules' }}">자동 처리</a>
 <a href="{{ url_for('stats') }}" class="{{ 'on' if tab=='stats' }}">통계</a>
 <a href="{{ url_for('guide') }}" class="{{ 'on' if tab=='guide' }}">응대 가이드</a>

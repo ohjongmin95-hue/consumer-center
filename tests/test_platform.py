@@ -371,6 +371,47 @@ class PlatformTest(unittest.TestCase):
             self.assertEqual(trk.t_key(),'')
         self.assertNotEqual(self.client().get('/biz/ops/keys').status_code,200)  # 운영자만
 
+    def test_order_ledger(self):
+        """주문 장부: 판매처 CSV를 올리고, 요청과 주문번호·휴대폰으로 이어지고, 송장을 넣으면 배송 중."""
+        b,o,cid=self.signup_and_approve('주문장부상회','ledger@example.com')
+        csv_text=('스마트스토어 주문 내역\n상품주문번호,주문일시,수취인명,수취인연락처1,배송지,상품명,옵션정보,수량,최종 상품별 총 주문금액,주문상태,택배사,송장번호\n'
+                  '2026101300001,2026.10.13 09:00,김구매,010-5555-6666,서울 강남구,수분 크림,50ml,2,"39,800",결제완료,,\n'
+                  '2026101300002,2026.10.12 11:00,이구매,010-7777-8888,부산,토너,,1,15000,배송중,CJ대한통운,123412341234\n').encode('cp949')
+        import io as _io
+        r=self.post(b,'/biz/orders',{'act':'csv','channel':'스마트스토어','file':(_io.BytesIO(csv_text),'orders.csv')},'/biz/orders',content_type='multipart/form-data',follow_redirects=True)
+        self.assertIn('새 주문 2건',r.get_data(as_text=True))
+        with self.core.conn() as db:rows={x['order_no']:x for x in db.execute('SELECT * FROM orders WHERE company_id=?',(cid,)).fetchall()}
+        a=rows['2026101300001'];self.assertEqual((a['product'],a['qty'],a['amount'],a['status'],a['phone'],a['ordered_on'],a['channel']),('수분 크림 / 50ml',2,39800,'paid','01055556666','2026-10-13','스마트스토어'))
+        self.assertEqual((rows['2026101300002']['status'],rows['2026101300002']['courier']),('shipped','CJ대한통운'))
+        page=b.get('/biz/orders').get_data(as_text=True);self.assertIn('수분 크림',page);self.assertIn('김구매',page)
+        self.assertIn('토너',b.get('/biz/orders?g=moving').get_data(as_text=True));self.assertNotIn('수분 크림',b.get('/biz/orders?g=moving').get_data(as_text=True))
+        # 같은 파일을 다시 올리면 새로 만들지 않고 고친다
+        r=self.post(b,'/biz/orders',{'act':'csv','file':(_io.BytesIO(csv_text),'orders.csv')},'/biz/orders',content_type='multipart/form-data',follow_redirects=True)
+        self.assertIn('고친 주문 2건',r.get_data(as_text=True))
+        # 고객 요청이 주문번호로 이어진다
+        me=self.client();cs=self.file_case(me,'주문장부상회','주문 취소',str(cid))
+        with self.core.conn() as db:db.execute("UPDATE cases SET order_no='2026101300001' WHERE id=?",(cs,))
+        page=b.get(f'/biz/case/{cs}').get_data(as_text=True);self.assertIn('수분 크림 / 50ml',page);self.assertIn('결제 완료',page)
+        self.assertIn(f'/biz/case/{cs}',b.get(f'/biz/order/{a["id"]}').get_data(as_text=True))
+        # 송장을 넣으면 배송 중, 상태 버튼으로 바꾸기
+        self.post(b,f'/biz/order/{a["id"]}',{'courier':'한진택배','invoice':'5555-6666-7777'})
+        with self.core.conn() as db:x=db.execute('SELECT status,invoice FROM orders WHERE id=?',(a['id'],)).fetchone()
+        self.assertEqual((x['status'],x['invoice']),('shipped','555566667777'))
+        self.post(b,f'/biz/order/{a["id"]}',{'status':'delivered'})
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT status,product FROM orders WHERE id=?',(a['id'],)).fetchone()[:],('delivered','수분 크림 / 50ml'))
+        # 직접 넣기, 같은 번호는 막는다
+        self.post(b,'/biz/orders',{'order_no':'M-1','product':'선물 세트','amount':'30,000','phone':'010-1212-3434'})
+        r=self.post(b,'/biz/orders',{'order_no':'M-1'},'/biz/orders',follow_redirects=True);self.assertIn('같은 주문번호가 이미',r.get_data(as_text=True))
+        # 앱 API
+        tok=self.client().post('/biz/api/v1/login',json={'login_id':'ledger@example.com','password':'longpassword1'}).get_json()['token'];h={'Authorization':'Bearer '+tok}
+        d=self.client().get('/biz/api/v1/orders?g=done',headers=h).get_json();self.assertEqual([x['order_no'] for x in d['orders']],['2026101300001'])
+        d=self.client().post(f'/biz/api/v1/orders/{a["id"]}',json={'status':'refunded','memo':'환불 완료'},headers=h).get_json()
+        self.assertEqual((d['status_label'],d['memo'],d['cases'][0]['id']),('환불','환불 완료',cs))
+        self.assertEqual(self.client().post('/biz/api/v1/orders',json={'order_no':'M-1'},headers=h).status_code,400)
+        # 다른 기업은 볼 수 없다
+        b2,_,_=self.signup_and_approve('남의주문상회','other-orders@example.com')
+        self.assertEqual(b2.get(f'/biz/order/{a["id"]}').status_code,404);self.assertNotIn('김구매',b2.get('/biz/orders').get_data(as_text=True))
+
     def test_courier_tracking_free_key(self):
         """무료 조회 키(t_key): 송장을 넣으면 바로 한 번 묻고, cron(poll)이 다시 물어 단계가 바뀌면 기록한다."""
         b,o,cid=self.signup_and_approve('무료택배마켓','freekey@example.com')

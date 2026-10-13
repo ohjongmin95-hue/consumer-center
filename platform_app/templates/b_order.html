@@ -1,0 +1,32 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}
+{% block title %}주문 {{ o.order_no }} · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('orders') }}{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('orders_page') }}">주문</a><span>›</span><span class="no">{{ o.order_no }}</span></div>
+<div class="chead"><div class="l"><div class="tagrow"><span class="pill">{{ OSTATUS[o.status] }}</span>{% if o.channel %}<span class="pill gray">{{ o.channel }}</span>{% endif %}</div>
+<h1>{{ o.product or o.order_no }}</h1><div class="cmeta">{% if o.ordered_on %}<span>{{ o.ordered_on }} 주문</span>{% endif %}<span class="no">{{ o.order_no }}</span></div></div></div>
+<div class="cols">
+<div class="stack">
+<section class="panel"><div class="ph">상태 바꾸기</div>
+<form method="post" style="display:flex;gap:8px;flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+{% for k,l in OSTATUS.items() %}<button class="btn sm {{ '' if o.status==k else 'gray' }}" name="status" value="{{ k }}" {{ 'disabled' if o.status==k }}>{{ l }}</button>{% endfor %}</form></section>
+<section class="panel"><div class="ph">발송</div>
+{% if o.invoice %}<p class="sub" style="font-size:15px;margin:0 0 12px">{{ o.courier }} <span class="no" style="user-select:all">{{ o.invoice }}</span>{% if COURIERS.get(o.courier) %} · <a class="link" href="{{ COURIERS[o.courier] }}" target="_blank" rel="noopener">조회하기</a>{% endif %}</p>{% endif %}
+<form method="post" class="addline" style="flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<select class="inp" name="courier" required style="flex:1 1 160px"><option value="">택배사</option>{% for k in COURIERS %}<option {{ 'selected' if o.courier==k }}>{{ k }}</option>{% endfor %}<option {{ 'selected' if o.courier=='기타' }}>기타</option></select>
+<input class="inp" name="invoice" inputmode="numeric" maxlength="30" placeholder="송장번호" value="{{ o.invoice }}" required style="flex:1 1 160px"><button class="btn md">{{ '송장 고치기' if o.invoice else '송장 넣기' }}</button></form></section>
+<section class="panel"><div class="ph">이 주문의 고객 요청</div>
+{% if cs %}{{ b.case_table(cs,m) }}{% else %}<p class="sub" style="font-size:15px;margin:0">아직 이 주문으로 들어온 요청이 없어요.</p>{% endif %}</section>
+</div>
+<aside class="stack side-sticky">
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="ph">주문 정보</div>
+<label class="fld"><span>상품 (옵션)</span><input class="inp" name="product" maxlength="200" value="{{ o.product }}"></label>
+<div style="display:flex;gap:8px"><label class="fld" style="flex:1"><span>수량</span><input class="inp" name="qty" inputmode="numeric" value="{{ o.qty }}"></label><label class="fld" style="flex:2"><span>결제금액</span><input class="inp" name="amount" inputmode="numeric" value="{{ o.amount or '' }}"></label></div>
+<label class="fld"><span>구매자</span><input class="inp" name="buyer" maxlength="30" value="{{ o.buyer }}"></label>
+<label class="fld"><span>휴대폰 번호</span><input class="inp" name="phone" type="tel" value="{{ fmt_phone(o.phone) if o.phone else '' }}"></label>
+<label class="fld"><span>배송지</span><input class="inp" name="address" maxlength="200" value="{{ o.address }}"></label>
+<label class="fld"><span>메모</span><textarea class="inp" name="memo" maxlength="500" style="min-height:90px">{{ o.memo }}</textarea></label>
+<button class="btn md gray">저장</button></form>
+<form method="post" onsubmit="return confirm('이 주문을 지울까요?')" style="text-align:center"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="delete"><button class="tbtn cap">주문 지우기</button></form>
+</aside></div>
+{% endblock %}
