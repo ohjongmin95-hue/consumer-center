@@ -341,6 +341,8 @@ def run_playbook(db,c,how):
         reply+='\n\n보내실 곳은 따로 안내드릴게요.';db.execute("UPDATE cases SET ret_status='guided' WHERE id=?",(c['id'],))
     if reply:add_event(db,c['id'],'co','답변을 보냈어요.',reply)
     db.execute('UPDATE cases SET status=?,decision=?,info_ask=? WHERE id=?',('answered' if reply else 'seen',how,'',c['id']))
+    if c['category']=='주문 취소':
+        import orders;orders.sync_case(db,c,'cancel')  # 이어진 주문도 '취소'로
     return bool(reply)
 
 def return_guide(co):
