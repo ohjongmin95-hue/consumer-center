@@ -4,7 +4,7 @@
 {% block bar %}{% endblock %}
 {% block main %}
 <main class="cs cs3">
-<header class="cs-top"><div class="cs-in"><span class="cs-brand"><img class="ch" src="{{ url_for('static',filename='soboru-char.png') }}" alt="" width="125" height="96"><b class="wm">소보루 CS</b></span>
+<header class="cs-top"><div class="cs-in"><span class="cs-brand"><img class="ch" src="{{ url_for('static',filename='soboru-char.png') }}?v=2" alt="" width="125" height="96"><b class="wm">소보루 CS</b></span>
 <a href="{{ url_for('mine') }}" class="cs-mine">내 접수{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a></div></header>
 <div class="cs3-top"><div class="cs-in">
 <section class="cs-hero">
