@@ -175,7 +175,70 @@ def decide():
         warn=insights.alerts(db,me());news=db.execute('SELECT * FROM news ORDER BY id DESC LIMIT 3').fetchall();comps=core.comp_rules(db,me()['id'])
     pend=[r for r in rows if is_pending(r)]
     counts={'comp':sum(core.comp_pending(r,comps) for r in rows),'all':len(rows),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows)}
-    return render_template('b_decide.html',pend=pend,recent=rows[:6],k=kpis(rows),counts=counts,cats=by_cat(rows),warn=warn,news=news,link=core.site_url('me','/to/%d'%me()['id']),tab='home')
+    today=core.now().date().isoformat();counts['today']=sum(r['created'][:10]==today for r in rows)
+    with conn() as db:ocnt=orders_mod.counts(db,me()['id'])
+    h=core.now().hour;hello='좋은 아침이에요' if h<11 else '좋은 오후예요' if h<18 else '오늘도 수고 많으셨어요'
+    return render_template('b_decide.html',pend=pend,recent=rows[:6],k=kpis(rows),counts=counts,cats=by_cat(rows),warn=warn,news=news,link=core.site_url('me','/to/%d'%me()['id']),
+        hello=hello,brief=briefing(rows,counts,ocnt),tab='home')
+
+def briefing(rows,counts,ocnt):
+    """홈의 '소보루 브리핑': 실제 요청·주문 숫자로 사장님이 먼저 볼 것을 몇 줄로 정리."""
+    week=(core.now().date()-datetime.timedelta(days=6)).isoformat();r7=[r for r in rows if r['created'][:10]>=week]
+    out=[]
+    if r7:
+        top,n=max(((cat,sum(r['category']==cat for r in r7)) for cat in core.CATS),key=lambda x:x[1])
+        out.append(f"최근 7일 요청 {len(r7)}건 중 '{top}' 요청이 {n}건으로 가장 많았어요." if n>=2 else f'최근 7일 요청이 {len(r7)}건 들어왔어요.')
+        a=sum(r['decision']=='auto' for r in r7)
+        if a:out.append(f'정해 둔 자동 처리로 {a}건은 바로 답했어요.')
+    p=sum(map(is_pending,rows))
+    out.append(f'사장님 승인이 필요한 요청이 {p}건 있어요.' if p else '승인할 요청은 모두 처리했어요.')
+    if counts['late']:out.append(f"답변 기한이 지난 요청이 {counts['late']}건 있어요. 먼저 봐 주세요.")
+    if counts['ret']:out.append(f"고객이 보낸 반품 상품 {counts['ret']}건이 오는 중이에요.")
+    if ocnt.get('todo'):out.append(f"아직 보내지 않은 주문이 {ocnt['todo']}건 있어요.")
+    if not rows:out=['아직 들어온 요청이 없어요. 아래 고객센터 링크를 고객에게 알려 주세요.']
+    return out
+
+@app.route('/approvals')
+@login_required
+def approvals():
+    """승인할 일: 사장님 판단이 필요한 요청만 모아서 바로 승인."""
+    with conn() as db:rows=my_cases(db,me());comps=core.comp_rules(db,me()['id'])
+    pend=[r for r in rows if is_pending(r)]
+    return render_template('b_approvals.html',pend=pend,n_comp=sum(core.comp_pending(r,comps) for r in rows),tab='approve')
+
+RET_CATS=('교환','반품·환불','제품 불량')
+RET_STAGES=[('new','새로 접수'),('back','회수 중'),('next','다음 처리 대기'),('done','처리 완료')]
+def ret_stage(c):
+    """교환·반품 요청이 지금 어느 단계인지: 접수 → 회수 중 → (재출고·환불) 대기 → 완료."""
+    if c['out_tracking'] or c['refund_status']=='done':return 'done'
+    if c['ret_status']=='received':return 'done' if c['status'] in core.FINAL and c['refund_status']!='requested' else 'next'
+    if c['ret_status'] in ('guided','sent'):return 'back'
+    if c['refund_status']=='requested':return 'next'
+    return 'done' if c['status'] in core.FINAL else 'new'
+
+@app.route('/returns')
+@login_required
+def returns():
+    with conn() as db:rows=[r for r in my_cases(db,me()) if r['category'] in RET_CATS or r['refund_status']=='requested']
+    keys=dict(RET_STAGES);st=request.args.get('s','');st=st if st in keys else ''
+    staged=[(r,ret_stage(r)) for r in rows];cnt={k:sum(x==k for _,x in staged) for k in keys}
+    return render_template('b_returns.html',rows=[(r,x) for r,x in staged if not st or x==st],cnt=cnt,stages=RET_STAGES,st=st,tab='returns')
+
+@app.route('/connect')
+@login_required
+def connect():
+    """서비스 연동: 지금 실제로 이어진 것과 준비 중인 것을 그대로 보여 준다."""
+    with conn() as db:
+        n=db.execute('SELECT channel,COUNT(*) n FROM orders WHERE company_id=? GROUP BY channel',(me()['id'],)).fetchall();by={r['channel']:r['n'] for r in n}
+    track_on=bool(core.secret('SWEETTRACKER_T_KEY'))
+    shops=[('네이버 스마트스토어','스마트스토어'),('쿠팡','쿠팡'),('자사몰·카페24','자사몰'),('오픈마켓','오픈마켓')]
+    rows=[dict(group='판매처',name=nm,desc=f'주문 {by[ch]}건 · 주문 엑셀(CSV)로 올리는 중' if by.get(ch) else '주문 엑셀(CSV)을 올리면 바로 쓸 수 있어요',
+               state='csv' if by.get(ch) else 'ready',href=url_for('orders_page')) for nm,ch in shops]
+    rows+=[dict(group='택배',name='택배 배송 조회',desc='송장번호로 고객·사장님 화면에서 위치를 바로 보여 줘요' if track_on else '소보루가 연결을 준비하고 있어요',state='on' if track_on else 'soon',href=''),
+           dict(group='알림',name='이메일 알림',desc='새 요청과 답변을 이메일로 알려 드려요' if core.mail_ready() else '소보루가 연결을 준비하고 있어요',state='on' if core.mail_ready() else 'soon',href=url_for('settings')),
+           dict(group='알림',name='카카오 알림톡',desc='고객에게 진행 상황을 카카오톡으로 보내요',state='soon',href=''),
+           dict(group='상담',name='AI 상담',desc='고객 채팅에 AI가 먼저 답해요' if core.secret('ANTHROPIC_API_KEY') else '소보루가 연결을 준비하고 있어요',state='on' if core.secret('ANTHROPIC_API_KEY') else 'soon',href='')]
+    return render_template('b_connect.html',rows=rows,tab='connect')
 
 @app.route('/approve_many',methods=['POST'])
 @login_required

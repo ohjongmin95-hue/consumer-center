@@ -444,6 +444,23 @@ class PlatformTest(unittest.TestCase):
         d=self.client().get(f'/biz/api/v1/cases/{c2}',headers={'Authorization':'Bearer '+tok}).get_json()
         self.assertEqual((d['order']['order_no'],d['cancel_blocked']),('S-2',True))
 
+    def test_owner_workspace_pages(self):
+        """사장님 화면: 홈 한 화면 요약·브리핑, 승인할 일, 교환·반품 단계, 서비스 연동."""
+        b,o,cid=self.signup_and_approve('한화면상회','oneview@example.com')
+        me=self.client();c1=self.file_case(me,'한화면상회','교환',str(cid),title='사이즈가 안 맞아요');c2=self.file_case(me,'한화면상회','배송 조회',str(cid),title='언제 와요')
+        home=b.get('/biz/').get_data(as_text=True)
+        for t in ('사장님','오늘 들어온 요청','승인할 요청이','소보루 브리핑','사장님 승인이 필요한 요청이 2건','사이즈가 안 맞아요','class="bside"','서비스 연동'):self.assertIn(t,home)
+        ap=b.get('/biz/approvals').get_data(as_text=True);self.assertIn('사이즈가 안 맞아요',ap);self.assertIn('언제 와요',ap)
+        r=b.get('/biz/returns').get_data(as_text=True);self.assertIn('사이즈가 안 맞아요',r);self.assertNotIn('언제 와요',r);self.assertIn('새로 접수',r)
+        self.post(b,f'/biz/case/{c1}',{'act':'approve'})
+        r=b.get('/biz/returns?s=back').get_data(as_text=True);self.assertIn('사이즈가 안 맞아요',r)
+        self.post(b,f'/biz/case/{c1}',{'act':'ret_received'})
+        self.assertIn('사이즈가 안 맞아요',b.get('/biz/returns?s=next').get_data(as_text=True))
+        cn=b.get('/biz/connect').get_data(as_text=True)
+        for t in ('네이버 스마트스토어','쿠팡','택배 배송 조회','카카오 알림톡','엑셀 올리기','준비 중'):self.assertIn(t,cn)
+        self.post(b,'/biz/orders',{'order_no':'X-1','channel':'쿠팡','product':'크림'})
+        self.assertIn('주문 1건',b.get('/biz/connect').get_data(as_text=True))
+
     def test_courier_tracking_free_key(self):
         """무료 조회 키(t_key): 송장을 넣으면 바로 한 번 묻고, cron(poll)이 다시 물어 단계가 바뀌면 기록한다."""
         b,o,cid=self.signup_and_approve('무료택배마켓','freekey@example.com')
@@ -552,7 +569,7 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(c1,)).fetchone()[0],'withdrawn')
         # 같은 유형 한 번에 승인 -> 답변 후 7일 응답 없으면 자동 종료
         a=self.file_case(me,'검토마켓','배송 조회',company_id=str(cid));bb=self.file_case(me,'검토마켓','배송 조회',company_id=str(cid))
-        self.assertIn('배송 조회 2건 모두 승인',b.get('/biz/').get_data(as_text=True))
+        self.assertIn('배송 조회 2건 모두 승인',b.get('/biz/approvals').get_data(as_text=True))
         self.post(b,'/biz/approve_many',{'category':'배송 조회'},'/biz/')
         with self.core.conn() as db:self.assertEqual({r[0] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)',(a,bb))},{'answered'})
         self.assertGreaterEqual(self.core.close_idle(self.core.now()+datetime.timedelta(days=8)),2)

@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}
+{% block title %}교환·반품 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('returns') }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>교환·반품</h1><p>접수부터 회수, 재발송·환불까지 단계별로 봐요</p></div></div>
+<div class="sumrow">{% for key,l in stages %}<a href="{{ url_for('returns',s=key) }}" class="{{ 'on' if st==key }}"><span>{{ l }}</span><b class="{{ 't-acc' if key=='next' and cnt[key] }}">{{ cnt[key] }}</b></a>{% endfor %}</div>
+<div class="tabs"><a href="{{ url_for('returns') }}" class="{{ 'on' if not st }}">전체<span>{{ cnt.values()|sum }}</span></a>{% for key,l in stages %}<a href="{{ url_for('returns',s=key) }}" class="{{ 'on' if st==key }}">{{ l }}<span>{{ cnt[key] }}</span></a>{% endfor %}</div>
+{% set NEXT={'new':'요청을 열어 승인하면 반품 방법이 안내돼요','back':'상품이 도착하면 회수 확인을 눌러 주세요','next':'새 상품 발송이나 환불을 마무리해 주세요','done':''} %}
+{% if rows %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>내용</th><th class="hm">유형</th><th class="hm">다음 할 일</th><th class="r">단계</th></tr></thead><tbody>
+{% for c,sg in rows %}<tr data-href="{{ url_for('case',case_id=c.id) }}"><td><a class="ttl" href="{{ url_for('case',case_id=c.id) }}">{{ c.title }}</a></td><td class="hm t-sub">{{ c.category }}</td><td class="hm t-mute">{{ NEXT[sg] }}</td>
+<td class="r"><span class="pill {{ {'new':'acc','back':'gray','next':'acc','done':'ok'}[sg] }}">{{ dict(stages)[sg] }}</span></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-card"><b>해당하는 교환·반품 요청이 없습니다</b></div>{% endif %}
+{% endblock %}

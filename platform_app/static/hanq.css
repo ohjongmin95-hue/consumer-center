@@ -1284,3 +1284,39 @@ html:has(.intro){scroll-behavior:smooth}
 .pw-steps li::before{content:counter(pw);grid-row:span 2;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
 .pw-steps b{font-size:16px;font-weight:600;color:var(--fg)}.pw-steps span{font-size:14px;color:var(--fg2);line-height:1.5}
 .li input.comp-in{width:100%;font-size:15px;background:var(--fill)}
+/* 사장님 화면: 넓은 화면 왼쪽 메뉴, 홈 한 화면 요약 */
+.bside{display:none}
+@media (min-width:1100px){
+body:has(.bside) .gnb nav{display:none}
+.bside{display:flex;flex-direction:column;gap:2px;position:fixed;left:0;top:65px;bottom:0;width:220px;padding:20px 12px;background:var(--card);border-right:1px solid var(--line);overflow-y:auto;z-index:10}
+.bside a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;font-size:15.5px;font-weight:600;color:var(--fg2)}
+.bside a:hover{background:var(--fill)}
+.bside a.on{background:var(--accent-soft);color:var(--accent-ink)}
+.bside a .cnt{margin-left:auto}
+.bside .ic{flex-shrink:0}
+body:has(.bside) main.pg,body:has(.bside) .flashes,body:has(.bside) .foot2{margin-left:220px}
+}
+.hsplit{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;margin-bottom:28px}
+.hsplit .ph .more{margin-left:auto;font-size:14px;font-weight:600;color:var(--fg3)}
+.hsplit .ph em{font-style:normal}
+.drow{display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+.drow:first-of-type{border-top:0}
+.drow .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.drow .tx b{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drow .tx span{font-size:14px;color:var(--fg3)}
+.drow .tx em{font-style:normal}
+.drow .lawchips{margin-top:4px}
+.hempty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 0;color:var(--fg3);font-size:15px}
+.brief{background:var(--accent-soft)}
+.brief ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.brief li{font-size:15.5px;line-height:1.6;color:var(--fg);padding-left:16px;position:relative}
+.brief li:before{content:'';position:absolute;left:0;top:.65em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.sumrow a.on{box-shadow:inset 0 0 0 2px var(--accent)}
+.conn{margin-bottom:16px}
+.crow{display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+.crow:first-of-type{border-top:0}
+.crow .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.crow .tx b{font-size:16px}
+.crow .tx span{font-size:14px;color:var(--fg3)}
+@media (max-width:900px){.hsplit{grid-template-columns:1fr}}
+@media (min-width:1100px){body:has(.bside) .gnb .wrap{max-width:none}}
