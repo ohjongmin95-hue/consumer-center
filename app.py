@@ -57,6 +57,8 @@ with conn() as db:
     row=db.execute("SELECT value FROM site_lists WHERE key='layout_guide'").fetchone()
     if row and [b.get('kind') for b in json.loads(row[0])]==['guide_basics','guide_writing','guide_evidence','guide_topics','guide_bottom'] and not any(b.get(k) for b in json.loads(row[0]) for k in ('title','body','button_label','button_link')):
         db.execute("DELETE FROM site_lists WHERE key='layout_guide'")
+    # 검색 노출 문구 개편: 예전 기본 제목·설명이 그대로 저장돼 있으면 지워서 새 기본 문구를 쓰게 함 (직접 고친 문구는 그대로 둠)
+    db.execute("DELETE FROM site_content WHERE (key='seo.home_title' AND value='소비자제보센터') OR (key='seo.description' AND value='소비자 피해 제보와 처리 과정 확인, 업체 답변까지 한곳에서. 환불·배송·불량 피해를 제보하세요.')")
     db.execute("CREATE TABLE IF NOT EXISTS takedown_requests(id INTEGER PRIMARY KEY,requester TEXT NOT NULL,contact TEXT NOT NULL,target TEXT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT '접수',admin_note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
 TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','기각','처리 완료']
 

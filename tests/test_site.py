@@ -50,8 +50,9 @@ class SiteTest(unittest.TestCase):
         def ld(html):
             return [json.loads(m) for m in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)]
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<title>소비자제보센터</title>', home)
-        self.assertIn('<meta name="title" content="소비자제보센터">', home)
+        self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', home)
+        self.assertIn('<meta name="title" content="소비자제보센터 - 소비자 피해 제보·고발">', home)
+        self.assertIn('환불 거부, 배송 지연, 불량품', home)
         self.assertIn('og:locale" content="ko_KR"', home)
         self.assertIn('WebSite', [d.get('@type') for d in ld(home)])
         with self.site.conn() as db:
@@ -95,9 +96,9 @@ class SiteTest(unittest.TestCase):
             self.assertIn('noindex', self.client.get(path).get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('여러분의 제보가', home)
-        self.assertIn('<title>소비자제보센터</title>', home)
+        self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', home)
         self.assertIn('<small class="brand-by">by SOBORU</small>', home)
-        self.assertIn('<meta property="og:title" content="소비자제보센터">', home)
+        self.assertIn('<meta property="og:title" content="소비자제보센터 - 소비자 피해 제보·고발">', home)
         self.assertIn('class="hero hero-art"', home)
         for side in ('left', 'right'):
             self.assertRegex(home, r'img/hero-%s\.svg\?v=\d+' % side)  # 그림이 바뀌면 주소도 바뀌어 캐시된 예전 그림이 보이지 않음
@@ -681,7 +682,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('/reports/%d<' % secret_id, xml)
         self.assertNotIn('/admin', xml)
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<meta name="description" content="소비자 피해 제보와 처리 과정', home)
+        self.assertIn('<meta name="description" content="환불 거부, 배송 지연, 불량품', home)
         self.assertNotIn('naver-site-verification', home)
         detail = self.client.get('/reports/%d' % public_id).get_data(as_text=True)
         self.assertIn('<meta name="description" content="공개 본문 내용입니다">', detail)
