@@ -1409,3 +1409,5 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 .ad-toast span { color: #d1d6db; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ad-notify-on { padding: 8px 14px; border: 1px solid var(--ad-line); border-radius: 9px; background: #fff; color: var(--ad-ink); font-size: 13px; font-weight: 700; cursor: pointer; }
 .ad-notify-on:disabled { cursor: default; color: var(--ad-sub); }
+/* 처리 절차 맨 아래 운영 안내 (법률 자문 안 함) */
+.process-disclaimer { margin: 32px auto 0; max-width: 640px; padding: 14px 16px; border-radius: 12px; background: #f6f5f2; color: #6b7280; font-size: 13px; line-height: 1.6; text-align: center; }

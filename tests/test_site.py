@@ -45,6 +45,11 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(r.headers['Location'], 'https://consumerjebo.co.kr/reports?page=2')
         self.assertEqual(self.client.get('/', base_url='https://consumerjebo.co.kr').status_code, 200)
 
+    def test_process_disclaimer(self):
+        # 법률 자문 안 함 안내는 하단이 아니라 처리 절차 페이지 맨 아래에만
+        self.assertIn('법률 상담·자문', self.client.get('/process').get_data(as_text=True))
+        self.assertNotIn('법률 상담·자문', self.client.get('/').get_data(as_text=True))
+
     def test_search_meta_tags(self):
         import json, re
         def ld(html):
