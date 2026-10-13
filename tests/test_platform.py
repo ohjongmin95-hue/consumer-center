@@ -142,7 +142,7 @@ class PlatformTest(unittest.TestCase):
         sm=c.get('/biz/sitemap.xml');self.assertEqual(sm.status_code,200);self.assertIn('/signup</loc>',sm.get_data(as_text=True))
         with patch.dict(self.core.GOOGLE_VERIFY,{'biz':'g-code'}),patch.dict(self.core.VERIFY,{'biz':'n-code'}),patch.dict(self.core.DAUM_ROBOTS,{'biz':'DaumWebMasterTool:abc'}):
             home=c.get('/biz/').get_data(as_text=True)
-            self.assertIn('content="g-code"',home);self.assertIn('content="n-code"',home);self.assertIn('SoftwareApplication',home)
+            self.assertIn('content="g-code"',home);self.assertIn('og-biz.png',home);self.assertIn('content="n-code"',home);self.assertIn('SoftwareApplication',home)
             self.assertTrue(c.get('/biz/robots.txt').get_data(as_text=True).startswith('#DaumWebMasterTool:abc'))
 
     def test_biz_app_inapp_pages(self):
