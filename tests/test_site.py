@@ -39,6 +39,12 @@ class SiteTest(unittest.TestCase):
         cls.env.stop()
         cls.temp.cleanup()
 
+    def test_www_redirects_to_bare_domain(self):
+        r = self.client.get('/reports?page=2', base_url='https://www.consumerjebo.co.kr')
+        self.assertEqual(r.status_code, 301)
+        self.assertEqual(r.headers['Location'], 'https://consumerjebo.co.kr/reports?page=2')
+        self.assertEqual(self.client.get('/', base_url='https://consumerjebo.co.kr').status_code, 200)
+
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:

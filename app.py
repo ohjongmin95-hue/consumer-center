@@ -87,6 +87,11 @@ def load_lists():
         saved={r['key']:json.loads(r['value']) for r in db.execute('SELECT key,value FROM site_lists')}
         return {key:saved[key] if key in saved else (legacy_list(db,key) or site_content.LIST_DEFAULTS[key]) for key,*_ in site_content.LISTS}
 @app.before_request
+def no_www():
+    # www가 붙은 주소는 www 없는 주소로 옮긴다: 검색엔진이 같은 글을 두 주소로 따로 모으지 않게
+    if request.host.lower().startswith('www.'):
+        return redirect(request.url.replace('://'+request.host,'://'+request.host[4:],1),301)
+@app.before_request
 def content_for_request():
     if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
 # 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
