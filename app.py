@@ -149,6 +149,12 @@ app.jinja_env.globals['GROUP_STATUSES']=None  # 아래 공동 대응 부분에�
 # 공동 대응(집단 피해 모집)은 기본으로 꺼 둠. 다시 켜려면 서버 설정에 ENABLE_GROUPS=1
 GROUPS_ON=os.getenv('ENABLE_GROUPS')=='1'
 app.jinja_env.globals['groups_on']=lambda:GROUPS_ON
+# 기업 회원(업체 가입·로그인)도 기본으로 꺼 둠. 업체 답변은 센터가 보내는 답변 링크(/company/...)로 받음. 다시 켜려면 ENABLE_BIZ_MEMBERS=1
+BIZ_ON=os.getenv('ENABLE_BIZ_MEMBERS')=='1'
+app.jinja_env.globals['biz_on']=lambda:BIZ_ON
+@app.before_request
+def biz_closed():
+    if not BIZ_ON and (request.path=='/biz' or request.path.startswith('/biz/')) and not session.get('admin'):abort(404)
 app.jinja_env.globals['industry_art']={k for k,_ in site_content.INDUSTRY_ART if k}  # static/img/guide-ind-<이름>.svg 가 있는 그림
 app.jinja_env.globals['guide_icon']=lambda name:Markup('<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">%s</svg>'%GUIDE_ICONS.get(name,GUIDE_ICONS['write']))
 STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']

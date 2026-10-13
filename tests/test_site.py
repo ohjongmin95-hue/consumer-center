@@ -477,6 +477,11 @@ class SiteTest(unittest.TestCase):
         notify.ASYNC = True
 
     def test_company_members(self):
+        # 기업 회원은 기본으로 꺼져 있음: 화면은 404, 하단 링크 없음
+        self.assertEqual(self.client.get('/biz/login').status_code, 404)
+        self.assertNotIn('/biz/login', self.client.get('/').get_data(as_text=True))
+        self.site.BIZ_ON = True
+        self.addCleanup(setattr, self.site, 'BIZ_ON', False)
         notify = self.site.notify
         notify.ASYNC = False
         # 1) 기업 가입: 사업자번호 검증번호가 틀리면 거절
