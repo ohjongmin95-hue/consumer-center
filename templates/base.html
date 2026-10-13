@@ -36,8 +36,8 @@
   <div class="top">
     <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">{{ txt('site.logo_by') }}</small>{% endif %}</a>
     <nav class="section-nav" aria-label="주요 메뉴">
-      {% for item in items('menu') %}{% set href = menu_href(item) %}
-      <a href="{{ href }}"{% if menu_active(href) %} class="active" aria-current="page"{% endif %}{% if item.page == 'custom' and href.startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>
+      {% for item in items('menu') %}{% set href = menu_href(item) %}{% if href %}
+      <a href="{{ href }}"{% if menu_active(href) %} class="active" aria-current="page"{% endif %}{% if item.page == 'custom' and href.startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
       {% endfor %}
     </nav>
     <div class="top-auth">
@@ -65,7 +65,7 @@
         <a href="{{ url_for('policy_page', page='youth') }}">{{ ui('common.ft_youth', '청소년보호정책') }}</a>
         <a class="ft-point" href="{{ url_for('takedown') }}">{{ ui('common.ft_takedown', '권리침해 신고 및 임시조치 안내') }}</a>
         <a href="{{ url_for('lookup') }}">{{ ui('common.ft_lookup', '내 제보 조회') }}</a>
-        <a href="{{ url_for('biz_login') }}">{{ ui('common.ft_biz', '기업 회원') }}</a>
+        {% if biz_on() %}<a href="{{ url_for('biz_login') }}">{{ ui('common.ft_biz', '기업 회원') }}</a>{% endif %}
       </nav>
     </div>
     {% set rows = footer_rows() %}

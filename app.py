@@ -58,6 +58,9 @@ with conn() as db:
     if row and [b.get('kind') for b in json.loads(row[0])]==['guide_basics','guide_writing','guide_evidence','guide_topics','guide_bottom'] and not any(b.get(k) for b in json.loads(row[0]) for k in ('title','body','button_label','button_link')):
         db.execute("DELETE FROM site_lists WHERE key='layout_guide'")
     # 검색 노출 문구 개편: 예전 기본 제목·설명이 그대로 저장돼 있으면 지워서 새 기본 문구를 쓰게 함 (직접 고친 문구는 그대로 둠)
+    # 진행 단계 이름 '조정 진행' → '기업 답변 도착' (센터는 분쟁을 조정하지 않음)
+    db.execute("UPDATE cases SET status='기업 답변 도착' WHERE status='조정 진행'")
+    db.execute("DELETE FROM site_content WHERE key='status.n5' AND value='조정 진행'")
     db.execute("DELETE FROM site_content WHERE (key='seo.home_title' AND value='소비자제보센터') OR (key='seo.description' AND value='소비자 피해 제보와 처리 과정 확인, 업체 답변까지 한곳에서. 환불·배송·불량 피해를 제보하세요.')")
     db.execute("CREATE TABLE IF NOT EXISTS takedown_requests(id INTEGER PRIMARY KEY,requester TEXT NOT NULL,contact TEXT NOT NULL,target TEXT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT '접수',admin_note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
 TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','기각','처리 완료']
@@ -114,6 +117,7 @@ def menu_href(item):
     if page=='custom':return item.get('url','') if SAFE_LINK.match(item.get('url','')) else '#'
     if page in ('guide','process','faq','types'):return url_for('info_page',page=page)
     if page in ('terms','privacy'):return url_for('policy_page',page=page)
+    if page=='groups' and not GROUPS_ON:return ''  # 공동 대응이 꺼져 있으면 메뉴에서 숨김
     if page in ('reports','board','report','lookup','home','takedown','groups'):return url_for(page)
     return '#'
 def menu_active(href):
@@ -142,6 +146,15 @@ GUIDE_ICONS={  # 이용 안내 단계 카드 아이콘 (주황 선이 포인트)
     'bell':'<path d="M14 33V22a10 10 0 0 1 20 0v11l3 4H11z"/><path class="o" d="M20 41a4 4 0 0 0 8 0"/><path class="o" d="M24 8v4"/>',
 }
 app.jinja_env.globals['GROUP_STATUSES']=None  # 아래 공동 대응 부분에서 채움
+# 공동 대응(집단 피해 모집)은 기본으로 꺼 둠. 다시 켜려면 서버 설정에 ENABLE_GROUPS=1
+GROUPS_ON=os.getenv('ENABLE_GROUPS')=='1'
+app.jinja_env.globals['groups_on']=lambda:GROUPS_ON
+# 기업 회원(업체 가입·로그인)도 기본으로 꺼 둠. 업체 답변은 센터가 보내는 답변 링크(/company/...)로 받음. 다시 켜려면 ENABLE_BIZ_MEMBERS=1
+BIZ_ON=os.getenv('ENABLE_BIZ_MEMBERS')=='1'
+app.jinja_env.globals['biz_on']=lambda:BIZ_ON
+@app.before_request
+def biz_closed():
+    if not BIZ_ON and (request.path=='/biz' or request.path.startswith('/biz/')) and not session.get('admin'):abort(404)
 app.jinja_env.globals['industry_art']={k for k,_ in site_content.INDUSTRY_ART if k}  # static/img/guide-ind-<이름>.svg 가 있는 그림
 app.jinja_env.globals['guide_icon']=lambda name:Markup('<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">%s</svg>'%GUIDE_ICONS.get(name,GUIDE_ICONS['write']))
 STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']
@@ -210,7 +223,7 @@ app.jinja_env.globals['ui_rich']=ui_rich
 def status_name(status):
     # 진행 단계 이름 (저장값은 그대로 두고 화면에 보이는 이름만 바꿈)
     names={STATUSES[0]:lambda:ui('status.n1','접수'),STATUSES[1]:lambda:ui('status.n2','검토 중'),STATUSES[2]:lambda:ui('status.n3','추가 확인'),
-           STATUSES[3]:lambda:ui('status.n4','기업 답변 대기'),STATUSES[4]:lambda:ui('status.n5','조정 진행'),STATUSES[5]:lambda:ui('status.n6','종결')}
+           STATUSES[3]:lambda:ui('status.n4','기업 답변 대기'),STATUSES[4]:lambda:ui('status.n5','기업 답변 도착'),STATUSES[5]:lambda:ui('status.n6','종결')}
     return names[status]() if status in names else status
 app.jinja_env.globals['status_name']=status_name
 app.jinja_env.globals['STATUSES']=STATUSES
@@ -367,7 +380,7 @@ def reports():
         args.append('%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%')
     cond=' AND '.join(where)
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
-    with conn() as db:open_groups=db.execute("SELECT id,title,company FROM damage_groups WHERE status='open' ORDER BY id DESC LIMIT 3").fetchall()
+    with conn() as db:open_groups=db.execute("SELECT id,title,company FROM damage_groups WHERE status='open' ORDER BY id DESC LIMIT 3").fetchall() if GROUPS_ON else []
     return render_template('reports.html',open_groups=open_groups,categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE),total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
 
 PHONE_RE=re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}')
@@ -432,7 +445,7 @@ def sitemap_xml():
     with conn() as db:
         pages+=[(url_for('public_case',case_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 5000')]
         pages+=[(url_for('board_post',post_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 5000')]
-        pages+=[(url_for('groups',_external=True),None)]+[(url_for('group_page',group_id=r['id'],_external=True),r['updated'][:10]) for r in db.execute("SELECT id,updated FROM damage_groups WHERE status IN ('open','active','closed') ORDER BY id DESC LIMIT 500")]
+        if GROUPS_ON:pages+=[(url_for('groups',_external=True),None)]+[(url_for('group_page',group_id=r['id'],_external=True),r['updated'][:10]) for r in db.execute("SELECT id,updated FROM damage_groups WHERE status IN ('open','active','closed') ORDER BY id DESC LIMIT 500")]
     body=''.join('<url><loc>%s</loc>%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '') for u,d in pages)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
@@ -1519,7 +1532,7 @@ def admin_staff():
 # '기업 전달'에 동의한 제보만 보고 답변함. 제보자 이름·연락처·첨부파일·내부 메모는 기업에 보이지 않음.
 # 공개 제보의 기업 답변은 운영자가 확인한 뒤에만 사이트에 공개.
 COMPANY_STATUSES={'pending':'승인 대기','active':'승인','rejected':'반려','stopped':'중지'}
-ANSWER_STATUS='조정 진행'  # 기업이 처음 답하면 이 단계로 (이미 이후 단계면 그대로)
+ANSWER_STATUS='기업 답변 도착'  # 기업이 처음 답하면 이 단계로 (이미 이후 단계면 그대로)
 with conn() as db:
     db.execute('''CREATE TABLE IF NOT EXISTS companies(id INTEGER PRIMARY KEY,name TEXT NOT NULL,biz_no TEXT NOT NULL,aliases TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending',contact_name TEXT NOT NULL,contact_phone TEXT NOT NULL,contact_email TEXT NOT NULL,created TEXT NOT NULL,approved TEXT NOT NULL DEFAULT '')''')
     db.execute('''CREATE TABLE IF NOT EXISTS company_users(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,login_id TEXT NOT NULL UNIQUE COLLATE NOCASE,pw_hash TEXT NOT NULL,name TEXT NOT NULL,session_ver INTEGER NOT NULL DEFAULT 1,failed INTEGER NOT NULL DEFAULT 0,locked_until TEXT NOT NULL DEFAULT '',last_login TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,FOREIGN KEY(company_id) REFERENCES companies(id))''')
@@ -1777,6 +1790,7 @@ with conn() as db:
 
 def home_groups(limit):
     # 메인 화면: 참여 모집·진행 중인 공동 대응 (참여 인원 많은 순)
+    if not GROUPS_ON:return []
     with conn() as db:
         return db.execute("""SELECT g.*,(SELECT COUNT(*) FROM group_members m WHERE m.group_id=g.id) AS n_members FROM damage_groups g
             WHERE g.status IN ('open','active') ORDER BY CASE g.status WHEN 'open' THEN 0 ELSE 1 END,n_members DESC,g.id DESC LIMIT ?""",(limit,)).fetchall()
@@ -1784,6 +1798,7 @@ app.jinja_env.globals['home_groups']=home_groups
 
 def group_for_case(db,case_id,company):
     # 그 제보가 연결된 공동 대응, 없으면 같은 업체 이름의 공개 공동 대응(모집·진행 중)
+    if not GROUPS_ON:return None
     grp=db.execute("SELECT g.* FROM damage_groups g JOIN cases c ON c.group_id=g.id WHERE c.id=? AND g.status IN ('open','active','closed')",(case_id,)).fetchone()
     if grp:return grp
     target=norm_company(company)
@@ -1794,6 +1809,7 @@ def group_for_case(db,case_id,company):
 
 @app.route('/groups')
 def groups():
+    if not GROUPS_ON:abort(404)
     with conn() as db:
         rows=db.execute("""SELECT g.*,(SELECT COUNT(*) FROM group_members m WHERE m.group_id=g.id) AS n_members,
             (SELECT COUNT(*) FROM cases c WHERE c.group_id=g.id) AS n_cases FROM damage_groups g
@@ -1818,6 +1834,7 @@ def too_many_group_posts(db,hours=1,limit=5,table='group_members'):
 @app.route('/groups/new',methods=['GET','POST'])
 def group_new():
     # 소비자가 공동 대응을 제안. 운영자 확인 뒤 공개되고, 제안자가 첫 참여자가 됨.
+    if not GROUPS_ON:abort(404)
     if request.method=='GET':return render_template('group_new.html')
     if request.form.get('website'):abort(400)
     title=request.form.get('title','').strip();company=request.form.get('company','').strip()
@@ -1836,6 +1853,7 @@ def group_new():
 
 @app.route('/groups/<int:group_id>',methods=['GET','POST'])
 def group_page(group_id):
+    if not GROUPS_ON:abort(404)
     with conn() as db:
         grp=db.execute('SELECT * FROM damage_groups WHERE id=?',(group_id,)).fetchone()
         if not grp or (grp['status'] not in GROUP_PUBLIC and not admin_active() and group_id not in (session.get('proposed_groups') or [])):abort(404)

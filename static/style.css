@@ -1343,7 +1343,7 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 .grp-review { background: #fff7ee; border-color: #f5d4b7; }
 .grp-review p { margin: 0 0 12px; line-height: 1.6; }
 
-/* 진행 단계별 색: 접수 회색 → 검토 중 파랑 → 추가 확인 보라 → 기업 답변 대기 노랑 → 조정 진행 주황 → 종결 초록 */
+/* 진행 단계별 색: 접수 회색 → 검토 중 파랑 → 추가 확인 보라 → 기업 답변 대기 노랑 → 기업 답변 도착 주황 → 종결 초록 */
 .st-1 { --st: #7b8798; --st-bg: #eef0f3; }
 .st-2 { --st: #2f6fe0; --st-bg: #e8f0fd; }
 .st-3 { --st: #7c4ddb; --st-bg: #f1ebfc; }
