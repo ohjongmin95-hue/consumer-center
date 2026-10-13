@@ -4,11 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#fafaf9">
-  {% if request.path.startswith(('/admin', '/case', '/company', '/me', '/login', '/account')) %}<meta name="robots" content="noindex,nofollow">{% endif %}
+  {% if request.path.startswith(('/admin', '/case', '/company', '/me', '/login', '/account')) %}<meta name="robots" content="noindex,nofollow">{% elif request.args.get('q') or request.args.get('category') or request.args.get('sort') %}{# 검색·분류 결과 화면: 원래 목록과 겹치는 얇은 페이지라 검색엔진에는 싣지 않고 링크만 따라가게 함 #}<meta name="robots" content="noindex,follow">{% endif %}
   <title>{% block title %}{{ txt('seo.home_title') or txt('site.name') }}{% endblock %}</title>
+  <meta name="title" content="{{ self.title()|trim }}">
   <meta name="description" content="{% filter trim %}{% block description %}{{ txt('seo.description') }}{% endblock %}{% endfilter %}">
   <link rel="canonical" href="{{ request.base_url }}{% if request.args.get('page', 1)|int > 1 %}?page={{ request.args.get('page', 1)|int }}{% endif %}">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="{{ txt('site.name') }}">
   <meta property="og:title" content="{{ self.title()|trim }}">
   <meta property="og:description" content="{{ self.description()|trim }}">
@@ -21,7 +23,9 @@
   {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
   <link rel="alternate" type="application/rss+xml" title="{{ txt('site.name') }}" href="{{ url_for('rss_xml', _external=True) }}">
-  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "name": txt('site.name'), "url": url_for('home', _external=True), "sameAs": channel_links()}|tojson }}</script>{% endif %}
+  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "name": txt('site.name'), "url": url_for('home', _external=True), "logo": url_for('static', filename='apple-touch-icon.png', _external=True), "sameAs": channel_links()}|tojson }}</script>
+  <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebSite", "name": txt('site.name'), "url": url_for('home', _external=True), "inLanguage": "ko", "potentialAction": {"@type": "SearchAction", "target": url_for('reports', _external=True) ~ "?q={search_term_string}", "query-input": "required name=search_term_string"}}|tojson }}</script>{% endif %}
+  {% block head %}{% endblock %}
   <link rel="icon" href="{{ url_for('favicon_ico') }}" sizes="48x48">
   <link rel="icon" href="{{ url_for('static', filename='soboru-favicon.png', v=css_v) }}" type="image/png">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png', v=css_v) }}">

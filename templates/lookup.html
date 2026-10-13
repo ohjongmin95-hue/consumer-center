@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block content %}<main class="page"><div class="wrap">
+{% extends 'base.html' %}{% block title %}{{ ui('lookup.title', '내 제보 조회') }} | {{ txt('site.name') }}{% endblock %}{% block content %}<main class="page"><div class="wrap">
 <div class="page-intro"><h1 class="page-title">{{ ui('lookup.title', '내 제보 조회') }}</h1><p>{{ ui('lookup.intro', '제보할 때 적은 휴대폰 번호와 조회 비밀번호를 넣어 주세요. 제보 목록에서 내 글을 눌러 비밀번호만 넣어도 돼요.') }}</p></div>
 {% if found %}
 <div class="form-panel"><h2 class="lookup-h">{{ ui('lookup.pick', '어떤 제보를 볼까요?') }}</h2>

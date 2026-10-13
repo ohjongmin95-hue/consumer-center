@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}{{ txt('report.title') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ txt('report.intro') or txt('seo.description') }}{% endblock %}
 {% macro lines(key) %}<span class="cell-lines"{{ ed_attr(key) }}>{% for line in g.content[key].split('\n') if line.strip() %}<span class="cell-line">{{ line }}</span>{% endfor %}</span>{% endmacro %}
 {% block content %}
 <main class="page"><div class="wrap">

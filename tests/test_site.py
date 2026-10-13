@@ -45,6 +45,29 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(r.headers['Location'], 'https://consumerjebo.co.kr/reports?page=2')
         self.assertEqual(self.client.get('/', base_url='https://consumerjebo.co.kr').status_code, 200)
 
+    def test_search_meta_tags(self):
+        import json, re
+        def ld(html):
+            return [json.loads(m) for m in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)]
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('<title>소비자제보센터</title>', home)
+        self.assertIn('<meta name="title" content="소비자제보센터">', home)
+        self.assertIn('og:locale" content="ko_KR"', home)
+        self.assertIn('WebSite', [d.get('@type') for d in ld(home)])
+        with self.site.conn() as db:
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES('CJ-SEO','x','배송·환불','가게','환불이 안 돼요','한 달째 환불을 안 해 줍니다','환불','2026-10-09T10:00:00',1,1)").lastrowid
+            pid = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created) VALUES(?,?,?,?,?,?,?)", ('꿀팁', '소비자', '', '환불 받은 후기', '이렇게 해서 환불을 받았어요', 'x', '2026-10-09T10:00:00')).lastrowid
+        page = self.client.get(f'/reports/{cid}').get_data(as_text=True)
+        self.assertIn('og:type" content="article"', page)
+        self.assertEqual(ld(page)[0][0]['@type'], 'Article')
+        post = self.client.get(f'/board/{pid}').get_data(as_text=True)
+        self.assertEqual(ld(post)[0][0]['@type'], 'DiscussionForumPosting')
+        faq = self.client.get('/faq').get_data(as_text=True)
+        self.assertIn('<title>자주 묻는 질문 | 소비자제보센터</title>', faq)
+        self.assertIn('FAQPage', faq)
+        self.assertNotIn('noindex', self.client.get('/reports').get_data(as_text=True))
+        self.assertIn('noindex,follow', self.client.get('/reports?q=환불').get_data(as_text=True))
+
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
