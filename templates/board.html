@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% from 'board_macros.html' import heart, bubble, chip %}
 {% block title %}{{ txt('board.title') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ txt('board.intro') or ui('board.meta', '소비자들이 피해 경험과 해결 방법을 나누는 게시판입니다.') }}{% endblock %}
 {% block content %}
 <main class="board">
   <section class="board-hero">

@@ -39,6 +39,36 @@ class SiteTest(unittest.TestCase):
         cls.env.stop()
         cls.temp.cleanup()
 
+    def test_www_redirects_to_bare_domain(self):
+        r = self.client.get('/reports?page=2', base_url='https://www.consumerjebo.co.kr')
+        self.assertEqual(r.status_code, 301)
+        self.assertEqual(r.headers['Location'], 'https://consumerjebo.co.kr/reports?page=2')
+        self.assertEqual(self.client.get('/', base_url='https://consumerjebo.co.kr').status_code, 200)
+
+    def test_search_meta_tags(self):
+        import json, re
+        def ld(html):
+            return [json.loads(m) for m in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)]
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', home)
+        self.assertIn('<meta name="title" content="소비자제보센터 - 소비자 피해 제보·고발">', home)
+        self.assertIn('환불 거부, 배송 지연, 불량품', home)
+        self.assertIn('og:locale" content="ko_KR"', home)
+        self.assertIn('WebSite', [d.get('@type') for d in ld(home)])
+        with self.site.conn() as db:
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES('CJ-SEO','x','배송·환불','가게','환불이 안 돼요','한 달째 환불을 안 해 줍니다','환불','2026-10-09T10:00:00',1,1)").lastrowid
+            pid = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created) VALUES(?,?,?,?,?,?,?)", ('꿀팁', '소비자', '', '환불 받은 후기', '이렇게 해서 환불을 받았어요', 'x', '2026-10-09T10:00:00')).lastrowid
+        page = self.client.get(f'/reports/{cid}').get_data(as_text=True)
+        self.assertIn('og:type" content="article"', page)
+        self.assertEqual(ld(page)[0][0]['@type'], 'Article')
+        post = self.client.get(f'/board/{pid}').get_data(as_text=True)
+        self.assertEqual(ld(post)[0][0]['@type'], 'DiscussionForumPosting')
+        faq = self.client.get('/faq').get_data(as_text=True)
+        self.assertIn('<title>자주 묻는 질문 | 소비자제보센터</title>', faq)
+        self.assertIn('FAQPage', faq)
+        self.assertNotIn('noindex', self.client.get('/reports').get_data(as_text=True))
+        self.assertIn('noindex,follow', self.client.get('/reports?q=환불').get_data(as_text=True))
+
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
@@ -66,9 +96,9 @@ class SiteTest(unittest.TestCase):
             self.assertIn('noindex', self.client.get(path).get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('여러분의 제보가', home)
-        self.assertIn('<title>소비자제보센터</title>', home)
+        self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', home)
         self.assertIn('<small class="brand-by">by SOBORU</small>', home)
-        self.assertIn('<meta property="og:title" content="소비자제보센터">', home)
+        self.assertIn('<meta property="og:title" content="소비자제보센터 - 소비자 피해 제보·고발">', home)
         self.assertIn('class="hero hero-art"', home)
         for side in ('left', 'right'):
             self.assertRegex(home, r'img/hero-%s\.svg\?v=\d+' % side)  # 그림이 바뀌면 주소도 바뀌어 캐시된 예전 그림이 보이지 않음
@@ -652,7 +682,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('/reports/%d<' % secret_id, xml)
         self.assertNotIn('/admin', xml)
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<meta name="description" content="소비자 피해 제보와 처리 과정', home)
+        self.assertIn('<meta name="description" content="환불 거부, 배송 지연, 불량품', home)
         self.assertNotIn('naver-site-verification', home)
         detail = self.client.get('/reports/%d' % public_id).get_data(as_text=True)
         self.assertIn('<meta name="description" content="공개 본문 내용입니다">', detail)

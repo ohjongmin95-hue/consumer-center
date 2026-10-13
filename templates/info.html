@@ -1,5 +1,8 @@
 {% extends 'base.html' %}
 {% from 'page_blocks.html' import generic %}
+{% block title %}{{ txt(page ~ '.title') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ txt(page ~ '.intro') or txt('seo.description') }}{% endblock %}
+{% block head %}{% if page == 'faq' %}{% set qs = [] %}{% for item in items('faq') if item.a %}{% set _ = qs.append({"@type": "Question", "name": item.q|string, "acceptedAnswer": {"@type": "Answer", "text": item.a|string}}) %}{% endfor %}{% if qs %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": qs}|tojson }}</script>{% endif %}{% endif %}{% endblock %}
 {% block content %}<main>
 {% if page == 'guide' %}
 {% include 'guide.html' %}
