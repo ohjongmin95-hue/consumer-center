@@ -235,20 +235,23 @@ def case_act(db,c,form):
     act=form.get('act');open_=c['status'] not in core.FINAL
     if act=='ret_received' and c['ret_status'] in ('guided','sent'):
         db.execute("UPDATE cases SET ret_status='received' WHERE id=?",(c['id'],))
-        core.add_event(db,c['id'],'co','반품 상품 회수를 확인했어요');notify_consumer(c,f'[{core.CNAME}] 보내신 상품이 도착했어요',f"{c['company_name']}이(가) 반품 상품 회수를 확인했어요.")
+        core.add_event(db,c['id'],'co','반품 상품 회수를 확인했어요')
+        if c['category']=='반품·환불':orders_mod.sync_case(db,c,'returned')
+        notify_consumer(c,f'[{core.CNAME}] 보내신 상품이 도착했어요',f"{c['company_name']}이(가) 반품 상품 회수를 확인했어요.")
         return '회수 확인을 기록했습니다','ok'
     if act=='out_ship' and c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking']:
         courier=form.get('courier','');tracking=digits(form.get('tracking',''))
         if (courier not in core.COURIERS and courier!='기타') or not 8<=len(tracking)<=20:return '택배사와 송장번호를 확인해 주세요','error'
         db.execute('UPDATE cases SET out_courier=?,out_tracking=? WHERE id=?',(courier,tracking,c['id']))
         tracking_on=tracking_mod.register(db,c['id'],'out',courier,tracking)
-        core.add_event(db,c['id'],'co',f'새 상품을 보냈어요: {courier} {tracking}')
+        core.add_event(db,c['id'],'co',f'새 상품을 보냈어요: {courier} {tracking}');orders_mod.sync_case(db,c,'exchanged')
         notify_consumer(c,f'[{core.CNAME}] 새 상품을 보냈어요',f"{c['company_name']}이(가) 교환 상품을 보냈어요.\n{courier} 송장번호 {tracking}"+('\n배송 상태가 바뀌면 알려 드릴게요.' if tracking_on else ''))
         return '고객에게 송장번호를 알렸습니다','ok'
     if act=='refund_done' and core.refund_case(c) and c['refund_status']!='done':
         # 환불이 끝나면 계좌 정보는 더 둘 이유가 없으니 바로 지운다
         db.execute("UPDATE cases SET refund_status='done',refund_bank='',refund_account='',refund_holder='' WHERE id=?",(c['id'],))
-        core.add_event(db,c['id'],'co','환불을 완료했어요');notify_consumer(c,f'[{core.CNAME}] 환불이 완료됐어요',f"{c['company_name']}이(가) 환불을 완료했어요. 입금 내역을 확인해 주세요.")
+        core.add_event(db,c['id'],'co','환불을 완료했어요');orders_mod.sync_case(db,c,'refunded')
+        notify_consumer(c,f'[{core.CNAME}] 환불이 완료됐어요',f"{c['company_name']}이(가) 환불을 완료했어요. 입금 내역을 확인해 주세요.")
         return '환불 완료를 기록했습니다','ok'
     if act=='comp' and core.comp_open(c):
         what=clean(form.get('comp'),100)
@@ -268,7 +271,8 @@ def case_act(db,c,form):
         link=core.COURIERS.get(courier,'')
         msg=f"주문하신 상품은 {courier} 송장번호 {tracking}(으)로 보냈어요."+(' 배송 상태가 바뀌면 이 화면과 알림으로 바로 알려 드릴게요.' if on else (f' 택배사 홈페이지({link})에서 지금 위치를 확인하실 수 있어요.' if link else ''))
         db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
-        core.add_event(db,c['id'],'co','송장번호를 알렸어요',msg);notify_consumer(c,f'[{core.CNAME}] 송장번호를 알려 드려요',f"{c['company_name']}: {courier} 송장번호 {tracking}")
+        core.add_event(db,c['id'],'co','송장번호를 알렸어요',msg);orders_mod.sync_case(db,c,'shipped',courier,tracking)
+        notify_consumer(c,f'[{core.CNAME}] 송장번호를 알려 드려요',f"{c['company_name']}: {courier} 송장번호 {tracking}")
         return '고객에게 송장번호를 알렸습니다','ok'
     if act=='approve' and c['decision'] not in ('approved','auto'):
         done=core.run_playbook(db,c,'approved')
@@ -305,9 +309,9 @@ def case(case_id):
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);rule=core.rule_for(db,me()['id'],c['category'])
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])];ship_track=can_ship_track(db,c)
     comp_show=core.comp_open(c) and (rule['comp'] or c['category'] in core.COMP_CATS)
-    with conn() as db:order=orders_mod.for_case(db,c)
+    with conn() as db:order=orders_mod.for_case(db,c);blocked=orders_mod.cancel_blocked(db,c)
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
-    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
+    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),tab='all')
 
 @app.route('/case/<int:case_id>/draft',methods=['POST'])
@@ -805,6 +809,8 @@ def biz_detail(db,c,co):
         events=[dict(id=e['id'],kind=e['kind'],text=e['text'],reply=e['reply'],created=e['created'],files=[dict(id=f['id'],name=f['original'],url=url(f)) for f in fl if f['event_id']==e['id']]) for e in ev],
         files=[dict(id=f['id'],name=f['original'],url=url(f)) for f in fl],
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])],
+        order=(lambda o:orders_mod.as_dict(o) if o else None)(orders_mod.for_case(db,c)),
+        cancel_blocked=bool(orders_mod.cancel_blocked(db,c)),
         comp=dict(reco=rule['comp'],status=c['comp_status'],given=c['comp'],examples=core.COMP_EXAMPLES),
         can=dict(comp=core.comp_open(c) and bool(rule['comp'] or c['category'] in core.COMP_CATS),ship_track=can_ship_track(db,c),approve=open_ and c['decision'] not in ('approved','auto'),hold=open_ and c['decision']!='hold',ask=open_,reply=open_,
             ret_received=c['ret_status'] in ('guided','sent'),out_ship=c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking'],

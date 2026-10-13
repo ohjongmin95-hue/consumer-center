@@ -55,6 +55,29 @@ def cases_for(db,o):
     return db.execute('SELECT * FROM cases WHERE company_id=? AND member=1 AND consent=1 AND (order_no=? OR (phone!=\'\' AND phone=?)) ORDER BY id DESC LIMIT 20',
                       (o['company_id'],o['order_no'],o['phone'] or '-')).fetchall()
 
+# 요청 처리 -> 주문 상태. 사장님이 요청을 처리하면 이어진 주문도 같이 바뀐다.
+SYNC={'cancel':('canceled',('paid','ready')),'returned':('returned',('paid','ready','shipped','delivered')),
+      'refunded':('refunded',('paid','ready','shipped','delivered','returned','canceled')),'exchanged':('exchanged',('paid','ready','shipped','delivered','returned'))}
+def sync_case(db,c,what,courier='',invoice=''):
+    """요청에서 한 일을 이어진 주문에 반영하고 요청 기록에 남긴다. 바꿨으면 주문, 아니면 None.
+    what: cancel(취소 승인) | returned(반품 회수) | refunded(환불 완료) | exchanged(교환 새 상품 발송) | shipped(송장으로 답함)"""
+    o=for_case(db,c)
+    if not o or o['order_no']!=(c['order_no'] or '').strip():return None  # 휴대폰 번호로만 짐작한 주문은 바꾸지 않는다
+    t=core.iso()
+    if what=='shipped':
+        if o['invoice'] or o['status'] not in ('paid','ready'):return None
+        db.execute("UPDATE orders SET status='shipped',courier=?,invoice=?,updated=? WHERE id=?",(courier,invoice,t,o['id']))
+        core.add_event(db,c['id'],'sys',f"주문 {o['order_no']}에 송장을 넣고 '배송 중'으로 바꿨어요");return o
+    st,frm=SYNC[what]
+    if o['status'] not in frm:return None
+    db.execute('UPDATE orders SET status=?,updated=? WHERE id=?',(st,t,o['id']))
+    core.add_event(db,c['id'],'sys',f"주문 {o['order_no']}을 '{STATUS[st]}'(으)로 바꿨어요");return o
+def cancel_blocked(db,c):
+    """주문 취소 요청인데 이어진 주문이 이미 발송됐으면 그 주문 (승인 전에 사장님께 알린다)."""
+    if c['category']!='주문 취소':return None
+    o=for_case(db,c)
+    return o if o and o['status'] in ('shipped','delivered') else None
+
 def save(db,co,f,oid=None):
     """주문 하나 추가·수정 (웹·앱 공용). 보내지 않은 칸은 그대로 둔다. (안내 문구, 'ok'|'error', id)"""
     cur=order(db,co['id'],oid) if oid else None

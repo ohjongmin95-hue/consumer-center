@@ -17,6 +17,7 @@
 <div class="facts"><div><span>원하는 해결</span><b>{{ c.want }}</b></div>{% if c.product %}<div><span>상품</span><b>{{ c.product }}</b></div>{% endif %}{% if c.order_no %}<div><span>주문번호</span><b class="no">{{ c.order_no }}</b></div>{% endif %}</div></section>
 {% if open and c.decision not in ('approved','auto') %}<section class="panel decide"><div class="ph">처리 방법</div>
 <div class="reco"><div class="r">{{ p.title }}</div><ol class="flow">{% for st in p.steps %}<li>{{ st }}</li>{% endfor %}{% if rule.reply %}<li>고객에게 답변 보내기</li>{% endif %}</ol></div>
+{% if blocked %}<div class="hint" style="margin:12px 0 0"><span>⚠️</span><span><b>이미 발송된 주문이에요 ({{ OSTATUS[blocked.status] }})</b> · 취소 대신 받으신 뒤 반품으로 안내해 주세요</span></div>{% endif %}
 <form method="post" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="approve">승인하고 처리</button><button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form></section>{% endif %}
 {% if comp_show %}<section class="panel"><div class="ph">보상</div><p class="sub" style="font-size:15px;margin:0 0 12px">{% if rule.comp %}정해 둔 보상을 추천합니다. 승인하면 고객에게 사과와 함께 알림이 갑니다.{% else %}보상을 하려면 내용을 적고 승인해 주세요. 자동 처리 화면에서 유형별 보상을 정해 둘 수 있습니다.{% endif %}</p>
 <form method="post" class="addline" style="flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}">

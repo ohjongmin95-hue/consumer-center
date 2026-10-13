@@ -412,6 +412,38 @@ class PlatformTest(unittest.TestCase):
         b2,_,_=self.signup_and_approve('남의주문상회','other-orders@example.com')
         self.assertEqual(b2.get(f'/biz/order/{a["id"]}').status_code,404);self.assertNotIn('김구매',b2.get('/biz/orders').get_data(as_text=True))
 
+    def test_order_sync_with_requests(self):
+        """요청을 처리하면 이어진 주문 상태도 같이 바뀐다. 이미 보낸 주문은 취소하지 않고 알려 준다."""
+        b,o,cid=self.signup_and_approve('주문맞춤상회','ordersync@example.com')
+        for no in ('20261013-0001','S-2','S-3','S-4'):self.post(b,'/biz/orders',{'order_no':no,'product':'크림','phone':'010-1111-2222'})
+        self.post(b,'/biz/orders',{'order_no':'S-9','product':'짐작','phone':'010-1111-2222'})
+        def st(no):
+            with self.core.conn() as db:return db.execute('SELECT status,invoice FROM orders WHERE company_id=? AND order_no=?',(cid,no)).fetchone()[:]
+        me=self.client()
+        def case(cat,no):
+            cs=self.file_case(me,'주문맞춤상회',cat,str(cid))
+            with self.core.conn() as db:db.execute('UPDATE cases SET order_no=? WHERE id=?',(no,cs))
+            return cs
+        # 취소 승인 → 주문도 취소
+        c1=case('주문 취소','20261013-0001');self.post(b,f'/biz/case/{c1}',{'act':'approve'})
+        self.assertEqual(st('20261013-0001')[0],'canceled')
+        self.assertIn('취소',b.get(f'/biz/case/{c1}').get_data(as_text=True))
+        # 이미 보낸 주문: 경고가 보이고 취소되지 않는다
+        with self.core.conn() as db:db.execute("UPDATE orders SET status='shipped' WHERE company_id=? AND order_no='S-2'",(cid,))
+        c2=case('주문 취소','S-2');self.assertIn('이미 발송된 주문이에요',b.get(f'/biz/case/{c2}').get_data(as_text=True))
+        self.post(b,f'/biz/case/{c2}',{'act':'approve'});self.assertEqual(st('S-2')[0],'shipped')
+        # 송장 알리기 → 배송 중 + 송장
+        c3=case('배송 조회','S-3');self.post(b,f'/biz/case/{c3}',{'act':'ship_track','courier':'한진택배','tracking':'123456789012'})
+        self.assertEqual(st('S-3'),('shipped','123456789012'))
+        # 환불 완료 → 환불
+        c4=case('반품·환불','S-4');self.post(b,f'/biz/case/{c4}',{'act':'refund_done'});self.assertEqual(st('S-4')[0],'refunded')
+        # 주문번호 없이 휴대폰으로만 짐작한 주문은 바꾸지 않는다
+        c5=case('반품·환불','');self.post(b,f'/biz/case/{c5}',{'act':'refund_done'});self.assertEqual(st('S-9')[0],'paid')
+        # 앱 API도 같은 정보
+        tok=self.client().post('/biz/api/v1/login',json={'login_id':'ordersync@example.com','password':'longpassword1'}).get_json()['token']
+        d=self.client().get(f'/biz/api/v1/cases/{c2}',headers={'Authorization':'Bearer '+tok}).get_json()
+        self.assertEqual((d['order']['order_no'],d['cancel_blocked']),('S-2',True))
+
     def test_courier_tracking_free_key(self):
         """무료 조회 키(t_key): 송장을 넣으면 바로 한 번 묻고, cron(poll)이 다시 물어 단계가 바뀌면 기록한다."""
         b,o,cid=self.signup_and_approve('무료택배마켓','freekey@example.com')

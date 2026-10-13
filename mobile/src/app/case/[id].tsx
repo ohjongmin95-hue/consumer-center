@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -124,6 +124,7 @@ export default function CaseScreen() {
         <Card style={{ borderWidth: 2, borderColor: C.accent }}>
           <Text style={st.eyebrow}>소보루 추천 처리</Text>
           <Text style={st.planTitle}>{c.plan.title}</Text>
+          {c.cancel_blocked && c.order ? <Notice flat text={`이미 발송된 주문이에요 (${c.order.status_label}) · 취소 대신 받으신 뒤 반품으로 안내해 주세요`} /> : null}
           <View style={{ gap: 6, marginVertical: 12 }}>
             {c.plan.steps.map((s, i) => (
               <Text key={s} style={st.step}>
@@ -244,6 +245,7 @@ export default function CaseScreen() {
         <View style={st.kv}>
           {c.want ? <KV k="원하는 해결" v={c.want} /> : null}
           {c.order_no ? <KV k="주문번호" v={c.order_no} /> : null}
+          {c.order ? <KV k="주문" v={`${c.order.product || c.order.order_no} · ${c.order.status_label}`} onPress={() => router.push(`/order/${c.order!.id}`)} /> : null}
           {c.product ? <KV k="상품" v={c.product} /> : null}
           {c.received_on ? <KV k="받은 날" v={c.received_on} /> : null}
           {c.phone ? <KV k="연락처" v={c.phone} onPress={() => Linking.openURL('tel:' + c.phone.replace(/\D/g, ''))} /> : null}

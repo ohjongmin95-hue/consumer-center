@@ -45,6 +45,8 @@ export type BizDetail = BizCase & {
   files: FileRef[];
   tracks?: Track[];
   comp?: { reco: string; status: string; given: string; examples: string[] };
+  order?: Order | null;
+  cancel_blocked?: boolean;
   can: { comp?: boolean; ship_track?: boolean; approve: boolean; hold: boolean; ask: boolean; reply: boolean; ret_received: boolean; out_ship: boolean; refund_done: boolean };
   message?: string;
 };
