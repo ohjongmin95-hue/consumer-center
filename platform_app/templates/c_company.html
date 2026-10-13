@@ -14,7 +14,7 @@
 </section>
 <section class="cs3-cats"><h2 class="cs3-h">직접 골라서 접수하기</h2>
 <div class="cs3-grid">{% for cat,sub in CAT_HINT.items() %}
-<a href="{{ url_for('new',company_id=co.id,category=cat) }}" title="{{ sub }}"><span class="sq">{{ i.cat_icon(cat,40) }}</span><b>{{ cat }}</b></a>{% endfor %}</div>
+<a href="{{ url_for('track',company_id=co.id) if cat=='배송 조회' else url_for('new',company_id=co.id,category=cat) }}" title="{{ sub }}"><span class="sq">{{ i.cat_icon(cat,40) }}</span><b>{{ cat }}</b></a>{% endfor %}</div>
 </section>
 </div></div>
 <div class="cs3-band"><div class="cs-in">

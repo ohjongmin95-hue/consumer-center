@@ -57,6 +57,7 @@ class PlatformTest(unittest.TestCase):
         if consent:data['consent']='1'
         if extra.get('received_on'):data['received_on']=extra['received_on']
         elif cat in ('교환','반품·환불'):data['received_on']=__import__('datetime').date.today().isoformat()
+        if cat in ('주문 취소','주문 변경'):data['order_no']='20261013-0001'
         r=self.post(c,'/submit',data,'/new')
         self.assertEqual(r.status_code,302,r.get_data(as_text=True)[:300])
         return int(r.headers['Location'].rstrip('/').split('/')[-1])
@@ -317,6 +318,45 @@ class PlatformTest(unittest.TestCase):
         cs2=self.file_case(self.client(),'주문변경상회','주문 변경',str(cid))
         with self.core.conn() as db:self.assertEqual(db.execute('SELECT decision FROM cases WHERE id=?',(cs2,)).fetchone()[0],'pending')
         self.assertIn('주문 변경',b.get('/biz/rules').get_data(as_text=True))
+
+    def test_customer_track_lookup(self):
+        """고객이 송장번호로 직접 배송 조회: 요청을 만들지 않고 바로 상태를 본다."""
+        b,o,cid=self.signup_and_approve('조회마켓','track@example.com')
+        trk=sys.modules['tracking'];me=self.client()
+        page=me.get(f'/to/{cid}').get_data(as_text=True)
+        self.assertIn(f'/track?company_id={cid}',page)  # 배송 조회 버튼은 조회 화면으로
+        ans={'level':5,'complete':False,'receiverName':'홍길동','receiverAddr':'서울 어딘가',
+             'trackingDetails':[{'timeString':'2026-10-12 21:00:00','where':'대전 HUB','kind':'간선상차'},{'timeString':'2026-10-13 07:30:00','where':'강남 대리점','kind':'배송출발'}]}
+        with self.core.conn() as db:n0=db.execute('SELECT COUNT(*) FROM cases').fetchone()[0]
+        with patch.dict(os.environ,{'SWEETTRACKER_T_KEY':'k'}),patch.object(trk,'get_info',lambda code,inv:ans if (code,inv)==('04','123456789012') else {'status':False,'msg':'운송장 미등록'}):
+            page=me.get(f'/track?company_id={cid}&courier=CJ대한통운&invoice=1234-5678-9012').get_data(as_text=True)
+            self.assertIn('배송 출발',page);self.assertIn('강남 대리점',page);self.assertIn('간선상차',page)
+            self.assertNotIn('홍길동',page);self.assertNotIn('서울 어딘가',page)  # 받는 사람 정보는 보이지 않는다
+            self.assertIn('운송장 미등록',me.get('/track?courier=CJ대한통운&invoice=111111111111').get_data(as_text=True))
+            self.assertIn('송장번호를 확인해',me.get('/track?courier=CJ대한통운&invoice=12').get_data(as_text=True))
+            self.assertIn('홈페이지에서',me.get('/track?courier=CU 편의점택배&invoice=123456789012').get_data(as_text=True))
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM cases').fetchone()[0],n0)
+        # 키가 없으면 택배사 홈페이지로 안내
+        self.assertIn('CJ대한통운 홈페이지에서 조회하기',me.get('/track?courier=CJ대한통운&invoice=123456789012').get_data(as_text=True))
+
+    def test_simple_request_form(self):
+        """요청은 버튼으로 사유만 골라도 접수된다 (긴 글·원하는 해결 질문 없이)."""
+        b,o,cid=self.signup_and_approve('간편상회','simple@example.com')
+        me=self.client();base={'company':'간편상회','company_id':str(cid),'phone':'010-2222-3333','password':'1234','privacy':'1','consent':'1'}
+        r=self.post(me,'/submit',dict(base,category='주문 취소',reason='잘못 주문했어요',order_no='A-1'),'/new')
+        self.assertEqual(r.status_code,302)
+        with self.core.conn() as db:c=db.execute('SELECT * FROM cases ORDER BY id DESC LIMIT 1').fetchone()
+        self.assertEqual((c['title'],c['body'],c['want'],c['order_no']),('주문 취소 · 잘못 주문했어요','잘못 주문했어요','환불','A-1'))
+        # 주문번호가 없으면, 주문 변경은 바꿀 내용이 없으면 다시 묻는다
+        r=self.post(me,'/submit',dict(base,category='주문 취소',reason='단순 변심'),'/new');self.assertIn('/new',r.headers['Location'])
+        self.assertIn('주문번호를 적어',me.get('/new').get_data(as_text=True))
+        r=self.post(me,'/submit',dict(base,category='주문 변경',reason='배송지',order_no='A-2'),'/new');self.assertIn('/new',r.headers['Location'])
+        self.assertIn('바꿀 내용을 적어',me.get('/new').get_data(as_text=True))
+        self.post(me,'/submit',dict(base,category='주문 변경',reason='배송지',order_no='A-2',body='서울 강남구 테헤란로 1로 바꿔 주세요'),'/new')
+        with self.core.conn() as db:c=db.execute('SELECT * FROM cases ORDER BY id DESC LIMIT 1').fetchone()
+        self.assertEqual((c['title'],c['want']),('주문 변경 · 배송지','기타'));self.assertIn('테헤란로',c['body'])
+        # 유형마다 묻는 말이 다르다
+        self.assertIn('어떤 주문을<br>취소할까요?',me.get(f'/new?company_id={cid}&category=주문 취소').get_data(as_text=True))
 
     def test_courier_tracking_free_key(self):
         """무료 조회 키(t_key): 송장을 넣으면 바로 한 번 묻고, cron(poll)이 다시 물어 단계가 바뀌면 기록한다."""

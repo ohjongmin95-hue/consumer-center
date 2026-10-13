@@ -79,6 +79,24 @@ def refresh(f):
     if level and t['note']:note(f,'')
     return update(f,level,str(last.get('where') or ''),str(last.get('timeString') or ''))
 
+def lookup(courier,invoice):
+    """고객이 송장번호로 직접 조회 (저장하지 않음). 받는 사람 주소·이름 같은 개인정보는 돌려주지 않는다.
+    -> {'ok':True,'level','status','done','place','time','steps':[{time,where,kind}]} 또는 {'ok':False,'error'}"""
+    code=CODES.get(courier)
+    if not code:return {'ok':False,'error':'이 택배사는 여기서 바로 조회할 수 없어요. 택배사 홈페이지에서 확인해 주세요.'}
+    if not t_key():return {'ok':False,'error':'지금은 바로 조회를 쓸 수 없어요. 택배사 홈페이지에서 확인해 주세요.'}
+    try:d=get_info(code,invoice)
+    except Exception:return {'ok':False,'error':'택배사 조회가 잠시 안 돼요. 조금 뒤에 다시 해 주세요.'}
+    try:level=int(d.get('level'))
+    except (TypeError,ValueError):level=0
+    if d.get('status') is False or not level:
+        return {'ok':False,'error':str(d.get('msg') or '조회 결과가 없어요. 택배사와 송장번호를 확인해 주세요.')[:100]}
+    steps=[{'time':str(t.get('timeString') or '')[:30],'where':str(t.get('where') or '')[:60],'kind':str(t.get('kind') or '')[:60]}
+           for t in (d.get('trackingDetails') or []) if isinstance(t,dict)]
+    last=steps[-1] if steps else {'time':'','where':''}
+    return {'ok':True,'level':level,'status':level_label(level),'done':level==6 or bool(d.get('complete')),
+            'place':last['where'],'time':last['time'],'steps':list(reversed(steps))[:30]}
+
 def poll(today=None):
     """cron: 아직 배송 완료가 안 된 송장을 다시 물어본다 (무료 조회 방식일 때만)."""
     if not t_key():return 0
