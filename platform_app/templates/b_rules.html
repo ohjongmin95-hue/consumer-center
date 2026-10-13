@@ -20,6 +20,10 @@
 <details><summary>답변 문구 고치기<span class="chev"></span></summary>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
 <textarea class="inp" name="reply">{{ r.reply }}</textarea><button class="btn md gray">저장</button></form></details>
+<details><summary>보상 정하기{% if r.comp %} · {{ r.comp }}{% endif %}<span class="chev"></span></summary>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
+<input class="inp comp-in" name="comp" maxlength="100" value="{{ r.comp }}" placeholder="예: 적립금 3,000원 (비워 두면 추천하지 않아요)" aria-label="{{ cat }} 보상">
+<small>이 유형 요청이 오면 이 보상을 추천합니다. 승인을 눌러야 고객에게 갑니다.</small><button class="btn md gray">저장</button></form></details>
 </div>{% endfor %}</div>
 
 <div class="phead" id="products"><div><h2>상품정보</h2><p>상품 가격·재고·사용법을 적어 두면 상담창에서 상품 문의에 바로 답합니다{% if not ai %} (AI 상담이 켜지면 사용돼요){% endif %}</p></div></div>

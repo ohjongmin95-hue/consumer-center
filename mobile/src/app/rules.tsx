@@ -47,6 +47,7 @@ function RuleCard({ r, conds, token, onSaved }: { r: Rule; conds: { value: strin
   const { logout } = useAuth();
   const [reply, setReply] = useState(r.reply);
   const [faq, setFaq] = useState(r.faq);
+  const [comp, setComp] = useState(r.comp ?? '');
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -82,10 +83,11 @@ function RuleCard({ r, conds, token, onSaved }: { r: Rule; conds: { value: strin
         <View style={{ gap: 12, marginTop: 14 }}>
           <Field label="고객에게 보낼 답변" value={reply} onChangeText={setReply} multiline />
           <Field label="챗봇이 먼저 안내할 내용" value={faq} onChangeText={setFaq} multiline hint="고객이 요청을 넣기 전에 챗봇이 이 내용으로 먼저 답합니다" />
+          <Field label="보상" value={comp} onChangeText={setComp} maxLength={100} placeholder="예: 적립금 3,000원" hint="비워 두면 추천하지 않아요. 승인을 눌러야 고객에게 갑니다" />
           <Notice text={err} flat />
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Btn title="취소" kind="gray" onPress={() => (setOpen(false), setReply(r.reply), setFaq(r.faq))} style={{ flex: 1 }} />
-            <Btn title="저장" onPress={() => save({ reply, faq })} busy={busy} style={{ flex: 2 }} />
+            <Btn title="취소" kind="gray" onPress={() => (setOpen(false), setReply(r.reply), setFaq(r.faq), setComp(r.comp ?? ''))} style={{ flex: 1 }} />
+            <Btn title="저장" onPress={() => save({ reply, faq, comp })} busy={busy} style={{ flex: 2 }} />
           </View>
         </View>
       ) : (
@@ -95,6 +97,7 @@ function RuleCard({ r, conds, token, onSaved }: { r: Rule; conds: { value: strin
               {r.reply}
             </Text>
           </View>
+          {r.comp ? <Text style={st.p}>추천 보상: {r.comp}</Text> : null}
           <Notice text={err} flat />
           <Btn title="답변 문구 고치기" kind="gray" onPress={() => setOpen(true)} />
         </View>

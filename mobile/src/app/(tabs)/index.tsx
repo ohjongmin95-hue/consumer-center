@@ -104,6 +104,16 @@ export default function HomeTab() {
         <Notice text={err} />
         <Notice text={ok} tone="ok" />
 
+        {home.counts.comp ? (
+          <Pressable onPress={() => router.push('/cases?f=comp')} style={st.warn}>
+            <Text style={{ fontSize: 18 }}>🎁</Text>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: C.fg }}>보상 승인을 기다리는 요청 {home.counts.comp}건</Text>
+              <Text style={{ fontSize: 13, color: C.fg3 }}>정해 둔 보상을 확인하고 승인하면 고객에게 알림이 갑니다</Text>
+            </View>
+          </Pressable>
+        ) : null}
+
         {(home.alerts ?? []).map((w) => (
           <Pressable key={w.kind + w.label} onPress={() => router.push(`/cases?q=${encodeURIComponent(w.kind === 'product' ? w.label : '')}`)} style={st.warn}>
             <Text style={{ fontSize: 18 }}>⚠️</Text>
