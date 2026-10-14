@@ -228,6 +228,11 @@ def status_name(status):
            STATUSES[3]:lambda:ui('status.n4','기업 답변 대기'),STATUSES[4]:lambda:ui('status.n5','기업 답변 도착'),STATUSES[5]:lambda:ui('status.n6','종결')}
     return names[status]() if status in names else status
 app.jinja_env.globals['status_name']=status_name
+# 공개 화면 3단계, 제보자 본인 화면 5단계 이름 (jebo.PUB_STAGES·MY_STEPS와 같은 순서, 화면에서 고칠 수 있음)
+def pub_names():return [ui('status.p1','접수'),ui('status.p2','처리 중'),ui('status.p3','종결')]
+def my_names():return [ui('status.m1','접수'),ui('status.m2','검토'),ui('status.m3','기업 전달'),ui('status.m4','기업 답변·처리'),ui('status.m5','완료·평가')]
+def my_descs():return [ui('status.m1_desc','소비자가 민원 제출'),ui('status.m2_desc','플랫폼에서 내용 심사'),ui('status.m3_desc','해당 기업에 민원 전달'),ui('status.m4_desc','기업과 소비자가 해결 진행'),ui('status.m5_desc','소비자가 결과를 확인하고 평가')]
+app.jinja_env.globals.update(pub_names=pub_names,my_names=my_names,my_descs=my_descs)
 app.jinja_env.globals['STATUSES']=STATUSES
 app.jinja_env.globals['status_step']=status_step
 DOC_VARS={'운영자':'operator.name','대표자':'operator.ceo','이메일':'operator.email','전화':'operator.phone','주소':'operator.address','보호책임자':'operator.privacy_officer','보호책임자연락처':'operator.privacy_contact','청소년보호책임자':'operator.youth_officer','청소년보호책임자연락처':'operator.youth_contact','시행일':'policy.effective_date'}
@@ -251,7 +256,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-76'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-77'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -338,7 +343,7 @@ def report_rows(where='1=1',args=(),limit=20,offset=0):
     # 모든 제보를 번호·분류·단계·접수일로 보여 줌. 제목·업체명은 공개 제보(운영자가 내리지 않음)와
     # 비밀글(운영자가 숨기지 않음)에 보이고, 비밀글은 눌러도 본문 대신 비밀번호 창이 열림.
     with conn() as db:
-        rows=db.execute('SELECT id,category,company,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
+        rows=db.execute('SELECT id,category,company,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
     today=datetime.date.today().isoformat()
     def when(created):
         # 오늘 들어온 제보는 시각(15:48), 그 전은 날짜(10.08)로 짧게 표시.
@@ -346,7 +351,7 @@ def report_rows(where='1=1',args=(),limit=20,offset=0):
     def shown(r):return list_title_shown(r)
     return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),held=bool(is_pending(r) and r['reviewed_at']),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
                  company=mask_personal(r['company']) if shown(r) else None,
-                 status=r['status'],created=r['created'][:10],when=when(r['created'])) for r in rows]
+                 status=r['status'],step=jebo.pub_step(jebo.my_step(r)),created=r['created'][:10],when=when(r['created'])) for r in rows]
 def report_summary():
     with conn() as db:stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
     total=sum(stats.values());done=stats.get('종결',0)
@@ -611,7 +616,7 @@ def lookup():
     found=[]
     if len(digits)>=8 and pw:
         with conn() as db:
-            rows=db.execute("SELECT id,receipt,subject,status,created,phone,pw_hash FROM cases WHERE pw_hash!='' ORDER BY id DESC").fetchall()
+            rows=db.execute("SELECT id,receipt,subject,status,created,phone,pw_hash,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE pw_hash!='' ORDER BY id DESC").fetchall()
         found=[r for r in rows if phone_digits(r['phone'])==digits and case_pw_ok(r,pw)]
     if not found:
         note_attempt('case');flash(ui_text('msg.lookup_fail','휴대폰 번호 또는 조회 비밀번호가 맞지 않아요.'));return render_template('lookup.html'),401
@@ -1197,7 +1202,7 @@ def member_logout():
 @member_only
 def mypage():
     with conn() as db:
-        cases=db.execute('SELECT id,receipt,category,company,subject,status,created,public_consent,published FROM cases WHERE user_id=? ORDER BY id DESC LIMIT 100',(g.user['id'],)).fetchall()
+        cases=db.execute('SELECT id,receipt,category,company,subject,status,created,public_consent,published,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE user_id=? ORDER BY id DESC LIMIT 100',(g.user['id'],)).fetchall()
         posts=db.execute('SELECT id,category,title,likes,comments,created,hidden FROM posts WHERE user_id=? ORDER BY id DESC LIMIT 50',(g.user['id'],)).fetchall()
         comment_count=db.execute('SELECT COUNT(*) FROM comments WHERE user_id=?',(g.user['id'],)).fetchone()[0]
     return render_template('mypage.html',cases=cases,posts=posts,comment_count=comment_count)

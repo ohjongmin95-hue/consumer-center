@@ -21,6 +21,11 @@ SOURCES={'biz':'기업 회원 화면','link':'답변 링크','email':'이메일 
 FREE_MAIL={'gmail.com','naver.com','daum.net','hanmail.net','kakao.com','nate.com','hotmail.com','outlook.com','yahoo.com','icloud.com','me.com','live.com','msn.com','korea.com','empas.com','dreamwiz.com','paran.com','proton.me','protonmail.com'}
 def official_domain(email):return (email or '').rsplit('@',1)[-1].lower() not in FREE_MAIL
 PUBLIC_STEPS=['제보 접수','운영자 검토','기업 전달 시도','기업 전달 확인','기업 공식 답변','소비자 확인','종결']
+# 진행 단계 표시: 제보자 본인 화면은 5단계, 외부 공개 화면은 3단계(화면 이름은 app.py my_names·pub_names). 색은 접수증 색(.st-1~6)에서 고름.
+MY_STEPS=[('접수','소비자가 민원 제출'),('검토','플랫폼에서 내용 심사'),('기업 전달','해당 기업에 민원 전달'),('기업 답변·처리','기업과 소비자가 해결 진행'),('완료·평가','소비자가 결과를 확인하고 평가')]
+PUB_STAGES=['접수','처리 중','종결']
+MY_COLOR=[1,2,3,5,6];PUB_COLOR=[1,5,6]
+STATUS_MY={'접수':1,'검토 중':2,'추가 확인':2,'기업 답변 대기':3,'기업 답변 도착':4,'종결':5}
 
 def migrate(db):
     cols={r['name'] for r in db.execute('PRAGMA table_info(cases)')}
@@ -103,7 +108,7 @@ def timeline(db,case,mask):
     if case['confirmed_at']:ev.append(('me','소비자 확인',case['confirmed_at'],{'resolved':'제보자가 해결됐다고 확인했어요.','unresolved':'제보자가 아직 해결되지 않았다고 알렸어요.'}.get(case['outcome'],'제보자가 처리 결과를 확인했어요.')))
     if case['status']=='종결':ev.append(('sys','종결',case['closed_at'],''))
     has_answer=db.execute("SELECT 1 FROM messages WHERE case_id=? AND author='기업 답변'",(case['id'],)).fetchone() is not None
-    step=step_of(case,has_answer)
+    step=my_step(case,has_answer)
     ev.sort(key=lambda e:e[2] or '9')  # 시각을 모르는 예전 기록은 뒤로
     return ev,step,has_answer
 
@@ -114,6 +119,21 @@ def step_of(case,has_answer):
         if ok:step=i
     return step
 
+def my_step(case,has_answer=False):
+    """제보자 5단계 중 지금 단계 (1~5). 운영자가 정한 진행 상태와 실제 기록 중 앞선 쪽."""
+    keys=case.keys()
+    has=lambda k:k in keys and case[k]
+    step=STATUS_MY.get(case['status'],1)
+    if has('reviewed_at'):step=max(step,2)
+    if has('forwarded_at') or has('seen_at'):step=max(step,3)
+    if has_answer:step=max(step,4)
+    if has('confirmed_at'):step=5
+    return step
+
+def pub_step(my):
+    """제보자 5단계를 공개 3단계로: 접수 → 접수, 검토·기업 전달·기업 답변·처리 → 처리 중, 완료·평가 → 종결."""
+    return 1 if my<=1 else 3 if my>=5 else 2
+
 def visible_company(db,company_id):
     return db.execute("SELECT * FROM companies WHERE id=? AND status IN ('active','listed')",(company_id,)).fetchone()
 
@@ -121,7 +141,7 @@ def install(S):
     app=S.app;conn=S.conn;mask=S.mask_personal;norm=S.norm_company
     S.COMPANY_STATUSES['listed']='등록 (미가입)'
     with conn() as db:migrate(db)
-    app.jinja_env.globals.update(cat_label=cat_label,PUBLIC_STEPS=PUBLIC_STEPS,JEBO_MIN_N=MIN_N)
+    app.jinja_env.globals.update(cat_label=cat_label,PUBLIC_STEPS=PUBLIC_STEPS,MY_COLOR=MY_COLOR,PUB_COLOR=PUB_COLOR,my_step=my_step,pub_step=pub_step,JEBO_MIN_N=MIN_N)
 
     def names(co):return [co['name'],co['brand'],co['biz_name']]+[a.strip() for a in (co['aliases'] or '').split(',') if a.strip()]
     def search(db,q,limit=30):
@@ -174,7 +194,7 @@ def install(S):
             cats=db.execute("SELECT category,COUNT(*) AS n FROM cases WHERE company_id=? AND public_consent=1 AND published=1 GROUP BY category",(company_id,)).fetchall()
         by_cat={}
         for r in cats:by_cat[cat_label(r['category'])]=by_cat.get(cat_label(r['category']),0)+r['n']
-        cases=[dict(id=r['id'],category=cat_label(r['category']),created=r['created'][:10],status=r['status'],answered=r['id'] in first,confirmed=bool(r['confirmed_at']),step=step_of(r,r['id'] in first),**pub(r,mask)) for r in rows]
+        cases=[dict(id=r['id'],category=cat_label(r['category']),created=r['created'][:10],status=r['status'],answered=r['id'] in first,confirmed=bool(r['confirmed_at']),step=pub_step(my_step(r,r['id'] in first)),**pub(r,mask)) for r in rows]
         indexable=bool(total or co['statement'])
         return render_template('company_page.html',co=co,st=st,cases=cases,total=total,page=page,pages=max(1,-(-total//size)),cat=cat,by_cat=by_cat,
                                categories=S.report_categories(),indexable=indexable,today=datetime.date.today().isoformat(),aka=[n for n in names(co)[1:] if n and n!=co['name']])

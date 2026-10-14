@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'status_macros.html' import steps7 %}
+{% from 'status_macros.html' import steps %}
 {% block title %}{{ subject }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ description|truncate(150, True, '…') }}{% endblock %}
 {% block og_type %}article{% endblock %}
@@ -13,8 +13,8 @@
     <h1 class="page-title">{{ subject }}</h1>
     <p>{{ ui('reports.target', '제보 대상') }} · {% if co %}<a class="case-co-link" href="{{ url_for('company_page', company_id=co['id']) }}"><b>{{ company }}</b> {{ ui('case.company_more', '기업 페이지 →') }}</a>{% else %}<b>{{ company }}</b>{% endif %}</p>
   </div>
-  <div class="form-panel stepper-panel">{{ steps7(step) }}
-    <p class="stepper-desc"><b>{{ ui('lookup.current_step', '현재 단계') }}: {{ PUBLIC_STEPS[step - 1] }}</b>{% if not has_answer %} {{ ui('case.no_answer', '아직 기업의 공식 답변이 등록되지 않았어요.') }}{% endif %}</p>
+  <div class="form-panel stepper-panel">{{ steps(pub_step(step), pub_names()) }}
+    <p class="stepper-desc"><b>{{ ui('lookup.current_step', '현재 단계') }}: {{ pub_names()[pub_step(step) - 1] }}</b>{% if not has_answer %} {{ ui('case.no_answer', '아직 기업의 공식 답변이 등록되지 않았어요.') }}{% endif %}</p>
   </div>
   <article class="form-panel public-case">
     <h2>{{ ui('report.f_description', '피해 내용') }}</h2>

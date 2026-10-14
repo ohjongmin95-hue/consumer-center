@@ -20,7 +20,7 @@
     {% for c in cases %}
     <a class="me-row" href="{{ url_for('my_case', case_id=c['id']) }}">
       <span class="me-row-main"><b>{{ c['subject'] }}</b><span class="meta">{{ c['receipt'] }} · {{ c['category'] }} · {{ c['company'] }} · {{ c['created'][:10]|replace('-', '.') }}{% if not (c['public_consent'] and c['published']) %} · 🔒 {{ ui('member.private', '비공개') }}{% endif %}</span></span>
-      {{ bar(c['status']) }}
+      {{ bar(my_step(c), my_names(), MY_COLOR) }}
     </a>
     {% else %}<p class="me-empty">{{ ui('member.no_reports', '로그인한 상태로 접수한 제보가 여기에 모여요. 로그인 전에 접수한 제보는') }} <a href="{{ url_for('lookup') }}">{{ ui('member.no_reports_link', '내 제보 조회') }}</a>{{ ui('member.no_reports_tail', '에서 휴대폰 번호와 조회 비밀번호로 볼 수 있어요.') }}</p>{% endfor %}
   </section>
