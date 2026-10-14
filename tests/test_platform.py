@@ -282,6 +282,22 @@ class PlatformTest(unittest.TestCase):
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',nosearch):
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'보습 크림 있어요?'}).get_json()
         self.assertEqual(j['answer'],'네, 있어요.');self.assertEqual([u.rsplit('/',1)[1] for u in urls],['responses','completions'])
+        # 네이버 검색 키가 있으면 AI가 필요할 때 네이버에서 검색하고, 그 결과를 보고 답한다
+        calls=[];got=[]
+        def nv_post(url,headers,body,timeout):
+            calls.append(body)
+            if len(calls)==1:return 200,{'choices':[{'message':{'content':None,'tool_calls':[{'id':'c1','type':'function','function':{'name':'search','arguments':'{"query": "선크림 덧바르는 주기"}'}}]}}]}
+            return 200,{'choices':[{'message':{'content':'{"category": null, "answer": "보통 2~3시간마다 덧바르는 게 좋아요.", "handoff": false, "summary": ""}'}}]}
+        def nv_get(url,headers,timeout):
+            got.append((url,headers));return 200,{'items':[{'title':'<b>선크림</b> 바르는 법','description':'2~3시간마다 &amp; 땀 흘린 뒤'}]}
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test','NAVER_SEARCH_ID':'nid','NAVER_SEARCH_SECRET':'nsec'}),patch.object(aim,'post',nv_post),patch.object(aim,'get',nv_get):
+            j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'선크림 얼마나 자주 발라요?'}).get_json()
+        self.assertEqual(j['answer'],'보통 2~3시간마다 덧바르는 게 좋아요.')
+        self.assertEqual(calls[0]['tools'][0]['function']['name'],'search')
+        self.assertIn('openapi.naver.com/v1/search/webkr.json',got[0][0]);self.assertIn('query=%EC%84%A0%ED%81%AC%EB%A6%BC',got[0][0])
+        self.assertEqual(got[0][1]['X-Naver-Client-Id'],'nid')
+        tool=calls[1]['messages'][-1];self.assertEqual((tool['role'],tool['tool_call_id']),('tool','c1'))
+        self.assertIn('선크림 바르는 법',tool['content']);self.assertIn('2~3시간마다 & 땀',tool['content'])
         # 사람이 처리할 일이면 담당자 연결과 요약을 돌려준다
         def fake2(url,headers,body,timeout):
             return oa(url,'{"category": "반품·환불", "answer": "불편을 드려 죄송해요. 환불은 담당자가 확인해야 해요.", "handoff": true, "summary": "고객 요구: 환불\\n주문번호: A-1"}')
