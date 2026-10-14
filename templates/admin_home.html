@@ -12,7 +12,17 @@
     <a class="ad-todo-item{% if new_reports %} is-on{% endif %}" href="{{ url_for('admin_reports', status=STATUSES[0]) }}"><b>{{ new_reports }}</b><span>새로 접수된 제보</span></a>
     <a class="ad-todo-item{% if stats.flagged %} is-on{% endif %}" href="{{ url_for('admin_board') }}"><b>{{ stats.flagged }}</b><span>신고된 게시글·댓글</span></a>
     <a class="ad-todo-item{% if stats.takedowns %} is-on{% endif %}" href="{{ url_for('admin_takedowns') }}"><b>{{ stats.takedowns }}</b><span>처리할 게시중단 요청</span></a>
+    <a class="ad-todo-item{% if ops.n_requests %} is-on{% endif %}" href="{{ url_for('admin_requests') }}"><b>{{ ops.n_requests }}</b><span>정정·삭제·이의 신청</span></a>
+    <a class="ad-todo-item{% if ops.n_late %} is-on{% endif %}" href="#late"><b>{{ ops.n_late }}</b><span>{{ ops.delay_days }}일 넘게 멈춘 제보</span></a>
   </section>
+
+  {% if ops.late %}
+  <section class="ad-panel" id="late">
+    <div class="ad-panel-head"><h2>처리 지연 제보</h2><a class="ad-link" href="{{ url_for('admin_stats') }}">운영 통계 →</a></div>
+    <p class="cs-hint">종결 전인데 {{ ops.delay_days }}일 넘게 처리 기록·메시지가 없는 제보예요. 오래된 순서예요.</p>
+    <ul class="ops-dups">{% for c in ops.late %}<li><a href="{{ url_for('admin_report', case_id=c['id']) }}"><span class="mono">{{ c['receipt'] }}</span> {{ c['subject'] }}</a><span>{{ c['company'] }} · {{ c['status'] }} · 마지막 기록 {{ c['last'][:10]|replace('-', '.') }}</span></li>{% endfor %}</ul>
+  </section>
+  {% endif %}
 
   <div class="ad-grid-2">
     <section class="ad-panel">

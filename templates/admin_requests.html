@@ -1,0 +1,26 @@
+{% extends 'console.html' %}
+{% block title %}정정·삭제·이의 신청 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="ad-page">
+  <header class="ad-head">
+    <div><h1>정정·삭제·이의 신청</h1><p>제보자의 정정·삭제 요청과 기업의 이의 신청이에요. 처리 결과는 요청한 쪽 화면에 그대로 보여요.</p></div>
+  </header>
+  <nav class="cs-tabs" aria-label="처리 상태">
+    {% for st in statuses %}<a href="{{ url_for('admin_requests', status=st) }}"{% if show == st %} class="on"{% endif %}>{{ st }} <b>{{ counts.get(st, 0) }}</b></a>{% endfor %}
+    <a href="{{ url_for('admin_requests', status='all') }}"{% if show == 'all' %} class="on"{% endif %}>전체</a>
+  </nav>
+  {% for r in rows %}
+  <section class="ad-panel ops-req-card">
+    <p class="ops-req-head"><b>{{ OPS_REQUEST_KINDS[r['kind']] }}</b> <span class="cs-pill{{ ' on' if r['status'] == '처리 완료' else (' off' if r['status'] == '반려' else '') }}">{{ r['status'] }}</span> <span class="cs-muted">{{ r['created'][:16]|replace('T', ' ') }} · {{ '제보자' if r['who'] == 'reporter' else '기업' }}</span></p>
+    <p class="ops-req-case"><a href="{{ url_for('admin_report', case_id=r['case_id']) }}#request_done"><span class="mono">{{ r['receipt'] }}</span> {{ r['subject'] }}</a> <span class="cs-muted">{{ r['company'] }}</span></p>
+    <p class="cs-text">{{ r['body'] }}</p>
+    {% if r['status'] == '접수' %}
+    <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="request_id" value="{{ r['id'] }}">
+      <textarea name="result" maxlength="1000" required rows="2" placeholder="처리 결과 (요청한 쪽에 그대로 보여요)" aria-label="처리 결과"></textarea>
+      <div class="cs-row cs-actions"><button class="cs-btn" name="decision" value="reject">반려</button><button class="cs-btn cs-btn-main" name="decision" value="done">처리 완료</button></div>
+    </form>
+    {% else %}<p class="cs-hint">{{ r['handled_at'][:16]|replace('T', ' ') }} {{ r['actor'] }} · {{ r['result'] }}</p>{% endif %}
+  </section>
+  {% else %}<section class="ad-panel"><p class="cs-muted">{{ '처리할 요청이 없어요.' if show == '접수' else '해당하는 요청이 없어요.' }}</p></section>{% endfor %}
+</main>
+{% endblock %}

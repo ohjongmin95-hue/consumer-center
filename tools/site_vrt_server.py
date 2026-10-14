@@ -43,6 +43,11 @@ post(a, '/admin/reports/%d' % eid, {'form': 'publish_review', 'decision': 'appro
 post(a, '/admin/reports/%d' % eid, {'form': 'forward'})
 post(b, '/biz/case/%d' % eid, {'response': '확인해 보니 무상 수리 대상이 맞아요. 접수하신 서비스센터에 비용 없이 처리하도록 안내했어요.'})
 post(u, '/report', dict(base, subject='승인 대기 제보', company='소보몰', phone='010-9999-0000'))
-post(u, '/report', dict(base, subject='비밀글 제보 예시', company='오소보쇼핑', phone='010-9999-0000', visibility='secret'))
+# 3차 화면: 보완 요청, 정정 요청, 기업 이의 신청 (메일은 설정이 없어 보내지 않음)
+if hasattr(m, 'ops'):  # 3차 이전 코드(기준 그림)에는 없는 기능
+    post(a, '/admin/reports/%d' % ids[1], {'form': 'supplement', 'body': '주문 내역 화면을 올려 주세요.'})
+    lk = app.test_client(); post(lk, '/lookup', {'mode': 'phone', 'phone': '010-2222-3333', 'password': '1234'})
+    post(lk, '/case/request', {'kind': 'correct', 'body': '발생일을 9월 27일로 고쳐 주세요.'}, page='/case')
+    post(b, '/biz/case/%d/objection' % eid, {'body': '무상 수리 대상이라 이미 안내했습니다. 접수 기록이 있습니다.'}, page='/biz/case/%d' % eid)
 print('ready', ids, eid, flush=True)
 app.run(host='127.0.0.1', port=PORT)

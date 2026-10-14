@@ -1,0 +1,39 @@
+{% extends 'console.html' %}
+{% block title %}운영 통계 | {{ txt('site.name') }}{% endblock %}
+{% macro rate(v) %}{{ '–' if v is none else v ~ '%' }}{% endmacro %}
+{% macro bars(rows, total) %}<ul class="ops-bars">{% for name, n in rows %}<li><span class="ob-name">{{ name }}</span><span class="ob-bar"><i style="width: {{ (100 * n / total)|round(1) if total else 0 }}%"></i></span><b>{{ n }}</b></li>{% else %}<li class="cs-muted">기간 안에 제보가 없어요.</li>{% endfor %}</ul>{% endmacro %}
+{% block content %}
+<main class="ad-page">
+  <header class="ad-head">
+    <div><h1>운영 통계</h1><p>모든 숫자는 지금 DB의 실제 기록으로 계산해요. 집계 기간: <b>{{ since[:10]|replace('-', '.') if since else '—' }} ~ {{ until[:10]|replace('-', '.') }}</b> (접수일 기준)</p></div>
+  </header>
+  <nav class="cs-tabs" aria-label="집계 기간">{% for k, label in periods.items() %}<a href="{{ url_for('admin_stats', period=k) }}"{% if period == k %} class="on"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+
+  <section class="ops-kpis">
+    <div class="ad-panel"><span>유효 제보</span><b>{{ s.valid }}</b><small>기간 안 접수 − 반려·중복 {{ s.excluded }}건</small></div>
+    <div class="ad-panel"><span>기업 전달률</span><b>{{ rate(s.forwarded_pct) }}</b><small>전달(시도) {{ s.forwarded }} ÷ 전달 동의 {{ s.shared }}</small></div>
+    <div class="ad-panel"><span>기업 확인률</span><b>{{ rate(s.seen_pct) }}</b><small>기업이 열어 봄 {{ s.seen }} ÷ 전달 {{ s.forwarded }}</small></div>
+    <div class="ad-panel"><span>공식 답변률</span><b>{{ rate(s.answered_pct) }}</b><small>답변 있음 {{ s.answered }} ÷ 전달 {{ s.forwarded }}</small></div>
+    <div class="ad-panel"><span>소비자 완료 확인</span><b>{{ rate(s.confirmed_pct) }}</b><small>확인 {{ s.confirmed }} (해결 {{ s.resolved }} · 미해결 {{ s.unresolved }}) ÷ 답변 있음 {{ s.answered }}</small></div>
+    <div class="ad-panel"><span>평균 첫 답변 시간</span><b>{{ '–' if s.avg_answer[0] is none else s.avg_answer[0] ~ '일' }}</b><small>기업 전달 → 첫 기업 답변, {{ s.avg_answer[1] }}건 평균</small></div>
+    <div class="ad-panel"><span>평균 처리 시간</span><b>{{ '–' if s.avg_close[0] is none else s.avg_close[0] ~ '일' }}</b><small>접수 → 종결, 종결 {{ s.avg_close[1] }}건 평균</small></div>
+    <div class="ad-panel"><span>공개 선택 · 공개 중</span><b>{{ rate(s.public_pct) }} · {{ rate(s.published_pct) }}</b><small>공개 선택 {{ s.public }} ÷ 유효 {{ s.valid }} · 공개 중 {{ s.published }} ÷ 공개 선택 {{ s.public }}</small></div>
+  </section>
+
+  <div class="ad-grid-2">
+    <section class="ad-panel"><div class="ad-panel-head"><h2>유형별 제보</h2></div>{{ bars(s.by_cat, s.valid) }}</section>
+    <section class="ad-panel"><div class="ad-panel-head"><h2>기업별 제보 (상위 10)</h2></div>{{ bars(s.by_co, s.valid) }}</section>
+  </div>
+  <div class="ad-grid-2">
+    <section class="ad-panel"><div class="ad-panel-head"><h2>진행 단계</h2></div><ul class="ops-bars">{% for st in statuses %}{% set n = s.by_status.get(st, 0) %}<li class="st-{{ loop.index }}"><span class="ob-name">{{ st }}</span><span class="ob-bar"><i style="width: {{ (100 * n / s.valid)|round(1) if s.valid else 0 }}%"></i></span><b>{{ n }}</b></li>{% endfor %}</ul></section>
+    <section class="ad-panel"><div class="ad-panel-head"><h2>기업 안내·요청 처리</h2></div>
+      <ul class="ops-bars plain">
+        <li><span class="ob-name">기업 안내 메일 보냄</span><b>{{ s.notices }}</b></li>
+        {% for k, label in OPS_REQUEST_KINDS.items() %}<li><span class="ob-name">{{ label }}</span><b>{{ s.requests.get(k, 0) }}</b></li>{% endfor %}
+      </ul>
+      <p class="cs-hint">요청·안내 건수는 그 일이 일어난 날 기준이에요.</p>
+    </section>
+  </div>
+  <p class="cs-hint">반려·중복으로 처리한 제보는 모든 통계에서 빠져요. 비율의 분모가 0이면 '–'로 보여요. 이 화면은 운영자만 볼 수 있어요.</p>
+</main>
+{% endblock %}
