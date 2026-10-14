@@ -252,23 +252,39 @@ class PlatformTest(unittest.TestCase):
         me=self.client();page=me.get(f'/to/{cid}').get_data(as_text=True);ctok=re.search(r'data-csrf="([^"]+)"',page).group(1)
         j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'택배가 아직 안 왔어요'}).get_json()
         self.assertNotIn('answer',j);self.assertEqual(j['category'],'배송 조회')
-        # 키가 있으면 AI(OpenAI)가 회사 정보(상품 포함)와 앞 대화를 보고 답한다
+        # 키가 있으면 AI(OpenAI, 인터넷 검색 가능)가 회사 정보(상품 포함)와 앞 대화를 보고 답한다
+        def oa(url,content):  # OpenAI 응답 모양 (검색: Responses API, 아니면 Chat Completions)
+            if url.endswith('/responses'):return 200,{'output':[{'type':'web_search_call'},{'type':'message','content':[{'type':'output_text','text':content}]}]}
+            return 200,{'choices':[{'message':{'content':content}}]}
         seen={}
         def fake(url,headers,body,timeout):
             seen.update(url=url,headers=headers,body=body)
-            return 200,{'choices':[{'message':{'content':'{"category": null, "answer": "선크림은 19000원이에요.", "handoff": false, "summary": ""}'}}]}
+            return oa(url,'{"category": null, "answer": "선크림은 19000원이에요.", "handoff": false, "summary": ""}')
         aim=sys.modules['ai']
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
             hist=json.dumps([{'who':'bot','text':'안녕하세요'},{'who':'me','text':'선크림 있어요?'},{'who':'bot','text':'네, 있어요.'}])
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'얼마예요?','history':hist}).get_json()
         self.assertEqual((j['answer'],j['category'],j['handoff']),('선크림은 19000원이에요.',None,False))
-        self.assertIn('api.openai.com',seen['url']);self.assertEqual(seen['body']['response_format'],{'type':'json_object'})
-        msgs=seen['body']['messages'];system=msgs[0]['content']
-        self.assertIn('선크림 / 가격 19000원',system);self.assertIn('보습 크림 / 가격 31000원 / 품절',system)
-        self.assertEqual([m['role'] for m in msgs],['system','user','assistant','user']);self.assertEqual(msgs[-1]['content'],'얼마예요?')
+        self.assertTrue(seen['url'].endswith('/v1/responses'));self.assertEqual(seen['body']['tools'],[{'type':'web_search'}])
+        system=seen['body']['instructions'];msgs=seen['body']['input']
+        self.assertIn('선크림 / 가격 19000원',system);self.assertIn('보습 크림 / 가격 31000원 / 품절',system);self.assertIn('인터넷 검색',system)
+        self.assertEqual([m['role'] for m in msgs],['user','assistant','user']);self.assertEqual(msgs[-1]['content'],'얼마예요?')
+        # 검색 답이 JSON이 아니어도 글이면 답으로 쓰고, 출처 링크 표시는 뺀다
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',lambda url,h,b,t:oa(url,'자외선 차단제는 2~3시간마다 덧바르는 게 좋아요 ([example.com](https://example.com/a)).')):
+            j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'선크림 얼마나 자주 발라요?'}).get_json()
+        self.assertEqual(j['answer'],'자외선 차단제는 2~3시간마다 덧바르는 게 좋아요.')
+        # 검색이 안 되면(예: 모델이 검색 도구를 지원하지 않음) 검색 없이 다시 묻는다
+        urls=[]
+        def nosearch(url,headers,body,timeout):
+            urls.append(url)
+            if url.endswith('/responses'):return 400,{'error':{'message':'tool not supported'}}
+            return oa(url,'{"category": null, "answer": "네, 있어요.", "handoff": false, "summary": ""}')
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',nosearch):
+            j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'보습 크림 있어요?'}).get_json()
+        self.assertEqual(j['answer'],'네, 있어요.');self.assertEqual([u.rsplit('/',1)[1] for u in urls],['responses','completions'])
         # 사람이 처리할 일이면 담당자 연결과 요약을 돌려준다
         def fake2(url,headers,body,timeout):
-            return 200,{'choices':[{'message':{'content':'{"category": "반품·환불", "answer": "불편을 드려 죄송해요. 환불은 담당자가 확인해야 해요.", "handoff": true, "summary": "고객 요구: 환불\\n주문번호: A-1"}'}}]}
+            return oa(url,'{"category": "반품·환불", "answer": "불편을 드려 죄송해요. 환불은 담당자가 확인해야 해요.", "handoff": true, "summary": "고객 요구: 환불\\n주문번호: A-1"}')
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake2):
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'A-1 주문 환불해 주세요'}).get_json()
         self.assertEqual((j['category'],j['handoff']),('반품·환불',True));self.assertIn('주문번호: A-1',j['summary'])
@@ -280,7 +296,7 @@ class PlatformTest(unittest.TestCase):
         b3,_,cid3=self.signup_and_approve('다른가게','other-shop@example.com')
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
             me.post(f'/chat/{cid3}',data={'csrf':ctok,'text':'선크림 있어요?'})
-        self.assertNotIn('선크림',seen['body']['messages'][0]['content'])
+        self.assertNotIn('선크림',seen['body']['instructions'])
 
     def test_pdf_product_import(self):
         """상품소개서 PDF(2쪽, 11개 상품) -> AI 추출 -> 검토·수정 -> 등록. 공급가는 따로 저장되고 상담 AI에 들어가지 않는다."""

@@ -28,11 +28,25 @@ def post(url,headers,body,timeout):
         try:return e.code,json.loads(e.read().decode() or '{}')
         except Exception:return e.code,{}
 
-def chat(system,messages,max_tokens=700,timeout=30,json_mode=False,temperature=0.3,files=None,anthropic_model=None):
+def web_answer(system,messages,max_tokens,timeout,temperature):
+    """OpenAI Responses API + 인터넷 검색 도구. AI가 필요할 때만 검색한다. 실패하면 None (부른 쪽이 검색 없이 다시 묻는다)."""
+    body={'model':OPENAI_MODEL,'instructions':system,'input':[dict(m) for m in messages],'tools':[{'type':'web_search'}],
+          'max_output_tokens':max_tokens,'temperature':temperature}
+    code,res=post('https://api.openai.com/v1/responses',{'Content-Type':'application/json','Authorization':'Bearer '+core.secret('OPENAI_API_KEY')},body,timeout)
+    if code!=200:LOG.warning('OpenAI 검색 응답 %s: %s',code,str((res.get('error') or {}).get('message',''))[:200]);return None
+    text=''.join(c.get('text','') for o in res.get('output') or [] if o.get('type')=='message' for c in o.get('content') or [] if c.get('type')=='output_text')
+    return text.strip() or None
+
+def chat(system,messages,max_tokens=700,timeout=30,json_mode=False,temperature=0.3,files=None,anthropic_model=None,web=False):
     """한 번 묻고 글을 돌려준다. messages: [{'role':'user'|'assistant','content':str}]. files: [(파일 이름, bytes)] PDF 첨부(OpenAI만).
-    키가 없거나 실패하면 None."""
+    web=True면 (OpenAI일 때) 인터넷 검색을 쓸 수 있게 한다. 키가 없거나 실패하면 None."""
     p=provider()
     try:
+        if p=='openai' and web and not files:
+            try:
+                text=web_answer(system+('\n출력은 JSON 한 개만.' if json_mode else ''),messages,max_tokens,timeout,temperature)
+                if text:return text
+            except Exception as e:LOG.warning('OpenAI 검색 실패: %s',type(e).__name__)
         if p=='openai':
             msgs=[{'role':'system','content':system}]+[dict(m) for m in messages]
             if files:  # 마지막 사용자 말에 PDF를 붙인다
@@ -53,9 +67,8 @@ def chat(system,messages,max_tokens=700,timeout=30,json_mode=False,temperature=0
     except Exception as e:LOG.warning('AI 연결 실패: %s',type(e).__name__)
     return None
 
-def chat_json(system,messages,**kw):
-    """JSON 객체로 답을 받는다. 못 읽으면 None."""
-    text=chat(system,messages,json_mode=True,**kw)
+def parse_json(text):
+    """글에서 JSON 객체를 꺼낸다. 못 읽으면 None."""
     if not text:return None
     try:return json.loads(text,strict=False)
     except ValueError:
@@ -63,3 +76,7 @@ def chat_json(system,messages,**kw):
         m=re.search(r'\{.*\}',text,re.S)
         try:return json.loads(m.group(0),strict=False) if m else None
         except ValueError:return None
+
+def chat_json(system,messages,**kw):
+    """JSON 객체로 답을 받는다. 못 읽으면 None."""
+    return parse_json(chat(system,messages,json_mode=True,**kw))

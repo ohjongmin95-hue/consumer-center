@@ -26,7 +26,7 @@
 <small>이 유형 요청이 오면 이 보상을 추천합니다. 승인을 눌러야 고객에게 갑니다.</small><button class="btn md gray">저장</button></form></details>
 </div>{% endfor %}</div>
 
-<div class="phead" id="ai"><div><h2>AI 상담 설정</h2><p>{% if ai %}AI가 고객과 대화할 때 이 내용과 아래 상품정보만 보고 답합니다. 적지 않은 내용은 지어내지 않고 담당자에게 넘겨요{% else %}AI 상담이 켜지면 이 내용으로 답해요{% endif %}</p></div></div>
+<div class="phead" id="ai"><div><h2>AI 상담 설정</h2><p>{% if ai %}가격·배송·반품 같은 우리 가게 정보는 이 내용과 아래 상품정보로만 답해요. 성분·사용법 같은 일반 지식은 AI가 아는 내용과 인터넷 검색으로 사람처럼 설명해요. 여기 없는 가게 정보는 지어내지 않고 담당자에게 넘겨요{% else %}AI 상담이 켜지면 이 내용으로 답해요{% endif %}</p></div></div>
 <div class="list prod-list aiset">{% for k,label in PROFILE %}
 <div class="li"><details{{ ' open' if loop.first and not prof[k] }}><summary><span>{{ label }}{% if prof[k] %} · 적어 둠{% endif %}</span><span class="chev"></span></summary>
 <form method="post" class="prod" action="{{ url_for('ai_profile') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
