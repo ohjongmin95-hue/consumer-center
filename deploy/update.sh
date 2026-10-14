@@ -49,6 +49,9 @@ if [ -f /etc/systemd/system/soboru-platform.service ]; then
   fi
   # PDF 상품 등록에 필요한 프로그램 (PDF 글자 읽기, 한글 포함)
   command -v pdftotext >/dev/null || apt-get install -y -q poppler-utils poppler-data >/dev/null 2>&1 || echo "pdftotext 설치 실패: sudo apt-get install -y poppler-utils poppler-data"
+  # AI 상담은 인터넷 검색까지 하면 30초를 넘길 수 있어서 응답 대기 시간을 늘리고, 동시에 여러 고객을 받게 함
+  U=/etc/systemd/system/soboru-platform.service
+  if [ -f $U ] && ! grep -q -- '--timeout' $U; then sed -i 's#gunicorn --workers 2 #gunicorn --workers 2 --threads 4 --timeout 90 #' $U; systemctl daemon-reload; fi
   systemctl restart soboru-platform
   # 새 버전이 안 뜨면 바로 전 버전으로 자동 복구
   sleep 3
