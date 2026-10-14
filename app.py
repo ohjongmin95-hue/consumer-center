@@ -233,6 +233,10 @@ def pub_names():return [ui('status.p1','접수'),ui('status.p2','처리 중'),ui
 def my_names():return [ui('status.m1','접수'),ui('status.m2','검토'),ui('status.m3','기업 전달'),ui('status.m4','기업 답변·처리'),ui('status.m5','완료·평가')]
 def my_descs():return [ui('status.m1_desc','소비자가 민원 제출'),ui('status.m2_desc','플랫폼에서 내용 심사'),ui('status.m3_desc','해당 기업에 민원 전달'),ui('status.m4_desc','기업과 소비자가 해결 진행'),ui('status.m5_desc','소비자가 결과를 확인하고 평가')]
 app.jinja_env.globals.update(pub_names=pub_names,my_names=my_names,my_descs=my_descs)
+# 관리자·기자실도 5단계로 보고 고름. 저장값은 예전 진행 상태 그대로 두고 단계마다 대표 상태 하나로 저장 ('추가 확인'은 검토로 봄)
+STAGE_STATUS=['접수','검토 중','기업 답변 대기','기업 답변 도착','종결']
+def stage_of(status):return jebo.STATUS_MY.get(status,1)
+app.jinja_env.globals.update(STAGE_STATUS=STAGE_STATUS,stage_of=stage_of)
 app.jinja_env.globals['STATUSES']=STATUSES
 app.jinja_env.globals['status_step']=status_step
 DOC_VARS={'운영자':'operator.name','대표자':'operator.ceo','이메일':'operator.email','전화':'operator.phone','주소':'operator.address','보호책임자':'operator.privacy_officer','보호책임자연락처':'operator.privacy_contact','청소년보호책임자':'operator.youth_officer','청소년보호책임자연락처':'operator.youth_contact','시행일':'policy.effective_date'}
@@ -256,7 +260,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-77'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-78'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -1305,6 +1309,7 @@ AREAS={
     'admin':{'layout':'console.html','list':'admin_reports','case':'admin_report','file':'admin_file','invite':'admin_invite'},
 }
 def actor_name():return g.staff['name'] if g.get('area')=='reporter' and g.get('staff') else '대표'
+def staff_sender():return g.staff['name'] if g.get('area')=='reporter' and g.get('staff') else ''  # 제보자에게 보이는 보낸 담당자
 def reporter_only(f):
     @functools.wraps(f)
     def wrapped(*a,**kw):
@@ -1327,7 +1332,9 @@ def reports_list():
     status=request.args.get('status','');q=request.args.get('q','').strip()[:60];mine=request.args.get('mine')=='1' and g.area=='reporter'
     page=max(1,request.args.get('page',1,type=int))
     where=['1=1'];args=[]
-    if status in STATUSES:where.append('status=?');args.append(status)
+    if status in STAGE_STATUS:
+        group=[s for s in STATUSES if stage_of(s)==stage_of(status)]
+        where.append('status IN (%s)'%','.join('?'*len(group)));args+=group
     else:status=''
     if q:
         like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
@@ -1335,7 +1342,8 @@ def reports_list():
     if mine:where.append('assignee=?');args.append(g.staff['name'])
     cond=' AND '.join(where)
     with conn() as db:
-        counts={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
+        counts={}
+        for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status'):counts[STAGE_STATUS[stage_of(r['status'])-1]]=counts.get(STAGE_STATUS[stage_of(r['status'])-1],0)+r['n']
         total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
         cases=db.execute('SELECT id,receipt,industry,category,company,subject,status,created,assignee,public_consent,published,share_company FROM cases WHERE '+cond+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
     return render_template('reports_list.html',layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total)
@@ -1359,12 +1367,13 @@ def report_detail(case_id):
             if form=='settings':
                 status=request.form.get('status','')
                 if status not in STATUSES:abort(400)
+                if stage_of(status)==stage_of(case['status']):status=case['status']  # 같은 단계면 그대로 ('추가 확인' 유지)
                 assignee=request.form.get('assignee',case['assignee'] or '').strip()[:80]
                 published=int(bool(request.form.get('published'))) if case['public_consent'] else 0
                 title_hidden=0  # 목록 제목·업체명은 늘 보임 (예전 '숨김' 설정은 쓰지 않음)
                 db.execute('UPDATE cases SET status=?,assignee=?,published=?,title_hidden=? WHERE id=?',(status,assignee,published,title_hidden,case_id))
                 if not published and title_hidden!=case['title_hidden']:log_case(db,case_id,'목록에서 제목·업체명 숨김' if title_hidden else '목록에 제목·업체명 표시')
-                if status!=case['status']:log_case(db,case_id,f"진행 단계 변경: {case['status']} → {status}");notify_later(case_id,'status')
+                if status!=case['status']:log_case(db,case_id,f"진행 단계 변경: {my_names()[stage_of(case['status'])-1]} → {my_names()[stage_of(status)-1]}");notify_later(case_id,'status')
                 if assignee!=(case['assignee'] or ''):log_case(db,case_id,f"담당 기자: {assignee or '미배정'}")
                 if case['public_consent'] and published!=case['published']:log_case(db,case_id,'공개로 전환' if published else '비공개로 전환')
                 if status!='접수' or published:jebo.mark(db,case_id,'reviewed_at')
@@ -1453,7 +1462,7 @@ def report_detail(case_id):
             elif form=='message':
                 msg=request.form.get('message','').strip()
                 if not msg or len(msg)>3000:abort(400)
-                db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'센터',msg,now()))
+                db.execute('INSERT INTO messages(case_id,author,body,created,sender) VALUES(?,?,?,?,?)',(case_id,'센터',msg,now(),staff_sender()))
                 log_case(db,case_id,'제보자에게 메시지 보냄');notify_later(case_id,'message')
             elif form in OPS_FORMS:ops_handle_form(db,case,form)
             else:abort(400)

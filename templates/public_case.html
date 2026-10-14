@@ -33,8 +33,5 @@
     <ol class="history">{% for who, label, at, text in events %}<li class="h-{{ who }}"><p class="h-head"><b>{{ label }}</b>{% if at %}<time datetime="{{ at }}">{{ at[:16]|replace('T', ' ') }}</time>{% endif %}</p>{% if text %}<p class="h-text">{{ text }}</p>{% endif %}</li>{% endfor %}</ol>
   </section>
   {% if groups_on() %}{% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}{% endif %}
-  <p class="public-case-mine"><a class="secondary" href="{{ url_for('case_open', case_id=case['id']) }}">{{ ui('reports.mine', '내가 쓴 제보라면 · 진행 상황과 답변 보기 →') }}</a></p>
-  <p class="public-case-notice">{{ ui('case.disclaimer', '기업의 답변 여부만으로 위법 행위나 책임이 확인되는 것은 아니에요. 소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요.') }}</p>
-  {% if txt('report.public_notice') %}<p class="public-case-notice">{{ txt('report.public_notice') }} <a href="{{ url_for('takedown') }}">{{ ui('reports.takedown_link', '게시중단 요청 →') }}</a></p>{% else %}<p class="public-case-notice"><a href="{{ url_for('takedown') }}">{{ ui('reports.takedown_link', '게시중단 요청 →') }}</a></p>{% endif %}
 </div></main>
 {% endblock %}

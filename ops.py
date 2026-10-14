@@ -45,6 +45,8 @@ def migrate(db):
         if c not in cols: db.execute(f"ALTER TABLE companies ADD COLUMN {c} TEXT NOT NULL DEFAULT ''")
     cols = {r['name'] for r in db.execute('PRAGMA table_info(cases)')}
     if 'supplement_at' not in cols: db.execute("ALTER TABLE cases ADD COLUMN supplement_at TEXT NOT NULL DEFAULT ''")
+    # 센터 메시지를 보낸 담당자 이름 (제보자 화면에 보여 줌). 대표 계정이 보내면 빈칸 → '센터'로만 표시
+    if 'sender' not in {r['name'] for r in db.execute('PRAGMA table_info(messages)')}: db.execute("ALTER TABLE messages ADD COLUMN sender TEXT NOT NULL DEFAULT ''")
 
 
 def later(fn):
@@ -161,7 +163,7 @@ def install(S):
         if form == 'supplement':
             body = request.form.get('body', '').strip()
             if not body or len(body) > 3000: flash('보완 요청 내용을 적어 주세요.'); return
-            db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)', (cid, '센터', '[보완 요청] ' + body, now()))
+            db.execute('INSERT INTO messages(case_id,author,body,created,sender) VALUES(?,?,?,?,?)', (cid, '센터', '[보완 요청] ' + body, now(), S.staff_sender()))
             db.execute('UPDATE cases SET supplement_at=? WHERE id=?', (now(), cid))
             if STATUSES.index(case['status']) < 2:
                 db.execute('UPDATE cases SET status=? WHERE id=?', (STATUSES[2], cid)); S.log_case(db, cid, f"진행 단계 변경: {case['status']} → {STATUSES[2]}")
@@ -312,7 +314,7 @@ def install(S):
         db.execute('UPDATE case_requests SET status=?,result=?,handled_at=?,actor=? WHERE id=?', (status, result, now(), S.actor_name(), req['id']))
         S.log_case(db, req['case_id'], f"{REQUEST_KINDS[req['kind']]} {status}")
         if req['who'] == 'reporter':
-            db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)', (req['case_id'], '센터', f"[{REQUEST_KINDS[req['kind']]} {status}] {result}", now()))
+            db.execute('INSERT INTO messages(case_id,author,body,created,sender) VALUES(?,?,?,?,?)', (req['case_id'], '센터', f"[{REQUEST_KINDS[req['kind']]} {status}] {result}", now(), S.staff_sender()))
             S.notify_later(req['case_id'], 'message')
         flash(f"{REQUEST_KINDS[req['kind']]}을 {status}로 처리했어요.")
 

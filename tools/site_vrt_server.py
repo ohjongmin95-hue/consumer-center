@@ -1,7 +1,7 @@
 # 소비자제보센터 화면 시험용 서버: 임시 DB에 예시 제보를 넣고 띄움 (실제 DB·운영 서버와 무관)
 #   python tools/site_vrt_server.py [앱 폴더] [포트]   기본: 이 저장소, 8822
 # 고치기 전 화면(기준 그림)은 git worktree로 받은 이전 코드 폴더를 앱 폴더로 넘겨서 띄워요.
-# 관리자 비밀번호 adminshotpw1, 제보 조회 010-2222-3333 / 1234, 기업 회원 sobo_cs / bizshotpw1
+# 관리자 비밀번호 adminshotpw1, 제보 조회 010-2222-3333 / 1234, 기업 회원 sobo_cs / bizshotpw1, 기자 vrt_staff / staffshotpw1
 import os, sys, re, tempfile, importlib.util
 from werkzeug.security import generate_password_hash
 APP_DIR = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..'))
@@ -43,6 +43,12 @@ post(a, '/admin/reports/%d' % eid, {'form': 'publish_review', 'decision': 'appro
 post(a, '/admin/reports/%d' % eid, {'form': 'forward'})
 post(b, '/biz/case/%d' % eid, {'response': '확인해 보니 무상 수리 대상이 맞아요. 접수하신 서비스센터에 비용 없이 처리하도록 안내했어요.'})
 post(u, '/report', dict(base, subject='승인 대기 제보', company='소보몰', phone='010-9999-0000'))
+# 기자실: 기자 계정 → 담당 배정 → 제보자에게 메시지 (기자 이지우 / staffshotpw1)
+post(a, '/admin/staff', {'action': 'add', 'name': '이지우', 'login_id': 'vrt_staff', 'password': 'staffshotpw1'})
+st = app.test_client(); post(st, '/reporter/login', {'login_id': 'vrt_staff', 'password': 'staffshotpw1'})
+with m.conn() as db: est = db.execute('SELECT status FROM cases WHERE id=?', (eid,)).fetchone()[0]
+post(st, '/reporter/case/%d' % eid, {'form': 'settings', 'status': est, 'assignee': '이지우', 'published': '1'})
+post(st, '/reporter/case/%d' % eid, {'form': 'message', 'message': '기업 답변을 확인했어요. 처리 결과를 알려 주세요.'})
 # 3차 화면: 보완 요청, 정정 요청, 기업 이의 신청 (메일은 설정이 없어 보내지 않음)
 if hasattr(m, 'ops'):  # 3차 이전 코드(기준 그림)에는 없는 기능
     post(a, '/admin/reports/%d' % ids[1], {'form': 'supplement', 'body': '주문 내역 화면을 올려 주세요.'})

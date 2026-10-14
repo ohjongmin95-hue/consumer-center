@@ -1620,3 +1620,9 @@ details.cs-card[open] > summary::after { content: ' −'; }
 .alert-line { margin: 0 0 6px; font-size: 14px; color: #4f5660; }
 .alert-line span { color: #8a8f96; margin-right: 8px; font-variant-numeric: tabular-nums; }
 .wrap.narrow { max-width: 720px; }
+
+/* 제보자 조회: 센터 담당자 */
+.case-staff { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 12px 0 0; padding: 0 2px; font-size: 14px; color: #6b6f76; line-height: 1.6; }
+.case-staff span { font-weight: 700; color: #5b5249; }
+.case-staff b { color: #202630; }
+.ad-who { font-weight: 800; color: var(--ad-ink); white-space: nowrap; }

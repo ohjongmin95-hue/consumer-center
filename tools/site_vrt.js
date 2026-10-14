@@ -15,6 +15,7 @@ const ROLES={
   reporter:['/case'],
   admin:['/admin','/admin/reports','/admin/reports/1','/admin/reports/4','/admin/reports/5','/admin/companies','/admin/requests','/admin/stats'],
   biz:['/biz','/biz/case/4','/biz/statement'],
+  newsroom:['/reporter','/reporter?mine=1','/reporter/case/4','/reporter/password'],
 };
 const WIDTHS=(process.env.VRT_WIDTHS||'1440,1024,768,390').split(',').map(Number);
 const TOLERANCE=+(process.env.VRT_TOLERANCE||0.3);
@@ -23,6 +24,7 @@ async function login(p,role){
   if(role==='admin'){await p.goto(H+'/admin/login');await p.fill('input[name=password]','adminshotpw1');await submit(p);}
   if(role==='reporter'){await p.goto(H+'/lookup');await p.fill('input[name=phone]','010-2222-3333');await p.fill('input[name=password]','1234');await submit(p);
     if(!p.url().endsWith('/case')){await Promise.all([p.waitForNavigation(),p.click('.lookup-list button')]);}}
+  if(role==='newsroom'){await p.goto(H+'/reporter/login');await p.fill('input[name=login_id]','vrt_staff');await p.fill('input[name=password]','staffshotpw1');await submit(p);}
   if(role==='biz'){await p.goto(H+'/biz/login');await p.fill('input[name=login_id]','sobo_cs');await p.fill('input[name=password]','bizshotpw1');await submit(p);}
 }
 function layoutCheck(){
