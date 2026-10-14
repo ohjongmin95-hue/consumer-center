@@ -1,16 +1,16 @@
 {# 진행 단계 표시: 목록용 막대(bar)와 조회 화면용 단계 목록(stepper). #}
-{% macro bar(status) %}{% set step = status_step(status) %}<span class="step-bar st-{{ step }}{% if step == STATUSES|length %} done{% endif %}" title="{{ step }}/{{ STATUSES|length }} 단계"><span class="step-badge">{{ status_name(status) }}</span><span class="step-dots" aria-hidden="true">{% for s in STATUSES %}<i{% if loop.index <= step %} class="on"{% endif %}></i>{% endfor %}</span></span>{% endmacro %}
+{% macro bar(step, names=None, colors=PUB_COLOR) %}{% set names = names or pub_names() %}<span class="step-bar st-{{ colors[step - 1] }}{% if step == names|length %} done{% endif %}" title="{{ step }}/{{ names|length }} 단계"><span class="step-badge">{{ names[step - 1] }}</span><span class="step-dots" aria-hidden="true">{% for s in names %}<i{% if loop.index <= step %} class="on"{% endif %}></i>{% endfor %}</span></span>{% endmacro %}
 {% macro stepper(status) %}{% set step = status_step(status) %}
 <ol class="stepper" aria-label="{{ ui('reports.col_status', '진행 단계') }}">
   {% for s in STATUSES %}<li class="{{ 'done' if loop.index < step else ('now' if loop.index == step else 'todo') }}"{% if loop.index == step %} aria-current="step"{% endif %}><span class="stepper-dot">{{ '✓' if loop.index < step else loop.index }}</span><span class="stepper-label">{{ status_name(s) }}</span></li>{% endfor %}
 </ol>
 <p class="stepper-desc"><b>{{ ui('lookup.current_step', '현재 단계') }}: {{ status_name(status) }}</b> {{ txt('status.%d' % step) }}</p>
 {% endmacro %}
-{# 공개 제보의 7단계 진행 (jebo.PUBLIC_STEPS). step은 지금 단계 번호 1~7. #}
-{% macro steps7(step) %}
-<ol class="stepper s7" aria-label="{{ ui('reports.col_status', '진행 단계') }}">
-  {% for s in PUBLIC_STEPS %}<li class="{{ 'done' if loop.index < step else ('now' if loop.index == step else 'todo') }}"{% if loop.index == step %} aria-current="step"{% endif %}><span class="stepper-dot">{{ '✓' if loop.index < step else loop.index }}</span><span class="stepper-label">{{ s }}</span></li>{% endfor %}
+{# 단계 목록. 공개 화면은 3단계(pub_names()), 제보자 본인 화면은 5단계(my_names()). step은 지금 단계 번호. #}
+{% macro steps(step, names) %}
+<ol class="stepper s7 n{{ names|length }}" aria-label="{{ ui('reports.col_status', '진행 단계') }}">
+  {% for s in names %}<li class="{{ 'done' if loop.index < step else ('now' if loop.index == step else 'todo') }}"{% if loop.index == step %} aria-current="step"{% endif %}><span class="stepper-dot">{{ '✓' if loop.index < step else loop.index }}</span><span class="stepper-label">{{ s }}</span></li>{% endfor %}
 </ol>
 {% endmacro %}
-{# 목록 위 단계 색 범례: 접수증 색과 같은 색 #}
-{% macro legend() %}<ul class="st-legend" aria-label="{{ ui('reports.legend', '진행 단계 색') }}">{% for s in STATUSES %}<li class="st-{{ loop.index }}"><i aria-hidden="true"></i>{{ status_name(s) }}</li>{% endfor %}</ul>{% endmacro %}
+{# 목록 위 단계 색 범례: 접수증 색과 같은 색 (공개 3단계) #}
+{% macro legend() %}<ul class="st-legend" aria-label="{{ ui('reports.legend', '진행 단계 색') }}">{% for s in pub_names() %}<li class="st-{{ PUB_COLOR[loop.index0] }}"><i aria-hidden="true"></i>{{ s }}</li>{% endfor %}</ul>{% endmacro %}

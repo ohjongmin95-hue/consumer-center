@@ -1493,6 +1493,7 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 .h-head time { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .h-text { margin: 4px 0 0; color: #5b616a; font-size: 14px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .stepper.s7 { grid-template-columns: repeat(7, 1fr); }
+@media (min-width: 561px) { .stepper.s7.n3 { grid-template-columns: repeat(3, 1fr); } .stepper.s7.n5 { grid-template-columns: repeat(5, 1fr); } }
 .co-pick { position: relative; }
 .co-suggest { position: absolute; z-index: 20; left: 0; right: 0; top: 78px; margin: 0; padding: 6px; list-style: none; background: #fff; border: 1px solid #e3e3e1; border-radius: 11px; box-shadow: 0 10px 24px #0000001a; max-height: 280px; overflow: auto; }
 .co-suggest li { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 8px; cursor: pointer; }

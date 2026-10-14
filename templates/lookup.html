@@ -2,7 +2,7 @@
 <div class="page-intro"><h1 class="page-title">{{ ui('lookup.title', '내 제보 조회') }}</h1><p>{{ ui('lookup.intro', '제보할 때 적은 휴대폰 번호와 조회 비밀번호를 넣어 주세요. 제보 목록에서 내 글을 눌러 비밀번호만 넣어도 돼요.') }}</p></div>
 {% if found %}
 <div class="form-panel"><h2 class="lookup-h">{{ ui('lookup.pick', '어떤 제보를 볼까요?') }}</h2>
-  <ul class="lookup-list">{% for r in found %}<li><form method="post" action="{{ url_for('lookup_pick', case_id=r['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit"><b>{{ r['subject'] }}</b><span>{{ r['receipt'] }} · {{ r['created'][:10] }} · {{ r['status'] }}</span></button></form></li>{% endfor %}</ul>
+  <ul class="lookup-list">{% for r in found %}<li><form method="post" action="{{ url_for('lookup_pick', case_id=r['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit"><b>{{ r['subject'] }}</b><span>{{ r['receipt'] }} · {{ r['created'][:10] }} · {{ my_names()[my_step(r) - 1] }}</span></button></form></li>{% endfor %}</ul>
 </div>
 {% else %}
 <div class="form-panel"><form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">

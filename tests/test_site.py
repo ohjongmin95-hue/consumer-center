@@ -1148,7 +1148,7 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(admin, '/guide')
         self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'guide.u_title', 'value': '첨부 전 체크'}).get_json()['ok'])
         self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:guide_basics:0:title', 'value': '구매한 날'}).get_json()['ok'])
-        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'status.n1', 'value': '접수 완료'}).get_json()['ok'])
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'status.p1', 'value': '접수 완료'}).get_json()['ok'])
         self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:guide_basics:0:title', 'value': ''}).status_code, 400)
         self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'list:menu:0:page', 'value': 'x'}).status_code, 400)
         self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'nope', 'value': 'x'}).status_code, 400)
@@ -1406,7 +1406,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('환불이 한 달째', self.client.get('/reports?q=한 달째').get_data(as_text=True))
         self.assertNotIn('원래 제목', self.client.get('/reports?q=원래').get_data(as_text=True))
         public = self.client.get('/reports/%d' % case['id']).get_data(as_text=True)
-        for text in ('환불이 한 달째 안 돼요', '공식 답변 미등록', '민간 플랫폼', 'href="/companies/%d"' % co['id'], 'aria-current="step"><span class="stepper-dot">2</span><span class="stepper-label">운영자 검토'):
+        for text in ('환불이 한 달째 안 돼요', '공식 답변 미등록', '민간 플랫폼', 'href="/companies/%d"' % co['id'], 'aria-current="step"><span class="stepper-dot">2</span><span class="stepper-label">처리 중'):
             self.assertIn(text, public)
         self.assertNotIn('A-123', public)
         # 답변 링크 발급 = 전달 시도, 기업이 열어 봐야 '전달 확인'
@@ -1603,6 +1603,33 @@ class SiteTest(unittest.TestCase):
         self.assertIn('비번 없는 공개 제보', home)
         self.assertIn('class="st-legend"', home)
         self.assertIn('공개 검토 중', home)
+
+    def test_public_three_and_reporter_five_stages(self):
+        # 공개 화면은 접수·처리 중·종결 3단계, 제보자 본인 화면은 5단계. 5단계 → 3단계 연결
+        jebo = self.site.jebo
+        mine = [jebo.my_step({'status': s}) for s in self.site.STATUSES]
+        self.assertEqual(mine, [1, 2, 2, 3, 4, 5])
+        self.assertEqual([jebo.pub_step(n) for n in range(1, 6)], [1, 2, 2, 2, 3])
+        self.assertEqual(jebo.my_step({'status': '접수', 'reviewed_at': 'x', 'forwarded_at': 'x'}), 3)
+        self.assertEqual(jebo.my_step({'status': '검토 중'}, has_answer=True), 4)
+        self.assertEqual(jebo.my_step({'status': '기업 답변 도착', 'confirmed_at': 'x'}), 5)
+        form = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '단계몰', 'description': '환불이 안 돼요', 'reporter_name': '최소비', 'subject': '단계 확인 제보',
+                'phone': '010-8181-3030', 'request_text': '환불', 'consent': 'on', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret', 'lookup_pw': '4321', 'lookup_pw2': '4321'}
+        done = self.post_form(self.client, '/report', form).get_data(as_text=True)
+        self.assertEqual(done.count('class="stepper-label"'), 5)
+        self.assertIn('기업 답변·처리', done)
+        with self.site.conn() as db:db.execute("UPDATE cases SET status='기업 답변 대기' WHERE subject='단계 확인 제보'")
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('<li class="st-5"><i aria-hidden="true"></i>처리 중</li>', home)
+        self.assertNotIn('기업 답변 대기', home)
+        self.assertIn('<span class="rc-progress" aria-label="3단계 중 2단계"><i class="on"></i><i class="on"></i><i></i></span>', home)
+        reports = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('<span class="step-badge">처리 중</span>', reports)
+        self.assertNotIn('기업 답변 대기', reports)
+        self.post_form(self.client, '/lookup', {'mode': 'phone', 'phone': '010-8181-3030', 'password': '4321'})
+        case = self.client.get('/case').get_data(as_text=True)
+        self.assertIn('aria-current="step"><span class="stepper-dot">3</span><span class="stepper-label">기업 전달', case)
+        self.assertIn('현재 단계: 기업 전달</b> 해당 기업에 민원 전달', case)
 
     def test_ops_review_notice_requests_stats(self):
         # 3차: 심사 확인(개인정보 의심·중복 후보), 보완 요청, 추가 자료, 기업 안내 메일(빈도 제한·수신 거부), 정정·삭제·이의 신청, 운영 통계
