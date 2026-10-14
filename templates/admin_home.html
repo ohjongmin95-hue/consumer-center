@@ -31,7 +31,7 @@
         <div><span>최근 7일 접수</span><b>{{ stats.new_cases }}</b></div>
         <div><span>처리 중</span><b>{{ stats.open_cases }}</b></div>
       </div>
-      <div class="ad-pipeline">{% for s in STATUSES %}<a href="{{ url_for('admin_reports', status=s) }}"><b>{{ counts.get(s, 0) }}</b><span>{{ s }}</span></a>{% endfor %}</div>
+      <div class="ad-pipeline">{% for s in STAGE_STATUS %}<a href="{{ url_for('admin_reports', status=s) }}"><b>{{ stage_count(counts, s) }}</b><span>{{ my_names()[loop.index0] }}</span></a>{% endfor %}</div>
     </section>
     <section class="ad-panel">
       <div class="ad-panel-head"><h2>회원·기자</h2></div>

@@ -100,5 +100,12 @@
     if (e.ctrlKey || e.metaKey) window.open(row.dataset.href, '_blank'); else location.href = row.dataset.href;
   });
 </script>
+<script>
+  // 모바일에서 표(.cs-stack)를 카드처럼 쌓을 때 칸 이름을 붙여 줌
+  document.querySelectorAll('table.cs-stack').forEach(function (t) {
+    var heads = [].map.call(t.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+    t.querySelectorAll('tbody tr').forEach(function (tr) { [].forEach.call(tr.children, function (td, i) { if (heads[i] && !td.hasAttribute('colspan')) td.setAttribute('data-label', heads[i]); }); });
+  });
+</script>
 </body>
 </html>

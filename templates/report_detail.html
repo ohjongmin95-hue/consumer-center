@@ -9,7 +9,7 @@
   <div class="cs-case-head">
     <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ cat_label(case['category']) }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}{% if case['occurred_on'] %} · 발생 {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
     <h1 class="cs-title">{{ case['subject'] }}</h1>
-    <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ status_step(case['status']) }}">{{ case['status'] }}</span></p>
+    <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ MY_COLOR[stage_of(case['status']) - 1] }}">{{ my_names()[stage_of(case['status']) - 1] }}</span></p>
   </div>
 
   <div class="cs-case">
