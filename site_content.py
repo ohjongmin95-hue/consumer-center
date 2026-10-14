@@ -145,12 +145,11 @@ SECTIONS = [
 POLICY_HINT = '줄 맨 앞에 "## "를 쓰면 소제목(목차에도 표시), "- "를 쓰면 목록이 됩니다. {운영자}, {대표자}, {이메일}, {전화}, {주소}, {보호책임자}, {보호책임자연락처}, {청소년보호책임자}, {청소년보호책임자연락처}, {시행일}은 운영자 정보로 자동 바뀝니다.'
 
 SECTIONS += [
-    ('policy', '약관·개인정보 처리방침·게시중단', [
+    ('policy', '약관·개인정보 처리방침', [
         ('policy.effective_date', '시행일', '2026년 10월 9일', {}),
         ('policy.terms', '이용약관', _policy('terms'), {'multiline': True, 'doc': True}),
         ('policy.privacy', '개인정보 처리방침', _policy('privacy'), {'multiline': True, 'doc': True}),
         ('policy.youth', '청소년보호정책', _policy('youth'), {'multiline': True, 'doc': True}),
-        ('policy.takedown', '권리침해 신고 및 임시조치 안내', _policy('takedown'), {'multiline': True, 'doc': True}),
         ('policy.biz', '기업 회원 이용약관', _policy('biz'), {'multiline': True, 'doc': True}),
     ]),
 ]
@@ -232,7 +231,7 @@ SAMPLE_REPORTS = [
 MENU_PAGES = [
     ('reports', '제보 목록'), ('companies', '기업별 제보'), ('guide', '이용 안내'), ('process', '처리 절차'), ('board', '소비자게시판'),
     ('faq', '자주 묻는 질문'), ('report', '제보하기'), ('lookup', '내 제보 조회'), ('types', '제보 유형'),
-    ('home', '홈 (메인 화면)'), ('terms', '이용약관'), ('privacy', '개인정보 처리방침'), ('takedown', '게시중단 요청'),
+    ('home', '홈 (메인 화면)'), ('terms', '이용약관'), ('privacy', '개인정보 처리방침'),
     ('groups', '공동 대응 (집단 피해)'), ('custom', '직접 입력한 주소'),
 ]
 HOME_BLOCKS = [
@@ -320,7 +319,7 @@ UI_GROUPS = {
     'common': '공통 (헤더·푸터)', 'home': '메인 화면', 'reports': '제보 목록·공개 제보', 'report': '제보하기 화면',
     'done': '제보 완료 화면', 'lookup': '내 제보 조회', 'guide': '이용 안내', 'process': '처리 절차', 'types': '제보 유형',
     'faq': '자주 묻는 질문', 'board': '소비자게시판', 'member': '회원가입·로그인·내 정보', 'takedown': '권리침해 신고',
-    'policy': '약관·개인정보 처리방침·게시중단', 'company': '기업 답변 화면', 'msg': '알림 메시지 (입력 오류 등)',
+    'policy': '약관·개인정보 처리방침', 'company': '기업 답변 화면', 'msg': '알림 메시지 (입력 오류 등)',
 }
 def _scan_ui():
     found = {}

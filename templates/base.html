@@ -63,7 +63,6 @@
         <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('common.ft_terms', '이용약관') }}</a>
         <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">{{ ui('common.ft_privacy', '개인정보 처리방침') }}</a>
         <a href="{{ url_for('policy_page', page='youth') }}">{{ ui('common.ft_youth', '청소년보호정책') }}</a>
-        <a class="ft-point" href="{{ url_for('takedown') }}">{{ ui('common.ft_takedown', '권리침해 신고 및 임시조치 안내') }}</a>
         <a href="{{ url_for('lookup') }}">{{ ui('common.ft_lookup', '내 제보 조회') }}</a>
         {% if biz_on() %}<a href="{{ url_for('biz_login') }}">{{ ui('common.ft_biz', '기업 회원') }}</a>{% endif %}
       </nav>
@@ -93,7 +92,7 @@
   <span class="ed-bar-title">✏️ 편집 모드</span>
   <label class="ed-go"><span>페이지 이동</span><select onchange="if (this.value) location.href = this.value" aria-label="고칠 페이지로 이동">
     <option value="">고칠 페이지 고르기 ▾</option>
-    {% for href, name in [(url_for('home'), '메인 화면'), (url_for('reports'), '제보 목록'), (url_for('info_page', page='guide'), '이용 안내'), (url_for('info_page', page='process'), '처리 절차'), (url_for('info_page', page='faq'), '자주 묻는 질문'), (url_for('info_page', page='types'), '제보 유형'), (url_for('report'), '제보하기'), (url_for('lookup'), '내 제보 조회'), (url_for('board'), '소비자게시판'), (url_for('board_write'), '게시판 글쓰기'), (url_for('signup'), '회원가입'), (url_for('login'), '로그인'), (url_for('account_help'), '아이디·비밀번호 찾기'), (url_for('policy_page', page='terms'), '이용약관'), (url_for('policy_page', page='privacy'), '개인정보 처리방침'), (url_for('policy_page', page='youth'), '청소년보호정책'), (url_for('takedown'), '권리침해 신고')] %}<option value="{{ href }}"{% if request.path == href %} selected{% endif %}>{{ name }}</option>{% endfor %}
+    {% for href, name in [(url_for('home'), '메인 화면'), (url_for('reports'), '제보 목록'), (url_for('info_page', page='guide'), '이용 안내'), (url_for('info_page', page='process'), '처리 절차'), (url_for('info_page', page='faq'), '자주 묻는 질문'), (url_for('info_page', page='types'), '제보 유형'), (url_for('report'), '제보하기'), (url_for('lookup'), '내 제보 조회'), (url_for('board'), '소비자게시판'), (url_for('board_write'), '게시판 글쓰기'), (url_for('signup'), '회원가입'), (url_for('login'), '로그인'), (url_for('account_help'), '아이디·비밀번호 찾기'), (url_for('policy_page', page='terms'), '이용약관'), (url_for('policy_page', page='privacy'), '개인정보 처리방침'), (url_for('policy_page', page='youth'), '청소년보호정책')] %}<option value="{{ href }}"{% if request.path == href %} selected{% endif %}>{{ name }}</option>{% endfor %}
     {% for row in g.lists.get('custom_pages', []) if row.slug %}<option value="{{ url_for('custom_page', slug=row.slug) }}"{% if request.path == url_for('custom_page', slug=row.slug) %} selected{% endif %}>새 페이지: {{ row.title }}</option>{% endfor %}
   </select></label>
   <a href="{{ url_for('admin_lists') }}">메뉴·항목</a><a href="{{ url_for('admin_content') }}">사이트 문구 전체</a>

@@ -70,6 +70,6 @@
     {% if page < pages %}<a href="{{ url_for('board', category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page + 1) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}
   </nav>
   {% endif %}
-  <p class="board-foot-note">{{ ui('board.foot1', '공감과 알리기는 한 번씩 할 수 있어요. 권리를 침해하는 글은') }} <a href="{{ url_for('takedown') }}">{{ ui('board.foot_link', '게시중단 요청') }}</a>{{ ui('board.foot2', '으로 알려 주세요.') }}</p>
+  <p class="board-foot-note">{{ ui('board.foot1b', '공감과 알리기는 한 번씩 할 수 있어요.') }}</p>
 </main>
 {% endblock %}

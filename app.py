@@ -460,7 +460,7 @@ def robots_txt():
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    pages=[(url_for(e,_external=True),None) for e in ('home','reports','board','report','takedown')]
+    pages=[(url_for(e,_external=True),None) for e in ('home','reports','board','report')]
     pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq','types')]
     pages+=[(url_for('policy_page',page=p,_external=True),None) for p in ('terms','privacy','youth')]
     pages+=[(url_for('custom_page',slug=r['slug'],_external=True),None) for r in g.lists.get('custom_pages',[]) if r.get('slug')]
@@ -507,14 +507,8 @@ def policy_page(page):
 
 @app.route('/takedown',methods=['GET','POST'])
 def takedown():
-    if request.method=='POST':
-        data={k:request.form.get(k,'').strip() for k in ('requester','contact','target','reason')}
-        if any(not v for v in data.values()) or not request.form.get('consent'):
-            flash(ui_text('msg.m01','모든 항목과 개인정보 수집 동의를 확인해 주세요.'));return render_template('takedown.html'),400
-        if any(len(data[k])>limit for k,limit in [('requester',120),('contact',150),('target',300),('reason',5000)]):abort(400)
-        with conn() as db:db.execute('INSERT INTO takedown_requests(requester,contact,target,reason,created) VALUES(?,?,?,?,?)',(data['requester'],data['contact'],data['target'],data['reason'],datetime.datetime.now().isoformat(timespec='seconds')))
-        return render_template('takedown.html',submitted=True)
-    return render_template('takedown.html')
+    # 게시중단 요청 기능은 뺌 (운영자 결정). 예전 주소로 들어오면 홈으로. 기존 요청 기록은 DB에 그대로 두고 관리자 화면에서 볼 수 있음
+    return redirect(url_for('home'))
 
 CONSENT_FIELDS={'privacy':'consent','share':'share_company','copyright':'use_consent','truth':'truth'}
 def required_consents():

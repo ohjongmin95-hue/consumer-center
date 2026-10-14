@@ -11,7 +11,7 @@
   <section class="ad-todo" aria-label="확인할 일">
     <a class="ad-todo-item{% if new_reports %} is-on{% endif %}" href="{{ url_for('admin_reports', status=STATUSES[0]) }}"><b>{{ new_reports }}</b><span>새로 접수된 제보</span></a>
     <a class="ad-todo-item{% if stats.flagged %} is-on{% endif %}" href="{{ url_for('admin_board') }}"><b>{{ stats.flagged }}</b><span>신고된 게시글·댓글</span></a>
-    <a class="ad-todo-item{% if stats.takedowns %} is-on{% endif %}" href="{{ url_for('admin_takedowns') }}"><b>{{ stats.takedowns }}</b><span>처리할 게시중단 요청</span></a>
+    {% if stats.takedowns %}<a class="ad-todo-item{% if stats.takedowns %} is-on{% endif %}" href="{{ url_for('admin_takedowns') }}"><b>{{ stats.takedowns }}</b><span>처리할 게시중단 요청</span></a>{% endif %}  {# 게시중단 요청 기능은 뺌. 예전에 들어와 처리 안 된 요청만 보여 줌 #}
     <a class="ad-todo-item{% if ops.n_requests %} is-on{% endif %}" href="{{ url_for('admin_requests') }}"><b>{{ ops.n_requests }}</b><span>정정·삭제·이의 신청</span></a>
     <a class="ad-todo-item{% if ops.n_late %} is-on{% endif %}" href="#late"><b>{{ ops.n_late }}</b><span>{{ ops.delay_days }}일 넘게 멈춘 제보</span></a>
   </section>
