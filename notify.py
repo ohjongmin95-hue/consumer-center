@@ -11,7 +11,9 @@ from email.message import EmailMessage
 from email.utils import formataddr
 
 ASYNC = True  # 테스트에서는 False로 바꿔 바로 실행
-EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변', 'company': '기업 답변'}
+EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변', 'company': '기업 답변', 'supplement': '보완 요청', 'seen': '기업 전달 확인',
+          'admin_answer': '운영자: 기업 답변', 'admin_request': '운영자: 정정·삭제·이의', 'admin_risk': '운영자: 개인정보 위험',
+          'company_notice': '기업 공식 안내', 'company_new': '기업: 새 제보', 'company_opinion': '기업: 제보자 추가 의견', 'company_files': '기업: 추가 자료'}
 
 # 이메일 본문. 카카오 템플릿과 같은 내용 + 조회 주소
 EMAIL_TEXT = {
@@ -26,9 +28,16 @@ EMAIL_TEXT = {
                 "답변 내용은 '내 제보 조회'에서 확인해 주세요.\n{link}"),
     'company': ('[소비자제보센터] 업체가 제보에 답변했습니다',
                 '{name}님의 제보에 업체가 답변했습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
-                "답변 내용은 '내 제보 조회'에서 확인해 주세요.\n{link}"),
+                "답변 내용은 '내 제보 조회'에서 확인해 주세요. 답변을 받고 해결됐는지도 알려 주세요.\n{link}"),
+    'supplement': ('[소비자제보센터] 제보 내용 보완을 요청드립니다',
+                   '{name}님의 제보를 확인하려면 내용이나 자료 보완이 필요합니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
+                   "요청 내용은 '내 제보 조회'에서 확인하고, 그 화면에서 설명이나 자료를 더해 주세요.\n{link}"),
+    'seen': ('[소비자제보센터] 업체가 제보를 확인했습니다',
+             '{name}님의 제보를 업체 담당자가 열어 확인했습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
+             "업체가 답변하면 다시 알려 드립니다. 답변 여부와 내용은 업체가 정합니다.\n{link}"),
 }
-KAKAO_TEMPLATE_ENV = {'received': 'KAKAO_TPL_RECEIVED', 'status': 'KAKAO_TPL_STATUS', 'message': 'KAKAO_TPL_MESSAGE', 'company': 'KAKAO_TPL_COMPANY'}
+KAKAO_TEMPLATE_ENV = {'received': 'KAKAO_TPL_RECEIVED', 'status': 'KAKAO_TPL_STATUS', 'message': 'KAKAO_TPL_MESSAGE', 'company': 'KAKAO_TPL_COMPANY',
+                      'supplement': 'KAKAO_TPL_SUPPLEMENT', 'seen': 'KAKAO_TPL_SEEN'}
 
 
 def env(key):
@@ -187,6 +196,26 @@ def plan(case, event, link):
 def dispatch(conn, case, event, link, admin_link=None):
     """알림을 뒤에서 보내고 결과를 기록. conn은 DB 연결을 여는 함수. admin_link가 있으면 운영자에게도 보냄."""
     jobs = plan(case, event, link) + (admin_plan(case, admin_link) if admin_link else [])
+    return run_jobs(conn, case, event, jobs)
+
+
+def admin_alert(conn, case, event, subject, body):
+    """운영자에게 메일(ADMIN_ALERT_EMAIL)·텔레그램으로 알림. 기업 답변, 정정·삭제·이의 신청, 개인정보 위험 등."""
+    emails = admin_targets()[0]
+    jobs = [('admin_email', e, lambda e=e: send_email(e, subject, body)) for e in emails]
+    if env('TELEGRAM_BOT_TOKEN'):
+        jobs += [('admin_telegram', c, lambda c=c: send_telegram(c, subject + '\n' + body)) for c in env('TELEGRAM_CHAT_ID').replace(' ', '').split(',') if c]
+    return run_jobs(conn, case, event, jobs)
+
+
+def company_email(conn, case, event, to, subject, body):
+    """기업에 메일 한 통. 보낼 수 있는지(설정·수신 거부·빈도)는 부르는 쪽에서 먼저 확인."""
+    if not (to and email_ready()):
+        return 0
+    return run_jobs(conn, case, event, [('company_email', to, lambda: send_email(to, subject, body))])
+
+
+def run_jobs(conn, case, event, jobs):
     if not jobs:
         return 0
 

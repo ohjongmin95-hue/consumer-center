@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}안내 메일 수신 거부 | {{ txt('site.name') }}{% endblock %}
+{% block head %}<meta name="robots" content="noindex,nofollow">{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap narrow">
+  <div class="page-intro"><h1 class="page-title">안내 메일 수신 거부</h1></div>
+  <div class="form-panel">
+    {% if company['notice_optout'] %}
+    <p><b>{{ company['name'] }}</b>에 소비자제보센터 안내 메일을 더 보내지 않아요. ({{ company['notice_optout'][:10] }} 처리)</p>
+    <p class="meta">다시 받으려면 센터에 알려 주세요. 기업 페이지의 공개 제보와 답변 기능은 그대로 쓸 수 있어요.</p>
+    {% else %}
+    <p><b>{{ company['name'] }}</b>에 보내는 소비자 제보 안내 메일과 알림 메일을 그만 받을까요?</p>
+    <p class="meta">수신을 거부해도 제보는 기업 페이지에 그대로 모이고, 센터는 메일 대신 다른 방법으로 연락할 수 있어요.</p>
+    <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="primary" type="submit">수신 거부하기</button></form>
+    {% endif %}
+  </div>
+</div></main>
+{% endblock %}

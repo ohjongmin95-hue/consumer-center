@@ -23,6 +23,17 @@
         {% for f in files %}<p><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a></p>{% else %}<p class="cs-muted">없음</p>{% endfor %}
       </section>
 
+      {% if ops.risks or ops.public_risks or ops.dups %}
+      {# 심사 도움: 개인정보 노출 의심, 중복 제보 후보 (판단은 운영자가) #}
+      <section class="cs-panel ops-check" id="check">
+        <h2>심사 확인</h2>
+        {% if ops.risks %}<p class="ops-flag"><span class="cs-pill off">개인정보 의심</span> 원문에 <b>{{ ops.risks|join(', ') }}</b>로 보이는 내용이 있어요.{% if case['public_consent'] %} 공개용 글에서 꼭 가려 주세요.{% endif %}</p>{% endif %}
+        {% if ops.public_risks %}<p class="ops-flag"><span class="cs-pill off">공개 글 확인</span> 공개용 글에 <b>{{ ops.public_risks|join(', ') }}</b>로 보이는 내용이 남아 있어요.</p>{% endif %}
+        {% if ops.dups %}<p class="cs-hint">최근 90일 안에 비슷한 제보가 있어요. 같은 피해면 아래 '검토'에서 중복으로 정해 주세요.</p>
+        <ul class="ops-dups">{% for d, why in ops.dups %}<li><a href="{{ url_for(ep.case, case_id=d['id']) }}"><span class="mono">{{ d['receipt'] }}</span> {{ d['subject'] }}</a><span>{{ d['company'] }} · {{ d['status'] }} · {{ why|join(', ') }}</span></li>{% endfor %}</ul>{% endif %}
+      </section>
+      {% endif %}
+
       {% if case['public_consent'] %}
       {# 공개 심사: 원문은 그대로 두고 공개용 글만 다듬음 #}
       <form class="cs-panel" method="post" id="publish_review"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="publish_review">
@@ -51,6 +62,29 @@
           <button class="cs-btn" type="submit">메시지 보내기</button>
         </form>
       </section>
+
+      <details class="cs-panel cs-card" id="supplement"{% if case['supplement_at'] and case['status'] == STATUSES[2] %} open{% endif %}><summary><h2>보완 요청</h2></summary>
+        <p class="cs-hint">내용이 부족하거나 증빙이 더 필요할 때 써요. 제보자 조회 화면 맨 위에 보이고, 연락처가 있으면 알림이 가요. 진행 단계는 '{{ STATUSES[2] }}'로 바뀌어요.{% if case['supplement_at'] %} 마지막 요청 {{ case['supplement_at'][:16]|replace('T', ' ') }}.{% endif %}</p>
+        <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="supplement">
+          <textarea name="body" maxlength="3000" required rows="3" placeholder="예: 주문 내역과 업체와 주고받은 문자 화면을 올려 주세요." aria-label="보완 요청 내용"></textarea>
+          <button class="cs-btn" type="submit">보완 요청 보내기</button>
+        </form>
+      </details>
+
+      {% if ops.requests %}
+      <section class="cs-panel" id="request_done">
+        <h2>정정·삭제·이의 신청</h2>
+        {% for r in ops.requests %}<div class="ops-req">
+          <p class="ops-req-head"><b>{{ OPS_REQUEST_KINDS[r['kind']] }}</b> <span class="cs-pill{{ ' on' if r['status'] == '처리 완료' else (' off' if r['status'] == '반려' else '') }}">{{ r['status'] }}</span> <span class="cs-muted">{{ r['created'][:16]|replace('T', ' ') }}</span></p>
+          <p class="cs-text">{{ r['body'] }}</p>
+          {% if r['status'] == '접수' %}<form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="request_done"><input type="hidden" name="request_id" value="{{ r['id'] }}">
+            <textarea name="result" maxlength="1000" required rows="2" placeholder="처리 결과 (요청한 쪽에 그대로 보여요)" aria-label="처리 결과"></textarea>
+            <div class="cs-row cs-actions"><button class="cs-btn" name="decision" value="reject">반려</button><button class="cs-btn cs-btn-main" name="decision" value="done">처리 완료</button></div>
+            {% if r['kind'] == 'delete' %}<p class="cs-hint">삭제는 이 화면 맨 아래 '제보 삭제'에서 따로 해요. 지운 뒤에는 기록도 함께 사라져요.</p>{% elif r['kind'] == 'correct' %}<p class="cs-hint">공개된 글을 고칠 때는 '공개 심사'의 공개용 글을 고쳐요. 원문은 그대로 남아요.</p>{% endif %}
+          </form>{% else %}<p class="cs-hint">{{ r['handled_at'][:16]|replace('T', ' ') }} {{ r['actor'] }} · {{ r['result'] }}</p>{% endif %}
+        </div>{% endfor %}
+      </section>
+      {% endif %}
 
       {% if case['share_company'] %}
       <details class="cs-panel cs-card" id="email_answer"><summary><h2>이메일로 받은 기업 답변 등록</h2></summary>
@@ -120,6 +154,20 @@
         </div>
         {% else %}<p class="cs-muted">제보자가 기업 전달에 동의하지 않아 기업에 내용을 보낼 수 없어요. 기업 페이지 연결은 할 수 있어요.</p>{% endif %}
       </section>
+
+      {# 2-1. 기업 안내: 운영자가 누를 때만 공식 이메일로 답변 링크를 보냄. 보낸 기록·직접 연락 기록 #}
+      {% if case['share_company'] %}
+      <section class="cs-panel cs-card" id="notice">
+        <h2>기업 안내 {% if case['seen_at'] %}<span class="cs-pill on">기업이 열어 봄</span>{% elif case['forwarded_at'] %}<span class="cs-pill">전달 시도</span>{% endif %}</h2>
+        {% if ops.notice_block %}<p class="cs-hint">{{ ops.notice_block }}</p>
+        {% else %}<form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice"><span class="cs-hint">{{ ops.company['name'] }} 공식 이메일({{ ops.notice_to }})로 이 제보만 볼 수 있는 답변 링크를 보내요.</span><button class="cs-btn" type="submit" onclick="return confirm('{{ ops.company['name'] }}에 안내 메일을 보낼까요?')">{{ '재안내 보내기' if ops.notices|selectattr('status', 'equalto', '보냄')|list else '안내 메일 보내기' }}</button></form>{% endif %}
+        <p class="cs-hint">메일은 같은 제보로 3번까지, 72시간 간격으로 보낼 수 있어요. 기업이 링크를 열어야 '기업 전달 확인'이 돼요.</p>
+        {% if ops.notices %}<ol class="ops-notices">{% for n in ops.notices %}<li><span>{{ n['created'][5:16]|replace('T', ' ')|replace('-', '.') }}</span><b>{{ OPS_NOTICE_KINDS.get(n['kind'], n['kind']) }}</b> {{ n['status'] }}{% if n['target'] %} · {{ n['target'] }}{% endif %}{% if n['memo'] %} · {{ n['memo'] }}{% endif %}</li>{% endfor %}</ol>{% endif %}
+        <details class="cs-more" id="notice_manual"><summary>전화·우편 등 직접 연락 기록</summary>
+          <form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice_manual"><input name="memo" maxlength="300" required placeholder="예: 고객센터에 전화로 안내 (담당 김OO)" aria-label="연락 기록"><button class="cs-btn" type="submit">기록</button></form>
+        </details>
+      </section>
+      {% endif %}
 
       {# 3. 제보자: 정보·동의, 조회 비밀번호, 알림 기록 #}
       <section class="cs-panel cs-card">

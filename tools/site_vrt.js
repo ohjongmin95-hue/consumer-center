@@ -13,7 +13,7 @@ const ONLY=(process.argv.find(a=>a.startsWith('--only='))||'').slice(7);
 const ROLES={
   guest:['/','/reports','/reports/1','/reports/2','/reports/4','/companies','/companies/1','/lookup','/report','/terms','/biz/login','/biz/signup'],
   reporter:['/case'],
-  admin:['/admin','/admin/reports','/admin/reports/1','/admin/reports/4','/admin/reports/5','/admin/companies'],
+  admin:['/admin','/admin/reports','/admin/reports/1','/admin/reports/4','/admin/reports/5','/admin/companies','/admin/requests','/admin/stats'],
   biz:['/biz','/biz/case/4','/biz/statement'],
 };
 const WIDTHS=(process.env.VRT_WIDTHS||'1440,1024,768,390').split(',').map(Number);

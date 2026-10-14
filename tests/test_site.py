@@ -1,5 +1,5 @@
 """Exercise the live templates and existing report flow using an isolated database."""
-import json, hashlib
+import json, hashlib, io
 import importlib.util
 import os
 from pathlib import Path
@@ -1510,7 +1510,12 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(db.execute('SELECT company_id FROM company_users WHERE login_id=?', ('catshop',)).fetchone()['company_id'], listed['id'])
         self.post_form(biz, '/biz/login', {'login_id': 'catshop', 'password': 'abcd1234'})
         self.assertNotIn('고양이상회 환불 제보', biz.get('/biz').get_data(as_text=True))  # 운영자가 보내기 전에는 안 보임
-        self.post_form(admin, path, {'form': 'forward'})
+        alerts = []
+        with patch.dict(os.environ, {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}), \
+             patch.object(notify, 'send_email', side_effect=lambda *a: alerts.append(a)):
+            self.post_form(admin, path, {'form': 'forward'})
+        self.assertEqual([(m[0], m[1]) for m in alerts], [('cs@cat.co.kr', '[소비자제보센터] 새 제보가 전달됐습니다')])
+        self.assertIn('/company/optout/', alerts[0][2])
         self.assertIn('고양이상회 환불 제보', biz.get('/biz').get_data(as_text=True))
         # 3) 공식 입장: 센터 확인 전에는 공개되지 않고, 확인하면 원문 그대로 공개
         self.post_form(biz, '/biz/statement', {'statement': '고객센터 1588-0000에서 환불을 도와드려요.'})
@@ -1598,6 +1603,107 @@ class SiteTest(unittest.TestCase):
         self.assertIn('비번 없는 공개 제보', home)
         self.assertIn('class="st-legend"', home)
         self.assertIn('공개 검토 중', home)
+
+    def test_ops_review_notice_requests_stats(self):
+        # 3차: 심사 확인(개인정보 의심·중복 후보), 보완 요청, 추가 자료, 기업 안내 메일(빈도 제한·수신 거부), 정정·삭제·이의 신청, 운영 통계
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        mails = []
+        env = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'ops@example.com'}
+        patcher = patch.dict(os.environ, env); patcher.start(); self.addCleanup(patcher.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/companies', {'action': 'create', 'name': '안내상점', 'official_email': 'cs@notice-shop.example'})
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '안내상점', 'description': '환불이 안 돼요. 제 번호는 010-5555-6666이에요',
+                'reporter_name': '정소비', 'phone': '010-5555-6666', 'contact': 'me@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', dict(base, subject='안내상점 환불 지연'))
+        self.post_form(self.client, '/report', dict(base, subject='안내상점 환불 지연', description='두 번째 제보'))
+        with self.site.conn() as db:
+            first, second = [r['id'] for r in db.execute("SELECT id FROM cases WHERE company='안내상점' ORDER BY id")]
+        self.assertTrue(any(m[0] == 'ops@example.com' and '개인정보 노출 의심' in m[1] for m in mails))
+        path = '/admin/reports/%d' % first
+        page = admin.get(path).get_data(as_text=True)
+        self.assertIn('개인정보 의심', page)
+        self.assertIn('같은 휴대폰 번호', page)
+        # 보완 요청 → 단계 '추가 확인', 제보자 화면 맨 위에 보이고 메일 알림
+        mails.clear()
+        self.post_form(admin, path, {'form': 'supplement', 'body': '주문 내역 화면을 올려 주세요.'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?', (first,)).fetchone()['status'], '추가 확인')
+        self.assertTrue(any(m[0] == 'me@example.com' and '보완' in m[1] for m in mails))
+        reporter = self.site.app.test_client()
+        self.post_form(reporter, '/lookup', {'mode': 'phone', 'phone': '010-5555-6666', 'password': '1234'})
+        reporter.post('/lookup/%d' % first, data={'_csrf': self.csrf(reporter, '/lookup')})
+        page = reporter.get('/case').get_data(as_text=True)
+        self.assertIn('센터가 보완을 요청했어요', page)
+        self.assertIn('주문 내역 화면을 올려 주세요.', page)
+        self.assertIn('보완 요청', page)  # 받은 알림 목록
+        # 추가 자료: 사진만, 공개 안 됨
+        png = b'\x89PNG\r\n\x1a\n' + b'0' * 64
+        token = self.csrf(reporter, '/case')
+        reporter.post('/case/files', data={'_csrf': token, 'evidence': (io.BytesIO(png), 'order.png')}, content_type='multipart/form-data')
+        reporter.post('/case/files', data={'_csrf': token, 'evidence': (io.BytesIO(b'MZ' + b'0' * 20), 'bad.exe')}, content_type='multipart/form-data')
+        with self.site.conn() as db:
+            self.assertEqual([r['original'] for r in db.execute('SELECT original FROM attachments WHERE case_id=?', (first,))], ['order.png'])
+        # 정정 요청 → 운영자 처리 → 제보자에게 메시지
+        mails.clear()
+        reporter.post('/case/request', data={'_csrf': token, 'kind': 'correct', 'body': '날짜를 10월 1일로 고쳐 주세요.'})
+        reporter.post('/case/request', data={'_csrf': token, 'kind': 'delete', 'body': '두 번째 요청'})  # 처리 중이면 거절
+        self.assertTrue(any(m[0] == 'ops@example.com' and '정정 요청' in m[1] for m in mails))
+        self.assertIn('날짜를 10월 1일로', admin.get('/admin/requests').get_data(as_text=True))
+        with self.site.conn() as db:
+            reqs = db.execute('SELECT * FROM case_requests WHERE case_id=?', (first,)).fetchall()
+        self.assertEqual(len(reqs), 1)
+        self.post_form(admin, '/admin/requests', {'request_id': reqs[0]['id'], 'decision': 'done', 'result': '공개 글의 날짜를 고쳤어요.'})
+        self.assertIn('[정정 요청 처리 완료] 공개 글의 날짜를 고쳤어요.', reporter.get('/case').get_data(as_text=True))
+        # 기업 안내 메일: 운영자가 누를 때만, 보내도 '전달 확인'은 아님, 72시간 안 재발송 막힘
+        mails.clear()
+        self.post_form(admin, path, {'form': 'notice'})
+        sent = [m for m in mails if m[0] == 'cs@notice-shop.example']
+        self.assertEqual(len(sent), 1)
+        self.assertIn('민간 플랫폼', sent[0][2])
+        link = re.search(r'http://localhost(/company/\d+/\S+)', sent[0][2])[1]
+        optout = re.search(r'http://localhost(/company/optout/\S+)', sent[0][2])[1]
+        with self.site.conn() as db:
+            row = db.execute('SELECT forwarded_at,seen_at FROM cases WHERE id=?', (first,)).fetchone()
+            self.assertTrue(row['forwarded_at']); self.assertEqual(row['seen_at'], '')
+        self.post_form(admin, path, {'form': 'notice'})
+        self.assertEqual(len([m for m in mails if m[0] == 'cs@notice-shop.example']), 1)
+        self.assertIn('72시간', admin.get(path).get_data(as_text=True))
+        # 기업이 링크를 열면 '전달 확인' + 제보자 알림, 이의 신청
+        mails.clear()
+        company = self.site.app.test_client()
+        self.assertEqual(company.get(link).status_code, 200)
+        self.assertTrue(any(m[0] == 'me@example.com' and '확인했습니다' in m[1] for m in mails))
+        company.post(link, data={'_csrf': self.csrf(company, link), 'form': 'objection', 'body': '이미 환불을 끝냈습니다. 영수증 있습니다.'})
+        self.assertIn('이미 환불을 끝냈습니다', company.get(link).get_data(as_text=True))
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT kind FROM case_requests WHERE who='company' AND case_id=?", (first,)).fetchone()['kind'], 'objection')
+        # 수신 거부하면 다른 제보로도 안내 메일을 못 보냄
+        self.post_form(company, optout, {})
+        self.assertIn('보내지 않아요', company.get(optout).get_data(as_text=True))
+        mails.clear()
+        self.post_form(admin, '/admin/reports/%d' % second, {'form': 'notice'})
+        self.assertEqual(mails, [])
+        self.assertIn('수신을 거부', admin.get('/admin/reports/%d' % second).get_data(as_text=True))
+        # 운영 통계와 홈
+        stats = admin.get('/admin/stats?period=30').get_data(as_text=True)
+        self.assertIn('<b>2</b><small>기간 안 접수', stats)
+        self.assertIn('기업 확인률', stats)
+        home = admin.get('/admin').get_data(as_text=True)
+        self.assertIn('정정·삭제·이의 신청', home)
+        with self.site.conn() as db:
+            db.execute("UPDATE cases SET created='2026-01-01T00:00:00' WHERE id=?", (second,))
+            db.execute("UPDATE case_log SET created='2026-01-01T00:00:00' WHERE case_id=?", (second,))
+            db.execute("UPDATE messages SET created='2026-01-01T00:00:00' WHERE case_id=?", (second,))
+        self.assertIn('처리 지연 제보', admin.get('/admin').get_data(as_text=True))
+        # 제보를 지우면 안내·요청 기록도 함께 지워짐
+        self.post_form(admin, path, {'form': 'delete', 'confirm': '1'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM case_requests WHERE case_id=?', (first,)).fetchone()[0], 0)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM company_notices WHERE case_id=?', (first,)).fetchone()[0], 0)
 
 if __name__ == '__main__':
     unittest.main()
