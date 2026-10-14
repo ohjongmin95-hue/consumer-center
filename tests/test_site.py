@@ -1065,11 +1065,22 @@ class SiteTest(unittest.TestCase):
         staff.post(path, data={'_csrf': token, 'form': 'settings', 'status': '검토 중', 'assignee': '김민지'})
         staff.post(path, data={'_csrf': token, 'form': 'message', 'message': '확인 중입니다'})
         page = staff.get(path).get_data(as_text=True)
-        self.assertIn('진행 단계 변경: 접수 → 검토 중', page)
+        self.assertIn('진행 단계 변경: 접수 → 검토', page)
+        self.assertIn('<option value="검토 중" selected>2. 검토</option>', page)  # 관리 화면도 5단계
+        listing5 = staff.get('/reporter').get_data(as_text=True)
+        for name in ('기업 전달', '기업 답변·처리', '완료·평가'):self.assertIn(name, listing5)
+        self.assertNotIn('기업 답변 대기', listing5)
         self.assertIn('<b>김민지</b>', page)
         self.assertNotIn('내부 메모', page)
         self.assertIn('확인 중입니다', page)
         self.assertIn('내 담당 제보', staff.get('/reporter').get_data(as_text=True))
+        self.assertIn('class="ad-side"', staff.get('/reporter').get_data(as_text=True))  # 관리자와 같은 공통 레이아웃
+        # 제보자는 조회 화면에서 센터 담당자와 메시지를 보낸 담당자를 볼 수 있음
+        me = self.site.app.test_client()
+        with me.session_transaction() as sess:sess['case_id'] = case_id
+        mine = me.get('/case').get_data(as_text=True)
+        self.assertIn('<span>센터 담당자</span><b>김민지</b>', mine)
+        self.assertIn('센터 · 김민지 담당자', mine)
         self.assertIn('배송이 안 와요', staff.get('/reporter?mine=1').get_data(as_text=True))
         self.assertNotIn('배송이 안 와요', staff.get('/reporter?status=종결').get_data(as_text=True))
         self.assertEqual(staff.get('/staff/case/%d' % case_id).headers['Location'], path)
@@ -1406,7 +1417,9 @@ class SiteTest(unittest.TestCase):
         self.assertIn('환불이 한 달째', self.client.get('/reports?q=한 달째').get_data(as_text=True))
         self.assertNotIn('원래 제목', self.client.get('/reports?q=원래').get_data(as_text=True))
         public = self.client.get('/reports/%d' % case['id']).get_data(as_text=True)
-        for text in ('환불이 한 달째 안 돼요', '공식 답변 미등록', '민간 플랫폼', 'href="/companies/%d"' % co['id'], 'aria-current="step"><span class="stepper-dot">2</span><span class="stepper-label">처리 중'):
+        self.assertNotIn('public-case-notice', public)  # 아래 안내 문구·내 제보 버튼은 뺌
+        self.assertNotIn('public-case-mine', public)
+        for text in ('환불이 한 달째 안 돼요', '공식 답변 미등록', 'href="/companies/%d"' % co['id'], 'aria-current="step"><span class="stepper-dot">2</span><span class="stepper-label">처리 중'):
             self.assertIn(text, public)
         self.assertNotIn('A-123', public)
         # 답변 링크 발급 = 전달 시도, 기업이 열어 봐야 '전달 확인'
