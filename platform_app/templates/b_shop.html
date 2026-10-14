@@ -21,12 +21,13 @@
 <form class="panel stack" method="post" autocomplete="off"{% if lk %} onsubmit="return confirm('지금 키를 새 키로 바꿀까요?')"{% endif %}><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="save">
 <div class="ph">{{ '키 바꾸기' if lk else '키 넣기' }}</div>
 {% for k,label in spec.fields %}<label class="fld"><span>{{ label }}</span><input class="inp" name="{{ k }}" {{ 'type=password' if 'secret' in k }} autocomplete="off" spellcheck="false" required maxlength="200"{% if k=='vendor_id' %} placeholder="예: A00012345"{% endif %}></label>{% endfor %}
+{% for k,label in spec.optional or [] %}<label class="fld"><span>{{ label }}</span><input class="inp" name="{{ k }}" autocomplete="off" spellcheck="false" maxlength="60"></label>{% endfor %}
 <p class="cap" style="margin:0">저장하기 전에 {{ spec.name }}에 실제로 연결해 보고, 맞을 때만 저장해요. 키는 암호화해서 보관하고 화면에는 끝 4자리만 보여요.</p>
 <button class="btn md">연결 확인하고 저장</button></form>
 <section class="panel"><div class="ph">가져온 뒤에는</div>
 <ul class="dots">
 <li>문의는 <b>요청</b>에 "{{ spec.channel }}" 표시로 들어와요. 유형을 자동으로 나누고 답변 초안도 만들어 드려요.</li>
-<li>답변은 아직 {{ spec.name }}에 자동으로 올라가지 않아요. 요청 화면에서 답변을 복사해 <a class="link" href="{{ spec.admin }}" target="_blank" rel="noopener">{{ spec.name }} 판매자 화면</a>에 붙여 넣어 주세요.</li>
+<li>답변을 보낸 뒤 요청 화면의 <b>{{ spec.name }}에 답변 올리기 (시험 운영)</b>를 누르면 {{ spec.name }}에 바로 올라가요{% if shop=='coupang' %} (Wing 로그인 아이디 필요){% endif %}. 처음 몇 번은 <a class="link" href="{{ spec.admin }}" target="_blank" rel="noopener">{{ spec.name }} 판매자 화면</a>에서 잘 올라갔는지 확인해 주세요.</li>
 <li>주문은 <b>주문·배송</b>에 들어와요. 주문번호가 같으면 상태와 송장만 고치고, 소보루에서 처리한 취소·반품 결과는 덮지 않아요.</li>
 </ul></section>
 </div>

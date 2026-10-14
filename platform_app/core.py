@@ -240,6 +240,8 @@ SECRETS={'SWEETTRACKER_T_KEY':('택배 조회 키','스마트택배(tracking.swe
          'NTS_API_KEY':('국세청 사업자 상태조회 키','공공데이터포털(data.go.kr) "국세청_사업자등록정보 진위확인 및 상태조회 서비스" 일반 인증키(Decoding). 넣으면 가입할 때 사업자 상태를 자동으로 확인해 바로 인증해요'),
          'GOOGLE_CLIENT_ID':('구글 로그인 클라이언트 ID','Google Cloud 콘솔 > API 및 서비스 > 사용자 인증 정보 > OAuth 클라이언트 ID(웹). 승인된 리디렉션 URI에 기업 주소/auth/google/callback 을 넣어요'),
          'GOOGLE_CLIENT_SECRET':('구글 로그인 클라이언트 보안 비밀','위 OAuth 클라이언트의 보안 비밀번호'),
+         'CAFE24_CLIENT_ID':('카페24 앱 Client ID','카페24 개발자센터(developers.cafe24.com) > 앱 만들기 > 앱 정보의 Client ID. Redirect URI에 기업 주소/connect/cafe24/callback 을 넣어요. 넣으면 사장님 화면의 카페24 연결이 열려요'),
+         'CAFE24_CLIENT_SECRET':('카페24 앱 Client Secret','위 앱의 Client Secret Key'),
          'NAVER_SITE_VERIFICATION_BIZ':('네이버 서치어드바이저 소유 확인 (기업 사이트)','searchadvisor.naver.com > 사이트 등록 > HTML 태그 방식의 content 값만 넣어요'),
          'GOOGLE_SITE_VERIFICATION_BIZ':('구글 서치 콘솔 소유 확인 (기업 사이트)','search.google.com/search-console > URL 접두어 > HTML 태그 방식의 content 값만 넣어요')}
 def secret(name):
@@ -508,6 +510,10 @@ def notify_company_new(co,c):
         f"{co['name']}에 새 요청이 들어왔습니다.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 처리 방법을 보고 승인해 주세요.\n{link}")
     if co['kakao']:send_kakao(co['phone'],{'#{회사}':short(co['name'],20),'#{유형}':c['category'],'#{요약}':short(c['title']),'#{링크}':link})
     send_biz_push(co['id'],f"새 요청: {c['category']}",short(c['title']),c['id'])
+
+def notify_company_link_broken(co,what,why,path):
+    """판매처·카페24 연결이 막 끊겼을 때 한 번 알린다 (계속 실패해도 다시 보내지 않는다)."""
+    send_mail(co['notify_email'],f"[{BNAME}] {what} 연결을 확인해 주세요",f"{co['name']}의 {what} 연결이 멈췄어요. 그동안 새 문의·주문을 가져오지 못해요.\n\n■ 이유: {why}\n\n아래에서 다시 연결해 주세요.\n{site_url('biz',path)}")
 
 # ---------- 문구 고치기 (운영 화면 /ops/copy) ----------
 # 운영자가 화면 문구를 바꾸거나 지우면, 페이지를 내보내기 직전에 글자 부분(태그 사이 글자와 입력칸 안내 글)만 바꾼다.

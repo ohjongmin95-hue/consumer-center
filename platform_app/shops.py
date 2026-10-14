@@ -10,7 +10,8 @@ from core import conn, clean, digits
 SHOPS={'naver':dict(name='스마트스토어',full='네이버 스마트스토어',channel='스마트스토어',admin='https://sell.smartstore.naver.com',
                     fields=[('client_id','애플리케이션 ID'),('client_secret','애플리케이션 시크릿')]),
        'coupang':dict(name='쿠팡',full='쿠팡',channel='쿠팡',admin='https://wing.coupang.com',
-                      fields=[('vendor_id','업체코드'),('access_key','Access Key'),('secret_key','Secret Key')])}
+                      fields=[('vendor_id','업체코드'),('access_key','Access Key'),('secret_key','Secret Key')],
+                      optional=[('wing_id','Wing 로그인 아이디 (답변 올리기에 써요, 선택)')])}
 FIRST_DAYS=3     # 처음 연결하면 며칠 전 것부터 가져올지
 TIMEOUT=15
 
@@ -192,6 +193,36 @@ def coupang_inquiries(creds,frm,to):
         cur=end+datetime.timedelta(days=1)
     return out
 
+# ---------- 답변 올리기 (시험 운영: 판매처 문서대로 만들었지만 실제 판매처 계정으로 아직 확인하지 못했다) ----------
+def coupang_send(creds,method,path,payload):
+    path=path.format(v=urllib.parse.quote(creds['vendor_id']))
+    dt=time.strftime('%y%m%dT%H%M%SZ',time.gmtime())
+    sig=hmac.new(creds['secret_key'].encode(),(dt+method+path).encode(),hashlib.sha256).hexdigest()
+    h={'Authorization':f"CEA algorithm=HmacSHA256, access-key={creds['access_key']}, signed-date={dt}, signature={sig}",'Content-Type':'application/json;charset=UTF-8'}
+    return _check(*http(method,COUPANG+path,h,json.dumps(payload).encode()),'coupang')
+def post_reply(db,co,c,text):
+    """판매처에서 가져온 문의에 답변을 올린다. 올리면 '', 못 올리면 이유."""
+    seen=db.execute('SELECT * FROM shop_seen WHERE company_id=? AND case_id=?',(co['id'],c['id'])).fetchone()
+    if not seen:return '판매처에서 가져온 문의가 아니에요.'
+    lk=link(db,co['id'],seen['shop'])
+    creds=unseal(lk['creds']) if lk else None
+    if not creds:return '판매처 연결이 끊겼어요. 서비스 연동에서 다시 연결해 주세요.'
+    text=(text or '').strip()[:1000]
+    if len(text)<2:return '답변 내용이 너무 짧아요.'
+    kind,no=seen['ext_id'][0],seen['ext_id'][1:]
+    try:
+        if seen['shop']=='naver':naver_get(creds,f'/v1/pay-merchant/inquiries/{urllib.parse.quote(no)}/answer',method='POST',payload={'answerComment':text})
+        else:
+            if not creds.get('wing_id'):return '쿠팡에 답변을 올리려면 판매처 연결에서 쿠팡 Wing 아이디를 넣어 주세요.'
+            if kind=='q':coupang_send(creds,'POST','/v2/providers/openapi/apis/api/v4/vendors/{v}/onlineInquiries/'+urllib.parse.quote(no)+'/replies',
+                                      {'content':text,'vendorId':creds['vendor_id'],'replyBy':creds['wing_id']})
+            else:coupang_send(creds,'POST','/v2/providers/openapi/apis/api/v4/vendors/{v}/callCenterInquiries/'+urllib.parse.quote(no)+'/replies',
+                              {'vendorId':creds['vendor_id'],'inquiryId':no,'content':text,'replyBy':creds['wing_id']})
+    except ShopError as e:return str(e)
+    except Exception:
+        traceback.print_exc();return '판매처 응답을 읽지 못했어요. 판매처 관리자 화면에서 답변이 올라갔는지 확인해 주세요.'
+    return ''
+
 FETCH={'naver':(naver_inquiries,naver_orders),'coupang':(coupang_inquiries,coupang_orders)}
 def test(shop,creds):
     """키로 판매처에 실제로 한 번 물어본다. 안 되면 ShopError."""
@@ -202,7 +233,7 @@ def test(shop,creds):
 
 def save(db,co,shop,form):
     """키를 확인하고 저장한다. (안내 문구, 'ok'|'error')"""
-    spec=SHOPS[shop];creds={k:re.sub(r'\s','',form.get(k,''))[:200] for k,_ in spec['fields']}
+    spec=SHOPS[shop];creds={k:re.sub(r'\s','',form.get(k,''))[:200] for k,_ in spec['fields']+spec.get('optional',[])}
     miss=[label for k,label in spec['fields'] if not creds[k]]
     if miss:return f"{', '.join(miss)}을(를) 넣어 주세요",'error'
     if shop=='coupang' and not re.fullmatch(r'[A-Za-z0-9]{4,20}',creds['vendor_id']):return '업체코드를 확인해 주세요 (예: A00012345)','error'
@@ -233,7 +264,7 @@ def _case(db,co,shop,q):
     return db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
 def _order(db,co,shop,o):
     """판매처 주문 하나 -> 주문 장부. 소보루에서 처리한 취소·반품 결과는 덮지 않는다."""
-    o={**o,'channel':SHOPS[shop]['channel'],'buyer':clean(o['buyer'],30),'phone':o['phone'][:11],'address':clean(o['address'],200),
+    o={**o,'channel':SHOPS[shop]['channel'] if shop in SHOPS else o['channel'],'buyer':clean(o['buyer'],30),'phone':o['phone'][:11],'address':clean(o['address'],200),
        'product':clean(o['product'],200),'qty':max(1,min(int(o['qty'] or 1),9999)),'amount':max(0,int(o['amount'] or 0)),'order_no':clean(o['order_no'],60)}
     if not o['order_no']:return 0
     old=db.execute('SELECT * FROM orders WHERE company_id=? AND order_no=?',(co['id'],o['order_no'])).fetchone();t=core.iso()
@@ -253,6 +284,7 @@ def sync(co,shop):
     creds=unseal(lk['creds'])
     def fail(msg):
         with conn() as db:db.execute("UPDATE shop_links SET status='error',note=? WHERE company_id=? AND shop=?",(msg,co['id'],shop))
+        if lk['status']=='ok':core.notify_company_link_broken(co,SHOPS[shop]['full'],msg,'/connect/'+shop)  # 처음 끊겼을 때만
         raise ShopError(msg)
     if not creds:fail('저장한 키를 읽지 못했어요. 키를 다시 넣어 주세요.')
     now=core.now();frm=core.parse(lk['since']) if lk['since'] else None
@@ -285,3 +317,5 @@ def sync_all():
 if __name__=='__main__':
     core.MAIL_ASYNC=False
     print(f'판매처 가져오기 {sync_all()}건')
+    import cafe24, openapi  # 같은 10분 cron에서 카페24 주문과 외부 API 웹훅도 처리한다
+    print(f'카페24 주문 {cafe24.sync_all()}건, 웹훅 {openapi.dispatch()}건')

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}AI 성과 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('stats') }}{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('stats') }}">통계</a><span>›</span><span>AI 성과</span></div>
+<div class="phead"><div><h1>AI 성과</h1><p>실제로 남은 기록만 세요. 기록이 {{ r.MIN_N }}건보다 적으면 비율은 '–'로 둬요.</p></div>
+<nav class="mk-tabs" aria-label="기간" style="margin:0">{% for d in (7,30,90) %}<a href="{{ url_for('ais.page',d=d) }}" class="{{ 'on' if r.days==d }}">최근 {{ d }}일</a>{% endfor %}</nav></div>
+{% macro v(x,unit='%') %}{% if x is none %}–{% else %}{{ x }}<small>{{ unit }}</small>{% endif %}{% endmacro %}
+<div class="kpis"><div class="kpi"><span>AI 상담 질문</span><b>{{ r.chat.asked }}<small>건</small></b></div><div class="kpi"><span>상담창에서 해결</span><b>{{ v(r.chat_solved) }}</b></div>
+<div class="kpi"><span>자동 처리율</span><b>{{ v(r.auto_rate) }}</b></div><div class="kpi"><span>초안 쓰고 답한 문의</span><b>{{ r.n_draft_used }}<small>건</small></b></div></div>
+<div class="grid2">
+<section class="panel"><div class="ph">AI 상담 (고객 상담창)</div>
+{% if not ai_on %}<p class="cap" style="margin:0 0 10px">AI 상담이 아직 꺼져 있어요. 켜지면 여기에 기록이 쌓여요.</p>{% endif %}
+<dl class="kv"><dt>질문</dt><dd>{{ r.chat.asked }}건</dd><dt>고객이 '해결됐어요'를 누름</dt><dd>{{ r.chat.solved }}건 ({{ v(r.chat_solved) }})</dd><dt>결국 접수로 넘어감</dt><dd>{{ r.chat.filed }}건 ({{ v(r.chat_filed) }})</dd></dl>
+{% if r.chat_cats %}<div class="tbl-wrap" style="margin-top:12px"><table class="tbl2"><thead><tr><th>유형</th><th class="r">질문</th><th class="r">해결</th><th class="r">접수</th></tr></thead><tbody>
+{% for x in r.chat_cats %}<tr><td>{{ x.category }}</td><td class="r">{{ x.a }}</td><td class="r">{{ x.s }}</td><td class="r">{{ x.f }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+<p class="cap" style="margin:10px 0 0">'해결'은 고객이 직접 누른 것만 세요. 누르지 않고 나간 대화는 해결로 세지 않아요.</p></section>
+<section class="panel"><div class="ph">자동 처리</div>
+<dl class="kv"><dt>받은 문의</dt><dd>{{ r.n }}건</dd><dt>자동 처리</dt><dd>{{ r.n_auto }}건 ({{ v(r.auto_rate) }})</dd><dt>자동 처리 후 고객 평가 해결</dt><dd>{{ v(r.auto_res) }} <small class="t-mute">(평가 {{ r.n_rated }}건)</small></dd>
+<dt>첫 답변 중간값 · 자동</dt><dd>{{ v(r.auto_h,'시간') }}</dd><dt>첫 답변 중간값 · 사람</dt><dd>{{ v(r.human_h,'시간') }}</dd></dl>
+{% if r.auto_cats %}<div class="tbl-wrap" style="margin-top:12px"><table class="tbl2"><thead><tr><th>유형</th><th class="r">자동</th><th class="r">전체</th></tr></thead><tbody>
+{% for c,a,n in r.auto_cats %}<tr><td>{{ c }}</td><td class="r">{{ a }}</td><td class="r">{{ n }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}</section>
+<section class="panel"><div class="ph">답변 초안</div>
+<dl class="kv"><dt>초안을 만든 문의</dt><dd>{{ r.n_draft }}건</dd><dt>그중 AI가 쓴 초안</dt><dd>{{ r.n_draft_ai }}건 <small class="t-mute">(나머지는 규칙 문구로 만든 초안)</small></dd><dt>초안을 만든 뒤 답한 문의</dt><dd>{{ r.n_draft_used }}건</dd></dl>
+<p class="cap" style="margin:10px 0 0">초안을 얼마나 고쳐서 보냈는지는 세지 않아요.</p></section>
+<section class="panel"><div class="ph">세는 방법</div><p class="cap" style="margin:0">가져온 지난 문의와 시험 문의는 빼요. 절약한 시간·비용처럼 추정이 필요한 숫자는 보여 주지 않아요. 절감액이 궁금하면 <a class="link" href="{{ url_for('mk.calculator') }}">절감 계산기</a>에 직접 넣어 보세요.</p></section>
+</div>
+{% endblock %}

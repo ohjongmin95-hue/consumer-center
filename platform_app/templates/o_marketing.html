@@ -14,7 +14,7 @@
 {% for x in r.by_source %}<tr><td>{{ x.src }}</td><td class="r">{{ x.v }}</td><td class="r">{{ x.s }}</td><td class="r">{{ x.c }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="cap">기록이 없어요</p>{% endif %}</section>
 <section class="panel"><div class="ph">캠페인 (UTM)</div>
 {% if r.by_campaign %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>캠페인</th><th class="hm">출처·매체</th><th class="r">방문</th><th class="r">가입</th><th class="r">상담</th></tr></thead><tbody>
-{% for x in r.by_campaign %}<tr><td>{{ x.campaign }}</td><td class="hm t-sub">{{ x.source }} / {{ x.medium or '–' }}</td><td class="r">{{ x.v }}</td><td class="r">{{ x.s }}</td><td class="r">{{ x.c }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="cap">UTM을 붙인 주소로 들어온 방문이 아직 없어요. 오른쪽에서 주소를 만들어 광고·게시물에 써 보세요.</p>{% endif %}</section>
+{% for x in r.by_campaign %}<tr><td>{{ x.campaign }}</td><td class="hm t-sub">{{ x.source }} / {{ x.medium or '–' }}</td><td class="r">{{ x.v }}</td><td class="r">{{ x.s }}</td><td class="r">{{ x.c }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="cap">UTM을 붙인 주소로 들어온 방문이 아직 없어요. ‘UTM 주소 만들기’에서 주소를 만들어 광고·게시물에 써 보세요.</p>{% endif %}</section>
 <section class="panel"><div class="ph">많이 본 화면</div>
 {% if r.by_page %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>화면</th><th class="r">방문</th></tr></thead><tbody>
 {% for x in r.by_page %}<tr><td><a class="link" href="{{ x.path }}" target="_blank" rel="noopener">{{ x.path }}</a></td><td class="r">{{ x.v }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="cap">기록이 없어요</p>{% endif %}</section>

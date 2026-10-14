@@ -1,0 +1,31 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}카페24 연결 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('connect') }}{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('connect') }}">서비스 연동</a><span>›</span><span>카페24</span></div>
+<div class="chead"><div class="l"><div class="tagrow">{% if not ready %}<span class="pill gray">연동 대기</span>{% elif lk and lk.status=='ok' %}<span class="pill ok">연결됨</span>{% elif lk %}<span class="pill bad">다시 연결 필요</span>{% else %}<span class="pill gray">연결 전</span>{% endif %}<span class="pill gray">시험 운영</span></div>
+<h1>카페24 연결</h1><div class="cmeta"><span>카페24 쇼핑몰 관리자 계정으로 로그인해 권한에 동의하면, 주문을 소보루로 가져와요</span></div></div></div>
+<div class="cols"><div class="stack">
+{% if not ready %}<section class="panel"><div class="ph">연동 대기 중이에요</div><p class="sub" style="margin:0">소보루가 카페24 개발자센터에 앱을 등록하고 심사를 받는 중이에요. 등록이 끝나면 이 화면에서 바로 연결할 수 있어요. 그동안은 <a class="link" href="{{ url_for('orders_page') }}">주문 엑셀(CSV) 올리기</a>로 주문을 가져와 주세요.</p></section>{% endif %}
+{% if lk %}<section class="panel"><div class="ph">연결 상태</div>
+{% if lk.status!='ok' %}<div class="warn" style="margin-bottom:14px">{{ lk.note }}</div>{% endif %}
+<dl class="kv"><dt>쇼핑몰 아이디</dt><dd>{{ lk.mall_id }}{% if lk.shop_name %} · {{ lk.shop_name }}{% endif %}</dd><dt>동의한 권한</dt><dd>{{ lk.scopes or '–' }}</dd>
+<dt>연결 유지 기한</dt><dd>{{ lk.refresh_expires[:10] if lk.refresh_expires else '–' }} <small class="t-mute">(쓸 때마다 자동으로 늘어나요)</small></dd>
+<dt>마지막으로 가져온 때</dt><dd>{{ fmt(lk.synced) if lk.synced else '아직 없어요' }}</dd><dt>가져온 주문</dt><dd>{{ lk.n_ord }}건</dd></dl>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="sync" {{ 'disabled' if lk.status!='ok' }}>지금 가져오기</button></form>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md gray" name="act" value="check">연결 확인</button></form>
+<form method="post" onsubmit="return confirm('카페24 연결을 끊을까요? 이미 가져온 주문은 그대로 둬요.')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md gray" name="act" value="delete">연결 끊기</button></form></div></section>{% endif %}
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="connect">
+<div class="ph">{{ '다시 연결하기' if lk else '연결하기' }}</div>
+<label class="fld"><span>카페24 쇼핑몰 아이디</span><input class="inp" name="mall_id" maxlength="40" value="{{ lk.mall_id if lk else '' }}" placeholder="예: myshop (myshop.cafe24.com의 앞부분)" required {{ 'disabled' if not ready }}></label>
+<p class="cap" style="margin:0">누르면 카페24 화면으로 넘어가요. 카페24 관리자로 로그인하고 권한에 동의하면 이 화면으로 돌아와요. 소보루는 카페24 비밀번호를 받지 않아요.</p>
+<button class="btn md" {{ 'disabled' if not ready or not trust or not trust.ok }}>카페24로 이동해 연결</button>
+{% if ready and trust and not trust.ok %}<p class="cap" style="margin:0">회사 인증이 끝나면 연결할 수 있어요.</p>{% endif %}</form>
+</div>
+<aside class="stack"><section class="panel"><div class="ph">가져오는 것</div>
+<ul class="dots"><li><b>쇼핑몰 정보 읽기</b>: 연결이 맞는지 확인해요.</li><li><b>주문 읽기</b>: 주문·배송 화면에 '자사몰'로 들어와요. 주문번호가 같으면 상태와 송장만 고쳐요.</li>
+<li>게시판 문의 가져오기와 답변 올리기는 카페24 앱 심사에서 권한을 받으면 켜요.</li></ul>
+<p class="cap" style="margin:12px 0 0">연결을 완전히 거두려면 카페24 관리자 &gt; 앱 &gt; 마이앱에서 소보루 앱을 지워 주세요.</p></section></aside>
+</div>
+{% endblock %}
