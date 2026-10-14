@@ -250,7 +250,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-74'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-75'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -326,17 +326,26 @@ def ed_multiline(key):
         return bool(meta and dict((n,o) for n,_,o in meta[1]).get(field,{}).get('multiline'))
     f=site_content.FIELDS.get(key,{});return bool(f.get('multiline') or f.get('doc'))
 
+def list_title_shown(r):
+    # 목록에 제목·업체명을 보일지: 공개된 제보, 그리고 공개 검토 중인 제보·비밀글도 운영자가 숨기지 않았으면 보임 (본문은 안 보임).
+    # 반려(허위·부적절)한 제보는 제목도 내림.
+    if r['public_consent'] and r['published']:return True
+    if r['title_hidden'] or r['review'] in jebo.NOT_VALID:return False
+    return not r['public_consent'] or is_pending(r)
+def is_pending(r):
+    # 공개를 골랐고 운영자가 아직 보지 않은 제보 (운영자가 '공개하지 않기'로 둔 제보는 아님)
+    return bool(r['public_consent'] and not r['published'] and not r['reviewed_at'])
 def report_rows(where='1=1',args=(),limit=20,offset=0):
     # 모든 제보를 번호·분류·단계·접수일로 보여 줌. 제목·업체명은 공개 제보(운영자가 내리지 않음)와
     # 비밀글(운영자가 숨기지 않음)에 보이고, 비밀글은 눌러도 본문 대신 비밀번호 창이 열림.
     with conn() as db:
-        rows=db.execute('SELECT id,category,company,subject,public_subject,status,created,public_consent,published,title_hidden FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
+        rows=db.execute('SELECT id,category,company,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
     today=datetime.date.today().isoformat()
     def when(created):
         # 오늘 들어온 제보는 시각(15:48), 그 전은 날짜(10.08)로 짧게 표시.
         return created[11:16] if created[:10]==today and len(created)>=16 else created[5:10].replace('-','.')
-    def shown(r):return bool(r['published']) if r['public_consent'] else not r['title_hidden']
-    return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
+    def shown(r):return list_title_shown(r)
+    return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
                  company=mask_personal(r['company']) if shown(r) else None,
                  status=r['status'],created=r['created'][:10],when=when(r['created'])) for r in rows]
 def report_summary():
@@ -377,8 +386,8 @@ def reports():
     where=['1=1'];args=[]
     if selected_category:names=jebo.cat_names(selected_category);where.append('category IN (%s)'%','.join('?'*len(names)));args+=names
     if search_query:
-        where.append("((public_consent=1 AND published=1 AND (public_subject LIKE ? ESCAPE '\\' OR (public_subject='' AND subject LIKE ? ESCAPE '\\'))) OR (public_consent=0 AND title_hidden=0 AND subject LIKE ? ESCAPE '\\'))")
-        like='%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%';args+=[like,like,like]
+        where.append("((public_consent=1 AND published=1 AND (public_subject LIKE ? ESCAPE '\\' OR (public_subject='' AND subject LIKE ? ESCAPE '\\'))) OR ((public_consent=0 OR published=0) AND title_hidden=0 AND review NOT IN ('rejected','duplicate') AND (public_consent=0 OR reviewed_at='') AND (public_subject LIKE ? ESCAPE '\\' OR subject LIKE ? ESCAPE '\\')))")
+        like='%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%';args+=[like,like,like,like]
     cond=' AND '.join(where)
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
     with conn() as db:open_groups=db.execute("SELECT id,title,company FROM damage_groups WHERE status='open' ORDER BY id DESC LIMIT 3").fetchall() if GROUPS_ON else []
@@ -527,7 +536,9 @@ def report():
     if any(len(data[k])>limit for k,limit in [('company',120),('subject',160),('description',6000),('request_text',3000),('contact',150),('reporter_name',40),('phone',20),('region_sigungu',40),('region_detail',120)]):abort(400)
     if not PHONE_INPUT.match(data['phone']):flash(ui_text('msg.report_phone','전화번호를 확인해 주세요.'));return report_form(400)
     lookup_pw=request.form.get('lookup_pw','')
-    if not LOOKUP_PW_MIN<=len(lookup_pw)<=30:flash(ui_text('msg.report_pw','조회 비밀번호를 4~30자로 정해 주세요.'));return report_form(400)
+    # 공개 제보는 조회 비밀번호가 선택: 비워 두면 비밀번호 없이 접수 (비밀글은 꼭 필요)
+    pw_optional=request.form.get('visibility')=='public' and not lookup_pw and not request.form.get('lookup_pw2','')
+    if not pw_optional and not LOOKUP_PW_MIN<=len(lookup_pw)<=30:flash(ui_text('msg.report_pw','조회 비밀번호를 4~30자로 정해 주세요.'));return report_form(400)
     if lookup_pw!=request.form.get('lookup_pw2',''):flash(ui_text('msg.report_pw2','조회 비밀번호 확인이 맞지 않아요.'));return report_form(400)
     if data['contact'] and not MEMBER_EMAIL_RE.match(data['contact']):flash(ui_text('msg.report_email','이메일 주소를 확인해 주세요.'));return report_form(400)
     if data['region_sido'] not in SIDO:data['region_sido']=''
@@ -556,7 +567,7 @@ def report():
         public=int(request.form.get('visibility')=='public')
         # 공개를 골라도 바로 올리지 않음: 운영자가 개인정보를 가리고 공개 승인해야 목록에 보임
         db.execute('UPDATE cases SET public_consent=?,published=0,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=?,industry=?,pw_hash=? WHERE id=?',
-                   (public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),data['industry'],generate_password_hash(lookup_pw),cur.lastrowid))
+                   (public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),data['industry'],'' if pw_optional else generate_password_hash(lookup_pw),cur.lastrowid))
         db.execute('UPDATE cases SET occurred_on=? WHERE id=?',(data['occurred_on'],cur.lastrowid))
         match=pick_company(db,request.form.get('company_id',type=int),data['company'])
         if match:db.execute('UPDATE cases SET company_id=? WHERE id=?',(match['id'],cur.lastrowid))
@@ -564,7 +575,7 @@ def report():
             stored=secrets.token_hex(20)+suffix;f.save(UPLOAD/stored)
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,original))
     notify_later(cur.lastrowid,'received')
-    return render_template('success.html',receipt=receipt,case_id=cur.lastrowid)
+    return render_template('success.html',receipt=receipt,case_id=cur.lastrowid,has_pw=not pw_optional)
 LOOKUP_PW_MIN=4
 def pick_company(db,company_id,typed):
     # 제보자가 목록에서 고른 기업(이름이 맞을 때만), 아니면 이름·다른 이름이 똑같은 등록 기업 하나
@@ -615,10 +626,10 @@ def lookup_pick(case_id):
 def case_open(case_id):
     # 목록에서 내 제보를 누르고 조회 비밀번호만 넣으면 진행 상황이 열림
     with conn() as db:
-        case=db.execute('SELECT id,receipt,subject,company,public_consent,published,title_hidden,pw_hash FROM cases WHERE id=?',(case_id,)).fetchone()
+        case=db.execute('SELECT id,receipt,subject,public_subject,company,public_consent,published,title_hidden,review,reviewed_at,pw_hash FROM cases WHERE id=?',(case_id,)).fetchone()
         if not case:abort(404)
         g.case_group=group_for_case(db,case_id,case['company'])
-    title=mask_personal(case['subject']) if (case['published'] if case['public_consent'] else not case['title_hidden']) else None
+    title=(case['public_subject'] or mask_personal(case['subject'])) if list_title_shown(case) else None
     if request.method=='POST':
         if too_many_attempts('case'):
             flash(ui_text('msg.lookup_rate','시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.'));return render_template('case_open.html',case=case,title=title),429
@@ -1338,9 +1349,9 @@ def report_detail(case_id):
                 if status not in STATUSES:abort(400)
                 assignee=request.form.get('assignee',case['assignee'] or '').strip()[:80]
                 published=int(bool(request.form.get('published'))) if case['public_consent'] else 0
-                title_hidden=0 if case['public_consent'] else int(not request.form.get('show_title'))
+                title_hidden=0 if published else int(not request.form.get('show_title'))
                 db.execute('UPDATE cases SET status=?,assignee=?,published=?,title_hidden=? WHERE id=?',(status,assignee,published,title_hidden,case_id))
-                if not case['public_consent'] and title_hidden!=case['title_hidden']:log_case(db,case_id,'목록에서 제목·업체명 숨김' if title_hidden else '목록에 제목·업체명 표시')
+                if not published and title_hidden!=case['title_hidden']:log_case(db,case_id,'목록에서 제목·업체명 숨김' if title_hidden else '목록에 제목·업체명 표시')
                 if status!=case['status']:log_case(db,case_id,f"진행 단계 변경: {case['status']} → {status}");notify_later(case_id,'status')
                 if assignee!=(case['assignee'] or ''):log_case(db,case_id,f"담당 기자: {assignee or '미배정'}")
                 if case['public_consent'] and published!=case['published']:log_case(db,case_id,'공개로 전환' if published else '비공개로 전환')

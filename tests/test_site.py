@@ -123,6 +123,7 @@ class SiteTest(unittest.TestCase):
             ):
                 db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
                            (receipt, hashlib.sha256(b'test').hexdigest(), category, '테스트 업체', subject, '비공개 상세 내용', '요청', '2026-10-09', consent, published))
+            db.execute("UPDATE cases SET reviewed_at='2026-10-10T10:00:00' WHERE receipt='three'")  # 운영자가 보고 공개하지 않기로 둔 제보
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('공개 환불 요청', home)
         self.assertIn('공개 계약 문의', home)
@@ -351,7 +352,11 @@ class SiteTest(unittest.TestCase):
                 ids[visibility] = db.execute('SELECT id FROM cases WHERE subject=?', (visibility + ' 제목',)).fetchone()['id']
         # 공개를 골라도 운영자 승인 전에는 안 보임
         self.assertEqual(self.client.get('/reports/%d' % ids['public']).status_code, 404)
-        self.assertNotIn('public 제목', self.client.get('/reports').get_data(as_text=True))
+        # 목록에는 '공개 검토 중'으로 제목·업체명만 보이고, 누르면 본문 대신 조회 비밀번호 창
+        listing = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('href="/reports/%d/mine" title="센터가 개인정보를 확인한 뒤 내용이 공개돼요">public 제목</a>' % ids['public'], listing)
+        self.assertIn('공개 검토 중', listing)
+        self.assertNotIn('연락은 010', listing)
         admin = self.login_admin()
         self.assertIn('승인 대기', admin.get('/admin/reports/%d' % ids['public']).get_data(as_text=True))
         self.assertEqual(self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'publish_review', 'decision': 'approve'}).status_code, 400)
@@ -1571,6 +1576,28 @@ class SiteTest(unittest.TestCase):
         reporter2 = self.site.app.test_client()
         self.post_form(reporter2, '/lookup', {'mode': 'phone', 'phone': '010-4141-2020', 'password': '1234'})
         self.assertIn('원문 그대로 옮겼어요', reporter2.get('/case').get_data(as_text=True))
+
+    def test_public_report_without_password(self):
+        # 공개 제보는 조회 비밀번호 없이 접수, 비밀글은 꼭 필요. 비밀번호를 넣어도 공개 설정은 그대로
+        form = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '비번없는몰', 'description': '환불이 안 돼요', 'reporter_name': '최소비',
+                'phone': '010-8181-2020', 'request_text': '환불', 'consent': 'on', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'lookup_pw': '', 'lookup_pw2': ''}
+        page = self.post_form(self.client, '/report', dict(form, subject='비번 없는 공개 제보', visibility='public'))
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('비밀번호 없이 공개 제보로 접수했어요', page.get_data(as_text=True))
+        self.assertEqual(self.post_form(self.client, '/report', dict(form, subject='비번 없는 비밀글', visibility='secret')).status_code, 400)
+        self.post_form(self.client, '/report', dict(form, subject='비번 있는 공개 제보', visibility='public', lookup_pw='4321', lookup_pw2='4321'))
+        with self.site.conn() as db:
+            rows = {r['subject']: r for r in db.execute('SELECT subject,public_consent,pw_hash FROM cases')}
+        self.assertNotIn('비번 없는 비밀글', rows)
+        self.assertEqual((rows['비번 없는 공개 제보']['public_consent'], rows['비번 없는 공개 제보']['pw_hash']), (1, ''))
+        self.assertEqual(rows['비번 있는 공개 제보']['public_consent'], 1)
+        self.assertTrue(rows['비번 있는 공개 제보']['pw_hash'])
+        # 비밀번호 없는 제보는 빈 비밀번호로도 열리지 않음
+        self.assertNotIn('/case', self.post_form(self.client, '/lookup', {'mode': 'phone', 'phone': '010-8181-2020', 'password': ''}).headers.get('Location', ''))
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('비번 없는 공개 제보', home)
+        self.assertIn('class="st-legend"', home)
+        self.assertIn('공개 검토 중', home)
 
 if __name__ == '__main__':
     unittest.main()
