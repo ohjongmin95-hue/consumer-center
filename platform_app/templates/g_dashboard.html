@@ -1,0 +1,20 @@
+{% extends 'base.html' %}{% import '_g.html' as gg with context %}
+{% block title %}파트너 · {{ u.pname }} · {{ BNAME }}{% endblock %}
+{% block bar %}{{ gg.pbar(u) }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>{{ u.pname }}</h1><p>파트너 링크로 가입한 고객사의 설정과 사용 현황이에요. 고객사 소비자 정보와 문의 내용은 보이지 않아요.</p></div></div>
+<section class="panel" style="margin-bottom:var(--ds-gap)"><div class="ph">파트너 가입 링크</div>
+<div class="addline"><input class="inp" id="plnk" value="{{ link }}" readonly><button class="btn md gray" type="button" data-copy="plnk">복사</button></div>
+<p class="cap" style="margin:10px 0 0">맡은 쇼핑몰에 이 링크로 가입하라고 안내해 주세요. 이미 가입한 회사는 설정 화면의 '대행사(파트너) 연결'에 파트너 코드 <b>{{ u.code }}</b>를 넣으면 이어져요.</p></section>
+<div class="kpis"><div class="kpi"><span>링크 방문</span><b>{{ s.clicks }}</b></div><div class="kpi"><span>가입한 고객사</span><b>{{ s.signups }}<small>곳</small></b></div><div class="kpi"><span>회사 인증</span><b>{{ s.verified }}<small>곳</small></b></div><div class="kpi"><span>최근 30일 사용</span><b>{{ s.using }}<small>곳</small></b></div></div>
+<section class="panel" style="margin-bottom:var(--ds-gap)"><div class="ph">고객사</div>
+{% if s.rows %}<div class="tbl-wrap"><table class="tbl2 mcards"><thead><tr><th>회사</th><th class="hm">가입일</th><th>인증</th><th class="hm">처음 설정</th><th class="r">30일 받은 문의</th><th class="r">답한 문의</th></tr></thead><tbody>
+{% for r in s.rows %}{% set uu=s.use.get(r.id,(0,0)) %}<tr><td><b style="font-weight:600">{{ r.name }}</b>{% if r.status=='suspended' %} <span class="pill gray">중지</span>{% endif %}<div class="msub">{{ r.industry or '업종 미입력' }}</div></td><td class="hm t-mute">{{ r.created[:10] }}</td>
+<td>{% if r.member %}<span class="pill ok">완료</span>{% else %}<span class="pill gray">진행 중</span>{% endif %}</td><td class="hm">{{ prog[r.id].n }}/{{ prog[r.id].total }}</td><td class="r">{{ uu[0] }}</td><td class="r">{{ uu[1] }}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-card"><b>아직 가입한 고객사가 없어요</b><span>위 링크로 가입하면 여기에 보여요</span></div>{% endif %}</section>
+<section class="panel"><div class="ph">직원</div>
+{% for t in team %}<div class="drow"><div class="tx"><b style="font-weight:500">{{ t.name }} {% if t.role=='owner' %}<span class="pill acc">대표</span>{% endif %}{% if t.status=='invited' %}<span class="pill gray">초대 중</span>{% endif %}</b><span>{{ t.email }}{% if t.last_login %} · 마지막 로그인 {{ t.last_login[:10] }}{% endif %}</span></div>
+{% if u.role=='owner' and t.role!='owner' %}<form method="post" onsubmit="return confirm('{{ t.name }}님을 내보낼까요?')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ t.id }}"><button class="btn sm gray" name="act" value="remove">내보내기</button></form>{% endif %}</div>{% endfor %}
+{% if u.role=='owner' %}<form method="post" class="addline" style="margin-top:12px;flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input class="inp" name="name" maxlength="30" placeholder="이름" aria-label="직원 이름" required style="max-width:160px"><input class="inp" name="email" type="email" maxlength="80" placeholder="이메일" aria-label="직원 이메일" required><button class="btn md gray" name="act" value="invite">초대</button></form>{% endif %}</section>
+{% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했습니다';},function(){b.textContent='선택했습니다';});};});</script>{% endblock %}

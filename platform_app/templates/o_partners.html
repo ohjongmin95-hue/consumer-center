@@ -1,0 +1,15 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}파트너·추천 · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>파트너·추천</h1><p>파트너 신청을 승인하고, 추천 링크로 들어온 가입을 봐요. 보상·수수료 지급 기능은 없어요.</p></div><a class="btn md gray" href="{{ url_for('gr.apply') }}" target="_blank" rel="noopener">신청 화면 보기</a></div>
+<section class="panel" style="margin-bottom:var(--ds-gap)"><div class="ph">파트너</div>
+{% if rows %}<div class="tbl-wrap"><table class="tbl2 mcards"><thead><tr><th>회사</th><th class="hm">하는 일</th><th class="hm">신청일</th><th class="r">고객사</th><th class="r">상태</th></tr></thead><tbody>
+{% for p in rows %}<tr data-href="{{ url_for('gr.ops_partner',pid=p.id) }}"><td><a class="ttl" href="{{ url_for('gr.ops_partner',pid=p.id) }}">{{ p.name }}</a><div class="msub">{{ p.contact }} · {{ p.email }}</div></td><td class="hm t-sub">{{ p.kind }}</td><td class="hm t-mute">{{ p.created[:10] }}</td><td class="r">{{ p.n }}</td>
+<td class="r"><span class="pill {{ 'acc' if p.status=='applied' else 'ok' if p.status=='approved' else 'gray' }}">{{ PSTATUS[p.status] }}</span></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty-card"><b>파트너 신청이 없어요</b><span>공개 화면 아래쪽 '파트너'에서 신청할 수 있어요</span></div>{% endif %}</section>
+<section class="panel"><div class="ph">회사 추천 (많이 추천한 곳)</div>
+{% if refs %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>추천한 회사</th><th class="r">가입</th><th class="r">인증</th></tr></thead><tbody>
+{% for r in refs %}<tr><td><a class="link" href="{{ url_for('ops_company',cid=r.id) }}">{{ r.name }}</a></td><td class="r">{{ r.n }}</td><td class="r">{{ r.v or 0 }}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="cap">추천 링크로 가입한 회사가 아직 없어요</p>{% endif %}</section>
+{% endblock %}

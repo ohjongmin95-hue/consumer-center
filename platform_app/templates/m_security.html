@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}보안과 개인정보 · {{ BNAME }}{% endblock %}
+{% block description %}{{ BNAME }}가 고객 정보와 판매처 키를 어떻게 지키는지, 아직 갖추지 못한 것은 무엇인지 그대로 적었어요.{% endblock %}
+{% block bar %}{{ b.bar(tab) }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">보안과 개인정보</span><h1>고객 정보를<br>이렇게 지켜요</h1><p>지금 실제로 하고 있는 것과 아직 갖추지 못한 것을 그대로 적었어요.</p></div></div></section>
+<section><div class="wrap mk-one"><h2>지금 하고 있는 것</h2>
+<div class="mk-grid">{% for t,d in items %}<div class="mk-card"><b>{{ t }}</b><p>{{ d }}</p></div>{% endfor %}</div>
+<h2 style="margin-top:56px">AI 상담과 외부 전송</h2><div class="ac-law" style="background:var(--bg)"><b style="font-weight:500">{{ ai_note }}</b></div>
+<h2 style="margin-top:56px">아직 갖추지 못한 것</h2><div class="mk-list">{% for x in not_yet %}<div class="mk-item"><div><p>{{ x }}</p></div></div>{% endfor %}</div>
+<p class="cap" style="margin-top:28px">개인정보를 어떻게 모으고 쓰는지는 <a class="link" href="{{ site_url('me','/privacy') }}">개인정보 처리방침</a>에, 보안 관련 문의는 <a class="link" href="{{ url_for('sl.consult') }}">상담 신청</a>으로 남겨 주세요.</p>
+</div></section>
+</main>{% endblock %}

@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -1370,6 +1370,167 @@ class PlatformTest(unittest.TestCase):
         # 지우기 (개인정보 삭제 요청)
         self.post(o,lp,{'act':'delete'})
         with self.core.conn() as db:self.assertIsNone(db.execute("SELECT 1 FROM leads WHERE email='lead@example.com'").fetchone())
+
+    def test_content_help_stories_seo_marketing(self):
+        """자료실·도움말·고객 사례: 운영에서 쓰고 공개, 비공개는 숨김, HTML 막기, 동의 없는 사례 공개 막기, 사이트맵·구조화 데이터, 마케팅 분석."""
+        c=self.client()
+        h=c.get('/biz/help').get_data(as_text=True);self.assertIn('가입하고 바로 쓰기',h)  # 처음 도움말이 들어 있다
+        self.assertIn('스마트스토어',c.get('/biz/help?q=스마트스토어').get_data(as_text=True))
+        self.assertEqual(c.get('/biz/ops/content').status_code,302)
+        o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+        r=self.post(o,'/biz/ops/content/new',{'kind':'blog','title':'반품 응대 잘하는 법','summary':'요약','category':'교환·반품 응대','slug':'returns-guide',
+            'body':'## 첫째\n- 빨리 답하기\n<script>alert(1)</script>\n[나쁜](javascript:alert(1)) [좋은](https://example.com)','video_url':'https://youtu.be/dQw4w9WgXcQ','seo_title':'반품 응대 가이드'},form_path='/biz/ops/content/new?kind=blog')
+        self.assertEqual(r.status_code,302)
+        with self.core.conn() as db:p=db.execute("SELECT * FROM posts WHERE slug='returns-guide'").fetchone()
+        self.assertEqual(p['published'],0)
+        self.assertEqual(c.get('/biz/blog/returns-guide').status_code,404)  # 비공개는 안 보인다
+        self.assertNotIn('반품 응대 잘하는 법',c.get('/biz/blog').get_data(as_text=True))
+        ep=f'/biz/ops/content/{p["id"]}'
+        self.post(o,ep,{'act':'publish'})
+        page=c.get('/biz/blog/returns-guide').get_data(as_text=True)
+        self.assertIn('<h2 id="첫째">첫째</h2>',page);self.assertIn('&lt;script&gt;',page);self.assertNotIn('<script>alert',page);self.assertNotIn('href="javascript',page)
+        self.assertIn('href="https://example.com"',page);self.assertIn('youtube-nocookie.com/embed/dQw4w9WgXcQ',page);self.assertIn('"@type": "Article"',page)
+        self.assertIn('<title>반품 응대 가이드',page);self.assertNotIn('noindex',page)
+        self.assertIn('반품 응대 잘하는 법',c.get('/biz/blog').get_data(as_text=True))
+        sm=c.get('/biz/sitemap.xml').get_data(as_text=True);self.assertIn('/blog/returns-guide</loc><lastmod>',sm);self.assertIn('/help/',sm)
+        # 같은 주소는 못 쓴다
+        r=self.post(o,'/biz/ops/content/new',{'kind':'blog','title':'다른 글','slug':'returns-guide','body':'x'},form_path='/biz/ops/content/new?kind=blog')
+        self.assertEqual(r.status_code,400);self.assertIn('같은 주소',r.get_data(as_text=True))
+        # 미리 보기
+        self.assertIn('<b>굵게</b>',self.post(o,'/biz/ops/content/preview',{'body':'**굵게**'},form_path='/biz/ops/content/new').get_json()['html'])
+        # 고객 사례: 동의 기록 없이는 공개 안 됨
+        self.assertIn('지어낸 사례는 올리지 않아요',c.get('/biz/customers').get_data(as_text=True))
+        self.post(o,'/biz/ops/content/new',{'kind':'story','title':'A사 이야기','slug':'a-story','body':'본문'},form_path='/biz/ops/content/new?kind=story')
+        with self.core.conn() as db:sid=db.execute("SELECT id FROM posts WHERE slug='a-story'").fetchone()[0]
+        r=self.post(o,f'/biz/ops/content/{sid}',{'act':'publish'},follow_redirects=True);self.assertIn('공개 동의',r.get_data(as_text=True))
+        self.assertEqual(c.get('/biz/customers/a-story').status_code,404)
+        self.post(o,f'/biz/ops/content/{sid}',{'title':'A사 이야기','slug':'a-story','body':'본문','story_company':'A사','consent_by':'김대표','consent_on':'2026-10-01','consent':'1'})
+        self.post(o,f'/biz/ops/content/{sid}',{'act':'publish'})
+        self.assertIn('A사의 공개 동의',c.get('/biz/customers/a-story').get_data(as_text=True))
+        # 동의를 빼고 저장하면 다시 비공개
+        self.post(o,f'/biz/ops/content/{sid}',{'title':'A사 이야기','slug':'a-story','body':'본문','story_company':'A사','consent_by':'김대표','consent_on':'2026-10-01'})
+        self.assertEqual(c.get('/biz/customers/a-story').status_code,404)
+        # 지우기
+        self.post(o,ep,{'act':'delete','title':'x'})
+        self.assertEqual(c.get('/biz/blog/returns-guide').status_code,404)
+        # 마케팅 분석: 실제 기록만, 운영 로그인 필요
+        v=self.client();v.get('/biz/help?utm_source=naver&utm_medium=cpc&utm_campaign=fall')
+        self.assertEqual(v.get('/biz/ops/marketing').status_code,302)
+        page=o.get('/biz/ops/marketing?d=7').get_data(as_text=True)
+        self.assertIn('fall',page);self.assertIn('naver',page);self.assertIn('/help',page);self.assertIn('IP 주소',page)
+        # 검색엔진 소유 확인 코드는 운영 서비스 키에서 읽는다
+        with self.core.conn() as db:db.execute("INSERT OR REPLACE INTO settings(key,value,updated) VALUES('NAVER_SITE_VERIFICATION_BIZ','abc123','2026-10-14')")
+        self.assertIn('naver-site-verification" content="abc123"',c.get('/biz/login').get_data(as_text=True))
+
+    def test_cs_history_import(self):
+        """지난 문의 가져오기: CSV·엑셀, 칸 짐작·고치기, 줄별 오류, 중복, 종료로 저장(알림 없음), 처리 대기 선택, 되돌리기, 권한."""
+        import io, zipfile
+        b,o,cid=self.signup_and_approve('가져오기상점','imp@example.com')
+        csv_text='접수일시,제목,문의내용,답변,상태,판매처,주문번호,고객명,연락처\n'\
+            '2026-03-02 10:15,배송 언제 와요,주문한 거 언제 와요?,내일 도착해요,답변완료,스마트스토어,A-1,김고객,010-1234-5678\n'\
+            '2026.03.05 오후 3:20,,사이즈 교환 되나요,,미답변,쿠팡,B-2,이고객,\n'\
+            '날짜아님,제목,내용,,,,,,\n'\
+            '2026-03-07,,,,,,,,\n'\
+            '2026-03-02 10:15,배송 언제 와요,주문한 거 언제 와요?,,,,A-1,,\n'
+        r=b.post('/biz/import',data={'csrf':self.csrf(b,'/biz/import'),'file':(io.BytesIO(csv_text.encode('cp949')),'old.csv')},content_type='multipart/form-data')
+        self.assertEqual(r.status_code,302);mp=r.headers['Location']
+        page=b.get(mp).get_data(as_text=True)
+        self.assertIn('접수 일시를 읽지 못했어요',page);self.assertIn('문의 내용이 비어 있어요',page);self.assertIn('파일 안에서 겹침',page)
+        self.assertIn('2건 옮기기',page)
+        sent=[]
+        with patch.object(self.core,'send_mail',lambda to,sub,body:sent.append(to)):
+            r=self.post(b,mp,{'act':'commit','f_received':'0','f_title':'1','f_body':'2','f_answer':'3','f_status':'4','f_channel':'5','f_order_no':'6','f_name':'7','f_phone':'8','open_pending':'1'})
+        self.assertEqual(sent,[])  # 고객에게 아무것도 보내지 않는다
+        with self.core.conn() as db:
+            rows=db.execute('SELECT * FROM cases WHERE company_id=? AND import_batch>0 ORDER BY created',(cid,)).fetchall()
+            self.assertEqual(len(rows),2)
+            a,c=rows
+            self.assertEqual((a['status'],a['channel'],a['order_no'],a['phone'],a['created'][:16],a['category']),('closed','스마트스토어','A-1','01012345678','2026-03-02 10:15','배송 조회'))
+            self.assertEqual((c['status'],c['channel'],c['created'][:16],c['category']),('seen','쿠팡','2026-03-05 15:20','교환'))  # 미답변은 처리 대기로
+            self.assertEqual(db.execute("SELECT reply FROM events WHERE case_id=? AND kind='co'",(a['id'],)).fetchone()[0],'내일 도착해요')
+            bid=a['import_batch']
+        # 같은 파일을 다시 올리면 모두 중복
+        r=b.post('/biz/import',data={'csrf':self.csrf(b,'/biz/import'),'file':(io.BytesIO(csv_text.encode('utf-8')),'old.csv')},content_type='multipart/form-data')
+        page=b.get(r.headers['Location']).get_data(as_text=True);self.assertIn('이미 있는 문의',page);self.assertIn('0건 옮기기',page)
+        self.post(b,r.headers['Location'],{'act':'cancel'})
+        # 엑셀(.xlsx)도 읽는다: 날짜가 숫자로 저장된 경우 포함
+        x=io.BytesIO()
+        with zipfile.ZipFile(x,'w') as z:
+            z.writestr('xl/sharedStrings.xml','<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>작성일</t></si><si><t>문의</t></si><si><t>환불해 주세요</t></si></sst>')
+            z.writestr('xl/worksheets/sheet1.xml','<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row><row r="2"><c r="A2"><v>46100.5</v></c><c r="B2" t="s"><v>2</v></c></row></sheetData></worksheet>')
+        r=b.post('/biz/import',data={'csrf':self.csrf(b,'/biz/import'),'file':(io.BytesIO(x.getvalue()),'old.xlsx')},content_type='multipart/form-data')
+        page=b.get(r.headers['Location']).get_data(as_text=True);self.assertIn('1건 옮기기',page);self.assertIn('2026-03-19 12:00',page)
+        self.post(b,r.headers['Location'],{'act':'commit','f_received':'0','f_body':'1'})
+        with self.core.conn() as db:self.assertEqual(db.execute("SELECT status FROM cases WHERE company_id=? AND body='환불해 주세요'",(cid,)).fetchone()[0],'closed')
+        # 다른 회사는 남의 묶음을 되돌릴 수 없다
+        b2,_,_=self.signup_and_approve('남의상점','other-imp@example.com')
+        self.assertEqual(b2.post(f'/biz/import/undo/{bid}',data={'csrf':self.csrf(b2,'/biz/import')}).status_code,404)
+        # 되돌리기
+        self.assertIn('되돌리기',b.get('/biz/import').get_data(as_text=True))
+        b.post(f'/biz/import/undo/{bid}',data={'csrf':self.csrf(b,'/biz/import')})
+        with self.core.conn() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM cases WHERE import_batch=?',(bid,)).fetchone()[0],0)
+            self.assertEqual(db.execute("SELECT status FROM import_batches WHERE id=?",(bid,)).fetchone()[0],'undone')
+        # 잘못된 파일
+        r=b.post('/biz/import',data={'csrf':self.csrf(b,'/biz/import'),'file':(io.BytesIO(b'x'),'a.pdf')},content_type='multipart/form-data',follow_redirects=True)
+        self.assertIn('CSV 또는 엑셀',r.get_data(as_text=True))
+
+    def test_referral_partner_security(self):
+        """추천 링크(가입 연결·통계, 보상 없음), 파트너 신청→승인→로그인→고객사 숫자만, 직원 초대, 회사가 직접 파트너 연결, 보안 안내."""
+        a,o,aid=self.signup_and_approve('추천하는상점','referrer@example.com')
+        page=a.get('/biz/settings').get_data(as_text=True);self.assertIn('추천 링크',page);self.assertIn('추천 보상은 아직 없어요',page)
+        code=re.search(r'/r/([a-z0-9]+)',page).group(1)
+        v=self.client();r=v.get('/biz/r/'+code);self.assertEqual(r.status_code,302);self.assertIn('/signup',r.headers['Location'])
+        self.assertEqual(self.client().get('/biz/r/nosuchcode').status_code,302)
+        self.post(v,'/biz/signup',{'name':'추천받은상점','biz_no':self.bizno(),'owner_name':'대표','phone':'010-1111-2222','contact':'1588-0000','login_id':'referred@example.com','password':'longpassword1','terms':'1'})
+        with self.core.conn() as db:
+            self.assertEqual(db.execute("SELECT referred_by FROM companies WHERE login_id='referred@example.com'").fetchone()[0],aid)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM ref_clicks WHERE code=?',(code,)).fetchone()[0],1)
+        page=a.get('/biz/settings').get_data(as_text=True);self.assertRegex(page,r'<span>가입</span><b>1</b>')
+        # 파트너 신청
+        p=self.client()
+        r=self.post(p,'/biz/partners',{'name':'대행사','kind':'없는종류','contact':'김대행','email':'agency@example.com','privacy':'1'});self.assertEqual(r.status_code,400)
+        sent=[]
+        with patch.object(self.core,'send_mail',lambda to,sub,body:sent.append((to,body))),patch.dict(os.environ,{'OPS_EMAIL':'ops@example.com'}):
+            r=self.post(p,'/biz/partners',{'name':'대행사','kind':'쇼핑몰 운영 대행사','contact':'김대행','email':'agency@example.com','privacy':'1'})
+        self.assertIn('신청을 받았어요',r.get_data(as_text=True));self.assertEqual(sorted(x[0] for x in sent),['agency@example.com','ops@example.com'])
+        with self.core.conn() as db:pid=db.execute("SELECT id FROM partners WHERE email='agency@example.com'").fetchone()[0]
+        self.assertEqual(p.get(f'/biz/ops/partner/{pid}').status_code,302)  # 운영 로그인 필요
+        sent=[]
+        with patch.object(self.core,'send_mail',lambda to,sub,body:sent.append((to,body))):
+            self.post(o,f'/biz/ops/partner/{pid}',{'act':'approve'})
+        tok=re.search(r'/partner/join/(\S+)',sent[0][1]).group(1)
+        with self.core.conn() as db:pc=db.execute('SELECT code FROM partners WHERE id=?',(pid,)).fetchone()[0]
+        pp=self.client()
+        self.assertEqual(pp.get('/biz/partner').status_code,302)
+        r=self.post(pp,f'/biz/partner/join/{tok}',{'password':'partnerpass1'});self.assertEqual(r.status_code,302)
+        self.assertEqual(self.client().get(f'/biz/partner/join/{tok}').status_code,400)  # 한 번 쓰면 끝
+        # 파트너 링크로 가입한 회사 + 이미 가입한 회사가 직접 연결
+        w=self.client();w.get('/biz/r/'+pc)
+        self.post(w,'/biz/signup',{'name':'파트너고객','biz_no':self.bizno(),'owner_name':'대표','phone':'010-1111-2222','contact':'1588-0000','login_id':'pclient@example.com','password':'longpassword1','terms':'1'})
+        self.post(a,'/biz/settings/partner',{'act':'link','code':pc},form_path='/biz/settings')
+        with self.core.conn() as db:
+            self.assertEqual(db.execute("SELECT partner_id FROM companies WHERE login_id='pclient@example.com'").fetchone()[0],pid)
+            self.assertEqual(db.execute('SELECT partner_id FROM companies WHERE id=?',(aid,)).fetchone()[0],pid)
+        self.file_case(self.client(),'추천하는상점','배송 조회',company_id=str(aid),title='고객비밀제목')
+        page=pp.get('/biz/partner').get_data(as_text=True)
+        self.assertIn('파트너고객',page);self.assertIn('추천하는상점',page);self.assertNotIn('고객비밀제목',page);self.assertNotIn('추천받은상점',page)
+        # 파트너 직원 초대·내보내기
+        self.post(pp,'/biz/partner',{'act':'invite','name':'이직원','email':'pstaff@example.com'})
+        with self.core.conn() as db:sid=db.execute("SELECT id FROM partner_users WHERE email='pstaff@example.com'").fetchone()[0]
+        self.post(pp,'/biz/partner',{'act':'remove','id':str(sid)})
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT status FROM partner_users WHERE id=?',(sid,)).fetchone()[0],'removed')
+        # 회사가 연결을 끊으면 파트너 화면에서 사라진다
+        self.post(a,'/biz/settings/partner',{'act':'unlink'},form_path='/biz/settings')
+        self.assertNotIn('추천하는상점',pp.get('/biz/partner').get_data(as_text=True))
+        # 중지하면 파트너 로그인이 막힌다
+        self.post(o,f'/biz/ops/partner/{pid}',{'act':'suspend'})
+        self.assertEqual(pp.get('/biz/partner').status_code,302)
+        r=self.post(self.client(),'/biz/partner/login',{'email':'agency@example.com','password':'partnerpass1'});self.assertIn('맞지 않아요',r.get_data(as_text=True))
+        # 보안 안내: HTTPS가 꺼진 서버에서는 HTTPS를 내세우지 않는다
+        sec=self.client().get('/biz/security').get_data(as_text=True)
+        self.assertIn('아직 갖추지 못한 것',sec);self.assertNotIn('접속 암호화',sec);self.assertNotIn('noindex',sec)
+        with patch.dict(os.environ,{'HTTPS_ONLY':'1'}):self.assertIn('접속 암호화',self.client().get('/biz/security').get_data(as_text=True))
 
 
 if __name__=='__main__':unittest.main()

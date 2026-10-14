@@ -28,11 +28,15 @@ PRIVACY_SINCE='2026년 10월 12일'
 TERMS_SINCE='2026년 10월 13일'  # 소보루 CS 기업 회원 이용약관 시행일
 RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 요청은 purge_old()가 파기
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 요청, 운영 등)는 noindex
-INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup','terms','mk.tour','mk.shop_page','mk.industries','mk.industry','mk.calculator','sl.consult'}}
+INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup','terms','mk.tour','mk.shop_page','mk.industries','mk.industry','mk.calculator','sl.consult','cms.blog','cms.blog_post','cms.help_home','cms.help_post','cms.stories','cms.story','gr.apply','sec.page'}}
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
              'biz':BNAME+'는 고객 요청을 한 화면에서 승인하고 반복 요청은 자동으로 처리하는 기업용 CS 운영 도구예요.'}
-VERIFY={'me':os.getenv('NAVER_SITE_VERIFICATION',''),'biz':os.getenv('NAVER_SITE_VERIFICATION_BIZ','')}
-GOOGLE_VERIFY={'me':os.getenv('GOOGLE_SITE_VERIFICATION',''),'biz':os.getenv('GOOGLE_SITE_VERIFICATION_BIZ','')}
+class _Verify(dict):
+    """검색엔진 소유 확인 코드: 운영 화면 서비스 키(또는 서버 설정)에서 그때그때 읽는다. 직접 넣은 값이 있으면 그것을."""
+    def __init__(self,me,biz):super().__init__();self.keys={'me':me,'biz':biz}
+    def __getitem__(self,site):return dict.get(self,site) or secret(self.keys[site])
+VERIFY=_Verify('NAVER_SITE_VERIFICATION','NAVER_SITE_VERIFICATION_BIZ')
+GOOGLE_VERIFY=_Verify('GOOGLE_SITE_VERIFICATION','GOOGLE_SITE_VERIFICATION_BIZ')
 DAUM_ROBOTS={'me':os.getenv('DAUM_WEBMASTER',''),'biz':os.getenv('DAUM_WEBMASTER_BIZ','')}  # 다음 웹마스터도구가 robots.txt에 넣으라는 줄
 def robots_txt(kind,disallow):
     lines=['User-agent: *','Allow: /']+['Disallow: '+p for p in disallow]+['','Sitemap: '+site_url(kind,'/sitemap.xml')]
@@ -235,7 +239,9 @@ SECRETS={'SWEETTRACKER_T_KEY':('택배 조회 키','스마트택배(tracking.swe
          'NAVER_SEARCH_SECRET':('네이버 검색 Client Secret','위 애플리케이션의 Client Secret'),
          'NTS_API_KEY':('국세청 사업자 상태조회 키','공공데이터포털(data.go.kr) "국세청_사업자등록정보 진위확인 및 상태조회 서비스" 일반 인증키(Decoding). 넣으면 가입할 때 사업자 상태를 자동으로 확인해 바로 인증해요'),
          'GOOGLE_CLIENT_ID':('구글 로그인 클라이언트 ID','Google Cloud 콘솔 > API 및 서비스 > 사용자 인증 정보 > OAuth 클라이언트 ID(웹). 승인된 리디렉션 URI에 기업 주소/auth/google/callback 을 넣어요'),
-         'GOOGLE_CLIENT_SECRET':('구글 로그인 클라이언트 보안 비밀','위 OAuth 클라이언트의 보안 비밀번호')}
+         'GOOGLE_CLIENT_SECRET':('구글 로그인 클라이언트 보안 비밀','위 OAuth 클라이언트의 보안 비밀번호'),
+         'NAVER_SITE_VERIFICATION_BIZ':('네이버 서치어드바이저 소유 확인 (기업 사이트)','searchadvisor.naver.com > 사이트 등록 > HTML 태그 방식의 content 값만 넣어요'),
+         'GOOGLE_SITE_VERIFICATION_BIZ':('구글 서치 콘솔 소유 확인 (기업 사이트)','search.google.com/search-console > URL 접두어 > HTML 태그 방식의 content 값만 넣어요')}
 def secret(name):
     try:
         with conn() as db:r=db.execute('SELECT value FROM settings WHERE key=?',(name,)).fetchone()

@@ -1,0 +1,34 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}파트너 프로그램 · {{ BNAME }}{% endblock %}
+{% block description %}쇼핑몰 운영 대행사, 마케팅 대행사, 컨설턴트를 위한 {{ BNAME }} 파트너 프로그램이에요. 맡은 쇼핑몰의 CS 설정과 사용 현황을 한 화면에서 봐요.{% endblock %}
+{% block bar %}{{ b.bar(tab) }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">파트너 프로그램</span><h1>맡은 쇼핑몰의 CS,<br>{{ BNAME }}로 함께 챙기세요</h1>
+<p>쇼핑몰 운영 대행사, 마케팅 대행사, 컨설턴트라면 파트너로 신청해 주세요. 승인되면 파트너 전용 링크와 화면을 드려요.</p></div></div></section>
+<section><div class="wrap mk-one"><h2>파트너가 되면</h2>
+<div class="mk-grid">
+<div class="mk-card"><b>파트너 전용 가입 링크</b><p>맡은 쇼핑몰이 이 링크로 가입하면 파트너 화면에 자동으로 이어져요.</p></div>
+<div class="mk-card"><b>고객사 설정·사용 현황</b><p>고객사별로 회사 인증, 처음 설정 진행률, 최근 30일 받은 문의와 답한 문의 수를 봐요.</p></div>
+<div class="mk-card"><b>직원 계정</b><p>파트너 회사 직원을 초대해 같은 화면을 함께 볼 수 있어요.</p></div>
+<div class="mk-card"><b>고객 정보는 보지 않아요</b><p>파트너 화면에는 고객사 소비자의 이름·연락처·문의 내용이 나오지 않아요. 숫자만 보여요.</p></div>
+</div>
+<p class="cap" style="margin-top:20px">수수료·보상 제도는 아직 없어요. 정해지면 파트너께 먼저 안내드릴게요.</p>
+<h2 style="margin-top:56px" id="apply">파트너 신청</h2>
+{% if done %}<div class="panel" style="text-align:center;padding:48px 24px;background:var(--bg)"><div class="done-ic"></div><h2>신청을 받았어요</h2><p style="margin-inline:auto">확인한 뒤 이메일로 결과를 알려 드릴게요.</p></div>
+{% else %}<form method="post" action="{{ url_for('gr.apply') }}#apply" class="panel stack contact" style="background:var(--bg)"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+<div class="grid2">
+<label class="fld"><span>회사명</span><input class="inp" name="name" maxlength="60" required value="{{ d.name or '' }}"></label>
+<label class="fld"><span>하는 일</span><select class="inp" name="kind" required><option value="">고르기</option>{% for k in KINDS %}<option {{ 'selected' if d.kind==k }}>{{ k }}</option>{% endfor %}</select></label>
+<label class="fld"><span>담당자</span><input class="inp" name="contact" maxlength="30" required value="{{ d.contact or '' }}"></label>
+<label class="fld"><span>이메일 (파트너 로그인에 써요)</span><input class="inp" name="email" type="email" maxlength="80" required value="{{ d.email or '' }}"></label>
+<label class="fld"><span>연락처 (선택)</span><input class="inp" name="phone" type="tel" maxlength="20" value="{{ d.phone or '' }}"></label>
+<label class="fld"><span>사업자등록번호 (선택)</span><input class="inp" name="biz_no" maxlength="12" inputmode="numeric" value="{{ d.biz_no or '' }}"></label>
+<label class="fld"><span>홈페이지 (선택)</span><input class="inp" name="site" maxlength="200" value="{{ d.site or '' }}" placeholder="https://"></label>
+<label class="fld"><span>맡은 쇼핑몰 수 (선택)</span><input class="inp" name="clients" maxlength="30" value="{{ d.clients or '' }}" placeholder="예: 15곳"></label></div>
+<label class="fld"><span>소개 (선택)</span><textarea class="inp" name="intro" maxlength="2000" placeholder="주로 맡는 쇼핑몰 업종과 판매처, {{ BNAME }}로 하고 싶은 일">{{ d.intro or '' }}</textarea></label>
+<div class="agree"><label class="check"><input type="checkbox" name="privacy" value="1" required><span class="bx"></span><span><b>개인정보 수집·이용 동의 (필수)</b><div class="cap">수집 항목: 회사명, 담당자, 이메일, 연락처 · 목적: 파트너 심사와 안내 · 보관: 파트너 종료 후 3년, 요청하면 바로 지워요</div></span></label></div>
+<button class="btn full">파트너 신청하기</button>
+<p class="cap" style="margin:0;text-align:center">이미 파트너라면 <a class="link" href="{{ url_for('gr.plogin') }}">파트너 로그인</a></p></form>{% endif %}
+</div></section>
+</main>{% endblock %}

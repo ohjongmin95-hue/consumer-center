@@ -1,0 +1,39 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}마케팅 분석 · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>마케팅 분석</h1><p>공개 화면 방문부터 가입, 처음 설정, 첫 답변, 상담 신청까지 실제로 남은 기록만 세요.</p></div>
+<nav class="mk-tabs" aria-label="기간" style="margin:0">{% for d in (7,30,90) %}<a href="{{ url_for('ops_marketing',d=d) }}" class="{{ 'on' if days==d }}">최근 {{ d }}일</a>{% endfor %}</nav></div>
+<div class="cols"><div class="stack" style="gap:var(--ds-gap)">
+<section class="panel"><div class="ph">단계별 (방문자·회사 수)</div>
+{% for k,label,n in r.steps %}<div class="fbar"><span class="l">{{ label }}</span><span class="b"><i style="width:{{ (n/top*100)|round(1) }}%"></i></span><b>{{ n }}</b></div>{% endfor %}
+{% set v=r.steps[0][2] %}{% set s=(r.steps|selectattr(0,'equalto','signup')|first)[2] %}
+<p class="cap" style="margin:12px 0 0">{% if v %}방문 → 가입 전환율 {{ (s/v*100)|round(1) }}%{% else %}아직 이 기간에 방문 기록이 없어요.{% endif %} 같은 사람이 같은 화면을 하루에 여러 번 열어도 한 번만 세요.</p></section>
+<section class="panel"><div class="ph">유입 출처</div>
+{% if r.by_source %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>출처</th><th class="r">방문</th><th class="r">가입</th><th class="r">상담 신청</th></tr></thead><tbody>
+{% for x in r.by_source %}<tr><td>{{ x.src }}</td><td class="r">{{ x.v }}</td><td class="r">{{ x.s }}</td><td class="r">{{ x.c }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="cap">기록이 없어요</p>{% endif %}</section>
+<section class="panel"><div class="ph">캠페인 (UTM)</div>
+{% if r.by_campaign %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>캠페인</th><th class="hm">출처·매체</th><th class="r">방문</th><th class="r">가입</th><th class="r">상담</th></tr></thead><tbody>
+{% for x in r.by_campaign %}<tr><td>{{ x.campaign }}</td><td class="hm t-sub">{{ x.source }} / {{ x.medium or '–' }}</td><td class="r">{{ x.v }}</td><td class="r">{{ x.s }}</td><td class="r">{{ x.c }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="cap">UTM을 붙인 주소로 들어온 방문이 아직 없어요. 오른쪽에서 주소를 만들어 광고·게시물에 써 보세요.</p>{% endif %}</section>
+<section class="panel"><div class="ph">많이 본 화면</div>
+{% if r.by_page %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>화면</th><th class="r">방문</th></tr></thead><tbody>
+{% for x in r.by_page %}<tr><td><a class="link" href="{{ x.path }}" target="_blank" rel="noopener">{{ x.path }}</a></td><td class="r">{{ x.v }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="cap">기록이 없어요</p>{% endif %}</section>
+<section class="panel"><div class="ph">날짜별</div>
+{% if r.daily %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>날짜</th><th class="r">방문</th><th class="r">가입</th></tr></thead><tbody>
+{% for x in r.daily|reverse %}<tr><td>{{ x.d }}</td><td class="r">{{ x.v }}</td><td class="r">{{ x.s }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="cap">기록이 없어요</p>{% endif %}</section>
+</div>
+<aside class="stack" style="gap:var(--ds-gap)">
+<section class="panel stack"><div class="ph">UTM 주소 만들기</div>
+<label class="fld"><span>보낼 화면</span><select class="inp" id="u_p"><option value="">첫 화면</option><option value="tour">제품 둘러보기</option><option value="calculator">절감 계산기</option><option value="industries">업종별</option><option value="contact">상담 신청</option><option value="signup">가입</option><option value="blog">자료실</option></select></label>
+<label class="fld"><span>출처 (utm_source)</span><input class="inp" id="u_s" placeholder="naver, instagram, newsletter" maxlength="60"></label>
+<label class="fld"><span>매체 (utm_medium)</span><input class="inp" id="u_m" placeholder="cpc, social, email" maxlength="60"></label>
+<label class="fld"><span>캠페인 (utm_campaign)</span><input class="inp" id="u_c" placeholder="2026-fall-launch" maxlength="60"></label>
+<div class="addline"><input class="inp" id="u_out" readonly aria-label="만든 주소"><button class="btn md gray" type="button" id="u_copy">복사</button></div></section>
+<section class="panel"><div class="ph">어떻게 세나요</div><p class="cap" style="margin:0">로그인하지 않은 방문자에게 무작위 번호를 붙여 세션 안에서만 구분해요. IP 주소·이름·연락처는 남기지 않아요. 처음 들어온 출처(UTM 또는 들어온 사이트)를 기억해 가입·상담 신청에 이어 붙여요. 방문 기록은 {{ keep }}일 뒤 지워요. 외부 분석 도구(GA 등)는 쓰지 않아요.</p></section>
+</aside></div>
+{% endblock %}
+{% block script %}<script>(function(){var base='{{ site.rstrip('/') }}/';var paths={'':'','tour':'tour','calculator':'calculator','industries':'industries','contact':'contact','signup':'signup','blog':'blog'};
+function upd(){var q=[];[['utm_source','u_s'],['utm_medium','u_m'],['utm_campaign','u_c']].forEach(function(x){var v=document.getElementById(x[1]).value.trim();if(v)q.push(x[0]+'='+encodeURIComponent(v));});
+document.getElementById('u_out').value=base+paths[document.getElementById('u_p').value]+(q.length?'?'+q.join('&'):'');}
+['u_p','u_s','u_m','u_c'].forEach(function(i){document.getElementById(i).oninput=upd;document.getElementById(i).onchange=upd;});upd();
+document.getElementById('u_copy').onclick=function(){var i=document.getElementById('u_out');i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){},function(){});this.textContent='복사했습니다';};})();</script>{% endblock %}

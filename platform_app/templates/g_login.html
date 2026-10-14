@@ -1,0 +1,11 @@
+{% extends 'base.html' %}{% import '_g.html' as gg with context %}
+{% block title %}파트너 로그인 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ gg.pbar() }}{% endblock %}
+{% block body %}<div class="narrow" style="max-width:420px">
+<div class="phead"><div><h1>파트너 로그인</h1><p>승인된 파트너와 초대받은 직원만 들어올 수 있어요.</p></div></div>
+{% if bad_link %}<div class="flash error">초대 링크가 만료됐거나 이미 썼어요. 파트너 대표에게 다시 초대해 달라고 해 주세요.</div>{% endif %}
+<form class="panel stack" method="post" action="{{ url_for('gr.plogin') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<label class="fld"><span>이메일</span><input class="inp" name="email" type="email" autocomplete="username" required></label>
+<label class="fld"><span>비밀번호</span><input class="inp" name="password" type="password" autocomplete="current-password" required></label>
+<button class="btn md">로그인</button></form>
+<p class="cap" style="text-align:center">파트너가 아니신가요? <a class="link" href="{{ url_for('gr.apply') }}">파트너 신청</a></p></div>{% endblock %}
