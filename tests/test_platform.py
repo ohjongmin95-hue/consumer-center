@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -35,16 +35,21 @@ class PlatformTest(unittest.TestCase):
     def post(self,c,path,data,form_path=None,**kw):
         data=dict(data,csrf=self.csrf(c,form_path or path));return c.post(path,data=data,**kw)
 
+    _biz=[100]
+    def bizno(self):
+        """검증번호가 맞는 사업자번호 (테스트마다 다른 번호)."""
+        self._biz[0]+=1;d=[int(x) for x in f'{self._biz[0]:09d}']
+        w=[1,3,7,1,3,7,1,3,5];t=sum(a*b for a,b in zip(d,w))+(d[8]*5)//10
+        return ''.join(map(str,d))+str((10-t%10)%10)
     def signup_and_approve(self,name,email):
         b=self.client()
-        r=self.post(b,'/biz/signup',{'name':name,'biz_no':'123-45-67890','owner_name':'대표','phone':'010-1111-2222','contact':'1588-0000','login_id':email,'password':'longpassword1','terms':'1'})
-        self.assertIn('가입 신청했습니다',r.get_data(as_text=True))
-        r=self.post(b,'/biz/login',{'login_id':email,'password':'longpassword1'})
-        self.assertIn('승인을 기다리고',r.get_data(as_text=True))
+        r=self.post(b,'/biz/signup',{'name':name,'biz_no':self.bizno(),'owner_name':'대표','phone':'010-1111-2222','contact':'1588-0000','login_id':email,'password':'longpassword1','terms':'1'})
+        self.assertEqual(r.status_code,302);self.assertIn('/start',r.headers['Location'])  # 가입하면 바로 로그인되고 처음 설정으로
+        self.assertIn('로그인 이메일 확인',b.get('/biz/start').get_data(as_text=True))
         o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
         with self.core.conn() as db:cid=db.execute('SELECT id FROM companies WHERE login_id=?',(email,)).fetchone()[0]
         self.post(o,'/biz/ops/companies',{'act':'approve','id':cid})
-        r=self.post(b,'/biz/login',{'login_id':email,'password':'longpassword1'})
+        b=self.client();r=self.post(b,'/biz/login',{'login_id':email,'password':'longpassword1'})
         self.assertEqual(r.status_code,302)
         # 같은 브라우저에서 운영 화면에 로그인해도 기업 로그인이 풀리지 않는다
         self.post(b,'/biz/ops/login',{'password':self.ops_pw})
@@ -157,10 +162,11 @@ class PlatformTest(unittest.TestCase):
         """앱 안 가입 신청·규칙·통계·설정·가이드: 웹과 같은 검사, 비밀번호를 바꾸면 새 토큰을 준다."""
         a=self.client()
         self.assertEqual(a.post('/biz/api/v1/signup',json={'name':'앱가입','biz_no':'123','owner_name':'김','login_id':'x@example.com','password':'longpassword1','terms':'1'}).status_code,400)
-        j=a.post('/biz/api/v1/signup',json={'name':'앱가입','biz_no':'1234567890','owner_name':'김사장','login_id':'appjoin@example.com','password':'longpassword1','terms':True}).get_json()
-        self.assertTrue(j['ok'])
-        with self.core.conn() as db:self.assertEqual(db.execute("SELECT status FROM companies WHERE login_id='appjoin@example.com'").fetchone()[0],'pending')
-        self.assertIn('승인을 기다리고',a.post('/biz/api/v1/login',json={'login_id':'appjoin@example.com','password':'longpassword1'}).get_json()['error'])
+        self.assertEqual(a.post('/biz/api/v1/signup',json={'name':'앱가입','biz_no':'1234567890','owner_name':'김','login_id':'x@example.com','password':'longpassword1','terms':'1'}).status_code,400)  # 검증번호 틀림
+        j=a.post('/biz/api/v1/signup',json={'name':'앱가입','biz_no':self.bizno(),'owner_name':'김사장','login_id':'appjoin@example.com','password':'longpassword1','terms':True}).get_json()
+        self.assertTrue(j['ok']);self.assertTrue(j['token']);self.assertFalse(j['verified'])  # 바로 쓰지만 회사 인증 전
+        with self.core.conn() as db:self.assertEqual(tuple(db.execute("SELECT status,member FROM companies WHERE login_id='appjoin@example.com'").fetchone()),('active',0))
+        self.assertTrue(a.post('/biz/api/v1/login',json={'login_id':'appjoin@example.com','password':'longpassword1'}).get_json()['token'])
         b,o,cid=self.signup_and_approve('설정상점','appset@example.com')
         tok=a.post('/biz/api/v1/login',json={'login_id':'appset@example.com','password':'longpassword1'}).get_json()['token'];auth={'Authorization':'Bearer '+tok}
         r=a.get('/biz/api/v1/rules',headers=auth).get_json()
@@ -1157,6 +1163,135 @@ class PlatformTest(unittest.TestCase):
         # 다른 회사 직원은 이 회사 요청을 못 본다
         b2,_,cid2=self.signup_and_approve('다른팀상점','teamother@example.com')
         self.assertEqual(b2.get(f'/biz/case/{case_id}').status_code,404)
+
+    def test_instant_signup_verify_wizard(self):
+        """바로 가입: 검증번호·중복 막기, 국세청 상태(모의), 이메일 확인 링크, 인증 전 판매처 연결 막기, 8단계 설정 저장·이어 하기, 시험 문의."""
+        ob=sys.modules['onboard']
+        c=self.client()
+        bad=self.bizno();bad=bad[:9]+str((int(bad[9])+1)%10)
+        r=self.post(c,'/biz/signup',{'name':'가짜번호','biz_no':bad,'owner_name':'김','login_id':'fakeno@example.com','password':'longpassword1','terms':'1'})
+        self.assertEqual(r.status_code,400);self.assertIn('사업자등록번호가 맞지 않아요',r.get_data(as_text=True))
+        no=self.bizno()
+        # 국세청 키가 있으면 폐업 번호는 가입 못 하고, 계속사업자는 이메일 확인만 끝나면 자동 인증
+        with patch.dict(os.environ,{'NTS_API_KEY':'k'}),patch.object(ob,'nts_post',return_value=(200,{'data':[{'b_stt_cd':'03'}]})):
+            r=self.post(self.client(),'/biz/signup',{'name':'폐업상점','biz_no':no,'owner_name':'김','login_id':'closed@example.com','password':'longpassword1','terms':'1'})
+            self.assertIn('폐업',r.get_data(as_text=True))
+        with patch.dict(os.environ,{'NTS_API_KEY':'k'}),patch.object(ob,'nts_post',return_value=(200,{'data':[{'b_stt_cd':'01'}]})):
+            r=self.post(c,'/biz/signup',{'name':'바로상점','biz_no':no,'owner_name':'김바로','login_id':'instant@example.com','password':'longpassword1','terms':'1','industry':'식품'})
+        self.assertEqual(r.status_code,302)
+        with self.core.conn() as db:co=db.execute("SELECT * FROM companies WHERE login_id='instant@example.com'").fetchone()
+        self.assertEqual((co['status'],co['member'],co['biz_status'],co['plan']),('active',0,'01','pilot'))
+        # 같은 사업자번호·같은 이메일은 다시 가입할 수 없다 (직원 초대로 안내)
+        r=self.post(self.client(),'/biz/signup',{'name':'바로상점2','biz_no':no,'owner_name':'김','login_id':'instant2@example.com','password':'longpassword1','terms':'1'})
+        self.assertIn('직원으로 초대',r.get_data(as_text=True))
+        r=self.post(self.client(),'/biz/signup',{'name':'바로상점3','biz_no':self.bizno(),'owner_name':'김','login_id':'instant@example.com','password':'longpassword1','terms':'1'})
+        self.assertIn('이미 가입된 이메일',r.get_data(as_text=True))
+        # 인증 전: 화면은 쓰지만 판매처 연결은 막히고, 소비자 접수 화면에서도 입점사로 보이지 않는다
+        self.assertIn('회사 인증 전',c.get('/biz/connect').get_data(as_text=True))
+        r=self.post(c,'/biz/connect/naver',{'client_id':'a','client_secret':'b'},follow_redirects=True)
+        self.assertIn('회사 인증이 끝난 뒤',r.get_data(as_text=True))
+        with self.core.conn() as db:self.assertIsNone(db.execute('SELECT 1 FROM shop_links WHERE company_id=?',(co['id'],)).fetchone())
+        self.assertFalse(self.core.active_member(co))
+        # 이메일 확인 링크 -> 국세청 계속사업자라 자동 인증
+        self.assertEqual(self.client().get('/biz/verify/'+ob.verify_link(co).split('/verify/')[1]).status_code,302)
+        with self.core.conn() as db:co=self.core.company(db,co['id'])
+        self.assertEqual((co['email_verified'],co['member']),(1,1))
+        self.assertEqual(self.client().get('/biz/verify/bad-token').status_code,302)
+        # 처음 설정: 단계마다 저장되고 나중에 이어서
+        self.assertIn('1. 기업 정보',c.get('/biz/start').get_data(as_text=True))
+        self.post(c,'/biz/start',{'step':'company','industry':'식품','owner_name':'김바로','phone':'010-2222-3333'},'/biz/start?step=company')
+        self.post(c,'/biz/start',{'step':'shop','shop_types':['네이버 스마트스토어','쿠팡']},'/biz/start?step=shop')
+        r=self.post(c,'/biz/start',{'step':'center','contact':'02-111-2222','hours':'평일 10시~17시','notify_email':'cs@example.com'},'/biz/start?step=center')
+        self.assertIn('step=policy',r.headers['Location'])
+        self.post(c,'/biz/start',{'step':'policy','returns':'7일 안에 반품 가능','shipping':'당일 출고','return_address':'서울시 반품로 9','return_courier':'CJ대한통운'},'/biz/start?step=policy')
+        self.post(c,'/biz/start',{'step':'connect','act':'skip'},'/biz/start?step=connect')
+        self.post(c,'/biz/start',{'step':'ai','brand':'건강한 간식','scope':'상품 문의','handoff':'불량은 담당자'},'/biz/start?step=ai')
+        self.post(c,'/biz/start',{'step':'widget'},'/biz/start?step=widget')
+        with self.core.conn() as db:
+            co=self.core.company(db,co['id']);prof=sys.modules['chatbot'].profile(db,co['id'])
+        p=ob.progress(co);self.assertEqual((p['n'],p['next']),(7,'test'))
+        self.assertEqual((co['contact'],co['notify_email'],co['shop_types'],co['return_address']),('02-111-2222','cs@example.com','네이버 스마트스토어,쿠팡','서울시 반품로 9'))
+        self.assertEqual((prof['hours'],prof['returns'],prof['brand']),('평일 10시~17시','7일 안에 반품 가능','건강한 간식'))
+        self.assertIn('처음 설정 7/8',c.get('/biz/all').get_data(as_text=True))
+        # 시험 문의를 만들고 답하면 마지막 단계가 끝난다. 고객 알림은 나가지 않는다.
+        r=self.post(c,'/biz/start',{'step':'test','act':'test_new'},'/biz/start?step=test')
+        tid=int(r.headers['Location'].rsplit('/',1)[1])
+        with self.core.conn() as db:n_mail=db.execute('SELECT COUNT(*) FROM mail_log').fetchone()[0]
+        self.post(c,f'/biz/case/{tid}',{'act':'reply','msg':'시험 답변이에요'})
+        with self.core.conn() as db:
+            co=self.core.company(db,co['id']);self.assertEqual(db.execute('SELECT COUNT(*) FROM mail_log').fetchone()[0],n_mail)
+        self.assertTrue(ob.progress(co)['finished'])
+        self.assertNotIn('처음 설정 ',c.get('/biz/all').get_data(as_text=True).replace('처음 설정 이어서',''))
+        # 설정: 무료 시범·이용 현황 (답장한 요청 1건)
+        page=c.get('/biz/settings').get_data(as_text=True)
+        self.assertIn('무료 시범 이용 중',page);self.assertIn('답장한 요청',page)
+        with self.core.conn() as db:self.assertEqual(ob.usage(db,co['id'])['replied'],1)
+        # 쇼핑몰 위젯
+        js=self.client().get(f'/widget.js?c={co["id"]}').get_data(as_text=True)
+        self.assertIn(f'/to/{co["id"]}',js);self.assertIn('문의하기',js)
+
+    def test_demo_workspace_isolated(self):
+        """데모: 견본 요청으로 승인·답변·배정을 해 보되 실제 회사·소비자·알림과 완전히 나뉜다."""
+        b,o,cid=self.signup_and_approve('데모주인상점','demoowner@example.com')
+        self.assertIn('데모 열기',b.get('/biz/').get_data(as_text=True))
+        self.post(b,'/biz/demo',{'act':'on'},'/biz/')
+        home=b.get('/biz/').get_data(as_text=True)
+        self.assertIn('데모 화면',home);self.assertIn('주문한 지 5일째',home)
+        with self.core.conn() as db:
+            d=db.execute('SELECT * FROM companies WHERE demo_of=?',(cid,)).fetchone()
+            self.assertEqual(d['status'],'demo')
+            ids=[r['id'] for r in db.execute('SELECT id FROM cases WHERE company_id=? ORDER BY id',(d['id'],))]
+            n_mail=db.execute('SELECT COUNT(*) FROM mail_log').fetchone()[0]
+        self.assertGreaterEqual(len(ids),8)
+        # 승인·답변·배정·초안이 실제처럼 된다
+        self.post(b,f'/biz/case/{ids[1]}',{'act':'approve'},f'/biz/case/{ids[1]}')
+        self.post(b,f'/biz/case/{ids[0]}',{'act':'reply','msg':'오늘 출고해요'},f'/biz/case/{ids[0]}')
+        self.post(b,f'/biz/case/{ids[0]}',{'act':'assign','assignee':'owner'},f'/biz/case/{ids[0]}')
+        with self.core.conn() as db:
+            self.assertEqual(db.execute('SELECT decision FROM cases WHERE id=?',(ids[1],)).fetchone()[0],'approved')
+            self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(ids[0],)).fetchone()[0],'answered')
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM mail_log').fetchone()[0],n_mail)  # 고객·사장님 알림 없음
+        # 판매처 연결·팀·설정은 데모에서 막힌다
+        self.assertEqual(b.get('/biz/connect').status_code,302);self.assertEqual(b.get('/biz/team').status_code,302)
+        # 소비자 쪽: 데모 회사는 검색·접수 화면에 없다
+        self.assertNotIn('(데모)',json.dumps(self.core.search_companies('데모주인')))
+        self.assertEqual(self.client().get(f'/to/{d["id"]}').status_code,404)
+        # 운영 화면 전체 현황에도 데모 요청이 없다
+        self.assertNotIn('주문한 지 5일째',o.get('/biz/ops/all').get_data(as_text=True))
+        # 처음부터 다시: 견본만 새로 만든다
+        self.post(b,'/biz/demo',{'act':'reset'},'/biz/')
+        with self.core.conn() as db:self.assertEqual(db.execute("SELECT decision FROM cases WHERE company_id=(SELECT id FROM companies WHERE demo_of=?) AND title LIKE '사이즈가 커서%'",(cid,)).fetchone()[0],'pending')
+        # 데모 끝내기: 실제 화면에는 데모 요청이 없다
+        self.post(b,'/biz/demo',{'act':'off'},'/biz/')
+        home=b.get('/biz/').get_data(as_text=True)
+        self.assertNotIn('데모 화면',home);self.assertNotIn('주문한 지 5일째',home)
+        self.assertEqual(b.get(f'/biz/case/{ids[0]}').status_code,404)
+
+    def test_google_signup_login(self):
+        """구글로 가입·로그인 (모의 응답). 키가 없으면 버튼이 없고 이메일 가입으로 안내."""
+        ob=sys.modules['onboard']
+        self.assertNotIn('구글 계정으로 시작하기',self.client().get('/biz/signup').get_data(as_text=True))
+        self.assertEqual(self.client().get('/biz/auth/google').status_code,302)
+        def fake(method,url,data=None,headers=None):
+            if 'token' in url:return 200,{'access_token':'at'}
+            return 200,{'sub':'g-123','email':'GUser@example.com','email_verified':True,'name':'구글대표'}
+        with patch.dict(os.environ,{'GOOGLE_CLIENT_ID':'cid','GOOGLE_CLIENT_SECRET':'sec'}),patch.object(ob,'http_json',side_effect=fake):
+            c=self.client()
+            self.assertIn('구글 계정으로 시작하기',c.get('/biz/signup').get_data(as_text=True))
+            r=c.get('/biz/auth/google');self.assertIn('accounts.google.com',r.headers['Location'])
+            state=re.search(r'state=([^&]+)',r.headers['Location']).group(1)
+            self.assertEqual(c.get('/biz/auth/google/callback?state=wrong&code=x').headers['Location'].endswith('/login'),True)
+            r=c.get('/biz/auth/google');state=re.search(r'state=([^&]+)',r.headers['Location']).group(1)
+            r=c.get(f'/biz/auth/google/callback?state={state}&code=abc');self.assertTrue(r.headers['Location'].endswith('/signup'))
+            page=c.get('/biz/signup').get_data(as_text=True);self.assertIn('guser@example.com',page);self.assertNotIn('name="password"',page)
+            r=self.post(c,'/biz/signup',{'name':'구글상점','biz_no':self.bizno(),'owner_name':'구글대표','login_id':'guser@example.com','terms':'1'})
+            self.assertEqual(r.status_code,302)
+            with self.core.conn() as db:co=db.execute("SELECT * FROM companies WHERE login_id='guser@example.com'").fetchone()
+            self.assertEqual((co['signup_via'],co['google_sub'],co['email_verified']),('google','g-123',1))
+            # 다음부터는 구글로 바로 로그인
+            c2=self.client();r=c2.get('/biz/auth/google');state=re.search(r'state=([^&]+)',r.headers['Location']).group(1)
+            r=c2.get(f'/biz/auth/google/callback?state={state}&code=abc');self.assertEqual(r.headers['Location'].rstrip('/').endswith('/biz'),True)
+            self.assertIn('구글상점',c2.get('/biz/').get_data(as_text=True))
 
 
 if __name__=='__main__':unittest.main()

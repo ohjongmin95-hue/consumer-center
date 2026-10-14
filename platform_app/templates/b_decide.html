@@ -2,6 +2,8 @@
 {% block bar %}{{ b.bar('home') }}{% endblock %}
 {% block body %}
 <div class="phead"><div><h1>{{ hello }}, {{ co.name }} 사장님</h1><p>오늘 먼저 볼 일만 모았어요</p></div><a class="btn sm gray" href="{{ url_for('new_case') }}">+ 직접 등록</a></div>
+{% if not recent and not in_demo %}<div class="panel" style="margin-bottom:20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:220px"><b>아직 들어온 요청이 없어요</b><p class="cap" style="margin:4px 0 0">견본 요청이 들어 있는 데모에서 승인·답변·담당자 배정·교환 처리를 먼저 해 보세요. 실제 데이터와 완전히 따로 있어요.</p></div>
+<form method="post" action="{{ url_for('demo_page') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="on">데모 열기</button></form>{% if setup and not setup.finished and can('manage') %}<a class="btn md gray" href="{{ url_for('start') }}">처음 설정 이어서</a>{% endif %}</div>{% endif %}
 {% if counts.comp %}<a class="warn" href="{{ url_for('all_cases',f='comp') }}"><span>🎁</span><span><b>보상 승인을 기다리는 요청 {{ counts.comp }}건</b><small>정해 둔 보상을 확인하고 승인하면 고객에게 알림이 갑니다</small></span></a>{% endif %}
 {% for w in warn %}<a class="warn" href="{{ url_for('all_cases',q=w.label if w.kind=='product' else None,f='all') }}"><span>⚠️</span><span><b>{% if w.kind=='product' %}'{{ w.label }}' 관련 요청이 최근 7일 {{ w.n }}건{% else %}{{ w.label }} 요청이 최근 7일 {{ w.n }}건{% endif %}</b><small>같은 문제가 반복되는지 확인해 보세요 · {{ w.cats|join(', ') }}</small></span></a>{% endfor %}
 <div class="sumrow">

@@ -4,6 +4,10 @@
 {% block bar %}{{ b.bar('settings') }}{% endblock %}
 {% block body %}
 <div class="phead"><div><h1>설정</h1><p>{{ co.name }} · {{ co.login_id }}</p></div></div>
+<div class="panel" style="margin-bottom:20px"><div class="ph">이용 현황 <span class="pill ok">{{ PLANS.get(co.plan,{}).get('name','무료 시범') }} 이용 중</span></div>
+<p class="sub" style="margin:0 0 14px">{{ fmt_day(co.plan_since or co.created) }}부터 이용 중이에요. 지금은 기간·건수 제한 없이 무료예요. 요금제가 생기면 미리 알려 드리고, 동의 없이 바뀌지 않아요.</p>
+<div class="sumrow" style="margin:0"><div class="sum" style="background:var(--fill)"><span>이번 달 받은 요청</span><b>{{ use.cases }}</b></div><div class="sum" style="background:var(--fill)"><span>답장한 요청</span><b>{{ use.replied }}</b></div><div class="sum" style="background:var(--fill)"><span>자동 처리</span><b>{{ use.auto }}</b></div><div class="sum" style="background:var(--fill)"><span>AI 상담 질문</span><b>{{ use.ai_chats }}</b></div></div>
+<p class="cap" style="margin:12px 0 0">답장한 요청은 직원이나 자동 처리가 한 번 이상 답한 요청이에요. 직원 수로는 요금을 받지 않아요.</p></div>
 <div class="panel" style="margin-bottom:20px"><div class="ph">고객센터 링크</div>
 <p class="sub" style="margin:0 0 14px">홈페이지나 쇼핑몰의 고객센터 메뉴에 이 링크를 걸면, 고객 문의가 바로 이 화면으로 들어옵니다.</p>
 <div class="addline"><input class="inp" id="lnk" value="{{ link }}" readonly><button class="btn md gray" type="button" data-copy="lnk">복사</button></div>

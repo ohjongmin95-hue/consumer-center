@@ -1,5 +1,5 @@
 """소비자용 '소보루 CS' 고객센터: 어느 기업이든 한곳에서 요청 접수·조회."""
-import os, re, datetime
+import os, re, datetime, json
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 import core, law, chatbot
@@ -285,6 +285,20 @@ def company_page(company_id):
     if not co or co['status'] not in ('active','listed'):abort(404)
     session['cs']=co['id']
     return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS)
+
+@app.route('/widget.js')
+def widget_js():
+    """쇼핑몰에 붙이는 '문의하기' 버튼. 누르면 그 회사 고객센터 화면을 새 창으로 연다 (쇼핑몰 화면에 다른 내용을 끼워 넣지 않는다)."""
+    cid=request.args.get('c','')
+    with conn() as db:co=core.company(db,int(cid)) if cid.isdigit() else None
+    if not co or co['status']!='active':return app.response_class('/* 소보루 CS: 회사를 찾을 수 없어요 */',mimetype='application/javascript')
+    url=core.site_url('me','/to/%d'%co['id'])
+    js=("(function(){if(window.__soboruCS)return;window.__soboruCS=1;var u=%s;var b=document.createElement('button');b.type='button';b.textContent='문의하기';"
+        "b.setAttribute('aria-label','고객센터 문의하기');b.style.cssText='position:fixed;right:20px;bottom:20px;z-index:2147483000;border:0;border-radius:28px;padding:14px 20px;"
+        "background:#f89b00;color:#fff;font:600 15px/1 -apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.18);cursor:pointer';"
+        "b.onclick=function(){var w=Math.min(420,screen.width),h=Math.min(720,screen.height);var p=window.open(u+'?from=widget','soborucs','width='+w+',height='+h+',left='+(screen.width-w-20)+',top=60');if(!p)location.href=u;};"
+        "(document.body?document.body.appendChild(b):document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(b);}));})();")%json.dumps(url)
+    r=app.response_class(js,mimetype='application/javascript');r.headers['Cache-Control']='public, max-age=600';return r
 
 @app.route('/track')
 def track():

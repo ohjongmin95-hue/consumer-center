@@ -1504,3 +1504,30 @@ body.v2 ul.dots{margin:0;padding-left:18px;display:flex;flex-direction:column;ga
 .pimp .private{background:var(--fill);border-radius:14px;padding:12px 16px;display:flex;flex-direction:column;gap:8px}
 .pimp .private .kv dd{text-align:left;overflow-wrap:anywhere}
 .pimp .pill{white-space:normal}
+
+/* ---------- 바로 가입·처음 설정·데모 ---------- */
+.nbar{display:block;background:var(--accent-soft);color:var(--accent-ink);font-size:14.5px}
+.nbar .wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:48px;padding-block:8px}
+.nbar b{font-weight:700}
+.nbar span{color:var(--fg2)}
+.nbar.demo{background:var(--blue-soft);color:var(--blue)}
+.nbar.demo form{margin-left:auto;display:flex;gap:8px}
+.nbar.warnb{background:var(--fill)}
+.nprog{flex:0 1 160px;height:6px;background:var(--fill2);border-radius:3px;overflow:hidden}
+.nprog i{display:block;height:100%;background:var(--accent)}
+@media (min-width:1024px){body:has(.bside) .nbar{margin-left:var(--ds-side)}body.v2:has(.bside) .nbar .wrap{max-width:calc(var(--ds-max) + var(--ds-pad)*2);padding-inline:var(--ds-pad)}}
+.wzl{display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:start}
+.wzs{list-style:none;margin:0;padding:8px;background:var(--card);border-radius:20px;display:flex;flex-direction:column;gap:2px}
+.wzs a{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;color:var(--fg2);font-size:15px}
+.wzs a:hover{background:var(--fill)}
+.wzs a.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:700}
+.wzs .n{width:26px;height:26px;border-radius:50%;background:var(--fill2);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none;color:var(--fg2)}
+.wzs .d .n{background:var(--green);color:#fff}
+.wzs .k .n{background:var(--fill2);color:var(--fg3)}
+.wzbody .ph small{display:block;font-weight:400;color:var(--fg3);font-size:14px;margin-top:4px}
+.chk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.wzact{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.trustbox{display:grid;gap:10px;margin-bottom:20px}
+.trustbox .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.trustbox .row form{margin-left:auto}
+@media (max-width:860px){.wzl{grid-template-columns:1fr}.wzs{flex-direction:row;overflow-x:auto;padding:6px}.wzs a{white-space:nowrap}.wzs a .t{display:none}.wzs a.on .t{display:inline}}
