@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -1216,10 +1216,10 @@ class PlatformTest(unittest.TestCase):
         # 시험 문의를 만들고 답하면 마지막 단계가 끝난다. 고객 알림은 나가지 않는다.
         r=self.post(c,'/biz/start',{'step':'test','act':'test_new'},'/biz/start?step=test')
         tid=int(r.headers['Location'].rsplit('/',1)[1])
-        with self.core.conn() as db:n_mail=db.execute('SELECT COUNT(*) FROM mail_log').fetchone()[0]
-        self.post(c,f'/biz/case/{tid}',{'act':'reply','msg':'시험 답변이에요'})
-        with self.core.conn() as db:
-            co=self.core.company(db,co['id']);self.assertEqual(db.execute('SELECT COUNT(*) FROM mail_log').fetchone()[0],n_mail)
+        sent=[]
+        with patch.object(self.core,'send_mail',lambda to,sub,body:sent.append(to)):self.post(c,f'/biz/case/{tid}',{'act':'reply','msg':'시험 답변이에요'})
+        self.assertEqual(sent,[])
+        with self.core.conn() as db:co=self.core.company(db,co['id'])
         self.assertTrue(ob.progress(co)['finished'])
         self.assertNotIn('처음 설정 ',c.get('/biz/all').get_data(as_text=True).replace('처음 설정 이어서',''))
         # 설정: 무료 시범·이용 현황 (답장한 요청 1건)
@@ -1241,16 +1241,17 @@ class PlatformTest(unittest.TestCase):
             d=db.execute('SELECT * FROM companies WHERE demo_of=?',(cid,)).fetchone()
             self.assertEqual(d['status'],'demo')
             ids=[r['id'] for r in db.execute('SELECT id FROM cases WHERE company_id=? ORDER BY id',(d['id'],))]
-            n_mail=db.execute('SELECT COUNT(*) FROM mail_log').fetchone()[0]
         self.assertGreaterEqual(len(ids),8)
-        # 승인·답변·배정·초안이 실제처럼 된다
-        self.post(b,f'/biz/case/{ids[1]}',{'act':'approve'},f'/biz/case/{ids[1]}')
-        self.post(b,f'/biz/case/{ids[0]}',{'act':'reply','msg':'오늘 출고해요'},f'/biz/case/{ids[0]}')
-        self.post(b,f'/biz/case/{ids[0]}',{'act':'assign','assignee':'owner'},f'/biz/case/{ids[0]}')
+        # 승인·답변·배정이 실제처럼 되지만 메일·알림은 나가지 않는다
+        sent=[]
+        with patch.object(self.core,'send_mail',lambda to,sub,body:sent.append(to)):
+            self.post(b,f'/biz/case/{ids[1]}',{'act':'approve'},f'/biz/case/{ids[1]}')
+            self.post(b,f'/biz/case/{ids[0]}',{'act':'reply','msg':'오늘 출고해요'},f'/biz/case/{ids[0]}')
+            self.post(b,f'/biz/case/{ids[0]}',{'act':'assign','assignee':'owner'},f'/biz/case/{ids[0]}')
+        self.assertEqual([x for x in sent if x],[])
         with self.core.conn() as db:
             self.assertEqual(db.execute('SELECT decision FROM cases WHERE id=?',(ids[1],)).fetchone()[0],'approved')
             self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(ids[0],)).fetchone()[0],'answered')
-            self.assertEqual(db.execute('SELECT COUNT(*) FROM mail_log').fetchone()[0],n_mail)  # 고객·사장님 알림 없음
         # 판매처 연결·팀·설정은 데모에서 막힌다
         self.assertEqual(b.get('/biz/connect').status_code,302);self.assertEqual(b.get('/biz/team').status_code,302)
         # 소비자 쪽: 데모 회사는 검색·접수 화면에 없다
@@ -1325,6 +1326,50 @@ class PlatformTest(unittest.TestCase):
             self.assertEqual(tuple(row),('naver','cpc','fall'))
             self.assertTrue(db.execute("SELECT 1 FROM funnel WHERE kind='visit' AND path='/for/smartstore' AND campaign='fall'").fetchone())
             cols={r[1] for r in db.execute('PRAGMA table_info(funnel)')};self.assertNotIn('ip',cols)
+
+
+    def test_consult_request_and_sales_pipeline(self):
+        """상담 신청: 검사·저장·운영 알림·UTM, 봇 칸, 운영 영업 관리(단계·담당자·일정·메모·연락 기록), 운영 로그인 없이는 못 봄."""
+        c=self.client();c.get('/biz/calculator?utm_source=blog&utm_campaign=guide1')
+        r=self.post(c,'/biz/contact',{'company':'상담상점','name':'박담당','email':'bad'})
+        self.assertEqual(r.status_code,400);self.assertIn('이메일',r.get_data(as_text=True))
+        r=self.post(c,'/biz/contact',{'company':'상담상점','name':'박담당','email':'lead@example.com','phone':'010-3333-4444','shop_url':'https://shop.example.com',
+            'channels':['쿠팡','카페24'],'volume':'월 500~2,000건','interests':['AI 상담','없는기능'],'message':'반품이 많아요'})
+        self.assertIn('개인정보',r.get_data(as_text=True))  # 동의 안 함
+        sent=[]
+        with patch.object(self.core,'send_mail',lambda to,sub,body:sent.append(to)),patch.dict(os.environ,{'OPS_EMAIL':'ops@example.com'}):
+            r=self.post(c,'/biz/contact',{'company':'상담상점','name':'박담당','email':'lead@example.com','phone':'010-3333-4444','shop_url':'https://shop.example.com',
+                'channels':['쿠팡','카페24'],'volume':'월 500~2,000건','interests':['AI 상담','없는기능'],'message':'반품이 많아요','privacy':'1'})
+        self.assertEqual(sorted(sent),['lead@example.com','ops@example.com'])
+        self.assertIn('신청을 받았어요',r.get_data(as_text=True))
+        with self.core.conn() as db:
+            l=db.execute("SELECT * FROM leads WHERE email='lead@example.com'").fetchone()
+            self.assertEqual((l['stage'],l['channels'],l['interests'],l['source'],l['campaign']),('new','쿠팡,카페24','AI 상담','blog','guide1'))
+            self.assertTrue(db.execute("SELECT 1 FROM funnel WHERE kind='consult'").fetchone())
+        # 봇이 숨은 칸을 채우면 저장하지 않는다
+        self.post(self.client(),'/biz/contact',{'company':'봇','name':'봇','email':'bot@example.com','privacy':'1','website':'http://spam'})
+        with self.core.conn() as db:self.assertIsNone(db.execute("SELECT 1 FROM leads WHERE email='bot@example.com'").fetchone())
+        # 운영 로그인 없이는 못 본다
+        self.assertEqual(c.get('/biz/ops/leads').status_code,302);self.assertEqual(c.get(f'/biz/ops/lead/{l["id"]}').status_code,302)
+        o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+        page=o.get('/biz/ops/leads').get_data(as_text=True);self.assertIn('상담상점',page);self.assertIn('새 신청',page)
+        lp=f'/biz/ops/lead/{l["id"]}'
+        self.post(o,lp,{'act':'update','stage':'scheduled','owner':'김영업','demo_at':'2026-10-20T14:00','follow_up':'2026-10-01'})
+        self.post(o,lp,{'act':'memo','memo':'카페24 연동을 가장 궁금해함'})
+        self.post(o,lp,{'act':'contact','channel':'전화','text':'시연 일정 잡음'})
+        with self.core.conn() as db:
+            l=db.execute('SELECT * FROM leads WHERE id=?',(l['id'],)).fetchone()
+            self.assertEqual((l['stage'],l['owner'],l['demo_at'],l['follow_up'],l['memo']),('scheduled','김영업','2026-10-20 14:00','2026-10-01','카페24 연동을 가장 궁금해함'))
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM lead_log WHERE lead_id=?',(l['id'],)).fetchone()[0],3)
+        page=o.get(lp).get_data(as_text=True);self.assertIn('시연 일정 잡음',page);self.assertIn('단계: 새 신청 → 시연 예정',page)
+        self.assertIn('오늘까지 연락할 곳',o.get('/biz/ops/leads').get_data(as_text=True))
+        self.assertEqual(self.post(o,lp,{'act':'update','stage':'won','demo_at':'내일'},follow_redirects=True).status_code,200)
+        # 같은 이메일로 가입하면 가입한 회사로 이어 보여 준다
+        self.signup_and_approve('상담상점','lead@example.com')
+        self.assertIn('가입함: 상담상점',o.get(lp).get_data(as_text=True))
+        # 지우기 (개인정보 삭제 요청)
+        self.post(o,lp,{'act':'delete'})
+        with self.core.conn() as db:self.assertIsNone(db.execute("SELECT 1 FROM leads WHERE email='lead@example.com'").fetchone())
 
 
 if __name__=='__main__':unittest.main()

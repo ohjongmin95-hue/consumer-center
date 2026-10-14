@@ -1576,3 +1576,6 @@ a.mk-card:hover{box-shadow:inset 0 0 0 2px var(--accent)}
 @media (max-width:900px){.calc{grid-template-columns:minmax(0,1fr)}.tour-step{grid-template-columns:minmax(0,1fr);gap:20px}.calc-big b{font-size:24px}}
 @media (max-width:760px){.tour-spot.d{display:none}.tour-spot.m{display:block}.mk-item{flex-direction:column;align-items:flex-start}.tour-nav .btn{flex:1}}
 .calc .panel .inp{background:var(--card)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.contact .grid2{gap:12px 16px}
+.contact .inp{background:var(--card)}

@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
-import team, onboard, demo, funnel, market
+import team, onboard, demo, funnel, market, sales
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -23,7 +23,7 @@ OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
-app.register_blueprint(market.bp)
+app.register_blueprint(market.bp);app.register_blueprint(sales.bp)
 app.jinja_env.globals.update(has_ep=lambda name:name in app.view_functions)
 
 @app.before_request
@@ -90,12 +90,12 @@ def ctx():
     if co:
         with conn() as db:n=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND member=1 AND consent=1 AND decision='pending' AND status IN ('forwarded','seen')",(co['id'],)).fetchone()[0]
     a=who() if co else None;rc=real() if co else None
-    return {'PUB_NAV':pub_nav(),'co':co,'n_pending':n,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES,
+    return {'PUB_NAV':pub_nav(),'n_leads':sales.n_new() if session.get('ops') and request.path.startswith('/ops') else 0,'co':co,'n_pending':n,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES,
             'real_co':rc,'in_demo':in_demo() if co else False,'trust':onboard.trust(rc) if rc else None,'setup':onboard.progress(rc) if rc else None}
 
 def pub_nav():
     """로그인 전 위쪽 메뉴: 각 공개 화면 모듈이 내놓는 메뉴를 차례로."""
-    return market.nav()
+    return market.nav()+sales.nav()
 def kpis(rows):
     n=len(rows);auto=sum(r['decision']=='auto' for r in rows);res=sum(r['status']=='resolved' for r in rows)
     rated=sum(r['status'] in ('resolved','unresolved') for r in rows);late=sum(core.overdue(r) for r in rows)
@@ -107,7 +107,7 @@ def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/ca
 
 @app.route('/sitemap.xml')
 def sitemap():
-    body=''.join('<url><loc>%s</loc></url>'%core.site_url('biz',p) for p in ['/','/signup','/login','/terms']+market.sitemap_paths())
+    body=''.join('<url><loc>%s</loc></url>'%core.site_url('biz',p) for p in ['/','/signup','/login','/terms']+market.sitemap_paths()+sales.sitemap_paths())
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
 @app.route('/terms')
