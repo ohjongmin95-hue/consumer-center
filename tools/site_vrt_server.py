@@ -43,5 +43,6 @@ post(a, '/admin/reports/%d' % eid, {'form': 'publish_review', 'decision': 'appro
 post(a, '/admin/reports/%d' % eid, {'form': 'forward'})
 post(b, '/biz/case/%d' % eid, {'response': '확인해 보니 무상 수리 대상이 맞아요. 접수하신 서비스센터에 비용 없이 처리하도록 안내했어요.'})
 post(u, '/report', dict(base, subject='승인 대기 제보', company='소보몰', phone='010-9999-0000'))
+post(u, '/report', dict(base, subject='비밀글 제보 예시', company='오소보쇼핑', phone='010-9999-0000', visibility='secret'))
 print('ready', ids, eid, flush=True)
 app.run(host='127.0.0.1', port=PORT)

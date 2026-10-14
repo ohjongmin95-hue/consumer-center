@@ -50,9 +50,11 @@
         <label class="vis-option"><input type="radio" name="visibility" value="secret" required{% if request.form.get('visibility') == 'secret' %} checked{% endif %}><span><b>{{ ui('report.vis_secret', '🔒 비밀글') }}</b>{{ txt('report.visibility_secret') }}</span></label>
       </fieldset>
 
-      <div class="field lookup-pw"><label for="r-pw">{{ ui('report.f_pw', '조회 비밀번호') }} <small>*</small></label>
-        <div class="pw-pair"><input id="r-pw" type="password" name="lookup_pw" minlength="4" maxlength="30" required autocomplete="new-password" placeholder="{{ ui('report.f_pw_ph', '4자 이상 (숫자 4자리도 돼요)') }}"><input type="password" name="lookup_pw2" minlength="4" maxlength="30" required autocomplete="new-password" aria-label="{{ ui('report.f_pw2', '조회 비밀번호 확인') }}" placeholder="{{ ui('report.f_pw2', '조회 비밀번호 확인') }}"></div>
-        <p class="hint">{{ ui('report.f_pw_hint', '나중에 제보 목록에서 내 글을 누르거나, 내 제보 조회에서 휴대폰 번호와 함께 넣으면 진행 상황과 답변을 볼 수 있어요. 꼭 기억해 주세요.') }}</p></div>
+      {% set pw_opt = request.form.get('visibility') == 'public' %}
+      <div class="field lookup-pw{% if pw_opt %} is-optional{% endif %}"><label for="r-pw">{{ ui('report.f_pw', '조회 비밀번호') }} <small class="pw-req">*</small><small class="pw-opt">{{ ui('report.f_pw_optional', '(공개 제보는 선택)') }}</small></label>
+        <div class="pw-pair"><input id="r-pw" type="password" name="lookup_pw" minlength="4" maxlength="30"{% if not pw_opt %} required{% endif %} autocomplete="new-password" placeholder="{{ ui('report.f_pw_ph', '4자 이상 (숫자 4자리도 돼요)') }}"><input type="password" name="lookup_pw2" minlength="4" maxlength="30"{% if not pw_opt %} required{% endif %} autocomplete="new-password" aria-label="{{ ui('report.f_pw2', '조회 비밀번호 확인') }}" placeholder="{{ ui('report.f_pw2', '조회 비밀번호 확인') }}"></div>
+        <p class="hint">{{ ui('report.f_pw_hint', '나중에 제보 목록에서 내 글을 누르거나, 내 제보 조회에서 휴대폰 번호와 함께 넣으면 진행 상황과 답변을 볼 수 있어요. 꼭 기억해 주세요.') }}</p>
+        <p class="hint pw-opt-hint">{{ ui('report.f_pw_optional_hint', '공개 제보는 비밀번호 없이 접수할 수 있어요. 비워 두면 내 제보 조회로는 진행 상황을 볼 수 없고, 공개된 뒤 제보 목록에서 확인할 수 있어요. 회원은 마이페이지에서 볼 수 있어요.') }}</p></div>
 
       <div class="consents">
         <h2 class="consents-title">{{ ui('report.consents_title', '동의 항목') }}</h2>
@@ -151,6 +153,19 @@
       else if (e.key === 'Escape') close();
     });
     input.addEventListener('blur', close);
+  })();
+  // 공개를 고르면 조회 비밀번호는 선택, 비밀글이면 꼭 넣어야 해요
+  (function () {
+    var box = document.querySelector('.lookup-pw'), radios = document.querySelectorAll('input[name=visibility]');
+    if (!box || !radios.length) return;
+    function sync() {
+      var pub = document.querySelector('input[name=visibility]:checked');
+      var optional = !!pub && pub.value === 'public';
+      box.classList.toggle('is-optional', optional);
+      box.querySelectorAll('input[type=password]').forEach(function (i) { i.required = !optional; });
+    }
+    radios.forEach(function (r) { r.addEventListener('change', sync); });
+    sync();
   })();
   // 고른 첨부파일 이름과 크기를 보여 줘요
   (function () {

@@ -12,3 +12,5 @@
   {% for s in PUBLIC_STEPS %}<li class="{{ 'done' if loop.index < step else ('now' if loop.index == step else 'todo') }}"{% if loop.index == step %} aria-current="step"{% endif %}><span class="stepper-dot">{{ '✓' if loop.index < step else loop.index }}</span><span class="stepper-label">{{ s }}</span></li>{% endfor %}
 </ol>
 {% endmacro %}
+{# 목록 위 단계 색 범례: 접수증 색과 같은 색 #}
+{% macro legend() %}<ul class="st-legend" aria-label="{{ ui('reports.legend', '진행 단계 색') }}">{% for s in STATUSES %}<li class="st-{{ loop.index }}"><i aria-hidden="true"></i>{{ status_name(s) }}</li>{% endfor %}</ul>{% endmacro %}
