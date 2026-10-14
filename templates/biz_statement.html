@@ -1,0 +1,14 @@
+{% extends 'biz_base.html' %}
+{% block title %}공식 입장{% endblock %}
+{% block content %}
+<main class="cs-page cs-narrow">
+  <h1 class="cs-title">공식 입장</h1>
+  <p class="cs-lead">우리 회사 기업 페이지 맨 위에 실리는 글이에요. 고객센터 안내, 처리 원칙, 개선 계획처럼 모든 제보에 해당하는 내용을 적어 주세요. 센터는 글을 고치지 않고, 개인정보나 특정인 비방이 없는지만 확인한 뒤 그대로 공개해요. 비용은 없어요.</p>
+  {% if g.company['statement'] %}<section class="cs-panel"><h2>지금 공개된 글 <span class="cs-muted">{{ g.company['statement_at'][:10]|replace('-', '.') }}</span></h2><p class="cs-text">{{ g.company['statement'] }}</p></section>{% endif %}
+  <form class="cs-panel cs-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h2>{{ '새로 보낼 글' if g.company['statement'] else '공식 입장 쓰기' }}{% if g.company['statement_draft'] %} <span class="cs-tag">센터 확인 중 · {{ g.company['statement_draft_at'][:10]|replace('-', '.') }}</span>{% endif %}</h2>
+    <textarea name="statement" maxlength="3000" rows="8" aria-label="공식 입장" placeholder="예: 고객센터 1588-0000(평일 9~18시)에서 교환·환불을 도와드려요. 접수된 제보는 3영업일 안에 답변하는 것을 원칙으로 해요.">{{ g.company['statement_draft'] }}</textarea>
+    {% if g.get('biz_preview') %}<p class="cs-muted">미리보기에서는 보낼 수 없어요.</p>{% else %}<button class="cs-btn cs-btn-main" type="submit">센터에 보내기</button>{% endif %}
+  </form>
+</main>
+{% endblock %}

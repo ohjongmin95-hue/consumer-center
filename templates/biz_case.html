@@ -14,10 +14,14 @@
     <h2>제보자가 원하는 해결 방법</h2>
     <p class="cs-text">{{ case['request_text'] }}</p>
   </section>
+  {% if outcome and outcome['confirmed_at'] %}<section class="cs-panel"><h2>제보자 확인</h2><p>{{ JEBO_OUTCOMES.get(outcome['outcome'], '확인함') }} <span class="cs-muted">({{ outcome['confirmed_at'][:10]|replace('-', '.') }})</span></p></section>{% endif %}
   <section class="cs-panel" id="answer">
     <h2>우리 회사 답변</h2>
     {% for a in answers %}
-    <div class="cs-msg from-company"><div class="cs-msg-head"><b>{{ g.company['name'] }}</b><span>{{ a['created'][:16]|replace('T', ' ') }}{% if a['public'] %} · 사이트에 공개됨{% endif %}</span></div><p>{{ a['body'] }}</p></div>
+    <div class="cs-msg from-company"><div class="cs-msg-head"><b>{{ g.company['name'] }}</b><span>{{ a['created'][:16]|replace('T', ' ') }}{% if a['edited'] %} · {{ a['edited'][:16]|replace('T', ' ') }} 수정{% endif %}{% if a['public'] %} · 사이트에 공개됨{% elif case['public_consent'] %} · 센터 확인 전{% endif %}</span></div><p>{{ a['body'] }}</p>
+      {% if revisions.get(a['id']) %}<details class="cs-rev"><summary>수정 이력 {{ revisions[a['id']]|length }}건</summary>{% for r in revisions[a['id']]|reverse %}<div class="cs-rev-item"><span>{{ r['edited_at'][:16]|replace('T', ' ') }}에 고치기 전 글</span><p>{{ r['body'] }}</p></div>{% endfor %}</details>{% endif %}
+      {% if not g.get('biz_preview') and a['source'] in ('biz', '') %}<details class="cs-rev"><summary>답변 고치기</summary><form method="post" action="{{ url_for('biz_answer_edit', message_id=a['id']) }}" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><textarea name="response" maxlength="5000" required rows="5" aria-label="고친 답변">{{ a['body'] }}</textarea><p class="cs-muted">고치기 전 글은 수정 이력에 그대로 남아요. 사이트에 공개된 답변이면 센터가 다시 확인할 때까지 공개가 내려가요.</p><button class="cs-btn" type="submit">고친 답변 저장</button></form></details>{% endif %}
+    </div>
     {% else %}<p class="cs-muted">아직 답변하지 않았어요.</p>{% endfor %}
     {% if g.get('biz_preview') %}<p class="cs-muted">대표 미리보기에서는 답변 칸이 닫혀 있어요. 기업 담당자는 여기에 답변을 적어요.</p>{% else %}
     <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">

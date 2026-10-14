@@ -12,8 +12,14 @@ CATEGORY_MAP={'상품·품질':'품질·하자·AS','배송·환불':'배송·�
 MIN_N=5  # 비율을 보여 주는 최소 유효 제보 수
 NOT_VALID=('rejected','duplicate')  # 운영자가 반려·중복 처리한 제보는 통계에서 뺀다
 REVIEWS={'':'검토 전','ok':'정상 제보','duplicate':'중복 제보','rejected':'반려 (허위·부적절·대상 아님)'}
-CASE_COLS=('public_subject','public_body','public_request','review','review_note','reviewed_at','occurred_on','forwarded_at','seen_at','confirmed_at','closed_at')
-COMPANY_COLS=('brand','biz_name','official_email','statement','statement_at')
+CASE_COLS=('public_subject','public_body','public_request','review','review_note','reviewed_at','occurred_on','forwarded_at','seen_at','confirmed_at','closed_at','outcome')
+COMPANY_COLS=('brand','biz_name','official_email','statement','statement_at','statement_draft','statement_draft_at','email_token','email_verified_at','claim_id')
+MESSAGE_COLS=(('edited',"TEXT NOT NULL DEFAULT ''"),('source',"TEXT NOT NULL DEFAULT ''"),('want_public','INTEGER NOT NULL DEFAULT 0'))
+OUTCOMES={'resolved':'해결됐어요','unresolved':'아직 해결되지 않았어요'}
+SOURCES={'biz':'기업 회원 화면','link':'답변 링크','email':'이메일 (원문 그대로 등록)'}
+# 무료 메일 주소는 회사 공식 메일로 보기 어려워 운영자 화면에 따로 표시
+FREE_MAIL={'gmail.com','naver.com','daum.net','hanmail.net','kakao.com','nate.com','hotmail.com','outlook.com','yahoo.com','icloud.com','me.com','live.com','msn.com','korea.com','empas.com','dreamwiz.com','paran.com','proton.me','protonmail.com'}
+def official_domain(email):return (email or '').rsplit('@',1)[-1].lower() not in FREE_MAIL
 PUBLIC_STEPS=['제보 접수','운영자 검토','기업 전달 시도','기업 전달 확인','기업 공식 답변','소비자 확인','종결']
 
 def migrate(db):
@@ -28,6 +34,11 @@ def migrate(db):
     cols={r['name'] for r in db.execute('PRAGMA table_info(companies)')}
     for c in COMPANY_COLS:
         if c not in cols:db.execute(f"ALTER TABLE companies ADD COLUMN {c} TEXT NOT NULL DEFAULT ''")
+    cols={r['name'] for r in db.execute('PRAGMA table_info(messages)')}
+    for c,t in MESSAGE_COLS:
+        if c not in cols:db.execute(f'ALTER TABLE messages ADD COLUMN {c} {t}')
+    # 기업 답변을 고칠 때 이전 글을 지우지 않고 남김 (원문 보존)
+    db.execute('CREATE TABLE IF NOT EXISTS answer_revisions(id INTEGER PRIMARY KEY,message_id INTEGER NOT NULL,body TEXT NOT NULL,was_public INTEGER NOT NULL DEFAULT 0,edited_at TEXT NOT NULL,editor TEXT NOT NULL)')
     db.execute('CREATE INDEX IF NOT EXISTS cases_company ON cases(company_id)')
 
 def now():return datetime.datetime.now().isoformat(timespec='seconds')
@@ -89,7 +100,7 @@ def timeline(db,case,mask):
     msgs=db.execute("SELECT author,body,created FROM messages WHERE case_id=? AND public=1 AND author IN ('기업 답변','제보자') ORDER BY id",(case['id'],)).fetchall()
     # 기업 답변 원문은 이력 아래 '공식 답변'에 그대로 싣고, 이력에는 등록 시각만 남김
     for m in msgs:ev.append(('co','기업 공식 답변',m['created'],'') if m['author']=='기업 답변' else ('me','제보자 추가 의견',m['created'],mask(m['body'])))
-    if case['confirmed_at']:ev.append(('me','소비자 확인',case['confirmed_at'],'제보자가 처리 결과를 확인했어요.'))
+    if case['confirmed_at']:ev.append(('me','소비자 확인',case['confirmed_at'],{'resolved':'제보자가 해결됐다고 확인했어요.','unresolved':'제보자가 아직 해결되지 않았다고 알렸어요.'}.get(case['outcome'],'제보자가 처리 결과를 확인했어요.')))
     if case['status']=='종결':ev.append(('sys','종결',case['closed_at'],''))
     has_answer=db.execute("SELECT 1 FROM messages WHERE case_id=? AND author='기업 답변'",(case['id'],)).fetchone() is not None
     step=step_of(case,has_answer)
@@ -167,3 +178,88 @@ def install(S):
         indexable=bool(total or co['statement'])
         return render_template('company_page.html',co=co,st=st,cases=cases,total=total,page=page,pages=max(1,-(-total//size)),cat=cat,by_cat=by_cat,
                                categories=S.report_categories(),indexable=indexable,today=datetime.date.today().isoformat(),aka=[n for n in names(co)[1:] if n and n!=co['name']])
+
+    # ---- 2차: 기업 공식 이메일 인증, 공식 입장, 답변 수정 이력, 소비자 해결 확인 ----
+    import hashlib,secrets
+    from flask import redirect,flash,session
+    def token_hash(t):return hashlib.sha256(t.encode()).hexdigest()
+    def send_verify(db,company):
+        """담당자 이메일로 인증 링크를 보냄. 메일 설정이 없으면 False (운영자가 직접 확인)."""
+        token=secrets.token_urlsafe(24)
+        db.execute('UPDATE companies SET email_token=? WHERE id=?',(token_hash(token),company['id']))
+        if not S.notify.email_ready():return False
+        link=url_for('biz_verify',token=token,_external=True)
+        body=(f"{company['contact_name']}님, 소비자제보센터 기업 회원 가입을 신청해 주셔서 감사합니다.\n\n"
+              f"아래 링크를 누르면 {company['contact_email']} 주소가 {company['name']}의 담당자 이메일로 확인돼요.\n{link}\n\n"
+              "이메일 확인과 별개로 센터가 사업자 정보를 확인한 뒤 승인해요. 직접 신청하지 않았다면 이 메일을 무시해 주세요.")
+        try:S.notify.send_email(company['contact_email'],'[소비자제보센터] 기업 담당자 이메일 확인',body)
+        except Exception:return False
+        return True
+    S.send_company_verify=send_verify
+
+    @app.route('/biz/verify/<token>')
+    def biz_verify(token):
+        if len(token)>100:abort(404)
+        with conn() as db:
+            co=db.execute("SELECT * FROM companies WHERE email_token=? AND email_token!=''",(token_hash(token),)).fetchone()
+            if not co:flash('링크가 맞지 않거나 이미 쓴 링크예요.');return redirect(url_for('biz_login'))
+            db.execute("UPDATE companies SET email_verified_at=?,email_token='' WHERE id=?",(now(),co['id']))
+        flash('담당자 이메일을 확인했어요. 센터가 사업자 정보를 확인한 뒤 승인해요.')
+        return redirect(url_for('biz_home'))
+
+    @app.route('/biz/verify/resend',methods=['POST'])
+    @S.biz_only
+    def biz_verify_resend():
+        if g.biz_preview or not g.company or g.company['email_verified_at']:return redirect(url_for('biz_home'))
+        with conn() as db:sent=send_verify(db,g.company)
+        flash('인증 메일을 다시 보냈어요. 메일함을 확인해 주세요.' if sent else '지금은 메일을 보낼 수 없어요. 센터가 연락드려 직접 확인할게요.')
+        return redirect(url_for('biz_home'))
+
+    @app.route('/biz/statement',methods=['GET','POST'])
+    @S.biz_active
+    def biz_statement():
+        # 기업 공식 입장: 기업이 쓰고, 센터가 확인한 뒤 기업 페이지에 그대로 공개 (센터는 글을 고치지 않음)
+        if request.method=='POST':
+            if g.biz_preview:flash('미리보기에서는 저장할 수 없어요.');return redirect(url_for('biz_statement'))
+            text=request.form.get('statement','').strip()
+            if len(text)>3000:flash('공식 입장은 3,000자 이내로 적어 주세요.');return redirect(url_for('biz_statement'))
+            with conn() as db:db.execute('UPDATE companies SET statement_draft=?,statement_draft_at=? WHERE id=?',(text,now() if text else '',g.company['id']))
+            flash('보냈어요. 센터가 확인한 뒤 기업 페이지에 공개돼요.' if text else '보낸 글을 지웠어요.')
+            return redirect(url_for('biz_statement'))
+        return render_template('biz_statement.html')
+
+    @app.route('/biz/answer/<int:message_id>/edit',methods=['POST'])
+    @S.biz_active
+    def biz_answer_edit(message_id):
+        # 답변을 고치면 이전 글은 수정 이력에 남고, 사이트 공개는 센터가 다시 확인할 때까지 내려감
+        if g.biz_preview:flash('미리보기에서는 고칠 수 없어요.');return redirect(url_for('biz_home'))
+        body=request.form.get('response','').strip()
+        with conn() as db:
+            m=db.execute("""SELECT m.* FROM messages m JOIN cases c ON c.id=m.case_id WHERE m.id=? AND m.author='기업 답변' AND m.source IN ('biz','')
+                AND c.company_id=? AND c.share_company=1 AND c.forwarded_at!=''""",(message_id,g.company['id'])).fetchone()
+            if not m:abort(404)
+            if not body or len(body)>5000:flash('답변을 5,000자 이내로 적어 주세요.');return redirect(url_for('biz_case',case_id=m['case_id'])+'#answer')
+            if body!=m['body']:
+                who=g.company['name']+' '+g.biz_user['name']
+                db.execute('INSERT INTO answer_revisions(message_id,body,was_public,edited_at,editor) VALUES(?,?,?,?,?)',(m['id'],m['body'],m['public'],now(),who))
+                db.execute('UPDATE messages SET body=?,edited=?,public=0 WHERE id=?',(body,now(),m['id']))
+                db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(m['case_id'],who,'기업 답변 수정 (이전 글 보관)',now()))
+                flash('답변을 고쳤어요. 이전 글은 수정 이력에 남고, 사이트 공개는 센터가 다시 확인해요.' if m['public'] else '답변을 고쳤어요. 이전 글은 수정 이력에 남아요.')
+        return redirect(url_for('biz_case',case_id=m['case_id'])+'#answer')
+
+    @app.route('/case/outcome',methods=['POST'])
+    def case_outcome():
+        # 제보자가 처리 결과를 확인: 해결됨 / 아직 해결 안 됨 (바꿀 수 있고, 처음 확인한 시각은 남김)
+        case_id=session.get('case_id')
+        if not case_id:return redirect(url_for('lookup'))
+        outcome=request.form.get('outcome','')
+        if outcome not in OUTCOMES:abort(400)
+        with conn() as db:
+            case=db.execute('SELECT id,outcome FROM cases WHERE id=?',(case_id,)).fetchone()
+            if not case:abort(404)
+            if not db.execute("SELECT 1 FROM messages WHERE case_id=? AND author='기업 답변'",(case_id,)).fetchone():abort(400)
+            db.execute('UPDATE cases SET outcome=? WHERE id=?',(outcome,case_id));mark(db,case_id,'confirmed_at')
+            if outcome!=case['outcome']:db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,'제보자',f'처리 결과 확인: {OUTCOMES[outcome]}',now()))
+        flash('알려 주셔서 고마워요. 센터와 기업에 전달돼요.')
+        return redirect(url_for('case_detail')+'#outcome')
+    app.jinja_env.globals.update(JEBO_OUTCOMES=OUTCOMES,JEBO_SOURCES=SOURCES,official_domain=official_domain)

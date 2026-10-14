@@ -6,6 +6,10 @@
   <section class="cs-panel biz-wait">
     <h1 class="cs-title">가입 신청을 확인하고 있어요</h1>
     <p>센터가 <b>{{ g.company['name'] }}</b>({{ g.company['biz_no']|biz_no }})의 사업자 정보를 확인한 뒤 승인해요. 승인되면 이 화면에서 우리 회사에 들어온 제보를 볼 수 있어요.</p>
+    <ol class="biz-steps">
+      <li class="{{ 'done' if g.company['email_verified_at'] else 'now' }}"><b>담당자 이메일 확인</b> {% if g.company['email_verified_at'] %}<span>{{ g.company['contact_email'] }} 확인됨</span>{% else %}<span>{{ g.company['contact_email'] }}로 보낸 메일의 링크를 눌러 주세요.</span>{% if not g.get('biz_preview') %}<form method="post" action="{{ url_for('biz_verify_resend') }}" class="cs-inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="cs-btn" type="submit">인증 메일 다시 받기</button></form>{% endif %}{% endif %}</li>
+      <li class="now"><b>센터의 사업자 정보 확인과 승인</b> <span>사업자등록번호가 맞는 형식이라는 것만으로는 승인하지 않아요. 센터가 회사와 담당자를 확인해요.</span></li>
+    </ol>
     <p class="cs-muted">확인을 위해 담당자 연락처({{ g.company['contact_phone'] }})나 이메일로 연락드릴 수 있어요.</p>
   </section>
 {% else %}

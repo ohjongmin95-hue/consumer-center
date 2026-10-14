@@ -250,7 +250,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-72'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-74'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -396,7 +396,7 @@ def public_case(case_id):
     if not case:abort(404)
     with conn() as db:
         grp=group_for_case(db,case_id,case['company'])
-        answers=db.execute("SELECT m.body,m.created,co.name AS company_name FROM messages m JOIN cases c ON c.id=m.case_id LEFT JOIN companies co ON co.id=c.company_id WHERE m.case_id=? AND m.author='기업 답변' AND m.public=1 ORDER BY m.id",(case_id,)).fetchall()
+        answers=db.execute("SELECT m.body,m.created,m.edited,m.source,co.name AS company_name FROM messages m JOIN cases c ON c.id=m.case_id LEFT JOIN companies co ON co.id=c.company_id WHERE m.case_id=? AND m.author='기업 답변' AND m.public=1 ORDER BY m.id",(case_id,)).fetchall()
         events,step,has_answer=jebo.timeline(db,case,mask_personal)
         co=jebo.visible_company(db,case['company_id']) if case['company_id'] else None
     text=jebo.pub(case,mask_personal)
@@ -636,10 +636,12 @@ def case_detail():
         if request.method=='POST':
             msg=request.form.get('message','').strip()
             if not msg or len(msg)>3000:abort(400)
-            db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'제보자',msg,datetime.datetime.now().isoformat(timespec='seconds')))
+            want=int(bool(request.form.get('want_public')) and bool(case['public_consent']))
+            db.execute('INSERT INTO messages(case_id,author,body,created,want_public) VALUES(?,?,?,?,?)',(case_id,'제보자',msg,now(),want))
             return redirect(url_for('case_detail'))
         msgs=db.execute('SELECT * FROM messages WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
-    return render_template('case.html',case=case,msgs=msgs)
+        events,step,has_answer=jebo.timeline(db,case,mask_personal)
+    return render_template('case.html',case=case,msgs=msgs,step=step,has_answer=has_answer)
 # 관리자 비밀번호: 관리자 화면에서 바꾸면 DB에 저장되고, 없으면 처음 설치 때 정한 /etc/soboru.env 값을 씀.
 with conn() as db:db.execute('CREATE TABLE IF NOT EXISTS admin_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL)')
 def admin_setting(key):
@@ -856,7 +858,10 @@ def company_access(case_id,token):
         if request.method=='POST':
             body=request.form.get('response','').strip()
             if not body or len(body)>5000:abort(400)
-            db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'기업 답변',body,datetime.datetime.now().isoformat(timespec='seconds')))
+            db.execute("INSERT INTO messages(case_id,author,body,created,source) VALUES(?,?,?,?,'link')",(case_id,'기업 답변',body,now()))
+            db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,(invite['company_name'] or '기업')+' (답변 링크)','기업 답변 등록',now()))
+            answer_arrived(db,case)
+            notify_later(case_id,'company')
             return redirect(url_for('company_access',case_id=case_id,token=token))
         responses=db.execute("SELECT author,body,created FROM messages WHERE case_id=? AND author='기업 답변' ORDER BY id",(case_id,)).fetchall()
         if not case['seen_at'] and not admin_active() and not g.get('staff'):jebo.mark(db,case_id,'seen_at');log_case(db,case_id,'기업이 답변 링크를 열어 봄')
@@ -1403,9 +1408,19 @@ def report_detail(case_id):
                     db.execute('UPDATE cases SET company_id=NULL WHERE id=?',(case_id,));log_case(db,case_id,'기업 연결 해제');flash('기업 연결을 해제했어요.')
             elif form=='answer_public':
                 mid=request.form.get('message_id',type=int);public=int(request.form.get('public')=='1')
-                msg=db.execute("SELECT id FROM messages WHERE id=? AND case_id=? AND author='기업 답변'",(mid,case_id)).fetchone()
+                msg=db.execute("SELECT id,author FROM messages WHERE id=? AND case_id=? AND author IN ('기업 답변','제보자')",(mid,case_id)).fetchone()
                 if not msg or (public and not case['public_consent']):abort(400)
-                db.execute('UPDATE messages SET public=? WHERE id=?',(public,mid));log_case(db,case_id,'기업 답변 사이트 공개' if public else '기업 답변 공개 취소')
+                who='기업 답변' if msg['author']=='기업 답변' else '제보자 추가 의견'
+                db.execute('UPDATE messages SET public=? WHERE id=?',(public,mid));log_case(db,case_id,f'{who} 사이트 공개' if public else f'{who} 공개 취소')
+            elif form=='email_answer':
+                # 가입하지 않은 기업이 이메일로 보낸 답변: 받은 글을 고치지 않고 그대로 붙여 넣어 등록
+                body=request.form.get('body','').strip();sender=request.form.get('sender','').strip()[:150];got=request.form.get('received','').strip()[:10]
+                if not body or len(body)>8000 or not MEMBER_EMAIL_RE.match(sender) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',got):
+                    flash('보낸 사람 이메일, 받은 날짜, 답변 원문을 모두 넣어 주세요.');return redirect(url_for(ep['case'],case_id=case_id)+'#email_answer')
+                db.execute("INSERT INTO messages(case_id,author,body,created,source) VALUES(?,?,?,?,'email')",(case_id,'기업 답변',body,got+'T00:00:00' if got<now()[:10] else now()))
+                log_case(db,case_id,f'이메일로 받은 기업 답변 등록 (보낸 사람 {sender}, 받은 날 {got})')
+                answer_arrived(db,case);notify_later(case_id,'company')
+                flash('이메일 답변을 등록했어요. 제보자에게 보여요. 사이트 공개는 아래에서 따로 정해요.')
             elif form=='lookup_pw':
                 pw=request.form.get('lookup_pw','')
                 if not LOOKUP_PW_MIN<=len(pw)<=30:flash('조회 비밀번호는 4~30자로 정해 주세요.');return redirect(url_for(ep['case'],case_id=case_id))
@@ -1419,6 +1434,7 @@ def report_detail(case_id):
             else:abort(400)
             return redirect(url_for(ep['case'],case_id=case_id)+('#'+form if form!='settings' else ''))
         msgs=db.execute('SELECT * FROM messages WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
+        revisions=revisions_for(db,[m['id'] for m in msgs if m['author']=='기업 답변'])
         files=db.execute('SELECT * FROM attachments WHERE case_id=?',(case_id,)).fetchall()
         notes=db.execute('SELECT * FROM internal_notes WHERE case_id=? ORDER BY id DESC',(case_id,)).fetchall()
         logs=db.execute('SELECT * FROM case_log WHERE case_id=? ORDER BY id DESC LIMIT 50',(case_id,)).fetchall()
@@ -1430,7 +1446,7 @@ def report_detail(case_id):
         invite=db.execute('SELECT * FROM company_invites WHERE case_id=?',(case_id,)).fetchone()
         staff_names=[r['name'] for r in db.execute('SELECT name FROM staff WHERE active=1 ORDER BY name')]
         neighbors=(db.execute('SELECT id FROM cases WHERE id<? ORDER BY id DESC LIMIT 1',(case_id,)).fetchone(),db.execute('SELECT id FROM cases WHERE id>? ORDER BY id LIMIT 1',(case_id,)).fetchone())
-    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,companies=suggested+[c for c in active_companies if c['id'] not in {x['id'] for x in suggested}],suggested_ids={c['id'] for c in suggested},linked=linked,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()},reviews=jebo.REVIEWS,pub_text=jebo.pub(case,mask_personal))
+    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,companies=suggested+[c for c in active_companies if c['id'] not in {x['id'] for x in suggested}],suggested_ids={c['id'] for c in suggested},linked=linked,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()},reviews=jebo.REVIEWS,pub_text=jebo.pub(case,mask_personal),revisions=revisions)
 
 def download_file(file_id):
     with conn() as db:f=db.execute('SELECT * FROM attachments WHERE id=?',(file_id,)).fetchone()
@@ -1607,6 +1623,15 @@ def admin_staff():
 # 공개 제보의 기업 답변은 운영자가 확인한 뒤에만 사이트에 공개.
 COMPANY_STATUSES={'pending':'승인 대기','active':'승인','rejected':'반려','stopped':'중지'}
 ANSWER_STATUS='기업 답변 도착'  # 기업이 처음 답하면 이 단계로 (이미 이후 단계면 그대로)
+def answer_arrived(db,case):
+    if STATUSES.index(case['status'])<STATUSES.index(ANSWER_STATUS):
+        db.execute('UPDATE cases SET status=? WHERE id=?',(ANSWER_STATUS,case['id']))
+        db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case['id'],'자동',f"진행 단계 변경: {case['status']} → {ANSWER_STATUS}",now()))
+def revisions_for(db,ids):
+    out={}
+    if ids:
+        for r in db.execute(f"SELECT * FROM answer_revisions WHERE message_id IN ({','.join('?'*len(ids))}) ORDER BY id",list(ids)):out.setdefault(r['message_id'],[]).append(r)
+    return out
 with conn() as db:
     db.execute('''CREATE TABLE IF NOT EXISTS companies(id INTEGER PRIMARY KEY,name TEXT NOT NULL,biz_no TEXT NOT NULL,aliases TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending',contact_name TEXT NOT NULL,contact_phone TEXT NOT NULL,contact_email TEXT NOT NULL,created TEXT NOT NULL,approved TEXT NOT NULL DEFAULT '')''')
     db.execute('''CREATE TABLE IF NOT EXISTS company_users(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,login_id TEXT NOT NULL UNIQUE COLLATE NOCASE,pw_hash TEXT NOT NULL,name TEXT NOT NULL,session_ver INTEGER NOT NULL DEFAULT 1,failed INTEGER NOT NULL DEFAULT 0,locked_until TEXT NOT NULL DEFAULT '',last_login TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,FOREIGN KEY(company_id) REFERENCES companies(id))''')
@@ -1683,7 +1708,7 @@ def biz_signup():
     elif pw!=request.form.get('password2',''):errors.append('비밀번호 확인이 일치하지 않아요.')
     if not request.form.get('agree'):errors.append('기업 회원 이용약관에 동의해 주세요.')
     with conn() as db:
-        if not errors and db.execute("SELECT 1 FROM companies WHERE biz_no=? AND status!='rejected'",(biz,)).fetchone():
+        if not errors and db.execute("SELECT 1 FROM companies WHERE biz_no=? AND status NOT IN ('rejected','listed')",(biz,)).fetchone():
             errors.append('이미 가입 신청된 사업자등록번호예요. 담당자를 추가하려면 센터로 문의해 주세요.')
         if not errors and (db.execute('SELECT 1 FROM company_users WHERE login_id=?',(f['login_id'],)).fetchone() or f['login_id']==admin_setting('biz_master_id')):errors.append('이미 있는 아이디예요.')
         if errors:
@@ -1691,6 +1716,12 @@ def biz_signup():
             return render_template('biz_signup.html'),400
         cur=db.execute('INSERT INTO companies(name,biz_no,contact_name,contact_phone,contact_email,created) VALUES(?,?,?,?,?,?)',(f['company_name'],biz,f['contact_name'],f['contact_phone'],f['contact_email'],now()))
         uid=db.execute('INSERT INTO company_users(company_id,login_id,pw_hash,name,created) VALUES(?,?,?,?,?)',(cur.lastrowid,f['login_id'],generate_password_hash(pw),f['contact_name'],now())).lastrowid
+        # 센터가 미리 등록해 둔 기업(미가입)과 사업자번호나 이름이 같으면, 승인할 때 그 기업 페이지로 합칠 수 있게 표시
+        claim=db.execute("SELECT id FROM companies WHERE status='listed' AND biz_no=? AND biz_no!=''",(biz,)).fetchone() or pick_company(db,None,f['company_name'])
+        if claim and claim['id']!=cur.lastrowid and db.execute("SELECT status FROM companies WHERE id=?",(claim['id'],)).fetchone()['status']=='listed':
+            db.execute('UPDATE companies SET claim_id=? WHERE id=?',(str(claim['id']),cur.lastrowid))
+        sent=send_company_verify(db,db.execute('SELECT * FROM companies WHERE id=?',(cur.lastrowid,)).fetchone())
+    flash('담당자 이메일로 확인 링크를 보냈어요. 메일의 링크를 눌러 주세요.' if sent else '가입 신청을 받았어요. 센터가 담당자 이메일과 사업자 정보를 확인한 뒤 연락드려요.')
     session['biz_uid']=uid;session['biz_v']=1
     return redirect(url_for('biz_home'))
 
@@ -1761,15 +1792,15 @@ def biz_case(case_id):
             if g.biz_preview:flash('미리보기에서는 답변할 수 없어요. 기업 담당자 계정으로 답변해요.');return redirect(url_for('biz_case',case_id=case_id))
             body=request.form.get('response','').strip()
             if not body or len(body)>5000:flash('답변을 5,000자 이내로 적어 주세요.');return redirect(url_for('biz_case',case_id=case_id))
-            db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)',(case_id,'기업 답변',body,now()))
+            db.execute("INSERT INTO messages(case_id,author,body,created,source) VALUES(?,?,?,?,'biz')",(case_id,'기업 답변',body,now()))
             db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,g.company['name']+' '+g.biz_user['name'],'기업 답변 등록',now()))
-            if STATUSES.index(case['status'])<STATUSES.index(ANSWER_STATUS):
-                db.execute('UPDATE cases SET status=? WHERE id=?',(ANSWER_STATUS,case_id))
-                db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,'자동',f"진행 단계 변경: {case['status']} → {ANSWER_STATUS}",now()))
+            answer_arrived(db,case)
             notify_later(case_id,'company')
             flash('답변을 등록했어요. 제보자에게 바로 보여요.');return redirect(url_for('biz_case',case_id=case_id))
-        answers=db.execute("SELECT body,created,public FROM messages WHERE case_id=? AND author='기업 답변' ORDER BY id",(case_id,)).fetchall()
-    return render_template('biz_case.html',case=case,answers=answers)
+        answers=db.execute("SELECT id,body,created,public,edited,source FROM messages WHERE case_id=? AND author='기업 답변' ORDER BY id",(case_id,)).fetchall()
+        revisions=revisions_for(db,[a['id'] for a in answers])
+        outcome=db.execute('SELECT outcome,confirmed_at FROM cases WHERE id=?',(case_id,)).fetchone()
+    return render_template('biz_case.html',case=case,answers=answers,revisions=revisions,outcome=outcome)
 
 @app.route('/biz/password',methods=['GET','POST'])
 @biz_only
@@ -1843,6 +1874,30 @@ def admin_companies():
                 name=request.form.get('name','').strip()[:120] or company['name']
                 db.execute('UPDATE companies SET name=?,brand=?,biz_name=?,official_email=? WHERE id=?',(name,request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email,cid))
                 flash(f'{name} 정보를 저장했어요.');return redirect(url_for('admin_companies'))
+            if action=='approve' and company['status']=='pending':
+                # 공식 이메일 확인 + 운영자 승인. 메일을 못 보낸 경우엔 운영자가 직접 확인했다고 표시해야 승인돼요.
+                if not company['email_verified_at']:
+                    if request.form.get('manual')!='1':flash(f"{company['name']}: 담당자 이메일 확인이 아직이에요. 직접 확인했다면 '직접 확인 후 승인'을 눌러 주세요.");return redirect(url_for('admin_companies'))
+                    db.execute('UPDATE companies SET email_verified_at=? WHERE id=?',(now()+' 운영자 확인',cid))
+                target=db.execute("SELECT * FROM companies WHERE id=? AND status='listed'",(int(company['claim_id']),)).fetchone() if company['claim_id'] and request.form.get('merge','1')=='1' else None
+                if target:
+                    # 미리 등록된 기업 페이지에 합침: 담당자 계정을 옮기고, 신청서 줄은 지움 (제보는 그대로)
+                    db.execute("UPDATE companies SET status='active',approved=?,biz_no=?,contact_name=?,contact_phone=?,contact_email=?,email_verified_at=? WHERE id=?",
+                               (now(),company['biz_no'],company['contact_name'],company['contact_phone'],company['contact_email'],company['email_verified_at'] or now()+' 운영자 확인',target['id']))
+                    db.execute('UPDATE company_users SET company_id=?,session_ver=session_ver+1 WHERE company_id=?',(target['id'],cid))
+                    db.execute('UPDATE cases SET company_id=? WHERE company_id=?',(target['id'],cid))
+                    db.execute('DELETE FROM companies WHERE id=?',(cid,))
+                    flash(f"{company['name']} 가입을 승인하고 등록돼 있던 '{target['name']}' 기업 페이지에 합쳤어요.")
+                    return redirect(url_for('admin_companies'))
+            if action in ('statement_ok','statement_no'):
+                if not company['statement_draft']:abort(400)
+                if action=='statement_ok':
+                    db.execute("UPDATE companies SET statement=statement_draft,statement_at=?,statement_draft='',statement_draft_at='' WHERE id=?",(now(),cid));flash(f"{company['name']} 공식 입장을 기업 페이지에 공개했어요.")
+                else:
+                    db.execute("UPDATE companies SET statement_draft='',statement_draft_at='' WHERE id=?",(cid,));flash(f"{company['name']} 공식 입장을 공개하지 않았어요.")
+                return redirect(url_for('admin_companies'))
+            if action=='statement_off':
+                db.execute("UPDATE companies SET statement='',statement_at='' WHERE id=?",(cid,));flash(f"{company['name']} 공식 입장을 내렸어요.");return redirect(url_for('admin_companies'))
             if action in ('approve','reject','stop','start'):
                 status={'approve':'active','start':'active','reject':'rejected','stop':'stopped'}[action]
                 if action=='start' and company['status']=='stopped' and not db.execute('SELECT 1 FROM company_users WHERE company_id=?',(cid,)).fetchone():status='listed'
@@ -1863,7 +1918,8 @@ def admin_companies():
         companies=db.execute("""SELECT co.*,(SELECT login_id FROM company_users WHERE company_id=co.id ORDER BY id LIMIT 1) AS login_id,
             (SELECT COUNT(*) FROM cases WHERE company_id=co.id) AS n_cases
             FROM companies co ORDER BY CASE co.status WHEN 'pending' THEN 0 WHEN 'active' THEN 1 WHEN 'listed' THEN 2 ELSE 3 END,co.id DESC""").fetchall()
-    return render_template('admin_companies.html',companies=companies,statuses=COMPANY_STATUSES,master_id=admin_setting('biz_master_id'))
+    claims={r['id']:r['name'] for r in companies if r['status']=='listed'}
+    return render_template('admin_companies.html',companies=companies,statuses=COMPANY_STATUSES,claims=claims,master_id=admin_setting('biz_master_id'))
 
 # ---- 집단 피해 공동 대응 (/groups) -------------------------------------------
 # 같은 업체·같은 피해가 쌓이면 운영자가 공동 대응을 열고 피해자 참여 신청을 받음.
@@ -2027,6 +2083,7 @@ def admin_group_csv(group_id):
     return resp
 
 # 기업별 공개 페이지·기업 검색 (jebo.py)
-jebo.install(types.SimpleNamespace(**globals()))
+_jebo=types.SimpleNamespace(**globals());jebo.install(_jebo)
+send_company_verify=_jebo.send_company_verify
 
 if __name__=='__main__':app.run(debug=False)

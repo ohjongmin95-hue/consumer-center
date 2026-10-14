@@ -855,7 +855,7 @@ body.console { background: #f6f5f2; }
 .cs-case-head { margin-bottom: 16px; }
 .cs-case-head .cs-title { margin: 4px 0 8px; }
 .cs-meta { margin: 0; color: #80858c; font-size: 13px; }
-.cs-company { display: flex; align-items: center; gap: 10px; margin: 0; color: #4f5660; font-size: 15px; }
+.cs-company { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 0; color: #4f5660; font-size: 15px; }
 .cs-case { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
 .cs-text { margin: 0 0 20px; white-space: pre-wrap; line-height: 1.8; color: #2f343c; overflow-wrap: anywhere; }
 .cs-file { color: #c66300; font-weight: 700; }
@@ -968,7 +968,7 @@ body.newsroom { background: #f4f4f2; }
 .nr-brand:hover { color: #fff; }
 .nr-brand b { font-size: 20px; font-weight: 900; letter-spacing: 1.5px; color: var(--orange); }
 .nr-brand span { font-size: 15px; font-weight: 800; color: #fff; }
-.nr-nav { display: flex; height: 100%; }
+.nr-nav { display: flex; gap: 20px; height: 100%; }
 .nr-nav a { display: flex; align-items: center; padding: 0 4px; border-bottom: 3px solid transparent; color: #c9ccd3; font-size: 15px; font-weight: 800; }
 .nr-nav a.on { color: #fff; border-bottom-color: var(--orange); }
 .nr-user { display: flex; align-items: center; gap: 14px; margin-left: auto; font-size: 13px; }
@@ -980,9 +980,12 @@ body.newsroom { background: #f4f4f2; }
 .nr-user button:hover { border-color: #8a91a0; }
 .auth-logo.nr-logo { font-size: 30px; font-weight: 900; letter-spacing: 3px; color: var(--orange); }
 @media (max-width: 640px) {
-  .nr-bar-inner { padding: 0 16px; gap: 14px; }
-  .nr-nav { display: none; }
-  .nr-user { gap: 10px; }
+  .nr-bar-inner { padding: 0 16px; gap: 0 14px; height: auto; min-height: 56px; flex-wrap: wrap; }
+  .nr-brand { height: 56px; align-items: center; }
+  .nr-nav { order: 3; flex: 0 0 100%; height: 44px; gap: 18px; overflow-x: auto; border-top: 1px solid #343a48; }
+  .nr-nav a { font-size: 14px; white-space: nowrap; }
+  .nr-user { gap: 10px; min-width: 0; }
+  .nr-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .nr-user a { display: none; }
 }
 .content-search { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
@@ -1516,3 +1519,33 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 }
 .co-step { font-size: 12px; font-weight: 750; color: #c66300; background: #fff0df; border-radius: 20px; padding: 4px 10px; }
 #publish_review .cs-hint{margin-bottom:16px}
+/* 2차: 기업 인증 단계, 답변 수정 이력, 공식 입장 확인, 처리 결과 확인 */
+.biz-steps { margin: 18px 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.biz-steps li { padding: 14px 16px 14px 44px; position: relative; border: 1px solid var(--line); border-radius: 12px; background: #fff; line-height: 1.6; }
+.biz-steps li::before { content: ''; position: absolute; left: 16px; top: 18px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #d6d9de; }
+.biz-steps li.now::before { border-color: var(--orange); background: #fff2e4; }
+.biz-steps li.done::before { border-color: #1f8a55; background: #1f8a55; }
+.biz-steps li b { display: block; }
+.biz-steps li span { color: #6b7079; font-size: 13.5px; }
+.biz-steps .cs-inline { margin-top: 10px; }
+.cs-rev { margin-top: 10px; font-size: 13.5px; }
+.cs-rev summary { cursor: pointer; color: #8a5a2b; font-weight: 700; }
+.cs-rev .cs-form { margin-top: 10px; }
+.cs-rev-item { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: #f7f6f3; }
+.cs-rev-item span { display: block; color: #8a8f96; font-size: 12px; }
+.cs-rev-item p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cs-subrow td { background: #fffaf4; }
+.cs-subrow .cs-text { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cs-subrow .biz-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+details.cs-card > summary { cursor: pointer; list-style: none; }
+details.cs-card > summary::-webkit-details-marker { display: none; }
+details.cs-card > summary h2 { display: inline; }
+details.cs-card > summary::after { content: ' +'; color: #b45400; font-weight: 800; }
+details.cs-card[open] > summary::after { content: ' −'; }
+#email_answer .cs-row { display: flex; flex-wrap: wrap; gap: 8px; }
+#email_answer .cs-row input { flex: 1 1 200px; min-width: 0; }
+.outcome-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.outcome-row button { flex: 1 1 200px; margin: 0; }
+.check-line { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 14px; font-size: 14px; color: #5b5249; line-height: 1.5; }
+.check-line input { margin-top: 3px; flex: none; width: auto; }
+.ca-note { margin: 10px 0 0; font-size: 12.5px; color: #8a8f96; line-height: 1.6; }
