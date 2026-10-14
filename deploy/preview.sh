@@ -10,10 +10,16 @@ git -C $APP archive "origin/$BRANCH" | tar -x -C $P
 echo "점검할 버전: $(git -C $APP log -1 --format='%h %s' "origin/$BRANCH")"
 command -v pdftotext >/dev/null || { apt-get install -y -q poppler-utils poppler-data >/dev/null 2>&1 || true; }
 /opt/soboru/venv/bin/pip install -q -r $P/requirements.txt
-set -a; . /etc/soboru-platform.env; set +a
+# 설정 파일을 글자 그대로 읽음 ($가 든 값도 바뀌지 않게, 셸로 실행하지 않음)
+while IFS= read -r line || [ -n "$line" ]; do
+  [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
+  k="${BASH_REMATCH[1]}"; v="${BASH_REMATCH[2]}"
+  [[ "$v" =~ ^\"(.*)\"$ || "$v" =~ ^\'(.*)\'$ ]] && v="${BASH_REMATCH[1]}"
+  export "$k=$v"
+done < /etc/soboru-platform.env
 # AI 키가 소보루 CS 설정에 아직 없으면, AI 서버 설정에서 읽어서 이번 점검에만 씁니다 (화면에 보이지 않음)
 if [ -z "${OPENAI_API_KEY:-}" ] && [ -f /opt/soboru-cs/.env ]; then
-  OPENAI_API_KEY="$(grep -E '^OPENAI_API_KEY=' /opt/soboru-cs/.env | head -1 | cut -d= -f2- | tr -d '"'"'"' ')"; export OPENAI_API_KEY
+  OPENAI_API_KEY="$(grep -E '^OPENAI_API_KEY=' /opt/soboru-cs/.env | head -1 | cut -d= -f2- | tr -d "\"' ")"; export OPENAI_API_KEY
 fi
 PDF="${1:-}"; [ -n "$PDF" ] && PDF="$(readlink -f "$PDF")"
 cd $P/platform_app && /opt/soboru/venv/bin/python selftest.py $PDF
