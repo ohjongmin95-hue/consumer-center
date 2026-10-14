@@ -231,8 +231,9 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<span>소비자</span>제보센터', home)
         self.assertIn('href="/privacy"', home)
         self.assertNotIn('신고센터', home)
-        for link in ('href="/terms"', 'href="/privacy"', 'href="/youth"', '권리침해 신고 및 임시조치 안내'):
+        for link in ('href="/terms"', 'href="/privacy"', 'href="/youth"'):
             self.assertIn(link, home)
+        self.assertNotIn('href="/takedown"', home)  # 게시중단 요청 기능은 뺌
         privacy = self.client.get('/privacy').get_data(as_text=True)
         self.assertIn('<h2 id="sec-1">1. 개인정보의 처리 목적</h2>', privacy)
         self.assertIn('<a href="#sec-13">13. 개인정보 처리방침의 변경</a>', privacy)
@@ -247,10 +248,11 @@ class SiteTest(unittest.TestCase):
         for text in ('개인정보 제3자 제공', '저작권 동의', '게시글 작성 시로부터 3년', '제보 대상이 된 해당 사업자'):
             self.assertIn(text, form)
         self.assertNotIn('badge-opt', form)
-        token = self.csrf(self.client, '/takedown')
-        self.assertEqual(self.client.post('/takedown', data={'_csrf': token, 'requester': '업체'}).status_code, 400)
-        done = self.client.post('/takedown', data={'_csrf': token, 'requester': '테스트 업체', 'contact': 'a@example.com', 'target': '제목', 'reason': '<b>사실과 다름</b>', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234'})
-        self.assertIn('요청이 접수됐습니다.', done.get_data(as_text=True))
+        # 게시중단 요청 기능은 뺌: 예전 주소는 홈으로, 예전에 들어온 요청 기록은 관리자 화면에 그대로
+        self.assertEqual(self.client.get('/takedown').headers['Location'], '/')
+        self.assertEqual(self.client.post('/takedown', data={'requester': '업체'}).status_code, 302)
+        with self.site.conn() as db:
+            db.execute("INSERT INTO takedown_requests(requester,contact,target,reason,created) VALUES('테스트 업체','a@example.com','제목','<b>사실과 다름</b>','2026-10-01T00:00:00')")
         admin = self.login_admin()
         listing = admin.get('/admin/takedowns').get_data(as_text=True)
         self.assertIn('&lt;b&gt;사실과 다름&lt;/b&gt;', listing)
