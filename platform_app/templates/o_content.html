@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}자료실·도움말 · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>자료실·도움말·고객 사례</h1><p>공개 화면에 올라가는 글을 쓰고 고쳐요. 공개한 글만 검색엔진과 사이트맵에 들어가요.</p></div>
+<a class="btn md" href="{{ url_for('cms.ops_edit',kind=kind) }}">새 글 쓰기</a></div>
+<nav class="mk-tabs" aria-label="종류">{% for k,v in KINDS.items() %}<a href="{{ url_for('cms.ops_list',k=k) }}" class="{{ 'on' if kind==k }}">{{ v }} {{ n[k] }}</a>{% endfor %}</nav>
+{% if kind=='story' %}<div class="warn" style="background:var(--accent-soft)"><span>✋</span><span><b>고객 사례는 실제 회사의 공개 동의가 있어야 올릴 수 있어요</b><small>회사 이름, 동의한 분, 동의 받은 날을 적어야 공개 버튼이 작동해요. 지어낸 사례나 성과는 올리지 않아요.</small></span></div>{% endif %}
+{% if rows %}<div class="tbl-wrap"><table class="tbl2 mcards"><thead><tr><th>제목</th><th class="hm">분류</th><th class="hm">고친 날</th><th class="r">상태</th></tr></thead><tbody>
+{% for r in rows %}<tr data-href="{{ url_for('cms.ops_edit',pid=r.id) }}"><td><a class="ttl" href="{{ url_for('cms.ops_edit',pid=r.id) }}">{{ r.title }}</a><div class="msub">/{{ {'blog':'blog','help':'help','story':'customers'}[r.kind] }}/{{ r.slug }}</div></td>
+<td class="hm t-sub">{{ r.category }}</td><td class="hm t-mute">{{ r.updated[:10] }}</td><td class="r"><span class="pill {{ 'ok' if r.published else 'gray' }}">{{ '공개' if r.published else '비공개' }}</span></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-card"><b>아직 글이 없어요</b><span>새 글 쓰기로 첫 글을 올려 보세요</span></div>{% endif %}
+{% endblock %}

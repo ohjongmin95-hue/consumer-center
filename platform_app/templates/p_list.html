@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}{{ title }}{% if cat %} · {{ cat }}{% endif %} · {{ BNAME }}{% endblock %}
+{% block description %}{{ lead }}{% endblock %}
+{% block bar %}{{ b.bar(tab) }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">{{ title }}</span><h1>{{ title }}</h1><p>{{ lead }}</p></div></div></section>
+<section><div class="wrap mk-one">
+{% if cats %}<nav class="mk-tabs" aria-label="분류"><a href="{{ url_for('cms.blog') }}" class="{{ 'on' if not cat }}">전체</a>{% for c in cats %}<a href="{{ url_for('cms.blog',c=c) }}" class="{{ 'on' if cat==c }}">{{ c }}</a>{% endfor %}</nav>{% endif %}
+{% if rows %}<div class="mk-grid">{% for r in rows %}<a class="mk-card pcard" href="{{ url_for('cms.blog_post' if kind=='blog' else 'cms.story',slug=r.slug) }}">{% if r.cover %}<img src="{{ r.cover }}" alt="" loading="lazy">{% endif %}<small class="t-mute">{{ r.story_company if kind=='story' else r.category }}</small><b>{{ r.title }}</b><p>{{ r.summary }}</p><span class="more">읽기</span></a>{% endfor %}</div>
+{% else %}<div class="empty-card"><b>{% if kind=='story' %}공개된 고객 사례가 아직 없어요{% else %}아직 올린 글이 없어요{% endif %}</b><span>{% if kind=='story' %}실제로 쓰는 회사가 공개에 동의하면 여기에 올려요. 지어낸 사례는 올리지 않아요.{% else %}곧 쇼핑몰 CS 운영에 도움이 되는 글을 올릴게요.{% endif %}</span></div>{% endif %}
+</div></section>
+<section class="in-end"><div class="wrap"><h2>쇼핑몰 문의,<br>한 곳에서 처리해 보세요</h2><p>가입하면 바로 데모로 써 볼 수 있어요.</p><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div></section>
+</main>{% endblock %}

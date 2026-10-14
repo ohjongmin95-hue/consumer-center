@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}도움말 · {{ BNAME }}{% endblock %}
+{% block description %}{{ BNAME }} 가입, 처음 설정, AI 상담, 판매처 연동, 직원 권한 사용법을 정리했어요.{% endblock %}
+{% block bar %}{{ b.bar(tab) }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">도움말</span><h1>무엇을 도와드릴까요?</h1>
+<form class="addline helpq" method="get" role="search"><input class="inp" name="q" value="{{ q }}" placeholder="예: 스마트스토어 연결, 직원 초대" aria-label="도움말 검색"><button class="btn md">검색</button></form></div></div></section>
+<section><div class="wrap mk-one">
+{% if q %}<p class="sub">‘{{ q }}’ 검색 결과 {{ n }}건{% if q %} · <a class="link" href="{{ url_for('cms.help_home') }}">전체 보기</a>{% endif %}</p>{% endif %}
+{% for c,items in groups %}<h2 class="hgrp">{{ c }}</h2><div class="rows hrows">{% for r in items %}<a class="rowi" href="{{ url_for('cms.help_post',slug=r.slug) }}"><div class="tx"><div class="t">{% if r.video_url %}▶ {% endif %}{{ r.title }}</div><div class="s">{{ r.summary }}</div></div><span class="chev"></span></a>{% endfor %}</div>
+{% else %}<div class="empty-card"><b>{% if q %}찾는 내용이 없어요{% else %}아직 도움말이 없어요{% endif %}</b><span>원하는 내용이 없으면 <a class="link" href="{{ url_for('sl.consult') }}">상담 신청</a>으로 물어봐 주세요.</span></div>{% endfor %}
+<div class="ac-law" style="margin-top:40px;background:var(--bg)"><small>더 궁금한 점</small><b style="font-weight:500">도움말에 없는 내용은 <a class="link" href="{{ url_for('sl.consult') }}">상담 신청</a>으로 남겨 주시면 담당자가 연락드려요.</b></div>
+</div></section>
+</main>{% endblock %}

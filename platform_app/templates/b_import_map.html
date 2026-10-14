@@ -1,0 +1,27 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}칸 맞추기 · 지난 문의 가져오기 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('all') }}{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('imp.page') }}">지난 문의 가져오기</a><span>›</span><span>{{ bt.filename }}</span></div>
+<div class="phead"><div><h1>칸 맞추고 확인하기</h1><p>{{ bt.filename }} · {{ '{:,}'.format(bt.n_rows) }}줄</p></div></div>
+<div class="kpis"><div class="kpi"><span>옮길 문의</span><b>{{ '{:,}'.format(n_ok) }}<small>건</small></b></div><div class="kpi"><span>중복 (건너뜀)</span><b>{{ n_dup }}<small>건</small></b></div><div class="kpi"><span>오류 (건너뜀)</span><b class="{{ 't-bad' if n_err }}">{{ n_err }}<small>건</small></b></div></div>
+<form method="post" class="cols"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<div class="stack" style="gap:var(--ds-gap)">
+<section class="panel stack"><div class="ph">2. 칸 맞추기</div><p class="cap" style="margin:-6px 0 0">파일의 어느 칸이 무엇인지 골라 주세요. 짐작해서 미리 골라 두었어요.</p>
+<div class="grid2">{% for k,n,req,_ in FIELDS %}<label class="fld"><span>{{ n }}{% if req %} (필수){% endif %}</span><select class="inp" name="f_{{ k }}"><option value="">없음</option>{% for h in head %}<option value="{{ loop.index0 }}" {{ 'selected' if mapping.get(k)==loop.index0 }}>{{ h }}{% if sample and sample[0][loop.index0] %} · 예: {{ sample[0][loop.index0][:20] }}{% endif %}</option>{% endfor %}</select></label>{% endfor %}</div>
+<label class="check"><input type="checkbox" name="open_pending" value="1" {{ 'checked' if bt.open_pending }}><span class="bx"></span><span>답변이 없고 상태가 완료가 아닌 문의는 처리 대기로 올리기 <small class="t-mute">(끄면 모두 종료로 들어가요)</small></span></label>
+<button class="btn md gray" name="act" value="map">이대로 다시 확인</button></section>
+<section class="panel"><div class="ph">옮겨질 모습 (앞 5건)</div>
+{% for x in preview %}<div class="drow"><div class="tx"><b style="font-weight:500">{{ (x.d.title or x.d.body)[:60] }}</b><span>{{ x.when.strftime('%Y-%m-%d %H:%M') }} · {{ channel_of(x.d.channel) }}{% if x.d.order_no %} · 주문 {{ x.d.order_no }}{% endif %}{% if x.d.name %} · {{ x.d.name }}{% endif %} · {{ '답변 있음' if x.d.answer else '답변 없음' }}</span></div></div>
+{% else %}<p class="cap">옮길 수 있는 줄이 없어요. 칸을 다시 맞춰 보세요.</p>{% endfor %}</section>
+{% if problems %}<section class="panel"><div class="ph">건너뛸 줄</div>
+<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>줄</th><th>이유</th><th class="hm">내용</th></tr></thead><tbody>
+{% for x in problems %}<tr><td>{{ x.n }}</td><td class="{{ 't-bad' if x.err }}">{{ x.err|join(', ') if x.err else x.dup }}</td><td class="hm t-sub">{{ (x.d.title or x.d.body)[:40] }}</td></tr>{% endfor %}
+</tbody></table></div>{% if n_dup+n_err>problems|length %}<p class="cap">앞 {{ problems|length }}줄만 보여요</p>{% endif %}</section>{% endif %}
+</div>
+<aside class="stack" style="gap:var(--ds-gap)"><section class="panel stack"><div class="ph">3. 옮기기</div>
+<p class="cap" style="margin:0">문제없는 {{ '{:,}'.format(n_ok) }}건을 옮겨요. 고객에게는 아무것도 보내지 않아요. 잘못 옮기면 가져오기 화면에서 통째로 되돌릴 수 있어요.</p>
+<button class="btn md" name="act" value="commit" {{ 'disabled' if not n_ok }}>{{ '{:,}'.format(n_ok) }}건 옮기기</button>
+<button class="btn md gray" name="act" value="cancel" formnovalidate>파일 버리기</button></section></aside>
+</form>
+{% endblock %}

@@ -8,7 +8,7 @@ from pathlib import Path
 from werkzeug.security import generate_password_hash
 d=tempfile.mkdtemp()
 os.environ.update(PLATFORM_DATABASE_PATH=d+'/p.sqlite3',PLATFORM_UPLOAD_DIR=d+'/up',SECRET_KEY='tour-shots-only-'+os.urandom(8).hex(),
-                  OPS_PASSWORD_HASH=generate_password_hash(os.urandom(8).hex()),CONSUMER_HOST='',BUSINESS_HOST='',PLATFORM_MODE='pilot')
+                  OPS_PASSWORD_HASH=generate_password_hash(os.getenv('TOUR_OPS_PW') or os.urandom(8).hex()),CONSUMER_HOST='',BUSINESS_HOST='',PLATFORM_MODE='pilot')
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import hanq, core, demo, chatbot
 core.throttled=lambda *a,**k:False

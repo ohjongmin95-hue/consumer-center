@@ -1,0 +1,39 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}{{ p.title or '새 글' }} · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+{% set view={'blog':'cms.blog_post','help':'cms.help_post','story':'cms.story'}[kind] %}
+<div class="phead"><div><a class="cap" href="{{ url_for('cms.ops_list',k=kind) }}">← {{ KINDS[kind] }}</a><h1>{{ p.title or '새 '+KINDS[kind] }}</h1>
+<p>{% if p.id %}{{ '공개 중' if p.published else '비공개' }}{% if p.slug %} · <a class="link" href="{{ url_for(view,slug=p.slug) }}" target="_blank" rel="noopener">화면에서 보기</a>{% endif %}{% else %}저장하면 비공개로 만들어져요. 다 쓰면 공개를 눌러요.{% endif %}</p></div>
+{% if p.id %}<form method="post" action="{{ url_for('cms.ops_edit',pid=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">{% if p.published %}<button class="btn md gray" name="act" value="unpublish">비공개로</button>{% else %}<button class="btn md" name="act" value="publish">공개하기</button>{% endif %}</form>{% endif %}</div>
+<form class="cols" method="post" enctype="multipart/form-data" action="{{ url_for('cms.ops_edit',pid=p.id) if p.id else url_for('cms.ops_edit') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="{{ kind }}">
+<div class="stack" style="gap:var(--ds-gap)">
+<section class="panel stack"><label class="fld"><span>제목</span><input class="inp" name="title" maxlength="120" value="{{ p.title }}" required></label>
+<label class="fld"><span>요약 (목록과 검색 결과에 보여요)</span><textarea class="inp" name="summary" maxlength="300" rows="2">{{ p.summary }}</textarea></label>
+<label class="fld"><span>본문</span><textarea class="inp mono" name="body" id="pbody" maxlength="60000" rows="18">{{ p.body }}</textarea></label>
+<p class="cap" style="margin:0">## 소제목 · - 목록 · 1. 번호 목록 · **굵게** · [글](https://주소) · ![설명](/media/그림) · &gt; 인용. 자주 묻는 질문 분류는 ## 질문 아래에 답을 쓰면 검색엔진용 FAQ로도 들어가요.</p>
+<button class="btn md gray" type="button" id="pv">미리 보기</button><div class="prose panel" id="pvout" hidden></div></section>
+{% if kind=='story' %}<section class="panel stack"><div class="ph">공개 동의 기록</div>
+<label class="fld"><span>회사 이름</span><input class="inp" name="story_company" maxlength="60" value="{{ p.story_company }}"></label>
+<label class="fld"><span>동의한 분 (이름·직함)</span><input class="inp" name="consent_by" maxlength="60" value="{{ p.consent_by }}"></label>
+<label class="fld"><span>동의 받은 날</span><input class="inp" name="consent_on" type="date" value="{{ p.consent_on }}"></label>
+<label class="fld"><span>동의 방법·범위</span><input class="inp" name="consent_note" maxlength="300" value="{{ p.consent_note }}" placeholder="예: 이메일로 회사명·수치 공개 동의, 로고 사용 동의"></label>
+<label class="check"><input type="checkbox" name="consent" value="1" {{ 'checked' if p.consent in (1,'1') }}><span class="bx"></span><span>회사가 이 글의 내용과 수치 공개에 동의했어요</span></label></section>{% endif %}
+</div>
+<aside class="stack" style="gap:var(--ds-gap)">
+<section class="panel stack"><div class="ph">글 설정</div>
+<label class="fld"><span>분류</span><select class="inp" name="category">{% for c in CATS[kind] %}<option {{ 'selected' if p.category==c }}>{{ c }}</option>{% endfor %}</select></label>
+<label class="fld"><span>주소</span><input class="inp" name="slug" maxlength="60" value="{{ p.slug }}" placeholder="비우면 제목으로 만들어요"></label>
+<label class="fld"><span>순서 (작을수록 위)</span><input class="inp" name="sort" type="number" min="0" max="9999" value="{{ p.sort or 100 }}"></label>
+<label class="fld"><span>영상 주소 (유튜브 등)</span><input class="inp" name="video_url" maxlength="300" value="{{ p.video_url }}" placeholder="https://youtu.be/…"></label>
+<label class="fld"><span>대표 그림 (png·jpg·webp, 3MB까지)</span><input class="inp" name="cover" type="file" accept=".png,.jpg,.jpeg,.webp"></label>
+{% if p.cover %}<img src="{{ p.cover }}" alt="" style="width:100%;border-radius:12px"><label class="check"><input type="checkbox" name="cover_clear" value="1"><span class="bx"></span><span>대표 그림 빼기</span></label>{% endif %}</section>
+<section class="panel stack"><div class="ph">검색엔진</div>
+<label class="fld"><span>검색 제목 (비우면 제목)</span><input class="inp" name="seo_title" maxlength="70" value="{{ p.seo_title }}"></label>
+<label class="fld"><span>검색 설명 (비우면 요약)</span><textarea class="inp" name="seo_desc" maxlength="160" rows="3">{{ p.seo_desc }}</textarea></label></section>
+<button class="btn md">저장</button>
+{% if p.id %}<button class="tbtn" name="act" value="delete" formnovalidate onclick="return confirm('이 글을 지울까요? 되돌릴 수 없어요.')">글 지우기</button>{% endif %}
+</aside></form>
+{% endblock %}
+{% block script %}<script>document.getElementById('pv').onclick=function(){var f=new FormData();f.append('body',document.getElementById('pbody').value);f.append('csrf','{{ csrf_token() }}');
+fetch('{{ url_for('cms.ops_preview') }}',{method:'POST',body:f}).then(function(r){return r.json()}).then(function(j){var o=document.getElementById('pvout');o.innerHTML=j.html;o.hidden=false;});};</script>{% endblock %}

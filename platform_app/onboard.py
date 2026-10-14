@@ -76,6 +76,7 @@ def signup(db,d,pw_hash,via='email',google_sub=''):
         email_verified,biz_status,biz_checked,plan,plan_since,signup_via,google_sub) VALUES(?,0,'active',?,?,?,?,?,?,?,?,?,?,?,?,'pilot',?,?,?)""",
         (d['name'],d.get('contact',''),d['login_id'].lower(),pw_hash,b,d['owner_name'],digits(d.get('phone','')),d['login_id'].lower(),d.get('industry',''),t,
          1 if via=='google' else 0,st,t if st else '',t,via,google_sub)).lastrowid
+    import growth;growth.attach(db,cid)  # 추천 링크로 들어왔으면 이어 붙인다
     co=core.company(db,cid)
     if via!='google':send_verify(co)
     core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.BNAME} 운영] 새 가입: {d['name']}",

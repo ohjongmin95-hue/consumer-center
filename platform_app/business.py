@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
-import team, onboard, demo, funnel, market, sales
+import team, onboard, demo, funnel, market, sales, cms, csimport, growth, security
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -23,7 +23,7 @@ OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
-app.register_blueprint(market.bp);app.register_blueprint(sales.bp)
+app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp)
 app.jinja_env.globals.update(has_ep=lambda name:name in app.view_functions)
 
 @app.before_request
@@ -54,11 +54,11 @@ def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
 # 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
-MANAGE_EPS={'rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
+MANAGE_EPS={'gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
 # 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
-DEMO_BLOCKED={'connect','connect_shop','team_page','settings','start','products_pdf','product_import','hook_trace'}
+DEMO_BLOCKED={'gr.co_partner','imp.page','imp.batch','imp.undo','connect','connect_shop','team_page','settings','start','products_pdf','product_import','hook_trace'}
 @app.before_request
 def role_guard():
     a=who() if not request.path.startswith(('/api/','/hook/','/ops')) else None
@@ -95,7 +95,7 @@ def ctx():
 
 def pub_nav():
     """로그인 전 위쪽 메뉴: 각 공개 화면 모듈이 내놓는 메뉴를 차례로."""
-    return market.nav()+sales.nav()
+    return market.nav()+cms.nav()+sales.nav()
 def kpis(rows):
     n=len(rows);auto=sum(r['decision']=='auto' for r in rows);res=sum(r['status']=='resolved' for r in rows)
     rated=sum(r['status'] in ('resolved','unresolved') for r in rows);late=sum(core.overdue(r) for r in rows)
@@ -103,11 +103,12 @@ def kpis(rows):
 
 # ---------- 기업 계정 ----------
 @app.route('/robots.txt')
-def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset','/team','/join','/start','/verify','/demo','/auth']),mimetype='text/plain')
+def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset','/team','/join','/start','/verify','/demo','/auth','/import','/partner/','/r/']),mimetype='text/plain')
 
 @app.route('/sitemap.xml')
 def sitemap():
-    body=''.join('<url><loc>%s</loc></url>'%core.site_url('biz',p) for p in ['/','/signup','/login','/terms']+market.sitemap_paths()+sales.sitemap_paths())
+    ent=[(p,'') for p in ['/','/signup','/login','/terms']+market.sitemap_paths()+sales.sitemap_paths()+growth.sitemap_paths()+['/security']]+cms.sitemap_entries()
+    body=''.join('<url><loc>%s</loc>%s</url>'%(core.site_url('biz',p),'<lastmod>%s</lastmod>'%m if m else '') for p,m in ent)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
 @app.route('/terms')
@@ -134,7 +135,7 @@ def signup_apply(f,via='email',google_sub=''):
     return d,err,cid
 def start_session(co,staff_id=None):
     """로그인 상태로 만든다 (가입·로그인·구글·직원 초대 공용). 다른 탭의 화면과 운영 로그인은 그대로 둔다."""
-    keep={k:session[k] for k in ('ops','csrf','utm','vid','ref') if k in session}  # 다른 탭 화면·운영 로그인·첫 유입 기록은 그대로
+    keep={k:session[k] for k in ('ops','csrf','utm','vid','ref','partner_uid') if k in session}  # 다른 탭 화면·운영 로그인·첫 유입 기록은 그대로
     session.clear();session.update(keep);session['co_id']=co['id'];session.permanent=True
     if staff_id:session['staff_id']=staff_id
 @app.route('/signup',methods=['GET','POST'])
@@ -883,8 +884,8 @@ def settings():
     if request.method=='POST':
         with conn() as db:flash(*save_settings(db,co,request.form))
         return redirect(url_for('settings'))
-    with conn() as db:use=onboard.usage(db,co['id'])
-    return render_template('b_settings.html',tab='settings',link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use)
+    with conn() as db:use=onboard.usage(db,co['id']);refs=growth.company_page_data(db,real())
+    return render_template('b_settings.html',tab='settings',link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use,refs=refs)
 
 def save_settings(db,co,f):
     """설정 저장(웹·앱 공용). act: password·return·notify, 없으면 회사 정보. (문구, 'ok'|'error')를 돌려준다."""
@@ -1025,6 +1026,15 @@ def ops_company(cid):
         n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     return render_template('o_company.html',co=co,cases=cases[:20],k=kpis(cases),n_open=sum(r['status'] not in core.FINAL for r in cases),chans=chans,n_auto=n_auto,n_signup=n_pending,otab='co')
 
+@app.route('/ops/marketing')
+@ops_required
+def ops_marketing():
+    """마케팅 분석: 공개 화면 방문부터 가입·설정·첫 답변·상담 신청까지 실제 기록만 센다."""
+    days=int(request.args.get('d','30')) if request.args.get('d') in ('7','30','90') else 30
+    with conn() as db:r=funnel.report(db,days)
+    top=max([n for _,_,n in r['steps']]+[1])
+    return render_template('o_marketing.html',r=r,top=top,days=days,keep=funnel.KEEP_DAYS,site=core.site_url('biz','/'),n_signup=cms.n_waiting(),otab='mkt')
+
 @app.route('/ops/news',methods=['GET','POST'])
 @ops_required
 def ops_news():
@@ -1068,7 +1078,7 @@ def ops_keys():
 COPY_PAGES=[('c_home.html','고객 첫 화면'),('c_new.html','요청 접수'),('c_done.html','접수 완료'),('c_mine.html','내 접수'),('c_case.html','접수 상세'),
  ('c_company.html','기업별 고객센터'),('c_guide.html','이용 안내'),('c_relief.html','피해구제 안내'),('c_privacy.html','개인정보 처리방침'),('c_error.html','오류 화면'),
  ('_c.html','고객 공통 메뉴'),('_chat.html','상담 챗봇'),('consumer.py','고객 안내 메시지'),
- ('b_intro.html','소보루 CS 소개'),('b_login.html','로그인'),('b_signup.html','가입'),('b_signup_done.html','가입 완료'),('b_forgot.html','비밀번호 찾기'),
+ ('b_intro.html','소보루 CS 소개'),('b_login.html','로그인'),('b_signup.html','가입'),('b_start.html','처음 설정'),('b_forgot.html','비밀번호 찾기'),
  ('b_decide.html','사장님 홈'),('b_all.html','요청 목록'),('b_case.html','요청 상세'),('b_new.html','직접 등록'),('b_rules.html','자동 처리'),('b_stats.html','통계'),
  ('b_report.html','리포트'),('insights.py','리포트 분석 문구'),('b_guide.html','응대 가이드'),('law.py','응대 가이드 상황별 문구'),('b_news.html','법·제도 소식'),
  ('b_settings.html','설정'),('b_record.html','처리 기록'),('b_terms.html','약관'),('_b.html','기업 공통 메뉴'),('business.py','기업 안내 메시지'),

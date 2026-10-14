@@ -13,6 +13,15 @@
 <div class="addline"><input class="inp" id="lnk" value="{{ link }}" readonly><button class="btn md gray" type="button" data-copy="lnk">복사</button></div>
 <details style="margin-top:14px"><summary class="cap" style="font-size:14px;justify-content:flex-start;gap:8px">홈페이지에 버튼으로 넣기<span class="chev"></span></summary>
 <div class="addline" style="margin-top:10px"><input class="inp" id="snip" value='&lt;a href="{{ link }}" target="_blank" rel="noopener"&gt;고객센터로 문의하기&lt;/a&gt;' readonly><button class="btn md gray" type="button" data-copy="snip">복사</button></div></details></div>
+{% if refs and not in_demo %}<div class="panel" style="margin-bottom:20px"><div class="ph">추천 링크</div>
+<p class="sub" style="margin:0 0 14px">다른 쇼핑몰 사장님께 {{ BNAME }}를 알려 주실 때 이 링크를 써 주세요. 이 링크로 가입한 회사 수만 보여 드려요. 추천 보상은 아직 없어요.</p>
+<div class="addline"><input class="inp" id="rlnk" value="{{ refs.link }}" readonly><button class="btn md gray" type="button" data-copy="rlnk">복사</button></div>
+<div class="sumrow" style="margin:14px 0 0"><div class="sum" style="background:var(--fill)"><span>링크 방문</span><b>{{ refs.clicks }}</b></div><div class="sum" style="background:var(--fill)"><span>가입</span><b>{{ refs.signups }}</b></div><div class="sum" style="background:var(--fill)"><span>회사 인증</span><b>{{ refs.verified }}</b></div><div class="sum" style="background:var(--fill)"><span>최근 30일 사용</span><b>{{ refs.using }}</b></div></div></div>
+<div class="panel" style="margin-bottom:20px" id="partner"><div class="ph">대행사(파트너) 연결</div>
+{% if refs.partner %}<p class="sub" style="margin:0 0 14px"><b>{{ refs.partner.name }}</b>와 연결돼 있어요. 파트너는 우리 회사의 가입·인증·설정 진행과 문의 수만 보고, 고객 정보와 문의 내용은 보지 못해요.</p>
+<form method="post" action="{{ url_for('gr.co_partner') }}" onsubmit="return confirm('파트너 연결을 끊을까요?')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md gray" name="act" value="unlink">연결 끊기</button></form>
+{% else %}<p class="sub" style="margin:0 0 14px">쇼핑몰 운영을 맡긴 대행사가 {{ BNAME }} 파트너라면, 받은 파트너 코드를 넣어 연결할 수 있어요. 파트너는 문의 수 같은 숫자만 봐요.</p>
+<form method="post" action="{{ url_for('gr.co_partner') }}" class="addline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input class="inp" name="code" maxlength="12" placeholder="파트너 코드" aria-label="파트너 코드" required><button class="btn md gray" name="act" value="link">연결</button></form>{% endif %}</div>{% endif %}
 <div class="grid2">
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="ph">회사 정보</div>
 <label class="fld"><span>고객센터 연락처</span><input class="inp" name="contact" maxlength="60" value="{{ co.contact }}" placeholder="1588-0000"></label>

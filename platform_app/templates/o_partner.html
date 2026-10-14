@@ -1,0 +1,26 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}{{ p.name }} · 파트너 · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+<div class="phead"><div><a class="cap" href="{{ url_for('gr.ops_list') }}">← 파트너·추천</a><h1>{{ p.name }}</h1><p>{{ PSTATUS[p.status] }} · {{ p.created[:10] }} 신청{% if p.decided %} · {{ p.decided[:10] }} 처리{% endif %}</p></div></div>
+<div class="cols"><div class="stack" style="gap:var(--ds-gap)">
+<section class="panel"><div class="ph">신청 내용</div>
+<dl class="kv"><dt>하는 일</dt><dd>{{ p.kind }}</dd><dt>담당자</dt><dd>{{ p.contact }}</dd><dt>이메일</dt><dd><a class="link" href="mailto:{{ p.email }}">{{ p.email }}</a></dd><dt>연락처</dt><dd>{{ fmt_phone(p.phone) if p.phone else '–' }}</dd>
+<dt>사업자번호</dt><dd>{% if p.biz_no %}{{ p.biz_no[:3] }}-{{ p.biz_no[3:5] }}-{{ p.biz_no[5:] }}{% else %}–{% endif %}</dd><dt>홈페이지</dt><dd>{% if p.site %}<a class="link" href="{{ p.site if p.site.startswith('http') else 'https://'+p.site }}" target="_blank" rel="noopener noreferrer">{{ p.site }}</a>{% else %}–{% endif %}</dd><dt>맡은 쇼핑몰</dt><dd>{{ p.clients or '–' }}</dd></dl>
+{% if p.intro %}<div class="reply" style="white-space:pre-wrap;margin-top:12px">{{ p.intro }}</div>{% endif %}</section>
+{% if s %}<section class="panel"><div class="ph">고객사 {{ s.signups }}곳 · 인증 {{ s.verified }} · 30일 사용 {{ s.using }} · 링크 방문 {{ s.clicks }}</div>
+{% for r in s.rows %}{% set uu=s.use.get(r.id,(0,0)) %}<div class="drow"><div class="tx"><a class="link" href="{{ url_for('ops_company',cid=r.id) }}"><b style="font-weight:500">{{ r.name }}</b></a><span>{{ r.created[:10] }} 가입 · {{ '인증' if r.member else '인증 전' }} · 30일 받은 문의 {{ uu[0] }} · 답한 문의 {{ uu[1] }}</span></div></div>{% else %}<p class="cap">아직 없어요</p>{% endfor %}</section>{% endif %}
+</div>
+<aside class="stack" style="gap:var(--ds-gap)">
+<section class="panel stack"><div class="ph">처리</div>
+{% if link %}<label class="fld"><span>파트너 링크</span><input class="inp" value="{{ link }}" readonly></label>{% endif %}
+<form method="post" class="stack"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+{% if p.status in ('applied','rejected','suspended') %}<button class="btn md" name="act" value="approve">승인하고 로그인 안내 보내기</button>{% endif %}
+{% if p.status=='applied' %}<label class="check"><input type="checkbox" name="mail" value="1"><span class="bx"></span><span>거절 메일 보내기</span></label><button class="btn md gray" name="act" value="reject">거절</button>{% endif %}
+{% if p.status=='approved' %}<button class="btn md gray" name="act" value="resend">로그인 안내 다시 보내기</button><button class="btn md gray" name="act" value="suspend" onclick="return confirm('중지하면 파트너 로그인과 링크가 멈춰요. 중지할까요?')">중지</button>{% endif %}
+</form></section>
+{% if users %}<section class="panel"><div class="ph">파트너 계정</div>{% for t in users %}<div class="drow"><div class="tx"><b style="font-weight:500">{{ t.name }}{% if t.role=='owner' %} (대표){% endif %}</b><span>{{ t.email }} · {{ '초대 중' if t.status=='invited' else '사용 중' }}</span></div></div>{% endfor %}</section>{% endif %}
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="memo"><div class="ph">내부 메모</div>
+<textarea class="inp" name="memo" maxlength="4000">{{ p.memo }}</textarea><button class="btn md gray">메모 저장</button></form>
+</aside></div>
+{% endblock %}
