@@ -6,3 +6,9 @@
 </ol>
 <p class="stepper-desc"><b>{{ ui('lookup.current_step', '현재 단계') }}: {{ status_name(status) }}</b> {{ txt('status.%d' % step) }}</p>
 {% endmacro %}
+{# 공개 제보의 7단계 진행 (jebo.PUBLIC_STEPS). step은 지금 단계 번호 1~7. #}
+{% macro steps7(step) %}
+<ol class="stepper s7" aria-label="{{ ui('reports.col_status', '진행 단계') }}">
+  {% for s in PUBLIC_STEPS %}<li class="{{ 'done' if loop.index < step else ('now' if loop.index == step else 'todo') }}"{% if loop.index == step %} aria-current="step"{% endif %}><span class="stepper-dot">{{ '✓' if loop.index < step else loop.index }}</span><span class="stepper-label">{{ s }}</span></li>{% endfor %}
+</ol>
+{% endmacro %}
