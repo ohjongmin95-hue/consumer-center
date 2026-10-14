@@ -7,7 +7,7 @@
     <span class="cs-pn">{% if newer %}<a href="{{ url_for(ep.case, case_id=newer['id']) }}">‹ 다음 제보</a>{% endif %}{% if older %}<a href="{{ url_for(ep.case, case_id=older['id']) }}">이전 제보 ›</a>{% endif %}</span>
   </div>
   <div class="cs-case-head">
-    <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ case['category'] }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}</p>
+    <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ cat_label(case['category']) }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}{% if case['occurred_on'] %} · 발생 {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
     <h1 class="cs-title">{{ case['subject'] }}</h1>
     <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ status_step(case['status']) }}">{{ case['status'] }}</span></p>
   </div>
@@ -22,6 +22,18 @@
         <h2>첨부파일</h2>
         {% for f in files %}<p><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a></p>{% else %}<p class="cs-muted">없음</p>{% endfor %}
       </section>
+
+      {% if case['public_consent'] %}
+      {# 공개 심사: 원문은 그대로 두고 공개용 글만 다듬음 #}
+      <form class="cs-panel" method="post" id="publish_review"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="publish_review">
+        <h2>공개 심사 {% if case['published'] %}<span class="cs-pill on">공개 중</span>{% elif case['reviewed_at'] %}<span class="cs-pill off">비공개</span>{% else %}<span class="cs-pill">승인 대기</span>{% endif %}</h2>
+        <p class="cs-hint">제보자가 공개를 골랐어요. 이름·연락처·주소·주문번호 같은 개인정보와 단정적인 비방 표현을 고친 뒤 승인해요. 비워 두면 원문에서 전화번호·이메일만 가려 보여요. 원문은 바뀌지 않아요.</p>
+        <div class="field"><label for="p-subject">공개 제목</label><input id="p-subject" name="public_subject" maxlength="160" value="{{ case['public_subject'] }}" placeholder="{{ pub_text.subject }}"></div>
+        <div class="field"><label for="p-body">공개 피해 내용</label><textarea id="p-body" name="public_body" maxlength="6000" rows="6" placeholder="{{ pub_text.body }}">{{ case['public_body'] }}</textarea></div>
+        <div class="field"><label for="p-request">공개 해결 요구</label><textarea id="p-request" name="public_request" maxlength="3000" rows="3" placeholder="{{ pub_text.request }}">{{ case['public_request'] }}</textarea></div>
+        <div class="cs-row cs-actions"><button class="cs-btn" name="decision" value="save">글만 저장</button><button class="cs-btn" name="decision" value="hold">공개하지 않기</button><button class="cs-btn cs-btn-main" name="decision" value="approve">{{ '저장 (공개 유지)' if case['published'] else '공개 승인' }}</button></div>
+      </form>
+      {% endif %}
 
       <section class="cs-panel" id="message">
         <h2>제보자와 주고받은 메시지</h2>
@@ -61,27 +73,40 @@
         <button class="cs-btn cs-btn-main" type="submit">저장</button>
       </form>
 
-      {# 2. 기업: 기업 회원 연결 + 1회용 답변 링크 #}
+      {# 1-2. 검토: 정상·중복·반려와 사유 (통계는 정상 제보만 셈) #}
+      <form class="cs-panel cs-card" method="post" id="review"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="review">
+        <h2>검토 {% if case['review'] %}<span class="cs-pill{{ ' on' if case['review'] == 'ok' else ' off' }}">{{ reviews[case['review']] }}</span>{% else %}<span class="cs-pill">검토 전</span>{% endif %}</h2>
+        <div class="field"><label for="c-review">검토 결과</label><select id="c-review" name="review">{% for k, v in reviews.items() %}<option value="{{ k }}"{% if k == case['review'] %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="c-review-note">사유 <em class="cs-muted">운영 기록용, 공개 안 됨</em></label><input id="c-review-note" name="review_note" maxlength="500" value="{{ case['review_note'] }}" placeholder="예: 3번 제보와 같은 내용"></div>
+        <p class="cs-hint">중복·반려로 두면 공개가 내려가고 기업 통계에서 빠져요.</p>
+        <button class="cs-btn" type="submit">검토 저장</button>
+      </form>
+
+      {# 2. 기업: 기업 페이지 연결, 가입 기업 전달, 1회용 답변 링크 #}
       <section class="cs-panel cs-card">
-        <h2>기업 {% if linked %}<span class="cs-pill on">연결됨</span>{% elif case['share_company'] %}<span class="cs-pill">연결 전</span>{% else %}<span class="cs-pill off">전달 미동의</span>{% endif %}</h2>
-        {% if not case['share_company'] %}
-        <p class="cs-muted">제보자가 기업 전달에 동의하지 않아 기업에 보여줄 수 없어요.</p>
-        {% else %}
+        <h2>기업 {% if linked %}<span class="cs-pill on">연결됨</span>{% else %}<span class="cs-pill">연결 전</span>{% endif %}{% if not case['share_company'] %} <span class="cs-pill off">전달 미동의</span>{% endif %}</h2>
         <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="company">
-          <label class="cs-label" for="c-company">기업 회원</label>
+          <label class="cs-label" for="c-company">등록 기업</label>
           {% if companies %}
           <div class="cs-row"><select id="c-company" name="company_id">
             <option value="">연결 안 함</option>
-            {% for c in companies %}<option value="{{ c['id'] }}"{% if linked and linked['id'] == c['id'] %} selected{% endif %}>{{ '★ ' if c['id'] in suggested_ids }}{{ c['name'] }}</option>{% endfor %}
+            {% for c in companies %}<option value="{{ c['id'] }}"{% if linked and linked['id'] == c['id'] %} selected{% endif %}>{{ '★ ' if c['id'] in suggested_ids }}{{ c['name'] }}{{ ' (가입)' if c['status'] == 'active' }}</option>{% endfor %}
           </select><button class="cs-btn" type="submit">저장</button></div>
-          <p class="cs-hint">{% if linked %}<b>{{ linked['name'] }}</b> 담당자 화면에 보이고 직접 답변할 수 있어요.{% elif suggested_ids %}★ 업체 이름이 비슷한 기업이에요.{% else %}연결하면 그 기업이 직접 답변해요.{% endif %}</p>
-          {% else %}<p class="cs-hint">승인된 기업 회원이 아직 없어요.{% if ep.list == 'admin_reports' %} <a href="{{ url_for('admin_companies') }}">기업 회원 →</a>{% endif %}</p>{% endif %}
+          {% endif %}
+          <p class="cs-hint">{% if linked %}<b>{{ linked['name'] }}</b> 기업 페이지에 모여요.{% if linked['status'] == 'active' %}{% if case['forwarded_at'] %} 담당자 화면에 보내졌어요.{% elif case['share_company'] %} 아직 담당자 화면에는 보내지 않았어요.{% endif %}{% endif %}{% elif suggested_ids %}★ 업체 이름이 비슷한 기업이에요.{% else %}연결하면 기업 페이지에 모여요.{% endif %}</p>
         </form>
+        {% if linked and linked['status'] == 'active' and case['share_company'] and not case['forwarded_at'] %}
+        <form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="forward"><span class="cs-hint">검토를 마쳤으면 기업 담당자 화면에 보내요.</span><button class="cs-btn" type="submit">담당자에게 보내기</button></form>
+        {% endif %}
+        {% if not linked %}
+        <form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="company_new"><input name="name" maxlength="120" value="{{ case['company'] }}" aria-label="등록할 기업 이름" required><button class="cs-btn" type="submit">새 기업으로 등록</button></form>
+        {% endif %}
+        {% if case['share_company'] %}
         <div class="cs-divide">
           <span class="cs-label">가입 안 한 기업</span>
-          <form method="post" action="{{ url_for(ep.invite, case_id=case['id']) }}" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><span class="cs-hint">이 제보만 볼 수 있는 1회용 답변 링크{% if invite %} · {{ invite['created'][5:10]|replace('-', '.') }} 발급{% endif %}</span><button class="cs-btn" type="submit">{{ '다시 만들기' if invite else '링크 만들기' }}</button></form>
+          <form method="post" action="{{ url_for(ep.invite, case_id=case['id']) }}" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><span class="cs-hint">이 제보만 볼 수 있는 1회용 답변 링크{% if invite %} · {{ invite['created'][5:10]|replace('-', '.') }} 발급{% endif %}{% if case['seen_at'] %} · 기업이 열어 봄{% endif %}</span><button class="cs-btn" type="submit">{{ '다시 만들기' if invite else '링크 만들기' }}</button></form>
         </div>
-        {% endif %}
+        {% else %}<p class="cs-muted">제보자가 기업 전달에 동의하지 않아 기업에 내용을 보낼 수 없어요. 기업 페이지 연결은 할 수 있어요.</p>{% endif %}
       </section>
 
       {# 3. 제보자: 정보·동의, 조회 비밀번호, 알림 기록 #}

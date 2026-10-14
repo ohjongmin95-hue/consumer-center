@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}{{ co['name'] }} {{ ui('company.title_tail', '소비자 제보') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ co['name'] }} {{ ui('company.meta', '관련 공개 제보와 기업 공식 답변, 답변 현황을 모아 볼 수 있어요.') }}{% endblock %}
+{% block head %}{% if not indexable %}<meta name="robots" content="noindex,follow">{% else %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": txt('site.name'), "item": url_for('home', _external=True)}, {"@type": "ListItem", "position": 2, "name": ui('companies.title', '기업별 제보'), "item": url_for('companies', _external=True)}, {"@type": "ListItem", "position": 3, "name": co['name']}]}|tojson }}</script>{% endif %}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap co-wrap">
+  <div class="page-intro co-head">
+    <a class="back-link" href="{{ url_for('companies') }}">← {{ ui('companies.title', '기업별 제보') }}</a>
+    <h1 class="page-title">{{ co['name'] }}</h1>
+    <p class="co-tags">{% if co['status'] == 'active' %}<span class="co-badge">{{ ui('companies.member', '가입 기업') }}</span>{% else %}<span class="co-badge off">{{ ui('company.listed', '미가입 기업') }}</span>{% endif %}{% for a in aka %}<span class="co-aka">{{ a }}</span>{% endfor %}</p>
+  </div>
+
+  <section class="form-panel co-stats" aria-labelledby="co-stats-h">
+    <h2 id="co-stats-h">{{ ui('company.stats', '제보 현황') }}</h2>
+    <dl class="co-nums">
+      <div><dt>{{ ui('company.n_valid', '확인된 제보') }}</dt><dd>{{ st.valid }}</dd></div>
+      <div><dt>{{ ui('company.n_public', '공개 제보') }}</dt><dd>{{ by_cat.values()|sum }}</dd></div>
+      <div><dt>{{ ui('company.answer_rate', '공식 답변 비율') }}</dt><dd>{{ st.answer_rate }}</dd></div>
+      <div><dt>{{ ui('company.confirm_rate', '소비자 확인 비율') }}</dt><dd>{{ st.confirm_rate }}</dd></div>
+      <div><dt>{{ ui('company.median', '답변까지 걸린 시간 (중앙값)') }}</dt><dd>{{ st.median }}</dd></div>
+    </dl>
+    <div class="co-chart" role="img" aria-label="{{ ui('company.monthly', '최근 6개월 월별 확인된 제보 수') }}">
+      {% for m in st.monthly %}<div class="co-bar"><span class="co-bar-n">{{ m.n }}</span><span class="co-bar-col"><i style="height:{{ (100 * m.n / st.top)|round|int }}%"></i><b style="height:{{ (100 * m.answered / st.top)|round|int }}%"></b></span><span class="co-bar-l">{{ m.label }}</span></div>{% endfor %}
+    </div>
+    <p class="co-legend"><span class="lg-a"></span>{{ ui('company.lg_cases', '확인된 제보') }} <span class="lg-b"></span>{{ ui('company.lg_answered', '그중 공식 답변') }}</p>
+    <p class="co-formula">{{ ui('company.formula', '집계 기준') }}: {% if st.since %}{{ st.since }} ~ {{ today }}{% else %}–{% endif %}. {{ ui('company.formula_text', '확인된 제보는 운영자 검토를 거친 제보 중 중복·반려를 뺀 수예요(비공개 제보 포함, 내용은 보이지 않아요). 공식 답변 비율은 기업이 답변을 1회 이상 등록한 제보 ÷ 확인된 제보, 소비자 확인 비율은 제보자가 처리 결과를 확인한 제보 ÷ 확인된 제보예요. 답변 시간은 센터가 기업에 전달한 때부터 첫 답변까지예요.') }} {{ ui('company.formula_min', '확인된 제보(답변 시간은 답변 건수)가 %d건 미만이면 표시하지 않아요.')|format(JEBO_MIN_N) }}</p>
+  </section>
+
+  {% if co['statement'] %}<section class="form-panel public-case co-statement"><h2>{{ ui('company.statement', '기업 공식 입장') }}</h2><p class="public-case-body">{{ co['statement'] }}</p>{% if co['statement_at'] %}<p class="meta">{{ co['statement_at'][:10] }}</p>{% endif %}</section>{% endif %}
+
+  <section class="co-cases" aria-labelledby="co-cases-h">
+    <div class="co-cases-head"><h2 id="co-cases-h">{{ ui('company.cases', '공개 제보') }}</h2><a class="primary" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a></div>
+    {% if by_cat %}<nav class="co-cats" aria-label="{{ ui('reports.all_types', '전체 유형') }}"><a href="{{ url_for('company_page', company_id=co['id']) }}"{% if not cat %} aria-current="true"{% endif %}>{{ ui('reports.all_types', '전체 유형') }}</a>{% for name, n in by_cat|dictsort %}<a href="{{ url_for('company_page', company_id=co['id'], category=name) }}"{% if cat == name %} aria-current="true"{% endif %}>{{ name }} <span>{{ n }}</span></a>{% endfor %}</nav>{% endif %}
+    <ul class="co-case-list">{% for c in cases %}<li><a href="{{ url_for('public_case', case_id=c.id) }}"><span class="co-case-top"><span class="case-cat">{{ c.category }}</span><span class="muted">No. {{ c.id }} · {{ c.created }}</span></span><b class="co-case-title">{{ c.subject }}</b><span class="co-case-body">{{ c.body|truncate(110, True, '…') }}</span><span class="co-case-foot"><span class="co-step">{{ c.step }}/7 · {{ PUBLIC_STEPS[c.step - 1] }}</span><span class="co-ans{% if c.answered %} on{% endif %}">{{ ui('company.answered', '공식 답변 있음') if c.answered else ui('case.answer_none', '공식 답변 미등록') }}</span></span></a></li>
+    {% else %}<li class="co-empty">{{ ui('company.no_cases', '아직 공개된 제보가 없어요.') }}</li>{% endfor %}</ul>
+    {% if pages > 1 %}<nav class="pager" aria-label="페이지">{% if page > 1 %}<a href="{{ url_for('company_page', company_id=co['id'], category=cat or None, page=page - 1) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}{% for p in range([1, page - 2]|max, [pages, page + 2]|min + 1) %}{% if p == page %}<b aria-current="page">{{ p }}</b>{% else %}<a href="{{ url_for('company_page', company_id=co['id'], category=cat or None, page=p) }}">{{ p }}</a>{% endif %}{% endfor %}{% if page < pages %}<a href="{{ url_for('company_page', company_id=co['id'], category=cat or None, page=page + 1) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}</nav>{% endif %}
+  </section>
+  <p class="public-case-notice">{{ ui('company.disclaimer', '제보는 제보자가 직접 작성한 주장이에요. 기업의 답변 여부만으로 위법 행위나 책임이 확인되는 것은 아니에요. 소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요.') }} <a href="{{ url_for('takedown') }}">{{ ui('company.correction', '정정·게시중단 요청 →') }}</a></p>
+</div></main>
+{% endblock %}

@@ -110,8 +110,8 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(self.client.get('/static/img/hero-%s.svg' % side).status_code, 200)
         self.assertIn('href="/report"', home)
         self.assertNotIn('localStorage', home)
-        report = self.client.get('/report?category=배송·환불').get_data(as_text=True)
-        self.assertIn('<option selected>배송·환불</option>', report)
+        report = self.client.get('/report?category=배송·교환·환불').get_data(as_text=True)
+        self.assertIn('<option selected>배송·교환·환불</option>', report)
 
     def test_public_list_filters_only_approved_consented_cases(self):
         with self.site.conn() as db:
@@ -139,7 +139,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('비밀글로 접수된 제보예요', home)
         self.assertIn('<dt>전체</dt><dd>4</dd>', self.client.get('/reports').get_data(as_text=True))
         self.assertIn('class="rc-status">접수</span>', home)
-        filtered_cat = self.client.get('/reports', query_string={'category': '배송·환불'}).get_data(as_text=True)
+        filtered_cat = self.client.get('/reports', query_string={'category': '배송·교환·환불'}).get_data(as_text=True)
         self.assertIn('미동의 접수</a>', filtered_cat)
         self.assertEqual(filtered_cat.count('비공개</a>'), 1)
         self.assertNotIn('공개 계약 문의', filtered_cat)
@@ -150,7 +150,7 @@ class SiteTest(unittest.TestCase):
             db.execute("UPDATE cases SET title_hidden=1 WHERE subject='미동의 접수'")
         self.assertNotIn('미동의 접수', self.client.get('/').get_data(as_text=True))
         self.assertNotIn('미동의 접수', self.client.get('/reports?q=미동의').get_data(as_text=True))
-        filtered = self.client.get('/reports', query_string={'q': '환불', 'category': '배송·환불'}).get_data(as_text=True)
+        filtered = self.client.get('/reports', query_string={'q': '환불', 'category': '배송·교환·환불'}).get_data(as_text=True)
         self.assertIn('공개 환불 요청', filtered)
         self.assertNotIn('공개 계약 문의', filtered)
         empty = self.client.get('/reports?q=missing').get_data(as_text=True)
@@ -163,7 +163,7 @@ class SiteTest(unittest.TestCase):
         invalid = self.client.post('/report', data={'_csrf': token}).get_data(as_text=True)
         self.assertNotIn('disabled title="현재 접수 준비 중"', invalid)
         response = self.client.post('/report', data={
-            '_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·환불', 'company': '테스트 업체',
+            '_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '테스트 업체',
             'subject': '테스트 환불 요청', 'description': '테스트 내용',
             'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': '환불 요청', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'use_consent': 'on', 'visibility': 'public',
             'share_company': 'on',
@@ -235,9 +235,9 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<a href="#sec-13">13. 개인정보 처리방침의 변경</a>', privacy)
         self.assertIn('소보루(이하', privacy)  # {운영자} placeholder filled from operator info
         token = self.csrf(self.client, '/report')
-        missing_truth = self.client.post('/report', data={'_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234'})
+        missing_truth = self.client.post('/report', data={'_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234'})
         self.assertEqual(missing_truth.status_code, 400)
-        full = {'_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
+        full = {'_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
         for required in ('consent', 'share_company', 'use_consent', 'truth'):
             self.assertEqual(self.client.post('/report', data={k: v for k, v in full.items() if k != required}).status_code, 400, required)
         form = self.client.get('/report').get_data(as_text=True)
@@ -343,12 +343,19 @@ class SiteTest(unittest.TestCase):
         for visibility in ('public', 'secret'):
             token = self.csrf(self.client, '/report')
             self.client.post('/report', data={
-                '_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·환불', 'company': '공개 업체', 'subject': visibility + ' 제목',
+                '_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '공개 업체', 'subject': visibility + ' 제목',
                 'description': '연락은 010-1234-5678 또는 me@example.com 으로', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': '환불',
                 'contact': 'secret@example.com', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': visibility,
             })
             with self.site.conn() as db:
                 ids[visibility] = db.execute('SELECT id FROM cases WHERE subject=?', (visibility + ' 제목',)).fetchone()['id']
+        # 공개를 골라도 운영자 승인 전에는 안 보임
+        self.assertEqual(self.client.get('/reports/%d' % ids['public']).status_code, 404)
+        self.assertNotIn('public 제목', self.client.get('/reports').get_data(as_text=True))
+        admin = self.login_admin()
+        self.assertIn('승인 대기', admin.get('/admin/reports/%d' % ids['public']).get_data(as_text=True))
+        self.assertEqual(self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'publish_review', 'decision': 'approve'}).status_code, 400)
+        self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'approve'})
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('href="/reports/%d">public 제목</a>' % ids['public'], home)
         self.assertIn('href="/reports/%d/mine"' % ids['secret'], home)  # 비밀글은 제목이 보여도 비밀번호 창으로
@@ -357,7 +364,6 @@ class SiteTest(unittest.TestCase):
         self.assertIn('secret 제목</a>', listing)
         self.assertNotIn('연락은 010', listing)  # 비밀글 본문은 목록에 없음
         # 관리자가 '목록에 제목·업체명 표시'를 끄면 숨김
-        admin = self.login_admin()
         self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'settings', 'status': '접수', 'assignee': ''})
         self.assertNotIn('secret 제목', self.client.get('/reports').get_data(as_text=True))
         self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'settings', 'status': '접수', 'assignee': '', 'show_title': 'on'})
@@ -370,14 +376,14 @@ class SiteTest(unittest.TestCase):
         self.assertIn('공개 업체', page)
         self.assertEqual(self.client.get('/reports/%d' % ids['secret']).status_code, 404)
         token = self.csrf(self.client, '/report')
-        no_choice = self.client.post('/report', data={'_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on'})
+        no_choice = self.client.post('/report', data={'_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on'})
         self.assertEqual(no_choice.status_code, 400)
 
     def test_reporter_notifications(self):
         notify = self.site.notify
         notify.ASYNC = False
         kakao, mails = [], []
-        base = {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'subject': '알림 테스트 제보', 'description': 'C', 'reporter_name': '김소비',
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'A', 'subject': '알림 테스트 제보', 'description': 'C', 'reporter_name': '김소비',
                 'phone': '010-2222-3333', 'contact': 'me@example.com', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
                 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
         # 설정이 없으면 아무것도 안 보냄
@@ -425,7 +431,7 @@ class SiteTest(unittest.TestCase):
         notify = self.site.notify
         notify.ASYNC = False
         sms, mails = [], []
-        base = {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': '알림상점', 'subject': '운영자 알림 제보', 'description': 'C', 'reporter_name': '김소비',
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '알림상점', 'subject': '운영자 알림 제보', 'description': 'C', 'reporter_name': '김소비',
                 'phone': '010-2222-3333', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
                 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
         keys = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'boss@example.com, ops@example.com',
@@ -500,7 +506,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             company_id = db.execute("SELECT id FROM companies WHERE biz_no='1234567891'").fetchone()['id']
         # 2) 제보 둘: 기업 전달 동의 / 미동의
-        base = {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': '테스트몰', 'description': '환불이 안 돼요', 'reporter_name': '홍길동',
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '테스트몰', 'description': '환불이 안 돼요', 'reporter_name': '홍길동',
                 'phone': '010-7777-8888', 'contact': 'reporter@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
                 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
         self.post_form(self.client, '/report', dict(base, subject='기업 전달 동의 제보', share_company='on'))
@@ -518,7 +524,10 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'aliases', 'aliases': 'TestMall, 테스트 쇼핑'})
         self.assertIn('★ 주식회사 테스트몰', admin.get('/admin/reports/%d' % shared).get_data(as_text=True))
         self.post_form(admin, '/admin/reports/%d' % shared, {'form': 'company', 'company_id': company_id})
-        self.assertEqual(self.post_form(admin, '/admin/reports/%d' % private, {'form': 'company', 'company_id': company_id}).status_code, 400)
+        # 미동의 제보도 기업 페이지에는 모을 수 있지만 기업 담당자 화면에는 안 감
+        self.post_form(admin, '/admin/reports/%d' % private, {'form': 'company', 'company_id': company_id})
+        self.assertEqual(self.post_form(admin, '/admin/reports/%d' % private, {'form': 'forward'}).status_code, 400)
+        self.post_form(admin, '/admin/reports/%d' % shared, {'form': 'publish_review', 'decision': 'approve'})
         # 4) 기업 화면: 연결된 동의 제보만, 제보자 정보 없음
         home = biz.get('/biz').get_data(as_text=True)
         self.assertIn('기업 전달 동의 제보', home)
@@ -675,7 +684,7 @@ class SiteTest(unittest.TestCase):
         # 예전 '조회 코드' 안내는 어디에도 안 남음
         for path in ('/lookup', '/guide', '/process', '/report', '/terms', '/privacy', '/faq'):
             self.assertNotIn('조회 코드', self.client.get(path).get_data(as_text=True), path)
-        base = {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-5555-1234',
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'A', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-5555-1234',
                 'request_text': 'D', 'consent': 'on', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
         # 비밀번호가 없거나 확인이 다르면 접수 안 됨
         self.assertEqual(self.post_form(self.client, '/report', dict(base, subject='x', lookup_pw='12', lookup_pw2='12')).status_code, 400)
@@ -956,7 +965,7 @@ class SiteTest(unittest.TestCase):
         evil = self.site.app.test_client()
         self.signup(evil, login_id='evil_one', nickname='다른사람')
         # 회원으로 제보하면 내 정보에 모이고, 다른 회원은 열 수 없음
-        report = self.post_form(self.client, '/report', {'industry': '쇼핑·유통', 'category': '배송·환불', 'company': '테스트몰', 'subject': '회원 제보', 'description': '배송이 오지 않았어요.', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'})
+        report = self.post_form(self.client, '/report', {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '테스트몰', 'subject': '회원 제보', 'description': '배송이 오지 않았어요.', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'})
         self.assertEqual(report.status_code, 200)
         with self.site.conn() as db:
             case_id = db.execute("SELECT id FROM cases WHERE subject='회원 제보'").fetchone()['id']
@@ -1212,7 +1221,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('사실 작성 확인', public)
         self.assertNotIn('name="truth"', public)
         t = self.csrf(self.client, '/report')
-        ok = self.client.post('/report', data={'_csrf': t, 'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'subject': '사실확인 없이', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'visibility': 'secret'})
+        ok = self.client.post('/report', data={'_csrf': t, 'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'A', 'subject': '사실확인 없이', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'visibility': 'secret'})
         self.assertEqual(ok.status_code, 200)
         # 직접 만든 동의 항목은 필수
         rows = self.site.load_lists()['report_consents'] + [{'kind': 'custom', 'title': '연락 동의', 'body': '확인 연락을 드릴 수 있어요.', 'agree': '연락에 동의해요.'}]
@@ -1220,7 +1229,7 @@ class SiteTest(unittest.TestCase):
         public = self.client.get('/report').get_data(as_text=True)
         self.assertIn('연락 동의', public)
         self.assertIn('name="consent_custom_3"', public)
-        base = {'_csrf': t, 'industry': '쇼핑·유통', 'category': '배송·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'visibility': 'secret'}
+        base = {'_csrf': t, 'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'A', 'subject': 'B', 'description': 'C', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'visibility': 'secret'}
         self.assertEqual(self.client.post('/report', data=base).status_code, 400)
         self.assertEqual(self.client.post('/report', data={**base, 'consent_custom_3': 'on'}).status_code, 200)
         # 페이지 섹션도 빼기
@@ -1311,7 +1320,7 @@ class SiteTest(unittest.TestCase):
             self.assertIn('name="%s"' % name, form)
         self.assertIn('multiple accept=', form)
         token = self.csrf(self.client, '/report')
-        base = {'_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·환불', 'company': '상세몰', 'subject': '상세 제보', 'description': '내용', 'request_text': '환불',
+        base = {'_csrf': token, 'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '상세몰', 'subject': '상세 제보', 'description': '내용', 'request_text': '환불',
                 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
         self.assertEqual(self.client.post('/report', data=base).status_code, 400)  # 이름·전화 필수
         self.assertEqual(self.client.post('/report', data={**base, 'reporter_name': '홍길동', 'phone': 'abc'}).status_code, 400)
@@ -1346,6 +1355,98 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, {'ENABLE_INTAKE': '0'}):
             self.assertEqual(self.client.post('/report', data={'_csrf': token}).status_code, 503)
             self.assertIn('disabled title="현재 접수 준비 중"', self.client.get('/report').get_data(as_text=True))
+
+
+    def test_company_page_flow(self):
+        # 기업별 공개 페이지, 기업 검색, 공개 심사, 7단계 진행 이력 (jebo.py)
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/companies', {'action': 'create', 'name': '검은고양이몰', 'brand': 'BC몰', 'biz_name': '주식회사 검은고양이', 'official_email': 'cs@bc.example'})
+        self.assertIn('같은 이름의 기업이 이미 있어요', self.post_form(admin, '/admin/companies', {'action': 'create', 'name': '(주)검은고양이몰'}).headers.get('Location', '') and admin.get('/admin/companies').get_data(as_text=True))
+        with self.site.conn() as db:
+            co = db.execute("SELECT * FROM companies WHERE name='검은고양이몰'").fetchone()
+            self.assertEqual(co['status'], 'listed')
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM companies WHERE name LIKE '%검은고양이몰%'").fetchone()[0], 1)
+        rows = self.client.get('/companies/suggest?q=bc').get_json()
+        self.assertEqual([r['name'] for r in rows], ['검은고양이몰'])
+        # 이름만 있는 기업 페이지는 검색엔진에 싣지 않음
+        page = self.client.get('/companies/%d' % co['id']).get_data(as_text=True)
+        self.assertIn('noindex', page)
+        self.assertIn('아직 공개된 제보가 없어요', page)
+        self.assertNotIn('/companies/%d<' % co['id'], self.client.get('/sitemap.xml').get_data(as_text=True))
+        # 브랜드 이름으로 제보해도 그 기업에 자동으로 모임. 발생일도 저장
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'BC몰', 'subject': '원래 제목 홍길동', 'description': '주문번호 A-123 환불이 안 돼요',
+                'reporter_name': '홍길동', 'phone': '010-4444-5555', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public', 'occurred_on': '2026-10-01'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db:
+            case = db.execute("SELECT * FROM cases WHERE subject='원래 제목 홍길동'").fetchone()
+        self.assertEqual(case['company_id'], co['id'])
+        self.assertEqual(case['occurred_on'], '2026-10-01')
+        self.assertEqual(case['published'], 0)
+        self.assertNotIn('원래 제목', self.client.get('/companies/%d' % co['id']).get_data(as_text=True))
+        # 운영자가 공개용 글을 다듬어 승인 → 원문은 그대로, 공개 화면은 다듬은 글
+        path = '/admin/reports/%d' % case['id']
+        self.post_form(admin, path, {'form': 'publish_review', 'decision': 'approve', 'public_subject': '환불이 한 달째 안 돼요', 'public_body': '환불이 안 돼요', 'public_request': ''})
+        with self.site.conn() as db:
+            case = db.execute('SELECT * FROM cases WHERE id=?', (case['id'],)).fetchone()
+        self.assertEqual((case['published'], case['review'], case['subject']), (1, 'ok', '원래 제목 홍길동'))
+        self.assertTrue(case['reviewed_at'])
+        page = self.client.get('/companies/%d' % co['id']).get_data(as_text=True)
+        self.assertIn('환불이 한 달째 안 돼요', page)
+        self.assertNotIn('홍길동', page)
+        self.assertNotIn('noindex', page)
+        self.assertIn('공식 답변 미등록', page)
+        self.assertIn('/companies/%d<' % co['id'], self.client.get('/sitemap.xml').get_data(as_text=True))
+        self.assertIn('검은고양이몰', self.client.get('/companies?q=검은고양이').get_data(as_text=True))
+        self.assertIn('환불이 한 달째', self.client.get('/reports?q=한 달째').get_data(as_text=True))
+        self.assertNotIn('원래 제목', self.client.get('/reports?q=원래').get_data(as_text=True))
+        public = self.client.get('/reports/%d' % case['id']).get_data(as_text=True)
+        for text in ('환불이 한 달째 안 돼요', '공식 답변 미등록', '민간 플랫폼', 'href="/companies/%d"' % co['id'], 'aria-current="step"><span class="stepper-dot">2</span><span class="stepper-label">운영자 검토'):
+            self.assertIn(text, public)
+        self.assertNotIn('A-123', public)
+        # 답변 링크 발급 = 전달 시도, 기업이 열어 봐야 '전달 확인'
+        token = self.csrf(admin, path)
+        response = admin.post('/admin/invite/%d' % case['id'], data={'_csrf': token})
+        invite = re.search(r'<strong>(http://localhost/company/[^<]+)</strong>', response.get_data(as_text=True))[1].removeprefix('http://localhost')
+        with self.site.conn() as db:
+            row = db.execute('SELECT forwarded_at,seen_at FROM cases WHERE id=?', (case['id'],)).fetchone()
+        self.assertTrue(row['forwarded_at'])
+        self.assertEqual(row['seen_at'], '')
+        self.assertIn('기업 전달 시도', self.client.get('/reports/%d' % case['id']).get_data(as_text=True))
+        company = self.site.app.test_client()
+        self.post_form(company, invite, {'response': '확인 후 환불해 드리겠습니다.'})
+        with self.site.conn() as db:
+            self.assertTrue(db.execute('SELECT seen_at FROM cases WHERE id=?', (case['id'],)).fetchone()['seen_at'])
+            mid = db.execute("SELECT id FROM messages WHERE case_id=? AND author='기업 답변'", (case['id'],)).fetchone()['id']
+        self.assertNotIn('환불해 드리겠습니다', self.client.get('/reports/%d' % case['id']).get_data(as_text=True))
+        self.post_form(admin, path, {'form': 'answer_public', 'message_id': mid, 'public': '1'})
+        public = self.client.get('/reports/%d' % case['id']).get_data(as_text=True)
+        self.assertIn('확인 후 환불해 드리겠습니다.', public)
+        self.assertIn('기업 전달 확인', public)
+        self.assertNotIn('공식 답변 미등록', public)
+        # 표본이 적으면 비율은 '–'
+        page = self.client.get('/companies/%d' % co['id']).get_data(as_text=True)
+        self.assertIn('<dt>공식 답변 비율</dt><dd>–</dd>', page)
+        self.assertIn('<dt>확인된 제보</dt><dd>1</dd>', page)
+        # 반려하면 공개가 내려가고 통계에서 빠짐
+        self.post_form(admin, path, {'form': 'review', 'review': 'rejected', 'review_note': '허위 확인'})
+        self.assertEqual(self.client.get('/reports/%d' % case['id']).status_code, 404)
+        self.assertIn('<dt>확인된 제보</dt><dd>0</dd>', self.client.get('/companies/%d' % co['id']).get_data(as_text=True))
+        # 이름만으로 새 기업 등록 후 연결
+        self.post_form(self.client, '/report', dict(base, company='새로운상점', subject='다른 제보'))
+        with self.site.conn() as db:
+            other = db.execute("SELECT id,company_id FROM cases WHERE subject='다른 제보'").fetchone()
+        self.assertIsNone(other['company_id'])
+        self.post_form(admin, '/admin/reports/%d' % other['id'], {'form': 'company_new', 'name': '새로운상점'})
+        with self.site.conn() as db:
+            new = db.execute("SELECT c.company_id,co.status FROM cases c JOIN companies co ON co.id=c.company_id WHERE c.id=?", (other['id'],)).fetchone()
+        self.assertEqual(new['status'], 'listed')
+        # 중지한 기업 페이지는 안 보임
+        self.post_form(admin, '/admin/companies', {'id': co['id'], 'action': 'stop'})
+        self.assertEqual(self.client.get('/companies/%d' % co['id']).status_code, 404)
+        self.post_form(admin, '/admin/companies', {'id': co['id'], 'action': 'start'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT status FROM companies WHERE id=?', (co['id'],)).fetchone()['status'], 'listed')
 
 
 if __name__ == '__main__':
