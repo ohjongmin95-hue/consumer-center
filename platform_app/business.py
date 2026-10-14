@@ -13,6 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
+import team
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -30,12 +31,32 @@ core.track_template(app)
 
 def me():
     if 'co' not in g:
-        g.co=None
+        g.co=None;g.who=None
         if session.get('co_id'):
-            with conn() as db:co=core.company(db,session['co_id'])
-            if co and co['status']=='active' and co['member']:g.co=co
-            else:session.pop('co_id',None)
+            with conn() as db:
+                co=core.company(db,session['co_id']);sid=session.get('staff_id')
+                s=team.member(db,co['id'],sid) if co and sid else None
+            if co and co['status']=='active' and co['member'] and (not sid or (s and s['status']=='active')):
+                g.co=co;g.who=team.staff_actor(s) if s else team.owner_actor(co)
+            else:session.pop('co_id',None);session.pop('staff_id',None)
     return g.co
+def who():
+    """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
+    me();return getattr(g,'who',None)
+# 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
+MANAGE_EPS={'rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
+DECIDE_EPS={'approve_many'}
+DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
+@app.before_request
+def role_guard():
+    a=who() if not request.path.startswith(('/api/','/hook/','/ops')) else None
+    if not a:return
+    g.actor=a['name']
+    ep=request.endpoint or ''
+    need='manage' if ep in MANAGE_EPS else 'decide' if ep in DECIDE_EPS else ('work' if request.method=='POST' and ep!='logout' else '')
+    if need and not team.can(a,need):
+        flash(f"{team.ROLES[a['role']]} 계정은 이 일을 할 수 없어요. 대표나 관리자에게 부탁해 주세요.",'error')
+        return redirect(url_for('decide'))
 def login_required(f):
     @functools.wraps(f)
     def w(*a,**k):
@@ -53,7 +74,8 @@ def ctx():
     co=me();n=0
     if co:
         with conn() as db:n=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND member=1 AND consent=1 AND decision='pending' AND status IN ('forwarded','seen')",(co['id'],)).fetchone()[0]
-    return {'co':co,'n_pending':n,'is_ops':bool(session.get('ops'))}
+    a=who() if co else None
+    return {'co':co,'n_pending':n,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES}
 
 def kpis(rows):
     n=len(rows);auto=sum(r['decision']=='auto' for r in rows);res=sum(r['status']=='resolved' for r in rows)
@@ -62,7 +84,7 @@ def kpis(rows):
 
 # ---------- 기업 계정 ----------
 @app.route('/robots.txt')
-def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset']),mimetype='text/plain')
+def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset','/team','/join']),mimetype='text/plain')
 
 @app.route('/sitemap.xml')
 def sitemap():
@@ -87,7 +109,7 @@ def signup_apply(f):
     elif core.throttled('signup',limit=5,minutes=60):err='잠시 후 다시 시도해 주세요.'
     if not err:
         with conn() as db:
-            if db.execute('SELECT 1 FROM companies WHERE lower(login_id)=lower(?)',(d['login_id'],)).fetchone():err='이미 가입된 이메일이에요.'
+            if team.email_taken(db,d['login_id']):err='이미 가입된 이메일이에요.'
             else:
                 db.execute("INSERT INTO companies(name,member,status,contact,login_id,pw_hash,biz_no,owner_name,phone,notify_email,industry,created) VALUES(?,0,'pending',?,?,?,?,?,?,?,?,?)",
                     (d['name'],d['contact'],d['login_id'].lower(),generate_password_hash(pw),digits(d['biz_no']),d['owner_name'],digits(d['phone']),d['login_id'].lower(),d['industry'],core.iso()))
@@ -107,12 +129,18 @@ def login():
     if request.method=='POST':
         lid=clean(request.form.get('login_id'),80).lower();pw=request.form.get('password','')
         if core.throttled('login',limit=10,minutes=10):flash('로그인 시도가 너무 많습니다. 10분 뒤에 다시 해 주세요.','error');return render_template('b_login.html'),429
-        with conn() as db:co=db.execute('SELECT * FROM companies WHERE login_id=?',(lid,)).fetchone()
-        if not co or not check_password_hash(co['pw_hash'],pw):flash('이메일이나 비밀번호가 맞지 않습니다.','error')
+        with conn() as db:
+            co=db.execute('SELECT * FROM companies WHERE login_id=?',(lid,)).fetchone();st=None
+            if not co:
+                st=team.find_login(db,lid);co=core.company(db,st['company_id']) if st else None
+        if not co or not check_password_hash((st or co)['pw_hash'],pw):flash('이메일이나 비밀번호가 맞지 않습니다.','error')
         elif co['status']=='pending':flash('가입 승인을 기다리고 있습니다. 승인되면 이메일로 알려 드립니다.','error')
         elif co['status']!='active':flash('이용할 수 없는 계정입니다. 센터에 문의해 주세요.','error')
         else:
             ops=session.get('ops');csrf=session.get('csrf');session.clear();session['co_id']=co['id'];session.permanent=True
+            if st:
+                session['staff_id']=st['id']
+                with conn() as db:db.execute('UPDATE staff SET last_login=? WHERE id=?',(core.iso(),st['id']))
             if csrf:session['csrf']=csrf  # 다른 탭에 열어 둔 화면도 그대로 쓸 수 있게
             if ops:session['ops']=True  # 운영 화면 로그인은 그대로 둔다
             return redirect(url_for('decide'))
@@ -153,7 +181,7 @@ def reset(tok):
     return render_template('b_forgot.html',reset=True)
 
 @app.route('/logout',methods=['POST'])
-def logout():session.pop('co_id',None);return redirect(url_for('login'))
+def logout():session.pop('co_id',None);session.pop('staff_id',None);return redirect(url_for('login'))
 
 # ---------- 기업 화면 ----------
 # 기업은 전달에 동의한 요청만 본다
@@ -303,9 +331,12 @@ def all_cases():
     groups={'all':rows,'open':[r for r in rows if is_open(r)],'done':[r for r in rows if r['status'] in ('answered','resolved','closed','withdrawn')],
             'bad':[r for r in rows if r['status']=='unresolved' or core.overdue(r)],
             'ret':[r for r in rows if r['ret_status'] in ('guided','sent') or r['refund_status']=='requested'],
-            'comp':[r for r in rows if core.comp_pending(r,comps)]}
+            'comp':[r for r in rows if core.comp_pending(r,comps)],
+            'mine':[r for r in rows if r['assignee']==who()['key'] and r['status'] not in core.FINAL],
+            'none':[r for r in rows if not r['assignee'] and r['status'] not in core.FINAL]}
     if fil not in groups:fil='all'
-    return render_template('b_all.html',groups=groups,fil=fil,rows=groups[fil],q=q,tab='all')
+    with conn() as db:names=dict(team.people(db,me()))
+    return render_template('b_all.html',groups=groups,fil=fil,rows=groups[fil],q=q,tab='all',names=names)
 
 @app.route('/stats')
 @login_required
@@ -396,6 +427,17 @@ def case(case_id):
     with conn() as db:
         c=my_case(db,case_id)
         if request.method=='POST':
+            act=request.form.get('act')
+            if act=='note':
+                if team.add_note(db,me(),c,who(),request.form.get('note')):flash('메모를 남겼어요. 고객에게는 보이지 않아요.','ok')
+                else:flash('메모 내용을 적어 주세요','error')
+                return redirect(url_for('case',case_id=case_id)+'#notes')
+            if act=='assign':
+                name=team.assign(db,me(),c,request.form.get('assignee',''))
+                if name is not None:flash(f'담당자를 {name}(으)로 정했어요' if name else '담당자를 비웠어요','ok')
+                return redirect(url_for('case',case_id=case_id))
+            if act in DECIDE_ACTS and not team.can(who(),'decide'):
+                flash('승인·보상·환불 완료는 대표나 관리자만 할 수 있어요. 메모로 부탁해 주세요.','error');return redirect(url_for('case',case_id=case_id))
             msg,level=case_act(db,c,request.form)
             if level=='bad':abort(400)
             if msg:flash(msg,level)
@@ -405,10 +447,11 @@ def case(case_id):
             c=my_case(db,case_id)
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);rule=core.rule_for(db,me()['id'],c['category'])
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])];ship_track=can_ship_track(db,c)
+        notes=team.notes(db,c['id']);people=team.people(db,me());assignee=team.assignee_name(db,me(),c['assignee'])
     comp_show=core.comp_open(c) and (rule['comp'] or c['category'] in core.COMP_CATS)
     with conn() as db:order=orders_mod.for_case(db,c);blocked=orders_mod.cancel_blocked(db,c)
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
-    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
+    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),tab='all')
 
 @app.route('/case/<int:case_id>/draft',methods=['POST'])
@@ -643,6 +686,37 @@ def save_rule(db,co,f):
     comp=clean(f.get('comp'),100) if 'comp' in f else cur['comp']
     db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond,comp) VALUES(?,?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond,comp=excluded.comp',(co['id'],cat,int(auto),reply,faq,cond,comp))
     return True
+
+@app.route('/team',methods=['GET','POST'])
+@login_required
+def team_page():
+    """직원 관리: 초대, 역할 바꾸기, 내보내기, 비밀번호 링크 다시 만들기. 직원 수로 요금을 받지 않는다."""
+    co=me();link=''
+    with conn() as db:
+        if request.method=='POST':
+            if request.form.get('act')=='invite':msg,level,link=team.invite(db,co,request.form)
+            else:msg,level,link=team.update(db,co,who(),request.form)
+            if msg:flash(msg,level)
+            if not link:return redirect(url_for('team_page'))
+        rows=team.staff(db,co['id'])
+        load={k:db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND assignee=? AND status NOT IN ('resolved','unresolved','closed','withdrawn')",(co['id'],k)).fetchone()[0] for k in ['owner']+[str(r['id']) for r in rows]}
+    return render_template('b_team.html',rows=rows,link=link,load=load,owner=team.owner_actor(co),INVITE_ROLES=team.INVITE_ROLES,tab='team')
+
+@app.route('/join/<tok>',methods=['GET','POST'])
+def join(tok):
+    """직원 초대 링크: 비밀번호를 정하면 바로 로그인. 한 번 쓰면 다시 못 쓴다."""
+    with conn() as db:
+        s=team.read_invite(db,tok)
+        if not s:flash('초대 링크가 만료됐거나 이미 썼어요. 대표나 관리자에게 다시 요청해 주세요.','error');return redirect(url_for('login'))
+        co=core.company(db,s['company_id'])
+        if request.method=='POST':
+            err=team.accept(db,s,request.form.get('password',''))
+            if not err:
+                csrf=session.get('csrf');session.clear();session['co_id']=co['id'];session['staff_id']=s['id'];session.permanent=True
+                if csrf:session['csrf']=csrf
+                flash(f"{co['name']}에 오신 걸 환영해요",'ok');return redirect(url_for('decide'))
+            flash(err,'error')
+    return render_template('b_join.html',s=s,company=co,role=team.ROLES[s['role']])
 
 @app.route('/settings',methods=['GET','POST'])
 @login_required
@@ -949,7 +1023,7 @@ def api_co():
     except Exception:d=None
     with conn() as db:co=core.company(db,d.get('id')) if isinstance(d,dict) else None
     if not co or co['status']!='active' or not co['member'] or co['pw_hash'][-16:]!=d.get('h'):abort(401)
-    g.co=co;return co
+    g.co=co;g.who=team.owner_actor(co);g.actor=g.who['name'];return co
 def api_form():j=request.get_json(silent=True);return j if isinstance(j,dict) and j else request.form
 def co_info(co):
     return dict(id=co['id'],name=co['name'],login_id=co['login_id'],link=core.site_url('me','/to/%d'%co['id']))

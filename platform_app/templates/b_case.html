@@ -18,8 +18,8 @@
 {% if open and c.decision not in ('approved','auto') %}<section class="panel decide"><div class="ph">처리 방법</div>
 <div class="reco"><div class="r">{{ p.title }}</div><ol class="flow">{% for st in p.steps %}<li>{{ st }}</li>{% endfor %}{% if rule.reply %}<li>고객에게 답변 보내기</li>{% endif %}</ol></div>
 {% if blocked %}<div class="hint" style="margin:12px 0 0"><span>⚠️</span><span><b>이미 발송된 주문이에요 ({{ OSTATUS[blocked.status] }})</b> · 취소 대신 받으신 뒤 반품으로 안내해 주세요</span></div>{% endif %}
-<form method="post" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="approve">승인하고 처리</button><button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form></section>{% endif %}
-{% if comp_show %}<section class="panel"><div class="ph">보상</div><p class="sub" style="font-size:15px;margin:0 0 12px">{% if rule.comp %}정해 둔 보상을 추천합니다. 승인하면 고객에게 사과와 함께 알림이 갑니다.{% else %}보상을 하려면 내용을 적고 승인해 주세요. 자동 처리 화면에서 유형별 보상을 정해 둘 수 있습니다.{% endif %}</p>
+<form method="post" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}">{% if can('decide') %}<button class="btn md" name="act" value="approve">승인하고 처리</button>{% endif %}<button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form></section>{% endif %}
+{% if comp_show and can('decide') %}<section class="panel"><div class="ph">보상</div><p class="sub" style="font-size:15px;margin:0 0 12px">{% if rule.comp %}정해 둔 보상을 추천합니다. 승인하면 고객에게 사과와 함께 알림이 갑니다.{% else %}보상을 하려면 내용을 적고 승인해 주세요. 자동 처리 화면에서 유형별 보상을 정해 둘 수 있습니다.{% endif %}</p>
 <form method="post" class="addline" style="flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <input class="inp" name="comp" maxlength="100" value="{{ rule.comp }}" placeholder="예: {{ COMP_EXAMPLES[0] }}" aria-label="보상 내용" style="flex:1 1 200px"><button class="btn md" name="act" value="comp">보상 승인</button><button class="btn md gray" name="act" value="comp_skip" formnovalidate>보상 안 함</button></form></section>
 {% elif c.comp_status=='given' %}<section class="panel"><div class="ph">보상</div><p class="sub" style="font-size:15px;margin:0">{{ c.comp }} · 고객에게 알렸습니다</p></section>{% endif %}
@@ -41,7 +41,7 @@
 {% if c.refund_status=='done' %}<p class="sub" style="font-size:15px;margin:0">환불을 완료했습니다. 고객 계좌 정보는 지웠습니다.</p>
 {% else %}<dl class="kv"><dt>은행</dt><dd>{{ c.refund_bank }}</dd><dt>계좌번호</dt><dd class="no" id="rAcct" style="user-select:all">{{ c.refund_account }}</dd><dt>예금주</dt><dd>{{ c.refund_holder }}</dd></dl>
 <p class="sub" style="font-size:14px;margin:12px 0 0">이 계좌로 입금한 뒤 환불 완료를 눌러 주세요. 고객에게 알림이 가고 계좌 정보는 바로 지워집니다.</p>
-<form method="post" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="refund_done">환불 완료</button><button class="btn md gray" type="button" data-copy-text="{{ c.refund_account }}">계좌번호 복사</button></form>{% endif %}</section>{% endif %}
+<form method="post" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}">{% if can('decide') %}<button class="btn md" name="act" value="refund_done">환불 완료</button>{% endif %}<button class="btn md gray" type="button" data-copy-text="{{ c.refund_account }}">계좌번호 복사</button></form>{% endif %}</section>{% endif %}
 {% if is_direct(c) and last_reply %}<section class="panel"><div class="ph">{{ c.channel }}(으)로 전할 답변</div><p class="sub" style="margin:0 0 12px;font-size:15px">직접 등록한 요청은 고객에게 자동으로 가지 않습니다. 복사해서 원래 받은 곳으로 보내 주세요.</p>
 <textarea class="inp" id="lastReply" readonly>{{ last_reply.reply }}</textarea><button class="btn md gray" type="button" data-copy="lastReply" style="margin-top:10px">복사</button></section>{% endif %}
 {% if open %}<form class="panel compose" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="reply">
@@ -50,9 +50,17 @@
 <p class="cap" id="draftNote" hidden></p>
 <div class="quick">{% for t in ['확인 후 오늘 안에 다시 연락드릴게요.','불편을 드려 죄송합니다. 바로 조치하겠습니다.','주문번호를 알려 주시면 빠르게 확인할게요.'] %}<button type="button" data-q="{{ t }}">{{ t }}</button>{% endfor %}{% for g in guides %}<button type="button" class="g" data-q="{{ g.sample }}">가이드 · {{ g.title }}</button>{% endfor %}</div>
 <div class="send"><span class="cap">{{ '기록만 남고 고객에게는 가지 않습니다' if is_direct(c) else '고객에게 알림이 갑니다' }}</span><button class="btn md">{{ '답변 기록하기' if is_direct(c) else '답변 보내기' }}</button></div></form>{% endif %}
+<section class="panel" id="notes"><div class="ph">내부 메모<span class="cap">고객에게 보이지 않아요</span></div>
+{% if notes %}<ul class="tl notes">{% for n in notes|reverse %}<li class="sys"><div><div class="x">{{ n.text }}</div><div class="w">{{ n.author }} · {{ fmt(n.created) }}</div></div></li>{% endfor %}</ul>{% endif %}
+{% if can('work') %}<form method="post" class="stack" style="margin-top:12px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="note">
+<textarea class="inp" name="note" maxlength="2000" rows="2" placeholder="동료에게 남길 메모 (@이름 으로 부르면 알림이 가요)" required></textarea><button class="btn md gray">메모 남기기</button></form>{% endif %}</section>
 <section class="panel"><div class="ph">진행 기록</div>{{ m.timeline(ev,c,'biz') }}</section>
 </div>
 <aside class="stack side-sticky">
+<section class="panel"><div class="ph">담당자</div>
+{% if can('work') %}<form method="post" class="addline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="assign">
+<select class="inp" name="assignee" aria-label="담당자"><option value="">담당자 없음</option>{% for k,nm in people %}<option value="{{ k }}" {{ 'selected' if c.assignee==k }}>{{ nm }}</option>{% endfor %}</select><button class="btn md gray">정하기</button></form>
+{% else %}<p class="sub" style="margin:0;font-size:15px">{{ assignee or '담당자 없음' }}</p>{% endif %}</section>
 {% if order %}<section class="panel"><div class="ph">주문<a href="{{ url_for('order_page',oid=order.id) }}">주문 보기 ›</a></div><dl class="kv"><dt>주문번호</dt><dd class="no">{{ order.order_no }}</dd><dt>상태</dt><dd><b>{{ OSTATUS[order.status] }}</b></dd>{% if order.product %}<dt>상품</dt><dd>{{ order.product }}{% if order.qty>1 %} × {{ order.qty }}{% endif %}</dd>{% endif %}{% if order.amount %}<dt>결제금액</dt><dd>{{ '{:,}'.format(order.amount) }}원</dd>{% endif %}{% if order.ordered_on %}<dt>주문일</dt><dd>{{ order.ordered_on }}</dd>{% endif %}{% if order.invoice %}<dt>송장</dt><dd>{{ order.courier }} <span class="no">{{ order.invoice }}</span></dd>{% endif %}</dl>{% if c.order_no!=order.order_no %}<p class="cap" style="margin:10px 0 0">같은 휴대폰 번호의 최근 주문이에요</p>{% endif %}</section>{% endif %}
 <section class="panel"><div class="ph">고객 정보</div><dl class="kv"><dt>이름</dt><dd>{{ c.name or '익명' }}</dd>{% if c.phone %}<dt>연락처</dt><dd>{{ fmt_phone(c.phone) }}</dd>{% endif %}{% if c.email %}<dt>이메일</dt><dd>{{ c.email }}</dd>{% endif %}{% if c.received_on %}<dt>상품 받은 날</dt><dd>{{ c.received_on }}</dd>{% endif %}</dl></section>
 <section class="panel"><div class="ph">법 기준<a href="{{ url_for('guide') }}">응대 가이드 ›</a></div>

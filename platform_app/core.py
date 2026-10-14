@@ -222,6 +222,8 @@ def init():
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
         if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')
         if 'cond' not in cols:db.execute("ALTER TABLE rules ADD COLUMN cond TEXT NOT NULL DEFAULT ''")
+        if 'actor' not in {r[1] for r in db.execute('PRAGMA table_info(events)')}:db.execute("ALTER TABLE events ADD COLUMN actor TEXT NOT NULL DEFAULT ''")
+        if 'assignee' not in {r[1] for r in db.execute('PRAGMA table_info(cases)')}:db.execute("ALTER TABLE cases ADD COLUMN assignee TEXT NOT NULL DEFAULT ''")
         if 'comp' not in cols:db.execute("ALTER TABLE rules ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
 init()
 
@@ -337,7 +339,9 @@ def new_case_no(db):
         no='H'+now().strftime('%y%m%d')+'-'+''.join(secrets.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(5))
         if not db.execute('SELECT 1 FROM cases WHERE no=?',(no,)).fetchone():return no
 def add_event(db,case_id,kind,text,reply=''):
-    cur=db.execute('INSERT INTO events(case_id,kind,text,reply,created) VALUES(?,?,?,?,?)',(case_id,kind,text,reply,iso()))
+    # 기업 화면에서 직원이 한 일이면 누가 했는지 남긴다 (business.py가 요청마다 g.actor를 정한다). 고객 화면에는 보이지 않는다.
+    actor=(getattr(g,'actor','') or '') if has_request_context() and kind!='me' else ''
+    cur=db.execute('INSERT INTO events(case_id,kind,text,reply,created,actor) VALUES(?,?,?,?,?,?)',(case_id,kind,text,reply,iso(),actor))
     db.execute('UPDATE cases SET updated=? WHERE id=?',(iso(),case_id))
     return cur.lastrowid
 def events(db,case_id):return db.execute('SELECT * FROM events WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
