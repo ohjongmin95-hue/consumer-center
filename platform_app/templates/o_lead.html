@@ -1,0 +1,30 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}{{ lead.company }} · 상담 신청 · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+<div class="phead"><div><a class="cap" href="{{ url_for('sl.ops_leads') }}">← 상담 신청</a><h1>{{ lead.company }}</h1><p>{{ STAGE[lead.stage] }} · {{ fmt(lead.created) }} 신청{% if co %} · <a class="link" href="{{ url_for('ops_company',cid=co.id) }}">가입함: {{ co.name }}</a>{% endif %}</p></div></div>
+<div class="cols"><div class="stack" style="gap:var(--ds-gap)">
+<section class="panel"><div class="ph">신청 내용</div>
+<dl class="kv"><dt>담당자</dt><dd>{{ lead.name }}</dd><dt>이메일</dt><dd><a class="link" href="mailto:{{ lead.email }}">{{ lead.email }}</a></dd><dt>연락처</dt><dd>{{ fmt_phone(lead.phone) if lead.phone else '–' }}</dd>
+<dt>쇼핑몰</dt><dd>{% if lead.shop_url %}<a class="link" href="{{ lead.shop_url if lead.shop_url.startswith('http') else 'https://'+lead.shop_url }}" target="_blank" rel="noopener noreferrer">{{ lead.shop_url }}</a>{% else %}–{% endif %}</dd>
+<dt>판매처</dt><dd>{{ lead.channels or '–' }}</dd><dt>월 문의</dt><dd>{{ lead.volume or '–' }}</dd><dt>관심 기능</dt><dd>{{ lead.interests or '–' }}</dd>
+<dt>유입</dt><dd>{{ lead.source or '직접 방문' }}{% if lead.campaign %} · {{ lead.campaign }}{% endif %}</dd></dl>
+{% if lead.message %}<div class="reply" style="white-space:pre-wrap;margin-top:12px">{{ lead.message }}</div>{% endif %}</section>
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="contact"><div class="ph">연락 기록 남기기</div>
+<div class="addline"><select class="inp" name="channel" aria-label="연락 방법" style="max-width:160px">{% for c in CHANNELS %}<option>{{ c }}</option>{% endfor %}</select><input class="inp" name="text" maxlength="2000" placeholder="통화 내용, 보낸 자료, 다음 할 일" aria-label="연락 내용" required></div>
+<button class="btn md">기록</button></form>
+<section class="panel"><div class="ph">지난 기록</div>
+{% for h in hist %}<div class="drow"><div class="tx"><b style="font-weight:500">{% if h.channel %}<span class="pill gray">{{ h.channel }}</span> {% endif %}{{ h.text }}</b><span>{{ fmt(h.created) }}</span></div></div>{% else %}<p class="cap">기록이 없어요</p>{% endfor %}</section>
+</div>
+<aside class="stack" style="gap:var(--ds-gap)">
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="update"><div class="ph">진행</div>
+<label class="fld"><span>단계</span><select class="inp" name="stage">{% for k,v in STAGES %}<option value="{{ k }}" {{ 'selected' if lead.stage==k }}>{{ v }}</option>{% endfor %}</select></label>
+<label class="fld"><span>담당자</span><input class="inp" name="owner" maxlength="30" value="{{ lead.owner }}" placeholder="이름"></label>
+<label class="fld"><span>시연 일시</span><input class="inp" name="demo_at" type="datetime-local" value="{{ lead.demo_at.replace(' ','T') }}"></label>
+<label class="fld"><span>다음 연락일</span><input class="inp" name="follow_up" type="date" value="{{ lead.follow_up }}"></label>
+<button class="btn md">저장</button></form>
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="memo"><div class="ph">내부 메모</div>
+<textarea class="inp" name="memo" maxlength="4000" placeholder="고객사에는 보이지 않아요">{{ lead.memo }}</textarea><button class="btn md gray">메모 저장</button></form>
+<form method="post" onsubmit="return confirm('이 신청과 기록을 모두 지울까요? 되돌릴 수 없어요.')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn" name="act" value="delete">신청 지우기 (개인정보 삭제 요청 시)</button></form>
+</aside></div>
+{% endblock %}

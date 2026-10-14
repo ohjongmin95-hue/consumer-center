@@ -1,0 +1,28 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}상담·데모 신청 · {{ BNAME }}{% endblock %}
+{% block description %}{{ BNAME }} 담당자가 우리 쇼핑몰에 맞춰 화면을 보여 드리고 설정을 도와드려요. 상담은 무료예요.{% endblock %}
+{% block bar %}{{ b.bar(tab) }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">상담·데모 신청</span><h1>우리 쇼핑몰에 맞춰<br>직접 보여 드릴게요</h1>
+<p>문의가 많거나 직원이 여럿이라면 담당자가 화상으로 화면을 보여 드리고 처음 설정을 도와드려요. 상담은 무료예요. 바로 써 보고 싶다면 <a class="link" href="{{ url_for('signup') }}">무료로 시작하기</a>를 눌러 주세요.</p></div></div></section>
+<section><div class="wrap mk-one">
+{% if done %}<div class="panel" style="text-align:center;padding:48px 24px;background:var(--bg)"><div class="done-ic"></div><h2>신청을 받았어요</h2><p style="margin-inline:auto">{{ d.name }}님, 담당자가 영업일 기준 1~2일 안에 {{ d.email }}(으)로 연락드릴게요.</p>
+<div class="in-cta" style="justify-content:center"><a class="btn" href="{{ url_for('mk.tour') }}">기다리는 동안 둘러보기</a></div></div>
+{% else %}{% set f=f or {} %}
+<form method="post" class="panel stack contact" style="background:var(--bg)"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="from" value="{{ request.referrer or '' }}">
+<div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+<div class="grid2">
+<label class="fld"><span>회사명</span><input class="inp" name="company" maxlength="60" required value="{{ d.company or '' }}"></label>
+<label class="fld"><span>담당자</span><input class="inp" name="name" maxlength="30" required value="{{ d.name or '' }}"></label>
+<label class="fld"><span>이메일</span><input class="inp" name="email" type="email" maxlength="80" required value="{{ d.email or '' }}"></label>
+<label class="fld"><span>연락처 (선택)</span><input class="inp" name="phone" type="tel" maxlength="20" value="{{ d.phone or '' }}" placeholder="010-0000-0000"></label>
+<label class="fld"><span>쇼핑몰 주소 (선택)</span><input class="inp" name="shop_url" maxlength="200" value="{{ d.shop_url or '' }}" placeholder="https://"></label>
+<label class="fld"><span>월 문의 수</span><select class="inp" name="volume"><option value="">고르기</option>{% for v in VOLUMES %}<option {{ 'selected' if d.volume==v }}>{{ v }}</option>{% endfor %}</select></label>
+</div>
+<div class="fld"><span>이용 중인 판매처</span><div class="chk-grid">{% for x in SHOP_TYPES %}<label class="check"><input type="checkbox" name="channels" value="{{ x }}" {{ 'checked' if x in (d.channels or '') }}><span class="bx"></span><span>{{ x }}</span></label>{% endfor %}</div></div>
+<div class="fld"><span>관심 있는 기능</span><div class="chk-grid">{% for x in INTERESTS %}<label class="check"><input type="checkbox" name="interests" value="{{ x }}" {{ 'checked' if x in (d.interests or '') }}><span class="bx"></span><span>{{ x }}</span></label>{% endfor %}</div></div>
+<label class="fld"><span>문의 내용 (선택)</span><textarea class="inp" name="message" maxlength="2000" placeholder="지금 CS를 어떻게 하고 계신지, 가장 힘든 점을 적어 주시면 맞춰 준비할게요">{{ d.message or '' }}</textarea></label>
+<div class="agree"><label class="check"><input type="checkbox" name="privacy" value="1" required><span class="bx"></span><span><b>개인정보 수집·이용 동의 (필수)</b><div class="cap">수집 항목: 회사명, 담당자, 이메일, 연락처, 쇼핑몰 주소 · 목적: 상담·데모 안내 연락 · 보관: 상담 종료 후 3년, 요청하면 바로 지워요</div></span></label></div>
+<button class="btn full">상담 신청하기</button></form>{% endif %}
+</div></section>
+</main>{% endblock %}

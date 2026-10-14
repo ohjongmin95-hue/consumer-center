@@ -25,6 +25,7 @@
 {% macro obar(tab,n_signup) -%}
 {# 본사 운영 메뉴: 사장님 화면과 같은 왼쪽 메뉴(bside). 좁은 화면은 위쪽 '메뉴' 버튼으로 펼친다 #}
 {% set OMENU=[('업무',[('all','ops_all','전체 현황','chart'),('non','ops','비입점 요청','inbox'),('co','ops_companies','기업 관리','building')]),
+ ('영업',[('leads','sl.ops_leads','상담 신청','list')]),
  ('콘텐츠',[('news','ops_news','법·제도 소식','scale'),('visual','ops_visual','화면 보며 고치기','search'),('copy','ops_copy','문구 고치기','note')]),
  ('설정',[('keys','ops_keys','서비스 키','shield')])] %}
 <header class="gnb"><div class="wrap">
@@ -35,7 +36,7 @@
 <nav class="bside oside" aria-label="운영 메뉴">{{ omenu_links(OMENU,tab,n_signup) }}</nav>
 {%- endmacro %}
 {% macro omenu_links(OMENU,tab,n_signup) -%}
-{% for grp,items in OMENU %}<span class="grp">{{ grp }}</span>{% for key,ep,label,ic in items %}<a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{{ i.icon(ic,22) }}<span>{{ label }}</span>{% if key=='co' and n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</a>{% endfor %}{% endfor %}
+{% for grp,items in OMENU %}<span class="grp">{{ grp }}</span>{% for key,ep,label,ic in items %}<a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{{ i.icon(ic,22) }}<span>{{ label }}</span>{% if key=='co' and n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}{% if key=='leads' and n_leads %}<span class="cnt">{{ n_leads }}</span>{% endif %}</a>{% endfor %}{% endfor %}
 {%- endmacro %}
 {% macro kpis(k) -%}
 <div class="kpis"><div class="kpi"><span>받은 요청</span><b>{{ k.n }}<small>건</small></b></div><div class="kpi"><span>자동 처리율</span><b>{{ k.auto }}<small>%</small></b></div>

@@ -16,8 +16,8 @@
 {% else %}<div class="hempty">{{ i.icon('approve',44) }}<span>처리할 비입점 요청이 없어요</span></div>{% endfor %}</section>
 <div class="stack" style="gap:var(--ds-gap)">
 <section class="panel"><div class="ph">확인이 필요한 기업{% if signups %}<a class="more" href="{{ url_for('ops_companies') }}">기업 관리</a>{% endif %}</div>
-{% for c in signups %}<div class="drow"><span class="av">{{ c.name[:1] }}</span><a class="tx" href="{{ url_for('ops_companies') }}"><b>{{ c.name }}</b><span>가입 신청 · {{ fmt(c.created) }}</span></a><span class="pill acc">승인 대기</span></div>
-{% else %}<div class="hempty"><span>승인을 기다리는 가입 신청이 없어요</span></div>{% endfor %}</section>
+{% for c in signups %}<div class="drow"><span class="av">{{ c.name[:1] }}</span><a class="tx" href="{{ url_for('ops_companies') }}"><b>{{ c.name }}</b><span>가입 · {{ fmt(c.created) }}</span></a><span class="pill acc">인증 대기</span></div>
+{% else %}<div class="hempty"><span>인증을 기다리는 회사가 없어요</span></div>{% endfor %}</section>
 <section class="panel brief"><div class="ph">운영 주의</div>{% if watch %}<ul>{% for w in watch %}<li><a href="{{ w.href }}">{{ w.text }}</a></li>{% endfor %}</ul>{% else %}<ul><li>지금 주의할 일이 없어요</li></ul>{% endif %}</section>
 </div></div>
 <div class="shead" id="recent" style="margin-top:28px"><h2>최근 요청</h2><div class="r"><span class="t-mute">받은 요청 {{ k.n }}건 · 자동 처리율 {{ k.auto }}% · 기한 지남 {{ k.late }}건</span></div></div>

@@ -1,0 +1,17 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}상담 신청 · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>상담 신청</h1><p>상담·데모 신청을 단계별로 관리해요. 운영 로그인으로만 볼 수 있어요.</p></div></div>
+{% if due %}<div class="warn" style="background:var(--accent-soft)"><span>📞</span><span><b>오늘까지 연락할 곳 {{ due|length }}곳</b><small>{% for l in due[:5] %}<a class="link" href="{{ url_for('sl.ops_lead',lid=l.id) }}">{{ l.company }}</a> ({{ l.follow_up }}){{ ', ' if not loop.last }}{% endfor %}</small></span></div>{% endif %}
+<nav class="mk-tabs" aria-label="단계">
+<a href="{{ url_for('sl.ops_leads',s='open') }}" class="{{ 'on' if st=='open' }}">진행 중 {{ n_open }}</a>
+{% for k,v in STAGES %}<a href="{{ url_for('sl.ops_leads',s=k) }}" class="{{ 'on' if st==k }}">{{ v }} {{ by.get(k,0) }}</a>{% endfor %}
+<a href="{{ url_for('sl.ops_leads',s='all') }}" class="{{ 'on' if st=='all' }}">전체</a></nav>
+<form class="addline" method="get" style="margin-bottom:16px"><input type="hidden" name="s" value="{{ st }}"><input class="inp" name="q" value="{{ q }}" placeholder="회사·담당자·이메일 검색" aria-label="검색"><button class="btn md gray">검색</button></form>
+{% if rows %}<div class="tbl-wrap"><table class="tbl2 mcards"><thead><tr><th>회사</th><th class="hm">월 문의</th><th class="hm">담당자</th><th class="hm">다음 연락</th><th class="hm">신청일</th><th class="r">단계</th></tr></thead><tbody>
+{% for l in rows %}<tr data-href="{{ url_for('sl.ops_lead',lid=l.id) }}"><td><a class="ttl" href="{{ url_for('sl.ops_lead',lid=l.id) }}">{{ l.company }}</a><div class="msub">{{ l.name }} · {{ l.email }}</div></td>
+<td class="hm t-sub">{{ l.volume or '–' }}</td><td class="hm">{{ l.owner or '–' }}</td><td class="hm {{ 't-bad' if l.follow_up and l.follow_up<=today }}">{{ l.follow_up or '–' }}</td><td class="hm t-mute">{{ fmt(l.created) }}</td>
+<td class="r"><span class="pill {{ 'acc' if l.stage=='new' else 'ok' if l.stage=='won' else 'gray' }}">{{ STAGE[l.stage] }}</span></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-card"><b>신청이 없어요</b><span>공개 화면의 상담 신청으로 들어온 신청이 여기에 모여요</span></div>{% endif %}
+{% endblock %}
