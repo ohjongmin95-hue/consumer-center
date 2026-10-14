@@ -1,0 +1,22 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}{{ p.name }} CS 연동 · {{ BNAME }}{% endblock %}
+{% block description %}{{ p.lead }}{% endblock %}
+{% block bar %}{{ b.bar(tab) }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one">
+<nav class="mk-tabs" aria-label="판매처">{% for k,x in pages.items() %}<a href="{{ url_for('mk.shop_page',slug=k) }}" class="{{ 'on' if k==slug }}">{{ x.short }}</a>{% endfor %}</nav>
+<div><span class="in-eyebrow">{{ p.name }} 연동</span><h1>{{ p.name }} 문의,<br>소보루 한 화면에서</h1><p>{{ p.lead }}</p>
+<div class="in-cta"><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a><a class="btn gray" href="{{ url_for('mk.tour') }}">제품 둘러보기</a></div></div>
+</div></section>
+<section><div class="wrap mk-one">
+<h2>지금 되는 것과 준비 중인 것</h2><p>실제로 동작하는 것만 '지금 됨'으로 적었어요.</p>
+<div class="mk-list">{% for t,d,s in p['items'] %}<div class="mk-item"><div><b>{{ t }}</b><p>{{ d }}</p></div><span class="pill {{ STATE[s][1] }}">{{ STATE[s][0] }}</span></div>{% endfor %}</div>
+<p class="cap" style="margin-top:14px">시험 운영: 판매처 공식 문서대로 만들었지만 아직 실제 판매자 계정으로 충분히 시험하지 못한 기능이에요. 연동 대기: 판매처 승인이나 키가 있어야 켜지는 기능이에요.</p>
+</div></section>
+<section class="in-steps"><div class="wrap">
+<h2>연결 방법</h2><p style="margin-inline:auto;text-align:center">{{ p.how }}</p>
+<ol>{% for s in p.steps %}<li><span>{{ loop.index }}</span><b>{{ s }}</b></li>{% endfor %}</ol>
+{% if p.shop and ip %}<p class="cap" style="text-align:center;margin-top:20px">소보루 서버 IP: <b>{{ ip }}</b></p>{% endif %}
+</div></section>
+<section class="in-end"><div class="wrap"><h2>{{ p.short }} 문의 정리,<br>오늘 시작하세요</h2><p>가입하면 바로 쓸 수 있어요. 기간 제한 없는 무료 시범이에요.</p><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div></section>
+</main>{% endblock %}

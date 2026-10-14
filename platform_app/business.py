@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
-import team, onboard, demo, funnel
+import team, onboard, demo, funnel, market
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -22,6 +22,9 @@ OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 # 소개 화면의 앱 받기 버튼: 스토어 주소를 서버 설정(.env)에 넣으면 '곧 출시' 대신 버튼이 나온다
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+app.register_blueprint(market.bp)
+app.jinja_env.globals.update(has_ep=lambda name:name in app.view_functions)
 
 @app.before_request
 def guard():
@@ -87,9 +90,12 @@ def ctx():
     if co:
         with conn() as db:n=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND member=1 AND consent=1 AND decision='pending' AND status IN ('forwarded','seen')",(co['id'],)).fetchone()[0]
     a=who() if co else None;rc=real() if co else None
-    return {'co':co,'n_pending':n,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES,
+    return {'PUB_NAV':pub_nav(),'co':co,'n_pending':n,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES,
             'real_co':rc,'in_demo':in_demo() if co else False,'trust':onboard.trust(rc) if rc else None,'setup':onboard.progress(rc) if rc else None}
 
+def pub_nav():
+    """로그인 전 위쪽 메뉴: 각 공개 화면 모듈이 내놓는 메뉴를 차례로."""
+    return market.nav()
 def kpis(rows):
     n=len(rows);auto=sum(r['decision']=='auto' for r in rows);res=sum(r['status']=='resolved' for r in rows)
     rated=sum(r['status'] in ('resolved','unresolved') for r in rows);late=sum(core.overdue(r) for r in rows)
@@ -97,11 +103,11 @@ def kpis(rows):
 
 # ---------- 기업 계정 ----------
 @app.route('/robots.txt')
-def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset','/team','/join']),mimetype='text/plain')
+def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset','/team','/join','/start','/verify','/demo','/auth']),mimetype='text/plain')
 
 @app.route('/sitemap.xml')
 def sitemap():
-    body=''.join('<url><loc>%s</loc></url>'%core.site_url('biz',p) for p in ('/','/signup','/login','/terms'))
+    body=''.join('<url><loc>%s</loc></url>'%core.site_url('biz',p) for p in ['/','/signup','/login','/terms']+market.sitemap_paths())
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
 @app.route('/terms')
@@ -128,10 +134,9 @@ def signup_apply(f,via='email',google_sub=''):
     return d,err,cid
 def start_session(co,staff_id=None):
     """로그인 상태로 만든다 (가입·로그인·구글·직원 초대 공용). 다른 탭의 화면과 운영 로그인은 그대로 둔다."""
-    ops=session.get('ops');csrf=session.get('csrf');session.clear();session['co_id']=co['id'];session.permanent=True
+    keep={k:session[k] for k in ('ops','csrf','utm','vid','ref') if k in session}  # 다른 탭 화면·운영 로그인·첫 유입 기록은 그대로
+    session.clear();session.update(keep);session['co_id']=co['id'];session.permanent=True
     if staff_id:session['staff_id']=staff_id
-    if csrf:session['csrf']=csrf
-    if ops:session['ops']=True
 @app.route('/signup',methods=['GET','POST'])
 def signup():
     g_=session.get('google_signup') or {}

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}제품 둘러보기 · {{ BNAME }}{% endblock %}
+{% block description %}{{ BNAME }} 실제 화면으로 3분 동안 둘러봐요. 요청 받기, 승인, AI 답변 초안, 교환·반품, 팀 배정, 통계까지.{% endblock %}
+{% block bar %}{{ b.bar(tab) }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one">
+<div><span class="in-eyebrow">제품 둘러보기 · 약 3분</span><h1>실제 화면으로<br>하루 CS를 따라가 봐요</h1>
+<p>견본 데이터를 넣은 실제 {{ BNAME }} 화면이에요. 반짝이는 곳을 누르거나 다음을 눌러 넘겨 보세요.</p></div>
+</div></section>
+<section class="tour-sec"><div class="wrap">
+{% if steps %}
+<div class="tour" id="tour" data-n="{{ steps|length }}">
+<div class="tour-head"><span class="tour-count"><b id="tN">1</b> / {{ steps|length }}</span><div class="nprog tour-prog"><i id="tBar" style="width:{{ (100/steps|length)|round(1) }}%"></i></div></div>
+{% for s in steps %}<figure class="tour-step{{ ' on' if loop.first }}" data-i="{{ loop.index0 }}" aria-hidden="{{ 'false' if loop.first else 'true' }}">
+<div class="tour-copy"><span class="in-num">{{ '%02d'|format(loop.index) }}</span><h2>{{ s.title }}</h2><p>{{ s.text }}</p>{% if s.note %}<p class="cap">{{ s.note }}</p>{% endif %}</div>
+<div class="tour-shot"><picture>{% if s.m %}<source media="(max-width:760px)" srcset="{{ url_for('static',filename='tour/'+s.m) }}">{% endif %}<img src="{{ url_for('static',filename='tour/'+s.d) }}" alt="{{ s.title }} 화면" loading="{{ 'eager' if loop.first else 'lazy' }}" width="{{ s.w }}" height="{{ s.h }}"></picture>
+{% if s.spot %}<button type="button" class="tour-spot d" style="left:{{ s.spot.x }}%;top:{{ s.spot.y }}%" aria-label="다음 화면">{{ loop.index }}</button>{% endif %}
+{% if s.mspot %}<button type="button" class="tour-spot m" style="left:{{ s.mspot.x }}%;top:{{ s.mspot.y }}%" aria-label="다음 화면">{{ loop.index }}</button>{% endif %}</div>
+</figure>{% endfor %}
+<div class="tour-nav"><button type="button" class="btn md gray" id="tPrev">이전</button><button type="button" class="btn md" id="tNext">다음</button></div>
+<div class="tour-end" id="tEnd" hidden><h2>직접 써 보세요</h2><p>가입하면 바로 내 데모 작업 공간이 생겨요. 같은 화면에서 승인·답변을 직접 해 볼 수 있어요.</p>
+<div class="in-cta" style="justify-content:center"><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a>{% if has_ep('sl.consult') %}<a class="btn gray" href="{{ url_for('sl.consult') }}">상담 신청</a>{% endif %}<button type="button" class="btn gray" id="tAgain">처음부터 다시</button></div></div>
+</div>
+{% else %}<div class="empty-card"><b>둘러보기 화면을 준비하고 있어요</b></div>{% endif %}
+</div></section>
+</main>{% endblock %}
+{% block script %}<script>
+(function(){var t=document.getElementById('tour');if(!t)return;var st=t.querySelectorAll('.tour-step'),n=st.length,i=0,end=document.getElementById('tEnd'),nav=t.querySelector('.tour-nav');
+function show(k){if(k>=n){st.forEach(function(s){s.classList.remove('on');});end.hidden=false;nav.hidden=true;document.getElementById('tN').textContent=n;document.getElementById('tBar').style.width='100%';end.scrollIntoView({block:'nearest'});return;}
+ i=Math.max(0,k);end.hidden=true;nav.hidden=false;st.forEach(function(s,j){s.classList.toggle('on',j===i);s.setAttribute('aria-hidden',j===i?'false':'true');});
+ document.getElementById('tN').textContent=i+1;document.getElementById('tBar').style.width=((i+1)/n*100)+'%';document.getElementById('tPrev').disabled=i===0;document.getElementById('tNext').textContent=i===n-1?'마치기':'다음';}
+document.getElementById('tNext').onclick=function(){show(i+1);};document.getElementById('tPrev').onclick=function(){show(i-1);};document.getElementById('tAgain').onclick=function(){show(0);t.scrollIntoView();};
+t.querySelectorAll('.tour-spot').forEach(function(b){b.onclick=function(){show(i+1);};});
+document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')show(i+1);if(e.key==='ArrowLeft')show(i-1);});show(0);})();
+</script>{% endblock %}
