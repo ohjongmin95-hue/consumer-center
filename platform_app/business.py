@@ -628,13 +628,30 @@ def ops():
     with conn() as db:
         rows=db.execute('SELECT * FROM cases WHERE member=0 ORDER BY CASE WHEN status IN (\'received\',\'forwarded\') THEN 0 ELSE 1 END,id DESC LIMIT 300').fetchall()
         n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
-    return render_template('o_home.html',rows=rows,n_signup=n_pending,otab='non')
+    q=clean(request.args.get('q'),40);fil=request.args.get('f','all')
+    if q:rows=[r for r in rows if q.lower() in (r['title']+' '+r['no']+' '+r['company_name']).lower()]
+    groups={'all':rows,'send':[r for r in rows if r['consent'] and not r['attempts'] and r['status'] not in core.FINAL],
+            'open':[r for r in rows if r['status'] not in core.FINAL],'done':[r for r in rows if r['status'] in core.FINAL]}
+    if fil not in groups:fil='all'
+    return render_template('o_home.html',rows=groups[fil],groups=groups,fil=fil,q=q,n_signup=n_pending,otab='non')
 
 @app.route('/ops/all')
 @ops_required
 def ops_all():
-    with conn() as db:rows=db.execute('SELECT * FROM cases ORDER BY id DESC LIMIT 500').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
-    return render_template('o_all.html',rows=rows,k=kpis(rows),n_signup=n_pending,otab='all')
+    with conn() as db:
+        rows=db.execute('SELECT * FROM cases ORDER BY id DESC LIMIT 500').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+        n=lambda sql,*a:db.execute(sql,a).fetchone()[0]
+        sums=dict(members=n("SELECT COUNT(*) FROM companies WHERE status='active' AND member=1"),cases=n('SELECT COUNT(*) FROM cases'),
+                  non=n('SELECT COUNT(*) FROM cases WHERE member=0'),open=n("SELECT COUNT(*) FROM cases WHERE status IN ('received','forwarded','seen','info')"))
+        todo=db.execute("SELECT * FROM cases WHERE member=0 AND status IN ('received','forwarded','seen','info') ORDER BY CASE WHEN attempts=0 AND consent=1 THEN 0 ELSE 1 END,id LIMIT 6").fetchall()
+        signups=db.execute("SELECT * FROM companies WHERE status='pending' ORDER BY id LIMIT 5").fetchall()
+        no_contact=n("SELECT COUNT(*) FROM companies WHERE status='listed' AND contact=''")
+    late=sum(map(core.overdue,rows))
+    watch=[dict(text=f'가입 신청 {n_pending}건이 승인을 기다려요',href=url_for('ops_companies')) for _ in [0] if n_pending]
+    watch+=[dict(text=f'답변 기한이 지난 요청이 {late}건 있어요',href=url_for('ops')) for _ in [0] if late]
+    watch+=[dict(text=f'공식 연락처가 없는 비입점 기업이 {no_contact}곳 있어요',href=url_for('ops_companies')) for _ in [0] if no_contact]
+    watch+=[dict(text=f'{core.SECRETS[k][0]}가 꺼져 있어요',href=url_for('ops_keys')) for k in core.SECRETS if not core.secret(k)]
+    return render_template('o_all.html',rows=rows,k=kpis(rows),sums=sums,todo=todo,signups=signups,watch=watch,n_signup=n_pending,otab='all')
 
 @app.route('/ops/case/<int:case_id>',methods=['GET','POST'])
 @ops_required
@@ -694,8 +711,21 @@ def ops_companies():
                 else:flash('이름이 비었거나 이미 있습니다','error')
             return redirect(url_for('ops_companies'))
         pending=db.execute("SELECT * FROM companies WHERE status='pending' ORDER BY id").fetchall()
-        rows=db.execute("SELECT c.*,(SELECT COUNT(*) FROM cases WHERE company_id=c.id) n FROM companies c WHERE status IN ('active','listed','suspended') ORDER BY member DESC,name").fetchall()
+        rows=db.execute("SELECT c.*,(SELECT COUNT(*) FROM cases WHERE company_id=c.id) n,(SELECT MAX(created) FROM cases WHERE company_id=c.id) last FROM companies c WHERE status IN ('active','listed','suspended') ORDER BY member DESC,name").fetchall()
     return render_template('o_companies.html',pending=pending,rows=rows,n_signup=len(pending),otab='co')
+
+@app.route('/ops/company/<int:cid>')
+@ops_required
+def ops_company(cid):
+    """기업 상세 (보기 전용): 기본 정보, 이용 상태, 연동 현황, 요청 처리 현황, 최근 요청. 바꾸는 일은 기업 관리 목록에서 한다."""
+    with conn() as db:
+        co=core.company(db,cid)
+        if not co or co['status'] not in ('active','listed','suspended'):abort(404)
+        cases=db.execute('SELECT * FROM cases WHERE company_id=? ORDER BY id DESC',(cid,)).fetchall()
+        chans=db.execute('SELECT channel,COUNT(*) n FROM orders WHERE company_id=? GROUP BY channel',(cid,)).fetchall()
+        n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(cid,)).fetchone()[0]
+        n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+    return render_template('o_company.html',co=co,cases=cases[:20],k=kpis(cases),n_open=sum(r['status'] not in core.FINAL for r in cases),chans=chans,n_auto=n_auto,n_signup=n_pending,otab='co')
 
 @app.route('/ops/news',methods=['GET','POST'])
 @ops_required

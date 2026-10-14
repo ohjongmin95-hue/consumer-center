@@ -9,8 +9,8 @@
 <label class="fld"><span>내용</span><textarea class="inp" name="body" maxlength="3000" required></textarea></label>
 <label class="fld"><span>출처 주소</span><input class="inp" name="source_url" type="url" maxlength="300" required placeholder="https://www.law.go.kr/..."></label>
 <label class="check"><input type="checkbox" name="mail" value="1"><span class="bx"></span><span>입점 기업에 이메일로도 보내기</span></label>
-<button class="btn md">올리기</button></form>
-{% if rows %}<div class="list" style="margin-top:24px">{% for n in rows %}<div class="li"><div class="row"><div class="tx"><b>{{ n.title }}</b><span>{{ fmt_day(n.created) }} · <a class="link" href="{{ n.source_url }}" target="_blank" rel="noopener">출처</a></span></div>
-<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="delete"><input type="hidden" name="id" value="{{ n.id }}"><button class="btn sm gray">지우기</button></form></div></div>{% endfor %}</div>{% endif %}
+<div class="orow end"><button class="btn">올리기</button></div></form>
+{% if rows %}<div class="shead" style="margin-top:28px"><h2>올린 소식 {{ rows|length }}</h2></div><div class="list">{% for n in rows %}<div class="li"><div class="row"><div class="tx"><b>{{ n.title }}</b><span>작성일 {{ fmt_day(n.created) }} · <a class="link" href="{{ n.source_url }}" target="_blank" rel="noopener">출처</a></span></div>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="delete"><input type="hidden" name="id" value="{{ n.id }}"><button class="btn sm gray" onclick="return confirm('이 소식을 지울까요?')">지우기</button></form></div></div>{% endfor %}</div>{% endif %}
 </div>
 {% endblock %}

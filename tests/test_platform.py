@@ -371,6 +371,21 @@ class PlatformTest(unittest.TestCase):
             self.assertEqual(trk.t_key(),'')
         self.assertNotEqual(self.client().get('/biz/ops/keys').status_code,200)  # 운영자만
 
+    def test_ops_overview_filters_and_company(self):
+        """운영 화면: 전체 현황 요약, 비입점 요청 검색·필터, 기업 상세(읽기 전용)."""
+        b,o,cid=self.signup_and_approve('운영상세상점','opsdetail@example.com')
+        self.file_case(self.client(),'운영상세상점','기타',str(cid),title='입점 기업 요청이에요')
+        self.file_case(self.client(),'아무도모르는가게','기타',title='비입점 가게 요청이에요')
+        page=o.get('/biz/ops/all').get_data(as_text=True)
+        for t in ('입점 기업','비입점 요청','처리 대기','처리할 비입점 요청','비입점 가게 요청이에요'):self.assertIn(t,page)
+        self.assertIn('비입점 가게 요청이에요',o.get('/biz/ops?q=아무도모르는').get_data(as_text=True))
+        self.assertNotIn('비입점 가게 요청이에요',o.get('/biz/ops?q=없는가게이름').get_data(as_text=True))
+        self.assertNotIn('비입점 가게 요청이에요',o.get('/biz/ops?f=done').get_data(as_text=True))
+        page=o.get(f'/biz/ops/company/{cid}').get_data(as_text=True)
+        self.assertIn('운영상세상점',page);self.assertIn('입점 기업 요청이에요',page);self.assertNotIn('비입점 가게 요청이에요',page)
+        self.assertEqual(o.get('/biz/ops/company/99999').status_code,404)
+        self.assertNotEqual(self.client().get(f'/biz/ops/company/{cid}').status_code,200)  # 운영자만
+
     def test_order_ledger(self):
         """주문 장부: 판매처 CSV를 올리고, 요청과 주문번호·휴대폰으로 이어지고, 송장을 넣으면 배송 중."""
         b,o,cid=self.signup_and_approve('주문장부상회','ledger@example.com')
