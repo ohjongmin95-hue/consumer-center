@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}업종별 CS 운영 · {{ BNAME }}{% endblock %}
+{% block description %}패션, 뷰티, 식품, 생활용품, 전자제품, 가구 등 업종별로 자주 오는 문의와 {{ BNAME }} 처리 방법을 정리했어요.{% endblock %}
+{% block bar %}{{ b.bar(tab) }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">업종별</span><h1>우리 업종에 맞는<br>CS 처리 흐름</h1><p>업종마다 자주 오는 문의가 달라요. 업종을 고르면 자주 오는 문의와 처리 방법을 보여 드려요.</p></div></div></section>
+<section><div class="wrap mk-one"><div class="mk-grid">{% for k,x in pages.items() %}<a class="mk-card" href="{{ url_for('mk.industry',slug=k) }}"><b>{{ x.title }}</b><p>{{ x.lead }}</p><span class="more">자세히</span></a>{% endfor %}</div></div></section>
+</main>{% endblock %}

@@ -1,0 +1,114 @@
+{
+ "home": {
+  "d": "home-d.jpg",
+  "w": 1280,
+  "h": 800,
+  "spot": {
+   "x": 79.1,
+   "y": 40.7
+  },
+  "m": "home-m.jpg",
+  "mspot": {
+   "x": 35.9,
+   "y": 40.7
+  }
+ },
+ "inbox": {
+  "d": "inbox-d.jpg",
+  "w": 1280,
+  "h": 800,
+  "spot": {
+   "x": 30.9,
+   "y": 34.6
+  },
+  "m": "inbox-m.jpg",
+  "mspot": {
+   "x": 40,
+   "y": 45.4
+  }
+ },
+ "case": {
+  "d": "case-d.jpg",
+  "w": 1280,
+  "h": 800,
+  "spot": {
+   "x": 63.4,
+   "y": 50
+  },
+  "m": "case-m.jpg",
+  "mspot": {
+   "x": 76.2,
+   "y": 50
+  }
+ },
+ "rules": {
+  "d": "rules-d.jpg",
+  "w": 1280,
+  "h": 800,
+  "spot": {
+   "x": 54.9,
+   "y": 40.2
+  },
+  "m": "rules-m.jpg",
+  "mspot": {
+   "x": 84.1,
+   "y": 52.6
+  }
+ },
+ "chat": {
+  "d": "chat-d.jpg",
+  "w": 1280,
+  "h": 800,
+  "spot": {
+   "x": 24.4,
+   "y": 39.6
+  },
+  "m": "chat-m.jpg",
+  "mspot": {
+   "x": 41,
+   "y": 31.1
+  }
+ },
+ "returns": {
+  "d": "returns-d.jpg",
+  "w": 1280,
+  "h": 800,
+  "spot": {
+   "x": 30.9,
+   "y": 50.2
+  },
+  "m": "returns-m.jpg",
+  "mspot": {
+   "x": 40,
+   "y": 59.5
+  }
+ },
+ "assign": {
+  "d": "assign-d.jpg",
+  "w": 1280,
+  "h": 800,
+  "spot": {
+   "x": 80.8,
+   "y": 40.7
+  },
+  "m": "assign-m.jpg",
+  "mspot": {
+   "x": 38.7,
+   "y": 50
+  }
+ },
+ "stats": {
+  "d": "stats-d.jpg",
+  "w": 1280,
+  "h": 800,
+  "spot": {
+   "x": 30.9,
+   "y": 26.9
+  },
+  "m": "stats-m.jpg",
+  "mspot": {
+   "x": 40,
+   "y": 31
+  }
+ }
+}

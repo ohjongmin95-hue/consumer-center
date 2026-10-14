@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -1292,6 +1292,39 @@ class PlatformTest(unittest.TestCase):
             c2=self.client();r=c2.get('/biz/auth/google');state=re.search(r'state=([^&]+)',r.headers['Location']).group(1)
             r=c2.get(f'/biz/auth/google/callback?state={state}&code=abc');self.assertEqual(r.headers['Location'].rstrip('/').endswith('/biz'),True)
             self.assertIn('구글상점',c2.get('/biz/').get_data(as_text=True))
+
+
+    def test_marketing_pages(self):
+        """공개 화면: 둘러보기(실제 화면 8단계), 판매처·업종 페이지, 계산기(넣은 값으로만 계산), 검색 노출, 방문 기록."""
+        c=self.client()
+        page=c.get('/biz/tour').get_data(as_text=True)
+        self.assertEqual(page.count('class="tour-step'),8);self.assertIn('/static/tour/home-d.jpg',page);self.assertNotIn('noindex',page)
+        for slug in ('smartstore','coupang','cafe24'):
+            r=c.get('/biz/for/'+slug);self.assertEqual(r.status_code,200)
+        self.assertIn('연동 대기',c.get('/biz/for/cafe24').get_data(as_text=True))
+        self.assertEqual(c.get('/biz/for/nope').status_code,404)
+        page=c.get('/biz/industries').get_data(as_text=True)
+        for slug in ('fashion','beauty','food','living','digital','furniture'):
+            self.assertIn(f'/industries/{slug}',page);self.assertEqual(c.get('/biz/industries/'+slug).status_code,200)
+        self.assertEqual(c.get('/biz/industries/nope').status_code,404)
+        # 계산기: 1000건 × 6분 = 100시간, 40% 자동 = 40시간 × 12,000원 = 480,000원/월
+        page=c.get('/biz/calculator?inquiries=1000&minutes=6&wage=12000&auto=40').get_data(as_text=True)
+        self.assertIn('480,000',page);self.assertIn('5,760,000',page);self.assertIn('보장하지 않아요',page)
+        page=c.get('/biz/calculator?inquiries=abc&minutes=-5&wage=1&auto=500').get_data(as_text=True)  # 이상한 값은 범위 안으로
+        self.assertEqual(c.get('/biz/calculator?inquiries=abc').status_code,200)
+        m=sys.modules['market'].calc({'inquiries':'abc','minutes':'-5','wage':'1','auto':'500'})
+        self.assertEqual((m['v']['inquiries'],m['v']['minutes'],m['v']['wage'],m['v']['auto']),(300,1,1000,100))
+        sm=c.get('/biz/sitemap.xml').get_data(as_text=True)
+        self.assertIn('/for/coupang</loc>',sm);self.assertIn('/industries/food</loc>',sm);self.assertIn('/calculator</loc>',sm)
+        self.assertIn('제품 둘러보기',c.get('/biz/').get_data(as_text=True))
+        # 방문 기록: UTM 첫 유입을 기억해 가입에 붙인다 (IP는 저장하지 않음)
+        v=self.client();v.get('/biz/for/smartstore?utm_source=naver&utm_medium=cpc&utm_campaign=fall')
+        r=self.post(v,'/biz/signup',{'name':'유입상점','biz_no':self.bizno(),'owner_name':'김','login_id':'utm@example.com','password':'longpassword1','terms':'1'})
+        with self.core.conn() as db:
+            row=db.execute("SELECT source,medium,campaign FROM funnel WHERE kind='signup' AND company_id=(SELECT id FROM companies WHERE login_id='utm@example.com')").fetchone()
+            self.assertEqual(tuple(row),('naver','cpc','fall'))
+            self.assertTrue(db.execute("SELECT 1 FROM funnel WHERE kind='visit' AND path='/for/smartstore' AND campaign='fall'").fetchone())
+            cols={r[1] for r in db.execute('PRAGMA table_info(funnel)')};self.assertNotIn('ip',cols)
 
 
 if __name__=='__main__':unittest.main()

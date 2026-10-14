@@ -28,7 +28,7 @@ PRIVACY_SINCE='2026년 10월 12일'
 TERMS_SINCE='2026년 10월 13일'  # 소보루 CS 기업 회원 이용약관 시행일
 RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 요청은 purge_old()가 파기
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 요청, 운영 등)는 noindex
-INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup','terms'}}
+INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup','terms','mk.tour','mk.shop_page','mk.industries','mk.industry','mk.calculator'}}
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
              'biz':BNAME+'는 고객 요청을 한 화면에서 승인하고 반복 요청은 자동으로 처리하는 기업용 CS 운영 도구예요.'}
 VERIFY={'me':os.getenv('NAVER_SITE_VERIFICATION',''),'biz':os.getenv('NAVER_SITE_VERIFICATION_BIZ','')}

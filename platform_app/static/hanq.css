@@ -1531,3 +1531,48 @@ body.v2 ul.dots{margin:0;padding-left:18px;display:flex;flex-direction:column;ga
 .trustbox .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .trustbox .row form{margin-left:auto}
 @media (max-width:860px){.wzl{grid-template-columns:1fr}.wzs{flex-direction:row;overflow-x:auto;padding:6px}.wzs a{white-space:nowrap}.wzs a .t{display:none}.wzs a.on .t{display:inline}}
+
+/* ---------- 공개 마케팅 화면 (제품 둘러보기·판매처·업종·계산기) ---------- */
+.mk-hero{padding-block:56px 40px!important}
+.intro .mk-one{display:block!important;max-width:1040px}
+.mk-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.mk-tabs a{padding:8px 16px;border-radius:999px;background:var(--card);color:var(--fg2);font-weight:600;font-size:15px}
+.mk-tabs a.on{background:var(--fg);color:#fff}
+.mk-list{display:flex;flex-direction:column;gap:10px;margin-top:24px}
+.mk-item{display:flex;align-items:center;gap:16px;background:var(--bg);border-radius:18px;padding:18px 20px}
+.mk-item>div{flex:1;min-width:0}.mk-item b{font-size:17px}.mk-item p{margin:4px 0 0!important;font-size:15px!important}
+.mk-item .pill{flex:none}
+.mk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:20px}
+.mk-card{background:var(--bg);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:6px;color:var(--fg)}
+.mk-card b{font-size:18px}.mk-card p{margin:0!important;font-size:15px!important}
+.mk-card .more{margin-top:auto;padding-top:8px;color:var(--accent-ink);font-weight:700;font-size:14px}
+a.mk-card:hover{box-shadow:inset 0 0 0 2px var(--accent)}
+.mk-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.mk-chips span,.mk-chips a{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:15px;color:var(--fg)}
+.mk-chips a:hover{border-color:var(--accent)}
+.pill.blue{background:var(--blue-soft);color:var(--blue)}
+.calc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.calc .panel{background:var(--bg)}
+.calc input[type=range]{width:100%;accent-color:var(--accent);height:32px}
+.calc-big{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.calc-big span{color:var(--fg2)}.calc-big b{font-size:28px;letter-spacing:-.04em}.calc-big em{font-style:normal;color:var(--accent-ink)}
+.kv2{display:grid;grid-template-columns:1fr auto;gap:10px 16px;margin-top:16px;font-size:15px}
+.kv2 span{color:var(--fg3)}.kv2 em{font-style:normal}
+.tour-sec{padding-block:24px 80px!important}
+.tour-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.tour-prog{flex:1 1 auto!important}
+.tour-count{font-size:15px;color:var(--fg2)}
+.tour-step{display:none;margin:0;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:32px;align-items:start}
+.tour-step.on{display:grid}
+.tour-copy h2{font-size:26px!important}
+.tour-shot{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 20px 50px rgba(25,31,40,.14);background:var(--bg)}
+.tour-shot img{display:block;width:100%;height:auto}
+.tour-spot{position:absolute;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-weight:800;box-shadow:0 0 0 0 rgba(248,155,0,.6);animation:spot 1.6s infinite}
+.tour-spot.m{display:none}
+@keyframes spot{0%{box-shadow:0 0 0 0 rgba(248,155,0,.55)}70%{box-shadow:0 0 0 18px rgba(248,155,0,0)}100%{box-shadow:0 0 0 0 rgba(248,155,0,0)}}
+@media (prefers-reduced-motion:reduce){.tour-spot{animation:none}}
+.tour-nav{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.tour-end{text-align:center;padding:48px 0}
+@media (max-width:900px){.calc{grid-template-columns:minmax(0,1fr)}.tour-step{grid-template-columns:minmax(0,1fr);gap:20px}.calc-big b{font-size:24px}}
+@media (max-width:760px){.tour-spot.d{display:none}.tour-spot.m{display:block}.mk-item{flex-direction:column;align-items:flex-start}.tour-nav .btn{flex:1}}
+.calc .panel .inp{background:var(--card)}
