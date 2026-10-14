@@ -1311,7 +1311,7 @@ body:has(.bside) .gnb nav{display:none}
 .bside a.on{background:var(--accent-soft);color:var(--accent-ink)}
 .bside a .cnt{margin-left:auto}
 .bside .ic{flex-shrink:0}
-body:has(.bside) main.pg,body:has(.bside) .flashes,body:has(.bside) .foot2{margin-left:var(--ds-side)}
+body:has(.bside) main.pg,body:has(.bside) main.intro,body:has(.bside) .flashes,body:has(.bside) .foot2{margin-left:var(--ds-side)}
 body:has(.bside) .gnb .wrap{max-width:none}
 }
 @media (max-width:1023.98px){
@@ -1623,8 +1623,10 @@ pre.code{background:var(--fill);border-radius:var(--ds-r-ctl);padding:10px 12px;
 @media (max-width:420px){.gnb .wrap:has(.chip){flex-wrap:nowrap}.gnb .chip{min-width:0}.gnb .chip .cnm{max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gnb .right{min-width:0}}
 /* 약관·개인정보: 자료실·보안 같은 하단 페이지와 같은 머리글과 폭 (글 상자는 읽기 좋은 폭) */
 .intro .doc-sec{padding-top:8px}
-.intro .panel.doc{max-width:860px;padding:0;background:none;border:0;box-shadow:none}
+main.intro .panel.privacy.doc{max-width:860px;padding:0;background:none;border:0;box-shadow:none}
 .intro .doc section{padding-block:0}
 .intro .doc h2{font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1.5;margin:0 0 8px}
 .intro .doc p{font-size:15px;line-height:1.7;max-width:none;margin:0;color:var(--fg2)}
 .intro .doc section p+.kv,.intro .doc section .kv+p,.intro .doc section p+p{margin-top:10px}
+/* 태블릿 가로(약 900~1100px)에서 소개 메뉴가 머리글 밖으로 밀리지 않게 */
+@media (max-width:1120px) and (min-width:761px){body.v2 .gnb nav.in-nav{gap:20px}body.v2 .gnb nav.in-nav a{font-size:15.5px}}
