@@ -1,9 +1,9 @@
 {% extends 'base.html' %}{% import '_g.html' as gg with context %}
 {% block title %}파트너 화면 시작 · {{ BNAME }}{% endblock %}
 {% block bar %}{{ gg.pbar() }}{% endblock %}
-{% block body %}<div class="narrow" style="max-width:420px">
-<div class="phead"><div><h1>{{ u.pname }} 파트너 화면</h1><p>{{ u.name }}님, 비밀번호를 정하면 바로 들어가요.</p></div></div>
-<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+{% block body %}<div class="auth panel">
+<h1 class="h1">{{ u.pname }} 파트너 화면</h1><p class="sub">{{ u.name }}님, 비밀번호를 정하면 바로 들어가요.</p>
+<form class="stack" style="margin-top:24px" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <label class="fld"><span>이메일</span><input class="inp" value="{{ u.email }}" readonly autocomplete="username"></label>
 <label class="fld"><span>비밀번호 (10자 이상)</span><input class="inp" name="password" type="password" minlength="10" autocomplete="new-password" required></label>
-<button class="btn md">시작하기</button></form></div>{% endblock %}
+<button class="btn full">시작하기</button></form></div>{% endblock %}

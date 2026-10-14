@@ -1518,13 +1518,13 @@ body.v2 ul.dots{margin:0;padding-left:18px;display:flex;flex-direction:column;ga
 @media (min-width:1024px){body:has(.bside) .nbar{margin-left:var(--ds-side)}body.v2:has(.bside) .nbar .wrap{max-width:calc(var(--ds-max) + var(--ds-pad)*2);padding-inline:var(--ds-pad)}}
 .wzl{display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:start}
 .wzs{list-style:none;margin:0;padding:8px;background:var(--card);border-radius:20px;display:flex;flex-direction:column;gap:2px}
-.wzs a{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;color:var(--fg2);font-size:15px}
+.wzs a{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:var(--ds-r-ctl);color:var(--fg2);font-size:var(--ds-fs-body)}
 .wzs a:hover{background:var(--fill)}
 .wzs a.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:700}
 .wzs .n{width:26px;height:26px;border-radius:50%;background:var(--fill2);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none;color:var(--fg2)}
 .wzs .d .n{background:var(--green);color:#fff}
 .wzs .k .n{background:var(--fill2);color:var(--fg3)}
-.wzbody .ph small{display:block;font-weight:400;color:var(--fg3);font-size:14px;margin-top:4px}
+.wzbody .ph small{display:block;font-weight:400;color:var(--fg3);font-size:var(--ds-fs-sub);margin-top:4px}
 .chk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
 .wzact{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
 .trustbox{display:grid;gap:10px;margin-bottom:20px}
@@ -1601,10 +1601,23 @@ a.mk-card:hover{box-shadow:inset 0 0 0 2px var(--accent)}
 @media (max-width:760px){.post{padding-block:28px 48px}.post h1{font-size:27px}.prose{font-size:16px}}
 /* --- 마케팅 분석 --- */
 .fbar{display:grid;grid-template-columns:110px 1fr 56px;gap:12px;align-items:center;padding:7px 0}
-.fbar .l{font-size:14.5px;color:var(--fg2)}.fbar b{text-align:right;font-variant-numeric:tabular-nums}
+.fbar .l{font-size:var(--ds-fs-sub);color:var(--fg2)}.fbar b{text-align:right;font-variant-numeric:tabular-nums}
 .fbar .b{height:12px;border-radius:6px;background:var(--fill);overflow:hidden}.fbar .b i{display:block;height:100%;background:var(--accent);border-radius:6px;min-width:2px}
 .gnb .right .tbtn{white-space:nowrap}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px}
-pre.code{background:var(--fill);border-radius:12px;padding:10px 12px;font-size:12.5px;white-space:pre-wrap;word-break:break-all;margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--ds-fs-sub)}
+pre.code{background:var(--fill);border-radius:var(--ds-r-ctl);padding:10px 12px;font-size:12.5px;white-space:pre-wrap;word-break:break-all;margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .apieps{display:flex;flex-direction:column;gap:10px;margin-top:12px}.apieps div{display:flex;flex-direction:column;gap:2px}
-.apieps code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;color:var(--fg)}.apieps span{font-size:13.5px;color:var(--fg2)}
+.apieps code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;color:var(--fg)}.apieps span{font-size:var(--ds-fs-sub);color:var(--fg2)}
+
+/* ---------- 화면 폭·간격 통일 (모든 화면 공통) ---------- */
+/* 공개 화면 본문은 상단 메뉴와 같은 폭(1200px, 좌우 여백 24px)에 맞춰 왼쪽 끝을 로고와 나란히 둔다 */
+.intro .wrap,.intro .mk-one{max-width:1200px}
+.intro .in-hero .wrap>div>p,.mk-hero p{max-width:640px}
+/* 그리드 안 카드가 긴 글 때문에 화면 밖으로 밀려나지 않게 */
+.panel,.hsplit>*,.grid2>*,.cgrid>*,.mk-grid>*,.sumrow>*{min-width:0}
+/* 블록으로 쌓인 패널 사이 간격 (stack을 쓰지 않는 화면) */
+.narrow>.panel+.panel,.narrow>form.panel+.panel,.narrow>.panel+form.panel{margin-top:20px}
+/* 입력+선택+버튼이 한 줄에 셋 이상이면 좁은 화면에서는 입력칸을 한 줄 전체로 */
+@media (max-width:520px){.addline:has(>.inp~.inp){flex-wrap:wrap}.addline:has(>.inp~.inp)>.inp:first-of-type{flex-basis:100%}.addline:has(>.inp~.inp)>select.inp{flex:1;max-width:none!important}}
+/* 좁은 휴대폰(400px 미만): 회사 이름이 길어도 상단 바가 두 줄로 늘지 않게 */
+@media (max-width:420px){.gnb .wrap:has(.chip){flex-wrap:nowrap}.gnb .chip{min-width:0}.gnb .chip .cnm{max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gnb .right{min-width:0}}
