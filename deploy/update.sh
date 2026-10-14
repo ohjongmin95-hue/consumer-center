@@ -13,6 +13,11 @@ if [ -f /etc/systemd/system/soboru-platform.service ]; then
   if [ -f /etc/soboru.env ] && [ -f /etc/soboru-platform.env ] && grep -q '^SMTP_HOST=.' /etc/soboru.env && ! grep -q '^SMTP_HOST=.' /etc/soboru-platform.env; then
     grep -E '^SMTP_(HOST|PORT|USER|PASSWORD|FROM)=' /etc/soboru.env >> /etc/soboru-platform.env
   fi
+  # 판매처 연결 안내에 보여 줄 이 서버의 공인 IP (사장님이 스마트스토어·쿠팡에 등록)
+  if [ -f /etc/soboru-platform.env ] && ! grep -q '^SERVER_IP=.' /etc/soboru-platform.env; then
+    IP="$(curl -fsS -m 5 https://api.ipify.org || true)"
+    if echo "$IP" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then echo "SERVER_IP=$IP" >> /etc/soboru-platform.env; fi
+  fi
   systemctl restart soboru-platform
   if grep -q '^SMTP_HOST=.' /etc/soboru-platform.env 2>/dev/null; then echo "소보루 CS 메일: 켜져 있어요"
   else echo "소보루 CS 메일: 꺼져 있어요. 켜려면 set-mail.sh를 한 번 실행해 주세요."; fi
@@ -23,6 +28,11 @@ set -a; . /etc/soboru-platform.env; set +a
 cd /opt/soboru/app/platform_app && runuser -u soboru -- /opt/soboru/venv/bin/python notify_late.py >/dev/null 2>&1
 CRON
   chmod 755 /etc/cron.hourly/soboru-platform-late
+  # 스마트스토어·쿠팡 문의와 주문 가져오기 (10분마다, 연결한 기업만)
+  cat > /etc/cron.d/soboru-platform-shops <<'CRON'
+*/10 * * * * root set -a; . /etc/soboru-platform.env; set +a; cd /opt/soboru/app/platform_app && runuser -u soboru -- /opt/soboru/venv/bin/python shops.py >/dev/null 2>&1
+CRON
+  chmod 644 /etc/cron.d/soboru-platform-shops
 fi
 sleep 2
 systemctl is-active --quiet soboru && echo "업데이트 완료: $(git -C /opt/soboru/app log -1 --format='%h %s')" || { journalctl -u soboru -n 30 --no-pager; exit 1; }

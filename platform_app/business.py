@@ -11,6 +11,7 @@ import csv, io
 import core, law, insights, drafting, chatbot
 import tracking as tracking_mod
 import orders as orders_mod
+import shops
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -230,15 +231,47 @@ def connect():
     """서비스 연동: 지금 실제로 이어진 것과 준비 중인 것을 그대로 보여 준다."""
     with conn() as db:
         n=db.execute('SELECT channel,COUNT(*) n FROM orders WHERE company_id=? GROUP BY channel',(me()['id'],)).fetchall();by={r['channel']:r['n'] for r in n}
+        lk=shops.links(db,me()['id'])
     track_on=bool(core.secret('SWEETTRACKER_T_KEY'))
-    shops=[('네이버 스마트스토어','스마트스토어'),('쿠팡','쿠팡'),('자사몰·카페24','자사몰'),('오픈마켓','오픈마켓')]
-    rows=[dict(group='판매처',name=nm,desc=f'주문 {by[ch]}건 · 주문 엑셀(CSV)로 올리는 중' if by.get(ch) else '주문 엑셀(CSV)을 올리면 바로 쓸 수 있어요',
-               state='csv' if by.get(ch) else 'ready',href=url_for('orders_page')) for nm,ch in shops]
+    rows=[]
+    for key,spec in shops.SHOPS.items():
+        l=lk.get(key)
+        if l:desc,state=(f"문의 {l['n_inq']}건 · 주문 {l['n_ord']}건 가져옴"+(f" · {core.fmt(l['synced'])}" if l['synced'] else ' · 곧 가져와요'),'on') if l['status']=='ok' else (l['note'],'err')
+        else:desc,state=(f"주문 {by[spec['channel']]}건 · 엑셀로 올리는 중. 내 키를 넣으면 자동으로 가져와요" if by.get(spec['channel']) else '내 키를 넣으면 문의와 주문을 자동으로 가져와요'),'link'
+        rows.append(dict(group='판매처',name=spec['full'],desc=desc,state=state,href=url_for('connect_shop',shop=key)))
+    rows+=[dict(group='판매처',name=nm,desc=f'주문 {by[ch]}건 · 주문 엑셀(CSV)로 올리는 중' if by.get(ch) else '주문 엑셀(CSV)을 올리면 바로 쓸 수 있어요',
+               state='csv' if by.get(ch) else 'ready',href=url_for('orders_page')) for nm,ch in (('자사몰·카페24','자사몰'),('오픈마켓','오픈마켓'))]
     rows+=[dict(group='택배',name='택배 배송 조회',desc='송장번호로 고객·사장님 화면에서 위치를 바로 보여 줘요' if track_on else '소보루가 연결을 준비하고 있어요',state='on' if track_on else 'soon',href=''),
            dict(group='알림',name='이메일 알림',desc='새 요청과 답변을 이메일로 알려 드려요' if core.mail_ready() else '소보루가 연결을 준비하고 있어요',state='on' if core.mail_ready() else 'soon',href=url_for('settings')),
            dict(group='알림',name='카카오 알림톡',desc='고객에게 진행 상황을 카카오톡으로 보내요',state='soon',href=''),
            dict(group='상담',name='AI 상담',desc='고객 채팅에 AI가 먼저 답해요' if core.secret('ANTHROPIC_API_KEY') else '소보루가 연결을 준비하고 있어요',state='on' if core.secret('ANTHROPIC_API_KEY') else 'soon',href='')]
     return render_template('b_connect.html',rows=rows,tab='connect')
+
+@app.route('/connect/<shop>',methods=['GET','POST'])
+@login_required
+def connect_shop(shop):
+    """판매처 연결: 사장님이 판매처에서 발급한 키를 넣는다. 연결 확인 -> 저장, 지금 가져오기, 연결 끊기."""
+    if shop not in shops.SHOPS:abort(404)
+    co=me()
+    if request.method=='POST':
+        act=request.form.get('act','save')
+        if act=='delete':
+            with conn() as db:shops.remove(db,co,shop)
+            flash('연결을 끊었어요. 저장한 키도 지웠어요.','ok')
+        elif act=='sync':
+            try:n_inq,n_ord=shops.sync(co,shop);flash(f'새 문의 {n_inq}건, 주문 {n_ord}건을 가져왔어요','ok')
+            except shops.ShopError as e:flash(str(e),'error')
+        else:
+            if core.throttled('shop',limit=10,minutes=10):flash('잠시 후 다시 해 주세요','error')
+            else:
+                with conn() as db:msg,level=shops.save(db,co,shop,request.form)
+                flash(msg,level)
+                if level=='ok':
+                    try:shops.sync(co,shop)
+                    except shops.ShopError:pass  # 연결 상태에 이유가 남는다
+        return redirect(url_for('connect_shop',shop=shop))
+    with conn() as db:lk=shops.link(db,co['id'],shop)
+    return render_template('b_shop.html',shop=shop,spec=shops.SHOPS[shop],lk=lk,ip=shops.server_ip(),tab='connect')
 
 @app.route('/approve_many',methods=['POST'])
 @login_required

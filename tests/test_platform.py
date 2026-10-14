@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -900,6 +900,89 @@ class PlatformTest(unittest.TestCase):
         app=sys.modules['consumer'].app
         with app.test_request_context('/',environ_base={'REMOTE_ADDR':'10.9.9.9'}):
             self.assertEqual([self.real_throttled('t',limit=3,minutes=10) for _ in range(4)],[False,False,False,True])
+
+    def test_shop_naver_connect_and_sync(self):
+        """스마트스토어: 사장님 키로 연결 확인 -> 암호화 저장 -> 문의는 요청으로, 주문은 장부로. 같은 문의는 한 번만."""
+        import bcrypt,urllib.parse
+        shops=sys.modules['shops'];b,o,cid=self.signup_and_approve('네이버연결상점','naverlink@example.com')
+        secret=bcrypt.gensalt().decode();calls=[]
+        def fake(method,url,headers=None,body=None):
+            calls.append((method,url))
+            if url.endswith('/oauth2/token'):
+                f=dict(urllib.parse.parse_qsl(body.decode()))
+                self.assertEqual((f['type'],f['grant_type'],f['client_id']),('SELF','client_credentials','app-id-1234'))
+                ok=bcrypt.checkpw(f"app-id-1234_{f['timestamp']}".encode(),__import__('base64').b64decode(f['client_secret_sign']))
+                return (200,{'access_token':'tok','expires_in':10800}) if ok else (401,{})
+            self.assertEqual(headers['Authorization'],'Bearer tok')
+            if '/last-changed-statuses' in url:return 200,{'data':{'lastChangeStatuses':[{'productOrderId':'2026101400001'}]}}
+            if url.endswith('/product-orders/query'):
+                self.assertEqual(json.loads(body)['productOrderIds'],['2026101400001'])
+                return 200,{'data':[{'order':{'orderId':'O1','ordererName':'김네이','orderDate':'2026-10-13T10:00:00.0+09:00'},
+                    'productOrder':{'productOrderId':'2026101400001','productOrderStatus':'DELIVERING','productName':'수분 크림','quantity':2,'totalPaymentAmount':39800,
+                                    'shippingAddress':{'name':'김네이','tel1':'010-2222-3333','baseAddress':'서울','detailedAddress':'1층'}},
+                    'delivery':{'deliveryCompany':'CJGLS','trackingNumber':'612300001111'}}]}
+            if '/pay-user/inquiries' in url:return 200,{'content':[{'inquiryNo':77,'title':'배송이 언제 되나요?','inquiryContent':'주문한 크림 언제 와요','customerName':'김*이',
+                                                                  'productOrderIdList':['2026101400001'],'answered':False,'inquiryRegistrationDateTime':'2026-10-14T09:00:00'}],'totalPages':1}
+            return 404,{}
+        with patch.object(shops,'http',fake):
+            shops._tokens.clear()
+            r=self.post(b,'/biz/connect/naver',{'client_id':'app-id-1234','client_secret':'wrong'})
+            self.assertIn('시크릿이 맞지 않아요',b.get(r.headers['Location']).get_data(as_text=True))
+            with self.core.conn() as db:self.assertIsNone(shops.link(db,cid,'naver'))
+            self.post(b,'/biz/connect/naver',{'client_id':'app-id-1234','client_secret':secret})
+            with self.core.conn() as db:
+                lk=shops.link(db,cid,'naver');self.assertNotIn(secret,lk['creds']);self.assertEqual(shops.unseal(lk['creds'])['client_secret'],secret)
+                c=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='스마트스토어'",(cid,)).fetchone()
+                od=db.execute("SELECT * FROM orders WHERE company_id=? AND order_no='2026101400001'",(cid,)).fetchone()
+            self.assertEqual((c['title'],c['category'],c['status'],c['order_no']),('배송이 언제 되나요?','배송 조회','forwarded','2026101400001'))
+            self.assertEqual((od['channel'],od['status'],od['courier'],od['invoice'],od['qty'],od['phone']),('스마트스토어','shipped','CJ대한통운','612300001111',2,'01022223333'))
+            page=b.get('/biz/connect/naver').get_data(as_text=True);self.assertIn('••••1234',page);self.assertNotIn(secret,page)
+            self.assertIn('연결됨',b.get('/biz/connect').get_data(as_text=True))
+            self.post(b,'/biz/connect/naver',{'act':'sync'})  # 같은 문의는 다시 만들지 않는다
+            with self.core.conn() as db:self.assertEqual(db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND channel='스마트스토어'",(cid,)).fetchone()[0],1)
+            self.assertIn('스마트스토어',b.get(f"/biz/case/{c['id']}").get_data(as_text=True))
+        self.assertFalse(any('coupang' in u for _,u in calls))
+        self.assertEqual(self.client().get('/biz/connect/naver').status_code,302)  # 로그인해야
+        self.post(b,'/biz/connect/naver',{'act':'delete'})
+        with self.core.conn() as db:self.assertIsNone(shops.link(db,cid,'naver'))
+
+    def test_shop_coupang_signature_and_errors(self):
+        """쿠팡: HMAC 서명 머리글, 주문서·문의 가져오기, 키가 틀리면 저장하지 않고 이유를 보여 준다."""
+        import hmac,hashlib,urllib.parse
+        shops=sys.modules['shops'];b,o,cid=self.signup_and_approve('쿠팡연결상점','coupanglink@example.com')
+        state={'deny':True}
+        def fake(method,url,headers=None,body=None):
+            m=re.match(r'CEA algorithm=HmacSHA256, access-key=AK1, signed-date=(\d{6}T\d{6}Z), signature=([0-9a-f]{64})$',headers['Authorization'])
+            self.assertTrue(m,headers['Authorization'])
+            u=urllib.parse.urlsplit(url)
+            self.assertEqual(m.group(2),hmac.new(b'SK1',(m.group(1)+'GET'+u.path+u.query).encode(),hashlib.sha256).hexdigest())
+            if state['deny']:return 401,{}
+            q=dict(urllib.parse.parse_qsl(u.query))
+            if u.path.endswith('/onlineInquiries'):
+                self.assertEqual(q['answeredType'],'NOANSWER')
+                return 200,{'data':{'content':[{'inquiryId':5,'content':'반품하고 환불받고 싶어요','inquiryAt':'2026-10-14T08:00:00','orderIds':[9001]}],'pagination':{'totalPages':1}}}
+            if u.path.endswith('/callCenterInquiries'):return 200,{'data':{'content':[],'pagination':{'totalPages':1}}}
+            if u.path.endswith('/ordersheets'):
+                self.assertTrue(q['createdAtFrom'].endswith('+09:00'))
+                rows=[{'orderId':9001,'orderedAt':'2026-10-12T10:00:00','status':'INSTRUCT','orderer':{'name':'이쿠팡'},'receiver':{'name':'이쿠팡','safeNumber':'0502-1234-5678','addr1':'부산','addr2':'2층'},
+                       'orderItems':[{'vendorItemName':'니트','shippingCount':1,'orderPrice':20000},{'vendorItemName':'양말','shippingCount':2,'orderPrice':6000}],'deliveryCompanyName':'','invoiceNumber':''}]
+                return 200,{'data':rows if q['status']=='INSTRUCT' else [],'nextToken':''}
+            return 404,{}
+        with patch.object(shops,'http',fake):
+            r=self.post(b,'/biz/connect/coupang',{'vendor_id':'A00012345','access_key':'AK1','secret_key':'SK1'})
+            self.assertIn('서버 IP가 등록되지 않았어요',b.get(r.headers['Location']).get_data(as_text=True))
+            with self.core.conn() as db:self.assertIsNone(shops.link(db,cid,'coupang'))
+            state['deny']=False
+            self.post(b,'/biz/connect/coupang',{'vendor_id':'A00012345','access_key':'AK1','secret_key':'SK1'})
+            with self.core.conn() as db:
+                c=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='쿠팡'",(cid,)).fetchone()
+                od=db.execute("SELECT * FROM orders WHERE company_id=? AND order_no='9001'",(cid,)).fetchone()
+            self.assertEqual((c['category'],c['order_no']),('반품·환불','9001'))
+            self.assertEqual((od['status'],od['product'],od['qty'],od['amount']),('ready','니트 외 1건',3,26000))
+            state['deny']=True  # 나중에 키가 만료되면 연결 화면에 이유가 남는다
+            self.post(b,'/biz/connect/coupang',{'act':'sync'})
+            with self.core.conn() as db:self.assertEqual(shops.link(db,cid,'coupang')['status'],'error')
+            self.assertIn('확인 필요',b.get('/biz/connect').get_data(as_text=True))
 
 
 if __name__=='__main__':unittest.main()
