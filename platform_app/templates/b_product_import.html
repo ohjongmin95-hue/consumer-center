@@ -1,0 +1,36 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}PDF 상품 등록 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('rules') }}{% endblock %}
+{% block head %}{% if j.status=='running' %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('rules') }}#products">상품정보</a><span>›</span><span>PDF로 올리기</span></div>
+<div class="chead"><div class="l"><div class="tagrow">{% if j.status=='running' %}<span class="pill acc">읽는 중</span>{% elif j.status=='ready' %}<span class="pill ok">확인해 주세요</span>{% elif j.status=='done' %}<span class="pill gray">등록 끝</span>{% else %}<span class="pill bad">실패</span>{% endif %}</div>
+<h1>{{ j.filename or '상품소개서' }}</h1></div></div>
+{% if j.status=='running' %}
+<section class="panel"><div class="ph">AI가 상품을 찾고 있어요</div>
+<p class="sub" style="font-size:15px;margin:0">상품이 많으면 1~2분 걸려요. 이 화면은 저절로 새로고침돼요.</p></section>
+{% elif j.status=='error' %}
+<section class="panel"><div class="ph">상품을 읽지 못했어요</div>
+<p class="sub" style="font-size:15px;margin:0 0 12px">{{ j.error }}</p><a class="btn md gray" href="{{ url_for('rules') }}#products">돌아가기</a></section>
+{% elif j.status=='done' %}
+<section class="panel"><p class="sub" style="font-size:15px;margin:0 0 12px">이미 등록을 마쳤어요.</p><a class="btn md gray" href="{{ url_for('rules') }}#products">상품정보 보기</a></section>
+{% else %}
+<form method="post" class="stack"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<section class="panel"><div class="ph">상품 {{ j['items']|length }}개를 찾았어요</div>
+<p class="sub" style="font-size:15px;margin:0">등록할 상품을 고르고, 틀린 곳은 고친 뒤 아래 버튼을 눌러 주세요. 고객 상담에는 이름·소비자가·안내만 쓰여요. 공급가·마진 같은 내부 정보는 따로 저장하고 상담에는 쓰지 않아요.</p></section>
+{% for it in j['items'] %}{% set n=loop.index0 %}
+<section class="panel pimp">
+<label class="pick"><input type="checkbox" name="pick{{ n }}" value="1" {{ '' if it.dup else 'checked' }}> <b>등록하기</b>
+{% if it.dup %}<span class="pill gray">이미 있는 상품 · 고르면 새 내용으로 바뀌어요</span>{% endif %}
+{% if it.check %}<span class="pill bad">PDF에서 못 찾은 내용: {{ it.check|join(', ') }}</span>{% endif %}</label>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<label class="fld" style="flex:2 1 220px"><span>제품명</span><input class="inp" name="name{{ n }}" maxlength="60" value="{{ it.name }}"></label>
+<label class="fld" style="flex:1 1 140px"><span>소비자가</span><input class="inp" name="price{{ n }}" maxlength="30" value="{{ it.price }}" placeholder="PDF에 없음"></label></div>
+<label class="fld"><span>고객 안내 (상담에 쓰여요)</span><textarea class="inp" name="info{{ n }}" maxlength="2000" style="min-height:150px">{{ compose(it) }}</textarea></label>
+{% if it.internal %}<div class="private"><span class="cap">내부 정보 · 상담에 쓰이지 않아요</span>
+<dl class="kv">{% for k,label in INTERNAL %}{% if it.internal.get(k) %}<dt>{{ label }}</dt><dd>{{ it.internal[k] }}</dd>{% endif %}{% endfor %}</dl></div>{% endif %}
+</section>{% endfor %}
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn md">고른 상품 등록</button><a class="btn md gray" href="{{ url_for('rules') }}#products">취소</a></div>
+</form>
+{% endif %}
+{% endblock %}

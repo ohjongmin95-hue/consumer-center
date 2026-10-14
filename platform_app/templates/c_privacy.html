@@ -31,13 +31,13 @@
 
 <section><h2>5. 처리 위탁</h2>
 <p>서비스 운영을 위해 아래 업체에 개인정보 처리를 맡기고 있어요. 위탁 계약에서 개인정보를 안전하게 다루도록 정하고 관리해요.</p>
-<dl class="kv"><dt>네이버클라우드 주식회사</dt><dd>서버 운영과 데이터 보관</dd>{% if mail_vendor %}<dt>{{ mail_vendor }}</dt><dd>알림 이메일 발송</dd>{% endif %}{% if kakao and kakao_vendor %}<dt>{{ kakao_vendor }}</dt><dd>카카오 알림톡 발송</dd>{% endif %}{% if ai %}<dt>Anthropic, PBC</dt><dd>AI 상담 답변과 기업 답변 초안 작성</dd>{% endif %}</dl>
+<dl class="kv"><dt>네이버클라우드 주식회사</dt><dd>서버 운영과 데이터 보관</dd>{% if mail_vendor %}<dt>{{ mail_vendor }}</dt><dd>알림 이메일 발송</dd>{% endif %}{% if kakao and kakao_vendor %}<dt>{{ kakao_vendor }}</dt><dd>카카오 알림톡 발송</dd>{% endif %}{% if ai %}<dt>{{ ai.name }}</dt><dd>AI 상담 답변, 기업 답변 초안 작성, 상품소개서 정리</dd>{% endif %}</dl>
 {% if ai %}<h3>개인정보 국외 이전</h3>
-<p>AI 상담 답변과 답변 초안을 만들기 위해 아래와 같이 개인정보를 국외로 보내요. Anthropic은 받은 내용을 AI 학습에 쓰지 않아요.</p>
-<dl class="kv"><dt>이전받는 자</dt><dd>Anthropic, PBC (미국, privacy@anthropic.com)</dd><dt>이전 국가</dt><dd>미국</dd>
+<p>AI 상담 답변과 답변 초안을 만들기 위해 아래와 같이 개인정보를 국외로 보내요. {{ ai.train }}</p>
+<dl class="kv"><dt>이전받는 자</dt><dd>{{ ai.contact }}</dd><dt>이전 국가</dt><dd>미국</dd>
 <dt>이전 일시와 방법</dt><dd>상담창에 문장을 쓸 때, 기업이 답변 초안을 만들 때 암호화된 통신으로 보내요</dd>
 <dt>항목</dt><dd>상담창에 쓴 문장과 앞의 대화, 요청 내용(유형·제목·내용·주문번호·상품명·상품 받은 날)</dd>
-<dt>목적</dt><dd>상담 답변과 답변 초안 작성</dd><dt>보유 기간</dt><dd>답변을 만든 뒤 Anthropic의 보관 정책에 따라 삭제</dd>
+<dt>목적</dt><dd>상담 답변과 답변 초안 작성</dd><dt>보유 기간</dt><dd>{{ ai.keep }}</dd>
 <dt>거부 방법</dt><dd>상담창을 쓰지 않고 접수 화면에서 바로 접수하면 상담 문장은 보내지 않아요</dd></dl>{% endif %}</section>
 
 <section><h2>6. 파기 절차와 방법</h2>

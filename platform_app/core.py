@@ -207,6 +207,18 @@ def init():
           level INTEGER NOT NULL DEFAULT 0,place TEXT NOT NULL DEFAULT '',at TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',updated TEXT NOT NULL,
           FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE);
         ''')
+        # AI 상담: 사업자별 상담 설정, 상품의 공개 상세(detail)와 내부 정보(공급가 등, 상담에 절대 쓰지 않음)는 다른 표에 둔다
+        db.executescript('''
+        CREATE TABLE IF NOT EXISTS ai_profile(company_id INTEGER PRIMARY KEY,brand TEXT NOT NULL DEFAULT '',hours TEXT NOT NULL DEFAULT '',shipping TEXT NOT NULL DEFAULT '',
+          returns TEXT NOT NULL DEFAULT '',scope TEXT NOT NULL DEFAULT '',faq TEXT NOT NULL DEFAULT '',handoff TEXT NOT NULL DEFAULT '',guide TEXT NOT NULL DEFAULT '',updated TEXT NOT NULL,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
+        CREATE TABLE IF NOT EXISTS product_private(product_id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,data TEXT NOT NULL,updated TEXT NOT NULL,
+          FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE);
+        CREATE TABLE IF NOT EXISTS product_imports(token TEXT PRIMARY KEY,company_id INTEGER NOT NULL,filename TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'running',
+          items TEXT NOT NULL DEFAULT '[]',error TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
+        ''')
+        if 'detail' not in {r[1] for r in db.execute('PRAGMA table_info(products)')}:db.execute("ALTER TABLE products ADD COLUMN detail TEXT NOT NULL DEFAULT ''")
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
         if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')
         if 'cond' not in cols:db.execute("ALTER TABLE rules ADD COLUMN cond TEXT NOT NULL DEFAULT ''")
@@ -215,7 +227,8 @@ init()
 
 # 외부 서비스 키: 운영 화면에서 넣은 값이 있으면 그것을, 없으면 서버 설정(/etc/soboru-platform.env)을 쓴다.
 SECRETS={'SWEETTRACKER_T_KEY':('택배 조회 키','스마트택배(tracking.sweettracker.co.kr)에서 받은 무료 조회 키(t_key)'),
-         'ANTHROPIC_API_KEY':('AI 상담 키','Anthropic 콘솔(console.anthropic.com)에서 만든 API 키. sk-ant-로 시작해요')}
+         'OPENAI_API_KEY':('AI 상담 키 (OpenAI)','OpenAI(platform.openai.com)에서 만든 API 키. sk-로 시작해요. 상담창 AI와 PDF 상품 등록에 써요'),
+         'ANTHROPIC_API_KEY':('AI 상담 키 (Anthropic, 예비)','Anthropic 콘솔(console.anthropic.com)에서 만든 API 키. OpenAI 키가 없을 때만 써요')}
 def secret(name):
     try:
         with conn() as db:r=db.execute('SELECT value FROM settings WHERE key=?',(name,)).fetchone()

@@ -1,10 +1,10 @@
 """답변 초안 만들기.
 
-ANTHROPIC_API_KEY가 있으면 Claude가 회사 말투(설정의 말투 + 자동 처리 답변 문구)로 초안을 쓴다.
+AI 키(OpenAI 또는 Anthropic)가 있으면 AI가 회사 말투(설정의 말투 + 자동 처리 답변 문구)로 초안을 쓴다.
 없거나 실패하면 유형별 기본 문구로 초안을 만든다. 어느 쪽이든 초안일 뿐이고 담당자가 고쳐서 보낸다.
 """
 import os, json, urllib.request
-import core, law
+import core, law, ai
 
 MODEL=os.getenv('DRAFT_MODEL','claude-sonnet-5-5')
 TONE_HINT={'polite':'정중하고 차분한 존댓말','friendly':'따뜻하고 친근한 존댓말 (해요체)','brief':'짧고 분명한 존댓말, 군더더기 없이'}
@@ -31,8 +31,7 @@ def fallback(c,co,rule_reply,history):
     return '\n'.join(lines)
 
 def ask_claude(c,co,rule_reply,history,samples):
-    key=core.secret('ANTHROPIC_API_KEY')
-    if not key:return None
+    if not ai.ready():return None
     refs='\n\n'.join(law.plain(r) for r,_ in law.BY_CAT.get(c['category'],[]))
     tone=TONE_HINT.get(co['tone'],TONE_HINT['polite'])
     system=(f"너는 온라인 쇼핑몰 '{co['name']}'의 고객 상담 담당자다. 고객 요청에 보낼 답변 초안을 한국어로 쓴다.\n"
@@ -45,17 +44,8 @@ def ask_claude(c,co,rule_reply,history,samples):
     return call(system,[{'role':'user','content':user}])
 
 def call(system,messages,model=None,max_tokens=800,timeout=40):
-    """Claude에 한 번 묻고 글만 돌려준다. 키가 없거나 실패하면 None."""
-    key=core.secret('ANTHROPIC_API_KEY')
-    if not key:return None
-    body={'model':model or MODEL,'max_tokens':max_tokens,'system':system,'messages':messages}
-    req=urllib.request.Request('https://api.anthropic.com/v1/messages',data=json.dumps(body).encode(),method='POST',
-        headers={'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'})
-    try:
-        with urllib.request.urlopen(req,timeout=timeout) as r:res=json.loads(r.read().decode())
-        text=''.join(b.get('text','') for b in res.get('content',[]) if b.get('type')=='text').strip()
-        return text or None
-    except Exception:return None
+    """AI에 한 번 묻고 글만 돌려준다. 키가 없거나 실패하면 None."""
+    return ai.chat(system,messages,max_tokens=max_tokens,timeout=timeout,anthropic_model=model or MODEL)
 
 def draft(db,c,co):
     rule=core.rule_for(db,co['id'],c['category'])

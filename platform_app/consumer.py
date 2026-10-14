@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import core, law, chatbot
 import tracking as tracking_mod
+import ai as ai_mod
 from core import conn, clean, digits, BIG
 from markupsafe import escape
 
@@ -59,7 +60,7 @@ def new():
         if co and co['status'] in ('active','listed'):d.setdefault('company',co['name']);d.setdefault('company_id',co['id']);d['member']=core.active_member(co)
     elif request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
     if request.args.get('body'):  # 상담창에서 쓴 문장을 그대로 이어 쓴다
-        body=clean(request.args['body'],BIG);d.setdefault('body',body);d.setdefault('title',core.short(body.split('\n')[0],80))
+        body=clean(request.args['body'],BIG);d.setdefault('body',body);d.setdefault('title',core.short(next((l for l in body.split('\n') if l.strip() and not l.startswith('[')),body),80))
         want={'주문 취소':'환불','반품·환불':'환불','교환':'교환','배송 조회':'배송 확인','고객 응대':'사과·재발 방지'}.get(d.get('category'))
         if want:d.setdefault('want',want)
     return render_template('c_new.html',d=d,today=datetime.date.today().isoformat())
@@ -324,7 +325,7 @@ def chat_answer(company_id,f):
             with conn() as db:
                 rule=core.rule_for(db,co['id'],cat or '기타')
                 db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],cat or '기타','asked',core.iso()))
-            return dict(category=cat,answer=ai['answer'],faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=True,ask_days=False),200
+            return dict(category=cat,answer=ai['answer'],handoff=ai['handoff'],summary=ai['summary'],faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=True,ask_days=False),200
     cat=f.get('category') if f.get('category') in core.CATS else core.classify(text)
     if not cat:return dict(category=None),200
     if not co:return dict(category=cat,faq=core.CHAT_FAQ[cat],auto=False,cond='',member=False,ask_days=cat in ('교환','반품·환불')),200
@@ -349,7 +350,7 @@ def case_file(case_id,file_id):
 @app.route('/privacy')
 def privacy():
     return render_template('c_privacy.html',op=core.OPERATOR,since=core.PRIVACY_SINCE,years=core.RETENTION_YEARS,contact=os.getenv('PRIVACY_EMAIL') or os.getenv('OPS_EMAIL',''),phone=os.getenv('PRIVACY_PHONE',''),
-        mail_vendor=os.getenv('MAIL_VENDOR',''),ai=bool(core.secret('ANTHROPIC_API_KEY')),kakao=core.kakao_ready() or core.kakao_ready('CS_KAKAO_TPL_REPLY'),kakao_vendor=os.getenv('KAKAO_VENDOR',''))
+        mail_vendor=os.getenv('MAIL_VENDOR',''),ai=ai_mod.vendor(),kakao=core.kakao_ready() or core.kakao_ready('CS_KAKAO_TPL_REPLY'),kakao_vendor=os.getenv('KAKAO_VENDOR',''))
 
 # ---------- 소보루 CS 앱 API (/api/v1) ----------
 # 앱은 쿠키를 쓰지 않는다. 접수하거나 조회하면 요청마다 토큰을 받아 휴대폰에 두고, 그 토큰으로만 요청을 연다.
