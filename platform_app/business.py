@@ -12,6 +12,7 @@ import core, law, insights, drafting, chatbot
 import tracking as tracking_mod
 import orders as orders_mod
 import shops
+import product_pdf
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -244,7 +245,7 @@ def connect():
     rows+=[dict(group='택배',name='택배 배송 조회',desc='송장번호로 고객·사장님 화면에서 위치를 바로 보여 줘요' if track_on else '소보루가 연결을 준비하고 있어요',state='on' if track_on else 'soon',href=''),
            dict(group='알림',name='이메일 알림',desc='새 요청과 답변을 이메일로 알려 드려요' if core.mail_ready() else '소보루가 연결을 준비하고 있어요',state='on' if core.mail_ready() else 'soon',href=url_for('settings')),
            dict(group='알림',name='카카오 알림톡',desc='고객에게 진행 상황을 카카오톡으로 보내요',state='soon',href=''),
-           dict(group='상담',name='AI 상담',desc='고객 채팅에 AI가 먼저 답해요' if core.secret('ANTHROPIC_API_KEY') else '소보루가 연결을 준비하고 있어요',state='on' if core.secret('ANTHROPIC_API_KEY') else 'soon',href='')]
+           dict(group='상담',name='AI 상담',desc='고객 채팅에 AI가 먼저 답해요' if chatbot.ready() else '소보루가 연결을 준비하고 있어요',state='on' if chatbot.ready() else 'soon',href=url_for('rules')+'#ai' if chatbot.ready() else '')]
     return render_template('b_connect.html',rows=rows,tab='connect')
 
 @app.route('/connect/<shop>',methods=['GET','POST'])
@@ -497,8 +498,16 @@ def rules():
         rs={cat:core.rule_for(db,co['id'],cat) for cat in core.CATS}
         since=core.now().strftime('%Y-%m-01')
         chat={o:db.execute('SELECT COUNT(*) FROM chat_log WHERE company_id=? AND outcome=? AND created>=?',(co['id'],o,since)).fetchone()[0] for o in ('asked','solved','filed')}
-        ps=core.products(db,co['id'])
-    return render_template('b_rules.html',rs=rs,chat=chat,link=core.site_url('me','/to/%d'%co['id']),products=ps,STOCKS=core.STOCKS,ai=chatbot.ready(),tab='rules')
+        ps=core.products(db,co['id']);priv=product_pdf.private_for(db,co['id']);prof=chatbot.profile(db,co['id'])
+    return render_template('b_rules.html',rs=rs,chat=chat,link=core.site_url('me','/to/%d'%co['id']),products=ps,priv=priv,prof=prof,PROFILE=chatbot.PROFILE,PROFILE_HINT=chatbot.HINT,STOCKS=core.STOCKS,ai=chatbot.ready(),tab='rules')
+
+@app.route('/ai-profile',methods=['POST'])
+@login_required
+def ai_profile():
+    """사업자별 AI 상담 설정 (회사 소개, 배송·반품 규정, 상담 범위, 담당자 연결 조건, 응대 지침)."""
+    co=me()
+    with conn() as db:chatbot.save_profile(db,co['id'],request.form)
+    flash('AI 상담 설정을 저장했습니다','ok');return redirect(url_for('rules')+'#ai')
 
 # ---------- 상품정보 (상담창 AI가 가격·재고·사용법 문의에 답할 때 본다) ----------
 def save_product(db,co,f):
@@ -506,17 +515,18 @@ def save_product(db,co,f):
     pid=f.get('id');pid=int(pid) if str(pid or '').isdigit() else None
     if pid and not db.execute('SELECT 1 FROM products WHERE id=? AND company_id=?',(pid,co['id'])).fetchone():return '상품을 찾을 수 없습니다','error'
     if f.get('act')=='delete':
-        if pid:db.execute('DELETE FROM products WHERE id=? AND company_id=?',(pid,co['id']))
+        if pid:db.execute('DELETE FROM product_private WHERE product_id=? AND company_id=?',(pid,co['id']));db.execute('DELETE FROM products WHERE id=? AND company_id=?',(pid,co['id']))
         return '삭제했습니다','ok'
     cur=db.execute('SELECT * FROM products WHERE id=?',(pid,)).fetchone() if pid else None
     keep=lambda k,n:clean(f.get(k),n) if k in f or not cur else cur[k]  # 고칠 때 보내지 않은 항목은 그대로 둔다
-    name,price,info=keep('name',60),keep('price',30),keep('info',1000)
+    name,price,info=keep('name',60),keep('price',30),keep('info',2000)
     stock=keep('stock',10);stock=stock if stock in core.STOCKS else ''
     if not name:return '상품 이름을 적어 주세요','error'
     if pid:db.execute('UPDATE products SET name=?,price=?,stock=?,info=?,updated=? WHERE id=?',(name,price,stock,info,core.iso(),pid))
     else:
         if db.execute('SELECT COUNT(*) FROM products WHERE company_id=?',(co['id'],)).fetchone()[0]>=core.MAX_PRODUCTS:return f'상품은 {core.MAX_PRODUCTS}개까지 등록할 수 있어요','error'
-        db.execute('INSERT INTO products(company_id,name,price,stock,info,updated) VALUES(?,?,?,?,?,?)',(co['id'],name,price,stock,info,core.iso()))
+        pid=db.execute('INSERT INTO products(company_id,name,price,stock,info,updated) VALUES(?,?,?,?,?,?)',(co['id'],name,price,stock,info,core.iso())).lastrowid
+    if 'private' in f:product_pdf.save_private(db,co['id'],pid,f.get('private'))  # 공급가 등 내부 정보는 따로 (상담에 안 쓰임)
     return '저장했습니다','ok'
 
 PRODUCT_COLS={'name':('상품명','상품 이름','상품','이름'),'price':('가격','판매가'),'stock':('재고','판매 상태','상태'),'info':('안내','설명','사용법','상품 안내')}
@@ -595,6 +605,29 @@ def products():
             msg,level=import_products(db,co,up.read(2_000_000)) if up and up.filename else ('파일을 골라 주세요','error')
         else:msg,level=save_product(db,co,request.form)
     flash(msg,level);return redirect(url_for('rules')+'#products')
+
+@app.route('/products/pdf',methods=['POST'])
+@login_required
+def products_pdf():
+    """상품소개서 PDF를 올리면 AI가 상품을 뽑는다. 결과는 검토 화면에서 사장님이 고르고 고친 뒤 등록한다."""
+    co=me();up=request.files.get('file')
+    if not up or not up.filename:flash('PDF 파일을 골라 주세요','error');return redirect(url_for('rules')+'#products')
+    try:
+        with conn() as db:token=product_pdf.start(db,co,up.filename,up.read(product_pdf.MAX_BYTES+1))
+    except ValueError as e:flash(str(e),'error');return redirect(url_for('rules')+'#products')
+    return redirect(url_for('product_import',token=token))
+
+@app.route('/products/import/<token>',methods=['GET','POST'])
+@login_required
+def product_import(token):
+    co=me()
+    with conn() as db:
+        if request.method=='POST':
+            msg,level=product_pdf.confirm(db,co,token,request.form);flash(msg,level)
+            return redirect(url_for('rules')+'#products')
+        j=product_pdf.job(db,co['id'],token)
+    if not j:abort(404)
+    return render_template('b_product_import.html',j=j,token=token,compose=product_pdf.compose,PUBLIC=product_pdf.PUBLIC,INTERNAL=product_pdf.INTERNAL,tab='rules')
 
 COND_CATS=('교환','반품·환불')  # 받은 지 7일 조건은 이 두 유형에만
 def save_rule(db,co,f):

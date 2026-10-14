@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -252,19 +252,109 @@ class PlatformTest(unittest.TestCase):
         me=self.client();page=me.get(f'/to/{cid}').get_data(as_text=True);ctok=re.search(r'data-csrf="([^"]+)"',page).group(1)
         j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'택배가 아직 안 왔어요'}).get_json()
         self.assertNotIn('answer',j);self.assertEqual(j['category'],'배송 조회')
-        # 키가 있으면 AI가 회사 정보(상품 포함)를 보고 답한다
+        # 키가 있으면 AI(OpenAI)가 회사 정보(상품 포함)와 앞 대화를 보고 답한다
         seen={}
-        def fake(system,messages,**k):seen.update(system=system,messages=messages);return '{"category": null, "answer": "선크림은 19000원이에요."}'
-        with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'test'}),patch.object(sys.modules['drafting'],'call',fake):
+        def fake(url,headers,body,timeout):
+            seen.update(url=url,headers=headers,body=body)
+            return 200,{'choices':[{'message':{'content':'{"category": null, "answer": "선크림은 19000원이에요.", "handoff": false, "summary": ""}'}}]}
+        aim=sys.modules['ai']
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
             hist=json.dumps([{'who':'bot','text':'안녕하세요'},{'who':'me','text':'선크림 있어요?'},{'who':'bot','text':'네, 있어요.'}])
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'얼마예요?','history':hist}).get_json()
-        self.assertEqual((j['answer'],j['category']),('선크림은 19000원이에요.',None))
-        self.assertIn('선크림 / 가격 19000원',seen['system']);self.assertIn('보습 크림 / 가격 31000원 / 품절',seen['system'])
-        self.assertEqual([m['role'] for m in seen['messages']],['user','assistant','user']);self.assertEqual(seen['messages'][-1]['content'],'얼마예요?')
-        # AI가 실패하면 기본 안내로 돌아간다
-        with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'test'}),patch.object(sys.modules['drafting'],'call',lambda *a,**k:None):
+        self.assertEqual((j['answer'],j['category'],j['handoff']),('선크림은 19000원이에요.',None,False))
+        self.assertIn('api.openai.com',seen['url']);self.assertEqual(seen['body']['response_format'],{'type':'json_object'})
+        msgs=seen['body']['messages'];system=msgs[0]['content']
+        self.assertIn('선크림 / 가격 19000원',system);self.assertIn('보습 크림 / 가격 31000원 / 품절',system)
+        self.assertEqual([m['role'] for m in msgs],['system','user','assistant','user']);self.assertEqual(msgs[-1]['content'],'얼마예요?')
+        # 사람이 처리할 일이면 담당자 연결과 요약을 돌려준다
+        def fake2(url,headers,body,timeout):
+            return 200,{'choices':[{'message':{'content':'{"category": "반품·환불", "answer": "불편을 드려 죄송해요. 환불은 담당자가 확인해야 해요.", "handoff": true, "summary": "고객 요구: 환불\\n주문번호: A-1"}'}}]}
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake2):
+            j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'A-1 주문 환불해 주세요'}).get_json()
+        self.assertEqual((j['category'],j['handoff']),('반품·환불',True));self.assertIn('주문번호: A-1',j['summary'])
+        # AI가 실패하면 기본 안내로 돌아간다 (키는 로그에 남지 않는다)
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'sk-secret-test'}),patch.object(aim,'post',lambda *a,**k:(500,{'error':{'message':'boom'}})),self.assertLogs('ai',level='WARNING') as lg:
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'환불하고 싶어요'}).get_json()
-        self.assertNotIn('answer',j);self.assertEqual(j['category'],'반품·환불')
+        self.assertNotIn('answer',j);self.assertEqual(j['category'],'반품·환불');self.assertNotIn('sk-secret-test',''.join(lg.output))
+        # 다른 회사 상담창에는 이 회사 상품이 들어가지 않는다
+        b3,_,cid3=self.signup_and_approve('다른가게','other-shop@example.com')
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
+            me.post(f'/chat/{cid3}',data={'csrf':ctok,'text':'선크림 있어요?'})
+        self.assertNotIn('선크림',seen['body']['messages'][0]['content'])
+
+    def test_pdf_product_import(self):
+        """상품소개서 PDF(2쪽, 11개 상품) -> AI 추출 -> 검토·수정 -> 등록. 공급가는 따로 저장되고 상담 AI에 들어가지 않는다."""
+        import shutil
+        if not shutil.which('pdftotext'):self.skipTest('pdftotext 없음')
+        b,o,cid=self.signup_and_approve('헬스마켓','health@example.com')
+        self.post(b,'/biz/products',{'name':'비타민C 1000','price':'18,000원','stock':'있음','info':'예전 안내'},'/biz/rules')
+        pp=sys.modules['product_pdf'];aim=sys.modules['ai'];pp.BACKGROUND=False
+        from pathlib import Path;pdf=(Path(__file__).parent/'fixtures'/'catalog-11.pdf').read_bytes()
+        names=['6년근 홍삼정 스틱','프로바이오틱스 19','루테인 지아잔틴','비타민C 1000','오메가3 알티지','밀크씨슬 간케어','마그네슘 플러스','콜라겐 펩타이드','흑마늘 진액','여성 멀티비타민','아르기닌 6000']
+        sent=[]
+        def fake(url,headers,body,timeout):
+            sent.append(body);items=[]
+            for n in names:
+                it={'name':n,'brand':'소보루헬스','kind':'건강기능식품','spec':'','price':'','desc':'','features':'','ingredients':'','usage':'','shelf':'','caution':'','internal':{'supply':''}}
+                items.append(it)
+            items[0].update(price='39,000원',spec='10g x 30포',ingredients='홍삼농축액(6년근, 국산) 100%',internal={'supply':'21,000원 (VAT 별도)','terms':'월말 정산, 최소 주문 20개'})
+            items[1].update(price='32,000원',desc='공급가 17,500원으로 판매처에 제공\n유산균 19종',internal={'supply':'17,500원'})  # AI가 실수로 공급가를 고객용 칸에 넣음
+            items[2].update(price='14,000원',internal={'supply':'14,000원'})  # 소비자가 칸에 공급가 숫자
+            items[3].update(price='19,000원',internal={'supply':'9,800원'})
+            items[4].update(features='관절 건강에 도움 99,999개 판매')  # PDF에 없는 숫자
+            items.append(dict(items[5],name='PDF에 없는 상품'))
+            return 200,{'choices':[{'message':{'content':json.dumps({'products':items},ensure_ascii=False)}}]}
+        from io import BytesIO
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
+            self.assertIn('PDF 파일만',self.post(b,'/biz/products/pdf',{'file':(BytesIO(b'not a pdf'),'x.pdf')},'/biz/rules',follow_redirects=True).get_data(as_text=True))
+            r=self.post(b,'/biz/products/pdf',{'file':(BytesIO(pdf),'catalog-11.pdf')},'/biz/rules')
+        loc=r.headers['Location'];self.assertIn('/biz/products/import/',loc);token=loc.rsplit('/',1)[1]
+        user=sent[0]['messages'][-1]['content'];self.assertIn('6년근 홍삼정 스틱',user);self.assertIn('아르기닌 6000',user)  # 두 쪽 글자가 모두 갔다
+        page=b.get(loc).get_data(as_text=True)
+        self.assertIn('상품 12개를 찾았어요',page);self.assertIn('이미 있는 상품',page)
+        self.assertIn('PDF에서 못 찾은 내용: 제품명',page);self.assertIn('PDF에서 못 찾은 내용: 특징',page)
+        with self.core.conn() as db:items=pp.job(db,cid,token)['items']
+        it={x['name']:x for x in items}
+        self.assertNotIn('공급가',it['프로바이오틱스 19']['desc']);self.assertIn('유산균 19종',it['프로바이오틱스 19']['desc'])
+        self.assertIn('공급가 17,500원',it['프로바이오틱스 19']['internal']['other'])
+        self.assertEqual(it['루테인 지아잔틴']['price'],'')  # 공급가와 같은 숫자는 소비자가에서 뺀다
+        # 다른 회사는 이 추출 결과를 못 본다
+        b2,_,_=self.signup_and_approve('남의헬스','other-health@example.com')
+        self.assertEqual(b2.get(loc).status_code,404)
+        self.assertIn('찾을 수 없',self.post(b2,loc,{'pick0':'1'},'/biz/rules',follow_redirects=True).get_data(as_text=True))
+        # 사장님이 고르고 고친 뒤 등록 (가짜 상품은 고르지 않음, 이미 있는 비타민C는 골라서 덮어씀)
+        form={f'pick{i}':'1' for i in range(11)};form['name0']='6년근 홍삼정 스틱 30포';form['price1']='31,000원'
+        r=self.post(b,loc,form,'/biz/rules',follow_redirects=True);self.assertIn('11개 상품을 등록',r.get_data(as_text=True))
+        with self.core.conn() as db:
+            ps={p['name']:p for p in self.core.products(db,cid)};priv=pp.private_for(db,cid)
+            left=db.execute('SELECT items FROM product_imports WHERE token=?',(token,)).fetchone()[0]
+        self.assertEqual(len(ps),11);self.assertNotIn('PDF에 없는 상품',ps);self.assertEqual(ps['비타민C 1000']['price'],'19,000원')
+        self.assertEqual(ps['프로바이오틱스 19']['price'],'31,000원');self.assertIn('원재료·성분: 홍삼농축액',ps['6년근 홍삼정 스틱 30포']['info'])
+        self.assertIn('공급가: 21,000원',priv[ps['6년근 홍삼정 스틱 30포']['id']]);self.assertEqual(left,'[]')  # 다 쓴 추출 결과는 지운다
+        # 사장님 화면에는 내부 정보가 보이고, 상담 AI·앱 API에는 안 간다
+        page=b.get('/biz/rules').get_data(as_text=True);self.assertIn('공급가: 21,000원',page);self.assertIn('AI 상담 설정',page)
+        with self.core.conn() as db:facts=sys.modules['chatbot'].company_facts(db,self.core.company(db,cid))
+        self.assertIn('6년근 홍삼정 스틱 30포',facts);self.assertIn('39,000원',facts)
+        for secret in ('21,000','17,500','9,800','공급가','정산','최소 주문'):self.assertNotIn(secret,facts)
+        tok=self.client().post('/biz/api/v1/login',json={'login_id':'health@example.com','password':'longpassword1'}).get_json()['token']
+        api=json.dumps(self.client().get('/biz/api/v1/products',headers={'Authorization':'Bearer '+tok}).get_json(),ensure_ascii=False)
+        self.assertNotIn('21,000',api);self.assertNotIn('공급가',api)
+        # 상품을 지우면 내부 정보도 같이 지운다
+        pid=ps['6년근 홍삼정 스틱 30포']['id'];self.post(b,'/biz/products',{'id':pid,'act':'delete'},'/biz/rules')
+        with self.core.conn() as db:self.assertNotIn(pid,pp.private_for(db,cid))
+        pp.BACKGROUND=True
+
+    def test_ai_profile(self):
+        """사업자별 AI 상담 설정이 저장되고, 그 회사 상담에만 들어간다."""
+        b,o,cid=self.signup_and_approve('설정마켓','aiset@example.com')
+        self.post(b,'/biz/ai-profile',{'shipping':'오후 2시 전 주문은 당일 출고'},'/biz/rules')
+        self.post(b,'/biz/ai-profile',{'handoff':'불량은 담당자에게'},'/biz/rules')
+        with self.core.conn() as db:
+            cb=sys.modules['chatbot'];prof=cb.profile(db,cid);facts=cb.company_facts(db,self.core.company(db,cid))
+        self.assertEqual((prof['shipping'],prof['handoff']),('오후 2시 전 주문은 당일 출고','불량은 담당자에게'))
+        self.assertIn('[배송 정책]\n오후 2시 전 주문은 당일 출고',facts)
+        b2,_,cid2=self.signup_and_approve('옆가게','aiset2@example.com')
+        with self.core.conn() as db:self.assertNotIn('당일 출고',cb.company_facts(db,self.core.company(db,cid2)))
 
     def test_courier_tracking(self):
         """배송 조회 요청에 송장으로 답하고, 스마트택배 알림(콜백)으로 배송 상태가 바뀌면 기록·알림한다."""
