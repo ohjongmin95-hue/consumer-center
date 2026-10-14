@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -1531,6 +1531,153 @@ class PlatformTest(unittest.TestCase):
         sec=self.client().get('/biz/security').get_data(as_text=True)
         self.assertIn('아직 갖추지 못한 것',sec);self.assertNotIn('접속 암호화',sec);self.assertNotIn('noindex',sec)
         with patch.dict(os.environ,{'HTTPS_ONLY':'1'}):self.assertIn('접속 암호화',self.client().get('/biz/security').get_data(as_text=True))
+
+    def test_cafe24_oauth(self):
+        """카페24: 키 없으면 연동 대기, 있으면 동의 화면으로 → 돌아오면 토큰 암호화 저장 → 만료 전 갱신 → 갱신 실패면 다시 연결 → 끊기."""
+        import urllib.parse
+        shops=sys.modules['shops'];c24=sys.modules['cafe24']
+        b,o,cid=self.signup_and_approve('카페24상점','c24@example.com')
+        self.assertIn('연동 대기',b.get('/biz/connect/cafe24').get_data(as_text=True))
+        self.assertIn('연동 대기',b.get('/biz/connect').get_data(as_text=True))
+        r=self.post(b,'/biz/connect/cafe24',{'act':'connect','mall_id':'myshop'},follow_redirects=True);self.assertIn('앱 등록을 마치면',r.get_data(as_text=True))
+        calls=[]
+        def fake(method,url,headers=None,body=None):
+            calls.append((method,url,dict(urllib.parse.parse_qsl(body.decode())) if body else None))
+            if url.endswith('/oauth/token'):
+                self.assertTrue(headers['Authorization'].startswith('Basic '))
+                f=dict(urllib.parse.parse_qsl(body.decode()))
+                if f['grant_type']=='authorization_code':return 200,{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00.000','refresh_token_expires_at':'2099-01-14T00:00:00.000','scopes':['mall.read_order','mall.read_store']}
+                if f['refresh_token']=='R1':return 200,{'access_token':'A2','refresh_token':'R2','expires_at':'2099-01-01T02:00:00.000','refresh_token_expires_at':'2099-01-15T00:00:00.000'}
+                return 400,{'error':'invalid_grant'}
+            if '/admin/orders' in url:
+                self.assertTrue(headers['Authorization'].startswith('Bearer A'))
+                return 200,{'orders':[{'order_id':'20261014-0000011','order_date':'2026-10-14T10:00:00+09:00','billing_name':'김카페','actual_payment_amount':'25000.00',
+                    'items':[{'product_name':'머그컵','quantity':1,'order_status':'N40','shipping_company_name':'CJ대한통운','tracking_no':'123412341234'}],'receivers':[{'name':'김카페','cellphone':'010-5555-6666','address1':'서울'}]}]}
+            if '/admin/store' in url:return 200,{'store':{'shop_name':'내 카페24몰'}}
+            return 404,{}
+        with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec'}),patch.object(shops,'http',fake):
+            r=self.post(b,'/biz/connect/cafe24',{'act':'connect','mall_id':'bad id!'},follow_redirects=True);self.assertIn('아이디를 확인',r.get_data(as_text=True))
+            r=self.post(b,'/biz/connect/cafe24',{'act':'connect','mall_id':'myshop'})
+            loc=r.headers['Location'];self.assertTrue(loc.startswith('https://myshop.cafe24api.com/api/v2/oauth/authorize?'))
+            q=dict(urllib.parse.parse_qsl(urllib.parse.urlparse(loc).query));self.assertEqual((q['client_id'],q['response_type']),('cid','code'));self.assertIn('mall.read_order',q['scope'])
+            # 다른 사람의 state는 안 받는다
+            r=b.get('/biz/connect/cafe24/callback?code=x&state=forged',follow_redirects=True);self.assertIn('만료됐거나',r.get_data(as_text=True))
+            r=self.post(b,'/biz/connect/cafe24',{'act':'connect','mall_id':'myshop'});q=dict(urllib.parse.parse_qsl(urllib.parse.urlparse(r.headers['Location']).query))
+            r=b.get('/biz/connect/cafe24/callback?code=CODE1&state='+urllib.parse.quote(q['state']),follow_redirects=True)
+            self.assertIn('카페24(myshop)에 연결했어요',r.get_data(as_text=True))
+            self.assertEqual(calls[0][2]['code'],'CODE1')
+            with self.core.conn() as db:
+                lk=c24.link(db,cid);self.assertNotIn('A1',lk['creds']);self.assertEqual(shops.unseal(lk['creds'])['refresh_token'],'R1')
+                self.assertEqual(db.execute("SELECT channel,status,invoice FROM orders WHERE company_id=? AND order_no='20261014-0000011'",(cid,)).fetchone()[:],('자사몰','delivered','123412341234'))
+                # 만료가 가까우면 갱신하고 갱신 토큰도 바뀐다
+                db.execute("UPDATE cafe24_links SET expires='2000-01-01 00:00:00' WHERE company_id=?",(cid,))
+                self.assertEqual(c24.access_token(db,cid)[1],'A2');self.assertEqual(shops.unseal(c24.link(db,cid)['creds'])['refresh_token'],'R2')
+                db.execute("UPDATE cafe24_links SET expires='2000-01-01 00:00:00' WHERE company_id=?",(cid,))
+            mails=[]
+            with patch.object(self.core,'send_mail',lambda to,sub,body:mails.append(sub)):
+                r=self.post(b,'/biz/connect/cafe24',{'act':'sync'},follow_redirects=True);self.assertIn('만료됐어요',r.get_data(as_text=True))
+                self.post(b,'/biz/connect/cafe24',{'act':'sync'})
+            self.assertEqual(mails,['[소보루 CS] 카페24 연결을 확인해 주세요'])  # 처음 끊겼을 때 한 번만
+            with self.core.conn() as db:self.assertEqual(c24.link(db,cid)['status'],'reconnect')
+            self.assertIn('다시 연결 필요',b.get('/biz/connect/cafe24').get_data(as_text=True))
+            self.post(b,'/biz/connect/cafe24',{'act':'delete'})
+            with self.core.conn() as db:self.assertIsNone(c24.link(db,cid))
+
+    def test_external_api_and_webhooks(self):
+        """외부 API: 운영자가 켠 회사만, 키 해시 저장, 시험 키는 데모 데이터만, 회사 간 격리, 폐기, 웹훅 서명·기록·내부 주소 차단."""
+        import hashlib,hmac as _h
+        api=sys.modules['openapi'];shops=sys.modules['shops']
+        b,o,cid=self.signup_and_approve('API상점','api@example.com')
+        self.assertEqual(b.get('/biz/developers').status_code,404)  # 운영자가 켜기 전에는 없다
+        self.post(o,f'/biz/ops/company/{cid}/api',{'on':'1'},form_path=f'/biz/ops/company/{cid}')
+        page=self.post(b,'/biz/developers',{'act':'key','mode':'test','name':'시험'}).get_data(as_text=True)
+        tkey=re.search(r'(sk_test_[A-Za-z0-9_-]+)',page).group(1)
+        lkey=re.search(r'(sk_live_[A-Za-z0-9_-]+)',self.post(b,'/biz/developers',{'act':'key','mode':'live','name':'운영'}).get_data(as_text=True)).group(1)
+        with self.core.conn() as db:self.assertFalse(db.execute('SELECT 1 FROM api_keys WHERE hash=? OR prefix=?',(tkey,tkey)).fetchone())
+        c=self.client();H=lambda k:{'Authorization':'Bearer '+k}
+        self.assertEqual(c.get('/biz/api/ext/v1/me').status_code,401)
+        self.assertEqual(c.get('/biz/api/ext/v1/me',headers=H('sk_test_'+'x'*30)).status_code,401)
+        self.assertTrue(c.get('/biz/api/ext/v1/me',headers=H(tkey)).get_json()['company']['demo'])
+        demo_cases=c.get('/biz/api/ext/v1/cases',headers=H(tkey)).get_json()['data'];self.assertTrue(demo_cases)
+        self.file_case(self.client(),'API상점','배송 조회',company_id=str(cid),title='실제고객문의')
+        live=c.get('/biz/api/ext/v1/cases',headers=H(lkey)).get_json()['data']
+        self.assertIn('실제고객문의',[x['title'] for x in live]);self.assertNotIn('실제고객문의',[x['title'] for x in demo_cases])
+        r=c.post('/biz/api/ext/v1/cases',headers=H(lkey),json={'channel':'전화','category':'교환','title':'API로 등록','body':'사이즈 교환','want':'교환'});self.assertEqual(r.status_code,201)
+        no=r.get_json()['data']['no']
+        self.assertEqual(c.post('/biz/api/ext/v1/cases',headers=H(lkey),json={'title':'x'}).status_code,400)
+        r=c.post(f'/biz/api/ext/v1/cases/{no}/replies',headers=H(lkey),json={'message':'교환 접수했어요'});self.assertEqual(r.status_code,200)
+        self.assertEqual(r.get_json()['data']['status'],'answered')
+        with self.core.conn() as db:self.assertTrue(db.execute("SELECT 1 FROM events e JOIN cases c ON c.id=e.case_id WHERE c.no=? AND e.actor='API (운영)'",(no,)).fetchone())
+        # 다른 회사 문의는 안 보인다
+        b2,_,cid2=self.signup_and_approve('남API상점','api2@example.com')
+        self.post(o,f'/biz/ops/company/{cid2}/api',{'on':'1'},form_path=f'/biz/ops/company/{cid2}')
+        k2=re.search(r'(sk_live_[A-Za-z0-9_-]+)',self.post(b2,'/biz/developers',{'act':'key','mode':'live'}).get_data(as_text=True)).group(1)
+        self.assertEqual(c.get(f'/biz/api/ext/v1/cases/{no}',headers=H(k2)).status_code,404)
+        # 폐기
+        with self.core.conn() as db:kid=db.execute("SELECT id FROM api_keys WHERE company_id=? AND mode='live'",(cid2,)).fetchone()[0]
+        self.post(b2,'/biz/developers',{'act':'revoke','id':str(kid)});self.assertEqual(c.get('/biz/api/ext/v1/me',headers=H(k2)).status_code,401)
+        # 웹훅: http·내부 주소는 막는다
+        self.assertIn('https://',self.post(b,'/biz/developers',{'act':'hook','url':'http://example.com/h','events':['case.created'],'mode':'live'},follow_redirects=True).get_data(as_text=True))
+        self.assertIn('사설망',self.post(b,'/biz/developers',{'act':'hook','url':'https://127.0.0.1/h','events':['case.created'],'mode':'live'},follow_redirects=True).get_data(as_text=True))
+        sent=[]
+        def fake(method,url,headers=None,body=None):sent.append((url,headers,body));return 200,{}
+        with patch.object(api,'safe_url',lambda u:''),patch.object(shops,'http',fake):
+            page=self.post(b,'/biz/developers',{'act':'hook','url':'https://hooks.example.com/s','events':['case.created','case.replied'],'mode':'live'},follow_redirects=True).get_data(as_text=True)
+            sec=re.search(r'(whsec_[A-Za-z0-9_-]+)',page).group(1)
+            self.file_case(self.client(),'API상점','배송 조회',company_id=str(cid),title='웹훅문의')
+            self.assertGreaterEqual(api.dispatch(),1)
+            url,hd,body=sent[-1];self.assertEqual(hd['X-Soboru-Event'],'case.created');self.assertIn('웹훅문의',body.decode())
+            t,v=re.match(r't=(\d+),v1=([0-9a-f]+)',hd['X-Soboru-Signature']).groups()
+            self.assertEqual(v,_h.new(sec.encode(),f'{t}.'.encode()+body,hashlib.sha256).hexdigest())
+            n=len(sent);api.dispatch();self.assertEqual(len(sent),n)  # 같은 것은 다시 안 보낸다
+        self.assertIn('case.created',b.get('/biz/developers').get_data(as_text=True))
+        # 운영자가 끄면 키도 막힌다
+        self.post(o,f'/biz/ops/company/{cid}/api',{'on':'0'},form_path=f'/biz/ops/company/{cid}')
+        self.assertEqual(c.get('/biz/api/ext/v1/me',headers=H(lkey)).status_code,403)
+
+    def test_shop_reply_posting_and_ai_stats(self):
+        """판매처 답변 올리기(시험 운영): 스마트스토어 문의에 답한 뒤 올리면 판매처 API로 간다. AI 성과는 실제 기록만."""
+        import bcrypt
+        shops=sys.modules['shops'];b,o,cid=self.signup_and_approve('답변올림상점','post@example.com')
+        sent=[]
+        def fake(method,url,headers=None,body=None):
+            if url.endswith('/oauth2/token'):return 200,{'access_token':'tok','expires_in':10800}
+            if '/pay-user/inquiries' in url:return 200,{'content':[{'inquiryNo':91,'title':'사이즈 문의','inquiryContent':'M 사이즈 있나요','answered':False}],'totalPages':1}
+            if '/answer' in url:sent.append((url,json.loads(body)));return 200,{}
+            return 200,{'data':{'lastChangeStatuses':[]}}
+        with patch.object(shops,'http',fake):
+            shops._tokens.clear();self.post(b,'/biz/connect/naver',{'client_id':'post-app','client_secret':bcrypt.gensalt().decode()})
+            with self.core.conn() as db:case_id=db.execute("SELECT case_id FROM shop_seen WHERE company_id=? AND ext_id='n91'",(cid,)).fetchone()[0]
+            r=self.post(b,f'/biz/case/{case_id}',{'act':'post_shop'},follow_redirects=True);self.assertIn('먼저 답변',r.get_data(as_text=True))
+            self.post(b,f'/biz/case/{case_id}',{'act':'reply','msg':'네, M 사이즈 있어요'})
+            self.assertIn('스마트스토어에 답변 올리기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
+            r=self.post(b,f'/biz/case/{case_id}',{'act':'post_shop'},follow_redirects=True)
+        self.assertEqual(sent,[('https://api.commerce.naver.com/external/v1/pay-merchant/inquiries/91/answer',{'answerComment':'네, M 사이즈 있어요'})])
+        self.assertIn('스마트스토어에 답변을 올렸어요',r.get_data(as_text=True))
+        # 쿠팡은 Wing 아이디가 없으면 안내만
+        with self.core.conn() as db:
+            db.execute("INSERT INTO shop_links(company_id,shop,creds,created) VALUES(?,?,?,?)",(cid,'coupang',shops.seal({'vendor_id':'A1','access_key':'a','secret_key':'s'}),'2026-10-14'))
+            db.execute("INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)",(cid,'coupang','q55',case_id+0))
+        # AI 성과: 기록이 적으면 비율은 –
+        page=b.get('/biz/stats/ai').get_data(as_text=True);self.assertIn('AI 성과',page);self.assertIn('–',page)
+        with self.core.conn() as db:
+            for _ in range(6):db.execute("INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)",(cid,'배송 조회','asked',self.core.iso()))
+            for _ in range(3):db.execute("INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)",(cid,'배송 조회','solved',self.core.iso()))
+        b.post(f'/biz/case/{case_id}/draft',data={'csrf':self.csrf(b,f'/biz/case/{case_id}')})
+        page=b.get('/biz/stats/ai').get_data(as_text=True)
+        self.assertRegex(page,r'상담창에서 해결</span><b>50<small>%');self.assertIn('초안을 만든 문의</dt><dd>1건',page)
+
+    def test_suspend_resume_keeps_verification(self):
+        b,o,cid=self.signup_and_approve('중지마켓','susp@example.com')
+        x=self.client();self.post(x,'/biz/signup',{'name':'미인증마켓','biz_no':self.bizno(),'owner_name':'대표','phone':'010-1111-2222','contact':'1588-0000','login_id':'susp2@example.com','password':'longpassword1','terms':'1'})
+        with self.core.conn() as db:uid=db.execute('SELECT id FROM companies WHERE login_id=?',('susp2@example.com',)).fetchone()[0]
+        for c in (cid,uid):
+            self.post(o,'/biz/ops/companies',{'act':'suspend','id':str(c)})
+            self.post(o,'/biz/ops/companies',{'act':'resume','id':str(c)})
+        with self.core.conn() as db:
+            m=dict(db.execute('SELECT id,member FROM companies WHERE id IN (?,?)',(cid,uid)).fetchall())
+            st=db.execute('SELECT status FROM companies WHERE id=?',(uid,)).fetchone()[0]
+        self.assertEqual((m[cid],m[uid],st),(1,0,'active'))  # 인증한 회사는 인증 그대로, 인증 전에 중지한 회사는 다시 인증 전으로
 
 
 if __name__=='__main__':unittest.main()

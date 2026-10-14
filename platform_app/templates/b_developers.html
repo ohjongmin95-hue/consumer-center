@@ -1,0 +1,39 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}외부 API · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('connect') }}{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('connect') }}">서비스 연동</a><span>›</span><span>외부 API</span></div>
+<div class="phead"><div><h1>외부 API <span class="pill gray">시범</span></h1><p>우리 회사 프로그램에서 문의를 읽고 답하고, 새 문의를 웹훅으로 받아요. 보안 점검을 마치기 전까지 소보루가 켠 회사만 써요.</p></div></div>
+{% if new_key %}<section class="panel" style="margin-bottom:var(--ds-gap);background:var(--accent-soft)"><div class="ph">새 API 키 (지금 한 번만 보여요)</div>
+<div class="addline"><input class="inp mono" id="nk" value="{{ new_key }}" readonly><button class="btn md gray" type="button" data-copy="nk">복사</button></div>
+<p class="cap" style="margin:10px 0 0">안전한 곳에 저장해 주세요. 소보루는 원문을 보관하지 않아 다시 보여 드릴 수 없어요.</p></section>{% endif %}
+<div class="cols"><div class="stack" style="gap:var(--ds-gap)">
+<section class="panel"><div class="ph">API 키</div>
+{% for k in keys %}<div class="drow"><div class="tx"><b style="font-weight:500">{{ k.name }} <span class="pill {{ 'acc' if k.mode=='test' else 'ok' }}">{{ '시험 (데모 데이터)' if k.mode=='test' else '운영' }}</span>{% if k.revoked %} <span class="pill gray">폐기됨</span>{% endif %}</b>
+<span class="mono">{{ k.prefix }}…</span><span>{{ k.created[:10] }} 만듦 · {{ ('마지막 사용 '+fmt(k.last_used)) if k.last_used else '아직 안 씀' }}</span></div>
+{% if not k.revoked %}<form method="post" onsubmit="return confirm('이 키를 폐기할까요? 이 키를 쓰는 프로그램이 바로 멈춰요.')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ k.id }}"><button class="btn sm gray" name="act" value="revoke">폐기</button></form>{% endif %}</div>
+{% else %}<p class="cap">아직 키가 없어요. 시험 키로 먼저 데모 데이터에 불러 보세요.</p>{% endfor %}
+<form method="post" class="addline" style="margin-top:12px;flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input class="inp" name="name" maxlength="40" placeholder="키 이름 (예: 사내 ERP)" aria-label="키 이름">
+<select class="inp" name="mode" aria-label="종류" style="max-width:200px"><option value="test">시험 (데모 데이터)</option><option value="live">운영 (실제 데이터)</option></select><button class="btn md" name="act" value="key">키 만들기</button></form></section>
+<section class="panel"><div class="ph">웹훅</div>
+{% for w in hooks %}<div class="drow"><div class="tx"><b style="font-weight:500;word-break:break-all">{{ w.url }}</b><span>{{ w.events.split(',')|map('replace','case.created','새 문의')|map('replace','case.replied','답변')|join(', ') }} · {{ '시험' if w.mode=='test' else '운영' }} · {% if w.active %}켜짐{% else %}<span class="t-bad">멈춤 (연달아 실패)</span>{% endif %}</span></div>
+<form method="post" style="display:flex;gap:6px;flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ w.id }}"><button class="btn sm gray" name="act" value="hook_test">시험 보내기</button>{% if not w.active %}<button class="btn sm gray" name="act" value="hook_on">다시 켜기</button>{% endif %}<button class="btn sm gray" name="act" value="hook_del" onclick="return confirm('웹훅을 지울까요?')">지우기</button></form></div>
+{% else %}<p class="cap">아직 웹훅이 없어요</p>{% endfor %}
+<form method="post" class="stack" style="margin-top:12px"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<label class="fld"><span>받을 주소 (https)</span><input class="inp" name="url" maxlength="300" placeholder="https://example.com/soboru-webhook" required></label>
+<div class="chk-grid">{% for k,v in EVENTS.items() %}<label class="check"><input type="checkbox" name="events" value="{{ k }}" checked><span class="bx"></span><span>{{ v }}</span></label>{% endfor %}</div>
+<select class="inp" name="mode" aria-label="데이터"><option value="test">시험 (데모 데이터)</option><option value="live">운영 (실제 데이터)</option></select>
+<button class="btn md gray" name="act" value="hook">웹훅 만들기</button></form></section>
+<section class="panel"><div class="ph">보낸 기록 (최근 30건)</div>
+{% if logs %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>때</th><th>알림</th><th class="hm">문의</th><th class="r">결과</th></tr></thead><tbody>
+{% for l in logs %}<tr><td class="t-mute">{{ fmt(l.created) }}</td><td>{{ l.event }}</td><td class="hm">{{ l.ref or '–' }}</td><td class="r {{ '' if l.ok else 't-bad' }}">{% if l.ok %}{{ l.status }} · {{ l.ms }}ms{% else %}{{ l.error }}{% endif %}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="cap">아직 보낸 알림이 없어요</p>{% endif %}</section>
+</div>
+<aside class="stack" style="gap:var(--ds-gap)"><section class="panel"><div class="ph">사용법</div>
+<p class="cap" style="margin:0 0 8px">기본 주소</p><input class="inp mono" value="{{ base }}" readonly aria-label="기본 주소">
+<p class="cap" style="margin:12px 0 6px">모든 요청에 키를 붙여요</p><pre class="code">Authorization: Bearer sk_test_…</pre>
+<div class="apieps"><div><code>GET /me</code><span>키 확인</span></div><div><code>GET /cases</code><span>문의 목록 (status, updated_since, limit≤100)</span></div><div><code>GET /cases/{no}</code><span>문의 하나와 기록</span></div><div><code>POST /cases</code><span>문의 등록 (channel, category, title, body, want …)</span></div><div><code>POST /cases/{no}/replies</code><span>답변 {"message": "…"}</span></div><div><code>GET /orders</code><span>주문 (order_no, limit)</span></div></div>
+<p class="cap" style="margin:12px 0 0">키마다 1분에 {{ RATE }}번까지. 오류는 {"error":{"code","message"}} 꼴이에요.</p>
+<p class="cap" style="margin:12px 0 6px">웹훅 서명 확인</p><pre class="code">X-Soboru-Signature: t=시각,v1=서명
+서명 = HMAC-SHA256(비밀값, "시각." + 본문)</pre></section></aside></div>
+{% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했습니다';},function(){b.textContent='선택했습니다';});};});</script>{% endblock %}

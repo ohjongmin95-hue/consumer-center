@@ -2,7 +2,7 @@
 {% block title %}통계 · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('stats') }}{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>통계</h1>{% if reply_h is not none %}<p>첫 답변까지 중간값 {{ reply_h }}시간</p>{% endif %}</div><a class="btn sm gray" href="{{ url_for('report') }}">월간 리포트</a></div>
+<div class="phead"><div><h1>통계</h1>{% if reply_h is not none %}<p>첫 답변까지 중간값 {{ reply_h }}시간</p>{% endif %}</div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sm gray" href="{{ url_for('ais.page') }}">AI 성과</a><a class="btn sm gray" href="{{ url_for('report') }}">월간 리포트</a></div></div>
 {{ b.kpis(k) }}
 <div class="panel" style="margin-bottom:20px"><div class="ph">주별 요청</div>
 <div class="vbars">{% for lab,cnt in weeks %}<div><b>{{ cnt }}</b><span class="tr">{% if cnt %}<i style="height:{{ (cnt/top*100)|round|int }}%"></i>{% endif %}</span><small>{{ lab }}</small></div>{% endfor %}</div></div>

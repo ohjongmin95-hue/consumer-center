@@ -21,7 +21,7 @@ def init():
         for col,kind in (('email_verified',"INTEGER NOT NULL DEFAULT 0"),('biz_status',"TEXT NOT NULL DEFAULT ''"),('biz_checked',"TEXT NOT NULL DEFAULT ''"),
                          ('plan',"TEXT NOT NULL DEFAULT 'pilot'"),('plan_since',"TEXT NOT NULL DEFAULT ''"),('setup',"TEXT NOT NULL DEFAULT '{}'"),
                          ('shop_types',"TEXT NOT NULL DEFAULT ''"),('signup_via',"TEXT NOT NULL DEFAULT ''"),('google_sub',"TEXT NOT NULL DEFAULT ''"),
-                         ('demo_of',"INTEGER NOT NULL DEFAULT 0")):
+                         ('demo_of',"INTEGER NOT NULL DEFAULT 0"),('susp_member',"INTEGER NOT NULL DEFAULT 1")):  # susp_member: 중지 전 인증 여부 (예전 중지 회사는 인증 회사였다)
             if col not in cols:db.execute(f'ALTER TABLE companies ADD COLUMN {col} {kind}')
         # 예전 방식으로 가입해 운영자가 승인한 회사는 이미 확인된 회사로 본다
         if 'email_verified' not in cols:db.execute("UPDATE companies SET email_verified=1 WHERE status='active' AND member=1")

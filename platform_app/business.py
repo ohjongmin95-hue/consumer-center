@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
-import team, onboard, demo, funnel, market, sales, cms, csimport, growth, security
+import team, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -23,7 +23,7 @@ OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
-app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp)
+app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp);app.register_blueprint(cafe24.bp);app.register_blueprint(openapi.bp);app.register_blueprint(aistats.bp)
 app.jinja_env.globals.update(has_ep=lambda name:name in app.view_functions)
 
 @app.before_request
@@ -54,11 +54,11 @@ def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
 # 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
-MANAGE_EPS={'gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
+MANAGE_EPS={'c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
 # 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
-DEMO_BLOCKED={'gr.co_partner','imp.page','imp.batch','imp.undo','connect','connect_shop','team_page','settings','start','products_pdf','product_import','hook_trace'}
+DEMO_BLOCKED={'c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','connect','connect_shop','team_page','settings','start','products_pdf','product_import','hook_trace'}
 @app.before_request
 def role_guard():
     a=who() if not request.path.startswith(('/api/','/hook/','/ops')) else None
@@ -103,7 +103,7 @@ def kpis(rows):
 
 # ---------- 기업 계정 ----------
 @app.route('/robots.txt')
-def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset','/team','/join','/start','/verify','/demo','/auth','/import','/partner/','/r/']),mimetype='text/plain')
+def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/case','/all','/rules','/stats','/settings','/new','/guide','/report','/news','/reset','/team','/join','/start','/verify','/demo','/auth','/import','/partner/','/r/','/developers']),mimetype='text/plain')
 
 @app.route('/sitemap.xml')
 def sitemap():
@@ -413,7 +413,7 @@ def connect():
     """서비스 연동: 지금 실제로 이어진 것과 준비 중인 것을 그대로 보여 준다."""
     with conn() as db:
         n=db.execute('SELECT channel,COUNT(*) n FROM orders WHERE company_id=? GROUP BY channel',(me()['id'],)).fetchall();by={r['channel']:r['n'] for r in n}
-        lk=shops.links(db,me()['id'])
+        lk=shops.links(db,me()['id']);c24=cafe24.link(db,me()['id'])
     track_on=bool(core.secret('SWEETTRACKER_T_KEY'))
     rows=[]
     for key,spec in shops.SHOPS.items():
@@ -421,8 +421,11 @@ def connect():
         if l:desc,state=(f"문의 {l['n_inq']}건 · 주문 {l['n_ord']}건 가져옴"+(f" · {core.fmt(l['synced'])}" if l['synced'] else ' · 곧 가져와요'),'on') if l['status']=='ok' else (l['note'],'err')
         else:desc,state=(f"주문 {by[spec['channel']]}건 · 엑셀로 올리는 중. 내 키를 넣으면 자동으로 가져와요" if by.get(spec['channel']) else '내 키를 넣으면 문의와 주문을 자동으로 가져와요'),'link'
         rows.append(dict(group='판매처',name=spec['full'],desc=desc,state=state,href=url_for('connect_shop',shop=key)))
+    if c24:rows.append(dict(group='판매처',name='카페24',desc=(f"주문 {c24['n_ord']}건 가져옴"+(f" · {core.fmt(c24['synced'])}" if c24['synced'] else '')) if c24['status']=='ok' else c24['note'],state='on' if c24['status']=='ok' else 'err',href=url_for('c24.page')))
+    else:rows.append(dict(group='판매처',name='카페24',desc='카페24 로그인으로 연결하면 주문을 자동으로 가져와요' if cafe24.ready() else '소보루가 카페24 앱 등록을 마치면 열려요. 그동안은 주문 엑셀로 써 주세요',state='link' if cafe24.ready() else 'wait',href=url_for('c24.page')))
     rows+=[dict(group='판매처',name=nm,desc=f'주문 {by[ch]}건 · 주문 엑셀(CSV)로 올리는 중' if by.get(ch) else '주문 엑셀(CSV)을 올리면 바로 쓸 수 있어요',
-               state='csv' if by.get(ch) else 'ready',href=url_for('orders_page')) for nm,ch in (('자사몰·카페24','자사몰'),('오픈마켓','오픈마켓'))]
+               state='csv' if by.get(ch) else 'ready',href=url_for('orders_page')) for nm,ch in (('자사몰','자사몰'),('오픈마켓','오픈마켓'))]
+    if real()['api_enabled']:rows.append(dict(group='개발',name='외부 API·웹훅 (시범)',desc='우리 회사 프로그램에서 문의를 읽고 답하고, 새 문의를 웹훅으로 받아요',state='link',href=url_for('api.manage')))
     rows+=[dict(group='택배',name='택배 배송 조회',desc='송장번호로 고객·사장님 화면에서 위치를 바로 보여 줘요' if track_on else '소보루가 연결을 준비하고 있어요',state='on' if track_on else 'soon',href=''),
            dict(group='알림',name='이메일 알림',desc='새 요청과 답변을 이메일로 알려 드려요' if core.mail_ready() else '소보루가 연결을 준비하고 있어요',state='on' if core.mail_ready() else 'soon',href=url_for('settings')),
            dict(group='알림',name='카카오 알림톡',desc='고객에게 진행 상황을 카카오톡으로 보내요',state='soon',href=''),
@@ -587,6 +590,15 @@ def case(case_id):
                 if team.add_note(db,me(),c,who(),request.form.get('note')):flash('메모를 남겼어요. 고객에게는 보이지 않아요.','ok')
                 else:flash('메모 내용을 적어 주세요','error')
                 return redirect(url_for('case',case_id=case_id)+'#notes')
+            if act=='post_shop':
+                last=next((e for e in reversed(core.events(db,c['id'])) if e['kind']=='co' and e['reply']),None)
+                if not last:flash('먼저 답변을 보내 주세요','error')
+                elif core.throttled('post_shop',limit=20,minutes=10):flash('잠시 후 다시 해 주세요','error')
+                else:
+                    e=shops.post_reply(db,me(),c,last['reply'])
+                    if e:core.add_event(db,c['id'],'sys',f"{c['channel']}에 답변을 올리지 못했어요: {e}");flash(e,'error')
+                    else:core.add_event(db,c['id'],'sys',f"{c['channel']}에 답변을 올렸어요");flash(f"{c['channel']}에 답변을 올렸어요",'ok')
+                return redirect(url_for('case',case_id=case_id))
             if act=='assign':
                 name=team.assign(db,me(),c,request.form.get('assignee',''))
                 if name is not None:flash(f'담당자를 {name}(으)로 정했어요' if name else '담당자를 비웠어요','ok')
@@ -607,11 +619,13 @@ def case(case_id):
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);rule=core.rule_for(db,me()['id'],c['category'])
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])];ship_track=can_ship_track(db,c)
         notes=team.notes(db,c['id']);people=team.people(db,me());assignee=team.assignee_name(db,me(),c['assignee'])
+        from_shop=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=?',(me()['id'],c['id'])).fetchone()
+        posted=any(e['kind']=='sys' and e['text'].endswith('에 답변을 올렸어요') for e in ev)
     comp_show=core.comp_open(c) and (rule['comp'] or c['category'] in core.COMP_CATS)
     with conn() as db:order=orders_mod.for_case(db,c);blocked=orders_mod.cancel_blocked(db,c)
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
-        last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),tab='all')
+        last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all')
 
 @app.route('/case/<int:case_id>/draft',methods=['POST'])
 @login_required
@@ -620,6 +634,7 @@ def draft(case_id):
     if core.throttled('draft',limit=30,minutes=10):return jsonify(error='잠시 후 다시 시도해 주세요'),429
     with conn() as db:
         c=my_case(db,case_id);res=drafting.draft(db,c,me())
+        if not in_demo():aistats.log_draft(db,me(),c,res.get('by','template'))
     return jsonify(res)
 
 @app.route('/case/<int:case_id>/record')
@@ -999,8 +1014,8 @@ def ops_companies():
             elif act=='recheck' and waiting:
                 co=onboard.recheck_biz(db,co);flash(f"국세청 확인: {onboard.BIZ_STATUS.get(co['biz_status'],co['biz_status'])}"+('' if onboard.nts_ready() else ' (국세청 키가 없어요. 서비스 키 화면에서 넣어 주세요)'),'ok')
             elif act=='reject' and waiting:db.execute("UPDATE companies SET status='rejected',member=0 WHERE id=?",(co['id'],));flash('반려했습니다. 이 계정은 더 로그인할 수 없어요','ok')
-            elif act=='suspend' and co and co['status']=='active':db.execute("UPDATE companies SET status='suspended',member=0 WHERE id=?",(co['id'],));flash('이용을 중지했습니다','ok')
-            elif act=='resume' and co and co['status']=='suspended':db.execute("UPDATE companies SET status='active',member=1 WHERE id=?",(co['id'],));flash('다시 이용할 수 있게 했습니다','ok')
+            elif act=='suspend' and co and co['status']=='active':db.execute("UPDATE companies SET status='suspended',susp_member=member,member=0 WHERE id=?",(co['id'],));flash('이용을 중지했습니다','ok')
+            elif act=='resume' and co and co['status']=='suspended':db.execute("UPDATE companies SET status='active',member=susp_member WHERE id=?",(co['id'],));flash('다시 이용할 수 있게 했습니다','ok')
             elif act=='pwlink' and co and co['status']=='active' and co['pw_hash']:
                 flash(f"{co['name']} 비밀번호 재설정 링크예요. 1시간 동안 열려요. 복사해서 사장님께 보내 주세요: {reset_link(co)}",'ok')
             elif act=='contact' and co:db.execute('UPDATE companies SET contact=? WHERE id=?',(clean(request.form.get('contact'),60),co['id']));flash('저장했습니다','ok')

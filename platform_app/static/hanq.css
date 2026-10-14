@@ -1606,3 +1606,5 @@ a.mk-card:hover{box-shadow:inset 0 0 0 2px var(--accent)}
 .gnb .right .tbtn{white-space:nowrap}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px}
 pre.code{background:var(--fill);border-radius:12px;padding:10px 12px;font-size:12.5px;white-space:pre-wrap;word-break:break-all;margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.apieps{display:flex;flex-direction:column;gap:10px;margin-top:12px}.apieps div{display:flex;flex-direction:column;gap:2px}
+.apieps code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;color:var(--fg)}.apieps span{font-size:13.5px;color:var(--fg2)}
