@@ -1621,3 +1621,10 @@ pre.code{background:var(--fill);border-radius:var(--ds-r-ctl);padding:10px 12px;
 @media (max-width:520px){.addline:has(>.inp~.inp){flex-wrap:wrap}.addline:has(>.inp~.inp)>.inp:first-of-type{flex-basis:100%}.addline:has(>.inp~.inp)>select.inp{flex:1;max-width:none!important}}
 /* 좁은 휴대폰(400px 미만): 회사 이름이 길어도 상단 바가 두 줄로 늘지 않게 */
 @media (max-width:420px){.gnb .wrap:has(.chip){flex-wrap:nowrap}.gnb .chip{min-width:0}.gnb .chip .cnm{max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gnb .right{min-width:0}}
+/* 약관·개인정보: 자료실·보안 같은 하단 페이지와 같은 머리글과 폭 (글 상자는 읽기 좋은 폭) */
+.intro .doc-sec{padding-top:8px}
+.intro .panel.doc{max-width:860px;padding:0;background:none;border:0;box-shadow:none}
+.intro .doc section{padding-block:0}
+.intro .doc h2{font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1.5;margin:0 0 8px}
+.intro .doc p{font-size:15px;line-height:1.7;max-width:none;margin:0;color:var(--fg2)}
+.intro .doc section p+.kv,.intro .doc section .kv+p,.intro .doc section p+p{margin-top:10px}
