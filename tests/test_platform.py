@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -1105,6 +1105,58 @@ class PlatformTest(unittest.TestCase):
             self.post(b,'/biz/connect/coupang',{'act':'sync'})
             with self.core.conn() as db:self.assertEqual(shops.link(db,cid,'coupang')['status'],'error')
             self.assertIn('확인 필요',b.get('/biz/connect').get_data(as_text=True))
+
+    def test_team_roles_notes_assign(self):
+        """직원 초대 → 비밀번호 정하고 로그인 → 상담원은 승인·설정 못 함, 메모는 고객에게 안 보임, 담당자 배정."""
+        b,o,cid=self.signup_and_approve('팀테스트상점','teamowner@example.com')
+        r=self.post(b,'/biz/team',{'act':'invite','name':'김상담','email':'agent1@example.com','role':'agent'})
+        html=r.get_data(as_text=True);m=re.search(r'value="(http[^"]*/join/[^"]+)"',html);self.assertTrue(m,html[:500])
+        path='/biz/join/'+m.group(1).split('/join/')[1]
+        # 같은 이메일로 다시 초대하거나 대표로 가입할 수 없다
+        self.assertIn('이미 쓰고 있는',self.post(b,'/biz/team',{'act':'invite','name':'x','email':'agent1@example.com','role':'agent'},follow_redirects=True).get_data(as_text=True))
+        a=self.client();r=self.post(a,path,{'password':'agentpassword1'})
+        self.assertEqual(r.status_code,302)
+        self.assertEqual(self.client().get(path).status_code,302)  # 한 번 쓰면 끝
+        # 다시 로그인도 된다
+        a2=self.client();self.assertEqual(self.post(a2,'/biz/login',{'login_id':'agent1@example.com','password':'agentpassword1'}).status_code,302)
+        # 상담원은 설정·자동 처리·팀에 못 들어간다
+        for p in ('/biz/settings','/biz/rules','/biz/team','/biz/connect'):self.assertEqual(a.get(p).status_code,302,p)
+        self.assertNotIn('href="/biz/rules"',a.get('/biz/all').get_data(as_text=True))
+        c=self.client();case_id=self.file_case(c,'팀테스트상점','제품 불량',company_id=cid)
+        # 승인은 못 하고, 메모·배정은 된다
+        self.post(a,f'/biz/case/{case_id}',{'act':'approve'})
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT decision FROM cases WHERE id=?',(case_id,)).fetchone()[0],'pending')
+        with self.core.conn() as db:sid=db.execute("SELECT id FROM staff WHERE email='agent1@example.com'").fetchone()[0]
+        self.post(a,f'/biz/case/{case_id}',{'act':'note','note':'비밀 메모: 사진 다시 확인'})
+        self.post(a,f'/biz/case/{case_id}',{'act':'assign','assignee':str(sid)})
+        page=a.get(f'/biz/case/{case_id}').get_data(as_text=True)
+        self.assertIn('비밀 메모',page);self.assertIn('담당자를 김상담',page)
+        self.assertIn(f'/biz/case/{case_id}',a.get('/biz/all?f=mine').get_data(as_text=True))
+        # 답변에는 누가 보냈는지 기업 화면에만 남는다
+        self.post(a,f'/biz/case/{case_id}',{'act':'reply','msg':'확인 후 교환해 드릴게요.'})
+        self.assertIn('· 김상담',a.get(f'/biz/case/{case_id}').get_data(as_text=True))
+        # 고객 화면·앱 API에는 메모와 직원 이름이 없다
+        r=self.post(c,'/lookup',{'phone':'010-1234-5678','password':'1234'},'/mine')
+        cpage=c.get(f'/case/{case_id}').get_data(as_text=True)
+        self.assertNotIn('비밀 메모',cpage);self.assertNotIn('김상담',cpage)
+        tok=self.client().post('/biz/api/v1/login',json={'login_id':'teamowner@example.com','password':'longpassword1'}).get_json()['token']
+        d=self.client().get(f'/biz/api/v1/cases/{case_id}',headers={'Authorization':'Bearer '+tok}).get_data(as_text=True)
+        self.assertNotIn('비밀 메모',d)
+        # 대표는 승인할 수 있다
+        self.post(b,f'/biz/case/{case_id}',{'act':'approve'})
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT decision FROM cases WHERE id=?',(case_id,)).fetchone()[0],'approved')
+        # 보기 전용으로 바꾸면 아무것도 못 바꾸고, 맡던 요청은 비워진다
+        self.post(b,'/biz/team',{'act':'role','id':sid,'role':'viewer'})
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT assignee FROM cases WHERE id=?',(case_id,)).fetchone()[0],'')
+        self.post(a,f'/biz/case/{case_id}',{'act':'note','note':'보기 전용 메모'})
+        self.assertNotIn('보기 전용 메모',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
+        # 내보내면 로그인이 풀린다
+        self.post(b,'/biz/team',{'act':'remove','id':sid})
+        self.assertEqual(a.get('/biz/all').status_code,302)
+        self.assertEqual(self.post(self.client(),'/biz/login',{'login_id':'agent1@example.com','password':'agentpassword1'}).status_code,400)
+        # 다른 회사 직원은 이 회사 요청을 못 본다
+        b2,_,cid2=self.signup_and_approve('다른팀상점','teamother@example.com')
+        self.assertEqual(b2.get(f'/biz/case/{case_id}').status_code,404)
 
 
 if __name__=='__main__':unittest.main()
