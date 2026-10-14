@@ -327,14 +327,12 @@ def ed_multiline(key):
     f=site_content.FIELDS.get(key,{});return bool(f.get('multiline') or f.get('doc'))
 
 def list_title_shown(r):
-    # 목록에 제목·업체명을 보일지: 공개된 제보, 그리고 공개 검토 중인 제보·비밀글도 운영자가 숨기지 않았으면 보임 (본문은 안 보임).
-    # 반려(허위·부적절)한 제보는 제목도 내림.
-    if r['public_consent'] and r['published']:return True
-    if r['title_hidden'] or r['review'] in jebo.NOT_VALID:return False
-    return not r['public_consent'] or is_pending(r)
+    # 목록에는 모든 제보의 제목(개인정보는 가림)과 업체명을 보임. 비밀글·공개 전 제보는 본문만 열람이 막힘.
+    # 운영자가 반려(허위·부적절)·중복으로 처리한 제보만 제목을 내림.
+    return r['review'] not in jebo.NOT_VALID
 def is_pending(r):
-    # 공개를 골랐고 운영자가 아직 보지 않은 제보 (운영자가 '공개하지 않기'로 둔 제보는 아님)
-    return bool(r['public_consent'] and not r['published'] and not r['reviewed_at'])
+    # 공개를 골랐지만 아직 공개되지 않은 제보 (운영자 확인 전이거나 공개하지 않기로 둔 제보)
+    return bool(r['public_consent'] and not r['published'])
 def report_rows(where='1=1',args=(),limit=20,offset=0):
     # 모든 제보를 번호·분류·단계·접수일로 보여 줌. 제목·업체명은 공개 제보(운영자가 내리지 않음)와
     # 비밀글(운영자가 숨기지 않음)에 보이고, 비밀글은 눌러도 본문 대신 비밀번호 창이 열림.
@@ -345,7 +343,7 @@ def report_rows(where='1=1',args=(),limit=20,offset=0):
         # 오늘 들어온 제보는 시각(15:48), 그 전은 날짜(10.08)로 짧게 표시.
         return created[11:16] if created[:10]==today and len(created)>=16 else created[5:10].replace('-','.')
     def shown(r):return list_title_shown(r)
-    return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
+    return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),held=bool(is_pending(r) and r['reviewed_at']),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
                  company=mask_personal(r['company']) if shown(r) else None,
                  status=r['status'],created=r['created'][:10],when=when(r['created'])) for r in rows]
 def report_summary():
@@ -386,7 +384,7 @@ def reports():
     where=['1=1'];args=[]
     if selected_category:names=jebo.cat_names(selected_category);where.append('category IN (%s)'%','.join('?'*len(names)));args+=names
     if search_query:
-        where.append("((public_consent=1 AND published=1 AND (public_subject LIKE ? ESCAPE '\\' OR (public_subject='' AND subject LIKE ? ESCAPE '\\'))) OR ((public_consent=0 OR published=0) AND title_hidden=0 AND review NOT IN ('rejected','duplicate') AND (public_consent=0 OR reviewed_at='') AND (public_subject LIKE ? ESCAPE '\\' OR subject LIKE ? ESCAPE '\\')))")
+        where.append("((public_consent=1 AND published=1 AND (public_subject LIKE ? ESCAPE '\\' OR (public_subject='' AND subject LIKE ? ESCAPE '\\'))) OR ((public_consent=0 OR published=0) AND review NOT IN ('rejected','duplicate') AND (public_subject LIKE ? ESCAPE '\\' OR subject LIKE ? ESCAPE '\\')))")
         like='%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%';args+=[like,like,like,like]
     cond=' AND '.join(where)
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
@@ -1349,7 +1347,7 @@ def report_detail(case_id):
                 if status not in STATUSES:abort(400)
                 assignee=request.form.get('assignee',case['assignee'] or '').strip()[:80]
                 published=int(bool(request.form.get('published'))) if case['public_consent'] else 0
-                title_hidden=0 if published else int(not request.form.get('show_title'))
+                title_hidden=0  # 목록 제목·업체명은 늘 보임 (예전 '숨김' 설정은 쓰지 않음)
                 db.execute('UPDATE cases SET status=?,assignee=?,published=?,title_hidden=? WHERE id=?',(status,assignee,published,title_hidden,case_id))
                 if not published and title_hidden!=case['title_hidden']:log_case(db,case_id,'목록에서 제목·업체명 숨김' if title_hidden else '목록에 제목·업체명 표시')
                 if status!=case['status']:log_case(db,case_id,f"진행 단계 변경: {case['status']} → {status}");notify_later(case_id,'status')
