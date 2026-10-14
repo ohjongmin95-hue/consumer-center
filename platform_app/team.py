@@ -80,7 +80,7 @@ def read_invite(db,tok):
     s=db.execute("SELECT * FROM staff WHERE id=? AND status!='removed'",(d.get('id'),)).fetchone()
     if not s or (s['pw_hash'] or 'new')[-12:]!=d.get('h'):return None  # 비밀번호를 정하면 링크는 더 못 쓴다
     co=core.company(db,s['company_id'])
-    return s if core.active_member(co) else None
+    return s if co and co['status']=='active' else None  # 회사 인증 전에도 직원을 부를 수 있다
 def accept(db,s,pw):
     if len(pw or '')<10:return '비밀번호는 10자 이상으로 정해 주세요'
     db.execute("UPDATE staff SET pw_hash=?,status='active' WHERE id=?",(generate_password_hash(pw),s['id']));return ''

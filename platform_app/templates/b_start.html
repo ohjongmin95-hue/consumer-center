@@ -1,0 +1,85 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}처음 설정 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('start') }}{% endblock %}
+{% block body %}
+{% set cur=(STEPS|map(attribute=0)|list).index(step) %}
+<div class="phead"><div><h1>처음 설정</h1><p>{{ p.n }}/{{ p.total }}단계 마침 · 언제든 이어서 할 수 있어요</p></div>
+<form method="post" action="{{ url_for('demo_page') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn sm gray" name="act" value="on">데모로 먼저 써 보기</button></form></div>
+<div class="prog" style="margin:0 0 20px"><i style="width:{{ p.pct }}%"></i></div>
+
+<section class="panel trustbox"><div class="ph">회사 인증 {% if trust.ok %}<span class="pill ok">완료</span>{% else %}<span class="pill gray">진행 중</span>{% endif %}</div>
+<p class="cap" style="margin:-6px 0 0">{% if trust.ok %}소비자 접수가 바로 들어오고 판매처를 연결할 수 있어요.{% else %}설정과 데모는 지금 바로 쓸 수 있어요. 아래 두 가지가 끝나면 소비자 접수와 판매처 연결이 열려요.{% endif %}</p>
+{% if not trust.ok %}
+<div class="row"><span>{% if rc.email_verified %}✅{% else %}⬜{% endif %} 로그인 이메일 확인 <span class="t-mute">{{ rc.login_id }}</span></span>
+{% if not rc.email_verified %}<form method="post" action="{{ url_for('verify_again') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ url_for('start',step=step) }}"><button class="btn sm gray" name="act" value="mail">확인 메일 다시 받기</button></form>{% endif %}</div>
+<div class="row"><span>{% if rc.biz_status=='01' %}✅{% else %}⬜{% endif %} 사업자 상태 <span class="t-mute">국세청: {{ BIZ_STATUS.get(rc.biz_status,rc.biz_status) }}</span></span>
+{% if rc.biz_status!='01' %}<form method="post" action="{{ url_for('verify_again') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ url_for('start',step=step) }}"><button class="btn sm gray" name="act" value="biz">다시 확인</button></form>{% endif %}</div>
+<p class="cap" style="margin:0">국세청 자동 확인이 안 되면 {{ BNAME }} 운영팀이 사업자 정보를 직접 확인한 뒤 인증해 드려요. 사업자번호가 맞는지와 이 회사 사람인지는 따로 확인해요.</p>{% endif %}
+</section>
+
+<div class="wzl">
+<ol class="wzs" aria-label="설정 단계">{% for k,t,d in STEPS %}<li><a href="{{ url_for('start',step=k) }}" class="{{ 'on' if k==step }} {{ 'd' if p.state.get(k)=='done' }} {{ 'k' if p.state.get(k)=='skip' }}" {{ 'aria-current=step' if k==step }}><span class="n">{% if p.state.get(k)=='done' %}✓{% else %}{{ loop.index }}{% endif %}</span><span class="t">{{ t }}{% if p.state.get(k)=='skip' %} <small class="t-mute">· 나중에</small>{% endif %}</span></a></li>{% endfor %}</ol>
+
+<div class="wzbody">
+{% set title=STEPS[cur][1] %}{% set desc=STEPS[cur][2] %}
+<form class="panel stack" method="post" action="{{ url_for('start',step=step) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="step" value="{{ step }}">
+<div class="ph">{{ cur+1 }}. {{ title }}</div><p class="cap" style="margin:-6px 0 4px">{{ desc }}</p>
+
+{% if step=='company' %}
+<label class="fld"><span>회사 이름</span><input class="inp" value="{{ rc.name }}" readonly></label>
+<label class="fld"><span>사업자등록번호</span><input class="inp" value="{{ rc.biz_no[:3] }}-{{ rc.biz_no[3:5] }}-{{ rc.biz_no[5:] }}" readonly></label>
+<label class="fld"><span>대표자</span><input class="inp" name="owner_name" maxlength="20" value="{{ rc.owner_name }}"></label>
+<label class="fld"><span>대표 연락처</span><input class="inp" name="phone" type="tel" maxlength="20" value="{{ fmt_phone(rc.phone) if rc.phone else '' }}"></label>
+<label class="fld"><span>업종</span><select class="inp" name="industry" required><option value="">고르기</option>{% for x in INDUSTRIES %}<option {{ 'selected' if rc.industry==x }}>{{ x }}</option>{% endfor %}</select></label>
+
+{% elif step=='shop' %}{% set mine=(rc.shop_types or '').split(',') %}
+<div class="chk-grid">{% for x in SHOP_TYPES %}<label class="check"><input type="checkbox" name="shop_types" value="{{ x }}" {{ 'checked' if x in mine }}><span class="bx"></span><span>{{ x }}</span></label>{% endfor %}</div>
+<p class="cap" style="margin:0">고른 곳에 맞춰 다음 단계에서 연결 방법을 안내해요.</p>
+
+{% elif step=='center' %}
+<label class="fld"><span>고객센터 연락처 (고객에게 보여요)</span><input class="inp" name="contact" maxlength="60" value="{{ rc.contact }}" placeholder="1588-0000" required></label>
+<label class="fld"><span>상담 시간</span><input class="inp" name="hours" maxlength="200" value="{{ prof.hours }}" placeholder="평일 10시~17시, 점심 12시~13시, 주말·공휴일 휴무"></label>
+<label class="fld"><span>새 요청 알림 받을 이메일</span><input class="inp" name="notify_email" type="email" maxlength="80" value="{{ rc.notify_email or rc.login_id }}"></label>
+
+{% elif step=='policy' %}
+<label class="fld"><span>배송 정책</span><textarea class="inp" name="shipping" maxlength="3000" placeholder="오후 2시 전 주문은 당일 출고, CJ대한통운, 3만원 이상 무료배송">{{ prof.shipping }}</textarea></label>
+<label class="fld"><span>교환·반품·환불 규정</span><textarea class="inp" name="returns" maxlength="3000" required placeholder="받은 날부터 7일 안에 교환·반품 가능, 단순 변심 왕복 배송비 6,000원">{{ prof.returns }}</textarea></label>
+<label class="fld"><span>반품 받을 주소</span><input class="inp" name="return_address" maxlength="200" value="{{ rc.return_address }}" placeholder="우편번호, 주소, 받는 사람, 연락처"></label>
+<label class="fld"><span>이용하는 택배사</span><select class="inp" name="return_courier"><option value="">안내하지 않음</option>{% for k in COURIERS %}<option {{ 'selected' if rc.return_courier==k }}>{{ k }}</option>{% endfor %}</select></label>
+<p class="cap" style="margin:0">전자상거래법상 소비자는 상품을 받은 날부터 7일 안에 청약철회를 할 수 있어요. 규정은 이 기준보다 불리하게 정할 수 없어요.</p>
+
+{% elif step=='connect' %}
+{% if not trust.ok %}<div class="flash error" style="margin:0">판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 열려요. 지금은 나중에 하기를 누르고 다음 단계로 가도 돼요.</div>{% endif %}
+<div class="rows" style="padding:0">{% for key,spec in SHOPS.items() %}<a class="rowi" href="{{ url_for('connect_shop',shop=key) }}"><div class="tx"><div class="t">{{ spec.full }}</div><div class="s">{% if links.get(key) %}연결됨{% else %}판매처에서 발급한 키를 넣으면 문의와 주문을 가져와요{% endif %}</div></div><span class="chev"></span></a>{% endfor %}
+<a class="rowi" href="{{ url_for('orders_page') }}"><div class="tx"><div class="t">카페24·자사몰·오픈마켓</div><div class="s">지금은 주문 엑셀(CSV)로 올려요. 카페24 자동 연결은 준비 중이에요</div></div><span class="chev"></span></a></div>
+
+{% elif step=='ai' %}
+<label class="fld"><span>회사·브랜드 소개</span><textarea class="inp" name="brand" maxlength="3000" placeholder="국내산 원료로 만드는 건강식품 브랜드예요">{{ prof.brand }}</textarea></label>
+<label class="fld"><span>AI가 답할 범위</span><textarea class="inp" name="scope" maxlength="3000" placeholder="상품 문의, 배송 안내, 교환·반품 방법 안내까지 AI가 답해요">{{ prof.scope }}</textarea></label>
+<label class="fld"><span>담당자에게 넘길 때</span><textarea class="inp" name="handoff" maxlength="3000" placeholder="불량·파손, 환불 요청, 대량 주문 문의는 담당자에게 넘겨 주세요">{{ prof.handoff }}</textarea></label>
+<p class="cap" style="margin:0">자주 묻는 질문, 응대 지침, 상품 정보는 <a class="link" href="{{ url_for('rules') }}#ai">자동 처리 &gt; AI 상담</a>에서 더 넣을 수 있어요.</p>
+
+{% elif step=='widget' %}
+<p class="sub" style="margin:0">쇼핑몰 화면 오른쪽 아래에 '문의하기' 버튼이 생기고, 누르면 우리 고객센터 화면(AI 상담·접수)이 열려요.</p>
+<label class="fld"><span>쇼핑몰 HTML의 &lt;/body&gt; 바로 위에 붙여 넣기</span><div class="addline"><input class="inp" id="wsnip" value='&lt;script src="{{ widget }}" async&gt;&lt;/script&gt;' readonly><button class="btn md gray" type="button" data-copy="wsnip">복사</button></div></label>
+<label class="fld"><span>버튼 대신 링크만 걸 때</span><div class="addline"><input class="inp" id="wlink" value="{{ link }}" readonly><button class="btn md gray" type="button" data-copy="wlink">복사</button></div></label>
+<p class="cap" style="margin:0">스마트스토어·쿠팡은 외부 스크립트를 넣을 수 없어서, 판매처 연결로 문의를 가져와요. 붙인 뒤 <a class="link" href="{{ link }}" target="_blank" rel="noopener">고객센터 화면</a>이 열리는지 확인해 주세요.</p>
+
+{% elif step=='test' %}
+{% if tc %}<div class="panel" style="background:var(--fill)"><b>{{ tc.title }}</b><p class="cap" style="margin:4px 0 0">{% if tc_done %}답변을 보냈어요. 이 단계는 끝났어요.{% else %}아직 답하지 않았어요. 열어서 답변 초안을 만들고 보내 보세요.{% endif %}</p>
+<a class="btn sm" href="{{ url_for('case',case_id=tc.id) }}" style="margin-top:10px">시험 문의 열기</a></div>
+{% else %}<p class="sub" style="margin:0">시험 문의 한 건을 만들어 직접 답해 봐요. 고객에게는 아무것도 나가지 않아요.</p>{% endif %}
+{% endif %}
+
+<div class="wzact">
+{% if step=='test' and not tc %}<button class="btn md" name="act" value="test_new">시험 문의 만들기</button>
+{% elif step=='test' %}<button class="btn md" name="act" value="save" {{ '' if tc_done else 'disabled' }}>다 했어요</button>
+{% elif step=='widget' %}<button class="btn md" name="act" value="save">붙였어요</button>
+{% elif step=='connect' %}<button class="btn md" name="act" value="save">연결했어요</button>
+{% else %}<button class="btn md" name="act" value="save">저장하고 다음</button>{% endif %}
+{% if step not in ('company','center','policy') %}<button class="btn md gray" name="act" value="skip" formnovalidate>나중에 하기</button>{% endif %}
+</div>
+</form>
+</div></div>
+{% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했습니다';},function(){b.textContent='선택했습니다';});};});</script>{% endblock %}

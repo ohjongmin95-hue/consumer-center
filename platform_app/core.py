@@ -232,7 +232,10 @@ SECRETS={'SWEETTRACKER_T_KEY':('택배 조회 키','스마트택배(tracking.swe
          'OPENAI_API_KEY':('AI 상담 키 (OpenAI)','OpenAI(platform.openai.com)에서 만든 API 키. sk-로 시작해요. 상담창 AI와 PDF 상품 등록에 써요'),
          'ANTHROPIC_API_KEY':('AI 상담 키 (Anthropic, 예비)','Anthropic 콘솔(console.anthropic.com)에서 만든 API 키. OpenAI 키가 없을 때만 써요'),
          'NAVER_SEARCH_ID':('네이버 검색 Client ID','네이버 개발자센터(developers.naver.com) > 애플리케이션 등록 > 사용 API "검색"으로 받은 Client ID. 넣으면 AI 상담이 네이버에서 검색해요'),
-         'NAVER_SEARCH_SECRET':('네이버 검색 Client Secret','위 애플리케이션의 Client Secret')}
+         'NAVER_SEARCH_SECRET':('네이버 검색 Client Secret','위 애플리케이션의 Client Secret'),
+         'NTS_API_KEY':('국세청 사업자 상태조회 키','공공데이터포털(data.go.kr) "국세청_사업자등록정보 진위확인 및 상태조회 서비스" 일반 인증키(Decoding). 넣으면 가입할 때 사업자 상태를 자동으로 확인해 바로 인증해요'),
+         'GOOGLE_CLIENT_ID':('구글 로그인 클라이언트 ID','Google Cloud 콘솔 > API 및 서비스 > 사용자 인증 정보 > OAuth 클라이언트 ID(웹). 승인된 리디렉션 URI에 기업 주소/auth/google/callback 을 넣어요'),
+         'GOOGLE_CLIENT_SECRET':('구글 로그인 클라이언트 보안 비밀','위 OAuth 클라이언트의 보안 비밀번호')}
 def secret(name):
     try:
         with conn() as db:r=db.execute('SELECT value FROM settings WHERE key=?',(name,)).fetchone()
@@ -412,7 +415,7 @@ def notify_late():
     """답변 목표일이 지난 입점 기업 요청을 소비자와 기업에 한 번씩 알린다. cron에서 부른다."""
     n=0
     with conn() as db:
-        for c in db.execute("SELECT * FROM cases WHERE member=1 AND consent=1 AND due!='' AND status IN ('forwarded','seen','info')").fetchall():
+        for c in db.execute("SELECT * FROM cases WHERE member=1 AND consent=1 AND due!='' AND status IN ('forwarded','seen','info') AND title NOT LIKE '[시험 문의]%' AND company_id IN (SELECT id FROM companies WHERE status='active')").fetchall():  # 데모·시험 문의는 빼고
             if not overdue(c) or c['late_sent']==c['due']:continue
             if not is_direct(c):send_mail(c['email'],f'[{CNAME}] 기업 답변이 늦어지고 있어요',f"{c['company_name']}의 답변이 아직 없어요.\n접수 화면에서 기업에 다시 요청하거나 공식 피해구제 절차를 확인할 수 있어요.\n\n■ 접수번호: {c['no']}\n{site_or_blank('me','/mine')}")
             co=company(db,c['company_id'])

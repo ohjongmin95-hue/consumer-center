@@ -13,11 +13,11 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
-import team
+import team, onboard, demo, funnel
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
-app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',law_check=law.check,is_direct=core.is_direct)
+app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS)
 OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 # 소개 화면의 앱 받기 버튼: 스토어 주소를 서버 설정(.env)에 넣으면 '곧 출시' 대신 버튼이 나온다
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
@@ -36,10 +36,17 @@ def me():
             with conn() as db:
                 co=core.company(db,session['co_id']);sid=session.get('staff_id')
                 s=team.member(db,co['id'],sid) if co and sid else None
-            if co and co['status']=='active' and co['member'] and (not sid or (s and s['status']=='active')):
-                g.co=co;g.who=team.staff_actor(s) if s else team.owner_actor(co)
-            else:session.pop('co_id',None);session.pop('staff_id',None)
+                d=demo.of(db,co) if co and session.get('demo') else None
+            # 가입하면 바로 쓴다(회사 인증 전이어도 로그인). 데모로 바꿔 두었으면 화면은 데모 회사를 보여 준다.
+            if co and co['status']=='active' and (not sid or (s and s['status']=='active')):
+                g.real=co;g.co=d or co;g.demo=bool(d);g.who=team.staff_actor(s) if s else team.owner_actor(co)
+                if session.get('demo') and not d:session.pop('demo',None)
+            else:session.pop('co_id',None);session.pop('staff_id',None);session.pop('demo',None)
     return g.co
+def real():
+    """로그인한 진짜 회사 (데모를 보는 중이어도). 인증·설정 도우미·데모 전환은 이것을 본다."""
+    me();return getattr(g,'real',None)
+def in_demo():me();return bool(getattr(g,'demo',False))
 def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
@@ -47,6 +54,8 @@ def who():
 MANAGE_EPS={'rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
+# 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
+DEMO_BLOCKED={'connect','connect_shop','team_page','settings','start','products_pdf','product_import','hook_trace'}
 @app.before_request
 def role_guard():
     a=who() if not request.path.startswith(('/api/','/hook/','/ops')) else None
@@ -56,6 +65,9 @@ def role_guard():
     need='manage' if ep in MANAGE_EPS else 'decide' if ep in DECIDE_EPS else ('work' if request.method=='POST' and ep!='logout' else '')
     if need and not team.can(a,need):
         flash(f"{team.ROLES[a['role']]} 계정은 이 일을 할 수 없어요. 대표나 관리자에게 부탁해 주세요.",'error')
+        return redirect(url_for('decide'))
+    if in_demo() and ep in DEMO_BLOCKED:
+        flash('데모에서는 판매처 연결·팀·설정·주문 올리기를 할 수 없어요. 데모를 끝내고 해 주세요.','error')
         return redirect(url_for('decide'))
 def login_required(f):
     @functools.wraps(f)
@@ -74,8 +86,9 @@ def ctx():
     co=me();n=0
     if co:
         with conn() as db:n=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND member=1 AND consent=1 AND decision='pending' AND status IN ('forwarded','seen')",(co['id'],)).fetchone()[0]
-    a=who() if co else None
-    return {'co':co,'n_pending':n,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES}
+    a=who() if co else None;rc=real() if co else None
+    return {'co':co,'n_pending':n,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES,
+            'real_co':rc,'in_demo':in_demo() if co else False,'trust':onboard.trust(rc) if rc else None,'setup':onboard.progress(rc) if rc else None}
 
 def kpis(rows):
     n=len(rows);auto=sum(r['decision']=='auto' for r in rows);res=sum(r['status']=='resolved' for r in rows)
@@ -95,33 +108,43 @@ def sitemap():
 def terms():
     return render_template('b_terms.html',op=core.OPERATOR,since=core.TERMS_SINCE,privacy_url=core.site_url('me','/privacy'))
 
-def signup_apply(f):
-    """가입 신청 검사와 저장. 웹과 앱이 같이 쓴다. (입력값, 오류 문구)를 돌려주고 문구가 비면 신청이 들어간 것이다."""
+def signup_apply(f,via='email',google_sub=''):
+    """가입 검사와 저장. 웹·앱·구글 가입이 같이 쓴다. (입력값, 오류 문구, 회사 id). 문구가 비면 작업 공간이 만들어진 것이다.
+    운영자 승인 없이 바로 쓴다. 소비자 접수·판매처 연결은 회사 인증(이메일 확인 + 사업자 상태) 뒤에 열린다 (onboard.py)."""
     d={k:clean(f.get(k),n) for k,n in (('name',40),('biz_no',20),('owner_name',20),('phone',20),('login_id',80),('contact',60),('industry',20))}
     if d['industry'] not in core.INDUSTRIES:d['industry']=''
     pw=f.get('password','');err=''
     if not d['name']:err='회사 이름을 적어 주세요.'
     elif len(digits(d['biz_no']))!=10:err='사업자등록번호 10자리를 적어 주세요.'
+    elif not onboard.bizno_ok(d['biz_no']):err='사업자등록번호가 맞지 않아요. 사업자등록증의 번호를 다시 확인해 주세요.'
     elif not d['owner_name']:err='대표자 이름을 적어 주세요.'
     elif not EMAIL_RE.match(d['login_id']):err='로그인에 쓸 이메일을 정확히 적어 주세요.'
-    elif len(pw)<10:err='비밀번호는 10자 이상으로 정해 주세요.'
+    elif via!='google' and len(pw)<10:err='비밀번호는 10자 이상으로 정해 주세요.'
     elif str(f.get('terms'))not in ('1','True','true'):err='이용약관에 동의해 주세요.'
     elif core.throttled('signup',limit=5,minutes=60):err='잠시 후 다시 시도해 주세요.'
+    cid=None
     if not err:
-        with conn() as db:
-            if team.email_taken(db,d['login_id']):err='이미 가입된 이메일이에요.'
-            else:
-                db.execute("INSERT INTO companies(name,member,status,contact,login_id,pw_hash,biz_no,owner_name,phone,notify_email,industry,created) VALUES(?,0,'pending',?,?,?,?,?,?,?,?,?)",
-                    (d['name'],d['contact'],d['login_id'].lower(),generate_password_hash(pw),digits(d['biz_no']),d['owner_name'],digits(d['phone']),d['login_id'].lower(),d['industry'],core.iso()))
-        if not err:core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 기업 가입 신청: {d['name']}",f"{d['name']} ({d['owner_name']})이 가입을 신청했습니다.\n{core.site_url('biz','/ops/companies')}")
-    return d,err
+        with conn() as db:cid,err=onboard.signup(db,d,generate_password_hash(pw if via!='google' else secrets.token_hex(24)),via,google_sub)
+    return d,err,cid
+def start_session(co,staff_id=None):
+    """로그인 상태로 만든다 (가입·로그인·구글·직원 초대 공용). 다른 탭의 화면과 운영 로그인은 그대로 둔다."""
+    ops=session.get('ops');csrf=session.get('csrf');session.clear();session['co_id']=co['id'];session.permanent=True
+    if staff_id:session['staff_id']=staff_id
+    if csrf:session['csrf']=csrf
+    if ops:session['ops']=True
 @app.route('/signup',methods=['GET','POST'])
 def signup():
+    g_=session.get('google_signup') or {}
     if request.method=='POST':
-        d,err=signup_apply(request.form)
-        if not err:return render_template('b_signup_done.html',name=d['name'])
-        flash(err,'error');return render_template('b_signup.html',d=d),400
-    return render_template('b_signup.html',d={})
+        via='google' if g_ and clean(request.form.get('login_id'),80).lower()==g_.get('email') else 'email'
+        d,err,cid=signup_apply(request.form,via,g_.get('sub','') if via=='google' else '')
+        if not err:
+            with conn() as db:co=core.company(db,cid)
+            start_session(co);funnel.track('signup',co['id'],via)
+            flash(f"{co['name']} 작업 공간을 만들었어요. 차례대로 설정하면 바로 쓸 수 있어요.",'ok');return redirect(url_for('start'))
+        flash(err,'error');return render_template('b_signup.html',d=d,google=onboard.google_ready(),g_=g_),400
+    d={'login_id':g_.get('email',''),'owner_name':g_.get('name','')} if g_ else {}
+    return render_template('b_signup.html',d=d,google=onboard.google_ready(),g_=g_)
 
 @app.route('/login',methods=['GET','POST'])
 def login():
@@ -137,12 +160,9 @@ def login():
         elif co['status']=='pending':flash('가입 승인을 기다리고 있습니다. 승인되면 이메일로 알려 드립니다.','error')
         elif co['status']!='active':flash('이용할 수 없는 계정입니다. 센터에 문의해 주세요.','error')
         else:
-            ops=session.get('ops');csrf=session.get('csrf');session.clear();session['co_id']=co['id'];session.permanent=True
+            start_session(co,st['id'] if st else None)
             if st:
-                session['staff_id']=st['id']
                 with conn() as db:db.execute('UPDATE staff SET last_login=? WHERE id=?',(core.iso(),st['id']))
-            if csrf:session['csrf']=csrf  # 다른 탭에 열어 둔 화면도 그대로 쓸 수 있게
-            if ops:session['ops']=True  # 운영 화면 로그인은 그대로 둔다
             return redirect(url_for('decide'))
         return render_template('b_login.html'),400
     return render_template('b_login.html')
@@ -182,6 +202,133 @@ def reset(tok):
 
 @app.route('/logout',methods=['POST'])
 def logout():session.pop('co_id',None);session.pop('staff_id',None);return redirect(url_for('login'))
+
+# ---------- 회사 인증·구글 가입 (onboard.py) ----------
+@app.route('/verify/<tok>')
+def verify(tok):
+    """가입 확인 메일의 링크. 이메일 확인이 끝나고, 국세청 상태까지 맞으면 회사 인증도 바로 끝난다."""
+    with conn() as db:co=onboard.check_verify(db,tok)
+    if not co:flash('확인 링크가 만료됐거나 맞지 않아요. 로그인한 뒤 확인 메일을 다시 받아 주세요.','error');return redirect(url_for('login'))
+    flash('이메일을 확인했어요.'+(' 회사 인증도 끝나 소비자 접수가 바로 들어와요.' if co['member'] else ' 사업자 확인이 끝나면 소비자 접수와 판매처 연결이 열려요.'),'ok')
+    return redirect(url_for('start') if me() else url_for('login'))
+@app.route('/verify',methods=['POST'])
+@login_required
+def verify_again():
+    """확인 메일 다시 보내기, 국세청 상태 다시 확인하기."""
+    co=real()
+    if core.throttled('verify',limit=5,minutes=30):flash('잠시 후 다시 해 주세요','error')
+    elif request.form.get('act')=='biz':
+        with conn() as db:co=onboard.recheck_biz(db,co)
+        flash('회사 인증이 끝났어요.' if co['member'] else f"국세청 확인 결과: {onboard.BIZ_STATUS.get(co['biz_status'],co['biz_status'])}"+('' if onboard.nts_ready() else ' (자동 확인 준비 중이라 운영팀이 직접 확인해요)'),'ok' if co['member'] else 'error')
+    elif not co['email_verified']:
+        onboard.send_verify(co);flash('확인 메일을 보냈어요.' if core.mail_ready() else '지금은 메일을 보낼 수 없어요. 운영팀이 직접 확인해 드려요.','ok' if core.mail_ready() else 'error')
+    nxt=request.form.get('next','')
+    return redirect(nxt if nxt.startswith('/') and not nxt.startswith('//') else url_for('start'))
+
+@app.route('/auth/google')
+def google_login():
+    """구글로 가입·로그인 (연동 대기: 운영 화면에 구글 클라이언트 ID·시크릿을 넣으면 켜진다)."""
+    if not onboard.google_ready():flash('구글 로그인은 연결 준비 중이에요. 이메일로 가입해 주세요.','error');return redirect(url_for('signup'))
+    session['g_state']=secrets.token_urlsafe(16)
+    return redirect(onboard.google_auth_url(session['g_state']))
+@app.route('/auth/google/callback')
+def google_callback():
+    st=session.pop('g_state',None)
+    if not st or not hmac.compare_digest(st,request.args.get('state','')) or not request.args.get('code'):flash('구글 로그인을 다시 해 주세요.','error');return redirect(url_for('login'))
+    u=onboard.google_user(request.args['code'])
+    if not u:flash('구글에서 이메일을 확인하지 못했어요. 이메일로 가입해 주세요.','error');return redirect(url_for('signup'))
+    with conn() as db:
+        co=db.execute("SELECT * FROM companies WHERE (google_sub=? AND google_sub!='') OR lower(login_id)=?",(u['sub'],u['email'])).fetchone()
+        stf=None if co else team.find_login(db,u['email'])
+        if co and co['status']=='active':
+            if not co['google_sub']:db.execute('UPDATE companies SET google_sub=?,email_verified=1 WHERE id=?',(u['sub'],co['id']));onboard.maybe_verify(db,core.company(db,co['id']))
+            start_session(co);return redirect(url_for('decide'))
+        if stf:
+            start_session(core.company(db,stf['company_id']),stf['id']);db.execute('UPDATE staff SET last_login=? WHERE id=?',(core.iso(),stf['id']));return redirect(url_for('decide'))
+        if co:flash('이용할 수 없는 계정입니다. 센터에 문의해 주세요.','error');return redirect(url_for('login'))
+    session['google_signup']=u;flash('구글 계정을 확인했어요. 회사 정보를 적으면 가입이 끝나요.','ok')
+    return redirect(url_for('signup'))
+
+# ---------- 처음 설정 도우미 (/start) ----------
+TEST_CASE=dict(channel='기타',category='배송 조회',title='[시험 문의] 주문한 상품은 언제 오나요?',body='소보루 CS 시험 문의예요. 실제 고객이 아니에요. 답변을 보내 보세요.',want='배송 확인',name='시험 고객')
+@app.route('/start',methods=['GET','POST'])
+@login_required
+def start():
+    """가입 직후 8단계 설정. 단계마다 저장해서 나중에 이어서 할 수 있다. 저장은 원래 설정 표에 그대로 한다."""
+    co=real();step=request.values.get('step') or onboard.progress(co)['next'] or 'company'
+    if step not in onboard.STEP_KEYS:abort(404)
+    if request.method=='POST':
+        if not team.can(who(),'manage'):flash('처음 설정은 대표나 관리자가 할 수 있어요','error');return redirect(url_for('decide'))
+        f=request.form;act=f.get('act','save')
+        with conn() as db:
+            if act=='skip':co=onboard.mark(db,co,step,'skip')
+            elif act=='test_new':
+                st=onboard.setup_state(co)
+                old=db.execute('SELECT id FROM cases WHERE id=? AND company_id=?',(st.get('test_case',0),co['id'])).fetchone()
+                if not old:
+                    d,err,cid=new_case_apply(co,TEST_CASE);st['test_case']=cid
+                    db.execute('UPDATE companies SET setup=? WHERE id=?',(json.dumps(st,ensure_ascii=False),co['id']))
+                    old={'id':cid}
+                flash('시험 문의를 만들었어요. 답변을 보내면 이 단계가 끝나요.','ok');return redirect(url_for('case',case_id=old['id']))
+            else:
+                err=save_step(db,co,step,f)
+                if err:flash(err,'error');return redirect(url_for('start',step=step))
+                co=onboard.mark(db,co,step,'done')
+            p=onboard.progress(co)
+            if p['finished']:funnel.track('setup_done',co['id'])
+        if p['finished']:flash('처음 설정을 모두 마쳤어요. 이제 실제 문의를 받아 보세요.','ok');return redirect(url_for('decide'))
+        return redirect(url_for('start',step=p['next']))
+    with conn() as db:
+        prof=chatbot.profile(db,co['id']);lk=shops.links(db,co['id']);st=onboard.setup_state(co)
+        tc=db.execute('SELECT * FROM cases WHERE id=? AND company_id=?',(st.get('test_case',0),co['id'])).fetchone()
+        tc_done=bool(tc and db.execute("SELECT 1 FROM events WHERE case_id=? AND kind='co'",(tc['id'],)).fetchone())
+        if step=='test' and tc_done and st.get('test')!='done':co=onboard.mark(db,co,'test','done')
+    return render_template('b_start.html',step=step,p=onboard.progress(co),STEPS=onboard.STEPS,SHOP_TYPES=onboard.SHOP_TYPES,prof=prof,links=lk,SHOPS=shops.SHOPS,
+        rc=co,tc=tc,tc_done=tc_done,link=core.site_url('me','/to/%d'%co['id']),widget=core.site_url('me','/widget.js?c=%d'%co['id']),tab='start')
+def save_step(db,co,step,f):
+    """설정 도우미 한 단계 저장. 오류 문구(없으면 '')."""
+    if step=='company':
+        ind=f.get('industry','') if f.get('industry','') in core.INDUSTRIES else ''
+        if not ind:return '업종을 골라 주세요'
+        db.execute('UPDATE companies SET industry=?,owner_name=?,phone=? WHERE id=?',(ind,clean(f.get('owner_name'),20) or co['owner_name'],digits(f.get('phone','')),co['id']))
+    elif step=='shop':
+        pick=[x for x in f.getlist('shop_types') if x in onboard.SHOP_TYPES]
+        if not pick:return '파는 곳을 하나 이상 골라 주세요'
+        db.execute('UPDATE companies SET shop_types=? WHERE id=?',(','.join(pick),co['id']))
+    elif step=='center':
+        email=clean(f.get('notify_email'),80)
+        if email and not EMAIL_RE.match(email):return '알림 이메일을 확인해 주세요'
+        if not clean(f.get('contact'),60):return '고객센터 연락처를 적어 주세요'
+        db.execute('UPDATE companies SET contact=?,notify_email=? WHERE id=?',(clean(f.get('contact'),60),email or co['login_id'],co['id']))
+        chatbot.save_profile(db,co['id'],{'hours':f.get('hours','')})
+    elif step=='policy':
+        if not clean(f.get('returns'),3000):return '교환·반품 규정을 적어 주세요'
+        courier=f.get('return_courier','') if f.get('return_courier','') in core.COURIERS else ''
+        db.execute('UPDATE companies SET return_address=?,return_courier=? WHERE id=?',(clean(f.get('return_address'),200),courier,co['id']))
+        chatbot.save_profile(db,co['id'],{k:f.get(k,'') for k in ('shipping','returns')})
+    elif step=='ai':
+        chatbot.save_profile(db,co['id'],{k:f.get(k,'') for k in ('brand','scope','handoff')})
+    elif step=='connect':
+        if not shops.links(db,co['id']):return '아직 연결한 판매처가 없어요. 연결하거나 나중에 하기를 눌러 주세요'
+    elif step=='test':
+        st=onboard.setup_state(co)
+        if not db.execute("SELECT 1 FROM events e JOIN cases c ON c.id=e.case_id WHERE c.id=? AND c.company_id=? AND e.kind='co'",(st.get('test_case',0),co['id'])).fetchone():
+            return '시험 문의에 아직 답하지 않았어요'
+    return ''
+
+# ---------- 데모 (demo.py) ----------
+@app.route('/demo',methods=['POST'])
+@login_required
+def demo_page():
+    """데모 켜기·처음부터 다시·끝내기. 데모 회사는 진짜 회사와 완전히 따로 있다."""
+    act=request.form.get('act','on');co=real()
+    with conn() as db:
+        if act=='off':session.pop('demo',None);flash('데모를 끝냈어요. 실제 화면이에요.','ok');return redirect(url_for('decide'))
+        if act=='reset':demo.reset(db,co);session['demo']=True;flash('데모를 처음 상태로 되돌렸어요','ok');return redirect(url_for('decide'))
+        demo.create(db,co)
+    session['demo']=True;funnel.track('demo',co['id'])
+    flash('데모 화면이에요. 견본 요청으로 승인·답변·배정을 마음껏 해 보세요. 실제 고객·주문에는 아무 영향이 없어요.','ok')
+    return redirect(url_for('decide'))
 
 # ---------- 기업 화면 ----------
 # 기업은 전달에 동의한 요청만 본다
@@ -282,6 +429,8 @@ def connect_shop(shop):
     """판매처 연결: 사장님이 판매처에서 발급한 키를 넣는다. 연결 확인 -> 저장, 지금 가져오기, 연결 끊기."""
     if shop not in shops.SHOPS:abort(404)
     co=me()
+    if request.method=='POST' and not co['member'] and request.form.get('act','save')!='delete':
+        flash('판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 할 수 있어요.','error');return redirect(url_for('connect_shop',shop=shop))
     if request.method=='POST':
         act=request.form.get('act','save')
         if act=='delete':
@@ -441,6 +590,10 @@ def case(case_id):
             msg,level=case_act(db,c,request.form)
             if level=='bad':abort(400)
             if msg:flash(msg,level)
+            if level=='ok' and act in ('reply','approve','ask','ship_track') and not in_demo() and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',me()['id'])
+            st=onboard.setup_state(real())
+            if level=='ok' and st.get('test_case')==c['id'] and st.get('test')!='done':
+                onboard.mark(db,real(),'test','done');flash('시험 문의 처리 단계를 마쳤어요.','ok')
             return redirect(url_for('case',case_id=case_id))
         if c['status']=='forwarded':
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
@@ -725,7 +878,8 @@ def settings():
     if request.method=='POST':
         with conn() as db:flash(*save_settings(db,co,request.form))
         return redirect(url_for('settings'))
-    return render_template('b_settings.html',tab='settings',link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co))
+    with conn() as db:use=onboard.usage(db,co['id'])
+    return render_template('b_settings.html',tab='settings',link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use)
 
 def save_settings(db,co,f):
     """설정 저장(웹·앱 공용). act: password·return·notify, 없으면 회사 정보. (문구, 'ok'|'error')를 돌려준다."""
@@ -767,7 +921,7 @@ def ops_logout():session.pop('ops',None);return redirect(url_for('ops_login'))
 def ops():
     with conn() as db:
         rows=db.execute('SELECT * FROM cases WHERE member=0 ORDER BY CASE WHEN status IN (\'received\',\'forwarded\') THEN 0 ELSE 1 END,id DESC LIMIT 300').fetchall()
-        n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+        n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     q=clean(request.args.get('q'),40);fil=request.args.get('f','all')
     if q:rows=[r for r in rows if q.lower() in (r['title']+' '+r['no']+' '+r['company_name']).lower()]
     groups={'all':rows,'send':[r for r in rows if r['consent'] and not r['attempts'] and r['status'] not in core.FINAL],
@@ -779,15 +933,15 @@ def ops():
 @ops_required
 def ops_all():
     with conn() as db:
-        rows=db.execute('SELECT * FROM cases ORDER BY id DESC LIMIT 500').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+        rows=db.execute("SELECT * FROM cases WHERE COALESCE(company_id,0) NOT IN (SELECT id FROM companies WHERE status='demo') ORDER BY id DESC LIMIT 500").fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
         n=lambda sql,*a:db.execute(sql,a).fetchone()[0]
-        sums=dict(members=n("SELECT COUNT(*) FROM companies WHERE status='active' AND member=1"),cases=n('SELECT COUNT(*) FROM cases'),
-                  non=n('SELECT COUNT(*) FROM cases WHERE member=0'),open=n("SELECT COUNT(*) FROM cases WHERE status IN ('received','forwarded','seen','info')"))
+        sums=dict(members=n("SELECT COUNT(*) FROM companies WHERE status='active' AND member=1"),cases=n("SELECT COUNT(*) FROM cases WHERE COALESCE(company_id,0) NOT IN (SELECT id FROM companies WHERE status='demo')"),
+                  non=n('SELECT COUNT(*) FROM cases WHERE member=0'),open=n("SELECT COUNT(*) FROM cases WHERE status IN ('received','forwarded','seen','info') AND COALESCE(company_id,0) NOT IN (SELECT id FROM companies WHERE status='demo')"))
         todo=db.execute("SELECT * FROM cases WHERE member=0 AND status IN ('received','forwarded','seen','info') ORDER BY CASE WHEN attempts=0 AND consent=1 THEN 0 ELSE 1 END,id LIMIT 6").fetchall()
-        signups=db.execute("SELECT * FROM companies WHERE status='pending' ORDER BY id LIMIT 5").fetchall()
+        signups=db.execute("SELECT * FROM companies WHERE "+onboard.WAITING_SQL+" ORDER BY id LIMIT 5").fetchall()
         no_contact=n("SELECT COUNT(*) FROM companies WHERE status='listed' AND contact=''")
     late=sum(map(core.overdue,rows))
-    watch=[dict(text=f'가입 신청 {n_pending}건이 승인을 기다려요',href=url_for('ops_companies')) for _ in [0] if n_pending]
+    watch=[dict(text=f'회사 인증을 기다리는 가입 {n_pending}건이 있어요',href=url_for('ops_companies')) for _ in [0] if n_pending]
     watch+=[dict(text=f'답변 기한이 지난 요청이 {late}건 있어요',href=url_for('ops')) for _ in [0] if late]
     watch+=[dict(text=f'공식 연락처가 없는 비입점 기업이 {no_contact}곳 있어요',href=url_for('ops_companies')) for _ in [0] if no_contact]
     watch+=[dict(text=f'{core.SECRETS[k][0]}가 꺼져 있어요',href=url_for('ops_keys')) for k in core.SECRETS if not core.secret(k)]
@@ -832,14 +986,13 @@ def ops_companies():
         if request.method=='POST':
             act=request.form.get('act');cid=request.form.get('id','')
             co=core.company(db,int(cid)) if cid.isdigit() else None
-            if act=='approve' and co and co['status']=='pending':
-                # 같은 이름의 비입점 기업이 있으면 그 요청을 이 기업으로 옮김 (이후 요청부터 입점 처리)
-                old=db.execute("SELECT id FROM companies WHERE status='listed' AND lower(name)=lower(?)",(co['name'],)).fetchall()
-                for o in old:db.execute('UPDATE cases SET company_id=? WHERE company_id=?',(co['id'],o['id']));db.execute('DELETE FROM companies WHERE id=?',(o['id'],))
-                db.execute("UPDATE companies SET status='active',member=1 WHERE id=?",(co['id'],))
-                core.send_mail(co['notify_email'],f'[{core.BNAME}] 가입이 승인되었습니다',f"{co['name']}의 {core.BNAME} 가입이 승인되었습니다.\n{core.site_url('biz','/login')}")
-                flash(f"{co['name']} 승인했습니다",'ok')
-            elif act=='reject' and co and co['status']=='pending':db.execute("UPDATE companies SET status='rejected' WHERE id=?",(co['id'],));flash('반려했습니다','ok')
+            waiting=co and (co['status']=='pending' or (co['status']=='active' and not co['member'] and not co['demo_of']))
+            if act=='approve' and waiting:
+                # 회사 인증: 같은 이름의 비입점 기업 요청을 이 기업으로 옮기고(이후 요청부터 입점 처리) 소비자 접수·판매처 연결을 연다
+                onboard.make_member(db,co);flash(f"{co['name']} 회사 인증을 마쳤습니다",'ok')
+            elif act=='recheck' and waiting:
+                co=onboard.recheck_biz(db,co);flash(f"국세청 확인: {onboard.BIZ_STATUS.get(co['biz_status'],co['biz_status'])}"+('' if onboard.nts_ready() else ' (국세청 키가 없어요. 서비스 키 화면에서 넣어 주세요)'),'ok')
+            elif act=='reject' and waiting:db.execute("UPDATE companies SET status='rejected',member=0 WHERE id=?",(co['id'],));flash('반려했습니다. 이 계정은 더 로그인할 수 없어요','ok')
             elif act=='suspend' and co and co['status']=='active':db.execute("UPDATE companies SET status='suspended',member=0 WHERE id=?",(co['id'],));flash('이용을 중지했습니다','ok')
             elif act=='resume' and co and co['status']=='suspended':db.execute("UPDATE companies SET status='active',member=1 WHERE id=?",(co['id'],));flash('다시 이용할 수 있게 했습니다','ok')
             elif act=='pwlink' and co and co['status']=='active' and co['pw_hash']:
@@ -850,7 +1003,7 @@ def ops_companies():
                 if name and not core.find_company(db,name):db.execute("INSERT INTO companies(name,member,status,contact,created) VALUES(?,0,'listed',?,?)",(name,clean(request.form.get('contact'),60),core.iso()));flash('추가했습니다','ok')
                 else:flash('이름이 비었거나 이미 있습니다','error')
             return redirect(url_for('ops_companies'))
-        pending=db.execute("SELECT * FROM companies WHERE status='pending' ORDER BY id").fetchall()
+        pending=db.execute("SELECT * FROM companies WHERE "+onboard.WAITING_SQL+" ORDER BY id").fetchall()
         rows=db.execute("SELECT c.*,(SELECT COUNT(*) FROM cases WHERE company_id=c.id) n,(SELECT MAX(created) FROM cases WHERE company_id=c.id) last FROM companies c WHERE status IN ('active','listed','suspended') ORDER BY member DESC,name").fetchall()
     return render_template('o_companies.html',pending=pending,rows=rows,n_signup=len(pending),otab='co')
 
@@ -864,7 +1017,7 @@ def ops_company(cid):
         cases=db.execute('SELECT * FROM cases WHERE company_id=? ORDER BY id DESC',(cid,)).fetchall()
         chans=db.execute('SELECT channel,COUNT(*) n FROM orders WHERE company_id=? GROUP BY channel',(cid,)).fetchall()
         n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(cid,)).fetchone()[0]
-        n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+        n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     return render_template('o_company.html',co=co,cases=cases[:20],k=kpis(cases),n_open=sum(r['status'] not in core.FINAL for r in cases),chans=chans,n_auto=n_auto,n_signup=n_pending,otab='co')
 
 @app.route('/ops/news',methods=['GET','POST'])
@@ -885,7 +1038,7 @@ def ops_news():
                             core.send_mail(co['notify_email'],f'[{core.BNAME}] 법·제도 소식: {title}',f"{body}\n\n출처: {src}\n{core.site_url('biz','/news')}")
                     flash('올렸습니다','ok')
             return redirect(url_for('ops_news'))
-        rows=db.execute('SELECT * FROM news ORDER BY id DESC').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+        rows=db.execute('SELECT * FROM news ORDER BY id DESC').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     return render_template('o_news.html',rows=rows,n_signup=n_pending,otab='news')
 
 @app.route('/ops/keys',methods=['GET','POST'])
@@ -904,7 +1057,7 @@ def ops_keys():
                 flash(f'{core.SECRETS[name][0]}를 저장했습니다. 바로 적용돼요','ok')
         return redirect(url_for('ops_keys'))
     keys=[dict(name=k,label=l,hint=h,source=core.secret_source(k),tail=core.secret(k)[-4:]) for k,(l,h) in core.SECRETS.items()]
-    with conn() as db:n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+    with conn() as db:n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     return render_template('o_keys.html',keys=keys,n_signup=n_pending,otab='keys')
 
 COPY_PAGES=[('c_home.html','고객 첫 화면'),('c_new.html','요청 접수'),('c_done.html','접수 완료'),('c_mine.html','내 접수'),('c_case.html','접수 상세'),
@@ -944,7 +1097,7 @@ def ops_copy():
             return redirect(url_for('ops_copy',q=q or None,pg=pg or None))
         edits={(e['site'],e['src']):e for e in db.execute('SELECT * FROM copy_edits ORDER BY id DESC')}
         page_edits=db.execute('SELECT * FROM copy_page_edits ORDER BY id DESC').fetchall()
-        n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+        n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     names=dict(COPY_PAGES);cat=core.copy_catalog();keys={(s,t) for s,t,_ in cat}
     items=[dict(site=s,src=t,files=fs,dst=edits[(s,t)]['dst'] if (s,t) in edits else t,edited=(s,t) in edits) for s,t,fs in cat]
     items=[dict(site=s,src=t,files=[],dst=e['dst'],edited=True) for (s,t),e in edits.items() if (s,t) not in keys]+items
@@ -974,7 +1127,7 @@ def visual_companies():
 def ops_visual():
     """화면 보며 고치기: 실제 화면을 띄워 놓고 문장을 끌어 옮기거나 두 번 눌러 글자를 고친다."""
     i=request.args.get('p','0');i=int(i) if i.isdigit() and int(i)<len(VISUAL_PAGES) else 0
-    with conn() as db:n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE status='pending'").fetchone()[0]
+    with conn() as db:n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     cos=visual_companies();dev='m' if request.args.get('dev')=='m' else 'pc'
     return render_template('o_visual.html',pages=VISUAL_PAGES,p=i,dev=dev,cos=cos,co_id=request.args.get('co',''),n_signup=n_pending,otab='visual')
 
@@ -1022,11 +1175,11 @@ def api_co():
     try:d=core.signer('app-biz').loads(tok)
     except Exception:d=None
     with conn() as db:co=core.company(db,d.get('id')) if isinstance(d,dict) else None
-    if not co or co['status']!='active' or not co['member'] or co['pw_hash'][-16:]!=d.get('h'):abort(401)
+    if not co or co['status']!='active' or co['pw_hash'][-16:]!=d.get('h'):abort(401)  # 인증 전 회사도 앱을 쓴다 (판매처 연결·소비자 접수만 인증 뒤)
     g.co=co;g.who=team.owner_actor(co);g.actor=g.who['name'];return co
 def api_form():j=request.get_json(silent=True);return j if isinstance(j,dict) and j else request.form
 def co_info(co):
-    return dict(id=co['id'],name=co['name'],login_id=co['login_id'],link=core.site_url('me','/to/%d'%co['id']))
+    return dict(id=co['id'],name=co['name'],login_id=co['login_id'],link=core.site_url('me','/to/%d'%co['id']),verified=bool(co['member']),plan=onboard.PLANS.get(co['plan'],{}).get('name',''))
 def biz_summary(c):
     return dict(id=c['id'],no=c['no'],category=c['category'],title=c['title'],name=c['name'] or '',status=c['status'],status_label=core.status_label(c['status']),
         decision=c['decision'],decision_label=core.DECISION.get(c['decision'],''),pending=is_pending(c),overdue=core.overdue(c),due=c['due'],created=c['created'],updated=c['updated'])
@@ -1065,7 +1218,7 @@ def api_biz_login():
     with conn() as db:co=db.execute('SELECT * FROM companies WHERE login_id=?',(lid,)).fetchone()
     if not co or not check_password_hash(co['pw_hash'],pw):return jsonify(error='이메일이나 비밀번호가 맞지 않습니다.'),400
     if co['status']=='pending':return jsonify(error='가입 승인을 기다리고 있습니다. 승인되면 이메일로 알려 드립니다.'),400
-    if co['status']!='active' or not co['member']:return jsonify(error='이용할 수 없는 계정입니다. 센터에 문의해 주세요.'),400
+    if co['status']!='active':return jsonify(error='이용할 수 없는 계정입니다. 센터에 문의해 주세요.'),400
     return jsonify(token=co_token(co),company=co_info(co))
 @app.route('/api/v1/home')
 def api_biz_home():
@@ -1139,9 +1292,12 @@ def api_biz_logout():
 # 앱 안에서 가입 신청·비밀번호 찾기·규칙·통계·설정·응대 가이드까지 (웹으로 나가지 않게)
 @app.route('/api/v1/signup',methods=['POST'])
 def api_biz_signup():
-    d,err=signup_apply(api_form())
+    d,err,cid=signup_apply(api_form())
     if err:return jsonify(error=err),400
-    return jsonify(ok=True,name=d['name'],message='가입 신청을 받았습니다. 승인되면 이메일로 알려 드립니다.')
+    with conn() as db:co=core.company(db,cid)
+    funnel.track('signup',cid,'app')
+    return jsonify(ok=True,name=d['name'],token=co_token(co),company=co_info(co),verified=bool(co['member']),
+        message='가입했어요. 바로 쓸 수 있어요. 로그인 이메일 확인과 사업자 확인이 끝나면 소비자 접수와 판매처 연결이 열려요.')
 @app.route('/api/v1/forgot',methods=['POST'])
 def api_biz_forgot():
     msg,level=send_reset(api_form().get('login_id'))
