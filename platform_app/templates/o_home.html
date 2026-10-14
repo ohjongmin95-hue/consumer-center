@@ -1,11 +1,13 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_c.html' as m with context %}
-{% block title %}{{ BNAME }} 운영{% endblock %}
+{% block title %}비입점 요청 · {{ BNAME }} 운영{% endblock %}
 {% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>비입점 요청</h1><p>공식 연락처로 전달하고, 회신을 기록하고, 답이 없으면 피해구제를 안내합니다</p></div></div>
-{% if rows %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th class="hm">접수번호</th><th>내용</th><th class="hm">기업</th><th class="hm">전달</th><th class="hm">접수일</th><th>상태</th></tr></thead><tbody>
-{% for c in rows %}<tr data-href="{{ url_for('ops_case',case_id=c.id) }}"><td class="hm no t-mute">{{ c.no }}</td><td><a class="ttl" href="{{ url_for('ops_case',case_id=c.id) }}">{{ c.title }}</a></td><td class="hm">{{ c.company_name }}</td>
-<td class="hm">{% if not c.consent %}<span class="pill gray">미동의</span>{% elif c.attempts %}{{ c.attempts }}회 시도{% else %}<span class="pill acc">전달 필요</span>{% endif %}</td><td class="hm t-mute">{{ fmt(c.created) }}</td><td>{{ m.pill(c,True) }}</td></tr>{% endfor %}
+<div class="phead"><div><h1>비입점 요청</h1><p>공식 연락처로 전달하고, 회신을 기록하고, 답이 없으면 피해구제를 안내합니다</p></div>
+<form class="searchbar" method="get"><input type="hidden" name="f" value="{{ fil }}"><input name="q" value="{{ q }}" placeholder="제목, 기업, 접수번호" aria-label="검색"><button class="btn sm gray">검색</button></form></div>
+<div class="tabs">{% for key,l in [('all','전체'),('send','전달 필요'),('open','처리 중'),('done','끝남')] %}<a href="{{ url_for('ops',f=key,q=q or None) }}" class="{{ 'on' if fil==key }}">{{ l }}<span>{{ groups[key]|length }}</span></a>{% endfor %}</div>
+{% if rows %}<div class="tbl-wrap"><table class="tbl2 mcards"><thead><tr><th class="hm">접수번호</th><th>내용</th><th class="hm">대상 기업</th><th class="hm">유형</th><th class="hm">전달</th><th class="hm">접수일</th><th class="r">상태</th></tr></thead><tbody>
+{% for c in rows %}<tr data-href="{{ url_for('ops_case',case_id=c.id) }}"><td class="hm no t-mute">{{ c.no }}</td><td><a class="ttl" href="{{ url_for('ops_case',case_id=c.id) }}">{{ c.title }}</a><div class="msub">{{ c.company_name }} · {{ c.category }} · {{ fmt(c.created) }}</div></td><td class="hm">{{ c.company_name }}</td><td class="hm t-sub">{{ c.category }}</td>
+<td class="hm">{% if not c.consent %}<span class="pill gray">미동의</span>{% elif c.attempts %}{{ c.attempts }}회 시도{% else %}<span class="pill acc">전달 필요</span>{% endif %}</td><td class="hm t-mute">{{ fmt(c.created) }}</td><td class="r">{{ m.pill(c,True) }}</td></tr>{% endfor %}
 </tbody></table></div>
-{% else %}<div class="empty-card"><b>처리할 비입점 요청이 없습니다</b></div>{% endif %}
+{% else %}<div class="empty-card"><b>{{ '검색 결과가 없습니다' if q else '처리할 비입점 요청이 없습니다' }}</b></div>{% endif %}
 {% endblock %}

@@ -1457,3 +1457,40 @@ body.v2:has(.bside) .linkbar .btn{flex:1}
 @media (max-width:359.98px){.gnb .chip .cnm{max-width:84px}}
 .mbar details:not([open]) .sheet{display:none}
 @media (max-width:759.98px){body.v2:has(.bside) .acts2{grid-template-columns:1fr}body.v2:has(.bside) .acts2>*{min-width:0}}
+
+/* --- 본사 운영 화면: 사장님 화면과 같은 규격 + 운영용 부품 --- */
+.oside .grp{display:block;font-size:12px;font-weight:600;color:var(--fg4);padding:14px 14px 6px}
+.oside .grp:first-child{padding-top:0}
+.omenu{position:relative}
+.omenu summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--ds-r-ctl);background:var(--fill);font-size:14px;font-weight:600}
+.omenu summary::-webkit-details-marker{display:none}
+.omenu .sheet{position:absolute;right:0;top:44px;width:240px;background:var(--card);border-radius:var(--ds-r-card);box-shadow:0 12px 40px rgba(0,20,60,.16);padding:10px;z-index:40}
+.omenu:not([open]) .sheet{display:none}
+.omenu .sheet a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:var(--ds-r-ctl);font-size:15px;font-weight:600;color:var(--fg)}
+.omenu .sheet a.on{background:var(--accent-soft);color:var(--accent-ink)}
+.omenu .sheet a .cnt{margin-left:auto}
+.omenu .sheet .grp{display:block;font-size:12px;font-weight:600;color:var(--fg4);padding:10px 12px 4px}
+@media (min-width:1024px){.omenu{display:none}}
+.sumrow .sum{background:var(--card);border-radius:var(--ds-r-card);padding:16px 20px;display:flex;flex-direction:column;gap:4px;min-height:88px;justify-content:center}
+.sumrow .sum span{font-size:var(--ds-fs-sub);color:var(--fg3)}
+.sumrow .sum b{font-size:var(--ds-fs-num);letter-spacing:-.04em}
+.orow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.orow>.inp{flex:1 1 160px;min-width:0}
+.orow>.btn{flex:none}
+.orow.end{justify-content:flex-end}
+.brief li a{color:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--fg4)}
+.ph .more{margin-left:auto;font-size:14px;font-weight:600;color:var(--fg3)}
+.ph{display:flex;align-items:center;gap:8px}
+body.v2:has(.oside) .cols.ocols{grid-template-columns:minmax(0,1fr) 320px}
+.tbl2 .msub{display:none;font-size:13px;color:var(--fg3);margin-top:3px}
+.tbl2 td .co-act{justify-content:flex-end}
+.tbl2 td .co-act .inp{width:150px;height:var(--ds-h-btn-sm);padding:0 10px;font-size:14px}
+.drow .av{flex-shrink:0}
+@media (max-width:1199.98px){body.v2:has(.oside) .cols.ocols{grid-template-columns:1fr}}
+@media (max-width:759.98px){
+.tbl2.mcards .msub{display:block}
+.tbl2.mcards td{height:auto}
+.tbl2 td .co-act{flex-wrap:wrap}
+.tbl2 td .co-act .inp{width:100%}
+.orow>.btn{flex:1 1 100%}
+}

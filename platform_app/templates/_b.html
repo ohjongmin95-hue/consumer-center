@@ -23,19 +23,19 @@
 <a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{% if side %}{{ i.icon(ic,22) }}{% endif %}<span>{{ label }}</span>{% if key=='approve' and n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>{% endfor %}
 {%- endmacro %}
 {% macro obar(tab,n_signup) -%}
+{# 본사 운영 메뉴: 사장님 화면과 같은 왼쪽 메뉴(bside). 좁은 화면은 위쪽 '메뉴' 버튼으로 펼친다 #}
+{% set OMENU=[('업무',[('all','ops_all','전체 현황','chart'),('non','ops','비입점 요청','inbox'),('co','ops_companies','기업 관리','building')]),
+ ('콘텐츠',[('news','ops_news','법·제도 소식','scale'),('visual','ops_visual','화면 보며 고치기','search'),('copy','ops_copy','문구 고치기','note')]),
+ ('설정',[('keys','ops_keys','서비스 키','shield')])] %}
 <header class="gnb"><div class="wrap">
-<a class="logo" href="{{ url_for('ops') }}"><i></i>{{ BNAME }}<small class="w">운영</small></a>
-<nav>
-<a href="{{ url_for('ops') }}" class="{{ 'on' if tab=='non' }}">비입점 요청</a>
-<a href="{{ url_for('ops_all') }}" class="{{ 'on' if tab=='all' }}">전체 현황</a>
-<a href="{{ url_for('ops_companies') }}" class="{{ 'on' if tab=='co' }}">기업 관리{% if n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</a>
-<a href="{{ url_for('ops_news') }}" class="{{ 'on' if tab=='news' }}">법·제도 소식</a>
-<a href="{{ url_for('ops_keys') }}" class="{{ 'on' if tab=='keys' }}">서비스 키</a>
-<a href="{{ url_for('ops_visual') }}" class="{{ 'on' if tab=='visual' }}">화면 보며 고치기</a>
-<a href="{{ url_for('ops_copy') }}" class="{{ 'on' if tab=='copy' }}">문구 고치기</a>
-</nav>
-<div class="right"><form method="post" action="{{ url_for('ops_logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn">로그아웃</button></form></div>
+<a class="logo biz" href="{{ url_for('ops_all') }}">{{ soboru_logo() }}<small class="w">운영</small></a>
+<div class="right"><details class="omenu"><summary aria-label="운영 메뉴 열기">메뉴{% if n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</summary><div class="sheet">{{ omenu_links(OMENU,tab,n_signup) }}</div></details>
+<form method="post" action="{{ url_for('ops_logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn">로그아웃</button></form></div>
 </div></header>
+<nav class="bside oside" aria-label="운영 메뉴">{{ omenu_links(OMENU,tab,n_signup) }}</nav>
+{%- endmacro %}
+{% macro omenu_links(OMENU,tab,n_signup) -%}
+{% for grp,items in OMENU %}<span class="grp">{{ grp }}</span>{% for key,ep,label,ic in items %}<a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{{ i.icon(ic,22) }}<span>{{ label }}</span>{% if key=='co' and n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</a>{% endfor %}{% endfor %}
 {%- endmacro %}
 {% macro kpis(k) -%}
 <div class="kpis"><div class="kpi"><span>받은 요청</span><b>{{ k.n }}<small>건</small></b></div><div class="kpi"><span>자동 처리율</span><b>{{ k.auto }}<small>%</small></b></div>
