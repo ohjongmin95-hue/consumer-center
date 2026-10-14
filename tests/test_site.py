@@ -520,7 +520,7 @@ class SiteTest(unittest.TestCase):
         # 3) 관리자 승인 → 제보에 연결 (★ 추천), 미동의 제보는 연결 불가
         admin = self.login_admin()
         self.assertIn('주식회사 테스트몰', admin.get('/admin/companies').get_data(as_text=True))
-        self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'approve'})
+        self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'approve', 'manual': '1'})
         self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'aliases', 'aliases': 'TestMall, 테스트 쇼핑'})
         self.assertIn('★ 주식회사 테스트몰', admin.get('/admin/reports/%d' % shared).get_data(as_text=True))
         self.post_form(admin, '/admin/reports/%d' % shared, {'form': 'company', 'company_id': company_id})
@@ -1448,6 +1448,129 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertEqual(db.execute('SELECT status FROM companies WHERE id=?', (co['id'],)).fetchone()['status'], 'listed')
 
+
+    def test_company_verify_answers_and_outcome(self):
+        # 2차: 기업 담당자 이메일 인증 + 운영자 승인, 미리 등록된 기업 페이지 합치기, 공식 입장, 답변 수정 이력, 이메일 답변, 소비자 확인
+        self.site.BIZ_ON = True
+        self.addCleanup(setattr, self.site, 'BIZ_ON', False)
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/companies', {'action': 'create', 'name': '고양이상회'})
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '고양이상회', 'subject': '고양이상회 환불 제보', 'description': '환불이 안 돼요',
+                'reporter_name': '이소비', 'phone': '010-3131-2020', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db:
+            listed = db.execute("SELECT * FROM companies WHERE name='고양이상회'").fetchone()
+            case = db.execute("SELECT * FROM cases WHERE subject='고양이상회 환불 제보'").fetchone()
+        self.assertEqual(case['company_id'], listed['id'])
+        path = '/admin/reports/%d' % case['id']
+        self.post_form(admin, path, {'form': 'publish_review', 'decision': 'approve'})
+        # 1) 가입 신청: 담당자 이메일로 인증 링크가 감 (메일 설정이 있을 때)
+        mails = []
+        biz = self.site.app.test_client()
+        form = {'company_name': '고양이상회', 'biz_no': '123-45-67891', 'contact_name': '김담당', 'contact_phone': '02-123-4567',
+                'contact_email': 'cs@cat.co.kr', 'login_id': 'catshop', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'}
+        with patch.dict(os.environ, {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}), \
+             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+            self.post_form(biz, '/biz/signup', form)
+        verify = [m for m in mails if m[0] == 'cs@cat.co.kr']
+        self.assertEqual(len(verify), 1)
+        link = re.search(r'http://localhost(/biz/verify/\S+)', verify[0][2])[1]
+        with self.site.conn() as db:
+            pending = db.execute("SELECT * FROM companies WHERE status='pending'").fetchone()
+        self.assertEqual(int(pending['claim_id']), listed['id'])
+        home = biz.get('/biz').get_data(as_text=True)
+        self.assertIn('담당자 이메일 확인', home)
+        self.assertIn('인증 메일 다시 받기', home)
+        # 사업자번호가 맞아도, 이메일 확인 전에는 일반 승인이 안 됨
+        companies = admin.get('/admin/companies').get_data(as_text=True)
+        self.assertIn('기업 페이지에 합쳐서 승인해요', companies)
+        self.assertIn('직접 확인 후 승인', companies)
+        self.post_form(admin, '/admin/companies', {'id': pending['id'], 'action': 'approve'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT status FROM companies WHERE id=?', (pending['id'],)).fetchone()['status'], 'pending')
+        self.assertEqual(biz.get(link).status_code, 302)
+        self.assertEqual(biz.get(link).status_code, 302)  # 두 번째는 '이미 쓴 링크'
+        with self.site.conn() as db:
+            self.assertTrue(db.execute('SELECT email_verified_at FROM companies WHERE id=?', (pending['id'],)).fetchone()['email_verified_at'])
+        # 2) 승인하면 미리 등록된 기업 페이지에 합쳐짐 (제보는 그대로, 신청서 줄은 사라짐)
+        self.post_form(admin, '/admin/companies', {'id': pending['id'], 'action': 'approve'})
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM companies WHERE id=?', (pending['id'],)).fetchone())
+            merged = db.execute('SELECT * FROM companies WHERE id=?', (listed['id'],)).fetchone()
+            self.assertEqual((merged['status'], merged['biz_no']), ('active', '1234567891'))
+            self.assertEqual(db.execute('SELECT company_id FROM company_users WHERE login_id=?', ('catshop',)).fetchone()['company_id'], listed['id'])
+        self.post_form(biz, '/biz/login', {'login_id': 'catshop', 'password': 'abcd1234'})
+        self.assertNotIn('고양이상회 환불 제보', biz.get('/biz').get_data(as_text=True))  # 운영자가 보내기 전에는 안 보임
+        self.post_form(admin, path, {'form': 'forward'})
+        self.assertIn('고양이상회 환불 제보', biz.get('/biz').get_data(as_text=True))
+        # 3) 공식 입장: 센터 확인 전에는 공개되지 않고, 확인하면 원문 그대로 공개
+        self.post_form(biz, '/biz/statement', {'statement': '고객센터 1588-0000에서 환불을 도와드려요.'})
+        self.assertNotIn('1588-0000', self.client.get('/companies/%d' % listed['id']).get_data(as_text=True))
+        self.post_form(admin, '/admin/companies', {'id': listed['id'], 'action': 'statement_ok'})
+        self.assertIn('고객센터 1588-0000에서 환불을 도와드려요.', self.client.get('/companies/%d' % listed['id']).get_data(as_text=True))
+        # 4) 답변 → 센터 공개 → 기업이 고치면 이전 글은 이력에 남고 공개는 내려감
+        self.post_form(biz, '/biz/case/%d' % case['id'], {'response': '첫 답변입니다.'})
+        with self.site.conn() as db:
+            mid = db.execute("SELECT id FROM messages WHERE case_id=? AND author='기업 답변'", (case['id'],)).fetchone()['id']
+        self.post_form(admin, path, {'form': 'answer_public', 'message_id': mid, 'public': '1'})
+        self.assertIn('첫 답변입니다.', self.client.get('/reports/%d' % case['id']).get_data(as_text=True))
+        biz.post('/biz/answer/%d/edit' % mid, data={'_csrf': self.csrf(biz, '/biz/case/%d' % case['id']), 'response': '고친 답변입니다.'})
+        with self.site.conn() as db:
+            msg = db.execute('SELECT * FROM messages WHERE id=?', (mid,)).fetchone()
+            rev = db.execute('SELECT * FROM answer_revisions WHERE message_id=?', (mid,)).fetchall()
+        self.assertEqual((msg['body'], msg['public'], bool(msg['edited'])), ('고친 답변입니다.', 0, True))
+        self.assertEqual([(r['body'], r['was_public']) for r in rev], [('첫 답변입니다.', 1)])
+        public = self.client.get('/reports/%d' % case['id']).get_data(as_text=True)
+        self.assertNotIn('답변입니다.', public)
+        self.assertIn('센터가 공개 여부를 확인하고 있어요', public)
+        self.assertIn('수정 이력 1건', admin.get(path).get_data(as_text=True))
+        self.assertIn('수정 이력 1건', biz.get('/biz/case/%d' % case['id']).get_data(as_text=True))
+        self.post_form(admin, path, {'form': 'answer_public', 'message_id': mid, 'public': '1'})
+        public = self.client.get('/reports/%d' % case['id']).get_data(as_text=True)
+        self.assertIn('고친 답변입니다.', public)
+        self.assertIn('수정됨', public)
+        # 5) 제보자: 처리 결과 확인과 공개 희망 추가 의견
+        reporter = self.site.app.test_client()
+        self.post_form(reporter, '/lookup', {'mode': 'phone', 'phone': '010-3131-2020', 'password': '1234'})
+        page = reporter.get('/case').get_data(as_text=True)
+        self.assertIn('기업 답변을 받고 해결됐나요?', page)
+        self.assertIn('공개 제보 아래에 함께 보여 주세요', page)
+        reporter.post('/case/outcome', data={'_csrf': self.csrf(reporter, '/case'), 'outcome': 'resolved'})
+        self.post_form(reporter, '/case', {'message': '환불 받았어요. 010-3131-2020', 'want_public': '1'})
+        with self.site.conn() as db:
+            row = db.execute('SELECT outcome,confirmed_at FROM cases WHERE id=?', (case['id'],)).fetchone()
+            opinion = db.execute("SELECT * FROM messages WHERE case_id=? AND author='제보자'", (case['id'],)).fetchone()
+        self.assertEqual(row['outcome'], 'resolved')
+        self.assertTrue(row['confirmed_at'])
+        self.assertEqual((opinion['want_public'], opinion['public']), (1, 0))
+        self.assertIn('제보자가 해결됐다고 확인했어요', self.client.get('/reports/%d' % case['id']).get_data(as_text=True))
+        self.assertIn('해결됐어요', biz.get('/biz/case/%d' % case['id']).get_data(as_text=True))
+        self.assertIn('공개 희망', admin.get(path).get_data(as_text=True))
+        self.post_form(admin, path, {'form': 'answer_public', 'message_id': opinion['id'], 'public': '1'})
+        public = self.client.get('/reports/%d' % case['id']).get_data(as_text=True)
+        self.assertIn('환불 받았어요.', public)
+        self.assertNotIn('010-3131-2020', public)
+        # 6) 가입하지 않은 기업의 이메일 답변: 원문 그대로 등록, 형식이 틀리면 거절
+        self.post_form(self.client, '/report', dict(base, company='미가입상점', subject='미가입 상점 제보', phone='010-4141-2020'))
+        with self.site.conn() as db:
+            other = db.execute("SELECT id FROM cases WHERE subject='미가입 상점 제보'").fetchone()['id']
+        opath = '/admin/reports/%d' % other
+        self.post_form(admin, opath, {'form': 'email_answer', 'sender': 'nope', 'received': '2026-10-01', 'body': '답변'})
+        self.post_form(admin, opath, {'form': 'email_answer', 'sender': 'cs@shop.example', 'received': '2026-10-01', 'body': '메일로 드리는 답변입니다.'})
+        with self.site.conn() as db:
+            answers = db.execute("SELECT body,source,public FROM messages WHERE case_id=? AND author='기업 답변'", (other,)).fetchall()
+            status = db.execute('SELECT status FROM cases WHERE id=?', (other,)).fetchone()['status']
+            log = db.execute("SELECT action FROM case_log WHERE case_id=? AND action LIKE '이메일로 받은%'", (other,)).fetchone()['action']
+        self.assertEqual([tuple(a) for a in answers], [('메일로 드리는 답변입니다.', 'email', 0)])
+        self.assertEqual(status, '기업 답변 도착')
+        self.assertIn('cs@shop.example', log)
+        reporter2 = self.site.app.test_client()
+        self.post_form(reporter2, '/lookup', {'mode': 'phone', 'phone': '010-4141-2020', 'password': '1234'})
+        self.assertIn('원문 그대로 옮겼어요', reporter2.get('/case').get_data(as_text=True))
 
 if __name__ == '__main__':
     unittest.main()

@@ -39,9 +39,10 @@
         <h2>제보자와 주고받은 메시지</h2>
         {% for m in msgs %}
         <div class="cs-msg {{ 'from-center' if m['author'] == '센터' else ('from-company' if m['author'] == '기업 답변' else 'from-reporter') }}">
-          <div class="cs-msg-head"><b>{{ m['author'] }}</b><span>{{ m['created'][:16]|replace('T', ' ') }}</span></div>
+          <div class="cs-msg-head"><b>{{ m['author'] }}</b><span>{{ m['created'][:16]|replace('T', ' ') }}{% if m['source'] %} · {{ JEBO_SOURCES.get(m['source'], m['source']) }}{% endif %}{% if m['edited'] %} · {{ m['edited'][:16]|replace('T', ' ') }} 기업이 수정{% endif %}{% if m['author'] == '제보자' and m['want_public'] %} · 공개 희망{% endif %}</span></div>
           <p>{{ m['body'] }}</p>
-          {% if m['author'] == '기업 답변' and case['public_consent'] %}<form class="cs-inline cs-msg-pub" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="answer_public"><input type="hidden" name="message_id" value="{{ m['id'] }}">
+          {% if revisions.get(m['id']) %}<details class="cs-rev"><summary>수정 이력 {{ revisions[m['id']]|length }}건</summary>{% for r in revisions[m['id']]|reverse %}<div class="cs-rev-item"><span>{{ r['edited_at'][:16]|replace('T', ' ') }}에 고치기 전 글{% if r['was_public'] %} · 그때 공개 중{% endif %}</span><p>{{ r['body'] }}</p></div>{% endfor %}</details>{% endif %}
+          {% if m['author'] in ('기업 답변', '제보자') and case['public_consent'] %}<form class="cs-inline cs-msg-pub" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="answer_public"><input type="hidden" name="message_id" value="{{ m['id'] }}">
             {% if m['public'] %}<span class="cs-tag">사이트에 공개 중</span><button class="cs-btn" name="public" value="0">공개 취소</button>{% else %}<button class="cs-btn" name="public" value="1">확인했어요 · 사이트에 공개</button>{% endif %}</form>{% endif %}
         </div>
         {% else %}<p class="cs-muted">아직 메시지가 없어요.</p>{% endfor %}
@@ -50,6 +51,17 @@
           <button class="cs-btn" type="submit">메시지 보내기</button>
         </form>
       </section>
+
+      {% if case['share_company'] %}
+      <details class="cs-panel cs-card" id="email_answer"><summary><h2>이메일로 받은 기업 답변 등록</h2></summary>
+        <p class="cs-hint">가입하지 않은 기업이 이메일로 답변을 보냈을 때 써요. 받은 글을 고치지 말고 그대로 붙여 넣어 주세요. 등록하면 제보자에게 보이고, 사이트 공개는 위에서 따로 정해요.</p>
+        <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="email_answer">
+          <div class="cs-row"><input type="email" name="sender" maxlength="150" required placeholder="보낸 사람 이메일" aria-label="보낸 사람 이메일"><input type="date" name="received" required aria-label="받은 날짜"></div>
+          <textarea name="body" maxlength="8000" required rows="6" placeholder="받은 답변 원문" aria-label="받은 답변 원문"></textarea>
+          <button class="cs-btn" type="submit">원문 그대로 등록</button>
+        </form>
+      </details>
+      {% endif %}
 
 
       {% if logs %}
