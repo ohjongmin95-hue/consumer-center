@@ -3,7 +3,7 @@
 운영 화면(서비스 키)이나 서버 설정에 OPENAI_API_KEY가 있으면 OpenAI를, 없고 ANTHROPIC_API_KEY만 있으면 Anthropic을 쓴다.
 키는 로그·화면에 남기지 않는다. 실패하면 None을 돌려주고, 부른 쪽이 기본 안내로 대신한다.
 """
-import base64, json, logging, os, urllib.error, urllib.request
+import base64, html, json, logging, os, re, time, urllib.error, urllib.parse, urllib.request
 import core
 
 LOG=logging.getLogger(__name__)
@@ -28,6 +28,47 @@ def post(url,headers,body,timeout):
         try:return e.code,json.loads(e.read().decode() or '{}')
         except Exception:return e.code,{}
 
+def get(url,headers,timeout):
+    """(상태 코드, JSON). 테스트에서 바꿔 끼운다."""
+    req=urllib.request.Request(url,headers=headers)
+    try:
+        with urllib.request.urlopen(req,timeout=timeout) as r:return r.status,json.loads(r.read().decode() or '{}')
+    except urllib.error.HTTPError as e:return e.code,{}
+
+# ---------- 네이버 검색 (키가 있으면 AI가 필요할 때 부른다) ----------
+def naver_ready():return bool(core.secret('NAVER_SEARCH_ID') and core.secret('NAVER_SEARCH_SECRET'))
+def _plain(s):return html.unescape(re.sub(r'<[^>]+>','',s or '')).strip()
+def naver_search(query):
+    """네이버 웹문서·블로그 검색 결과 [{title,text,source}] (최대 8개). 실패하면 빈 목록."""
+    out=[];h={'X-Naver-Client-Id':core.secret('NAVER_SEARCH_ID'),'X-Naver-Client-Secret':core.secret('NAVER_SEARCH_SECRET')}
+    for kind,label in (('webkr','네이버 웹문서'),('blog','네이버 블로그')):
+        try:code,res=get(f'https://openapi.naver.com/v1/search/{kind}.json?'+urllib.parse.urlencode({'query':query[:100],'display':4}),h,8)
+        except Exception as e:LOG.warning('네이버 검색 실패: %s',type(e).__name__);continue
+        if code!=200:LOG.warning('네이버 검색 응답 %s',code);continue
+        out+=[{'title':_plain(i.get('title')),'text':_plain(i.get('description'))[:300],'source':label} for i in (res.get('items') or [])[:4]]
+    return out
+SEARCH_TOOL={'type':'function','function':{'name':'search','description':'네이버에서 일반 정보(원료·성분, 사용법, 보관법, 상식 등)를 검색한다. 이 가게의 가격·정책은 검색하지 않는다.',
+    'parameters':{'type':'object','properties':{'query':{'type':'string','description':'한국어 검색어'}},'required':['query']}}}
+
+def naver_answer(system,messages,max_tokens,timeout,temperature,json_mode):
+    """OpenAI가 필요할 때 네이버 검색 도구를 부르게 하고, 결과를 보고 답하게 한다. 실패하면 None."""
+    msgs=[{'role':'system','content':system}]+[dict(m) for m in messages];end=time.time()+timeout
+    for rnd in range(3):
+        body={'model':OPENAI_MODEL,'messages':msgs,'max_tokens':max_tokens,'temperature':temperature,'tools':[SEARCH_TOOL],'tool_choice':'none' if rnd==2 else 'auto'}
+        if json_mode:body['response_format']={'type':'json_object'}
+        code,res=post('https://api.openai.com/v1/chat/completions',{'Content-Type':'application/json','Authorization':'Bearer '+core.secret('OPENAI_API_KEY')},body,max(5,end-time.time()))
+        if code!=200:LOG.warning('OpenAI 응답 %s: %s',code,str((res.get('error') or {}).get('message',''))[:200]);return None
+        m=(res.get('choices') or [{}])[0].get('message') or {}
+        calls=m.get('tool_calls') or []
+        if not calls:return (m.get('content') or '').strip() or None
+        msgs.append({'role':'assistant','content':m.get('content'),'tool_calls':calls})
+        for c in calls[:3]:
+            try:q=json.loads((c.get('function') or {}).get('arguments') or '{}').get('query','')
+            except ValueError:q=''
+            found=naver_search(q) if q else []
+            msgs.append({'role':'tool','tool_call_id':c.get('id'),'content':json.dumps(found,ensure_ascii=False)[:4000] if found else '검색 결과 없음'})
+    return None
+
 def web_answer(system,messages,max_tokens,timeout,temperature):
     """OpenAI Responses API + 인터넷 검색 도구. AI가 필요할 때만 검색한다. 실패하면 None (부른 쪽이 검색 없이 다시 묻는다)."""
     body={'model':OPENAI_MODEL,'instructions':system,'input':[dict(m) for m in messages],'tools':[{'type':'web_search'}],
@@ -42,7 +83,12 @@ def chat(system,messages,max_tokens=700,timeout=30,json_mode=False,temperature=0
     web=True면 (OpenAI일 때) 인터넷 검색을 쓸 수 있게 한다. 키가 없거나 실패하면 None."""
     p=provider()
     try:
-        if p=='openai' and web and not files:
+        if p=='openai' and web and not files and naver_ready():  # 네이버 검색 키가 있으면 네이버로 검색
+            try:
+                text=naver_answer(system,messages,max_tokens,timeout,temperature,json_mode)
+                if text:return text
+            except Exception as e:LOG.warning('네이버 검색 상담 실패: %s',type(e).__name__)
+        elif p=='openai' and web and not files:  # 없으면 OpenAI 자체 검색
             try:
                 text=web_answer(system+('\n출력은 JSON 한 개만.' if json_mode else ''),messages,max_tokens,timeout,temperature)
                 if text:return text
