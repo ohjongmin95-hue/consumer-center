@@ -236,7 +236,8 @@ app.jinja_env.globals.update(pub_names=pub_names,my_names=my_names,my_descs=my_d
 # 관리자·기자실도 5단계로 보고 고름. 저장값은 예전 진행 상태 그대로 두고 단계마다 대표 상태 하나로 저장 ('추가 확인'은 검토로 봄)
 STAGE_STATUS=['접수','검토 중','기업 답변 대기','기업 답변 도착','종결']
 def stage_of(status):return jebo.STATUS_MY.get(status,1)
-app.jinja_env.globals.update(STAGE_STATUS=STAGE_STATUS,stage_of=stage_of)
+def stage_count(counts,status):return sum(n for s,n in counts.items() if stage_of(s)==stage_of(status))
+app.jinja_env.globals.update(STAGE_STATUS=STAGE_STATUS,stage_of=stage_of,stage_count=stage_count)
 app.jinja_env.globals['STATUSES']=STATUSES
 app.jinja_env.globals['status_step']=status_step
 DOC_VARS={'운영자':'operator.name','대표자':'operator.ceo','이메일':'operator.email','전화':'operator.phone','주소':'operator.address','보호책임자':'operator.privacy_officer','보호책임자연락처':'operator.privacy_contact','청소년보호책임자':'operator.youth_officer','청소년보호책임자연락처':'operator.youth_contact','시행일':'policy.effective_date'}
@@ -260,7 +261,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-78'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-79'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)

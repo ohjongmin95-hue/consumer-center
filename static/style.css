@@ -1626,3 +1626,47 @@ details.cs-card[open] > summary::after { content: ' −'; }
 .case-staff span { font-weight: 700; color: #5b5249; }
 .case-staff b { color: #202630; }
 .ad-who { font-weight: 800; color: var(--ad-ink); white-space: nowrap; }
+
+/* 관리자·기자실 모바일 비율 정리 */
+.ad-pipeline { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.ad-pipeline span { font-size: 12px; text-align: center; word-break: keep-all; line-height: 1.35; }
+@media (max-width: 1100px) { .ad-todo { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  .ad-main { padding: 18px 16px 48px; }
+  .ad-head { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 16px; }
+  .ad-head h1, .ad-main .page-title, .ad-main .cs-title { font-size: 22px; }
+  .ad-head .ad-notify-on { align-self: flex-start; }
+  .ad-todo { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .ad-todo-item { flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; border-radius: 12px; }
+  .ad-todo-item b { min-width: 0; font-size: 22px; }
+  .ad-todo-item span { font-size: 13px; line-height: 1.4; }
+  .ad-panel, .ad-main .form-panel, .ad-main .cs-panel { padding: 16px; border-radius: 12px; }
+  .ad-kpis b { font-size: 22px; }
+  .ad-pipeline { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+  .ad-pipeline a { padding: 8px 2px; }
+  .ad-pipeline b { font-size: 16px; }
+  .ad-pipeline span { font-size: 11px; }
+  .ops-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .ops-kpis > div { padding: 14px; }
+  .ops-kpis b { font-size: 21px; }
+  .ops-kpis small { font-size: 11.5px; }
+  /* 표는 카드처럼 한 줄씩 쌓음 (칸 이름은 console.html 스크립트가 붙임) */
+  .cs-table-wrap:has(.cs-stack), .tablewrap:has(.cs-stack) { overflow: visible; }
+  table.cs-stack, .cs-stack tbody, .cs-stack tr, .cs-stack td { display: block; width: auto; }
+  .cs-stack thead { display: none; }
+  .cs-stack tr { padding: 14px 16px; border-bottom: 1px solid #f1f0ec; }
+  .cs-stack tbody tr:last-child { border-bottom: 0; }
+  .cs-stack td { padding: 3px 0 !important; border: 0 !important; white-space: normal; overflow-wrap: anywhere; background: none !important; }
+  .cs-stack td[data-label]::before { content: attr(data-label); display: block; margin: 6px 0 2px; color: #8a8f96; font-size: 11.5px; font-weight: 700; }
+  .cs-stack td:first-child::before { display: none; }
+  .cs-stack td:empty { display: none; }
+  .cs-stack .cs-inline, .cs-stack .biz-actions, .cs-stack .inline-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cs-stack input:not([type=hidden]):not([type=checkbox]) { max-width: 100%; min-width: 0; }
+}
+@media (max-width: 380px) { .ad-pipeline span { font-size: 10px; } }
+@media (max-width: 900px) {
+  .ad-pipeline a { min-width: 0; }
+  .ad-pipeline span { max-width: 100%; white-space: normal; }
+  .cs-stack .biz-actions { flex-direction: row; }
+  .cs-stack .biz-actions .cs-btn, .cs-stack .biz-actions button { width: auto; flex: 0 0 auto; }
+}

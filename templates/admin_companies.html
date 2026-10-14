@@ -29,7 +29,7 @@
   {% if master_id %}<form method="post" class="biz-master-off"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="master_off"><button class="cs-btn" type="submit" onclick="return confirm('마스터 계정을 끌까요?')">마스터 계정 끄기</button></form>{% endif %}
 
   <div class="cs-table-wrap">
-    <table class="cs-table">
+    <table class="cs-table cs-stack">
       <thead><tr><th>회사</th><th>담당자</th><th>상태</th><th>다른 이름 (제보에 적히는 이름)</th><th>담당자 비밀번호</th><th></th></tr></thead>
       <tbody>
       {% for c in companies %}
