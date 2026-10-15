@@ -1,5 +1,5 @@
 """소비자용 '소보루 CS' 고객센터: 어느 기업이든 한곳에서 요청 접수·조회."""
-import os, re, datetime, json
+import os, re, datetime, json, urllib.parse
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 import core, law, chatbot, workflow
@@ -290,6 +290,13 @@ def company_page(company_id):
     session['cs']=co['id']
     return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS)
 
+def seen_widget(co):
+    """버튼이 실제로 붙었는지 사장님 화면에 보여 주려고, 버튼을 불러간 쇼핑몰 주소(도메인만)와 때를 남긴다. 한 시간에 한 번만 쓴다."""
+    host=urllib.parse.urlsplit(request.headers.get('Referer','')).hostname or ''
+    if not host or host in (core.CONSUMER_HOST,core.BUSINESS_HOST,'localhost','127.0.0.1'):return
+    if co['widget_seen'] and co['widget_host']==host and co['widget_seen']>core.iso(core.now()-datetime.timedelta(hours=1)):return
+    with conn() as db:db.execute('UPDATE companies SET widget_seen=?,widget_host=? WHERE id=?',(core.iso(),host[:100],co['id']))
+
 @app.route('/widget.js')
 def widget_js():
     """쇼핑몰에 붙이는 '문의하기' 버튼. 누르면 그 회사 고객센터 화면을 새 창으로 연다 (쇼핑몰 화면에 다른 내용을 끼워 넣지 않는다)."""
@@ -297,6 +304,7 @@ def widget_js():
     with conn() as db:co=core.company(db,int(cid)) if cid.isdigit() else None
     if not co or co['status']!='active':return app.response_class('/* 소보루 CS: 회사를 찾을 수 없어요 */',mimetype='application/javascript')
     url=core.site_url('me','/to/%d'%co['id'])
+    seen_widget(co)
     js=("(function(){if(window.__soboruCS)return;window.__soboruCS=1;var u=%s;var b=document.createElement('button');b.type='button';b.textContent='문의하기';"
         "b.setAttribute('aria-label','고객센터 문의하기');b.style.cssText='position:fixed;right:20px;bottom:20px;z-index:2147483000;border:0;border-radius:28px;padding:14px 20px;"
         "background:#f89b00;color:#fff;font:600 15px/1 -apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.18);cursor:pointer';"

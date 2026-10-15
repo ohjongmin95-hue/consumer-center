@@ -38,6 +38,24 @@ def summarize(db,rows):
             'cats':[(c,sum(r['category']==c for r in rows)) for c in core.CATS],
             'channels':sorted({(r['channel'] or '한큐') for r in rows})}
 
+def conversion(db,co,days=30,window=14):
+    """상담 후 구매 전환: 최근 days일에 요청을 남긴 고객(휴대폰 번호가 있는) 중, 요청한 날부터 window일 안에
+    주문 장부에 새 주문이 생긴 고객의 비율과 그 주문 금액. 요청에 적힌 주문번호와 같은 주문은 세지 않는다. -> dict"""
+    since=(core.now()-datetime.timedelta(days=days)).date().isoformat()
+    rows=db.execute("SELECT phone,order_no,created FROM cases WHERE company_id=? AND phone!='' AND substr(created,1,10)>=? AND title NOT LIKE '[시험 문의]%'",(co['id'],since)).fetchall()
+    first={}
+    for r in rows:
+        first.setdefault(r['phone'],[]).append(r)
+    won=set();amount=0;seen=set()
+    for ph,cs in first.items():
+        start=min(r['created'][:10] for r in cs);mine={(r['order_no'] or '').strip() for r in cs}
+        end=(datetime.date.fromisoformat(start)+datetime.timedelta(days=window)).isoformat()
+        for o in db.execute("SELECT id,order_no,amount FROM orders WHERE company_id=? AND phone=? AND ordered_on>=? AND ordered_on<=?",(co['id'],ph,start,end)).fetchall():
+            if o['order_no'] in mine or o['id'] in seen:continue
+            won.add(ph);seen.add(o['id']);amount+=o['amount'] or 0
+    n=len(first)
+    return dict(n=n,won=len(won),pct=round(len(won)/n*100) if n else None,amount=amount,days=days,window=window)
+
 def month_range(y,m):
     start=datetime.date(y,m,1);end=(start+datetime.timedelta(days=32)).replace(day=1)
     return start,end

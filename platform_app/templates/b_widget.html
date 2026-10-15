@@ -1,0 +1,20 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
+{% block title %}쇼핑몰 문의 버튼 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('connect') }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>쇼핑몰 문의 버튼</h1></div><a class="btn sm gray" href="{{ url_for('connect') }}">서비스 연동</a></div>
+<section class="panel"><div class="phd">{{ i.tf_tile('check' if rc.widget_seen else 'link',24) }}<div class="ph">{% if rc.widget_seen %}{{ rc.widget_host }}에 붙어 있어요{% else %}아직 붙이지 않았어요{% endif %}</div></div>
+{% if rc.widget_seen %}<p class="sub" style="margin:0;font-size:15px">마지막 확인 {{ fmt(rc.widget_seen) }}</p>{% else %}<p class="sub" style="margin:0;font-size:15px">붙인 뒤 쇼핑몰을 한 번 열면 여기에 표시돼요.</p>{% endif %}</section>
+<section class="panel stack"><div class="ph">1. 이 한 줄을 복사해요</div>
+<div class="addline"><input class="inp" id="wsnip" value='&lt;script src="{{ widget }}" async&gt;&lt;/script&gt;' readonly aria-label="붙일 코드"><button class="btn md" type="button" data-copy="wsnip">복사</button></div></section>
+<section class="panel stack"><div class="ph">2. 쇼핑몰에 붙여요</div>
+<div class="wsteps">
+<div class="drow">{{ i.tf_tile('gift',28) }}<span class="tx"><b>카페24</b><span>관리자 › 디자인 › 디자인 편집에서 기본 레이아웃(layout.html)을 열고 &lt;/body&gt; 바로 위에 붙여요. PC와 모바일에 한 번씩.</span></span></div>
+<div class="drow">{{ i.tf_tile('pencil',28) }}<span class="tx"><b>다른 쇼핑몰·홈페이지</b><span>모든 화면에 들어가는 HTML의 &lt;/body&gt; 바로 위에 붙여요.</span></span></div>
+<div class="drow">{{ i.tf_tile('speech',28) }}<span class="tx"><b>스마트스토어·쿠팡</b><span>코드를 넣을 수 없어요. 판매처 연결로 문의를 가져와요.</span></span></div>
+</div></section>
+<section class="panel stack"><div class="ph">버튼 대신 링크만 걸 때</div>
+<div class="addline"><input class="inp" id="wlink" value="{{ link }}" readonly aria-label="고객센터 링크"><button class="btn md gray" type="button" data-copy="wlink">복사</button></div>
+<p class="cap" style="margin:0">인스타그램 프로필, 카카오 채널, 문자에 넣어도 돼요. <a class="link" href="{{ link }}" target="_blank" rel="noopener">열어 보기</a></p></section>
+{% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했어요';},function(){b.textContent='선택했어요';});};});</script>{% endblock %}
