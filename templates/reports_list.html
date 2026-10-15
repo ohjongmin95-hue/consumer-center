@@ -17,6 +17,12 @@
     {% if layout == 'reporter_base.html' %}<a class="cs-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
   </nav>
 
+  {% if legacy_pending %}
+  <form class="pend-bar" method="post" action="{{ url_for('admin_publish_pending') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <p><b>승인을 기다리던 공개 제보가 {{ legacy_pending }}건 있어요.</b> 자동 게시로 바뀌기 전에 들어와서 아직 사이트에 '비공개'로 보여요.</p>
+    <button class="cs-btn cs-btn-main" type="submit" onclick="return confirm('{{ legacy_pending }}건을 지금 게시할까요? 전화번호·이메일은 자동으로 가려져요.')">한 번에 게시하기</button>
+  </form>
+  {% endif %}
   {# 검토 결과(미검토·정상·중복·제외)는 진행 단계와 따로 거름. 개수는 전체 제보 기준 #}
   <div class="rv-bar">
     <nav class="rv-filter" aria-label="검토 결과별 보기">
