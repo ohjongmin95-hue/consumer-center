@@ -8,7 +8,7 @@
 문서: apidocs.cafe24.com > Admin API (Authentication, order/cancellation, return, community/boards)
 시험 운영: 문서대로 만들었고, 실제 쇼핑몰로는 OH 시험 쇼핑몰에서 먼저 확인한다.
 """
-import base64, datetime, html, json, re, secrets, urllib.parse
+import base64, datetime, hashlib, hmac as _hmac, html, json, re, secrets, time, urllib.parse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, session, current_app
 import core, shops, orders
 from core import conn, clean, digits
@@ -251,6 +251,46 @@ def company():
     if not co:abort(403)
     return co
 
+# ---------- 카페24 앱스토어·관리자에서 앱을 열 때 (App URL) ----------
+LAUNCH_MAX_AGE=2*3600  # 카페24가 붙여 보낸 timestamp가 이보다 오래되면 받지 않는다
+def launch_ok(raw_query):
+    """카페24가 App URL에 붙여 보내는 값(mall_id, timestamp, hmac 등)이 진짜인지. 맞으면 mall_id, 아니면 None.
+    hmac = base64(HMAC-SHA256(client secret, hmac을 뺀 쿼리 문자열)). 카페24가 보낸 순서 그대로와 이름 순 정렬 둘 다 확인한다."""
+    secret=core.secret('CAFE24_CLIENT_SECRET')
+    if not secret:return None
+    pairs=urllib.parse.parse_qsl(raw_query,keep_blank_values=True)
+    d=dict(pairs);sig=d.get('hmac','');mall=(d.get('mall_id') or '').lower()
+    if not sig or not MALL_RE.match(mall):return None
+    try:
+        if abs(time.time()-int(d.get('timestamp','0')))>LAUNCH_MAX_AGE:return None
+    except ValueError:return None
+    rest=[(k,v) for k,v in pairs if k!='hmac']
+    for q in {urllib.parse.urlencode(rest),urllib.parse.urlencode(sorted(rest)),'&'.join(x for x in raw_query.split('&') if not x.startswith('hmac='))}:
+        mac=base64.b64encode(_hmac.new(secret.encode(),q.encode(),hashlib.sha256).digest()).decode()
+        if _hmac.compare_digest(mac,sig):return mall
+    return None
+
+@bp.route('/cafe24/launch')
+def launch():
+    """카페24에서 '소보루 CS' 앱을 누르면 오는 곳. 로그인돼 있으면 바로 연결(권한 동의)로, 아니면 가입·로그인 뒤 이어서."""
+    if not ready():abort(404)
+    mall=launch_ok(request.query_string.decode())
+    if not mall:
+        current_app.logger.warning('카페24 앱 실행 값 확인 실패: %s',request.args.get('mall_id',''))
+        flash('카페24에서 온 요청을 확인하지 못했어요. 카페24 관리자에서 앱을 다시 열어 주세요.','error')
+        return redirect(url_for('login'))
+    session['c24_launch']=mall
+    if not session.get('co_id'):
+        flash(f'카페24 쇼핑몰({mall})을 소보루 CS에 연결할게요. 먼저 가입하거나 로그인해 주세요.','ok')
+        return redirect(url_for('signup'))
+    co=company()
+    with conn() as db:lk=link(db,co['id'])
+    if lk and lk['mall_id']==mall and lk['status']=='ok':
+        session.pop('c24_launch',None);return redirect(url_for('decide'))
+    if not co['member']:return redirect(url_for('c24.page'))  # 회사 인증 전: 연결 화면에서 안내
+    nonce=secrets.token_urlsafe(12);session['c24_nonce']=nonce
+    return redirect(authorize_url(mall,core.signer('c24').dumps({'co':co['id'],'mall':mall,'n':nonce})))
+
 @bp.route('/connect/cafe24',methods=['GET','POST'])
 def page():
     if not session.get('co_id'):return redirect(url_for('login'))
@@ -292,7 +332,7 @@ def page():
                         return redirect(authorize_url(mall,state))
         return redirect(url_for('c24.page'))
     with conn() as db:lk=link(db,co['id'])
-    return render_template('b_cafe24.html',scope_text=scope_text,lk=lk,ready=ready(),scopes=SCOPES,tab='connect',watch=boards_of(lk) if lk else None,pick=None)
+    return render_template('b_cafe24.html',scope_text=scope_text,lk=lk,ready=ready(),scopes=SCOPES,tab='connect',watch=boards_of(lk) if lk else None,pick=None,launch=session.pop('c24_launch',None))
 
 @bp.route('/connect/cafe24/callback')
 def callback():
@@ -316,7 +356,7 @@ def callback():
     try:data=_token(st['mall'],{'grant_type':'authorization_code','code':code,'redirect_uri':redirect_uri()})
     except shops.ShopError as e:flash(str(e),'error');return redirect(url_for('c24.page'))
     with conn() as db:
-        store(db,co['id'],st['mall'],data)
+        store(db,co['id'],st['mall'],data);session.pop('c24_launch',None)
         try:sync_orders(db,co)
         except shops.ShopError:pass
         try:sync_boards(db,co)

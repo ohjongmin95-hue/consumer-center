@@ -948,6 +948,17 @@ body.v2 .foot2{padding-block:16px 18px;font-size:14px}
 .cb-chips .pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .cb-chips button:hover{border-color:var(--fg3)}
 .cb-in{display:flex;gap:8px;margin-top:4px}
+.cb-ord{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-self:stretch;max-width:520px}
+.cb-ord input{min-width:0;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);padding:0 14px;font:inherit;font-size:15px;color:var(--fg)}
+.cb-ord input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+.cb-ord button{height:44px;padding:0 18px;border-radius:12px;border:0;background:var(--accent);color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.cb-ord button:disabled{opacity:.5}
+@media (max-width:480px){.cb-ord{grid-template-columns:1fr}}
+.cb-oc{display:grid;gap:4px;min-width:min(300px,86%);white-space:normal}
+.cb-oc strong{font-size:16.5px;margin-bottom:4px}
+.cb-oc div{display:flex;gap:12px;justify-content:space-between;font-size:14.5px}
+.cb-oc div span{color:var(--fg3);flex:none}
+.cb-oc div b{font-weight:600;text-align:right;overflow-wrap:anywhere}
 .cb-in input{flex:1;min-width:0;height:48px;border-radius:24px;border:1px solid var(--line);background:var(--card);padding:0 18px;font:inherit;font-size:15.5px;color:var(--fg)}
 .cb-in input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
 .cb-in button{flex:none;height:48px;padding:0 18px;border-radius:24px;border:0;background:var(--fg);color:var(--card);font:inherit;font-size:15px;font-weight:700;cursor:pointer}

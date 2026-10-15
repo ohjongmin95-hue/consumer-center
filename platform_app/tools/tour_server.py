@@ -22,6 +22,8 @@ with core.conn() as db:
     db.execute("UPDATE cases SET company_id=?,company_name=?,channel=CASE id%3 WHEN 0 THEN '스마트스토어' WHEN 1 THEN '쿠팡' ELSE '한큐' END WHERE company_id=?",(cid,co['name'],dm['id']))
     db.execute('DELETE FROM ai_profile WHERE company_id=?',(dm['id'],));db.execute('DELETE FROM companies WHERE id=?',(dm['id'],))
     chatbot.save_profile(db,cid,demo.PROFILE)
+    # 상담창 주문 조회 화면 (견본 주문 하나에 견본 휴대폰 번호)
+    db.execute("UPDATE orders SET phone='01012345678' WHERE id=(SELECT MIN(id) FROM orders WHERE company_id=? AND status='shipped')",(cid,))
     # 카페24 연결 화면·카페24 주문 화면 (가짜 토큰, 밖으로 나가지 않는다)
     import cafe24, shops
     db.execute("INSERT INTO cafe24_links(company_id,mall_id,creds,shop_name,scopes,expires,refresh_expires,synced,n_ord,created) VALUES(?,?,?,?,?,?,?,?,?,?)",

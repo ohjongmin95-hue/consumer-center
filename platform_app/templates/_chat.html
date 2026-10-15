@@ -1,5 +1,5 @@
 {# 상담창(자동응답). co가 있으면 그 기업의 안내 문구, 없으면 기본 문구로 답한다 #}
-<div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) if co else url_for('chat') }}" data-new="{{ url_for('new',company_id=co.id) if co else url_for('new') }}" data-track="{{ url_for('track',company_id=co.id) if co else url_for('track') }}" data-greet="{{ co.name+' 고객센터예요' if co else CNAME+'예요' }}" data-csrf="{{ csrf_token() }}">
+<div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) if co else url_for('chat') }}" data-new="{{ url_for('new',company_id=co.id) if co else url_for('new') }}" data-track="{{ url_for('track',company_id=co.id) if co else url_for('track') }}" data-greet="{{ co.name+' 고객센터예요' if co else CNAME+'예요' }}" data-csrf="{{ csrf_token() }}" data-orders="{{ 1 if member else '' }}">
 <div class="cb-log" id="cbLog" aria-live="polite"></div>
 <form class="cb-in" id="cbForm" autocomplete="off"><input id="cbText" maxlength="500" placeholder="예: 주문한 게 아직 안 왔어요" aria-label="문의 내용"><button>보내기</button></form>
 </div>
@@ -17,8 +17,31 @@ function clearChips(){log.querySelectorAll('.cb-chips').forEach(e=>e.remove())}
 function later(fn,ms){const d=bubble('•••','bot dots');setTimeout(()=>{d.remove();fn()},ms||450)}
 function post(data){const fd=new FormData();fd.append('csrf',box.dataset.csrf);for(const k in data)fd.append(k,data[k]);
   return fetch(box.dataset.url,{method:'POST',body:fd,credentials:'same-origin'}).then(r=>r.json())}
-function catChips(){chips(CATS.map(c=>({label:c,fn:()=>{bubble(c,'me');ask({category:c})}})))}
-function newUrl(){const u=new URL(box.dataset.new,location.href);if(cat)u.searchParams.set('category',cat);
+const ORD=!!box.dataset.orders;
+function catChips(){chips([...(ORD?[{label:'내 주문 조회',pri:true,fn:()=>{bubble('내 주문 조회','me');later(orderForm)}}]:[]),...CATS.map(c=>({label:c,fn:()=>{bubble(c,'me');ask({category:c})}}))])}
+function orderForm(){  // 휴대폰 번호 + 주문번호(또는 주문자 이름)가 둘 다 맞아야 보여 준다
+  bubble('주문할 때 쓴 휴대폰 번호와 주문번호를 적어 주세요. 주문번호를 모르면 주문자 이름도 돼요.');
+  const f=document.createElement('form');f.className='cb-ord';f.autocomplete='off';
+  f.innerHTML='<input name="phone" type="tel" inputmode="numeric" maxlength="13" placeholder="휴대폰 번호" aria-label="휴대폰 번호" required><input name="key" maxlength="60" placeholder="주문번호 또는 주문자 이름" aria-label="주문번호 또는 주문자 이름" required><button>조회</button>';
+  log.appendChild(f);show(f);f.phone.focus();
+  f.addEventListener('submit',e=>{e.preventDefault();const btn=f.querySelector('button');btn.disabled=true;
+    post({act:'order',phone:f.phone.value,key:f.key.value}).then(r=>{
+      if(r.order_error){btn.disabled=false;later(()=>bubble(r.order_error));return}
+      f.remove();bubble('주문 조회','me');
+      later(()=>{r.orders.forEach(orderCard);const o=r.orders[0];
+        bubble(r.orders.length>1?'최근 주문 '+r.orders.length+'건이에요. 궁금한 점을 이어서 물어보셔도 돼요.':'궁금한 점을 이어서 물어보셔도 돼요.');
+        chips([...(o.can_cancel?[{label:'주문 취소 접수',fn:()=>{bubble('주문 취소 접수','me');later(()=>{bubble('취소 요청을 이어서 쓸 수 있게 해 둘게요.');setTimeout(()=>location.href=newUrl({category:'주문 취소',order_no:o.order_no}),700)})}}]:[]),
+               ...(o.can_return?[{label:'반품·교환 접수',fn:()=>{bubble('반품·교환 접수','me');later(()=>{bubble('반품·교환 요청을 이어서 쓸 수 있게 해 둘게요.');setTimeout(()=>location.href=newUrl({category:'반품·환불',order_no:o.order_no}),700)})}}]:[]),
+               ...(o.invoice?[{label:'배송 자세히 보기',href:box.dataset.track+(box.dataset.track.includes('?')?'&':'?')+'courier='+encodeURIComponent(o.courier)+'&invoice='+encodeURIComponent(o.invoice)}]:[]),
+               {label:'해결됐어요',fn:()=>{post({outcome:'solved',category:cat||'배송 조회'});bubble('해결됐어요','me');later(()=>bubble('도움이 되어 다행이에요. 다른 궁금한 점도 편하게 말씀해 주세요.'))}}])});
+    }).catch(()=>{btn.disabled=false;later(()=>bubble('연결이 잠시 불안정해요. 조금 뒤에 다시 해 주세요.'))})});
+}
+function orderCard(o){const d=document.createElement('div');d.className='cb-m bot cb-oc';
+  const row=(k,v)=>{if(!v)return;const p=document.createElement('div');const a=document.createElement('span');a.textContent=k;const b=document.createElement('b');b.textContent=v;p.append(a,b);d.appendChild(p)};
+  const h=document.createElement('strong');h.textContent=o.status_label;d.appendChild(h);
+  row('상품',o.product+(o.qty>1?' × '+o.qty:''));row('주문번호',o.order_no);row('주문일',o.ordered_on);row('택배',o.invoice?o.courier+' '+o.invoice:'');row('배송 위치',o.track);
+  log.appendChild(d);show(d);hist.push({who:'bot',text:'주문 '+o.order_no+': '+o.status_label+(o.track?' ('+o.track+')':'')})}
+function newUrl(x){x=x||{};const u=new URL(box.dataset.new,location.href);const c=x.category||cat;if(c)u.searchParams.set('category',c);if(x.order_no)u.searchParams.set('order_no',x.order_no);
   const body=(summary?'[AI 상담 요약]\n'+summary+'\n\n[고객이 쓴 말]\n':'')+said.join('\n');if(body)u.searchParams.set('body',body.slice(0,3000));return u.pathname+u.search}
 function aiChips(handoff){  // AI 답 뒤: 계속 물어보면 되고, 필요하면 담당자에게 넘긴다
   const go={label:'담당자에게 전달하기',pri:!!handoff,fn:()=>{post({outcome:'filed',category:cat||'기타'});bubble('담당자에게 전달할게요','me');later(()=>{bubble('지금까지 나눈 내용을 정리해 둘게요. 연락받을 정보만 적어 주시면 담당자가 확인하고 답드려요.');setTimeout(()=>location.href=newUrl(),900)})}};
@@ -26,7 +49,7 @@ function aiChips(handoff){  // AI 답 뒤: 계속 물어보면 되고, 필요하
   chips(handoff?[go,ok]:[ok,go])}
 function endChips(){
   const file=info&&info.member?(info.auto&&!info.cond?'접수하면 바로 처리돼요':'담당자에게 바로 전달돼요'):'';
-  chips([...(cat==='배송 조회'?[{label:'송장번호로 바로 조회',pri:true,href:box.dataset.track}]:[]),{label:'접수할게요',pri:cat!=='배송 조회',fn:()=>{post({outcome:'filed',category:cat});bubble('접수할게요','me');later(()=>{bubble((file?file+'. ':'')+'적어 주신 내용을 이어서 쓸 수 있게 해 둘게요.');setTimeout(()=>location.href=newUrl(),700)})}},
+  chips([...(cat==='배송 조회'&&ORD?[{label:'내 주문 조회',pri:true,fn:()=>{bubble('내 주문 조회','me');later(orderForm)}}]:[]),...(cat==='배송 조회'?[{label:'송장번호로 바로 조회',pri:!ORD,href:box.dataset.track}]:[]),{label:'접수할게요',pri:cat!=='배송 조회',fn:()=>{post({outcome:'filed',category:cat});bubble('접수할게요','me');later(()=>{bubble((file?file+'. ':'')+'적어 주신 내용을 이어서 쓸 수 있게 해 둘게요.');setTimeout(()=>location.href=newUrl(),700)})}},
          {label:'해결됐어요',fn:()=>{post({outcome:'solved',category:cat});bubble('해결됐어요','me');later(()=>bubble('도움이 됐다니 다행이에요. 또 궁금한 게 생기면 언제든 적어 주세요.'))}},
          {label:'다른 걸 물어볼게요',fn:()=>{bubble('다른 걸 물어볼게요','me');said=[];cat=null;later(()=>{bubble('네, 편하게 적어 주세요.');catChips()})}}])}
 function days(){chips([
@@ -36,7 +59,7 @@ function days(){chips([
 function ask(data){clearChips();
   post(data).then(r=>{
     if(r.error){later(()=>bubble(r.error));return}
-    if(r.answer){if(r.category)cat=r.category;info=r;if(r.summary)summary=r.summary;later(()=>{bubble(r.answer);aiChips(r.handoff)});return}  // AI 상담원: 대화는 이어지고, 사람이 처리할 일이면 담당자 연결을 먼저 보여 준다
+    if(r.answer){if(r.category)cat=r.category;info=r;if(r.summary)summary=r.summary;later(()=>{bubble(r.answer);if(r.lookup&&ORD)orderForm();else aiChips(r.handoff)});return}  // AI 상담원: 대화는 이어지고, 사람이 처리할 일이면 담당자 연결을 먼저 보여 준다
     if(!r.category){later(()=>{bubble('제가 정확히 알아들었는지 모르겠어요. 가장 가까운 걸 골라 주시겠어요?');catChips()});return}
     cat=r.category;info=r;
     later(()=>{bubble(cat==='기타'?'네, 확인했어요.':cat+' 문의시군요.');
