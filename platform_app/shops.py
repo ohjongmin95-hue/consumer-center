@@ -204,6 +204,9 @@ def post_reply(db,co,c,text):
     """판매처에서 가져온 문의에 답변을 올린다. 올리면 '', 못 올리면 이유."""
     seen=db.execute('SELECT * FROM shop_seen WHERE company_id=? AND case_id=?',(co['id'],c['id'])).fetchone()
     if not seen:return '판매처에서 가져온 문의가 아니에요.'
+    if seen['shop']=='email':
+        import mailin
+        return mailin.post_reply(db,co,c,text)
     text=(text or '').strip()[:1000]
     if seen['shop']=='cafe24':
         import cafe24
@@ -323,5 +326,5 @@ def sync_all():
 if __name__=='__main__':
     core.MAIL_ASYNC=False
     print(f'판매처 가져오기 {sync_all()}건')
-    import cafe24, openapi  # 같은 10분 cron에서 카페24 주문과 외부 API 웹훅도 처리한다
-    print(f'카페24 주문 {cafe24.sync_all()}건, 웹훅 {openapi.dispatch()}건')
+    import cafe24, openapi, mailin  # 같은 10분 cron에서 카페24 주문, 이메일 문의, 외부 API 웹훅도 처리한다
+    print(f'카페24 주문 {cafe24.sync_all()}건, 이메일 문의 {mailin.sync_all()}건, 웹훅 {openapi.dispatch()}건')

@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -2008,6 +2008,62 @@ class PlatformTest(unittest.TestCase):
         # 끄면 버튼이 사라진다
         self.post(b,'/biz/settings',{'act':'ops'})
         self.assertNotIn('상담원과 채팅',self.client().get(f'/to/{cid}').get_data(as_text=True))
+
+    def test_mail_inbox(self):
+        """이메일 문의: 메일함을 이으면 새 메일이 요청이 되고, 답장은 이어 붙고, 답변은 눌러야 회사 메일함에서 나간다."""
+        import mailin
+        b,o,cid=self.signup_and_approve('메일상점','mail-co@example.com')
+        logins=[];sent=[]
+        class FakeImap:
+            def logout(self):pass
+        def imap_open(creds):
+            logins.append(creds)
+            if creds['password']!='app-pass-1':raise mailin.MailError('로그인하지 못했어요. 메일 주소와 앱 비밀번호, IMAP 사용 설정을 확인해 주세요.')
+            return FakeImap()
+        box=[]
+        def fetch(creds,uv,last,since):return '7',[(u,r) for u,r in box if u>last]
+        def mail(uid,frm,subj,body,mid,extra=''):
+            box.append((uid,(f"From: {frm}\r\nTo: cs@mail-shop.com\r\nSubject: {subj}\r\nMessage-ID: {mid}\r\nDate: Wed, 14 Oct 2026 10:00:00 +0900\r\n{extra}"
+                             f"Content-Type: text/plain; charset=utf-8\r\n\r\n{body}").encode()))
+        old=(mailin.imap_open,mailin.fetch,mailin.smtp_send)
+        mailin.imap_open=imap_open;mailin.fetch=fetch;mailin.smtp_send=lambda creds,msg:sent.append(msg)
+        try:
+            page=b.get('/biz/connect').get_data(as_text=True);self.assertIn('이메일 문의',page)
+            r=self.post(b,'/biz/connect/email',{'preset':'naver','user':'cs@mail-shop.com','password':'wrong'},'/biz/connect/email')
+            self.assertIn('로그인하지 못했어요',b.get('/biz/connect/email').get_data(as_text=True))
+            with self.core.conn() as db:self.assertIsNone(mailin.link(db,cid))
+            mail(1,'"김메일" <kim@example.com>','환불 언제 되나요?','지난주에 반품 보냈는데 환불이 아직이에요.\n\n-----Original Message-----\n지난 메일','<m1@example.com>')
+            mail(2,'news@shop.example','이번 주 할인','광고','<ad@example.com>','List-Unsubscribe: <mailto:x@example.com>\r\n')
+            mail(3,'no-reply@pg.example','결제 알림','자동','<pg@example.com>')
+            self.post(b,'/biz/connect/email',{'preset':'naver','user':'cs@mail-shop.com','password':'app-pass-1'},'/biz/connect/email')
+            self.assertEqual(logins[-1]['imap'],'imap.naver.com')
+            with self.core.conn() as db:
+                lk=mailin.link(db,cid);self.assertEqual(lk['status'],'ok');self.assertNotIn('app-pass-1',lk['creds'])
+                rows=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='이메일'",(cid,)).fetchall()
+            self.assertEqual(len(rows),1);c=rows[0]
+            self.assertEqual((c['title'],c['email'],c['name']),('환불 언제 되나요?','kim@example.com','김메일'))
+            self.assertNotIn('지난 메일',c['body'])
+            # 다시 가져와도 같은 메일은 한 번만
+            self.post(b,'/biz/connect/email',{'act':'sync'},'/biz/connect/email')
+            with self.core.conn() as db:self.assertEqual(db.execute("SELECT COUNT(*) FROM cases WHERE channel='이메일' AND company_id=?",(cid,)).fetchone()[0],1)
+            # 답변 쓰기만으로는 메일이 나가지 않는다
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'reply','msg':'오늘 환불해 드렸어요. 2~3일 안에 들어가요.'},f'/biz/case/{c["id"]}')
+            self.assertEqual(sent,[])
+            page=b.get(f'/biz/case/{c["id"]}').get_data(as_text=True);self.assertIn('메일로 답변 보내기',page)
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'post_shop'},f'/biz/case/{c["id"]}')
+            self.assertEqual(len(sent),1);m=sent[0]
+            self.assertEqual((m['To'],m['In-Reply-To']),('kim@example.com','<m1@example.com>'));self.assertIn('오늘 환불해 드렸어요',m.get_content())
+            # 고객이 우리 답장에 다시 답하면 같은 요청에 이어 붙는다
+            mail(4,'kim@example.com','Re: 환불 언제 되나요?','확인했어요 감사합니다\n\n> 오늘 환불해 드렸어요','<m4@example.com>',f"In-Reply-To: {m['Message-ID']}\r\n")
+            self.post(b,'/biz/connect/email',{'act':'sync'},'/biz/connect/email')
+            with self.core.conn() as db:
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM cases WHERE channel='이메일' AND company_id=?",(cid,)).fetchone()[0],1)
+                ev=db.execute("SELECT text FROM events WHERE case_id=? AND kind='me' ORDER BY id DESC",(c['id'],)).fetchone()[0]
+                self.assertEqual(ev,'확인했어요 감사합니다')
+                self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(c['id'],)).fetchone()[0],'seen')
+            self.post(b,'/biz/connect/email',{'act':'delete'},'/biz/connect/email')
+            with self.core.conn() as db:self.assertIsNone(mailin.link(db,cid))
+        finally:mailin.imap_open,mailin.fetch,mailin.smtp_send=old
 
 
 if __name__=='__main__':unittest.main()

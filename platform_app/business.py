@@ -11,7 +11,7 @@ import csv, io
 import core, law, insights, drafting, chatbot
 import tracking as tracking_mod
 import orders as orders_mod
-import shops
+import shops, mailin
 import product_pdf
 import team, inbox, workflow, automations, livechat, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
 from core import conn, clean, digits, BIG
@@ -54,7 +54,7 @@ def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
 # 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
-MANAGE_EPS={'macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
+MANAGE_EPS={'macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','connect_email','team_page'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
 # 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
@@ -416,7 +416,7 @@ def connect():
     """서비스 연동: 지금 실제로 이어진 것과 준비 중인 것을 그대로 보여 준다."""
     with conn() as db:
         n=db.execute('SELECT channel,COUNT(*) n FROM orders WHERE company_id=? GROUP BY channel',(me()['id'],)).fetchall();by={r['channel']:r['n'] for r in n}
-        lk=shops.links(db,me()['id']);c24=cafe24.link(db,me()['id'])
+        lk=shops.links(db,me()['id']);c24=cafe24.link(db,me()['id']);ml=mailin.link(db,me()['id'])
     track_on=bool(core.secret('SWEETTRACKER_T_KEY'))
     rows=[]
     for key,spec in shops.SHOPS.items():
@@ -432,6 +432,8 @@ def connect():
     rows+=[dict(group='택배',name='택배 배송 조회',desc='송장번호로 고객·사장님 화면에서 위치를 바로 보여 줘요' if track_on else '소보루가 연결을 준비하고 있어요',state='on' if track_on else 'soon',href=''),
            dict(group='알림',name='이메일 알림',desc='새 요청과 답변을 이메일로 알려 드려요' if core.mail_ready() else '소보루가 연결을 준비하고 있어요',state='on' if core.mail_ready() else 'soon',href=url_for('settings')),
            dict(group='알림',name='카카오 알림톡',desc='고객에게 진행 상황을 카카오톡으로 보내요',state='soon',href=''),
+           dict(group='상담',name='이메일 문의',desc=((f"{ml['address']} · 문의 {ml['n_inq']}건 가져옴"+(f" · {core.fmt(ml['synced'])}" if ml['synced'] else ' · 곧 가져와요')) if ml['status']=='ok' else ml['note']) if ml else '회사 메일함을 이으면 메일 문의가 요청으로 들어와요',
+                state=('on' if ml['status']=='ok' else 'err') if ml else 'link',href=url_for('connect_email')),
            dict(group='상담',name='쇼핑몰 문의 버튼',desc=(f"{real()['widget_host']}에 붙어 있어요 · {core.fmt(real()['widget_seen'])} 확인" if real()['widget_seen'] else '쇼핑몰에 한 줄만 붙이면 문의하기 버튼이 생겨요'),state='on' if real()['widget_seen'] else 'link',href=url_for('connect_widget')),
            dict(group='상담',name='AI 상담',desc='고객 채팅에 AI가 먼저 답해요' if chatbot.ready() else '소보루가 연결을 준비하고 있어요',state='on' if chatbot.ready() else 'soon',href=url_for('rules')+'#ai' if chatbot.ready() else '')]
     return render_template('b_connect.html',rows=rows,tab='connect')
@@ -442,6 +444,31 @@ def connect_widget():
     """쇼핑몰 문의 버튼(위젯) 설치 안내: 붙일 한 줄, 카페24 붙이는 곳, 붙었는지 확인."""
     co=real()
     return render_template('b_widget.html',rc=co,widget=core.site_url('me','/widget.js?c=%d'%co['id']),link=core.site_url('me','/to/%d'%co['id']),tab='connect')
+
+@app.route('/connect/email',methods=['GET','POST'])
+@login_required
+def connect_email():
+    """이메일 문의 받기: 회사 메일함 주소와 앱 비밀번호를 넣는다. 연결 확인 -> 저장, 지금 가져오기, 연결 끊기."""
+    co=me()
+    if request.method=='POST':
+        act=request.form.get('act','save')
+        if act!='delete' and not co['member']:flash('메일함 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 할 수 있어요.','error')
+        elif act=='delete':
+            with conn() as db:mailin.remove(db,co)
+            flash('연결을 끊었어요. 저장한 비밀번호도 지웠어요.','ok')
+        elif act=='sync':
+            try:flash(f'새 메일 문의 {mailin.sync(co)}건을 가져왔어요','ok')
+            except mailin.MailError as e:flash(str(e),'error')
+        elif core.throttled('mailin',limit=10,minutes=10):flash('잠시 후 다시 해 주세요','error')
+        else:
+            with conn() as db:msg,level=mailin.save(db,co,request.form)
+            flash(msg,level)
+            if level=='ok':
+                try:mailin.sync(co)
+                except mailin.MailError:pass  # 연결 상태에 이유가 남는다
+        return redirect(url_for('connect_email'))
+    with conn() as db:lk=mailin.link(db,co['id'])
+    return render_template('b_mail.html',lk=lk,presets=mailin.PRESETS,tab='connect')
 
 @app.route('/connect/<shop>',methods=['GET','POST'])
 @login_required
@@ -693,8 +720,11 @@ def case(case_id):
                 elif core.throttled('post_shop',limit=20,minutes=10):flash('잠시 후 다시 해 주세요','error')
                 else:
                     e=shops.post_reply(db,me(),c,last['reply'])
-                    if e:core.add_event(db,c['id'],'sys',f"{c['channel']}에 답변을 올리지 못했어요: {e}");flash(e,'error')
-                    else:core.add_event(db,c['id'],'sys',f"{c['channel']}에 답변을 올렸어요");flash(f"{c['channel']}에 답변을 올렸어요",'ok')
+                    by_mail=c['channel']==mailin.CHANNEL
+                    if e:core.add_event(db,c['id'],'sys',('메일을 보내지 못했어요: ' if by_mail else f"{c['channel']}에 답변을 올리지 못했어요: ")+e);flash(e,'error')
+                    else:
+                        done='메일로 답변을 보냈어요' if by_mail else f"{c['channel']}에 답변을 올렸어요"
+                        core.add_event(db,c['id'],'sys',done);flash(done,'ok')
                 return redirect(url_for('case',case_id=case_id))
             if act in ('tag_add','tag_del','prio','snooze','merge'):
                 flash(*case_inbox(db,c,act,request.form));return redirect(url_for('case',case_id=case_id))
@@ -720,7 +750,7 @@ def case(case_id):
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])];ship_track=can_ship_track(db,c)
         notes=team.notes(db,c['id']);people=team.people(db,me());assignee=team.assignee_name(db,me(),c['assignee'])
         from_shop=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=?',(me()['id'],c['id'])).fetchone()
-        posted=any(e['kind']=='sys' and e['text'].endswith('에 답변을 올렸어요') for e in ev)
+        posted=any(e['kind']=='sys' and e['text'].endswith(('에 답변을 올렸어요','메일로 답변을 보냈어요')) for e in ev)
         ctags=inbox.tags_by_case(db,me()['id'],{c['id']}).get(c['id'],[]);all_tags=inbox.tags(db,me()['id']);ms=inbox.macros(db,me()['id'])
         sla=workflow.state(me(),c,workflow.first_replies(db,me()['id']).get(c['id']));
         profile=inbox.customer(db,me(),c);merged=db.execute('SELECT id,no FROM cases WHERE id=?',(c['merged_into'],)).fetchone() if c['merged_into'] else None
