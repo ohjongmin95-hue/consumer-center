@@ -4,22 +4,22 @@
 <div class="phead"><div><h1>{{ hello }}, {{ co.name }} 사장님</h1><p>오늘 먼저 볼 일만 모았어요</p></div><a class="btn sm gray" href="{{ url_for('new_case') }}">+ 직접 등록</a></div>
 {% if not recent and not in_demo %}<div class="panel" style="margin-bottom:20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:220px"><b>아직 들어온 요청이 없어요</b><p class="cap" style="margin:4px 0 0">견본 요청이 들어 있는 데모에서 승인·답변·담당자 배정·교환 처리를 먼저 해 보세요. 실제 데이터와 완전히 따로 있어요.</p></div>
 <form method="post" action="{{ url_for('demo_page') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="on">데모 열기</button></form>{% if setup and not setup.finished and can('manage') %}<a class="btn md gray" href="{{ url_for('start') }}">처음 설정 이어서</a>{% endif %}</div>{% endif %}
-{% if counts.comp %}<a class="warn" href="{{ url_for('all_cases',f='comp') }}"><span>🎁</span><span><b>보상 승인을 기다리는 요청 {{ counts.comp }}건</b><small>정해 둔 보상을 확인하고 승인하면 고객에게 알림이 갑니다</small></span></a>{% endif %}
-{% for w in warn %}<a class="warn" href="{{ url_for('all_cases',q=w.label if w.kind=='product' else None,f='all') }}"><span>⚠️</span><span><b>{% if w.kind=='product' %}'{{ w.label }}' 관련 요청이 최근 7일 {{ w.n }}건{% else %}{{ w.label }} 요청이 최근 7일 {{ w.n }}건{% endif %}</b><small>같은 문제가 반복되는지 확인해 보세요 · {{ w.cats|join(', ') }}</small></span></a>{% endfor %}
+{% if counts.comp %}<a class="warn" href="{{ url_for('all_cases',f='comp') }}">{{ i.tf_tile('gift') }}<span><b>보상 승인을 기다리는 요청 {{ counts.comp }}건</b><small>정해 둔 보상을 확인하고 승인하면 고객에게 알림이 갑니다</small></span></a>{% endif %}
+{% for w in warn %}<a class="warn" href="{{ url_for('all_cases',q=w.label if w.kind=='product' else None,f='all') }}">{{ i.tf_tile('warn') }}<span><b>{% if w.kind=='product' %}'{{ w.label }}' 관련 요청이 최근 7일 {{ w.n }}건{% else %}{{ w.label }} 요청이 최근 7일 {{ w.n }}건{% endif %}</b><small>같은 문제가 반복되는지 확인해 보세요 · {{ w.cats|join(', ') }}</small></span></a>{% endfor %}
 <div class="sumrow">
-<a href="{{ url_for('all_cases') }}"><span>오늘 들어온 요청</span><b>{{ counts.today }}</b></a>
-<a href="{{ url_for('approvals') }}"><span>승인 대기</span><b class="{{ 't-acc' if pend }}">{{ pend|length }}</b></a>
-<a href="{{ url_for('all_cases',f='open') }}"><span>답변할 요청</span><b>{{ counts.open }}</b></a>
-<a href="{{ url_for('all_cases',f='bad') }}"><span>기한 지난 요청</span><b class="{{ 't-bad' if counts.late }}">{{ counts.late }}</b></a>
+<a href="{{ url_for('all_cases') }}">{{ i.tf('inbox',32) }}<span>오늘 들어온 요청</span><b>{{ counts.today }}</b></a>
+<a href="{{ url_for('approvals') }}">{{ i.tf('check',32) }}<span>승인 대기</span><b class="{{ 't-acc' if pend }}">{{ pend|length }}</b></a>
+<a href="{{ url_for('all_cases',f='open') }}">{{ i.tf('speech',32) }}<span>답변할 요청</span><b>{{ counts.open }}</b></a>
+<a href="{{ url_for('all_cases',f='bad') }}">{{ i.tf('clock',32) }}<span>기한 지난 요청</span><b class="{{ 't-bad' if counts.late }}">{{ counts.late }}</b></a>
 </div>
 <div class="hsplit">
 <section class="panel"><div class="ph">{% if pend %}승인할 요청이 <em class="t-acc">{{ pend|length }}건</em> 있습니다{% else %}승인할 요청을 모두 처리했습니다{% endif %}{% if pend|length>5 %}<a class="more" href="{{ url_for('approvals') }}">전체 보기</a>{% endif %}</div>
-{% if pend %}{% for c in pend[:5] %}{% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}<div class="drow">{{ i.cat_icon(c.category,28) }}<a class="tx" href="{{ url_for('case',case_id=c.id) }}"><b>{{ c.title }}</b><span>{{ c.category }} · 처리 방법 {{ p.title }}{% if overdue(c) %} · <em class="t-bad">기한 지남</em>{% endif %}</span>{{ b.law_chip(c) }}</a>
+{% if pend %}{% for c in pend[:5] %}{% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}<div class="drow">{{ i.cat_tile(c.category) }}<a class="tx" href="{{ url_for('case',case_id=c.id) }}"><b>{{ c.title }}</b><span>{{ c.category }} · 처리 방법 {{ p.title }}{% if overdue(c) %} · <em class="t-bad">기한 지남</em>{% endif %}</span>{{ b.law_chip(c) }}</a>
 <form method="post" action="{{ url_for('case',case_id=c.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn sm" name="act" value="approve">승인</button></form></div>{% endfor %}
-{% else %}<div class="hempty">{{ i.icon('approve',44) }}<span>새 요청이 오면 이메일로 알려 드립니다</span></div>{% endif %}</section>
-<section class="panel brief"><div class="ph">소보루 브리핑</div><ul>{% for line in brief %}<li>{{ line }}</li>{% endfor %}</ul></section>
+{% else %}<div class="hempty">{{ i.tf('check',44) }}<span>새 요청이 오면 이메일로 알려 드립니다</span></div>{% endif %}</section>
+<section class="panel brief"><div class="phd">{{ i.tf_tile('bulb',24) }}<div class="ph">소보루 브리핑</div></div><ul>{% for line in brief %}<li>{{ line }}</li>{% endfor %}</ul></section>
 </div>
-<div class="linkbar"><div class="tx"><b>우리 고객센터 링크</b><span id="hLink">{{ link }}</span></div><a class="btn md gray" href="{{ link }}" target="_blank" rel="noopener">열어 보기</a><button class="btn md" type="button" id="hCopy">링크 복사</button></div>
+<div class="linkbar">{{ i.tf_tile('link') }}<div class="tx"><b>우리 고객센터 링크</b><span id="hLink">{{ link }}</span></div><a class="btn md gray" href="{{ link }}" target="_blank" rel="noopener">열어 보기</a><button class="btn md" type="button" id="hCopy">링크 복사</button></div>
 <script>document.getElementById('hCopy').onclick=function(){var b=this,t=document.getElementById('hLink');(navigator.clipboard?navigator.clipboard.writeText(t.textContent):Promise.reject()).then(function(){b.textContent='복사했습니다';setTimeout(function(){b.textContent='링크 복사';},2000);},function(){var r=document.createRange();r.selectNodeContents(t);getSelection().removeAllRanges();getSelection().addRange(r);b.textContent='선택했습니다';});};</script>
 {% if news %}<div class="shead" style="margin-top:56px"><h2>법·제도 소식</h2><div class="r"><a href="{{ url_for('news') }}">전체보기</a></div></div>
 <div class="newsrow">{% for n in news %}<a class="panel" href="{{ n.source_url }}" target="_blank" rel="noopener"><span class="cap">{{ fmt_day(n.created) }}</span><b>{{ n.title }}</b></a>{% endfor %}</div>{% endif %}

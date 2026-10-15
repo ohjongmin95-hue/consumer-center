@@ -1709,3 +1709,134 @@ body.v2 main .inp.sm,body.v2 main select.inp.sm{height:36px;padding:0 12px;font-
 .slab span{color:var(--fg2)}
 .nprog.big{display:block;height:10px;border-radius:99px;background:var(--fill);overflow:hidden}
 .nprog.big i{display:block;height:100%;background:var(--accent);border-radius:99px}
+/* ---------- 기업 글씨체: 위메이드 Infinity Sans (로고 글자는 그대로) ---------- */
+@font-face{font-family:'Infinity Sans';font-weight:400;font-style:normal;font-display:swap;src:url(fonts/InfinitySans-Regular.woff2) format('woff2')}
+@font-face{font-family:'Infinity Sans';font-weight:500 900;font-style:normal;font-display:swap;src:url(fonts/InfinitySans-Bold.woff2) format('woff2')}
+body.v2.fbiz,body.v2.fbiz button,body.v2.fbiz input,body.v2.fbiz select,body.v2.fbiz textarea{font-family:'Infinity Sans',Pretendard,'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif}
+body.v2.fbiz .logo .wm{font-family:Pretendard,'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif}
+body.v2.fbiz .no{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* ---------- 기업 화면 토스풍: 전부 흰 바탕. 구역은 또렷한 선 한 줄과 넉넉한 여백으로 나누고, 큰 제목 아래 설명은 두지 않는다 ---------- */
+body.v2:has(.bside){--bg:#fff;--t-ink:#191f28;--t-sub:#6b7684;--t-mute:#8b95a1;--t-soft:#f2f4f6;--t-faint:#f9fafb;--t-line:#e5e8eb;background:#fff}
+body.v2:has(.bside) .gnb{background:rgba(255,255,255,.97);border-bottom:1px solid var(--t-line)}
+body.v2:has(.bside) .bside{background:#fff;border-right:1px solid var(--t-line);padding:16px 12px}
+body.v2:has(.bside) .bside a{color:#4e5968;font-weight:500;padding:10px 14px}
+body.v2:has(.bside) .bside a:hover{background:var(--t-faint)}
+body.v2:has(.bside) .bside a.on{background:var(--t-soft);color:var(--t-ink);font-weight:700}
+body.v2:has(.bside) .bside a.on .ic{color:var(--accent)}
+/* 큰 제목: 크게, 아래 설명 없이. 제목 줄 아래를 선으로 끊는다 */
+body.v2:has(.bside) main.pg{padding-top:36px}
+body.v2:has(.bside) .phead{margin-bottom:0;padding-bottom:24px;border-bottom:1px solid var(--t-line);align-items:center}
+body.v2:has(.bside) .phead p{display:none}
+body.v2:has(.bside) .phead h1,body.v2:has(.bside) .chead h1{font-size:30px;font-weight:700;letter-spacing:-.04em;color:var(--t-ink)}
+body.v2:has(.bside) .phead+*{margin-top:28px}
+body.v2:has(.bside) .chead{padding-bottom:24px;border-bottom:1px solid var(--t-line);margin-bottom:0}
+/* 구역: 카드 없이 흰 바탕, 구역 사이는 꽉 찬 선 */
+body.v2:has(.bside) .panel,body.v2:has(.bside) .cols .panel,body.v2:has(.bside) .card,body.v2:has(.bside) .dcard,body.v2:has(.bside) .ccard,body.v2:has(.bside) .list,
+body.v2:has(.bside) .tbl-wrap,body.v2:has(.bside) .empty-card{background:#fff;border:0;border-radius:0;box-shadow:none}
+body.v2:has(.bside) .panel,body.v2:has(.bside) .cols .panel{padding:32px 0}
+body.v2:has(.bside) .stack>*+.panel,body.v2:has(.bside) .stack>*+form.panel,body.v2:has(.bside) .stack>section+section{border-top:1px solid var(--t-line)}
+body.v2:has(.bside) .cols{gap:0;margin-top:0}
+body.v2:has(.bside) .cols>.stack,body.v2:has(.bside) .cols>aside.stack{gap:0}
+@media (min-width:1200px){body.v2:has(.bside) .cols>.stack{padding-right:40px}body.v2:has(.bside) .cols>aside{border-left:1px solid var(--t-line);padding-left:32px}}
+body.v2:has(.bside) .hsplit{gap:0;margin-bottom:0;border-top:1px solid var(--t-line);border-bottom:1px solid var(--t-line)}
+@media (min-width:760px){body.v2:has(.bside) .hsplit>.panel:first-child{padding-right:40px}body.v2:has(.bside) .hsplit>.panel+.panel{border-left:1px solid var(--t-line);padding-left:32px}}
+@media (max-width:759.98px){body.v2:has(.bside) .hsplit>.panel+.panel{border-top:1px solid var(--t-line)}}
+body.v2:has(.bside) .grid2{gap:0 48px}
+body.v2:has(.bside) .ccard:hover{transform:none;box-shadow:none;background:var(--t-faint)}
+body.v2:has(.bside) .ph{font-size:21px;font-weight:700;letter-spacing:-.035em;color:var(--t-ink);margin-bottom:12px}
+body.v2:has(.bside) .ph .cap{display:none}
+body.v2:has(.bside) .ph .more,body.v2:has(.bside) .ph>a{margin-left:auto;font-size:14.5px;font-weight:500;color:var(--t-mute)}
+body.v2:has(.bside) .ph .more::after,body.v2:has(.bside) .shead .r a::after{content:'';display:inline-block;width:6px;height:6px;margin-left:6px;border:solid currentColor;border-width:1.6px 1.6px 0 0;transform:translateY(-1px) rotate(45deg)}
+body.v2:has(.bside) .shead{margin:40px 0 12px}
+body.v2:has(.bside) .shead h2{font-size:21px;letter-spacing:-.035em}
+/* 요약 숫자: 이모지 + 이름 + 큰 숫자, 칸 사이 세로선 */
+body.v2:has(.bside) .sumrow{gap:0;margin-bottom:0;padding:8px 0}
+body.v2:has(.bside) .sumrow a,body.v2:has(.bside) .kpi{background:#fff;border:0;box-shadow:none;border-radius:0;padding:20px 24px;min-height:0;gap:6px}
+body.v2:has(.bside) .sumrow a+a{border-left:1px solid var(--t-line)}
+body.v2:has(.bside) .sumrow a:hover{background:var(--t-faint)}
+body.v2:has(.bside) .sumrow .tf{width:32px;height:32px;margin-bottom:6px}
+body.v2:has(.bside) .sumrow span{font-size:15px;color:var(--t-sub);font-weight:500}
+body.v2:has(.bside) .sumrow b{font-size:30px;font-weight:700;color:var(--t-ink)}
+body.v2:has(.bside) .sumrow b.t-acc{color:var(--accent)}
+body.v2:has(.bside) .sumrow b.t-bad{color:var(--red)}
+/* 목록 줄: 왼쪽 이모지 칸, 가운데 제목·설명, 오른쪽 버튼 */
+.tft{flex:none;width:48px;height:48px;border-radius:16px;background:var(--fill);display:grid;place-items:center}
+.tft .tf{width:28px;height:28px}
+img.tf{display:inline-block;vertical-align:middle;object-fit:contain}
+body.v2:has(.bside) .tft{background:var(--t-soft)}
+body.v2:has(.bside) .drow{display:flex;align-items:center;gap:16px;padding:18px 0;border:0;border-bottom:1px solid var(--t-line)}
+body.v2:has(.bside) .drow:last-child{border-bottom:0;padding-bottom:0}
+body.v2:has(.bside) .drow .tx b{font-size:17px;font-weight:700;color:var(--t-ink);letter-spacing:-.025em}
+body.v2:has(.bside) .drow .tx span{font-size:15px;color:var(--t-mute)}
+body.v2:has(.bside) .drow .btn.sm{border-radius:12px;height:40px;padding:0 18px;font-weight:700}
+body.v2:has(.bside) .hempty{color:var(--t-mute)}
+body.v2:has(.bside) .brief{background:#fff}
+body.v2:has(.bside) .brief ul{gap:0}
+body.v2:has(.bside) .brief li{padding:14px 0 14px 16px;border-bottom:1px solid var(--t-soft);font-size:15.5px;color:#333d4b;line-height:1.55}
+body.v2:has(.bside) .brief li:last-child{border-bottom:0}
+body.v2:has(.bside) .brief li:before{top:calc(14px + .62em);width:5px;height:5px}
+body.v2:has(.bside) .phd{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+body.v2:has(.bside) .phd .ph{margin:0}
+body.v2:has(.bside) .phd .tft{width:40px;height:40px;border-radius:14px}
+body.v2:has(.bside) .phd .tft .tf{width:24px;height:24px}
+/* 알림 줄·링크 줄 */
+body.v2:has(.bside) .warn,body.v2:has(.bside) .linkbar{background:var(--t-faint);border:0;box-shadow:none;border-radius:18px}
+body.v2:has(.bside) .warn{padding:16px 20px;gap:14px;align-items:center;margin:0 0 12px}
+body.v2:has(.bside) .warn .tft,body.v2:has(.bside) .linkbar .tft{background:#fff}
+body.v2:has(.bside) .warn b{color:var(--t-ink)}
+body.v2:has(.bside) .warn small{display:none}
+body.v2:has(.bside) .linkbar{padding:14px 14px 14px 18px;gap:14px;margin:28px 0 0}
+/* 표 */
+body.v2:has(.bside) .tbl-wrap{padding:0}
+body.v2:has(.bside) .tbl2 th{background:transparent;color:var(--t-mute);font-weight:500;border:0;border-bottom:1px solid var(--t-line)}
+body.v2:has(.bside) .tbl2 td{border:0;border-bottom:1px solid var(--t-soft)}
+body.v2:has(.bside) .tbl2 tbody tr:hover td{background:var(--t-faint)}
+body.v2:has(.bside) .tbl2 .ttl{font-weight:700;color:var(--t-ink)}
+/* 탭·검색·버튼·입력 */
+body.v2:has(.bside) .tabs a{background:var(--t-soft);color:#4e5968;font-weight:600}
+body.v2:has(.bside) .tabs a.on{background:var(--t-ink);color:#fff}
+body.v2:has(.bside) .searchbar{background:var(--t-soft);border:0}
+body.v2:has(.bside) main .btn{border-radius:14px;font-weight:700}
+body.v2:has(.bside) .btn.gray,body.v2:has(.bside) .phead .btn.gray,body.v2:has(.bside) .chead .btn.gray{background:var(--t-soft);color:#4e5968}
+body.v2:has(.bside) .btn.gray:hover{background:#e5e8eb}
+body.v2:has(.bside) main .inp{background:var(--t-soft);border-color:transparent}
+body.v2:has(.bside) main .inp:focus{background:#fff;border-color:var(--accent)}
+body.v2:has(.bside) .pill.gray{background:var(--t-soft);color:#4e5968}
+body.v2:has(.bside) .kv dt{color:var(--t-mute)}
+body.v2:has(.bside) .reco{background:var(--t-faint)}
+/* 아래쪽 */
+body.v2:has(.bside) .foot2{background:#fff;border-top:1px solid var(--t-line)}
+body.v2:has(.bside) .mbar{background:rgba(255,255,255,.97);border-top:1px solid var(--t-line)}
+.foot2 .tfnote{margin:6px 0 0;font-size:12px;color:var(--fg4)}
+.foot2 .tfnote a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+@media (max-width:759.98px){
+  body.v2:has(.bside) main.pg{padding-top:20px}
+  body.v2:has(.bside) .phead h1,body.v2:has(.bside) .chead h1{font-size:24px}
+  body.v2:has(.bside) .phead{padding-bottom:16px}
+  body.v2:has(.bside) .sumrow{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.v2:has(.bside) .sumrow a{padding:16px}
+  body.v2:has(.bside) .sumrow a:nth-child(3){border-left:0}
+  body.v2:has(.bside) .sumrow a:nth-child(n+3){border-top:1px solid var(--t-line)}
+  body.v2:has(.bside) .sumrow b{font-size:26px}
+  body.v2:has(.bside) .cols>aside.stack>section:first-child{border-top:1px solid var(--t-line)}
+  .tft{width:44px;height:44px;border-radius:14px}
+  .tft .tf{width:26px;height:26px}
+}
+/* 통계 숫자·구역도 홈과 같은 또렷한 선으로 */
+body.v2:has(.bside) .sumrow{padding:0;border-bottom:1px solid var(--t-line)}
+body.v2:has(.bside) .sumrow a{padding:28px 24px}
+body.v2:has(.bside) .kpis{gap:0;margin:0;border-bottom:1px solid var(--t-line)}
+body.v2:has(.bside) .kpi{padding:28px 24px}
+body.v2:has(.bside) .kpi+.kpi{border-left:1px solid var(--t-line)}
+body.v2:has(.bside) .kpi span{font-size:15px;color:var(--t-sub);font-weight:500}
+body.v2:has(.bside) .kpi b{font-size:30px;font-weight:700}
+body.v2:has(.bside) .pg>.wrap>.panel,body.v2:has(.bside) .pg>.wrap>.grid2{margin:0!important;border-bottom:1px solid var(--t-line)}
+body.v2:has(.bside) .pg>.wrap>.grid2>.panel+.panel{border-left:1px solid var(--t-line);padding-left:32px}
+body.v2:has(.bside) .pg>.wrap>.grid2>.panel:first-child{padding-right:16px}
+@media (max-width:759.98px){
+  body.v2:has(.bside) .kpi{padding:20px 16px}
+  body.v2:has(.bside) .kpi:nth-child(3){border-left:0}
+  body.v2:has(.bside) .kpi:nth-child(n+3){border-top:1px solid var(--t-line)}
+  body.v2:has(.bside) .pg>.wrap>.grid2>.panel+.panel{border-left:0;padding-left:0;border-top:1px solid var(--t-line)}
+}
