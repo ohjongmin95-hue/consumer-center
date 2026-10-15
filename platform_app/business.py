@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
-import team, inbox, workflow, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
+import team, inbox, workflow, automations, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -54,7 +54,7 @@ def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
 # 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
-MANAGE_EPS={'macros','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
+MANAGE_EPS={'macros','automations_page','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
 # 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
@@ -554,6 +554,35 @@ def macros():
     edit=request.args.get('edit','')
     return render_template('b_macros.html',ms=ms,ts=ts,counts=counts,edit=int(edit) if edit.isdigit() else (0 if request.args.get('new') else None),VARS=inbox.VARS,tab='macros')
 
+@app.route('/automations',methods=['GET','POST'])
+@login_required
+def automations_page():
+    """자동화 규칙: 새 요청이 들어오면 조건에 맞춰 태그·우선순위·담당자·메모를 정한다."""
+    import automations as au
+    co=me();rid=request.form.get('id','') or request.args.get('edit','')
+    rid=int(rid) if str(rid).isdigit() else None
+    with conn() as db:people=team.people(db,co)
+    if request.method=='POST':
+        act=request.form.get('act')
+        with conn() as db:
+            if act=='save':
+                r,err=au.parse(request.form,dict(people))
+                if err:
+                    flash(err,'error');rs=au.rules(db,co['id'])
+                    return render_template('b_auto.html',rs=rs,edit=rid or 0,cur=r,people=people,AU=au,PRIO=inbox.PRIO,CATS=core.CATS,counts={},tab='automations')
+                new=au.save(db,co['id'],r,rid if rid and au.get(db,co['id'],rid) else None)
+                flash('규칙을 저장했어요. 이제 들어오는 요청부터 적용돼요.' if new else f'규칙은 {au.MAX_RULES}개까지 만들 수 있어요','ok' if new else 'error')
+            elif rid and act=='toggle':au.toggle(db,co['id'],rid)
+            elif rid and act=='delete':au.delete(db,co['id'],rid);flash('규칙을 지웠어요','ok')
+            elif rid and act in ('up','down'):au.move(db,co['id'],rid,act=='up')
+        return redirect(url_for('automations_page'))
+    with conn() as db:
+        rs=au.rules(db,co['id']);counts={r['id']:au.preview(db,co,r) for r in rs}
+    edit=rid if rid else (0 if request.args.get('new') else None)
+    cur=next((r for r in rs if r['id']==edit),None) if edit else None
+    if edit==0 and request.args.get('ex') in au.EXAMPLES:cur=au.EXAMPLES[request.args['ex']]
+    return render_template('b_auto.html',rs=rs,edit=edit,cur=cur,people=people,AU=au,PRIO=inbox.PRIO,CATS=core.CATS,counts=counts,tab='automations')
+
 @app.route('/stats')
 @login_required
 def stats():
@@ -753,6 +782,7 @@ def new_case_apply(co,f):
             VALUES(?,?,?,1,?,?,?,?,?,?,?,?,?,1,'seen','pending',?,?,?,?,?,?)''',(core.new_case_no(db),co['id'],co['name'],d['category'],d['title'],d['body'],d['want'],d['order_no'],
             d['name'],digits(d['phone']),d['email'],generate_password_hash(secrets.token_hex(16)),due,t,t,d['product'],d['received_on'],d['channel']))
         core.add_event(db,cur.lastrowid,'sys',f"{d['channel']}(으)로 받은 요청을 직접 등록했어요")
+        import automations;automations.run(db,co,db.execute('SELECT * FROM cases WHERE id=?',(cur.lastrowid,)).fetchone())  # 직접 등록한 요청에도 자동화 규칙
     return d,'',cur.lastrowid
 
 @app.route('/guide')

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
+{% block title %}자동화 규칙 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('automations') }}{% endblock %}
+{% block body %}
+{% set names=dict(people) %}
+<div class="phead"><div><h1>자동화 규칙</h1></div>{% if edit is none %}<a class="btn sm" href="{{ url_for('automations_page',new=1) }}">+ 새 규칙</a>{% endif %}</div>
+{% if edit is not none %}
+{% set conds=(cur.conds if cur else []) %}{% set acts=(cur.acts if cur else []) %}
+<form class="panel stack aued" method="post" action="{{ url_for('automations_page') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="save">{% if edit %}<input type="hidden" name="id" value="{{ edit }}">{% endif %}
+<div class="ph">{{ '규칙 고치기' if edit else '새 규칙' }}</div>
+<label class="fld"><span>이름</span><input class="inp" name="name" maxlength="30" required value="{{ cur.name if cur }}" placeholder="예: 환불 요청은 김매니저에게"></label>
+<div class="aublk"><div class="auhd"><b>이런 요청이 들어오면</b><select class="inp sm" name="match" aria-label="조건 맞추는 방법"><option value="all">아래 조건이 모두 맞을 때</option><option value="any" {{ 'selected' if cur and cur.match=='any' }}>하나라도 맞을 때</option></select></div>
+{% for n in range(AU.MAX_CONDS) %}{% set cd=conds[n] if n<conds|length else {} %}
+<div class="aurow" data-kind="c" {{ 'hidden' if n>0 and n>=conds|length }}>
+<select class="inp sm" name="cf_{{ n }}" data-role="f" aria-label="조건 {{ n+1 }}"><option value="">고르기</option>{% for k,l in AU.FIELDS.items() %}<option value="{{ k }}" {{ 'selected' if cd.f==k }}>{{ l }}</option>{% endfor %}</select>
+<input class="inp sm" name="cv_{{ n }}" data-for="text" maxlength="200" value="{{ cd.v if cd.f=='text' }}" placeholder="쉼표로 여러 개: 환불, 취소" {{ 'disabled' if cd.f!='text' }}>
+<select class="inp sm" name="cv_{{ n }}" data-for="category" {{ 'disabled' if cd.f!='category' }}>{% for x in CATS %}<option {{ 'selected' if cd.v==x }}>{{ x }}</option>{% endfor %}</select>
+<select class="inp sm" name="cv_{{ n }}" data-for="channel" {{ 'disabled' if cd.f!='channel' }}>{% for x in AU.channels() %}<option {{ 'selected' if cd.v==x }}>{{ x }}</option>{% endfor %}</select>
+<select class="inp sm" name="cop_{{ n }}" data-for="text" {{ 'disabled' if cd.f!='text' }}><option value="has">있으면</option><option value="not" {{ 'selected' if cd.op=='not' }}>없으면</option></select>
+<select class="inp sm" name="cop_{{ n }}" data-for="category channel" {{ 'disabled' if cd.f not in ('category','channel') }}><option value="is">이면</option><option value="not" {{ 'selected' if cd.op=='not' }}>이 아니면</option></select>
+<select class="inp sm" name="cop_{{ n }}" data-for="order" {{ 'disabled' if cd.f!='order' }}><option value="has">있으면</option><option value="none" {{ 'selected' if cd.op=='none' }}>없으면</option></select>
+<select class="inp sm" name="cop_{{ n }}" data-for="hours" {{ 'disabled' if cd.f!='hours' }}><option value="out">영업시간 밖이면</option><option value="in" {{ 'selected' if cd.op=='in' }}>영업시간 안이면</option></select>
+</div>{% endfor %}
+<button type="button" class="auadd" data-add="c">+ 조건 더하기</button></div>
+<div class="aublk"><div class="auhd"><b>이렇게 해요</b></div>
+{% for n in range(AU.MAX_ACTS) %}{% set a=acts[n] if n<acts|length else {} %}
+<div class="aurow" data-kind="a" {{ 'hidden' if n>0 and n>=acts|length }}>
+<select class="inp sm" name="af_{{ n }}" data-role="f" aria-label="할 일 {{ n+1 }}"><option value="">고르기</option>{% for k,l in AU.ACTS.items() %}<option value="{{ k }}" {{ 'selected' if a.a==k }}>{{ l }}</option>{% endfor %}</select>
+<input class="inp sm" name="av_{{ n }}" data-for="tag" maxlength="100" value="{{ a.v if a.a=='tag' }}" placeholder="태그 이름 (쉼표로 여러 개)" {{ 'disabled' if a.a!='tag' }}>
+<select class="inp sm" name="av_{{ n }}" data-for="prio" {{ 'disabled' if a.a!='prio' }}>{% for k,l in PRIO.items() %}<option value="{{ k }}" {{ 'selected' if a.v==k }}>{{ l }}</option>{% endfor %}</select>
+<select class="inp sm" name="av_{{ n }}" data-for="assign" {{ 'disabled' if a.a!='assign' }}>{% for k,l in people %}<option value="{{ k }}" {{ 'selected' if a.v==k }}>{{ l }}</option>{% endfor %}</select>
+<input class="inp sm" name="av_{{ n }}" data-for="note" maxlength="300" value="{{ a.v if a.a=='note' }}" placeholder="담당자에게 남길 말" {{ 'disabled' if a.a!='note' }}>
+</div>{% endfor %}
+<button type="button" class="auadd" data-add="a">+ 할 일 더하기</button></div>
+<p class="cap" style="margin:0">고객에게 답하거나 알림을 보내지는 않아요. 담당자를 정하면 자동 배정보다 먼저 적용돼요.</p>
+<div style="display:flex;gap:8px"><button class="btn md">{{ '고치기' if edit else '만들기' }}</button><a class="btn md gray" href="{{ url_for('automations_page') }}">취소</a></div></form>
+{% endif %}
+{% if rs and edit is none %}<div class="panel aulist">{% for r in rs %}{% set cnt=counts.get(r.id) %}
+<div class="aurule{{ ' off' if not r.enabled }}">{{ i.tf_tile('repeat' if r.enabled else 'clock',28) }}
+<div class="tx"><b>{{ r.name }}</b>
+<span>{% for cd in r.conds %}{{ AU.say_cond(cd) }}{% if not loop.last %}{{ ' 그리고 ' if r.match=='all' else ' 또는 ' }}{% endif %}{% endfor %} → {% for a in r.acts %}{{ AU.say_act(a,names) }}{{ ', ' if not loop.last }}{% endfor %}</span>
+<small>{% if cnt %}최근 30일 요청 {{ cnt[1] }}건 중 {{ cnt[0] }}건이 맞아요 · {% endif %}{{ r.runs }}번 적용{% if not r.enabled %} · 꺼져 있어요{% endif %}</small></div>
+<div class="auact">
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="act" value="toggle"><button class="sw{{ ' on' if r.enabled }}" role="switch" aria-checked="{{ 'true' if r.enabled else 'false' }}" aria-label="{{ r.name }} {{ '끄기' if r.enabled else '켜기' }}"></button></form>
+{% if not loop.first %}<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="act" value="up"><button class="btn sm gray" aria-label="위로">↑</button></form>{% endif %}
+{% if not loop.last %}<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="act" value="down"><button class="btn sm gray" aria-label="아래로">↓</button></form>{% endif %}
+<a class="btn sm gray" href="{{ url_for('automations_page',edit=r.id) }}">고치기</a>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="act" value="delete"><button class="btn sm gray" onclick="return confirm('이 규칙을 지울까요?')">지우기</button></form>
+</div></div>{% endfor %}</div>
+{% elif edit is none %}<div class="panel"><div class="ph">이렇게 시작해 보세요</div>
+<div class="auex">{% for k,t,tf in [('angry','화난 고객은 급함으로','warn'),('defect','불량은 태그와 메모','tools'),('night','밤사이 문의 표시','clock')] %}<a class="drow" href="{{ url_for('automations_page',new=1,ex=k) }}">{{ i.tf_tile(tf,28) }}<span class="tx"><b>{{ t }}</b></span><span class="go" aria-hidden="true">›</span></a>{% endfor %}</div></div>{% endif %}
+{% endblock %}
+{% block script %}<script>
+(function(){
+function sync(row){var f=row.querySelector('[data-role=f]').value;row.querySelectorAll('[data-for]').forEach(function(el){var on=el.dataset.for.split(' ').indexOf(f)>=0;el.disabled=!on;el.hidden=!on;});}
+document.querySelectorAll('.aurow').forEach(function(row){sync(row);row.querySelector('[data-role=f]').addEventListener('change',function(){sync(row);});});
+document.querySelectorAll('[data-add]').forEach(function(b){b.onclick=function(){var next=document.querySelector('.aurow[data-kind='+b.dataset.add+'][hidden]');if(next){next.hidden=false;next.querySelector('select').focus();}if(!document.querySelector('.aurow[data-kind='+b.dataset.add+'][hidden]'))b.hidden=true;};});
+})();
+</script>{% endblock %}

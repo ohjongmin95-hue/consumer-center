@@ -111,9 +111,11 @@ def pick(db,co):
     load=dict(db.execute("SELECT assignee,COUNT(*) FROM cases WHERE company_id=? AND assignee!='' AND status IN ('forwarded','seen','info') GROUP BY assignee",(co['id'],)).fetchall())
     return min(ppl,key=lambda p:load.get(p[0],0))[0] if ppl else ''
 def on_new(db,co,c,from_consumer=False):
-    """요청이 들어온 직후: 자동 배정, 영업시간 밖이면 안내. 자동 처리로 이미 답한 요청은 건드리지 않는다. -> 안내를 남겼으면 True"""
+    """요청이 들어온 직후: 자동화 규칙, 자동 배정, 영업시간 밖이면 안내. 자동 처리로 이미 답한 요청은 건드리지 않는다. -> 안내를 남겼으면 True"""
     c=db.execute('SELECT * FROM cases WHERE id=?',(c['id'],)).fetchone()
     if c['decision']=='auto' or c['status'] not in ('forwarded','seen'):return False
+    import automations
+    if automations.run(db,co,c):c=db.execute('SELECT * FROM cases WHERE id=?',(c['id'],)).fetchone()  # 사장님이 만든 규칙이 먼저. 담당자를 정했으면 자동 배정은 건너뛴다
     if co['auto_assign'] and not c['assignee']:
         key=pick(db,co)
         if key:team.assign(db,co,c,key)
