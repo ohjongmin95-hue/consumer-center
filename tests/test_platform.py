@@ -2065,6 +2065,29 @@ class PlatformTest(unittest.TestCase):
             with self.core.conn() as db:self.assertIsNone(mailin.link(db,cid))
         finally:mailin.imap_open,mailin.fetch,mailin.smtp_send=old
 
+    def test_notify_poll(self):
+        """켜 둔 화면 알림: 처음엔 위치만, 그다음엔 새 요청과 고객의 새 메시지를 요청마다 한 번씩. 다른 회사 것은 안 보인다."""
+        import instagram
+        b,o,cid=self.signup_and_approve('알림상점','nt-co@example.com')
+        b2,o2,cid2=self.signup_and_approve('남의상점','nt-other@example.com')
+        with self.core.conn() as db:
+            for k,c in ((cid,'1'),(cid2,'2')):db.execute("INSERT INTO ig_links(company_id,ig_id,username,creds,created) VALUES(?,?,?,?,?)",(k,'ig'+c,'u'+c,'{}',self.core.iso()))
+        old=instagram._call;instagram._call=lambda *a,**k:(200,{'username':'gogaek'})
+        ev=lambda ig,mid,text:{'object':'instagram','entry':[{'id':ig,'messaging':[{'sender':{'id':'777'},'message':{'mid':mid,'text':text}}]}]}
+        try:
+            p0=b.get('/biz/notify/poll').get_json();self.assertEqual(p0['items'],[])
+            self.assertEqual(self.client().get('/biz/notify/poll').status_code,302)  # 로그인 전
+            instagram.receive(ev('ig1','m1','반품하고 싶어요'));instagram.receive(ev('ig1','m2','사진 보낼게요'));instagram.receive(ev('ig2','x1','남의 회사 문의'))
+            p1=b.get(f"/biz/notify/poll?c={p0['c']}&e={p0['e']}").get_json()
+            self.assertEqual([(i['kind'],i['text']) for i in p1['items']],[('new','반품하고 싶어요')])
+            self.assertIn('인스타그램 DM',p1['items'][0]['title'])
+            self.assertEqual(b.get(f"/biz/notify/poll?c={p1['c']}&e={p1['e']}").get_json()['items'],[])
+            instagram.receive(ev('ig1','m3','언제 와요?'))
+            p2=b.get(f"/biz/notify/poll?c={p1['c']}&e={p1['e']}").get_json()
+            self.assertEqual([(i['kind'],i['text']) for i in p2['items']],[('msg','언제 와요?')])
+            self.assertIn('notify.js',b.get('/biz/').get_data(as_text=True))
+        finally:instagram._call=old
+
     def test_instagram_dm(self):
         """인스타그램 DM: 키가 없으면 연동 대기, 로그인으로 잇고, 서명 맞는 웹훅만 받고, 같은 고객은 이어 붙고, 답장은 눌러야 간다."""
         import instagram, hmac as _h, hashlib, json as _j, urllib.parse as up

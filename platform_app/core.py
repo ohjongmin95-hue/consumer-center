@@ -148,7 +148,7 @@ def iso(dt=None):return (dt or now()).isoformat(sep=' ')
 
 @contextlib.contextmanager
 def conn():
-    db=sqlite3.connect(DB,timeout=10);db.row_factory=sqlite3.Row
+    db=sqlite3.connect(DB,timeout=30);db.row_factory=sqlite3.Row  # 다른 쓰기가 끝나길 30초까지 기다린다
     db.execute('PRAGMA foreign_keys=ON')
     try:
         with db:yield db

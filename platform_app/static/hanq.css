@@ -1910,3 +1910,17 @@ body.v2 main .lform textarea.inp,.lform textarea.inp{height:48px;min-height:48px
 .lerr{margin:0;color:var(--red)}
 .livec{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--green);margin-left:6px}
 .livec.on::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green)}
+/* 켜 둔 화면 알림 (오른쪽 아래, notify.js) */
+.ntbox{position:fixed;right:max(20px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));z-index:90;display:flex;flex-direction:column;gap:10px;width:min(360px,calc(100vw - 32px));pointer-events:none}
+.ntcard{pointer-events:auto;display:flex;align-items:center;gap:12px;background:var(--card);color:var(--fg);border-radius:18px;padding:14px 12px 14px 16px;box-shadow:0 10px 30px rgba(0,23,51,.16),0 1px 3px rgba(0,23,51,.08);text-decoration:none;opacity:0;transform:translateY(16px);transition:opacity .25s,transform .3s cubic-bezier(.2,.9,.3,1.2)}
+.ntcard.on{opacity:1;transform:none}
+.ntcard:hover{box-shadow:0 12px 34px rgba(0,23,51,.2),0 1px 3px rgba(0,23,51,.08)}
+.ntic{flex:none;width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--fill);color:var(--fg2);font-weight:800;font-size:15px}
+.ntic.new{background:var(--blue-soft);color:var(--blue)}
+.nttx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.nttx b{font-size:15px;font-weight:700}
+.nttx span{font-size:14px;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ntx{flex:none;border:0;background:none;color:var(--fg4);font-size:20px;line-height:1;width:28px;height:28px;border-radius:8px;cursor:pointer}
+.ntx:hover{background:var(--fill);color:var(--fg2)}
+.ntask .btn{flex:none}
+@media (max-width:1023.98px){.ntbox{right:16px;left:16px;width:auto;bottom:calc(var(--ds-h-tab) + 12px + env(safe-area-inset-bottom,0px))}}

@@ -106,6 +106,7 @@ def sync_orders(db,co):
     frm=(core.parse(lk['since']) if lk['since'] else now-datetime.timedelta(days=shops.FIRST_DAYS))-datetime.timedelta(minutes=10)
     n=0;offset=0
     while offset<5000:
+        db.commit()  # 카페24를 기다리는 동안 DB를 잠가 두지 않는다 (그사이 사장님 화면의 저장이 'database is locked'로 실패했다)
         d=api(db,co['id'],'/admin/orders',{'start_date':frm.strftime('%Y-%m-%d'),'end_date':now.strftime('%Y-%m-%d'),'embed':'items,receivers','limit':100,'offset':offset})
         rows=d.get('orders') or []
         for o in rows:
@@ -153,6 +154,7 @@ def sync_boards(db,co):
     for bno,bname in bs:
         offset=0
         while offset<2000:
+            db.commit()  # 위와 같은 이유
             d=api(db,co['id'],f'/admin/boards/{bno}/articles',{'start_date':frm.strftime('%Y-%m-%d'),'end_date':now.strftime('%Y-%m-%d'),'limit':100,'offset':offset})
             rows=d.get('articles') or []
             for a in sorted(rows,key=lambda x:str(x.get('created_date') or '')):
