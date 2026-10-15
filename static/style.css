@@ -1773,3 +1773,34 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .pend-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; margin: 0 0 14px; padding: 14px 18px; border: 1px solid #f3d6b4; border-radius: 14px; background: #fff7ec; }
 .pend-bar p { margin: 0; color: #5b4630; font-size: 14px; line-height: 1.6; }
 .pend-bar b { color: #1f2329; }
+
+/* 카카오·네이버 로그인 (각 회사 버튼 색 그대로) */
+.social-login { display: grid; gap: 8px; }
+.social-btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 50px; border-radius: 8px; font-size: 16px; font-weight: 700; text-decoration: none; }
+.social-btn svg { width: 20px; height: 20px; flex: none; }
+.social-btn:hover { filter: brightness(.97); }
+.social-btn:focus-visible { outline: 2px solid #2b3038; outline-offset: 2px; }
+.social-kakao { background: #FEE500; color: rgba(0,0,0,.85); }
+.social-naver { background: #03C75A; color: #fff; }
+.social-naver svg { width: 15px; height: 15px; }
+.social-or { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; color: #9a9ea5; font-size: 13px; }
+.social-or::before, .social-or::after { content: ""; flex: 1; height: 1px; background: #ececea; }
+.auth-lead { margin: -12px 0 10px; text-align: center; font-size: 15px; line-height: 1.6; color: #6b7079; }
+/* 내 정보: 로그인 방법·기업 회원 */
+.me-methods { display: grid; }
+.me-method { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 8px 0; border-top: 1px solid #f0f0f0; }
+.me-method:first-child { border-top: 0; }
+.me-method form { display: flex; align-items: center; gap: 10px; margin: 0; }
+.me-method-name { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; color: #2b3038; }
+.me-method-on { font-size: 14px; font-weight: 700; color: #1f8a4c; }
+.social-dot { width: 22px; height: 22px; border-radius: 50%; display: inline-block; }
+.text-button { border: 0; background: none; padding: 6px 4px; font: inherit; font-size: 14px; font-weight: 700; color: #8a8f96; cursor: pointer; }
+.text-button:hover:not(:disabled) { color: #d23a2a; }
+.text-button:disabled { opacity: .45; cursor: default; }
+.me-dl { display: grid; grid-template-columns: 120px 1fr; gap: 10px 16px; margin: 6px 0 14px; font-size: 15px; }
+.me-dl dt { color: #8a8f96; }
+.me-dl dd { margin: 0; color: #2b3038; }
+.note-box { padding: 14px 16px; border-radius: 12px; background: #fff4e8; color: #6a3d10; font-size: 15px; line-height: 1.6; }
+@media (max-width: 640px) { .me-dl { grid-template-columns: 1fr; gap: 2px; } .me-dl dd { margin-bottom: 10px; } }
+.ad-main #memberships { margin-bottom: 18px; padding-top: 20px; }
+.ad-main #memberships h2 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 8px; }

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}기업 소속 인증 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page member-page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">{{ ui('member.company_title', '기업 소속 인증') }}</h1>
+    <p>{{ ui('member.company_lead', '기업 담당자라면 소속을 인증해 주세요. 카카오·네이버로 로그인해도 소속은 자동으로 인증되지 않고, 운영자가 확인해 승인해요. 승인 전에는 어떤 제보도 볼 수 없어요.') }}</p></div>
+
+  {% if m and m['status'] != 'rejected' %}
+  <section class="form-panel me-section">
+    <div class="me-section-head"><h2>{{ m['company_name'] }}</h2><span class="pill">{{ MEMBERSHIP_STATUSES[m['status']] }}</span></div>
+    <dl class="me-dl">
+      <dt>사업자등록번호</dt><dd>{{ m['biz_no']|biz_no }}</dd>
+      <dt>담당자</dt><dd>{{ m['person_name'] }}{% if m['department'] %} · {{ m['department'] }}{% endif %}</dd>
+      <dt>회사 이메일</dt><dd>{{ m['work_email'] }}</dd>
+      <dt>신청일</dt><dd>{{ m['created'][:10]|replace('-', '.') }}</dd>
+    </dl>
+    <p class="meta">{% if m['status'] == 'pending' %}{{ ui('member.company_wait', '운영자가 사업자 정보와 소속을 확인하고 있어요. 확인이 끝나면 이 화면과 내 정보에 표시돼요.') }}{% else %}{{ ui('member.company_ok', '기업 회원으로 승인됐어요. 기업별 제보 확인과 답변 기능은 준비되는 대로 열려요.') }}{% endif %}</p>
+  </section>
+  {% else %}
+  {% if m %}<p class="note-box">{{ ui('member.company_rejected', '지난 신청이 반려됐어요.') }}{% if m['reason'] %} {{ m['reason'] }}{% endif %} {{ ui('member.company_retry', '내용을 고쳐 다시 신청할 수 있어요.') }}</p>{% endif %}
+  <form class="form-panel me-section me-form" method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="member-pw">
+      <div class="field"><label for="c-name">기업명</label><input id="c-name" name="company_name" maxlength="60" required value="{{ request.form.get('company_name','') }}"></div>
+      <div class="field"><label for="c-biz">사업자등록번호</label><input id="c-biz" name="biz_no" inputmode="numeric" maxlength="12" required placeholder="000-00-00000" value="{{ request.form.get('biz_no','') }}"></div>
+    </div>
+    <div class="member-pw">
+      <div class="field"><label for="c-person">담당자 이름</label><input id="c-person" name="person_name" maxlength="30" required value="{{ request.form.get('person_name','') }}"></div>
+      <div class="field"><label for="c-dept">소속·직함 <span class="opt-tag">선택</span></label><input id="c-dept" name="department" maxlength="60" placeholder="예: 고객지원팀 매니저" value="{{ request.form.get('department','') }}"></div>
+    </div>
+    <div class="member-pw">
+      <div class="field"><label for="c-phone">연락처</label><input id="c-phone" name="phone" inputmode="tel" maxlength="20" required value="{{ request.form.get('phone','') }}"></div>
+      <div class="field"><label for="c-mail">회사 이메일</label><input id="c-mail" type="email" name="work_email" maxlength="120" required placeholder="회사 도메인 이메일이면 확인이 빨라요" value="{{ request.form.get('work_email','') }}"></div>
+    </div>
+    <div class="field"><label for="c-ev">재직·소속 증빙 <span class="opt-tag">선택</span></label><input id="c-ev" type="file" name="evidence" accept=".pdf,.png,.jpg,.jpeg,.webp"><p class="meta">명함, 재직증명서, 사업자등록증 등 사진이나 PDF (5MB까지). 운영자만 봐요.</p></div>
+    <label class="check"><input type="checkbox" name="agree" required><span><b>[필수]</b> 소속 확인을 위해 위 정보를 수집·이용하는 데 동의해요. 회원 탈퇴 시 바로 지워져요.</span></label>
+    <button class="auth-submit" type="submit">{{ ui('member.company_submit', '소속 인증 신청') }}</button>
+  </form>
+  {% endif %}
+  <p><a class="text-link" href="{{ url_for('mypage') }}#company">← {{ ui('member.back_me', '내 정보로') }}</a></p>
+</div></main>
+{% endblock %}

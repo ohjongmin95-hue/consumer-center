@@ -8,6 +8,7 @@ from markupsafe import Markup, escape
 import site_content
 import notify
 import jebo
+import members
 import ops
 
 BASE=Path(__file__).parent
@@ -261,7 +262,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-82'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-83'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -1155,6 +1156,7 @@ def signup():
         if not errors:
             if db.execute('SELECT 1 FROM users WHERE login_id=?',(f['login_id'],)).fetchone():errors.append(ui_text('msg.m25','이미 쓰고 있는 아이디예요.'))
             if db.execute('SELECT 1 FROM users WHERE nickname=?',(f['nickname'],)).fetchone():errors.append(ui_text('msg.m26','이미 쓰고 있는 닉네임이에요.'))
+            if f['email'] and db.execute('SELECT 1 FROM users WHERE email=? COLLATE NOCASE',(f['email'],)).fetchone():errors.append(ui_text('msg.email_taken','이미 가입한 이메일이에요. 그 계정으로 로그인해 주세요.'))
         if not errors:
             hour_ago=(datetime.datetime.now()-datetime.timedelta(hours=1)).isoformat(timespec='seconds')
             if db.execute('SELECT COUNT(*) FROM users WHERE ip_hash=? AND created>=?',(ip_hash(),hour_ago)).fetchone()[0]>=3:errors.append(ui_text('msg.m27','잠시 후 다시 가입해 주세요.'))
@@ -1172,16 +1174,20 @@ def login():
     if g.user:return redirect(safe_next())
     if request.method=='GET':return render_template('login.html',enabled=members_enabled())
     if not members_enabled():abort(503)
-    login_id=request.form.get('login_id','').strip().lower()[:40];pw=request.form.get('password','')
-    fail=ui_text('msg.m30','아이디 또는 비밀번호가 맞지 않아요.')
+    login_id=request.form.get('login_id','').strip().lower()[:120];pw=request.form.get('password','')
+    fail=ui_text('msg.m30b','아이디(이메일) 또는 비밀번호가 맞지 않아요.')
     if too_many_attempts('member'):
         flash(ui_text('msg.m28','로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.'));return render_template('login.html',enabled=True),429
     with conn() as db:
         user=db.execute('SELECT * FROM users WHERE login_id=?',(login_id,)).fetchone()
+        if not user and '@' in login_id:
+            # 이메일로 로그인: 그 이메일을 쓰는 회원이 딱 한 명일 때만 (예전에 같은 이메일을 넣은 회원이 여럿이면 아이디로)
+            same=db.execute("SELECT * FROM users WHERE email=? COLLATE NOCASE AND email!='' LIMIT 2",(login_id,)).fetchall()
+            user=same[0] if len(same)==1 else None
         if user and user['locked_until'] and user['locked_until']>now():
             flash(ui_text('msg.locked','비밀번호를 여러 번 틀려 잠시 잠겼어요. 10분 뒤 다시 시도해 주세요.'));return render_template('login.html',enabled=True),429
-        if not user or not check_password_hash(user['pw_hash'],pw):
-            if user:
+        if not user or not user['pw_hash'] or not check_password_hash(user['pw_hash'],pw):
+            if user and user['pw_hash']:
                 failed=user['failed']+1
                 lock=(datetime.datetime.now()+datetime.timedelta(minutes=LOGIN_LOCK_MINUTES)).isoformat(timespec='seconds') if failed>=LOGIN_LOCK_FAILS else ''
                 db.execute('UPDATE users SET failed=?,locked_until=? WHERE id=?',(0 if lock else failed,lock,user['id']))
@@ -1211,7 +1217,8 @@ def mypage():
         cases=db.execute('SELECT id,receipt,category,company,subject,status,created,public_consent,published,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE user_id=? ORDER BY id DESC LIMIT 100',(g.user['id'],)).fetchall()
         posts=db.execute('SELECT id,category,title,likes,comments,created,hidden FROM posts WHERE user_id=? ORDER BY id DESC LIMIT 50',(g.user['id'],)).fetchall()
         comment_count=db.execute('SELECT COUNT(*) FROM comments WHERE user_id=?',(g.user['id'],)).fetchone()[0]
-    return render_template('mypage.html',cases=cases,posts=posts,comment_count=comment_count)
+        membership=membership_of(db,g.user['id'])
+    return render_template('mypage.html',cases=cases,posts=posts,comment_count=comment_count,methods=login_methods(g.user),membership=membership)
 
 @app.route('/me/case/<int:case_id>')
 @member_only
@@ -1229,10 +1236,11 @@ def mypage_edit():
         if action=='email':
             email=request.form.get('email','').strip()
             if email and (len(email)>120 or not MEMBER_EMAIL_RE.match(email)):flash(ui_text('msg.m32','이메일 주소를 확인해 주세요.'))
-            else:db.execute('UPDATE users SET email=? WHERE id=?',(email,g.user['id']));flash(ui_text('msg.m37','이메일을 저장했어요.') if email else ui_text('msg.m38','이메일을 지웠어요.'))
+            elif email and db.execute('SELECT 1 FROM users WHERE email=? COLLATE NOCASE AND id!=?',(email,g.user['id'])).fetchone():flash(ui_text('msg.email_taken2','다른 회원이 쓰고 있는 이메일이에요.'))
+            else:db.execute("UPDATE users SET email=?,email_verified_at=CASE WHEN email=? COLLATE NOCASE THEN email_verified_at ELSE '' END WHERE id=?",(email,email,g.user['id']));flash(ui_text('msg.m37','이메일을 저장했어요.') if email else ui_text('msg.m38','이메일을 지웠어요.'))
         elif action=='password':
             cur_pw=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
-            if not check_password_hash(g.user['pw_hash'],cur_pw):flash(ui_text('msg.m33','지금 비밀번호가 맞지 않아요.'))
+            if g.user['pw_hash'] and not check_password_hash(g.user['pw_hash'],cur_pw):flash(ui_text('msg.m33','지금 비밀번호가 맞지 않아요.'))
             elif not (8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):flash(ui_text('msg.m34','새 비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.'))
             elif pw!=pw2:flash(ui_text('msg.m35','새 비밀번호 확인이 일치하지 않아요.'))
             else:
@@ -1245,7 +1253,7 @@ def mypage_edit():
 @app.route('/me/withdraw',methods=['POST'])
 @member_only
 def withdraw():
-    if not check_password_hash(g.user['pw_hash'],request.form.get('password','')) or not request.form.get('confirm'):
+    if (g.user['pw_hash'] and not check_password_hash(g.user['pw_hash'],request.form.get('password',''))) or not request.form.get('confirm'):
         flash(ui_text('msg.m39','비밀번호와 탈퇴 확인을 다시 확인해 주세요.'));return redirect(url_for('mypage')+'#withdraw')
     with conn() as db:delete_member(db,g.user['id'],bool(request.form.get('delete_posts')))
     session.pop('uid',None);session.pop('uv',None);session.pop('case_id',None)
@@ -1261,6 +1269,7 @@ def delete_member(db,uid,delete_posts):
         for table in ('posts','comments'):db.execute(f"UPDATE {table} SET user_id=NULL,nickname='탈퇴한 회원' WHERE user_id=?",(uid,))
     db.execute('DELETE FROM board_votes WHERE voter=?',(hashlib.sha256(('member:%d'%uid).encode()).hexdigest(),))
     db.execute('UPDATE cases SET user_id=NULL WHERE user_id=?',(uid,))
+    delete_member_extras(db,uid)
     db.execute('DELETE FROM users WHERE id=?',(uid,))
 
 @app.route('/admin/members',methods=['GET','POST'])
@@ -1268,6 +1277,8 @@ def delete_member(db,uid,delete_posts):
 def admin_members():
     with conn() as db:
         if request.method=='POST':
+            if request.form.get('action') in ('m_approve','m_reject'):
+                flash(admin_membership_action(db,request.form));return redirect(url_for('admin_members')+'#memberships')
             uid=request.form.get('id',type=int);action=request.form.get('action')
             if not uid or action not in ('suspend','restore','delete'):abort(400)
             if not db.execute('SELECT 1 FROM users WHERE id=?',(uid,)).fetchone():abort(404)
@@ -1277,11 +1288,13 @@ def admin_members():
             return redirect(url_for('admin_members',q=request.args.get('q','')))
         q=request.args.get('q','').strip()[:40]
         like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
-        members=db.execute("""SELECT u.id,u.login_id,u.nickname,u.email,u.status,u.created,u.last_login,
+        members=db.execute("""SELECT u.id,u.login_id,u.nickname,u.email,u.status,u.created,u.last_login,u.kind,u.pw_hash!='' AS has_pw,
+            (SELECT group_concat(provider) FROM user_identities WHERE user_id=u.id) AS providers,
             (SELECT COUNT(*) FROM cases WHERE user_id=u.id) AS n_cases,(SELECT COUNT(*) FROM posts WHERE user_id=u.id) AS n_posts
             FROM users u WHERE u.login_id LIKE ? ESCAPE '\\' OR u.nickname LIKE ? ESCAPE '\\' ORDER BY u.id DESC LIMIT 300""",(like,like)).fetchall()
         total=db.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-    return render_template('admin_members.html',members=members,q=q,total=total)
+        memberships=admin_memberships(db)
+    return render_template('admin_members.html',members=members,q=q,total=total,memberships=memberships)
 
 # ---- 직원 제보 관리 / 관리자 홈 --------------------------------------------
 # 관리자(대표): 사이트 문구·항목·회원·게시판·직원 계정을 관리하고, 제보 관리 화면도 볼 수 있음.
@@ -2149,5 +2162,8 @@ send_company_verify=_jebo.send_company_verify
 # 3차 운영 자동화: 심사 보조·기업 통지·알림·정정·삭제·이의·운영 통계 (ops.py)
 _ops=types.SimpleNamespace(**globals());ops.install(_ops)
 for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras'):globals()[_k]=getattr(_ops,_k)
+# 회원 확장: 카카오·네이버 로그인, 예전 제보 연결, 기업 소속 인증 신청 (members.py)
+_members=types.SimpleNamespace(**globals());members.install(_members)
+for _k in ('login_methods','membership_of','admin_memberships','admin_membership_action','delete_member_extras'):globals()[_k]=getattr(_members,_k)
 
 if __name__=='__main__':app.run(debug=False)

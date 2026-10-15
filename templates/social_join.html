@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}{{ provider }}로 가입 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="auth-page">
+  <div class="auth-card auth-card-wide">
+    <form class="auth-body" method="post" autocomplete="off"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
+      <h1 class="auth-title">{{ provider }}로 가입하기</h1>
+      <p class="auth-lead">처음 오셨네요. 게시판에 보일 닉네임을 정하고 약관에 동의하면 가입이 끝나요.</p>
+      <input name="nickname" maxlength="12" required placeholder="{{ ui('member.nick_ph', '닉네임 (2~12자, 게시판에 보여요)') }}" aria-label="{{ ui('board.nickname', '닉네임') }}" value="{{ nickname }}">
+      <div class="agree-box">
+        <label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all', '모두 동의합니다') }}</span></label>
+        <details class="agree-row">
+          <summary><label><input type="checkbox" name="agree_terms" required{% if request.form.get('agree_terms') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_terms', '이용약관 동의') }}</span></label><span class="agree-view">{{ ui('member.view', '보기') }}</span></summary>
+          <div class="agree-detail consent-scroll">{{ doc('policy.terms') }}</div>
+        </details>
+        <details class="agree-row">
+          <summary><label><input type="checkbox" name="agree_privacy" required{% if request.form.get('agree_privacy') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_privacy', '개인정보 수집·이용 동의') }}</span></label><span class="agree-view">{{ ui('member.view', '보기') }}</span></summary>
+          <div class="agree-detail">
+            <div class="consent-table" role="table" aria-label="{{ ui('member.agree_privacy', '개인정보 수집·이용 동의') }}">
+              <div role="row" class="ct-head"><span role="columnheader">{{ ui('report.c1_col1', '수집 개인정보 항목') }}</span><span role="columnheader">{{ ui('report.c1_col2', '수집·이용 목적') }}</span><span role="columnheader">{{ ui('report.c1_col3', '보유 기간') }}</span></div>
+              <div role="row"><span role="cell" data-label="{{ ui('report.c1_col1', '수집 개인정보 항목') }}"><span class="cell-lines"{{ ed_attr('member.privacy_items') }}>{% for l in g.content['member.privacy_items'].split('\n') if l.strip() %}<span class="cell-line">{{ l }}</span>{% endfor %}</span></span><span role="cell" data-label="{{ ui('report.c1_col2', '수집·이용 목적') }}"><span class="cell-lines"{{ ed_attr('member.privacy_purpose') }}>{% for l in g.content['member.privacy_purpose'].split('\n') if l.strip() %}<span class="cell-line">{{ l }}</span>{% endfor %}</span></span><span role="cell" data-label="{{ ui('report.c1_col3', '보유 기간') }}"><span class="cell-lines"{{ ed_attr('member.privacy_period') }}>{% for l in g.content['member.privacy_period'].split('\n') if l.strip() %}<span class="cell-line">{{ l }}</span>{% endfor %}</span></span></div>
+            </div>
+            <p class="consent-note">{{ txt('member.privacy_refusal') }} <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></p>
+          </div>
+        </details>
+        <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_age" required{% if request.form.get('agree_age') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_age', '만 14세 이상입니다') }}</span></label></div>
+      </div>
+
+      <button class="auth-submit" type="submit">{{ ui('member.signup_btn', '가입하기') }}</button>
+    </form>
+    <div class="auth-foot auth-foot-one">
+      <a href="{{ url_for('login') }}">{{ ui('member.to_login2', '이미 아이디가 있다면 로그인 후 연결') }}</a>
+    </div>
+  </div>
+</main>
+<script>
+  (function () {
+    var all = document.querySelector('[data-check-all]');
+    if (!all) return;
+    var boxes = document.querySelectorAll('.agree-row input[type=checkbox]');
+    all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); });
+    boxes.forEach(function (b) { b.addEventListener('change', function () { all.checked = Array.prototype.every.call(boxes, function (x) { return x.checked; }); }); });
+    // 체크박스를 누를 때 "{{ ui('member.view', '보기') }}"가 같이 열리지 않도록 함
+    document.querySelectorAll('.agree-row summary label').forEach(function (l) { l.addEventListener('click', function (e) { e.stopPropagation(); }); });
+  })();
+</script>
+{% endblock %}
