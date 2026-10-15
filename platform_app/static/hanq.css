@@ -1709,10 +1709,10 @@ body.v2 main .inp.sm,body.v2 main select.inp.sm{height:36px;padding:0 12px;font-
 .slab span{color:var(--fg2)}
 .nprog.big{display:block;height:10px;border-radius:99px;background:var(--fill);overflow:hidden}
 .nprog.big i{display:block;height:100%;background:var(--accent);border-radius:99px}
-/* ---------- 기업 글씨체: 위메이드 Infinity Sans (로고 글자는 그대로) ---------- */
-@font-face{font-family:'Infinity Sans';font-weight:400;font-style:normal;font-display:swap;src:url(fonts/InfinitySans-Regular.woff2) format('woff2')}
-@font-face{font-family:'Infinity Sans';font-weight:500 900;font-style:normal;font-display:swap;src:url(fonts/InfinitySans-Bold.woff2) format('woff2')}
-body.v2.fbiz,body.v2.fbiz button,body.v2.fbiz input,body.v2.fbiz select,body.v2.fbiz textarea{font-family:'Infinity Sans',Pretendard,'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif}
+/* ---------- 기업 글씨체: 네오현대 (로고 글자는 그대로) ---------- */
+@font-face{font-family:'NeoHyundai';font-weight:400;font-style:normal;font-display:swap;src:url(fonts/NeoHyundai-R.woff2) format('woff2')}
+@font-face{font-family:'NeoHyundai';font-weight:500 900;font-style:normal;font-display:swap;src:url(fonts/NeoHyundai-B.woff2) format('woff2')}
+body.v2.fbiz,body.v2.fbiz button,body.v2.fbiz input,body.v2.fbiz select,body.v2.fbiz textarea{font-family:'NeoHyundai',Pretendard,'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif}
 body.v2.fbiz .logo .wm{font-family:Pretendard,'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif}
 body.v2.fbiz .no{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
@@ -1840,3 +1840,12 @@ body.v2:has(.bside) .pg>.wrap>.grid2>.panel:first-child{padding-right:16px}
   body.v2:has(.bside) .kpi:nth-child(n+3){border-top:1px solid var(--t-line)}
   body.v2:has(.bside) .pg>.wrap>.grid2>.panel+.panel{border-left:0;padding-left:0;border-top:1px solid var(--t-line)}
 }
+/* 로그인 뒤 하단 정보는 접어 두고, '회사 정보'를 누르면 펼친다 */
+body.v2 .foot2.ffold{padding-block:0}
+.ftd>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:18px 16px;font-size:14px;font-weight:500;color:var(--fg3)}
+.ftd>summary::-webkit-details-marker{display:none}
+.ftd>summary::after{content:'';width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s}
+.ftd[open]>summary::after{transform:translateY(2px) rotate(-135deg)}
+.ftd>summary:hover{color:var(--fg)}
+.ftd[open]>.wrap{padding-block:8px 48px}
+@media (max-width:1023.98px){body.v2:has(.mbar) .foot2.ffold{padding-bottom:calc(var(--ds-h-tab) + env(safe-area-inset-bottom,0px))}}
