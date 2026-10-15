@@ -7,11 +7,12 @@
 <div class="prog"><i id="wProg" style="width:20%"></i></div>
 <form method="post" action="{{ url_for('submit') }}" enctype="multipart/form-data" id="wForm" autocomplete="off" novalidate>
 <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-<input type="hidden" name="company_id" id="fCompanyId" value="{{ d.company_id or '' }}">
+<input type="hidden" name="company_id" id="fCompanyId" value="{{ d.company_id or '' }}">{% if d.live %}<input type="hidden" name="live" value="1">{% endif %}
 <section class="step" data-step="0">
   <h1 class="h1">어느 기업인가요?</h1>
   <div style="margin-top:28px"><input class="big" name="company" id="fCompany" maxlength="60" placeholder="기업이나 쇼핑몰 이름" value="{{ d.company or '' }}" required></div>
   <div class="rows" id="sugg" style="margin-top:16px" hidden></div>
+  {% if d.live %}<div class="hint ok" style="margin-top:20px"><span>💬</span><span><b>상담원과 채팅</b> · 접수하면 바로 채팅방이 열려요</span></div>{% endif %}
   <div class="hint ok" id="hMember" style="margin-top:20px" {{ '' if d.member else 'hidden' }}><span>⚡</span><span><b>입점 기업</b> · 담당자에게 바로 전달돼요</span></div>
   <div class="hint blue" id="hNon" style="margin-top:20px" hidden><span>📮</span><span><b>비입점 기업</b> · 센터가 공식 연락처로 전달을 시도해요</span></div>
 </section>

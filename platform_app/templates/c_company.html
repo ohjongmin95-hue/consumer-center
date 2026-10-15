@@ -27,7 +27,7 @@
 </div>
 <footer class="cs-foot"><nav class="ft-links"><a class="strong" href="{{ url_for('privacy') }}">개인정보 처리방침</a><a href="{{ url_for('guide') }}">이용 안내</a></nav>{{ op.opinfo() }}<p class="copy">© 2026 SOBORU. All rights reserved.</p></footer>
 </div></div>
-<div class="cs-cta"><div><a class="btn full" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a></div></div>
+<div class="cs-cta"><div{% if live %} class="cs-cta2"{% endif %}>{% if live %}<a class="btn full" href="{{ url_for('new',company_id=co.id,live=1) }}">💬 상담원과 채팅</a><a class="btn full gray" href="{{ url_for('new',company_id=co.id) }}">접수하기</a>{% else %}<a class="btn full" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a>{% endif %}</div></div>
 </main>
 
 {% endblock %}

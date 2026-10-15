@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -1969,6 +1969,45 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('상담 후 구매',stats);self.assertIn('45,000원',stats);self.assertIn('14일 안에',stats)
         pg=b.get(f'/biz/case/{case}').get_data(as_text=True)
         self.assertIn('취소·반품·환불 내역',pg);self.assertIn('85,000원',pg);self.assertIn('30,000원',pg)
+
+
+    def test_live_chat(self):
+        """실시간 채팅: 켜면 고객센터에 버튼, 채팅으로 접수하면 채팅방, 서로 주고받고 보고 있는지 보인다."""
+        b,o,cid=self.signup_and_approve('채팅상점','chat-co@example.com')
+        self.assertNotIn('상담원과 채팅',self.client().get(f'/to/{cid}').get_data(as_text=True))
+        self.post(b,'/biz/settings',{'act':'ops','live_chat':'1'})
+        self.assertIn('상담원과 채팅',self.client().get(f'/to/{cid}').get_data(as_text=True))
+        u=self.client()
+        self.assertIn('접수하면 바로 채팅방이 열려요',u.get(f'/new?company_id={cid}&live=1').get_data(as_text=True))
+        data={'company':'채팅상점','company_id':cid,'category':'배송 조회','title':'배송이 언제 와요?','body':'어제 주문한 원피스 언제 받을 수 있을까요?','want':'배송 확인','name':'김채팅','phone':'010-2222-3333',
+              'password':'1234','privacy':'1','consent':'1','live':'1'}
+        r=self.post(u,'/submit',data,'/new')
+        self.assertIn('#chat',r.headers['Location']);case=int(r.headers['Location'].split('/case/')[1].split('#')[0])
+        page=u.get(f'/case/{case}').get_data(as_text=True)
+        self.assertIn('id="chat"',page);self.assertIn('livechat.js',page)
+        j=self.post(u,f'/case/{case}/live',{'text':'혹시 오늘 출발하나요?'},f'/case/{case}').get_json()
+        self.assertEqual(j['msgs'][-1]['text'],'혹시 오늘 출발하나요?');self.assertFalse(j['co_online'])
+        # 다른 사람은 채팅방을 못 본다
+        self.assertEqual(self.client().get(f'/case/{case}/live').status_code,404)
+        jb=b.get(f'/biz/case/{case}/live?after=0').get_json()
+        self.assertIn('혹시 오늘 출발하나요?',[m['text'] for m in jb['msgs']]);self.assertTrue(jb['me_online'])
+        self.assertIn('채팅 중',b.get('/biz/all').get_data(as_text=True))
+        last=jb['msgs'][-1]['id']
+        jb=self.post(b,f'/biz/case/{case}/live',{'text':'네, 오늘 오후에 보내요!','after':str(last)},f'/biz/case/{case}').get_json()
+        self.assertEqual([m['text'] for m in jb['msgs']],['네, 오늘 오후에 보내요!'])
+        j=u.get(f'/case/{case}/live?after={last}').get_json()
+        self.assertEqual([(m['who'],m['text']) for m in j['msgs']],[('co','네, 오늘 오후에 보내요!')]);self.assertTrue(j['co_online'])
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(case,)).fetchone()[0],'answered')
+        # 답을 받은 뒤 고객이 또 말하면 다시 '확인 중'
+        self.post(u,f'/case/{case}/live',{'text':'고마워요'},f'/case/{case}')
+        with self.core.conn() as db:
+            self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(case,)).fetchone()[0],'seen')
+            db.execute("UPDATE cases SET status='closed' WHERE id=?",(case,))
+        r=self.post(u,f'/case/{case}/live',{'text':'또 있어요'},f'/case/{case}')
+        self.assertEqual(r.status_code,400)
+        # 끄면 버튼이 사라진다
+        self.post(b,'/biz/settings',{'act':'ops'})
+        self.assertNotIn('상담원과 채팅',self.client().get(f'/to/{cid}').get_data(as_text=True))
 
 
 if __name__=='__main__':unittest.main()
