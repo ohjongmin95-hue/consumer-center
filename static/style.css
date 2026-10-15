@@ -1804,3 +1804,41 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 @media (max-width: 640px) { .me-dl { grid-template-columns: 1fr; gap: 2px; } .me-dl dd { margin-bottom: 10px; } }
 .ad-main #memberships { margin-bottom: 18px; padding-top: 20px; }
 .ad-main #memberships h2 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 8px; }
+
+/* AI 기업 입장 요청서·기업 연락처·답변 등록 (제보 상세) */
+.desk-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
+.desk-head h2 { margin: 0 4px 0 0; }
+.cs-form input:not([type=checkbox]):not([type=file]) { width: 100%; padding: 10px 12px; border: 1px solid #dddbd6; border-radius: 8px; background: #fff; font-size: 14px; }
+.desk-form textarea { font-size: 14.5px; line-height: 1.7; min-height: 320px; }
+.desk-copy, .desk-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.desk-copy a.cs-btn, .desk-btns a.cs-btn { text-decoration: none; }
+.desk-copied { font-size: 13px; font-weight: 700; color: #1f8a4c; }
+.desk-steps { margin-top: 4px; padding-top: 12px; border-top: 1px solid #f0efec; }
+.desk-steps .cs-row { flex-wrap: wrap; }
+.desk-steps .cs-row .cs-hint { flex: 1 1 260px; margin: 0; }
+.desk-make { margin-top: 10px; justify-content: flex-start; }
+.desk-make form { margin: 0; }
+.desk-versions { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; font-size: 13.5px; }
+.desk-versions li { padding: 8px 10px; border-radius: 8px; background: #f8f7f4; }
+.desk-versions .cs-text { margin: 8px 0; white-space: pre-wrap; }
+.desk-ans-meta { margin: 2px 0 6px; font-size: 13px; color: #6b7079; }
+.desk-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.desk-answer .cs-check { align-self: flex-start; }
+.desk-kakao { background: #FEE500; border-color: #FEE500; color: rgba(0,0,0,.85); }
+.desk-contact-form .cs-row input { flex: 1; }
+.desk-contact .desk-btns { margin-top: 10px; }
+@media (max-width: 640px) { .desk-grid { grid-template-columns: 1fr; } .desk-form textarea { min-height: 260px; } }
+/* 관리자: 기업 연락처 */
+.contact-list { display: grid; gap: 10px; margin-top: 14px; }
+.contact-item > summary, .contact-new > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+.contact-item > summary::-webkit-details-marker, .contact-new > summary::-webkit-details-marker { display: none; }
+.contact-new > summary { font-weight: 800; color: #c66300; }
+.contact-name { flex: 1 1 220px; min-width: 0; }
+.contact-ways { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13.5px; color: #4f5660; }
+.contact-ways span { padding: 3px 9px; border-radius: 999px; background: #f4f3f0; }
+.contact-form { margin-top: 14px; }
+.contact-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; }
+.contact-grid input { width: 100%; }
+.contact-cases a { color: #c66300; }
+@media (max-width: 1100px) { .contact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .contact-grid { grid-template-columns: 1fr; } }
