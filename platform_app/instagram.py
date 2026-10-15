@@ -110,6 +110,12 @@ def take(db,co,lk,ev):
     text=clean(msg.get('text'),core.BIG).strip() or NO_TEXT
     r=db.execute('SELECT case_id FROM shop_seen WHERE company_id=? AND shop=? AND ext_id=? ORDER BY rowid DESC LIMIT 1',(co['id'],SHOP,'u:'+sender)).fetchone()
     c=db.execute('SELECT * FROM cases WHERE id=?',(r['case_id'],)).fetchone() if r else None
+    name=''
+    if not (c and c['status'] not in core.FINAL):  # 새 요청이면 이름을 먼저 묻는다 (DB에 쓰기 전에: 기다리는 동안 DB를 잠그지 않게)
+        try:
+            s,d=_call('GET',GRAPH+'/'+urllib.parse.quote(sender),{'fields':'username,name'},token=token(db,lk))
+            if s<400:name=clean(d.get('username') or d.get('name'),20)
+        except IgError:pass
     db.execute('UPDATE ig_links SET last_in=? WHERE company_id=?',(core.iso(),co['id']))
     if c and c['status'] not in core.FINAL:  # 같은 고객의 진행 중인 요청에 이어 붙인다
         core.add_event(db,c['id'],'me',text)
@@ -117,11 +123,6 @@ def take(db,co,lk,ev):
         db.execute('UPDATE cases SET updated=? WHERE id=?',(core.iso(),c['id']))
         db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,'m:'+mid,c['id']))
         return None
-    name=''
-    try:
-        s,d=_call('GET',GRAPH+'/'+urllib.parse.quote(sender),{'fields':'username,name'},token=token(db,lk))
-        if s<400:name=clean(d.get('username') or d.get('name'),20)
-    except IgError:pass
     from werkzeug.security import generate_password_hash
     import datetime as _d
     title=clean(' '.join(text.split()),40)

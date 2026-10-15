@@ -779,6 +779,27 @@ def case_live(case_id):
         c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         return jsonify(msgs=livechat.since(db,case_id,after),me_online=livechat.online(db,case_id,'me'),open=livechat.is_open(c))
 
+@app.route('/notify/poll')
+@login_required
+def notify_poll():
+    """켜 둔 화면의 알림(오른쪽 아래): c·e 다음에 들어온 새 요청과 고객의 새 메시지. 처음(c·e 없음)에는 지금 위치만 알려 준다."""
+    co=me();out=[]
+    num=lambda k:int(request.args[k]) if request.args.get(k,'').isdigit() else None
+    c0,e0=num('c'),num('e')
+    with conn() as db:
+        mc=db.execute('SELECT COALESCE(MAX(id),0) FROM cases WHERE company_id=?',(co['id'],)).fetchone()[0]
+        me_=db.execute('SELECT COALESCE(MAX(e.id),0) FROM events e JOIN cases c ON c.id=e.case_id WHERE c.company_id=?',(co['id'],)).fetchone()[0]
+        if c0 is not None and e0 is not None:
+            new=db.execute("SELECT id,title,channel,name FROM cases WHERE company_id=? AND member=1 AND consent=1 AND id>? ORDER BY id DESC LIMIT 5",(co['id'],c0)).fetchall()
+            for r in new:out.append(dict(case=r['id'],kind='new',title='새 요청'+(f" · {r['channel']}" if r['channel'] else ''),text=r['title'],url=url_for('case',case_id=r['id'])))
+            seen={r['id'] for r in new}
+            for r in db.execute("""SELECT e.case_id,e.text,c.title,c.channel FROM events e JOIN cases c ON c.id=e.case_id WHERE c.company_id=? AND c.member=1 AND c.consent=1
+                    AND e.kind='me' AND e.id>? ORDER BY e.id DESC LIMIT 10""",(co['id'],e0)).fetchall():
+                if r['case_id'] in seen:continue
+                seen.add(r['case_id'])
+                out.append(dict(case=r['case_id'],kind='msg',title='고객의 새 메시지'+(f" · {r['channel']}" if r['channel'] else ''),text=core.short(' '.join((r['text'] or '').split()),60),url=url_for('case',case_id=r['case_id'])))
+    return jsonify(c=mc,e=me_,items=out[:5])
+
 def case_inbox(db,c,act,f):
     """요청 화면 오른쪽 '분류': 태그·우선순위·미루기·합치기. -> (안내, ok|error)"""
     co=me()
