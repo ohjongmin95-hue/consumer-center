@@ -1,0 +1,26 @@
+{% extends 'base.html' %}{% import '_c.html' as m with context %}
+{% block title %}데이터 삭제 안내 · {{ CNAME }}{% endblock %}
+{% block bar %}{{ m.bar() }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">개인정보</span><h1>데이터 삭제 안내</h1></div></div></section>
+<section class="doc-sec"><div class="wrap mk-one"><div class="panel privacy doc">
+<section><h2>1. 인스타그램 연결을 끊고 지우기 (기업 회원)</h2><ul>
+<li>{{ BNAME }} <b>서비스 연동 &gt; 인스타그램 DM</b>에서 <b>연결 끊기</b>를 누르면 저장한 인스타그램 토큰을 바로 지워요.</li>
+<li>인스타그램 앱 <b>설정 &gt; 앱 및 웹사이트</b>에서 소보루를 지우면 권한도 완전히 거둬져요.</li>
+<li>이미 받은 문의 기록까지 지우려면 아래 이메일로 요청해 주세요.</li>
+</ul></section>
+<section><h2>2. 내 문의 기록 지우기 (고객)</h2><ul>
+<li>인스타그램 DM, 이메일, 소보루 CS로 남긴 문의와 연락처를 지우려면 아래 이메일로 요청해 주세요.</li>
+<li>본인 확인 뒤 30일 안에 지우고, 지운 결과를 알려 드려요.</li>
+<li>요청하지 않아도 마지막 처리일부터 {{ years }}년이 지나면 자동으로 지워요.</li>
+</ul></section>
+<section><h2>3. 요청하는 곳</h2>
+<dl class="kv"><dt>담당</dt><dd>{{ op.name }} 개인정보 보호책임자</dd>{% if contact %}<dt>이메일</dt><dd style="user-select:all">{{ contact }}</dd>{% endif %}<dt>주소</dt><dd>{{ op.address }}</dd></dl>
+<p>자세한 내용은 <a class="link" href="{{ url_for('privacy') }}">개인정보 처리방침</a>을 봐 주세요.</p></section>
+<section lang="en"><h2>Data deletion (English)</h2><ul>
+<li>Businesses can disconnect Instagram at <b>Integrations &gt; Instagram DM &gt; Disconnect</b>. The stored access token is deleted immediately. You can also remove SOBORU in Instagram <b>Settings &gt; Apps and websites</b>.</li>
+<li>To delete messages and contact details we received, email the address above. We verify the request and delete the data within 30 days.</li>
+<li>Without a request, records are deleted automatically {{ years }} years after the case was last handled.</li>
+</ul></section>
+</div></div></section>
+</main>{% endblock %}
