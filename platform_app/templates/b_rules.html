@@ -8,7 +8,7 @@
 <dl><div><dt>이번 달 문의</dt><dd>{{ chat.asked }}</dd></div><div><dt>상담창에서 해결</dt><dd>{{ chat.solved }}</dd></div><div><dt>접수로 이어짐</dt><dd>{{ chat.filed }}</dd></div></dl></div>
 <div class="list rgrid">{% for cat in CATS %}{% set r=rs[cat] %}{% set p=PLAYBOOK[cat] %}
 <div class="li" id="r{{ loop.index }}">
-<div class="row">{{ i.cat_icon(cat,36) }}<div class="tx"><b>{{ cat }}</b><span>{{ p.title }}</span></div>
+<div class="row">{{ i.cat_tile(cat) }}<div class="tx"><b>{{ cat }}</b><span>{{ p.title }}</span></div>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}"><input type="hidden" name="auto" value="{{ '0' if r.auto else '1' }}">
 <button class="sw{{ ' on' if r.auto }}" role="switch" aria-checked="{{ 'true' if r.auto else 'false' }}" aria-label="{{ cat }} 자동 처리"></button></form></div>
 {% if cat in ('교환','반품·환불') %}<form method="post" class="cond"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
