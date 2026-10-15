@@ -128,7 +128,31 @@
         <noscript><button class="cs-btn" type="submit">검토 저장</button></noscript>
         <p class="cs-hint">중복·제외는 공개 목록과 기업 통계에서 빠져요. 진행 단계는 바뀌지 않아요.</p>
       </form>
-      <script>(function(){var f=document.getElementById('review');if(!f)return;var d=f.querySelector('.rv-desc'),h={{ review_hints|tojson }};f.addEventListener('change',function(e){if(e.target.name!=='review')return;d.textContent=h[e.target.value]||'';if(e.target.value==='duplicate'||e.target.value==='rejected'){var n=f.querySelector('#c-review-note');n.focus();}else{f.submit();}});})();</script>
+      <script>
+      // 검토 결과는 화면을 새로 고치지 않고 저장 (위 '처리'에서 고르던 진행 단계·담당 기자가 풀리지 않게)
+      (function () {
+        var f = document.getElementById('review'); if (!f || !window.fetch) return;
+        var d = f.querySelector('.rv-desc'), chip = f.querySelector('h2 .rv-chip'), h = {{ review_hints|tojson }}, names = {{ reviews|tojson }};
+        function save() {
+          var v = (f.querySelector('input[name=review]:checked') || {}).value || '';
+          d.textContent = '저장하는 중…';
+          fetch(f.action || location.href, { method: 'POST', body: new FormData(f), credentials: 'same-origin' })
+            .then(function (r) {
+              if (!r.ok) throw r;
+              chip.className = 'rv-chip rv-' + (v || 'new'); chip.textContent = names[v];
+              d.textContent = '✓ ' + names[v] + '(으)로 저장했어요. ' + (h[v] || '');
+            })
+            .catch(function () { f.submit(); });
+        }
+        f.addEventListener('change', function (e) {
+          if (e.target.name !== 'review') return;
+          d.textContent = h[e.target.value] || '';
+          if (e.target.value === 'duplicate' || e.target.value === 'rejected') f.querySelector('#c-review-note').focus();
+          else save();
+        });
+        f.addEventListener('submit', function (e) { e.preventDefault(); save(); });
+      })();
+      </script>
 
       {# 2. 기업: 기업 페이지 연결, 가입 기업 전달, 1회용 답변 링크 #}
       <section class="cs-panel cs-card">
