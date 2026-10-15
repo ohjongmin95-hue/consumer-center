@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -1870,6 +1870,43 @@ class PlatformTest(unittest.TestCase):
             self.assertTrue(db.execute('SELECT 1 FROM case_tags WHERE case_id=? AND tag_id=?',(c2,tid)).fetchone())
         self.assertIn('에 합쳐졌어요',b.get(f'/biz/case/{c1}').get_data(as_text=True))
         self.assertIn('이미 끝난 요청',self.post(b,f'/biz/case/{c1}',{'act':'merge','target':no2},follow_redirects=True).get_data(as_text=True))
+
+    def test_hours_sla_autoassign(self):
+        """영업시간·영업시간 밖 안내·첫 답변 목표·자동 배정."""
+        import datetime as dt
+        b,o,cid=self.signup_and_approve('운영상점','ops-co@example.com')
+        wf=sys.modules['workflow']
+        for nm,em in (('가상담','ga@example.com'),('나상담','na@example.com')):
+            html=self.post(b,'/biz/team',{'act':'invite','name':nm,'email':em,'role':'agent'}).get_data(as_text=True)
+            path='/biz/join/'+re.search(r'value="(http[^"]*/join/[^"]+)"',html).group(1).split('/join/')[1];self.post(self.client(),path,{'password':'agentpassword1'})
+        r=self.post(b,'/biz/settings',{'act':'ops','day1':'1','day2':'1','day3':'1','day4':'1','day5':'1','hours_from':'09:00','hours_to':'18:00','sla_hours':'4','away_on':'1','away_msg':'지금은 쉬는 시간이에요. {다음영업}에 답변드릴게요.','auto_assign':'1'},follow_redirects=True)
+        self.assertIn('응대 운영 설정을 저장했어요',r.get_data(as_text=True))
+        self.assertIn('시작 시간이 끝 시간보다',self.post(b,'/biz/settings',{'act':'ops','day1':'1','hours_from':'18:00','hours_to':'09:00'},follow_redirects=True).get_data(as_text=True))
+        with self.core.conn() as db:co=self.core.company(db,cid)
+        self.assertEqual(wf.hours_text(co),'평일 09:00~18:00')
+        # 영업시간만 센다: 금요일 17시 + 4시간 = 월요일 12시
+        self.assertEqual(wf.add_work_hours(co,dt.datetime(2026,10,16,17,0),4),dt.datetime(2026,10,19,12,0))
+        self.assertFalse(wf.in_hours(co,dt.datetime(2026,10,18,10,0)))
+        self.assertEqual(wf.next_open(co,dt.datetime(2026,10,17,3,0)),dt.datetime(2026,10,19,9,0))
+        # 일요일 새벽에 들어온 요청: 안내가 진행 기록에 남고, 직원끼리 나눠 배정된다
+        with patch.object(self.core,'now',lambda:dt.datetime(2026,10,18,3,0)):
+            c1=self.file_case(self.client(),'운영상점','제품 불량',company_id=cid)
+            c2=self.file_case(self.client(),'운영상점','고객 응대',company_id=cid)
+        with self.core.conn() as db:
+            ev=db.execute("SELECT text,reply FROM events WHERE case_id=? AND kind='co'",(c1,)).fetchall()
+            self.assertEqual(ev[0][0],wf.AWAY_TEXT);self.assertIn('내일 9시에 답변드릴게요',ev[0][1])
+            a1,a2=[db.execute('SELECT assignee FROM cases WHERE id=?',(x,)).fetchone()[0] for x in (c1,c2)]
+            self.assertTrue(a1 and a2 and a1!=a2 and 'owner' not in (a1,a2))
+            self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(c1,)).fetchone()[0],'forwarded')  # 안내는 답변으로 치지 않는다
+        with patch.object(self.core,'now',lambda:dt.datetime(2026,10,19,10,0)):
+            self.assertIn('첫 답변 3시간 남음',b.get(f'/biz/case/{c1}').get_data(as_text=True))  # 일요일 접수라 월 9시부터 4시간: 13시까지
+        # 목표(월 13시)가 지나면 목록에 '지남', 답하면 사라지고 달성률에 들어간다
+        with patch.object(self.core,'now',lambda:dt.datetime(2026,10,19,13,30)):
+            self.assertIn('첫 답변 목표 지남',b.get('/biz/all').get_data(as_text=True))
+            self.post(b,f'/biz/case/{c2}',{'act':'reply','msg':'확인했어요.'})
+            with self.core.conn() as db:rep=wf.report(db,self.core.company(db,cid),db.execute('SELECT * FROM cases WHERE company_id=?',(cid,)).fetchall())
+            self.assertEqual((rep['n'],rep['met']),(2,0))
+            self.assertIn('첫 답변 목표 달성률',b.get('/biz/stats').get_data(as_text=True))
 
 
 if __name__=='__main__':unittest.main()

@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
-import team, inbox, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
+import team, inbox, workflow, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -489,7 +489,7 @@ def all_cases():
     fil,q,tg,sort,rows,tagmap,names=inbox_rows()
     with conn() as db:all_tags=inbox.tags(db,me()['id']);people=team.people(db,me())
     groups=g.inbox_groups
-    return render_template('b_all.html',groups=groups,fil=fil,rows=rows,q=q,tg=tg,sort=sort,tab='all',names=names,tagmap=tagmap,all_tags=all_tags,people=people,PRIO=inbox.PRIO)
+    return render_template('b_all.html',sla=g.sla,groups=groups,fil=fil,rows=rows,q=q,tg=tg,sort=sort,tab='all',names=names,tagmap=tagmap,all_tags=all_tags,people=people,PRIO=inbox.PRIO)
 def inbox_rows():
     """요청 목록 (화면·CSV 같이 씀): 탭(f)·검색(q)·태그(t)·정렬(s=prio)."""
     fil=request.args.get('f','all');q=clean(request.args.get('q'),40);tg=request.args.get('t','');sort=request.args.get('s','')
@@ -510,6 +510,7 @@ def inbox_rows():
     out=groups[fil]
     if sort=='prio':out=sorted(out,key=lambda r:(inbox.PRIO_ORDER.get(r['priority'] or 'normal',2),-r['id']))
     g.inbox_groups=groups
+    with conn() as db:g.sla=workflow.states(db,me(),out)
     return fil,q,tg,sort,out,tagmap,names
 
 @app.route('/all.csv')
@@ -566,7 +567,7 @@ def stats_data(db,co):
     for w in range(7,-1,-1):
         end=today-datetime.timedelta(days=7*w);start=end-datetime.timedelta(days=6)
         weeks.append((f'{start.month}.{start.day}',sum(start.isoformat()<=r['created'][:10]<=end.isoformat() for r in rows)))
-    return dict(k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,cmp=cmp,reply_h=reply_h)
+    return dict(k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,cmp=cmp,reply_h=reply_h,sla=workflow.report(db,co,rows))
 
 notify_consumer=core.notify_consumer
 
@@ -682,6 +683,7 @@ def case(case_id):
         from_shop=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=?',(me()['id'],c['id'])).fetchone()
         posted=any(e['kind']=='sys' and e['text'].endswith('에 답변을 올렸어요') for e in ev)
         ctags=inbox.tags_by_case(db,me()['id'],{c['id']}).get(c['id'],[]);all_tags=inbox.tags(db,me()['id']);ms=inbox.macros(db,me()['id'])
+        sla=workflow.state(me(),c,workflow.first_replies(db,me()['id']).get(c['id']));
         profile=inbox.customer(db,me(),c);merged=db.execute('SELECT id,no FROM cases WHERE id=?',(c['merged_into'],)).fetchone() if c['merged_into'] else None
     comp_show=core.comp_open(c) and (rule['comp'] or c['category'] in core.COMP_CATS)
     with conn() as db:order=orders_mod.for_case(db,c);blocked=orders_mod.cancel_blocked(db,c)
@@ -689,7 +691,7 @@ def case(case_id):
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all',
-        ctags=ctags,all_tags=all_tags,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
+        ctags=ctags,all_tags=all_tags,sla=sla,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
 def case_inbox(db,c,act,f):
     """요청 화면 오른쪽 '분류': 태그·우선순위·미루기·합치기. -> (안내, ok|error)"""
     co=me()
@@ -992,7 +994,7 @@ def settings():
         with conn() as db:flash(*save_settings(db,co,request.form))
         return redirect(url_for('settings'))
     with conn() as db:use=onboard.usage(db,co['id']);refs=growth.company_page_data(db,real())
-    return render_template('b_settings.html',tab='settings',link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use,refs=refs)
+    return render_template('b_settings.html',tab='settings',DAYS=workflow.DAYS,SLA_CHOICES=workflow.SLA_CHOICES,AWAY_DEFAULT=workflow.AWAY_DEFAULT,hours_text=workflow.hours_text(co),link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use,refs=refs)
 
 def save_settings(db,co,f):
     """설정 저장(웹·앱 공용). act: password·return·notify, 없으면 회사 정보. (문구, 'ok'|'error')를 돌려준다."""
@@ -1004,6 +1006,7 @@ def save_settings(db,co,f):
     if f.get('act')=='return':
         courier=f.get('return_courier','') if f.get('return_courier','') in core.COURIERS else ''
         db.execute('UPDATE companies SET return_address=?,return_courier=?,return_memo=? WHERE id=?',(clean(f.get('return_address'),200),courier,clean(f.get('return_memo'),300),co['id']));return '반품 안내를 저장했습니다','ok'
+    if f.get('act')=='ops':return workflow.save(db,co,f)
     if f.get('act')=='notify':
         phone=digits(f.get('phone',''))
         if on('kakao') and not (phone.startswith('01') and 10<=len(phone)<=11):return '알림톡을 받을 휴대폰 번호를 확인해 주세요','error'

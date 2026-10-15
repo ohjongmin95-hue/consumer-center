@@ -265,6 +265,8 @@ def _case(db,co,shop,q):
         clean(q['order_no'],40),clean(q['name'],20),generate_password_hash(secrets.token_hex(16)),due,t,t,clean(q['product'],60),ch)).lastrowid
     core.add_event(db,cid,'sys',f"{ch} 문의를 가져왔어요"+(f" ({q['at']} 접수)" if q.get('at') else ''))
     db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],shop,q['ext_id'],cid))
+    c=db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
+    import workflow;workflow.on_new(db,core.company(db,co['id']),c)  # 자동 배정 (판매처에는 영업시간 밖 안내를 올리지 않는다)
     return db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
 def _order(db,co,shop,o):
     """판매처 주문 하나 -> 주문 장부. 소보루에서 처리한 취소·반품 결과는 덮지 않는다."""

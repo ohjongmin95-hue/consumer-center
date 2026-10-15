@@ -4,6 +4,10 @@
 {% block body %}
 <div class="phead"><div><h1>통계</h1>{% if reply_h is not none %}<p>첫 답변까지 중간값 {{ reply_h }}시간</p>{% endif %}</div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sm gray" href="{{ url_for('ais.page') }}">AI 성과</a><a class="btn sm gray" href="{{ url_for('report') }}">월간 리포트</a></div></div>
 {{ b.kpis(k) }}
+{% if sla %}<div class="panel slap" style="margin-bottom:20px"><div class="ph">첫 답변 목표 달성률<a href="{{ url_for('settings') }}#ops">목표 바꾸기</a></div>
+{% if sla.n %}<div class="slab"><b>{{ sla.pct }}<small>%</small></b><span>최근 {{ sla.days }}일 {{ sla.n }}건 중 {{ sla.met }}건을 {{ sla.hours }}시간 안에 첫 답변했어요</span></div>
+<div class="nprog big"><i style="width:{{ sla.pct }}%"></i></div>{% else %}<p class="sub" style="margin:0">아직 셀 요청이 없어요. 목표 시간이 지나거나 답한 요청부터 셉니다.</p>{% endif %}
+<p class="cap" style="margin:12px 0 0">산식: 최근 {{ sla.days }}일에 들어온 요청 중 목표 시간이 지났거나 이미 답한 요청을 모수로, 영업시간만 세어 {{ sla.hours }}시간 안에 첫 답변한 비율. 자동 처리·시험 문의·영업시간 외 자동 안내는 빼요.</p></div>{% endif %}
 <div class="panel" style="margin-bottom:20px"><div class="ph">주별 요청</div>
 <div class="vbars">{% for lab,cnt in weeks %}<div><b>{{ cnt }}</b><span class="tr">{% if cnt %}<i style="height:{{ (cnt/top*100)|round|int }}%"></i>{% endif %}</span><small>{{ lab }}</small></div>{% endfor %}</div></div>
 <div class="grid2">

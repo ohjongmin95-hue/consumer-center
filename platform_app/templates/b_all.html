@@ -20,7 +20,7 @@
 <input class="inp sm" name="tag" data-for="tag" list="tagList" maxlength="20" placeholder="태그 이름" aria-label="태그 이름" hidden><datalist id="tagList">{% for t in all_tags %}<option value="{{ t.name }}">{% endfor %}</datalist>
 <select class="inp sm" name="prio" data-for="prio" aria-label="우선순위" hidden>{% for k,l in PRIO.items() %}<option value="{{ k }}" {{ 'selected' if k=='high' }}>{{ l }}</option>{% endfor %}</select>
 <input type="hidden" name="when" value="tomorrow"><button class="btn sm">적용</button></form>{% endif %}
-{{ b.case_table(rows,m,sel=can('work'),tagmap=tagmap) }}
+{{ b.case_table(rows,m,sel=can('work'),tagmap=tagmap,sla=sla) }}
 {% else %}<div class="empty-card"><b>{{ '검색 결과가 없습니다' if q else '미뤄 둔 요청이 없어요' if fil=='snz' else '해당하는 요청이 없습니다' }}</b></div>{% endif %}
 {% endblock %}
 {% block script %}<script>
