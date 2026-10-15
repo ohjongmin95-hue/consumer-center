@@ -2,7 +2,7 @@
 import os, re, datetime, json, urllib.parse
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-import core, law, chatbot, workflow
+import core, law, chatbot, workflow, livechat
 import tracking as tracking_mod
 import orders as orders_mod
 import ai as ai_mod
@@ -65,6 +65,8 @@ def new():
         body=clean(request.args['body'],BIG);d.setdefault('body',body);d.setdefault('title',core.short(next((l for l in body.split('\n') if l.strip() and not l.startswith('[')),body),80))
         want={'주문 취소':'환불','반품·환불':'환불','교환':'교환','배송 조회':'배송 확인','고객 응대':'사과·재발 방지'}.get(d.get('category'))
         if want:d.setdefault('want',want)
+    if request.args.get('live')=='1' and d.get('company_id'):
+        with conn() as db:d['live']=livechat.available(core.company(db,int(d['company_id'])))
     return render_template('c_new.html',d=d,today=datetime.date.today().isoformat())
 
 @app.route('/guide')
@@ -144,6 +146,9 @@ def submit():
         flash(err,'error');session['draft']={k:v for k,v in d.items()};return redirect(url_for('new'))
     case_id,no,co=create_case(d,f.get('password',''),ups,f.get('company_id',''))
     remember(case_id)
+    if f.get('live')=='1' and d['consent'] and livechat.available(co):
+        with conn() as db:livechat.start(db,db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone())
+        return redirect(url_for('case',case_id=case_id)+'#chat')
     return redirect(url_for('done',case_id=case_id))
 
 @app.route('/done/<int:case_id>')
@@ -263,7 +268,21 @@ def case(case_id):
     with conn() as db:
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id'])
         again=core.can_follow_up(db,c);tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])]
-    return render_template('c_case.html',c=c,ev=ev,files=fl,co=co,again=again,tracks=tracks)
+    return render_template('c_case.html',c=c,ev=ev,files=fl,co=co,again=again,tracks=tracks,live=livechat.is_open(c))
+
+@app.route('/case/<int:case_id>/live',methods=['GET','POST'])
+def case_live(case_id):
+    """채팅방: GET은 after 다음의 새 말, POST는 고객이 쓴 말."""
+    c=my_case(case_id)
+    with conn() as db:
+        if request.method=='POST':
+            if core.throttled('live_say',limit=40,minutes=10):return jsonify(error='잠시 후 다시 보내 주세요'),429
+            err=livechat.say(db,c,request.form.get('text',''))
+            if err:return jsonify(error=err),400
+        livechat.ping(db,case_id,'me')
+        after=request.values.get('after','0');after=int(after) if after.isdigit() else 0
+        c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+        return jsonify(msgs=livechat.since(db,case_id,after),co_online=livechat.online(db,case_id,'co'),open=livechat.is_open(c))
 
 @app.route('/case/<int:case_id>/relief')
 def relief(case_id):
@@ -288,7 +307,7 @@ def company_page(company_id):
     with conn() as db:co=core.company(db,company_id)
     if not co or co['status'] not in ('active','listed'):abort(404)
     session['cs']=co['id']
-    return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS)
+    return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS,live=livechat.available(co))
 
 def seen_widget(co):
     """버튼이 실제로 붙었는지 사장님 화면에 보여 주려고, 버튼을 불러간 쇼핑몰 주소(도메인만)와 때를 남긴다. 한 시간에 한 번만 쓴다."""

@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
-import team, inbox, workflow, automations, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
+import team, inbox, workflow, automations, livechat, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -518,7 +518,7 @@ def inbox_rows():
     out=groups[fil]
     if sort=='prio':out=sorted(out,key=lambda r:(inbox.PRIO_ORDER.get(r['priority'] or 'normal',2),-r['id']))
     g.inbox_groups=groups
-    with conn() as db:g.sla=workflow.states(db,me(),out)
+    with conn() as db:g.sla=workflow.states(db,me(),out);g.live_on=livechat.online_cases(db,[r['id'] for r in out if r['live']])
     return fil,q,tg,sort,out,tagmap,names
 
 @app.route('/all.csv')
@@ -671,7 +671,9 @@ def case_act(db,c,form):
         msg=clean(form.get('msg'),3000)
         if not msg:return '답변 내용을 적어 주세요','error'
         db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
-        core.add_event(db,c['id'],'co','답변을 보냈어요',msg);notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.");return '보냈습니다','ok'
+        core.add_event(db,c['id'],'co','답변을 보냈어요',msg)
+        if not (c['live'] and livechat.online(db,c['id'],'me')):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")  # 채팅방을 보고 있으면 메일은 보내지 않는다
+        return '보냈습니다','ok'
     return '','ok'
 
 @app.route('/case/<int:case_id>',methods=['GET','POST'])
@@ -729,6 +731,21 @@ def case(case_id):
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all',
         ctags=ctags,all_tags=all_tags,sla=sla,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
+@app.route('/case/<int:case_id>/live',methods=['GET','POST'])
+@login_required
+def case_live(case_id):
+    """채팅방(사장님 쪽): GET은 after 다음의 새 말, POST는 답변 보내기."""
+    with conn() as db:
+        c=my_case(db,case_id)
+        if request.method=='POST':
+            msg,level=case_act(db,c,{'act':'reply','msg':request.form.get('text','')})
+            if level!='ok':return jsonify(error=msg or '보내지 못했어요'),400
+            if not in_demo() and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',me()['id'])
+        livechat.ping(db,case_id,'co')
+        after=request.values.get('after','0');after=int(after) if after.isdigit() else 0
+        c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+        return jsonify(msgs=livechat.since(db,case_id,after),me_online=livechat.online(db,case_id,'me'),open=livechat.is_open(c))
+
 def case_inbox(db,c,act,f):
     """요청 화면 오른쪽 '분류': 태그·우선순위·미루기·합치기. -> (안내, ok|error)"""
     co=me()

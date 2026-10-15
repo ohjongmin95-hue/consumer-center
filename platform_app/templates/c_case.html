@@ -11,7 +11,12 @@
 <h1>{{ '답변이 늦어지고 있어요' if overdue(c) else heads.get(c.status,'접수했어요') }}</h1>
 {% if c.member and c.due and c.status in ('forwarded','seen') %}<p class="sub">담당자가 확인하고 있어요</p>{% endif %}
 {{ m.track(c) }}</div>
-{% if last %}<div class="panel"><div class="tagrow"><span class="av sm">{{ c.company_name[:1] }}</span><b>{{ c.company_name }}</b><span class="sp"></span><span class="cap">{{ fmt(last.created) }}</span></div><div class="reply">{{ last.reply }}</div></div>{% endif %}
+{% if live %}<div class="panel lchat" id="chat" data-url="{{ url_for('case_live',case_id=c.id) }}" data-csrf="{{ csrf_token() }}" data-me="me" data-after="{{ (ev|map(attribute='id')|max) if ev else 0 }}">
+<div class="lchd"><b>💬 {{ c.company_name }}</b><span class="lon" id="lOn" hidden>상담원이 보고 있어요</span></div>
+<div class="lmsgs" id="lMsgs" aria-live="polite"><div class="lm me"><p><b>{{ c.title }}</b><br>{{ c.body }}</p><small>{{ fmt(c.created) }}</small></div>{% for e in ev if (e.kind=='me' and e.text!='요청을 접수했어요.') or (e.kind=='co' and e.reply) %}<div class="lm {{ 'me' if e.kind=='me' else 'co' }}"><p>{{ e.text if e.kind=='me' else e.reply }}</p><small>{{ fmt(e.created) }}</small></div>{% endfor %}</div>
+<form class="lform" id="lForm"><textarea class="inp" name="text" id="lText" rows="1" maxlength="1000" placeholder="메시지를 적어 주세요" aria-label="메시지" required></textarea><button class="btn md">보내기</button></form>
+<p class="cap lerr" id="lErr" hidden></p></div>
+{% elif last %}<div class="panel"><div class="tagrow"><span class="av sm">{{ c.company_name[:1] }}</span><b>{{ c.company_name }}</b><span class="sp"></span><span class="cap">{{ fmt(last.created) }}</span></div><div class="reply">{{ last.reply }}</div></div>{% endif %}
 {{ m.tracks_panel(tracks) }}
 {% if c.ret_status %}<div class="panel"><div class="ph">반품 보내기</div>
 {% if c.ret_status=='received' %}<p class="sub" style="margin:0">{{ c.company_name }}이(가) 보내신 상품을 받았어요.</p>
@@ -46,12 +51,12 @@
 {% if c.status in ('received','forwarded','seen','info') %}<details class="panel cancel"><summary>접수 취소하기<span class="chev"></span></summary>
 <form method="post" style="margin-top:12px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="cancel">
 <p class="sub" style="margin:0 0 12px">이미 해결됐거나 잘못 접수했다면 취소해 주세요. 취소하면 기업에도 알려요.</p><button class="btn md gray">접수 취소</button></form></details>{% endif %}
-{% if again %}<form class="panel" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="again">
+{% if again and not live %}<form class="panel" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="again">
 <div class="ph" style="margin-bottom:4px">기업에 다시 요청할까요?</div><p class="sub">{{ '답변이 늦어지고 있어요. 다시 요청하면 기업에 한 번 더 알려요.' if overdue(c) else '해결되지 않은 내용을 덧붙여 한 번 더 보내요.' }}</p>
 <div class="addline" style="margin-top:14px"><input class="inp" name="msg" maxlength="2000" placeholder="덧붙일 말 (선택)"><button class="btn md">다시 요청</button></div></form>{% endif %}
-{% if c.status=='unresolved' or overdue(c) %}<div><div class="shead" style="margin-bottom:16px"><h2 style="font-size:22px">공식 피해구제</h2><div class="r"><a href="{{ url_for('relief',case_id=c.id) }}">신청 자료 정리하기</a></div></div>{{ m.relief() }}</div>{% endif %}
+{% if c.status=='unresolved' or (overdue(c) and not live) %}<div><div class="shead" style="margin-bottom:16px"><h2 style="font-size:22px">공식 피해구제</h2><div class="r"><a href="{{ url_for('relief',case_id=c.id) }}">신청 자료 정리하기</a></div></div>{{ m.relief() }}</div>{% endif %}
 <div class="panel"><div class="ph">진행 기록</div>{{ m.timeline(ev,c,'me') }}
-{% if c.status in ('received','forwarded','seen','answered') %}
+{% if c.status in ('received','forwarded','seen','answered') and not live %}
 <form method="post" enctype="multipart/form-data" class="addline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="add">
 <input class="inp" name="msg" placeholder="덧붙일 내용" required><button class="btn md gray">보내기</button></form>{% endif %}
 </div></div>
@@ -61,3 +66,4 @@
 <div class="hr"></div><dl class="kv"><dt>접수번호</dt><dd class="no">{{ c.no }}</dd><dt>유형</dt><dd>{{ c.category }}</dd><dt>원하는 해결</dt><dd>{{ c.want }}</dd><dt>접수일</dt><dd>{{ fmt(c.created) }}</dd></dl></div>
 </aside></div>
 {% endblock %}
+{% block script %}{% if live %}<script src="{{ url_for('static',filename='livechat.js') }}?v=1" defer></script>{% endif %}{% endblock %}

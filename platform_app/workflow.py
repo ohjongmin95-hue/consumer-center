@@ -130,6 +130,6 @@ def save(db,co,f):
     if days and (not _hm(a,'') or not _hm(b,'') or _hm(a,'')>=_hm(b,'')):return '영업 시작 시간이 끝 시간보다 빨라야 해요','error'
     sla=int(f.get('sla_hours','0')) if str(f.get('sla_hours','0')).isdigit() and int(f.get('sla_hours','0')) in SLA_CHOICES else 0
     on=lambda k:str(f.get(k)) in ('1','True','true')
-    db.execute('UPDATE companies SET hours_days=?,hours_from=?,hours_to=?,away_on=?,away_msg=?,sla_hours=?,auto_assign=? WHERE id=?',
-               (days,a[:5],b[:5],int(on('away_on')),clean(f.get('away_msg'),300),sla,int(on('auto_assign')),co['id']))
+    db.execute('UPDATE companies SET hours_days=?,hours_from=?,hours_to=?,away_on=?,away_msg=?,sla_hours=?,auto_assign=?,live_chat=? WHERE id=?',
+               (days,a[:5],b[:5],int(on('away_on')),clean(f.get('away_msg'),300),sla,int(on('auto_assign')),int(on('live_chat')),co['id']))
     return '응대 운영 설정을 저장했어요','ok'

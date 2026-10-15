@@ -17,6 +17,11 @@
 <p class="bodytext">{{ c.body }}</p>
 {% if files %}<div class="files">{% for f in files %}<a href="{{ url_for('case_file',case_id=c.id,file_id=f.id) }}">📎 {{ f.original }}</a>{% endfor %}</div>{% endif %}
 <div class="facts"><div><span>원하는 해결</span><b>{{ c.want }}</b></div>{% if c.product %}<div><span>상품</span><b>{{ c.product }}</b></div>{% endif %}{% if c.order_no %}<div><span>주문번호</span><b class="no">{{ c.order_no }}</b></div>{% endif %}</div></section>
+{% if c.live and c.status not in FINAL %}<section class="panel lchat" id="chat" data-url="{{ url_for('case_live',case_id=c.id) }}" data-csrf="{{ csrf_token() }}" data-me="co" data-after="{{ (ev|map(attribute='id')|max) if ev else 0 }}">
+<div class="lchd"><b>💬 실시간 채팅</b><span class="lon" id="lOn" hidden>고객이 보고 있어요</span></div>
+<div class="lmsgs" id="lMsgs" aria-live="polite"><div class="lm co"><p><b>{{ c.title }}</b><br>{{ c.body }}</p><small>{{ fmt(c.created) }}</small></div>{% for e in ev if (e.kind=='me' and e.text!='요청을 접수했어요.') or (e.kind=='co' and e.reply) %}<div class="lm {{ 'me' if e.kind=='co' else 'co' }}"><p>{{ e.text if e.kind=='me' else e.reply }}</p><small>{{ fmt(e.created) }}</small></div>{% endfor %}</div>
+<form class="lform" id="lForm"><textarea class="inp" name="text" id="lText" rows="1" maxlength="3000" placeholder="답장을 적고 Enter" aria-label="답장" required></textarea><button class="btn md">보내기</button></form>
+<p class="cap lerr" id="lErr" hidden></p></section>{% endif %}
 {% if open and c.decision not in ('approved','auto') %}<section class="panel decide"><div class="ph">처리 방법</div>
 <div class="reco"><div class="r">{{ p.title }}</div><ol class="flow">{% for st in p.steps %}<li>{{ st }}</li>{% endfor %}{% if rule.reply %}<li>고객에게 답변 보내기</li>{% endif %}</ol></div>
 {% if blocked %}<div class="hint" style="margin:12px 0 0"><span>⚠️</span><span><b>이미 발송된 주문이에요 ({{ OSTATUS[blocked.status] }})</b> · 취소 대신 받으신 뒤 반품으로 안내해 주세요</span></div>{% endif %}
@@ -93,7 +98,7 @@
 <p class="cap lawnote">요약은 이해를 돕는 설명이고, 판단은 원문을 기준으로 해 주세요. 법률 자문이 아닙니다.</p></section>
 </aside></div>
 {% endblock %}
-{% block script %}<script>
+{% block script %}{% if c.live and c.status not in FINAL %}<script src="{{ url_for('static',filename='livechat.js') }}?v=1" defer></script>{% endif %}<script>
 (function(){var p=document.getElementById('macroPick');if(!p)return;p.onchange=function(){var o=p.options[p.selectedIndex];if(!o.value)return;var t=document.getElementById('msg');t.value=(t.value.trim()?t.value.trim()+'\n\n':'')+o.dataset.body;document.getElementById('macroId').value=o.value;t.focus();p.selectedIndex=0;};})();
 document.querySelectorAll('[data-q]').forEach(function(b){b.onclick=function(){var t=document.getElementById('msg');t.value=(t.value.trim()?t.value.trim()+'\n':'')+b.dataset.q;t.focus();};});
 document.querySelectorAll('[data-copy-text]').forEach(function(b){b.onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(b.dataset.copyText):Promise.reject()).then(function(){b.textContent='복사했습니다';},function(){b.textContent='계좌번호를 길게 눌러 복사해 주세요';});};});
