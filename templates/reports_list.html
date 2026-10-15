@@ -1,12 +1,12 @@
 {% extends layout %}
 {% block title %}제보 목록 | {{ txt('site.name') }}{% endblock %}
-{% macro qs() %}{% set kw = kwargs %}{{ url_for(ep.list, status=kw.get('status', status) or None, review=kw.get('review', review) or None, sort=kw.get('sort', sort) or None, q=kw.get('q', q) or None, mine=('1' if kw.get('mine', mine) else None), page=kw.get('page') ) }}{% endmacro %}
+{% macro qs() %}{% set kw = kwargs %}{{ url_for(ep.list, status=kw.get('status', status) or None, review=kw.get('review', review) or None, sort=kw.get('sort', sort) or None, q=kw.get('q', q) or None, mine=('1' if kw.get('mine', mine) else None), track=kw.get('track', track) or None, assignee=kw.get('assignee', assignee) or None, page=kw.get('page') ) }}{% endmacro %}
 {% block content %}
 <main class="cs-page">
   <div class="cs-head">
     <h1 class="cs-title">제보 목록</h1>
     <form class="cs-search" method="get" role="search">
-      {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}{% if review %}<input type="hidden" name="review" value="{{ review }}">{% endif %}{% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}{% if mine %}<input type="hidden" name="mine" value="1">{% endif %}
+      {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}{% if review %}<input type="hidden" name="review" value="{{ review }}">{% endif %}{% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}{% if mine %}<input type="hidden" name="mine" value="1">{% endif %}{% if track %}<input type="hidden" name="track" value="{{ track }}">{% endif %}{% if assignee %}<input type="hidden" name="assignee" value="{{ assignee }}">{% endif %}
       <input type="search" name="q" value="{{ q }}" placeholder="접수번호, 제목, 업체로 찾기" aria-label="제보 검색"><button class="cs-btn" type="submit">찾기</button>
     </form>
   </div>
@@ -23,6 +23,18 @@
     <button class="cs-btn cs-btn-main" type="submit" onclick="return confirm('{{ legacy_pending }}건을 지금 게시할까요? 전화번호·이메일은 자동으로 가려져요.')">한 번에 게시하기</button>
   </form>
   {% endif %}
+  {# AI 분류와 담당자별 몰아 보기. 개수는 전체 제보 기준 #}
+  <div class="tri-bar">
+    <nav class="rv-filter" aria-label="AI 분류별 보기">
+      <a href="{{ qs(track='', page=None) }}"{% if not track %} class="on"{% endif %}>분류 전체</a>
+      {% for k, v in TRIAGE_TRACKS.items() %}<a href="{{ qs(track=k, page=None) }}"{% if track == k %} class="on"{% endif %}>{{ v }} <b>{{ track_counts.get(k, 0) }}</b></a>{% endfor %}
+      <a href="{{ qs(track='none', page=None) }}"{% if track == 'none' %} class="on"{% endif %}>미분류 <b>{{ track_counts.get('', 0) }}</b></a>
+    </nav>
+    <nav class="rv-filter" aria-label="담당자별 보기">
+      <a href="{{ qs(assignee='', page=None) }}"{% if not assignee %} class="on"{% endif %}>담당 전체</a>
+      {% for a in assignee_counts %}<a href="{{ qs(assignee=(a['name'] or '-'), page=None) }}"{% if assignee == (a['name'] or '-') %} class="on"{% endif %}>{{ a['name'] or '미배정' }} <b>{{ a['n'] }}</b></a>{% endfor %}
+    </nav>
+  </div>
   {# 검토 결과(미검토·정상·중복·제외)는 진행 단계와 따로 거름. 개수는 전체 제보 기준 #}
   <div class="rv-bar">
     <nav class="rv-filter" aria-label="검토 결과별 보기">
@@ -41,7 +53,7 @@
       <tr class="{{ 'is-new' if c['status'] == STATUSES[0] }}" data-href="{{ url_for(ep.case, case_id=c['id']) }}">
         <td class="mono c-no"><a href="{{ url_for(ep.case, case_id=c['id']) }}">{{ c['receipt'] }}</a></td>
         <td class="c-cat" title="{{ (c['industry'] ~ ' · ' if c['industry']) ~ c['category'] }}">{{ c['category'] }}</td>
-        <td class="cs-subject c-sub"><a href="{{ url_for(ep.case, case_id=c['id']) }}" title="{{ c['subject'] }}">{{ c['subject'] }}</a></td>
+        <td class="cs-subject c-sub">{% set tr = track_of.get(c['id']) %}{% if tr and tr['track'] %}<span class="tri-chip tri-{{ tr['track'] }}">{{ '취재' if tr['track'] == 'story' else '자동' }}</span>{% endif %}<a href="{{ url_for(ep.case, case_id=c['id']) }}" title="{{ c['subject'] }}">{{ c['subject'] }}</a></td>
         <td class="c-co" title="{{ c['company'] }}">{{ c['company'] }}</td>
         <td class="c-pub">{% if not c['public_consent'] %}<span class="pub-chip is-secret" title="제보자가 비밀글로 접수">비밀</span>{% elif c['published'] %}<span class="pub-chip is-on" title="사이트에 게시 중">공개</span>{% else %}<span class="pub-chip is-off" title="게시되지 않음 (운영자가 내림)">비공개</span>{% endif %}</td>
         <td class="c-rv"><span class="rv-chip rv-{{ c['review'] or 'new' }}">{{ reviews[c['review']] if c['review'] in reviews else c['review'] }}</span></td>
@@ -50,7 +62,7 @@
         <td class="mono c-dt" title="{{ c['created'][:16]|replace('T', ' ') }}">{{ c['created'][2:10]|replace('-', '.') }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="9" class="cs-empty">{{ '조건에 맞는 제보가 없어요.' if q or status or mine or review else '아직 접수된 제보가 없어요.' }}</td></tr>
+      <tr><td colspan="9" class="cs-empty">{{ '조건에 맞는 제보가 없어요.' if q or status or mine or review or track or assignee else '아직 접수된 제보가 없어요.' }}</td></tr>
       {% endfor %}
       </tbody>
     </table>

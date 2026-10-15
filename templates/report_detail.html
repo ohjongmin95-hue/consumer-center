@@ -23,6 +23,28 @@
         {% for f in files %}<p><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a></p>{% else %}<p class="cs-muted">없음</p>{% endfor %}
       </section>
 
+      {# AI 분류와 법률 안내 답변: 취재 검토 / 자동 응답. 근거 조문은 국가법령정보센터 원문(law_texts.json)에 있는 것만 #}
+      <section class="cs-panel tri-panel" id="triage">
+        <div class="desk-head"><h2>AI 분류 · 법률 안내 답변</h2>
+          {% if tri.t and tri.t['track'] %}<span class="tri-chip tri-{{ tri.t['track'] }}">{{ TRIAGE_TRACKS[tri.t['track']] }}</span>{% endif %}
+          {% if tri.t and tri.t['status'] == 'sent' %}<span class="cs-pill on">제보자에게 보냄 {{ tri.t['sent_at'][5:16]|replace('T', ' ')|replace('-', '.') }}{% if tri.t['sent_by'] %} · {{ tri.t['sent_by'] }}{% endif %}</span>{% endif %}</div>
+        {% if tri.t and tri.t['reason'] %}<p class="tri-reason"><b>AI 판단</b> {{ tri.t['reason'] }}{% if tri.t['set_by'] and tri.t['ai_track'] and tri.t['ai_track'] != tri.t['track'] %} <span class="cs-muted">(AI는 {{ TRIAGE_TRACKS[tri.t['ai_track']] }}, {{ tri.t['set_by'] }}님이 바꿈)</span>{% endif %}</p>{% endif %}
+        {% if tri.t and tri.t['error'] %}<p class="cs-hint tri-error">AI 분류 실패: {{ tri.t['error'] }}</p>{% endif %}
+        {% if not tri.t and not tri.ready %}<p class="cs-hint">AI 키가 없어 분류하지 않았어요.</p>{% elif not tri.t %}<p class="cs-hint">아직 AI 분류 전이에요.</p>{% endif %}
+        <div class="tri-actions">
+          <form method="post" class="cs-inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="triage_track">
+            {% for k, v in TRIAGE_TRACKS.items() %}<button class="cs-btn{{ ' cs-btn-main' if tri.t and tri.t['track'] == k }}" name="track" value="{{ k }}">{{ v }}</button>{% endfor %}</form>
+          {% if tri.ready %}<form method="post" class="cs-inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="triage_run"><button class="cs-btn" type="submit">{{ 'AI로 다시 만들기' if tri.t and tri.t['body'] else 'AI로 분류하기' }}</button></form>{% endif %}
+        </div>
+        {% if tri.t and tri.t['body'] %}
+        <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="triage_send">
+          <textarea class="cs-compose" data-autogrow name="body" maxlength="8000" required aria-label="제보자에게 보낼 법률 안내 답변">{{ tri.t['body'] }}</textarea>
+          {% if tri.refs %}<p class="tri-refs">근거 조문 원문: {% for c in tri.refs %}<a href="{{ c['source'] }}" target="_blank" rel="noopener">{{ c['label'] }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+          <div class="tri-send">{% if tri.t['status'] == 'sent' %}<label class="cs-check"><input type="checkbox" name="again" value="1"><span>한 번 더 보내기</span></label>{% endif %}<button class="cs-btn cs-btn-main" type="submit">제보자에게 보내기</button></div>
+        </form>
+        {% endif %}
+      </section>
+
       {# AI 기업 입장 요청서: 초안 → 관리자 수정·승인 → 운영자가 직접 보내고 '기업 전달 완료'. 자동 발송 없음 #}
       <section class="cs-panel desk-req" id="company_request">
         <div class="desk-head"><h2>AI 기업 입장 요청서</h2>

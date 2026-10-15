@@ -10,6 +10,7 @@ import notify
 import jebo
 import members
 import companydesk
+import triage
 import ops
 
 BASE=Path(__file__).parent
@@ -264,7 +265,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-86'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-87'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -592,6 +593,7 @@ def report():
     with conn() as db:ops_risk_alert(db.execute('SELECT * FROM cases WHERE id=?',(cur.lastrowid,)).fetchone())
     notify_later(cur.lastrowid,'received')
     desk_after_submit(cur.lastrowid)  # AI 기업 입장 요청서 초안 (키가 있을 때, 접수 뒤에 따로)
+    triage_after_submit(cur.lastrowid)  # AI 분류(취재 검토·자동 응답)와 법률 안내 답변
     return render_template('success.html',receipt=receipt,case_id=cur.lastrowid,has_pw=not pw_optional)
 LOOKUP_PW_MIN=4
 def pick_company(db,company_id,typed):
@@ -1338,7 +1340,9 @@ AREAS={
     'reporter':{'layout':'reporter_base.html','list':'reporter_home','case':'reporter_case','file':'reporter_file','invite':'reporter_invite'},
     'admin':{'layout':'console.html','list':'admin_reports','case':'admin_report','file':'admin_file','invite':'admin_invite'},
 }
-def actor_name():return g.staff['name'] if g.get('area')=='reporter' and g.get('staff') else '대표'
+def actor_name():
+    if not has_request_context():return '자동'  # 접수 뒤 따로 도는 AI 작업 (요청 밖이라 g를 쓸 수 없음)
+    return g.staff['name'] if g.get('area')=='reporter' and g.get('staff') else '대표'
 def staff_sender():return g.staff['name'] if g.get('area')=='reporter' and g.get('staff') else ''  # 제보자에게 보이는 보낸 담당자
 def reporter_only(f):
     @functools.wraps(f)
@@ -1372,6 +1376,12 @@ def reports_list():
         like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
         where.append("(receipt LIKE ? ESCAPE '\\' OR subject LIKE ? ESCAPE '\\' OR company LIKE ? ESCAPE '\\')");args+=[like,like,like]
     if mine:where.append('assignee=?');args.append(g.staff['name'])
+    track=request.args.get('track','');track=track if track in ('story','auto','none') else ''
+    if track=='none':where.append("id NOT IN (SELECT case_id FROM case_triage WHERE track!='')")
+    elif track:where.append('id IN (SELECT case_id FROM case_triage WHERE track=?)');args.append(track)
+    assignee=request.args.get('assignee','').strip()[:80]  # 담당자별 몰아 보기 ('-'는 미배정)
+    if assignee=='-':where.append("COALESCE(assignee,'')=''")
+    elif assignee:where.append('assignee=?');args.append(assignee)
     cond=' AND '.join(where)
     with conn() as db:
         counts={}
@@ -1382,8 +1392,11 @@ def reports_list():
         legacy_pending=db.execute('SELECT COUNT(*) FROM cases WHERE '+LEGACY_PENDING).fetchone()[0] if g.area=='admin' else 0
         order="CASE WHEN review='' THEN 0 ELSE 1 END,id DESC" if sort else 'id DESC'
         cases=db.execute('SELECT id,receipt,industry,category,company,subject,status,created,assignee,public_consent,published,share_company,review FROM cases WHERE '+cond+' ORDER BY '+order+' LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
+        track_counts=triage_counts(db);track_of=triage_rows(db,[c['id'] for c in cases])
+        assignee_counts=db.execute("SELECT COALESCE(assignee,'') AS name,COUNT(*) AS n FROM cases GROUP BY 1 ORDER BY name=''").fetchall()
     return render_template('reports_list.html',layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
-                           review=review,sort=sort,review_counts={k:review_counts.get(v,0) for k,v in jebo.REVIEW_KEYS.items()},reviews=jebo.REVIEWS,review_keys=jebo.REVIEW_KEYS,legacy_pending=legacy_pending)
+                           review=review,sort=sort,review_counts={k:review_counts.get(v,0) for k,v in jebo.REVIEW_KEYS.items()},reviews=jebo.REVIEWS,review_keys=jebo.REVIEW_KEYS,legacy_pending=legacy_pending,
+                           track=track,track_counts=track_counts,track_of=track_of,assignee=assignee,assignee_counts=assignee_counts)
 
 def report_detail(case_id):
     ep=AREAS[g.area]
@@ -1397,7 +1410,7 @@ def report_detail(case_id):
                 if g.area!='admin' or request.form.get('confirm')!='1':abort(400)
                 stored=[r['stored'] for r in db.execute('SELECT stored FROM attachments WHERE case_id=? UNION ALL SELECT stored FROM answer_files WHERE case_id=?',(case_id,case_id))]
                 db.execute('DELETE FROM answer_revisions WHERE message_id IN (SELECT id FROM messages WHERE case_id=?)',(case_id,))
-                for table in ('attachments','messages','internal_notes','case_log','notifications','company_invites','company_notices','case_requests','company_requests','answer_files'):db.execute(f'DELETE FROM {table} WHERE case_id=?',(case_id,))
+                for table in ('attachments','messages','internal_notes','case_log','notifications','company_invites','company_notices','case_requests','company_requests','answer_files','case_triage'):db.execute(f'DELETE FROM {table} WHERE case_id=?',(case_id,))
                 db.execute('DELETE FROM cases WHERE id=?',(case_id,));db.commit()
                 for name in stored:(UPLOAD/name).unlink(missing_ok=True)
                 flash(f"제보 {case['receipt']}를 삭제했어요.");return redirect(url_for(ep['list']))
@@ -1503,6 +1516,7 @@ def report_detail(case_id):
                 db.execute('INSERT INTO messages(case_id,author,body,created,sender) VALUES(?,?,?,?,?)',(case_id,'센터',msg,now(),staff_sender()))
                 log_case(db,case_id,'제보자에게 메시지 보냄');notify_later(case_id,'message')
             elif form in DESK_FORMS:desk_handle_form(db,case,form)
+            elif form in TRIAGE_FORMS:triage_handle_form(db,case,form)
             elif form in OPS_FORMS:ops_handle_form(db,case,form)
             else:abort(400)
             return redirect(url_for(ep['case'],case_id=case_id)+('#'+form if form!='settings' else ''))
@@ -1516,12 +1530,13 @@ def report_detail(case_id):
         linked=db.execute('SELECT * FROM companies WHERE id=?',(case['company_id'],)).fetchone() if case['company_id'] else None
         ops_ctx=ops_context(db,case)
         desk=desk_context(db,case)
+        tri=triage_context(db,case)
     suggested=[c for c in active_companies if company_matches(c,case['company'])]
     with conn() as db:
         invite=db.execute('SELECT * FROM company_invites WHERE case_id=?',(case_id,)).fetchone()
         staff_names=[r['name'] for r in db.execute('SELECT name FROM staff WHERE active=1 ORDER BY name')]
         neighbors=(db.execute('SELECT id FROM cases WHERE id<? ORDER BY id DESC LIMIT 1',(case_id,)).fetchone(),db.execute('SELECT id FROM cases WHERE id>? ORDER BY id LIMIT 1',(case_id,)).fetchone())
-    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,companies=suggested+[c for c in active_companies if c['id'] not in {x['id'] for x in suggested}],suggested_ids={c['id'] for c in suggested},linked=linked,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()},reviews=jebo.REVIEWS,review_hints=jebo.REVIEW_HINTS,pub_text=jebo.pub(case,mask_personal),revisions=revisions,ops=ops_ctx,desk=desk)
+    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,companies=suggested+[c for c in active_companies if c['id'] not in {x['id'] for x in suggested}],suggested_ids={c['id'] for c in suggested},linked=linked,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()},reviews=jebo.REVIEWS,review_hints=jebo.REVIEW_HINTS,pub_text=jebo.pub(case,mask_personal),revisions=revisions,ops=ops_ctx,desk=desk,tri=tri)
 
 def download_file(file_id):
     with conn() as db:f=db.execute('SELECT * FROM attachments WHERE id=?',(file_id,)).fetchone()
@@ -2182,6 +2197,9 @@ for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_a
 # 기업 대응 관리: AI 기업 입장 요청서, 기업 연락처, 전달 기록, 기업 답변 등록 (companydesk.py)
 _desk=types.SimpleNamespace(**globals());companydesk.install(_desk)
 for _k in ('desk_context','desk_handle_form','DESK_FORMS','desk_after_submit','desk_generate'):globals()[_k]=getattr(_desk,_k)
+# AI 제보 분류(취재 검토·자동 응답)와 법률 안내 답변 (triage.py)
+_tri=types.SimpleNamespace(**globals());triage.install(_tri)
+for _k in ('triage_context','triage_handle_form','TRIAGE_FORMS','triage_after_submit','triage_run','triage_counts','triage_rows'):globals()[_k]=getattr(_tri,_k)
 # 회원 확장: 카카오·네이버 로그인, 예전 제보 연결, 기업 소속 인증 신청 (members.py)
 _members=types.SimpleNamespace(**globals());members.install(_members)
 for _k in ('login_methods','membership_of','admin_memberships','admin_membership_action','delete_member_extras'):globals()[_k]=getattr(_members,_k)
