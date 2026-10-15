@@ -38,7 +38,7 @@
       {# 공개 글 관리: 공개 제보는 접수 즉시 게시됨. 원문은 그대로 두고 공개용 글만 다듬거나 게시를 내림 #}
       <form class="cs-panel" method="post" id="publish_review"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="publish_review">
         <h2>공개 글 관리 {% if case['published'] %}<span class="pub-chip is-on">공개 중</span>{% else %}<span class="pub-chip is-off">비공개</span>{% endif %}</h2>
-        <p class="cs-hint">제보자가 공개를 골라 접수 즉시 게시됐어요. 전화번호·이메일은 자동으로 가려져요. 이름·주소·주문번호 같은 개인정보나 단정적인 비방 표현이 보이면 공개용 글을 고치거나 게시를 내려 주세요. 원문은 바뀌지 않아요.</p>
+        <p class="cs-hint">제보자가 접수할 때 '공개'를 선택해서, 접수와 동시에 사이트에 올라갔어요. 전화번호·이메일은 자동으로 가려져요. 이름·주소·주문번호나 비방 표현이 보이면 아래 공개용 글을 고치거나 '게시 중단'을 눌러 주세요. 제보 원문은 그대로 남아요.</p>
         <div class="field"><label for="p-subject">공개 제목</label><input id="p-subject" name="public_subject" maxlength="160" value="{{ case['public_subject'] }}" placeholder="{{ pub_text.subject }}"></div>
         <div class="field"><label for="p-body">공개 피해 내용</label><textarea id="p-body" name="public_body" maxlength="6000" rows="6" placeholder="{{ pub_text.body }}">{{ case['public_body'] }}</textarea></div>
         <div class="field"><label for="p-request">공개 해결 요구</label><textarea id="p-request" name="public_request" maxlength="3000" rows="3" placeholder="{{ pub_text.request }}">{{ case['public_request'] }}</textarea></div>
