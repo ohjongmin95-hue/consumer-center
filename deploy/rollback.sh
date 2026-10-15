@@ -3,6 +3,8 @@
 # 사용법: sudo bash /opt/soboru/app/deploy/rollback.sh
 #   DB는 그대로 둡니다 (새 버전은 표를 더하기만 해서 예전 버전도 그대로 열려요).
 #   DB까지 되돌려야 하면 /var/lib/soboru-platform/backups/ 의 업데이트 직전 백업(pre-update-*.sqlite3)을 쓰세요.
+#   소비자제보센터 DB는 DATABASE_PATH 옆 pre-update/cases-<시각>.sqlite3 에 있어요. 되돌리는 법:
+#     sudo systemctl stop soboru && sudo cp <DB> <DB>.before-restore && sudo cp pre-update/cases-<시각>.sqlite3 <DB> && sudo systemctl start soboru
 set -euo pipefail
 APP=/opt/soboru/app; PREV_FILE=/var/lib/soboru-platform/prev-commit
 [ -s $PREV_FILE ] || { echo "되돌릴 버전 기록이 없어요"; exit 1; }

@@ -25,6 +25,15 @@ if [ -f $DATA/platform.sqlite3 ]; then
   chmod 600 $DATA/backups/pre-update-$NOW.sqlite3
   ls -1t $DATA/backups/pre-update-*.sqlite3 2>/dev/null | tail -n +11 | xargs -r rm -f
 fi
+# 소비자제보센터 DB도 업데이트 직전에 백업 (최근 10개만 남김, 첨부는 매일 백업에 있음). 복구 방법은 deploy/rollback.sh 맨 위 설명
+JEBO_DB="$(grep -E '^DATABASE_PATH=' /etc/soboru.env 2>/dev/null | cut -d= -f2- || true)"
+if [ -n "$JEBO_DB" ] && [ -f "$JEBO_DB" ]; then
+  JB="$(dirname "$JEBO_DB")/pre-update"; mkdir -p "$JB"; chmod 700 "$JB"
+  python3 -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[2]);sqlite3.connect(sys.argv[1]).backup(d);d.close()' "$JEBO_DB" "$JB/cases-$NOW.sqlite3"
+  chmod 600 "$JB/cases-$NOW.sqlite3"
+  ls -1t "$JB"/cases-*.sqlite3 2>/dev/null | tail -n +11 | xargs -r rm -f
+  echo "제보센터 DB 백업: $JB/cases-$NOW.sqlite3"
+fi
 git -C $APP checkout -q -B "$BRANCH" "origin/$BRANCH"
 [ -d $DATA ] && echo "$PREV" > $DATA/prev-commit
 chmod -R u+rwX,go+rX $APP  # 서비스 계정이 읽지 못하는 파일 때문에 멈추는 일(502)이 없게
