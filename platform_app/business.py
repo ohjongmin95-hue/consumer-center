@@ -135,7 +135,7 @@ def signup_apply(f,via='email',google_sub=''):
     return d,err,cid
 def start_session(co,staff_id=None):
     """로그인 상태로 만든다 (가입·로그인·구글·직원 초대 공용). 다른 탭의 화면과 운영 로그인은 그대로 둔다."""
-    keep={k:session[k] for k in ('ops','csrf','utm','vid','ref','partner_uid') if k in session}  # 다른 탭 화면·운영 로그인·첫 유입 기록은 그대로
+    keep={k:session[k] for k in ('ops','csrf','utm','vid','ref','partner_uid','c24_launch') if k in session}  # 다른 탭 화면·운영 로그인·첫 유입 기록·카페24에서 연 앱은 그대로
     session.clear();session.update(keep);session['co_id']=co['id'];session.permanent=True
     if staff_id:session['staff_id']=staff_id
 @app.route('/signup',methods=['GET','POST'])
@@ -352,7 +352,10 @@ def by_cat(rows):
 
 @app.route('/')
 def decide():
+    if request.args.get('mall_id') and request.args.get('hmac'):  # 카페24 App URL이 첫 화면이면 앱 실행으로
+        return redirect(url_for('c24.launch')+'?'+request.query_string.decode())
     if not me():return render_template('b_intro.html',app_links=APP_LINKS)  # 로그인 전: 서비스 소개
+    if session.get('c24_launch'):return redirect(url_for('c24.page'))  # 카페24에서 열고 가입·로그인한 뒤 이어서
     with conn() as db:
         rows=my_cases(db,me());n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(me()['id'],)).fetchone()[0]
         warn=insights.alerts(db,me());news=db.execute('SELECT * FROM news ORDER BY id DESC LIMIT 3').fetchall();comps=core.comp_rules(db,me()['id'])

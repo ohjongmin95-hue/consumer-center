@@ -1702,6 +1702,31 @@ class PlatformTest(unittest.TestCase):
         # 접수 화면은 주문번호를 이어받는다
         self.assertIn('value="A-099"',me.get(f'/new?company_id={cid}&category=주문 취소&order_no=A-099').get_data(as_text=True))
 
+    def test_cafe24_app_launch(self):
+        """카페24에서 앱을 열면: hmac·시간 확인 -> 로그인 전이면 가입으로, 로그인돼 있으면 바로 권한 동의로. 위조·오래된 값은 거절."""
+        import base64,hashlib,hmac as _h,time,urllib.parse
+        c24=sys.modules['cafe24']
+        def q(mall='myshop',ts=None,secret='csec',sort=False):
+            p=[('is_multi_shop','F'),('lang','ko_KR'),('mall_id',mall),('shop_no','1'),('timestamp',str(int(ts or time.time()))),('user_id','owner'),('user_name','대표'),('user_type','P')]
+            s=urllib.parse.urlencode(sorted(p) if sort else p)
+            return s+'&hmac='+urllib.parse.quote(base64.b64encode(_h.new(secret.encode(),s.encode(),hashlib.sha256).digest()).decode())
+        with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec'}):
+            self.assertEqual(c24.launch_ok(q()),'myshop')
+            self.assertIsNone(c24.launch_ok(q(secret='nope')))
+            self.assertIsNone(c24.launch_ok(q(ts=time.time()-3*3600)))
+            self.assertIsNone(c24.launch_ok(q().replace('myshop','other')))
+            g=self.client()
+            r=g.get('/biz/?'+q());self.assertIn('/cafe24/launch?',r.headers['Location'])  # App URL이 첫 화면이어도
+            r=g.get('/biz/cafe24/launch?'+q(),follow_redirects=True);self.assertIn('myshop',r.get_data(as_text=True))  # 가입·로그인 안내
+            r=g.get('/biz/cafe24/launch?'+q(secret='x'),follow_redirects=True);self.assertIn('확인하지 못했어요',r.get_data(as_text=True))
+            b,o,cid=self.signup_and_approve('카페24앱상점','c24app@example.com')
+            r=b.get('/biz/cafe24/launch?'+q('appshop'));self.assertTrue(r.headers['Location'].startswith('https://appshop.cafe24api.com/api/v2/oauth/authorize?'))
+            # 로그인 전에 열고 나서 로그인하면 연결 화면에 아이디가 채워져 있다
+            g2=self.client();g2.get('/biz/cafe24/launch?'+q('later'))
+            self.post(g2,'/biz/login',{'login_id':'c24app@example.com','password':'longpassword1'})
+            page=g2.get('/biz/',follow_redirects=True).get_data(as_text=True);self.assertIn('value="later"',page);self.assertIn('앱을 열었어요',page)
+            self.assertNotIn('앱을 열었어요',g2.get('/biz/connect/cafe24').get_data(as_text=True))  # 한 번만 이어 준다
+
     def test_external_api_and_webhooks(self):
         """외부 API: 운영자가 켠 회사만, 키 해시 저장, 시험 키는 데모 데이터만, 회사 간 격리, 폐기, 웹훅 서명·기록·내부 주소 차단."""
         import hashlib,hmac as _h

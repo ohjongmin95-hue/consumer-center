@@ -26,7 +26,8 @@
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn sm gray" name="act" value="boards" {{ 'disabled' if lk.status!='ok' }}>게시판 바꾸기</button></form>{% endif %}</section>{% endif %}
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="connect">
 <div class="ph">{{ '다시 연결하기' if lk else '연결하기' }}</div>
-<label class="fld"><span>카페24 쇼핑몰 아이디</span><input class="inp" name="mall_id" maxlength="40" value="{{ lk.mall_id if lk else '' }}" placeholder="예: myshop (myshop.cafe24.com의 앞부분)" required {{ 'disabled' if not ready }}></label>
+{% if launch %}<div class="hint ok">카페24에서 소보루 CS 앱을 열었어요. 쇼핑몰 아이디 <b>{{ launch }}</b>로 연결을 이어서 할게요.</div>{% endif %}
+<label class="fld"><span>카페24 쇼핑몰 아이디</span><input class="inp" name="mall_id" maxlength="40" value="{{ launch or (lk.mall_id if lk else '') }}" placeholder="예: myshop (myshop.cafe24.com의 앞부분)" required {{ 'disabled' if not ready }}></label>
 <p class="cap" style="margin:0">누르면 카페24 화면으로 넘어가요. 카페24 관리자로 로그인하고 권한에 동의하면 이 화면으로 돌아와요. 소보루는 카페24 비밀번호를 받지 않아요.</p>
 <button class="btn md" {{ 'disabled' if not ready or not trust or not trust.ok }}>카페24로 이동해 연결</button>
 {% if ready and trust and not trust.ok %}<p class="cap" style="margin:0">회사 인증이 끝나면 연결할 수 있어요.</p>{% endif %}</form>
