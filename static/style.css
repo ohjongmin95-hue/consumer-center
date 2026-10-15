@@ -1889,3 +1889,11 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .biz-sso .social-login { margin-top: 14px; }
 .biz-sso .social-or { display: none; }
 .biz-go { display: flex; align-items: center; justify-content: center; margin-top: 14px; text-decoration: none; }
+
+/* 인증 기업 배지: 운영자가 사업자번호·담당자 소속을 확인한 기업, 그 기업 계정이 직접 쓴 답변 */
+.co-badge.verified { display: inline-flex; align-items: center; gap: 3px; color: #c66300; background: #fff0df; }
+.co-badge.verified svg, .ca-verified svg { width: 14px; height: 14px; flex: none; color: #ef7300; }
+.co-verified-note { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: #6b7684; }
+.ca-head b { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.ca-head .ca-verified { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; background: #fff0df; color: #c66300; font-size: 12px; font-weight: 700; }
+.ca-head > span { white-space: nowrap; }

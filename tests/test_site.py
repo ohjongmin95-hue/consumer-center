@@ -566,6 +566,11 @@ class SiteTest(unittest.TestCase):
         public = self.client.get('/reports/%d' % shared).get_data(as_text=True)
         self.assertIn('내일까지 환불 처리하겠습니다.', public)
         self.assertIn('주식회사 테스트몰', public)
+        # 인증 기업 계정이 직접 쓴 답변에는 인증 표시, 기업 페이지에도 인증 기업 배지와 설명
+        self.assertIn('인증 기업 계정이 직접 등록', public)
+        co_page = self.client.get('/companies/%d' % company_id).get_data(as_text=True)
+        self.assertIn('co-badge verified', co_page)
+        self.assertIn('서비스 품질을 보증하는 표시는 아니에요', co_page)
         # 대표 미리보기: 관리자 로그인으로 그 기업 화면을 보되 답변은 못 함
         admin.post('/admin/companies/%d/preview' % company_id, data={'_csrf': self.csrf(admin, '/admin')})
         preview = admin.get('/biz').get_data(as_text=True)
