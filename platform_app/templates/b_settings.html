@@ -34,6 +34,15 @@
 <label class="check"><input type="checkbox" name="kakao" value="1" {{ 'checked' if co.kakao }}><span class="bx"></span><span><b>새 요청을 카카오 알림톡으로 받기</b><div class="cap">{{ '알림을 누르면 바로 승인 화면이 열립니다' if kakao_ready else '알림톡 연결 준비 중입니다. 켜 두면 연결되는 대로 보내 드립니다' }}</div></span></label>
 <label class="check"><input type="checkbox" name="report_mail" value="1" {{ 'checked' if co.report_mail }}><span class="bx"></span><span><b>월간 CS 리포트 이메일 받기</b><div class="cap">매달 1일 지난달 리포트를 보내 드립니다</div></span></label>
 <button class="btn md">저장</button></form>
+<form class="panel stack" method="post" id="ops"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="ops"><div class="ph">응대 운영</div>
+<p class="sub" style="margin:0">지금: {{ hours_text }}{% if co.sla_hours %} · 첫 답변 목표 {{ co.sla_hours }}시간{% endif %}{% if co.auto_assign %} · 자동 배정 켬{% endif %}</p>
+<div class="fld"><span>영업 요일 (고르지 않으면 늘 받는 걸로 봐요)</span><div class="dayrow">{% for d in DAYS %}<label class="dayc"><input type="checkbox" name="day{{ loop.index }}" value="1" {{ 'checked' if loop.index|string in co.hours_days }}><span>{{ d }}</span></label>{% endfor %}</div></div>
+<div class="addline" style="margin:0"><label class="fld" style="flex:1"><span>시작</span><input class="inp" type="time" name="hours_from" value="{{ co.hours_from or '09:00' }}"></label><label class="fld" style="flex:1"><span>끝</span><input class="inp" type="time" name="hours_to" value="{{ co.hours_to or '18:00' }}"></label></div>
+<label class="fld"><span>첫 답변 목표 (영업시간만 셉니다)</span><select class="inp" name="sla_hours">{% for h in SLA_CHOICES %}<option value="{{ h }}" {{ 'selected' if co.sla_hours==h }}>{{ '정하지 않음' if not h else h|string+'시간 안에' }}</option>{% endfor %}</select></label>
+<label class="check"><input type="checkbox" name="away_on" value="1" {{ 'checked' if co.away_on }}><span class="bx"></span><span><b>영업시간 밖에는 바로 안내 남기기</b><div class="cap">고객센터 링크로 들어온 요청에만 남겨요. 판매처 게시판에는 올리지 않아요</div></span></label>
+<label class="fld"><span>안내 문구 ({다음영업}은 다음 영업 시작 때로 바뀌어요)</span><textarea class="inp" name="away_msg" maxlength="300" rows="3" placeholder="{{ AWAY_DEFAULT }}">{{ co.away_msg }}</textarea></label>
+<label class="check"><input type="checkbox" name="auto_assign" value="1" {{ 'checked' if co.auto_assign }}><span class="bx"></span><span><b>새 요청 자동 배정</b><div class="cap">진행 중인 요청이 가장 적은 사람에게 줘요. 직원이 있으면 직원끼리 나눠요</div></span></label>
+<button class="btn md">저장</button></form>
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="return"><div class="ph">반품 안내</div>
 <p class="sub" style="margin:0">교환·반품·불량 요청을 승인하면 답변 끝에 이 안내가 붙고, 고객은 접수 화면에서 송장번호를 입력합니다.</p>
 <label class="fld"><span>반품 받을 주소</span><input class="inp" name="return_address" maxlength="200" value="{{ co.return_address }}" placeholder="우편번호, 주소, 받는 사람, 연락처"></label>

@@ -1693,3 +1693,19 @@ body.v2 main .inp.sm,body.v2 main select.inp.sm{height:36px;padding:0 12px;font-
 .mrow .tx>span:not(.tagline){font-size:14px;color:var(--fg3)}
 .mrow .tagline{margin:0}
 @media (max-width:759.98px){.tbl2 .sel{display:none}.mrow{flex-wrap:wrap}.mrow .tx{flex-basis:100%}.bulk{top:auto;bottom:calc(var(--ds-h-tab) + 12px);position:fixed;left:12px;right:12px}}
+
+/* ---------- 응대 운영: 첫 답변 목표 표시, 영업 요일 고르기, 달성률 ---------- */
+.slam{display:inline-block;font-size:12.5px;font-weight:600;margin-left:8px;color:var(--fg3)}
+.slam.warn{color:var(--accent-ink)}.slam.bad{color:var(--red)}
+.tbl2 .slam{display:block;margin:4px 0 0}
+.dayrow{display:flex;gap:6px;flex-wrap:wrap}
+.dayc{position:relative;cursor:pointer}
+.dayc input{position:absolute;opacity:0;pointer-events:none}
+.dayc span{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--fill);font-weight:600;color:var(--fg2)}
+.dayc input:checked+span{background:var(--accent);color:var(--on-accent)}
+.dayc input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.slab{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.slab b{font-size:32px;letter-spacing:-.04em}.slab b small{font-size:18px;margin-left:2px;color:var(--fg3)}
+.slab span{color:var(--fg2)}
+.nprog.big{display:block;height:10px;border-radius:99px;background:var(--fill);overflow:hidden}
+.nprog.big i{display:block;height:100%;background:var(--accent);border-radius:99px}

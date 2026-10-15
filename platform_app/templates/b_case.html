@@ -7,7 +7,7 @@
 <div class="chead">
 <div class="l"><div class="tagrow">{{ m.pill(c,True) }}<span class="pill gray">{{ c.category }}</span>{% if is_direct(c) %}<span class="pill gray">{{ c.channel }} · 직접 등록</span>{% endif %}</div>
 <h1>{{ c.title }}</h1>
-<div class="cmeta"><span>{{ fmt(c.created) }} 접수</span>{% if c.due and open %}<span class="{{ 't-bad' if overdue(c) }}">{{ fmt_day(c.due) }}까지 답변{{ ' · 지연' if overdue(c) }}</span>{% endif %}<span class="no">{{ c.no }}</span></div></div>
+<div class="cmeta"><span>{{ fmt(c.created) }} 접수</span>{% if c.due and open %}<span class="{{ 't-bad' if overdue(c) }}">{{ fmt_day(c.due) }}까지 답변{{ ' · 지연' if overdue(c) }}</span>{% endif %}<span class="no">{{ c.no }}</span>{% if sla %}<span class="slam {{ sla[1] }}">{{ sla[0] }}</span>{% endif %}</div></div>
 <a class="btn sm gray" href="{{ url_for('record',case_id=c.id) }}" target="_blank">{{ i.icon('note',18) }}기록 PDF</a></div>
 {% if merged %}<div class="hint" style="margin:0 0 16px"><span>🔗</span><span>이 요청은 <a class="link" href="{{ url_for('case',case_id=merged.id) }}">{{ merged.no }}</a>에 합쳐졌어요. 이어지는 처리는 그쪽에서 해 주세요.</span></div>{% endif %}
 {% if snoozed %}<div class="hint" style="margin:0 0 16px"><span>⏰</span><span><b>{{ fmt_when(c.snooze_until) }}까지 미뤄 둔 요청이에요.</b> 그때가 되거나 고객이 새로 글을 남기면 '답변 전'에 다시 나와요.</span></div>{% endif %}

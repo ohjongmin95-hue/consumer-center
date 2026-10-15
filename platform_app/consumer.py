@@ -2,7 +2,7 @@
 import os, re, datetime, json
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-import core, law, chatbot
+import core, law, chatbot, workflow
 import tracking as tracking_mod
 import orders as orders_mod
 import ai as ai_mod
@@ -125,7 +125,9 @@ def create_case(d,pw,ups,company_id=''):
             c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
             if core.auto_ok(db,c):
                 if core.run_playbook(db,c,'auto'):core.notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{co['name']}이(가) 답변했어요.")
-            else:core.notify_company_new(co,c)
+            else:
+                core.notify_company_new(co,c)
+                workflow.on_new(db,core.company(db,co['id']),c,from_consumer=True)  # 영업시간 밖 안내는 접수 화면 진행 기록에만 남긴다 (따로 알림을 보내지 않음)
         elif member:core.add_event(db,case_id,'sys','기업 전달에 동의하지 않아 접수만 했어요.')
         else:core.add_event(db,case_id,'sys','비입점 기업이에요. 센터가 공식 연락처로 전달을 시도할게요.' if d['consent'] else '비입점 기업이고 전달 동의가 없어 접수만 했어요.')
         no=db.execute('SELECT no FROM cases WHERE id=?',(case_id,)).fetchone()[0]
