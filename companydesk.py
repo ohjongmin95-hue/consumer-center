@@ -123,9 +123,10 @@ def install(S):
     S.ops.NOTICE_KINDS.setdefault('request','입장 요청서 전달')
     app.jinja_env.globals.update(REQ_STATUSES=REQ_STATUSES,REQ_ORIGINS=REQ_ORIGINS,DESK_CHANNELS=CHANNELS,desk_ai_ready=ai_ready)
 
-    def public_url(case):
+    def public_url(case,link=None):
+        # link: 접수 직후 뒤에서 만들 때 요청 안에서 미리 만들어 둔 주소 (요청 밖에서는 url_for를 쓸 수 없음)
         ok=case['public_consent'] and case['published'] and case['review'] not in jebo.NOT_VALID
-        return url_for('public_case',case_id=case['id'],_external=True) if ok else ''
+        return (link or url_for('public_case',case_id=case['id'],_external=True)) if ok else ''
     def latest(db,case_id):
         return db.execute('SELECT * FROM company_requests WHERE case_id=? ORDER BY version DESC LIMIT 1',(case_id,)).fetchone()
     def add_version(db,case_id,title,body,origin,facts=None,model='',error='',actor=''):
@@ -135,7 +136,7 @@ def install(S):
                    (case_id,v,title,body,json.dumps(facts,ensure_ascii=False) if facts else '',origin,model,error,actor,now()))
         return v
 
-    def generate(case_id,actor='자동'):
+    def generate(case_id,actor='자동',link=None):
         """AI로 새 판을 만듦. 실패하면 오류만 남김(이미 판이 있으면 그대로 두고 기록만)."""
         with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if not case or not case['share_company']:return False  # 기업 전달에 동의하지 않은 제보는 요청서를 만들지 않음
@@ -150,7 +151,7 @@ def install(S):
             return False
         with conn() as db:
             case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
-            title,body=compose(facts,case['company'],public_url(case))
+            title,body=compose(facts,case['company'],public_url(case,link))
             v=add_version(db,case_id,title,body,'ai',facts,model,actor=actor)
             S.log_case(db,case_id,f'AI 입장 요청서 {v}판 생성')
         return True
@@ -159,8 +160,9 @@ def install(S):
     def generate_later(case_id):
         # 접수 응답을 기다리게 하지 않도록 뒤에서 만듦
         if not ai_ready():return
+        link=url_for('public_case',case_id=case_id,_external=True)
         def run(resp):
-            threading.Thread(target=generate,args=(case_id,),daemon=True).start();return resp
+            threading.Thread(target=generate,args=(case_id,'자동',link),daemon=True).start();return resp
         after_this_request(run)
     S.desk_after_submit=generate_later
 

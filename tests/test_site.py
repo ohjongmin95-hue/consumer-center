@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import secrets
 import tempfile
+import threading
+_REAL_THREAD = threading.Thread
 import unittest
 from unittest.mock import patch
 
@@ -1193,6 +1195,8 @@ class SiteTest(unittest.TestCase):
                  'paragraphs': ['제보자에 따르면 운동화를 반품했지만 환불을 받지 못했다고 합니다. 연락처 010-9999-8888', '제보자는 환불을 요구하고 있습니다.'],
                  'claims': '환불 지연', 'company_response': '확인 필요', 'demands': '환불', 'questions': ['반품 접수 여부를 확인해 주시기 바랍니다.', '환불 처리 일정을 알려 주시기 바랍니다.']}
         def fake(url, headers, body, timeout):
+            if '제보 분류' in body['messages'][0]['content']:
+                return 503, {}  # AI 분류는 이 테스트에서 보지 않음
             sent.append((url, headers, body))
             if status != 200:
                 return status, {'error': {'message': 'server busy'}}
@@ -1203,7 +1207,8 @@ class SiteTest(unittest.TestCase):
         def __init__(self, target, args=(), daemon=None):
             self.target, self.args = target, args
         def start(self):
-            self.target(*self.args)
+            # 실제처럼 요청 밖(다른 스레드)에서 돌리고 끝날 때까지 기다림
+            t = _REAL_THREAD(target=self.target, args=self.args); t.start(); t.join()
 
     def test_ai_company_request_generate_edit_approve_send(self):
         desk = self.site.companydesk
@@ -1299,6 +1304,72 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(manual['origin'], 'manual')
         self.assertIn('■ 확인 요청 사항', manual['body'])
         self.assertNotIn('<span class="cs-pill off">생성 실패</span>', admin.get(f'/admin/reports/{cid}').get_data(as_text=True))
+
+    def triage_ai(self, sent, track='auto', refs=('ecom:제17조:①', 'ecom:제99조', 'ecom:제18조:②')):
+        guidance = {'track': track, 'reason': '단순 반품·환불 문의라 법률 안내로 충분해요.',
+                    'guidance': ['상품을 받은 날부터 7일 안이면 반품(청약철회)을 요청할 수 있어요. 홍길동 010-1234-5678', '상품이 돌아간 날부터 3영업일 안에 환불돼야 해요.'],
+                    'refs': list(refs), 'steps': ['업체에 반품·환불을 문자나 게시판처럼 기록이 남는 방법으로 요청하세요.', '반품 송장 번호를 보관하세요.']}
+        facts = {'company': '고양이몰', 'paragraphs': ['제보자에 따르면 환불이 안 됐습니다.'], 'questions': ['환불 지연 사유는 무엇인가요?']}
+        def fake(url, headers, body, timeout):
+            sent.append(body)
+            out = guidance if '제보 분류' in body['messages'][0]['content'] else facts
+            return 200, {'model': 'gpt-test', 'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+        return fake
+
+    def test_ai_triage_draft_send_and_filters(self):
+        desk = self.site.companydesk
+        sent = []
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(desk, 'post_json', self.triage_ai(sent)), patch.object(desk.threading, 'Thread', self.NowThread):
+            self.assertEqual(self.post_form(self.client, '/report', self.DESK_REPORT).status_code, 200)
+        tri_calls = [b for b in sent if '제보 분류' in b['messages'][0]['content']]
+        self.assertEqual(len(tri_calls), 1)
+        user = tri_calls[0]['messages'][1]['content']
+        self.assertNotIn('010-1234-5678', user)  # 개인정보는 AI에 보내지 않음
+        self.assertNotIn('홍길동', user)
+        self.assertIn('[ecom:제17조:①]', user)  # 조문 후보(원문)를 함께 보냄
+        with self.site.conn() as db:
+            cid = db.execute("SELECT id FROM cases WHERE subject='환불이 안 돼요'").fetchone()['id']
+            t = db.execute('SELECT * FROM case_triage WHERE case_id=?', (cid,)).fetchone()
+            log = [r['actor'] + ':' + r['action'] for r in db.execute('SELECT * FROM case_log WHERE case_id=?', (cid,))]
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM messages WHERE case_id=? AND author='센터'", (cid,)).fetchone()[0], 0)  # 자동 발송 안 함
+        self.assertEqual((t['track'], t['ai_track'], t['status']), ('auto', 'auto', 'draft'))
+        self.assertEqual(json.loads(t['refs']), ['ecom:제17조:①', 'ecom:제18조:②'])  # 후보에 없는 조문은 버림
+        self.assertIn('전자상거래 등에서의 소비자보호에 관한 법률', self.site.triage.law.cite('ecom:제17조:①')['law'])
+        self.assertIn('- 전자상거래법 제17조 제1항 (청약철회등)', t['body'])
+        self.assertIn('1372', t['body'])
+        self.assertNotIn('010-1234-5678', t['body'])
+        self.assertIn('자동:AI 분류: 자동 응답 · 답변 초안 생성', log)
+        admin = self.login_admin()
+        page = admin.get('/admin/reports/%d' % cid).get_data(as_text=True)
+        self.assertIn('AI 분류 · 법률 안내 답변', page)
+        self.assertIn('단순 반품·환불 문의라', page)
+        listing = admin.get('/admin/reports').get_data(as_text=True)
+        self.assertIn('자동 응답 <b>1</b>', listing)
+        self.assertIn('<span class="tri-chip tri-auto">자동</span>', listing)
+        self.assertNotIn('환불이 안 돼요', admin.get('/admin/reports?track=story').get_data(as_text=True))
+        # 확인하고 보내기: 제보자 메시지로 들어가고 다시 누르면 막음
+        body = t['body'].replace('안내드려요.', '안내드려요. (담당자 확인)')
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'triage_send', 'body': body})
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'triage_send', 'body': body})
+        with self.site.conn() as db:
+            msgs = db.execute("SELECT body FROM messages WHERE case_id=? AND author='센터'", (cid,)).fetchall()
+            t = db.execute('SELECT * FROM case_triage WHERE case_id=?', (cid,)).fetchone()
+        self.assertEqual(len(msgs), 1)
+        self.assertIn('(담당자 확인)', msgs[0]['body'])
+        self.assertEqual((t['status'], t['sent_by']), ('sent', '대표'))
+        # 사람이 분류를 바꾸면 다시 만들어도 사람이 정한 분류 유지
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'triage_track', 'track': 'story'})
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(desk, 'post_json', self.triage_ai([])):
+            self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'triage_run'})
+        with self.site.conn() as db:
+            t = db.execute('SELECT * FROM case_triage WHERE case_id=?', (cid,)).fetchone()
+        self.assertEqual((t['track'], t['ai_track'], t['set_by']), ('story', 'auto', '대표'))
+        self.assertIn('취재 검토 <b>1</b>', admin.get('/admin/reports').get_data(as_text=True))
+        # 담당자별 몰아 보기
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'settings', 'status': '검토 중', 'assignee': '이지우'})
+        self.assertIn('환불이 안 돼요', admin.get('/admin/reports?assignee=이지우').get_data(as_text=True))
+        self.assertNotIn('환불이 안 돼요', admin.get('/admin/reports?assignee=-').get_data(as_text=True))
+        self.assertIn('이지우 <b>1</b>', admin.get('/admin/reports').get_data(as_text=True))
 
     def test_company_contacts_and_answer_registration(self):
         for subject in ('첫 제보', '둘째 제보'):

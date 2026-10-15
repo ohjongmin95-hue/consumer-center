@@ -1861,3 +1861,21 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 /* 관리자·기자실 제보 상세: 제보자 메시지·보완 요청 작성 칸 */
 .cs-form textarea.cs-compose { min-height: 240px; padding: 16px 18px; font-size: 15px; line-height: 1.7; resize: vertical; }
 @media (max-width: 640px) { .cs-form textarea.cs-compose { min-height: 200px; } }
+
+/* AI 분류 · 법률 안내 답변 */
+.tri-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.tri-story { background: #fff0df; color: #c35b00; }
+.tri-auto { background: #e8f1ff; color: #2456a6; }
+.tri-none { background: #f1f1ef; color: #8b8f96; }
+.tri-reason { margin: 6px 0 12px; font-size: 14px; line-height: 1.6; color: #4b5059; }
+.tri-reason b { margin-right: 6px; color: #2b3038; }
+.tri-error { color: #c0392b; }
+.tri-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tri-actions .cs-inline { display: flex; gap: 6px; }
+.tri-refs { margin: 2px 0 0; font-size: 13px; color: #6b7079; line-height: 1.7; }
+.tri-refs a { color: #2456a6; }
+.tri-send { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
+.c-sub .tri-chip { float: left; height: 20px; padding: 0 7px; margin: 1px 6px 0 0; font-size: 11px; }
+.tri-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 0 0 12px; }
+.tri-bar .rv-filter { margin: 0; }
+.tri-bar-label { font-size: 13px; font-weight: 700; color: #6b7079; }
