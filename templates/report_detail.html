@@ -9,7 +9,7 @@
   <div class="cs-case-head">
     <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ cat_label(case['category']) }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}{% if case['occurred_on'] %} · 발생 {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
     <h1 class="cs-title">{{ case['subject'] }}</h1>
-    <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ MY_COLOR[stage_of(case['status']) - 1] }}">{{ my_names()[stage_of(case['status']) - 1] }}</span></p>
+    <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ stage_of(case['status']) }}">{{ stage_names()[stage_of(case['status']) - 1] }}</span></p>
   </div>
 
   <div class="cs-case">
@@ -107,15 +107,15 @@
         </div>
         {% else %}<p class="cs-muted">아직 메시지가 없어요.</p>{% endfor %}
         <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="message">
-          <textarea name="message" maxlength="3000" required rows="3" placeholder="제보자에게 보낼 메시지 (제보자가 조회 화면에서 봐요)" aria-label="제보자에게 메시지"></textarea>
+          <textarea class="cs-compose" data-autogrow name="message" maxlength="3000" required rows="10" placeholder="제보자에게 보낼 메시지 (제보자가 조회 화면에서 봐요)" aria-label="제보자에게 메시지"></textarea>
           <button class="cs-btn" type="submit">메시지 보내기</button>
         </form>
       </section>
 
       <details class="cs-panel cs-card" id="supplement"{% if case['supplement_at'] and case['status'] == STATUSES[2] %} open{% endif %}><summary><h2>보완 요청</h2></summary>
-        <p class="cs-hint">내용이 부족하거나 증빙이 더 필요할 때 써요. 제보자 조회 화면 맨 위에 보이고, 연락처가 있으면 알림이 가요. 진행 단계는 '{{ STATUSES[2] }}'로 바뀌어요.{% if case['supplement_at'] %} 마지막 요청 {{ case['supplement_at'][:16]|replace('T', ' ') }}.{% endif %}</p>
+        <p class="cs-hint">내용이 부족하거나 증빙이 더 필요할 때 써요. 제보자 조회 화면 맨 위에 보이고, 연락처가 있으면 알림이 가요. 진행 단계는 '3. {{ stage_names()[2] }}'로 바뀌어요.{% if case['supplement_at'] %} 마지막 요청 {{ case['supplement_at'][:16]|replace('T', ' ') }}.{% endif %}</p>
         <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="supplement">
-          <textarea name="body" maxlength="3000" required rows="3" placeholder="예: 주문 내역과 업체와 주고받은 문자 화면을 올려 주세요." aria-label="보완 요청 내용"></textarea>
+          <textarea class="cs-compose" data-autogrow name="body" maxlength="3000" required rows="8" placeholder="예: 주문 내역과 업체와 주고받은 문자 화면을 올려 주세요." aria-label="보완 요청 내용"></textarea>
           <button class="cs-btn" type="submit">보완 요청 보내기</button>
         </form>
       </details>
@@ -169,7 +169,7 @@
       <form class="cs-panel cs-card" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="settings">
         <h2>처리</h2>
         <div class="cs-two">
-          <div class="field"><label for="c-status">진행 단계</label><select id="c-status" name="status">{% for s in STAGE_STATUS %}<option value="{{ s }}"{% if loop.index == stage_of(case['status']) %} selected{% endif %}>{{ loop.index }}. {{ my_names()[loop.index0] }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="c-status">진행 단계</label><select id="c-status" name="status">{% for s in STAGE_STATUS %}<option value="{{ s }}"{% if loop.index == stage_of(case['status']) %} selected{% endif %}>{{ loop.index }}. {{ stage_names()[loop.index0] }}</option>{% endfor %}</select></div>
           <div class="field"><label for="c-assignee">담당 기자</label><select id="c-assignee" name="assignee"><option value="">미배정</option>{% for n in staff_names %}<option{% if n == case['assignee'] %} selected{% endif %}>{{ n }}</option>{% endfor %}{% if case['assignee'] and case['assignee'] not in staff_names %}<option selected>{{ case['assignee'] }}</option>{% endif %}</select></div>
         </div>
         {% if case['public_consent'] %}<label class="cs-check"><input type="checkbox" name="published"{% if case['published'] %} checked{% endif %}><span>사이트에 공개</span></label>{% endif %}
@@ -342,5 +342,10 @@
     document.querySelectorAll('[data-copy]').forEach(function (b) { b.addEventListener('click', function () { copy(text(b.getAttribute('data-copy')), b); }); });
     document.querySelectorAll('[data-copy-text]').forEach(function (b) { b.addEventListener('click', function () { copy(b.getAttribute('data-copy-text'), b); }); });
   })();
+  // 메시지 작성 칸: 글이 길어지면 화면 높이의 70%까지 자동으로 늘어남
+  document.querySelectorAll('textarea[data-autogrow]').forEach(function (t) {
+    var grow = function () { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, window.innerHeight * 0.7) + 'px'; };
+    t.addEventListener('input', grow); grow();
+  });
 </script>
 {% endblock %}

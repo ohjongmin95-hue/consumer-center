@@ -13,7 +13,7 @@
 
   <nav class="cs-tabs" aria-label="진행 단계별 보기">
     <a href="{{ qs(status='') }}"{% if not status %} class="on"{% endif %}>전체 <b>{{ all_count }}</b></a>
-    {% for s in STAGE_STATUS %}<a href="{{ qs(status=s) }}"{% if status == s %} class="on"{% endif %}>{{ my_names()[loop.index0] }} <b>{{ counts.get(s, 0) }}</b></a>{% endfor %}
+    {% for s in STAGE_STATUS %}<a href="{{ qs(status=s) }}"{% if status == s %} class="on"{% endif %}>{{ stage_names()[loop.index0] }} <b>{{ counts.get(s, 0) }}</b></a>{% endfor %}
     {% if layout == 'reporter_base.html' %}<a class="cs-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
   </nav>
 
@@ -45,7 +45,7 @@
         <td class="c-co" title="{{ c['company'] }}">{{ c['company'] }}</td>
         <td class="c-pub">{% if not c['public_consent'] %}<span class="pub-chip is-secret" title="제보자가 비밀글로 접수">비밀</span>{% elif c['published'] %}<span class="pub-chip is-on" title="사이트에 게시 중">공개</span>{% else %}<span class="pub-chip is-off" title="게시되지 않음 (운영자가 내림)">비공개</span>{% endif %}</td>
         <td class="c-rv"><span class="rv-chip rv-{{ c['review'] or 'new' }}">{{ reviews[c['review']] if c['review'] in reviews else c['review'] }}</span></td>
-        <td class="c-st"><span class="cs-status s{{ MY_COLOR[stage_of(c['status']) - 1] }}">{{ my_names()[stage_of(c['status']) - 1] }}</span></td>
+        <td class="c-st"><span class="cs-status s{{ stage_of(c['status']) }}">{{ stage_names()[stage_of(c['status']) - 1] }}</span></td>
         <td class="c-as" title="{{ c['assignee'] or '' }}">{{ c['assignee'] or '—' }}</td>
         <td class="mono c-dt" title="{{ c['created'][:16]|replace('T', ' ') }}">{{ c['created'][2:10]|replace('-', '.') }}</td>
       </tr>
