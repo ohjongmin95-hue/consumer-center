@@ -1,0 +1,23 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}답변 템플릿 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('macros') }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>답변 템플릿</h1><p>자주 쓰는 답변을 만들어 두면 요청 화면의 답변 쓰기에서 골라 바로 넣을 수 있어요.</p></div>{% if edit is none %}<a class="btn sm" href="{{ url_for('macros',new=1) }}">+ 새 템플릿</a>{% endif %}</div>
+{% if edit is not none %}{% set cur=(ms|selectattr('id','equalto',edit)|first) if edit else None %}
+<form class="panel stack" method="post" action="{{ url_for('macros') }}" style="margin-bottom:16px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="save">{% if cur %}<input type="hidden" name="id" value="{{ cur.id }}">{% endif %}
+<div class="ph">{{ '템플릿 고치기' if cur else '새 템플릿' }}</div>
+<label class="fld"><span>이름</span><input class="inp" name="name" maxlength="30" required value="{{ cur.name if cur }}" placeholder="예: 배송 지연 사과"></label>
+<label class="fld"><span>답변 내용</span><textarea class="inp" name="body" id="mBody" maxlength="3000" required rows="7" placeholder="{고객명}님, 기다리게 해서 죄송합니다. 주문하신 {상품}은(는) {택배사} {송장번호}(으)로 보냈어요.">{{ cur.body if cur }}</textarea></label>
+<div class="vars"><span class="cap">누르면 넣어져요. 보낼 때 요청 내용으로 바뀌어요</span>{% for v in VARS %}<button type="button" class="chip" data-v="{{ v }}">{{ v }}</button>{% endfor %}</div>
+<label class="fld"><span>함께 붙일 태그 <small class="cap">쉼표로 나눠 적어요. 이 템플릿으로 답하면 요청에 붙어요</small></span><input class="inp" name="tags" maxlength="200" value="{{ cur.tags if cur }}" placeholder="예: 배송지연, 사과"></label>
+<div style="display:flex;gap:8px"><button class="btn md">{{ '고치기' if cur else '만들기' }}</button><a class="btn md gray" href="{{ url_for('macros') }}">취소</a></div></form>{% endif %}
+{% if ms %}<div class="panel mlist">{% for x in ms %}<div class="mrow"><div class="tx"><b>{{ x.name }}</b><span>{{ x.body[:90] }}{{ '…' if x.body|length>90 }}</span>{% if x.tags %}<span class="tagline">{% for t in x.tags.split(',') %}<span class="tagc gray">{{ t }}</span>{% endfor %}</span>{% endif %}</div>
+<span class="cap">{{ x.used }}번 씀</span><a class="btn sm gray" href="{{ url_for('macros',edit=x.id) }}">고치기</a>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="delete"><input type="hidden" name="id" value="{{ x.id }}"><button class="btn sm gray" onclick="return confirm('이 템플릿을 지울까요?')">지우기</button></form></div>{% endfor %}</div>
+{% elif edit is none %}<div class="empty-card"><b>아직 만든 템플릿이 없어요</b><p class="cap" style="margin:6px 0 0">배송 지연 사과, 교환 안내처럼 자주 보내는 답변부터 만들어 보세요.</p></div>{% endif %}
+<div class="shead" style="margin-top:28px"><h2>태그</h2></div>
+<div class="panel"><p class="sub" style="margin:0 0 12px;font-size:15px">요청을 나눠 볼 때 쓰는 이름표예요. 고객에게는 보이지 않아요. 요청 화면에서 바로 만들어 붙여도 돼요.</p>
+<div class="tagline tbig">{% for t in ts %}<form method="post" class="tagx"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="tag_delete"><input type="hidden" name="id" value="{{ t.id }}"><button class="tagc {{ t.color }}" aria-label="태그 {{ t.name }} 지우기" onclick="return confirm('태그 {{ t.name }}을(를) 지울까요? 붙어 있는 요청 {{ counts.get(t.id,0) }}건에서도 떨어져요.')">{{ t.name }} <small>{{ counts.get(t.id,0) }}</small><span aria-hidden="true">×</span></button></form>{% else %}<span class="cap">아직 태그가 없어요</span>{% endfor %}</div>
+<form method="post" class="addline" style="margin-top:12px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="tag_add"><input class="inp" name="name" maxlength="20" placeholder="새 태그 이름" aria-label="새 태그 이름" required><button class="btn md gray">만들기</button></form></div>
+{% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-v]').forEach(function(b){b.onclick=function(){var t=document.getElementById('mBody'),s=t.selectionStart||t.value.length;t.value=t.value.slice(0,s)+b.dataset.v+t.value.slice(t.selectionEnd||s);t.focus();t.selectionStart=t.selectionEnd=s+b.dataset.v.length;};});</script>{% endblock %}

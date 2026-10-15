@@ -9,6 +9,8 @@
 <h1>{{ c.title }}</h1>
 <div class="cmeta"><span>{{ fmt(c.created) }} 접수</span>{% if c.due and open %}<span class="{{ 't-bad' if overdue(c) }}">{{ fmt_day(c.due) }}까지 답변{{ ' · 지연' if overdue(c) }}</span>{% endif %}<span class="no">{{ c.no }}</span></div></div>
 <a class="btn sm gray" href="{{ url_for('record',case_id=c.id) }}" target="_blank">{{ i.icon('note',18) }}기록 PDF</a></div>
+{% if merged %}<div class="hint" style="margin:0 0 16px"><span>🔗</span><span>이 요청은 <a class="link" href="{{ url_for('case',case_id=merged.id) }}">{{ merged.no }}</a>에 합쳐졌어요. 이어지는 처리는 그쪽에서 해 주세요.</span></div>{% endif %}
+{% if snoozed %}<div class="hint" style="margin:0 0 16px"><span>⏰</span><span><b>{{ fmt_when(c.snooze_until) }}까지 미뤄 둔 요청이에요.</b> 그때가 되거나 고객이 새로 글을 남기면 '답변 전'에 다시 나와요.</span></div>{% endif %}
 <div class="cols">
 <div class="stack">
 <section class="panel req"><div class="who"><span class="av sm acc">{{ (c.name or '고객')[:1] }}</span><div><b>{{ c.name or '익명' }}</b><small>{{ c.channel if is_direct(c) else CNAME+'로 접수' }} · {{ fmt(c.created) }}</small></div></div>
@@ -48,6 +50,8 @@
 {% if from_shop %}<p class="cap" style="margin:8px 0 0">시험 운영 중이에요. {% if posted %}올렸어요. {% endif %}판매자 화면에서 잘 올라갔는지 확인해 주세요.</p>{% endif %}</section>{% endif %}
 {% if open %}<form class="panel compose" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="reply">
 <div class="ph">답변 쓰기<button type="button" class="btn sm gray" id="mkDraft" data-url="{{ url_for('draft',case_id=c.id) }}">✨ 초안 만들기</button></div>
+{% if macros %}<div class="mpick"><select class="inp sm" id="macroPick" aria-label="답변 템플릿 고르기"><option value="">답변 템플릿 고르기</option>{% for x in macros %}<option value="{{ x.id }}" data-body="{{ x.body }}">{{ x.name }}</option>{% endfor %}</select>{% if can('manage') %}<a class="cap" href="{{ url_for('macros') }}">템플릿 관리</a>{% endif %}</div><input type="hidden" name="macro" id="macroId">
+{% elif can('manage') %}<p class="cap" style="margin:0 0 8px">자주 쓰는 답변은 <a class="link" href="{{ url_for('macros') }}">답변 템플릿</a>으로 만들어 두면 한 번에 넣을 수 있어요.</p>{% endif %}
 <textarea class="inp" name="msg" id="msg" required>{{ rule.reply }}</textarea>
 <p class="cap" id="draftNote" hidden></p>
 <div class="quick">{% for t in ['확인 후 오늘 안에 다시 연락드릴게요.','불편을 드려 죄송합니다. 바로 조치하겠습니다.','주문번호를 알려 주시면 빠르게 확인할게요.'] %}<button type="button" data-q="{{ t }}">{{ t }}</button>{% endfor %}{% for g in guides %}<button type="button" class="g" data-q="{{ g.sample }}">가이드 · {{ g.title }}</button>{% endfor %}</div>
@@ -63,8 +67,23 @@
 {% if can('work') %}<form method="post" class="addline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="assign">
 <select class="inp" name="assignee" aria-label="담당자"><option value="">담당자 없음</option>{% for k,nm in people %}<option value="{{ k }}" {{ 'selected' if c.assignee==k }}>{{ nm }}</option>{% endfor %}</select><button class="btn md gray">정하기</button></form>
 {% else %}<p class="sub" style="margin:0;font-size:15px">{{ assignee or '담당자 없음' }}</p>{% endif %}</section>
+<section class="panel cls"><div class="ph">분류</div>
+<div class="tagline tbig">{% for t in ctags %}{% if can('work') %}<form method="post" class="tagx"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="tag_del"><input type="hidden" name="tag_id" value="{{ t.id }}"><button class="tagc {{ t.color }}" aria-label="태그 {{ t.name }} 떼기">{{ t.name }}<span aria-hidden="true">×</span></button></form>{% else %}{{ b.tag_chip(t) }}{% endif %}{% else %}<span class="cap">태그 없음</span>{% endfor %}</div>
+{% if can('work') %}<form method="post" class="addline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="tag_add">
+<input class="inp" name="tag" list="caseTags" maxlength="20" placeholder="태그 붙이기" aria-label="태그 이름" required><datalist id="caseTags">{% for t in all_tags %}<option value="{{ t.name }}">{% endfor %}</datalist><button class="btn md gray">붙이기</button></form>
+<form method="post" class="addline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="prio">
+<select class="inp" name="prio" aria-label="우선순위">{% for k,l in PRIO.items() %}<option value="{{ k }}" {{ 'selected' if (c.priority or 'normal')==k }}>우선순위 {{ l }}</option>{% endfor %}</select><button class="btn md gray">바꾸기</button></form>
+{% if open %}<form method="post" class="snzf"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="snooze">
+<span class="cap">미루기</span><div class="snzb">{% for k,l in [('1h','1시간'),('tomorrow','내일 9시'),('3d','3일 뒤')] %}<button class="btn sm gray" name="when" value="{{ k }}">{{ l }}</button>{% endfor %}{% if snoozed %}<button class="btn sm gray" name="when" value="off">풀기</button>{% endif %}</div>
+<div class="addline"><input class="inp" type="date" name="day" min="{{ today }}" aria-label="미룰 날짜"><button class="btn md gray" name="when" value="date">그날까지</button></div></form>
+<details class="mergef"><summary>다른 요청과 합치기</summary><form method="post" class="addline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="merge">
+<input class="inp" name="target" maxlength="30" placeholder="합칠 접수번호" aria-label="합칠 접수번호" required list="sameCust"><datalist id="sameCust">{% for x in profile.cases if x.status not in FINAL %}<option value="{{ x.no }}">{{ x.title }}</option>{% endfor %}</datalist><button class="btn md gray" onclick="return confirm('이 요청을 닫고 고른 요청에 합칠까요? 기록은 지우지 않아요.')">합치기</button></form>
+<p class="cap" style="margin:6px 0 0">같은 고객의 요청만 합칠 수 있어요. 이 요청은 닫히고 내용은 합친 요청의 메모로 옮겨져요.</p></details>{% endif %}{% endif %}</section>
 {% if order %}<section class="panel"><div class="ph">주문<a href="{{ url_for('order_page',oid=order.id) }}">주문 보기 ›</a></div><dl class="kv"><dt>주문번호</dt><dd class="no">{{ order.order_no }}</dd><dt>상태</dt><dd><b>{{ OSTATUS[order.status] }}</b></dd>{% if order.product %}<dt>상품</dt><dd>{{ order.product }}{% if order.qty>1 %} × {{ order.qty }}{% endif %}</dd>{% endif %}{% if order.amount %}<dt>결제금액</dt><dd>{{ '{:,}'.format(order.amount) }}원</dd>{% endif %}{% if order.ordered_on %}<dt>주문일</dt><dd>{{ order.ordered_on }}</dd>{% endif %}{% if order.invoice %}<dt>송장</dt><dd>{{ order.courier }} <span class="no">{{ order.invoice }}</span></dd>{% endif %}</dl>{% if c.order_no!=order.order_no %}<p class="cap" style="margin:10px 0 0">같은 휴대폰 번호의 최근 주문이에요</p>{% endif %}</section>{% endif %}
-<section class="panel"><div class="ph">고객 정보</div><dl class="kv"><dt>이름</dt><dd>{{ c.name or '익명' }}</dd>{% if c.phone %}<dt>연락처</dt><dd>{{ fmt_phone(c.phone) }}</dd>{% endif %}{% if c.email %}<dt>이메일</dt><dd>{{ c.email }}</dd>{% endif %}{% if c.received_on %}<dt>상품 받은 날</dt><dd>{{ c.received_on }}</dd>{% endif %}</dl></section>
+<section class="panel"><div class="ph">고객 정보</div><dl class="kv"><dt>이름</dt><dd>{{ c.name or '익명' }}</dd>{% if c.phone %}<dt>연락처</dt><dd>{{ fmt_phone(c.phone) }}</dd>{% endif %}{% if c.email %}<dt>이메일</dt><dd>{{ c.email }}</dd>{% endif %}{% if c.received_on %}<dt>상품 받은 날</dt><dd>{{ c.received_on }}</dd>{% endif %}</dl>
+{% if profile.cases or profile.orders %}<div class="prof"><div class="cap">이 고객 · 요청 {{ profile.n }}건{% if profile.orders %} · 주문 {{ profile.orders|length }}건{% endif %}</div>
+{% for x in profile.cases %}<a href="{{ url_for('case',case_id=x.id) }}"><span>{{ x.title }}</span><small>{{ x.category }} · {{ fmt_day(x.created) }} · {{ status_label(x.status) }}</small></a>{% endfor %}
+{% for o in profile.orders %}<a href="{{ url_for('order_page',oid=o.id) }}"><span>주문 {{ o.order_no }}{% if o.product %} · {{ o.product }}{% endif %}</span><small>{{ o.ordered_on }} · {{ OSTATUS[o.status] }}</small></a>{% endfor %}</div>{% endif %}</section>
 <section class="panel"><div class="ph">법 기준<a href="{{ url_for('guide') }}">응대 가이드 ›</a></div>
 {% if chk %}<div class="lawk {{ 'ok' if chk.within else 'bad' }}"><b>받은 지 {{ chk.days }}일째</b><span>{% if chk.within %}청약철회 기간 7일 안입니다 · {{ chk.left }}일 남음{% else %}청약철회 7일이 지났습니다. 광고·계약과 다르면 3개월 안까지 가능합니다{% endif %}</span></div>
 {% elif c.category in ('교환','반품·환불','제품 불량') %}<p class="cap" style="margin:0 0 12px">상품 받은 날을 알면 7일 기간을 계산해 드립니다.</p>{% endif %}
@@ -73,6 +92,7 @@
 </aside></div>
 {% endblock %}
 {% block script %}<script>
+(function(){var p=document.getElementById('macroPick');if(!p)return;p.onchange=function(){var o=p.options[p.selectedIndex];if(!o.value)return;var t=document.getElementById('msg');t.value=(t.value.trim()?t.value.trim()+'\n\n':'')+o.dataset.body;document.getElementById('macroId').value=o.value;t.focus();p.selectedIndex=0;};})();
 document.querySelectorAll('[data-q]').forEach(function(b){b.onclick=function(){var t=document.getElementById('msg');t.value=(t.value.trim()?t.value.trim()+'\n':'')+b.dataset.q;t.focus();};});
 document.querySelectorAll('[data-copy-text]').forEach(function(b){b.onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(b.dataset.copyText):Promise.reject()).then(function(){b.textContent='복사했습니다';},function(){b.textContent='계좌번호를 길게 눌러 복사해 주세요';});};});
 document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했습니다';},function(){b.textContent='선택했습니다';});};});

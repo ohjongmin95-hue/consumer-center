@@ -1642,3 +1642,54 @@ main.intro .panel.privacy.doc{max-width:860px;padding:0;background:none;border:0
 .intro .doc section p+.kv,.intro .doc section .kv+p,.intro .doc section p+p{margin-top:10px}
 /* 태블릿 가로(약 900~1100px)에서 소개 메뉴가 머리글 밖으로 밀리지 않게 */
 @media (max-width:1120px) and (min-width:761px){body.v2 .gnb nav.in-nav{gap:20px}body.v2 .gnb nav.in-nav a{font-size:15.5px}}
+
+/* ---------- 받은 요청함 도구: 태그·우선순위·일괄 처리·답변 템플릿·고객 프로필 ---------- */
+.tagline{display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:8px;vertical-align:middle}
+.tbl2 .tagline{display:flex;margin:6px 0 0}
+.tagline.tbig{display:flex;margin:0 0 12px;gap:6px}
+.tagc{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;line-height:1;padding:5px 9px;border-radius:8px;border:0;background:var(--fill);color:var(--fg2);white-space:nowrap;font-family:inherit}
+.tagc.blue{background:#e8f3ff;color:#1b64da}.tagc.green{background:#e5f8ef;color:#0a8a55}.tagc.amber{background:#fff4e0;color:#b25c00}
+.tagc.red{background:#ffeeee;color:#d22030}.tagc.purple{background:#f2edff;color:#6a3fd1}.tagc.gray{background:var(--fill);color:var(--fg2)}
+.tagx{display:inline}.tagx .tagc{cursor:pointer}.tagx .tagc span{opacity:.6;font-size:14px;margin-left:2px}.tagx .tagc:hover span{opacity:1}
+.tagc small{font-weight:500;opacity:.7}
+.prio{display:inline-block;font-size:12px;font-weight:700;padding:3px 7px;border-radius:6px;margin-right:8px;vertical-align:1px}
+.prio.urgent{background:var(--red);color:#fff}.prio.high{background:var(--red-soft);color:var(--red)}
+.snz{display:inline-block;font-size:12px;font-weight:600;color:var(--fg3);margin-left:8px}
+.tbl2 .sel{width:44px;padding-right:0}
+.tbl2 .sel .check{padding:0;width:auto}
+.listbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.listbar .sp{flex:1}
+.listbar .lb-s{font-size:14px;font-weight:600;color:var(--fg2);padding:8px 12px;border-radius:10px}
+.listbar .lb-s:hover{background:var(--fill)}
+.listbar .lb-s.on{color:var(--accent-ink)}
+.inp.sm{height:36px;padding:0 12px;font-size:14px;border-radius:10px;width:auto}
+.bulk{position:sticky;top:72px;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--fg);color:var(--card);border-radius:16px;padding:10px 12px 10px 18px;margin:0 0 12px;box-shadow:0 8px 24px rgba(0,20,60,.16)}
+.bulk b{font-size:14.5px;margin-right:4px}
+.bulk .inp.sm{background:var(--card);color:var(--fg);border:0}
+.bulk .btn.sm{margin-left:auto;background:var(--accent);color:var(--on-accent)}
+body.v2 main .inp.sm,body.v2 main select.inp.sm{height:36px;padding:0 12px;font-size:14px;border-radius:10px}
+.mpick{display:flex;align-items:center;gap:12px;margin:0 0 8px}
+.mpick .inp.sm{flex:1 1 auto;max-width:320px}
+.cls .addline{margin-top:8px}
+.cls .addline .inp{flex:1;min-width:0}
+.snzf{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.snzf .snzb{display:flex;gap:6px;flex-wrap:wrap}
+.mergef{margin-top:14px}
+.mergef summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--fg2)}
+.prof{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:2px}
+.prof .cap{margin-bottom:4px}
+.prof a{display:flex;flex-direction:column;padding:8px 10px;margin:0 -10px;border-radius:10px}
+.prof a:hover{background:var(--fill)}
+.prof a span{font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prof a small{font-size:13px;color:var(--fg3)}
+.vars{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.vars .cap{flex-basis:100%}
+.vars .chip{padding:5px 10px;font-size:13.5px;cursor:pointer}
+.mlist{padding-block:8px}
+.mrow{display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}
+.mrow:last-child{border-bottom:0}
+.mrow .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.mrow .tx b{font-size:16px}
+.mrow .tx>span:not(.tagline){font-size:14px;color:var(--fg3)}
+.mrow .tagline{margin:0}
+@media (max-width:759.98px){.tbl2 .sel{display:none}.mrow{flex-wrap:wrap}.mrow .tx{flex-basis:100%}.bulk{top:auto;bottom:calc(var(--ds-h-tab) + 12px);position:fixed;left:12px;right:12px}}

@@ -13,11 +13,11 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops
 import product_pdf
-import team, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
+import team, inbox, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
-app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS)
+app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS)
 OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 # 소개 화면의 앱 받기 버튼: 스토어 주소를 서버 설정(.env)에 넣으면 '곧 출시' 대신 버튼이 나온다
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
@@ -54,7 +54,7 @@ def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
 # 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
-MANAGE_EPS={'c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
+MANAGE_EPS={'macros','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','team_page'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
 # 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
@@ -486,18 +486,72 @@ def pending():return redirect(url_for('decide'))
 @app.route('/all')
 @login_required
 def all_cases():
-    fil=request.args.get('f','all');q=clean(request.args.get('q'),40)
-    with conn() as db:rows=my_cases(db,me());comps=core.comp_rules(db,me()['id'])
+    fil,q,tg,sort,rows,tagmap,names=inbox_rows()
+    with conn() as db:all_tags=inbox.tags(db,me()['id']);people=team.people(db,me())
+    groups=g.inbox_groups
+    return render_template('b_all.html',groups=groups,fil=fil,rows=rows,q=q,tg=tg,sort=sort,tab='all',names=names,tagmap=tagmap,all_tags=all_tags,people=people,PRIO=inbox.PRIO)
+def inbox_rows():
+    """요청 목록 (화면·CSV 같이 씀): 탭(f)·검색(q)·태그(t)·정렬(s=prio)."""
+    fil=request.args.get('f','all');q=clean(request.args.get('q'),40);tg=request.args.get('t','');sort=request.args.get('s','')
+    with conn() as db:
+        rows=my_cases(db,me());comps=core.comp_rules(db,me()['id'])
+        tagmap=inbox.tags_by_case(db,me()['id']);names=dict(team.people(db,me()))
     if q:rows=[r for r in rows if q.lower() in (r['title']+' '+r['no']+' '+(r['name'] or '')+' '+r['body']).lower()]
-    groups={'all':rows,'open':[r for r in rows if is_open(r)],'done':[r for r in rows if r['status'] in ('answered','resolved','closed','withdrawn')],
+    if tg.isdigit():rows=[r for r in rows if any(t['id']==int(tg) for t in tagmap.get(r['id'],[]))]
+    nowi=core.iso();live=lambda r:not (r['snooze_until'] and r['snooze_until']>nowi)  # 미뤄 둔 요청은 때가 될 때까지 할 일 목록에서 뺀다
+    groups={'all':rows,'open':[r for r in rows if is_open(r) and live(r)],'done':[r for r in rows if r['status'] in ('answered','resolved','closed','withdrawn')],
             'bad':[r for r in rows if r['status']=='unresolved' or core.overdue(r)],
             'ret':[r for r in rows if r['ret_status'] in ('guided','sent') or r['refund_status']=='requested'],
             'comp':[r for r in rows if core.comp_pending(r,comps)],
-            'mine':[r for r in rows if r['assignee']==who()['key'] and r['status'] not in core.FINAL],
-            'none':[r for r in rows if not r['assignee'] and r['status'] not in core.FINAL]}
+            'mine':[r for r in rows if r['assignee']==who()['key'] and r['status'] not in core.FINAL and live(r)],
+            'none':[r for r in rows if not r['assignee'] and r['status'] not in core.FINAL and live(r)],
+            'snz':[r for r in rows if not live(r) and r['status'] not in core.FINAL]}
     if fil not in groups:fil='all'
-    with conn() as db:names=dict(team.people(db,me()))
-    return render_template('b_all.html',groups=groups,fil=fil,rows=groups[fil],q=q,tab='all',names=names)
+    out=groups[fil]
+    if sort=='prio':out=sorted(out,key=lambda r:(inbox.PRIO_ORDER.get(r['priority'] or 'normal',2),-r['id']))
+    g.inbox_groups=groups
+    return fil,q,tg,sort,out,tagmap,names
+
+@app.route('/all.csv')
+@login_required
+def all_csv():
+    """지금 보는 요청 목록을 엑셀에서 여는 표(CSV)로. 연락처·이메일·계좌는 넣지 않는다."""
+    if not team.can(who(),'manage'):abort(403)
+    fil,q,tg,sort,rows,tagmap,names=inbox_rows()
+    data=inbox.csv_bytes(rows,tagmap,names,lambda r:core.status_label(r['status']))
+    return send_file(io.BytesIO(data),mimetype='text/csv',as_attachment=True,download_name=f"requests-{core.now():%Y%m%d}.csv")
+
+@app.route('/all/bulk',methods=['POST'])
+@login_required
+def all_bulk():
+    """목록에서 고른 요청들에 태그·담당자·우선순위·미루기를 한 번에."""
+    ids={int(x) for x in request.form.getlist('ids') if x.isdigit()}
+    back=request.form.get('back') or url_for('all_cases')
+    if not back.startswith('/'):back=url_for('all_cases')
+    if not ids:flash('먼저 요청을 골라 주세요','error');return redirect(back)
+    with conn() as db:
+        rows=[r for r in my_cases(db,me()) if r['id'] in ids]
+        n=inbox.bulk(db,me(),rows,request.form,team.people(db,me()))
+    flash(f'{n}건을 바꿨어요' if n else '바뀐 요청이 없어요',  'ok' if n else 'error')
+    return redirect(back)
+
+@app.route('/macros',methods=['GET','POST'])
+@login_required
+def macros():
+    """답변 템플릿과 태그 관리. 템플릿은 요청 화면의 답변 쓰기에서 골라 쓴다."""
+    co=me()
+    if request.method=='POST':
+        act=request.form.get('act');mid=request.form.get('id','')
+        with conn() as db:
+            if act=='save':msg,level=inbox.save_macro(db,co['id'],request.form,int(mid) if mid.isdigit() else None);flash(msg,level)
+            elif act=='delete' and mid.isdigit():inbox.delete_macro(db,co['id'],int(mid));flash('템플릿을 지웠어요','ok')
+            elif act=='tag_add':
+                flash('태그를 만들었어요' if inbox.tag_named(db,co['id'],request.form.get('name','')) else f'태그 이름을 적어 주세요 (최대 {inbox.MAX_TAGS}개)','ok' if request.form.get('name','').strip() else 'error')
+            elif act=='tag_delete' and mid.isdigit():inbox.delete_tag(db,co['id'],int(mid));flash('태그를 지웠어요. 붙어 있던 요청에서도 떨어졌어요.','ok')
+        return redirect(url_for('macros'))
+    with conn() as db:ms=inbox.macros(db,co['id']);ts=inbox.tags(db,co['id']);counts=dict(db.execute('SELECT tag_id,COUNT(*) FROM case_tags ct JOIN tags t ON t.id=ct.tag_id WHERE t.company_id=? GROUP BY tag_id',(co['id'],)).fetchall())
+    edit=request.args.get('edit','')
+    return render_template('b_macros.html',ms=ms,ts=ts,counts=counts,edit=int(edit) if edit.isdigit() else (0 if request.args.get('new') else None),VARS=inbox.VARS,tab='macros')
 
 @app.route('/stats')
 @login_required
@@ -602,6 +656,8 @@ def case(case_id):
                     if e:core.add_event(db,c['id'],'sys',f"{c['channel']}에 답변을 올리지 못했어요: {e}");flash(e,'error')
                     else:core.add_event(db,c['id'],'sys',f"{c['channel']}에 답변을 올렸어요");flash(f"{c['channel']}에 답변을 올렸어요",'ok')
                 return redirect(url_for('case',case_id=case_id))
+            if act in ('tag_add','tag_del','prio','snooze','merge'):
+                flash(*case_inbox(db,c,act,request.form));return redirect(url_for('case',case_id=case_id))
             if act=='assign':
                 name=team.assign(db,me(),c,request.form.get('assignee',''))
                 if name is not None:flash(f'담당자를 {name}(으)로 정했어요' if name else '담당자를 비웠어요','ok')
@@ -610,6 +666,7 @@ def case(case_id):
                 flash('승인·보상·환불 완료는 대표나 관리자만 할 수 있어요. 메모로 부탁해 주세요.','error');return redirect(url_for('case',case_id=case_id))
             msg,level=case_act(db,c,request.form)
             if level=='bad':abort(400)
+            if level=='ok' and act=='reply' and request.form.get('macro','').isdigit():inbox.used_macro(db,me(),c,int(request.form['macro']))
             if msg:flash(msg,level)
             if level=='ok' and act in ('reply','approve','ask','ship_track') and not in_demo() and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',me()['id'])
             st=onboard.setup_state(real())
@@ -624,11 +681,31 @@ def case(case_id):
         notes=team.notes(db,c['id']);people=team.people(db,me());assignee=team.assignee_name(db,me(),c['assignee'])
         from_shop=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=?',(me()['id'],c['id'])).fetchone()
         posted=any(e['kind']=='sys' and e['text'].endswith('에 답변을 올렸어요') for e in ev)
+        ctags=inbox.tags_by_case(db,me()['id'],{c['id']}).get(c['id'],[]);all_tags=inbox.tags(db,me()['id']);ms=inbox.macros(db,me()['id'])
+        profile=inbox.customer(db,me(),c);merged=db.execute('SELECT id,no FROM cases WHERE id=?',(c['merged_into'],)).fetchone() if c['merged_into'] else None
     comp_show=core.comp_open(c) and (rule['comp'] or c['category'] in core.COMP_CATS)
     with conn() as db:order=orders_mod.for_case(db,c);blocked=orders_mod.cancel_blocked(db,c)
+    ms=[dict(id=x['id'],name=x['name'],body=inbox.fill(x['body'],c,me(),order)) for x in ms]
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
-        last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all')
+        last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all',
+        ctags=ctags,all_tags=all_tags,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
+def case_inbox(db,c,act,f):
+    """요청 화면 오른쪽 '분류': 태그·우선순위·미루기·합치기. -> (안내, ok|error)"""
+    co=me()
+    if act=='tag_add':
+        t=inbox.add_tag(db,co,c,f.get('tag',''))
+        return (f"태그 '{t['name']}'을(를) 붙였어요",'ok') if t else (f'태그 이름을 적어 주세요 (회사당 최대 {inbox.MAX_TAGS}개)','error')
+    if act=='tag_del':
+        if f.get('tag_id','').isdigit():inbox.remove_tag(db,co,c,int(f['tag_id']))
+        return '태그를 뗐어요','ok'
+    if act=='prio':
+        return (f"우선순위를 {inbox.PRIO[f.get('prio')]}(으)로 바꿨어요",'ok') if inbox.set_priority(db,co,c,f.get('prio','')) else ('바뀐 게 없어요','ok')
+    if act=='snooze':
+        msg=inbox.snooze(db,co,c,f.get('when',''),f.get('day',''))
+        return (msg,'ok') if msg else ('미룰 때를 확인해 주세요 (오늘 이후 90일 안)','error') if msg is None else ('미뤄 둔 요청이 아니에요','ok')
+    if act=='merge':return inbox.merge(db,co,c,f.get('target',''))
+    return '','ok'
 
 @app.route('/case/<int:case_id>/draft',methods=['POST'])
 @login_required

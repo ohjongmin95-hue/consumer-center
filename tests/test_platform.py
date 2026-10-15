@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -1822,6 +1822,54 @@ class PlatformTest(unittest.TestCase):
             m=dict(db.execute('SELECT id,member FROM companies WHERE id IN (?,?)',(cid,uid)).fetchall())
             st=db.execute('SELECT status FROM companies WHERE id=?',(uid,)).fetchone()[0]
         self.assertEqual((m[cid],m[uid],st),(1,0,'active'))  # 인증한 회사는 인증 그대로, 인증 전에 중지한 회사는 다시 인증 전으로
+
+    def test_inbox_tools(self):
+        """태그·우선순위·미루기·답변 템플릿·일괄 처리·CSV·합치기·고객 프로필."""
+        b,o,cid=self.signup_and_approve('받은함상점','inbox@example.com')
+        c=self.client();c1=self.file_case(c,'받은함상점','제품 불량',company_id=cid,title='단추가 떨어졌어요')
+        c2=self.file_case(self.client(),'받은함상점','교환',company_id=cid,title='사이즈 교환 원해요')
+        # 태그는 만들면서 붙이고, 메모에 남고, 목록에서 태그로 거른다
+        self.post(b,f'/biz/case/{c1}',{'act':'tag_add','tag':'불량'})
+        with self.core.conn() as db:tid=db.execute("SELECT id FROM tags WHERE company_id=? AND name='불량'",(cid,)).fetchone()[0]
+        page=b.get(f'/biz/case/{c1}').get_data(as_text=True);self.assertIn('태그 &#39;불량&#39;을(를) 붙였어요',page)
+        lst=b.get(f'/biz/all?t={tid}').get_data(as_text=True);self.assertIn(f'/biz/case/{c1}"',lst);self.assertNotIn(f'/biz/case/{c2}"',lst)
+        # 우선순위 급함은 우선순위 순 맨 위
+        self.post(b,f'/biz/case/{c1}',{'act':'prio','prio':'urgent'})
+        lst=b.get('/biz/all?s=prio').get_data(as_text=True);self.assertLess(lst.index(f'/biz/case/{c1}"'),lst.index(f'/biz/case/{c2}"'));self.assertIn('class="prio urgent"',lst)
+        # 미루면 '답변 전'에서 빠지고 '미뤄 둠'에 나온다. 고객이 새 글을 남기면 풀린다
+        self.post(b,f'/biz/case/{c2}',{'act':'snooze','when':'tomorrow'})
+        self.assertNotIn(f'/biz/case/{c2}"',b.get('/biz/all?f=open').get_data(as_text=True))
+        self.assertIn(f'/biz/case/{c2}"',b.get('/biz/all?f=snz').get_data(as_text=True))
+        self.assertIn('미루기를 확인',self.post(b,f'/biz/case/{c2}',{'act':'snooze','when':'date','day':'2000-01-01'},follow_redirects=True).get_data(as_text=True).replace('미룰 때를 확인','미루기를 확인'))
+        with self.core.conn() as db:self.core.add_event(db,c2,'me','추가로 사진 보내요');self.assertEqual(db.execute('SELECT snooze_until FROM cases WHERE id=?',(c2,)).fetchone()[0],'')
+        # 답변 템플릿: 자리를 요청 내용으로 채우고, 쓰면 정한 태그가 붙는다
+        self.post(b,'/biz/macros',{'act':'save','name':'교환 안내','body':'{고객명}님, 접수번호 {접수번호} 교환 도와드릴게요.','tags':'교환안내'})
+        with self.core.conn() as db:mid,no2=db.execute("SELECT id FROM macros WHERE company_id=?",(cid,)).fetchone()[0],db.execute('SELECT no FROM cases WHERE id=?',(c2,)).fetchone()[0]
+        page=b.get(f'/biz/case/{c2}').get_data(as_text=True);self.assertIn(f'김소비님, 접수번호 {no2} 교환 도와드릴게요.',page)
+        self.post(b,f'/biz/case/{c2}',{'act':'reply','msg':'김소비님, 교환 도와드릴게요.','macro':str(mid)})
+        with self.core.conn() as db:
+            self.assertEqual(db.execute('SELECT used FROM macros WHERE id=?',(mid,)).fetchone()[0],1)
+            self.assertTrue(db.execute("SELECT 1 FROM case_tags ct JOIN tags t ON t.id=ct.tag_id WHERE ct.case_id=? AND t.name='교환안내'",(c2,)).fetchone())
+        # 일괄: 두 건에 담당자와 태그를 한 번에. 다른 회사 요청 번호는 무시
+        other=self.file_case(self.client(),'없는가게','기타')
+        self.post(b,'/biz/all/bulk',{'ids':[str(c1),str(c2),str(other)],'bulk':'assign','assignee':'owner'},'/biz/all')
+        self.post(b,'/biz/all/bulk',{'ids':[str(c1),str(c2)],'bulk':'tag','tag':'=위험'},'/biz/all')
+        with self.core.conn() as db:
+            self.assertEqual([r[0] for r in db.execute('SELECT assignee FROM cases WHERE id IN (?,?) ORDER BY id',(c1,c2))],['owner','owner'])
+            self.assertEqual(db.execute('SELECT assignee FROM cases WHERE id=?',(other,)).fetchone()[0],'')
+        # CSV: 엑셀 수식이 되지 않게, 연락처는 넣지 않는다
+        r=b.get('/biz/all.csv');self.assertEqual(r.status_code,200);txt=r.get_data().decode('utf-8-sig')
+        self.assertIn('접수번호,접수일',txt);self.assertIn("'=위험",txt);self.assertNotIn('010-1234',txt);self.assertNotIn('01012345678',txt)
+        # 고객 프로필: 같은 휴대폰의 다른 요청이 보인다
+        self.assertIn('사이즈 교환 원해요',b.get(f'/biz/case/{c1}').get_data(as_text=True))
+        # 합치기: 원래 요청은 지우지 않고 닫고, 합친 쪽에 메모·태그가 옮겨진다
+        self.post(b,f'/biz/case/{c1}',{'act':'merge','target':no2})
+        with self.core.conn() as db:
+            r1=db.execute('SELECT status,merged_into FROM cases WHERE id=?',(c1,)).fetchone();self.assertEqual((r1[0],r1[1]),('closed',c2))
+            self.assertTrue(db.execute("SELECT 1 FROM notes WHERE case_id=? AND text LIKE '합친 요청%단추가 떨어졌어요%'",(c2,)).fetchone())
+            self.assertTrue(db.execute('SELECT 1 FROM case_tags WHERE case_id=? AND tag_id=?',(c2,tid)).fetchone())
+        self.assertIn('에 합쳐졌어요',b.get(f'/biz/case/{c1}').get_data(as_text=True))
+        self.assertIn('이미 끝난 요청',self.post(b,f'/biz/case/{c1}',{'act':'merge','target':no2},follow_redirects=True).get_data(as_text=True))
 
 
 if __name__=='__main__':unittest.main()
