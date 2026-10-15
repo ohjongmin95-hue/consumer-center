@@ -138,7 +138,12 @@ def install(S):
         elif form=='triage_track':
             track=request.form.get('track')
             if track not in TRACKS:abort(400)
-            save(db,cid,track=track,set_by=who);S.log_case(db,cid,f'분류 변경: {TRACKS[track]}');flash(f'{TRACKS[track]}(으)로 바꿨어요.')
+            save(db,cid,track=track,set_by=who);S.log_case(db,cid,f'분류 변경: {TRACKS[track]}')
+            if track=='auto' and not (t and t['body']) and _desk.ai_ready():
+                # 자동 응답으로 골랐는데 초안이 없으면 바로 만듦 (고른 분류는 그대로)
+                db.commit()  # AI 작업이 따로 여는 연결이 기다리지 않도록 먼저 저장
+                flash('자동 응답으로 바꾸고 답변 초안을 만들었어요. 아래에서 확인해 주세요.' if run(cid,who) else '자동 응답으로 바꿨어요. 답변 초안은 만들지 못했어요. "AI로 분류하기"를 다시 눌러 주세요.')
+            else:flash(f'{TRACKS[track]}(으)로 바꿨어요.')
         elif form=='triage_send':
             body=request.form.get('body','').strip()
             if not body or len(body)>8000:flash('보낼 내용을 확인해 주세요.');return

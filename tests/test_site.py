@@ -1365,6 +1365,16 @@ class SiteTest(unittest.TestCase):
             t = db.execute('SELECT * FROM case_triage WHERE case_id=?', (cid,)).fetchone()
         self.assertEqual((t['track'], t['ai_track'], t['set_by']), ('story', 'auto', '대표'))
         self.assertIn('취재 검토 <b>1</b>', admin.get('/admin/reports').get_data(as_text=True))
+        # 초안 없는 제보에서 '자동 응답'을 고르면 초안도 바로 만듦
+        with self.site.conn() as db:
+            db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,share_company) VALUES('T2','x','배송·교환·환불','고양이몰','예전 제보','반품했는데 환불이 안 돼요','환불','2026-10-01',0)")
+            old = db.execute("SELECT id FROM cases WHERE receipt='T2'").fetchone()['id']
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(desk, 'post_json', self.triage_ai([], track='story')):
+            self.post_form(admin, '/admin/reports/%d' % old, {'form': 'triage_track', 'track': 'auto'})
+        with self.site.conn() as db:
+            t2 = db.execute('SELECT * FROM case_triage WHERE case_id=?', (old,)).fetchone()
+        self.assertEqual((t2['track'], t2['ai_track']), ('auto', 'story'))
+        self.assertIn('■ 관련 법률 안내', t2['body'])
         # 담당자별 몰아 보기
         self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'settings', 'status': '검토 중', 'assignee': '이지우'})
         self.assertIn('환불이 안 돼요', admin.get('/admin/reports?assignee=이지우').get_data(as_text=True))
