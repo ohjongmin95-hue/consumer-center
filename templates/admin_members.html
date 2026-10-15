@@ -31,7 +31,7 @@
     <tr><th>아이디</th><th>가입 방법</th><th>닉네임</th><th>이메일</th><th>제보·글</th><th>가입일 / 최근 로그인</th><th>상태</th><th></th></tr>
     {% for m in members %}
     <tr>
-      <td>{{ m['login_id'] if m['has_pw'] else '-' }}</td><td>{% set ps = (m['providers'] or '').split(',')|select|list %}{% if m['has_pw'] %}아이디{% endif %}{% for p in ps %}{% if m['has_pw'] or not loop.first %} · {% endif %}{{ SOCIAL_NAMES.get(p, p) }}{% endfor %}{% if m['kind'] == 'company' %}<br><span class="pill">기업</span>{% endif %}</td><td>{{ m['nickname'] }}</td><td>{{ m['email'] or '-' }}</td><td>{{ m['n_cases'] }} · {{ m['n_posts'] }}</td>
+      <td>{{ m['login_id'] if m['has_pw'] else '-' }}</td><td>{% set ps = (m['providers'] or '').split(',')|select|list %}{% if m['has_pw'] %}아이디{% endif %}{% for p in ps %}{% if m['has_pw'] or not loop.first %} · {% endif %}{{ SOCIAL_NAMES.get(p, p) }}{% endfor %}{% if m['kind'] == 'company' %}<br><span class="pill">기업</span>{% endif %}</td><td>{{ m['nickname'] }}{% if m['real_name'] %}<br><span class="meta">{{ m['real_name'] }}</span>{% endif %}</td><td>{{ m['email'] or '-' }}</td><td>{{ m['n_cases'] }} · {{ m['n_posts'] }}</td>
       <td>{{ m['created'][:10] }}<br><span class="meta">{{ m['last_login'][:16]|replace('T', ' ') or '-' }}</span></td>
       <td>{% if m['status'] == 'active' %}정상{% else %}<span class="pill">정지</span>{% endif %}</td>
       <td><form class="inline-actions" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ m['id'] }}">

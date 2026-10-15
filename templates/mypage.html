@@ -66,6 +66,17 @@
 
   <section class="form-panel me-section" id="settings">
     <h2>{{ ui('member.info', '회원 정보') }}</h2>
+    <form class="me-form" method="post" action="{{ url_for('mypage_edit') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="nickname">
+      <div class="field"><label for="m-nick">{{ ui('board.nickname', '닉네임') }}</label><div class="inline-field"><input id="m-nick" name="nickname" maxlength="12" required value="{{ g.user['nickname'] }}"><button class="secondary" type="submit">{{ ui('member.save', '저장') }}</button></div><p class="hint">{{ ui('member.nick_hint', '게시판에 보이는 이름이에요. 앞으로 쓰는 글부터 적용돼요.') }}</p></div>
+    </form>
+    <form class="me-form" method="post" action="{{ url_for('mypage_edit') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="profile">
+      <div class="field-row">
+        <div class="field"><label for="m-real">{{ ui('member.real_name', '이름 (실명)') }}</label><input id="m-real" name="real_name" maxlength="40" autocomplete="name" value="{{ g.user['real_name'] }}"></div>
+        <div class="field"><label for="m-phone">{{ ui('report.f_phone', '전화번호') }}</label><input id="m-phone" name="phone" type="tel" maxlength="20" autocomplete="tel" placeholder="{{ ui('report.f_phone_ph', '010-0000-0000') }}" value="{{ g.user['phone'] }}"></div>
+      </div>
+      <p class="hint">{{ ui('member.profile_hint', '제보할 때 자동으로 채워져요. 공개되지 않아요.') }}</p>
+      <button class="secondary" type="submit">{{ ui('member.profile_save', '제보자 정보 저장') }}</button>
+    </form>
     <form class="me-form" method="post" action="{{ url_for('mypage_edit') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="action" value="email">
       <div class="field"><label for="m-mail">이메일 <span class="opt-tag">{{ ui('member.optional', '선택') }}</span></label><div class="inline-field"><input id="m-mail" type="email" name="email" maxlength="120" value="{{ g.user['email'] }}" placeholder="{{ ui('member.email_hint', '비밀번호 분실 시 본인 확인용') }}"><button class="secondary" type="submit">{{ ui('member.save', '저장') }}</button></div></div>
     </form>

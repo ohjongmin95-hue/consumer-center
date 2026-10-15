@@ -999,13 +999,13 @@ class SiteTest(unittest.TestCase):
     def post_me(self, client, path, data):
         return client.post(path, data={'_csrf': self.csrf(client, '/me'), **data})
 
-    def kakao_fake(self, uid='4242', email='kim@kakao.test', nickname='김카카오'):
+    def kakao_fake(self, uid='4242', email='kim@kakao.test', nickname='김카카오', name='김실명', phone='+82 10-1234-5678'):
         calls = []
         def fake(method, url, data=None, headers=None, timeout=10):
             calls.append((method, url, data, headers))
             if 'oauth/token' in url:
                 return 200, {'access_token': 'tok-' + uid}
-            return 200, {'id': int(uid), 'kakao_account': {'email': email, 'is_email_valid': True, 'is_email_verified': True, 'profile': {'nickname': nickname}}}
+            return 200, {'id': int(uid), 'kakao_account': {'email': email, 'is_email_valid': True, 'is_email_verified': True, 'profile': {'nickname': nickname}, 'name': name, 'phone_number': phone}}
         return calls, fake
 
     def social_round(self, client, fake, start='/auth/kakao/start'):
@@ -1037,14 +1037,26 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(token_call[2]['redirect_uri'], 'http://localhost/auth/kakao/callback')
             page = self.client.get('/auth/join').get_data(as_text=True)
             self.assertIn('카카오로 가입하기', page)
-            self.assertIn('value="김카카오"', page)
-            self.assertEqual(self.post_form(self.client, '/auth/join', {'nickname': '김카카오'}).status_code, 400)
-            joined = self.post_form(self.client, '/auth/join', {'nickname': '김카카오', 'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            self.assertIn('김실명', page)
+            self.assertIn('010-1234-5678', page)
+            self.assertNotIn('name="nickname"', page)  # 닉네임은 묻지 않고 자동으로 정함
+            self.assertEqual(self.post_form(self.client, '/auth/join', {}).status_code, 400)
+            joined = self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
             self.assertEqual(joined.status_code, 302)
             with self.site.conn() as db:
-                user = db.execute("SELECT * FROM users WHERE nickname='김카카오'").fetchone()
+                user = db.execute("SELECT * FROM users WHERE real_name='김실명'").fetchone()
                 ident = db.execute('SELECT * FROM user_identities WHERE user_id=?', (user['id'],)).fetchone()
+            self.assertRegex(user['nickname'], r'^소비자\d{4}$')  # 카카오 닉네임(실명일 수 있음)은 게시판에 쓰지 않음
             self.assertEqual((user['pw_hash'], user['email'], ident['provider'], ident['provider_uid']), ('', 'kim@kakao.test', 'kakao', '4242'))
+            self.assertEqual((user['real_name'], user['phone']), ('김실명', '010-1234-5678'))
+            # 제보 양식에 실명·연락처가 자동으로 채워짐
+            form = self.client.get('/report').get_data(as_text=True)
+            self.assertIn('value="김실명"', form)
+            self.assertIn('value="010-1234-5678"', form)
+            self.assertIn('value="kim@kakao.test"', form)
+            self.assertIn('내 정보로 자동으로 채웠어요', form)
+            # 실명은 공개 화면(내 정보 제목·게시판)에 쓰이지 않음
+            self.assertNotIn('김실명님', self.client.get('/me').get_data(as_text=True))
             self.assertTrue(user['email_verified_at'])
             self.assertNotIn('tok-4242', json.dumps([dict(r) for r in [user, ident]]))  # 토큰은 저장하지 않음
             me = self.client.get('/me').get_data(as_text=True)
@@ -1059,7 +1071,7 @@ class SiteTest(unittest.TestCase):
             # 다시 오면 바로 로그인
             again = self.site.app.test_client()
             self.assertEqual(self.social_round(again, fake).headers['Location'], '/')
-            self.assertIn('김카카오님', again.get('/me').get_data(as_text=True))
+            self.assertIn(user['nickname'] + '님', again.get('/me').get_data(as_text=True))
             # 같은 이메일의 기존 회원이 있으면 합치지 않음
             self.signup(self.site.app.test_client(), login_id='lee_id', nickname='이아이디', email='lee@kakao.test')
             _, fake2 = self.kakao_fake(uid='777', email='lee@kakao.test', nickname='이카카오')
@@ -1098,14 +1110,45 @@ class SiteTest(unittest.TestCase):
                 seen.append(data)
                 if 'oauth2.0/token' in url:
                     return 200, {'access_token': 'nt'}
-                return 200, {'resultcode': '00', 'response': {'id': 'naver-uid-1', 'email': 'park@naver.test', 'nickname': '박네이버!'}}
+                return 200, {'resultcode': '00', 'response': {'id': 'naver-uid-1', 'email': 'park@naver.test', 'nickname': '박네이버!', 'name': '박실명', 'mobile': '010-9876-5432'}}
             with patch.object(self.site.members, 'http', fake):
                 self.assertEqual(self.client.get(f'/auth/naver/callback?code=c&state={state}').headers['Location'], '/auth/join')
             self.assertEqual(seen[0]['state'], state)
-            self.assertIn('value="박네이버"', self.client.get('/auth/join').get_data(as_text=True))
+            self.assertIn('박실명', self.client.get('/auth/join').get_data(as_text=True))
             # 같은 state로 다시 들어오면 거절 (한 번만 씀)
             with patch.object(self.site.members, 'http', fake):
                 self.assertEqual(self.client.get(f'/auth/naver/callback?code=c&state={state}').headers['Location'], '/login')
+            r = self.client.get('/auth/naver/start')
+            state = re.search(r'state=([^&]+)', r.headers['Location'])[1]
+            with patch.object(self.site.members, 'http', fake):
+                self.client.get(f'/auth/naver/callback?code=c&state={state}')
+            self.assertEqual(self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'}).status_code, 302)
+            with self.site.conn() as db:
+                u = db.execute("SELECT * FROM users WHERE real_name='박실명'").fetchone()
+            self.assertRegex(u['nickname'], r'^소비자\d{4}$')
+            self.assertEqual(u['phone'], '010-9876-5432')
+
+    def test_report_quick_fill_and_profile(self):
+        self.assertEqual((self.site.members.kr_phone('+82 10-1234-5678'), self.site.members.kr_phone('01012345678'), self.site.members.kr_phone('02-123')), ('010-1234-5678', '010-1234-5678', ''))
+        with patch.dict(os.environ, {'KAKAO_REST_API_KEY': 'rest-key', 'KAKAO_CLIENT_SECRET': 'shh'}):
+            page = self.client.get('/report').get_data(as_text=True)
+            self.assertIn('간편하게 입력하기', page)
+            self.assertIn('/auth/kakao/start?next=/report', page)
+            r = self.client.get('/auth/kakao/start?next=/report')
+            with self.client.session_transaction() as sess:
+                self.assertEqual(sess['oauth']['next'], '/report')
+        # 아이디 회원: 내 정보에서 실명·전화번호와 닉네임을 바꾸면 제보 양식에 채워짐
+        self.signup(self.client)
+        self.assertNotIn('간편하게 입력하기', self.client.get('/report').get_data(as_text=True))
+        self.post_me(self.client, '/me/edit', {'action': 'profile', 'real_name': '홍길동', 'phone': '010-2222-3333'})
+        self.post_me(self.client, '/me/edit', {'action': 'nickname', 'nickname': '새닉네임'})
+        self.post_me(self.client, '/me/edit', {'action': 'nickname', 'nickname': '운영팀'})
+        with self.site.conn() as db:
+            u = db.execute("SELECT * FROM users WHERE real_name='홍길동'").fetchone()
+        self.assertEqual((u['phone'], u['nickname']), ('010-2222-3333', '새닉네임'))
+        form = self.client.get('/report').get_data(as_text=True)
+        self.assertIn('value="홍길동"', form)
+        self.assertIn('value="010-2222-3333"', form)
 
     def test_company_membership_request_and_approval(self):
         self.signup(self.client)

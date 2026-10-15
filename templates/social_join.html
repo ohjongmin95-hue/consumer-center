@@ -6,8 +6,17 @@
     <form class="auth-body" method="post" autocomplete="off"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
       <h1 class="auth-title">{{ provider }}로 가입하기</h1>
-      <p class="auth-lead">처음 오셨네요. 게시판에 보일 닉네임을 정하고 약관에 동의하면 가입이 끝나요.</p>
-      <input name="nickname" maxlength="12" required placeholder="{{ ui('member.nick_ph', '닉네임 (2~12자, 게시판에 보여요)') }}" aria-label="{{ ui('board.nickname', '닉네임') }}" value="{{ nickname }}">
+      <p class="auth-lead">약관에 동의하면 가입이 끝나요. 제보할 때 이름과 연락처가 자동으로 채워져요.</p>
+      {% if real_name or phone or email %}
+      <dl class="join-profile" aria-label="{{ provider }}에서 받은 정보">
+        {% if real_name %}<div><dt>이름</dt><dd>{{ real_name }}</dd></div>{% endif %}
+        {% if phone %}<div><dt>휴대전화</dt><dd>{{ phone }}</dd></div>{% endif %}
+        {% if email %}<div><dt>이메일</dt><dd>{{ email }}</dd></div>{% endif %}
+      </dl>
+      <p class="join-profile-note">이름과 연락처는 공개되지 않아요. 제보 확인과 연락에만 쓰여요. 게시판 닉네임은 자동으로 정해지고 내 정보에서 바꿀 수 있어요.</p>
+      {% else %}
+      <p class="join-profile-note">게시판 닉네임은 자동으로 정해지고 내 정보에서 바꿀 수 있어요.</p>
+      {% endif %}
       <div class="agree-box">
         <label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all', '모두 동의합니다') }}</span></label>
         <details class="agree-row">

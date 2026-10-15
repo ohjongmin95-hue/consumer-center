@@ -263,7 +263,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-84'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-85'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -581,6 +581,8 @@ def report():
         db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=?,industry=?,pw_hash=? WHERE id=?',
                    (public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),data['industry'],'' if pw_optional else generate_password_hash(lookup_pw),cur.lastrowid))
         db.execute('UPDATE cases SET occurred_on=? WHERE id=?',(data['occurred_on'],cur.lastrowid))
+        if g.user:  # 다음 제보 때 자동으로 채우도록 회원 정보의 빈칸에만 기억
+            db.execute("UPDATE users SET real_name=CASE WHEN real_name='' THEN ? ELSE real_name END,phone=CASE WHEN phone='' THEN ? ELSE phone END WHERE id=?",(data['reporter_name'],data['phone'],g.user['id']))
         match=pick_company(db,request.form.get('company_id',type=int),data['company'])
         if match:db.execute('UPDATE cases SET company_id=? WHERE id=?',(match['id'],cur.lastrowid))
         for f,suffix,original in checked:
@@ -1240,6 +1242,16 @@ def mypage_edit():
             if email and (len(email)>120 or not MEMBER_EMAIL_RE.match(email)):flash(ui_text('msg.m32','이메일 주소를 확인해 주세요.'))
             elif email and db.execute('SELECT 1 FROM users WHERE email=? COLLATE NOCASE AND id!=?',(email,g.user['id'])).fetchone():flash(ui_text('msg.email_taken2','다른 회원이 쓰고 있는 이메일이에요.'))
             else:db.execute("UPDATE users SET email=?,email_verified_at=CASE WHEN email=? COLLATE NOCASE THEN email_verified_at ELSE '' END WHERE id=?",(email,email,g.user['id']));flash(ui_text('msg.m37','이메일을 저장했어요.') if email else ui_text('msg.m38','이메일을 지웠어요.'))
+        elif action=='profile':  # 제보자 정보 (실명·휴대전화). 공개되지 않고 제보 양식 자동 입력에만 씀
+            real=request.form.get('real_name','').strip();phone=request.form.get('phone','').strip()
+            if len(real)>40 or (phone and not PHONE_INPUT.match(phone)):flash(ui_text('msg.report_phone','전화번호를 확인해 주세요.'))
+            else:db.execute('UPDATE users SET real_name=?,phone=? WHERE id=?',(real,phone,g.user['id']));flash(ui_text('msg.profile_saved','제보자 정보를 저장했어요.'))
+        elif action=='nickname':
+            nick=request.form.get('nickname','').strip()
+            if not 2<=len(nick)<=12 or not re.match(r'^[0-9A-Za-z가-힣_]+$',nick):flash(ui_text('msg.m22','닉네임은 한글·영문·숫자로 2~12자로 정해 주세요.'))
+            elif nick in ('운영자','관리자','탈퇴한회원') or '운영' in nick or '관리자' in nick:flash(ui_text('msg.m23','사용할 수 없는 닉네임이에요.'))
+            elif db.execute('SELECT 1 FROM users WHERE nickname=? AND id!=?',(nick,g.user['id'])).fetchone():flash(ui_text('msg.m26','이미 쓰고 있는 닉네임이에요.'))
+            else:db.execute('UPDATE users SET nickname=? WHERE id=?',(nick,g.user['id']));flash(ui_text('msg.nick_saved','닉네임을 바꿨어요. 앞으로 쓰는 글부터 적용돼요.'))
         elif action=='password':
             cur_pw=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
             if g.user['pw_hash'] and not check_password_hash(g.user['pw_hash'],cur_pw):flash(ui_text('msg.m33','지금 비밀번호가 맞지 않아요.'))
@@ -1290,7 +1302,7 @@ def admin_members():
             return redirect(url_for('admin_members',q=request.args.get('q','')))
         q=request.args.get('q','').strip()[:40]
         like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
-        members=db.execute("""SELECT u.id,u.login_id,u.nickname,u.email,u.status,u.created,u.last_login,u.kind,u.pw_hash!='' AS has_pw,
+        members=db.execute("""SELECT u.id,u.login_id,u.nickname,u.real_name,u.email,u.status,u.created,u.last_login,u.kind,u.pw_hash!='' AS has_pw,
             (SELECT group_concat(provider) FROM user_identities WHERE user_id=u.id) AS providers,
             (SELECT COUNT(*) FROM cases WHERE user_id=u.id) AS n_cases,(SELECT COUNT(*) FROM posts WHERE user_id=u.id) AS n_posts
             FROM users u WHERE u.login_id LIKE ? ESCAPE '\\' OR u.nickname LIKE ? ESCAPE '\\' ORDER BY u.id DESC LIMIT 300""",(like,like)).fetchall()
