@@ -136,15 +136,24 @@ def take(db,co,lk,ev):
     c=db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
     import workflow;workflow.on_new(db,core.company(db,co['id']),c)
     return db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
+def _why(fmt,*a):
+    try:current_app.logger.warning('인스타그램 웹훅 '+fmt,*a)
+    except RuntimeError:pass  # 요청 밖(테스트·스크립트)
 def receive(payload):
     """웹훅 본문 -> 새 요청 수."""
     new=[]
+    if payload.get('object')!='instagram':_why('object=%s',clean(str(payload.get('object')),30))
     for ent in (payload.get('entry') or []) if payload.get('object')=='instagram' else []:
+        evs=ent.get('messaging') or []
+        # 왜 요청이 안 생겼는지 서버 기록으로 알 수 있게, 메시지 내용 없이 id와 종류만 남긴다
+        _why('entry=%s events=%d kinds=%s changes=%s',clean(str(ent.get('id')),40),len(evs),','.join(sorted({k for ev in evs for k in ev if k not in ('sender','recipient','timestamp')})) or '-',
+             ','.join(sorted({str(ch.get('field')) for ch in ent.get('changes') or []})) or '-')
         with conn() as db:
             lk=db.execute("SELECT * FROM ig_links WHERE ig_id=? AND status='ok'",(str(ent.get('id') or ''),)).fetchone()
             co=core.company(db,lk['company_id']) if lk else None
-            if not co or not co['member'] or co['status']!='active':continue
-            for ev in ent.get('messaging') or []:
+            if not lk:_why('연결된 계정 없음: entry=%s',clean(str(ent.get('id')),40));continue
+            if not co or not co['member'] or co['status']!='active':_why('입점 회사가 아님: company=%s',lk['company_id']);continue
+            for ev in evs:
                 try:c=take(db,co,lk,ev)
                 except Exception:traceback.print_exc();c=None  # 이상한 메시지 하나 때문에 멈추지 않는다
                 if c:new.append((co,c))
