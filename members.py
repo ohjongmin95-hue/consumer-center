@@ -6,6 +6,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 주소�
   실명·휴대전화번호는 제보 양식 자동 입력용이며 공개 화면에는 나오지 않는다(관리자·본인만).
 - 소셜 이메일이 기존 회원 이메일과 같아도 자동으로 합치지 않는다. 기존 계정으로 로그인한 뒤 내 정보에서 연결한다.
 - 소셜로 로그인해도 기업 소속은 인증되지 않는다. 소속 인증 신청 → 관리자 승인 뒤에만 기업 회원.
+  승인되면 그 회원에게 기업 담당자 자리(company_users.user_id)를 붙여, 카카오·네이버 로그인만으로 기업 화면(/biz)에 들어간다.
 """
 import datetime, json, os, re, secrets, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
@@ -34,6 +35,9 @@ def migrate(db):
         person_name TEXT NOT NULL,department TEXT NOT NULL DEFAULT '',phone TEXT NOT NULL,work_email TEXT NOT NULL,evidence_stored TEXT NOT NULL DEFAULT '',evidence_original TEXT NOT NULL DEFAULT '',
         status TEXT NOT NULL DEFAULT 'pending',reason TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,decided_at TEXT NOT NULL DEFAULT '',decided_by TEXT NOT NULL DEFAULT '')''')
     db.execute('CREATE INDEX IF NOT EXISTS company_memberships_user ON company_memberships(user_id)')
+    # 간편 로그인 기업 담당자: 비밀번호 없이 회원 계정(user_id)으로 기업 화면에 들어옴
+    if 'user_id' not in {r['name'] for r in db.execute('PRAGMA table_info(company_users)')}:db.execute('ALTER TABLE company_users ADD COLUMN user_id INTEGER')
+    db.execute('CREATE UNIQUE INDEX IF NOT EXISTS company_users_member ON company_users(user_id) WHERE user_id IS NOT NULL')
 
 def secret(name):return os.getenv(name,'').strip()
 def provider_ready(p):return p in PROVIDERS and bool(secret(PROVIDERS[p]['key']) and secret(PROVIDERS[p]['secret']))
@@ -268,6 +272,26 @@ def install(S):
         flash('기업 소속 인증을 신청했어요. 운영자가 확인한 뒤 알려 드려요.')
         return redirect(url_for('me_company'))
 
+    def biz_company_for(db,m):
+        """소속 승인할 때 붙일 기업. 사업자번호가 같은 기업 → 센터가 미리 등록한 같은 이름 기업 → 없으면 새로 만듦.
+        센터가 미리 등록만 해 둔 기업이면 운영자가 이 승인으로 확인한 것이므로 승인 상태로 바꿈.
+        (다른 담당자가 아이디로 가입 신청해 승인 대기 중인 기업은 그 신청을 따로 승인해야 열림)"""
+        company=db.execute('SELECT * FROM companies WHERE biz_no=? AND biz_no!=\'\' ORDER BY CASE status WHEN \'active\' THEN 0 ELSE 1 END,id LIMIT 1',(m['biz_no'],)).fetchone()
+        if not company:
+            hit=S.pick_company(db,None,m['company_name'])
+            company=hit if hit and not hit['biz_no'] else None
+        if not company:
+            cid=db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created,approved,email_verified_at) VALUES(?,?,'active',?,?,?,?,?,?)",
+                           (m['company_name'],m['biz_no'],m['person_name'],m['phone'],m['work_email'],now(),now(),now()+' 운영자 확인')).lastrowid
+        elif company['status']=='listed':
+            cid=company['id']
+            db.execute("UPDATE companies SET status='active',approved=CASE approved WHEN '' THEN ? ELSE approved END,biz_no=?,"
+                       "contact_name=CASE contact_name WHEN '' THEN ? ELSE contact_name END,contact_phone=CASE contact_phone WHEN '' THEN ? ELSE contact_phone END,"
+                       "contact_email=CASE contact_email WHEN '' THEN ? ELSE contact_email END,email_verified_at=CASE email_verified_at WHEN '' THEN ? ELSE email_verified_at END WHERE id=?",
+                       (now(),m['biz_no'],m['person_name'],m['phone'],m['work_email'],now()+' 운영자 확인',cid))
+        else:cid=company['id']
+        return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone()
+
     def admin_memberships(db):
         return db.execute('''SELECT m.*,u.nickname,u.login_id FROM company_memberships m JOIN users u ON u.id=m.user_id
             ORDER BY CASE m.status WHEN 'pending' THEN 0 ELSE 1 END,m.id DESC LIMIT 100''').fetchall()
@@ -276,12 +300,23 @@ def install(S):
         m=db.execute('SELECT * FROM company_memberships WHERE id=?',(mid,)).fetchone()
         if not m or action not in ('m_approve','m_reject'):abort(400)
         if action=='m_approve':
-            company=db.execute('SELECT id FROM companies WHERE biz_no=? ORDER BY id LIMIT 1',(m['biz_no'],)).fetchone()
-            db.execute("UPDATE company_memberships SET status='approved',company_id=?,reason='',decided_at=?,decided_by='관리자' WHERE id=?",(company['id'] if company else m['company_id'],now(),mid))
+            company=biz_company_for(db,m)
+            db.execute("UPDATE company_memberships SET status='approved',company_id=?,reason='',decided_at=?,decided_by='관리자' WHERE id=?",(company['id'],now(),mid))
             db.execute("UPDATE users SET kind='company' WHERE id=?",(m['user_id'],))
-            return '기업 소속을 승인했어요.'
+            if company['status'] in ('rejected','stopped'):
+                return f"기업 소속을 승인했어요. 다만 {company['name']} 기업 계정이 {S.COMPANY_STATUSES[company['status']]} 상태라 기업 화면은 열리지 않아요."
+            wait=f" {company['name']} 기업 가입 신청이 승인 대기라, 기업 관리에서 승인하면 제보가 보여요." if company['status']=='pending' else ''
+            seat=db.execute('SELECT id FROM company_users WHERE user_id=?',(m['user_id'],)).fetchone()
+            if seat:db.execute('UPDATE company_users SET company_id=?,name=?,session_ver=session_ver+1 WHERE id=?',(company['id'],m['person_name'],seat['id']))
+            else:
+                for _ in range(5):  # 간편 로그인 담당자는 아이디·비밀번호를 쓰지 않음. 겹치지 않는 내부 아이디만
+                    login_id='sns_'+secrets.token_hex(5)
+                    if not db.execute('SELECT 1 FROM company_users WHERE login_id=?',(login_id,)).fetchone():break
+                db.execute("INSERT INTO company_users(company_id,login_id,pw_hash,name,created,user_id) VALUES(?,?,'',?,?,?)",(company['id'],login_id,m['person_name'],now(),m['user_id']))
+            return f"기업 소속을 승인했어요. 이제 카카오·네이버 로그인으로 {company['name']} 기업 화면에 들어갈 수 있어요."+wait
         reason=form.get('reason','').strip()[:300]
         db.execute("UPDATE company_memberships SET status='rejected',reason=?,decided_at=?,decided_by='관리자' WHERE id=?",(reason,now(),mid))
+        db.execute('DELETE FROM company_users WHERE user_id=? AND company_id IS ?',(m['user_id'],m['company_id']))
         if not db.execute("SELECT 1 FROM company_memberships WHERE user_id=? AND status='approved'",(m['user_id'],)).fetchone():
             db.execute("UPDATE users SET kind='consumer' WHERE id=?",(m['user_id'],))
         return '반려했어요.'
@@ -300,4 +335,5 @@ def install(S):
         db.execute('DELETE FROM user_identities WHERE user_id=?',(uid,))
         for r in db.execute("SELECT evidence_stored FROM company_memberships WHERE user_id=? AND evidence_stored!=''",(uid,)).fetchall():(S.UPLOAD/r['evidence_stored']).unlink(missing_ok=True)
         db.execute('DELETE FROM company_memberships WHERE user_id=?',(uid,))
+        db.execute('DELETE FROM company_users WHERE user_id=?',(uid,))
     S.delete_member_extras=delete_member_extras

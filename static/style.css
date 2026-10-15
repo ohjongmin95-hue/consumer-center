@@ -1879,3 +1879,13 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .tri-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 0 0 12px; }
 .tri-bar .rv-filter { margin: 0; }
 .tri-bar-label { font-size: 13px; font-weight: 700; color: #6b7079; }
+
+/* 기업 회원 간편 로그인 (카카오·네이버) */
+.biz-sso-note { margin: 4px 0 6px; padding: 16px; border-radius: 14px; background: #fff4e8; text-align: left; }
+.biz-sso-note b { display: block; font-size: 16px; color: #191f28; }
+.biz-sso-note p { margin: 4px 0 0; font-size: 14px; line-height: 1.6; color: #4e5968; }
+.biz-sso-note a { display: inline-block; margin-top: 10px; font-size: 14px; font-weight: 700; color: #ef7300; text-decoration: none; }
+.biz-sso-note a.biz-sso-go { display: flex; align-items: center; justify-content: center; height: 48px; border-radius: 12px; background: #ef7300; color: #fff; font-size: 16px; }
+.biz-sso .social-login { margin-top: 14px; }
+.biz-sso .social-or { display: none; }
+.biz-go { display: flex; align-items: center; justify-content: center; margin-top: 14px; text-decoration: none; }

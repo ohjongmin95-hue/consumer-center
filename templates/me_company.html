@@ -14,7 +14,8 @@
       <dt>회사 이메일</dt><dd>{{ m['work_email'] }}</dd>
       <dt>신청일</dt><dd>{{ m['created'][:10]|replace('-', '.') }}</dd>
     </dl>
-    <p class="meta">{% if m['status'] == 'pending' %}{{ ui('member.company_wait', '운영자가 사업자 정보와 소속을 확인하고 있어요. 확인이 끝나면 이 화면과 내 정보에 표시돼요.') }}{% else %}{{ ui('member.company_ok', '기업 회원으로 승인됐어요. 기업별 제보 확인과 답변 기능은 준비되는 대로 열려요.') }}{% endif %}</p>
+    <p class="meta">{% if m['status'] == 'pending' %}{{ ui('member.company_wait', '운영자가 사업자 정보와 소속을 확인하고 있어요. 확인이 끝나면 이 화면과 내 정보에 표시돼요.') }}{% else %}{{ ui('member.company_ok2', '기업 회원으로 승인됐어요. 기업 화면에서 우리 회사 제보를 확인하고 답변할 수 있어요.') }}{% endif %}</p>
+    {% if m['status'] == 'approved' %}<a class="auth-submit biz-go" href="{{ url_for('biz_home') }}">기업 화면으로 가기</a>{% endif %}
   </section>
   {% else %}
   {% if m %}<p class="note-box">{{ ui('member.company_rejected', '지난 신청이 반려됐어요.') }}{% if m['reason'] %} {{ m['reason'] }}{% endif %} {{ ui('member.company_retry', '내용을 고쳐 다시 신청할 수 있어요.') }}</p>{% endif %}
