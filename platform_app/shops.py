@@ -207,6 +207,9 @@ def post_reply(db,co,c,text):
     if seen['shop']=='email':
         import mailin
         return mailin.post_reply(db,co,c,text)
+    if seen['shop']=='instagram':
+        import instagram
+        return instagram.post_reply(db,co,c,text)
     text=(text or '').strip()[:1000]
     if seen['shop']=='cafe24':
         import cafe24
@@ -326,5 +329,5 @@ def sync_all():
 if __name__=='__main__':
     core.MAIL_ASYNC=False
     print(f'판매처 가져오기 {sync_all()}건')
-    import cafe24, openapi, mailin  # 같은 10분 cron에서 카페24 주문, 이메일 문의, 외부 API 웹훅도 처리한다
-    print(f'카페24 주문 {cafe24.sync_all()}건, 이메일 문의 {mailin.sync_all()}건, 웹훅 {openapi.dispatch()}건')
+    import cafe24, openapi, mailin, instagram  # 같은 10분 cron에서 카페24 주문, 이메일 문의, 인스타그램 토큰 갱신, 외부 API 웹훅도 처리한다
+    print(f'카페24 주문 {cafe24.sync_all()}건, 이메일 문의 {mailin.sync_all()}건, 인스타그램 토큰 갱신 {instagram.refresh_all()}건, 웹훅 {openapi.dispatch()}건')
