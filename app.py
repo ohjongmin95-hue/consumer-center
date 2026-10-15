@@ -9,6 +9,7 @@ import site_content
 import notify
 import jebo
 import members
+import companydesk
 import ops
 
 BASE=Path(__file__).parent
@@ -262,7 +263,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-83'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-84'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -587,6 +588,7 @@ def report():
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,original))
     with conn() as db:ops_risk_alert(db.execute('SELECT * FROM cases WHERE id=?',(cur.lastrowid,)).fetchone())
     notify_later(cur.lastrowid,'received')
+    desk_after_submit(cur.lastrowid)  # AI 기업 입장 요청서 초안 (키가 있을 때, 접수 뒤에 따로)
     return render_template('success.html',receipt=receipt,case_id=cur.lastrowid,has_pw=not pw_optional)
 LOOKUP_PW_MIN=4
 def pick_company(db,company_id,typed):
@@ -1381,9 +1383,9 @@ def report_detail(case_id):
             if form=='delete':
                 # 대표(관리자)만: 제보와 딸린 기록·첨부파일을 모두 지움. 되돌릴 수 없음.
                 if g.area!='admin' or request.form.get('confirm')!='1':abort(400)
-                stored=[r['stored'] for r in db.execute('SELECT stored FROM attachments WHERE case_id=?',(case_id,))]
+                stored=[r['stored'] for r in db.execute('SELECT stored FROM attachments WHERE case_id=? UNION ALL SELECT stored FROM answer_files WHERE case_id=?',(case_id,case_id))]
                 db.execute('DELETE FROM answer_revisions WHERE message_id IN (SELECT id FROM messages WHERE case_id=?)',(case_id,))
-                for table in ('attachments','messages','internal_notes','case_log','notifications','company_invites','company_notices','case_requests'):db.execute(f'DELETE FROM {table} WHERE case_id=?',(case_id,))
+                for table in ('attachments','messages','internal_notes','case_log','notifications','company_invites','company_notices','case_requests','company_requests','answer_files'):db.execute(f'DELETE FROM {table} WHERE case_id=?',(case_id,))
                 db.execute('DELETE FROM cases WHERE id=?',(case_id,));db.commit()
                 for name in stored:(UPLOAD/name).unlink(missing_ok=True)
                 flash(f"제보 {case['receipt']}를 삭제했어요.");return redirect(url_for(ep['list']))
@@ -1487,6 +1489,7 @@ def report_detail(case_id):
                 if not msg or len(msg)>3000:abort(400)
                 db.execute('INSERT INTO messages(case_id,author,body,created,sender) VALUES(?,?,?,?,?)',(case_id,'센터',msg,now(),staff_sender()))
                 log_case(db,case_id,'제보자에게 메시지 보냄');notify_later(case_id,'message')
+            elif form in DESK_FORMS:desk_handle_form(db,case,form)
             elif form in OPS_FORMS:ops_handle_form(db,case,form)
             else:abort(400)
             return redirect(url_for(ep['case'],case_id=case_id)+('#'+form if form!='settings' else ''))
@@ -1499,12 +1502,13 @@ def report_detail(case_id):
         active_companies=db.execute("SELECT * FROM companies WHERE status IN ('active','listed') ORDER BY status,name").fetchall()
         linked=db.execute('SELECT * FROM companies WHERE id=?',(case['company_id'],)).fetchone() if case['company_id'] else None
         ops_ctx=ops_context(db,case)
+        desk=desk_context(db,case)
     suggested=[c for c in active_companies if company_matches(c,case['company'])]
     with conn() as db:
         invite=db.execute('SELECT * FROM company_invites WHERE case_id=?',(case_id,)).fetchone()
         staff_names=[r['name'] for r in db.execute('SELECT name FROM staff WHERE active=1 ORDER BY name')]
         neighbors=(db.execute('SELECT id FROM cases WHERE id<? ORDER BY id DESC LIMIT 1',(case_id,)).fetchone(),db.execute('SELECT id FROM cases WHERE id>? ORDER BY id LIMIT 1',(case_id,)).fetchone())
-    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,companies=suggested+[c for c in active_companies if c['id'] not in {x['id'] for x in suggested}],suggested_ids={c['id'] for c in suggested},linked=linked,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()},reviews=jebo.REVIEWS,review_hints=jebo.REVIEW_HINTS,pub_text=jebo.pub(case,mask_personal),revisions=revisions,ops=ops_ctx)
+    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,companies=suggested+[c for c in active_companies if c['id'] not in {x['id'] for x in suggested}],suggested_ids={c['id'] for c in suggested},linked=linked,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()},reviews=jebo.REVIEWS,review_hints=jebo.REVIEW_HINTS,pub_text=jebo.pub(case,mask_personal),revisions=revisions,ops=ops_ctx,desk=desk)
 
 def download_file(file_id):
     with conn() as db:f=db.execute('SELECT * FROM attachments WHERE id=?',(file_id,)).fetchone()
@@ -2162,6 +2166,9 @@ send_company_verify=_jebo.send_company_verify
 # 3차 운영 자동화: 심사 보조·기업 통지·알림·정정·삭제·이의·운영 통계 (ops.py)
 _ops=types.SimpleNamespace(**globals());ops.install(_ops)
 for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras'):globals()[_k]=getattr(_ops,_k)
+# 기업 대응 관리: AI 기업 입장 요청서, 기업 연락처, 전달 기록, 기업 답변 등록 (companydesk.py)
+_desk=types.SimpleNamespace(**globals());companydesk.install(_desk)
+for _k in ('desk_context','desk_handle_form','DESK_FORMS','desk_after_submit','desk_generate'):globals()[_k]=getattr(_desk,_k)
 # 회원 확장: 카카오·네이버 로그인, 예전 제보 연결, 기업 소속 인증 신청 (members.py)
 _members=types.SimpleNamespace(**globals());members.install(_members)
 for _k in ('login_methods','membership_of','admin_memberships','admin_membership_action','delete_member_extras'):globals()[_k]=getattr(_members,_k)

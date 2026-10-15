@@ -77,7 +77,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('group_members', 'damage_groups', 'company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings', 'user_identities', 'company_memberships'):
+            for table in ('group_members', 'damage_groups', 'company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings', 'user_identities', 'company_memberships', 'company_requests', 'company_contacts', 'answer_files', 'company_notices'):
                 db.execute('DELETE FROM ' + table)
 
     def old_guide(self):
@@ -1139,6 +1139,169 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertIsNone(db.execute('SELECT 1 FROM company_memberships').fetchone())
         self.assertFalse((Path(self.temp.name) / 'uploads' / m['evidence_stored']).exists())
+
+    DESK_REPORT = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '고양이몰', 'subject': '환불이 안 돼요',
+                   'description': '홍길동입니다. 9월 1일 산 운동화를 반품했는데 환불이 안 돼요. 연락은 010-1234-5678로 주세요.', 'reporter_name': '홍길동',
+                   'phone': '010-1234-5678', 'request_text': '환불해 주세요.', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                   'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+
+    def ai_reply(self, sent, status=200):
+        facts = {'company': '고양이몰', 'product': '운동화', 'purchase_date': '', 'damage_date': '확인 필요',
+                 'paragraphs': ['제보자에 따르면 운동화를 반품했지만 환불을 받지 못했다고 합니다. 연락처 010-9999-8888', '제보자는 환불을 요구하고 있습니다.'],
+                 'claims': '환불 지연', 'company_response': '확인 필요', 'demands': '환불', 'questions': ['반품 접수 여부를 확인해 주시기 바랍니다.', '환불 처리 일정을 알려 주시기 바랍니다.']}
+        def fake(url, headers, body, timeout):
+            sent.append((url, headers, body))
+            if status != 200:
+                return status, {'error': {'message': 'server busy'}}
+            return 200, {'model': 'gpt-test', 'choices': [{'message': {'content': json.dumps(facts, ensure_ascii=False)}}]}
+        return fake
+
+    class NowThread:
+        def __init__(self, target, args=(), daemon=None):
+            self.target, self.args = target, args
+        def start(self):
+            self.target(*self.args)
+
+    def test_ai_company_request_generate_edit_approve_send(self):
+        desk = self.site.companydesk
+        sent = []
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(desk, 'post_json', self.ai_reply(sent)), patch.object(desk.threading, 'Thread', self.NowThread):
+            r = self.post_form(self.client, '/report', self.DESK_REPORT)
+            self.assertEqual(r.status_code, 200)
+            self.post_form(self.client, '/report', dict(self.DESK_REPORT, subject='비밀 제보', visibility='secret'))
+            # 기업 전달에 동의하지 않은 제보(예전 제보 등)는 AI에 보내지 않음
+            with self.site.conn() as db:
+                db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,share_company) VALUES('N1','x','기타','고양이몰','전달 미동의','내용','요청','2026-10-15',0)")
+                nid = db.execute("SELECT id FROM cases WHERE receipt='N1'").fetchone()['id']
+            self.assertFalse(self.site.desk_generate(nid))
+        self.assertEqual(len(sent), 2)
+        payload = json.dumps(sent[0][2], ensure_ascii=False)
+        for secret in ('홍길동', '010-1234-5678', 'sk-test-key'):
+            self.assertNotIn(secret, payload)
+        self.assertEqual(sent[0][1]['Authorization'], 'Bearer sk-test-key')
+        with self.site.conn() as db:
+            ids = {r['subject']: r['id'] for r in db.execute('SELECT id,subject FROM cases')}
+            req = db.execute('SELECT * FROM company_requests WHERE case_id=?', (ids['환불이 안 돼요'],)).fetchone()
+            secret_req = db.execute('SELECT * FROM company_requests WHERE case_id=?', (ids['비밀 제보'],)).fetchone()
+            self.assertIsNone(db.execute('SELECT 1 FROM company_requests WHERE case_id=?', (ids['전달 미동의'],)).fetchone())
+        self.assertEqual((req['version'], req['origin'], req['status'], req['model']), (1, 'ai', 'draft', 'gpt-test'))
+        self.assertEqual(req['title'], '[소비자제보센터] 고양이몰 관련 사실관계 확인 및 공식 입장 요청')
+        for text in ('안녕하세요. 소비자제보센터입니다.', '■ 주요 제보 내용', '■ 확인 요청 사항', '1. 반품 접수 여부', '3. ', '■ 제보 내용 확인',
+                     f"/reports/{ids['환불이 안 돼요']}", '소비자제보센터 드림\nhttps://consumerjebo.co.kr', '향후 추가 취재 및 보도가 진행될 수 있음'):
+            self.assertIn(text, req['body'])
+        self.assertNotIn('010-9999-8888', req['body'])  # AI가 돌려준 개인정보도 지움
+        self.assertNotIn('■ 제보 내용 확인', secret_req['body'])  # 비밀글은 링크 없이
+        cid = ids['환불이 안 돼요']
+        admin = self.login_admin()
+        page = admin.get(f'/admin/reports/{cid}').get_data(as_text=True)
+        for text in ('AI 기업 입장 요청서', '제목 복사', '본문 복사', '전체 복사', '관리자 승인', '공개 제보 보기'):
+            self.assertIn(text, page)
+        token = self.csrf(admin, f'/admin/reports/{cid}')
+        post = lambda **d: admin.post(f'/admin/reports/{cid}', data={'_csrf': token, **d})
+        post(form='req_save', title=req['title'], body=req['body'] + '\n(관리자 추가)')
+        # 승인 전에는 전달 완료 불가
+        post(form='req_sent', channel='email', target='cs@cat.example')
+        with self.site.conn() as db:
+            self.assertFalse(db.execute("SELECT 1 FROM company_requests WHERE status='sent'").fetchone())
+        # 다시 만들어도 관리자가 고친 판은 이력에 그대로
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(desk, 'post_json', self.ai_reply(sent)):
+            post(form='req_generate')
+        with self.site.conn() as db:
+            vs = db.execute('SELECT version,origin,body FROM company_requests WHERE case_id=? ORDER BY version', (cid,)).fetchall()
+        self.assertEqual([(v['version'], v['origin']) for v in vs], [(1, 'ai'), (2, 'edit'), (3, 'ai')])
+        self.assertIn('(관리자 추가)', vs[1]['body'])
+        post(form='req_restore', version='2')
+        post(form='req_approve')
+        post(form='req_sent', channel='email', target='cs@cat.example')
+        with self.site.conn() as db:
+            last = db.execute('SELECT * FROM company_requests WHERE case_id=? ORDER BY version DESC LIMIT 1', (cid,)).fetchone()
+            case = db.execute('SELECT status,forwarded_at,seen_at FROM cases WHERE id=?', (cid,)).fetchone()
+            notice = db.execute("SELECT * FROM company_notices WHERE case_id=? AND kind='request'", (cid,)).fetchone()
+        self.assertEqual((last['version'], last['origin'], last['status'], last['sent_channel']), (4, 'restore', 'sent', 'email'))
+        self.assertIn('(관리자 추가)', last['body'])
+        self.assertEqual(case['status'], '기업 답변 대기')
+        self.assertTrue(case['forwarded_at'])
+        self.assertFalse(case['seen_at'])  # 보냈다고 '기업 확인'으로 표시하지 않음
+        self.assertIn('이메일', notice['memo'])
+        page = admin.get(f'/admin/reports/{cid}').get_data(as_text=True)
+        self.assertIn('기업 전달 완료', page)
+        self.assertIn('입장 요청서 전달', page)
+        self.assertIn('이력 4판', page)
+        # 답변 없이 종결 (중립 표현)
+        post(form='close_no_answer')
+        with self.site.conn() as db:
+            c = db.execute('SELECT status,close_reason FROM cases WHERE id=?', (cid,)).fetchone()
+        self.assertEqual((c['status'], c['close_reason']), ('종결', 'no_answer'))
+
+    def test_ai_request_failure_does_not_block_and_manual_fallback(self):
+        desk = self.site.companydesk
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(desk, 'post_json', self.ai_reply([], status=500)), \
+             patch.object(desk.threading, 'Thread', self.NowThread), self.assertLogs('companydesk', level='WARNING'):
+            r = self.post_form(self.client, '/report', self.DESK_REPORT)
+        self.assertEqual(r.status_code, 200)
+        with self.site.conn() as db:
+            cid = db.execute('SELECT id FROM cases').fetchone()['id']
+            row = db.execute('SELECT * FROM company_requests WHERE case_id=?', (cid,)).fetchone()
+        self.assertEqual(row['body'], '')
+        self.assertIn('500', row['error'])
+        self.assertNotIn('sk-test-key', row['error'])
+        admin = self.login_admin()
+        page = admin.get(f'/admin/reports/{cid}').get_data(as_text=True)
+        self.assertIn('<span class="cs-pill off">생성 실패</span>', page)
+        self.assertIn('직접 쓰기', page)
+        token = self.csrf(admin, f'/admin/reports/{cid}')
+        admin.post(f'/admin/reports/{cid}', data={'_csrf': token, 'form': 'req_manual'})
+        with self.site.conn() as db:
+            manual = db.execute("SELECT * FROM company_requests WHERE case_id=? AND body!=''", (cid,)).fetchone()
+        self.assertEqual(manual['origin'], 'manual')
+        self.assertIn('■ 확인 요청 사항', manual['body'])
+        self.assertNotIn('<span class="cs-pill off">생성 실패</span>', admin.get(f'/admin/reports/{cid}').get_data(as_text=True))
+
+    def test_company_contacts_and_answer_registration(self):
+        for subject in ('첫 제보', '둘째 제보'):
+            self.post_form(self.client, '/report', dict(self.DESK_REPORT, subject=subject))
+        with self.site.conn() as db:
+            ids = [r['id'] for r in db.execute('SELECT id FROM cases ORDER BY id')]
+        admin = self.login_admin()
+        token = self.csrf(admin, f'/admin/reports/{ids[0]}')
+        post = lambda cid, files=None, **d: admin.post(f'/admin/reports/{cid}', data={'_csrf': token, **d, **(files or {})}, content_type='multipart/form-data' if files else None)
+        post(ids[0], form='desk_contact', name='고양이몰', aliases='냥몰', cs_email='cs@cat.example', kakao_url='http://evil.example/x')
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM company_contacts').fetchone())  # 카카오 채널이 아닌 주소는 거절
+        post(ids[0], form='desk_contact', name='고양이몰', aliases='냥몰', cs_email='cs@cat.example', kakao_url='pf.kakao.com/_abc', checked_on='2026-10-15', source='공식 홈페이지')
+        # 같은 기업의 다른 제보에 자동으로 보임
+        page = admin.get(f'/admin/reports/{ids[1]}').get_data(as_text=True)
+        self.assertIn('data-copy-text="cs@cat.example"', page)
+        self.assertIn('href="https://pf.kakao.com/_abc"', page)
+        self.assertIn('카카오톡 채널 열기', page)
+        # 기업 답변 등록 (원문 그대로, 첨부, 공식 여부)
+        bad = post(ids[1], form='desk_answer', answer_company='고양이몰', received_on='2026-10-14', channel='nope', body='답변')
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute("SELECT 1 FROM messages WHERE author='기업 답변'").fetchone())
+        body = '안녕하세요. 고양이몰 고객지원팀입니다.\n  반품 확인 후 환불하겠습니다.  '
+        post(ids[1], files={'answer_files': (io.BytesIO(b'%PDF-1.4 a'), 'reply.pdf')}, form='desk_answer', answer_company='고양이몰', answer_person='CS팀 김OO',
+             received_on='2026-10-14', channel='kakao', sender='카카오 채널', body=body, official='on', public='on')
+        with self.site.conn() as db:
+            m = db.execute("SELECT * FROM messages WHERE author='기업 답변'").fetchone()
+            case = db.execute('SELECT status FROM cases WHERE id=?', (ids[1],)).fetchone()
+            f = db.execute('SELECT * FROM answer_files').fetchone()
+        self.assertEqual((m['answer_company'], m['answer_person'], m['channel'], m['official'], m['public'], m['received_on'], m['source']),
+                         ('고양이몰', 'CS팀 김OO', 'kakao', 1, 1, '2026-10-14', 'admin'))
+        self.assertEqual(m['body'], body.strip())
+        self.assertEqual(case['status'], '기업 답변 도착')
+        page = admin.get(f'/admin/reports/{ids[1]}').get_data(as_text=True)
+        self.assertIn('공식 답변 확인', page)
+        self.assertIn('reply.pdf', page)
+        self.assertEqual(admin.get(f"/admin/answer-file/{f['id']}").status_code, 200)
+        self.assertEqual(self.client.get(f"/admin/answer-file/{f['id']}").status_code, 302)
+        self.assertNotIn('reply.pdf', self.client.get(f'/reports/{ids[1]}').get_data(as_text=True))  # 첨부는 공개 안 함
+        # 연락처 목록: 요청·답변 이력
+        listing = admin.get('/admin/contacts').get_data(as_text=True)
+        self.assertIn('고양이몰', listing)
+        self.assertIn('제보 2 · 요청 0 · 답변 1', listing)
+        # 제보를 지우면 답변 첨부도 지움
+        admin.post(f'/admin/reports/{ids[1]}', data={'_csrf': token, 'form': 'delete', 'confirm': '1'})
+        self.assertFalse((Path(self.temp.name) / 'uploads' / f['stored']).exists())
 
     def test_login_lock_mypage_and_withdraw(self):
         self.signup(self.site.app.test_client())

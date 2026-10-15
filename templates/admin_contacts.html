@@ -1,0 +1,46 @@
+{% extends 'console.html' %}
+{% block title %}기업 연락처 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">기업 연락처</h1>
+    <p>입장 요청서를 보낼 기업 연락처를 모아 둬요. 가입하지 않은 기업도 넣을 수 있고, 같은 기업 제보에 자동으로 보여요. 이메일·카카오톡은 자동으로 보내지 않아요.</p>
+    <form class="report-tools" method="get"><input name="q" value="{{ q }}" placeholder="기업명이나 브랜드로 찾기" aria-label="기업 연락처 검색"><button class="search-button" type="submit">찾기</button></form>
+  </div>
+
+  {% macro contact_form(c=None) %}
+  <form class="contact-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% if c %}<input type="hidden" name="id" value="{{ c['id'] }}">{% endif %}
+    <div class="contact-grid">
+      <div class="field"><label>기업명</label><input name="name" maxlength="120" required value="{{ c['name'] if c else '' }}"></div>
+      <div class="field"><label>브랜드·다른 이름 <em class="cs-muted">쉼표로</em></label><input name="aliases" maxlength="300" value="{{ c['aliases'] if c else '' }}"></div>
+      <div class="field"><label>홈페이지</label><input name="homepage" maxlength="300" value="{{ c['homepage'] if c else '' }}"></div>
+      <div class="field"><label>카카오톡 채널</label><input name="kakao_url" maxlength="300" placeholder="https://pf.kakao.com/..." value="{{ c['kakao_url'] if c else '' }}"></div>
+      <div class="field"><label>대표 이메일</label><input type="email" name="main_email" maxlength="150" value="{{ c['main_email'] if c else '' }}"></div>
+      <div class="field"><label>고객센터 이메일</label><input type="email" name="cs_email" maxlength="150" value="{{ c['cs_email'] if c else '' }}"></div>
+      <div class="field"><label>담당자 연락처</label><input name="manager" maxlength="200" value="{{ c['manager'] if c else '' }}"></div>
+      <div class="field"><label>확인일</label><input type="date" name="checked_on" value="{{ c['checked_on'] if c else '' }}"></div>
+      <div class="field"><label>출처</label><input name="source" maxlength="200" placeholder="예: 공식 홈페이지 하단" value="{{ c['source'] if c else '' }}"></div>
+      <div class="field contact-memo"><label>메모</label><input name="memo" maxlength="1000" value="{{ c['memo'] if c else '' }}"></div>
+    </div>
+    <div class="inline-actions"><button class="secondary" type="submit">{{ '저장' if c else '등록' }}</button>
+      {% if c %}<button class="secondary danger" name="action" value="delete" formnovalidate onclick="return confirm('이 연락처를 지울까요? 제보·답변 기록은 그대로 남아요.')">삭제</button>{% endif %}</div>
+  </form>
+  {% endmacro %}
+
+  <details class="form-panel contact-new"{% if not rows %} open{% endif %}><summary>새 연락처 넣기</summary>{{ contact_form() }}</details>
+
+  <div class="contact-list">
+  {% for c in rows %}{% set st = stats[c['id']] %}
+    <details class="form-panel contact-item" id="c{{ c['id'] }}"{% if edit == c['id'] %} open{% endif %}>
+      <summary>
+        <span class="contact-name"><b>{{ c['name'] }}</b>{% if c['aliases'] %} <span class="meta">{{ c['aliases'] }}</span>{% endif %}</span>
+        <span class="contact-ways">{% if c['cs_email'] or c['main_email'] %}<span>{{ c['cs_email'] or c['main_email'] }}</span>{% endif %}{% if c['kakao_url'] %}<span>카카오톡 채널</span>{% endif %}</span>
+        <span class="contact-hist meta">제보 {{ st[0]|length }} · 요청 {{ st[1] }} · 답변 {{ st[2] }}</span>
+      </summary>
+      {{ contact_form(c) }}
+      {% if st[0] %}<p class="meta contact-cases">최근 제보: {% for k in st[0][:6] %}<a href="{{ url_for('admin_report', case_id=k['id']) }}">{{ k['receipt'] }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+      <p class="meta">확인일 {{ c['checked_on'] or '—' }}{% if c['source'] %} · {{ c['source'] }}{% endif %} · 마지막 수정 {{ c['updated'][:10] }}</p>
+    </details>
+  {% else %}<p class="meta">{{ '찾는 연락처가 없어요.' if q else '아직 넣은 연락처가 없어요. 제보 화면이나 위에서 넣을 수 있어요.' }}</p>{% endfor %}
+  </div>
+</div></main>
+{% endblock %}
