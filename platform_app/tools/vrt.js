@@ -16,7 +16,7 @@ const PUBLIC=['/biz/','/biz/tour','/biz/for','/biz/for/smartstore','/biz/industr
 // 로그인한 기업 회원도 하단 메뉴로 공개 페이지를 열어요 (왼쪽 메뉴가 붙은 상태)
 const ROLES={
   guest:PUBLIC,
-  co:['/biz/','/biz/all','/biz/approvals','/biz/new','/biz/news','/biz/orders','/biz/pending','/biz/returns','/biz/rules','/biz/settings','/biz/start',
+  co:['/biz/','/biz/all','/biz/approvals','/biz/new','/biz/news','/biz/orders','/biz/pending','/biz/returns','/biz/rules','/biz/macros','/biz/automations','/biz/settings','/biz/start',
       '/biz/stats','/biz/stats/ai','/biz/team','/biz/connect','/biz/connect/cafe24','C24ORDER','/biz/import','/biz/report','/biz/guide','CASE',
       '/biz/tour','/biz/blog','/biz/customers','/biz/help','/biz/partners','/biz/security','/biz/terms','/biz/calculator','/biz/industries','/biz/contact'],
   ops:['/biz/ops','/biz/ops/all','/biz/ops/companies','/biz/ops/content','/biz/ops/copy','/biz/ops/keys','/biz/ops/leads','/biz/ops/marketing','/biz/ops/partners'],

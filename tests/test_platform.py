@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -1907,6 +1907,45 @@ class PlatformTest(unittest.TestCase):
             with self.core.conn() as db:rep=wf.report(db,self.core.company(db,cid),db.execute('SELECT * FROM cases WHERE company_id=?',(cid,)).fetchall())
             self.assertEqual((rep['n'],rep['met']),(2,0))
             self.assertIn('첫 답변 목표 달성률',b.get('/biz/stats').get_data(as_text=True))
+
+
+    def test_automations(self):
+        """자동화 규칙: 조건에 맞는 새 요청에 태그·우선순위·담당자·메모. 고객에게 보이는 기록은 남기지 않는다."""
+        b,o,cid=self.signup_and_approve('규칙상점','rule-co@example.com')
+        html=self.post(b,'/biz/team',{'act':'invite','name':'다상담','email':'da@example.com','role':'agent'}).get_data(as_text=True)
+        self.post(self.client(),'/biz/join/'+re.search(r'value="(http[^"]*/join/[^"]+)"',html).group(1).split('/join/')[1],{'password':'agentpassword1'})
+        with self.core.conn() as db:staff=[k for k,_ in sys.modules['team'].people(db,self.core.company(db,cid)) if k!='owner'][0]
+        self.assertIn('이렇게 시작해 보세요',b.get('/biz/automations').get_data(as_text=True))
+        self.assertIn('화난 고객 먼저',b.get('/biz/automations?new=1&ex=angry').get_data(as_text=True))
+        # 조건·할 일이 없으면 저장하지 않는다
+        self.assertIn('조건을 하나 이상',self.post(b,'/biz/automations',{'act':'save','name':'빈 규칙','af_0':'tag','av_0':'x'},follow_redirects=True).get_data(as_text=True))
+        r=self.post(b,'/biz/automations',{'act':'save','name':'깨짐은 급하게','match':'all','cf_0':'text','cop_0':'has','cv_0':'깨져, 파손','cf_1':'category','cop_1':'is','cv_1':'제품 불량',
+            'af_0':'tag','av_0':'파손, 사진확인','af_1':'prio','av_1':'urgent','af_2':'assign','av_2':staff,'af_3':'note','av_3':'사진 먼저 확인'},follow_redirects=True)
+        self.assertIn('규칙을 저장했어요',r.get_data(as_text=True))
+        self.post(b,'/biz/automations',{'act':'save','name':'꺼 둘 규칙','cf_0':'order','cop_0':'none','af_0':'tag','av_0':'주문없음'})
+        with self.core.conn() as db:rid=db.execute("SELECT id FROM automations WHERE name='꺼 둘 규칙'").fetchone()[0]
+        self.post(b,'/biz/automations',{'act':'toggle','id':str(rid)})
+        hit=self.file_case(self.client(),'규칙상점','제품 불량',company_id=cid)
+        miss=self.file_case(self.client(),'규칙상점','고객 응대',company_id=cid,title='응대가 아쉬웠어요')
+        with self.core.conn() as db:
+            c=db.execute('SELECT priority,assignee FROM cases WHERE id=?',(hit,)).fetchone()
+            self.assertEqual((c[0],c[1]),('urgent',staff))
+            tg={r[0] for r in db.execute('SELECT t.name FROM case_tags ct JOIN tags t ON t.id=ct.tag_id WHERE ct.case_id=?',(hit,))}
+            self.assertEqual(tg,{'파손','사진확인'})
+            notes=' '.join(r[0] for r in db.execute('SELECT text FROM notes WHERE case_id=?',(hit,)))
+            self.assertIn("자동화 규칙 '깨짐은 급하게'",notes);self.assertIn('사진 먼저 확인',notes)
+            self.assertFalse(db.execute("SELECT 1 FROM events WHERE case_id=? AND text LIKE '%자동화%'",(hit,)).fetchone())  # 고객이 보는 기록에는 없음
+            self.assertEqual(db.execute('SELECT priority FROM cases WHERE id=?',(miss,)).fetchone()[0],'normal')
+            self.assertFalse(db.execute('SELECT 1 FROM case_tags WHERE case_id=?',(miss,)).fetchone())  # 꺼 둔 규칙은 적용 안 함
+            self.assertEqual(db.execute("SELECT runs FROM automations WHERE name='깨짐은 급하게'").fetchone()[0],1)
+        page=b.get('/biz/automations').get_data(as_text=True)
+        self.assertIn("제목·내용에 &#39;깨져, 파손&#39; 중 하나가 있음 그리고 유형이 제품 불량",page);self.assertIn('1번 적용',page);self.assertIn('꺼져 있어요',page)
+        # 다른 회사 규칙은 고치거나 지울 수 없다
+        b2,_,_=self.signup_and_approve('남의상점','other-co@example.com')
+        self.post(b2,'/biz/automations',{'act':'delete','id':str(rid)})
+        with self.core.conn() as db:self.assertTrue(db.execute('SELECT 1 FROM automations WHERE id=?',(rid,)).fetchone())
+        self.post(b,'/biz/automations',{'act':'delete','id':str(rid)})
+        with self.core.conn() as db:self.assertFalse(db.execute('SELECT 1 FROM automations WHERE id=?',(rid,)).fetchone())
 
 
 if __name__=='__main__':unittest.main()

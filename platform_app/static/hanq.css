@@ -1849,3 +1849,34 @@ body.v2 .foot2.ffold{padding-block:0}
 .ftd>summary:hover{color:var(--fg)}
 .ftd[open]>.wrap{padding-block:8px 48px}
 @media (max-width:1023.98px){body.v2:has(.mbar) .foot2.ffold{padding-bottom:calc(var(--ds-h-tab) + env(safe-area-inset-bottom,0px))}}
+/* 자동화 규칙 */
+.aublk{display:grid;gap:10px;padding:18px 0;border-top:1px solid var(--t-line,var(--line))}
+.auhd{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.auhd b{font-size:17px}
+.auhd .inp.sm{width:auto}
+.aurow{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr) minmax(0,160px);gap:8px;align-items:center}
+.aurow[data-kind=a]{grid-template-columns:minmax(0,180px) minmax(0,1fr) minmax(0,160px)}
+.aurow[data-kind=a] [name^=av_]{grid-column:span 2}
+.aurow[data-kind=a] select[name^=av_]{grid-column:span 1;max-width:320px}
+.aurow [hidden]{display:none!important}
+.auadd{justify-self:start;background:none;border:0;padding:6px 0;color:var(--accent-ink,#c26f00);font-weight:600;font-size:15px;cursor:pointer}
+.aurule{display:flex;align-items:center;gap:16px;padding:18px 0;border-bottom:1px solid var(--t-line,var(--line))}
+.aurule:last-child{border-bottom:0}
+.aurule .tx{flex:1;min-width:0;display:grid;gap:4px}
+.aurule .tx b{font-size:17px}
+.aurule .tx span{color:var(--fg2);font-size:15px;word-break:keep-all}
+.aurule .tx small{color:var(--fg3);font-size:13px}
+.aurule.off .tx b,.aurule.off .tx span{color:var(--fg3)}
+.auact{display:flex;align-items:center;gap:6px;flex:none}
+.auact form{margin:0}
+.auex .drow .tx{flex:1}
+.auex .drow .go{color:var(--fg3);font-size:22px}
+@media (max-width:759.98px){
+  .aurow,.aurow[data-kind=a]{grid-template-columns:1fr 1fr}
+  .aurow [name^=cv_],.aurow [name^=av_]{grid-column:1/-1!important;order:2}
+  .aurow[data-kind=a] [data-role=f]{grid-column:1/-1}
+  .aurow[data-kind=a] select[name^=av_]{max-width:none}
+  .aurule{flex-wrap:wrap}
+  .aurule .tx{flex-basis:calc(100% - 64px)}
+  .auact{width:100%;justify-content:flex-end;flex-wrap:wrap}
+}
