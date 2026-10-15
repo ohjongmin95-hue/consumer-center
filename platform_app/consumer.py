@@ -419,6 +419,11 @@ def case_file(case_id,file_id):
     if not f:abort(404)
     return send_file(core.UPLOAD/f['stored'],download_name=f['original'])
 
+@app.route('/data-deletion')
+def data_deletion():
+    """데이터 삭제 안내 (메타 앱 설정의 '데이터 삭제 안내 URL'로 쓴다)."""
+    return render_template('c_deletion.html',op=core.OPERATOR,years=core.RETENTION_YEARS,contact=os.getenv('PRIVACY_EMAIL') or os.getenv('OPS_EMAIL') or os.getenv('ADMIN_ALERT_EMAIL') or os.getenv('SMTP_FROM') or os.getenv('SMTP_USER',''))
+
 @app.route('/privacy')
 def privacy():
     return render_template('c_privacy.html',op=core.OPERATOR,since=core.PRIVACY_SINCE,years=core.RETENTION_YEARS,contact=os.getenv('PRIVACY_EMAIL') or os.getenv('OPS_EMAIL',''),phone=os.getenv('PRIVACY_PHONE',''),

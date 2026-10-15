@@ -2126,5 +2126,10 @@ class PlatformTest(unittest.TestCase):
                 if v is None:os.environ.pop(k,None)
                 else:os.environ[k]=v
 
+    def test_data_deletion_page(self):
+        """메타 앱 설정에 넣는 데이터 삭제 안내 페이지가 열리고, 연결 끊기와 요청 방법이 적혀 있다."""
+        r=self.client().get('/data-deletion');page=r.get_data(as_text=True)
+        self.assertEqual(r.status_code,200);self.assertIn('연결 끊기',page);self.assertIn('Data deletion',page)
+
 
 if __name__=='__main__':unittest.main()
