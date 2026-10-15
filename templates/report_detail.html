@@ -35,14 +35,14 @@
       {% endif %}
 
       {% if case['public_consent'] %}
-      {# 공개 심사: 원문은 그대로 두고 공개용 글만 다듬음 #}
+      {# 공개 글 관리: 공개 제보는 접수 즉시 게시됨. 원문은 그대로 두고 공개용 글만 다듬거나 게시를 내림 #}
       <form class="cs-panel" method="post" id="publish_review"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="publish_review">
-        <h2>공개 심사 {% if case['published'] %}<span class="cs-pill on">공개 중</span>{% elif case['reviewed_at'] %}<span class="cs-pill off">비공개</span>{% else %}<span class="cs-pill">승인 대기</span>{% endif %}</h2>
-        <p class="cs-hint">제보자가 공개를 골랐어요. 이름·연락처·주소·주문번호 같은 개인정보와 단정적인 비방 표현을 고친 뒤 승인해요. 비워 두면 원문에서 전화번호·이메일만 가려 보여요. 원문은 바뀌지 않아요.</p>
+        <h2>공개 글 관리 {% if case['published'] %}<span class="pub-chip is-on">공개 중</span>{% else %}<span class="pub-chip is-off">비공개</span>{% endif %}</h2>
+        <p class="cs-hint">제보자가 공개를 골라 접수 즉시 게시됐어요. 전화번호·이메일은 자동으로 가려져요. 이름·주소·주문번호 같은 개인정보나 단정적인 비방 표현이 보이면 공개용 글을 고치거나 게시를 내려 주세요. 원문은 바뀌지 않아요.</p>
         <div class="field"><label for="p-subject">공개 제목</label><input id="p-subject" name="public_subject" maxlength="160" value="{{ case['public_subject'] }}" placeholder="{{ pub_text.subject }}"></div>
         <div class="field"><label for="p-body">공개 피해 내용</label><textarea id="p-body" name="public_body" maxlength="6000" rows="6" placeholder="{{ pub_text.body }}">{{ case['public_body'] }}</textarea></div>
         <div class="field"><label for="p-request">공개 해결 요구</label><textarea id="p-request" name="public_request" maxlength="3000" rows="3" placeholder="{{ pub_text.request }}">{{ case['public_request'] }}</textarea></div>
-        <div class="cs-row cs-actions"><button class="cs-btn" name="decision" value="save">글만 저장</button><button class="cs-btn" name="decision" value="hold">공개하지 않기</button><button class="cs-btn cs-btn-main" name="decision" value="approve">{{ '저장 (공개 유지)' if case['published'] else '공개 승인' }}</button></div>
+        <div class="cs-row cs-actions">{% if case['published'] %}<button class="cs-btn" name="decision" value="hold" onclick="return confirm('게시를 내릴까요? 외부에는 내용이 보이지 않아요.')">게시 중단</button><button class="cs-btn cs-btn-main" name="decision" value="save">공개용 글 저장</button>{% else %}<button class="cs-btn" name="decision" value="save">글만 저장</button><button class="cs-btn cs-btn-main" name="decision" value="approve">다시 게시</button>{% endif %}</div>
       </form>
       {% endif %}
 
@@ -115,18 +115,20 @@
           <div class="field"><label for="c-assignee">담당 기자</label><select id="c-assignee" name="assignee"><option value="">미배정</option>{% for n in staff_names %}<option{% if n == case['assignee'] %} selected{% endif %}>{{ n }}</option>{% endfor %}{% if case['assignee'] and case['assignee'] not in staff_names %}<option selected>{{ case['assignee'] }}</option>{% endif %}</select></div>
         </div>
         {% if case['public_consent'] %}<label class="cs-check"><input type="checkbox" name="published"{% if case['published'] %} checked{% endif %}><span>사이트에 공개</span></label>{% endif %}
-        {% if not case['published'] %}<p class="cs-hint">목록에는 제목(개인정보는 가려서)과 업체명이 보이고, 내용은 {{ '공개 승인 전까지' if case['public_consent'] else '비밀글이라' }} 열리지 않아요.</p>{% endif %}
+        {% if not case['published'] %}<p class="cs-hint">{% if case['review'] in ('duplicate', 'rejected') %}중복·제외로 처리해 공개 목록에서 빠져 있어요.{% else %}목록에는 제목(개인정보는 가려서)과 업체명이 보이고, 내용은 {{ '게시를 내려서' if case['public_consent'] else '비밀글이라' }} 열리지 않아요.{% endif %}</p>{% endif %}
         <button class="cs-btn cs-btn-main" type="submit">저장</button>
       </form>
 
-      {# 1-2. 검토: 정상·중복·반려와 사유 (통계는 정상 제보만 셈) #}
-      <form class="cs-panel cs-card" method="post" id="review"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="review">
-        <h2>검토 {% if case['review'] %}<span class="cs-pill{{ ' on' if case['review'] == 'ok' else ' off' }}">{{ reviews[case['review']] }}</span>{% else %}<span class="cs-pill">검토 전</span>{% endif %}</h2>
-        <div class="field"><label for="c-review">검토 결과</label><select id="c-review" name="review">{% for k, v in reviews.items() %}<option value="{{ k }}"{% if k == case['review'] %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
-        <div class="field"><label for="c-review-note">사유 <em class="cs-muted">운영 기록용, 공개 안 됨</em></label><input id="c-review-note" name="review_note" maxlength="500" value="{{ case['review_note'] }}" placeholder="예: 3번 제보와 같은 내용"></div>
-        <p class="cs-hint">중복·반려로 두면 공개가 내려가고 기업 통계에서 빠져요.</p>
-        <button class="cs-btn" type="submit">검토 저장</button>
+      {# 1-2. 검토 결과: 미검토·정상·중복·제외 (진행 단계와 따로 관리). 사유는 중복·제외일 때만, 내부 기록용 #}
+      <form class="cs-panel cs-card rv-panel" method="post" id="review"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="review">
+        <h2>검토 결과 <span class="rv-chip rv-{{ case['review'] or 'new' }}">{{ reviews[case['review']] }}</span></h2>
+        <div class="rv-seg" role="radiogroup" aria-label="검토 결과">{% for k, v in reviews.items() %}<label class="rv-opt rv-{{ k or 'new' }}" title="{{ review_hints[k] }}"><input type="radio" name="review" value="{{ k }}"{% if k == case['review'] %} checked{% endif %}><span>{{ v }}</span></label>{% endfor %}</div>
+        <p class="rv-desc">{{ review_hints[case['review']] }}</p>
+        <div class="rv-reason field"><label for="c-review-note">사유 <em class="cs-muted">관리자 내부 기록용, 공개 안 됨</em></label><input id="c-review-note" name="review_note" maxlength="500" value="{{ case['review_note'] if case['review'] in ('duplicate', 'rejected') else '' }}" placeholder="예: 3번 제보와 같은 내용"><button class="cs-btn cs-btn-main" type="submit">저장</button></div>
+        <noscript><button class="cs-btn" type="submit">검토 저장</button></noscript>
+        <p class="cs-hint">중복·제외는 공개 목록과 기업 통계에서 빠져요. 진행 단계는 바뀌지 않아요.</p>
       </form>
+      <script>(function(){var f=document.getElementById('review');if(!f)return;var d=f.querySelector('.rv-desc'),h={{ review_hints|tojson }};f.addEventListener('change',function(e){if(e.target.name!=='review')return;d.textContent=h[e.target.value]||'';if(e.target.value==='duplicate'||e.target.value==='rejected'){var n=f.querySelector('#c-review-note');n.focus();}else{f.submit();}});})();</script>
 
       {# 2. 기업: 기업 페이지 연결, 가입 기업 전달, 1회용 답변 링크 #}
       <section class="cs-panel cs-card">
