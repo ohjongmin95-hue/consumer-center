@@ -22,6 +22,14 @@ with core.conn() as db:
     db.execute("UPDATE cases SET company_id=?,company_name=?,channel=CASE id%3 WHEN 0 THEN '스마트스토어' WHEN 1 THEN '쿠팡' ELSE '한큐' END WHERE company_id=?",(cid,co['name'],dm['id']))
     db.execute('DELETE FROM ai_profile WHERE company_id=?',(dm['id'],));db.execute('DELETE FROM companies WHERE id=?',(dm['id'],))
     chatbot.save_profile(db,cid,demo.PROFILE)
+    # 카페24 연결 화면·카페24 주문 화면 (가짜 토큰, 밖으로 나가지 않는다)
+    import cafe24, shops
+    db.execute("INSERT INTO cafe24_links(company_id,mall_id,creds,shop_name,scopes,expires,refresh_expires,synced,n_ord,created) VALUES(?,?,?,?,?,?,?,?,?,?)",
+               (cid,'soborushop',shops.seal({'access_token':'x','refresh_token':'y'}),'소보루 견본몰',cafe24.SCOPES,'2099-01-01 00:00:00','2099-01-14 00:00:00',core.iso(),2,core.iso()))
+    oc={r[1] for r in db.execute('PRAGMA table_info(orders)')}
+    if 'src' in oc:db.execute("UPDATE orders SET src='cafe24',channel='자사몰' WHERE id=(SELECT MIN(id) FROM orders WHERE company_id=? AND status IN ('paid','ready'))",(cid,))
+    lc={r[1] for r in db.execute('PRAGMA table_info(cafe24_links)')}
+    if 'boards' in lc:db.execute("UPDATE cafe24_links SET boards=?,n_inq=3 WHERE company_id=?",('[[6,"상품 Q&A"],[9,"1:1 맞춤상담"]]',cid))
 print('company',cid,flush=True)
 from werkzeug.serving import run_simple
 run_simple('127.0.0.1',8811,hanq.app,use_reloader=False,threaded=True)

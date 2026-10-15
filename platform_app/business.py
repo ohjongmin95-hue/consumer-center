@@ -421,8 +421,8 @@ def connect():
         if l:desc,state=(f"문의 {l['n_inq']}건 · 주문 {l['n_ord']}건 가져옴"+(f" · {core.fmt(l['synced'])}" if l['synced'] else ' · 곧 가져와요'),'on') if l['status']=='ok' else (l['note'],'err')
         else:desc,state=(f"주문 {by[spec['channel']]}건 · 엑셀로 올리는 중. 내 키를 넣으면 자동으로 가져와요" if by.get(spec['channel']) else '내 키를 넣으면 문의와 주문을 자동으로 가져와요'),'link'
         rows.append(dict(group='판매처',name=spec['full'],desc=desc,state=state,href=url_for('connect_shop',shop=key)))
-    if c24:rows.append(dict(group='판매처',name='카페24',desc=(f"주문 {c24['n_ord']}건 가져옴"+(f" · {core.fmt(c24['synced'])}" if c24['synced'] else '')) if c24['status']=='ok' else c24['note'],state='on' if c24['status']=='ok' else 'err',href=url_for('c24.page')))
-    else:rows.append(dict(group='판매처',name='카페24',desc='카페24 로그인으로 연결하면 주문을 자동으로 가져와요' if cafe24.ready() else '소보루가 카페24 앱 등록을 마치면 열려요. 그동안은 주문 엑셀로 써 주세요',state='link' if cafe24.ready() else 'wait',href=url_for('c24.page')))
+    if c24:rows.append(dict(group='판매처',name='카페24',desc=(f"문의 {c24['n_inq']}건 · 주문 {c24['n_ord']}건 가져옴"+(f" · {core.fmt(c24['synced'])}" if c24['synced'] else '')) if c24['status']=='ok' else c24['note'],state='on' if c24['status']=='ok' else 'err',href=url_for('c24.page')))
+    else:rows.append(dict(group='판매처',name='카페24',desc='카페24 로그인으로 연결하면 주문과 게시판 문의를 자동으로 가져와요' if cafe24.ready() else '소보루가 카페24 앱 등록을 마치면 열려요. 그동안은 주문 엑셀로 써 주세요',state='link' if cafe24.ready() else 'wait',href=url_for('c24.page')))
     rows+=[dict(group='판매처',name=nm,desc=f'주문 {by[ch]}건 · 주문 엑셀(CSV)로 올리는 중' if by.get(ch) else '주문 엑셀(CSV)을 올리면 바로 쓸 수 있어요',
                state='csv' if by.get(ch) else 'ready',href=url_for('orders_page')) for nm,ch in (('자사몰','자사몰'),('오픈마켓','오픈마켓'))]
     if real()['api_enabled']:rows.append(dict(group='개발',name='외부 API·웹훅 (시범)',desc='우리 회사 프로그램에서 문의를 읽고 답하고, 새 문의를 웹훅으로 받아요',state='link',href=url_for('api.manage')))
@@ -799,10 +799,22 @@ def order_page(oid):
         if not o:abort(404)
         if request.method=='POST':
             if request.form.get('act')=='delete':orders_mod.delete(db,co,oid);flash('주문을 지웠어요','ok');return redirect(url_for('orders_page'))
+            if request.form.get('act') in ('c24_cancel','c24_return'):
+                if not team.can(who(),'decide'):flash('카페24 취소·반품은 대표나 관리자만 할 수 있어요. 메모로 부탁해 주세요.','error')
+                elif in_demo():flash('데모에서는 카페24에 보낼 수 없어요.','error')
+                elif core.throttled('c24_claim',limit=20,minutes=10):flash('잠시 후 다시 해 주세요','error')
+                else:
+                    msg,level=cafe24.claim(db,co,o,'cancel' if request.form['act']=='c24_cancel' else 'return',request.form.get('reason_type',''),request.form.get('reason',''),(who() or {}).get('name',''))
+                    flash(msg,level)
+                return redirect(url_for('order_page',oid=oid))
             msg,level,_=orders_mod.save(db,co,request.form,oid);flash(msg,level)
             return redirect(url_for('order_page',oid=oid))
         cs=orders_mod.cases_for(db,o)
-    return render_template('b_order.html',o=o,cs=cs,OSTATUS=orders_mod.STATUS,OCHANNELS=orders_mod.CHANNELS,tab='orders')
+        c24=None
+        if o['src']=='cafe24':
+            lk=cafe24.link(db,co['id'])
+            c24=dict(ok=bool(lk and lk['status']=='ok'),acts={k:cafe24.action(db,co['id'],o['order_no'],k) for k in ('cancel','return')})
+    return render_template('b_order.html',o=o,cs=cs,c24=c24,C24_REASONS=cafe24.REASONS,OSTATUS=orders_mod.STATUS,OCHANNELS=orders_mod.CHANNELS,tab='orders')
 
 @app.route('/hook/trace/<tok>',methods=['POST'])
 def hook_trace(tok):

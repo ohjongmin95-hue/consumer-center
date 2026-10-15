@@ -204,6 +204,10 @@ def post_reply(db,co,c,text):
     """판매처에서 가져온 문의에 답변을 올린다. 올리면 '', 못 올리면 이유."""
     seen=db.execute('SELECT * FROM shop_seen WHERE company_id=? AND case_id=?',(co['id'],c['id'])).fetchone()
     if not seen:return '판매처에서 가져온 문의가 아니에요.'
+    text=(text or '').strip()[:1000]
+    if seen['shop']=='cafe24':
+        import cafe24
+        return cafe24.post_reply(db,co,c,seen['ext_id'],text) if len(text)>=2 else '답변 내용이 너무 짧아요.'
     lk=link(db,co['id'],seen['shop'])
     creds=unseal(lk['creds']) if lk else None
     if not creds:return '판매처 연결이 끊겼어요. 서비스 연동에서 다시 연결해 주세요.'
@@ -252,7 +256,7 @@ def _case(db,co,shop,q):
     """판매처 문의 하나 -> 소보루 요청. 같은 문의는 한 번만."""
     if db.execute('SELECT 1 FROM shop_seen WHERE company_id=? AND shop=? AND ext_id=?',(co['id'],shop,q['ext_id'])).fetchone():return None
     from werkzeug.security import generate_password_hash
-    body=clean(q['body'],core.BIG) or '(내용 없음)';ch=SHOPS[shop]['channel']
+    body=clean(q['body'],core.BIG) or '(내용 없음)';ch=SHOPS[shop]['channel'] if shop in SHOPS else q['channel']
     title=clean(q['title'],60) or clean(re.sub(r'\s+',' ',body),40)
     cat=core.classify(title+' '+body) or '기타';t=core.iso()
     due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))

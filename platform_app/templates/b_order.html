@@ -15,6 +15,19 @@
 <form method="post" class="addline" style="flex-wrap:wrap"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <select class="inp" name="courier" required style="flex:1 1 160px"><option value="">택배사</option>{% for k in COURIERS %}<option {{ 'selected' if o.courier==k }}>{{ k }}</option>{% endfor %}<option {{ 'selected' if o.courier=='기타' }}>기타</option></select>
 <input class="inp" name="invoice" inputmode="numeric" maxlength="30" placeholder="송장번호" value="{{ o.invoice }}" required style="flex:1 1 160px"><button class="btn md">{{ '송장 고치기' if o.invoice else '송장 넣기' }}</button></form></section>
+{% if c24 %}<section class="panel" id="c24"><div class="ph">카페24에서 처리</div>
+{% set dc=c24.acts.cancel %}{% set dr=c24.acts['return'] %}
+{% for k,a in (('취소',dc),('반품 접수',dr)) if a %}<div class="{{ 'hint ok' if a.state=='ok' else 'warn' }}" style="margin-bottom:12px">{% if a.state=='ok' %}카페24에 {{ k }}를 보냈어요 · {{ fmt(a.created) }}{% if a.actor %} · {{ a.actor }}{% endif %}{% elif a.state=='sending' %}카페24에 {{ k }}를 보내는 중이에요.{% elif a.state=='unknown' %}{{ k }} 결과를 확인하지 못했어요. 카페24 관리자에서 먼저 확인해 주세요.{% else %}{{ k }}를 보내지 못했어요: {{ a.note }}{% endif %}</div>{% endfor %}
+{% if not c24.ok %}<p class="sub" style="margin:0">카페24 연결이 끊겨 있어요. <a class="link" href="{{ url_for('c24.page') }}">다시 연결</a>하면 여기서 취소·반품을 보낼 수 있어요.</p>
+{% elif not can('decide') %}<p class="sub" style="margin:0">카페24 취소·반품은 대표나 관리자가 보낼 수 있어요.</p>
+{% elif o.status in ('paid','ready','shipped','delivered') %}<form method="post" class="stack" onsubmit="return confirm('카페24에 바로 반영되고 되돌릴 수 없어요. 보낼까요?')">
+<input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<p class="sub" style="margin:0">{% if o.status in ('paid','ready') %}발송 전이라 <b>취소</b>할 수 있어요. 카드·간편결제는 결제 취소까지 함께 요청해요.{% else %}발송된 주문이라 <b>반품 접수</b>를 해요. 상품을 돌려받은 뒤 카페24에서 환불을 마쳐 주세요.{% endif %}</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><select class="inp" name="reason_type" required style="flex:1 1 160px"><option value="">사유</option>{% for k,v in C24_REASONS.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+<input class="inp" name="reason" maxlength="500" placeholder="자세한 사유 (선택)" style="flex:2 1 200px"></div>
+{% if o.status in ('paid','ready') %}<button class="btn md danger" name="act" value="c24_cancel" {{ 'disabled' if dc and dc.state in ('ok','sending') }}>카페24에서 주문 취소</button>
+{% else %}<button class="btn md" name="act" value="c24_return" {{ 'disabled' if dr and dr.state in ('ok','sending') }}>카페24에 반품 접수</button>{% endif %}
+</form>{% else %}<p class="sub" style="margin:0">이미 {{ OSTATUS[o.status] }} 처리된 주문이에요.</p>{% endif %}</section>{% endif %}
 <section class="panel"><div class="ph">이 주문의 고객 요청</div>
 {% if cs %}{{ b.case_table(cs,m) }}{% else %}<p class="sub" style="font-size:15px;margin:0">아직 이 주문으로 들어온 요청이 없어요.</p>{% endif %}</section>
 </div>
