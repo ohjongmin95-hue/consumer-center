@@ -24,7 +24,7 @@
   </article>
   <section class="form-panel public-case company-answers">
     <h2>{{ ui('reports.company_answer', '기업 공식 답변') }}</h2>
-    {% for a in answers %}<div class="company-answer"><p class="ca-head"><b>{{ a['company_name'] or company }}</b><span>{{ a['created'][:10]|replace('-', '.') }}{% if a['edited'] %} · {{ a['edited'][:10]|replace('-', '.') }} 수정됨{% endif %}</span></p><p class="public-case-body">{{ a['body'] }}</p>{% if a['source'] == 'email' %}<p class="ca-note">{{ ui('case.answer_email', '기업이 이메일로 보낸 답변을 센터가 원문 그대로 옮겼어요.') }}</p>{% endif %}</div>
+    {% for a in answers %}<div class="company-answer"><p class="ca-head"><b>{{ a['company_name'] or company }}{% if a['source'] == 'biz' %}<span class="ca-verified"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z"/><path fill="#fff" d="M7.1 10.6 4.8 8.3l.9-.9 1.4 1.4 3.2-3.2.9.9z"/></svg>{{ ui('case.answer_verified', '인증 기업 계정이 직접 등록') }}</span>{% endif %}</b><span>{{ a['created'][:10]|replace('-', '.') }}{% if a['edited'] %} · {{ a['edited'][:10]|replace('-', '.') }} 수정됨{% endif %}</span></p><p class="public-case-body">{{ a['body'] }}</p>{% if a['source'] == 'email' %}<p class="ca-note">{{ ui('case.answer_email', '기업이 이메일로 보낸 답변을 센터가 원문 그대로 옮겼어요.') }}</p>{% endif %}</div>
     {% else %}<p class="ca-none">{{ ui('case.answer_checking', '기업 답변이 등록돼 센터가 공개 여부를 확인하고 있어요.') if has_answer else ui('case.answer_none', '공식 답변 미등록') }}</p>{% endfor %}
     <p class="ca-note">{{ ui('case.answer_rule', '기업의 답변은 고치지 않고 원문 그대로 실어요. 기업이 답변을 고치면 센터가 다시 확인한 뒤 공개하고, 수정한 날짜를 함께 보여 줘요.') }}</p>
   </section>
