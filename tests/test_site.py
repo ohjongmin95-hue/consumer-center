@@ -1375,6 +1375,17 @@ class SiteTest(unittest.TestCase):
             t2 = db.execute('SELECT * FROM case_triage WHERE case_id=?', (old,)).fetchone()
         self.assertEqual((t2['track'], t2['ai_track']), ('auto', 'story'))
         self.assertIn('■ 관련 법률 안내', t2['body'])
+        # AI가 배열 대신 글 한 덩어리로 줘도 글자 단위로 쪼개지지 않음
+        res = self.site.triage.clean({'track': 'auto', 'guidance': '헬스장 이용권은 계약서를 먼저 확인해요.\n\n남은 기간 환불은 분쟁해결기준을 따라요.', 'steps': '1. 계약서를 확인해요.\n2. 서면으로 요청해요.', 'refs': []},
+                                     {'reporter_name': '홍길동'}, self.site.triage.POOL_ALL)
+        self.assertEqual(res['guidance'], ['헬스장 이용권은 계약서를 먼저 확인해요.', '남은 기간 환불은 분쟁해결기준을 따라요.'])
+        self.assertEqual(res['steps'], ['계약서를 확인해요.', '서면으로 요청해요.'])
+        # 헬스장 같은 계속거래는 방문판매법 조문(원문)을 후보로 줌
+        tri = self.site.triage
+        self.assertIn('door:제31조', tri.ref_pool('계약·해지'))
+        self.assertEqual(tri.law.cite('door:제31조')['label'], '방문판매법 제31조')
+        self.assertIn('언제든지 계약을 해지할 수 있다', tri.law.plain('door:제31조'))
+        self.assertIn('"계속거래"란 1개월 이상', tri.law.plain('door:제2조::10'))
         # 담당자별 몰아 보기
         self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'settings', 'status': '검토 중', 'assignee': '이지우'})
         self.assertIn('환불이 안 돼요', admin.get('/admin/reports?assignee=이지우').get_data(as_text=True))

@@ -9,7 +9,7 @@ import json, datetime
 from pathlib import Path
 
 TEXTS=json.loads((Path(__file__).parent/'law_texts.json').read_text(encoding='utf-8'))
-SHORT={'ecom':'전자상거래법','ecom_dec':'전자상거래법 시행령','basic':'소비자기본법','basic_dec':'소비자기본법 시행령'}
+SHORT={'ecom':'전자상거래법','ecom_dec':'전자상거래법 시행령','basic':'소비자기본법','basic_dec':'소비자기본법 시행령','door':'방문판매법','door_dec':'방문판매법 시행령'}
 # 원문을 담지 못한 기준: 공식 원문 링크로만 안내한다
 KCA_STANDARD='https://www.law.go.kr/행정규칙/소비자분쟁해결기준'
 BASIC_DEC_TABLE='https://www.law.go.kr/법령/소비자기본법시행령'
