@@ -13,7 +13,8 @@ VERIFY=$(grep -E '^IG_VERIFY_TOKEN=.' "$ENV_FILE" | head -1 | cut -d= -f2- || tr
 [[ -n $VERIFY ]] || VERIFY=$(python3 -c 'import secrets;print(secrets.token_urlsafe(24))')
 TMP=$(mktemp); grep -vE '^(IG_APP_ID|IG_APP_SECRET|IG_VERIFY_TOKEN)=' "$ENV_FILE" > "$TMP" || true
 printf 'IG_APP_ID=%s\nIG_APP_SECRET=%s\nIG_VERIFY_TOKEN=%s\n' "$APP_ID" "$APP_SECRET" "$VERIFY" >> "$TMP"
-cat "$TMP" > "$ENV_FILE"; rm -f "$TMP"systemctl restart soboru-platform
+cat "$TMP" > "$ENV_FILE"; rm -f "$TMP"
+systemctl restart soboru-platform
 BIZ=$(grep -E '^BUSINESS_HOST=.' "$ENV_FILE" | head -1 | cut -d= -f2- || true)
 echo
 echo "저장했어요. 메타 개발자 화면의 '웹훅 구성'에 아래 두 값을 넣고 확인 및 저장을 누르세요."
