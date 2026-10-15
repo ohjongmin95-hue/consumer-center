@@ -352,15 +352,20 @@ class SiteTest(unittest.TestCase):
             })
             with self.site.conn() as db:
                 ids[visibility] = db.execute('SELECT id FROM cases WHERE subject=?', (visibility + ' 제목',)).fetchone()['id']
-        # 공개를 골라도 운영자 승인 전에는 안 보임
+        # 공개를 고른 제보는 접수 즉시 게시 (연락처는 가려서)
+        self.assertEqual(self.client.get('/reports/%d' % ids['public']).status_code, 200)
+        admin = self.login_admin()
+        self.assertIn('pub-chip is-on">공개 중', admin.get('/admin/reports/%d' % ids['public']).get_data(as_text=True))
+        listing = admin.get('/admin/reports').get_data(as_text=True)
+        self.assertIn('pub-chip is-on', listing)
+        self.assertIn('rv-chip rv-new">미검토', listing)
+        # 운영자가 사후에 게시를 내리면 목록에는 '비공개'로 제목만, 누르면 조회 비밀번호 창
+        self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'hold'})
         self.assertEqual(self.client.get('/reports/%d' % ids['public']).status_code, 404)
-        # 목록에는 '공개 검토 중'으로 제목·업체명만 보이고, 누르면 본문 대신 조회 비밀번호 창
         listing = self.client.get('/reports').get_data(as_text=True)
         self.assertIn('href="/reports/%d/mine" title="센터가 개인정보를 확인한 뒤 내용이 공개돼요">public 제목</a>' % ids['public'], listing)
-        self.assertIn('공개 검토 중', listing)
+        self.assertIn('pending-tag">비공개', listing)
         self.assertNotIn('연락은 010', listing)
-        admin = self.login_admin()
-        self.assertIn('승인 대기', admin.get('/admin/reports/%d' % ids['public']).get_data(as_text=True))
         self.assertEqual(self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'publish_review', 'decision': 'approve'}).status_code, 400)
         self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'approve'})
         home = self.client.get('/').get_data(as_text=True)
@@ -1398,15 +1403,17 @@ class SiteTest(unittest.TestCase):
             case = db.execute("SELECT * FROM cases WHERE subject='원래 제목 홍길동'").fetchone()
         self.assertEqual(case['company_id'], co['id'])
         self.assertEqual(case['occurred_on'], '2026-10-01')
-        self.assertEqual(case['published'], 0)
-        self.assertNotIn('원래 제목', self.client.get('/companies/%d' % co['id']).get_data(as_text=True))
-        # 운영자가 공개용 글을 다듬어 승인 → 원문은 그대로, 공개 화면은 다듬은 글
+        # 공개 제보는 접수 즉시 게시되고 검토 결과는 '미검토'
+        self.assertEqual((case['published'], case['review'], case['reviewed_at']), (1, '', ''))
+        self.assertIn('원래 제목', self.client.get('/companies/%d' % co['id']).get_data(as_text=True))
+        # 운영자가 사후에 공개용 글을 다듬음 → 원문은 그대로, 공개 화면은 다듬은 글. 검토 결과는 따로 '정상'으로
         path = '/admin/reports/%d' % case['id']
-        self.post_form(admin, path, {'form': 'publish_review', 'decision': 'approve', 'public_subject': '환불이 한 달째 안 돼요', 'public_body': '환불이 안 돼요', 'public_request': ''})
+        self.post_form(admin, path, {'form': 'publish_review', 'decision': 'save', 'public_subject': '환불이 한 달째 안 돼요', 'public_body': '환불이 안 돼요', 'public_request': ''})
+        self.post_form(admin, path, {'form': 'review', 'review': 'ok', 'review_note': '무시됨'})
         with self.site.conn() as db:
             case = db.execute('SELECT * FROM cases WHERE id=?', (case['id'],)).fetchone()
-        self.assertEqual((case['published'], case['review'], case['subject']), (1, 'ok', '원래 제목 홍길동'))
-        self.assertTrue(case['reviewed_at'])
+        self.assertEqual((case['published'], case['review'], case['review_note'], case['subject']), (1, 'ok', '', '원래 제목 홍길동'))
+        self.assertEqual((case['reviewed_at'], case['status']), ('', '접수'))  # 검토 결과는 진행 단계를 바꾸지 않음
         page = self.client.get('/companies/%d' % co['id']).get_data(as_text=True)
         self.assertIn('환불이 한 달째 안 돼요', page)
         self.assertNotIn('홍길동', page)
@@ -1419,7 +1426,7 @@ class SiteTest(unittest.TestCase):
         public = self.client.get('/reports/%d' % case['id']).get_data(as_text=True)
         self.assertNotIn('public-case-notice', public)  # 아래 안내 문구·내 제보 버튼은 뺌
         self.assertNotIn('public-case-mine', public)
-        for text in ('환불이 한 달째 안 돼요', '공식 답변 미등록', 'href="/companies/%d"' % co['id'], 'aria-current="step"><span class="stepper-dot">2</span><span class="stepper-label">처리 중'):
+        for text in ('환불이 한 달째 안 돼요', '공식 답변 미등록', 'href="/companies/%d"' % co['id'], 'aria-current="step"><span class="stepper-dot">1</span><span class="stepper-label">접수'):
             self.assertIn(text, public)
         self.assertNotIn('A-123', public)
         # 답변 링크 발급 = 전달 시도, 기업이 열어 봐야 '전달 확인'
@@ -1450,6 +1457,14 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, path, {'form': 'review', 'review': 'rejected', 'review_note': '허위 확인'})
         self.assertEqual(self.client.get('/reports/%d' % case['id']).status_code, 404)
         self.assertIn('<dt>확인된 제보</dt><dd>0</dd>', self.client.get('/companies/%d' % co['id']).get_data(as_text=True))
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT review_note FROM cases WHERE id=?', (case['id'],)).fetchone()[0], '허위 확인')
+        listing = self.client.get('/reports').get_data(as_text=True)
+        self.assertNotIn('/reports/%d"' % case['id'], listing)  # 제외한 제보는 공개 목록에서 빠짐
+        self.assertNotIn('/reports/%d/mine"' % case['id'], listing)
+        listing = admin.get('/admin/reports?review=rejected').get_data(as_text=True)
+        self.assertIn('rv-chip rv-rejected">제외', listing)
+        self.assertNotIn('rv-chip rv-new', listing)
         # 이름만으로 새 기업 등록 후 연결
         self.post_form(self.client, '/report', dict(base, company='새로운상점', subject='다른 제보'))
         with self.site.conn() as db:
@@ -1615,7 +1630,8 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('비번 없는 공개 제보', home)
         self.assertIn('class="st-legend"', home)
-        self.assertIn('공개 검토 중', home)
+        self.assertNotIn('공개 검토 중', home)  # 공개 제보는 접수 즉시 게시
+        self.assertIn('href="/reports/1">비번 없는 공개 제보', home)
 
     def test_public_three_and_reporter_five_stages(self):
         # 공개 화면은 접수·처리 중·종결 3단계, 제보자 본인 화면은 5단계. 5단계 → 3단계 연결

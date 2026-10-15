@@ -261,7 +261,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-79'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-80'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -342,23 +342,24 @@ def list_title_shown(r):
     # 운영자가 반려(허위·부적절)·중복으로 처리한 제보만 제목을 내림.
     return r['review'] not in jebo.NOT_VALID
 def is_pending(r):
-    # 공개를 골랐지만 아직 공개되지 않은 제보 (운영자 확인 전이거나 공개하지 않기로 둔 제보)
+    # 공개를 골랐지만 게시되지 않은 제보 (예전 승인 대기 제보이거나 운영자가 게시를 내린 제보)
     return bool(r['public_consent'] and not r['published'])
+PUBLIC_VALID="review NOT IN ('rejected','duplicate')"  # 중복·제외 처리한 제보는 공개 목록에서 뺌
 def report_rows(where='1=1',args=(),limit=20,offset=0):
     # 모든 제보를 번호·분류·단계·접수일로 보여 줌. 제목·업체명은 공개 제보(운영자가 내리지 않음)와
     # 비밀글(운영자가 숨기지 않음)에 보이고, 비밀글은 눌러도 본문 대신 비밀번호 창이 열림.
     with conn() as db:
-        rows=db.execute('SELECT id,category,company,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
+        rows=db.execute('SELECT id,category,company,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE ('+where+') AND '+PUBLIC_VALID+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
     today=datetime.date.today().isoformat()
     def when(created):
         # 오늘 들어온 제보는 시각(15:48), 그 전은 날짜(10.08)로 짧게 표시.
         return created[11:16] if created[:10]==today and len(created)>=16 else created[5:10].replace('-','.')
     def shown(r):return list_title_shown(r)
-    return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),held=bool(is_pending(r) and r['reviewed_at']),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
+    return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),held=bool(is_pending(r) and (r['reviewed_at'] or r['review'])),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
                  company=mask_personal(r['company']) if shown(r) else None,
                  status=r['status'],step=jebo.pub_step(jebo.my_step(r)),created=r['created'][:10],when=when(r['created'])) for r in rows]
 def report_summary():
-    with conn() as db:stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status')}
+    with conn() as db:stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases WHERE '+PUBLIC_VALID+' GROUP BY status')}
     total=sum(stats.values());done=stats.get('종결',0)
     return dict(total=total,done=done,active=total-done)
 
@@ -392,7 +393,7 @@ def reports():
     selected_category=request.args.get('category','')
     if selected_category not in report_categories():selected_category=''
     page=max(1,request.args.get('page',1,type=int))
-    where=['1=1'];args=[]
+    where=[PUBLIC_VALID];args=[]
     if selected_category:names=jebo.cat_names(selected_category);where.append('category IN (%s)'%','.join('?'*len(names)));args+=names
     if search_query:
         where.append("((public_consent=1 AND published=1 AND (public_subject LIKE ? ESCAPE '\\' OR (public_subject='' AND subject LIKE ? ESCAPE '\\'))) OR ((public_consent=0 OR published=0) AND review NOT IN ('rejected','duplicate') AND (public_subject LIKE ? ESCAPE '\\' OR subject LIKE ? ESCAPE '\\')))")
@@ -574,9 +575,9 @@ def report():
             flash(ui_text('msg.report_rate','잠시 후 다시 제보해 주세요. 한 시간에 5건까지 접수할 수 있어요.'));return report_form(429)
         cur=db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,contact,share_company,created) VALUES(?,?,?,?,?,?,?,?,?,?)',(receipt,hashlib.sha256(code.encode()).hexdigest(),data['category'],data['company'],data['subject'],data['description'],data['request_text'],data['contact'],int(bool(request.form.get('share_company'))),datetime.datetime.now().isoformat(timespec='seconds')))
         public=int(request.form.get('visibility')=='public')
-        # 공개를 골라도 바로 올리지 않음: 운영자가 개인정보를 가리고 공개 승인해야 목록에 보임
-        db.execute('UPDATE cases SET public_consent=?,published=0,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=?,industry=?,pw_hash=? WHERE id=?',
-                   (public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),data['industry'],'' if pw_optional else generate_password_hash(lookup_pw),cur.lastrowid))
+        # 공개를 고른 제보는 접수 즉시 게시 (공개 화면은 전화번호·이메일을 가려 보임). 운영자는 사후 검토로 내릴 수 있음
+        db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=?,industry=?,pw_hash=? WHERE id=?',
+                   (public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),data['industry'],'' if pw_optional else generate_password_hash(lookup_pw),cur.lastrowid))
         db.execute('UPDATE cases SET occurred_on=? WHERE id=?',(data['occurred_on'],cur.lastrowid))
         match=pick_company(db,request.form.get('company_id',type=int),data['company'])
         if match:db.execute('UPDATE cases SET company_id=? WHERE id=?',(match['id'],cur.lastrowid))
@@ -1331,8 +1332,11 @@ def strong_password(pw):return 8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and 
 def reports_list():
     ep=AREAS[g.area]
     status=request.args.get('status','');q=request.args.get('q','').strip()[:60];mine=request.args.get('mine')=='1' and g.area=='reporter'
+    review=request.args.get('review','');review=review if review in jebo.REVIEW_KEYS else ''
+    sort='new_first' if request.args.get('sort')=='new_first' else ''
     page=max(1,request.args.get('page',1,type=int))
     where=['1=1'];args=[]
+    if review:where.append('review=?');args.append(jebo.REVIEW_KEYS[review])
     if status in STAGE_STATUS:
         group=[s for s in STATUSES if stage_of(s)==stage_of(status)]
         where.append('status IN (%s)'%','.join('?'*len(group)));args+=group
@@ -1346,8 +1350,12 @@ def reports_list():
         counts={}
         for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status'):counts[STAGE_STATUS[stage_of(r['status'])-1]]=counts.get(STAGE_STATUS[stage_of(r['status'])-1],0)+r['n']
         total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
-        cases=db.execute('SELECT id,receipt,industry,category,company,subject,status,created,assignee,public_consent,published,share_company FROM cases WHERE '+cond+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
-    return render_template('reports_list.html',layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total)
+        # 검토 결과별 개수는 단계·검색 조건을 뺀 전체 기준
+        review_counts={r['review']:r['n'] for r in db.execute('SELECT review,COUNT(*) AS n FROM cases GROUP BY review')}
+        order="CASE WHEN review='' THEN 0 ELSE 1 END,id DESC" if sort else 'id DESC'
+        cases=db.execute('SELECT id,receipt,industry,category,company,subject,status,created,assignee,public_consent,published,share_company,review FROM cases WHERE '+cond+' ORDER BY '+order+' LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
+    return render_template('reports_list.html',layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
+                           review=review,sort=sort,review_counts={k:review_counts.get(v,0) for k,v in jebo.REVIEW_KEYS.items()},reviews=jebo.REVIEWS,review_keys=jebo.REVIEW_KEYS)
 
 def report_detail(case_id):
     ep=AREAS[g.area]
@@ -1370,15 +1378,14 @@ def report_detail(case_id):
                 if status not in STATUSES:abort(400)
                 if stage_of(status)==stage_of(case['status']):status=case['status']  # 같은 단계면 그대로 ('추가 확인' 유지)
                 assignee=request.form.get('assignee',case['assignee'] or '').strip()[:80]
-                published=int(bool(request.form.get('published'))) if case['public_consent'] else 0
+                published=int(bool(request.form.get('published'))) if case['public_consent'] and case['review'] not in jebo.NOT_VALID else 0
                 title_hidden=0  # 목록 제목·업체명은 늘 보임 (예전 '숨김' 설정은 쓰지 않음)
                 db.execute('UPDATE cases SET status=?,assignee=?,published=?,title_hidden=? WHERE id=?',(status,assignee,published,title_hidden,case_id))
                 if not published and title_hidden!=case['title_hidden']:log_case(db,case_id,'목록에서 제목·업체명 숨김' if title_hidden else '목록에 제목·업체명 표시')
                 if status!=case['status']:log_case(db,case_id,f"진행 단계 변경: {my_names()[stage_of(case['status'])-1]} → {my_names()[stage_of(status)-1]}");notify_later(case_id,'status')
                 if assignee!=(case['assignee'] or ''):log_case(db,case_id,f"담당 기자: {assignee or '미배정'}")
                 if case['public_consent'] and published!=case['published']:log_case(db,case_id,'공개로 전환' if published else '비공개로 전환')
-                if status!='접수' or published:jebo.mark(db,case_id,'reviewed_at')
-                if published and not case['review']:db.execute("UPDATE cases SET review='ok' WHERE id=?",(case_id,))
+                if status!='접수':jebo.mark(db,case_id,'reviewed_at')
                 if status=='종결':jebo.mark(db,case_id,'closed_at')
                 flash('저장했어요.')
             elif form=='publish_review':
@@ -1391,23 +1398,24 @@ def report_detail(case_id):
                 db.execute('UPDATE cases SET public_subject=?,public_body=?,public_request=? WHERE id=?',(fields['public_subject'],fields['public_body'],fields['public_request'],case_id))
                 if (fields['public_subject'],fields['public_body'],fields['public_request'])!=(case['public_subject'],case['public_body'],case['public_request']):log_case(db,case_id,'공개용 글 수정')
                 if decision=='approve':
-                    db.execute("UPDATE cases SET published=1,review=CASE WHEN review='' THEN 'ok' ELSE review END WHERE id=?",(case_id,));jebo.mark(db,case_id,'reviewed_at')
-                    if not case['published']:log_case(db,case_id,'공개 승인')
-                    flash('공개를 승인했어요. 목록과 기업 페이지에 보여요.')
+                    if case['review'] in jebo.NOT_VALID:flash('중복·제외로 처리한 제보는 게시할 수 없어요. 검토 결과를 먼저 바꿔 주세요.');return redirect(url_for(ep['case'],case_id=case_id)+'#publish_review')
+                    db.execute('UPDATE cases SET published=1 WHERE id=?',(case_id,))
+                    if not case['published']:log_case(db,case_id,'다시 게시')
+                    flash('저장했어요. 목록과 기업 페이지에 보여요.' if case['published'] else '다시 게시했어요. 목록과 기업 페이지에 보여요.')
                 elif decision=='hold':
                     db.execute('UPDATE cases SET published=0 WHERE id=?',(case_id,));jebo.mark(db,case_id,'reviewed_at')
-                    if case['published']:log_case(db,case_id,'비공개로 전환')
-                    flash('공개하지 않고 두었어요.')
+                    if case['published']:log_case(db,case_id,'게시 중단 (비공개로 전환)')
+                    flash('게시를 내렸어요. 외부에는 내용이 보이지 않아요.')
                 else:flash('공개용 글을 저장했어요.')
             elif form=='review':
                 review=request.form.get('review','')
                 if review not in jebo.REVIEWS:abort(400)
-                note=request.form.get('review_note','').strip()[:500]
-                db.execute('UPDATE cases SET review=?,review_note=? WHERE id=?',(review,note,case_id))
-                if review:jebo.mark(db,case_id,'reviewed_at')
+                # 사유는 중복·제외일 때만 받음 (관리자 내부 기록용). 정상·미검토로 바꿔도 예전 사유는 지우지 않음
+                if review in jebo.NOT_VALID:db.execute('UPDATE cases SET review=?,review_note=? WHERE id=?',(review,request.form.get('review_note','').strip()[:500],case_id))
+                else:db.execute('UPDATE cases SET review=? WHERE id=?',(review,case_id))
                 if review in jebo.NOT_VALID and case['published']:db.execute('UPDATE cases SET published=0 WHERE id=?',(case_id,));log_case(db,case_id,'비공개로 전환')
-                if review!=case['review']:log_case(db,case_id,f"검토 결과: {jebo.REVIEWS[review]}")
-                flash('검토 결과를 저장했어요.')
+                if review!=case['review']:log_case(db,case_id,f"검토 결과: {jebo.REVIEWS[case['review']]} → {jebo.REVIEWS[review]}")
+                flash(f"검토 결과를 '{jebo.REVIEWS[review]}'(으)로 저장했어요."+(' 공개 목록에서 빠져요.' if review in jebo.NOT_VALID else ''))
             elif form=='company_new':
                 # 제보에 적힌 이름으로 기업을 등록 (가입하지 않은 기업). 이름이 같은 기업이 있으면 그 기업에 연결.
                 name=(request.form.get('name','') or case['company']).strip()[:120]
@@ -1482,7 +1490,7 @@ def report_detail(case_id):
         invite=db.execute('SELECT * FROM company_invites WHERE case_id=?',(case_id,)).fetchone()
         staff_names=[r['name'] for r in db.execute('SELECT name FROM staff WHERE active=1 ORDER BY name')]
         neighbors=(db.execute('SELECT id FROM cases WHERE id<? ORDER BY id DESC LIMIT 1',(case_id,)).fetchone(),db.execute('SELECT id FROM cases WHERE id>? ORDER BY id LIMIT 1',(case_id,)).fetchone())
-    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,companies=suggested+[c for c in active_companies if c['id'] not in {x['id'] for x in suggested}],suggested_ids={c['id'] for c in suggested},linked=linked,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()},reviews=jebo.REVIEWS,pub_text=jebo.pub(case,mask_personal),revisions=revisions,ops=ops_ctx)
+    return render_template('report_detail.html',layout=ep['layout'],ep=ep,case=case,msgs=msgs,files=files,statuses=STATUSES,notes=notes,logs=logs,invite=invite,staff_names=staff_names,older=neighbors[0],newer=neighbors[1],sent=sent,events=notify.EVENTS,companies=suggested+[c for c in active_companies if c['id'] not in {x['id'] for x in suggested}],suggested_ids={c['id'] for c in suggested},linked=linked,notify_on={'kakao':notify.kakao_ready(),'email':notify.email_ready()},reviews=jebo.REVIEWS,review_hints=jebo.REVIEW_HINTS,pub_text=jebo.pub(case,mask_personal),revisions=revisions,ops=ops_ctx)
 
 def download_file(file_id):
     with conn() as db:f=db.execute('SELECT * FROM attachments WHERE id=?',(file_id,)).fetchone()
