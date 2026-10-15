@@ -1562,6 +1562,13 @@ class PlatformTest(unittest.TestCase):
             q=dict(urllib.parse.parse_qsl(urllib.parse.urlparse(loc).query));self.assertEqual((q['client_id'],q['response_type']),('cid','code'));self.assertIn('mall.read_order',q['scope'])
             # 다른 사람의 state는 안 받는다
             r=b.get('/biz/connect/cafe24/callback?code=x&state=forged',follow_redirects=True);self.assertIn('만료됐거나',r.get_data(as_text=True))
+            # 카페24가 돌려준 오류 이유를 그대로 보여 줌 (동의 취소와 설정 문제를 구분)
+            r=self.post(b,'/biz/connect/cafe24',{'act':'connect','mall_id':'myshop'});q=dict(urllib.parse.parse_qsl(urllib.parse.urlparse(r.headers['Location']).query))
+            r=b.get('/biz/connect/cafe24/callback?error=invalid_scope&error_description=scope+not+allowed&state='+urllib.parse.quote(q['state']),follow_redirects=True)
+            self.assertIn('invalid_scope: scope not allowed',r.get_data(as_text=True))
+            r=self.post(b,'/biz/connect/cafe24',{'act':'connect','mall_id':'myshop'});q=dict(urllib.parse.parse_qsl(urllib.parse.urlparse(r.headers['Location']).query))
+            r=b.get('/biz/connect/cafe24/callback?error=access_denied&state='+urllib.parse.quote(q['state']),follow_redirects=True)
+            self.assertIn('권한 동의를 취소',r.get_data(as_text=True))
             r=self.post(b,'/biz/connect/cafe24',{'act':'connect','mall_id':'myshop'});q=dict(urllib.parse.parse_qsl(urllib.parse.urlparse(r.headers['Location']).query))
             r=b.get('/biz/connect/cafe24/callback?code=CODE1&state='+urllib.parse.quote(q['state']),follow_redirects=True)
             self.assertIn('카페24(myshop)에 연결했어요',r.get_data(as_text=True))
