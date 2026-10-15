@@ -22,7 +22,7 @@ if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not 
 app.config['MAX_CONTENT_LENGTH']=22*1024*1024  # 첨부 합계 20MB + 글 내용
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 STATUSES=site_content.STATUSES
-HOME_LATEST=8  # 메인 화면 최신 제보 수 기본값 (관리자 '메인 화면'에서 3~20으로 변경)
+HOME_LATEST=20  # 메인 화면 최신 제보 수 기본값 (관리자 '메인 화면'에서 3~20으로 변경)
 REPORTS_PAGE_SIZE=20
 def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
 
@@ -261,7 +261,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-81'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-82'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -1352,10 +1352,11 @@ def reports_list():
         total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
         # 검토 결과별 개수는 단계·검색 조건을 뺀 전체 기준
         review_counts={r['review']:r['n'] for r in db.execute('SELECT review,COUNT(*) AS n FROM cases GROUP BY review')}
+        legacy_pending=db.execute('SELECT COUNT(*) FROM cases WHERE '+LEGACY_PENDING).fetchone()[0] if g.area=='admin' else 0
         order="CASE WHEN review='' THEN 0 ELSE 1 END,id DESC" if sort else 'id DESC'
         cases=db.execute('SELECT id,receipt,industry,category,company,subject,status,created,assignee,public_consent,published,share_company,review FROM cases WHERE '+cond+' ORDER BY '+order+' LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
     return render_template('reports_list.html',layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
-                           review=review,sort=sort,review_counts={k:review_counts.get(v,0) for k,v in jebo.REVIEW_KEYS.items()},reviews=jebo.REVIEWS,review_keys=jebo.REVIEW_KEYS)
+                           review=review,sort=sort,review_counts={k:review_counts.get(v,0) for k,v in jebo.REVIEW_KEYS.items()},reviews=jebo.REVIEWS,review_keys=jebo.REVIEW_KEYS,legacy_pending=legacy_pending)
 
 def report_detail(case_id):
     ep=AREAS[g.area]
@@ -1570,6 +1571,18 @@ def reporter_invite(case_id):return make_invite(case_id)
 @app.route('/admin/reports')
 @admin_area
 def admin_reports():return reports_list()
+# 자동 게시로 바꾸기 전에 들어와 승인을 기다리던 공개 제보 (운영자가 게시를 내린 기록이 있거나 중복·제외면 뺌)
+LEGACY_PENDING="""public_consent=1 AND published=0 AND review NOT IN ('rejected','duplicate')
+    AND NOT EXISTS(SELECT 1 FROM case_log l WHERE l.case_id=cases.id AND (l.action LIKE '%비공개로 전환%' OR l.action LIKE '게시 중단%'))"""
+@app.route('/admin/reports/publish-pending',methods=['POST'])
+@admin_area
+def admin_publish_pending():
+    with conn() as db:
+        ids=[r['id'] for r in db.execute('SELECT id FROM cases WHERE '+LEGACY_PENDING)]
+        for i in ids:
+            db.execute('UPDATE cases SET published=1 WHERE id=?',(i,));log_case(db,i,'게시 (예전 승인 대기 공개 제보 한 번에 게시)')
+    flash(f'승인을 기다리던 공개 제보 {len(ids)}건을 게시했어요.')
+    return redirect(url_for('admin_reports'))
 @app.route('/admin/reports/<int:case_id>',methods=['GET','POST'])
 @admin_area
 def admin_report(case_id):return report_detail(case_id)

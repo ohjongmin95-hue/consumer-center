@@ -743,7 +743,7 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/').get_data(as_text=True)
         self.assertEqual(home.count('class="case-link"'), self.site.HOME_LATEST)
         self.assertIn('공개 제보 24', home)
-        self.assertNotIn('공개 제보 10<', home)
+        self.assertNotIn('공개 제보 04<', home)
         self.assertIn('href="/reports">', home)  # 메뉴와 하단 전체 보기 링크
         admin = self.login_admin()
         admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'home', 'home.latest_count': '4'})
@@ -914,15 +914,16 @@ class SiteTest(unittest.TestCase):
 
     def test_example_cards_fill_only_empty_slots(self):
         home = self.client.get('/').get_data(as_text=True)
-        self.assertEqual(home.count('class="report-card is-sample'), self.site.HOME_LATEST)
-        self.assertEqual(home.count('class="rc-sample">예시<'), self.site.HOME_LATEST)
+        samples = home.count('class="report-card is-sample')  # 예시 카드는 준비된 개수(8)까지만
+        self.assertEqual(samples, min(self.site.HOME_LATEST, 8))
+        self.assertEqual(home.count('class="rc-sample">예시<'), samples)
         with self.site.conn() as db:
             for i in range(3):
                 db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,1,1)',
                            ('E%d' % i, 'x', '기타', '업체', '실제 제보 %d' % i, '내용', '요청', '2026-10-09'))
         home = self.client.get('/').get_data(as_text=True)
         self.assertEqual(home.count('class="case-link"'), 3)
-        self.assertEqual(home.count('class="report-card is-sample'), self.site.HOME_LATEST - 3)
+        self.assertEqual(home.count('class="report-card is-sample'), min(samples, self.site.HOME_LATEST - 3))
         self.assertLess(home.index('실제 제보 2'), home.index('is-sample'))  # 실제 제보가 항상 앞
         self.assertNotIn('is-sample', self.client.get('/reports').get_data(as_text=True))
         self.assertEqual(self.client.get('/reports/latest?n=4&view=cards').get_data(as_text=True).count('is-sample'), 1)
@@ -1632,6 +1633,25 @@ class SiteTest(unittest.TestCase):
         self.assertIn('class="st-legend"', home)
         self.assertNotIn('공개 검토 중', home)  # 공개 제보는 접수 즉시 게시
         self.assertIn('href="/reports/1">비번 없는 공개 제보', home)
+
+    def test_publish_legacy_pending_reports(self):
+        # 자동 게시 전에 들어와 승인을 기다리던 공개 제보는 관리자가 한 번에 게시. 게시를 내린 기록이 있으면 그대로
+        form = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '예전몰', 'description': '환불이 안 돼요', 'reporter_name': '최소비',
+                'phone': '010-8181-2020', 'request_text': '환불', 'consent': 'on', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        for subject in ('예전 대기 제보', '내린 제보'):
+            self.post_form(self.client, '/report', dict(form, subject=subject))
+        admin = self.login_admin()
+        with self.site.conn() as db:
+            ids = {r['subject']: r['id'] for r in db.execute('SELECT id,subject FROM cases')}
+        self.post_form(admin, '/admin/reports/%d' % ids['내린 제보'], {'form': 'publish_review', 'decision': 'hold'})
+        with self.site.conn() as db:
+            db.execute('UPDATE cases SET published=0 WHERE id=?', (ids['예전 대기 제보'],))  # 예전 규칙으로 승인 대기
+        self.assertIn('승인을 기다리던 공개 제보가 1건', admin.get('/admin/reports').get_data(as_text=True))
+        admin.post('/admin/reports/publish-pending', data={'_csrf': self.csrf(admin, '/admin/reports')})
+        with self.site.conn() as db:
+            pub = {r['subject']: r['published'] for r in db.execute('SELECT subject,published FROM cases')}
+        self.assertEqual(pub, {'예전 대기 제보': 1, '내린 제보': 0})
+        self.assertNotIn('pend-bar', admin.get('/admin/reports').get_data(as_text=True))
 
     def test_public_three_and_reporter_five_stages(self):
         # 공개 화면은 접수·처리 중·종결 3단계, 제보자 본인 화면은 5단계. 5단계 → 3단계 연결

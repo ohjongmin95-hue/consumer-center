@@ -1769,3 +1769,7 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
   .cs-stack-wide .cs-inline, .cs-stack-wide .biz-actions, .cs-stack-wide .inline-actions { display: flex; flex-wrap: wrap; gap: 6px; }
   .cs-stack-wide input:not([type=hidden]):not([type=checkbox]) { max-width: 100%; min-width: 0; }
 }
+/* 예전 승인 대기 공개 제보 한 번에 게시 */
+.pend-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; margin: 0 0 14px; padding: 14px 18px; border: 1px solid #f3d6b4; border-radius: 14px; background: #fff7ec; }
+.pend-bar p { margin: 0; color: #5b4630; font-size: 14px; line-height: 1.6; }
+.pend-bar b { color: #1f2329; }
