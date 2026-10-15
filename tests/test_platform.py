@@ -1659,6 +1659,49 @@ class PlatformTest(unittest.TestCase):
                 self.assertIn('카페24 반품 접수',db.execute('SELECT memo FROM orders WHERE id=?',(ob,)).fetchone()[0])
                 self.assertTrue(any('반품 접수를 보냈어요' in e['text'] for e in self.core.events(db,case_id)))
 
+    def test_chat_order_lookup(self):
+        """상담창 주문 조회: 휴대폰 + 주문번호(또는 이름)가 둘 다 맞아야 보임. 개인정보는 고객 화면·AI 어디에도 안 나감. AI는 확인된 주문으로 답함."""
+        b,o,cid=self.signup_and_approve('주문조회상점','lookup@example.com')
+        with self.core.conn() as db:
+            for no,st,inv,day in (('A-100','shipped','123412341234','2026-10-14'),('A-099','paid','','2026-10-10')):
+                db.execute("""INSERT INTO orders(company_id,order_no,channel,ordered_on,buyer,phone,address,product,qty,amount,status,courier,invoice,created,updated)
+                    VALUES(?,?,'자사몰',?,'홍길동','01012345678','서울시 비밀구 1','머그컵',1,1000,?,?,?,?,?)""",(cid,no,day,st,'CJ대한통운' if inv else '',inv,'2026-10-14','2026-10-14'))
+        me=self.client();page=me.get(f'/to/{cid}').get_data(as_text=True);ctok=re.search(r'data-csrf="([^"]+)"',page).group(1)
+        self.assertIn('data-orders="1"',page)
+        ask=lambda **d:me.post(f'/chat/{cid}',data=dict(d,csrf=ctok,act='order')).get_json()
+        self.assertIn('order_error',ask(phone='010-1234-5678',key='A-999'))   # 주문번호 틀림
+        self.assertIn('order_error',ask(phone='010-9999-9999',key='A-100'))   # 휴대폰 틀림
+        self.assertIn('order_error',ask(phone='010-1234-5678',key=''))
+        j=ask(phone='010-1234-5678',key='a-100');self.assertEqual([x['order_no'] for x in j['orders']],['A-100'])
+        x=j['orders'][0];self.assertEqual((x['status_label'],x['courier'],x['can_return'],x['can_cancel']),('배송 중','CJ대한통운',True,False))
+        self.assertNotIn('01012345678',json.dumps(j,ensure_ascii=False));self.assertNotIn('비밀구',json.dumps(j,ensure_ascii=False));self.assertNotIn('홍길동',json.dumps(j,ensure_ascii=False))
+        j=ask(phone='01012345678',key='홍길동');self.assertEqual([x['order_no'] for x in j['orders']],['A-100','A-099'])
+        # AI는 확인된 주문만 받고, 이름·휴대폰·주소는 받지 않는다
+        seen={}
+        def fake(url,headers,body,timeout):
+            seen.update(body=body);c='{"category": "배송 조회", "answer": "A-100은 배송 중이에요.", "handoff": false, "lookup": false, "summary": ""}'
+            return (200,{'output':[{'type':'message','content':[{'type':'output_text','text':c}]}]}) if url.endswith('/responses') else (200,{'choices':[{'message':{'content':c}}]})
+        aim=sys.modules['ai']
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
+            j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'제 택배 어디쯤이에요?'}).get_json()
+        self.assertEqual((j['answer'],j['lookup']),('A-100은 배송 중이에요.',False))
+        system=seen['body'].get('instructions') or seen['body']['messages'][0]['content']
+        self.assertIn('[본인 확인된 주문]',system);self.assertIn('주문번호 A-100',system);self.assertIn('상태 배송 중',system)
+        for pii in ('01012345678','010-1234-5678','홍길동','비밀구'):self.assertNotIn(pii,system)
+        # 다른 브라우저는 확인 전이라 주문을 모르고, AI가 조회를 권하면 lookup
+        other=self.client();p2=other.get(f'/to/{cid}').get_data(as_text=True);t2=re.search(r'data-csrf="([^"]+)"',p2).group(1)
+        def fake2(url,headers,body,timeout):
+            seen.update(body=body);c='{"category": "배송 조회", "answer": "주문 조회로 확인해 드릴게요.", "handoff": false, "lookup": true, "summary": ""}'
+            return (200,{'output':[{'type':'message','content':[{'type':'output_text','text':c}]}]}) if url.endswith('/responses') else (200,{'choices':[{'message':{'content':c}}]})
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake2):
+            j=other.post(f'/chat/{cid}',data={'csrf':t2,'text':'제 택배 어디쯤이에요?'}).get_json()
+        self.assertTrue(j['lookup']);self.assertNotIn('A-100',seen['body'].get('instructions') or seen['body']['messages'][0]['content'])
+        # 마구 넣어 보면 막는다
+        with patch.object(self.core,'throttled',lambda p,**k:p=='chat_order'):
+            self.assertIn('너무 많아요',ask(phone='010-1234-5678',key='A-100')['order_error'])
+        # 접수 화면은 주문번호를 이어받는다
+        self.assertIn('value="A-099"',me.get(f'/new?company_id={cid}&category=주문 취소&order_no=A-099').get_data(as_text=True))
+
     def test_external_api_and_webhooks(self):
         """외부 API: 운영자가 켠 회사만, 키 해시 저장, 시험 키는 데모 데이터만, 회사 간 격리, 폐기, 웹훅 서명·기록·내부 주소 차단."""
         import hashlib,hmac as _h

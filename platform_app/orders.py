@@ -147,3 +147,16 @@ def as_dict(o):
     return dict(id=o['id'],order_no=o['order_no'],channel=o['channel'],ordered_on=o['ordered_on'],buyer=o['buyer'],phone=core.fmt_phone(o['phone']) if o['phone'] else '',
                 address=o['address'],product=o['product'],qty=o['qty'],amount=o['amount'],status=o['status'],status_label=STATUS.get(o['status'],''),
                 courier=o['courier'],invoice=o['invoice'],memo=o['memo'],link=core.COURIERS.get(o['courier'],''),updated=o['updated'])
+
+# ---------- 고객 본인 주문 조회 (상담창) ----------
+def find_for_customer(db,cid,phone,key):
+    """휴대폰 번호 + (주문번호 또는 주문자 이름)이 둘 다 맞는 주문만, 최근 3건. 하나만 맞으면 아무것도 돌려주지 않는다."""
+    phone=digits(phone);key=(key or '').strip()
+    if not re.fullmatch(r'01\d{8,9}',phone) or len(key)<2:return []
+    return db.execute("""SELECT * FROM orders WHERE company_id=? AND phone=? AND (lower(order_no)=lower(?) OR (buyer!='' AND buyer=?))
+        ORDER BY ordered_on DESC,id DESC LIMIT 3""",(cid,phone,key[:60],key[:30])).fetchall()
+def customer_view(o,track=None):
+    """고객에게 보여 줄 주문 (이름·연락처·주소는 빼고)."""
+    st=o['status']
+    return dict(id=o['id'],order_no=o['order_no'],ordered_on=o['ordered_on'],product=o['product'],qty=o['qty'],status=st,status_label=STATUS.get(st,st),
+                courier=o['courier'],invoice=o['invoice'],track=track or '',can_cancel=st in ('paid','ready'),can_return=st in ('shipped','delivered'))

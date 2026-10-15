@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import core, law, chatbot
 import tracking as tracking_mod
+import orders as orders_mod
 import ai as ai_mod
 from core import conn, clean, digits, BIG
 from markupsafe import escape
@@ -59,6 +60,7 @@ def new():
         with conn() as db:co=core.company(db,int(request.args['company_id']))
         if co and co['status'] in ('active','listed'):d.setdefault('company',co['name']);d.setdefault('company_id',co['id']);d['member']=core.active_member(co)
     elif request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
+    if request.args.get('order_no'):d.setdefault('order_no',clean(request.args['order_no'],40))
     if request.args.get('body'):  # 상담창에서 쓴 문장을 그대로 이어 쓴다
         body=clean(request.args['body'],BIG);d.setdefault('body',body);d.setdefault('title',core.short(next((l for l in body.split('\n') if l.strip() and not l.startswith('[')),body),80))
         want={'주문 취소':'환불','반품·환불':'환불','교환':'교환','배송 조회':'배송 확인','고객 응대':'사과·재발 방지'}.get(d.get('category'))
@@ -325,6 +327,7 @@ def chat_answer(company_id,f):
         with conn() as db:co=core.company(db,company_id)
         if not co or co['status'] not in ('active','listed'):abort(404)
     if core.throttled('chat',limit=60,minutes=10):return dict(error='잠시 후 다시 시도해 주세요'),429
+    if f.get('act')=='order':return chat_order(co,f),200
     if f.get('outcome') in ('solved','filed') and f.get('category') in core.CATS:
         if co:
             with conn() as db:db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],f['category'],f['outcome'],core.iso()))
@@ -332,14 +335,16 @@ def chat_answer(company_id,f):
     text=clean(f.get('text'),500)
     if co and text and f.get('category') not in core.CATS and core.active_member(co) and chatbot.ready():
         # 입점 기업 상담창에 고객이 직접 쓴 문장: AI가 회사 정보를 보고 답한다 (실패하면 아래 기본 안내로)
-        with conn() as db:facts=chatbot.company_facts(db,co)
+        with conn() as db:
+            facts=chatbot.company_facts(db,co);mine=chat_orders(db,co)
+        if mine:facts+='\n\n'+chatbot.order_facts(mine)
         ai=chatbot.answer(co,facts,text,f.get('history'))
         if ai:
             cat=ai['category']
             with conn() as db:
                 rule=core.rule_for(db,co['id'],cat or '기타')
                 db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],cat or '기타','asked',core.iso()))
-            return dict(category=cat,answer=ai['answer'],handoff=ai['handoff'],summary=ai['summary'],faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=True,ask_days=False),200
+            return dict(category=cat,answer=ai['answer'],handoff=ai['handoff'],lookup=ai['lookup'] and not mine,summary=ai['summary'],faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=True,ask_days=False),200
     cat=f.get('category') if f.get('category') in core.CATS else core.classify(text)
     if not cat:return dict(category=None),200
     if not co:return dict(category=cat,faq=core.CHAT_FAQ[cat],auto=False,cond='',member=False,ask_days=cat in ('교환','반품·환불')),200
@@ -348,6 +353,30 @@ def chat_answer(company_id,f):
         rule=core.rule_for(db,co['id'],cat) if member else {'auto':False,'cond':'','faq':core.CHAT_FAQ[cat]}
         db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],cat,'asked',core.iso()))
     return dict(category=cat,faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=member,ask_days=cat in ('교환','반품·환불')),200
+
+ORDER_MINUTES=30  # 상담창에서 본인 확인한 주문을 AI가 기억하는 시간
+def chat_order(co,f):
+    """상담창 '주문 조회': 휴대폰 번호 + 주문번호(또는 주문자 이름)가 둘 다 맞아야 보여 준다. 맞은 주문은 이 브라우저에서 잠시 AI 답에 쓴다."""
+    if not core.active_member(co):return dict(order_error='이 가게는 상담창 주문 조회를 쓰지 않아요. 접수해 주시면 담당자가 확인해 드려요.')
+    if core.throttled('chat_order',limit=8,minutes=10):return dict(order_error='조회가 너무 많아요. 10분 뒤에 다시 해 주세요.')
+    with conn() as db:rows=orders_mod.find_for_customer(db,co['id'],f.get('phone',''),clean(f.get('key'),60))
+    if not rows:return dict(order_error='맞는 주문을 찾지 못했어요. 주문할 때 쓴 휴대폰 번호와 주문번호(또는 주문자 이름)를 확인해 주세요.')
+    tracks={}
+    for o in rows:
+        if o['status']=='shipped' and o['invoice'] and o['courier'] in tracking_mod.CODES and tracking_mod.t_key():
+            r=tracking_mod.lookup(o['courier'],o['invoice'])
+            if r.get('ok'):tracks[o['id']]=' · '.join(x for x in (r['status'],r['place'],r['time']) if x)
+            break  # 택배 조회는 한 번만 (가장 최근 배송 중 주문)
+    session['chat_orders']={'co':co['id'],'ids':[o['id'] for o in rows],'track':{str(k):v for k,v in tracks.items()},'at':core.iso()}
+    return dict(orders=[orders_mod.customer_view(o,tracks.get(o['id'])) for o in rows])
+def chat_orders(db,co):
+    """이 브라우저에서 본인 확인한 이 가게 주문 (30분 안). 없으면 []."""
+    s=session.get('chat_orders')
+    if not s or s.get('co')!=co['id']:return []
+    at=core.parse(s.get('at',''))
+    if not at or at<core.now()-datetime.timedelta(minutes=ORDER_MINUTES):session.pop('chat_orders',None);return []
+    rows=[db.execute('SELECT * FROM orders WHERE id=? AND company_id=?',(i,co['id'])).fetchone() for i in s.get('ids',[])[:3]]
+    return [orders_mod.customer_view(o,s.get('track',{}).get(str(o['id']))) for o in rows if o]
 
 @app.route('/chat',methods=['POST'])
 @app.route('/chat/<int:company_id>',methods=['POST'])
