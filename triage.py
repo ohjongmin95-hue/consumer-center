@@ -8,7 +8,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
 - 제보자에게 보내는 건 운영자·기자가 초안을 확인하고 '제보자에게 보내기'를 눌렀을 때만이다. 자동 발송하지 않는다.
 - 분류는 언제든 사람이 바꿀 수 있고, 바꾼 사람이 기록된다.
 """
-import importlib.util, json, logging, os, threading
+import importlib.util, json, logging, os, re, threading
 from pathlib import Path
 from flask import abort, after_this_request, flash, request
 
@@ -20,12 +20,15 @@ law=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(law)
 # 제보 유형별로 AI에 보여 줄 조문 후보 (유형 이름은 관리자가 바꿀 수 있어 없는 유형은 전체 후보를 씀)
 POOL_ALL=['ecom:제15조:①','ecom:제15조:②','ecom:제17조:①','ecom:제17조:②','ecom:제17조:③','ecom:제17조:⑤','ecom:제17조:⑥',
           'ecom:제18조:②','ecom:제18조:③','ecom:제18조:⑨','ecom:제18조:⑩','ecom_dec:제21조의3','ecom:제21조:①:1','ecom:제21조:①:3','basic:제16조:③']
-POOL={'배송·교환·환불':['ecom:제15조:①','ecom:제15조:②','ecom:제17조:①','ecom:제17조:②','ecom:제17조:③','ecom:제17조:⑤','ecom:제18조:②','ecom:제18조:③','ecom:제18조:⑨','ecom:제18조:⑩','ecom_dec:제21조의3'],
+# 헬스장·학원·필라테스처럼 1개월 이상 이용권(계속거래): 방문판매법. 오프라인 계약은 전자상거래법이 아니라 이쪽
+DOOR=['door:제2조::10','door:제31조','door:제32조:①','door:제32조:③','door:제34조:①:4','door_dec:제41조:②']
+POOL_ALL=POOL_ALL+DOOR
+POOL={'배송·교환·환불':DOOR+['ecom:제15조:①','ecom:제15조:②','ecom:제17조:①','ecom:제17조:②','ecom:제17조:③','ecom:제17조:⑤','ecom:제18조:②','ecom:제18조:③','ecom:제18조:⑨','ecom:제18조:⑩','ecom_dec:제21조의3'],
       '품질·하자·AS':['ecom:제17조:③','ecom:제17조:⑤','ecom:제18조:⑩','basic:제16조:③'],
-      '요금·결제':['ecom:제17조:①','ecom:제18조:②','ecom:제18조:③','ecom_dec:제21조의3','basic:제16조:③'],
-      '계약·해지':['ecom:제17조:①','ecom:제17조:②','ecom:제18조:②','ecom:제18조:⑨','basic:제16조:③'],
+      '요금·결제':['ecom:제17조:①','ecom:제18조:②','ecom:제18조:③','ecom_dec:제21조의3','basic:제16조:③']+DOOR,
+      '계약·해지':['ecom:제17조:①','ecom:제17조:②','ecom:제18조:②','ecom:제18조:⑨','basic:제16조:③']+DOOR,
       '허위·과장 광고':['ecom:제17조:③','ecom:제18조:⑩','ecom:제21조:①:1'],
-      '고객 응대':['ecom:제21조:①:3','ecom:제21조:①:1','basic:제16조:③']}
+      '고객 응대':['ecom:제21조:①:3','ecom:제21조:①:1','basic:제16조:③']+DOOR}
 OPENING='안녕하세요. 소비자제보센터입니다.\n\n먼저 소중한 제보를 보내주셔서 감사합니다.'
 HELP=('■ 도움받을 수 있는 곳\n'
       '- 1372 소비자상담센터: 국번 없이 1372 또는 www.ccn.go.kr 에서 상담을 받을 수 있어요.\n'
@@ -43,8 +46,12 @@ SYSTEM=('너는 소비자제보센터의 제보 분류와 답변 초안을 돕�
         '3) guidance: 제보자에게 줄 법률 안내 2~4문단 배열. [조문 후보]의 내용만 근거로 쉬운 존댓말(해요체)로 쓴다. '
         '조문에 없는 기간·금액·권리를 지어내지 않는다. 기업이 법을 위반했다고 단정하지 않는다("~라면 ~할 수 있어요"처럼 조건으로 쓴다). '
         '개인정보(이름·연락처·주소·계좌·주문번호)는 쓰지 않는다. 조문 번호는 문단에 쓰지 않아도 된다.\n'
-        '4) refs: guidance의 근거가 된 조문 후보 id 1~4개 배열(후보 목록의 id 그대로).\n'
-        '5) steps: 제보자가 할 일 2~4개 배열(예: 업체에 서면으로 요청하고 기록 남기기). 짧은 문장.')
+        '   [조문 후보]에는 온라인 거래(전자상거래법)와 계속거래(방문판매법: 헬스장·학원·필라테스처럼 1개월 이상 이용권 계약) 조문이 섞여 있다. '
+        '제보 상황에 맞는 법만 고른다. 매장에서 직접 맺은 이용권 계약에는 전자상거래법을 쓰지 말고 방문판매법 계속거래 조문을 쓴다. '
+        '맞는 조문이 없으면 끌어다 쓰지 말고, 계약서·약관 확인과 품목별 소비자분쟁해결기준·1372 상담을 중심으로 일반적인 안내만 한다.\n'
+        '4) refs: guidance의 근거가 된 조문 후보 id 0~4개 배열(후보 목록의 id 그대로). 맞는 조문이 없으면 빈 배열.\n'
+        '5) steps: 제보자가 할 일 2~4개 배열(예: 업체에 서면으로 요청하고 기록 남기기). 해요체 짧은 문장.\n'
+        'guidance와 steps는 반드시 문자열의 배열(JSON array)로 쓴다.')
 
 def ref_pool(category):return POOL.get(category,POOL_ALL)
 
@@ -71,8 +78,13 @@ def clean(out,case,pool):
     names=[case['reporter_name']] if 'reporter_name' in case.keys() else []
     s=lambda v:_desk.scrub(str(v).strip(),names)
     track=out.get('track') if out.get('track') in TRACKS else 'story'
-    guidance=[s(p) for p in (out.get('guidance') or []) if str(p).strip()][:4]
-    steps=[s(p) for p in (out.get('steps') or []) if str(p).strip()][:4]
+    def items(v,sep):
+        # AI가 배열 대신 한 덩어리 글로 줄 때가 있어 문단(줄)으로 나눔 (글자 단위로 쪼개지지 않게)
+        if isinstance(v,str):v=[x for x in re.split(sep,v)]
+        if not isinstance(v,list):return []
+        return [re.sub(r'^\s*(\d+[.)]|[-•·])\s*','',str(x)).strip() for x in v if str(x).strip()]
+    guidance=[s(p) for p in items(out.get('guidance'),r'\n\s*\n|\n')][:4]
+    steps=[s(p) for p in items(out.get('steps'),r'\n')][:4]
     refs=[r for r in dict.fromkeys(out.get('refs') or []) if r in pool][:4]  # 후보에 없는 조문은 버림
     if not guidance:raise RuntimeError('AI가 안내 내용을 채우지 못했어요')
     return {'track':track,'reason':s(out.get('reason') or '')[:300],'guidance':guidance,'steps':steps,'refs':refs}
@@ -138,7 +150,12 @@ def install(S):
         elif form=='triage_track':
             track=request.form.get('track')
             if track not in TRACKS:abort(400)
-            save(db,cid,track=track,set_by=who);S.log_case(db,cid,f'분류 변경: {TRACKS[track]}');flash(f'{TRACKS[track]}(으)로 바꿨어요.')
+            save(db,cid,track=track,set_by=who);S.log_case(db,cid,f'분류 변경: {TRACKS[track]}')
+            if track=='auto' and not (t and t['body']) and _desk.ai_ready():
+                # 자동 응답으로 골랐는데 초안이 없으면 바로 만듦 (고른 분류는 그대로)
+                db.commit()  # AI 작업이 따로 여는 연결이 기다리지 않도록 먼저 저장
+                flash('자동 응답으로 바꾸고 답변 초안을 만들었어요. 아래에서 확인해 주세요.' if run(cid,who) else '자동 응답으로 바꿨어요. 답변 초안은 만들지 못했어요. "AI로 분류하기"를 다시 눌러 주세요.')
+            else:flash(f'{TRACKS[track]}(으)로 바꿨어요.')
         elif form=='triage_send':
             body=request.form.get('body','').strip()
             if not body or len(body)>8000:flash('보낼 내용을 확인해 주세요.');return
