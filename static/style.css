@@ -1785,7 +1785,22 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .social-naver svg { width: 15px; height: 15px; }
 .social-or { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; color: #9a9ea5; font-size: 13px; }
 .social-or::before, .social-or::after { content: ""; flex: 1; height: 1px; background: #ececea; }
-.auth-lead { margin: -12px 0 10px; text-align: center; font-size: 15px; line-height: 1.6; color: #6b7079; }
+.auth-lead { margin: -12px 0 10px; text-align: center; word-break: keep-all; font-size: 15px; line-height: 1.6; color: #6b7079; }
+.join-profile { margin: 14px 0 6px; padding: 4px 18px; border-radius: 14px; background: #f6f7f9; }
+.join-profile div { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #ececef; font-size: 15px; }
+.join-profile div:first-child { border-top: 0; }
+.join-profile dt { color: #6b7079; }
+.join-profile dd { margin: 0; font-weight: 600; color: #2b3038; text-align: right; word-break: break-all; }
+.join-profile-note { margin: 8px 0 16px; word-break: keep-all; font-size: 13px; line-height: 1.6; color: #8b9098; text-align: center; }
+.quick-fill { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin: 0 0 18px; padding: 16px 18px; border-radius: 14px; background: #f6f7f9; }
+.quick-fill-text b { display: block; font-size: 15px; color: #2b3038; }
+.quick-fill-text span { font-size: 13px; color: #6b7079; }
+.quick-fill-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.quick-fill .social-btn { height: 42px; padding: 0 16px; font-size: 14px; }
+.quick-fill .social-btn svg { width: 18px; height: 18px; }
+.quick-fill .social-naver svg { width: 14px; height: 14px; }
+.quick-fill-done { margin: -4px 0 14px; font-size: 13px; color: #3182f6; }
+@media (max-width: 560px) { .quick-fill-btns { width: 100%; } .quick-fill .social-btn { flex: 1; } }
 /* 내 정보: 로그인 방법·기업 회원 */
 .me-methods { display: grid; }
 .me-method { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 8px 0; border-top: 1px solid #f0f0f0; }

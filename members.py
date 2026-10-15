@@ -2,7 +2,8 @@
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 주소를 붙인다.
 - 카카오·네이버는 공식 OAuth(인가 코드) 방식. 키가 서버 설정(/etc/soboru.env)에 있을 때만 버튼이 보인다.
-  받은 토큰은 저장하지 않고, 회원 고유번호·이메일·별명만 쓴다.
+  받은 토큰은 저장하지 않고, 회원 고유번호·이메일·닉네임·실명·휴대전화번호만 쓴다.
+  실명·휴대전화번호는 제보 양식 자동 입력용이며 공개 화면에는 나오지 않는다(관리자·본인만).
 - 소셜 이메일이 기존 회원 이메일과 같아도 자동으로 합치지 않는다. 기존 계정으로 로그인한 뒤 내 정보에서 연결한다.
 - 소셜로 로그인해도 기업 소속은 인증되지 않는다. 소속 인증 신청 → 관리자 승인 뒤에만 기업 회원.
 """
@@ -24,6 +25,9 @@ def migrate(db):
     cols={r['name'] for r in db.execute('PRAGMA table_info(users)')}
     if 'kind' not in cols:db.execute("ALTER TABLE users ADD COLUMN kind TEXT NOT NULL DEFAULT 'consumer'")  # consumer / company
     if 'email_verified_at' not in cols:db.execute("ALTER TABLE users ADD COLUMN email_verified_at TEXT NOT NULL DEFAULT ''")
+    # 제보자 실명·휴대전화 (카카오·네이버에서 받았거나 본인이 적은 값). 제보 양식 자동 입력용, 공개 안 함
+    if 'real_name' not in cols:db.execute("ALTER TABLE users ADD COLUMN real_name TEXT NOT NULL DEFAULT ''")
+    if 'phone' not in cols:db.execute("ALTER TABLE users ADD COLUMN phone TEXT NOT NULL DEFAULT ''")
     db.execute('''CREATE TABLE IF NOT EXISTS user_identities(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,provider TEXT NOT NULL,provider_uid TEXT NOT NULL,
         email TEXT NOT NULL DEFAULT '',linked_at TEXT NOT NULL,UNIQUE(provider,provider_uid),UNIQUE(user_id,provider))''')
     db.execute('''CREATE TABLE IF NOT EXISTS company_memberships(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,company_id INTEGER,company_name TEXT NOT NULL,biz_no TEXT NOT NULL,
@@ -45,8 +49,15 @@ def http(method,url,data=None,headers=None,timeout=10):
         try:return e.code,json.loads(e.read().decode() or '{}')
         except Exception:return e.code,{}
 
+def kr_phone(v):
+    """'+82 10-1234-5678' · '01012345678' → '010-1234-5678'. 알아볼 수 없으면 ''."""
+    d=re.sub(r'\D','',v or '')
+    if d.startswith('82'):d='0'+d[2:]
+    if not re.match(r'^01\d{8,9}$',d):return ''
+    return f'{d[:3]}-{d[3:-4]}-{d[-4:]}'
+
 def fetch_profile(p,code,state,redirect_uri):
-    """인가 코드 → {'uid','email','email_verified','nickname'}. 실패하면 None."""
+    """인가 코드 → {'uid','email','email_verified','nickname','name','phone'}. 실패하면 None."""
     cfg=PROVIDERS[p]
     form=dict(grant_type='authorization_code',client_id=secret(cfg['key']),client_secret=secret(cfg['secret']),code=code,redirect_uri=redirect_uri)
     if p=='naver':form['state']=state
@@ -63,12 +74,26 @@ def fetch_profile(p,code,state,redirect_uri):
         email=(acc.get('email') or '').strip()
         verified=bool(email and acc.get('is_email_valid') and acc.get('is_email_verified'))
         nick=((acc.get('profile') or {}).get('nickname') or (me.get('properties') or {}).get('nickname') or '').strip()
+        real=(acc.get('name') or '').strip();phone=kr_phone(acc.get('phone_number'))
     else:
         if me.get('resultcode')!='00':return None
         r=me.get('response') or {}
         uid=str(r.get('id') or '');email=(r.get('email') or '').strip();verified=bool(email);nick=(r.get('nickname') or '').strip()
+        real=(r.get('name') or '').strip();phone=kr_phone(r.get('mobile') or r.get('mobile_e164'))
     if not uid:return None
-    return dict(uid=uid,email=email.lower()[:120],email_verified=verified,nickname=nick)
+    return dict(uid=uid,email=email.lower()[:120],email_verified=verified,nickname=nick,name=real[:40],phone=phone)
+
+def fill_identity(db,uid,prof):
+    """카카오·네이버가 준 실명·휴대전화를 회원 정보의 빈칸에만 채움 (본인이 고친 값은 그대로 둠)."""
+    if prof.get('name'):db.execute("UPDATE users SET real_name=? WHERE id=? AND real_name=''",(prof['name'],uid))
+    if prof.get('phone'):db.execute("UPDATE users SET phone=? WHERE id=? AND phone=''",(prof['phone'],uid))
+
+def auto_nickname(db):
+    """게시판 닉네임 자동 지정 '소비자1234'. 카카오·네이버 닉네임은 실명인 경우가 많아 그대로 쓰지 않음. 내 정보에서 바꿀 수 있음."""
+    for _ in range(50):
+        nick='소비자'+str(secrets.randbelow(9000)+1000)
+        if not db.execute('SELECT 1 FROM users WHERE nickname=?',(nick,)).fetchone():return nick
+    return '소비자'+secrets.token_hex(4)
 
 def install(S):
     app=S.app;conn=S.conn;now=S.now;ui_text=S.ui_text
@@ -119,6 +144,7 @@ def install(S):
                 elif db.execute('SELECT 1 FROM user_identities WHERE user_id=? AND provider=?',(g.user['id'],provider)).fetchone():flash(f'다른 {name} 계정이 이미 연결돼 있어요. 해제한 뒤 다시 연결해 주세요.')
                 else:
                     db.execute('INSERT INTO user_identities(user_id,provider,provider_uid,email,linked_at) VALUES(?,?,?,?,?)',(g.user['id'],provider,prof['uid'],prof['email'],now()))
+                    fill_identity(db,g.user['id'],prof)
                     flash(f'{name} 계정을 연결했어요. 이제 {name}로도 로그인할 수 있어요.')
                 return redirect(url_for('mypage')+'#login-methods')
             if ident:
@@ -127,6 +153,7 @@ def install(S):
                 elif user['status']!='active':flash(ui_text('msg.m29','이용이 제한된 계정이에요. 운영자에게 문의해 주세요.'));return redirect(url_for('login'))
                 else:
                     db.execute("UPDATE users SET last_login=? WHERE id=?",(now(),user['id']))
+                    fill_identity(db,user['id'],prof)
                     S.sign_in(user,True);return redirect(info.get('next') or url_for('home'))
             # 처음 보는 소셜 계정. 같은 이메일 회원이 있으면 합치지 않고 기존 계정 로그인을 안내 (남의 계정에 붙는 일 방지)
             if prof['email'] and db.execute("SELECT 1 FROM users WHERE email=? COLLATE NOCASE AND email!=''",(prof['email'],)).fetchone():
@@ -137,32 +164,26 @@ def install(S):
 
     @app.route('/auth/join',methods=['GET','POST'])
     def social_join():
-        # 소셜 계정으로 처음 오면 약관 동의와 닉네임만 받고 가입
+        # 소셜 계정으로 처음 오면 약관 동의만 받고 가입. 닉네임은 자동으로 정하고(내 정보에서 변경), 실명·휴대전화는 제보 양식에 자동 입력
         pend=session.get('oauth_join')
         if g.user:return redirect(url_for('mypage'))
         if not pend or pend['at']<(datetime.datetime.now()-datetime.timedelta(minutes=30)).isoformat(timespec='seconds'):
             session.pop('oauth_join',None);flash('로그인을 다시 시작해 주세요.');return redirect(url_for('login'))
         name=PROVIDERS[pend['p']]['name']
-        suggest=re.sub(r'[^0-9A-Za-z가-힣_]','',pend.get('nickname') or '')[:12]
-        if request.method=='GET':return render_template('social_join.html',provider=name,nickname=suggest)
-        nick=request.form.get('nickname','').strip()
-        errors=[]
-        if not all(request.form.get(k) for k in ('agree_terms','agree_privacy','agree_age')):errors.append(ui_text('msg.m17','필수 동의 항목을 모두 확인해 주세요.'))
-        if not 2<=len(nick)<=12 or not re.match(r'^[0-9A-Za-z가-힣_]+$',nick):errors.append(ui_text('msg.m22','닉네임은 한글·영문·숫자로 2~12자로 정해 주세요.'))
-        elif nick in ('운영자','관리자','탈퇴한회원') or '운영' in nick or '관리자' in nick:errors.append(ui_text('msg.m23','사용할 수 없는 닉네임이에요.'))
+        view=dict(provider=name,real_name=pend.get('name',''),phone=pend.get('phone',''),email=pend.get('email',''))
+        if request.method=='GET':return render_template('social_join.html',**view)
         with conn() as db:
-            if not errors and db.execute('SELECT 1 FROM users WHERE nickname=?',(nick,)).fetchone():errors.append(ui_text('msg.m26','이미 쓰고 있는 닉네임이에요.'))
-            if not errors and db.execute('SELECT 1 FROM user_identities WHERE provider=? AND provider_uid=?',(pend['p'],pend['uid'])).fetchone():
+            if not all(request.form.get(k) for k in ('agree_terms','agree_privacy','agree_age')):
+                flash(ui_text('msg.m17','필수 동의 항목을 모두 확인해 주세요.'));return render_template('social_join.html',**view),400
+            if db.execute('SELECT 1 FROM user_identities WHERE provider=? AND provider_uid=?',(pend['p'],pend['uid'])).fetchone():
                 session.pop('oauth_join',None);flash('이미 가입된 계정이에요. 다시 로그인해 주세요.');return redirect(url_for('login'))
-            if errors:
-                for e in errors:flash(e)
-                return render_template('social_join.html',provider=name,nickname=nick),400
+            nick=auto_nickname(db)
             for _ in range(5):  # 소셜 회원은 아이디를 쓰지 않음. 겹치지 않는 내부 아이디만 만들어 둠
                 login_id=pend['p'][0]+'_'+secrets.token_hex(5)
                 if not db.execute('SELECT 1 FROM users WHERE login_id=?',(login_id,)).fetchone():break
             email=pend['email'] if pend['email'] and not db.execute("SELECT 1 FROM users WHERE email=? COLLATE NOCASE",(pend['email'],)).fetchone() else ''
-            cur=db.execute("INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created,email_verified_at) VALUES(?,'',?,?,?,?,?,?,?)",
-                           (login_id,nick,email,S.TERMS_VERSION,now(),S.ip_hash(),now(),now() if email and pend['email_verified'] else ''))
+            cur=db.execute("INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created,email_verified_at,real_name,phone) VALUES(?,'',?,?,?,?,?,?,?,?,?)",
+                           (login_id,nick,email,S.TERMS_VERSION,now(),S.ip_hash(),now(),now() if email and pend['email_verified'] else '',pend.get('name',''),pend.get('phone','')))
             db.execute('INSERT INTO user_identities(user_id,provider,provider_uid,email,linked_at) VALUES(?,?,?,?,?)',(cur.lastrowid,pend['p'],pend['uid'],pend['email'],now()))
             user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
         nxt=pend.get('next') or ''
