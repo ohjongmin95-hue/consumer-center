@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -2064,6 +2064,67 @@ class PlatformTest(unittest.TestCase):
             self.post(b,'/biz/connect/email',{'act':'delete'},'/biz/connect/email')
             with self.core.conn() as db:self.assertIsNone(mailin.link(db,cid))
         finally:mailin.imap_open,mailin.fetch,mailin.smtp_send=old
+
+    def test_instagram_dm(self):
+        """인스타그램 DM: 키가 없으면 연동 대기, 로그인으로 잇고, 서명 맞는 웹훅만 받고, 같은 고객은 이어 붙고, 답장은 눌러야 간다."""
+        import instagram, hmac as _h, hashlib, json as _j, urllib.parse as up
+        b,o,cid=self.signup_and_approve('인스타상점','ig-co@example.com')
+        self.assertIn('메타 앱 준비를 마치면',b.get('/biz/connect/instagram').get_data(as_text=True))
+        env={'IG_APP_ID':'app1','IG_APP_SECRET':'sec-ig-1','IG_VERIFY_TOKEN':'verify-1'};old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
+        calls=[];reply={'fail':None}
+        def call(method,url,params=None,form=None,token=None):
+            calls.append((method,url,params,form,token))
+            if 'oauth/access_token' in url:return 200,{'access_token':'short-tok','user_id':'111'}
+            if url.endswith('/access_token'):return 200,{'access_token':'long-tok','expires_in':5184000}
+            if url.endswith('/me'):return 200,{'user_id':'9001','username':'inssa_shop'}
+            if url.endswith('/subscribed_apps'):return 200,{'success':True}
+            if url.endswith('/me/messages'):return (400,{'error':{'code':10,'error_subcode':2534022,'message':'outside window'}}) if reply['fail'] else (200,{'message_id':'mid.out1'})
+            return 200,{'username':'gogaek_kim'}
+        old=instagram._call;instagram._call=call
+        try:
+            # 메타의 콜백 주소 확인
+            self.assertEqual(b.get('/biz/hook/instagram?hub.mode=subscribe&hub.verify_token=verify-1&hub.challenge=ch42').get_data(as_text=True),'ch42')
+            self.assertEqual(b.get('/biz/hook/instagram?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=x').status_code,403)
+            r=self.post(b,'/biz/connect/instagram',{'act':'connect'},'/biz/connect/instagram')
+            self.assertTrue(r.headers['Location'].startswith('https://www.instagram.com/oauth/authorize'))
+            st=up.parse_qs(up.urlparse(r.headers['Location']).query)['state'][0]
+            b.get('/biz/connect/instagram/callback?code=abc%23_&state='+up.quote(st))
+            with self.core.conn() as db:
+                lk=instagram.link(db,cid);self.assertEqual((lk['ig_id'],lk['username'],lk['status']),('9001','inssa_shop','ok'));self.assertNotIn('long-tok',lk['creds'])
+            self.assertIn('@inssa_shop',b.get('/biz/connect').get_data(as_text=True))
+            def hook(msgs,sig=None):
+                raw=_j.dumps({'object':'instagram','entry':[{'id':'9001','time':1,'messaging':msgs}]}).encode()
+                sig=sig or 'sha256='+_h.new(b'sec-ig-1',raw,hashlib.sha256).hexdigest()
+                return self.client().post('/biz/hook/instagram',data=raw,headers={'X-Hub-Signature-256':sig,'Content-Type':'application/json'})
+            m=lambda mid,text,frm='555',**k:{'sender':{'id':frm},'recipient':{'id':'9001'},'timestamp':1,'message':dict(mid=mid,text=text,**k)}
+            self.assertEqual(hook([m('a1','교환 되나요? 사이즈가 커요')],sig='sha256=00').status_code,403)
+            self.assertEqual(hook([m('a1','교환 되나요? 사이즈가 커요')]).status_code,200)
+            hook([m('a1','교환 되나요? 사이즈가 커요')])  # 같은 메시지 두 번
+            hook([m('a2','주문번호는 1234예요'),m('e1','우리 답장',frm='9001',is_echo=True)])
+            with self.core.conn() as db:
+                rows=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='인스타그램 DM'",(cid,)).fetchall()
+                self.assertEqual(len(rows),1);c=rows[0];self.assertEqual(c['name'],'gogaek_kim')
+                self.assertEqual([e[0] for e in db.execute("SELECT text FROM events WHERE case_id=? AND kind='me'",(c['id'],))],['주문번호는 1234예요'])
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'reply','msg':'네, 교환 가능해요. 반품 신청해 주세요.'},f'/biz/case/{c["id"]}')
+            self.assertFalse([x for x in calls if x[1].endswith('/me/messages')])  # 답변 쓰기만으로는 안 나간다
+            self.assertIn('인스타그램 DM으로 답변 보내기',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'post_shop'},f'/biz/case/{c["id"]}')
+            sent=[x for x in calls if x[1].endswith('/me/messages')][-1]
+            self.assertEqual(sent[3],{'recipient':{'id':'555'},'message':{'text':'네, 교환 가능해요. 반품 신청해 주세요.'}});self.assertEqual(sent[4],'long-tok')
+            reply['fail']=True
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'post_shop'},f'/biz/case/{c["id"]}')
+            with self.core.conn() as db:
+                last=db.execute("SELECT text FROM events WHERE case_id=? AND kind='sys' ORDER BY id DESC",(c['id'],)).fetchone()[0]
+            self.assertIn('24시간',last)
+            self.post(b,'/biz/connect/instagram',{'act':'delete'},'/biz/connect/instagram')
+            with self.core.conn() as db:self.assertIsNone(instagram.link(db,cid))
+            self.assertEqual(hook([m('a3','또 문의')]).status_code,200)  # 끊긴 계정의 DM은 받지 않는다
+            with self.core.conn() as db:self.assertEqual(db.execute("SELECT COUNT(*) FROM events WHERE case_id=? AND text='또 문의'",(c['id'],)).fetchone()[0],0)
+        finally:
+            instagram._call=old
+            for k,v in old_env.items():
+                if v is None:os.environ.pop(k,None)
+                else:os.environ[k]=v
 
 
 if __name__=='__main__':unittest.main()

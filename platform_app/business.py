@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops, mailin
 import product_pdf
-import team, inbox, workflow, automations, livechat, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats
+import team, inbox, workflow, automations, livechat, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats, instagram
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -23,7 +23,7 @@ OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
-app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp);app.register_blueprint(cafe24.bp);app.register_blueprint(openapi.bp);app.register_blueprint(aistats.bp)
+app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp);app.register_blueprint(cafe24.bp);app.register_blueprint(openapi.bp);app.register_blueprint(aistats.bp);app.register_blueprint(instagram.bp)
 app.jinja_env.globals.update(has_ep=lambda name:name in app.view_functions)
 
 @app.before_request
@@ -54,11 +54,11 @@ def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
 # 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
-MANAGE_EPS={'macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','connect_email','team_page'}
+MANAGE_EPS={'macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','connect_email','ig.page','ig.callback','team_page'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
 # 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
-DEMO_BLOCKED={'c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','connect','connect_shop','team_page','settings','start','products_pdf','product_import','hook_trace'}
+DEMO_BLOCKED={'c24.page','c24.callback','ig.page','ig.callback','connect_email','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','connect','connect_shop','team_page','settings','start','products_pdf','product_import','hook_trace'}
 @app.before_request
 def role_guard():
     a=who() if not request.path.startswith(('/api/','/hook/','/ops')) else None
@@ -416,7 +416,7 @@ def connect():
     """서비스 연동: 지금 실제로 이어진 것과 준비 중인 것을 그대로 보여 준다."""
     with conn() as db:
         n=db.execute('SELECT channel,COUNT(*) n FROM orders WHERE company_id=? GROUP BY channel',(me()['id'],)).fetchall();by={r['channel']:r['n'] for r in n}
-        lk=shops.links(db,me()['id']);c24=cafe24.link(db,me()['id']);ml=mailin.link(db,me()['id'])
+        lk=shops.links(db,me()['id']);c24=cafe24.link(db,me()['id']);ml=mailin.link(db,me()['id']);ig=instagram.link(db,me()['id'])
     track_on=bool(core.secret('SWEETTRACKER_T_KEY'))
     rows=[]
     for key,spec in shops.SHOPS.items():
@@ -434,6 +434,8 @@ def connect():
            dict(group='알림',name='카카오 알림톡',desc='고객에게 진행 상황을 카카오톡으로 보내요',state='soon',href=''),
            dict(group='상담',name='이메일 문의',desc=((f"{ml['address']} · 문의 {ml['n_inq']}건 가져옴"+(f" · {core.fmt(ml['synced'])}" if ml['synced'] else ' · 곧 가져와요')) if ml['status']=='ok' else ml['note']) if ml else '회사 메일함을 이으면 메일 문의가 요청으로 들어와요',
                 state=('on' if ml['status']=='ok' else 'err') if ml else 'link',href=url_for('connect_email')),
+           dict(group='상담',name='인스타그램 DM',desc=((f"@{ig['username']} · DM {ig['n_inq']}건 받음") if ig['status']=='ok' else ig['note']) if ig else ('인스타그램으로 로그인하면 DM이 요청으로 들어와요' if instagram.ready() else '소보루가 메타 앱 준비를 마치면 열려요'),
+                state=('on' if ig['status']=='ok' else 'err') if ig else ('link' if instagram.ready() else 'wait'),href=url_for('ig.page')),
            dict(group='상담',name='쇼핑몰 문의 버튼',desc=(f"{real()['widget_host']}에 붙어 있어요 · {core.fmt(real()['widget_seen'])} 확인" if real()['widget_seen'] else '쇼핑몰에 한 줄만 붙이면 문의하기 버튼이 생겨요'),state='on' if real()['widget_seen'] else 'link',href=url_for('connect_widget')),
            dict(group='상담',name='AI 상담',desc='고객 채팅에 AI가 먼저 답해요' if chatbot.ready() else '소보루가 연결을 준비하고 있어요',state='on' if chatbot.ready() else 'soon',href=url_for('rules')+'#ai' if chatbot.ready() else '')]
     return render_template('b_connect.html',rows=rows,tab='connect')
@@ -634,6 +636,7 @@ def stats_data(db,co):
     return dict(k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,cmp=cmp,reply_h=reply_h,sla=workflow.report(db,co,rows),conv=insights.conversion(db,co))
 
 notify_consumer=core.notify_consumer
+SEND_VIA={mailin.CHANNEL:'메일로',instagram.CHANNEL:'인스타그램 DM으로'}  # 사람이 눌러야 그 채널로 답이 나가는 곳
 
 def can_ship_track(db,c):
     """배송 조회 요청에 송장을 넣어 답할 수 있는지: 아직 안 넣었고 끝나지 않은 배송 조회 요청."""
@@ -720,10 +723,10 @@ def case(case_id):
                 elif core.throttled('post_shop',limit=20,minutes=10):flash('잠시 후 다시 해 주세요','error')
                 else:
                     e=shops.post_reply(db,me(),c,last['reply'])
-                    by_mail=c['channel']==mailin.CHANNEL
-                    if e:core.add_event(db,c['id'],'sys',('메일을 보내지 못했어요: ' if by_mail else f"{c['channel']}에 답변을 올리지 못했어요: ")+e);flash(e,'error')
+                    via=SEND_VIA.get(c['channel'])
+                    if e:core.add_event(db,c['id'],'sys',(f'{via} 보내지 못했어요: ' if via else f"{c['channel']}에 답변을 올리지 못했어요: ")+e);flash(e,'error')
                     else:
-                        done='메일로 답변을 보냈어요' if by_mail else f"{c['channel']}에 답변을 올렸어요"
+                        done=f'{via} 답변을 보냈어요' if via else f"{c['channel']}에 답변을 올렸어요"
                         core.add_event(db,c['id'],'sys',done);flash(done,'ok')
                 return redirect(url_for('case',case_id=case_id))
             if act in ('tag_add','tag_del','prio','snooze','merge'):
@@ -750,7 +753,7 @@ def case(case_id):
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])];ship_track=can_ship_track(db,c)
         notes=team.notes(db,c['id']);people=team.people(db,me());assignee=team.assignee_name(db,me(),c['assignee'])
         from_shop=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=?',(me()['id'],c['id'])).fetchone()
-        posted=any(e['kind']=='sys' and e['text'].endswith(('에 답변을 올렸어요','메일로 답변을 보냈어요')) for e in ev)
+        posted=any(e['kind']=='sys' and e['text'].endswith(('에 답변을 올렸어요','로 답변을 보냈어요')) for e in ev)
         ctags=inbox.tags_by_case(db,me()['id'],{c['id']}).get(c['id'],[]);all_tags=inbox.tags(db,me()['id']);ms=inbox.macros(db,me()['id'])
         sla=workflow.state(me(),c,workflow.first_replies(db,me()['id']).get(c['id']));
         profile=inbox.customer(db,me(),c);merged=db.execute('SELECT id,no FROM cases WHERE id=?',(c['merged_into'],)).fetchone() if c['merged_into'] else None
