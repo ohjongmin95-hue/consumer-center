@@ -1,4 +1,5 @@
 {% extends 'biz_base.html' %}
+{% from 'social_macros.html' import social_buttons %}
 {% block title %}기업 회원 로그인{% endblock %}
 {% block content %}
 <main class="auth-page">
@@ -8,6 +9,15 @@
       <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
       <h1 class="auth-title">기업 회원 로그인</h1>
       <p class="auth-note">우리 회사에 들어온 소비자 제보를 확인하고 직접 답변해요.</p>
+      {% if g.user %}
+      {# 카카오·네이버로 로그인했지만 아직 기업 화면이 열리지 않은 경우 #}
+      <div class="biz-sso-note">
+        {% if membership and membership['status'] == 'pending' %}<b>소속 인증을 확인하고 있어요</b><p>{{ membership['company_name'] }} 담당자 확인이 끝나면 이 계정으로 바로 기업 화면이 열려요.</p><a href="{{ url_for('me_company') }}">신청 내용 보기</a>
+        {% elif membership and membership['status'] == 'approved' %}<b>기업 화면을 열 수 없어요</b><p>{{ membership['company_name'] }} 기업 계정이 이용 중지 상태예요. 센터로 문의해 주세요.</p>
+        {% else %}<b>기업 소속 인증이 필요해요</b><p>회원으로 로그인돼 있어요. 소속 인증을 신청하면 센터가 확인한 뒤 이 계정으로 기업 화면이 열려요.</p><a class="biz-sso-go" href="{{ url_for('me_company') }}">소속 인증 신청하기</a>{% endif %}
+      </div>
+      <div class="social-or"><span>또는 기업 아이디로</span></div>
+      {% else %}{{ social_buttons('기업 로그인', url_for('biz_home')) }}{% endif %}
       <input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="아이디" aria-label="아이디" value="{{ request.form.get('login_id','') }}">
       <input type="password" name="password" maxlength="64" required autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호">
       <button class="auth-submit" type="submit">로그인</button>

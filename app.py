@@ -265,7 +265,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-87'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-88'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -1759,7 +1759,7 @@ def company_matches(company,case_company):
 
 @app.before_request
 def load_biz():
-    g.biz_user=None;g.company=None;g.biz_preview=False;g.biz_master=False
+    g.biz_user=None;g.company=None;g.biz_preview=False;g.biz_master=False;g.biz_social=False
     if request.path.startswith('/biz') and session.get('biz_master') and session['biz_master']==admin_setting('biz_master_ver'):
         # 대표 전용 마스터 계정: 모든 기업 화면을 골라 보기 (보기 전용)
         g.biz_master=True;g.biz_preview=True;g.biz_user={'id':0,'name':'마스터','session_ver':0,'pw_hash':''}
@@ -1773,7 +1773,14 @@ def load_biz():
             g.company=company;g.biz_preview=True
             g.biz_user={'id':0,'name':'대표 미리보기','session_ver':0,'pw_hash':''};return
     uid=session.get('biz_uid')
-    if not uid:return
+    if not uid:
+        # 카카오·네이버로 로그인한 회원 중 기업 소속이 승인된 담당자 (아이디·비밀번호 없이 기업 화면)
+        if not g.get('user') or not request.path.startswith('/biz'):return
+        with conn() as db:
+            user=db.execute('SELECT * FROM company_users WHERE user_id=?',(g.user['id'],)).fetchone()
+            company=db.execute('SELECT * FROM companies WHERE id=?',(user['company_id'],)).fetchone() if user else None
+        if user and company and company['status'] not in ('rejected','stopped'):g.biz_user=user;g.company=company;g.biz_social=True
+        return
     with conn() as db:
         user=db.execute('SELECT * FROM company_users WHERE id=?',(uid,)).fetchone()
         company=db.execute('SELECT * FROM companies WHERE id=?',(user['company_id'],)).fetchone() if user else None
@@ -1831,7 +1838,10 @@ def biz_signup():
 @app.route('/biz/login',methods=['GET','POST'])
 def biz_login():
     if g.biz_user:return redirect(url_for('biz_home'))
-    if request.method=='GET':return render_template('biz_login.html')
+    if request.method=='GET':
+        # 카카오·네이버로 로그인했지만 기업 소속 승인 전이면 소속 인증 안내를 같이 보여 줌
+        with conn() as db:membership=membership_of(db,g.user['id']) if g.user else None
+        return render_template('biz_login.html',membership=membership)
     login_id=request.form.get('login_id','').strip().lower()[:40];pw=request.form.get('password','')
     if too_many_attempts('biz'):
         flash('로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.');return render_template('biz_login.html'),429
@@ -1845,7 +1855,7 @@ def biz_login():
         user=db.execute('SELECT * FROM company_users WHERE login_id=?',(login_id,)).fetchone()
         if user and user['locked_until'] and user['locked_until']>now():
             flash(f'비밀번호를 여러 번 틀려 잠시 잠겼어요. {LOGIN_LOCK_MINUTES}분 뒤 다시 시도해 주세요.');return render_template('biz_login.html'),429
-        ok=bool(user) and check_password_hash(user['pw_hash'],pw)
+        ok=bool(user) and bool(user['pw_hash']) and check_password_hash(user['pw_hash'],pw)
         if user and not ok:
             failed=user['failed']+1
             lock=(datetime.datetime.now()+datetime.timedelta(minutes=LOGIN_LOCK_MINUTES)).isoformat(timespec='seconds') if failed>=LOGIN_LOCK_FAILS else ''
@@ -1862,7 +1872,8 @@ def biz_login():
 
 @app.route('/biz/logout',methods=['POST'])
 def biz_logout():
-    for key in ('biz_uid','biz_v','biz_master','biz_master_company'):session.pop(key,None)
+    keys=('biz_uid','biz_v','biz_master','biz_master_company')+(('uid','uv') if g.biz_social else ())
+    for key in keys:session.pop(key,None)
     return redirect(url_for('biz_login'))
 
 @app.route('/biz')
@@ -1909,7 +1920,7 @@ def biz_case(case_id):
 @app.route('/biz/password',methods=['GET','POST'])
 @biz_only
 def biz_password():
-    if g.biz_preview:return redirect(url_for('biz_home'))
+    if g.biz_preview or g.biz_social:return redirect(url_for('biz_home'))
     if request.method=='POST':
         cur=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
         if not check_password_hash(g.biz_user['pw_hash'],cur):flash('지금 비밀번호가 맞지 않아요.')
@@ -2017,11 +2028,12 @@ def admin_companies():
                 pw=request.form.get('password','')
                 if not strong_password(pw):flash('새 비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
                 else:
-                    db.execute("UPDATE company_users SET pw_hash=?,session_ver=session_ver+1,failed=0,locked_until='' WHERE company_id=?",(generate_password_hash(pw),cid))
+                    db.execute("UPDATE company_users SET pw_hash=?,session_ver=session_ver+1,failed=0,locked_until='' WHERE company_id=? AND user_id IS NULL",(generate_password_hash(pw),cid))
                     flash(f"{company['name']} 담당자 비밀번호를 바꿨어요. 직접 알려 주세요.")
             else:abort(400)
             return redirect(url_for('admin_companies'))
-        companies=db.execute("""SELECT co.*,(SELECT login_id FROM company_users WHERE company_id=co.id ORDER BY id LIMIT 1) AS login_id,
+        companies=db.execute("""SELECT co.*,(SELECT login_id FROM company_users WHERE company_id=co.id AND user_id IS NULL ORDER BY id LIMIT 1) AS login_id,
+            (SELECT group_concat(name,', ') FROM company_users WHERE company_id=co.id AND user_id IS NOT NULL) AS social_staff,
             (SELECT COUNT(*) FROM cases WHERE company_id=co.id) AS n_cases
             FROM companies co ORDER BY CASE co.status WHEN 'pending' THEN 0 WHEN 'active' THEN 1 WHEN 'listed' THEN 2 ELSE 3 END,co.id DESC""").fetchall()
     claims={r['id']:r['name'] for r in companies if r['status']=='listed'}

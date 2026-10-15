@@ -1185,6 +1185,57 @@ class SiteTest(unittest.TestCase):
             self.assertIsNone(db.execute('SELECT 1 FROM company_memberships').fetchone())
         self.assertFalse((Path(self.temp.name) / 'uploads' / m['evidence_stored']).exists())
 
+    def test_company_member_signs_in_to_biz_with_social_login(self):
+        self.site.BIZ_ON = True
+        self.addCleanup(setattr, self.site, 'BIZ_ON', False)
+        with patch.dict(os.environ, {'KAKAO_REST_API_KEY': 'rest-key', 'KAKAO_CLIENT_SECRET': 'shh'}):
+            login_page = self.client.get('/biz/login').get_data(as_text=True)
+            self.assertIn('카카오로 기업 로그인', login_page)
+            self.assertIn('/auth/kakao/start?next=/biz', login_page)
+            self.assertIn('/auth/kakao/start?next=/me/company', self.client.get('/biz/signup').get_data(as_text=True))
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/companies', {'action': 'create', 'name': '고양이상회'})
+        # 회원 로그인만으로는 기업 화면이 열리지 않고, 소속 인증 안내가 보임
+        self.signup(self.client)
+        self.assertEqual(self.client.get('/biz').headers['Location'], '/biz/login?next=/biz')
+        self.assertIn('기업 소속 인증이 필요해요', self.client.get('/biz/login').get_data(as_text=True))
+        form = {'company_name': '고양이상회', 'biz_no': '123-45-67891', 'person_name': '김담당', 'department': 'CS팀', 'phone': '02-123-4567', 'work_email': 'cs@cat.example', 'agree': 'on'}
+        self.post_form(self.client, '/me/company', form)
+        self.assertIn('소속 인증을 확인하고 있어요', self.client.get('/biz/login').get_data(as_text=True))
+        self.assertEqual(self.client.get('/biz').status_code, 302)
+        with self.site.conn() as db:
+            m = db.execute('SELECT * FROM company_memberships').fetchone()
+        self.post_form(admin, '/admin/members', {'membership_id': m['id'], 'action': 'm_approve'})
+        with self.site.conn() as db:
+            company = db.execute("SELECT * FROM companies WHERE name='고양이상회'").fetchone()
+            seat = db.execute('SELECT * FROM company_users WHERE user_id IS NOT NULL').fetchone()
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM companies').fetchone()[0], 1)  # 미리 등록된 기업에 붙음
+        self.assertEqual((company['status'], company['biz_no'], seat['company_id'], seat['name'], seat['pw_hash']), ('active', '1234567891', company['id'], '김담당', ''))
+        # 승인 뒤에는 같은 회원 로그인으로 기업 화면에 들어감 (비밀번호 변경 화면은 없음)
+        home = self.client.get('/biz')
+        self.assertEqual(home.status_code, 200)
+        self.assertIn('고양이상회 · 김담당', home.get_data(as_text=True))
+        self.assertNotIn('비밀번호 변경', home.get_data(as_text=True))
+        self.assertEqual(self.client.get('/biz/password').headers['Location'], '/biz')
+        self.assertIn('기업 화면으로 가기', self.client.get('/me/company').get_data(as_text=True))
+        # 내부 아이디로 비밀번호 로그인은 안 되고, 관리자 비밀번호 재설정도 간편 로그인 담당자에겐 적용 안 됨
+        other = self.site.app.test_client()
+        self.assertEqual(self.post_form(other, '/biz/login', {'login_id': seat['login_id'], 'password': ''}).status_code, 401)
+        self.assertIn('간편 로그인 김담당', admin.get('/admin/companies').get_data(as_text=True))
+        self.post_form(admin, '/admin/companies', {'action': 'reset', 'id': company['id'], 'password': 'newpass123'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT pw_hash FROM company_users WHERE id=?', (seat['id'],)).fetchone()['pw_hash'], '')
+        # 기업 화면에서 로그아웃하면 회원 로그인도 끝남
+        self.client.post('/biz/logout', data={'_csrf': self.csrf(self.client, '/biz')})
+        self.assertEqual(self.client.get('/me').status_code, 302)
+        # 소속 반려하면 기업 화면 자리도 없어짐
+        self.post_form(self.client, '/login', {'login_id': 'sobo_ru', 'password': 'butter123'})
+        self.assertEqual(self.client.get('/biz').status_code, 200)
+        self.post_form(admin, '/admin/members', {'membership_id': m['id'], 'action': 'm_reject', 'reason': '확인 불가'})
+        self.assertEqual(self.client.get('/biz').status_code, 302)
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM company_users WHERE user_id IS NOT NULL').fetchone())
+
     DESK_REPORT = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '고양이몰', 'subject': '환불이 안 돼요',
                    'description': '홍길동입니다. 9월 1일 산 운동화를 반품했는데 환불이 안 돼요. 연락은 010-1234-5678로 주세요.', 'reporter_name': '홍길동',
                    'phone': '010-1234-5678', 'request_text': '환불해 주세요.', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
