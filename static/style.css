@@ -1117,7 +1117,8 @@ body.console { --ad-ink: #1f2430; --ad-sub: #5d636b; --ad-mute: #8a8f96; --ad-li
 }
 .ad-main main { max-width: none; margin: 0; padding: 0; min-height: 0; }
 .ad-main main.page { padding-top: 0; }
-.ad-main .ad-page, .ad-main .page > .wrap, .ad-main .cs-page { max-width: 1160px !important; }
+/* 관리자·기자실 본문: 넓은 화면에서는 오른쪽 빈 공간까지 쓰되, 아주 넓은 모니터에서는 1760px에서 멈춤 */
+.ad-main .ad-page, .ad-main .page > .wrap, .ad-main .cs-page { max-width: 1760px !important; }
 body.console .ad-main main.page { padding: 0; }
 .ed-actions .ed-delete { border-color: #f0c4be; color: #c0392b; }
 .ed-ghost { color: #b0b3b8; font-size: .85em; font-style: italic; font-weight: 500; }
@@ -1728,9 +1729,7 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 }
 @media (max-width: 640px) {
   .rv-bar { margin-top: 0; }
-  .rv-filter { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
-  .rv-filter::-webkit-scrollbar { display: none; }
-  .rv-filter a { flex-shrink: 0; }
+  .rv-filter a { padding: 6px 11px; }
   .cs-table-list { table-layout: auto; }
   .cs-table-list colgroup, .cs-table-list thead { display: none; }
   .cs-table-list tbody tr { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "no rv pub st" "sub sub sub sub" "co co co dt"; align-items: center; gap: 7px 6px; padding: 14px 16px; border-bottom: 1px solid #f1f0ec; }
@@ -1748,4 +1747,25 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
   .cs-table-list td.cs-empty { grid-column: 1 / -1; }
   .cs-table-list tr.is-new { box-shadow: inset 3px 0 0 var(--orange); }
   .cs-table-list tr.is-new td:first-child { box-shadow: none; }
+}
+
+/* 넓은 관리자 화면 (1500px 이상): 늘어난 폭을 표의 유형·업체 열과 상세 오른쪽 칸에 나눠 줌 */
+@media (min-width: 1500px) {
+  .cs-table-list col.w-cat { width: 150px; } .cs-table-list col.w-co { width: 200px; } .cs-table-list col.w-as { width: 96px; }
+  .ad-main .cs-case { grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; }
+}
+/* 기업·기자 계정 표는 칸이 많아 901~1400px에서도 가로로 넘침 → 한 줄을 3칸 카드로 */
+@media (min-width: 901px) and (max-width: 1400px) {
+  .cs-table-wrap:has(.cs-stack-wide) { overflow: visible; }
+  table.cs-stack-wide, .cs-stack-wide tbody { display: block; width: auto; }
+  .cs-stack-wide thead { display: none; }
+  .cs-stack-wide tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 18px; padding: 16px 18px; border-bottom: 1px solid #f1f0ec; }
+  .cs-stack-wide tbody tr:last-child { border-bottom: 0; }
+  .cs-stack-wide td { display: block; padding: 3px 0 !important; border: 0 !important; white-space: normal; overflow-wrap: anywhere; background: none !important; }
+  .cs-stack-wide td:first-child { grid-column: 1 / -1; }
+  .cs-stack-wide td[data-label]::before { content: attr(data-label); display: block; margin: 4px 0 2px; color: #8a8f96; font-size: 11.5px; font-weight: 700; }
+  .cs-stack-wide td:first-child::before { display: none; }
+  .cs-stack-wide td:empty { display: none; }
+  .cs-stack-wide .cs-inline, .cs-stack-wide .biz-actions, .cs-stack-wide .inline-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cs-stack-wide input:not([type=hidden]):not([type=checkbox]) { max-width: 100%; min-width: 0; }
 }
