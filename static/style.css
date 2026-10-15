@@ -1616,7 +1616,7 @@ details.cs-card[open] > summary::after { content: ' −'; }
 .ad-who { font-weight: 800; color: var(--ad-ink); white-space: nowrap; }
 
 /* 관리자·기자실 모바일 비율 정리 */
-.ad-pipeline { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.ad-pipeline { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .ad-pipeline span { font-size: 12px; text-align: center; word-break: keep-all; line-height: 1.35; }
 @media (max-width: 1100px) { .ad-todo { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 900px) {
@@ -1630,7 +1630,7 @@ details.cs-card[open] > summary::after { content: ' −'; }
   .ad-todo-item span { font-size: 13px; line-height: 1.4; }
   .ad-panel, .ad-main .form-panel, .ad-main .cs-panel { padding: 16px; border-radius: 12px; }
   .ad-kpis b { font-size: 22px; }
-  .ad-pipeline { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+  .ad-pipeline { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
   .ad-pipeline a { padding: 8px 2px; }
   .ad-pipeline b { font-size: 16px; }
   .ad-pipeline span { font-size: 11px; }
@@ -1857,3 +1857,7 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .contact-cases a { color: #c66300; }
 @media (max-width: 1100px) { .contact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .contact-grid { grid-template-columns: 1fr; } }
+
+/* 관리자·기자실 제보 상세: 제보자 메시지·보완 요청 작성 칸 */
+.cs-form textarea.cs-compose { min-height: 240px; padding: 16px 18px; font-size: 15px; line-height: 1.7; resize: vertical; }
+@media (max-width: 640px) { .cs-form textarea.cs-compose { min-height: 200px; } }

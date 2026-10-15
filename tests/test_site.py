@@ -2065,6 +2065,20 @@ class SiteTest(unittest.TestCase):
         case = self.client.get('/case').get_data(as_text=True)
         self.assertIn('aria-current="step"><span class="stepper-dot">3</span><span class="stepper-label">기업 전달', case)
         self.assertIn('현재 단계: 기업 전달</b> 해당 기업에 민원 전달', case)
+        # 관리자·기자실은 6단계: '3. 추가자료 요청'을 따로 고를 수 있고, 제보자 화면에서는 검토로 보임
+        admin = self.login_admin()
+        with self.site.conn() as db:cid = db.execute("SELECT id FROM cases WHERE subject='단계 확인 제보'").fetchone()['id']
+        page = admin.get('/admin/reports/%d' % cid).get_data(as_text=True)
+        self.assertIn('>3. 추가자료 요청</option>', page)
+        self.assertIn('>4. 기업 전달</option>', page)
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'settings', 'status': '추가 확인', 'assignee': ''})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?', (cid,)).fetchone()['status'], '추가 확인')
+            self.assertTrue(db.execute("SELECT 1 FROM case_log WHERE case_id=? AND action LIKE '%기업 전달 → 추가자료 요청%'", (cid,)).fetchone())
+        listing = admin.get('/admin/reports?status=추가 확인').get_data(as_text=True)
+        self.assertIn('단계 확인 제보', listing)
+        self.assertIn('추가자료 요청 <b>1</b>', listing)
+        self.assertNotIn('단계 확인 제보', admin.get('/admin/reports?status=검토 중').get_data(as_text=True))
 
     def test_ops_review_notice_requests_stats(self):
         # 3차: 심사 확인(개인정보 의심·중복 후보), 보완 요청, 추가 자료, 기업 안내 메일(빈도 제한·수신 거부), 정정·삭제·이의 신청, 운영 통계
