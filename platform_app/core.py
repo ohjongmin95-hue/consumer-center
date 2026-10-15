@@ -229,6 +229,10 @@ def init():
         if 'actor' not in {r[1] for r in db.execute('PRAGMA table_info(events)')}:db.execute("ALTER TABLE events ADD COLUMN actor TEXT NOT NULL DEFAULT ''")
         if 'assignee' not in {r[1] for r in db.execute('PRAGMA table_info(cases)')}:db.execute("ALTER TABLE cases ADD COLUMN assignee TEXT NOT NULL DEFAULT ''")
         if 'comp' not in cols:db.execute("ALTER TABLE rules ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
+        # 받은 요청함 도구(inbox.py): 우선순위, 미루기, 합친 곳
+        ccols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
+        for col,kind in (('priority',"TEXT NOT NULL DEFAULT 'normal'"),('snooze_until',"TEXT NOT NULL DEFAULT ''"),('merged_into',"INTEGER NOT NULL DEFAULT 0")):
+            if col not in ccols:db.execute(f'ALTER TABLE cases ADD COLUMN {col} {kind}')
 init()
 
 # 외부 서비스 키: 운영 화면에서 넣은 값이 있으면 그것을, 없으면 서버 설정(/etc/soboru-platform.env)을 쓴다.
@@ -353,7 +357,8 @@ def add_event(db,case_id,kind,text,reply=''):
     # 기업 화면에서 직원이 한 일이면 누가 했는지 남긴다 (business.py가 요청마다 g.actor를 정한다). 고객 화면에는 보이지 않는다.
     actor=(getattr(g,'actor','') or '') if has_request_context() and kind!='me' else ''
     cur=db.execute('INSERT INTO events(case_id,kind,text,reply,created,actor) VALUES(?,?,?,?,?,?)',(case_id,kind,text,reply,iso(),actor))
-    db.execute('UPDATE cases SET updated=? WHERE id=?',(iso(),case_id))
+    # 고객이 새로 글을 남기면 미뤄 둔 요청도 다시 '답변 전'으로 나온다
+    db.execute("UPDATE cases SET updated=?"+(",snooze_until=''" if kind=='me' else '')+" WHERE id=?",(iso(),case_id))
     return cur.lastrowid
 def events(db,case_id):return db.execute('SELECT * FROM events WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
 def case_files(db,case_id):return db.execute('SELECT * FROM files WHERE case_id=? ORDER BY id',(case_id,)).fetchall()

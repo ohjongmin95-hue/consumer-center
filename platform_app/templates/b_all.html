@@ -3,7 +3,31 @@
 {% block bar %}{{ b.bar('all') }}{% endblock %}
 {% block body %}
 <div class="phead"><div><h1>요청</h1></div><div style="display:flex;gap:8px;flex-wrap:wrap">{% if can('manage') and not in_demo %}<a class="btn sm gray" href="{{ url_for('imp.page') }}">지난 문의 가져오기</a>{% endif %}<a class="btn sm" href="{{ url_for('new_case') }}">+ 직접 등록</a></div>
-<form class="searchbar" method="get"><input type="hidden" name="f" value="{{ fil }}"><input name="q" value="{{ q }}" placeholder="제목, 소비자 이름, 접수번호" aria-label="검색"><button class="btn sm gray">검색</button></form></div>
-<div class="tabs">{% for key,l in [('all','전체'),('mine','내 담당'),('none','담당자 없음'),('open','답변 전'),('done','답변 완료'),('bad','지연·미해결'),('ret','반품 회수')]+([('comp','보상 승인')] if groups.comp or fil=='comp' else []) %}<a href="{{ url_for('all_cases',f=key,q=q or None) }}" class="{{ 'on' if fil==key }}">{{ l }}<span>{{ groups[key]|length }}</span></a>{% endfor %}</div>
-{% if rows %}{{ b.case_table(rows,m) }}{% else %}<div class="empty-card"><b>{{ '검색 결과가 없습니다' if q else '해당하는 요청이 없습니다' }}</b></div>{% endif %}
+<form class="searchbar" method="get"><input type="hidden" name="f" value="{{ fil }}">{% if tg %}<input type="hidden" name="t" value="{{ tg }}">{% endif %}{% if sort %}<input type="hidden" name="s" value="{{ sort }}">{% endif %}<input name="q" value="{{ q }}" placeholder="제목, 소비자 이름, 접수번호" aria-label="검색"><button class="btn sm gray">검색</button></form></div>
+<div class="tabs">{% for key,l in [('all','전체'),('mine','내 담당'),('none','담당자 없음'),('open','답변 전'),('done','답변 완료'),('bad','지연·미해결'),('ret','반품 회수')]+([('comp','보상 승인')] if groups.comp or fil=='comp' else [])+([('snz','미뤄 둠')] if groups.snz or fil=='snz' else []) %}<a href="{{ url_for('all_cases',f=key,q=q or None,t=tg or None,s=sort or None) }}" class="{{ 'on' if fil==key }}">{{ l }}<span>{{ groups[key]|length }}</span></a>{% endfor %}</div>
+<div class="listbar">
+{% if all_tags %}<form method="get" class="lb-f"><input type="hidden" name="f" value="{{ fil }}">{% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}{% if sort %}<input type="hidden" name="s" value="{{ sort }}">{% endif %}
+<select class="inp sm" name="t" aria-label="태그로 보기" onchange="this.form.submit()"><option value="">모든 태그</option>{% for t in all_tags %}<option value="{{ t.id }}" {{ 'selected' if tg==t.id|string }}>#{{ t.name }}</option>{% endfor %}</select><noscript><button class="btn sm gray">보기</button></noscript></form>{% endif %}
+<a class="lb-s{{ ' on' if sort=='prio' }}" href="{{ url_for('all_cases',f=fil,q=q or None,t=tg or None,s=None if sort=='prio' else 'prio') }}">{{ '우선순위 순' if sort=='prio' else '최신 순' }}</a>
+<span class="sp"></span>
+{% if can('manage') and rows %}<a class="lb-s" href="{{ url_for('all_csv',f=fil,q=q or None,t=tg or None,s=sort or None) }}">CSV로 받기</a>{% endif %}
+</div>
+{% if rows %}
+{% if can('work') %}<form method="post" action="{{ url_for('all_bulk') }}" id="bulkForm" class="bulk" hidden><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="back" value="{{ request.full_path }}">
+<b id="bulkN">0건 고름</b>
+<select class="inp sm" name="bulk" id="bulkAct" aria-label="한 번에 할 일"><option value="assign">담당자 정하기</option><option value="tag">태그 붙이기</option><option value="prio">우선순위 바꾸기</option><option value="snooze">내일 오전 9시까지 미루기</option><option value="unsnooze">미루기 풀기</option></select>
+<select class="inp sm" name="assignee" data-for="assign" aria-label="담당자"><option value="">담당자 없음</option>{% for k,nm in people %}<option value="{{ k }}">{{ nm }}</option>{% endfor %}</select>
+<input class="inp sm" name="tag" data-for="tag" list="tagList" maxlength="20" placeholder="태그 이름" aria-label="태그 이름" hidden><datalist id="tagList">{% for t in all_tags %}<option value="{{ t.name }}">{% endfor %}</datalist>
+<select class="inp sm" name="prio" data-for="prio" aria-label="우선순위" hidden>{% for k,l in PRIO.items() %}<option value="{{ k }}" {{ 'selected' if k=='high' }}>{{ l }}</option>{% endfor %}</select>
+<input type="hidden" name="when" value="tomorrow"><button class="btn sm">적용</button></form>{% endif %}
+{{ b.case_table(rows,m,sel=can('work'),tagmap=tagmap) }}
+{% else %}<div class="empty-card"><b>{{ '검색 결과가 없습니다' if q else '미뤄 둔 요청이 없어요' if fil=='snz' else '해당하는 요청이 없습니다' }}</b></div>{% endif %}
 {% endblock %}
+{% block script %}<script>
+(function(){var f=document.getElementById('bulkForm');if(!f)return;var boxes=[].slice.call(document.querySelectorAll('input[name=ids]')),all=document.getElementById('selAll'),act=document.getElementById('bulkAct');
+function sync(){var n=boxes.filter(function(b){return b.checked;}).length;f.hidden=!n;document.getElementById('bulkN').textContent=n+'건 고름';if(all)all.checked=n&&n===boxes.length;}
+function field(){[].forEach.call(f.querySelectorAll('[data-for]'),function(e){e.hidden=e.dataset.for!==act.value;});}
+boxes.forEach(function(b){b.addEventListener('change',sync);b.closest('td').addEventListener('click',function(e){e.stopPropagation();});});
+if(all){all.addEventListener('change',function(){boxes.forEach(function(b){b.checked=all.checked;});sync();});all.closest('th').addEventListener('click',function(e){e.stopPropagation();});}
+act.addEventListener('change',field);field();sync();})();
+</script>{% endblock %}
