@@ -7,7 +7,7 @@
 문서: developers.cafe24.com > Admin API > Authentication
 """
 import base64, datetime, json, re, secrets, urllib.parse
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, session, current_app
 import core, shops, orders
 from core import conn, clean, digits
 
@@ -160,8 +160,14 @@ def callback():
     nonce=session.pop('c24_nonce',None)
     if not st or st.get('co')!=co['id'] or not nonce or st.get('n')!=nonce:
         flash('연결 요청이 만료됐거나 다른 브라우저에서 왔어요. 다시 연결해 주세요.','error');return redirect(url_for('c24.page'))
-    if request.args.get('error'):
-        flash('카페24에서 권한 동의를 취소했어요. 다시 연결하려면 권한에 동의해 주세요.','error');return redirect(url_for('c24.page'))
+    err=clean(request.args.get('error',''),60)
+    if err:
+        # 카페24가 돌려준 실제 이유를 보여 줌 (동의 취소만이 아니라 권한·앱 설정 문제도 같은 길로 옴)
+        desc=clean(request.args.get('error_description',''),200)
+        current_app.logger.warning('카페24 연결 거절: %s %s',err,desc)
+        if err=='access_denied' and not desc:msg='카페24에서 권한 동의를 취소했어요. 다시 연결하려면 권한에 동의해 주세요.'
+        else:msg=f'카페24가 연결을 거절했어요 ({err}{": "+desc if desc else ""}). 카페24 앱의 권한(Scope)과 설정을 확인해 주세요.'
+        flash(msg,'error');return redirect(url_for('c24.page'))
     code=request.args.get('code','')
     if not code:flash('카페24가 인증 코드를 보내지 않았어요. 다시 해 주세요.','error');return redirect(url_for('c24.page'))
     try:data=_token(st['mall'],{'grant_type':'authorization_code','code':code,'redirect_uri':redirect_uri()})
