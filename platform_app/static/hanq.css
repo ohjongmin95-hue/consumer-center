@@ -47,6 +47,7 @@ button.rowi:hover{background:var(--fill)}
 .btn:disabled{opacity:.35;pointer-events:none}
 .btn.gray{background:var(--fill);color:var(--fg2)}
 .btn.gray:hover{background:var(--fill2)}
+.btn.danger{background:var(--red);color:#fff}
 .btn.md{height:48px;font-size:16px;border-radius:14px;padding:0 16px}
 .btn.full{width:100%}
 .cta{position:fixed;left:0;right:0;bottom:0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 72%,transparent);z-index:6}

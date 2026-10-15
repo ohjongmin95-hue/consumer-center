@@ -1590,6 +1590,75 @@ class PlatformTest(unittest.TestCase):
             self.post(b,'/biz/connect/cafe24',{'act':'delete'})
             with self.core.conn() as db:self.assertIsNone(c24.link(db,cid))
 
+    def test_cafe24_boards_and_claims(self):
+        """카페24: 문의 게시판 글 -> 요청 (공지·답글 제외, 한 번만) -> 답변을 답글로 올림. 취소(발송 전)·반품 접수(발송 후)는 사장님이 누를 때 한 번만."""
+        shops=sys.modules['shops'];c24=sys.modules['cafe24']
+        b,o,cid=self.signup_and_approve('카페24문의상점','c24b@example.com')
+        sent=[];state={'N':'N10'}
+        orders=[{'order_id':'20261015-0000001','order_date':'2026-10-15T10:00:00+09:00','billing_name':'홍길동','actual_payment_amount':'1000.00',
+                 'items':[{'product_name':'시험상품','quantity':1,'order_status':'N10'}],'receivers':[{'name':'홍길동','cellphone':'010-1234-5678','address1':'서울'}]},
+                {'order_id':'20261015-0000002','order_date':'2026-10-15T11:00:00+09:00','billing_name':'홍길동','actual_payment_amount':'1000.00',
+                 'items':[{'product_name':'시험상품','quantity':1,'order_status':'N30','shipping_company_name':'CJ대한통운','tracking_no':'111122223333'}],'receivers':[{'name':'홍길동','cellphone':'010-1234-5678'}]}]
+        def fake(method,url,headers=None,body=None):
+            path=url.split('/api/v2')[1].split('?')[0]
+            if method=='POST':sent.append((path,json.loads(body)))
+            if path=='/admin/orders':return 200,{'orders':orders}
+            if path=='/admin/boards':return 200,{'boards':[{'board_no':1,'board_name':'공지사항'},{'board_no':6,'board_name':'상품 Q&A'},{'board_no':9,'board_name':'1:1 맞춤상담'}]}
+            if path=='/admin/boards/6/articles' and method=='GET':return 200,{'articles':[
+                {'article_no':10,'parent_article_no':10,'reply_depth':1,'title':'배송 문의','content':'<p>언제 와요?<br>급해요</p>','writer':'홍길동','secret':'T','order_id':'20261015-0000002','created_date':'2026-10-15T12:00:00+09:00','deleted':'F','notice':'F'},
+                {'article_no':11,'parent_article_no':10,'reply_depth':2,'title':'RE: 배송 문의','content':'답글','writer':'상점','notice':'F'},
+                {'article_no':12,'parent_article_no':12,'title':'공지','content':'공지','notice':'T'}]}
+            if path=='/admin/boards/9/articles':return 200,{'articles':[]}
+            if path=='/admin/boards/6/articles':return 201,{'articles':[{'article_no':13}]}
+            if path.startswith('/admin/orders/20261015-0000001') and method=='GET':return 200,{'order':{'items':[{'order_item_code':'A-1','quantity':1,'order_status':state['N']}]}}
+            if path.startswith('/admin/orders/20261015-0000002') and method=='GET':return 200,{'order':{'items':[{'order_item_code':'B-1','quantity':1,'order_status':'N30'}]}}
+            if path.endswith('/cancellation'):return 201,{'cancellation':[{'claim_code':'C1'}]}
+            if path=='/admin/return':return 201,{'returns':[{'claim_code':'R1'}]}
+            return 404,{}
+        with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec'}),patch.object(shops,'http',fake):
+            with self.core.conn() as db:c24.store(db,cid,'myshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00'})
+            r=self.post(b,'/biz/connect/cafe24',{'act':'sync'},follow_redirects=True).get_data(as_text=True)
+            self.assertIn('주문 2건, 새 문의 1건',r);self.assertIn('상품 Q&amp;A',r);self.assertIn('1:1 맞춤상담',r);self.assertNotIn('>공지사항<',r)
+            self.post(b,'/biz/connect/cafe24',{'act':'sync'})  # 같은 글은 한 번만
+            with self.core.conn() as db:
+                rows=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='카페24'",(cid,)).fetchall()
+                self.assertEqual(len(rows),1);self.assertEqual((rows[0]['title'],rows[0]['body'],rows[0]['order_no']),('배송 문의','언제 와요?\n급해요','20261015-0000002'))
+                self.assertEqual(db.execute("SELECT src FROM orders WHERE company_id=? AND order_no='20261015-0000001'",(cid,)).fetchone()[0],'cafe24')
+            case_id=rows[0]['id']
+            self.post(b,f'/biz/case/{case_id}',{'act':'reply','msg':'오늘 출발해요\n<내일 도착>'})
+            self.assertIn('카페24에 답변 올리기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
+            r=self.post(b,f'/biz/case/{case_id}',{'act':'post_shop'},follow_redirects=True)
+            self.assertIn('카페24에 답변을 올렸어요',r.get_data(as_text=True))
+            path,payload=sent[-1];rq=payload['requests'][0]
+            self.assertEqual(path,'/admin/boards/6/articles');self.assertEqual((rq['reply_article_no'],rq['secret'],rq['title']),(10,'T','RE: 배송 문의'))
+            self.assertEqual(rq['content'],'오늘 출발해요<br>&lt;내일 도착&gt;');self.assertTrue(rq['password'])
+            # 게시판 바꾸기: 1:1만 남기면 Q&A는 더 안 본다
+            self.assertIn('공지사항',self.post(b,'/biz/connect/cafe24',{'act':'boards'}).get_data(as_text=True))
+            self.post(b,'/biz/connect/cafe24',{'act':'boards_save','board':'9'})
+            with self.core.conn() as db:self.assertEqual(c24.boards_of(c24.link(db,cid)),[(9,'1:1 맞춤상담')])
+            # 취소: 발송 전 주문
+            with self.core.conn() as db:
+                oa=db.execute("SELECT id FROM orders WHERE company_id=? AND order_no='20261015-0000001'",(cid,)).fetchone()[0]
+                ob=db.execute("SELECT id FROM orders WHERE company_id=? AND order_no='20261015-0000002'",(cid,)).fetchone()[0]
+            page=b.get(f'/biz/order/{oa}').get_data(as_text=True);self.assertIn('카페24에서 주문 취소',page);self.assertNotIn('카페24에 반품 접수',page)
+            r=self.post(b,f'/biz/order/{oa}',{'act':'c24_cancel','reason_type':''},follow_redirects=True);self.assertIn('사유를 골라',r.get_data(as_text=True))
+            r=self.post(b,f'/biz/order/{oa}',{'act':'c24_cancel','reason_type':'A','reason':'단순 변심'},follow_redirects=True).get_data(as_text=True)
+            self.assertIn('카페24에서 주문을 취소했어요',r);self.assertIn('카페24에 취소를 보냈어요',r)
+            path,payload=sent[-1];self.assertEqual(path,'/admin/orders/20261015-0000001/cancellation')
+            self.assertEqual((payload['request']['status'],payload['request']['payment_gateway_cancel'],payload['request']['items']),('canceled','T',[{'order_item_code':'A-1','quantity':1}]))
+            n=len(sent);r=self.post(b,f'/biz/order/{oa}',{'act':'c24_cancel','reason_type':'A'},follow_redirects=True)
+            self.assertEqual(len(sent),n)  # 두 번 보내지 않는다
+            with self.core.conn() as db:self.assertEqual(db.execute('SELECT status FROM orders WHERE id=?',(oa,)).fetchone()[0],'canceled')
+            # 반품 접수: 발송된 주문. 발송된 걸 취소하려 하면 막는다
+            self.assertIn('카페24에 반품 접수',b.get(f'/biz/order/{ob}').get_data(as_text=True))
+            r=self.post(b,f'/biz/order/{ob}',{'act':'c24_cancel','reason_type':'A'},follow_redirects=True);self.assertIn('반품 접수로 처리',r.get_data(as_text=True))
+            r=self.post(b,f'/biz/order/{ob}',{'act':'c24_return','reason_type':'E'},follow_redirects=True).get_data(as_text=True)
+            self.assertIn('카페24에 반품을 접수했어요',r)
+            path,payload=sent[-1];self.assertEqual(path,'/admin/return');self.assertEqual(payload['requests'][0]['status'],'accepted')
+            with self.core.conn() as db:
+                self.assertIn('카페24 반품 접수',db.execute('SELECT memo FROM orders WHERE id=?',(ob,)).fetchone()[0])
+                self.assertTrue(any('반품 접수를 보냈어요' in e['text'] for e in self.core.events(db,case_id)))
+
     def test_external_api_and_webhooks(self):
         """외부 API: 운영자가 켠 회사만, 키 해시 저장, 시험 키는 데모 데이터만, 회사 간 격리, 폐기, 웹훅 서명·기록·내부 주소 차단."""
         import hashlib,hmac as _h

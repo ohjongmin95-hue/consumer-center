@@ -17,7 +17,7 @@ const PUBLIC=['/biz/','/biz/tour','/biz/for','/biz/for/smartstore','/biz/industr
 const ROLES={
   guest:PUBLIC,
   co:['/biz/','/biz/all','/biz/approvals','/biz/new','/biz/news','/biz/orders','/biz/pending','/biz/returns','/biz/rules','/biz/settings','/biz/start',
-      '/biz/stats','/biz/stats/ai','/biz/team','/biz/connect','/biz/import','/biz/report','/biz/guide','CASE',
+      '/biz/stats','/biz/stats/ai','/biz/team','/biz/connect','/biz/connect/cafe24','C24ORDER','/biz/import','/biz/report','/biz/guide','CASE',
       '/biz/tour','/biz/blog','/biz/customers','/biz/help','/biz/partners','/biz/security','/biz/terms','/biz/calculator','/biz/industries','/biz/contact'],
   ops:['/biz/ops','/biz/ops/all','/biz/ops/companies','/biz/ops/content','/biz/ops/copy','/biz/ops/keys','/biz/ops/leads','/biz/ops/marketing','/biz/ops/partners'],
 };
@@ -74,6 +74,9 @@ async function diff(page,a,b,out){
     const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
     await login(p,role);
     let paths=ROLES[role];
+    if(paths.includes('C24ORDER')){await p.goto(H+'/biz/orders');const ls=await p.evaluate(()=>[...new Set([...document.querySelectorAll('a[href*="/biz/order/"]')].map(a=>a.getAttribute('href').replace(/^.*?(\/biz\/order\/\d+)/,'$1')))].slice(0,40));
+      let hit=null;for(const l of ls){await p.goto(H+l);if(await p.evaluate(()=>!!document.querySelector('#c24'))){hit=l;break;}}
+      paths=paths.map(x=>x==='C24ORDER'?hit:x).filter(Boolean);}
     if(paths.includes('CASE')){await p.goto(H+'/biz/all');const c=await p.evaluate(()=>{const a=document.querySelector('a[href*="/biz/case/"]');return a&&a.getAttribute('href').replace(/^.*?(\/biz\/case\/\d+)/,'$1')});paths=paths.map(x=>x==='CASE'?c:x).filter(Boolean);}
     for(const u of paths)for(const w of WIDTHS){
       await p.setViewportSize({width:w,height:900});
