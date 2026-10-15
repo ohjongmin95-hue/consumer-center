@@ -15,6 +15,7 @@ PRIO={'urgent':'급함','high':'높음','normal':'보통','low':'낮음'}
 PRIO_ORDER={'urgent':0,'high':1,'normal':2,'low':3}
 COLORS=('blue','green','amber','red','purple','gray')
 MAX_TAGS=40;MAX_MACROS=60
+BACK=('canceled','returned','refunded','exchanged')  # 주문 장부의 취소·반품·환불·교환
 VARS=('{고객명}','{주문번호}','{상품}','{택배사}','{송장번호}','{접수번호}','{가게이름}')
 
 def init():
@@ -143,12 +144,20 @@ def merge(db,co,src,target_no):
 # ---------- 고객 프로필 ----------
 def customer(db,co,c):
     """같은 고객(휴대폰 번호나 이메일이 같은)의 다른 요청과 주문."""
-    if not c['phone'] and not c['email']:return {'cases':[],'orders':[]}
+    if not c['phone'] and not c['email']:return {'cases':[],'orders':[],'money':None}
     cases=db.execute("SELECT id,no,title,category,status,created FROM cases WHERE company_id=? AND member=1 AND consent=1 AND id!=? AND ((phone!='' AND phone=?) OR (email!='' AND lower(email)=lower(?))) ORDER BY id DESC LIMIT 6",
                      (co['id'],c['id'],c['phone'],c['email'])).fetchall()
     orders=db.execute("SELECT id,order_no,product,status,ordered_on,amount FROM orders WHERE company_id=? AND phone!='' AND phone=? ORDER BY ordered_on DESC,id DESC LIMIT 5",(co['id'],c['phone'])).fetchall() if c['phone'] else []
     n=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND member=1 AND consent=1 AND ((phone!='' AND phone=?) OR (email!='' AND lower(email)=lower(?)))",(co['id'],c['phone'],c['email'])).fetchone()[0]
-    return {'cases':cases,'orders':orders,'n':n}
+    # 주문 장부 기준 합계: 결제한 금액과 취소·반품·환불된 금액 (장부에 금액이 있는 주문만)
+    money=None
+    if c['phone']:
+        rows=db.execute("SELECT order_no,product,status,amount,ordered_on,id FROM orders WHERE company_id=? AND phone=?",(co['id'],c['phone'])).fetchall()
+        if rows:
+            back=[r for r in rows if r['status'] in BACK]
+            money=dict(n=len(rows),paid=sum(r['amount'] for r in rows),back_n=len(back),back=sum(r['amount'] for r in back),
+                       claims=sorted(back,key=lambda r:r['ordered_on'],reverse=True)[:5])
+    return {'cases':cases,'orders':orders,'n':n,'money':money}
 
 # ---------- 일괄 처리 ----------
 def bulk(db,co,rows,form,people):

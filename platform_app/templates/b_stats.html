@@ -8,6 +8,12 @@
 {% if sla.n %}<div class="slab"><b>{{ sla.pct }}<small>%</small></b><span>최근 {{ sla.days }}일 {{ sla.n }}건 중 {{ sla.met }}건을 {{ sla.hours }}시간 안에 첫 답변했어요</span></div>
 <div class="nprog big"><i style="width:{{ sla.pct }}%"></i></div>{% else %}<p class="sub" style="margin:0">아직 셀 요청이 없어요. 목표 시간이 지나거나 답한 요청부터 셉니다.</p>{% endif %}
 <p class="cap" style="margin:12px 0 0">산식: 최근 {{ sla.days }}일에 들어온 요청 중 목표 시간이 지났거나 이미 답한 요청을 모수로, 영업시간만 세어 {{ sla.hours }}시간 안에 첫 답변한 비율. 자동 처리·시험 문의·영업시간 외 자동 안내는 빼요.</p></div>{% endif %}
+<div class="grid2">
+<div class="panel"><div class="ph">첫 답변까지</div>{% if reply_h is not none %}<div class="slab"><b>{{ reply_h }}<small>시간</small></b><span>중간값</span></div>{% else %}<p class="sub" style="margin:0">아직 답한 요청이 없어요.</p>{% endif %}
+<p class="cap" style="margin:12px 0 0">산식: 답한 요청마다 들어온 때부터 첫 답변까지 걸린 시간의 중간값</p></div>
+<div class="panel"><div class="ph">상담 후 구매</div>{% if conv.pct is not none %}<div class="slab"><b>{{ conv.pct }}<small>%</small></b><span>{{ conv.n }}명 중 {{ conv.won }}명{% if conv.amount %} · {{ '{:,}'.format(conv.amount) }}원{% endif %}</span></div>{% else %}<p class="sub" style="margin:0">아직 셀 요청이 없어요.</p>{% endif %}
+<p class="cap" style="margin:12px 0 0">산식: 최근 {{ conv.days }}일 요청 고객(휴대폰 번호 기준) 중 요청한 날부터 {{ conv.window }}일 안에 주문 장부에 새 주문이 생긴 비율. 요청에 적힌 주문은 빼요.</p></div>
+</div>
 <div class="panel" style="margin-bottom:20px"><div class="ph">주별 요청</div>
 <div class="vbars">{% for lab,cnt in weeks %}<div><b>{{ cnt }}</b><span class="tr">{% if cnt %}<i style="height:{{ (cnt/top*100)|round|int }}%"></i>{% endif %}</span><small>{{ lab }}</small></div>{% endfor %}</div></div>
 <div class="grid2">

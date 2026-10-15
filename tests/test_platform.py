@@ -1948,4 +1948,27 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:self.assertFalse(db.execute('SELECT 1 FROM automations WHERE id=?',(rid,)).fetchone())
 
 
+    def test_widget_conversion_money(self):
+        """문의 버튼 설치 확인, 상담 후 구매 전환, 요청 화면의 주문·환불 합계."""
+        import datetime as dt
+        b,o,cid=self.signup_and_approve('전환상점','conv-co@example.com')
+        self.assertIn('아직 붙이지 않았어요',b.get('/biz/connect/widget').get_data(as_text=True))
+        c=self.client();c.get(f'/widget.js?c={cid}',headers={'Referer':'https://myshop.example.com/product/1'})
+        page=b.get('/biz/connect/widget').get_data(as_text=True)
+        self.assertIn('myshop.example.com에 붙어 있어요',page)
+        self.assertIn('myshop.example.com에 붙어 있어요',b.get('/biz/connect').get_data(as_text=True))
+        case=self.file_case(self.client(),'전환상점','반품·환불',company_id=cid)
+        today=dt.date.today()
+        with self.core.conn() as db:
+            ph=db.execute('SELECT phone FROM cases WHERE id=?',(case,)).fetchone()[0];t=self.core.iso()
+            for no,day,amt,st in (('A-1',today-dt.timedelta(days=20),30000,'refunded'),('A-2',today+dt.timedelta(days=0),45000,'paid'),('A-3',today-dt.timedelta(days=40),10000,'delivered')):
+                db.execute("INSERT INTO orders(company_id,order_no,ordered_on,phone,product,amount,status,created,updated) VALUES(?,?,?,?,?,?,?,?,?)",(cid,no,day.isoformat(),ph,'원피스',amt,st,t,t))
+            conv=sys.modules['insights'].conversion(db,self.core.company(db,cid))
+        self.assertEqual((conv['n'],conv['won'],conv['pct'],conv['amount']),(1,1,100,45000))  # 요청 뒤 주문 A-2만 센다
+        stats=b.get('/biz/stats').get_data(as_text=True)
+        self.assertIn('상담 후 구매',stats);self.assertIn('45,000원',stats);self.assertIn('14일 안에',stats)
+        pg=b.get(f'/biz/case/{case}').get_data(as_text=True)
+        self.assertIn('취소·반품·환불 내역',pg);self.assertIn('85,000원',pg);self.assertIn('30,000원',pg)
+
+
 if __name__=='__main__':unittest.main()
