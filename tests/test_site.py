@@ -77,7 +77,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('group_members', 'damage_groups', 'company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings'):
+            for table in ('group_members', 'damage_groups', 'company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings', 'user_identities', 'company_memberships'):
                 db.execute('DELETE FROM ' + table)
 
     def old_guide(self):
@@ -959,6 +959,186 @@ class SiteTest(unittest.TestCase):
         dup = self.signup(other, login_id='SOBO_RU', nickname='다른이름')
         self.assertIn('이미 쓰고 있는 아이디', dup.get_data(as_text=True))
         self.assertIn('이미 쓰고 있는 닉네임', self.signup(other, login_id='another', nickname='소보루').get_data(as_text=True))
+
+    def test_email_login_and_link_old_case(self):
+        self.signup(self.site.app.test_client(), email='Sobo@Example.com')
+        # 같은 이메일로는 또 가입할 수 없음
+        dup = self.signup(self.site.app.test_client(), login_id='another', nickname='다른이름', email='sobo@example.com')
+        self.assertIn('이미 가입한 이메일', dup.get_data(as_text=True))
+        self.assertIn('아이디 또는 이메일', self.client.get('/login').get_data(as_text=True))
+        bad = self.post_form(self.client, '/login', {'login_id': 'sobo@example.com', 'password': 'wrong-pass1'})
+        self.assertEqual(bad.status_code, 401)
+        ok = self.post_form(self.client, '/login', {'login_id': 'SOBO@example.com', 'password': 'butter123'})
+        self.assertEqual(ok.status_code, 302)
+        self.assertIn('소보루님', self.client.get('/me').get_data(as_text=True))
+        # 로그인 전에 접수한 제보: 접수번호 + 휴대폰 + 조회 비밀번호가 모두 맞아야 연결
+        guest = self.site.app.test_client()
+        self.post_form(guest, '/report', {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '테스트몰', 'subject': '비회원 제보', 'description': '배송이 오지 않았어요.', 'reporter_name': '홍길동', 'phone': '010-1234-5678', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '5678', 'lookup_pw2': '5678', 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'})
+        with self.site.conn() as db:
+            case = db.execute("SELECT id,receipt,user_id FROM cases WHERE subject='비회원 제보'").fetchone()
+        self.assertIsNone(case['user_id'])
+        me = self.client.get('/me').get_data(as_text=True)
+        self.assertIn('로그인 전에 접수한 제보 연결하기', me)
+        wrong = self.post_me(self.client, '/me/link-case', {'receipt': case['receipt'], 'phone': '010-1234-5678', 'password': '0000'})
+        self.assertEqual(wrong.status_code, 302)
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute('SELECT user_id FROM cases WHERE id=?', (case['id'],)).fetchone()['user_id'])
+        self.post_me(self.client, '/me/link-case', {'receipt': case['receipt'].lower(), 'phone': '01012345678', 'password': '5678'})
+        with self.site.conn() as db:
+            self.assertIsNotNone(db.execute('SELECT user_id FROM cases WHERE id=?', (case['id'],)).fetchone()['user_id'])
+            self.assertTrue(db.execute("SELECT 1 FROM case_log WHERE case_id=? AND action LIKE '%회원 계정에 연결'", (case['id'],)).fetchone())
+        self.assertIn('비회원 제보', self.client.get('/me').get_data(as_text=True))
+        # 다른 회원은 이미 연결된 제보를 가져갈 수 없음
+        other = self.site.app.test_client()
+        self.signup(other, login_id='other_one', nickname='다른사람')
+        self.post_me(other, '/me/link-case', {'receipt': case['receipt'], 'phone': '010-1234-5678', 'password': '5678'})
+        with self.site.conn() as db:
+            owner = db.execute('SELECT u.login_id FROM cases c JOIN users u ON u.id=c.user_id WHERE c.id=?', (case['id'],)).fetchone()['login_id']
+        self.assertEqual(owner, 'sobo_ru')
+
+    def post_me(self, client, path, data):
+        return client.post(path, data={'_csrf': self.csrf(client, '/me'), **data})
+
+    def kakao_fake(self, uid='4242', email='kim@kakao.test', nickname='김카카오'):
+        calls = []
+        def fake(method, url, data=None, headers=None, timeout=10):
+            calls.append((method, url, data, headers))
+            if 'oauth/token' in url:
+                return 200, {'access_token': 'tok-' + uid}
+            return 200, {'id': int(uid), 'kakao_account': {'email': email, 'is_email_valid': True, 'is_email_verified': True, 'profile': {'nickname': nickname}}}
+        return calls, fake
+
+    def social_round(self, client, fake, start='/auth/kakao/start'):
+        r = client.get(start)
+        self.assertEqual(r.status_code, 302)
+        loc = r.headers['Location']
+        self.assertTrue(loc.startswith('https://kauth.kakao.com/oauth/authorize?'))
+        state = re.search(r'state=([^&]+)', loc)[1]
+        with patch.object(self.site.members, 'http', fake):
+            return client.get(f'/auth/kakao/callback?code=abc&state={state}')
+
+    def test_kakao_login_signup_link_and_withdraw(self):
+        self.assertNotIn('카카오로', self.client.get('/login').get_data(as_text=True))  # 키가 없으면 버튼도 없음
+        self.assertEqual(self.client.get('/auth/kakao/start').status_code, 404)
+        with patch.dict(os.environ, {'KAKAO_REST_API_KEY': 'rest-key', 'KAKAO_CLIENT_SECRET': 'shh'}):
+            self.assertIn('카카오로 로그인', self.client.get('/login').get_data(as_text=True))
+            calls, fake = self.kakao_fake()
+            # 다른 브라우저에서 시작한 state는 거절
+            self.client.get('/auth/kakao/start')
+            with patch.object(self.site.members, 'http', fake):
+                forged = self.client.get('/auth/kakao/callback?code=abc&state=forged')
+            self.assertEqual(forged.headers['Location'], '/login')
+            self.assertEqual(calls, [])
+            # 처음이면 동의 화면을 거쳐 가입
+            r = self.social_round(self.client, fake)
+            self.assertEqual(r.headers['Location'], '/auth/join')
+            token_call = calls[0]
+            self.assertEqual(token_call[2]['client_secret'], 'shh')
+            self.assertEqual(token_call[2]['redirect_uri'], 'http://localhost/auth/kakao/callback')
+            page = self.client.get('/auth/join').get_data(as_text=True)
+            self.assertIn('카카오로 가입하기', page)
+            self.assertIn('value="김카카오"', page)
+            self.assertEqual(self.post_form(self.client, '/auth/join', {'nickname': '김카카오'}).status_code, 400)
+            joined = self.post_form(self.client, '/auth/join', {'nickname': '김카카오', 'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            self.assertEqual(joined.status_code, 302)
+            with self.site.conn() as db:
+                user = db.execute("SELECT * FROM users WHERE nickname='김카카오'").fetchone()
+                ident = db.execute('SELECT * FROM user_identities WHERE user_id=?', (user['id'],)).fetchone()
+            self.assertEqual((user['pw_hash'], user['email'], ident['provider'], ident['provider_uid']), ('', 'kim@kakao.test', 'kakao', '4242'))
+            self.assertTrue(user['email_verified_at'])
+            self.assertNotIn('tok-4242', json.dumps([dict(r) for r in [user, ident]]))  # 토큰은 저장하지 않음
+            me = self.client.get('/me').get_data(as_text=True)
+            self.assertIn('카카오로 가입', me)
+            self.assertIn('비밀번호 만들기', me)
+            # 소셜 회원은 비밀번호가 없어 아이디 로그인 불가
+            self.assertEqual(self.post_form(self.site.app.test_client(), '/login', {'login_id': user['login_id'], 'password': ''}).status_code, 401)
+            # 로그인 방법이 하나뿐이면 해제 불가
+            self.post_me(self.client, '/me/social/kakao/unlink', {})
+            with self.site.conn() as db:
+                self.assertTrue(db.execute('SELECT 1 FROM user_identities WHERE user_id=?', (user['id'],)).fetchone())
+            # 다시 오면 바로 로그인
+            again = self.site.app.test_client()
+            self.assertEqual(self.social_round(again, fake).headers['Location'], '/')
+            self.assertIn('김카카오님', again.get('/me').get_data(as_text=True))
+            # 같은 이메일의 기존 회원이 있으면 합치지 않음
+            self.signup(self.site.app.test_client(), login_id='lee_id', nickname='이아이디', email='lee@kakao.test')
+            _, fake2 = self.kakao_fake(uid='777', email='lee@kakao.test', nickname='이카카오')
+            blocked = self.social_round(self.site.app.test_client(), fake2)
+            self.assertEqual(blocked.headers['Location'], '/login')
+            with self.site.conn() as db:
+                self.assertIsNone(db.execute("SELECT 1 FROM user_identities WHERE provider_uid='777'").fetchone())
+            # 기존 회원은 로그인한 뒤 내 정보에서 연결
+            lee = self.site.app.test_client()
+            self.post_form(lee, '/login', {'login_id': 'lee_id', 'password': 'butter123'})
+            linked = self.social_round(lee, fake2, '/auth/kakao/start?link=1')
+            self.assertEqual(linked.headers['Location'], '/me#login-methods')
+            self.assertIn('연결됨', lee.get('/me').get_data(as_text=True))
+            # 이미 다른 회원에게 연결된 카카오 계정은 연결 안 됨
+            self.social_round(lee, fake, '/auth/kakao/start?link=1')
+            with self.site.conn() as db:
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM user_identities WHERE provider_uid='4242'").fetchone()[0], 1)
+            # 비밀번호가 있으면 해제 가능
+            self.post_me(lee, '/me/social/kakao/unlink', {})
+            with self.site.conn() as db:
+                self.assertIsNone(db.execute("SELECT 1 FROM user_identities WHERE provider_uid='777'").fetchone())
+            # 소셜 회원 탈퇴: 비밀번호 없이 확인만, 연결 정보도 삭제
+            out = self.post_me(self.client, '/me/withdraw', {'confirm': 'on'})
+            self.assertEqual(out.status_code, 302)
+            with self.site.conn() as db:
+                self.assertIsNone(db.execute('SELECT 1 FROM users WHERE id=?', (user['id'],)).fetchone())
+                self.assertIsNone(db.execute('SELECT 1 FROM user_identities WHERE user_id=?', (user['id'],)).fetchone())
+
+    def test_naver_profile_and_state(self):
+        with patch.dict(os.environ, {'NAVER_CLIENT_ID': 'nid', 'NAVER_CLIENT_SECRET': 'nsec'}):
+            r = self.client.get('/auth/naver/start')
+            self.assertTrue(r.headers['Location'].startswith('https://nid.naver.com/oauth2.0/authorize?'))
+            state = re.search(r'state=([^&]+)', r.headers['Location'])[1]
+            seen = []
+            def fake(method, url, data=None, headers=None, timeout=10):
+                seen.append(data)
+                if 'oauth2.0/token' in url:
+                    return 200, {'access_token': 'nt'}
+                return 200, {'resultcode': '00', 'response': {'id': 'naver-uid-1', 'email': 'park@naver.test', 'nickname': '박네이버!'}}
+            with patch.object(self.site.members, 'http', fake):
+                self.assertEqual(self.client.get(f'/auth/naver/callback?code=c&state={state}').headers['Location'], '/auth/join')
+            self.assertEqual(seen[0]['state'], state)
+            self.assertIn('value="박네이버"', self.client.get('/auth/join').get_data(as_text=True))
+            # 같은 state로 다시 들어오면 거절 (한 번만 씀)
+            with patch.object(self.site.members, 'http', fake):
+                self.assertEqual(self.client.get(f'/auth/naver/callback?code=c&state={state}').headers['Location'], '/login')
+
+    def test_company_membership_request_and_approval(self):
+        self.signup(self.client)
+        self.assertIn('소속 인증 신청', self.client.get('/me').get_data(as_text=True))
+        form = {'company_name': '고양이상회', 'biz_no': '123-45-67891', 'person_name': '김담당', 'department': 'CS팀', 'phone': '02-123-4567', 'work_email': 'cs@cat.example', 'agree': 'on'}
+        bad = self.post_form(self.client, '/me/company', dict(form, biz_no='111-11-11111'))
+        self.assertEqual(bad.status_code, 400)
+        token = self.csrf(self.client, '/me/company')
+        made = self.client.post('/me/company', data={'_csrf': token, **form, 'evidence': (io.BytesIO(b'%PDF-1.4 test'), 'card.pdf')}, content_type='multipart/form-data')
+        self.assertEqual(made.status_code, 302)
+        page = self.client.get('/me/company').get_data(as_text=True)
+        self.assertIn('확인 중', page)
+        with self.site.conn() as db:
+            m = db.execute('SELECT * FROM company_memberships').fetchone()
+            self.assertEqual(db.execute("SELECT kind FROM users WHERE login_id='sobo_ru'").fetchone()['kind'], 'consumer')
+        self.assertTrue((Path(self.temp.name) / 'uploads' / m['evidence_stored']).exists())
+        # 기업 소속 신청만으로는 기업 화면·제보에 접근할 수 없음
+        self.assertEqual(self.client.get(f"/admin/memberships/{m['id']}/evidence").status_code, 302)
+        admin = self.login_admin()
+        listing = admin.get('/admin/members').get_data(as_text=True)
+        self.assertIn('고양이상회', listing)
+        self.assertIn('확인 대기 1', listing)
+        self.assertEqual(admin.get(f"/admin/memberships/{m['id']}/evidence").status_code, 200)
+        self.post_form(admin, '/admin/members', {'membership_id': m['id'], 'action': 'm_approve'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT kind FROM users WHERE login_id='sobo_ru'").fetchone()['kind'], 'company')
+            self.assertEqual(db.execute('SELECT status FROM company_memberships').fetchone()['status'], 'approved')
+        self.assertIn('기업 회원', self.client.get('/me').get_data(as_text=True))
+        # 탈퇴하면 신청과 증빙 파일도 지움
+        self.post_me(self.client, '/me/withdraw', {'password': 'butter123', 'confirm': 'on'})
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM company_memberships').fetchone())
+        self.assertFalse((Path(self.temp.name) / 'uploads' / m['evidence_stored']).exists())
 
     def test_login_lock_mypage_and_withdraw(self):
         self.signup(self.site.app.test_client())

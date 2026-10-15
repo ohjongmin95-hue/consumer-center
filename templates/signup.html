@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}회원가입 | {{ txt('site.name') }}{% endblock %}
+{% from 'social_macros.html' import social_buttons %}
 {% block content %}
 <main class="auth-page">
   <div class="auth-card auth-card-wide">
@@ -7,13 +8,13 @@
       <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
       <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
       <h1 class="auth-title">{{ ui('common.signup', '회원가입') }}</h1>
-      {% if not enabled %}<p class="auth-note">{{ ui('member.signup_closed', '회원가입은 곧 열려요.') }}</p>{% endif %}
+      {% if not enabled %}<p class="auth-note">{{ ui('member.signup_closed', '회원가입은 곧 열려요.') }}</p>{% else %}{{ social_buttons('시작하기') }}{% endif %}
 
       <input name="login_id" maxlength="20" required pattern="[A-Za-z0-9_]{4,20}" autocapitalize="off" spellcheck="false" placeholder="{{ ui('member.id_ph', '아이디 (영문 소문자·숫자 4~20자)') }}" aria-label="{{ ui('member.id', '아이디') }}" value="{{ request.form.get('login_id','') }}">
       <input type="password" name="password" minlength="8" maxlength="64" required autocomplete="new-password" placeholder="{{ ui('member.pw_ph', '비밀번호 (영문+숫자 8자 이상)') }}" aria-label="{{ ui('member.pw', '비밀번호') }}">
       <input type="password" name="password2" minlength="8" maxlength="64" required autocomplete="new-password" placeholder="{{ ui('member.pw2', '비밀번호 확인') }}" aria-label="{{ ui('member.pw2', '비밀번호 확인') }}">
       <input name="nickname" maxlength="12" required placeholder="{{ ui('member.nick_ph', '닉네임 (2~12자, 게시판에 보여요)') }}" aria-label="{{ ui('board.nickname', '닉네임') }}" value="{{ request.form.get('nickname','') }}">
-      <input type="email" name="email" maxlength="120" placeholder="{{ ui('member.email_ph', '이메일 (선택)') }}" aria-label="{{ ui('member.email_ph', '이메일 (선택)') }}" value="{{ request.form.get('email','') }}">
+      <input type="email" name="email" maxlength="120" placeholder="{{ ui('member.email_ph2', '이메일 (선택, 이메일로도 로그인)') }}" aria-label="{{ ui('member.email_ph', '이메일 (선택)') }}" value="{{ request.form.get('email','') }}">
 
       <div class="agree-box">
         <label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all', '모두 동의합니다') }}</span></label>

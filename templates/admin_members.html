@@ -6,18 +6,39 @@
     <p>전체 회원 {{ total }}명. 정지하면 바로 로그아웃되고 다시 로그인할 수 없어요. 비밀번호는 암호화되어 있어 운영자도 볼 수 없어요.</p>
     <form class="report-tools" method="get"><input name="q" value="{{ q }}" placeholder="아이디나 닉네임으로 찾기" aria-label="회원 검색"><button class="search-button" type="submit">찾기</button></form>
   </div>
+  {% set pending = memberships|selectattr('status', 'equalto', 'pending')|list %}
+  <section class="form-panel" id="memberships">
+    <div class="me-section-head"><h2>기업 소속 인증 신청{% if pending %} <span class="pill">확인 대기 {{ pending|length }}</span>{% endif %}</h2></div>
+    <p class="meta">사업자등록번호와 회사 이메일, 증빙을 확인한 뒤 승인해요. 승인해도 지금은 기업 회원 표시만 바뀌고, 제보를 볼 수 있는 권한은 생기지 않아요.</p>
+    {% if memberships %}<div class="tablewrap"><table class="cs-stack">
+      <tr><th>신청</th><th>기업</th><th>담당자</th><th>증빙</th><th>상태</th><th></th></tr>
+      {% for m in memberships %}
+      <tr>
+        <td>{{ m['created'][:10] }}<br><span class="meta">{{ m['nickname'] }}</span></td>
+        <td><b>{{ m['company_name'] }}</b><br><span class="meta">{{ m['biz_no']|biz_no }}{% if m['company_id'] %} · 등록 기업과 사업자번호 같음{% endif %}</span></td>
+        <td>{{ m['person_name'] }}{% if m['department'] %} · {{ m['department'] }}{% endif %}<br><span class="meta">{{ m['work_email'] }} · {{ m['phone'] }}</span></td>
+        <td>{% if m['evidence_stored'] %}<a class="text-link" href="{{ url_for('admin_membership_file', mid=m['id']) }}">내려받기</a>{% else %}-{% endif %}</td>
+        <td>{{ MEMBERSHIP_STATUSES[m['status']] }}{% if m['reason'] %}<br><span class="meta">{{ m['reason'] }}</span>{% endif %}</td>
+        <td>{% if m['status'] == 'pending' %}<form class="inline-actions" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="membership_id" value="{{ m['id'] }}">
+          <button class="secondary" name="action" value="m_approve" onclick="return confirm('이 회원의 기업 소속을 승인할까요?')">승인</button>
+          <input name="reason" maxlength="300" placeholder="반려 사유 (회원에게 보여요)" aria-label="반려 사유"><button class="secondary danger" name="action" value="m_reject">반려</button></form>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table></div>{% else %}<p class="meta">아직 신청이 없어요.</p>{% endif %}
+  </section>
+
   <div class="tablewrap"><table class="cs-stack">
-    <tr><th>아이디</th><th>닉네임</th><th>이메일</th><th>제보·글</th><th>가입일 / 최근 로그인</th><th>상태</th><th></th></tr>
+    <tr><th>아이디</th><th>가입 방법</th><th>닉네임</th><th>이메일</th><th>제보·글</th><th>가입일 / 최근 로그인</th><th>상태</th><th></th></tr>
     {% for m in members %}
     <tr>
-      <td>{{ m['login_id'] }}</td><td>{{ m['nickname'] }}</td><td>{{ m['email'] or '-' }}</td><td>{{ m['n_cases'] }} · {{ m['n_posts'] }}</td>
+      <td>{{ m['login_id'] if m['has_pw'] else '-' }}</td><td>{% set ps = (m['providers'] or '').split(',')|select|list %}{% if m['has_pw'] %}아이디{% endif %}{% for p in ps %}{% if m['has_pw'] or not loop.first %} · {% endif %}{{ SOCIAL_NAMES.get(p, p) }}{% endfor %}{% if m['kind'] == 'company' %}<br><span class="pill">기업</span>{% endif %}</td><td>{{ m['nickname'] }}</td><td>{{ m['email'] or '-' }}</td><td>{{ m['n_cases'] }} · {{ m['n_posts'] }}</td>
       <td>{{ m['created'][:10] }}<br><span class="meta">{{ m['last_login'][:16]|replace('T', ' ') or '-' }}</span></td>
       <td>{% if m['status'] == 'active' %}정상{% else %}<span class="pill">정지</span>{% endif %}</td>
       <td><form class="inline-actions" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ m['id'] }}">
         {% if m['status'] == 'active' %}<button class="secondary" name="action" value="suspend" onclick="return confirm('이 회원의 이용을 정지할까요?')">정지</button>{% else %}<button class="secondary" name="action" value="restore">정지 풀기</button>{% endif %}
         <input type="hidden" name="delete_posts" value="1"><button class="secondary danger" name="action" value="delete" onclick="return confirm('회원과 그 회원의 게시판 글·댓글을 모두 지울까요? 되돌릴 수 없어요.')">삭제</button></form></td>
     </tr>
-    {% else %}<tr><td colspan="7" class="meta">{{ '찾는 회원이 없어요.' if q else '아직 가입한 회원이 없어요.' }}</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="8" class="meta">{{ '찾는 회원이 없어요.' if q else '아직 가입한 회원이 없어요.' }}</td></tr>{% endfor %}
   </table></div>
 </div></main>
 {% endblock %}
