@@ -26,7 +26,7 @@ LIFE_PAGE = 12
 RANK_DAYS = 30
 # 메인 화면 순서 (관리자 > 메인 화면 순서)
 HOME_SECTIONS = [('top', '맨 위 큰 카드'), ('box', '제보하기 상자'), ('cases', '새로 올라온 제보'), ('rank', '이달의 기업 답변 · 커뮤니티 인기글'),
-                 ('life', '알아 두면 돈 버는 생활정보'), ('tools', '제보 안내 바로가기')]
+                 ('life', '알아 두면 돈 버는 생활정보')]  # 제보 안내 바로가기는 '소비자 제보' 메뉴 안으로 옮김
 HOME_KINDS = {'report': '소비자 제보', 'life': '생활정보'}
 HOME_PERIODS = [(1, '1시간'), (3, '3시간'), (6, '6시간'), (12, '12시간'), (24, '하루')]
 HOME_DEFAULT = {'slots': ['report', 'life'], 'hours': 6, 'pins': [], 'sections': [[k, 1] for k, _ in HOME_SECTIONS]}

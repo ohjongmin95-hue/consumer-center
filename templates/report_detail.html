@@ -20,7 +20,9 @@
         <h2>원하는 해결 방법</h2>
         <p class="cs-text">{{ case['request_text'] }}</p>
         <h2>첨부파일</h2>
-        {% for f in files %}<p><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a></p>{% else %}<p class="cs-muted">없음</p>{% endfor %}
+        {% for f in files %}<p id="{{ 'files' if loop.first else '' }}"><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a>{% if ep.list == 'admin_reports' and art_photo is defined and art_photo(f['stored']) and case['public_consent'] %}
+          <form method="post" action="{{ url_for('admin_report_cover', case_id=case['id']) }}" class="cs-cover"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="file_id" value="{{ 0 if f['cover'] else f['id'] }}">{% if f['cover'] %}<b class="cs-cover-on">대표 사진 공개 중</b> <button class="cs-btn">내리기</button>{% else %}<button class="cs-btn" title="개인정보(이름·번호·얼굴)가 없는지 확인한 뒤 눌러 주세요">대표 사진 공개</button>{% endif %}</form>{% endif %}</p>{% else %}<p class="cs-muted">없음</p>{% endfor %}
+        {% if ep.list == 'admin_reports' and files %}<p class="cs-muted">대표 사진으로 고른 사진 하나만 제보 카드와 상세 화면에 보여요. 이름·전화번호·카드번호·얼굴이 보이면 고르지 마세요. 고르지 않으면 AI 일러스트가 붙어요.</p>{% endif %}
       </section>
 
       {# AI 분류와 법률 안내 답변: 취재 검토 / 자동 응답. 근거 조문은 국가법령정보센터 원문(law_texts.json)에 있는 것만 #}

@@ -272,7 +272,8 @@ class SiteTest(unittest.TestCase):
             self.assertIn('생활정보 카드 제목', home)
             self.assertIn('공개 제보 카드 제목', home)
             self.assertNotIn('sb-report-box', home)  # 끈 묶음은 빠짐
-            self.assertLess(home.index('sb-top'), home.index('sb-tools'))
+            self.assertNotIn('sb-tools', home)  # 제보 안내 바로가기는 메뉴로 옮김
+            self.assertIn('피해 유형별 안내', home)
             self.assertNotIn('010-1234-5678', home)
             # 주기마다 맨 위가 제보 ↔ 생활정보로 바뀜
             kinds = set()
@@ -340,6 +341,20 @@ class SiteTest(unittest.TestCase):
                 with self.site.conn() as db: db.execute('UPDATE cases SET published=1 WHERE id=?', (cid2,))
                 admin.post('/admin/art/fill', data={'_csrf': self.csrf(admin, '/admin/art'), 'kind': 'report'})
             self.assertEqual(visitor.get(f'/art/report/{cid2}.webp').status_code, 200)
+            # 대표 사진: 관리자가 고른 첨부 사진만 공개, 고르면 AI 그림 대신 사진
+            (Path(self.site.UPLOAD) / 'cover-test.png').write_bytes(b'\x89PNG fake')
+            with self.site.conn() as db:
+                fid = db.execute("INSERT INTO attachments(case_id,stored,original) VALUES(?,'cover-test.png','영수증.png')", (cid2,)).lastrowid
+            self.assertEqual(visitor.get(f'/reports/{cid2}/cover').status_code, 404)
+            page = admin.get(f'/admin/reports/{cid2}').get_data(as_text=True)
+            self.assertIn('대표 사진 공개', page)
+            admin.post(f'/admin/reports/{cid2}/cover', data={'_csrf': self.csrf(admin, f'/admin/reports/{cid2}'), 'file_id': fid})
+            self.assertEqual(visitor.get(f'/reports/{cid2}/cover').status_code, 200)
+            detail = visitor.get(f'/reports/{cid2}').get_data(as_text=True)
+            self.assertIn(f'/reports/{cid2}/cover', detail)
+            self.assertIn('제보자 사진', detail)
+            admin.post(f'/admin/reports/{cid2}/cover', data={'_csrf': self.csrf(admin, f'/admin/reports/{cid2}'), 'file_id': 0})
+            self.assertEqual(visitor.get(f'/reports/{cid2}/cover').status_code, 404)
         finally:
             with self.site.conn() as db:
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")

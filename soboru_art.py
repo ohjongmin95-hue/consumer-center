@@ -16,6 +16,7 @@ import threading
 from flask import abort, flash, g, redirect, render_template, request, send_file, url_for
 
 KINDS = ('report', 'life')
+PHOTO = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
 # 토스 피드 그림 느낌: 단색 배경 + 부드러운 입체 물건 한두 개(때로는 손), 글자 없음
 STYLE = ('Soft 3D illustration in the style of a Korean fintech app feed thumbnail: smooth matte clay-like objects with gentle gradients and soft shadows, '
          'one or two everyday objects (sometimes simple stylized hands, no faces) floating in the center, slightly tilted, generous empty space, '
@@ -39,6 +40,9 @@ def install(S):
     with conn() as db:
         db.execute("CREATE TABLE IF NOT EXISTS soboru_art(kind TEXT NOT NULL,target_id INTEGER NOT NULL,file TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'draft',"
                    "created TEXT NOT NULL,PRIMARY KEY(kind,target_id))")
+        # 대표 사진: 관리자가 제보 첨부 사진 중 하나를 골라 공개 (기본은 모두 비공개)
+        if 'cover' not in {r['name'] for r in db.execute('PRAGMA table_info(attachments)')}:
+            db.execute('ALTER TABLE attachments ADD COLUMN cover INTEGER NOT NULL DEFAULT 0')
 
     def now(): return datetime.datetime.now().isoformat(timespec='seconds')
 
@@ -49,7 +53,17 @@ def install(S):
                 g._art_live = {(r['kind'], r['target_id']): r['file'] for r in db.execute("SELECT * FROM soboru_art WHERE status='live'")}
         return g._art_live
 
+    def covers():
+        # 공개·게시된 제보의 대표 사진 {제보 번호: 첨부 번호}
+        if g.get('_art_cover') is None:
+            with conn() as db:
+                g._art_cover = {r['case_id']: r['id'] for r in db.execute(
+                    "SELECT a.id,a.case_id FROM attachments a JOIN cases c ON c.id=a.case_id WHERE a.cover=1 AND c.public_consent=1 AND c.published=1 AND c.review NOT IN ('rejected','duplicate')")}
+        return g._art_cover
+
     def art_url(kind, target_id):
+        if kind == 'report' and target_id in covers():
+            return url_for('report_cover', case_id=target_id, v=covers()[target_id])
         f = live().get((kind, target_id))
         return url_for('art_image', kind=kind, target_id=target_id, v=f[-12:-5]) if f else ''
 
@@ -102,6 +116,28 @@ def install(S):
         if not r or (r['status'] != 'live' and not S.admin_active()) or not (folder / r['file']).is_file(): abort(404)
         resp = send_file(folder / r['file'], mimetype='image/webp', max_age=86400 if r['status'] == 'live' else 0)
         return resp
+
+    @app.route('/reports/<int:case_id>/cover')
+    def report_cover(case_id):
+        fid = covers().get(case_id)
+        if not fid: abort(404)
+        with conn() as db: f = db.execute('SELECT * FROM attachments WHERE id=?', (fid,)).fetchone()
+        ext = os.path.splitext(f['stored'])[1].lower()
+        if ext not in PHOTO or not (S.UPLOAD / f['stored']).is_file(): abort(404)
+        return send_file(S.UPLOAD / f['stored'], mimetype=PHOTO[ext], max_age=86400)
+
+    @app.route('/admin/reports/<int:case_id>/cover', methods=['POST'])
+    @S.admin_only
+    def admin_report_cover(case_id):
+        fid = request.form.get('file_id', type=int) or 0
+        with conn() as db:
+            if fid:
+                f = db.execute('SELECT * FROM attachments WHERE id=? AND case_id=?', (fid, case_id)).fetchone()
+                if not f or os.path.splitext(f['stored'])[1].lower() not in PHOTO: abort(400)
+            db.execute('UPDATE attachments SET cover=CASE WHEN id=? THEN 1 ELSE 0 END WHERE case_id=?', (fid, case_id))
+            S.log_case(db, case_id, '대표 사진 공개' if fid else '대표 사진 내림')
+        flash('이 사진을 대표 사진으로 공개했어요. 제보 카드와 상세 화면에 보여요.' if fid else '대표 사진을 내렸어요.')
+        return redirect(url_for('admin_report', case_id=case_id) + '#files')
 
     @app.route('/admin/art')
     @S.admin_only
@@ -159,6 +195,6 @@ def install(S):
             else: abort(400)
         return back
 
-    app.jinja_env.globals.update(art_url=art_url)
+    app.jinja_env.globals.update(art_url=art_url, art_photo=lambda stored: os.path.splitext(stored)[1].lower() in PHOTO)
     S.art_draw = draw; S.art_auto = auto
     app.extensions['soboru_art'] = {'auto': auto, 'draw': draw}
