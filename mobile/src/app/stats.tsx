@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { BarLine, Card, H2, Loading, MenuRow, Notice, Screen } from '../components/ui';
 import { api } from '../lib/api';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 import { useLoad } from '../lib/useLoad';
 
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? '-' : `${v}%`);
@@ -78,17 +78,17 @@ export default function Stats() {
 function Big({ label, v }: { label: string; v: string }) {
   return (
     <View style={st.big}>
-      <Text style={{ fontSize: 13, color: C.fg3, fontWeight: '600' }}>{label}</Text>
-      <Text style={{ fontSize: 22, fontWeight: '700', color: C.fg, letterSpacing: -0.6 }}>{v}</Text>
+      <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ fontFamily: FONT, fontSize: 22, fontWeight: '700', color: C.fg, letterSpacing: -0.6 }}>{v}</Text>
     </View>
   );
 }
 function Cmp({ label, mine, avg }: { label: string; mine: string; avg: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <Text style={{ flex: 1, fontSize: 15, color: C.fg2, fontWeight: '600' }}>{label}</Text>
-      <Text style={{ fontSize: 15, fontWeight: '700', color: C.accentInk, width: 80, textAlign: 'right' }}>우리 {mine}</Text>
-      <Text style={{ fontSize: 15, color: C.fg3, width: 90, textAlign: 'right' }}>평균 {avg}</Text>
+      <Text style={{ flex: 1, fontFamily: FONT, fontSize: 15, color: C.fg2, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ fontFamily: FONT, fontSize: 15, fontWeight: '700', color: C.accentInk, width: 80, textAlign: 'right' }}>우리 {mine}</Text>
+      <Text style={{ fontFamily: FONT, fontSize: 15, color: C.fg3, width: 90, textAlign: 'right' }}>평균 {avg}</Text>
     </View>
   );
 }
@@ -97,7 +97,7 @@ const st = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 16, marginTop: 8, marginBottom: 12 },
   big: { flexGrow: 1, flexBasis: '45%', backgroundColor: C.card, borderRadius: 16, padding: 16, gap: 6 },
   weeks: { flexDirection: 'row', alignItems: 'flex-end' },
-  wn: { fontSize: 12, fontWeight: '700', color: C.fg2 },
-  wl: { fontSize: 11, color: C.fg3 },
-  p: { fontSize: 15, lineHeight: 22, color: C.fg2 },
+  wn: { fontFamily: FONT, fontSize: 12, fontWeight: '700', color: C.fg2 },
+  wl: { fontFamily: FONT, fontSize: 11, color: C.fg3 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 22, color: C.fg2 },
 });

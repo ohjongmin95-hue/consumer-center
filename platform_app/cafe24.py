@@ -159,17 +159,58 @@ def sync_boards(db,co):
             rows=d.get('articles') or []
             for a in sorted(rows,key=lambda x:str(x.get('created_date') or '')):
                 no=int(a.get('article_no') or 0);parent=int(a.get('parent_article_no') or 0)
-                if not no or a.get('notice')=='T' or (a.get('deleted') or 'F')!='F' or (parent and parent!=no) or int(a.get('reply_depth') or 0)>1:continue  # 공지·지운 글·답글은 빼고
+                if not no or a.get('notice')=='T' or (a.get('deleted') or 'F')!='F':continue  # 공지·지운 글은 빼고
+                if (parent and parent!=no) or int(a.get('reply_depth') or 0)>1:  # 답글: 고객이 같은 문의에 이어 쓴 것만 그 요청에 붙인다
+                    follow(db,co,lk,bno,parent,f"a{bno}:{no}",a.get('writer') or a.get('nick_name') or '',text_of(a.get('content')),a.get('secret')=='T');continue
                 c=shops._case(db,co,'cafe24',dict(ext_id=f"b{bno}:{no}:{'s' if a.get('secret')=='T' else 'p'}",title=a.get('title') or '',body=text_of(a.get('content')),
                     name=a.get('writer') or a.get('nick_name') or '',order_no=str(a.get('order_id') or ''),product='',at=str(a.get('created_date') or '')[:16].replace('T',' '),channel='카페24'))
                 if c:new.append(c)
             if len(rows)<100:break
             offset+=100
+    sync_comments(db,co,lk)
     db.execute('UPDATE cafe24_links SET since_b=?,n_inq=n_inq+? WHERE company_id=?',(core.iso(now),len(new),co['id']))
     return new
+OPEN_COMMENTS=30  # 한 번에 댓글을 확인하는 진행 중 요청 수 (호출을 아끼려고)
+def sync_comments(db,co,lk):
+    """진행 중인 카페24 문의 글에 고객이 단 댓글을 그 요청에 붙인다."""
+    fin=','.join('?'*len(core.FINAL))
+    rows=db.execute(f'''SELECT s.ext_id,c.id FROM shop_seen s JOIN cases c ON c.id=s.case_id WHERE s.company_id=? AND s.shop='cafe24' AND s.ext_id LIKE 'b%'
+        AND c.status NOT IN ({fin}) ORDER BY c.updated DESC LIMIT ?''',(co['id'],*core.FINAL,OPEN_COMMENTS)).fetchall()
+    for r in rows:
+        m=re.fullmatch(r'b(\d+):(\d+):([sp])',r['ext_id'])
+        if not m:continue
+        bno,no=int(m[1]),int(m[2])
+        db.commit()  # 카페24를 기다리는 동안 DB를 잠그지 않게
+        try:d=api(db,co['id'],f'/admin/boards/{bno}/articles/{no}/comments',{'limit':100})
+        except shops.ShopError:continue  # 댓글을 못 읽어도 새 글 가져오기는 계속한다
+        for cm in sorted(d.get('comments') or [],key=lambda x:str(x.get('created_date') or '')):
+            if not cm.get('comment_no'):continue
+            follow(db,co,lk,bno,no,f"c{bno}:{no}:{cm['comment_no']}",cm.get('writer') or cm.get('nick_name') or '',text_of(cm.get('content')),m[3]=='s')
+def mine(co,lk,writer):
+    """우리(가게)가 쓴 글·댓글인지: 소보루가 올린 답글의 글쓴이와 같거나 관리자 이름."""
+    w=(writer or '').strip()
+    return bool(w) and w in {clean(lk['shop_name'] or co['name'],40),co['name'],lk['shop_name'] or '','관리자','운영자'}
+def follow(db,co,lk,bno,parent,ext,writer,text,secret):
+    """카페24 문의 글에 이어진 답글·댓글 하나. 진행 중이면 그 요청에 붙이고, 끝난 요청이면 새 요청으로 받는다."""
+    if mine(co,lk,writer) or db.execute("SELECT 1 FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id=?",(co['id'],ext)).fetchone():return None
+    root=db.execute("SELECT case_id FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id IN (?,?) ORDER BY rowid LIMIT 1",(co['id'],f'b{bno}:{parent}:s',f'b{bno}:{parent}:p')).fetchone()
+    if not root:return None  # 소보루가 가져온 적 없는 글에 달린 것
+    c=db.execute('SELECT * FROM cases WHERE id=?',(root['case_id'],)).fetchone()
+    if c and c['name'] and clean(writer,20)!=c['name']:return None  # 처음 글쓴 고객이 쓴 것만 (다른 사람·가게 답글은 빼고)
+    text=text or '(내용 없음)'
+    if c and c['status'] not in core.FINAL:
+        core.add_event(db,c['id'],'me',text);core.notify_company_msg(db,c['id'],text)
+        if c['status'] in ('answered','info'):db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],))
+        db.execute('UPDATE cases SET updated=? WHERE id=?',(core.iso(),c['id']))
+        db.execute("INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)",(co['id'],'cafe24',ext,c['id']));return c
+    # 끝난 요청에 다시 쓰면 새 요청 (답변은 처음 글에 답글로 올라간다)
+    n=shops._case(db,co,'cafe24',dict(ext_id=f"b{bno}:{parent}:{'s' if secret else 'p'}:{ext}",title='다시 문의: '+((c['title'] if c else '') or '카페24 문의'),body=text,
+        name=writer,order_no=(c['order_no'] if c else ''),product='',at='',channel='카페24'))
+    if n:core.notify_company_new(co,n)
+    return n
 def post_reply(db,co,c,ext_id,text):
     """소보루에서 쓴 답변을 카페24 게시판 답글로 올린다. 올리면 '', 못 올리면 이유."""
-    m=re.fullmatch(r'b(\d+):(\d+):([sp])',ext_id or '')
+    m=re.fullmatch(r'b(\d+):(\d+):([sp])(?::.*)?',ext_id or '')  # 끝난 문의에 다시 단 글이면 뒤에 그 글 표시가 붙는다
     if not m:return '카페24 게시판에서 가져온 문의가 아니에요.'
     bno,no,sec=int(m[1]),int(m[2]),m[3]=='s'
     lk=link(db,co['id'])

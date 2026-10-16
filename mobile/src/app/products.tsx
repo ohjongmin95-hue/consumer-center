@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Btn, Card, Chips, Field, Loading, Notice, Screen } from '../components/ui';
 import { api, Product, Products } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 import { errText, useLoad } from '../lib/useLoad';
 
 const EMPTY: Product = { id: 0, name: '', price: '', stock: '', info: '' };
@@ -91,8 +91,8 @@ function ProductCard({ p, stocks, token, onSaved }: { p: Product; stocks: Produc
 
 const st = StyleSheet.create({
   head: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16 },
-  p: { fontSize: 15, lineHeight: 23, color: C.fg2 },
-  name: { fontSize: 16, fontWeight: '700', color: C.fg },
-  sub: { fontSize: 14, lineHeight: 21, color: C.fg2 },
-  label: { fontSize: 14, fontWeight: '600', color: C.fg2 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 },
+  name: { fontFamily: FONT, fontSize: 16, fontWeight: '700', color: C.fg },
+  sub: { fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.fg2 },
+  label: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2 },
 });

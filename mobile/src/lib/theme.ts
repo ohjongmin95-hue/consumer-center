@@ -11,7 +11,7 @@ export const C = {
   fg4: '#B0B8C1',
   line: '#E5E8EB',
   fill: '#F2F4F6',
-  band: '#F6F7F9',
+  band: '#F2F4F6', // 토스처럼 바탕은 연회색, 그 위에 흰 카드
   card: '#FFFFFF',
   green: '#12A26A',
   greenSoft: '#E5F6EE',
@@ -19,7 +19,7 @@ export const C = {
   redSoft: '#FDECEE',
 };
 
-export const R = { sm: 12, md: 16, lg: 20, xl: 26 };
+export const R = { sm: 12, md: 16, lg: 24, xl: 28 };
 
 export const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
   received: { bg: C.fill, fg: C.fg2 },
@@ -32,3 +32,6 @@ export const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
   unresolved: { bg: C.redSoft, fg: C.red },
   withdrawn: { bg: C.fill, fg: C.fg3 },
 };
+
+// 글꼴: 프리텐다드 (assets/fonts, SIL OFL). 굵기는 fontWeight로 고른다 (안드로이드는 expo-font 설정으로 한 가족으로 묶음)
+export const FONT = 'Pretendard';

@@ -8,7 +8,7 @@ import { CAT_ICON, Icon } from '../../components/Icon';
 import { Btn, Card, Chips, Field, H2, Loading, Notice, StatusPill } from '../../components/ui';
 import { api, ApiError, BizDetail, fmtDate } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { C, R } from '../../lib/theme';
+import { C, R, FONT } from '../../lib/theme';
 
 type Mode = '' | 'ask' | 'reply';
 
@@ -363,26 +363,26 @@ function ModeBtn({ title, on, onPress }: { title: string; on: boolean; onPress: 
 
 const st = StyleSheet.create({
   ic: { width: 52, height: 52, borderRadius: 16, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
-  cat: { fontSize: 14, fontWeight: '600', color: C.fg3, marginBottom: 2 },
-  title: { fontSize: 19, fontWeight: '700', color: C.fg, letterSpacing: -0.5, lineHeight: 26 },
+  cat: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg3, marginBottom: 2 },
+  title: { fontFamily: FONT, fontSize: 19, fontWeight: '700', color: C.fg, letterSpacing: -0.5, lineHeight: 26 },
   kv: { gap: 8, marginTop: 16, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
-  k: { width: 76, fontSize: 14, color: C.fg3 },
-  v: { flex: 1, fontSize: 14, fontWeight: '600', color: C.fg },
-  eyebrow: { fontSize: 13, fontWeight: '700', color: C.accentInk, marginBottom: 6 },
-  planTitle: { fontSize: 19, fontWeight: '700', color: C.fg, letterSpacing: -0.5 },
-  step: { fontSize: 15, color: C.fg2 },
+  k: { width: 76, fontFamily: FONT, fontSize: 14, color: C.fg3 },
+  v: { flex: 1, fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg },
+  eyebrow: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.accentInk, marginBottom: 6 },
+  planTitle: { fontFamily: FONT, fontSize: 19, fontWeight: '700', color: C.fg, letterSpacing: -0.5 },
+  step: { fontFamily: FONT, fontSize: 15, color: C.fg2 },
   quote: { backgroundColor: C.band, borderRadius: R.md, padding: 14, gap: 6 },
-  quoteLabel: { fontSize: 13, fontWeight: '700', color: C.fg3 },
-  quoteText: { fontSize: 15, lineHeight: 23, color: C.fg },
+  quoteLabel: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.fg3 },
+  quoteText: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg },
   mode: { flex: 1, height: 44, borderRadius: R.sm, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
-  modeText: { fontSize: 15, fontWeight: '700', color: C.fg2 },
-  label: { fontSize: 15, fontWeight: '600', color: C.fg2 },
-  p: { fontSize: 15, lineHeight: 22, color: C.fg2 },
-  cap: { fontSize: 13, lineHeight: 19, color: C.fg3, textAlign: 'center' },
-  body: { fontSize: 16, lineHeight: 25, color: C.fg },
-  file: { fontSize: 14, fontWeight: '600', color: C.accentInk },
+  modeText: { fontFamily: FONT, fontSize: 15, fontWeight: '700', color: C.fg2 },
+  label: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 22, color: C.fg2 },
+  cap: { fontFamily: FONT, fontSize: 13, lineHeight: 19, color: C.fg3, textAlign: 'center' },
+  body: { fontFamily: FONT, fontSize: 16, lineHeight: 25, color: C.fg },
+  file: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.accentInk },
   dot: { width: 9, height: 9, borderRadius: 5, marginTop: 7 },
-  evText: { fontSize: 15, fontWeight: '600', color: C.fg },
-  evReply: { fontSize: 15, lineHeight: 23, color: C.fg2, backgroundColor: C.band, borderRadius: R.sm, padding: 12 },
-  evTime: { fontSize: 13, color: C.fg3 },
+  evText: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg },
+  evReply: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2, backgroundColor: C.band, borderRadius: R.sm, padding: 12 },
+  evTime: { fontFamily: FONT, fontSize: 13, color: C.fg3 },
 });

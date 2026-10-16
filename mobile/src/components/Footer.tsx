@@ -2,7 +2,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 
 const FALLBACK = { name: '소보루', ceo: '오규섭', biz_no: '129-14-81596', address: '서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)', manager: '오민주' };
 
@@ -27,5 +27,5 @@ export function Footer() {
 
 const st = StyleSheet.create({
   wrap: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 12 },
-  t: { fontSize: 12, lineHeight: 19, color: C.fg3 },
+  t: { fontFamily: FONT, fontSize: 12, lineHeight: 19, color: C.fg3 },
 });

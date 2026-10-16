@@ -43,7 +43,50 @@
         }
       ],
       "expo-sharing",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-font",
+        {
+          "ios": {
+            "fonts": [
+              "./assets/fonts/Pretendard-Regular.otf",
+              "./assets/fonts/Pretendard-Medium.otf",
+              "./assets/fonts/Pretendard-SemiBold.otf",
+              "./assets/fonts/Pretendard-Bold.otf",
+              "./assets/fonts/Pretendard-ExtraBold.otf"
+            ]
+          },
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "Pretendard",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Pretendard-Regular.otf",
+                    "weight": 400
+                  },
+                  {
+                    "path": "./assets/fonts/Pretendard-Medium.otf",
+                    "weight": 500
+                  },
+                  {
+                    "path": "./assets/fonts/Pretendard-SemiBold.otf",
+                    "weight": 600
+                  },
+                  {
+                    "path": "./assets/fonts/Pretendard-Bold.otf",
+                    "weight": 700
+                  },
+                  {
+                    "path": "./assets/fonts/Pretendard-ExtraBold.otf",
+                    "weight": 800
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
     ],
     "scheme": "soborucs",
     "extra": {
