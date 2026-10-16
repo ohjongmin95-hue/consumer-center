@@ -1,5 +1,6 @@
-// 하단 사업자 정보 (웹 하단과 같은 내용)
+// 하단 사업자 정보 (웹 하단과 같은 내용). 평소엔 접어 두고 '회사 정보'를 누르면 펼친다
 import * as WebBrowser from 'expo-web-browser';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
 import { C, FONT } from '../lib/theme';
@@ -9,19 +10,27 @@ const FALLBACK = { name: '소보루', ceo: '오규섭', biz_no: '129-14-81596', 
 export function Footer() {
   const { meta } = useAuth();
   const o = meta?.operator ?? FALLBACK;
+  const [open, setOpen] = useState(false);
   return (
     <View style={st.wrap}>
-      <View style={{ flexDirection: 'row', gap: 16, marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
         <Pressable onPress={() => WebBrowser.openBrowserAsync(meta?.privacy ?? 'https://cs.soboru.co.kr/privacy', { toolbarColor: '#FFFFFF' })}>
           <Text style={[st.t, { fontWeight: '700', color: C.fg2 }]}>개인정보 처리방침</Text>
         </Pressable>
+        <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+          <Text style={[st.t, { color: C.fg2 }]}>회사 정보 {open ? '∧' : '∨'}</Text>
+        </Pressable>
       </View>
-      <Text style={st.t}>상호. {o.name}</Text>
-      <Text style={st.t}>사업자등록번호. {o.biz_no}</Text>
-      <Text style={st.t}>소재지. {o.address}</Text>
-      <Text style={st.t}>관리자. {o.manager}</Text>
-      <Text style={[st.t, { marginTop: 10 }]}>© 2026 SOBORU. All rights reserved.</Text>
-      <Text style={[st.t, { marginTop: 6, color: C.fg4 }]}>이 서비스에는 토스(비바리퍼블리카)가 제공한 Tossface가 적용되어 있습니다</Text>
+      {open ? (
+        <View style={{ marginTop: 12 }}>
+          <Text style={st.t}>상호. {o.name}</Text>
+          <Text style={st.t}>사업자등록번호. {o.biz_no}</Text>
+          <Text style={st.t}>소재지. {o.address}</Text>
+          <Text style={st.t}>관리자. {o.manager}</Text>
+          <Text style={[st.t, { marginTop: 10 }]}>© 2026 SOBORU. All rights reserved.</Text>
+          <Text style={[st.t, { marginTop: 6, color: C.fg4 }]}>이 서비스에는 토스(비바리퍼블리카)가 제공한 Tossface가 적용되어 있습니다</Text>
+        </View>
+      ) : null}
     </View>
   );
 }

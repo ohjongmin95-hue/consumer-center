@@ -1,5 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import { Platform, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
 import { Loading } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
@@ -10,6 +11,8 @@ import { C, FONT } from '../../lib/theme';
 export default function TabsLayout() {
   const { ready, session } = useAuth();
   const n = usePending();
+  // 안드로이드 아래 버튼(|||, O, <)이나 아이폰 홈 막대에 가리지 않게 그만큼 띄운다
+  const bottom = useSafeAreaInsets().bottom;
   if (!ready) return <Loading />;
   if (!session) return <Redirect href="/login" />;
   return (
@@ -18,7 +21,7 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: C.fg,
         tabBarInactiveTintColor: C.fg3,
-        tabBarStyle: { borderTopColor: C.line, backgroundColor: C.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, ...(Platform.OS === 'web' ? { height: 76, paddingBottom: 12, paddingTop: 8 } : { height: 68, paddingTop: 6 }) },
+        tabBarStyle: { borderTopColor: C.line, backgroundColor: C.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, ...(Platform.OS === 'web' ? { height: 76, paddingBottom: 12, paddingTop: 8 } : { height: 64 + bottom, paddingTop: 6, paddingBottom: bottom + 6 }) },
         tabBarLabelStyle: { fontFamily: FONT, fontSize: 12, fontWeight: '600', marginTop: 2 },
       }}
     >
