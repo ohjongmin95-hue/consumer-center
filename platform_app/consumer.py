@@ -210,7 +210,7 @@ def case_act(c,form,ups):
             return ('알려 주셔서 고마워요' if v=='resolved' else '아직 해결되지 않았다고 기록했어요. 아래에서 다시 요청할 수 있어요'),'ok'
         elif act=='again' and core.can_follow_up(db,c):
             text='다시 요청'+(': '+msg if msg else '했어요.')
-            core.add_event(db,c['id'],'me',text)
+            core.add_event(db,c['id'],'me',text);core.notify_company_msg(db,c['id'],text)
             if c['member'] and c['consent']:
                 due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))
                 db.execute("UPDATE cases SET status='seen',decision='pending',due=? WHERE id=?",(due,c['id']))
@@ -250,7 +250,7 @@ def case_act(c,form,ups):
         elif act in ('info','add') and msg and c['status'] not in core.FINAL:
             err=core.files_ok(ups)
             if err:return err,'error'
-            eid=core.add_event(db,c['id'],'me',('추가 자료: ' if act=='info' else '')+msg)
+            eid=core.add_event(db,c['id'],'me',('추가 자료: ' if act=='info' else '')+msg);core.notify_company_msg(db,c['id'],msg)
             core.save_files(db,c['id'],ups,eid)
             if act=='info' and c['status']=='info':db.execute("UPDATE cases SET status='seen',decision='pending' WHERE id=?",(c['id'],))
             if c['member'] and c['consent']:

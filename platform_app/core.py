@@ -509,6 +509,15 @@ def expo_push(toks,title,body,data,table):
                 db.execute('INSERT INTO mail_log(target,subject,status,created) VALUES(?,?,?,?)',('push:%d대'%len(toks),title,status,iso()))
         except sqlite3.OperationalError:pass  # 부른 쪽이 아직 쓰는 중이면 기록만 건너뛴다
     threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
+_msg_push={}
+def notify_company_msg(db,case_id,text):
+    """고객이 진행 중인 요청에 말을 더 하면 사장님 앱에 알림 (같은 요청은 1분에 한 번만)."""
+    c=db.execute('SELECT id,company_id,member,consent,title FROM cases WHERE id=?',(case_id,)).fetchone()
+    if not c or not c['company_id'] or not (c['member'] and c['consent']):return
+    t=now().timestamp()
+    if t-_msg_push.get(case_id,0)<60:return
+    _msg_push[case_id]=t
+    send_biz_push(c['company_id'],'고객 메시지: '+short(c['title'],24),short(text,60),c['id'])
 def notify_company_new(co,c):
     """입점 기업에 새 요청 알림: 이메일, 그리고 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
     link=site_url('biz','/case/%d'%c['id'])

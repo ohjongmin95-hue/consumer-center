@@ -38,7 +38,7 @@ def say(db,c,text):
     text=clean(text,MAX_LEN).strip()
     if not text:return '내용을 적어 주세요.'
     if not is_open(c):return '끝난 대화예요. 새로 문의해 주세요.'
-    core.add_event(db,c['id'],'me',text)
+    core.add_event(db,c['id'],'me',text);core.notify_company_msg(db,c['id'],text)
     if c['status']=='answered':db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],))
     db.execute('UPDATE cases SET updated=? WHERE id=?',(core.iso(),c['id']))
     return ''

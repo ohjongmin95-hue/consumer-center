@@ -1429,13 +1429,13 @@ def api_form():j=request.get_json(silent=True);return j if isinstance(j,dict) an
 def co_info(co):
     return dict(id=co['id'],name=co['name'],login_id=co['login_id'],link=core.site_url('me','/to/%d'%co['id']),verified=bool(co['member']),plan=onboard.PLANS.get(co['plan'],{}).get('name',''))
 def biz_summary(c):
-    return dict(id=c['id'],no=c['no'],category=c['category'],title=c['title'],name=c['name'] or '',status=c['status'],status_label=core.status_label(c['status']),
+    return dict(id=c['id'],no=c['no'],channel=c['channel'] or '',category=c['category'],title=c['title'],name=c['name'] or '',status=c['status'],status_label=core.status_label(c['status']),
         decision=c['decision'],decision_label=core.DECISION.get(c['decision'],''),pending=is_pending(c),overdue=core.overdue(c),due=c['due'],created=c['created'],updated=c['updated'])
 def biz_detail(db,c,co):
     ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);rule=core.rule_for(db,co['id'],c['category']);pb=core.PLAYBOOK.get(c['category'],core.PLAYBOOK['기타'])
     tok=co_token(co);url=lambda f:url_for('api_biz_file',case_id=c['id'],file_id=f['id'],t=tok,_external=True)
     d=biz_summary(c);open_=c['status'] not in core.FINAL
-    d.update(body=c['body'],want=c['want'],order_no=c['order_no'],product=c['product'],received_on=c['received_on'],info_ask=c['info_ask'],
+    d.update(channel=c['channel'] or '',send_via=send_via(db,c),live=bool(c['live']),direct=core.is_direct(c),body=c['body'],want=c['want'],order_no=c['order_no'],product=c['product'],received_on=c['received_on'],info_ask=c['info_ask'],
         phone=core.fmt_phone(c['phone']) if c['phone'] else '',email=c['email'] or '',
         plan=dict(title=pb['title'],steps=pb['steps'],reply=rule.get('reply') or pb['reply']),
         ret=dict(status=c['ret_status'],courier=c['ret_courier'],tracking=c['ret_tracking'],out_courier=c['out_courier'],out_tracking=c['out_tracking']),
@@ -1448,7 +1448,7 @@ def biz_detail(db,c,co):
         comp=dict(reco=rule['comp'],status=c['comp_status'],given=c['comp'],examples=core.COMP_EXAMPLES),
         can=dict(comp=core.comp_open(c) and bool(rule['comp'] or c['category'] in core.COMP_CATS),ship_track=can_ship_track(db,c),approve=open_ and c['decision'] not in ('approved','auto'),hold=open_ and c['decision']!='hold',ask=open_,reply=open_,
             ret_received=c['ret_status'] in ('guided','sent'),out_ship=c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking'],
-            refund_done=core.refund_case(c) and c['refund_status']!='done'))
+            refund_done=core.refund_case(c) and c['refund_status']!='done',close_chat=closable(c)))
     return d
 def api_my_case(db,co,case_id):
     c=db.execute('SELECT * FROM cases WHERE id=? AND company_id=? AND member=1 AND consent=1',(case_id,co['id'])).fetchone()
@@ -1490,14 +1490,18 @@ def api_biz_cases():
 def api_biz_case(case_id):
     co=api_co()
     with conn() as db:
-        c=api_my_case(db,co,case_id);msg=''
+        c=api_my_case(db,co,case_id);msg=warn=''
         if request.method=='POST':
-            msg,level=case_act(db,c,api_form())
+            f=api_form();msg,level=case_act(db,c,f)
             if level!='ok':return jsonify(error=msg or '처리할 수 없어요.'),400
+            if f.get('act')=='reply' and send_via(db,c):  # 웹과 같이: 답변하기 한 번이면 가져온 곳(메일·인스타그램·판매처)으로 바로 간다
+                sent,lv=post_to_shop(db,c,clean(f.get('msg'),3000))
+                if lv=='ok':msg=sent
+                else:msg,warn='',sent
         elif c['status']=='forwarded':
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
         c=api_my_case(db,co,case_id);d=biz_detail(db,c,co)
-    return jsonify(dict(d,message=msg))
+    return jsonify(dict(d,message=msg,warn=warn))
 @app.route('/api/v1/cases/<int:case_id>/draft',methods=['POST'])
 def api_biz_draft(case_id):
     co=api_co()
