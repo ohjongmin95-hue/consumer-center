@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Footer } from '../../components/Footer';
 import { Icon } from '../../components/Icon';
 import { Btn, Card, H2, TopBar } from '../../components/ui';
 import { SITE_BASE } from '../../lib/api';
@@ -84,7 +83,6 @@ export default function MoreTab() {
             <Btn title="로그아웃" kind="gray" onPress={() => setSure(true)} />
           )}
         </View>
-        <Footer />
       </ScrollView>
     </SafeAreaView>
   );
