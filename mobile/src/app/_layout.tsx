@@ -29,7 +29,7 @@ function Intro() {
   const [gone, setGone] = useState(false);
   const fade = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    const t = setTimeout(() => setMinDone(true), 3000);
+    const t = setTimeout(() => setMinDone(true), 1000);
     return () => clearTimeout(t);
   }, []);
   useEffect(() => {
