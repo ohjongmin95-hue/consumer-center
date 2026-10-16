@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
 import site_content
 import casetalk
+import soboru_art
 import notify
 import jebo
 import soboru
@@ -268,7 +269,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-97'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-98'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -2231,5 +2232,7 @@ _soboru=types.SimpleNamespace(**globals());soboru.install(_soboru)
 # 공개 제보 공감('나도 겪었어요')·댓글 (casetalk.py)
 _talk=types.SimpleNamespace(**globals());casetalk.install(_talk)
 delete_case_comment=_talk.delete_case_comment
+# AI 일러스트: 관리자가 그리고 게시한 그림을 카드에 (soboru_art.py)
+_art=types.SimpleNamespace(**globals());soboru_art.install(_art)
 
 if __name__=='__main__':app.run(debug=False)

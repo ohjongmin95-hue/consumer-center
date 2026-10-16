@@ -100,3 +100,13 @@ body.console .ad-toast{border-radius:18px;box-shadow:0 12px 32px rgba(0,27,55,.1
   body.console .ad-panel,body.console .cs-panel,body.console .ad-main .form-panel{padding:20px}
 }
 @media(prefers-reduced-motion:reduce){body.console *{transition:none !important}}
+
+/* AI 일러스트 */
+body.console .art-list{display:grid;gap:12px}
+body.console .art-row{display:flex;gap:20px;align-items:center}
+body.console .art-pic{flex:0 0 240px;aspect-ratio:3/2;border-radius:14px;overflow:hidden;background:var(--ad-soft);display:flex;align-items:center;justify-content:center;color:var(--ad-mute);font-size:13px}
+body.console .art-pic img{width:100%;height:100%;object-fit:cover;display:block}
+body.console .art-info{min-width:0;flex:1}
+body.console .art-info h2{font-size:17px;margin:4px 0 12px}
+body.console .art-on{color:var(--ad-orange)}
+@media(max-width:700px){body.console .art-row{flex-direction:column;align-items:stretch}body.console .art-pic{flex:none}}
