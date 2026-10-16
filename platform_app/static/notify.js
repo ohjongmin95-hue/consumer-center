@@ -1,11 +1,10 @@
 /* 켜 둔 화면 알림: 새 요청이나 고객의 새 메시지가 오면 오른쪽 아래에 카드가 올라오고, 소리와 탭 숫자로 알린다.
    창을 내려 두었거나 다른 탭을 보고 있으면 윈도우·맥 알림(브라우저 알림)으로 띄운다. 누르면 그 요청이 열린다.
-   탭을 여러 개 열어도 한 탭만 서버에 묻는다(localStorage로 순번). */
+   탭마다 따로 묻는다. 카드는 보이는 탭에만, 윈도우 알림은 같은 tag라 탭이 여러 개여도 하나만 뜬다. */
 (function(){
   var root=document.currentScript&&document.currentScript.dataset.url;if(!root||!window.fetch)return;
-  var me=Math.random().toString(36).slice(2),cur=null,unseen=0,baseTitle=document.title,box,audio;
+  var cur=null,unseen=0,baseTitle=document.title,box,audio;
   function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
-  function lead(){var l=(ls('nt:lead')||'').split('|');if(l[0]===me||!l[1]||Date.now()-(+l[1])>45000){ls('nt:lead',me+'|'+Date.now());return true;}return false;}
   function el(t,c,txt){var e=document.createElement(t);if(c)e.className=c;if(txt)e.textContent=txt;return e;}
   function stack(){if(!box){box=el('div','ntbox');box.setAttribute('aria-live','polite');document.body.appendChild(box);}return box;}
   function ding(){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();var t=audio.currentTime;
@@ -31,17 +30,14 @@
   }
   function badge(){document.title=(unseen?'('+unseen+') ':'')+baseTitle;}
   window.addEventListener('focus',function(){unseen=0;badge();});
-  window.addEventListener('pagehide',function(){if((ls('nt:lead')||'').split('|')[0]===me)ls('nt:lead','');});  // 다른 화면으로 옮길 때 순번을 내려놓아 다음 화면이 바로 이어받게
   function show(items){
     items=items.filter(function(it){return it.url!==location.pathname;});  // 지금 보고 있는 요청은 화면에 바로 보이니 빼고
     if(!items.length)return;
-    var away=document.hidden||!document.hasFocus();
-    items.slice().reverse().forEach(function(it){card(it);if(away)osNote(it);});
-    if(away){unseen+=items.length;badge();}
-    ding();
+    var seen=document.visibilityState==='visible',focus=document.hasFocus();
+    if(seen){items.slice().reverse().forEach(card);ding();}
+    if(!focus){items.forEach(osNote);unseen+=items.length;badge();}  // 다른 프로그램이나 다른 탭을 보고 있을 때
   }
   function poll(){
-    if(!lead())return later();
     var q=cur?('?c='+cur.c+'&e='+cur.e):'';
     fetch(root+q,{credentials:'same-origin',headers:{'Accept':'application/json'}}).then(function(r){return r.ok?r.json():null;}).then(function(d){
       if(!d)return;var first=!cur;cur={c:d.c,e:d.e};if(!first)show(d.items||[]);
