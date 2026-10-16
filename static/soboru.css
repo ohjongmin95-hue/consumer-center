@@ -1,5 +1,5 @@
 /* 소보루 브랜드 (뉴닉식 화면). 관리자 설정 '브랜드'가 소보루일 때만 style.css 뒤에 붙음. */
-.sb{--sb-ink:#1d1d1f;--sb-sub:#6b6f76;--sb-mute:#9a9ea5;--sb-line:#ececec;--sb-soft:#f5f5f4;--sb-orange:#ef7300;--sb-orange-soft:#fff1e3;--sb-brown:#652D1C;background:#fff;color:var(--sb-ink);word-break:keep-all}
+.sb{font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;--sb-ink:#1d1d1f;--sb-sub:#6b6f76;--sb-mute:#9a9ea5;--sb-line:#ececec;--sb-soft:#f5f5f4;--sb-orange:#ef7300;--sb-orange-soft:#fff1e3;--sb-brown:#652D1C;background:#fff;color:var(--sb-ink);word-break:keep-all;-webkit-font-smoothing:antialiased}
 .sb main.sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;min-height:auto}
 .sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px}
 .sb-preview{background:#1d1d1f;color:#fff;text-align:center;font-size:13px;padding:8px 16px}
@@ -65,6 +65,7 @@
 .sb-two{display:grid;grid-template-columns:1fr 1fr;gap:40px}
 .sb-rank{border:1px solid var(--sb-line);border-radius:16px;overflow:hidden}
 .sb-tabs{display:flex;border-bottom:1px solid var(--sb-line)}
+.sb button,.sb input,.sb select,.sb textarea{font-family:inherit}
 .sb-tabs button{flex:1;padding:14px;font-weight:700;color:var(--sb-mute);font-size:15px;background:none;border:0}
 .sb-tabs button.on{color:var(--sb-ink);box-shadow:inset 0 -3px 0 var(--sb-ink)}
 .sb-rank ol{list-style:none;margin:0;padding:6px 20px}
@@ -125,18 +126,16 @@
   .sb-wrap,.sb main.sb-wrap{padding-left:16px;padding-right:16px}
   .sb-logo .sb-wm{height:30px}
   .sb-login{padding:8px 14px;font-size:14px}
-  .sb-top{grid-template-columns:1fr;gap:8px;padding-top:20px}
-  .sb-lead h1{font-size:23px;margin-top:16px}.sb-lead p{font-size:16px}
-  .sb-thumb.big b{font-size:84px}
-  .sb-side{margin-top:18px;border-top:1px solid var(--sb-line)}
-  .sb-side a:first-child{padding-top:18px}
+  .sb-top{gap:24px;padding-top:24px}
+  .sb-lead h1{font-size:24px;margin-top:16px}.sb-lead p{font-size:16px}
   .sb-thumb.sq{width:84px;height:84px}.sb-side h3{font-size:17px}
   .sb-sec{padding:30px 0}.sb-sec-flat{padding-bottom:4px}
   .sb-report-box{flex-wrap:wrap;padding:22px;gap:14px}.sb-report-box img{width:76px}
   .sb-report-box>div:not(.sb-btns){flex:1;min-width:0}.sb-report-box h2{font-size:19px}.sb-report-box p{font-size:14px}
   .sb-btns{margin:0;flex:1 1 100%}.sb-btns a{flex:1;text-align:center}
-  .sb-cases{display:flex;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scroll-snap-type:x mandatory;scrollbar-width:none}
-  .sb-case{flex:0 0 78%;scroll-snap-align:start}
+  .sb-cases{grid-template-columns:1fr 1fr;gap:10px}.sb-cases .sb-case:nth-child(3){display:none}
+  .sb-case{padding:16px 18px}.sb-case h3{margin:10px 0 6px}.sb-case-me{margin-top:10px}
+  .sb-cats{flex-wrap:wrap;overflow:visible}
   .sb-two{grid-template-columns:1fr;gap:30px}
   .sb-grid{grid-template-columns:1fr 1fr;gap:20px 12px}.sb-grid h3{font-size:15px;margin-top:10px}.sb-grid .sb-meta{font-size:12px}
   .sb-thumb.wide b{font-size:44px}
@@ -150,4 +149,13 @@
   .sb-tabbar a.on{color:var(--sb-ink)}
   .sb-tab-plus span{background:var(--sb-orange);color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center}
   .sb-tab-plus svg{stroke-width:2.6}
+}
+/* 휴대폰: 대표 글 아래로 목록, 제보 카드 한 줄씩 */
+@media(max-width:640px){
+  .sb-top{grid-template-columns:1fr;gap:8px;padding-top:20px}
+  .sb-lead h1{font-size:23px}
+  .sb-thumb.big b{font-size:84px}
+  .sb-side{margin-top:18px;border-top:1px solid var(--sb-line)}
+  .sb-side a:first-child{padding-top:18px}
+  .sb-cases{grid-template-columns:1fr}.sb-cases .sb-case:nth-child(3){display:block}
 }

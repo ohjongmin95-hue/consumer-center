@@ -55,5 +55,16 @@ if hasattr(m, 'ops'):  # 3차 이전 코드(기준 그림)에는 없는 기능
     lk = app.test_client(); post(lk, '/lookup', {'mode': 'phone', 'phone': '010-2222-3333', 'password': '1234'})
     post(lk, '/case/request', {'kind': 'correct', 'body': '발생일을 9월 27일로 고쳐 주세요.'}, page='/case')
     post(b, '/biz/case/%d/objection' % eid, {'body': '무상 수리 대상이라 이미 안내했습니다. 접수 기록이 있습니다.'}, page='/biz/case/%d' % eid)
+# 소보루 화면: VRT_BRAND=소보루 로 띄우면 생활정보 글·게시판 글을 넣고 브랜드를 소보루로 바꿈
+if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
+    for t, e, tone, cat, feat in [('택배가 사라졌다면? 보상은 얼마까지 받을 수 있을까', '📦', 't1', '쇼핑', '1'), ('헬스장 중도 해지, 위약금은 10%만 내면 돼요', '🏋️', 't3', '생활', ''),
+                                  ('결항 환불, 이렇게 요청하면 빨라요', '✈️', 't2', '여행', ''), ('중고거래 택배 사기, 이렇게 피했어요', '🧾', 't4', '쇼핑', ''),
+                                  ('온라인 쇼핑 청약철회, 7일 안에 이것만 기억해요', '🛒', 't6', '쇼핑', ''), ('휴대폰 약정 중도 해지, 위약금 미리 계산하는 법', '📱', 't5', '통신', ''),
+                                  ('숙소 예약 취소 수수료, 어디까지 내야 할까', '🏨', 't2', '여행', ''), ('배달 음식에서 이물질이 나왔다면 사진부터', '🍱', 't3', '음식', ''),
+                                  ('모르는 결제 문자, 카드사에 먼저 전화해야 하는 이유', '💳', 't4', '금융', ''), ('어린이 킥보드 일부 모델, 브레이크 결함으로 회수', '🛴', 't1', '리콜', '')]:
+        post(a, '/admin/life', {'title': t, 'summary': '추석 지나고 관련 제보가 늘었어요. 꼭 알아야 할 것만 정리했어요.', 'body': '먼저 판매자에게 알리세요.\n\n## 얼마까지 받을 수 있나요\n- 운송장에 적은 물품 가격 기준\n- 적지 않았다면 최대 50만 원',
+                                'category': cat, 'emoji': e, 'tone': tone, 'source_name': '공정거래위원회 소비자24', 'source_url': 'https://www.consumer.go.kr', 'featured': feat, 'publish': '1'})
+    with m.conn() as db:
+        db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand',?,'2026-10-16')", (os.environ['VRT_BRAND'],))
 print('ready', ids, eid, flush=True)
 app.run(host='127.0.0.1', port=PORT)

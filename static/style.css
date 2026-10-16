@@ -1906,3 +1906,6 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .console .admin-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
 .console .admin-actions button{padding:10px 16px;border-radius:8px;border:1px solid #dcdcdc;background:#fff;font-weight:650}
 .console .admin-actions button.primary{background:#ef7300;border-color:#ef7300;color:#fff}
+
+/* 게시판: 좁은 화면에서 분류 탭이 화면 밖으로 넓어지지 않게 (탭은 안에서 가로로 넘김) */
+.board-tools>*,.board-search{min-width:0}
