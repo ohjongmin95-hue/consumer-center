@@ -301,6 +301,13 @@ class SiteTest(unittest.TestCase):
         c.post(f'/reports/{pub}/react', data={'_csrf': tok, 'kind': 'metoo'})
         page = c.get(f'/reports/{pub}').get_data(as_text=True)
         self.assertIn('talk-btn t-metoo on', page)
+        with self.site.conn() as db:
+            db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                       ('t3', 'x', '배송·교환·환불', '테스트 업체', '공감 없는 새 제보', '본문', '환불', '2026-10-10T10:00:00', 1, 1))
+        hot = c.get('/reports?sort=hot').get_data(as_text=True)
+        self.assertLess(hot.index('공감 시험 제보'), hot.index('공감 없는 새 제보'))  # 공감 많은 순
+        new = c.get('/reports').get_data(as_text=True)
+        self.assertLess(new.index('공감 없는 새 제보'), new.index('공감 시험 제보'))  # 최신순
         c.post(f'/reports/{pub}/react', data={'_csrf': tok, 'kind': 'metoo'})
         self.assertNotIn('talk-btn t-metoo on', c.get(f'/reports/{pub}').get_data(as_text=True))
         self.assertEqual(c.post(f'/reports/{sec}/react', data={'_csrf': tok, 'kind': 'metoo'}).status_code, 404)
@@ -2230,12 +2237,13 @@ class SiteTest(unittest.TestCase):
         page = reporter.get('/case').get_data(as_text=True)
         self.assertIn('기업 답변을 받고 해결됐나요?', page)
         self.assertIn('공개 제보 아래에 함께 보여 주세요', page)
-        reporter.post('/case/outcome', data={'_csrf': self.csrf(reporter, '/case'), 'outcome': 'resolved'})
+        reporter.post('/case/outcome', data={'_csrf': self.csrf(reporter, '/case'), 'outcome': 'resolved', 'rating': '4'})
         self.post_form(reporter, '/case', {'message': '환불 받았어요. 010-3131-2020', 'want_public': '1'})
         with self.site.conn() as db:
-            row = db.execute('SELECT outcome,confirmed_at FROM cases WHERE id=?', (case['id'],)).fetchone()
+            row = db.execute('SELECT outcome,confirmed_at,rating FROM cases WHERE id=?', (case['id'],)).fetchone()
             opinion = db.execute("SELECT * FROM messages WHERE case_id=? AND author='제보자'", (case['id'],)).fetchone()
         self.assertEqual(row['outcome'], 'resolved')
+        self.assertEqual(row['rating'], 4)
         self.assertTrue(row['confirmed_at'])
         self.assertEqual((opinion['want_public'], opinion['public']), (1, 0))
         self.assertIn('제보자가 해결됐다고 확인했어요', self.client.get('/reports/%d' % case['id']).get_data(as_text=True))

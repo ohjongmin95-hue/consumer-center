@@ -80,7 +80,7 @@ def fmt_hours(h):
     return f'{h:.0f}시간' if h<48 else f'{h/24:.1f}일'
 
 def company_stats(db,company_id,months=6):
-    rows=db.execute('SELECT id,status,review,reviewed_at,created,forwarded_at,confirmed_at FROM cases WHERE company_id=?',(company_id,)).fetchall()
+    rows=db.execute('SELECT id,status,review,reviewed_at,created,forwarded_at,confirmed_at,outcome,rating FROM cases WHERE company_id=?',(company_id,)).fetchall()
     good=[r for r in rows if valid(r)]
     first=first_answers(db,[r['id'] for r in good])
     answered=[r for r in good if r['id'] in first]
@@ -97,6 +97,10 @@ def company_stats(db,company_id,months=6):
     top=max([x['n'] for x in monthly]+[1])
     return {'valid':n,'answered':len(answered),'answer_rate':rate(len(answered)),'confirmed':sum(1 for r in good if r['confirmed_at']),
             'confirm_rate':rate(sum(1 for r in good if r['confirmed_at'])),'median':fmt_hours(statistics.median(waits)) if len(waits)>=MIN_N else '–','n_waits':len(waits),
+            'resolved':sum(1 for r in good if r['outcome']=='resolved'),
+            # 해결 비율: 결과를 알려 준 제보자 중 '해결됐어요'라고 한 비율 (알려 준 사람이 MIN_N명 이상일 때만)
+            'resolve_rate':(lambda c:f"{round(100*sum(1 for r in c if r['outcome']=='resolved')/len(c))}%" if len(c)>=MIN_N else '–')([r for r in good if r['outcome'] in ('resolved','unresolved')]),
+            'rating':(lambda v:f'{sum(v)/len(v):.1f}' if len(v)>=MIN_N else '–')([r['rating'] for r in good if r['rating']]),
             'monthly':monthly,'top':top,'enough':n>=MIN_N,'total':len(rows),'since':min((r['created'][:10] for r in rows),default='')}
 
 def timeline(db,case,mask):
@@ -277,11 +281,13 @@ def install(S):
         if not case_id:return redirect(url_for('lookup'))
         outcome=request.form.get('outcome','')
         if outcome not in OUTCOMES:abort(400)
+        rating=request.form.get('rating',type=int)
+        if rating is not None and not 1<=rating<=5:rating=None
         with conn() as db:
             case=db.execute('SELECT id,outcome FROM cases WHERE id=?',(case_id,)).fetchone()
             if not case:abort(404)
             if not db.execute("SELECT 1 FROM messages WHERE case_id=? AND author='기업 답변'",(case_id,)).fetchone():abort(400)
-            db.execute('UPDATE cases SET outcome=? WHERE id=?',(outcome,case_id));mark(db,case_id,'confirmed_at')
+            db.execute('UPDATE cases SET outcome=?,rating=COALESCE(?,rating) WHERE id=?',(outcome,rating,case_id));mark(db,case_id,'confirmed_at')
             if outcome!=case['outcome']:db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,'제보자',f'처리 결과 확인: {OUTCOMES[outcome]}',now()))
         flash('알려 주셔서 고마워요. 센터와 기업에 전달돼요.')
         return redirect(url_for('case_detail')+'#outcome')

@@ -17,7 +17,8 @@
       <div><dt>{{ ui('company.n_valid', '확인된 제보') }}</dt><dd>{{ st.valid }}</dd></div>
       <div><dt>{{ ui('company.n_public', '공개 제보') }}</dt><dd>{{ by_cat.values()|sum }}</dd></div>
       <div><dt>{{ ui('company.answer_rate', '공식 답변 비율') }}</dt><dd>{{ st.answer_rate }}</dd></div>
-      <div><dt>{{ ui('company.confirm_rate', '소비자 확인 비율') }}</dt><dd>{{ st.confirm_rate }}</dd></div>
+      <div><dt>{{ ui('company.resolve_rate', '소비자가 말한 해결 비율') }}</dt><dd>{{ st.resolve_rate }}</dd></div>
+      <div><dt>{{ ui('company.rating', '처리 만족도 (5점)') }}</dt><dd>{{ st.rating }}</dd></div>
       <div><dt>{{ ui('company.median', '답변까지 걸린 시간 (중앙값)') }}</dt><dd>{{ st.median }}</dd></div>
     </dl>
     <div class="co-chart" role="img" aria-label="{{ ui('company.monthly', '최근 6개월 월별 확인된 제보 수') }}">

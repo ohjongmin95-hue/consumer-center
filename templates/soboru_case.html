@@ -10,6 +10,7 @@
     <p class="sbc-kicker"><span class="sbc-cat">{{ cat_s }}</span><span>No. {{ case['id'] }}</span></p>
     <h1 class="page-title">{{ subject }}</h1>
     <p class="sbc-meta">{% if co %}<a class="sbc-co-link" href="{{ url_for('company_page', company_id=co['id']) }}">{{ company }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>{% else %}<b>{{ company }}</b>{% endif %}<span>{{ ui('lookup.received_on', '접수일') }} {{ case['created'][:10]|replace('-', '.') }}</span>{% if case['occurred_on'] %}<span>{{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on']|replace('-', '.') }}</span>{% endif %}</p>
+    <button type="button" class="sbc-share" data-share data-title="{{ subject }}" data-done="{{ ui('case.share_done', '링크를 복사했어요') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg>{{ ui('case.share', '공유하기') }}</button>
     <div class="sbc-steps">
       {{ steps(pub_step(step), pub_names()) }}
       <p class="sbc-hint">{% if has_answer %}{{ ui('case.has_answer_s', '기업이 답변을 남겼어요. 아래에서 확인해 보세요.') }}{% else %}{{ ui('case.no_answer', '아직 기업의 공식 답변이 등록되지 않았어요.') }}{% endif %}</p>
@@ -39,3 +40,4 @@
   </section>
   {% if groups_on() %}{% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}{% endif %}
 </div></main>
+<script>document.querySelectorAll('[data-share]').forEach(function(b){b.addEventListener('click',function(){var u=location.href.split('#')[0],t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u}).catch(function(){});return}(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){var o=b.lastChild.textContent;b.lastChild.textContent=b.dataset.done;setTimeout(function(){b.lastChild.textContent=o},1800)},function(){prompt('',u)})})})</script>
