@@ -1920,3 +1920,27 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .hp-sections .check{white-space:nowrap}
 .hp-warn{background:#fff4cc;color:#7f5d00;border-radius:10px;padding:10px 14px}
 @media(max-width:640px){.hp-slots{grid-template-columns:1fr}}
+/* 로그인·가입 화면 (토스+뉴닉 느낌): 옅은 귤색 바탕, 그림자 카드, 회색 입력칸, 둥근 큰 버튼 */
+.auth-page{background:radial-gradient(ellipse 500px 260px at 50% 0,#fff1e0 0,rgba(255,241,224,0) 100%);padding-top:72px}
+.auth-card{border:0;border-radius:28px;box-shadow:0 0 0 1px rgba(0,27,55,.04),0 12px 40px rgba(0,27,55,.08)}
+.auth-body{gap:12px;padding:48px 44px 30px}
+.auth-logo .auth-wm{display:block;height:30px;width:auto;margin:0 auto}
+.auth-title{margin:16px 0 18px;font-size:24px;font-weight:700;letter-spacing:-.04em;color:#191f28}
+.auth-body input:not([type=checkbox]){height:56px;padding:0 16px;border:1.5px solid transparent;border-radius:14px;background:#f2f4f6;font-size:16px;transition:background .15s,border-color .15s,box-shadow .15s}
+.auth-body input:not([type=checkbox]):hover{background:#eceff2}
+.auth-body input:not([type=checkbox]):focus{background:#fff;border-color:var(--orange);box-shadow:0 0 0 4px rgba(239,115,0,.12)}
+.auth-body input::placeholder{color:#8b95a1}
+.auth-submit{height:56px;margin-top:6px;border-radius:16px;font-size:17px;font-weight:700;letter-spacing:-.02em;transition:transform .15s cubic-bezier(.2,.8,.2,1),background .2s,box-shadow .2s}
+.auth-submit:hover{filter:none;background:#e56c00;box-shadow:0 8px 20px rgba(239,115,0,.28)}
+.auth-submit:active{transform:scale(.97)}
+.social-btn{height:52px;border-radius:14px;transition:transform .15s cubic-bezier(.2,.8,.2,1),filter .2s}
+.social-btn:active{transform:scale(.97)}
+.social-or{color:#8b95a1}
+.social-or::before,.social-or::after{background:#eef0f2}
+.auth-keep{font-size:14px;color:#4e5968}
+.auth-foot{background:#fff;border-top:1px solid #f2f4f6}
+.auth-foot a{padding:20px 8px;font-size:14px;color:#4e5968}
+.auth-foot a+a{border-left-color:#f2f4f6}
+.auth-foot a:hover{color:#191f28;background:#f9fafb}
+.auth-note{color:#8b95a1}
+@media(max-width:560px){.auth-page{padding-top:28px}.auth-body{padding:36px 22px 24px}.auth-card{border-radius:24px}}

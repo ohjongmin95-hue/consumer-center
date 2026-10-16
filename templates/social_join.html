@@ -4,7 +4,7 @@
 <main class="auth-page">
   <div class="auth-card auth-card-wide">
     <form class="auth-body" method="post" autocomplete="off"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
+      {% include 'auth_logo.html' %}
       <h1 class="auth-title">{{ provider }}로 가입하기</h1>
       <p class="auth-lead">약관에 동의하면 가입이 끝나요. 제보할 때 이름과 연락처가 자동으로 채워져요.</p>
       {% if real_name or phone or email %}

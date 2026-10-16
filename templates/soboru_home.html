@@ -19,7 +19,6 @@
   {% elif key == 'box' %}
   <section class="sb-sec">
     <div class="sb-report-box">
-      <img src="{{ asset('img/soboru-character.png') }}" alt="" width="120" height="93">
       <div><h2>{{ ui('sb.box_title', '억울한 일 겪으셨나요?') }}</h2><p>{{ ui('sb.box_body', '소보루에 제보하면 기업에 전달하고, 답변이 올 때까지 챙겨 드려요.') }}</p></div>
       <div class="sb-btns"><a class="sb-ghost" href="{{ url_for('lookup') }}">{{ ui('sb.box_lookup', '내 제보 조회') }}</a><a class="sb-cta" href="{{ url_for('report') }}">{{ ui('sb.cta', '제보하기') }}</a></div>
     </div>

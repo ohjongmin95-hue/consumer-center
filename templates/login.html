@@ -6,7 +6,7 @@
   <div class="auth-card">
     <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
-      <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
+      {% include 'auth_logo.html' %}
       <h1 class="auth-title">{{ ui('common.login', '로그인') }}</h1>
       {% if not enabled %}<p class="auth-note">{{ ui('member.login_closed', '로그인은 곧 열려요.') }}</p>{% else %}{{ social_buttons('로그인', request.args.get('next','')) }}{% endif %}
       <input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="{{ ui('member.id_or_email', '아이디 또는 이메일') }}" aria-label="{{ ui('member.id_or_email', '아이디 또는 이메일') }}" value="{{ request.form.get('login_id','') }}">
