@@ -3,7 +3,7 @@
 {% if g.brand_preview %}<div class="sb-preview">소보루 미리보기 중이에요. 관리자에게만 보여요. <a href="{{ request.path }}?brand=off">끄기</a></div>{% endif %}
 <header class="sb-header">
   <div class="sb-wrap sb-hd">
-    <a class="sb-logo" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈"><img class="sb-wm" src="{{ asset('img/soboru-logo.png') }}" alt="SOBORU" width="134" height="26"></a>
+    <a class="sb-logo" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈"><img class="sb-wm" src="{{ asset('img/soboru-logo.png') }}" alt="SOBORU" width="152" height="36"></a>
     <nav class="sb-nav" aria-label="주요 메뉴">{% for href, label, on in sb_nav %}<a href="{{ href }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
     <span class="sb-sp"></span>
     <a class="sb-search" href="{{ url_for('companies') }}" aria-label="기업 검색"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L20 20" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></a>
