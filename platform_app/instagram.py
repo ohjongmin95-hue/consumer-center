@@ -14,7 +14,7 @@ import core, shops
 from core import conn, clean
 
 bp=Blueprint('ig',__name__)
-SHOP='instagram'            # shop_seen 이름. ext_id 'u:<고객 IGSID>' = 대화 상대, 'm:<mid>' = 받은 메시지(중복 막기)
+SHOP='instagram'            # shop_seen 이름. ext_id 'u:<고객 IGSID>' = 그 고객의 가장 최근 요청, 'r:<요청 id>:<IGSID>' = 그 요청의 답장 상대, 'm:<mid>' = 받은 메시지(중복 막기)
 CHANNEL='인스타그램 DM'
 GRAPH='https://graph.instagram.com/v21.0'
 SCOPES='instagram_business_basic,instagram_business_manage_messages'
@@ -131,7 +131,10 @@ def take(db,co,lk,ev):
         VALUES(?,?,?,1,?,?,?,?,'',?,'','',?,1,'forwarded','pending',?,?,?,'','',?)''',(core.new_case_no(db),co['id'],co['name'],cat,title,text,core.WANT_OF.get(cat,'기타'),
         name,generate_password_hash(secrets.token_hex(16)),due,t,t,CHANNEL)).lastrowid
     core.add_event(db,cid,'sys','인스타그램 DM을 가져왔어요'+(f' (@{name})' if name else ''))
-    db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,'u:'+sender,cid))
+    # 같은 고객이 끝난 요청 뒤에 다시 보내면 'u:' 줄이 이미 있다. 예전 요청에는 답장 상대를 따로 남기고, 'u:'는 새 요청을 가리키게 바꾼다
+    if r:db.execute('INSERT OR IGNORE INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,f"r:{r['case_id']}:{sender}",r['case_id']))
+    db.execute('INSERT OR REPLACE INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,'u:'+sender,cid))
+    db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,f'r:{cid}:{sender}',cid))
     db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,'m:'+mid,cid))
     db.execute('UPDATE ig_links SET n_inq=n_inq+1 WHERE company_id=?',(co['id'],))
     c=db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
@@ -155,8 +158,10 @@ def receive(payload):
             if not lk:_why('연결된 계정 없음: entry=%s',clean(str(ent.get('id')),40));continue
             if not co or not co['member'] or co['status']!='active':_why('입점 회사가 아님: company=%s',lk['company_id']);continue
             for ev in evs:
-                try:c=take(db,co,lk,ev)
-                except Exception:traceback.print_exc();c=None  # 이상한 메시지 하나 때문에 멈추지 않는다
+                db.execute('SAVEPOINT ig_take')
+                try:c=take(db,co,lk,ev);db.execute('RELEASE ig_take')
+                except Exception:  # 이상한 메시지 하나 때문에 멈추지 않고, 그 메시지가 반쯤 쓴 것은 되돌린다
+                    traceback.print_exc();db.execute('ROLLBACK TO ig_take');db.execute('RELEASE ig_take');c=None
                 if c:new.append((co,c))
     for co,c in new[:5]:core.notify_company_new(co,c)
     return len(new)
@@ -168,9 +173,9 @@ def post_reply(db,co,c,text):
     if not tok:return '인스타그램 연결이 끊겼어요. 서비스 연동에서 다시 연결해 주세요.'
     text=(text or '').strip()
     if len(text)<2:return '답변 내용이 너무 짧아요.'
-    r=db.execute("SELECT ext_id FROM shop_seen WHERE company_id=? AND shop=? AND case_id=? AND ext_id LIKE 'u:%' LIMIT 1",(co['id'],SHOP,c['id'])).fetchone()
+    r=db.execute("SELECT ext_id FROM shop_seen WHERE company_id=? AND shop=? AND case_id=? AND (ext_id LIKE 'r:%' OR ext_id LIKE 'u:%') ORDER BY ext_id LIMIT 1",(co['id'],SHOP,c['id'])).fetchone()
     if not r:return '인스타그램에서 가져온 대화가 아니에요.'
-    try:s,d=_call('POST',GRAPH+'/me/messages',form={'recipient':{'id':r['ext_id'][2:]},'message':{'text':text[:1000]}},token=tok)
+    try:s,d=_call('POST',GRAPH+'/me/messages',form={'recipient':{'id':r['ext_id'].rsplit(':',1)[-1]},'message':{'text':text[:1000]}},token=tok)
     except IgError as e:return str(e)
     if s>=400 or not d.get('message_id'):
         e=_err(d)
