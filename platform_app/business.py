@@ -637,6 +637,7 @@ def stats_data(db,co):
 
 notify_consumer=core.notify_consumer
 SEND_VIA={mailin.CHANNEL:'메일로',instagram.CHANNEL:'인스타그램 DM으로'}  # 사람이 눌러야 그 채널로 답이 나가는 곳
+def closable(c):return (c['channel'] in SEND_VIA or bool(c['live'])) and c['status'] not in core.FINAL
 
 def can_ship_track(db,c):
     """배송 조회 요청에 송장을 넣어 답할 수 있는지: 아직 안 넣었고 끝나지 않은 배송 조회 요청."""
@@ -690,6 +691,9 @@ def case_act(db,c,form):
         if done is None:return '이 유형은 미리 정한 답변이 없어요. 아래에서 답변을 직접 적어 보내 주세요.','error'
         if done:notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
         return '승인했습니다','ok'
+    if act=='close_chat' and closable(c):  # 인스타·메일·채팅은 고객이 '해결됐어요'를 누를 화면이 없어서, 응대한 사람이 대화를 끝낸다
+        db.execute("UPDATE cases SET status='closed' WHERE id=?",(c['id'],))
+        core.add_event(db,c['id'],'sys','대화를 끝냈어요. 고객이 다시 보내면 새 요청으로 들어와요.');return '대화를 끝냈어요','ok'
     if act=='hold':
         db.execute("UPDATE cases SET decision='hold',status=CASE status WHEN 'forwarded' THEN 'seen' ELSE status END WHERE id=?",(c['id'],))
         core.add_event(db,c['id'],'sys','보류했어요');return '보류했습니다','ok'
@@ -763,7 +767,7 @@ def case(case_id):
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all',
-        ctags=ctags,all_tags=all_tags,sla=sla,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
+        ctags=ctags,all_tags=all_tags,sla=sla,closable=closable(c),macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
 @app.route('/case/<int:case_id>/live',methods=['GET','POST'])
 @login_required
 def case_live(case_id):
