@@ -1501,6 +1501,8 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('010-1234-5678', user)  # 개인정보는 AI에 보내지 않음
         self.assertNotIn('홍길동', user)
         self.assertIn('[ecom:제17조:①]', user)  # 조문 후보(원문)를 함께 보냄
+        self.assertIn('[corpus:', user)  # 제보 글로 찾은 법령 원문 후보도 함께
+        self.assertIn('일반 지식이나 인터넷 검색', tri_calls[0]['messages'][0]['content'])
         with self.site.conn() as db:
             cid = db.execute("SELECT id FROM cases WHERE subject='환불이 안 돼요'").fetchone()['id']
             t = db.execute('SELECT * FROM case_triage WHERE case_id=?', (cid,)).fetchone()
@@ -1565,6 +1567,37 @@ class SiteTest(unittest.TestCase):
         self.assertIn('환불이 안 돼요', admin.get('/admin/reports?assignee=이지우').get_data(as_text=True))
         self.assertNotIn('환불이 안 돼요', admin.get('/admin/reports?assignee=-').get_data(as_text=True))
         self.assertIn('이지우 <b>1</b>', admin.get('/admin/reports').get_data(as_text=True))
+
+    def test_triage_corpus_candidates(self):
+        """제보 글로 법령 원문 모음에서 찾은 조문이 'corpus:' 후보로 더해지고, 후보 밖 조문은 버리며, 근거 조문 목록에 이름이 붙는다."""
+        tri = self.site.triage
+        info = {'제보 유형': '품질·하자·AS', '업체·서비스명': '뷰티몰', '제목': '화장품에 사용기한 표시가 없어요',
+                '피해 내용': '온라인에서 산 크림 포장에 사용기한이나 개봉 후 사용기간 표시가 없어요', '원하는 해결': '환불'}
+        fixed = tri.ref_pool('품질·하자·AS')
+        pool = tri.candidates({'category': '품질·하자·AS'}, info)
+        self.assertEqual(pool[:len(fixed)], fixed)
+        extra = pool[len(fixed):]
+        self.assertIn('corpus:cosmetics:제10조', extra)
+        self.assertTrue(all(r.startswith('corpus:') for r in extra))
+        self.assertLessEqual(len(extra), tri.CORPUS_MAX)
+        block = tri.law_block(pool)
+        self.assertIn('[corpus:cosmetics:제10조] 화장품법 제10조 (화장품의 기재사항)', block)
+        self.assertIn('사용기한 또는 개봉 후 사용기간', block)
+        # 고정 후보에 이미 있는 조문(ecom:제17조:…)은 corpus 후보로 다시 넣지 않음
+        refund = tri.candidates({'category': '배송·교환·환불'}, dict(info, 제목='환불이 안 돼요', **{'피해 내용': '운동화를 반품했는데 환불이 안 돼요'}))
+        self.assertNotIn('corpus:ecom:제17조', refund)
+        self.assertIn('corpus:ecom:제17조', tri.corpus_refs('운동화를 반품했는데 환불이 안 돼요'))
+        res = tri.clean({'track': 'auto', 'guidance': ['화장품 포장에는 사용기한을 적어야 해요.'], 'steps': ['사진을 남겨 두세요.'],
+                         'refs': ['corpus:cosmetics:제10조', 'ecom:제17조:③', 'corpus:civil:제750조', 'corpus:cosmetics:제999조']},
+                        {'reporter_name': '홍길동'}, pool)
+        self.assertEqual(res['refs'], ['corpus:cosmetics:제10조', 'ecom:제17조:③'])  # 후보에 없는 조문은 버림
+        body = tri.compose(res)
+        self.assertIn('- 화장품법 제10조 (화장품의 기재사항)', body)
+        self.assertIn('- 전자상거래법 제17조 제3항 (청약철회등)', body)
+        c = tri.cite('corpus:cosmetics:제10조')
+        self.assertEqual((c['ref'], c['law']), ('corpus:cosmetics:제10조', '화장품법'))
+        self.assertTrue(c['source'].startswith('https://www.law.go.kr/'))
+        self.assertIn('[조문 후보]에 주어진 법령 원문에서만', tri.SYSTEM)
 
     def test_company_contacts_and_answer_registration(self):
         for subject in ('첫 제보', '둘째 제보'):

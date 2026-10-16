@@ -2245,5 +2245,98 @@ class PlatformTest(unittest.TestCase):
         r=self.client().get('/data-deletion');page=r.get_data(as_text=True)
         self.assertEqual(r.status_code,200);self.assertIn('연결 끊기',page);self.assertIn('Data deletion',page)
 
+    def test_chat_law_grounding(self):
+        """상담창: 법률 질문이면 찾은 법령 원문을 '[관련 법령 원문]'으로 주고 인터넷 검색을 끈다. 일반 질문은 예전처럼 검색을 쓴다."""
+        b,o,cid=self.signup_and_approve('법령마켓','lawshop@example.com')
+        me=self.client();page=me.get(f'/to/{cid}').get_data(as_text=True);ctok=re.search(r'data-csrf="([^"]+)"',page).group(1)
+        seen=[]
+        def fake(url,headers,body,timeout):
+            seen.append((url,body))
+            content='{"category": "반품·환불", "answer": "받으신 날부터 7일 안이면 반품하실 수 있어요.", "handoff": false, "summary": ""}'
+            if url.endswith('/responses'):return 200,{'output':[{'type':'message','content':[{'type':'output_text','text':content}]}]}
+            return 200,{'choices':[{'message':{'content':content}}]}
+        aim=sys.modules['ai']
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
+            j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'받은 지 5일 됐는데 단순 변심으로 환불 되나요?'}).get_json()
+        self.assertEqual(j['answer'],'받으신 날부터 7일 안이면 반품하실 수 있어요.')
+        url,body=seen[-1]
+        self.assertTrue(url.endswith('/chat/completions'))  # 검색(Responses API) 없이
+        self.assertNotIn('tools',body)
+        system=body['messages'][0]['content']
+        self.assertIn('[관련 법령 원문]',system);self.assertIn('[회사 정보]',system)
+        self.assertIn('전자상거래법 제17조 (청약철회등)',system)
+        self.assertIn('7일',system.split('[관련 법령 원문]')[-1])
+        self.assertLess(system.index('[회사 정보]'),system.index('[관련 법령 원문]'))
+        # 법과 상관없는 일반 질문은 조문을 넣지 않고 예전처럼 검색을 쓸 수 있다
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
+            me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'비타민C 세럼은 아침에 써도 돼요?'})
+        url,body=seen[-1]
+        self.assertTrue(url.endswith('/responses'));self.assertNotIn('[관련 법령 원문]',body['instructions'])
+
+
+class LawCorpusTest(unittest.TestCase):
+    """법령 원문 모음(law_corpus.json)과 찾기(law_corpus.py), 원문 나누기(law_corpus_build.py)."""
+    @classmethod
+    def setUpClass(cls):
+        def load(name):
+            spec=importlib.util.spec_from_file_location('t_'+name,ROOT/'platform_app'/(name+'.py'))
+            m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+        cls.lc=load('law_corpus');cls.build=load('law_corpus_build')
+
+    def test_corpus_articles(self):
+        data=json.loads((ROOT/'platform_app'/'law_corpus.json').read_text(encoding='utf-8'))
+        self.assertEqual(set(data),{'cosmetics','terms','adlabel','civil','ecom_dec','foodlabel','food','basic','kca','ecom','easylaw'})
+        ecom=data['ecom'];self.assertEqual((ecom['no'],ecom['effective'],ecom['kind']),('21312','2026-07-21','법률'))
+        self.assertGreater(len(data['civil']['articles']),1000);self.assertEqual(len(data['kca']['articles']),4)
+        # 공식 원문 미러에서 뽑은 law_texts.json의 제17조와 글자가 같다 (띄어쓰기·항·호 줄바꿈만 다를 수 있음)
+        texts=json.loads((ROOT/'platform_app'/'law_texts.json').read_text(encoding='utf-8'))
+        for key,art in (('ecom','제17조'),('ecom','제21조'),('basic','제16조')):
+            a=texts[key]['articles'][art]
+            flat=''.join(p['n']+p['text']+''.join(i['n']+'.'+i['text']+''.join(s['n']+'.'+s['text'] for s in i.get('subs',[])) for i in p['items']) for p in a['paras'])
+            got=data[key]['articles'][art]
+            self.assertEqual(got['title'],a['title'])
+            self.assertEqual(re.sub(r'\s','',got['text']),re.sub(r'\s','',flat),art)
+        t17=data['ecom']['articles']['제17조']['text']
+        self.assertIn('\n③ 소비자는 제1항 및 제2항에도 불구하고 재화등의 내용이 표시ㆍ광고의 내용과 다르거나',t17)
+        self.assertIn('\n  1. 제13조제2항에 따른 계약내용에 관한 서면을 받은 날부터 7일.',t17)
+        for law in data.values():  # 쪽 머리글·연혁 표시는 남지 않는다
+            for a in law['articles'].values():
+                self.assertNotIn('국가법령정보센터',a['text']);self.assertNotRegex(a['text'],r'<(개정|신설)')
+        self.assertIn('사용기한 또는 개봉 후 사용기간',data['cosmetics']['articles']['제10조']['text'])
+
+    def test_build_parser(self):
+        raw=('법제처 1 국가법령정보센터\n시험법\n \n시험법\n[시행 2026. 1. 2.] [법률 제12345호, 2025. 7. 1., 일부개정]\n시험부 (시험과) 044-000-0000\n'
+             ' 제1장 총칙\n제1조(목적) 이 법은 소비자의 권익을 보호하고 시장의 신뢰도를 높여 국민경제의 건전한 발전에 이바지함을 목적으로 한\n다. <개정 2020. 1. 1.>\n'
+             '제2조(청약철회) ① 소비자는 다음 각 호의 기간 이내에 청약철회를 할 수 있다. <개정 2021. 3.\n4.>\n1. 서면을 받은 날부터 7일\n'
+             '2. 공급받은 날부터 7일. 다만, 다음 각 목의 경우는 제외한다.\n가. 소비자가 재화를\n\n법제처 2 국가법령정보센터\n시험법\n훼손한 경우\n'
+             '② 사업자는 소비자에게 위약금을 청구할 수 없다.\n[본조신설 2012. 2. 17.]\n제3조 삭제 <2020. 1. 1.>\n \n부칙 <제12345호,2025. 7. 1.>\n제1조(시행일) 이 법은 공포한 날부터 시행한다.\n')
+        lines=raw.splitlines()
+        (name,_,block),=self.build.split_laws(lines)
+        arts=self.build.parse_law(name,block,self.build.Joiner(lines))
+        self.assertEqual(list(arts),['제1조','제2조','제3조'])  # 부칙의 제1조는 넣지 않는다
+        self.assertEqual(arts['제1조'],{'title':'목적','text':'이 법은 소비자의 권익을 보호하고 시장의 신뢰도를 높여 국민경제의 건전한 발전에 이바지함을 목적으로 한다.'})
+        self.assertEqual(arts['제2조']['text'],'① 소비자는 다음 각 호의 기간 이내에 청약철회를 할 수 있다.\n  1. 서면을 받은 날부터 7일\n'
+                         '  2. 공급받은 날부터 7일. 다만, 다음 각 목의 경우는 제외한다.\n    가. 소비자가 재화를 훼손한 경우\n② 사업자는 소비자에게 위약금을 청구할 수 없다.')
+        self.assertEqual(self.build.meta(name,block),('법률','12345','2026-01-02','2025-07-01'))
+
+    def test_search(self):
+        lc=self.lc
+        hits=lc.search('환불 7일 청약철회')
+        self.assertIn('ecom:제17조',[h['ref'] for h in hits[:2]])
+        h=[x for x in hits if x['ref']=='ecom:제17조'][0]
+        self.assertEqual(h['label'],'전자상거래법 제17조 (청약철회등)');self.assertIn('7일',h['text'])
+        self.assertEqual(lc.label('ecom:제17조'),'전자상거래법 제17조 (청약철회등)');self.assertIn('청약철회등을 할 수 있다',lc.text('ecom:제17조'))
+        self.assertTrue(lc.source('ecom:제17조').startswith('https://www.law.go.kr/법령/'))
+        hits=lc.search('화장품 사용기한 표시')
+        self.assertTrue(all(h['ref'].startswith('cosmetics:') for h in hits[:3]));self.assertEqual(hits[0]['ref'],'cosmetics:제10조')
+        self.assertEqual([h['ref'].split(':')[0] for h in lc.search('사용기한 표시',laws=['food'])][:1],['food'])
+        # 법률 질문인지: 조문이 충분히 맞을 때만
+        self.assertTrue(lc.is_legal(lc.search('청약철회 기간이 며칠이에요?'),'청약철회 기간이 며칠이에요?'))
+        for q in ('선크림 있어요?','비타민C 세럼은 아침에 써도 돼요?','사이즈 추천해 주세요'):
+            self.assertFalse(lc.is_legal(lc.search(q),q),q);self.assertEqual(lc.grounding_block(q),'',q)
+        block=lc.grounding_block('받은 지 5일 됐는데 단순 변심으로 환불 되나요?')
+        self.assertIn('전자상거래법 제17조 (청약철회등)',block)
+        block=lc.grounding_block('환불 7일 청약철회',ids=True);self.assertIn('[corpus:ecom:제17조] 전자상거래법 제17조',block)
+
 
 if __name__=='__main__':unittest.main()

@@ -4,6 +4,8 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
 - 접수 뒤 따로(접수는 기다리지 않음) AI가 '취재 검토'(센터가 직접 볼 제보)와 '자동 응답'(법률 안내로 답할 제보)으로 나눈다.
 - 자동 응답 제보에는 법률 안내 답변 초안을 만든다. 근거 조문은 platform_app/law_texts.json(국가법령정보센터 원문)에 있는 것만 고를 수 있고,
   답변 아래에 붙이는 조문 이름도 그 파일에서 가져온다. AI가 목록에 없는 조문을 적으면 버린다.
+- 고정 후보에 더해, 제보 내용으로 소비자 법령 원문 모음(platform_app/law_corpus.json: 화장품법·식품위생법·약관법·민법 등)에서 찾은 조문을
+  'corpus:ecom:제17조' 꼴의 후보로 같이 준다. AI는 일반 지식이나 검색이 아니라 이 후보 원문만 근거로 쓴다.
 - AI에는 이름·연락처 등을 지운 제보 내용만 보낸다(companydesk.case_input). 첨부 파일은 보내지 않는다.
 - 제보자에게 보내는 건 운영자·기자가 초안을 확인하고 '제보자에게 보내기'를 눌렀을 때만이다. 자동 발송하지 않는다.
 - 분류는 언제든 사람이 바꿀 수 있고, 바꾼 사람이 기록된다.
@@ -16,6 +18,10 @@ LOG=logging.getLogger(__name__)
 TRACKS={'story':'취재 검토','auto':'자동 응답'}
 _spec=importlib.util.spec_from_file_location('jebo_law',Path(__file__).parent/'platform_app'/'law.py')
 law=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(law)
+_spec=importlib.util.spec_from_file_location('jebo_law_corpus',Path(__file__).parent/'platform_app'/'law_corpus.py')
+corpus=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(corpus)
+CORPUS='corpus:'   # 법령 원문 모음에서 찾은 후보의 앞글자 ('corpus:ecom:제17조')
+CORPUS_MAX=4       # 제보마다 더 주는 후보 수
 
 # 제보 유형별로 AI에 보여 줄 조문 후보 (유형 이름은 관리자가 바꿀 수 있어 없는 유형은 전체 후보를 씀)
 POOL_ALL=['ecom:제15조:①','ecom:제15조:②','ecom:제17조:①','ecom:제17조:②','ecom:제17조:③','ecom:제17조:⑤','ecom:제17조:⑥',
@@ -38,6 +44,7 @@ CLOSING=('이 안내는 보내 주신 내용을 바탕으로 한 일반적인 �
          '실제 결과는 계약 내용과 사실관계에 따라 달라질 수 있어요.\n'
          '추가로 알려 주실 내용이나 자료가 있으면 이 화면에서 답장해 주세요. 센터가 함께 확인할게요.\n\n소비자제보센터 드림')
 SYSTEM=('너는 소비자제보센터의 제보 분류와 답변 초안을 돕는다. 제보 내용과 [조문 후보]만 근거로 JSON을 만든다.\n'
+        '법률 안내는 [조문 후보]에 주어진 법령 원문에서만 끌어온다. 네가 아는 일반 지식이나 인터넷 검색 결과로 법 내용을 말하지 않는다.\n'
         '1) 분류 track: "story"(취재 검토) 또는 "auto"(자동 응답).\n'
         '   story: 여러 소비자에게 반복될 수 있는 피해, 큰 금액, 안전·건강 위해, 기업의 조직적·고의적 행위 의심, 사회적 관심이 클 사안 등 센터가 직접 취재·검토할 가치가 있는 제보.\n'
         '   auto: 개인 간 일회성 분쟁, 단순 변심·반품·환불 문의처럼 법률 안내만으로 소비자가 스스로 해결을 시도할 수 있는 제보.\n'
@@ -47,7 +54,9 @@ SYSTEM=('너는 소비자제보센터의 제보 분류와 답변 초안을 돕�
         '조문에 없는 기간·금액·권리를 지어내지 않는다. 기업이 법을 위반했다고 단정하지 않는다("~라면 ~할 수 있어요"처럼 조건으로 쓴다). '
         '개인정보(이름·연락처·주소·계좌·주문번호)는 쓰지 않는다. 조문 번호는 문단에 쓰지 않아도 된다.\n'
         '   [조문 후보]에는 온라인 거래(전자상거래법)와 계속거래(방문판매법: 헬스장·학원·필라테스처럼 1개월 이상 이용권 계약) 조문이 섞여 있다. '
-        '제보 상황에 맞는 법만 고른다. 매장에서 직접 맺은 이용권 계약에는 전자상거래법을 쓰지 말고 방문판매법 계속거래 조문을 쓴다. '
+        '[조문 후보] 중 id가 corpus:로 시작하는 것은 제보 내용으로 법령 원문 모음(화장품법·식품위생법·식품표시광고법·약관법·표시광고법·민법·소비자기본법 등)에서 찾은 조문 전체다. '
+        '제보와 맞지 않는 조문은 쓰지 않는다. corpus:easylaw로 시작하는 것은 법령 해설(찾기 쉬운 생활법령정보)이라 조문 원문이 있으면 원문을 먼저 따른다.\n'
+        '   제보 상황에 맞는 법만 고른다. 매장에서 직접 맺은 이용권 계약에는 전자상거래법을 쓰지 말고 방문판매법 계속거래 조문을 쓴다. '
         '맞는 조문이 없으면 끌어다 쓰지 말고, 계약서·약관 확인과 품목별 소비자분쟁해결기준·1372 상담을 중심으로 일반적인 안내만 한다.\n'
         '4) refs: guidance의 근거가 된 조문 후보 id 0~4개 배열(후보 목록의 id 그대로). 맞는 조문이 없으면 빈 배열.\n'
         '5) steps: 제보자가 할 일 2~4개 배열(예: 업체에 서면으로 요청하고 기록 남기기). 해요체 짧은 문장.\n'
@@ -55,16 +64,43 @@ SYSTEM=('너는 소비자제보센터의 제보 분류와 답변 초안을 돕�
 
 def ref_pool(category):return POOL.get(category,POOL_ALL)
 
+def case_text(info):
+    """법령을 찾을 제보 글 (case_input 결과에서 제목·업체·내용·원하는 해결. 유형 이름은 여러 뜻이 섞여 있어 넣지 않음)."""
+    return ' '.join(str(info.get(k) or '') for k in ('제목','업체·서비스명','피해 내용','원하는 해결'))
+
+def corpus_refs(text,pool=()):
+    """제보 글로 찾은 법령 원문 후보 ['corpus:ecom:제17조', ...]. 고정 후보에 이미 있는 조문은 뺀다."""
+    have={':'.join(r.split(':')[:2]) for r in pool}
+    try:hits=corpus.related(text,CORPUS_MAX+2)
+    except Exception as e:LOG.warning('법령 원문 찾기 실패: %s',type(e).__name__);return []
+    return [CORPUS+h['ref'] for h in hits if h['ref'] not in have][:CORPUS_MAX]
+
+def candidates(case,info=None):
+    """AI에 보여 줄 조문 후보 전체: 유형별 고정 후보 + 제보 글로 찾은 법령 원문."""
+    pool=ref_pool(case['category'])
+    return pool+corpus_refs(case_text(info if info is not None else _desk.case_input(case)),pool)
+
+def cite(ref):
+    """고정 후보와 법령 원문 후보 모두 {ref, label, title, source, ...}로."""
+    if ref.startswith(CORPUS):return dict(corpus.cite(ref[len(CORPUS):]),ref=ref)
+    return law.cite(ref)
+
+def plain(ref):
+    if ref.startswith(CORPUS):
+        c=cite(ref);return f"{c['label']} ({c['title']})\n"+corpus.clip(c['text'],2500)
+    return law.plain(ref)
+
 def law_block(refs):
-    return '\n\n'.join(f'[{r}] '+law.plain(r) for r in refs)
+    return '\n\n'.join(f'[{r}] '+plain(r) for r in refs)
 
 def ask(case):
     """{track, reason, guidance, refs, steps} 와 모델 이름. 실패하면 예외(키는 메시지에 넣지 않음)."""
     desk=_desk
     key=os.getenv('OPENAI_API_KEY','').strip()
     if not key:raise RuntimeError('OpenAI API 키가 없어요')
-    pool=ref_pool(case['category'])
-    user=json.dumps(desk.case_input(case),ensure_ascii=False)+'\n\n[조문 후보]\n'+law_block(pool)
+    info=desk.case_input(case)
+    pool=candidates(case,info)
+    user=json.dumps(info,ensure_ascii=False)+'\n\n[조문 후보]\n'+law_block(pool)
     body={'model':desk.ai_model(),'temperature':0.2,'response_format':{'type':'json_object'},
           'messages':[{'role':'system','content':_branded(SYSTEM)},{'role':'user','content':user}]}
     st,res=desk.post_json('https://api.openai.com/v1/chat/completions',{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body,45)
@@ -96,7 +132,7 @@ def _branded(text):
 
 def compose(res):
     parts=[OPENING,'','보내 주신 내용을 살펴보고, 관련 법률을 바탕으로 도움이 될 만한 내용을 안내드려요.','','■ 관련 법률 안내','\n\n'.join(res['guidance'])]
-    if res['refs']:parts+=['','■ 근거 조문']+[f"- {c['label']} ({c['title']})" for c in (law.cite(r) for r in res['refs'])]
+    if res['refs']:parts+=['','■ 근거 조문']+[f"- {c['label']} ({c['title']})" if c['title'] else f"- {c['label']}" for c in (cite(r) for r in res['refs'])]
     if res['steps']:parts+=['','■ 이렇게 해 보세요']+[f'{i}. {t}' for i,t in enumerate(res['steps'],1)]
     parts+=['',HELP,'',CLOSING]
     return _branded('\n'.join(parts))
@@ -143,7 +179,10 @@ def install(S):
 
     def context(db,case):
         t=row(db,case['id'])
-        refs=[law.cite(r) for r in json.loads(t['refs'] or '[]')] if t and t['refs'] else []
+        refs=[]
+        for r in (json.loads(t['refs'] or '[]') if t and t['refs'] else []):
+            try:refs.append(cite(r))
+            except (KeyError,ValueError):pass  # 법령 파일이 바뀌어 없어진 조문은 건너뜀
         return dict(t=t,refs=refs,ready=_desk.ai_ready())
     S.triage_context=context
 
