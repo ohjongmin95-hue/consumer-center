@@ -1,4 +1,4 @@
-// 하단 사업자 정보 (웹 하단과 같은 내용). 평소엔 접어 두고 '회사 정보'를 누르면 펼친다
+// 하단 사업자 정보 (웹 하단과 같은 내용). 평소엔 가운데 작은 화살표만, 누르면 방침 링크와 사업자 정보를 펼친다
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -13,16 +13,14 @@ export function Footer() {
   const [open, setOpen] = useState(false);
   return (
     <View style={st.wrap}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <Pressable onPress={() => WebBrowser.openBrowserAsync(meta?.privacy ?? 'https://cs.soboru.co.kr/privacy', { toolbarColor: '#FFFFFF' })}>
-          <Text style={[st.t, { fontWeight: '700', color: C.fg2 }]}>개인정보 처리방침</Text>
-        </Pressable>
-        <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8} accessibilityRole="button" accessibilityState={{ expanded: open }}>
-          <Text style={[st.t, { color: C.fg2 }]}>회사 정보 {open ? '∧' : '∨'}</Text>
-        </Pressable>
-      </View>
+      <Pressable style={st.fold} onPress={() => setOpen((v) => !v)} hitSlop={12} accessibilityRole="button" accessibilityLabel={open ? '회사 정보 접기' : '회사 정보 펼치기'} accessibilityState={{ expanded: open }}>
+        <View style={[st.chev, open && { transform: [{ rotate: '-135deg' }], marginTop: 6 }]} />
+      </Pressable>
       {open ? (
         <View style={{ marginTop: 12 }}>
+          <Pressable style={{ marginBottom: 10, alignSelf: 'flex-start' }} onPress={() => WebBrowser.openBrowserAsync(meta?.privacy ?? 'https://cs.soboru.co.kr/privacy', { toolbarColor: '#FFFFFF' })}>
+            <Text style={[st.t, { fontWeight: '700', color: C.fg2 }]}>개인정보 처리방침</Text>
+          </Pressable>
           <Text style={st.t}>상호. {o.name}</Text>
           <Text style={st.t}>사업자등록번호. {o.biz_no}</Text>
           <Text style={st.t}>소재지. {o.address}</Text>
@@ -36,6 +34,8 @@ export function Footer() {
 }
 
 const st = StyleSheet.create({
-  wrap: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 12 },
+  wrap: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12 },
+  fold: { alignSelf: 'center', width: 44, height: 28, alignItems: 'center', justifyContent: 'center' },
+  chev: { width: 9, height: 9, borderRightWidth: 1.6, borderBottomWidth: 1.6, borderColor: C.fg4, transform: [{ rotate: '45deg' }], marginTop: -4 },
   t: { fontFamily: FONT, fontSize: 12, lineHeight: 19, color: C.fg3 },
 });
