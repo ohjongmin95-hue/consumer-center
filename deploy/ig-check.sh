@@ -20,3 +20,5 @@ echo; echo "== 최근 30분 웹훅 =="
 journalctl -u soboru-platform --since "30 min ago" --no-pager | grep -E "hook/instagram|인스타그램 웹훅" | tail -n 12 | sed -E 's/^.*gunicorn\[[0-9]+\]: //'
 echo; echo "== 최근 30분 오류 =="
 journalctl -u soboru-platform --since "30 min ago" --no-pager | grep -E "^.*: [A-Za-z_.]*(Error|Exception)[: ]" | tail -n 5 | sed -E 's/^.*gunicorn\[[0-9]+\]: //'
+echo; echo "== 마지막 오류 자세히 (비밀 값 없이 코드 줄만) =="
+journalctl -u soboru-platform --since "2 hours ago" --no-pager | sed -E 's/^.*gunicorn\[[0-9]+\]: //' | grep -A 40 "ERROR in app: Exception" | tail -n 40 | grep -E "ERROR in app|File \"/opt|^[A-Za-z_.]*(Error|Exception)" | tail -n 14

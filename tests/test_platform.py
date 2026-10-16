@@ -2194,6 +2194,28 @@ class PlatformTest(unittest.TestCase):
             self.assertIn('다시 열기',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))
             self.post(b,f'/biz/case/{c["id"]}',{'act':'reopen'},f'/biz/case/{c["id"]}')
             with self.core.conn() as db:self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(c['id'],)).fetchone()[0],'answered')
+            # 끝낸 뒤 같은 고객이 또 DM하면 새 요청이 생기고, 새 요청에서도 답변하기가 DM으로 간다 (예전엔 답장 상대가 저장되지 않았다)
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'close_chat'},f'/biz/case/{c["id"]}')
+            hook([m('b1','반품하고 싶어요')])
+            with self.core.conn() as db:
+                rows=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='인스타그램 DM' ORDER BY id",(cid,)).fetchall()
+                self.assertEqual(len(rows),2);c2=rows[1]
+            self.assertIn('누르면 고객에게 인스타그램 DM으로 바로 가요',b.get(f'/biz/case/{c2["id"]}').get_data(as_text=True))
+            self.post(b,f'/biz/case/{c2["id"]}',{'act':'reply','msg':'반품 접수해 드릴게요.'},f'/biz/case/{c2["id"]}')
+            sent=[x for x in calls if x[1].endswith('/me/messages')][-1];self.assertEqual(sent[3]['recipient'],{'id':'555'})
+            hook([m('b2','감사해요')])  # 새 요청에 이어 붙는다
+            with self.core.conn() as db:
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND channel='인스타그램 DM'",(cid,)).fetchone()[0],2)
+                self.assertEqual([e[0] for e in db.execute("SELECT text FROM events WHERE case_id=? AND kind='me'",(c2['id'],))],['감사해요'])
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'reopen'},f'/biz/case/{c["id"]}')
+            n_sent=len([x for x in calls if x[1].endswith('/me/messages')])
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'post_shop'},f'/biz/case/{c["id"]}')  # 예전 요청도 여전히 같은 고객에게 간다
+            self.assertEqual(len([x for x in calls if x[1].endswith('/me/messages')]),n_sent+1)
+            # 답장 상대가 없는 인스타 요청(예전 버그로 생긴 것)에 답해도 오류 없이 기록만 남는다
+            with self.core.conn() as db:
+                db.execute("DELETE FROM shop_seen WHERE case_id=?",(c2['id'],))
+            r=self.post(b,f'/biz/case/{c2["id"]}',{'act':'reply','msg':'기록용 답변이에요'},f'/biz/case/{c2["id"]}')
+            self.assertLess(r.status_code,500)
             # 앱 답변 템플릿: 만들면 요청 화면에 고객 이름이 채워져 나오고, 골라 보내면 쓴 횟수가 오른다
             self.assertEqual(a.post('/biz/api/v1/macros',json={'name':'','body':''},headers=auth).status_code,400)
             ms=a.post('/biz/api/v1/macros',json={'name':'배송 안내','body':'{고객명}님, 오늘 보내요','tags':'배송'},headers=auth).get_json();mid=ms['macros'][0]['id']
