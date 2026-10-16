@@ -341,6 +341,7 @@ def install(S):
             with conn() as db:
                 cur = db.execute('INSERT INTO articles(title,summary,body,category,emoji,tone,source_name,source_url,featured,status,created,updated,published_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
                                  (v['title'], v['summary'], v['body'], v['category'], v['emoji'], v['tone'], v['source_name'], v['source_url'], v['featured'], status, now(), now(), now() if status == 'published' else None))
+            auto_art(cur.lastrowid)
             flash('글을 게시했어요.' if status == 'published' else '초안으로 저장했어요.')
             return redirect(url_for('admin_life_edit', article_id=cur.lastrowid))
         view = request.args.get('view', '')
@@ -348,6 +349,11 @@ def install(S):
             rows = db.execute('SELECT * FROM articles' + (" WHERE status='draft'" if view == 'draft' else '') + ' ORDER BY id DESC LIMIT 200').fetchall()
             n_draft = db.execute("SELECT COUNT(*) FROM articles WHERE status='draft'").fetchone()[0]
         return render_template('admin_life.html', rows=rows, a=None, view=view, n_draft=n_draft, categories=LIFE_CATEGORIES, tones=LIFE_TONES)
+
+    def auto_art(article_id):
+        # AI 일러스트 자동 그리기 (soboru_art.py가 붙어 있고 키가 있을 때만)
+        art = app.extensions.get('soboru_art')
+        if art: art['auto']('life', article_id)
 
     @app.route('/admin/life/<int:article_id>', methods=['GET', 'POST'])
     @S.admin_only
@@ -365,6 +371,7 @@ def install(S):
                 published_at = a['published_at'] or (now() if status == 'published' else None)
                 db.execute('UPDATE articles SET title=?,summary=?,body=?,category=?,emoji=?,tone=?,source_name=?,source_url=?,featured=?,status=?,updated=?,published_at=? WHERE id=?',
                            (v['title'], v['summary'], v['body'], v['category'], v['emoji'], v['tone'], v['source_name'], v['source_url'], v['featured'], status, now(), published_at, article_id))
+                db.commit(); auto_art(article_id)
                 flash({'publish': '게시했어요.', 'unpublish': '게시를 내렸어요. 초안으로 남아 있어요.'}.get(act, '저장했어요.'))
                 return redirect(url_for('admin_life_edit', article_id=article_id))
             rows = db.execute('SELECT * FROM articles ORDER BY id DESC LIMIT 200').fetchall()

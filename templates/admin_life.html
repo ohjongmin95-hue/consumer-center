@@ -15,7 +15,7 @@
     <div class="admin-row">
       <label>분야<select name="category">{% for c in categories %}<option{% if a and a['category'] == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
       <input type="hidden" name="emoji" value="{{ a['emoji'] if a else '' }}"><input type="hidden" name="tone" value="{{ a['tone'] if a else 't1' }}">
-      <p class="meta">대표 그림은 고른 분야에 맞는 그림이 자동으로 들어가요.</p>
+      <p class="meta">저장하면 AI 일러스트를 자동으로 그려서 붙여요(30초쯤 걸려요). 그림은 관리자 > AI 일러스트에서 다시 그리거나 내릴 수 있어요.</p>
     </div>
     <div class="admin-row">
       <label>출처 이름<input name="source_name" maxlength="120" value="{{ a['source_name'] if a else '' }}" placeholder="공정거래위원회 소비자24"></label>

@@ -1,7 +1,8 @@
 """AI 일러스트: 제보·생활정보 카드에 붙일 단순한 그림을 OpenAI로 그림.
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인다.
-- 관리자 > AI 일러스트에서 '그리기'를 누르면 초안 그림이 생기고, '게시'를 눌러야 사이트에 보인다.
+- 생활정보 글을 만들거나 게시하면 그림이 없을 때 자동으로 그려서 바로 붙인다(뒤에서 그려서 저장은 기다리지 않음).
+- 관리자 > AI 일러스트에서 다시 그리기·내리기·지우기, 제보는 '그리기' 후 '게시'를 눌러야 보인다.
 - AI에는 분야와 공개용 제목만 보낸다(개인정보·업체명은 지움). 본문·제보자 정보는 보내지 않는다.
 - 그림이 없거나 내리면 지금처럼 글자 카드가 나온다. 그림에는 'AI 일러스트'라고 작게 표시한다.
 - 키는 사이트가 이미 쓰는 OPENAI_API_KEY, 모델은 OPENAI_IMAGE_MODEL(기본 gpt-image-1-mini).
@@ -10,6 +11,7 @@ import base64
 import datetime
 import os
 import re
+import threading
 from flask import abort, flash, g, redirect, render_template, request, send_file, url_for
 
 KINDS = ('report', 'life')
@@ -78,6 +80,19 @@ def install(S):
             db.execute("INSERT OR REPLACE INTO soboru_art(kind,target_id,file,status,created) VALUES(?,?,?,'draft',?)", (kind, target_id, name, now()))
         if old and old['file'] != name: (folder / old['file']).unlink(missing_ok=True)
 
+    def auto(kind, target_id):
+        # 그림이 없을 때만, 키가 있을 때만. 실패하면 조용히 넘어가고 글자 카드가 그대로 나옴
+        if not desk.ai_ready(): return
+        with conn() as db:
+            if db.execute('SELECT 1 FROM soboru_art WHERE kind=? AND target_id=?', (kind, target_id)).fetchone(): return
+        def run():
+            try:
+                draw(kind, target_id)
+                with conn() as db: db.execute("UPDATE soboru_art SET status='live' WHERE kind=? AND target_id=?", (kind, target_id))
+            except Exception as e: app.logger.warning('AI 일러스트 자동 그리기 실패: %s', str(e)[:200])
+        if app.config.get('TESTING'): run()
+        else: threading.Thread(target=run, daemon=True).start()
+
     @app.route('/art/<kind>/<int:target_id>.webp')
     def art_image(kind, target_id):
         with conn() as db:
@@ -126,4 +141,5 @@ def install(S):
         return back
 
     app.jinja_env.globals.update(art_url=art_url)
-    S.art_draw = draw
+    S.art_draw = draw; S.art_auto = auto
+    app.extensions['soboru_art'] = {'auto': auto, 'draw': draw}

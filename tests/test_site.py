@@ -320,10 +320,17 @@ class SiteTest(unittest.TestCase):
             self.assertIn('sb-art', visitor.get('/').get_data(as_text=True))
             admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'hide'})
             self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)
+            # 생활정보 글은 만들면 자동으로 그려서 바로 붙음
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+                r = admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '헬스장 환불 받는 법', 'summary': '요약', 'body': '본문', 'category': '쇼핑', 'publish': '1'})
+            aid = int(r.headers['Location'].rstrip('/').split('/')[-1])
+            self.assertIn('헬스장 환불 받는 법', sent[-1]['prompt'])
+            self.assertEqual(visitor.get(f'/art/life/{aid}.webp').status_code, 200)
+            self.assertIn('AI 일러스트', visitor.get(f'/life/{aid}').get_data(as_text=True))
         finally:
             with self.site.conn() as db:
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")
-                db.execute('DELETE FROM soboru_art')
+                db.execute('DELETE FROM soboru_art'); db.execute('DELETE FROM articles')
 
     def test_case_metoo_and_comments(self):
         # 공개 제보: '나도 겪었어요' 공감(누르면 +1, 다시 누르면 취소), 댓글(연락처 가림), 알리기 5번이면 숨김, 비공개 제보는 막힘
