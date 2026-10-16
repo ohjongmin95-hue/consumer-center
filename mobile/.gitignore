@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# 안드로이드 알림 설정 (EAS 환경 변수로 넣는다)
+google-services.json
