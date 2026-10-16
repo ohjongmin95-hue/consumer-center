@@ -1816,7 +1816,7 @@ class PlatformTest(unittest.TestCase):
             with self.core.conn() as db:case_id=db.execute("SELECT case_id FROM shop_seen WHERE company_id=? AND ext_id='n91'",(cid,)).fetchone()[0]
             r=self.post(b,f'/biz/case/{case_id}',{'act':'post_shop'},follow_redirects=True);self.assertIn('먼저 답변',r.get_data(as_text=True))
             r=self.post(b,f'/biz/case/{case_id}',{'act':'reply','msg':'네, M 사이즈 있어요'},follow_redirects=True)
-            self.assertIn('스마트스토어에 답변 올리기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))  # 다시 올리기는 그대로
+            self.assertIn('다시 보내기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))  # 다시 올리기는 그대로
         self.assertEqual(sent,[('https://api.commerce.naver.com/external/v1/pay-merchant/inquiries/91/answer',{'answerComment':'네, M 사이즈 있어요'})])
         self.assertIn('스마트스토어에 답변을 올렸어요',r.get_data(as_text=True))
         # 쿠팡은 Wing 아이디가 없으면 안내만
@@ -2071,7 +2071,7 @@ class PlatformTest(unittest.TestCase):
             self.assertIn('누르면 고객에게 메일로 바로 가요',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True));self.assertEqual(sent,[])
             self.post(b,f'/biz/case/{c["id"]}',{'act':'reply','msg':'오늘 환불해 드렸어요. 2~3일 안에 들어가요.'},f'/biz/case/{c["id"]}')
             self.assertEqual(len(sent),1);m=sent[0]
-            self.assertIn('메일로 답변 보내기',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))  # 다시 보내기는 그대로 있다
+            self.assertIn('다시 보내기',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))  # 다시 보내기는 그대로 있다
             self.assertEqual((m['To'],m['In-Reply-To']),('kim@example.com','<m1@example.com>'));self.assertIn('오늘 환불해 드렸어요',m.get_content())
             # 고객이 우리 답장에 다시 답하면 같은 요청에 이어 붙는다
             mail(4,'kim@example.com','Re: 환불 언제 되나요?','확인했어요 감사합니다\n\n> 오늘 환불해 드렸어요','<m4@example.com>',f"In-Reply-To: {m['Message-ID']}\r\n")
@@ -2186,6 +2186,28 @@ class PlatformTest(unittest.TestCase):
             self.assertEqual(d['message'],'인스타그램 DM으로 답변을 보냈어요');self.assertEqual(len([x for x in calls if x[1].endswith('/me/messages')]),n_sent+1)
             d=a.post(f'/biz/api/v1/cases/{c["id"]}',json={'act':'close_chat'},headers=auth).get_json()
             self.assertEqual(d['status'],'closed');self.assertFalse(d['can']['close_chat'])
+            # 끝낸 요청은 다시 열 수 있다 (앱·웹)
+            self.assertTrue(d['can']['reopen'])
+            d=a.post(f'/biz/api/v1/cases/{c["id"]}',json={'act':'reopen'},headers=auth).get_json()
+            self.assertEqual(d['status'],'answered');self.assertTrue(d['can']['close_chat']);self.assertFalse(d['can']['reopen'])
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'close_chat'},f'/biz/case/{c["id"]}')
+            self.assertIn('다시 열기',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'reopen'},f'/biz/case/{c["id"]}')
+            with self.core.conn() as db:self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(c['id'],)).fetchone()[0],'answered')
+            # 앱 답변 템플릿: 만들면 요청 화면에 고객 이름이 채워져 나오고, 골라 보내면 쓴 횟수가 오른다
+            self.assertEqual(a.post('/biz/api/v1/macros',json={'name':'','body':''},headers=auth).status_code,400)
+            ms=a.post('/biz/api/v1/macros',json={'name':'배송 안내','body':'{고객명}님, 오늘 보내요','tags':'배송'},headers=auth).get_json();mid=ms['macros'][0]['id']
+            self.assertIn('{고객명}',ms['vars'])
+            d=a.get(f'/biz/api/v1/cases/{c["id"]}',headers=auth).get_json()
+            self.assertEqual([x['id'] for x in d['macros']],[mid]);self.assertNotIn('{고객명}',d['macros'][0]['body'])
+            a.post(f'/biz/api/v1/cases/{c["id"]}',json={'act':'reply','msg':d['macros'][0]['body'],'macro':str(mid)},headers=auth)
+            self.assertEqual(a.get('/biz/api/v1/macros',headers=auth).get_json()['macros'][0]['used'],1)
+            self.assertEqual(a.post('/biz/api/v1/macros',json={'act':'delete','id':mid},headers=auth).get_json()['macros'],[])
+            # 앱 교환·반품: 웹과 같은 네 단계, 홈은 오늘 들어온 요청 수와 처리 방법을 준다
+            r=a.get('/biz/api/v1/returns',headers=auth).get_json()
+            self.assertEqual([x['key'] for x in r['stages']],['new','back','next','done'])
+            h=a.get('/biz/api/v1/home',headers=auth).get_json();self.assertIn('today',h['counts']);self.assertTrue(h['hello']);self.assertTrue(h['brief'])
+            self.assertIn('plan_title',a.get('/biz/api/v1/cases?f=all',headers=auth).get_json()['cases'][0])
             self.post(b,'/biz/connect/instagram',{'act':'delete'},'/biz/connect/instagram')
             with self.core.conn() as db:self.assertIsNone(instagram.link(db,cid))
             self.assertEqual(hook([m('a3','또 문의')]).status_code,200)  # 끊긴 계정의 DM은 받지 않는다

@@ -21,6 +21,7 @@ export function Footer() {
       <Text style={st.t}>소재지. {o.address}</Text>
       <Text style={st.t}>관리자. {o.manager}</Text>
       <Text style={[st.t, { marginTop: 10 }]}>© 2026 SOBORU. All rights reserved.</Text>
+      <Text style={[st.t, { marginTop: 6, color: C.fg4 }]}>이 서비스에는 토스(비바리퍼블리카)가 제공한 Tossface가 적용되어 있습니다</Text>
     </View>
   );
 }

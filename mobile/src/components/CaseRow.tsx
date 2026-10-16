@@ -2,15 +2,13 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BizCase, fmtDate } from '../lib/api';
 import { C, R, FONT } from '../lib/theme';
-import { CAT_ICON, Icon } from './Icon';
+import { catTf, TfTile } from './Tf';
 import { StatusPill } from './ui';
 
 export function CaseRow({ c }: { c: BizCase }) {
   return (
     <Pressable onPress={() => router.push(`/case/${c.id}`)} style={({ pressed }) => [st.row, pressed && { backgroundColor: C.band }]}>
-      <View style={st.ic}>
-        <Icon name={CAT_ICON[c.category] ?? 'note'} size={26} />
-      </View>
+      <TfTile name={catTf(c.category)} />
       <View style={{ flex: 1, gap: 5 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {c.pending ? <StatusPill status="forwarded" label="승인 대기" /> : <StatusPill status={c.status} label={c.status_label} />}

@@ -3,9 +3,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CaseRow } from '../../components/CaseRow';
-import { Card, Loading, Notice } from '../../components/ui';
+import { Card, Loading, Notice, TopBar } from '../../components/ui';
 import { api, ApiError, BizCase } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { setPending } from '../../lib/badge';
 import { C, R, FONT } from '../../lib/theme';
 
 const FILTERS: [string, string][] = [
@@ -33,6 +34,7 @@ export default function CasesTab() {
         const r = await api.cases(session.token, fil, query.trim());
         setRows(r.cases);
         setCounts(r.counts);
+        setPending(r.counts.pending ?? 0);
         setErr('');
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) return logout();
@@ -66,11 +68,12 @@ export default function CasesTab() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.band }} edges={['top']}>
+      <TopBar />
       <View style={st.head}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={st.h1}>전체 요청</Text>
+          <Text style={st.h1}>요청</Text>
           <Pressable onPress={() => router.push('/new')} style={({ pressed }) => [st.add, pressed && { opacity: 0.7 }]} accessibilityRole="button">
-            <Text style={{ color: C.accentInk, fontWeight: '700', fontFamily: FONT, fontSize: 14 }}>+ 직접 등록</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontFamily: FONT, fontSize: 14 }}>+ 직접 등록</Text>
           </Pressable>
         </View>
         <TextInput
@@ -129,7 +132,7 @@ export default function CasesTab() {
 }
 
 const st = StyleSheet.create({
-  add: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: C.accentSoft, justifyContent: 'center' },
+  add: { height: 36, paddingHorizontal: 14, borderRadius: 12, backgroundColor: C.accent, justifyContent: 'center' },
   head: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 },
   h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8, paddingHorizontal: 8 },
   search: { height: 48, borderRadius: R.md, backgroundColor: C.card, paddingHorizontal: 16, fontFamily: FONT, fontSize: 15, color: C.fg },

@@ -2,10 +2,10 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Loading, Notice } from '../../components/ui';
-import { api, ApiError, Orders } from '../../lib/api';
-import { useAuth } from '../../lib/auth';
-import { C, R, FONT } from '../../lib/theme';
+import { Card, Loading, Notice } from '../components/ui';
+import { api, ApiError, Orders } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import { C, R, FONT } from '../lib/theme';
 
 // 주문 장부: 웹에서 올린 판매처 주문을 앱에서 보고 상태·송장을 처리한다
 export default function OrdersTab() {
@@ -36,9 +36,8 @@ export default function OrdersTab() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.band }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.band }} edges={[]}>
       <View style={st.head}>
-        <Text style={st.h1}>주문</Text>
         <TextInput style={st.search} placeholder="주문번호, 구매자, 상품, 송장으로 찾기" placeholderTextColor={C.fg4} value={q} onChangeText={setQ} onSubmitEditing={() => load(g, q)} returnKeyType="search" />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
           {(d?.groups ?? [{ key: 'all', label: '전체' }]).map(({ key, label }) => {

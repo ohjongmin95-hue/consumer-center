@@ -1,11 +1,43 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Footer } from '../../components/Footer';
-import { Btn, Card, H2, MenuRow } from '../../components/ui';
+import { Icon } from '../../components/Icon';
+import { Btn, Card, H2, TopBar } from '../../components/ui';
+import { SITE_BASE } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { C, FONT } from '../../lib/theme';
+
+// 전체: 웹 왼쪽 메뉴와 같은 순서. 처음 한 번만 하는 연결·직원 관리는 웹에서 연다
+const web = (path: string) => () => WebBrowser.openBrowserAsync(SITE_BASE + path, { toolbarColor: '#FFFFFF' });
+const GROUPS: { icon: string; title: string; go: () => void; web?: boolean }[][] = [
+  [
+    { icon: 'truck', title: '주문·배송', go: () => router.push('/orders') },
+    { icon: 'exchange', title: '교환·반품', go: () => router.push('/returns') },
+    { icon: 'box', title: '상품정보', go: () => router.push('/products') },
+  ],
+  [
+    { icon: 'bolt', title: '자동 처리', go: () => router.navigate('/auto') },
+    { icon: 'macro', title: '답변 템플릿', go: () => router.push('/macros') },
+    { icon: 'flow', title: '자동화 규칙', go: web('/automations'), web: true },
+  ],
+  [
+    { icon: 'chart', title: '통계', go: () => router.push('/stats') },
+    { icon: 'note', title: '월간 리포트', go: () => router.push('/report') },
+  ],
+  [
+    { icon: 'guide', title: '응대 가이드', go: () => router.push('/guide') },
+    { icon: 'search', title: '법·제도 소식', go: () => router.push('/news') },
+    { icon: 'reply', title: '이용 안내', go: () => router.push('/howto') },
+  ],
+  [
+    { icon: 'link', title: '서비스 연동', go: web('/connect'), web: true },
+    { icon: 'user', title: '팀', go: web('/team'), web: true },
+    { icon: 'gear', title: '회사 정보와 알림 설정', go: () => router.push('/settings') },
+  ],
+];
 
 export default function MoreTab() {
   const { session, logout } = useAuth();
@@ -14,40 +46,35 @@ export default function MoreTab() {
   const co = session.company;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.band }} edges={['top']}>
+      <TopBar />
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
         <View style={st.head}>
           <Text style={st.h1}>{co.name}</Text>
           <Text style={st.sub}>{co.login_id}</Text>
         </View>
 
+        {GROUPS.map((g, i) => (
+          <Card key={i} style={{ paddingVertical: 6 }}>
+            {g.map((m) => (
+              <Pressable key={m.title} onPress={m.go} style={({ pressed }) => [st.row, pressed && { opacity: 0.6 }]}>
+                <Icon name={m.icon} size={26} />
+                <Text style={st.rowT}>{m.title}</Text>
+                {m.web ? <Text style={st.webTag}>웹에서 열기</Text> : null}
+                <Text style={st.chev}>›</Text>
+              </Pressable>
+            ))}
+          </Card>
+        ))}
+
         <Card>
           <H2>우리 가게 고객센터 링크</H2>
-          <Text style={st.p}>쇼핑몰 상세페이지나 카카오톡 채널에 이 링크를 걸어 두면, 고객 문의가 소보루로 들어와 대신 응대합니다.</Text>
           <Text style={st.link} selectable>
             {co.link}
           </Text>
-          <Btn title="링크 공유하기" kind="soft" onPress={() => Share.share({ message: co.link })} />
+          <Btn title="링크 공유하기" onPress={() => Share.share({ message: co.link })} />
         </Card>
 
-        <Card style={{ paddingVertical: 4 }}>
-          <MenuRow title="자동 처리 규칙" sub="어떤 요청을 소보루가 바로 처리할지 정합니다" onPress={() => router.push('/rules')} />
-          <MenuRow title="상품정보" sub="상담창이 가격·재고·사용법 문의에 답할 때 봅니다" onPress={() => router.push('/products')} />
-          <MenuRow title="요청 직접 등록" sub="전화·쇼핑몰 문의·DM으로 받은 요청 올리기" onPress={() => router.push('/new')} last />
-        </Card>
-        <Card style={{ paddingVertical: 4 }}>
-          <MenuRow title="처리 통계" sub="자동 처리율, 해결률, 주별 요청 수" onPress={() => router.push('/stats')} />
-          <MenuRow title="월간 리포트" sub="지난달 요청을 한 장으로" onPress={() => router.push('/report')} last />
-        </Card>
-        <Card style={{ paddingVertical: 4 }}>
-          <MenuRow title="이용 안내" sub="소보루 CS 사용법과 자주 묻는 질문" onPress={() => router.push('/howto')} />
-          <MenuRow title="응대 가이드" sub="상황별 법 조항과 예시 답변" onPress={() => router.push('/guide')} />
-          <MenuRow title="법·제도 소식" sub="사장님이 알아야 할 바뀐 규정" onPress={() => router.push('/news')} last />
-        </Card>
-        <Card style={{ paddingVertical: 4 }}>
-          <MenuRow title="회사 정보와 알림 설정" sub="연락처, 반품 주소, 알림, 비밀번호" onPress={() => router.push('/settings')} last />
-        </Card>
-
-        <View style={{ marginHorizontal: 16, marginTop: 12 }}>
+        <View style={{ marginHorizontal: 16, marginTop: 4 }}>
           {sure ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Btn title="취소" kind="gray" onPress={() => setSure(false)} style={{ flex: 1 }} />
@@ -64,9 +91,12 @@ export default function MoreTab() {
 }
 
 const st = StyleSheet.create({
-  head: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 18, gap: 4 },
+  head: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, gap: 4 },
   h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
   sub: { fontFamily: FONT, fontSize: 14, color: C.fg3 },
-  p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2, marginBottom: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
+  rowT: { flex: 1, fontFamily: FONT, fontSize: 17, fontWeight: '600', color: C.fg, letterSpacing: -0.3 },
+  webTag: { fontFamily: FONT, fontSize: 12, fontWeight: '600', color: C.fg3 },
+  chev: { fontFamily: FONT, fontSize: 24, color: C.fg4 },
   link: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.accentInk, backgroundColor: C.accentSoft, borderRadius: 12, padding: 14, marginBottom: 12 },
 });
