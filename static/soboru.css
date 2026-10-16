@@ -408,3 +408,11 @@ a:active .sb-tc{transform:scale(.98)}
 .sb-hd .sb-sp+.sb-search{margin-right:6px}
 .sb-join{transition:transform .15s var(--sb-ease),background-color .2s}.sb-join:active{transform:scale(.96)}
 @media(max-width:860px){.sb-hd .sb-join{display:none}.sb-hd .sb-login{height:38px;padding:0 14px;font-size:14px}}
+
+/* AI 일러스트 (관리자가 게시한 그림). 글자 카드와 같은 자리·비율 */
+.sb-tc.sb-art{padding:0;background:#f2f4f6}
+.sb-tc.sb-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.sb-art-l{position:absolute;right:10px;bottom:10px;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.38);color:#fff;font-size:11px;font-weight:600;line-height:1.4;letter-spacing:-.01em}
+.sb-tc.sq .sb-art-l{right:6px;bottom:6px;padding:1px 6px;font-size:10px}
+.sbc-art{position:relative;margin:4px 0 24px;border-radius:20px;overflow:hidden;aspect-ratio:2/1;background:#f2f4f6}
+.sbc-art img{width:100%;height:100%;object-fit:cover;display:block}

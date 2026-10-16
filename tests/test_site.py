@@ -289,6 +289,42 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")
 
+    def test_soboru_ai_art(self):
+        # AI 일러스트: 분야·공개 제목만 보내고(연락처·이름 빠짐), 그린 그림은 게시 전엔 관리자만, 게시하면 카드에 'AI 일러스트'
+        import base64
+        with self.site.conn() as db:
+            cid = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published,reporter_name) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+                             ('art1', 'x', '배송·교환·환불', '비밀상사', '홍길동 환불 거부 010-1234-5678', '본문 비밀 내용', '환불', '2026-10-09T10:00:00', 1, 1, '홍길동')).lastrowid
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+        sent = []
+        def fake(url, headers, body, timeout):
+            sent.append(body)
+            return 200, {'data': [{'b64_json': base64.b64encode(b'RIFFxxxxWEBPfake').decode()}]}
+        admin = self.login_admin()
+        try:
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+                page = admin.get('/admin/art').get_data(as_text=True)
+                self.assertIn('AI 일러스트', page)
+                admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'draw'})
+            prompt = sent[0]['prompt']
+            self.assertIn('환불 거부', prompt)
+            for secret in ('010-1234-5678', '홍길동', '비밀상사', '본문 비밀 내용'):
+                self.assertNotIn(secret, prompt)
+            visitor = self.site.app.test_client()
+            self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)
+            self.assertEqual(admin.get(f'/art/report/{cid}.webp').status_code, 200)
+            self.assertNotIn('sb-art', visitor.get('/').get_data(as_text=True))
+            admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'publish'})
+            self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 200)
+            self.assertIn('AI 일러스트', visitor.get(f'/reports/{cid}').get_data(as_text=True))
+            self.assertIn('sb-art', visitor.get('/').get_data(as_text=True))
+            admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'hide'})
+            self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)
+        finally:
+            with self.site.conn() as db:
+                db.execute("DELETE FROM site_content WHERE key='site.brand'")
+                db.execute('DELETE FROM soboru_art')
+
     def test_case_metoo_and_comments(self):
         # 공개 제보: '나도 겪었어요' 공감(누르면 +1, 다시 누르면 취소), 댓글(연락처 가림), 알리기 5번이면 숨김, 비공개 제보는 막힘
         with self.site.conn() as db:

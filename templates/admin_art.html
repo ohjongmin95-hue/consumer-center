@@ -1,0 +1,30 @@
+{% extends 'console.html' %}
+{% block title %}AI 일러스트 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">AI 일러스트</h1>
+    <p>제보·생활정보 카드에 넣을 그림을 AI로 그려요. 그리기를 누르면 초안이 생기고, 게시를 눌러야 사이트에 보여요. 그림이 없으면 지금처럼 글자 카드가 나와요.</p>
+    <p class="meta">AI에는 분야와 공개용 제목만 보내요(개인정보·업체명은 지워서). 그림 한 장에 몇십 원 정도 들어요. 그림 아래에는 'AI 일러스트'라고 작게 표시돼요.</p>
+    {% if not ready %}<p class="hp-warn">OpenAI API 키가 없어서 지금은 그릴 수 없어요. 서버 설정에 OPENAI_API_KEY를 넣어 주세요.</p>{% endif %}
+    <p><a href="{{ url_for('admin_art') }}"{% if kind == 'report' %} class="strong-link"{% endif %}>소비자 제보</a> · <a href="{{ url_for('admin_art', kind='life') }}"{% if kind == 'life' %} class="strong-link"{% endif %}>생활정보</a></p>
+  </div>
+  <div class="art-list">
+  {% for r in rows %}
+    <div class="form-panel art-row" id="art-{{ r.id }}">
+      <div class="art-pic">{% if r.src %}<img src="{{ r.src }}" alt="" loading="lazy">{% else %}<span>그림 없음</span>{% endif %}</div>
+      <div class="art-info">
+        <p class="meta">#{{ r.id }} · {{ r.label }} · {{ r.note }}{% if r.art == 'live' %} · <b class="art-on">게시 중</b>{% elif r.art %} · <b>초안</b>{% endif %}</p>
+        <h2>{{ r.title }}</h2>
+        <form method="post" action="{{ url_for('admin_art_action', kind=kind, target_id=r.id) }}" class="admin-actions" data-art>
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          {% if ready %}<button name="act" value="draw"{% if not r.art %} class="primary"{% endif %}>{{ '다시 그리기' if r.art else '그리기' }}</button>{% endif %}
+          {% if r.art == 'draft' %}<button name="act" value="publish" class="primary">게시</button>{% elif r.art == 'live' %}<button name="act" value="hide">내리기</button>{% endif %}
+          {% if r.art %}<button name="act" value="delete" class="danger">지우기</button>{% endif %}
+        </form>
+      </div>
+    </div>
+  {% else %}<p class="meta">아직 그릴 글이 없어요.</p>{% endfor %}
+  </div>
+</div></main>
+<script>document.querySelectorAll('[data-art]').forEach(function(f){f.addEventListener('submit',function(e){var b=e.submitter;if(b&&b.value==='draw'){setTimeout(function(){f.querySelectorAll('button').forEach(function(x){x.disabled=true});b.textContent='그리는 중… (30초쯤 걸려요)'},0)}})})</script>
+{% endblock %}
