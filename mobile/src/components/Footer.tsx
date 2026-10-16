@@ -1,4 +1,4 @@
-// 하단 사업자 정보 (웹 하단과 같은 내용). 평소엔 가운데 작은 화살표만, 누르면 방침 링크와 사업자 정보를 펼친다
+// 하단 사업자 정보 (웹 하단과 같은 내용). 평소엔 가운데 짧은 가로 막대만, 누르면 방침 링크와 사업자 정보를 펼친다
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -14,7 +14,7 @@ export function Footer() {
   return (
     <View style={st.wrap}>
       <Pressable style={st.fold} onPress={() => setOpen((v) => !v)} hitSlop={12} accessibilityRole="button" accessibilityLabel={open ? '회사 정보 접기' : '회사 정보 펼치기'} accessibilityState={{ expanded: open }}>
-        <View style={[st.chev, open && { transform: [{ rotate: '-135deg' }], marginTop: 6 }]} />
+        <View style={st.bar} />
       </Pressable>
       {open ? (
         <View style={{ marginTop: 12 }}>
@@ -36,6 +36,6 @@ export function Footer() {
 const st = StyleSheet.create({
   wrap: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12 },
   fold: { alignSelf: 'center', width: 44, height: 28, alignItems: 'center', justifyContent: 'center' },
-  chev: { width: 9, height: 9, borderRightWidth: 1.6, borderBottomWidth: 1.6, borderColor: C.fg4, transform: [{ rotate: '45deg' }], marginTop: -4 },
+  bar: { width: 36, height: 4, borderRadius: 2, backgroundColor: C.line },
   t: { fontFamily: FONT, fontSize: 12, lineHeight: 19, color: C.fg3 },
 });
