@@ -67,5 +67,22 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
                                 'category': cat, 'emoji': e, 'tone': tone, 'source_name': '공정거래위원회 소비자24', 'source_url': 'https://www.consumer.go.kr', 'featured': feat, 'publish': '1'})
     with m.conn() as db:
         db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand',?,'2026-10-16')", (os.environ['VRT_BRAND'],))
+    if hasattr(m, 'lawask'):
+        # 법률 질문창: 가짜 AI 답(실제 OpenAI는 부르지 않음)과 관리자가 올린 법령 하나
+        import json as _json
+        law, = m.lawask.parse_text('법제처 1 국가법령정보센터\n할부거래에 관한 법률\n[시행 2026. 1. 2.] [법률 제12345호, 2025. 7. 1., 일부개정]\n'
+                                   '제1조(목적) 이 법은 할부계약에 의한 거래를 공정하게 함을 목적으로 한다.\n'
+                                   '제2조(할부계약의 청약철회) ① 소비자는 할부계약서를 받은 날부터 7일 이내에 할부계약에 관한 청약을 철회할 수 있다.\n')
+        ext = m.app.extensions['lawask']['extra_path']; ext.write_text(_json.dumps({law['key']: dict(law, added='2026-10-16T10:00:00', file='할부거래법.pdf')}, ensure_ascii=False), encoding='utf-8')
+        def fake_ai(url, headers, body, timeout):
+            if '법률 안내 도우미' not in body['messages'][0]['content']: return 503, {}
+            refs = re.findall(r'^\[corpus:([^\]]+)\]', body['messages'][1]['content'], re.M)
+            out = {'headline': '단순 변심이라면 받은 날부터 7일이 지나면 환불이 어려울 수 있어요',
+                   'paragraphs': ['전자상거래법 제17조에 따르면 온라인으로 산 물건은 받은 날부터 7일 안에 청약철회(주문 취소·반품)를 할 수 있어요. 7일이 지났다면 단순 변심으로는 반품을 요구하기 어려울 수 있어요.',
+                                  '다만 받은 옷이 광고나 상품 설명과 다르다면 이야기가 달라요. 같은 조 제3항에 따라 받은 날부터 3개월 안, 그 사실을 안 날부터 30일 안에 청약철회를 할 수 있어요.',
+                                  '판매자에게는 문자나 게시판처럼 기록이 남는 방법으로 요청하고, 상품 사진과 주문 내역을 보관해 두세요.'],
+                   'refs': [r for r in refs if r.startswith('ecom:제17') or r.startswith('ecom:제18')][:2] or refs[:2], 'covered': True, 'suggest_report': True}
+            return 200, {'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
+        os.environ['OPENAI_API_KEY'] = 'vrt-fake'; m.companydesk.post_json = fake_ai
 print('ready', ids, eid, flush=True)
 app.run(host='127.0.0.1', port=PORT)

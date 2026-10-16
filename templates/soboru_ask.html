@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{# 소비자 법률 질문창: 배운 법령 원문에서 조문을 찾아 그 조문만 근거로 답함 (lawask.py) #}
+{% block title %}{{ ui_text('ask.title', '소비자 법률 질문') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui_text('ask.description', '환불·반품·약관·표시 광고처럼 궁금한 소비자 법률, 법령 원문을 근거로 쉽게 답해 드려요.') }}{% endblock %}
+{% block head %}{% if not is_soboru() %}<link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}{% endblock %}
+{% block content %}
+{% set chev %}<svg class="sba-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>{% endset %}
+<main class="sb-wrap sb-ask{% if not is_soboru() %} sb{% endif %}">
+<div class="sba">
+  <header class="sba-head">
+    <p class="sba-kicker"><span aria-hidden="true">⚖️</span> {{ ui('ask.kicker', '법령 원문으로 답해요') }}</p>
+    <h1>{{ ui('ask.h1', '소비자 법률, 편하게 물어보세요') }}</h1>
+    <p>{{ ui('ask.intro', '배운 소비자 법령에서 근거 조문을 찾아 쉽게 풀어 드려요.') }} <a class="sba-learned" href="#sba-laws">법령 {{ counts.laws }}개 · 조문 {{ '{:,}'.format(counts.articles) }}개</a></p>
+  </header>
+
+  {% if result %}
+  <section class="sba-thread" aria-label="답변" aria-live="polite">
+    <div class="sba-q"><p>{{ question }}</p></div>
+    <div class="sba-a">
+      <p class="sba-who"><span class="sba-av" aria-hidden="true">⚖️</span><b>{{ site_name() }} 법령 도우미</b></p>
+      {% if result.kind == 'answer' %}
+        {% if result.headline %}<h2 class="sba-headline">{{ result.headline }}</h2>{% endif %}
+        <div class="sba-body">{% for p in result.paragraphs %}<p>{{ p }}</p>{% endfor %}</div>
+        {% if not result.covered %}<p class="sba-note">{{ ui('ask.not_covered', '배운 법령 원문만으로는 정확히 답하기 어려운 질문이에요. 1372 소비자상담센터에 한 번 더 확인해 보세요.') }}</p>{% endif %}
+      {% elif result.kind == 'fallback' %}
+        <h2 class="sba-headline">{{ ui('ask.fb_title', '질문과 가장 가까운 조문을 찾았어요') }}</h2>
+        <div class="sba-body"><p>{{ ui('ask.fb_text', '지금은 쉬운 설명을 만들 수 없어서 법령 원문을 먼저 보여 드려요. 조문을 눌러 확인해 보세요.') }}</p></div>
+      {% else %}
+        <h2 class="sba-headline">{{ ui('ask.none_title', '배운 법령에서 딱 맞는 조문을 찾지 못했어요') }}</h2>
+        <div class="sba-body"><p>{{ ui('ask.none_text', '무엇을, 어디서, 어떻게 샀는지 조금 더 적어 주시면 다시 찾아볼게요. 급하다면 1372 소비자상담센터에서 상담받을 수 있어요.') }}</p></div>
+      {% endif %}
+      {% if result.cards %}
+      <div class="sba-refs">
+        <p class="sba-refs-h">{{ '근거 조문' if result.kind == 'answer' else '찾은 조문' }} <b>{{ result.cards|length }}</b></p>
+        {% for c in result.cards %}
+        <details class="sba-ref"{% if result.kind == 'fallback' and loop.first %} open{% endif %}>
+          <summary><span class="sba-law">{{ '생활법령정보' if c.guide else c.short }}</span><span class="sba-art">{% if not c.guide %}<b>{{ c.art }}</b> {% endif %}{{ c.title }}</span>{{ chev }}</summary>
+          <div class="sba-ref-body">
+            <p class="sba-text">{{ c.text }}</p>
+            <p class="sba-src"><span>{{ c.law }}{% if c.effective %} · 시행 {{ c.effective|replace('-', '.') }}{% endif %}</span><a href="{{ c.source }}" target="_blank" rel="noopener">{{ '원문 보기' if c.guide else '국가법령정보센터에서 보기' }} ↗</a></p>
+          </div>
+        </details>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <p class="sba-disc">{{ ui('ask.disclaimer', '법령 원문을 바탕으로 한 일반 안내예요. 법률 자문이 아니고, 실제 상황에 따라 결과가 달라질 수 있어요.') }}</p>
+      <div class="sba-cta">
+        <a class="sba-btn main" href="{{ url_for('report') }}"><span aria-hidden="true">📣</span>{{ ui('ask.cta_report', '업체가 안 들어주면 제보하기') }}</a>
+        <a class="sba-btn" href="https://www.ccn.go.kr" target="_blank" rel="noopener"><span aria-hidden="true">📞</span>{{ ui('ask.cta_1372', '1372 소비자상담센터') }}</a>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <form class="sba-form" method="post" action="{{ url_for('law_ask') }}" data-ask>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    {% if result %}<h2 class="sba-more">{{ ui('ask.more', '더 궁금한 게 있나요?') }}</h2>{% endif %}
+    {% if error %}<p class="sba-error" role="alert">{{ error }}</p>{% endif %}
+    <div class="sba-box">
+      <label class="sba-sr" for="sba-q">질문</label>
+      <textarea id="sba-q" name="q" rows="3" maxlength="{{ max_q }}" placeholder="{{ ui_text('ask.placeholder', '예: 온라인에서 산 옷, 7일 지나서도 환불되나요?') }}" required>{{ question if error else '' }}</textarea>
+      <div class="sba-box-foot"><span class="sba-count"><b data-count>{{ (question if error else '')|length }}</b>/{{ max_q }}</span><button class="sba-send" type="submit" data-send><span>{{ ui('ask.send', '물어보기') }}</span></button></div>
+    </div>
+    <p class="sba-privacy">{{ ui('ask.privacy', '이름·전화번호 같은 개인정보는 적지 마세요. 질문 내용은 저장하지 않아요.') }}</p>
+    <div class="sba-ex">
+      <p>{{ ui('ask.examples', '이런 걸 물어볼 수 있어요') }}</p>
+      <div class="sba-chips">{% for e in examples %}<button type="submit" name="example" value="{{ e }}" formnovalidate>{{ e }}</button>{% endfor %}</div>
+    </div>
+    <div class="sba-wait" aria-hidden="true"><span class="sba-dots"><i></i><i></i><i></i></span>{{ ui('ask.wait', '법령 원문에서 근거를 찾고 있어요') }}</div>
+  </form>
+
+  {% if not result %}
+  <ol class="sba-how">
+    <li><b>1</b><div><h3>{{ ui('ask.how1', '맞는 조문을 찾아요') }}</h3><p>{{ ui('ask.how1_d', '전자상거래법, 약관법, 소비자기본법처럼 배운 법령 원문에서 찾아요.') }}</p></div></li>
+    <li><b>2</b><div><h3>{{ ui('ask.how2', '그 조문만 근거로 답해요') }}</h3><p>{{ ui('ask.how2_d', '인터넷 검색 없이, 찾은 원문에 적힌 내용으로만 쉽게 풀어요.') }}</p></div></li>
+    <li><b>3</b><div><h3>{{ ui('ask.how3', '원문을 바로 확인해요') }}</h3><p>{{ ui('ask.how3_d', '답변 아래 조문 카드를 누르면 법령 원문과 출처가 나와요.') }}</p></div></li>
+  </ol>
+  {% endif %}
+
+  <details class="sba-laws" id="sba-laws">
+    <summary>{{ ui('ask.laws', '어떤 법령을 배웠나요?') }} <span>{{ counts.laws }}개</span>{{ chev }}</summary>
+    <ul>{% for l in laws %}<li><a href="{{ l.source }}" target="_blank" rel="noopener"><b>{{ l.short }}</b><span>{% if l.effective %}시행 {{ l.effective|replace('-', '.') }} · {% endif %}조문 {{ l.count }}개</span></a></li>{% endfor %}</ul>
+    <p>{{ ui('ask.laws_note', '국가법령정보센터(law.go.kr) 원문을 그대로 나눠 담았어요. 법이 바뀌면 새 원문으로 다시 배워요.') }}</p>
+  </details>
+</div>
+</main>
+<script>
+(function(){
+  var f=document.querySelector('[data-ask]');if(!f)return;
+  var t=f.querySelector('textarea'),n=f.querySelector('[data-count]');
+  function fit(){t.style.height='auto';t.style.height=Math.min(t.scrollHeight,260)+'px';n.textContent=t.value.length}
+  t.addEventListener('input',fit);
+  if(t.value)fit();
+  f.addEventListener('submit',function(e){
+    var b=e.submitter;
+    if(b&&b.name==='example')t.value=b.value;
+    if(t.value.trim().length<{{ min_q }}&&!(b&&b.name==='example'))return;
+    if(f.classList.contains('is-loading')){e.preventDefault();return}
+    setTimeout(function(){f.classList.add('is-loading');f.querySelectorAll('button').forEach(function(x){x.disabled=true})},0);
+  });
+})();
+</script>
+{% endblock %}

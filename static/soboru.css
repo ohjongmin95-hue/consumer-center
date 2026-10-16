@@ -416,3 +416,116 @@ a:active .sb-tc{transform:scale(.98)}
 .sb-tc.sq .sb-art-l{right:6px;bottom:6px;padding:1px 6px;font-size:10px}
 .sbc-art{position:relative;margin:4px 0 24px;border-radius:20px;overflow:hidden;aspect-ratio:2/1;background:#f2f4f6}
 .sbc-art img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* 소비자 법률 질문창 (/ask): 가운데 한 줄, 흰 바탕 + 가는 선. 질문은 오른쪽 말풍선, 답은 도우미 이름 아래 글, 근거 조문은 펼치는 카드 */
+.sba{max-width:720px;margin:0 auto;padding-top:40px}
+.sba-head{padding-bottom:28px}
+.sba-kicker{display:inline-flex;align-items:center;gap:6px;margin:0 0 14px;padding:6px 12px;border-radius:999px;background:var(--sb-orange-soft);color:#c45f00;font-size:14px;font-weight:700;letter-spacing:-.01em}
+.sba-head h1{font-size:32px;line-height:1.35;letter-spacing:-.04em;margin:0 0 10px;color:var(--sb-ink)}
+.sba-head>p:last-child{margin:0;color:var(--sb-sub);font-size:16px;line-height:1.7}
+.sba-learned{display:inline-block;margin-left:2px;color:var(--sb-ink);font-weight:700;text-decoration:underline;text-decoration-color:rgba(239,115,0,.45);text-decoration-thickness:2px;text-underline-offset:4px;white-space:nowrap}
+.sba-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* 입력 상자: 회색 바탕, 누르면 흰 바탕 + 주황 테두리 (토스 입력칸) */
+.sba-box{background:var(--sb-gray);border:1.5px solid transparent;border-radius:22px;padding:18px 18px 12px 20px;transition:background-color .15s,border-color .15s,box-shadow .15s}
+.sba-box:hover{background:#eceff2}
+.sba-box:focus-within{background:#fff;border-color:var(--sb-orange);box-shadow:0 0 0 4px rgba(239,115,0,.12)}
+.sb .sba-box textarea,.sb .sba-box textarea:hover,.sb .sba-box textarea:focus{display:block;width:100%;min-height:78px;max-height:260px;resize:none;border:0;padding:0;margin:0;background:transparent;box-shadow:none;outline:0;font-size:17px;line-height:1.6;color:var(--sb-ink);letter-spacing:-.01em}
+.sba-box-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
+.sba-count{font-size:13px;color:var(--sb-mute)}.sba-count b{font-weight:600;color:var(--sb-gray-ink)}
+.sba-send{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 22px;border:0;border-radius:14px;background:var(--sb-orange);color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:transform .15s var(--sb-ease),background-color .2s,box-shadow .2s}
+.sba-send:hover{background:#e56c00;box-shadow:0 8px 18px rgba(239,115,0,.26)}
+.sba-send:active{transform:scale(.96)}
+.sba-privacy{margin:10px 4px 0;font-size:13px;color:var(--sb-mute)}
+.sba-error{margin:0 0 12px;padding:14px 16px;border-radius:14px;background:#fff1f0;color:#c0392b;font-size:15px;font-weight:600}
+.sba-ex{margin-top:28px}
+.sba-ex>p{margin:0 0 10px;font-size:14px;font-weight:700;color:var(--sb-gray-ink)}
+.sba-chips{display:flex;flex-wrap:wrap;gap:8px}
+.sba-chips button{border:0;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1px var(--sb-line);padding:10px 15px;font-size:14px;font-weight:600;color:#333d4b;cursor:pointer;text-align:left;line-height:1.4;transition:transform .15s var(--sb-ease),background-color .2s,box-shadow .2s,color .2s}
+.sba-chips button:hover{background:var(--sb-orange-soft);box-shadow:inset 0 0 0 1px #ffd2a6;color:#c45f00}
+.sba-chips button:active{transform:scale(.96)}
+/* 보내는 중: 버튼 흐리게 + 점 세 개 */
+.sba-wait{display:none;align-items:center;gap:10px;margin-top:18px;font-size:15px;font-weight:600;color:var(--sb-gray-ink)}
+.sba-form.is-loading .sba-wait{display:flex}
+.sba-form.is-loading .sba-send,.sba-form.is-loading .sba-chips{opacity:.45;pointer-events:none}
+.sba-dots{display:inline-flex;gap:4px}
+.sba-dots i{width:7px;height:7px;border-radius:50%;background:var(--sb-orange);animation:sba-dot 1s infinite ease-in-out}
+.sba-dots i:nth-child(2){animation-delay:.15s}.sba-dots i:nth-child(3){animation-delay:.3s}
+@keyframes sba-dot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:none;opacity:1}}
+/* 이렇게 답해요: 가는 선으로 세 칸 */
+.sba-how{list-style:none;margin:44px 0 0;padding:0;border-top:2px solid var(--sb-ink)}
+.sba-how li{display:flex;gap:16px;padding:20px 0;border-bottom:1px solid var(--sb-line)}
+.sba-how li>b{flex:none;width:28px;height:28px;border-radius:50%;background:var(--sb-orange-soft);color:#c45f00;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.sba-how h3{margin:0 0 4px;font-size:17px;letter-spacing:-.03em}
+.sba-how p{margin:0;color:var(--sb-sub);font-size:15px;line-height:1.6}
+/* 질문·답 */
+.sba-thread{padding:4px 0 36px;margin-bottom:32px;border-bottom:1px solid var(--sb-line)}
+.sba-q{display:flex;justify-content:flex-end;margin-bottom:24px}
+.sba-q p{margin:0;max-width:82%;background:var(--sb-orange);color:#fff;border-radius:22px 22px 6px 22px;padding:14px 18px;font-size:16px;line-height:1.6;font-weight:600;letter-spacing:-.01em;overflow-wrap:anywhere;animation:sba-in .35s var(--sb-ease) both}
+.sba-a{animation:sba-in .45s .08s var(--sb-ease) both}
+@keyframes sba-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sba-who{display:flex;align-items:center;gap:10px;margin:0 0 14px;font-size:15px}
+.sba-av{width:36px;height:36px;border-radius:50%;background:var(--sb-orange-soft);display:flex;align-items:center;justify-content:center;font-size:19px}
+.sba-headline{margin:0 0 12px;font-size:23px;line-height:1.45;letter-spacing:-.035em;color:var(--sb-ink)}
+.sba-body p{margin:0 0 14px;font-size:17px;line-height:1.85;color:#333d4b;overflow-wrap:anywhere}
+.sba-body p:last-child{margin-bottom:0}
+.sba-note{margin:16px 0 0;padding:14px 16px;border-radius:14px;background:#fff8e6;color:#7f5d00;font-size:15px;line-height:1.6}
+.sba-refs{margin-top:26px}
+.sba-refs-h{margin:0 0 10px;font-size:14px;font-weight:700;color:var(--sb-gray-ink)}
+.sba-refs-h b{color:var(--sb-orange)}
+.sba-ref{border:1px solid var(--sb-line);border-radius:18px;background:#fff;transition:border-color .2s,box-shadow .2s}
+.sba-ref+.sba-ref{margin-top:8px}
+.sba-ref[open]{border-color:#e3e3e3;box-shadow:0 8px 24px rgba(0,0,0,.05)}
+.sba-ref summary{display:flex;align-items:center;gap:10px;padding:15px 16px 15px 18px;cursor:pointer;list-style:none;border-radius:18px;-webkit-tap-highlight-color:transparent}
+.sba-ref summary::-webkit-details-marker,.sba-laws summary::-webkit-details-marker{display:none}
+.sba-ref summary:hover{background:#fafafa}
+.sba-law{flex:none;padding:4px 9px;border-radius:8px;background:var(--sb-orange-soft);color:#c45f00;font-size:13px;font-weight:700;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sba-art{flex:1;min-width:0;font-size:15px;color:#333d4b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sba-art b{color:var(--sb-ink)}
+.sba-chev{flex:none;width:20px;height:20px;fill:none;stroke:var(--sb-mute);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s var(--sb-ease)}
+details[open]>summary .sba-chev{transform:rotate(180deg)}
+.sba-ref-body{padding:2px 18px 16px}
+.sba-text{margin:0;padding-top:14px;border-top:1px solid var(--sb-line);white-space:pre-wrap;font-size:15px;line-height:1.8;color:#3d4148;overflow-wrap:anywhere;max-height:360px;overflow-y:auto}
+.sba-src{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;margin:14px 0 0;font-size:13px;color:var(--sb-mute)}
+.sba-src a{color:var(--sb-ink);font-weight:700}
+.sba-src a:hover{color:var(--sb-orange)}
+.sba-disc{margin:20px 0 0;font-size:13px;line-height:1.6;color:var(--sb-mute)}
+.sba-cta{display:flex;gap:8px;margin-top:18px}
+.sba-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:54px;padding:0 16px;border-radius:16px;background:var(--sb-gray);color:#333d4b;font-size:16px;font-weight:700;letter-spacing:-.02em;text-align:center;transition:transform .15s var(--sb-ease),background-color .2s,box-shadow .2s}
+.sba-btn:hover{background:#e5e8eb;color:var(--sb-ink)}
+.sba-btn.main{background:var(--sb-orange);color:#fff}
+.sba-btn.main:hover{background:#e56c00;color:#fff;box-shadow:0 8px 18px rgba(239,115,0,.26)}
+.sba-btn:active{transform:scale(.96)}
+.sba-more{margin:0 0 14px;font-size:20px;letter-spacing:-.03em}
+/* 배운 법령 */
+.sba-laws{margin-top:40px;border-top:1px solid var(--sb-line);border-bottom:1px solid var(--sb-line)}
+.sba-laws summary{display:flex;align-items:center;gap:8px;padding:18px 2px;cursor:pointer;list-style:none;font-size:16px;font-weight:700;color:var(--sb-ink)}
+.sba-laws summary span{color:var(--sb-orange)}
+.sba-laws summary .sba-chev{margin-left:auto}
+.sba-laws ul{list-style:none;margin:0;padding:0 0 4px;display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+.sba-laws li{min-width:0}
+.sba-laws li a{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 2px;border-top:1px solid var(--sb-line);font-size:15px}
+.sba-laws li a b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sba-laws li a span{flex:none;font-size:13px;color:var(--sb-mute)}
+.sba-laws li a:hover b{color:var(--sb-orange)}
+.sba-laws>p{margin:6px 2px 18px;font-size:13px;color:var(--sb-mute);line-height:1.6}
+@media(max-width:860px){
+  .sba{padding-top:26px}
+  .sba-head{padding-bottom:22px}
+  .sba-head h1{font-size:25px}
+  .sba-head>p:last-child{font-size:15px}
+  .sba-box{padding:16px 14px 10px 16px;border-radius:20px}
+  .sb .sba-box textarea,.sb .sba-box textarea:hover,.sb .sba-box textarea:focus{font-size:16px;min-height:72px}
+  .sba-q p{max-width:90%;font-size:15px}
+  .sba-headline{font-size:20px}
+  .sba-body p{font-size:16px;line-height:1.8}
+  .sba-cta{flex-direction:column}
+  .sba-btn{flex:none;height:52px}
+  .sba-laws ul{grid-template-columns:1fr}
+  .sba-how{margin-top:36px}
+}
+@media(prefers-reduced-motion:reduce){.sba-q p,.sba-a,.sba-dots i{animation:none}}
+/* 머리글: 메뉴가 6개(법률 질문)여도 한 줄에 들어가게 */
+@media(max-width:1180px){.sb-nav{gap:20px;margin-left:22px;font-size:15px}}
+@media(max-width:1000px){.sb-nav{gap:14px;margin-left:14px;font-size:14.5px}.sb-hd{gap:10px}}
+.sb-nav a{white-space:nowrap}
+@media(max-width:940px){.sb-nav{gap:11px;margin-left:8px;font-size:14px}.sb-hd .sb-login,.sb-hd .sb-join,.sb-hd .sb-cta{padding:0 14px}}
