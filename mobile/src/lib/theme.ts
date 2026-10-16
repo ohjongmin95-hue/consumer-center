@@ -11,7 +11,7 @@ export const C = {
   fg4: '#B0B8C1',
   line: '#E5E8EB',
   fill: '#F2F4F6',
-  band: '#F2F4F6', // 토스처럼 바탕은 연회색, 그 위에 흰 카드
+  band: '#F7F8FA', // 토스처럼 바탕은 연회색, 그 위에 흰 카드
   card: '#FFFFFF',
   green: '#12A26A',
   greenSoft: '#E5F6EE',

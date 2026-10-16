@@ -26,6 +26,8 @@ export type BizCase = {
   due: string;
   created: string;
   updated: string;
+  want?: string;
+  plan_title?: string;
 };
 export type FileRef = { id: number; name: string; url: string };
 export type Track = { kind: string; label: string; courier: string; invoice: string; level: number; status: string; place: string; time: string; done: boolean; note: string; live: boolean; link: string };
@@ -51,15 +53,18 @@ export type BizDetail = BizCase & {
   comp?: { reco: string; status: string; given: string; examples: string[] };
   order?: Order | null;
   cancel_blocked?: boolean;
-  can: { comp?: boolean; ship_track?: boolean; approve: boolean; hold: boolean; ask: boolean; reply: boolean; ret_received: boolean; out_ship: boolean; refund_done: boolean; close_chat?: boolean };
+  macros?: { id: number; name: string; body: string }[];
+  can: { reopen?: boolean; comp?: boolean; ship_track?: boolean; approve: boolean; hold: boolean; ask: boolean; reply: boolean; ret_received: boolean; out_ship: boolean; refund_done: boolean; close_chat?: boolean };
   message?: string;
   warn?: string; // 기록은 됐지만 고객에게 보내지 못했을 때
 };
 export type Kpi = { n: number; auto: number; res: number | null; late: number };
 export type Home = {
   company: CompanyInfo;
+  hello?: string;
+  brief?: string[];
   kpi: Kpi;
-  counts: { all: number; pending: number; open: number; late: number; auto_rules: number; ret?: number; comp?: number };
+  counts: { all: number; pending: number; open: number; late: number; auto_rules: number; ret?: number; comp?: number; today?: number };
   pending: BizCase[];
   recent: BizCase[];
   alerts?: Alert[];
@@ -97,6 +102,11 @@ export type OrdersMeta = { groups: { key: string; label: string }[]; statuses: {
 export type Orders = OrdersMeta & { orders: Order[]; counts: Record<string, number>; message?: string };
 export type OrderDetail = Order & OrdersMeta & { cases: BizCase[]; message?: string };
 export type NewForm = { channels: string[]; cats: string[]; wants: string[]; hints: Record<string, string> };
+
+export type RetCase = BizCase & { stage: string; stage_label: string };
+export type Returns = { stages: { key: string; label: string; n: number }[]; cases: RetCase[] };
+export type Macro = { id: number; name: string; body: string; tags: string; used: number };
+export type Macros = { macros: Macro[]; vars: string[]; max: number; message?: string };
 
 export class ApiError extends Error {
   constructor(message: string, public status = 0) {
@@ -151,6 +161,9 @@ export const api = {
   addOrder: (t: string, f: Record<string, string>) => call<Orders>('/api/v1/orders', json(f), t),
   order: (t: string, id: number) => call<OrderDetail>('/api/v1/orders/' + id, {}, t),
   saveOrder: (t: string, id: number, f: Record<string, string>) => call<OrderDetail>('/api/v1/orders/' + id, json(f), t),
+  returns: (t: string, st = '') => call<Returns>('/api/v1/returns?s=' + st, {}, t),
+  macros: (t: string) => call<Macros>('/api/v1/macros', {}, t),
+  saveMacro: (t: string, f: { id?: number; name?: string; body?: string; tags?: string; act?: 'delete' }) => call<Macros>('/api/v1/macros', json(f), t),
   leave: (t: string, password: string) => call<{ ok: boolean; message: string }>('/api/v1/leave', json({ password }), t),
 };
 

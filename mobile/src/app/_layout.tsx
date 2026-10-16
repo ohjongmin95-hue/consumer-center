@@ -87,6 +87,9 @@ export default function RootLayout() {
           <Stack.Screen name="howto" options={{ title: '이용 안내' }} />
           <Stack.Screen name="news" options={{ title: '법·제도 소식' }} />
           <Stack.Screen name="new" options={{ title: '요청 직접 등록' }} />
+          <Stack.Screen name="orders" options={{ title: '주문·배송' }} />
+          <Stack.Screen name="returns" options={{ title: '교환·반품' }} />
+          <Stack.Screen name="macros" options={{ title: '답변 템플릿' }} />
         </Stack>
         <Intro />
       </AuthProvider>

@@ -1,23 +1,34 @@
 // 자동 처리 규칙: 유형마다 소보루가 바로 처리할지, 어떤 답변을 보낼지 정한다.
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ReactNode, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon, CAT_ICON } from '../components/Icon';
-import { Btn, Card, Chips, Field, Loading, Notice, Screen, Toggle } from '../components/ui';
+import { Btn, Card, Chips, Field, Loading, Notice, PageHead, Screen, Toggle, TopBar } from '../components/ui';
 import { api, Rule } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { C, FONT } from '../lib/theme';
 import { errText, useLoad } from '../lib/useLoad';
 
-export default function Rules() {
+export default function Rules({ tab }: { tab?: boolean }) {
   const { data, setData, err, token } = useLoad(api.rules);
   const [ok, setOk] = useState('');
-  if (!data) return err ? <Notice text={err} /> : <Loading />;
+  // 아래 '자동 응대' 탭으로 열면 웹처럼 머리글과 큰 제목을 단다
+  const wrap = (body: ReactNode) =>
+    tab ? (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.band }} edges={['top']}>
+        <TopBar />
+        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+          <PageHead title="자동 응대" />
+          {body}
+        </ScrollView>
+      </SafeAreaView>
+    ) : (
+      <Screen>{body}</Screen>
+    );
+  if (!data) return wrap(err ? <Notice text={err} /> : <Loading />);
   const c = data.chat;
-  return (
-    <Screen>
-      <View style={st.head}>
-        <Text style={st.p}>켜 둔 유형의 요청은 사장님 확인 없이 소보루가 아래 답변으로 바로 처리합니다. 꺼 두면 사장님이 승인한 뒤에 답변합니다.</Text>
-      </View>
+  return wrap(
+    <>
       <Card>
         <Text style={st.h2}>이번 달 상담 챗봇</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -30,7 +41,7 @@ export default function Rules() {
       {data.rules.map((r) => (
         <RuleCard key={r.category} r={r} conds={data.conds} token={token} onSaved={(d, m) => (setData(d), setOk(m))} />
       ))}
-    </Screen>
+    </>,
   );
 }
 

@@ -4,13 +4,13 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import { Alert, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CAT_ICON, Icon } from '../../components/Icon';
+import { catTf, TfTile } from '../../components/Tf';
 import { Btn, Card, Chips, Field, H2, Loading, Notice, StatusPill } from '../../components/ui';
 import { api, ApiError, BizDetail, fmtDate } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { C, R, FONT } from '../../lib/theme';
 
-type Mode = '' | 'ask' | 'reply';
+type Mode = '' | 'ask';
 
 export default function CaseScreen() {
   const id = Number(useLocalSearchParams<{ id: string }>().id);
@@ -22,6 +22,7 @@ export default function CaseScreen() {
   const [mode, setMode] = useState<Mode>('');
   const [ask, setAsk] = useState('');
   const [msg, setMsg] = useState('');
+  const [macro, setMacro] = useState(0);
   const [courier, setCourier] = useState('');
   const [tracking, setTracking] = useState('');
   const [comp, setComp] = useState('');
@@ -54,6 +55,7 @@ export default function CaseScreen() {
       if (d.warn) setErr(d.warn);
       setMode('');
       setMsg('');
+      setMacro(0);
       setAsk('');
     } catch (e) {
       setErr((e as Error).message);
@@ -86,7 +88,6 @@ export default function CaseScreen() {
 
   if (!c) return err ? <Notice text={err} /> : <Loading />;
   const can = c.can;
-  const anyOpen = can.approve || can.ask || can.reply;
 
   return (
     <ScrollView
@@ -114,9 +115,7 @@ export default function CaseScreen() {
           {c.channel ? <StatusPill status="received" label={c.channel} /> : null}
         </View>
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-          <View style={st.ic}>
-            <Icon name={CAT_ICON[c.category] ?? 'note'} size={28} />
-          </View>
+          <TfTile name={catTf(c.category)} size={28} box={50} />
           <View style={{ flex: 1 }}>
             <Text style={st.cat}>{c.category}</Text>
             <Text style={st.title}>{c.title}</Text>
@@ -154,24 +153,36 @@ export default function CaseScreen() {
         </Card>
       ) : null}
 
-      {anyOpen ? (
+      {can.reply ? (
         <Card>
-          <H2>{can.approve ? '다르게 처리하기' : '처리하기'}</H2>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {can.reply ? <ModeBtn on={mode === 'reply'} title="답변하기" onPress={() => setMode(mode === 'reply' ? '' : 'reply')} /> : null}
-            {can.ask ? <ModeBtn on={mode === 'ask'} title="자료 요청" onPress={() => setMode(mode === 'ask' ? '' : 'ask')} /> : null}
-            {can.hold ? <ModeBtn on={false} title={busy === 'hold' ? '보류 중' : '보류'} onPress={() => act({ act: 'hold' })} /> : null}
-          </View>
-          {mode === 'reply' ? (
-            <View style={{ gap: 10, marginTop: 14 }}>
+          <H2>답변 쓰기</H2>
+          <View style={{ gap: 10 }}>
+              {c.macros?.length ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                  {c.macros.map((m) => (
+                    <Pressable key={m.id} onPress={() => (setMsg(msg.trim() ? msg.trim() + '\n\n' + m.body : m.body), setMacro(m.id))} style={[st.macro, macro === m.id && { backgroundColor: C.accentSoft }]}>
+                      <Text style={[st.macroT, macro === m.id && { color: C.accentInk }]}>{m.name}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              ) : null}
               <Field multiline placeholder="고객에게 보낼 답변을 적어 주세요" value={msg} onChangeText={setMsg} />
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Btn title={busy === 'draft' ? '만드는 중' : '초안 만들기'} kind="soft" onPress={draft} busy={busy === 'draft'} style={{ flex: 1 }} />
-                <Btn title="답변하기" onPress={() => act({ act: 'reply', msg })} busy={busy === 'reply'} disabled={!msg.trim()} style={{ flex: 1 }} />
+                <Btn title="답변하기" onPress={() => act(macro ? { act: 'reply', msg, macro: String(macro) } : { act: 'reply', msg })} busy={busy === 'reply'} style={{ flex: 1 }} />
               </View>
               <Text style={st.cap}>{c.send_via || (c.direct ? '직접 등록한 요청이라 기록만 남아요. 고객에게는 따로 전해 주세요' : '고객에게 알림이 가요')}</Text>
             </View>
-          ) : null}
+        </Card>
+      ) : null}
+
+      {can.ask || can.hold ? (
+        <Card>
+          <H2>{can.approve ? '다르게 처리하기' : '그 밖의 처리'}</H2>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {can.ask ? <ModeBtn on={mode === 'ask'} title="자료 요청" onPress={() => setMode(mode === 'ask' ? '' : 'ask')} /> : null}
+            {can.hold ? <ModeBtn on={false} title={busy === 'hold' ? '보류 중' : '보류'} onPress={() => act({ act: 'hold' })} /> : null}
+          </View>
           {mode === 'ask' ? (
             <View style={{ gap: 10, marginTop: 14 }}>
               <Field multiline placeholder="비워 두면 주문번호와 사진을 요청합니다" value={ask} onChangeText={setAsk} style={{ height: 100 }} />
@@ -186,6 +197,14 @@ export default function CaseScreen() {
           <H2>대화</H2>
           <Text style={st.p}>다 끝났으면 닫아 주세요. 고객이 다시 보내면 새 요청으로 들어와요.</Text>
           <Btn title="대화 끝내기" kind="gray" onPress={closeChat} busy={busy === 'close_chat'} style={{ marginTop: 12 }} />
+        </Card>
+      ) : null}
+
+      {can.reopen ? (
+        <Card>
+          <H2>끝난 요청</H2>
+          <Text style={st.p}>다시 답하거나 처리하려면 열어 주세요.</Text>
+          <Btn title="다시 열기" onPress={() => act({ act: 'reopen' })} busy={busy === 'reopen'} style={{ marginTop: 12 }} />
         </Card>
       ) : null}
 
@@ -355,7 +374,7 @@ function KV({ k, v, red, onPress }: { k: string; v: string; red?: boolean; onPre
 
 function ModeBtn({ title, on, onPress }: { title: string; on: boolean; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[st.mode, on && { backgroundColor: C.fg }]}>
+    <Pressable onPress={onPress} style={[st.mode, on && { backgroundColor: C.accent }]}>
       <Text style={[st.modeText, on && { color: '#fff' }]}>{title}</Text>
     </Pressable>
   );
@@ -374,6 +393,8 @@ const st = StyleSheet.create({
   quote: { backgroundColor: C.band, borderRadius: R.md, padding: 14, gap: 6 },
   quoteLabel: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.fg3 },
   quoteText: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg },
+  macro: { height: 34, paddingHorizontal: 12, borderRadius: 12, backgroundColor: C.fill, justifyContent: 'center' },
+  macroT: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2 },
   mode: { flex: 1, height: 44, borderRadius: R.sm, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
   modeText: { fontFamily: FONT, fontSize: 15, fontWeight: '700', color: C.fg2 },
   label: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },

@@ -22,7 +22,7 @@
 <div class="chk-grid">{% for n,nm,on in pick %}<label class="check"><input type="checkbox" name="board" value="{{ n }}" {{ 'checked' if on }}><span class="bx"></span><span>{{ nm }}</span></label>{% else %}<p class="cap" style="margin:0">쇼핑몰에 게시판이 없어요.</p>{% endfor %}</div>
 <div style="display:flex;gap:8px"><button class="btn md">저장</button><a class="btn md gray" href="{{ url_for('c24.page') }}">취소</a></div></form>
 {% else %}{% if watch %}<div class="tagrow">{% for n,nm in watch %}<span class="pill gray">{{ nm }}</span>{% endfor %}</div>{% elif watch is none %}<p class="sub" style="margin:0">처음 가져올 때 이름에 Q&amp;A·문의·상담이 들어간 게시판을 알아서 골라요.</p>{% else %}<p class="sub" style="margin:0">지켜보는 게시판이 없어요.</p>{% endif %}
-<p class="cap" style="margin:10px 0 12px">소보루에서 답변을 보낸 뒤 <b>카페24에 답변 올리기</b>를 누르면 그 글의 답글로 올라가요. 비밀글이면 답글도 비밀글이에요.</p>
+<p class="cap" style="margin:10px 0 12px">요청 화면에서 <b>답변하기</b>를 누르면 그 글의 답글로 바로 올라가요. 비밀글이면 답글도 비밀글이에요.</p>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn sm gray" name="act" value="boards" {{ 'disabled' if lk.status!='ok' }}>게시판 바꾸기</button></form>{% endif %}</section>{% endif %}
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="connect">
 <div class="ph">{{ '다시 연결하기' if lk else '연결하기' }}</div>

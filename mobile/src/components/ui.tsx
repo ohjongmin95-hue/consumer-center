@@ -1,8 +1,74 @@
 // 토스처럼 납작하고 둥근 기본 부품. 색은 소보루 주황.
-import { ReactNode, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { router } from 'expo-router';
+import { ReactNode, useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../lib/auth';
+import { api } from '../lib/api';
+import { pendingKnown, setPending } from '../lib/badge';
 import { C, R, STATUS_TONE, FONT } from '../lib/theme';
+import { Tf, TfName } from './Tf';
+
+// 웹 머리글과 같은 줄: 왼쪽 소보루 CS 로고, 오른쪽 승인할 일 종(숫자)과 회사 이름
+export function TopBar() {
+  const { session } = useAuth();
+  const name = session?.company.name ?? '';
+  // 홈을 거치지 않고 다른 탭부터 열었으면 승인 탭 숫자를 한 번 받아 온다
+  useEffect(() => {
+    if (session && !pendingKnown()) api.cases(session.token, 'pending').then((r) => setPending(r.cases.length), () => {});
+  }, [session]);
+  return (
+    <View style={s.top}>
+      <Pressable onPress={() => router.navigate('/')} style={s.logo} hitSlop={6}>
+        <Image source={require('../../assets/soboru-char.png')} style={{ width: 34, height: 26 }} resizeMode="contain" />
+        <Text style={s.logoText}>소보루 CS</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]}>
+        <View style={s.coDot}>
+          <Text style={s.coDotText}>{name.slice(0, 1)}</Text>
+        </View>
+        <Text style={s.coName} numberOfLines={1}>
+          {name}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// 화면 큰 제목 (웹의 h1). 오른쪽에 주황 버튼 하나를 둘 수 있다
+export function PageHead({ title, accent, action }: { title: string; accent?: string; action?: { title: string; onPress: () => void } }) {
+  return (
+    <View style={s.phead}>
+      <Text style={s.pheadText}>
+        {title}
+        {accent ? <Text style={{ color: C.accent }}>{accent}</Text> : null}
+      </Text>
+      {action ? <SmallBtn title={action.title} onPress={action.onPress} /> : null}
+    </View>
+  );
+}
+
+// 작은 둥근 버튼 (웹 .btn.sm)
+export function SmallBtn({ title, onPress, kind = 'primary', busy }: { title: string; onPress: () => void; kind?: 'primary' | 'soft' | 'gray'; busy?: boolean }) {
+  const bg = { primary: C.accent, soft: C.accentSoft, gray: C.fill }[kind];
+  const fg = { primary: '#fff', soft: C.accentInk, gray: C.fg2 }[kind];
+  return (
+    <Pressable onPress={onPress} disabled={busy} style={({ pressed }) => [s.small, { backgroundColor: bg, opacity: pressed || busy ? 0.75 : 1 }]} accessibilityRole="button">
+      {busy ? <ActivityIndicator color={fg} size="small" /> : <Text style={[s.smallText, { color: fg }]}>{title}</Text>}
+    </Pressable>
+  );
+}
+
+// 홈 숫자 칸 (웹 홈의 '오늘 들어온 요청 · 승인 대기 · 답변할 요청 · 기한 지난 요청')
+export function Tile({ icon, label, value, tone, onPress }: { icon: TfName; label: string; value: number; tone?: 'acc' | 'red'; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [s.tile, pressed && { opacity: 0.7 }]}>
+      <Tf name={icon} size={32} />
+      <Text style={s.tileLabel}>{label}</Text>
+      <Text style={[s.tileValue, tone === 'acc' && value ? { color: C.accent } : null, tone === 'red' && value ? { color: C.red } : null]}>{value}</Text>
+    </Pressable>
+  );
+}
 
 export function Screen({ children, bg = C.band, edges }: { children: ReactNode; bg?: string; edges?: ('top' | 'bottom')[] }) {
   return (
@@ -196,6 +262,20 @@ export function Loading() {
 }
 
 export const s = StyleSheet.create({
+  top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
+  logo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  logoText: { fontFamily: FONT, fontSize: 19, fontWeight: '800', color: C.brand, letterSpacing: -0.6 },
+  coChip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: 18, backgroundColor: C.card, maxWidth: 150 },
+  coDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
+  coDotText: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: '#fff' },
+  coName: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2, flexShrink: 1 },
+  phead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 14 },
+  pheadText: { flex: 1, fontFamily: FONT, fontSize: 24, lineHeight: 33, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
+  small: { height: 36, minWidth: 56, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  smallText: { fontFamily: FONT, fontSize: 14, fontWeight: '700' },
+  tile: { flexBasis: '47%', flexGrow: 1, backgroundColor: C.card, borderRadius: R.lg, padding: 18, gap: 6 },
+  tileLabel: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2, marginTop: 6 },
+  tileValue: { fontFamily: FONT, fontSize: 26, fontWeight: '700', color: C.fg, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
   card: { backgroundColor: C.card, borderRadius: R.lg, padding: 22, marginHorizontal: 14, marginBottom: 12 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12 },
   statIc: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },

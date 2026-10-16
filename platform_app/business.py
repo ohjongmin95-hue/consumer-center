@@ -648,6 +648,7 @@ def post_to_shop(db,c,text):
     msg,level=core.deliver_reply(db,c,text)
     return (msg,level) if level else ('판매처에서 가져온 문의가 아니에요.','error')
 def closable(c):return (c['channel'] in SEND_VIA or bool(c['live'])) and c['status'] not in core.FINAL
+def reopenable(c):return c['status']=='closed'  # 응대한 사람이 끝낸 요청만 다시 연다 (고객이 '해결됐어요'를 고른 요청은 그대로)
 
 def can_ship_track(db,c):
     """배송 조회 요청에 송장을 넣어 답할 수 있는지: 아직 안 넣었고 끝나지 않은 배송 조회 요청."""
@@ -685,6 +686,10 @@ def case_act(db,c,form):
     if act=='comp_skip' and core.comp_open(c):
         db.execute("UPDATE cases SET comp_status='skipped' WHERE id=?",(c['id'],))
         core.add_event(db,c['id'],'sys','보상 없이 처리하기로 했어요');return '보상 없이 처리합니다','ok'
+    if act=='reopen' and reopenable(c):
+        answered=db.execute("SELECT 1 FROM events WHERE case_id=? AND kind='co' AND reply!='' LIMIT 1",(c['id'],)).fetchone()
+        db.execute('UPDATE cases SET status=? WHERE id=?',('answered' if answered else 'seen',c['id']))
+        core.add_event(db,c['id'],'sys','요청을 다시 열었어요');return '요청을 다시 열었어요','ok'
     if not open_:return '이미 끝난 요청이에요','bad'
     if act=='ship_track' and can_ship_track(db,c):
         courier=form.get('courier','');tracking=digits(form.get('tracking',''))
@@ -774,7 +779,7 @@ def case(case_id):
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all',
-        ctags=ctags,all_tags=all_tags,sla=sla,closable=closable(c),send_via=sv,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
+        ctags=ctags,all_tags=all_tags,sla=sla,closable=closable(c),reopenable=reopenable(c),send_via=sv,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
 @app.route('/case/<int:case_id>/live',methods=['GET','POST'])
 @login_required
 def case_live(case_id):
@@ -1427,7 +1432,8 @@ def co_info(co):
     return dict(id=co['id'],name=co['name'],login_id=co['login_id'],link=core.site_url('me','/to/%d'%co['id']),verified=bool(co['member']),plan=onboard.PLANS.get(co['plan'],{}).get('name',''))
 def biz_summary(c):
     return dict(id=c['id'],no=c['no'],channel=c['channel'] or '',category=c['category'],title=c['title'],name=c['name'] or '',status=c['status'],status_label=core.status_label(c['status']),
-        decision=c['decision'],decision_label=core.DECISION.get(c['decision'],''),pending=is_pending(c),overdue=core.overdue(c),due=c['due'],created=c['created'],updated=c['updated'])
+        decision=c['decision'],decision_label=core.DECISION.get(c['decision'],''),pending=is_pending(c),overdue=core.overdue(c),due=c['due'],created=c['created'],updated=c['updated'],
+        want=c['want'] or '',plan_title=core.PLAYBOOK.get(c['category'],core.PLAYBOOK['기타'])['title'])
 def biz_detail(db,c,co):
     ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);rule=core.rule_for(db,co['id'],c['category']);pb=core.PLAYBOOK.get(c['category'],core.PLAYBOOK['기타'])
     tok=co_token(co);url=lambda f:url_for('api_biz_file',case_id=c['id'],file_id=f['id'],t=tok,_external=True)
@@ -1442,10 +1448,11 @@ def biz_detail(db,c,co):
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])],
         order=(lambda o:orders_mod.as_dict(o) if o else None)(orders_mod.for_case(db,c)),
         cancel_blocked=bool(orders_mod.cancel_blocked(db,c)),
+        macros=[dict(id=x['id'],name=x['name'],body=inbox.fill(x['body'],c,co,orders_mod.for_case(db,c))) for x in inbox.macros(db,co['id'])],
         comp=dict(reco=rule['comp'],status=c['comp_status'],given=c['comp'],examples=core.COMP_EXAMPLES),
         can=dict(comp=core.comp_open(c) and bool(rule['comp'] or c['category'] in core.COMP_CATS),ship_track=can_ship_track(db,c),approve=open_ and c['decision'] not in ('approved','auto'),hold=open_ and c['decision']!='hold',ask=open_,reply=open_,
             ret_received=c['ret_status'] in ('guided','sent'),out_ship=c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking'],
-            refund_done=core.refund_case(c) and c['refund_status']!='done',close_chat=closable(c)))
+            refund_done=core.refund_case(c) and c['refund_status']!='done',close_chat=closable(c),reopen=reopenable(c)))
     return d
 def api_my_case(db,co,case_id):
     c=db.execute('SELECT * FROM cases WHERE id=? AND company_id=? AND member=1 AND consent=1',(case_id,co['id'])).fetchone()
@@ -1471,8 +1478,11 @@ def api_biz_home():
     with conn() as db:
         rows=my_cases(db,co);n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(co['id'],)).fetchone()[0]
         warn=insights.alerts(db,co);news=db.execute('SELECT id,title,created FROM news ORDER BY id DESC LIMIT 3').fetchall();comps=core.comp_rules(db,co['id'])
-    pend=[r for r in rows if is_pending(r)]
-    return jsonify(company=co_info(co),kpi=kpis(rows),counts={'comp':sum(core.comp_pending(r,comps) for r in rows),'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows)},
+    pend=[r for r in rows if is_pending(r)];today=core.now().date().isoformat();h=core.now().hour
+    with conn() as db:ocnt=orders_mod.counts(db,co['id'])
+    cnt=dict(late=sum(map(core.overdue,rows)),ret=sum(r['ret_status']=='sent' for r in rows))
+    return jsonify(company=co_info(co),kpi=kpis(rows),brief=briefing(rows,cnt,ocnt),hello='좋은 아침이에요' if h<11 else '좋은 오후예요' if h<18 else '오늘도 수고 많으셨어요',
+        counts={'comp':sum(core.comp_pending(r,comps) for r in rows),'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows),'today':sum(r['created'][:10]==today for r in rows)},
         pending=[biz_summary(r) for r in pend],recent=[biz_summary(r) for r in rows[:6]],
         alerts=[dict(kind=w['kind'],label=w['label'],n=w['n'],cats=w['cats']) for w in warn],news=[dict(r) for r in news])
 @app.route('/api/v1/cases')
@@ -1495,6 +1505,7 @@ def api_biz_case(case_id):
                 sent,lv=post_to_shop(db,c,clean(f.get('msg'),3000))
                 if lv=='ok':msg=sent
                 else:msg,warn='',sent
+            if f.get('act')=='reply' and str(f.get('macro','')).isdigit():inbox.used_macro(db,co,c,int(f['macro']))
         elif c['status']=='forwarded':
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
         c=api_my_case(db,co,case_id);d=biz_detail(db,c,co)
@@ -1653,6 +1664,27 @@ def api_biz_report():
     return jsonify(ym=f'{y}-{m:02d}',months=[f'{a}-{b:02d}' for a,b in months],n=s['n'],prev_n=s['prev_n'],auto=s['auto'],res=s['res'],reply_h=s['reply_h'],late=s['late'],
         cats=[dict(label=c,n=n) for c,n in s['cats']],top_products=[dict(label=p,n=n) for p,n in s['top_products']],by_channel=[dict(label=c,n=n) for c,n in s['by_channel']],
         text=insights.report_text(co,s))
+@app.route('/api/v1/returns')
+def api_biz_returns():
+    """교환·반품: 웹 '교환·반품'과 같은 단계(새로 접수 → 회수 중 → 다음 처리 대기 → 처리 완료)."""
+    co=api_co();st=request.args.get('s','')
+    with conn() as db:rows=[r for r in my_cases(db,co) if r['category'] in RET_CATS or r['refund_status']=='requested']
+    staged=[(r,ret_stage(r)) for r in rows];keys=dict(RET_STAGES)
+    return jsonify(stages=[dict(key=k,label=l,n=sum(x==k for _,x in staged)) for k,l in RET_STAGES],
+        cases=[dict(biz_summary(r),stage=x,stage_label=keys[x]) for r,x in staged if st not in keys or x==st])
+@app.route('/api/v1/macros',methods=['GET','POST'])
+def api_biz_macros():
+    """답변 템플릿: 웹과 같은 목록. 요청 화면의 답변 쓰기에서 골라 쓴다."""
+    co=api_co();msg=''
+    with conn() as db:
+        if request.method=='POST':
+            f=api_form();mid=str(f.get('id',''))
+            if f.get('act')=='delete' and mid.isdigit():inbox.delete_macro(db,co['id'],int(mid));msg='템플릿을 지웠어요'
+            else:
+                msg,level=inbox.save_macro(db,co['id'],f,int(mid) if mid.isdigit() else None)
+                if level!='ok':return jsonify(error=msg),400
+        ms=inbox.macros(db,co['id'])
+    return jsonify(macros=[dict(id=m['id'],name=m['name'],body=m['body'],tags=m['tags'],used=m['used']) for m in ms],vars=list(inbox.VARS),max=inbox.MAX_MACROS,message=msg)
 @app.route('/api/v1/news')
 def api_biz_news():
     api_co()
