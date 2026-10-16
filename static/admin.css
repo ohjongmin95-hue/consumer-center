@@ -151,3 +151,6 @@ body.console .ad-main .lw-law-head input{height:42px;padding:0 12px;font-size:15
 body.console .ad-main .lw-list td button.danger{border:0;border-radius:10px;white-space:nowrap}
 body.console .lw-list td:nth-child(2),body.console .lw-list td:nth-child(3),body.console .lw-list th{white-space:nowrap}
 @media(max-width:700px){body.console .lw-list td:first-child small{display:none}body.console .lw-list td,body.console .lw-list th{padding:12px 10px}}
+body.console .cs-cover{display:inline-flex;align-items:center;gap:8px;margin-left:10px}
+body.console .cs-cover .cs-btn{padding:5px 10px;font-size:13px}
+body.console .cs-cover-on{color:var(--ad-orange);font-size:13px}
