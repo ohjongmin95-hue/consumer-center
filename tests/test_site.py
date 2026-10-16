@@ -327,6 +327,19 @@ class SiteTest(unittest.TestCase):
             self.assertIn('헬스장 환불 받는 법', sent[-1]['prompt'])
             self.assertEqual(visitor.get(f'/art/life/{aid}.webp').status_code, 200)
             self.assertIn('AI 일러스트', visitor.get(f'/life/{aid}').get_data(as_text=True))
+            # 공개 제보는 게시되면 자동으로 그림 (내린 그림은 그대로 둠), 그림 없는 글은 한 번에 채우기
+            with self.site.conn() as db:
+                cid2 = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                                  ('art2', 'x', '배송·교환·환불', '가게', '택배가 안 와요', '본문', '배송', '2026-10-09T10:00:00', 1, 0)).lastrowid
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+                admin.post('/admin/art/fill', data={'_csrf': self.csrf(admin, '/admin/art'), 'kind': 'report'})
+                self.assertEqual(visitor.get(f'/art/report/{cid2}.webp').status_code, 404)  # 게시 전이라 안 그림
+                self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)  # 내린 그림은 그대로
+                with self.site.app.test_request_context('/'):
+                    self.site.app.extensions['soboru_art']['auto']('report', cid2)  # 게시 전 제보는 그릴 글이 없어 조용히 넘어감
+                with self.site.conn() as db: db.execute('UPDATE cases SET published=1 WHERE id=?', (cid2,))
+                admin.post('/admin/art/fill', data={'_csrf': self.csrf(admin, '/admin/art'), 'kind': 'report'})
+            self.assertEqual(visitor.get(f'/art/report/{cid2}.webp').status_code, 200)
         finally:
             with self.site.conn() as db:
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")
@@ -1545,7 +1558,7 @@ class SiteTest(unittest.TestCase):
         sent = []
         with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(desk, 'post_json', self.triage_ai(sent)), patch.object(desk.threading, 'Thread', self.NowThread):
             self.assertEqual(self.post_form(self.client, '/report', self.DESK_REPORT).status_code, 200)
-        tri_calls = [b for b in sent if '제보 분류' in b['messages'][0]['content']]
+        tri_calls = [b for b in sent if 'messages' in b and '제보 분류' in b['messages'][0]['content']]
         self.assertEqual(len(tri_calls), 1)
         user = tri_calls[0]['messages'][1]['content']
         self.assertNotIn('010-1234-5678', user)  # 개인정보는 AI에 보내지 않음

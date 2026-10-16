@@ -2,7 +2,8 @@
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인다.
 - 생활정보 글을 만들거나 게시하면 그림이 없을 때 자동으로 그려서 바로 붙인다(뒤에서 그려서 저장은 기다리지 않음).
-- 관리자 > AI 일러스트에서 다시 그리기·내리기·지우기, 제보는 '그리기' 후 '게시'를 눌러야 보인다.
+- 공개 제보도 게시되는 순간(접수 즉시 공개·관리자 게시) 같은 방식으로 자동으로 그린다.
+- 관리자 > AI 일러스트에서 다시 그리기·내리기·지우기. 손으로 '그리기'한 그림은 '게시'를 눌러야 보인다.
 - AI에는 분야와 공개용 제목만 보낸다(개인정보·업체명은 지움). 본문·제보자 정보는 보내지 않는다.
 - 그림이 없거나 내리면 지금처럼 글자 카드가 나온다. 그림에는 'AI 일러스트'라고 작게 표시한다.
 - 키는 사이트가 이미 쓰는 OPENAI_API_KEY, 모델은 OPENAI_IMAGE_MODEL(기본 gpt-image-1-mini).
@@ -80,7 +81,7 @@ def install(S):
             db.execute("INSERT OR REPLACE INTO soboru_art(kind,target_id,file,status,created) VALUES(?,?,?,'draft',?)", (kind, target_id, name, now()))
         if old and old['file'] != name: (folder / old['file']).unlink(missing_ok=True)
 
-    def auto(kind, target_id):
+    def auto(kind, target_id, wait=False):
         # 그림이 없을 때만, 키가 있을 때만. 실패하면 조용히 넘어가고 글자 카드가 그대로 나옴
         if not desk.ai_ready(): return
         with conn() as db:
@@ -90,7 +91,7 @@ def install(S):
                 draw(kind, target_id)
                 with conn() as db: db.execute("UPDATE soboru_art SET status='live' WHERE kind=? AND target_id=?", (kind, target_id))
             except Exception as e: app.logger.warning('AI 일러스트 자동 그리기 실패: %s', str(e)[:200])
-        if app.config.get('TESTING'): run()
+        if wait or app.config.get('TESTING'): run()
         else: threading.Thread(target=run, daemon=True).start()
 
     @app.route('/art/<kind>/<int:target_id>.webp')
@@ -119,6 +120,24 @@ def install(S):
             r['art'] = a['status'] if a else ''
             r['src'] = url_for('art_image', kind=kind, target_id=r['id'], v=a['file'][-12:-5]) if a else ''
         return render_template('admin_art.html', rows=rows, kind=kind, ready=desk.ai_ready(), model=image_model())
+
+    @app.route('/admin/art/fill', methods=['POST'])
+    @S.admin_only
+    def admin_art_fill():
+        # 그림 없는 최근 글을 한 번에 최대 20개 (뒤에서 하나씩 그림)
+        kind = request.form.get('kind') if request.form.get('kind') in KINDS else 'report'
+        if not desk.ai_ready(): flash('OpenAI API 키가 없어서 그릴 수 없어요.'); return redirect(url_for('admin_art', kind=kind))
+        with conn() as db:
+            have = {r[0] for r in db.execute('SELECT target_id FROM soboru_art WHERE kind=?', (kind,))}
+            sql = ('SELECT id FROM articles ORDER BY id DESC LIMIT 200' if kind == 'life' else
+                   "SELECT id FROM cases WHERE public_consent=1 AND published=1 AND review NOT IN ('rejected','duplicate') ORDER BY id DESC LIMIT 200")
+            ids = [r[0] for r in db.execute(sql) if r[0] not in have][:20]
+        def run():
+            for i in ids: auto(kind, i, wait=True)
+        if app.config.get('TESTING'): run()
+        else: threading.Thread(target=run, daemon=True).start()
+        flash(f'그림 없는 글 {len(ids)}개를 그리기 시작했어요. 하나에 30초쯤 걸려요. 잠시 뒤 새로 고침해 보세요.' if ids else '그림 없는 글이 없어요.')
+        return redirect(url_for('admin_art', kind=kind))
 
     @app.route('/admin/art/<kind>/<int:target_id>', methods=['POST'])
     @S.admin_only
