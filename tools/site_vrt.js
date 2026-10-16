@@ -18,7 +18,7 @@ const ROLES={
   newsroom:['/reporter','/reporter?mine=1','/reporter/case/4','/reporter/password'],
 };
 // 소보루 브랜드로 띄운 서버(VRT_BRAND=소보루)일 때 생활정보·커뮤니티 화면도 봄
-if(process.env.VRT_SOBORU){ROLES.guest.push('/life','/life/1','/board','/guide');ROLES.admin.push('/admin/home-plan','/admin/life');}
+if(process.env.VRT_SOBORU){ROLES.guest.push('/life','/life/1','/board','/guide');if(process.env.VRT_NAVER)ROLES.guest.push('/life/search?q=환불','/life/search?q=환불&tab=news','/life/trend','/life/shopping','/life/shopping?cat=50000003&k=노트북&k=태블릿');ROLES.admin.push('/admin/home-plan','/admin/life');}
 const WIDTHS=(process.env.VRT_WIDTHS||'1440,1024,768,390').split(',').map(Number);
 const TOLERANCE=+(process.env.VRT_TOLERANCE||0.3);
 async function submit(p){await Promise.all([p.waitForNavigation(),p.click('main form button[type=submit]')]);}

@@ -4,6 +4,7 @@
 <main class="page"><div class="wrap">
   <div class="page-intro"><h1 class="page-title">생활정보 글</h1>
     <p>게시한 글은 생활정보(<a href="{{ url_for('life') }}" target="_blank" rel="noopener">/life ↗</a>)와 소보루 메인 화면에 보여요. 초안은 관리자만 볼 수 있어요. 나중에 공공데이터 자동 수집이 들어오면 초안이 여기에 쌓여요.</p>
+    {% if naver_ready is defined %}<p class="meta">네이버 검색 연결: {% if naver_ready() %}{% set nu = naver_usage() %}켜짐 · 오늘 검색 {{ '{:,}'.format(nu['search'][0]) }}/{{ '{:,}'.format(nu['search'][1]) }}번 · 추이·쇼핑 {{ '{:,}'.format(nu['datalab'][0]) }}/{{ '{:,}'.format(nu['datalab'][1]) }}번{% else %}꺼짐 (서버 환경변수 NAVER_HUB_CLIENT_ID·NAVER_HUB_CLIENT_SECRET을 넣으면 통합 검색·검색 추이·쇼핑 관심도가 열려요){% endif %}</p>{% endif %}
     <p><a href="{{ url_for('admin_life') }}"{% if view != 'draft' %} class="strong-link"{% endif %}>전체</a> · <a href="{{ url_for('admin_life', view='draft') }}"{% if view == 'draft' %} class="strong-link"{% endif %}>초안 {{ n_draft }}</a>{% if a %} · <a href="{{ url_for('admin_life') }}">＋ 새 글</a>{% endif %}</p>
   </div>
   <form class="form-panel" method="post" action="{{ url_for('admin_life_edit', article_id=a['id']) if a else url_for('admin_life') }}">

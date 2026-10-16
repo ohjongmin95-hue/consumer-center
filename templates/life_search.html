@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% from 'soboru_life_macros.html' import thumb, meta %}
+{% from 'life_nv_macros.html' import nv_row, nv_credit, nv_off %}
+{% block title %}{% if q %}{{ q }} · {% endif %}{{ ui('life.search_title', '통합 검색') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('life.search_desc', '뉴스·블로그·카페·지식iN에서 소비자에게 필요한 정보를 한 번에 찾아봐요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap sb-life nv">
+  <div class="sb-page-head"><h1>{{ ui('life.search_title', '통합 검색') }}</h1><p>{{ ui('life.search_intro', '뉴스·블로그·카페·지식iN을 한 번에 찾아봐요.') }}</p></div>
+  {% include 'life_tabs.html' %}
+  <form class="nv-search" action="{{ url_for('life_search') }}" method="get" role="search">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <input type="search" name="q" value="{{ q }}" maxlength="50" placeholder="{{ ui('life.search_ph', '예: 헬스장 환불, 택배 분실 보상') }}" aria-label="검색어" autocomplete="off"{% if not q %} autofocus{% endif %}>
+    {% if tab != 'all' %}<input type="hidden" name="tab" value="{{ tab }}">{% endif %}
+    <button type="submit">{{ ui('life.search_btn', '찾기') }}</button>
+  </form>
+  {% if not ready %}{{ nv_off() }}
+  {% elif not q %}
+  <div class="nv-hint"><p>{{ ui('life.search_try', '이런 걸 많이 찾아요') }}</p><div class="nv-chips">{% for w in ['헬스장 환불', '택배 분실', '중고거래 사기', '항공권 취소 수수료', '구독 해지', '리콜'] %}<a href="{{ url_for('life_search', q=w) }}">{{ w }}</a>{% endfor %}</div></div>
+  {% else %}
+  <nav class="nv-kinds" aria-label="검색 종류"><a href="{{ url_for('life_search', q=q) }}"{% if tab == 'all' %} class="on" aria-current="page"{% endif %}>전체</a>{% for k, (label, _) in kinds.items() %}<a href="{{ url_for('life_search', q=q, tab=k) }}"{% if tab == k %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+  {% if error %}<p class="nv-error">{{ error }}</p>{% endif %}
+  {% if own %}
+  <section class="nv-sec"><div class="nv-sec-head"><h2>{{ ui('life.search_own', '소보루 생활정보') }}</h2></div>
+    <div class="sb-grid">{% for a in own %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{{ meta(a) }}</a>{% endfor %}</div></section>
+  {% endif %}
+  {% if tab == 'all' %}<div class="nv-all">
+    {% for k, (label, _) in kinds.items() %}{% set r = results.get(k) %}{% if r and r['items'] %}
+    <section class="nv-sec"><div class="nv-sec-head"><h2>{{ label }}</h2><a class="sb-more" href="{{ url_for('life_search', q=q, tab=k) }}">더 보기 ›</a></div>
+      <ul class="nv-list">{% for it in r['items'] %}{{ nv_row(it) }}{% endfor %}</ul></section>
+    {% endif %}{% endfor %}</div>
+    {% if not error and not own and not (results.values()|map(attribute='items')|select|list) %}<p class="sb-empty">{{ ui('life.search_none', '찾은 결과가 없어요. 다른 말로 찾아봐 주세요.') }}</p>{% endif %}
+  {% else %}{% set r = results.get(tab) %}
+    {% if r %}
+    <div class="nv-meta"><span>{{ '{:,}'.format(r['total']) }}건</span>{% if tab == 'news' %}<span class="nv-sort"><a href="{{ url_for('life_search', q=q, tab=tab) }}"{% if sort == 'sim' %} class="on"{% endif %}>정확도순</a><a href="{{ url_for('life_search', q=q, tab=tab, sort='date') }}"{% if sort == 'date' %} class="on"{% endif %}>최신순</a></span>{% endif %}</div>
+    {% if r['items'] %}<ul class="nv-list">{% for it in r['items'] %}{{ nv_row(it) }}{% endfor %}</ul>{% else %}<p class="sb-empty">{{ ui('life.search_none', '찾은 결과가 없어요. 다른 말로 찾아봐 주세요.') }}</p>{% endif %}
+    {% if pages > 1 %}<nav class="sb-pager" aria-label="쪽">{% if page > 1 %}<a href="{{ url_for('life_search', q=q, tab=tab, sort=sort if sort == 'date' else None, page=page - 1) }}">‹ 이전</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a href="{{ url_for('life_search', q=q, tab=tab, sort=sort if sort == 'date' else None, page=page + 1) }}">다음 ›</a>{% endif %}</nav>{% endif %}
+    {% endif %}
+  {% endif %}
+  {{ nv_credit() }}
+  {% endif %}
+</main>
+{% endblock %}
