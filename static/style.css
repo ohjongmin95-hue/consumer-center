@@ -1909,3 +1909,13 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 
 /* 게시판: 좁은 화면에서 분류 탭이 화면 밖으로 넓어지지 않게 (탭은 안에서 가로로 넘김) */
 .board-tools>*,.board-search{min-width:0}
+/* 관리자 > 메인 화면 순서 */
+.hp-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;list-style:none;padding:0;margin:12px 0 18px}
+.hp-slots li{display:flex;align-items:center;gap:10px;min-width:0}
+.hp-slots li>span{flex:none;width:28px;height:28px;border-radius:50%;background:#fff1e3;color:#c45f00;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.hp-slots select,.hp-sections input[type=number]{flex:1;min-width:0;height:44px;padding:0 12px;border:1px solid #dcdcdc;border-radius:10px;background:#fff}
+.hp-sections{width:100%;border-collapse:collapse;margin:8px 0 16px}
+.hp-sections th,.hp-sections td{text-align:left;padding:8px 10px;border-bottom:1px solid #eee}
+.hp-sections input[type=number]{width:72px;flex:none}
+.hp-warn{background:#fff4cc;color:#7f5d00;border-radius:10px;padding:10px 14px}
+@media(max-width:640px){.hp-slots{grid-template-columns:1fr}}

@@ -5,7 +5,7 @@
 - 관리자는 바꾸기 전에 아무 주소 뒤에 ?brand=soboru 를 붙여 미리 볼 수 있음 (?brand=off 로 끔). 방문자에게는 안 보임.
 - 생활정보(/life): 운영자가 쓰거나, 나중에 공공데이터 자동 수집이 초안으로 넣는 글. 게시한 글만 보임.
 """
-import datetime, re, statistics
+import datetime, json, re, statistics
 from flask import abort, flash, g, has_request_context, redirect, render_template, request, session, url_for
 from markupsafe import Markup, escape
 
@@ -23,6 +23,30 @@ LIFE_CATEGORIES = ['쇼핑', '통신', '여행', '음식', '금융', '자동차'
 LIFE_TONES = ['t1', 't2', 't3', 't4', 't5', 't6']  # 대표 그림 바탕색
 LIFE_PAGE = 12
 RANK_DAYS = 30
+# 메인 화면 순서 (관리자 > 메인 화면 순서)
+HOME_SECTIONS = [('top', '맨 위 큰 카드'), ('box', '제보하기 상자'), ('cases', '방금 들어온 제보'), ('rank', '이달의 기업 답변 · 커뮤니티 인기글'),
+                 ('life', '알아 두면 돈 버는 생활정보'), ('tools', '제보 안내 바로가기')]
+HOME_KINDS = {'report': '소비자 제보', 'life': '생활정보'}
+HOME_PERIODS = [(1, '1시간'), (3, '3시간'), (6, '6시간'), (12, '12시간'), (24, '하루')]
+HOME_DEFAULT = {'slots': ['report', 'life'], 'hours': 6, 'pins': [], 'sections': [[k, 1] for k, _ in HOME_SECTIONS]}
+# 제보 카드 대표 그림: 제보 유형별 이모지·바탕색
+REPORT_EMOJI = {'배송·교환·환불': '📦', '계약·해지': '📝', '요금·결제': '💳', '품질·하자·AS': '🛠️', '허위·과장 광고': '📢',
+                '고객 응대': '☎️', '개인정보': '🔐', '안전·위해': '⚠️'}
+REPORT_TONE = {'배송·교환·환불': 't1', '계약·해지': 't5', '요금·결제': 't4', '품질·하자·AS': 't2', '허위·과장 광고': 't6',
+               '고객 응대': 't3', '개인정보': 't5', '안전·위해': 't6'}
+
+
+def clean_plan(raw):
+    # 저장된 값이 이상해도 메인 화면이 깨지지 않게 기본값으로 메움
+    slots = [k for k in (raw.get('slots') or []) if k in HOME_KINDS][:6] or list(HOME_DEFAULT['slots'])
+    hours = raw.get('hours') if raw.get('hours') in [h for h, _ in HOME_PERIODS] else HOME_DEFAULT['hours']
+    pins = [p for p in (raw.get('pins') or []) if isinstance(p, int) and p > 0][:12]
+    seen, sections = set(), []
+    for item in raw.get('sections') or []:
+        if isinstance(item, (list, tuple)) and len(item) == 2 and item[0] in dict(HOME_SECTIONS) and item[0] not in seen:
+            seen.add(item[0]); sections.append([item[0], 1 if item[1] else 0])
+    sections += [[k, 1] for k, _ in HOME_SECTIONS if k not in seen]
+    return {'slots': slots, 'hours': hours, 'pins': pins, 'sections': sections}
 
 
 def migrate(db):
@@ -31,6 +55,7 @@ def migrate(db):
         status TEXT NOT NULL DEFAULT 'draft',origin TEXT NOT NULL DEFAULT 'manual',ext_key TEXT,featured INTEGER NOT NULL DEFAULT 0,views INTEGER NOT NULL DEFAULT 0,
         created TEXT NOT NULL,updated TEXT NOT NULL,published_at TEXT)''')
     # 공공데이터 자동 수집이 같은 항목을 두 번 넣지 않게
+    db.execute('CREATE TABLE IF NOT EXISTS soboru_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
     db.execute('CREATE UNIQUE INDEX IF NOT EXISTS articles_ext_key ON articles(ext_key) WHERE ext_key IS NOT NULL')
 
 
@@ -147,15 +172,101 @@ def install(S):
                                  ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES)
 
     # ---- 메인 화면: 소보루면 새 홈 ------------------------------------------
+    # 관리자 > 메인 화면 순서에서 맨 위 큰 카드에 무엇을 어떤 순서·주기로 띄울지, 아래 묶음 순서를 정함.
+    def home_plan():
+        with conn() as db:
+            row = db.execute("SELECT value FROM soboru_settings WHERE key='home'").fetchone()
+        try: saved = json.loads(row[0]) if row else {}
+        except ValueError: saved = {}
+        return clean_plan(saved)
+
+    def report_items(limit=12, pins=()):
+        # 공개 동의 + 게시된 제보만 (비밀글·게시 전·반려·중복은 메인 카드에 안 나감)
+        sql = ("SELECT c.*,EXISTS(SELECT 1 FROM messages m WHERE m.case_id=c.id AND m.author='기업 답변' AND m.public=1) AS answered FROM cases c "
+               "WHERE c.public_consent=1 AND c.published=1 AND c.review NOT IN ('rejected','duplicate')")
+        with conn() as db:
+            if pins:
+                rows = {r['id']: r for r in db.execute(sql + ' AND c.id IN (%s)' % ','.join('?' * len(pins)), list(pins))}
+                rows = [rows[i] for i in pins if i in rows]
+            else:
+                rows = db.execute(sql + ' ORDER BY c.id DESC LIMIT ?', (limit,)).fetchall()
+        out = []
+        for r in rows:
+            text = jebo.pub(r, S.mask_personal)
+            body = ' '.join((text['body'] or '').split())
+            cat = jebo.cat_label(r['category'])
+            out.append({'kind': 'report', 'id': r['id'], 'url': url_for('public_case', case_id=r['id']), 'title': text['subject'],
+                        'summary': body[:110] + ('…' if len(body) > 110 else ''), 'label': cat, 'company': S.mask_personal(r['company']),
+                        'status': r['status'], 'answered': bool(r['answered']), 'stamp': r['created'],
+                        'emoji': REPORT_EMOJI.get(cat, '📣'), 'tone': REPORT_TONE.get(cat, 't1')})
+        return out
+
+    def life_item(a):
+        return {'kind': 'life', 'id': a['id'], 'url': url_for('life_article', article_id=a['id']), 'title': a['title'], 'summary': a['summary'],
+                'label': a['category'], 'stamp': a['published_at'] or a['created'], 'emoji': a['emoji'] or '📰', 'tone': a['tone'] or 't1'}
+
+    def plan_tick(plan, at=None):
+        # 주기 번호: 서버 시각(한국 시각) 0시 기준으로 hours마다 1씩 오름
+        at = at or datetime.datetime.now()
+        secs = (at - datetime.datetime(2026, 1, 1)).total_seconds()
+        step = plan['hours'] * 3600
+        tick = int(secs // step)
+        return tick, datetime.datetime(2026, 1, 1) + datetime.timedelta(seconds=(tick + 1) * step)
+
+    def pick_top(plan, at=None):
+        """맨 위 큰 카드 1개 + 옆 목록 3개. 순서표(slots)를 주기마다 한 칸씩 넘기고, 같은 종류 안에서도 돌아가며 보여 줌."""
+        featured = [life_item(a) for a in life_rows(12) if a['featured']]
+        pools = {'life': featured or [life_item(a) for a in life_rows(12)], 'report': report_items(12, plan['pins'])}
+        slots = plan['slots']
+        tick, _ = plan_tick(plan, at)
+        i = tick % len(slots)
+        kind = slots[i]
+        if not pools[kind]: kind = 'life' if kind == 'report' else 'report'  # 그 종류가 아직 없으면 다른 종류로
+        pool = pools[kind]
+        if not pool: return None, []
+        nth = (tick // len(slots)) * max(1, slots.count(kind)) + slots[:i].count(kind)
+        lead = pool[nth % len(pool)]
+        # 옆 목록: 다른 종류부터 번갈아 3개
+        other = 'life' if kind == 'report' else 'report'
+        rest = {'life': [life_item(a) for a in life_rows(4, exclude=[lead['id']] if kind == 'life' else ())],
+                'report': [x for x in pools['report'] if x is not lead]}
+        side, order = [], [other, kind]
+        while len(side) < 3 and (rest['life'] or rest['report']):
+            for k in order:
+                if rest[k] and len(side) < 3: side.append(rest[k].pop(0))
+        return lead, side
+
     old_home = app.view_functions['home']
     def home():
         if not is_soboru(): return old_home()
-        lead = life_rows(1)
-        side = life_rows(3, exclude=[a['id'] for a in lead])
-        more = life_rows(6, exclude=[a['id'] for a in lead + side])
-        return render_template('soboru_home.html', lead=lead[0] if lead else None, side=side, more=more, rank=company_rank(4),
+        plan = home_plan()
+        lead, side = pick_top(plan)
+        shown = [x['id'] for x in ([lead] if lead else []) + side if x['kind'] == 'life']
+        more = life_rows(6, exclude=shown) or life_rows(6)
+        return render_template('soboru_home.html', plan=plan, lead=lead, side=side, more=more, rank=company_rank(4),
                                cases=S.report_rows(limit=6), posts=S.recent_posts(4))
     app.view_functions['home'] = home
+
+    @app.route('/admin/home-plan', methods=['GET', 'POST'])
+    @S.admin_only
+    def admin_home_plan():
+        if request.method == 'POST':
+            f = request.form
+            pins = [int(x) for x in re.findall(r'\d+', f.get('pins', ''))]
+            order = sorted(HOME_SECTIONS, key=lambda s: f.get('order_' + s[0], type=int) or 99)
+            plan = clean_plan({'slots': f.getlist('slot'), 'hours': f.get('hours', type=int), 'pins': pins,
+                               'sections': [[k, 1 if f.get('show_' + k) else 0] for k, _ in order]})
+            with conn() as db:
+                db.execute('INSERT OR REPLACE INTO soboru_settings(key,value) VALUES(?,?)', ('home', json.dumps(plan, ensure_ascii=False)))
+            flash('메인 화면 순서를 저장했어요.')
+            return redirect(url_for('admin_home_plan'))
+        plan = home_plan()
+        lead, side = pick_top(plan)
+        _, next_at = plan_tick(plan)
+        found = {r['id'] for r in report_items(pins=plan['pins'])} if plan['pins'] else set()
+        return render_template('admin_home_plan.html', plan=plan, lead=lead, side=side, next_at=next_at, kinds=HOME_KINDS, periods=HOME_PERIODS,
+                               sections=dict(HOME_SECTIONS), missing=[p for p in plan['pins'] if p not in found],
+                               n_life=len(life_rows(50)), n_report=len(report_items(50)))
 
     # ---- 생활정보 화면 ----------------------------------------------------
     @app.route('/life')
@@ -228,3 +339,4 @@ def install(S):
         return render_template('admin_life.html', rows=rows, a=a, view='', n_draft=n_draft, categories=LIFE_CATEGORIES, tones=LIFE_TONES)
 
     S.life_rows = life_rows; S.company_rank = company_rank; S.is_soboru = is_soboru
+    app.extensions['soboru'] = {'home_plan': home_plan, 'pick_top': pick_top, 'report_items': report_items}

@@ -1,5 +1,5 @@
 """Exercise the live templates and existing report flow using an isolated database."""
-import json, hashlib, io
+import datetime, json, hashlib, io
 import importlib.util
 import os
 from pathlib import Path
@@ -247,6 +247,47 @@ class SiteTest(unittest.TestCase):
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")
         self.assertNotIn('sb-home', visitor.get('/').get_data(as_text=True))
         self.assertEqual(self.site.notify.site_name(), '소비자제보센터')
+
+    def test_soboru_home_plan_rotates_reports_and_life(self):
+        # 메인 맨 위 큰 카드: 관리자가 정한 순서(제보 → 생활정보)·주기로 돌아가며, 공개 제보만 뜸
+        with self.site.conn() as db:
+            for receipt, subject, consent in (('p1', '공개 제보 카드 제목', 1), ('s1', '비밀 제보 카드 제목', 0)):
+                db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                           (receipt, hashlib.sha256(b'test').hexdigest(), '배송·교환·환불', '테스트 업체', subject, '본문 미리보기 010-1234-5678', '요청', '2026-10-09T10:00:00', consent, 1))
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+        admin = self.login_admin()
+        admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '생활정보 카드 제목', 'summary': '요약', 'body': '본문', 'category': '쇼핑', 'publish': '1'})
+        try:
+            page = admin.get('/admin/home-plan').get_data(as_text=True)
+            self.assertIn('메인 화면 순서', page)
+            r = admin.post('/admin/home-plan', data={'_csrf': self.csrf(admin, '/admin/home-plan'), 'slot': ['report', 'life', ''], 'hours': '6', 'pins': '',
+                                                     'order_top': '1', 'show_top': '1', 'order_box': '2', 'order_tools': '3', 'show_tools': '1'})
+            self.assertEqual(r.status_code, 302)
+            soboru = self.site.soboru
+            plan = soboru.clean_plan({'slots': ['report', 'life'], 'hours': 6})
+            self.assertEqual(plan['slots'], ['report', 'life'])
+            # 깨진 값은 기본값으로
+            self.assertEqual(soboru.clean_plan({'slots': ['x'], 'hours': 5})['slots'], ['report', 'life'])
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertIn('생활정보 카드 제목', home)
+            self.assertIn('공개 제보 카드 제목', home)
+            self.assertNotIn('sb-report-box', home)  # 끈 묶음은 빠짐
+            self.assertLess(home.index('sb-top'), home.index('sb-tools'))
+            self.assertNotIn('010-1234-5678', home)
+            # 주기마다 맨 위가 제보 ↔ 생활정보로 바뀜
+            kinds = set()
+            with self.site.app.test_request_context('/'):
+                ext = self.site.app.extensions['soboru']
+                saved = ext['home_plan']()
+                for h in (0, 6, 12, 18):
+                    lead, side = ext['pick_top'](saved, at=datetime.datetime(2026, 10, 16, h, 30))
+                    kinds.add(lead['kind'])
+                    self.assertNotEqual(lead['title'], '비밀 제보 카드 제목')
+                    self.assertNotIn('비밀 제보 카드 제목', [x['title'] for x in side])
+            self.assertEqual(kinds, {'report', 'life'})
+        finally:
+            with self.site.conn() as db:
+                db.execute("DELETE FROM site_content WHERE key='site.brand'")
 
     def test_admin_edits_site_copy(self):
         self.assertEqual(self.client.get('/admin/content').status_code, 302)
