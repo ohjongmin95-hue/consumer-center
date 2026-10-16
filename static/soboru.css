@@ -218,3 +218,110 @@ a:hover>.sb-thumb b,a:hover .sb-thumb b{transform:scale(1.08) rotate(-4deg)}
 .sb .alert{border:0;border-radius:16px;background:#fff;box-shadow:0 0 0 1px rgba(0,27,55,.05),0 8px 24px rgba(0,27,55,.08);border-left:4px solid var(--sb-orange)}
 .sb .consent-card,.sb .info-card{border-radius:20px}
 .sb-metoo{display:inline-block;margin-left:6px;background:var(--sb-orange-soft);color:#c45f00;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px}
+/* ==== 토스 바탕 + 뉴닉 한 스푼: 하위 화면 전체 ====
+   회색(#f2f4f6) 바탕 위에 흰 카드(모서리 24, 그림자 없음), 굵고 큰 제목, 회색 보조 버튼, 둥근 아이콘 동그라미. */
+.sb:has(main.page),.sb:has(main.board),.sb:has(.reports-page){background:#f2f4f6}
+.sb .reports-page{padding-top:8px}
+.sb .reports-head h1{font-size:28px;font-weight:800;letter-spacing:-.045em}
+.sb .reports-page .report-tools input,.sb .reports-page .report-tools select{background-color:#fff !important}
+.sb .reports-head .secondary{background:#fff}
+.sb main.page,.sb main.board{background:#f2f4f6;padding-bottom:72px}
+.sb main.page>.wrap,.sb main.board>.wrap{padding-top:4px}
+.sb .page .form-panel,.sb .board .form-panel,.sb .sbc-card{background:#fff;border:0;border-radius:24px;box-shadow:none;padding:28px}
+.sb .page-intro{margin-bottom:20px}
+.sb .page-title{font-size:28px}
+.sb .back-link{background:#fff}
+/* 목록 표 → 토스식 목록 */
+.sb .report-table{background:#fff;box-shadow:none;border-radius:24px;padding:6px 8px}
+.sb .report-table .tr.heading{display:none}
+.sb .report-table .tr{grid-template-columns:minmax(0,1fr) 110px 96px;padding:16px 14px;border-radius:16px;border-bottom:0;gap:14px}
+.sb .report-table .tr>span:first-child{display:none}
+.sb .report-table .tr:hover{background:#f9fafb}
+.sb .title-cell{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding-left:58px;min-height:46px;white-space:normal}
+.sb .title-cell>a{order:-1;flex-basis:100%;font-size:16px;font-weight:700;letter-spacing:-.02em;color:var(--sb-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb .title-cell .case-cat{background:none;padding:0;color:var(--sb-mute);font-weight:600;font-size:13px}
+.sb .title-cell .case-company{margin:0;font-size:13px;color:var(--sb-mute)}
+.sb .title-cell .case-company::before{content:'·';margin-right:6px}
+.sb .title-cell .case-cat,.sbc-kicker .case-cat{display:inline-block}
+.sb .title-cell .case-talk-n{margin:0;color:var(--sb-orange)}
+.sb .title-cell .pending-tag{font-size:12px}
+.sbr-ico{position:absolute;left:0;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px}
+.sb .report-table .tr>span:last-child{color:var(--sb-mute);font-size:13px;text-align:right}
+.sb .report-stats div{background:#fff}
+.sb .st-legend{display:none}
+@media(max-width:680px){.sb .report-table{padding:4px}.sb .report-table .tr{grid-template-columns:minmax(0,1fr) 72px;padding:14px 10px}.sb .report-table .tr>span:last-child{display:none}.sb .title-cell{padding-left:52px}.sbr-ico{width:40px;height:40px;font-size:20px}.sb .title-cell>a{font-size:15px}}
+
+/* ---- 제보 상세 ---- */
+.sbc{max-width:720px}
+.sbc-back{display:inline-flex;align-items:center;gap:2px;color:var(--sb-gray-ink);font-weight:600;font-size:15px;padding:6px 10px 6px 4px;border-radius:10px;margin:0 0 12px -4px}
+.sbc-back:hover{background:#e5e8eb;color:var(--sb-ink)}
+.sbc-back svg,.sbc-more svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.sbc-hero{background:#fff;border-radius:28px;padding:32px 32px 28px;position:relative;overflow:hidden}
+.sbc-ico{width:72px;height:72px;border-radius:24px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.sbc-ico b{font-size:38px;line-height:1;filter:drop-shadow(0 6px 10px rgba(0,0,0,.12));animation:sbc-pop .6s var(--sb-ease) both}
+@keyframes sbc-pop{from{transform:scale(.6) rotate(-12deg);opacity:0}to{transform:none;opacity:1}}
+.sbc-kicker{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:14px;color:var(--sb-mute);font-weight:600}
+.sbc-hero .page-title{font-size:30px;line-height:1.35;margin:0;overflow-wrap:anywhere}
+.sbc-date{margin:10px 0 0;color:var(--sb-mute);font-size:14px}
+.sbc-stats{display:flex;margin:24px 0 0;background:var(--sb-gray);border-radius:18px;padding:16px 0}
+.sbc-stats div{flex:1;text-align:center}
+.sbc-stats div+div{border-left:1px solid #e5e8eb}
+.sbc-stats dt{font-size:13px;color:var(--sb-gray-ink);font-weight:600}
+.sbc-stats dd{margin:4px 0 0;font-size:20px;font-weight:800;letter-spacing:-.03em;color:var(--sb-ink)}
+.sbc-stats dd.st-2{color:var(--sb-orange)}.sbc-stats dd.st-3{color:#1b8f4a}
+.sbc-metoo{display:flex;gap:8px;margin:14px 0 0}
+.sbc-metoo button{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:56px;border:0;border-radius:16px;background:var(--sb-orange);color:#fff;font-size:17px;font-weight:700;cursor:pointer;transition:transform .15s var(--sb-ease),background .2s,box-shadow .2s}
+.sbc-metoo button:hover{background:#e56c00;box-shadow:0 8px 18px rgba(239,115,0,.26)}
+.sbc-metoo button.on{background:var(--sb-orange-soft);color:#c45f00}
+.sbc-metoo button span{font-size:22px}
+.sbc-metoo a{flex:none;display:flex;align-items:center;padding:0 22px;height:56px;border-radius:16px;background:var(--sb-gray);color:#333d4b;font-weight:700;font-size:16px;transition:transform .15s var(--sb-ease),background .2s}
+.sbc-metoo a:hover{background:#e5e8eb}
+.sbc-metoo button:active,.sbc-metoo a:active,.sbc-co:active{transform:scale(.97)}
+.sbc-co{display:flex;align-items:center;gap:14px;background:#fff;border-radius:24px;padding:18px 22px;margin-top:12px;transition:transform .15s var(--sb-ease),background .2s}
+a.sbc-co:hover{background:#fafbfc}
+.sbc-av{flex:none;width:44px;height:44px;border-radius:50%;background:#fff1e3;color:#c45f00;font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center}
+.sbc-av.sm{width:32px;height:32px;font-size:14px}
+.sbc-co-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.sbc-co-t small{font-size:13px;color:var(--sb-mute)}
+.sbc-co-t b{font-size:17px;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbc-more{display:flex;align-items:center;color:var(--sb-mute);font-size:14px;font-weight:600}
+.sb .sbc .sbc-card,.sb .sbc .form-panel{margin-top:12px;padding:28px 28px}
+.sb .sbc h2{font-size:20px;letter-spacing:-.03em;margin:0 0 16px}
+.sbc-steps .stepper-dot{width:28px;height:28px}
+.sbc-steps .stepper li+li::before{top:13px}
+.sbc-hint{margin:18px 0 0;color:var(--sb-gray-ink);font-size:15px;background:var(--sb-gray);border-radius:14px;padding:14px 16px}
+.sb .sbc .public-case-body{font-size:17px;line-height:1.85;color:#333d4b;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.sbc-want{margin-top:22px;background:var(--sb-orange-soft);border-radius:18px;padding:18px 20px}
+.sbc-want-h{margin:0 0 4px;font-size:14px;font-weight:700;color:#c45f00}
+.sb .sbc .sbc-want .public-case-body{font-size:16px;color:#5b3a1e}
+.sb .sbc .company-answers{box-shadow:none}
+.sbc-answer{padding:0;border:0;background:none}
+.sbc-answer .ca-head{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+.sbc-answer .ca-head b{flex:1;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.sbc-answer .ca-head>span:last-child{color:var(--sb-mute);font-size:13px}
+.sb .sbc .sbc-bubble{background:var(--sb-gray);border-radius:4px 20px 20px 20px;padding:16px 18px;margin-left:42px;font-size:16px}
+.sbc-answer+.sbc-answer{margin-top:20px}
+.sbc-none{display:flex;align-items:center;gap:12px;background:var(--sb-gray);border-radius:18px;padding:18px 20px}
+.sbc-none span{font-size:24px}.sbc-none p{margin:0;font-weight:600;color:var(--sb-gray-ink)}
+.sb .sbc .ca-note{color:var(--sb-mute);font-size:13px;margin:14px 0 0}
+.sb .sbc .history li{border-left-color:#eef0f2}
+.sb .sbc .h-head b{font-size:15px}
+@media(max-width:640px){
+  .sb main.page>.wrap{padding-left:12px;padding-right:12px}
+  .sbc-hero{padding:24px 20px 20px;border-radius:24px}
+  .sbc-ico{width:60px;height:60px;border-radius:20px;margin-bottom:16px}.sbc-ico b{font-size:32px}
+  .sbc-hero .page-title{font-size:23px}
+  .sbc-stats dd{font-size:17px}
+  .sbc-metoo button{font-size:16px;height:52px}.sbc-metoo a{height:52px;padding:0 16px;font-size:15px}
+  .sbc-co{padding:16px 18px}
+  .sb .sbc .sbc-card,.sb .sbc .form-panel{padding:22px 20px}
+  .sb .sbc .public-case-body{font-size:16px}
+  .sb .sbc .sbc-bubble{margin-left:0}
+}
+/* 커뮤니티: 회색 바탕 위 흰 카드 */
+.sb .board-search input{background-color:#fff !important}
+.sb .board-search button{border:0;border-radius:14px;background:var(--sb-ink);color:#fff}
+.sb .board-empty,.sb .post-card,.sb .board-hot{border:0 !important;border-radius:24px;box-shadow:none;background:#fff}
+.sb .post-card{transition:transform .15s var(--sb-ease)}
+.sb .post-card:active{transform:scale(.98)}
+.sb .sort-toggle{background:#e5e8eb}

@@ -6,6 +6,7 @@
 {% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "Article", "headline": subject|truncate(110, True, '…'), "description": description|truncate(150, True, '…'), "articleSection": category, "datePublished": case['created'], "inLanguage": "ko", "mainEntityOfPage": request.base_url, "author": {"@type": "Organization", "name": txt('site.name')}, "publisher": {"@type": "Organization", "name": txt('site.name'), "logo": {"@type": "ImageObject", "url": url_for('static', filename='apple-touch-icon.png', _external=True)}}, "image": url_for('static', filename='og-image.png', _external=True)},
   {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": txt('site.name'), "item": url_for('home', _external=True)}, {"@type": "ListItem", "position": 2, "name": txt('home.list_title'), "item": url_for('reports', _external=True)}, {"@type": "ListItem", "position": 3, "name": subject|truncate(60, True, '…')}]}]|tojson }}</script>{% endblock %}
 {% block content %}
+{% if is_soboru() %}{% include 'soboru_case.html' %}{% else %}
 <main class="page"><div class="wrap">
   <div class="page-intro">
     <a class="back-link" href="{{ url_for('reports') }}">← {{ txt('home.list_title') }}</a>
@@ -35,4 +36,5 @@
   </section>
   {% if groups_on() %}{% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}{% endif %}
 </div></main>
+{% endif %}
 {% endblock %}

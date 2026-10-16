@@ -169,7 +169,8 @@ def install(S):
         return {'best': best, 'wait': wait, 'days': days, 'min_n': jebo.MIN_N}
 
     app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, company_rank=company_rank,
-                                 ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES)
+                                 ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES,
+                                 report_look=lambda cat: (REPORT_EMOJI.get(cat, '📣'), REPORT_TONE.get(cat, 't1')))
 
     # ---- 메인 화면: 소보루면 새 홈 ------------------------------------------
     # 관리자 > 메인 화면 순서에서 맨 위 큰 카드에 무엇을 어떤 순서·주기로 띄울지, 아래 묶음 순서를 정함.
