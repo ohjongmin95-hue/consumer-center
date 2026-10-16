@@ -2,7 +2,7 @@
 import { ReactNode, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { C, R, STATUS_TONE } from '../lib/theme';
+import { C, R, STATUS_TONE, FONT } from '../lib/theme';
 
 export function Screen({ children, bg = C.band, edges }: { children: ReactNode; bg?: string; edges?: ('top' | 'bottom')[] }) {
   return (
@@ -62,7 +62,7 @@ export function PwField({ label, hint, ...p }: TextInputProps & { label?: string
       <View>
         <TextInput placeholderTextColor={C.fg4} autoCapitalize="none" autoCorrect={false} {...p} secureTextEntry={!show} style={[s.input, { paddingRight: 64 }]} />
         <Pressable onPress={() => setShow(!show)} hitSlop={8} style={s.eye} accessibilityRole="button">
-          <Text style={{ fontSize: 14, fontWeight: '600', color: C.fg3 }}>{show ? '숨기기' : '보기'}</Text>
+          <Text style={{ fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg3 }}>{show ? '숨기기' : '보기'}</Text>
         </Pressable>
       </View>
       {hint ? <Text style={s.hint}>{hint}</Text> : null}
@@ -89,20 +89,59 @@ export function MenuRow({ title, sub, onPress, last, right }: { title: string; s
         <Text style={s.rowTitle}>{title}</Text>
         {sub ? <Text style={s.rowSub}>{sub}</Text> : null}
       </View>
-      {right ? <Text style={{ fontSize: 15, fontWeight: '700', color: C.accentInk, marginRight: 6 }}>{right}</Text> : null}
+      {right ? <Text style={{ fontFamily: FONT, fontSize: 15, fontWeight: '700', color: C.accentInk, marginRight: 6 }}>{right}</Text> : null}
       <Text style={s.chev}>›</Text>
     </Pressable>
   );
 }
 
 // 가로 막대 하나 (통계)
+// 토스 홈의 한 줄: 왼쪽 동그란 아이콘, 큰 숫자와 회색 설명, 오른쪽 회색 버튼
+export function StatRow({ icon, value, sub, action, onPress, tone }: { icon: ReactNode; value: string; sub: string; action?: string; onPress?: () => void; tone?: 'red' | 'acc' }) {
+  return (
+    <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [s.stat, pressed && { opacity: 0.7 }]}>
+      <View style={s.statIc}>{icon}</View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[s.statValue, tone === 'red' && { color: C.red }, tone === 'acc' && { color: C.accentInk }]}>{value}</Text>
+        <Text style={s.statSub}>{sub}</Text>
+      </View>
+      {action ? (
+        <View style={s.pillBtn}>
+          <Text style={s.pillBtnText}>{action}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
+// 카드 아래 바로가기 줄 (계좌 | 대출 | 카드 ... 모두보기)
+export function LinkBar({ items, more }: { items: { title: string; onPress: () => void }[]; more?: { title: string; onPress: () => void } }) {
+  return (
+    <View style={s.linkBar}>
+      {items.map((it, i) => (
+        <View key={it.title} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {i ? <View style={s.linkSep} /> : null}
+          <Pressable onPress={it.onPress} hitSlop={8} style={({ pressed }) => pressed && { opacity: 0.5 }}>
+            <Text style={s.linkText}>{it.title}</Text>
+          </Pressable>
+        </View>
+      ))}
+      {more ? (
+        <Pressable onPress={more.onPress} hitSlop={8} style={({ pressed }) => [{ marginLeft: 'auto' }, pressed && { opacity: 0.5 }]}>
+          <Text style={s.linkText}>{more.title}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 export function BarLine({ label, n, pct, max, unit = '건' }: { label: string; n: number; pct?: number; max: number; unit?: string }) {
   const w = max ? Math.max(2, Math.round((n / max) * 100)) : 0;
   return (
     <View style={{ gap: 6, marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={{ fontSize: 15, color: C.fg2, fontWeight: '600' }}>{label}</Text>
-        <Text style={{ fontSize: 15, color: C.fg, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
+        <Text style={{ fontFamily: FONT, fontSize: 15, color: C.fg2, fontWeight: '600' }}>{label}</Text>
+        <Text style={{ fontFamily: FONT, fontSize: 15, color: C.fg, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
           {n}
           {unit}
           {pct !== undefined ? <Text style={{ color: C.fg3, fontWeight: '500' }}> · {pct}%</Text> : null}
@@ -143,7 +182,7 @@ export function Notice({ text, tone = 'error', flat }: { text: string; tone?: 'e
   if (!text) return null;
   return (
     <View style={[s.notice, flat && { marginHorizontal: 0, marginBottom: 0 }, { backgroundColor: tone === 'error' ? C.redSoft : C.greenSoft }]}>
-      <Text style={{ color: tone === 'error' ? C.red : C.green, fontSize: 15, fontWeight: '600' }}>{text}</Text>
+      <Text style={{ color: tone === 'error' ? C.red : C.green, fontFamily: FONT, fontSize: 15, fontWeight: '600' }}>{text}</Text>
     </View>
   );
 }
@@ -157,26 +196,35 @@ export function Loading() {
 }
 
 export const s = StyleSheet.create({
-  card: { backgroundColor: C.card, borderRadius: R.lg, padding: 20, marginHorizontal: 16, marginBottom: 12 },
-  h1: { fontSize: 26, lineHeight: 36, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
-  h2: { fontSize: 19, fontWeight: '700', color: C.fg, letterSpacing: -0.6, marginBottom: 14 },
-  sub: { fontSize: 15, lineHeight: 22, color: C.fg3 },
+  card: { backgroundColor: C.card, borderRadius: R.lg, padding: 22, marginHorizontal: 14, marginBottom: 12 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12 },
+  statIc: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
+  statValue: { fontFamily: FONT, fontSize: 21, fontWeight: '700', color: C.fg, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
+  statSub: { fontFamily: FONT, fontSize: 15, color: C.fg3, letterSpacing: -0.2 },
+  pillBtn: { height: 38, paddingHorizontal: 16, borderRadius: 12, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
+  pillBtnText: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
+  linkBar: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10, marginHorizontal: -22, paddingHorizontal: 22, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
+  linkSep: { width: 1, height: 14, backgroundColor: C.line, marginRight: 14 },
+  linkText: { fontFamily: FONT, fontSize: 15, fontWeight: '500', color: C.fg2 },
+  h1: { fontFamily: FONT, fontSize: 26, lineHeight: 36, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
+  h2: { fontFamily: FONT, fontSize: 20, fontWeight: '700', color: C.fg, letterSpacing: -0.6, marginBottom: 14 },
+  sub: { fontFamily: FONT, fontSize: 15, lineHeight: 22, color: C.fg3 },
   btn: { height: 54, borderRadius: R.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  btnText: { fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
-  label: { fontSize: 15, fontWeight: '600', color: C.fg2 },
-  hint: { fontSize: 13, color: C.fg3 },
-  input: { height: 54, borderRadius: R.md, backgroundColor: C.fill, paddingHorizontal: 16, fontSize: 16, color: C.fg },
+  btnText: { fontFamily: FONT, fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
+  label: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
+  hint: { fontFamily: FONT, fontSize: 13, color: C.fg3 },
+  input: { height: 54, borderRadius: R.md, backgroundColor: C.fill, paddingHorizontal: 16, fontFamily: FONT, fontSize: 16, color: C.fg },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { height: 40, paddingHorizontal: 16, borderRadius: 20, backgroundColor: C.fill, justifyContent: 'center' },
-  chipText: { fontSize: 15, fontWeight: '600', color: C.fg2 },
+  chipText: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
   pill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  pillText: { fontSize: 13, fontWeight: '700' },
+  pillText: { fontFamily: FONT, fontSize: 13, fontWeight: '700' },
   eye: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
   rowLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: C.fg },
-  rowSub: { fontSize: 13, lineHeight: 19, color: C.fg3 },
-  chev: { fontSize: 24, color: C.fg4 },
+  rowTitle: { fontFamily: FONT, fontSize: 17, fontWeight: '600', color: C.fg, letterSpacing: -0.3 },
+  rowSub: { fontFamily: FONT, fontSize: 14, lineHeight: 20, color: C.fg3 },
+  chev: { fontFamily: FONT, fontSize: 24, color: C.fg4 },
   notice: { borderRadius: R.sm, padding: 14, marginHorizontal: 16, marginBottom: 12 },
 });

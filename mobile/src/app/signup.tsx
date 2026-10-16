@@ -6,7 +6,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { Btn, Card, Chips, Field, Notice, PwField } from '../components/ui';
 import { api, SITE_BASE } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 
 const FALLBACK_IND = ['패션·잡화', '뷰티', '식품', '생활·주방', '가전·디지털', '가구·인테리어', '유아·출산', '스포츠·레저', '반려동물', '도서·문구', '서비스', '기타'];
 
@@ -69,11 +69,11 @@ export default function Signup() {
         <Pressable onPress={() => setTerms(!terms)} style={st.agree} accessibilityRole="checkbox" accessibilityState={{ checked: terms }}>
           <View style={[st.box, terms && { backgroundColor: C.accent, borderColor: C.accent }]}>{terms ? <Text style={{ color: '#fff', fontWeight: '800' }}>✓</Text> : null}</View>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: C.fg }}>
+            <Text style={{ fontFamily: FONT, fontSize: 16, fontWeight: '700', color: C.fg }}>
               이용약관 동의 (필수){'  '}
-              <Text onPress={() => WebBrowser.openBrowserAsync(SITE_BASE + '/terms')} style={{ fontSize: 14, fontWeight: '600', color: C.fg3, textDecorationLine: 'underline' }} accessibilityRole="link">보기</Text>
+              <Text onPress={() => WebBrowser.openBrowserAsync(SITE_BASE + '/terms')} style={{ fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg3, textDecorationLine: 'underline' }} accessibilityRole="link">보기</Text>
             </Text>
-            <Text style={{ fontSize: 13, color: C.fg3 }}>가입 여부는 소비자 요청 처리 결과에 영향을 주지 않습니다</Text>
+            <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3 }}>가입 여부는 소비자 요청 처리 결과에 영향을 주지 않습니다</Text>
           </View>
         </Pressable>
         <Notice text={err} />
@@ -86,10 +86,10 @@ export default function Signup() {
 }
 
 const st = StyleSheet.create({
-  h1: { fontSize: 24, lineHeight: 33, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
-  p: { fontSize: 15, lineHeight: 23, color: C.fg3 },
-  big: { fontSize: 44 },
-  label: { fontSize: 15, fontWeight: '600', color: C.fg2 },
+  h1: { fontFamily: FONT, fontSize: 24, lineHeight: 33, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg3 },
+  big: { fontFamily: FONT, fontSize: 44 },
+  label: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
   agree: { flexDirection: 'row', gap: 12, alignItems: 'center', marginHorizontal: 16, marginBottom: 12, backgroundColor: C.card, borderRadius: 20, padding: 18 },
   box: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
 });

@@ -5,7 +5,7 @@ import { Icon, CAT_ICON } from '../components/Icon';
 import { Btn, Card, Chips, Field, Loading, Notice, Screen, Toggle } from '../components/ui';
 import { api, Rule } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 import { errText, useLoad } from '../lib/useLoad';
 
 export default function Rules() {
@@ -37,8 +37,8 @@ export default function Rules() {
 function Stat({ label, v }: { label: string; v: number }) {
   return (
     <View style={{ flex: 1, backgroundColor: C.fill, borderRadius: 14, padding: 12, gap: 4 }}>
-      <Text style={{ fontSize: 12, color: C.fg3, fontWeight: '600' }}>{label}</Text>
-      <Text style={{ fontSize: 18, fontWeight: '700', color: C.fg }}>{v}건</Text>
+      <Text style={{ fontFamily: FONT, fontSize: 12, color: C.fg3, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.fg }}>{v}건</Text>
     </View>
   );
 }
@@ -108,9 +108,9 @@ function RuleCard({ r, conds, token, onSaved }: { r: Rule; conds: { value: strin
 
 const st = StyleSheet.create({
   head: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16 },
-  p: { fontSize: 15, lineHeight: 23, color: C.fg2 },
-  h2: { fontSize: 17, fontWeight: '700', color: C.fg, marginBottom: 12 },
-  label: { fontSize: 14, fontWeight: '600', color: C.fg2 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 },
+  h2: { fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, marginBottom: 12 },
+  label: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2 },
   reply: { backgroundColor: C.fill, borderRadius: 12, padding: 12 },
-  replyT: { fontSize: 14, lineHeight: 21, color: C.fg2 },
+  replyT: { fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.fg2 },
 });

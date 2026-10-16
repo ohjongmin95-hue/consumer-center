@@ -5,7 +5,7 @@ import { Text, View } from 'react-native';
 import { Btn, Card, Chips, Field, H2, Loading, Notice, PwField, Screen, Toggle } from '../components/ui';
 import { api, Settings } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 import { errText, useLoad } from '../lib/useLoad';
 
 export default function SettingsScreen() {
@@ -54,13 +54,13 @@ function Section({ title, sub, children }: { title: string; sub?: string; childr
     <Card style={{ gap: 14 }}>
       <View style={{ gap: 4 }}>
         <H2>{title}</H2>
-        {sub ? <Text style={{ fontSize: 14, lineHeight: 21, color: C.fg3, marginTop: -10 }}>{sub}</Text> : null}
+        {sub ? <Text style={{ fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.fg3, marginTop: -10 }}>{sub}</Text> : null}
       </View>
       {children}
     </Card>
   );
 }
-const Label = ({ children }: { children: ReactNode }) => <Text style={{ fontSize: 15, fontWeight: '600', color: C.fg2 }}>{children}</Text>;
+const Label = ({ children }: { children: ReactNode }) => <Text style={{ fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 }}>{children}</Text>;
 
 function Info({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void }) {
   const [f, setF] = useState({ contact: s.contact, notify_email: s.notify_email, industry: s.industry, tone: s.tone });
@@ -91,8 +91,8 @@ function Return({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void })
       <Field label="함께 안내할 말 (선택)" value={f.return_memo} onChangeText={(v) => setF({ ...f, return_memo: v })} placeholder="예: 상품 택을 떼지 말고 보내 주세요" />
       {s.return_guide ? (
         <View style={{ backgroundColor: C.fill, borderRadius: 12, padding: 12 }}>
-          <Text style={{ fontSize: 13, color: C.fg3, marginBottom: 6, fontWeight: '600' }}>고객에게 이렇게 보입니다</Text>
-          <Text style={{ fontSize: 14, lineHeight: 21, color: C.fg2 }}>{s.return_guide}</Text>
+          <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3, marginBottom: 6, fontWeight: '600' }}>고객에게 이렇게 보입니다</Text>
+          <Text style={{ fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.fg2 }}>{s.return_guide}</Text>
         </View>
       ) : null}
       {msg.t ? <Notice text={msg.t} tone={msg.ok ? 'ok' : 'error'} flat /> : null}

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Btn, Card, Loading, Notice, Screen } from '../components/ui';
 import { api, GuideItem } from '../lib/api';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 import { useLoad } from '../lib/useLoad';
 
 export default function Guide() {
@@ -36,7 +36,7 @@ function Item({ g, open, onToggle }: { g: GuideItem; open: boolean; onToggle: ()
     <Card>
       <Pressable onPress={onToggle} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Text style={[st.h2, { flex: 1 }]}>{g.title}</Text>
-        <Text style={{ fontSize: 20, color: C.fg4 }}>{open ? '⌃' : '⌄'}</Text>
+        <Text style={{ fontFamily: FONT, fontSize: 20, color: C.fg4 }}>{open ? '⌃' : '⌄'}</Text>
       </Pressable>
       {open ? (
         <View style={{ gap: 12, marginTop: 14 }}>
@@ -65,10 +65,10 @@ function Item({ g, open, onToggle }: { g: GuideItem; open: boolean; onToggle: ()
           <Text style={st.ph}>관련 조항 원문</Text>
           {g.laws.map((l, i) => (
             <Pressable key={i} onPress={() => setLaw(law === i ? -1 : i)} style={st.law}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: C.fg }}>
+              <Text style={{ fontFamily: FONT, fontSize: 14, fontWeight: '700', color: C.fg }}>
                 {l.label} <Text style={{ fontWeight: '500', color: C.fg3 }}>{l.title}</Text>
               </Text>
-              {law === i ? <Text style={[st.body, { marginTop: 8, fontSize: 14 }]}>{l.text}</Text> : null}
+              {law === i ? <Text style={[st.body, { marginTop: 8, fontFamily: FONT, fontSize: 14 }]}>{l.text}</Text> : null}
             </Pressable>
           ))}
         </View>
@@ -78,11 +78,11 @@ function Item({ g, open, onToggle }: { g: GuideItem; open: boolean; onToggle: ()
 }
 
 const st = StyleSheet.create({
-  p: { fontSize: 15, lineHeight: 23, color: C.fg2 },
-  h2: { fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: -0.4 },
-  ph: { fontSize: 13, fontWeight: '700', color: C.fg3, marginTop: 4 },
-  body: { fontSize: 15, lineHeight: 23, color: C.fg },
-  ref: { fontSize: 12, color: C.fg3 },
-  sample: { fontSize: 15, lineHeight: 23, color: C.fg2, backgroundColor: C.accentSoft, borderRadius: 12, padding: 14 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 },
+  h2: { fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: -0.4 },
+  ph: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.fg3, marginTop: 4 },
+  body: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg },
+  ref: { fontFamily: FONT, fontSize: 12, color: C.fg3 },
+  sample: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2, backgroundColor: C.accentSoft, borderRadius: 12, padding: 14 },
   law: { backgroundColor: C.fill, borderRadius: 12, padding: 12 },
 });

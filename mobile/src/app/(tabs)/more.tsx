@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Footer } from '../../components/Footer';
 import { Btn, Card, H2, MenuRow } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
-import { C } from '../../lib/theme';
+import { C, FONT } from '../../lib/theme';
 
 export default function MoreTab() {
   const { session, logout } = useAuth();
@@ -65,8 +65,8 @@ export default function MoreTab() {
 
 const st = StyleSheet.create({
   head: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 18, gap: 4 },
-  h1: { fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
-  sub: { fontSize: 14, color: C.fg3 },
-  p: { fontSize: 15, lineHeight: 23, color: C.fg2, marginBottom: 12 },
-  link: { fontSize: 15, fontWeight: '600', color: C.accentInk, backgroundColor: C.accentSoft, borderRadius: 12, padding: 14, marginBottom: 12 },
+  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
+  sub: { fontFamily: FONT, fontSize: 14, color: C.fg3 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2, marginBottom: 12 },
+  link: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.accentInk, backgroundColor: C.accentSoft, borderRadius: 12, padding: 14, marginBottom: 12 },
 });

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon } from '../components/Icon';
 import { Card, H2, Screen } from '../components/ui';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 
 const OWNER: [string, string, string][] = [
   ['building', '고객센터 링크 걸기', '내 정보의 우리 가게 고객센터 링크를 쇼핑몰 상세페이지나 카카오톡 채널에 걸어 두세요.'],
@@ -97,7 +97,7 @@ export default function HowTo() {
               <Text style={st.t}>{t}</Text>
               <Text style={st.s}>{s}</Text>
             </View>
-            <Text style={{ fontSize: 22, color: C.fg4 }}>›</Text>
+            <Text style={{ fontFamily: FONT, fontSize: 22, color: C.fg4 }}>›</Text>
           </Pressable>
         ))}
       </Card>
@@ -108,7 +108,7 @@ export default function HowTo() {
           <Pressable key={q} onPress={() => setOpen(open === i ? -1 : i)} style={[st.row, { flexDirection: 'column', alignItems: 'stretch', gap: 8 }, i < FAQ.length - 1 && st.line]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={[st.t, { flex: 1 }]}>{q}</Text>
-              <Text style={{ fontSize: 18, color: C.fg4 }}>{open === i ? '⌃' : '⌄'}</Text>
+              <Text style={{ fontFamily: FONT, fontSize: 18, color: C.fg4 }}>{open === i ? '⌃' : '⌄'}</Text>
             </View>
             {open === i ? <Text style={st.s}>{a}</Text> : null}
           </Pressable>
@@ -119,12 +119,12 @@ export default function HowTo() {
 }
 
 const st = StyleSheet.create({
-  h1: { fontSize: 24, lineHeight: 34, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
-  p: { fontSize: 15, lineHeight: 23, color: C.fg3 },
+  h1: { fontFamily: FONT, fontSize: 24, lineHeight: 34, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg3 },
   ic: { width: 48, height: 48, borderRadius: 14, backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },
-  k: { fontSize: 12, fontWeight: '700', color: C.accentInk },
-  t: { fontSize: 16, fontWeight: '700', color: C.fg, letterSpacing: -0.3 },
-  s: { fontSize: 14, lineHeight: 21, color: C.fg2 },
+  k: { fontFamily: FONT, fontSize: 12, fontWeight: '700', color: C.accentInk },
+  t: { fontFamily: FONT, fontSize: 16, fontWeight: '700', color: C.fg, letterSpacing: -0.3 },
+  s: { fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.fg2 },
   box: { backgroundColor: C.fill, borderRadius: 14, padding: 14, gap: 4 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
   line: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },

@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { Btn, Card, Chips, Field, Loading, Notice, Screen } from '../components/ui';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 import { errText, useLoad } from '../lib/useLoad';
 
 export default function NewCase() {
@@ -28,19 +28,19 @@ export default function NewCase() {
       setBusy(false);
     }
   };
-  const L = ({ t }: { t: string }) => <Text style={{ fontSize: 15, fontWeight: '600', color: C.fg2 }}>{t}</Text>;
+  const L = ({ t }: { t: string }) => <Text style={{ fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 }}>{t}</Text>;
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen>
         <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14 }}>
-          <Text style={{ fontSize: 15, lineHeight: 23, color: C.fg2 }}>다른 곳으로 받은 요청도 여기 올리면 추천 처리, 답변 초안, 기록 관리를 똑같이 쓸 수 있습니다.</Text>
+          <Text style={{ fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 }}>다른 곳으로 받은 요청도 여기 올리면 추천 처리, 답변 초안, 기록 관리를 똑같이 쓸 수 있습니다.</Text>
         </View>
         <Card style={{ gap: 12 }}>
           <L t="어디로 받았나요" />
           <Chips items={data.channels} value={f.channel} onChange={set('channel')} />
           <L t="유형" />
           <Chips items={data.cats} value={f.category} onChange={set('category')} />
-          {f.category && data.hints[f.category] ? <Text style={{ fontSize: 13, color: C.fg3 }}>{data.hints[f.category]}</Text> : null}
+          {f.category && data.hints[f.category] ? <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3 }}>{data.hints[f.category]}</Text> : null}
           <L t="원하는 해결" />
           <Chips items={data.wants} value={f.want} onChange={set('want')} />
         </Card>

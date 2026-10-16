@@ -6,13 +6,18 @@ import { ActivityIndicator, Animated, Image, Platform, StyleSheet, Text, View } 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { Notifications } from '../lib/push';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 
 // 웹 미리보기에서도 한글이 낱말 단위로 줄바꿈되게
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   const el = document.createElement('style');
   el.textContent = '*{word-break:keep-all;overflow-wrap:anywhere}';
   document.head.appendChild(el);
+  // 앱에 넣은 프리텐다드는 휴대폰용이라, 웹 미리보기는 같은 글꼴을 공개 배포처에서 읽는다
+  const font = document.createElement('link');
+  font.rel = 'stylesheet';
+  font.href = 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css';
+  document.head.appendChild(font);
 }
 
 // 앱을 켜면 하얀 바탕에 소보루 캐릭터(기본 시작 화면) → 같은 자리에 '소보루 CS' 로고 화면 → 로그인 확인이 끝나면 부드럽게 사라진다
@@ -61,7 +66,7 @@ export default function RootLayout() {
             headerTintColor: C.fg,
             headerShadowVisible: false,
             headerStyle: { backgroundColor: C.band },
-            headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+            headerTitleStyle: { fontWeight: '700', fontFamily: FONT, fontSize: 17 },
             headerBackButtonDisplayMode: 'minimal',
             contentStyle: { backgroundColor: C.band },
           }}
@@ -91,7 +96,7 @@ export default function RootLayout() {
 
 const st = StyleSheet.create({
   intro: { backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
-  wm: { fontSize: 30, fontWeight: '800', color: C.brand, letterSpacing: -1, marginTop: 14 },
-  sub: { fontSize: 15, fontWeight: '600', color: C.fg3, marginTop: 6 },
-  foot: { position: 'absolute', bottom: 48, fontSize: 13, color: C.fg4 },
+  wm: { fontFamily: FONT, fontSize: 30, fontWeight: '800', color: C.brand, letterSpacing: -1, marginTop: 14 },
+  sub: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg3, marginTop: 6 },
+  foot: { position: 'absolute', bottom: 48, fontFamily: FONT, fontSize: 13, color: C.fg4 },
 });

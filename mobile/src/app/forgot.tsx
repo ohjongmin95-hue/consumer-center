@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Btn, Field, Notice } from '../components/ui';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 
 export default function Forgot() {
   const { lastId } = useAuth();
@@ -44,6 +44,6 @@ export default function Forgot() {
 }
 
 const st = StyleSheet.create({
-  h1: { fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
-  p: { fontSize: 15, lineHeight: 23, color: C.fg3 },
+  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg3 },
 });

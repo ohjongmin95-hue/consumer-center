@@ -5,7 +5,7 @@ import { CaseRow } from '../../components/CaseRow';
 import { Btn, Card, Chips, Field, H2, Loading, Notice } from '../../components/ui';
 import { api, ApiError, OrderDetail } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { C } from '../../lib/theme';
+import { C, FONT } from '../../lib/theme';
 
 export default function OrderScreen() {
   const id = Number(useLocalSearchParams<{ id: string }>().id);
@@ -132,7 +132,7 @@ export default function OrderScreen() {
 
 const st = StyleSheet.create({
   head: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16, gap: 6 },
-  h1: { fontSize: 22, fontWeight: '700', color: C.fg, letterSpacing: -0.6 },
-  sub: { fontSize: 14, color: C.fg3 },
-  p: { fontSize: 15, lineHeight: 23, color: C.fg2 },
+  h1: { fontFamily: FONT, fontSize: 22, fontWeight: '700', color: C.fg, letterSpacing: -0.6 },
+  sub: { fontFamily: FONT, fontSize: 14, color: C.fg3 },
+  p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 },
 });

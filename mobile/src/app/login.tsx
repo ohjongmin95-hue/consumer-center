@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Footer } from '../components/Footer';
 import { Btn, Field, Notice, PwField } from '../components/ui';
 import { useAuth } from '../lib/auth';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 
 export default function Login() {
   const { session, login, lastId } = useAuth();
@@ -71,11 +71,11 @@ export default function Login() {
 const st = StyleSheet.create({
   top: { paddingHorizontal: 24, paddingTop: 28, gap: 14 },
   logo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 18 },
-  wm: { fontSize: 22, fontWeight: '800', color: C.brand, letterSpacing: -0.8 },
-  h1: { fontSize: 28, lineHeight: 38, fontWeight: '700', color: C.fg, letterSpacing: -0.9 },
-  sub: { fontSize: 15, lineHeight: 23, color: C.fg3 },
+  wm: { fontFamily: FONT, fontSize: 22, fontWeight: '800', color: C.brand, letterSpacing: -0.8 },
+  h1: { fontFamily: FONT, fontSize: 28, lineHeight: 38, fontWeight: '700', color: C.fg, letterSpacing: -0.9 },
+  sub: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg3 },
   form: { paddingHorizontal: 24, paddingTop: 32, gap: 12 },
   links: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 8 },
-  link: { fontSize: 14, fontWeight: '600', color: C.fg3, paddingVertical: 6 },
+  link: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg3, paddingVertical: 6 },
   dot: { color: C.fg4 },
 });

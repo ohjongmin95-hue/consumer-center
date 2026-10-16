@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 import { Btn, Card, Notice, PwField, Screen } from '../components/ui';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { C } from '../lib/theme';
+import { C, FONT } from '../lib/theme';
 import { errText } from '../lib/useLoad';
 
 export default function Leave() {
@@ -28,8 +28,8 @@ export default function Leave() {
   return (
     <Screen>
       <Card style={{ gap: 14 }}>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: C.fg }}>회원 탈퇴</Text>
-        <Text style={{ fontSize: 15, lineHeight: 23, color: C.fg2 }}>
+        <Text style={{ fontFamily: FONT, fontSize: 20, fontWeight: '700', color: C.fg }}>회원 탈퇴</Text>
+        <Text style={{ fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 }}>
           탈퇴하면 고객센터 링크가 닫히고 더는 요청을 받지 않습니다. 이미 받은 요청 기록은 소비자 보호 법령에 따라 정해진 기간 동안 보관한 뒤 지웁니다. 운영팀이 확인하고 처리한 뒤 이메일로 알려 드립니다.
         </Text>
         {ok ? (
