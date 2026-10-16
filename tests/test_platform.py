@@ -2086,6 +2086,15 @@ class PlatformTest(unittest.TestCase):
             p2=b.get(f"/biz/notify/poll?c={p1['c']}&e={p1['e']}").get_json()
             self.assertEqual([(i['kind'],i['text']) for i in p2['items']],[('msg','언제 와요?')])
             self.assertIn('notify.js',b.get('/biz/').get_data(as_text=True))
+            # 인스타 요청은 '대화 끝내기'로 닫고, 그다음 DM은 새 요청이 된다
+            with self.core.conn() as db:case_id=db.execute("SELECT id FROM cases WHERE company_id=? AND channel='인스타그램 DM'",(cid,)).fetchone()[0]
+            self.assertIn('대화 끝내기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
+            self.post(b,f'/biz/case/{case_id}',{'act':'close_chat'},f'/biz/case/{case_id}')
+            self.assertNotIn('대화 끝내기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
+            instagram.receive(ev('ig1','m4','또 문의할게요'))
+            with self.core.conn() as db:
+                rows=db.execute("SELECT status FROM cases WHERE company_id=? AND channel='인스타그램 DM' ORDER BY id",(cid,)).fetchall()
+                self.assertEqual([r[0] for r in rows],['closed','forwarded'])
         finally:instagram._call=old
 
     def test_instagram_dm(self):
