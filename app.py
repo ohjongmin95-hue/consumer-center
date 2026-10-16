@@ -269,7 +269,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-98'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-98b'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -591,6 +591,7 @@ def report():
         db.execute('UPDATE cases SET public_consent=?,published=?,use_consent=?,user_id=?,reporter_name=?,phone=?,region_sido=?,region_sigungu=?,region_detail=?,gender=?,age_group=?,ip_hash=?,industry=?,pw_hash=? WHERE id=?',
                    (public,public,int(bool(request.form.get('use_consent'))),g.user['id'] if g.user else None,data['reporter_name'],data['phone'],data['region_sido'],data['region_sigungu'],data['region_detail'],data['gender'],data['age_group'],ip_hash(),data['industry'],'' if pw_optional else generate_password_hash(lookup_pw),cur.lastrowid))
         db.execute('UPDATE cases SET occurred_on=? WHERE id=?',(data['occurred_on'],cur.lastrowid))
+        if public:art_later(cur.lastrowid)
         if g.user:  # 다음 제보 때 자동으로 채우도록 회원 정보의 빈칸에만 기억
             db.execute("UPDATE users SET real_name=CASE WHEN real_name='' THEN ? ELSE real_name END,phone=CASE WHEN phone='' THEN ? ELSE phone END WHERE id=?",(data['reporter_name'],data['phone'],g.user['id']))
         match=pick_company(db,request.form.get('company_id',type=int),data['company'])
@@ -1433,6 +1434,7 @@ def report_detail(case_id):
                 published=int(bool(request.form.get('published'))) if case['public_consent'] and case['review'] not in jebo.NOT_VALID else 0
                 title_hidden=0  # 목록 제목·업체명은 늘 보임 (예전 '숨김' 설정은 쓰지 않음)
                 db.execute('UPDATE cases SET status=?,assignee=?,published=?,title_hidden=? WHERE id=?',(status,assignee,published,title_hidden,case_id))
+                if published:art_later(case_id)
                 if not published and title_hidden!=case['title_hidden']:log_case(db,case_id,'목록에서 제목·업체명 숨김' if title_hidden else '목록에 제목·업체명 표시')
                 if status!=case['status']:
                     log_case(db,case_id,f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
@@ -1453,7 +1455,7 @@ def report_detail(case_id):
                 if (fields['public_subject'],fields['public_body'],fields['public_request'])!=(case['public_subject'],case['public_body'],case['public_request']):log_case(db,case_id,'공개용 글 수정')
                 if decision=='approve':
                     if case['review'] in jebo.NOT_VALID:flash('중복·제외로 처리한 제보는 게시할 수 없어요. 검토 결과를 먼저 바꿔 주세요.');return redirect(url_for(ep['case'],case_id=case_id)+'#publish_review')
-                    db.execute('UPDATE cases SET published=1 WHERE id=?',(case_id,))
+                    db.execute('UPDATE cases SET published=1 WHERE id=?',(case_id,));art_later(case_id)
                     if not case['published']:log_case(db,case_id,'다시 게시')
                     flash('저장했어요. 목록과 기업 페이지에 보여요.' if case['published'] else '다시 게시했어요. 목록과 기업 페이지에 보여요.')
                 elif decision=='hold':
@@ -1629,6 +1631,12 @@ def reporter_invite(case_id):return make_invite(case_id)
 @admin_area
 def admin_reports():return reports_list()
 # 자동 게시로 바꾸기 전에 들어와 승인을 기다리던 공개 제보 (운영자가 게시를 내린 기록이 있거나 중복·제외면 뺌)
+def art_later(case_id):
+    # 제보가 게시되면 응답을 보낸 뒤 AI 일러스트를 자동으로 그림 (soboru_art.py, 그림이 없을 때만)
+    ext=app.extensions.get('soboru_art')
+    if ext:
+        @after_this_request
+        def _draw(resp):ext['auto']('report',case_id);return resp
 LEGACY_PENDING="""public_consent=1 AND published=0 AND review NOT IN ('rejected','duplicate')
     AND NOT EXISTS(SELECT 1 FROM case_log l WHERE l.case_id=cases.id AND (l.action LIKE '%비공개로 전환%' OR l.action LIKE '게시 중단%'))"""
 @app.route('/admin/reports/publish-pending',methods=['POST'])
@@ -1637,7 +1645,7 @@ def admin_publish_pending():
     with conn() as db:
         ids=[r['id'] for r in db.execute('SELECT id FROM cases WHERE '+LEGACY_PENDING)]
         for i in ids:
-            db.execute('UPDATE cases SET published=1 WHERE id=?',(i,));log_case(db,i,'게시 (예전 승인 대기 공개 제보 한 번에 게시)')
+            db.execute('UPDATE cases SET published=1 WHERE id=?',(i,));log_case(db,i,'게시 (예전 승인 대기 공개 제보 한 번에 게시)');art_later(i)
     flash(f'승인을 기다리던 공개 제보 {len(ids)}건을 게시했어요.')
     return redirect(url_for('admin_reports'))
 @app.route('/admin/reports/<int:case_id>',methods=['GET','POST'])
