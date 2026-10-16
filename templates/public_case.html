@@ -28,6 +28,7 @@
     {% else %}<p class="ca-none">{{ ui('case.answer_checking', '기업 답변이 등록돼 센터가 공개 여부를 확인하고 있어요.') if has_answer else ui('case.answer_none', '공식 답변 미등록') }}</p>{% endfor %}
     <p class="ca-note">{{ ui('case.answer_rule', '기업의 답변은 고치지 않고 원문 그대로 실어요. 기업이 답변을 고치면 센터가 다시 확인한 뒤 공개하고, 수정한 날짜를 함께 보여 줘요.') }}</p>
   </section>
+  {% set talk = case_talk(case['id']) %}{% if talk %}{% with case_id = case['id'] %}{% include 'case_talk.html' %}{% endwith %}{% endif %}
   <section class="form-panel public-case case-history">
     <h2>{{ ui('case.history', '진행 이력') }}</h2>
     <ol class="history">{% for who, label, at, text in events %}<li class="h-{{ who }}"><p class="h-head"><b>{{ label }}</b>{% if at %}<time datetime="{{ at }}">{{ at[:16]|replace('T', ' ') }}</time>{% endif %}</p>{% if text %}<p class="h-text">{{ text }}</p>{% endif %}</li>{% endfor %}</ol>

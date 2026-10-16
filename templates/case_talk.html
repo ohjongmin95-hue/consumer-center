@@ -1,0 +1,39 @@
+{# 공개 제보 공감('나도 겪었어요'·'응원해요')과 댓글 (casetalk.py). talk = case_talk(case_id) #}
+<section class="form-panel case-talk" id="talk" aria-labelledby="talk-heading">
+  <h2 id="talk-heading">{{ ui('case.talk_title', '이 제보, 어떻게 생각하세요?') }}</h2>
+  <p class="talk-sub">{{ ui('case.talk_sub', '같은 일을 겪었다면 눌러 주세요. 공감이 많을수록 기업이 더 빨리 움직여요.') }}</p>
+  <div class="talk-react">
+    {% for k, label in talk.kinds.items() %}
+    <form method="post" action="{{ url_for('case_react', case_id=case_id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="{{ k }}">
+      <button type="submit" class="talk-btn t-{{ k }}{% if k in talk.mine %} on{% endif %}" aria-pressed="{{ 'true' if k in talk.mine else 'false' }}"><span class="ico" aria-hidden="true">{{ '🙋' if k == 'metoo' else '💪' }}</span><span class="lb">{{ ui('case.react_' + k, label) }}</span><b>{{ talk.counts[k] }}</b></button>
+    </form>
+    {% endfor %}
+  </div>
+
+  <h3 class="talk-count">{{ ui('case.comments', '댓글') }} <b>{{ talk.comments|length }}</b></h3>
+  <div class="talk-list">
+  {% for c in talk.comments %}
+    <div class="talk-c" id="k{{ c.id }}">
+      <div class="talk-av" aria-hidden="true">{{ c.nickname[:1] }}</div>
+      <div class="talk-main">
+        <p class="talk-head"><b>{{ c.nickname }}</b>{% if c.by_reporter %}<span class="talk-tag t-rep">{{ ui('case.by_reporter', '제보자') }}</span>{% elif c.member %}<span class="talk-tag">{{ ui('board.member_badge', '회원') }}</span>{% endif %}<time datetime="{{ c.created }}">{{ c.created|ago }}</time></p>
+        <p class="talk-body">{{ c.body }}</p>
+        <div class="talk-tools">
+          <form method="post" action="{{ url_for('case_comment_flag', comment_id=c.id) }}" onsubmit="return confirm({{ ui_text('board.flag_c_confirm', '이 댓글이 부적절하다고 알릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.flag_comment', '알리기') }}</button></form>
+          {% if c.own %}<form method="post" action="{{ url_for('case_comment_delete', comment_id=c.id) }}" onsubmit="return confirm({{ ui_text('board.delete_c_confirm', '이 댓글을 지울까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.delete', '삭제') }}</button></form>
+          {% elif not c.member %}<details class="delete-box"><summary class="text-btn">{{ ui('board.delete', '삭제') }}</summary><form method="post" action="{{ url_for('case_comment_delete', comment_id=c.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" placeholder="{{ ui('board.comment_pw', '댓글 비밀번호') }}" required aria-label="{{ ui('board.comment_pw', '댓글 비밀번호') }}"><button class="secondary" type="submit">{{ ui('board.delete', '삭제') }}</button></form></details>{% endif %}
+        </div>
+      </div>
+    </div>
+  {% else %}<p class="talk-empty">{{ ui('case.first_comment', '첫 댓글로 비슷한 경험이나 응원을 남겨 주세요.') }}</p>{% endfor %}
+  </div>
+
+  <form class="talk-form" id="talk-form" method="post" action="{{ url_for('case_comment', case_id=case_id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    {% if g.user %}<p class="member-writer"><span class="talk-tag">{{ ui('board.member_badge', '회원') }}</span><b>{{ g.user['nickname'] }}</b> {{ ui('board.as_member_comment', '이름으로 남겨요.') }}</p>
+    {% else %}<div class="comment-ids"><input name="nickname" maxlength="20" required placeholder="{{ ui('board.nickname', '닉네임') }}" aria-label="{{ ui('board.nickname', '닉네임') }}"><input type="password" name="password" maxlength="30" required placeholder="{{ ui('board.delete_pw', '삭제용 비밀번호') }}" aria-label="{{ ui('board.delete_pw', '삭제용 비밀번호') }}"></div>{% endif %}
+    {% if talk.reporter %}<p class="talk-note">{{ ui('case.as_reporter', '이 제보를 쓴 분으로 확인돼서 댓글에 "제보자" 표시가 붙어요.') }}</p>{% endif %}
+    <textarea name="body" maxlength="1000" required rows="3" placeholder="{{ ui('case.comment_ph', '비슷한 경험, 해결 팁, 응원을 남겨 주세요. 이름·연락처는 적지 마세요.') }}" aria-label="{{ ui('board.comment_aria', '댓글 내용') }}"></textarea>
+    <div class="talk-submit"><span>{{ ui('case.comment_rule', '욕설·비방·광고는 알림이 쌓이면 자동으로 숨겨져요.') }}</span><button class="primary" type="submit">{{ ui('board.comment_btn', '댓글 남기기') }}</button></div>
+  </form>
+</section>

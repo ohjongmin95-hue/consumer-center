@@ -182,3 +182,39 @@ a:hover>.sb-thumb b,a:hover .sb-thumb b{transform:scale(1.08) rotate(-4deg)}
 .sb .secondary:hover{background:#e5e8eb;color:var(--sb-ink)}
 @media(prefers-reduced-motion:reduce){.sb *{transition:none !important}.sb a:hover .sb-thumb b{transform:none}}
 .sb-meta em.sb-k{color:var(--sb-orange);margin-right:6px}
+/* ---- 다른 화면들(제보 목록·상세, 내 제보 조회, 제보하기, 기업, 커뮤니티, 안내)도 같은 느낌으로 ---- */
+.sb .page{padding-top:44px}
+.sb .page-title{font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.3;color:var(--sb-ink)}
+.sb .page-intro p{color:var(--sb-sub)}
+.sb .back-link{display:inline-flex;align-items:center;gap:4px;padding:7px 12px 7px 10px;border-radius:999px;background:var(--sb-gray);color:var(--sb-gray-ink);font-size:14px;font-weight:600;margin-bottom:18px}
+.sb .back-link:hover{background:#e5e8eb;color:var(--sb-ink)}
+.sb .case-cat{background:var(--sb-orange-soft);color:#c45f00;border-radius:999px;padding:4px 10px;font-size:13px}
+.sb .case-co-link b{color:var(--sb-ink)}
+.sb .form-panel{border:0;border-radius:24px;box-shadow:0 0 0 1px rgba(0,27,55,.05),0 2px 10px rgba(0,27,55,.04)}
+.sb .form-panel+.form-panel,.sb .page .form-panel.public-case+.form-panel{margin-top:16px}
+.sb .public-case h2,.sb .form-panel>h2{font-size:19px;letter-spacing:-.03em}
+.sb .public-case-body{font-size:16px;line-height:1.8;color:#333d4b}
+.sb .company-answers{box-shadow:0 0 0 1.5px #ffd2a6,0 2px 10px rgba(239,115,0,.06);border-left:0}
+.sb .stepper-desc{border-radius:14px}
+/* 입력칸: 회색 바탕, 누르면 흰 바탕 + 주황 테두리 */
+.sb main input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),.sb main select,.sb main textarea{border:1.5px solid transparent;border-radius:14px;background-color:var(--sb-gray);transition:background-color .15s,border-color .15s,box-shadow .15s}
+.sb main input:not([type=checkbox]):not([type=radio]):not([type=file]):hover,.sb main select:hover,.sb main textarea:hover{background-color:#eceff2}
+.sb main input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,.sb main select:focus,.sb main textarea:focus{outline:0;background-color:#fff;border-color:var(--sb-orange);box-shadow:0 0 0 4px rgba(239,115,0,.12)}
+.sb main input::placeholder,.sb main textarea::placeholder{color:#8b95a1}
+.sb main input[type=checkbox],.sb main input[type=radio]{accent-color:var(--sb-orange)}
+.sb .radio-pill span{border:0;border-radius:14px;background:var(--sb-gray);color:var(--sb-gray-ink);font-weight:600;transition:background .15s,transform .15s var(--sb-ease)}
+.sb .radio-pill span:active{transform:scale(.97)}
+.sb .radio-pill input:checked+span{background:var(--sb-orange-soft);color:#c45f00;box-shadow:inset 0 0 0 1.5px #ffc58f}
+.sb .search-button{border:0;border-radius:14px;background:var(--sb-ink);color:#fff}
+/* 표·칩 */
+.sb .tablewrap,.sb .report-table{border:0;border-radius:24px;box-shadow:0 0 0 1px rgba(0,27,55,.05),0 2px 10px rgba(0,27,55,.04);overflow:hidden}
+.sb main th{background:#fff;color:var(--sb-mute);font-weight:600}
+.sb main tbody tr{transition:background .15s}
+.sb main tbody tr:hover{background:#f9fafb}
+.sb .report-stats div{border:0;background:var(--sb-gray)}
+.sb .pill,.sb .co-badge{border-radius:999px}
+.sb .text-btn{color:var(--sb-mute)}
+.sb .text-btn:hover{color:var(--sb-ink)}
+.sb .alert{border:0;border-radius:16px;background:#fff;box-shadow:0 0 0 1px rgba(0,27,55,.05),0 8px 24px rgba(0,27,55,.08);border-left:4px solid var(--sb-orange)}
+.sb .consent-card,.sb .info-card{border-radius:20px}
+.sb-metoo{display:inline-block;margin-left:6px;background:var(--sb-orange-soft);color:#c45f00;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px}
