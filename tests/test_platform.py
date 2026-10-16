@@ -1625,10 +1625,9 @@ class PlatformTest(unittest.TestCase):
                 self.assertEqual(len(rows),1);self.assertEqual((rows[0]['title'],rows[0]['body'],rows[0]['order_no']),('배송 문의','언제 와요?\n급해요','20261015-0000002'))
                 self.assertEqual(db.execute("SELECT src FROM orders WHERE company_id=? AND order_no='20261015-0000001'",(cid,)).fetchone()[0],'cafe24')
             case_id=rows[0]['id']
-            self.post(b,f'/biz/case/{case_id}',{'act':'reply','msg':'오늘 출발해요\n<내일 도착>'})
-            self.assertIn('카페24에 답변 올리기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
-            r=self.post(b,f'/biz/case/{case_id}',{'act':'post_shop'},follow_redirects=True)
-            self.assertIn('카페24에 답변을 올렸어요',r.get_data(as_text=True))
+            self.assertIn('누르면 카페24에 바로 올라가요',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
+            r=self.post(b,f'/biz/case/{case_id}',{'act':'reply','msg':'오늘 출발해요\n<내일 도착>'},follow_redirects=True)  # '답변하기' 한 번으로 올라간다
+            self.assertIn('카페24에 답변을 올렸어요',r.get_data(as_text=True));self.assertEqual(len(sent),1)
             path,payload=sent[-1];rq=payload['requests'][0]
             self.assertEqual(path,'/admin/boards/6/articles');self.assertEqual((rq['reply_article_no'],rq['secret'],rq['title']),(10,'T','RE: 배송 문의'))
             self.assertEqual(rq['content'],'오늘 출발해요<br>&lt;내일 도착&gt;');self.assertTrue(rq['password'])
@@ -1793,9 +1792,8 @@ class PlatformTest(unittest.TestCase):
             shops._tokens.clear();self.post(b,'/biz/connect/naver',{'client_id':'post-app','client_secret':bcrypt.gensalt().decode()})
             with self.core.conn() as db:case_id=db.execute("SELECT case_id FROM shop_seen WHERE company_id=? AND ext_id='n91'",(cid,)).fetchone()[0]
             r=self.post(b,f'/biz/case/{case_id}',{'act':'post_shop'},follow_redirects=True);self.assertIn('먼저 답변',r.get_data(as_text=True))
-            self.post(b,f'/biz/case/{case_id}',{'act':'reply','msg':'네, M 사이즈 있어요'})
-            self.assertIn('스마트스토어에 답변 올리기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
-            r=self.post(b,f'/biz/case/{case_id}',{'act':'post_shop'},follow_redirects=True)
+            r=self.post(b,f'/biz/case/{case_id}',{'act':'reply','msg':'네, M 사이즈 있어요'},follow_redirects=True)
+            self.assertIn('스마트스토어에 답변 올리기',b.get(f'/biz/case/{case_id}').get_data(as_text=True))  # 다시 올리기는 그대로
         self.assertEqual(sent,[('https://api.commerce.naver.com/external/v1/pay-merchant/inquiries/91/answer',{'answerComment':'네, M 사이즈 있어요'})])
         self.assertIn('스마트스토어에 답변을 올렸어요',r.get_data(as_text=True))
         # 쿠팡은 Wing 아이디가 없으면 안내만
@@ -2046,12 +2044,11 @@ class PlatformTest(unittest.TestCase):
             # 다시 가져와도 같은 메일은 한 번만
             self.post(b,'/biz/connect/email',{'act':'sync'},'/biz/connect/email')
             with self.core.conn() as db:self.assertEqual(db.execute("SELECT COUNT(*) FROM cases WHERE channel='이메일' AND company_id=?",(cid,)).fetchone()[0],1)
-            # 답변 쓰기만으로는 메일이 나가지 않는다
+            # '답변하기'를 눌러야 나가고, 누르면 바로 간다
+            self.assertIn('누르면 고객에게 메일로 바로 가요',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True));self.assertEqual(sent,[])
             self.post(b,f'/biz/case/{c["id"]}',{'act':'reply','msg':'오늘 환불해 드렸어요. 2~3일 안에 들어가요.'},f'/biz/case/{c["id"]}')
-            self.assertEqual(sent,[])
-            page=b.get(f'/biz/case/{c["id"]}').get_data(as_text=True);self.assertIn('메일로 답변 보내기',page)
-            self.post(b,f'/biz/case/{c["id"]}',{'act':'post_shop'},f'/biz/case/{c["id"]}')
             self.assertEqual(len(sent),1);m=sent[0]
+            self.assertIn('메일로 답변 보내기',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))  # 다시 보내기는 그대로 있다
             self.assertEqual((m['To'],m['In-Reply-To']),('kim@example.com','<m1@example.com>'));self.assertIn('오늘 환불해 드렸어요',m.get_content())
             # 고객이 우리 답장에 다시 답하면 같은 요청에 이어 붙는다
             mail(4,'kim@example.com','Re: 환불 언제 되나요?','확인했어요 감사합니다\n\n> 오늘 환불해 드렸어요','<m4@example.com>',f"In-Reply-To: {m['Message-ID']}\r\n")
@@ -2137,10 +2134,10 @@ class PlatformTest(unittest.TestCase):
                 rows=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='인스타그램 DM'",(cid,)).fetchall()
                 self.assertEqual(len(rows),1);c=rows[0];self.assertEqual(c['name'],'gogaek_kim')
                 self.assertEqual([e[0] for e in db.execute("SELECT text FROM events WHERE case_id=? AND kind='me'",(c['id'],))],['주문번호는 1234예요'])
+            self.assertIn('누르면 고객에게 인스타그램 DM으로 바로 가요',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))  # '답변하기'가 바로 DM으로 보낸다
+            self.assertFalse([x for x in calls if x[1].endswith('/me/messages')])  # 누르기 전에는 안 나간다
             self.post(b,f'/biz/case/{c["id"]}',{'act':'reply','msg':'네, 교환 가능해요. 반품 신청해 주세요.'},f'/biz/case/{c["id"]}')
-            self.assertFalse([x for x in calls if x[1].endswith('/me/messages')])  # 답변 쓰기만으로는 안 나간다
-            self.assertIn('인스타그램 DM으로 답변 보내기',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))
-            self.post(b,f'/biz/case/{c["id"]}',{'act':'post_shop'},f'/biz/case/{c["id"]}')
+            self.assertEqual(len([x for x in calls if x[1].endswith('/me/messages')]),1)
             sent=[x for x in calls if x[1].endswith('/me/messages')][-1]
             self.assertEqual(sent[3],{'recipient':{'id':'555'},'message':{'text':'네, 교환 가능해요. 반품 신청해 주세요.'}});self.assertEqual(sent[4],'long-tok')
             reply['fail']=True

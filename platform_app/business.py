@@ -637,6 +637,19 @@ def stats_data(db,co):
 
 notify_consumer=core.notify_consumer
 SEND_VIA={mailin.CHANNEL:'메일로',instagram.CHANNEL:'인스타그램 DM으로'}  # 사람이 눌러야 그 채널로 답이 나가는 곳
+def send_via(db,c):
+    """연결된 곳에서 가져온 요청이면 '답변하기'가 그곳으로 바로 보낸다. 화면에 쓸 안내('누르면 ...')를 돌려준다, 아니면 ''."""
+    r=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=? LIMIT 1',(c['company_id'],c['id'])).fetchone()
+    if not r:return ''
+    if r['shop'] in ('email','instagram'):return f"누르면 고객에게 {SEND_VIA.get(c['channel']) or ('메일로' if r['shop']=='email' else '인스타그램 DM으로')} 바로 가요"
+    return f"누르면 {c['channel']}에 바로 올라가요"
+def post_to_shop(db,c,text):
+    """답변 하나를 받은 곳(판매처·메일·인스타그램)으로 보낸다. -> (안내, ok|error)"""
+    e=shops.post_reply(db,me(),c,text)
+    via=SEND_VIA.get(c['channel'])
+    if e:core.add_event(db,c['id'],'sys',(f'{via} 보내지 못했어요: ' if via else f"{c['channel']}에 답변을 올리지 못했어요: ")+e);return e,'error'
+    done=f'{via} 답변을 보냈어요' if via else f"{c['channel']}에 답변을 올렸어요"
+    core.add_event(db,c['id'],'sys',done);return done,'ok'
 def closable(c):return (c['channel'] in SEND_VIA or bool(c['live'])) and c['status'] not in core.FINAL
 
 def can_ship_track(db,c):
@@ -725,13 +738,7 @@ def case(case_id):
                 last=next((e for e in reversed(core.events(db,c['id'])) if e['kind']=='co' and e['reply']),None)
                 if not last:flash('먼저 답변을 보내 주세요','error')
                 elif core.throttled('post_shop',limit=20,minutes=10):flash('잠시 후 다시 해 주세요','error')
-                else:
-                    e=shops.post_reply(db,me(),c,last['reply'])
-                    via=SEND_VIA.get(c['channel'])
-                    if e:core.add_event(db,c['id'],'sys',(f'{via} 보내지 못했어요: ' if via else f"{c['channel']}에 답변을 올리지 못했어요: ")+e);flash(e,'error')
-                    else:
-                        done=f'{via} 답변을 보냈어요' if via else f"{c['channel']}에 답변을 올렸어요"
-                        core.add_event(db,c['id'],'sys',done);flash(done,'ok')
+                else:flash(*post_to_shop(db,c,last['reply']))
                 return redirect(url_for('case',case_id=case_id))
             if act in ('tag_add','tag_del','prio','snooze','merge'):
                 flash(*case_inbox(db,c,act,request.form));return redirect(url_for('case',case_id=case_id))
@@ -743,6 +750,8 @@ def case(case_id):
                 flash('승인·보상·환불 완료는 대표나 관리자만 할 수 있어요. 메모로 부탁해 주세요.','error');return redirect(url_for('case',case_id=case_id))
             msg,level=case_act(db,c,request.form)
             if level=='bad':abort(400)
+            if level=='ok' and act=='reply' and send_via(db,c):  # 인스타·메일 요청은 '보내기'를 누르면 그 채널로 바로 간다
+                msg,level=post_to_shop(db,c,clean(request.form.get('msg'),3000))
             if level=='ok' and act=='reply' and request.form.get('macro','').isdigit():inbox.used_macro(db,me(),c,int(request.form['macro']))
             if msg:flash(msg,level)
             if level=='ok' and act in ('reply','approve','ask','ship_track') and not in_demo() and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',me()['id'])
@@ -757,6 +766,7 @@ def case(case_id):
         tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])];ship_track=can_ship_track(db,c)
         notes=team.notes(db,c['id']);people=team.people(db,me());assignee=team.assignee_name(db,me(),c['assignee'])
         from_shop=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=?',(me()['id'],c['id'])).fetchone()
+        sv=send_via(db,c)
         posted=any(e['kind']=='sys' and e['text'].endswith(('에 답변을 올렸어요','로 답변을 보냈어요')) for e in ev)
         ctags=inbox.tags_by_case(db,me()['id'],{c['id']}).get(c['id'],[]);all_tags=inbox.tags(db,me()['id']);ms=inbox.macros(db,me()['id'])
         sla=workflow.state(me(),c,workflow.first_replies(db,me()['id']).get(c['id']));
@@ -767,7 +777,7 @@ def case(case_id):
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all',
-        ctags=ctags,all_tags=all_tags,sla=sla,closable=closable(c),macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
+        ctags=ctags,all_tags=all_tags,sla=sla,closable=closable(c),send_via=sv,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
 @app.route('/case/<int:case_id>/live',methods=['GET','POST'])
 @login_required
 def case_live(case_id):

@@ -60,7 +60,7 @@
 <textarea class="inp" name="msg" id="msg" required>{{ rule.reply }}</textarea>
 <p class="cap" id="draftNote" hidden></p>
 <div class="quick">{% for t in ['확인 후 오늘 안에 다시 연락드릴게요.','불편을 드려 죄송합니다. 바로 조치하겠습니다.','주문번호를 알려 주시면 빠르게 확인할게요.'] %}<button type="button" data-q="{{ t }}">{{ t }}</button>{% endfor %}{% for g in guides %}<button type="button" class="g" data-q="{{ g.sample }}">가이드 · {{ g.title }}</button>{% endfor %}</div>
-<div class="send"><span class="cap">{{ '기록만 남고 고객에게는 가지 않습니다' if is_direct(c) else '고객에게 알림이 갑니다' }}</span><button class="btn md">{{ '답변 기록하기' if is_direct(c) else '답변 보내기' }}</button></div></form>{% endif %}
+<div class="send"><span class="cap">{{ send_via if send_via else '직접 등록한 요청이라 기록만 남아요. 고객에게는 따로 전해 주세요' if is_direct(c) else '고객에게 알림이 가요' }}</span><button class="btn md">답변하기</button></div></form>{% endif %}
 <section class="panel" id="notes"><div class="ph">내부 메모<span class="cap">고객에게 보이지 않아요</span></div>
 {% if notes %}<ul class="tl notes">{% for n in notes|reverse %}<li class="sys"><div><div class="x">{{ n.text }}</div><div class="w">{{ n.author }} · {{ fmt(n.created) }}</div></div></li>{% endfor %}</ul>{% endif %}
 {% if can('work') %}<form method="post" class="stack" style="margin-top:12px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="note">

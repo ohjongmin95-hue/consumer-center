@@ -46,14 +46,18 @@
   function later(){setTimeout(poll,document.hidden?20000:10000);}
   // 처음 한 번: 브라우저 알림 허락 받기 (닫으면 다시 묻지 않는다)
   function ask(){
-    if(!('Notification' in window)||Notification.permission!=='default'||ls('nt:asked'))return;
+    if(!('Notification' in window)||Notification.permission!=='default'||Date.now()-(+ls('nt:asked')||0)<86400000)return;  // 닫았으면 하루 뒤에 다시 묻는다
     var a=el('div','ntcard ntask');var tx=el('span','nttx');
     tx.appendChild(el('b',null,'새 요청이 오면 알려 드릴까요?'));tx.appendChild(el('span',null,'다른 창을 보고 있어도 오른쪽 아래에 알림이 떠요.'));
     var ok=el('button','btn sm','알림 켜기');ok.type='button';var no=el('button','ntx','×');no.type='button';no.setAttribute('aria-label','닫기');
-    function close(){ls('nt:asked','1');a.classList.remove('on');setTimeout(function(){a.remove();},300);}
-    ok.addEventListener('click',function(){try{Notification.requestPermission().then(close,close);}catch(e){close();}});
+    function close(){ls('nt:asked',String(Date.now()));a.classList.remove('on');setTimeout(function(){a.remove();},300);}
+    ok.addEventListener('click',function(){try{Notification.requestPermission().then(function(p){close();done(p);},close);}catch(e){close();}});
     no.addEventListener('click',close);
     a.appendChild(tx);a.appendChild(ok);a.appendChild(no);stack().appendChild(a);requestAnimationFrame(function(){a.classList.add('on');});
+  }
+  function done(p){  // 켰으면 시험 알림을 하나 띄워 바로 확인하게
+    if(p==='granted'){osNote({kind:'test',case:0,title:'알림이 켜졌어요',text:'새 요청이 오면 이렇게 알려 드려요.',url:location.pathname});card({kind:'new',title:'알림이 켜졌어요',text:'다른 창을 보고 있어도 화면 오른쪽 아래에 떠요.',url:location.pathname});ding();}
+    else if(p==='denied')card({kind:'msg',title:'알림이 막혀 있어요',text:'주소창 왼쪽 자물쇠 → 알림 → 허용으로 바꿔 주세요.',url:location.pathname});
   }
   document.addEventListener('pointerdown',function u(){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume();}catch(e){}document.removeEventListener('pointerdown',u);});
   setTimeout(ask,1500);poll();
