@@ -11,28 +11,39 @@ from email.message import EmailMessage
 from email.utils import formataddr
 
 ASYNC = True  # 테스트에서는 False로 바꿔 바로 실행
+
+
+def site_name():
+    """메일·알림에 쓰는 사이트 이름. app.py가 시작할 때 관리자 설정(사이트 이름·브랜드)을 읽는 함수로 바꿔 끼움 (soboru.py)."""
+    return '소비자제보센터'
+
+
+def branded(text):
+    """기본 문구 속 '소비자제보센터'를 지금 사이트 이름으로 바꿈."""
+    name = site_name()
+    return text if name == '소비자제보센터' else text.replace('소비자제보센터', name)
 EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변', 'company': '기업 답변', 'supplement': '보완 요청', 'seen': '기업 전달 확인',
           'admin_answer': '운영자: 기업 답변', 'admin_request': '운영자: 정정·삭제·이의', 'admin_risk': '운영자: 개인정보 위험',
           'company_notice': '기업 공식 안내', 'company_new': '기업: 새 제보', 'company_opinion': '기업: 제보자 추가 의견', 'company_files': '기업: 추가 자료'}
 
 # 이메일 본문. 카카오 템플릿과 같은 내용 + 조회 주소
 EMAIL_TEXT = {
-    'received': ('[소비자제보센터] 제보가 접수됐습니다',
+    'received': ('[{site}] 제보가 접수됐습니다',
                  '{name}님, 제보가 접수됐습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
                  "진행 상황은 '내 제보 조회'에서 휴대폰 번호와 조회 비밀번호로 확인할 수 있습니다.\n{link}"),
-    'status': ('[소비자제보센터] 제보 진행 상황이 바뀌었습니다',
+    'status': ('[{site}] 제보 진행 상황이 바뀌었습니다',
                '{name}님의 제보 진행 단계가 바뀌었습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n■ 현재 단계: {status}\n\n'
                "자세한 내용은 '내 제보 조회'에서 확인해 주세요.\n{link}"),
-    'message': ('[소비자제보센터] 제보에 센터 답변이 등록됐습니다',
+    'message': ('[{site}] 제보에 센터 답변이 등록됐습니다',
                 '{name}님의 제보에 센터 답변이 등록됐습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
                 "답변 내용은 '내 제보 조회'에서 확인해 주세요.\n{link}"),
-    'company': ('[소비자제보센터] 업체가 제보에 답변했습니다',
+    'company': ('[{site}] 업체가 제보에 답변했습니다',
                 '{name}님의 제보에 업체가 답변했습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
                 "답변 내용은 '내 제보 조회'에서 확인해 주세요. 답변을 받고 해결됐는지도 알려 주세요.\n{link}"),
-    'supplement': ('[소비자제보센터] 제보 내용 보완을 요청드립니다',
+    'supplement': ('[{site}] 제보 내용 보완을 요청드립니다',
                    '{name}님의 제보를 확인하려면 내용이나 자료 보완이 필요합니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
                    "요청 내용은 '내 제보 조회'에서 확인하고, 그 화면에서 설명이나 자료를 더해 주세요.\n{link}"),
-    'seen': ('[소비자제보센터] 업체가 제보를 확인했습니다',
+    'seen': ('[{site}] 업체가 제보를 확인했습니다',
              '{name}님의 제보를 업체 담당자가 열어 확인했습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
              "업체가 답변하면 다시 알려 드립니다. 답변 여부와 내용은 업체가 정합니다.\n{link}"),
 }
@@ -72,7 +83,7 @@ def short(text, limit=30):
 def send_email(to, subject, body):
     msg = EmailMessage()
     msg['Subject'] = subject
-    msg['From'] = formataddr((env('MAIL_FROM_NAME') or '소비자제보센터', env('MAIL_FROM') or env('SMTP_USER')))
+    msg['From'] = formataddr((env('MAIL_FROM_NAME') or site_name(), env('MAIL_FROM') or env('SMTP_USER')))
     msg['To'] = to
     msg.set_content(body)
     port = int(env('SMTP_PORT') or 465)
@@ -163,10 +174,10 @@ def admin_plan(case, link):
     """새 제보 운영자 알림. 제보자 이름·연락처도 함께 보내 바로 연락할 수 있게 함."""
     emails, phones, channel = admin_targets()
     name, phone = short(case['reporter_name'] or '-', 20), fmt_phone(case['phone'])
-    subject = '[소비자제보센터] 새 제보: ' + short(case['subject'])
+    subject = f'[{site_name()}] 새 제보: ' + short(case['subject'])
     body = (f"새 제보가 들어왔습니다.\n\n■ 접수번호: {case['receipt']}\n■ 제보자: {name} ({phone})\n■ 분야: {case['category']}\n■ 업체: {short(case['company'])}\n"
             f"■ 제목: {short(case['subject'], 60)}\n\n관리자 화면에서 확인해 주세요.\n{link}")
-    text = f"[소비자제보센터] 새 제보\n{name} {phone}\n{case['receipt']} · {short(case['company'], 15)}\n{short(case['subject'], 30)}"
+    text = f"[{site_name()}] 새 제보\n{name} {phone}\n{case['receipt']} · {short(case['company'], 15)}\n{short(case['subject'], 30)}"
     jobs = [('admin_email', e, lambda e=e: send_email(e, subject, body)) for e in emails]
     if env('TELEGRAM_BOT_TOKEN'):
         jobs += [('admin_telegram', c, lambda c=c: send_telegram(c, body)) for c in env('TELEGRAM_CHAT_ID').replace(' ', '').split(',') if c]
@@ -189,6 +200,7 @@ def plan(case, event, link):
     email = (case['contact'] or '').strip()
     if email and email_ready():
         subject, body = EMAIL_TEXT[event]
+        subject = subject.format(site=site_name())
         jobs.append(('email', email, lambda: send_email(email, subject, body.format(**values))))
     return jobs
 

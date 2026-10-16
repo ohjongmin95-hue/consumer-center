@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% from 'soboru_life_macros.html' import thumb, meta %}
+{% block title %}{{ ui('life.title', '생활정보') }}{% if cat %} · {{ cat }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('life.description', '환불, 해지, 리콜처럼 알아 두면 돈 버는 소비자 생활정보를 쉽게 풀어 드려요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap sb-life">
+  <div class="sb-page-head"><h1>{{ ui('life.title', '생활정보') }}</h1><p>{{ ui('life.intro', '알아 두면 돈 버는 소비자 정보를 쉽게 풀어 드려요.') }}</p></div>
+  <nav class="sb-cats" aria-label="분야">
+    <a href="{{ url_for('life') }}"{% if not cat %} class="on" aria-current="page"{% endif %}>전체</a>
+    {% for c in LIFE_CATEGORIES %}<a href="{{ url_for('life', category=c) }}"{% if cat == c %} class="on" aria-current="page"{% endif %}>{{ c }}</a>{% endfor %}
+  </nav>
+  {% if rows %}
+  <div class="sb-grid">{% for a in rows %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{% if a['summary'] %}<p class="sb-sum">{{ a['summary'] }}</p>{% endif %}{{ meta(a) }}</a>{% endfor %}</div>
+  {% if pages > 1 %}<nav class="sb-pager" aria-label="쪽">{% if page > 1 %}<a href="{{ url_for('life', category=cat or None, page=page - 1) }}">‹ 이전</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a href="{{ url_for('life', category=cat or None, page=page + 1) }}">다음 ›</a>{% endif %}</nav>{% endif %}
+  {% else %}<p class="sb-empty">{{ ui('life.empty', '아직 올라온 글이 없어요. 곧 채워 둘게요.') }}</p>{% endif %}
+</main>
+{% endblock %}

@@ -212,10 +212,10 @@ def install(S):
         db.execute('UPDATE companies SET email_token=? WHERE id=?',(token_hash(token),company['id']))
         if not S.notify.email_ready():return False
         link=url_for('biz_verify',token=token,_external=True)
-        body=(f"{company['contact_name']}님, 소비자제보센터 기업 회원 가입을 신청해 주셔서 감사합니다.\n\n"
+        body=(f"{company['contact_name']}님, {S.notify.site_name()} 기업 회원 가입을 신청해 주셔서 감사합니다.\n\n"
               f"아래 링크를 누르면 {company['contact_email']} 주소가 {company['name']}의 담당자 이메일로 확인돼요.\n{link}\n\n"
               "이메일 확인과 별개로 센터가 사업자 정보를 확인한 뒤 승인해요. 직접 신청하지 않았다면 이 메일을 무시해 주세요.")
-        try:S.notify.send_email(company['contact_email'],'[소비자제보센터] 기업 담당자 이메일 확인',body)
+        try:S.notify.send_email(company['contact_email'],f'[{S.notify.site_name()}] 기업 담당자 이메일 확인',body)
         except Exception:return False
         return True
     S.send_company_verify=send_verify

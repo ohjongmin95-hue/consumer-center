@@ -1897,3 +1897,12 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .ca-head b { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .ca-head .ca-verified { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; background: #fff0df; color: #c66300; font-size: 12px; font-weight: 700; }
 .ca-head > span { white-space: nowrap; }
+
+/* 관리자 > 생활정보 글 */
+.console .form-panel>label,.console .admin-row>label{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:650;margin-bottom:14px}
+.console .form-panel>label input,.console .form-panel>label textarea,.console .admin-row input,.console .admin-row select{font-weight:400;padding:10px 12px;border:1px solid #dcdcdc;border-radius:8px;background:#fff;width:100%}
+.console .admin-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.console .form-panel>label.check{flex-direction:row;align-items:center;font-weight:500}
+.console .admin-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.console .admin-actions button{padding:10px 16px;border-radius:8px;border:1px solid #dcdcdc;background:#fff;font-weight:650}
+.console .admin-actions button.primary{background:#ef7300;border-color:#ef7300;color:#fff}

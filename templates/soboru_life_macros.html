@@ -1,0 +1,3 @@
+{# 생활정보 대표 그림: 운영자가 고른 이모지 + 바탕색 #}
+{% macro thumb(a, cls='') %}<div class="sb-thumb {{ a['tone'] or 't1' }} {{ cls }}" aria-hidden="true"><b>{{ a['emoji'] or '📰' }}</b></div>{% endmacro %}
+{% macro meta(a) %}<div class="sb-meta"><em>{{ a['category'] }}</em>{{ ago_text(a['published_at'] or a['created']) }}</div>{% endmacro %}

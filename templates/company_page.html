@@ -36,6 +36,6 @@
     {% else %}<li class="co-empty">{{ ui('company.no_cases', '아직 공개된 제보가 없어요.') }}</li>{% endfor %}</ul>
     {% if pages > 1 %}<nav class="pager" aria-label="페이지">{% if page > 1 %}<a href="{{ url_for('company_page', company_id=co['id'], category=cat or None, page=page - 1) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}{% for p in range([1, page - 2]|max, [pages, page + 2]|min + 1) %}{% if p == page %}<b aria-current="page">{{ p }}</b>{% else %}<a href="{{ url_for('company_page', company_id=co['id'], category=cat or None, page=p) }}">{{ p }}</a>{% endif %}{% endfor %}{% if page < pages %}<a href="{{ url_for('company_page', company_id=co['id'], category=cat or None, page=page + 1) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}</nav>{% endif %}
   </section>
-  <p class="public-case-notice">{{ ui('company.disclaimer', '제보는 제보자가 직접 작성한 주장이에요. 기업의 답변 여부만으로 위법 행위나 책임이 확인되는 것은 아니에요. 소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요.') }} <a href="{{ url_for('takedown') }}">{{ ui('company.correction', '정정·게시중단 요청 →') }}</a></p>
+  <p class="public-case-notice">{{ ui('company.disclaimer', '제보는 제보자가 직접 작성한 주장이에요. 기업의 답변 여부만으로 위법 행위나 책임이 확인되는 것은 아니에요. 소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요.')|branded }} <a href="{{ url_for('takedown') }}">{{ ui('company.correction', '정정·게시중단 요청 →') }}</a></p>
 </div></main>
 {% endblock %}

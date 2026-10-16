@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% from 'soboru_life_macros.html' import thumb, meta %}
+{% block title %}{{ a['title'] }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ a['summary'] or a['body'][:120] }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block content %}
+<main class="sb-wrap sb-article">
+  <article>
+    {% if a['status'] != 'published' %}<p class="sb-draft">아직 게시하지 않은 초안이에요. 관리자에게만 보여요.</p>{% endif %}
+    <a class="sb-article-cat" href="{{ url_for('life', category=a['category']) }}">{{ a['category'] }}</a>
+    <h1>{{ a['title'] }}</h1>
+    <div class="sb-meta">{{ (a['published_at'] or a['created'])[:10].replace('-', '.') }}</div>
+    {{ thumb(a, 'big') }}
+    {% if a['summary'] %}<p class="sb-article-sum">{{ a['summary'] }}</p>{% endif %}
+    <div class="sb-article-body">{{ life_body(a['body']) }}</div>
+    {% if a['source_name'] or a['source_url'] %}<p class="sb-source">출처: {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
+  </article>
+  <div class="sb-report-box sb-report-mini">
+    <img src="{{ asset('img/soboru-character.png') }}" alt="" width="76" height="59">
+    <div><h2>{{ ui('sb.box_title', '억울한 일 겪으셨나요?') }}</h2><p>{{ ui('sb.box_body', '소보루에 제보하면 기업에 전달하고, 답변이 올 때까지 챙겨 드려요.') }}</p></div>
+    <div class="sb-btns"><a class="sb-cta" href="{{ url_for('report') }}">{{ ui('sb.cta', '제보하기') }}</a></div>
+  </div>
+  {% if related %}
+  <section class="sb-sec sb-sec-flat"><div class="sb-sec-head"><div><h2>{{ ui('life.related', '같은 분야 글') }}</h2></div><a class="sb-more" href="{{ url_for('life', category=a['category']) }}">더 보기 ›</a></div>
+    <div class="sb-grid">{% for r in related %}<a href="{{ url_for('life_article', article_id=r['id']) }}">{{ thumb(r, 'wide') }}<h3>{{ r['title'] }}</h3>{{ meta(r) }}</a>{% endfor %}</div>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

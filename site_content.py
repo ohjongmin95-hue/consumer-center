@@ -30,6 +30,7 @@ OPT_ML = {'optional': True, 'multiline': True}
 SECTIONS = [
     ('common', '공통 (헤더·푸터)', [
         ('site.name', '사이트 이름 (브라우저 탭 등)', '소비자제보센터', {}),
+        ('site.brand', '브랜드 (소보루라고 적으면 이름·로고·메인 화면이 소보루로 바뀌어요. 비우면 소비자제보센터)', '', OPT),
         ('site.logo_accent', '로고 앞부분 (주황색)', '소비자', OPT),
         ('site.logo_rest', '로고 뒷부분', '제보센터', {}),
         ('site.logo_by', '로고 옆 작은 글씨 (비우면 숨김)', 'by SOBORU', OPT),

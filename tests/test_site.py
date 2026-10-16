@@ -211,6 +211,43 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/login', data={'_csrf': token, 'password': self.password})
         return admin
 
+    def test_soboru_brand_switch_and_life(self):
+        # 브랜드를 바꾸기 전에는 지금 사이트 그대로, 관리자만 ?brand=soboru 로 미리 봄
+        self.assertNotIn('sb-header', self.client.get('/?brand=soboru').get_data(as_text=True))
+        admin = self.login_admin()
+        page = admin.get('/?brand=soboru').get_data(as_text=True)
+        self.assertIn('sb-header', page)
+        self.assertIn('소보루 미리보기 중', page)
+        self.assertIn('<title>소보루 - 소비자 생활정보·커뮤니티·제보</title>', page)
+        self.assertNotIn('sb-header', admin.get('/?brand=off').get_data(as_text=True))
+        # 생활정보: 초안은 관리자만, 게시하면 누구나
+        r = admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '택배 분실 보상 정리', 'summary': '요약', 'body': '첫 문단\n\n## 소제목\n- 목록', 'category': '쇼핑', 'emoji': '📦', 'tone': 't1'})
+        aid = int(r.headers['Location'].rstrip('/').split('/')[-1])
+        visitor = self.site.app.test_client()
+        self.assertEqual(visitor.get(f'/life/{aid}').status_code, 404)
+        self.assertNotIn('택배 분실 보상 정리', visitor.get('/life').get_data(as_text=True))
+        admin.post(f'/admin/life/{aid}', data={'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'act': 'publish', 'title': '택배 분실 보상 정리', 'summary': '요약', 'body': '첫 문단\n\n## 소제목\n- 목록', 'category': '쇼핑'})
+        art = visitor.get(f'/life/{aid}').get_data(as_text=True)
+        self.assertIn('<h2>소제목</h2>', art)
+        self.assertIn('<li>목록</li>', art)
+        self.assertIn('택배 분실 보상 정리', visitor.get('/life?category=쇼핑').get_data(as_text=True))
+        # 설정에서 브랜드를 소보루로: 방문자 화면·메일 이름이 모두 소보루, 비우면 원래대로
+        with self.site.conn() as db:
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+        try:
+            home = visitor.get('/').get_data(as_text=True)
+            self.assertIn('sb-home', home)
+            self.assertIn('택배 분실 보상 정리', home)
+            self.assertNotIn('소보루 미리보기 중', home)
+            self.assertIn('소보루는 공공기관이 아닌', visitor.get('/companies').get_data(as_text=True))
+            self.assertEqual(self.site.notify.site_name(), '소보루')
+            self.assertEqual(self.site.notify.branded('소비자제보센터 드림'), '소보루 드림')
+        finally:
+            with self.site.conn() as db:
+                db.execute("DELETE FROM site_content WHERE key='site.brand'")
+        self.assertNotIn('sb-home', visitor.get('/').get_data(as_text=True))
+        self.assertEqual(self.site.notify.site_name(), '소비자제보센터')
+
     def test_admin_edits_site_copy(self):
         self.assertEqual(self.client.get('/admin/content').status_code, 302)
         admin = self.login_admin()

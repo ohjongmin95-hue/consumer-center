@@ -1,0 +1,44 @@
+{% extends 'console.html' %}
+{% block title %}생활정보 글 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">생활정보 글</h1>
+    <p>게시한 글은 생활정보(<a href="{{ url_for('life') }}" target="_blank" rel="noopener">/life ↗</a>)와 소보루 메인 화면에 보여요. 초안은 관리자만 볼 수 있어요. 나중에 공공데이터 자동 수집이 들어오면 초안이 여기에 쌓여요.</p>
+    <p><a href="{{ url_for('admin_life') }}"{% if view != 'draft' %} class="strong-link"{% endif %}>전체</a> · <a href="{{ url_for('admin_life', view='draft') }}"{% if view == 'draft' %} class="strong-link"{% endif %}>초안 {{ n_draft }}</a>{% if a %} · <a href="{{ url_for('admin_life') }}">＋ 새 글</a>{% endif %}</p>
+  </div>
+  <form class="form-panel" method="post" action="{{ url_for('admin_life_edit', article_id=a['id']) if a else url_for('admin_life') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h2>{% if a %}#{{ a['id'] }} 고치기 · {{ '게시 중' if a['status'] == 'published' else '초안' }}{% if a['origin'] == 'auto' %} · 자동 수집{% endif %}{% else %}새 글{% endif %}</h2>
+    <label>제목<input name="title" maxlength="120" required value="{{ a['title'] if a else '' }}" placeholder="택배가 사라졌다면? 보상은 얼마까지 받을 수 있을까"></label>
+    <label>요약 (목록과 메인에 보이는 2~3줄)<textarea name="summary" rows="3" maxlength="400">{{ a['summary'] if a else '' }}</textarea></label>
+    <label>본문 (빈 줄로 문단을 나눠요. "## "로 시작하면 소제목, "- "로 시작하면 목록)<textarea name="body" rows="14">{{ a['body'] if a else '' }}</textarea></label>
+    <div class="admin-row">
+      <label>분야<select name="category">{% for c in categories %}<option{% if a and a['category'] == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+      <label>대표 그림 (이모지 하나)<input name="emoji" maxlength="8" value="{{ a['emoji'] if a else '' }}" placeholder="📦"></label>
+      <label>바탕색<select name="tone">{% for t, name in [('t1', '귤색'), ('t2', '하늘'), ('t3', '초록'), ('t4', '분홍'), ('t5', '보라'), ('t6', '노랑')] %}<option value="{{ t }}"{% if a and a['tone'] == t %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+    </div>
+    <div class="admin-row">
+      <label>출처 이름<input name="source_name" maxlength="120" value="{{ a['source_name'] if a else '' }}" placeholder="공정거래위원회 소비자24"></label>
+      <label>출처 주소<input name="source_url" maxlength="500" value="{{ a['source_url'] if a else '' }}" placeholder="https://"></label>
+    </div>
+    <label class="check"><input type="checkbox" name="featured" value="1"{% if a and a['featured'] %} checked{% endif %}> 메인 맨 위에 고정</label>
+    <div class="admin-actions">
+      {% if a %}
+      <button type="submit" name="act" value="save">저장</button>
+      {% if a['status'] == 'published' %}<button type="submit" name="act" value="unpublish">게시 내리기</button>{% else %}<button type="submit" class="primary" name="act" value="publish">게시하기</button>{% endif %}
+      <a href="{{ url_for('life_article', article_id=a['id']) }}" target="_blank" rel="noopener">미리보기 ↗</a>
+      <button type="submit" name="act" value="delete" onclick="return confirm('이 글을 지울까요? 되돌릴 수 없어요.')">지우기</button>
+      {% else %}
+      <button type="submit">초안으로 저장</button><button type="submit" class="primary" name="publish" value="1">바로 게시</button>
+      {% endif %}
+    </div>
+  </form>
+  <h2>글 ({{ rows|length }})</h2>
+  {% for r in rows %}
+  <div class="form-panel admin-item">
+    <p class="meta">#{{ r['id'] }} · {{ r['category'] }} · {{ '게시 중' if r['status'] == 'published' else '초안' }}{% if r['origin'] == 'auto' %} · 자동 수집{% endif %}{% if r['featured'] %} · 고정{% endif %} · 조회 {{ r['views'] }} · {{ (r['published_at'] or r['created'])[:16] }}</p>
+    <h3><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['emoji'] }} {{ r['title'] }}</a></h3>
+  </div>
+  {% else %}<p class="meta">아직 글이 없어요.</p>{% endfor %}
+</div></main>
+{% endblock %}

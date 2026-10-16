@@ -66,7 +66,7 @@ def ask(case):
     pool=ref_pool(case['category'])
     user=json.dumps(desk.case_input(case),ensure_ascii=False)+'\n\n[조문 후보]\n'+law_block(pool)
     body={'model':desk.ai_model(),'temperature':0.2,'response_format':{'type':'json_object'},
-          'messages':[{'role':'system','content':SYSTEM},{'role':'user','content':user}]}
+          'messages':[{'role':'system','content':_branded(SYSTEM)},{'role':'user','content':user}]}
     st,res=desk.post_json('https://api.openai.com/v1/chat/completions',{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body,45)
     if st!=200:raise RuntimeError(f'AI 응답 오류 ({st}) '+str((res.get('error') or {}).get('message',''))[:120].replace(key,'***'))
     try:out=json.loads(res['choices'][0]['message']['content'])
@@ -89,12 +89,17 @@ def clean(out,case,pool):
     if not guidance:raise RuntimeError('AI가 안내 내용을 채우지 못했어요')
     return {'track':track,'reason':s(out.get('reason') or '')[:300],'guidance':guidance,'steps':steps,'refs':refs}
 
+def _branded(text):
+    # 기본 문구 속 '소비자제보센터'를 지금 사이트 이름(관리자 설정)으로 바꿈
+    import notify
+    return notify.branded(text)
+
 def compose(res):
     parts=[OPENING,'','보내 주신 내용을 살펴보고, 관련 법률을 바탕으로 도움이 될 만한 내용을 안내드려요.','','■ 관련 법률 안내','\n\n'.join(res['guidance'])]
     if res['refs']:parts+=['','■ 근거 조문']+[f"- {c['label']} ({c['title']})" for c in (law.cite(r) for r in res['refs'])]
     if res['steps']:parts+=['','■ 이렇게 해 보세요']+[f'{i}. {t}' for i,t in enumerate(res['steps'],1)]
     parts+=['',HELP,'',CLOSING]
-    return '\n'.join(parts)
+    return _branded('\n'.join(parts))
 
 _desk=None
 def install(S):
