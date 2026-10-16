@@ -1917,5 +1917,6 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .hp-sections{width:100%;border-collapse:collapse;margin:8px 0 16px}
 .hp-sections th,.hp-sections td{text-align:left;padding:8px 10px;border-bottom:1px solid #eee}
 .hp-sections input[type=number]{width:72px;flex:none}
+.hp-sections .check{white-space:nowrap}
 .hp-warn{background:#fff4cc;color:#7f5d00;border-radius:10px;padding:10px 14px}
 @media(max-width:640px){.hp-slots{grid-template-columns:1fr}}
