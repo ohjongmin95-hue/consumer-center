@@ -8,8 +8,7 @@
 .sb-header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--sb-line);z-index:20}
 .sb-hd{height:64px;display:flex;align-items:center;gap:14px}
 .sb-logo{display:flex;align-items:center;gap:6px;flex:none}
-.sb-logo .sb-ch{width:34px;height:auto}
-.sb-logo .sb-wm{height:24px;width:auto;display:block}
+.sb-logo .sb-wm{height:36px;width:auto;display:block}
 .sb-nav{display:flex;gap:26px;margin-left:30px;font-weight:700;font-size:16px}
 .sb-nav a.on{color:var(--sb-orange)}
 .sb-nav a:hover{color:var(--sb-orange)}
@@ -116,7 +115,7 @@
 .sb-report-mini img{width:76px}.sb-report-mini h2{font-size:19px}.sb-report-mini p{font-size:14px}
 /* 바닥글·탭바 */
 .sb .site-footer{background:var(--sb-soft);border-top:0}
-.sb-ft-logo img{height:20px;width:auto;display:block}
+.sb-ft-logo img{height:30px;width:auto;display:block}
 .sb-tabbar{display:none}
 @media(max-width:1000px){.sb-nav{gap:18px;margin-left:16px;font-size:15px}}
 @media(max-width:860px){
@@ -124,7 +123,7 @@
   .sb-chips{display:flex}
   .sb-hd{height:56px;gap:12px}
   .sb-wrap,.sb main.sb-wrap{padding-left:16px;padding-right:16px}
-  .sb-logo .sb-ch{width:28px}.sb-logo .sb-wm{height:20px}
+  .sb-logo .sb-wm{height:30px}
   .sb-login{padding:8px 14px;font-size:14px}
   .sb-top{grid-template-columns:1fr;gap:8px;padding-top:20px}
   .sb-lead h1{font-size:23px;margin-top:16px}.sb-lead p{font-size:16px}
