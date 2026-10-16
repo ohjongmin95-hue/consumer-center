@@ -5,7 +5,7 @@
   <div class="auth-card">
     <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
-      <p class="auth-logo nr-logo">SOBORU</p>
+      <p class="auth-logo"><img class="auth-wm" src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="154" height="30"></p>
       <h1 class="auth-title">소보루 기자 로그인</h1>
       <input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="아이디" aria-label="아이디" value="{{ request.form.get('login_id','') }}">
       <input type="password" name="password" maxlength="64" required autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호">

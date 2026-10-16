@@ -1,5 +1,5 @@
 """Exercise the live templates and existing report flow using an isolated database."""
-import json, hashlib, io
+import datetime, json, hashlib, io
 import importlib.util
 import os
 from pathlib import Path
@@ -247,6 +247,86 @@ class SiteTest(unittest.TestCase):
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")
         self.assertNotIn('sb-home', visitor.get('/').get_data(as_text=True))
         self.assertEqual(self.site.notify.site_name(), '소비자제보센터')
+
+    def test_soboru_home_plan_rotates_reports_and_life(self):
+        # 메인 맨 위 큰 카드: 관리자가 정한 순서(제보 → 생활정보)·주기로 돌아가며, 공개 제보만 뜸
+        with self.site.conn() as db:
+            for receipt, subject, consent in (('p1', '공개 제보 카드 제목', 1), ('s1', '비밀 제보 카드 제목', 0)):
+                db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                           (receipt, hashlib.sha256(b'test').hexdigest(), '배송·교환·환불', '테스트 업체', subject, '본문 미리보기 010-1234-5678', '요청', '2026-10-09T10:00:00', consent, 1))
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+        admin = self.login_admin()
+        admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '생활정보 카드 제목', 'summary': '요약', 'body': '본문', 'category': '쇼핑', 'publish': '1'})
+        try:
+            page = admin.get('/admin/home-plan').get_data(as_text=True)
+            self.assertIn('메인 화면 순서', page)
+            r = admin.post('/admin/home-plan', data={'_csrf': self.csrf(admin, '/admin/home-plan'), 'slot': ['report', 'life', ''], 'hours': '6', 'pins': '',
+                                                     'order_top': '1', 'show_top': '1', 'order_box': '2', 'order_tools': '3', 'show_tools': '1'})
+            self.assertEqual(r.status_code, 302)
+            soboru = self.site.soboru
+            plan = soboru.clean_plan({'slots': ['report', 'life'], 'hours': 6})
+            self.assertEqual(plan['slots'], ['report', 'life'])
+            # 깨진 값은 기본값으로
+            self.assertEqual(soboru.clean_plan({'slots': ['x'], 'hours': 5})['slots'], ['report', 'life'])
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertIn('생활정보 카드 제목', home)
+            self.assertIn('공개 제보 카드 제목', home)
+            self.assertNotIn('sb-report-box', home)  # 끈 묶음은 빠짐
+            self.assertLess(home.index('sb-top'), home.index('sb-tools'))
+            self.assertNotIn('010-1234-5678', home)
+            # 주기마다 맨 위가 제보 ↔ 생활정보로 바뀜
+            kinds = set()
+            with self.site.app.test_request_context('/'):
+                ext = self.site.app.extensions['soboru']
+                saved = ext['home_plan']()
+                for h in (0, 6, 12, 18):
+                    lead, side = ext['pick_top'](saved, at=datetime.datetime(2026, 10, 16, h, 30))
+                    kinds.add(lead['kind'])
+                    self.assertNotEqual(lead['title'], '비밀 제보 카드 제목')
+                    self.assertNotIn('비밀 제보 카드 제목', [x['title'] for x in side])
+            self.assertEqual(kinds, {'report', 'life'})
+        finally:
+            with self.site.conn() as db:
+                db.execute("DELETE FROM site_content WHERE key='site.brand'")
+
+    def test_case_metoo_and_comments(self):
+        # 공개 제보: '나도 겪었어요' 공감(누르면 +1, 다시 누르면 취소), 댓글(연락처 가림), 알리기 5번이면 숨김, 비공개 제보는 막힘
+        with self.site.conn() as db:
+            for receipt, consent in (('t1', 1), ('t2', 0)):
+                db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                           (receipt, 'x', '배송·교환·환불', '테스트 업체', '공감 시험 제보', '본문', '환불', '2026-10-09T10:00:00', consent, 1))
+            pub, sec = [r['id'] for r in db.execute("SELECT id FROM cases WHERE receipt IN ('t1','t2') ORDER BY id")]
+        c = self.site.app.test_client()
+        tok = self.csrf(c, f'/reports/{pub}')
+        c.post(f'/reports/{pub}/react', data={'_csrf': tok, 'kind': 'metoo'})
+        page = c.get(f'/reports/{pub}').get_data(as_text=True)
+        self.assertIn('talk-btn t-metoo on', page)
+        c.post(f'/reports/{pub}/react', data={'_csrf': tok, 'kind': 'metoo'})
+        self.assertNotIn('talk-btn t-metoo on', c.get(f'/reports/{pub}').get_data(as_text=True))
+        self.assertEqual(c.post(f'/reports/{sec}/react', data={'_csrf': tok, 'kind': 'metoo'}).status_code, 404)
+        c.post(f'/reports/{pub}/comment', data={'_csrf': tok, 'nickname': '겪은사람', 'password': '1234', 'body': '저도 똑같아요 010-1234-5678'})
+        page = c.get(f'/reports/{pub}').get_data(as_text=True)
+        self.assertIn('저도 똑같아요', page)
+        self.assertNotIn('010-1234-5678', page)
+        self.assertEqual(c.post(f'/reports/{sec}/comment', data={'_csrf': tok, 'nickname': '겪은사람', 'password': '1234', 'body': '비공개'}).status_code, 404)
+        with self.site.conn() as db:
+            cid = db.execute('SELECT id FROM case_comments WHERE case_id=?', (pub,)).fetchone()[0]
+        for _ in range(self.site.FLAG_HIDE_THRESHOLD):
+            v = self.site.app.test_client()
+            v.post(f'/reports/comment/{cid}/flag', data={'_csrf': self.csrf(v, f'/reports/{pub}')})
+        self.assertNotIn('저도 똑같아요', c.get(f'/reports/{pub}').get_data(as_text=True))
+        admin = self.login_admin()
+        self.assertIn('제보 댓글', admin.get('/admin/board').get_data(as_text=True))
+        admin.post('/admin/board', data={'_csrf': self.csrf(admin, '/admin/board'), 'kind': 'k', 'id': cid, 'action': 'show'})
+        self.assertIn('저도 똑같아요', c.get(f'/reports/{pub}').get_data(as_text=True))
+        # 관리자 설정으로 끄면 사라짐
+        with self.site.conn() as db:
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('case.talk_off','끔','2026-10-16')")
+        try:
+            self.assertNotIn('talk-react', c.get(f'/reports/{pub}').get_data(as_text=True))
+        finally:
+            with self.site.conn() as db:
+                db.execute("DELETE FROM site_content WHERE key='case.talk_off'")
 
     def test_admin_edits_site_copy(self):
         self.assertEqual(self.client.get('/admin/content').status_code, 302)
@@ -656,8 +736,9 @@ class SiteTest(unittest.TestCase):
                 db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
                            ('G%d' % i, 'x', '배송·환불', 'OO쇼핑', subject, '본문 비공개 내용', '환불', '2026-10-09', public, public))
             first, second = [r['id'] for r in db.execute('SELECT id FROM cases ORDER BY id')]
-        # '나도 겪었어요'는 없음. 공개 제보·비밀글 비밀번호 화면 모두 '공동 대응 제안하기'로 안내
-        self.assertNotIn('나도 겪었어요', self.client.get('/reports/%d' % first).get_data(as_text=True))
+        # 공개 제보에는 '나도 겪었어요' 공감과 함께, 공개 제보·비밀글 비밀번호 화면 모두 '공동 대응 제안하기'로 안내
+        self.assertIn('나도 겪었어요', self.client.get('/reports/%d' % first).get_data(as_text=True))
+        self.assertNotIn('나도 겪었어요', self.client.get('/reports/%d/mine' % second).get_data(as_text=True))
         self.assertIn('/groups/new?company=OO', self.client.get('/reports/%d' % first).get_data(as_text=True))
         self.assertIn('/groups/new?company=OO', self.client.get('/reports/%d/mine' % second).get_data(as_text=True))
         # 1) 소비자 제안 → 검토 중(제안자·관리자만 보임), 제안자는 첫 참여자

@@ -1909,3 +1909,75 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 
 /* 게시판: 좁은 화면에서 분류 탭이 화면 밖으로 넓어지지 않게 (탭은 안에서 가로로 넘김) */
 .board-tools>*,.board-search{min-width:0}
+/* 관리자 > 메인 화면 순서 */
+.hp-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;list-style:none;padding:0;margin:12px 0 18px}
+.hp-slots li{display:flex;align-items:center;gap:10px;min-width:0}
+.hp-slots li>span{flex:none;width:28px;height:28px;border-radius:50%;background:#fff1e3;color:#c45f00;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.hp-slots select,.hp-sections input[type=number]{flex:1;min-width:0;height:44px;padding:0 12px;border:1px solid #dcdcdc;border-radius:10px;background:#fff}
+.hp-sections{width:100%;border-collapse:collapse;margin:8px 0 16px}
+.hp-sections th,.hp-sections td{text-align:left;padding:8px 10px;border-bottom:1px solid #eee}
+.hp-sections input[type=number]{width:72px;flex:none}
+.hp-sections .check{white-space:nowrap}
+.hp-warn{background:#fff4cc;color:#7f5d00;border-radius:10px;padding:10px 14px}
+@media(max-width:640px){.hp-slots{grid-template-columns:1fr}}
+/* 로그인·가입 화면 (토스+뉴닉 느낌): 옅은 귤색 바탕, 그림자 카드, 회색 입력칸, 둥근 큰 버튼 */
+.auth-page{background:radial-gradient(ellipse 500px 260px at 50% 0,#fff1e0 0,rgba(255,241,224,0) 100%);padding-top:72px}
+.auth-card{border:0;border-radius:28px;box-shadow:0 0 0 1px rgba(0,27,55,.04),0 12px 40px rgba(0,27,55,.08)}
+.auth-body{gap:12px;padding:48px 44px 30px}
+.auth-logo .auth-wm{display:block;height:30px;width:auto;margin:0 auto}
+.auth-title{margin:16px 0 18px;font-size:24px;font-weight:700;letter-spacing:-.04em;color:#191f28}
+.auth-body input:not([type=checkbox]){height:56px;padding:0 16px;border:1.5px solid transparent;border-radius:14px;background:#f2f4f6;font-size:16px;transition:background .15s,border-color .15s,box-shadow .15s}
+.auth-body input:not([type=checkbox]):hover{background:#eceff2}
+.auth-body input:not([type=checkbox]):focus{background:#fff;border-color:var(--orange);box-shadow:0 0 0 4px rgba(239,115,0,.12)}
+.auth-body input::placeholder{color:#8b95a1}
+.auth-submit{height:56px;margin-top:6px;border-radius:16px;font-size:17px;font-weight:700;letter-spacing:-.02em;transition:transform .15s cubic-bezier(.2,.8,.2,1),background .2s,box-shadow .2s}
+.auth-submit:hover{filter:none;background:#e56c00;box-shadow:0 8px 20px rgba(239,115,0,.28)}
+.auth-submit:active{transform:scale(.97)}
+.social-btn{height:52px;border-radius:14px;transition:transform .15s cubic-bezier(.2,.8,.2,1),filter .2s}
+.social-btn:active{transform:scale(.97)}
+.social-or{color:#8b95a1}
+.social-or::before,.social-or::after{background:#eef0f2}
+.auth-keep{font-size:14px;color:#4e5968}
+.auth-foot{background:#fff;border-top:1px solid #f2f4f6}
+.auth-foot a{padding:20px 8px;font-size:14px;color:#4e5968}
+.auth-foot a+a{border-left-color:#f2f4f6}
+.auth-foot a:hover{color:#191f28;background:#f9fafb}
+.auth-note{color:#8b95a1}
+@media(max-width:560px){.auth-page{padding-top:28px}.auth-body{padding:36px 22px 24px}.auth-card{border-radius:24px}}
+/* 공개 제보: 공감('나도 겪었어요'·'응원해요')과 댓글 */
+.case-talk h2{margin:0 0 4px}
+.talk-sub{margin:0 0 16px;color:#6b7684;font-size:14px}
+.talk-react{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px}
+.talk-react form{margin:0}
+.talk-btn{width:100%;display:flex;align-items:center;gap:10px;padding:16px 18px;border:0;border-radius:16px;background:#f2f4f6;color:#333d4b;font-size:16px;font-weight:700;cursor:pointer;transition:transform .15s cubic-bezier(.2,.8,.2,1),background .2s,box-shadow .2s}
+.talk-btn:hover{background:#e9ecef}
+.talk-btn:active{transform:scale(.97)}
+.talk-btn .ico{font-size:22px;line-height:1}
+.talk-btn .lb{flex:1;text-align:left}
+.talk-btn b{font-size:18px;font-weight:800;color:#191f28}
+.talk-btn.on{background:#fff1e3;color:#c45f00;box-shadow:inset 0 0 0 1.5px #ffc58f}
+.talk-btn.on b{color:#ef7300}
+.talk-count{margin:0 0 6px;font-size:17px}
+.talk-count b{color:#ef7300}
+.talk-c{display:flex;gap:12px;padding:16px 0;border-bottom:1px solid #f2f4f6}
+.talk-av{flex:none;width:36px;height:36px;border-radius:50%;background:#fff1e3;color:#c45f00;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
+.talk-main{flex:1;min-width:0}
+.talk-head{margin:0 0 4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:14px}
+.talk-head time{color:#8b95a1;font-size:13px;margin-left:2px}
+.talk-tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#f2f4f6;color:#4e5968;font-size:12px;font-weight:700}
+.talk-tag.t-rep{background:#ef7300;color:#fff}
+.talk-body{margin:0;font-size:15px;line-height:1.7;color:#333d4b;white-space:pre-wrap;overflow-wrap:anywhere}
+.talk-tools{display:flex;gap:10px;margin-top:6px;font-size:13px}
+.talk-tools form{margin:0}
+.talk-empty{color:#8b95a1;padding:18px 0;margin:0}
+.talk-form{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+.talk-form textarea{width:100%;padding:14px 16px;border:1.5px solid transparent;border-radius:14px;background:#f2f4f6;font-size:15px;line-height:1.6;resize:vertical}
+.talk-form textarea:focus,.talk-form .comment-ids input:focus{outline:0;background:#fff;border-color:#ef7300;box-shadow:0 0 0 4px rgba(239,115,0,.12)}
+.talk-form .comment-ids{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.talk-form .comment-ids input{width:100%;min-width:0;height:48px;padding:0 14px;border:1.5px solid transparent;border-radius:12px;background:#f2f4f6}
+.talk-submit{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.talk-submit span{color:#8b95a1;font-size:13px}
+.talk-submit .primary{padding:12px 20px;font-size:15px;flex:none}
+.talk-note{margin:0;color:#c45f00;font-size:13px;font-weight:600}
+@media(max-width:560px){.talk-submit{flex-direction:column;align-items:stretch}.talk-submit .primary{width:100%}.talk-btn{padding:14px;gap:8px;font-size:15px}.talk-btn .lb{white-space:nowrap}.talk-btn .ico{font-size:20px}}
+.case-talk-n{display:inline-flex;gap:8px;margin-left:8px;font-size:12px;font-weight:700;color:#c45f00;white-space:nowrap}

@@ -4,7 +4,7 @@
 <main class="auth-page">
   <div class="auth-card">
     <div class="auth-body">
-      <p class="auth-logo">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</p>
+      {% include 'auth_logo.html' %}
       <h1 class="auth-title">{{ ui('member.find', '아이디·비밀번호 찾기') }}</h1>
       <p class="auth-text">{{ ui('member.help_text', '가입할 때 등록한 이메일로 아래 주소에 메일을 보내 주세요.') }}{% if txt('operator.email') %}<br><a href="mailto:{{ txt('operator.email') }}"><b>{{ txt('operator.email') }}</b></a>{% endif %}</p>
       <ul class="auth-list">

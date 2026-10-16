@@ -1,0 +1,2 @@
+{# 로그인·가입 화면 맨 위 로고: 소보루면 SOBORU 글자 로고, 아니면 사이트 이름 글자 #}
+<p class="auth-logo">{% if is_soboru() %}<img class="auth-wm" src="{{ asset('img/soboru-wordmark.png') }}" alt="{{ site_name() }}" width="154" height="30">{% else %}{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% endif %}</p>

@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
 import site_content
+import casetalk
 import notify
 import jebo
 import soboru
@@ -266,7 +267,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-90'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-93'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -1080,10 +1081,10 @@ def admin_board():
     with conn() as db:
         if request.method=='POST':
             kind=request.form.get('kind');item_id=request.form.get('id',type=int);action=request.form.get('action')
-            if kind not in ('p','c') or not item_id or action not in ('hide','show','delete'):abort(400)
-            table='posts' if kind=='p' else 'comments'
+            if kind not in ('p','c','k') or not item_id or action not in ('hide','show','delete'):abort(400)
+            table={'p':'posts','c':'comments','k':'case_comments'}[kind]
             if not db.execute(f'SELECT 1 FROM {table} WHERE id=?',(item_id,)).fetchone():abort(404)
-            if action=='delete':delete_board_item(db,kind,item_id)
+            if action=='delete':delete_case_comment(db,item_id) if kind=='k' else delete_board_item(db,kind,item_id)
             else:
                 db.execute(f'UPDATE {table} SET hidden=? WHERE id=?',(int(action=='hide'),item_id))
                 if kind=='c':refresh_comment_count(db,db.execute('SELECT post_id FROM comments WHERE id=?',(item_id,)).fetchone()['post_id'])
@@ -1093,7 +1094,8 @@ def admin_board():
         cond='WHERE flags>0 OR hidden=1' if flagged else ''
         posts=db.execute(f'SELECT id,category,nickname,title,body,created,hidden,likes,comments,flags FROM posts {cond} ORDER BY flags DESC,id DESC LIMIT 200').fetchall()
         comments=db.execute(f'SELECT c.id,c.post_id,c.nickname,c.body,c.created,c.hidden,c.flags,p.title FROM comments c JOIN posts p ON p.id=c.post_id {cond.replace("flags","c.flags").replace("hidden","c.hidden")} ORDER BY c.flags DESC,c.id DESC LIMIT 200').fetchall()
-    return render_template('admin_board.html',posts=posts,comments=comments,flagged=flagged,threshold=FLAG_HIDE_THRESHOLD)
+        case_comments=db.execute(f'SELECT k.id,k.case_id,k.nickname,k.body,k.created,k.hidden,k.flags,c.subject,c.public_subject FROM case_comments k JOIN cases c ON c.id=k.case_id {cond.replace("flags","k.flags").replace("hidden","k.hidden")} ORDER BY k.flags DESC,k.id DESC LIMIT 200').fetchall()
+    return render_template('admin_board.html',posts=posts,comments=comments,case_comments=case_comments,flagged=flagged,threshold=FLAG_HIDE_THRESHOLD)
 
 # ---- 회원 ------------------------------------------------------------------
 # 아이디·비밀번호 회원가입. 제보와 게시판은 비회원도 그대로 쓸 수 있고, 회원은 내 정보에서 모아 봄.
@@ -1414,6 +1416,9 @@ def report_detail(case_id):
                 stored=[r['stored'] for r in db.execute('SELECT stored FROM attachments WHERE case_id=? UNION ALL SELECT stored FROM answer_files WHERE case_id=?',(case_id,case_id))]
                 db.execute('DELETE FROM answer_revisions WHERE message_id IN (SELECT id FROM messages WHERE case_id=?)',(case_id,))
                 for table in ('attachments','messages','internal_notes','case_log','notifications','company_invites','company_notices','case_requests','company_requests','answer_files','case_triage'):db.execute(f'DELETE FROM {table} WHERE case_id=?',(case_id,))
+                # 공개 제보의 공감·댓글 (casetalk.py)
+                db.execute("DELETE FROM board_votes WHERE target=? OR target IN (SELECT 'k:'||id FROM case_comments WHERE case_id=?)",('case:%d'%case_id,case_id))
+                db.execute('DELETE FROM case_comments WHERE case_id=?',(case_id,))
                 db.execute('DELETE FROM cases WHERE id=?',(case_id,));db.commit()
                 for name in stored:(UPLOAD/name).unlink(missing_ok=True)
                 flash(f"제보 {case['receipt']}를 삭제했어요.");return redirect(url_for(ep['list']))
@@ -2220,5 +2225,8 @@ _members=types.SimpleNamespace(**globals());members.install(_members)
 for _k in ('login_methods','membership_of','admin_memberships','admin_membership_action','delete_member_extras'):globals()[_k]=getattr(_members,_k)
 # 소보루 브랜드 바꾸기·생활정보·이달의 기업 답변 순위 (soboru.py)
 _soboru=types.SimpleNamespace(**globals());soboru.install(_soboru)
+# 공개 제보 공감('나도 겪었어요')·댓글 (casetalk.py)
+_talk=types.SimpleNamespace(**globals());casetalk.install(_talk)
+delete_case_comment=_talk.delete_case_comment
 
 if __name__=='__main__':app.run(debug=False)

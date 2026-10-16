@@ -9,6 +9,8 @@
   <link rel="icon" href="{{ url_for('static', filename='soboru-favicon.png', v=css_v) }}" type="image/png">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png', v=css_v) }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="{{ asset('admin.css') }}">
 </head>
 <body class="console">
 {# 소보루 기자 전용 화면 틀. 관리자 화면(console.html)과 같은 공통 레이아웃(위 막대 + 왼쪽 메뉴)을 쓰고, 메뉴만 기자용. #}
@@ -26,7 +28,7 @@
   ('설정', [(url_for('reporter_password'), 'key', '비밀번호 변경', request.endpoint == 'reporter_password')]),
 ] %}
 <header class="ad-top">
-  <a class="ad-brand" href="{{ url_for('reporter_home') }}"><span>SOBORU</span><em>기자실</em></a>
+  <a class="ad-brand" href="{{ url_for('reporter_home') }}"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="123" height="24"><em>기자실</em></a>
   <div class="ad-top-right">
     <span class="ad-who">{{ g.staff['name'] }} 기자</span>
     <a class="ad-site" href="{{ url_for('home') }}" target="_blank" rel="noopener">사이트 보기 ↗</a>

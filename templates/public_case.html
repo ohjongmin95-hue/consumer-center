@@ -6,6 +6,7 @@
 {% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "Article", "headline": subject|truncate(110, True, '…'), "description": description|truncate(150, True, '…'), "articleSection": category, "datePublished": case['created'], "inLanguage": "ko", "mainEntityOfPage": request.base_url, "author": {"@type": "Organization", "name": txt('site.name')}, "publisher": {"@type": "Organization", "name": txt('site.name'), "logo": {"@type": "ImageObject", "url": url_for('static', filename='apple-touch-icon.png', _external=True)}}, "image": url_for('static', filename='og-image.png', _external=True)},
   {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": txt('site.name'), "item": url_for('home', _external=True)}, {"@type": "ListItem", "position": 2, "name": txt('home.list_title'), "item": url_for('reports', _external=True)}, {"@type": "ListItem", "position": 3, "name": subject|truncate(60, True, '…')}]}]|tojson }}</script>{% endblock %}
 {% block content %}
+{% if is_soboru() %}{% include 'soboru_case.html' %}{% else %}
 <main class="page"><div class="wrap">
   <div class="page-intro">
     <a class="back-link" href="{{ url_for('reports') }}">← {{ txt('home.list_title') }}</a>
@@ -28,10 +29,12 @@
     {% else %}<p class="ca-none">{{ ui('case.answer_checking', '기업 답변이 등록돼 센터가 공개 여부를 확인하고 있어요.') if has_answer else ui('case.answer_none', '공식 답변 미등록') }}</p>{% endfor %}
     <p class="ca-note">{{ ui('case.answer_rule', '기업의 답변은 고치지 않고 원문 그대로 실어요. 기업이 답변을 고치면 센터가 다시 확인한 뒤 공개하고, 수정한 날짜를 함께 보여 줘요.') }}</p>
   </section>
+  {% set talk = case_talk(case['id']) %}{% if talk %}{% with case_id = case['id'] %}{% include 'case_talk.html' %}{% endwith %}{% endif %}
   <section class="form-panel public-case case-history">
     <h2>{{ ui('case.history', '진행 이력') }}</h2>
     <ol class="history">{% for who, label, at, text in events %}<li class="h-{{ who }}"><p class="h-head"><b>{{ label }}</b>{% if at %}<time datetime="{{ at }}">{{ at[:16]|replace('T', ' ') }}</time>{% endif %}</p>{% if text %}<p class="h-text">{{ text }}</p>{% endif %}</li>{% endfor %}</ol>
   </section>
   {% if groups_on() %}{% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}{% endif %}
 </div></main>
+{% endif %}
 {% endblock %}

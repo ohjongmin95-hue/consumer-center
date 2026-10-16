@@ -24,5 +24,13 @@
     {{ actions('c', c) }}
   </div>
   {% else %}<p class="meta">해당하는 댓글이 없어요.</p>{% endfor %}
+  <h2>제보 댓글 ({{ case_comments|length }})</h2>
+  {% for c in case_comments %}
+  <div class="form-panel admin-item">
+    <p class="meta">#{{ c['id'] }} · {{ c['nickname'] }} · {{ c['created'] }} · <b>알림 {{ c['flags'] }}</b>{% if c['hidden'] %} · <span class="pill">숨김</span>{% endif %} · 제보: <a href="{{ url_for('public_case', case_id=c['case_id']) }}#k{{ c['id'] }}" target="_blank" rel="noopener">{{ c['public_subject'] or c['subject'] }}</a></p>
+    <p class="admin-body">{{ c['body'] }}</p>
+    {{ actions('k', c) }}
+  </div>
+  {% else %}<p class="meta">해당하는 제보 댓글이 없어요.</p>{% endfor %}
 </div></main>
 {% endblock %}
