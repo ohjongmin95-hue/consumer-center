@@ -645,11 +645,8 @@ def send_via(db,c):
     return f"누르면 {c['channel']}에 바로 올라가요"
 def post_to_shop(db,c,text):
     """답변 하나를 받은 곳(판매처·메일·인스타그램)으로 보낸다. -> (안내, ok|error)"""
-    e=shops.post_reply(db,me(),c,text)
-    via=SEND_VIA.get(c['channel'])
-    if e:core.add_event(db,c['id'],'sys',(f'{via} 보내지 못했어요: ' if via else f"{c['channel']}에 답변을 올리지 못했어요: ")+e);return e,'error'
-    done=f'{via} 답변을 보냈어요' if via else f"{c['channel']}에 답변을 올렸어요"
-    core.add_event(db,c['id'],'sys',done);return done,'ok'
+    msg,level=core.deliver_reply(db,c,text)
+    return (msg,level) if level else ('판매처에서 가져온 문의가 아니에요.','error')
 def closable(c):return (c['channel'] in SEND_VIA or bool(c['live'])) and c['status'] not in core.FINAL
 
 def can_ship_track(db,c):

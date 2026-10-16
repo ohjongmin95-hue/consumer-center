@@ -202,7 +202,7 @@ def coupang_send(creds,method,path,payload):
     return _check(*http(method,COUPANG+path,h,json.dumps(payload).encode()),'coupang')
 def post_reply(db,co,c,text):
     """판매처에서 가져온 문의에 답변을 올린다. 올리면 '', 못 올리면 이유."""
-    seen=db.execute('SELECT * FROM shop_seen WHERE company_id=? AND case_id=?',(co['id'],c['id'])).fetchone()
+    seen=db.execute('SELECT * FROM shop_seen WHERE company_id=? AND case_id=? ORDER BY rowid LIMIT 1',(co['id'],c['id'])).fetchone()  # 처음 가져온 글 (이어진 댓글·답글이 아니라)
     if not seen:return '판매처에서 가져온 문의가 아니에요.'
     if seen['shop']=='email':
         import mailin

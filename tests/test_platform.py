@@ -1594,7 +1594,7 @@ class PlatformTest(unittest.TestCase):
         """카페24: 문의 게시판 글 -> 요청 (공지·답글 제외, 한 번만) -> 답변을 답글로 올림. 취소(발송 전)·반품 접수(발송 후)는 사장님이 누를 때 한 번만."""
         shops=sys.modules['shops'];c24=sys.modules['cafe24']
         b,o,cid=self.signup_and_approve('카페24문의상점','c24b@example.com')
-        sent=[];state={'N':'N10'}
+        sent=[];state={'N':'N10'};extra=[];comments=[]
         orders=[{'order_id':'20261015-0000001','order_date':'2026-10-15T10:00:00+09:00','billing_name':'홍길동','actual_payment_amount':'1000.00',
                  'items':[{'product_name':'시험상품','quantity':1,'order_status':'N10'}],'receivers':[{'name':'홍길동','cellphone':'010-1234-5678','address1':'서울'}]},
                 {'order_id':'20261015-0000002','order_date':'2026-10-15T11:00:00+09:00','billing_name':'홍길동','actual_payment_amount':'1000.00',
@@ -1607,7 +1607,8 @@ class PlatformTest(unittest.TestCase):
             if path=='/admin/boards/6/articles' and method=='GET':return 200,{'articles':[
                 {'article_no':10,'parent_article_no':10,'reply_depth':1,'title':'배송 문의','content':'<p>언제 와요?<br>급해요</p>','writer':'홍길동','secret':'T','order_id':'20261015-0000002','created_date':'2026-10-15T12:00:00+09:00','deleted':'F','notice':'F'},
                 {'article_no':11,'parent_article_no':10,'reply_depth':2,'title':'RE: 배송 문의','content':'답글','writer':'상점','notice':'F'},
-                {'article_no':12,'parent_article_no':12,'title':'공지','content':'공지','notice':'T'}]}
+                {'article_no':12,'parent_article_no':12,'title':'공지','content':'공지','notice':'T'}]+extra}
+            if path=='/admin/boards/6/articles/10/comments':return 200,{'comments':comments}
             if path=='/admin/boards/9/articles':return 200,{'articles':[]}
             if path=='/admin/boards/6/articles':return 201,{'articles':[{'article_no':13}]}
             if path.startswith('/admin/orders/20261015-0000001') and method=='GET':return 200,{'order':{'items':[{'order_item_code':'A-1','quantity':1,'order_status':state['N']}]}}
@@ -1631,6 +1632,28 @@ class PlatformTest(unittest.TestCase):
             path,payload=sent[-1];rq=payload['requests'][0]
             self.assertEqual(path,'/admin/boards/6/articles');self.assertEqual((rq['reply_article_no'],rq['secret'],rq['title']),(10,'T','RE: 배송 문의'))
             self.assertEqual(rq['content'],'오늘 출발해요<br>&lt;내일 도착&gt;');self.assertTrue(rq['password'])
+            # 고객이 같은 글에 단 답글·댓글은 그 요청에 이어 붙고 (가게 댓글은 빼고), 끝난 요청에 다시 쓰면 새 요청
+            extra.append({'article_no':14,'parent_article_no':10,'reply_depth':2,'title':'RE: RE: 배송 문의','content':'아직 안 왔어요','writer':'홍길동','secret':'T','deleted':'F','notice':'F','created_date':'2026-10-16T09:00:00+09:00'})
+            comments[:]=[{'comment_no':5,'writer':'홍길동','content':'송장번호는요?','created_date':'2026-10-16T10:00:00+09:00'},{'comment_no':6,'writer':'상점','content':'확인할게요'}]
+            pushed=[];old_push=self.core.expo_push;self.core.expo_push=lambda *a:pushed.append(a)
+            try:
+                self.post(b,'/biz/connect/cafe24',{'act':'sync'});self.post(b,'/biz/connect/cafe24',{'act':'sync'})
+                with self.core.conn() as db:
+                    me=[e['text'] for e in self.core.events(db,case_id) if e['kind']=='me']
+                    self.assertEqual(sorted(me),sorted(['아직 안 왔어요','송장번호는요?']));self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(case_id,)).fetchone()[0],'seen')
+                    db.execute("UPDATE cases SET status='resolved' WHERE id=?",(case_id,))
+                comments.append({'comment_no':7,'writer':'홍길동','content':'또 안 와요','created_date':'2026-10-17T10:00:00+09:00'})
+                self.post(b,'/biz/connect/cafe24',{'act':'sync'})  # 끝난 요청이라 댓글은 안 본다 (진행 중인 요청만)
+                extra.append({'article_no':15,'parent_article_no':10,'reply_depth':2,'title':'RE: 또','content':'다시 문의해요','writer':'홍길동','secret':'T','deleted':'F','notice':'F'})
+                self.post(b,'/biz/connect/cafe24',{'act':'sync'})
+            finally:self.core.expo_push=old_push
+            with self.core.conn() as db:
+                again=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='카페24' AND id!=?",(cid,case_id)).fetchall()
+                self.assertEqual(len(again),1);self.assertEqual((again[0]['title'],again[0]['body']),('다시 문의: 배송 문의','다시 문의해요'))
+            # 승인해도 카페24에 바로 올라간다 (처음 글에 답글로)
+            n=len(sent);self.post(b,f'/biz/case/{again[0]["id"]}',{'act':'approve'})
+            self.assertEqual(len(sent),n+1);self.assertEqual(sent[-1][1]['requests'][0]['reply_article_no'],10)
+            with self.core.conn() as db:self.assertTrue(any(e['text']=='카페24에 답변을 올렸어요' for e in self.core.events(db,again[0]['id'])))
             # 게시판 바꾸기: 1:1만 남기면 Q&A는 더 안 본다
             self.assertIn('공지사항',self.post(b,'/biz/connect/cafe24',{'act':'boards'}).get_data(as_text=True))
             self.post(b,'/biz/connect/cafe24',{'act':'boards_save','board':'9'})
