@@ -1981,3 +1981,10 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .talk-note{margin:0;color:#c45f00;font-size:13px;font-weight:600}
 @media(max-width:560px){.talk-submit{flex-direction:column;align-items:stretch}.talk-submit .primary{width:100%}.talk-btn{padding:14px;gap:8px;font-size:15px}.talk-btn .lb{white-space:nowrap}.talk-btn .ico{font-size:20px}}
 .case-talk-n{display:inline-flex;gap:8px;margin-left:8px;font-size:12px;font-weight:700;color:#c45f00;white-space:nowrap}
+.sort-tabs{display:flex;gap:14px;margin:4px 0 10px;font-size:14px}.sort-tabs a{color:#8a8f96;font-weight:600}.sort-tabs a.on{color:#202630;font-weight:800}
+.rating-row{border:0;margin:12px 0 4px;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px}.rating-row legend{font-size:14px;font-weight:700;margin-bottom:8px;padding:0}
+.rating-row label{cursor:pointer}.rating-row input{position:absolute;opacity:0;pointer-events:none}
+.rating-row span{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:#f2f4f6;font-weight:800;color:#4e5968}
+.rating-row input:checked+span{background:#ef7300;color:#fff}.rating-row input:focus-visible+span{outline:3px solid #ffc58f}
+.rating-row small{color:#8b95a1;margin-left:4px}
+.outcome-row .rating-row{flex:1 1 100%}

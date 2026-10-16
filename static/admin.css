@@ -8,7 +8,7 @@ body.console button,body.console input,body.console select,body.console textarea
 /* 머리글 */
 body.console .ad-top{height:60px;padding:0 24px;border-bottom:1px solid var(--ad-line)}
 body.console .ad-brand{align-items:center;font-size:19px}
-body.console .ad-brand img{height:24px;width:auto;display:block}
+body.console .ad-brand img{height:32px;width:auto;display:block}
 body.console .ad-brand em{margin-left:10px;padding:4px 9px;border-radius:999px;background:var(--ad-soft);color:var(--ad-sub);font-size:12px;transform:none}
 body.console .ad-site{padding:8px 12px;border-radius:12px}
 body.console .ad-site:hover{background:var(--ad-soft);color:var(--ad-ink)}
@@ -93,7 +93,7 @@ body.console .ad-toast{border-radius:18px;box-shadow:0 12px 32px rgba(0,27,55,.1
 
 @media(max-width:900px){
   body.console .ad-top{height:56px;padding:0 16px}
-  body.console .ad-brand img{height:20px}
+  body.console .ad-brand img{height:28px}
   body.console .ad-group+.ad-group{margin:0 0 0 8px}
   body.console .ad-side a{font-size:14px;padding:8px 11px}
   body.console .ad-main{padding:20px 16px 56px}

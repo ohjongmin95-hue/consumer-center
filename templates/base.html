@@ -63,7 +63,7 @@
 <footer class="site-footer">
   <div class="ft-inner">
     <div class="ft-top">
-      {% if is_soboru() %}<a class="ft-logo sb-ft-logo" href="{{ url_for('home') }}"><img src="{{ asset('img/soboru-logo.png') }}" alt="{{ txt('site.name') }}" width="127" height="30"></a>{% else %}      <a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>{% endif %}
+      {% if is_soboru() %}<a class="ft-logo sb-ft-logo" href="{{ url_for('home') }}"><img src="{{ asset('img/soboru-logo.png') }}" alt="{{ txt('site.name') }}" width="127" height="30"></a><span class="sb-ft-why"><b>소</b>비자 권익 <b>보</b>호를 위한 <b>루</b>트</span>{% else %}      <a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>{% endif %}
       <nav class="ft-links" aria-label="정책 및 안내">
         <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('common.ft_terms', '이용약관') }}</a>
         <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">{{ ui('common.ft_privacy', '개인정보 처리방침') }}</a>

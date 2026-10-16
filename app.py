@@ -54,6 +54,7 @@ with conn() as db:
     if 'published' not in cols: db.execute('ALTER TABLE cases ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
+    if 'rating' not in cols: db.execute('ALTER TABLE cases ADD COLUMN rating INTEGER')  # 제보자가 처리 결과를 확인하며 남긴 만족도 1~5
     if 'title_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN title_hidden INTEGER NOT NULL DEFAULT 0')  # 비밀글 제목·업체명을 목록에서 숨김(운영자)
     db.execute('CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,channel TEXT NOT NULL,event TEXT NOT NULL,target TEXT NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT \'\',created TEXT NOT NULL)')
     for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash','industry','pw_hash'):
@@ -267,7 +268,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-93'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-96'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -351,11 +352,12 @@ def is_pending(r):
     # 공개를 골랐지만 게시되지 않은 제보 (예전 승인 대기 제보이거나 운영자가 게시를 내린 제보)
     return bool(r['public_consent'] and not r['published'])
 PUBLIC_VALID="review NOT IN ('rejected','duplicate')"  # 중복·제외 처리한 제보는 공개 목록에서 뺌
-def report_rows(where='1=1',args=(),limit=20,offset=0):
+HOT_ORDER="(SELECT COUNT(*) FROM board_votes v WHERE v.kind='metoo' AND v.target='case:'||cases.id) DESC,id DESC"  # 공감순: '나도 겪었어요'가 많은 제보 먼저
+def report_rows(where='1=1',args=(),limit=20,offset=0,order='id DESC'):
     # 모든 제보를 번호·분류·단계·접수일로 보여 줌. 제목·업체명은 공개 제보(운영자가 내리지 않음)와
     # 비밀글(운영자가 숨기지 않음)에 보이고, 비밀글은 눌러도 본문 대신 비밀번호 창이 열림.
     with conn() as db:
-        rows=db.execute('SELECT id,category,company,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE ('+where+') AND '+PUBLIC_VALID+' ORDER BY id DESC LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
+        rows=db.execute('SELECT id,category,industry,company,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE ('+where+') AND '+PUBLIC_VALID+' ORDER BY '+order+' LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
     today=datetime.date.today().isoformat()
     def when(created):
         # 오늘 들어온 제보는 시각(15:48), 그 전은 날짜(10.08)로 짧게 표시.
@@ -363,7 +365,7 @@ def report_rows(where='1=1',args=(),limit=20,offset=0):
     def shown(r):return list_title_shown(r)
     return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),held=bool(is_pending(r) and (r['reviewed_at'] or r['review'])),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
                  company=mask_personal(r['company']) if shown(r) else None,
-                 status=r['status'],step=jebo.pub_step(jebo.my_step(r)),created=r['created'][:10],when=when(r['created'])) for r in rows]
+                 status=r['status'],step=jebo.pub_step(jebo.my_step(r)),created=r['created'][:10],when=when(r['created']),industry=r['industry'] or '') for r in rows]
 def report_summary():
     with conn() as db:stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases WHERE '+PUBLIC_VALID+' GROUP BY status')}
     total=sum(stats.values());done=stats.get('종결',0)
@@ -399,6 +401,7 @@ def reports():
     selected_category=request.args.get('category','')
     if selected_category not in report_categories():selected_category=''
     page=max(1,request.args.get('page',1,type=int))
+    sort='hot' if request.args.get('sort')=='hot' else ''
     where=[PUBLIC_VALID];args=[]
     if selected_category:names=jebo.cat_names(selected_category);where.append('category IN (%s)'%','.join('?'*len(names)));args+=names
     if search_query:
@@ -407,7 +410,7 @@ def reports():
     cond=' AND '.join(where)
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
     with conn() as db:open_groups=db.execute("SELECT id,title,company FROM damage_groups WHERE status='open' ORDER BY id DESC LIMIT 3").fetchall() if GROUPS_ON else []
-    return render_template('reports.html',open_groups=open_groups,categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE),total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
+    return render_template('reports.html',open_groups=open_groups,categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE,HOT_ORDER if sort else 'id DESC'),sort=sort,total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
 
 PHONE_RE=re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}')
 EMAIL_RE=re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')

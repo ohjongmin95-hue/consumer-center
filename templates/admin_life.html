@@ -14,8 +14,8 @@
     <label>본문 (빈 줄로 문단을 나눠요. "## "로 시작하면 소제목, "- "로 시작하면 목록)<textarea name="body" rows="14">{{ a['body'] if a else '' }}</textarea></label>
     <div class="admin-row">
       <label>분야<select name="category">{% for c in categories %}<option{% if a and a['category'] == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
-      <label>대표 그림 (이모지 하나)<input name="emoji" maxlength="8" value="{{ a['emoji'] if a else '' }}" placeholder="📦"></label>
-      <label>바탕색<select name="tone">{% for t, name in [('t1', '귤색'), ('t2', '하늘'), ('t3', '초록'), ('t4', '분홍'), ('t5', '보라'), ('t6', '노랑')] %}<option value="{{ t }}"{% if a and a['tone'] == t %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+      <input type="hidden" name="emoji" value="{{ a['emoji'] if a else '' }}"><input type="hidden" name="tone" value="{{ a['tone'] if a else 't1' }}">
+      <p class="meta">대표 그림은 고른 분야에 맞는 그림이 자동으로 들어가요.</p>
     </div>
     <div class="admin-row">
       <label>출처 이름<input name="source_name" maxlength="120" value="{{ a['source_name'] if a else '' }}" placeholder="공정거래위원회 소비자24"></label>
@@ -37,7 +37,7 @@
   {% for r in rows %}
   <div class="form-panel admin-item">
     <p class="meta">#{{ r['id'] }} · {{ r['category'] }} · {{ '게시 중' if r['status'] == 'published' else '초안' }}{% if r['origin'] == 'auto' %} · 자동 수집{% endif %}{% if r['featured'] %} · 고정{% endif %} · 조회 {{ r['views'] }} · {{ (r['published_at'] or r['created'])[:16] }}</p>
-    <h3><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['emoji'] }} {{ r['title'] }}</a></h3>
+    <h3><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['title'] }}</a></h3>
   </div>
   {% else %}<p class="meta">아직 글이 없어요.</p>{% endfor %}
 </div></main>

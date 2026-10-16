@@ -44,7 +44,7 @@
 {% set nc = new_case_info() %}
 {% set active = {'admin_report': 'admin_reports', 'admin_life_edit': 'admin_life', 'admin_invite': 'admin_reports', 'admin_group': 'admin_groups'}.get(request.endpoint, request.endpoint) %}
 <header class="ad-top">
-  <a class="ad-brand" href="{{ url_for('admin') }}">{% if is_soboru() %}<img src="{{ asset('img/soboru-wordmark.png') }}" alt="{{ site_name() }}" width="123" height="24">{% else %}{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% endif %}<em>관리자</em></a>
+  <a class="ad-brand" href="{{ url_for('admin') }}">{% if is_soboru() %}<img src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="136" height="32">{% else %}{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% endif %}<em>관리자</em></a>
   <div class="ad-top-right">
     <a class="ad-site" href="{{ url_for('home') }}" target="_blank" rel="noopener">사이트 보기 ↗</a>
     <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">{{ icon('out') }}<span>로그아웃</span></button></form>

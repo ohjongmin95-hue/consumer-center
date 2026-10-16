@@ -6,6 +6,7 @@
 - 생활정보(/life): 운영자가 쓰거나, 나중에 공공데이터 자동 수집이 초안으로 넣는 글. 게시한 글만 보임.
 """
 import datetime, json, re, statistics
+import site_content
 from flask import abort, flash, g, has_request_context, redirect, render_template, request, session, url_for
 from markupsafe import Markup, escape
 
@@ -34,6 +35,37 @@ REPORT_EMOJI = {'배송·교환·환불': '📦', '계약·해지': '📝', '요
                 '고객 응대': '☎️', '개인정보': '🔐', '안전·위해': '⚠️'}
 REPORT_TONE = {'배송·교환·환불': 't1', '계약·해지': 't5', '요금·결제': 't4', '품질·하자·AS': 't2', '허위·과장 광고': 't6',
                '고객 응대': 't3', '개인정보': 't5', '안전·위해': 't6'}
+
+# 관리자가 분야 이름을 바꿔도(예: 요금·환불, 정보·안전) 맞는 그림이 나오게 낱말로도 찾음. 앞에 있는 낱말이 먼저.
+REPORT_WORDS = [('안전', '⚠️', 't6'), ('위해', '⚠️', 't6'), ('개인정보', '🔐', 't5'), ('환불', '📦', 't1'), ('배송', '📦', 't1'), ('교환', '📦', 't1'),
+                ('품질', '🛠️', 't2'), ('하자', '🛠️', 't2'), ('AS', '🛠️', 't2'), ('요금', '💳', 't4'), ('결제', '💳', 't4'), ('광고', '📢', 't6'),
+                ('표시', '📢', 't6'), ('계약', '📝', 't5'), ('해지', '📝', 't5'), ('응대', '☎️', 't3')]
+# 제보 업종 → 이용 안내의 업종 그림(static/img/guide-ind-<이름>.svg)
+ART_WORDS = [('식품', 'food'), ('외식', 'food'), ('음식', 'food'), ('의약', 'medical'), ('의료', 'medical'), ('병원', 'medical'), ('쇼핑', 'commerce'),
+             ('유통', 'commerce'), ('가전', 'appliance'), ('전자', 'appliance'), ('자동차', 'car'), ('통신', 'telecom'), ('금융', 'finance'),
+             ('보험', 'finance'), ('카드', 'finance'), ('게임', 'game'), ('건설', 'building'), ('부동산', 'building'), ('인테리어', 'building'),
+             ('가구', 'building')]
+INDUSTRY_ART = {name: art for name, art, *_ in site_content.INDUSTRIES}
+LIFE_ART = {'쇼핑': 'commerce', '통신': 'telecom', '음식': 'food', '금융': 'finance', '자동차': 'car', '리콜': 'appliance'}
+
+
+def report_look(cat):
+    """분야 이름 → (이모지, 바탕색 번호)."""
+    if cat in REPORT_EMOJI: return REPORT_EMOJI[cat], REPORT_TONE[cat]
+    for word, emoji, tone in REPORT_WORDS:
+        if word in (cat or ''): return emoji, tone
+    return '📣', 't1'
+
+
+def report_art(industry, extra=()):
+    """제보 업종 → 업종 그림 이름. 관리자가 이용 안내 업종 카드에 그림을 골라 뒀으면 그걸 먼저 씀."""
+    industry = industry or ''
+    for it in extra:
+        if it.get('name') == industry and it.get('icon'): return it['icon']
+    if industry in INDUSTRY_ART: return INDUSTRY_ART[industry]
+    for word, art in ART_WORDS:
+        if word in industry: return art
+    return 'other'
 
 
 def clean_plan(raw):
@@ -170,7 +202,7 @@ def install(S):
 
     app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, company_rank=company_rank,
                                  ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES,
-                                 report_look=lambda cat: (REPORT_EMOJI.get(cat, '📣'), REPORT_TONE.get(cat, 't1')))
+                                 report_look=report_look, life_art=lambda cat: LIFE_ART.get(cat, 'other'), report_art=lambda ind: report_art(ind, S.items('guide_industries')))
 
     # ---- 메인 화면: 소보루면 새 홈 ------------------------------------------
     # 관리자 > 메인 화면 순서에서 맨 위 큰 카드에 무엇을 어떤 순서·주기로 띄울지, 아래 묶음 순서를 정함.
@@ -191,7 +223,7 @@ def install(S):
                 rows = [rows[i] for i in pins if i in rows]
             else:
                 rows = db.execute(sql + ' ORDER BY c.id DESC LIMIT ?', (limit,)).fetchall()
-        out = []
+        out = []; arts = S.items('guide_industries') if has_request_context() and g.get('lists') is not None else []
         for r in rows:
             text = jebo.pub(r, S.mask_personal)
             body = ' '.join((text['body'] or '').split())
@@ -199,12 +231,12 @@ def install(S):
             out.append({'kind': 'report', 'id': r['id'], 'url': url_for('public_case', case_id=r['id']), 'title': text['subject'],
                         'summary': body[:110] + ('…' if len(body) > 110 else ''), 'label': cat, 'company': S.mask_personal(r['company']),
                         'status': r['status'], 'answered': bool(r['answered']), 'stamp': r['created'],
-                        'emoji': REPORT_EMOJI.get(cat, '📣'), 'tone': REPORT_TONE.get(cat, 't1')})
+                        'emoji': report_look(cat)[0], 'tone': report_look(cat)[1], 'art': report_art(r['industry'], arts)})
         return out
 
     def life_item(a):
         return {'kind': 'life', 'id': a['id'], 'url': url_for('life_article', article_id=a['id']), 'title': a['title'], 'summary': a['summary'],
-                'label': a['category'], 'stamp': a['published_at'] or a['created'], 'emoji': a['emoji'] or '📰', 'tone': a['tone'] or 't1'}
+                'label': a['category'], 'stamp': a['published_at'] or a['created'], 'emoji': a['emoji'] or '📰', 'tone': a['tone'] or 't1', 'art': LIFE_ART.get(a['category'], 'other')}
 
     def plan_tick(plan, at=None):
         # 주기 번호: 서버 시각(한국 시각) 0시 기준으로 hours마다 1씩 오름

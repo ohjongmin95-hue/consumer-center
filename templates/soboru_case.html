@@ -1,33 +1,20 @@
 {# 소보루 제보 상세 (토스 바탕 + 뉴닉 한 스푼). public_case.html에서 브랜드가 소보루일 때 씀. #}
 {% from 'status_macros.html' import steps %}
-{% set look = report_look(category) %}{% set talk = case_talk(case['id']) %}{% set stage = pub_names()[pub_step(step) - 1] %}
+{% set talk = case_talk(case['id']) %}
 <main class="page sbc-page"><div class="wrap sbc">
   <a class="sbc-back" href="{{ url_for('reports') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>{{ txt('home.list_title') }}</a>
 
   <section class="sbc-hero">
-    <div class="sbc-ico {{ look[1] }}" aria-hidden="true"><b>{{ look[0] }}</b></div>
-    <p class="sbc-kicker"><span class="case-cat">{{ category }}</span><span>No. {{ case['id'] }}</span></p>
+    <div class="sbc-art" aria-hidden="true"><img src="{{ asset('img/guide-ind-%s.svg' % report_art(case['industry'] if 'industry' in case.keys() else '')) }}" alt="" width="330" height="200"></div>
+    {% set cat_s = category.split(']')[0].lstrip('[') if category.startswith('[') and ']' in category else category %}
+    <p class="sbc-kicker"><span class="sbc-cat">{{ cat_s }}</span><span>No. {{ case['id'] }}</span></p>
     <h1 class="page-title">{{ subject }}</h1>
-    <p class="sbc-date">{{ ui('lookup.received_on', '접수일') }} {{ case['created'][:10]|replace('-', '.') }}{% if case['occurred_on'] %} · {{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
-    <dl class="sbc-stats">
-      <div><dt>{{ ui('case.stat_stage', '진행') }}</dt><dd class="st-{{ pub_step(step) }}">{{ stage }}</dd></div>
-      {% if talk %}<div><dt>{{ ui('case.react_metoo', '나도 겪었어요') }}</dt><dd>{{ talk.counts['metoo'] }}{{ ui('case.people', '명') }}</dd></div>
-      <div><dt>{{ ui('case.comments', '댓글') }}</dt><dd>{{ talk.comments|length }}</dd></div>{% endif %}
-    </dl>
-    {% if talk %}<form class="sbc-metoo" method="post" action="{{ url_for('case_react', case_id=case['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="metoo">
-      <button type="submit" class="{{ 'on' if 'metoo' in talk.mine }}" aria-pressed="{{ 'true' if 'metoo' in talk.mine else 'false' }}"><span aria-hidden="true">🙋</span>{{ ui('case.metoo_cta_on', '나도 겪었어요 눌렀어요') if 'metoo' in talk.mine else ui('case.metoo_cta', '나도 겪었어요') }}</button>
-      <a href="#talk-form">{{ ui('case.comment_cta', '댓글 쓰기') }}</a></form>{% endif %}
-  </section>
-
-  {% if co %}<a class="sbc-co" href="{{ url_for('company_page', company_id=co['id']) }}">{% else %}<div class="sbc-co">{% endif %}
-    <span class="sbc-av" aria-hidden="true">{{ company[:1] }}</span>
-    <span class="sbc-co-t"><small>{{ ui('reports.target', '제보 대상') }}</small><b>{{ company }}</b></span>
-    {% if co %}<span class="sbc-more">{{ ui('case.company_more_s', '기업 페이지') }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span></a>{% else %}</div>{% endif %}
-
-  <section class="sbc-card sbc-steps">
-    <h2>{{ ui('case.where_now', '지금 어디까지 왔을까요') }}</h2>
-    {{ steps(pub_step(step), pub_names()) }}
-    <p class="sbc-hint">{% if has_answer %}{{ ui('case.has_answer_s', '기업이 답변을 남겼어요. 아래에서 확인해 보세요.') }}{% else %}{{ ui('case.no_answer', '아직 기업의 공식 답변이 등록되지 않았어요.') }}{% endif %}</p>
+    <p class="sbc-meta">{% if co %}<a class="sbc-co-link" href="{{ url_for('company_page', company_id=co['id']) }}">{{ company }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>{% else %}<b>{{ company }}</b>{% endif %}<span>{{ ui('lookup.received_on', '접수일') }} {{ case['created'][:10]|replace('-', '.') }}</span>{% if case['occurred_on'] %}<span>{{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on']|replace('-', '.') }}</span>{% endif %}</p>
+    <button type="button" class="sbc-share" data-share data-title="{{ subject }}" data-done="{{ ui('case.share_done', '링크를 복사했어요') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg>{{ ui('case.share', '공유하기') }}</button>
+    <div class="sbc-steps">
+      {{ steps(pub_step(step), pub_names()) }}
+      <p class="sbc-hint">{% if has_answer %}{{ ui('case.has_answer_s', '기업이 답변을 남겼어요. 아래에서 확인해 보세요.') }}{% else %}{{ ui('case.no_answer', '아직 기업의 공식 답변이 등록되지 않았어요.') }}{% endif %}</p>
+    </div>
   </section>
 
   <article class="sbc-card public-case">
@@ -41,7 +28,7 @@
     {% for a in answers %}<div class="company-answer sbc-answer">
       <p class="ca-head"><span class="sbc-av sm" aria-hidden="true">{{ (a['company_name'] or company)[:1] }}</span><b>{{ a['company_name'] or company }}{% if a['source'] == 'biz' %}<span class="ca-verified"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z"/><path fill="#fff" d="M7.1 10.6 4.8 8.3l.9-.9 1.4 1.4 3.2-3.2.9.9z"/></svg>{{ ui('case.answer_verified', '인증 기업 계정이 직접 등록') }}</span>{% endif %}</b><span>{{ a['created'][:10]|replace('-', '.') }}{% if a['edited'] %} · {{ a['edited'][:10]|replace('-', '.') }} 수정됨{% endif %}</span></p>
       <p class="public-case-body sbc-bubble">{{ a['body'] }}</p>{% if a['source'] == 'email' %}<p class="ca-note">{{ ui('case.answer_email', '기업이 이메일로 보낸 답변을 센터가 원문 그대로 옮겼어요.') }}</p>{% endif %}</div>
-    {% else %}<div class="sbc-none"><span aria-hidden="true">⏳</span><p class="ca-none">{{ ui('case.answer_checking', '기업 답변이 등록돼 센터가 공개 여부를 확인하고 있어요.') if has_answer else ui('case.answer_none', '공식 답변 미등록') }}</p></div>{% endfor %}
+    {% else %}<div class="sbc-none"><p class="ca-none">{{ ui('case.answer_checking', '기업 답변이 등록돼 센터가 공개 여부를 확인하고 있어요.') if has_answer else ui('case.answer_none', '공식 답변 미등록') }}</p></div>{% endfor %}
     <p class="ca-note">{{ ui('case.answer_rule', '기업의 답변은 고치지 않고 원문 그대로 실어요. 기업이 답변을 고치면 센터가 다시 확인한 뒤 공개하고, 수정한 날짜를 함께 보여 줘요.') }}</p>
   </section>
 
@@ -53,3 +40,4 @@
   </section>
   {% if groups_on() %}{% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}{% endif %}
 </div></main>
+<script>document.querySelectorAll('[data-share]').forEach(function(b){b.addEventListener('click',function(){var u=location.href.split('#')[0],t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u}).catch(function(){});return}(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){var o=b.lastChild.textContent;b.lastChild.textContent=b.dataset.done;setTimeout(function(){b.lastChild.textContent=o},1800)},function(){prompt('',u)})})})</script>
