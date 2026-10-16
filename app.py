@@ -8,6 +8,7 @@ from markupsafe import Markup, escape
 import site_content
 import notify
 import jebo
+import soboru
 import members
 import companydesk
 import triage
@@ -265,7 +266,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-89'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-90'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -476,6 +477,8 @@ def sitemap_xml():
         # 기업 페이지는 공개 제보나 공식 입장이 있을 때만 (이름만 있는 빈 페이지는 빼기)
         pages+=[(url_for('company_page',company_id=r['id'],_external=True),None) for r in db.execute("""SELECT id FROM companies co WHERE status IN ('active','listed')
             AND (statement!='' OR EXISTS(SELECT 1 FROM cases c WHERE c.company_id=co.id AND c.public_consent=1 AND c.published=1)) ORDER BY id LIMIT 5000""")]
+        # 생활정보 (soboru.py): 게시한 글만
+        pages+=[(url_for('life',_external=True),None)]+[(url_for('life_article',article_id=r['id'],_external=True),(r['updated'] or '')[:10] or None) for r in db.execute("SELECT id,updated FROM articles WHERE status='published' ORDER BY id DESC LIMIT 5000")]
         if GROUPS_ON:pages+=[(url_for('groups',_external=True),None)]+[(url_for('group_page',group_id=r['id'],_external=True),r['updated'][:10]) for r in db.execute("SELECT id,updated FROM damage_groups WHERE status IN ('open','active','closed') ORDER BY id DESC LIMIT 500")]
     body=''.join('<url><loc>%s</loc>%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '') for u,d in pages)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
@@ -2215,5 +2218,7 @@ for _k in ('triage_context','triage_handle_form','TRIAGE_FORMS','triage_after_su
 # 회원 확장: 카카오·네이버 로그인, 예전 제보 연결, 기업 소속 인증 신청 (members.py)
 _members=types.SimpleNamespace(**globals());members.install(_members)
 for _k in ('login_methods','membership_of','admin_memberships','admin_membership_action','delete_member_extras'):globals()[_k]=getattr(_members,_k)
+# 소보루 브랜드 바꾸기·생활정보·이달의 기업 답변 순위 (soboru.py)
+_soboru=types.SimpleNamespace(**globals());soboru.install(_soboru)
 
 if __name__=='__main__':app.run(debug=False)

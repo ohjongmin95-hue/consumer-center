@@ -268,7 +268,7 @@ def install(S):
             company=db.execute('SELECT id FROM companies WHERE biz_no=? ORDER BY id LIMIT 1',(biz,)).fetchone()
             db.execute('''INSERT INTO company_memberships(user_id,company_id,company_name,biz_no,person_name,department,phone,work_email,evidence_stored,evidence_original,created)
                 VALUES(?,?,?,?,?,?,?,?,?,?,?)''',(g.user['id'],company['id'] if company else None,f['company_name'],biz,f['person_name'],f['department'],f['phone'],f['work_email'],stored,ev[2] if ev else '',now()))
-        admin_ping(f"[소비자제보센터] 기업 소속 인증 신청: {f['company_name']}\n"+url_for('admin_members',_external=True)+'#memberships')
+        admin_ping(f"[{S.notify.site_name()}] 기업 소속 인증 신청: {f['company_name']}\n"+url_for('admin_members',_external=True)+'#memberships')
         flash('기업 소속 인증을 신청했어요. 운영자가 확인한 뒤 알려 드려요.')
         return redirect(url_for('me_company'))
 

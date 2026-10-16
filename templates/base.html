@@ -30,8 +30,12 @@
   <link rel="icon" href="{{ url_for('static', filename='soboru-favicon.png', v=css_v) }}" type="image/png">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png', v=css_v) }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
+  {% if is_soboru() %}<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">{# 소보루 글꼴 Pretendard (SIL OFL), 화면에 쓰는 글자만 나눠 받음 #}
+  <link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}
 </head>
-<body>
+<body{% if is_soboru() %} class="sb"{% endif %}>
+{% if is_soboru() %}{% include 'soboru_header.html' %}{% else %}
 <header class="site-header">
   <div class="top">
     <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">{{ txt('site.logo_by') }}</small>{% endif %}</a>
@@ -51,6 +55,7 @@
     </div>
   </div>
 </header>
+{% endif %}
 {% with msgs = get_flashed_messages() %}
 {% if msgs %}<div class="flash-wrap" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
 {% endwith %}
@@ -58,7 +63,7 @@
 <footer class="site-footer">
   <div class="ft-inner">
     <div class="ft-top">
-      <a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>
+      {% if is_soboru() %}<a class="ft-logo sb-ft-logo" href="{{ url_for('home') }}"><img src="{{ asset('img/soboru-logo.png') }}" alt="{{ txt('site.name') }}" width="127" height="30"></a>{% else %}      <a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>{% endif %}
       <nav class="ft-links" aria-label="정책 및 안내">
         <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('common.ft_terms', '이용약관') }}</a>
         <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">{{ ui('common.ft_privacy', '개인정보 처리방침') }}</a>
@@ -87,6 +92,7 @@
     })();
   </script>
 </footer>
+{% if is_soboru() %}{% include 'soboru_tabbar.html' %}{% endif %}
 {% if editing() %}
 {# 관리자 편집 모드: 점선으로 표시된 문장을 누르면 바로 고칠 수 있음 #}
 <div class="ed-bar" role="region" aria-label="편집 모드">

@@ -20,6 +20,6 @@
   <ul class="co-list">{% for c in busy %}<li><a href="{{ url_for('company_page', company_id=c['id']) }}"><span class="co-name">{{ c['name'] }}{% if c['status'] == 'active' %}<span class="co-badge verified" title="{{ ui('company.verified_tip', '센터가 사업자등록번호와 담당자 소속을 확인한 기업') }}"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z"/><path fill="#fff" d="M7.1 10.6 4.8 8.3l.9-.9 1.4 1.4 3.2-3.2.9.9z"/></svg>{{ ui('companies.verified', '인증 기업') }}</span>{% endif %}</span><span class="co-n">{{ ui('companies.n_public', '공개 제보') }} {{ c['n_public'] }}</span></a></li>
   {% else %}<li class="co-empty">{{ ui('companies.empty', '아직 공개된 제보가 있는 기업이 없어요.') }}</li>{% endfor %}</ul>
   {% endif %}
-  <p class="public-case-notice">{{ ui('companies.notice', '소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요. 제보는 제보자의 주장이며, 기업 답변을 보장하지 않아요.') }}</p>
+  <p class="public-case-notice">{{ ui('companies.notice', '소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요. 제보는 제보자의 주장이며, 기업 답변을 보장하지 않아요.')|branded }}</p>
 </div></main>
 {% endblock %}

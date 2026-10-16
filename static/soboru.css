@@ -1,0 +1,161 @@
+/* 소보루 브랜드 (뉴닉식 화면). 관리자 설정 '브랜드'가 소보루일 때만 style.css 뒤에 붙음. */
+.sb{font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;--sb-ink:#1d1d1f;--sb-sub:#6b6f76;--sb-mute:#9a9ea5;--sb-line:#ececec;--sb-soft:#f5f5f4;--sb-orange:#ef7300;--sb-orange-soft:#fff1e3;--sb-brown:#652D1C;background:#fff;color:var(--sb-ink);word-break:keep-all;-webkit-font-smoothing:antialiased}
+.sb main.sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;min-height:auto}
+.sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+.sb-preview{background:#1d1d1f;color:#fff;text-align:center;font-size:13px;padding:8px 16px}
+.sb-preview a{color:#ffb36b;font-weight:700;margin-left:6px}
+/* 머리글 */
+.sb-header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--sb-line);z-index:20}
+.sb-hd{height:64px;display:flex;align-items:center;gap:14px}
+.sb-logo{display:flex;align-items:center;gap:6px;flex:none}
+.sb-logo .sb-wm{height:36px;width:auto;display:block}
+.sb-nav{display:flex;gap:26px;margin-left:30px;font-weight:700;font-size:16px}
+.sb-nav a.on{color:var(--sb-orange)}
+.sb-nav a:hover{color:var(--sb-orange)}
+.sb-sp{flex:1}
+.sb-search{display:flex;color:var(--sb-ink)}
+.sb-login{background:var(--sb-orange-soft);color:var(--sb-orange);font-weight:700;padding:10px 18px;border-radius:12px;font-size:15px;margin-left:6px;white-space:nowrap}
+.sb-cta{background:var(--sb-orange);color:#fff !important;font-weight:700;padding:10px 18px;border-radius:12px;font-size:15px;white-space:nowrap}
+.sb-cta:hover{background:#d96800}
+.sb-chips{display:none;gap:8px;overflow-x:auto;padding:10px 16px;border-top:1px solid var(--sb-line);scrollbar-width:none}
+.sb-chips::-webkit-scrollbar{display:none}
+.sb-chips a{flex:none;padding:8px 14px;border-radius:999px;background:var(--sb-soft);font-weight:600;font-size:14px;color:var(--sb-sub)}
+.sb-chips a.on{background:var(--sb-ink);color:#fff}
+/* 대표 그림 */
+.sb-thumb{border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.sb-thumb b{font-size:56px;line-height:1}
+.sb-thumb.big{aspect-ratio:16/9}.sb-thumb.big b{font-size:110px}
+.sb-thumb.wide{aspect-ratio:4/3}
+.sb-thumb.sq{width:104px;height:104px;flex:none}.sb-thumb.sq b{font-size:40px}
+.t1{background:linear-gradient(135deg,#f6d9b4,#e9a868)}.t2{background:linear-gradient(135deg,#d7e4f4,#8eb2dd)}.t3{background:linear-gradient(135deg,#dcefdc,#93c79a)}
+.t4{background:linear-gradient(135deg,#f3dce4,#df9db3)}.t5{background:linear-gradient(135deg,#ece3f6,#b39ad8)}.t6{background:linear-gradient(135deg,#f6efc9,#e2c55d)}
+.sb-meta{font-size:14px;color:var(--sb-mute);margin-top:10px}
+.sb-meta em{font-style:normal;font-weight:700;color:var(--sb-ink);margin-right:8px}
+/* 홈 */
+.sb-top{display:grid;grid-template-columns:1.45fr 1fr;gap:36px;padding-top:32px}
+.sb-lead h1{font-size:30px;line-height:1.35;letter-spacing:-.035em;margin:22px 0 10px}
+.sb-lead p{font-size:17px;line-height:1.7;color:var(--sb-sub);margin:0}
+.sb-side{display:flex;flex-direction:column}
+.sb-side a{display:flex;gap:16px;padding:18px 0;border-bottom:1px solid var(--sb-line)}
+.sb-side a:first-child{padding-top:0}.sb-side a:last-child{border:0}
+.sb-side h3{font-size:18px;line-height:1.45;letter-spacing:-.03em;margin:0}
+.sb-lead:hover h1,.sb-side a:hover h3,.sb-grid a:hover h3,.sb-posts a:hover h3{text-decoration:underline;text-underline-offset:3px}
+.sb-sec{padding:40px 0;border-bottom:1px solid var(--sb-line)}
+.sb-sec-flat{border:0;padding-bottom:8px}
+.sb-sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:18px}
+.sb-sec-head h2{font-size:22px;letter-spacing:-.03em;margin:0 0 4px}
+.sb-sec-head p{color:var(--sb-sub);font-size:15px;margin:0}
+.sb-more{font-size:14px;color:var(--sb-sub);font-weight:600;white-space:nowrap}
+.sb-report-box{display:flex;align-items:center;gap:24px;background:var(--sb-orange-soft);border-radius:20px;padding:28px 32px}
+.sb-report-box img{width:120px;height:auto;flex:none}
+.sb-report-box h2{font-size:24px;letter-spacing:-.035em;margin:0 0 6px;line-height:1.4}
+.sb-report-box p{margin:0;color:#7a5a45;font-size:16px;line-height:1.6}
+.sb-btns{display:flex;gap:8px;margin-left:auto;flex:none}
+.sb-btns a{padding:12px 20px}
+.sb-ghost{background:#fff;color:var(--sb-brown);font-weight:700;border-radius:12px;font-size:15px}
+.sb-cases{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.sb-case{border:1px solid var(--sb-line);border-radius:16px;padding:20px;background:#fff;display:block}
+.sb-case:hover{border-color:#d8d8d8;box-shadow:0 4px 16px rgba(0,0,0,.05)}
+.sb-case h3{font-size:17px;line-height:1.5;letter-spacing:-.03em;margin:12px 0 8px;overflow-wrap:anywhere}
+.sb-case-co{font-size:14px;color:var(--sb-sub)}
+.sb-case-me{margin-top:16px;font-size:13px;color:var(--sb-mute)}
+.sb-badge{display:inline-block;font-size:13px;font-weight:700;padding:4px 10px;border-radius:999px}
+.b-new{background:#eeeff1;color:#555b63}.b-review{background:#e8f0fc;color:#2a5fa8}.b-more{background:#f0e9fb;color:#6a41a8}
+.b-wait{background:#fff4cc;color:#7f5d00}.b-ans{background:#ffe7d6;color:#a84800}.b-done{background:#e2f4e5;color:#23743a}
+.sb-two{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.sb-rank{border:1px solid var(--sb-line);border-radius:16px;overflow:hidden}
+.sb-tabs{display:flex;border-bottom:1px solid var(--sb-line)}
+.sb button,.sb input,.sb select,.sb textarea{font-family:inherit}
+.sb-tabs button{flex:1;padding:14px;font-weight:700;color:var(--sb-mute);font-size:15px;background:none;border:0}
+.sb-tabs button.on{color:var(--sb-ink);box-shadow:inset 0 -3px 0 var(--sb-ink)}
+.sb-rank ol{list-style:none;margin:0;padding:6px 20px}
+.sb-rank li{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--sb-line)}
+.sb-rank li:last-child{border:0}
+.sb-rank .n{width:22px;font-weight:800;color:var(--sb-orange);font-size:17px}
+.sb-rank .nm{flex:1;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.sb-rank .st{font-size:13px;color:var(--sb-sub);text-align:right;line-height:1.5;white-space:nowrap}
+.sb-rank .st b{color:var(--sb-ink)}
+.sb-rank-foot{font-size:12px;color:var(--sb-mute);padding:0 20px 16px;line-height:1.6;margin:0}
+.sb-posts{list-style:none;margin:0;padding:0}
+.sb-posts li{border-bottom:1px solid var(--sb-line)}
+.sb-posts a{display:block;padding:16px 0}
+.sb-posts li:first-child a{padding-top:4px}
+.sb-posts .cat{font-size:13px;font-weight:700;color:#2f6fbd}
+.sb-posts h3{font-size:17px;margin:6px 0;letter-spacing:-.03em;line-height:1.45}
+.sb-posts .me{font-size:13px;color:var(--sb-mute);display:flex;gap:12px}
+.sb-empty{color:var(--sb-sub);font-size:15px;padding:16px 0;list-style:none}
+.sb-empty a{color:var(--sb-orange);font-weight:700}
+.sb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px 22px}
+.sb-grid h3{font-size:18px;line-height:1.45;letter-spacing:-.03em;margin:14px 0 0}
+.sb-sum{color:var(--sb-sub);font-size:15px;line-height:1.6;margin:6px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sb-tools{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.sb-tools a{background:var(--sb-soft);border-radius:14px;padding:18px;font-weight:700;font-size:15px;display:flex;flex-direction:column;gap:6px}
+.sb-tools svg{width:26px;height:26px;fill:none;stroke:var(--sb-orange);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-bottom:4px}
+.sb-tools small{font-weight:400;color:var(--sb-sub);font-size:13px}
+/* 생활정보 목록·글 */
+.sb-page-head{padding:36px 0 8px}
+.sb-page-head h1{font-size:30px;letter-spacing:-.035em;margin:0 0 6px}
+.sb-page-head p{color:var(--sb-sub);margin:0}
+.sb-cats{display:flex;gap:8px;overflow-x:auto;padding:18px 0 26px;scrollbar-width:none}
+.sb-cats a{flex:none;padding:8px 14px;border-radius:999px;background:var(--sb-soft);font-weight:600;font-size:14px;color:var(--sb-sub)}
+.sb-cats a.on{background:var(--sb-ink);color:#fff}
+.sb-pager{display:flex;gap:16px;justify-content:center;align-items:center;margin-top:36px;font-weight:600;color:var(--sb-sub)}
+.sb-article article{max-width:720px;margin:0 auto;padding-top:36px}
+.sb-article-cat{display:inline-block;font-weight:700;color:var(--sb-orange);font-size:15px}
+.sb-article h1{font-size:32px;line-height:1.4;letter-spacing:-.035em;margin:10px 0 0}
+.sb-article .sb-meta{margin:10px 0 24px}
+.sb-article-sum{font-size:18px;line-height:1.75;color:#3d4148;background:var(--sb-soft);border-radius:14px;padding:20px 22px;margin:24px 0 0}
+.sb-article-body{font-size:17px;line-height:1.9;color:#2b2e33;margin-top:24px}
+.sb-article-body h2{font-size:22px;letter-spacing:-.03em;margin:36px 0 8px}
+.sb-article-body p{margin:0 0 18px}
+.sb-article-body ul{padding-left:22px;margin:0 0 18px}
+.sb-source{font-size:14px;color:var(--sb-sub);border-top:1px solid var(--sb-line);padding-top:16px;margin-top:28px}
+.sb-source a{color:var(--sb-ink);text-decoration:underline}
+.sb-draft{background:#fff4cc;color:#7f5d00;border-radius:10px;padding:10px 14px;font-size:14px}
+.sb-report-mini{max-width:720px;margin:40px auto 0;padding:22px 24px}
+.sb-report-mini img{width:76px}.sb-report-mini h2{font-size:19px}.sb-report-mini p{font-size:14px}
+/* 바닥글·탭바 */
+.sb .site-footer{background:var(--sb-soft);border-top:0}
+.sb-ft-logo img{height:30px;width:auto;display:block}
+.sb-tabbar{display:none}
+@media(max-width:1000px){.sb-nav{gap:18px;margin-left:16px;font-size:15px}}
+@media(max-width:860px){
+  .sb-nav,.sb-hd .sb-cta{display:none}
+  .sb-chips{display:flex}
+  .sb-hd{height:56px;gap:12px}
+  .sb-wrap,.sb main.sb-wrap{padding-left:16px;padding-right:16px}
+  .sb-logo .sb-wm{height:30px}
+  .sb-login{padding:8px 14px;font-size:14px}
+  .sb-top{gap:24px;padding-top:24px}
+  .sb-lead h1{font-size:24px;margin-top:16px}.sb-lead p{font-size:16px}
+  .sb-thumb.sq{width:84px;height:84px}.sb-side h3{font-size:17px}
+  .sb-sec{padding:30px 0}.sb-sec-flat{padding-bottom:4px}
+  .sb-report-box{flex-wrap:wrap;padding:22px;gap:14px}.sb-report-box img{width:76px}
+  .sb-report-box>div:not(.sb-btns){flex:1;min-width:0}.sb-report-box h2{font-size:19px}.sb-report-box p{font-size:14px}
+  .sb-btns{margin:0;flex:1 1 100%}.sb-btns a{flex:1;text-align:center}
+  .sb-cases{grid-template-columns:1fr 1fr;gap:10px}.sb-cases .sb-case:nth-child(3){display:none}
+  .sb-case{padding:16px 18px}.sb-case h3{margin:10px 0 6px}.sb-case-me{margin-top:10px}
+  .sb-cats{flex-wrap:wrap;overflow:visible}
+  .sb-two{grid-template-columns:1fr;gap:30px}
+  .sb-grid{grid-template-columns:1fr 1fr;gap:20px 12px}.sb-grid h3{font-size:15px;margin-top:10px}.sb-grid .sb-meta{font-size:12px}
+  .sb-thumb.wide b{font-size:44px}
+  .sb-tools{grid-template-columns:1fr 1fr}
+  .sb-article h1{font-size:25px}.sb-article-body{font-size:16px}
+  .sb .site-footer{padding-bottom:84px}
+  .sb .to-top{bottom:84px}
+  .sb-tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--sb-line);height:64px;padding-bottom:env(safe-area-inset-bottom);z-index:30}
+  .sb-tabbar a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;color:var(--sb-mute)}
+  .sb-tabbar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .sb-tabbar a.on{color:var(--sb-ink)}
+  .sb-tab-plus span{background:var(--sb-orange);color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .sb-tab-plus svg{stroke-width:2.6}
+}
+/* 휴대폰: 대표 글 아래로 목록, 제보 카드 한 줄씩 */
+@media(max-width:640px){
+  .sb-top{grid-template-columns:1fr;gap:8px;padding-top:20px}
+  .sb-lead h1{font-size:23px}
+  .sb-thumb.big b{font-size:84px}
+  .sb-side{margin-top:18px;border-top:1px solid var(--sb-line)}
+  .sb-side a:first-child{padding-top:18px}
+  .sb-cases{grid-template-columns:1fr}.sb-cases .sb-case:nth-child(3){display:block}
+}

@@ -80,7 +80,7 @@ def ask_ai(case):
     key=os.getenv('OPENAI_API_KEY','').strip()
     if not key:raise RuntimeError('OpenAI API 키가 없어요')
     body={'model':ai_model(),'temperature':0.2,'response_format':{'type':'json_object'},
-          'messages':[{'role':'system','content':SYSTEM},{'role':'user','content':json.dumps(case_input(case),ensure_ascii=False)}]}
+          'messages':[{'role':'system','content':_branded(SYSTEM)},{'role':'user','content':json.dumps(case_input(case),ensure_ascii=False)}]}
     st,res=post_json('https://api.openai.com/v1/chat/completions',{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body,45)
     if st!=200:raise RuntimeError(f'AI 응답 오류 ({st}) '+str((res.get('error') or {}).get('message',''))[:120].replace(key,'***'))
     try:facts=json.loads(res['choices'][0]['message']['content'])
@@ -100,6 +100,11 @@ def clean_facts(facts,case):
     out['paragraphs']=paras;out['questions']=qs[:5]
     return out
 
+def _branded(text):
+    # 기본 문구 속 '소비자제보센터'를 지금 사이트 이름(관리자 설정)으로 바꿈
+    import notify
+    return notify.branded(text)
+
 def compose(facts,case_company,public_url):
     """요청서 양식(운영자가 정한 문구)에 내용을 채워 (제목, 본문)."""
     name=facts.get('company') if facts.get('company') and facts.get('company')!=NEED else case_company
@@ -110,7 +115,7 @@ def compose(facts,case_company,public_url):
            '■ 확인 요청 사항','\n'.join(f'{i}. {q}' for i,q in enumerate(facts['questions'],1))]
     if public_url:parts+=['','■ 제보 내용 확인',public_url]
     parts+=['',CLOSING]
-    return title,'\n'.join(parts)
+    return _branded(title),_branded('\n'.join(parts))
 
 def blank_facts(case):
     return {'company':case['company'],'paragraphs':['제보자에 따르면 (주요 제보 내용을 2~4문단으로 적어 주세요.)'],

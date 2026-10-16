@@ -17,6 +17,8 @@ const ROLES={
   biz:['/biz','/biz/case/4','/biz/statement'],
   newsroom:['/reporter','/reporter?mine=1','/reporter/case/4','/reporter/password'],
 };
+// 소보루 브랜드로 띄운 서버(VRT_BRAND=소보루)일 때 생활정보·커뮤니티 화면도 봄
+if(process.env.VRT_SOBORU)ROLES.guest.push('/life','/life/1','/board','/guide');
 const WIDTHS=(process.env.VRT_WIDTHS||'1440,1024,768,390').split(',').map(Number);
 const TOLERANCE=+(process.env.VRT_TOLERANCE||0.3);
 async function submit(p){await Promise.all([p.waitForNavigation(),p.click('main form button[type=submit]')]);}
@@ -38,7 +40,9 @@ function layoutCheck(){
     let hidden=0,off=0,ex='',offEx='';
     for(const e of els){const r=e.getBoundingClientRect();
       if(sr&&r.left<sr.right-1&&r.right>sr.left&&r.bottom>sr.top&&r.top<sr.bottom){hidden++;ex=ex||e.tagName+' "'+e.textContent.trim().slice(0,20)+'"';}
-      if(r.right>vw+1||r.left<-1){off++;offEx=offEx||e.tagName+' "'+e.textContent.trim().slice(0,20)+'"';}
+      // 가로로 넘겨 보는 줄(분류 탭 등) 안의 항목은 원래 화면 밖에 있음
+      const inScroller=(()=>{for(let x=e.parentElement;x&&x!==main;x=x.parentElement){const o=getComputedStyle(x).overflowX;if(o==='auto'||o==='scroll')return true;}return false;})();
+      if(!inScroller&&(r.right>vw+1||r.left<-1)){off++;offEx=offEx||e.tagName+' "'+e.textContent.trim().slice(0,20)+'"';}
     }
     if(hidden)bad.push('왼쪽 메뉴에 가려진 요소 '+hidden+'개 (예: '+ex+')');
     if(off)bad.push('화면 밖으로 나간 요소 '+off+'개 (예: '+offEx+')');

@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% from 'soboru_life_macros.html' import thumb, meta %}
+{% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
+{% block content %}
+<main class="sb-wrap sb-home">
+  {% if lead %}
+  <div class="sb-top">
+    <a class="sb-lead" href="{{ url_for('life_article', article_id=lead['id']) }}">
+      {{ thumb(lead, 'big') }}
+      <h1>{{ lead['title'] }}</h1>
+      {% if lead['summary'] %}<p>{{ lead['summary'] }}</p>{% endif %}
+      {{ meta(lead) }}
+    </a>
+    {% if side %}<div class="sb-side">{% for a in side %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'sq') }}<div><h3>{{ a['title'] }}</h3>{{ meta(a) }}</div></a>{% endfor %}</div>{% endif %}
+  </div>
+  {% endif %}
+
+  <section class="sb-sec sb-sec-flat">
+    <div class="sb-report-box">
+      <img src="{{ asset('img/soboru-character.png') }}" alt="" width="120" height="93">
+      <div><h2>{{ ui('sb.box_title', '억울한 일 겪으셨나요?') }}</h2><p>{{ ui('sb.box_body', '소보루에 제보하면 기업에 전달하고, 답변이 올 때까지 챙겨 드려요.') }}</p></div>
+      <div class="sb-btns"><a class="sb-ghost" href="{{ url_for('lookup') }}">{{ ui('sb.box_lookup', '내 제보 조회') }}</a><a class="sb-cta" href="{{ url_for('report') }}">{{ ui('sb.cta', '제보하기') }}</a></div>
+    </div>
+  </section>
+
+  {% set shown = cases|selectattr('title')|list %}
+  {% if shown %}
+  <section class="sb-sec">
+    <div class="sb-sec-head"><div><h2>{{ ui('sb.cases_title', '방금 들어온 제보') }}</h2><p>{{ ui('sb.cases_sub', '개인정보는 가리고 제목과 기업만 보여 드려요') }}</p></div><a class="sb-more" href="{{ url_for('reports') }}">{{ ui('sb.more_all', '전체 보기') }} ›</a></div>
+    <div class="sb-cases">
+      {% for c in shown[:3] %}
+      <a class="sb-case" href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
+        <span class="sb-badge {{ badge.get(c.status, 'b-new') }}">{{ status_name(c.status) }}</span>
+        <h3>{% if c.secret %}🔒 {% endif %}{{ c.title }}</h3>
+        <div class="sb-case-co">{{ c.company }} · {{ c.cat }}</div>
+        <div class="sb-case-me"><time datetime="{{ c.created }}">{{ c.when }}</time></div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="sb-sec">
+    <div class="sb-two">
+      <div>
+        <div class="sb-sec-head"><div><h2>{{ ui('sb.rank_title', '이달의 기업 답변') }}</h2><p>최근 {{ rank.days }}일 · 제보 {{ rank.min_n }}건 이상 받은 기업</p></div><a class="sb-more" href="{{ url_for('companies') }}">{{ ui('sb.rank_more', '기업 찾기') }} ›</a></div>
+        <div class="sb-rank" data-tabs>
+          <div class="sb-tabs" role="tablist"><button type="button" role="tab" class="on" data-tab="best" aria-selected="true">{{ ui('sb.rank_best', '답변 잘한 곳') }}</button><button type="button" role="tab" data-tab="wait" aria-selected="false">{{ ui('sb.rank_wait', '답변 기다리는 곳') }}</button></div>
+          {% for key in ('best', 'wait') %}
+          <ol data-pane="{{ key }}"{% if key == 'wait' %} hidden{% endif %}>
+            {% for p in rank[key] %}<li><span class="n">{{ loop.index }}</span><a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
+              <span class="st">{% if key == 'best' %}답변률 <b>{{ p['rate'] }}%</b><br>답변까지 {{ p['median'] }}{% else %}답변 없는 제보 <b>{{ p['waiting'] }}건</b><br>답변률 {{ p['rate'] }}%{% endif %}</span></li>
+            {% else %}<li class="sb-empty">{{ ui('sb.rank_empty', '아직 순위를 낼 만큼 제보가 쌓이지 않았어요.') }}</li>{% endfor %}
+          </ol>
+          {% endfor %}
+          <p class="sb-rank-foot">{{ ui('sb.rank_note', '숫자는 소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.') }}</p>
+        </div>
+      </div>
+      <div>
+        <div class="sb-sec-head"><div><h2>{{ ui('sb.board_title', '커뮤니티 인기글') }}</h2><p>{{ ui('sb.board_sub', '소비자끼리 나누는 경험과 팁') }}</p></div><a class="sb-more" href="{{ url_for('board') }}">{{ ui('sb.more', '더 보기') }} ›</a></div>
+        <ul class="sb-posts">
+          {% for p in posts %}<li><a href="{{ url_for('board_post', post_id=p['id']) }}"><span class="cat">{{ p['category'] }}</span><h3>{{ p['title'] }}</h3><div class="me"><span>공감 {{ p['likes'] }}</span><span>댓글 {{ p['comments'] }}</span><span>{{ ago_text(p['created']) }}</span></div></a></li>
+          {% else %}<li class="sb-empty">{{ ui('sb.board_empty', '첫 글을 남겨 주세요.') }} <a href="{{ url_for('board') }}">커뮤니티 가기 ›</a></li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  {% if more %}
+  <section class="sb-sec sb-sec-flat">
+    <div class="sb-sec-head"><div><h2>{{ ui('sb.life_title', '알아 두면 돈 버는 생활정보') }}</h2><p>{{ ui('sb.life_sub', '소보루 에디터가 쉽게 풀어 드려요') }}</p></div><a class="sb-more" href="{{ url_for('life') }}">{{ ui('sb.more', '더 보기') }} ›</a></div>
+    <div class="sb-grid">{% for a in more %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{{ meta(a) }}</a>{% endfor %}</div>
+  </section>
+  {% endif %}
+  <section class="sb-sec sb-sec-flat">
+    <div class="sb-tools">
+      <a href="{{ url_for('info_page', page='guide') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 14h8"/></svg>{{ ui('sb.tool1', '제보 잘 쓰는 법') }}<small>{{ ui('sb.tool1s', '증빙부터 요구까지') }}</small></a>
+      <a href="{{ url_for('info_page', page='types') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>{{ ui('sb.tool2', '피해 유형별 안내') }}<small>{{ ui('sb.tool2s', '배송부터 개인정보까지') }}</small></a>
+      <a href="{{ url_for('info_page', page='process') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>{{ ui('sb.tool3', '처리 절차') }}<small>{{ ui('sb.tool3s', '접수부터 종결까지') }}</small></a>
+      <a href="{{ url_for('info_page', page='faq') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 015 0c0 1.7-2.5 2-2.5 3.8M12 16.8v.2"/></svg>{{ ui('sb.tool4', '자주 묻는 질문') }}<small>{{ ui('sb.tool4s', '궁금한 점 바로 확인') }}</small></a>
+    </div>
+  </section>
+</main>
+<script>
+  // 이달의 기업 답변: 탭 바꾸기
+  document.querySelectorAll('[data-tabs]').forEach(function (box) {
+    box.querySelectorAll('[data-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        box.querySelectorAll('[data-tab]').forEach(function (b) { var on = b === btn; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+        box.querySelectorAll('[data-pane]').forEach(function (p) { p.hidden = p.getAttribute('data-pane') !== btn.getAttribute('data-tab'); });
+      });
+    });
+  });
+</script>
+{% endblock %}
