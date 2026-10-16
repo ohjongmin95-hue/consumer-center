@@ -33,7 +33,7 @@
 {{ op.opinfo() }}
 <p class="copy">© 2026 SOBORU. All rights reserved.</p>{% if site!='me' %}<p class="tfnote">이 서비스에는 토스(비바리퍼블리카)가 제공한 Tossface가 적용되어 있습니다 · <a href="https://toss.im/tossface/copyright" target="_blank" rel="noopener">저작권 안내</a></p>{% endif %}</div>{% if ffold %}</details>{% endif %}</footer>{% endblock %}
 {% block script %}{% endblock %}
-{% if site=='biz' and co and not request.path.startswith('/ops') %}<script src="{{ url_for('static',filename='notify.js') }}?v=1" data-url="{{ url_for('notify_poll') }}" defer></script>{% endif %}
+{% if site=='biz' and co and not request.path.startswith('/ops') %}<script src="{{ url_for('static',filename='notify.js') }}?v=2" data-url="{{ url_for('notify_poll') }}" defer></script>{% endif %}
 <script>document.querySelectorAll('tr[data-href]').forEach(function(r){r.addEventListener('click',function(e){if(!e.target.closest('a,button'))location.href=r.dataset.href;});});</script>
 </body>
 </html>
