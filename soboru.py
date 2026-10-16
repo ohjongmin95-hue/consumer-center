@@ -277,7 +277,7 @@ def install(S):
         shown = [x['id'] for x in ([lead] if lead else []) + side if x['kind'] == 'life']
         more = life_rows(6, exclude=shown) or life_rows(6)
         return render_template('soboru_home.html', plan=plan, lead=lead, side=side, more=more, rank=company_rank(4),
-                               cases=S.report_rows(limit=6), posts=S.recent_posts(4))
+                               cases=S.report_rows(limit=6), posts=S.community_feed(4))
     app.view_functions['home'] = home
 
     @app.route('/admin/home-plan', methods=['GET', 'POST'])

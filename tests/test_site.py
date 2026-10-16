@@ -510,6 +510,60 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, {'ENABLE_BOARD': '0'}):
             self.assertEqual(self.post_form(writer, '/board/write', {}).status_code, 503)
 
+    def test_community_review_tip_question(self):
+        # 커뮤니티 글 종류: 리뷰(별점·좋았던 점·기업 연결), 꿀팁(요약), 질문(글쓴이가 해결됨 표시). 소보루 화면에서 종류별로 보임
+        with self.site.conn() as db:
+            co = db.execute("INSERT INTO companies(name,biz_no,contact_name,contact_phone,contact_email,created,status) VALUES('리뷰상사','1234567890','담당','02','a@b.c','2026-10-01','listed')").lastrowid
+        writer = self.site.app.test_client()
+        base = {'nickname': '후기왕', 'password': '1234', 'agree': 'on'}
+        r = self.post_form(writer, '/board/write', {**base, 'kind': 'review', 'target': '리뷰 상사', 'rating': '4', 'recommend': '1', 'title': '환불이 빨랐어요', 'pros': '사흘 만에 환불 010-1234-5678', 'cons': '전화 연결이 느려요', 'body': ''})
+        self.assertEqual(r.status_code, 302)
+        rid = int(r.headers['Location'].rstrip('/').split('/')[-1])
+        bad = self.post_form(writer, '/board/write', {**base, 'kind': 'review', 'target': '어딘가', 'title': '별점 없는 리뷰', 'body': '별점을 안 골랐어요. 열 글자 넘게.'})
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn('별점을 골라 주세요', bad.get_data(as_text=True))
+        q = self.post_form(writer, '/board/write', {**base, 'kind': 'question', 'title': '위약금 얼마인가요?', 'body': '헬스장 중도 해지 위약금이 궁금해요.', 'category': '자유'})
+        qid = int(q.headers['Location'].rstrip('/').split('/')[-1])
+        with self.site.conn() as db:
+            row = db.execute('SELECT * FROM posts WHERE id=?', (rid,)).fetchone()
+            self.assertEqual((row['kind'], row['rating'], row['recommend'], row['company_id'], row['category']), ('review', 4, 1, co, '경험 공유'))
+            self.assertEqual(db.execute('SELECT kind,category FROM posts WHERE id=?', (qid,)).fetchone()[:], ('question', '질문해요'))
+            tid = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind,summary) VALUES('꿀팁','팁','','택배 분실 보상 순서','먼저 택배사에 접수해요. 그다음 영수증.','x',?,'tip','운송장 금액 기준이에요')", (datetime.datetime.now().isoformat(timespec='seconds'),)).lastrowid
+        page = writer.get(f'/board/{rid}').get_data(as_text=True)
+        self.assertIn('aria-label="별점 5점 중 4점"', page)
+        self.assertIn(f'/companies/{co}', page)
+        self.assertNotIn('010-1234-5678', page)
+        # 질문: 비밀번호가 틀리면 그대로, 맞으면 해결됨
+        token = self.csrf(writer, f'/board/{qid}')
+        writer.post(f'/board/{qid}/solve', data={'_csrf': token, 'password': 'nope'})
+        with self.site.conn() as db:self.assertEqual(db.execute('SELECT solved FROM posts WHERE id=?', (qid,)).fetchone()[0], 0)
+        writer.post(f'/board/{qid}/solve', data={'_csrf': token, 'password': '1234'})
+        with self.site.conn() as db:self.assertEqual(db.execute('SELECT solved FROM posts WHERE id=?', (qid,)).fetchone()[0], 1)
+        self.assertIn('해결됨', self.client.get(f'/board/{qid}').get_data(as_text=True))
+        self.assertIn('리뷰 상사', self.client.get('/board').get_data(as_text=True))  # 예전 화면에도 리뷰 대상이 보임
+        self.assertIn('커뮤니티 리뷰', self.client.get(f'/companies/{co}').get_data(as_text=True))
+        with self.site.conn() as db:
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+        try:
+            board = self.client.get('/board').get_data(as_text=True)
+            for text in ('무엇을 올릴까요?', '리뷰 모아 보기', '환불이 빨랐어요', '운송장 금액 기준이에요', 'cm-solved', '별점 5점 중 4점'):
+                self.assertIn(text, board)
+            only = self.client.get('/board?type=question').get_data(as_text=True)
+            self.assertIn('위약금 얼마인가요?', only)
+            self.assertNotIn('환불이 빨랐어요', only)
+            self.assertIn('data-kind="tip"', self.client.get('/board/write?type=tip').get_data(as_text=True))
+            post = self.client.get(f'/board/{rid}').get_data(as_text=True)
+            self.assertIn('cm-review', post)
+            self.assertIn('좋았던 점', post)
+            self.assertNotIn('010-1234-5678', post)
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertIn('sb-cm-card k-review', home)
+            self.assertIn('택배 분실 보상 순서', home)
+            self.assertIn('별점 5점 중 4점', self.client.get(f'/companies/{co}').get_data(as_text=True))
+        finally:
+            with self.site.conn() as db:
+                db.execute("DELETE FROM site_content WHERE key='site.brand'")
+
     def test_public_and_secret_report_pages(self):
         ids = {}
         for visibility in ('public', 'secret'):

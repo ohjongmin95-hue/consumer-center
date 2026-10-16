@@ -1,8 +1,10 @@
 {% extends 'base.html' %}
 {% from 'board_macros.html' import heart, bubble, chip %}
+{% from 'community_macros.html' import stars %}
 {% block title %}{{ txt('board.title') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ txt('board.intro') or ui('board.meta', '소비자들이 피해 경험과 해결 방법을 나누는 게시판입니다.') }}{% endblock %}
 {% block content %}
+{% if is_soboru() %}{% include 'soboru_board.html' %}{% else %}
 <main class="board">
   <section class="board-hero">
     <div>
@@ -45,7 +47,8 @@
     <article class="post-card">
       <a class="post-link" href="{{ url_for('board_post', post_id=p['id']) }}">
         <div class="post-top">{{ chip(p['category'], categories) }}<span class="post-meta">{% if p['user_id'] %}<span class="member-badge">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ p['nickname'] }} · {{ p['created']|ago }}</span></div>
-        <h2>{{ p['title'] }}</h2>
+        {% if p['kind'] == 'review' %}<p class="post-review">{{ mask_personal(p['target']) }} {{ stars(p['rating']) }}</p>{% endif %}
+        <h2>{% if p['kind'] == 'question' and p['solved'] %}<span class="cm-solved">해결됨</span> {% endif %}{{ p['title'] }}</h2>
         <p class="post-excerpt">{{ p['excerpt'] }}</p>
       </a>
       <div class="post-actions">
@@ -72,4 +75,5 @@
   {% endif %}
   <p class="board-foot-note">{{ ui('board.foot1', '공감과 알리기는 한 번씩 할 수 있어요. 권리를 침해하는 글은') }} <a href="{{ url_for('takedown') }}">{{ ui('board.foot_link', '게시중단 요청') }}</a>{{ ui('board.foot2', '으로 알려 주세요.') }}</p>
 </main>
+{% endif %}
 {% endblock %}

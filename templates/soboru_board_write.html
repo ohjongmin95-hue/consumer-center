@@ -1,0 +1,93 @@
+{# 소보루 커뮤니티 글쓰기: 종류(리뷰·꿀팁·질문·이야기)를 고르면 칸이 바뀜. board_write.html에서 is_soboru()일 때 #}
+{% set f = request.form %}
+{% set cur = f.get('kind') or kind or request.args.get('type') or 'review' %}
+{% set cur = cur if cur in POST_KIND_NAMES else 'review' %}
+{% set pick_emoji = {'review': '⭐', 'tip': '💡', 'question': '🙋', 'post': '💬'} %}
+{% set rate_words = ['', '별로예요', '아쉬워요', '보통이에요', '좋아요', '최고예요'] %}
+<main class="sb-wrap cm cm-write">
+  <a class="cm-back" href="{{ url_for('board') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('cm.title', '커뮤니티') }}</a>
+  <h1>{{ ui('cm.pick_title', '무엇을 올릴까요?') }}</h1>
+  {% if not enabled %}<div class="alert">{{ ui('board.closed', '게시판 글쓰기는 곧 열려요. 조금만 기다려 주세요.') }}</div>{% endif %}
+  <form class="cm-form" method="post" data-kind="{{ cur }}" data-cm-form><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <fieldset class="cm-kinds"><legend class="sr-only">{{ ui('cm.tabs_aria', '글 종류') }}</legend>
+      {% for k, name, desc in POST_KINDS %}<label><input type="radio" name="kind" value="{{ k }}"{% if cur == k %} checked{% endif %}><span><i aria-hidden="true">{{ pick_emoji[k] }}</i><b>{{ name }}</b><small>{{ desc }}</small></span></label>{% endfor %}
+    </fieldset>
+
+    <div class="cm-f" data-for="review">
+      <label class="cm-l" for="w-target">{{ ui('cm.f_target', '어떤 회사·제품인가요?') }}</label>
+      <input id="w-target" name="target" maxlength="40" placeholder="{{ ui('cm.f_target_ph', '예: 오소보쇼핑, 무선 이어폰 A') }}" value="{{ f.get('target', request.args.get('target', ''))[:40] }}">
+      <p class="cm-hint">{{ ui('cm.f_target_hint', '소보루에 등록된 기업이면 기업 페이지와 이어져요.') }}</p>
+    </div>
+    <div class="cm-f" data-for="review">
+      <span class="cm-l" id="w-rate-l">{{ ui('cm.f_rating', '별점을 매겨 주세요') }}</span>
+      <div class="cm-rate-row">
+        <div class="cm-rate" role="radiogroup" aria-labelledby="w-rate-l">{% for i in [5, 4, 3, 2, 1] %}<input type="radio" id="w-r{{ i }}" name="rating" value="{{ i }}"{% if f.get('rating') == i|string %} checked{% endif %} data-word="{{ rate_words[i] }}"><label for="w-r{{ i }}" title="{{ i }}점 · {{ rate_words[i] }}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.8l2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.8l-5.1 2.6 1-5.6-4.1-4 5.7-.8z"/></svg><span class="sr-only">{{ i }}점</span></label>{% endfor %}</div>
+        <b class="cm-rate-word" data-rate-word>{{ rate_words[f.get('rating')|int] if f.get('rating', '')|int in range(1, 6) else '' }}</b>
+      </div>
+    </div>
+    <div class="cm-f" data-for="review">
+      <span class="cm-l">{{ ui('cm.f_rec', '다른 분께 추천하나요?') }}</span>
+      <div class="cm-seg"><label><input type="radio" name="recommend" value="1"{% if f.get('recommend') == '1' %} checked{% endif %}><span>👍 {{ ui('cm.rec_yes', '추천해요') }}</span></label><label><input type="radio" name="recommend" value="0"{% if f.get('recommend') == '0' %} checked{% endif %}><span>{{ ui('cm.rec_no', '추천하지 않아요') }}</span></label></div>
+    </div>
+    <div class="cm-f" data-for="post">
+      <span class="cm-l">{{ ui('board.cat_aria', '분류') }}</span>
+      <div class="cm-cats">{% for c in story_categories() %}<label><input type="radio" name="category" value="{{ c }}"{% if f.get('category', story_categories()[0]) == c %} checked{% endif %}><span>{{ c }}</span></label>{% endfor %}</div>
+    </div>
+
+    {% if g.user %}
+    <p class="cm-me"><span class="cm-av">{{ g.user['nickname'][:1] }}</span><span><b>{{ g.user['nickname'] }}</b> {{ ui('board.as_member_post', '이름으로 올라가요. 내 정보에서 모아 보고, 비밀번호 없이 지울 수 있어요.') }}</span></p>
+    {% else %}
+    <div class="cm-two">
+      <div class="cm-f"><label class="cm-l" for="w-nick">{{ ui('board.nickname', '닉네임') }}</label><input id="w-nick" name="nickname" maxlength="20" required placeholder="{{ ui('board.nickname_ph', '2~20자') }}" value="{{ f.get('nickname','') }}"></div>
+      <div class="cm-f"><label class="cm-l" for="w-pw">{{ ui('board.delete_pw', '삭제용 비밀번호') }}</label><input id="w-pw" type="password" name="password" maxlength="30" required placeholder="{{ ui('board.pw_ph', '4~30자') }}"></div>
+    </div>
+    <p class="cm-hint cm-hint-top">{{ ui('board.pw_hint1', '나중에 글을 지울 때 필요해요.') }} <a href="{{ url_for('login', next=url_for('board_write', type=cur)) }}">{{ ui('common.login', '로그인') }}</a>{{ ui('board.pw_hint2', '하면 비밀번호 없이 쓸 수 있어요.') }}</p>
+    {% endif %}
+
+    <div class="cm-f">
+      <label class="cm-l" for="w-title" data-l-review="{{ ui('cm.l_title_review', '한 줄 평') }}" data-l-tip="{{ ui('cm.l_title_tip', '제목') }}" data-l-question="{{ ui('cm.l_title_q', '무엇이 궁금한가요?') }}" data-l-post="{{ ui('board.f_title', '제목') }}">{{ ui('board.f_title', '제목') }}</label>
+      <input id="w-title" name="title" maxlength="100" required value="{{ f.get('title','') }}" placeholder="{{ ui('board.f_title_ph', '어떤 일이 있었는지 한 줄로') }}"
+        data-p-review="{{ ui('cm.p_title_review', '예: 배송은 빨랐는데 포장이 아쉬웠어요') }}" data-p-tip="{{ ui('cm.p_title_tip', '예: 택배 분실 보상, 이렇게 받았어요') }}" data-p-question="{{ ui('cm.p_title_q', '예: 헬스장 중도 해지하면 위약금이 얼마인가요?') }}" data-p-post="{{ ui('board.f_title_ph', '어떤 일이 있었는지 한 줄로') }}">
+    </div>
+    <div class="cm-f" data-for="tip">
+      <label class="cm-l" for="w-sum">{{ ui('cm.f_summary', '한 줄 요약') }} <small>{{ ui('cm.optional', '선택') }}</small></label>
+      <input id="w-sum" name="summary" maxlength="120" value="{{ f.get('summary','') }}" placeholder="{{ ui('cm.f_summary_ph', '바쁜 분들을 위해 핵심만 한 줄로') }}">
+    </div>
+    <div class="cm-two" data-for="review">
+      <div class="cm-f"><label class="cm-l cm-l-up" for="w-pros">{{ ui('cm.f_pros', '좋았던 점') }}</label><textarea id="w-pros" name="pros" maxlength="500" rows="3" placeholder="{{ ui('cm.f_pros_ph', '예: 상담원이 친절하고 환불이 빨랐어요') }}">{{ f.get('pros','') }}</textarea></div>
+      <div class="cm-f"><label class="cm-l cm-l-down" for="w-cons">{{ ui('cm.f_cons', '아쉬운 점') }}</label><textarea id="w-cons" name="cons" maxlength="500" rows="3" placeholder="{{ ui('cm.f_cons_ph', '예: 전화 연결까지 30분 넘게 걸렸어요') }}">{{ f.get('cons','') }}</textarea></div>
+    </div>
+    <div class="cm-f">
+      <label class="cm-l" for="w-body" data-l-review="{{ ui('cm.l_body_review', '자세한 후기') }}" data-l-tip="{{ ui('cm.l_body_tip', '본문') }}" data-l-question="{{ ui('cm.l_body_q', '자세한 상황') }}" data-l-post="{{ ui('board.f_body', '내용') }}">{{ ui('board.f_body', '내용') }}</label>
+      <textarea id="w-body" name="body" maxlength="10000" rows="7" placeholder="{{ ui('board.f_body_ph', '언제, 어떤 상품이나 서비스에서, 어떤 일이 있었는지 편하게 적어 주세요. 비슷한 일을 겪는 분들에게 큰 도움이 돼요.') }}"
+        data-p-review="{{ ui('cm.p_body_review', '언제, 어떻게 이용했는지 적어 주면 다른 분들이 판단하기 쉬워요.') }}" data-p-tip="{{ ui('cm.p_body_tip', '순서대로 적으면 읽기 좋아요. 빈 줄로 문단을 나눠 주세요.') }}" data-p-question="{{ ui('cm.p_body_q', '언제, 어디서, 어떤 일이 있었는지 적어 주면 답이 빨라요.') }}" data-p-post="{{ ui('board.f_body_ph', '언제, 어떤 상품이나 서비스에서, 어떤 일이 있었는지 편하게 적어 주세요. 비슷한 일을 겪는 분들에게 큰 도움이 돼요.') }}">{{ f.get('body','') }}</textarea>
+      <p class="cm-hint">{{ ui('cm.privacy_hint', '전화번호·이메일은 자동으로 가려져요. 실명이나 주문번호는 적지 말아 주세요.') }}</p>
+    </div>
+    {% if txt('board.rules') %}
+    <details class="cm-rules"><summary>{{ ui('board.rules_title', '글쓰기 약속') }}</summary><ul{{ ed_attr('board.rules') }}>{% for line in g.content['board.rules'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul></details>
+    {% endif %}
+    <label class="cm-agree"><input type="checkbox" name="agree" required><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {% if g.user %}{{ ui('board.agree_member', '글쓰기 약속과 이용약관을 지키고, 글 내용 게시에 동의합니다.') }}{% else %}{{ ui('board.agree_guest', '글쓰기 약속과 이용약관을 지키고, 닉네임·비밀번호(암호화 저장)·글 내용 수집에 동의합니다.') }}{% endif %} <a href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">{{ ui('report.terms_link', '이용약관 ↗') }}</a> <a href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></span></label>
+    <button class="cm-submit" type="submit"{% if not enabled %} disabled{% endif %} data-s-review="{{ ui('cm.s_review', '리뷰 올리기') }}" data-s-tip="{{ ui('cm.s_tip', '꿀팁 올리기') }}" data-s-question="{{ ui('cm.s_q', '질문 올리기') }}" data-s-post="{{ ui('board.submit', '올리기') }}">{{ ui('board.submit', '올리기') }}</button>
+  </form>
+</main>
+<script>
+  // 종류를 고르면 맞는 칸·문구만 보여 줌 (스크립트가 없으면 모든 칸이 보이고 서버가 종류에 맞게 정리)
+  (function () {
+    var form = document.querySelector('[data-cm-form]'); if (!form) return;
+    function apply() {
+      var k = (form.querySelector('input[name=kind]:checked') || {}).value || 'review';
+      form.setAttribute('data-kind', k);
+      form.querySelectorAll('[data-for]').forEach(function (el) { el.hidden = el.getAttribute('data-for').split(' ').indexOf(k) < 0; });
+      form.querySelectorAll('[data-l-' + k + ']').forEach(function (el) { el.textContent = el.getAttribute('data-l-' + k); });
+      form.querySelectorAll('[data-p-' + k + ']').forEach(function (el) { el.placeholder = el.getAttribute('data-p-' + k); });
+      form.querySelectorAll('[data-s-' + k + ']').forEach(function (el) { el.textContent = el.getAttribute('data-s-' + k); });
+      var body = form.querySelector('#w-body'); body.required = k !== 'review'; body.maxLength = k === 'tip' ? 10000 : 5000;
+      form.querySelector('#w-target').required = k === 'review';
+    }
+    form.querySelectorAll('input[name=kind]').forEach(function (r) { r.addEventListener('change', apply); });
+    var word = form.querySelector('[data-rate-word]');
+    form.querySelectorAll('input[name=rating]').forEach(function (r) { r.addEventListener('change', function () { word.textContent = r.getAttribute('data-word'); }); });
+    apply();
+  })();
+</script>
