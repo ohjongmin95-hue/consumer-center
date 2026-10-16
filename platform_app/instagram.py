@@ -118,7 +118,7 @@ def take(db,co,lk,ev):
         except IgError:pass
     db.execute('UPDATE ig_links SET last_in=? WHERE company_id=?',(core.iso(),co['id']))
     if c and c['status'] not in core.FINAL:  # 같은 고객의 진행 중인 요청에 이어 붙인다
-        core.add_event(db,c['id'],'me',text)
+        core.add_event(db,c['id'],'me',text);core.notify_company_msg(db,c['id'],text)
         if c['status'] in ('answered','info'):db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],))
         db.execute('UPDATE cases SET updated=? WHERE id=?',(core.iso(),c['id']))
         db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,'m:'+mid,c['id']))

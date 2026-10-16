@@ -13,6 +13,7 @@ export type CompanyInfo = { id: number; name: string; login_id: string; link: st
 export type BizCase = {
   id: number;
   no: string;
+  channel?: string;
   category: string;
   title: string;
   name: string;
@@ -38,6 +39,9 @@ export type BizDetail = BizCase & {
   info_ask: string;
   phone: string;
   email: string;
+  send_via?: string; // 연결된 곳에서 온 요청이면 '누르면 ... 바로 가요'
+  live?: boolean;
+  direct?: boolean;
   plan: { title: string; steps: string[]; reply: string };
   ret: { status: string; courier: string; tracking: string; out_courier: string; out_tracking: string };
   refund: { possible: boolean; status: string; bank: string; account: string; holder: string };
@@ -47,8 +51,9 @@ export type BizDetail = BizCase & {
   comp?: { reco: string; status: string; given: string; examples: string[] };
   order?: Order | null;
   cancel_blocked?: boolean;
-  can: { comp?: boolean; ship_track?: boolean; approve: boolean; hold: boolean; ask: boolean; reply: boolean; ret_received: boolean; out_ship: boolean; refund_done: boolean };
+  can: { comp?: boolean; ship_track?: boolean; approve: boolean; hold: boolean; ask: boolean; reply: boolean; ret_received: boolean; out_ship: boolean; refund_done: boolean; close_chat?: boolean };
   message?: string;
+  warn?: string; // 기록은 됐지만 고객에게 보내지 못했을 때
 };
 export type Kpi = { n: number; auto: number; res: number | null; late: number };
 export type Home = {

@@ -117,7 +117,7 @@ def _take(db,co,own,m):
         r=db.execute(f'SELECT case_id FROM shop_seen WHERE company_id=? AND shop=? AND ext_id IN ({q}) ORDER BY rowid DESC LIMIT 1',(co['id'],SHOP,*m['refs'])).fetchone()
         c=db.execute('SELECT * FROM cases WHERE id=?',(r['case_id'],)).fetchone() if r else None
         if c and c['status'] not in core.FINAL:
-            core.add_event(db,c['id'],'me',body)
+            core.add_event(db,c['id'],'me',body);core.notify_company_msg(db,c['id'],body)
             if c['status'] in ('answered','info'):db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],))
             db.execute('UPDATE cases SET updated=? WHERE id=?',(core.iso(),c['id']))
             db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,m['msgid'],c['id']))

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
-import { Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CAT_ICON, Icon } from '../../components/Icon';
 import { Btn, Card, Chips, Field, H2, Loading, Notice, StatusPill } from '../../components/ui';
 import { api, ApiError, BizDetail, fmtDate } from '../../lib/api';
@@ -51,6 +51,7 @@ export default function CaseScreen() {
       const d = await api.act(session.token, id, fields);
       setC(d);
       setOk(d.message || '');
+      if (d.warn) setErr(d.warn);
       setMode('');
       setMsg('');
       setAsk('');
@@ -72,6 +73,15 @@ export default function CaseScreen() {
     } finally {
       setBusy('');
     }
+  };
+
+  const closeChat = () => {
+    const go = () => act({ act: 'close_chat' });
+    if (Platform.OS === 'web') return go();
+    Alert.alert('대화를 끝낼까요?', '고객이 다시 보내면 새 요청으로 들어와요.', [
+      { text: '취소', style: 'cancel' },
+      { text: '끝내기', onPress: go },
+    ]);
   };
 
   if (!c) return err ? <Notice text={err} /> : <Loading />;
@@ -101,6 +111,7 @@ export default function CaseScreen() {
         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
           {c.pending ? <StatusPill status="forwarded" label="승인 대기" /> : <StatusPill status={c.status} label={c.status_label} />}
           {c.overdue ? <StatusPill status="unresolved" label="기한 지남" /> : null}
+          {c.channel ? <StatusPill status="received" label={c.channel} /> : null}
         </View>
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
           <View style={st.ic}>
@@ -147,7 +158,7 @@ export default function CaseScreen() {
         <Card>
           <H2>{can.approve ? '다르게 처리하기' : '처리하기'}</H2>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {can.reply ? <ModeBtn on={mode === 'reply'} title="직접 답변" onPress={() => setMode(mode === 'reply' ? '' : 'reply')} /> : null}
+            {can.reply ? <ModeBtn on={mode === 'reply'} title="답변하기" onPress={() => setMode(mode === 'reply' ? '' : 'reply')} /> : null}
             {can.ask ? <ModeBtn on={mode === 'ask'} title="자료 요청" onPress={() => setMode(mode === 'ask' ? '' : 'ask')} /> : null}
             {can.hold ? <ModeBtn on={false} title={busy === 'hold' ? '보류 중' : '보류'} onPress={() => act({ act: 'hold' })} /> : null}
           </View>
@@ -156,8 +167,9 @@ export default function CaseScreen() {
               <Field multiline placeholder="고객에게 보낼 답변을 적어 주세요" value={msg} onChangeText={setMsg} />
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Btn title={busy === 'draft' ? '만드는 중' : '초안 만들기'} kind="soft" onPress={draft} busy={busy === 'draft'} style={{ flex: 1 }} />
-                <Btn title="보내기" onPress={() => act({ act: 'reply', msg })} busy={busy === 'reply'} disabled={!msg.trim()} style={{ flex: 1 }} />
+                <Btn title="답변하기" onPress={() => act({ act: 'reply', msg })} busy={busy === 'reply'} disabled={!msg.trim()} style={{ flex: 1 }} />
               </View>
+              <Text style={st.cap}>{c.send_via || (c.direct ? '직접 등록한 요청이라 기록만 남아요. 고객에게는 따로 전해 주세요' : '고객에게 알림이 가요')}</Text>
             </View>
           ) : null}
           {mode === 'ask' ? (
@@ -166,6 +178,14 @@ export default function CaseScreen() {
               <Btn title="고객에게 요청하기" onPress={() => act({ act: 'ask', ask })} busy={busy === 'ask'} />
             </View>
           ) : null}
+        </Card>
+      ) : null}
+
+      {can.close_chat ? (
+        <Card>
+          <H2>대화</H2>
+          <Text style={st.p}>다 끝났으면 닫아 주세요. 고객이 다시 보내면 새 요청으로 들어와요.</Text>
+          <Btn title="대화 끝내기" kind="gray" onPress={closeChat} busy={busy === 'close_chat'} style={{ marginTop: 12 }} />
         </Card>
       ) : null}
 
@@ -358,6 +378,7 @@ const st = StyleSheet.create({
   modeText: { fontSize: 15, fontWeight: '700', color: C.fg2 },
   label: { fontSize: 15, fontWeight: '600', color: C.fg2 },
   p: { fontSize: 15, lineHeight: 22, color: C.fg2 },
+  cap: { fontSize: 13, lineHeight: 19, color: C.fg3, textAlign: 'center' },
   body: { fontSize: 16, lineHeight: 25, color: C.fg },
   file: { fontSize: 14, fontWeight: '600', color: C.accentInk },
   dot: { width: 9, height: 9, borderRadius: 5, marginTop: 7 },

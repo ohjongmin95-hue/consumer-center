@@ -20,7 +20,7 @@ export function CaseRow({ c }: { c: BizCase }) {
           {c.title}
         </Text>
         <Text style={st.meta} numberOfLines={1}>
-          {[c.name, c.category, fmtDate(c.updated)].filter(Boolean).join(' · ')}
+          {[c.name, c.channel, c.category, fmtDate(c.updated)].filter(Boolean).join(' · ')}
         </Text>
       </View>
       <Text style={st.chev}>›</Text>

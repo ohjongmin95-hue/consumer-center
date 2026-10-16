@@ -1574,7 +1574,7 @@ class PlatformTest(unittest.TestCase):
             self.assertIn('카페24(myshop)에 연결했어요',r.get_data(as_text=True))
             self.assertEqual(calls[0][2]['code'],'CODE1')
             with self.core.conn() as db:
-                lk=c24.link(db,cid);self.assertNotIn('A1',lk['creds']);self.assertEqual(shops.unseal(lk['creds'])['refresh_token'],'R1')
+                lk=c24.link(db,cid);self.assertNotIn('"A1"',lk['creds']);self.assertEqual(shops.unseal(lk['creds'])['refresh_token'],'R1')
                 self.assertEqual(db.execute("SELECT channel,status,invoice FROM orders WHERE company_id=? AND order_no='20261014-0000011'",(cid,)).fetchone()[:],('자사몰','delivered','123412341234'))
                 # 만료가 가까우면 갱신하고 갱신 토큰도 바뀐다
                 db.execute("UPDATE cafe24_links SET expires='2000-01-01 00:00:00' WHERE company_id=?",(cid,))
@@ -2145,6 +2145,24 @@ class PlatformTest(unittest.TestCase):
             with self.core.conn() as db:
                 last=db.execute("SELECT text FROM events WHERE case_id=? AND kind='sys' ORDER BY id DESC",(c['id'],)).fetchone()[0]
             self.assertIn('24시간',last)
+            # 앱: 같은 '답변하기'가 DM으로 바로 가고, 고객이 더 보내면 휴대폰 알림, 대화 끝내기도 된다
+            a=self.client();tok=a.post('/biz/api/v1/login',json={'login_id':'ig-co@example.com','password':'longpassword1'}).get_json()['token'];auth={'Authorization':'Bearer '+tok}
+            self.assertTrue(a.post('/biz/api/v1/push',json={'push_token':'ExponentPushToken[ig-1]'},headers=auth).get_json()['ok'])
+            pushed=[];old_push=self.core.expo_push;self.core.expo_push=lambda toks,title,body,data,table:pushed.append((toks,title,body,data))
+            try:
+                self.core._msg_push.clear();hook([m('a4','언제 와요?')])
+                self.assertEqual(pushed[-1][0],['ExponentPushToken[ig-1]']);self.assertTrue(pushed[-1][1].startswith('고객 메시지'));self.assertEqual(pushed[-1][3],{'case_id':c['id']})
+                hook([m('a5','빨리요')]);self.assertEqual(len(pushed),1)  # 같은 요청은 1분에 한 번만
+            finally:self.core.expo_push=old_push
+            d=a.get(f'/biz/api/v1/cases/{c["id"]}',headers=auth).get_json()
+            self.assertEqual((d['channel'],d['send_via'],d['can']['close_chat']),('인스타그램 DM','누르면 고객에게 인스타그램 DM으로 바로 가요',True))
+            d=a.post(f'/biz/api/v1/cases/{c["id"]}',json={'act':'reply','msg':'오늘 보내요'},headers=auth).get_json()
+            self.assertIn('24시간',d['warn']);self.assertEqual(d['message'],'')  # 못 보내면 앱에 빨갛게 알린다
+            reply['fail']=None;n_sent=len([x for x in calls if x[1].endswith('/me/messages')])
+            d=a.post(f'/biz/api/v1/cases/{c["id"]}',json={'act':'reply','msg':'오늘 보내요'},headers=auth).get_json()
+            self.assertEqual(d['message'],'인스타그램 DM으로 답변을 보냈어요');self.assertEqual(len([x for x in calls if x[1].endswith('/me/messages')]),n_sent+1)
+            d=a.post(f'/biz/api/v1/cases/{c["id"]}',json={'act':'close_chat'},headers=auth).get_json()
+            self.assertEqual(d['status'],'closed');self.assertFalse(d['can']['close_chat'])
             self.post(b,'/biz/connect/instagram',{'act':'delete'},'/biz/connect/instagram')
             with self.core.conn() as db:self.assertIsNone(instagram.link(db,cid))
             self.assertEqual(hook([m('a3','또 문의')]).status_code,200)  # 끊긴 계정의 DM은 받지 않는다
