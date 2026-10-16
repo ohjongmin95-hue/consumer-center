@@ -10,7 +10,7 @@
     <span class="sb-sp"></span>
     <a class="sb-search" href="{{ url_for('companies') }}" aria-label="기업 검색"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L20 20" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></a>
     {% if g.user %}<a class="sb-login" href="{{ url_for('mypage') }}">{{ ui('common.my_info', '내 정보') }}</a>
-    {% else %}<a class="sb-login" href="{{ url_for('login', next=request.full_path.rstrip('?')) if request.endpoint not in ('login', 'signup', 'member_logout') else url_for('login') }}">{{ ui('common.login', '로그인') }}</a>{% endif %}
+    {% else %}<a class="sb-login" href="{{ url_for('login', next=request.full_path.rstrip('?')) if request.endpoint not in ('login', 'signup', 'member_logout') else url_for('login') }}">{{ ui('common.login', '로그인') }}</a><a class="sb-join" href="{{ url_for('signup') }}">{{ ui('common.signup', '회원가입') }}</a>{% endif %}
     <a class="sb-cta" href="{{ url_for('report') }}">{{ ui('sb.cta', '제보하기') }}</a>
   </div>
   <nav class="sb-chips" aria-label="주요 메뉴">{% for href, label, on in sb_nav %}<a href="{{ href }}"{% if on %} class="on"{% endif %}>{{ '전체' if loop.first else label }}</a>{% endfor %}</nav>

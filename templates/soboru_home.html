@@ -9,8 +9,7 @@
   <div class="sb-top">
     <a class="sb-lead{{ ' is-report' if lead.kind == 'report' }}" href="{{ lead.url }}">
       {{ card_thumb(lead, 'big') }}
-      <h1>{% if lead.kind == 'report' %}<span class="sb-q">“</span>{% endif %}{{ lead.title }}{% if lead.kind == 'report' %}<span class="sb-q">”</span>{% endif %}</h1>
-      {% if lead.summary %}<p>{{ lead.summary }}</p>{% endif %}
+      <h1>{{ lead.title }}</h1>
       {{ card_meta(lead) }}
     </a>
     {% if side %}<div class="sb-side">{% for it in side %}<a href="{{ it.url }}">{{ card_thumb(it, 'sq') }}<div><h3>{{ it.title }}</h3>{{ card_meta(it) }}</div></a>{% endfor %}</div>{% endif %}
@@ -29,7 +28,7 @@
   {% set shown = cases|selectattr('title')|list %}
   {% if shown %}
   <section class="sb-sec">
-    <div class="sb-sec-head"><div><h2>{{ ui('sb.cases_title', '방금 들어온 제보') }}</h2><p>{{ ui('sb.cases_sub', '개인정보는 가리고 제목과 기업만 보여 드려요') }}</p></div><a class="sb-more" href="{{ url_for('reports') }}">{{ ui('sb.more_all', '전체 보기') }} ›</a></div>
+    <div class="sb-sec-head"><div><h2>{{ ui('sb.cases_title', '새로 올라온 제보') }}</h2><p>{{ ui('sb.cases_sub', '누가 썼는지는 가려서 보여 드려요') }}</p></div><a class="sb-more" href="{{ url_for('reports') }}">{{ ui('sb.more_all', '전체 보기') }} ›</a></div>
     <div class="sb-cases">
       {% for c in shown[:3] %}
       <a class="sb-case" href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">

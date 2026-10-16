@@ -10,7 +10,6 @@
     <a class="sb-article-cat" href="{{ url_for('life', category=a['category']) }}">{{ a['category'] }}</a>
     <h1>{{ a['title'] }}</h1>
     <div class="sb-meta">{{ (a['published_at'] or a['created'])[:10].replace('-', '.') }}</div>
-    {{ thumb(a, 'big') }}
     {% if a['summary'] %}<p class="sb-article-sum">{{ a['summary'] }}</p>{% endif %}
     <div class="sb-article-body">{{ life_body(a['body']) }}</div>
     {% if a['source_name'] or a['source_url'] %}<p class="sb-source">출처: {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
