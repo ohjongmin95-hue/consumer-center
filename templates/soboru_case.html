@@ -5,7 +5,6 @@
   <a class="sbc-back" href="{{ url_for('reports') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>{{ txt('home.list_title') }}</a>
 
   <section class="sbc-hero">
-    <div class="sbc-art" aria-hidden="true"><img src="{{ asset('img/guide-ind-%s.svg' % report_art(case['industry'] if 'industry' in case.keys() else '')) }}" alt="" width="330" height="200"></div>
     {% set cat_s = category.split(']')[0].lstrip('[') if category.startswith('[') and ']' in category else category %}
     <p class="sbc-kicker"><span class="sbc-cat">{{ cat_s }}</span><span>No. {{ case['id'] }}</span></p>
     <h1 class="page-title">{{ subject }}</h1>

@@ -10,7 +10,7 @@
     {% for c in LIFE_CATEGORIES %}<a href="{{ url_for('life', category=c) }}"{% if cat == c %} class="on" aria-current="page"{% endif %}>{{ c }}</a>{% endfor %}
   </nav>
   {% if rows %}
-  <div class="sb-grid">{% for a in rows %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{% if a['summary'] %}<p class="sb-sum">{{ a['summary'] }}</p>{% endif %}{{ meta(a) }}</a>{% endfor %}</div>
+  <div class="sb-grid">{% for a in rows %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{{ meta(a) }}</a>{% endfor %}</div>
   {% if pages > 1 %}<nav class="sb-pager" aria-label="쪽">{% if page > 1 %}<a href="{{ url_for('life', category=cat or None, page=page - 1) }}">‹ 이전</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a href="{{ url_for('life', category=cat or None, page=page + 1) }}">다음 ›</a>{% endif %}</nav>{% endif %}
   {% else %}<p class="sb-empty">{{ ui('life.empty', '아직 올라온 글이 없어요. 곧 채워 둘게요.') }}</p>{% endif %}
 </main>
