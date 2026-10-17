@@ -301,7 +301,7 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'appready'):
                                           ('case', '내 제보 진행 단계가 바뀌었어요: 반품했는데 환불이 안 돼요', '/me/case/%d' % cid, 80, _ago(70))]:
             db.execute('INSERT INTO member_alerts(user_id,kind,body,link,created,read_at) VALUES(?,?,?,?,?,?)', (me, kind, body, link, _ago(h), read))
     print('appready seed: member vrt_member / membershotpw1, writer post', wp, 'question', q, flush=True)
-# 크로와상 레터 화면 시험: 가짜 AI가 가짜 뉴스(VRT_NAVER)로 레터를 씀 (실제 OpenAI·메일은 안 부름). 1·2호는 보낸 레터, 3호는 검토 필요 초안. 구독자 몇 명
+# 소보루 레터 화면 시험: 가짜 AI가 가짜 뉴스(VRT_NAVER)로 레터를 씀 (실제 OpenAI·메일은 안 부름). 1·2호는 보낸 레터, 3호는 검토 필요 초안. 구독자 몇 명
 if hasattr(m, 'soboru_letter') and os.environ.get('VRT_NAVER'):
     import json as _json, datetime as _dt
     os.environ.setdefault('OPENAI_API_KEY', 'vrt-fake')
@@ -313,9 +313,9 @@ if hasattr(m, 'soboru_letter') and os.environ.get('VRT_NAVER'):
            ('중고거래', '중고거래 사기, 안전결제가 답이에요', '중고거래 사기 피해가 1년 새 30% 늘었대요. 판매자가 따로 보내 주는 결제 링크는 가짜일 수 있어요. 거래는 앱 안의 안전결제로만 하고, 너무 싼 물건은 한 번 더 의심해 보세요.', '앱 밖 결제 링크는 누르지 말고, 플랫폼 안전결제만 쓰세요.')]
     _LT_NO = {'n': 0}
     def _letter_ai(url, headers, body, timeout):
-        if '크로와상 레터' not in body['messages'][0]['content']: return _prev_letter(url, headers, body, timeout)
+        if '소보루 레터' not in body['messages'][0]['content']: return _prev_letter(url, headers, body, timeout)
         news = _json.loads(body['messages'][1]['content'].split('[이번 호 뉴스]\n', 1)[1])
-        no = int(re.search(r'크로와상 레터 (\d+)호', body['messages'][1]['content']).group(1))
+        no = int(re.search(r'소보루 레터 (\d+)호', body['messages'][1]['content']).group(1))
         items = []
         for x in news:
             key, title, text, tip = next((t for t in _LT if t[0] in x['제목']), _LT[0])
