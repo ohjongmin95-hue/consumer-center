@@ -1467,6 +1467,10 @@ class SiteTest(unittest.TestCase):
                 self.assertNotIn('원문 비공개 내용', rows)
             self.assertIn('소비자게시판', self.client.get('/board', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
             self.assertEqual(self.client.get('/reports', base_url='http://www.consumerjebo.co.kr').headers['Location'], 'https://consumerjebo.co.kr/reports')
+            with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):
+                r = self.client.get('/life?category=쇼핑', base_url='https://consumerjebo.co.kr')
+                self.assertEqual((r.status_code, r.headers['Location']), (301, 'https://soboru.co.kr/life?category=%EC%87%BC%ED%95%91'))
+                self.assertEqual(self.client.get('/reports', base_url='https://consumerjebo.co.kr').status_code, 200)
         finally:
             self.site.JEBO_HOSTS.difference_update(hosts)
         # 관리자는 소보루 주소에서도 /?face=jebo 로 미리 봄
