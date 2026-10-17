@@ -1,10 +1,10 @@
 {% extends 'console.html' %}
-{% block title %}크로와상 {{ L.no }}호 | {{ site_name() }}{% endblock %}
+{% block title %}크로와상 레터 {{ L.no }}호 | {{ site_name() }}{% endblock %}
 {% block content %}
 {% set draft = L.status == 'draft' %}
 <main class="page"><div class="wrap lt-ad-edit">
   <div class="page-intro">
-    <p><a href="{{ url_for('admin_letter') }}">← 크로와상</a></p>
+    <p><a href="{{ url_for('admin_letter') }}">← 크로와상 레터</a></p>
     <h1 class="page-title">{{ L.no }}호 {{ {'draft': '초안', 'scheduled': '보내는 중', 'sent': '보낸 레터'}.get(L.status, L.status) }}</h1>
     <p class="meta">{{ L.created[:16].replace('T', ' ') }} 만듦{% if L.sent_at %} · {{ L.sent_at[:16].replace('T', ' ') }} 보냄 ({{ sends.get('sent', 0) }}명{% if sends.get('failed') %}, 실패 {{ sends.failed }}명{% endif %}){% elif L.status == 'scheduled' %} · 지금까지 {{ sends.get('sent', 0) }}명에게 보냄{% endif %} · <a href="{{ url_for('letter_issue', no=L.no) }}" target="_blank" rel="noopener">웹 버전 ↗</a></p>
     {% if not mail_ready %}<p class="hp-warn">메일 발송 설정(SMTP)이 없어 테스트 메일도, 구독자 발송도 할 수 없어요 (deploy/set-mail.sh).</p>{% endif %}

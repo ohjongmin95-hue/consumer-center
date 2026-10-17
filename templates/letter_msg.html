@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}크로와상 | {{ txt('site.name') }}{% endblock %}
+{% block title %}크로와상 레터 | {{ txt('site.name') }}{% endblock %}
 {% block head %}<meta name="robots" content="noindex,nofollow">{% endblock %}
 {% block content %}
-{% set M = {'confirmed': ('🎉', '구독을 시작했어요!', ((email ~ ' 주소로 ') if email is defined else '') ~ letter_cfg().when ~ ' 크로와상을 보내 드릴게요.'),
+{% set M = {'confirmed': ('🎉', '구독을 시작했어요!', ((email ~ ' 주소로 ') if email is defined else '') ~ letter_cfg().when ~ ' 크로와상 레터를 보내 드릴게요.'),
             'already': ('✅', '이미 구독 중이에요', '다음 레터에서 만나요. 지난 레터는 웹에서도 볼 수 있어요.'),
-            'unsubscribed': ('🔔', '구독을 해지했어요', '앞으로 크로와상을 보내지 않아요. 이메일 주소도 지웠어요. 마음이 바뀌면 언제든 다시 구독해 주세요.'),
-            'bad': ('🔍', '구독 정보를 찾지 못했어요', '이미 해지했거나 주소가 잘못됐을 수 있어요. 다시 구독하려면 크로와상 화면에서 신청해 주세요.')}[kind] %}
+            'unsubscribed': ('🔔', '구독을 해지했어요', '앞으로 크로와상 레터를 보내지 않아요. 이메일 주소도 지웠어요. 마음이 바뀌면 언제든 다시 구독해 주세요.'),
+            'bad': ('🔍', '구독 정보를 찾지 못했어요', '이미 해지했거나 주소가 잘못됐을 수 있어요. 다시 구독하려면 크로와상 레터 화면에서 신청해 주세요.')}[kind] %}
 <main class="sb-wrap lt-msg">
   <span class="lt-msg-emo tf" aria-hidden="true">{{ M[0] }}</span>
   <h1>{{ M[1] }}</h1>

@@ -289,7 +289,7 @@ class SiteTest(unittest.TestCase):
             # 화면 편집: 예전 '메인 화면 순서' 주소는 화면 편집으로
             self.assertIn('/admin/screens#page-home', admin.get('/admin/home-plan').headers['Location'])
             page = admin.get('/admin/screens').get_data(as_text=True)
-            for name in ('화면 편집', '홈', '생활정보', '소보루 픽', '제보', '기업', '법률 질문', '크로와상', '공통 머리글·바닥글', '소보루의 소리', '이 페이지 문구 모두 보기'):
+            for name in ('화면 편집', '홈', '생활정보', '소보루 픽', '제보', '기업', '법률 질문', '크로와상 레터', '공통 머리글·바닥글', '소보루의 소리', '이 페이지 문구 모두 보기'):
                 self.assertIn(name, page)
             token = self.csrf(admin, '/admin/screens')
             # 순서표 통째로: 레터를 맨 위로, 기업 답변 기록은 숨김
@@ -3932,7 +3932,7 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 self.assertEqual(db.execute('SELECT COUNT(*) FROM apple_tokens').fetchone()[0], 0)
                 self.assertIsNone(db.execute("SELECT 1 FROM users WHERE real_name='홍길동'").fetchone())
-    # ---- 크로와상 (soboru_letter.py) -------------------------------------------
+    # ---- 크로와상 레터 (soboru_letter.py) -------------------------------------------
     LETTER_MAIL = {'SMTP_HOST': 'smtp.test', 'SMTP_USER': 'u@test', 'SMTP_PASSWORD': 'pw-test', 'MAIL_FROM': 'letter@consumerjebo.co.kr'}
     LETTER_NAVER = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
 
@@ -3955,7 +3955,7 @@ class SiteTest(unittest.TestCase):
                 if bad and n == 3: text += ' ' + x['제목'] + ' ' + x['요약'] + ' 이런 기사였어요.'
                 law = x['법 조문 후보'][0]['id'] if n == 1 and x['법 조문 후보'] else ('9-L9' if n == 2 else '')
                 items.append({'no': n, 'title': ['첫째', '둘째', '셋째', '넷째', '다섯째'][n - 1] + ' 소식, 이것만 알면 돼요', 'body': text, 'tip': '이럴 땐 이렇게: 영수증과 대화 기록부터 챙겨 두세요.', 'law': law})
-            out = {'subject': '이번 주 소비자 뉴스, 이것만 보면 끝', 'intro': '안녕하세요, 크로와상이에요. 이번 주 꼭 알아 둘 소식을 모았어요.', 'outro': '다음 주에 또 만나요.', 'items': items}
+            out = {'subject': '이번 주 소비자 뉴스, 이것만 보면 끝', 'intro': '안녕하세요, 크로와상 레터예요. 이번 주 꼭 알아 둘 소식을 모았어요.', 'outro': '다음 주에 또 만나요.', 'items': items}
             return 200, {'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
         return fake
 
@@ -4029,7 +4029,7 @@ class SiteTest(unittest.TestCase):
         subject, html, text = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')
         icon = self.site.soboru_letter.TOPIC_ICON[it1['topic']][0]  # 분야를 남겨 분야 그림(토스페이스)을 붙임
         self.assertIn(f'/static/img/tf/{icon}.png', html); self.assertIn('오늘의 메인뉴스', html)
-        self.assertIn('/static/img/tf/croissant.png', html); self.assertLess(html.index('soboru-wordmark.png'), html.index('soboru-character-hero.png'))  # 머리는 크로와상 그림과 글자 로고, 캐릭터는 아래에서만
+        self.assertIn('/static/img/croissant-char.png', html); self.assertLess(html.index('soboru-wordmark.png'), html.index('soboru-character-hero.png'))  # 머리는 크로와상 레터 그림과 글자 로고, 캐릭터는 아래에서만
         self.assertIn('이번 주 소비자 뉴스, 이것만 보면 끝', subject)
         for part in (html, text):
             self.assertIn('첫째 소식, 이것만 알면 돼요', part); self.assertIn(it1['src']['url'], part)
@@ -4054,7 +4054,7 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, {k: v for k, v in os.environ.items() if not k.startswith('SMTP')}, clear=True):
             page = admin.get('/admin/letter').get_data(as_text=True)
         self.assertIn('이번 호 만들기', page); self.assertIn('메일 발송 설정(SMTP)이 없어요', page)
-        self.assertIn('크로와상', admin.get('/admin').get_data(as_text=True))  # 관리 메뉴
+        self.assertIn('크로와상 레터', admin.get('/admin').get_data(as_text=True))  # 관리 메뉴
         sent, calls = [], []
         with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), \
                 patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent)), patch.object(self.site.triage.corpus, 'related', self.letter_related):
@@ -4171,11 +4171,11 @@ class SiteTest(unittest.TestCase):
             token = 'tok-' + m['To'].split('@')[0]
             self.assertEqual(m['List-Unsubscribe'], f'<https://consumerjebo.co.kr/letter/unsubscribe/{token}>')
             self.assertEqual(m['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click')
-            self.assertIn('크로와상', m['From'])
+            self.assertIn('크로와상 레터', m['From'])
             html, text = m.get_body(('html',)).get_content(), m.get_body(('plain',)).get_content()
             self.assertIn(f'/letter/unsubscribe/{token}', html); self.assertIn(f'/letter/unsubscribe/{token}', text)
             self.assertNotIn('__LETTER_UNSUB__', html + text)
-            self.assertTrue(m['Subject'].startswith('[크로와상]'))
+            self.assertTrue(m['Subject'].startswith('[크로와상 레터]'))
         sent = L['get'](r['id'])
         self.assertEqual((sent['status'], sent['sent_count'], sent['failed']), ('sent', 2, 0)); self.assertTrue(sent['sent_at'])
         # 공개 보관함·웹 버전·사이트맵

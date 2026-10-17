@@ -1,13 +1,13 @@
 {% extends 'console.html' %}
-{% block title %}크로와상 | {{ site_name() }}{% endblock %}
+{% block title %}크로와상 레터 | {{ site_name() }}{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap">
   {% if waiting is defined and waiting %}
   <meta http-equiv="refresh" content="4">
-  <div class="page-intro"><h1 class="page-title">크로와상</h1></div>
+  <div class="page-intro"><h1 class="page-title">크로와상 레터</h1></div>
   <div class="form-panel aw-wait"><span class="aw-spin" aria-hidden="true"></span><div><b>이번 호를 만들고 있어요</b><p class="meta">뉴스를 모으고 AI가 레터를 쓰는 데 1~2분 걸려요. 다 되면 초안이 바로 열려요. 이 화면은 4초마다 새로 고쳐져요.</p></div></div>
   {% else %}
-  <div class="page-intro"><h1 class="page-title">크로와상</h1>
+  <div class="page-intro"><h1 class="page-title">크로와상 레터</h1>
     <p>뉴닉식 뉴스레터예요. 분야별(경제·물가·금리·부동산·정책·국회·사회·국제·IT·소비자·리콜) 최근 기사를 모아 여러 언론이 함께 다룬 주요 이슈 3~5개를 고르고, AI가 우리 말로 풀어 소보루 픽 인기 리뷰·리뷰 주제·새 생활정보를 붙여요. 확인 메일을 눌러 구독을 마친 분께만 보내요.</p>
     <p class="meta">AI 글의 숫자는 그 뉴스의 제목·요약·법 조문에 있는 것만 쓰게 하고, 기사 문장을 그대로 옮긴 곳(6어절 넘게 같음)이 있는지도 코드로 한 번 더 확인해요. <a href="{{ url_for('letter_home') }}" target="_blank" rel="noopener">공개 화면 /letter ↗</a></p>
     {% if not ai_ready %}<p class="hp-warn">OpenAI API 키가 없어서 레터를 만들 수 없어요. 서버 설정에 OPENAI_API_KEY를 넣어 주세요.</p>{% endif %}

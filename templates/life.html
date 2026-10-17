@@ -25,7 +25,7 @@
     <ul class="nv-list">{% for it in news %}{{ nv_row(it) }}{% endfor %}</ul>{{ nv_credit() }}</section>
   {% endif %}{% endif %}
   {% elif blk == 'letter' %}
-  {% from 'letter_macros.html' import letter_card with context %}{{ letter_card('life') }}{# 크로와상 구독 (soboru_letter.py) #}
+  {% from 'letter_macros.html' import letter_card with context %}{{ letter_card('life') }}{# 크로와상 레터 구독 (soboru_letter.py) #}
   {% endif %}
   {% endfor %}
   {{ ed_hidden_blocks('life') }}

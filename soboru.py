@@ -42,12 +42,12 @@ RANK_DAYS = 30
 # 화면 편집 (관리자 > 화면 편집): 페이지마다 큰 묶음(블록)의 순서와 보이기. 잘게 나누지 않고 화면에서 한눈에 보이는 덩어리 단위
 PAGE_BLOCKS = {
     'home': ('홈', [('intro', '맨 위 소개 (소보루 큰 문구 · 제보하기 버튼)'), ('quick', '바로가기 아이콘 줄'), ('live', '소보루의 소리 (실시간 제보)'),
-                   ('letter', '크로와상 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('pick', '소보루 픽 (추천 TOP 5 · 최신 글 · 글쓰기)'),
+                   ('letter', '크로와상 레터 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('pick', '소보루 픽 (추천 TOP 5 · 최신 글 · 글쓰기)'),
                    ('answer', '기업 답변 기록')]),
-    'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '크로와상 구독')]),
+    'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '크로와상 레터 구독')]),
     'board': ('소보루 픽', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
                          ('feed', '글 목록 · 이번 주 인기 · 리뷰 모아 보기'), ('foot', '맨 아래 안내')]),
-    'letter': ('크로와상', [('hero', '맨 위 구독 신청'), ('feats', '레터에 담기는 것 (3가지)'), ('archive', '지난 레터')]),
+    'letter': ('크로와상 레터', [('hero', '맨 위 구독 신청'), ('feats', '레터에 담기는 것 (3가지)'), ('archive', '지난 레터')]),
 }
 # 예전 '메인 화면 순서' 저장값(top·life·rank 켜고 끄기)을 새 묶음으로 옮길 때
 OLD_HOME_SECTIONS = {'top': ('intro', 'quick', 'live'), 'life': ('life',), 'rank': ('pick', 'answer')}
@@ -338,7 +338,7 @@ def install(S):
         ('report', '제보', lambda: url_for('report'), ['report.html', 'reports.html', 'report_rows.html', 'public_case.html', 'soboru_case.html', 'case_talk.html', 'success.html', 'lookup.html', 'case.html', 'guide.html', 'info.html', 'process_cards.html']),
         ('company', '기업', lambda: url_for('companies'), ['companies.html', 'company_page.html']),
         ('ask', '법률 질문', lambda: url_for('law_ask'), ['soboru_ask.html', 'soboru_ask_v2.html']),
-        ('letter', '크로와상', lambda: url_for('letter_home'), ['letter.html', 'letter_issue.html', 'letter_msg.html', 'letter_macros.html']),
+        ('letter', '크로와상 레터', lambda: url_for('letter_home'), ['letter.html', 'letter_issue.html', 'letter_msg.html', 'letter_macros.html']),
         ('common', '공통 머리글·바닥글', lambda: url_for('home'), ['base.html', 'soboru_header.html', 'soboru_tabbar.html']),
     ]
     SCREEN_SKIP = {'site.name'}  # 사이트 이름은 숨은 문구·설정에서

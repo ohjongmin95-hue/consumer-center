@@ -1,7 +1,7 @@
-# 크로와상: 매일 아침 soboru-letter.timer가 부름. 관리자가 고른 주기(평일 매일·매일·매주)에 맞는 날에만 한 호를 만들고, 자동 보내기를 켜 두었을 때만 보냄.
-# 설치·끄기: sudo bash /opt/soboru/app/deploy/set-letter.sh  (주기·자동 보내기는 관리자 > 크로와상에서)
+# 크로와상 레터: 매일 아침 soboru-letter.timer가 부름. 관리자가 고른 주기(평일 매일·매일·매주)에 맞는 날에만 한 호를 만들고, 자동 보내기를 켜 두었을 때만 보냄.
+# 설치·끄기: sudo bash /opt/soboru/app/deploy/set-letter.sh  (주기·자동 보내기는 관리자 > 크로와상 레터에서)
 [Unit]
-Description=크로와상 (뉴스레터)
+Description=크로와상 레터 (뉴스레터)
 After=network-online.target soboru.service
 Wants=network-online.target
 

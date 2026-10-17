@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from 'letter_macros.html' import letter_card with context %}
-{% block title %}{{ L.title }} · 크로와상 {{ L.no }}호 | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ L.title }} · 크로와상 레터 {{ L.no }}호 | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ (L.intro or L.title)[:150] }}{% endblock %}
 {% block og_type %}article{% endblock %}
 {% block head %}{% if L.status != 'sent' %}<meta name="robots" content="noindex,nofollow">{% endif %}{% endblock %}
@@ -9,7 +9,7 @@
 <main class="sb-wrap lt-issue">
   <article>
     {% if L.status != 'sent' %}<p class="sb-draft">아직 보내지 않은 레터예요. 관리자에게만 보여요.</p>{% endif %}
-    <a class="lt-kicker" href="{{ url_for('letter_home') }}"><span class="tf" aria-hidden="true">🥐</span> 크로와상 {{ L.no }}호</a>
+    <a class="lt-kicker" href="{{ url_for('letter_home') }}"><img class="lt-cr" src="{{ asset('img/croissant-char.svg') }}" alt="" aria-hidden="true"> 크로와상 레터 {{ L.no }}호</a>
     <h1>{{ L.title }}</h1>
     <p class="sb-meta">{{ letter_kdate(L.sent_at or L.created) }}</p>
     {% if L.intro %}<p class="lt-intro">{{ L.intro }}</p>{% endif %}
