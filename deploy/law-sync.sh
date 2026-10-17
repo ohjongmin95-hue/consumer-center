@@ -25,5 +25,11 @@ esac
 grep -qE '^LAW_OC=.' "$ENV_FILE" || echo "주의: LAW_OC가 없어요. sudo bash $APP_DIR/deploy/set-law.sh 로 먼저 넣어 주세요. (임베딩만 만들어요)"
 echo "[$(date '+%Y-%m-%d %H:%M')] 현행 법령 받기"
 # 설정 파일을 읽어 서비스 계정(soboru)으로 돌림. 키를 명령줄에 붙이지 않아 ps에도 안 보임
-(set -a; . "$ENV_FILE"; set +a; cd "$APP_DIR" && sudo -E -u soboru "$VENV/bin/python" "$APP_DIR/lawsync.py") || { echo "일부 법령을 받지 못했어요. 위 메시지를 확인해 주세요."; exit 1; }
+# 설정 파일은 셸로 읽지 않고 글자 그대로 읽음 (관리자 비밀번호 해시처럼 값에 $가 들어 있어도 되게, systemd와 같은 방식)
+load_env() { local line; while IFS= read -r line || [[ -n $line ]]; do
+  [[ $line =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
+  local k=${BASH_REMATCH[1]} v=${BASH_REMATCH[2]}
+  [[ $v =~ ^\"(.*)\"$ || $v =~ ^\'(.*)\'$ ]] && v=${BASH_REMATCH[1]}
+  export "$k=$v"; done < "$ENV_FILE"; }
+(load_env; cd "$APP_DIR" && sudo -E -u soboru "$VENV/bin/python" "$APP_DIR/lawsync.py") || { echo "일부 법령을 받지 못했어요. 위 메시지를 확인해 주세요."; exit 1; }
 echo "끝났어요. 관리자 > 법령 학습 > 현행 여부에서 확인할 수 있어요."
