@@ -7,6 +7,7 @@
 
 - 태그: **`jebo-center-final`** (커밋 `7353589`, 2026-10-17 main)
 - 이 태그에는 브랜드를 고르던 시절의 완성본이 통째로 들어 있습니다. `site.brand`를 비우면 소비자제보센터, "소보루"라고 적으면 소보루 화면이 나오던 코드입니다.
+- 같은 커밋을 가리키는 가지(branch) **`jebo-center-final-snapshot`** 도 올려 둠. 태그가 원격에 없으면 `origin/jebo-center-final-snapshot` 으로 바꿔 쓰면 됨 (`git fetch origin jebo-center-final-snapshot`)
 
 ## 보는 법
 
