@@ -38,6 +38,8 @@ SEO_PAGES = {
 # 공유 미리보기 기본 그림: 주소 앞부분별로 다른 그림 (글 자체 사진이 있으면 그 사진이 먼저)
 OG_SECTIONS = [('/reports', 'report'), ('/report', 'report'), ('/companies', 'report'), ('/life', 'life'), ('/board', 'pick'), ('/ask', 'ask')]
 LIFE_CATEGORIES = ['쇼핑', '통신', '여행', '음식', '금융', '자동차', '생활', '리콜']
+LIFE_EMOJI = {'쇼핑': '🛒', '통신': '📱', '여행': '✈️', '음식': '🍜', '금융': '💰', '자동차': '🚗', '생활': '🏠', '리콜': '🚨'}  # 생활정보 분야 칩
+GUIDE_EMOJI = {'write': '📝', 'attach': '📋', 'ticket': '🧾', 'lock': '🔒', 'search': '🔍', 'chat': '💬', 'check': '✅', 'bell': '🔔'}  # 이용 안내 단계 아이콘 자리
 LIFE_TONES = ['t1', 't2', 't3', 't4', 't5', 't6']  # 대표 그림 바탕색
 LIFE_PAGE = 12
 RANK_DAYS = 30
@@ -232,7 +234,7 @@ def install(S):
         return {'best': best, 'wait': wait, 'days': days, 'min_n': jebo.MIN_N}
 
     app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, company_rank=company_rank,
-                                 ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES,
+                                 ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES, LIFE_EMOJI=LIFE_EMOJI, GUIDE_EMOJI=GUIDE_EMOJI,
                                  report_look=report_look, life_art=lambda cat: LIFE_ART.get(cat, 'other'), report_art=lambda ind: report_art(ind, S.items('guide_industries')))
 
     # ---- 메인 화면: 소보루면 새 홈 ------------------------------------------

@@ -58,7 +58,7 @@
       <button type="button" class="on" data-chip="all">전체</button>
       <button type="button" data-chip="life">💡 생활정보</button>
       <button type="button" data-chip="report">📣 제보 리포트</button>
-      {% for cat in cats %}<button type="button" data-chip="c-{{ cat }}">{{ cat }}</button>{% endfor %}
+      {% for cat in cats %}<button type="button" data-chip="c-{{ cat }}">{% if LIFE_EMOJI.get(cat) %}{{ LIFE_EMOJI[cat] }} {% endif %}{{ cat }}</button>{% endfor %}
     </div>
     <div class="nn-list">
       {% for it in feed %}
