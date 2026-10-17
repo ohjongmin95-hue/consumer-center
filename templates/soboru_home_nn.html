@@ -5,30 +5,39 @@
 {% block content %}
 <main class="sb-wrap nn-home">
   {% if show.top %}
-  <section class="nn-hero">
-    <div class="nn-hero-main">
-      <p class="nn-kicker"><b>소</b>비자 권익 <b>보</b>호를 위한 <b>루</b>트</p>
-      <h1>오늘도 누군가<br>억울한 일을 겪었어요</h1>
-      <p class="nn-lede">소보루에 올라온 제보를 실시간으로 보고, <br>같은 일을 겪었다면 함께 목소리를 내요.</p>
-      <div class="nn-hero-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-ghost" href="{{ url_for('lookup') }}">내 제보 조회</a></div>
-      <ul class="nn-stats">
-        <li><b>{{ stats.today }}</b><span>오늘 들어온 제보</span></li>
-        <li><b>{{ stats.answered }}</b><span>기업이 답한 제보</span></li>
-        <li><b>{{ stats.total }}</b><span>지금까지 쌓인 제보</span></li>
-      </ul>
-      <img class="nn-char" src="{{ asset('img/soboru-character.png') }}" alt="" width="200" height="155">
+  {# 맨 위는 소보루 소개만: 이름·한 줄 설명·큰 캐릭터·하는 일 바로가기. 건수·실시간 목록은 아래 '지금 올라온 제보'로 #}
+  <section class="nn-intro">
+    <div class="nn-intro-copy">
+      <p class="nn-intro-kicker">소비자의 경험을 나누는 곳</p>
+      <h1 class="nn-intro-name">소보루</h1>
+      <p class="nn-intro-why"><b>소</b>비자 권익 <b>보</b>호를 위한 <b>루</b>트</p>
+      <p class="nn-intro-sub">억울한 일은 제보하고, 써 본 건 추천하고, <br>내 권리는 쉽게 알아봐요.</p>
+      <div class="nn-intro-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-ghost" href="{{ url_for('board') }}">소보루 픽 둘러보기</a></div>
     </div>
-    <div class="nn-live">
-      <div class="nn-live-head"><h2><span class="nn-dot" aria-hidden="true"></span>실시간 제보</h2><a href="{{ url_for('reports') }}">전체 보기 ›</a></div>
-      <ol>
-        {% for c in cases[:6] %}
-        <li><a href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
-          <div><h3>{% if c.secret %}🔒 비공개 제보예요{% else %}{{ c.title or '제목을 가린 제보예요' }}{% endif %}</h3>
-          <p><span class="sb-badge {{ badge.get(c.status, 'b-new') }}">{{ status_name(c.status) }}</span>{% if c.company %}{{ c.company }} · {% endif %}{{ c.cat }} · <time datetime="{{ c.created }}">{{ c.when }}</time></p></div>
-        </a></li>
-        {% else %}<li class="nn-empty">아직 올라온 제보가 없어요.</li>{% endfor %}
-      </ol>
-    </div>
+    <div class="nn-intro-art"><img src="{{ asset('img/soboru-character-lg.png') }}" alt="펜을 든 소보루 캐릭터" width="560" height="432"></div>
+    <nav class="nn-intro-menu" aria-label="소보루에서 할 수 있는 일">
+      <a href="{{ url_for('report') }}"><span aria-hidden="true">📣</span>소비자 피해 제보</a>
+      <a href="{{ url_for('reports') }}"><span aria-hidden="true">📋</span>올라온 제보 보기</a>
+      <a href="{{ url_for('board') }}"><span aria-hidden="true">⭐</span>제품·업체 리뷰</a>
+      <a href="{{ url_for('life') }}"><span aria-hidden="true">💡</span>알아 두면 돈 버는 정보</a>
+      {% if ask_on() %}<a href="{{ url_for('law_ask') }}"><span aria-hidden="true">💬</span>AI 소비자 상담</a>{% endif %}
+      <a href="{{ url_for('companies') }}"><span aria-hidden="true">🏢</span>기업 답변 기록</a>
+    </nav>
+  </section>
+  <a class="nn-intro-bar" href="{{ url_for('report') }}">억울한 일 겪으셨나요? 소보루에 제보하기</a>
+
+  <section class="nn-sec nn-now">
+    <div class="nn-sec-head"><h2><span class="nn-dot" aria-hidden="true"></span>지금 올라온 제보</h2><a href="{{ url_for('reports') }}">전체 보기 ›</a></div>
+    <p class="nn-now-sub">누가 썼는지는 가리고, 무슨 일이 있었는지만 보여 드려요. 같은 일을 겪었다면 '나도 겪었어요'를 눌러 주세요.</p>
+    <ol class="nn-now-grid">
+      {% for c in cases[:6] %}
+      <li><a href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
+        <p class="nn-now-top"><span class="nn-now-emo" aria-hidden="true">{{ c.emoji }}</span><span>{{ c.cat }}</span><span class="sb-badge {{ badge.get(c.status, 'b-new') }}">{{ status_name(c.status) }}</span></p>
+        <h3>{% if c.secret %}🔒 비공개 제보예요{% else %}{{ c.title or '제목을 가린 제보예요' }}{% endif %}</h3>
+        <p class="nn-now-me">{% if c.company %}{{ c.company }} · {% endif %}<time datetime="{{ c.created }}">{{ c.when }}</time></p>
+      </a></li>
+      {% else %}<li class="nn-empty">아직 올라온 제보가 없어요. 첫 제보를 남겨 주세요.</li>{% endfor %}
+    </ol>
   </section>
   {% endif %}
 
@@ -114,14 +123,14 @@
   {% endif %}
 </main>
 <script>
-  // 실시간 제보: 화면을 켜 두면 30초마다 새 목록으로 바꿈
+  // 지금 올라온 제보: 화면을 켜 두면 30초마다 새 목록으로 바꿈
   (function () {
-    var box = document.querySelector('.nn-live ol');
+    var box = document.querySelector('.nn-now-grid');
     if (!box || !window.fetch || !window.DOMParser) return;
     setInterval(function () {
       if (document.hidden) return;
       fetch(location.pathname, {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.text() : null; }).then(function (html) {
-        var fresh = html && new DOMParser().parseFromString(html, 'text/html').querySelector('.nn-live ol');
+        var fresh = html && new DOMParser().parseFromString(html, 'text/html').querySelector('.nn-now-grid');
         if (fresh && fresh.innerHTML !== box.innerHTML) box.innerHTML = fresh.innerHTML;
       }).catch(function () {});
     }, 30000);

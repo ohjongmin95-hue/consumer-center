@@ -1056,3 +1056,40 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 @media(max-width:680px){.nn-pick-head{flex-direction:column;align-items:flex-start;gap:10px}.nn-pick-head h2{font-size:24px}.nn-sub{font-size:14px}
   .nn-pick-feed,.nn-ans-grid{grid-template-columns:1fr}.nn-write{gap:8px}.nn-write a{padding:14px;column-gap:10px;border-radius:18px}.nn-wi{width:38px;height:38px;font-size:19px;border-radius:12px}
   .nn-write small{font-size:12px}.nn-top,.nn-ans{border-radius:20px;padding:20px 18px 6px}.nn-biz{flex-wrap:wrap;padding:16px 18px}.nn-biz-go{width:100%;padding-left:60px}}
+/* 홈 맨 위 소개 (운영자 요청 2026-10-17): 육아크루처럼 이름·한 줄 설명·큰 캐릭터·바로가기만, 건수 없음 */
+.nn-intro{display:grid;grid-template-columns:1fr 1.05fr 220px;gap:40px;align-items:center;margin-top:48px}
+.nn-intro-kicker{display:inline;font-size:22px;font-weight:800;color:var(--sb-ink);letter-spacing:-.03em;margin:0;background:linear-gradient(transparent 58%,#ffd3a8 58%)}
+.nn-intro-name{font-size:96px;line-height:1.02;font-weight:900;letter-spacing:-.06em;color:var(--sb-orange);margin:14px 0 0}
+.nn-intro-why{font-size:17px;font-weight:700;color:var(--sb-brown);margin:18px 0 0;letter-spacing:-.02em}
+.nn-intro-why b{color:var(--sb-orange)}
+.nn-intro-sub{font-size:16px;line-height:1.65;color:var(--sb-sub);margin:10px 0 0}
+.nn-intro-btns{display:flex;gap:8px;margin-top:28px;flex-wrap:wrap}
+.nn-intro-btns .sb-cta,.nn-intro-btns .nn-ghost{height:50px;padding:0 22px;border-radius:14px;display:inline-flex;align-items:center;font-size:16px;font-weight:700}
+.nn-intro-btns .sb-cta{border:2px solid var(--sb-ink)}
+.nn-intro-btns .nn-ghost{background:#fff;color:var(--sb-ink);border:2px solid var(--sb-ink)}
+.nn-intro-btns .nn-ghost:hover{background:var(--sb-orange-soft)}
+.nn-intro-art{background:var(--sb-orange-soft);border:2px solid var(--sb-ink);border-radius:32px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.nn-intro-art::before{content:'';position:absolute;width:70%;aspect-ratio:1;border-radius:50%;background:#ffe2c4;right:-12%;top:-18%}
+.nn-intro-art img{position:relative;width:78%;height:auto}
+.nn-intro-menu{display:flex;flex-direction:column;gap:10px}
+.nn-intro-menu a{transition:transform .12s var(--sb-ease),box-shadow .12s var(--sb-ease),background .12s;display:flex;align-items:center;gap:10px;height:52px;padding:0 18px;border:2px solid var(--sb-ink);border-radius:999px;font-size:15px;font-weight:700;color:var(--sb-ink);background:#fff}
+.nn-intro-menu a:hover{background:var(--sb-orange-soft);transform:translate(-2px,-2px);box-shadow:3px 3px 0 var(--sb-ink)}
+.nn-intro-menu span{font-family:Tossface,sans-serif;font-size:18px}
+.nn-intro-bar{display:flex;align-items:center;justify-content:center;height:64px;margin:40px auto 0;max-width:880px;border-radius:999px;background:var(--sb-orange);color:#fff;font-size:20px;font-weight:800;letter-spacing:-.02em;border:2px solid var(--sb-ink);box-shadow:4px 4px 0 var(--sb-ink);transition:transform .12s var(--sb-ease),box-shadow .12s var(--sb-ease)}
+.nn-intro-bar:hover{color:#fff;transform:translate(2px,2px);box-shadow:2px 2px 0 var(--sb-ink)}
+/* 지금 올라온 제보: 뉴닉처럼 가볍게 읽는 카드 */
+.nn-now .nn-sec-head h2{display:flex;align-items:center;gap:8px}
+.nn-now-sub{font-size:15px;color:var(--sb-sub);margin:-6px 0 18px}
+.nn-now-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.nn-now-grid li a{display:flex;flex-direction:column;height:100%;padding:20px 20px 18px;border-radius:22px;background:#fff;border:2px solid var(--sb-ink);transition:transform .12s var(--sb-ease),box-shadow .12s var(--sb-ease)}
+.nn-now-grid li a:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--sb-ink)}
+.nn-now-top{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:600;color:var(--sb-gray-ink)}
+.nn-now-top .sb-badge{margin-left:auto;font-size:12px;padding:2px 8px}
+.nn-now-emo{font-family:Tossface,sans-serif;font-size:20px;width:36px;height:36px;border-radius:12px;background:var(--sb-orange-soft);display:inline-flex;align-items:center;justify-content:center}
+.nn-now-grid h3{font-size:17px;line-height:1.45;font-weight:700;letter-spacing:-.02em;margin:14px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nn-now-me{font-size:13px;color:var(--sb-mute);margin:auto 0 0;padding-top:12px}
+@media(max-width:1080px){.nn-intro{grid-template-columns:1fr 1fr}.nn-intro-menu{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.nn-intro-menu a{height:44px;font-size:14px}}
+@media(max-width:900px){.nn-now-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:680px){.nn-intro{grid-template-columns:1fr;gap:24px;margin-top:24px}.nn-intro-kicker{font-size:17px}.nn-intro-name{font-size:64px}.nn-intro-sub br{display:none}
+  .nn-intro-art{border-radius:24px;aspect-ratio:16/10}.nn-intro-art img{width:58%}.nn-intro-menu{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}.nn-intro-menu::-webkit-scrollbar{display:none}.nn-intro-menu a{flex:none}
+  .nn-intro-bar{height:54px;font-size:16px;margin-top:28px}.nn-now-grid{grid-template-columns:1fr}.nn-now-grid li a{border-radius:18px}}
