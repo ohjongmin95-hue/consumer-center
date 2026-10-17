@@ -329,10 +329,10 @@ def install(S):
             feed += lifes[:2]; lifes = lifes[2:]
             if reps: feed.append(reps.pop(0))
         cats = [c for c in LIFE_CATEGORIES if any(x['kind'] == 'life' and x['label'] == c for x in feed)]
-        # 소보루 픽: 리뷰를 대상(제품·업체)별로 묶어 '추천해요'와 별점으로 순위
+        # 소보루 픽: 리뷰를 대상(제품·업체)별로 묶어 '추천해요'와 별점으로 순위. 소보루 에디터 리뷰는 소비자 순위에 넣지 않음
         with conn() as db:
             picks = [dict(r) for r in db.execute("""SELECT target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg,SUM(recommend=1) AS rec
-                FROM posts WHERE kind='review' AND hidden=0 AND target!='' GROUP BY target ORDER BY rec DESC,avg DESC,n DESC LIMIT 5""")]
+                FROM posts WHERE kind='review' AND hidden=0 AND editor=0 AND target!='' GROUP BY target ORDER BY rec DESC,avg DESC,n DESC LIMIT 5""")]
         show = {k: on for k, on in home_plan()['sections']}
         return render_template('soboru_home_nn.html', show=show, cases=[dict(c, look=report_look(c['cat'])) for c in S.report_rows(limit=6)], feed=feed[:10], cats=cats,
                                rank=company_rank(5), posts=S.community_feed(4), picks=picks)

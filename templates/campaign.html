@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% from 'community_macros.html' import feed_item, reward_box %}
+{# 이번 주 리뷰 주제 안내 화면(/pick/<주소>): 광고 링크가 여기로 옴. 캐릭터·제목·칩·쓰는 순서·리뷰 쓰기 버튼·모인 리뷰 #}
+{% block title %}{{ c['title'] }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ (c['intro'] or ui('cp.meta', '직접 써 본 소비자의 솔직한 리뷰를 모아요. 별점과 한 줄 평만 있어도 충분해요.'))|truncate(150, True, '…') }}{% endblock %}
+{% block content %}
+{% set write_url = url_for('board_write', type='review', campaign=c['slug']) %}
+<main class="sb-wrap cm cp">
+  {% if not running %}<div class="alert">{{ ui('cp.ended', '이 주제는 끝났어요. 모인 리뷰는 계속 볼 수 있어요.') if n else ui('cp.draft', '아직 열지 않은 주제예요. 운영자에게만 보여요.') }}</div>{% endif %}
+  <section class="cp-hero">
+    <div class="cp-hero-copy">
+      <p class="cp-eyebrow">{{ ui('cp.eyebrow', '이번 주 리뷰 주제') }}{% if c['starts'] or c['ends'] %} · {{ (c['starts'] or '')[5:].replace('-', '.') }}{% if c['ends'] %} ~ {{ c['ends'][5:].replace('-', '.') }}{% endif %}{% endif %}</p>
+      <h1>{{ c['title'] }}</h1>
+      {% if c['intro'] %}<p class="cp-intro">{{ c['intro'] }}</p>{% endif %}
+      <p class="cp-chips">{% if c['topic'] %}<span>#{{ c['topic'] }}</span>{% endif %}<span>#내돈내산</span><span>#사진 리뷰</span>{% if c['reward_on'] %}<span class="cp-gift">🎁 참여 혜택</span>{% endif %}</p>
+      {% if running %}<div class="cp-hero-btns"><a class="cm-btn cp-go" href="{{ write_url }}">{{ ui('cp.write', '리뷰 쓰기') }}</a><span>{{ ui('cp.no_login', '로그인 없이도 1분이면 써요') }}</span></div>{% endif %}
+    </div>
+    <div class="cp-hero-art" aria-hidden="true">
+      <span class="nn-bubble">{{ ui('cp.bubble', '솔직하게 알려 주세요!') }}</span>
+      <img src="{{ asset('img/soboru-character-hero.png') }}" alt="" width="579" height="479">
+    </div>
+  </section>
+
+  <p class="cm-first cp-first"><span aria-hidden="true">⭐</span><span>{% if n %}<b>{{ ui('cp.count1', '벌써') }} {{ n }}{{ ui('cp.count_unit', '개의 리뷰가 모였어요') }}</b>{{ ui('cp.count_sub', '내 리뷰가 더해질수록 순위가 정확해져요.') }}{% else %}<b>{{ ui('cp.first', '첫 리뷰를 남기면 소보루 픽 순위가 생겨요') }}</b>{{ ui('cp.first_sub', '아직 아무도 안 썼어요. 첫 번째 리뷰어가 되어 주세요.') }}{% endif %}</span></p>
+
+  <section class="cp-steps" aria-labelledby="cp-steps-h">
+    <h2 id="cp-steps-h">{{ ui('cp.steps_title', '이렇게 써 주세요') }}</h2>
+    <ol>
+      {% set food = c['topic'] == '배달음식' %}
+      <li><span class="cp-step-e" aria-hidden="true">{{ REVIEW_CAT_EMOJI.get(c['topic'], '📝') }}</span><b>{{ ui('cp.step1', '가게와 메뉴') if food else ui('cp.step1_plain', '업체와 제품') }}</b><small>{{ ui('cp.step1_sub', '어디서 무엇을 시켰는지 적어요') if food else ui('cp.step1_plain_sub', '어디서 무엇을 샀는지 적어요') }}</small></li>
+      <li><span class="cp-step-e" aria-hidden="true">⭐</span><b>{{ ui('cp.step2', '별점 하나') }}</b><small>{{ ui('cp.step2_sub', '맛·양·배달까지 솔직하게') if food else ui('cp.step2_plain_sub', '써 본 그대로 솔직하게') }}</small></li>
+      <li><span class="cp-step-e" aria-hidden="true">💬</span><b>{{ ui('cp.step3', '좋았던 점·아쉬웠던 점') }}</b><small>{{ ui('cp.step3_sub', '사진이 있으면 더 좋아요') }}</small></li>
+    </ol>
+    {% if c['fields_hint'] %}<div class="cp-hint-box"><h3>{{ ui('cp.hint_title', '이런 걸 적어 주면 도움이 돼요') }}</h3><ul class="cp-hints">{% for line in c['fields_hint'].split('\n') if line.strip() %}<li>{{ line.strip().lstrip('-').strip() }}</li>{% endfor %}</ul></div>{% endif %}
+  </section>
+
+  {% if c['reward_on'] %}{{ reward_box(c) }}{% endif %}
+
+  <div class="cp-body">
+    <section class="cp-list" aria-labelledby="cp-list-h">
+      <div class="cm-rel-head"><h2 id="cp-list-h">{{ ui('cp.list_title', '모인 리뷰') }} <b>{{ n }}</b></h2>{% if running %}<a href="{{ write_url }}">{{ ui('cp.write', '리뷰 쓰기') }} ›</a>{% endif %}</div>
+      <div class="cm-feed">
+        {% for p in rows %}{{ feed_item(p) }}
+        {% else %}<div class="cm-empty"><p>{{ ui('cp.empty', '아직 리뷰가 없어요. 첫 리뷰를 남겨 주세요.') }}</p>{% if running %}<a class="cm-btn" href="{{ write_url }}">{{ ui('cp.write_first', '첫 리뷰 쓰기') }}</a>{% endif %}</div>{% endfor %}
+      </div>
+    </section>
+    <aside class="cm-side cp-rank" aria-labelledby="cp-rank-h">
+      <h2 id="cp-rank-h">{{ ui('cp.rank_title', '이 주제 소보루 픽') }}</h2>
+      <p class="cm-side-sub">{{ ui('cp.rank_sub', "소비자 리뷰의 '추천해요'와 별점으로 매겨요. 에디터 리뷰는 빼요.") }}</p>
+      <ol>
+        {% for p in picks %}<li><span class="cm-rank">{{ loop.index }}</span><span class="cm-hot-t"><b>{{ mask_personal(p['target']) }}</b><small>★ {{ '%.1f' % (p['avg'] or 0) }} · {{ ui('cm.reviews_n', '리뷰') }} {{ p['n'] }} · {{ ui('cp.rec', '추천') }} {{ p['rec'] or 0 }}</small></span></li>
+        {% else %}<li class="cp-rank-empty">{{ ui('cp.rank_empty', '첫 리뷰를 남기면 여기에 순위가 생겨요.') }}</li>{% endfor %}
+      </ol>
+    </aside>
+  </div>
+  {% if running %}<div class="cp-sticky"><a class="cm-btn" href="{{ write_url }}">{{ ui('cp.write', '리뷰 쓰기') }}</a></div>{% endif %}
+</main>
+{% endblock %}

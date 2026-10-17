@@ -1,0 +1,44 @@
+{% extends 'console.html' %}
+{% block title %}광고 효과 | {{ site_name() }}{% endblock %}
+{% macro pct(a, b) %}{% if b %}{{ '%.1f' % (100 * a / b) }}%{% else %}-{% endif %}{% endmacro %}
+{% block content %}
+<main class="cs-page">
+  <h1 class="cs-title">광고 효과</h1>
+  <p class="cs-lead">최근 {{ days }}일, 사이트에 <b>처음 들어온 경로</b>(utm_source·utm_medium·utm_campaign)별로 방문자·가입·리뷰 작성·재방문(다음 날 이후 다시 옴)을 셌어요. 같은 사람의 같은 일은 하루에 한 번만 세요. 방문자는 무작위 쿠키 번호를 서버 비밀키로 바꾼 값으로만 구분하고, IP·개인정보는 저장하지 않아요. 기록은 {{ 90 }}일이 지나면 지워요.</p>
+
+  <div class="ads-kpis">
+    <div><small>방문자</small><b>{{ '{:,}'.format(total.visit) }}</b></div>
+    <div><small>가입</small><b>{{ '{:,}'.format(total.signup) }}</b><em>{{ pct(total.signup, total.visit) }}</em></div>
+    <div><small>리뷰 작성</small><b>{{ '{:,}'.format(total.review) }}</b><em>{{ pct(total.review, total.visit) }}</em></div>
+    <div><small>재방문</small><b>{{ '{:,}'.format(total['return']) }}</b><em>{{ pct(total['return'], total.visit) }}</em></div>
+  </div>
+
+  <div class="cs-table-wrap">
+    <table class="cs-table ads-table">
+      <thead><tr><th>경로 (source)</th><th>매체 (medium)</th><th>캠페인</th><th>방문자</th><th>가입</th><th>리뷰 작성</th><th>재방문</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+      <tr><td><b>{{ r.source }}</b></td><td>{{ r.medium or '-' }}</td><td>{{ r.campaign or '-' }}</td><td>{{ '{:,}'.format(r.visit) }}</td>
+        <td>{{ r.signup }} <small>{{ pct(r.signup, r.visit) }}</small></td><td>{{ r.review }} <small>{{ pct(r.review, r.visit) }}</small></td><td>{{ r['return'] }} <small>{{ pct(r['return'], r.visit) }}</small></td></tr>
+      {% else %}<tr><td colspan="7" class="cs-empty">아직 기록이 없어요. 광고 링크에 utm을 붙여 보내 보세요.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="cs-lead ads-note">‘(direct)’는 utm 없이 들어온 방문이에요. 가입·리뷰가 방문자보다 많을 수 있어요: {{ days }}일보다 먼저 처음 온 사람의 가입·리뷰도 그 경로로 세기 때문이에요.</p>
+
+  {% if daily %}
+  <div class="cs-panel">
+    <h2>날짜별 새 방문자</h2>
+    {% set top = daily|map(attribute='n')|max %}
+    <ol class="ads-days">{% for d in daily %}<li><span>{{ d['day'][5:].replace('-', '.') }}</span><i style="width:{{ (100 * d['n'] / top)|round(1) }}%"></i><b>{{ d['n'] }}</b></li>{% endfor %}</ol>
+  </div>
+  {% endif %}
+
+  <div class="cs-panel">
+    <h2>광고 링크 만들기</h2>
+    <p class="cs-lead">주소 뒤에 <code>?utm_source=매체&amp;utm_medium=종류&amp;utm_campaign=이름</code>을 붙여요. 영문·숫자·한글·-·_ 만 써 주세요.</p>
+    {% if campaign %}<p><code>{{ url_for('campaign_page', slug=campaign['slug'], _external=True) }}?utm_source=instagram&amp;utm_medium=paid&amp;utm_campaign={{ campaign['slug'] }}</code></p>
+    {% else %}<p class="cs-lead">지금 보이는 리뷰 주제가 없어요. <a href="{{ url_for('admin_campaigns') }}">리뷰 주제</a>를 열면 안내 화면 링크가 여기에 나와요.</p>{% endif %}
+  </div>
+</main>
+{% endblock %}

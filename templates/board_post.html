@@ -16,6 +16,10 @@
     <h1>{% if post['kind'] == 'question' and post['solved'] %}<span class="cm-solved">해결됨</span> {% endif %}{{ post['title'] }}</h1>
     {% if post['kind'] == 'review' %}<div class="post-review-box"><p><b>{% if company %}<a href="{{ url_for('company_page', company_id=company['id']) }}">{{ company['name'] }}</a>{% else %}{{ mask_personal(post['target']) }}{% endif %}</b> {{ stars(post['rating']) }} {{ post['rating'] }}점{% if post['recommend'] == 1 %} · {{ ui('cm.rec_yes', '추천해요') }}{% elif post['recommend'] == 0 %} · {{ ui('cm.rec_no', '추천하지 않아요') }}{% endif %}</p>
       {% if post['pros'] %}<p><b>{{ ui('cm.f_pros', '좋았던 점') }}</b> {{ mask_personal(post['pros']) }}</p>{% endif %}{% if post['cons'] %}<p><b>{{ ui('cm.f_cons', '아쉬운 점') }}</b> {{ mask_personal(post['cons']) }}</p>{% endif %}</div>{% endif %}
+    {% if post['editor'] %}<p class="post-summary"><b>{{ ui('cm.editor_badge', '소보루 에디터') }}</b> · {{ ui('cm.editor_note', '소보루 에디터가 직접 써 보고 남긴 리뷰예요. 소비자 별점과 순위에는 넣지 않아요.') }}</p>{% endif %}
+    {% if post['reward'] %}<p class="post-summary"><b>🎁 {{ ui('cm.reward_label', '소보루 이벤트 참여 리뷰 · 혜택을 받을 수 있어요') }}</b></p>{% endif %}
+    {% if post['menu'] %}<p class="post-summary">{{ ui('cm.f_menu', '주문 메뉴') }}: {{ mask_personal(post['menu']) }}</p>{% endif %}
+    {% if post['photo'] %}<p><img src="{{ url_for('board_photo', name=post['photo']) }}" alt="{{ ui('cm.photo_alt', '글쓴이가 올린 사진') }}" loading="lazy" style="max-width:100%;border-radius:12px"></p>{% endif %}
     {% if post['summary'] %}<p class="post-summary"><b>{{ post['summary'] }}</b></p>{% endif %}
     <div class="post-body">{{ post['body'] }}</div>
     {% if post['kind'] == 'question' and enabled and ((g.user and post['user_id'] == g.user['id']) or not post['user_id']) %}

@@ -1,4 +1,4 @@
-import os, re, types, json, time, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
+import os, re, io, types, json, time, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
 from pathlib import Path
 from flask import Flask, g, has_request_context, render_template, request, redirect, url_for, session, flash, abort, send_file, after_this_request
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -282,7 +282,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-110'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-111'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -959,10 +959,20 @@ with conn() as db:
     # 글 종류(리뷰·꿀팁·질문·이야기)와 리뷰 별점·좋았던 점·아쉬운 점, 꿀팁 요약, 질문 해결 여부
     have={r['name'] for r in db.execute('PRAGMA table_info(posts)')}
     for col,ddl in (('kind',"TEXT NOT NULL DEFAULT 'post'"),('target',"TEXT NOT NULL DEFAULT ''"),('company_id','INTEGER'),('rating','INTEGER NOT NULL DEFAULT 0'),('pros',"TEXT NOT NULL DEFAULT ''"),
-                    ('cons',"TEXT NOT NULL DEFAULT ''"),('recommend','INTEGER'),('summary',"TEXT NOT NULL DEFAULT ''"),('solved','INTEGER NOT NULL DEFAULT 0')):
+                    ('cons',"TEXT NOT NULL DEFAULT ''"),('recommend','INTEGER'),('summary',"TEXT NOT NULL DEFAULT ''"),('solved','INTEGER NOT NULL DEFAULT 0'),
+                    # 리뷰 주문 메뉴·사진(저장 파일 이름)·리뷰 주제(캠페인)·소보루 에디터 글·혜택 받는 이벤트 참여 리뷰·리뷰 분류
+                    ('menu',"TEXT NOT NULL DEFAULT ''"),('photo',"TEXT NOT NULL DEFAULT ''"),('campaign_id','INTEGER'),('editor','INTEGER NOT NULL DEFAULT 0'),('reward','INTEGER NOT NULL DEFAULT 0'),('review_cat',"TEXT NOT NULL DEFAULT ''")):
         if col not in have:db.execute(f'ALTER TABLE posts ADD COLUMN {col} {ddl}')
     if 'kind' not in have:db.execute("UPDATE posts SET kind=CASE category WHEN '질문해요' THEN 'question' WHEN '꿀팁' THEN 'tip' ELSE 'post' END")  # 예전 글은 분류로 종류를 정함
     db.execute('CREATE INDEX IF NOT EXISTS posts_kind ON posts(kind,hidden)')
+    db.execute('CREATE INDEX IF NOT EXISTS posts_campaign ON posts(campaign_id)')
+    # 이번 주 리뷰 주제(광고 링크로 들어오는 리뷰 모으기). 한 번에 하나만 사이트에 보임
+    db.execute('''CREATE TABLE IF NOT EXISTS review_campaigns(id INTEGER PRIMARY KEY,slug TEXT NOT NULL UNIQUE,title TEXT NOT NULL,topic TEXT NOT NULL DEFAULT '',intro TEXT NOT NULL DEFAULT '',fields_hint TEXT NOT NULL DEFAULT '',
+        starts TEXT NOT NULL DEFAULT '',ends TEXT NOT NULL DEFAULT '',active INTEGER NOT NULL DEFAULT 0,reward_on INTEGER NOT NULL DEFAULT 0,reward_rules TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
+    # 광고 효과: 날짜·유입 경로별 익명 방문자 해시만(IP·개인정보 없음). 90일 지나면 지움
+    db.execute('''CREATE TABLE IF NOT EXISTS ad_events(day TEXT NOT NULL,utm_source TEXT NOT NULL DEFAULT '',utm_medium TEXT NOT NULL DEFAULT '',utm_campaign TEXT NOT NULL DEFAULT '',event TEXT NOT NULL,visitor_hash TEXT NOT NULL,
+        PRIMARY KEY(day,event,visitor_hash))''')
+    db.execute('CREATE INDEX IF NOT EXISTS ad_events_visitor ON ad_events(visitor_hash,event)')
 
 def soboru_on():return bool(app.jinja_env.globals.get('is_soboru',lambda:False)())  # soboru.py가 맨 끝에 붙임
 def board_enabled():return os.getenv('ENABLE_BOARD')=='1'
@@ -983,10 +993,10 @@ def match_company(db,name):
     return None
 def read_minutes(text):return max(1,round((text if isinstance(text,int) else len(text or ''))/500))  # 글자 수 또는 본문
 def review_stats(db,company_id=None,limit=5):
-    # 리뷰가 쌓인 곳: 같은 기업(또는 같은 이름)끼리 묶어 평균 별점
-    where="kind='review' AND hidden=0 AND rating BETWEEN 1 AND 5"+(' AND company_id=?' if company_id else '')
+    # 리뷰가 쌓인 곳: 같은 기업(또는 같은 이름)끼리 묶어 평균 별점. 소보루 에디터 리뷰는 소비자 별점에 넣지 않음
+    where="kind='review' AND hidden=0 AND editor=0 AND rating BETWEEN 1 AND 5"+(' AND company_id=?' if company_id else '')
     return db.execute(f"SELECT MAX(target) AS target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg FROM posts WHERE {where} GROUP BY COALESCE(company_id,lower(replace(target,' ',''))) ORDER BY n DESC,avg DESC LIMIT ?",((company_id,) if company_id else ())+(limit,)).fetchall()
-FEED_COLS='id,kind,category,nickname,user_id,title,substr(body,1,160) AS excerpt,length(body) AS body_len,likes,comments,created,target,company_id,rating,pros,cons,recommend,summary,solved'
+FEED_COLS='id,kind,category,nickname,user_id,title,substr(body,1,160) AS excerpt,length(body) AS body_len,likes,comments,created,target,company_id,rating,pros,cons,recommend,summary,solved,menu,photo,campaign_id,editor,reward,review_cat'
 def community_feed(limit=4):
     # 메인 화면 커뮤니티: 최근 30일 반응 많은 글을 종류별로 하나씩 먼저, 나머지는 반응순 → 모자라면 최신순
     since=(datetime.datetime.now()-datetime.timedelta(days=30)).isoformat(timespec='seconds')
@@ -1024,6 +1034,89 @@ def board_back(post_id=None):
 def refresh_comment_count(db,post_id):
     db.execute('UPDATE posts SET comments=(SELECT COUNT(*) FROM comments WHERE post_id=? AND hidden=0) WHERE id=?',(post_id,post_id))
 
+# ---- 리뷰 분류·사진·이번 주 리뷰 주제 -----------------------------------------
+REVIEW_CATS=['배달음식','편의점','생활용품','화장품','온라인 쇼핑']
+REVIEW_CAT_EMOJI={'배달음식':'🍜','편의점':'🛒','생활용품':'🏠','화장품':'🧴','온라인 쇼핑':'📦'}  # 토스페이스 글꼴에 들어 있는 이모지만
+BOARD_PHOTO_DIR=UPLOAD/'board';BOARD_PHOTO_DIR.mkdir(parents=True,exist_ok=True)
+BOARD_PHOTO_MAX=8*1024*1024
+PHOTO_TYPES={'jpg':'image/jpeg','png':'image/png','webp':'image/webp'}
+def photo_kind(data):
+    # 확장자 대신 파일 앞부분(매직 바이트)으로 종류 확인
+    if data[:3]==b'\xff\xd8\xff':return 'jpg'
+    if data[:8]==b'\x89PNG\r\n\x1a\n':return 'png'
+    if data[:4]==b'RIFF' and data[8:12]==b'WEBP':return 'webp'
+    return None
+def strip_jpeg(data):
+    # Pillow가 없을 때: APP1(EXIF·XMP, 위치 정보 포함)·APP3~13·APP15·주석 조각을 떼어 냄. APP0(JFIF)·APP2(색 정보)·APP14(Adobe)는 남김
+    out=bytearray(data[:2]);i=2
+    while i+4<=len(data):
+        if data[i]!=0xFF:return None
+        marker=data[i+1]
+        if marker==0xFF:i+=1;continue
+        if marker==0xDA:out+=data[i:];return bytes(out)  # 그림 데이터 시작: 나머지는 그대로
+        if 0xD0<=marker<=0xD8 or marker==0x01:out+=data[i:i+2];i+=2;continue
+        n=int.from_bytes(data[i+2:i+4],'big')
+        if n<2 or i+2+n>len(data):return None
+        if not (marker==0xE1 or 0xE3<=marker<=0xED or marker in (0xEF,0xFE)):out+=data[i:i+2+n]
+        i+=2+n
+    return None
+def strip_png(data):
+    # Pillow가 없을 때: EXIF·글 조각(eXIf·tEXt·zTXt·iTXt·tIME)을 떼어 냄
+    out=bytearray(data[:8]);i=8
+    while i+12<=len(data):
+        n=int.from_bytes(data[i:i+4],'big');kind=data[i+4:i+8]
+        if i+12+n>len(data):return None
+        if kind not in (b'eXIf',b'tEXt',b'zTXt',b'iTXt',b'tIME'):out+=data[i:i+12+n]
+        i+=12+n
+        if kind==b'IEND':return bytes(out)
+    return None
+def clean_photo(data):
+    # 사진 한 장 검사: JPG·PNG·WEBP, 8MB 이하. Pillow가 있으면 새로 저장해 EXIF(위치 등)를 지우고, 없으면 JPG·PNG만 받아 EXIF 조각을 떼어 냄
+    kind=photo_kind(data or b'')
+    if not kind or len(data)>BOARD_PHOTO_MAX:return None,None
+    try:from PIL import Image,ImageOps
+    except ImportError:Image=None
+    if Image is None:
+        out=strip_jpeg(data) if kind=='jpg' else strip_png(data) if kind=='png' else None
+        return (out,kind) if out else (None,None)
+    try:
+        im=Image.open(io.BytesIO(data))
+        if {'JPEG':'jpg','PNG':'png','WEBP':'webp'}.get(im.format)!=kind or im.width*im.height>40_000_000:return None,None
+        im=ImageOps.exif_transpose(im);im.thumbnail((2400,2400))
+        icc=im.info.get('icc_profile');im.info={k:v for k,v in im.info.items() if k=='transparency'}  # EXIF·XMP·글 조각은 버림
+        buf=io.BytesIO()
+        if kind=='jpg':im.convert('RGB').save(buf,'JPEG',quality=88,optimize=True,**({'icc_profile':icc} if icc else {}))
+        elif kind=='png':(im if im.mode in ('RGB','RGBA','L','LA','P') else im.convert('RGBA')).save(buf,'PNG',optimize=True)
+        else:im.save(buf,'WEBP',quality=88)
+        return buf.getvalue(),kind
+    except Exception:return None,None
+def save_board_photo(data,kind):
+    name=secrets.token_hex(16)+'.'+kind;(BOARD_PHOTO_DIR/name).write_bytes(data);return name
+def drop_board_photo(name):
+    if name and re.fullmatch(r'[0-9a-f]{32}\.(jpg|png|webp)',name):(BOARD_PHOTO_DIR/name).unlink(missing_ok=True)
+def today_str():return datetime.date.today().isoformat()
+def campaign_running(c):return bool(c and c['active'] and (not c['starts'] or c['starts']<=today_str()) and (not c['ends'] or c['ends']>=today_str()))
+def current_campaign():
+    # 지금 진행 중인 리뷰 주제 하나(요청마다 한 번만 읽음)
+    if has_request_context() and 'campaign' in g:return g.campaign
+    with conn() as db:c=next((c for c in db.execute('SELECT * FROM review_campaigns WHERE active=1 ORDER BY id DESC') if campaign_running(c)),None)
+    if has_request_context():g.campaign=c
+    return c
+def campaign_by_slug(slug):
+    with conn() as db:return db.execute('SELECT * FROM review_campaigns WHERE slug=?',(slug or '',)).fetchone()
+def campaign_review_count(cid):
+    with conn() as db:return db.execute("SELECT COUNT(*) FROM posts WHERE campaign_id=? AND hidden=0 AND kind='review'",(cid,)).fetchone()[0]
+def reward_lines(text):
+    # 혜택 규칙: '대상: …', '지급 방법: …' 처럼 쓴 줄은 (이름, 내용), 아닌 줄은 ('', 내용)
+    out=[]
+    for line in (text or '').split('\n'):
+        line=line.strip().lstrip('-').strip()
+        if not line:continue
+        k,sep,v=line.partition(':')
+        out.append((k.strip(),v.strip()) if sep and 0<len(k.strip())<=10 else ('',line))
+    return out
+app.jinja_env.globals.update(REVIEW_CATS=REVIEW_CATS,REVIEW_CAT_EMOJI=REVIEW_CAT_EMOJI,current_campaign=current_campaign,campaign_review_count=campaign_review_count,reward_lines=reward_lines)
+
 @app.template_filter('ago')
 def ago(created):
     try:delta=datetime.datetime.now()-datetime.datetime.fromisoformat(created)
@@ -1041,10 +1134,13 @@ def board():
     kind=request.args.get('type','');kind=kind if kind in POST_KIND_NAMES else ''
     sort='top' if request.args.get('sort')=='top' else 'new'
     page=max(1,request.args.get('page',1,type=int))
+    rc=request.args.get('rc','');rc=rc if rc in REVIEW_CATS else ''  # 리뷰 분류(배달음식·편의점…)
+    if rc:kind='review'
     where=['hidden=0'];args=[]
     if cat in board_categories():where.append('category=?');args.append(cat)
     else:cat=''
     if kind:where.append('kind=?');args.append(kind)
+    if rc:where.append('review_cat=?');args.append(rc)
     if q:where.append("(title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\' OR target LIKE ? ESCAPE '\\')");like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%';args+=[like,like,like]
     order='likes DESC,id DESC' if sort=='top' else 'id DESC'
     with conn() as db:
@@ -1056,21 +1152,33 @@ def board():
         rated=review_stats(db) if not (q or cat or page>1) else []
         counts=dict(db.execute('SELECT kind,COUNT(*) FROM posts WHERE hidden=0 GROUP BY kind').fetchall())
     if page>1 and page>-(-total//BOARD_PAGE_SIZE):abort(404)  # 없는 쪽 번호는 빈 화면(200) 대신 404
-    return render_template('board.html',posts=posts,hot=hot,liked=liked,categories=board_categories(),cat=cat,kind=kind,q=q,sort=sort,page=page,pages=max(1,-(-total//BOARD_PAGE_SIZE)),total=total,enabled=board_enabled(),rated=rated,counts=counts)
+    return render_template('board.html',posts=posts,hot=hot,liked=liked,categories=board_categories(),cat=cat,kind=kind,q=q,sort=sort,page=page,pages=max(1,-(-total//BOARD_PAGE_SIZE)),total=total,enabled=board_enabled(),rated=rated,counts=counts,rc=rc)
 
 @app.route('/board/write',methods=['GET','POST'])
 def board_write():
     if request.method=='POST':
         if not board_enabled():abort(503,description='게시판 글쓰기 준비 중입니다.')
-        f={k:request.form.get(k,'').strip() for k in ('category','nickname','password','title','body','kind','target','pros','cons','summary')}
+        f={k:request.form.get(k,'').strip() for k in ('category','nickname','password','title','body','kind','target','pros','cons','summary','menu','review_cat')}
         if f['kind'] in ('','post') or f['kind'] not in POST_KIND_NAMES:f['kind']=category_kind(f['category'])  # 종류 없이 오면(예전 화면) 분류로 정함
         else:f['category']=kind_category(f['kind'])
         rating=request.form.get('rating',0,type=int) if f['kind']=='review' else 0
         recommend={'1':1,'0':0}.get(request.form.get('recommend','')) if f['kind']=='review' else None
-        if f['kind']!='review':f['target']=f['pros']=f['cons']=''
+        editor=1 if request.form.get('editor')=='1' and admin_active() else 0  # 소보루 에디터 글은 관리자만
+        camp=campaign_by_slug(request.form.get('campaign')) if f['kind']=='review' else None
+        camp=camp if campaign_running(camp) else None  # 끝난 주제로는 참여하지 않음
+        if f['kind']!='review':f['target']=f['pros']=f['cons']=f['menu']=f['review_cat']=''
+        if camp and not f['review_cat'] and camp['topic'] in REVIEW_CATS:f['review_cat']=camp['topic']
+        if f['review_cat'] not in REVIEW_CATS:f['review_cat']=''
         if f['kind']!='tip':f['summary']=''
         if g.user:f['nickname']=g.user['nickname'];f['password']='member'  # 회원은 로그인 정보로 쓰고 지움
+        elif editor:f['nickname']=f['nickname'] or '소보루 에디터';f['password']=f['password'] or secrets.token_urlsafe(12)  # 관리자는 관리자 화면에서 지움
+        upload=request.files.get('photo') if f['kind']=='review' else None
+        photo=(None,None)
         errors=[]
+        if upload and upload.filename:
+            photo=clean_photo(upload.stream.read(BOARD_PHOTO_MAX+1))
+            if not photo[0]:errors.append(ui_text('msg.photo','사진은 8MB 이하 JPG·PNG·WEBP 한 장만 올릴 수 있어요.'))
+        if len(f['menu'])>40:errors.append(ui_text('msg.rv_menu','주문 메뉴는 40자 안으로 적어 주세요.'))
         if request.form.get('website'):abort(400)  # 사람에게는 보이지 않는 칸. 채워져 있으면 자동 등록 프로그램.
         if f['category'] not in board_categories():errors.append(ui_text('msg.m05','분류를 골라 주세요.'))
         if not 2<=len(f['nickname'])<=20:errors.append(ui_text('msg.m06','닉네임은 2~20자로 적어 주세요.'))
@@ -1088,12 +1196,22 @@ def board_write():
             if not errors and recent_count(db,'posts',10)>=3:errors.append(ui_text('msg.m11','잠시 후 다시 올려 주세요. 10분에 3개까지 쓸 수 있어요.'))
             if errors:
                 for e in errors:flash(e)
-                return render_template('board_write.html',categories=board_categories(),enabled=True,kind=f['kind']),400
-            cur=db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id,kind,target,company_id,rating,pros,cons,recommend,summary) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(f['category'],f['nickname'],'' if g.user else generate_password_hash(f['password']),f['title'],f['body'],ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None,
-                f['kind'],f['target'],match_company(db,f['target']) if f['target'] else None,rating,f['pros'],f['cons'],recommend,f['summary']))
+                if photo[0]:flash(ui_text('msg.photo_again','사진은 다시 골라 주세요.'))
+                return render_template('board_write.html',categories=board_categories(),enabled=True,kind=f['kind'],**write_extras(camp)),400
+            cur=db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id,kind,target,company_id,rating,pros,cons,recommend,summary,menu,photo,campaign_id,editor,reward,review_cat) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(f['category'],f['nickname'],'' if g.user else generate_password_hash(f['password']),f['title'],f['body'],ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None,
+                f['kind'],f['target'],match_company(db,f['target']) if f['target'] else None,rating,f['pros'],f['cons'],recommend,f['summary'],f['menu'],save_board_photo(*photo) if photo[0] else '',
+                camp['id'] if camp else None,editor,1 if camp and camp['reward_on'] and not editor else 0,f['review_cat']))
+            if f['kind']=='review' and not editor:ad_event('review',db)
         return redirect(url_for('board_post',post_id=cur.lastrowid))
     kind=request.args.get('type','')
-    return render_template('board_write.html',categories=board_categories(),enabled=board_enabled(),kind=kind if kind in POST_KIND_NAMES else '')
+    camp=campaign_by_slug(request.args.get('campaign'))
+    camp=camp if campaign_running(camp) else None
+    return render_template('board_write.html',categories=board_categories(),enabled=board_enabled(),kind='review' if camp else (kind if kind in POST_KIND_NAMES else ''),**write_extras(camp))
+def write_extras(camp):
+    # 글쓰기 화면: 참여 중인 리뷰 주제와 첫 리뷰 안내(회원이 처음 쓰는 리뷰인지)
+    with conn() as db:
+        mine=db.execute("SELECT COUNT(*) FROM posts WHERE user_id=? AND kind='review'",(g.user['id'],)).fetchone()[0] if g.user else 0
+    return {'campaign':camp,'campaign_n':campaign_review_count(camp['id']) if camp else 0,'first_review':not mine}
 
 @app.route('/board/<int:post_id>')
 def board_post(post_id):
@@ -1104,7 +1222,18 @@ def board_post(post_id):
         mine={r['kind']+r['target'] for r in db.execute('SELECT kind,target FROM board_votes WHERE voter=?',(voter_id(),))}
         company=db.execute("SELECT id,name FROM companies WHERE id=? AND status IN ('active','listed')",(post['company_id'],)).fetchone() if post['company_id'] else None
         related=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0 AND kind=? AND id!=? ORDER BY likes DESC,id DESC LIMIT 3',(post['kind'],post_id)).fetchall()
-    return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled(),company=company,related=related)
+        camp=db.execute('SELECT * FROM review_campaigns WHERE id=?',(post['campaign_id'],)).fetchone() if post['campaign_id'] else None
+    return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled(),company=company,related=related,campaign=camp)
+
+@app.route('/board/photo/<name>')
+def board_photo(name):
+    # 리뷰 사진: 글이 숨겨지면 사진도 운영자에게만. 종류는 저장할 때 확인한 그대로 알려 줌
+    if not re.fullmatch(r'[0-9a-f]{32}\.(jpg|png|webp)',name):abort(404)
+    with conn() as db:post=db.execute('SELECT hidden FROM posts WHERE photo=?',(name,)).fetchone()
+    if not post or (post['hidden'] and not admin_active()) or not (BOARD_PHOTO_DIR/name).is_file():abort(404)
+    resp=send_file(BOARD_PHOTO_DIR/name,mimetype=PHOTO_TYPES[name.rsplit('.',1)[1]],max_age=3600)
+    resp.headers['Content-Security-Policy']="default-src 'none'";resp.headers['Content-Disposition']='inline'
+    return resp
 
 @app.route('/board/<int:post_id>/solve',methods=['POST'])
 def board_solve(post_id):
@@ -1182,7 +1311,9 @@ def delete_board_item(db,kind,item_id):
         ids=[r['id'] for r in db.execute('SELECT id FROM comments WHERE post_id=?',(item_id,))]
         db.execute('DELETE FROM board_votes WHERE target=?'+' OR target=?'*len(ids),['p:%d'%item_id]+['c:%d'%i for i in ids])
         db.execute('DELETE FROM comments WHERE post_id=?',(item_id,))
+        row=db.execute('SELECT photo FROM posts WHERE id=?',(item_id,)).fetchone()
         db.execute('DELETE FROM posts WHERE id=?',(item_id,))
+        if row:drop_board_photo(row['photo'])  # 사진 파일도 바로 지움
     else:
         post_id=db.execute('SELECT post_id FROM comments WHERE id=?',(item_id,)).fetchone()['post_id']
         db.execute('DELETE FROM board_votes WHERE target=?',('c:%d'%item_id,))
@@ -1210,6 +1341,109 @@ def admin_board():
         comments=db.execute(f'SELECT c.id,c.post_id,c.nickname,c.body,c.created,c.hidden,c.flags,p.title FROM comments c JOIN posts p ON p.id=c.post_id {cond.replace("flags","c.flags").replace("hidden","c.hidden")} ORDER BY c.flags DESC,c.id DESC LIMIT 200').fetchall()
         case_comments=db.execute(f'SELECT k.id,k.case_id,k.nickname,k.body,k.created,k.hidden,k.flags,c.subject,c.public_subject FROM case_comments k JOIN cases c ON c.id=k.case_id {cond.replace("flags","k.flags").replace("hidden","k.hidden")} ORDER BY k.flags DESC,k.id DESC LIMIT 200').fetchall()
     return render_template('admin_board.html',posts=posts,comments=comments,case_comments=case_comments,flagged=flagged,threshold=FLAG_HIDE_THRESHOLD)
+
+# ---- 이번 주 리뷰 주제(캠페인) ----------------------------------------------
+# 운영자가 주제를 열면 /pick/<주소>가 광고 링크용 안내 화면이 되고, 소보루 픽·메인 화면 위에 카드가 떠요. 한 번에 하나만.
+CAMPAIGN_SLUG_RE=re.compile(r'^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$')
+def campaign_picks(db,cid,limit=5):
+    # 주제 안 소비자 순위: 에디터 리뷰는 빼고, 업체별 '추천해요'·별점으로
+    return db.execute("""SELECT target,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg,SUM(recommend=1) AS rec FROM posts
+        WHERE campaign_id=? AND kind='review' AND hidden=0 AND editor=0 AND target!='' GROUP BY lower(replace(target,' ','')) ORDER BY rec DESC,avg DESC,n DESC LIMIT ?""",(cid,limit)).fetchall()
+
+@app.route('/pick/<slug>')
+def campaign_page(slug):
+    c=campaign_by_slug(slug)
+    if not c:abort(404)
+    with conn() as db:
+        rows=db.execute(f"SELECT {FEED_COLS} FROM posts WHERE campaign_id=? AND kind='review' AND hidden=0 ORDER BY id DESC LIMIT 30",(c['id'],)).fetchall()
+        picks=campaign_picks(db,c['id'])
+    running=campaign_running(c)
+    if not running and not rows and not admin_active():abort(404)  # 아직 열지 않은 주제는 운영자만 미리 봄
+    return render_template('campaign.html',c=c,rows=rows,picks=picks,running=running,n=len(rows))
+
+@app.route('/admin/campaigns',methods=['GET','POST'])
+@admin_only
+def admin_campaigns():
+    with conn() as db:
+        if request.method=='POST':
+            cid=request.form.get('id',type=int);act=request.form.get('act','save')
+            if act=='end' and cid:
+                db.execute('UPDATE review_campaigns SET active=0 WHERE id=?',(cid,));flash('주제를 끝냈어요. 이미 모인 리뷰는 그대로 보여요.');return redirect(url_for('admin_campaigns'))
+            f={k:request.form.get(k,'').strip() for k in ('slug','title','topic','intro','fields_hint','starts','ends','reward_rules')}
+            f['slug']=f['slug'].lower()
+            for k in ('starts','ends'):f[k]=f[k] if re.fullmatch(r'\d{4}-\d{2}-\d{2}',f[k]) else ''
+            active=1 if request.form.get('active') else 0;reward=1 if request.form.get('reward_on') else 0
+            errors=[]
+            if not CAMPAIGN_SLUG_RE.match(f['slug']):errors.append('주소는 영문 소문자·숫자·하이픈(-)으로 3~40자로 정해 주세요. 예: delivery-1017')
+            elif db.execute('SELECT 1 FROM review_campaigns WHERE slug=? AND id!=?',(f['slug'],cid or 0)).fetchone():errors.append('이미 쓰고 있는 주소예요.')
+            if not 2<=len(f['title'])<=80:errors.append('제목은 2~80자로 적어 주세요.')
+            if len(f['topic'])>20 or len(f['intro'])>600 or len(f['fields_hint'])>600 or len(f['reward_rules'])>2000:errors.append('글자 수를 줄여 주세요. (분야 20자, 소개·적을 내용 600자, 혜택 규칙 2,000자)')
+            if f['starts'] and f['ends'] and f['ends']<f['starts']:errors.append('끝나는 날이 시작하는 날보다 빨라요.')
+            if reward and not f['reward_rules']:errors.append('혜택을 켜려면 기간·대상·지급 방법·유의사항을 적어 주세요.')
+            if errors:
+                for e in errors:flash(e)
+                return redirect(url_for('admin_campaigns',id=cid) if cid else url_for('admin_campaigns'))
+            if active:db.execute('UPDATE review_campaigns SET active=0 WHERE id!=?',(cid or 0,))  # 사이트에는 한 번에 하나만
+            vals=(f['slug'],f['title'],f['topic'],f['intro'],f['fields_hint'],f['starts'],f['ends'],active,reward,f['reward_rules'])
+            if cid:db.execute('UPDATE review_campaigns SET slug=?,title=?,topic=?,intro=?,fields_hint=?,starts=?,ends=?,active=?,reward_on=?,reward_rules=? WHERE id=?',vals+(cid,))
+            else:cid=db.execute('INSERT INTO review_campaigns(slug,title,topic,intro,fields_hint,starts,ends,active,reward_on,reward_rules,created) VALUES(?,?,?,?,?,?,?,?,?,?,?)',vals+(now(),)).lastrowid
+            flash('저장했어요.'+(' 지금 사이트에 보여요.' if active else ''));return redirect(url_for('admin_campaigns',id=cid))
+        rows=db.execute("SELECT c.*,(SELECT COUNT(*) FROM posts p WHERE p.campaign_id=c.id AND p.kind='review') AS n FROM review_campaigns c ORDER BY c.id DESC").fetchall()
+        edit=db.execute('SELECT * FROM review_campaigns WHERE id=?',(request.args.get('id',type=int),)).fetchone() if request.args.get('id') else None
+    return render_template('admin_campaigns.html',rows=rows,c=edit,running=campaign_running,topics=REVIEW_CATS)
+
+# ---- 광고 효과: 처음 들어온 경로(utm)별 방문·가입·리뷰·재방문 ------------------------
+# 방문자마다 무작위 쿠키 번호를 주고, 서버 비밀키로 만든 해시만 저장(IP·개인정보 없음). 같은 날 같은 일은 한 번만 세고, 90일 지나면 지움.
+AD_COOKIE='sb_vid';AD_KEEP_DAYS=90
+AD_SKIP=('/static','/admin','/staff','/reporter','/biz','/board/photo','/robots.txt','/sitemap.xml','/favicon','/rss','/feed','/api')
+AD_BOT=re.compile(r'bot|crawl|spider|slurp|yeti|daum|preview|externalhit|headless|python|curl|wget',re.I)
+AD_EVENTS=['visit','signup','review','return']
+def ad_clean(v):return re.sub(r'[^0-9A-Za-z가-힣_.\-]','',v or '')[:40]
+def ad_visitor():
+    vid=g.get('ad_vid') or request.cookies.get(AD_COOKIE,'')
+    return hmac.new(app.secret_key.encode(),('ad:'+vid).encode(),'sha256').hexdigest() if re.fullmatch(r'[A-Za-z0-9_-]{16,64}',vid) else None
+def ad_event(event,db=None):
+    # 처음 들어온 경로(첫 방문 기록, 없으면 이번 세션의 utm)에 붙여 셈
+    vh=ad_visitor() if has_request_context() else None
+    if not vh:return
+    def put(db):
+        row=db.execute("SELECT utm_source,utm_medium,utm_campaign FROM ad_events WHERE visitor_hash=? AND event='visit' ORDER BY day LIMIT 1",(vh,)).fetchone()
+        u=session.get('utm') or {}
+        src=tuple(row) if row else (u.get('s') or '(direct)',u.get('m',''),u.get('c',''))
+        db.execute('INSERT OR IGNORE INTO ad_events(day,utm_source,utm_medium,utm_campaign,event,visitor_hash) VALUES(?,?,?,?,?,?)',(today_str(),*src,event,vh))
+    if db is not None:return put(db)
+    with conn() as db:put(db)
+@app.before_request
+def ad_track():
+    if request.method!='GET' or request.endpoint in (None,'static') or request.path.startswith(AD_SKIP) or session.get('admin') or AD_BOT.search(request.headers.get('User-Agent','')):return
+    if request.args.get('utm_source') and 'utm' not in session:  # 첫 방문 경로만 기억(first touch)
+        session['utm']={'s':ad_clean(request.args['utm_source']),'m':ad_clean(request.args.get('utm_medium')),'c':ad_clean(request.args.get('utm_campaign'))}
+    if not re.fullmatch(r'[A-Za-z0-9_-]{16,64}',request.cookies.get(AD_COOKIE,'')):g.ad_vid=secrets.token_urlsafe(16)
+    day=today_str()
+    if session.get('ad_day')==day:return  # 이 세션은 오늘 이미 셈
+    session['ad_day']=day;vh=ad_visitor()
+    with conn() as db:
+        first=db.execute("SELECT day FROM ad_events WHERE visitor_hash=? AND event='visit' ORDER BY day LIMIT 1",(vh,)).fetchone()
+        if not first:ad_event('visit',db)
+        elif first['day']<day:ad_event('return',db)  # 다음 날 이후 다시 옴
+        db.execute('DELETE FROM ad_events WHERE day<?',((datetime.date.today()-datetime.timedelta(days=AD_KEEP_DAYS)).isoformat(),))
+@app.after_request
+def ad_cookie(resp):
+    if g.get('ad_vid'):resp.set_cookie(AD_COOKIE,g.ad_vid,max_age=AD_KEEP_DAYS*86400,httponly=True,samesite='Lax',secure=os.getenv('HTTPS_ONLY')=='1')
+    return resp
+
+@app.route('/admin/ads')
+@admin_only
+def admin_ads():
+    days=30;since=(datetime.date.today()-datetime.timedelta(days=days-1)).isoformat()
+    with conn() as db:
+        raw=db.execute('SELECT utm_source,utm_medium,utm_campaign,event,COUNT(DISTINCT visitor_hash) AS n FROM ad_events WHERE day>=? GROUP BY utm_source,utm_medium,utm_campaign,event',(since,)).fetchall()
+        daily=db.execute("SELECT day,COUNT(DISTINCT visitor_hash) AS n FROM ad_events WHERE day>=? AND event='visit' GROUP BY day ORDER BY day",(since,)).fetchall()
+    per={}
+    for r in raw:per.setdefault((r['utm_source'],r['utm_medium'],r['utm_campaign']),dict.fromkeys(AD_EVENTS,0))[r['event']]=r['n']
+    rows=sorted(({'source':k[0],'medium':k[1],'campaign':k[2],**v} for k,v in per.items()),key=lambda r:(-r['visit'],r['source']))
+    total={e:sum(r[e] for r in rows) for e in AD_EVENTS}
+    return render_template('admin_ads.html',rows=rows,total=total,days=days,daily=daily,campaign=current_campaign())
 
 # ---- 회원 ------------------------------------------------------------------
 # 아이디·비밀번호 회원가입. 제보와 게시판은 비회원도 그대로 쓸 수 있고, 회원은 내 정보에서 모아 봄.
@@ -1257,7 +1491,7 @@ def safe_next(default='home'):
     return nxt if nxt.startswith('/') and not nxt.startswith('//') and '\\' not in nxt else url_for(default)
 def sign_in(user,remember):
     # 회원 로그인은 관리자 로그인을 이어받지 않음 (로그인 유지 쿠키에 관리자 권한이 남지 않도록)
-    keep={k:session[k] for k in ('voter',) if k in session}
+    keep={k:session[k] for k in ('voter','utm','ad_day') if k in session}  # 광고 효과용 첫 방문 경로는 이어 감
     session.clear();session.update(keep)
     session['uid']=user['id'];session['uv']=user['session_ver'];session.permanent=bool(remember)
 
@@ -1291,6 +1525,7 @@ def signup():
             return render_template('signup.html',enabled=True),400
         cur=db.execute('INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created) VALUES(?,?,?,?,?,?,?,?)',(f['login_id'],generate_password_hash(pw),f['nickname'],f['email'],TERMS_VERSION,now(),ip_hash(),now()))
         user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
+        ad_event('signup',db)
     sign_in(user,False)
     flash(user['nickname']+ui_text('msg.welcome','님, 가입을 환영해요!'))
     return redirect(url_for('mypage'))
