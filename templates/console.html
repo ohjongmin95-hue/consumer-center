@@ -40,7 +40,8 @@
   ('기업', [('admin_companies', 'building', '기업'), ('admin_contacts', 'mail', '기업 연락처')]),
   ('커뮤니티', [('admin_members', 'users', '회원'), ('admin_board', 'chat', '게시판 신고'), ('admin_takedowns', 'flag', '게시중단 요청'), ('admin_campaigns', 'layers', '리뷰 주제'), ('admin_ads', 'chart', '광고 효과')]),
   ('콘텐츠', [('admin_life', 'text', '생활정보 글'), ('admin_letter', 'mail', '소보루 레터'), ('admin_art', 'image', 'AI 일러스트'), ('admin_laws', 'book', '법령 학습'), ('admin_ask', 'chat', 'AI 상담')]),
-  ('사이트', [('admin_screens', 'edit', '화면 편집'), ('admin_site', 'layers', '사이트 편집'), ('admin_lists', 'layers', '구성 바꾸기'), ('admin_content', 'text', '숨은 문구·설정')]),
+  ('사이트 (소보루)', [('admin_screens', 'edit', '화면 편집'), ('admin_site', 'layers', '사이트 편집'), ('admin_lists', 'layers', '구성 바꾸기'), ('admin_content', 'text', '숨은 문구·설정')]),
+  ('소비자제보센터', [('admin_site', 'edit', '제보센터 화면 편집'), ('admin_lists', 'layers', '제보센터 구성'), ('admin_content', 'text', '제보센터 문구·설정')]),
   ('계정', [('admin_staff', 'id', '기자 계정'), ('admin_password', 'key', '비밀번호 변경')]),
 ] %}
 {% set nc = new_case_info() %}
@@ -48,7 +49,9 @@
 <header class="ad-top">
   <a class="ad-brand" href="{{ url_for('admin') }}"><img src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="136" height="32"><em>관리자</em></a>
   <div class="ad-top-right">
-    <a class="ad-site" href="{{ url_for('home') }}" target="_blank" rel="noopener">사이트 보기 ↗</a>
+    <details class="ad-site-pick"><summary class="ad-site">사이트 보기 ▾</summary>{# 어느 사이트로 나갈지 고름 #}
+      <div><a href="{{ url_for('home', face='off') }}" target="_blank" rel="noopener">소보루 ↗</a>
+      <a href="{{ jebo_site_url() }}" target="_blank" rel="noopener">소비자제보센터 ↗</a></div></details>
     <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">{{ icon('out') }}<span>로그아웃</span></button></form>
   </div>
 </header>
@@ -56,11 +59,13 @@
   <nav class="ad-side" aria-label="관리 메뉴">
     {% for group, links in groups %}
     <div class="ad-group">{% if group %}<p class="ad-group-title">{{ group }}</p>{% endif %}
-      {% for e, ico, label in links %}<a href="{{ url_for(e) }}"{% if active == e %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span>{% if e == 'admin_reports' %}<em class="ad-badge" id="ad-new-badge"{% if not nc.count %} hidden{% endif %}>{{ nc.count }}</em>{% endif %}</a>{% endfor %}
+      {% set gface = 'jebo' if group == '소비자제보센터' else ('soboru' if group.startswith('사이트') else '') %}
+      {% for e, ico, label in links %}{% set on = active == e and (not gface or gface == current_face()) %}<a href="{{ url_for(e, face='jebo') if gface == 'jebo' else url_for(e) }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span>{% if e == 'admin_reports' %}<em class="ad-badge" id="ad-new-badge"{% if not nc.count %} hidden{% endif %}>{{ nc.count }}</em>{% endif %}</a>{% endfor %}
     </div>
     {% endfor %}
   </nav>
   <div class="ad-main">
+    {% if current_face() == 'jebo' and request.endpoint in ('admin_site', 'admin_lists', 'admin_content') %}<div class="ad-face-note" role="note"><b>소비자제보센터를 고치는 중이에요.</b> 여기서 바꾼 문구와 구성은 consumerjebo.co.kr에만 보이고 소보루에는 영향이 없어요. 사업자 정보와 약관은 두 사이트가 같이 써요.{% if request.args.get('face') == 'jebo' %} <a href="{{ url_for(request.endpoint) }}">소보루로 돌아가기</a>{% endif %}</div>{% endif %}
     {% with msgs = get_flashed_messages() %}{% if msgs %}<div class="cs-flash" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}{% endwith %}
     {% block content %}{% endblock %}
   </div>

@@ -94,7 +94,8 @@
     {% for href, name in [(url_for('home'), '홈'), (url_for('life'), '생활정보'), (url_for('board'), '소보루 픽'), (url_for('board_write'), '소보루 픽 글쓰기'), (url_for('reports'), '제보 목록'), (url_for('report'), '제보하기'), (url_for('info_page', page='guide'), '이용 안내'), (url_for('info_page', page='process'), '처리 절차'), (url_for('info_page', page='faq'), '자주 묻는 질문'), (url_for('lookup'), '내 제보 조회'), (url_for('companies'), '기업 답변'), (url_for('law_ask'), '법률 질문'), (url_for('letter_home'), '소보루 레터'), (url_for('signup'), '회원가입'), (url_for('login'), '로그인'), (url_for('policy_page', page='terms'), '이용약관'), (url_for('policy_page', page='privacy'), '개인정보 처리방침'), (url_for('takedown'), '권리침해 신고')] %}<option value="{{ href }}"{% if request.path == href %} selected{% endif %}>{{ name }}</option>{% endfor %}
     {% for row in g.lists.get('custom_pages', []) if row.slug %}<option value="{{ url_for('custom_page', slug=row.slug) }}"{% if request.path == url_for('custom_page', slug=row.slug) %} selected{% endif %}>새 페이지: {{ row.title }}</option>{% endfor %}
   </select></label>
-  <a href="{{ url_for('admin_screens') }}">화면 편집</a><a href="{{ url_for('admin_content') }}">숨은 문구</a>
+  {% if is_soboru() %}<a href="{{ url_for('admin_screens') }}">화면 편집</a><a href="{{ url_for('admin_content') }}">숨은 문구</a>
+  {% else %}<span class="ed-bar-title">소비자제보센터 고치는 중</span><a href="{{ face_url('admin_content') }}">제보센터 문구</a><a href="{{ request.path }}?face=off">소보루 화면으로</a>{% endif %}
   <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="0"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button type="submit">편집 끝내기</button></form>
   <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit" class="ed-bar-out">관리자 로그아웃</button></form>
 </div>
@@ -105,7 +106,7 @@
     var data = null;
     function load() { if (!data) data = JSON.parse((document.getElementById('ed-data') || {}).textContent || '{}'); return data; }
     var modal = document.querySelector('.ed-modal'), area = modal.querySelector('textarea'), label = modal.querySelector('.ed-label'), msg = modal.querySelector('.ed-msg');
-    var token = '{{ csrf_token() }}', current = null;
+    var token = '{{ csrf_token() }}', current = null, face = '{{ current_face() }}';  {# 소비자제보센터 화면에서 고친 문구는 제보센터에만 저장 #}
     var follow = modal.querySelector('.ed-follow'), delBtn = modal.querySelector('.ed-delete');
     function open(key, link) {
       follow.hidden = !link; if (link) follow.href = link;
@@ -115,7 +116,7 @@
       modal.hidden = false; area.focus();
     }
     function post(url, fields) {
-      var body = new FormData(); body.append('_csrf', token);
+      var body = new FormData(); body.append('_csrf', token); body.append('face', face);
       Object.keys(fields).forEach(function (k) { body.append(k, fields[k]); });
       msg.textContent = '저장 중…';
       return fetch(url, {method: 'POST', body: body, credentials: 'same-origin'})
@@ -152,7 +153,7 @@
       if (rm) {
         e.preventDefault(); e.stopPropagation();
         if (!confirm('이 항목을 화면에서 뺄까요? 관리자 메뉴·항목에서 다시 넣을 수 있어요.')) return;
-        var body = new FormData(); body.append('_csrf', token); body.append('list', rm.getAttribute('data-list')); body.append('index', rm.getAttribute('data-i'));
+        var body = new FormData(); body.append('_csrf', token); body.append('face', face); body.append('list', rm.getAttribute('data-list')); body.append('index', rm.getAttribute('data-i'));
         fetch('{{ url_for('admin_list_remove') }}', {method: 'POST', body: body, credentials: 'same-origin'})
           .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
           .then(function (res) { if (res.ok) location.reload(); else alert(res.error || '빼지 못했어요. 다시 시도해 주세요.'); });
