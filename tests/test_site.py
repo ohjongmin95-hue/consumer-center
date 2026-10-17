@@ -3159,7 +3159,7 @@ class SiteTest(unittest.TestCase):
         def clean():
             rag['set_v2'](False)
             st = rag['store']
-            for p in (st.synced, st.status, st.appendix, st.emb_index, st.emb_vec):
+            for p in (st.synced, st.status, st.appendix, st.emb_index, st.emb_vec, st.learned, st.api_use):
                 if p.exists(): p.unlink()
             rag['corpus'].reset()
             with self.site.conn() as db: db.execute('DELETE FROM ask_logs')
@@ -3415,6 +3415,62 @@ class SiteTest(unittest.TestCase):
         self.assertEqual((c['status'], c['label'], c['effective']), ('현행', '법률 조문', '2026-03-01'))
         if __import__('shutil').which('pdftotext'):
             self.assertIn('개정됨, 확인 필요', page)  # 별표(2025-12-18)도 현행 고시(2026-01-01)보다 옛 판
+
+    def test_ask_v2_finds_other_laws_from_law_api(self):
+        import lawsync
+        rag = self.rag_setup(); st = rag['store']
+        q = '분양받은 반려견이 일주일 만에 파보장염으로 죽었어요. 분양업자에게 뭘 요구할 수 있나요?'
+        self.assertTrue(rag['retrieve'](q, api=False)[2]['weak'])  # 모아 둔 법으로는 약하게만 맞음
+        found = ('<LawSearch><totalCnt>2</totalCnt>'
+                 '<law id="1"><법령일련번호>5001</법령일련번호><법령명한글>동물보호법</법령명한글><법령ID>0101</법령ID><시행일자>20260201</시행일자><법령구분명>법률</법령구분명></law>'
+                 '<law id="2"><법령일련번호>5002</법령일련번호><법령명한글>수의사법</법령명한글><법령ID>0102</법령ID><시행일자>20260101</시행일자><법령구분명>법률</법령구분명></law>'
+                 '<law id="3"><법령일련번호>5003</법령일련번호><법령명한글>서울특별시 동물 조례</법령명한글><법령구분명>조례</법령구분명></law></LawSearch>')
+        def law(mst, name, title, text):
+            return (f'<법령><기본정보><법령명_한글>{name}</법령명_한글><시행일자>20260201</시행일자><공포번호>1</공포번호><법종구분>법률</법종구분></기본정보><조문>'
+                    f'<조문단위><조문번호>7</조문번호><조문여부>조문</조문여부><조문제목>{title}</조문제목><조문내용>제7조({title}) {text}</조문내용></조문단위></조문></법령>')
+        urls = []
+        def get(url, timeout=25):
+            urls.append((url, timeout))
+            if 'lawSearch.do' in url: return 200, found
+            if 'MST=5001' in url: return 200, law(5001, '동물보호법', '반려견 분양', '분양업자는 분양받은 반려견이 파보장염 등 질병으로 죽은 경우 같은 종으로 교환하거나 분양가를 돌려주어야 한다.')
+            if 'MST=5002' in url: return 200, law(5002, '수의사법', '면허', '수의사가 되려면 농림축산식품부장관의 면허를 받아야 한다.')
+            return 404, ''
+        sent = []
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key', 'LAW_OC': 'oc-key-777'}), patch.object(lawsync, 'http_get', get), \
+             patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent)):
+            html = self.ask2(self.client, q).get_data(as_text=True)
+        self.assertIn('동물보호법', html)  # 법제처에서 찾은 조문으로 답함
+        self.assertTrue(all(t <= lawsync.API_TIMEOUT for _, t in urls)); self.assertIn('search=2', urls[0][0])
+        self.assertNotIn('%EB%B0%98%EB%A0%A4%EA%B2%AC%EC%9D%B4', urls[0][0].split('query=')[0])
+        self.assertEqual(len([u for u, _ in urls if 'lawService.do' in u]), 2)  # 조례는 받지 않음
+        learned = json.loads(st.learned.read_text(encoding='utf-8'))
+        self.assertEqual([x['name'] for x in learned.values()], ['동물보호법'])  # 답에 쓴 법만 모아 둠
+        self.assertNotIn('수의사법', st.synced.read_text(encoding='utf-8'))
+        self.assertIn(('동물보호법', '동물보호법', 'law'), [x[1:] for x in lawsync.all_laws(st)])  # 다음부터 매일 받음
+        with self.site.conn() as db:
+            row = db.execute("SELECT answer, error FROM ask_logs WHERE kind='ask'").fetchone()
+        self.assertEqual(json.loads(row[0])['api'], ['동물보호법']); self.assertNotIn('oc-key-777', ' '.join(map(str, row)) + st.api_use.read_text(encoding='utf-8'))
+        # 두 번째는 모아 둔 법에서 바로 찾아 법제처를 다시 부르지 않음
+        urls.clear()
+        with patch.dict(os.environ, {'LAW_OC': 'oc-key-777'}), patch.object(lawsync, 'http_get', get):
+            _, cards, info = rag['retrieve'](q)
+        self.assertFalse(urls); self.assertIn('동물보호법', [c['law'] for c in cards])
+        # 찾아도 쓸 만한 법이 없으면 하루 동안 같은 낱말로 다시 찾지 않고, 하루 한도를 넘지 않음
+        urls.clear(); q2 = '우주정거장 관광 상품을 샀는데 발사가 미뤄졌어요'
+        with patch.dict(os.environ, {'LAW_OC': 'oc-key-777'}), patch.object(lawsync, 'http_get', lambda u, t=25: (urls.append((u, t)), (200, '<LawSearch><totalCnt>0</totalCnt></LawSearch>'))[1]):
+            rag['retrieve'](q2); n = len(urls); rag['retrieve'](q2)
+            self.assertEqual(len(urls), n)
+            with patch.object(lawsync, 'API_PER_DAY', 0):
+                urls.clear(); rag['retrieve']('전혀 다른 질문인 열기구 체험 예약 취소')
+            self.assertFalse(urls)
+        # 관리자 화면에 '질문으로 찾음'으로 보이고, 뺄 수 있음
+        admin = self.login_admin()
+        if True:
+            page = admin.get('/admin/laws').get_data(as_text=True)
+            self.assertIn('질문으로 찾음', page); self.assertIn('동물보호법', page); self.assertNotIn('oc-key-777', page)
+            key = next(iter(learned))
+            admin.post('/admin/laws', data={'_csrf': self.csrf(admin, '/admin/laws'), 'act': 'appendix_forget', 'key': key})
+            self.assertEqual(json.loads(st.learned.read_text(encoding='utf-8')), {}); self.assertNotIn('동물보호법', st.synced.read_text(encoding='utf-8'))
 
 if __name__ == '__main__':
     unittest.main()

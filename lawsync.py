@@ -37,8 +37,22 @@ SYNC_LAWS = [('basic', '소비자기본법', '소비자기본법', 'law'),
              ('adlabel', '표시ㆍ광고의 공정화에 관한 법률', '표시광고법', 'law'),
              ('foodlabel', '식품 등의 표시ㆍ광고에 관한 법률', '식품표시광고법', 'law'),
              ('cosmetics', '화장품법', '화장품법', 'law'),
-             ('kca', '소비자분쟁해결기준', '소비자분쟁해결기준', 'admrul')]
-OPTIONAL_LAWS = [('civil', '민법', '민법', 'law')]   # LAW_SYNC_CIVIL=1일 때만 (조문이 많음)
+             ('kca', '소비자분쟁해결기준', '소비자분쟁해결기준', 'admrul'),
+             # 제보가 많은 분야 (2026-10 추가)
+             ('civil', '민법', '민법', 'law'),
+             ('telecom', '전기통신사업법', '전기통신사업법', 'law'),
+             ('sports', '체육시설의 설치ㆍ이용에 관한 법률', '체육시설법', 'law'),
+             ('academy', '학원의 설립ㆍ운영 및 과외교습에 관한 법률', '학원법', 'law'),
+             ('aviation', '항공사업법', '항공사업법', 'law'),
+             ('tourism', '관광진흥법', '관광진흥법', 'law'),
+             ('car', '자동차관리법', '자동차관리법', 'law'),
+             ('efin', '전자금융거래법', '전자금융거래법', 'law'),
+             ('privacy', '개인정보 보호법', '개인정보보호법', 'law'),
+             ('marriage', '결혼중개업의 관리에 관한 법률', '결혼중개업법', 'law'),
+             ('commerce', '상법', '상법(운송)', 'law')]
+OPTIONAL_LAWS = []
+# 조문이 아주 많은 법은 소비자 피해와 닿는 부분만 (key: (첫 조, 끝 조))
+ARTICLE_RANGE = {'commerce': (125, 150)}   # 상법 제2편 제9장 운송업 (택배 분실·파손)
 APPENDIX_KEY = 'kca_appx'
 APPENDIX_SOURCE = 'https://www.law.go.kr/행정규칙/소비자분쟁해결기준'
 TAG = re.compile(r'\s*<(?:개정|신설|전문개정|본조신설|제목개정|타법개정)[^>]*>')
@@ -61,6 +75,8 @@ class Store:
         self.appendix = self.dir / 'appendix.json'
         self.emb_index = self.dir / 'emb_index.json'
         self.emb_vec = self.dir / 'emb_vectors.bin'
+        self.learned = self.dir / 'learned_laws.json'  # 질문으로 법제처에서 찾아 모아 둔 법 (다음부터 매일 받음)
+        self.api_use = self.dir / 'api_use.json'       # 질문 때 쓴 법제처 호출 수 (하루 한도)
 
     def read(self, path, default=None):
         try: return json.loads(Path(path).read_text(encoding='utf-8'))
@@ -100,11 +116,11 @@ def hide(text, key=None):
     return (text or '').replace(key, '***') if key else (text or '')
 
 
-def api_get(path, **params):
+def api_get(path, timeout=25, **params):
     key = oc()
     if not key: raise RuntimeError('LAW_OC가 없어요 (deploy/set-law.sh로 넣어 주세요)')
     url = API + path + '?' + urllib.parse.urlencode(dict(OC=key, type='XML', **params))
-    try: st, body = http_get(url)
+    try: st, body = http_get(url, timeout)
     except Exception as e: raise RuntimeError(hide(f'법제처 연결 실패: {type(e).__name__}'))
     if st != 200 or not body.strip(): raise RuntimeError(f'법제처 응답 {st}')
     try: return ET.fromstring(body.strip())
@@ -162,9 +178,25 @@ def parse_law_xml(root):
     return meta, arts
 
 
-def fetch_law(found):
-    root = api_get('lawService.do', target='law', MST=found['mst']) if found.get('mst') else api_get('lawService.do', target='law', ID=found['id'])
+def fetch_law(found, timeout=25):
+    root = api_get('lawService.do', timeout, target='law', MST=found['mst']) if found.get('mst') else api_get('lawService.do', timeout, target='law', ID=found['id'])
     return parse_law_xml(root)
+
+
+def art_no(art):
+    m = re.match(r'제(\d+)조', art); return int(m.group(1)) if m else 0
+
+
+def in_range(key, arts):
+    lo_hi = ARTICLE_RANGE.get(key)
+    return {a: x for a, x in arts.items() if lo_hi[0] <= art_no(a) <= lo_hi[1]} if lo_hi else arts
+
+
+def all_laws(store):
+    """매일 받는 법: 정해 둔 목록 + 질문으로 찾아 모아 둔 법"""
+    fixed = SYNC_LAWS + OPTIONAL_LAWS; names = {norm_name(n) for _, n, _, _ in fixed}
+    learned = [(k, x['name'], x.get('short') or x['name'], 'law') for k, x in store.read(store.learned).items() if norm_name(x.get('name')) not in names]
+    return fixed + learned
 
 
 def law_source(name, kind=''):
@@ -174,7 +206,7 @@ def law_source(name, kind=''):
 def sync(store, laws=None, log=print):
     """설정한 법령의 현행 시행일을 확인하고, 바뀌었거나 처음이면 원문을 받아 synced_laws.json에 넣는다.
     돌려주는 값: [{key, name, ok, changed, effective, error}]. 하나가 실패해도 나머지는 계속."""
-    laws = laws or SYNC_LAWS + (OPTIONAL_LAWS if os.getenv('LAW_SYNC_CIVIL') == '1' else [])
+    laws = laws or all_laws(store)
     synced = store.read(store.synced); status = store.read(store.status); out = []
     for key, name, short, target in laws:
         row = {'key': key, 'name': name, 'ok': False, 'changed': False, 'effective': '', 'error': ''}
@@ -187,6 +219,7 @@ def sync(store, laws=None, log=print):
                 old = synced.get(key) or {}
                 if old.get('effective') != found['effective'] or old.get('mst') != found['mst'] or not old.get('articles'):
                     meta, arts = fetch_law(found)
+                    arts = in_range(key, arts)
                     if not arts: raise RuntimeError('조문을 받지 못했어요')
                     synced[key] = {'key': key, 'name': meta['name'] or name, 'short': short, 'kind': meta['kind'] or found['kind'] or '법률',
                                    'no': meta['no'], 'effective': meta['effective'] or found['effective'], 'promulgated': meta['promulgated'],
@@ -203,6 +236,113 @@ def sync(store, laws=None, log=print):
         out.append(row)
     store.write(store.synced, synced); store.write(store.status, status)
     return out
+
+
+# ---- 질문으로 법 찾기 (모아 둔 법에서 못 찾을 때) ------------------------------------------
+API_PER_DAY = int(os.getenv('LAW_API_PER_DAY', '300'))   # 질문 때 쓰는 법제처 호출 하루 한도
+API_TIMEOUT = 6           # 손님이 기다리니 짧게
+FIND_LAWS = 2             # 한 질문에 원문까지 받아 보는 법 수
+MISS_DAYS = 1             # 찾아도 쓸 만한 법이 없던 낱말은 이만큼 다시 찾지 않음
+LAW_KINDS = ('법률', '대통령령', '총리령', '부령')
+ENDING = re.compile(r'(?:으로는|에서는|에게서|한테서|으로|에서|에게|한테|까지|부터|이랑|하고|처럼|보다|이나|은|는|이|가|을|를|에|의|도|로|와|과|만|요)$')
+VERB = re.compile(r'(?:했더니|하려는데|하려고|했는데|하는데|했어요|해서|하면|해도|하고|했어|했다|됐는데|됐어요|되는데|됐어|되나|되는|됐|된|한)$')
+QSTOP = {'어떻게', '어떤', '얼마나', '그런데', '근데', '혹시', '이거', '그거', '저거', '이런', '그런', '있나요', '없나요', '되나요', '하나요', '했어요', '했는데',
+         '해요', '있어요', '없어요', '싶어요', '받을', '받을수', '수있나요', '가능한가요', '가능할까요', '문의', '질문', '제가', '저는', '우리', '너무', '정말', '진짜',
+         '지금', '오늘', '어제', '이번', '다시', '계속', '그냥', '좀', '많이', '조금', '같아요', '같은데', '어요', '아요', '나요', '건가요', '할까요', '될까요', '하려는데', '하는데', '했더니'}
+
+
+def keywords(question, n=3):
+    """질문에서 법령 본문 검색에 쓸 낱말 (한글 두 글자 이상, 조사·말끝 뗀 것). 숫자·영문은 넣지 않는다(개인정보 줄이기)."""
+    out = []
+    for w in re.findall(r'[가-힣]{2,}', question or ''):
+        w = VERB.sub('', w) if len(w) > 2 else w
+        w = ENDING.sub('', w) if len(w) > 2 else w
+        if len(w) < 2 or w in QSTOP or any(w.endswith(x) for x in ('어요', '아요', '나요', '는데', '해요', '세요', '까요', '했어', '니다', '었어', '았어', '났어')): continue
+        if w not in out: out.append(w)
+    out.sort(key=lambda w: -len(w))   # 긴 낱말이 대개 더 뜻이 좁다
+    return out[:n]
+
+
+def api_budget(store, n=1):
+    """오늘 한도 안이면 n만큼 쓰고 True"""
+    use = store.read(store.api_use); day = datetime.date.today().isoformat()
+    if use.get('day') != day: use = {'day': day, 'n': 0, 'miss': use.get('miss', {})}
+    if use['n'] + n > API_PER_DAY: return False
+    use['n'] += n; store.write(store.api_use, use); return True
+
+
+def missed(store, words):
+    m = store.read(store.api_use).get('miss', {}).get(' '.join(words), '')
+    try: return (datetime.datetime.now() - datetime.datetime.fromisoformat(m)).days < MISS_DAYS
+    except ValueError: return False
+
+
+def mark_miss(store, words):
+    use = store.read(store.api_use); miss = use.get('miss', {})
+    cut = (datetime.datetime.now() - datetime.timedelta(days=MISS_DAYS)).isoformat(timespec='seconds')
+    miss = {k: v for k, v in miss.items() if v >= cut}; miss[' '.join(words)] = now()
+    use['miss'] = miss; store.write(store.api_use, use)
+
+
+def search_text(query, timeout=API_TIMEOUT):
+    """법령 본문 검색(search=2) -> 현행 법령 [{mst, id, name, effective, kind}] (법률·시행령·시행규칙만)"""
+    root = api_get('lawSearch.do', timeout, target='law', query=query, search=2, display=20)
+    out = []
+    for el in root.iter('law'):
+        nm = t(el, '법령명한글', '법령명'); kind = t(el, '법령구분명')
+        if not nm or (kind and kind not in LAW_KINDS): continue
+        out.append({'mst': t(el, '법령일련번호'), 'id': t(el, '법령ID'), 'name': nm, 'effective': ymd(t(el, '시행일자')), 'kind': kind})
+    return out
+
+
+def learned_key(name): return 'api_' + hashlib.sha1(norm_name(name).encode()).hexdigest()[:8]
+
+
+def short_name(name): return name   # 줄임말을 지어내지 않음 (정해 둔 법만 줄임말이 있다)
+
+
+def discover(store, question, known=(), log=lambda s: None):
+    """모아 둔 법에 없는 법을 법제처 본문 검색으로 찾아 원문까지 받는다 -> [(key, 법령 dict)].
+    아직 저장하지 않음 (lawrag가 이번 답에 쓸 만한지 본 뒤 remember로 남긴다)."""
+    if not oc(): return []
+    words = keywords(question)
+    if not words or missed(store, words): return []
+    known = {norm_name(n) for n in known}; found = []
+    for q in ([' '.join(words[:2])] + ([words[0]] if len(words) > 1 else [])):
+        if not api_budget(store): log('하루 한도'); break
+        try: rows = search_text(q)
+        except RuntimeError as e: log(hide(str(e))); break
+        rows = [r for r in rows if norm_name(r['name']) not in known]
+        rows.sort(key=lambda r: LAW_KINDS.index(r['kind']) if r['kind'] in LAW_KINDS else 9)   # 법률 먼저
+        if rows: found = rows; break
+    out = []
+    for r in found[:FIND_LAWS]:
+        if not api_budget(store): break
+        try: meta, arts = fetch_law(r, API_TIMEOUT)
+        except RuntimeError as e: log(hide(str(e))); continue
+        if not arts: continue
+        name = meta['name'] or r['name']; key = learned_key(name)
+        out.append((key, {'key': key, 'name': name, 'short': short_name(name), 'kind': meta['kind'] or r['kind'] or '법률', 'no': meta['no'],
+                          'effective': meta['effective'] or r['effective'], 'promulgated': meta['promulgated'], 'source': law_source(name),
+                          'articles': arts, 'mst': r['mst'], 'synced': now(), 'api': True}))
+    if not out: mark_miss(store, words)
+    return out
+
+
+def remember(store, key, law, dtype=''):
+    """쓸 만했던 법을 모아 두기: 원문은 synced_laws.json, 이름은 learned_laws.json (다음부터 매일 받음)"""
+    learned = store.read(store.learned); row = learned.get(key) or {'name': law['name'], 'short': law['short'], 'found': now(), 'uses': 0, 'dtype': dtype}
+    row['uses'] += 1; row['last'] = now(); learned[key] = row; store.write(store.learned, learned)
+    status = store.read(store.status)
+    status[key] = {'name': law['name'], 'short': law['short'], 'current': law['effective'], 'checked': now(), 'mst': law.get('mst', ''), 'target': 'law'}
+    store.write(store.status, status)
+
+
+def forget(store, key):
+    """모아 둔 법 빼기 (관리자)"""
+    for path in (store.learned, store.synced, store.status):
+        data = store.read(path)
+        if data.pop(key, None) is not None: store.write(path, data)
 
 
 # ---- 현행 여부 -------------------------------------------------------------------
