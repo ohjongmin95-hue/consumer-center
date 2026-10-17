@@ -106,7 +106,9 @@ def load_lists():
 def no_www():
     # www가 붙은 주소는 www 없는 주소로 옮긴다: 검색엔진이 같은 글을 두 주소로 따로 모으지 않게
     if request.host.lower().startswith('www.'):
-        return redirect(request.url.replace('://'+request.host,'://'+request.host[4:],1),301)
+        new=request.url.replace('://'+request.host,'://'+request.host[4:],1)
+        if request.host.lower().split(':')[0]=='www.consumerjebo.co.kr':new='https://'+new.split('://',1)[1]  # 운영 도메인은 https까지 한 번에(두 번 옮기지 않게)
+        return redirect(new,301)
 @app.before_request
 def content_for_request():
     if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
@@ -163,6 +165,13 @@ app.jinja_env.globals['groups_on']=lambda:GROUPS_ON
 # 기업 회원(업체 가입·로그인)도 기본으로 꺼 둠. 업체 답변은 센터가 보내는 답변 링크(/company/...)로 받음. 다시 켜려면 ENABLE_BIZ_MEMBERS=1
 BIZ_ON=os.getenv('ENABLE_BIZ_MEMBERS')=='1'
 app.jinja_env.globals['biz_on']=lambda:BIZ_ON
+CANONICAL_HOST='consumerjebo.co.kr'
+def canonical_url(path=None):
+    # 운영 도메인(www 포함)으로 들어오면 주소를 https://consumerjebo.co.kr 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
+    host=request.host.split(':')[0].lower()
+    base='https://'+CANONICAL_HOST if host in (CANONICAL_HOST,'www.'+CANONICAL_HOST) else request.host_url.rstrip('/')
+    return base+(request.path if path is None else path)
+app.jinja_env.globals['canonical_url']=canonical_url
 @app.before_request
 def biz_closed():
     if not BIZ_ON and (request.path=='/biz' or request.path.startswith('/biz/')) and not session.get('admin'):abort(404)
@@ -271,7 +280,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-103'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-104'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -413,6 +422,7 @@ def reports():
     cond=' AND '.join(where)
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
     with conn() as db:open_groups=db.execute("SELECT id,title,company FROM damage_groups WHERE status='open' ORDER BY id DESC LIMIT 3").fetchall() if GROUPS_ON else []
+    if page>1 and page>-(-total//REPORTS_PAGE_SIZE):abort(404)  # 없는 쪽 번호는 빈 화면(200) 대신 404
     return render_template('reports.html',open_groups=open_groups,categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE,HOT_ORDER if sort else 'id DESC'),sort=sort,total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
 
 PHONE_RE=re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}')
@@ -469,15 +479,19 @@ def favicon_ico():
 def robots_txt():
     # AI 학습용 수집 봇은 막음(운영자 요청, 2026-10-17). 검색 노출용 봇은 그대로
     ai_bots=['GPTBot','ClaudeBot','anthropic-ai','CCBot','Google-Extended','Applebot-Extended','Bytespider','meta-externalagent']
-    lines=[x for b in ai_bots for x in ('User-agent: '+b,'Disallow: /','')]+['User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /biz','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/latest','Disallow: /companies/suggest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
+    lines=[x for b in ai_bots for x in ('User-agent: '+b,'Disallow: /','')]+['User-agent: Yeti','User-agent: Googlebot','User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /biz','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/*/mine','Disallow: /reports/latest','Disallow: /companies/suggest','','Sitemap: '+canonical_url('/sitemap.xml')]
     daum=g.content.get('seo.daum_robots','').strip()
     if daum:lines.insert(0,daum if daum.startswith('#') else '#'+daum)
     return app.response_class('\n'.join(lines)+'\n',mimetype='text/plain')
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    pages=[(url_for(e,_external=True),None) for e in ('home','reports','board','report','takedown')]
-    pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq','types')]
+    today=datetime.date.today().isoformat()
+    pages=[(url_for('home',_external=True),today)]+[(url_for(e,_external=True),None) for e in ('reports','board','companies','report','takedown')]  # 내 제보 조회는 개인 화면이라 검색 제외(noindex)
+    pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq')]  # 피해 유형별 안내는 메뉴에서 빠짐
+    # 나중에 붙는 기능(법률 질문·생활정보 검색어 트렌드·쇼핑 인사이트)은 켜져 있을 때만
+    if 'law_ask' in app.view_functions and g.content.get('ask.off','').strip() not in ('끔','끄기','off'):pages.append((url_for('law_ask',_external=True),None))
+    if os.getenv('NAVER_HUB_CLIENT_ID','').strip():pages+=[(url_for(ep,_external=True),None) for ep in ('life_trend','life_shopping') if ep in app.view_functions]
     pages+=[(url_for('policy_page',page=p,_external=True),None) for p in ('terms','privacy','youth')]
     pages+=[(url_for('custom_page',slug=r['slug'],_external=True),None) for r in g.lists.get('custom_pages',[]) if r.get('slug')]
     with conn() as db:
@@ -489,6 +503,8 @@ def sitemap_xml():
         # 생활정보 (soboru.py): 게시한 글만
         pages+=[(url_for('life',_external=True),None)]+[(url_for('life_article',article_id=r['id'],_external=True),(r['updated'] or '')[:10] or None) for r in db.execute("SELECT id,updated FROM articles WHERE status='published' ORDER BY id DESC LIMIT 5000")]
         if GROUPS_ON:pages+=[(url_for('groups',_external=True),None)]+[(url_for('group_page',group_id=r['id'],_external=True),r['updated'][:10]) for r in db.execute("SELECT id,updated FROM damage_groups WHERE status IN ('open','active','closed') ORDER BY id DESC LIMIT 500")]
+    here=request.host_url.rstrip('/');base=canonical_url('')
+    pages=[(base+u[len(here):] if u.startswith(here) else u,d) for u,d in pages]  # 운영 도메인 주소로 통일
     body=''.join('<url><loc>%s</loc>%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '') for u,d in pages)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
@@ -505,9 +521,14 @@ def rss_xml():
             items.append((r['created'],text['subject'],url_for('public_case',case_id=r['id'],_external=True),text['body']))
         for r in db.execute('SELECT id,title,body,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 30'):
             items.append((r['created'],r['title'],url_for('board_post',post_id=r['id'],_external=True),r['body']))
+        if 'life_article' in app.view_functions:  # 소보루 생활정보 기사도 본문까지
+            for r in db.execute("SELECT id,title,summary,body,published_at,created FROM articles WHERE status='published' ORDER BY id DESC LIMIT 30"):
+                items.append((r['published_at'] or r['created'],r['title'],url_for('life_article',article_id=r['id'],_external=True),(r['summary']+'\n\n' if r['summary'] else '')+r['body']))
     items.sort(key=lambda x:x[0],reverse=True)
+    here=request.host_url.rstrip('/');base=canonical_url('')
+    items=[(c,t,base+u[len(here):] if u.startswith(here) else u,d) for c,t,u,d in items]  # 운영 도메인 주소로 통일
     body=''.join('<item><title>%s</title><link>%s</link><guid>%s</guid><description>%s</description>%s</item>'%(escape(t),escape(u),escape(u),escape(d),'<pubDate>%s</pubDate>'%date(c) if date(c) else '') for c,t,u,d in items[:50])
-    home=url_for('home',_external=True)
+    home=canonical_url('/')
     head='<channel><title>%s</title><link>%s</link><description>%s</description><language>ko</language>'%(escape(g.content.get('site.name','')),escape(home),escape(g.content.get('seo.description','')))
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0">'+head+body+'</channel></rss>',mimetype='application/rss+xml')
 
@@ -1032,6 +1053,7 @@ def board():
         liked={r['target'] for r in db.execute("SELECT target FROM board_votes WHERE kind='like' AND voter=?",(voter_id(),))}
         rated=review_stats(db) if not (q or cat or page>1) else []
         counts=dict(db.execute('SELECT kind,COUNT(*) FROM posts WHERE hidden=0 GROUP BY kind').fetchall())
+    if page>1 and page>-(-total//BOARD_PAGE_SIZE):abort(404)  # 없는 쪽 번호는 빈 화면(200) 대신 404
     return render_template('board.html',posts=posts,hot=hot,liked=liked,categories=board_categories(),cat=cat,kind=kind,q=q,sort=sort,page=page,pages=max(1,-(-total//BOARD_PAGE_SIZE)),total=total,enabled=board_enabled(),rated=rated,counts=counts)
 
 @app.route('/board/write',methods=['GET','POST'])
