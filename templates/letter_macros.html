@@ -15,8 +15,8 @@
 <section class="lt-card" id="letter-sub" aria-labelledby="lt-card-h-{{ place }}">
   <div class="lt-card-copy">
     <p class="lt-kicker"><span class="tf" aria-hidden="true">📨</span> 소보루 레터</p>
-    <h2 id="lt-card-h-{{ place }}">매주 {{ cfg.day_name }} 아침,<br>소비자 뉴스를 쉽게 풀어 드려요</h2>
-    <p>한 주 소비자 뉴스와 '이럴 땐 이렇게', 인기 리뷰까지 5분이면 다 읽어요. <a href="{{ url_for('letter_home') }}">지난 레터 보기 ›</a></p>
+    <h2 id="lt-card-h-{{ place }}">{{ cfg.when }},<br>주요 이슈를 쉽게 풀어 드려요</h2>
+    <p>{{ cfg.span }}의 주요 뉴스와 내 생활에 어떤 의미인지, 인기 리뷰까지 5분이면 다 읽어요. <a href="{{ url_for('letter_home') }}">지난 레터 보기 ›</a></p>
   </div>
   {{ subscribe_form(place) }}
 </section>

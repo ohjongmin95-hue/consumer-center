@@ -28,7 +28,7 @@
     </td></tr></table>
   </td></tr>
   <tr><td style="padding:22px 28px 6px;{{ F }}">
-    <p style="margin:0 0 10px;font-size:14px;font-weight:800;color:#1d1d1f;">이번 주 소식</p>
+    <p style="margin:0 0 10px;font-size:14px;font-weight:800;color:#1d1d1f;">이번 호 소식</p>
     {% for it in items %}<p style="margin:0 0 6px;font-size:15px;line-height:1.5;color:#4e4a46;"><b style="color:#ef7300;">{{ '%02d' % loop.index }}</b>&nbsp; {{ it.title }}</p>{% endfor %}
   </td></tr>
   {% for it in items %}
@@ -38,7 +38,7 @@
       <h2 style="margin:0 0 12px;font-size:21px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ it.title }}</h2>
       {% for p in it.body|letter_paras %}<p style="margin:0 0 12px;font-size:16px;line-height:1.75;color:#3a3633;">{{ p }}</p>{% endfor %}
       {% if it.tip %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff7ee;border-radius:14px;border-left:4px solid #ef7300;"><tr><td style="padding:13px 16px;{{ F }}">
-        <p style="margin:0 0 3px;font-size:13px;font-weight:800;color:#ef7300;">💡 이럴 땐 이렇게</p>
+        <p style="margin:0 0 3px;font-size:13px;font-weight:800;color:#ef7300;">💡 나한테는?</p>
         <p style="margin:0;font-size:15px;line-height:1.6;color:#652D1C;font-weight:600;">{{ it.tip }}</p>
       </td></tr></table>{% endif %}
       {% if it.law %}<p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#6b6f76;">⚖️ 관련 법: {% if it.law.url %}<a href="{{ it.law.url }}" style="color:#652D1C;text-decoration:underline;">{{ it.law.label }}</a>{% else %}{{ it.law.label }}{% endif %} <span style="color:#a39d97;">(국가법령정보센터)</span></p>{% endif %}
@@ -66,7 +66,7 @@
   {% if sec.campaign %}{% set c = sec.campaign %}
   <tr><td style="padding:22px 20px 4px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ef7300;border-radius:18px;"><tr><td style="padding:22px 22px;{{ F }}">
-      <p style="margin:0 0 6px;font-size:13px;font-weight:800;color:#ffe3c7;">📝 이번 주 리뷰 주제{% if c.reward %} · 참여하면 혜택{% endif %}</p>
+      <p style="margin:0 0 6px;font-size:13px;font-weight:800;color:#ffe3c7;">📝 진행 중인 리뷰 주제{% if c.reward %} · 참여하면 혜택{% endif %}</p>
       <p style="margin:0 0 8px;font-size:19px;line-height:1.45;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">{{ c.title }}</p>
       {% if c.intro %}<p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#fff4e8;">{{ c.intro }}</p>{% endif %}
       <a href="{{ site }}{{ c.url }}" style="display:inline-block;background:#ffffff;color:#c25a00;font-size:15px;font-weight:800;text-decoration:none;padding:11px 18px;border-radius:12px;">리뷰 남기러 가기 ›</a>

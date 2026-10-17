@@ -3957,14 +3957,14 @@ class SiteTest(unittest.TestCase):
         """가짜 OpenAI: 받은 뉴스마다 우리 말 설명을 씀. bad면 2번에 자료에 없는 숫자, 3번에 기사 제목을 그대로 옮김."""
         def fake(url, headers, body, timeout):
             sent.append(body)
-            news = json.loads(body['messages'][1]['content'].split('[이번 주 소비자 뉴스]\n', 1)[1])
+            news = json.loads(body['messages'][1]['content'].split('[이번 호 뉴스]\n', 1)[1])
             items = []
             for x in news:
                 n = x['번호']
                 text = f'이번 주에 이런 소식이 있었어요. 비슷한 일을 겪은 분이 많대요. 자세한 내용은 기사 원문에서 확인해 보세요.'
                 if n == 1: text += ' 관련 상담이 30% 늘었다고 해요.'
                 if bad and n == 2: text += ' 작년보다 98765명 늘었대요.'
-                if bad and n == 3: text += ' ' + x['제목'] + ' 이런 제목이었어요.'
+                if bad and n == 3: text += ' ' + x['제목'] + ' ' + x['요약'] + ' 이런 기사였어요.'
                 law = x['법 조문 후보'][0]['id'] if n == 1 and x['법 조문 후보'] else ('9-L9' if n == 2 else '')
                 items.append({'no': n, 'title': ['첫째', '둘째', '셋째', '넷째', '다섯째'][n - 1] + ' 소식, 이것만 알면 돼요', 'body': text, 'tip': '이럴 땐 이렇게: 영수증과 대화 기록부터 챙겨 두세요.', 'law': law})
             out = {'subject': '이번 주 소비자 뉴스, 이것만 보면 끝', 'intro': '안녕하세요, 소보루 레터예요. 이번 주 꼭 알아 둘 소식을 모았어요.', 'outro': '다음 주에 또 만나요.', 'items': items}
@@ -4071,10 +4071,13 @@ class SiteTest(unittest.TestCase):
         self.assertIn('/admin/letter/', r.headers['Location'])
         lid = int(r.headers['Location'].rsplit('/', 1)[1])
         # 설정: 기본은 자동 보내기 꺼짐·월요일
-        self.assertEqual(self.site.app.extensions['soboru_letter']['settings'](), {'auto': 0, 'day': 0})
-        admin.post('/admin/letter/settings', data={'_csrf': self.csrf(admin, '/admin/letter'), 'auto': '1', 'day': '3'})
-        self.assertEqual(self.site.app.extensions['soboru_letter']['settings'](), {'auto': 1, 'day': 3})
-        self.assertIn('목요일 아침 5분이면 끝', self.client.get('/letter').get_data(as_text=True))
+        self.assertEqual(self.site.app.extensions['soboru_letter']['settings'](), {'auto': 0, 'day': 0, 'freq': 'weekdays'})  # 기본은 평일 아침마다
+        self.assertIn('평일 아침마다', self.client.get('/letter').get_data(as_text=True))
+        admin.post('/admin/letter/settings', data={'_csrf': self.csrf(admin, '/admin/letter'), 'auto': '1', 'day': '3', 'freq': 'weekly'})
+        self.assertEqual(self.site.app.extensions['soboru_letter']['settings'](), {'auto': 1, 'day': 3, 'freq': 'weekly'})
+        self.assertIn('매주 목요일 아침', self.client.get('/letter').get_data(as_text=True))
+        admin.post('/admin/letter/settings', data={'_csrf': self.csrf(admin, '/admin/letter'), 'day': '3', 'freq': 'nope'})
+        self.assertEqual(self.site.app.extensions['soboru_letter']['settings']()['freq'], 'weekdays')  # 모르는 값은 기본으로
         # 검토 필요가 있으면 확인 체크 없이는 보내지 않음, 메일 설정이 없으면 보내지 못함
         box = []
         self.letter_subs([('a@test.kr', 'active')])
@@ -4194,11 +4197,34 @@ class SiteTest(unittest.TestCase):
         self.assertIn('/letter/1</loc>', self.client.get('/sitemap.xml').get_data(as_text=True))
         self.assertEqual(self.client.get('/letter/99').status_code, 404)
 
+    def test_letter_picks_issues_many_outlets_covered(self):
+        # 여러 언론이 함께 다룬 이슈가 먼저, 같은 이슈는 하나만, 한 분야는 2개까지
+        import urllib.parse
+        day = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%a, %d %b %Y 09:00:00 +0900')
+        heads = {'경제': ['한국은행 기준금리 동결 결정', '한은 기준금리 동결, 시장 예상대로', '기준금리 동결에 대출 금리도 멈춰', '반도체 수출 석 달째 늘어', '중소기업 대출 연체율 올라'],
+                 '사회': ['수능 앞두고 교통 대책 발표', '지하철 파업 예고에 출근길 비상', '지하철 파업 협상 결렬 출근길 대란', '지하철 파업 첫날 출근길 혼잡'],
+                 '국제': ['미국 대선 후보 첫 토론', '일본 엔화 약세 계속']}
+        def fake(method, url, headers, body, timeout):
+            q = dict(urllib.parse.parse_qsl(url.split('?', 1)[1]))['query']
+            return 200, {'total': 9, 'items': [{'title': t, 'description': t + ' 요약', 'link': f'https://n.news.naver.com/{abs(hash(t))}', 'originallink': f'https://news.example.co.kr/{abs(hash(t))}',
+                                               'pubDate': day} for t in heads.get(q, [])]}
+        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', fake), patch.object(self.site.triage.corpus, 'related', self.letter_related):
+            news = self.site.app.extensions['soboru_letter']['collect']()
+        titles = [x['title'] for x in news]
+        self.assertEqual(len(titles), 5)
+        self.assertIn(titles[0][:4], ('지하철 ', '한국은행', '한은 기준', '기준금리'))  # 3곳이 다룬 이슈가 맨 앞
+        self.assertEqual(sum('파업' in t for t in titles), 1)  # 같은 이슈는 하나만
+        self.assertEqual(sum('동결' in t for t in titles), 1)
+        self.assertLessEqual(sum(t in heads['경제'] for t in titles), 2)  # 한 분야 2개까지
+
     def test_letter_weekly_schedule_and_auto_send(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         L = self.site.app.extensions['soboru_letter']
         monday = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())
-        self.assertEqual(L['weekly'](monday + datetime.timedelta(days=1))['status'], 'not_today')  # 기본은 월요일만
+        self.assertEqual(L['weekly'](monday + datetime.timedelta(days=5))['status'], 'not_today')  # 기본(평일 매일)은 주말에 쉼
+        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('letter','{\"day\": 0, \"freq\": \"weekly\"}')")
+        self.assertEqual(L['weekly'](monday + datetime.timedelta(days=1))['status'], 'not_today')  # 매주면 고른 요일만
+        with self.site.conn() as db: db.execute("DELETE FROM soboru_settings WHERE key='letter'")
         self.letter_subs([('one@test.kr', 'active')])
         box, sent, calls = [], [], []
         with patch.dict(os.environ, {**self.LETTER_NAVER, **self.LETTER_MAIL}), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), \
@@ -4206,7 +4232,7 @@ class SiteTest(unittest.TestCase):
                 patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)):
             r = L['weekly'](monday)  # 자동 보내기 꺼짐(기본) → 초안만
             self.assertEqual((r['status'], r['sent']), ('made', False)); self.assertEqual(box, [])
-            self.assertEqual(L['weekly'](monday)['status'], 'exists')  # 같은 주에는 한 번
+            self.assertEqual(L['weekly'](monday)['status'], 'exists')  # 같은 날에는 한 번
             with self.site.conn() as db: db.execute('DELETE FROM letters')
             with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('letter','{\"auto\": 1, \"day\": 0}')")
             r = L['weekly'](monday)  # 켜면 검사를 통과한 호는 바로 보냄
@@ -4218,7 +4244,7 @@ class SiteTest(unittest.TestCase):
         # 확인하지 않은 신청은 7일 뒤 지움
         with self.site.conn() as db:
             db.execute("INSERT INTO letter_subscribers(email,token,status,created,asked) VALUES('old@test.kr','tok-old','pending','2000-01-01T00:00:00','2000-01-01T00:00:00')")
-        L['weekly'](monday + datetime.timedelta(days=1))
+        L['weekly'](monday + datetime.timedelta(days=6))
         with self.site.conn() as db: self.assertIsNone(db.execute("SELECT 1 FROM letter_subscribers WHERE email='old@test.kr'").fetchone())
 
 if __name__ == '__main__':

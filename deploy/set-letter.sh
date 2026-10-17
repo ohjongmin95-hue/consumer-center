@@ -1,6 +1,6 @@
 #!/bin/bash
-# 소보루 레터: 매주 레터를 만드는 예약 작업(systemd 타이머)을 설치하거나 끕니다. 요일·자동 보내기는 관리자 > 소보루 레터에서 정해요.
-# 사용법: sudo bash /opt/soboru/app/deploy/set-letter.sh          설치(켜기). 매일 아침 7시 30분에 깨어 고른 요일에만 한 호를 만들어요
+# 소보루 레터: 레터를 만드는 예약 작업(systemd 타이머)을 설치하거나 끕니다. 주기·자동 보내기는 관리자 > 소보루 레터에서 정해요.
+# 사용법: sudo bash /opt/soboru/app/deploy/set-letter.sh          설치(켜기). 매일 아침 7시 30분에 깨어 고른 주기에 맞는 날에만 한 호를 만들어요
 #         sudo bash /opt/soboru/app/deploy/set-letter.sh off      예약 작업 끄기
 #         sudo bash /opt/soboru/app/deploy/set-letter.sh dry      AI·저장·발송 없이 뉴스와 법 조문 후보만 모아 보기 (키 연결 확인용)
 # 필요한 것: /etc/soboru.env 의 OPENAI_API_KEY, NAVER_HUB_CLIENT_ID·SECRET(set-naver.sh), 메일 발송 SMTP_*(set-mail.sh)
@@ -19,6 +19,6 @@ install -m 644 $APP/deploy/soboru-letter.service /etc/systemd/system/soboru-lett
 install -m 644 $APP/deploy/soboru-letter.timer /etc/systemd/system/soboru-letter.timer
 systemctl daemon-reload
 systemctl enable --now soboru-letter.timer
-echo "설치했어요. 매일 아침 7시 30분(한국 시각)에 깨어, 관리자 > 소보루 레터에서 고른 요일에만 한 호를 만들어요."
+echo "설치했어요. 매일 아침 7시 30분(한국 시각)에 깨어, 관리자 > 소보루 레터에서 고른 주기에 맞는 날에만 한 호를 만들어요."
 echo "자동 보내기가 꺼져 있으면(기본) 초안만 만들고 운영자가 '보내기'를 누를 때까지 기다려요."
 systemctl list-timers soboru-letter.timer --no-pager || true

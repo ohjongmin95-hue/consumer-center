@@ -8,7 +8,7 @@
   <div class="form-panel aw-wait"><span class="aw-spin" aria-hidden="true"></span><div><b>이번 호를 만들고 있어요</b><p class="meta">뉴스를 모으고 AI가 레터를 쓰는 데 1~2분 걸려요. 다 되면 초안이 바로 열려요. 이 화면은 4초마다 새로 고쳐져요.</p></div></div>
   {% else %}
   <div class="page-intro"><h1 class="page-title">소보루 레터</h1>
-    <p>뉴닉식 주간 뉴스레터예요. 지난 7일 소비자 뉴스 3~5개를 AI가 우리 말로 풀고, 소보루 픽 인기 리뷰·리뷰 주제·새 생활정보를 붙여요. 확인 메일을 눌러 구독을 마친 분께만 보내요.</p>
+    <p>뉴닉식 뉴스레터예요. 분야별(경제·물가·금리·부동산·정책·국회·사회·국제·IT·소비자·리콜) 최근 기사를 모아 여러 언론이 함께 다룬 주요 이슈 3~5개를 고르고, AI가 우리 말로 풀어 소보루 픽 인기 리뷰·리뷰 주제·새 생활정보를 붙여요. 확인 메일을 눌러 구독을 마친 분께만 보내요.</p>
     <p class="meta">AI 글의 숫자는 그 뉴스의 제목·요약·법 조문에 있는 것만 쓰게 하고, 기사 문장을 그대로 옮긴 곳(6어절 넘게 같음)이 있는지도 코드로 한 번 더 확인해요. <a href="{{ url_for('letter_home') }}" target="_blank" rel="noopener">공개 화면 /letter ↗</a></p>
     {% if not ai_ready %}<p class="hp-warn">OpenAI API 키가 없어서 레터를 만들 수 없어요. 서버 설정에 OPENAI_API_KEY를 넣어 주세요.</p>{% endif %}
     {% if not naver_ready %}<p class="hp-warn">네이버 API HUB 키가 없어서 뉴스를 모을 수 없어요 (deploy/set-naver.sh).</p>{% endif %}
@@ -24,10 +24,11 @@
     </form>
     <form class="form-panel lt-ad-set" method="post" action="{{ url_for('admin_letter_settings') }}">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <h2>매주 보내기</h2>
-      <div class="admin-row"><label>보내는 요일<select name="day">{% for d in days %}<option value="{{ loop.index0 }}"{% if cfg.day == loop.index0 %} selected{% endif %}>{{ d }}</option>{% endfor %}</select></label></div>
+      <h2>보내는 주기</h2>
+      <div class="admin-row"><label>주기<select name="freq">{% for k, v in freqs.items() %}<option value="{{ k }}"{% if cfg.freq == k %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+        <label>매주 한 번일 때 요일<select name="day">{% for d in days %}<option value="{{ loop.index0 }}"{% if cfg.day == loop.index0 %} selected{% endif %}>{{ d }}</option>{% endfor %}</select></label></div>
       <label class="check"><input type="checkbox" name="auto" value="1"{% if cfg.auto %} checked{% endif %}> 자동 보내기 (만든 호가 검사를 통과하면 바로 구독자에게 보내요)</label>
-      <p class="meta">끄면(기본) 그 요일 아침 7시 30분에 초안만 만들어 두고 운영자가 '보내기'를 누를 때까지 기다려요. 서버에 예약 작업(deploy/set-letter.sh)을 한 번 설치해야 돌아가요.</p>
+      <p class="meta">끄면(기본) 보내는 날 아침 7시 30분에 초안만 만들어 두고 운영자가 '보내기'를 누를 때까지 기다려요. 서버에 예약 작업(deploy/set-letter.sh)을 한 번 설치해야 돌아가요.</p>
       <div class="admin-actions"><button type="submit">저장</button></div>
     </form>
   </div>
@@ -35,7 +36,7 @@
   <h2 class="aw-h">레터 ({{ rows|length }})</h2>
   {% for L in rows %}
   <div class="form-panel admin-item lt-ad-row">
-    <p class="meta">{{ L.no }}호 · {{ L.created[:16].replace('T', ' ') }} · {{ '매주 자동' if L.trigger == 'weekly' else '직접 만듦' }}{% if L.sent_at %} · 보냄 {{ L.sent_at[:16].replace('T', ' ') }}{% endif %}</p>
+    <p class="meta">{{ L.no }}호 · {{ L.created[:16].replace('T', ' ') }} · {{ '자동' if L.trigger == 'weekly' else '직접 만듦' }}{% if L.sent_at %} · 보냄 {{ L.sent_at[:16].replace('T', ' ') }}{% endif %}</p>
     <h3><a href="{{ url_for('admin_letter_edit', lid=L.id) }}">{{ L.title }}</a></h3>
     <span class="aw-badge{{ ' ok' if L.status == 'sent' }}">{{ {'draft': '초안', 'scheduled': '보내는 중', 'sent': '보냄'}.get(L.status, L.status) }}</span>
     {% if L.check_ok %}<span class="aw-badge ok">검사 통과</span>{% else %}<span class="aw-badge bad">검토 필요 {{ L.problems|length }}곳</span>{% endif %}
@@ -65,7 +66,7 @@
 
   {% if logs %}
   <h2 class="aw-h">최근 기록</h2>
-  <ul class="aw-log">{% for l in logs %}<li><span>{{ l.at[5:16].replace('T', ' ') }}</span> {{ '매주 자동' if l.trigger == 'weekly' else '직접' }} · {% if l.no %}{{ l.no }}호 · {% endif %}{{ {'made': '초안 만듦', 'skip': '건너뜀', 'error': '실패', 'sent': '보냄', 'held': '보내지 않고 기다림'}.get(l.status, l.status) }}{% if l.reason %} — {{ l.reason }}{% endif %}</li>{% endfor %}</ul>
+  <ul class="aw-log">{% for l in logs %}<li><span>{{ l.at[5:16].replace('T', ' ') }}</span> {{ '자동' if l.trigger == 'weekly' else '직접' }} · {% if l.no %}{{ l.no }}호 · {% endif %}{{ {'made': '초안 만듦', 'skip': '건너뜀', 'error': '실패', 'sent': '보냄', 'held': '보내지 않고 기다림'}.get(l.status, l.status) }}{% if l.reason %} — {{ l.reason }}{% endif %}</li>{% endfor %}</ul>
   {% endif %}
   {% endif %}
 </div></main>

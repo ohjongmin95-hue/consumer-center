@@ -314,7 +314,7 @@ if hasattr(m, 'soboru_letter') and os.environ.get('VRT_NAVER'):
     _LT_NO = {'n': 0}
     def _letter_ai(url, headers, body, timeout):
         if '소보루 레터' not in body['messages'][0]['content']: return _prev_letter(url, headers, body, timeout)
-        news = _json.loads(body['messages'][1]['content'].split('[이번 주 소비자 뉴스]\n', 1)[1])
+        news = _json.loads(body['messages'][1]['content'].split('[이번 호 뉴스]\n', 1)[1])
         no = int(re.search(r'소보루 레터 (\d+)호', body['messages'][1]['content']).group(1))
         items = []
         for x in news:
@@ -326,6 +326,13 @@ if hasattr(m, 'soboru_letter') and os.environ.get('VRT_NAVER'):
                'outro': '이번 주도 억울한 일 없이 지나가길 바라요. 혹시 겪었다면 소보루에 알려 주세요. 다음 주에 또 만나요.', 'items': items}
         return 200, {'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
     m.companydesk.post_json = _letter_ai
+    _prev_nv = m.naverhub.http
+    def _today_news(method, url, headers, body, timeout):  # 레터는 지난 하루 뉴스만 쓰므로 가짜 뉴스 날짜를 오늘로
+        st, res = _prev_nv(method, url, headers, body, timeout)
+        if '/search/v1/news' in url: res = dict(res, items=[dict(it, pubDate=_dt.datetime.now().strftime('%a, %d %b %Y 06:00:00 +0900')) for it in res['items']])
+        return st, res
+    m.naverhub.http = _today_news
+    with m.conn() as db: db.execute('DELETE FROM naver_cache')
     _lx = app.extensions['soboru_letter']
     with app.app_context():
         for _i in range(3): print('letter', _lx['generate']('admin'), flush=True)

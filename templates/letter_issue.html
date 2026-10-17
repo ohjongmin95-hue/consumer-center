@@ -13,13 +13,13 @@
     <h1>{{ L.title }}</h1>
     <p class="sb-meta">{{ letter_kdate(L.sent_at or L.created) }}</p>
     {% if L.intro %}<p class="lt-intro">{{ L.intro }}</p>{% endif %}
-    <nav class="lt-toc" aria-label="이번 주 소식"><b>이번 주 소식</b><ol>{% for it in L['items'] %}<li><a href="#n{{ loop.index }}">{{ it.title }}</a></li>{% endfor %}</ol></nav>
+    <nav class="lt-toc" aria-label="이번 호 소식"><b>이번 호 소식</b><ol>{% for it in L['items'] %}<li><a href="#n{{ loop.index }}">{{ it.title }}</a></li>{% endfor %}</ol></nav>
     {% for it in L['items'] %}
     <section class="lt-item" id="n{{ loop.index }}">
       <p class="lt-num">NEWS {{ '%02d' % loop.index }}</p>
       <h2>{{ it.title }}</h2>
       {% for p in it.body|letter_paras %}<p>{{ p }}</p>{% endfor %}
-      {% if it.tip %}<div class="lt-tip"><b><span class="tf" aria-hidden="true">💡</span> 이럴 땐 이렇게</b><p>{{ it.tip }}</p></div>{% endif %}
+      {% if it.tip %}<div class="lt-tip"><b><span class="tf" aria-hidden="true">💡</span> 나한테는?</b><p>{{ it.tip }}</p></div>{% endif %}
       <ul class="lt-src">
         {% if it.law %}<li><span class="tf" aria-hidden="true">⚖️</span> 관련 법 · {% if it.law.url %}<a href="{{ it.law.url }}" target="_blank" rel="noopener nofollow">{{ it.law.label }} ↗</a>{% else %}{{ it.law.label }}{% endif %}</li>{% endif %}
         <li><span class="tf" aria-hidden="true">📰</span> {{ it.src.name or '기사' }}{% if it.src.date %} · {{ it.src.date.replace('-', '.') }}{% endif %} · <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">기사 원문 보기 ↗</a></li>
@@ -32,7 +32,7 @@
       <div class="lt-revs">{% for r in sec.reviews %}<a href="{{ r.url }}"><span class="lt-stars" aria-label="별점 {{ r.rating }}점">{{ '★' * r.rating }}<i>{{ '★' * (5 - r.rating) }}</i></span><em>{{ r.target }}</em><b>{{ r.title }}</b>{% if r.line %}<p>{{ r.line }}</p>{% endif %}<small>{{ r.nick }}{% if r.likes %} · 공감 {{ r.likes }}{% endif %}</small></a>{% endfor %}</div>
     </section>
     {% endif %}
-    {% if sec.campaign %}<a class="lt-camp" href="{{ sec.campaign.url }}"><small><span class="tf" aria-hidden="true">📝</span> 이번 주 리뷰 주제{% if sec.campaign.reward %} · 참여하면 혜택{% endif %}</small><b>{{ sec.campaign.title }}</b>{% if sec.campaign.intro %}<p>{{ sec.campaign.intro }}</p>{% endif %}<span class="lt-camp-go">리뷰 남기러 가기 ›</span></a>{% endif %}
+    {% if sec.campaign %}<a class="lt-camp" href="{{ sec.campaign.url }}"><small><span class="tf" aria-hidden="true">📝</span> 진행 중인 리뷰 주제{% if sec.campaign.reward %} · 참여하면 혜택{% endif %}</small><b>{{ sec.campaign.title }}</b>{% if sec.campaign.intro %}<p>{{ sec.campaign.intro }}</p>{% endif %}<span class="lt-camp-go">리뷰 남기러 가기 ›</span></a>{% endif %}
     {% if sec.life %}
     <section class="lt-more">
       <h2><span class="tf" aria-hidden="true">📚</span> 새로 올라온 생활정보</h2>

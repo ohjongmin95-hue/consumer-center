@@ -1,7 +1,8 @@
-"""소보루 레터: 뉴닉식 주간 뉴스레터. 지난 7일 소비자 뉴스 3~5개를 AI가 우리 말로 풀고, 소보루 픽 리뷰·리뷰 주제·생활정보를 붙여 메일로 보낸다.
+"""소보루 레터: 뉴닉식 뉴스레터. 기본은 평일 아침마다 그날의 주요 이슈(여러 언론이 함께 다룬 뉴스) 3~5개를 AI가 우리 말로 풀고, 소보루 픽 리뷰·리뷰 주제·생활정보를 붙여 메일로 보낸다.
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인다 (soboru_writer.py와 같은 방식).
-- 호 만들기: 네이버 뉴스 검색(soboru_writer.NEWS_QUERIES, 제목·요약 조각만)에서 지난 7일 뉴스 3~5개 → AI(companydesk.post_json)가
+- 호 만들기: 네이버 뉴스 검색(분야별 LETTER_QUERIES, 제목·요약 조각만)에서 지난 하루(월요일은 주말 포함, 매주면 7일) 뉴스를 모아
+  여러 기사가 함께 다룬 이슈부터 3~5개(비슷한 기사는 하나로, 한 분야 2개까지) 고르면 → AI(companydesk.post_json)가
   해요체로 짧은 제목·3~5문장 설명·'이럴 땐 이렇게' 한 줄·관련 법 조문(넘겨 준 후보 중에서만)을 쓴다. 기사 문장은 옮기지 않게 하고,
   코드로도 원문과 6어절 넘게 겹치는지, 숫자가 그 뉴스 자료에 있는지(soboru_writer.check_text) 검사해 '검토 필요'로 표시한다.
   각 뉴스에는 기사 원문(언론사) 링크와 법령 출처를 붙인다. 아래 묶음(소보루 픽 인기 리뷰, 진행 중인 리뷰 주제, 새 생활정보)은 DB에서.
@@ -11,7 +12,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
 - 구독: 이메일 + 수집·이용 동의 → 확인 메일(/letter/confirm/<token>)을 눌러야 구독(이중 확인). 모든 메일에 한 번에 해지하는
   /letter/unsubscribe/<token> 링크와 List-Unsubscribe 머리글. 해지하면 이메일 주소는 복원할 수 없는 값으로 바꿔 지운다.
   확인하지 않은 신청은 7일 뒤 지운다.
-- 예약: deploy/soboru-letter.timer가 매일 아침 7시 30분 `python soboru_letter.py weekly`를 부르면, 관리자가 고른 요일에만 한 호를 만든다.
+- 예약: deploy/soboru-letter.timer가 매일 아침 7시 30분 `python soboru_letter.py weekly`를 부르면, 관리자가 고른 주기(평일 매일·매일·매주 한 요일)에 맞을 때만 한 호를 만든다.
 """
 import datetime, hashlib, json, os, re, secrets, sys, threading, time
 from flask import abort, flash, g, redirect, render_template, request, url_for
@@ -22,7 +23,13 @@ SITE = W.SITE
 NAME = '소보루 레터'
 DAYS = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
 ITEMS = (3, 5)            # 한 호에 뉴스 몇 개
-NEWS_DAYS = 7
+NEWS_DAYS = 7             # 매주 보낼 때 뉴스 기간
+FREQS = {'weekdays': '평일 매일', 'daily': '매일', 'weekly': '매주 한 번'}
+# 뉴닉처럼 분야를 고루: 분야마다 최근 기사를 모아 여러 언론이 함께 다룬 이슈부터 고름
+LETTER_QUERIES = ['경제', '물가', '금리', '부동산', '정부 정책', '국회', '사회', '국제', 'IT 과학', '소비자', '리콜']
+PER_QUERY = 30            # 분야마다 가져올 기사 수
+PER_TOPIC = 2             # 한 분야에서 고를 수 있는 이슈 수
+COMMON_SHARE = 0.4        # 모은 기사 제목의 이만큼 넘게 나오는 낱말은 이슈를 가르는 데 안 씀
 REVIEW_DAYS = 14
 SEND_BATCH = 20           # 한 번에 보내는 메일 수
 SEND_PAUSE = 3.0          # 묶음 사이 쉬는 시간(초)
@@ -33,16 +40,16 @@ AI_TIMEOUT = 120
 EMAIL_RE = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
 UNSUB_MARK = '__LETTER_UNSUB__'
 
-SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 주간 뉴스레터 "소보루 레터" 에디터다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 쓴다.\n'
+SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 뉴스레터 "소보루 레터" 에디터다. 뉴닉처럼 그날의 주요 이슈를 바쁜 사람도 5분이면 따라잡게 정리한다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 쓴다.\n'
           '지켜야 할 것:\n'
           '- 뉴스마다 제목과 요약 조각만 준다. 기사 문장을 옮기지 말고 반드시 네 말로 새로 풀어 쓴다. 기사에서 그대로 따오는 말은 몇 낱말을 넘지 않게 하고, 따옴표로 인용하지 않는다.\n'
           '- 그 뉴스의 [제목]·[요약]·[법 조문 후보]에 있는 사실과 숫자만 쓴다. 없는 숫자(날짜·금액·비율·건수·기간 모두)는 쓰지 않고, 숫자를 새로 계산하지 않는다.\n'
           '- 요약이 말하지 않는 원인·전망·뒷이야기는 짐작하지 않는다. 더 알 수 없으면 "자세한 내용은 기사 원문에서 확인해 보세요"처럼 쓴다.\n'
-          '- 기업을 좋다·나쁘다 평가하거나 비난하지 않는다. 사람 이름·연락처 같은 개인정보는 쓰지 않는다.\n'
+          '- 기업을 좋다·나쁘다 평가하거나 비난하지 않는다. 정치 이슈는 어느 편도 들지 않고 누가 무엇을 했는지 사실만 쓴다. 사람 이름·연락처 같은 개인정보는 쓰지 않는다(공인이 한 공식 발표는 기관 이름으로 쓴다).\n'
           '- 법 조문은 그 뉴스의 [법 조문 후보] id 가운데 정말 관련 있는 것 하나만 고르고, 맞는 것이 없으면 빈 문자열로 둔다. 법 이야기는 "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다.\n'
           '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(이번 호에서 가장 눈길 끄는 소식), "intro": 첫인사 2~3문장, "outro": 맺음말 1~2문장, '
-          '"items": [{"no": 뉴스 번호, "title": 25자 안팎 짧고 눈길 끄는 제목, "body": 3~5문장 설명, "tip": "이럴 땐 이렇게" 한 줄 행동 요령(60자 이내), "law": 고른 조문 id 또는 ""}]}')
+          '"items": [{"no": 뉴스 번호, "title": 25자 안팎 짧고 눈길 끄는 제목, "body": 3~5문장 설명, "tip": 이 소식이 내 생활·지갑에 어떤 의미인지 또는 할 일 한 줄(60자 이내, 마땅치 않으면 ""), "law": 고른 조문 id 또는 ""}]}')
 
 
 class Skip(Exception):
@@ -115,7 +122,14 @@ def install(S):
 
     def settings():
         s = setting('letter', {})
-        return {'auto': 1 if s.get('auto') == 1 else 0, 'day': s.get('day') if s.get('day') in range(7) else 0}
+        return {'auto': 1 if s.get('auto') == 1 else 0, 'day': s.get('day') if s.get('day') in range(7) else 0,
+                'freq': s.get('freq') if s.get('freq') in FREQS else 'weekdays'}
+
+    def news_days(today=None):
+        # 매일 보내면 지난 하루치(평일만 보내면 월요일은 주말까지), 매주면 7일치
+        cfg = settings(); today = today or datetime.date.today()
+        if cfg['freq'] == 'weekly': return NEWS_DAYS
+        return 3 if cfg['freq'] == 'weekdays' and today.weekday() == 0 else 1
 
     def log(entry):
         put('letter_log', ([dict(entry, at=stamp())] + setting('letter_log', []))[:30])
@@ -124,20 +138,21 @@ def install(S):
     def collect_news():
         nv = naver()
         if not nv or not nv['ready'](): raise Skip('네이버 API HUB 키가 없어요 (deploy/set-naver.sh)')
-        since = datetime.date.today() - datetime.timedelta(days=NEWS_DAYS)
-        items, seen, heads = [], set(), set()
+        days = news_days()
+        since = datetime.date.today() - datetime.timedelta(days=days)
+        pool, seen, heads = [], set(), set()
         try:
-            for q in W.NEWS_QUERIES:
-                for it in nv['search']('news', q, display=10, sort='date')['items']:
+            for q in LETTER_QUERIES:
+                for it in nv['search']('news', q, display=PER_QUERY, sort='date')['items']:
                     try: day = datetime.date(*map(int, it['date'].split('.')))
                     except (ValueError, TypeError): continue
                     head = re.sub(r'\W', '', it['title'])[:14]
                     if day < since or it['url'] in seen or head in heads: continue
-                    seen.add(it['url']); heads.add(head); items.append(it)
+                    seen.add(it['url']); heads.add(head); pool.append(dict(it, topic=q))
         except Exception as e:  # 네이버 오류 문구(NaverError)는 그대로, 그 밖은 이름만 (키가 섞이지 않게)
             raise Skip(str(e)[:120] if type(e).__name__ == 'NaverError' else f'뉴스를 가져오지 못했어요 ({type(e).__name__})')
-        items = items[:ITEMS[1]]
-        if len(items) < ITEMS[0]: raise Skip(f'최근 {NEWS_DAYS}일 소비자 뉴스가 {ITEMS[0]}건보다 적어요')
+        items = pick_issues(pool)
+        if len(items) < ITEMS[0]: raise Skip(f'최근 {days}일 주요 뉴스가 {ITEMS[0]}건보다 적어요')
         scrub = lambda t: W.clean_personal(desk.scrub, t)
         out = []
         for n, it in enumerate(items, 1):
@@ -147,6 +162,27 @@ def install(S):
             out.append({'no': n, 'title': title, 'summary': summary, 'source': it['source'], 'date': iso_day(it['date']), 'url': it['url'], 'cands': cands})
         return out
 
+    def pick_issues(pool):
+        # 주요 이슈 = 여러 기사가 함께 다룬 소식. 제목 낱말이 2개 넘게 겹치는 기사가 많을수록 앞에 둠.
+        # 거의 모든 제목에 나오는 낱말(속보·단독 같은 말)은 빼고 셈. 같은 이슈는 하나만, 한 분야는 PER_TOPIC개까지.
+        stem = lambda w: w[:-1] if len(w) >= 3 and w[-1] in '은는이가을를의에도로와과만' else w  # '금리가'·'금리는' → '금리'
+        bags = [{stem(w) for w in words(it['title']) if len(w) >= 2 and not w.isdigit()} for it in pool]
+        df = {}
+        for b in bags:
+            for w in b: df[w] = df.get(w, 0) + 1
+        common = {w for w, n in df.items() if len(pool) >= 5 and n > len(pool) * COMMON_SHARE}
+        bags = [b - common for b in bags]
+        same = lambda a, b: len(a & b) >= 2
+        score = [sum(1 for j, o in enumerate(bags) if j != i and same(b, o)) for i, b in enumerate(bags)]
+        picked, per, order = [], {}, sorted(range(len(pool)), key=lambda i: -score[i])  # 점수가 같으면 분야 순서·최신 순 그대로
+        for cap in (PER_TOPIC, ITEMS[1]):  # 분야를 고루 고르고, 모자라면 한 분야에서 더
+            for i in order:
+                t = pool[i]['topic']
+                if len(picked) == ITEMS[1]: break
+                if i in picked or per.get(t, 0) >= cap or any(same(bags[i], bags[k]) for k in picked): continue
+                picked.append(i); per[t] = per.get(t, 0) + 1
+        return [pool[i] for i in sorted(picked, key=order.index)]
+
     def ai_facts(news):
         return [{'번호': x['no'], '제목': x['title'], '요약': x['summary'], '언론사': x['source'], '날짜': x['date'],
                  '법 조문 후보': [{'id': c['id'], '조문': c['label'], '원문': c['text']} for c in x['cands']]} for x in news]
@@ -154,7 +190,7 @@ def install(S):
     def ask_ai(news, no):
         key = os.getenv('OPENAI_API_KEY', '').strip()
         if not key: raise RuntimeError('OpenAI API 키가 없어요')
-        user = (f"[이번 호] {NAME} {no}호 ({datetime.date.today().isoformat()})\n[이번 주 소비자 뉴스]\n"
+        user = (f"[이번 호] {NAME} {no}호 ({datetime.date.today().isoformat()})\n[이번 호 뉴스]\n"
                 f"{json.dumps(ai_facts(news), ensure_ascii=False, indent=1)}")
         body = {'model': desk.ai_model(), 'temperature': 0.5, 'response_format': {'type': 'json_object'}, 'max_tokens': 2600,
                 'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': user}]}
@@ -354,13 +390,14 @@ def install(S):
         with conn() as db: db.execute("DELETE FROM letter_subscribers WHERE status='pending' AND COALESCE(asked,created)<?", (old,))
 
     def weekly(today=None, force=False):
-        """매일 아침 예약 작업: 고른 요일이면 한 호를 만들고, 자동 보내기가 켜져 있고 검사를 통과하면 보냄."""
+        """매일 아침 예약 작업: 고른 주기에 맞는 날이면 한 호를 만들고, 자동 보내기가 켜져 있고 검사를 통과하면 보냄."""
         cfg = settings(); today = today or datetime.date.today()
         cleanup()
-        if not force and today.weekday() != cfg['day']: return {'status': 'not_today', 'reason': f"보내는 날은 {DAYS[cfg['day']]}이에요"}
-        monday = (today - datetime.timedelta(days=today.weekday())).isoformat()
-        with conn() as db: old = db.execute('SELECT id FROM letters WHERE created>=? ORDER BY id DESC', (monday,)).fetchone()
-        if old and not force: return {'status': 'exists', 'id': old['id'], 'reason': '이번 주 호가 이미 있어요'}
+        if not force and cfg['freq'] == 'weekly' and today.weekday() != cfg['day']: return {'status': 'not_today', 'reason': f"보내는 날은 {DAYS[cfg['day']]}이에요"}
+        if not force and cfg['freq'] == 'weekdays' and today.weekday() >= 5: return {'status': 'not_today', 'reason': '주말에는 쉬어요'}
+        start = (today - datetime.timedelta(days=today.weekday())) if cfg['freq'] == 'weekly' else today
+        with conn() as db: old = db.execute('SELECT id FROM letters WHERE created>=? ORDER BY id DESC', (start.isoformat(),)).fetchone()
+        if old and not force: return {'status': 'exists', 'id': old['id'], 'reason': '이번 주 호가 이미 있어요' if cfg['freq'] == 'weekly' else '오늘 호가 이미 있어요'}
         r = generate('weekly')
         if r['status'] != 'made': return r
         if not cfg['auto']: return dict(r, sent=False, reason=(r['reason'] + ' · ' if r['reason'] else '') + '자동 보내기가 꺼져 있어 운영자를 기다려요')
@@ -378,7 +415,10 @@ def install(S):
         sents = [s for s in re.split(r'(?<=[.!?])\s+', (text or '').strip()) if s]
         return [' '.join(sents[i:i + 2]) for i in range(0, len(sents), 2)] or [text]
     def letter_cfg():
-        cfg = settings(); return dict(cfg, day_name=DAYS[cfg['day']])
+        # 화면 문구용: when='평일 아침마다'·'매일 아침'·'매주 월요일 아침', span='오늘'·'이번 주'
+        cfg = settings(); day = DAYS[cfg['day']]
+        when = {'weekdays': '평일 아침마다', 'daily': '매일 아침', 'weekly': f'매주 {day} 아침'}[cfg['freq']]
+        return dict(cfg, day_name=day, when=when, span='이번 주' if cfg['freq'] == 'weekly' else '오늘')
     app.jinja_env.globals.update(letter_counts=counts, letter_kdate=kdate, letter_cfg=letter_cfg)
     app.jinja_env.filters['letter_paras'] = body_lines
 
@@ -482,7 +522,7 @@ def install(S):
         with conn() as db:
             rows = [row_info(r) for r in db.execute('SELECT * FROM letters ORDER BY no DESC LIMIT 40')]
             subs = db.execute("SELECT id,email,status,created,confirmed,unsubscribed,place FROM letter_subscribers ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,id DESC LIMIT 200").fetchall()
-        return dict(rows=rows, subs=subs, counts=counts(), cfg=settings(), days=DAYS, ai_ready=desk.ai_ready(), naver_ready=bool(naver()) and naver()['ready'](),
+        return dict(rows=rows, subs=subs, counts=counts(), cfg=settings(), days=DAYS, freqs=FREQS, ai_ready=desk.ai_ready(), naver_ready=bool(naver()) and naver()['ready'](),
                     mail_ready=notify.email_ready(), logs=setting('letter_log', [])[:10])
 
     @app.route('/admin/letter', methods=['GET', 'POST'])
@@ -521,8 +561,8 @@ def install(S):
     @app.route('/admin/letter/settings', methods=['POST'])
     @S.admin_only
     def admin_letter_settings():
-        day = request.form.get('day', type=int)
-        put('letter', {'auto': 1 if request.form.get('auto') else 0, 'day': day if day in range(7) else 0})
+        day, freq = request.form.get('day', type=int), request.form.get('freq', '')
+        put('letter', {'auto': 1 if request.form.get('auto') else 0, 'day': day if day in range(7) else 0, 'freq': freq if freq in FREQS else 'weekdays'})
         flash('레터 설정을 저장했어요.')
         return redirect(url_for('admin_letter'))
 

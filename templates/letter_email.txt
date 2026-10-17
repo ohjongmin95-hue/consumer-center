@@ -10,7 +10,7 @@ NEWS {{ '%02d' % loop.index }}. {{ it.title }}
 
 {{ it.body }}
 {% if it.tip %}
-💡 이럴 땐 이렇게: {{ it.tip }}
+💡 나한테는? {{ it.tip }}
 {% endif %}{% if it.law %}⚖️ 관련 법: {{ it.law.label }}{% if it.law.url %} {{ it.law.url }}{% endif %}
 {% endif %}📰 기사 원문({{ it.src.name or '기사' }}): {{ it.src.url }}
 {% endfor %}
