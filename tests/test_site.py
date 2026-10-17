@@ -273,7 +273,7 @@ class SiteTest(unittest.TestCase):
             self.assertIn('공개 제보 카드 제목', home)
             self.assertNotIn('sb-report-box', home)  # 끈 묶음은 빠짐
             self.assertNotIn('sb-tools', home)  # 제보 안내 바로가기는 메뉴로 옮김
-            self.assertIn('피해 유형별 안내', home)
+            self.assertIn('자주 묻는 질문', home); self.assertNotIn('피해 유형별 안내', home)  # 피해 유형별 안내는 메뉴에서 뺌(운영자 요청)
             self.assertNotIn('010-1234-5678', home)
             # 주기마다 맨 위가 제보 ↔ 생활정보로 바뀜
             kinds = set()
@@ -319,7 +319,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 200)
             detail = visitor.get(f'/reports/{cid}').get_data(as_text=True)
             self.assertIn(f'/art/report/{cid}.webp', detail)
-            self.assertNotIn('sb-art-l', detail)
+            self.assertNotIn('sb-art-l', detail); self.assertIn('sb-art-ai', detail)
             self.assertIn('sb-art', visitor.get('/').get_data(as_text=True))
             admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'hide'})
             self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)
@@ -343,6 +343,19 @@ class SiteTest(unittest.TestCase):
                 with self.site.conn() as db: db.execute('UPDATE cases SET published=1 WHERE id=?', (cid2,))
                 admin.post('/admin/art/fill', data={'_csrf': self.csrf(admin, '/admin/art'), 'kind': 'report'})
             self.assertEqual(visitor.get(f'/art/report/{cid2}.webp').status_code, 200)
+            self.assertEqual(sent[-1]['quality'], 'medium')
+            # 옛 그림체 그림은 한 번에 새 그림체로 (게시 중이면 게시 상태 그대로)
+            with self.site.conn() as db: db.execute("UPDATE soboru_art SET style=1 WHERE kind='report' AND target_id=?", (cid2,))
+            n = len(sent)
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+                self.assertIn('옛 그림체 1개', admin.get('/admin/art').get_data(as_text=True))
+                admin.post('/admin/art/fill', data={'_csrf': self.csrf(admin, '/admin/art'), 'kind': 'report', 'mode': 'old'})
+            self.assertEqual(len(sent), n + 1)
+            with self.site.conn() as db:
+                r = db.execute("SELECT * FROM soboru_art WHERE kind='report' AND target_id=?", (cid2,)).fetchone()
+            self.assertEqual((r['style'], r['status']), (self.site.soboru_art.STYLE_V, 'live'))
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}):
+                self.assertNotIn('새 그림체로 다시 그리기', admin.get('/admin/art').get_data(as_text=True))
             # 대표 사진: 관리자가 고른 첨부 사진만 공개, 고르면 AI 그림 대신 사진
             (Path(self.site.UPLOAD) / 'cover-test.png').write_bytes(b'\x89PNG fake')
             with self.site.conn() as db:

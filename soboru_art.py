@@ -5,8 +5,8 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
 - 공개 제보도 게시되는 순간(접수 즉시 공개·관리자 게시) 같은 방식으로 자동으로 그린다.
 - 관리자 > AI 일러스트에서 다시 그리기·내리기·지우기. 손으로 '그리기'한 그림은 '게시'를 눌러야 보인다.
 - AI에는 분야와 공개용 제목만 보낸다(개인정보·업체명은 지움). 본문·제보자 정보는 보내지 않는다.
-- 그림이 없거나 내리면 지금처럼 글자 카드가 나온다. 그림 위에 따로 표시는 붙이지 않는다(운영자 요청, 2026-10-17).
-- 키는 사이트가 이미 쓰는 OPENAI_API_KEY, 모델은 OPENAI_IMAGE_MODEL(기본 gpt-image-1-mini).
+- 그림이 없거나 내리면 지금처럼 글자 카드가 나온다. AI 그림 오른쪽 아래에는 아주 작은 'AI' 글자만 옅게 붙인다(운영자 요청, 2026-10-17).
+- 키는 사이트가 이미 쓰는 OPENAI_API_KEY, 모델은 OPENAI_IMAGE_MODEL(기본 gpt-image-1-mini), 품질은 OPENAI_IMAGE_QUALITY(기본 medium).
 """
 import base64
 import datetime
@@ -17,21 +17,30 @@ from flask import abort, flash, g, redirect, render_template, request, send_file
 
 KINDS = ('report', 'life')
 PHOTO = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
-# 토스 피드 그림 느낌: 단색 배경 + 부드러운 입체 물건 한두 개(때로는 손), 글자 없음
-STYLE = ('Soft 3D illustration in the style of a Korean fintech app feed thumbnail: smooth matte clay-like objects with gentle gradients and soft shadows, '
-         'one or two everyday objects (sometimes simple stylized hands, no faces) floating in the center, slightly tilted, generous empty space, '
-         'flat solid {bg} background filling the whole image, a limited palette that harmonizes with the background. '
-         'Absolutely no text, no letters, no numbers, no logos, no brand names, no real people.')
+# 토스 피드 그림 느낌: 단색 배경 가운데 반질한 3D 아이콘 하나, 장면·사람·글자 없음
+# 그림체를 바꾸면 STYLE_V를 올림. 관리자 화면에서 옛 그림체 그림을 새로 그릴 수 있음
+STYLE_V = 2
+STYLE = ('A single cute 3D icon, in the style of the glossy 3D emoji illustrations used in the Toss app (Korean fintech) feed thumbnails. '
+         'High-quality Blender render: chunky rounded shapes, smooth glossy plastic and soft matte clay materials, soft studio light from the upper left, '
+         'gentle highlights, a soft contact shadow directly below. '
+         'Exactly one main object (optionally one tiny companion object), centered, about 45% of the image height, front three-quarter view, '
+         'simple and iconic with minimal details, bright clean colors that stand out from the background. '
+         'Pure flat solid {bg} background filling the whole image: no gradient, no floor, no scenery, no extra props, no patterns. '
+         'No people, no faces, no hands. Absolutely no text, no letters, no numbers, no logos, no brand names.')
 BGS = ('soft sky blue (#9dbcef)', 'deep teal (#2b9db5)', 'bright blue (#3a8ef6)', 'warm apricot (#ffb56b)', 'fresh mint (#7fd1ae)', 'soft lavender (#b7a6f0)')
 
 
 def image_model(): return os.getenv('OPENAI_IMAGE_MODEL', '').strip() or 'gpt-image-1-mini'
+def image_quality(): return os.getenv('OPENAI_IMAGE_QUALITY', '').strip() or 'medium'
 
 
 def make_prompt(category, title, extra=(), seed=0):
     from companydesk import scrub
     clean = lambda t: re.sub(r'\[[^\]]*삭제\]', '', scrub(t or '', extra)).strip()
-    return STYLE.format(bg=BGS[seed % len(BGS)]) + f'\nTopic (Korean consumer issue, draw the situation, do not write it): category "{clean(category)}", headline "{clean(title)}".'
+    return (STYLE.format(bg=BGS[seed % len(BGS)]) + '\nPick one simple, instantly recognizable object that symbolizes this Korean consumer topic '
+            '(for example a parcel box for delivery, a credit card for payments, a smartphone for apps and subscriptions, a receipt for refunds, '
+            'a house for rent, a plane for travel, a shield for safety). Do not draw a scene and do not write the words. '
+            f'Category "{clean(category)}", headline "{clean(title)}".')
 
 
 def install(S):
@@ -43,6 +52,8 @@ def install(S):
         # 대표 사진: 관리자가 제보 첨부 사진 중 하나를 골라 공개 (기본은 모두 비공개)
         if 'cover' not in {r['name'] for r in db.execute('PRAGMA table_info(attachments)')}:
             db.execute('ALTER TABLE attachments ADD COLUMN cover INTEGER NOT NULL DEFAULT 0')
+        if 'style' not in {r['name'] for r in db.execute('PRAGMA table_info(soboru_art)')}:
+            db.execute('ALTER TABLE soboru_art ADD COLUMN style INTEGER NOT NULL DEFAULT 1')
 
     def now(): return datetime.datetime.now().isoformat(timespec='seconds')
 
@@ -78,12 +89,12 @@ def install(S):
         text = S.jebo.pub(c, S.mask_personal)
         return S.jebo.cat_label(c['category']), text['subject'], [c['company'], c['reporter_name']]
 
-    def draw(kind, target_id):
+    def draw(kind, target_id, keep=False):
         key = os.getenv('OPENAI_API_KEY', '').strip()
         if not key: raise RuntimeError('OpenAI API 키가 없어요')
         t = target(kind, target_id)
         if not t: raise RuntimeError('그릴 글을 찾지 못했어요')
-        body = {'model': image_model(), 'prompt': make_prompt(*t, seed=target_id), 'size': '1536x1024', 'quality': 'low', 'output_format': 'webp', 'n': 1}
+        body = {'model': image_model(), 'prompt': make_prompt(*t, seed=target_id), 'size': '1536x1024', 'quality': image_quality(), 'output_format': 'webp', 'n': 1}
         st, res = desk.post_json('https://api.openai.com/v1/images/generations', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, 150)
         if st != 200: raise RuntimeError(f'AI 응답 오류 ({st}) ' + str((res.get('error') or {}).get('message', ''))[:160].replace(key, '***'))
         try: data = base64.b64decode(res['data'][0]['b64_json'])
@@ -91,8 +102,10 @@ def install(S):
         name = f'{kind}-{target_id}-{datetime.datetime.now():%Y%m%d%H%M%S}.webp'
         (folder / name).write_bytes(data)
         with conn() as db:
-            old = db.execute('SELECT file FROM soboru_art WHERE kind=? AND target_id=?', (kind, target_id)).fetchone()
-            db.execute("INSERT OR REPLACE INTO soboru_art(kind,target_id,file,status,created) VALUES(?,?,?,'draft',?)", (kind, target_id, name, now()))
+            old = db.execute('SELECT file,status FROM soboru_art WHERE kind=? AND target_id=?', (kind, target_id)).fetchone()
+            # keep: 게시 중인 그림을 새 그림체로 바꿀 때는 게시 상태 그대로
+            status = old['status'] if keep and old else 'draft'
+            db.execute('INSERT OR REPLACE INTO soboru_art(kind,target_id,file,status,created,style) VALUES(?,?,?,?,?,?)', (kind, target_id, name, status, now(), STYLE_V))
         if old and old['file'] != name: (folder / old['file']).unlink(missing_ok=True)
 
     def auto(kind, target_id, wait=False):
@@ -151,11 +164,12 @@ def install(S):
             else:
                 rows = [{'id': c['id'], 'title': S.jebo.pub(c, S.mask_personal)['subject'], 'label': S.jebo.cat_label(c['category']), 'note': c['status']}
                         for c in db.execute("SELECT * FROM cases WHERE public_consent=1 AND published=1 AND review NOT IN ('rejected','duplicate') ORDER BY id DESC LIMIT 60")]
+            old = db.execute('SELECT COUNT(*) FROM soboru_art WHERE kind=? AND style<?', (kind, STYLE_V)).fetchone()[0]
         for r in rows:
             a = arts.get(r['id'])
             r['art'] = a['status'] if a else ''
             r['src'] = url_for('art_image', kind=kind, target_id=r['id'], v=a['file'][-12:-5]) if a else ''
-        return render_template('admin_art.html', rows=rows, kind=kind, ready=desk.ai_ready(), model=image_model())
+        return render_template('admin_art.html', rows=rows, kind=kind, ready=desk.ai_ready(), model=image_model(), old=old)
 
     @app.route('/admin/art/fill', methods=['POST'])
     @S.admin_only
@@ -164,15 +178,21 @@ def install(S):
         kind = request.form.get('kind') if request.form.get('kind') in KINDS else 'report'
         if not desk.ai_ready(): flash('OpenAI API 키가 없어서 그릴 수 없어요.'); return redirect(url_for('admin_art', kind=kind))
         with conn() as db:
+            redo = request.form.get('mode') == 'old'
             have = {r[0] for r in db.execute('SELECT target_id FROM soboru_art WHERE kind=?', (kind,))}
+            old = [r[0] for r in db.execute('SELECT target_id FROM soboru_art WHERE kind=? AND style<? ORDER BY target_id DESC', (kind, STYLE_V))]
             sql = ('SELECT id FROM articles ORDER BY id DESC LIMIT 200' if kind == 'life' else
                    "SELECT id FROM cases WHERE public_consent=1 AND published=1 AND review NOT IN ('rejected','duplicate') ORDER BY id DESC LIMIT 200")
-            ids = [r[0] for r in db.execute(sql) if r[0] not in have][:20]
+            ids = old[:20] if redo else [r[0] for r in db.execute(sql) if r[0] not in have][:20]
         def run():
-            for i in ids: auto(kind, i, wait=True)
+            for i in ids:
+                if not redo: auto(kind, i, wait=True); continue
+                try: draw(kind, i, keep=True)
+                except Exception as e: app.logger.warning('AI 일러스트 다시 그리기 실패: %s', str(e)[:200])
         if app.config.get('TESTING'): run()
         else: threading.Thread(target=run, daemon=True).start()
-        flash(f'그림 없는 글 {len(ids)}개를 그리기 시작했어요. 하나에 30초쯤 걸려요. 잠시 뒤 새로 고침해 보세요.' if ids else '그림 없는 글이 없어요.')
+        what = '옛 그림체 그림' if redo else '그림 없는 글'
+        flash(f'{what} {len(ids)}개를 그리기 시작했어요. 하나에 30초쯤 걸려요. 잠시 뒤 새로 고침해 보세요.' if ids else f'{what}이 없어요.')
         return redirect(url_for('admin_art', kind=kind))
 
     @app.route('/admin/art/<kind>/<int:target_id>', methods=['POST'])
