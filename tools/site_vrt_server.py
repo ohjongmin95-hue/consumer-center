@@ -166,6 +166,18 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
         _batch = _now
         for _q in m.lawrag.TEST_QUESTIONS: rag['consult'](_q, (), 'test', batch=_batch)
         for _q in m.lawrag.TEST_QUESTIONS[:12] + ['사이즈 추천 부탁해요 감사합니다']: rag['consult'](_q, (), 'ask')
+        # 법제처 본문 검색 (가짜 응답): 모아 둔 법에 없는 반려견 분양 질문이면 동물보호법을 찾아 모아 둠
+        os.environ['LAW_OC'] = 'vrt-oc'
+        def _law_get(url, timeout=25):
+            if 'lawSearch.do' in url and 'search=2' in url:
+                return 200, ('<LawSearch><law><법령일련번호>5001</법령일련번호><법령명한글>동물보호법</법령명한글><법령ID>0101</법령ID><시행일자>20260201</시행일자><법령구분명>법률</법령구분명></law></LawSearch>')
+            if 'MST=5001' in url:
+                return 200, ('<법령><기본정보><법령명_한글>동물보호법</법령명_한글><시행일자>20260201</시행일자><공포번호>1</공포번호><법종구분>법률</법종구분></기본정보><조문>'
+                             '<조문단위><조문번호>69</조문번호><조문여부>조문</조문여부><조문제목>영업의 허가</조문제목><조문내용>제69조(영업의 허가) 반려동물과 관련된 동물생산업, 동물수입업, 동물판매업을 하려는 자는 특별자치시장ㆍ특별자치도지사ㆍ시장ㆍ군수ㆍ구청장의 허가를 받아야 한다.</조문내용></조문단위>'
+                             '<조문단위><조문번호>78</조문번호><조문여부>조문</조문여부><조문제목>영업자 등의 준수사항</조문제목><조문내용>제78조(영업자 등의 준수사항) 동물판매업자는 반려견을 분양할 때 질병 발생 시 보상 내용 등을 적은 계약서를 소비자에게 주어야 한다.</조문내용></조문단위></조문></법령>')
+            return 200, '<LawSearch><totalCnt>0</totalCnt></LawSearch>'
+        _ls.http_get = _law_get
+        rag['consult']('분양받은 반려견이 일주일 만에 파보장염으로 죽었어요. 분양업자에게 뭘 요구할 수 있나요?', (), 'ask')
 # 네이버 API HUB 화면 시험: VRT_NAVER=1이면 가짜 키와 가짜 응답으로 통합 검색·검색 추이·쇼핑 관심도를 띄움 (실제 네이버는 안 부름)
 if os.environ.get('VRT_NAVER') and hasattr(m, 'naverhub'):
     import random as _r
