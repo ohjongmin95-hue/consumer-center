@@ -322,8 +322,8 @@ if hasattr(m, 'soboru_letter') and os.environ.get('VRT_NAVER'):
             if no == 3 and key == '항공권': text += ' 지난해보다 상담이 2배 늘었대요.'  # 자료에 없는 숫자: 관리자 화면 '검토 필요' 보기
             items.append({'no': x['번호'], 'title': title, 'body': text, 'tip': tip, 'law': x['법 조문 후보'][0]['id'] if x['법 조문 후보'] else ''})
         out = {'subject': ['', '택배 분실 보상, 얼마까지 받을까?', '해지했는데 또 결제됐다면', '헬스장이 문 닫았다면, 남은 회원권은?'][no] if no <= 3 else '이번 주 소비자 뉴스',
-               'intro': '안녕하세요, 소보루 레터예요. 이번 주에도 내 지갑과 닿은 소비자 뉴스를 골라 쉽게 풀어 봤어요. 출근길에 가볍게 읽어 보세요.',
-               'outro': '이번 주도 억울한 일 없이 지나가길 바라요. 혹시 겪었다면 소보루에 알려 주세요. 다음 주에 또 만나요.', 'items': items}
+               'intro': '좋은 아침이에요, 소보루 레터예요. 어제 여러 언론이 함께 다룬 소식 가운데 내 지갑과 닿은 이야기를 골라 쉽게 풀어 봤어요. 출근길 5분이면 충분해요.',
+               'outro': '오늘도 억울한 일 없이 지나가길 바라요. 혹시 겪었다면 소보루에 알려 주세요. 내일 아침에 또 만나요.', 'items': items}
         return 200, {'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
     m.companydesk.post_json = _letter_ai
     _prev_nv = m.naverhub.http
