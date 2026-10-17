@@ -53,6 +53,7 @@ def migrate(db):
 def secret(name):return os.getenv(name,'').strip()
 def provider_ready(p):
     if p not in PROVIDERS or not (secret(PROVIDERS[p]['key']) and secret(PROVIDERS[p]['secret'])):return False
+    if p=='naver' and secret('ENABLE_NAVER_LOGIN')!='1':return False  # 네이버 로그인은 꺼 둠 (운영자 요청 2026-10-17, 스마트스토어 연동 때 ENABLE_NAVER_LOGIN=1)
     return p!='apple' or bool(secret('APPLE_TEAM_ID') and secret('APPLE_PRIVATE_KEY') and es256_ready())
 def es256_ready():
     try:import cryptography.hazmat.primitives.asymmetric.ec  # noqa: F401  Apple 서명용 (requirements.txt)

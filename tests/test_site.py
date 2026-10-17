@@ -1481,6 +1481,45 @@ class SiteTest(unittest.TestCase):
         for key in ('menu', 'home_blocks', 'sample_reports'):
             self.assertIn('id="list-%s"' % key, lists)
 
+    def test_cross_site_login(self):
+        # 소비자제보센터에서 가입·로그인하면 소보루에도 로그인, 로그아웃도 같이. 표는 한 번만 쓰고 다른 브라우저 상태값으론 안 됨
+        J, M = 'https://consumerjebo.co.kr', 'https://soboru.co.kr'
+        hosts = {'consumerjebo.co.kr', 'www.consumerjebo.co.kr'}
+        self.site.JEBO_HOSTS.update(hosts)
+        def hop(client, r):
+            loc = r.headers['Location']; base = loc.split('/', 3)[:3]
+            return client.get('/' + loc.split('/', 3)[3], base_url='/'.join(base))
+        try:
+            with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):
+                c = self.site.app.test_client()
+                page = c.get('/signup', base_url=J).get_data(as_text=True)
+                self.assertIn('class="site-header"', page)  # 가입 화면은 소비자제보센터 화면 그대로
+                token = re.search(r'name="_csrf" value="([^"]+)"', page)[1]
+                r = c.post('/signup', base_url=J, data={'_csrf': token, 'login_id': 'jebo_user', 'password': 'butter123', 'password2': 'butter123', 'nickname': '제보회원',
+                                                        'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+                self.assertTrue(r.headers['Location'].startswith(M + '/sso/begin?'))
+                r = hop(c, r); self.assertTrue(r.headers['Location'].startswith(J + '/sso/issue?'))
+                r = hop(c, r); self.assertTrue(r.headers['Location'].startswith(M + '/sso/in?'))
+                ticket = r.headers['Location']
+                r = hop(c, r); self.assertEqual(r.headers['Location'], J + '/me')
+                self.assertEqual(c.get('/me', base_url=M).status_code, 200)
+                self.assertEqual(c.get('/me', base_url=J).status_code, 200)
+                # 같은 표를 다른 브라우저에서 쓰면 로그인 안 됨
+                other = self.site.app.test_client()
+                other.get('/' + ticket.split('/', 3)[3], base_url=M)
+                self.assertEqual(other.get('/me', base_url=M).status_code, 302)
+                # 다른 주소로는 돌려보내지 않음
+                self.assertEqual(c.get('/sso/begin?back=https://evil.example/', base_url=M).status_code, 404)
+                # 소보루에서 로그아웃하면 소비자제보센터도 로그아웃
+                token = re.search(r'name="_csrf" value="([^"]+)"', c.get('/me', base_url=M).get_data(as_text=True))[1]
+                r = c.post('/logout', base_url=M, data={'_csrf': token})
+                self.assertTrue(r.headers['Location'].startswith(J + '/sso/out?'))
+                hop(c, r)
+                self.assertEqual(c.get('/me', base_url=J).status_code, 302)
+                self.assertEqual(c.get('/me', base_url=M).status_code, 302)
+        finally:
+            self.site.JEBO_HOSTS.difference_update(hosts)
+
     def test_process_page_cards(self):
         page = self.client.get('/process').get_data(as_text=True)
         self.assertEqual(page.count('class="process-card"'), 5)
@@ -1665,7 +1704,7 @@ class SiteTest(unittest.TestCase):
                 self.assertIsNone(db.execute('SELECT 1 FROM user_identities WHERE user_id=?', (user['id'],)).fetchone())
 
     def test_naver_profile_and_state(self):
-        with patch.dict(os.environ, {'NAVER_CLIENT_ID': 'nid', 'NAVER_CLIENT_SECRET': 'nsec'}):
+        with patch.dict(os.environ, {'NAVER_CLIENT_ID': 'nid', 'NAVER_CLIENT_SECRET': 'nsec', 'ENABLE_NAVER_LOGIN': '1'}):
             r = self.client.get('/auth/naver/start')
             self.assertTrue(r.headers['Location'].startswith('https://nid.naver.com/oauth2.0/authorize?'))
             state = re.search(r'state=([^&]+)', r.headers['Location'])[1]

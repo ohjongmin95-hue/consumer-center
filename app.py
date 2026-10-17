@@ -173,6 +173,7 @@ app.jinja_env.globals['biz_on']=lambda:BIZ_ON
 CANONICAL_HOST=(os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().lower()
 LIVE_HOSTS={h for d in (CANONICAL_HOST,'consumerjebo.co.kr','soboru.co.kr') for h in (d,'www.'+d)}
 # 소비자제보센터 화면으로 보여 줄 주소 (soboru.py가 화면을 바꿈). 대표 주소도 그 주소 그대로
+def main_host():return CANONICAL_HOST  # 로그인·가입을 받는 대표 주소 (crosslogin.py)
 JEBO_HOSTS={x for h in os.getenv('JEBO_HOST','').split(',') if h.strip() for x in (h.strip().lower(),'www.'+h.strip().lower())}
 def canonical_url(path=None):
     # 운영 도메인(www 포함)으로 들어오면 주소를 https://대표주소 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
@@ -1530,6 +1531,7 @@ def sign_in(user,remember):
     keep={k:session[k] for k in ('voter','utm','ad_day') if k in session}  # 광고 효과용 첫 방문 경로는 이어 감
     session.clear();session.update(keep)
     session['uid']=user['id'];session['uv']=user['session_ver'];session.permanent=bool(remember)
+    g.signed_in=True  # 다른 사이트(소보루↔소비자제보센터)도 같이 로그인 (crosslogin.py)
 
 @app.route('/signup',methods=['GET','POST'])
 def signup():
@@ -1564,7 +1566,7 @@ def signup():
         ad_event('signup',db)
     sign_in(user,False)
     flash(user['nickname']+ui_text('msg.welcome','님, 가입을 환영해요!'))
-    return redirect(url_for('mypage'))
+    return redirect(safe_next('mypage'))
 
 @app.route('/login',methods=['GET','POST'])
 def login():
@@ -1603,7 +1605,7 @@ def account_help():return render_template('account_help.html')
 
 @app.route('/logout',methods=['POST'])
 def member_logout():
-    session.pop('uid',None);session.pop('uv',None);session.pop('case_id',None)
+    session.pop('uid',None);session.pop('uv',None);session.pop('case_id',None);g.signed_out=True
     flash(ui_text('msg.m31','로그아웃했어요.'))
     return redirect(url_for('home'))
 
@@ -2659,5 +2661,6 @@ _writer=types.SimpleNamespace(**globals());soboru_writer.install(_writer)
 # AI 소비자 상담 새 버전: 유형 분류·키워드+임베딩 검색·근거 확인·상담 기록·관리자 대시보드 (lawrag.py, 관리자 설정으로 켤 때만 손님에게 보임)
 _rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
 import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  # 소보루 레터: 주간 뉴스레터·구독·발송 (soboru_letter.py)
+import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 if __name__=='__main__':app.run(debug=False)
