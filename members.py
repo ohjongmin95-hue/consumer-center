@@ -190,6 +190,7 @@ def install(S):
                            (login_id,nick,email,S.TERMS_VERSION,now(),S.ip_hash(),now(),now() if email and pend['email_verified'] else '',pend.get('name',''),pend.get('phone','')))
             db.execute('INSERT INTO user_identities(user_id,provider,provider_uid,email,linked_at) VALUES(?,?,?,?,?)',(cur.lastrowid,pend['p'],pend['uid'],pend['email'],now()))
             user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
+            S.ad_event('signup',db)  # 광고 효과: 처음 들어온 경로별 가입 수
         nxt=pend.get('next') or ''
         session.pop('oauth_join',None);S.sign_in(user,True)
         flash(user['nickname']+ui_text('msg.welcome','님, 가입을 환영해요!'))

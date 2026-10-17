@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'community_macros.html' import top_line as cm_top, sub_line as cm_sub, foot_line as cm_foot %}
+{% from 'community_macros.html' import top_line as cm_top, sub_line as cm_sub, foot_line as cm_foot, campaign_card %}
 {% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
 {# 뉴닉식 홈: 그림은 맨 위 캐릭터 하나만, 나머지는 글과 토스페이스 이모지. 실시간 제보를 맨 위 오른쪽에 #}
 {% block content %}
@@ -71,6 +71,7 @@
       <div><p class="nn-eyebrow">써 본 소비자가 직접 골랐어요</p><h2><span class="tf" aria-hidden="true">⭐</span> 소보루 픽</h2><p class="nn-sub">제품·업체 추천부터 솔직한 리뷰, 살까 말까 고민될 때 질문까지. 광고 없이 소비자끼리만 나눠요.</p></div>
       <a class="nn-more" href="{{ url_for('board') }}">소보루 픽 전체 보기 ›</a>
     </div>
+    {% set camp = current_campaign() %}{% if camp %}{{ campaign_card(camp, campaign_review_count(camp['id']), 'cp-home') }}{% endif %}
     <div class="nn-pick-grid">
       <div class="nn-top">
         <h3>소비자 추천 TOP 5</h3><p class="nn-top-sub">리뷰 별점과 '추천해요'로 매긴 순위</p>

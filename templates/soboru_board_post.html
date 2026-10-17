@@ -1,5 +1,5 @@
 {# 소보루 커뮤니티 글 보기: 종류별 머리(리뷰 별점·좋았던 점/아쉬운 점, 꿀팁 요약, 질문 해결 여부) + 공감·댓글. board_post.html에서 is_soboru()일 때 #}
-{% from 'community_macros.html' import stars, kind_chip, feed_item, heart_i, bubble_i %}
+{% from 'community_macros.html' import stars, kind_chip, feed_item, heart_i, bubble_i, editor_badge %}
 {% set k = post['kind'] if post['kind'] in POST_KIND_NAMES else 'post' %}
 {% set rate_words = ['', '별로예요', '아쉬워요', '보통이에요', '좋아요', '최고예요'] %}
 {% set mine = (g.user and post['user_id'] == g.user['id']) %}
@@ -9,7 +9,10 @@
     {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨김 처리된 글입니다. 운영자에게만 보입니다.') }}</div>{% endif %}
     <div class="cm-kicker">{{ kind_chip(k) }}{% if k == 'post' %}<span>{{ post['category'] }}</span>{% elif k == 'tip' %}<span>{{ read_minutes(post['body']) }}분이면 읽어요</span>{% elif k == 'question' %}{% if post['solved'] %}<span class="cm-solved">해결됨</span>{% else %}<span>답변을 기다려요</span>{% endif %}{% endif %}</div>
     <h1>{% if k == 'question' %}<span class="cm-q">Q.</span>{% endif %}{{ post['title'] }}</h1>
-    <div class="cm-author"><span class="cm-av">{{ post['nickname'][:1] }}</span><div><b>{{ post['nickname'] }}{% if post['user_id'] %}<span class="cm-member">{{ ui('board.member_badge', '회원') }}</span>{% endif %}</b><small>{{ post['created']|ago }} · 공감 {{ post['likes'] }} · {{ '답변' if k == 'question' else '댓글' }} {{ comments|length }}</small></div></div>
+    <div class="cm-author"><span class="cm-av">{{ post['nickname'][:1] }}</span><div><b>{{ post['nickname'] }}{% if post['user_id'] %}<span class="cm-member">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ editor_badge(post) }}</b><small>{{ post['created']|ago }} · 공감 {{ post['likes'] }} · {{ '답변' if k == 'question' else '댓글' }} {{ comments|length }}</small></div></div>
+    {% if post['editor'] %}<p class="cm-editor-note">{{ ui('cm.editor_note', '소보루 에디터가 직접 써 보고 남긴 리뷰예요. 소비자 별점과 순위에는 넣지 않아요.') }}</p>{% endif %}
+    {% if post['reward'] %}<p class="cm-disclose lg"><span aria-hidden="true">🎁</span> <span><b>{{ ui('cm.reward_label', '소보루 이벤트 참여 리뷰 · 혜택을 받을 수 있어요') }}</b>{% if campaign %}‘<a href="{{ url_for('campaign_page', slug=campaign['slug']) }}">{{ campaign['title'] }}</a>’ {{ ui('cm.reward_note', '주제에 참여한 리뷰예요.') }}{% endif %}</span></p>
+    {% elif campaign %}<p class="cm-camp-link"><a href="{{ url_for('campaign_page', slug=campaign['slug']) }}">{{ ui('cp.eyebrow', '이번 주 리뷰 주제') }} · {{ campaign['title'] }} ›</a></p>{% endif %}
 
     {% if k == 'review' %}
     <section class="cm-review" aria-label="{{ ui('cm.review_aria', '리뷰 요약') }}">
@@ -18,6 +21,7 @@
         {% else %}<div class="cm-rv-co"><span class="cm-av lg">{{ mask_personal(post['target'])[:1] }}</span><span><small>{{ ui('cm.rv_target', '리뷰한 곳') }}</small><b>{{ mask_personal(post['target']) }}</b></span></div>{% endif %}
         <div class="cm-rv-score">{% if post['rating'] %}<b>{{ post['rating'] }}.0</b>{{ stars(post['rating'], 'lg') }}<small>{{ rate_words[post['rating']] }}</small>{% endif %}</div>
       </div>
+      {% if post['menu'] or post['review_cat'] %}<p class="cm-rv-menu">{% if post['review_cat'] %}<a href="{{ url_for('board', type='review', rc=post['review_cat']) }}"><span aria-hidden="true">{{ REVIEW_CAT_EMOJI.get(post['review_cat'], '') }}</span> {{ post['review_cat'] }}</a>{% endif %}{% if post['menu'] %}<span><small>{{ ui('cm.f_menu', '주문 메뉴') }}</small> {{ mask_personal(post['menu']) }}</span>{% endif %}</p>{% endif %}
       {% if post['recommend'] is not none %}<p class="cm-rv-rec{{ ' no' if post['recommend'] == 0 }}">{{ ('👍 ' ~ ui('cm.rec_yes_long', '다른 분께도 추천해요')) if post['recommend'] == 1 else ui('cm.rec_no_long', '추천하지는 않아요') }}</p>{% endif %}
       {% if post['pros'] or post['cons'] %}
       <div class="cm-rv-pc">
@@ -27,6 +31,7 @@
       {% endif %}
     </section>
     {% endif %}
+    {% if post['photo'] %}<figure class="cm-photo-full"><img src="{{ url_for('board_photo', name=post['photo']) }}" alt="{{ ui('cm.photo_alt', '글쓴이가 올린 사진') }}" loading="lazy"></figure>{% endif %}
     {% if k == 'tip' and post['summary'] %}<p class="cm-lede">{{ mask_personal(post['summary']) }}</p>{% endif %}
     {% if post['body'] %}<div class="cm-text">{{ mask_personal(post['body']) }}</div>{% endif %}
 

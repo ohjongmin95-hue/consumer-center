@@ -87,6 +87,31 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
                 db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created) VALUES(?,?,?,?,?,?)', (pid, ['이웃소비자', '경험자'][i], generate_password_hash('1234'), cb, 'seed', ago(max(0.2, h - 1 - i))))
             db.execute('UPDATE posts SET comments=(SELECT COUNT(*) FROM comments WHERE post_id=?) WHERE id=?', (pid, pid))
         db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand',?,'2026-10-16')", (os.environ['VRT_BRAND'],))
+        if hasattr(m, 'clean_photo'):  # 예전 코드(기준 그림)로 띄우면 건너뜀
+            # 이번 주 리뷰 주제(배달음식, 혜택 켬)와 그 주제 리뷰: 사진 리뷰 하나, 소보루 에디터 리뷰 하나 (미리보기 전용 예시)
+            cpid = db.execute('INSERT INTO review_campaigns(slug,title,topic,intro,fields_hint,starts,ends,active,reward_on,reward_rules,created) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+                              ('delivery-1017', '내가 시켜 먹은 배달음식, 솔직히 어땠나요?', '배달음식', '어제 시킨 치킨, 지난주 떡볶이. 맛·양·배달 시간까지 솔직하게 알려 주세요. 다른 분들이 메뉴 고를 때 큰 도움이 돼요.',
+                               '주문한 메뉴와 가격\n맛·양·포장 상태\n주문부터 도착까지 걸린 시간', _dt.date.today().isoformat(), (_dt.date.today() + _dt.timedelta(days=6)).isoformat(), 1, 1,
+                               '대상: 기간 안에 사진과 함께 리뷰를 남긴 분 중 추첨 20명\n혜택: 편의점 모바일 상품권 5천 원\n지급 방법: 끝나고 7일 안에 가입한 이메일로 보내 드려요\n유의사항: 별점이나 좋은 평가와 상관없이 추첨해요. 광고·도배 글은 빠져요.', ago(30))).lastrowid
+            from PIL import Image as _Im, ImageDraw as _Dr
+            _im = _Im.new('RGB', (900, 680), (246, 226, 196)); _d = _Dr.Draw(_im)
+            _d.ellipse((120, 90, 780, 610), fill=(255, 255, 255)); _d.ellipse((170, 140, 730, 560), fill=(250, 244, 236))
+            for x, y, r in [(330, 260, 95), (480, 230, 85), (560, 360, 100), (380, 410, 90), (470, 330, 70)]: _d.ellipse((x - r, y - r, x + r, y + r), fill=(206, 128, 46), outline=(168, 92, 26), width=6)
+            _buf = __import__('io').BytesIO(); _im.save(_buf, 'JPEG', quality=90)
+            photo = m.save_board_photo(*m.clean_photo(_buf.getvalue()))
+            for nick, title, target, menu, rating, rec, pros, cons, h, ph, editor, reward in [
+                    ('치킨러버', '바삭함은 최고, 배달이 50분 걸린 건 아쉬워요', '소보루치킨 역삼점', '후라이드 반 양념 반', 4, 1, '튀김옷이 집에 올 때까지 바삭했어요', '주문하고 50분 만에 왔어요', 3, photo, 0, 1),
+                    ('떡볶이요정', '국물 떡볶이 양이 넉넉해서 둘이 먹기 딱', '오소보분식', '국물 떡볶이, 순대', 5, 1, '2인분인데 셋이 먹어도 될 만큼 넉넉해요', '', 9, '', 0, 1),
+                    ('소보루 에디터', '에디터가 직접 시켜 본 보루피자, 도우가 쫄깃해요', '보루피자', '고구마 피자 라지', 4, 1, '도우가 쫄깃하고 토핑이 끝까지 있어요', '포장 상자가 조금 눌려서 왔어요', 20, '', 1, 0)]:
+                pid = db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind,target,rating,pros,cons,recommend,likes,menu,photo,campaign_id,editor,reward,review_cat) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                                 ('경험 공유', nick, generate_password_hash('1234'), title, '', 'seed', ago(h), 'review', target, rating, pros, cons, rec, 3, menu, ph, cpid, editor, reward, '배달음식')).lastrowid
+            # 광고 효과 화면용 기록 (경로별 방문·가입·리뷰·재방문)
+            for i in range(60):
+                src = ['instagram', 'instagram', 'naver', '(direct)'][i % 4]; med = {'instagram': 'paid', 'naver': 'cpc'}.get(src, ''); cmp = 'delivery-1017' if src != '(direct)' else ''
+                day = (_dt.date.today() - _dt.timedelta(days=i % 9)).isoformat(); vh = 'seed%03d' % i
+                db.execute('INSERT INTO ad_events(day,utm_source,utm_medium,utm_campaign,event,visitor_hash) VALUES(?,?,?,?,?,?)', (day, src, med, cmp, 'visit', vh))
+                for ev, every in (('signup', 5), ('review', 7), ('return', 3)):
+                    if i % every == 0: db.execute('INSERT OR IGNORE INTO ad_events(day,utm_source,utm_medium,utm_campaign,event,visitor_hash) VALUES(?,?,?,?,?,?)', (_dt.date.today().isoformat(), src, med, cmp, ev, vh))
         if os.environ.get('VRT_NN'):
             # 뉴닉식 홈 미리보기용: 리뷰 대상 여러 개, 기업 답변 순위가 나올 만큼의 전달·답변 기록
             for nick, title, target, rating, rec, likes, h in [('살림9단', '소보루마트 신선식품, 이 가격에 이 품질이면 추천', '소보루마트', 5, 1, 31, 30), ('매일커피', '오소보카페 구독권, 한 달 써 보니 돈값 해요', '오소보카페', 5, 1, 18, 50),

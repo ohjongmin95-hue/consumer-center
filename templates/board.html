@@ -47,7 +47,8 @@
     <article class="post-card">
       <a class="post-link" href="{{ url_for('board_post', post_id=p['id']) }}">
         <div class="post-top">{{ chip(p['category'], categories) }}<span class="post-meta">{% if p['user_id'] %}<span class="member-badge">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ p['nickname'] }} · {{ p['created']|ago }}</span></div>
-        {% if p['kind'] == 'review' %}<p class="post-review">{{ mask_personal(p['target']) }} {{ stars(p['rating']) }}</p>{% endif %}
+        {% if p['kind'] == 'review' %}<p class="post-review">{{ mask_personal(p['target']) }} {{ stars(p['rating']) }}{% if p['editor'] %} · <b>{{ ui('cm.editor_badge', '소보루 에디터') }}</b>{% endif %}</p>{% endif %}
+        {% if p['reward'] %}<p class="post-review">🎁 {{ ui('cm.reward_label', '소보루 이벤트 참여 리뷰 · 혜택을 받을 수 있어요') }}</p>{% endif %}
         <h2>{% if p['kind'] == 'question' and p['solved'] %}<span class="cm-solved">해결됨</span> {% endif %}{{ p['title'] }}</h2>
         <p class="post-excerpt">{{ p['excerpt'] }}</p>
       </a>

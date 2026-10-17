@@ -246,4 +246,28 @@ body.console .lw-warn{color:#d63b2b}
 body.console .lw-appx li span{color:var(--ad-mute)}
 @media(max-width:900px){body.console .ak-kpis{grid-template-columns:1fr 1fr}body.console .ak-lab{grid-template-columns:1fr}}
 @media(max-width:560px){body.console .ak-kpis{grid-template-columns:1fr}body.console .ak-switch{flex-direction:column;align-items:stretch}}
+/* 리뷰 주제·광고 효과 */
+body.console .cp-admin-form .field{margin-bottom:12px}
+body.console .cp-admin-form .field label{display:block;font-size:13px;font-weight:700;color:var(--ad-sub);margin-bottom:6px}
+body.console .cp-admin-form input:not([type=checkbox]),body.console .cp-admin-form textarea{width:100%;padding:10px 12px;border:1px solid #dddbd6;border-radius:8px;background:#fff;font-size:14px}
+body.console .cp-admin-form textarea{min-height:0;height:auto;resize:vertical;line-height:1.6}
+body.console .cp-admin-form .check{display:flex;gap:8px;align-items:flex-start;font-size:14px;margin:4px 0 12px;line-height:1.5}
+body.console .cp-admin-reward{margin:6px 0 14px;padding:14px 16px 4px;border:1px solid #f0dcc6;border-radius:10px;background:#fffaf4}
+body.console .cp-admin-reward legend{padding:0 6px;font-size:13px;font-weight:800;color:#c35b00}
+body.console .cp-admin-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+body.console .cp-admin-link{margin:14px 0 0}
+body.console .cp-admin-link code,body.console .cs-panel code{word-break:break-all;font-size:12.5px;background:#f6f5f2;padding:2px 6px;border-radius:6px}
+body.console .ads-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+body.console .ads-kpis>div{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border-radius:11px;background:#fff;border:1px solid #e9e7e3}
+body.console .ads-kpis small{color:var(--ad-sub);font-size:13px;font-weight:700}
+body.console .ads-kpis b{font-size:26px;font-weight:850;letter-spacing:-1px}
+body.console .ads-kpis em{font-style:normal;color:#c35b00;font-size:13px;font-weight:800}
+body.console .ads-table small{color:#c35b00;font-weight:700;margin-left:4px}
+body.console .ads-note{margin-top:10px}
+body.console .ads-days{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+body.console .ads-days li{display:grid;grid-template-columns:52px minmax(0,1fr) 40px;align-items:center;gap:10px;font-size:13px}
+body.console .ads-days li span{color:var(--ad-mute)}
+body.console .ads-days li i{display:block;height:10px;border-radius:999px;background:#ff8a1f;min-width:4px}
+body.console .ads-days li b{text-align:right}
+@media(max-width:700px){body.console .ads-kpis{grid-template-columns:1fr 1fr}body.console .cp-admin-form .cs-two{grid-template-columns:1fr;gap:0}body.console .cp-admin-form .cs-two .cs-two{grid-template-columns:1fr 1fr;gap:10px}}
 .lw-forget{display:inline;margin:0}.lw-forget .btn-link{background:none;border:0;padding:0;margin-top:2px;color:#b42318;font-size:12px;text-decoration:underline;cursor:pointer}

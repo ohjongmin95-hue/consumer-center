@@ -1,5 +1,6 @@
 {# 소보루 커뮤니티 첫 화면: 쓰기 고르기 · 종류 탭 · 글 목록 · 이번 주 인기 · 별점 모아 보기. board.html에서 is_soboru()일 때 #}
-{% from 'community_macros.html' import feed_item, stars, kind_chip %}
+{% from 'community_macros.html' import feed_item, stars, kind_chip, campaign_card %}
+{% set camp = current_campaign() %}
 {% set pick_emoji = {'review': '⭐', 'tip': '💡', 'question': '🙋', 'post': '💬'} %}
 {% set pick_label = {'review': ui('cm.pick_review', '리뷰 쓰기'), 'tip': ui('cm.pick_tip', '꿀팁 나누기'), 'question': ui('cm.pick_question', '질문하기'), 'post': ui('cm.pick_post', '이야기 쓰기')} %}
 <main class="sb-wrap cm">
@@ -9,11 +10,13 @@
       <p>{{ ui('cm.intro', '제품·업체 추천부터 솔직한 리뷰, 살까 말까 고민될 때 질문까지. 광고 없이 소비자끼리만 나눠요.') }}</p>
     </div>
     <form class="cm-search" method="get" role="search">
-      {% if kind %}<input type="hidden" name="type" value="{{ kind }}">{% endif %}{% if sort == 'top' %}<input type="hidden" name="sort" value="top">{% endif %}
+      {% if kind %}<input type="hidden" name="type" value="{{ kind }}">{% endif %}{% if rc %}<input type="hidden" name="rc" value="{{ rc }}">{% endif %}{% if sort == 'top' %}<input type="hidden" name="sort" value="top">{% endif %}
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg>
       <input type="search" name="q" value="{{ q }}" placeholder="{{ ui('cm.search_ph', '회사, 제품, 궁금한 것 검색') }}" aria-label="{{ ui('board.search_aria', '게시판 검색') }}">
     </form>
   </header>
+
+  {% if camp and not (q or page > 1) %}{{ campaign_card(camp, campaign_review_count(camp['id'])) }}{% endif %}
 
   <section class="cm-pick" aria-labelledby="cm-pick-h">
     <h2 id="cm-pick-h">{{ ui('cm.pick_title', '무엇을 올릴까요?') }}</h2>
@@ -30,11 +33,17 @@
         <a href="{{ url_for('board', sort=sort if sort == 'top' else None, q=q or None) }}"{% if not kind %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
         {% for k, name, _ in POST_KINDS %}<a href="{{ url_for('board', type=k, sort=sort if sort == 'top' else None, q=q or None) }}"{% if kind == k %} class="on" aria-current="true"{% endif %}>{{ name }}{% if counts.get(k) %}<small>{{ counts[k] }}</small>{% endif %}</a>{% endfor %}
       </nav>
+      {% if kind == 'review' %}
+      <nav class="cm-rcs" aria-label="{{ ui('cm.rc_aria', '리뷰 분류') }}">
+        <a href="{{ url_for('board', type='review', sort=sort if sort == 'top' else None, q=q or None) }}"{% if not rc %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+        {% for c in REVIEW_CATS %}<a href="{{ url_for('board', type='review', rc=c, sort=sort if sort == 'top' else None, q=q or None) }}"{% if rc == c %} class="on" aria-current="true"{% endif %}><span aria-hidden="true">{{ REVIEW_CAT_EMOJI[c] }}</span> {{ c }}</a>{% endfor %}
+      </nav>
+      {% endif %}
       <div class="cm-bar">
         <p>{% if q %}‘{{ q }}’ {{ ui('cm.found', '검색 결과') }} {% endif %}<b>{{ total }}</b>{{ ui('cm.count_tail', '개의 글') }}{% if cat %} · {{ cat }}{% endif %}</p>
         <div class="cm-sort" role="group" aria-label="{{ ui('board.sort_aria', '정렬') }}">
-          <a href="{{ url_for('board', type=kind or None, category=cat or None, q=q or None) }}"{% if sort == 'new' %} class="on"{% endif %}>{{ ui('board.sort_new', '최신순') }}</a>
-          <a href="{{ url_for('board', type=kind or None, category=cat or None, q=q or None, sort='top') }}"{% if sort == 'top' %} class="on"{% endif %}>{{ ui('board.sort_top', '공감순') }}</a>
+          <a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None) }}"{% if sort == 'new' %} class="on"{% endif %}>{{ ui('board.sort_new', '최신순') }}</a>
+          <a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None, sort='top') }}"{% if sort == 'top' %} class="on"{% endif %}>{{ ui('board.sort_top', '공감순') }}</a>
         </div>
       </div>
       <div class="cm-feed">
@@ -48,9 +57,9 @@
       </div>
       {% if pages > 1 %}
       <nav class="cm-pager" aria-label="page">
-        {% if page > 1 %}<a href="{{ url_for('board', type=kind or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page - 1) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}
+        {% if page > 1 %}<a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page - 1) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}
         <span>{{ page }} / {{ pages }}</span>
-        {% if page < pages %}<a href="{{ url_for('board', type=kind or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page + 1) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}
+        {% if page < pages %}<a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page + 1) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}
       </nav>
       {% endif %}
     </div>

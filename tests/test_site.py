@@ -716,6 +716,166 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")
 
+    def jpeg_with_gps(self):
+        # 위치(GPS)가 든 EXIF를 붙인 작은 JPEG
+        from PIL import Image
+        im = Image.new('RGB', (40, 30), (255, 120, 0))
+        exif = Image.Exif()
+        exif[0x010F] = 'SecretCam'
+        exif[0x8825] = {1: 'N', 2: (37.0, 30.0, 0.0), 3: 'E', 4: (127.0, 2.0, 0.0)}
+        buf = io.BytesIO()
+        im.save(buf, 'JPEG', exif=exif.tobytes())
+        return buf.getvalue()
+
+    def test_review_campaign_photo_editor(self):
+        # 이번 주 리뷰 주제: 관리자가 열면 소보루 픽·메인·안내 화면에 보이고, 그 주제로 쓴 리뷰는 '이벤트 참여 리뷰' 표시
+        with self.site.conn() as db:
+            db.execute('DELETE FROM review_campaigns')
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+        try:
+            self.assertEqual(self.client.get('/admin/campaigns').status_code, 302)
+            admin = self.login_admin()
+            r = self.post_form(admin, '/admin/campaigns', {'slug': 'delivery-1017', 'title': '내가 시켜 먹은 배달음식, 솔직히 어땠나요?', 'topic': '배달음식', 'intro': '맛·양·배달까지 솔직하게',
+                                                          'fields_hint': '주문한 메뉴와 가격', 'starts': '', 'ends': '', 'active': '1', 'reward_on': '1', 'reward_rules': '대상: 사진 리뷰 중 추첨 20명\n지급 방법: 가입한 이메일로 보내 드려요\n유의사항: 별점과 상관없이 추첨해요'})
+            self.assertEqual(r.status_code, 302)
+            bad = self.post_form(admin, '/admin/campaigns', {'slug': 'Bad Slug', 'title': '두 번째'})
+            self.assertEqual(bad.status_code, 302)
+            with self.site.conn() as db:
+                self.assertEqual(db.execute('SELECT COUNT(*) FROM review_campaigns').fetchone()[0], 1)
+                camp = db.execute('SELECT * FROM review_campaigns').fetchone()
+            self.assertIn('리뷰 주제', admin.get('/admin/campaigns').get_data(as_text=True))
+            board = self.client.get('/board').get_data(as_text=True)
+            self.assertIn('내가 시켜 먹은 배달음식, 솔직히 어땠나요?', board)
+            self.assertIn('/board/write?type=review&amp;campaign=delivery-1017', board)
+            self.assertIn('cp-card', self.client.get('/').get_data(as_text=True))
+            page = self.client.get('/pick/delivery-1017').get_data(as_text=True)
+            for text in ('#배달음식', '#내돈내산', '#사진 리뷰', '첫 리뷰를 남기면 소보루 픽 순위가 생겨요', '참여 혜택 안내', '사진 리뷰 중 추첨 20명', 'soboru-character-hero.png'):
+                self.assertIn(text, page)
+            self.assertEqual(self.client.get('/pick/nope').status_code, 404)
+            write = self.client.get('/board/write?type=review&campaign=delivery-1017').get_data(as_text=True)
+            for text in ('name="campaign" value="delivery-1017"', '주문 메뉴', 'enctype="multipart/form-data"', 'name="photo"', '첫 리뷰를 남기면'):
+                self.assertIn(text, write)
+            self.assertNotIn('name="editor"', write)  # 에디터 칸은 관리자에게만
+            # 손님이 사진(위치 정보 포함)과 함께 주제 리뷰를 씀
+            guest = self.site.app.test_client()
+            token = self.csrf(guest, '/board/write?type=review&campaign=delivery-1017')
+            base = {'_csrf': token, 'nickname': '배달러', 'password': '1234', 'agree': 'on', 'kind': 'review', 'campaign': 'delivery-1017', 'target': '소보루치킨 역삼점', 'menu': '후라이드 반 양념 반',
+                    'rating': '4', 'recommend': '1', 'title': '바삭함은 최고, 배달은 50분', 'pros': '튀김옷이 끝까지 바삭했어요', 'cons': '배달이 50분 걸렸어요', 'body': ''}
+            no = guest.post('/board/write', data={**base, 'photo': (io.BytesIO(b'<script>alert(1)</script>'), 'x.jpg')}, content_type='multipart/form-data')
+            self.assertEqual(no.status_code, 400)
+            self.assertIn('사진은 8MB 이하 JPG·PNG·WEBP 한 장만', no.get_data(as_text=True))
+            ok = guest.post('/board/write', data={**base, 'photo': (io.BytesIO(self.jpeg_with_gps()), 'me.jpg')}, content_type='multipart/form-data')
+            self.assertEqual(ok.status_code, 302)
+            rid = int(ok.headers['Location'].rstrip('/').split('/')[-1])
+            with self.site.conn() as db:
+                row = db.execute('SELECT * FROM posts WHERE id=?', (rid,)).fetchone()
+            self.assertEqual((row['campaign_id'], row['reward'], row['editor'], row['review_cat'], row['menu']), (camp['id'], 1, 0, '배달음식', '후라이드 반 양념 반'))
+            self.assertRegex(row['photo'], r'^[0-9a-f]{32}\.jpg$')
+            stored = (Path(os.environ['UPLOAD_DIR']) / 'board' / row['photo']).read_bytes()
+            self.assertTrue(stored.startswith(b'\xff\xd8\xff'))
+            self.assertNotIn(b'Exif', stored)
+            self.assertNotIn(b'SecretCam', stored)
+            photo = self.client.get('/board/photo/' + row['photo'])
+            self.assertEqual((photo.status_code, photo.mimetype, photo.headers['X-Content-Type-Options']), (200, 'image/jpeg', 'nosniff'))
+            photo.close()
+            self.assertEqual(self.client.get('/board/photo/../app.py').status_code, 404)
+            post = self.client.get(f'/board/{rid}').get_data(as_text=True)
+            for text in ('소보루 이벤트 참여 리뷰 · 혜택을 받을 수 있어요', '/board/photo/' + row['photo'], '후라이드 반 양념 반', '/pick/delivery-1017'):
+                self.assertIn(text, post)
+            listing = self.client.get('/board?type=review&rc=배달음식').get_data(as_text=True)
+            self.assertIn('바삭함은 최고, 배달은 50분', listing)
+            self.assertIn('cm-thumb', listing)
+            self.assertIn('소보루 이벤트 참여 리뷰', listing)
+            self.assertNotIn('바삭함은 최고, 배달은 50분', self.client.get('/board?type=review&rc=편의점').get_data(as_text=True))
+            self.assertIn('벌써', self.client.get('/pick/delivery-1017').get_data(as_text=True))
+            # 소보루 에디터 리뷰: 관리자만, 표시가 붙고, 혜택·소비자 순위에는 안 들어감
+            self.assertIn('name="editor"', admin.get('/board/write?type=review').get_data(as_text=True))
+            ed = self.post_form(admin, '/board/write', {'kind': 'review', 'editor': '1', 'campaign': 'delivery-1017', 'target': '에디터픽치킨', 'rating': '5', 'recommend': '1', 'title': '에디터가 먹어 본 치킨', 'pros': '양이 많아요 정말 많아요', 'agree': 'on'})
+            self.assertEqual(ed.status_code, 302)
+            sneaky = self.post_form(guest, '/board/write', {'kind': 'review', 'editor': '1', 'nickname': '흉내', 'password': '1234', 'target': '가짜에디터', 'rating': '5', 'title': '에디터인 척', 'pros': '열 글자가 넘는 후기예요', 'agree': 'on'})
+            self.assertEqual(sneaky.status_code, 302)
+            with self.site.conn() as db:
+                eds = dict(db.execute('SELECT target,editor FROM posts WHERE target IN (?,?)', ('에디터픽치킨', '가짜에디터')).fetchall())
+                erow = db.execute("SELECT * FROM posts WHERE target='에디터픽치킨'").fetchone()
+            self.assertEqual(eds, {'에디터픽치킨': 1, '가짜에디터': 0})
+            self.assertEqual((erow['reward'], erow['nickname']), (0, '소보루 에디터'))
+            board = self.client.get('/board').get_data(as_text=True)
+            self.assertIn('cm-editor', board)
+            rated = board.split('cm-rated-h', 1)[1]
+            self.assertNotIn('에디터픽치킨', rated)
+            self.assertIn('소보루치킨 역삼점', rated)
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertNotIn('에디터픽치킨</', home.split('소비자 추천 TOP 5', 1)[1].split('nn-pick-feed', 1)[0])
+            self.assertNotIn('에디터픽치킨', self.client.get('/pick/delivery-1017').get_data(as_text=True).split('cp-rank-h', 1)[1])
+            # 숨긴 글의 사진은 운영자만, 글을 지우면 사진 파일도 지움
+            with self.site.conn() as db:db.execute('UPDATE posts SET hidden=1 WHERE id=?', (rid,))
+            self.assertEqual(self.client.get('/board/photo/' + row['photo']).status_code, 404)
+            admin.get('/board/photo/' + row['photo']).close()
+            with self.site.conn() as db:self.site.delete_board_item(db, 'p', rid)
+            self.assertFalse((Path(os.environ['UPLOAD_DIR']) / 'board' / row['photo']).exists())
+            # 주제를 끝내면 카드가 내려가고, 끝난 주제로는 참여하지 않음
+            admin.post('/admin/campaigns', data={'_csrf': self.csrf(admin, '/admin/campaigns'), 'id': camp['id'], 'act': 'end'})
+            self.assertNotIn('cp-card', self.client.get('/board').get_data(as_text=True))
+            self.assertNotIn('name="campaign"', self.client.get('/board/write?type=review&campaign=delivery-1017').get_data(as_text=True))
+            self.assertIn('이 주제는 끝났어요', self.client.get('/pick/delivery-1017').get_data(as_text=True))
+        finally:
+            with self.site.conn() as db:
+                db.execute("DELETE FROM site_content WHERE key='site.brand'")
+                db.execute('DELETE FROM review_campaigns')
+
+    def test_photo_cleaning_without_pillow(self):
+        # Pillow가 없으면 JPEG의 EXIF(APP1) 조각만 떼어 내고, PNG는 글 조각을 떼고, WEBP는 받지 않음
+        from PIL import Image
+        jpg = self.jpeg_with_gps()
+        self.assertIn(b'Exif', jpg)
+        png = io.BytesIO(); Image.new('RGB', (4, 4)).save(png, 'PNG'); raw = png.getvalue()
+        text = b'GPS\x0037.5'
+        raw = raw[:33] + len(text).to_bytes(4, 'big') + b'tEXt' + text + b'\0\0\0\0' + raw[33:]  # 머리(IHDR) 바로 뒤에 글 조각
+        webp = io.BytesIO(); Image.new('RGB', (4, 4)).save(webp, 'WEBP')
+        with patch.dict('sys.modules', {'PIL': None}):
+            out, kind = self.site.clean_photo(jpg)
+            self.assertEqual(kind, 'jpg')
+            self.assertNotIn(b'Exif', out)
+            self.assertTrue(out.startswith(b'\xff\xd8') and out.endswith(b'\xff\xd9'))
+            out, kind = self.site.clean_photo(raw)
+            self.assertEqual(kind, 'png')
+            self.assertNotIn(b'GPS', out)
+            self.assertEqual(self.site.clean_photo(webp.getvalue()), (None, None))
+        self.assertEqual(self.site.clean_photo(b'GIF89a' + b'\0' * 20), (None, None))
+        self.assertEqual(self.site.clean_photo(b'\xff\xd8\xff' + b'\0' * (8 * 1024 * 1024)), (None, None))
+
+    def test_ad_effect_first_touch(self):
+        # 광고 효과: 처음 들어온 경로(utm)별 방문·가입·리뷰·재방문. 쿠키 번호는 해시로만 저장
+        with self.site.conn() as db:db.execute('DELETE FROM ad_events')
+        visitor = self.site.app.test_client()
+        r = visitor.get('/board?utm_source=instagram&utm_medium=paid&utm_campaign=delivery-1017')
+        self.assertIn('sb_vid=', r.headers.get('Set-Cookie', '') + ''.join(r.headers.getlist('Set-Cookie')))
+        visitor.get('/reports?utm_source=naver')  # 두 번째 경로는 무시(첫 경로만)
+        self.signup(visitor, login_id='ad_user', nickname='광고손님')
+        self.post_form(visitor, '/board/write', {'kind': 'review', 'target': '광고치킨', 'rating': '5', 'title': '광고 보고 와서 쓴 리뷰', 'pros': '열 글자가 넘는 후기예요', 'agree': 'on'})
+        self.client.get('/', headers={'User-Agent': 'Mozilla/5.0 (compatible; Yeti/1.1; +https://naver.me/spd)'})  # 검색 로봇은 세지 않음
+        with self.site.conn() as db:
+            rows = db.execute('SELECT * FROM ad_events ORDER BY event').fetchall()
+            self.assertEqual(sorted(r['event'] for r in rows), ['review', 'signup', 'visit'])
+            self.assertEqual({(r['utm_source'], r['utm_medium'], r['utm_campaign']) for r in rows}, {('instagram', 'paid', 'delivery-1017')})
+            vid = visitor.get_cookie('sb_vid').value
+            self.assertNotIn(vid, rows[0]['visitor_hash'])
+            self.assertEqual(len(rows[0]['visitor_hash']), 64)
+            # 다음 날 다시 오면 재방문. 90일 지난 기록은 지움
+            yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+            db.execute('UPDATE ad_events SET day=?', (yesterday,))
+            db.execute("INSERT INTO ad_events(day,utm_source,event,visitor_hash) VALUES('2020-01-01','old','visit','x')")
+        with visitor.session_transaction() as s:s.pop('ad_day', None)
+        visitor.get('/')
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT utm_source FROM ad_events WHERE event='return'").fetchone()[0], 'instagram')
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM ad_events WHERE utm_source='old'").fetchone()[0], 0)
+        self.assertEqual(self.client.get('/admin/ads').status_code, 302)
+        page = self.login_admin().get('/admin/ads').get_data(as_text=True)
+        self.assertIn('instagram', page)
+        self.assertIn('100.0%', page)
+        self.assertIn('익명 방문자 쿠키', self.client.get('/privacy').get_data(as_text=True))
+
     def test_public_and_secret_report_pages(self):
         ids = {}
         for visibility in ('public', 'secret'):
