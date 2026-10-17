@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui_text('alert.title', '알림') }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+{# 회원 알림함: 내 글 댓글·내 질문 답변·답변한 질문 해결·내 제보 진행 소식. 열면 모두 읽음으로 바뀜 (appready.py) #}
+{% set icons = {'chat': '<path d="M5 6.5h14v9H10l-4 3v-3H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>', 'check': '<path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>', 'doc': '<path d="M7 4h7l4 4v12H7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 12h5M10 15.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'} %}
+<main class="page member-page alerts-page"><div class="wrap">
+  <div class="page-intro me-head">
+    <div><h1 class="page-title">{{ ui('alert.title', '알림') }}</h1><p class="meta">{{ ui('alert.sub', '최근 90일 동안 받은 알림이에요.') }}</p></div>
+    <a class="secondary" href="{{ url_for('mypage') }}">{{ ui('common.my_info', '내 정보') }}</a>
+  </div>
+
+  {% if push_on() %}
+  <section class="form-panel me-section push-box" id="push" data-key="{{ push_public_key() }}" data-subs="{{ subs }}">
+    <div class="push-row">
+      <span class="alert-ic ic-push" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <div class="push-text"><b>{{ ui('push.title', '푸시 알림') }}</b><p class="meta push-msg" role="status">{{ ui('push.hint', '댓글·답변·제보 소식을 휴대폰 알림으로 받아요.') }}</p></div>
+      <button class="primary push-btn" type="button" data-label-on="{{ ui_text('push.on_btn', '푸시 알림 받기') }}" data-label-off="{{ ui_text('push.off_btn', '알림 끄기') }}">{{ ui_text('push.on_btn', '푸시 알림 받기') }}</button>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="form-panel me-section alert-list" aria-label="{{ ui_text('alert.title', '알림') }}">
+    {% for a in rows %}
+    <a class="alert-row{{ ' new' if not a['read_at'] }}" href="{{ url_for('alert_go', alert_id=a['id']) }}">
+      <span class="alert-ic ic-{{ ALERT_ICONS.get(a['kind'], 'chat') }}" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22">{{ icons[ALERT_ICONS.get(a['kind'], 'chat')]|safe }}</svg></span>
+      <span class="alert-main"><b>{{ a['body'] }}</b><span class="meta">{{ a['created']|ago }}</span></span>
+      {% if not a['read_at'] %}<i class="alert-dot" title="{{ ui_text('alert.new', '새 알림') }}"></i>{% endif %}
+    </a>
+    {% else %}
+    <div class="alert-empty">
+      <img src="{{ asset('img/soboru-character.png') }}" alt="" width="120" height="120" loading="lazy">
+      <p>{{ ui('alert.empty', '아직 알림이 없어요. 내 글에 댓글이 달리거나 제보 진행 상황이 바뀌면 여기서 알려 드려요.') }}</p>
+    </div>
+    {% endfor %}
+  </section>
+</div></main>
+{% if push_on() %}
+<script>
+  // 푸시 알림 켜기·끄기: 서비스 워커에 구독을 만들고, 주소·암호 키만 서버에 저장해요.
+  (function () {
+    var box = document.getElementById('push'); if (!box) return;
+    var btn = box.querySelector('.push-btn'), msg = box.querySelector('.push-msg'), token = '{{ csrf_token() }}';
+    var say = function (t) { msg.textContent = t; };
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) { btn.hidden = true; say({{ ui_text('push.unsupported', '이 브라우저는 푸시 알림을 지원하지 않아요. 앱이나 크롬에서 켜 주세요.')|tojson }}); return; }
+    function keyBytes(b64) { var s = (b64 + '===='.slice((b64.length + 3) % 4)).replace(/-/g, '+').replace(/_/g, '/'), raw = atob(s), out = new Uint8Array(raw.length); for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i); return out; }
+    function send(url, fields) { var body = new FormData(); body.append('_csrf', token); Object.keys(fields).forEach(function (k) { body.append(k, fields[k]); }); return fetch(url, { method: 'POST', body: body, credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+    function show(on) { btn.dataset.on = on ? '1' : ''; btn.textContent = on ? btn.dataset.labelOff : btn.dataset.labelOn; btn.classList.toggle('secondary', on); btn.classList.toggle('primary', !on); if (on) say({{ ui_text('push.is_on', '이 기기에서 푸시 알림을 받고 있어요.')|tojson }}); }
+    var reg = navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function () { return navigator.serviceWorker.ready; });
+    reg.then(function (r) { return r.pushManager.getSubscription(); }).then(function (sub) { show(!!sub && Notification.permission === 'granted'); });
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      reg.then(function (r) {
+        return r.pushManager.getSubscription().then(function (sub) {
+          if (btn.dataset.on) return (sub ? sub.unsubscribe().then(function () { return send('{{ url_for('push_unsubscribe') }}', { endpoint: sub.endpoint }); }) : send('{{ url_for('push_unsubscribe') }}', {})).then(function () { show(false); say({{ ui_text('push.off_done', '푸시 알림을 껐어요. 알림함에는 계속 모여요.')|tojson }}); });
+          return Notification.requestPermission().then(function (perm) {
+            if (perm !== 'granted') { say({{ ui_text('push.denied', '알림 권한이 꺼져 있어요. 휴대폰 설정에서 소보루 알림을 허용해 주세요.')|tojson }}); return; }
+            return r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(box.dataset.key) }).then(function (s) {
+              var j = s.toJSON(); return send('{{ url_for('push_subscribe') }}', { endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth });
+            }).then(function (res) { if (res && res.ok) show(true); else say((res && res.error) || {{ ui_text('push.fail', '켜지 못했어요. 잠시 뒤 다시 시도해 주세요.')|tojson }}); });
+          });
+        });
+      }).catch(function () { say({{ ui_text('push.fail', '켜지 못했어요. 잠시 뒤 다시 시도해 주세요.')|tojson }}); }).then(function () { btn.disabled = false; });
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

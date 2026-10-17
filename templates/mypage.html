@@ -58,6 +58,18 @@
     </div>
   </section>
 
+  <section class="form-panel me-section" id="alerts-link">
+    <a class="me-row me-row-link" href="{{ url_for('me_alerts') }}"><span class="me-row-main"><b>{{ ui('alert.title', '알림') }}{% if alert_unread() %} <span class="me-badge">{{ alert_unread() }}</span>{% endif %}</b><span class="meta">{{ ui('alert.me_hint', '댓글·답변·제보 진행 소식과 푸시 알림 설정') }}</span></span><span class="me-row-go" aria-hidden="true">›</span></a>
+  </section>
+
+  <section class="form-panel me-section" id="blocked">
+    <h2>{{ ui('member.blocked', '차단한 사용자') }}</h2>
+    {% for b in blocks %}
+    <div class="me-method"><span class="me-method-name">{{ b['nickname'] or ui_text('member.gone', '탈퇴한 회원') }}<small class="meta">{{ b['created'][:10]|replace('-', '.') }} {{ ui('member.blocked_at', '차단') }}</small></span>
+      <form method="post" action="{{ url_for('unblock_user', uid=b['blocked']) }}" onsubmit="return confirm({{ ui_text('member.unblock_ask', '차단을 풀까요? 이 사용자의 글과 댓글이 다시 보여요.')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-button" type="submit">{{ ui('member.unblock', '차단 풀기') }}</button></form></div>
+    {% else %}<p class="me-empty">{{ ui('member.no_blocked', '차단한 사용자가 없어요. 글이나 댓글 옆 더 보기(…) 메뉴에서 차단할 수 있어요.') }}</p>{% endfor %}
+  </section>
+
   <section class="form-panel me-section" id="company">
     <div class="me-section-head"><h2>{{ ui('member.company', '기업 회원') }}</h2>{% if not membership or membership['status'] == 'rejected' %}<a class="text-link" href="{{ url_for('me_company') }}">{{ ui('member.company_apply', '소속 인증 신청 →') }}</a>{% endif %}</div>
     {% if membership %}<p class="meta">{{ membership['company_name'] }} · <b>{{ MEMBERSHIP_STATUSES[membership['status']] }}</b>{% if membership['status'] == 'rejected' and membership['reason'] %} · {{ membership['reason'] }}{% endif %} · <a class="text-link" href="{{ url_for('me_company') }}">{{ ui('member.detail', '자세히') }}</a></p>

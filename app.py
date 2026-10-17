@@ -16,6 +16,7 @@ import notify
 import jebo
 import soboru
 import members
+import appready
 import companydesk
 import triage
 import ops
@@ -282,7 +283,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-111'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-112'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -314,7 +315,7 @@ def csrf():
 app.jinja_env.globals['csrf_token']=csrf
 @app.before_request
 def protect():
-    if request.method=='POST' and not hmac.compare_digest(str(request.form.get('_csrf','')),str(csrf())): abort(400)
+    if request.method=='POST' and request.path!='/auth/apple/callback' and not hmac.compare_digest(str(request.form.get('_csrf','')),str(csrf())): abort(400)  # 애플 로그인 응답(form_post)은 state 값으로 위조를 막음 (members.py)
 @app.after_request
 def headers(resp):
     resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
@@ -390,7 +391,8 @@ def home_latest():
     except ValueError:return HOME_LATEST
 
 def recent_posts(limit):
-    with conn() as db:return db.execute('SELECT id,category,title,likes,comments,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT ?',(limit,)).fetchall()
+    nb=not_blocked()
+    with conn() as db:return db.execute('SELECT id,category,title,likes,comments,created FROM posts WHERE hidden=0'+nb+' ORDER BY id DESC LIMIT ?',(limit,)).fetchall()
 def sample_fill(cases,n):
     # 실제 제보가 n건보다 적으면 남는 자리만 '예시' 카드로 채움 (실제 제보처럼 보이지 않게 템플릿에서 표시).
     return items('sample_reports')[:max(0,n-len(cases))]
@@ -651,7 +653,7 @@ def notify_later(case_id,event):
     admin_link=url_for('admin_report',case_id=case_id,_external=True) if event=='received' else None
     def send(resp):
         with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
-        if case:notify.dispatch(conn,case,event,link,admin_link)
+        if case:notify.dispatch(conn,case,event,link,admin_link);case_alert(case,event)  # 회원 제보면 알림함·푸시에도
         return resp
     after_this_request(send)
 def phone_digits(value):return re.sub(r'\D','',value or '')
@@ -975,7 +977,19 @@ with conn() as db:
     db.execute('''CREATE TABLE IF NOT EXISTS ad_events(day TEXT NOT NULL,utm_source TEXT NOT NULL DEFAULT '',utm_medium TEXT NOT NULL DEFAULT '',utm_campaign TEXT NOT NULL DEFAULT '',event TEXT NOT NULL,visitor_hash TEXT NOT NULL,
         PRIMARY KEY(day,event,visitor_hash))''')
     db.execute('CREATE INDEX IF NOT EXISTS ad_events_visitor ON ad_events(visitor_hash,event)')
+    # 회원 차단: 차단당한 회원(blocked)의 글·댓글은 차단한 회원(blocker)에게만 안 보임 (앱 마켓 UGC 기준)
+    db.execute('CREATE TABLE IF NOT EXISTS user_blocks(blocker INTEGER NOT NULL,blocked INTEGER NOT NULL,created TEXT NOT NULL,PRIMARY KEY(blocker,blocked))')
 
+def blocked_ids():
+    # 로그인한 회원이 차단한 회원 번호들 (요청마다 한 번만 읽음). 손님은 빈 집합
+    if not has_request_context() or not g.get('user'):return set()
+    if 'blocked_ids' not in g:
+        with conn() as db:g.blocked_ids={r[0] for r in db.execute('SELECT blocked FROM user_blocks WHERE blocker=?',(g.user['id'],))}
+    return g.blocked_ids
+def not_blocked(col='user_id'):
+    # SQL 조건 조각: 차단한 회원의 글·댓글 빼기. 번호는 정수로만 넣음
+    ids=blocked_ids()
+    return f" AND ({col} IS NULL OR {col} NOT IN ({','.join(str(int(i)) for i in sorted(ids))}))" if ids else ''
 def soboru_on():return bool(app.jinja_env.globals.get('is_soboru',lambda:False)())  # soboru.py가 맨 끝에 붙임
 def board_enabled():return os.getenv('ENABLE_BOARD')=='1'
 # 글 종류: (키, 이름, 쓰기 버튼 설명). 리뷰·꿀팁·질문은 분류가 자동으로 정해지고, 이야기는 분류를 고름.
@@ -1001,10 +1015,10 @@ def review_stats(db,company_id=None,limit=5):
 FEED_COLS='id,kind,category,nickname,user_id,title,substr(body,1,160) AS excerpt,length(body) AS body_len,likes,comments,created,target,company_id,rating,pros,cons,recommend,summary,solved,menu,photo,campaign_id,editor,reward,review_cat'
 def community_feed(limit=4):
     # 메인 화면 커뮤니티: 최근 30일 반응 많은 글을 종류별로 하나씩 먼저, 나머지는 반응순 → 모자라면 최신순
-    since=(datetime.datetime.now()-datetime.timedelta(days=30)).isoformat(timespec='seconds')
+    since=(datetime.datetime.now()-datetime.timedelta(days=30)).isoformat(timespec='seconds');nb=not_blocked()
     with conn() as db:
-        rows=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0 AND created>=? ORDER BY likes*2+comments DESC,id DESC LIMIT 40',(since,)).fetchall()
-        if len(rows)<limit:rows+=[r for r in db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT ?',(limit*2,)) if r['id'] not in {x['id'] for x in rows}]
+        rows=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0{nb} AND created>=? ORDER BY likes*2+comments DESC,id DESC LIMIT 40',(since,)).fetchall()
+        if len(rows)<limit:rows+=[r for r in db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0{nb} ORDER BY id DESC LIMIT ?',(limit*2,)) if r['id'] not in {x['id'] for x in rows}]
     out=[]
     for k,_,_ in POST_KINDS:
         r=next((r for r in rows if r['kind']==k),None)
@@ -1014,7 +1028,7 @@ def community_feed(limit=4):
     return sorted(out,key=lambda r:order.index(r['id']))
 def company_reviews(company_id,limit=3):
     with conn() as db:
-        rows=db.execute(f"SELECT {FEED_COLS} FROM posts WHERE kind='review' AND hidden=0 AND company_id=? ORDER BY id DESC LIMIT ?",(company_id,limit)).fetchall()
+        rows=db.execute(f"SELECT {FEED_COLS} FROM posts WHERE kind='review' AND hidden=0{not_blocked()} AND company_id=? ORDER BY id DESC LIMIT ?",(company_id,limit)).fetchall()
         st=review_stats(db,company_id,1)
     return {'rows':rows,'n':st[0]['n'] if st else 0,'avg':st[0]['avg'] if st else None}
 def story_categories():return [c for c in board_categories() if category_kind(c)=='post'] or board_categories()  # '이야기'에서 고를 분류 (꿀팁·질문해요는 종류로 따로)
@@ -1138,7 +1152,7 @@ def board():
     page=max(1,request.args.get('page',1,type=int))
     rc=request.args.get('rc','');rc=rc if rc in REVIEW_CATS else ''  # 리뷰 분류(배달음식·편의점…)
     if rc:kind='review'
-    where=['hidden=0'];args=[]
+    nb=not_blocked();where=['hidden=0'+nb];args=[]
     if cat in board_categories():where.append('category=?');args.append(cat)
     else:cat=''
     if kind:where.append('kind=?');args.append(kind)
@@ -1149,7 +1163,7 @@ def board():
         total=db.execute('SELECT COUNT(*) FROM posts WHERE '+' AND '.join(where),args).fetchone()[0]
         posts=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE '+' AND '.join(where)+f' ORDER BY {order} LIMIT ? OFFSET ?',args+[BOARD_PAGE_SIZE,(page-1)*BOARD_PAGE_SIZE]).fetchall()
         week_ago=(datetime.datetime.now()-datetime.timedelta(days=7)).isoformat(timespec='seconds')
-        hot=db.execute('SELECT id,kind,category,title,likes,comments,target,rating FROM posts WHERE hidden=0 AND likes>0 AND created>=? ORDER BY likes DESC,id DESC LIMIT ?',(week_ago,5 if soboru_on() else 3)).fetchall() if not (q or cat or kind or page>1) else []
+        hot=db.execute('SELECT id,kind,category,title,likes,comments,target,rating FROM posts WHERE hidden=0'+nb+' AND likes>0 AND created>=? ORDER BY likes DESC,id DESC LIMIT ?',(week_ago,5 if soboru_on() else 3)).fetchall() if not (q or cat or kind or page>1) else []
         liked={r['target'] for r in db.execute("SELECT target FROM board_votes WHERE kind='like' AND voter=?",(voter_id(),))}
         rated=review_stats(db) if not (q or cat or page>1) else []
         counts=dict(db.execute('SELECT kind,COUNT(*) FROM posts WHERE hidden=0 GROUP BY kind').fetchall())
@@ -1220,12 +1234,13 @@ def board_post(post_id):
     with conn() as db:
         post=db.execute('SELECT * FROM posts WHERE id=?',(post_id,)).fetchone()
         if not post or (post['hidden'] and not admin_active()):abort(404)
-        comments=db.execute('SELECT id,nickname,body,created,user_id FROM comments WHERE post_id=? AND hidden=0 ORDER BY id',(post_id,)).fetchall()
+        comments=db.execute('SELECT id,nickname,body,created,user_id FROM comments WHERE post_id=? AND hidden=0'+not_blocked()+' ORDER BY id',(post_id,)).fetchall()
         mine={r['kind']+r['target'] for r in db.execute('SELECT kind,target FROM board_votes WHERE voter=?',(voter_id(),))}
         company=db.execute("SELECT id,name FROM companies WHERE id=? AND status IN ('active','listed')",(post['company_id'],)).fetchone() if post['company_id'] else None
-        related=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0 AND kind=? AND id!=? ORDER BY likes DESC,id DESC LIMIT 3',(post['kind'],post_id)).fetchall()
+        related=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0{not_blocked()} AND kind=? AND id!=? ORDER BY likes DESC,id DESC LIMIT 3',(post['kind'],post_id)).fetchall()
         camp=db.execute('SELECT * FROM review_campaigns WHERE id=?',(post['campaign_id'],)).fetchone() if post['campaign_id'] else None
-    return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled(),company=company,related=related,campaign=camp)
+    blocked=bool(post['user_id'] and post['user_id'] in blocked_ids())  # 차단한 회원의 글: 본문 대신 안내와 차단 풀기
+    return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled(),company=company,related=related,campaign=camp,blocked=blocked)
 
 @app.route('/board/photo/<name>')
 def board_photo(name):
@@ -1246,6 +1261,9 @@ def board_solve(post_id):
         own=(g.user and post['user_id']==g.user['id']) or (not post['user_id'] and post['pw_hash'] and check_password_hash(post['pw_hash'],request.form.get('password','')))
         if not own:flash(ui_text('msg.m15','비밀번호가 맞지 않아요.'));return redirect(url_for('board_post',post_id=post_id))
         db.execute('UPDATE posts SET solved=? WHERE id=?',(0 if post['solved'] else 1,post_id))
+        if not post['solved']:  # 해결됨으로 바꾸면 답변을 남긴 회원에게 알림 (글쓴이 본인 빼고)
+            for r in db.execute('SELECT DISTINCT user_id FROM comments WHERE post_id=? AND hidden=0 AND user_id IS NOT NULL AND user_id IS NOT ?',(post_id,post['user_id'])).fetchall():
+                member_alert(db,r['user_id'],'solved',ui_text('alert.solved','답변한 질문이 해결됐어요')+f": {post['title'][:40]}",url_for('board_post',post_id=post_id))
     flash(ui_text('msg.unsolved','해결됨 표시를 껐어요.') if post['solved'] else ui_text('msg.solved','해결됨으로 표시했어요.'))
     return redirect(url_for('board_post',post_id=post_id))
 
@@ -1267,13 +1285,19 @@ def board_comment(post_id):
     nickname=request.form.get('nickname','').strip();password=request.form.get('password','');body=request.form.get('body','').strip()
     if g.user:nickname=g.user['nickname'];password='member'
     with conn() as db:
-        if not db.execute('SELECT 1 FROM posts WHERE id=? AND hidden=0',(post_id,)).fetchone():abort(404)
+        post=db.execute('SELECT id,user_id,kind,title FROM posts WHERE id=? AND hidden=0',(post_id,)).fetchone()
+        if not post:abort(404)
         if not (2<=len(nickname)<=20 and 4<=len(password)<=30 and 1<=len(body)<=1000):
             flash(ui_text('msg.m12','닉네임(2~20자), 비밀번호(4~30자), 댓글(1,000자 이내)을 확인해 주세요.'));return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
         if recent_count(db,'comments',2)>=5:
             flash(ui_text('msg.m13','잠시 후 다시 남겨 주세요.'));return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
-        db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,?,?,?,?,?,?)',(post_id,nickname,'' if g.user else generate_password_hash(password),body,ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None))
+        cid=db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,?,?,?,?,?,?)',(post_id,nickname,'' if g.user else generate_password_hash(password),body,ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None)).lastrowid
         refresh_comment_count(db,post_id)
+        # 회원 글에 다른 사람이 댓글을 달면 글쓴이에게 알림 (글쓴이가 차단한 회원의 댓글은 알리지 않음)
+        me=g.user['id'] if g.user else None
+        if post['user_id'] and post['user_id']!=me and not (me and db.execute('SELECT 1 FROM user_blocks WHERE blocker=? AND blocked=?',(post['user_id'],me)).fetchone()):
+            what=ui_text('alert.answer','내 질문에 답변이 달렸어요') if post['kind']=='question' else ui_text('alert.comment','내 글에 댓글이 달렸어요')
+            member_alert(db,post['user_id'],'answer' if post['kind']=='question' else 'comment',f"{what}: {post['title'][:40]}",url_for('board_post',post_id=post_id)+f'#c{cid}')
     return redirect(url_for('board_post',post_id=post_id)+'#comments')
 
 @app.route('/board/flag/<kind>/<int:item_id>',methods=['POST'])
@@ -1357,7 +1381,7 @@ def campaign_page(slug):
     c=campaign_by_slug(slug)
     if not c:abort(404)
     with conn() as db:
-        rows=db.execute(f"SELECT {FEED_COLS} FROM posts WHERE campaign_id=? AND kind='review' AND hidden=0 ORDER BY id DESC LIMIT 30",(c['id'],)).fetchall()
+        rows=db.execute(f"SELECT {FEED_COLS} FROM posts WHERE campaign_id=? AND kind='review' AND hidden=0{not_blocked()} ORDER BY id DESC LIMIT 30",(c['id'],)).fetchall()
         picks=campaign_picks(db,c['id'])
     running=campaign_running(c)
     if not running and not rows and not admin_active():abort(404)  # 아직 열지 않은 주제는 운영자만 미리 봄
@@ -1581,7 +1605,8 @@ def mypage():
         posts=db.execute('SELECT id,category,title,likes,comments,created,hidden FROM posts WHERE user_id=? ORDER BY id DESC LIMIT 50',(g.user['id'],)).fetchall()
         comment_count=db.execute('SELECT COUNT(*) FROM comments WHERE user_id=?',(g.user['id'],)).fetchone()[0]
         membership=membership_of(db,g.user['id'])
-    return render_template('mypage.html',cases=cases,posts=posts,comment_count=comment_count,methods=login_methods(g.user),membership=membership)
+        blocks=db.execute('SELECT b.blocked,b.created,u.nickname FROM user_blocks b LEFT JOIN users u ON u.id=b.blocked WHERE b.blocker=? ORDER BY b.created DESC',(g.user['id'],)).fetchall()
+    return render_template('mypage.html',cases=cases,posts=posts,comment_count=comment_count,methods=login_methods(g.user),membership=membership,blocks=blocks)
 
 @app.route('/me/case/<int:case_id>')
 @member_only
@@ -1642,8 +1667,32 @@ def delete_member(db,uid,delete_posts):
         for table in ('posts','comments'):db.execute(f"UPDATE {table} SET user_id=NULL,nickname='탈퇴한 회원' WHERE user_id=?",(uid,))
     db.execute('DELETE FROM board_votes WHERE voter=?',(hashlib.sha256(('member:%d'%uid).encode()).hexdigest(),))
     db.execute('UPDATE cases SET user_id=NULL WHERE user_id=?',(uid,))
-    delete_member_extras(db,uid)
+    db.execute('DELETE FROM user_blocks WHERE blocker=? OR blocked=?',(uid,uid))
+    delete_member_extras(db,uid);delete_app_extras(db,uid)  # 소셜 연결·기업 소속 신청 / 알림·푸시 구독
     db.execute('DELETE FROM users WHERE id=?',(uid,))
+
+# ---- 회원 차단 (게시판 글·댓글의 '이 사용자 차단') ----------------------------------
+@app.route('/board/block/<kind>/<int:item_id>',methods=['POST'])
+@member_only
+def board_block(kind,item_id):
+    # 글·댓글을 쓴 회원을 차단: 그 회원의 글·댓글이 나에게만 안 보임. 손님 글은 회원이 아니라 차단할 수 없음
+    if kind not in ('p','c'):abort(404)
+    with conn() as db:
+        item=db.execute('SELECT * FROM %s WHERE id=?'%('posts' if kind=='p' else 'comments'),(item_id,)).fetchone()
+        if not item or not item['user_id']:abort(404)
+        post_id=item_id if kind=='p' else item['post_id']
+        if item['user_id']==g.user['id']:flash(ui_text('msg.block_self','내 글은 차단할 수 없어요.'));return redirect(url_for('board_post',post_id=post_id))
+        db.execute('INSERT OR IGNORE INTO user_blocks(blocker,blocked,created) VALUES(?,?,?)',(g.user['id'],item['user_id'],now()))
+    flash(ui_text('msg.blocked','차단했어요. 이제 이 사용자의 글과 댓글이 보이지 않아요. 내 정보에서 풀 수 있어요.'))
+    return redirect(url_for('board') if kind=='p' else url_for('board_post',post_id=post_id)+'#comments')
+
+@app.route('/me/blocks/<int:uid>/remove',methods=['POST'])
+@member_only
+def unblock_user(uid):
+    with conn() as db:db.execute('DELETE FROM user_blocks WHERE blocker=? AND blocked=?',(g.user['id'],uid))
+    flash(ui_text('msg.unblocked','차단을 풀었어요.'))
+    nxt=request.form.get('next','')
+    return redirect(nxt if nxt.startswith('/board/') and '//' not in nxt else url_for('mypage')+'#blocked')
 
 @app.route('/admin/members',methods=['GET','POST'])
 @admin_only
@@ -2581,6 +2630,9 @@ for _k in ('triage_context','triage_handle_form','TRIAGE_FORMS','triage_after_su
 # 회원 확장: 카카오·네이버 로그인, 예전 제보 연결, 기업 소속 인증 신청 (members.py)
 _members=types.SimpleNamespace(**globals());members.install(_members)
 for _k in ('login_methods','membership_of','admin_memberships','admin_membership_action','delete_member_extras'):globals()[_k]=getattr(_members,_k)
+# 앱 포장 준비: 서비스 워커·오프라인 화면·앱 링크 확인 파일·회원 알림함·웹 푸시 (appready.py)
+_appr=types.SimpleNamespace(**globals());appready.install(_appr)
+for _k in ('member_alert','case_alert','delete_app_extras'):globals()[_k]=getattr(_appr,_k)
 # 소보루 브랜드 바꾸기·생활정보·이달의 기업 답변 순위 (soboru.py)
 _soboru=types.SimpleNamespace(**globals());soboru.install(_soboru)
 # 공개 제보 공감('나도 겪었어요')·댓글 (casetalk.py)
