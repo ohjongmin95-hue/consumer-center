@@ -51,27 +51,59 @@
     </div>
   </section>
 
-  <section class="nn-sec nn-two">
-    <div>
-      <div class="nn-sec-head"><h2>이달의 기업 답변</h2><a href="{{ url_for('companies') }}">기업 찾기 ›</a></div>
-      <div class="sb-rank" data-tabs>
-        <div class="sb-tabs" role="tablist"><button type="button" role="tab" class="on" data-tab="best" aria-selected="true">답변 잘한 곳</button><button type="button" role="tab" data-tab="wait" aria-selected="false">답변 기다리는 곳</button></div>
-        {% for tab in ('best', 'wait') %}
-        <ol data-pane="{{ tab }}"{% if tab == 'wait' %} hidden{% endif %}>
-          {% for p in rank[tab] %}<li><span class="n">{{ loop.index }}</span><a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
-            <span class="st">{% if tab == 'best' %}답변률 <b>{{ p['rate'] }}%</b><br>답변까지 {{ p['median'] }}{% else %}답변 없는 제보 <b>{{ p['waiting'] }}건</b><br>답변률 {{ p['rate'] }}%{% endif %}</span></li>
-          {% else %}<li class="sb-empty">아직 순위를 낼 만큼 제보가 쌓이지 않았어요.</li>{% endfor %}
+  <section class="nn-sec nn-pick">
+    <div class="nn-pick-head">
+      <div><p class="nn-eyebrow">써 본 소비자가 직접 골랐어요</p><h2>소보루 픽</h2><p class="nn-sub">제품·업체 추천부터 솔직한 리뷰, 살까 말까 고민될 때 질문까지. 광고 없이 소비자끼리만 나눠요.</p></div>
+      <a class="nn-more" href="{{ url_for('board') }}">소보루 픽 전체 보기 ›</a>
+    </div>
+    <div class="nn-pick-grid">
+      <div class="nn-top">
+        <h3>소비자 추천 TOP 5</h3><p class="nn-top-sub">리뷰 별점과 '추천해요'로 매긴 순위</p>
+        <ol>
+          {% for p in picks %}
+          <li><span class="nn-rank{{ ' hi' if loop.index <= 3 }}">{{ loop.index }}</span>
+            <div><b>{% if p.company_id %}<a href="{{ url_for('company_page', company_id=p.company_id) }}">{{ mask_personal(p.target) }}</a>{% else %}{{ mask_personal(p.target) }}{% endif %}</b>
+            <span class="nn-top-me"><em>★ {{ '%.1f' % (p.avg or 0) }}</em>리뷰 {{ p.n }} · 추천 {{ p.rec or 0 }}</span></div></li>
+          {% else %}<li class="nn-empty">첫 리뷰를 남기면 여기에 순위가 생겨요.</li>{% endfor %}
         </ol>
-        {% endfor %}
       </div>
-    </div>
-    <div>
-      <div class="nn-sec-head"><h2>커뮤니티 인기글</h2><a href="{{ url_for('board') }}">더 보기 ›</a></div>
-      <div class="sb-cm">
+      <div class="nn-pick-feed">
         {% for p in posts %}<a class="sb-cm-card k-{{ p['kind'] }}" href="{{ url_for('board_post', post_id=p['id']) }}">{{ cm_top(p) }}<h3>{% if p['kind'] == 'question' %}<span class="cm-q">Q.</span>{% endif %}{{ p['title'] }}</h3>{{ cm_sub(p) }}{{ cm_foot(p) }}</a>
-        {% else %}<p class="sb-empty">첫 글을 남겨 주세요.</p>{% endfor %}
+        {% else %}<p class="nn-empty">첫 글을 남겨 주세요.</p>{% endfor %}
       </div>
     </div>
+    <div class="nn-write">
+      <a href="{{ url_for('board_write', type='review') }}"><span class="nn-wi t6" aria-hidden="true">⭐</span><b>리뷰 쓰기</b><small>써 본 제품·서비스 솔직 후기</small></a>
+      <a href="{{ url_for('board_write', type='review') }}"><span class="nn-wi t1" aria-hidden="true">👍</span><b>제품 추천</b><small>이건 돈값 했다 싶은 것</small></a>
+      <a href="{{ url_for('board_write', type='review') }}"><span class="nn-wi t2" aria-hidden="true">🏢</span><b>업체 추천</b><small>믿고 맡길 수 있었던 곳</small></a>
+      <a href="{{ url_for('board_write', type='question') }}"><span class="nn-wi t3" aria-hidden="true">🙋</span><b>질문하기</b><small>살까 말까 고민될 때</small></a>
+    </div>
+  </section>
+
+  <section class="nn-sec nn-answer">
+    <div class="nn-pick-head">
+      <div><p class="nn-eyebrow">최근 {{ rank.days }}일 · 제보 {{ rank.min_n }}건 이상 받은 기업</p><h2>기업 답변 기록</h2><p class="nn-sub">소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.</p></div>
+      <a class="nn-more" href="{{ url_for('companies') }}">기업 찾기 ›</a>
+    </div>
+    <div class="nn-ans-grid">
+      <div class="nn-ans">
+        <h3><span aria-hidden="true">👏</span> 답변 잘한 기업</h3>
+        <ol>{% for p in rank.best %}<li><span class="nn-rank{{ ' hi' if loop.index <= 3 }}">{{ loop.index }}</span><a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
+          <span class="nn-bar"><i style="width:{{ p['rate'] }}%"></i></span><span class="nn-val"><b>{{ p['rate'] }}%</b>{{ p['median'] }}</span></li>
+        {% else %}<li class="nn-empty">제보가 쌓이면 기업별 답변 기록이 여기에 나와요.</li>{% endfor %}</ol>
+      </div>
+      <div class="nn-ans">
+        <h3><span aria-hidden="true">⏳</span> 답변을 기다리는 기업</h3>
+        <ol>{% for p in rank.wait %}<li><span class="nn-rank">{{ loop.index }}</span><a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
+          <span class="nn-val w"><b>{{ p['waiting'] }}건</b>답변 없음</span></li>
+        {% else %}<li class="nn-empty">답변을 미루는 기업이 아직 없어요.</li>{% endfor %}</ol>
+      </div>
+    </div>
+    <a class="nn-biz" href="{{ url_for('biz_login') if biz_on() else url_for('companies') }}">
+      <span class="nn-wi t2" aria-hidden="true">🏢</span>
+      <div><b>업체이신가요?</b><p>소보루에 업체를 등록하면 소비자 리뷰와 제보에 직접 답할 수 있어요.</p></div>
+      <span class="nn-biz-go">업체 등록 안내 ›</span>
+    </a>
   </section>
   <p class="nn-copy">ⓒ 소보루. 소보루의 제보 글, 기사, 그림은 저작권법의 보호를 받아요. 무단 전재·재배포, 자동 수집(크롤링), AI 학습 이용을 금지합니다.</p>
 </main>

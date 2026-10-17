@@ -294,8 +294,12 @@ def install(S):
             answered = db.execute("SELECT COUNT(DISTINCT case_id) FROM messages WHERE author='기업 답변'").fetchone()[0]
         stats = {'today': today, 'answered': answered, 'total': S.report_summary()['total']}
         cats = [c for c in LIFE_CATEGORIES if any(x['kind'] == 'life' and x['label'] == c for x in feed)]
+        # 소보루 픽: 리뷰를 대상(제품·업체)별로 묶어 '추천해요'와 별점으로 순위
+        with conn() as db:
+            picks = [dict(r) for r in db.execute("""SELECT target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg,SUM(recommend=1) AS rec
+                FROM posts WHERE kind='review' AND hidden=0 AND target!='' GROUP BY target ORDER BY rec DESC,avg DESC,n DESC LIMIT 5""")]
         return render_template('soboru_home_nn.html', cases=S.report_rows(limit=6), feed=feed[:10], cats=cats, stats=stats,
-                               rank=company_rank(4), posts=S.community_feed(4))
+                               rank=company_rank(5), posts=S.community_feed(4), picks=picks)
 
     @app.route('/admin/home-plan', methods=['GET', 'POST'])
     @S.admin_only
