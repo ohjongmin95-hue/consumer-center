@@ -549,7 +549,8 @@ app.jinja_env.globals['verification_code']=verification_code
 @app.route('/favicon.ico')
 def favicon_ico():
     # 브라우저·검색엔진이 주소 맨 앞에서 바로 찾는 탭 아이콘
-    return app.send_static_file('favicon.ico')
+    # 소비자제보센터 주소에서는 제보센터 아이콘(확성기): 네이버 검색·광고가 이 파일을 아이콘으로 씀
+    return app.send_static_file('jebo-favicon.ico' if request.host.split(':')[0].lower() in JEBO_HOSTS else 'favicon.ico')
 
 @app.route('/robots.txt')
 def robots_txt():
