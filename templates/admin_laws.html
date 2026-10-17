@@ -69,14 +69,15 @@
   {% set ap = ask_laws_panel() %}
   <div class="form-panel lw-list" id="current">
     <h2>현행 여부 <small class="meta">AI 소비자 상담 새 버전</small></h2>
-    <p class="meta">서버가 매일 국가법령정보 Open API에서 현행 법령 원문과 시행일을 받아요(deploy/law-sync.sh). 올린 PDF가 현행보다 옛 판이면 '개정됨, 확인 필요', {{ 3 }}일 넘게 확인하지 못했으면 '현행 여부 미확인'으로 보여요.{% if not ap.oc %} <b class="lw-warn">지금 서버에 법제처 인증키(LAW_OC)가 없어요.</b>{% endif %}</p>
+    <p class="meta">서버가 매일 국가법령정보 Open API에서 현행 법령 원문과 시행일을 받아요(deploy/law-sync.sh). 여기 모은 법에서 답할 근거를 못 찾으면 법제처 본문 검색으로 다른 법을 찾아보고, 답에 쓴 법은 '질문으로 찾음'으로 모아 두고 다음부터 같이 받아요(하루 {{ ap.api_per_day }}번까지 찾기, 오늘 {{ ap.api_today }}번). 올린 PDF가 현행보다 옛 판이면 '개정됨, 확인 필요', {{ 3 }}일 넘게 확인하지 못했으면 '현행 여부 미확인'으로 보여요.{% if not ap.oc %} <b class="lw-warn">지금 서버에 법제처 인증키(LAW_OC)가 없어요.</b>{% endif %}</p>
     {% if ap.flags %}<div class="lw-errors" role="alert">{% for f in ap.flags %}<p>올린 PDF '{{ f.name }}'(시행 {{ f.effective|replace('-', '.') }})가 현행(시행 {{ f.current|replace('-', '.') }})보다 옛 판이에요. 개정됨, 확인 필요</p>{% endfor %}</div>{% endif %}
     <div class="tablewrap"><table>
       <thead><tr><th>법령</th><th>현행 시행일</th><th>상담에 쓰는 판</th><th>상태</th><th>마지막 확인</th></tr></thead>
       <tbody>{% for r in ap.rows %}<tr>
         <td><b>{{ r.short }}</b>{% if r.name != r.short %}<small>{{ r.name }}</small>{% endif %}</td>
         <td>{{ r.current|replace('-', '.') or '—' }}</td>
-        <td>{% if r.have %}{{ r.have|replace('-', '.') }}<small>{{ r.from }}</small>{% else %}—{% endif %}</td>
+        <td>{% if r.have %}{{ r.have|replace('-', '.') }}<small>{{ r.from }}</small>{% else %}—{% endif %}{% if r.learned %}<small>{{ (r.learned.found or '')[:10]|replace('-', '.') }}부터 · 답에 {{ r.learned.uses }}번 씀</small>
+          <form method="post" class="lw-forget" onsubmit="return confirm('이 법을 모아 둔 법에서 뺄까요? 다음부터 받지 않아요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="appendix_forget"><input type="hidden" name="key" value="{{ r.key }}"><button type="submit" class="btn-link">빼기</button></form>{% endif %}</td>
         <td><span class="lw-tag{% if r.status == '현행' %} on{% elif '개정' in r.status %} bad{% endif %}">{{ r.status }}</span>{% if r.error %}<small>{{ r.error }}</small>{% endif %}</td>
         <td>{{ r.checked or '—' }}</td></tr>{% endfor %}</tbody>
     </table></div>

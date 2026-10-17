@@ -28,6 +28,7 @@ MAX_CANDS = 10
 MAX_GUIDE, MAX_APPX = 2, 4
 RRF = 60                    # 순위 섞기 상수
 EMB_MIN = 0.35              # 임베딩만으로 후보에 넣는 코사인 하한
+EMB_SURE = 0.5              # 낱말로 못 찾았어도 임베딩이 이만큼 맞으면 법제처에서 더 찾지 않음
 TYPE_BOOST = 1.4
 # 1백만 토큰당 달러 (답변 모델·임베딩 기본 단가. 바뀌면 환경변수로 고친다)
 PRICE = {'in': float(os.getenv('ASK_PRICE_IN', '0.40')), 'out': float(os.getenv('ASK_PRICE_OUT', '1.60')), 'emb': float(os.getenv('ASK_PRICE_EMB', '0.02'))}
@@ -37,15 +38,15 @@ LABELS = ('법률 조문', '분쟁해결기준(권고)', '생활법령 해설(�
 # 피해 유형: (이름, 이모지, 질문 낱말, 앞에 둘 법령 key, 앞에 둘 별표 품목 낱말)
 TYPES = [
     ('온라인 쇼핑', '🛒', ('온라인', '인터넷', '쇼핑몰', '택배', '배송', '주문', '반품', '교환', '청약철회', '직구', '해외구매', '홈쇼핑', '라이브커머스', '광고 사진', '옷', '신발', '안 와', '안와'),
-     ('ecom', 'ecom_dec', 'easylaw', 'adlabel'), ('통신판매', '전자상거래', '의류', '신발', '택배', '운송')),
+     ('ecom', 'ecom_dec', 'easylaw', 'adlabel', 'commerce'), ('통신판매', '전자상거래', '의류', '신발', '택배', '운송')),
     ('식품·외식', '🍜', ('음식', '배달', '식당', '식품', '이물', '벌레', '바퀴벌레', '머리카락', '식중독', '유통기한', '소비기한', '먹', '음료', '카페', '외식', '알레르기', '원산지', '우유'),
      ('food', 'food_rule', 'foodlabel'), ('식료품', '외식', '음식', '식품', '농산', '수산', '축산', '배달')),
     ('구독·서비스 계약', '📝', ('구독', '정기결제', '멤버십', '자동결제', '자동 결제', '무료체험', '해지', '중도해지', '중도 해지', '위약금', '약정', '헬스', 'PT', '필라테스', '요가', '학원', '회원권', '이용권', '개월권', '계속거래', '정수기', '렌탈', '방문판매'),
-     ('terms', 'door', 'installment', 'ecom', 'easylaw'), ('체육시설', '헬스', '학원', '콘텐츠', '회원권', '렌탈', '방문판매', '계속거래', '통신')),
+     ('terms', 'door', 'installment', 'ecom', 'easylaw', 'telecom', 'sports', 'academy'), ('체육시설', '헬스', '학원', '콘텐츠', '회원권', '렌탈', '방문판매', '계속거래', '통신')),
     ('생활서비스', '🏠', ('세탁', '수선', '이사', '인테리어', '미용', '네일', '숙박', '호텔', '펜션', '여행', '항공', '결항', '렌터카', '결혼', '사진', '청소', '수리', 'AS', '에이에스', '자동차', '정비', '가전', '노트북', '휴대폰', '화재', '다쳤', '파손', '불이'),
-     ('basic', 'kca', 'pl', 'terms'), ('세탁', '이사', '미용', '숙박', '여행', '항공', '자동차', '수리', '인테리어', '사진', '결혼', '가전', '전자', '컴퓨터', '휴대')),
+     ('basic', 'kca', 'pl', 'terms', 'aviation', 'tourism', 'car', 'marriage'), ('세탁', '이사', '미용', '숙박', '여행', '항공', '자동차', '수리', '인테리어', '사진', '결혼', '가전', '전자', '컴퓨터', '휴대')),
     ('금융·보험', '💳', ('카드', '할부', '대출', '보험', '은행', '이자', '투자', '펀드', '금리', '보험금', '연체', '신용', '항변', '폐업', '설명을'),
-     ('fincon', 'installment'), ('보험', '신용카드', '금융', '할부', '대부')),
+     ('fincon', 'installment', 'efin'), ('보험', '신용카드', '금융', '할부', '대부')),
     ('플랫폼 거래', '🤝', ('중고', '당근', '번개장터', '중고나라', '플랫폼', '오픈마켓', '중개', '개인 간', '개인간', '배달앱', '숙박앱', '앱마켓', '입점'),
      ('ecom', 'easylaw', 'terms'), ('통신판매중개', '중개', '플랫폼')),
 ]
@@ -265,12 +266,43 @@ def install(S):
         else: c['art_label'] = art
         return c
 
-    def retrieve(question, prior=''):
-        """(피해 유형, 후보 카드들, 정보{emb_tokens, error}). 맞는 게 없으면 후보는 빈 목록."""
-        text = (prior + ' ' + question).strip(); info = {'emb_tokens': 0, 'error': ''}
+    def retrieve(question, prior='', api=True):
+        """(피해 유형, 후보 카드들, 정보{emb_tokens, error, api}). 맞는 게 없으면 후보는 빈 목록.
+        모아 둔 법에서 못 찾거나 약하게만 맞으면 법제처 본문 검색으로 다른 법을 찾아 한 번 더 본다."""
+        dtype, cards, info = search_once(question, prior)
+        if api and info['weak'] and lawsync.oc():
+            try: dtype, cards, info = api_fallback(question, prior, dtype, cards, info)
+            except Exception as e: LOG.warning('법제처 찾기 실패: %s', lawsync.hide(str(e))[:160])
+        return dtype, cards, info
+
+    find_lock = threading.Lock()
+
+    def api_fallback(question, prior, dtype, cards, info):
+        """법제처에서 찾은 법을 잠깐 모음에 넣고 다시 찾아, 후보에 든 법만 남긴다(다음부터 매일 받음)."""
+        with find_lock:
+            known = [l['name'] for l in rc._load()['laws'].values()]
+            found = lawsync.discover(store, question, known, log=lambda s: LOG.info('법제처 찾기: %s', s))
+            if not found: return dtype, cards, info
+            synced = store.read(store.synced)
+            for key, law in found: synced[key] = law
+            store.write(store.synced, synced); rc.reset()
+            dtype2, cards2, info2 = search_once(question, prior)
+            used = {c['key'] for c in cards2}; kept = []
+            for key, law in found:
+                if key in used: lawsync.remember(store, key, law, dtype2); kept.append(law['name'])
+                else: synced.pop(key, None)
+            if len(kept) < len(found): store.write(store.synced, synced); rc.reset()
+            if not kept: return dtype, cards, info
+            info2['emb_tokens'] += info['emb_tokens']; info2['api'] = kept
+        background('embed', build_embeddings)   # 새로 모은 법의 조문 임베딩 (다음 질문부터)
+        if len(kept) < len(found): return search_once(question, prior)[:2] + (info2,)
+        return dtype2, cards2, info2
+
+    def search_once(question, prior=''):
+        text = (prior + ' ' + question).strip(); info = {'emb_tokens': 0, 'error': '', 'weak': True, 'api': []}
         kw = rc.search(text, 40)
         dtype = classify(text, kw); t = type_info(dtype)
-        kw_ok = rc.strength(kw) >= rc.RELATED
+        kw_ok = rc.strength(kw) >= rc.RELATED; emb_top = 0.0
         score, why = {}, {}
         if kw_ok:
             top = kw[0]['score']
@@ -282,10 +314,12 @@ def install(S):
             try:
                 (qv,), n = lawsync.embed([mask(text)[:1000]], post); info['emb_tokens'] = n
                 for i, (cos, d) in enumerate(emb.search(qv, docs(), 40)):
+                    emb_top = max(emb_top, cos)
                     if cos < EMB_MIN: break
                     score[d['ref']] = score.get(d['ref'], 0) + 1 / (RRF + i + 1); why[d['ref']] = why.get(d['ref'], '') + 'emb'
             except Exception as e:
                 info['error'] = str(e)[:160]; LOG.warning('임베딩 검색 실패: %s', info['error'])
+        info['weak'] = not kw_ok and emb_top < EMB_SURE
         if not score: return dtype, [], info
         laws = rc._load()['laws']
         def boost(ref):
@@ -377,7 +411,7 @@ def install(S):
                 res.update(kind='fallback', headline='질문과 가까운 근거 원문을 찾았어요', cards=cards[:4]); status = 'error'
         res['text'] = plain(res)
         ms = int((time.time() - t0) * 1000)
-        log(kind, conv=conv, batch=batch, dtype=dtype, question=q, answer=json.dumps({'kind': res['kind'], 'parts': res['parts'], 'questions': res['questions'], 'headline': res['headline']}, ensure_ascii=False),
+        log(kind, conv=conv, batch=batch, dtype=dtype, question=q, answer=json.dumps({'kind': res['kind'], 'parts': res['parts'], 'questions': res['questions'], 'headline': res['headline'], 'api': info.get('api', [])}, ensure_ascii=False),
             refs=json.dumps([c['ref'] for c in res['cards']], ensure_ascii=False), parts=json.dumps([n for n, _ in res['parts']], ensure_ascii=False), status=status,
             model=meta['model'], tokens_in=meta['in'], tokens_out=meta['out'], emb_tokens=info.get('emb_tokens', 0), latency_ms=ms,
             error=(error or info.get('error', ''))[:300], flags=json.dumps(res['flags'], ensure_ascii=False))
@@ -444,6 +478,11 @@ def install(S):
         act = request.form.get('act', '') if request.method == 'POST' else ''
         if not act.startswith('appendix_'): return old_laws()
         if not S.admin_active(): return redirect(url_for('admin_login'))
+        if act == 'appendix_forget':   # 질문으로 찾아 모아 둔 법 빼기
+            key = request.form.get('key', '')
+            if key in store.read(store.learned):
+                lawsync.forget(store, key); rc.reset(); flash('모아 둔 법에서 뺐어요. 다음부터 받지 않아요.')
+            return redirect(url_for('admin_laws') + '#current')
         parts = lawsync.appendix_parts(store)
         if act == 'appendix_delete':
             i = request.form.get('index', type=int)
@@ -487,19 +526,22 @@ def install(S):
     def laws_panel():
         """법령 학습 화면 아래쪽: 현행 여부, 별표 목록·미리 보기 (admin_laws.html이 부름)"""
         status = status_map(); laws = rc._load()['laws']; rows = []
-        for key, name, short, target in lawsync.SYNC_LAWS + lawsync.OPTIONAL_LAWS:
+        learned = store.read(store.learned)
+        for key, name, short, target in lawsync.all_laws(store):
             law = laws.get(key) or next((l for l in laws.values() if lawsync.norm_name(l['name']) == lawsync.norm_name(name)), None)
             s = status.get(key) or {}
             if law: st, day = lawsync.status_of(law, status)
             else: st, day = lawsync.UNKNOWN, ''
             rows.append({'short': short, 'name': name, 'have': (law or {}).get('effective', ''), 'current': s.get('current', ''), 'checked': (s.get('checked') or '')[:16].replace('T', ' '),
-                         'status': st if law else ('모음에 없음' if not s.get('current') else '받기 전'), 'from': '현행 원문' if (law or {}).get('synced') else '올린 PDF' if (law or {}).get('extra') else '기본 모음' if law else '',
+                         'status': st if law else ('모음에 없음' if not s.get('current') else '받기 전'), 'from': '질문으로 찾음' if key in learned else '현행 원문' if (law or {}).get('synced') else '올린 PDF' if (law or {}).get('extra') else '기본 모음' if law else '',
+                         'key': key, 'learned': learned.get(key),
                          'error': s.get('error', '') if not s.get('checked') or (s.get('error_at', '') > s.get('checked', '')) else ''})
         token = request.args.get('appendix', ''); preview = None
         if re.fullmatch(r'[A-Za-z0-9_-]{16,64}', token) and (pending / ('appx-' + token + '.json')).exists():
             preview = json.loads((pending / ('appx-' + token + '.json')).read_text(encoding='utf-8'))
         return {'rows': rows, 'parts': lawsync.appendix_parts(store), 'preview': preview, 'token': token if preview else '', 'oc': bool(lawsync.oc()),
-                'flags': lawsync.pdf_flags(store), 'kca': status.get('kca') or {}}
+                'flags': lawsync.pdf_flags(store), 'kca': status.get('kca') or {}, 'api_per_day': lawsync.API_PER_DAY,
+                'api_today': (lambda u: u.get('n', 0) if u.get('day') == datetime.date.today().isoformat() else 0)(store.read(store.api_use))}
 
     # ---- 뒤 작업 (임베딩 만들기, 법령 받기, 품질 시험) ------------------------------------------------
     def background(name, fn, *args):
