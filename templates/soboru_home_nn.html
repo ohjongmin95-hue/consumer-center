@@ -28,7 +28,7 @@
   </nav>
 
   <section class="nn-sec nn-live nn-live-wide">
-    <div class="nn-live-head"><h2><span class="nn-dot" aria-hidden="true"></span>방금 들어온 제보</h2><a href="{{ url_for('reports') }}">전체 보기 ›</a></div>
+    <div class="nn-live-head nn-voice"><h2><span class="tf" aria-hidden="true">📣</span> 소보루의 소리</h2><span class="nn-voice-tag"><span class="nn-dot" aria-hidden="true"></span>소비자가 직접 올린 제보</span><a href="{{ url_for('reports') }}">전체 보기 ›</a></div>
     <ol>
       {% for c in cases[:6] %}
       <li><a href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
@@ -40,6 +40,7 @@
     </ol>
   </section>
   {% endif %}
+  {% from 'letter_macros.html' import letter_card with context %}{{ letter_card('home') }}{# 소보루 레터 구독 (soboru_letter.py) #}
 
   {% if show.life %}
   <section class="nn-sec">
@@ -127,7 +128,6 @@
     </a>
   </section>
   {% endif %}
-  {% from 'letter_macros.html' import letter_card with context %}{{ letter_card('home') }}{# 소보루 레터 구독 (soboru_letter.py) #}
 </main>
 <script>
   // 실시간 제보: 화면을 켜 두면 30초마다 새 목록으로 바꿈

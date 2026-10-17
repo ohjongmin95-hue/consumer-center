@@ -296,6 +296,7 @@ class SiteTest(unittest.TestCase):
             self.assertIn('공개 제보 카드 제목', home)
             self.assertIn('nn-intro', home)  # 맨 위 소보루 소개
             self.assertIn('nn-live', home)  # 바로 아래 실시간 제보
+            self.assertIn('소보루의 소리', home); self.assertLess(home.index('nn-live'), home.index('id="letter-sub"'))  # 제보 목록 바로 밑에 레터 구독
             self.assertNotIn('nn-stats', home)  # 맨 위 건수 현황은 뺌
             self.assertIn('🔒 비밀 제보 카드 제목', home)  # 비밀글도 제목·업체는 보이고 본문만 잠금
             self.assertNotIn('nn-pick', home)  # 끈 묶음(소보루 픽·기업 답변)은 빠짐

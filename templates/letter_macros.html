@@ -12,7 +12,7 @@
 {% endmacro %}
 {% macro letter_card(place) %}
 {% set cfg = letter_cfg() %}
-<section class="lt-card" id="letter-sub" aria-labelledby="lt-card-h-{{ place }}">
+<section class="lt-card{{ ' lt-card-pop' if place == 'home' }}" id="letter-sub" aria-labelledby="lt-card-h-{{ place }}">
   <div class="lt-card-copy">
     <p class="lt-kicker"><span class="tf" aria-hidden="true">📨</span> 소보루 레터</p>
     <h2 id="lt-card-h-{{ place }}">{{ cfg.when }},<br>주요 이슈를 쉽게 풀어 드려요</h2>
