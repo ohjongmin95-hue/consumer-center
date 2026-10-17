@@ -9,7 +9,7 @@
 <main class="sb-wrap lt-issue">
   <article>
     {% if L.status != 'sent' %}<p class="sb-draft">아직 보내지 않은 레터예요. 관리자에게만 보여요.</p>{% endif %}
-    <a class="lt-kicker" href="{{ url_for('letter_home') }}"><img class="lt-cr" src="{{ asset('img/croissant-char.svg') }}" alt="" aria-hidden="true"> 크로와상 레터 {{ L.no }}호</a>
+    <a class="lt-kicker" href="{{ url_for('letter_home') }}"><span class="lt-logo tf" aria-hidden="true">🥐</span> 크로와상 레터 {{ L.no }}호</a>
     <h1>{{ L.title }}</h1>
     <p class="sb-meta">{{ letter_kdate(L.sent_at or L.created) }}</p>
     {% if L.intro %}<p class="lt-intro">{{ L.intro }}</p>{% endif %}

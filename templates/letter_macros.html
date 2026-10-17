@@ -14,7 +14,7 @@
 {% set cfg = letter_cfg() %}
 <section class="lt-card{{ ' lt-card-pop' if place == 'home' }}" id="letter-sub" aria-labelledby="lt-card-h-{{ place }}">
   <div class="lt-card-copy">
-    <p class="lt-kicker"><img class="lt-cr" src="{{ asset('img/croissant-char.svg') }}" alt="" aria-hidden="true"> {{ ui('letter.card_kicker', '크로와상 레터') }}</p>
+    <p class="lt-kicker"><span class="lt-logo tf" aria-hidden="true">🥐</span> {{ ui('letter.card_kicker', '크로와상 레터') }}</p>
     <h2 id="lt-card-h-{{ place }}">{{ ui('letter.card_title', '{when},\n주요 이슈를 쉽게 풀어 드려요', when=cfg.when) }}</h2>
     <p>{{ ui('letter.card_body', '{span}의 주요 뉴스와 내 생활에 어떤 의미인지, 인기 리뷰까지 5분이면 다 읽어요.', span=cfg.span) }} <a href="{{ url_for('letter_home') }}">{{ ui('letter.card_more', '지난 레터 보기 ›') }}</a></p>
   </div>

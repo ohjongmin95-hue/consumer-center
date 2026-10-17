@@ -4029,7 +4029,7 @@ class SiteTest(unittest.TestCase):
         subject, html, text = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')
         icon = self.site.soboru_letter.TOPIC_ICON[it1['topic']][0]  # 분야를 남겨 분야 그림(토스페이스)을 붙임
         self.assertIn(f'/static/img/tf/{icon}.png', html); self.assertIn('오늘의 메인뉴스', html)
-        self.assertIn('/static/img/croissant-char.png', html); self.assertLess(html.index('soboru-wordmark.png'), html.index('soboru-character-hero.png'))  # 머리는 크로와상 레터 그림과 글자 로고, 캐릭터는 아래에서만
+        self.assertIn('/static/img/croissant-logo.png', html); self.assertLess(html.index('croissant-logo.png'), html.index('soboru-character-hero.png'))  # 머리는 크로와상 레터 그림과 글자 로고, 캐릭터는 아래에서만
         self.assertIn('이번 주 소비자 뉴스, 이것만 보면 끝', subject)
         for part in (html, text):
             self.assertIn('첫째 소식, 이것만 알면 돼요', part); self.assertIn(it1['src']['url'], part)

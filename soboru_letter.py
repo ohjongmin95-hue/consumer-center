@@ -327,7 +327,7 @@ def install(S):
         tf = lambda name: site_url(f'/static/img/tf/{name}.png')
         icons = [tf(TOPIC_ICON.get(it.get('topic', ''), ('news', ''))[0]) for it in L['items']]
         return {'L': L, 'items': L['items'], 'sec': L['sections'], 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
-                'tf': tf, 'icons': icons, 'mark': site_url('/static/img/soboru-wordmark.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark.png')) else '', 'hero': site_url('/static/img/soboru-character-hero.png'), 'cfg': letter_cfg(),
+                'tf': tf, 'icons': icons, 'hero': site_url('/static/img/soboru-character-hero.png'), 'cfg': letter_cfg(),
                 'unsub': site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME}
 
     def email_parts(L, token=UNSUB_MARK):
