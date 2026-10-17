@@ -33,7 +33,7 @@
       {% for c in cases[:6] %}
       <li><a href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
         <span class="nn-emo {{ c.look[1] }}" aria-hidden="true">{{ c.look[0] }}</span>
-        <div><h3>{% if c.secret %}🔒 비공개 제보예요{% else %}{{ c.title or '제목을 가린 제보예요' }}{% endif %}</h3>
+        <div><h3>{% if c.title %}{% if c.secret %}🔒 {% endif %}{{ c.title }}{% elif c.secret %}🔒 비공개 제보예요{% else %}제목을 가린 제보예요{% endif %}</h3>
         <p><span class="sb-badge {{ badge.get(c.status, 'b-new') }}">{{ status_name(c.status) }}</span>{% if c.company %}{{ c.company }} · {% endif %}{{ c.cat }} · <time datetime="{{ c.created }}">{{ c.when }}</time></p></div>
       </a></li>
       {% else %}<li class="nn-empty">아직 올라온 제보가 없어요.</li>{% endfor %}
