@@ -19,5 +19,6 @@
   <section class="nv-sec nv-news"><div class="nv-sec-head"><h2>{{ ui('life.news_title', '요즘 소비자 뉴스') }}</h2><a class="sb-more" href="{{ url_for('life_search', q='소비자 피해', tab='news', sort='date') }}">더 보기 ›</a></div>
     <ul class="nv-list">{% for it in news %}{{ nv_row(it) }}{% endfor %}</ul>{{ nv_credit() }}</section>
   {% endif %}{% endif %}
+  {% from 'letter_macros.html' import letter_card with context %}{{ letter_card('life') }}{# 소보루 레터 구독 (soboru_letter.py) #}
 </main>
 {% endblock %}

@@ -1,0 +1,109 @@
+{#- 소보루 레터 메일 본문. 메일 앱(Gmail·네이버 메일)은 style 태그와 바깥 CSS를 지우거나 무시하므로 표(table)와 인라인 스타일만 씀. 폭 600px -#}
+{%- set F = "font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;" -%}
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light">
+<title>{{ L.title }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f6f2ec;-webkit-text-size-adjust:100%;word-break:keep-all;">
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{ (L.intro or L.title)[:90] }}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f2ec;">
+<tr><td align="center" style="padding:24px 10px 8px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:20px;">
+  <tr><td style="padding:26px 28px 0;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td align="left" valign="middle">{% if logo %}<a href="{{ site }}/" style="text-decoration:none;"><img src="{{ logo }}" width="108" alt="소보루" style="display:block;width:108px;height:auto;border:0;"></a>{% else %}<b style="{{ F }}font-size:20px;color:#ef7300;">소보루</b>{% endif %}</td>
+      <td align="right" valign="middle" style="{{ F }}font-size:13px;color:#9a8f86;">{{ name }} <b style="color:#652D1C;">{{ L.no }}호</b></td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="padding:18px 20px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff1e3;border-radius:18px;"><tr><td style="padding:24px 22px 22px;{{ F }}">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#ef7300;letter-spacing:-0.2px;">{{ date }}</p>
+      <h1 style="margin:0;font-size:25px;line-height:1.4;font-weight:800;color:#652D1C;letter-spacing:-0.8px;">{{ L.title }}</h1>
+      {% if L.intro %}<p style="margin:14px 0 0;font-size:16px;line-height:1.75;color:#5b4337;">{{ L.intro }}</p>{% endif %}
+    </td></tr></table>
+  </td></tr>
+  <tr><td style="padding:22px 28px 6px;{{ F }}">
+    <p style="margin:0 0 10px;font-size:14px;font-weight:800;color:#1d1d1f;">이번 주 소식</p>
+    {% for it in items %}<p style="margin:0 0 6px;font-size:15px;line-height:1.5;color:#4e4a46;"><b style="color:#ef7300;">{{ '%02d' % loop.index }}</b>&nbsp; {{ it.title }}</p>{% endfor %}
+  </td></tr>
+  {% for it in items %}
+  <tr><td style="padding:26px 28px 4px;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid #f0e9e1;padding-top:26px;{{ F }}">
+      <p style="margin:0 0 6px;font-size:13px;font-weight:800;color:#ef7300;letter-spacing:0.5px;">NEWS {{ '%02d' % loop.index }}</p>
+      <h2 style="margin:0 0 12px;font-size:21px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ it.title }}</h2>
+      {% for p in it.body|letter_paras %}<p style="margin:0 0 12px;font-size:16px;line-height:1.75;color:#3a3633;">{{ p }}</p>{% endfor %}
+      {% if it.tip %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff7ee;border-radius:14px;border-left:4px solid #ef7300;"><tr><td style="padding:13px 16px;{{ F }}">
+        <p style="margin:0 0 3px;font-size:13px;font-weight:800;color:#ef7300;">💡 이럴 땐 이렇게</p>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#652D1C;font-weight:600;">{{ it.tip }}</p>
+      </td></tr></table>{% endif %}
+      {% if it.law %}<p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#6b6f76;">⚖️ 관련 법: {% if it.law.url %}<a href="{{ it.law.url }}" style="color:#652D1C;text-decoration:underline;">{{ it.law.label }}</a>{% else %}{{ it.law.label }}{% endif %} <span style="color:#a39d97;">(국가법령정보센터)</span></p>{% endif %}
+      <p style="margin:8px 0 0;font-size:14px;line-height:1.6;color:#6b6f76;">📰 {{ it.src.name or '기사' }}{% if it.src.date %} · {{ it.src.date.replace('-', '.') }}{% endif %} · <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;">기사 원문 보기 ›</a></p>
+    </td></tr></table>
+  </td></tr>
+  {% endfor %}
+  {% if sec.reviews %}
+  <tr><td style="padding:30px 28px 4px;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid #f0e9e1;padding-top:26px;{{ F }}">
+      <p style="margin:0 0 4px;font-size:13px;font-weight:800;color:#ef7300;letter-spacing:0.5px;">SOBORU PICK</p>
+      <h2 style="margin:0 0 14px;font-size:20px;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">⭐ 소보루 픽 인기 리뷰</h2>
+      {% for r in sec.reviews %}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f6;border-radius:14px;margin:0 0 8px;"><tr><td style="padding:14px 16px;{{ F }}">
+        <p style="margin:0 0 4px;font-size:13px;color:#ef7300;letter-spacing:1px;">{{ '★' * r.rating }}<span style="color:#ddd6cf;">{{ '★' * (5 - r.rating) }}</span> <span style="color:#6b6f76;letter-spacing:0;">{{ r.target }}</span></p>
+        <a href="{{ site }}{{ r.url }}" style="font-size:16px;line-height:1.5;font-weight:700;color:#1d1d1f;text-decoration:none;">{{ r.title }}</a>
+        {% if r.line %}<p style="margin:4px 0 0;font-size:14px;line-height:1.55;color:#6b6f76;">{{ r.line }}</p>{% endif %}
+        <p style="margin:6px 0 0;font-size:12px;color:#a39d97;">{{ r.nick }}{% if r.likes %} · 공감 {{ r.likes }}{% endif %}</p>
+      </td></tr></table>
+      {% endfor %}
+      <p style="margin:6px 0 0;font-size:14px;"><a href="{{ site }}/board" style="color:#ef7300;font-weight:700;text-decoration:none;">리뷰 더 보기 ›</a></p>
+    </td></tr></table>
+  </td></tr>
+  {% endif %}
+  {% if sec.campaign %}{% set c = sec.campaign %}
+  <tr><td style="padding:22px 20px 4px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ef7300;border-radius:18px;"><tr><td style="padding:22px 22px;{{ F }}">
+      <p style="margin:0 0 6px;font-size:13px;font-weight:800;color:#ffe3c7;">📝 이번 주 리뷰 주제{% if c.reward %} · 참여하면 혜택{% endif %}</p>
+      <p style="margin:0 0 8px;font-size:19px;line-height:1.45;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">{{ c.title }}</p>
+      {% if c.intro %}<p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#fff4e8;">{{ c.intro }}</p>{% endif %}
+      <a href="{{ site }}{{ c.url }}" style="display:inline-block;background:#ffffff;color:#c25a00;font-size:15px;font-weight:800;text-decoration:none;padding:11px 18px;border-radius:12px;">리뷰 남기러 가기 ›</a>
+    </td></tr></table>
+  </td></tr>
+  {% endif %}
+  {% if sec.life %}
+  <tr><td style="padding:26px 28px 4px;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid #f0e9e1;padding-top:26px;{{ F }}">
+      <p style="margin:0 0 4px;font-size:13px;font-weight:800;color:#ef7300;letter-spacing:0.5px;">LIFE TIP</p>
+      <h2 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">📚 새로 올라온 생활정보</h2>
+      {% for a in sec.life %}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;"><tr>
+        <td width="44" valign="top" style="width:44px;"><div style="width:36px;height:36px;line-height:36px;text-align:center;border-radius:12px;background:#fff1e3;font-size:19px;">{{ a.emoji }}</div></td>
+        <td valign="top" style="{{ F }}"><a href="{{ site }}{{ a.url }}" style="font-size:16px;line-height:1.45;font-weight:700;color:#1d1d1f;text-decoration:none;">{{ a.title }}</a>
+          {% if a.summary %}<p style="margin:3px 0 0;font-size:14px;line-height:1.55;color:#6b6f76;">{{ a.summary }}</p>{% endif %}</td>
+      </tr></table>
+      {% endfor %}
+    </td></tr></table>
+  </td></tr>
+  {% endif %}
+  <tr><td style="padding:22px 28px 30px;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid #f0e9e1;padding-top:22px;{{ F }}">
+      {% if L.outro %}<p style="margin:0 0 10px;font-size:16px;line-height:1.75;color:#3a3633;">{{ L.outro }}</p>{% endif %}
+      <p style="margin:0;font-size:15px;font-weight:700;color:#652D1C;">소보루 에디터 드림</p>
+      <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#a39d97;">억울한 소비자 피해를 겪었다면 <a href="{{ site }}/report" style="color:#ef7300;font-weight:700;text-decoration:none;">소보루에 제보</a>해 주세요. 이 레터는 법률 자문이 아닌 일반 정보예요.</p>
+    </td></tr></table>
+  </td></tr>
+</table>
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+  <tr><td align="center" style="padding:20px 18px 28px;{{ F }}font-size:12px;line-height:1.7;color:#9a928a;">
+    <p style="margin:0 0 8px;">이 메일은 {{ name }} 구독을 신청하고 메일 주소 확인을 마친 분께 보내 드려요.<br>더 받고 싶지 않으면 언제든 한 번에 해지할 수 있어요.</p>
+    <p style="margin:0 0 10px;"><a href="{{ web }}" style="color:#6b6f76;text-decoration:underline;">웹에서 보기</a> &nbsp;·&nbsp; <a href="{{ unsub }}" style="color:#6b6f76;text-decoration:underline;">구독 해지</a></p>
+    <p style="margin:0;">{{ op.name }}{% if op.biz_no %} · 사업자등록번호 {{ op.biz_no }}{% endif %}{% if op.address %}<br>{{ op.address }}{% endif %}{% if op.email %}<br>{{ op.email }}{% endif %}</p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

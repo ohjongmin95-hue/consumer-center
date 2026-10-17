@@ -1,0 +1,59 @@
+{% extends 'console.html' %}
+{% block title %}소보루 레터 {{ L.no }}호 | {{ site_name() }}{% endblock %}
+{% block content %}
+{% set draft = L.status == 'draft' %}
+<main class="page"><div class="wrap lt-ad-edit">
+  <div class="page-intro">
+    <p><a href="{{ url_for('admin_letter') }}">← 소보루 레터</a></p>
+    <h1 class="page-title">{{ L.no }}호 {{ {'draft': '초안', 'scheduled': '보내는 중', 'sent': '보낸 레터'}.get(L.status, L.status) }}</h1>
+    <p class="meta">{{ L.created[:16].replace('T', ' ') }} 만듦{% if L.sent_at %} · {{ L.sent_at[:16].replace('T', ' ') }} 보냄 ({{ sends.get('sent', 0) }}명{% if sends.get('failed') %}, 실패 {{ sends.failed }}명{% endif %}){% elif L.status == 'scheduled' %} · 지금까지 {{ sends.get('sent', 0) }}명에게 보냄{% endif %} · <a href="{{ url_for('letter_issue', no=L.no) }}" target="_blank" rel="noopener">웹 버전 ↗</a></p>
+    {% if not mail_ready %}<p class="hp-warn">메일 발송 설정(SMTP)이 없어 테스트 메일도, 구독자 발송도 할 수 없어요 (deploy/set-mail.sh).</p>{% endif %}
+  </div>
+
+  <div class="form-panel aw-check{{ ' ok' if L.check_ok else ' bad' }}">
+    {% if L.check_ok %}<p><span class="aw-badge ok">검사 통과</span> 숫자는 모두 그 뉴스 자료 안에 있고, 기사 문장을 그대로 옮긴 곳도 없어요. 내용을 읽어 보고 보내 주세요.</p>
+    {% else %}<p><span class="aw-badge bad">검토 필요 {{ L.problems|length }}곳</span> 아래 줄을 고치고 저장하면 다시 검사해요.</p>
+    <ul class="aw-problems">{% for p in L.problems %}<li><b>{{ p.where }} · {% if p.numbers %}자료에 없는 숫자 {{ p.numbers|join(', ') }}{% elif p.words %}평가로 읽힐 말 {{ p.words|join(', ') }}{% else %}기사 문장을 그대로 옮긴 것 같아요{% endif %}</b><span>{{ p.line }}</span></li>{% endfor %}</ul>{% endif %}
+  </div>
+
+  <div class="lt-ad-grid">
+    <form class="lt-ad-form" method="post" id="lt-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="form-panel">
+        <label class="field">메일 제목<input name="title" value="{{ L.title }}" maxlength="80"{% if not draft %} readonly{% endif %}></label>
+        <label class="field">첫인사<textarea name="intro" rows="3"{% if not draft %} readonly{% endif %}>{{ L.intro }}</textarea></label>
+      </div>
+      {% for it in L['items'] %}{% set i = loop.index0 %}
+      <div class="form-panel lt-ad-item">
+        <p class="lt-ad-num">NEWS {{ '%02d' % loop.index }} · <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">{{ it.src.name }} 원문 ↗</a> <span class="meta">{{ it.src.headline }}</span></p>
+        <label class="field">제목<input name="title{{ i }}" value="{{ it.title }}" maxlength="80"{% if not draft %} readonly{% endif %}></label>
+        <label class="field">설명 (3~5문장)<textarea name="body{{ i }}" rows="5"{% if not draft %} readonly{% endif %}>{{ it.body }}</textarea></label>
+        <label class="field">이럴 땐 이렇게<input name="tip{{ i }}" value="{{ it.tip }}" maxlength="160"{% if not draft %} readonly{% endif %}></label>
+        <p class="meta">⚖️ 관련 법: {% if it.law %}{% if it.law.url %}<a href="{{ it.law.url }}" target="_blank" rel="noopener nofollow">{{ it.law.label }}</a>{% else %}{{ it.law.label }}{% endif %}{% else %}없음{% endif %}</p>
+        {% if draft %}<div class="lt-ad-checks">{% if it.law %}<label class="check"><input type="checkbox" name="nolaw{{ i }}" value="1"> 관련 법 빼기</label>{% endif %}<label class="check"><input type="checkbox" name="drop{{ i }}" value="1"> 이 뉴스 빼기</label></div>{% endif %}
+      </div>
+      {% endfor %}
+      <div class="form-panel">
+        <label class="field">맺음말<textarea name="outro" rows="2"{% if not draft %} readonly{% endif %}>{{ L.outro }}</textarea></label>
+        <p class="meta">소보루 픽 인기 리뷰 {{ L.sections.reviews|length }}개 · 리뷰 주제 {{ '있음' if L.sections.campaign else '없음' }} · 생활정보 {{ L.sections.life|length }}개는 만들 때의 DB에서 가져왔어요.</p>
+        {% if draft %}<div class="admin-actions"><button type="submit" name="act" value="save" class="primary">저장하고 다시 검사</button><button type="submit" name="act" value="delete" class="secondary danger" onclick="return confirm('이 초안을 지울까요?')">초안 지우기</button></div>{% endif %}
+      </div>
+      <div class="form-panel lt-ad-send">
+        <h2>테스트 메일</h2>
+        <div class="lt-ad-inline"><input type="email" name="test_to" value="{{ test_to }}" placeholder="받아 볼 이메일 주소" aria-label="테스트 메일 주소"><button type="submit" name="act" value="test"{% if not mail_ready %} disabled{% endif %}>테스트 메일 보내기</button></div>
+        <p class="meta">고친 내용을 저장한 뒤 이 주소로 한 통만 보내요. 구독자에게는 가지 않아요.</p>
+        {% if L.status != 'sent' %}
+        <h2>구독자에게 보내기</h2>
+        <p>확인을 마친 구독자 <b>{{ counts.get('active', 0) }}명</b>에게 보내요. {% if L.status == 'scheduled' %}보내는 중이에요. 끊겼다면 다시 누르면 아직 못 받은 분께만 보내요.{% endif %}</p>
+        <div class="admin-actions">{% if not L.check_ok %}<label class="check aw-ack"><input type="checkbox" name="ack" value="1"> 검토 필요한 곳을 직접 확인했어요</label>{% endif %}
+          <button type="submit" name="act" value="send" class="primary"{% if not mail_ready or not counts.get('active') %} disabled{% endif %} onclick="return confirm('구독자 {{ counts.get('active', 0) }}명에게 {{ L.no }}호를 보낼까요? 보낸 메일은 되돌릴 수 없어요.')">보내기</button></div>
+        {% endif %}
+      </div>
+    </form>
+    <div class="lt-ad-preview">
+      <p class="meta">메일 미리보기 · 제목: <b>{{ subject }}</b></p>
+      <iframe title="메일 미리보기" srcdoc="{{ preview }}" sandbox="allow-same-origin allow-popups" loading="lazy" onload="try{this.style.height=(this.contentDocument.documentElement.scrollHeight+8)+'px'}catch(e){}"></iframe>
+    </div>
+  </div>
+</div></main>
+{% endblock %}

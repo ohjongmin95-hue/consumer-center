@@ -1,0 +1,18 @@
+# 소보루 레터: 매일 아침 soboru-letter.timer가 부름. 관리자가 고른 요일에만 한 호를 만들고, 자동 보내기를 켜 두었을 때만 보냄.
+# 설치·끄기: sudo bash /opt/soboru/app/deploy/set-letter.sh  (요일·자동 보내기는 관리자 > 소보루 레터에서)
+[Unit]
+Description=소보루 레터 (주간 뉴스레터)
+After=network-online.target soboru.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=soboru
+Group=soboru
+WorkingDirectory=/opt/soboru/app
+EnvironmentFile=/etc/soboru.env
+ExecStart=/opt/soboru/venv/bin/python soboru_letter.py weekly
+TimeoutStartSec=3600
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/soboru

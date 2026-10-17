@@ -283,7 +283,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-112'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-113'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -2648,5 +2648,6 @@ _ask=types.SimpleNamespace(**globals());lawask.install(_ask)
 _writer=types.SimpleNamespace(**globals());soboru_writer.install(_writer)
 # AI 소비자 상담 새 버전: 유형 분류·키워드+임베딩 검색·근거 확인·상담 기록·관리자 대시보드 (lawrag.py, 관리자 설정으로 켤 때만 손님에게 보임)
 _rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
+import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  # 소보루 레터: 주간 뉴스레터·구독·발송 (soboru_letter.py)
 
 if __name__=='__main__':app.run(debug=False)

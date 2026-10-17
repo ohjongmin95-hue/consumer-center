@@ -41,6 +41,7 @@ chmod -R u+rwX,go+rX $APP  # 서비스 계정이 읽지 못하는 파일 때문�
 systemctl restart soboru
 # AI 분석 기사 예약 작업을 설치해 뒀으면(set-writer.sh) 새 설정으로 바꿔 둠
 if [ -f /etc/systemd/system/soboru-writer.timer ]; then install -m 644 $APP/deploy/soboru-writer.service $APP/deploy/soboru-writer.timer /etc/systemd/system/ && systemctl daemon-reload; fi
+if [ -f /etc/systemd/system/soboru-letter.timer ]; then install -m 644 $APP/deploy/soboru-letter.service $APP/deploy/soboru-letter.timer /etc/systemd/system/ && systemctl daemon-reload; fi  # 소보루 레터(set-letter.sh)
 # SOBORU 플랫폼(한큐 + 소보루 비즈)이 설치돼 있으면 같이 다시 시작
 if [ -f /etc/systemd/system/soboru-platform.service ]; then
   # 소비자제보센터에 넣어 둔 메일 설정을 소보루 CS에도 똑같이 넣음 (비밀번호 찾기·알림 메일)

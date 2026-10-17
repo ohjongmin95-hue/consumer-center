@@ -272,3 +272,28 @@ body.console .ads-days li b{text-align:right}
 @media(max-width:700px){body.console .ads-kpis{grid-template-columns:1fr 1fr}body.console .cp-admin-form .cs-two{grid-template-columns:1fr;gap:0}body.console .cp-admin-form .cs-two .cs-two{grid-template-columns:1fr 1fr;gap:10px}}
 .lw-forget{display:inline;margin:0}.lw-forget .btn-link{background:none;border:0;padding:0;margin-top:2px;color:#b42318;font-size:12px;text-decoration:underline;cursor:pointer}
 body.console .ad-main .aw-auto{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 20px;border:1px solid #e5e8eb;background:#f9fafb}body.console .ad-main .aw-auto.on{border-color:#ffd6a5;background:#fff4e6}body.console .ad-main .aw-auto b{font-size:16px}body.console .ad-main .aw-auto p{margin:4px 0 0}body.console .ad-main .aw-auto button{flex:none;border:0;border-radius:12px;padding:12px 20px;font-weight:800;font-size:15px;background:var(--ad-ink,#191f28);color:#fff;cursor:pointer}body.console .ad-main .aw-auto button.danger{background:#e5484d}body.console .ad-main .aw-auto button.danger:hover{background:#c93c40}@media(max-width:600px){body.console .ad-main .aw-auto{flex-direction:column;align-items:stretch}}
+/* 소보루 레터 관리 (soboru_letter.py) */
+body.console .lt-ad-top{display:grid;grid-template-columns:1fr 1.3fr;gap:14px;margin-bottom:6px}
+body.console .lt-ad-top>.form-panel{margin:0}
+body.console .lt-ad-top h2{margin:0 0 6px;font-size:18px}
+body.console .lt-ad-counts{display:flex;gap:10px;margin:0 0 10px}
+body.console .lt-ad-counts div{flex:1;background:#fff;border-radius:14px;padding:14px 16px;box-shadow:var(--ad-card)}
+body.console .lt-ad-counts b{display:block;font-size:24px;color:var(--ad-ink)}
+body.console .lt-ad-counts div:first-child b{color:var(--ad-orange)}
+body.console .lt-ad-counts span{font-size:13px;color:var(--ad-sub)}
+body.console .lt-ad-subs td{overflow-wrap:anywhere}
+body.console .lt-ad-grid{display:grid;grid-template-columns:minmax(0,1fr) 620px;gap:20px;align-items:start;margin-top:4px}
+body.console .lt-ad-form .form-panel{margin-bottom:12px}
+body.console .lt-ad-preview{position:sticky;top:76px}
+body.console .lt-ad-preview .meta{margin:0 0 8px}
+body.console .lt-ad-preview iframe{display:block;width:100%;height:1500px;border:0;border-radius:16px;background:#f6f2ec;box-shadow:var(--ad-card)}
+body.console .lt-ad-num{font-weight:800;color:var(--ad-orange);font-size:13px;margin:0 0 10px}
+body.console .lt-ad-num .meta{display:block;font-weight:400;margin-top:2px;color:var(--ad-mute)}
+body.console .lt-ad-checks{display:flex;gap:18px;flex-wrap:wrap}
+body.console .lt-ad-inline{display:flex;gap:8px;align-items:center}
+body.console .lt-ad-inline input{flex:1;min-width:0}
+body.console .lt-ad-inline button{flex:none}
+body.console .lt-ad-send h2{font-size:17px;margin:2px 0 8px}
+body.console .lt-ad-send h2+p{margin-top:0}
+@media (max-width:1280px){body.console .lt-ad-grid{grid-template-columns:1fr}body.console .lt-ad-preview{position:static;max-width:640px}}
+@media (max-width:760px){body.console .lt-ad-top{grid-template-columns:1fr}}
