@@ -8,11 +8,14 @@
 드물게 나오는 묶음일수록 점수를 더 주고(BM25), 조문 제목에 나오면 더 쳐 준다.
 참조는 'ecom:제17조'처럼 '법 key:조문 번호'로 쓴다 (law.py의 'ecom:제17조:①'과 달리 조문 전체).
 """
-import json, math, re
+import json, math, os, re
 from collections import Counter
 from pathlib import Path
 
 PATH=Path(__file__).parent/'law_corpus.json'
+# 관리자가 PDF로 더 올린 법령 파일 (같은 꼴의 JSON). 환경변수 LAW_CORPUS_EXTRA(여러 개는 ':'로) 또는 add_extra()로 붙인다.
+# 같은 key의 법령이 있으면 올린 쪽이 기본 모음을 대신한다(법이 바뀌어 새 PDF를 올린 경우). 지우면 기본 모음으로 돌아간다.
+EXTRA=[Path(x) for x in os.getenv('LAW_CORPUS_EXTRA','').split(os.pathsep) if x.strip()]
 TITLE_W=3.0     # 제목에 나온 묶음 가중치
 K1,B=1.2,0.6    # BM25
 # 조문이 질문과 얼마나 맞는지 = 점수 × 맞은 몫(match). 앞의 세 조문 중 가장 큰 값으로 본다.
@@ -30,11 +33,43 @@ HINTS=[(('화장품','크림','로션','세럼','앰플','선크림','샴푸','�
        (('온라인','인터넷','쇼핑몰','통신판매','택배','배송','반품','환불','청약철회','교환','주문','취소'),('ecom','ecom_dec','easylaw'),1.5),
        (('분쟁','피해구제','소비자원','보상','1372'),('basic','kca'),1.3)]
 
-_DB=None
-def _load():
+_DB=None;_SIG=None;_BASE=None
+def add_extra(path):
+    """더 올린 법령 파일을 찾기에 넣는다 (파일이 아직 없어도 됨. 생기거나 바뀌면 다음 찾기 때 다시 읽음)."""
+    p=Path(path)
+    if p not in EXTRA:EXTRA.append(p);reset()
+
+def reset():
     global _DB
-    if _DB is not None:return _DB
-    laws=json.loads(PATH.read_text(encoding='utf-8'))
+    _DB=None
+
+def _sig():
+    # 더 올린 파일이 바뀌었는지 (다른 서버 프로세스가 올려도 알아채게 파일 시각·크기로 봄)
+    out=[]
+    for p in EXTRA:
+        try:st=p.stat();out.append((str(p),st.st_mtime_ns,st.st_size))
+        except OSError:out.append((str(p),0,0))
+    return tuple(out)
+
+def extra_laws(path):
+    """더 올린 법령 파일 하나 {key: 법령}. 없거나 깨졌으면 빈 dict."""
+    try:data=json.loads(Path(path).read_text(encoding='utf-8'))
+    except (OSError,ValueError):return {}
+    return {k:v for k,v in data.items() if isinstance(v,dict) and isinstance(v.get('articles'),dict) and ':' not in k} if isinstance(data,dict) else {}
+
+def base_keys():
+    """law_corpus.json(기본 모음)에 든 법령 key."""
+    _load();return set(_BASE)
+
+def _load():
+    global _DB,_SIG,_BASE
+    sig=_sig()
+    if _DB is not None and sig==_SIG:return _DB
+    if _BASE is None:_BASE=json.loads(PATH.read_text(encoding='utf-8'))
+    laws=dict(_BASE)
+    for p in EXTRA:
+        for k,l in extra_laws(p).items():laws[k]=dict(l,extra=True,replaces=k in _BASE)
+    _SIG=sig
     docs=[];df=Counter()
     for key,law in laws.items():
         for art,a in law['articles'].items():
