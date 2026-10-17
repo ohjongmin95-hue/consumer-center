@@ -31,6 +31,19 @@ SECTIONS = [
     ('common', '공통 (헤더·푸터)', [
         ('site.name', '사이트 이름 (브라우저 탭·메일 머리말 등)', '소보루', {}),
     ]),
+    # consumerjebo.co.kr로 들어왔을 때만 쓰는 문구. 사이트 이름·제목은 위 소보루 값 대신 이 값이 들어감 (soboru.py JEBO_KEYS)
+    ('jebo', '소비자제보센터 화면 (consumerjebo.co.kr)', [
+        ('jebo.site_name', '사이트 이름', '소비자제보센터', {}),
+        ('site.logo_accent', '로고 앞부분 (주황색)', '소비자', OPT),
+        ('site.logo_rest', '로고 뒷부분', '제보센터', {}),
+        ('site.logo_by', '로고 옆 작은 글씨 (비우면 숨김)', 'by SOBORU', OPT),
+        ('jebo.home_title', '메인 화면 제목 (브라우저 탭·검색 결과·카톡 미리보기)', '소비자제보센터 - 소비자 피해 제보·고발', {}),
+        ('jebo.description', '사이트 설명 (검색 결과에 보이는 문장)', '환불 거부, 배송 지연, 불량품 같은 소비자 피해를 제보하고 업체 답변과 처리 과정을 확인하세요. 다른 소비자들의 피해 사례도 볼 수 있습니다.', {}),
+        ('jebo.board_title', '게시판 이름', '소비자게시판', {}),
+        ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),
+        ('home.latest_title', '메인 최근 제보 제목 (비우면 제목 없이 카드만)', '', OPT),
+        ('home.latest_count', '메인에 보여줄 최근 제보 수 (3~20, 4의 배수가 깔끔해요)', '20', {}),
+    ]),
     ('seo', '검색 노출 (네이버·구글)', [
         ('seo.home_title', '메인 화면 제목 (브라우저 탭·검색 결과·카톡 미리보기 제목)', '소보루(SOBORU)', {}),
         ('seo.description', '사이트 설명 (검색 결과에 보이는 문장)', '소비자 피해 제보부터 제품·업체 리뷰와 추천, 소비자 권리 안내까지. 소비자의 경험을 나누는 소비자 정보 플랫폼, 소보루.', {}),
@@ -216,7 +229,38 @@ PROCESS_STEPS = [
     ('결과 안내', 'check', '처리 결과를 **내 제보 조회**에서 안내하고 제보를 마무리해요.'),
 ]
 STATUSES = ['접수', '검토 중', '추가 확인', '기업 답변 대기', '기업 답변 도착', '종결']
+# ---- 소비자제보센터 화면(consumerjebo.co.kr) 전용 목록: 상단 메뉴·메인 구성·예시 카드 ----
+SAMPLE_REPORTS = [
+    ('반품 접수 후 2주째 환불이 안 돼요', '배송·환불', '○○쇼핑', '검토 중'),
+    ('해지했는데 다음 달 요금이 또 결제됐어요', '구독·결제', '○○뮤직', '기업 답변 대기'),
+    ('중도 해지 위약금을 과하게 청구해요', '서비스·계약', '○○피트니스', '추가 확인'),
+    ('수리 후에도 같은 고장이 반복돼요', '상품·품질', '○○가전', '접수'),
+    ('숙소 취소 수수료가 안내와 달라요', '여행·숙박', '○○투어', '기업 답변 도착'),
+    ('가입하지 않은 부가서비스 요금이 나왔어요', '금융·통신', '○○텔레콤', '종결'),
+    ('파손된 상품의 교환을 거부해요', '배송·환불', '○○마켓', '접수'),
+    ('무료체험 후 자동결제 안내가 없었어요', '구독·결제', '○○TV', '검토 중'),
+]
+MENU_PAGES = [
+    ('reports', '제보 목록'), ('companies', '기업별 제보'), ('guide', '이용 안내'), ('process', '처리 절차'), ('board', '소비자게시판'),
+    ('faq', '자주 묻는 질문'), ('report', '제보하기'), ('lookup', '내 제보 조회'), ('types', '제보 유형'),
+    ('home', '홈 (메인 화면)'), ('terms', '이용약관'), ('privacy', '개인정보 처리방침'), ('takedown', '게시중단 요청'),
+    ('groups', '공동 대응 (집단 피해)'), ('custom', '직접 입력한 주소'),
+]
+HOME_BLOCKS = [
+    ('hero', '메인 문구 + 제보하기 버튼 + 사람들 일러스트'), ('hero_plain', '메인 문구 + 제보하기 버튼 (일러스트 없이)'), ('latest_reports', '최근 제보 (실시간)'), ('board_posts', '최근 게시판 글'),
+    ('notice', '공지·안내 박스'), ('process', '처리 절차 요약'), ('faq', '자주 묻는 질문 미리보기'),
+    ('groups', '진행 중인 공동 대응 (+ 제안하기)'),
+]
+LEGACY_NAV = [('nav.home', 'reports', '소비자 제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
+              ('nav.board', 'board', '소비자게시판'), ('nav.faq', 'faq', '자주 묻는 질문')]
 LISTS = [
+    ('menu', '소비자제보센터 상단 메뉴', 'consumerjebo.co.kr 맨 위 메뉴예요. 이름, 순서, 연결할 페이지를 정할 수 있고 외부 주소(블로그 등)도 넣을 수 있어요.',
+     [('label', '메뉴 이름', {}), ('page', '연결할 페이지', {'choices': MENU_PAGES}), ('url', '직접 입력한 주소 ("직접 입력한 주소"를 골랐을 때만, 예: https://blog.naver.com/...)', {})], 1),
+    ('home_blocks', '소비자제보센터 메인 화면 구성', 'consumerjebo.co.kr 메인 화면에 위에서부터 차례로 보여요. 블록 종류마다 쓰는 칸이 달라요: 제목은 모든 블록, 개수는 최근 제보·게시판 글·질문 미리보기, 내용과 버튼은 공지·안내 박스에 쓰여요. 비운 칸은 기본값을 써요.',
+     [('kind', '블록 종류', {'choices': HOME_BLOCKS}), ('title', '제목', {}), ('count', '보여줄 개수', {}), ('body', '내용', ML),
+      ('button_label', '버튼 글자', {}), ('button_link', '버튼 주소 (예: /report 또는 https://...)', {})], 1),
+    ('sample_reports', '소비자제보센터 메인 예시 제보 카드', '실제 제보가 메인 카드 개수보다 적을 때 남는 자리를 "예시" 표시와 함께 채워요. 실제 제보가 늘면 하나씩 빠지고, 목록을 비우면 예시 카드는 나오지 않아요.',
+     [('title', '제목', {}), ('category', '분류', {}), ('company', '업체 표시 (예: ○○쇼핑)', {}), ('status', '진행 단계', {'choices': [(s, s) for s in STATUSES]})], 0),
     ('report_categories', '제보 유형', '제보하기 화면, 제보 목록 필터, 유형 페이지에 쓰여요. 이미 접수된 제보의 유형은 바뀌지 않아요.', [('name', '유형 이름', {})], 1),
     ('report_industries', '제보 업종', '제보하기 화면의 업종 선택 칸이에요. 예시는 고를 때 이름 옆에 흐리게 보여요. 이미 접수된 제보의 업종은 바뀌지 않아요.',
      [('name', '업종 이름', {}), ('examples', '예시 (예: 이동통신, 인터넷·IPTV)', {})], 1),
@@ -254,6 +298,9 @@ LISTS.append(('report_consents', '제보하기 동의 항목', '제보하기 화
 LISTS.append(('custom_pages', '새 페이지', '원하는 페이지를 직접 만들어요. 주소는 consumerjebo.co.kr/p/영문주소 가 되고, 메뉴에 넣으려면 상단 메뉴에서 "직접 입력한 주소"를 고르고 /p/영문주소 를 적어요. 내용은 약관처럼 줄 맨 앞에 "## "를 쓰면 소제목, "- "를 쓰면 목록이 돼요.',
               [('slug', '영문 주소 (소문자·숫자·하이픈, 예: about)', {}), ('title', '페이지 제목', {}), ('body', '내용', ML)], 0))
 LIST_DEFAULTS = {
+    'menu': [{'label': label, 'page': page, 'url': ''} for _, page, label in LEGACY_NAV],
+    'home_blocks': [dict(_BLANK_BLOCK, kind='hero'), dict(_BLANK_BLOCK, kind='latest_reports'), dict(_BLANK_BLOCK, kind='groups')],
+    'sample_reports': [{'title': t, 'category': c, 'company': co, 'status': st} for t, c, co, st in SAMPLE_REPORTS],
     'report_categories': [{'name': n} for n in REPORT_CATEGORY_DEFAULTS],
     'report_industries': [{'name': n, 'examples': e} for n, e in REPORT_INDUSTRY_DEFAULTS],
     'board_categories': [{'name': n} for n in BOARD_CATEGORY_DEFAULTS],

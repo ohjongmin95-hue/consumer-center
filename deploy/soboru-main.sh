@@ -7,8 +7,10 @@
 #   1) 가비아 DNS에 soboru.co.kr, www.soboru.co.kr A 레코드 → 이 서버 IP
 #   2) sudo bash /opt/soboru/app/deploy/soboru-main.sh 이메일        # soboru.co.kr 열기 (consumerjebo.co.kr도 그대로)
 #   3) sudo bash /opt/soboru/app/deploy/soboru-main.sh --make-main   # 대표 주소를 soboru.co.kr로 (검색엔진·공유 링크·레터)
+#   4) sudo bash /opt/soboru/app/deploy/soboru-main.sh --jebo-on     # consumerjebo.co.kr을 소비자제보센터 화면으로 (제보는 두 사이트가 같이 씀)
 # 되돌리기:
-#   sudo bash /opt/soboru/app/deploy/soboru-main.sh --undo           # 2)·3)을 모두 원래대로
+#   sudo bash /opt/soboru/app/deploy/soboru-main.sh --jebo-off       # 4)만 원래대로 (consumerjebo.co.kr도 소보루 화면)
+#   sudo bash /opt/soboru/app/deploy/soboru-main.sh --undo           # 2)·3)·4)를 모두 원래대로
 set -euo pipefail
 
 APP_DIR=/opt/soboru/app; ENV_FILE=/etc/soboru.env
@@ -39,8 +41,8 @@ case "${1:-}" in
   backup
   rm -f "$LINK"
   if nginx -t -q; then systemctl reload nginx; echo "soboru.co.kr 연결을 껐어요. (설정 파일은 $NGX 에 남겨 둠)"; else echo "nginx 설정 오류. $BK/nginx.tar.gz 로 되돌려 주세요."; exit 1; fi
-  if grep -q '^CANONICAL_HOST=' "$ENV_FILE"; then
-    sed -i '/^CANONICAL_HOST=/d' "$ENV_FILE"; systemctl restart soboru; echo "대표 주소를 consumerjebo.co.kr로 되돌렸어요."
+  if grep -q '^CANONICAL_HOST=\|^JEBO_HOST=' "$ENV_FILE"; then
+    sed -i '/^CANONICAL_HOST=/d; /^JEBO_HOST=/d' "$ENV_FILE"; systemctl restart soboru; echo "대표 주소를 consumerjebo.co.kr로, 화면을 소보루로 되돌렸어요."
   fi
   check; exit 0 ;;
 --make-main)
@@ -51,7 +53,15 @@ case "${1:-}" in
   systemctl is-active --quiet soboru || { cp -a "$BK/soboru.env" "$ENV_FILE"; systemctl restart soboru; echo "사이트가 뜨지 않아 되돌렸어요."; exit 1; }
   echo "대표 주소를 https://$MAIN 로 바꿨어요. consumerjebo.co.kr로 들어와도 같은 화면이 뜨고, 검색엔진에는 soboru.co.kr을 대표로 알려요."
   check; exit 0 ;;
--*|"") echo "사용법: sudo bash $0 이메일 | --make-main | --undo"; exit 1 ;;
+--jebo-on|--jebo-off)
+  [[ $1 == --jebo-off ]] || grep -q "^CANONICAL_HOST=$MAIN" "$ENV_FILE" || { echo "먼저 대표 주소를 바꿔 주세요: sudo bash $0 --make-main"; exit 1; }
+  backup
+  sed -i '/^JEBO_HOST=/d' "$ENV_FILE"; [[ $1 == --jebo-on ]] && echo "JEBO_HOST=consumerjebo.co.kr" >> "$ENV_FILE"
+  systemctl restart soboru; sleep 3
+  systemctl is-active --quiet soboru || { cp -a "$BK/soboru.env" "$ENV_FILE"; systemctl restart soboru; echo "사이트가 뜨지 않아 되돌렸어요."; exit 1; }
+  [[ $1 == --jebo-on ]] && echo "consumerjebo.co.kr이 소비자제보센터 화면으로 바뀌었어요. 제보는 soboru.co.kr과 같이 보여요." || echo "consumerjebo.co.kr도 소보루 화면으로 되돌렸어요."
+  check; exit 0 ;;
+-*|"") echo "사용법: sudo bash $0 이메일 | --make-main | --jebo-on | --jebo-off | --undo"; exit 1 ;;
 esac
 
 EMAIL=$1

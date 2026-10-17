@@ -53,3 +53,13 @@ git checkout jebo-center-final -- templates/index.html
 - 관리자 화면 이용 안내·처리 절차·FAQ 페이지 구성(`layout_*`): 소보루 제보 메뉴에서 그대로 씀
 - `tools/site_vrt_server.py`의 `VRT_BRAND`: 넣어도 아무 일 없음 (예전 설정값은 무시)
 - DB의 예전 설정값: 한 번만 지움(`soboru_settings.brand_only`). 소보루 시절 화면에 안 보이던 값(브랜드·로고 글자·사이트 이름·메인 제목·사이트 설명·게시판 제목)만
+
+## 2026-10-17 되살림: 주소별 화면
+
+운영자 요청으로 소비자제보센터 화면을 다시 넣었습니다. 이번에는 관리자 설정이 아니라 **들어온 주소**로 화면이 정해집니다.
+
+- 서버 설정 `JEBO_HOST=consumerjebo.co.kr`이면 그 주소는 소비자제보센터 화면(예전 메인·머리글·게시판), 나머지(soboru.co.kr)는 소보루 화면
+- 제보·회원·게시판·관리자는 하나라서 어느 쪽에서 접수해도 두 사이트에 같이 보임 (공개 규칙은 같음)
+- 이름·제목은 관리자 > 숨은 문구 > "소비자제보센터 화면" (`jebo.*`, `site.logo_*`), 메뉴·메인 구성은 관리자 > 구성 바꾸기
+- 관리자는 `/?face=jebo`로 미리 보고 `/?face=off`로 끔
+- 켜고 끄기: `deploy/soboru-main.sh --jebo-on` / `--jebo-off`

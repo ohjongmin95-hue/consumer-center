@@ -1,0 +1,21 @@
+{# 소비자제보센터 머리글 (consumerjebo.co.kr로 들어왔을 때) #}
+<header class="site-header">
+  <div class="top">
+    <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">{{ txt('site.logo_by') }}</small>{% endif %}</a>
+    <nav class="section-nav" aria-label="주요 메뉴">
+      {% for item in items('menu') %}{% set href = menu_href(item) %}{% if href %}
+      <a href="{{ href }}"{% if menu_active(href) %} class="active" aria-current="page"{% endif %}{% if item.page == 'custom' and href.startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}
+      {% endfor %}
+    </nav>
+    <div class="top-auth">
+      {% if g.user %}{% set n_alert = alert_unread() %}
+      <a class="util-me util-bell" href="{{ url_for('me_alerts') }}" aria-label="알림{% if n_alert %} {{ n_alert }}개 안 읽음{% endif %}">{{ ui('alert.title', '알림') }}{% if n_alert %} <b>{{ n_alert if n_alert < 100 else '99+' }}</b>{% endif %}</a>
+      <a class="util-me"href="{{ url_for('mypage') }}" title="{{ ui('common.my_info', '내 정보') }}"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="8.5" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{{ g.user['nickname'] }}{{ ui('common.nim', '님') }}</a>
+      <form method="post" action="{{ url_for('member_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">{{ ui('common.logout', '로그아웃') }}</button></form>
+      {% else %}
+      <a href="{{ url_for('login', next=request.full_path.rstrip('?')) if request.endpoint not in ('login', 'signup', 'member_logout') else url_for('login') }}">{{ ui('common.login', '로그인') }}</a>
+      <a href="{{ url_for('signup') }}">{{ ui('common.signup', '회원가입') }}</a>
+      {% endif %}
+    </div>
+  </div>
+</header>

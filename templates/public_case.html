@@ -7,5 +7,35 @@
 {% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "Article", "headline": subject|truncate(110, True, '…'), "description": description|truncate(150, True, '…'), "articleSection": category, "datePublished": case['created'], "inLanguage": "ko", "mainEntityOfPage": canonical_url(), "author": {"@type": "Organization", "name": txt('site.name')}, "publisher": {"@type": "Organization", "name": txt('site.name'), "logo": {"@type": "ImageObject", "url": canonical_url(url_for('static', filename='img/soboru-logo.png' if is_soboru() else 'apple-touch-icon.png'))}}, "image": og_photo(case['id']) or canonical_url(url_for('static', filename=og_default()))},
   {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": txt('site.name'), "item": url_for('home', _external=True)}, {"@type": "ListItem", "position": 2, "name": txt('home.list_title'), "item": url_for('reports', _external=True)}, {"@type": "ListItem", "position": 3, "name": subject|truncate(60, True, '…')}]}]|tojson }}</script>{% endblock %}
 {% block content %}
-{% include 'soboru_case.html' %}
+{% if is_soboru() %}{% include 'soboru_case.html' %}{% else %}
+<main class="page"><div class="wrap">
+  <div class="page-intro">
+    <a class="back-link" href="{{ url_for('reports') }}">← {{ txt('home.list_title') }}</a>
+    <p class="public-case-meta"><span class="case-cat">{{ category }}</span>No. {{ case['id'] }} · {{ ui('lookup.received_on', '접수일') }} {{ case['created'][:10] }}{% if case['occurred_on'] %} · {{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on'] }}{% endif %}</p>
+    <h1 class="page-title">{{ subject }}</h1>
+    <p>{{ ui('reports.target', '제보 대상') }} · {% if co %}<a class="case-co-link" href="{{ url_for('company_page', company_id=co['id']) }}"><b>{{ company }}</b> {{ ui('case.company_more', '기업 페이지 →') }}</a>{% else %}<b>{{ company }}</b>{% endif %}</p>
+  </div>
+  <div class="form-panel stepper-panel">{{ steps(pub_step(step), pub_names()) }}
+    <p class="stepper-desc"><b>{{ ui('lookup.current_step', '현재 단계') }}: {{ pub_names()[pub_step(step) - 1] }}</b>{% if not has_answer %} {{ ui('case.no_answer', '아직 기업의 공식 답변이 등록되지 않았어요.') }}{% endif %}</p>
+  </div>
+  <article class="form-panel public-case">
+    <h2>{{ ui('report.f_description', '피해 내용') }}</h2>
+    <p class="public-case-body">{{ description }}</p>
+    <h2>{{ ui('report.f_request', '원하는 해결 방법') }}</h2>
+    <p class="public-case-body">{{ request_text }}</p>
+  </article>
+  <section class="form-panel public-case company-answers">
+    <h2>{{ ui('reports.company_answer', '기업 공식 답변') }}</h2>
+    {% for a in answers %}<div class="company-answer"><p class="ca-head"><b>{{ a['company_name'] or company }}{% if a['source'] == 'biz' %}<span class="ca-verified"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z"/><path fill="#fff" d="M7.1 10.6 4.8 8.3l.9-.9 1.4 1.4 3.2-3.2.9.9z"/></svg>{{ ui('case.answer_verified', '인증 기업 계정이 직접 등록') }}</span>{% endif %}</b><span>{{ a['created'][:10]|replace('-', '.') }}{% if a['edited'] %} · {{ a['edited'][:10]|replace('-', '.') }} 수정됨{% endif %}</span></p><p class="public-case-body">{{ a['body'] }}</p>{% if a['source'] == 'email' %}<p class="ca-note">{{ ui('case.answer_email', '기업이 이메일로 보낸 답변을 센터가 원문 그대로 옮겼어요.') }}</p>{% endif %}</div>
+    {% else %}<p class="ca-none">{{ ui('case.answer_checking', '기업 답변이 등록돼 센터가 공개 여부를 확인하고 있어요.') if has_answer else ui('case.answer_none', '공식 답변 미등록') }}</p>{% endfor %}
+    <p class="ca-note">{{ ui('case.answer_rule', '기업의 답변은 고치지 않고 원문 그대로 실어요. 기업이 답변을 고치면 센터가 다시 확인한 뒤 공개하고, 수정한 날짜를 함께 보여 줘요.') }}</p>
+  </section>
+  {% set talk = case_talk(case['id']) %}{% if talk %}{% with case_id = case['id'] %}{% include 'case_talk.html' %}{% endwith %}{% endif %}
+  <section class="form-panel public-case case-history">
+    <h2>{{ ui('case.history', '진행 이력') }}</h2>
+    <ol class="history">{% for who, label, at, text in events %}<li class="h-{{ who }}"><p class="h-head"><b>{{ label }}</b>{% if at %}<time datetime="{{ at }}">{{ at[:16]|replace('T', ' ') }}</time>{% endif %}</p>{% if text %}<p class="h-text">{{ text }}</p>{% endif %}</li>{% endfor %}</ol>
+  </section>
+  {% if groups_on() %}{% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}{% endif %}
+</div></main>
+{% endif %}
 {% endblock %}

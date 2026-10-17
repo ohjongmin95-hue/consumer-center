@@ -13,7 +13,10 @@ OLD_NAME = '소비자제보센터'
 NEW_NAME = '소보루'
 # 소보루로 바꿀 때 덮어쓰는 문구 (관리자가 적어 둔 값보다 앞섬)
 # 예전 브랜드 시절 소보루로 덮어쓰던 문구. 소보루 하나만 쓰면서 기본값이 소보루 문구가 됐으니, 그때 저장해 둔 값(화면에 안 보이던 값)은 한 번 지움
-RETIRED_KEYS = ('site.brand', 'site.logo_accent', 'site.logo_rest', 'site.logo_by', 'site.name', 'seo.home_title', 'seo.description', 'board.title')
+RETIRED_KEYS = ('site.brand', 'site.name', 'seo.home_title', 'seo.description', 'board.title')
+# 소비자제보센터 화면(consumerjebo.co.kr): 소보루와 같은 제보·게시판·관리자를 쓰고, 이름·제목만 이 칸의 값으로 바꿔 보여 줌
+JEBO_KEYS = {'site.name': 'jebo.site_name', 'seo.home_title': 'jebo.home_title', 'seo.description': 'jebo.description', 'board.title': 'jebo.board_title'}
+
 # AI 소비자 상담 새 버전(lawrag.py)을 켰을 때만 쓰는 메뉴·제목 문구. 꺼져 있으면 old_nav 그대로
 ASK_V2_TEXT = {'nav': 'AI 소비자 상담', 'old_nav': '법률 질문', 'title': 'AI 소비자 상담', 'h1': '소비자 피해, AI에게 편하게 물어보세요',
                'notice': '상담사가 아닌 AI가 제공하는 일반 정보예요', 'cta': '업체와의 협의가 어려우신가요?'}
@@ -142,18 +145,21 @@ def install(S):
     with conn() as db: migrate(db)
 
     # ---- 브랜드 ---------------------------------------------------------
-    # 소보루 하나만 씀 (2026-10-17 운영자 요청). 예전 소비자제보센터 화면은 태그 jebo-center-final에 보관 (docs/JEBO_CENTER_RESTORE.md)
-    def brand(): return 'soboru'
+    # 들어온 주소로 정함: JEBO_HOST(consumerjebo.co.kr)면 소비자제보센터 화면, 그 밖은 소보루. 제보·회원·게시판 데이터는 하나라 양쪽에 같이 보임.
+    # 관리자는 /?face=jebo 로 소비자제보센터 화면을 미리 볼 수 있음 (/?face=off 로 끔)
+    def brand():
+        return g.get('brand', 'soboru') if has_request_context() else 'soboru'
 
-    def is_soboru(): return True
+    def is_soboru(): return brand() == 'soboru'
 
     def seo_page(field):
-        if not has_request_context(): return ''
+        if not has_request_context() or not is_soboru(): return ''
         page = (request.view_args or {}).get('page')
         row = SEO_PAGES.get(f'{request.endpoint}:{page}' if page else request.endpoint)
         return row[0 if field == 'title' else 1] if row else ''
 
     def og_default():
+        if not is_soboru(): return 'og-image.png'
         path = request.path
         for prefix, name in OG_SECTIONS:
             if path == prefix or path.startswith(prefix + '/'): return f'soboru-og-{name}.png'
@@ -163,7 +169,15 @@ def install(S):
     @app.before_request
     def apply_brand():
         if request.endpoint == 'static' or 'content' not in g: return
-        g.brand = 'soboru'
+        pick = request.args.get('face')
+        if pick in ('jebo', 'off') and S.admin_active():
+            if pick == 'jebo': session['face_preview'] = 'jebo'
+            else: session.pop('face_preview', None)
+        jebo_face = request.host.split(':')[0].lower() in S.JEBO_HOSTS or (session.get('face_preview') == 'jebo' and S.admin_active())
+        g.brand = 'jebo' if jebo_face else 'soboru'
+        if jebo_face:
+            for key, jkey in JEBO_KEYS.items(): g.content[key] = g.content.get(jkey) or OLD_NAME
+            return
         for k, v in g.content.items():  # 예전에 저장해 둔 문구 속 옛 이름도 소보루로
             if OLD_NAME in v: g.content[k] = v.replace(OLD_NAME, NEW_NAME)
 
@@ -177,7 +191,7 @@ def install(S):
 
     def branded(value):
         # 템플릿에 적힌 기본 문구 속 이름도 지금 브랜드로 (Markup은 Markup 그대로)
-        return value.replace(OLD_NAME, site_name()) if value else value
+        return value.replace(OLD_NAME, site_name()) if value and is_soboru() else value
     app.jinja_env.filters['branded'] = branded
 
     # ---- 생활정보 --------------------------------------------------------
@@ -304,7 +318,8 @@ def install(S):
         return {'kind': 'life', 'id': a['id'], 'url': url_for('life_article', article_id=a['id']), 'title': a['title'], 'summary': a['summary'],
                 'label': a['category'], 'stamp': a['published_at'] or a['created'], 'emoji': a['emoji'] or '📰', 'tone': a['tone'] or 't1', 'art': LIFE_ART.get(a['category'], 'other')}
 
-    app.view_functions['home'] = lambda: home_nn()  # 메인 화면은 소보루 홈 하나 (예전 /?look=old 비교 화면은 뺌)
+    jebo_home = app.view_functions['home']
+    app.view_functions['home'] = lambda: home_nn() if is_soboru() else jebo_home()  # 소비자제보센터 주소면 예전 메인(index.html)
 
     def home_nn():
         # 뉴닉식 홈(운영자 요청, 2026-10-17): 맨 위는 소보루 소개만(건수 없음), 바로 아래 실시간 제보.

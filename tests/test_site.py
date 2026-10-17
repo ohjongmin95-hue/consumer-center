@@ -1444,23 +1444,42 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('cm-head', self.client.get('/board').get_data(as_text=True))
         with self.site.conn() as db: db.execute("DELETE FROM soboru_settings WHERE key LIKE 'blocks:%'")
 
-    def test_old_brand_settings_are_gone(self):
-        # 예전 소비자제보센터 전용 설정(브랜드·로고 글자·상단 메뉴·메인 화면 구성·예시 카드)은 관리자 화면에서 빠짐. 되살리는 법은 문서에
+    def test_jebo_face_shares_reports(self):
+        # JEBO_HOST(consumerjebo.co.kr)로 들어오면 소비자제보센터 화면, 그 밖은 소보루. 제보는 한 곳에 저장돼 양쪽에 같이 보임
+        hosts = {'consumerjebo.co.kr', 'www.consumerjebo.co.kr'}
+        self.site.JEBO_HOSTS.update(hosts)
+        try:
+            with self.site.conn() as db:
+                db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                           ('jebo-face', hashlib.sha256(b'test').hexdigest(), '배송·환불', '양쪽 업체', '두 사이트에 같이 뜨는 제보', '원문 비공개 내용', '요청', '2026-10-17', 1, 1))
+            jebo = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+            self.assertIn('class="site-header"', jebo)
+            self.assertNotIn('class="sb"', jebo)
+            self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', jebo)
+            self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', jebo)
+            self.assertIn('여러분의 제보가', jebo)
+            sob = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+            self.assertIn('class="sb"', sob)
+            self.assertNotIn('class="site-header"', sob)
+            for base in ('https://consumerjebo.co.kr', 'https://soboru.co.kr'):
+                rows = self.client.get('/reports', base_url=base).get_data(as_text=True)
+                self.assertIn('두 사이트에 같이 뜨는 제보', rows)
+                self.assertNotIn('원문 비공개 내용', rows)
+            self.assertIn('소비자게시판', self.client.get('/board', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
+            self.assertEqual(self.client.get('/reports', base_url='http://www.consumerjebo.co.kr').headers['Location'], 'https://consumerjebo.co.kr/reports')
+        finally:
+            self.site.JEBO_HOSTS.difference_update(hosts)
+        # 관리자는 소보루 주소에서도 /?face=jebo 로 미리 봄
         admin = self.login_admin()
+        self.assertIn('class="site-header"', admin.get('/?face=jebo').get_data(as_text=True))
+        self.assertIn('class="sb"', admin.get('/?face=off').get_data(as_text=True))
+        self.assertIn('class="sb"', self.client.get('/?face=jebo').get_data(as_text=True))  # 손님은 못 바꿈
         content = admin.get('/admin/content').get_data(as_text=True)
-        for key in ('site.brand', 'site.logo_accent', 'site.logo_rest', 'site.logo_by', 'home.hero_title', 'home.latest_count'):
-            self.assertNotIn('name="%s"' % key, content)
-        self.assertNotIn('소보루라고 적으면', content)
+        self.assertIn('name="jebo.site_name"', content)
+        self.assertNotIn('name="site.brand"', content)
         lists = admin.get('/admin/lists').get_data(as_text=True)
         for key in ('menu', 'home_blocks', 'sample_reports'):
-            self.assertNotIn('id="list-%s"' % key, lists)
-        self.assertNotIn('메인 화면 순서', admin.get('/admin').get_data(as_text=True))
-        self.assertIn('화면 편집', admin.get('/admin').get_data(as_text=True))
-        for name in ('index.html', 'soboru_home.html', 'report_cards.html', 'admin_home_plan.html'):
-            self.assertFalse((ROOT / 'templates' / name).exists(), name)
-        doc = (ROOT / 'docs' / 'JEBO_CENTER_RESTORE.md').read_text(encoding='utf-8')
-        self.assertIn('jebo-center-final', doc)
-        self.assertIn('checkout jebo-center-final -- templates/index.html', doc)
+            self.assertIn('id="list-%s"' % key, lists)
 
     def test_process_page_cards(self):
         page = self.client.get('/process').get_data(as_text=True)
@@ -2243,7 +2262,6 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('제보 접수하기 ↗', form)
         admin.post('/admin/content', data={'_csrf': token, 'section': 'common', 'common.login': '로그인하기'})
         self.assertNotIn('name="site.brand"', page)  # 예전 브랜드 바꾸기 칸은 뺌
-        self.assertNotIn('name="site.logo_rest"', page)
         self.assertIn('>로그인하기</a>', self.client.get('/').get_data(as_text=True))
         admin.post('/admin/content', data={'_csrf': token, 'section': 'guide', 'guide.u1': '파일은 **하나만** 올려 주세요'})
         self.assertIn('파일은 <strong>하나만</strong> 올려 주세요', self.client.get('/guide').get_data(as_text=True))

@@ -31,21 +31,21 @@
   {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
   <link rel="alternate" type="application/rss+xml" title="{{ txt('site.name') }}" href="{{ url_for('rss_xml', _external=True) }}">
-  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "name": txt('site.name'), "alternateName": ["SOBORU", "소보루(SOBORU)"], "url": canonical_url('/'), "logo": canonical_url(url_for('static', filename='img/soboru-logo.png')), "sameAs": channel_links()}|tojson }}</script>
-  <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebSite", "name": txt('site.name'), "alternateName": ["SOBORU", "소보루(SOBORU)"], "url": canonical_url('/'), "inLanguage": "ko", "potentialAction": {"@type": "SearchAction", "target": canonical_url(url_for('reports')) ~ "?q={search_term_string}", "query-input": "required name=search_term_string"}}|tojson }}</script>{% endif %}
+  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else []), "url": canonical_url('/'), "logo": canonical_url(url_for('static', filename='img/soboru-logo.png' if is_soboru() else 'apple-touch-icon.png')), "sameAs": channel_links()}|tojson }}</script>
+  <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebSite", "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else []), "url": canonical_url('/'), "inLanguage": "ko", "potentialAction": {"@type": "SearchAction", "target": canonical_url(url_for('reports')) ~ "?q={search_term_string}", "query-input": "required name=search_term_string"}}|tojson }}</script>{% endif %}
   {% block head %}{% endblock %}
   <link rel="icon" href="{{ url_for('favicon_ico') }}" sizes="48x48">
   <link rel="icon" href="{{ url_for('static', filename='soboru-favicon.png', v=css_v) }}" type="image/png">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png', v=css_v) }}">
-  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest', v=css_v) }}">{# 홈 화면에 추가·앱 포장용 #}
-  <meta name="apple-mobile-web-app-title" content="소보루"><meta name="mobile-web-app-capable" content="yes">
+  {% if is_soboru() %}<link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest', v=css_v) }}">{# 홈 화면에 추가·앱 포장용 #}
+  <meta name="apple-mobile-web-app-title" content="소보루"><meta name="mobile-web-app-capable" content="yes">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  {% if is_soboru() %}<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">{# 소보루 글꼴 Pretendard (SIL OFL), 화면에 쓰는 글자만 나눠 받음 #}
-  <link rel="stylesheet" href="{{ asset('soboru.css') }}">
+  <link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}
 </head>
-<body class="sb">
-{% include 'soboru_header.html' %}
+<body{% if is_soboru() %} class="sb"{% endif %}>
+{% if is_soboru() %}{% include 'soboru_header.html' %}{% else %}{% include 'jebo_header.html' %}{% endif %}
 {% with msgs = get_flashed_messages() %}
 {% if msgs %}<div class="flash-wrap" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
 {% endwith %}
@@ -53,7 +53,7 @@
 <footer class="site-footer">
   <div class="ft-inner">
     <div class="ft-top">
-      <a class="ft-logo sb-ft-logo" href="{{ url_for('home') }}"><img src="{{ asset('img/soboru-logo.png') }}" alt="{{ txt('site.name') }}" width="127" height="30"></a><span class="sb-ft-why">{{ ui_rich('common.ft_why', '**소**비자 권익 **보**호를 위한 **루**트') }}</span>
+      {% if is_soboru() %}<a class="ft-logo sb-ft-logo" href="{{ url_for('home') }}"><img src="{{ asset('img/soboru-logo.png') }}" alt="{{ txt('site.name') }}" width="127" height="30"></a><span class="sb-ft-why">{{ ui_rich('common.ft_why', '**소**비자 권익 **보**호를 위한 **루**트') }}</span>{% else %}<a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}</a>{% endif %}
       <nav class="ft-links" aria-label="정책 및 안내">
         <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('common.ft_terms', '이용약관') }}</a>
         <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">{{ ui('common.ft_privacy', '개인정보 처리방침') }}</a>
@@ -83,8 +83,8 @@
     })();
   </script>
 </footer>
-{% include 'soboru_tabbar.html' %}
-<script>if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); });</script>{# 오프라인 안내·정적 파일 캐시·푸시 (static/sw.js) #}
+{% if is_soboru() %}{% include 'soboru_tabbar.html' %}
+<script>if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); });</script>{# 오프라인 안내·정적 파일 캐시·푸시 (static/sw.js) #}{% endif %}
 {% if editing() %}
 {# 관리자 편집 모드: 점선으로 표시된 문장을 누르면 바로 고칠 수 있음 #}
 <div class="ed-bar" role="region" aria-label="편집 모드">

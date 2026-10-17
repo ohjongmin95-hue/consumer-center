@@ -24,7 +24,7 @@
   <section class="gd-section" aria-labelledby="gd-steps">
     <h2 class="gd-head" id="gd-steps"><i>{{ "%02d" % num }}</i>{{ ui('guide.h_steps', '한눈에 보는 제보 방법') }}</h2>
     <ol class="gd-steps">
-      {% for step in items('guide_steps') %}<li><span class="gd-ic gd-emo" aria-hidden="true">{{ GUIDE_EMOJI.get(step.icon, '📝') }}</span><b>{{ loop.index }}{{ ui('guide.step_unit', '단계') }}</b><strong>{{ step.title }}</strong></li>{% endfor %}
+      {% for step in items('guide_steps') %}<li>{% if is_soboru() %}<span class="gd-ic gd-emo" aria-hidden="true">{{ GUIDE_EMOJI.get(step.icon, '📝') }}</span>{% else %}<span class="gd-ic" aria-hidden="true">{{ guide_icon(step.icon) }}</span>{% endif %}<b>{{ loop.index }}{{ ui('guide.step_unit', '단계') }}</b><strong>{{ step.title }}</strong></li>{% endfor %}
     </ol>{{ ed_list('guide_steps') }}
   </section>
 

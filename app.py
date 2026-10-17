@@ -33,7 +33,7 @@ if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not 
 app.config['MAX_CONTENT_LENGTH']=22*1024*1024  # 첨부 합계 20MB + 글 내용
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 STATUSES=site_content.STATUSES
-HOME_LATEST=20  # /reports/latest 최신 제보 수 기본값
+HOME_LATEST=20  # 최신 제보 수 기본값 (소비자제보센터 메인은 관리자 문구 home.latest_count로 3~20)
 REPORTS_PAGE_SIZE=20
 def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
 
@@ -86,6 +86,9 @@ def load_content():
     return {k:saved[k] if k in saved else f['default'] for k,f in site_content.FIELDS.items()}
 def legacy_list(db,key):
     # 예전에 고정 칸(faq.q1~8, process.step1~4, nav.*)으로 수정해 둔 값이 있으면 그 내용을 첫 목록으로 씀.
+    if key=='menu':
+        saved={r['key']:r['value'] for r in db.execute("SELECT key,value FROM site_content WHERE key LIKE 'nav.%'")}
+        return [{'label':saved.get(k) or label,'page':page,'url':''} for k,page,label in site_content.LEGACY_NAV] if saved else None
     prefix={'faq':'faq.','process_steps':'process.step'}.get(key)
     if not prefix:return None
     # 예전 고정 칸 이름(faq.q1, process.step1_title 등)만 봄. faq.title 같은 다른 문구는 제외.
@@ -107,14 +110,14 @@ def no_www():
     # www가 붙은 주소는 www 없는 주소로 옮긴다: 검색엔진이 같은 글을 두 주소로 따로 모으지 않게
     if request.host.lower().startswith('www.'):
         new=request.url.replace('://'+request.host,'://'+request.host[4:],1)
-        if request.host.lower().split(':')[0] in LIVE_HOSTS:new='https://'+new.split('://',1)[1]  # 운영 도메인은 https까지 한 번에(두 번 옮기지 않게)
+        if request.host.lower().split(':')[0] in LIVE_HOSTS|JEBO_HOSTS:new='https://'+new.split('://',1)[1]  # 운영 도메인은 https까지 한 번에(두 번 옮기지 않게)
         return redirect(new,301)
 @app.before_request
 def content_for_request():
     if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
 # 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
-LIST_DISPLAY_FIELDS={'faq':('q','a'),'process_steps':('title','body'),
-    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'guide_steps':('title',),'guide_industries':('name','examples','tip'),
+LIST_DISPLAY_FIELDS={'menu':('label',),'home_blocks':('title','body','button_label'),'faq':('q','a'),'process_steps':('title','body'),
+    'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'guide_steps':('title',),'guide_industries':('name','examples','tip'),'sample_reports':('title','company'),
     'custom_pages':('title',),'report_consents':('title','body','agree'),**{'layout_'+p:('title','body','button_label') for p in site_content.PAGE_SECTIONS}}
 def items(key):
     rows=g.lists.get(key,[])
@@ -125,10 +128,23 @@ def report_industries():return [i['name'] for i in items('report_industries')]
 def board_categories():return [i['name'] for i in items('board_categories')]
 app.jinja_env.globals['items']=items
 SAFE_LINK=re.compile(r'^(https?://[^\s<>"]+|/[^\s<>"]*)$')
+# 소비자제보센터 화면(consumerjebo.co.kr)의 상단 메뉴
+def menu_href(item):
+    page=item.get('page','')
+    if page=='custom':return item.get('url','') if SAFE_LINK.match(item.get('url','')) else '#'
+    if page in ('guide','process','faq','types'):return url_for('info_page',page=page)
+    if page in ('terms','privacy'):return url_for('policy_page',page=page)
+    if page=='groups' and not GROUPS_ON:return ''  # 공동 대응이 꺼져 있으면 메뉴에서 숨김
+    if page in ('reports','board','report','lookup','home','takedown','groups','companies'):return url_for(page)
+    return '#'
+def menu_active(href):
+    # 현재 페이지가 이 메뉴 주소이거나 그 하위 주소(예: /reports/12, /board/3)면 강조.
+    if not href.startswith('/') or href=='#':return False
+    return request.path==href or (href!='/' and request.path.startswith(href.rstrip('/')+'/'))
 def block_count(item,default,top=30):
     try:return min(top,max(1,int(item.get('count',''))))
     except ValueError:return default
-app.jinja_env.globals.update(block_count=block_count)
+app.jinja_env.globals.update(menu_href=menu_href,menu_active=menu_active,block_count=block_count)
 EMPHASIS=re.compile(r'\*\*(.+?)\*\*')
 @app.template_filter('emph')
 def emph(text):
@@ -156,10 +172,13 @@ app.jinja_env.globals['biz_on']=lambda:BIZ_ON
 # 대표 주소. soboru.co.kr로 옮길 때 서버 설정에 CANONICAL_HOST=soboru.co.kr (deploy/soboru-main.sh --make-main)
 CANONICAL_HOST=(os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().lower()
 LIVE_HOSTS={h for d in (CANONICAL_HOST,'consumerjebo.co.kr','soboru.co.kr') for h in (d,'www.'+d)}
+# 소비자제보센터 화면으로 보여 줄 주소 (soboru.py가 화면을 바꿈). 대표 주소도 그 주소 그대로
+JEBO_HOSTS={x for h in os.getenv('JEBO_HOST','').split(',') if h.strip() for x in (h.strip().lower(),'www.'+h.strip().lower())}
 def canonical_url(path=None):
     # 운영 도메인(www 포함)으로 들어오면 주소를 https://대표주소 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
     host=request.host.split(':')[0].lower()
-    base='https://'+CANONICAL_HOST if host in LIVE_HOSTS else request.host_url.rstrip('/')
+    if host in JEBO_HOSTS:base='https://'+host.removeprefix('www.')
+    else:base='https://'+CANONICAL_HOST if host in LIVE_HOSTS else request.host_url.rstrip('/')
     return base+(request.path if path is None else path)
 app.jinja_env.globals['canonical_url']=canonical_url
 @app.before_request
@@ -202,7 +221,7 @@ app.jinja_env.globals['editing']=editing
 def ed_list(key):
     # 목록 아래에 "항목 추가·순서 바꾸기" 바로가기 (편집 모드에서만)
     if not editing():return ''
-    label={'custom_pages':'＋ 새 페이지 만들기·관리'}.get(key) or ('＋ 이 페이지 섹션 추가·삭제·순서 바꾸기' if key.startswith('layout_') else '＋ 항목 추가·삭제·순서 바꾸기')
+    label={'home_blocks':'＋ 메인 화면 섹션 추가·삭제·순서 바꾸기','custom_pages':'＋ 새 페이지 만들기·관리'}.get(key) or ('＋ 이 페이지 섹션 추가·삭제·순서 바꾸기' if key.startswith('layout_') else '＋ 항목 추가·삭제·순서 바꾸기')
     return Markup('<a class="ed-list" href="%s">%s</a>')%(url_for('admin_lists',_anchor='list-'+key),label)
 app.jinja_env.globals['ed_list']=ed_list
 def ed_remove(key,index):
@@ -377,20 +396,27 @@ def report_summary():
     total=sum(stats.values());done=stats.get('종결',0)
     return dict(total=total,done=done,active=total-done)
 
+def home_latest():
+    try:return min(20,max(3,int(g.content.get('home.latest_count',''))))
+    except ValueError:return HOME_LATEST
 
 def recent_posts(limit):
     nb=not_blocked()
     with conn() as db:return db.execute('SELECT id,category,title,likes,comments,created FROM posts WHERE hidden=0'+nb+' ORDER BY id DESC LIMIT ?',(limit,)).fetchall()
-app.jinja_env.globals.update(report_rows=report_rows,report_summary=report_summary,recent_posts=recent_posts)
+def sample_fill(cases,n):
+    # 실제 제보가 n건보다 적으면 남는 자리만 '예시' 카드로 채움 (실제 제보처럼 보이지 않게 템플릿에서 표시).
+    return items('sample_reports')[:max(0,n-len(cases))]
+app.jinja_env.globals.update(report_rows=report_rows,report_summary=report_summary,recent_posts=recent_posts,home_latest=home_latest,sample_fill=sample_fill)
 
 @app.route('/')
-def home():abort(404)  # 메인 화면은 soboru.py가 소보루 홈으로 바꿔 끼움 (예전 소비자제보센터 홈 index.html은 뺌)
+def home():
+    return render_template('index.html')  # 소비자제보센터 메인. 소보루 주소로 들어오면 soboru.py가 소보루 홈으로 바꿔 끼움
 
 @app.route('/reports/latest')
 def latest_reports():
     # 메인 화면이 주기적으로 불러가는 최신 목록 조각 (실시간 갱신용). n은 블록에 정한 개수.
-    n=min(30,max(1,request.args.get('n',HOME_LATEST,type=int)))
-    template='report_rows.html'
+    n=min(30,max(1,request.args.get('n',home_latest(),type=int)))
+    template='report_cards.html' if request.args.get('view')=='cards' else 'report_rows.html'
     resp=app.make_response(render_template(template,cases=report_rows(limit=n),summary=report_summary(),live=True,n=n))
     resp.headers['Cache-Control']='no-store'
     return resp
@@ -870,7 +896,10 @@ def admin_lists():
         elif any(not r[first] for r in rows):error='"%s" 칸이 비어 있는 항목이 있어요.'%fields[0][1]
         elif len(rows)<minimum:error='%s은(는) 최소 %d개가 있어야 해요.'%(title,minimum)
         elif key.endswith(('categories','industries')) and len({r[first] for r in rows})!=len(rows):error='같은 이름이 두 번 들어갔어요.'
-        elif key.startswith('layout_') and any(r['button_link'] and not SAFE_LINK.match(r['button_link']) for r in rows):error='버튼 주소는 https:// 또는 / 로 시작해야 해요.'
+        elif key=='menu' and any(not r['label'] or not r['page'] for r in rows):error='메뉴 이름과 연결할 페이지를 모두 정해 주세요.'
+        elif key=='menu' and any(r['page']=='custom' and not SAFE_LINK.match(r['url']) for r in rows):error='직접 입력한 주소는 https:// 또는 / 로 시작해야 해요.'
+        elif (key=='home_blocks' or key.startswith('layout_')) and any(r['button_link'] and not SAFE_LINK.match(r['button_link']) for r in rows):error='버튼 주소는 https:// 또는 / 로 시작해야 해요.'
+        elif key=='home_blocks' and any(r['count'] and not r['count'].isdigit() for r in rows):error='보여줄 개수에는 숫자만 넣어 주세요.'
         elif key=='custom_pages' and any(not CUSTOM_SLUG.match(r['slug']) for r in rows):error='영문 주소는 영어 소문자·숫자·하이픈(-)으로 40자 이내로 적어 주세요.'
         elif key=='custom_pages' and len({r['slug'] for r in rows})!=len(rows):error='같은 영문 주소가 두 번 들어갔어요.'
         elif key=='custom_pages' and any(not r['title'] for r in rows):error='페이지 제목을 적어 주세요.'
