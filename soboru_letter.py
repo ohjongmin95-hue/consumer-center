@@ -24,6 +24,9 @@ NAME = '소보루 레터'
 DAYS = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
 ITEMS = (3, 5)            # 한 호에 뉴스 몇 개
 NEWS_DAYS = 7             # 매주 보낼 때 뉴스 기간
+# 분야별 토스페이스 그림 (메일은 글꼴을 못 받으므로 static/img/tf/*.png 그림으로, 웹은 같은 이모지 글자로)
+TOPIC_ICON = {'경제': ('money', '💰'), '물가': ('cart', '🛒'), '금리': ('chart', '📈'), '부동산': ('house', '🏠'), '정부 정책': ('speaker', '📢'),
+              '국회': ('bank', '🏦'), '사회': ('mega', '📣'), '국제': ('plane', '✈️'), 'IT 과학': ('laptop', '💻'), '소비자': ('shield', '🛡️'), '리콜': ('siren', '🚨')}
 FREQS = {'weekdays': '평일 매일', 'daily': '매일', 'weekly': '매주 한 번'}
 # 뉴닉처럼 분야를 고루: 분야마다 최근 기사를 모아 여러 언론이 함께 다룬 이슈부터 고름
 LETTER_QUERIES = ['경제', '물가', '금리', '부동산', '정부 정책', '국회', '사회', '국제', 'IT 과학', '소비자', '리콜']
@@ -48,7 +51,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 뉴스레터 "소보�
           '- 기업을 좋다·나쁘다 평가하거나 비난하지 않는다. 정치 이슈는 어느 편도 들지 않고 누가 무엇을 했는지 사실만 쓴다. 사람 이름·연락처 같은 개인정보는 쓰지 않는다(공인이 한 공식 발표는 기관 이름으로 쓴다).\n'
           '- 법 조문은 그 뉴스의 [법 조문 후보] id 가운데 정말 관련 있는 것 하나만 고르고, 맞는 것이 없으면 빈 문자열로 둔다. 법 이야기는 "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다.\n'
           '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다.\n'
-          'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(이번 호에서 가장 눈길 끄는 소식), "intro": 첫인사 2~3문장, "outro": 맺음말 1~2문장, '
+          'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(이번 호에서 가장 눈길 끄는 소식), "intro": 첫인사 3~4문장 — "소보루 이웃님,"으로 시작해 오늘 가장 큰 소식을 공감하듯 꺼내고, 오늘 무엇을 같이 읽어 볼지 말한 뒤 "그 밖에 ~ 소식도 정리해봤어요"처럼 나머지 소식을 한 문장으로 묶는다. 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
           '"items": [{"no": 뉴스 번호, "title": 25자 안팎 짧고 눈길 끄는 제목, "body": 3~5문장 설명, "tip": 이 소식이 내 생활·지갑에 어떤 의미인지 또는 할 일 한 줄(60자 이내, 마땅치 않으면 ""), "law": 고른 조문 id 또는 ""}]}')
 
 
@@ -159,7 +162,7 @@ def install(S):
             title, summary = scrub(it['title']), scrub(it['summary'])
             hits = corpus.related(title + ' ' + summary, limit=3)
             cands = [{'id': f'{n}-L{k}', 'label': h['label'], 'law': h.get('law', ''), 'text': corpus.clip(h['text'], 500), 'url': h.get('source') or ''} for k, h in enumerate(hits, 1)]
-            out.append({'no': n, 'title': title, 'summary': summary, 'source': it['source'], 'date': iso_day(it['date']), 'url': it['url'], 'cands': cands})
+            out.append({'no': n, 'title': title, 'summary': summary, 'source': it['source'], 'date': iso_day(it['date']), 'url': it['url'], 'cands': cands, 'topic': it.get('topic', '')})
         return out
 
     def pick_issues(pool):
@@ -217,7 +220,7 @@ def install(S):
             tip = re.sub(r'^\s*(이럴 땐 이렇게\s*[:：]?\s*)', '', W._plain(it.get('tip'), 160))
             if not title or not body: continue
             law = next((c for c in x['cands'] if c['id'] == it.get('law')), None)
-            items.append({'title': title, 'body': body, 'tip': tip,
+            items.append({'title': title, 'body': body, 'tip': tip, 'topic': x.get('topic', ''),
                           'law': {'label': law['label'], 'url': law['url'], 'text': law['text']} if law else None,
                           'src': {'name': x['source'], 'url': x['url'], 'date': x['date'], 'headline': x['title']},
                           '_facts': item_facts(x, law), '_source': x['title'] + ' ' + x['summary']})
@@ -321,7 +324,10 @@ def install(S):
         return ''
 
     def mail_ctx(L, token):
+        tf = lambda name: site_url(f'/static/img/tf/{name}.png')
+        icons = [tf(TOPIC_ICON.get(it.get('topic', ''), ('news', ''))[0]) for it in L['items']]
         return {'L': L, 'items': L['items'], 'sec': L['sections'], 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
+                'tf': tf, 'icons': icons, 'hero': site_url('/static/img/soboru-character-hero.png'), 'cfg': letter_cfg(),
                 'unsub': site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME}
 
     def email_parts(L, token=UNSUB_MARK):
@@ -419,7 +425,7 @@ def install(S):
         cfg = settings(); day = DAYS[cfg['day']]
         when = {'weekdays': '평일 아침마다', 'daily': '매일 아침', 'weekly': f'매주 {day} 아침'}[cfg['freq']]
         return dict(cfg, day_name=day, when=when, span='이번 주' if cfg['freq'] == 'weekly' else '오늘')
-    app.jinja_env.globals.update(letter_counts=counts, letter_kdate=kdate, letter_cfg=letter_cfg)
+    app.jinja_env.globals.update(letter_counts=counts, letter_kdate=kdate, letter_cfg=letter_cfg, letter_icon=lambda t: TOPIC_ICON.get(t or '', ('', ''))[1])
     app.jinja_env.filters['letter_paras'] = body_lines
 
     @app.route('/letter')

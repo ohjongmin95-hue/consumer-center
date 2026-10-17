@@ -4039,11 +4039,13 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(sec['campaign']['url'], '/pick/delivery')
         # 메일: HTML(표·인라인)과 글 두 가지, 원문·법령 링크, 해지 링크
         subject, html, text = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')
+        icon = self.site.soboru_letter.TOPIC_ICON[it1['topic']][0]  # 분야를 남겨 분야 그림(토스페이스)을 붙임
+        self.assertIn(f'/static/img/tf/{icon}.png', html); self.assertIn('오늘의 메인뉴스', html)
         self.assertIn('이번 주 소비자 뉴스, 이것만 보면 끝', subject)
         for part in (html, text):
             self.assertIn('첫째 소식, 이것만 알면 돼요', part); self.assertIn(it1['src']['url'], part)
             self.assertIn('/letter/unsubscribe/tok-x', part); self.assertIn('https://www.law.go.kr/', part)
-        self.assertIn('max-width:600px', html); self.assertIn('기사 원문 보기', html); self.assertIn('소보루 픽 인기 리뷰', html)
+        self.assertIn('max-width:600px', html); self.assertIn('원문 보기 ›', html); self.assertIn('써 본 사람들이 추천한 리뷰', html)
         self.assertIn('서울시 강남구', html)  # 보내는 곳 주소 (사이트 하단 정보)
         # 운영자가 고쳐 저장하면 같은 자료로 다시 검사
         admin = self.login_admin()

@@ -1505,3 +1505,4 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-fill-go{margin-top:auto;padding-top:12px;font-size:14px;font-weight:700;color:var(--sb-orange)}
 @media(min-width:681px){.nn-write.has-fill{display:none}}
 @media(max-width:680px){.sb-cm-card.nn-fill{display:none}}  /* 좁은 화면은 한 줄 목록이라 빈 칸이 없음: 아래 글쓰기 버튼만 */
+.lt-ic{display:block;font-size:40px;line-height:1;margin:0 0 10px}

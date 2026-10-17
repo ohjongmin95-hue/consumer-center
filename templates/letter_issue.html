@@ -16,7 +16,8 @@
     <nav class="lt-toc" aria-label="이번 호 소식"><b>이번 호 소식</b><ol>{% for it in L['items'] %}<li><a href="#n{{ loop.index }}">{{ it.title }}</a></li>{% endfor %}</ol></nav>
     {% for it in L['items'] %}
     <section class="lt-item" id="n{{ loop.index }}">
-      <p class="lt-num">NEWS {{ '%02d' % loop.index }}</p>
+      {% set ic = letter_icon(it.topic) %}{% if ic %}<span class="lt-ic tf" aria-hidden="true">{{ ic }}</span>{% endif %}
+      <p class="lt-num">NEWS {{ '%02d' % loop.index }}{% if it.topic %} · {{ it.topic }}{% endif %}</p>
       <h2>{{ it.title }}</h2>
       {% for p in it.body|letter_paras %}<p>{{ p }}</p>{% endfor %}
       {% if it.tip %}<div class="lt-tip"><b><span class="tf" aria-hidden="true">💡</span> 나한테는?</b><p>{{ it.tip }}</p></div>{% endif %}

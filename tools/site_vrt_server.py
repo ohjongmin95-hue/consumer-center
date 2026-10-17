@@ -322,14 +322,18 @@ if hasattr(m, 'soboru_letter') and os.environ.get('VRT_NAVER'):
             if no == 3 and key == '항공권': text += ' 지난해보다 상담이 2배 늘었대요.'  # 자료에 없는 숫자: 관리자 화면 '검토 필요' 보기
             items.append({'no': x['번호'], 'title': title, 'body': text, 'tip': tip, 'law': x['법 조문 후보'][0]['id'] if x['법 조문 후보'] else ''})
         out = {'subject': ['', '택배 분실 보상, 얼마까지 받을까?', '해지했는데 또 결제됐다면', '헬스장이 문 닫았다면, 남은 회원권은?'][no] if no <= 3 else '이번 주 소비자 뉴스',
-               'intro': '좋은 아침이에요, 소보루 레터예요. 어제 여러 언론이 함께 다룬 소식 가운데 내 지갑과 닿은 이야기를 골라 쉽게 풀어 봤어요. 출근길 5분이면 충분해요.',
+               'intro': '소보루 이웃님, 다니던 헬스장이 하루아침에 문을 닫으면 남은 회원권은 어떻게 될까요? 오늘은 카드 할부로 결제했을 때 돈을 돌려받는 방법부터 같이 읽어봐요. 그 밖에 택배 분실 보상, 해지 후 또 빠져나간 구독료, 항공권 취소 수수료와 중고거래 사기 소식도 정리해봤어요.',
                'outro': '오늘도 억울한 일 없이 지나가길 바라요. 혹시 겪었다면 소보루에 알려 주세요. 내일 아침에 또 만나요.', 'items': items}
         return 200, {'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
     m.companydesk.post_json = _letter_ai
     _prev_nv = m.naverhub.http
     def _today_news(method, url, headers, body, timeout):  # 레터는 지난 하루 뉴스만 쓰므로 가짜 뉴스 날짜를 오늘로
         st, res = _prev_nv(method, url, headers, body, timeout)
-        if '/search/v1/news' in url: res = dict(res, items=[dict(it, pubDate=_dt.datetime.now().strftime('%a, %d %b %Y 06:00:00 +0900')) for it in res['items']])
+        if '/search/v1/news' in url:  # 분야마다 맞는 가짜 뉴스만 (분야 그림 보기)
+            import urllib.parse as _up
+            q = dict(_up.parse_qsl(url.split('?', 1)[1])).get('query', '')
+            want = {'소비자': ('헬스장', '구독'), '물가': ('택배',), '국제': ('항공권',), '사회': ('중고거래',)}.get(q, ())
+            res = dict(res, items=[dict(it, pubDate=_dt.datetime.now().strftime('%a, %d %b %Y 06:00:00 +0900')) for it in res['items'] if any(w in it['title'] for w in want)])
         return st, res
     m.naverhub.http = _today_news
     with m.conn() as db: db.execute('DELETE FROM naver_cache')
