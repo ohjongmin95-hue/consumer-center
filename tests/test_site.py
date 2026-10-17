@@ -277,7 +277,7 @@ class SiteTest(unittest.TestCase):
             self.assertLess(home.index('nn-intro'), home.index('nn-live'))
             self.assertIn('생활정보 카드 제목', home)
             self.assertIn('공개 제보 카드 제목', home)
-            self.assertIn('소보루의 소리', home); self.assertLess(home.index('nn-live'), home.index('id="letter-sub"'))  # 제보 목록 바로 밑에 레터 구독
+            self.assertIn('소비자의 소리', home); self.assertLess(home.index('nn-live'), home.index('id="letter-sub"'))  # 제보 목록 바로 밑에 레터 구독
             self.assertNotIn('nn-stats', home)  # 맨 위 건수 현황은 뺌
             self.assertIn('🔒 비밀 제보 카드 제목', home)  # 비밀글도 제목·업체는 보이고 본문만 잠금
             self.assertIn('소보루 픽', home)  # 메뉴 이름 (커뮤니티 → 소보루 픽)
@@ -289,7 +289,7 @@ class SiteTest(unittest.TestCase):
             # 화면 편집: 예전 '메인 화면 순서' 주소는 화면 편집으로
             self.assertIn('/admin/screens#page-home', admin.get('/admin/home-plan').headers['Location'])
             page = admin.get('/admin/screens').get_data(as_text=True)
-            for name in ('화면 편집', '홈', '생활정보', '소보루 픽', '제보', '기업', '법률 질문', '소보루 레터', '공통 머리글·바닥글', '소보루의 소리', '이 페이지 문구 모두 보기'):
+            for name in ('화면 편집', '홈', '생활정보', '소보루 픽', '제보', '기업', '법률 질문', '소보루 레터', '공통 머리글·바닥글', '소비자의 소리', '이 페이지 문구 모두 보기'):
                 self.assertIn(name, page)
             token = self.csrf(admin, '/admin/screens')
             # 순서표 통째로: 레터를 맨 위로, 기업 답변 기록은 숨김

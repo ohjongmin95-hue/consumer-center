@@ -25,9 +25,15 @@
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf7f2;">
 <tr><td align="center" style="padding:24px 10px 8px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:24px;">
-  <tr><td align="center" style="padding:40px 28px 0;{{ F }}">{# 머리: 뉴닉처럼 하얀 바탕에 글자 로고와 호수만 깔끔하게 (캐릭터는 아래 구간에서만) #}
-    <a href="{{ site }}/" style="text-decoration:none;">{% if mark %}<img src="{{ mark }}" width="190" alt="SOBORU 소보루" style="display:block;width:190px;max-width:60%;height:auto;border:0;margin:0 auto;">{% else %}<b style="{{ F }}font-size:34px;color:#652D1C;">SOBORU</b>{% endif %}</a>
-    <p style="margin:22px 0 4px;font-size:19px;font-weight:800;color:#1d1d1f;letter-spacing:-0.4px;">{{ name }} <span style="color:#ef7300;">{{ L.no }}호</span></p>
+  <tr><td align="center" style="padding:40px 28px 0;{{ F }}">{# 머리: 뉴닉처럼 하얀 바탕에 글자 로고와 호수만 깔끔하게, 둘레에 빵 이모지 (캐릭터는 아래 구간에서만) #}
+    {# 로고 둘레에 토스페이스 빵들을 위아래로 엇갈려 띄움 #}
+    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
+      <td valign="top" style="padding:2px 4px 0 0;"><img src="{{ tf('bagel') }}" width="26" height="26" alt="" style="display:block;width:26px;height:26px;border:0;"></td><td valign="top" style="padding:26px 8px 0 0;"><img src="{{ tf('croissant') }}" width="38" height="38" alt="" style="display:block;width:38px;height:38px;border:0;"></td>
+      <td valign="middle" style="padding:10px 4px 0;"><a href="{{ site }}/" style="text-decoration:none;">{% if mark %}<img src="{{ mark }}" width="170" alt="SOBORU 소보루" style="display:block;width:170px;height:auto;border:0;">{% else %}<b style="{{ F }}font-size:34px;color:#652D1C;">SOBORU</b>{% endif %}</a></td>
+      <td valign="top" style="padding:0 0 0 8px;"><img src="{{ tf('bread') }}" width="34" height="34" alt="" style="display:block;width:34px;height:34px;border:0;"></td><td valign="top" style="padding:30px 0 0 4px;"><img src="{{ tf('pretzel') }}" width="28" height="28" alt="" style="display:block;width:28px;height:28px;border:0;"></td>
+    </tr></table>
+    <p style="margin:8px 0 0;font-size:0;line-height:0;">{{ ic('sparkle', 16) }}&nbsp;&nbsp;&nbsp;{{ ic('baguette', 26) }}&nbsp;&nbsp;&nbsp;{{ ic('donut', 22) }}&nbsp;&nbsp;&nbsp;{{ ic('sparkle', 16) }}</p>
+    <p style="margin:16px 0 4px;font-size:19px;font-weight:800;color:#1d1d1f;letter-spacing:-0.4px;">{{ name }} <span style="color:#ef7300;">{{ L.no }}호</span></p>
     <p style="margin:0;font-size:14px;color:#6b6f76;">{{ date }} &nbsp;|&nbsp; <a href="{{ web }}" style="color:#6b6f76;text-decoration:underline;">웹에서 보기</a></p>
     <div style="margin:26px 0 0;border-top:1px solid #eee6dd;font-size:0;line-height:0;">&nbsp;</div>
   </td></tr>

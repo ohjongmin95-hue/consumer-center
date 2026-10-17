@@ -1516,16 +1516,14 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .sb-ft-why strong{color:var(--sb-orange);font-weight:800}
 .nn-intro-kicker strong{color:var(--sb-orange)}.nn-intro .nn-intro-kicker strong{color:#2b1206}
 @media(max-width:680px){body.sb .ed-bar{bottom:calc(74px + env(safe-area-inset-bottom))}body.sb .ed-bar form:has(.ed-bar-out){display:none}}  /* 폰: 편집 막대가 화면 밖으로 안 넘치게 로그아웃은 관리자 화면에서 */
-.nn-voice{background:var(--sb-orange);color:#fff;border-radius:16px;padding:14px 18px;gap:12px;margin-bottom:8px}
-.nn-voice h2{color:#fff;font-size:20px}.nn-voice h2 .tf{font-size:24px}
-.nn-voice-tag{display:inline-flex;align-items:center;gap:6px;margin-right:auto;font-size:13px;font-weight:700;background:rgba(255,255,255,.2);border-radius:999px;padding:4px 10px}
-.nn-voice-tag .nn-dot{background:#fff;box-shadow:none}
-.nn-live-head.nn-voice a{color:#fff}
-.lt-card.lt-card-pop{margin-top:20px;background:linear-gradient(120deg,#ef7300,#ff9a3c);box-shadow:0 14px 34px rgba(239,115,0,.24)}
-.lt-card-pop h2,.lt-card-pop .lt-kicker,.lt-card-pop .lt-card-copy p,.lt-card-pop .lt-card-copy p a,.lt-card-pop .lt-agree,.lt-card-pop .lt-agree b,.lt-card-pop .lt-agree a{color:#fff}
+.lt-card.lt-card-pop{margin-top:20px;background:var(--sb-orange-soft)}
 .lt-card-pop h2{font-size:24px}
-.sb main .lt-card-pop .lt-form .lt-row input[type=email]:not([type=checkbox]):not([type=radio]){border-color:#fff}
+.lt-card-pop .lt-kicker{color:#d25f00}
 .lt-card-pop .lt-row button{background:var(--sb-brown)}.lt-card-pop .lt-row button:hover{background:#4a2a17;box-shadow:none}
 .lt-card-pop .lt-agree input{accent-color:var(--sb-brown)}
-@media(max-width:680px){.nn-voice{flex-wrap:wrap;row-gap:6px}.nn-voice-tag{order:3;margin-right:0}.nn-voice h2{margin-right:auto}}
 .lt-card-pop .lt-kicker .tf{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background:#fff;border-radius:8px;font-size:16px}
+.nn-voice{justify-content:flex-start;align-items:center;gap:10px}
+.nn-voice>a{margin-left:auto}
+.nn-voice-tag{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--sb-sub);background:var(--sb-soft);border-radius:999px;padding:4px 10px}
+.nn-live.nn-live-wide{border:0;border-radius:0;padding:0}
+@media(max-width:680px){.nn-voice{flex-wrap:wrap;row-gap:6px}.nn-voice-tag{order:3}}

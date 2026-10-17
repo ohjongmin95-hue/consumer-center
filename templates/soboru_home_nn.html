@@ -31,7 +31,7 @@
   </nav>
   {% elif blk == 'live' %}
   <section class="nn-sec nn-live nn-live-wide">
-    <div class="nn-live-head nn-voice"><h2><span class="tf" aria-hidden="true">📣</span> {{ ui('home.live_title', '소보루의 소리') }}</h2><span class="nn-voice-tag"><span class="nn-dot" aria-hidden="true"></span>{{ ui('home.live_tag', '소비자가 직접 올린 제보') }}</span><a href="{{ url_for('reports') }}">{{ ui('home.live_more', '전체 보기 ›') }}</a></div>
+    <div class="nn-sec-head nn-voice"><h2><span class="tf" aria-hidden="true">📣</span> {{ ui('home.live_title', '소비자의 소리') }}</h2><span class="nn-voice-tag"><span class="nn-dot" aria-hidden="true"></span>{{ ui('home.live_tag', '소비자가 직접 올린 제보') }}</span><a href="{{ url_for('reports') }}">{{ ui('home.live_more', '전체 보기 ›') }}</a></div>
     <ol>
       {% for c in cases[:6] %}
       <li><a href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
