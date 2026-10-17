@@ -4,7 +4,7 @@
 <main class="page"><div class="wrap">
   <div class="page-intro"><h1 class="page-title">AI 일러스트</h1>
     <p>생활정보 글은 저장하면 그림이 자동으로 그려져 바로 붙어요. 공개 제보도 게시되면 자동으로 그려져요. 그림이 없거나 내리면 지금처럼 글자 카드가 나와요.</p>
-    <p class="meta">AI에는 분야와 공개용 제목만 보내요(개인정보·업체명은 지워서). 그림 한 장에 몇십 원 정도 들어요. 그림 아래에는 'AI 일러스트'라고 작게 표시돼요.</p>
+    <p class="meta">AI에는 분야와 공개용 제목만 보내요(개인정보·업체명은 지워서). 그림 한 장에 몇십 원 정도 들어요.</p>
     {% if not ready %}<p class="hp-warn">OpenAI API 키가 없어서 지금은 그릴 수 없어요. 서버 설정에 OPENAI_API_KEY를 넣어 주세요.</p>{% endif %}
     <p><a href="{{ url_for('admin_art') }}"{% if kind == 'report' %} class="strong-link"{% endif %}>소비자 제보</a> · <a href="{{ url_for('admin_art', kind='life') }}"{% if kind == 'life' %} class="strong-link"{% endif %}>생활정보</a></p>
   </div>

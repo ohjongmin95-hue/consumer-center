@@ -291,7 +291,7 @@ class SiteTest(unittest.TestCase):
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")
 
     def test_soboru_ai_art(self):
-        # AI 일러스트: 분야·공개 제목만 보내고(연락처·이름 빠짐), 그린 그림은 게시 전엔 관리자만, 게시하면 카드에 'AI 일러스트'
+        # AI 일러스트: 분야·공개 제목만 보내고(연락처·이름 빠짐), 그린 그림은 게시 전엔 관리자만, 게시하면 카드에 그림('AI 일러스트' 표시는 없음)
         import base64
         with self.site.conn() as db:
             cid = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published,reporter_name) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
@@ -317,7 +317,9 @@ class SiteTest(unittest.TestCase):
             self.assertNotIn('sb-art', visitor.get('/').get_data(as_text=True))
             admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'publish'})
             self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 200)
-            self.assertIn('AI 일러스트', visitor.get(f'/reports/{cid}').get_data(as_text=True))
+            detail = visitor.get(f'/reports/{cid}').get_data(as_text=True)
+            self.assertIn(f'/art/report/{cid}.webp', detail)
+            self.assertNotIn('sb-art-l', detail)
             self.assertIn('sb-art', visitor.get('/').get_data(as_text=True))
             admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'hide'})
             self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)
@@ -327,7 +329,7 @@ class SiteTest(unittest.TestCase):
             aid = int(r.headers['Location'].rstrip('/').split('/')[-1])
             self.assertIn('헬스장 환불 받는 법', sent[-1]['prompt'])
             self.assertEqual(visitor.get(f'/art/life/{aid}.webp').status_code, 200)
-            self.assertIn('AI 일러스트', visitor.get(f'/life/{aid}').get_data(as_text=True))
+            self.assertIn(f'/art/life/{aid}.webp', visitor.get(f'/life/{aid}').get_data(as_text=True))
             # 공개 제보는 게시되면 자동으로 그림 (내린 그림은 그대로 둠), 그림 없는 글은 한 번에 채우기
             with self.site.conn() as db:
                 cid2 = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
