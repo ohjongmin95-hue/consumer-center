@@ -1,4 +1,4 @@
-import os, re, io, types, json, time, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
+import os, re, urllib.parse, io, types, json, time, sqlite3, secrets, hashlib, hmac, datetime, functools, contextlib
 from pathlib import Path
 from flask import Flask, g, has_request_context, render_template, request, redirect, url_for, session, flash, abort, send_file, after_this_request
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -177,10 +177,29 @@ def main_host():return CANONICAL_HOST  # 로그인·가입을 받는 대표 주�
 JEBO_HOSTS={x for h in os.getenv('JEBO_HOST','').split(',') if h.strip() for x in (h.strip().lower(),'www.'+h.strip().lower())}
 def canonical_url(path=None):
     # 운영 도메인(www 포함)으로 들어오면 주소를 https://대표주소 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
-    host=request.host.split(':')[0].lower()
+    host=request.host.split(':')[0].lower();path=request.path if path is None else path
+    if host in JEBO_HOSTS or host in LIVE_HOSTS:
+        site=owner_site(path)
+        if site:return 'https://'+site+path
     if host in JEBO_HOSTS:base='https://'+host.removeprefix('www.')
     else:base='https://'+CANONICAL_HOST if host in LIVE_HOSTS else request.host_url.rstrip('/')
-    return base+(request.path if path is None else path)
+    return base+path
+# 두 사이트에 같이 뜨는 화면은 검색엔진에 한 주소만 대표로 알림: 제보 화면은 소비자제보센터, 소보루 화면(생활정보·소보루 픽 등)은 소보루.
+# 홈·약관처럼 양쪽에 따로 있는 화면은 각자 자기 주소. 소비자제보센터 화면을 켜지 않았으면(JEBO_HOST 없음) 나누지 않음
+JEBO_OWN=('/reports','/report','/companies','/guide','/process','/types','/faq','/lookup')
+SOBORU_OWN=('/life','/letter','/pick','/ask','/board')
+def owner_site(path):
+    jebo=sorted(h for h in JEBO_HOSTS if not h.startswith('www.'))
+    if not jebo or CANONICAL_HOST in JEBO_HOSTS:return ''
+    own=lambda prefixes:any(path==p or path.startswith(p+'/') for p in prefixes)
+    if own(JEBO_OWN):return jebo[0]
+    if own(SOBORU_OWN):return CANONICAL_HOST
+    host=request.host.split(':')[0].lower()
+    return jebo[0] if host in JEBO_HOSTS else CANONICAL_HOST
+def own_page(url):
+    # 사이트맵·RSS에는 이 주소가 대표인 화면만
+    path=urllib.parse.urlsplit(url).path or '/'
+    return canonical_url(path)==canonical_url('/')[:-1]+path
 app.jinja_env.globals['canonical_url']=canonical_url
 @app.before_request
 def biz_closed():
@@ -521,7 +540,7 @@ def sitemap_xml():
         pages+=[(url_for('life',_external=True),None)]+[(url_for('life_article',article_id=r['id'],_external=True),(r['updated'] or '')[:10] or None) for r in db.execute("SELECT id,updated FROM articles WHERE status='published' ORDER BY id DESC LIMIT 5000")]
         if GROUPS_ON:pages+=[(url_for('groups',_external=True),None)]+[(url_for('group_page',group_id=r['id'],_external=True),r['updated'][:10]) for r in db.execute("SELECT id,updated FROM damage_groups WHERE status IN ('open','active','closed') ORDER BY id DESC LIMIT 500")]
     here=request.host_url.rstrip('/');base=canonical_url('')
-    pages=[(base+u[len(here):] if u.startswith(here) else u,d) for u,d in pages]  # 운영 도메인 주소로 통일
+    pages=[(base+u[len(here):] if u.startswith(here) else u,d) for u,d in pages if own_page(u)]  # 운영 도메인 주소로 통일, 다른 사이트가 대표인 화면은 빼기
     body=''.join('<url><loc>%s</loc>%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '') for u,d in pages)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
@@ -543,7 +562,7 @@ def rss_xml():
                 items.append((r['published_at'] or r['created'],r['title'],url_for('life_article',article_id=r['id'],_external=True),(r['summary']+'\n\n' if r['summary'] else '')+r['body']))
     items.sort(key=lambda x:x[0],reverse=True)
     here=request.host_url.rstrip('/');base=canonical_url('')
-    items=[(c,t,base+u[len(here):] if u.startswith(here) else u,d) for c,t,u,d in items]  # 운영 도메인 주소로 통일
+    items=[(c,t,base+u[len(here):] if u.startswith(here) else u,d) for c,t,u,d in items if own_page(u)]  # 운영 도메인 주소로 통일, 다른 사이트가 대표인 글은 빼기
     body=''.join('<item><title>%s</title><link>%s</link><guid>%s</guid><description>%s</description>%s</item>'%(escape(t),escape(u),escape(u),escape(d),'<pubDate>%s</pubDate>'%date(c) if date(c) else '') for c,t,u,d in items[:50])
     home=canonical_url('/')
     head='<channel><title>%s</title><link>%s</link><description>%s</description><language>ko</language>'%(escape(g.content.get('site.name','')),escape(home),escape(g.content.get('seo.description','')))

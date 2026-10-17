@@ -1471,6 +1471,16 @@ class SiteTest(unittest.TestCase):
                 r = self.client.get('/life?category=쇼핑', base_url='https://consumerjebo.co.kr')
                 self.assertEqual((r.status_code, r.headers['Location']), (301, 'https://soboru.co.kr/life?category=%EC%87%BC%ED%95%91'))
                 self.assertEqual(self.client.get('/reports', base_url='https://consumerjebo.co.kr').status_code, 200)
+                # 검색엔진 대표 주소: 제보 화면은 소비자제보센터, 소보루 화면은 소보루, 홈은 각자
+                self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/reports">', self.client.get('/reports', base_url='https://soboru.co.kr').get_data(as_text=True))
+                self.assertIn('<link rel="canonical" href="https://soboru.co.kr/board">', self.client.get('/board', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
+                self.assertIn('<link rel="canonical" href="https://soboru.co.kr/">', self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True))
+                jmap = self.client.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+                smap = self.client.get('/sitemap.xml', base_url='https://soboru.co.kr').get_data(as_text=True)
+                self.assertIn('<loc>https://consumerjebo.co.kr/reports</loc>', jmap); self.assertNotIn('soboru.co.kr', jmap); self.assertNotIn('/life', jmap)
+                self.assertIn('<loc>https://soboru.co.kr/life</loc>', smap); self.assertNotIn('consumerjebo', smap); self.assertNotIn('/reports<', smap)
+                self.assertIn('Sitemap: https://consumerjebo.co.kr/sitemap.xml', self.client.get('/robots.txt', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
+                self.assertNotIn('soboru.co.kr', self.client.get('/rss.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True).split('<item>', 1)[-1])
         finally:
             self.site.JEBO_HOSTS.difference_update(hosts)
         # 관리자는 소보루 주소에서도 /?face=jebo 로 미리 봄
