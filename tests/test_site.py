@@ -57,9 +57,9 @@ class SiteTest(unittest.TestCase):
         def ld(html):
             return [json.loads(m) for m in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)]
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', home)
-        self.assertIn('<meta name="title" content="소비자제보센터 - 소비자 피해 제보·고발">', home)
-        self.assertIn('환불 거부, 배송 지연, 불량품', home)
+        self.assertIn('<title>소보루(SOBORU)</title>', home)
+        self.assertIn('<meta name="title" content="소보루(SOBORU)">', home)
+        self.assertIn('소비자 피해 제보부터 제품·업체 리뷰와 추천', home)
         self.assertIn('og:locale" content="ko_KR"', home)
         self.assertIn('WebSite', [d.get('@type') for d in ld(home)])
         with self.site.conn() as db:
@@ -71,7 +71,7 @@ class SiteTest(unittest.TestCase):
         post = self.client.get(f'/board/{pid}').get_data(as_text=True)
         self.assertEqual(ld(post)[0][0]['@type'], 'DiscussionForumPosting')
         faq = self.client.get('/faq').get_data(as_text=True)
-        self.assertIn('<title>자주 묻는 질문 | 소비자제보센터</title>', faq)
+        self.assertIn('<title>자주 묻는 질문 | 소보루</title>', faq)
         self.assertIn('FAQPage', faq)
         self.assertNotIn('noindex', self.client.get('/reports').get_data(as_text=True))
         self.assertIn('noindex,follow', self.client.get('/reports?q=환불').get_data(as_text=True))
@@ -98,20 +98,18 @@ class SiteTest(unittest.TestCase):
         for path in ('/', '/reports', '/guide', '/process', '/types', '/faq', '/report', '/lookup', '/terms', '/privacy', '/takedown', '/board', '/board/write'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200, path)
-            self.assertIn('class="section-nav"', response.get_data(as_text=True))
+            self.assertIn('class="sb-header"', response.get_data(as_text=True))  # 소보루 머리글 하나뿐 (예전 소비자제보센터 머리글은 뺌)
+            self.assertNotIn('class="section-nav"', response.get_data(as_text=True))
         for path in ('/admin/login', '/reporter/login'):
             self.assertIn('noindex', self.client.get(path).get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('여러분의 제보가', home)
-        self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', home)
-        self.assertIn('<small class="brand-by">by SOBORU</small>', home)
-        self.assertIn('<meta property="og:title" content="소비자제보센터 - 소비자 피해 제보·고발">', home)
-        self.assertIn('class="hero hero-art"', home)
-        for side in ('left', 'right'):
-            self.assertRegex(home, r'img/hero-%s\.svg\?v=\d+' % side)  # 그림이 바뀌면 주소도 바뀌어 캐시된 예전 그림이 보이지 않음
-            self.assertEqual(self.client.get('/static/img/hero-%s.svg' % side).status_code, 200)
+        self.assertIn('nn-intro', home)
+        self.assertIn('<title>소보루(SOBORU)</title>', home)
+        self.assertIn('<meta property="og:title" content="소보루(SOBORU)">', home)
+        self.assertNotIn('brand-by', home)
         self.assertIn('href="/report"', home)
         self.assertNotIn('localStorage', home)
+        self.assertEqual(self.client.get('/?look=old').get_data(as_text=True).count('nn-intro'), home.count('nn-intro'))  # 예전 홈 비교 주소도 소보루 홈
         report = self.client.get('/report?category=배송·교환·환불').get_data(as_text=True)
         self.assertIn('<option selected>배송·교환·환불</option>', report)
 
@@ -132,15 +130,14 @@ class SiteTest(unittest.TestCase):
         # 비밀글·공개 전 제보도 제목·업체명은 보이고(눌러도 비밀번호 창), 본문은 안 보임
         self.assertIn('미동의 접수', home)
         self.assertIn('비공개 접수', home)
-        self.assertNotIn('비공개 상세 내용', home)
-        self.assertEqual(home.count('class="rc-company">테스트 업체<'), 4)
-        self.assertNotIn('class="rc-company">업체 비공개<', home)
-        self.assertNotIn('class="report-stats"', home)  # 메인에는 건수·실시간 표시 없음
-        self.assertNotIn('live-dot', home)
+        live = home.split('class="nn-sec nn-live')[1].split('</section>')[0]  # 방금 들어온 제보: 제목·업체만, 본문 없음
+        self.assertNotIn('비공개 상세 내용', live)
+        self.assertEqual(live.count('테스트 업체 ·'), 4)
+        self.assertNotIn('nn-stats', home)  # 메인에는 건수 현황 없음
         self.assertNotIn('비공개 처리된 제보예요', home)
         self.assertNotIn('비밀글로 접수된 제보예요', home)
         self.assertIn('<dt>전체</dt><dd>4</dd>', self.client.get('/reports').get_data(as_text=True))
-        self.assertIn('class="rc-status">접수</span>', home)
+        self.assertIn('>접수</span>', live)
         filtered_cat = self.client.get('/reports', query_string={'category': '배송·교환·환불'}).get_data(as_text=True)
         self.assertIn('미동의 접수</a>', filtered_cat)
         self.assertIn('비공개 접수</a>', filtered_cat)
@@ -212,12 +209,12 @@ class SiteTest(unittest.TestCase):
         return admin
 
     def test_soboru_brand_switch_and_life(self):
-        # 브랜드를 바꾸기 전에는 지금 사이트 그대로, 관리자만 ?brand=soboru 로 미리 봄
-        self.assertNotIn('sb-header', self.client.get('/?brand=soboru').get_data(as_text=True))
+        # 소보루 하나만: 설정 없이도 방문자·관리자 모두 소보루 화면 (예전 ?brand= 미리보기는 뺌)
+        self.assertIn('sb-header', self.client.get('/').get_data(as_text=True))
         admin = self.login_admin()
-        page = admin.get('/?brand=soboru').get_data(as_text=True)
+        page = admin.get('/?brand=off').get_data(as_text=True)
         self.assertIn('sb-header', page)
-        self.assertIn('소보루 미리보기 중', page)
+        self.assertNotIn('미리보기 중', page)
         self.assertIn('<title>소보루(SOBORU)</title>', page)
         self.assertIn('<meta name="description" content="소비자 피해 제보부터 제품·업체 리뷰와 추천, 소비자 권리 안내까지. 소비자의 경험을 나누는 소비자 정보 플랫폼, 소보루.">', page)
         # 네이버 기준: 화면마다 다른 제목·설명, 화면 종류별 공유 그림, 개인 화면은 검색 제외
@@ -239,7 +236,6 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<meta property="og:url" content="https://consumerjebo.co.kr/">', prod)
         self.assertIn('<loc>https://consumerjebo.co.kr/</loc>', self.client.get('/sitemap.xml', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
         self.assertIn('Sitemap: https://consumerjebo.co.kr/sitemap.xml', self.client.get('/robots.txt', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
-        self.assertNotIn('sb-header', admin.get('/?brand=off').get_data(as_text=True))
         # 생활정보: 초안은 관리자만, 게시하면 누구나
         r = admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '택배 분실 보상 정리', 'summary': '요약', 'body': '첫 문단\n\n## 소제목\n- 목록', 'category': '쇼핑', 'emoji': '📦', 'tone': 't1'})
         aid = int(r.headers['Location'].rstrip('/').split('/')[-1])
@@ -254,70 +250,83 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(visitor.get('/', base_url='http://www.consumerjebo.co.kr').headers['Location'], 'https://consumerjebo.co.kr/')  # www는 https 대표 주소로 한 번에
         self.assertIn('<li>목록</li>', art)
         self.assertIn('택배 분실 보상 정리', visitor.get('/life?category=쇼핑').get_data(as_text=True))
-        # 설정에서 브랜드를 소보루로: 방문자 화면·메일 이름이 모두 소보루, 비우면 원래대로
-        with self.site.conn() as db:
-            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
-        try:
+        # 방문자 화면·메일 이름이 모두 소보루. 예전 '브랜드' 설정값이 남아 있어도(비워도) 그대로 소보루
+        for brand in ('', '소비자제보센터'):
+            with self.site.conn() as db:
+                db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand',?,'2026-10-16')", (brand,))
             home = visitor.get('/').get_data(as_text=True)
             self.assertIn('nn-home', home)
             self.assertIn('택배 분실 보상 정리', home)
-            self.assertNotIn('소보루 미리보기 중', home)
             self.assertIn('소보루는 공공기관이 아닌', visitor.get('/companies').get_data(as_text=True))
             self.assertEqual(self.site.notify.site_name(), '소보루')
             self.assertEqual(self.site.notify.branded('소비자제보센터 드림'), '소보루 드림')
-        finally:
-            with self.site.conn() as db:
-                db.execute("DELETE FROM site_content WHERE key='site.brand'")
-        self.assertNotIn('nn-home', visitor.get('/').get_data(as_text=True))
-        self.assertEqual(self.site.notify.site_name(), '소비자제보센터')
+        with self.site.conn() as db: db.execute("DELETE FROM site_content WHERE key='site.brand'")
 
-    def test_soboru_home_plan_rotates_reports_and_life(self):
-        # 메인 맨 위 큰 카드: 관리자가 정한 순서(제보 → 생활정보)·주기로 돌아가며, 공개 제보만 뜸
+    def test_soboru_home_blocks_order_and_hide(self):
+        # 메인 화면 묶음: 관리자 > 화면 편집에서 순서를 바꾸고 숨기면 홈에 그대로. 공개 제보만 본문이 나감
         with self.site.conn() as db:
             for receipt, subject, consent in (('p1', '공개 제보 카드 제목', 1), ('s1', '비밀 제보 카드 제목', 0)):
                 db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
                            (receipt, hashlib.sha256(b'test').hexdigest(), '배송·교환·환불', '테스트 업체', subject, '본문 미리보기 010-1234-5678', '요청', '2026-10-09T10:00:00', consent, 1))
-            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
         admin = self.login_admin()
         admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '생활정보 카드 제목', 'summary': '요약', 'body': '본문', 'category': '쇼핑', 'publish': '1'})
         try:
-            page = admin.get('/admin/home-plan').get_data(as_text=True)
-            self.assertIn('메인 화면 순서', page)
-            r = admin.post('/admin/home-plan', data={'_csrf': self.csrf(admin, '/admin/home-plan'), 'slot': ['report', 'life', ''], 'hours': '6', 'pins': '',
-                                                     'order_top': '1', 'show_top': '1', 'order_box': '2', 'order_life': '3', 'show_life': '1'})
-            self.assertEqual(r.status_code, 302)
-            soboru = self.site.soboru
-            plan = soboru.clean_plan({'slots': ['report', 'life'], 'hours': 6})
-            self.assertEqual(plan['slots'], ['report', 'life'])
-            # 깨진 값은 기본값으로
-            self.assertEqual(soboru.clean_plan({'slots': ['x'], 'hours': 5})['slots'], ['report', 'life'])
             home = self.client.get('/').get_data(as_text=True)
+            order = lambda html: [k for k in ('nn-intro', 'nn-quick', 'nn-live', 'nn-pick', 'nn-answer', 'lt-card') if k in html]
+            self.assertEqual(order(home), ['nn-intro', 'nn-quick', 'nn-live', 'nn-pick', 'nn-answer', 'lt-card'])
+            self.assertLess(home.index('nn-intro'), home.index('nn-live'))
             self.assertIn('생활정보 카드 제목', home)
             self.assertIn('공개 제보 카드 제목', home)
-            self.assertIn('nn-intro', home)  # 맨 위 소보루 소개
-            self.assertIn('nn-live', home)  # 바로 아래 실시간 제보
             self.assertNotIn('nn-stats', home)  # 맨 위 건수 현황은 뺌
             self.assertIn('🔒 비밀 제보 카드 제목', home)  # 비밀글도 제목·업체는 보이고 본문만 잠금
-            self.assertNotIn('nn-pick', home)  # 끈 묶음(소보루 픽·기업 답변)은 빠짐
             self.assertIn('소보루 픽', home)  # 메뉴 이름 (커뮤니티 → 소보루 픽)
             self.assertIn('AI 학습 이용을 금지', home)  # 하단 무단 이용 금지 문구
             self.assertIn('User-agent: GPTBot', self.client.get('/robots.txt').get_data(as_text=True))
             self.assertIn('자주 묻는 질문', home); self.assertNotIn('피해 유형별 안내', home)  # 피해 유형별 안내는 메뉴에서 뺌(운영자 요청)
             self.assertNotIn('010-1234-5678', home)
-            # 주기마다 맨 위가 제보 ↔ 생활정보로 바뀜
-            kinds = set()
+            self.assertNotIn('ed-blockbar', home)  # 손님 화면에는 편집 막대 없음
+            # 화면 편집: 예전 '메인 화면 순서' 주소는 화면 편집으로
+            self.assertIn('/admin/screens#page-home', admin.get('/admin/home-plan').headers['Location'])
+            page = admin.get('/admin/screens').get_data(as_text=True)
+            for name in ('화면 편집', '홈', '생활정보', '소보루 픽', '제보', '기업', '법률 질문', '소보루 레터', '공통 머리글·바닥글', '방금 들어온 제보', '이 페이지 문구 모두 보기'):
+                self.assertIn(name, page)
+            token = self.csrf(admin, '/admin/screens')
+            # 순서표 통째로: 레터를 맨 위로, 기업 답변 기록은 숨김
+            r = admin.post('/admin/screens', data={'_csrf': token, 'page': 'home', 'act': 'order', 'block': ['letter', 'intro', 'quick', 'live', 'life', 'pick', 'answer'],
+                                                   'show_letter': '1', 'show_intro': '1', 'show_quick': '1', 'show_live': '1', 'show_life': '1', 'show_pick': '1'})
+            self.assertEqual(r.status_code, 302)
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertEqual(order(home), ['nn-intro', 'nn-quick', 'nn-live', 'nn-pick', 'lt-card'])
+            self.assertLess(home.index('lt-card'), home.index('nn-intro'))
+            self.assertNotIn('nn-answer', home)
+            # 한 칸씩: 레터 아래로, 기업 답변 다시 보이기, 소개 숨기기 (편집 모드 막대가 쓰는 주소)
+            self.assertEqual(admin.post('/admin/screens', data={'_csrf': token, 'page': 'home', 'block': 'letter', 'act': 'down', 'ajax': '1'}).get_json(), {'ok': True})
+            admin.post('/admin/screens', data={'_csrf': token, 'page': 'home', 'block': 'answer', 'act': 'show', 'ajax': '1'})
+            admin.post('/admin/screens', data={'_csrf': token, 'page': 'home', 'block': 'intro', 'act': 'hide', 'ajax': '1'})
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertNotIn('nn-intro', home)
+            self.assertIn('nn-answer', home)
+            self.assertLess(home.index('lt-card'), home.index('nn-quick'))
             with self.site.app.test_request_context('/'):
-                ext = self.site.app.extensions['soboru']
-                saved = ext['home_plan']()
-                for h in (0, 6, 12, 18):
-                    lead, side = ext['pick_top'](saved, at=datetime.datetime(2026, 10, 16, h, 30))
-                    kinds.add(lead['kind'])
-                    self.assertNotEqual(lead['title'], '비밀 제보 카드 제목')
-                    self.assertNotIn('비밀 제보 카드 제목', [x['title'] for x in side])
-            self.assertEqual(kinds, {'report', 'life'})
+                self.assertEqual(self.site.app.extensions['soboru']['page_blocks']('home')[:3], [['intro', 0], ['letter', 1], ['quick', 1]])
+            # 이상한 값은 무시하고, 모르는 묶음은 빠지고 빠진 묶음은 뒤에 붙음
+            self.assertEqual(admin.post('/admin/screens', data={'_csrf': token, 'page': 'nope', 'block': 'x', 'act': 'up'}).status_code, 400)
+            self.assertEqual(self.site.soboru.clean_blocks('letter', [['archive', 1], ['zzz', 1]]), [['archive', 1], ['hero', 1], ['feats', 1]])
+            # 편집 모드: 묶음마다 옮기기 막대, 숨긴 묶음은 맨 아래에서 다시 보이기
+            admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '1', 'next': '/'})
+            edit = admin.get('/').get_data(as_text=True)
+            self.assertIn('class="ed-blockbar" data-page="home" data-block="quick"', edit)
+            self.assertIn('class="ed-hiddenblocks"', edit)
+            self.assertIn('data-act="show"', edit)
+            # 예전 '메인 화면 순서'에서 끈 묶음은 새 화면에서도 꺼져 있음
+            with self.site.conn() as db:
+                db.execute("DELETE FROM soboru_settings WHERE key='blocks:home'")
+                db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('home',?)", (json.dumps({'sections': [['top', 1], ['life', 1], ['rank', 0]]}),))
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertIn('nn-intro', home); self.assertNotIn('nn-pick', home); self.assertNotIn('nn-answer', home)
         finally:
             with self.site.conn() as db:
-                db.execute("DELETE FROM site_content WHERE key='site.brand'")
+                db.execute("DELETE FROM soboru_settings WHERE key IN ('home','blocks:home')")
 
     def test_soboru_ai_art(self):
         # AI 일러스트: 분야·공개 제목만 보내고(연락처·이름 빠짐), 그린 그림은 게시 전엔 관리자만, 게시하면 카드에 그림('AI 일러스트' 표시는 없음)
@@ -325,7 +334,6 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             cid = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published,reporter_name) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
                              ('art1', 'x', '배송·교환·환불', '비밀상사', '홍길동 환불 거부 010-1234-5678', '본문 비밀 내용', '환불', '2026-10-09T10:00:00', 1, 1, '홍길동')).lastrowid
-            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
         sent = []
         def fake(url, headers, body, timeout):
             sent.append(body)
@@ -349,7 +357,7 @@ class SiteTest(unittest.TestCase):
             detail = visitor.get(f'/reports/{cid}').get_data(as_text=True)
             self.assertIn(f'/art/report/{cid}.webp', detail)
             self.assertNotIn('sb-art-l', detail); self.assertIn('sb-art-ai', detail)
-            self.assertIn('sb-art', visitor.get('/?look=old').get_data(as_text=True))  # 새 홈은 그림 없이 이모지
+            self.assertNotIn('sb-art', visitor.get('/').get_data(as_text=True))  # 홈은 그림 없이 이모지 (예전 /?look=old 홈은 뺌)
             admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'hide'})
             self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)
             # 생활정보 글은 만들면 자동으로 그려서 바로 붙음
@@ -402,7 +410,6 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(visitor.get(f'/reports/{cid2}/cover').status_code, 404)
         finally:
             with self.site.conn() as db:
-                db.execute("DELETE FROM site_content WHERE key='site.brand'")
                 db.execute('DELETE FROM soboru_art'); db.execute('DELETE FROM articles')
 
     def test_soboru_naver_hub(self):
@@ -426,7 +433,6 @@ class SiteTest(unittest.TestCase):
                 return 200, {'results': [{'title': k['name'], 'keyword': k['param'], 'data': [{'period': '2026-09-01', 'ratio': 30}, {'period': '2026-09-08', 'ratio': 90}]} for k in body['keyword']]}
             return 404, {}
         with self.site.conn() as db:
-            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
             db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
         hub = self.site.naverhub
         try:
@@ -482,7 +488,7 @@ class SiteTest(unittest.TestCase):
                 self.assertIn('오늘 쓸 수 있는 검색을 모두 썼어요', self.client.get('/life/search?q=또 다른 말').get_data(as_text=True))
         finally:
             with self.site.conn() as db:
-                db.execute("DELETE FROM site_content WHERE key='site.brand'"); db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
+                db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
 
     def test_case_metoo_and_comments(self):
         # 공개 제보: '나도 겪었어요' 공감(누르면 +1, 다시 누르면 취소), 댓글(연락처 가림), 알리기 5번이면 숨김, 비공개 제보는 막힘
@@ -531,25 +537,32 @@ class SiteTest(unittest.TestCase):
                 db.execute("DELETE FROM site_content WHERE key='case.talk_off'")
 
     def test_admin_edits_site_copy(self):
+        # 소보루 홈 문구(맨 위 큰 문구부터 작은 안내까지)를 관리자가 바꾸면 그대로 보이고, HTML은 글자로만 나감
         self.assertEqual(self.client.get('/admin/content').status_code, 302)
         admin = self.login_admin()
         token = self.csrf(admin, '/admin/content')
         response = admin.post('/admin/content', data={
             '_csrf': token, 'section': 'home',
-            'home.hero_title': '첫 줄\r\n<b>둘째 줄</b>', 'home.list_note': '', 'home.hero_button': '',
+            'home.intro_sub': '첫 줄\r\n<b>둘째 줄</b>', 'home.intro_title': '<script>x</script>소보루!', 'home.intro_btn': '',
+            'home.live_title': '지금 막 온 제보', 'home.intro_kicker': '**굵게** <i>기울임</i>',
         }, follow_redirects=True)
         self.assertIn('문구를 저장했습니다.', response.get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('첫 줄<br>&lt;b&gt;둘째 줄&lt;/b&gt;', home)
-        self.assertNotIn('여러분의 제보가', home)
-        self.assertNotIn('공개에 동의하고 센터의 검토', home)  # optional field left blank hides it
-        self.assertIn('제보하기 →', home)  # required field left blank falls back to default
+        self.assertIn('&lt;script&gt;x&lt;/script&gt;소보루!', home)
+        self.assertNotIn('<script>x</script>', home)
+        self.assertIn('<strong>굵게</strong> &lt;i&gt;기울임&lt;/i&gt;', home)
+        self.assertIn('지금 막 온 제보', home)
+        self.assertNotIn('억울한 일은 제보하고', home)
+        self.assertIn('>제보하기</a><a class="nn-intro-link"', home)  # required field left blank falls back to default
         admin.post('/admin/content', data={'_csrf': token, 'reset_section': 'home'})
-        self.assertIn('여러분의 제보가', self.client.get('/').get_data(as_text=True))
+        self.assertIn('억울한 일은 제보하고', self.client.get('/').get_data(as_text=True))
 
     def test_branding_policies_and_takedown(self):
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<span>소비자</span>제보센터', home)
+        self.assertIn('img/soboru-logo.png', home)
+        self.assertNotIn('<span>소비자</span>제보센터', home)  # 예전 로고는 뺌
+        self.assertIn('<strong>소</strong>비자 권익 <strong>보</strong>호를 위한 <strong>루</strong>트', home)  # 바닥글 한 줄도 고칠 수 있는 문구
         self.assertIn('href="/privacy"', home)
         self.assertNotIn('신고센터', home)
         for link in ('href="/terms"', 'href="/privacy"', 'href="/youth"', '권리침해 신고 및 임시조치 안내'):
@@ -605,7 +618,7 @@ class SiteTest(unittest.TestCase):
 
     def test_consumer_board(self):
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('>소비자게시판</a>', home)
+        self.assertIn('>소보루 픽</a>', home)
         self.assertIn('>이용 안내</a>', home)
         self.assertNotIn('제보 유형</a>', home)
         writer = self.site.app.test_client()
@@ -692,29 +705,23 @@ class SiteTest(unittest.TestCase):
         writer.post(f'/board/{qid}/solve', data={'_csrf': token, 'password': '1234'})
         with self.site.conn() as db:self.assertEqual(db.execute('SELECT solved FROM posts WHERE id=?', (qid,)).fetchone()[0], 1)
         self.assertIn('해결됨', self.client.get(f'/board/{qid}').get_data(as_text=True))
-        self.assertIn('리뷰 상사', self.client.get('/board').get_data(as_text=True))  # 예전 화면에도 리뷰 대상이 보임
+        self.assertIn('리뷰 상사', self.client.get('/board').get_data(as_text=True))  # 목록에도 리뷰 대상이 보임
         self.assertIn('커뮤니티 리뷰', self.client.get(f'/companies/{co}').get_data(as_text=True))
-        with self.site.conn() as db:
-            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
-        try:
-            board = self.client.get('/board').get_data(as_text=True)
-            for text in ('무엇을 올릴까요?', '리뷰 모아 보기', '환불이 빨랐어요', '운송장 금액 기준이에요', 'cm-solved', '별점 5점 중 4점'):
-                self.assertIn(text, board)
-            only = self.client.get('/board?type=question').get_data(as_text=True)
-            self.assertIn('위약금 얼마인가요?', only)
-            self.assertNotIn('환불이 빨랐어요', only)
-            self.assertIn('data-kind="tip"', self.client.get('/board/write?type=tip').get_data(as_text=True))
-            post = self.client.get(f'/board/{rid}').get_data(as_text=True)
-            self.assertIn('cm-review', post)
-            self.assertIn('좋았던 점', post)
-            self.assertNotIn('010-1234-5678', post)
-            home = self.client.get('/').get_data(as_text=True)
-            self.assertIn('sb-cm-card k-review', home)
-            self.assertIn('택배 분실 보상 순서', home)
-            self.assertIn('별점 5점 중 4점', self.client.get(f'/companies/{co}').get_data(as_text=True))
-        finally:
-            with self.site.conn() as db:
-                db.execute("DELETE FROM site_content WHERE key='site.brand'")
+        board = self.client.get('/board').get_data(as_text=True)
+        for text in ('무엇을 올릴까요?', '리뷰 모아 보기', '환불이 빨랐어요', '운송장 금액 기준이에요', 'cm-solved', '별점 5점 중 4점'):
+            self.assertIn(text, board)
+        only = self.client.get('/board?type=question').get_data(as_text=True)
+        self.assertIn('위약금 얼마인가요?', only)
+        self.assertNotIn('환불이 빨랐어요', only)
+        self.assertIn('data-kind="tip"', self.client.get('/board/write?type=tip').get_data(as_text=True))
+        post = self.client.get(f'/board/{rid}').get_data(as_text=True)
+        self.assertIn('cm-review', post)
+        self.assertIn('좋았던 점', post)
+        self.assertNotIn('010-1234-5678', post)
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('sb-cm-card k-review', home)
+        self.assertIn('택배 분실 보상 순서', home)
+        self.assertIn('별점 5점 중 4점', self.client.get(f'/companies/{co}').get_data(as_text=True))
 
     def jpeg_with_gps(self):
         # 위치(GPS)가 든 EXIF를 붙인 작은 JPEG
@@ -731,7 +738,6 @@ class SiteTest(unittest.TestCase):
         # 이번 주 리뷰 주제: 관리자가 열면 소보루 픽·메인·안내 화면에 보이고, 그 주제로 쓴 리뷰는 '이벤트 참여 리뷰' 표시
         with self.site.conn() as db:
             db.execute('DELETE FROM review_campaigns')
-            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
         try:
             self.assertEqual(self.client.get('/admin/campaigns').status_code, 302)
             admin = self.login_admin()
@@ -821,7 +827,6 @@ class SiteTest(unittest.TestCase):
             self.assertIn('이 주제는 끝났어요', self.client.get('/pick/delivery-1017').get_data(as_text=True))
         finally:
             with self.site.conn() as db:
-                db.execute("DELETE FROM site_content WHERE key='site.brand'")
                 db.execute('DELETE FROM review_campaigns')
 
     def test_photo_cleaning_without_pillow(self):
@@ -905,7 +910,8 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'publish_review', 'decision': 'approve'}).status_code, 400)
         self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'approve'})
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('href="/reports/%d">public 제목</a>' % ids['public'], home)
+        self.assertIn('href="/reports/%d">' % ids['public'], home)
+        self.assertIn('public 제목', home)
         self.assertIn('href="/reports/%d/mine"' % ids['secret'], home)  # 비밀글은 제목이 보여도 비밀번호 창으로
         self.assertIn('secret 제목', home)
         listing = self.client.get('/reports').get_data(as_text=True)
@@ -1175,9 +1181,7 @@ class SiteTest(unittest.TestCase):
         # 3) 공개: 목록·배너·진행 막대(1/50), 같은 업체 제보에서 '같이 참여하기'
         self.assertIn('OO쇼핑 반품 후 환불 지연', self.client.get('/groups').get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('진행 중인 공동 대응', home)
-        self.assertIn('href="/groups/%d"' % gid, home)
-        self.assertIn('href="/groups/new"', home)
+        self.assertIn('href="/groups">공동 대응</a>', home)  # 소보루 머리글 제보 메뉴 (예전 홈의 공동 대응 묶음은 뺌)
         self.assertIn('공동 대응 참여 모집', self.client.get('/reports').get_data(as_text=True))
         group = self.client.get('/groups/%d' % gid).get_data(as_text=True)
         self.assertIn('<b>1</b>명 참여', group)
@@ -1283,21 +1287,17 @@ class SiteTest(unittest.TestCase):
                 db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,1,1)',
                            ('R%d' % i, 'x', '기타', '업체', '공개 제보 %02d' % i, '내용', '요청', '2026-10-09'))
         home = self.client.get('/').get_data(as_text=True)
-        self.assertEqual(home.count('class="case-link"'), self.site.HOME_LATEST)
+        live = home.split('class="nn-sec nn-live')[1].split('</section>')[0]
+        self.assertEqual(live.count('<li><a href="/reports/'), 6)  # 방금 들어온 제보 6건
         self.assertIn('공개 제보 24', home)
         self.assertNotIn('공개 제보 04<', home)
-        self.assertIn('href="/reports">', home)  # 메뉴와 하단 전체 보기 링크
-        admin = self.login_admin()
-        admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'home', 'home.latest_count': '4'})
-        self.assertEqual(self.client.get('/').get_data(as_text=True).count('class="case-link"'), 4)
-        admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'home', 'home.latest_count': '이상한값'})
-        self.assertEqual(self.client.get('/').get_data(as_text=True).count('class="case-link"'), self.site.HOME_LATEST)
+        self.assertIn('href="/reports">', home)  # 메뉴와 전체 보기 링크
         live = self.client.get('/reports/latest')
         self.assertEqual(live.headers['Cache-Control'], 'no-store')
         self.assertEqual(live.get_data(as_text=True).count('class="case-link"'), self.site.HOME_LATEST)
         page1 = self.client.get('/reports').get_data(as_text=True)
         self.assertEqual(page1.count('class="case-link"'), 20)
-        self.assertIn('aria-current="page">소비자 제보 목록</a>', page1)
+        self.assertIn('aria-current="page">제보 목록</a>', page1)
         page2 = self.client.get('/reports?page=2').get_data(as_text=True)
         self.assertEqual(page2.count('class="case-link"'), 5)
         self.assertIn('공개 제보 00', page2)
@@ -1320,11 +1320,11 @@ class SiteTest(unittest.TestCase):
         for path in ('/companies</loc>', '/ask</loc>', '/life</loc>', '/faq</loc>'): self.assertIn(path, xml)
         self.assertNotIn('/types</loc>', xml)  # 메뉴에서 뺀 안내는 사이트맵에서도 뺌
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<meta name="description" content="환불 거부, 배송 지연, 불량품', home)
+        self.assertIn('<meta name="description" content="소비자 피해 제보부터 제품·업체 리뷰와 추천', home)
         self.assertNotIn('naver-site-verification', home)
         detail = self.client.get('/reports/%d' % public_id).get_data(as_text=True)
         self.assertIn('<meta name="description" content="공개 본문 내용입니다">', detail)
-        self.assertIn('<meta property="og:title" content="공개 제목 | 소비자제보센터">', detail)
+        self.assertIn('<meta property="og:title" content="공개 제목 | 소보루">', detail)
         admin = self.login_admin()
         admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'seo',
             'seo.naver_verification': '<meta name="naver-site-verification" content="abc123naver" />',
@@ -1394,53 +1394,69 @@ class SiteTest(unittest.TestCase):
         process = self.client.get('/process').get_data(as_text=True)
         self.assertEqual(process.count('class="process-card"'), 2)
 
-    def test_menu_and_home_layout_editing(self):
+    def test_screen_editor_edits_every_soboru_text(self):
+        # 화면 편집: 소보루 화면 글자(홈 큰 문구·머리글 메뉴·아래 탭·레터·생활정보·소보루 픽)를 편집 모드에서 눌러 고치고, 페이지별 문구 목록에서도 고침
         admin = self.login_admin()
-        token = self.csrf(admin, '/admin/lists')
-        menu = {'_csrf': token, 'list': 'menu', 'label': ['게시판', '제보하기', '블로그'], 'page': ['board', 'report', 'custom'], 'url': ['', '', 'https://blog.example.com']}
-        self.assertEqual(admin.post('/admin/lists', data=menu).status_code, 302)
+        token = self.csrf(admin, '/admin/screens')
+        admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '1', 'next': '/'})
+        pages = {'/': ('home.intro_title', 'home.live_title', 'home.pick_title', 'home.answer_eyebrow', 'sb.nav_home', 'sb.tab_home', 'common.ft_why', 'letter.card_title'),
+                 '/life': ('life.title', 'life.cat_all', 'letter.subscribe'), '/board': ('cm.title', 'cm.pick_title'), '/letter': ('letter.h1', 'letter.f2', 'letter.archive_title'),
+                 '/companies': ('sb.nav_companies',), '/ask': ('ask.h1',)}
+        for path, keys in pages.items():
+            page = admin.get(path).get_data(as_text=True)
+            self.assertNotRegex(page, '[\ue000-\ue002]', path)
+            for key in keys:
+                self.assertIn('data-k="%s"' % key, page, (path, key))
+        self.assertIn('href="/admin/screens">화면 편집</a>', admin.get('/').get_data(as_text=True))  # 편집 막대에서 바로 화면 편집으로
+        # 편집 모드에서 눌러 저장: HTML은 글자로, {자리}는 화면 값으로
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'home.intro_title', 'value': '소보루 <b>새 얼굴</b>'}).get_json()['ok'])
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'home.answer_eyebrow', 'value': '지난 {days}일 기록'}).get_json()['ok'])
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': token, 'key': 'sb.tab_home', 'value': '처음'}).get_json()['ok'])
+        self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'home.live_title', 'value': 'x' * 2001}).status_code, 400)  # 길이 제한 그대로
         home = self.client.get('/').get_data(as_text=True)
-        nav = home[home.index('class="section-nav"'):home.index('</nav>')]
-        self.assertLess(nav.index('>게시판</a>'), nav.index('>제보하기</a>'))
-        self.assertIn('href="https://blog.example.com" target="_blank" rel="noopener">블로그</a>', nav)
-        self.assertNotIn('이용 안내', nav)
-        self.assertIn('href="/board" class="active"', self.client.get('/board').get_data(as_text=True))
-        bad = admin.post('/admin/lists', data={**menu, 'url': ['', '', 'javascript:alert(1)']})
-        self.assertEqual(bad.status_code, 400)
-        self.assertNotIn('javascript:', self.client.get('/').get_data(as_text=True))
-        self.assertEqual(admin.post('/admin/lists', data={**menu, 'page': ['board', 'report', 'nope']}).status_code, 400)
-        # 메인 화면 블록: 순서·종류·개수·버튼
-        blocks = {'_csrf': token, 'list': 'home_blocks',
-                  'kind': ['notice', 'hero', 'faq', 'process', 'board_posts'],
-                  'title': ['오픈 안내', '', '궁금해요', '', ''], 'count': ['', '', '2', '', '3'],
-                  'body': ['소비자제보센터가 문을 열었어요.', '', '', '', ''],
-                  'button_label': ['제보하러 가기', '', '', '', ''], 'button_link': ['/report', '', '', '', '']}
-        self.assertEqual(admin.post('/admin/lists', data=blocks).status_code, 302)
+        self.assertIn('소보루 &lt;b&gt;새 얼굴&lt;/b&gt;', home)
+        self.assertIn('지난 30일 기록', home)
+        self.assertIn('</svg>처음</a>', home)
+        self.assertNotIn('data-k=', home)
+        # 화면 편집 > 페이지별 문구 목록: 그 페이지 문구만 한 번에 저장, 비우면 기본 문구로
+        page = admin.get('/admin/screens').get_data(as_text=True)
+        self.assertIn('name="home.intro_sub"', page)
+        self.assertIn('name="letter.h1"', page)
+        self.assertIn('name="sb.nav_life"', page)
+        r = admin.post('/admin/screens', data={'_csrf': token, 'page': 'home', 'act': 'texts', 'home.intro_title': '', 'home.pick_title': '오늘의 픽', 'report.submit': '무시돼요'})
+        self.assertEqual(r.status_code, 302)
         home = self.client.get('/').get_data(as_text=True)
-        self.assertLess(home.index('오픈 안내'), home.index('class="hero hero-art"'))
-        self.assertIn('<a class="primary" href="/report">제보하러 가기</a>', home)
-        self.assertEqual(home.count('class="faq-item"'), 2)
-        self.assertIn('class="process-cards"', home)
-        self.assertNotIn('data-live-list="', home)  # 최근 제보 블록을 뺐음
-        admin.post('/admin/lists', data={**blocks, 'kind': ['notice', 'hero_plain', 'faq', 'process', 'board_posts']})
-        plain = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<section class="hero">', plain)
-        self.assertNotIn('hero-left.svg', plain)
-        self.assertEqual(admin.post('/admin/lists', data={**blocks, 'count': ['', '', '두개', '', '']}).status_code, 400)
-        self.assertEqual(admin.post('/admin/lists', data={**blocks, 'button_link': ['javascript:x', '', '', '', '']}).status_code, 400)
-        admin.post('/admin/lists', data={'_csrf': token, 'list': 'home_blocks', 'kind': ['latest_reports'], 'title': ['지금 들어온 제보'], 'count': ['3'], 'body': [''], 'button_label': [''], 'button_link': ['']})
-        home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('지금 들어온 제보', home)
-        self.assertIn('data-live-list="/reports/latest?n=3&amp;view=cards"', home)
-        cards = self.client.get('/reports/latest?n=3&view=cards').get_data(as_text=True)
-        self.assertIn('class="report-cards"', cards)
+        self.assertIn('오늘의 픽', home)
+        self.assertNotIn('새 얼굴', home)
+        self.assertIn('제보 접수하기', self.client.get('/report').get_data(as_text=True))  # 다른 페이지 문구는 그대로
+        self.assertEqual(admin.post('/admin/screens', data={'_csrf': token, 'page': 'home', 'act': 'texts', 'home.pick_title': 'x' * 2001}).status_code, 400)
+        r = admin.post('/admin/screens', data={'_csrf': token, 'page': 'letter', 'act': 'order', 'block': ['archive', 'hero'], 'show_archive': '1', 'show_hero': '1'})
+        letter = self.client.get('/letter').get_data(as_text=True)
+        self.assertLess(letter.index('lt-archive'), letter.index('lt-hero'))
+        self.assertLess(letter.index('lt-hero'), letter.index('lt-feats'))  # 순서표에 없던 묶음은 켠 채로 맨 뒤에 붙음 (화면이 비지 않게)
+        for key in ('life', 'board'):
+            admin.post('/admin/screens', data={'_csrf': token, 'page': key, 'block': 'head', 'act': 'hide'})
+        self.assertNotIn('sb-page-head', self.client.get('/life').get_data(as_text=True))
+        self.assertNotIn('cm-head', self.client.get('/board').get_data(as_text=True))
+        with self.site.conn() as db: db.execute("DELETE FROM soboru_settings WHERE key LIKE 'blocks:%'")
 
-    def test_legacy_menu_labels_carry_over(self):
-        with self.site.conn() as db:
-            db.execute("INSERT INTO site_content(key,value,updated) VALUES('nav.faq','FAQ','x')")
-        nav = self.client.get('/').get_data(as_text=True)
-        self.assertIn('href="/faq">FAQ</a>', nav)
-        self.assertIn('href="/reports">소비자 제보 목록</a>', nav)
+    def test_old_brand_settings_are_gone(self):
+        # 예전 소비자제보센터 전용 설정(브랜드·로고 글자·상단 메뉴·메인 화면 구성·예시 카드)은 관리자 화면에서 빠짐. 되살리는 법은 문서에
+        admin = self.login_admin()
+        content = admin.get('/admin/content').get_data(as_text=True)
+        for key in ('site.brand', 'site.logo_accent', 'site.logo_rest', 'site.logo_by', 'home.hero_title', 'home.latest_count'):
+            self.assertNotIn('name="%s"' % key, content)
+        self.assertNotIn('소보루라고 적으면', content)
+        lists = admin.get('/admin/lists').get_data(as_text=True)
+        for key in ('menu', 'home_blocks', 'sample_reports'):
+            self.assertNotIn('id="list-%s"' % key, lists)
+        self.assertNotIn('메인 화면 순서', admin.get('/admin').get_data(as_text=True))
+        self.assertIn('화면 편집', admin.get('/admin').get_data(as_text=True))
+        for name in ('index.html', 'soboru_home.html', 'report_cards.html', 'admin_home_plan.html'):
+            self.assertFalse((ROOT / 'templates' / name).exists(), name)
+        doc = (ROOT / 'docs' / 'JEBO_CENTER_RESTORE.md').read_text(encoding='utf-8')
+        self.assertIn('jebo-center-final', doc)
+        self.assertIn('checkout jebo-center-final -- templates/index.html', doc)
 
     def test_process_page_cards(self):
         page = self.client.get('/process').get_data(as_text=True)
@@ -1455,25 +1471,6 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(page.count('class="process-card"'), 2)
         self.assertIn('<strong class="em">&lt;i&gt;빠르게&lt;/i&gt;</strong> 연락드려요', page)
         self.assertEqual(admin.post('/admin/lists', data={'_csrf': token, 'list': 'process_steps', 'title': ['x'], 'icon': ['rocket'], 'body': ['']}).status_code, 400)
-
-    def test_example_cards_fill_only_empty_slots(self):
-        home = self.client.get('/').get_data(as_text=True)
-        samples = home.count('class="report-card is-sample')  # 예시 카드는 준비된 개수(8)까지만
-        self.assertEqual(samples, min(self.site.HOME_LATEST, 8))
-        self.assertEqual(home.count('class="rc-sample">예시<'), samples)
-        with self.site.conn() as db:
-            for i in range(3):
-                db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,1,1)',
-                           ('E%d' % i, 'x', '기타', '업체', '실제 제보 %d' % i, '내용', '요청', '2026-10-09'))
-        home = self.client.get('/').get_data(as_text=True)
-        self.assertEqual(home.count('class="case-link"'), 3)
-        self.assertEqual(home.count('class="report-card is-sample'), min(samples, self.site.HOME_LATEST - 3))
-        self.assertLess(home.index('실제 제보 2'), home.index('is-sample'))  # 실제 제보가 항상 앞
-        self.assertNotIn('is-sample', self.client.get('/reports').get_data(as_text=True))
-        self.assertEqual(self.client.get('/reports/latest?n=4&view=cards').get_data(as_text=True).count('is-sample'), 1)
-        admin = self.login_admin()
-        admin.post('/admin/lists', data={'_csrf': self.csrf(admin, '/admin/lists'), 'list': 'sample_reports', 'title': [''], 'category': [''], 'company': [''], 'status': ['']})
-        self.assertNotIn('is-sample', self.client.get('/').get_data(as_text=True))
 
     def signup(self, client, login_id='sobo_ru', nickname='소보루', password='butter123', **extra):
         data = {'login_id': login_id, 'password': password, 'password2': password, 'nickname': nickname,
@@ -1826,9 +1823,9 @@ class SiteTest(unittest.TestCase):
             secret_req = db.execute('SELECT * FROM company_requests WHERE case_id=?', (ids['비밀 제보'],)).fetchone()
             self.assertIsNone(db.execute('SELECT 1 FROM company_requests WHERE case_id=?', (ids['전달 미동의'],)).fetchone())
         self.assertEqual((req['version'], req['origin'], req['status'], req['model']), (1, 'ai', 'draft', 'gpt-test'))
-        self.assertEqual(req['title'], '[소비자제보센터] 고양이몰 관련 사실관계 확인 및 공식 입장 요청')
-        for text in ('안녕하세요. 소비자제보센터입니다.', '■ 주요 제보 내용', '■ 확인 요청 사항', '1. 반품 접수 여부', '3. ', '■ 제보 내용 확인',
-                     f"/reports/{ids['환불이 안 돼요']}", '소비자제보센터 드림\nhttps://consumerjebo.co.kr', '향후 추가 취재 및 보도가 진행될 수 있음'):
+        self.assertEqual(req['title'], '[소보루] 고양이몰 관련 사실관계 확인 및 공식 입장 요청')
+        for text in ('안녕하세요. 소보루입니다.', '■ 주요 제보 내용', '■ 확인 요청 사항', '1. 반품 접수 여부', '3. ', '■ 제보 내용 확인',
+                     f"/reports/{ids['환불이 안 돼요']}", '소보루 드림\nhttps://consumerjebo.co.kr', '향후 추가 취재 및 보도가 진행될 수 있음'):
             self.assertIn(text, req['body'])
         self.assertNotIn('010-9999-8888', req['body'])  # AI가 돌려준 개인정보도 지움
         self.assertNotIn('■ 제보 내용 확인', secret_req['body'])  # 비밀글은 링크 없이
@@ -2093,7 +2090,7 @@ class SiteTest(unittest.TestCase):
         made = self.post_form(self.client, '/board/write', {'category': '꿀팁', 'title': '회원 글이에요', 'body': '회원으로 쓰는 글입니다. 반가워요.', 'agree': 'on'})
         post_id = int(made.headers['Location'].rstrip('/').split('/')[-1])
         page = self.client.get(f'/board/{post_id}').get_data(as_text=True)
-        self.assertIn('<span class="member-badge">회원</span>소보루', page)
+        self.assertIn('소보루<span class="cm-member">회원</span>', page)
         token = self.csrf(evil, f'/board/{post_id}')
         evil.post(f'/board/delete/p/{post_id}', data={'_csrf': token, 'password': ''})
         with self.site.conn() as db:
@@ -2232,7 +2229,7 @@ class SiteTest(unittest.TestCase):
         self.old_guide()
         admin = self.login_admin()
         page = admin.get('/admin/content').get_data(as_text=True)
-        for key in ('report.submit', 'common.login', 'board.write_btn', 'member.signup_btn', 'msg.welcome', 'guide.u1'):
+        for key in ('report.submit', 'common.login', 'home.intro_title', 'home.write1', 'sb.nav_home', 'member.signup_btn', 'msg.welcome', 'guide.u1'):
             self.assertIn('name="%s"' % key, page)
         token = self.csrf(admin, '/admin/content')
         admin.post('/admin/content', data={'_csrf': token, 'section': 'report', 'report.submit': '지금 제보하기', 'report.c3_title': '콘텐츠 이용 동의'})
@@ -2240,7 +2237,9 @@ class SiteTest(unittest.TestCase):
         self.assertIn('지금 제보하기', form)
         self.assertIn('콘텐츠 이용 동의', form)
         self.assertNotIn('제보 접수하기 ↗', form)
-        admin.post('/admin/content', data={'_csrf': token, 'section': 'common', 'common.login': '로그인하기', 'site.name': '소비자제보센터', 'site.logo_rest': '제보센터'})
+        admin.post('/admin/content', data={'_csrf': token, 'section': 'common', 'common.login': '로그인하기'})
+        self.assertNotIn('name="site.brand"', page)  # 예전 브랜드 바꾸기 칸은 뺌
+        self.assertNotIn('name="site.logo_rest"', page)
         self.assertIn('>로그인하기</a>', self.client.get('/').get_data(as_text=True))
         admin.post('/admin/content', data={'_csrf': token, 'section': 'guide', 'guide.u1': '파일은 **하나만** 올려 주세요'})
         self.assertIn('파일은 <strong>하나만</strong> 올려 주세요', self.client.get('/guide').get_data(as_text=True))
@@ -2277,7 +2276,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('첨부 전 체크', public)
         self.assertIn('구매한 날', public)
         self.assertNotIn('data-k=', public)
-        self.assertIn('접수 완료', self.client.get('/').get_data(as_text=True))
+        self.assertIn('접수 완료', self.client.get('/reports').get_data(as_text=True))
         admin.post('/admin/inline', data={'_csrf': token, 'key': 'guide.u_title', 'value': '', 'reset': '1'})
         self.assertIn('첨부하기 전에 확인해 주세요', self.client.get('/guide').get_data(as_text=True))
         self.assertEqual(self.client.post('/admin/inline', data={'_csrf': self.csrf(self.client, '/report'), 'key': 'guide.u_title', 'value': 'x'}).status_code, 302)
@@ -2401,7 +2400,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<li>계정 아이디와 서버</li>', guide)
         self.assertEqual(self.client.get('/static/img/guide-cut1.svg').status_code, 200)
         self.assertIn('rel="apple-touch-icon"', guide)
-        self.assertIn('<meta property="og:image" content="http://localhost/static/og-image.png', guide)
+        self.assertIn('<meta property="og:image" content="http://localhost/static/soboru-og.png', guide)
         for path in ('/favicon.ico', '/static/favicon.svg', '/static/apple-touch-icon.png', '/static/og-image.png'):
             resp = self.client.get(path); self.assertEqual(resp.status_code, 200); resp.close()
         admin = self.login_admin()
@@ -2647,7 +2646,7 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}), \
              patch.object(notify, 'send_email', side_effect=lambda *a: alerts.append(a)):
             self.post_form(admin, path, {'form': 'forward'})
-        self.assertEqual([(m[0], m[1]) for m in alerts], [('cs@cat.co.kr', '[소비자제보센터] 새 제보가 전달됐습니다')])
+        self.assertEqual([(m[0], m[1]) for m in alerts], [('cs@cat.co.kr', '[소보루] 새 제보가 전달됐습니다')])
         self.assertIn('/company/optout/', alerts[0][2])
         self.assertIn('고양이상회 환불 제보', biz.get('/biz').get_data(as_text=True))
         # 3) 공식 입장: 센터 확인 전에는 공개되지 않고, 확인하면 원문 그대로 공개
@@ -2735,9 +2734,9 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('/case', self.post_form(self.client, '/lookup', {'mode': 'phone', 'phone': '010-8181-2020', 'password': ''}).headers.get('Location', ''))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('비번 없는 공개 제보', home)
-        self.assertIn('class="st-legend"', home)
         self.assertNotIn('공개 검토 중', home)  # 공개 제보는 접수 즉시 게시
-        self.assertIn('href="/reports/1">비번 없는 공개 제보', home)
+        self.assertIn('href="/reports/1"', home)
+        self.assertIn('class="st-legend"', self.client.get('/reports').get_data(as_text=True))
 
     def test_publish_legacy_pending_reports(self):
         # 자동 게시 전에 들어와 승인을 기다리던 공개 제보는 관리자가 한 번에 게시. 게시를 내린 기록이 있으면 그대로
@@ -2773,11 +2772,8 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(done.count('class="stepper-label"'), 5)
         self.assertIn('기업 답변·처리', done)
         with self.site.conn() as db:db.execute("UPDATE cases SET status='기업 답변 대기' WHERE subject='단계 확인 제보'")
-        home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<li class="st-5"><i aria-hidden="true"></i>처리 중</li>', home)
-        self.assertNotIn('기업 답변 대기', home)
-        self.assertIn('<span class="rc-progress" aria-label="3단계 중 2단계"><i class="on"></i><i class="on"></i><i></i></span>', home)
         reports = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('<li class="st-5"><i aria-hidden="true"></i>처리 중</li>', reports)
         self.assertIn('<span class="step-badge">처리 중</span>', reports)
         self.assertNotIn('기업 답변 대기', reports)
         self.post_form(self.client, '/lookup', {'mode': 'phone', 'phone': '010-8181-3030', 'password': '4321'})
@@ -2940,12 +2936,11 @@ class SiteTest(unittest.TestCase):
     def ask_setup(self):
         with self.site.conn() as db:
             db.execute('DELETE FROM law_questions')
-            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
         self.addCleanup(self.ask_cleanup)
 
     def ask_cleanup(self):
         with self.site.conn() as db:
-            db.execute('DELETE FROM law_questions'); db.execute("DELETE FROM site_content WHERE key IN ('site.brand','ask.off')")
+            db.execute('DELETE FROM law_questions'); db.execute("DELETE FROM site_content WHERE key='ask.off'")
         extra = self.site.app.extensions['lawask']['extra_path']
         if extra.exists(): extra.unlink()
         self.site.triage.corpus.reset()
@@ -3643,10 +3638,6 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(json.loads(st.learned.read_text(encoding='utf-8')), {}); self.assertNotIn('동물보호법', st.synced.read_text(encoding='utf-8'))
 
     # ---- 앱 포장 준비 (appready.py): 서비스 워커·앱 링크·차단·알림·푸시·Apple 로그인 ----
-    def soboru_brand(self):
-        with self.site.conn() as db:
-            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
-
     def member_client(self, login_id, nickname):
         c = self.site.app.test_client()
         self.assertEqual(self.signup(c, login_id=login_id, nickname=nickname).status_code, 302)
@@ -3673,8 +3664,6 @@ class SiteTest(unittest.TestCase):
         self.assertIn('다시 시도하기', html)
         self.assertIn('img/soboru-character-hero.png?v=', html)
         self.assertNotIn('sb-header', html)  # 회원 정보가 없는 단독 화면
-        self.assertNotIn("serviceWorker.register", self.client.get('/').get_data(as_text=True))  # 소보루일 때만 등록
-        self.soboru_brand()
         self.assertIn("navigator.serviceWorker.register('/sw.js'", self.client.get('/').get_data(as_text=True))
 
     def test_app_link_files_follow_settings(self):
@@ -3702,7 +3691,6 @@ class SiteTest(unittest.TestCase):
             self.assertIn('ABCDE12345.kr.example.ios', self.client.get('/.well-known/apple-app-site-association').get_data(as_text=True))
 
     def test_members_can_block_and_unblock(self):
-        self.soboru_brand()
         alice, a_id = self.member_client('alice_b', '앨리스')
         bob, b_id = self.member_client('bob_b', '밥밥')
         now = datetime.datetime.now().isoformat(timespec='seconds')
@@ -3766,7 +3754,6 @@ class SiteTest(unittest.TestCase):
         self.assertIn('푸시 알림', privacy); self.assertIn('Apple로 가입·로그인', privacy)
 
     def test_alerts_for_comments_answers_solved_and_reports(self):
-        self.soboru_brand()
         alice, a_id = self.member_client('alice_a', '앨리스')
         bob, b_id = self.member_client('bob_a', '밥밥')
         now = datetime.datetime.now().isoformat(timespec='seconds')
@@ -3818,7 +3805,7 @@ class SiteTest(unittest.TestCase):
         alice, a_id = self.member_client('alice_p', '앨리스')
         bob, b_id = self.member_client('bob_p', '밥밥')
         sub = {'endpoint': 'https://fcm.googleapis.com/fcm/send/abc123', 'p256dh': 'B' * 87, 'auth': 'a' * 22}
-        token = self.csrf(alice, '/me/alerts')
+        token = self.csrf(alice, '/me')
         self.assertEqual(alice.post('/me/push/subscribe', data={'_csrf': token, **sub}).status_code, 503)  # 키가 없으면 꺼짐
         keys = {'VAPID_PUBLIC_KEY': 'BPub' + 'x' * 83, 'VAPID_PRIVATE_KEY': 'p' * 43, 'VAPID_SUBJECT': 'mailto:help@example.com'}
         with patch.dict(os.environ, keys):
@@ -3847,9 +3834,9 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 self.assertEqual([r[0] for r in db.execute('SELECT endpoint FROM push_subscriptions')], [sub['endpoint']])
             # 같은 기기에서 다른 회원이 켜면 그 회원에게 옮김, 끄면 지움
-            bob.post('/me/push/subscribe', data={'_csrf': self.csrf(bob, '/me/alerts'), **sub})
+            bob.post('/me/push/subscribe', data={'_csrf': self.csrf(bob, '/me'), **sub})
             with self.site.conn() as db:self.assertEqual(db.execute('SELECT user_id FROM push_subscriptions').fetchall()[0][0], b_id)
-            self.assertEqual(bob.post('/me/push/unsubscribe', data={'_csrf': self.csrf(bob, '/me/alerts'), 'endpoint': sub['endpoint']}).get_json(), {'ok': True})
+            self.assertEqual(bob.post('/me/push/unsubscribe', data={'_csrf': self.csrf(bob, '/me'), 'endpoint': sub['endpoint']}).get_json(), {'ok': True})
             with self.site.conn() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM push_subscriptions').fetchone()[0], 0)
         # pywebpush가 없으면 보내지 않고 기록만
         with patch.dict('sys.modules', {'pywebpush': None}), self.assertLogs(self.site.app.logger, 'WARNING') as logs:
@@ -4099,7 +4086,6 @@ class SiteTest(unittest.TestCase):
     def test_letter_subscribe_confirm_unsubscribe(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         box = []
-        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-17')")  # 홈 구독 칸은 소보루 홈에
         for path in ('/letter', '/life', '/'):
             page = self.client.get(path).get_data(as_text=True)
             self.assertIn('action="/letter/subscribe"', page, path); self.assertIn('name="website"', page, path); self.assertIn('name="agree"', page, path)

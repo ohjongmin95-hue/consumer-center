@@ -29,15 +29,11 @@ OPT_ML = {'optional': True, 'multiline': True}
 
 SECTIONS = [
     ('common', '공통 (헤더·푸터)', [
-        ('site.name', '사이트 이름 (브라우저 탭 등)', '소비자제보센터', {}),
-        ('site.brand', '브랜드 (소보루라고 적으면 이름·로고·메인 화면이 소보루로 바뀌어요. 비우면 소비자제보센터)', '', OPT),
-        ('site.logo_accent', '로고 앞부분 (주황색)', '소비자', OPT),
-        ('site.logo_rest', '로고 뒷부분', '제보센터', {}),
-        ('site.logo_by', '로고 옆 작은 글씨 (비우면 숨김)', 'by SOBORU', OPT),
+        ('site.name', '사이트 이름 (브라우저 탭·메일 머리말 등)', '소보루', {}),
     ]),
     ('seo', '검색 노출 (네이버·구글)', [
-        ('seo.home_title', '메인 화면 제목 (브라우저 탭·검색 결과·카톡 미리보기 제목)', '소비자제보센터 - 소비자 피해 제보·고발', {}),
-        ('seo.description', '사이트 설명 (검색 결과에 보이는 문장)', '환불 거부, 배송 지연, 불량품 같은 소비자 피해를 제보하고 업체 답변과 처리 과정을 확인하세요. 다른 소비자들의 피해 사례도 볼 수 있습니다.', {}),
+        ('seo.home_title', '메인 화면 제목 (브라우저 탭·검색 결과·카톡 미리보기 제목)', '소보루(SOBORU)', {}),
+        ('seo.description', '사이트 설명 (검색 결과에 보이는 문장)', '소비자 피해 제보부터 제품·업체 리뷰와 추천, 소비자 권리 안내까지. 소비자의 경험을 나누는 소비자 정보 플랫폼, 소보루.', {}),
         ('seo.naver_verification', '네이버 서치어드바이저 소유확인 코드', '', OPT),
         ('seo.google_verification', '구글 서치 콘솔 소유확인 코드', '', OPT),
         ('seo.daum_robots', '다음 웹마스터도구 robots.txt 줄', '', OPT),
@@ -60,11 +56,8 @@ SECTIONS = [
         ('footer.text', '저작권 문구 (맨 아래)', '© SOBORU All rights reserved.', ML),
         ('footer.nocopy', '무단 이용 금지 문구 (저작권 문구 위)', '소보루의 제보 글, 기사, 그림은 저작권법의 보호를 받습니다. 무단 전재·재배포, 자동 수집(크롤링), AI 학습 이용을 금지합니다.', ML),
     ]),
-    ('home', '메인 화면', [
-        ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),
-        ('home.hero_button', '제보 버튼', '제보하기 →', {}),
-        ('home.latest_title', '메인 최근 제보 제목 (비우면 제목 없이 카드만)', '', OPT),
-        ('home.latest_count', '메인에 보여줄 최근 제보 수 (3~20, 4의 배수가 깔끔해요)', '20', {}),
+    ('home', '메인 화면·제보 목록', [
+        ('home.hero_button', '제보 버튼 (기업 페이지)', '제보하기 →', {}),
         ('home.list_title', '제보 목록 페이지 제목', '소비자 제보 목록', {}),
         ('home.search_placeholder', '검색창 안내 문구', '제보 제목 검색', {}),
         ('home.empty', '목록이 비었을 때', '표시할 제보 내역이 없습니다.', {}),
@@ -114,7 +107,7 @@ SECTIONS = [
         ('guide.bottom_button', '하단 버튼', '제보 작성하기 →', {}),
     ]),
     ('board', '소비자게시판', [
-        ('board.title', '페이지 제목', '소비자게시판', {}),
+        ('board.title', '페이지 제목', '소보루 픽', {}),
         ('board.intro', '소개 문구', '', OPT_ML),
         ('board.rules', '글쓰기 약속 (한 줄에 하나씩)', '경험한 사실을 중심으로 써 주세요. 추측이나 단정은 피해 주세요.\n이름, 전화번호, 주소, 주문번호처럼 누군가를 알아볼 수 있는 정보는 적지 마세요.\n특정인을 향한 욕설, 비방, 조롱은 삼가 주세요.\n광고, 홍보, 같은 글 반복 등록은 삭제돼요.\n여러 분이 부적절하다고 알린 글은 자동으로 숨겨지고 운영자가 확인해요.', OPT_ML),
         ('board.empty', '글이 없을 때 문구', '아직 글이 없어요. 첫 이야기를 들려주세요.', {}),
@@ -223,41 +216,11 @@ PROCESS_STEPS = [
     ('결과 안내', 'check', '처리 결과를 **내 제보 조회**에서 안내하고 제보를 마무리해요.'),
 ]
 STATUSES = ['접수', '검토 중', '추가 확인', '기업 답변 대기', '기업 답변 도착', '종결']
-SAMPLE_REPORTS = [
-    ('반품 접수 후 2주째 환불이 안 돼요', '배송·환불', '○○쇼핑', '검토 중'),
-    ('해지했는데 다음 달 요금이 또 결제됐어요', '구독·결제', '○○뮤직', '기업 답변 대기'),
-    ('중도 해지 위약금을 과하게 청구해요', '서비스·계약', '○○피트니스', '추가 확인'),
-    ('수리 후에도 같은 고장이 반복돼요', '상품·품질', '○○가전', '접수'),
-    ('숙소 취소 수수료가 안내와 달라요', '여행·숙박', '○○투어', '기업 답변 도착'),
-    ('가입하지 않은 부가서비스 요금이 나왔어요', '금융·통신', '○○텔레콤', '종결'),
-    ('파손된 상품의 교환을 거부해요', '배송·환불', '○○마켓', '접수'),
-    ('무료체험 후 자동결제 안내가 없었어요', '구독·결제', '○○TV', '검토 중'),
-]
-MENU_PAGES = [
-    ('reports', '제보 목록'), ('companies', '기업별 제보'), ('guide', '이용 안내'), ('process', '처리 절차'), ('board', '소비자게시판'),
-    ('faq', '자주 묻는 질문'), ('report', '제보하기'), ('lookup', '내 제보 조회'), ('types', '제보 유형'),
-    ('home', '홈 (메인 화면)'), ('terms', '이용약관'), ('privacy', '개인정보 처리방침'), ('takedown', '게시중단 요청'),
-    ('groups', '공동 대응 (집단 피해)'), ('custom', '직접 입력한 주소'),
-]
-HOME_BLOCKS = [
-    ('hero', '메인 문구 + 제보하기 버튼 + 사람들 일러스트'), ('hero_plain', '메인 문구 + 제보하기 버튼 (일러스트 없이)'), ('latest_reports', '최근 제보 (실시간)'), ('board_posts', '최근 게시판 글'),
-    ('notice', '공지·안내 박스'), ('process', '처리 절차 요약'), ('faq', '자주 묻는 질문 미리보기'),
-    ('groups', '진행 중인 공동 대응 (+ 제안하기)'),
-]
-LEGACY_NAV = [('nav.home', 'reports', '소비자 제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
-              ('nav.board', 'board', '소비자게시판'), ('nav.faq', 'faq', '자주 묻는 질문')]
 LISTS = [
-    ('menu', '상단 메뉴', '사이트 맨 위 메뉴예요. 이름, 순서, 연결할 페이지를 정할 수 있고 외부 주소(블로그 등)도 넣을 수 있어요.',
-     [('label', '메뉴 이름', {}), ('page', '연결할 페이지', {'choices': MENU_PAGES}), ('url', '직접 입력한 주소 ("직접 입력한 주소"를 골랐을 때만, 예: https://blog.naver.com/...)', {})], 1),
-    ('home_blocks', '메인 화면 구성', '메인 화면에 위에서부터 차례로 보여요. 블록 종류마다 쓰는 칸이 달라요: 제목은 모든 블록, 개수는 최근 제보·게시판 글·질문 미리보기, 내용과 버튼은 공지·안내 박스에 쓰여요. 비운 칸은 기본값을 써요.',
-     [('kind', '블록 종류', {'choices': HOME_BLOCKS}), ('title', '제목', {}), ('count', '보여줄 개수', {}), ('body', '내용', ML),
-      ('button_label', '버튼 글자', {}), ('button_link', '버튼 주소 (예: /report 또는 https://...)', {})], 1),
     ('report_categories', '제보 유형', '제보하기 화면, 제보 목록 필터, 유형 페이지에 쓰여요. 이미 접수된 제보의 유형은 바뀌지 않아요.', [('name', '유형 이름', {})], 1),
     ('report_industries', '제보 업종', '제보하기 화면의 업종 선택 칸이에요. 예시는 고를 때 이름 옆에 흐리게 보여요. 이미 접수된 제보의 업종은 바뀌지 않아요.',
      [('name', '업종 이름', {}), ('examples', '예시 (예: 이동통신, 인터넷·IPTV)', {})], 1),
     ('board_categories', '소비자게시판 분류', '글쓰기 분류와 게시판 탭에 쓰여요. 6번째부터는 색이 처음부터 반복돼요.', [('name', '분류 이름', {})], 1),
-    ('sample_reports', '메인 예시 제보 카드', '실제 제보가 메인 카드 개수보다 적을 때 남는 자리를 "예시" 표시와 함께 채워요. 실제 제보가 늘면 하나씩 빠지고, 목록을 비우면 예시 카드는 나오지 않아요. 제보 목록 페이지에는 나오지 않아요.',
-     [('title', '제목', {}), ('category', '분류', {}), ('company', '업체 표시 (예: ○○쇼핑)', {}), ('status', '진행 단계', {'choices': [(s, s) for s in STATUSES]})], 0),
     ('faq', '자주 묻는 질문', '자주 묻는 질문 페이지에 순서대로 보여요.', [('q', '질문', {}), ('a', '답변', ML)], 0),
     ('process_steps', '처리 절차 단계', '처리 절차 페이지와 메인 "처리 절차 요약"의 단계 카드예요. 번호는 자동으로 매겨져요.', [('title', '단계 이름', {}), ('icon', '아이콘', {'choices': PROCESS_ICONS}), ('body', '설명 (**강조할 말**처럼 별표 두 개로 감싸면 주황색으로 강조돼요)', ML)], 0),
     ('guide_steps', '이용 안내 · 한눈에 보는 제보 방법', '이용 안내 맨 위 단계 카드예요. 번호는 자동으로 매겨져요.', [('title', '단계 이름', {}), ('icon', '아이콘', {'choices': GUIDE_STEP_ICONS})], 0),
@@ -291,13 +254,10 @@ LISTS.append(('report_consents', '제보하기 동의 항목', '제보하기 화
 LISTS.append(('custom_pages', '새 페이지', '원하는 페이지를 직접 만들어요. 주소는 consumerjebo.co.kr/p/영문주소 가 되고, 메뉴에 넣으려면 상단 메뉴에서 "직접 입력한 주소"를 고르고 /p/영문주소 를 적어요. 내용은 약관처럼 줄 맨 앞에 "## "를 쓰면 소제목, "- "를 쓰면 목록이 돼요.',
               [('slug', '영문 주소 (소문자·숫자·하이픈, 예: about)', {}), ('title', '페이지 제목', {}), ('body', '내용', ML)], 0))
 LIST_DEFAULTS = {
-    'menu': [{'label': label, 'page': page, 'url': ''} for _, page, label in LEGACY_NAV],
-    'home_blocks': [dict(_BLANK_BLOCK, kind='hero'), dict(_BLANK_BLOCK, kind='latest_reports'), dict(_BLANK_BLOCK, kind='groups')],
     'report_categories': [{'name': n} for n in REPORT_CATEGORY_DEFAULTS],
     'report_industries': [{'name': n, 'examples': e} for n, e in REPORT_INDUSTRY_DEFAULTS],
     'board_categories': [{'name': n} for n in BOARD_CATEGORY_DEFAULTS],
     'faq': [{'q': q, 'a': a} for q, a in FAQ_DEFAULTS],
-    'sample_reports': [{'title': t, 'category': c, 'company': co, 'status': st} for t, c, co, st in SAMPLE_REPORTS],
     'process_steps': [{'title': t, 'icon': i, 'body': b} for t, i, b in PROCESS_STEPS],
     'guide_steps': [{'title': t, 'icon': i} for t, i in GUIDE_STEPS],
     'guide_industries': [{'name': n, 'icon': i, 'examples': e, 'must': mu, 'materials': ma, 'tip': t} for n, i, e, mu, ma, t in INDUSTRIES],
@@ -319,19 +279,28 @@ LIST_MAX_ITEMS = 60
 # 템플릿에 {{ ui('report.submit', '제보 접수하기') }}처럼 적으면, 여기서 그 키와 기본 문구를 찾아
 # 관리자 '사이트 문구'에 자동으로 칸을 만들어 줌. 새 문구를 넣을 때 이 파일을 따로 고칠 필요가 없음.
 import re as _re
-_UI_CALL = _re.compile(r"""\bui(?:_text|_rich)?\(\s*'([a-z0-9_.]+)'\s*,\s*'([^'\n]*)'""")
+_UI_CALL = _re.compile(r"""\bui(?:_text|_rich)?\(\s*'([a-z0-9_.]+)'\s*,\s*(?:'([^'\n]*)'|"([^"\n]*)")""")
 UI_GROUPS = {
     'common': '공통 (헤더·푸터)', 'home': '메인 화면', 'reports': '제보 목록·공개 제보', 'report': '제보하기 화면',
     'done': '제보 완료 화면', 'lookup': '내 제보 조회', 'guide': '이용 안내', 'process': '처리 절차', 'types': '제보 유형',
-    'faq': '자주 묻는 질문', 'board': '소비자게시판', 'member': '회원가입·로그인·내 정보', 'takedown': '권리침해 신고',
+    'faq': '자주 묻는 질문', 'board': '소보루 픽 (게시판)', 'member': '회원가입·로그인·내 정보', 'takedown': '권리침해 신고',
     'policy': '약관·개인정보 처리방침·게시중단', 'company': '기업 답변 화면', 'msg': '알림 메시지 (입력 오류 등)',
+    'sb': '소보루 머리글·아래 탭', 'life': '생활정보', 'letter': '소보루 레터', 'cm': '소보루 픽', 'cp': '소보루 픽 리뷰 주제', 'case': '공개 제보 화면',
+    'ask': '법률 질문', 'ask2': 'AI 소비자 상담',
 }
+_TXT_CALL = _re.compile(r"""\b(?:txt|ed_attr)\(\s*'([a-z0-9_.]+)'\s*\)""")
+UI_FILES = {}  # 템플릿 파일 이름 → 그 화면에 나오는 문구 키 (관리자 '화면 편집'이 페이지별로 묶어 보여 줌)
 def _scan_ui():
     found = {}
     root = Path(__file__).parent
     for path in sorted((root / 'templates').glob('*.html')) + [root / 'app.py']:
-        for key, default in _UI_CALL.findall(path.read_text(encoding='utf-8')):
-            found.setdefault(key, default)
+        text = path.read_text(encoding='utf-8')
+        keys = UI_FILES.setdefault(path.name, [])
+        for key, single, double in _UI_CALL.findall(text):
+            found.setdefault(key, (single or double).replace('\\n', '\n'))  # 기본 문구 속 \n 은 줄바꿈
+            if key not in keys: keys.append(key)
+        for key in _TXT_CALL.findall(text):
+            if key not in keys: keys.append(key)
     return found
 UI_TEXTS = _scan_ui()
 _section_ids = {sid for sid, _, _ in SECTIONS}
@@ -342,8 +311,8 @@ for _key, _default in UI_TEXTS.items():
         SECTIONS.append((_sid, UI_GROUPS.get(_group, _group) + ' · 버튼·안내 문구', []))
         _section_ids.add(_sid)
     _items = next(items for sid, _, items in SECTIONS if sid == _sid)
-    _label = '화면 문구: ' + (_default if len(_default) <= 40 else _default[:40] + '…')
-    _items.append((_key, _label, _default, ML if len(_default) > 70 else {}))
+    _label = '화면 문구: ' + (_default if len(_default) <= 40 else _default[:40] + '…').replace('\n', ' ')
+    _items.append((_key, _label, _default, ML if len(_default) > 70 or '\n' in _default else {}))
 
 FIELDS = {key: {'label': label, 'default': default, 'section': sid, **opts}
           for sid, _, items in SECTIONS for key, label, default, opts in items}

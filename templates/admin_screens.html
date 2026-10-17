@@ -1,0 +1,108 @@
+{% extends 'console.html' %}
+{% block title %}화면 편집 | {{ site_name() }}{% endblock %}
+{% block content %}
+{# 관리자 > 화면 편집: 페이지별로 (1) 화면에서 바로 고치기 (2) 큰 묶음 순서·보이기 (3) 그 페이지 문구 전체를 한곳에서 #}
+<main class="ad-page sc-page">
+  <header class="ad-head"><div><h1>화면 편집</h1>
+    <p>소보루 화면의 글자는 큰 제목부터 작은 안내까지 모두 고칠 수 있어요. <b>화면에서 바로 고치기</b>를 누르면 실제 화면이 열리고, 점선이 그어진 글자를 누르면 바로 바꿀 수 있어요. 묶음(칸)은 아래 순서표나 화면 위 <b>▲ 위로 · ▼ 아래로 · 숨기기</b> 막대로 옮겨요.</p></div></header>
+
+  <nav class="sc-jump" aria-label="페이지 바로가기">{% for sc in screens %}<a href="#page-{{ sc.key }}">{{ sc.name }}</a>{% endfor %}</nav>
+
+  {% for sc in screens %}
+  <section class="ad-panel sc-panel" id="page-{{ sc.key }}">
+    <div class="sc-head">
+      <h2>{{ sc.name }}</h2>
+      <div class="sc-head-btns">
+        <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="1"><input type="hidden" name="next" value="{{ sc.url }}"><button class="ad-btn ad-btn-main" type="submit">화면에서 바로 고치기 →</button></form>
+        <a class="ad-btn" href="{{ sc.url }}" target="_blank" rel="noopener">화면 보기 ↗</a>
+      </div>
+    </div>
+
+    {% if sc.blocks %}
+    <form class="sc-blocks" method="post" data-sc-order>
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="page" value="{{ sc.key }}"><input type="hidden" name="act" value="order">
+      <h3>묶음 순서 · 보이기 <small>위에 있을수록 화면 위쪽에 나와요. 끄면 화면에서 빠져요 (지워지지는 않아요).</small></h3>
+      <ol>
+        {% for key, on in sc.blocks %}
+        <li draggable="true"{% if not on %} class="off"{% endif %}><input type="hidden" name="block" value="{{ key }}">
+          <span class="sc-grip" aria-hidden="true">⠿</span><span class="sc-name">{{ sc.names[key] }}</span>
+          <button type="button" class="sc-up" aria-label="{{ sc.names[key] }} 위로">▲</button><button type="button" class="sc-down" aria-label="{{ sc.names[key] }} 아래로">▼</button>
+          <label class="sc-show"><input type="checkbox" name="show_{{ key }}" value="1"{% if on %} checked{% endif %}> 보이기</label></li>
+        {% endfor %}
+      </ol>
+      <button class="ad-btn ad-btn-main" type="submit">순서 저장</button>
+    </form>
+    {% endif %}
+
+    {% if sc.texts %}
+    <details class="sc-texts">
+      <summary>이 페이지 문구 모두 보기 ({{ sc.texts|length }}개{% set n = sc.texts|select('in', changed)|list|length %}{% if n %} · 바꾼 문구 {{ n }}개{% endif %})</summary>
+      <form method="post">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="page" value="{{ sc.key }}"><input type="hidden" name="act" value="texts">
+        <input type="search" class="sc-find" placeholder="이 페이지에서 문구 찾기" aria-label="{{ sc.name }} 문구 찾기">
+        {% for key in sc.texts %}{% set f = fields[key] %}
+        <label class="sc-field"><span>{{ f.default|replace('\n', ' ')|truncate(60, True, '…') or key }}{% if key in changed %} <em>바꿈</em>{% endif %}</span>
+          {% if f.multiline or content[key]|length > 60 %}<textarea name="{{ key }}" rows="{{ [2, content[key].count('\n') + 2]|max }}" maxlength="2000">{{ content[key] }}</textarea>{% else %}<input name="{{ key }}" value="{{ content[key] }}" maxlength="2000">{% endif %}</label>
+        {% endfor %}
+        <p class="ad-muted">칸을 비우고 저장하면 처음 문구로 돌아가요. **굵게**처럼 별표 두 개로 감싸면 굵은 글씨가 되는 칸도 있어요.</p>
+        <button class="ad-btn ad-btn-main" type="submit">{{ sc.name }} 문구 저장</button>
+      </form>
+    </details>
+    {% endif %}
+  </section>
+  {% endfor %}
+  <p class="ad-muted">오류 메시지·메일 문구·검색 등록 코드처럼 화면에 안 보이는 문구는 <a href="{{ url_for('admin_content') }}">숨은 문구·설정</a>에서 고쳐요.</p>
+</main>
+<style>
+  .sc-jump{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+  .sc-jump a{padding:7px 13px;border-radius:999px;background:#fff;border:1px solid #e5e8eb;font-weight:700;font-size:14px;color:#333d4b}
+  .sc-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+  .sc-head h2{margin:0;font-size:20px}
+  .sc-head-btns{display:flex;flex-wrap:wrap;gap:8px}
+  .sc-blocks{margin-top:14px}
+  .sc-blocks h3,.sc-texts summary{font-size:15px;margin:0 0 8px;font-weight:800}
+  .sc-blocks h3 small{display:block;font-weight:500;color:#6b7684;font-size:13px;margin-top:2px}
+  .sc-blocks ol{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:6px}
+  .sc-blocks li{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #e5e8eb;border-radius:12px;background:#fff;cursor:grab}
+  .sc-blocks li.off{background:#f6f7f9;color:#8b95a1}
+  .sc-blocks li.drag{opacity:.4}
+  .sc-grip{color:#b0b8c1;font-size:18px}
+  .sc-name{flex:1;font-weight:700;min-width:0}
+  .sc-blocks li button{border:1px solid #e5e8eb;background:#f9fafb;border-radius:8px;padding:4px 9px;cursor:pointer}
+  .sc-show{display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap}
+  .sc-texts{margin-top:14px;border-top:1px solid #eef0f2;padding-top:12px}
+  .sc-texts summary{cursor:pointer}
+  .sc-find{width:100%;margin:10px 0}
+  .sc-field{display:grid;gap:4px;margin:0 0 10px}
+  .sc-field span{font-size:13px;color:#6b7684}
+  .sc-field em{font-style:normal;color:#d46a00;font-weight:800}
+  .sc-field input,.sc-field textarea,.sc-find{box-sizing:border-box;width:100%;padding:9px 11px;border:1px solid #d1d6db;border-radius:10px;font:inherit}
+  @media (max-width:640px){.sc-blocks li{flex-wrap:wrap}.sc-name{flex-basis:calc(100% - 30px)}}
+</style>
+<script>
+  // 묶음 순서표: ▲▼ 버튼이나 끌어서 옮기고 '순서 저장'
+  document.querySelectorAll('[data-sc-order] ol').forEach(function (ol) {
+    var dragging = null;
+    ol.addEventListener('click', function (e) {
+      var li = e.target.closest('li'); if (!li) return;
+      if (e.target.closest('.sc-up') && li.previousElementSibling) ol.insertBefore(li, li.previousElementSibling);
+      if (e.target.closest('.sc-down') && li.nextElementSibling) ol.insertBefore(li.nextElementSibling, li);
+      if (e.target.closest('.sc-show input')) li.classList.toggle('off', !e.target.checked);
+    });
+    ol.addEventListener('dragstart', function (e) { dragging = e.target.closest('li'); if (dragging) dragging.classList.add('drag'); });
+    ol.addEventListener('dragend', function () { if (dragging) dragging.classList.remove('drag'); dragging = null; });
+    ol.addEventListener('dragover', function (e) {
+      var li = e.target.closest('li'); if (!dragging || !li || li === dragging) return;
+      e.preventDefault(); var r = li.getBoundingClientRect();
+      ol.insertBefore(dragging, e.clientY > r.top + r.height / 2 ? li.nextElementSibling : li);
+    });
+  });
+  // 문구 찾기
+  document.querySelectorAll('.sc-find').forEach(function (box) {
+    box.addEventListener('input', function () {
+      var q = box.value.trim().toLowerCase();
+      box.form.querySelectorAll('.sc-field').forEach(function (f) { var v = (f.querySelector('input,textarea') || {}).value || ''; f.hidden = q && (f.textContent + ' ' + v).toLowerCase().indexOf(q) < 0; });
+    });
+  });
+</script>
+{% endblock %}

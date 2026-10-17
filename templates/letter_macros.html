@@ -4,19 +4,19 @@
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="place" value="{{ place }}">
   <div class="lt-hp" aria-hidden="true"><label>웹사이트 <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
   <div class="lt-row">
-    <input type="email" name="email" required maxlength="254" placeholder="이메일 주소" autocomplete="email" aria-label="이메일 주소" value="{{ g.user['email'] if g.user and g.user['email'] else '' }}">
-    <button type="submit">구독하기</button>
+    <input type="email" name="email" required maxlength="254" placeholder="{{ ui_text('letter.email_ph', '이메일 주소') }}" autocomplete="email" aria-label="{{ ui_text('letter.email_ph', '이메일 주소') }}" value="{{ g.user['email'] if g.user and g.user['email'] else '' }}">
+    <button type="submit">{{ ui('letter.subscribe', '구독하기') }}</button>
   </div>
-  <label class="lt-agree"><input type="checkbox" name="agree" value="1" required><span><b>(필수)</b> 레터 발송을 위한 이메일 수집·이용에 동의해요. 해지하면 바로 지워요. <a href="{{ url_for('policy_page', page='privacy') }}">자세히</a></span></label>
+  <label class="lt-agree"><input type="checkbox" name="agree" value="1" required><span>{{ ui_rich('letter.agree', '**(필수)** 레터 발송을 위한 이메일 수집·이용에 동의해요. 해지하면 바로 지워요.') }} <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.agree_more', '자세히') }}</a></span></label>
 </form>
 {% endmacro %}
 {% macro letter_card(place) %}
 {% set cfg = letter_cfg() %}
 <section class="lt-card" id="letter-sub" aria-labelledby="lt-card-h-{{ place }}">
   <div class="lt-card-copy">
-    <p class="lt-kicker"><span class="tf" aria-hidden="true">📨</span> 소보루 레터</p>
-    <h2 id="lt-card-h-{{ place }}">{{ cfg.when }},<br>주요 이슈를 쉽게 풀어 드려요</h2>
-    <p>{{ cfg.span }}의 주요 뉴스와 내 생활에 어떤 의미인지, 인기 리뷰까지 5분이면 다 읽어요. <a href="{{ url_for('letter_home') }}">지난 레터 보기 ›</a></p>
+    <p class="lt-kicker"><span class="tf" aria-hidden="true">📨</span> {{ ui('letter.card_kicker', '소보루 레터') }}</p>
+    <h2 id="lt-card-h-{{ place }}">{{ ui('letter.card_title', '{when},\n주요 이슈를 쉽게 풀어 드려요', when=cfg.when) }}</h2>
+    <p>{{ ui('letter.card_body', '{span}의 주요 뉴스와 내 생활에 어떤 의미인지, 인기 리뷰까지 5분이면 다 읽어요.', span=cfg.span) }} <a href="{{ url_for('letter_home') }}">{{ ui('letter.card_more', '지난 레터 보기 ›') }}</a></p>
   </div>
   {{ subscribe_form(place) }}
 </section>

@@ -9,6 +9,7 @@
       <span class="ad-chip">가장 쉬운 방법</span>
       <h2>화면에서 바로 고치기</h2>
       <p>사이트를 그대로 보면서 점선으로 표시된 문장을 누르면 고칠 수 있어요. 필요 없는 섹션이나 동의 항목은 <b>✕ 빼기</b>로 지워요. 아래 막대에서 다른 페이지로 이동할 수 있어요.</p>
+      <p><a class="ad-link" href="{{ url_for('admin_screens') }}">페이지별로 고르기 · 묶음(칸) 순서 바꾸기 → 화면 편집</a></p>
     </div>
     <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="1"><button class="ad-btn ad-btn-main ad-btn-lg" type="submit">편집 시작하기 →</button></form>
   </section>

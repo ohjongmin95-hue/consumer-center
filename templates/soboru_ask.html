@@ -2,10 +2,10 @@
 {# 소비자 법률 질문창: 배운 법령 원문에서 조문을 찾아 그 조문만 근거로 답함 (lawask.py) #}
 {% block title %}{{ ui_text('ask.title', '소비자 법률 질문') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui_text('ask.description', '환불·반품·약관·표시 광고처럼 궁금한 소비자 법률, 법령 원문을 근거로 쉽게 답해 드려요.') }}{% endblock %}
-{% block head %}{% if not is_soboru() %}<link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}{% endblock %}
+
 {% block content %}
 {% set chev %}<svg class="sba-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>{% endset %}
-<main class="sb-wrap sb-ask{% if not is_soboru() %} sb{% endif %}">
+<main class="sb-wrap sb-ask">
 <div class="sba">
   <header class="sba-head">
     <p class="sba-kicker"><span aria-hidden="true">⚖️</span> {{ ui('ask.kicker', '법령 원문으로 답해요') }}</p>
@@ -31,13 +31,13 @@
       {% endif %}
       {% if result.cards %}
       <div class="sba-refs">
-        <p class="sba-refs-h">{{ '근거 조문' if result.kind == 'answer' else '찾은 조문' }} <b>{{ result.cards|length }}</b></p>
+        <p class="sba-refs-h">{{ ui('ask.refs_answer', '근거 조문') if result.kind == 'answer' else ui('ask.refs_found', '찾은 조문') }} <b>{{ result.cards|length }}</b></p>
         {% for c in result.cards %}
         <details class="sba-ref"{% if result.kind == 'fallback' and loop.first %} open{% endif %}>
-          <summary><span class="sba-law">{{ '생활법령정보' if c.guide else c.short }}</span><span class="sba-art">{% if not c.guide %}<b>{{ c.art }}</b> {% endif %}{{ c.title }}</span>{{ chev }}</summary>
+          <summary><span class="sba-law">{{ ui('ask.guide_label', '생활법령정보') if c.guide else c.short }}</span><span class="sba-art">{% if not c.guide %}<b>{{ c.art }}</b> {% endif %}{{ c.title }}</span>{{ chev }}</summary>
           <div class="sba-ref-body">
             <p class="sba-text">{{ c.text }}</p>
-            <p class="sba-src"><span>{{ c.law }}{% if c.effective %} · 시행 {{ c.effective|replace('-', '.') }}{% endif %}</span><a href="{{ c.source }}" target="_blank" rel="noopener">{{ '원문 보기' if c.guide else '국가법령정보센터에서 보기' }} ↗</a></p>
+            <p class="sba-src"><span>{{ c.law }}{% if c.effective %} · {{ ui('ask.effective', '시행') }} {{ c.effective|replace('-', '.') }}{% endif %}</span><a href="{{ c.source }}" target="_blank" rel="noopener">{{ ui('ask.src_guide', '원문 보기') if c.guide else ui('ask.src_law', '국가법령정보센터에서 보기') }} ↗</a></p>
           </div>
         </details>
         {% endfor %}
@@ -72,9 +72,9 @@
 
   {% if not result %}
   <ol class="sba-how">
-    <li>{% if is_soboru() %}<span class="nn-emo sba-emo t2" aria-hidden="true">🔍</span>{% else %}<b>1</b>{% endif %}<div><h3>{{ ui('ask.how1', '맞는 조문을 찾아요') }}</h3><p>{{ ui('ask.how1_d', '전자상거래법, 약관법, 소비자기본법처럼 배운 법령 원문에서 찾아요.') }}</p></div></li>
-    <li>{% if is_soboru() %}<span class="nn-emo sba-emo t1" aria-hidden="true">⚖️</span>{% else %}<b>2</b>{% endif %}<div><h3>{{ ui('ask.how2', '그 조문만 근거로 답해요') }}</h3><p>{{ ui('ask.how2_d', '인터넷 검색 없이, 찾은 원문에 적힌 내용으로만 쉽게 풀어요.') }}</p></div></li>
-    <li>{% if is_soboru() %}<span class="nn-emo sba-emo t3" aria-hidden="true">✅</span>{% else %}<b>3</b>{% endif %}<div><h3>{{ ui('ask.how3', '원문을 바로 확인해요') }}</h3><p>{{ ui('ask.how3_d', '답변 아래 조문 카드를 누르면 법령 원문과 출처가 나와요.') }}</p></div></li>
+    <li><span class="nn-emo sba-emo t2" aria-hidden="true">🔍</span><div><h3>{{ ui('ask.how1', '맞는 조문을 찾아요') }}</h3><p>{{ ui('ask.how1_d', '전자상거래법, 약관법, 소비자기본법처럼 배운 법령 원문에서 찾아요.') }}</p></div></li>
+    <li><span class="nn-emo sba-emo t1" aria-hidden="true">⚖️</span><div><h3>{{ ui('ask.how2', '그 조문만 근거로 답해요') }}</h3><p>{{ ui('ask.how2_d', '인터넷 검색 없이, 찾은 원문에 적힌 내용으로만 쉽게 풀어요.') }}</p></div></li>
+    <li><span class="nn-emo sba-emo t3" aria-hidden="true">✅</span><div><h3>{{ ui('ask.how3', '원문을 바로 확인해요') }}</h3><p>{{ ui('ask.how3_d', '답변 아래 조문 카드를 누르면 법령 원문과 출처가 나와요.') }}</p></div></li>
   </ol>
   {% endif %}
 

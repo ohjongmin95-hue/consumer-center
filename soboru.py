@@ -1,8 +1,7 @@
-"""소보루 브랜드: 설정 하나로 이름·로고·메인 화면을 소보루로 바꾸기, 생활정보(매거진), 이달의 기업 답변 순위.
+"""소보루: 사이트 브랜드(소보루 하나), 메인 화면, 생활정보(매거진), 이달의 기업 답변 순위.
 
-- 관리자 > 숨은 문구·설정 > '브랜드'에 소보루라고 적으면 사이트 이름·로고·메인 화면·메일 머리말이 소보루로 바뀜.
-  비우면 지금 그대로 소비자제보센터. 주소·데이터는 그대로라 언제든 오갈 수 있음.
-- 관리자는 바꾸기 전에 아무 주소 뒤에 ?brand=soboru 를 붙여 미리 볼 수 있음 (?brand=off 로 끔). 방문자에게는 안 보임.
+- 예전 소비자제보센터 화면은 2026-10-17에 뺐음. 그 완성본은 태그 jebo-center-final에 있음 (docs/JEBO_CENTER_RESTORE.md).
+- 저장해 둔 문구 속 '소비자제보센터'는 화면에 낼 때 '소보루'로 바꿔 보여 줌.
 - 생활정보(/life): 운영자가 쓰거나, 나중에 공공데이터 자동 수집이 초안으로 넣는 글. 게시한 글만 보임.
 """
 import datetime, json, re, statistics
@@ -12,15 +11,9 @@ from markupsafe import Markup, escape
 
 OLD_NAME = '소비자제보센터'
 NEW_NAME = '소보루'
-BRAND_VALUES = {'소보루', 'soboru', 'SOBORU'}
 # 소보루로 바꿀 때 덮어쓰는 문구 (관리자가 적어 둔 값보다 앞섬)
-SOBORU_TEXT = {
-    'site.name': NEW_NAME,
-    'seo.home_title': '소보루(SOBORU)',
-    'seo.description': '소비자 피해 제보부터 제품·업체 리뷰와 추천, 소비자 권리 안내까지. 소비자의 경험을 나누는 소비자 정보 플랫폼, 소보루.',
-    'site.logo_accent': '', 'site.logo_rest': NEW_NAME, 'site.logo_by': '',
-    'board.title': '소보루 픽',
-}
+# 예전 브랜드 시절 소보루로 덮어쓰던 문구. 소보루 하나만 쓰면서 기본값이 소보루 문구가 됐으니, 그때 저장해 둔 값(화면에 안 보이던 값)은 한 번 지움
+RETIRED_KEYS = ('site.brand', 'site.logo_accent', 'site.logo_rest', 'site.logo_by', 'site.name', 'seo.home_title', 'seo.description', 'board.title')
 # AI 소비자 상담 새 버전(lawrag.py)을 켰을 때만 쓰는 메뉴·제목 문구. 꺼져 있으면 old_nav 그대로
 ASK_V2_TEXT = {'nav': 'AI 소비자 상담', 'old_nav': '법률 질문', 'title': 'AI 소비자 상담', 'h1': '소비자 피해, AI에게 편하게 물어보세요',
                'notice': '상담사가 아닌 AI가 제공하는 일반 정보예요', 'cta': '업체와의 협의가 어려우신가요?'}
@@ -46,12 +39,18 @@ GUIDE_EMOJI = {'write': '📝', 'attach': '📋', 'ticket': '🧾', 'lock': '�
 LIFE_TONES = ['t1', 't2', 't3', 't4', 't5', 't6']  # 대표 그림 바탕색
 LIFE_PAGE = 12
 RANK_DAYS = 30
-# 메인 화면 순서 (관리자 > 메인 화면 순서)
-HOME_SECTIONS = [('top', '맨 위 큰 카드'), ('box', '제보하기 상자'), ('cases', '새로 올라온 제보'), ('rank', '이달의 기업 답변 · 커뮤니티 인기글'),
-                 ('life', '알아 두면 돈 버는 생활정보')]  # 제보 안내 바로가기는 '소비자 제보' 메뉴 안으로 옮김
-HOME_KINDS = {'report': '소비자 제보', 'life': '생활정보'}
-HOME_PERIODS = [(1, '1시간'), (3, '3시간'), (6, '6시간'), (12, '12시간'), (24, '하루')]
-HOME_DEFAULT = {'slots': ['report', 'life'], 'hours': 6, 'pins': [], 'sections': [[k, 1] for k, _ in HOME_SECTIONS]}
+# 화면 편집 (관리자 > 화면 편집): 페이지마다 큰 묶음(블록)의 순서와 보이기. 잘게 나누지 않고 화면에서 한눈에 보이는 덩어리 단위
+PAGE_BLOCKS = {
+    'home': ('홈', [('intro', '맨 위 소개 (소보루 큰 문구 · 제보하기 버튼)'), ('quick', '바로가기 아이콘 줄'), ('live', '방금 들어온 제보'),
+                   ('life', '알아 두면 돈 버는 소비 이야기'), ('pick', '소보루 픽 (추천 TOP 5 · 최신 글 · 글쓰기)'), ('answer', '기업 답변 기록'),
+                   ('letter', '소보루 레터 구독')]),
+    'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '소보루 레터 구독')]),
+    'board': ('소보루 픽', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
+                         ('feed', '글 목록 · 이번 주 인기 · 리뷰 모아 보기'), ('foot', '맨 아래 안내')]),
+    'letter': ('소보루 레터', [('hero', '맨 위 구독 신청'), ('feats', '레터에 담기는 것 (3가지)'), ('archive', '지난 레터')]),
+}
+# 예전 '메인 화면 순서' 저장값(top·life·rank 켜고 끄기)을 새 묶음으로 옮길 때
+OLD_HOME_SECTIONS = {'top': ('intro', 'quick', 'live'), 'life': ('life',), 'rank': ('pick', 'answer')}
 # 제보 카드 대표 그림: 제보 유형별 이모지·바탕색
 REPORT_EMOJI = {'배송·교환·환불': '📦', '계약·해지': '📝', '요금·결제': '💳', '품질·하자·AS': '🛠️', '허위·과장 광고': '📢',
                 '고객 응대': '☎️', '개인정보': '🔐', '안전·위해': '⚠️'}
@@ -90,17 +89,26 @@ def report_art(industry, extra=()):
     return 'other'
 
 
-def clean_plan(raw):
-    # 저장된 값이 이상해도 메인 화면이 깨지지 않게 기본값으로 메움
-    slots = [k for k in (raw.get('slots') or []) if k in HOME_KINDS][:6] or list(HOME_DEFAULT['slots'])
-    hours = raw.get('hours') if raw.get('hours') in [h for h, _ in HOME_PERIODS] else HOME_DEFAULT['hours']
-    pins = [p for p in (raw.get('pins') or []) if isinstance(p, int) and p > 0][:12]
-    seen, sections = set(), []
-    for item in raw.get('sections') or []:
-        if isinstance(item, (list, tuple)) and len(item) == 2 and item[0] in dict(HOME_SECTIONS) and item[0] not in seen:
-            seen.add(item[0]); sections.append([item[0], 1 if item[1] else 0])
-    sections += [[k, 1] for k, _ in HOME_SECTIONS if k not in seen]
-    return {'slots': slots, 'hours': hours, 'pins': pins, 'sections': sections}
+def clean_blocks(page, raw):
+    # 저장된 값이 이상해도 화면이 깨지지 않게: 모르는 묶음은 빼고, 빠진 묶음은 맨 뒤에 켜서 붙임
+    names = dict(PAGE_BLOCKS[page][1])
+    seen, out = set(), []
+    for item in raw or []:
+        if isinstance(item, (list, tuple)) and len(item) == 2 and item[0] in names and item[0] not in seen:
+            seen.add(item[0]); out.append([item[0], 1 if item[1] else 0])
+    return out + [[k, 1] for k in names if k not in seen]
+
+
+def move_block(rows, key, act):
+    """묶음 하나를 위·아래로 옮기거나 숨기기·보이기. rows는 clean_blocks 결과."""
+    i = next((n for n, (k, _) in enumerate(rows) if k == key), None)
+    if i is None: return rows
+    rows = [list(r) for r in rows]
+    if act == 'up' and i > 0: rows[i - 1], rows[i] = rows[i], rows[i - 1]
+    elif act == 'down' and i < len(rows) - 1: rows[i + 1], rows[i] = rows[i], rows[i + 1]
+    elif act in ('top', 'bottom'): rows.insert(0 if act == 'top' else len(rows), rows.pop(i))
+    elif act in ('hide', 'show'): rows[i][1] = 1 if act == 'show' else 0
+    return rows
 
 
 def migrate(db):
@@ -111,6 +119,9 @@ def migrate(db):
     # 공공데이터 자동 수집이 같은 항목을 두 번 넣지 않게
     db.execute('CREATE TABLE IF NOT EXISTS soboru_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
     db.execute('CREATE UNIQUE INDEX IF NOT EXISTS articles_ext_key ON articles(ext_key) WHERE ext_key IS NOT NULL')
+    if not db.execute("SELECT 1 FROM soboru_settings WHERE key='brand_only'").fetchone():
+        db.execute('DELETE FROM site_content WHERE key IN (%s)' % ','.join('?' * len(RETIRED_KEYS)), RETIRED_KEYS)
+        db.execute("INSERT INTO soboru_settings(key,value) VALUES('brand_only','1')")
 
 
 def ago_text(stamp):
@@ -131,25 +142,18 @@ def install(S):
     with conn() as db: migrate(db)
 
     # ---- 브랜드 ---------------------------------------------------------
-    def saved_brand(value):
-        return 'soboru' if (value or '').strip() in BRAND_VALUES else 'jebo'
+    # 소보루 하나만 씀 (2026-10-17 운영자 요청). 예전 소비자제보센터 화면은 태그 jebo-center-final에 보관 (docs/JEBO_CENTER_RESTORE.md)
+    def brand(): return 'soboru'
 
-    def brand():
-        if has_request_context() and 'brand' in g: return g.brand
-        with conn() as db:
-            row = db.execute("SELECT value FROM site_content WHERE key='site.brand'").fetchone()
-        return saved_brand(row[0] if row else '')
-
-    def is_soboru(): return brand() == 'soboru'
+    def is_soboru(): return True
 
     def seo_page(field):
-        if not has_request_context() or not is_soboru(): return ''
+        if not has_request_context(): return ''
         page = (request.view_args or {}).get('page')
         row = SEO_PAGES.get(f'{request.endpoint}:{page}' if page else request.endpoint)
         return row[0 if field == 'title' else 1] if row else ''
 
     def og_default():
-        if not is_soboru(): return 'og-image.png'
         path = request.path
         for prefix, name in OG_SECTIONS:
             if path == prefix or path.startswith(prefix + '/'): return f'soboru-og-{name}.png'
@@ -159,29 +163,21 @@ def install(S):
     @app.before_request
     def apply_brand():
         if request.endpoint == 'static' or 'content' not in g: return
-        pick = request.args.get('brand')
-        if pick in ('soboru', 'off') and S.admin_active():
-            if pick == 'soboru': session['brand_preview'] = 'soboru'
-            else: session.pop('brand_preview', None)
-        g.brand = 'soboru' if session.get('brand_preview') == 'soboru' and S.admin_active() else saved_brand(g.content.get('site.brand'))
-        g.brand_preview = g.brand == 'soboru' and saved_brand(g.content.get('site.brand')) != 'soboru'
-        if g.brand == 'soboru':
-            for k, v in g.content.items():
-                if OLD_NAME in v: g.content[k] = v.replace(OLD_NAME, NEW_NAME)
-            g.content.update(SOBORU_TEXT)
+        g.brand = 'soboru'
+        for k, v in g.content.items():  # 예전에 저장해 둔 문구 속 옛 이름도 소보루로
+            if OLD_NAME in v: g.content[k] = v.replace(OLD_NAME, NEW_NAME)
 
     def site_name():
         """메일·알림·AI 초안에 쓰는 사이트 이름 (요청 밖에서도 DB 설정을 읽음)."""
-        if has_request_context() and 'content' in g: return g.content.get('site.name') or OLD_NAME
+        if has_request_context() and 'content' in g: return g.content.get('site.name') or NEW_NAME
         with conn() as db:
-            rows = {r[0]: r[1] for r in db.execute("SELECT key,value FROM site_content WHERE key IN ('site.brand','site.name')")}
-        if saved_brand(rows.get('site.brand')) == 'soboru': return NEW_NAME
-        return rows.get('site.name') or OLD_NAME
+            row = db.execute("SELECT value FROM site_content WHERE key='site.name'").fetchone()
+        return (row[0] if row else '') or NEW_NAME
     notify.site_name = site_name
 
     def branded(value):
         # 템플릿에 적힌 기본 문구 속 이름도 지금 브랜드로 (Markup은 Markup 그대로)
-        return value.replace(OLD_NAME, site_name()) if is_soboru() and value else value
+        return value.replace(OLD_NAME, site_name()) if value else value
     app.jinja_env.filters['branded'] = branded
 
     # ---- 생활정보 --------------------------------------------------------
@@ -240,14 +236,48 @@ def install(S):
                                  ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES, LIFE_EMOJI=LIFE_EMOJI, GUIDE_EMOJI=GUIDE_EMOJI,
                                  report_look=report_look, life_art=lambda cat: LIFE_ART.get(cat, 'other'), report_art=lambda ind: report_art(ind, S.items('guide_industries')))
 
-    # ---- 메인 화면: 소보루면 새 홈 ------------------------------------------
-    # 관리자 > 메인 화면 순서에서 맨 위 큰 카드에 무엇을 어떤 순서·주기로 띄울지, 아래 묶음 순서를 정함.
-    def home_plan():
+    # ---- 화면 편집: 페이지별 큰 묶음 순서·보이기 ---------------------------------
+    def page_blocks(page):
+        """[[묶음, 켬], ...] 저장된 순서 (없으면 기본 순서)."""
         with conn() as db:
-            row = db.execute("SELECT value FROM soboru_settings WHERE key='home'").fetchone()
-        try: saved = json.loads(row[0]) if row else {}
-        except ValueError: saved = {}
-        return clean_plan(saved)
+            row = db.execute('SELECT value FROM soboru_settings WHERE key=?', ('blocks:' + page,)).fetchone()
+            old = db.execute("SELECT value FROM soboru_settings WHERE key='home'").fetchone() if page == 'home' and not row else None
+        try: saved = json.loads(row[0]) if row else []
+        except ValueError: saved = []
+        if old:  # 예전 '메인 화면 순서'에서 끈 묶음은 계속 꺼 둠
+            try: off = {k for k, on in json.loads(old[0]).get('sections', []) if not on}
+            except (ValueError, AttributeError, TypeError): off = set()
+            saved = [[b, 0 if any(b in OLD_HOME_SECTIONS.get(k, ()) for k in off) else 1] for b, _ in PAGE_BLOCKS['home'][1]]
+        return clean_blocks(page, saved)
+
+    def save_blocks(page, rows):
+        with conn() as db:
+            db.execute('INSERT OR REPLACE INTO soboru_settings(key,value) VALUES(?,?)', ('blocks:' + page, json.dumps(clean_blocks(page, rows))))
+
+    def blocks(page):
+        # 템플릿: {% for b in blocks('home') %} 순서대로 켠 묶음만. 요청마다 한 번만 읽음
+        cache = g.setdefault('page_blocks', {}) if has_request_context() else {}
+        if page not in cache: cache[page] = page_blocks(page)
+        return [k for k, on in cache[page] if on]
+
+    def ed_block(page, key):
+        # 편집 모드에서 묶음 위에 붙는 작은 막대: 이름 · 위로 · 아래로 · 숨기기
+        if not S.editing(): return ''
+        names = dict(PAGE_BLOCKS[page][1]); keys = blocks(page)
+        btn = lambda act, label, off=False: Markup('<button type="button" data-act="%s"%s>%s</button>') % (act, Markup(' disabled') if off else '', label)
+        return (Markup('<div class="ed-blockbar" data-page="%s" data-block="%s"><b>%s</b>') % (page, key, names.get(key, key))
+                + btn('up', '▲ 위로', keys[:1] == [key]) + btn('down', '▼ 아래로', keys[-1:] == [key]) + btn('hide', '숨기기') + Markup('</div>'))
+
+    def ed_hidden_blocks(page):
+        # 편집 모드에서 페이지 맨 아래: 숨긴 묶음을 다시 보이게
+        if not S.editing(): return ''
+        names = dict(PAGE_BLOCKS[page][1])
+        off = [k for k, on in page_blocks(page) if not on]
+        if not off: return ''
+        return (Markup('<div class="ed-hiddenblocks"><b>숨긴 묶음</b>')
+                + Markup('').join(Markup('<span class="ed-blockbar" data-page="%s" data-block="%s">%s <button type="button" data-act="show">보이기</button></span>') % (page, k, names[k]) for k in off)
+                + Markup('</div>'))
+    app.jinja_env.globals.update(blocks=blocks, ed_block=ed_block, ed_hidden_blocks=ed_hidden_blocks)
 
     def report_items(limit=12, pins=()):
         # 공개 동의 + 게시된 제보만 (비밀글·게시 전·반려·중복은 메인 카드에 안 나감)
@@ -274,52 +304,11 @@ def install(S):
         return {'kind': 'life', 'id': a['id'], 'url': url_for('life_article', article_id=a['id']), 'title': a['title'], 'summary': a['summary'],
                 'label': a['category'], 'stamp': a['published_at'] or a['created'], 'emoji': a['emoji'] or '📰', 'tone': a['tone'] or 't1', 'art': LIFE_ART.get(a['category'], 'other')}
 
-    def plan_tick(plan, at=None):
-        # 주기 번호: 서버 시각(한국 시각) 0시 기준으로 hours마다 1씩 오름
-        at = at or datetime.datetime.now()
-        secs = (at - datetime.datetime(2026, 1, 1)).total_seconds()
-        step = plan['hours'] * 3600
-        tick = int(secs // step)
-        return tick, datetime.datetime(2026, 1, 1) + datetime.timedelta(seconds=(tick + 1) * step)
-
-    def pick_top(plan, at=None):
-        """맨 위 큰 카드 1개 + 옆 목록 3개. 순서표(slots)를 주기마다 한 칸씩 넘기고, 같은 종류 안에서도 돌아가며 보여 줌."""
-        featured = [life_item(a) for a in life_rows(12) if a['featured']]
-        pools = {'life': featured or [life_item(a) for a in life_rows(12)], 'report': report_items(12, plan['pins'])}
-        slots = plan['slots']
-        tick, _ = plan_tick(plan, at)
-        i = tick % len(slots)
-        kind = slots[i]
-        if not pools[kind]: kind = 'life' if kind == 'report' else 'report'  # 그 종류가 아직 없으면 다른 종류로
-        pool = pools[kind]
-        if not pool: return None, []
-        nth = (tick // len(slots)) * max(1, slots.count(kind)) + slots[:i].count(kind)
-        lead = pool[nth % len(pool)]
-        # 옆 목록: 다른 종류부터 번갈아 3개
-        other = 'life' if kind == 'report' else 'report'
-        rest = {'life': [life_item(a) for a in life_rows(4, exclude=[lead['id']] if kind == 'life' else ())],
-                'report': [x for x in pools['report'] if x is not lead]}
-        side, order = [], [other, kind]
-        while len(side) < 3 and (rest['life'] or rest['report']):
-            for k in order:
-                if rest[k] and len(side) < 3: side.append(rest[k].pop(0))
-        return lead, side
-
-    old_home = app.view_functions['home']
-    def home():
-        if not is_soboru(): return old_home()
-        if request.args.get('look') != 'old': return home_nn()  # 예전 홈은 /?look=old 로 비교용
-        plan = home_plan()
-        lead, side = pick_top(plan)
-        shown = [x['id'] for x in ([lead] if lead else []) + side if x['kind'] == 'life']
-        more = life_rows(6, exclude=shown) or life_rows(6)
-        return render_template('soboru_home.html', plan=plan, lead=lead, side=side, more=more, rank=company_rank(4),
-                               cases=S.report_rows(limit=6), posts=S.community_feed(4))
-    app.view_functions['home'] = home
+    app.view_functions['home'] = lambda: home_nn()  # 메인 화면은 소보루 홈 하나 (예전 /?look=old 비교 화면은 뺌)
 
     def home_nn():
         # 뉴닉식 홈(운영자 요청, 2026-10-17): 맨 위는 소보루 소개만(건수 없음), 바로 아래 실시간 제보.
-        # 관리자 > 메인 화면 순서의 켜고 끄기를 따름: top=소개·실시간 제보, life=소비 이야기, rank=소보루 픽·기업 답변 기록
+        # 묶음 순서·보이기는 관리자 > 화면 편집 (PAGE_BLOCKS['home'])
         lifes = [life_item(a) for a in life_rows(8)]
         reps = [r for r in report_items(6) if r['title']]
         for r in reps:  # '[품질·하자] 물건이나…' → '품질·하자'
@@ -333,30 +322,67 @@ def install(S):
         with conn() as db:
             picks = [dict(r) for r in db.execute("""SELECT target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg,SUM(recommend=1) AS rec
                 FROM posts WHERE kind='review' AND hidden=0 AND editor=0 AND target!='' GROUP BY target ORDER BY rec DESC,avg DESC,n DESC LIMIT 5""")]
-        show = {k: on for k, on in home_plan()['sections']}
-        return render_template('soboru_home_nn.html', show=show, cases=[dict(c, look=report_look(c['cat'])) for c in S.report_rows(limit=6)], feed=feed[:10], cats=cats,
+        return render_template('soboru_home_nn.html', cases=[dict(c, look=report_look(c['cat'])) for c in S.report_rows(limit=6)], feed=feed[:10], cats=cats,
                                rank=company_rank(5), posts=S.community_feed(4), picks=picks)
 
-    @app.route('/admin/home-plan', methods=['GET', 'POST'])
+    @app.route('/admin/home-plan')
     @S.admin_only
-    def admin_home_plan():
+    def admin_home_plan():  # 예전 '메인 화면 순서' 주소 → 화면 편집
+        return redirect(url_for('admin_screens', _anchor='page-home'))
+
+    # 관리자 > 화면 편집: 페이지별로 '화면에서 바로 고치기' 열기, 묶음 순서·보이기, 그 페이지 문구 전체
+    SCREENS = [  # (키, 이름, 주소 만드는 함수, 문구를 모을 템플릿 파일)
+        ('home', '홈', lambda: url_for('home'), ['soboru_home_nn.html', 'letter_macros.html']),
+        ('life', '생활정보', lambda: url_for('life'), ['life.html', 'life_article.html', 'soboru_life_macros.html', 'life_tabs.html', 'life_search.html', 'life_trend.html', 'life_shopping.html', 'life_nv_macros.html']),
+        ('board', '소보루 픽', lambda: url_for('board'), ['board.html', 'soboru_board.html', 'soboru_board_post.html', 'soboru_board_write.html', 'board_post.html', 'board_write.html', 'community_macros.html']),
+        ('report', '제보', lambda: url_for('report'), ['report.html', 'reports.html', 'report_rows.html', 'public_case.html', 'soboru_case.html', 'case_talk.html', 'success.html', 'lookup.html', 'case.html', 'guide.html', 'info.html', 'process_cards.html']),
+        ('company', '기업', lambda: url_for('companies'), ['companies.html', 'company_page.html']),
+        ('ask', '법률 질문', lambda: url_for('law_ask'), ['soboru_ask.html', 'soboru_ask_v2.html']),
+        ('letter', '소보루 레터', lambda: url_for('letter_home'), ['letter.html', 'letter_issue.html', 'letter_msg.html', 'letter_macros.html']),
+        ('common', '공통 머리글·바닥글', lambda: url_for('home'), ['base.html', 'soboru_header.html', 'soboru_tabbar.html']),
+    ]
+    SCREEN_SKIP = {'site.name'}  # 사이트 이름은 숨은 문구·설정에서
+
+    def screen_keys(files):
+        keys = []
+        for f in files:
+            for k in site_content.UI_FILES.get(f, []):
+                if k in site_content.FIELDS and k not in keys and k not in SCREEN_SKIP and not site_content.FIELDS[k].get('doc'): keys.append(k)
+        return keys
+
+    @app.route('/admin/screens', methods=['GET', 'POST'])
+    @S.admin_only
+    def admin_screens():
         if request.method == 'POST':
-            f = request.form
-            pins = [int(x) for x in re.findall(r'\d+', f.get('pins', ''))]
-            order = sorted(HOME_SECTIONS, key=lambda s: f.get('order_' + s[0], type=int) or 99)
-            plan = clean_plan({'slots': f.getlist('slot'), 'hours': f.get('hours', type=int), 'pins': pins,
-                               'sections': [[k, 1 if f.get('show_' + k) else 0] for k, _ in order]})
-            with conn() as db:
-                db.execute('INSERT OR REPLACE INTO soboru_settings(key,value) VALUES(?,?)', ('home', json.dumps(plan, ensure_ascii=False)))
-            flash('메인 화면 순서를 저장했어요.')
-            return redirect(url_for('admin_home_plan'))
-        plan = home_plan()
-        lead, side = pick_top(plan)
-        _, next_at = plan_tick(plan)
-        found = {r['id'] for r in report_items(pins=plan['pins'])} if plan['pins'] else set()
-        return render_template('admin_home_plan.html', plan=plan, lead=lead, side=side, next_at=next_at, kinds=HOME_KINDS, periods=HOME_PERIODS,
-                               sections=dict(HOME_SECTIONS), missing=[p for p in plan['pins'] if p not in found],
-                               n_life=len(life_rows(50)), n_report=len(report_items(50)))
+            f = request.form; page = f.get('page', '')
+            if f.get('act') == 'texts':  # 그 페이지 문구 한 번에 저장 (관리자 > 숨은 문구·설정과 같은 규칙)
+                files = next((x[3] for x in SCREENS if x[0] == page), None)
+                if files is None: abort(400)
+                stamp = now()
+                with conn() as db:
+                    for key in screen_keys(files):
+                        if key not in f: continue
+                        field = site_content.FIELDS[key]
+                        value = f[key].replace('\r\n', '\n').strip()
+                        if len(value) > site_content.MAX_LENGTH: abort(400)
+                        if not field.get('multiline'): value = ' '.join(value.split())
+                        if value == field['default'] or (not value and not field.get('optional')): db.execute('DELETE FROM site_content WHERE key=?', (key,))
+                        else: db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated', (key, value, stamp))
+                flash('문구를 저장했어요.')
+                return redirect(url_for('admin_screens', _anchor='page-' + page))
+            if page not in PAGE_BLOCKS: abort(400)
+            if f.get('act') == 'order':  # 순서표 통째로 저장 (끌어서 옮기기·숫자)
+                keys = [k for k in f.getlist('block') if k in dict(PAGE_BLOCKS[page][1])]
+                save_blocks(page, [[k, 1 if f.get('show_' + k) else 0] for k in keys])
+            else:
+                save_blocks(page, move_block(page_blocks(page), f.get('block', ''), f.get('act', '')))
+            if f.get('ajax'): return {'ok': True}
+            flash('%s 묶음 순서를 저장했어요.' % PAGE_BLOCKS[page][0])
+            return redirect(url_for('admin_screens', _anchor='page-' + page))
+        with conn() as db: changed = {r['key'] for r in db.execute('SELECT key FROM site_content')}
+        screens = [{'key': k, 'name': n, 'url': u(), 'texts': screen_keys(files), 'blocks': page_blocks(k) if k in PAGE_BLOCKS else None,
+                    'names': dict(PAGE_BLOCKS[k][1]) if k in PAGE_BLOCKS else {}} for k, n, u, files in SCREENS]
+        return render_template('admin_screens.html', screens=screens, fields=site_content.FIELDS, content=S.load_content(), changed=changed)
 
     # ---- 생활정보 화면 ----------------------------------------------------
     @app.route('/life')
@@ -437,4 +463,4 @@ def install(S):
         return render_template('admin_life.html', rows=rows, a=a, view='', n_draft=n_draft, categories=LIFE_CATEGORIES, tones=LIFE_TONES)
 
     S.life_rows = life_rows; S.company_rank = company_rank; S.is_soboru = is_soboru
-    app.extensions['soboru'] = {'home_plan': home_plan, 'pick_top': pick_top, 'report_items': report_items}
+    app.extensions['soboru'] = {'page_blocks': page_blocks, 'blocks': blocks, 'report_items': report_items}

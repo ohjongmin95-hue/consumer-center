@@ -2,12 +2,11 @@
 {# AI 소비자 상담 새 버전 (lawrag.py). 관리자 > AI 상담에서 켰을 때만 손님에게 보임. 꺼져 있으면 soboru_ask.html 그대로 #}
 {% block title %}{{ ui_text('ask2.title', 'AI 소비자 상담') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui_text('ask2.description', '환불·해지·배송·품질 같은 소비자 피해를 AI에게 편하게 물어보세요. 법령 원문을 근거로 소비자 권리와 대응 방법을 안내해 드려요.') }}{% endblock %}
-{% block head %}{% if not is_soboru() %}<link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}{% endblock %}
 {% block content %}
 {% set chev %}<svg class="sba-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>{% endset %}
 {% macro lines(text) %}{% for l in text.split('\n') if l.strip() %}{% if l.lstrip().startswith(('- ', '• ', '· ')) %}<p class="sbv-li">{{ l.lstrip()[2:]|askrefs }}</p>{% else %}<p>{{ l|askrefs }}</p>{% endif %}{% endfor %}{% endmacro %}
 {% set notice = ui_text('ask2.notice', '상담사가 아닌 AI가 제공하는 일반 정보예요') %}
-<main class="sb-wrap sbv{% if not is_soboru() %} sb{% endif %}">
+<main class="sb-wrap sbv">
 <div class="sbv-in">
   {% if preview %}<p class="sbv-preview">관리자 미리 보기예요. 손님에게는 아직 예전 화면이 보여요. 관리자 &gt; AI 상담에서 켤 수 있어요.</p>{% endif %}
   <p class="sbv-notice" role="note"><span class="sbv-notice-i" aria-hidden="true">💬</span><span><b>{{ notice }}</b> {{ ui('ask2.notice_sub', '법률 자문이 아니고, 실제 결과는 상황에 따라 달라질 수 있어요.') }}</span></p>
@@ -25,14 +24,14 @@
     {% for t in turns %}
     <div class="sba-q sbv-q"><p>{{ t.q }}</p></div>
     <div class="sbv-a sbv-old">
-      <p class="sbv-who"><span class="sba-av" aria-hidden="true">💬</span><b>{{ site_name() }} AI 상담</b><span class="sbv-ai">{{ notice }}</span></p>
+      <p class="sbv-who"><span class="sba-av" aria-hidden="true">💬</span><b>{{ ui('ask2.who', '{site} AI 상담', site=site_name()) }}</b><span class="sbv-ai">{{ notice }}</span></p>
       <div class="sbv-bubble"><div class="sbv-plain">{{ t.a }}</div></div>
     </div>
     {% endfor %}
     {% if result %}
     <div class="sba-q sbv-q"><p>{{ shown_q }}</p></div>
     <article class="sbv-a" id="sbv-latest">
-      <p class="sbv-who"><span class="sba-av" aria-hidden="true">💬</span><b>{{ site_name() }} AI 상담</b>{% if result.dtype %}<span class="sbv-type"><span aria-hidden="true">{{ result.emoji }}</span>{{ result.dtype }}</span>{% endif %}</p>
+      <p class="sbv-who"><span class="sba-av" aria-hidden="true">💬</span><b>{{ ui('ask2.who', '{site} AI 상담', site=site_name()) }}</b>{% if result.dtype %}<span class="sbv-type"><span aria-hidden="true">{{ result.emoji }}</span>{{ result.dtype }}</span>{% endif %}</p>
       <div class="sbv-bubble">
         <p class="sbv-ai-tag">{{ notice }}</p>
         {% if result.kind == 'answer' %}
@@ -66,7 +65,7 @@
 
         {% if result.cards %}
         <div class="sbv-src">
-          <p class="sba-refs-h">{{ '출처' if result.kind in ('answer', 'ask') else '찾은 근거' }} <b>{{ result.cards|length }}</b></p>
+          <p class="sba-refs-h">{{ ui('ask2.refs_answer', '출처') if result.kind in ('answer', 'ask') else ui('ask2.refs_found', '찾은 근거') }} <b>{{ result.cards|length }}</b></p>
           {% for c in result.cards %}
           <details class="sbv-card">
             <summary>
@@ -75,12 +74,12 @@
                 <span class="sbv-kind k{{ ['법률 조문', '분쟁해결기준(권고)', '생활법령 해설(효력 없음)'].index(c.label) if c.label in ['법률 조문', '분쟁해결기준(권고)', '생활법령 해설(효력 없음)'] else 0 }}">{{ c.label }}</span>
                 <b class="sbv-doc">{{ c.law }}</b>
                 <span class="sbv-art">{{ c.art_label }}{% if c.title and c.key not in ('easylaw', 'kca_appx') %} {{ c.title }}{% endif %}</span>
-                <span class="sbv-meta">{% if c.effective %}<span>시행 {{ c.effective|replace('-', '.') }}</span>{% endif %}<span class="sbv-st{% if c.status == '현행' %} ok{% elif '개정' in c.status %} bad{% endif %}">{{ c.status }}</span>{% if c.page %}<span>PDF {{ c.page }}쪽</span>{% endif %}</span>
+                <span class="sbv-meta">{% if c.effective %}<span>{{ ui('ask.effective', '시행') }} {{ c.effective|replace('-', '.') }}</span>{% endif %}<span class="sbv-st{% if c.status == '현행' %} ok{% elif '개정' in c.status %} bad{% endif %}">{{ c.status }}</span>{% if c.page %}<span>PDF {{ c.page }}쪽</span>{% endif %}</span>
               </span>{{ chev }}
             </summary>
             <div class="sba-ref-body">
               <p class="sba-text">{{ c.text }}</p>
-              <p class="sba-src"><span>{{ c.law }}{% if c.checked %} · {{ c.checked|replace('-', '.') }} 확인{% endif %}</span><a href="{{ c.source }}" target="_blank" rel="noopener">{{ '원문 보기' if c.key == 'easylaw' else '국가법령정보센터에서 보기' }} ↗</a></p>
+              <p class="sba-src"><span>{{ c.law }}{% if c.checked %} · {{ ui('ask2.checked', '{date} 확인', date=c.checked|replace('-', '.')) }}{% endif %}</span><a href="{{ c.source }}" target="_blank" rel="noopener">{{ ui('ask.src_guide', '원문 보기') if c.key == 'easylaw' else ui('ask.src_law', '국가법령정보센터에서 보기') }} ↗</a></p>
             </div>
           </details>
           {% endfor %}

@@ -3,22 +3,31 @@
 {% block title %}{{ ui('life.title', '생활정보') }}{% if cat %} · {{ cat }}{% endif %} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui('life.description', '환불, 해지, 리콜처럼 알아 두면 돈 버는 소비자 생활정보를 쉽게 풀어 드려요.') }}{% endblock %}
 {% block content %}
+{# 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['life']) #}
 <main class="sb-wrap sb-life">
+  {% for blk in blocks('life') %}{{ ed_block('life', blk) }}
+  {% if blk == 'head' %}
   <div class="sb-page-head"><h1>{{ ui('life.title', '생활정보') }}</h1><p>{{ ui('life.intro', '알아 두면 돈 버는 소비자 정보를 쉽게 풀어 드려요.') }}</p></div>
   {% set nv_tab = 'life' %}{% if naver_ready() %}{% include 'life_tabs.html' %}{% endif %}
   <nav class="sb-cats" aria-label="분야">
-    <a href="{{ url_for('life') }}"{% if not cat %} class="on" aria-current="page"{% endif %}>전체</a>
+    <a href="{{ url_for('life') }}"{% if not cat %} class="on" aria-current="page"{% endif %}>{{ ui('life.cat_all', '전체') }}</a>
     {% for c in LIFE_CATEGORIES %}<a href="{{ url_for('life', category=c) }}"{% if cat == c %} class="on" aria-current="page"{% endif %}>{% if LIFE_EMOJI.get(c) %}<span class="tf" aria-hidden="true">{{ LIFE_EMOJI[c] }}</span> {% endif %}{{ c }}</a>{% endfor %}
   </nav>
+  {% elif blk == 'list' %}
   {% if rows %}
   <div class="sb-grid">{% for a in rows %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{{ meta(a) }}</a>{% endfor %}</div>
-  {% if pages > 1 %}<nav class="sb-pager" aria-label="쪽">{% if page > 1 %}<a href="{{ url_for('life', category=cat or None, page=page - 1) }}">‹ 이전</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a href="{{ url_for('life', category=cat or None, page=page + 1) }}">다음 ›</a>{% endif %}</nav>{% endif %}
+  {% if pages > 1 %}<nav class="sb-pager" aria-label="쪽">{% if page > 1 %}<a href="{{ url_for('life', category=cat or None, page=page - 1) }}">{{ ui('life.prev', '‹ 이전') }}</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a href="{{ url_for('life', category=cat or None, page=page + 1) }}">{{ ui('life.next', '다음 ›') }}</a>{% endif %}</nav>{% endif %}
   {% else %}<p class="sb-empty">{{ ui('life.empty', '아직 올라온 글이 없어요. 곧 채워 둘게요.') }}</p>{% endif %}
+  {% elif blk == 'news' %}
   {% if not cat and page == 1 %}{% set news = naver_news() %}{% if news %}
   {% from 'life_nv_macros.html' import nv_row, nv_credit %}
-  <section class="nv-sec nv-news"><div class="nv-sec-head"><h2>{{ ui('life.news_title', '요즘 소비자 뉴스') }}</h2><a class="sb-more" href="{{ url_for('life_search', q='소비자 피해', tab='news', sort='date') }}">더 보기 ›</a></div>
+  <section class="nv-sec nv-news"><div class="nv-sec-head"><h2>{{ ui('life.news_title', '요즘 소비자 뉴스') }}</h2><a class="sb-more" href="{{ url_for('life_search', q='소비자 피해', tab='news', sort='date') }}">{{ ui('life.news_more', '더 보기 ›') }}</a></div>
     <ul class="nv-list">{% for it in news %}{{ nv_row(it) }}{% endfor %}</ul>{{ nv_credit() }}</section>
   {% endif %}{% endif %}
+  {% elif blk == 'letter' %}
   {% from 'letter_macros.html' import letter_card with context %}{{ letter_card('life') }}{# 소보루 레터 구독 (soboru_letter.py) #}
+  {% endif %}
+  {% endfor %}
+  {{ ed_hidden_blocks('life') }}
 </main>
 {% endblock %}
