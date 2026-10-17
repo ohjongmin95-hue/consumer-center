@@ -16,7 +16,7 @@
     </div>
   </section>
 
-  {% set art = art_url('report', case['id']) %}{% if art %}<div class="sbc-art" aria-hidden="true"><img src="{{ art }}" alt=""><span class="sb-art-l">{{ 'AI 일러스트' if '/art/' in art else '제보자 사진' }}</span></div>{% endif %}
+  {% set art = art_url('report', case['id']) %}{% if art %}<div class="sbc-art" aria-hidden="true"><img src="{{ art }}" alt="">{% if '/art/' not in art %}<span class="sb-art-l">제보자 사진</span>{% endif %}</div>{% endif %}
 
   <article class="sbc-card public-case">
     <h2>{{ ui('report.f_description', '피해 내용') }}</h2>

@@ -11,7 +11,7 @@
     <h1>{{ a['title'] }}</h1>
     <div class="sb-meta">{{ (a['published_at'] or a['created'])[:10].replace('-', '.') }}</div>
     {% if a['summary'] %}<p class="sb-article-sum">{{ a['summary'] }}</p>{% endif %}
-    {% set art = art_url('life', a['id']) %}{% if art %}<div class="sbc-art" aria-hidden="true"><img src="{{ art }}" alt=""><span class="sb-art-l">{{ 'AI 일러스트' if '/art/' in art else '제보자 사진' }}</span></div>{% endif %}
+    {% set art = art_url('life', a['id']) %}{% if art %}<div class="sbc-art" aria-hidden="true"><img src="{{ art }}" alt="">{% if '/art/' not in art %}<span class="sb-art-l">제보자 사진</span>{% endif %}</div>{% endif %}
     <div class="sb-article-body">{{ life_body(a['body']) }}</div>
     {% if a['source_name'] or a['source_url'] %}<p class="sb-source">출처: {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
   </article>
