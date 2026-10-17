@@ -1018,7 +1018,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-sub{font-size:15px;line-height:1.6;color:var(--sb-sub);margin:8px 0 0;max-width:560px}
 .nn-more{flex:none;font-size:14px;font-weight:600;color:var(--sb-sub)}
 .nn-more:hover{color:var(--sb-orange)}
-.nn-pick-grid{display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:start}
+.nn-pick-grid{display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:stretch}
 .nn-top{border:1px solid var(--sb-line);border-radius:24px;padding:24px 22px 10px}
 .nn-top h3{font-size:17px;font-weight:800;margin:0;letter-spacing:-.02em}
 .nn-top-sub{font-size:13px;color:var(--sb-mute);margin:4px 0 8px}
@@ -1495,3 +1495,13 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
   .lt-list h3{font-size:16px}
   .sb main.lt-msg{padding-top:56px}
 }
+
+/* 홈 소보루 픽: 글이 적을 때 빈 칸을 채우는 글쓰기 카드 */
+.sb-cm-card.nn-fill{border-style:dashed;background:#fffaf5;border-color:#f3dcc4}
+.sb-cm-card.nn-fill:hover{border-color:var(--sb-orange)}
+.nn-fill-ic{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:13px;background:#fff;font-size:20px}
+.sb-cm-card.nn-fill h3{margin-top:12px}
+.sb-cm-card.nn-fill p{margin:6px 0 0;font-size:14px;line-height:1.6;color:var(--sb-sub)}
+.nn-fill-go{margin-top:auto;padding-top:12px;font-size:14px;font-weight:700;color:var(--sb-orange)}
+@media(min-width:681px){.nn-write.has-fill{display:none}}
+@media(max-width:680px){.sb-cm-card.nn-fill{display:none}}  /* 좁은 화면은 한 줄 목록이라 빈 칸이 없음: 아래 글쓰기 버튼만 */
