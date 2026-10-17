@@ -1988,3 +1988,16 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .rating-row input:checked+span{background:#ef7300;color:#fff}.rating-row input:focus-visible+span{outline:3px solid #ffc58f}
 .rating-row small{color:#8b95a1;margin-left:4px}
 .outcome-row .rating-row{flex:1 1 100%}
+/* 커뮤니티 글 종류(리뷰·꿀팁·질문): 기본 화면에서도 별점·해결됨·리뷰 묶음이 보이게 (소보루는 soboru.css에서 따로 꾸밈) */
+.cm-stars{display:inline-flex;gap:1px;vertical-align:-2px}.cm-stars svg{width:14px;height:14px;fill:#e5e8eb}.cm-stars svg.on{fill:#ffb400}
+.cm-solved{display:inline-block;padding:1px 8px;border-radius:999px;background:#e2f4e5;color:#23743a;font-size:12px;font-weight:700;vertical-align:middle}
+.post-review{margin:6px 0 0;font-size:13px;font-weight:700;color:#4e5968}
+.post-review-box{margin:14px 0;padding:14px 16px;border:1px solid #ececec;border-radius:12px}.post-review-box p{margin:4px 0;line-height:1.6}
+.post-summary{margin:12px 0;color:#4e5968}.post-solve{display:flex;gap:8px;margin:16px 0}
+.review-extra summary{cursor:pointer;font-weight:700}.review-extra[open] summary{margin-bottom:10px}
+.co-reviews{margin-top:32px}.co-rv-note{color:#8a8f96;font-size:13px;margin:4px 0 10px}.co-rv-avg{color:#b45400}
+.cm-feed .cm-item{display:block;padding:14px 0;border-bottom:1px solid #ececec}.cm-feed .cm-item h3{font-size:16px;margin:6px 0 0}
+.cm-kind{display:inline-block;padding:1px 8px;border-radius:999px;background:#fff1e3;color:#b45400;font-size:12px;font-weight:700;margin-right:6px}
+.cm-top,.cm-foot{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:13px;color:#8a8f96}.cm-foot{margin-top:6px}
+.cm-n svg,.cm-foot svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px}
+.cm-ex,.cm-pc p{margin:4px 0 0;font-size:14px;color:#5b6068}.cm-pc em{font-style:normal;font-weight:700;margin-right:6px}

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% from 'soboru_life_macros.html' import thumb, meta, card_thumb, card_meta %}
+{% from 'community_macros.html' import top_line as cm_top, sub_line as cm_sub, foot_line as cm_foot %}
 {% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
 {% block content %}
 <main class="sb-wrap sb-home">
@@ -44,7 +45,7 @@
 
   {% elif key == 'rank' %}
   <section class="sb-sec">
-    <div class="sb-two">
+    <div class="sb-two sb-two-cm">
       <div>
         <div class="sb-sec-head"><div><h2>{{ ui('sb.rank_title', '이달의 기업 답변') }}</h2><p>최근 {{ rank.days }}일 · 제보 {{ rank.min_n }}건 이상 받은 기업</p></div><a class="sb-more" href="{{ url_for('companies') }}">{{ ui('sb.rank_more', '기업 찾기') }} ›</a></div>
         <div class="sb-rank" data-tabs>
@@ -60,11 +61,16 @@
         </div>
       </div>
       <div>
-        <div class="sb-sec-head"><div><h2>{{ ui('sb.board_title', '커뮤니티 인기글') }}</h2><p>{{ ui('sb.board_sub', '소비자끼리 나누는 경험과 팁') }}</p></div><a class="sb-more" href="{{ url_for('board') }}">{{ ui('sb.more', '더 보기') }} ›</a></div>
-        <ul class="sb-posts">
-          {% for p in posts %}<li><a href="{{ url_for('board_post', post_id=p['id']) }}"><span class="cat">{{ p['category'] }}</span><h3>{{ p['title'] }}</h3><div class="me"><span>공감 {{ p['likes'] }}</span><span>댓글 {{ p['comments'] }}</span><span>{{ ago_text(p['created']) }}</span></div></a></li>
-          {% else %}<li class="sb-empty">{{ ui('sb.board_empty', '첫 글을 남겨 주세요.') }} <a href="{{ url_for('board') }}">커뮤니티 가기 ›</a></li>{% endfor %}
-        </ul>
+        <div class="sb-sec-head"><div><h2>{{ ui('sb.board_title', '커뮤니티 인기글') }}</h2><p>{{ ui('sb.board_sub2', '리뷰·꿀팁·질문, 소비자끼리 솔직하게') }}</p></div><a class="sb-more" href="{{ url_for('board') }}">{{ ui('sb.more', '더 보기') }} ›</a></div>
+        <div class="sb-cm">
+          {% for p in posts %}<a class="sb-cm-card k-{{ p['kind'] }}" href="{{ url_for('board_post', post_id=p['id']) }}">{{ cm_top(p) }}<h3>{% if p['kind'] == 'question' %}<span class="cm-q">Q.</span>{% endif %}{{ p['title'] }}</h3>{{ cm_sub(p) }}{{ cm_foot(p) }}</a>
+          {% else %}<p class="sb-empty">{{ ui('sb.board_empty', '첫 글을 남겨 주세요.') }} <a href="{{ url_for('board') }}">커뮤니티 가기 ›</a></p>{% endfor %}
+        </div>
+        <div class="sb-cm-write">
+          <a href="{{ url_for('board_write', type='review') }}"><span aria-hidden="true">⭐</span>{{ ui('cm.pick_review', '리뷰 쓰기') }}</a>
+          <a href="{{ url_for('board_write', type='tip') }}"><span aria-hidden="true">💡</span>{{ ui('cm.pick_tip', '꿀팁 나누기') }}</a>
+          <a href="{{ url_for('board_write', type='question') }}"><span aria-hidden="true">🙋</span>{{ ui('cm.pick_question', '질문하기') }}</a>
+        </div>
       </div>
     </div>
   </section>

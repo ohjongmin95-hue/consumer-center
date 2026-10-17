@@ -1,18 +1,26 @@
 {% extends 'base.html' %}
 {% from 'board_macros.html' import heart, bubble, chip %}
+{% from 'community_macros.html' import stars %}
 {% block title %}{{ post['title'] }} | {{ txt('board.title') }}{% endblock %}
-{% block description %}{{ post['body']|truncate(150, True, '…') }}{% endblock %}
+{% block description %}{{ mask_personal(post['summary'] or post['body'] or post['pros'] or post['title'])|truncate(150, True, '…') }}{% endblock %}
 {% block og_type %}article{% endblock %}
-{% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "DiscussionForumPosting", "headline": post['title'], "text": post['body']|truncate(500, True, '…'), "articleSection": post['category'], "datePublished": post['created'], "url": request.base_url, "inLanguage": "ko", "author": {"@type": "Person", "name": post['nickname']}, "commentCount": comments|length, "interactionStatistic": {"@type": "InteractionCounter", "interactionType": "https://schema.org/LikeAction", "userInteractionCount": post['likes']}},
+{% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "DiscussionForumPosting", "headline": post['title'], "text": mask_personal(post['body'])|truncate(500, True, '…'), "articleSection": post['category'], "datePublished": post['created'], "url": request.base_url, "inLanguage": "ko", "author": {"@type": "Person", "name": post['nickname']}, "commentCount": comments|length, "interactionStatistic": {"@type": "InteractionCounter", "interactionType": "https://schema.org/LikeAction", "userInteractionCount": post['likes']}},
   {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": txt('site.name'), "item": url_for('home', _external=True)}, {"@type": "ListItem", "position": 2, "name": txt('board.title'), "item": url_for('board', _external=True)}, {"@type": "ListItem", "position": 3, "name": post['title']|truncate(60, True, '…')}]}]|tojson }}</script>{% endblock %}
 {% block content %}
+{% if is_soboru() %}{% include 'soboru_board_post.html' %}{% else %}
 <main class="board board-detail">
   <a class="back-link" href="{{ url_for('board') }}">← {{ txt('board.title') }}</a>
   <article class="post-full">
     {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨김 처리된 글입니다. 운영자에게만 보입니다.') }}</div>{% endif %}
     <div class="post-top">{{ chip(post['category'], categories) }}<span class="post-meta">{% if post['user_id'] %}<span class="member-badge">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ post['nickname'] }} · {{ post['created']|ago }}</span></div>
-    <h1>{{ post['title'] }}</h1>
+    <h1>{% if post['kind'] == 'question' and post['solved'] %}<span class="cm-solved">해결됨</span> {% endif %}{{ post['title'] }}</h1>
+    {% if post['kind'] == 'review' %}<div class="post-review-box"><p><b>{% if company %}<a href="{{ url_for('company_page', company_id=company['id']) }}">{{ company['name'] }}</a>{% else %}{{ mask_personal(post['target']) }}{% endif %}</b> {{ stars(post['rating']) }} {{ post['rating'] }}점{% if post['recommend'] == 1 %} · {{ ui('cm.rec_yes', '추천해요') }}{% elif post['recommend'] == 0 %} · {{ ui('cm.rec_no', '추천하지 않아요') }}{% endif %}</p>
+      {% if post['pros'] %}<p><b>{{ ui('cm.f_pros', '좋았던 점') }}</b> {{ mask_personal(post['pros']) }}</p>{% endif %}{% if post['cons'] %}<p><b>{{ ui('cm.f_cons', '아쉬운 점') }}</b> {{ mask_personal(post['cons']) }}</p>{% endif %}</div>{% endif %}
+    {% if post['summary'] %}<p class="post-summary"><b>{{ post['summary'] }}</b></p>{% endif %}
     <div class="post-body">{{ post['body'] }}</div>
+    {% if post['kind'] == 'question' and enabled and ((g.user and post['user_id'] == g.user['id']) or not post['user_id']) %}
+    <form class="post-solve" method="post" action="{{ url_for('board_solve', post_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% if not post['user_id'] %}<input type="password" name="password" required placeholder="{{ ui('board.post_pw', '글 비밀번호') }}" aria-label="{{ ui('board.post_pw', '글 비밀번호') }}">{% endif %}<button class="secondary" type="submit">{{ ui('cm.unsolve', '해결됨 끄기') if post['solved'] else ui('cm.solve', '해결됐어요') }}</button></form>
+    {% endif %}
     <div class="post-full-actions">
       <form method="post" action="{{ url_for('board_like', post_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <button class="like-btn like-btn-big{% if liked %} on{% endif %}" type="submit"{% if not enabled %} disabled{% endif %} aria-pressed="{{ 'true' if liked else 'false' }}">{{ heart(liked) }} {{ ui('board.liked', '공감했어요') if liked else ui('board.like_do', '공감해요') }} <b>{{ post['likes'] }}</b></button>
@@ -58,4 +66,5 @@
     {% endif %}
   </section>
 </main>
+{% endif %}
 {% endblock %}

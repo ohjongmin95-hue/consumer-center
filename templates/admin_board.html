@@ -10,7 +10,7 @@
   <h2>글 ({{ posts|length }})</h2>
   {% for p in posts %}
   <div class="form-panel admin-item">
-    <p class="meta">#{{ p['id'] }} · {{ p['category'] }} · {{ p['nickname'] }} · {{ p['created'] }} · 공감 {{ p['likes'] }} · 댓글 {{ p['comments'] }} · <b>알림 {{ p['flags'] }}</b>{% if p['hidden'] %} · <span class="pill">숨김</span>{% endif %}</p>
+    <p class="meta">#{{ p['id'] }} · {{ POST_KIND_NAMES.get(p['kind'], '이야기') }}{% if p['kind'] == 'review' %} ({{ p['target'] }} ★{{ p['rating'] }}){% endif %} · {{ p['category'] }} · {{ p['nickname'] }} · {{ p['created'] }} · 공감 {{ p['likes'] }} · 댓글 {{ p['comments'] }} · <b>알림 {{ p['flags'] }}</b>{% if p['hidden'] %} · <span class="pill">숨김</span>{% endif %}</p>
     <h3><a href="{{ url_for('board_post', post_id=p['id']) }}" target="_blank" rel="noopener">{{ p['title'] }} ↗</a></h3>
     <p class="admin-body">{{ p['body'][:400] }}{% if p['body']|length > 400 %}…{% endif %}</p>
     {{ actions('p', p) }}
