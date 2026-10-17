@@ -1,0 +1,18 @@
+# 소보루 AI 분석 기사 초안 쓰기 (매일 아침 soboru-writer.timer가 부름). 게시는 하지 않고 초안만 만듦.
+# 설치·끄기: sudo bash /opt/soboru/app/deploy/set-writer.sh  (관리자 > 생활정보 글 > AI 기사 만들기에서도 끌 수 있음)
+[Unit]
+Description=소보루 AI 분석 기사 초안 (매일 아침)
+After=network-online.target soboru.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=soboru
+Group=soboru
+WorkingDirectory=/opt/soboru/app
+EnvironmentFile=/etc/soboru.env
+ExecStart=/opt/soboru/venv/bin/python -m soboru_writer
+TimeoutStartSec=900
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/soboru

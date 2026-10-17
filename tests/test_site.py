@@ -2894,5 +2894,228 @@ class SiteTest(unittest.TestCase):
         self.assertIn('올린 법령만 지울 수 있어요', r.get_data(as_text=True)); self.assertIn('ecom', [l['key'] for l in corpus.laws()])
         self.assertIn('법령 학습', admin.get('/admin').get_data(as_text=True))  # 관리자 메뉴
 
+    # ---- AI 분석 기사 (soboru_writer.py) ------------------------------------------
+    def writer_cleanup(self):
+        with self.site.conn() as db:
+            db.execute("DELETE FROM articles WHERE origin='ai'"); db.execute('DELETE FROM ai_articles')
+            db.execute("DELETE FROM soboru_settings WHERE key LIKE 'writer%'"); db.execute('DELETE FROM soboru_art')
+            db.execute("DELETE FROM messages WHERE case_id IN (SELECT id FROM cases WHERE receipt LIKE 'AIW-%')")
+            db.execute("DELETE FROM cases WHERE receipt LIKE 'AIW-%'"); db.execute("DELETE FROM companies WHERE biz_no='AIW'")
+            db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
+
+    def writer_ai(self, sent, extra=''):
+        """가짜 OpenAI: 받은 자료([자료] JSON)의 숫자만 써서 기사를 돌려줌. extra는 자료에 없는 말을 섞을 때."""
+        def fake(url, headers, body, timeout):
+            if 'images' in url: return 500, {'error': {'message': 'no images in test'}}
+            sent.append(body)
+            facts = json.loads(body['messages'][1]['content'].split('[자료]\n', 1)[1])
+            nums = [v for v in facts.values() if isinstance(v, int)][:1] or [1372]
+            out = {'title': f'요즘 소비자 이야기, 숫자로 보면 {nums[0]}', 'summary': ['첫 줄 요약이에요.', '둘째 줄이에요.', f'셋째 줄, {facts["소비자상담센터 전화번호"]}도 기억해요.'],
+                   'sections': [{'heading': '무슨 일이에요?', 'paragraphs': [f'자료를 보면 {nums[0]}이라는 숫자가 나와요.' + extra, '자료만으로는 원인을 알 수 없어요.']}],
+                   'tips': ['영수증을 챙겨 두세요.', '1372 소비자상담센터에 물어보세요.'], 'category': '생활'}
+            return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+        return fake
+
+    def writer_cases(self, n_public=6, n_private=3):
+        now = datetime.datetime.now()
+        with self.site.conn() as db:
+            co = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES('공개몰','AIW','active','담당','02','a@b.c',?)", (now.isoformat(),)).lastrowid
+            secret = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES('비밀상회','AIW','active','담당','02','a@b.c',?)", (now.isoformat(),)).lastrowid
+            for i in range(n_public):
+                t = (now - datetime.timedelta(days=2, hours=i)).isoformat(timespec='seconds')
+                cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,company_id,subject,description,request_text,created,public_consent,published,review,reviewed_at,forwarded_at,status) VALUES(?,?,?,?,?,?,?,?,?,1,1,'ok',?,?,'기업 답변 대기')",
+                                 (f'AIW-P{i}', 'x', '배송·교환·환불', '공개몰', co, '환불이 안 돼요', '공개 제보 내용', '환불', t, t, t)).lastrowid
+                if i < 4: db.execute("INSERT INTO messages(case_id,author,body,created,public) VALUES(?,?,?,?,1)", (cid, '기업 답변', '처리했어요', (now - datetime.timedelta(days=1)).isoformat(timespec='seconds')))
+            for i in range(n_private):  # 비밀글·게시 전 제보: 내용도 숫자도 기사에 들어가면 안 됨
+                t = (now - datetime.timedelta(days=1, hours=i)).isoformat(timespec='seconds')
+                db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,company_id,subject,description,request_text,created,public_consent,published,review,reviewed_at,forwarded_at,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,'ok',?,?,'기업 답변 대기')",
+                           (f'AIW-S{i}', 'x', '개인정보', '비밀상회', secret, '비밀 제보 제목 김철수', '비밀 내용 010-1234-5678', '삭제', t, 0 if i % 2 == 0 else 1, 0, t, t))
+        return co, secret
+
+    def test_writer_number_check(self):
+        check = self.site.soboru_writer.check_text
+        facts = {'증감률(%)': -12, '지수': 53.27, '기간': '2026-09-01 ~ 2026-10-16', '건수': 1234, '금액': 30000, '시행일': '20261101'}
+        ok = '검색이 12% 줄었어요. 지수는 53.3, 반올림하면 53이에요.\n2026년 9월 1일부터 10월 16일까지 1,234건이에요. 3만 원이에요. 11월 1일 시행돼요.'
+        self.assertEqual(check(ok, facts), [])
+        bad = check('검색이 2배로 늘었어요.\n지수는 53이에요.\n작년보다 47% 늘어난 1,500건이에요.\n이 회사는 최악이에요.', facts)
+        self.assertEqual([p.get('numbers') for p in bad if 'numbers' in p], [['2배'], ['47%', '1,500건']])
+        self.assertIn('2배로', bad[0]['line'])
+        # 단위가 붙은 숫자는 자료에도 같은 단위로 있어야 함: 자료에 4(주)·12(%)가 있어도 '4배'·'12건'은 잡음
+        self.assertEqual([p['numbers'] for p in check('검색이 4배, 12건이에요.', dict(facts, 기간='최근 4주'))], [['4배', '12건']])
+        self.assertEqual([p['words'] for p in bad if 'words' in p], [['최악']])  # 기업 평가로 읽힐 말도
+        clean = self.site.soboru_writer.clean_personal
+        self.assertEqual(clean(self.site.companydesk.scrub, '2026-07-18 ~ 2026-10-16, 문의 010-1234-5678'), '2026-07-18 ~ 2026-10-16, 문의 [개인정보 삭제]')
+
+    def test_writer_reports_draft_check_dedupe_and_admin_only(self):
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']
+        co, secret = self.writer_cases(n_private=0)
+        with self.site.app.app_context(): base = w['collect']('reports')['facts']
+        with self.site.conn() as db: db.execute("DELETE FROM companies WHERE name='비밀상회'")
+        self.writer_cases(n_public=0, n_private=4)  # 비밀글·게시 전 제보를 더해도 자료는 그대로
+        with self.site.app.app_context(): got = w['collect']('reports')
+        self.assertEqual(got['facts'], base)
+        text = json.dumps(got, ensure_ascii=False)
+        for word in ('비밀상회', '비밀 제보', '김철수', '010-1234-5678', '개인정보', '환불이 안 돼요'):
+            self.assertNotIn(word, text)  # 비공개 제보는 기업 이름·제목·유형도 안 들어가고, 공개 제보도 제목·내용은 안 씀
+        with self.site.conn() as db:
+            n = db.execute("SELECT COUNT(*) FROM cases WHERE public_consent=1 AND published=1 AND review NOT IN ('rejected','duplicate') AND created>=?",
+                           ((datetime.datetime.now() - datetime.timedelta(days=30)).isoformat(timespec='seconds'),)).fetchone()[0]
+        self.assertEqual(got['facts']['최근 공개 제보(건)'], n)
+        cos = got['facts']['기업별 답변 (공개 제보 5건 이상인 기업만, 많은 순)']
+        self.assertEqual([(c['기업'], c['기업에 전달된 공개 제보(건)'], c['답변한 제보(건)'], c['답변률(%)']) for c in cos if c['기업'] == '공개몰'], [('공개몰', 6, 4, 67)])
+        # 관리자만: 로그인 안 하면 화면·만들기 모두 막힘 (글도 안 생김)
+        sent = []
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)):
+            r = self.client.get('/admin/life/ai'); self.assertEqual(r.status_code, 302); self.assertIn('/admin/login', r.headers['Location'])
+            r = self.client.post('/admin/life/ai', data={'_csrf': self.csrf(self.client, '/report'), 'kind': 'reports'})
+            self.assertEqual(r.status_code, 302); self.assertIn('/admin/login', r.headers['Location'])
+            self.assertEqual(sent, [])
+            admin = self.login_admin()
+            page = admin.get('/admin/life/ai').get_data(as_text=True)
+            self.assertIn('소보루 제보 동향', page); self.assertIn('네이버 API HUB 키가 없어요', page)  # 키 없는 종류는 이유를 보여 줌
+            r = admin.post('/admin/life/ai', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'kind': 'reports'})
+            self.assertEqual(r.status_code, 302)
+            aid = int(re.search(r'/admin/life/(\d+)', r.headers['Location'])[1])
+            (body,), = [sent]
+            self.assertEqual(body['response_format'], {'type': 'json_object'}); self.assertNotIn('tools', body)  # 인터넷 검색 없이
+            self.assertNotIn('비밀상회', json.dumps(body, ensure_ascii=False)); self.assertNotIn('sk-test-key', json.dumps(body, ensure_ascii=False))
+            with self.site.conn() as db:
+                a = db.execute('SELECT * FROM articles WHERE id=?', (aid,)).fetchone()
+                x = db.execute('SELECT * FROM ai_articles WHERE article_id=?', (aid,)).fetchone()
+            self.assertEqual((a['status'], a['origin'], a['ext_key']), ('draft', 'ai', 'ai:reports:' + datetime.date.today().isoformat()))
+            self.assertIsNone(a['published_at']); self.assertEqual(a['source_name'], '소보루 공개 제보 통계')
+            self.assertEqual(len(a['summary'].split('\n')), 3); self.assertIn('## 이렇게 하세요', a['body'])
+            self.assertEqual(x['check_ok'], 1)
+            edit = admin.get(f'/admin/life/{aid}').get_data(as_text=True)
+            self.assertIn('숫자 확인됨', edit); self.assertIn('AI에 넘긴 자료 보기', edit)
+            self.assertEqual(self.client.get(f'/life/{aid}').status_code, 404)  # 초안은 방문자에게 안 보임
+            # 같은 날 같은 종류는 한 번만 (다시 누르면 그 초안을 엶)
+            r = admin.post('/admin/life/ai', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'kind': 'reports'})
+            self.assertTrue(r.headers['Location'].endswith(f'/admin/life/{aid}')); self.assertEqual(len(sent), 1)
+            self.assertEqual(w['generate']('reports', 'daily')['status'], 'exists')
+            # 자료에 없는 숫자를 쓰면 '검토 필요' + 그 줄, 확인 체크 없이는 게시 안 됨
+            r = admin.post('/admin/life/ai', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'kind': 'reports', 'force': '1'})
+            self.assertEqual(len(sent), 2)
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, extra=' 작년보다 98765명 늘었어요.')):
+            r = admin.post('/admin/life/ai', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'kind': 'reports', 'force': '1'})
+        self.assertTrue(r.headers['Location'].endswith(f'/admin/life/{aid}'))  # 같은 초안을 새로 씀
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM articles WHERE origin='ai'").fetchone()[0], 1)
+            a = db.execute('SELECT * FROM articles WHERE id=?', (aid,)).fetchone()
+        edit = admin.get(f'/admin/life/{aid}').get_data(as_text=True)
+        self.assertIn('검토 필요 1곳', edit); self.assertIn('자료에 없는 숫자 98765', edit); self.assertIn('숫자를 직접 확인했어요', edit)
+        self.assertIn('검토 필요 1곳', admin.get('/admin/life/ai').get_data(as_text=True))
+        form = {'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'title': a['title'], 'summary': a['summary'], 'body': a['body'], 'category': a['category'],
+                'emoji': a['emoji'], 'tone': a['tone'], 'source_name': a['source_name'], 'source_url': a['source_url']}
+        r = admin.post(f'/admin/life/{aid}', data=dict(form, act='publish'), follow_redirects=True)
+        self.assertIn('게시하지 않았어요', r.get_data(as_text=True))
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (aid,)).fetchone()[0], 'draft')
+        # 운영자가 고쳐 저장하면 같은 자료로 다시 검사 → 통과하면 게시 가능
+        fixed = a['body'].replace(' 작년보다 98765명 늘었어요.', '')
+        admin.post(f'/admin/life/{aid}', data=dict(form, body=fixed, act='save'))
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT check_ok FROM ai_articles WHERE article_id=?', (aid,)).fetchone()[0], 1)
+        admin.post(f'/admin/life/{aid}', data=dict(form, body=fixed, act='publish'))
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (aid,)).fetchone()[0], 'published')
+        page = self.client.get(f'/life/{aid}').get_data(as_text=True)
+        self.assertIn('class="sb-article-sum sb-sum3"', page); self.assertIn('소보루 공개 제보 통계 ↗', page); self.assertIn('AI가 위 자료의 숫자만으로', page)
+        # 지우면 AI 기록도 같이 지움
+        admin.post(f'/admin/life/{aid}', data=dict(form, act='delete'))
+        with self.site.conn() as db: self.assertIsNone(db.execute('SELECT 1 FROM ai_articles WHERE article_id=?', (aid,)).fetchone())
+
+    def writer_naver(self, calls):
+        import urllib.parse
+        weeks = [(datetime.date.today() - datetime.timedelta(days=7 * (12 - i))).isoformat() for i in range(12)]
+        news_day = datetime.date.today() - datetime.timedelta(days=1)
+        pub = news_day.strftime('%a, %d %b %Y 09:00:00 +0900')
+        def fake(method, url, headers, body, timeout):
+            calls.append(url)
+            path = url.split('ntruss.com', 1)[1].split('?')[0]
+            if path == '/search-trend/v1/search':
+                return 200, {'results': [{'title': g['groupName'], 'data': [{'period': p, 'ratio': 20 + i * (k + 1)} for i, p in enumerate(weeks)]} for k, g in enumerate(body['keywordGroups'])]}
+            if path == '/search/v1/news':
+                q = dict(urllib.parse.parse_qsl(url.split('?', 1)[1]))['query']
+                return 200, {'total': 2, 'items': [{'title': f'{q} 늘어 소비자 주의 {j}', 'description': f'{q} 관련 상담이 30% 늘었다 010-5555-6666', 'link': f'https://n.news.naver.com/{q}/{j}',
+                                                    'originallink': f'https://news.example.co.kr/{abs(hash(q)) % 1000}/{j}', 'pubDate': pub} for j in range(2)]}
+            if path == '/shopping/v1/categories':
+                return 200, {'results': [{'title': c['name'], 'data': [{'period': p, 'ratio': 30 + i * (len(c['name']) % 4)} for i, p in enumerate(weeks)]} for c in body['category']]}
+            if path.startswith('/shopping/v1/category/'):
+                grp = {'gender': ['f', 'm'], 'age': ['20', '30'], 'device': ['pc', 'mo']}[path.rsplit('/', 1)[1]]
+                return 200, {'results': [{'title': '분야', 'data': [{'period': weeks[0], 'group': grp[0], 'ratio': 60}, {'period': weeks[0], 'group': grp[1], 'ratio': 40}]}]}
+            return 404, {}
+        return fake
+
+    def test_writer_daily_never_publishes_and_rotates(self):
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls = [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        # AI 키가 없으면 아무것도 안 함
+        with patch.dict(os.environ, {k: v for k, v in os.environ.items() if k != 'OPENAI_API_KEY'}, clear=True):
+            self.assertEqual(w['daily']()[0]['status'], 'skip')
+        # 다른 시험이 넣은 공개 제보 수와 상관없이 '제보 동향'은 건너뛰게 (최소 건수를 아주 크게)
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            out = w['daily']()
+            made = [r for r in out if r['status'] == 'made']
+            self.assertEqual(len(made), 2)  # 하루 2개 (기본)
+            self.assertEqual(out[0]['kind'], 'trend')  # 첫날은 순서표 맨 앞부터, 제보 동향은 공개 제보가 적어 건너뜀
+            self.assertIn('reports', [r['kind'] for r in out if r['status'] == 'skip'])
+            self.assertEqual(w['daily'](), [])  # 같은 날 다시 돌려도 더 만들지 않음
+            with self.site.conn() as db:
+                rows = db.execute("SELECT a.*,x.kind,x.facts,x.sources FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE a.origin='ai'").fetchall()
+            self.assertEqual({r['status'] for r in rows}, {'draft'})  # 절대 자동 게시하지 않음
+            self.assertTrue(all(r['published_at'] is None for r in rows))
+            kinds = {r['kind']: r for r in rows}
+            self.assertEqual(set(kinds), {'trend', 'news'})
+            trend = json.loads(kinds['trend']['facts'])
+            self.assertEqual([r['검색어'] for r in trend['검색어별 추이(증감률 큰 순)']][0], '구독 해지')
+            news = kinds['news']
+            self.assertNotIn('010-5555-6666', news['facts'])  # 뉴스 요약 속 연락처도 지움
+            self.assertIn('관련 법 조문', news['facts']); self.assertIn('https://news.example.co.kr/', news['sources'])
+            self.assertNotIn('secret-test-value', json.dumps([dict(r) for r in rows], ensure_ascii=False))
+            life = self.client.get('/life').get_data(as_text=True)
+            for r in rows: self.assertNotIn(r['title'], life)
+            # 다음 날은 다음 종류부터, 자동 쓰기를 끄면 아무것도 안 함
+            tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
+            admin = self.login_admin()
+            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'per_day': '1'})
+            self.assertEqual(w['settings'](), {'auto': 0, 'per_day': 1})
+            self.assertEqual(w['daily'](tomorrow)[0]['status'], 'off')
+            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'per_day': '1'})
+            with self.site.conn() as db: db.execute("UPDATE ai_articles SET created='2000-01-01T07:00:00'")  # 오늘 만든 개수에서 빼서 다음 날처럼
+            out = w['daily'](tomorrow)
+            self.assertEqual((out[0]['kind'], out[0]['status']), ('reports', 'skip'))
+            self.assertEqual([r['kind'] for r in out if r['status'] == 'made'], ['news'])
+            with self.site.conn() as db:
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM articles WHERE origin='ai' AND status!='draft'").fetchone()[0], 0)
+            # 쇼핑 관심도: 가장 많이 오른 분야와 그 분야 클릭 비중
+            with self.site.app.app_context(): shop = w['collect']('shopping')
+            top = shop['facts']['가장 많이 오른 분야']
+            self.assertEqual(shop['facts'][f'{top} 클릭 비중']['성별 클릭 비중(%)'], {'여성': 60, '남성': 40})
+            self.assertEqual(shop['category'], '쇼핑')
+
+    def test_writer_law_source_hides_key(self):
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; mod = self.site.soboru_writer
+        soon = (datetime.date.today() + datetime.timedelta(days=5)).strftime('%Y%m%d')
+        lst = ('<?xml version="1.0" encoding="UTF-8"?><LawSearch><totalCnt>2</totalCnt>'
+               f'<law id="1"><법령명한글>전자상거래 등에서의 소비자보호에 관한 법률</법령명한글><법령구분명>법률</법령구분명><제개정구분명>일부개정</제개정구분명><공포일자>20260901</공포일자><시행일자>{soon}</시행일자><소관부처명>공정거래위원회</소관부처명><법령일련번호>999</법령일련번호><법령상세링크>/DRF/lawService.do?OC=oc-secret&amp;MST=999</법령상세링크></law>'
+               f'<law id="2"><법령명한글>국방과학연구소법</법령명한글><시행일자>{soon}</시행일자></law></LawSearch>')
+        detail = '<?xml version="1.0" encoding="UTF-8"?><법령><제개정이유><제개정이유내용>온라인 플랫폼에서 산 물건의 청약철회 기간을 7일로 정한다.</제개정이유내용></제개정이유></법령>'
+        urls = []
+        def fake(url, timeout=15):
+            urls.append(url); return 200, (detail if 'lawService' in url else lst)
+        with self.site.app.app_context():
+            self.assertIn('LAW_OC', w['kind_ready']('law')[1])
+            with patch.dict(os.environ, {'LAW_OC': 'oc-secret'}), patch.object(mod, 'http_get', fake):
+                got = w['collect']('law')
+        self.assertTrue(urls[0].startswith('http://www.law.go.kr/DRF/lawSearch.do?') and 'OC=oc-secret' in urls[0] and 'efYd=' in urls[0])
+        laws = got['facts']['법령']
+        self.assertEqual([l['법령'] for l in laws], ['전자상거래 등에서의 소비자보호에 관한 법률'])  # 소비자와 상관없는 법은 뺌
+        self.assertEqual(laws[0]['시행일'], f'{soon[:4]}-{soon[4:6]}-{soon[6:]}'); self.assertIn('7일', laws[0]['개정 이유(원문 일부)'])
+        self.assertNotIn('oc-secret', json.dumps(got, ensure_ascii=False))  # 인증키는 자료·출처에 안 남음
+        self.assertEqual(got['sources'][0]['url'], 'https://www.law.go.kr/법령/전자상거래 등에서의 소비자보호에 관한 법률')
+
 if __name__ == '__main__':
     unittest.main()

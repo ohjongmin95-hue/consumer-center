@@ -10,6 +10,7 @@ import casetalk
 import soboru_art
 import naverhub
 import lawask
+import soboru_writer
 import notify
 import jebo
 import soboru
@@ -2353,5 +2354,7 @@ _art=types.SimpleNamespace(**globals());soboru_art.install(_art)
 _naver=types.SimpleNamespace(**globals());naverhub.install(_naver)
 # 소비자 법률 질문창(/ask)과 관리자 > 법령 학습: 법령 PDF를 올려 조문 모음에 더함 (lawask.py)
 _ask=types.SimpleNamespace(**globals());lawask.install(_ask)
+# AI 분석 기사: 네이버·법제처·소보루 공개 통계로 초안을 쓰고 운영자가 게시 (soboru_writer.py)
+_writer=types.SimpleNamespace(**globals());soboru_writer.install(_writer)
 
 if __name__=='__main__':app.run(debug=False)

@@ -1,0 +1,11 @@
+# 매일 아침 7시쯤(한국 시각) AI 분석 기사 초안 1~2개. 서버가 꺼져 있었으면 켜진 뒤 한 번 돌림.
+[Unit]
+Description=소보루 AI 분석 기사 초안 (매일 아침 7시)
+
+[Timer]
+OnCalendar=*-*-* 07:00:00 Asia/Seoul
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

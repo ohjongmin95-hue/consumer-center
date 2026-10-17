@@ -5,11 +5,23 @@
   <div class="page-intro"><h1 class="page-title">생활정보 글</h1>
     <p>게시한 글은 생활정보(<a href="{{ url_for('life') }}" target="_blank" rel="noopener">/life ↗</a>)와 소보루 메인 화면에 보여요. 초안은 관리자만 볼 수 있어요. 나중에 공공데이터 자동 수집이 들어오면 초안이 여기에 쌓여요.</p>
     {% if naver_ready is defined %}<p class="meta">네이버 검색 연결: {% if naver_ready() %}{% set nu = naver_usage() %}켜짐 · 오늘 검색 {{ '{:,}'.format(nu['search'][0]) }}/{{ '{:,}'.format(nu['search'][1]) }}번 · 추이·쇼핑 {{ '{:,}'.format(nu['datalab'][0]) }}/{{ '{:,}'.format(nu['datalab'][1]) }}번{% else %}꺼짐 (서버 환경변수 NAVER_HUB_CLIENT_ID·NAVER_HUB_CLIENT_SECRET을 넣으면 통합 검색·검색 추이·쇼핑 관심도가 열려요){% endif %}</p>{% endif %}
-    <p><a href="{{ url_for('admin_life') }}"{% if view != 'draft' %} class="strong-link"{% endif %}>전체</a> · <a href="{{ url_for('admin_life', view='draft') }}"{% if view == 'draft' %} class="strong-link"{% endif %}>초안 {{ n_draft }}</a>{% if a %} · <a href="{{ url_for('admin_life') }}">＋ 새 글</a>{% endif %}</p>
+    <p><a href="{{ url_for('admin_life') }}"{% if view != 'draft' %} class="strong-link"{% endif %}>전체</a> · <a href="{{ url_for('admin_life', view='draft') }}"{% if view == 'draft' %} class="strong-link"{% endif %}>초안 {{ n_draft }}</a>{% if ai_article is defined %} · <a href="{{ url_for('admin_life_ai') }}" class="aw-link">✨ AI 기사 만들기</a>{% endif %}{% if a %} · <a href="{{ url_for('admin_life') }}">＋ 새 글</a>{% endif %}</p>
   </div>
+  {% set ai = ai_article(a['id']) if a and ai_article is defined else None %}
+  {% if ai %}
+  <div class="form-panel aw-check{{ ' ok' if ai.ok else ' bad' }}" id="ai-check">
+    <h2>AI 초안 · {{ ai.kind_name }}</h2>
+    {% if ai.ok %}<p><span class="aw-badge ok">숫자 확인됨</span> 글 속 숫자가 모두 모은 자료 안에 있어요. 내용을 읽어 보고 게시해 주세요.</p>
+    {% else %}<p><span class="aw-badge bad">검토 필요 {{ ai.problems|length }}곳</span> 자료에 없는 숫자나 기업을 평가하는 말이 있어요. 아래 줄을 고치고 저장하면 다시 확인해요.</p>
+    <ul class="aw-problems">{% for p in ai.problems %}<li>{% if p.numbers %}<b>자료에 없는 숫자 {{ p.numbers|join(', ') }}</b>{% else %}<b>평가로 읽힐 말 {{ p.words|join(', ') }}</b>{% endif %}<span>{{ p.line }}</span></li>{% endfor %}</ul>{% endif %}
+    <p class="meta">출처 {{ ai.sources|length }}곳 (글 아래에 자동으로 붙어요): {% for s in ai.sources %}{% if s.url %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}{{ ', ' if not loop.last }}{% endfor %}</p>
+    <details><summary>AI에 넘긴 자료 보기</summary><pre class="aw-facts">{{ ai.facts }}</pre></details>
+    <p class="meta">{{ '매일 아침 자동으로' if ai.trigger == 'daily' else '관리자가 직접' }} 만듦 · {{ ai.created[:16].replace('T', ' ') }} · 마지막 확인 {{ ai.checked[:16].replace('T', ' ') }}</p>
+  </div>
+  {% endif %}
   <form class="form-panel" method="post" action="{{ url_for('admin_life_edit', article_id=a['id']) if a else url_for('admin_life') }}">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    <h2>{% if a %}#{{ a['id'] }} 고치기 · {{ '게시 중' if a['status'] == 'published' else '초안' }}{% if a['origin'] == 'auto' %} · 자동 수집{% endif %}{% else %}새 글{% endif %}</h2>
+    <h2>{% if a %}#{{ a['id'] }} 고치기 · {{ '게시 중' if a['status'] == 'published' else '초안' }}{% if a['origin'] == 'auto' %} · 자동 수집{% elif a['origin'] == 'ai' %} · AI 초안{% endif %}{% else %}새 글{% endif %}</h2>
     <label>제목<input name="title" maxlength="120" required value="{{ a['title'] if a else '' }}" placeholder="택배가 사라졌다면? 보상은 얼마까지 받을 수 있을까"></label>
     <label>요약 (목록과 메인에 보이는 2~3줄)<textarea name="summary" rows="3" maxlength="400">{{ a['summary'] if a else '' }}</textarea></label>
     <label>본문 (빈 줄로 문단을 나눠요. "## "로 시작하면 소제목, "- "로 시작하면 목록)<textarea name="body" rows="14">{{ a['body'] if a else '' }}</textarea></label>
@@ -26,7 +38,7 @@
     <div class="admin-actions">
       {% if a %}
       <button type="submit" name="act" value="save">저장</button>
-      {% if a['status'] == 'published' %}<button type="submit" name="act" value="unpublish">게시 내리기</button>{% else %}<button type="submit" class="primary" name="act" value="publish">게시하기</button>{% endif %}
+      {% if a['status'] == 'published' %}<button type="submit" name="act" value="unpublish">게시 내리기</button>{% else %}{% if ai and not ai.ok %}<label class="check aw-ack"><input type="checkbox" name="ack_numbers" value="1"> 숫자를 직접 확인했어요</label>{% endif %}<button type="submit" class="primary" name="act" value="publish">게시하기</button>{% endif %}
       <a href="{{ url_for('life_article', article_id=a['id']) }}" target="_blank" rel="noopener">미리보기 ↗</a>
       <button type="submit" name="act" value="delete" onclick="return confirm('이 글을 지울까요? 되돌릴 수 없어요.')">지우기</button>
       {% else %}
@@ -37,7 +49,7 @@
   <h2>글 ({{ rows|length }})</h2>
   {% for r in rows %}
   <div class="form-panel admin-item">
-    <p class="meta">#{{ r['id'] }} · {{ r['category'] }} · {{ '게시 중' if r['status'] == 'published' else '초안' }}{% if r['origin'] == 'auto' %} · 자동 수집{% endif %}{% if r['featured'] %} · 고정{% endif %} · 조회 {{ r['views'] }} · {{ (r['published_at'] or r['created'])[:16] }}</p>
+    <p class="meta">#{{ r['id'] }} · {{ r['category'] }} · {{ '게시 중' if r['status'] == 'published' else '초안' }}{% if r['origin'] == 'auto' %} · 자동 수집{% endif %}{% if r['origin'] == 'ai' and ai_marks is defined %}{% set m = ai_marks().get(r['id']) %} · AI 초안{% if m %} · {% if m.ok %}<span class="aw-badge ok">숫자 확인됨</span>{% else %}<span class="aw-badge bad">검토 필요 {{ m.problems|length }}곳</span>{% endif %}{% endif %}{% endif %}{% if r['featured'] %} · 고정{% endif %} · 조회 {{ r['views'] }} · {{ (r['published_at'] or r['created'])[:16] }}</p>
     <h3><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['title'] }}</a></h3>
   </div>
   {% else %}<p class="meta">아직 글이 없어요.</p>{% endfor %}
