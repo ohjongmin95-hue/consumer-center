@@ -1,4 +1,4 @@
-"""소보루 레터: 뉴닉식 뉴스레터. 기본은 평일 아침마다 그날의 주요 이슈(여러 언론이 함께 다룬 뉴스) 3~5개를 AI가 우리 말로 풀고, 소보루 픽 리뷰·리뷰 주제·생활정보를 붙여 메일로 보낸다.
+"""크로와상: 뉴닉식 뉴스레터. 기본은 평일 아침마다 그날의 주요 이슈(여러 언론이 함께 다룬 뉴스) 3~5개를 AI가 우리 말로 풀고, 소보루 픽 리뷰·리뷰 주제·생활정보를 붙여 메일로 보낸다.
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인다 (soboru_writer.py와 같은 방식).
 - 호 만들기: 네이버 뉴스 검색(분야별 LETTER_QUERIES, 제목·요약 조각만)에서 지난 하루(월요일은 주말 포함, 매주면 7일) 뉴스를 모아
@@ -6,7 +6,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
   해요체로 짧은 제목·3~5문장 설명·'이럴 땐 이렇게' 한 줄·관련 법 조문(넘겨 준 후보 중에서만)을 쓴다. 기사 문장은 옮기지 않게 하고,
   코드로도 원문과 6어절 넘게 겹치는지, 숫자가 그 뉴스 자료에 있는지(soboru_writer.check_text) 검사해 '검토 필요'로 표시한다.
   각 뉴스에는 기사 원문(언론사) 링크와 법령 출처를 붙인다. 아래 묶음(소보루 픽 인기 리뷰, 진행 중인 리뷰 주제, 새 생활정보)은 DB에서.
-- 보내기: 관리자 > 소보루 레터에서 운영자가 '보내기'를 누르거나, '자동 보내기'를 켜 두면 검사를 통과한 호만 만든 뒤 바로 보낸다.
+- 보내기: 관리자 > 크로와상에서 운영자가 '보내기'를 누르거나, '자동 보내기'를 켜 두면 검사를 통과한 호만 만든 뒤 바로 보낸다.
   메일은 notify.send_email(SMTP, deploy/set-mail.sh)로 확인을 마친(active) 구독자에게만, 작은 묶음으로 쉬어 가며 뒤에서 보낸다.
   보낸 기록은 letter_sends에 남겨 같은 사람에게 두 번 보내지 않는다(중간에 끊겨도 다시 누르면 남은 사람에게만).
 - 구독: 이메일 + 수집·이용 동의 → 확인 메일(/letter/confirm/<token>)을 눌러야 구독(이중 확인). 모든 메일에 한 번에 해지하는
@@ -20,7 +20,7 @@ from markupsafe import Markup
 import soboru_writer as W
 
 SITE = W.SITE
-NAME = '소보루 레터'
+NAME = '크로와상'
 DAYS = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
 ITEMS = (3, 5)            # 한 호에 뉴스 몇 개
 NEWS_DAYS = 7             # 매주 보낼 때 뉴스 기간
@@ -43,7 +43,7 @@ AI_TIMEOUT = 120
 EMAIL_RE = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
 UNSUB_MARK = '__LETTER_UNSUB__'
 
-SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 뉴스레터 "소보루 레터" 에디터다. 뉴닉처럼 그날의 주요 이슈를 바쁜 사람도 5분이면 따라잡게 정리한다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 쓴다.\n'
+SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 뉴스레터 "크로와상" 에디터다. 뉴닉처럼 그날의 주요 이슈를 바쁜 사람도 5분이면 따라잡게 정리한다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 쓴다.\n'
           '지켜야 할 것:\n'
           '- 뉴스마다 제목과 요약 조각만 준다. 기사 문장을 옮기지 말고 반드시 네 말로 새로 풀어 쓴다. 기사에서 그대로 따오는 말은 몇 낱말을 넘지 않게 하고, 따옴표로 인용하지 않는다.\n'
           '- 그 뉴스의 [제목]·[요약]·[법 조문 후보]에 있는 사실과 숫자만 쓴다. 없는 숫자(날짜·금액·비율·건수·기간 모두)는 쓰지 않고, 숫자를 새로 계산하지 않는다.\n'
@@ -327,7 +327,7 @@ def install(S):
         tf = lambda name: site_url(f'/static/img/tf/{name}.png')
         icons = [tf(TOPIC_ICON.get(it.get('topic', ''), ('news', ''))[0]) for it in L['items']]
         return {'L': L, 'items': L['items'], 'sec': L['sections'], 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
-                'tf': tf, 'icons': icons, 'hero': site_url('/static/img/soboru-character-hero.png'), 'cfg': letter_cfg(),
+                'tf': tf, 'icons': icons, 'mark': site_url('/static/img/soboru-wordmark.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark.png')) else '', 'hero': site_url('/static/img/soboru-character-hero.png'), 'cfg': letter_cfg(),
                 'unsub': site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME}
 
     def email_parts(L, token=UNSUB_MARK):
@@ -508,7 +508,7 @@ def install(S):
                 return _orig()
             funcs[i] = protect
 
-    # 사이트맵에 소보루 레터(목록·보낸 호)를 더함
+    # 사이트맵에 크로와상(목록·보낸 호)을 더함
     if 'sitemap_xml' in app.view_functions:
         old_map = app.view_functions['sitemap_xml']
         def sitemap_xml():

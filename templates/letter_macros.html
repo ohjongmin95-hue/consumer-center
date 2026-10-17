@@ -1,4 +1,4 @@
-{# 소보루 레터 구독 칸: /letter, /life 아래, 홈 아래에서 같이 씀. 사람 눈에 안 보이는 website 칸은 자동 등록 막기 #}
+{# 크로와상 구독 칸: /letter, /life 아래, 홈 아래에서 같이 씀. 사람 눈에 안 보이는 website 칸은 자동 등록 막기 #}
 {% macro subscribe_form(place, big=False) %}
 <form class="lt-form{{ ' big' if big }}" method="post" action="{{ url_for('letter_subscribe') }}">
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="place" value="{{ place }}">
@@ -12,9 +12,9 @@
 {% endmacro %}
 {% macro letter_card(place) %}
 {% set cfg = letter_cfg() %}
-<section class="lt-card" id="letter-sub" aria-labelledby="lt-card-h-{{ place }}">
+<section class="lt-card{{ ' lt-card-pop' if place == 'home' }}" id="letter-sub" aria-labelledby="lt-card-h-{{ place }}">
   <div class="lt-card-copy">
-    <p class="lt-kicker"><span class="tf" aria-hidden="true">📨</span> {{ ui('letter.card_kicker', '소보루 레터') }}</p>
+    <p class="lt-kicker"><span class="tf" aria-hidden="true">🥐</span> {{ ui('letter.card_kicker', '크로와상') }}</p>
     <h2 id="lt-card-h-{{ place }}">{{ ui('letter.card_title', '{when},\n주요 이슈를 쉽게 풀어 드려요', when=cfg.when) }}</h2>
     <p>{{ ui('letter.card_body', '{span}의 주요 뉴스와 내 생활에 어떤 의미인지, 인기 리뷰까지 5분이면 다 읽어요.', span=cfg.span) }} <a href="{{ url_for('letter_home') }}">{{ ui('letter.card_more', '지난 레터 보기 ›') }}</a></p>
   </div>

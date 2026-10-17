@@ -31,7 +31,7 @@
   </nav>
   {% elif blk == 'live' %}
   <section class="nn-sec nn-live nn-live-wide">
-    <div class="nn-live-head"><h2><span class="nn-dot" aria-hidden="true"></span>{{ ui('home.live_title', '방금 들어온 제보') }}</h2><a href="{{ url_for('reports') }}">{{ ui('home.live_more', '전체 보기 ›') }}</a></div>
+    <div class="nn-live-head nn-voice"><h2><span class="tf" aria-hidden="true">📣</span> {{ ui('home.live_title', '소보루의 소리') }}</h2><span class="nn-voice-tag"><span class="nn-dot" aria-hidden="true"></span>{{ ui('home.live_tag', '소비자가 직접 올린 제보') }}</span><a href="{{ url_for('reports') }}">{{ ui('home.live_more', '전체 보기 ›') }}</a></div>
     <ol>
       {% for c in cases[:6] %}
       <li><a href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
@@ -125,7 +125,7 @@
     </a>
   </section>
   {% elif blk == 'letter' %}
-  {% from 'letter_macros.html' import letter_card with context %}{{ letter_card('home') }}{# 소보루 레터 구독 (soboru_letter.py) #}
+  {% from 'letter_macros.html' import letter_card with context %}{{ letter_card('home') }}{# 크로와상 구독 (soboru_letter.py) #}
   {% endif %}
   {% endfor %}
   {{ ed_hidden_blocks('home') }}

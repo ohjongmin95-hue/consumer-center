@@ -81,7 +81,7 @@ def short(text, limit=30):
 
 
 def send_email(to, subject, body, html=None, headers=None, from_name=None):
-    # html이 있으면 글(body)과 HTML 두 가지를 함께 보냄. headers는 List-Unsubscribe 같은 머리글 (소보루 레터)
+    # html이 있으면 글(body)과 HTML 두 가지를 함께 보냄. headers는 List-Unsubscribe 같은 머리글 (크로와상)
     msg = EmailMessage()
     msg['Subject'] = subject
     msg['From'] = formataddr((from_name or env('MAIL_FROM_NAME') or site_name(), env('MAIL_FROM') or env('SMTP_USER')))

@@ -1,5 +1,5 @@
 /* 토스페이스 이모지 (© Viva Republica, https://toss.im/tossface/copyright). 쓰는 이모지만 남긴 파일이라 가볍고, 이모지가 화면에 있을 때만 받음. */
-@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270F,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F370,U+1F371,U+1F373,U+1F381,U+1F389,U+1F393,U+1F3AE,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F431,U+1F436,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F45F,U+1F48A,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F91D,U+1F957,U+1F95B,U+1F9CA,U+1F9EA,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F370,U+1F371,U+1F373,U+1F381,U+1F389,U+1F393,U+1F3AE,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F431,U+1F436,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F45F,U+1F48A,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
 /* 소보루 브랜드 (뉴닉식 화면). 관리자 설정 '브랜드'가 소보루일 때만 style.css 뒤에 붙음. */
 .sb{font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;--sb-ink:#1d1d1f;--sb-sub:#6b6f76;--sb-mute:#9a9ea5;--sb-line:#ececec;--sb-soft:#f5f5f4;--sb-orange:#ef7300;--sb-orange-soft:#fff1e3;--sb-brown:#652D1C;--sb-gray:#f2f4f6;--sb-gray-ink:#4e5968;--sb-ease:cubic-bezier(.2,.8,.2,1);background:#fff;color:var(--sb-ink);word-break:keep-all;-webkit-font-smoothing:antialiased}
 .sb main.sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;min-height:auto}
@@ -1369,7 +1369,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 #blocked .me-method-name small{font-weight:500}
 @media(max-width:860px){.cm-tools .cm-more-pop{right:auto;left:50%;transform:translateX(-50%);animation:none}}
 @media(max-width:480px){.sb-hd .sb-bell+.sb-login{display:none}}  /* 좁은 화면: 내 정보는 아래 탭(MY)에 있어 종만 남김 */
-/* 소보루 레터 (soboru_letter.py): 구독 칸 · /letter · /letter/<호> · 확인·해지 화면 */
+/* 크로와상 (soboru_letter.py): 구독 칸 · /letter · /letter/<호> · 확인·해지 화면 */
 .lt-kicker{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--sb-orange);letter-spacing:.02em;margin:0 0 10px}
 .lt-hp{position:absolute!important;left:-9999px;width:1px;height:1px;overflow:hidden}
 .lt-form{display:flex;flex-direction:column;gap:10px;width:100%;max-width:460px}
@@ -1516,3 +1516,16 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .sb-ft-why strong{color:var(--sb-orange);font-weight:800}
 .nn-intro-kicker strong{color:var(--sb-orange)}.nn-intro .nn-intro-kicker strong{color:#2b1206}
 @media(max-width:680px){body.sb .ed-bar{bottom:calc(74px + env(safe-area-inset-bottom))}body.sb .ed-bar form:has(.ed-bar-out){display:none}}  /* 폰: 편집 막대가 화면 밖으로 안 넘치게 로그아웃은 관리자 화면에서 */
+.nn-voice{background:var(--sb-orange);color:#fff;border-radius:16px;padding:14px 18px;gap:12px;margin-bottom:8px}
+.nn-voice h2{color:#fff;font-size:20px}.nn-voice h2 .tf{font-size:24px}
+.nn-voice-tag{display:inline-flex;align-items:center;gap:6px;margin-right:auto;font-size:13px;font-weight:700;background:rgba(255,255,255,.2);border-radius:999px;padding:4px 10px}
+.nn-voice-tag .nn-dot{background:#fff;box-shadow:none}
+.nn-live-head.nn-voice a{color:#fff}
+.lt-card.lt-card-pop{margin-top:20px;background:linear-gradient(120deg,#ef7300,#ff9a3c);box-shadow:0 14px 34px rgba(239,115,0,.24)}
+.lt-card-pop h2,.lt-card-pop .lt-kicker,.lt-card-pop .lt-card-copy p,.lt-card-pop .lt-card-copy p a,.lt-card-pop .lt-agree,.lt-card-pop .lt-agree b,.lt-card-pop .lt-agree a{color:#fff}
+.lt-card-pop h2{font-size:24px}
+.sb main .lt-card-pop .lt-form .lt-row input[type=email]:not([type=checkbox]):not([type=radio]){border-color:#fff}
+.lt-card-pop .lt-row button{background:var(--sb-brown)}.lt-card-pop .lt-row button:hover{background:#4a2a17;box-shadow:none}
+.lt-card-pop .lt-agree input{accent-color:var(--sb-brown)}
+@media(max-width:680px){.nn-voice{flex-wrap:wrap;row-gap:6px}.nn-voice-tag{order:3;margin-right:0}.nn-voice h2{margin-right:auto}}
+.lt-card-pop .lt-kicker .tf{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background:#fff;border-radius:8px;font-size:16px}
