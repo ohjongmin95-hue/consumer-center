@@ -14,13 +14,13 @@
     {% if not ai_ready %}<p class="hp-warn">OpenAI API 키가 없어서 지금은 기사를 쓸 수 없어요. 서버 설정에 OPENAI_API_KEY를 넣어 주세요.</p>{% endif %}
   </div>
 
-  {# 맨 위 멈춤 스위치: 쓰기·게시를 한 번에 멈추거나 다시 켬 #}
-  <form class="form-panel aw-auto{% if cfg.auto and cfg.publish %} on{% endif %}" method="post" action="{{ url_for('admin_life_ai_settings') }}">
+  {# 맨 위 멈춤 스위치: 글은 매일 계속 쓰고, 승인 없는 게시만 멈추거나 다시 켬 #}
+  <form class="form-panel aw-auto{% if cfg.publish %} on{% endif %}" method="post" action="{{ url_for('admin_life_ai_settings') }}">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    {% if cfg.auto and cfg.publish %}<div><b>자동 콘텐츠가 돌고 있어요</b><p class="meta">매일 아침 {{ cfg.per_day }}개를 쓰고, 숫자 검사를 통과한 글은 승인 없이 바로 게시해요.</p></div>
-    <button type="submit" name="act" value="stop" class="danger">자동 멈추기</button>
-    {% else %}<div><b>자동 콘텐츠가 멈춰 있어요</b><p class="meta">{% if cfg.auto %}글은 초안으로만 써 두고 게시하지 않아요.{% else %}새 글을 쓰지 않아요.{% endif %}</p></div>
-    <button type="submit" name="act" value="start">다시 켜기</button>{% endif %}
+    {% if cfg.publish %}<div><b>자동 게시 중이에요</b><p class="meta">매일 아침 {{ cfg.per_day }}개를 쓰고, 숫자 검사를 통과한 글은 승인 없이 바로 올려요.</p></div>
+    <button type="submit" name="act" value="stop" class="danger">자동 게시 멈추기</button>
+    {% else %}<div><b>자동 게시를 멈췄어요</b><p class="meta">글은 매일 계속 써서 <a href="{{ url_for('admin_life', view='draft') }}">올릴 글</a>에 초안으로 쌓아 둬요. 직접 보고 게시해 주세요.</p></div>
+    <button type="submit" name="act" value="start">자동 게시 다시 켜기</button>{% endif %}
   </form>
 
   <h2 class="aw-h">무엇을 쓸까요</h2>

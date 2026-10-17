@@ -3254,14 +3254,13 @@ class SiteTest(unittest.TestCase):
             self.assertEqual([r['kind'] for r in out if r['status'] == 'made'], ['news'])
             with self.site.conn() as db:
                 self.assertEqual(db.execute("SELECT status FROM articles WHERE origin='ai' ORDER BY id DESC LIMIT 1").fetchone()[0], 'draft')  # 바로 게시를 끄면 초안
-            # 맨 위 '자동 멈추기'는 쓰기와 게시를 한꺼번에 끄고, '다시 켜기'는 둘 다 켬
+            # 맨 위 '자동 게시 멈추기'는 게시만 끄고 글은 계속 씀, '다시 켜기'는 게시를 켬
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'start'})
             self.assertEqual(w['settings'](), {'auto': 1, 'per_day': 1, 'publish': 1})
-            self.assertIn('자동 콘텐츠가 돌고 있어요', admin.get('/admin/life/ai').get_data(as_text=True))
+            self.assertIn('자동 게시 중이에요', admin.get('/admin/life/ai').get_data(as_text=True))
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'stop'})
-            self.assertEqual(w['settings'](), {'auto': 0, 'per_day': 1, 'publish': 0})
-            self.assertIn('자동 콘텐츠가 멈춰 있어요', admin.get('/admin/life/ai').get_data(as_text=True))
-            self.assertEqual(w['daily'](tomorrow)[0]['status'], 'off')
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_day': 1, 'publish': 0})
+            self.assertIn('자동 게시를 멈췄어요', admin.get('/admin/life/ai').get_data(as_text=True))
             # 쇼핑 관심도: 가장 많이 오른 분야와 그 분야 클릭 비중
             with self.site.app.app_context(): shop = w['collect']('shopping')
             top = shop['facts']['가장 많이 오른 분야']

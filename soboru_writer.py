@@ -542,9 +542,9 @@ def install(S):
     @S.admin_only
     def admin_life_ai_settings():
         per = request.form.get('per_day', type=int)
-        if request.form.get('act') in ('stop', 'start'):   # 맨 위 '자동 멈추기·다시 켜기' 버튼: 쓰기와 게시를 한꺼번에
-            on = request.form.get('act') == 'start'; put('writer', dict(settings(), auto=int(on), publish=int(on)))
-            flash('자동 콘텐츠를 다시 켰어요. 내일 아침부터 쓰고 바로 게시해요.' if on else '자동 콘텐츠를 멈췄어요. 새 글을 쓰지도, 게시하지도 않아요.')
+        if request.form.get('act') in ('stop', 'start'):   # 맨 위 '자동 게시 멈추기·다시 켜기' 버튼: 쓰기는 계속, 게시만 켜고 끔
+            on = request.form.get('act') == 'start'; put('writer', dict(settings(), auto=1, publish=int(on)))
+            flash('자동 게시를 다시 켰어요. 검사를 통과한 글은 바로 올라가요.' if on else '자동 게시를 멈췄어요. 글은 계속 써서 올릴 글(초안)에 쌓아 둬요.')
             return redirect(url_for('admin_life_ai'))
         put('writer', {'auto': 1 if request.form.get('auto') else 0, 'per_day': per if per in PER_DAY else 2, 'publish': 1 if request.form.get('publish') else 0})
         flash('자동 쓰기 설정을 저장했어요.')
