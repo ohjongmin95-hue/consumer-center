@@ -1097,11 +1097,21 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-quick a:hover{background:#e9ecef}
 .nn-quick b{font-size:15px;font-weight:700;color:var(--sb-ink);letter-spacing:-.02em}
 .nn-live-wide{margin-top:40px}
-.nn-live-wide ol{display:grid;grid-template-columns:1fr 1fr;column-gap:40px}
+.nn-live-wide ol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:40px}
+.nn-live-wide li{min-width:0}.nn-live-wide li a>div{flex:1;min-width:0}
 .nn-live-wide li+li{border-top:0}
 .nn-live-wide li a{display:flex;align-items:center;gap:14px}.nn-live-wide .nn-emo{flex:none;width:44px;height:44px;border-radius:14px;font-size:22px}
 .nn-live-wide li:nth-child(n+3){border-top:1px solid var(--sb-line)}
-@media(max-width:900px){.nn-live-wide ol{grid-template-columns:1fr}.nn-live-wide li:nth-child(n+2){border-top:1px solid var(--sb-line)}}
+@media(max-width:900px){.nn-live-wide ol{grid-template-columns:minmax(0,1fr)}.nn-live-wide li:nth-child(n+2){border-top:1px solid var(--sb-line)}}
 @media(max-width:680px){.nn-intro{grid-template-columns:1fr;gap:8px;margin-top:28px}.nn-intro-art{order:-1;max-width:270px}.nn-tile{font-size:24px}.nn-phone{border-width:5px;border-radius:30px}.nn-phone::before{height:12px;top:6px}.nn-phone-in{padding:28px 9px 0}.nn-ph-hi{font-size:10px}.nn-ph-grid{gap:4px;margin-top:8px}.nn-ph-grid span{padding:6px;font-size:8px;gap:4px;border-radius:10px}.nn-ph-grid i,.nn-ph-row i{width:18px;height:18px;font-size:11px;border-radius:6px}.nn-ph-h{font-size:9px;margin:10px 0 2px}.nn-ph-row{font-size:8px;padding:5px 0;gap:5px}
   .nn-intro-kicker{font-size:15px}.nn-intro-name{font-size:56px}.nn-intro-sub{font-size:16px}.nn-intro-sub br{display:none}.nn-intro-btns{margin-top:24px;gap:16px}.nn-intro-btns .sb-cta{height:52px;padding:0 24px;font-size:16px}
   .nn-quick{grid-template-columns:1fr 1fr;margin-top:32px}.nn-quick a:last-child:nth-child(odd){grid-column:1/-1}.nn-quick a{padding:14px}.nn-quick b{font-size:14px}}
+
+/* 아이콘 자리에 토스페이스 이모지 타일: 제보 목록, 이용 안내 단계, 법률 질문 순서, 생활정보 분야 */
+.sb .title-cell.has-emo{padding-left:60px;min-height:44px}
+.sb .sbr-emo{position:absolute;left:0;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:14px;font-size:22px}
+.sb .gd-ic.gd-emo{border-radius:24px;background:#fff1e3;font-family:Tossface,sans-serif;font-size:38px;line-height:1}
+.sb .gd-steps li:nth-child(2) .gd-emo{background:#e8f1fb}.sb .gd-steps li:nth-child(3) .gd-emo{background:#fbf5dc}.sb .gd-steps li:nth-child(4) .gd-emo{background:#e7f5ea}
+.sba-how .sba-emo{width:44px;height:44px;border-radius:14px;font-size:22px}
+.sb-cats .tf{margin-right:2px}
+@media(max-width:680px){.sb .title-cell.has-emo{padding-left:54px}.sb .sbr-emo{width:40px;height:40px;font-size:20px;border-radius:12px}.sb .gd-ic.gd-emo{font-size:30px;border-radius:20px}}

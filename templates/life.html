@@ -8,7 +8,7 @@
   {% set nv_tab = 'life' %}{% if naver_ready() %}{% include 'life_tabs.html' %}{% endif %}
   <nav class="sb-cats" aria-label="분야">
     <a href="{{ url_for('life') }}"{% if not cat %} class="on" aria-current="page"{% endif %}>전체</a>
-    {% for c in LIFE_CATEGORIES %}<a href="{{ url_for('life', category=c) }}"{% if cat == c %} class="on" aria-current="page"{% endif %}>{{ c }}</a>{% endfor %}
+    {% for c in LIFE_CATEGORIES %}<a href="{{ url_for('life', category=c) }}"{% if cat == c %} class="on" aria-current="page"{% endif %}>{% if LIFE_EMOJI.get(c) %}<span class="tf" aria-hidden="true">{{ LIFE_EMOJI[c] }}</span> {% endif %}{{ c }}</a>{% endfor %}
   </nav>
   {% if rows %}
   <div class="sb-grid">{% for a in rows %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{{ meta(a) }}</a>{% endfor %}</div>

@@ -72,9 +72,9 @@
 
   {% if not result %}
   <ol class="sba-how">
-    <li><b>1</b><div><h3>{{ ui('ask.how1', '맞는 조문을 찾아요') }}</h3><p>{{ ui('ask.how1_d', '전자상거래법, 약관법, 소비자기본법처럼 배운 법령 원문에서 찾아요.') }}</p></div></li>
-    <li><b>2</b><div><h3>{{ ui('ask.how2', '그 조문만 근거로 답해요') }}</h3><p>{{ ui('ask.how2_d', '인터넷 검색 없이, 찾은 원문에 적힌 내용으로만 쉽게 풀어요.') }}</p></div></li>
-    <li><b>3</b><div><h3>{{ ui('ask.how3', '원문을 바로 확인해요') }}</h3><p>{{ ui('ask.how3_d', '답변 아래 조문 카드를 누르면 법령 원문과 출처가 나와요.') }}</p></div></li>
+    <li>{% if is_soboru() %}<span class="nn-emo sba-emo t2" aria-hidden="true">🔍</span>{% else %}<b>1</b>{% endif %}<div><h3>{{ ui('ask.how1', '맞는 조문을 찾아요') }}</h3><p>{{ ui('ask.how1_d', '전자상거래법, 약관법, 소비자기본법처럼 배운 법령 원문에서 찾아요.') }}</p></div></li>
+    <li>{% if is_soboru() %}<span class="nn-emo sba-emo t1" aria-hidden="true">⚖️</span>{% else %}<b>2</b>{% endif %}<div><h3>{{ ui('ask.how2', '그 조문만 근거로 답해요') }}</h3><p>{{ ui('ask.how2_d', '인터넷 검색 없이, 찾은 원문에 적힌 내용으로만 쉽게 풀어요.') }}</p></div></li>
+    <li>{% if is_soboru() %}<span class="nn-emo sba-emo t3" aria-hidden="true">✅</span>{% else %}<b>3</b>{% endif %}<div><h3>{{ ui('ask.how3', '원문을 바로 확인해요') }}</h3><p>{{ ui('ask.how3_d', '답변 아래 조문 카드를 누르면 법령 원문과 출처가 나와요.') }}</p></div></li>
   </ol>
   {% endif %}
 
