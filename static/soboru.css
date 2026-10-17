@@ -1518,3 +1518,4 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .lt-card-pop .lt-row button{background:var(--sb-brown)}.lt-card-pop .lt-row button:hover{background:#4a2a17;box-shadow:none}
 .lt-card-pop .lt-agree input{accent-color:var(--sb-brown)}
 @media(max-width:680px){.nn-voice{flex-wrap:wrap;row-gap:6px}.nn-voice-tag{order:3;margin-right:0}.nn-voice h2{margin-right:auto}}
+.lt-card-pop .lt-kicker .tf{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background:#fff;border-radius:8px;font-size:16px}
