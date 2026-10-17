@@ -30,7 +30,7 @@ LAW_WORDS = ('소비자', '전자상거래', '약관', '표시', '광고', '할�
 BANNED = ('악덕', '최악', '사기꾼', '먹튀', '갑질', '양심 없', '양심없', '블랙기업', '불매', '무책임한 기업', '나쁜 기업', '믿을 수 없는 기업')
 CONST = {'소비자상담센터 전화번호': '1372'}  # 글 끝 안내에 늘 쓰는 번호는 자료에 같이 넣음
 AI_TIMEOUT = 90
-PER_DAY = (1, 2)
+PER_DAY = (1, 2, 3, 4)
 
 # 글 종류: 이름, 필요한 자료(SOURCES), 기본 분야·그림·바탕색, AI에게 줄 설명
 KINDS = {
@@ -387,7 +387,8 @@ def install(S):
 
     def settings():
         s = setting('writer', {})
-        return {'auto': 0 if s.get('auto') == 0 else 1, 'per_day': s.get('per_day') if s.get('per_day') in PER_DAY else 2}
+        # publish: 매일 쓴 글 중 숫자 검사를 통과한 글은 관리자 승인 없이 바로 게시 (운영자 요청 2026-10-17, 관리자에서 멈출 수 있음)
+        return {'auto': 0 if s.get('auto') == 0 else 1, 'per_day': s.get('per_day') if s.get('per_day') in PER_DAY else 2, 'publish': 0 if s.get('publish') == 0 else 1}
 
     def log(entry):
         rows = setting('writer_log', [])
@@ -413,7 +414,8 @@ def install(S):
         return problems
 
     def generate(kind, trigger='admin', force=False, day=None):
-        """{status: made|exists|skip|error, id, reason}. 만든 글은 언제나 초안(draft)."""
+        """{status: made|exists|skip|error, id, reason, published}. 관리자가 만든 글은 초안(draft). 매일 자동으로 쓴 글은
+        '바로 게시'가 켜져 있고 숫자 검사를 통과하면 게시하고, 아니면 초안으로 남긴다."""
         if kind not in KINDS: return {'status': 'error', 'reason': '모르는 글 종류예요'}
         key = f"ai:{kind}:{day or datetime.date.today().isoformat()}"
         with conn() as db: old = db.execute('SELECT id,status FROM articles WHERE ext_key=?', (key,)).fetchone()
@@ -437,14 +439,16 @@ def install(S):
             db.execute('INSERT OR REPLACE INTO ai_articles(article_id,kind,facts,sources,trigger,created,checked) VALUES(?,?,?,?,?,?,?)',
                        (aid, kind, facts_s, sources_s, trigger, stamp(), stamp()))
             problems = save_check(db, aid, title, summary, body, got['facts'])
+            published = trigger == 'daily' and not problems and settings()['publish'] == 1
+            if published: db.execute("UPDATE articles SET status='published',published_at=?,updated=? WHERE id=?", (stamp(), stamp(), aid))
         art = app.extensions.get('soboru_art')  # 저장한 글처럼 AI 일러스트 자동 그리기 (키가 있을 때만)
         if art: art['auto']('life', aid, wait=trigger == 'daily')
-        res = {'status': 'made', 'id': aid, 'reason': '숫자 검토 필요 %d곳' % len(problems) if problems else ''}
+        res = {'status': 'made', 'id': aid, 'published': published, 'reason': '숫자 검토 필요 %d곳' % len(problems) if problems else ('바로 게시했어요' if published else '')}
         log(dict(res, kind=kind, trigger=trigger))
         return res
 
     def daily(today=None):
-        """매일 아침 1~2개. 꺼 뒀거나 AI 키가 없으면 아무것도 안 함. 어떤 경우에도 게시하지 않음."""
+        """매일 아침 1~4개. 꺼 뒀거나 AI 키가 없으면 아무것도 안 함. 게시 여부는 generate가 정함."""
         cfg = settings(); day = today or datetime.date.today().isoformat()
         if not cfg['auto']: return [{'status': 'off', 'reason': '자동 쓰기를 꺼 두었어요'}]
         if not desk.ai_ready(): log({'status': 'skip', 'kind': '', 'trigger': 'daily', 'reason': 'OpenAI API 키가 없어요'}); return [{'status': 'skip', 'reason': 'OpenAI API 키가 없어요'}]
@@ -538,7 +542,11 @@ def install(S):
     @S.admin_only
     def admin_life_ai_settings():
         per = request.form.get('per_day', type=int)
-        put('writer', {'auto': 1 if request.form.get('auto') else 0, 'per_day': per if per in PER_DAY else 2})
+        if request.form.get('act') in ('stop', 'start'):   # 맨 위 '자동 멈추기·다시 켜기' 버튼: 쓰기와 게시를 한꺼번에
+            on = request.form.get('act') == 'start'; put('writer', dict(settings(), auto=int(on), publish=int(on)))
+            flash('자동 콘텐츠를 다시 켰어요. 내일 아침부터 쓰고 바로 게시해요.' if on else '자동 콘텐츠를 멈췄어요. 새 글을 쓰지도, 게시하지도 않아요.')
+            return redirect(url_for('admin_life_ai'))
+        put('writer', {'auto': 1 if request.form.get('auto') else 0, 'per_day': per if per in PER_DAY else 2, 'publish': 1 if request.form.get('publish') else 0})
         flash('자동 쓰기 설정을 저장했어요.')
         return redirect(url_for('admin_life_ai'))
 

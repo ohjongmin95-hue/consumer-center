@@ -3208,7 +3208,7 @@ class SiteTest(unittest.TestCase):
             return 404, {}
         return fake
 
-    def test_writer_daily_never_publishes_and_rotates(self):
+    def test_writer_daily_publishes_checked_and_rotates(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
         w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
         sent, calls = [], []
@@ -3227,8 +3227,10 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(w['daily'](), [])  # 같은 날 다시 돌려도 더 만들지 않음
             with self.site.conn() as db:
                 rows = db.execute("SELECT a.*,x.kind,x.facts,x.sources FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE a.origin='ai'").fetchall()
-            self.assertEqual({r['status'] for r in rows}, {'draft'})  # 절대 자동 게시하지 않음
-            self.assertTrue(all(r['published_at'] is None for r in rows))
+            with self.site.conn() as db: checks = {r[0]: r[1] for r in db.execute('SELECT article_id,check_ok FROM ai_articles')}
+            self.assertTrue(any(checks.values()))
+            for r in rows:  # 숫자 검사를 통과한 글만 승인 없이 바로 게시, 아니면 초안
+                self.assertEqual((r['status'], r['published_at'] is not None), ('published', True) if checks[r['id']] else ('draft', False))
             kinds = {r['kind']: r for r in rows}
             self.assertEqual(set(kinds), {'trend', 'news'})
             trend = json.loads(kinds['trend']['facts'])
@@ -3238,12 +3240,12 @@ class SiteTest(unittest.TestCase):
             self.assertIn('관련 법 조문', news['facts']); self.assertIn('https://news.example.co.kr/', news['sources'])
             self.assertNotIn('secret-test-value', json.dumps([dict(r) for r in rows], ensure_ascii=False))
             life = self.client.get('/life').get_data(as_text=True)
-            for r in rows: self.assertNotIn(r['title'], life)
+            for r in rows: (self.assertIn if checks[r['id']] else self.assertNotIn)(r['title'], life)
             # 다음 날은 다음 종류부터, 자동 쓰기를 끄면 아무것도 안 함
             tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
             admin = self.login_admin()
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'per_day': '1'})
-            self.assertEqual(w['settings'](), {'auto': 0, 'per_day': 1})
+            self.assertEqual(w['settings'](), {'auto': 0, 'per_day': 1, 'publish': 0})
             self.assertEqual(w['daily'](tomorrow)[0]['status'], 'off')
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'per_day': '1'})
             with self.site.conn() as db: db.execute("UPDATE ai_articles SET created='2000-01-01T07:00:00'")  # 오늘 만든 개수에서 빼서 다음 날처럼
@@ -3251,7 +3253,15 @@ class SiteTest(unittest.TestCase):
             self.assertEqual((out[0]['kind'], out[0]['status']), ('reports', 'skip'))
             self.assertEqual([r['kind'] for r in out if r['status'] == 'made'], ['news'])
             with self.site.conn() as db:
-                self.assertEqual(db.execute("SELECT COUNT(*) FROM articles WHERE origin='ai' AND status!='draft'").fetchone()[0], 0)
+                self.assertEqual(db.execute("SELECT status FROM articles WHERE origin='ai' ORDER BY id DESC LIMIT 1").fetchone()[0], 'draft')  # 바로 게시를 끄면 초안
+            # 맨 위 '자동 멈추기'는 쓰기와 게시를 한꺼번에 끄고, '다시 켜기'는 둘 다 켬
+            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'start'})
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_day': 1, 'publish': 1})
+            self.assertIn('자동 콘텐츠가 돌고 있어요', admin.get('/admin/life/ai').get_data(as_text=True))
+            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'stop'})
+            self.assertEqual(w['settings'](), {'auto': 0, 'per_day': 1, 'publish': 0})
+            self.assertIn('자동 콘텐츠가 멈춰 있어요', admin.get('/admin/life/ai').get_data(as_text=True))
+            self.assertEqual(w['daily'](tomorrow)[0]['status'], 'off')
             # 쇼핑 관심도: 가장 많이 오른 분야와 그 분야 클릭 비중
             with self.site.app.app_context(): shop = w['collect']('shopping')
             top = shop['facts']['가장 많이 오른 분야']
