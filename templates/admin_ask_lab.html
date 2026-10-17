@@ -1,0 +1,46 @@
+{% extends 'console.html' %}
+{# 관리자 전용 실험실: 같은 질문에 예전 답(lawask)과 새 답(lawrag)을 나란히 (lawrag.py) #}
+{% block title %}AI 상담 실험실 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="ad-page ak">
+  <header class="ad-head">
+    <div><h1>AI 상담 실험실</h1><p>같은 질문을 예전 버전과 새 버전에 동시에 물어 나란히 봐요. 관리자만 볼 수 있고, 손님 화면은 바뀌지 않아요. 새 버전은 지금 <b>{{ '켜짐' if on else '꺼짐' }}</b>이에요.</p></div>
+    <a class="ad-btn" href="{{ url_for('admin_ask') }}">← AI 상담</a>
+  </header>
+  <form class="ad-panel ak-labform" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label for="ak-q">질문</label>
+    <textarea id="ak-q" name="q" rows="2" maxlength="500" required placeholder="예: 헬스장 6개월권 중도해지하면 환불받을 수 있나요?">{{ question }}</textarea>
+    <div class="ak-chips">{% for e in examples %}<button type="button" data-q="{{ e }}">{{ e }}</button>{% endfor %}</div>
+    <div class="admin-actions"><button class="primary" type="submit">두 버전에 물어보기</button></div>
+  </form>
+  {% if new %}
+  <div class="ak-lab">
+    <section class="ad-panel ak-col">
+      <p class="ak-colh"><span class="ak-pill">예전</span> 법률 질문 ({{ '새 버전을 끄면 돌아가는 화면' if on else '지금 손님 화면' }})</p>
+      {% if old.kind == 'answer' %}
+        {% if old.headline %}<h3>{{ old.headline }}</h3>{% endif %}
+        {% for p in old.paragraphs %}<p>{{ p }}</p>{% endfor %}
+      {% elif old.kind == 'fallback' %}<p class="ak-mute">AI 설명 없이 가까운 조문만 보여 줘요.</p>
+      {% elif old.kind == 'error' %}<p class="ak-bad">오류: {{ old.error }}</p>
+      {% else %}<p class="ak-mute">배운 법령에서 딱 맞는 조문을 찾지 못했어요.</p>{% endif %}
+      <p class="ak-srch">근거 조문 {{ old.cards|length }}개</p>
+      <ul class="ak-refs">{% for c in old.cards %}<li><b>{{ '생활법령정보' if c.guide else c.short }}</b> {{ c.art if not c.guide else '' }} {{ c.title }}</li>{% endfor %}</ul>
+      <p class="ak-chars">글자 수 {{ ((old.headline or '') ~ (old.paragraphs or [])|join(''))|length }}자</p>
+    </section>
+    <section class="ad-panel ak-col new">
+      <p class="ak-colh"><span class="ak-pill on">새</span> AI 소비자 상담 · {{ new.emoji }} {{ new.dtype }} · {{ '%.1f'|format(new.latency / 1000) }}초</p>
+      {% if new.kind in ('answer', 'ask') %}
+        {% for name, body in new.parts %}<h4>{{ ask_part_emoji.get(name, '') }} {{ name }}</h4><p class="ak-pre">{{ body|askrefs }}</p>{% endfor %}
+        {% if new.questions %}<h4>🔍 확인 질문</h4><ol>{% for q in new.questions %}<li>{{ q }}</li>{% endfor %}</ol>{% endif %}
+      {% else %}<h3>{{ new.headline }}</h3><p class="ak-mute">{{ '법적 결론 없이 일반 절차와 상담기관만 안내해요.' if new.kind == 'none' else 'AI 설명 없이 근거 원문만 보여 줘요.' }}</p>{% endif %}
+      {% if new.flags %}<p class="ak-flag">근거 확인으로 뺀 내용 {{ new.flags|length }}곳: {% for f in new.flags %}{{ f.text }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+      <p class="ak-srch">출처 {{ new.cards|length }}개</p>
+      <ul class="ak-refs">{% for c in new.cards %}<li><span class="ak-k">{{ c.label }}</span><b>{{ c.short }}</b> {{ c.art_label }} · {{ c.status }}</li>{% endfor %}</ul>
+      <p class="ak-chars">글자 수 {{ new.parts|map(attribute=1)|join('')|length }}자 · 부분 {{ new.parts|map(attribute=0)|join(', ') or '없음' }}</p>
+    </section>
+  </div>
+  {% endif %}
+</main>
+<script>document.querySelectorAll('.ak-chips button').forEach(function(b){b.addEventListener('click',function(){document.getElementById('ak-q').value=b.dataset.q})})</script>
+{% endblock %}

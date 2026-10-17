@@ -64,6 +64,68 @@
     </table></div>
     <p class="meta">기본 모음은 저장소의 platform_app/law_corpus.json이라 여기서 지울 수 없어요. 직접 올린 법령은 서버 데이터 폴더에 따로 저장돼요.</p>
   </div>
+
+  {# AI 소비자 상담 새 버전(lawrag.py)만 쓰는 것: 현행 여부, 소비자분쟁해결기준 별표. 법률 질문(예전)·AI 제보 분류에는 들어가지 않음 #}
+  {% set ap = ask_laws_panel() %}
+  <div class="form-panel lw-list" id="current">
+    <h2>현행 여부 <small class="meta">AI 소비자 상담 새 버전</small></h2>
+    <p class="meta">서버가 매일 국가법령정보 Open API에서 현행 법령 원문과 시행일을 받아요(deploy/law-sync.sh). 올린 PDF가 현행보다 옛 판이면 '개정됨, 확인 필요', {{ 3 }}일 넘게 확인하지 못했으면 '현행 여부 미확인'으로 보여요.{% if not ap.oc %} <b class="lw-warn">지금 서버에 법제처 인증키(LAW_OC)가 없어요.</b>{% endif %}</p>
+    {% if ap.flags %}<div class="lw-errors" role="alert">{% for f in ap.flags %}<p>올린 PDF '{{ f.name }}'(시행 {{ f.effective|replace('-', '.') }})가 현행(시행 {{ f.current|replace('-', '.') }})보다 옛 판이에요. 개정됨, 확인 필요</p>{% endfor %}</div>{% endif %}
+    <div class="tablewrap"><table>
+      <thead><tr><th>법령</th><th>현행 시행일</th><th>상담에 쓰는 판</th><th>상태</th><th>마지막 확인</th></tr></thead>
+      <tbody>{% for r in ap.rows %}<tr>
+        <td><b>{{ r.short }}</b>{% if r.name != r.short %}<small>{{ r.name }}</small>{% endif %}</td>
+        <td>{{ r.current|replace('-', '.') or '—' }}</td>
+        <td>{% if r.have %}{{ r.have|replace('-', '.') }}<small>{{ r.from }}</small>{% else %}—{% endif %}</td>
+        <td><span class="lw-tag{% if r.status == '현행' %} on{% elif '개정' in r.status %} bad{% endif %}">{{ r.status }}</span>{% if r.error %}<small>{{ r.error }}</small>{% endif %}</td>
+        <td>{{ r.checked or '—' }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+
+  {% if ap.preview %}
+  <form class="form-panel lw-preview" id="appendix" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="appendix_save"><input type="hidden" name="token" value="{{ ap.token }}">
+    <h2>별표 미리 보기</h2>
+    <p class="meta">품목·분쟁유형·해결기준 한 줄씩 이렇게 나눠졌어요. 문서 이름과 시행일을 확인하고 저장해 주세요. 출처 카드에 문서 이름·별표·PDF 쪽이 보여요.</p>
+    {% for x in ap.preview %}{% set k = loop.index0 %}
+    <div class="lw-law">
+      <div class="lw-law-head">
+        <div><b>{{ x.appendix }}</b><p class="meta"><b class="lw-n">{{ x.rows|length }}줄</b> · {{ x.file }}</p></div>
+        <label>문서 이름<input name="doc_{{ k }}" value="{{ x.doc }}" maxlength="80"></label>
+        <label>시행일<input name="eff_{{ k }}" value="{{ x.effective }}" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}"></label>
+      </div>
+      <ol class="lw-first lw-appx">{% for r in x.rows[:6] %}<li><b>{{ r.item or '공통' }}</b>{{ r.dispute }} → <span>{{ r.rule[:80] }}{% if r.rule|length > 80 %}…{% endif %}</span> <small>{{ r.page }}쪽</small></li>{% endfor %}{% if x.rows|length > 6 %}<li class="lw-rest">… 그 밖에 {{ x.rows|length - 6 }}줄</li>{% endif %}</ol>
+    </div>
+    {% endfor %}
+    <div class="admin-actions"><button class="primary" type="submit">이대로 배우기</button><a class="secondary" href="{{ url_for('admin_laws') }}">취소</a></div>
+  </form>
+  {% endif %}
+
+  <form class="form-panel lw-upload" method="post" enctype="multipart/form-data"{% if not ap.preview %} id="appendix"{% endif %}>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="appendix_preview">
+    <h2>소비자분쟁해결기준 별표 PDF 올리기</h2>
+    <ol class="lw-steps">
+      <li>국가법령정보센터에서 행정규칙 '소비자분쟁해결기준'을 찾아 별표(품목별 해결기준 등) PDF를 받아요.</li>
+      <li>여기에 올리면 품목·분쟁유형·해결기준을 한 줄씩 나눠요. 문서 이름·별표·시행일·PDF 쪽도 같이 저장해요.</li>
+      <li>저장하면 AI 상담 새 버전에서 '분쟁해결기준(권고)'으로 찾아 써요. 예전 법률 질문과 AI 제보 분류에는 들어가지 않아요.</li>
+    </ol>
+    <label class="lw-drop"><input type="file" name="pdf" accept="application/pdf,.pdf" multiple required><span>별표 PDF 파일 고르기</span><small>한 번에 5개까지 · 파일마다 20MB까지</small></label>
+    <div class="admin-actions"><button class="primary" type="submit">미리 보기</button></div>
+  </form>
+
+  {% if ap.parts %}
+  <div class="form-panel lw-list">
+    <h2>배운 별표</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>문서</th><th>시행일</th><th>줄</th><th>올린 날</th><th></th></tr></thead>
+      <tbody>{% for x in ap.parts %}<tr>
+        <td><b>{{ x.doc }}</b><small>{{ x.file }}</small></td><td>{{ (x.effective or '—')|replace('-', '.') }}{% if ap.kca.current and x.effective and x.effective < ap.kca.current %}<small class="lw-warn">개정됨, 확인 필요 (현행 {{ ap.kca.current|replace('-', '.') }})</small>{% endif %}</td>
+        <td>{{ x.rows|length }}줄</td><td>{{ (x.added or '')[:10]|replace('-', '.') }}</td>
+        <td><form method="post" onsubmit="return confirm('이 별표를 지울까요?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="appendix_delete"><input type="hidden" name="index" value="{{ loop.index0 }}"><button class="danger" type="submit">지우기</button></form></td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% endif %}
 </div></main>
 <script>document.querySelectorAll('.lw-drop input').forEach(function(i){var s=i.parentNode.querySelector('span');i.addEventListener('change',function(){s.textContent=i.files.length?[].map.call(i.files,function(f){return f.name}).join(', '):'PDF 파일 고르기'})})
 document.querySelectorAll('.lw-upload').forEach(function(f){f.addEventListener('submit',function(){var b=f.querySelector('button');setTimeout(function(){b.disabled=true;b.textContent='읽는 중…'},0)})})</script>

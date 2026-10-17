@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{# AI 소비자 상담 새 버전 (lawrag.py). 관리자 > AI 상담에서 켰을 때만 손님에게 보임. 꺼져 있으면 soboru_ask.html 그대로 #}
+{% block title %}{{ ui_text('ask2.title', 'AI 소비자 상담') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui_text('ask2.description', '환불·해지·배송·품질 같은 소비자 피해를 AI에게 편하게 물어보세요. 법령 원문을 근거로 소비자 권리와 대응 방법을 안내해 드려요.') }}{% endblock %}
+{% block head %}{% if not is_soboru() %}<link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}{% endblock %}
+{% block content %}
+{% set chev %}<svg class="sba-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>{% endset %}
+{% macro lines(text) %}{% for l in text.split('\n') if l.strip() %}{% if l.lstrip().startswith(('- ', '• ', '· ')) %}<p class="sbv-li">{{ l.lstrip()[2:]|askrefs }}</p>{% else %}<p>{{ l|askrefs }}</p>{% endif %}{% endfor %}{% endmacro %}
+{% set notice = ui_text('ask2.notice', '상담사가 아닌 AI가 제공하는 일반 정보예요') %}
+<main class="sb-wrap sbv{% if not is_soboru() %} sb{% endif %}">
+<div class="sbv-in">
+  {% if preview %}<p class="sbv-preview">관리자 미리 보기예요. 손님에게는 아직 예전 화면이 보여요. 관리자 &gt; AI 상담에서 켤 수 있어요.</p>{% endif %}
+  <p class="sbv-notice" role="note"><span class="sbv-notice-i" aria-hidden="true">💬</span><span><b>{{ notice }}</b> {{ ui('ask2.notice_sub', '법률 자문이 아니고, 실제 결과는 상황에 따라 달라질 수 있어요.') }}</span></p>
+
+  {% if not result and not turns %}
+  <header class="sba-head sbv-head">
+    <p class="sba-kicker"><span aria-hidden="true">⚖️</span> {{ ui('ask2.kicker', '법령 원문으로 답해요') }}</p>
+    <h1>{{ ui('ask2.h1', '소비자 피해, AI에게 편하게 물어보세요') }}</h1>
+    <p>{{ ui('ask2.intro', '상황을 적어 주시면 관련 법령과 분쟁해결기준을 찾아 환불·보상 가능성과 대응 방법을 정리해 드려요.') }}</p>
+  </header>
+  {% endif %}
+
+  {% if turns or result %}
+  <section class="sbv-thread" aria-label="상담 내용" aria-live="polite">
+    {% for t in turns %}
+    <div class="sba-q sbv-q"><p>{{ t.q }}</p></div>
+    <div class="sbv-a sbv-old">
+      <p class="sbv-who"><span class="sba-av" aria-hidden="true">💬</span><b>{{ site_name() }} AI 상담</b><span class="sbv-ai">{{ notice }}</span></p>
+      <div class="sbv-bubble"><div class="sbv-plain">{{ t.a }}</div></div>
+    </div>
+    {% endfor %}
+    {% if result %}
+    <div class="sba-q sbv-q"><p>{{ shown_q }}</p></div>
+    <article class="sbv-a" id="sbv-latest">
+      <p class="sbv-who"><span class="sba-av" aria-hidden="true">💬</span><b>{{ site_name() }} AI 상담</b>{% if result.dtype %}<span class="sbv-type"><span aria-hidden="true">{{ result.emoji }}</span>{{ result.dtype }}</span>{% endif %}</p>
+      <div class="sbv-bubble">
+        <p class="sbv-ai-tag">{{ notice }}</p>
+        {% if result.kind == 'answer' %}
+          {% for name, body in result.parts %}
+          <section class="sbv-part{% if loop.first %} first{% endif %}">
+            <h2><span class="sbv-pe" aria-hidden="true">{{ ask_part_emoji.get(name, '•') }}</span>{{ name }}</h2>
+            <div class="sbv-body">{{ lines(body) }}</div>
+          </section>
+          {% endfor %}
+          {% if not result.covered %}<p class="sba-note">{{ ui('ask2.not_covered', '찾은 근거 원문만으로는 정확히 답하기 어려운 질문이에요. 1372 소비자상담센터에 한 번 더 확인해 보세요.') }}</p>{% endif %}
+        {% elif result.kind == 'ask' %}
+          {% for name, body in result.parts %}<div class="sbv-body">{{ lines(body) }}</div>{% endfor %}
+          <section class="sbv-part sbv-askmore">
+            <h2><span class="sbv-pe" aria-hidden="true">🔍</span>{{ ui('ask2.need_more', '정확히 답하려면 몇 가지가 더 필요해요') }}</h2>
+            <ol>{% for q in result.questions %}<li>{{ q }}</li>{% endfor %}</ol>
+            <p class="sbv-hint">{{ ui('ask2.need_more_hint', '아래 입력창에 답해 주시면 이어서 알려 드릴게요.') }}</p>
+          </section>
+        {% else %}
+          <h2 class="sbv-headline">{% if result.kind == 'none' %}{{ ui('ask2.none_title', '관련 법령을 찾지 못했어요') }}{% else %}{{ ui('ask2.fb_title', '질문과 가까운 근거 원문을 찾았어요') }}{% endif %}</h2>
+          <div class="sbv-body"><p>{% if result.kind == 'none' %}{{ ui('ask2.none_text', '배운 법령과 분쟁해결기준에서 이 질문에 맞는 내용을 찾지 못해 법적인 판단은 드리기 어려워요. 대신 일반적인 대응 순서와 상담기관을 알려 드릴게요.') }}{% else %}{{ ui('ask2.fb_text', '지금은 AI 설명을 만들 수 없어서 근거 원문과 일반적인 대응 순서를 먼저 보여 드려요.') }}{% endif %}</p></div>
+          <section class="sbv-part">
+            <h2><span class="sbv-pe" aria-hidden="true">✅</span>{{ ui('ask2.steps', '일반적인 대응 순서') }}</h2>
+            <ol class="sbv-steps">{% for s in result_steps %}<li>{{ s }}</li>{% endfor %}</ol>
+          </section>
+          <section class="sbv-part">
+            <h2><span class="sbv-pe" aria-hidden="true">📞</span>{{ ui('ask2.agencies', '신고·상담기관') }}</h2>
+            <ul class="sbv-agency">{% for name, desc, href in result.agencies %}<li><a href="{{ href }}" target="_blank" rel="noopener"><b>{{ name }}</b><span>{{ desc }}</span></a></li>{% endfor %}</ul>
+          </section>
+        {% endif %}
+        {% if result.flags %}<p class="sbv-flag">{{ ui('ask2.flagged', '근거 원문에서 확인되지 않은 내용은 빼고 보여 드려요.') }}</p>{% endif %}
+
+        {% if result.cards %}
+        <div class="sbv-src">
+          <p class="sba-refs-h">{{ '출처' if result.kind in ('answer', 'ask') else '찾은 근거' }} <b>{{ result.cards|length }}</b></p>
+          {% for c in result.cards %}
+          <details class="sbv-card">
+            <summary>
+              <span class="sbv-no">{{ loop.index }}</span>
+              <span class="sbv-card-main">
+                <span class="sbv-kind k{{ ['법률 조문', '분쟁해결기준(권고)', '생활법령 해설(효력 없음)'].index(c.label) if c.label in ['법률 조문', '분쟁해결기준(권고)', '생활법령 해설(효력 없음)'] else 0 }}">{{ c.label }}</span>
+                <b class="sbv-doc">{{ c.law }}</b>
+                <span class="sbv-art">{{ c.art_label }}{% if c.title and c.key not in ('easylaw', 'kca_appx') %} {{ c.title }}{% endif %}</span>
+                <span class="sbv-meta">{% if c.effective %}<span>시행 {{ c.effective|replace('-', '.') }}</span>{% endif %}<span class="sbv-st{% if c.status == '현행' %} ok{% elif '개정' in c.status %} bad{% endif %}">{{ c.status }}</span>{% if c.page %}<span>PDF {{ c.page }}쪽</span>{% endif %}</span>
+              </span>{{ chev }}
+            </summary>
+            <div class="sba-ref-body">
+              <p class="sba-text">{{ c.text }}</p>
+              <p class="sba-src"><span>{{ c.law }}{% if c.checked %} · {{ c.checked|replace('-', '.') }} 확인{% endif %}</span><a href="{{ c.source }}" target="_blank" rel="noopener">{{ '원문 보기' if c.key == 'easylaw' else '국가법령정보센터에서 보기' }} ↗</a></p>
+            </div>
+          </details>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="sbv-tools">
+          <button type="button" class="sbv-copy" data-copy><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span>{{ ui('ask2.copy', '답변 복사') }}</span></button>
+          <textarea class="sbv-copy-src" hidden aria-hidden="true" tabindex="-1">{{ result.text }}
+
+{{ notice }}</textarea>
+        </div>
+      </div>
+      <div class="sbv-cta">
+        <div><b>{{ ui('ask2.cta_title', '업체와의 협의가 어려우신가요?') }}</b><p>{{ ui('ask2.cta_text', '직접 제보하면 내용을 정리해 기업에 전달하고 답변을 받아 드려요. 상담 내용은 옮겨 가지 않아요.') }}</p></div>
+        <a class="sba-btn main" href="{{ url_for('report') }}"><span aria-hidden="true">📣</span>{{ ui('ask2.cta_btn', '제보하러 가기') }}</a>
+      </div>
+    </article>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <form class="sba-form sbv-form" method="post" action="{{ url_for('law_ask', v=2) if preview else url_for('law_ask') }}" data-ask>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="conv" value="{{ conv }}">
+    <input type="hidden" name="history" value="{{ history_json }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    {% if error %}<p class="sba-error" role="alert">{{ error }}</p>{% endif %}
+    <div class="sba-box sbv-box">
+      <label class="sba-sr" for="sbv-q">질문</label>
+      <textarea id="sbv-q" name="q" rows="2" maxlength="{{ max_q }}" placeholder="{{ ui_text('ask2.placeholder_more', '이어서 물어보거나, 빠진 사실을 알려 주세요') if result or turns else ui_text('ask2.placeholder', '예: 헬스장 6개월권을 두 달 쓰고 해지하려는데 얼마나 돌려받나요?') }}" required>{{ question if error else '' }}</textarea>
+      <div class="sba-box-foot"><span class="sba-count"><b data-count>{{ (question if error else '')|length }}</b>/{{ max_q }}</span><button class="sba-send" type="submit"><span>{{ ui('ask2.send', '물어보기') }}</span></button></div>
+    </div>
+    <p class="sba-privacy">{{ ui('ask2.privacy', '이름·전화번호 같은 개인정보는 적지 마세요. 적더라도 AI에 보내기 전에 지워요. 개인정보를 지운 상담 기록은 품질 확인을 위해 30일 보관한 뒤 지워요.') }}{% if result or turns %} <a class="sbv-new" href="{{ url_for('law_ask', v=2) if preview else url_for('law_ask') }}">{{ ui('ask2.new', '새 상담 시작') }}</a>{% endif %}</p>
+    {% if not result and not turns %}
+    <div class="sba-ex">
+      <p>{{ ui('ask2.examples', '이런 걸 물어볼 수 있어요') }}</p>
+      <div class="sba-chips">{% for e in examples %}<button type="submit" name="example" value="{{ e }}" formnovalidate>{{ e }}</button>{% endfor %}</div>
+    </div>
+    {% endif %}
+    <div class="sba-wait" aria-hidden="true"><span class="sba-dots"><i></i><i></i><i></i></span>{{ ui('ask2.wait', '관련 법령과 분쟁해결기준을 찾고 있어요') }}</div>
+  </form>
+
+  {% if not result and not turns %}
+  <ol class="sba-how">
+    <li><span class="nn-emo sba-emo t2" aria-hidden="true">🔍</span><div><h3>{{ ui('ask2.how1', '피해 유형부터 알아봐요') }}</h3><p>{{ ui('ask2.how1_d', '온라인 쇼핑, 식품·외식, 구독·서비스 계약, 생활서비스, 금융·보험, 플랫폼 거래 중 어디에 가까운지 보고 맞는 법령을 먼저 찾아요.') }}</p></div></li>
+    <li><span class="nn-emo sba-emo t1" aria-hidden="true">⚖️</span><div><h3>{{ ui('ask2.how2', '찾은 원문만 근거로 답해요') }}</h3><p>{{ ui('ask2.how2_d', '인터넷 검색 없이 법률 조문, 소비자분쟁해결기준, 생활법령 해설에 적힌 내용으로만 답해요.') }}</p></div></li>
+    <li><span class="nn-emo sba-emo t3" aria-hidden="true">✅</span><div><h3>{{ ui('ask2.how3', '출처와 현행 여부를 보여 드려요') }}</h3><p>{{ ui('ask2.how3_d', '답변 아래 출처 카드에서 문서 이름, 조항, 시행일, 지금 시행 중인지 확인할 수 있어요.') }}</p></div></li>
+  </ol>
+  {% endif %}
+</div>
+</main>
+<script>
+(function(){
+  var f=document.querySelector('[data-ask]');if(!f)return;
+  var t=f.querySelector('textarea'),n=f.querySelector('[data-count]');
+  function fit(){t.style.height='auto';t.style.height=Math.min(t.scrollHeight,220)+'px';n.textContent=t.value.length}
+  t.addEventListener('input',fit);if(t.value)fit();
+  t.addEventListener('keydown',function(e){if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();f.requestSubmit?f.requestSubmit():f.submit()}});
+  f.addEventListener('submit',function(e){
+    var b=e.submitter;if(b&&b.name==='example')t.value=b.value;
+    if(t.value.trim().length<{{ min_q }}&&!(b&&b.name==='example'))return;
+    if(f.classList.contains('is-loading')){e.preventDefault();return}
+    setTimeout(function(){f.classList.add('is-loading');f.querySelectorAll('button').forEach(function(x){x.disabled=true})},0);
+  });
+  document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){
+    var src=b.parentNode.querySelector('.sbv-copy-src').value,s=b.querySelector('span'),old=s.textContent;
+    function done(){s.textContent='복사했어요';b.classList.add('on');setTimeout(function(){s.textContent=old;b.classList.remove('on')},1800)}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(src).then(done,function(){});
+    else{var x=document.createElement('textarea');x.value=src;document.body.appendChild(x);x.select();try{document.execCommand('copy');done()}catch(_){}x.remove()}
+  })});
+  var last=document.getElementById('sbv-latest');if(last&&document.querySelector('.sbv-old'))last.scrollIntoView({block:'start'});
+})();
+</script>
+{% endblock %}

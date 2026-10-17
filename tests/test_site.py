@@ -2762,7 +2762,9 @@ class SiteTest(unittest.TestCase):
         font = add(b'<< /Type /Font /Subtype /Type0 /BaseFont /T /Encoding /Identity-H /DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>' % (cid, tu))
         pages_id = len(objs) + 1 + 2 * len(pages); kids = []
         for lines in pages:
-            s = '\n'.join('BT /F1 9 Tf 30 %d Td <%s> Tj ET' % (800 - i * 14, ''.join(f'{ord(ch):04X}' for ch in l)) for i, l in enumerate(lines)).encode()
+            # 한 줄은 글 하나(왼쪽 30) 또는 [(x, 글), …] (표처럼 칸을 나눠 놓을 때)
+            s = '\n'.join('BT /F1 9 Tf %d %d Td <%s> Tj ET' % (x, 800 - i * 14, ''.join(f'{ord(ch):04X}' for ch in w))
+                          for i, l in enumerate(lines) for x, w in ([(30, l)] if isinstance(l, str) else l)).encode()
             c = add(b'<< /Length %d >>\nstream\n' % len(s) + s + b'\nendstream')
             kids.append(add(b'<< /Type /Page /Parent %d 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 %d 0 R >> >> /Contents %d 0 R >>' % (pages_id, font, c)))
         add(b'<< /Type /Pages /Kids [%s] /Count %d >>' % (b' '.join(b'%d 0 R' % k for k in kids), len(kids)))
@@ -3116,6 +3118,303 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(laws[0]['시행일'], f'{soon[:4]}-{soon[4:6]}-{soon[6:]}'); self.assertIn('7일', laws[0]['개정 이유(원문 일부)'])
         self.assertNotIn('oc-secret', json.dumps(got, ensure_ascii=False))  # 인증키는 자료·출처에 안 남음
         self.assertEqual(got['sources'][0]['url'], 'https://www.law.go.kr/법령/전자상거래 등에서의 소비자보호에 관한 법률')
+    # ---- AI 소비자 상담 새 버전 (lawrag.py · lawsync.py) ----
+    APPX_PDF = [['법제처 1 국가법령정보센터', '[별표 Ⅱ] 품목별 해결기준(제3조 관련)', '[시행 2025. 12. 18.]', '1. 체육시설업(헬스장, 필라테스)',
+                 [(30, '분쟁유형'), (260, '해결기준'), (470, '비고')],
+                 [(30, '1) 사업자의 귀책사유로'), (260, '- 계약해제 및 이용료 환급')],
+                 [(30, '계약을 해제하는 경우'), (260, '- 남은 기간 이용료 전액 환급')],
+                 [(30, '2) 소비자의 사정으로 중도'), (260, '- 이용일수에 해당하는 금액과'), (470, '개시일 기준')],
+                 [(30, '해지하는 경우'), (260, '총 이용금액의 10% 공제 후 환급')]],
+                ['법제처 2 국가법령정보센터', '2. 외식업', [(30, '분쟁유형'), (260, '해결기준'), (470, '비고')], [(30, '1) 음식물에 이물 혼입'), (260, '- 제품 교환 또는 구입가 환급')]]]
+
+    @staticmethod
+    def fake_vec(text):
+        """가짜 임베딩: 두 글자 묶음을 512칸에 흩뿌림 (같은 낱말이 많으면 가까움)"""
+        import hashlib as _h
+        v = [0.0] * 512
+        for w in re.findall(r'[가-힣]+', text):
+            for i in range(len(w) - 1): v[int(_h.md5(w[i:i + 2].encode()).hexdigest(), 16) % 512] += 1
+        return v
+
+    def rag_fake(self, sent, answer=None, status=200):
+        """OpenAI 대신: 임베딩은 fake_vec, 상담 답은 answer(후보 id 목록) -> dict. 보낸 몸통은 sent에 쌓음."""
+        def fake(url, headers, body, timeout):
+            sent.append((url, body))
+            if url.endswith('/embeddings'):
+                return 200, {'data': [{'index': i, 'embedding': self.fake_vec(x)} for i, x in enumerate(body['input'])], 'usage': {'total_tokens': 10 * len(body['input'])}}
+            if '법률 안내 도우미' in body['messages'][0]['content']:  # 예전 버전(lawask)
+                return 200, {'choices': [{'message': {'content': json.dumps({'headline': '예전 답', 'paragraphs': ['예전 버전 설명이에요.'], 'refs': [], 'covered': True}, ensure_ascii=False)}}]}
+            if status != 200: return status, {'error': {'message': 'busy sk-test-key'}}
+            ids = re.findall(r'^\[(c\d+)\] ', body['messages'][-1]['content'], re.M)
+            out = answer(ids) if answer else {'need_more': False, 'questions': [], 'refs': ids[:2], 'covered': True,
+                                              'parts': [{'name': '핵심 결론', 'text': f'남은 기간 이용료를 돌려받을 수 있는 경우가 많아요 [{ids[0]}].'}]}
+            return 200, {'model': 'answer-model-test', 'usage': {'prompt_tokens': 1200, 'completion_tokens': 300},
+                         'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+        return fake
+
+    def rag_setup(self, on=True):
+        self.ask_setup()
+        rag = self.site.app.extensions['lawrag']
+        rag['set_v2'](on)
+        def clean():
+            rag['set_v2'](False)
+            st = rag['store']
+            for p in (st.synced, st.status, st.appendix, st.emb_index, st.emb_vec):
+                if p.exists(): p.unlink()
+            rag['corpus'].reset()
+            with self.site.conn() as db: db.execute('DELETE FROM ask_logs')
+        self.addCleanup(clean)
+        return rag
+
+    def rag_appendix(self, rag):
+        import lawsync
+        x = lawsync.parse_appendix(lawsync.pdf_layout_text(self.make_pdf(self.APPX_PDF)))
+        x.update(doc='소비자분쟁해결기준 [별표 Ⅱ]', file='별표2.pdf', added='2026-10-16T10:00:00')
+        lawsync.save_appendix(rag['store'], [x])
+
+    def ask2(self, client, q, **extra):
+        return client.post('/ask', data={'_csrf': self.csrf(client, '/ask'), 'q': q, **extra})
+
+    def test_ask_v2_switch_off_keeps_old_screen(self):
+        self.rag_setup(on=False)
+        page = self.client.get('/ask').get_data(as_text=True)
+        self.assertIn('소비자 법률, 편하게 물어보세요', page); self.assertNotIn('상담사가 아닌 AI가', page)
+        self.assertIn('>법률 질문</a>', page); self.assertNotIn('>AI 소비자 상담</a>', page)
+        self.assertNotIn('상담사가 아닌 AI가', self.client.get('/ask?v=2').get_data(as_text=True))  # 손님은 ?v=2로도 못 봄
+        sent = []
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent)):
+            html = self.ask(self.client, '온라인에서 산 옷 7일 지나서 환불 되나요?').get_data(as_text=True)
+        self.assertIn('예전 답', html)  # 예전 질문창이 그대로 답함
+        self.assertEqual([u for u, _ in sent], ['https://api.openai.com/v1/chat/completions'])  # 임베딩도 안 부름
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM ask_logs').fetchone()[0], 0)  # 새 기록도 안 남김
+        # 관리자가 켜면 새 화면, 끄면 다시 예전 화면
+        admin = self.login_admin()
+        self.assertIn('상담사가 아닌 AI가', admin.get('/ask?v=2').get_data(as_text=True))  # 관리자 미리 보기
+        tok = self.csrf(admin, '/admin/ask')
+        admin.post('/admin/ask', data={'_csrf': tok, 'act': 'switch', 'on': '1'})
+        page = self.client.get('/ask').get_data(as_text=True)
+        self.assertIn('상담사가 아닌 AI가 제공하는 일반 정보예요', page); self.assertIn('>AI 소비자 상담</a>', page)
+        admin.post('/admin/ask', data={'_csrf': tok, 'act': 'switch', 'on': '0'})
+        self.assertEqual(self.client.get('/ask').get_data(as_text=True).count('소비자 법률, 편하게 물어보세요'), 1)
+        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('ask.off','끔','x')")
+        self.site.app.extensions['lawrag']['set_v2'](True)
+        self.assertEqual(self.client.get('/ask').status_code, 404)  # 질문창 끄기는 새 버전에도
+
+    def test_ask_v2_answer_masks_personal_info_and_checks_sources(self):
+        rag = self.rag_setup(); self.rag_appendix(rag)
+        sent = []
+        def answer(ids):
+            return {'need_more': False, 'questions': [], 'covered': True, 'refs': [ids[0], 'c99', 'ecom:제17조'],
+                    'parts': [{'name': '핵심 결론', 'text': f'남은 기간 이용료를 돌려받을 수 있는 경우가 많아요 [{ids[0]}]. 대법원 2021다98765 판결도 같은 취지예요. 위약금은 77만 원까지만 내면 돼요.'},
+                              {'name': '관련 법령', 'text': f'분쟁해결기준은 총 이용금액의 10% 공제 후 환급을 권고해요 [{ids[0]}]. 민법 제999조에 따라 해지할 수 있어요. [c77] 참고'},
+                              {'name': '대응 절차', 'text': '- 문자로 해지를 요청해요. 담당 010-5555-6666\n- 답이 없으면 1372에 상담해요.'},
+                              {'name': '이상한 부분', 'text': '빼야 해요'}]}
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent, answer)):
+            rag['build_embeddings']()
+            sent.clear()
+            q = '헬스장 6개월권을 두 달 쓰고 중도 해지하면 환불되나요? 제 이름은 홍길동이고 010-9876-5432, hong@example.com 이에요. 김철수 매니저가 안 된대요'
+            r = self.ask2(self.client, q)
+        html = r.get_data(as_text=True)
+        self.assertEqual(r.status_code, 200)
+        dump = json.dumps([b for _, b in sent], ensure_ascii=False)
+        for secret in ('010-9876-5432', 'hong@example.com', '홍길동', '김철수', 'sk-test-key'): self.assertNotIn(secret, dump)  # AI에는 개인정보 없이
+        chat = [b for u, b in sent if u.endswith('/chat/completions')][-1]
+        self.assertNotIn('tools', chat); self.assertEqual(chat['model'], self.site.companydesk.ai_model())  # 검색 없이, 답 모델은 그대로
+        self.assertIn('[근거 후보]', chat['messages'][-1]['content']); self.assertIn('(분쟁해결기준(권고))', chat['messages'][-1]['content'])
+        self.assertIn('체육시설업', chat['messages'][-1]['content'])  # 유형에 맞는 별표 줄을 후보로
+        # 코드 확인: 지어낸 사건번호·금액·조항 문장, 후보에 없는 출처는 빠짐
+        for bad in ('2021다98765', '77만', '제999조', '[c77]', '이상한 부분', '빼야 해요', '010-5555-6666'): self.assertNotIn(bad, html)
+        self.assertIn('남은 기간 이용료를 돌려받을 수 있는 경우가 많아요', html); self.assertIn('10% 공제 후 환급', html)
+        self.assertIn('근거 원문에서 확인되지 않은 내용은 빼고', html)
+        docs = re.findall(r'class="sbv-doc">([^<]+)', html)
+        self.assertEqual(docs, ['소비자분쟁해결기준 [별표 Ⅱ]'])  # 출처 카드는 넘겨준 후보 중 쓴 것만
+        self.assertIn('분쟁해결기준(권고)', html); self.assertIn('PDF 1쪽', html); self.assertIn('현행 여부 미확인', html); self.assertIn('시행 2025.12.18', html)
+        self.assertEqual(html.count('상담사가 아닌 AI가 제공하는 일반 정보예요'), 3)  # 맨 위 + 답마다 + 복사 글
+        self.assertIn('data-copy', html); self.assertIn('업체와의 협의가 어려우신가요?', html)
+        # 제보로 자동으로 넘기지 않음: 링크만, 채워 넣는 값 없음
+        self.assertIn('href="/report"', html); self.assertNotRegex(html, r'href="/report\?')
+        with self.client.session_transaction() as sess:
+            self.assertNotIn('헬스장', json.dumps(dict(sess), ensure_ascii=False))
+        self.assertNotIn('6개월권을 두 달', self.client.get('/report').get_data(as_text=True))
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM cases WHERE description LIKE '%헬스장%'").fetchone()[0], 0)
+            row = db.execute("SELECT * FROM ask_logs WHERE kind='ask'").fetchone()
+        self.assertNotIn('010-9876-5432', row['question']); self.assertNotIn('홍길동', row['question']); self.assertIn('헬스장', row['question'])
+        self.assertEqual(row['status'], 'ok'); self.assertEqual(row['dtype'], '구독·서비스 계약'); self.assertEqual((row['tokens_in'], row['tokens_out']), (1200, 300))
+        kinds = {f['type'] for f in json.loads(row['flags'])}; self.assertTrue({'case', 'amount', 'law', 'source'} <= kinds)
+        # 이어 묻기: 앞 대화(지운 것)를 최근 6턴까지 같이 보냄
+        hist = re.search(r'name="history" value="([^"]*)"', html)[1]
+        import html as _html
+        hist = json.loads(_html.unescape(hist)); self.assertEqual(len(hist), 1); self.assertNotIn('010-9876-5432', hist[0]['q'])
+        long_hist = json.dumps(hist * 5 + [{'q': '전화 010-1111-2222로 주세요', 'a': '네'}], ensure_ascii=False)
+        sent.clear()
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent)):
+            html2 = self.ask2(self.client, '계약은 6개월에 60만 원이었어요', history=long_hist, conv='conv12345').get_data(as_text=True)
+        chat = [b for u, b in sent if u.endswith('/chat/completions')][-1]
+        self.assertEqual(len(chat['messages']), 1 + 6 + 1)  # 시스템 + 최근 6턴 + 이번 질문
+        self.assertNotIn('010-1111-2222', json.dumps(chat, ensure_ascii=False))
+        self.assertEqual(html2.count('class="sbv-a sbv-old"'), 3)
+
+    def test_ask_v2_verify_drops_invented_content(self):
+        import lawrag
+        cards = [{'id': 'c1', 'ref': 'ecom:제17조', 'art': '제17조', 'short': '전자상거래법', 'law': '전자상거래 등에서의 소비자보호에 관한 법률', 'title': '청약철회등',
+                  'text': '소비자는 재화등을 공급받은 날부터 7일 이내에 청약철회등을 할 수 있다. 위약금 10만원'}]
+        out = {'parts': [{'name': '핵심 결론', 'text': '전자상거래법 제17조에 따라 7일 안에 반품할 수 있어요 [c1]. 전자상거래법 제18조에 따라 3일 안에 돌려줘야 해요.'},
+                         {'name': '환불·보상 가능성', 'text': '위약금은 10만원이에요. 배상은 300만 원까지예요. 2019다1234 사건이 있어요.'},
+                         {'name': '출처', 'text': '[c2] 참고 [c1]'}], 'refs': ['c1', 'c2', 'easylaw:1'], 'need_more': False}
+        v = lawrag.verify(out, cards, '반품되나요')
+        text = ' '.join(t for _, t in v['parts'])
+        self.assertIn('제17조', text); self.assertIn('10만원', text)
+        for bad in ('제18조', '300만', '2019다1234', '[c2]'): self.assertNotIn(bad, text)
+        self.assertEqual(v['refs'], ['c1'])
+        self.assertEqual({f['type'] for f in v['flags']}, {'law', 'amount', 'case', 'source'})
+        with self.assertRaises(ValueError): lawrag.verify({'parts': [{'name': '핵심 결론', 'text': '민법 제1조에 따라 됩니다.'}]}, cards, 'q')
+        ask = lawrag.verify({'need_more': True, 'questions': ['언제 받으셨나요?'], 'parts': []}, cards, 'q')
+        self.assertTrue(ask['need_more']); self.assertEqual(ask['questions'], ['언제 받으셨나요?'])
+
+    def test_ask_v2_no_law_and_follow_up_question(self):
+        self.rag_setup()
+        sent = []
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent)):
+            html = self.ask2(self.client, '사이즈 추천해 주세요 감사합니다').get_data(as_text=True)
+        self.assertIn('관련 법령을 찾지 못했어요', html); self.assertIn('1372 소비자상담센터', html); self.assertIn('일반적인 대응 순서', html)
+        self.assertFalse([u for u, _ in sent if u.endswith('/chat/completions')])  # 법적 결론을 만들지 않게 AI도 안 부름
+        ask = lambda ids: {'need_more': True, 'questions': ['물건을 받은 날이 언제인가요?', '판매자가 뭐라고 답했나요?'], 'parts': [], 'refs': []}
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent, ask)):
+            html = self.ask2(self.client, '온라인에서 산 옷 환불 되나요?').get_data(as_text=True)
+        self.assertIn('정확히 답하려면 몇 가지가 더 필요해요', html); self.assertIn('물건을 받은 날이 언제인가요?', html)
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent, status=500)):
+            html = self.ask2(self.client, '온라인에서 산 옷 환불 되나요?').get_data(as_text=True)
+        self.assertIn('질문과 가까운 근거 원문을 찾았어요', html); self.assertNotIn('sk-test-key', html)
+        with self.site.conn() as db:
+            self.assertEqual([r[0] for r in db.execute("SELECT status FROM ask_logs WHERE kind='ask' ORDER BY id")], ['no_law', 'ask_more', 'error'])
+            self.assertNotIn('sk-test-key', ' '.join(r[0] for r in db.execute('SELECT error FROM ask_logs')))
+
+    def test_ask_logs_only_top_admin_and_kept_30_days(self):
+        rag = self.rag_setup()
+        sent = []
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent)):
+            self.ask2(self.client, '온라인에서 산 옷 7일 지나서 환불 되나요? 010-3333-4444')
+        with self.site.conn() as db:
+            log_id = db.execute("SELECT id FROM ask_logs WHERE kind='ask'").fetchone()[0]
+            old = (datetime.datetime.now() - datetime.timedelta(days=31)).isoformat(timespec='seconds')
+            db.execute("INSERT INTO ask_logs(kind,created,question,status) VALUES('ask',?,'오래된 상담','ok')", (old,))
+        # 손님·기자 계정은 못 봄
+        self.assertIn('/admin/login', self.client.get('/admin/ask').headers['Location'])
+        self.assertIn('/admin/login', self.client.get(f'/admin/ask/logs/{log_id}').headers['Location'])
+        admin = self.login_admin()
+        admin.post('/admin/staff', data={'_csrf': self.csrf(admin, '/admin/staff'), 'action': 'add', 'name': '박기자', 'login_id': 'askreporter', 'password': 'staffpass9'})
+        staff = self.site.app.test_client()
+        self.post_form(staff, '/reporter/login', {'login_id': 'askreporter', 'password': 'staffpass9'})
+        self.assertIn('기자실', staff.get('/reporter').get_data(as_text=True))
+        for path in ('/admin/ask', f'/admin/ask/logs/{log_id}', '/admin/ask/lab'):
+            r = staff.get(path); self.assertEqual(r.status_code, 302); self.assertIn('/admin/login', r.headers['Location'])
+        dash = admin.get('/admin/ask').get_data(as_text=True)
+        self.assertIn('AI 상담 새 버전', dash); self.assertIn('상담 수', dash); self.assertIn('예상 비용', dash); self.assertIn('온라인 쇼핑', dash)
+        self.assertNotIn('7일 지나서 환불', dash)  # 질문 글은 기록을 열 때만
+        with self.site.conn() as db: self.assertEqual(db.execute("SELECT COUNT(*) FROM ask_logs WHERE question='오래된 상담'").fetchone()[0], 0)  # 30일 지난 기록은 지움
+        page = admin.get(f'/admin/ask/logs/{log_id}').get_data(as_text=True)
+        self.assertIn('7일 지나서 환불', page); self.assertNotIn('010-3333-4444', page); self.assertIn('열람 기록', page)
+        admin.get(f'/admin/ask/logs/{log_id}')
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM ask_logs WHERE kind='view' AND target=?", (log_id,)).fetchone()[0], 2)  # 볼 때마다 남김
+        self.assertIn('AI 상담', admin.get('/admin').get_data(as_text=True))  # 관리자 메뉴
+
+    def test_ask_v2_quality_test_lab_and_embedding_cache(self):
+        import lawrag
+        rag = self.rag_setup(on=False)
+        admin = self.login_admin(); tok = self.csrf(admin, '/admin/ask')
+        sent = []
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent)), patch.object(lawrag.threading, 'Thread', self.NowThread):
+            admin.post('/admin/ask', data={'_csrf': tok, 'act': 'embed'})
+            n_emb = len([u for u, _ in sent if u.endswith('/embeddings')]); self.assertGreater(n_emb, 0)
+            total = len(rag['docs']()); self.assertEqual(len(rag['emb'].load().index), total)
+            sent.clear(); admin.post('/admin/ask', data={'_csrf': tok, 'act': 'embed'})
+            self.assertEqual([u for u, _ in sent if u.endswith('/embeddings')], [])  # 한 번 만든 건 다시 안 만듦
+            self.rag_appendix(rag); admin.post('/admin/ask', data={'_csrf': tok, 'act': 'embed'})
+            emb_calls = [b for u, b in sent if u.endswith('/embeddings')]
+            self.assertEqual(sum(len(b['input']) for b in emb_calls), 3)  # 바뀐(새) 별표 3줄만
+            sent.clear()
+            admin.post('/admin/ask', data={'_csrf': tok, 'act': 'test'})
+            dash = admin.get('/admin/ask').get_data(as_text=True)
+            lab = admin.post('/admin/ask/lab', data={'_csrf': self.csrf(admin, '/admin/ask/lab'), 'q': '온라인에서 산 옷 7일 지나서 환불 되나요?'}).get_data(as_text=True)
+        with self.site.conn() as db:
+            rows = db.execute("SELECT * FROM ask_logs WHERE kind='test'").fetchall()
+        self.assertEqual(len(rows), len(lawrag.TEST_QUESTIONS)); self.assertEqual(len(rows), 20)
+        self.assertIn('배달 음식에서 바퀴벌레', dash); self.assertIn('품질 시험', dash); self.assertIn('ak-yes', dash)
+        self.assertTrue(any(json.loads(r['parts']) == ['핵심 결론'] for r in rows))
+        self.assertIn('예전 답', lab); self.assertIn('AI 소비자 상담', lab); self.assertIn('남은 기간 이용료', lab)
+        self.assertIn('상담사가 아닌 AI가', admin.get('/ask?v=2').get_data(as_text=True))
+        self.assertNotIn('상담사가 아닌 AI가', self.client.get('/ask').get_data(as_text=True))  # 실험해도 손님 화면은 예전 그대로
+
+    def test_appendix_upload_and_law_sync(self):
+        import lawsync
+        rag = self.rag_setup()
+        admin = self.login_admin(); tok = self.csrf(admin, '/admin/laws')
+        page = admin.get('/admin/laws').get_data(as_text=True)
+        self.assertIn('소비자분쟁해결기준 별표 PDF 올리기', page); self.assertIn('현행 여부', page); self.assertIn('현행 여부 미확인', page)
+        r = admin.post('/admin/laws', data={'_csrf': tok, 'act': 'appendix_preview', 'pdf': (io.BytesIO(self.make_pdf(self.LAW_PDF_LINES)), '법.pdf')}, content_type='multipart/form-data', follow_redirects=True)
+        self.assertIn('분쟁유형', r.get_data(as_text=True))  # 별표가 아니면 거절
+        if __import__('shutil').which('pdftotext'):
+            r = admin.post('/admin/laws', data={'_csrf': tok, 'act': 'appendix_preview', 'pdf': (io.BytesIO(self.make_pdf(self.APPX_PDF)), '별표2.pdf')}, content_type='multipart/form-data', follow_redirects=True)
+            html = r.get_data(as_text=True)
+            self.assertIn('별표 미리 보기', html); self.assertIn('3줄', html); self.assertIn('체육시설업', html); self.assertIn('2025-12-18', html)
+            token = re.search(r'name="act" value="appendix_save"><input type="hidden" name="token" value="([^"]+)"', html)[1]
+            r = admin.post('/admin/laws', data={'_csrf': tok, 'act': 'appendix_save', 'token': token, 'doc_0': '소비자분쟁해결기준 [별표 Ⅱ]', 'eff_0': '2025-12-18'}, follow_redirects=True)
+            self.assertIn('별표를 배웠어요', r.get_data(as_text=True)); self.assertIn('배운 별표', r.get_data(as_text=True))
+            laws = rag['corpus'].laws(); appx = next(l for l in laws if l['key'] == 'kca_appx')
+            self.assertEqual(appx['count'], 3)
+            art = rag['corpus']._load()['laws']['kca_appx']['articles']['별표Ⅱ-2']
+            self.assertEqual((art['item'], art['page'], art['appendix']), ('체육시설업(헬스장, 필라테스)', 1, '별표 Ⅱ'))
+            self.assertIn('총 이용금액의 10% 공제 후 환급', art['text'])
+            self.assertNotIn('kca_appx', [l['key'] for l in self.site.triage.corpus.laws()])  # AI 제보 분류의 모음·검색은 그대로
+        # 국가법령정보 Open API (가짜 응답)
+        search = ('<LawSearch><totalCnt>1</totalCnt><law id="1"><법령일련번호>270001</법령일련번호><법령명한글>할부거래에 관한 법률</법령명한글>'
+                  '<법령ID>001234</법령ID><시행일자>20260301</시행일자><법령구분명>법률</법령구분명></law></LawSearch>')
+        adm = ('<AdmRulSearch><totalCnt>1</totalCnt><admrul id="1"><행정규칙일련번호>99</행정규칙일련번호><행정규칙명>소비자분쟁해결기준</행정규칙명>'
+               '<시행일자>20260101</시행일자></admrul></AdmRulSearch>')
+        service = ('<법령><기본정보><법령명_한글>할부거래에 관한 법률</법령명_한글><시행일자>20260301</시행일자><공포일자>20250901</공포일자><공포번호>21000</공포번호>'
+                   '<법종구분>법률</법종구분></기본정보><조문><조문단위><조문번호>1</조문번호><조문여부>전문</조문여부><조문내용>제1장 총칙</조문내용></조문단위>'
+                   '<조문단위><조문번호>1</조문번호><조문여부>조문</조문여부><조문제목>목적</조문제목><조문내용>제1조(목적) 이 법은 할부거래를 공정하게 한다.</조문내용></조문단위>'
+                   '<조문단위><조문번호>8</조문번호><조문여부>조문</조문여부><조문제목>청약의 철회</조문제목><조문내용>제8조(청약의 철회)</조문내용>'
+                   '<항><항번호>①</항번호><항내용>① 소비자는 계약서를 받은 날부터 7일 이내에 할부계약에 관한 청약을 철회할 수 있다. &lt;개정 2016. 3. 29.&gt;</항내용>'
+                   '<호><호내용>1. 계약서를 받은 날</호내용></호></항></조문단위></조문></법령>')
+        urls = []
+        def get(url, timeout=25):
+            urls.append(url)
+            if 'lawSearch.do' in url and 'target=admrul' in url: return 200, adm
+            if 'lawSearch.do' in url: return 200, search if '%ED%95%A0%EB%B6%80' in url else '<LawSearch><totalCnt>0</totalCnt></LawSearch>'
+            if 'lawService.do' in url and 'MST=270001' in url: return 200, service
+            return 200, 'error OC=test-oc-123 not allowed'
+        st = rag['store']
+        st.write(st.extra, {'u1234abcd': {'key': 'u1234abcd', 'name': '할부거래에 관한 법률', 'short': '할부거래법', 'kind': '법률', 'no': '1', 'effective': '2026-01-02', 'promulgated': '',
+                                          'source': 'https://www.law.go.kr/법령/할부거래에관한법률', 'articles': {'제2조': {'title': '청약철회', 'text': '옛 조문'}}}})
+        env = {k: v for k, v in os.environ.items() if k != 'LAW_OC'}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertIn('LAW_OC', admin.post('/admin/ask', data={'_csrf': self.csrf(admin, '/admin/ask'), 'act': 'sync'}, follow_redirects=True).get_data(as_text=True))
+        logs = []
+        with patch.dict(os.environ, {'LAW_OC': 'test-oc-123'}), patch.object(lawsync, 'http_get', get):
+            rows = lawsync.sync(st, laws=[('installment', '할부거래에 관한 법률', '할부거래법', 'law'), ('kca', '소비자분쟁해결기준', '소비자분쟁해결기준', 'admrul'),
+                                          ('pl', '제조물 책임법', '제조물책임법', 'law')], log=logs.append)
+            again = lawsync.sync(st, laws=[('installment', '할부거래에 관한 법률', '할부거래법', 'law')], log=logs.append)
+        self.assertEqual([r['ok'] for r in rows], [True, True, False]); self.assertTrue(rows[0]['changed']); self.assertFalse(again[0]['changed'])
+        self.assertTrue(all('OC=test-oc-123' in u and u.startswith('http://www.law.go.kr/DRF/') for u in urls))
+        self.assertNotIn('test-oc-123', json.dumps(rows, ensure_ascii=False) + ' '.join(logs) + st.status.read_text(encoding='utf-8'))  # 키는 기록에 안 남김
+        synced = json.loads(st.synced.read_text(encoding='utf-8'))['installment']
+        self.assertEqual(list(synced['articles']), ['제1조', '제8조']); self.assertEqual(synced['effective'], '2026-03-01')
+        self.assertEqual(synced['articles']['제8조']['text'], '① 소비자는 계약서를 받은 날부터 7일 이내에 할부계약에 관한 청약을 철회할 수 있다.\n1. 계약서를 받은 날')
+        self.assertEqual([f['name'] for f in lawsync.pdf_flags(st)], ['할부거래에 관한 법률'])  # 올린 PDF는 옛 판
+        rag['corpus'].reset()
+        page = admin.get('/admin/laws').get_data(as_text=True)
+        self.assertIn('개정됨, 확인 필요', page); self.assertIn('2026.03.01', page); self.assertNotIn('test-oc-123', page)
+        hits = rag['corpus'].search('할부계약 청약 철회 7일')
+        self.assertEqual(hits[0]['ref'], 'installment:제8조')  # 새 버전 모음은 받은 현행 원문
+        self.assertNotIn('installment', [l['key'] for l in self.site.triage.corpus.laws()])
+        dtype, cards, _ = rag['retrieve']('할부계약 청약 철회는 며칠 안에 하나요?')
+        c = next(c for c in cards if c['ref'] == 'installment:제8조')
+        self.assertEqual((c['status'], c['label'], c['effective']), ('현행', '법률 조문', '2026-03-01'))
+        if __import__('shutil').which('pdftotext'):
+            self.assertIn('개정됨, 확인 필요', page)  # 별표(2025-12-18)도 현행 고시(2026-01-01)보다 옛 판
 
 if __name__ == '__main__':
     unittest.main()

@@ -11,6 +11,7 @@ import soboru_art
 import naverhub
 import lawask
 import soboru_writer
+import lawrag
 import notify
 import jebo
 import soboru
@@ -2356,5 +2357,7 @@ _naver=types.SimpleNamespace(**globals());naverhub.install(_naver)
 _ask=types.SimpleNamespace(**globals());lawask.install(_ask)
 # AI 분석 기사: 네이버·법제처·소보루 공개 통계로 초안을 쓰고 운영자가 게시 (soboru_writer.py)
 _writer=types.SimpleNamespace(**globals());soboru_writer.install(_writer)
+# AI 소비자 상담 새 버전: 유형 분류·키워드+임베딩 검색·근거 확인·상담 기록·관리자 대시보드 (lawrag.py, 관리자 설정으로 켤 때만 손님에게 보임)
+_rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
 
 if __name__=='__main__':app.run(debug=False)

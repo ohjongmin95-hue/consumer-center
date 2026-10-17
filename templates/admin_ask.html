@@ -1,0 +1,84 @@
+{% extends 'console.html' %}
+{# 관리자 > AI 상담: 새 버전 켜고 끄기, 최근 30일 숫자, 품질 시험, 상담 기록 (lawrag.py). 대표 관리자만 #}
+{% block title %}AI 상담 | {{ site_name() }}{% endblock %}
+{% macro bars(rows, total) %}<ul class="ops-bars">{% for name, n in rows %}<li><span class="ob-name">{{ name }}</span><span class="ob-bar"><i style="width: {{ (100 * n / total)|round(1) if total else 0 }}%"></i></span><b>{{ n }}</b></li>{% else %}<li class="ak-empty">아직 기록이 없어요.</li>{% endfor %}</ul>{% endmacro %}
+{% set ST = {'ok': '답변', 'ask_more': '확인 질문', 'no_law': '법령 없음', 'fallback': '원문만', 'error': '오류'} %}
+{% block content %}
+<main class="ad-page ak">
+  <header class="ad-head">
+    <div><h1>AI 상담</h1><p>소비자 상담 새 버전의 사용량·품질을 봐요. 숫자는 최근 {{ keep_days }}일 손님 상담 기록으로 계산하고, 기록은 {{ keep_days }}일이 지나면 자동으로 지워요.</p></div>
+    <a class="ad-btn" href="{{ url_for('admin_ask_lab') }}">실험실: 예전 답 vs 새 답 →</a>
+  </header>
+
+  <section class="ad-panel ak-switch{% if on %} on{% endif %}">
+    <div>
+      <h2>AI 상담 새 버전 <span class="ak-pill">{{ '켜짐' if on else '꺼짐' }}</span></h2>
+      <p>{% if on %}손님이 /ask 에서 새 화면(유형 분류·출처 카드·이어 묻기)을 봐요. 끄면 바로 예전 화면으로 돌아가요.{% else %}지금 손님에게는 예전 법률 질문 화면이 보여요. 실험실에서 답을 비교해 보고 켜 주세요. 관리자는 <a href="{{ url_for('law_ask', v=2) }}" target="_blank" rel="noopener">/ask?v=2 ↗</a>로 미리 볼 수 있어요.{% endif %}</p>
+    </div>
+    <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="switch"><input type="hidden" name="on" value="{{ '0' if on else '1' }}">
+      <button class="{{ 'secondary' if on else 'primary' }}" type="submit"{% if on %} onclick="return confirm('새 버전을 끄고 예전 화면으로 돌릴까요?')"{% endif %}>{{ '끄기' if on else '켜기' }}</button></form>
+  </section>
+
+  <section class="ops-kpis ak-kpis">
+    <div class="ad-panel"><span>상담 수</span><b>{{ '{:,}'.format(s.n) }}</b><small>답변 {{ s.status.ok }} · 확인 질문 {{ s.status.ask_more }} · 법령 없음 {{ s.status.no_law }}</small></div>
+    <div class="ad-panel"><span>응답 시간</span><b>{{ '%.1f'|format(s.avg / 1000) }}초</b><small>평균 · 95%는 {{ '%.1f'|format(s.p95 / 1000) }}초 안</small></div>
+    <div class="ad-panel"><span>토큰</span><b>{{ '{:,}'.format(s.tin + s.tout) }}</b><small>입력 {{ '{:,}'.format(s.tin) }} · 출력 {{ '{:,}'.format(s.tout) }} · 임베딩 {{ '{:,}'.format(s.temb) }}</small></div>
+    <div class="ad-panel"><span>예상 비용</span><b>${{ '%.2f'|format(s.cost) }}</b><small>약 {{ '{:,}'.format((s.cost * 1400)|round|int) }}원 · 1백만 토큰당 입력 ${{ price['in'] }} · 출력 ${{ price.out }}</small></div>
+    <div class="ad-panel"><span>실패·오류</span><b class="{{ 'ak-bad' if s.nfail }}">{{ s.nfail }}</b><small>AI 오류 {{ s.status.error }} · 키 없음 등 원문만 {{ s.status.fallback }} · 근거 확인으로 뺀 문장이 있던 답 {{ s.flagged }}</small></div>
+    <div class="ad-panel"><span>모델</span><b class="ak-model">{{ model }}</b><small>{% for m, n in s.models %}{{ m }} {{ n }}건{% if not loop.last %} · {% endif %}{% else %}기록 없음{% endfor %} · 검색 {{ embed_model }}</small></div>
+  </section>
+
+  <div class="ad-grid-2">
+    <section class="ad-panel"><div class="ad-panel-head"><h2>피해 유형</h2></div>{{ bars(s.types, s.n) }}</section>
+    <section class="ad-panel"><div class="ad-panel-head"><h2>많이 쓴 법령·기준</h2></div>{{ bars(s.laws, s.laws[0][1] if s.laws else 0) }}</section>
+  </div>
+
+  <div class="ad-grid-2">
+    <section class="ad-panel">
+      <div class="ad-panel-head"><h2>검색 준비</h2></div>
+      <ul class="ops-bars plain">
+        <li><span class="ob-name">임베딩 (조문 수)</span><b>{{ '{:,}'.format(emb.have) }} / {{ '{:,}'.format(emb.total) }}</b></li>
+        <li><span class="ob-name">OpenAI 키</span><b>{{ '있음' if key else '없음' }}</b></li>
+        <li><span class="ob-name">법제처 인증키(LAW_OC)</span><b>{{ '있음' if oc else '없음' }}</b></li>
+      </ul>
+      <div class="admin-actions ak-acts">
+        <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="embed"><button type="submit"{% if 'embed' in jobs %} disabled{% endif %}>{{ '임베딩 만드는 중…' if 'embed' in jobs else '바뀐 조문 임베딩 만들기' }}</button></form>
+        <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="sync"><button type="submit"{% if 'sync' in jobs %} disabled{% endif %}>{{ '법령 받는 중…' if 'sync' in jobs else '지금 현행 법령 받기' }}</button></form>
+      </div>
+      <p class="cs-hint">서버에서 매일 deploy/law-sync.sh가 현행 법령을 받고 바뀐 조문만 임베딩을 다시 만들어요. 법령별 현행 여부는 <a href="{{ url_for('admin_laws') }}">법령 학습</a>에서 봐요.</p>
+    </section>
+    <section class="ad-panel">
+      <div class="ad-panel-head"><h2>최근 실패·오류</h2></div>
+      {% if s.fails %}<ul class="ak-fails">{% for r in s.fails %}<li><a href="{{ url_for('admin_ask_log', log_id=r.id) }}"><span>{{ r.created[5:16]|replace('T', ' ') }}</span><b>{{ ST.get(r.status, r.status) }}</b><em>{{ r.error or '—' }}</em></a></li>{% endfor %}</ul>
+      {% else %}<p class="ak-empty">최근 {{ keep_days }}일 동안 실패가 없어요.</p>{% endif %}
+    </section>
+  </div>
+
+  <section class="ad-panel ak-tests">
+    <div class="ad-panel-head ak-row"><h2>품질 시험 <small>고정 질문 {{ test_total }}개</small></h2>
+      <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="test"><button class="primary" type="submit"{% if 'test' in jobs %} disabled{% endif %}>{{ '시험 중…' if 'test' in jobs else '품질 시험 돌리기' }}</button></form></div>
+    {% if tests %}
+    <p class="cs-hint">{{ test_batch[:16]|replace('T', ' ') }}에 돌린 결과 {{ tests|length }}개{% if tests|length < test_total %} (아직 도는 중){% endif %}. 칸마다 답에 들어간 부분이에요.</p>
+    <div class="tablewrap"><table class="ak-table">
+      <thead><tr><th>질문</th><th>유형</th>{% for p in parts_all %}<th class="ak-p">{{ p }}</th>{% endfor %}<th>출처</th><th>결과</th><th>시간</th></tr></thead>
+      <tbody>{% for r in tests %}{% set ps = loads(r.parts) %}
+        <tr><td><a href="{{ url_for('admin_ask_log', log_id=r.id) }}">{{ r.question }}</a></td><td>{{ r.dtype }}</td>
+          {% for p in parts_all %}<td class="ak-p">{% if p in ps %}<span class="ak-yes" title="{{ p }}">●</span>{% else %}<span class="ak-no">·</span>{% endif %}</td>{% endfor %}
+          <td>{{ loads(r.refs)|length }}</td><td><span class="ak-st s-{{ r.status }}">{{ ST.get(r.status, r.status) }}</span>{% if r.flags not in ('', '[]') %}<span class="ak-st s-flag" title="근거 확인으로 뺀 문장">확인 {{ loads(r.flags)|length }}</span>{% endif %}</td><td>{{ '%.1f'|format(r.latency_ms / 1000) }}초</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="ak-empty">아직 돌린 적이 없어요. 배달 음식 이물질, 구독 중도 해지, 헬스장 6개월권 환불, 2주째 안 오는 택배 같은 질문 {{ test_total }}개를 차례로 물어봐요.</p>{% endif %}
+  </section>
+
+  <section class="ad-panel">
+    <div class="ad-panel-head"><h2>상담 기록 <small>개인정보를 지운 글 · 대표 관리자만 · 질문 글은 열어 볼 때만 보이고, 열 때마다 열람 기록이 남아요</small></h2></div>
+    {% if recent %}
+    <div class="tablewrap"><table class="ak-table">
+      <thead><tr><th>시각</th><th>유형</th><th>기록</th><th>결과</th><th>시간</th><th>토큰</th></tr></thead>
+      <tbody>{% for r in recent %}<tr><td>{{ r.created[5:16]|replace('T', ' ') }}</td><td>{{ r.dtype }}</td><td><a href="{{ url_for('admin_ask_log', log_id=r.id) }}">#{{ r.id }} 열어 보기</a></td>
+        <td><span class="ak-st s-{{ r.status }}">{{ ST.get(r.status, r.status) }}</span></td><td>{{ '%.1f'|format(r.latency_ms / 1000) }}초</td><td>{{ '{:,}'.format(r.tokens_in + r.tokens_out) }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="ak-empty">아직 손님 상담 기록이 없어요.</p>{% endif %}
+  </section>
+</main>
+{% endblock %}
