@@ -9,6 +9,7 @@ import site_content
 import casetalk
 import soboru_art
 import naverhub
+import lawask
 import notify
 import jebo
 import soboru
@@ -270,7 +271,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-99n'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-101'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -930,8 +931,57 @@ with conn() as db:
     db.execute('CREATE INDEX IF NOT EXISTS comments_post ON comments(post_id)')
     for table in ('posts','comments'):
         if 'user_id' not in {r['name'] for r in db.execute(f'PRAGMA table_info({table})')}:db.execute(f'ALTER TABLE {table} ADD COLUMN user_id INTEGER')
+    # 글 종류(리뷰·꿀팁·질문·이야기)와 리뷰 별점·좋았던 점·아쉬운 점, 꿀팁 요약, 질문 해결 여부
+    have={r['name'] for r in db.execute('PRAGMA table_info(posts)')}
+    for col,ddl in (('kind',"TEXT NOT NULL DEFAULT 'post'"),('target',"TEXT NOT NULL DEFAULT ''"),('company_id','INTEGER'),('rating','INTEGER NOT NULL DEFAULT 0'),('pros',"TEXT NOT NULL DEFAULT ''"),
+                    ('cons',"TEXT NOT NULL DEFAULT ''"),('recommend','INTEGER'),('summary',"TEXT NOT NULL DEFAULT ''"),('solved','INTEGER NOT NULL DEFAULT 0')):
+        if col not in have:db.execute(f'ALTER TABLE posts ADD COLUMN {col} {ddl}')
+    if 'kind' not in have:db.execute("UPDATE posts SET kind=CASE category WHEN '질문해요' THEN 'question' WHEN '꿀팁' THEN 'tip' ELSE 'post' END")  # 예전 글은 분류로 종류를 정함
+    db.execute('CREATE INDEX IF NOT EXISTS posts_kind ON posts(kind,hidden)')
 
+def soboru_on():return bool(app.jinja_env.globals.get('is_soboru',lambda:False)())  # soboru.py가 맨 끝에 붙임
 def board_enabled():return os.getenv('ENABLE_BOARD')=='1'
+# 글 종류: (키, 이름, 쓰기 버튼 설명). 리뷰·꿀팁·질문은 분류가 자동으로 정해지고, 이야기는 분류를 고름.
+POST_KINDS=[('review','리뷰','써 본 후기를 솔직하게'),('tip','꿀팁','아는 만큼 아끼는 정보'),('question','질문','궁금한 건 물어보세요'),('post','이야기','겪은 일, 편하게 나눠요')]
+POST_KIND_NAMES=dict((k,n) for k,n,_ in POST_KINDS)
+KIND_CATEGORY={'review':'경험 공유','tip':'꿀팁','question':'질문해요'}
+def kind_category(kind):
+    cats=board_categories();c=KIND_CATEGORY.get(kind)
+    return c if c in cats else (cats[0] if cats else '자유')
+def category_kind(cat):return next((k for k,c in KIND_CATEGORY.items() if c==cat and k!='review'),'post')
+def match_company(db,name):
+    # 리뷰한 회사·브랜드 이름이 등록된 기업과 같으면 기업 페이지로 이어 줌
+    t=norm_company(name)
+    if len(t)<2:return None
+    for co in db.execute("SELECT * FROM companies WHERE status IN ('active','listed')"):
+        if t in [norm_company(n) for n in [co['name'],co['brand'],co['biz_name']]+[a for a in (co['aliases'] or '').split(',')] if n]:return co['id']
+    return None
+def read_minutes(text):return max(1,round((text if isinstance(text,int) else len(text or ''))/500))  # 글자 수 또는 본문
+def review_stats(db,company_id=None,limit=5):
+    # 리뷰가 쌓인 곳: 같은 기업(또는 같은 이름)끼리 묶어 평균 별점
+    where="kind='review' AND hidden=0 AND rating BETWEEN 1 AND 5"+(' AND company_id=?' if company_id else '')
+    return db.execute(f"SELECT MAX(target) AS target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg FROM posts WHERE {where} GROUP BY COALESCE(company_id,lower(replace(target,' ',''))) ORDER BY n DESC,avg DESC LIMIT ?",((company_id,) if company_id else ())+(limit,)).fetchall()
+FEED_COLS='id,kind,category,nickname,user_id,title,substr(body,1,160) AS excerpt,length(body) AS body_len,likes,comments,created,target,company_id,rating,pros,cons,recommend,summary,solved'
+def community_feed(limit=4):
+    # 메인 화면 커뮤니티: 최근 30일 반응 많은 글을 종류별로 하나씩 먼저, 나머지는 반응순 → 모자라면 최신순
+    since=(datetime.datetime.now()-datetime.timedelta(days=30)).isoformat(timespec='seconds')
+    with conn() as db:
+        rows=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0 AND created>=? ORDER BY likes*2+comments DESC,id DESC LIMIT 40',(since,)).fetchall()
+        if len(rows)<limit:rows+=[r for r in db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT ?',(limit*2,)) if r['id'] not in {x['id'] for x in rows}]
+    out=[]
+    for k,_,_ in POST_KINDS:
+        r=next((r for r in rows if r['kind']==k),None)
+        if r and len(out)<limit:out.append(r)
+    out+=[r for r in rows if r['id'] not in {x['id'] for x in out}][:max(0,limit-len(out))]
+    order=[x['id'] for x in rows]
+    return sorted(out,key=lambda r:order.index(r['id']))
+def company_reviews(company_id,limit=3):
+    with conn() as db:
+        rows=db.execute(f"SELECT {FEED_COLS} FROM posts WHERE kind='review' AND hidden=0 AND company_id=? ORDER BY id DESC LIMIT ?",(company_id,limit)).fetchall()
+        st=review_stats(db,company_id,1)
+    return {'rows':rows,'n':st[0]['n'] if st else 0,'avg':st[0]['avg'] if st else None}
+def story_categories():return [c for c in board_categories() if category_kind(c)=='post'] or board_categories()  # '이야기'에서 고를 분류 (꿀팁·질문해요는 종류로 따로)
+app.jinja_env.globals.update(story_categories=story_categories,POST_KINDS=POST_KINDS,POST_KIND_NAMES=POST_KIND_NAMES,community_feed=community_feed,company_reviews=company_reviews,read_minutes=read_minutes,mask_personal=mask_personal)
 def voter_id():
     if g.get('user'):return hashlib.sha256(('member:%d'%g.user['id']).encode()).hexdigest()  # 회원은 기기가 달라도 공감 1회
     if 'voter' not in session:session['voter']=secrets.token_urlsafe(16)
@@ -963,26 +1013,36 @@ def ago(created):
 @app.route('/board')
 def board():
     q=request.args.get('q','').strip()[:60];cat=request.args.get('category','')
+    kind=request.args.get('type','');kind=kind if kind in POST_KIND_NAMES else ''
     sort='top' if request.args.get('sort')=='top' else 'new'
     page=max(1,request.args.get('page',1,type=int))
     where=['hidden=0'];args=[]
     if cat in board_categories():where.append('category=?');args.append(cat)
     else:cat=''
-    if q:where.append("(title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\')");like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%';args+=[like,like]
+    if kind:where.append('kind=?');args.append(kind)
+    if q:where.append("(title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\' OR target LIKE ? ESCAPE '\\')");like='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%';args+=[like,like,like]
     order='likes DESC,id DESC' if sort=='top' else 'id DESC'
     with conn() as db:
         total=db.execute('SELECT COUNT(*) FROM posts WHERE '+' AND '.join(where),args).fetchone()[0]
-        posts=db.execute('SELECT id,category,nickname,user_id,title,substr(body,1,160) AS excerpt,likes,comments,created FROM posts WHERE '+' AND '.join(where)+f' ORDER BY {order} LIMIT ? OFFSET ?',args+[BOARD_PAGE_SIZE,(page-1)*BOARD_PAGE_SIZE]).fetchall()
+        posts=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE '+' AND '.join(where)+f' ORDER BY {order} LIMIT ? OFFSET ?',args+[BOARD_PAGE_SIZE,(page-1)*BOARD_PAGE_SIZE]).fetchall()
         week_ago=(datetime.datetime.now()-datetime.timedelta(days=7)).isoformat(timespec='seconds')
-        hot=db.execute('SELECT id,category,title,likes,comments FROM posts WHERE hidden=0 AND likes>0 AND created>=? ORDER BY likes DESC,id DESC LIMIT 3',(week_ago,)).fetchall() if not (q or cat or page>1) else []
+        hot=db.execute('SELECT id,kind,category,title,likes,comments,target,rating FROM posts WHERE hidden=0 AND likes>0 AND created>=? ORDER BY likes DESC,id DESC LIMIT ?',(week_ago,5 if soboru_on() else 3)).fetchall() if not (q or cat or kind or page>1) else []
         liked={r['target'] for r in db.execute("SELECT target FROM board_votes WHERE kind='like' AND voter=?",(voter_id(),))}
-    return render_template('board.html',posts=posts,hot=hot,liked=liked,categories=board_categories(),cat=cat,q=q,sort=sort,page=page,pages=max(1,-(-total//BOARD_PAGE_SIZE)),total=total,enabled=board_enabled())
+        rated=review_stats(db) if not (q or cat or page>1) else []
+        counts=dict(db.execute('SELECT kind,COUNT(*) FROM posts WHERE hidden=0 GROUP BY kind').fetchall())
+    return render_template('board.html',posts=posts,hot=hot,liked=liked,categories=board_categories(),cat=cat,kind=kind,q=q,sort=sort,page=page,pages=max(1,-(-total//BOARD_PAGE_SIZE)),total=total,enabled=board_enabled(),rated=rated,counts=counts)
 
 @app.route('/board/write',methods=['GET','POST'])
 def board_write():
     if request.method=='POST':
         if not board_enabled():abort(503,description='게시판 글쓰기 준비 중입니다.')
-        f={k:request.form.get(k,'').strip() for k in ('category','nickname','password','title','body')}
+        f={k:request.form.get(k,'').strip() for k in ('category','nickname','password','title','body','kind','target','pros','cons','summary')}
+        if f['kind'] in ('','post') or f['kind'] not in POST_KIND_NAMES:f['kind']=category_kind(f['category'])  # 종류 없이 오면(예전 화면) 분류로 정함
+        else:f['category']=kind_category(f['kind'])
+        rating=request.form.get('rating',0,type=int) if f['kind']=='review' else 0
+        recommend={'1':1,'0':0}.get(request.form.get('recommend','')) if f['kind']=='review' else None
+        if f['kind']!='review':f['target']=f['pros']=f['cons']=''
+        if f['kind']!='tip':f['summary']=''
         if g.user:f['nickname']=g.user['nickname'];f['password']='member'  # 회원은 로그인 정보로 쓰고 지움
         errors=[]
         if request.form.get('website'):abort(400)  # 사람에게는 보이지 않는 칸. 채워져 있으면 자동 등록 프로그램.
@@ -990,16 +1050,24 @@ def board_write():
         if not 2<=len(f['nickname'])<=20:errors.append(ui_text('msg.m06','닉네임은 2~20자로 적어 주세요.'))
         if not 4<=len(f['password'])<=30:errors.append(ui_text('msg.m07','비밀번호는 4~30자로 정해 주세요.'))
         if not 2<=len(f['title'])<=100:errors.append(ui_text('msg.m08','제목은 2~100자로 적어 주세요.'))
-        if not 10<=len(f['body'])<=5000:errors.append(ui_text('msg.m09','내용은 10~5,000자로 적어 주세요.'))
+        if f['kind']=='review':
+            if not 1<=len(f['target'])<=40:errors.append(ui_text('msg.rv_target','어떤 회사·제품인지 40자 안으로 적어 주세요.'))
+            if not 1<=rating<=5:errors.append(ui_text('msg.rv_rating','별점을 골라 주세요.'))
+            if len(f['pros'])>500 or len(f['cons'])>500:errors.append(ui_text('msg.rv_long','좋았던 점·아쉬운 점은 500자 안으로 적어 주세요.'))
+            if len(f['body']+f['pros']+f['cons'])<10 or len(f['body'])>5000:errors.append(ui_text('msg.rv_body','후기를 10자 이상 적어 주세요.'))
+        elif not 10<=len(f['body'])<=(10000 if f['kind']=='tip' else 5000):errors.append(ui_text('msg.m09','내용은 10~5,000자로 적어 주세요.'))
+        if len(f['summary'])>120:errors.append(ui_text('msg.tip_sum','한 줄 요약은 120자 안으로 적어 주세요.'))
         if not request.form.get('agree'):errors.append(ui_text('msg.m10','글쓰기 약속에 동의해 주세요.'))
         with conn() as db:
             if not errors and recent_count(db,'posts',10)>=3:errors.append(ui_text('msg.m11','잠시 후 다시 올려 주세요. 10분에 3개까지 쓸 수 있어요.'))
             if errors:
                 for e in errors:flash(e)
-                return render_template('board_write.html',categories=board_categories(),enabled=True),400
-            cur=db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id) VALUES(?,?,?,?,?,?,?,?)',(f['category'],f['nickname'],'' if g.user else generate_password_hash(f['password']),f['title'],f['body'],ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None))
+                return render_template('board_write.html',categories=board_categories(),enabled=True,kind=f['kind']),400
+            cur=db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id,kind,target,company_id,rating,pros,cons,recommend,summary) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(f['category'],f['nickname'],'' if g.user else generate_password_hash(f['password']),f['title'],f['body'],ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None,
+                f['kind'],f['target'],match_company(db,f['target']) if f['target'] else None,rating,f['pros'],f['cons'],recommend,f['summary']))
         return redirect(url_for('board_post',post_id=cur.lastrowid))
-    return render_template('board_write.html',categories=board_categories(),enabled=board_enabled())
+    kind=request.args.get('type','')
+    return render_template('board_write.html',categories=board_categories(),enabled=board_enabled(),kind=kind if kind in POST_KIND_NAMES else '')
 
 @app.route('/board/<int:post_id>')
 def board_post(post_id):
@@ -1008,7 +1076,21 @@ def board_post(post_id):
         if not post or (post['hidden'] and not admin_active()):abort(404)
         comments=db.execute('SELECT id,nickname,body,created,user_id FROM comments WHERE post_id=? AND hidden=0 ORDER BY id',(post_id,)).fetchall()
         mine={r['kind']+r['target'] for r in db.execute('SELECT kind,target FROM board_votes WHERE voter=?',(voter_id(),))}
-    return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled())
+        company=db.execute("SELECT id,name FROM companies WHERE id=? AND status IN ('active','listed')",(post['company_id'],)).fetchone() if post['company_id'] else None
+        related=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0 AND kind=? AND id!=? ORDER BY likes DESC,id DESC LIMIT 3',(post['kind'],post_id)).fetchall()
+    return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled(),company=company,related=related)
+
+@app.route('/board/<int:post_id>/solve',methods=['POST'])
+def board_solve(post_id):
+    # 질문 글: 글쓴이(회원 또는 글 비밀번호)가 '해결됐어요'를 켜고 끔
+    with conn() as db:
+        post=db.execute("SELECT * FROM posts WHERE id=? AND hidden=0 AND kind='question'",(post_id,)).fetchone()
+        if not post:abort(404)
+        own=(g.user and post['user_id']==g.user['id']) or (not post['user_id'] and post['pw_hash'] and check_password_hash(post['pw_hash'],request.form.get('password','')))
+        if not own:flash(ui_text('msg.m15','비밀번호가 맞지 않아요.'));return redirect(url_for('board_post',post_id=post_id))
+        db.execute('UPDATE posts SET solved=? WHERE id=?',(0 if post['solved'] else 1,post_id))
+    flash(ui_text('msg.unsolved','해결됨 표시를 껐어요.') if post['solved'] else ui_text('msg.solved','해결됨으로 표시했어요.'))
+    return redirect(url_for('board_post',post_id=post_id))
 
 @app.route('/board/<int:post_id>/like',methods=['POST'])
 def board_like(post_id):
@@ -1098,7 +1180,7 @@ def admin_board():
             return redirect(url_for('admin_board',view=request.args.get('view','')))
         flagged=request.args.get('view')!='all'
         cond='WHERE flags>0 OR hidden=1' if flagged else ''
-        posts=db.execute(f'SELECT id,category,nickname,title,body,created,hidden,likes,comments,flags FROM posts {cond} ORDER BY flags DESC,id DESC LIMIT 200').fetchall()
+        posts=db.execute(f'SELECT id,kind,category,nickname,title,body,created,hidden,likes,comments,flags,target,rating FROM posts {cond} ORDER BY flags DESC,id DESC LIMIT 200').fetchall()
         comments=db.execute(f'SELECT c.id,c.post_id,c.nickname,c.body,c.created,c.hidden,c.flags,p.title FROM comments c JOIN posts p ON p.id=c.post_id {cond.replace("flags","c.flags").replace("hidden","c.hidden")} ORDER BY c.flags DESC,c.id DESC LIMIT 200').fetchall()
         case_comments=db.execute(f'SELECT k.id,k.case_id,k.nickname,k.body,k.created,k.hidden,k.flags,c.subject,c.public_subject FROM case_comments k JOIN cases c ON c.id=k.case_id {cond.replace("flags","k.flags").replace("hidden","k.hidden")} ORDER BY k.flags DESC,k.id DESC LIMIT 200').fetchall()
     return render_template('admin_board.html',posts=posts,comments=comments,case_comments=case_comments,flagged=flagged,threshold=FLAG_HIDE_THRESHOLD)
@@ -2245,5 +2327,7 @@ delete_case_comment=_talk.delete_case_comment
 _art=types.SimpleNamespace(**globals());soboru_art.install(_art)
 # 네이버 API HUB: 생활정보 통합 검색·검색 추이·쇼핑 관심도 (naverhub.py)
 _naver=types.SimpleNamespace(**globals());naverhub.install(_naver)
+# 소비자 법률 질문창(/ask)과 관리자 > 법령 학습: 법령 PDF를 올려 조문 모음에 더함 (lawask.py)
+_ask=types.SimpleNamespace(**globals());lawask.install(_ask)
 
 if __name__=='__main__':app.run(debug=False)

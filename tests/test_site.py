@@ -617,6 +617,60 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, {'ENABLE_BOARD': '0'}):
             self.assertEqual(self.post_form(writer, '/board/write', {}).status_code, 503)
 
+    def test_community_review_tip_question(self):
+        # 커뮤니티 글 종류: 리뷰(별점·좋았던 점·기업 연결), 꿀팁(요약), 질문(글쓴이가 해결됨 표시). 소보루 화면에서 종류별로 보임
+        with self.site.conn() as db:
+            co = db.execute("INSERT INTO companies(name,biz_no,contact_name,contact_phone,contact_email,created,status) VALUES('리뷰상사','1234567890','담당','02','a@b.c','2026-10-01','listed')").lastrowid
+        writer = self.site.app.test_client()
+        base = {'nickname': '후기왕', 'password': '1234', 'agree': 'on'}
+        r = self.post_form(writer, '/board/write', {**base, 'kind': 'review', 'target': '리뷰 상사', 'rating': '4', 'recommend': '1', 'title': '환불이 빨랐어요', 'pros': '사흘 만에 환불 010-1234-5678', 'cons': '전화 연결이 느려요', 'body': ''})
+        self.assertEqual(r.status_code, 302)
+        rid = int(r.headers['Location'].rstrip('/').split('/')[-1])
+        bad = self.post_form(writer, '/board/write', {**base, 'kind': 'review', 'target': '어딘가', 'title': '별점 없는 리뷰', 'body': '별점을 안 골랐어요. 열 글자 넘게.'})
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn('별점을 골라 주세요', bad.get_data(as_text=True))
+        q = self.post_form(writer, '/board/write', {**base, 'kind': 'question', 'title': '위약금 얼마인가요?', 'body': '헬스장 중도 해지 위약금이 궁금해요.', 'category': '자유'})
+        qid = int(q.headers['Location'].rstrip('/').split('/')[-1])
+        with self.site.conn() as db:
+            row = db.execute('SELECT * FROM posts WHERE id=?', (rid,)).fetchone()
+            self.assertEqual((row['kind'], row['rating'], row['recommend'], row['company_id'], row['category']), ('review', 4, 1, co, '경험 공유'))
+            self.assertEqual(db.execute('SELECT kind,category FROM posts WHERE id=?', (qid,)).fetchone()[:], ('question', '질문해요'))
+            tid = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind,summary) VALUES('꿀팁','팁','','택배 분실 보상 순서','먼저 택배사에 접수해요. 그다음 영수증.','x',?,'tip','운송장 금액 기준이에요')", (datetime.datetime.now().isoformat(timespec='seconds'),)).lastrowid
+        page = writer.get(f'/board/{rid}').get_data(as_text=True)
+        self.assertIn('aria-label="별점 5점 중 4점"', page)
+        self.assertIn(f'/companies/{co}', page)
+        self.assertNotIn('010-1234-5678', page)
+        # 질문: 비밀번호가 틀리면 그대로, 맞으면 해결됨
+        token = self.csrf(writer, f'/board/{qid}')
+        writer.post(f'/board/{qid}/solve', data={'_csrf': token, 'password': 'nope'})
+        with self.site.conn() as db:self.assertEqual(db.execute('SELECT solved FROM posts WHERE id=?', (qid,)).fetchone()[0], 0)
+        writer.post(f'/board/{qid}/solve', data={'_csrf': token, 'password': '1234'})
+        with self.site.conn() as db:self.assertEqual(db.execute('SELECT solved FROM posts WHERE id=?', (qid,)).fetchone()[0], 1)
+        self.assertIn('해결됨', self.client.get(f'/board/{qid}').get_data(as_text=True))
+        self.assertIn('리뷰 상사', self.client.get('/board').get_data(as_text=True))  # 예전 화면에도 리뷰 대상이 보임
+        self.assertIn('커뮤니티 리뷰', self.client.get(f'/companies/{co}').get_data(as_text=True))
+        with self.site.conn() as db:
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+        try:
+            board = self.client.get('/board').get_data(as_text=True)
+            for text in ('무엇을 올릴까요?', '리뷰 모아 보기', '환불이 빨랐어요', '운송장 금액 기준이에요', 'cm-solved', '별점 5점 중 4점'):
+                self.assertIn(text, board)
+            only = self.client.get('/board?type=question').get_data(as_text=True)
+            self.assertIn('위약금 얼마인가요?', only)
+            self.assertNotIn('환불이 빨랐어요', only)
+            self.assertIn('data-kind="tip"', self.client.get('/board/write?type=tip').get_data(as_text=True))
+            post = self.client.get(f'/board/{rid}').get_data(as_text=True)
+            self.assertIn('cm-review', post)
+            self.assertIn('좋았던 점', post)
+            self.assertNotIn('010-1234-5678', post)
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertIn('sb-cm-card k-review', home)
+            self.assertIn('택배 분실 보상 순서', home)
+            self.assertIn('별점 5점 중 4점', self.client.get(f'/companies/{co}').get_data(as_text=True))
+        finally:
+            with self.site.conn() as db:
+                db.execute("DELETE FROM site_content WHERE key='site.brand'")
+
     def test_public_and_secret_report_pages(self):
         ids = {}
         for visibility in ('public', 'secret'):
@@ -2637,6 +2691,161 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertEqual(db.execute('SELECT COUNT(*) FROM case_requests WHERE case_id=?', (first,)).fetchone()[0], 0)
             self.assertEqual(db.execute('SELECT COUNT(*) FROM company_notices WHERE case_id=?', (first,)).fetchone()[0], 0)
+
+    # ---- 소비자 법률 질문창(/ask)과 법령 학습(/admin/laws) ----
+    LAW_PDF_LINES = [['법제처 1 국가법령정보센터', '할부거래에 관한 법률', '[시행 2026. 1. 2.] [법률 제12345호, 2025. 7. 1., 일부개정]',
+                      '제1조(목적) 이 법은 할부계약에 의한 거래를 공정하게 함을 목적으로 한다.',
+                      '제2조(할부계약의 청약철회) ① 소비자는 할부계약서를 받은 날부터 7일 이내에 할부계약에 관한 청약을 철회할 수 있다.'],
+                     ['법제처 2 국가법령정보센터', '할부거래에 관한 법률', '② 할부거래업자는 청약철회를 이유로 소비자에게 위약금을 청구할 수 없다.',
+                      '부칙 <제12345호,2025. 7. 1.>', '제1조(시행일) 이 법은 공포한 날부터 시행한다.']]
+
+    @staticmethod
+    def make_pdf(pages):
+        """글꼴 파일 없이 pdftotext가 읽을 수 있는 작은 PDF (유니코드 번호를 그대로 글자 번호로 쓰고 ToUnicode로 되돌림)."""
+        objs = []
+        def add(b): objs.append(b); return len(objs)
+        rs = [f'<{h:02X}00> <{h:02X}FF> <{h:02X}00>' for h in range(256)]
+        blocks = '\n'.join(f'{len(rs[i:i + 100])} beginbfrange\n' + '\n'.join(rs[i:i + 100]) + '\nendbfrange' for i in range(0, 256, 100))
+        cmap = ('/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def '
+                '/CMapName /Adobe-Identity-UCS def /CMapType 2 def 1 begincodespacerange <0000> <FFFF> endcodespacerange\n' + blocks +
+                '\nendcmap CMapName currentdict /CMap defineresource pop end end').encode()
+        tu = add(b'<< /Length %d >>\nstream\n' % len(cmap) + cmap + b'\nendstream')
+        desc = add(b'<< /Type /FontDescriptor /FontName /T /Flags 4 /FontBBox [0 0 1000 1000] /ItalicAngle 0 /Ascent 880 /Descent -120 /CapHeight 700 /StemV 80 >>')
+        cid = add(b'<< /Type /Font /Subtype /CIDFontType2 /BaseFont /T /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor %d 0 R /DW 1000 /W [32 [250] 33 126 500] >>' % desc)
+        font = add(b'<< /Type /Font /Subtype /Type0 /BaseFont /T /Encoding /Identity-H /DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>' % (cid, tu))
+        pages_id = len(objs) + 1 + 2 * len(pages); kids = []
+        for lines in pages:
+            s = '\n'.join('BT /F1 9 Tf 30 %d Td <%s> Tj ET' % (800 - i * 14, ''.join(f'{ord(ch):04X}' for ch in l)) for i, l in enumerate(lines)).encode()
+            c = add(b'<< /Length %d >>\nstream\n' % len(s) + s + b'\nendstream')
+            kids.append(add(b'<< /Type /Page /Parent %d 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 %d 0 R >> >> /Contents %d 0 R >>' % (pages_id, font, c)))
+        add(b'<< /Type /Pages /Kids [%s] /Count %d >>' % (b' '.join(b'%d 0 R' % k for k in kids), len(kids)))
+        cat = add(b'<< /Type /Catalog /Pages %d 0 R >>' % pages_id)
+        out = bytearray(b'%PDF-1.4\n'); offs = []
+        for i, o in enumerate(objs, 1): offs.append(len(out)); out += b'%d 0 obj\n' % i + o + b'\nendobj\n'
+        x = len(out)
+        out += b'xref\n0 %d\n0000000000 65535 f \n' % (len(objs) + 1) + b''.join(b'%010d 00000 n \n' % o for o in offs)
+        out += b'trailer\n<< /Size %d /Root %d 0 R >>\nstartxref\n%d\n%%%%EOF\n' % (len(objs) + 1, cat, x)
+        return bytes(out)
+
+    def ask_setup(self):
+        with self.site.conn() as db:
+            db.execute('DELETE FROM law_questions')
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+        self.addCleanup(self.ask_cleanup)
+
+    def ask_cleanup(self):
+        with self.site.conn() as db:
+            db.execute('DELETE FROM law_questions'); db.execute("DELETE FROM site_content WHERE key IN ('site.brand','ask.off')")
+        extra = self.site.app.extensions['lawask']['extra_path']
+        if extra.exists(): extra.unlink()
+        self.site.triage.corpus.reset()
+
+    def ask(self, client, q, **extra):
+        return client.post('/ask', data={'_csrf': self.csrf(client, '/ask'), 'q': q, **extra})
+
+    def test_law_ask_answer_cites_only_candidates(self):
+        self.ask_setup()
+        page = self.client.get('/ask').get_data(as_text=True)
+        self.assertIn('소비자 법률, 편하게 물어보세요', page)
+        self.assertIn('href="/ask"', page)  # 머리글 메뉴 '법률 질문'
+        self.assertIn('온라인에서 산 옷, 7일 지나서도 환불되나요?', page)  # 예시 질문
+        sent = []
+        def fake(url, headers, body, timeout):
+            sent.append((url, headers, body))
+            out = {'headline': '받은 날부터 7일이 지났다면 단순 변심 환불은 어려울 수 있어요',
+                   'paragraphs': ['전자상거래법 제17조에 따르면 상품을 받은 날부터 7일 안에 청약철회를 할 수 있어요. 문의 010-1234-5678', '광고와 다르면 더 길게 돼요.'],
+                   'refs': ['corpus:ecom:제17조', 'ecom:제99조', 'civil:제1조'], 'covered': True, 'suggest_report': True}
+            return 200, {'model': 'gpt-test', 'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', fake):
+            r = self.ask(self.client, '온라인에서 산 옷 7일 지나서 환불 되나요? 제 번호는 010-9876-5432예요')
+        html = r.get_data(as_text=True)
+        self.assertEqual(r.status_code, 200)
+        (url, headers, body), = sent
+        self.assertTrue(url.endswith('/chat/completions')); self.assertNotIn('tools', body)  # 검색 없이
+        user = body['messages'][1]['content']
+        self.assertNotIn('010-9876-5432', user); self.assertIn('[조문 후보]', user); self.assertIn('[corpus:ecom:제17조]', user)
+        self.assertIn('조문 후보', body['messages'][0]['content']); self.assertNotIn('sk-test-key', json.dumps(body, ensure_ascii=False))
+        self.assertIn('받은 날부터 7일이 지났다면', html)
+        self.assertNotIn('010-1234-5678', html)  # 답에 섞인 개인정보도 지움
+        cards = re.findall(r'<span class="sba-law">([^<]+)</span><span class="sba-art"><b>([^<]+)</b>', html)
+        self.assertEqual(cards, [('전자상거래법', '제17조')])  # 후보에 없던 제99조·민법 제1조는 버림
+        self.assertIn('https://www.law.go.kr/법령/', html); self.assertIn('법률 자문이 아니고', html)
+        self.assertIn('href="/report"', html); self.assertIn('1372 소비자상담센터', html)
+        # AI가 실패하면 찾은 조문 카드만 (키는 화면에 안 나옴)
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', lambda *a: (500, {'error': {'message': 'bad sk-test-key'}})):
+            html = self.ask(self.client, '받은 지 5일 됐는데 단순 변심으로 환불 되나요?').get_data(as_text=True)
+        self.assertIn('질문과 가장 가까운 조문을 찾았어요', html); self.assertNotIn('sk-test-key', html)
+        with self.site.conn() as db:  # 질문 글은 저장하지 않음
+            row = db.execute('SELECT * FROM law_questions').fetchone()
+            self.assertEqual(set(row.keys()), {'id', 'ip_hash', 'created'})
+
+    def test_law_ask_fallback_limit_and_off(self):
+        self.ask_setup()
+        env = {k: v for k, v in os.environ.items() if k != 'OPENAI_API_KEY'}
+        with patch.dict(os.environ, env, clear=True):
+            html = self.ask(self.client, '받은 지 5일 됐는데 단순 변심으로 환불 되나요?').get_data(as_text=True)
+            self.assertIn('질문과 가장 가까운 조문을 찾았어요', html)
+            self.assertIn('<b>제17조</b>', html)
+            self.assertIn('배운 법령에서 딱 맞는 조문을 찾지 못했어요', self.ask(self.client, '사이즈 추천해 주세요 감사합니다').get_data(as_text=True))
+            self.assertIn('조금 더 자세히', self.ask(self.client, '환불').get_data(as_text=True))  # 너무 짧음 (기록 안 함)
+            self.assertIn('줄여 주세요', self.ask(self.client, '환불 ' * 200).get_data(as_text=True))
+            self.assertEqual(self.ask(self.client, '환불 되나요 문의해요', website='http://spam').status_code, 400)
+            for _ in range(8): self.ask(self.client, '받은 지 5일 됐는데 단순 변심으로 환불 되나요?')
+            html = self.ask(self.client, '받은 지 5일 됐는데 단순 변심으로 환불 되나요?').get_data(as_text=True)
+        self.assertIn('1시간 뒤에 다시', html); self.assertNotIn('가장 가까운 조문', html)
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM law_questions').fetchone()[0], 10)
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('ask.off','끔','x')")
+        self.assertEqual(self.client.get('/ask').status_code, 404)
+        self.assertNotIn('href="/ask"', self.client.get('/').get_data(as_text=True))
+
+    def test_law_text_parse_unknown_law(self):
+        lawask = self.site.lawask
+        text = '\n'.join(sum(self.LAW_PDF_LINES, []))
+        (law,) = lawask.parse_text(text)
+        self.assertEqual((law['name'], law['short'], law['kind'], law['effective']), ('할부거래에 관한 법률', '할부거래법', '법률', '2026-01-02'))
+        self.assertRegex(law['key'], r'^u[0-9a-f]{8}$')
+        self.assertEqual(list(law['articles']), ['제1조', '제2조'])  # 부칙 제1조는 빼고
+        self.assertEqual(law['articles']['제2조']['text'], '① 소비자는 할부계약서를 받은 날부터 7일 이내에 할부계약에 관한 청약을 철회할 수 있다.\n② 할부거래업자는 청약철회를 이유로 소비자에게 위약금을 청구할 수 없다.')
+        # 머리글 없이 이름 줄부터 시작해도 읽음, 아는 법령은 원래 key
+        (law,) = lawask.parse_text('전자상거래 등에서의 소비자보호에 관한 법률\n[시행 2026. 7. 21.] [법률 제21312호, 2026. 1. 20., 일부개정]\n제1조(목적) 이 법은 소비자를 보호한다.\n')
+        self.assertEqual((law['key'], law['short']), ('ecom', '전자상거래법'))
+        with self.assertRaises(ValueError): lawask.parse_text('그냥 글입니다\n아무 법령도 아님')
+
+    @unittest.skipUnless(__import__('shutil').which('pdftotext'), 'pdftotext 없음')
+    def test_admin_law_pdf_upload_becomes_searchable(self):
+        self.ask_setup()
+        corpus = self.site.triage.corpus
+        admin = self.login_admin()
+        page = admin.get('/admin/laws').get_data(as_text=True)
+        self.assertIn('법령 학습', page); self.assertIn('기본 모음', page); self.assertIn('전자상거래법', page)
+        tok = self.csrf(admin, '/admin/laws')
+        # PDF가 아니면 거절
+        r = admin.post('/admin/laws', data={'_csrf': tok, 'act': 'preview', 'pdf': (io.BytesIO(b'hello'), 'law.txt')}, content_type='multipart/form-data')
+        self.assertIn('PDF 파일만', r.get_data(as_text=True))
+        r = admin.post('/admin/laws', data={'_csrf': tok, 'act': 'preview', 'pdf': (io.BytesIO(self.make_pdf(self.LAW_PDF_LINES)), '할부거래법.pdf')}, content_type='multipart/form-data')
+        html = r.get_data(as_text=True)
+        self.assertIn('미리 보기', html); self.assertIn('조문 2개', html); self.assertIn('할부계약의 청약철회', html)
+        self.assertNotIn('할부거래법', [l['short'] for l in corpus.laws()])  # 저장 전엔 안 씀
+        key = re.search(r'name="short_(u[0-9a-f]{8})" value="할부거래법"', html)[1]
+        token = re.search(r'name="token" value="([^"]+)"', html)[1]
+        r = admin.post('/admin/laws', data={'_csrf': tok, 'act': 'save', 'token': token, 'short_' + key: '할부거래법'}, follow_redirects=True)
+        self.assertIn('법령을 배웠어요', r.get_data(as_text=True))
+        self.assertIn('직접 올림', r.get_data(as_text=True))
+        self.assertTrue(self.site.app.extensions['lawask']['extra_path'].exists())
+        hits = corpus.search('할부계약 청약철회 위약금')
+        self.assertEqual(hits[0]['ref'], key + ':제2조'); self.assertEqual(hits[0]['label'], '할부거래법 제2조 (할부계약의 청약철회)')
+        self.assertEqual(self.site.triage.cite('corpus:' + key + ':제2조')['label'], '할부거래법 제2조')  # AI 제보 분류도 같은 모음
+        env = {k: v for k, v in os.environ.items() if k != 'OPENAI_API_KEY'}
+        with patch.dict(os.environ, env, clear=True):
+            html = self.ask(self.client, '할부계약 청약철회하면 위약금을 내야 하나요?').get_data(as_text=True)
+        self.assertIn('<span class="sba-law">할부거래법</span>', html)
+        # 지우면 다시 안 찾음, 기본 모음은 못 지움
+        admin.post('/admin/laws', data={'_csrf': tok, 'act': 'delete', 'key': key})
+        self.assertNotIn(key, [l['key'] for l in corpus.laws()])
+        r = admin.post('/admin/laws', data={'_csrf': tok, 'act': 'delete', 'key': 'ecom'}, follow_redirects=True)
+        self.assertIn('올린 법령만 지울 수 있어요', r.get_data(as_text=True)); self.assertIn('ecom', [l['key'] for l in corpus.laws()])
+        self.assertIn('법령 학습', admin.get('/admin').get_data(as_text=True))  # 관리자 메뉴
 
 if __name__ == '__main__':
     unittest.main()

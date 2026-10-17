@@ -1,6 +1,7 @@
 """law_corpus.json 만들기: 국가법령정보센터(law.go.kr)에서 받은 법령 PDF를 pdftotext로 글자만 뽑아 이어 붙인 파일을 조문 단위로 나눈다.
 
 사용법: python platform_app/law_corpus_build.py <소비자법령_원문_모음.txt> platform_app/law_corpus.json
+  (관리자 > 법령 학습에서 올린 PDF도 parse_text()로 같은 방식으로 나눈다. LAWS에 없는 법령은 key·짧은 이름을 이름으로 만든다)
   · 법령마다 첫 줄은 '법제처 1 국가법령정보센터', 다음 줄은 법령 이름, 그 뒤 '[시행 YYYY. M. D.] [법률 제NNNNN호, ...]'
   · 쪽마다 되풀이되는 머리글('법제처 N 국가법령정보센터' + 법령 이름)은 지운다
   · PDF 줄바꿈으로 끊긴 문장은 다시 잇는다. 띄어 쓸지 붙일지는 같은 파일 안에서 그 낱말이 붙어 나온 적이 있는지로 정한다
@@ -221,14 +222,53 @@ def chunks(body,J,size=350):
 def source(name,kind):
     return ('https://www.law.go.kr/행정규칙/' if '고시' in kind else 'https://www.law.go.kr/법령/')+name.replace(' ','')
 
+def auto_key(name):
+    """LAWS에 없는 법령(관리자가 PDF로 더 올린 법령)의 key: 이름으로 만든 'u' + 8글자. 같은 이름이면 늘 같은 key."""
+    import hashlib
+    return 'u'+hashlib.sha1(name.encode()).hexdigest()[:8]
+
+def short_name(name):
+    """LAWS에 없는 법령의 짧은 이름. '할부거래에 관한 법률' -> '할부거래법', '… 법률 시행령' -> '…법 시행령'."""
+    tail=''
+    for t in (' 시행규칙',' 시행령'):
+        if name.endswith(t):name,tail=name[:-len(t)],t;break
+    m=re.match(r'^(.+?)(?: 등)?(?:에서의 .+?)?에 관한 (?:법률|특례법)$',name)
+    if m:name=m[1].replace(' ','')+'법'
+    elif len(name)>16:name=name[:16].rstrip()+'…'
+    return name+tail
+
+def law_entry(name,block,J,short=None):
+    """법령 하나 {key, name, short, kind, no, effective, promulgated, source, articles}. LAWS에 없는 이름은 key·짧은 이름을 만들어 씀."""
+    key,short0=LAWS.get(name) or (auto_key(name),short_name(name))
+    kind,no,eff,prom=meta(name,block)
+    return {'key':key,'name':name,'short':short or short0,'kind':'고시' if '고시' in kind else kind,'no':no,'effective':eff,'promulgated':prom,
+            'source':source(name,kind),'articles':parse_law(name,block,J)}
+
+def normalize(text):
+    """pdftotext·pypdf로 뽑은 글을 이 스크립트가 읽는 꼴로: 쪽 나눔(\f) 지우기, 맨 앞에 '법제처 1 국가법령정보센터'가 없으면 붙이기."""
+    lines=[l.replace('\f','').rstrip() for l in text.replace('\r\n','\n').split('\n')]
+    lines=[re.sub(r'^\s*법제처\s+(\d+)\s+국가법령정보센터\s*$',r'법제처 \1 국가법령정보센터',l) for l in lines]
+    first=next((i for i,l in enumerate(lines) if l.strip()=='법제처 1 국가법령정보센터'),len(lines))
+    eff=next((i for i,l in enumerate(lines[:40]) if l.strip().startswith('[시행 ')),None)
+    if eff is not None and eff<first:
+        # 머리글이 없거나 쪽 아래에 붙은 PDF: '[시행 …]' 줄 바로 앞의 글자 있는 줄을 법령 이름으로 본다
+        name=next((x.strip() for x in reversed(lines[:eff]) if x.strip()),'')
+        if name:lines=['법제처 1 국가법령정보센터',name]+lines
+    return lines
+
+def parse_text(text):
+    """PDF에서 뽑은 글 -> [법령 dict]. 법령을 못 찾으면 빈 목록. 시행일 줄이 없는 법령은 ValueError."""
+    raw=normalize(text);J=Joiner(raw);parts=[]
+    for name,start,block in split_laws(raw):
+        if parts and parts[-1][0]==name:parts[-1][1].extend(block)  # 같은 법령의 다음 쪽(쪽 번호 1이 다시 나온 경우)
+        else:parts.append((name,list(block)))
+    return [law_entry(name,block,J) for name,block in parts]
+
 def build(path):
     raw=open(path,encoding='utf-8').read().splitlines()
     J=Joiner(raw);res={}
     for name,start,block in split_laws(raw):
-        key,short=LAWS[name]
-        kind,no,eff,prom=meta(name,block)
-        law={'key':key,'name':name,'short':short,'kind':'고시' if '고시' in kind else kind,'no':no,'effective':eff,'promulgated':prom,
-             'source':source(name,kind),'articles':parse_law(name,block,J)}
+        law=law_entry(name,block,J);key=law['key']
         res[key]=law
         if key=='cosmetics':
             # 화장품법 부칙 뒤에 붙어 온 생활법령정보 해설
