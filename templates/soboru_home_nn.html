@@ -5,7 +5,7 @@
 {% block content %}
 <main class="sb-wrap nn-home">
   {% if show.top %}
-  {# 맨 위는 소보루 소개만(토스식 흰 바탕, 큰 방패 카드, 제보하기 버튼 하나). 건수는 넣지 않음 #}
+  {# 맨 위는 소보루 소개만(뉴닉식 귤색 바탕, 캐릭터와 말풍선, 제보하기 버튼 하나). 건수는 넣지 않음 #}
   <section class="nn-intro">
     <div class="nn-intro-copy">
       <p class="nn-intro-kicker"><b>소</b>비자 권익 <b>보</b>호를 위한 <b>루</b>트</p>
@@ -13,11 +13,10 @@
       <p class="nn-intro-sub">억울한 일은 제보하고, 써 본 건 추천하고, <br>내 권리는 쉽게 알아보는 소비자 정보 플랫폼이에요.</p>
       <div class="nn-intro-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-intro-link" href="{{ url_for('board') }}">소보루 픽 둘러보기 ›</a></div>
     </div>
-    {# 토스식 그림: 가운데 큰 방패 카드(소비자 편), 둘레에 토스페이스 이모지 타일. 모바일은 글자 아래 작게 #}
+    {# 뉴닉식 그림: 귤색 바탕 오른쪽에 소보루 캐릭터 + 말풍선 #}
     <div class="nn-intro-art" aria-hidden="true">
-      <div class="nn-badge"><span class="nn-badge-e">🛡️</span><span class="nn-badge-t">소비자 편</span></div>
-      <span class="nn-tile a t1">📦</span><span class="nn-tile b t2">📣</span>
-      <span class="nn-tile c t6">💰</span><span class="nn-tile d t3">🛒</span><span class="nn-tile e t5">🔍</span>
+      <span class="nn-bubble">억울한 일, 같이 풀어요!</span>
+      <img class="nn-char-hero" src="{{ asset('img/soboru-character-hero.png') }}" alt="" width="579" height="479">
     </div>
   </section>
   <nav class="nn-quick" aria-label="소보루에서 할 수 있는 일">

@@ -1104,8 +1104,18 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .sb-cats .tf{margin-right:2px}
 @media(max-width:680px){.sb .title-cell.has-emo{padding-left:54px}.sb .sbr-emo{width:40px;height:40px;font-size:20px;border-radius:12px}.sb .gd-ic.gd-emo{font-size:30px;border-radius:20px}}
 
-/* 첫 화면 그림: 휴대폰 대신 큰 방패 카드 + 이모지 타일. 모바일은 글자·버튼 먼저, 그림은 아래 작게 */
-.nn-badge{position:absolute;left:50%;top:50%;width:46%;aspect-ratio:1;translate:-50% -50%;rotate:-6deg;border-radius:28%;background:linear-gradient(150deg,#fff7ee 0%,#ffe4c7 100%);box-shadow:0 30px 60px rgba(239,115,0,.16),inset 0 1px 0 #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6%}
-.nn-badge-e{font-family:Tossface,sans-serif;font-size:clamp(56px,8vw,112px);line-height:1}
-.nn-badge-t{font-size:clamp(14px,1.5vw,19px);font-weight:800;color:#c45f00;letter-spacing:-.03em;background:#fff;border-radius:999px;padding:5px 14px;box-shadow:0 4px 12px rgba(239,115,0,.12)}
-@media(max-width:680px){.nn-intro .nn-intro-art{order:0;max-width:340px;width:100%;aspect-ratio:1/.56;margin:24px auto 0}.nn-badge{width:38%;border-radius:26%}.nn-badge-e{font-size:52px}.nn-badge-t{font-size:12px;padding:3px 10px}.nn-intro .nn-tile{width:15%;font-size:22px}.nn-intro .nn-tile.a{left:8%;top:6%}.nn-intro .nn-tile.b{left:77%;top:2%}.nn-intro .nn-tile.c{left:78%;top:56%}.nn-intro .nn-tile.d{left:6%;top:58%}.nn-intro .nn-tile.e{left:62%;top:78%;width:13%}}
+/* 첫 화면: 뉴닉식 귤색 바탕 카드, 흰 글자, 갈색 제보하기 버튼, 오른쪽에 캐릭터와 말풍선 */
+.nn-intro{background:#ff7a00;border-radius:32px;padding:64px 64px 64px 72px;color:#fff;overflow:hidden}
+.nn-intro .nn-intro-kicker{color:rgba(255,255,255,.88)}.nn-intro .nn-intro-kicker b{color:#5a2410}
+.nn-intro .nn-intro-name{color:#fff}
+.nn-intro .nn-intro-sub{color:rgba(255,255,255,.94)}
+.nn-intro .nn-intro-btns .sb-cta{background:#9c4200;color:#fff;box-shadow:none}
+.nn-intro .nn-intro-btns .sb-cta:hover{background:#863800}
+.nn-intro .nn-intro-link{color:#fff}.nn-intro .nn-intro-link:hover{color:#fff;text-decoration:underline}
+.nn-intro .nn-intro-art{aspect-ratio:auto;max-width:420px;display:flex;flex-direction:column;align-items:flex-end;justify-self:end}
+.nn-bubble{position:relative;align-self:flex-end;margin:0 4% 14px 0;padding:11px 18px;border-radius:999px;background:#ffd6a5;color:#5a2410;font-size:16px;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
+.nn-bubble::after{content:'';position:absolute;right:26%;bottom:-9px;width:18px;height:14px;background:#ffd6a5;clip-path:polygon(0 0,100% 0,30% 100%)}
+.nn-char-hero{display:block;width:64%;height:auto;margin-right:16%;animation:nn-float 6s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.nn-char-hero{animation:none}}
+@media(max-width:900px){.nn-intro{padding:48px 36px}}
+@media(max-width:680px){.nn-intro{border-radius:24px;padding:32px 24px 0;gap:0}.nn-intro .nn-intro-art{order:0;max-width:none;width:100%;margin:12px 0 0;flex-direction:row;align-items:flex-end;justify-content:flex-end;gap:8px}.nn-bubble{align-self:flex-start;margin:18px 0 0;font-size:13px;padding:8px 13px}.nn-bubble::after{right:12px;bottom:-8px;clip-path:polygon(0 0,100% 0,85% 100%)}.nn-char-hero{width:150px;margin:0 -6px -4px 0}}
