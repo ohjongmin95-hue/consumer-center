@@ -13,10 +13,15 @@
       <p class="nn-intro-sub">억울한 일은 제보하고, 써 본 건 추천하고, <br>내 권리는 쉽게 알아보는 소비자 정보 플랫폼이에요.</p>
       <div class="nn-intro-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-intro-link" href="{{ url_for('board') }}">소보루 픽 둘러보기 ›</a></div>
     </div>
-    {# 토스식 그림: 소보루가 하는 일(제보·택배·결제·영수증·리뷰·상담)을 토스페이스 이모지 타일로 #}
+    {# 토스식 그림: 가운데 작은 앱 화면(제보가 처리되는 모습), 둘레에 토스페이스 이모지 타일 #}
     <div class="nn-intro-art" aria-hidden="true">
-      <span class="nn-orb"></span>
-      <span class="nn-tile big">📣</span><span class="nn-tile a t1">📦</span><span class="nn-tile b t2">💳</span>
+      <div class="nn-mock">
+        <p class="nn-mock-top"><span class="nn-mock-emo">📦</span>배송·교환·환불<em>기업 답변 도착</em></p>
+        <p class="nn-mock-title">주문한 택배가 2주째 안 와요</p>
+        <ol class="nn-mock-steps"><li class="ok">제보 접수</li><li class="ok">기업에 전달</li><li class="now">기업 답변 도착</li></ol>
+        <p class="nn-mock-ans"><b>오소보쇼핑 답변</b>확인해 보니 배송이 누락됐어요. 오늘 다시 보내 드릴게요.</p>
+      </div>
+      <span class="nn-tile a t1">📣</span><span class="nn-tile b t2">💳</span>
       <span class="nn-tile c t6">⭐</span><span class="nn-tile d t3">🧾</span><span class="nn-tile e t5">💬</span>
     </div>
   </section>
