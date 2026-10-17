@@ -50,7 +50,7 @@
   <a class="ad-brand" href="{{ url_for('admin') }}"><img src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="136" height="32"><em>관리자</em></a>
   <div class="ad-top-right">
     <details class="ad-site-pick"><summary class="ad-site">사이트 보기 ▾</summary>{# 어느 사이트로 나갈지 고름 #}
-      <div><a href="{{ url_for('home', face='off') }}" target="_blank" rel="noopener">소보루 ↗</a>
+      <div><a href="{{ main_site_url() }}" target="_blank" rel="noopener">소보루 ↗</a>
       <a href="{{ jebo_site_url() }}" target="_blank" rel="noopener">소비자제보센터 ↗</a></div></details>
     <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">{{ icon('out') }}<span>로그아웃</span></button></form>
   </div>

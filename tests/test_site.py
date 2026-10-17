@@ -1453,6 +1453,9 @@ class SiteTest(unittest.TestCase):
                 db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
                            ('jebo-face', hashlib.sha256(b'test').hexdigest(), '배송·환불', '양쪽 업체', '두 사이트에 같이 뜨는 제보', '원문 비공개 내용', '요청', '2026-10-17', 1, 1))
             jebo = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+            with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):  # 관리자는 소보루 주소 하나
+                r = self.client.get('/admin/content?face=jebo', base_url='https://consumerjebo.co.kr')
+                self.assertEqual((r.status_code, r.headers['Location']), (302, 'https://soboru.co.kr/admin/content?face=jebo'))
             self.assertIn('jebo-favicon.png', jebo); self.assertIn('<meta property="og:site_name" content="소비자제보센터">', jebo)  # 검색·광고에 뜨는 이름·아이콘
             self.assertNotEqual(self.client.get('/favicon.ico', base_url='https://consumerjebo.co.kr').data, self.client.get('/favicon.ico').data)
             self.assertIn('class="site-header"', jebo)

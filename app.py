@@ -116,6 +116,12 @@ def no_www():
         if request.host.lower().split(':')[0] in LIVE_HOSTS|JEBO_HOSTS:new='https://'+new.split('://',1)[1]  # 운영 도메인은 https까지 한 번에(두 번 옮기지 않게)
         return redirect(new,301)
 @app.before_request
+def admin_on_main_host():
+    # 관리자는 소보루 주소(soboru.co.kr/admin) 하나. 소비자제보센터 주소로 들어온 관리자 화면은 그쪽으로 보냄
+    # (제보센터 문구는 그 관리자 안의 '소비자제보센터' 칸에서 고침)
+    if request.path.startswith('/admin') and request.host.split(':')[0].lower() in JEBO_HOSTS and main_host() not in JEBO_HOSTS:
+        return redirect('https://'+main_host()+request.full_path.rstrip('?'),302)
+@app.before_request
 def content_for_request():
     if request.endpoint!='static':current_face();g.content=load_content();g.lists=load_lists()
 # 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
@@ -216,7 +222,10 @@ def jebo_site_url():
     # 관리자 '사이트 보기 > 소비자제보센터': 실제 주소가 정해져 있으면 그 주소, 아니면 이 주소에서 제보센터 화면 미리보기
     real=sorted(h for h in JEBO_HOSTS if not h.startswith('www.'))
     return 'https://'+real[0]+'/' if real and request.host.split(':')[0].lower() not in JEBO_HOSTS else url_for('home',face='jebo')
-app.jinja_env.globals.update(jebo_site_url=jebo_site_url,face_url=face_url,current_face=current_face,shared_lists=SHARED_LISTS)
+def main_site_url():
+    # 관리자 '사이트 보기 > 소보루': 실제 운영 중이면 soboru.co.kr, 아니면 이 주소에서 소보루 화면
+    return 'https://'+main_host()+'/' if JEBO_HOSTS and main_host() not in JEBO_HOSTS and request.host.split(':')[0].lower()!=main_host() else url_for('home',face='off')
+app.jinja_env.globals.update(main_site_url=main_site_url,jebo_site_url=jebo_site_url,face_url=face_url,current_face=current_face,shared_lists=SHARED_LISTS)
 def canonical_url(path=None):
     # 운영 도메인(www 포함)으로 들어오면 주소를 https://대표주소 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
     host=request.host.split(':')[0].lower();path=request.path if path is None else path
