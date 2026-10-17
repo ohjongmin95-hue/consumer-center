@@ -1105,13 +1105,13 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 @media(max-width:680px){.sb .title-cell.has-emo{padding-left:54px}.sb .sbr-emo{width:40px;height:40px;font-size:20px;border-radius:12px}.sb .gd-ic.gd-emo{font-size:30px;border-radius:20px}}
 
 /* 첫 화면: 뉴닉식 귤색 바탕 카드, 흰 글자, 갈색 제보하기 버튼, 오른쪽에 캐릭터와 말풍선 */
-.nn-intro{background:#ff7a00;border-radius:32px;padding:64px 64px 64px 72px;color:#fff;overflow:hidden}
-.nn-intro .nn-intro-kicker{color:rgba(255,255,255,.88)}.nn-intro .nn-intro-kicker b{color:#5a2410}
-.nn-intro .nn-intro-name{color:#fff}
-.nn-intro .nn-intro-sub{color:rgba(255,255,255,.94)}
-.nn-intro .nn-intro-btns .sb-cta{background:#9c4200;color:#fff;box-shadow:none}
-.nn-intro .nn-intro-btns .sb-cta:hover{background:#863800}
-.nn-intro .nn-intro-link{color:#fff}.nn-intro .nn-intro-link:hover{color:#fff;text-decoration:underline}
+.nn-intro{background:#ff7a00;border-radius:32px;padding:64px 64px 64px 72px;color:#2b1206;overflow:hidden}
+.nn-intro .nn-intro-kicker{color:#4a1f0b}.nn-intro .nn-intro-kicker b{color:#fff}
+.nn-intro .nn-intro-name{color:#2b1206}
+.nn-intro .nn-intro-sub{color:#3d1a08;font-weight:500}
+.nn-intro .nn-intro-btns .sb-cta{background:#2b1206;color:#fff;box-shadow:none}
+.nn-intro .nn-intro-btns .sb-cta:hover{background:#46200d}
+.nn-intro .nn-intro-link{color:#2b1206;font-weight:700}.nn-intro .nn-intro-link:hover{color:#2b1206;text-decoration:underline}
 .nn-intro .nn-intro-art{aspect-ratio:auto;max-width:420px;display:flex;flex-direction:column;align-items:flex-end;justify-self:end}
 .nn-bubble{position:relative;align-self:flex-end;margin:0 4% 14px 0;padding:11px 18px;border-radius:999px;background:#ffd6a5;color:#5a2410;font-size:16px;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
 .nn-bubble::after{content:'';position:absolute;right:26%;bottom:-9px;width:18px;height:14px;background:#ffd6a5;clip-path:polygon(0 0,100% 0,30% 100%)}
