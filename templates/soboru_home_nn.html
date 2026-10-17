@@ -7,6 +7,7 @@
   {% if show.top %}
   {# 맨 위는 소보루 소개만: 이름·한 줄 설명·큰 캐릭터·하는 일 바로가기. 건수·실시간 목록은 아래 '지금 올라온 제보'로 #}
   <section class="nn-intro">
+    <div class="nn-intro-card">
     <div class="nn-intro-copy">
       <p class="nn-intro-kicker">소비자의 경험을 나누는 곳</p>
       <h1 class="nn-intro-name">소보루</h1>
@@ -14,7 +15,8 @@
       <p class="nn-intro-sub">억울한 일은 제보하고, 써 본 건 추천하고, <br>내 권리는 쉽게 알아봐요.</p>
       <div class="nn-intro-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-ghost" href="{{ url_for('board') }}">소보루 픽 둘러보기</a></div>
     </div>
-    <div class="nn-intro-art"><img src="{{ asset('img/soboru-character-lg.png') }}" alt="펜을 든 소보루 캐릭터" width="560" height="432"></div>
+    <div class="nn-intro-art"><p class="nn-intro-bubble">억울한 일, 같이 정리해 드릴게요!</p><img src="{{ asset('img/soboru-character-lg.png') }}" alt="펜을 든 소보루 캐릭터" width="560" height="432"></div>
+    </div>
     <nav class="nn-intro-menu" aria-label="소보루에서 할 수 있는 일">
       <a href="{{ url_for('report') }}"><span aria-hidden="true">📣</span>소비자 피해 제보</a>
       <a href="{{ url_for('reports') }}"><span aria-hidden="true">📋</span>올라온 제보 보기</a>
