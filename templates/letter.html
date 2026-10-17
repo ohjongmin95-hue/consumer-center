@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from 'letter_macros.html' import subscribe_form with context %}
-{% block title %}{{ ui_text('letter.title', '크로와상 레터') }} | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ ui_text('letter.title', '소보루 레터') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui_text('letter.description', '평일 아침마다 그날 꼭 알아야 할 주요 이슈를 쉽게 풀어 메일로 보내 드려요. 내 생활에 어떤 의미인지, 관련 법, 소보루 픽 인기 리뷰까지.') }}{% endblock %}
 {% block content %}
 {% set cfg = letter_cfg() %}
@@ -10,8 +10,8 @@
   {% if blk == 'hero' %}
   <section class="lt-hero" id="sub">
     <div class="lt-hero-copy">
-      <p class="lt-kicker"><img class="lt-cr" src="{{ asset('img/croissant-char.svg') }}" alt="" aria-hidden="true"> {{ ui('letter.kicker', '크로와상 레터') }}</p>
-      <h1>{{ ui('letter.h1', '갓 구운 {span}의 이슈,\n한 입 크기로 5분이면 끝', span=cfg.span) }}</h1>
+      <p class="lt-kicker"><span class="tf" aria-hidden="true">📨</span> {{ ui('letter.kicker', 'SOBORU LETTER') }}</p>
+      <h1>{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }}</h1>
       <p class="lt-hero-sub">{{ ui('letter.sub', '경제·사회·국제·IT부터 내 지갑과 닿은 소비자 소식까지, 여러 언론이 함께 다룬 이슈를 골라 친구에게 말하듯 쉽게 풀어 {when} 보내 드려요.', when=cfg.when) }}</p>
       {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
                       'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent', '이메일 수집·이용에 동의해야 구독할 수 있어요.')),
@@ -21,7 +21,7 @@
       {{ subscribe_form('letter', True) }}
     </div>
     <div class="lt-hero-art" aria-hidden="true">
-      <img class="lt-env" src="{{ asset('img/croissant-char.svg') }}" alt="">
+      <span class="lt-env tf">✉️</span>
       <img src="{{ asset('img/soboru-character.png') }}" alt="" width="152" height="118">
     </div>
   </section>
