@@ -13,7 +13,12 @@
       <p class="nn-intro-sub">억울한 일은 제보하고, 써 본 건 추천하고, <br>내 권리는 쉽게 알아보는 소비자 정보 플랫폼이에요.</p>
       <div class="nn-intro-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-intro-link" href="{{ url_for('board') }}">소보루 픽 둘러보기 ›</a></div>
     </div>
-    <div class="nn-intro-art"><img src="{{ asset('img/soboru-character-lg.png') }}" alt="펜을 든 소보루 캐릭터" width="560" height="432"></div>
+    {# 토스식 그림: 소보루가 하는 일(제보·택배·결제·영수증·리뷰·상담)을 토스페이스 이모지 타일로 #}
+    <div class="nn-intro-art" aria-hidden="true">
+      <span class="nn-orb"></span>
+      <span class="nn-tile big">📣</span><span class="nn-tile a t1">📦</span><span class="nn-tile b t2">💳</span>
+      <span class="nn-tile c t6">⭐</span><span class="nn-tile d t3">🧾</span><span class="nn-tile e t5">💬</span>
+    </div>
   </section>
   <nav class="nn-quick" aria-label="소보루에서 할 수 있는 일">
     <a href="{{ url_for('reports') }}"><span class="nn-wi t1" aria-hidden="true">📋</span><b>올라온 제보</b></a>
