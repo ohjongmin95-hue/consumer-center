@@ -272,7 +272,7 @@ def install(S):
     old_home = app.view_functions['home']
     def home():
         if not is_soboru(): return old_home()
-        if request.args.get('look') == 'nn': return home_nn()
+        if request.args.get('look') != 'old': return home_nn()  # 예전 홈은 /?look=old 로 비교용
         plan = home_plan()
         lead, side = pick_top(plan)
         shown = [x['id'] for x in ([lead] if lead else []) + side if x['kind'] == 'life']
@@ -282,7 +282,8 @@ def install(S):
     app.view_functions['home'] = home
 
     def home_nn():
-        # 뉴닉식 홈 미리보기(/?look=nn): 그림 없이 글·이모지, 실시간 제보를 맨 위에
+        # 뉴닉식 홈(운영자 요청, 2026-10-17): 그림은 캐릭터 하나, 글·이모지 위주, 실시간 제보를 맨 위에.
+        # 관리자 > 메인 화면 순서의 켜고 끄기를 따름: top=맨 위·실시간 제보, life=소비 이야기, rank=소보루 픽·기업 답변 기록
         lifes = [life_item(a) for a in life_rows(8)]
         reps = [r for r in report_items(6) if r['title']]
         feed = []
@@ -298,7 +299,8 @@ def install(S):
         with conn() as db:
             picks = [dict(r) for r in db.execute("""SELECT target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg,SUM(recommend=1) AS rec
                 FROM posts WHERE kind='review' AND hidden=0 AND target!='' GROUP BY target ORDER BY rec DESC,avg DESC,n DESC LIMIT 5""")]
-        return render_template('soboru_home_nn.html', cases=S.report_rows(limit=6), feed=feed[:10], cats=cats, stats=stats,
+        show = {k: on for k, on in home_plan()['sections']}
+        return render_template('soboru_home_nn.html', show=show, cases=S.report_rows(limit=6), feed=feed[:10], cats=cats, stats=stats,
                                rank=company_rank(5), posts=S.community_feed(4), picks=picks)
 
     @app.route('/admin/home-plan', methods=['GET', 'POST'])

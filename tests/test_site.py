@@ -236,7 +236,7 @@ class SiteTest(unittest.TestCase):
             db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
         try:
             home = visitor.get('/').get_data(as_text=True)
-            self.assertIn('sb-home', home)
+            self.assertIn('nn-home', home)
             self.assertIn('택배 분실 보상 정리', home)
             self.assertNotIn('소보루 미리보기 중', home)
             self.assertIn('소보루는 공공기관이 아닌', visitor.get('/companies').get_data(as_text=True))
@@ -245,7 +245,7 @@ class SiteTest(unittest.TestCase):
         finally:
             with self.site.conn() as db:
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")
-        self.assertNotIn('sb-home', visitor.get('/').get_data(as_text=True))
+        self.assertNotIn('nn-home', visitor.get('/').get_data(as_text=True))
         self.assertEqual(self.site.notify.site_name(), '소비자제보센터')
 
     def test_soboru_home_plan_rotates_reports_and_life(self):
@@ -261,7 +261,7 @@ class SiteTest(unittest.TestCase):
             page = admin.get('/admin/home-plan').get_data(as_text=True)
             self.assertIn('메인 화면 순서', page)
             r = admin.post('/admin/home-plan', data={'_csrf': self.csrf(admin, '/admin/home-plan'), 'slot': ['report', 'life', ''], 'hours': '6', 'pins': '',
-                                                     'order_top': '1', 'show_top': '1', 'order_box': '2', 'order_tools': '3', 'show_tools': '1'})
+                                                     'order_top': '1', 'show_top': '1', 'order_box': '2', 'order_life': '3', 'show_life': '1'})
             self.assertEqual(r.status_code, 302)
             soboru = self.site.soboru
             plan = soboru.clean_plan({'slots': ['report', 'life'], 'hours': 6})
@@ -271,8 +271,12 @@ class SiteTest(unittest.TestCase):
             home = self.client.get('/').get_data(as_text=True)
             self.assertIn('생활정보 카드 제목', home)
             self.assertIn('공개 제보 카드 제목', home)
-            self.assertNotIn('sb-report-box', home)  # 끈 묶음은 빠짐
-            self.assertNotIn('sb-tools', home)  # 제보 안내 바로가기는 메뉴로 옮김
+            self.assertIn('nn-live', home)  # 맨 위 실시간 제보
+            self.assertNotIn('비밀 제보 카드 제목', home)  # 비밀글은 제목 없이 '비공개 제보'로만
+            self.assertNotIn('nn-pick', home)  # 끈 묶음(소보루 픽·기업 답변)은 빠짐
+            self.assertIn('소보루 픽', home)  # 메뉴 이름 (커뮤니티 → 소보루 픽)
+            self.assertIn('AI 학습 이용을 금지', home)  # 하단 무단 이용 금지 문구
+            self.assertIn('User-agent: GPTBot', self.client.get('/robots.txt').get_data(as_text=True))
             self.assertIn('자주 묻는 질문', home); self.assertNotIn('피해 유형별 안내', home)  # 피해 유형별 안내는 메뉴에서 뺌(운영자 요청)
             self.assertNotIn('010-1234-5678', home)
             # 주기마다 맨 위가 제보 ↔ 생활정보로 바뀜
@@ -320,7 +324,7 @@ class SiteTest(unittest.TestCase):
             detail = visitor.get(f'/reports/{cid}').get_data(as_text=True)
             self.assertIn(f'/art/report/{cid}.webp', detail)
             self.assertNotIn('sb-art-l', detail); self.assertIn('sb-art-ai', detail)
-            self.assertIn('sb-art', visitor.get('/').get_data(as_text=True))
+            self.assertIn('sb-art', visitor.get('/?look=old').get_data(as_text=True))  # 새 홈은 그림 없이 이모지
             admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'hide'})
             self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)
             # 생활정보 글은 만들면 자동으로 그려서 바로 붙음

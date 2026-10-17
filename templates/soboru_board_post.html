@@ -4,7 +4,7 @@
 {% set rate_words = ['', '별로예요', '아쉬워요', '보통이에요', '좋아요', '최고예요'] %}
 {% set mine = (g.user and post['user_id'] == g.user['id']) %}
 <main class="sb-wrap cm cm-post">
-  <a class="cm-back" href="{{ url_for('board', type=k) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('cm.title', '커뮤니티') }} · {{ POST_KIND_NAMES[k] }}</a>
+  <a class="cm-back" href="{{ url_for('board', type=k) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('cm.title', '소보루 픽') }} · {{ POST_KIND_NAMES[k] }}</a>
   <article class="cm-article">
     {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨김 처리된 글입니다. 운영자에게만 보입니다.') }}</div>{% endif %}
     <div class="cm-kicker">{{ kind_chip(k) }}{% if k == 'post' %}<span>{{ post['category'] }}</span>{% elif k == 'tip' %}<span>{{ read_minutes(post['body']) }}분이면 읽어요</span>{% elif k == 'question' %}{% if post['solved'] %}<span class="cm-solved">해결됨</span>{% else %}<span>답변을 기다려요</span>{% endif %}{% endif %}</div>

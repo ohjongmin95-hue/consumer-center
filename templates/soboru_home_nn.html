@@ -1,9 +1,10 @@
 {% extends 'base.html' %}
 {% from 'community_macros.html' import top_line as cm_top, sub_line as cm_sub, foot_line as cm_foot %}
 {% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
-{# 뉴닉식 홈 (미리보기): 그림은 맨 위 캐릭터 하나만, 나머지는 글과 토스페이스 이모지. 실시간 제보를 맨 위 오른쪽에 #}
+{# 뉴닉식 홈: 그림은 맨 위 캐릭터 하나만, 나머지는 글과 토스페이스 이모지. 실시간 제보를 맨 위 오른쪽에 #}
 {% block content %}
 <main class="sb-wrap nn-home">
+  {% if show.top %}
   <section class="nn-hero">
     <div class="nn-hero-main">
       <p class="nn-kicker"><b>소</b>비자 권익 <b>보</b>호를 위한 <b>루</b>트</p>
@@ -29,7 +30,9 @@
       </ol>
     </div>
   </section>
+  {% endif %}
 
+  {% if show.life %}
   <section class="nn-sec">
     <div class="nn-sec-head"><h2>알아 두면 돈 버는 소비 이야기</h2><a href="{{ url_for('life') }}">더 보기 ›</a></div>
     <div class="nn-chips" role="tablist">
@@ -51,6 +54,9 @@
     </div>
   </section>
 
+  {% endif %}
+
+  {% if show.rank %}
   <section class="nn-sec nn-pick">
     <div class="nn-pick-head">
       <div><p class="nn-eyebrow">써 본 소비자가 직접 골랐어요</p><h2>소보루 픽</h2><p class="nn-sub">제품·업체 추천부터 솔직한 리뷰, 살까 말까 고민될 때 질문까지. 광고 없이 소비자끼리만 나눠요.</p></div>
@@ -105,17 +111,21 @@
       <span class="nn-biz-go">업체 등록 안내 ›</span>
     </a>
   </section>
-  <p class="nn-copy">ⓒ 소보루. 소보루의 제보 글, 기사, 그림은 저작권법의 보호를 받아요. 무단 전재·재배포, 자동 수집(크롤링), AI 학습 이용을 금지합니다.</p>
+  {% endif %}
 </main>
 <script>
-  document.querySelectorAll('[data-tabs]').forEach(function (box) {
-    box.querySelectorAll('[data-tab]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        box.querySelectorAll('[data-tab]').forEach(function (b) { var on = b === btn; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
-        box.querySelectorAll('[data-pane]').forEach(function (p) { p.hidden = p.getAttribute('data-pane') !== btn.getAttribute('data-tab'); });
-      });
-    });
-  });
+  // 실시간 제보: 화면을 켜 두면 30초마다 새 목록으로 바꿈
+  (function () {
+    var box = document.querySelector('.nn-live ol');
+    if (!box || !window.fetch || !window.DOMParser) return;
+    setInterval(function () {
+      if (document.hidden) return;
+      fetch(location.pathname, {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.text() : null; }).then(function (html) {
+        var fresh = html && new DOMParser().parseFromString(html, 'text/html').querySelector('.nn-live ol');
+        if (fresh && fresh.innerHTML !== box.innerHTML) box.innerHTML = fresh.innerHTML;
+      }).catch(function () {});
+    }, 30000);
+  })();
   // 분야 칩: 누르면 그 종류·분야 글만
   document.querySelectorAll('[data-chip]').forEach(function (btn) {
     btn.addEventListener('click', function () {

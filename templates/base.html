@@ -77,6 +77,7 @@
     {% if rows %}<div class="ft-info">{% for row in rows %}<ul class="ft-row">{% for key, label, value in row %}<li{{ ed_attr(key) }}>{{ label }}. {% if key == 'operator.manager' %}{# 관리자 이름 첫 글자: 관리자 로그인으로 가는 숨은 링크 #}<a class="ft-quiet" href="{{ url_for('admin_login') }}" rel="nofollow">{{ value[:1] }}</a>{{ value[1:] }}{% else %}{{ value }}{% endif %}</li>{% endfor %}</ul>{% endfor %}</div>{% endif %}
     <div class="ft-bottom">
       {% if txt('operator.notice') %}<p class="ft-notice">{{ txt('operator.notice') }}</p>{% endif %}
+      {% if txt('footer.nocopy') %}<p class="ft-notice">{{ txt('footer.nocopy') }}</p>{% endif %}
       <p class="ft-copy">{{ txt('footer.text') }}</p>
     </div>
   </div>

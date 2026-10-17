@@ -58,6 +58,7 @@ SECTIONS = [
         ('operator.youth_contact', '청소년보호책임자 연락처 (비우면 개인정보 보호책임자 연락처)', '', OPT),
         ('operator.notice', '하단 안내 문구 (비우면 표시 안 함)', '', OPT_ML),
         ('footer.text', '저작권 문구 (맨 아래)', '© SOBORU All rights reserved.', ML),
+        ('footer.nocopy', '무단 이용 금지 문구 (저작권 문구 위)', '소보루의 제보 글, 기사, 그림은 저작권법의 보호를 받습니다. 무단 전재·재배포, 자동 수집(크롤링), AI 학습 이용을 금지합니다.', ML),
     ]),
     ('home', '메인 화면', [
         ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),
