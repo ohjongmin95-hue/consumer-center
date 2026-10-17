@@ -107,7 +107,7 @@ def no_www():
     # www가 붙은 주소는 www 없는 주소로 옮긴다: 검색엔진이 같은 글을 두 주소로 따로 모으지 않게
     if request.host.lower().startswith('www.'):
         new=request.url.replace('://'+request.host,'://'+request.host[4:],1)
-        if request.host.lower().split(':')[0]=='www.consumerjebo.co.kr':new='https://'+new.split('://',1)[1]  # 운영 도메인은 https까지 한 번에(두 번 옮기지 않게)
+        if request.host.lower().split(':')[0] in LIVE_HOSTS:new='https://'+new.split('://',1)[1]  # 운영 도메인은 https까지 한 번에(두 번 옮기지 않게)
         return redirect(new,301)
 @app.before_request
 def content_for_request():
@@ -153,11 +153,13 @@ app.jinja_env.globals['groups_on']=lambda:GROUPS_ON
 # 기업 회원(업체 가입·로그인)도 기본으로 꺼 둠. 업체 답변은 센터가 보내는 답변 링크(/company/...)로 받음. 다시 켜려면 ENABLE_BIZ_MEMBERS=1
 BIZ_ON=os.getenv('ENABLE_BIZ_MEMBERS')=='1'
 app.jinja_env.globals['biz_on']=lambda:BIZ_ON
-CANONICAL_HOST='consumerjebo.co.kr'
+# 대표 주소. soboru.co.kr로 옮길 때 서버 설정에 CANONICAL_HOST=soboru.co.kr (deploy/soboru-main.sh --make-main)
+CANONICAL_HOST=(os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().lower()
+LIVE_HOSTS={h for d in (CANONICAL_HOST,'consumerjebo.co.kr','soboru.co.kr') for h in (d,'www.'+d)}
 def canonical_url(path=None):
-    # 운영 도메인(www 포함)으로 들어오면 주소를 https://consumerjebo.co.kr 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
+    # 운영 도메인(www 포함)으로 들어오면 주소를 https://대표주소 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
     host=request.host.split(':')[0].lower()
-    base='https://'+CANONICAL_HOST if host in (CANONICAL_HOST,'www.'+CANONICAL_HOST) else request.host_url.rstrip('/')
+    base='https://'+CANONICAL_HOST if host in LIVE_HOSTS else request.host_url.rstrip('/')
     return base+(request.path if path is None else path)
 app.jinja_env.globals['canonical_url']=canonical_url
 @app.before_request

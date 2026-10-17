@@ -18,7 +18,7 @@ import datetime, json, os, re, statistics, sys, threading, urllib.error, urllib.
 import xml.etree.ElementTree as ET
 from flask import abort, flash, g, redirect, render_template, request, url_for
 
-SITE = 'https://consumerjebo.co.kr'
+SITE = 'https://' + (os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().lower()
 TREND_WORDS = ['환불', '위약금', '리콜', '택배 분실', '구독 해지']  # 네이버 검색어트렌드는 한 번에 5묶음까지
 NEWS_QUERIES = ['소비자 피해', '환불 분쟁', '리콜']
 NEWS_DAYS = 7

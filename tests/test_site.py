@@ -236,6 +236,9 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<meta property="og:url" content="https://consumerjebo.co.kr/">', prod)
         self.assertIn('<loc>https://consumerjebo.co.kr/</loc>', self.client.get('/sitemap.xml', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
         self.assertIn('Sitemap: https://consumerjebo.co.kr/sitemap.xml', self.client.get('/robots.txt', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
+        # soboru.co.kr로 들어와도 같은 사이트, 대표 주소는 CANONICAL_HOST(기본 consumerjebo.co.kr)
+        self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True))
+        self.assertEqual(self.client.get('/letter', base_url='http://www.soboru.co.kr').headers['Location'], 'https://soboru.co.kr/letter')
         # 생활정보: 초안은 관리자만, 게시하면 누구나
         r = admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '택배 분실 보상 정리', 'summary': '요약', 'body': '첫 문단\n\n## 소제목\n- 목록', 'category': '쇼핑', 'emoji': '📦', 'tone': 't1'})
         aid = int(r.headers['Location'].rstrip('/').split('/')[-1])
