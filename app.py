@@ -10,6 +10,7 @@ import casetalk
 import soboru_art
 import naverhub
 import lawask
+import lawrag
 import notify
 import jebo
 import soboru
@@ -2353,5 +2354,7 @@ _art=types.SimpleNamespace(**globals());soboru_art.install(_art)
 _naver=types.SimpleNamespace(**globals());naverhub.install(_naver)
 # 소비자 법률 질문창(/ask)과 관리자 > 법령 학습: 법령 PDF를 올려 조문 모음에 더함 (lawask.py)
 _ask=types.SimpleNamespace(**globals());lawask.install(_ask)
+# AI 소비자 상담 새 버전: 유형 분류·키워드+임베딩 검색·근거 확인·상담 기록·관리자 대시보드 (lawrag.py, 관리자 설정으로 켤 때만 손님에게 보임)
+_rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
 
 if __name__=='__main__':app.run(debug=False)

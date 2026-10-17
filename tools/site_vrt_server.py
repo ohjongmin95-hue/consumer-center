@@ -118,6 +118,54 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
                    'refs': [r for r in refs if r.startswith('ecom:제17') or r.startswith('ecom:제18')][:2] or refs[:2], 'covered': True, 'suggest_report': True}
             return 200, {'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
         os.environ['OPENAI_API_KEY'] = 'vrt-fake'; m.companydesk.post_json = fake_ai
+    if hasattr(m, 'lawrag'):
+        # AI 소비자 상담 새 버전: 가짜 임베딩·가짜 답, 분쟁해결기준 별표 몇 줄, 현행 확인 기록, 품질 시험·상담 기록 (스위치는 꺼진 채, 관리자가 켬)
+        import lawsync as _ls, hashlib as _h, datetime as _d
+        rag = m.app.extensions['lawrag']; st = rag['store']
+        W = lambda a, b, c='': f'{a:<34}{b:<44}{c}'
+        pages = ['\n'.join(['[별표 Ⅱ] 품목별 해결기준(제3조 관련)', '[시행 2025. 12. 18.]', '12. 체육시설업(헬스장, 필라테스, 요가)', W('분쟁유형', '해결기준', '비고'),
+                            W('1) 사업자의 귀책사유로 계약을', '- 계약해제 및 이용료 환급'), W('해제하는 경우', '- 남은 기간 이용료 전액 환급'),
+                            W('2) 소비자의 사정으로 중도 해지', '- 이용일수에 해당하는 금액과 총 이용금액의', '개시일 이후'), W('하는 경우', '10% 공제 후 환급')]),
+                 '\n'.join(['31. 외식업', W('분쟁유형', '해결기준', '비고'), W('1) 음식물에 이물 혼입', '- 제품 교환 또는 구입가 환급'), W('2) 부패·변질된 음식물', '- 제품 교환 또는 구입가 환급, 치료비 배상')]),
+                 '\n'.join(['40. 인터넷콘텐츠업(구독 서비스)', W('분쟁유형', '해결기준', '비고'), W('1) 계약 중도 해지', '- 해지일까지 이용일수 요금과 잔여기간 이용금액의', '1개월 이상 계약'), W('', '10% 공제 후 환급')])]
+        _x = _ls.parse_appendix(pages); _x.update(doc='소비자분쟁해결기준 [별표 Ⅱ]', file='소비자분쟁해결기준_별표2.pdf', added='2026-10-16T10:00:00')
+        _ls.save_appendix(st, [_x])
+        _now = _d.datetime.now().isoformat(timespec='seconds')
+        st.write(st.status, {k: {'name': n, 'short': s, 'current': c, 'checked': _now, 'target': tg} for k, n, s, c, tg in [
+            ('basic', '소비자기본법', '소비자기본법', '2026-09-11', 'law'), ('ecom', '전자상거래 등에서의 소비자보호에 관한 법률', '전자상거래법', '2026-07-21', 'law'),
+            ('terms', '약관의 규제에 관한 법률', '약관법', '2024-08-07', 'law'), ('food', '식품위생법', '식품위생법', '2026-10-08', 'law'),
+            ('installment', '할부거래에 관한 법률', '할부거래법', '2026-03-01', 'law'), ('kca', '소비자분쟁해결기준', '소비자분쟁해결기준', '2025-12-18', 'admrul')]})
+        def _vec(text):
+            v = [0.0] * 512
+            for w in re.findall(r'[가-힣]+', text):
+                for i in range(len(w) - 1): v[int(_h.md5(w[i:i + 2].encode()).hexdigest(), 16) % 512] += 1
+            return v
+        _prev = m.companydesk.post_json
+        def fake_rag(url, headers, body, timeout):
+            if url.endswith('/embeddings'):
+                return 200, {'data': [{'index': i, 'embedding': _vec(x)} for i, x in enumerate(body['input'])], 'usage': {'total_tokens': 12 * len(body['input'])}}
+            if 'AI 소비자 상담 도우미' not in body['messages'][0]['content']: return _prev(url, headers, body, timeout)
+            user = body['messages'][-1]['content']; ids = re.findall(r'^\[(c\d+)\] \(([^)]+\)?)\) (.+)$', user, re.M)
+            appx = [i for i, k, l in ids if '체육시설' in l or '인터넷콘텐츠' in l] or [i for i, k, l in ids if '분쟁해결기준' in k]
+            law = [i for i, k, l in ids if k == '법률 조문'] or [i for i, _, _ in ids]
+            a, b = (appx or law)[0], law[0]
+            bm = f' [{b}]' if b != a else ''
+            if '헬스' in user:
+                parts = [{'name': '핵심 결론', 'text': f'헬스장 이용권을 중간에 해지해도 남은 기간 이용료는 돌려받을 수 있는 경우가 많아요. 소비자분쟁해결기준은 소비자 사정으로 중도 해지하면 이용일수에 해당하는 금액과 총 이용금액의 10%를 빼고 환급하도록 권고해요 [{a}].'},
+                         {'name': '환불·보상 가능성', 'text': f'- 쓴 기간 이용료와 총 이용금액의 10%를 뺀 나머지를 돌려받을 수 있어요 [{a}].\n- 할인가로 계약했다면 할인가를 기준으로 계산하는지 업체에 확인해 보세요.\n- 분쟁해결기준은 권고라서 업체가 꼭 따라야 하는 것은 아니에요.'},
+                         {'name': '증거', 'text': '- 계약서나 이용권 영수증, 결제 내역\n- 해지를 요청한 문자·앱 메시지 화면\n- 업체가 안내한 환불 금액'},
+                         {'name': '대응 절차', 'text': f'- 문자나 앱처럼 기록이 남는 방법으로 해지와 환불을 요청해요.\n- 업체가 응하지 않으면 소비자기본법에 따른 피해구제를 신청할 수 있어요{bm}.'},
+                         {'name': '신고·상담기관', 'text': '- 1372 소비자상담센터에서 상담받을 수 있어요.\n- 한국소비자원에 피해구제를 신청할 수 있어요.'}]
+            else:
+                parts = [{'name': '핵심 결론', 'text': f'찾은 근거 원문으로 보면 업체에 환불이나 교환을 요청할 수 있는 경우가 많아요 [{a}].'},
+                         {'name': '대응 절차', 'text': f'- 기록이 남는 방법으로 먼저 요청해요{bm}.\n- 답이 없으면 1372 소비자상담센터에 상담해요.'}]
+            out = {'need_more': False, 'questions': [], 'parts': parts, 'refs': [a, b], 'covered': True}
+            return 200, {'model': m.companydesk.ai_model(), 'usage': {'prompt_tokens': 3100, 'completion_tokens': 620}, 'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
+        m.companydesk.post_json = fake_rag
+        rag['build_embeddings']()
+        _batch = _now
+        for _q in m.lawrag.TEST_QUESTIONS: rag['consult'](_q, (), 'test', batch=_batch)
+        for _q in m.lawrag.TEST_QUESTIONS[:12] + ['사이즈 추천 부탁해요 감사합니다']: rag['consult'](_q, (), 'ask')
 # 네이버 API HUB 화면 시험: VRT_NAVER=1이면 가짜 키와 가짜 응답으로 통합 검색·검색 추이·쇼핑 관심도를 띄움 (실제 네이버는 안 부름)
 if os.environ.get('VRT_NAVER') and hasattr(m, 'naverhub'):
     import random as _r
