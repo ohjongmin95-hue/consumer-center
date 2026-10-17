@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% from 'life_nv_macros.html' import nv_change, nv_months, nv_credit, nv_off %}
+{% block title %}{% if cat %}{{ cat }} · {% endif %}{{ ui('life.shop_title', '쇼핑 관심도') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('life.shop_desc', '네이버 쇼핑에서 분야별로 관심이 얼마나 늘고 줄었는지 보여 드려요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap sb-life nv">
+  <div class="sb-page-head"><h1>{% if cat %}{{ cat }}{% else %}{{ ui('life.shop_title', '쇼핑 관심도') }}{% endif %}</h1><p>{% if cat %}{{ ui('life.shop_cat_intro', '누가, 어디서 이 분야를 많이 찾는지 볼 수 있어요.') }}{% else %}{{ ui('life.shop_intro', '네이버 쇼핑에서 분야별 관심이 얼마나 늘고 줄었는지 볼 수 있어요.') }}{% endif %}</p></div>
+  {% include 'life_tabs.html' %}
+  {% if not ready %}{{ nv_off() }}{% else %}
+  {% if cat %}
+  <p class="nv-back"><a href="{{ url_for('life_shopping', months=months) }}">‹ 전체 분야</a></p>
+  <div class="nv-card-head nv-top">{{ nv_months(months, 'life_shopping', {'cat': code, 'k': words} if words else {'cat': code}) }}</div>
+  {% if error %}<p class="nv-error">{{ error }}</p>{% else %}
+  <div class="nv-splits">
+    <section class="nv-card"><h2>성별</h2>{% set g = detail.get('gender', {}) %}<div class="nv-bar2"><span class="f" style="width:{{ g.get('f', 0) }}%">여성 {{ g.get('f', 0) }}%</span><span class="m" style="width:{{ g.get('m', 0) }}%">남성 {{ g.get('m', 0) }}%</span></div></section>
+    <section class="nv-card"><h2>기기</h2>{% set d = detail.get('device', {}) %}<div class="nv-bar2"><span class="f" style="width:{{ d.get('mo', 0) }}%">모바일 {{ d.get('mo', 0) }}%</span><span class="m" style="width:{{ d.get('pc', 0) }}%">PC {{ d.get('pc', 0) }}%</span></div></section>
+    <section class="nv-card nv-wide"><h2>연령</h2>{% set a = detail.get('age', {}) %}{% set top = (a.values()|max) if a else 1 %}
+      <ul class="nv-ages">{% for k, label in ages %}<li><span>{{ label }}</span><i><b style="width:{{ ((a.get(k, 0) / (top or 1)) * 100)|round|int }}%"></b></i><em>{{ a.get(k, 0) }}%</em></li>{% endfor %}</ul></section>
+  </div>
+  <form class="nv-kw" action="{{ url_for('life_shopping') }}" method="get">
+    <p class="nv-label">{{ ui('life.shop_kw', '이 분야에서 견줘 볼 검색어 (5개까지)') }}</p>
+    <div class="nv-kw-row">{% for n in range(5) %}<input name="k" maxlength="20" value="{{ words[n] if n < words|length else '' }}" aria-label="검색어 {{ n + 1 }}"{% if n == 0 %} placeholder="예: 패딩"{% endif %}>{% endfor %}</div>
+    <input type="hidden" name="cat" value="{{ code }}"><input type="hidden" name="months" value="{{ months }}"><button type="submit">견줘 보기</button>
+  </form>
+  {% if detail.get('kw') %}<section class="nv-card">{{ detail['svg'] }}<ul class="nv-legend">{% for n, s in detail['kw'] %}<li><i style="background:{{ colors[loop.index0 % colors|length] }}"></i><b>{{ n }}</b></li>{% endfor %}</ul><p class="nv-note">네이버 쇼핑에서 이 분야 안의 검색어를 누른 횟수를, 가장 많았던 때를 100으로 둔 상대 값이에요.</p></section>{% endif %}
+  {% endif %}
+  {% else %}
+  <div class="nv-card-head nv-top"><p class="nv-label">{{ ui('life.shop_rank', '관심이 많이 늘어난 순서예요') }}</p>{{ nv_months(months, 'life_shopping') }}</div>
+  {% if error %}<p class="nv-error">{{ error }}</p>{% else %}
+  <div class="nv-cats">{% for r in rows %}<a href="{{ url_for('life_shopping', cat=r.code, months=months) }}"><span class="nv-rank">{{ loop.index }}</span><div><b>{{ r.name }}</b>{{ nv_change(r.change) }}</div>{{ chart([(r.name, r.series)], 200, 48, False) }}</a>{% endfor %}</div>
+  <p class="nv-note">{{ ui('life.shop_note', '네이버 쇼핑에서 분야를 누른 횟수가 앞 기간보다 얼마나 늘고 줄었는지예요. 분야를 누르면 성별·연령·기기별로 볼 수 있어요.') }}</p>
+  {% endif %}
+  {% endif %}
+  {{ nv_credit() }}
+  {% endif %}
+</main>
+{% endblock %}

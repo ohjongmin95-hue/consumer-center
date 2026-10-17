@@ -5,6 +5,7 @@
 {% block content %}
 <main class="sb-wrap sb-life">
   <div class="sb-page-head"><h1>{{ ui('life.title', '생활정보') }}</h1><p>{{ ui('life.intro', '알아 두면 돈 버는 소비자 정보를 쉽게 풀어 드려요.') }}</p></div>
+  {% set nv_tab = 'life' %}{% if naver_ready() %}{% include 'life_tabs.html' %}{% endif %}
   <nav class="sb-cats" aria-label="분야">
     <a href="{{ url_for('life') }}"{% if not cat %} class="on" aria-current="page"{% endif %}>전체</a>
     {% for c in LIFE_CATEGORIES %}<a href="{{ url_for('life', category=c) }}"{% if cat == c %} class="on" aria-current="page"{% endif %}>{{ c }}</a>{% endfor %}
@@ -13,5 +14,10 @@
   <div class="sb-grid">{% for a in rows %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{{ meta(a) }}</a>{% endfor %}</div>
   {% if pages > 1 %}<nav class="sb-pager" aria-label="쪽">{% if page > 1 %}<a href="{{ url_for('life', category=cat or None, page=page - 1) }}">‹ 이전</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a href="{{ url_for('life', category=cat or None, page=page + 1) }}">다음 ›</a>{% endif %}</nav>{% endif %}
   {% else %}<p class="sb-empty">{{ ui('life.empty', '아직 올라온 글이 없어요. 곧 채워 둘게요.') }}</p>{% endif %}
+  {% if not cat and page == 1 %}{% set news = naver_news() %}{% if news %}
+  {% from 'life_nv_macros.html' import nv_row, nv_credit %}
+  <section class="nv-sec nv-news"><div class="nv-sec-head"><h2>{{ ui('life.news_title', '요즘 소비자 뉴스') }}</h2><a class="sb-more" href="{{ url_for('life_search', q='소비자 피해', tab='news', sort='date') }}">더 보기 ›</a></div>
+    <ul class="nv-list">{% for it in news %}{{ nv_row(it) }}{% endfor %}</ul>{{ nv_credit() }}</section>
+  {% endif %}{% endif %}
 </main>
 {% endblock %}

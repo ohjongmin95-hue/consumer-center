@@ -360,6 +360,85 @@ class SiteTest(unittest.TestCase):
                 db.execute("DELETE FROM site_content WHERE key='site.brand'")
                 db.execute('DELETE FROM soboru_art'); db.execute('DELETE FROM articles')
 
+    def test_soboru_naver_hub(self):
+        # 네이버 API HUB: 서버에서만 키를 붙여 부르고, 같은 요청은 저장해 둔 결과를 다시 씀. 키는 화면에 안 나옴
+        calls = []
+        def fake(method, url, headers, body, timeout):
+            calls.append((method, url, headers, body))
+            path = url.split('ntruss.com', 1)[1].split('?')[0]
+            if path.startswith('/search/v1/'):
+                return 200, {'total': 3, 'items': [{'title': '<b>헬스장</b> 환불 &amp; 위약금', 'description': '요약 <b>환불</b>', 'link': 'https://n.news.naver.com/a/1',
+                                                    'originallink': 'https://www.example-news.co.kr/a/1', 'pubDate': 'Thu, 15 Oct 2026 09:00:00 +0900', 'bloggername': '블로거', 'postdate': '20261015', 'cafename': '맘카페'},
+                                                   {'title': '나쁜 링크', 'description': '', 'link': 'javascript:alert(1)'}]}
+            if path == '/search-trend/v1/search':
+                return 200, {'results': [{'title': g['groupName'], 'keywords': g['keywords'], 'data': [{'period': '2026-09-01', 'ratio': 40}, {'period': '2026-09-08', 'ratio': 50}, {'period': '2026-09-15', 'ratio': 80}, {'period': '2026-09-22', 'ratio': 100}]} for g in body['keywordGroups']]}
+            if path == '/shopping/v1/categories':
+                return 200, {'results': [{'title': c['name'], 'category': c['param'], 'data': [{'period': '2026-09-01', 'ratio': 50}, {'period': '2026-09-08', 'ratio': 60}]} for c in body['category']]}
+            if path in ('/shopping/v1/category/gender', '/shopping/v1/category/age', '/shopping/v1/category/device'):
+                grp = {'gender': ['f', 'm'], 'age': ['20', '30'], 'device': ['pc', 'mo']}[path.rsplit('/', 1)[1]]
+                return 200, {'results': [{'title': '분야', 'data': [{'period': '2026-09-01', 'group': grp[0], 'ratio': 75}, {'period': '2026-09-01', 'group': grp[1], 'ratio': 25}]}]}
+            if path == '/shopping/v1/category/keywords':
+                return 200, {'results': [{'title': k['name'], 'keyword': k['param'], 'data': [{'period': '2026-09-01', 'ratio': 30}, {'period': '2026-09-08', 'ratio': 90}]} for k in body['keyword']]}
+            return 404, {}
+        with self.site.conn() as db:
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+            db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
+        hub = self.site.naverhub
+        try:
+            # 키가 없으면 '곧 열려요'만, 네이버는 부르지 않음
+            with patch.object(hub, 'http', fake):
+                self.assertIn('곧 열려요', self.client.get('/life/search?q=환불').get_data(as_text=True))
+            self.assertEqual(calls, [])
+            env = {'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+            with patch.dict(os.environ, env), patch.object(hub, 'http', fake):
+                page = self.client.get('/life/search?q=헬스장 환불').get_data(as_text=True)
+                self.assertIn('헬스장 환불 &amp; 위약금', page)
+                self.assertIn('https://www.example-news.co.kr/a/1', page)  # 뉴스는 원문 링크
+                self.assertIn('example-news.co.kr', page)
+                self.assertIn('맘카페', page)
+                self.assertIn('검색 결과 제공: NAVER', page)
+                self.assertNotIn('javascript:', page)
+                self.assertNotIn('<b>헬스장', page)
+                self.assertNotIn('secret-test-value', page)
+                self.assertNotIn('cid-test', page)
+                self.assertEqual(len(calls), 4)
+                method, url, headers, _ = calls[0]
+                self.assertTrue(url.startswith('https://naverapihub.apigw.ntruss.com/search/v1/'))
+                self.assertEqual((headers['X-NCP-APIGW-API-KEY-ID'], headers['X-NCP-APIGW-API-KEY']), ('cid-test', 'secret-test-value'))
+                self.client.get('/life/search?q=헬스장 환불')
+                self.assertEqual(len(calls), 4)  # 같은 검색은 저장해 둔 결과
+                page = self.client.get('/life/search?q=헬스장 환불&tab=news&sort=date').get_data(as_text=True)
+                self.assertIn('sort=date', calls[-1][1])
+                self.assertIn('3건', page)
+                # 검색어 추이·쇼핑 관심도
+                page = self.client.get('/life/trend?k=환불&k=택배&months=3').get_data(as_text=True)
+                self.assertIn('nv-chart', page)
+                self.assertEqual([g['groupName'] for g in calls[-1][3]['keywordGroups']], ['환불', '택배'])
+                self.assertEqual(calls[-1][2]['Content-Type'], 'application/json')
+                page = self.client.get('/life/shopping').get_data(as_text=True)
+                self.assertIn('디지털/가전', page)
+                self.assertIn('20%', page)
+                page = self.client.get('/life/shopping?cat=50000003&k=노트북').get_data(as_text=True)
+                self.assertIn('여성 75%', page)
+                self.assertIn('모바일 25%', page)
+                self.assertEqual(calls[-1][3]['category'], '50000003')
+                self.assertEqual(self.client.get('/life/shopping?cat=999').status_code, 404)
+                # 생활정보 첫 화면: 탭과 요즘 소비자 뉴스
+                life = self.client.get('/life').get_data(as_text=True)
+                self.assertIn('요즘 소비자 뉴스', life)
+                self.assertIn('통합 검색', life)
+            # 인증 실패·한도 초과는 키 없이 쉬운 말로
+            with patch.dict(os.environ, dict(env, NAVER_HUB_DAILY_SEARCH='1000000')), patch.object(hub, 'http', lambda *a: (401, {'errorCode': '401'})):
+                page = self.client.get('/life/search?q=새로운 말').get_data(as_text=True)
+                self.assertIn('네이버 검색 연결을 확인하고 있어요', page)
+                self.assertNotIn('secret-test-value', page)
+            with self.site.conn() as db: db.execute("UPDATE naver_usage SET n=99999 WHERE api='search'")
+            with patch.dict(os.environ, env), patch.object(hub, 'http', fake):
+                self.assertIn('오늘 쓸 수 있는 검색을 모두 썼어요', self.client.get('/life/search?q=또 다른 말').get_data(as_text=True))
+        finally:
+            with self.site.conn() as db:
+                db.execute("DELETE FROM site_content WHERE key='site.brand'"); db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
+
     def test_case_metoo_and_comments(self):
         # 공개 제보: '나도 겪었어요' 공감(누르면 +1, 다시 누르면 취소), 댓글(연락처 가림), 알리기 5번이면 숨김, 비공개 제보는 막힘
         with self.site.conn() as db:

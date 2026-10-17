@@ -1,0 +1,9 @@
+{# 네이버 검색 결과 한 줄: 출처·날짜, 제목, 요약, 원문 링크 #}
+{% macro nv_row(it) %}<li class="nv-row"><a href="{{ it.url }}" target="_blank" rel="noopener nofollow noreferrer">
+  <p class="nv-src"><b>{{ it.source }}</b>{% if it.date %}<span>{{ it.date }}</span>{% endif %}</p>
+  <h3>{{ it.title }}</h3>{% if it.summary %}<p class="nv-sum">{{ it.summary }}</p>{% endif %}
+  <span class="nv-out" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6h9v9M18 6L7 17"/></svg></span></a></li>{% endmacro %}
+{% macro nv_change(c) %}{% if c is not none %}<em class="nv-chg {{ 'up' if c > 0 else ('down' if c < 0 else '') }}">{{ '▲' if c > 0 else ('▼' if c < 0 else '') }} {{ c|abs }}%</em>{% else %}<em class="nv-chg">-</em>{% endif %}{% endmacro %}
+{% macro nv_months(months, endpoint, extra={}) %}<div class="nv-seg" role="group" aria-label="기간">{% for m, label in ((1, '1개월'), (3, '3개월'), (12, '1년')) %}<a href="{{ url_for(endpoint, months=m, **extra) }}"{% if months == m %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</div>{% endmacro %}
+{% macro nv_credit() %}<p class="nv-credit">검색 결과 제공: NAVER · 제목과 요약만 보여 드리고, 원문은 각 사이트에서 볼 수 있어요.</p>{% endmacro %}
+{% macro nv_off() %}<div class="nv-off"><p><b>{{ ui('life.nv_off', '곧 열려요') }}</b></p><p>{{ ui('life.nv_off_s', '네이버 검색 연결을 준비하고 있어요. 조금만 기다려 주세요.') }}</p></div>{% endmacro %}

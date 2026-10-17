@@ -104,5 +104,34 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
                    'refs': [r for r in refs if r.startswith('ecom:제17') or r.startswith('ecom:제18')][:2] or refs[:2], 'covered': True, 'suggest_report': True}
             return 200, {'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
         os.environ['OPENAI_API_KEY'] = 'vrt-fake'; m.companydesk.post_json = fake_ai
+# 네이버 API HUB 화면 시험: VRT_NAVER=1이면 가짜 키와 가짜 응답으로 통합 검색·검색 추이·쇼핑 관심도를 띄움 (실제 네이버는 안 부름)
+if os.environ.get('VRT_NAVER') and hasattr(m, 'naverhub'):
+    import random as _r
+    os.environ.update(NAVER_HUB_CLIENT_ID='vrt', NAVER_HUB_CLIENT_SECRET='vrt')
+    def _series(seed, n=13):
+        g = _r.Random(seed); v = 40 + g.random() * 30
+        return [{'period': '2026-%02d-%02d' % (7 + i // 4, 1 + (i % 4) * 7), 'ratio': round(min(100, max(5, v := v + g.uniform(-9, 11))), 1)} for i in range(n)]
+    _news = [('헬스장 폐업했는데 남은 회원권 환불은? 할부 항변권으로 돌려받는 법', '한국소비자원', 'kca.go.kr'), ('택배 분실 보상, 운송장 가격 기준으로 최대 50만원까지', '소비자경제', 'dailycnc.com'),
+             ('구독 해지했는데 요금이 또 나갔다면… 공정위 "다크패턴 단속"', '연합뉴스', 'yna.co.kr'), ('항공권 취소 수수료 과다 청구, 소비자원 "약관 확인하세요"', '뉴시스', 'newsis.com'),
+             ('중고거래 사기 피해 1년 새 30% 늘어… 안전결제 꼭 쓰세요', '머니투데이', 'mt.co.kr')]
+    def _fake(method, url, headers, body, timeout):
+        path = url.split('ntruss.com', 1)[1].split('?')[0]
+        if path.startswith('/search/v1/'):
+            kind = path.rsplit('/', 1)[1]
+            items = [{'title': t, 'description': '소비자가 알아 두면 좋은 내용을 정리했어요. 계약서와 영수증을 꼭 챙기고, 업체와 나눈 대화는 캡처해 두세요.',
+                      'originallink': 'https://www.%s/news/%d' % (h, i), 'link': 'https://www.%s/news/%d' % (h, i), 'pubDate': 'Thu, %02d Oct 2026 09:00:00 +0900' % (15 - i),
+                      'bloggername': '알뜰소비 일기', 'postdate': '202610%02d' % (15 - i), 'cafename': '소비자 권리 찾기'} for i, (t, src, h) in enumerate(_news)]
+            return 200, {'total': 1284, 'items': items}
+        if path == '/search-trend/v1/search':
+            return 200, {'results': [{'title': g['groupName'], 'keywords': g['keywords'], 'data': _series(g['groupName'])} for g in body['keywordGroups']]}
+        if path == '/shopping/v1/categories':
+            return 200, {'results': [{'title': c['name'], 'category': c['param'], 'data': _series(c['param'][0])} for c in body['category']]}
+        if path.startswith('/shopping/v1/category/') and path.rsplit('/', 1)[1] in ('gender', 'age', 'device'):
+            grp = {'gender': [('f', 62), ('m', 38)], 'age': [('10', 8), ('20', 31), ('30', 27), ('40', 19), ('50', 10), ('60', 5)], 'device': [('mo', 81), ('pc', 19)]}[path.rsplit('/', 1)[1]]
+            return 200, {'results': [{'title': 'x', 'data': [{'period': '2026-09-01', 'group': k, 'ratio': v} for k, v in grp]}]}
+        if path == '/shopping/v1/category/keywords':
+            return 200, {'results': [{'title': k['name'], 'keyword': k['param'], 'data': _series(k['name'])} for k in body['keyword']]}
+        return 404, {}
+    m.naverhub.http = _fake
 print('ready', ids, eid, flush=True)
 app.run(host='127.0.0.1', port=PORT)

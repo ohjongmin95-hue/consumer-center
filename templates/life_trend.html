@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% from 'life_nv_macros.html' import nv_change, nv_months, nv_credit, nv_off %}
+{% block title %}{{ ui('life.trend_title', '검색 추이') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('life.trend_desc', '소비자들이 요즘 무엇을 많이 찾는지 네이버 검색 추이로 보여 드려요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap sb-life nv">
+  <div class="sb-page-head"><h1>{{ ui('life.trend_title', '검색 추이') }}</h1><p>{{ ui('life.trend_intro', '소비자들이 요즘 무엇을 많이 찾는지 볼 수 있어요.') }}</p></div>
+  {% include 'life_tabs.html' %}
+  {% if not ready %}{{ nv_off() }}{% else %}
+  <form class="nv-kw" action="{{ url_for('life_trend') }}" method="get">
+    <p class="nv-label">{{ ui('life.trend_kw', '견줘 볼 검색어 (5개까지)') }}</p>
+    <div class="nv-kw-row">{% for n in range(5) %}<input name="k" maxlength="20" value="{{ words[n] if custom and n < words|length else '' }}" placeholder="{{ preset[n] }}" aria-label="검색어 {{ n + 1 }}">{% endfor %}</div>
+    <input type="hidden" name="months" value="{{ months }}"><button type="submit">{{ ui('life.trend_btn', '견줘 보기') }}</button>
+  </form>
+  <section class="nv-card">
+    <div class="nv-card-head"><h2>{{ ui('life.trend_now', '요즘 많이 찾는 말') if not custom else ui('life.trend_mine', '내가 고른 검색어') }}</h2>{{ nv_months(months, 'life_trend', {'k': words} if custom else {}) }}</div>
+    {% if error %}<p class="nv-error">{{ error }}</p>{% elif rows %}
+    {{ svg }}
+    <ul class="nv-legend">{% for r in rows %}<li><i style="background:{{ r.color }}"></i><b>{{ r.name }}</b>{{ nv_change(r.change) }}</li>{% endfor %}</ul>
+    <p class="nv-note">{{ ui('life.trend_note', '기간 안에서 가장 많이 찾은 때를 100으로 둔 상대 값이에요. 옆 숫자는 앞 기간보다 얼마나 더(덜) 찾았는지예요.') }}</p>
+    {% else %}<p class="sb-empty">{{ ui('life.trend_none', '보여 드릴 추이가 없어요. 다른 검색어로 견줘 보세요.') }}</p>{% endif %}
+  </section>
+  {% if rows %}<div class="nv-next">{% for r in rows %}<a href="{{ url_for('life_search', q=r.name) }}">‘{{ r.name }}’ 관련 글 찾아보기 ›</a>{% endfor %}</div>{% endif %}
+  {{ nv_credit() }}
+  {% endif %}
+</main>
+{% endblock %}

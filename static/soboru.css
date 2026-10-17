@@ -417,6 +417,109 @@ a:active .sb-tc{transform:scale(.98)}
 .sbc-art{position:relative;margin:4px 0 24px;border-radius:20px;overflow:hidden;aspect-ratio:2/1;background:#f2f4f6}
 .sbc-art img{width:100%;height:100%;object-fit:cover;display:block}
 
+/* 생활정보: 네이버 통합 검색·검색 추이·쇼핑 관심도 (토스 느낌: 흰 바탕, 선으로 나눔, 둥근 칸) */
+.nv-tabs{display:flex;gap:4px;border-bottom:1px solid var(--sb-line);margin:4px 0 0;overflow-x:auto;scrollbar-width:none}
+.nv-tabs::-webkit-scrollbar{display:none}
+.nv-tabs a{flex:none;padding:12px 4px;margin-right:18px;font-size:16px;font-weight:600;color:var(--sb-mute);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+.nv-tabs a:hover{color:var(--sb-ink)}
+.nv-tabs a.on{color:var(--sb-ink);font-weight:700;border-bottom-color:var(--sb-ink)}
+.nv .nv-tabs{margin-bottom:24px}
+.nv-search{display:flex;align-items:center;gap:10px;height:58px;padding:0 8px 0 20px;border-radius:18px;background:var(--sb-gray);transition:box-shadow .15s,background .15s}
+.nv-search:focus-within{background:#fff;box-shadow:0 0 0 2px var(--sb-orange)}
+.nv-search svg{width:20px;height:20px;flex:none;fill:none;stroke:var(--sb-mute);stroke-width:2.2;stroke-linecap:round}
+.nv-search input{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:17px;font-weight:500;color:var(--sb-ink);outline:0;height:100%}
+.nv-search input::placeholder{color:var(--sb-mute)}
+.nv-search button{flex:none;height:42px;padding:0 20px;border:0;border-radius:12px;background:var(--sb-orange);color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer;transition:transform .15s var(--sb-ease),background .15s}
+.nv-search button:hover{background:#e56c00}
+.nv-search button:active,.nv-kw button:active,.nv-chips a:active,.nv-cats a:active{transform:scale(.97)}
+.nv-hint{padding:28px 0 8px}
+.nv-hint p{margin:0 0 12px;color:var(--sb-sub);font-size:14px;font-weight:600}
+.nv-chips{display:flex;flex-wrap:wrap;gap:8px}
+.nv-chips a{padding:9px 14px;border-radius:999px;background:var(--sb-gray);color:var(--sb-gray-ink);font-size:14px;font-weight:600;transition:transform .15s var(--sb-ease),background .15s}
+.nv-chips a:hover{background:#e5e8eb;color:var(--sb-ink)}
+.nv-kinds{display:flex;gap:8px;overflow-x:auto;padding:22px 0 6px;scrollbar-width:none}
+.nv-kinds a{flex:none;padding:8px 15px;border-radius:999px;font-size:14px;font-weight:600;color:var(--sb-gray-ink);background:var(--sb-gray)}
+.nv-kinds a.on{background:var(--sb-ink);color:#fff}
+.nv-sec{padding:26px 0 6px;border-top:1px solid var(--sb-line);margin-top:22px}
+.nv-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+.nv-sec-head h2{font-size:20px;letter-spacing:-.03em;margin:0}
+.nv-list{list-style:none;margin:0;padding:0}
+.nv-row+.nv-row{border-top:1px solid var(--sb-line)}
+.nv-row a{position:relative;display:block;padding:18px 44px 18px 0;color:inherit;border-radius:12px;transition:background .15s}
+.nv-row a:hover h3{color:var(--sb-orange)}
+.nv-src{display:flex;gap:8px;align-items:center;margin:0 0 6px;font-size:13px;color:var(--sb-mute)}
+.nv-src b{color:var(--sb-gray-ink);font-weight:600;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nv-row h3{font-size:17px;line-height:1.45;letter-spacing:-.02em;margin:0 0 4px;font-weight:700;transition:color .15s;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nv-sum{margin:0;font-size:15px;line-height:1.6;color:var(--sb-sub);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nv-out{position:absolute;right:4px;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;background:var(--sb-gray);display:flex;align-items:center;justify-content:center}
+.nv-out svg{width:15px;height:15px;fill:none;stroke:var(--sb-gray-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.nv-meta{display:flex;justify-content:space-between;align-items:center;padding:14px 0 4px;font-size:14px;color:var(--sb-sub);border-bottom:1px solid var(--sb-line)}
+.nv-sort{display:flex;gap:12px}.nv-sort a{color:var(--sb-mute);font-weight:600}.nv-sort a.on{color:var(--sb-ink)}
+.nv-error{margin:18px 0;padding:14px 18px;border-radius:14px;background:#fff4e8;color:#a0520a;font-size:15px}
+.nv-off{margin:20px 0;padding:36px 24px;border-radius:20px;border:1px solid var(--sb-line);text-align:center}
+.nv-off p{margin:4px 0;color:var(--sb-sub)}.nv-off b{color:var(--sb-ink);font-size:18px}
+.nv-credit{margin:36px 0 0;font-size:12px;color:var(--sb-mute)}
+.nv-news{margin-top:44px}
+/* 검색 추이·쇼핑 */
+.nv-label{margin:0 0 10px;font-size:14px;font-weight:600;color:var(--sb-sub)}
+.nv-kw{margin:6px 0 20px}
+.nv-kw-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.nv-kw input{height:48px;padding:0 14px;border:1px solid #e5e8eb;border-radius:12px;background:#fff;font:inherit;font-size:15px;min-width:0;transition:border-color .15s,box-shadow .15s}
+.nv-kw input:focus{outline:0;border-color:var(--sb-orange);box-shadow:0 0 0 4px rgba(239,115,0,.14)}
+.nv-kw button{margin-top:10px;height:46px;padding:0 22px;border:0;border-radius:12px;background:var(--sb-ink);color:#fff;font:inherit;font-weight:700;cursor:pointer;transition:transform .15s var(--sb-ease)}
+.nv-card{padding:22px 24px;border:1px solid var(--sb-line);border-radius:20px;background:#fff}
+.nv-card h2{font-size:18px;letter-spacing:-.03em;margin:0 0 14px}
+.nv-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.nv-card-head h2{margin:0}
+.nv-top{margin:0 0 14px}.nv-top .nv-label{margin:0}
+.nv-seg{display:inline-flex;padding:4px;border-radius:12px;background:var(--sb-gray)}
+.nv-seg a{padding:7px 14px;border-radius:9px;font-size:14px;font-weight:600;color:var(--sb-gray-ink)}
+.nv-seg a.on{background:#fff;color:var(--sb-ink);box-shadow:0 1px 3px rgba(0,27,55,.12)}
+.nv-chart{display:block;width:100%;height:220px;overflow:visible}
+.nv-grid{stroke:var(--sb-line);stroke-width:1}
+.nv-ax{font-size:11px;fill:var(--sb-mute)}
+.nv-legend{list-style:none;display:flex;flex-wrap:wrap;gap:10px 22px;margin:16px 0 0;padding:0}
+.nv-legend li{display:flex;align-items:center;gap:8px;font-size:15px}
+.nv-legend i{width:10px;height:10px;border-radius:50%}
+.nv-chg{font-style:normal;font-size:13px;font-weight:700;color:var(--sb-mute);padding:2px 8px;border-radius:999px;background:var(--sb-gray)}
+.nv-chg.up{color:#e0402a;background:#fff0ee}.nv-chg.down{color:#2f6fdb;background:#eef4ff}
+.nv-note{margin:14px 0 0;font-size:13px;line-height:1.6;color:var(--sb-mute)}
+.nv-next{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+.nv-next a{font-size:14px;font-weight:600;color:var(--sb-gray-ink);padding:9px 14px;border-radius:999px;background:var(--sb-gray)}
+.nv-cats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.nv-cats a{display:flex;flex-direction:column;gap:10px;padding:18px 18px 14px;border:1px solid var(--sb-line);border-radius:18px;color:inherit;transition:transform .15s var(--sb-ease),border-color .15s,box-shadow .15s}
+.nv-cats a:hover{border-color:#e0e3e7;box-shadow:0 6px 18px rgba(0,27,55,.06)}
+.nv-cats a>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nv-cats b{font-size:16px;letter-spacing:-.02em}
+.nv-rank{font-size:13px;font-weight:700;color:var(--sb-orange)}
+.nv-cats .nv-chart{height:48px}
+.nv-back{margin:0 0 12px}.nv-back a{font-weight:600;color:var(--sb-gray-ink)}
+.nv-splits{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:26px}
+.nv-wide{grid-column:1/-1}
+.nv-bar2{display:flex;height:40px;border-radius:12px;overflow:hidden;background:var(--sb-gray);font-size:13px;font-weight:700}
+.nv-bar2 span{display:flex;align-items:center;padding:0 12px;white-space:nowrap;min-width:0;overflow:hidden}
+.nv-bar2 .f{background:#ffe3c7;color:#a0520a}.nv-bar2 .m{background:#e2ecff;color:#2f5fb3;justify-content:flex-end}
+.nv-ages{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.nv-ages li{display:grid;grid-template-columns:72px 1fr 44px;align-items:center;gap:10px;font-size:14px;color:var(--sb-gray-ink)}
+.nv-ages i{height:12px;border-radius:999px;background:var(--sb-gray);overflow:hidden}
+.nv-ages i b{display:block;height:100%;border-radius:999px;background:var(--sb-orange)}
+.nv-ages em{font-style:normal;font-weight:700;text-align:right;color:var(--sb-ink)}
+@media(max-width:860px){.nv-cats{grid-template-columns:1fr 1fr}.nv-kw-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){
+  .nv-search{height:52px;padding-left:16px}.nv-search input{font-size:16px}.nv-search button{height:38px;padding:0 14px}
+  .nv-row h3{font-size:16px}.nv-sum{font-size:14px}
+  .nv-cats{grid-template-columns:1fr}.nv-splits{grid-template-columns:1fr}
+  .nv-kw-row{grid-template-columns:1fr 1fr}.nv-card{padding:18px}.nv-chart{height:180px}
+  .nv-tabs a{font-size:15px;margin-right:14px}
+}
+@media(min-width:1000px){.nv-all{display:grid;grid-template-columns:1fr 1fr;column-gap:48px}.nv-all .nv-row h3{font-size:16px}.nv-all .nv-sum{font-size:14px}}
+@media(max-width:640px){
+  .nv-cats{gap:0;border-top:1px solid var(--sb-line)}
+  .nv-cats a{display:grid;grid-template-columns:26px 1fr 96px;align-items:center;gap:10px;padding:14px 2px;border:0;border-bottom:1px solid var(--sb-line);border-radius:0}
+  .nv-cats a:hover{box-shadow:none}
+  .nv-cats a>div{justify-content:flex-start;gap:8px}
+  .nv-cats .nv-chart{height:32px}
+}
 /* 소비자 법률 질문창 (/ask): 가운데 한 줄, 흰 바탕 + 가는 선. 질문은 오른쪽 말풍선, 답은 도우미 이름 아래 글, 근거 조문은 펼치는 카드 */
 .sba{max-width:720px;margin:0 auto;padding-top:40px}
 .sba-head{padding-bottom:28px}

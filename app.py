@@ -8,6 +8,7 @@ from markupsafe import Markup, escape
 import site_content
 import casetalk
 import soboru_art
+import naverhub
 import lawask
 import notify
 import jebo
@@ -270,7 +271,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-100'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-101'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -2324,6 +2325,8 @@ _talk=types.SimpleNamespace(**globals());casetalk.install(_talk)
 delete_case_comment=_talk.delete_case_comment
 # AI 일러스트: 관리자가 그리고 게시한 그림을 카드에 (soboru_art.py)
 _art=types.SimpleNamespace(**globals());soboru_art.install(_art)
+# 네이버 API HUB: 생활정보 통합 검색·검색 추이·쇼핑 관심도 (naverhub.py)
+_naver=types.SimpleNamespace(**globals());naverhub.install(_naver)
 # 소비자 법률 질문창(/ask)과 관리자 > 법령 학습: 법령 PDF를 올려 조문 모음에 더함 (lawask.py)
 _ask=types.SimpleNamespace(**globals());lawask.install(_ask)
 
