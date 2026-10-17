@@ -5,7 +5,7 @@
 {% block content %}
 <main class="sb-wrap nn-home">
   {% if show.top %}
-  {# 맨 위는 소보루 소개만(토스식 흰 바탕, 큰 캐릭터 하나, 제보하기 버튼 하나). 건수는 넣지 않음 #}
+  {# 맨 위는 소보루 소개만(토스식 흰 바탕, 큰 방패 카드, 제보하기 버튼 하나). 건수는 넣지 않음 #}
   <section class="nn-intro">
     <div class="nn-intro-copy">
       <p class="nn-intro-kicker"><b>소</b>비자 권익 <b>보</b>호를 위한 <b>루</b>트</p>
@@ -13,19 +13,10 @@
       <p class="nn-intro-sub">억울한 일은 제보하고, 써 본 건 추천하고, <br>내 권리는 쉽게 알아보는 소비자 정보 플랫폼이에요.</p>
       <div class="nn-intro-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-intro-link" href="{{ url_for('board') }}">소보루 픽 둘러보기 ›</a></div>
     </div>
-    {# 토스식 그림: 가운데 소보루 앱 화면(휴대폰), 둘레에 토스페이스 이모지 타일 #}
+    {# 토스식 그림: 가운데 큰 방패 카드(소비자 편), 둘레에 토스페이스 이모지 타일. 모바일은 글자 아래 작게 #}
     <div class="nn-intro-art" aria-hidden="true">
-      <div class="nn-phone">
-        <div class="nn-phone-in">
-          <p class="nn-ph-hi">오늘 어떤 일이 있었나요? <span class="tf">🙋</span></p>
-          <div class="nn-ph-grid"><span><i class="tf t1">📣</i>제보하기</span><span><i class="tf t6">⭐</i>리뷰</span><span><i class="tf t3">💡</i>생활정보</span><span><i class="tf t5">💬</i>AI 상담</span></div>
-          <p class="nn-ph-h"><span class="tf">🔥</span> 많이 본 이야기</p>
-          <p class="nn-ph-row"><i class="tf t2">💳</i><span>구독 해지했는데 또 결제됐다면</span></p>
-          <p class="nn-ph-row"><i class="tf t1">📦</i><span>택배 분실, 보상받는 순서</span></p>
-          <p class="nn-ph-row"><i class="tf t3">🧾</i><span>영수증 없이 환불받는 법</span></p>
-        </div>
-      </div>
-      <span class="nn-tile a t1">📦</span><span class="nn-tile b t2">🛡️</span>
+      <div class="nn-badge"><span class="nn-badge-e">🛡️</span><span class="nn-badge-t">소비자 편</span></div>
+      <span class="nn-tile a t1">📦</span><span class="nn-tile b t2">📣</span>
       <span class="nn-tile c t6">💰</span><span class="nn-tile d t3">🛒</span><span class="nn-tile e t5">🔍</span>
     </div>
   </section>
