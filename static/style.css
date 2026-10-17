@@ -928,6 +928,7 @@ body.console main.page { max-width: none; padding: 26px 0 0; }
 .top-auth a, .top-auth button { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none; color: #6b6f76; font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .top-auth a:hover, .top-auth button:hover { color: #2b3038; }
 .top-auth .util-me { color: #2b3038; font-weight: 700; }
+.top-auth .util-bell b { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: #e8590c; color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
 .top-auth form { margin: 0; }
 @media (min-width: 1051px) {
   .site-header .top { min-height: 84px; }
@@ -1783,6 +1784,8 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .social-kakao { background: #FEE500; color: rgba(0,0,0,.85); }
 .social-naver { background: #03C75A; color: #fff; }
 .social-naver svg { width: 15px; height: 15px; }
+.social-apple { background: #000; color: #fff; }
+.social-apple svg { width: 19px; height: 19px; margin-top: -2px; }
 .social-or { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; color: #9a9ea5; font-size: 13px; }
 .social-or::before, .social-or::after { content: ""; flex: 1; height: 1px; background: #ececea; }
 .auth-lead { margin: -12px 0 10px; text-align: center; word-break: keep-all; font-size: 15px; line-height: 1.6; color: #6b7079; }

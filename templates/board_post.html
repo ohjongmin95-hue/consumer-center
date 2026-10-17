@@ -1,15 +1,19 @@
 {% extends 'base.html' %}
 {% from 'board_macros.html' import heart, bubble, chip %}
 {% from 'community_macros.html' import stars %}
-{% block title %}{{ post['title'] }} | {{ txt('site.name') if is_soboru() else txt('board.title') }}{% endblock %}
-{% block description %}{{ mask_personal(post['summary'] or post['body'] or post['pros'] or post['title'])|truncate(150, True, '…') }}{% endblock %}
+{% block title %}{{ ui_text('board.blocked_title', '차단한 사용자의 글이에요') if blocked else post['title'] }} | {{ txt('site.name') if is_soboru() else txt('board.title') }}{% endblock %}
+{% block description %}{% if blocked %}{{ ui_text('board.blocked_title', '차단한 사용자의 글이에요') }}{% else %}{{ mask_personal(post['summary'] or post['body'] or post['pros'] or post['title'])|truncate(150, True, '…') }}{% endif %}{% endblock %}
 {% block og_type %}article{% endblock %}
-{% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "DiscussionForumPosting", "headline": post['title'], "text": mask_personal(post['body'])|truncate(500, True, '…'), "articleSection": post['category'], "datePublished": post['created'], "url": request.base_url, "inLanguage": "ko", "author": {"@type": "Person", "name": post['nickname']}, "commentCount": comments|length, "interactionStatistic": {"@type": "InteractionCounter", "interactionType": "https://schema.org/LikeAction", "userInteractionCount": post['likes']}},
-  {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": txt('site.name'), "item": url_for('home', _external=True)}, {"@type": "ListItem", "position": 2, "name": txt('board.title'), "item": url_for('board', _external=True)}, {"@type": "ListItem", "position": 3, "name": post['title']|truncate(60, True, '…')}]}]|tojson }}</script>{% endblock %}
+{% block head %}{% if not blocked %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "DiscussionForumPosting", "headline": post['title'], "text": mask_personal(post['body'])|truncate(500, True, '…'), "articleSection": post['category'], "datePublished": post['created'], "url": request.base_url, "inLanguage": "ko", "author": {"@type": "Person", "name": post['nickname']}, "commentCount": comments|length, "interactionStatistic": {"@type": "InteractionCounter", "interactionType": "https://schema.org/LikeAction", "userInteractionCount": post['likes']}},
+  {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": txt('site.name'), "item": url_for('home', _external=True)}, {"@type": "ListItem", "position": 2, "name": txt('board.title'), "item": url_for('board', _external=True)}, {"@type": "ListItem", "position": 3, "name": post['title']|truncate(60, True, '…')}]}]|tojson }}</script>{% endif %}{% endblock %}
 {% block content %}
 {% if is_soboru() %}{% include 'soboru_board_post.html' %}{% else %}
 <main class="board board-detail">
   <a class="back-link" href="{{ url_for('board') }}">← {{ txt('board.title') }}</a>
+  {% if blocked %}
+  <div class="post-full"><p><b>{{ ui('board.blocked_title', '차단한 사용자의 글이에요') }}</b></p><p class="muted-text">{{ ui('board.blocked_body', '이 사용자의 글과 댓글은 나에게 보이지 않아요.') }}</p>
+    <form method="post" action="{{ url_for('unblock_user', uid=post['user_id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}"><button class="secondary" type="submit">{{ ui('board.unblock_view', '차단 풀고 보기') }}</button></form></div>
+  {% else %}
   <article class="post-full">
     {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨김 처리된 글입니다. 운영자에게만 보입니다.') }}</div>{% endif %}
     <div class="post-top">{{ chip(post['category'], categories) }}<span class="post-meta">{% if post['user_id'] %}<span class="member-badge">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ post['nickname'] }} · {{ post['created']|ago }}</span></div>
@@ -33,6 +37,8 @@
         {% if flagged %}<span class="muted-text">{{ ui('board.flag_done', '알림 완료') }}</span>{% else %}
         <form method="post" action="{{ url_for('board_flag', kind='p', item_id=post['id']) }}" onsubmit="return confirm({{ ui_text('board.flag_confirm', '이 글이 부적절하다고 운영자에게 알릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.flag_post', '부적절한 글 알리기') }}</button></form>
         {% endif %}
+        {% if post['user_id'] and not (g.user and post['user_id'] == g.user['id']) %}{% if g.user %}<form method="post" action="{{ url_for('board_block', kind='p', item_id=post['id']) }}" onsubmit="return confirm({{ ui_text('board.block_confirm', '이 사용자를 차단할까요? 이 사용자의 글과 댓글이 더는 보이지 않아요. 내 정보에서 언제든 풀 수 있어요.')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.block', '이 사용자 차단') }}</button></form>
+        {% else %}<a class="text-btn" href="{{ url_for('login', next=request.path) }}" title="{{ ui_text('board.block_login', '로그인하면 차단할 수 있어요') }}">{{ ui('board.block', '이 사용자 차단') }}</a>{% endif %}{% endif %}
         {% if g.user and post['user_id'] == g.user['id'] %}
         <form method="post" action="{{ url_for('board_delete', kind='p', item_id=post['id']) }}" onsubmit="return confirm({{ ui_text('board.delete_confirm', '이 글을 지울까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.delete', '삭제') }}</button></form>
         {% elif not post['user_id'] %}
@@ -51,6 +57,7 @@
       <div class="comment-head"><strong>{% if c['user_id'] %}<span class="member-badge">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ c['nickname'] }}</strong><span class="post-meta">{{ c['created']|ago }}</span>
         <span class="comment-tools">
           <form method="post" action="{{ url_for('board_flag', kind='c', item_id=c['id']) }}" onsubmit="return confirm({{ ui_text('board.flag_c_confirm', '이 댓글이 부적절하다고 알릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.flag_comment', '알리기') }}</button></form>
+          {% if c['user_id'] and not (g.user and c['user_id'] == g.user['id']) %}{% if g.user %}<form method="post" action="{{ url_for('board_block', kind='c', item_id=c['id']) }}" onsubmit="return confirm({{ ui_text('board.block_confirm', '이 사용자를 차단할까요? 이 사용자의 글과 댓글이 더는 보이지 않아요. 내 정보에서 언제든 풀 수 있어요.')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.block_short', '차단') }}</button></form>{% else %}<a class="text-btn" href="{{ url_for('login', next=request.path) }}" title="{{ ui_text('board.block_login', '로그인하면 차단할 수 있어요') }}">{{ ui('board.block_short', '차단') }}</a>{% endif %}{% endif %}
           {% if g.user and c['user_id'] == g.user['id'] %}<form method="post" action="{{ url_for('board_delete', kind='c', item_id=c['id']) }}" onsubmit="return confirm({{ ui_text('board.delete_c_confirm', '이 댓글을 지울까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.delete', '삭제') }}</button></form>
           {% elif not c['user_id'] %}<details class="delete-box"><summary class="text-btn">{{ ui('board.delete', '삭제') }}</summary><form method="post" action="{{ url_for('board_delete', kind='c', item_id=c['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" placeholder="{{ ui('board.comment_pw', '댓글 비밀번호') }}" required aria-label="{{ ui('board.comment_pw', '댓글 비밀번호') }}"><button class="secondary" type="submit">{{ ui('board.delete', '삭제') }}</button></form></details>{% endif %}
         </span>
@@ -69,6 +76,7 @@
     </form>
     {% endif %}
   </section>
+  {% endif %}
 </main>
 {% endif %}
 {% endblock %}

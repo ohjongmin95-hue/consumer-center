@@ -267,5 +267,39 @@ if hasattr(m, 'soboru_writer'):
         facts = _json.loads(body['messages'][1]['content'].split('[자료]\n', 1)[1])
         return 200, {'choices': [{'message': {'content': _json.dumps(_writer_article(facts), ensure_ascii=False)}}]}
     m.companydesk.post_json = _writer_ai
+# 앱 준비 화면 시험(appready.py): 회원 vrt_member / membershotpw1 의 알림함·차단 목록, 다른 회원 글의 더 보기 메뉴,
+# 로그인 화면 Apple 버튼(가짜 키, 실제 애플은 안 부름), 알림함 푸시 버튼(가짜 키, 실제 발송 없음)
+if os.environ.get('VRT_BRAND') and hasattr(m, 'appready'):
+    import datetime as _dt2
+    from cryptography.hazmat.primitives.asymmetric import ec as _ec
+    from cryptography.hazmat.primitives import serialization as _ser
+    _k = _ec.generate_private_key(_ec.SECP256R1())
+    os.environ.update(APPLE_SERVICE_ID='kr.co.consumerjebo.soboru.web', APPLE_TEAM_ID='VRTTEAM123', APPLE_KEY_ID='VRTKEY1234',
+                      APPLE_PRIVATE_KEY=_k.private_bytes(_ser.Encoding.PEM, _ser.PrivateFormat.PKCS8, _ser.NoEncryption()).decode().replace('\n', '\\n'),
+                      KAKAO_REST_API_KEY='vrt', KAKAO_CLIENT_SECRET='vrt', NAVER_CLIENT_ID='vrt', NAVER_CLIENT_SECRET='vrt',
+                      VAPID_PUBLIC_KEY='BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U', VAPID_PRIVATE_KEY='vrt' * 14, VAPID_SUBJECT='mailto:vrt@example.com')
+    m.appready.webpush_send = lambda s, p, l: (False, False)
+    def _ago(h): return (_dt2.datetime.now() - _dt2.timedelta(hours=h)).isoformat(timespec='seconds')
+    with m.conn() as db:
+        def _user(login, nick): return db.execute('INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created) VALUES(?,?,?,?,?,?,?,?)',
+                                                  (login, generate_password_hash('membershotpw1'), nick, '', m.TERMS_VERSION, _ago(200), 'seed', _ago(200))).lastrowid
+        me, writer, spam = _user('vrt_member', '알뜰소비'), _user('vrt_writer', '리뷰장인'), _user('vrt_spam', '광고왕')
+        q = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id,kind,likes) VALUES('질문해요','알뜰소비','','중고폰 판매자가 환불을 안 해 줘요','택배로 받은 중고폰 화면에 줄이 있는데 판매자가 연락을 피해요. 어떻게 해야 할까요?','seed',?,?,'question',3)", (_ago(30), me)).lastrowid
+        db.execute("INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,'리뷰장인','','거래 앱 고객센터에 신고부터 하세요. 대화 내용을 캡처해 두면 좋아요.','seed',?,?)", (q, _ago(2), writer))
+        db.execute("UPDATE posts SET comments=1 WHERE id=?", (q,))
+        wp = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id,kind,target,rating,pros,cons,recommend,likes) VALUES('경험 공유','리뷰장인','','무선 이어폰 한 달 써 보니 배터리가 아쉬워요','소리는 깔끔한데 배터리가 하루를 못 가요. 교환 문의는 빨리 받아 줬어요.','seed',?,?,'review','소보루사운드',3,'교환 문의 응답이 빨라요','배터리가 하루를 못 가요',0,5)", (_ago(5), writer)).lastrowid
+        db.execute("INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,'광고왕','','최저가 링크 드려요!! 지금 바로 클릭','seed',?,?)", (wp, _ago(1), spam))
+        db.execute("INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,'알뜰소비','','저도 같은 모델인데 배터리 공감해요.','seed',?,?)", (wp, _ago(0.5), me))
+        db.execute("INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,'리뷰장인','','충전 케이스까지 쓰면 이틀은 가요. 참고하세요!','seed',?,?)", (wp, _ago(0.2), writer))
+        db.execute("UPDATE posts SET comments=3 WHERE id=?", (wp,))
+        db.execute('INSERT INTO user_blocks(blocker,blocked,created) VALUES(?,?,?)', (me, spam, _ago(20)))
+        cid = ids[0]
+        for kind, body, link, h, read in [('answer', '내 질문에 답변이 달렸어요: 중고폰 판매자가 환불을 안 해 줘요', '/board/%d' % q, 2, ''),
+                                          ('case', '내 제보에 기업 답변이 도착했어요: 반품했는데 환불이 안 돼요', '/me/case/%d' % cid, 5, ''),
+                                          ('solved', '답변한 질문이 해결됐어요: 헬스장 6개월권 중도 해지하면 위약금이 얼마나 되나요?', '/board', 26, _ago(20)),
+                                          ('comment', '내 글에 댓글이 달렸어요: 동네 마트 사장님 칭찬해요', '/board', 50, _ago(40)),
+                                          ('case', '내 제보 진행 단계가 바뀌었어요: 반품했는데 환불이 안 돼요', '/me/case/%d' % cid, 80, _ago(70))]:
+            db.execute('INSERT INTO member_alerts(user_id,kind,body,link,created,read_at) VALUES(?,?,?,?,?,?)', (me, kind, body, link, _ago(h), read))
+    print('appready seed: member vrt_member / membershotpw1, writer post', wp, 'question', q, flush=True)
 print('ready', ids, eid, flush=True)
 app.run(host='127.0.0.1', port=PORT)

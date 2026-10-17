@@ -79,7 +79,7 @@ class SiteTest(unittest.TestCase):
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
-            for table in ('group_members', 'damage_groups', 'company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings', 'user_identities', 'company_memberships', 'company_requests', 'company_contacts', 'answer_files', 'company_notices'):
+            for table in ('group_members', 'damage_groups', 'company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings', 'user_identities', 'company_memberships', 'company_requests', 'company_contacts', 'answer_files', 'company_notices', 'user_blocks', 'member_alerts', 'push_subscriptions', 'apple_tokens'):
                 db.execute('DELETE FROM ' + table)
 
     def old_guide(self):
@@ -3641,6 +3641,309 @@ class SiteTest(unittest.TestCase):
             key = next(iter(learned))
             admin.post('/admin/laws', data={'_csrf': self.csrf(admin, '/admin/laws'), 'act': 'appendix_forget', 'key': key})
             self.assertEqual(json.loads(st.learned.read_text(encoding='utf-8')), {}); self.assertNotIn('동물보호법', st.synced.read_text(encoding='utf-8'))
+
+    # ---- 앱 포장 준비 (appready.py): 서비스 워커·앱 링크·차단·알림·푸시·Apple 로그인 ----
+    def soboru_brand(self):
+        with self.site.conn() as db:
+            db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-16')")
+
+    def member_client(self, login_id, nickname):
+        c = self.site.app.test_client()
+        self.assertEqual(self.signup(c, login_id=login_id, nickname=nickname).status_code, 302)
+        with self.site.conn() as db:
+            return c, db.execute('SELECT id FROM users WHERE login_id=?', (login_id,)).fetchone()[0]
+
+    def test_service_worker_and_offline_page(self):
+        r = self.client.get('/sw.js')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.mimetype, 'application/javascript')
+        self.assertEqual(r.headers['Service-Worker-Allowed'], '/')
+        self.assertEqual(r.headers['Cache-Control'], 'no-cache')
+        sw = r.get_data(as_text=True)
+        self.assertNotIn('__VERSION__', sw)
+        self.assertIn("var VERSION = '%s'" % self.site.app.jinja_env.globals['css_v'], sw)  # 디자인 버전이 바뀌면 캐시도 새로
+        self.assertIn("var OFFLINE_URL = '/offline'", sw)
+        self.assertIn("req.method !== 'GET'", sw)  # POST는 손대지 않음
+        self.assertEqual(sw.count('cache.put('), 1)  # 저장은 버전 붙은 /static 파일 한 곳뿐 (화면·내 정보·관리자는 저장 안 함)
+        self.assertIn("url.pathname.indexOf('/static/') === 0 && url.searchParams.has('v')", sw)
+        page = self.client.get('/offline')
+        html = page.get_data(as_text=True)
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('인터넷 연결이 끊겼어요', html)
+        self.assertIn('다시 시도하기', html)
+        self.assertIn('img/soboru-character-hero.png?v=', html)
+        self.assertNotIn('sb-header', html)  # 회원 정보가 없는 단독 화면
+        self.assertNotIn("serviceWorker.register", self.client.get('/').get_data(as_text=True))  # 소보루일 때만 등록
+        self.soboru_brand()
+        self.assertIn("navigator.serviceWorker.register('/sw.js'", self.client.get('/').get_data(as_text=True))
+
+    def test_app_link_files_follow_settings(self):
+        for path in ('/.well-known/assetlinks.json', '/.well-known/apple-app-site-association'):
+            self.assertEqual(self.client.get(path).status_code, 404, path)
+        fp = ':'.join(['ab'] * 32)
+        with patch.dict(os.environ, {'ANDROID_SHA256': fp + ', nope'}):
+            r = self.client.get('/.well-known/assetlinks.json')
+            self.assertEqual(r.mimetype, 'application/json')
+            data = json.loads(r.get_data(as_text=True))
+            self.assertEqual(data[0]['relation'], ['delegate_permission/common.handle_all_urls'])
+            self.assertEqual(data[0]['target'], {'namespace': 'android_app', 'package_name': 'kr.co.consumerjebo.soboru', 'sha256_cert_fingerprints': [fp.upper()]})
+        with patch.dict(os.environ, {'ANDROID_SHA256': 'nope'}):
+            self.assertEqual(self.client.get('/.well-known/assetlinks.json').status_code, 404)  # 지문 모양이 아니면 없는 것과 같음
+        with patch.dict(os.environ, {'ANDROID_SHA256': fp, 'ANDROID_PACKAGE': 'kr.example.app'}):
+            self.assertEqual(json.loads(self.client.get('/.well-known/assetlinks.json').get_data(as_text=True))[0]['target']['package_name'], 'kr.example.app')
+        with patch.dict(os.environ, {'APPLE_TEAM_ID': 'ABCDE12345'}):
+            r = self.client.get('/.well-known/apple-app-site-association')
+            self.assertEqual(r.mimetype, 'application/json')
+            data = json.loads(r.get_data(as_text=True))
+            self.assertEqual(data['applinks']['details'][0]['appIDs'], ['ABCDE12345.kr.co.consumerjebo.soboru'])
+            self.assertIn({'/': '/admin*', 'exclude': True}, data['applinks']['details'][0]['components'])
+            self.assertEqual(data['webcredentials']['apps'], ['ABCDE12345.kr.co.consumerjebo.soboru'])
+        with patch.dict(os.environ, {'APPLE_TEAM_ID': 'ABCDE12345', 'IOS_BUNDLE_ID': 'kr.example.ios'}):
+            self.assertIn('ABCDE12345.kr.example.ios', self.client.get('/.well-known/apple-app-site-association').get_data(as_text=True))
+
+    def test_members_can_block_and_unblock(self):
+        self.soboru_brand()
+        alice, a_id = self.member_client('alice_b', '앨리스')
+        bob, b_id = self.member_client('bob_b', '밥밥')
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            camp = db.execute("INSERT INTO review_campaigns(slug,title,topic,starts,ends,active,created) VALUES('block-test','차단 시험 주제','배달음식','','',1,?)", (now,)).lastrowid
+            bad = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id,kind,target,rating,campaign_id) VALUES('경험 공유','밥밥','','밥이 쓴 리뷰 제목','밥이 쓴 본문 내용입니다','x',?,?,'review','밥가게',4,?)", (now, b_id, camp)).lastrowid
+            other = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind) VALUES('꿀팁','손님','x','손님이 쓴 꿀팁','손님 본문입니다 열 글자 넘게','x',?,'tip')", (now,)).lastrowid
+            db.execute("INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,'밥밥','','밥이 단 댓글이에요','x',?,?)", (other, now, b_id))
+            db.execute("INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created) VALUES(?,'손님2','x','손님 댓글이에요','x',?)", (other, now))
+            guest_c = db.execute('SELECT id FROM comments WHERE user_id IS NULL').fetchone()[0]
+        def seen(client):
+            return {'board': '밥이 쓴 리뷰 제목' in client.get('/board').get_data(as_text=True),
+                    'post': '밥이 쓴 본문 내용입니다' in client.get(f'/board/{bad}').get_data(as_text=True),
+                    'comment': '밥이 단 댓글이에요' in client.get(f'/board/{other}').get_data(as_text=True),
+                    'feed': '밥이 쓴 리뷰 제목' in client.get('/').get_data(as_text=True),
+                    'campaign': '밥이 쓴 리뷰 제목' in client.get('/pick/block-test').get_data(as_text=True)}
+        everywhere = {'board': True, 'post': True, 'comment': True, 'feed': True, 'campaign': True}
+        self.assertEqual(seen(alice), everywhere)
+        # 글·댓글의 더 보기 메뉴: 신고와 차단. 손님에게는 로그인하면 차단할 수 있다고 안내
+        page = alice.get(f'/board/{bad}').get_data(as_text=True)
+        self.assertIn('이 사용자 차단', page); self.assertIn('부적절한 글 알리기', page)
+        self.assertIn(f'action="/board/block/p/{bad}"', page)
+        guest = self.client.get(f'/board/{bad}').get_data(as_text=True)
+        self.assertIn(f'href="/login?next=/board/{bad}"', guest); self.assertIn('로그인하면 차단할 수 있어요', guest)
+        self.assertNotIn('/board/block/', guest)
+        self.assertEqual(self.client.post(f'/board/block/p/{bad}', data={'_csrf': self.csrf(self.client, '/report')}).status_code, 302)  # 손님은 로그인 화면으로
+        with self.site.conn() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM user_blocks').fetchone()[0], 0)
+        self.assertNotIn(f'/board/block/p/{bad}', bob.get(f'/board/{bad}').get_data(as_text=True))  # 내 글에는 차단 메뉴 없음
+        token = self.csrf(alice, f'/board/{other}')
+        self.assertEqual(alice.post(f'/board/block/c/{guest_c}', data={'_csrf': token}).status_code, 404)  # 손님 댓글은 회원이 아니라 차단 못 함
+        self.assertEqual(alice.post(f'/board/block/p/{bad}', data={}).status_code, 400)  # 위조 방지 값 없으면 거절
+        r = alice.post(f'/board/block/p/{bad}', data={'_csrf': token})
+        self.assertEqual(r.headers['Location'], '/board')
+        self.assertIn('차단했어요', alice.get('/board').get_data(as_text=True))
+        self.assertEqual(seen(alice), {k: False for k in everywhere})
+        blocked_page = alice.get(f'/board/{bad}').get_data(as_text=True)
+        self.assertIn('차단한 사용자의 글이에요', blocked_page); self.assertIn('차단 풀고 보기', blocked_page)
+        self.assertIn('손님 댓글이에요', alice.get(f'/board/{other}').get_data(as_text=True))  # 다른 사람 댓글은 그대로
+        self.assertEqual(seen(self.client), everywhere)  # 다른 사람에게는 그대로 보임
+        self.assertEqual(seen(bob), everywhere)
+        self.assertIn('내 글은 차단할 수 없어요', bob.get(bob.post(f'/board/block/p/{bad}', data={'_csrf': self.csrf(bob, '/report')}).headers['Location']).get_data(as_text=True))
+        # 내 정보 > 차단한 사용자에서 풀기
+        me = alice.get('/me').get_data(as_text=True)
+        self.assertIn('차단한 사용자', me); self.assertIn('밥밥', me)
+        r = alice.post(f'/me/blocks/{b_id}/remove', data={'_csrf': self.csrf(alice, '/me')})
+        self.assertEqual(r.headers['Location'], '/me#blocked')
+        self.assertEqual(seen(alice), everywhere)
+        # 글 화면에서 '차단 풀고 보기'는 그 글로 돌아옴
+        alice.post(f'/board/block/p/{bad}', data={'_csrf': self.csrf(alice, '/report')})
+        r = alice.post(f'/me/blocks/{b_id}/remove', data={'_csrf': self.csrf(alice, '/me'), 'next': f'/board/{bad}'})
+        self.assertEqual(r.headers['Location'], f'/board/{bad}')
+        # 탈퇴하면 차단 기록도 지움
+        alice.post(f'/board/block/p/{bad}', data={'_csrf': self.csrf(alice, '/report')})
+        bob.post('/me/withdraw', data={'_csrf': self.csrf(bob, '/me'), 'password': 'butter123', 'confirm': 'on', 'delete_posts': 'on'})
+        with self.site.conn() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM user_blocks').fetchone()[0], 0)
+
+    def test_terms_have_zero_tolerance_and_reporting(self):
+        terms = self.client.get('/terms').get_data(as_text=True)
+        self.assertIn('무관용', terms); self.assertIn('차단', terms)
+        privacy = self.client.get('/privacy').get_data(as_text=True)
+        self.assertIn('푸시 알림', privacy); self.assertIn('Apple로 가입·로그인', privacy)
+
+    def test_alerts_for_comments_answers_solved_and_reports(self):
+        self.soboru_brand()
+        alice, a_id = self.member_client('alice_a', '앨리스')
+        bob, b_id = self.member_client('bob_a', '밥밥')
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            q = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id,kind) VALUES('질문해요','앨리스','','헬스장 환불 되나요?','중도 해지하면 환불이 되나요 궁금해요','x',?,?,'question')", (now, a_id)).lastrowid
+        def comment(client, body, **extra):
+            return client.post(f'/board/{q}/comment', data={'_csrf': self.csrf(client, f'/board/{q}'), 'body': body, **extra})
+        self.assertNotIn('<b>', re.search(r'<a class="sb-bell[^"]*".*?</a>', alice.get('/').get_data(as_text=True), re.S)[0])  # 아직 알림 없음
+        comment(bob, '네 10%만 빼고 돌려받아요')
+        comment(self.client, '저도 궁금해요', nickname='손님', password='1234')
+        comment(alice, '고마워요!')  # 내 글에 내가 단 댓글은 알리지 않음
+        bell = re.search(r'<a class="sb-bell[^"]*".*?</a>', alice.get('/').get_data(as_text=True), re.S)[0]
+        self.assertIn('href="/me/alerts"', bell); self.assertIn('<b>2</b>', bell); self.assertIn('알림 2개 안 읽음', bell)
+        page = alice.get('/me/alerts').get_data(as_text=True)
+        self.assertEqual(page.count('내 질문에 답변이 달렸어요: 헬스장 환불 되나요?'), 2)
+        self.assertEqual(page.count('alert-row new'), 2)
+        self.assertNotIn('푸시 알림 받기', page)  # 키가 없으면 푸시 버튼도 없음
+        self.assertNotIn('<b>', re.search(r'<a class="sb-bell[^"]*".*?</a>', alice.get('/').get_data(as_text=True), re.S)[0])  # 열어 보면 모두 읽음
+        with self.site.conn() as db:
+            alert_id, link = db.execute('SELECT id,link FROM member_alerts WHERE user_id=? ORDER BY id LIMIT 1', (a_id,)).fetchone()
+        self.assertRegex(link, rf'^/board/{q}#c\d+$')
+        self.assertEqual(alice.get(f'/me/alerts/go/{alert_id}').headers['Location'], link)
+        self.assertEqual(bob.get(f'/me/alerts/go/{alert_id}').headers['Location'], '/me/alerts')  # 남의 알림은 못 엶
+        self.assertEqual(self.client.get('/me/alerts').status_code, 302)
+        # 질문을 해결됨으로 바꾸면 답변한 회원에게
+        alice.post(f'/board/{q}/solve', data={'_csrf': self.csrf(alice, f'/board/{q}')})
+        self.assertIn('답변한 질문이 해결됐어요: 헬스장 환불 되나요?', bob.get('/me/alerts').get_data(as_text=True))
+        # 내 글을 차단한 회원의 댓글은 알리지 않음
+        with self.site.conn() as db:
+            db.execute('INSERT INTO user_blocks(blocker,blocked,created) VALUES(?,?,?)', (a_id, b_id, now))
+            before = db.execute('SELECT COUNT(*) FROM member_alerts WHERE user_id=?', (a_id,)).fetchone()[0]
+        comment(bob, '한 번 더 남겨요')
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM member_alerts WHERE user_id=?', (a_id,)).fetchone()[0], before)
+        # 회원 계정에 연결된 제보의 진행 소식 (제보 알림이 커밋 뒤에 부름)
+        with self.site.conn() as db:
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,user_id) VALUES('CJ-AL1','x','배송','가게','택배가 안 와요','내용','환불',?,?)", (now, a_id)).lastrowid
+            case = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
+        with self.site.app.test_request_context():
+            self.site.case_alert(case, 'status'); self.site.case_alert(case, 'seen')  # 'seen'은 알림함에 넣지 않음
+        with self.site.conn() as db:
+            rows = db.execute("SELECT body,link FROM member_alerts WHERE user_id=? AND kind='case'", (a_id,)).fetchall()
+        self.assertEqual([tuple(r) for r in rows], [('내 제보 진행 단계가 바뀌었어요: 택배가 안 와요', f'/me/case/{cid}')])
+        # 탈퇴하면 알림도 지움
+        alice.post('/me/withdraw', data={'_csrf': self.csrf(alice, '/me'), 'password': 'butter123', 'confirm': 'on'})
+        with self.site.conn() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM member_alerts WHERE user_id=?', (a_id,)).fetchone()[0], 0)
+
+    def test_push_subscribe_and_send(self):
+        alice, a_id = self.member_client('alice_p', '앨리스')
+        bob, b_id = self.member_client('bob_p', '밥밥')
+        sub = {'endpoint': 'https://fcm.googleapis.com/fcm/send/abc123', 'p256dh': 'B' * 87, 'auth': 'a' * 22}
+        token = self.csrf(alice, '/me/alerts')
+        self.assertEqual(alice.post('/me/push/subscribe', data={'_csrf': token, **sub}).status_code, 503)  # 키가 없으면 꺼짐
+        keys = {'VAPID_PUBLIC_KEY': 'BPub' + 'x' * 83, 'VAPID_PRIVATE_KEY': 'p' * 43, 'VAPID_SUBJECT': 'mailto:help@example.com'}
+        with patch.dict(os.environ, keys):
+            page = alice.get('/me/alerts').get_data(as_text=True)
+            self.assertIn('푸시 알림 받기', page); self.assertIn('data-key="BPub', page)
+            self.assertEqual(alice.post('/me/push/subscribe', data=sub).status_code, 400)  # 위조 방지 값 없음
+            guest = self.client.post('/me/push/subscribe', data={'_csrf': self.csrf(self.client, '/login'), **sub})
+            self.assertEqual(guest.status_code, 302); self.assertIn('/login', guest.headers['Location'])  # 회원만
+            self.assertEqual(alice.post('/me/push/subscribe', data={'_csrf': token, **dict(sub, endpoint='http://evil.test/x')}).status_code, 400)
+            r = alice.post('/me/push/subscribe', data={'_csrf': token, **sub})
+            self.assertEqual((r.status_code, r.get_json()), (200, {'ok': True}))
+            with self.site.conn() as db:
+                self.assertEqual(db.execute('SELECT user_id,p256dh,auth FROM push_subscriptions').fetchall()[0][:], (a_id, sub['p256dh'], sub['auth']))
+            # 새 알림이 생기면 그 회원 기기로 푸시 (외부로는 보내지 않고 가짜로 받음). 구독이 끊긴 기기는 지움
+            sent = []
+            def fake_send(s, payload, log):
+                sent.append((s['endpoint'], payload)); return (False, True) if 'gone' in s['endpoint'] else (True, False)
+            with self.site.conn() as db:
+                q = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id,kind) VALUES('꿀팁','앨리스','','앨리스 꿀팁','꿀팁 본문입니다 열 글자 넘게','x','2026-10-17T10:00:00',?,'tip')", (a_id,)).lastrowid
+                db.execute("INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth,created) VALUES(?,?,?,?,?)", (a_id, 'https://push.test/gone', 'B' * 87, 'a' * 22, 'x'))
+            with patch.object(self.site.appready, 'ASYNC', False), patch.object(self.site.appready, 'webpush_send', fake_send):
+                bob.post(f'/board/{q}/comment', data={'_csrf': self.csrf(bob, f'/board/{q}'), 'body': '좋은 정보 고마워요'})
+            self.assertEqual(sorted(e for e, _ in sent), ['https://fcm.googleapis.com/fcm/send/abc123', 'https://push.test/gone'])
+            payload = sent[0][1]
+            self.assertEqual(payload['body'], '내 글에 댓글이 달렸어요: 앨리스 꿀팁'); self.assertTrue(payload['url'].startswith(f'/board/{q}#c'))
+            with self.site.conn() as db:
+                self.assertEqual([r[0] for r in db.execute('SELECT endpoint FROM push_subscriptions')], [sub['endpoint']])
+            # 같은 기기에서 다른 회원이 켜면 그 회원에게 옮김, 끄면 지움
+            bob.post('/me/push/subscribe', data={'_csrf': self.csrf(bob, '/me/alerts'), **sub})
+            with self.site.conn() as db:self.assertEqual(db.execute('SELECT user_id FROM push_subscriptions').fetchall()[0][0], b_id)
+            self.assertEqual(bob.post('/me/push/unsubscribe', data={'_csrf': self.csrf(bob, '/me/alerts'), 'endpoint': sub['endpoint']}).get_json(), {'ok': True})
+            with self.site.conn() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM push_subscriptions').fetchone()[0], 0)
+        # pywebpush가 없으면 보내지 않고 기록만
+        with patch.dict('sys.modules', {'pywebpush': None}), self.assertLogs(self.site.app.logger, 'WARNING') as logs:
+            self.assertEqual(self.site.appready.webpush_send(dict(sub, id=1), {}, self.site.app.logger), (False, False))
+        self.assertIn('pywebpush', logs.output[0])
+
+    def apple_env(self):
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives import serialization
+        key = ec.generate_private_key(ec.SECP256R1())
+        pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode()
+        return key, {'APPLE_SERVICE_ID': 'kr.co.consumerjebo.soboru.web', 'APPLE_TEAM_ID': 'TEAM123456', 'APPLE_KEY_ID': 'KEY1234567', 'APPLE_PRIVATE_KEY': pem.replace('\n', '\\n')}
+
+    def test_apple_login(self):
+        import base64, time
+        self.assertNotIn('Apple로 계속하기', self.client.get('/login').get_data(as_text=True))  # 설정이 없으면 버튼도 없음
+        self.assertEqual(self.client.get('/auth/apple/start').status_code, 404)
+        key, env = self.apple_env()
+        members = self.site.members
+        with patch.dict(os.environ, env):
+            login = self.client.get('/login').get_data(as_text=True)
+            self.assertIn('Apple로 계속하기', login); self.assertIn('social-apple', login)
+            self.assertNotIn('social-apple', self.client.get('/report').get_data(as_text=True))  # 이름·전화번호를 주지 않아 자동 입력에는 없음
+            # client_secret: ES256으로 서명한 JWT
+            from cryptography.hazmat.primitives import hashes
+            from cryptography.hazmat.primitives.asymmetric import ec
+            from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+            jwt = members.apple_client_secret(1_800_000_000)
+            head, body, sig = jwt.split('.')
+            dec = lambda s: base64.urlsafe_b64decode(s + '=' * (-len(s) % 4))
+            self.assertEqual(json.loads(dec(head)), {'alg': 'ES256', 'kid': 'KEY1234567', 'typ': 'JWT'})
+            self.assertEqual(json.loads(dec(body)), {'iss': 'TEAM123456', 'iat': 1_800_000_000, 'exp': 1_800_000_600, 'aud': 'https://appleid.apple.com', 'sub': 'kr.co.consumerjebo.soboru.web'})
+            raw = dec(sig)
+            key.public_key().verify(encode_dss_signature(int.from_bytes(raw[:32], 'big'), int.from_bytes(raw[32:], 'big')), f'{head}.{body}'.encode(), ec.ECDSA(hashes.SHA256()))
+            # 시작: form_post로 이름·이메일 요청
+            loc = self.client.get('/auth/apple/start').headers['Location']
+            self.assertTrue(loc.startswith('https://appleid.apple.com/auth/authorize?'))
+            self.assertIn('response_mode=form_post', loc); self.assertIn('scope=name+email', loc); self.assertIn('client_id=kr.co.consumerjebo.soboru.web', loc)
+            state = re.search(r'state=([^&]+)', loc)[1]
+            claims = {'iss': 'https://appleid.apple.com', 'aud': 'kr.co.consumerjebo.soboru.web', 'exp': int(time.time()) + 600, 'sub': '000123.apple.uid',
+                      'email': 'xyz@privaterelay.appleid.com', 'email_verified': 'true', 'is_private_email': 'true'}
+            calls = []
+            def fake(method, url, data=None, headers=None, timeout=10):
+                calls.append((url, data))
+                if url.endswith('/auth/token'):
+                    return 200, {'id_token': 'h.' + base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip('=') + '.s', 'refresh_token': 'refresh-abc', 'access_token': 'a'}
+                return 200, {}
+            form = {'code': 'apple-code', 'state': state, 'user': json.dumps({'name': {'firstName': '길동', 'lastName': '홍'}})}
+            # 애플이 다른 사이트에서 POST로 보내면 쿠키가 없어 중계 화면으로 한 번 더 보냄 (쿠키는 건드리지 않음)
+            other = self.site.app.test_client()
+            with patch.object(members, 'http', fake):
+                relay = other.post('/auth/apple/callback', data=form)
+            self.assertEqual(relay.status_code, 200)
+            self.assertNotIn('Set-Cookie', relay.headers)
+            html = relay.get_data(as_text=True)
+            self.assertIn('name="relayed" value="1"', html); self.assertIn('value="apple-code"', html)
+            self.assertEqual(calls, [])
+            self.assertEqual(self.client.post('/auth/kakao/callback', data=form).status_code, 400)  # 다른 로그인은 POST 예외 없음
+            with patch.object(members, 'http', fake):
+                r = self.client.post('/auth/apple/callback', data=dict(form, relayed='1'))
+            self.assertEqual(r.headers['Location'], '/auth/join')
+            self.assertEqual(calls[0][1]['client_id'], 'kr.co.consumerjebo.soboru.web')
+            self.assertEqual(calls[0][1]['redirect_uri'], 'http://localhost/auth/apple/callback')
+            self.assertEqual(calls[0][1]['client_secret'].count('.'), 2)
+            self.assertIn('Apple로 가입하기', self.client.get('/auth/join').get_data(as_text=True))
+            self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            with self.site.conn() as db:
+                user = db.execute("SELECT * FROM users WHERE real_name='홍길동'").fetchone()
+                ident = db.execute('SELECT * FROM user_identities WHERE user_id=?', (user['id'],)).fetchone()
+                token = db.execute('SELECT refresh_token FROM apple_tokens WHERE provider_uid=?', ('000123.apple.uid',)).fetchone()
+            self.assertEqual(user['email'], '')  # 애플 중계 주소는 회원 이메일로 쓰지 않음
+            self.assertEqual((ident['provider'], ident['email']), ('apple', 'xyz@privaterelay.appleid.com'))
+            self.assertEqual(token[0], 'refresh-abc')
+            self.assertNotIn('refresh-abc', str(self.client.get_cookie('session').value if self.client.get_cookie('session') else ''))
+            # 위조된 state는 거절
+            loc = self.client.get('/auth/apple/start?link=1').headers['Location']
+            with patch.object(members, 'http', fake):
+                self.assertEqual(self.client.post('/auth/apple/callback', data=dict(form, state='forged', relayed='1')).headers['Location'], '/login')
+            # 다시 로그인하면 바로 들어오고, 이름은 처음 받은 그대로
+            self.client.post('/logout', data={'_csrf': self.csrf(self.client, '/me')})
+            state = re.search(r'state=([^&]+)', self.client.get('/auth/apple/start').headers['Location'])[1]
+            with patch.object(members, 'http', fake):
+                r = self.client.post('/auth/apple/callback', data={'code': 'c2', 'state': state, 'relayed': '1'})
+            self.assertEqual(r.headers['Location'], '/')
+            # 탈퇴하면 애플에 토큰 취소를 알리고 저장한 토큰을 지움
+            calls.clear()
+            with patch.object(members, 'http', fake):
+                self.client.post('/me/withdraw', data={'_csrf': self.csrf(self.client, '/me'), 'confirm': 'on'})
+            revoke = [c for c in calls if c[0].endswith('/auth/revoke')]
+            self.assertEqual(len(revoke), 1)
+            self.assertEqual((revoke[0][1]['token'], revoke[0][1]['token_type_hint']), ('refresh-abc', 'refresh_token'))
+            with self.site.conn() as db:
+                self.assertEqual(db.execute('SELECT COUNT(*) FROM apple_tokens').fetchone()[0], 0)
+                self.assertIsNone(db.execute("SELECT 1 FROM users WHERE real_name='홍길동'").fetchone())
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,14 +1,18 @@
-"""회원 확장: 이메일 로그인 보조, 카카오·네이버 로그인, 예전 제보 연결, 기업 소속 인증 신청.
+"""회원 확장: 이메일 로그인 보조, 카카오·네이버·Apple 로그인, 예전 제보 연결, 기업 소속 인증 신청.
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 주소를 붙인다.
 - 카카오·네이버는 공식 OAuth(인가 코드) 방식. 키가 서버 설정(/etc/soboru.env)에 있을 때만 버튼이 보인다.
   받은 토큰은 저장하지 않고, 회원 고유번호·이메일·닉네임·실명·휴대전화번호만 쓴다.
+- Apple 로그인(앱 심사 4.8: 다른 간편 로그인이 있으면 Apple 로그인도 있어야 함)은 APPLE_SERVICE_ID·APPLE_TEAM_ID·APPLE_KEY_ID·APPLE_PRIVATE_KEY가 있을 때만.
+  애플은 응답을 POST(form_post)로 보내고, 이름은 처음 동의할 때 한 번만 준다. '이메일 가리기'를 고르면 @privaterelay.appleid.com 주소가 오는데,
+  이 주소는 회원 이메일(로그인·본인 확인용)에 넣지 않고 연결 정보에만 둔다. 탈퇴·연결 해제 때 애플에 토큰 취소를 알려야 해서(심사 5.1.1)
+  애플의 갱신 토큰만 apple_tokens 표에 두고, 그때 지운다.
   실명·휴대전화번호는 제보 양식 자동 입력용이며 공개 화면에는 나오지 않는다(관리자·본인만).
 - 소셜 이메일이 기존 회원 이메일과 같아도 자동으로 합치지 않는다. 기존 계정으로 로그인한 뒤 내 정보에서 연결한다.
 - 소셜로 로그인해도 기업 소속은 인증되지 않는다. 소속 인증 신청 → 관리자 승인 뒤에만 기업 회원.
   승인되면 그 회원에게 기업 담당자 자리(company_users.user_id)를 붙여, 카카오·네이버 로그인만으로 기업 화면(/biz)에 들어간다.
 """
-import datetime, json, os, re, secrets, urllib.error, urllib.parse, urllib.request
+import base64, datetime, json, logging, os, re, secrets, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 from flask import abort, flash, g, redirect, render_template, request, send_file, session, url_for
 
@@ -17,7 +21,12 @@ PROVIDERS={
                  authorize='https://kauth.kakao.com/oauth/authorize',token='https://kauth.kakao.com/oauth/token',me='https://kapi.kakao.com/v2/user/me'),
     'naver':dict(name='네이버',key='NAVER_CLIENT_ID',secret='NAVER_CLIENT_SECRET',
                  authorize='https://nid.naver.com/oauth2.0/authorize',token='https://nid.naver.com/oauth2.0/token',me='https://openapi.naver.com/v1/nid/me'),
+    # Apple: client_secret은 비밀키(.p8)로 그때그때 서명해 만듦 (APPLE_KEY_ID는 그 키의 번호)
+    'apple':dict(name='Apple',key='APPLE_SERVICE_ID',secret='APPLE_KEY_ID',
+                 authorize='https://appleid.apple.com/auth/authorize',token='https://appleid.apple.com/auth/token',me='',revoke='https://appleid.apple.com/auth/revoke'),
 }
+APPLE_ISSUER='https://appleid.apple.com'
+log=logging.getLogger(__name__)
 MEMBERSHIP_STATUSES={'pending':'확인 중','approved':'승인','rejected':'반려'}
 EVIDENCE_TYPES={'.pdf':'pdf','.png':'png','.jpg':'jpg','.jpeg':'jpg','.webp':'webp'}
 EVIDENCE_MAX=5*1024*1024
@@ -38,9 +47,17 @@ def migrate(db):
     # 간편 로그인 기업 담당자: 비밀번호 없이 회원 계정(user_id)으로 기업 화면에 들어옴
     if 'user_id' not in {r['name'] for r in db.execute('PRAGMA table_info(company_users)')}:db.execute('ALTER TABLE company_users ADD COLUMN user_id INTEGER')
     db.execute('CREATE UNIQUE INDEX IF NOT EXISTS company_users_member ON company_users(user_id) WHERE user_id IS NOT NULL')
+    # Apple 갱신 토큰: 탈퇴·연결 해제 때 애플에 취소를 알리는 데만 씀
+    db.execute('CREATE TABLE IF NOT EXISTS apple_tokens(provider_uid TEXT PRIMARY KEY,refresh_token TEXT NOT NULL,created TEXT NOT NULL)')
 
 def secret(name):return os.getenv(name,'').strip()
-def provider_ready(p):return p in PROVIDERS and bool(secret(PROVIDERS[p]['key']) and secret(PROVIDERS[p]['secret']))
+def provider_ready(p):
+    if p not in PROVIDERS or not (secret(PROVIDERS[p]['key']) and secret(PROVIDERS[p]['secret'])):return False
+    return p!='apple' or bool(secret('APPLE_TEAM_ID') and secret('APPLE_PRIVATE_KEY') and es256_ready())
+def es256_ready():
+    try:import cryptography.hazmat.primitives.asymmetric.ec  # noqa: F401  Apple 서명용 (requirements.txt)
+    except ImportError:return False
+    return True
 def ready_providers():return [p for p in PROVIDERS if provider_ready(p)]
 
 def http(method,url,data=None,headers=None,timeout=10):
@@ -52,6 +69,53 @@ def http(method,url,data=None,headers=None,timeout=10):
     except urllib.error.HTTPError as e:
         try:return e.code,json.loads(e.read().decode() or '{}')
         except Exception:return e.code,{}
+
+def b64u(raw):return base64.urlsafe_b64encode(raw).rstrip(b'=').decode()
+def apple_key_pem():
+    """APPLE_PRIVATE_KEY: .p8 파일 경로(권장, deploy/set-apple.sh) 또는 PEM 내용 그대로."""
+    v=secret('APPLE_PRIVATE_KEY')
+    if v.startswith('-----BEGIN'):return v.replace('\\n','\n').encode()
+    try:return Path(v).read_bytes() if v else b''
+    except OSError:return b''
+def apple_client_secret(now_ts=None):
+    """Apple 토큰 요청용 client_secret: ES256으로 서명한 JWT (10분짜리)."""
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+    t=int(now_ts or time.time());js=lambda d:b64u(json.dumps(d,separators=(',',':')).encode())
+    signing=js({'alg':'ES256','kid':secret('APPLE_KEY_ID'),'typ':'JWT'})+'.'+js({'iss':secret('APPLE_TEAM_ID'),'iat':t,'exp':t+600,'aud':APPLE_ISSUER,'sub':secret('APPLE_SERVICE_ID')})
+    key=serialization.load_pem_private_key(apple_key_pem(),password=None)
+    r,s=decode_dss_signature(key.sign(signing.encode(),ec.ECDSA(hashes.SHA256())))
+    return signing+'.'+b64u(r.to_bytes(32,'big')+s.to_bytes(32,'big'))
+def jwt_claims(token):
+    try:return json.loads(base64.urlsafe_b64decode(token.split('.')[1]+'=='))
+    except (IndexError,ValueError,TypeError):return {}
+def apple_name(raw):
+    """처음 로그인할 때만 오는 이름 {"name":{"firstName","lastName"}} → 한글이면 성+이름."""
+    try:n=json.loads(raw or '{}').get('name') or {}
+    except (ValueError,AttributeError):return ''
+    first=str(n.get('firstName') or '').strip();last=str(n.get('lastName') or '').strip()
+    return (last+first) if re.search('[가-힣]',first+last) else ' '.join(x for x in (first,last) if x)
+def apple_profile(code,redirect_uri,user_json=''):
+    """인가 코드 → 프로필. 애플 서버에서 HTTPS로 직접 받은 id_token이라 서명 대신 발급자·대상·만료를 확인 (OpenID Connect 3.1.3.7)."""
+    sid=secret('APPLE_SERVICE_ID')
+    try:
+        st,tok=http('POST',PROVIDERS['apple']['token'],dict(grant_type='authorization_code',client_id=sid,client_secret=apple_client_secret(),code=code,redirect_uri=redirect_uri))
+    except (OSError,ValueError):return None
+    if st!=200 or not tok.get('id_token'):return None
+    c=jwt_claims(tok['id_token'])
+    if c.get('iss')!=APPLE_ISSUER or c.get('aud')!=sid or int(c.get('exp') or 0)<time.time() or not c.get('sub'):return None
+    email=str(c.get('email') or '').strip().lower()
+    relay=str(c.get('is_private_email')).lower()=='true' or email.endswith('@privaterelay.appleid.com')
+    return dict(uid=str(c['sub']),email=email[:120],email_verified=str(c.get('email_verified')).lower()=='true',nickname='',name=apple_name(user_json)[:40],phone='',
+                relay=relay,refresh=str(tok.get('refresh_token') or ''))
+def apple_revoke(db,uid):
+    """Apple 연결 해제·탈퇴: 애플에 토큰 취소를 알리고 저장한 토큰을 지움. 애플이 응답하지 않아도 해제·탈퇴는 그대로 진행."""
+    for r in db.execute("SELECT t.provider_uid,t.refresh_token FROM user_identities i JOIN apple_tokens t ON t.provider_uid=i.provider_uid WHERE i.user_id=? AND i.provider='apple'",(uid,)).fetchall():
+        if provider_ready('apple'):
+            try:http('POST',PROVIDERS['apple']['revoke'],dict(client_id=secret('APPLE_SERVICE_ID'),client_secret=apple_client_secret(),token=r['refresh_token'],token_type_hint='refresh_token'),timeout=5)
+            except Exception as e:log.warning('Apple 토큰 취소 실패: %s',type(e).__name__)
+        db.execute('DELETE FROM apple_tokens WHERE provider_uid=?',(r['provider_uid'],))
 
 def kr_phone(v):
     """'+82 10-1234-5678' · '01012345678' → '010-1234-5678'. 알아볼 수 없으면 ''."""
@@ -123,23 +187,36 @@ def install(S):
         session['oauth']={'p':provider,'state':state,'mode':mode,'next':S.safe_next('mypage' if mode=='link' else 'home')}
         cfg=PROVIDERS[provider]
         q=dict(response_type='code',client_id=secret(cfg['key']),redirect_uri=redirect_uri(provider),state=state)
+        if provider=='apple':q.update(response_mode='form_post',scope='name email')  # 이름·이메일을 받으려면 애플은 form_post만 허용
         return redirect(cfg['authorize']+'?'+urllib.parse.urlencode(q))
 
-    @app.route('/auth/<provider>/callback')
+    @app.route('/auth/<provider>/callback',methods=['GET','POST'])
     def social_callback(provider):
         if provider not in PROVIDERS:abort(404)
+        if request.method=='POST':
+            if provider!='apple':abort(405)
+            # 애플은 다른 사이트(appleid.apple.com)에서 POST로 돌려보내 로그인 쿠키(SameSite=Lax)가 붙지 않음.
+            # 세션은 건드리지 않고(쿠키를 덮어쓰지 않게) 우리 화면에서 한 번 더 보내 쿠키를 붙인 뒤 state를 확인함
+            if 'oauth' not in session and not request.form.get('relayed'):
+                resp=app.make_response(render_template('social_relay.html',fields={k:request.form.get(k,'')[:4000] for k in ('code','state','user','error')}))
+                resp.headers['Cache-Control']='no-store';resp.headers['Referrer-Policy']='no-referrer';return resp
+        args=request.form if request.method=='POST' else request.args
         info=session.pop('oauth',None)
         # 위조 방지: 이 브라우저에서 시작한 로그인인지 state 값으로 확인
-        if not info or info.get('p')!=provider or not secrets.compare_digest(str(info.get('state','')),request.args.get('state','')):
+        if not info or info.get('p')!=provider or not secrets.compare_digest(str(info.get('state','')),args.get('state','')):
             flash('로그인을 다시 시작해 주세요.');return redirect(url_for('login'))
-        if request.args.get('error') or not request.args.get('code'):
+        if args.get('error') or not args.get('code'):
             flash(PROVIDERS[provider]['name']+' 로그인을 취소했어요.');return redirect(url_for('mypage') if info['mode']=='link' and g.user else url_for('login'))
         if S.too_many_attempts('social'):flash(ui_text('msg.m28','로그인 시도가 너무 많아요. 10분 뒤 다시 시도해 주세요.'));return redirect(url_for('login'))
-        prof=fetch_profile(provider,request.args['code'],request.args.get('state',''),redirect_uri(provider))
+        prof=apple_profile(args['code'],redirect_uri(provider),args.get('user','')) if provider=='apple' else fetch_profile(provider,args['code'],args.get('state',''),redirect_uri(provider))
         if not prof:
             S.note_attempt('social');flash(PROVIDERS[provider]['name']+' 로그인에 실패했어요. 잠시 뒤 다시 시도해 주세요.');return redirect(url_for('login'))
         name=PROVIDERS[provider]['name']
+        refresh=prof.pop('refresh','')  # 애플 갱신 토큰은 쿠키(세션)에 넣지 않고 서버 표에만
         with conn() as db:
+            if refresh:
+                db.execute('INSERT OR REPLACE INTO apple_tokens(provider_uid,refresh_token,created) VALUES(?,?,?)',(prof['uid'],refresh,now()))
+                db.execute("DELETE FROM apple_tokens WHERE created<? AND provider_uid NOT IN (SELECT provider_uid FROM user_identities WHERE provider='apple')",((datetime.datetime.now()-datetime.timedelta(days=1)).isoformat(timespec='seconds'),))  # 가입을 마치지 않은 토큰
             ident=db.execute('SELECT * FROM user_identities WHERE provider=? AND provider_uid=?',(provider,prof['uid'])).fetchone()
             if info['mode']=='link':
                 if not g.user:return redirect(url_for('login'))
@@ -160,7 +237,7 @@ def install(S):
                     fill_identity(db,user['id'],prof)
                     S.sign_in(user,True);return redirect(info.get('next') or url_for('home'))
             # 처음 보는 소셜 계정. 같은 이메일 회원이 있으면 합치지 않고 기존 계정 로그인을 안내 (남의 계정에 붙는 일 방지)
-            if prof['email'] and db.execute("SELECT 1 FROM users WHERE email=? COLLATE NOCASE AND email!=''",(prof['email'],)).fetchone():
+            if prof['email'] and not prof.get('relay') and db.execute("SELECT 1 FROM users WHERE email=? COLLATE NOCASE AND email!=''",(prof['email'],)).fetchone():
                 flash(f'이미 이 이메일로 가입한 회원이 있어요. 기존 아이디로 로그인한 뒤 내 정보에서 {name} 계정을 연결해 주세요.')
                 return redirect(url_for('login'))
         session['oauth_join']=dict(p=provider,**prof,at=now(),next=info.get('next') or '')
@@ -185,7 +262,7 @@ def install(S):
             for _ in range(5):  # 소셜 회원은 아이디를 쓰지 않음. 겹치지 않는 내부 아이디만 만들어 둠
                 login_id=pend['p'][0]+'_'+secrets.token_hex(5)
                 if not db.execute('SELECT 1 FROM users WHERE login_id=?',(login_id,)).fetchone():break
-            email=pend['email'] if pend['email'] and not db.execute("SELECT 1 FROM users WHERE email=? COLLATE NOCASE",(pend['email'],)).fetchone() else ''
+            email=pend['email'] if pend['email'] and not pend.get('relay') and not db.execute("SELECT 1 FROM users WHERE email=? COLLATE NOCASE",(pend['email'],)).fetchone() else ''
             cur=db.execute("INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created,email_verified_at,real_name,phone) VALUES(?,'',?,?,?,?,?,?,?,?,?)",
                            (login_id,nick,email,S.TERMS_VERSION,now(),S.ip_hash(),now(),now() if email and pend['email_verified'] else '',pend.get('name',''),pend.get('phone','')))
             db.execute('INSERT INTO user_identities(user_id,provider,provider_uid,email,linked_at) VALUES(?,?,?,?,?)',(cur.lastrowid,pend['p'],pend['uid'],pend['email'],now()))
@@ -202,7 +279,9 @@ def install(S):
         if provider not in PROVIDERS:abort(404)
         if len(login_methods(g.user))<=1:
             flash('로그인 방법이 하나만 남아 있어 해제할 수 없어요. 비밀번호를 먼저 만들어 주세요.');return redirect(url_for('mypage')+'#login-methods')
-        with conn() as db:db.execute('DELETE FROM user_identities WHERE user_id=? AND provider=?',(g.user['id'],provider))
+        with conn() as db:
+            if provider=='apple':apple_revoke(db,g.user['id'])
+            db.execute('DELETE FROM user_identities WHERE user_id=? AND provider=?',(g.user['id'],provider))
         flash(PROVIDERS[provider]['name']+' 연결을 해제했어요.')
         return redirect(url_for('mypage')+'#login-methods')
 
@@ -332,7 +411,8 @@ def install(S):
         resp.headers['Cache-Control']='no-store';return resp
 
     def delete_member_extras(db,uid):
-        # 탈퇴: 소셜 연결·기업 소속 신청(증빙 파일 포함)을 바로 지움
+        # 탈퇴: 소셜 연결(Apple은 토큰 취소까지)·기업 소속 신청(증빙 파일 포함)을 바로 지움
+        apple_revoke(db,uid)
         db.execute('DELETE FROM user_identities WHERE user_id=?',(uid,))
         for r in db.execute("SELECT evidence_stored FROM company_memberships WHERE user_id=? AND evidence_stored!=''",(uid,)).fetchall():(S.UPLOAD/r['evidence_stored']).unlink(missing_ok=True)
         db.execute('DELETE FROM company_memberships WHERE user_id=?',(uid,))

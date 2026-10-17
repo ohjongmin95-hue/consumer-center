@@ -1,0 +1,15 @@
+<!doctype html>
+{# Apple 로그인 응답 중계: 애플이 다른 사이트에서 POST로 보낸 값을 우리 화면에서 한 번 더 보내 로그인 쿠키가 붙게 함 (members.py social_callback) #}
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>로그인 중…</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;color:#4e5968;background:#fff}button{font:inherit;padding:12px 20px;border-radius:12px;border:0;background:#000;color:#fff}</style></head>
+<body>
+<form id="relay" method="post" action="{{ request.path }}">
+  {% for k, v in fields.items() if v %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+  <input type="hidden" name="relayed" value="1">
+  <p>로그인하는 중이에요…</p>
+  <noscript><button type="submit">계속하기</button></noscript>
+</form>
+<script>document.getElementById('relay').submit();</script>
+</body>
+</html>
