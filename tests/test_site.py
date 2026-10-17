@@ -752,6 +752,7 @@ class SiteTest(unittest.TestCase):
             for text in ('#배달음식', '#내돈내산', '#사진 리뷰', '첫 리뷰를 남기면 소보루 픽 순위가 생겨요', '참여 혜택 안내', '사진 리뷰 중 추첨 20명', 'soboru-character-hero.png'):
                 self.assertIn(text, page)
             self.assertEqual(self.client.get('/pick/nope').status_code, 404)
+            self.assertIn('/pick/delivery-1017</loc>', self.client.get('/sitemap.xml').get_data(as_text=True))  # 연 주제는 사이트맵에
             write = self.client.get('/board/write?type=review&campaign=delivery-1017').get_data(as_text=True)
             for text in ('name="campaign" value="delivery-1017"', '주문 메뉴', 'enctype="multipart/form-data"', 'name="photo"', '첫 리뷰를 남기면'):
                 self.assertIn(text, write)

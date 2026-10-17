@@ -499,6 +499,8 @@ def sitemap_xml():
     with conn() as db:
         pages+=[(url_for('public_case',case_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 5000')]
         pages+=[(url_for('board_post',post_id=r['id'],_external=True),r['created'][:10]) for r in db.execute('SELECT id,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 5000')]
+        # 리뷰 캠페인 페이지: 연 적이 있는 것만 (열린 것, 리뷰가 모인 것)
+        pages+=[(url_for('campaign_page',slug=r['slug'],_external=True),None) for r in db.execute("SELECT slug FROM review_campaigns c WHERE active=1 OR EXISTS(SELECT 1 FROM posts p WHERE p.campaign_id=c.id AND p.hidden=0) ORDER BY id DESC LIMIT 200")]
         # 기업 페이지는 공개 제보나 공식 입장이 있을 때만 (이름만 있는 빈 페이지는 빼기)
         pages+=[(url_for('company_page',company_id=r['id'],_external=True),None) for r in db.execute("""SELECT id FROM companies co WHERE status IN ('active','listed')
             AND (statement!='' OR EXISTS(SELECT 1 FROM cases c WHERE c.company_id=co.id AND c.public_consent=1 AND c.published=1)) ORDER BY id LIMIT 5000""")]
