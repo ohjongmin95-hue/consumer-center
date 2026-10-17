@@ -1489,11 +1489,40 @@ class SiteTest(unittest.TestCase):
         self.assertIn('class="sb"', admin.get('/?face=off').get_data(as_text=True))
         self.assertIn('class="sb"', self.client.get('/?face=jebo').get_data(as_text=True))  # 손님은 못 바꿈
         content = admin.get('/admin/content').get_data(as_text=True)
-        self.assertIn('name="jebo.site_name"', content)
+        self.assertNotIn('name="jebo.site_name"', content)  # 제보센터 이름·검색 설정은 소비자제보센터 칸에서
         self.assertNotIn('name="site.brand"', content)
+        self.assertIn('href="/admin/content?face=jebo"', content)  # 관리자 메뉴의 소비자제보센터 칸
+        self.assertIn('소비자제보센터 ↗', content)  # 사이트 보기에서 어느 사이트로 갈지 고름
+        jcontent = admin.get('/admin/content?face=jebo').get_data(as_text=True)
+        self.assertIn('name="jebo.site_name"', jcontent); self.assertNotIn('name="seo.naver_verification"', jcontent)
+        self.assertIn('소비자제보센터를 고치는 중', jcontent)
         lists = admin.get('/admin/lists').get_data(as_text=True)
         for key in ('menu', 'home_blocks', 'sample_reports'):
             self.assertIn('id="list-%s"' % key, lists)
+
+    def test_jebo_copy_is_separate(self):
+        # 관리자는 하나지만 소비자제보센터에서 고친 문구·구성은 제보센터에만, 소보루 문구는 소보루에만
+        admin = self.login_admin(); tok = self.csrf(admin, '/admin/content')
+        default = self.site.site_content.FIELDS['home.hero_button']['default']
+        admin.post('/admin/content?face=jebo', data={'_csrf': tok, 'section': 'home', 'home.hero_button': '제보센터 전용 제목'})
+        admin.post('/admin/content', data={'_csrf': tok, 'section': 'home', 'home.hero_button': '소보루 전용 제목'})
+        self.assertIn('제보센터 전용 제목', admin.get('/admin/content?face=jebo').get_data(as_text=True))
+        self.assertNotIn('제보센터 전용 제목', admin.get('/admin/content').get_data(as_text=True))
+        self.assertIn('제보센터 전용 제목', admin.get('/?face=jebo').get_data(as_text=True))
+        # 다른 탭에서 미리보기를 소비자제보센터로 바꿔도 face 없는 관리자 저장은 소보루로
+        admin.post('/admin/inline', data={'_csrf': tok, 'key': 'home.hero_button', 'value': '인라인 소보루'})
+        admin.post('/admin/inline', data={'_csrf': tok, 'key': 'home.hero_button', 'value': '인라인 제보센터', 'face': 'jebo'})
+        with self.site.conn() as db:
+            saved = dict(db.execute("SELECT key,value FROM site_content WHERE key LIKE '%home.hero_button'").fetchall())
+        self.assertEqual(saved, {'home.hero_button': '인라인 소보루', 'jebo:home.hero_button': '인라인 제보센터'})
+        # 사업자 정보는 두 사이트 공통
+        admin.post('/admin/content?face=jebo', data={'_csrf': tok, 'section': 'operator', 'operator.name': '공통상호'})
+        self.assertIn('공통상호', admin.get('/admin/content').get_data(as_text=True))
+        # 제보센터 FAQ 목록도 따로
+        admin.post('/admin/lists?face=jebo', data={'_csrf': tok, 'list': 'faq', 'q': ['제보센터 질문'] * 3, 'a': ['답'] * 3})
+        self.assertIn('제보센터 질문', admin.get('/admin/lists?face=jebo').get_data(as_text=True))
+        self.assertNotIn('제보센터 질문', admin.get('/admin/lists').get_data(as_text=True))
+        self.assertTrue(default)
 
     def test_cross_site_login(self):
         # 소비자제보센터에서 가입·로그인하면 소보루에도 로그인, 로그아웃도 같이. 표는 한 번만 쓰고 다른 브라우저 상태값으론 안 됨

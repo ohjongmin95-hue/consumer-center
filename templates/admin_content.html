@@ -3,15 +3,15 @@
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro admin-head">
-    <div><h1 class="page-title">숨은 문구·설정</h1>
-    <p>사이트의 모든 문구가 모여 있어요. 화면에 보이는 문장은 <a href="{{ url_for('admin_site') }}">사이트 편집</a>에서 고치는 게 쉽고, 여기서는 <b>오류 메시지·입력칸 안내·검색 등록 코드·하단 정보</b>처럼 평소 안 보이는 것을 찾아 고쳐요. 칸을 비우고 저장하면 기본 문구로 돌아가요.</p></div>
+    <div><h1 class="page-title">{% if current_face() == 'jebo' %}소비자제보센터 문구·설정{% else %}숨은 문구·설정{% endif %}</h1>
+    <p>사이트의 모든 문구가 모여 있어요. 화면에 보이는 문장은 <a href="{{ face_url('admin_site') }}">사이트 편집</a>에서 고치는 게 쉽고, 여기서는 <b>오류 메시지·입력칸 안내·검색 등록 코드·하단 정보</b>처럼 평소 안 보이는 것을 찾아 고쳐요. 칸을 비우고 저장하면 기본 문구로 돌아가요.</p></div>
   </div>
   <div class="content-search"><input type="search" id="content-search" placeholder="바꾸고 싶은 문구를 검색하세요 (예: 제보 접수하기)" aria-label="문구 검색"><span id="content-search-count" class="meta"></span></div>
   <nav class="content-tabs" aria-label="섹션 바로가기">{% for sid, title, _ in sections %}<a href="#section-{{ sid }}">{{ title }}</a>{% endfor %}</nav>
   {% for sid, title, items in sections %}
   <form class="form-panel content-section" id="section-{{ sid }}" method="post">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="section" value="{{ sid }}">
-    <h2>{{ title }}</h2>
+    <h2>{{ title }}{% if sid in ('operator', 'policy') %} <span class="field-tag">두 사이트 공통</span>{% endif %}</h2>
     {% for key, label, default, opts in items %}
     <div class="field">
       <label for="f-{{ key }}">{{ label }}{% if opts.optional %} <span class="field-tag">선택</span>{% endif %}{% if key in changed %} <span class="field-tag changed">수정됨</span>{% endif %}</label>
@@ -24,7 +24,7 @@
     <div class="content-actions">
       <button class="primary" type="submit">{{ title }} 저장</button>
       <button class="secondary" type="submit" name="reset_section" value="{{ sid }}" onclick="return confirm('이 섹션의 문구를 모두 기본값으로 되돌릴까요?')">기본값으로 되돌리기</button>
-      <a class="content-preview" href="{{ {'common': url_for('home'), 'home': url_for('home'), 'operator': url_for('home'), 'report': url_for('report'), 'policy': url_for('policy_page', page='privacy'), 'board': url_for('board'), 'status': url_for('lookup'), 'reports': url_for('reports'), 'seo': url_for('home')}.get(sid) or (url_for('info_page', page=sid) if sid in ('guide', 'process', 'types', 'faq') else url_for('home')) }}" target="_blank" rel="noopener">화면에서 보기 ↗</a>
+      <a class="content-preview" href="{{ {'common': face_url('home'), 'home': face_url('home'), 'operator': face_url('home'), 'report': face_url('report'), 'policy': face_url('policy_page', page='privacy'), 'board': face_url('board'), 'status': face_url('lookup'), 'reports': face_url('reports'), 'seo': face_url('home')}.get(sid) or (face_url('info_page', page=sid) if sid in ('guide', 'process', 'types', 'faq') else face_url('home')) }}" target="_blank" rel="noopener">화면에서 보기 ↗</a>
     </div>
   </form>
   {% endfor %}

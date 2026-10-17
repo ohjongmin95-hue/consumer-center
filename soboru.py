@@ -170,11 +170,7 @@ def install(S):
     @app.before_request
     def apply_brand():
         if request.endpoint == 'static' or 'content' not in g: return
-        pick = request.args.get('face')
-        if pick in ('jebo', 'off') and S.admin_active():
-            if pick == 'jebo': session['face_preview'] = 'jebo'
-            else: session.pop('face_preview', None)
-        jebo_face = request.host.split(':')[0].lower() in S.JEBO_HOSTS or (session.get('face_preview') == 'jebo' and S.admin_active())
+        jebo_face = S.current_face() == 'jebo'  # 주소·관리자 미리보기로 정함 (app.py current_face)
         g.brand = 'jebo' if jebo_face else 'soboru'
         # 소보루에만 있는 화면(생활정보·레터·리뷰 주제·AI 상담)은 소비자제보센터 주소로 들어와도 soboru.co.kr로
         if request.host.split(':')[0].lower() in S.JEBO_HOSTS and S.main_host() not in S.JEBO_HOSTS and request.path.startswith(SOBORU_ONLY):
@@ -387,8 +383,8 @@ def install(S):
                         value = f[key].replace('\r\n', '\n').strip()
                         if len(value) > site_content.MAX_LENGTH: abort(400)
                         if not field.get('multiline'): value = ' '.join(value.split())
-                        if value == field['default'] or (not value and not field.get('optional')): db.execute('DELETE FROM site_content WHERE key=?', (key,))
-                        else: db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated', (key, value, stamp))
+                        if value == field['default'] or (not value and not field.get('optional')): db.execute('DELETE FROM site_content WHERE key=?', (S.db_key(key),))
+                        else: db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated', (S.db_key(key), value, stamp))
                 flash('문구를 저장했어요.')
                 return redirect(url_for('admin_screens', _anchor='page-' + page))
             if page not in PAGE_BLOCKS: abort(400)
@@ -400,7 +396,7 @@ def install(S):
             if f.get('ajax'): return {'ok': True}
             flash('%s 묶음 순서를 저장했어요.' % PAGE_BLOCKS[page][0])
             return redirect(url_for('admin_screens', _anchor='page-' + page))
-        with conn() as db: changed = {r['key'] for r in db.execute('SELECT key FROM site_content')}
+        changed = S.saved_keys('site_content')
         screens = [{'key': k, 'name': n, 'url': u(), 'texts': screen_keys(files), 'blocks': page_blocks(k) if k in PAGE_BLOCKS else None,
                     'names': dict(PAGE_BLOCKS[k][1]) if k in PAGE_BLOCKS else {}} for k, n, u, files in SCREENS]
         return render_template('admin_screens.html', screens=screens, fields=site_content.FIELDS, content=S.load_content(), changed=changed)

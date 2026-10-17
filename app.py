@@ -82,6 +82,8 @@ TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','
 def load_content():
     # 빈 값으로 저장된 문구는 '지운 문장' (편집 모드의 지우기). 관리자 문구 화면에서 비우면 행이 지워져 기본값으로 돌아감.
     with conn() as db:saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content')}
+    if current_face()=='jebo':saved={k:saved[db_key(k)] for k in site_content.FIELDS if db_key(k) in saved}  # 소비자제보센터: 제보센터용으로 고친 문구만
+    else:saved={k:v for k,v in saved.items() if not k.startswith(JEBO_PREFIX)}
     if has_request_context():g.deleted={k for k,v in saved.items() if v==''}
     return {k:saved[k] if k in saved else f['default'] for k,f in site_content.FIELDS.items()}
 def legacy_list(db,key):
@@ -104,6 +106,7 @@ def legacy_list(db,key):
 def load_lists():
     with conn() as db:
         saved={r['key']:json.loads(r['value']) for r in db.execute('SELECT key,value FROM site_lists')}
+        if current_face()=='jebo':return {key:saved.get(db_key(key,True)) or (legacy_list(db,key) if shared_key(key,True) else None) or site_content.LIST_DEFAULTS[key] for key,*_ in site_content.LISTS}
         return {key:saved[key] if key in saved else (legacy_list(db,key) or site_content.LIST_DEFAULTS[key]) for key,*_ in site_content.LISTS}
 @app.before_request
 def no_www():
@@ -114,7 +117,7 @@ def no_www():
         return redirect(new,301)
 @app.before_request
 def content_for_request():
-    if request.endpoint!='static':g.content=load_content();g.lists=load_lists()
+    if request.endpoint!='static':current_face();g.content=load_content();g.lists=load_lists()
 # 편집 모드에서 화면에 보이는 목록 칸 (클릭해서 바로 고칠 수 있는 칸)
 LIST_DISPLAY_FIELDS={'menu':('label',),'home_blocks':('title','body','button_label'),'faq':('q','a'),'process_steps':('title','body'),
     'guide_basics':('title','body'),'guide_writing':('title','body'),'guide_topics':('name','heading','info','materials'),'guide_steps':('title',),'guide_industries':('name','examples','tip'),'sample_reports':('title','company'),
@@ -175,6 +178,45 @@ LIVE_HOSTS={h for d in (CANONICAL_HOST,'consumerjebo.co.kr','soboru.co.kr') for 
 # 소비자제보센터 화면으로 보여 줄 주소 (soboru.py가 화면을 바꿈). 대표 주소도 그 주소 그대로
 def main_host():return CANONICAL_HOST  # 로그인·가입을 받는 대표 주소 (crosslogin.py)
 JEBO_HOSTS={x for h in os.getenv('JEBO_HOST','').split(',') if h.strip() for x in (h.strip().lower(),'www.'+h.strip().lower())}
+# 관리자는 하나, 문구는 사이트별: 소비자제보센터 화면에서 고친 문구·목록은 'jebo:'를 붙여 따로 저장(소보루 문구와 섞이지 않게).
+# 사업자 정보·약관(operator, policy), 사이트별 검색 설정(seo, jebo), 제보 분류처럼 두 사이트가 같은 데이터를 쓰는 목록만 같이 씀.
+JEBO_PREFIX='jebo:'
+SHARED_SECTIONS={'operator','policy','seo','jebo'}
+SHARED_LISTS={'menu','home_blocks','sample_reports','report_categories','report_industries','board_categories','report_consents','custom_pages'}
+def current_face():
+    # 'jebo'(소비자제보센터) 또는 'soboru'. 관리자 화면은 주소의 face=jebo로만 정해서, 다른 탭에서 미리보기를 바꿔도 엉뚱한 사이트에 저장되지 않게 함.
+    if not has_request_context():return 'soboru'
+    if 'face' in g:return g.face
+    host=request.host.split(':')[0].lower()
+    if host in JEBO_HOSTS:face='jebo'
+    elif not admin_active():face='soboru'
+    else:
+        pick=request.values.get('face')
+        if request.path.startswith('/admin'):face='jebo' if pick=='jebo' else 'soboru'
+        else:
+            if pick=='jebo':session['face_preview']='jebo'
+            elif pick=='off':session.pop('face_preview',None)
+            face='jebo' if session.get('face_preview')=='jebo' else 'soboru'
+    g.face=face;return face
+def shared_key(key,is_list=False):
+    return key in SHARED_LISTS if is_list else site_content.FIELDS.get(key,{}).get('section') in SHARED_SECTIONS
+def db_key(key,is_list=False):
+    return JEBO_PREFIX+key if current_face()=='jebo' and not shared_key(key,is_list) else key
+def saved_keys(table):
+    # 지금 고치는 사이트에서 바꾼 칸 이름들 ('수정됨' 표시용)
+    with conn() as db:keys=[r['key'] for r in db.execute('SELECT key FROM '+table)]
+    lst=table=='site_lists'
+    if current_face()!='jebo':return {k for k in keys if not k.startswith(JEBO_PREFIX)}
+    return {k[len(JEBO_PREFIX):] for k in keys if k.startswith(JEBO_PREFIX)}|{k for k in keys if shared_key(k,lst)}
+def face_url(endpoint,**kw):
+    # 관리자 화면 링크: 소비자제보센터를 고치는 중이면 face=jebo를 이어 붙임
+    if current_face()=='jebo':kw['face']='jebo'
+    return url_for(endpoint,**kw)
+def jebo_site_url():
+    # 관리자 '사이트 보기 > 소비자제보센터': 실제 주소가 정해져 있으면 그 주소, 아니면 이 주소에서 제보센터 화면 미리보기
+    real=sorted(h for h in JEBO_HOSTS if not h.startswith('www.'))
+    return 'https://'+real[0]+'/' if real and request.host.split(':')[0].lower() not in JEBO_HOSTS else url_for('home',face='jebo')
+app.jinja_env.globals.update(jebo_site_url=jebo_site_url,face_url=face_url,current_face=current_face,shared_lists=SHARED_LISTS)
 def canonical_url(path=None):
     # 운영 도메인(www 포함)으로 들어오면 주소를 https://대표주소 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
     host=request.host.split(':')[0].lower();path=request.path if path is None else path
@@ -242,7 +284,7 @@ def ed_list(key):
     # 목록 아래에 "항목 추가·순서 바꾸기" 바로가기 (편집 모드에서만)
     if not editing():return ''
     label={'home_blocks':'＋ 메인 화면 섹션 추가·삭제·순서 바꾸기','custom_pages':'＋ 새 페이지 만들기·관리'}.get(key) or ('＋ 이 페이지 섹션 추가·삭제·순서 바꾸기' if key.startswith('layout_') else '＋ 항목 추가·삭제·순서 바꾸기')
-    return Markup('<a class="ed-list" href="%s">%s</a>')%(url_for('admin_lists',_anchor='list-'+key),label)
+    return Markup('<a class="ed-list" href="%s">%s</a>')%(face_url('admin_lists',_anchor='list-'+key),label)
 app.jinja_env.globals['ed_list']=ed_list
 def ed_remove(key,index):
     # 편집 모드에서 섹션·항목 옆에 붙는 "✕ 빼기" 버튼
@@ -829,7 +871,7 @@ def admin_list_remove():
     if not 0<=i<len(rows):abort(404)
     if len(rows)-1<meta[2]:return {'ok':False,'error':'%s은(는) 최소 %d개가 있어야 해요.'%(meta[0],meta[2])},400
     rows.pop(i)
-    with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,json.dumps(rows,ensure_ascii=False),datetime.datetime.now().isoformat(timespec='seconds')))
+    with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(db_key(key,True),json.dumps(rows,ensure_ascii=False),datetime.datetime.now().isoformat(timespec='seconds')))
     return {'ok':True}
 
 @app.route('/admin/inline',methods=['POST'])
@@ -852,17 +894,18 @@ def admin_inline():
         if len(value)>site_content.MAX_LENGTH:abort(400)
         if not value and field==fields[0][0]:return {'ok':False,'error':'이 칸은 비울 수 없어요. 항목째 빼려면 지우기를 눌러 주세요.'},400
         rows[i][field]=value
-        with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(lk,json.dumps(rows,ensure_ascii=False),stamp))
+        with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(db_key(lk,True),json.dumps(rows,ensure_ascii=False),stamp))
         return {'ok':True}
     field=site_content.FIELDS.get(key)
     if not field:abort(400)
     if not (field.get('multiline') or field.get('doc')):value=' '.join(value.split())
     if len(value)>(site_content.DOC_MAX_LENGTH if field.get('doc') else site_content.MAX_LENGTH):abort(400)
     if delete and key in UNDELETABLE:return {'ok':False,'error':'이 문구는 지울 수 없어요. 내용만 바꿔 주세요.'},400
+    dk=db_key(key)
     with conn() as db:
-        if delete:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,'',stamp))
-        elif reset or value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(key,))
-        else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,stamp))
+        if delete:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(dk,'',stamp))
+        elif reset or value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(dk,))
+        else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(dk,value,stamp))
     return {'ok':True}
 
 @app.route('/admin/content',methods=['GET','POST'])
@@ -874,18 +917,22 @@ def admin_content():
         with conn() as db:
             for key,field in site_content.FIELDS.items():
                 if reset:
-                    if field['section']==reset:db.execute('DELETE FROM site_content WHERE key=?',(key,))
+                    if field['section']==reset:db.execute('DELETE FROM site_content WHERE key=?',(db_key(key),))
                     continue
                 if key not in request.form:continue
                 value=request.form[key].replace('\r\n','\n').strip()
                 if len(value)>(site_content.DOC_MAX_LENGTH if field.get('doc') else site_content.MAX_LENGTH):abort(400)
                 if not field.get('multiline'):value=' '.join(value.split())
-                if value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(key,))
-                else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,now))
+                if value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(db_key(key),))
+                else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(db_key(key),value,now))
         flash('기본값으로 되돌렸습니다.' if reset else '문구를 저장했습니다.')
-        return redirect(url_for('admin_content',_anchor='section-'+(reset or request.form.get('section',''))))
-    with conn() as db:changed={r['key'] for r in db.execute('SELECT key FROM site_content')}
-    return render_template('admin_content.html',sections=site_content.SECTIONS,content=load_content(),changed=changed,policy_hint=site_content.POLICY_HINT)
+        return redirect(face_url('admin_content',_anchor='section-'+(reset or request.form.get('section',''))))
+    # 소비자제보센터 칸에서는 소보루 검색 설정을, 소보루 칸에서는 소비자제보센터 이름·검색 설정을 빼고 보여 줌
+    hide='seo' if current_face()=='jebo' else 'jebo'
+    # 소비자제보센터에서는 사이트 이름·검색 제목처럼 '소비자제보센터 화면' 칸에서 따로 정하는 문구도 뺌 (soboru.JEBO_KEYS)
+    skip=set(soboru.JEBO_KEYS) if current_face()=='jebo' else set()
+    sections=[(sid,title,[it for it in rows if it[0] not in skip]) for sid,title,rows in site_content.SECTIONS if sid!=hide]
+    return render_template('admin_content.html',sections=sections,changed=saved_keys('site_content'),content=load_content(),policy_hint=site_content.POLICY_HINT)
 @app.route('/admin/lists',methods=['GET','POST'])
 @admin_only
 def admin_lists():
@@ -896,8 +943,8 @@ def admin_lists():
         title,_,fields,minimum=lists[key]
         now=datetime.datetime.now().isoformat(timespec='seconds')
         if request.form.get('reset'):
-            with conn() as db:db.execute('DELETE FROM site_lists WHERE key=?',(key,))
-            flash(title+' 항목을 기본값으로 되돌렸습니다.');return redirect(url_for('admin_lists',_anchor='list-'+key))
+            with conn() as db:db.execute('DELETE FROM site_lists WHERE key=?',(db_key(key,True),))
+            flash(title+' 항목을 기본값으로 되돌렸습니다.');return redirect(face_url('admin_lists',_anchor='list-'+key))
         # 같은 이름의 칸이 항목 순서대로 반복되므로 필드별 getlist를 묶으면 화면 순서 그대로 항목이 됨.
         columns=[request.form.getlist(name) for name,_,_ in fields]
         if len({len(c) for c in columns})!=1:abort(400)
@@ -927,13 +974,12 @@ def admin_lists():
             # 입력한 내용을 잃지 않도록 저장하지 않은 상태 그대로 다시 보여 줌.
             flash(title+': '+error);data=load_lists();data[key]=rows
             return render_admin_lists(data,focus=key),400
-        with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,json.dumps(rows,ensure_ascii=False),now))
+        with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(db_key(key,True),json.dumps(rows,ensure_ascii=False),now))
         flash(title+' 항목을 저장했습니다.')
-        return redirect(url_for('admin_lists',_anchor='list-'+key))
+        return redirect(face_url('admin_lists',_anchor='list-'+key))
     return render_admin_lists(load_lists())
 def render_admin_lists(data,focus=None):
-    with conn() as db:changed={r['key'] for r in db.execute('SELECT key FROM site_lists')}
-    return render_template('admin_lists.html',lists=site_content.LISTS,data=data,changed=changed,max_items=site_content.LIST_MAX_ITEMS,focus=focus)
+    return render_template('admin_lists.html',lists=site_content.LISTS,data=data,changed=saved_keys('site_lists'),max_items=site_content.LIST_MAX_ITEMS,focus=focus)
 
 @app.route('/admin/takedowns',methods=['GET','POST'])
 @admin_only
@@ -2128,7 +2174,7 @@ def admin():
 @admin_only
 def admin_site():
     # 사이트 편집 안내: 화면에서 바로 고치기, 구성 바꾸기, 숨은 문구·설정으로 가는 첫 화면
-    with conn() as db:changed=db.execute('SELECT COUNT(*) FROM site_content').fetchone()[0]+db.execute('SELECT COUNT(*) FROM site_lists').fetchone()[0]
+    changed=len(saved_keys('site_content'))+len(saved_keys('site_lists'))
     return render_template('admin_site.html',changed=changed,custom_pages=g.lists.get('custom_pages',[]))
 
 @app.route('/admin/staff',methods=['GET','POST'])
