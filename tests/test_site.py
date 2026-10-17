@@ -294,7 +294,9 @@ class SiteTest(unittest.TestCase):
             home = self.client.get('/').get_data(as_text=True)
             self.assertIn('생활정보 카드 제목', home)
             self.assertIn('공개 제보 카드 제목', home)
-            self.assertIn('nn-live', home)  # 맨 위 실시간 제보
+            self.assertIn('nn-intro', home)  # 맨 위 소보루 소개
+            self.assertIn('nn-live', home)  # 바로 아래 실시간 제보
+            self.assertNotIn('nn-stats', home)  # 맨 위 건수 현황은 뺌
             self.assertNotIn('비밀 제보 카드 제목', home)  # 비밀글은 제목 없이 '비공개 제보'로만
             self.assertNotIn('nn-pick', home)  # 끈 묶음(소보루 픽·기업 답변)은 빠짐
             self.assertIn('소보루 픽', home)  # 메뉴 이름 (커뮤니티 → 소보루 픽)
