@@ -950,7 +950,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-hero{margin-top:32px}
 .nn-hero{display:grid;grid-template-columns:1.15fr 1fr;gap:24px;align-items:stretch}
 .nn-hero-main{position:relative;overflow:hidden;background:var(--sb-orange-soft);border-radius:28px;padding:44px 40px 40px;min-height:420px;display:flex;flex-direction:column}
-.nn-kicker{align-self:flex-start;background:#fff;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--sb-brown);margin:0}
+.nn-kicker{display:inline-block;background:#fff;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--sb-brown);margin:0}
 .nn-kicker b{color:var(--sb-orange)}
 .nn-hero-main h1{font-size:40px;line-height:1.28;font-weight:800;letter-spacing:-.035em;margin:20px 0 12px;color:var(--sb-ink)}
 .nn-lede{font-size:16px;line-height:1.6;color:#5c4a40;margin:0}
@@ -958,10 +958,15 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-hero-btns .sb-cta,.nn-ghost{height:48px;padding:0 22px;border-radius:14px;display:inline-flex;align-items:center;font-size:16px;font-weight:700}
 .nn-ghost{background:#fff;color:var(--sb-ink)}
 .nn-ghost:hover{background:#fffaf5}
-.nn-stats{list-style:none;display:flex;gap:32px;margin:auto 0 0;padding:32px 0 0}
-.nn-stats b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--sb-ink);font-variant-numeric:tabular-nums}
-.nn-stats span{font-size:13px;color:#7a685d}
-.nn-char{position:absolute;right:28px;bottom:26px;width:170px;height:auto}
+.nn-hero-top{position:relative}
+.nn-hero-copy{min-width:0}
+.nn-char{position:absolute;right:-8px;top:-10px;width:136px;height:auto}
+.nn-stats{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:auto 0 0;padding:28px 0 0}
+.nn-stats li{background:#fff;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.nn-stats .nn-si{font-family:Tossface,sans-serif;font-size:24px;line-height:1;margin-bottom:10px;color:inherit}
+.nn-stats span{font-size:13px;color:var(--sb-sub)}
+.nn-stats b{font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--sb-ink);font-variant-numeric:tabular-nums}
+.nn-stats b small{font-size:14px;font-weight:700;margin-left:2px;color:var(--sb-sub)}
 .nn-live{border:1px solid var(--sb-line);border-radius:28px;padding:26px 26px 10px;display:flex;flex-direction:column}
 .nn-live-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
 .nn-live-head h2{display:flex;align-items:center;gap:8px;font-size:19px;font-weight:800;margin:0;letter-spacing:-.02em}
@@ -1000,8 +1005,8 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-copy{margin:64px 0 0;padding-top:20px;border-top:1px solid var(--sb-line);font-size:12px;line-height:1.6;color:var(--sb-mute);text-align:center}
 @media(max-width:900px){.nn-hero{grid-template-columns:1fr}.nn-hero-main{min-height:0}.nn-list,.nn-two{grid-template-columns:1fr}.nn-two{gap:56px}}
 @media(max-width:680px){.nn-hero{margin-top:16px;gap:16px}.nn-hero-main{border-radius:22px;padding:28px 22px 24px}.nn-hero-main h1{font-size:28px;margin-top:16px}.nn-lede{font-size:15px}.nn-lede br{display:none}
-  .nn-hero-btns .sb-cta,.nn-ghost{height:46px;padding:0 18px;font-size:15px}.nn-stats{gap:18px;padding-top:26px}.nn-stats b{font-size:20px}.nn-stats span{font-size:12px}
-  .nn-char{width:96px;right:14px;top:22px;bottom:auto}.nn-live{border-radius:22px;padding:20px 18px 6px}.nn-sec{margin-top:48px}.nn-sec-head h2{font-size:20px}
+  .nn-hero-btns .sb-cta,.nn-ghost{height:46px;padding:0 18px;font-size:15px}.nn-stats{gap:8px;padding-top:22px}.nn-stats li{padding:12px;border-radius:14px}.nn-stats .nn-si{font-size:20px;margin-bottom:8px}.nn-stats b{font-size:18px}.nn-stats span{font-size:11px;letter-spacing:-.02em}
+  .nn-char{width:80px;right:-6px;top:-8px}.nn-live{border-radius:22px;padding:20px 18px 6px}.nn-sec{margin-top:48px}.nn-sec-head h2{font-size:20px}
   .nn-item{gap:14px;padding:18px 0}.nn-emo{width:56px;height:56px;border-radius:16px;font-size:26px}.nn-item h3{font-size:16px}.nn-copy{text-align:left}}
 /* 뉴닉식 홈: 소보루 픽 · 기업 답변 기록 */
 .nn-pick-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:22px}

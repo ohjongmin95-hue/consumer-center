@@ -4,27 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">{# viewport-fit: 앱(웹뷰)·아이폰 홈 화면에서 아래 탭바가 홈 바를 피하게 #}
   <meta name="theme-color" content="#fafaf9">
-  {% if request.path.startswith(('/admin', '/case', '/company', '/me', '/login', '/account')) %}<meta name="robots" content="noindex,nofollow">{% elif request.args.get('q') or request.args.get('category') or request.args.get('sort') %}{# 검색·분류 결과 화면: 원래 목록과 겹치는 얇은 페이지라 검색엔진에는 싣지 않고 링크만 따라가게 함 #}<meta name="robots" content="noindex,follow">{% endif %}
-  <title>{% block title %}{{ txt('seo.home_title') or txt('site.name') }}{% endblock %}</title>
-  <meta name="title" content="{{ self.title()|trim }}">
-  <meta name="description" content="{% filter trim %}{% block description %}{{ txt('seo.description') }}{% endblock %}{% endfilter %}">
-  <link rel="canonical" href="{{ request.base_url }}{% if request.args.get('page', 1)|int > 1 %}?page={{ request.args.get('page', 1)|int }}{% endif %}">
+  {% if request.path.startswith(('/admin', '/case', '/company', '/me', '/login', '/account', '/signup', '/lookup', '/biz', '/staff', '/reporter', '/board/write')) or request.path.endswith('/mine') %}<meta name="robots" content="noindex,nofollow">{% elif request.args.get('q') or request.args.get('category') or request.args.get('sort') or request.args.get('type') or request.args.get('cat') or request.args.get('months') %}{# 검색·분류 결과 화면: 원래 목록과 겹치는 얇은 페이지라 검색엔진에는 싣지 않고 링크만 따라가게 함 #}<meta name="robots" content="noindex,follow">{% endif %}
+  {# 소보루 주요 화면은 seo_page()가 정한 제목·설명이 먼저, 나머지는 각 화면 블록 #}
+  {% set page_no = request.args.get('page', 1)|int %}{% set page_tail = ' (%d쪽)' % page_no if page_no > 1 else '' %}{# 목록 2쪽부터는 제목·설명이 1쪽과 겹치지 않게 #}
+  <title>{% if seo_page('title') %}{{ seo_page('title') }}{% else %}{% block title %}{{ txt('seo.home_title') or txt('site.name') }}{% endblock %}{% endif %}{{ page_tail }}</title>
+  {% set page_title = (seo_page('title') or self.title()|trim) ~ page_tail %}{% set page_desc = (seo_page('desc') or self.description()|trim) ~ page_tail %}{% set og_pic = self.og_image()|trim %}
+  <meta name="title" content="{{ page_title }}">
+  <meta name="description" content="{% if seo_page('desc') %}{{ page_desc }}{% else %}{% filter trim %}{% block description %}{{ txt('seo.description') }}{% endblock %}{% endfilter %}{{ page_tail }}{% endif %}">
+  <link rel="canonical" href="{{ canonical_url() }}{% if request.args.get('page', 1)|int > 1 %}?page={{ request.args.get('page', 1)|int }}{% endif %}">
   <meta property="og:type" content="{% block og_type %}website{% endblock %}">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="{{ txt('site.name') }}">
-  <meta property="og:title" content="{{ self.title()|trim }}">
-  <meta property="og:description" content="{{ self.description()|trim }}">
-  <meta property="og:url" content="{{ request.base_url }}">
-  <meta property="og:image" content="{{ url_for('static', filename='og-image.png', v=css_v, _external=True) }}">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="{{ txt('site.name') }}">
+  <meta property="og:title" content="{{ page_title }}">
+  <meta property="og:description" content="{{ page_desc }}">
+  <meta property="og:url" content="{{ canonical_url() }}">
+  {# 글에 실린 사진(JPG·PNG)이 있으면 그 사진, 없으면 화면 종류별 기본 그림 #}
+  {% set og_img = og_pic or canonical_url(url_for('static', filename=og_default(), v=css_v)) %}
+  <meta property="og:image" content="{{ og_img }}">
+  {% if not og_pic %}<meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">{% endif %}
+  <meta property="og:image:alt" content="{{ page_title }}">{% if false %}{% block og_image %}{% endblock %}{% endif %}{# 상세 화면이 사진 주소만 채움 #}
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page_title }}">
+  <meta name="twitter:description" content="{{ page_desc }}">
+  <meta name="twitter:image" content="{{ og_img }}">
   {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
   <link rel="alternate" type="application/rss+xml" title="{{ txt('site.name') }}" href="{{ url_for('rss_xml', _external=True) }}">
-  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "name": txt('site.name'), "url": url_for('home', _external=True), "logo": url_for('static', filename='apple-touch-icon.png', _external=True), "sameAs": channel_links()}|tojson }}</script>
-  <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebSite", "name": txt('site.name'), "url": url_for('home', _external=True), "inLanguage": "ko", "potentialAction": {"@type": "SearchAction", "target": url_for('reports', _external=True) ~ "?q={search_term_string}", "query-input": "required name=search_term_string"}}|tojson }}</script>{% endif %}
+  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else []), "url": canonical_url('/'), "logo": canonical_url(url_for('static', filename='img/soboru-logo.png' if is_soboru() else 'apple-touch-icon.png')), "sameAs": channel_links()}|tojson }}</script>
+  <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebSite", "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else []), "url": canonical_url('/'), "inLanguage": "ko", "potentialAction": {"@type": "SearchAction", "target": canonical_url(url_for('reports')) ~ "?q={search_term_string}", "query-input": "required name=search_term_string"}}|tojson }}</script>{% endif %}
   {% block head %}{% endblock %}
   <link rel="icon" href="{{ url_for('favicon_ico') }}" sizes="48x48">
   <link rel="icon" href="{{ url_for('static', filename='soboru-favicon.png', v=css_v) }}" type="image/png">

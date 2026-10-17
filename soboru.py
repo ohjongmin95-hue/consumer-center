@@ -16,10 +16,27 @@ BRAND_VALUES = {'소보루', 'soboru', 'SOBORU'}
 # 소보루로 바꿀 때 덮어쓰는 문구 (관리자가 적어 둔 값보다 앞섬)
 SOBORU_TEXT = {
     'site.name': NEW_NAME,
-    'seo.home_title': '소보루 - 소비자 생활정보·커뮤니티·제보',
-    'seo.description': '알아 두면 돈 버는 소비자 생활정보, 소비자끼리 나누는 경험, 억울한 일 제보까지. 기업 답변과 해결 과정을 한곳에서 확인하세요.',
+    'seo.home_title': '소보루(SOBORU)',
+    'seo.description': '소비자 피해 제보부터 제품·업체 리뷰와 추천, 소비자 권리 안내까지. 소비자의 경험을 나누는 소비자 정보 플랫폼, 소보루.',
     'site.logo_accent': '', 'site.logo_rest': NEW_NAME, 'site.logo_by': '',
+    'board.title': '소보루 픽',
 }
+# 검색·공유용 페이지 제목과 설명 (소보루일 때만). 키는 화면 이름, 안내·약관 화면은 '화면:쪽'
+SEO_PAGES = {
+    'report': ('소비자 피해 제보하기 | 소보루', '겪은 소비자 피해를 소보루에 제보하세요. 내용을 정리해 기업에 전달하고, 답변이 올 때까지 진행 상황을 알려 드려요.'),
+    'reports': ('소비자 제보 목록 | 소보루', '소비자들이 직접 올린 피해 제보와 기업 답변을 분야별로 모아 볼 수 있어요. 같은 일을 겪었다면 함께 목소리를 내요.'),
+    'board': ('제품·업체 리뷰와 추천 | 소보루', '직접 써 본 소비자가 남긴 제품·업체 리뷰와 추천을 모았어요. 광고 없이 솔직한 후기와 살까 말까 고민될 때의 질문까지 나눠요.'),
+    'law_ask': ('AI 소비자 상담 | 소보루', '환불·해지·배송·품질 같은 소비자 피해를 AI에게 편하게 물어보세요. 법령 원문을 근거로 소비자 권리와 대응 방법을 안내해 드려요.'),
+    'info_page:faq': ('자주 묻는 질문 | 소보루', '제보 방법, 처리 절차, 공개 범위, 기업 답변까지 소보루 이용자들이 자주 묻는 질문을 모았어요.'),
+    'info_page:guide': ('이용 안내 | 소보루', '소보루에서 제보하고, 리뷰를 쓰고, 생활정보를 찾아보는 방법을 한눈에 안내해 드려요.'),
+    'info_page:process': ('제보 처리 절차 | 소보루', '제보 접수부터 검토, 기업 전달, 답변 도착, 종결까지 소보루가 제보를 처리하는 과정을 알려 드려요.'),
+    'takedown': ('권리침해 신고 및 임시조치 안내 | 소보루', '소보루 게시물로 권리를 침해당했다면 신고할 수 있어요. 임시조치 절차와 이의 제기 방법을 안내해 드려요.'),
+    'policy_page:terms': ('이용약관 | 소보루', '소보루 서비스 이용 조건과 이용자·운영자의 권리와 의무를 정한 이용약관이에요.'),
+    'policy_page:privacy': ('개인정보 처리방침 | 소보루', '소보루가 어떤 개인정보를 왜 모으고, 얼마나 보관하고, 어떻게 보호하는지 알려 드려요.'),
+    'policy_page:youth': ('청소년보호정책 | 소보루', '청소년이 유해한 정보에 노출되지 않도록 소보루가 지키는 원칙과 책임자를 안내해요.'),
+}
+# 공유 미리보기 기본 그림: 주소 앞부분별로 다른 그림 (글 자체 사진이 있으면 그 사진이 먼저)
+OG_SECTIONS = [('/reports', 'report'), ('/report', 'report'), ('/companies', 'report'), ('/life', 'life'), ('/board', 'pick'), ('/ask', 'ask')]
 LIFE_CATEGORIES = ['쇼핑', '통신', '여행', '음식', '금융', '자동차', '생활', '리콜']
 LIFE_TONES = ['t1', 't2', 't3', 't4', 't5', 't6']  # 대표 그림 바탕색
 LIFE_PAGE = 12
@@ -119,6 +136,20 @@ def install(S):
         return saved_brand(row[0] if row else '')
 
     def is_soboru(): return brand() == 'soboru'
+
+    def seo_page(field):
+        if not has_request_context() or not is_soboru(): return ''
+        page = (request.view_args or {}).get('page')
+        row = SEO_PAGES.get(f'{request.endpoint}:{page}' if page else request.endpoint)
+        return row[0 if field == 'title' else 1] if row else ''
+
+    def og_default():
+        if not is_soboru(): return 'og-image.png'
+        path = request.path
+        for prefix, name in OG_SECTIONS:
+            if path == prefix or path.startswith(prefix + '/'): return f'soboru-og-{name}.png'
+        return 'soboru-og.png'
+    app.jinja_env.globals.update(seo_page=seo_page, og_default=og_default)
 
     @app.before_request
     def apply_brand():
@@ -286,6 +317,8 @@ def install(S):
         # 관리자 > 메인 화면 순서의 켜고 끄기를 따름: top=소개·실시간 제보, life=소비 이야기, rank=소보루 픽·기업 답변 기록
         lifes = [life_item(a) for a in life_rows(8)]
         reps = [r for r in report_items(6) if r['title']]
+        for r in reps:  # '[품질·하자] 물건이나…' → '품질·하자'
+            m = re.match(r'\[([^\]]+)\]', r['label'] or ''); r['label'] = m.group(1) if m else r['label']
         feed = []
         while lifes or reps:
             feed += lifes[:2]; lifes = lifes[2:]
@@ -329,6 +362,7 @@ def install(S):
         with conn() as db:
             total = db.execute("SELECT COUNT(*) FROM articles WHERE status='published'" + (' AND category=?' if cat else ''), (cat,) if cat else ()).fetchone()[0]
         rows = life_rows(LIFE_PAGE, (page - 1) * LIFE_PAGE, cat or None)
+        if page > 1 and page > -(-total // LIFE_PAGE): abort(404)  # 없는 쪽 번호는 빈 화면(200) 대신 404
         return render_template('life.html', rows=rows, cat=cat, page=page, pages=max(1, -(-total // LIFE_PAGE)), total=total)
 
     @app.route('/life/<int:article_id>')
