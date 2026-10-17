@@ -2,7 +2,7 @@
 {% macro tc_short(label) %}{{ label.split(']')[0].lstrip('[') if label.startswith('[') and ']' in label else label }}{% endmacro %}
 {% macro tc_quote(text, n=64) %}{% set t = (text or '')|replace('\n', ' ')|trim %}{{ t[:n] ~ ('…' if t|length > n else '') }}{% endmacro %}
 {# 관리자가 게시한 AI 일러스트가 있으면 그림, 없으면 글자 카드 #}
-{% macro art_pic(src, cls='') %}<div class="sb-tc sb-art {{ cls }}" aria-hidden="true"><img src="{{ src }}" alt="" loading="lazy">{% if '/art/' not in src %}<span class="sb-art-l">{{ '사진' if cls == 'sq' else '제보자 사진' }}</span>{% endif %}</div>{% endmacro %}
+{% macro art_pic(src, cls='') %}<div class="sb-tc sb-art {{ cls }}" aria-hidden="true"><img src="{{ src }}" alt="" loading="lazy">{% if '/art/' not in src %}<span class="sb-art-l">{{ '사진' if cls == 'sq' else '제보자 사진' }}</span>{% else %}<span class="sb-art-ai">AI</span>{% endif %}</div>{% endmacro %}
 {% macro thumb(a, cls='') %}{% set src = art_url('life', a['id']) %}{% if src %}{{ art_pic(src, cls) }}{% else %}{% set tone = 't%d' % (1 + (LIFE_CATEGORIES.index(a['category']) if a['category'] in LIFE_CATEGORIES else 0) % 6) %}<div class="sb-tc {{ tone }} {{ cls }}" aria-hidden="true"><span class="sb-tc-k">{{ a['category'] }}</span><p class="sb-tc-q">{{ tc_quote(a['summary'] or a['title'], 54) }}</p></div>{% endif %}{% endmacro %}
 {% macro meta(a) %}<div class="sb-meta"><em>{{ a['category'] }}</em>{{ ago_text(a['published_at'] or a['created']) }}</div>{% endmacro %}
 {# 메인 카드(생활정보·제보 공통) #}
