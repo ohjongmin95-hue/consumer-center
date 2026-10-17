@@ -272,6 +272,7 @@ def install(S):
     old_home = app.view_functions['home']
     def home():
         if not is_soboru(): return old_home()
+        if request.args.get('look') != 'old': return home_nn()  # 예전 홈은 /?look=old 로 비교용
         plan = home_plan()
         lead, side = pick_top(plan)
         shown = [x['id'] for x in ([lead] if lead else []) + side if x['kind'] == 'life']
@@ -279,6 +280,28 @@ def install(S):
         return render_template('soboru_home.html', plan=plan, lead=lead, side=side, more=more, rank=company_rank(4),
                                cases=S.report_rows(limit=6), posts=S.community_feed(4))
     app.view_functions['home'] = home
+
+    def home_nn():
+        # 뉴닉식 홈(운영자 요청, 2026-10-17): 그림은 캐릭터 하나, 글·이모지 위주, 실시간 제보를 맨 위에.
+        # 관리자 > 메인 화면 순서의 켜고 끄기를 따름: top=맨 위·실시간 제보, life=소비 이야기, rank=소보루 픽·기업 답변 기록
+        lifes = [life_item(a) for a in life_rows(8)]
+        reps = [r for r in report_items(6) if r['title']]
+        feed = []
+        while lifes or reps:
+            feed += lifes[:2]; lifes = lifes[2:]
+            if reps: feed.append(reps.pop(0))
+        with conn() as db:
+            today = db.execute('SELECT COUNT(*) FROM cases WHERE substr(created,1,10)=? AND ' + S.PUBLIC_VALID, (datetime.date.today().isoformat(),)).fetchone()[0]
+            answered = db.execute("SELECT COUNT(DISTINCT case_id) FROM messages WHERE author='기업 답변'").fetchone()[0]
+        stats = {'today': today, 'answered': answered, 'total': S.report_summary()['total']}
+        cats = [c for c in LIFE_CATEGORIES if any(x['kind'] == 'life' and x['label'] == c for x in feed)]
+        # 소보루 픽: 리뷰를 대상(제품·업체)별로 묶어 '추천해요'와 별점으로 순위
+        with conn() as db:
+            picks = [dict(r) for r in db.execute("""SELECT target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg,SUM(recommend=1) AS rec
+                FROM posts WHERE kind='review' AND hidden=0 AND target!='' GROUP BY target ORDER BY rec DESC,avg DESC,n DESC LIMIT 5""")]
+        show = {k: on for k, on in home_plan()['sections']}
+        return render_template('soboru_home_nn.html', show=show, cases=S.report_rows(limit=6), feed=feed[:10], cats=cats, stats=stats,
+                               rank=company_rank(5), posts=S.community_feed(4), picks=picks)
 
     @app.route('/admin/home-plan', methods=['GET', 'POST'])
     @S.admin_only

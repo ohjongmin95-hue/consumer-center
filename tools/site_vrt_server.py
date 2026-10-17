@@ -87,6 +87,20 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
                 db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created) VALUES(?,?,?,?,?,?)', (pid, ['이웃소비자', '경험자'][i], generate_password_hash('1234'), cb, 'seed', ago(max(0.2, h - 1 - i))))
             db.execute('UPDATE posts SET comments=(SELECT COUNT(*) FROM comments WHERE post_id=?) WHERE id=?', (pid, pid))
         db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand',?,'2026-10-16')", (os.environ['VRT_BRAND'],))
+        if os.environ.get('VRT_NN'):
+            # 뉴닉식 홈 미리보기용: 리뷰 대상 여러 개, 기업 답변 순위가 나올 만큼의 전달·답변 기록
+            for nick, title, target, rating, rec, likes, h in [('살림9단', '소보루마트 신선식품, 이 가격에 이 품질이면 추천', '소보루마트', 5, 1, 31, 30), ('매일커피', '오소보카페 구독권, 한 달 써 보니 돈값 해요', '오소보카페', 5, 1, 18, 50),
+                                                              ('통신박사', '보루텔레콤 알뜰요금제 6개월 사용기', '보루텔레콤', 4, 1, 22, 26), ('출장러', '루트호텔 체크인 대기만 빼면 만족', '루트호텔', 4, 1, 9, 80),
+                                                              ('수리왕', '소보루전자 출장 수리, 두 번째도 친절했어요', '소보루전자', 5, 1, 15, 60)]:
+                db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind,target,rating,recommend,likes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                           ('경험 공유', nick, generate_password_hash('1234'), title, '직접 써 보고 남기는 후기예요.', 'seed', ago(h), 'review', target, rating, rec, likes))
+            for name, ans, wait_h in [('소보루마트', 5, 20), ('보루텔레콤', 4, 50), ('오소보쇼핑', 3, 90), ('루트호텔', 1, 0), ('가나다몰', 0, 0)]:
+                co = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES(?,?,?,?,?,?,?)", (name, '000', 'active', '-', '-', '-', ago(500))).lastrowid
+                for k in range(5):
+                    c = -(co * 10 + k)  # 음수 번호: 실시간 제보 목록(최신순) 맨 뒤로
+                    db.execute("INSERT INTO cases(id,receipt,lookup_hash,category,company,subject,description,request_text,created,company_id,forwarded_at,review,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                                   (c, 'nn%d-%d' % (co, k), 'x', '배송·교환·환불', name, '순위용 제보', '본문', '환불', ago(300), co, ago(290), 'ok', '기업 답변 대기'))
+                    if k < ans: db.execute("INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)", (c, '기업 답변', '확인했습니다.', ago(290 - wait_h / 10 - k * 3)))
     if hasattr(m, 'lawask'):
         # 법률 질문창: 가짜 AI 답(실제 OpenAI는 부르지 않음)과 관리자가 올린 법령 하나
         import json as _json

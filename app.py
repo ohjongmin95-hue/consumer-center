@@ -271,7 +271,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-102'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-103'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -467,7 +467,9 @@ def favicon_ico():
 
 @app.route('/robots.txt')
 def robots_txt():
-    lines=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /biz','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/latest','Disallow: /companies/suggest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
+    # AI 학습용 수집 봇은 막음(운영자 요청, 2026-10-17). 검색 노출용 봇은 그대로
+    ai_bots=['GPTBot','ClaudeBot','anthropic-ai','CCBot','Google-Extended','Applebot-Extended','Bytespider','meta-externalagent']
+    lines=[x for b in ai_bots for x in ('User-agent: '+b,'Disallow: /','')]+['User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /biz','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/latest','Disallow: /companies/suggest','','Sitemap: '+url_for('sitemap_xml',_external=True)]
     daum=g.content.get('seo.daum_robots','').strip()
     if daum:lines.insert(0,daum if daum.startswith('#') else '#'+daum)
     return app.response_class('\n'.join(lines)+'\n',mimetype='text/plain')
