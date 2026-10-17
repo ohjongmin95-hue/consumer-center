@@ -1,0 +1,98 @@
+{# 소보루 커뮤니티 글 보기: 종류별 머리(리뷰 별점·좋았던 점/아쉬운 점, 꿀팁 요약, 질문 해결 여부) + 공감·댓글. board_post.html에서 is_soboru()일 때 #}
+{% from 'community_macros.html' import stars, kind_chip, feed_item, heart_i, bubble_i %}
+{% set k = post['kind'] if post['kind'] in POST_KIND_NAMES else 'post' %}
+{% set rate_words = ['', '별로예요', '아쉬워요', '보통이에요', '좋아요', '최고예요'] %}
+{% set mine = (g.user and post['user_id'] == g.user['id']) %}
+<main class="sb-wrap cm cm-post">
+  <a class="cm-back" href="{{ url_for('board', type=k) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('cm.title', '커뮤니티') }} · {{ POST_KIND_NAMES[k] }}</a>
+  <article class="cm-article">
+    {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨김 처리된 글입니다. 운영자에게만 보입니다.') }}</div>{% endif %}
+    <div class="cm-kicker">{{ kind_chip(k) }}{% if k == 'post' %}<span>{{ post['category'] }}</span>{% elif k == 'tip' %}<span>{{ read_minutes(post['body']) }}분이면 읽어요</span>{% elif k == 'question' %}{% if post['solved'] %}<span class="cm-solved">해결됨</span>{% else %}<span>답변을 기다려요</span>{% endif %}{% endif %}</div>
+    <h1>{% if k == 'question' %}<span class="cm-q">Q.</span>{% endif %}{{ post['title'] }}</h1>
+    <div class="cm-author"><span class="cm-av">{{ post['nickname'][:1] }}</span><div><b>{{ post['nickname'] }}{% if post['user_id'] %}<span class="cm-member">{{ ui('board.member_badge', '회원') }}</span>{% endif %}</b><small>{{ post['created']|ago }} · 공감 {{ post['likes'] }} · {{ '답변' if k == 'question' else '댓글' }} {{ comments|length }}</small></div></div>
+
+    {% if k == 'review' %}
+    <section class="cm-review" aria-label="{{ ui('cm.review_aria', '리뷰 요약') }}">
+      <div class="cm-rv-head">
+        {% if company %}<a class="cm-rv-co" href="{{ url_for('company_page', company_id=company['id']) }}"><span class="cm-av lg">{{ company['name'][:1] }}</span><span><small>{{ ui('cm.rv_target', '리뷰한 곳') }}</small><b>{{ company['name'] }}</b></span><em>{{ ui('cm.co_page', '기업 페이지') }} ›</em></a>
+        {% else %}<div class="cm-rv-co"><span class="cm-av lg">{{ mask_personal(post['target'])[:1] }}</span><span><small>{{ ui('cm.rv_target', '리뷰한 곳') }}</small><b>{{ mask_personal(post['target']) }}</b></span></div>{% endif %}
+        <div class="cm-rv-score">{% if post['rating'] %}<b>{{ post['rating'] }}.0</b>{{ stars(post['rating'], 'lg') }}<small>{{ rate_words[post['rating']] }}</small>{% endif %}</div>
+      </div>
+      {% if post['recommend'] is not none %}<p class="cm-rv-rec{{ ' no' if post['recommend'] == 0 }}">{{ ('👍 ' ~ ui('cm.rec_yes_long', '다른 분께도 추천해요')) if post['recommend'] == 1 else ui('cm.rec_no_long', '추천하지는 않아요') }}</p>{% endif %}
+      {% if post['pros'] or post['cons'] %}
+      <div class="cm-rv-pc">
+        {% if post['pros'] %}<div class="up"><h2>{{ ui('cm.f_pros', '좋았던 점') }}</h2><p>{{ mask_personal(post['pros']) }}</p></div>{% endif %}
+        {% if post['cons'] %}<div class="down"><h2>{{ ui('cm.f_cons', '아쉬운 점') }}</h2><p>{{ mask_personal(post['cons']) }}</p></div>{% endif %}
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+    {% if k == 'tip' and post['summary'] %}<p class="cm-lede">{{ mask_personal(post['summary']) }}</p>{% endif %}
+    {% if post['body'] %}<div class="cm-text">{{ mask_personal(post['body']) }}</div>{% endif %}
+
+    {% if k == 'question' %}
+    <div class="cm-qbox{{ ' solved' if post['solved'] }}">
+      <p>{% if post['solved'] %}✅ {{ ui('cm.q_solved', '글쓴이가 해결됐다고 표시했어요.') }}{% else %}{{ ui('cm.q_open', '비슷한 일을 겪었다면 답변으로 알려 주세요.') }}{% endif %}</p>
+      {% if enabled and mine %}
+      <form method="post" action="{{ url_for('board_solve', post_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="cm-btn sm{{ ' ghost' if post['solved'] }}" type="submit">{{ ui('cm.unsolve', '해결됨 끄기') if post['solved'] else ui('cm.solve', '해결됐어요') }}</button></form>
+      {% elif enabled and not post['user_id'] %}
+      <details class="cm-del cm-solve"><summary class="cm-btn sm ghost">{{ ui('cm.unsolve', '해결됨 끄기') if post['solved'] else ui('cm.solve_mine', '내 질문, 해결됐어요') }}</summary>
+        <form method="post" action="{{ url_for('board_solve', post_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" required placeholder="{{ ui('board.post_pw', '글 비밀번호') }}" aria-label="{{ ui('board.post_pw', '글 비밀번호') }}"><button class="cm-btn sm" type="submit">{{ ui('cm.confirm', '확인') }}</button></form>
+      </details>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="cm-actions">
+      <form method="post" action="{{ url_for('board_like', post_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="cm-like{% if liked %} on{% endif %}" type="submit"{% if not enabled %} disabled{% endif %} aria-pressed="{{ 'true' if liked else 'false' }}">{{ heart_i() }}{{ ui('board.liked', '공감했어요') if liked else (ui('cm.helpful', '도움이 됐어요') if k in ('review', 'tip') else ui('board.like_do', '공감해요')) }} <b>{{ post['likes'] }}</b></button>
+      </form>
+      <div class="cm-tools">
+        {% if flagged %}<span>{{ ui('board.flag_done', '알림 완료') }}</span>{% else %}
+        <form method="post" action="{{ url_for('board_flag', kind='p', item_id=post['id']) }}" onsubmit="return confirm({{ ui_text('board.flag_confirm', '이 글이 부적절하다고 운영자에게 알릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.flag_post', '부적절한 글 알리기') }}</button></form>
+        {% endif %}
+        {% if mine %}
+        <form method="post" action="{{ url_for('board_delete', kind='p', item_id=post['id']) }}" onsubmit="return confirm({{ ui_text('board.delete_confirm', '이 글을 지울까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.delete', '삭제') }}</button></form>
+        {% elif not post['user_id'] %}
+        <details class="cm-del"><summary class="text-btn">{{ ui('board.delete', '삭제') }}</summary>
+          <form method="post" action="{{ url_for('board_delete', kind='p', item_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" placeholder="{{ ui('board.post_pw', '글 비밀번호') }}" required aria-label="{{ ui('board.post_pw', '글 비밀번호') }}"><button class="cm-btn sm ghost" type="submit">{{ ui('board.delete_do', '삭제하기') }}</button></form>
+        </details>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+
+  <section class="cm-comments" id="comments" aria-labelledby="comments-heading">
+    <h2 id="comments-heading">{{ ui('cm.answers', '답변') if k == 'question' else ui('board.comments', '댓글') }} <b>{{ comments|length }}</b></h2>
+    {% if enabled %}
+    <form class="cm-cform" id="comment-form" method="post" action="{{ url_for('board_comment', post_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      {% if not g.user %}<div class="cm-two"><input name="nickname" maxlength="20" required placeholder="{{ ui('board.nickname', '닉네임') }}" aria-label="{{ ui('board.nickname', '닉네임') }}"><input type="password" name="password" maxlength="30" required placeholder="{{ ui('board.delete_pw', '삭제용 비밀번호') }}" aria-label="{{ ui('board.delete_pw', '삭제용 비밀번호') }}"></div>{% endif %}
+      <div class="cm-cbox"><textarea name="body" maxlength="1000" required rows="2" placeholder="{{ ui('cm.answer_ph', '아는 만큼 알려 주세요. 겪어 본 일이면 더 좋아요.') if k == 'question' else ui('board.comment_ph', '따뜻한 한마디나 비슷한 경험을 남겨 주세요') }}" aria-label="{{ ui('board.comment_aria', '댓글 내용') }}"></textarea><button class="cm-btn sm" type="submit">{{ ui('cm.answer_btn', '답변 남기기') if k == 'question' else ui('board.comment_btn', '댓글 남기기') }}</button></div>
+      {% if g.user %}<p class="cm-hint">{{ g.user['nickname'] }} {{ ui('board.as_member_comment', '이름으로 남겨요.') }}</p>{% endif %}
+    </form>
+    {% endif %}
+    {% for c in comments %}
+    <div class="cm-c" id="c{{ c['id'] }}">
+      <span class="cm-av sm">{{ c['nickname'][:1] }}</span>
+      <div class="cm-c-b">
+        <div class="cm-c-h"><b>{{ c['nickname'] }}{% if c['user_id'] %}<span class="cm-member">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{% if c['nickname'] == post['nickname'] and ((c['user_id'] and c['user_id'] == post['user_id']) or (not c['user_id'] and not post['user_id'])) %}<span class="cm-op">{{ ui('cm.op', '글쓴이') }}</span>{% endif %}</b><small>{{ c['created']|ago }}</small>
+          <span class="cm-c-tools">
+            <form method="post" action="{{ url_for('board_flag', kind='c', item_id=c['id']) }}" onsubmit="return confirm({{ ui_text('board.flag_c_confirm', '이 댓글이 부적절하다고 알릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.flag_comment', '알리기') }}</button></form>
+            {% if g.user and c['user_id'] == g.user['id'] %}<form method="post" action="{{ url_for('board_delete', kind='c', item_id=c['id']) }}" onsubmit="return confirm({{ ui_text('board.delete_c_confirm', '이 댓글을 지울까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.delete', '삭제') }}</button></form>
+            {% elif not c['user_id'] %}<details class="cm-del"><summary class="text-btn">{{ ui('board.delete', '삭제') }}</summary><form method="post" action="{{ url_for('board_delete', kind='c', item_id=c['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" placeholder="{{ ui('board.comment_pw', '댓글 비밀번호') }}" required aria-label="{{ ui('board.comment_pw', '댓글 비밀번호') }}"><button class="cm-btn sm ghost" type="submit">{{ ui('board.delete', '삭제') }}</button></form></details>{% endif %}
+          </span>
+        </div>
+        <p>{{ mask_personal(c['body']) }}</p>
+      </div>
+    </div>
+    {% else %}<p class="cm-c-empty">{{ ui('cm.first_answer', '아직 답변이 없어요. 첫 답변을 남겨 주세요.') if k == 'question' else ui('board.first_comment', '첫 댓글로 공감이나 비슷한 경험을 나눠 주세요.') }}</p>{% endfor %}
+  </section>
+
+  {% if related %}
+  <section class="cm-related" aria-labelledby="cm-rel-h">
+    <div class="cm-rel-head"><h2 id="cm-rel-h">{{ ui('cm.related', '이런 글도 있어요') }}</h2><a href="{{ url_for('board', type=k) }}">{{ POST_KIND_NAMES[k] }} {{ ui('sb.more_all', '전체 보기') }} ›</a></div>
+    <div class="cm-feed">{% for p in related %}{{ feed_item(p, categories) }}{% endfor %}</div>
+  </section>
+  {% endif %}
+</main>

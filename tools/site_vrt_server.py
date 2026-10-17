@@ -65,7 +65,27 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
                                   ('모르는 결제 문자, 카드사에 먼저 전화해야 하는 이유', '💳', 't4', '금융', ''), ('어린이 킥보드 일부 모델, 브레이크 결함으로 회수', '🛴', 't1', '리콜', '')]:
         post(a, '/admin/life', {'title': t, 'summary': SUMS.get(e, '꼭 알아야 할 것만 정리했어요.'), 'body': '먼저 판매자에게 알리세요.\n\n## 얼마까지 받을 수 있나요\n- 운송장에 적은 물품 가격 기준\n- 적지 않았다면 최대 50만 원',
                                 'category': cat, 'emoji': e, 'tone': tone, 'source_name': '공정거래위원회 소비자24', 'source_url': 'https://www.consumer.go.kr', 'featured': feat, 'publish': '1'})
+    # 커뮤니티 글: 리뷰·꿀팁·질문·이야기 (종류마다 화면이 달라 골고루)
+    import datetime as _dt
+    def ago(h): return (_dt.datetime.now() - _dt.timedelta(hours=h)).isoformat(timespec='seconds')
+    POSTS = [  # kind, category, nickname, title, body, target, rating, pros, cons, recommend, summary, likes, hours ago, solved
+        ('review', '경험 공유', '알뜰한다람쥐', '환불은 빨랐는데 상담 연결이 너무 오래 걸려요', '반품 접수하고 3일 만에 카드 취소가 됐어요. 다만 고객센터 전화는 30분 넘게 기다렸어요.', '오소보쇼핑', 4, '반품 접수 3일 만에 카드 취소까지 끝났어요', '고객센터 전화 연결이 30분 넘게 걸렸어요', 1, '', 12, 5, 0),
+        ('tip', '꿀팁', '생활의고수', '택배 분실됐을 때 보상 제대로 받는 순서', '1. 택배사 고객센터에 분실 접수부터 해요.\n\n2. 운송장 번호와 물품 가격을 증명할 영수증을 준비해요.\n\n3. 접수 후 14일 안에 연락이 없으면 소비자24에 상담을 신청해요.', '', 0, '', '', None, '운송장에 적은 금액 기준, 안 적었다면 최대 50만 원까지예요', 9, 20, 0),
+        ('question', '질문해요', '헬린이', '헬스장 6개월권 중도 해지하면 위약금이 얼마나 되나요?', '두 달 다니고 이사를 가게 됐어요. 헬스장에서는 할인가로 끊었으니 정가로 계산해서 빼겠다고 하는데 맞는 건가요?', '', 0, '', '', None, '', 6, 30, 1),
+        ('review', '경험 공유', '꼼꼼소비', 'AS 기사님 친절, 수리비도 처음 안내 그대로', '무상 수리 기간이라 비용 없이 고쳤어요. 예약부터 방문까지 이틀 걸렸어요.', '소보루전자', 5, '예약 이틀 만에 방문, 비용 없이 수리', '', 1, '', 7, 40, 0),
+        ('post', '칭찬해요', '따뜻한소비자', '동네 마트 사장님이 유통기한 지난 우유를 먼저 바꿔 주셨어요', '계산할 때 몰랐는데 집에 와서 보니 하루 지난 우유였어요. 다시 가니까 사과하시면서 새 걸로 바꿔 주시고 요구르트까지 챙겨 주셨어요.', '', 0, '', '', None, '', 4, 50, 0),
+        ('question', '질문해요', '여행가자', '항공권 결항됐는데 수수료를 떼고 환불해 준대요', '항공사 사정으로 결항됐는데 여행사에서 취소 수수료 3만 원을 빼고 준대요. 이게 맞나요?', '', 0, '', '', None, '', 3, 8, 0),
+        ('review', '경험 공유', '깐깐한고양이', '배송은 빠른데 포장이 너무 부실했어요', '유리병이 깨진 채로 왔어요. 교환은 해 줬지만 다시 받는 데 일주일 걸렸어요.', '오소보쇼핑', 2, '교환 요청은 바로 받아 줬어요', '유리병이 깨져서 왔고, 다시 받는 데 일주일', 0, '', 2, 70, 0),
+        ('tip', '꿀팁', '절약왕', '통신사 약정 끝나기 전에 꼭 확인할 3가지', '약정 만료일, 남은 할부금, 선택약정 할인 재가입 여부를 먼저 확인하세요.\n\n특히 선택약정은 자동으로 이어지지 않아서 직접 다시 신청해야 해요.', '', 0, '', '', None, '선택약정 할인은 자동으로 안 이어져요. 직접 다시 신청하세요', 5, 90, 0),
+    ]
     with m.conn() as db:
+        oso = db.execute("SELECT id FROM companies WHERE name='오소보쇼핑'").fetchone()[0]
+        for kind, cat, nick, title, body, target, rating, pros, cons, rec, summ, likes, h, solved in POSTS:
+            pid = db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind,target,company_id,rating,pros,cons,recommend,summary,likes,solved) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                             (cat, nick, generate_password_hash('1234'), title, body, 'seed', ago(h), kind, target, oso if target == '오소보쇼핑' else (cid if target == '소보루전자' else None), rating, pros, cons, rec, summ, likes, solved)).lastrowid
+            for i, cb in enumerate({'question': ['계약할 때 받은 할인 금액만큼은 빼도 돼요. 정가 전체를 다 빼는 건 과해요.', '저도 비슷했는데 소비자24 기준표 보여 주니 다시 계산해 줬어요.'], 'review': ['저도 같은 일 있었어요. 도움 됐어요!']}.get(kind, [])[: (2 if solved or kind == 'review' else 0)]):
+                db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created) VALUES(?,?,?,?,?,?)', (pid, ['이웃소비자', '경험자'][i], generate_password_hash('1234'), cb, 'seed', ago(max(0.2, h - 1 - i))))
+            db.execute('UPDATE posts SET comments=(SELECT COUNT(*) FROM comments WHERE post_id=?) WHERE id=?', (pid, pid))
         db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand',?,'2026-10-16')", (os.environ['VRT_BRAND'],))
     if hasattr(m, 'lawask'):
         # 법률 질문창: 가짜 AI 답(실제 OpenAI는 부르지 않음)과 관리자가 올린 법령 하나
