@@ -311,3 +311,5 @@ def install(S):
 
     app.jinja_env.globals.update(naver_ready=ready, naver_news=latest_news, naver_usage=usage)
     S.naver_search = search; S.naver_trend = trend; S.naver_ready = ready
+    # AI 분석 기사(soboru_writer.py)가 같은 호출·저장·한도를 그대로 씀
+    app.extensions['naverhub'] = {'ready': ready, 'search': search, 'trend': trend, 'shop_overview': shop_overview, 'shop_split': shop_split}
