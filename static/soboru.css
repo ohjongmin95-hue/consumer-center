@@ -1369,7 +1369,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 #blocked .me-method-name small{font-weight:500}
 @media(max-width:860px){.cm-tools .cm-more-pop{right:auto;left:50%;transform:translateX(-50%);animation:none}}
 @media(max-width:480px){.sb-hd .sb-bell+.sb-login{display:none}}  /* 좁은 화면: 내 정보는 아래 탭(MY)에 있어 종만 남김 */
-/* 소보루 레터 (soboru_letter.py): 구독 칸 · /letter · /letter/<호> · 확인·해지 화면 */
+/* 크로와상 (soboru_letter.py): 구독 칸 · /letter · /letter/<호> · 확인·해지 화면 */
 .lt-kicker{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--sb-orange);letter-spacing:.02em;margin:0 0 10px}
 .lt-hp{position:absolute!important;left:-9999px;width:1px;height:1px;overflow:hidden}
 .lt-form{display:flex;flex-direction:column;gap:10px;width:100%;max-width:460px}
@@ -1506,3 +1506,15 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 @media(min-width:681px){.nn-write.has-fill{display:none}}
 @media(max-width:680px){.sb-cm-card.nn-fill{display:none}}  /* 좁은 화면은 한 줄 목록이라 빈 칸이 없음: 아래 글쓰기 버튼만 */
 .lt-ic{display:block;font-size:40px;line-height:1;margin:0 0 10px}
+.nn-voice{background:var(--sb-orange);color:#fff;border-radius:16px;padding:14px 18px;gap:12px;margin-bottom:8px}
+.nn-voice h2{color:#fff;font-size:20px}.nn-voice h2 .tf{font-size:24px}
+.nn-voice-tag{display:inline-flex;align-items:center;gap:6px;margin-right:auto;font-size:13px;font-weight:700;background:rgba(255,255,255,.2);border-radius:999px;padding:4px 10px}
+.nn-voice-tag .nn-dot{background:#fff;box-shadow:none}
+.nn-live-head.nn-voice a{color:#fff}
+.lt-card.lt-card-pop{margin-top:20px;background:linear-gradient(120deg,#ef7300,#ff9a3c);box-shadow:0 14px 34px rgba(239,115,0,.24)}
+.lt-card-pop h2,.lt-card-pop .lt-kicker,.lt-card-pop .lt-card-copy p,.lt-card-pop .lt-card-copy p a,.lt-card-pop .lt-agree,.lt-card-pop .lt-agree b,.lt-card-pop .lt-agree a{color:#fff}
+.lt-card-pop h2{font-size:24px}
+.sb main .lt-card-pop .lt-form .lt-row input[type=email]:not([type=checkbox]):not([type=radio]){border-color:#fff}
+.lt-card-pop .lt-row button{background:var(--sb-brown)}.lt-card-pop .lt-row button:hover{background:#4a2a17;box-shadow:none}
+.lt-card-pop .lt-agree input{accent-color:var(--sb-brown)}
+@media(max-width:680px){.nn-voice{flex-wrap:wrap;row-gap:6px}.nn-voice-tag{order:3;margin-right:0}.nn-voice h2{margin-right:auto}}
