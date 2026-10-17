@@ -1,0 +1,59 @@
+{% extends 'console.html' %}
+{% block title %}AI 기사 만들기 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  {% if waiting is defined and waiting %}
+  <meta http-equiv="refresh" content="4">
+  <div class="page-intro"><h1 class="page-title">AI 기사 만들기</h1></div>
+  <div class="form-panel aw-wait"><span class="aw-spin" aria-hidden="true"></span><div><b>'{{ waiting }}' 기사를 쓰고 있어요</b><p class="meta">자료를 모으고 AI가 초안을 쓰는 데 1분쯤 걸려요. 다 되면 초안이 바로 열려요. 이 화면은 4초마다 새로 고쳐져요.</p></div></div>
+  {% else %}
+  <div class="page-intro"><h1 class="page-title">AI 기사 만들기</h1>
+    <p>연결된 데이터(네이버 검색 추이·쇼핑 관심도·뉴스, 법제처 법령, 소보루 공개 제보 통계)로 AI가 분석 기사 초안을 써요. 초안은 <a href="{{ url_for('admin_life', view='draft') }}">올릴 글</a>에 쌓이고, 운영자가 '게시하기'를 눌러야만 올라가요.</p>
+    <p class="meta">AI 글의 숫자는 모은 자료에 있는 것만 쓰게 하고, 저장할 때 코드로 한 번 더 확인해요. 자료에 없는 숫자나 기업을 평가하는 말이 있으면 '검토 필요'로 표시하고 그 줄을 보여 줘요. 출처는 글 아래에 자동으로 붙어요.</p>
+    <p><a href="{{ url_for('admin_life') }}">← 생활정보 글</a></p>
+    {% if not ai_ready %}<p class="hp-warn">OpenAI API 키가 없어서 지금은 기사를 쓸 수 없어요. 서버 설정에 OPENAI_API_KEY를 넣어 주세요.</p>{% endif %}
+  </div>
+
+  <h2 class="aw-h">무엇을 쓸까요</h2>
+  <div class="aw-kinds">
+    {% for k in kinds %}
+    <form class="form-panel aw-kind{% if not k.ready %} off{% endif %}" method="post" action="{{ url_for('admin_life_ai') }}" data-aw>
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="{{ k.key }}">
+      <div class="aw-kind-head"><span class="aw-emoji" aria-hidden="true">{{ k.emoji }}</span><b>{{ k.name }}</b></div>
+      <p>{{ k.about }}</p>
+      {% if k.ready %}<p class="aw-src on">자료 연결됨</p>{% else %}<p class="aw-src">{{ k.why }}</p>{% endif %}
+      <div class="admin-actions">
+        <button class="primary"{% if not k.ready or not ai_ready %} disabled{% endif %}>지금 만들기</button>
+        <button name="force" value="1"{% if not k.ready or not ai_ready %} disabled{% endif %} title="오늘 만든 초안이 있으면 새로 써서 바꿔요 (게시한 글은 그대로)">다시 쓰기</button>
+      </div>
+    </form>
+    {% endfor %}
+  </div>
+
+  <form class="form-panel aw-set" method="post" action="{{ url_for('admin_life_ai_settings') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h2>매일 아침 자동 쓰기</h2>
+    <label class="check"><input type="checkbox" name="auto" value="1"{% if cfg.auto %} checked{% endif %}> 매일 아침 초안을 자동으로 써 두기 (게시는 하지 않아요)</label>
+    <div class="admin-row"><label>하루에<select name="per_day">{% for n in per_day %}<option value="{{ n }}"{% if cfg.per_day == n %} selected{% endif %}>{{ n }}개</option>{% endfor %}</select></label></div>
+    <p class="meta">종류를 날마다 돌아가며 써요. 자료가 연결되지 않은 종류는 건너뛰어요. 서버에 예약 작업(deploy/set-writer.sh)을 한 번 설치해야 돌아가요.</p>
+    <div class="admin-actions"><button type="submit">저장</button></div>
+  </form>
+
+  <h2 class="aw-h">AI가 쓴 글 ({{ items|length }})</h2>
+  {% for it in items %}
+  <div class="form-panel admin-item aw-item">
+    <p class="meta">#{{ it.id }} · {{ it.kind_name }} · {{ it.category }} · {{ '게시 중' if it.status == 'published' else '초안' }} · {{ '매일 아침' if it.trigger == 'daily' else '직접 만듦' }} · {{ it.created[:16].replace('T', ' ') }}</p>
+    <h3><a href="{{ url_for('admin_life_edit', article_id=it.id) }}">{{ it.title }}</a></h3>
+    {% if it.ok %}<span class="aw-badge ok">숫자 확인됨</span>{% else %}<span class="aw-badge bad">검토 필요 {{ it.problems|length }}곳</span>{% endif %}
+    <span class="aw-badge">출처 {{ it.sources|length }}곳</span>
+  </div>
+  {% else %}<p class="meta">아직 AI가 쓴 글이 없어요.</p>{% endfor %}
+
+  {% if logs %}
+  <h2 class="aw-h">최근 기록</h2>
+  <ul class="aw-log">{% for l in logs %}<li><span>{{ l.at[5:16].replace('T', ' ') }}</span> {{ '매일 아침' if l.trigger == 'daily' else '직접' }} · {{ kinds|selectattr('key', 'equalto', l.kind)|map(attribute='name')|first or l.kind }} · {{ {'made': '초안 만듦', 'skip': '건너뜀', 'error': '실패', 'exists': '이미 있음'}.get(l.status, l.status) }}{% if l.reason %} — {{ l.reason }}{% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+  {% endif %}
+</div></main>
+<script>document.querySelectorAll('[data-aw]').forEach(function(f){f.addEventListener('submit',function(e){var b=e.submitter;setTimeout(function(){f.querySelectorAll('button').forEach(function(x){x.disabled=true});if(b)b.textContent='쓰는 중… (1분쯤)'},0)})})</script>
+{% endblock %}

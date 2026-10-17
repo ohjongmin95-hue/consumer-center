@@ -147,5 +147,40 @@ if os.environ.get('VRT_NAVER') and hasattr(m, 'naverhub'):
             return 200, {'results': [{'title': k['name'], 'keyword': k['param'], 'data': _series(k['name'])} for k in body['keyword']]}
         return 404, {}
     m.naverhub.http = _fake
+# AI 분석 기사 화면 시험: 가짜 AI가 받은 자료의 숫자로 기사를 씀 (실제 OpenAI는 안 부름). 뉴스 해설은 일부러 자료에 없는 숫자 하나를 넣어 '검토 필요'를 보여 줌
+if hasattr(m, 'soboru_writer'):
+    import json as _json
+    os.environ.setdefault('OPENAI_API_KEY', 'vrt-fake')
+    _prev_ai = m.companydesk.post_json
+    def _day(s): return '%d월 %d일' % (int(s[5:7]), int(s[8:10]))
+    def _writer_article(facts):
+        if '검색어별 추이(증감률 큰 순)' in facts:
+            rows = facts['검색어별 추이(증감률 큰 순)']; a, b = rows[0], rows[1]
+            up = lambda r: f"{abs(r['증감률(%)'])}% {'늘었' if r['증감률(%)'] >= 0 else '줄었'}"
+            others = [f"'{r['검색어']}'은 {up(r)}어요" for r in rows[1:]]
+            return {'title': f"요즘 '{a['검색어']}' 검색이 {up(a)}어요",
+                    'summary': [f"최근 4주 네이버에서 '{a['검색어']}'를 찾아본 정도가 그 전 4주보다 {up(a)}어요.", f"'{b['검색어']}'도 {up(b)}어요.",
+                                '같은 일을 겪고 있다면, 아래 순서대로 기록부터 챙겨 두세요.'],
+                    'sections': [{'heading': '이 숫자, 뭘 뜻해요?', 'paragraphs': ['네이버 데이터랩 검색어트렌드는 검색 횟수를 그대로 보여 주지 않아요. 기간 안에서 가장 많이 찾은 때를 100으로 두고, 나머지를 그에 견준 상대 지수로 보여 줘요.',
+                                                                         f"그래서 검색어끼리 누가 더 많이 찾아졌는지 견줄 수 있어요. 이번에는 {facts['기간']} 동안 '{rows[0]['검색어']}' 같은 소비자 검색어 다섯 개를 주 단위로 봤어요."]},
+                                 {'heading': f"'{a['검색어']}', 얼마나 늘었어요?", 'paragraphs': [f"최근 4주 평균 지수는 {a['최근 4주 평균 지수']}로, 그 전 4주 평균 {a['그 전 4주 평균 지수']}보다 {up(a)}어요.",
+                                                                                          f"가장 많이 찾은 때는 {_day(a['가장 많이 찾은 주'])}이 낀 주였고, 그 주 지수는 {a['그 주 지수']}였어요."]},
+                                 {'heading': '다른 검색어는요?', 'paragraphs': [', '.join(others) + '.']},
+                                 {'heading': '왜 늘었는지는요?', 'paragraphs': ['자료만으로는 이유까지 알 수 없어요. 검색 지수는 사람들이 얼마나 많이 찾아봤는지만 보여 주거든요. 다만 같은 고민을 하는 사람이 적지 않다는 건 분명해요.']}],
+                    'tips': ['결제 내역, 계약서, 상담 기록 같은 증거를 먼저 모아 두세요.', '업체에는 전화보다 문자나 게시판처럼 기록이 남는 방법으로 요청하세요.',
+                             '해결이 안 되면 1372 소비자상담센터에 상담하거나 소보루에 제보해 주세요.'], 'category': '생활'}
+        if '뉴스' in facts:
+            n = facts['뉴스']
+            return {'title': '이번 주 소비자 뉴스, 이것만 알면 돼요', 'summary': [n[0]['제목'][:40] + ' 소식이 있었어요.', n[1]['제목'][:40] + ' 소식도 눈여겨볼 만해요.', '관련 법 조문으로 내 권리도 같이 짚어 봤어요.'],
+                    'sections': [{'heading': i['제목'][:30], 'paragraphs': [i['요약']]} for i in n[:3]] + [{'heading': '피해 상담은 2배 늘었대요', 'paragraphs': ['자세한 숫자는 뉴스 원문에서 확인해 주세요.']}],
+                    'tips': ['계약서와 영수증을 챙겨 두세요.', '1372 소비자상담센터에 물어보세요.'], 'category': '생활'}
+        return {'title': '소비자 데이터로 본 이번 주', 'summary': ['자료를 정리했어요.', '숫자는 자료 그대로예요.', '할 일을 챙겨 보세요.'],
+                'sections': [{'heading': '정리', 'paragraphs': ['자료를 바탕으로 정리했어요.']}], 'tips': ['1372 소비자상담센터에 물어보세요.'], 'category': '생활'}
+    def _writer_ai(url, headers, body, timeout):
+        if 'images' in url: return 503, {}
+        if '의 에디터다' not in body['messages'][0]['content']: return _prev_ai(url, headers, body, timeout)
+        facts = _json.loads(body['messages'][1]['content'].split('[자료]\n', 1)[1])
+        return 200, {'choices': [{'message': {'content': _json.dumps(_writer_article(facts), ensure_ascii=False)}}]}
+    m.companydesk.post_json = _writer_ai
 print('ready', ids, eid, flush=True)
 app.run(host='127.0.0.1', port=PORT)

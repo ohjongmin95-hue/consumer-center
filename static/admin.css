@@ -154,3 +154,36 @@ body.console .lw-list td:nth-child(2),body.console .lw-list td:nth-child(3),body
 body.console .cs-cover{display:inline-flex;align-items:center;gap:8px;margin-left:10px}
 body.console .cs-cover .cs-btn{padding:5px 10px;font-size:13px}
 body.console .cs-cover-on{color:var(--ad-orange);font-size:13px}
+/* AI 기사 만들기 (soboru_writer.py) */
+body.console .aw-h{font-size:18px;margin:28px 0 12px}
+body.console .aw-link{font-weight:800;color:var(--ad-orange)}
+body.console .aw-kinds{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+body.console .ad-main .aw-kind{display:flex;flex-direction:column;gap:8px;padding:20px 22px;margin:0}
+body.console .aw-kind p{margin:0;font-size:14px;color:var(--ad-sub);line-height:1.6;flex:1}
+body.console .aw-kind.off{opacity:.7}
+body.console .aw-kind-head{display:flex;align-items:center;gap:10px;font-size:17px}
+body.console .aw-emoji{font-size:24px;line-height:1}
+body.console .aw-kind .aw-src{flex:0;font-size:13px;color:#a05a00}
+body.console .aw-kind .aw-src.on{color:#0a8a5a}
+body.console .aw-kind .admin-actions{margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
+body.console .aw-kind button[disabled]{opacity:.45;cursor:not-allowed}
+body.console .ad-main .aw-set{margin-top:20px}
+body.console .aw-badge{display:inline-block;padding:3px 9px;border-radius:999px;background:var(--ad-soft);color:var(--ad-sub);font-size:12px;font-weight:700;white-space:nowrap;margin-right:4px}
+body.console .aw-badge.ok{background:#e3f6ee;color:#0a7a50}
+body.console .aw-badge.bad{background:#fde8e8;color:#c22}
+body.console .ad-main .aw-check{margin-bottom:16px}
+body.console .ad-main .aw-check.bad{box-shadow:0 0 0 1.5px #f6b5b5,0 1px 3px rgba(0,27,55,.05)}
+body.console .ad-main .aw-check.ok{box-shadow:0 0 0 1.5px #a9e2c9,0 1px 3px rgba(0,27,55,.05)}
+body.console .aw-problems{list-style:none;padding:0;margin:10px 0;display:grid;gap:8px}
+body.console .aw-problems li{background:#fff6f6;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.55}
+body.console .aw-problems b{display:block;color:#c22;font-size:13px}
+body.console .aw-problems span{overflow-wrap:anywhere}
+body.console .aw-facts{white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto;background:var(--ad-soft);border-radius:10px;padding:12px;overflow-wrap:anywhere}
+body.console .aw-ack{margin:0 6px 0 0;align-self:center}
+body.console .aw-log{list-style:none;padding:0;margin:0;display:grid;gap:6px;font-size:13px;color:var(--ad-sub)}
+body.console .aw-log span{color:var(--ad-mute);margin-right:6px}
+body.console .aw-wait{display:flex;gap:16px;align-items:center}
+body.console .aw-spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--ad-soft);border-top-color:var(--ad-orange);animation:awspin 1s linear infinite;flex:none}
+@keyframes awspin{to{transform:rotate(360deg)}}
+body.console .ad-main .form-panel>label.check{flex-direction:row;align-items:center;gap:10px;font-weight:600}
+body.console .ad-main label.check input{width:auto;height:auto;flex:none;margin:0}
