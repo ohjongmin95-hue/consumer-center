@@ -267,5 +267,41 @@ if hasattr(m, 'soboru_writer'):
         facts = _json.loads(body['messages'][1]['content'].split('[자료]\n', 1)[1])
         return 200, {'choices': [{'message': {'content': _json.dumps(_writer_article(facts), ensure_ascii=False)}}]}
     m.companydesk.post_json = _writer_ai
+# 소보루 레터 화면 시험: 가짜 AI가 가짜 뉴스(VRT_NAVER)로 레터를 씀 (실제 OpenAI·메일은 안 부름). 1·2호는 보낸 레터, 3호는 검토 필요 초안. 구독자 몇 명
+if hasattr(m, 'soboru_letter') and os.environ.get('VRT_NAVER'):
+    import json as _json, datetime as _dt
+    os.environ.setdefault('OPENAI_API_KEY', 'vrt-fake')
+    _prev_letter = m.companydesk.post_json
+    _LT = [('헬스장', '헬스장이 문 닫았다면, 남은 회원권은?', '다니던 헬스장이 갑자기 폐업하면 남은 기간 이용료를 날린 것 같아 막막하죠. 카드 할부로 결제했다면 이야기가 달라져요. 할부 항변권을 쓰면 카드사에 남은 할부금을 내지 않겠다고 말할 수 있어요. 다만 결제 금액과 할부 기간 같은 조건이 맞아야 해요. 자세한 조건은 기사 원문에서 확인해 보세요.', '카드사에 할부 항변권을 서면으로 신청하고, 폐업 안내 사진을 남겨 두세요.'),
+           ('택배', '택배가 사라졌을 때 받을 수 있는 돈', '택배가 분실되면 보상은 운송장에 적은 물건 값을 기준으로 해요. 운송장에 값을 적지 않았다면 최대 50만 원까지만 받을 수 있대요. 비싼 물건을 보낼 땐 운송장에 값을 꼭 적어 두는 게 좋아요.', '보내기 전에 운송장에 물건 값을 적고, 영수증은 버리지 마세요.'),
+           ('구독', '해지했는데 또 결제됐다면', '구독을 해지했는데 다음 달 요금이 또 빠져나가는 일, 생각보다 흔해요. 해지 버튼을 꽁꽁 숨기거나 여러 번 붙잡는 화면을 다크패턴이라고 불러요. 공정위가 이런 화면을 단속하겠다고 밝혔어요. 해지할 때는 해지 완료 화면을 꼭 남겨 두세요.', '해지 완료 화면을 캡처해 두고, 또 결제되면 바로 환불을 요청하세요.'),
+           ('항공권', '항공권 취소 수수료, 약관부터 봐요', '항공권을 취소했더니 생각보다 수수료가 많이 나왔다는 상담이 이어지고 있어요. 수수료는 항공사와 여행사 약관에 따라 달라서, 예약할 때 약관을 먼저 확인하는 게 제일 좋아요. 항공사 사정으로 결항됐다면 수수료 없이 돌려받을 수 있는지도 꼭 물어보세요.', '예약 화면의 취소 규정을 캡처해 두고, 결항이면 수수료 없는 환불을 요청하세요.'),
+           ('중고거래', '중고거래 사기, 안전결제가 답이에요', '중고거래 사기 피해가 1년 새 30% 늘었대요. 판매자가 따로 보내 주는 결제 링크는 가짜일 수 있어요. 거래는 앱 안의 안전결제로만 하고, 너무 싼 물건은 한 번 더 의심해 보세요.', '앱 밖 결제 링크는 누르지 말고, 플랫폼 안전결제만 쓰세요.')]
+    _LT_NO = {'n': 0}
+    def _letter_ai(url, headers, body, timeout):
+        if '소보루 레터' not in body['messages'][0]['content']: return _prev_letter(url, headers, body, timeout)
+        news = _json.loads(body['messages'][1]['content'].split('[이번 주 소비자 뉴스]\n', 1)[1])
+        no = int(re.search(r'소보루 레터 (\d+)호', body['messages'][1]['content']).group(1))
+        items = []
+        for x in news:
+            key, title, text, tip = next((t for t in _LT if t[0] in x['제목']), _LT[0])
+            if no == 3 and key == '항공권': text += ' 지난해보다 상담이 2배 늘었대요.'  # 자료에 없는 숫자: 관리자 화면 '검토 필요' 보기
+            items.append({'no': x['번호'], 'title': title, 'body': text, 'tip': tip, 'law': x['법 조문 후보'][0]['id'] if x['법 조문 후보'] else ''})
+        out = {'subject': ['', '택배 분실 보상, 얼마까지 받을까?', '해지했는데 또 결제됐다면', '헬스장이 문 닫았다면, 남은 회원권은?'][no] if no <= 3 else '이번 주 소비자 뉴스',
+               'intro': '안녕하세요, 소보루 레터예요. 이번 주에도 내 지갑과 닿은 소비자 뉴스를 골라 쉽게 풀어 봤어요. 출근길에 가볍게 읽어 보세요.',
+               'outro': '이번 주도 억울한 일 없이 지나가길 바라요. 혹시 겪었다면 소보루에 알려 주세요. 다음 주에 또 만나요.', 'items': items}
+        return 200, {'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
+    m.companydesk.post_json = _letter_ai
+    _lx = app.extensions['soboru_letter']
+    with app.app_context():
+        for _i in range(3): print('letter', _lx['generate']('admin'), flush=True)
+    with m.conn() as db:
+        _now = _dt.datetime.now()
+        db.execute("UPDATE letters SET status='sent',sent_at=?,sent_count=126 WHERE no=1", ((_now - _dt.timedelta(days=7)).isoformat(timespec='seconds'),))
+        db.execute("UPDATE letters SET status='sent',sent_at=?,sent_count=131,created=? WHERE no=2", (_now.isoformat(timespec='seconds'), (_now - _dt.timedelta(minutes=40)).isoformat(timespec='seconds')))
+        for _k, (_e, _st) in enumerate([('kim.sobi@example.com', 'active'), ('park.jy@example.com', 'active'), ('lee.mart@example.com', 'active'), ('choi.new@example.com', 'pending'), ('x:' + 'a' * 64, 'unsubscribed')]):
+            db.execute('INSERT INTO letter_subscribers(email,token,status,created,confirmed,place) VALUES(?,?,?,?,?,?)',
+                       (_e, 'vrt-%d' % _k, _st, (_now - _dt.timedelta(days=10 - _k)).isoformat(timespec='seconds'),
+                        (_now - _dt.timedelta(days=9 - _k)).isoformat(timespec='seconds') if _st == 'active' else None, ['home', 'letter', 'life', 'home', 'issue'][_k]))
 print('ready', ids, eid, flush=True)
 app.run(host='127.0.0.1', port=PORT)

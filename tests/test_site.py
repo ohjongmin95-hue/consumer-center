@@ -3633,5 +3633,282 @@ class SiteTest(unittest.TestCase):
             admin.post('/admin/laws', data={'_csrf': self.csrf(admin, '/admin/laws'), 'act': 'appendix_forget', 'key': key})
             self.assertEqual(json.loads(st.learned.read_text(encoding='utf-8')), {}); self.assertNotIn('동물보호법', st.synced.read_text(encoding='utf-8'))
 
+    # ---- 소보루 레터 (soboru_letter.py) -------------------------------------------
+    LETTER_MAIL = {'SMTP_HOST': 'smtp.test', 'SMTP_USER': 'u@test', 'SMTP_PASSWORD': 'pw-test', 'MAIL_FROM': 'letter@consumerjebo.co.kr'}
+    LETTER_NAVER = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+
+    def letter_cleanup(self):
+        with self.site.conn() as db:
+            for t in ('letters', 'letter_subscribers', 'letter_sends', 'naver_cache', 'naver_usage', 'review_campaigns', 'articles'): db.execute('DELETE FROM ' + t)
+            db.execute("DELETE FROM soboru_settings WHERE key LIKE 'letter%'")
+
+    def letter_ai(self, sent, bad=True):
+        """가짜 OpenAI: 받은 뉴스마다 우리 말 설명을 씀. bad면 2번에 자료에 없는 숫자, 3번에 기사 제목을 그대로 옮김."""
+        def fake(url, headers, body, timeout):
+            sent.append(body)
+            news = json.loads(body['messages'][1]['content'].split('[이번 주 소비자 뉴스]\n', 1)[1])
+            items = []
+            for x in news:
+                n = x['번호']
+                text = f'이번 주에 이런 소식이 있었어요. 비슷한 일을 겪은 분이 많대요. 자세한 내용은 기사 원문에서 확인해 보세요.'
+                if n == 1: text += ' 관련 상담이 30% 늘었다고 해요.'
+                if bad and n == 2: text += ' 작년보다 98765명 늘었대요.'
+                if bad and n == 3: text += ' ' + x['제목'] + ' 이런 제목이었어요.'
+                law = x['법 조문 후보'][0]['id'] if n == 1 and x['법 조문 후보'] else ('9-L9' if n == 2 else '')
+                items.append({'no': n, 'title': ['첫째', '둘째', '셋째', '넷째', '다섯째'][n - 1] + ' 소식, 이것만 알면 돼요', 'body': text, 'tip': '이럴 땐 이렇게: 영수증과 대화 기록부터 챙겨 두세요.', 'law': law})
+            out = {'subject': '이번 주 소비자 뉴스, 이것만 보면 끝', 'intro': '안녕하세요, 소보루 레터예요. 이번 주 꼭 알아 둘 소식을 모았어요.', 'outro': '다음 주에 또 만나요.', 'items': items}
+            return 200, {'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+        return fake
+
+    def letter_related(self, text, limit=4, laws=None):
+        return [{'ref': 'ecom:제17조', 'label': '전자상거래법 제17조', 'title': '청약철회등', 'text': '제17조(청약철회등) 소비자는 계약내용에 관한 서면을 받은 날부터 7일 이내에 청약철회를 할 수 있다.',
+                 'law': '전자상거래법', 'source': 'https://www.law.go.kr/법령/전자상거래법/제17조'}]
+
+    def letter_smtp(self, box):
+        class FakeSMTP:
+            def __init__(self, *a, **k): pass
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def starttls(self): pass
+            def login(self, user, pw): pass
+            def send_message(self, msg): box.append(msg)
+        return FakeSMTP
+
+    def letter_make(self, bad=True):
+        sent, calls = [], []
+        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), \
+                patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent, bad)), patch.object(self.site.triage.corpus, 'related', self.letter_related):
+            r = self.site.app.extensions['soboru_letter']['generate']('admin')
+        return r, sent
+
+    def letter_post(self, client, data):
+        return client.post('/letter/subscribe', data={'_csrf': self.csrf(client, '/letter'), **data})
+
+    def letter_subs(self, rows):
+        with self.site.conn() as db:
+            for email, status in rows:
+                db.execute('INSERT INTO letter_subscribers(email,token,status,created) VALUES(?,?,?,?)', (email, 'tok-' + email.split('@')[0], status, '2026-10-01T09:00:00'))
+
+    def test_letter_generation_checks_numbers_copy_and_links(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            for i, (nick, likes, editor) in enumerate([('알뜰한다람쥐', 9, 0), ('에디터', 99, 1), ('꼼꼼소비', 3, 0)]):
+                db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind,target,rating,likes,editor,pros) VALUES('경험 공유',?,'x',?,'본문','x',?,'review','오소보쇼핑',4,?,?,?)",
+                           (nick, f'리뷰 {i} 연락처 010-1234-5678', now, likes, editor, '환불이 빨랐어요'))
+            db.execute("INSERT INTO articles(title,summary,status,created,updated,published_at) VALUES('택배 분실 보상 정리','운송장 금액 기준이에요','published',?,?,?)", (now, now, now))
+            db.execute("INSERT INTO articles(title,status,created,updated) VALUES('아직 초안','draft',?,?)", (now, now))
+            db.execute("INSERT INTO review_campaigns(slug,title,topic,active,created) VALUES('delivery','배달음식 리뷰 모아요','배달',1,?)", (now,))
+        r, sent = self.letter_make(bad=True)
+        self.assertEqual(r['status'], 'made', r)
+        L = self.site.app.extensions['soboru_letter']['get'](r['id'])
+        self.assertEqual((L['no'], L['status']), (1, 'draft'))
+        self.assertEqual(len(L['items']), 5)  # 3~5개
+        # AI에는 제목·요약 조각만 (기사 주소·연락처는 넘기지 않음), 기사 문장을 옮기지 말라고 함
+        prompt = sent[0]['messages'][1]['content']
+        self.assertNotIn('news.example.co.kr', prompt); self.assertNotIn('010-5555-6666', prompt)
+        self.assertIn('기사 문장을 옮기지 말고', sent[0]['messages'][0]['content'])
+        self.assertEqual(sent[0]['response_format'], {'type': 'json_object'})
+        it1, it2 = L['items'][0], L['items'][1]
+        self.assertIn('30% 늘었다고 해요', it1['body'])
+        self.assertTrue(it1['src']['url'].startswith('https://news.example.co.kr/'))
+        self.assertEqual(it1['law']['label'], '전자상거래법 제17조')  # 후보 중에서 고름
+        self.assertIsNone(it2['law'])  # 후보에 없는 id는 버림
+        self.assertEqual(it1['tip'], '영수증과 대화 기록부터 챙겨 두세요.')
+        # 검사: 2번의 자료에 없는 숫자, 3번의 기사 제목 그대로 옮기기 → 검토 필요
+        self.assertFalse(L['check_ok'])
+        self.assertIn({'where': '2번 뉴스', 'numbers': ['98765명']}, [{k: p[k] for k in ('where', 'numbers') if k in p} for p in L['problems']])
+        self.assertTrue(any(p.get('copy') and p['where'] == '3번 뉴스' for p in L['problems']))
+        self.assertFalse([p for p in L['problems'] if p['where'] == '1번 뉴스'])  # 30%는 요약에 있는 숫자
+        # 아래 묶음: 에디터 리뷰는 빼고 공감 순, 연락처는 가림, 게시한 생활정보만, 진행 중인 리뷰 주제
+        sec = L['sections']
+        self.assertEqual([x['nick'] for x in sec['reviews']], ['알뜰**', '꼼꼼**'])
+        self.assertNotIn('010-1234-5678', json.dumps(sec, ensure_ascii=False))
+        self.assertEqual([a['title'] for a in sec['life']], ['택배 분실 보상 정리'])
+        self.assertEqual(sec['campaign']['url'], '/pick/delivery')
+        # 메일: HTML(표·인라인)과 글 두 가지, 원문·법령 링크, 해지 링크
+        subject, html, text = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')
+        self.assertIn('이번 주 소비자 뉴스, 이것만 보면 끝', subject)
+        for part in (html, text):
+            self.assertIn('첫째 소식, 이것만 알면 돼요', part); self.assertIn(it1['src']['url'], part)
+            self.assertIn('/letter/unsubscribe/tok-x', part); self.assertIn('https://www.law.go.kr/', part)
+        self.assertIn('max-width:600px', html); self.assertIn('기사 원문 보기', html); self.assertIn('소보루 픽 인기 리뷰', html)
+        self.assertIn('서울시 강남구', html)  # 보내는 곳 주소 (사이트 하단 정보)
+        # 운영자가 고쳐 저장하면 같은 자료로 다시 검사
+        admin = self.login_admin()
+        page = admin.get(f"/admin/letter/{r['id']}").get_data(as_text=True)
+        self.assertIn('srcdoc=', page); self.assertIn('검토 필요', page)
+        form = {'title': L['title'], 'intro': L['intro'], 'outro': L['outro'], 'act': 'save'}
+        for i, it in enumerate(L['items']): form.update({f'title{i}': it['title'], f'body{i}': it['body'], f'tip{i}': it['tip']})
+        form['body1'] = '숫자 없이 고쳤어요.'; form['drop2'] = '1'
+        admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), **form})
+        L = self.site.app.extensions['soboru_letter']['get'](r['id'])
+        self.assertEqual(len(L['items']), 4); self.assertTrue(L['check_ok'], L['problems'])
+
+    def test_letter_admin_flow_and_settings(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        self.assertEqual(self.client.get('/admin/letter').status_code, 302)  # 관리자만
+        admin = self.login_admin()
+        with patch.dict(os.environ, {k: v for k, v in os.environ.items() if not k.startswith('SMTP')}, clear=True):
+            page = admin.get('/admin/letter').get_data(as_text=True)
+        self.assertIn('이번 호 만들기', page); self.assertIn('메일 발송 설정(SMTP)이 없어요', page)
+        self.assertIn('소보루 레터', admin.get('/admin').get_data(as_text=True))  # 관리 메뉴
+        sent, calls = [], []
+        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), \
+                patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent)), patch.object(self.site.triage.corpus, 'related', self.letter_related):
+            r = admin.post('/admin/letter', data={'_csrf': self.csrf(admin, '/admin/letter')})
+        self.assertIn('/admin/letter/', r.headers['Location'])
+        lid = int(r.headers['Location'].rsplit('/', 1)[1])
+        # 설정: 기본은 자동 보내기 꺼짐·월요일
+        self.assertEqual(self.site.app.extensions['soboru_letter']['settings'](), {'auto': 0, 'day': 0})
+        admin.post('/admin/letter/settings', data={'_csrf': self.csrf(admin, '/admin/letter'), 'auto': '1', 'day': '3'})
+        self.assertEqual(self.site.app.extensions['soboru_letter']['settings'](), {'auto': 1, 'day': 3})
+        self.assertIn('목요일 아침 5분이면 끝', self.client.get('/letter').get_data(as_text=True))
+        # 검토 필요가 있으면 확인 체크 없이는 보내지 않음, 메일 설정이 없으면 보내지 못함
+        box = []
+        self.letter_subs([('a@test.kr', 'active')])
+        with patch.dict(os.environ, self.LETTER_MAIL), patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)):
+            r = admin.post(f'/admin/letter/{lid}', data={'_csrf': self.csrf(admin, f'/admin/letter/{lid}'), 'act': 'send'}, follow_redirects=True)
+            self.assertIn('보내지 않았어요', r.get_data(as_text=True)); self.assertEqual(box, [])
+            # 테스트 메일은 적은 주소로 한 통만
+            admin.post(f'/admin/letter/{lid}', data={'_csrf': self.csrf(admin, f'/admin/letter/{lid}'), 'act': 'test', 'test_to': 'editor@test.kr'})
+        self.assertEqual([m['To'] for m in box], ['editor@test.kr']); self.assertTrue(box[0]['Subject'].startswith('[테스트]'))
+        self.assertEqual(self.site.app.extensions['soboru_letter']['get'](lid)['status'], 'draft')
+        with patch.dict(os.environ, {k: v for k, v in os.environ.items() if not k.startswith('SMTP')}, clear=True):
+            self.assertEqual(self.site.app.extensions['soboru_letter']['send'](lid)['status'], 'error')
+        # 초안 지우기
+        admin.post(f'/admin/letter/{lid}', data={'_csrf': self.csrf(admin, f'/admin/letter/{lid}'), 'act': 'delete'})
+        self.assertIsNone(self.site.app.extensions['soboru_letter']['get'](lid))
+
+    def test_letter_subscribe_confirm_unsubscribe(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        box = []
+        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand','소보루','2026-10-17')")  # 홈 구독 칸은 소보루 홈에
+        for path in ('/letter', '/life', '/'):
+            page = self.client.get(path).get_data(as_text=True)
+            self.assertIn('action="/letter/subscribe"', page, path); self.assertIn('name="website"', page, path); self.assertIn('name="agree"', page, path)
+        with patch.dict(os.environ, self.LETTER_MAIL), patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)):
+            r = self.letter_post(self.client, {'email': 'not-an-email', 'agree': '1'})
+            self.assertIn('s=email', r.headers['Location'])
+            r = self.letter_post(self.client, {'email': 'reader@test.kr'})
+            self.assertIn('s=consent', r.headers['Location'])
+            r = self.client.post('/letter/subscribe', data={'_csrf': self.csrf(self.client, '/letter'), 'email': 'bot@test.kr', 'agree': '1', 'website': 'http://spam'})
+            self.assertIn('s=check', r.headers['Location'])  # 자동 등록 프로그램에도 같은 말, 저장은 안 함
+            with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM letter_subscribers').fetchone()[0], 0)
+            self.assertEqual(box, [])
+            r = self.client.post('/letter/subscribe', data={'_csrf': self.csrf(self.client, '/letter'), 'email': 'Reader@Test.kr ', 'agree': '1', 'place': 'home'})
+            self.assertIn('s=check', r.headers['Location'])
+            self.assertIn('확인 메일을 보냈어요', self.client.get(r.headers['Location']).get_data(as_text=True))
+        with self.site.conn() as db: sub = db.execute('SELECT * FROM letter_subscribers').fetchone()
+        self.assertEqual((sub['email'], sub['status'], sub['place']), ('reader@test.kr', 'pending', 'home'))
+        self.assertTrue(sub['ip_hash'])
+        self.assertEqual(len(box), 1)
+        msg = box[0]
+        self.assertEqual(msg['To'], 'reader@test.kr')
+        self.assertEqual(msg['List-Unsubscribe'], f"<https://consumerjebo.co.kr/letter/unsubscribe/{sub['token']}>")
+        self.assertEqual(msg['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click')
+        self.assertIn(f"/letter/confirm/{sub['token']}", msg.get_body(('plain',)).get_content())
+        self.assertIn(f"/letter/confirm/{sub['token']}", msg.get_body(('html',)).get_content())
+        # 확인 전에는 보내지 않음 → 확인하면 구독
+        self.assertIn('구독을 시작했어요', self.client.get(f"/letter/confirm/{sub['token']}").get_data(as_text=True))
+        self.assertIn('이미 구독 중', self.client.get(f"/letter/confirm/{sub['token']}").get_data(as_text=True))
+        self.assertEqual(self.client.get('/letter/confirm/nope').status_code, 404)
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM letter_subscribers').fetchone()[0], 'active')
+        # 한 번 클릭 해지: 링크(GET)로 바로, 이메일 주소는 지움
+        self.assertIn('구독을 해지했어요', self.client.get(f"/letter/unsubscribe/{sub['token']}").get_data(as_text=True))
+        with self.site.conn() as db: row = db.execute('SELECT * FROM letter_subscribers').fetchone()
+        self.assertEqual(row['status'], 'unsubscribed'); self.assertTrue(row['email'].startswith('x:')); self.assertNotIn('reader', row['email'])
+        # 메일 앱의 '구독 취소' 버튼(RFC 8058 POST)은 CSRF 토큰 없이도 됨
+        self.letter_subs([('oneclick@test.kr', 'active')])
+        r = self.site.app.test_client().post('/letter/unsubscribe/tok-oneclick', data={'List-Unsubscribe': 'One-Click'})
+        self.assertEqual(r.status_code, 200)
+        with self.site.conn() as db: self.assertEqual(db.execute("SELECT status FROM letter_subscribers WHERE token='tok-oneclick'").fetchone()[0], 'unsubscribed')
+        self.assertEqual(self.site.app.test_client().post('/letter/subscribe', data={'email': 'x@test.kr', 'agree': '1'}).status_code, 400)  # 다른 POST는 그대로 CSRF 확인
+        # 해지한 주소로 다시 신청하면 확인 메일부터 다시
+        with patch.dict(os.environ, self.LETTER_MAIL), patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)):
+            self.letter_post(self.client, {'email': 'reader@test.kr', 'agree': '1'})
+        with self.site.conn() as db: row = db.execute("SELECT * FROM letter_subscribers WHERE id=?", (sub['id'],)).fetchone()
+        self.assertEqual((row['email'], row['status']), ('reader@test.kr', 'pending')); self.assertEqual(len(box), 2)
+        # 메일 설정이 없으면 신청을 받지 않음
+        with patch.dict(os.environ, {k: v for k, v in os.environ.items() if not k.startswith('SMTP')}, clear=True):
+            r = self.letter_post(self.client, {'email': 'later@test.kr', 'agree': '1'})
+        self.assertIn('s=nomail', r.headers['Location'])
+        # 회원은 가입 이메일을 미리 채움
+        member = self.site.app.test_client()
+        self.signup(member, login_id='letter_m', nickname='레터회원', email='member@test.kr')
+        self.assertIn('value="member@test.kr"', member.get('/letter').get_data(as_text=True))
+
+    def test_letter_subscribe_rate_limit(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        box = []
+        with patch.dict(os.environ, self.LETTER_MAIL), patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)):
+            codes = [self.letter_post(self.client, {'email': f'r{i}@test.kr', 'agree': '1'}).headers['Location'] for i in range(7)]
+        self.assertEqual(['s=check' in c for c in codes], [True] * 5 + [False] * 2)
+        self.assertIn('s=limit', codes[-1]); self.assertEqual(len(box), 5)
+
+    def test_letter_send_only_active_with_unsubscribe_header_and_archive(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        L = self.site.app.extensions['soboru_letter']
+        r, _ = self.letter_make(bad=False)
+        self.assertEqual(r['status'], 'made'); self.assertTrue(r['ok'])
+        self.letter_subs([('one@test.kr', 'active'), ('two@test.kr', 'active'), ('wait@test.kr', 'pending'), ('x:gone', 'unsubscribed')])
+        # 보내기 전: 공개 화면에 없음, 관리자만 웹 버전
+        self.assertEqual(self.client.get('/letter/1').status_code, 404)
+        self.assertNotIn('/letter/1"', self.client.get('/letter').get_data(as_text=True))
+        admin = self.login_admin()
+        self.assertEqual(admin.get('/letter/1').status_code, 200)
+        box = []
+        with patch.dict(os.environ, self.LETTER_MAIL), patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)), patch.object(self.site.soboru_letter, 'SEND_BATCH', 1):
+            admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), 'act': 'send'})
+            self.assertEqual(sorted(m['To'] for m in box), ['one@test.kr', 'two@test.kr'])  # 확인을 마친 구독자에게만
+            again = L['send'](r['id'])
+        self.assertEqual(again['status'], 'error'); self.assertEqual(len(box), 2)  # 두 번 보내지 않음
+        for m in box:
+            token = 'tok-' + m['To'].split('@')[0]
+            self.assertEqual(m['List-Unsubscribe'], f'<https://consumerjebo.co.kr/letter/unsubscribe/{token}>')
+            self.assertEqual(m['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click')
+            self.assertIn('소보루 레터', m['From'])
+            html, text = m.get_body(('html',)).get_content(), m.get_body(('plain',)).get_content()
+            self.assertIn(f'/letter/unsubscribe/{token}', html); self.assertIn(f'/letter/unsubscribe/{token}', text)
+            self.assertNotIn('__LETTER_UNSUB__', html + text)
+            self.assertTrue(m['Subject'].startswith('[소보루 레터]'))
+        sent = L['get'](r['id'])
+        self.assertEqual((sent['status'], sent['sent_count'], sent['failed']), ('sent', 2, 0)); self.assertTrue(sent['sent_at'])
+        # 공개 보관함·웹 버전·사이트맵
+        page = self.client.get('/letter').get_data(as_text=True)
+        self.assertIn('/letter/1"', page); self.assertIn(sent['title'], page)
+        web = self.client.get('/letter/1').get_data(as_text=True)
+        self.assertIn(sent['items'][0]['title'], web); self.assertIn(sent['items'][0]['src']['url'], web); self.assertIn('기사 원문 보기', web)
+        self.assertIn('전자상거래법 제17조', web)
+        self.assertIn('/letter/1</loc>', self.client.get('/sitemap.xml').get_data(as_text=True))
+        self.assertEqual(self.client.get('/letter/99').status_code, 404)
+
+    def test_letter_weekly_schedule_and_auto_send(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        L = self.site.app.extensions['soboru_letter']
+        monday = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())
+        self.assertEqual(L['weekly'](monday + datetime.timedelta(days=1))['status'], 'not_today')  # 기본은 월요일만
+        self.letter_subs([('one@test.kr', 'active')])
+        box, sent, calls = [], [], []
+        with patch.dict(os.environ, {**self.LETTER_NAVER, **self.LETTER_MAIL}), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), \
+                patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent, bad=False)), patch.object(self.site.triage.corpus, 'related', self.letter_related), \
+                patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)):
+            r = L['weekly'](monday)  # 자동 보내기 꺼짐(기본) → 초안만
+            self.assertEqual((r['status'], r['sent']), ('made', False)); self.assertEqual(box, [])
+            self.assertEqual(L['weekly'](monday)['status'], 'exists')  # 같은 주에는 한 번
+            with self.site.conn() as db: db.execute('DELETE FROM letters')
+            with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('letter','{\"auto\": 1, \"day\": 0}')")
+            r = L['weekly'](monday)  # 켜면 검사를 통과한 호는 바로 보냄
+            self.assertTrue(r['sent']); self.assertEqual([m['To'] for m in box], ['one@test.kr'])
+            with self.site.conn() as db: db.execute('DELETE FROM letters')
+            with patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent, bad=True)):
+                r = L['weekly'](monday)  # 검토 필요가 있으면 자동으로도 보내지 않음
+            self.assertEqual((r['status'], r['sent']), ('made', False)); self.assertEqual(len(box), 1)
+        # 확인하지 않은 신청은 7일 뒤 지움
+        with self.site.conn() as db:
+            db.execute("INSERT INTO letter_subscribers(email,token,status,created,asked) VALUES('old@test.kr','tok-old','pending','2000-01-01T00:00:00','2000-01-01T00:00:00')")
+        L['weekly'](monday + datetime.timedelta(days=1))
+        with self.site.conn() as db: self.assertIsNone(db.execute("SELECT 1 FROM letter_subscribers WHERE email='old@test.kr'").fetchone())
+
 if __name__ == '__main__':
     unittest.main()

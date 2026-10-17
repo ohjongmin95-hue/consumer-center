@@ -80,12 +80,17 @@ def short(text, limit=30):
     return text if len(text) <= limit else text[:limit - 1] + '…'
 
 
-def send_email(to, subject, body):
+def send_email(to, subject, body, html=None, headers=None, from_name=None):
+    # html이 있으면 글(body)과 HTML 두 가지를 함께 보냄. headers는 List-Unsubscribe 같은 머리글 (소보루 레터)
     msg = EmailMessage()
     msg['Subject'] = subject
-    msg['From'] = formataddr((env('MAIL_FROM_NAME') or site_name(), env('MAIL_FROM') or env('SMTP_USER')))
+    msg['From'] = formataddr((from_name or env('MAIL_FROM_NAME') or site_name(), env('MAIL_FROM') or env('SMTP_USER')))
     msg['To'] = to
+    for key, value in (headers or {}).items():
+        msg[key] = value
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype='html')
     port = int(env('SMTP_PORT') or 465)
     if port == 465:
         server = smtplib.SMTP_SSL(env('SMTP_HOST'), port, timeout=15)

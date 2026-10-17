@@ -1,0 +1,73 @@
+{% extends 'console.html' %}
+{% block title %}소보루 레터 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  {% if waiting is defined and waiting %}
+  <meta http-equiv="refresh" content="4">
+  <div class="page-intro"><h1 class="page-title">소보루 레터</h1></div>
+  <div class="form-panel aw-wait"><span class="aw-spin" aria-hidden="true"></span><div><b>이번 호를 만들고 있어요</b><p class="meta">뉴스를 모으고 AI가 레터를 쓰는 데 1~2분 걸려요. 다 되면 초안이 바로 열려요. 이 화면은 4초마다 새로 고쳐져요.</p></div></div>
+  {% else %}
+  <div class="page-intro"><h1 class="page-title">소보루 레터</h1>
+    <p>뉴닉식 주간 뉴스레터예요. 지난 7일 소비자 뉴스 3~5개를 AI가 우리 말로 풀고, 소보루 픽 인기 리뷰·리뷰 주제·새 생활정보를 붙여요. 확인 메일을 눌러 구독을 마친 분께만 보내요.</p>
+    <p class="meta">AI 글의 숫자는 그 뉴스의 제목·요약·법 조문에 있는 것만 쓰게 하고, 기사 문장을 그대로 옮긴 곳(6어절 넘게 같음)이 있는지도 코드로 한 번 더 확인해요. <a href="{{ url_for('letter_home') }}" target="_blank" rel="noopener">공개 화면 /letter ↗</a></p>
+    {% if not ai_ready %}<p class="hp-warn">OpenAI API 키가 없어서 레터를 만들 수 없어요. 서버 설정에 OPENAI_API_KEY를 넣어 주세요.</p>{% endif %}
+    {% if not naver_ready %}<p class="hp-warn">네이버 API HUB 키가 없어서 뉴스를 모을 수 없어요 (deploy/set-naver.sh).</p>{% endif %}
+    {% if not mail_ready %}<p class="hp-warn">메일 발송 설정(SMTP)이 없어요. 지금은 구독 신청을 받지 않고, 레터를 보낼 수도 없어요 (deploy/set-mail.sh).</p>{% endif %}
+  </div>
+
+  <div class="lt-ad-top">
+    <form class="form-panel lt-ad-make" method="post" action="{{ url_for('admin_letter') }}" data-lt-make>
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <h2><span aria-hidden="true">📨</span> 이번 호 만들기</h2>
+      <p class="meta">지금 뉴스로 새 호 초안을 만들어요. 보내기 전에 내용을 고치고, 테스트 메일로 먼저 받아 볼 수 있어요.</p>
+      <div class="admin-actions"><button class="primary"{% if not ai_ready or not naver_ready %} disabled{% endif %}>이번 호 만들기</button></div>
+    </form>
+    <form class="form-panel lt-ad-set" method="post" action="{{ url_for('admin_letter_settings') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <h2>매주 보내기</h2>
+      <div class="admin-row"><label>보내는 요일<select name="day">{% for d in days %}<option value="{{ loop.index0 }}"{% if cfg.day == loop.index0 %} selected{% endif %}>{{ d }}</option>{% endfor %}</select></label></div>
+      <label class="check"><input type="checkbox" name="auto" value="1"{% if cfg.auto %} checked{% endif %}> 자동 보내기 (만든 호가 검사를 통과하면 바로 구독자에게 보내요)</label>
+      <p class="meta">끄면(기본) 그 요일 아침 7시 30분에 초안만 만들어 두고 운영자가 '보내기'를 누를 때까지 기다려요. 서버에 예약 작업(deploy/set-letter.sh)을 한 번 설치해야 돌아가요.</p>
+      <div class="admin-actions"><button type="submit">저장</button></div>
+    </form>
+  </div>
+
+  <h2 class="aw-h">레터 ({{ rows|length }})</h2>
+  {% for L in rows %}
+  <div class="form-panel admin-item lt-ad-row">
+    <p class="meta">{{ L.no }}호 · {{ L.created[:16].replace('T', ' ') }} · {{ '매주 자동' if L.trigger == 'weekly' else '직접 만듦' }}{% if L.sent_at %} · 보냄 {{ L.sent_at[:16].replace('T', ' ') }}{% endif %}</p>
+    <h3><a href="{{ url_for('admin_letter_edit', lid=L.id) }}">{{ L.title }}</a></h3>
+    <span class="aw-badge{{ ' ok' if L.status == 'sent' }}">{{ {'draft': '초안', 'scheduled': '보내는 중', 'sent': '보냄'}.get(L.status, L.status) }}</span>
+    {% if L.check_ok %}<span class="aw-badge ok">검사 통과</span>{% else %}<span class="aw-badge bad">검토 필요 {{ L.problems|length }}곳</span>{% endif %}
+    <span class="aw-badge">뉴스 {{ L['items']|length }}개</span>
+    {% if L.status == 'sent' %}<span class="aw-badge">{{ L.sent_count }}명에게 보냄{% if L.failed %} · 실패 {{ L.failed }}{% endif %}</span>{% endif %}
+  </div>
+  {% else %}<p class="meta">아직 만든 레터가 없어요. '이번 호 만들기'를 눌러 첫 호를 만들어 보세요.</p>{% endfor %}
+
+  <h2 class="aw-h" id="subs">구독자</h2>
+  <div class="lt-ad-counts">
+    <div><b>{{ counts.get('active', 0) }}</b><span>구독 중</span></div>
+    <div><b>{{ counts.get('pending', 0) }}</b><span>확인 기다림</span></div>
+    <div><b>{{ counts.get('unsubscribed', 0) }}</b><span>해지</span></div>
+  </div>
+  <p class="meta">확인 메일을 누른 '구독 중'인 분께만 보내요. 확인하지 않은 신청은 7일 뒤, 해지한 분의 이메일 주소는 해지할 때 바로 지워요.</p>
+  <div class="tablewrap"><table class="cs-stack lt-ad-subs">
+    <tr><th>이메일</th><th>상태</th><th>신청</th><th>확인</th><th>신청한 곳</th><th></th></tr>
+    {% for s in subs %}
+    <tr>
+      <td>{{ '(지운 주소)' if s['email'].startswith('x:') else s['email'] }}</td>
+      <td>{% if s['status'] == 'active' %}<span class="aw-badge ok">구독 중</span>{% elif s['status'] == 'pending' %}<span class="aw-badge">확인 기다림</span>{% else %}<span class="aw-badge">해지</span>{% endif %}</td>
+      <td>{{ s['created'][:10] }}</td><td>{{ (s['confirmed'] or '-')[:10] }}</td><td>{{ {'home': '홈', 'life': '생활정보', 'letter': '레터 화면', 'issue': '지난 레터'}.get(s['place'], s['place'] or '-') }}</td>
+      <td>{% if s['status'] != 'unsubscribed' %}<form class="inline-actions" method="post" action="{{ url_for('admin_letter_subs') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ s['id'] }}"><button class="secondary danger" onclick="return confirm('이 구독자를 해지할까요? 이메일 주소도 지워져요.')">해지</button></form>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="meta">아직 구독자가 없어요.</td></tr>{% endfor %}
+  </table></div>
+
+  {% if logs %}
+  <h2 class="aw-h">최근 기록</h2>
+  <ul class="aw-log">{% for l in logs %}<li><span>{{ l.at[5:16].replace('T', ' ') }}</span> {{ '매주 자동' if l.trigger == 'weekly' else '직접' }} · {% if l.no %}{{ l.no }}호 · {% endif %}{{ {'made': '초안 만듦', 'skip': '건너뜀', 'error': '실패', 'sent': '보냄', 'held': '보내지 않고 기다림'}.get(l.status, l.status) }}{% if l.reason %} — {{ l.reason }}{% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+  {% endif %}
+</div></main>
+<script>document.querySelectorAll('[data-lt-make]').forEach(function(f){f.addEventListener('submit',function(){var b=f.querySelector('button');setTimeout(function(){b.disabled=true;b.textContent='만드는 중… (1~2분)'},0)})})</script>
+{% endblock %}

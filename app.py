@@ -2596,5 +2596,6 @@ _ask=types.SimpleNamespace(**globals());lawask.install(_ask)
 _writer=types.SimpleNamespace(**globals());soboru_writer.install(_writer)
 # AI 소비자 상담 새 버전: 유형 분류·키워드+임베딩 검색·근거 확인·상담 기록·관리자 대시보드 (lawrag.py, 관리자 설정으로 켤 때만 손님에게 보임)
 _rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
+import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  # 소보루 레터: 주간 뉴스레터·구독·발송 (soboru_letter.py)
 
 if __name__=='__main__':app.run(debug=False)
