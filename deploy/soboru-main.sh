@@ -67,8 +67,10 @@ esac
 EMAIL=$1
 echo "== 1/4 DNS 확인"
 MYIP=$(curl -fsS https://checkip.amazonaws.com || true)
+AUTH=$(dig +short NS "$MAIN" @8.8.8.8 | head -n1); AUTH=${AUTH:-ns.gabia.co.kr}
 for H in $MAIN www.$MAIN; do
-  IP=$(dig +short "$H" A | tail -n1)
+  # 서버가 예전 "주소 없음" 답을 기억하고 있을 수 있어 가비아(도메인 담당 네임서버)에 직접 물어봄
+  IP=$(dig +short "$H" A @"$AUTH" | tail -n1)
   [[ -n $MYIP && $IP == "$MYIP" ]] || { echo "$H 가 아직 이 서버($MYIP)를 가리키지 않아요(지금: ${IP:-없음}). 가비아 DNS에 A 레코드를 넣고 몇 분 뒤 다시 실행해 주세요."; exit 1; }
 done
 echo "  $MAIN, www.$MAIN → $MYIP"
