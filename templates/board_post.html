@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'board_macros.html' import heart, bubble, chip %}
 {% from 'community_macros.html' import stars %}
-{% block title %}{{ post['title'] }} | {{ txt('board.title') }}{% endblock %}
+{% block title %}{{ post['title'] }} | {{ txt('site.name') if is_soboru() else txt('board.title') }}{% endblock %}
 {% block description %}{{ mask_personal(post['summary'] or post['body'] or post['pros'] or post['title'])|truncate(150, True, '…') }}{% endblock %}
 {% block og_type %}article{% endblock %}
 {% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "DiscussionForumPosting", "headline": post['title'], "text": mask_personal(post['body'])|truncate(500, True, '…'), "articleSection": post['category'], "datePublished": post['created'], "url": request.base_url, "inLanguage": "ko", "author": {"@type": "Person", "name": post['nickname']}, "commentCount": comments|length, "interactionStatistic": {"@type": "InteractionCounter", "interactionType": "https://schema.org/LikeAction", "userInteractionCount": post['likes']}},

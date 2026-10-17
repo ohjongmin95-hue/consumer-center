@@ -215,6 +215,14 @@ def install(S):
             else: abort(400)
         return back
 
-    app.jinja_env.globals.update(art_url=art_url, art_photo=lambda stored: os.path.splitext(stored)[1].lower() in PHOTO)
+    def og_photo(case_id):
+        # 공유 미리보기용 제보 대표 사진: 네이버·카카오가 확실히 읽는 JPG·PNG만 (AI 그림은 webp라 제외)
+        fid = covers().get(case_id)
+        if not fid: return ''
+        with conn() as db: f = db.execute('SELECT stored FROM attachments WHERE id=?', (fid,)).fetchone()
+        if not f or os.path.splitext(f['stored'])[1].lower() not in ('.jpg', '.jpeg', '.png'): return ''
+        return S.canonical_url(url_for('report_cover', case_id=case_id, v=fid))
+
+    app.jinja_env.globals.update(og_photo=og_photo, art_url=art_url, art_photo=lambda stored: os.path.splitext(stored)[1].lower() in PHOTO)
     S.art_draw = draw; S.art_auto = auto
     app.extensions['soboru_art'] = {'auto': auto, 'draw': draw}

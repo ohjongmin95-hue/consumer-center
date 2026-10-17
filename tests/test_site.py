@@ -218,7 +218,27 @@ class SiteTest(unittest.TestCase):
         page = admin.get('/?brand=soboru').get_data(as_text=True)
         self.assertIn('sb-header', page)
         self.assertIn('소보루 미리보기 중', page)
-        self.assertIn('<title>소보루 - 소비자 생활정보·커뮤니티·제보</title>', page)
+        self.assertIn('<title>소보루(SOBORU)</title>', page)
+        self.assertIn('<meta name="description" content="소비자 피해 제보부터 제품·업체 리뷰와 추천, 소비자 권리 안내까지. 소비자의 경험을 나누는 소비자 정보 플랫폼, 소보루.">', page)
+        # 네이버 기준: 화면마다 다른 제목·설명, 화면 종류별 공유 그림, 개인 화면은 검색 제외
+        board = admin.get('/board').get_data(as_text=True)
+        self.assertIn('<title>제품·업체 리뷰와 추천 | 소보루</title>', board)
+        self.assertIn('static/soboru-og-pick.png', board)
+        self.assertIn('<meta name="twitter:image" content="http://localhost/static/soboru-og-pick.png', board)
+        self.assertIn('<title>소비자 피해 제보하기 | 소보루</title>', admin.get('/report').get_data(as_text=True))
+        self.assertIn('<title>자주 묻는 질문 | 소보루</title>', admin.get('/faq').get_data(as_text=True))
+        self.assertIn('<meta name="robots" content="noindex,nofollow">', admin.get('/lookup').get_data(as_text=True))
+        self.assertIn('User-agent: Yeti', self.client.get('/robots.txt').get_data(as_text=True))
+        self.assertEqual(self.client.get('/reports?page=999').status_code, 404)  # 없는 쪽은 소프트 404 대신 404
+        self.assertIn('<meta name="robots" content="noindex,follow">', admin.get('/board?type=review').get_data(as_text=True))
+        self.assertIn('<meta property="og:image" content="http://localhost/static/soboru-og.png', page)
+        self.assertIn('"alternateName": ["SOBORU", ', page)  # 구조화 데이터 (한글은 \u 꼴로 들어감)
+        # 운영 도메인으로 들어오면(http여도) canonical·og:url·사이트맵이 https://consumerjebo.co.kr 로 통일
+        prod = self.client.get('/', base_url='http://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', prod)
+        self.assertIn('<meta property="og:url" content="https://consumerjebo.co.kr/">', prod)
+        self.assertIn('<loc>https://consumerjebo.co.kr/</loc>', self.client.get('/sitemap.xml', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
+        self.assertIn('Sitemap: https://consumerjebo.co.kr/sitemap.xml', self.client.get('/robots.txt', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
         self.assertNotIn('sb-header', admin.get('/?brand=off').get_data(as_text=True))
         # 생활정보: 초안은 관리자만, 게시하면 누구나
         r = admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '택배 분실 보상 정리', 'summary': '요약', 'body': '첫 문단\n\n## 소제목\n- 목록', 'category': '쇼핑', 'emoji': '📦', 'tone': 't1'})
@@ -229,6 +249,9 @@ class SiteTest(unittest.TestCase):
         admin.post(f'/admin/life/{aid}', data={'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'act': 'publish', 'title': '택배 분실 보상 정리', 'summary': '요약', 'body': '첫 문단\n\n## 소제목\n- 목록', 'category': '쇼핑'})
         art = visitor.get(f'/life/{aid}').get_data(as_text=True)
         self.assertIn('<h2>소제목</h2>', art)
+        self.assertIn('"@type": "Article"', art)
+        self.assertIn(f'<link>http://localhost/life/{aid}</link>', visitor.get('/rss.xml').get_data(as_text=True))  # RSS에 생활정보 기사도
+        self.assertEqual(visitor.get('/', base_url='http://www.consumerjebo.co.kr').headers['Location'], 'https://consumerjebo.co.kr/')  # www는 https 대표 주소로 한 번에
         self.assertIn('<li>목록</li>', art)
         self.assertIn('택배 분실 보상 정리', visitor.get('/life?category=쇼핑').get_data(as_text=True))
         # 설정에서 브랜드를 소보루로: 방문자 화면·메일 이름이 모두 소보루, 비우면 원래대로
@@ -372,6 +395,7 @@ class SiteTest(unittest.TestCase):
             detail = visitor.get(f'/reports/{cid2}').get_data(as_text=True)
             self.assertIn(f'/reports/{cid2}/cover', detail)
             self.assertIn('제보자 사진', detail)
+            self.assertIn(f'<meta property="og:image" content="http://localhost/reports/{cid2}/cover?v={fid}">', detail)  # 공유 미리보기도 그 사진
             admin.post(f'/admin/reports/{cid2}/cover', data={'_csrf': self.csrf(admin, f'/admin/reports/{cid2}'), 'file_id': 0})
             self.assertEqual(visitor.get(f'/reports/{cid2}/cover').status_code, 404)
         finally:
@@ -1130,6 +1154,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<loc>http://localhost/reports/%d</loc><lastmod>2026-10-09</lastmod>' % public_id, xml)
         self.assertNotIn('/reports/%d<' % secret_id, xml)
         self.assertNotIn('/admin', xml)
+        for path in ('/companies</loc>', '/ask</loc>', '/life</loc>', '/faq</loc>'): self.assertIn(path, xml)
+        self.assertNotIn('/types</loc>', xml)  # 메뉴에서 뺀 안내는 사이트맵에서도 뺌
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('<meta name="description" content="환불 거부, 배송 지연, 불량품', home)
         self.assertNotIn('naver-site-verification', home)

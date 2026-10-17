@@ -7,16 +7,20 @@
   {% if show.top %}
   <section class="nn-hero">
     <div class="nn-hero-main">
-      <p class="nn-kicker"><b>소</b>비자 권익 <b>보</b>호를 위한 <b>루</b>트</p>
-      <h1>오늘도 누군가<br>억울한 일을 겪었어요</h1>
-      <p class="nn-lede">소보루에 올라온 제보를 실시간으로 보고, <br>같은 일을 겪었다면 함께 목소리를 내요.</p>
+      <div class="nn-hero-top">
+        <div class="nn-hero-copy">
+          <p class="nn-kicker"><b>소</b>비자 권익 <b>보</b>호를 위한 <b>루</b>트</p>
+          <h1>오늘도 누군가<br>억울한 일을 겪었어요</h1>
+          <p class="nn-lede">소보루에 올라온 제보를 실시간으로 보고, <br>같은 일을 겪었다면 함께 목소리를 내요.</p>
+        </div>
+        <img class="nn-char" src="{{ asset('img/soboru-character.png') }}" alt="" width="200" height="155">
+      </div>
       <div class="nn-hero-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-ghost" href="{{ url_for('lookup') }}">내 제보 조회</a></div>
       <ul class="nn-stats">
-        <li><b>{{ stats.today }}</b><span>오늘 들어온 제보</span></li>
-        <li><b>{{ stats.answered }}</b><span>기업이 답한 제보</span></li>
-        <li><b>{{ stats.total }}</b><span>지금까지 쌓인 제보</span></li>
+        <li><span class="nn-si" aria-hidden="true">📣</span><span>오늘 제보</span><b>{{ stats.today }}<small>건</small></b></li>
+        <li><span class="nn-si" aria-hidden="true">💬</span><span>기업 답변</span><b>{{ stats.answered }}<small>건</small></b></li>
+        <li><span class="nn-si" aria-hidden="true">📋</span><span>누적 제보</span><b>{{ stats.total }}<small>건</small></b></li>
       </ul>
-      <img class="nn-char" src="{{ asset('img/soboru-character.png') }}" alt="" width="200" height="155">
     </div>
     <div class="nn-live">
       <div class="nn-live-head"><h2><span class="nn-dot" aria-hidden="true"></span>실시간 제보</h2><a href="{{ url_for('reports') }}">전체 보기 ›</a></div>
