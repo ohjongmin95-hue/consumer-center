@@ -10,7 +10,7 @@
   <header class="sba-head">
     <p class="sba-kicker"><span aria-hidden="true">⚖️</span> {{ ui('ask.kicker', '법령 원문으로 답해요') }}</p>
     <h1>{{ ui('ask.h1', '소비자 법률, 편하게 물어보세요') }}</h1>
-    <p>{{ ui('ask.intro', '배운 소비자 법령에서 근거 조문을 찾아 쉽게 풀어 드려요.') }} <a class="sba-learned" href="#sba-laws">법령 {{ counts.laws }}개 · 조문 {{ '{:,}'.format(counts.articles) }}개</a></p>
+    <p>{{ ui('ask.intro', '배운 소비자 법령에서 근거 조문을 찾아 쉽게 풀어 드려요.') }}</p>
   </header>
 
   {% if result %}
@@ -79,8 +79,8 @@
   {% endif %}
 
   <details class="sba-laws" id="sba-laws">
-    <summary>{{ ui('ask.laws', '어떤 법령을 배웠나요?') }} <span>{{ counts.laws }}개</span>{{ chev }}</summary>
-    <ul>{% for l in laws %}<li><a href="{{ l.source }}" target="_blank" rel="noopener"><b>{{ l.short }}</b><span>{% if l.effective %}시행 {{ l.effective|replace('-', '.') }} · {% endif %}조문 {{ l.count }}개</span></a></li>{% endfor %}</ul>
+    <summary>{{ ui('ask.laws', '어떤 법령을 배웠나요?') }}{{ chev }}</summary>
+    <ul>{% for l in laws %}<li><a href="{{ l.source }}" target="_blank" rel="noopener"><b>{{ l.short }}</b>{% if l.effective %}<span>시행 {{ l.effective|replace('-', '.') }}</span>{% endif %}</a></li>{% endfor %}</ul>
     <p>{{ ui('ask.laws_note', '국가법령정보센터(law.go.kr) 원문을 그대로 나눠 담았어요. 법이 바뀌면 새 원문으로 다시 배워요.') }}</p>
   </details>
 </div>
