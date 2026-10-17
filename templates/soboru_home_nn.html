@@ -13,16 +13,20 @@
       <p class="nn-intro-sub">억울한 일은 제보하고, 써 본 건 추천하고, <br>내 권리는 쉽게 알아보는 소비자 정보 플랫폼이에요.</p>
       <div class="nn-intro-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-intro-link" href="{{ url_for('board') }}">소보루 픽 둘러보기 ›</a></div>
     </div>
-    {# 토스식 그림: 가운데 작은 앱 화면(제보가 처리되는 모습), 둘레에 토스페이스 이모지 타일 #}
+    {# 토스식 그림: 가운데 소보루 앱 화면(휴대폰), 둘레에 토스페이스 이모지 타일 #}
     <div class="nn-intro-art" aria-hidden="true">
-      <div class="nn-mock">
-        <p class="nn-mock-top"><span class="nn-mock-emo">📦</span>배송·교환·환불<em>기업 답변 도착</em></p>
-        <p class="nn-mock-title">주문한 택배가 2주째 안 와요</p>
-        <ol class="nn-mock-steps"><li class="ok">제보 접수</li><li class="ok">기업에 전달</li><li class="now">기업 답변 도착</li></ol>
-        <p class="nn-mock-ans"><b>오소보쇼핑 답변</b>확인해 보니 배송이 누락됐어요. 오늘 다시 보내 드릴게요.</p>
+      <div class="nn-phone">
+        <div class="nn-phone-in">
+          <p class="nn-ph-hi">오늘 어떤 일이 있었나요? <span class="tf">🙋</span></p>
+          <div class="nn-ph-grid"><span><i class="tf t1">📣</i>제보하기</span><span><i class="tf t6">⭐</i>리뷰</span><span><i class="tf t3">💡</i>생활정보</span><span><i class="tf t5">💬</i>AI 상담</span></div>
+          <p class="nn-ph-h"><span class="tf">🔥</span> 많이 본 이야기</p>
+          <p class="nn-ph-row"><i class="tf t2">💳</i><span>구독 해지했는데 또 결제됐다면</span></p>
+          <p class="nn-ph-row"><i class="tf t1">📦</i><span>택배 분실, 보상받는 순서</span></p>
+          <p class="nn-ph-row"><i class="tf t3">🧾</i><span>영수증 없이 환불받는 법</span></p>
+        </div>
       </div>
-      <span class="nn-tile a t1">📣</span><span class="nn-tile b t2">💳</span>
-      <span class="nn-tile c t6">⭐</span><span class="nn-tile d t3">🧾</span><span class="nn-tile e t5">💬</span>
+      <span class="nn-tile a t1">📦</span><span class="nn-tile b t2">🛡️</span>
+      <span class="nn-tile c t6">💰</span><span class="nn-tile d t3">🛒</span><span class="nn-tile e t5">🔍</span>
     </div>
   </section>
   <nav class="nn-quick" aria-label="소보루에서 할 수 있는 일">
@@ -38,6 +42,7 @@
     <ol>
       {% for c in cases[:6] %}
       <li><a href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
+        <span class="nn-emo {{ c.look[1] }}" aria-hidden="true">{{ c.look[0] }}</span>
         <div><h3>{% if c.secret %}🔒 비공개 제보예요{% else %}{{ c.title or '제목을 가린 제보예요' }}{% endif %}</h3>
         <p><span class="sb-badge {{ badge.get(c.status, 'b-new') }}">{{ status_name(c.status) }}</span>{% if c.company %}{{ c.company }} · {% endif %}{{ c.cat }} · <time datetime="{{ c.created }}">{{ c.when }}</time></p></div>
       </a></li>
@@ -48,7 +53,7 @@
 
   {% if show.life %}
   <section class="nn-sec">
-    <div class="nn-sec-head"><h2>알아 두면 돈 버는 소비 이야기</h2><a href="{{ url_for('life') }}">더 보기 ›</a></div>
+    <div class="nn-sec-head"><h2><span class="tf" aria-hidden="true">💡</span> 알아 두면 돈 버는 소비 이야기</h2><a href="{{ url_for('life') }}">더 보기 ›</a></div>
     <div class="nn-chips" role="tablist">
       <button type="button" class="on" data-chip="all">전체</button>
       <button type="button" data-chip="life">💡 생활정보</button>
@@ -73,7 +78,7 @@
   {% if show.rank %}
   <section class="nn-sec nn-pick">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">써 본 소비자가 직접 골랐어요</p><h2>소보루 픽</h2><p class="nn-sub">제품·업체 추천부터 솔직한 리뷰, 살까 말까 고민될 때 질문까지. 광고 없이 소비자끼리만 나눠요.</p></div>
+      <div><p class="nn-eyebrow">써 본 소비자가 직접 골랐어요</p><h2><span class="tf" aria-hidden="true">⭐</span> 소보루 픽</h2><p class="nn-sub">제품·업체 추천부터 솔직한 리뷰, 살까 말까 고민될 때 질문까지. 광고 없이 소비자끼리만 나눠요.</p></div>
       <a class="nn-more" href="{{ url_for('board') }}">소보루 픽 전체 보기 ›</a>
     </div>
     <div class="nn-pick-grid">
@@ -102,7 +107,7 @@
 
   <section class="nn-sec nn-answer">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">최근 {{ rank.days }}일 · 제보 {{ rank.min_n }}건 이상 받은 기업</p><h2>기업 답변 기록</h2><p class="nn-sub">소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.</p></div>
+      <div><p class="nn-eyebrow">최근 {{ rank.days }}일 · 제보 {{ rank.min_n }}건 이상 받은 기업</p><h2><span class="tf" aria-hidden="true">🏢</span> 기업 답변 기록</h2><p class="nn-sub">소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.</p></div>
       <a class="nn-more" href="{{ url_for('companies') }}">기업 찾기 ›</a>
     </div>
     <div class="nn-ans-grid">

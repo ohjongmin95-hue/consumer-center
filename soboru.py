@@ -296,7 +296,7 @@ def install(S):
             picks = [dict(r) for r in db.execute("""SELECT target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg,SUM(recommend=1) AS rec
                 FROM posts WHERE kind='review' AND hidden=0 AND target!='' GROUP BY target ORDER BY rec DESC,avg DESC,n DESC LIMIT 5""")]
         show = {k: on for k, on in home_plan()['sections']}
-        return render_template('soboru_home_nn.html', show=show, cases=S.report_rows(limit=6), feed=feed[:10], cats=cats,
+        return render_template('soboru_home_nn.html', show=show, cases=[dict(c, look=report_look(c['cat'])) for c in S.report_rows(limit=6)], feed=feed[:10], cats=cats,
                                rank=company_rank(5), posts=S.community_feed(4), picks=picks)
 
     @app.route('/admin/home-plan', methods=['GET', 'POST'])
