@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% from 'community_macros.html' import top_line as cm_top, sub_line as cm_sub, foot_line as cm_foot %}
+{% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
+{# 뉴닉식 홈 (미리보기): 그림은 맨 위 캐릭터 하나만, 나머지는 글과 토스페이스 이모지. 실시간 제보를 맨 위 오른쪽에 #}
+{% block content %}
+<main class="sb-wrap nn-home">
+  <section class="nn-hero">
+    <div class="nn-hero-main">
+      <p class="nn-kicker"><b>소</b>비자 권익 <b>보</b>호를 위한 <b>루</b>트</p>
+      <h1>오늘도 누군가<br>억울한 일을 겪었어요</h1>
+      <p class="nn-lede">소보루에 올라온 제보를 실시간으로 보고,<br>같은 일을 겪었다면 함께 목소리를 내요.</p>
+      <div class="nn-hero-btns"><a class="sb-cta" href="{{ url_for('report') }}">제보하기</a><a class="nn-ghost" href="{{ url_for('lookup') }}">내 제보 조회</a></div>
+      <ul class="nn-stats">
+        <li><b>{{ stats.today }}</b><span>오늘 들어온 제보</span></li>
+        <li><b>{{ stats.answered }}</b><span>기업이 답한 제보</span></li>
+        <li><b>{{ stats.total }}</b><span>지금까지 쌓인 제보</span></li>
+      </ul>
+      <img class="nn-char" src="{{ asset('img/soboru-character.png') }}" alt="" width="200" height="155">
+    </div>
+    <div class="nn-live">
+      <div class="nn-live-head"><h2><span class="nn-dot" aria-hidden="true"></span>실시간 제보</h2><a href="{{ url_for('reports') }}">전체 보기 ›</a></div>
+      <ol>
+        {% for c in cases[:6] %}
+        <li><a href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
+          <div><h3>{% if c.secret %}🔒 비공개 제보예요{% else %}{{ c.title or '제목을 가린 제보예요' }}{% endif %}</h3>
+          <p><span class="sb-badge {{ badge.get(c.status, 'b-new') }}">{{ status_name(c.status) }}</span>{% if c.company %}{{ c.company }} · {% endif %}{{ c.cat }} · <time datetime="{{ c.created }}">{{ c.when }}</time></p></div>
+        </a></li>
+        {% else %}<li class="nn-empty">아직 올라온 제보가 없어요.</li>{% endfor %}
+      </ol>
+    </div>
+  </section>
+
+  <section class="nn-sec">
+    <div class="nn-sec-head"><h2>알아 두면 돈 버는 소비 이야기</h2><a href="{{ url_for('life') }}">더 보기 ›</a></div>
+    <div class="nn-chips" role="tablist">
+      <button type="button" class="on" data-chip="all">전체</button>
+      <button type="button" data-chip="life">💡 생활정보</button>
+      <button type="button" data-chip="report">📣 제보 리포트</button>
+      {% for cat in cats %}<button type="button" data-chip="c-{{ cat }}">{{ cat }}</button>{% endfor %}
+    </div>
+    <div class="nn-list">
+      {% for it in feed %}
+      <a class="nn-item" href="{{ it.url }}" data-kind="{{ it.kind }}" data-cat="c-{{ it.label }}">
+        <span class="nn-emo {{ it.tone }}" aria-hidden="true">{{ it.emoji }}</span>
+        <div><p class="nn-tag">{{ '생활정보' if it.kind == 'life' else '제보 리포트' }} · {{ it.label }}</p>
+          <h3>{{ it.title }}</h3>
+          {% if it.summary %}<p class="nn-sum">{{ it.summary }}</p>{% endif %}
+          <p class="nn-date">{{ (it.stamp or '')[:10].replace('-', '.') }}</p></div>
+      </a>
+      {% else %}<p class="nn-empty">아직 글이 없어요.</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="nn-sec nn-two">
+    <div>
+      <div class="nn-sec-head"><h2>이달의 기업 답변</h2><a href="{{ url_for('companies') }}">기업 찾기 ›</a></div>
+      <div class="sb-rank" data-tabs>
+        <div class="sb-tabs" role="tablist"><button type="button" role="tab" class="on" data-tab="best" aria-selected="true">답변 잘한 곳</button><button type="button" role="tab" data-tab="wait" aria-selected="false">답변 기다리는 곳</button></div>
+        {% for tab in ('best', 'wait') %}
+        <ol data-pane="{{ tab }}"{% if tab == 'wait' %} hidden{% endif %}>
+          {% for p in rank[tab] %}<li><span class="n">{{ loop.index }}</span><a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
+            <span class="st">{% if tab == 'best' %}답변률 <b>{{ p['rate'] }}%</b><br>답변까지 {{ p['median'] }}{% else %}답변 없는 제보 <b>{{ p['waiting'] }}건</b><br>답변률 {{ p['rate'] }}%{% endif %}</span></li>
+          {% else %}<li class="sb-empty">아직 순위를 낼 만큼 제보가 쌓이지 않았어요.</li>{% endfor %}
+        </ol>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <div class="nn-sec-head"><h2>커뮤니티 인기글</h2><a href="{{ url_for('board') }}">더 보기 ›</a></div>
+      <div class="sb-cm">
+        {% for p in posts %}<a class="sb-cm-card k-{{ p['kind'] }}" href="{{ url_for('board_post', post_id=p['id']) }}">{{ cm_top(p) }}<h3>{% if p['kind'] == 'question' %}<span class="cm-q">Q.</span>{% endif %}{{ p['title'] }}</h3>{{ cm_sub(p) }}{{ cm_foot(p) }}</a>
+        {% else %}<p class="sb-empty">첫 글을 남겨 주세요.</p>{% endfor %}
+      </div>
+    </div>
+  </section>
+  <p class="nn-copy">ⓒ 소보루. 소보루의 제보 글, 기사, 그림은 저작권법의 보호를 받아요. 무단 전재·재배포, 자동 수집(크롤링), AI 학습 이용을 금지합니다.</p>
+</main>
+<script>
+  document.querySelectorAll('[data-tabs]').forEach(function (box) {
+    box.querySelectorAll('[data-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        box.querySelectorAll('[data-tab]').forEach(function (b) { var on = b === btn; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+        box.querySelectorAll('[data-pane]').forEach(function (p) { p.hidden = p.getAttribute('data-pane') !== btn.getAttribute('data-tab'); });
+      });
+    });
+  });
+  // 분야 칩: 누르면 그 종류·분야 글만
+  document.querySelectorAll('[data-chip]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var k = btn.getAttribute('data-chip');
+      document.querySelectorAll('[data-chip]').forEach(function (b) { b.classList.toggle('on', b === btn); });
+      document.querySelectorAll('.nn-item').forEach(function (it) { it.hidden = !(k === 'all' || it.dataset.kind === k || it.dataset.cat === k); });
+    });
+  });
+</script>
+{% endblock %}

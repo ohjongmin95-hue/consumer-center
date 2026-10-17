@@ -272,6 +272,7 @@ def install(S):
     old_home = app.view_functions['home']
     def home():
         if not is_soboru(): return old_home()
+        if request.args.get('look') == 'nn': return home_nn()
         plan = home_plan()
         lead, side = pick_top(plan)
         shown = [x['id'] for x in ([lead] if lead else []) + side if x['kind'] == 'life']
@@ -279,6 +280,22 @@ def install(S):
         return render_template('soboru_home.html', plan=plan, lead=lead, side=side, more=more, rank=company_rank(4),
                                cases=S.report_rows(limit=6), posts=S.community_feed(4))
     app.view_functions['home'] = home
+
+    def home_nn():
+        # 뉴닉식 홈 미리보기(/?look=nn): 그림 없이 글·이모지, 실시간 제보를 맨 위에
+        lifes = [life_item(a) for a in life_rows(8)]
+        reps = [r for r in report_items(6) if r['title']]
+        feed = []
+        while lifes or reps:
+            feed += lifes[:2]; lifes = lifes[2:]
+            if reps: feed.append(reps.pop(0))
+        with conn() as db:
+            today = db.execute('SELECT COUNT(*) FROM cases WHERE substr(created,1,10)=? AND ' + S.PUBLIC_VALID, (datetime.date.today().isoformat(),)).fetchone()[0]
+            answered = db.execute("SELECT COUNT(DISTINCT case_id) FROM messages WHERE author='기업 답변'").fetchone()[0]
+        stats = {'today': today, 'answered': answered, 'total': S.report_summary()['total']}
+        cats = [c for c in LIFE_CATEGORIES if any(x['kind'] == 'life' and x['label'] == c for x in feed)]
+        return render_template('soboru_home_nn.html', cases=S.report_rows(limit=6), feed=feed[:10], cats=cats, stats=stats,
+                               rank=company_rank(4), posts=S.community_feed(4))
 
     @app.route('/admin/home-plan', methods=['GET', 'POST'])
     @S.admin_only
