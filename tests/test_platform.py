@@ -2599,6 +2599,31 @@ class PlatformTest(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT COUNT(*) FROM events WHERE case_id=? AND kind='co'",(case,)).fetchone()[0],1)
         self.assertIn('민감성 피부도 돼요?',said[-1])
 
+    def test_chat_inbox(self):
+        """상담 화면: 대화방 목록(결정 필요 표시), 대화 열기(확인 처리), 새 말 받기, 대화방에서 답·메모, 남의 대화방은 못 연다."""
+        b,o,cid=self.signup_and_approve('상담방상점','chatinbox@example.com')
+        with self.core.conn() as db:
+            co=self.core.company(db,cid);t=self.core.iso()
+            case=db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel,ai_why,ai_draft)
+                VALUES(?,?,?,1,'환불','환불해 주세요','환불해 주세요','환불','','김고객','','','x',1,'forwarded','pending',?,?,?,'','','인스타그램','환불 요청','확인 후 안내드릴게요.')""",(self.core.new_case_no(db),cid,co['name'],t,t,t)).lastrowid
+        j=b.get('/biz/chat/list.json').get_json()['rows']
+        self.assertEqual([(r['id'],r['need'],r['mark'][0]) for r in j],[(case,True,'IG')])
+        h=b.get(f'/biz/chat/{case}').get_data(as_text=True)
+        self.assertIn('환불해 주세요',h);self.assertIn('확인 후 안내드릴게요.',h);self.assertIn('id="cxDec"',h)
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?',(case,)).fetchone()[0],'seen')
+        m=b.get(f'/biz/chat/{case}/msgs').get_json();self.assertTrue(m['need']);last=m['last']
+        r=self.post(b,f'/biz/chat/{case}/send',{'text':'사진 보내 주실 수 있을까요?'},f'/biz/chat/{case}')
+        self.assertEqual(r.get_json(),{'ok':True})
+        new=b.get(f'/biz/chat/{case}/msgs?after={last}').get_json()['msgs']
+        self.assertEqual([(x['who'],x['text']) for x in new if x['who']=='co'],[('co','사진 보내 주실 수 있을까요?')])
+        r=self.post(b,f'/biz/case/{case}',{'act':'note','note':'사진 받으면 교환','back':'chat'},f'/biz/chat/{case}')
+        self.assertTrue(r.headers['Location'].endswith(f'/biz/chat/{case}'))
+        self.assertIn('사진 받으면 교환',b.get(f'/biz/chat/{case}').get_data(as_text=True))
+        self.assertEqual(self.post(b,f'/biz/chat/{case}/send',{'text':''},f'/biz/chat/{case}').status_code,400)
+        b2,_,_=self.signup_and_approve('남의상점','chatother@example.com')
+        self.assertEqual(b2.get(f'/biz/chat/{case}').status_code,404)
+        self.assertEqual(b2.get('/biz/chat/list.json').get_json()['rows'],[])
+
     def test_instagram_dm(self):
         """인스타그램 DM: 키가 없으면 연동 대기, 로그인으로 잇고, 서명 맞는 웹훅만 받고, 같은 고객은 이어 붙고, 답장은 눌러야 간다."""
         import instagram, hmac as _h, hashlib, json as _j, urllib.parse as up
