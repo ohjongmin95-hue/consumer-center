@@ -3,7 +3,7 @@
 {% block bar %}{{ b.bar('all') }}{% endblock %}
 {% block body %}
 {% set open=c.status not in FINAL %}{% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}
-<div class="crumb"><a href="{{ url_for('decide') }}">홈</a><span>›</span><a href="{{ url_for('all_cases') }}">요청</a><span>›</span><span class="no">{{ c.no }}</span></div>
+<div class="crumb"><a href="{{ url_for('decide') }}">홈</a><span>›</span><a href="{{ url_for('chat',case_id=c.id) }}">상담</a><span>›</span><span class="no">{{ c.no }}</span></div>
 <div class="chead">
 <div class="l"><div class="tagrow">{{ m.pill(c,True) }}<span class="pill gray">{{ c.category }}</span>{% if is_direct(c) %}<span class="pill gray">{{ c.channel }} · 직접 등록</span>{% endif %}</div>
 <h1>{{ c.title }}</h1>

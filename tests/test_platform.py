@@ -2485,6 +2485,58 @@ class PlatformTest(unittest.TestCase):
             if old_env is None:os.environ.pop('IG_APP_SECRET',None)
             else:os.environ['IG_APP_SECRET']=old_env
 
+    def test_cafe24_app_billing(self):
+        """카페24 앱 결제: 운영자가 켜면 연결 권한에 앱 결제가 들어가고, 카페24로 연결한 사장님은 카페24 주문 -> 결제 화면 -> 돌아오면 카페24에 직접 확인해 켠다.
+        카페24 결제 화면 주소가 카페24가 아니면 보내지 않는다. 매달 결제는 카페24가 하고(우리 cron은 결제 안 함), 웹훅은 카페24에 다시 물어 맞춘다."""
+        import json as _j
+        bl=sys.modules['billing'];shops=sys.modules['shops'];c24=sys.modules['cafe24']
+        b,o,cid=self.signup_and_approve('카페24결제상점','c24pay@example.com')
+        env={'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec'};old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
+        calls=[];st={'url':'https://myshop.cafe24.com/disp/common/myapps/order?signature=x','pays':[]}
+        def http(method,url,headers=None,body=None,**kw):
+            calls.append((method,url,_j.loads(body) if body else None))
+            if url.endswith('/admin/appstore/orders') and method=='POST':return 201,{'order':{'order_id':'cafe24-20261018-1','confirmation_url':st['url']}}
+            if '/admin/appstore/payments' in url:return 200,{'payments':st['pays']}
+            if url.endswith('/billing-key'):raise AssertionError('카페24 결제 회사에 포트원 결제를 하면 안 돼요')
+            return 404,{}
+        old=shops.http;shops.http=http
+        def row():
+            with self.core.conn() as db:return db.execute('SELECT * FROM billing WHERE company_id=?',(cid,)).fetchone()
+        def plan_of():
+            with self.core.conn() as db:return db.execute('SELECT plan FROM companies WHERE id=?',(cid,)).fetchone()[0]
+        try:
+            self.post(o,'/biz/ops/billing',{'name':'베이직','price':'29000'})
+            with self.core.conn() as db:c24.store(db,cid,'myshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':c24.SCOPES.split(',')})
+            self.assertNotIn('카페24로 결제하고',b.get('/biz/billing').get_data(as_text=True))  # 꺼져 있으면 안 보임
+            self.assertNotIn('application',c24.scopes())
+            self.post(o,'/biz/ops/billing',{'act':'c24','on':'1'});self.assertTrue(bl.c24_on());self.assertIn('mall.write_application',c24.scopes())
+            self.assertIn('카페24 다시 연결하기',b.get('/biz/billing').get_data(as_text=True))  # 결제 권한이 없는 예전 연결
+            with self.core.conn() as db:c24.store(db,cid,'myshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':c24.scopes().split(',')})
+            self.assertIn('카페24로 결제하고 시작하기',b.get('/biz/billing').get_data(as_text=True))
+            st['url']='https://evil.example.com/pay'
+            r=self.post(b,'/biz/billing/cafe24',{},'/biz/billing');self.assertTrue(r.headers['Location'].endswith('/biz/billing'))  # 카페24가 아닌 결제 주소는 보내지 않는다
+            st['url']='https://myshop.cafe24.com/disp/common/myapps/order?signature=x'
+            r=self.post(b,'/biz/billing/cafe24',{},'/biz/billing');self.assertEqual(r.headers['Location'],st['url'])
+            req=[c for c in calls if c[1].endswith('/admin/appstore/orders')][-1][2]['request']
+            self.assertEqual((req['order_amount'],req['automatic_payment']),('29000','T'));self.assertTrue(req['return_url'].endswith('/biz/billing/cafe24/done'))
+            b.get('/biz/billing/cafe24/done');self.assertEqual(plan_of(),'pilot')  # 아직 결제 전
+            st['pays']=[{'payment_id':'P1','payment_status':'paid','payment_amount':'29000.00','approval_no':'A-1','pay_date':'2026-10-18T10:00:00+09:00','expiration_date':'2026-11-18T00:00:00+09:00'}]
+            b.get('/biz/billing/cafe24/done');b.get('/biz/billing/cafe24/done')
+            r_=row();self.assertEqual((r_['status'],r_['source'],r_['next_charge']),('active','cafe24','2026-11-18'));self.assertEqual(plan_of(),'paid')
+            with self.core.conn() as db:self.assertEqual(db.execute("SELECT COUNT(*) FROM billing_payments WHERE company_id=? AND status='done'",(cid,)).fetchone()[0],1)
+            self.assertIn('해지는 카페24 관리자',b.get('/biz/billing').get_data(as_text=True))
+            with self.core.conn() as db:db.execute("UPDATE billing SET next_charge=? WHERE company_id=?",(bl.today().isoformat(),cid))
+            bl.renew_all()  # 우리 cron은 카페24 결제 회사를 결제하지 않는다
+            hook=lambda ev:self.client().post('/biz/hook/cafe24',json={'event_no':ev,'resource':{'mall_id':'myshop','client_id':'cid'}})
+            st['pays'][0]['expiration_date']='2099-01-01';hook(90078);self.assertEqual(row()['status'],'active')  # 가짜 만료 웹훅: 카페24엔 기간이 남아 있어 그대로
+            st['pays']=[];hook(90078);self.assertEqual((row()['status'],plan_of()),('ended','pilot'))
+        finally:
+            shops.http=old
+            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key IN ('billing_plan','c24_billing')")  # 다른 시험에 요금제가 남지 않게
+            for k,v in old_env.items():
+                if v is None:os.environ.pop(k,None)
+                else:os.environ[k]=v
+
     def test_portone_billing(self):
         """포트원 정기결제: 키·요금제가 없으면 준비 중, 카드 등록하면 첫 달 결제, 남의 빌링키는 거절, 결제일엔 하루 한 번만, 3번 실패하면 멈춤, 해지하면 결제일에 끝."""
         import json as _j, datetime as _d

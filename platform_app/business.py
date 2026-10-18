@@ -831,7 +831,7 @@ def case(case_id):
     ms=[dict(id=x['id'],name=x['name'],body=inbox.fill(x['body'],c,me(),order)) for x in ms]
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
-        last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all',
+        last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='chat',
         ctags=ctags,all_tags=all_tags,sla=sla,closable=closable(c),reopenable=reopenable(c),send_via=sv,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
 # ---------- 상담 (채널톡처럼: 왼쪽 대화방 목록, 가운데 대화, 오른쪽 고객·주문) ----------
 # 요청 하나 = 대화방 하나. 고객 말·AI 답·사장님 답이 말풍선으로 이어지고, 처리할 일(환불·취소 등)은 대화 안의 '결정' 카드로 뜬다.
@@ -1469,6 +1469,9 @@ def ops_news():
 @ops_required
 def ops_billing():
     """요금제(이름·월 금액)와 결제 현황. 키는 서비스 키에서. 금액을 바꾸면 이미 결제 중인 회사는 다음 결제부터 새 금액."""
+    if request.method=='POST' and request.form.get('act')=='c24':  # 카페24 앱 결제 켜기·끄기 (카페24 앱 등록에 결제 권한을 넣은 뒤)
+        with conn() as db:db.execute("INSERT INTO settings(key,value,updated) VALUES('c24_billing',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated",('1' if request.form.get('on')=='1' else '0',core.iso()))
+        flash('카페24 앱 결제를 켰어요. 이제 카페24로 연결할 때 앱 결제 권한도 받아요.' if request.form.get('on')=='1' else '카페24 앱 결제를 껐어요.','ok');return redirect(url_for('ops_billing'))
     if request.method=='POST':
         name=clean(request.form.get('name'),30);price=int(digits(request.form.get('price',''))[:9] or 0)
         if not name or price<100:flash('요금제 이름과 금액(100원 이상)을 넣어 주세요','error')
@@ -1478,7 +1481,7 @@ def ops_billing():
         subs=db.execute("SELECT b.*,c.name co_name FROM billing b JOIN companies c ON c.id=b.company_id WHERE b.status!='none' ORDER BY b.next_charge").fetchall()
         pays=db.execute("SELECT p.*,c.name co_name FROM billing_payments p JOIN companies c ON c.id=p.company_id ORDER BY p.id DESC LIMIT 50").fetchall()
         n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
-    return render_template('o_billing.html',p=billing.plan(),ready=billing.ready(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
+    return render_template('o_billing.html',p=billing.plan(),ready=billing.ready(),c24_on=billing.c24_on(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
 
 @app.route('/ops/ai',methods=['GET','POST'])
 @ops_required

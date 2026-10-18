@@ -29,6 +29,8 @@ def init():
           status TEXT NOT NULL,payment_key TEXT NOT NULL DEFAULT '',receipt TEXT NOT NULL DEFAULT '',error TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,
           FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE)''')
 init()
+with conn() as _db:  # 카페24 앱 결제: source 'cafe24'면 카페24가 매달 결제하고 우리는 웹훅·조회로 상태만 맞춘다
+    if 'source' not in {r[1] for r in _db.execute('PRAGMA table_info(billing)')}:_db.execute("ALTER TABLE billing ADD COLUMN source TEXT NOT NULL DEFAULT ''")
 
 def ready():return all(core.secret(k) for k in ('PORTONE_STORE_ID','PORTONE_CHANNEL_KEY','PORTONE_API_SECRET'))
 def plan():
@@ -94,7 +96,8 @@ def paid(db,cid,start):
 def renew_all():
     """cron: 결제일이 된 회사를 하루 한 번만 결제. 해지한 회사는 결제일에 무료 시범으로 돌린다."""
     n=0;t=today().isoformat()
-    with conn() as db:due=db.execute("SELECT * FROM billing WHERE status IN ('active','past_due','canceled') AND next_charge!='' AND next_charge<=?",(t,)).fetchall()
+    c24_expire()
+    with conn() as db:due=db.execute("SELECT * FROM billing WHERE status IN ('active','past_due','canceled') AND source!='cafe24' AND next_charge!='' AND next_charge<=?",(t,)).fetchall()
     for b in due:
         with conn() as db:
             if b['status']=='canceled':
@@ -119,6 +122,122 @@ def renew_all():
             if mail_of(co):core.send_mail(mail_of(co),f'[{core.BNAME}] 요금 결제를 하지 못했어요',f"{co['name']} 요금 결제가 되지 않았어요.\n이유: {e}\n설정 > 요금·결제에서 카드를 바꾸거나 다시 결제해 주세요.")
     return n
 
+# ---------- 카페24 앱 결제 (카페24 앱스토어에서 설치한 쇼핑몰) ----------
+# 카페24 앱스토어 앱은 카페24 결제로 받는다 (수수료 20%는 카페24가 떼고 정산). 운영자 결정 2026-10-18: 카페24로 연결한 사장님은 카페24 결제, 직접 가입은 포트원.
+#  · '카페24로 결제하고 시작' -> POST /admin/appstore/orders (정기과금 automatic_payment=T, return_url=여기) -> 카페24 결제 화면(confirmation_url)
+#  · 돌아오면 GET /admin/appstore/payments?order_id= 로 결제됐는지 카페24에 직접 확인한 뒤 유료로 켠다 (주소의 값은 믿지 않는다)
+#  · 그다음 달부터는 카페24가 결제한다. 웹훅 90157(결제)·90079(갱신)은 카페24에 다시 확인해 기간을 늘리고, 90078(만료)·90159(환불 완료)는 끈다.
+#    웹훅을 못 받아도: 이용 기간이 3일 넘게 지나면 카페24에 결제를 물어보고, 없으면 무료 시범으로 돌린다 (c24_expire).
+#  · 해지는 카페24 관리자에서 한다 (카페24에 앱 결제 해지 API가 없음).
+# 문서: apidocs.cafe24.com > Application > Appstore orders / Appstore payments. 조사: /mnt/project-files/plans/카페24_앱결제_조사.md
+C24_GRACE=3
+def c24_on():
+    """운영자가 카페24 앱 결제를 켰는지 (카페24 앱 등록에 결제 권한·가격을 넣은 뒤 켠다)."""
+    with conn() as db:r=db.execute("SELECT value FROM settings WHERE key='c24_billing'").fetchone()
+    return bool(r and r['value']=='1')
+def c24_link(db,cid):
+    """카페24 앱 결제를 쓸 연결 (켰고, 연결이 살아 있으면). 결제 권한이 없는 예전 연결이면 ('reconnect', 연결)."""
+    import cafe24
+    if not c24_on() or not cafe24.ready():return None
+    lk=cafe24.link(db,cid)
+    if not lk or lk['status']!='ok':return None
+    return lk if cafe24.has_scope(lk,'mall.write_application') else ('reconnect',lk)
+def c24_paid(db,cid,order_id):
+    """카페24에 이 주문의 결제를 직접 묻는다 -> 결제 dict(paid) 또는 None."""
+    import cafe24
+    d=today();q={'order_id':order_id,'start_date':(d-datetime.timedelta(days=400)).isoformat(),'end_date':(d+datetime.timedelta(days=1)).isoformat(),'limit':50}
+    pays=(cafe24.api(db,cid,'/admin/appstore/payments',q) or {}).get('payments') or []
+    paid=[p for p in pays if str(p.get('payment_status'))=='paid']
+    return max(paid,key=lambda p:str(p.get('pay_date') or '')) if paid else None
+def c24_until(p):
+    """결제의 이용 기간 끝 (expiration_date), 없으면 결제일부터 한 달."""
+    for k in ('expiration_date','pay_date'):
+        try:
+            v=datetime.date.fromisoformat(str(p.get(k) or '')[:10])
+            return v if k=='expiration_date' else add_month(v)
+        except ValueError:continue
+    return add_month(today())
+def c24_record(db,cid,order_id,p):
+    """카페24 결제 하나를 기록하고 유료로 켠다 (같은 결제는 한 번만)."""
+    pid='C24-'+str(p.get('payment_id') or order_id)
+    if not db.execute('SELECT 1 FROM billing_payments WHERE order_id=?',(pid,)).fetchone():
+        amt=int(float(str(p.get('payment_amount') or 0) or 0))
+        db.execute("INSERT INTO billing_payments(company_id,order_id,amount,status,payment_key,created) VALUES(?,?,?,'done',?,?)",(cid,pid,amt,clean(str(p.get('approval_no') or ''),60),core.iso()))
+    until=c24_until(p).isoformat()
+    db.execute("UPDATE billing SET status='active',source='cafe24',fails=0,note='',next_charge=?,creds=?,canceled='' WHERE company_id=?",(until,shops.seal({'c24_order':order_id}),cid))
+    db.execute("UPDATE companies SET plan='paid',plan_since=CASE plan WHEN 'paid' THEN plan_since ELSE ? END WHERE id=?",(core.iso(),cid))
+def c24_order_of(b):
+    c=shops.unseal(b['creds']) if b and b['creds'] else None
+    return (c or {}).get('c24_order','')
+def c24_stop(db,cid,why):
+    db.execute("UPDATE billing SET status='ended',note=? WHERE company_id=? AND source='cafe24'",(why,cid))
+    db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=? AND plan='paid'",(core.iso(),cid))
+def c24_event(mall,ev,res):
+    """카페24 앱 결제 웹훅. 내용은 믿지 않고 카페24에 다시 물어서 맞춘다."""
+    with conn() as db:
+        rows=db.execute("SELECT b.* FROM billing b JOIN cafe24_links l ON l.company_id=b.company_id WHERE l.mall_id=? AND l.status='ok' AND b.source='cafe24'",(mall,)).fetchall()
+        for b in rows:
+            oid=c24_order_of(b)
+            if not oid:continue
+            p=c24_paid(db,b['company_id'],oid)
+            if ev in ('90157','90079'):
+                if p:c24_record(db,b['company_id'],oid,p)
+            elif ev in ('90078','90159'):  # 만료·환불 완료: 카페24에 아직 기간이 남은 결제가 없으면 끈다
+                if not p or c24_until(p)<today() or ev=='90159':c24_stop(db,b['company_id'],'카페24 앱 결제가 끝났어요 (만료 또는 환불).')
+            elif ev=='90158':
+                core.alert(core.company(db,b['company_id']),'link','카페24에 앱 환불 요청이 들어왔어요','카페24 관리자에서 처리돼요',db=db)
+def c24_expire():
+    """cron: 이용 기간이 사흘 넘게 지난 카페24 결제를 카페24에 다시 묻고, 새 결제가 없으면 무료 시범으로."""
+    t=(today()-datetime.timedelta(days=C24_GRACE)).isoformat()
+    with conn() as db:due=db.execute("SELECT * FROM billing WHERE source='cafe24' AND status='active' AND next_charge!='' AND next_charge<?",(t,)).fetchall()
+    for b in due:
+        with conn() as db:
+            try:p=c24_paid(db,b['company_id'],c24_order_of(b)) if c24_order_of(b) else None
+            except shops.ShopError:continue  # 연결 문제면 다음에 (카페24 쪽 결제를 모르면 끄지 않는다)
+            if p and c24_until(p)>=today():c24_record(db,b['company_id'],c24_order_of(b),p)
+            else:c24_stop(db,b['company_id'],'카페24 앱 결제 기간이 끝났어요. 카페24에서 다시 결제하면 이어서 쓸 수 있어요.')
+
+@bp.route('/billing/cafe24',methods=['POST'])
+def c24_start():
+    """카페24로 결제하고 시작: 앱스토어 주문을 만들고 카페24 결제 화면으로."""
+    if not session.get('co_id'):return redirect(url_for('login'))
+    co,can=company()
+    if not can:abort(403)
+    import cafe24
+    p=plan()
+    with conn() as db:
+        lk=c24_link(db,co['id'])
+        if not p or not lk:flash('카페24 결제를 아직 쓸 수 없어요.','error');return redirect(url_for('pay.page'))
+        if isinstance(lk,tuple):flash('카페24 앱 결제 권한이 필요해요. 서비스 연동 > 카페24에서 다시 연결해 주세요.','error');return redirect(url_for('c24.page'))
+        body={'request':{'order_name':f"{core.BNAME} {p['name']} (월 정기결제)"[:100],'order_amount':str(int(p['price'])),
+                         'return_url':url_for('pay.c24_done',_external=True),'automatic_payment':'T'}}
+        try:d=cafe24.api(db,co['id'],'/admin/appstore/orders',method='POST',payload=body)
+        except shops.ShopError as e:flash(str(e),'error');return redirect(url_for('pay.page'))
+        o=(d or {}).get('order') or {};oid=clean(str(o.get('order_id') or ''),60);url=str(o.get('confirmation_url') or '')
+        host=urllib.parse.urlparse(url).hostname or ''
+        if not oid or not url.startswith('https://') or not (host=='cafe24.com' or host.endswith('.cafe24.com') or host.endswith('.cafe24api.com')):
+            current_app.logger.warning('카페24 앱 주문 응답이 이상해요: %s',str(d)[:300]);flash('카페24 결제 화면을 열지 못했어요. 잠시 후 다시 해 주세요.','error');return redirect(url_for('pay.page'))
+        if not row(db,co['id']):db.execute('INSERT INTO billing(company_id,customer_key) VALUES(?,?)',(co['id'],'cs_'+secrets.token_urlsafe(24)))
+        db.execute("UPDATE billing SET plan_name=?,price=? WHERE company_id=?",(p['name'],int(p['price']),co['id']))
+        session['c24_pay']=oid
+    return redirect(url)
+
+@bp.route('/billing/cafe24/done')
+def c24_done():
+    """카페24 결제 화면에서 돌아옴. 이 브라우저에서 만든 주문만, 카페24에 결제를 직접 확인한 뒤 켠다."""
+    if not session.get('co_id'):return redirect(url_for('login'))
+    co,can=company()
+    oid=session.get('c24_pay') or ''
+    if not oid:flash('결제 요청을 찾지 못했어요. 다시 해 주세요.','error');return redirect(url_for('pay.page'))
+    with conn() as db:
+        try:p=c24_paid(db,co['id'],oid)
+        except shops.ShopError as e:flash(str(e),'error');return redirect(url_for('pay.page'))
+        if not p:flash('카페24에서 결제가 아직 확인되지 않았어요. 결제를 마쳤다면 잠시 뒤 다시 열어 주세요.','error');return redirect(url_for('pay.page'))
+        c24_record(db,co['id'],oid,p);db.execute("UPDATE billing SET started=CASE started WHEN '' THEN ? ELSE started END WHERE company_id=?",(core.iso(),co['id']))
+    session.pop('c24_pay',None)
+    flash('카페24로 결제했어요. 다음 달부터는 카페24가 매달 결제해요.','ok')
+    return redirect(url_for('pay.page'))
+
 # ---------- 화면 ----------
 def company():
     import business, team
@@ -135,6 +254,7 @@ def page():
         if request.method=='POST':
             act=request.form.get('act')
             if not can:flash('요금·결제는 대표나 관리자만 바꿀 수 있어요.','error')
+            elif b and b['source']=='cafe24':flash('카페24로 결제 중이에요. 해지는 카페24 관리자의 앱 관리에서 해 주세요.','error')
             elif act=='cancel' and b and b['status'] in ('active','past_due'):
                 db.execute("UPDATE billing SET status='canceled',canceled=? WHERE company_id=?",(core.iso(),co['id']))
                 flash(f"해지했어요. {b['next_charge']}까지 그대로 쓰고, 그날부터 결제하지 않아요.",'ok')
@@ -146,9 +266,10 @@ def page():
                 else:paid(db,co['id'],today());flash('결제했어요.','ok')
             return redirect(url_for('pay.page'))
         pays=db.execute('SELECT * FROM billing_payments WHERE company_id=? ORDER BY id DESC LIMIT 24',(co['id'],)).fetchall()
-        if ready() and can and not b:  # 포트원에 줄 고객 키: 추측할 수 없는 값으로 한 번 만들어 둔다
+        c24=c24_link(db,co['id'])
+        if (ready() or c24) and can and not b:  # 포트원에 줄 고객 키: 추측할 수 없는 값으로 한 번 만들어 둔다
             db.execute('INSERT INTO billing(company_id,customer_key) VALUES(?,?)',(co['id'],'cs_'+secrets.token_urlsafe(24)));b=row(db,co['id'])
-    return render_template('b_billing.html',co=co,bl=b,pays=pays,p=plan(),ready=ready(),may=can,sdk=SDK,store_id=core.secret('PORTONE_STORE_ID'),
+    return render_template('b_billing.html',co=co,bl=b,pays=pays,p=plan(),ready=ready(),may=can,c24=c24,c24_old=isinstance(c24,tuple),sdk=SDK,store_id=core.secret('PORTONE_STORE_ID'),
                            channel_key=core.secret('PORTONE_CHANNEL_KEY'),mail=mail_of(co),ok_url=url_for('pay.done',_external=True),
                            fail_url=url_for('pay.fail',_external=True),tab='settings')
 
