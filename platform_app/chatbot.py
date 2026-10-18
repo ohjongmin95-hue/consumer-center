@@ -144,6 +144,8 @@ def ready():return ai.ready()
 DISPUTE_RE=re.compile(r'소비자원|신고|고소|소송|고발|사기|최악|화가|화나|열받|어이없|어이가 없|황당|짜증|책임지|책임져|배상|보상|변상|손해|분쟁|내용증명|공정위|민원|거부하|거절하|안\s?해\s?주|못\s?해\s?준|말이 되|장난하|무시하')
 FAULT_RE=re.compile(r'불량|파손|고장|하자|깨[져졌지]|찢어|터[져졌지]|변질|상했|이물질|벌레|곰팡이|누수|작동이? 안')
 FAULT_JUDGE_RE=re.compile(r'책임|누구|과실|잘못|탓|원인|사용하다|쓰다가|쓰던|사용 중|몇 번 쓰|개봉 후|세탁|떨어뜨|배송 중|택배')
+# 쉬운 문의: 처리·판단 낱말이 없는 짧은 첫 질문 (상품·사용법·배송 시간 등). 생각 없이 바로 답하고, AI가 확신이 없거나 깊은 판단이 필요하다고 하면 낮은 추론으로 다시 묻는다.
+HARD_RE=re.compile(r'환불|반품|교환|취소|변경|불량|파손|고장|하자|보상|배상|법률|법적|법령|위법|약관|계약|위약|청약|소비자|개인정보|건강|질환|임산|알레르기|복용|약을|약과|부작용|의사|불만|화나|화가')
 REPEAT_RE=re.compile(r'몇\s?번째|다시 문의|아직도|여러 번|수차례|언제까지|답이 없|연락이 없|해결이 안|해결 안|또 문의|계속 안')
 def level(text,asks=1,repeat_at=3):
     """('low'|'high', 이유). asks: 이 문의에서 고객이 쓴 횟수."""
@@ -151,6 +153,7 @@ def level(text,asks=1,repeat_at=3):
     if DISPUTE_RE.search(t):return 'high','분쟁·강한 불만'
     if FAULT_RE.search(t) and FAULT_JUDGE_RE.search(t):return 'high','불량 책임 판단'
     if asks>=repeat_at or REPEAT_RE.search(t):return 'high','해결되지 않고 반복된 문의'
+    if asks<=1 and len(t)<=80 and not HARD_RE.search(t) and ai.plan()['fast']:return 'fast','쉬운 문의'
     return 'low',''
 PROMISE_RE=re.compile(r'(환불|반품|교환|취소|보상|배상|변상|적립금|쿠폰|재발송|무상|무료로)[^.!?\n]{0,15}?(해\s?드릴게요|해\s?드리겠|드릴게요|드리겠습니다|처리했|처리됐|처리되었|완료했|완료됐|완료되었|해\s?드렸|진행할게요|진행하겠|승인됐|승인했)')
 SOFT_RE=re.compile(r'안내|알려|확인|설명|도와|연결|전달|접수')
@@ -183,6 +186,7 @@ def answer(co,facts,text,history=None,meta=None,asks=None):
     # 답이 빨리 나가야 한다 (운영자 요청 2026-10-18): 먼저 검색 없이 회사 정보만으로 답하고, AI가 확신이 없다고 할 때만 인터넷 검색으로 한 번 더 묻는다.
     # 법률 질문이 분명하면(조문이 충분히 맞으면) 검색 없이 원문으로만 답한다
     d=ask(tier,why)
+    if tier=='fast' and (not d or d.get('sure') is False or d.get('deep') is True or d.get('action') is True or d.get('handoff')):tier='low';d=ask('low','쉬운 문의로 봤지만 AI가 더 생각해야 한다고 봄') or d
     if tier=='low' and d and d.get('sure') is False and d.get('deep') is not True and not (law_text and legal):d=ask('low','확신이 없어 검색해서 다시 답함',web=True) or d
     if tier=='low' and d and d.get('deep') is True:tier='high';d=ask('high','AI가 깊은 판단이 필요하다고 봄') or d
     if tier=='high' and d and d.get('sure') is False and ai.plan()['sol']:  # 실패는 ai.ladder가 이미 Sol까지 해 봤다

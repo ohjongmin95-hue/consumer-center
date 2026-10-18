@@ -8,7 +8,7 @@
 <div class="cx-lh"><h1>상담</h1><form method="get" class="cx-search"><input type="hidden" name="t" value="{{ tab_c }}"><input name="q" value="{{ q }}" placeholder="이름, 내용 검색" aria-label="검색"></form></div>
 <div class="cx-tabs">{% for k,l in TABS %}<a href="{{ url_for('chat',case_id=cur,t=k,q=q or None) }}" class="{{ 'on' if tab_c==k }}">{{ l }}<span>{{ cnt[k] }}</span></a>{% endfor %}</div>
 <ul class="cx-rows" id="cxRows">{% for r in rows %}<li><a href="{{ url_for('chat',case_id=r.id,t=tab_c,q=q or None) }}" class="cx-row{{ ' on' if cur==r.id }}{{ ' unread' if r.unread }}">
-<span class="cx-av">{{ r.name[:1] }}<i class="chm {{ r.mark[1] }}">{{ r.mark[0] }}</i></span>
+<span class="cx-av">{{ r.name[:1] }}<i class="chm {{ r.mark[1] }}" title="{{ r.channel }}">{{ r.mark[0] }}</i></span>
 <span class="cx-rt"><span class="cx-r1"><b>{{ r.name }}</b><time>{{ r.when }}</time></span><span class="cx-r2">{{ r.text }}</span>
 <span class="cx-r3">{% if r.need %}<em class="bdg need">결정 필요</em>{% elif r.ai %}<em class="bdg ai">{{ r.ai }}</em>{% endif %}<em class="bdg">{{ r.cat }}</em></span></span>{% if r.unread %}<span class="dotu" aria-label="새 메시지"></span>{% endif %}</a></li>
 {% else %}<li class="cx-empty">{{ '찾는 대화가 없어요' if q else ('대화가 없어요' if tab_c!='open' else '진행 중인 상담이 없어요. 카페24·인스타그램·메일·상담창으로 문의가 오면 여기에 떠요') }}</li>{% endfor %}</ul>
@@ -92,7 +92,7 @@
   if(rowsEl){
     var url='{{ url_for('chat_list') }}?t='+encodeURIComponent(root.dataset.tab)+'&q='+encodeURIComponent(root.dataset.q||''),cur={{ cur or 0 }};
     function rowHtml(r){var href='{{ url_for('chat') }}/'+r.id+'?t='+encodeURIComponent(root.dataset.tab);
-      return '<li><a href="'+href+'" class="cx-row'+(cur===r.id?' on':'')+(r.unread?' unread':'')+'"><span class="cx-av">'+esc(r.name.slice(0,1))+'<i class="chm '+r.mark[1]+'">'+esc(r.mark[0])+'</i></span>'+
+      return '<li><a href="'+href+'" class="cx-row'+(cur===r.id?' on':'')+(r.unread?' unread':'')+'"><span class="cx-av">'+esc(r.name.slice(0,1))+'<i class="chm '+r.mark[1]+'" title="'+esc(r.channel)+'">'+esc(r.mark[0])+'</i></span>'+
         '<span class="cx-rt"><span class="cx-r1"><b>'+esc(r.name)+'</b><time>'+esc(r.when)+'</time></span><span class="cx-r2">'+esc(r.text)+'</span><span class="cx-r3">'+
         (r.need?'<em class="bdg need">결정 필요</em>':(r.ai?'<em class="bdg ai">'+esc(r.ai)+'</em>':''))+'<em class="bdg">'+esc(r.cat)+'</em></span></span>'+(r.unread?'<span class="dotu"></span>':'')+'</a></li>'}
     setInterval(function(){fetch(url,{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){if(d.rows&&d.rows.length)rowsEl.innerHTML=d.rows.map(rowHtml).join('')}).catch(function(){})},10000);

@@ -1497,7 +1497,7 @@ def ops_ai():
             if not rows:flash('OpenAI 키가 없어요. 서비스 키에서 넣어 주세요','error')
             else:flash('연결 시험을 마쳤어요' if all(r['ok'] for r in rows) else '받지 않는 모델이 있어요. 아래 결과를 확인해 주세요','ok' if all(r['ok'] for r in rows) else 'error')
         else:
-            ai.save_setting('ai_sol','1' if request.form.get('sol') else '');flash('저장했어요. 바로 적용돼요','ok')
+            ai.save_setting('ai_sol','1' if request.form.get('sol') else '');ai.save_setting('ai_fast','1' if request.form.get('fast') else '0');flash('저장했어요. 바로 적용돼요','ok')
         return redirect(url_for('ops_ai'))
     with conn() as db:n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     return render_template('o_ai.html',pl=ai.plan(),LUNA=ai.LUNA,SOL=ai.SOL,rep=ai.report(),calls=ai.recent(),chk=ai.last_check(),bench=aibench.last(),
@@ -1727,7 +1727,7 @@ def api_biz_case(case_id):
 # 앱의 상담 탭: 웹 상담방(/chat)과 같은 목록·대화·결정 카드. 보내기는 화면을 바로 넘기고 판매처·DM·메일로는 뒤에서 간다.
 def api_chat_state(db,co,c):
     need=c['decision']=='pending' and c['status'] not in core.FINAL
-    return dict(id=c['id'],no=c['no'],name=c['name'] or '고객',channel=c['channel'] or '상담창',category=c['category'],status=c['status'],status_label=core.STATUS[c['status']][0],
+    return dict(id=c['id'],no=c['no'],name=c['name'] or '고객',channel=c['channel'] or '상담창',mark=CH_MARK.get(c['channel'] or '',('W','web'))[1],category=c['category'],status=c['status'],status_label=core.STATUS[c['status']][0],
         need=need,why=c['ai_why'] or '',draft=c['ai_draft'] or '',decision=c['decision'],can_reply=c['status'] not in ('resolved','unresolved','withdrawn'),
         send_via=send_via(db,c) or '',last=livechat.last_id(db,c['id']))
 @app.route('/api/v1/chat')

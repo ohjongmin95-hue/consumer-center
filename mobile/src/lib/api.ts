@@ -118,7 +118,7 @@ export type ChatRow = { id: number; name: string; channel: string; mark: [string
 export type ChatList = { rows: ChatRow[]; counts: Record<string, number>; tabs: { key: string; label: string }[] };
 export type ChatMsg = { id: number; who: 'me' | 'ai' | 'co' | 'sys' | 'note'; by: string; text: string; at: string; ts: string; tmp?: boolean };
 export type ChatRoom = {
-  id: number; no: string; name: string; channel: string; category: string; status: string; status_label: string;
+  id: number; no: string; name: string; channel: string; mark: string; category: string; status: string; status_label: string;
   need: boolean; why: string; draft: string; decision: string; can_reply: boolean; send_via: string; last: number; msgs: ChatMsg[]; message?: string;
 };
 

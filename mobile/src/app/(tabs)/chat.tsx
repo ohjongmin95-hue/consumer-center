@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChannelIcon } from '../../components/ChannelIcon';
 import { Card, Loading, Notice, TopBar } from '../../components/ui';
 import { api, ApiError, ChatRow } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -13,8 +14,6 @@ const TABS: [string, string][] = [
   ['hold', '보류'],
   ['done', '종료'],
 ];
-// 들어온 곳 표시 (웹 hanq.css의 .mk 색)
-const MARK: Record<string, string> = { c24: '#1B64DA', ig: '#D6249F', mail: '#6B7684', nv: '#03C75A', cp: '#E52528', web: C.accent };
 
 export default function ChatTab() {
   const { session, logout } = useAuth();
@@ -108,8 +107,8 @@ function Room({ r }: { r: ChatRow }) {
     <Pressable onPress={() => router.push(`/chat/${r.id}`)} style={({ pressed }) => [st.row, pressed && { backgroundColor: C.band }]}>
       <View style={st.av}>
         <Text style={st.avText}>{r.name.slice(0, 1)}</Text>
-        <View style={[st.mk, { backgroundColor: MARK[r.mark[1]] ?? C.fg3 }]}>
-          <Text style={st.mkText}>{r.mark[0]}</Text>
+        <View style={st.mk} accessibilityLabel={r.channel}>
+          <ChannelIcon mark={r.mark[1]} />
         </View>
       </View>
       <View style={{ flex: 1, gap: 3 }}>
@@ -153,8 +152,7 @@ const st = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12, marginHorizontal: -12, borderRadius: R.md },
   av: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },
   avText: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.accentInk },
-  mk: { position: 'absolute', right: -3, bottom: -3, minWidth: 20, height: 20, paddingHorizontal: 4, borderRadius: 10, borderWidth: 2, borderColor: C.card, alignItems: 'center', justifyContent: 'center' },
-  mkText: { fontFamily: FONT, fontSize: 9, fontWeight: '800', color: '#fff' },
+  mk: { position: 'absolute', right: -4, bottom: -4, borderRadius: 13, borderWidth: 2, borderColor: C.card, backgroundColor: C.card },
   name: { flexShrink: 1, fontFamily: FONT, fontSize: 16, fontWeight: '700', color: C.fg, letterSpacing: -0.3 },
   when: { marginLeft: 'auto', fontFamily: FONT, fontSize: 12, color: C.fg4 },
   text: { fontFamily: FONT, fontSize: 14, color: C.fg3 },

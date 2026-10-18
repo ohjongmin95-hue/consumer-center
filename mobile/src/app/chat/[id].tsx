@@ -2,6 +2,7 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { useCallback, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChannelIcon } from '../../components/ChannelIcon';
 import { Loading, Notice, SmallBtn } from '../../components/ui';
 import { api, ApiError, ChatMsg, ChatRoom } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -107,7 +108,10 @@ export default function ChatRoomScreen() {
         }}
       />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
-        <Text style={st.sub}>{[room.channel, room.category, room.status_label].join(' · ')}</Text>
+        <View style={st.subRow}>
+          <ChannelIcon mark={room.mark} size={18} />
+          <Text style={st.sub}>{[room.channel, room.category, room.status_label].join(' · ')}</Text>
+        </View>
         <ScrollView ref={scroll} contentContainerStyle={st.list} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })} keyboardShouldPersistTaps="handled">
           {msgs.map((m) => (
             <Bubble key={m.id} m={m} />
@@ -175,7 +179,8 @@ function Bubble({ m }: { m: ChatMsg }) {
 
 const st = StyleSheet.create({
   more: { fontFamily: FONT, fontSize: 14, fontWeight: '700', color: C.accentInk, paddingHorizontal: 8 },
-  sub: { fontFamily: FONT, fontSize: 13, color: C.fg3, paddingHorizontal: 20, paddingBottom: 6 },
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingBottom: 6 },
+  sub: { fontFamily: FONT, fontSize: 13, color: C.fg3 },
   list: { padding: 16, gap: 12 },
   sys: { alignSelf: 'center', fontFamily: FONT, fontSize: 12, color: C.fg3, backgroundColor: C.fill, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, overflow: 'hidden', textAlign: 'center' },
   by: { fontFamily: FONT, fontSize: 12, fontWeight: '600', color: C.fg3, paddingHorizontal: 4 },

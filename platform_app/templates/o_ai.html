@@ -3,9 +3,12 @@
 {% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
 {% block body %}
 <div class="narrow">
-<div class="phead"><div><h1>AI 모델</h1><p>상담 모델은 GPT-6 Luna예요. 평소 문의는 낮은 추론으로 빠르게, 분쟁·불량 책임·강한 불만·반복 문의는 높은 추론으로 답해요. AI가 답하지 못하면 기본 안내로 답하거나 사장님 승인으로 넘겨요</p></div></div>
+<div class="phead"><div><h1>AI 모델</h1><p>상담 모델은 GPT-6 Luna예요. 쉬운 첫 질문은 생각 없이 바로, 평소 문의는 낮은 추론으로, 분쟁·불량 책임·강한 불만·반복 문의는 높은 추론으로 답해요. AI가 답하지 못하면 기본 안내로 답하거나 사장님 승인으로 넘겨요</p></div></div>
 {% if not ready %}<div class="warn" style="margin-bottom:var(--ds-gap)">OpenAI 키가 없어요. <a class="link" href="{{ url_for('ops_keys') }}">서비스 키</a>에서 넣어 주세요.</div>{% endif %}
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<div class="ph">빠른 답</div>
+<label class="check"><input type="checkbox" name="fast" value="1" {{ 'checked' if pl.fast }}><span class="bx"></span>쉬운 문의는 생각 없이 바로 답하기</label>
+<p class="sub" style="font-size:14px;margin:0">환불·교환·불량·법 같은 낱말이 없는 짧은 첫 질문(상품, 사용법, 배송 시간 등)이에요. AI가 확신이 없거나 처리가 필요하다고 하면 낮은 추론으로 다시 답해요. 아래 '빠른 Luna' 줄에서 응답시간과 해결률을 비교해 보세요.</p>
 <div class="ph">GPT-6.1 Sol 자동 호출</div>
 <label class="check"><input type="checkbox" name="sol" value="1" {{ 'checked' if pl.sol }}><span class="bx"></span>Luna 높은 추론으로도 부족하면 {{ SOL }} 자동 호출</label>
 <p class="sub" style="font-size:14px;margin:0">Luna 높은 추론이 실패하거나 확신이 없다고 할 때만 불러요. 요청당 비용이 Luna보다 약 20배 비싸서 처음엔 꺼 두었어요.</p>
