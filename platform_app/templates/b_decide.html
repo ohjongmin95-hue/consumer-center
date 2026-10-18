@@ -7,9 +7,9 @@
 {% if counts.comp %}<a class="warn" href="{{ url_for('all_cases',f='comp') }}">{{ i.tf_tile('gift') }}<span><b>보상 승인을 기다리는 요청 {{ counts.comp }}건</b><small>정해 둔 보상을 확인하고 승인하면 고객에게 알림이 갑니다</small></span></a>{% endif %}
 {% for w in warn %}<a class="warn" href="{{ url_for('all_cases',q=w.label if w.kind=='product' else None,f='all') }}">{{ i.tf_tile('warn') }}<span><b>{% if w.kind=='product' %}'{{ w.label }}' 관련 요청이 최근 7일 {{ w.n }}건{% else %}{{ w.label }} 요청이 최근 7일 {{ w.n }}건{% endif %}</b><small>같은 문제가 반복되는지 확인해 보세요 · {{ w.cats|join(', ') }}</small></span></a>{% endfor %}
 <div class="sumrow">
-<a href="{{ url_for('all_cases') }}">{{ i.tf('inbox',32) }}<span>오늘 들어온 요청</span><b>{{ counts.today }}</b></a>
+<a href="{{ url_for('chat') }}">{{ i.tf('inbox',32) }}<span>오늘 들어온 요청</span><b>{{ counts.today }}</b></a>
 <a href="{{ url_for('approvals') }}">{{ i.tf('check',32) }}<span>승인 대기</span><b class="{{ 't-acc' if pend }}">{{ pend|length }}</b></a>
-<a href="{{ url_for('all_cases',f='open') }}">{{ i.tf('speech',32) }}<span>답변할 요청</span><b>{{ counts.open }}</b></a>
+<a href="{{ url_for('chat') }}">{{ i.tf('speech',32) }}<span>답변할 요청</span><b>{{ counts.open }}</b></a>
 <a href="{{ url_for('all_cases',f='bad') }}">{{ i.tf('clock',32) }}<span>기한 지난 요청</span><b class="{{ 't-bad' if counts.late }}">{{ counts.late }}</b></a>
 </div>
 <div class="hsplit">

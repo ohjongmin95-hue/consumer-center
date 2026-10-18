@@ -16,7 +16,12 @@ from core import conn, clean, digits
 
 bp=Blueprint('c24',__name__);log=logging.getLogger('cafe24')
 SCOPES='mall.read_store,mall.read_product,mall.read_order,mall.write_order,mall.read_community,mall.write_community'
-SCOPE_NAMES={'store':'상점','order':'주문','community':'게시판','customer':'회원','product':'상품'}
+PAY_SCOPES='mall.read_application,mall.write_application'  # 앱 결제(앱스토어 주문). 카페24 앱 권한에 넣은 뒤 운영 > 요금제에서 켠다
+def scopes():
+    """연결할 때 받을 권한. 카페24 앱 결제를 켰으면 결제 권한도 (카페24 앱 등록에 없는 권한을 달라면 연결이 거절돼서 켜야만 넣는다)."""
+    import billing
+    return SCOPES+(','+PAY_SCOPES if billing.c24_on() else '')
+SCOPE_NAMES={'store':'상점','order':'주문','community':'게시판','customer':'회원','product':'상품','application':'앱 결제'}
 def scope_text(scopes):
     """'mall.read_order,mall.write_order' -> '주문 읽기·쓰기'"""
     got={}
@@ -51,7 +56,7 @@ def base(mall):return f'https://{mall}.cafe24api.com/api/v2'
 def link(db,cid):return db.execute('SELECT * FROM cafe24_links WHERE company_id=?',(cid,)).fetchone()
 
 def authorize_url(mall,state):
-    q={'response_type':'code','client_id':core.secret('CAFE24_CLIENT_ID'),'state':state,'redirect_uri':redirect_uri(),'scope':SCOPES}
+    q={'response_type':'code','client_id':core.secret('CAFE24_CLIENT_ID'),'state':state,'redirect_uri':redirect_uri(),'scope':scopes()}
     return base(mall)+'/oauth/authorize?'+urllib.parse.urlencode(q)
 
 def _token(mall,body):
@@ -541,6 +546,7 @@ BACKGROUND=True  # 시험에서는 False
 
 # 고객이 카페24에서 문의 글을 지우면(이벤트 90036) 진행 중인 그 요청을 닫는다. 이벤트 내용은 믿지 않고, 카페24 게시판에서 그 글이 정말 없어졌을 때만.
 POST_DELETED='90036'
+PAY_EVENTS={'90157','90079','90078','90158','90159'}  # 앱 결제 완료, 구독 갱신, 앱 만료, 환불 요청, 환불 완료 (billing.c24_event)
 def _gone(db,cid,bno,no,since):
     """게시판에 그 글이 없거나 지워졌으면 True. 못 읽었거나 너무 많아 끝까지 못 봤으면 False (닫지 않는다)."""
     end=core.now()+datetime.timedelta(days=1)
@@ -586,6 +592,12 @@ def hook():
     elif str(d.get('event_no')) in POST_EVENTS:
         mall=clean(str(res.get('mall_id') or ''),40)
         if re.fullmatch(r'[a-z0-9_-]{2,40}',mall or ''):boards_now(mall)
+    elif str(d.get('event_no')) in PAY_EVENTS:
+        mall=clean(str(res.get('mall_id') or ''),40);cid=str(res.get('client_id') or '')
+        if re.fullmatch(r'[a-z0-9_-]{2,40}',mall or '') and (not cid or cid==core.secret('CAFE24_CLIENT_ID')):
+            import billing
+            try:billing.c24_event(mall,str(d.get('event_no')),res)
+            except Exception:log.exception('카페24 앱 결제 웹훅 처리 실패: %s',mall)
     elif str(d.get('event_no'))==POST_DELETED:
         mall=clean(str(res.get('mall_id') or ''),40);bno,no=str(res.get('board_no') or ''),str(res.get('no') or res.get('article_no') or '')
         if re.fullmatch(r'[a-z0-9_-]{2,40}',mall or '') and bno.isdigit() and no.isdigit():deleted_now(mall,int(bno),int(no))
@@ -660,7 +672,7 @@ def page():
                 try:bs=all_boards(db,co['id'])
                 except shops.ShopError as e:flash(str(e),'error');return redirect(url_for('c24.page'))
                 lk=link(db,co['id']);on={n for n,_ in (boards_of(lk) or [])}
-                return render_template('b_cafe24.html',scope_text=scope_text,lk=lk,ready=ready(),scopes=SCOPES,tab='connect',watch=boards_of(lk),pick=[(n,nm,n in on) for n,nm in bs])
+                return render_template('b_cafe24.html',scope_text=scope_text,lk=lk,ready=ready(),scopes=scopes(),tab='connect',watch=boards_of(lk),pick=[(n,nm,n in on) for n,nm in bs])
             elif act=='boards_save':
                 try:
                     bs=pick_boards(db,co['id'],{int(x) for x in request.form.getlist('board') if x.isdigit()})
@@ -684,7 +696,7 @@ def page():
                         return redirect(authorize_url(mall,state))
         return redirect(url_for('c24.page'))
     with conn() as db:lk=link(db,co['id'])
-    return render_template('b_cafe24.html',scope_text=scope_text,lk=lk,ready=ready(),scopes=SCOPES,tab='connect',watch=boards_of(lk) if lk else None,pick=None,launch=session.pop('c24_launch',None) if co['member'] else session.get('c24_launch'))
+    return render_template('b_cafe24.html',scope_text=scope_text,lk=lk,ready=ready(),scopes=scopes(),tab='connect',watch=boards_of(lk) if lk else None,pick=None,launch=session.pop('c24_launch',None) if co['member'] else session.get('c24_launch'))
 
 @bp.route('/connect/cafe24/callback')
 def callback():
