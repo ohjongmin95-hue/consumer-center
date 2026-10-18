@@ -30,6 +30,8 @@ LAW_WORDS = ('소비자', '전자상거래', '약관', '표시', '광고', '할�
 BANNED = ('악덕', '최악', '사기꾼', '먹튀', '갑질', '양심 없', '양심없', '블랙기업', '불매', '무책임한 기업', '나쁜 기업', '믿을 수 없는 기업')
 CONST = {'소비자상담센터 전화번호': '1372'}  # 글 끝 안내에 늘 쓰는 번호는 자료에 같이 넣음
 AI_TIMEOUT = 90
+# 소제목에 붙이는 이모지: 사이트의 토스페이스 글꼴(static/fonts/tossface-soboru.woff2)에 들어 있는 것만
+EMOJI = '📊📈📉🔍💡📌📦🛒💳💰💸🧾📱🚗✈🏠🍔🩺💊⚖📢📣📰🔔⚠🚨✅📝📋🤝🙋💬👀🔥✨⏰📅🛡🔒🧸🧴🎁'
 PER_DAY = (1, 2, 3, 4)
 
 # 글 종류: 이름, 필요한 자료(SOURCES), 기본 분야·그림·바탕색, AI에게 줄 설명
@@ -58,7 +60,11 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉�
           '- 법 이야기는 자료의 조문·법령 정보만 근거로, "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다.\n'
           '- 출처·링크·주소는 본문에 쓰지 않는다(화면에서 따로 붙인다). HTML·마크다운 기호는 쓰지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"title": 40자 안팎 제목, "summary": [세 줄 요약, 문자열 3개], '
-          '"sections": [{"heading": 소제목, "paragraphs": [문단 1~3개]}] 2~4개, "tips": ["이렇게 하세요"에 넣을 행동 요령 2~4개], "category": 분야 목록 중 하나}')
+          '"highlight": 글 전체에서 가장 중요한 한 문장(자료의 사실·숫자로만), '
+          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 2~3개]}] 3~5개, '
+          '"tips": ["이렇게 하세요"에 넣을 행동 요령 2~4개], "category": 분야 목록 중 하나}\n'
+          '심층 분석 기사다: 숫자를 나열만 하지 말고 무엇이 눈에 띄는지, 소비자에게 어떤 뜻인지를 문단마다 풀어 쓴다(자료 안에서만).\n'
+          '쓸 수 있는 이모지: ' + EMOJI)
 
 
 class Skip(Exception):
@@ -173,11 +179,15 @@ def assemble(out, kind):
         paras = [_plain(p) for p in paras if _plain(p)][:4]
         if not paras: continue
         head = _plain(sec.get('heading'), 60)
+        emo = str(sec.get('emoji') or '').strip().replace('\ufe0f', '')
+        if head and emo and emo in EMOJI and len(emo) <= 2: head = emo + ' ' + head  # 글꼴에 있는 이모지만
         parts.append(('## ' + head + '\n\n' if head else '') + '\n\n'.join(paras))
     tips = out.get('tips') or []
     if isinstance(tips, str): tips = tips.split('\n')
     tips = [re.sub(r'^\s*(\d+[.)]|[-•·])\s*', '', _plain(t, 300)) for t in tips if _plain(t)][:5]
-    if tips: parts.append('## 이렇게 하세요\n' + '\n'.join('- ' + t for t in tips))
+    if tips: parts.append('## ✅ 이렇게 하세요\n' + '\n'.join('- ' + t for t in tips))
+    hl = _plain(out.get('highlight'), 200)
+    if hl and parts: parts.insert(0, '> 💡 ' + hl)  # 맨 앞 '핵심만 쏙' 상자
     if not title or not parts: raise RuntimeError('AI가 기사를 채우지 못했어요')
     cat = out.get('category') if out.get('category') in ('쇼핑', '통신', '여행', '음식', '금융', '자동차', '생활', '리콜') else KINDS[kind]['category']
     return title, '\n'.join(summary), '\n\n'.join(parts), cat

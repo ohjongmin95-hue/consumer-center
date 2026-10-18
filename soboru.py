@@ -6,6 +6,7 @@
 """
 import datetime, json, re, statistics
 import site_content
+import soboru_writer
 from flask import abort, flash, g, has_request_context, redirect, render_template, request, session, url_for
 from markupsafe import Markup, escape
 
@@ -205,17 +206,33 @@ def install(S):
             return db.execute('SELECT * FROM articles WHERE ' + ' AND '.join(where) + ' ORDER BY featured DESC, published_at DESC, id DESC LIMIT ? OFFSET ?',
                               args + [limit, offset]).fetchall()
 
+    BODY_EMOJI = set(soboru_writer.EMOJI) | {'☕', '📨'}  # 토스페이스 글꼴에 있는 것만 이모지 칸으로
+    LIFE_DEFAULT_EMOJI = ('📌', '🔍', '💬', '📊', '👀')
+
     def life_body(text):
-        # 본문: 빈 줄은 문단, "## "는 소제목, "- "는 목록. HTML은 쓰지 않음.
-        out, items = [], []
+        # 본문: 빈 줄은 문단, "## "는 소제목(앞에 이모지), "- "는 목록, "> "는 '핵심만 쏙' 상자. HTML은 쓰지 않음.
+        # 뉴스레터처럼: 소제목마다 이모지 칸, '이렇게 하세요'는 체크 목록. 이모지가 없는 예전 글은 차례로 기본 이모지를 붙임.
+        out, items, n_head, check = [], [], 0, False
         def flush():
-            if items: out.append(Markup('<ul>') + Markup('').join(Markup('<li>%s</li>') % i for i in items) + Markup('</ul>')); items.clear()
+            nonlocal check
+            if items:
+                out.append(Markup('<ul class="sb-check">' if check else '<ul>') + Markup('').join(Markup('<li>%s</li>') % i for i in items) + Markup('</ul>'))
+                items.clear()
         for block in re.split(r'\n\s*\n', (text or '').strip()):
             lines = [l.strip() for l in block.split('\n') if l.strip()]
             for line in lines:
                 if line.startswith('- '): items.append(line[2:]); continue
                 flush()
-                if line.startswith('## '): out.append(Markup('<h2>%s</h2>') % line[3:])
+                if line.startswith('## '):
+                    head = line[3:].strip(); emo = head[:1]
+                    if emo in BODY_EMOJI: head = head[1:].strip()
+                    else: emo = '✅' if '이렇게 하세요' in head else LIFE_DEFAULT_EMOJI[n_head % len(LIFE_DEFAULT_EMOJI)]
+                    n_head += 1; check = emo == '✅'
+                    out.append(Markup('<h2 class="sb-h"><span class="sb-h-emo" aria-hidden="true">%s</span>%s</h2>') % (emo, head))
+                elif line.startswith('> '):
+                    note = line[2:].strip(); emo = note[:1] if note[:1] in BODY_EMOJI else '💡'
+                    if note[:1] in BODY_EMOJI: note = note[1:].strip()
+                    out.append(Markup('<aside class="sb-callout"><span class="sb-h-emo" aria-hidden="true">%s</span><div><b>%s</b><p>%s</p></div></aside>') % (emo, S.ui_text('life.callout', '핵심만 쏙'), note))
                 else: out.append(Markup('<p>%s</p>') % line)
             flush()
         return Markup('\n').join(out)

@@ -247,7 +247,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('택배 분실 보상 정리', visitor.get('/life').get_data(as_text=True))
         admin.post(f'/admin/life/{aid}', data={'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'act': 'publish', 'title': '택배 분실 보상 정리', 'summary': '요약', 'body': '첫 문단\n\n## 소제목\n- 목록', 'category': '쇼핑'})
         art = visitor.get(f'/life/{aid}').get_data(as_text=True)
-        self.assertIn('<h2>소제목</h2>', art)
+        self.assertIn('<span class="sb-h-emo" aria-hidden="true">📌</span>소제목</h2>', art)  # 이모지 없는 예전 글도 이모지 칸
         self.assertIn('"@type": "Article"', art)
         self.assertIn(f'<link>http://localhost/life/{aid}</link>', visitor.get('/rss.xml').get_data(as_text=True))  # RSS에 생활정보 기사도
         self.assertEqual(visitor.get('/', base_url='http://www.consumerjebo.co.kr').headers['Location'], 'https://consumerjebo.co.kr/')  # www는 https 대표 주소로 한 번에
@@ -3271,7 +3271,7 @@ class SiteTest(unittest.TestCase):
                 x = db.execute('SELECT * FROM ai_articles WHERE article_id=?', (aid,)).fetchone()
             self.assertEqual((a['status'], a['origin'], a['ext_key']), ('draft', 'ai', 'ai:reports:' + datetime.date.today().isoformat()))
             self.assertIsNone(a['published_at']); self.assertEqual(a['source_name'], '소보루 공개 제보 통계')
-            self.assertEqual(len(a['summary'].split('\n')), 3); self.assertIn('## 이렇게 하세요', a['body'])
+            self.assertEqual(len(a['summary'].split('\n')), 3); self.assertIn('## ✅ 이렇게 하세요', a['body'])
             self.assertEqual(x['check_ok'], 1)
             edit = admin.get(f'/admin/life/{aid}').get_data(as_text=True)
             self.assertIn('숫자 확인됨', edit); self.assertIn('AI에 넘긴 자료 보기', edit)
@@ -3304,7 +3304,7 @@ class SiteTest(unittest.TestCase):
         admin.post(f'/admin/life/{aid}', data=dict(form, body=fixed, act='publish'))
         with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (aid,)).fetchone()[0], 'published')
         page = self.client.get(f'/life/{aid}').get_data(as_text=True)
-        self.assertIn('class="sb-article-sum sb-sum3"', page); self.assertIn('소보루 공개 제보 통계 ↗', page); self.assertIn('AI가 위 자료의 숫자만으로', page)
+        self.assertIn('class="sb-sum3"', page); self.assertIn('바쁜 이웃님을 위한 3줄 요약', page); self.assertIn('sb-letter-cta', page); self.assertIn('소보루 공개 제보 통계 ↗', page); self.assertIn('AI가 위 자료의 숫자만으로', page)
         # 지우면 AI 기록도 같이 지움
         admin.post(f'/admin/life/{aid}', data=dict(form, act='delete'))
         with self.site.conn() as db: self.assertIsNone(db.execute('SELECT 1 FROM ai_articles WHERE article_id=?', (aid,)).fetchone())

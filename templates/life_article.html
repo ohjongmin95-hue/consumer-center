@@ -11,14 +11,15 @@
     <a class="sb-article-cat" href="{{ url_for('life', category=a['category']) }}">{{ a['category'] }}</a>
     <h1>{{ a['title'] }}</h1>
     <div class="sb-meta">{{ (a['published_at'] or a['created'])[:10].replace('-', '.') }}</div>
-    {% if a['summary'] and '\n' in a['summary'] %}<ul class="sb-article-sum sb-sum3">{% for line in a['summary'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>
-    {% elif a['summary'] %}<p class="sb-article-sum">{{ a['summary'] }}</p>{% endif %}
+    {% if a['summary'] %}<div class="sb-article-sum sb-sumbox"><p class="sb-sum-h"><span class="sb-h-emo" aria-hidden="true">☕</span>{{ ui('life.sum_title', '바쁜 이웃님을 위한 3줄 요약') }}</p>
+    {% if '\n' in a['summary'] %}<ul class="sb-sum3">{% for line in a['summary'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>{% else %}<p>{{ a['summary'] }}</p>{% endif %}</div>{% endif %}
     {% set art = art_url('life', a['id']) %}{% if art %}<div class="sbc-art" aria-hidden="true"><img src="{{ art }}" alt="">{% if '/art/' not in art %}<span class="sb-art-l">{{ ui('case.photo_label', '제보자 사진') }}</span>{% else %}<span class="sb-art-ai">AI</span>{% endif %}</div>{% endif %}
     <div class="sb-article-body">{{ life_body(a['body']) }}</div>
     {% set ai = ai_article(a['id']) if a['origin'] == 'ai' and ai_article is defined else None %}
     {% if ai and ai.sources %}<div class="sb-source sb-sources"><b>{{ ui('life.sources', '출처') }}</b><ul>{% for s in ai.sources %}<li>{% if s.url %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name }} ↗</a>{% else %}{{ s.name }}{% endif %} <span>{{ s.fetched_at[:10].replace('-', '.') }} 기준</span></li>{% endfor %}</ul>
       <p class="sb-ai-note">{{ ui('life.ai_note', '이 글은 AI가 위 자료의 숫자만으로 초안을 쓰고, {site} 운영자가 확인한 뒤 올렸어요. 법률 자문이 아닌 일반 정보예요.', site=txt('site.name')) }}</p></div>
     {% elif a['source_name'] or a['source_url'] %}<p class="sb-source">{{ ui('life.source', '출처') }}: {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
+    <a class="sb-letter-cta" href="{{ url_for('letter_home') }}"><span class="sb-h-emo" aria-hidden="true">📨</span><span><b>{{ ui('life.letter_title', '이런 글, 아침마다 메일로 받아 볼래요?') }}</b><small>{{ ui('life.letter_body', '소보루 레터를 구독하면 꼭 알아야 할 소비자 소식을 쉽게 풀어 보내 드려요.') }}</small></span><em>{{ ui('life.letter_btn', '구독하기') }} ›</em></a>
   {{ admin_delete('life', a['id'], '관리자: 이 글 지우기') }}
   </article>
   <div class="sb-report-box sb-report-mini">
