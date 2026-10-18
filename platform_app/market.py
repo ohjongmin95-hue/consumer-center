@@ -126,7 +126,7 @@ def tour_steps():
     except (OSError,ValueError):shots={}
     return [dict(shots[k],key=k,title=t,text=x,note=n) for k,t,x,n in TOUR if shots.get(k,{}).get('d')]
 
-PUBLIC={'decide','signup','terms','refund_policy'}  # 로그인 전 방문을 세는 화면 (mk.* 전부 포함)
+PUBLIC={'decide','signup','terms','refund_policy','pricing'}  # 로그인 전 방문을 세는 화면 (mk.* 전부 포함)
 @bp.before_app_request
 def count_visit():
     if request.method!='GET' or session.get('co_id') or session.get('ops') or request.path.startswith('/ops'):return  # 운영자·로그인한 회사는 방문으로 세지 않는다

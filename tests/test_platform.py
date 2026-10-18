@@ -159,7 +159,15 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('/terms</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True))
         r=c.get('/biz/refund');self.assertEqual(r.status_code,200);page=r.get_data(as_text=True)  # 결제대행사 심사에 내는 환불 정책 (로그인 없이)
         self.assertIn('환불 정책',page);self.assertIn('7일 이내',page);self.assertNotIn('noindex',page)
-        for pg in (page,t.get_data(as_text=True),c.get('/biz/').get_data(as_text=True)):self.assertIn('전화. 010-5531-4247',pg);self.assertIn('대표자.',pg)  # 결제대행사 심사: 사업자 정보
+        pr=c.get('/biz/pricing');self.assertEqual(pr.status_code,200);ph=pr.get_data(as_text=True)  # 공개 요금 안내 (요금제를 정하면 금액이 보인다)
+        self.assertIn('정기결제',ph);self.assertIn('/biz/refund',ph);self.assertIn('/biz/pricing',c.get('/biz/').get_data(as_text=True))
+        with self.core.conn() as db:db.execute("INSERT OR REPLACE INTO settings(key,value,updated) VALUES('billing_plan','{\"name\":\"베이직\",\"price\":29000}','x')")
+        try:self.assertIn('월 29,000원',c.get('/biz/pricing').get_data(as_text=True))
+        finally:
+            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key='billing_plan'")
+        self.assertIn('/pricing</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True));self.assertIn('요금 안내',t.get_data(as_text=True))
+        self.assertIn('코리아포트원',c.get('/privacy').get_data(as_text=True))
+        for pg in (page,t.get_data(as_text=True),c.get('/biz/').get_data(as_text=True)):self.assertIn('전화. 02-749-7515',pg);self.assertIn('대표자.',pg)  # 결제대행사 심사: 사업자 정보
         self.assertIn('/biz/refund',t.get_data(as_text=True));self.assertIn('/refund</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True))
 
     def test_biz_app_inapp_pages(self):
