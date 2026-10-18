@@ -124,7 +124,7 @@ STATUS={'received':('접수됨','gray',0),'forwarded':('기업 전달','acc',1),
 FINAL=('resolved','unresolved','closed','withdrawn')  # 더 처리하지 않는 상태
 CLOSE_DAYS=7  # 답변 후 이 기간 동안 소비자가 아무 응답이 없으면 자동 종료
 OPEN_STATUSES=('received','forwarded','seen','info')
-DECISION={'pending':'승인 대기','approved':'승인됨','auto':'자동 처리','hold':'보류','info':'추가 확인','direct':'직접 답변'}
+DECISION={'pending':'승인 대기','approved':'승인됨','auto':'자동 처리','hold':'보류','info':'추가 확인','direct':'직접 답변','ai':'AI 확인 중'}
 REPLY_DAYS=2  # 입점 기업 답변 목표일 (전달 후 n일)
 # 기업이 전화·쇼핑몰 문의 등으로 받은 요청을 직접 등록할 때 고르는 채널 ('한큐'는 소비자가 직접 접수한 것)
 CHANNELS=['전화','쇼핑몰 문의','카카오톡','인스타그램 DM','이메일','기타']
@@ -182,12 +182,13 @@ def init():
         # 나중에 더한 칸: 이미 있는 DB에도 붙인다
         cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
-        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status'):
+        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status','ai_tried'):
             if col not in cols:db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         cols={r[1] for r in db.execute('PRAGMA table_info(companies)')}
         for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),
                          ('return_courier',"TEXT NOT NULL DEFAULT ''"),('return_memo',"TEXT NOT NULL DEFAULT ''"),('kakao',"INTEGER NOT NULL DEFAULT 0"),('report_mail',"INTEGER NOT NULL DEFAULT 1"),
-                         ('widget_seen',"TEXT NOT NULL DEFAULT ''"),('widget_host',"TEXT NOT NULL DEFAULT ''")):
+                         ('widget_seen',"TEXT NOT NULL DEFAULT ''"),('widget_host',"TEXT NOT NULL DEFAULT ''"),
+                         ('ai_reply',"TEXT NOT NULL DEFAULT ''")):  # ai_reply: 'AI 자동 답변'을 켠 때 ('' = 꺼짐). 켠 뒤에 들어온 문의에만 답한다
             if col not in cols:db.execute(f'ALTER TABLE companies ADD COLUMN {col} {kind}')
         db.executescript('''
         CREATE TABLE IF NOT EXISTS news(id INTEGER PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,source_url TEXT NOT NULL,created TEXT NOT NULL);
@@ -228,6 +229,7 @@ def init():
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
         if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')
         if 'cond' not in cols:db.execute("ALTER TABLE rules ADD COLUMN cond TEXT NOT NULL DEFAULT ''")
+        if 'ai_ok' not in cols:db.execute("ALTER TABLE rules ADD COLUMN ai_ok TEXT NOT NULL DEFAULT ''")  # AI 자동 답변: '1' AI가 바로 답함, '0' 사장님 승인 후, '' 기본값
         if 'actor' not in {r[1] for r in db.execute('PRAGMA table_info(events)')}:db.execute("ALTER TABLE events ADD COLUMN actor TEXT NOT NULL DEFAULT ''")
         if 'assignee' not in {r[1] for r in db.execute('PRAGMA table_info(cases)')}:db.execute("ALTER TABLE cases ADD COLUMN assignee TEXT NOT NULL DEFAULT ''")
         if 'comp' not in cols:db.execute("ALTER TABLE rules ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
@@ -333,7 +335,9 @@ def rule_for(db,cid,cat):
     pb=PLAYBOOK.get(cat,PLAYBOOK['기타'])
     return {'auto':bool(r and r['auto']),'reply':(r['reply'] if r and r['reply'] is not None else pb['reply']),
             'faq':(r['faq'] if r and r['faq'] is not None else CHAT_FAQ.get(cat,CHAT_FAQ['기타'])),'cond':(r['cond'] if r and r['cond'] in COND else ''),
-            'comp':(r['comp'] if r else '')}
+            'comp':(r['comp'] if r else ''),
+            'ai_ok':(r['ai_ok']=='1') if r and r['ai_ok'] in ('0','1') else cat not in AI_HUMAN_CATS}
+AI_HUMAN_CATS=('주문 취소','주문 변경','교환','반품·환불','제품 불량')  # AI 자동 답변 기본값: 이 유형은 사장님 승인 후 (운영자 결정 2026-10-18, 유형별로 바꿀 수 있음)
 
 # 보상: 기업이 유형별로 정해 둔 보상(예: 적립금 3,000원)을 요청마다 추천하고, 사장님이 승인해야 고객에게 간다. 자동으로 주지는 않는다.
 COMP_CATS=('배송 조회','제품 불량','고객 응대')  # 정해 둔 보상이 없어도 보상 칸을 보여 주는 유형 (불만이 큰 유형)
@@ -374,16 +378,21 @@ def run_playbook(db,c,how):
     add_event(db,c['id'],'sys',('자동 처리 규칙 실행: ' if how=='auto' else '대표 승인: ')+pb['title'])
     for s in pb['steps']:add_event(db,c['id'],'sys','✓ '+s)
     reply=(rule['reply'] or '').strip()
-    guide=return_guide(company(db,c['company_id'])) if c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status'] else ''
+    ext=bool(db.execute('SELECT 1 FROM shop_seen WHERE company_id=? AND case_id=?',(c['company_id'],c['id'])).fetchone())  # 판매처·메일·DM에서 온 요청 (고객에게 접수 화면이 없다)
+    guide=return_guide(company(db,c['company_id']),ext) if c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status'] else ''
     if reply and guide:reply+='\n\n'+guide;db.execute("UPDATE cases SET ret_status='guided' WHERE id=?",(c['id'],))
     elif reply and c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status']:
         # 반품 주소를 아직 안 정했어도 회수 단계(송장 입력, 회수 확인)는 열어 둔다
         reply+='\n\n보내실 곳은 따로 안내드릴게요.';db.execute("UPDATE cases SET ret_status='guided' WHERE id=?",(c['id'],))
     if reply:add_event(db,c['id'],'co','답변을 보냈어요.',reply)
     db.execute('UPDATE cases SET status=?,decision=?,info_ask=? WHERE id=?',('answered' if reply else 'seen',how,'',c['id']))
-    if reply and how=='approved':deliver_reply(db,c,reply)  # 사람이 승인했을 때만: 인스타그램·메일·판매처에서 온 요청이면 그곳으로도 보낸다
+    if reply and how=='approved' and deliver_reply(db,c,reply)[1]=='error':  # 사람이 승인했을 때만: 인스타그램·메일·판매처에서 온 요청이면 그곳으로도 보낸다
+        db.execute("UPDATE cases SET status='seen',decision='pending' WHERE id=?",(c['id'],))  # 못 보냈으면 '완료'로 두지 않는다 (진행 기록에 이유가 남음)
     if c['category']=='주문 취소':
-        import orders;orders.sync_case(db,c,'cancel')  # 이어진 주문도 '취소'로
+        import orders;o=orders.for_case(db,c)
+        if o and 'src' in o.keys() and o['src']=='cafe24':  # 카페24 주문은 카페24에서 취소해야 결제도 취소된다. 여기서 '취소'로만 바꾸면 카페24 취소 버튼이 사라진다
+            add_event(db,c['id'],'sys',f"카페24 주문 {o['order_no']}은 주문 화면의 '카페24에서 주문 취소'를 눌러야 카페24에서도 취소돼요")
+        else:orders.sync_case(db,c,'cancel')  # 이어진 주문도 '취소'로
     return bool(reply)
 
 VIA={'email':'메일로','instagram':'인스타그램 DM으로'}
@@ -396,13 +405,13 @@ def deliver_reply(db,c,text):
     if e:add_event(db,c['id'],'sys',(f'{via} 보내지 못했어요: ' if via else f"{c['channel']}에 답변을 올리지 못했어요: ")+e);return e,'error'
     done=f'{via} 답변을 보냈어요' if via else f"{c['channel']}에 답변을 올렸어요"
     add_event(db,c['id'],'sys',done);return done,'ok'
-def return_guide(co):
-    """설정에 반품 주소가 있으면 소비자에게 보낼 반품 안내 문구. 택배사는 소개만 하고 연동하지 않는다."""
+def return_guide(co,ext=False):
+    """설정에 반품 주소가 있으면 소비자에게 보낼 반품 안내 문구. 택배사는 소개만 하고 연동하지 않는다. ext: 판매처·메일·DM 고객 (접수 화면이 없음)"""
     if not co or not co['return_address']:return ''
     lines=['[반품 보내실 곳]',co['return_address']]
     if co['return_courier'] in COURIERS:lines.append(f"이용 택배사: {co['return_courier']} ({COURIERS[co['return_courier']]})")
     if co['return_memo']:lines.append(co['return_memo'])
-    lines.append('보내신 뒤 접수 화면에서 택배사와 송장번호를 입력해 주세요.')
+    lines.append('보내신 뒤 택배사와 송장번호를 이 글에 남겨 주세요.' if ext else '보내신 뒤 접수 화면에서 택배사와 송장번호를 입력해 주세요.')
     return '\n'.join(lines)
 def is_direct(c):return bool(c['channel']) and c['channel']!='한큐'  # 기업이 직접 등록한 요청 (소비자는 한큐에서 볼 수 없음)
 
@@ -535,6 +544,7 @@ def notify_company_msg(db,case_id,text):
     send_biz_push(c['company_id'],'고객 메시지: '+short(c['title'],24),short(text,60),c['id'])
 def notify_company_new(co,c):
     """입점 기업에 새 요청 알림: 이메일, 그리고 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
+    if c['decision']=='ai':return  # AI가 먼저 보는 문의: 사장님께 넘길 때 알린다 (chatbot._to_owner)
     link=site_url('biz','/case/%d'%c['id'])
     send_mail(co['notify_email'],f"[{BNAME}] 새 요청: {c['title']}",
         f"{co['name']}에 새 요청이 들어왔습니다.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 처리 방법을 보고 승인해 주세요.\n{link}")

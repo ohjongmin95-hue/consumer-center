@@ -50,8 +50,8 @@
 
 {% elif step=='connect' %}
 {% if not trust.ok %}<div class="flash error" style="margin:0">판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 열려요. 지금은 나중에 하기를 누르고 다음 단계로 가도 돼요.</div>{% endif %}
-<div class="rows" style="padding:0">{% for key,spec in SHOPS.items() %}<a class="rowi" href="{{ url_for('connect_shop',shop=key) }}"><div class="tx"><div class="t">{{ spec.full }}</div><div class="s">{% if links.get(key) %}연결됨{% else %}판매처에서 발급한 키를 넣으면 문의와 주문을 가져와요{% endif %}</div></div><span class="chev"></span></a>{% endfor %}
-<a class="rowi" href="{{ url_for('orders_page') }}"><div class="tx"><div class="t">카페24·자사몰·오픈마켓</div><div class="s">지금은 주문 엑셀(CSV)로 올려요. 카페24 자동 연결은 준비 중이에요</div></div><span class="chev"></span></a></div>
+<div class="rows" style="padding:0"><a class="rowi" href="{{ url_for('c24.page') }}"><div class="tx"><div class="t">카페24</div><div class="s">카페24 관리자로 로그인하면 주문·상품·게시판 문의를 가져오고, AI가 단순 문의에 답해요</div></div><span class="chev"></span></a>{% for key,spec in SHOPS.items() %}<a class="rowi" href="{{ url_for('connect_shop',shop=key) }}"><div class="tx"><div class="t">{{ spec.full }}</div><div class="s">{% if links.get(key) %}연결됨{% else %}판매처에서 발급한 키를 넣으면 문의와 주문을 가져와요{% endif %}</div></div><span class="chev"></span></a>{% endfor %}
+<a class="rowi" href="{{ url_for('orders_page') }}"><div class="tx"><div class="t">자사몰·오픈마켓</div><div class="s">주문 엑셀(CSV)로 올려요</div></div><span class="chev"></span></a></div>
 
 {% elif step=='ai' %}
 <label class="fld"><span>회사·브랜드 소개</span><textarea class="inp" name="brand" maxlength="3000" placeholder="국내산 원료로 만드는 건강식품 브랜드예요">{{ prof.brand }}</textarea></label>

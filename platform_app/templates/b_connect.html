@@ -7,5 +7,5 @@
 {% for grp in rows|map(attribute='group')|unique %}<section class="panel conn"><div class="ph">{{ grp }}</div>
 {% for r in rows if r.group==grp %}<div class="crow"><div class="tx"><b>{{ r.name }}</b><span>{{ r.desc }}</span></div>{% if r.href %}<a class="pill {{ ST[r.state][1] }}" href="{{ r.href }}">{{ ST[r.state][0] }}</a>{% else %}<span class="pill {{ ST[r.state][1] }}">{{ ST[r.state][0] }}</span>{% endif %}</div>{% endfor %}
 </section>{% endfor %}
-<p class="t-mute" style="margin-top:16px;font-size:14px">스마트스토어·쿠팡은 사장님이 발급한 키로 바로 연결돼요. 다른 판매처는 내려받은 주문 엑셀을 주문·배송 화면에 올리면 돼요.</p>
+<p class="t-mute" style="margin-top:16px;font-size:14px">카페24는 관리자 로그인으로 바로 연결돼요. 다른 판매처는 내려받은 주문 엑셀을 주문·배송 화면에 올리면 돼요.</p>
 {% endblock %}

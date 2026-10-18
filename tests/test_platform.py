@@ -1314,7 +1314,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(page.count('class="tour-step'),8);self.assertIn('/static/tour/home-d.jpg',page);self.assertNotIn('noindex',page)
         for slug in ('smartstore','coupang','cafe24'):
             r=c.get('/biz/for/'+slug);self.assertEqual(r.status_code,200)
-        self.assertIn('연동 대기',c.get('/biz/for/cafe24').get_data(as_text=True))
+        page=c.get('/biz/for/cafe24').get_data(as_text=True);self.assertIn('지금 됨',page);self.assertNotIn('>연동 대기<',page)
         self.assertEqual(c.get('/biz/for/nope').status_code,404)
         page=c.get('/biz/industries').get_data(as_text=True)
         for slug in ('fashion','beauty','food','living','digital','furniture'):
@@ -1692,6 +1692,84 @@ class PlatformTest(unittest.TestCase):
             with self.core.conn() as db:
                 self.assertIn('카페24 반품 접수',db.execute('SELECT memo FROM orders WHERE id=?',(ob,)).fetchone()[0])
                 self.assertTrue(any('반품 접수를 보냈어요' in e['text'] for e in self.core.events(db,case_id)))
+
+    def test_cafe24_products_and_ai_reply(self):
+        """카페24 상품 -> 상품정보 (사장님이 고친 안내는 그대로, 상품 권한 없는 예전 연결은 건너뜀). 상품 문의엔 상품 이름.
+        AI 초안은 상품정보를 본다. AI 자동 답변: 단순 문의는 답해서 카페24에 올리고 완료, 반품 등은 안 보내고 메모. 개인정보는 가려서 보낸다."""
+        shops=sys.modules['shops'];c24=sys.modules['cafe24'];bot=sys.modules['chatbot'];drafting=sys.modules['drafting'];aim=sys.modules['ai']
+        b,o,cid=self.signup_and_approve('카페24상품상점','c24p@example.com')
+        sent=[];prods=[{'product_no':7,'product_name':'선크림','price':'19000.00','selling':'T','sold_out':'F','summary_description':'<b>SPF50</b> 순한 선크림','simple_description':''},
+                       {'product_no':8,'product_name':'토너','price':'15000.00','selling':'T','sold_out':'T','summary_description':'수분 토너'}]
+        arts=[{'article_no':20,'parent_article_no':20,'title':'선크림 문의','content':'민감성도 써도 돼요? 010-1234-5678로 연락 주세요','writer':'김손님','product_no':7,'deleted':'F','notice':'F','created_date':'2026-10-18T12:00:00+09:00'},
+              {'article_no':21,'parent_article_no':21,'title':'반품하고 싶어요','content':'토너 반품할게요','writer':'이손님','product_no':8,'deleted':'F','notice':'F','created_date':'2026-10-18T12:05:00+09:00'}]
+        def fake(method,url,headers=None,body=None):
+            path=url.split('/api/v2')[1].split('?')[0]
+            if method=='POST':sent.append((path,json.loads(body)));return 201,{'articles':[{'article_no':99}]}
+            if path=='/admin/orders':return 200,{'orders':[]}
+            if path=='/admin/products':return 200,{'products':prods}
+            if path=='/admin/boards':return 200,{'boards':[{'board_no':6,'board_name':'상품 Q&A'}]}
+            if path=='/admin/boards/6/articles':return 200,{'articles':arts}
+            if '/comments' in path:return 200,{'comments':[]}
+            return 404,{}
+        with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec'}),patch.object(shops,'http',fake):
+            with self.core.conn() as db:
+                db.execute("INSERT INTO products(company_id,name,price,stock,info,updated) VALUES(?,?,?,?,?,?)",(cid,'토너','','','사장님이 쓴 안내',self.core.iso()))
+                c24.store(db,cid,'myshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order','mall.read_community']})
+            r=self.post(b,'/biz/connect/cafe24',{'act':'sync'},follow_redirects=True).get_data(as_text=True)
+            self.assertNotIn('상품',r.split('를 가져왔어요')[0].split('주문')[-1])  # 상품 권한이 없는 예전 연결: 상품은 건너뛴다
+            with self.core.conn() as db:
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM products WHERE company_id=?",(cid,)).fetchone()[0],1)
+                db.execute("DELETE FROM cases WHERE company_id=?",(cid,));db.execute("DELETE FROM shop_seen WHERE company_id=?",(cid,));db.execute("UPDATE cafe24_links SET since_b='' WHERE company_id=?",(cid,))
+                c24.store(db,cid,'myshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':c24.SCOPES.split(',')})
+            asked=[]
+            def fake_answer(co,facts,text,history=None):
+                asked.append((facts,text))
+                return {'answer':'민감성 피부도 쓰실 수 있어요.','category':None,'handoff':False,'lookup':False,'summary':''} if '선크림' in text else {'answer':'반품 도와드릴게요','category':'반품·환불','handoff':False,'lookup':False,'summary':'토너 반품 요청'}
+            bot.BACKGROUND=False
+            with patch.object(bot,'ready',lambda:True),patch.object(bot,'answer',fake_answer):  # AI 자동 답변 (가입하면 켜져 있음): 가져오자마자 답한다
+                r=self.post(b,'/biz/connect/cafe24',{'act':'sync'},follow_redirects=True).get_data(as_text=True)
+                self.assertEqual(bot.auto_reply_all(),0)  # 한 번 본 문의는 다시 안 본다
+            self.assertIn('상품 2개',r)
+            with self.core.conn() as db:
+                ps={p['name']:p for p in self.core.products(db,cid)}
+                self.assertEqual((ps['선크림']['price'],ps['선크림']['stock'],ps['선크림']['info'],ps['선크림']['src']),('19,000원','있음','SPF50 순한 선크림','cafe24'))
+                self.assertEqual((ps['토너']['stock'],ps['토너']['info'],ps['토너']['ext_id']),('품절','사장님이 쓴 안내','8'))  # 같은 이름은 이어 쓰고, 사장님 안내는 그대로
+                cs={c['title']:c for c in db.execute("SELECT * FROM cases WHERE company_id=?",(cid,))}
+                self.assertEqual(cs['선크림 문의']['product'],'선크림')
+                prods[0]['price']='21000.00';prods[0]['summary_description']='새 설명'
+                c24.sync_products(db,self.core.company(db,cid))  # 6시간 안이면 자동으로는 안 가져온다
+                self.assertEqual(self.core.products(db,cid)[0]['price'] if self.core.products(db,cid)[0]['name']=='선크림' else '19,000원','19,000원')
+                c24.sync_products(db,self.core.company(db,cid),force=True)
+                p=db.execute("SELECT * FROM products WHERE company_id=? AND name='선크림'",(cid,)).fetchone()
+                self.assertEqual((p['price'],p['info']),('21,000원','새 설명'))  # 사장님이 안 고친 안내는 카페24를 따라간다
+            # AI 초안: 문의 상품의 정보를 넣는다 (내부 정보는 안 넣음)
+            seen={}
+            with patch.object(aim,'ready',lambda:True),patch.object(drafting,'call',lambda system,messages,**k:seen.update(u=messages[0]['content']) or '초안'):
+                with self.core.conn() as db:res=drafting.draft(db,cs['선크림 문의'],self.core.company(db,cid))
+            self.assertEqual(res['by'],'ai');self.assertIn('[상품정보]\n- 선크림 / 가격 21,000원',seen['u']);self.assertNotIn('토너',seen['u'].split('[상품정보]')[1].split('[관련 조문]')[0])
+            # AI 자동 답변 결과
+            self.assertTrue(any('(전화번호)' in t and '010-1234-5678' not in t for _,t in asked));self.assertIn('선크림 / 가격 19,000원',asked[0][0])
+            self.assertEqual(len(sent),1);self.assertEqual(sent[0][1]['requests'][0]['reply_article_no'],20)
+            with self.core.conn() as db:
+                a=db.execute('SELECT * FROM cases WHERE id=?',(cs['선크림 문의']['id'],)).fetchone();r2=db.execute('SELECT * FROM cases WHERE id=?',(cs['반품하고 싶어요']['id'],)).fetchone()
+                self.assertEqual((a['status'],a['decision']),('answered','auto'))
+                self.assertTrue(any(e['kind']=='co' and e['reply']=='민감성 피부도 쓰실 수 있어요.' for e in self.core.events(db,a['id'])))
+                self.assertEqual((r2['status'],r2['decision']),('forwarded','pending'))  # 반품은 사장님 승인으로
+                self.assertIn('토너 반품 요청',db.execute('SELECT text FROM notes WHERE case_id=?',(r2['id'],)).fetchone()[0])
+            # 승인 목록엔 AI가 넘긴 것만, AI 확인 중인 건 안 보인다
+            with self.core.conn() as db:db.execute("UPDATE cases SET decision='ai' WHERE id=?",(cs['선크림 문의']['id'],));db.execute("UPDATE cases SET status='forwarded' WHERE id=?",(cs['선크림 문의']['id'],))
+            biz=sys.modules['business']
+            with self.core.conn() as db:self.assertEqual(sum(map(biz.is_pending,db.execute('SELECT * FROM cases WHERE company_id=?',(cid,)).fetchall())),1)
+            with self.core.conn() as db:db.execute("UPDATE cases SET decision='auto',status='answered' WHERE id=?",(cs['선크림 문의']['id'],))
+            # 유형별로 'AI가 바로 답함 / 내 승인 후'를 고른다 (기본: 반품·환불은 승인 후)
+            with self.core.conn() as db:self.assertFalse(self.core.rule_for(db,cid,'반품·환불')['ai_ok']);self.assertTrue(self.core.rule_for(db,cid,'기타')['ai_ok'])
+            self.assertIn('내 승인 후 답함',b.get('/biz/rules').get_data(as_text=True))
+            self.post(b,'/biz/rules',{'category':'반품·환불','ai_ok':'1'});self.post(b,'/biz/rules',{'category':'기타','ai_ok':'0'})
+            with self.core.conn() as db:self.assertTrue(self.core.rule_for(db,cid,'반품·환불')['ai_ok']);self.assertFalse(self.core.rule_for(db,cid,'기타')['ai_ok'])
+            # 끄면 새 문의에 답하지 않는다
+            self.post(b,'/biz/ai-reply',{'on':'0'},form_path='/biz/rules')
+            with self.core.conn() as db:self.assertEqual(self.core.company(db,cid)['ai_reply'],'')
+            self.assertIn('AI 자동 답변',b.get('/biz/rules').get_data(as_text=True))
 
     def test_chat_order_lookup(self):
         """상담창 주문 조회: 휴대폰 + 주문번호(또는 이름)가 둘 다 맞아야 보임. 개인정보는 고객 화면·AI 어디에도 안 나감. AI는 확인된 주문으로 답함."""
