@@ -8,7 +8,7 @@
   · 답변은 사람이 요청 화면에서 '인스타그램 DM으로 답변 보내기'를 눌러야 나간다. 인스타그램 규칙상 고객이 마지막으로 보낸 지 24시간 안에만 보낼 수 있다.
 문서: developers.facebook.com/docs/instagram-platform (Business Login, Webhooks, Messaging API)
 """
-import datetime, hashlib, hmac, json, secrets, traceback, urllib.parse
+import base64, datetime, hashlib, hmac, json, secrets, traceback, urllib.parse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, abort, jsonify, current_app
 import core, shops
 from core import conn, clean
@@ -205,6 +205,35 @@ def hook():
     except ValueError:abort(400)
     receive(payload)
     return jsonify(ok=True)
+
+# 메타 앱 설정 '콜백 URL 승인 취소'·'데이터 삭제 요청 URL': 사장님이 인스타그램에서 소보루 권한을 거두면
+# 메타가 signed_request(앱 시크릿으로 서명)를 보낸다 -> 그 계정의 연결과 저장한 토큰을 지운다. 이미 받은 요청(고객 문의)은 회사 기록이라 그대로.
+def signed_data(sr):
+    sec=core.secret('IG_APP_SECRET')
+    try:
+        sig,body=sr.split('.',1);pad=lambda s:s+'='*(-len(s)%4)
+        got=base64.urlsafe_b64decode(pad(sig));data=json.loads(base64.urlsafe_b64decode(pad(body)))
+    except (ValueError,TypeError):return None
+    if not sec or not hmac.compare_digest(got,hmac.new(sec.encode(),body.encode(),hashlib.sha256).digest()):return None
+    return data if isinstance(data,dict) and str(data.get('algorithm','')).upper()=='HMAC-SHA256' else None
+
+def forget(user_id):
+    with conn() as db:return db.execute('DELETE FROM ig_links WHERE ig_id=?',(str(user_id or ''),)).rowcount
+
+@bp.route('/hook/instagram/deauth',methods=['POST'])
+def deauth():
+    d=signed_data(request.form.get('signed_request',''))
+    if not d:abort(400)
+    forget(d.get('user_id'))
+    return jsonify(ok=True)
+
+@bp.route('/hook/instagram/delete',methods=['POST'])
+def delete_data():
+    d=signed_data(request.form.get('signed_request',''))
+    if not d:abort(400)
+    forget(d.get('user_id'));code=secrets.token_hex(8)
+    current_app.logger.info('인스타그램 데이터 삭제 요청 처리: %s',code)
+    return jsonify(url=core.site_url('me','/data-deletion'),confirmation_code=code)
 
 @bp.route('/connect/instagram',methods=['GET','POST'])
 def page():

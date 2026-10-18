@@ -2117,6 +2117,31 @@ class PlatformTest(unittest.TestCase):
                 self.assertEqual([r[0] for r in rows],['closed','forwarded'])
         finally:instagram._call=old
 
+    def test_instagram_deauth_and_delete(self):
+        """메타가 보낸 서명 맞는 승인 취소·데이터 삭제 요청만 받고, 그 계정 연결을 지운다."""
+        import instagram, base64 as _b, hmac as _h, hashlib, json as _j
+        b,o,cid=self.signup_and_approve('인스타삭제','ig-del@example.com')
+        old_env=os.environ.get('IG_APP_SECRET');os.environ['IG_APP_SECRET']='sec-ig-2'
+        def sr(uid,key=b'sec-ig-2'):
+            body=_b.urlsafe_b64encode(_j.dumps({'algorithm':'HMAC-SHA256','user_id':uid}).encode()).decode().rstrip('=')
+            return _b.urlsafe_b64encode(_h.new(key,body.encode(),hashlib.sha256).digest()).decode().rstrip('=')+'.'+body
+        def n():
+            with self.core.conn() as db:return db.execute('SELECT COUNT(*) FROM ig_links WHERE company_id=?',(cid,)).fetchone()[0]
+        try:
+            with self.core.conn() as db:db.execute("INSERT OR REPLACE INTO ig_links(company_id,ig_id,creds,created) VALUES(?,?,?,?)",(cid,'7001','x','2026-10-18'))
+            c=self.client()
+            self.assertEqual(c.post('/biz/hook/instagram/deauth',data={'signed_request':sr('7001',b'wrong')}).status_code,400)
+            self.assertEqual(c.post('/biz/hook/instagram/deauth',data={'signed_request':'junk'}).status_code,400)
+            self.assertEqual(n(),1)
+            self.assertEqual(c.post('/biz/hook/instagram/deauth',data={'signed_request':sr('7001')}).status_code,200)
+            self.assertEqual(n(),0)
+            with self.core.conn() as db:db.execute("INSERT OR REPLACE INTO ig_links(company_id,ig_id,creds,created) VALUES(?,?,?,?)",(cid,'7001','x','2026-10-18'))
+            d=c.post('/biz/hook/instagram/delete',data={'signed_request':sr('7001')}).get_json()
+            self.assertTrue(d['url'].endswith('/data-deletion'));self.assertEqual(len(d['confirmation_code']),16);self.assertEqual(n(),0)
+        finally:
+            if old_env is None:os.environ.pop('IG_APP_SECRET',None)
+            else:os.environ['IG_APP_SECRET']=old_env
+
     def test_instagram_dm(self):
         """인스타그램 DM: 키가 없으면 연동 대기, 로그인으로 잇고, 서명 맞는 웹훅만 받고, 같은 고객은 이어 붙고, 답장은 눌러야 간다."""
         import instagram, hmac as _h, hashlib, json as _j, urllib.parse as up
