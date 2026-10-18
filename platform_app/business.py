@@ -430,13 +430,13 @@ def connect():
         lk=shops.links(db,me()['id']);c24=cafe24.link(db,me()['id']);ml=mailin.link(db,me()['id']);ig=instagram.link(db,me()['id'])
     track_on=bool(core.secret('SWEETTRACKER_T_KEY'))
     rows=[]
-    for key,spec in shops.SHOPS.items():
+    if c24:rows.append(dict(group='판매처',name='카페24',desc=(f"문의 {c24['n_inq']}건 · 주문 {c24['n_ord']}건 · 상품 {c24['n_prod']}개 가져옴"+(f" · {core.fmt(c24['synced'])}" if c24['synced'] else '')) if c24['status']=='ok' else c24['note'],state='on' if c24['status']=='ok' else 'err',href=url_for('c24.page')))
+    else:rows.append(dict(group='판매처',name='카페24',desc='카페24 관리자로 로그인하면 주문·상품·게시판 문의를 가져오고, AI가 단순 문의에 답해요' if cafe24.ready() else '카페24 연결 준비 중이에요. 그동안은 주문 엑셀로 써 주세요',state='link' if cafe24.ready() else 'wait',href=url_for('c24.page')))
+    for key,spec in shops.SHOPS.items():  # 카페24를 맨 위에 (지금은 카페24 사장님 대상)
         l=lk.get(key)
         if l:desc,state=(f"문의 {l['n_inq']}건 · 주문 {l['n_ord']}건 가져옴"+(f" · {core.fmt(l['synced'])}" if l['synced'] else ' · 곧 가져와요'),'on') if l['status']=='ok' else (l['note'],'err')
         else:desc,state=(f"주문 {by[spec['channel']]}건 · 엑셀로 올리는 중. 내 키를 넣으면 자동으로 가져와요" if by.get(spec['channel']) else '내 키를 넣으면 문의와 주문을 자동으로 가져와요'),'link'
         rows.append(dict(group='판매처',name=spec['full'],desc=desc,state=state,href=url_for('connect_shop',shop=key)))
-    if c24:rows.append(dict(group='판매처',name='카페24',desc=(f"문의 {c24['n_inq']}건 · 주문 {c24['n_ord']}건 가져옴"+(f" · {core.fmt(c24['synced'])}" if c24['synced'] else '')) if c24['status']=='ok' else c24['note'],state='on' if c24['status']=='ok' else 'err',href=url_for('c24.page')))
-    else:rows.append(dict(group='판매처',name='카페24',desc='카페24 로그인으로 연결하면 주문과 게시판 문의를 자동으로 가져와요' if cafe24.ready() else '소보루가 카페24 앱 등록을 마치면 열려요. 그동안은 주문 엑셀로 써 주세요',state='link' if cafe24.ready() else 'wait',href=url_for('c24.page')))
     rows+=[dict(group='판매처',name=nm,desc=f'주문 {by[ch]}건 · 주문 엑셀(CSV)로 올리는 중' if by.get(ch) else '주문 엑셀(CSV)을 올리면 바로 쓸 수 있어요',
                state='csv' if by.get(ch) else 'ready',href=url_for('orders_page')) for nm,ch in (('자사몰','자사몰'),('오픈마켓','오픈마켓'))]
     if real()['api_enabled']:rows.append(dict(group='개발',name='외부 API·웹훅 (시범)',desc='우리 회사 프로그램에서 문의를 읽고 답하고, 새 문의를 웹훅으로 받아요',state='link',href=url_for('api.manage')))

@@ -9,12 +9,12 @@
 문서: apidocs.cafe24.com > Admin API (Authentication, order/cancellation, return, community/boards)
 시험 운영: 문서대로 만들었고, 실제 쇼핑몰로는 OH 시험 쇼핑몰에서 먼저 확인한다.
 """
-import base64, datetime, hashlib, hmac as _hmac, html, json, re, secrets, time, urllib.parse
+import base64, datetime, hashlib, hmac as _hmac, html, json, logging, re, secrets, time, urllib.parse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, session, current_app
 import core, shops, orders
 from core import conn, clean, digits
 
-bp=Blueprint('c24',__name__)
+bp=Blueprint('c24',__name__);log=logging.getLogger('cafe24')
 SCOPES='mall.read_store,mall.read_product,mall.read_order,mall.write_order,mall.read_community,mall.write_community'
 SCOPE_NAMES={'store':'상점','order':'주문','community':'게시판','customer':'회원','product':'상품'}
 def scope_text(scopes):
@@ -37,7 +37,7 @@ def init():
           actor TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,PRIMARY KEY(company_id,order_no,kind),FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE)''')
         cols={r[1] for r in db.execute('PRAGMA table_info(cafe24_links)')}
         for col,kind in (('boards',"TEXT NOT NULL DEFAULT ''"),('since_b',"TEXT NOT NULL DEFAULT ''"),('n_inq','INTEGER NOT NULL DEFAULT 0'),
-                         ('synced_p',"TEXT NOT NULL DEFAULT ''"),('n_prod','INTEGER NOT NULL DEFAULT 0')):
+                         ('synced_p',"TEXT NOT NULL DEFAULT ''"),('n_prod','INTEGER NOT NULL DEFAULT 0'),('full_o',"TEXT NOT NULL DEFAULT ''")):
             if col not in cols:db.execute(f'ALTER TABLE cafe24_links ADD COLUMN {col} {kind}')
         pc={r[1] for r in db.execute('PRAGMA table_info(products)')}
         for col in ('src','ext_id','src_info'):  # src 'cafe24' + 카페24 상품번호. src_info: 마지막으로 카페24에서 받은 안내 (사장님이 고쳤는지 보려고)
@@ -67,6 +67,10 @@ def _parse_exp(v):
     return core.iso(p) if p else ''
 def store(db,cid,mall,data):
     creds={'mall_id':mall,'access_token':data['access_token'],'refresh_token':data.get('refresh_token','')}
+    old=link(db,cid)
+    if old and old['mall_id']!=mall:  # 다른 쇼핑몰로 바꿔 연결: 글 번호가 겹치지 않게 본 글 기록과 가져온 때를 비운다 (이미 만든 요청은 그대로)
+        db.execute("DELETE FROM shop_seen WHERE company_id=? AND shop='cafe24'",(cid,))
+        db.execute("UPDATE cafe24_links SET since='',since_b='',full_o='',synced_p='',boards='',created=? WHERE company_id=?",(core.iso(),cid))
     db.execute('''INSERT INTO cafe24_links(company_id,mall_id,creds,status,note,scopes,expires,refresh_expires,created) VALUES(?,?,?,'ok','',?,?,?,?)
         ON CONFLICT(company_id) DO UPDATE SET mall_id=excluded.mall_id,creds=excluded.creds,status='ok',note='',scopes=excluded.scopes,expires=excluded.expires,refresh_expires=excluded.refresh_expires''',
         (cid,mall,shops.seal(creds),','.join(data.get('scopes') or []) if isinstance(data.get('scopes'),list) else str(data.get('scopes') or ''),
@@ -79,14 +83,23 @@ def access_token(db,cid):
     creds=shops.unseal(lk['creds'])
     if not creds:
         db.execute("UPDATE cafe24_links SET status='reconnect',note=? WHERE company_id=?",('저장한 연결 정보를 읽지 못했어요.',cid));raise shops.ShopError('카페24를 다시 연결해 주세요.')
-    exp=core.parse(lk['expires'])
-    if exp and exp>core.now()+datetime.timedelta(minutes=5):return lk['mall_id'],creds['access_token']
-    try:data=_token(lk['mall_id'],{'grant_type':'refresh_token','refresh_token':creds['refresh_token']})
-    except shops.ShopError:
-        db.execute("UPDATE cafe24_links SET status='reconnect',note=? WHERE company_id=?",('연결이 만료됐어요. 다시 연결해 주세요.',cid))
-        if lk['status']=='ok':core.notify_company_link_broken(core.company(db,cid),'카페24','연결이 만료됐어요','/connect/cafe24')
-        raise shops.ShopError('카페24 연결이 만료됐어요. 다시 연결해 주세요.')
-    store(db,cid,lk['mall_id'],data)
+    fresh=lambda r:(core.parse(r['expires']) or core.now())>core.now()+datetime.timedelta(minutes=5)
+    if fresh(lk):return lk['mall_id'],creds['access_token']
+    # 갱신 토큰은 한 번 쓰면 바뀐다(카페24). 새 토큰을 잃으면 연결이 끊기므로: 다른 작업(cron·화면·AI 답변)과 겹치지 않게 잠그고,
+    # 그사이 누가 갱신했으면 그 토큰을 쓰고, 받은 토큰은 그 자리에서 저장(커밋)한다. 뒤의 API 호출이 실패해도 되돌리지 않는다
+    db.commit();db.execute('BEGIN IMMEDIATE')
+    try:
+        lk=link(db,cid);creds=shops.unseal(lk['creds']) or creds
+        if fresh(lk):db.commit();return lk['mall_id'],creds['access_token']
+        try:data=_token(lk['mall_id'],{'grant_type':'refresh_token','refresh_token':creds['refresh_token']})
+        except shops.ShopError:
+            db.execute("UPDATE cafe24_links SET status='reconnect',note=? WHERE company_id=?",('연결이 만료됐어요. 다시 연결해 주세요.',cid));db.commit()
+            if lk['status']=='ok':core.notify_company_link_broken(core.company(db,cid),'카페24','연결이 만료됐어요','/connect/cafe24')
+            raise shops.ShopError('카페24 연결이 만료됐어요. 다시 연결해 주세요.')
+        store(db,cid,lk['mall_id'],data);db.commit()
+    except BaseException:
+        if db.in_transaction:db.commit()
+        raise
     return lk['mall_id'],data['access_token']
 
 def api(db,cid,path,params=None,method='GET',payload=None):
@@ -103,12 +116,19 @@ def api(db,cid,path,params=None,method='GET',payload=None):
         raise shops.ShopError(f'카페24가 요청을 거절했어요 ({code}{": "+msg if msg else ""}).')
     return data
 
-C_STATUS={'N00':'paid','N10':'paid','N20':'ready','N21':'ready','N22':'ready','N30':'shipped','N40':'delivered',
-          'C00':'canceled','C10':'canceled','C34':'canceled','C40':'canceled','R00':'returned','R10':'returned','R40':'returned','E00':'exchanged','E40':'exchanged'}
+C_STATUS={'N00':'paid','N10':'paid','N20':'ready','N21':'ready','N22':'ready','N30':'shipped','N40':'delivered','N50':'delivered',  # N00 입금 전도 '결제 완료'로 둔다 (입금 대기 상태가 따로 없음)
+          'C00':'paid','C11':'paid','R00':'delivered','R11':'delivered','R12':'delivered','E00':'delivered','E11':'delivered','E12':'delivered'}  # 신청·거부·보류는 아직 끝난 게 아니다
+def status_of(code):
+    """카페24 주문 상태 코드 -> 소보루 주문 상태. 취소(C)·반품(R)·교환(E)의 처리 중·완료는 앞글자로."""
+    code=str(code or '')
+    return C_STATUS.get(code) or {'C':'canceled','R':'returned','E':'exchanged'}.get(code[:1],'paid')
+FULL_DAYS=14;FULL_EVERY=datetime.timedelta(hours=1)  # 주문일로만 찾아지므로, 한 시간마다 최근 14일 주문을 다시 읽어 배송·취소 변화를 반영한다
 def sync_orders(db,co):
     """카페24 주문 -> 주문 장부 (채널 '자사몰'). 넣거나 고친 수."""
     lk=link(db,co['id']);now=core.now()
     frm=(core.parse(lk['since']) if lk['since'] else now-datetime.timedelta(days=shops.FIRST_DAYS))-datetime.timedelta(minutes=10)
+    full=bool(lk['since']) and (not lk['full_o'] or now-(core.parse(lk['full_o']) or now)>=FULL_EVERY)
+    if full:frm=min(frm,now-datetime.timedelta(days=FULL_DAYS))
     n=0;offset=0
     while offset<5000:
         db.commit()  # 카페24를 기다리는 동안 DB를 잠가 두지 않는다 (그사이 사장님 화면의 저장이 'database is locked'로 실패했다)
@@ -116,7 +136,7 @@ def sync_orders(db,co):
         rows=d.get('orders') or []
         for o in rows:
             items=o.get('items') or [];rc=(o.get('receivers') or [{}])[0]
-            st=C_STATUS.get(str((items[0] if items else {}).get('order_status') or ''),'paid')
+            st=status_of((items[0] if items else {}).get('order_status'))
             names=[i.get('product_name') or '' for i in items]
             n+=shops._order(db,co,'cafe24',dict(channel='자사몰',order_no=str(o.get('order_id','')),ordered_on=str(o.get('order_date') or '')[:10],buyer=o.get('billing_name') or rc.get('name') or '',
                 phone=digits(rc.get('cellphone') or rc.get('phone') or ''),address=' '.join(x for x in (rc.get('address1'),rc.get('address2')) if x),
@@ -127,6 +147,7 @@ def sync_orders(db,co):
         if len(rows)<100:break
         offset+=100
     db.execute("UPDATE cafe24_links SET status='ok',note='',synced=?,since=?,n_ord=n_ord+? WHERE company_id=?",(core.iso(now),core.iso(now),n,co['id']))
+    if full or not lk['full_o']:db.execute('UPDATE cafe24_links SET full_o=? WHERE company_id=?',(core.iso(now),co['id']))
     return n
 
 # ---------- 상품 ----------
@@ -214,13 +235,17 @@ def sync_boards(db,co):
             db.commit()  # 위와 같은 이유
             d=api(db,co['id'],f'/admin/boards/{bno}/articles',{'start_date':frm.strftime('%Y-%m-%d'),'end_date':now.strftime('%Y-%m-%d'),'limit':100,'offset':offset})
             rows=d.get('articles') or []
+            answered={int(a.get('parent_article_no') or 0) for a in rows if int(a.get('parent_article_no') or 0)!=int(a.get('article_no') or 0) and mine(co,lk,a.get('writer') or a.get('nick_name'))}
             for a in sorted(rows,key=lambda x:str(x.get('created_date') or '')):
                 no=int(a.get('article_no') or 0);parent=int(a.get('parent_article_no') or 0)
                 if not no or a.get('notice')=='T' or (a.get('deleted') or 'F')!='F':continue  # 공지·지운 글은 빼고
                 if (parent and parent!=no) or int(a.get('reply_depth') or 0)>1:  # 답글: 고객이 같은 문의에 이어 쓴 것만 그 요청에 붙인다
                     follow(db,co,lk,bno,parent,f"a{bno}:{no}",a.get('writer') or a.get('nick_name') or '',text_of(a.get('content')),a.get('secret')=='T');continue
+                if no in answered:continue  # 가게가 이미 답글을 단 글 (처음 연결할 때 지난 글)
+                at=str(a.get('created_date') or '')[:19].replace('T',' ')
                 c=shops._case(db,co,'cafe24',dict(ext_id=f"b{bno}:{no}:{'s' if a.get('secret')=='T' else 'p'}",title=a.get('title') or '',body=text_of(a.get('content')),
-                    name=a.get('writer') or a.get('nick_name') or '',order_no=str(a.get('order_id') or ''),product=product_name(db,co['id'],a.get('product_no')),at=str(a.get('created_date') or '')[:16].replace('T',' '),channel='카페24'))
+                    name=a.get('writer') or a.get('nick_name') or '',order_no=str(a.get('order_id') or ''),product=product_name(db,co['id'],a.get('product_no')),at=at[:16],channel='카페24',
+                    ai=bool(at) and at>=max(lk['created'] or '',co['ai_reply'] or '')))  # AI는 연결·켠 뒤에 올라온 글에만 답한다 (지난 글은 승인 목록으로)
                 if c:new.append(c)
             if len(rows)<100:break
             offset+=100
@@ -258,6 +283,7 @@ def follow(db,co,lk,bno,parent,ext,writer,text,secret):
     if c and c['status'] not in core.FINAL:
         core.add_event(db,c['id'],'me',text);core.notify_company_msg(db,c['id'],text)
         if c['status'] in ('answered','info'):db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],))
+        if c['decision'] in ('auto','ai'):db.execute("UPDATE cases SET decision='pending' WHERE id=?",(c['id'],))  # AI가 답한 글에 고객이 다시 쓰면 사장님이 본다
         db.execute('UPDATE cases SET updated=? WHERE id=?',(core.iso(),c['id']))
         db.execute("INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)",(co['id'],'cafe24',ext,c['id']));return c
     # 끝난 요청에 다시 쓰면 새 요청 (답변은 처음 글에 답글로 올라간다)
@@ -334,17 +360,20 @@ def sync_all():
     if not ready():return 0
     n=0
     with conn() as db:rows=db.execute("SELECT c.* FROM cafe24_links l JOIN companies c ON c.id=l.company_id WHERE l.status='ok' AND c.member=1 AND c.status='active'").fetchall()
-    for co in rows:
+    for co in rows:  # 한 쇼핑몰·한 단계가 실패해도 나머지는 계속 (예상 못 한 오류도 기록만 하고 넘어간다)
         try:
             with conn() as db:n+=sync_orders(db,co)
         except shops.ShopError:pass
+        except Exception:log.exception('카페24 주문 가져오기 실패 (회사 %s)',co['id'])
         try:
             with conn() as db:sync_products(db,co)  # 상품을 먼저 (상품 문의에 이름을 붙이려고)
         except shops.ShopError:pass
+        except Exception:log.exception('카페24 상품 가져오기 실패 (회사 %s)',co['id'])
         try:
             with conn() as db:new=sync_boards(db,co);n+=len(new)
-            for c in new[:5]:core.notify_company_new(co,c)  # 한꺼번에 많이 들어와도 알림은 5건까지
+            for c in [c for c in new if c['decision']!='ai'][:5]:core.notify_company_new(co,c)  # AI가 먼저 보는 문의는 넘겨받을 때 알린다. 한꺼번에 많아도 5건까지
         except shops.ShopError:pass  # 게시판 권한이 없는 예전 연결은 주문만
+        except Exception:log.exception('카페24 문의 가져오기 실패 (회사 %s)',co['id'])
     return n
 
 # ---------- 화면 ----------
@@ -439,7 +468,7 @@ def page():
                         return redirect(authorize_url(mall,state))
         return redirect(url_for('c24.page'))
     with conn() as db:lk=link(db,co['id'])
-    return render_template('b_cafe24.html',scope_text=scope_text,lk=lk,ready=ready(),scopes=SCOPES,tab='connect',watch=boards_of(lk) if lk else None,pick=None,launch=session.pop('c24_launch',None))
+    return render_template('b_cafe24.html',scope_text=scope_text,lk=lk,ready=ready(),scopes=SCOPES,tab='connect',watch=boards_of(lk) if lk else None,pick=None,launch=session.pop('c24_launch',None) if co['member'] else session.get('c24_launch'))
 
 @bp.route('/connect/cafe24/callback')
 def callback():

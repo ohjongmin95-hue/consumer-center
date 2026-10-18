@@ -1314,7 +1314,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(page.count('class="tour-step'),8);self.assertIn('/static/tour/home-d.jpg',page);self.assertNotIn('noindex',page)
         for slug in ('smartstore','coupang','cafe24'):
             r=c.get('/biz/for/'+slug);self.assertEqual(r.status_code,200)
-        self.assertIn('연동 대기',c.get('/biz/for/cafe24').get_data(as_text=True))
+        page=c.get('/biz/for/cafe24').get_data(as_text=True);self.assertIn('지금 됨',page);self.assertNotIn('>연동 대기<',page)
         self.assertEqual(c.get('/biz/for/nope').status_code,404)
         page=c.get('/biz/industries').get_data(as_text=True)
         for slug in ('fashion','beauty','food','living','digital','furniture'):

@@ -267,7 +267,7 @@ def _case(db,co,shop,q):
     cat=core.classify(title+' '+body) or '기타';t=core.iso()
     due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))
     import chatbot
-    dec='ai' if chatbot.auto_on(core.company(db,co['id'])) else 'pending'  # AI 자동 답변이 켜져 있으면 AI가 먼저 본다 (승인 목록엔 AI가 넘긴 것만)
+    dec='ai' if q.get('ai',True) and chatbot.auto_on(core.company(db,co['id'])) else 'pending'  # AI 자동 답변이 켜져 있으면 AI가 먼저 본다 (승인 목록엔 AI가 넘긴 것만)
     cid=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
         VALUES(?,?,?,1,?,?,?,?,?,?,'','',?,1,'forwarded',?,?,?,?,?,'',?)''',(core.new_case_no(db),co['id'],co['name'],cat,title,body,core.WANT_OF.get(cat,'기타'),
         clean(q['order_no'],40),clean(q['name'],20),generate_password_hash(secrets.token_hex(16)),dec,due,t,t,clean(q['product'],60),ch)).lastrowid
