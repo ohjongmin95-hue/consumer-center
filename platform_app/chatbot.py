@@ -168,8 +168,11 @@ def auto_reply(db,co,c):
     if not ai:
         db.execute("UPDATE cases SET decision='pending' WHERE id=? AND decision='ai'",(c['id'],));return 'failed'
     ok=lambda cat:core.rule_for(db,co['id'],cat)['ai_ok']  # 사장님이 '내 승인 후'로 정한 유형이면 AI가 답할 수 있어도 넘긴다 (기본: 취소·변경·교환·반품·환불·불량)
-    if ai['handoff'] or ai['lookup'] or not ok(c['category']) or (ai['category'] and not ok(ai['category'])):
-        note='AI가 사람 확인이 필요하다고 봐서 답하지 않았어요.'+('\n'+ai['summary'] if ai['summary'] else '')
+    why=[f"'{x}' 유형은 승인 후 답하기로 정해 두셨어요" for x in dict.fromkeys((c['category'],ai['category'])) if x and not ok(x)]
+    if ai['lookup']:why.append('주문 정보가 없어 답할 수 없어요')
+    if ai['handoff'] and not why:why.append('AI가 사람 확인이 필요하다고 봤어요 (정보가 없거나, 처리가 필요하거나, 불만이 커요)')
+    if why:
+        note='AI가 답하지 않고 넘겼어요: '+' · '.join(why)+('\n'+ai['summary'] if ai['summary'] else '')+('\n\nAI 답변 초안:\n'+ai['answer'] if ai['answer'] and not ai['handoff'] else '')
         db.execute('INSERT INTO notes(case_id,company_id,author,text,created) VALUES(?,?,?,?,?)',(c['id'],co['id'],'AI',note[:2000],core.iso()))
         db.execute("UPDATE cases SET decision='pending' WHERE id=? AND decision='ai'",(c['id'],))
         return 'handoff'
