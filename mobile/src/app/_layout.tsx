@@ -48,12 +48,12 @@ function Intro() {
 }
 
 export default function RootLayout() {
-  // 새 요청 알림을 누르면 그 요청 화면으로
+  // 알림을 누르면 그 요청 화면으로
   useEffect(() => {
     if (!Notifications) return;
     const sub = Notifications.addNotificationResponseReceivedListener((r) => {
       const id = (r.notification.request.content.data as { case_id?: number } | undefined)?.case_id;
-      if (id) router.push(`/case/${id}`);
+      router.push(id ? `/case/${id}` : '/alerts'); // 연결 끊김처럼 요청이 없는 알림은 알림 화면으로
     });
     return () => sub.remove();
   }, []);
@@ -81,6 +81,7 @@ export default function RootLayout() {
           <Stack.Screen name="products" options={{ title: '상품정보' }} />
           <Stack.Screen name="stats" options={{ title: '처리 통계' }} />
           <Stack.Screen name="report" options={{ title: '월간 리포트' }} />
+          <Stack.Screen name="alerts" options={{ title: '알림' }} />
           <Stack.Screen name="settings" options={{ title: '회사 정보와 알림 설정' }} />
           <Stack.Screen name="leave" options={{ title: '회원 탈퇴' }} />
           <Stack.Screen name="guide" options={{ title: '응대 가이드' }} />

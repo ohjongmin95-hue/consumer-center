@@ -289,7 +289,7 @@ def follow(db,co,lk,bno,parent,ext,writer,text,secret):
     # 끝난 요청에 다시 쓰면 새 요청 (답변은 처음 글에 답글로 올라간다)
     n=shops._case(db,co,'cafe24',dict(ext_id=f"b{bno}:{parent}:{'s' if secret else 'p'}:{ext}",title='다시 문의: '+((c['title'] if c else '') or '카페24 문의'),body=text,
         name=writer,order_no=(c['order_no'] if c else ''),product='',at='',channel='카페24'))
-    if n:core.notify_company_new(co,n)
+    if n:core.notify_company_new(co,n,db)
     return n
 def post_reply(db,co,c,ext_id,text):
     """소보루에서 쓴 답변을 카페24 게시판 답글로 올린다. 올리면 '', 못 올리면 이유."""

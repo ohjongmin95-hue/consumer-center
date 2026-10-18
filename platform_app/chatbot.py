@@ -171,7 +171,7 @@ def _to_owner(db,c,note=''):
     """사장님 승인 목록으로 넘기고 알린다 (AI가 먼저 보는 문의는 들어올 때 알리지 않았다)."""
     if note:_note(db,c,note)
     if db.execute("UPDATE cases SET decision='pending' WHERE id=? AND decision='ai'",(c['id'],)).rowcount:
-        co=core.company(db,c['company_id']);core.notify_company_new(co,db.execute('SELECT * FROM cases WHERE id=?',(c['id'],)).fetchone())
+        co=core.company(db,c['company_id']);core.notify_company_new(co,db.execute('SELECT * FROM cases WHERE id=?',(c['id'],)).fetchone(),db)
 def auto_reply(case_id):
     """문의 하나에 AI 자동 답변. -> 'sent' | 'handoff' | 'failed' | None (대상 아님·이미 누가 처리)
     DB를 잠근 채로 AI·카페24를 기다리지 않는다: 맡기(ai_tried)만 먼저 커밋하고, 답은 밖에서 받고, 보내기 직전에 다시 맡는다."""
@@ -205,6 +205,8 @@ def auto_reply(case_id):
             db.execute("UPDATE cases SET status='forwarded',decision='ai' WHERE id=?",(case_id,))
             _to_owner(db,c,'AI가 쓴 답변 (카페24 등에 보내지 못했어요. 확인하고 보내 주세요):\n'+ai['answer'])
             return 'failed'
+        core.alert(core.company(db,c['company_id']),'ai','AI가 답했어요: '+c['category'],core.short(c['title'],60),case_id=case_id,db=db,
+            mail=(f"[{core.BNAME}] AI가 답했어요: {c['title']}",f"AI가 답한 내용:\n{ai['answer']}\n\n{core.site_url('biz','/case/%d'%case_id)}"))
     return 'sent'
 def auto_reply_all():
     """AI 확인 중('ai')인 문의에 답한다. 껐거나 AI를 못 쓰면, 그리고 너무 오래 걸린 건 승인 목록으로 돌린다. -> 보낸 수"""

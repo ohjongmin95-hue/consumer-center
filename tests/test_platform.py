@@ -1693,6 +1693,36 @@ class PlatformTest(unittest.TestCase):
                 self.assertIn('카페24 반품 접수',db.execute('SELECT memo FROM orders WHERE id=?',(ob,)).fetchone()[0])
                 self.assertTrue(any('반품 접수를 보냈어요' in e['text'] for e in self.core.events(db,case_id)))
 
+    def test_biz_alerts(self):
+        """알림: 모두 목록에 남고, 앱 알림·이메일은 종류별 설정대로. 목록을 열면 읽음. 웹·앱에서 설정을 바꾼다."""
+        core=self.core
+        b,o,cid=self.signup_and_approve('알림상점','alerts@example.com')
+        pushed=[];mails=[];old_push,old_mail=core.expo_push,core.send_mail
+        core.expo_push=lambda toks,title,body,data,table:pushed.append(title);core.send_mail=lambda to,subj,body,*a,**k:mails.append(subj)
+        try:
+            with core.conn() as db:
+                co=core.company(db,cid)
+                core.alert(co,'ai','AI가 답했어요: 배송','언제 와요?',mail=('ai-mail','x'),db=db)  # 기본: 목록에만
+                core.alert(co,'new','승인할 문의: 반품·환불','토너 반품',mail=('new-mail','x'),db=db)  # 기본: 앱 알림 + 이메일
+            self.assertEqual(pushed,['승인할 문의: 반품·환불']);self.assertEqual(mails,['new-mail'])
+            self.assertIn('알림 2건 안 읽음',b.get('/biz/').get_data(as_text=True))
+            page=b.get('/biz/alerts').get_data(as_text=True);self.assertIn('AI가 답했어요: 배송',page);self.assertIn('토너 반품',page)
+            self.assertIn('알림 0건 안 읽음',b.get('/biz/alerts').get_data(as_text=True))
+            self.post(b,'/biz/alerts',{'ai.push':'1'})
+            with core.conn() as db:p=core.alert_prefs(core.company(db,cid))
+            self.assertEqual(p['ai'],{'push':1,'email':0});self.assertEqual(p['new'],{'push':0,'email':0})
+            pushed.clear()
+            with core.conn() as db:core.alert(core.company(db,cid),'ai','AI가 답했어요: 사용법','',db=db);core.alert(core.company(db,cid),'new','승인할 문의: 교환','',db=db)
+            self.assertEqual(pushed,['AI가 답했어요: 사용법'])
+            tok=b.post('/biz/api/v1/login',json={'login_id':'alerts@example.com','password':'longpassword1'}).get_json()['token'];auth={'Authorization':'Bearer '+tok}
+            self.assertEqual(b.get('/biz/api/v1/home',headers=auth).get_json()['counts']['alerts'],2)
+            j=b.get('/biz/api/v1/alerts',headers=auth).get_json()
+            self.assertEqual(len(j['items']),4);self.assertTrue(j['items'][0]['new']);self.assertEqual([k['key'] for k in j['kinds']][:3],['new','msg','ai'])
+            self.assertEqual(b.get('/biz/api/v1/home',headers=auth).get_json()['counts']['alerts'],0)
+            j=b.post('/biz/api/v1/alerts',headers=auth,json={'act':'prefs','new.push':True,'new.email':True}).get_json()
+            self.assertEqual(j['prefs']['new'],{'push':1,'email':1});self.assertEqual(j['prefs']['ai'],{'push':0,'email':0})
+        finally:core.expo_push,core.send_mail=old_push,old_mail
+
     def test_cafe24_products_and_ai_reply(self):
         """카페24 상품 -> 상품정보 (사장님이 고친 안내는 그대로, 상품 권한 없는 예전 연결은 건너뜀). 상품 문의엔 상품 이름.
         AI 초안은 상품정보를 본다. AI 자동 답변: 단순 문의는 답해서 카페24에 올리고 완료, 반품 등은 안 보내고 메모. 개인정보는 가려서 보낸다."""

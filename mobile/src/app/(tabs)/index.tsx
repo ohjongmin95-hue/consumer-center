@@ -8,7 +8,7 @@ import { Icon } from '../../components/Icon';
 import { catTf, TfTile } from '../../components/Tf';
 import { Card, H2, LinkBar, Loading, Notice, SmallBtn, StatRow, Tile, TopBar } from '../../components/ui';
 import { api, ApiError, Home } from '../../lib/api';
-import { setPending } from '../../lib/badge';
+import { setAlerts, setPending } from '../../lib/badge';
 import { useAuth } from '../../lib/auth';
 import { C, R, FONT } from '../../lib/theme';
 
@@ -26,6 +26,7 @@ export default function HomeTab() {
       const h = await api.home(session.token);
       setHome(h);
       setPending(h.counts.pending);
+      setAlerts(h.counts.alerts ?? 0);
       setErr('');
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) return logout();

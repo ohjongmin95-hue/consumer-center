@@ -64,7 +64,7 @@ export type Home = {
   hello?: string;
   brief?: string[];
   kpi: Kpi;
-  counts: { all: number; pending: number; open: number; late: number; auto_rules: number; ret?: number; comp?: number; today?: number };
+  counts: { all: number; pending: number; open: number; late: number; auto_rules: number; ret?: number; comp?: number; today?: number; alerts?: number };
   pending: BizCase[];
   recent: BizCase[];
   alerts?: Alert[];
@@ -107,6 +107,11 @@ export type RetCase = BizCase & { stage: string; stage_label: string };
 export type Returns = { stages: { key: string; label: string; n: number }[]; cases: RetCase[] };
 export type Macro = { id: number; name: string; body: string; tags: string; used: number };
 export type Macros = { macros: Macro[]; vars: string[]; max: number; message?: string };
+
+export type AlertKind = { key: string; label: string; sub: string };
+export type AlertPrefs = Record<string, { push: number; email: number }>;
+export type BizAlert = { id: number; kind: string; title: string; body: string; case_id: number | null; created: string; new: boolean };
+export type Alerts = { items: BizAlert[]; prefs: AlertPrefs; kinds: AlertKind[]; message?: string };
 
 export class ApiError extends Error {
   constructor(message: string, public status = 0) {
@@ -164,6 +169,8 @@ export const api = {
   returns: (t: string, st = '') => call<Returns>('/api/v1/returns?s=' + st, {}, t),
   macros: (t: string) => call<Macros>('/api/v1/macros', {}, t),
   saveMacro: (t: string, f: { id?: number; name?: string; body?: string; tags?: string; act?: 'delete' }) => call<Macros>('/api/v1/macros', json(f), t),
+  alerts: (t: string) => call<Alerts>('/api/v1/alerts', {}, t),
+  saveAlerts: (t: string, f: Record<string, string | boolean>) => call<Alerts>('/api/v1/alerts', json({ act: 'prefs', ...f }), t),
   leave: (t: string, password: string) => call<{ ok: boolean; message: string }>('/api/v1/leave', json({ password }), t),
 };
 

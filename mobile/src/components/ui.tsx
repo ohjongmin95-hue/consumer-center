@@ -5,14 +5,16 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleProp, StyleSheet,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
-import { pendingKnown, setPending } from '../lib/badge';
+import { pendingKnown, setPending, useAlerts } from '../lib/badge';
+import { Icon } from './Icon';
 import { C, R, STATUS_TONE, FONT } from '../lib/theme';
 import { Tf, TfName } from './Tf';
 
-// 웹 머리글과 같은 줄: 왼쪽 소보루 CS 로고, 오른쪽 승인할 일 종(숫자)과 회사 이름
+// 웹 머리글과 같은 줄: 왼쪽 소보루 CS 로고, 오른쪽 알림 종(안 읽은 수)과 회사 이름
 export function TopBar() {
   const { session } = useAuth();
   const name = session?.company.name ?? '';
+  const unread = useAlerts();
   // 홈을 거치지 않고 다른 탭부터 열었으면 승인 탭 숫자를 한 번 받아 온다
   useEffect(() => {
     if (session && !pendingKnown()) api.cases(session.token, 'pending').then((r) => setPending(r.cases.length), () => {});
@@ -23,7 +25,15 @@ export function TopBar() {
         <Image source={require('../../assets/soboru-char.png')} style={{ width: 34, height: 26 }} resizeMode="contain" />
         <Text style={s.logoText}>소보루 CS</Text>
       </Pressable>
-      <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]}>
+      <Pressable onPress={() => router.push('/alerts')} style={({ pressed }) => [s.bell, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]} hitSlop={6} accessibilityLabel={`알림 ${unread}건 안 읽음`}>
+        <Icon name="bell" size={26} />
+        {unread ? (
+          <View style={s.bellCnt}>
+            <Text style={s.bellCntText}>{unread > 99 ? '99+' : unread}</Text>
+          </View>
+        ) : null}
+      </Pressable>
+      <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, pressed && { opacity: 0.7 }]}>
         <View style={s.coDot}>
           <Text style={s.coDotText}>{name.slice(0, 1)}</Text>
         </View>
@@ -265,6 +275,9 @@ export const s = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
   logo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   logoText: { fontFamily: FONT, fontSize: 19, fontWeight: '800', color: C.brand, letterSpacing: -0.6 },
+  bell: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  bellCnt: { position: 'absolute', top: 0, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center' },
+  bellCntText: { fontFamily: FONT, fontSize: 11, fontWeight: '700', color: '#fff' },
   coChip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: 18, backgroundColor: C.card, maxWidth: 150 },
   coDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
   coDotText: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: '#fff' },

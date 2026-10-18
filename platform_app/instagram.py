@@ -94,7 +94,7 @@ def refresh_all():
 def fail(db,cid,msg):
     lk=link(db,cid)
     db.execute("UPDATE ig_links SET status='error',note=? WHERE company_id=?",(msg,cid))
-    if lk and lk['status']=='ok':core.notify_company_link_broken(core.company(db,cid),'인스타그램 DM',msg,'/connect/instagram')  # 처음 끊겼을 때만
+    if lk and lk['status']=='ok':core.notify_company_link_broken(core.company(db,cid),'인스타그램 DM',msg,'/connect/instagram',db)  # 처음 끊겼을 때만
 
 # ---------- DM 받기 ----------
 def signature_ok(raw,header):

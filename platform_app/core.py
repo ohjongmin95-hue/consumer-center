@@ -188,9 +188,12 @@ def init():
         for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),
                          ('return_courier',"TEXT NOT NULL DEFAULT ''"),('return_memo',"TEXT NOT NULL DEFAULT ''"),('kakao',"INTEGER NOT NULL DEFAULT 0"),('report_mail',"INTEGER NOT NULL DEFAULT 1"),
                          ('widget_seen',"TEXT NOT NULL DEFAULT ''"),('widget_host',"TEXT NOT NULL DEFAULT ''"),
-                         ('ai_reply',"TEXT NOT NULL DEFAULT ''")):  # ai_reply: 'AI 자동 답변'을 켠 때 ('' = 꺼짐). 켠 뒤에 들어온 문의에만 답한다
+                         ('ai_reply',"TEXT NOT NULL DEFAULT ''"),('alert_prefs',"TEXT NOT NULL DEFAULT ''")):  # alert_prefs: 알림 종류별 받을 곳(JSON, ALERTS 기본값을 덮는다). ai_reply: 'AI 자동 답변'을 켠 때 ('' = 꺼짐). 켠 뒤에 들어온 문의에만 답한다
             if col not in cols:db.execute(f'ALTER TABLE companies ADD COLUMN {col} {kind}')
         db.executescript('''
+        CREATE TABLE IF NOT EXISTS biz_alerts(id INTEGER PRIMARY KEY,company_id INTEGER NOT NULL,kind TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL DEFAULT '',
+          case_id INTEGER,path TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,read_at TEXT NOT NULL DEFAULT '',FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
+        CREATE INDEX IF NOT EXISTS biz_alerts_co ON biz_alerts(company_id,id);
         CREATE TABLE IF NOT EXISTS news(id INTEGER PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,source_url TEXT NOT NULL,created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sent_marks(kind TEXT NOT NULL,company_id INTEGER NOT NULL,key TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(kind,company_id,key));
         CREATE TABLE IF NOT EXISTS copy_edits(id INTEGER PRIMARY KEY,site TEXT NOT NULL,src TEXT NOT NULL,dst TEXT NOT NULL,created TEXT NOT NULL,UNIQUE(site,src));
@@ -447,6 +450,7 @@ def purge_old(today=None):
             db.execute('DELETE FROM cases WHERE id=?',(c['id'],));n+=1
         db.execute('DELETE FROM mail_log WHERE created<?',(cut,))
         db.execute('DELETE FROM orders WHERE updated<?',(cut,))  # 기업이 올린 주문(구매자 정보 포함)도 같은 기간 뒤 파기
+        db.execute('DELETE FROM biz_alerts WHERE created<?',(iso((today or now())-datetime.timedelta(days=ALERT_KEEP_DAYS)),))  # 사장님 알림 목록은 90일만
     return n
 
 def notify_late():
@@ -457,7 +461,8 @@ def notify_late():
             if not overdue(c) or c['late_sent']==c['due']:continue
             if not is_direct(c):send_mail(c['email'],f'[{CNAME}] 기업 답변이 늦어지고 있어요',f"{c['company_name']}의 답변이 아직 없어요.\n접수 화면에서 기업에 다시 요청하거나 공식 피해구제 절차를 확인할 수 있어요.\n\n■ 접수번호: {c['no']}\n{site_or_blank('me','/mine')}")
             co=company(db,c['company_id'])
-            if co:send_mail(co['notify_email'],f"[{BNAME}] 답변 기한이 지났습니다: {c['title']}",f"소비자에게 답변 지연을 알렸습니다. 지금 답변해 주세요.\n{site_or_blank('biz','/case/%d'%c['id'])}")
+            if co:alert(co,'late','답변 기한이 지났어요',short(c['title'],60),case_id=c['id'],db=db,
+                mail=(f"[{BNAME}] 답변 기한이 지났습니다: {c['title']}",f"소비자에게 답변 지연을 알렸습니다. 지금 답변해 주세요.\n{site_or_blank('biz','/case/%d'%c['id'])}"))
             add_event(db,c['id'],'sys','답변 목표일이 지나 소비자와 기업에 알렸어요')
             db.execute('UPDATE cases SET late_sent=? WHERE id=?',(c['due'],c['id']));n+=1
     return n
@@ -535,25 +540,70 @@ def expo_push(toks,title,body,data,table):
     threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
 _msg_push={}
 def notify_company_msg(db,case_id,text):
-    """고객이 진행 중인 요청에 말을 더 하면 사장님 앱에 알림 (같은 요청은 1분에 한 번만)."""
+    """고객이 진행 중인 요청에 말을 더 하면 사장님께 알림 (같은 요청은 1분에 한 번만)."""
     c=db.execute('SELECT id,company_id,member,consent,title FROM cases WHERE id=?',(case_id,)).fetchone()
     if not c or not c['company_id'] or not (c['member'] and c['consent']):return
     t=now().timestamp()
     if t-_msg_push.get(case_id,0)<60:return
     _msg_push[case_id]=t
-    send_biz_push(c['company_id'],'고객 메시지: '+short(c['title'],24),short(text,60),c['id'])
-def notify_company_new(co,c):
-    """입점 기업에 새 요청 알림: 이메일, 그리고 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
+    co=company(db,c['company_id'])
+    if co:alert(co,'msg','고객 메시지: '+short(c['title'],24),short(text,60),case_id=c['id'],db=db,
+        mail=(f"[{BNAME}] 고객의 새 메시지: {c['title']}",f"{short(text,200)}\n\n{site_url('biz','/case/%d'%c['id'])}"))
+def notify_company_new(co,c,db=None):
+    """입점 기업에 새 요청 알림: 알림 목록, 앱 알림·이메일(알림 설정대로), 켜 두었으면 휴대폰 알림톡(누르면 승인 화면)."""
     if c['decision']=='ai':return  # AI가 먼저 보는 문의: 사장님께 넘길 때 알린다 (chatbot._to_owner)
     link=site_url('biz','/case/%d'%c['id'])
-    send_mail(co['notify_email'],f"[{BNAME}] 새 요청: {c['title']}",
-        f"{co['name']}에 새 요청이 들어왔습니다.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 처리 방법을 보고 승인해 주세요.\n{link}")
+    alert(co,'new',f"승인할 문의: {c['category']}",short(c['title'],60),case_id=c['id'],db=db,
+        mail=(f"[{BNAME}] 새 요청: {c['title']}",f"{co['name']}에 새 요청이 들어왔습니다.\n\n■ 유형: {c['category']}\n■ 요약: {c['title']}\n\n요약과 처리 방법을 보고 승인해 주세요.\n{link}"))
     if co['kakao']:send_kakao(co['phone'],{'#{회사}':short(co['name'],20),'#{유형}':c['category'],'#{요약}':short(c['title']),'#{링크}':link})
-    send_biz_push(co['id'],f"새 요청: {c['category']}",short(c['title']),c['id'])
 
-def notify_company_link_broken(co,what,why,path):
+def notify_company_link_broken(co,what,why,path,db=None):
     """판매처·카페24 연결이 막 끊겼을 때 한 번 알린다 (계속 실패해도 다시 보내지 않는다)."""
-    send_mail(co['notify_email'],f"[{BNAME}] {what} 연결을 확인해 주세요",f"{co['name']}의 {what} 연결이 멈췄어요. 그동안 새 문의·주문을 가져오지 못해요.\n\n■ 이유: {why}\n\n아래에서 다시 연결해 주세요.\n{site_url('biz',path)}")
+    alert(co,'link',f"{what} 연결이 멈췄어요",why,path=path,db=db,
+        mail=(f"[{BNAME}] {what} 연결을 확인해 주세요",f"{co['name']}의 {what} 연결이 멈췄어요. 그동안 새 문의·주문을 가져오지 못해요.\n\n■ 이유: {why}\n\n아래에서 다시 연결해 주세요.\n{site_url('biz',path)}"))
+
+# ---------- 사장님 알림 (알림 목록 + 종류별 받을 곳) ----------
+# 알림은 모두 알림 목록(웹 /alerts, 앱 알림 화면)에 남고, 앱 알림·이메일은 회사가 고른 종류만 보낸다. 알림톡은 '새 요청'에만 (설정 화면의 알림톡 스위치).
+ALERTS=(('new','승인할 문의','AI가 넘기거나 사장님 승인이 필요한 새 문의',dict(push=1,email=1)),
+        ('msg','고객의 새 메시지','진행 중인 문의에 고객이 말을 더 했을 때',dict(push=1,email=0)),
+        ('ai','AI가 답한 문의','AI가 단순 문의에 답했을 때 (목록에서 확인)',dict(push=0,email=0)),
+        ('late','답변 기한','답변 기한이 지났을 때',dict(push=1,email=1)),
+        ('link','연결 끊김','카페24·인스타그램·이메일 연결이 멈췄을 때',dict(push=1,email=1)))
+ALERT_KEEP_DAYS=90
+def alert_prefs(co):
+    """{종류: {'push':0|1,'email':0|1}} — 저장한 값이 없으면 기본값."""
+    try:saved=json.loads(co['alert_prefs'] or '{}')
+    except (ValueError,TypeError,IndexError,KeyError):saved={}
+    out={}
+    for k,_,_,d in ALERTS:
+        v=saved.get(k) if isinstance(saved.get(k),dict) else {}
+        out[k]={ch:int(bool(v.get(ch,d[ch]))) for ch in ('push','email')}
+    return out
+def save_alert_prefs(db,co,f):
+    """f: {'new.push':'1', ...} 처럼 켠 칸만 온다 (웹 폼·앱 공용). 없는 칸은 끔."""
+    on=lambda k:str(f.get(k)) in ('1','True','true','on')
+    prefs={k:{ch:int(on(f'{k}.{ch}')) for ch in ('push','email')} for k,_,_,_ in ALERTS}
+    db.execute('UPDATE companies SET alert_prefs=? WHERE id=?',(json.dumps(prefs),co['id']));return prefs
+def alert(co,kind,title,body='',case_id=None,path='',mail=None,db=None):
+    """알림 하나: 목록에 남기고, 설정대로 앱 알림·이메일. db를 주면 그 거래 안에서 쓴다 (부른 쪽이 쓰는 중일 때 잠금을 피하려고)."""
+    def put(d):
+        d.execute('INSERT INTO biz_alerts(company_id,kind,title,body,case_id,path,created) VALUES(?,?,?,?,?,?,?)',(co['id'],kind,title,body,case_id,path,iso()))
+    try:
+        if db is not None:put(db)
+        else:
+            with conn() as d:put(d)
+    except sqlite3.OperationalError:pass  # 목록 기록이 막혀도 알림은 보낸다
+    p=alert_prefs(co).get(kind,{})
+    if p.get('email') and mail:send_mail(co['notify_email'],*mail)
+    if p.get('push'):send_biz_push(co['id'],title,body,case_id)
+def unread_alerts(db,cid):
+    return db.execute("SELECT COUNT(*) FROM biz_alerts WHERE company_id=? AND read_at=''",(cid,)).fetchone()[0]
+def list_alerts(db,cid,limit=100):
+    return db.execute('SELECT * FROM biz_alerts WHERE company_id=? ORDER BY id DESC LIMIT ?',(cid,limit)).fetchall()
+def read_alerts(db,cid,case_id=None):
+    """다 읽음 (case_id를 주면 그 문의 알림만: 문의를 열었을 때)."""
+    if case_id is None:db.execute("UPDATE biz_alerts SET read_at=? WHERE company_id=? AND read_at=''",(iso(),cid))
+    else:db.execute("UPDATE biz_alerts SET read_at=? WHERE company_id=? AND case_id=? AND read_at=''",(iso(),cid,case_id))
 
 # ---------- 문구 고치기 (운영 화면 /ops/copy) ----------
 # 운영자가 화면 문구를 바꾸거나 지우면, 페이지를 내보내기 직전에 글자 부분(태그 사이 글자와 입력칸 안내 글)만 바꾼다.
