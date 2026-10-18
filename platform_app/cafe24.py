@@ -9,7 +9,7 @@
 문서: apidocs.cafe24.com > Admin API (Authentication, order/cancellation, return, community/boards)
 시험 운영: 문서대로 만들었고, 실제 쇼핑몰로는 OH 시험 쇼핑몰에서 먼저 확인한다.
 """
-import base64, datetime, hashlib, hmac as _hmac, html, json, logging, os, re, secrets, time, urllib.parse
+import base64, datetime, hashlib, hmac as _hmac, html, json, logging, os, re, secrets, threading, time, urllib.parse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, session, current_app
 import core, shops, orders
 from core import conn, clean, digits
@@ -309,8 +309,33 @@ def sync_boards(db,co):
                 if c:new.append(c)
             if len(rows)<100:break
             offset+=100
+    new+=sync_urgent(db,co,lk,frm,now)
     sync_comments(db,co,lk)
     db.execute('UPDATE cafe24_links SET since_b=?,n_inq=n_inq+? WHERE company_id=?',(core.iso(now),len(new),co['id']))
+    return new
+def sync_urgent(db,co,lk,frm,now):
+    """카페24 긴급문의 -> 소보루 요청 (답변은 그 긴급문의의 답변으로 올라간다). 이미 답한 긴급문의는 빼고. 새로 만든 요청 목록."""
+    new=[];seen_m={};offset=0
+    while offset<2000:
+        db.commit()  # 카페24를 기다리는 동안 DB를 잠그지 않게
+        try:d=api(db,co['id'],'/admin/urgentinquiry',{'start_date':frm.strftime('%Y-%m-%d'),'end_date':now.strftime('%Y-%m-%d'),'limit':100,'offset':offset})
+        except shops.ShopError:return new  # 긴급문의를 못 읽어도 게시판 가져오기는 그대로
+        rows=d.get('urgentinquiry') or []
+        for a in sorted(rows,key=lambda x:str(x.get('start_date') or '')):
+            no=int(a.get('article_no') or 0)
+            if not no or a.get('reply_status')=='T':continue  # 가게가 카페24에서 이미 답한 것
+            ext=f'u{no}'
+            if db.execute("SELECT 1 FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id=?",(co['id'],ext)).fetchone():continue
+            at=str(a.get('start_date') or '')[:19].replace('T',' ')
+            ono='';mid=str(a.get('member_id') or '').strip()
+            if mid:
+                if mid not in seen_m:seen_m[mid]=member_order(db,co,mid)
+                ono=seen_m[mid]
+            c=shops._case(db,co,'cafe24',dict(ext_id=ext,title='[긴급문의] '+(a.get('title') or ''),body=text_of(a.get('content')),
+                name=a.get('writer') or '',order_no=ono,product='',at=at[:16],channel='카페24',ai=bool(at) and at>=max(lk['created'] or '',co['ai_reply'] or '')))
+            if c:new.append(c)
+        if len(rows)<100:break
+        offset+=100
     return new
 OPEN_COMMENTS=30  # 한 번에 댓글을 확인하는 진행 중 요청 수 (호출을 아끼려고)
 def sync_comments(db,co,lk):
@@ -352,7 +377,14 @@ def follow(db,co,lk,bno,parent,ext,writer,text,secret):
     if n:core.notify_company_new(co,n,db)
     return n
 def post_reply(db,co,c,ext_id,text):
-    """소보루에서 쓴 답변을 카페24 게시판 답글로 올린다. 올리면 '', 못 올리면 이유."""
+    """소보루에서 쓴 답변을 카페24 게시판 답글(긴급문의는 긴급문의 답변)로 올린다. 올리면 '', 못 올리면 이유."""
+    u=re.fullmatch(r'u(\d+)',ext_id or '')
+    if u:
+        lk=link(db,co['id'])
+        if not lk:return '카페24 연결이 끊겼어요. 서비스 연동에서 다시 연결해 주세요.'
+        try:api(db,co['id'],f'/admin/urgentinquiry/{int(u[1])}/reply',method='POST',payload={'shop_no':1,'request':{'content':text,'status':'T','user_id':lk['mall_id'][:20]}})  # 대표 운영자 아이디 = 쇼핑몰 아이디
+        except shops.ShopError as e:return str(e)
+        return ''
     m=re.fullmatch(r'b(\d+):(\d+):([sp])(?::.*)?',ext_id or '')  # 끝난 문의에 다시 단 글이면 뒤에 그 글 표시가 붙는다
     if not m:return '카페24 게시판에서 가져온 문의가 아니에요.'
     bno,no,sec=int(m[1]),int(m[2]),m[3]=='s'
@@ -460,12 +492,11 @@ def app_deleted(db,mall,trusted):
     return n
 # 게시물 등록·댓글 이벤트는 '지금 그 쇼핑몰 게시판을 가져오라'는 신호로만 쓴다 (내용은 믿지 않고 카페24 API로 다시 읽는다).
 # 그래서 가짜 이벤트가 와도 할 수 있는 건 가져오기를 한 번 더 하는 것뿐이다. 같은 회사는 몇 초에 한 번만.
-POST_EVENTS={'90033','90034','90039'}  # 게시물 등록, 댓글 등록, 게시물 수정
+POST_EVENTS={'90033','90034','90039','90035'}  # 게시물 등록, 댓글 등록, 게시물 수정, 긴급문의 접수
 SYNC_LOCK=os.getenv('PLATFORM_SYNC_LOCK','/run/soboru-platform-sync.lock')  # 1분 cron(quick_sync.py)과 같은 잠금: 겹쳐 돌지 않게
 _kick={}
 def boards_now(mall):
     """그 쇼핑몰을 연결한 회사들의 게시판을 바로 가져오고 AI가 답한다 (뒤에서). 1분 cron을 기다리지 않게."""
-    import threading
     def job():
         import fcntl, chatbot
         fh=None
@@ -492,9 +523,42 @@ def boards_now(mall):
     threading.Thread(target=job,daemon=True).start() if BACKGROUND else job()
     return True
 BACKGROUND=True  # 시험에서는 False
+
+# 고객이 카페24에서 문의 글을 지우면(이벤트 90036) 진행 중인 그 요청을 닫는다. 이벤트 내용은 믿지 않고, 카페24 게시판에서 그 글이 정말 없어졌을 때만.
+POST_DELETED='90036'
+def _gone(db,cid,bno,no,since):
+    """게시판에 그 글이 없거나 지워졌으면 True. 못 읽었거나 너무 많아 끝까지 못 봤으면 False (닫지 않는다)."""
+    end=core.now()+datetime.timedelta(days=1)
+    for off in range(0,500,100):
+        try:d=api(db,cid,f'/admin/boards/{bno}/articles',{'start_date':since.strftime('%Y-%m-%d'),'end_date':end.strftime('%Y-%m-%d'),'limit':100,'offset':off})
+        except shops.ShopError:return False
+        rows=d.get('articles') or []
+        for a in rows:
+            if int(a.get('article_no') or 0)==no:return (a.get('deleted') or 'F')!='F'
+        if len(rows)<100:return True
+    return False
+def post_deleted(db,mall,bno,no):
+    """mall을 연결한 회사들에서, 지워진 글로 만든 진행 중인 요청을 닫는다 -> 닫은 수."""
+    n=0;fin=','.join('?'*len(core.FINAL))
+    for lk in db.execute("SELECT * FROM cafe24_links WHERE mall_id=? AND status='ok'",(mall,)).fetchall():
+        c=db.execute(f'''SELECT c.* FROM shop_seen s JOIN cases c ON c.id=s.case_id WHERE s.company_id=? AND s.shop='cafe24' AND s.ext_id IN (?,?)
+            AND c.status NOT IN ({fin})''',(lk['company_id'],f'b{bno}:{no}:s',f'b{bno}:{no}:p',*core.FINAL)).fetchone()
+        if not c:continue
+        since=core.parse(c['created'])-datetime.timedelta(days=shops.FIRST_DAYS+1)  # 처음 연결할 때는 며칠 전 글도 가져온다
+        db.commit()  # 카페24를 기다리는 동안 DB를 잠그지 않게
+        if not _gone(db,lk['company_id'],bno,no,since):continue
+        if db.execute(f"UPDATE cases SET status='closed',updated=? WHERE id=? AND status NOT IN ({fin})",(core.iso(),c['id'],*core.FINAL)).rowcount:
+            core.add_event(db,c['id'],'sys','고객이 카페24에서 문의 글을 지워서 요청을 닫았어요.');n+=1
+    return n
+def deleted_now(mall,bno,no):
+    def job():
+        try:
+            with conn() as db:post_deleted(db,mall,bno,no)
+        except Exception:log.exception('카페24 글 삭제 처리 실패: %s',mall)
+    threading.Thread(target=job,daemon=True).start() if BACKGROUND else job()
 @bp.route('/hook/cafe24',methods=['POST'])
 def hook():
-    """카페24 웹훅: 앱 삭제(연결 거두기), 게시물·댓글 등록(바로 가져오기). 받으면 늘 200 (카페24가 다시 보내지 않게)."""
+    """카페24 웹훅: 앱 삭제(연결 거두기), 게시물·댓글·긴급문의 등록(바로 가져오기), 게시물 삭제(요청 닫기). 받으면 늘 200 (카페24가 다시 보내지 않게)."""
     if not ready():abort(404)
     key=core.secret('CAFE24_WEBHOOK_KEY');got=request.headers.get('X-Api-Key') or request.headers.get('X-Cafe24-Api-Key') or ''
     trusted=bool(key and got and _hmac.compare_digest(got,key))
@@ -507,6 +571,9 @@ def hook():
     elif str(d.get('event_no')) in POST_EVENTS:
         mall=clean(str(res.get('mall_id') or ''),40)
         if re.fullmatch(r'[a-z0-9_-]{2,40}',mall or ''):boards_now(mall)
+    elif str(d.get('event_no'))==POST_DELETED:
+        mall=clean(str(res.get('mall_id') or ''),40);bno,no=str(res.get('board_no') or ''),str(res.get('no') or res.get('article_no') or '')
+        if re.fullmatch(r'[a-z0-9_-]{2,40}',mall or '') and bno.isdigit() and no.isdigit():deleted_now(mall,int(bno),int(no))
     return {'ok':True}
 
 # ---------- 화면 ----------

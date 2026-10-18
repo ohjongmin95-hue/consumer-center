@@ -7,7 +7,7 @@ import os, re, hmac, json, functools, datetime, threading
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, g, jsonify, after_this_request
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
-import csv, io
+import csv, io, urllib.parse
 import core, law, insights, drafting, chatbot
 import tracking as tracking_mod
 import orders as orders_mod
@@ -1083,26 +1083,42 @@ def hook_trace(tok):
     ok=tracking_mod.callback(tok,d)
     return jsonify(code=ok,message='success' if ok else 'fail')
 
-@app.route('/products',methods=['POST'])
+PRODUCT_GROUPS=(('all','전체'),('cafe24','카페24'),('mine','직접 등록'),('soldout','품절'))
+def product_rows(ps,g,q):
+    if g=='cafe24':ps=[p for p in ps if p['src']=='cafe24']
+    elif g=='mine':ps=[p for p in ps if p['src']!='cafe24']
+    elif g=='soldout':ps=[p for p in ps if p['stock']=='품절']
+    q=(q or '').lower()
+    return [p for p in ps if q in ' '.join((p['name'],p['info'],p['ext_id'] or '',p['price'])).lower()] if q else ps
+@app.route('/products',methods=['GET','POST'])
 @login_required
 def products():
     co=me()
     with conn() as db:
-        if request.form.get('act')=='csv':
-            up=request.files.get('file')
-            msg,level=import_products(db,co,up.read(2_000_000)) if up and up.filename else ('파일을 골라 주세요','error')
-        else:msg,level=save_product(db,co,request.form)
-    flash(msg,level);return redirect(url_for('rules')+'#products')
+        if request.method=='POST':
+            if request.form.get('act')=='csv':
+                up=request.files.get('file')
+                msg,level=import_products(db,co,up.read(2_000_000)) if up and up.filename else ('파일을 골라 주세요','error')
+            else:msg,level=save_product(db,co,request.form)
+            flash(msg,level)
+            back=urllib.parse.parse_qs(request.form.get('back',''))  # 보던 목록(분류·검색)으로 돌아간다
+            return redirect(url_for('products',g=(back.get('g') or [None])[0],q=(back.get('q') or [None])[0]))
+        g=request.args.get('g','all');q=clean(request.args.get('q'),40)
+        if g not in dict(PRODUCT_GROUPS):g='all'
+        allp=core.products(db,co['id']);priv=product_pdf.private_for(db,co['id'])
+    cnt={k:len(product_rows(allp,k,'')) for k,_ in PRODUCT_GROUPS}
+    return render_template('b_products.html',products=product_rows(allp,g,q),total=len(allp),cnt=cnt,g=g,q=q,GROUPS=PRODUCT_GROUPS,n_c24=cnt['cafe24'],
+        back=urllib.parse.urlencode({k:v for k,v in (('g',g),('q',q)) if v and v!='all'}),priv=priv,STOCKS=core.STOCKS,ai=chatbot.ready(),tab='products')
 
 @app.route('/products/pdf',methods=['POST'])
 @login_required
 def products_pdf():
     """상품소개서 PDF를 올리면 AI가 상품을 뽑는다. 결과는 검토 화면에서 사장님이 고르고 고친 뒤 등록한다."""
     co=me();up=request.files.get('file')
-    if not up or not up.filename:flash('PDF 파일을 골라 주세요','error');return redirect(url_for('rules')+'#products')
+    if not up or not up.filename:flash('PDF 파일을 골라 주세요','error');return redirect(url_for('products'))
     try:
         with conn() as db:token=product_pdf.start(db,co,up.filename,up.read(product_pdf.MAX_BYTES+1))
-    except ValueError as e:flash(str(e),'error');return redirect(url_for('rules')+'#products')
+    except ValueError as e:flash(str(e),'error');return redirect(url_for('products'))
     return redirect(url_for('product_import',token=token))
 
 @app.route('/products/import/<token>',methods=['GET','POST'])
@@ -1112,10 +1128,10 @@ def product_import(token):
     with conn() as db:
         if request.method=='POST':
             msg,level=product_pdf.confirm(db,co,token,request.form);flash(msg,level)
-            return redirect(url_for('rules')+'#products')
+            return redirect(url_for('products'))
         j=product_pdf.job(db,co['id'],token)
     if not j:abort(404)
-    return render_template('b_product_import.html',j=j,token=token,compose=product_pdf.compose,PUBLIC=product_pdf.PUBLIC,INTERNAL=product_pdf.INTERNAL,tab='rules')
+    return render_template('b_product_import.html',j=j,token=token,compose=product_pdf.compose,PUBLIC=product_pdf.PUBLIC,INTERNAL=product_pdf.INTERNAL,tab='products')
 
 COND_CATS=('교환','반품·환불')  # 받은 지 7일 조건은 이 두 유형에만
 def save_rule(db,co,f):

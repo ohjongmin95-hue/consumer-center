@@ -382,7 +382,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(ps['프로바이오틱스 19']['price'],'31,000원');self.assertIn('원재료·성분: 홍삼농축액',ps['6년근 홍삼정 스틱 30포']['info'])
         self.assertIn('공급가: 21,000원',priv[ps['6년근 홍삼정 스틱 30포']['id']]);self.assertEqual(left,'[]')  # 다 쓴 추출 결과는 지운다
         # 사장님 화면에는 내부 정보가 보이고, 상담 AI·앱 API에는 안 간다
-        page=b.get('/biz/rules').get_data(as_text=True);self.assertIn('공급가: 21,000원',page);self.assertIn('AI 상담 설정',page)
+        self.assertIn('공급가: 21,000원',b.get('/biz/products').get_data(as_text=True));self.assertIn('AI 상담 설정',b.get('/biz/rules').get_data(as_text=True))
         with self.core.conn() as db:facts=sys.modules['chatbot'].company_facts(db,self.core.company(db,cid))
         self.assertIn('6년근 홍삼정 스틱 30포',facts);self.assertIn('39,000원',facts)
         for secret in ('21,000','17,500','9,800','공급가','정산','최소 주문'):self.assertNotIn(secret,facts)
@@ -1734,8 +1734,14 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(c24.product_image(p),'https://img.cafe24.com/a.jpg');self.assertEqual(c24.product_url('myshop',5),'https://myshop.cafe24.com/product/detail.html?product_no=5')
         b,o,cid=self.signup_and_approve('상품되돌림상점','revert@example.com')
         with self.core.conn() as db:pid=db.execute("INSERT INTO products(company_id,name,price,stock,info,updated,src,ext_id,src_info) VALUES(?,?,?,?,?,?,'cafe24','5','카페24 안내')",(cid,'클렌저','','있음','고친 안내',self.core.iso())).lastrowid
-        page=b.get('/biz/rules').get_data(as_text=True);self.assertIn('카페24 내용으로 되돌리기',page);self.assertIn('카페24에서 가져온 상품 1개',page)
-        self.post(b,'/biz/products',{'id':str(pid),'act':'revert'},form_path='/biz/rules')
+        with self.core.conn() as db:db.execute("INSERT INTO products(company_id,name,price,stock,info,updated) VALUES(?,?,?,?,?,?)",(cid,'직접 넣은 수건','5,000원','품절','면 100%',self.core.iso()))
+        self.assertIn('상품 2개 보기',b.get('/biz/rules').get_data(as_text=True))  # 자동 처리에는 상품 페이지로 가는 길만
+        page=b.get('/biz/products').get_data(as_text=True);self.assertIn('카페24 내용으로 되돌리기',page);self.assertIn('클렌저',page);self.assertIn('직접 넣은 수건',page)
+        page=b.get('/biz/products?g=cafe24').get_data(as_text=True);self.assertIn('클렌저',page);self.assertNotIn('직접 넣은 수건',page)
+        page=b.get('/biz/products?g=soldout').get_data(as_text=True);self.assertNotIn('클렌저',page);self.assertIn('직접 넣은 수건',page)
+        page=b.get('/biz/products?q=%EB%A9%B4').get_data(as_text=True);self.assertNotIn('>클렌저',page);self.assertIn('직접 넣은 수건',page)  # 안내 글로도 찾는다
+        r=self.post(b,'/biz/products',{'id':str(pid),'act':'revert','back':'g=cafe24'},form_path='/biz/products')
+        self.assertTrue(r.headers['Location'].endswith('/biz/products?g=cafe24'))
         with self.core.conn() as db:self.assertEqual(db.execute('SELECT info FROM products WHERE id=?',(pid,)).fetchone()[0],'카페24 안내')
 
     def test_cafe24_app_deleted_hook(self):
@@ -1760,6 +1766,44 @@ class PlatformTest(unittest.TestCase):
                 c24.store(db,cid,'delshop',{'access_token':'A2','refresh_token':'R2','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
             alive[0]=True;b.post('/biz/hook/cafe24',json=ev,headers={'X-Api-Key':'hookkey'});self.assertEqual(st(),'removed')  # 인증정보가 맞으면 묻지 않고 거둔다
 
+    def test_cafe24_urgent_and_deleted(self):
+        """카페24 긴급문의: 답하지 않은 것만 요청이 되고, 답변은 긴급문의 답변으로 올라간다.
+        고객이 글을 지웠다는 웹훅은 카페24 게시판에서 정말 없어졌을 때만 그 요청을 닫는다."""
+        shops=sys.modules['shops'];c24=sys.modules['cafe24']
+        b,o,cid=self.signup_and_approve('긴급문의상점','c24u@example.com')
+        sent=[]
+        arts=[{'article_no':30,'parent_article_no':30,'title':'배송 문의','content':'언제 와요','writer':'박손님','deleted':'F','notice':'F','created_date':'2026-10-18T10:00:00+09:00'}]
+        urg=[{'article_no':5,'title':'급해요','content':'<p>주소를 바꿔 주세요</p>','writer':'최손님','member_id':'','start_date':'2026-10-18T10:00:00+09:00','reply_status':'F'},
+             {'article_no':6,'title':'이미 답함','content':'고마워요','writer':'정손님','member_id':'','start_date':'2026-10-18T10:01:00+09:00','reply_status':'T'}]
+        def fake(method,url,headers=None,body=None):
+            path=url.split('/api/v2')[1].split('?')[0]
+            if method=='POST':sent.append((path,json.loads(body)));return 201,{}
+            if path=='/admin/boards':return 200,{'boards':[{'board_no':6,'board_name':'상품 Q&A'}]}
+            if path=='/admin/boards/6/articles':return 200,{'articles':arts}
+            if path=='/admin/urgentinquiry':return 200,{'urgentinquiry':urg}
+            if '/comments' in path:return 200,{'comments':[]}
+            return 404,{}
+        c24.BACKGROUND=False
+        try:
+            with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec'}),patch.object(shops,'http',fake):
+                with self.core.conn() as db:
+                    c24.store(db,cid,'ushop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order','mall.read_community','mall.write_community']})
+                    new=c24.sync_boards(db,self.core.company(db,cid))
+                titles={c['title'] for c in new}
+                self.assertIn('[긴급문의] 급해요',titles);self.assertIn('배송 문의',titles);self.assertNotIn('[긴급문의] 이미 답함',titles)
+                with self.core.conn() as db:
+                    u=[c for c in new if c['title'].startswith('[긴급문의]')][0];self.assertEqual((u['channel'],u['body']),('카페24','주소를 바꿔 주세요'))
+                    self.assertEqual(shops.post_reply(db,self.core.company(db,cid),u,'바꿔 드렸어요'),'')
+                self.assertEqual(sent[-1][0],'/admin/urgentinquiry/5/reply');self.assertEqual(sent[-1][1]['request'],{'content':'바꿔 드렸어요','status':'T','user_id':'ushop'})
+                q=[c for c in new if c['title']=='배송 문의'][0]
+                def st():
+                    with self.core.conn() as db:return db.execute('SELECT status FROM cases WHERE id=?',(q['id'],)).fetchone()[0]
+                ev={'event_no':90036,'resource':{'mall_id':'ushop','board_no':6,'no':30}}
+                self.assertEqual(b.post('/biz/hook/cafe24',json=ev).status_code,200);self.assertNotEqual(st(),'closed')  # 카페24엔 아직 있음: 가짜 이벤트로는 안 닫힌다
+                arts[0]['deleted']='T';b.post('/biz/hook/cafe24',json=ev);self.assertEqual(st(),'closed')
+                with self.core.conn() as db:self.assertTrue(any('지워서' in e['text'] for e in self.core.events(db,q['id'])))
+        finally:c24.BACKGROUND=True
+
     def test_cafe24_products_and_ai_reply(self):
         """카페24 상품 -> 상품정보 (사장님이 고친 안내는 그대로, 상품 권한 없는 예전 연결은 건너뜀). 상품 문의엔 상품 이름.
         AI 초안은 상품정보를 본다. AI 자동 답변: 단순 문의는 답해서 카페24에 올리고 완료, 반품 등은 안 보내고 메모. 개인정보는 가려서 보낸다."""
@@ -1767,8 +1811,9 @@ class PlatformTest(unittest.TestCase):
         b,o,cid=self.signup_and_approve('카페24상품상점','c24p@example.com')
         sent=[];prods=[{'product_no':7,'product_name':'선크림','price':'19000.00','selling':'T','sold_out':'F','summary_description':'<b>SPF50</b> 순한 선크림','simple_description':''},
                        {'product_no':8,'product_name':'토너','price':'15000.00','selling':'T','sold_out':'T','summary_description':'수분 토너'}]
-        arts=[{'article_no':20,'parent_article_no':20,'title':'선크림 문의','content':'민감성도 써도 돼요? 010-1234-5678로 연락 주세요','writer':'김손님','product_no':7,'deleted':'F','notice':'F','created_date':'2026-10-18T12:00:00+09:00'},
-              {'article_no':21,'parent_article_no':21,'title':'반품하고 싶어요','content':'토너 반품할게요','writer':'이손님','product_no':8,'deleted':'F','notice':'F','created_date':'2026-10-18T12:05:00+09:00'}]
+        soon=lambda m:(self.core.now()+__import__('datetime').timedelta(minutes=m)).strftime('%Y-%m-%dT%H:%M:%S+09:00')  # 연결한 뒤에 올라온 글이어야 AI가 답한다
+        arts=[{'article_no':20,'parent_article_no':20,'title':'선크림 문의','content':'민감성도 써도 돼요? 010-1234-5678로 연락 주세요','writer':'김손님','product_no':7,'deleted':'F','notice':'F','created_date':soon(1)},
+              {'article_no':21,'parent_article_no':21,'title':'반품하고 싶어요','content':'토너 반품할게요','writer':'이손님','product_no':8,'deleted':'F','notice':'F','created_date':soon(2)}]
         def fake(method,url,headers=None,body=None):
             path=url.split('/api/v2')[1].split('?')[0]
             if method=='POST':sent.append((path,json.loads(body)));return 201,{'articles':[{'article_no':99}]}

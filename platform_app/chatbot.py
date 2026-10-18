@@ -233,7 +233,10 @@ def auto_reply_all():
         old=core.iso(core.now()-datetime.timedelta(minutes=STUCK_MIN))
         stuck=db.execute("""SELECT * FROM cases WHERE decision='ai' AND (updated<? OR status NOT IN ('forwarded','seen') OR NOT ?
             OR company_id IN (SELECT id FROM companies WHERE ai_reply='' OR member!=1 OR status!='active'))""",(old,ready())).fetchall()
-        for c in stuck:_to_owner(db,c,'AI가 제때 답하지 못해 넘겼어요.' if ready() and c['ai_tried'] else '')
+        for c in stuck:
+            if c['status'] in core.FINAL:  # 그사이 끝난 요청(대화 끝내기·고객이 글을 지움)은 승인 목록으로 알리지 않는다
+                db.execute("UPDATE cases SET decision='pending' WHERE id=? AND decision='ai'",(c['id'],));continue
+            _to_owner(db,c,'AI가 제때 답하지 못해 넘겼어요.' if ready() and c['ai_tried'] else '')
         rows=db.execute("""SELECT id,company_id FROM cases WHERE decision='ai' AND ai_tried=''
               AND EXISTS (SELECT 1 FROM shop_seen s WHERE s.company_id=cases.company_id AND s.case_id=cases.id) ORDER BY id""").fetchall()
     per={}
