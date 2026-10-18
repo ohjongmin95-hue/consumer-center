@@ -1,0 +1,34 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}환불 정책 · {{ BNAME }}{% endblock %}
+{% block description %}{{ BNAME }} 유료 요금제의 결제, 해지, 환불 기준을 안내합니다.{% endblock %}
+{% block bar %}{{ b.bar('terms') }}{% endblock %}
+{% block main %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">환불 정책</span><h1>{{ BNAME }} 환불 정책</h1><p>{{ op.name }} · {{ since }}부터 시행</p></div></div></section>
+<section class="doc-sec"><div class="wrap mk-one"><div class="panel privacy terms doc">
+<section><h2>1. 결제 방식</h2><ul>
+<li>{{ BNAME }} 유료 요금제는 한 달 단위 정기결제입니다. 카드를 등록한 날 첫 달 요금이 결제되고, 그다음부터 매달 같은 날 다음 한 달 요금이 자동으로 결제됩니다.</li>
+<li>요금은 부가세를 포함한 금액이며, 결제 화면(설정 &gt; 요금·결제)에 미리 보여 드립니다.</li>
+<li>무료 시범 기간에는 요금을 받지 않으며, 기업 회원이 카드를 등록하고 동의하기 전에는 결제되지 않습니다.</li></ul></section>
+
+<section><h2>2. 해지</h2><ul>
+<li>설정 &gt; 요금·결제에서 언제든지 해지할 수 있습니다.</li>
+<li>해지하면 이미 결제한 기간이 끝날 때까지 그대로 쓰실 수 있고, 다음 결제일부터는 결제되지 않습니다.</li>
+<li>다음 결제일 전에는 해지를 취소하고 이어서 쓸 수 있습니다.</li></ul></section>
+
+<section><h2>3. 환불</h2><ul>
+<li><b>결제 후 7일 이내</b>에 서비스를 쓰지 않으셨다면(유료 기간 중 처리한 요청이 없는 경우) 그 결제 금액 전액을 환불해 드립니다.</li>
+<li>결제 후 7일이 지났거나 유료 기간 중 서비스를 쓰신 경우, 이미 결제한 달의 요금은 환불되지 않습니다. 해지하시면 다음 달부터 결제되지 않습니다.</li>
+<li>회사의 잘못으로 서비스를 연속 24시간 이상 쓰지 못한 경우, 쓰지 못한 날만큼 일할 계산해 환불하거나 이용 기간을 늘려 드립니다.</li>
+<li>같은 기간이 두 번 결제되는 등 잘못 결제된 금액은 기간과 관계없이 전액 환불해 드립니다.</li></ul></section>
+
+<section><h2>4. 환불 방법</h2><ul>
+<li>환불은 결제한 카드의 결제 취소로 처리합니다. 카드사에 따라 취소가 반영되기까지 영업일 기준 3~7일이 걸릴 수 있습니다.</li>
+<li>환불 신청은 아래 연락처로 회사 이름, 사업자등록번호, 결제일을 알려 주시면 됩니다. 확인 후 영업일 기준 3일 안에 처리 결과를 알려 드립니다.</li></ul></section>
+
+<section><h2>5. 문의</h2>
+<p>{{ op.name }} · 대표 {{ op.ceo }} · 사업자등록번호 {{ op.biz_no }}<br>{{ op.address }}{% if contact %}<br>환불 문의: {{ contact }}{% endif %}</p></section>
+
+<section><h2>부칙</h2>
+<p>이 정책은 {{ since }}부터 시행합니다. 바뀌는 경우 시행 7일 전부터 서비스 화면에 알리고, 기업 회원에게 불리한 변경은 30일 전부터 알리고 이메일로도 안내합니다.</p></section>
+</div></div></section>
+</main>{% endblock %}

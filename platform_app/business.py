@@ -107,13 +107,19 @@ def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/ca
 
 @app.route('/sitemap.xml')
 def sitemap():
-    ent=[(p,'') for p in ['/','/signup','/login','/terms']+market.sitemap_paths()+sales.sitemap_paths()+growth.sitemap_paths()+['/security']]+cms.sitemap_entries()
+    ent=[(p,'') for p in ['/','/signup','/login','/terms','/refund']+market.sitemap_paths()+sales.sitemap_paths()+growth.sitemap_paths()+['/security']]+cms.sitemap_entries()
     body=''.join('<url><loc>%s</loc>%s</url>'%(core.site_url('biz',p),'<lastmod>%s</lastmod>'%m if m else '') for p,m in ent)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
 @app.route('/terms')
 def terms():
     return render_template('b_terms.html',op=core.OPERATOR,since=core.TERMS_SINCE,privacy_url=core.site_url('me','/privacy'))
+
+@app.route('/refund')
+def refund_policy():
+    """유료 요금제 결제·해지·환불 기준 (결제대행사 심사에 이 주소를 낸다)."""
+    contact=next((os.getenv(k) for k in ('SUPPORT_EMAIL','OPS_EMAIL','ADMIN_ALERT_EMAIL','SMTP_FROM','SMTP_USER') if os.getenv(k)),'')
+    return render_template('b_refund.html',op=core.OPERATOR,since=core.REFUND_SINCE,contact=contact)
 
 def signup_apply(f,via='email',google_sub=''):
     """가입 검사와 저장. 웹·앱·구글 가입이 같이 쓴다. (입력값, 오류 문구, 회사 id). 문구가 비면 작업 공간이 만들어진 것이다.
@@ -1346,7 +1352,7 @@ COPY_PAGES=[('c_home.html','고객 첫 화면'),('c_new.html','요청 접수'),(
  ('b_intro.html','소보루 CS 소개'),('b_login.html','로그인'),('b_signup.html','가입'),('b_start.html','처음 설정'),('b_forgot.html','비밀번호 찾기'),
  ('b_decide.html','사장님 홈'),('b_all.html','요청 목록'),('b_case.html','요청 상세'),('b_new.html','직접 등록'),('b_rules.html','자동 처리'),('b_stats.html','통계'),
  ('b_report.html','리포트'),('insights.py','리포트 분석 문구'),('b_guide.html','응대 가이드'),('law.py','응대 가이드 상황별 문구'),('b_news.html','법·제도 소식'),
- ('b_settings.html','설정'),('b_record.html','처리 기록'),('b_terms.html','약관'),('_b.html','기업 공통 메뉴'),('business.py','기업 안내 메시지'),
+ ('b_settings.html','설정'),('b_record.html','처리 기록'),('b_terms.html','약관'),('b_refund.html','환불 정책'),('_b.html','기업 공통 메뉴'),('business.py','기업 안내 메시지'),
  ('base.html','두 곳 공통'),('core.py','공통 안내 문구')]
 
 @app.route('/ops/copy',methods=['GET','POST'])
@@ -1396,7 +1402,7 @@ def ops_copy():
 
 
 VISUAL_PAGES=[('me','/','고객 첫 화면',0),('me','/new','요청 접수',0),('me','/guide','이용 안내',0),('me','/mine','내 접수',0),('me','/to/','기업별 고객센터',0),('me','/privacy','개인정보 처리방침',0),
- ('biz','/','소보루 CS 소개',0),('biz','/login','로그인',0),('biz','/signup','가입',0),('biz','/forgot','비밀번호 찾기',0),('biz','/terms','약관',0),
+ ('biz','/','소보루 CS 소개',0),('biz','/login','로그인',0),('biz','/signup','가입',0),('biz','/forgot','비밀번호 찾기',0),('biz','/terms','약관',0),('biz','/refund','환불 정책',0),
  ('biz','/','사장님 홈',1),('biz','/all','요청 목록',1),('biz','/rules','자동 처리',1),('biz','/stats','통계',1),('biz','/report','리포트',1),('biz','/guide','응대 가이드',1),('biz','/news','법·제도 소식',1),('biz','/new','직접 등록',1),('biz','/settings','설정',1)]
 
 def visual_companies():
