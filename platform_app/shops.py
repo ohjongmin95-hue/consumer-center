@@ -329,5 +329,5 @@ def sync_all():
 if __name__=='__main__':
     core.MAIL_ASYNC=False
     print(f'판매처 가져오기 {sync_all()}건')
-    import cafe24, openapi, mailin, instagram  # 같은 10분 cron에서 카페24 주문, 이메일 문의, 인스타그램 토큰 갱신, 외부 API 웹훅도 처리한다
-    print(f'카페24 주문 {cafe24.sync_all()}건, 이메일 문의 {mailin.sync_all()}건, 인스타그램 토큰 갱신 {instagram.refresh_all()}건, 웹훅 {openapi.dispatch()}건')
+    import cafe24, openapi, mailin, instagram, billing  # 같은 10분 cron에서 카페24 주문, 이메일 문의, 인스타그램 토큰 갱신, 외부 API 웹훅, 요금 자동결제도 처리한다
+    print(f'카페24 주문 {cafe24.sync_all()}건, 이메일 문의 {mailin.sync_all()}건, 인스타그램 토큰 갱신 {instagram.refresh_all()}건, 웹훅 {openapi.dispatch()}건, 요금 결제 {billing.renew_all()}건')

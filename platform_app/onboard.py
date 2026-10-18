@@ -12,7 +12,7 @@ import core
 from core import conn, clean, digits
 
 LOG=logging.getLogger(__name__)
-PLANS={'pilot':{'name':'무료 시범','limit':None}}  # 유료 요금제는 나중에 여기 더한다 (지금은 기간·건수 제한 없음)
+PLANS={'pilot':{'name':'무료 시범','limit':None},'paid':{'name':'유료','limit':None}}  # 'paid': 토스페이먼츠 자동결제 중 (billing.py, 요금제 이름·금액은 운영 화면에서)
 VERIFY_HOURS=48
 
 def init():

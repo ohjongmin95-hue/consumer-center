@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops, mailin
 import product_pdf
-import team, inbox, workflow, automations, livechat, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats, instagram
+import team, inbox, workflow, automations, livechat, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats, instagram, billing
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -23,7 +23,7 @@ OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
-app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp);app.register_blueprint(cafe24.bp);app.register_blueprint(openapi.bp);app.register_blueprint(aistats.bp);app.register_blueprint(instagram.bp)
+app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp);app.register_blueprint(cafe24.bp);app.register_blueprint(openapi.bp);app.register_blueprint(aistats.bp);app.register_blueprint(instagram.bp);app.register_blueprint(billing.bp)
 app.jinja_env.globals.update(has_ep=lambda name:name in app.view_functions)
 
 @app.before_request
@@ -1305,6 +1305,21 @@ def ops_news():
             return redirect(url_for('ops_news'))
         rows=db.execute('SELECT * FROM news ORDER BY id DESC').fetchall();n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     return render_template('o_news.html',rows=rows,n_signup=n_pending,otab='news')
+
+@app.route('/ops/billing',methods=['GET','POST'])
+@ops_required
+def ops_billing():
+    """요금제(이름·월 금액)와 결제 현황. 키는 서비스 키에서. 금액을 바꾸면 이미 결제 중인 회사는 다음 결제부터 새 금액."""
+    if request.method=='POST':
+        name=clean(request.form.get('name'),30);price=int(digits(request.form.get('price',''))[:9] or 0)
+        if not name or price<100:flash('요금제 이름과 금액(100원 이상)을 넣어 주세요','error')
+        else:billing.save_plan(name,price);flash('요금제를 저장했어요','ok')
+        return redirect(url_for('ops_billing'))
+    with conn() as db:
+        subs=db.execute("SELECT b.*,c.name co_name FROM billing b JOIN companies c ON c.id=b.company_id WHERE b.status!='none' ORDER BY b.next_charge").fetchall()
+        pays=db.execute("SELECT p.*,c.name co_name FROM billing_payments p JOIN companies c ON c.id=p.company_id ORDER BY p.id DESC LIMIT 50").fetchall()
+        n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
+    return render_template('o_billing.html',p=billing.plan(),ready=billing.ready(),test=billing.test_mode(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
 
 @app.route('/ops/keys',methods=['GET','POST'])
 @ops_required
