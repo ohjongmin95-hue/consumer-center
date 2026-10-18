@@ -9,7 +9,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
   검토 필요 초안은 '숫자를 직접 확인했어요'에 체크해야 게시된다. 운영자가 고쳐 저장하면 같은 facts로 다시 검사한다.
 - 저장: articles에 status='draft', origin='ai', ext_key='ai:종류:날짜'(같은 날 같은 종류는 한 번). 자료·출처·검사 결과는 ai_articles에.
   게시는 관리자 > 생활정보 글에서 운영자만. 이 모듈은 어떤 경우에도 published로 바꾸지 않는다.
-- 매일 아침: deploy/soboru-writer.timer가 `python -m soboru_writer`를 부르면 하루 1~2개를 종류를 돌아가며 만든다.
+- 매일 아침: deploy/soboru-writer.timer가 `python -m soboru_writer`를 부르면 하루 여러 편(기본 6개)을 종류·주제를 돌아가며 만든다.
   데이터가 연결되지 않은 종류(키 없음)는 건너뛴다. 관리자 > AI 기사 만들기에서 자동 쓰기를 끌 수 있다.
 - 공공데이터(data.go.kr 리콜 등)는 아직 키가 없다. 키가 생기면 SOURCES에 준비 확인을, KINDS에 collector 하나를 더하면 된다
   (plans/소보루_매일콘텐츠_공공데이터.md). 리콜처럼 사실만 옮기는 글도 처음에는 초안으로 쌓는다.
@@ -32,7 +32,21 @@ CONST = {'소비자상담센터 전화번호': '1372'}  # 글 끝 안내에 늘 
 AI_TIMEOUT = 90
 # 소제목에 붙이는 이모지: 사이트의 토스페이스 글꼴(static/fonts/tossface-soboru.woff2)에 들어 있는 것만
 EMOJI = '📊📈📉🔍💡📌📦🛒💳💰💸🧾📱🚗✈🏠🍔🩺💊⚖📢📣📰🔔⚠🚨✅📝📋🤝🙋💬👀🔥✨⏰📅🛡🔒🧸🧴🎁'
-PER_DAY = (1, 2, 3, 4)
+PER_DAY = (1, 2, 3, 4, 5, 6, 8, 10)
+DEFAULT_PER_DAY = 6  # 운영자 요청 2026-10-18: 하루 5~10개 심층 분석
+FRESH_DAYS = 14      # 주제별 글(EXTRA)은 같은 주제를 이 기간 안에 다시 쓰지 않음
+# 주제별 깊이 보기 글의 주제 후보
+RIGHTS_TOPICS = ['온라인 쇼핑 청약철회', '반품 배송비 부담', '환불 지연 배상', '제품 하자 교환 환불', '불공정 약관 조항', '방문판매 청약철회',
+                 '숙박 예약 취소 환불', '택배 분실 배상', '식품 이물질', '식품 소비기한 표시', '화장품 표시 사항', '건강기능식품 광고', '과장 광고',
+                 '해외직구 반품', '개인정보 유출', '학원비 환불', '소비자분쟁조정 신청', '소비자 피해구제 신청', '통신판매업자 신원 정보']
+WORD_TOPICS = {'택배 분실': ['택배 파손', '택배 지연', '택배 보상'], '구독 해지': ['정기결제 해지', '자동결제 해지', '구독 환불'],
+               '중고거래 사기': ['직거래 사기', '안전거래', '사기 조회'], '항공권 환불': ['항공권 취소 수수료', '항공 지연 보상', '수하물 분실'],
+               '헬스장 환불': ['헬스장 양도', 'PT 환불', '필라테스 환불'], '위약금': ['인터넷 위약금', '휴대폰 위약금', '렌탈 위약금'],
+               '리콜': ['자동차 리콜', '제품 리콜', '무상수리'], '해외직구': ['해외직구 관세', '해외직구 반품', '해외직구 사기'],
+               '숙소 환불': ['호텔 취소', '펜션 환불', '숙박 예약 취소'], '개인정보 유출': ['유출 조회', '스미싱', '보이스피싱'],
+               '식품 이물질': ['음식 이물질', '배달 음식 이물질', '식중독'], '허위광고': ['과대광고', '뒷광고', '광고 신고'],
+               '소비기한': ['유통기한', '소비기한 지난', '유통기한 지난'], '보증기간': ['무상 AS', '유상 수리', 'AS 거부'],
+               '웨딩홀 위약금': ['스드메 환불', '웨딩 계약 해지', '예식장 계약']}
 
 # 글 종류: 이름, 필요한 자료(SOURCES), 기본 분야·그림·바탕색, AI에게 줄 설명
 KINDS = {
@@ -46,8 +60,16 @@ KINDS = {
                     about='소보루에 공개·게시된 제보 집계로 최근 어떤 피해 제보가 많았는지, 기업 답변은 어땠는지 숫자로만 전한다.'),
     'law': dict(name='법 바뀐 것 해설', needs=('law',), category='생활', emoji='⚖️', tone='t5',
                 about='최근 시행됐거나 곧 시행되는 소비자 관련 법령을 쉽게 풀어 준다. 시행일·개정 이유는 자료 그대로 전한다.'),
+    # 주제별 깊이 보기 (topics=True): 하루 몫이 남으면 주제를 바꿔 가며 여러 편
+    'rights': dict(name='소비자 권리 깊이 보기', needs=(), category='생활', emoji='💡', tone='t5', topics=True,
+                   about='[주제] 하나를 골라, 함께 준 법 조문 원문을 근거로 소비자가 가진 권리와 사업자의 의무를 깊이 풀어 준다. 조문에 없는 기간·금액은 쓰지 않고, 주제와 맞지 않는 조문은 쓰지 않는다.'),
+    'word': dict(name='검색어 깊이 보기', needs=('naver',), category='생활', emoji='🔍', tone='t2', topics=True,
+                 about='[주제] 검색어와 그 곁 검색어의 1년 검색 추이를 견주어 언제 왜 관심이 몰렸는지(자료로 알 수 있는 만큼만) 분석하고, 최근 뉴스와 법 조문으로 소비자가 할 일을 알려 준다.'),
+    'shopcat': dict(name='쇼핑 분야 깊이 보기', needs=('naver',), category='쇼핑', emoji='🛒', tone='t4', topics=True,
+                    about='[주제] 쇼핑 분야 하나의 클릭 추이와 성별·연령·기기별 비중, 다른 분야와 견준 순위를 깊이 분석하고, 그 분야를 살 때 소비자가 챙길 점을 알려 준다.'),
 }
 ORDER = ['trend', 'reports', 'news', 'shopping', 'law']  # 매일 아침 돌아가며 시작하는 순서
+EXTRA = ['rights', 'word', 'shopcat']  # ORDER를 한 바퀴 돈 뒤에도 하루 몫이 남으면 돌아가며 채우는 주제별 글
 
 SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 소비자에게 쓸모 있는 분석 기사를 쓴다.\n'
           '지켜야 할 것:\n'
@@ -374,12 +396,105 @@ def install(S):
         sources = [src(f"국가법령정보센터 · {l['법령']}", 'https://www.law.go.kr/법령/' + l['법령']) for l in laws]
         return {'facts': facts, 'sources': sources, 'topic': laws[0]['법령']}
 
-    COLLECT = {'trend': collect_trend, 'shopping': collect_shopping, 'news': collect_news, 'reports': collect_reports, 'law': collect_law}
+    # ---- 주제별 깊이 보기 ------------------------------------------------------
+    def recent_news(q, days=30, n=4):
+        if not SOURCES['naver']()[0]: return []
+        since = datetime.date.today() - datetime.timedelta(days=days); out = []
+        try: items = naver()['search']('news', q, display=10, sort='date')['items']
+        except Exception: return []  # 뉴스는 곁들이는 자료라 못 가져와도 글은 씀
+        for it in items:
+            try: day = datetime.date(*map(int, it['date'].split('.')))
+            except (ValueError, TypeError): continue
+            if day >= since: out.append(it)
+        return out[:n]
 
-    def collect(kind):
+    def news_facts(items):
+        scrub = lambda t: clean_personal(desk.scrub, t)
+        return [{'제목': scrub(i['title']), '요약': scrub(i['summary']), '언론사': i['source'], '날짜': i['date']} for i in items]
+
+    def collect_rights(topic):
+        hits = corpus.related(topic, limit=5)
+        if len(hits) < 2: raise Skip(f'"{topic}"와 맞는 법 조문을 찾지 못했어요')
+        news = recent_news(topic)
+        facts = {'자료': '소보루 법령 원문 모음 (국가법령정보센터 법령·소비자분쟁해결기준·찾기 쉬운 생활법령정보)', '주제': topic,
+                 '관련 법 조문(원문)': [{'조문': h['label'], '원문': corpus.clip(h['text'], 900)} for h in hits]}
+        if news: facts['최근 관련 뉴스(제목·요약만)'] = news_facts(news)
+        sources = [src(f"국가법령정보센터 · {h['label']}", h['source']) for h in hits] + [src(f"{i['source']} · {i['title'][:40]}", i['url']) for i in news]
+        return {'facts': facts, 'sources': sources, 'topic': topic}
+
+    def collect_word(topic):
+        import naverhub
+        words = [topic] + WORD_TOPICS[topic][:4]
+        series = naver()['trend'](words, 12)
+        start, end, unit = naverhub.periods(12)
+        partial = (datetime.date.fromisoformat(end) + datetime.timedelta(days=1)).day != 1  # 이번 달이 덜 찼으면 마지막 달은 뺌
+        month = lambda p: f'{p[:4]}년 {int(p[5:7])}월'
+        rows = []
+        for name, s in series:
+            s = s[:-1] if partial and s else s
+            vals = [v for _, v in s]
+            if len(vals) < 6: continue
+            last, prev = statistics.mean(vals[-3:]), statistics.mean(vals[-6:-3])
+            peak = max(s, key=lambda p: p[1])
+            rows.append({'검색어': name, '최근 3달 평균 지수': round(last, 1), '그 전 3달 평균 지수': round(prev, 1),
+                         '증감률(%)': round((last - prev) / prev * 100) if prev else None, '가장 많이 찾은 달': month(peak[0]), '그 달 지수': round(peak[1], 1),
+                         '달별 지수': [[month(p), round(v, 1)] for p, v in s]})
+        if not rows or rows[0]['검색어'] != topic: raise Skip(f'"{topic}" 검색 추이 자료가 모자라요')
+        news = recent_news(topic)
+        hits = corpus.related(' '.join(words), limit=3)
+        facts = {'자료': '네이버 데이터랩 검색어트렌드', '주제 검색어': topic, '기간': f'{start} ~ {end}', '단위': '달',
+                 '지수 설명': '검색량 그대로가 아니라 기간 안에서 다섯 검색어 가운데 가장 많이 찾은 때를 100으로 둔 상대 지수예요. 검색어끼리 견줄 수 있어요.',
+                 '검색어별 추이': rows}
+        if news: facts['최근 관련 뉴스(제목·요약만)'] = news_facts(news)
+        if hits: facts['관련 법 조문(원문)'] = [{'조문': h['label'], '원문': corpus.clip(h['text'], 600)} for h in hits]
+        sources = ([src('네이버 데이터랩 검색어트렌드 (NAVER API HUB)', 'https://datalab.naver.com/keyword/trendSearch.naver')]
+                   + [src(f"{i['source']} · {i['title'][:40]}", i['url']) for i in news] + [src(f"국가법령정보센터 · {h['label']}", h['source']) for h in hits])
+        return {'facts': facts, 'sources': sources, 'topic': topic}
+
+    def collect_shopcat(topic):
+        import naverhub
+        nv = naver(); rows = nv['shop_overview'](3)
+        ranked = [r for r in rows if r['change'] is not None]
+        me = next((r for r in ranked if r['name'] == topic), None)
+        if not me or len(me['series']) < 8: raise Skip(f'{topic} 쇼핑 관심도 자료가 모자라요')
+        start, end, unit = naverhub.periods(3)
+        n = max(1, len(me['series']) // 4)
+        labels = {'f': '여성', 'm': '남성', 'pc': 'PC', 'mo': '모바일'}
+        facts = {'자료': '네이버 데이터랩 쇼핑인사이트 (분야별 클릭 추이)', '분야': topic, '기간': f'{start} ~ {end}', '단위': '주',
+                 '증감 기준': f'최근 {n}주 평균 클릭 지수를 그 전 {n}주 평균과 견준 증감률이에요',
+                 f'{topic} 증감률(%)': me['change'], '증감률 순위': f'{len(ranked)}개 분야 가운데 {ranked.index(me) + 1}위',
+                 f'{topic} 주별 클릭 지수': [[p, round(v, 1)] for p, v in me['series'][-12:]],
+                 '다른 분야 증감률(%)': [{'분야': r['name'], '증감률(%)': r['change']} for r in ranked if r is not me]}
+        for what, label in (('gender', '성별 클릭 비중(%)'), ('age', '연령별 클릭 비중(%)'), ('device', '기기별 클릭 비중(%)')):
+            got = nv['shop_split'](me['code'], what, 3)
+            facts[label] = {(labels.get(k) or (dict(naverhub.AGES).get(k) or k)): v for k, v in got.items()}
+        return {'facts': facts, 'sources': [src('네이버 데이터랩 쇼핑인사이트 (NAVER API HUB)', 'https://datalab.naver.com/shoppingInsight/sCategory.naver')],
+                'topic': topic, 'category': '쇼핑'}
+
+    def topic_list(kind):
+        import naverhub
+        return {'rights': RIGHTS_TOPICS, 'word': list(WORD_TOPICS), 'shopcat': [n for _, n in naverhub.SHOP_CATS]}[kind]
+
+    def pick_topic(kind, day):
+        """FRESH_DAYS 안에 쓰지 않은 주제 가운데 가장 오래전에 쓴(또는 한 번도 안 쓴) 것. 없으면 None."""
+        since = (datetime.date.fromisoformat(day) - datetime.timedelta(days=FRESH_DAYS - 1)).isoformat(); last = {}
+        with conn() as db:
+            for r in db.execute('SELECT ext_key,created FROM articles WHERE ext_key LIKE ?', (f'ai:{kind}:%',)):
+                parts = r['ext_key'].split(':')
+                if len(parts) >= 4: last[parts[2]] = max(last.get(parts[2], ''), r['created'][:10])
+        free = [t for t in topic_list(kind) if last.get(t, '') < since]
+        return min(free, key=lambda t: last.get(t, '')) if free else None
+
+    COLLECT = {'trend': collect_trend, 'shopping': collect_shopping, 'news': collect_news, 'reports': collect_reports, 'law': collect_law,
+               'rights': collect_rights, 'word': collect_word, 'shopcat': collect_shopcat}
+
+    def collect(kind, topic=None):
         ok, why = kind_ready(kind)
         if not ok: raise Skip(why)
-        try: got = COLLECT[kind]()
+        if KINDS[kind].get('topics') and not topic:
+            topic = pick_topic(kind, datetime.date.today().isoformat())
+            if not topic: raise Skip(f'최근 {FRESH_DAYS}일 안에 주제를 다 썼어요')
+        try: got = COLLECT[kind](topic) if KINDS[kind].get('topics') else COLLECT[kind]()
         except Skip: raise
         except Exception as e:  # 네이버 오류 문구(NaverError)는 그대로, 그 밖은 이름만 (키가 섞이지 않게)
             raise Skip(str(e)[:120] if type(e).__name__ == 'NaverError' else f'자료를 가져오지 못했어요 ({type(e).__name__})')
@@ -398,20 +513,22 @@ def install(S):
     def settings():
         s = setting('writer', {})
         # publish: 매일 쓴 글 중 숫자 검사를 통과한 글은 관리자 승인 없이 바로 게시 (운영자 요청 2026-10-17, 관리자에서 멈출 수 있음)
-        return {'auto': 0 if s.get('auto') == 0 else 1, 'per_day': s.get('per_day') if s.get('per_day') in PER_DAY else 2, 'publish': 0 if s.get('publish') == 0 else 1}
+        per = s.get('per_day') if s.get('per_day') in PER_DAY else DEFAULT_PER_DAY
+        if s.get('v') != 2: per = max(per, DEFAULT_PER_DAY)  # 하루 1~4개이던 때 저장한 값은 새 기본(심층 분석 여러 편)으로
+        return {'auto': 0 if s.get('auto') == 0 else 1, 'per_day': per, 'publish': 0 if s.get('publish') == 0 else 1}
 
     def log(entry):
         rows = setting('writer_log', [])
         put('writer_log', ([dict(entry, at=stamp())] + rows)[:30])
 
     # ---- AI로 쓰기 · 저장 -------------------------------------------------------
-    def ask_ai(kind, facts):
+    def ask_ai(kind, facts, topic=None):
         key = os.getenv('OPENAI_API_KEY', '').strip()
         if not key: raise RuntimeError('OpenAI API 키가 없어요')
         k = KINDS[kind]
-        user = (f"[글 종류] {k['name']}: {k['about']}\n[분야 목록] 쇼핑, 통신, 여행, 음식, 금융, 자동차, 생활, 리콜\n"
+        user = (f"[글 종류] {k['name']}: {k['about']}\n" + (f"[주제] {topic}\n" if topic else '') + "[분야 목록] 쇼핑, 통신, 여행, 음식, 금융, 자동차, 생활, 리콜\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
-        body = {'model': desk.ai_model(), 'temperature': 0.4, 'response_format': {'type': 'json_object'}, 'max_tokens': 2200,
+        body = {'model': desk.ai_model(), 'temperature': 0.4, 'response_format': {'type': 'json_object'}, 'max_tokens': 3000,
                 'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': user}]}
         st, res = desk.post_json('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, AI_TIMEOUT)
         if st != 200: raise RuntimeError(f'AI 응답 오류 ({st}) ' + str((res.get('error') or {}).get('message', ''))[:120].replace(key, '***'))
@@ -423,11 +540,17 @@ def install(S):
         db.execute('UPDATE ai_articles SET check_ok=?,problems=?,checked=? WHERE article_id=?', (0 if problems else 1, json.dumps(problems, ensure_ascii=False), stamp(), article_id))
         return problems
 
-    def generate(kind, trigger='admin', force=False, day=None):
+    def generate(kind, trigger='admin', force=False, day=None, topic=None):
         """{status: made|exists|skip|error, id, reason, published}. 관리자가 만든 글은 초안(draft). 매일 자동으로 쓴 글은
         '바로 게시'가 켜져 있고 숫자 검사를 통과하면 게시하고, 아니면 초안으로 남긴다."""
         if kind not in KINDS: return {'status': 'error', 'reason': '모르는 글 종류예요'}
-        key = f"ai:{kind}:{day or datetime.date.today().isoformat()}"
+        today = day or datetime.date.today().isoformat()
+        if KINDS[kind].get('topics'):  # 주제별 글은 주제마다 하루 한 번 (같은 주제는 FRESH_DAYS 동안 다시 안 씀)
+            topic = topic or pick_topic(kind, today)
+            if not topic:
+                res = {'status': 'skip', 'reason': f'최근 {FRESH_DAYS}일 안에 주제를 다 썼어요'}; log(dict(res, kind=kind, trigger=trigger)); return res
+            key = f'ai:{kind}:{topic}:{today}'
+        else: key = f'ai:{kind}:{today}'
         with conn() as db: old = db.execute('SELECT id,status FROM articles WHERE ext_key=?', (key,)).fetchone()
         if old and (not force or old['status'] != 'draft'): return {'status': 'exists', 'id': old['id'], 'reason': '오늘 이미 만든 초안이 있어요'}
         every = KINDS[kind].get('every', 1)
@@ -438,8 +561,8 @@ def install(S):
             if recent:
                 res = {'status': 'skip', 'reason': '%d일에 한 번만 써요' % every}; log(dict(res, kind=kind, trigger=trigger)); return res
         try:
-            got = collect(kind)
-            title, summary, body, cat = assemble(ask_ai(kind, got['facts']), kind)
+            got = collect(kind, topic)
+            title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic), kind)
         except Skip as e: res = {'status': 'skip', 'reason': str(e)}; log(dict(res, kind=kind, trigger=trigger)); return res
         except RuntimeError as e: res = {'status': 'error', 'reason': str(e)}; log(dict(res, kind=kind, trigger=trigger)); return res
         title, summary, body = (clean_personal(desk.scrub, t) for t in (title, summary, body))  # 연락처처럼 보이는 것은 지움
@@ -471,7 +594,7 @@ def install(S):
         return res
 
     def daily(today=None):
-        """매일 아침 1~4개. 꺼 뒀거나 AI 키가 없으면 아무것도 안 함. 게시 여부는 generate가 정함."""
+        """매일 아침 per_day개 (ORDER 한 바퀴 → 남으면 EXTRA 주제별 글). 꺼 뒀거나 AI 키가 없으면 아무것도 안 함. 게시 여부는 generate가 정함."""
         cfg = settings(); day = today or datetime.date.today().isoformat()
         if not cfg['auto']: return [{'status': 'off', 'reason': '자동 쓰기를 꺼 두었어요'}]
         if not desk.ai_ready(): log({'status': 'skip', 'kind': '', 'trigger': 'daily', 'reason': 'OpenAI API 키가 없어요'}); return [{'status': 'skip', 'reason': 'OpenAI API 키가 없어요'}]
@@ -489,6 +612,19 @@ def install(S):
             r = dict(generate(kind, 'daily', day=day), kind=kind); out.append(r)
             if r['status'] == 'made': want -= 1
         put('writer_turn', (turn + 1) % len(ORDER))
+        # 아직 하루 몫이 남으면 주제별 깊이 보기 글로 돌아가며 채움 (실패가 이어져도 AI를 끝없이 부르지 않게 횟수를 막음)
+        xturn = setting('writer_xturn', 0); xturn = xturn if isinstance(xturn, int) else 0
+        dead = set()
+        for i in range(cfg['per_day'] + len(EXTRA) * 2):
+            if want <= 0 or len(dead) == len(EXTRA): break
+            kind = EXTRA[(xturn + i) % len(EXTRA)]
+            if kind in dead: continue
+            ok, why = kind_ready(kind)
+            if not ok: dead.add(kind); out.append({'status': 'skip', 'kind': kind, 'reason': why}); continue
+            r = dict(generate(kind, 'daily', day=day), kind=kind); out.append(r)
+            if r['status'] == 'made': want -= 1
+            elif r['status'] == 'skip' and '주제' in r.get('reason', ''): dead.add(kind)
+        put('writer_xturn', (xturn + 1) % len(EXTRA))
         return out
 
     # ---- 화면에서 쓰는 정보 ------------------------------------------------------
@@ -539,7 +675,7 @@ def install(S):
             return redirect(url_for('admin_life_ai_job'))
         with conn() as db:
             rows = db.execute("SELECT a.id,a.title,a.status,a.category,a.created,x.* FROM ai_articles x JOIN articles a ON a.id=x.article_id AND a.origin='ai' ORDER BY a.id DESC LIMIT 60").fetchall()
-        kinds = [dict(KINDS[k], key=k, ready=kind_ready(k)[0], why=kind_ready(k)[1]) for k in ORDER]
+        kinds = [dict(KINDS[k], key=k, ready=kind_ready(k)[0], why=kind_ready(k)[1]) for k in ORDER + EXTRA]
         items = [dict(ai_info(r), id=r['id'], title=r['title'], status=r['status'], category=r['category']) for r in rows]
         return render_template('admin_life_ai.html', kinds=kinds, items=items, cfg=settings(), ai_ready=desk.ai_ready(), logs=setting('writer_log', [])[:10],
                                per_day=PER_DAY, sources={k: f()[0] for k, f in SOURCES.items()})
@@ -566,10 +702,10 @@ def install(S):
     def admin_life_ai_settings():
         per = request.form.get('per_day', type=int)
         if request.form.get('act') in ('stop', 'start'):   # 맨 위 '자동 게시 멈추기·다시 켜기' 버튼: 쓰기는 계속, 게시만 켜고 끔
-            on = request.form.get('act') == 'start'; put('writer', dict(settings(), auto=1, publish=int(on)))
+            on = request.form.get('act') == 'start'; put('writer', dict(settings(), auto=1, publish=int(on), v=2))
             flash('자동 게시를 다시 켰어요. 검사를 통과한 글은 바로 올라가요.' if on else '자동 게시를 멈췄어요. 글은 계속 써서 올릴 글(초안)에 쌓아 둬요.')
             return redirect(url_for('admin_life_ai'))
-        put('writer', {'auto': 1 if request.form.get('auto') else 0, 'per_day': per if per in PER_DAY else 2, 'publish': 1 if request.form.get('publish') else 0})
+        put('writer', {'auto': 1 if request.form.get('auto') else 0, 'per_day': per if per in PER_DAY else DEFAULT_PER_DAY, 'publish': 1 if request.form.get('publish') else 0, 'v': 2})
         flash('자동 쓰기 설정을 저장했어요.')
         return redirect(url_for('admin_life_ai'))
 
@@ -604,7 +740,7 @@ def main(argv):
     w = site.app.extensions['soboru_writer']
     with site.app.app_context():
         if '--dry' in argv:
-            for k in ([argv[argv.index('--kind') + 1]] if '--kind' in argv else ORDER):
+            for k in ([argv[argv.index('--kind') + 1]] if '--kind' in argv else ORDER + EXTRA):
                 try: print(k, json.dumps(w['collect'](k), ensure_ascii=False, indent=1)[:3000])
                 except Skip as e: print(k, '건너뜀:', e)
             return 0
