@@ -180,7 +180,8 @@ def answer(co,facts,text,history=None,meta=None,asks=None):
         return d if str(d.get('answer') or '').strip() else None
     d=ask(tier,why)
     if tier=='low' and d and d.get('deep') is True:tier='high';d=ask('high','AI가 깊은 판단이 필요하다고 봄') or d
-    if tier=='high' and (not d or d.get('sure') is False) and ai.plan()['sol']:tier='sol';d=ask('sol','Luna 높은 추론으로 부족함') or d
+    if tier=='high' and d and d.get('sure') is False and ai.plan()['sol']:  # 실패는 ai.ladder가 이미 Sol까지 해 봤다
+        tier='sol';d=ask('sol','Luna 높은 추론으로 부족함') or d
     if not d:return None
     ans=str(d.get('answer') or '').strip()
     cat=d.get('category') if d.get('category') in core.CATS else None

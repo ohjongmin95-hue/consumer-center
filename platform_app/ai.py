@@ -8,11 +8,10 @@ import core
 
 LOG=logging.getLogger(__name__)
 # 모델: 기본은 GPT-6 Luna. 평소 문의는 낮은 추론(low), 어려운 문의(tier='high')는 같은 Luna의 높은 추론(high).
-# Luna 높은 추론으로도 안 되면(실패·확신 없음) 운영 화면에서 켠 경우에만 GPT-6.1 Sol. 어느 것이든 실패하면 예전 모델(4.1-mini)로 한 번 더.
-# 운영 > AI 모델에서 예전 모델로 되돌리거나 일부 회사만 Luna로 옮길 수 있다 (settings: ai_model, ai_rollout, ai_sol).
+# Luna 높은 추론으로도 안 되면(실패·확신 없음) 운영 화면에서 켠 경우에만 GPT-6.1 Sol (settings: ai_sol). 예전 gpt-4.1-mini는 쓰지 않는다.
+# 모두 실패하면 None: 부른 쪽이 기본 안내로 답하거나 사장님 승인 목록으로 넘긴다.
 LUNA='gpt-6-luna';SOL='gpt-6.1-sol'
-OLD_MODEL=os.getenv('OPENAI_MODEL') or os.getenv('SOBORU_AI_MODEL') or 'gpt-4.1-mini'
-OPENAI_MODEL=OLD_MODEL  # 예전 이름 (다른 곳에서 읽을 수 있음)
+OPENAI_MODEL=LUNA
 PRICES={'gpt-6-luna':(0.10,0.01,0.50),'gpt-6.1-sol':(2.00,0.10,10.00),'gpt-6-sol':(2.00,0.10,10.00),'gpt-4.1-mini':(0.40,0.10,1.60),'gpt-4.1':(2.00,0.50,8.00)}  # 100만 토큰당 달러 (입력, 캐시 입력, 출력). OpenAI 가격표 2026-10
 EFFORTS={'low':'low','high':'high','sol':'high'}
 ANTHROPIC_MODEL=os.getenv('CHAT_MODEL','claude-haiku-5-5')
@@ -34,16 +33,8 @@ def setting(key):
 def save_setting(key,value):
     with core.conn() as db:db.execute('INSERT INTO settings(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,core.iso()))
 def plan():
-    """{'model': 상담 모델, 'rollout': Luna로 옮긴 회사 비율(%), 'sol': Sol 자동 호출}"""
-    m=setting('ai_model') or os.getenv('CS_AI_MODEL') or LUNA
-    try:r=max(0,min(100,int(setting('ai_rollout') or 100)))
-    except ValueError:r=100
-    return {'model':m,'rollout':r,'sol':setting('ai_sol')=='1'}
-def model_for(company_id=None,pl=None):
-    """이 회사가 쓸 모델. 단계적 전환: 회사 번호로 나눠 rollout%만 새 모델."""
-    pl=pl or plan()
-    if pl['model']==OLD_MODEL or company_id is None or int(company_id)%100<pl['rollout']:return pl['model']
-    return OLD_MODEL
+    """{'model': 상담 모델, 'sol': Sol 자동 호출}"""
+    return {'model':LUNA,'sol':setting('ai_sol')=='1'}
 def thinks(model):
     """생각하는 모델(gpt-5 이후, o 시리즈): temperature를 받지 않고, 생각에 쓰는 토큰까지 출력 한도에 든다."""
     return bool(re.match(r'(gpt-([5-9]|\d\d)|o\d)',model or ''))
@@ -164,19 +155,16 @@ def web_answer(system,messages,max_tokens,timeout,temperature,model,effort='',me
 
 def ladder(company_id,tier):
     """[(모델, 추론 수준)] 차례대로. 앞에서 실패하면 다음."""
-    pl=plan();main=model_for(company_id,pl);out=[]
+    pl=plan();out=[]
     if tier=='sol' and pl['sol']:out.append((SOL,'high'))
-    if thinks(main):
-        out.append((main,EFFORTS.get(tier,'low')))
-        if tier=='high' and pl['sol']:out.append((SOL,'high'))  # Luna 높은 추론이 실패하면 (켠 경우에만) Sol
-    else:out.append((main,''))
-    if OLD_MODEL not in [m for m,_ in out]:out.append((OLD_MODEL,''))
+    out.append((LUNA,EFFORTS.get(tier,'low')))
+    if tier=='high' and pl['sol']:out.append((SOL,'high'))  # Luna 높은 추론이 실패하면 (켠 경우에만) Sol
     return out
 
 def chat(system,messages,max_tokens=700,timeout=30,json_mode=False,temperature=0.3,files=None,anthropic_model=None,web=False,meta=None):
     """한 번 묻고 글을 돌려준다. messages: [{'role':'user'|'assistant','content':str}]. files: [(파일 이름, bytes)] PDF 첨부(OpenAI만).
     web=True면 (OpenAI일 때) 인터넷 검색을 쓸 수 있게 한다. 키가 없거나 실패하면 None.
-    meta: {'company_id','case_id','purpose','tier': 'low'|'high'|'sol','why'} 를 주면 회사별 모델·추론 수준을 고르고 호출을 기록한다.
+    meta: {'company_id','case_id','purpose','tier': 'low'|'high'|'sol','why'} 를 주면 추론 수준을 고르고 호출을 기록한다.
     끝나면 meta에 'req'(요청 묶음), 'model', 'effort', 'log_id'가 들어간다."""
     p=provider();m=meta if meta is not None else {}
     tier=m.get('tier','low');steps=ladder(m.get('company_id'),tier) if p=='openai' else []
@@ -267,7 +255,7 @@ def check():
     """실제 API가 각 모델·추론 수준을 받는지 짧게 물어본다. [{'label','model','effort','ok','code','ms','msg'}]"""
     out=[]
     if provider()!='openai':return out
-    for label,model,effort in (('일반 Luna',LUNA,'low'),('고추론 Luna',LUNA,'high'),('검색용 Luna (함수 호출)',LUNA,'none'),('GPT-6.1 Sol',SOL,'high'),('예전 모델',OLD_MODEL,'')):
+    for label,model,effort in (('일반 Luna',LUNA,'low'),('고추론 Luna',LUNA,'high'),('검색용 Luna (함수 호출)',LUNA,'none'),('GPT-6.1 Sol',SOL,'high')):
         body={'model':model,'messages':[{'role':'user','content':'"됐어요"라고만 답해 주세요.'}],**oa_params(model,20,0.3,effort)}
         if effort=='none':body.update(tools=[SEARCH_TOOL],tool_choice='auto')
         t=time.time()

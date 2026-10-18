@@ -8,7 +8,7 @@ for f in /etc/soboru.env /etc/soboru-platform.env; do
   grep -E '^(CS_AI_MODEL|OPENAI_MODEL|OPENAI_IMAGE_MODEL|OPENAI_IMAGE_QUALITY|SOBORU_AI_MODEL|CHAT_MODEL|DRAFT_MODEL)=' "$f" | sed "s|^|  $f: |"
   if grep -qE '^OPENAI_API_KEY=.' "$f"; then echo "  $f: OpenAI 키 있음"; else echo "  $f: OpenAI 키 없음"; fi
 done
-echo "  코드 기본값: 소보루CS AI 상담 gpt-6-luna(운영 > AI 모델에서 바꿈, 실패하면 gpt-4.1-mini), 소보루 글(요청서·분류·법률 질문) gpt-4.1-mini, 그림 gpt-image-1-mini(medium)"
+echo "  코드 기본값: 소보루CS AI 상담 gpt-6-luna(일반 low, 어려운 문의 high), 소보루 글(요청서·분류·법률 질문) gpt-4.1-mini, 그림 gpt-image-1-mini(medium)"
 DB="$(grep -E '^DATABASE_PATH=' /etc/soboru.env 2>/dev/null | cut -d= -f2- || true)"; DB="${DB:-/opt/soboru/app/cases.sqlite3}"
 [ -f "$DB" ] || { echo "DB를 찾지 못했어요: $DB"; exit 1; }
 python3 - "$DB" <<'PY'

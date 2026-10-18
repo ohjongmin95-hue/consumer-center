@@ -333,7 +333,7 @@ class PlatformTest(unittest.TestCase):
         self.assertNotIn('선크림',seen['body']['instructions'])
 
     def test_ai_model_luna_tiers_and_log(self):
-        """AI 상담: Luna 낮은 추론 기본, 어려운 문의는 높은 추론, 실패하면 예전 모델. Sol은 운영에서 켠 경우만. 호출은 모델·추론·토큰·비용·결과로 남는다."""
+        """AI 상담: Luna 낮은 추론 기본, 어려운 문의는 높은 추론. 예전 4.1-mini는 쓰지 않는다. Sol은 운영에서 켠 경우만. 호출은 모델·추론·토큰·비용·결과로 남는다."""
         aim=sys.modules['ai'];cb=sys.modules['chatbot'];sent=[]
         def reply(d):return 200,{'choices':[{'message':{'content':json.dumps(d,ensure_ascii=False)}}],'usage':{'prompt_tokens':1000,'completion_tokens':300,'prompt_tokens_details':{'cached_tokens':200},'completion_tokens_details':{'reasoning_tokens':100}}}
         script={}
@@ -362,15 +362,11 @@ class PlatformTest(unittest.TestCase):
         aim.save_setting('ai_sol','1')
         script[('gpt-6.1-sol','high')]={'answer':'규정상 이렇게 돼요.','sure':True}
         sent.clear();a=ask('보상해 주세요');self.assertEqual((a['answer'],a['tier']),('규정상 이렇게 돼요.','sol'))
-        # 높은 추론이 실패하면 (켠 경우) Sol, 그것도 실패하면 예전 모델
+        # 높은 추론이 실패하면 (켠 경우) Sol. 그것도 실패하면 답 없음 (기본 안내·승인으로). 4.1-mini는 부르지 않는다
         script[('gpt-6-luna','high')]=(500,{'error':{'message':'x'}});script[('gpt-6.1-sol','high')]=(400,{'error':{'message':'y'}})
-        sent.clear();ask('배상하세요');self.assertEqual([b['model'] for b in sent],['gpt-6-luna','gpt-6.1-sol','gpt-4.1-mini'])
-        self.assertEqual((sent[-1]['temperature'],sent[-1]['max_tokens']),(0.3,900))  # 예전 모델은 예전 방식 그대로
+        sent.clear();self.assertIsNone(ask('배상하세요'));self.assertEqual([b['model'] for b in sent],['gpt-6-luna','gpt-6.1-sol'])
         aim.save_setting('ai_sol','');script.clear()
-        # 운영에서 예전 모델로 되돌리기·일부 회사만 옮기기
-        aim.save_setting('ai_model','gpt-4.1-mini');self.assertEqual([m for m,_ in aim.ladder(7,'high')],['gpt-4.1-mini'])
-        aim.save_setting('ai_model','gpt-6-luna');aim.save_setting('ai_rollout','30')
-        self.assertEqual((aim.model_for(129),aim.model_for(150)),('gpt-6-luna','gpt-4.1-mini'));aim.save_setting('ai_rollout','100')
+        self.assertEqual(aim.ladder(7,'low'),[('gpt-6-luna','low')]);self.assertEqual(aim.ladder(7,'high'),[('gpt-6-luna','high')])
         # 기록: 모델·추론·토큰·비용·결과
         meta={'company_id':None,'purpose':'chat'};ask('이거 얼마예요?',meta);aim.outcome(meta,'answered')
         with self.core.conn() as db:r=db.execute('SELECT * FROM ai_calls WHERE req=?',(meta['req'],)).fetchone()
@@ -383,16 +379,16 @@ class PlatformTest(unittest.TestCase):
         # 운영 화면: 설정·비교가 보인다
         o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
         page=o.get('/biz/ops/ai').get_data(as_text=True);self.assertIn('최근 30일 비교',page);self.assertIn('고추론 Luna',page)
-        self.post(o,'/biz/ops/ai',{'model':'gpt-6-luna','rollout':'50','sol':'1'});self.assertEqual(aim.plan(),{'model':'gpt-6-luna','rollout':50,'sol':True})
-        self.post(o,'/biz/ops/ai',{'model':'gpt-6-luna','rollout':'100'});self.assertFalse(aim.plan()['sol'])
+        self.post(o,'/biz/ops/ai',{'sol':'1'});self.assertEqual(aim.plan(),{'model':'gpt-6-luna','sol':True})
+        self.post(o,'/biz/ops/ai',{});self.assertFalse(aim.plan()['sol'])
         # 같은 질문으로 비교: 예전 모델·Luna 낮은·높은 추론에 샘플 질문을 보내고 채점해 나란히 남긴다
         bench=sys.modules['aibench']
         def bfake(url,headers,body,timeout):
             if '채점자' in body['messages'][0]['content']:return 200,{'choices':[{'message':{'content':'{"score": 4, "note": "정확해요"}'}}]}
-            return reply({'answer':'바로 환불해 드릴게요.' if body['model']=='gpt-4.1-mini' and '환불' in body['messages'][1]['content'] else '안내해 드릴게요.'})
+            return reply({'answer':'바로 환불해 드릴게요.' if body.get('reasoning_effort')=='low' and '환불' in body['messages'][1]['content'] else '안내해 드릴게요.'})
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',bfake):bench.run()
-        res=bench.last();self.assertTrue(res['done']);self.assertEqual(res['models'],['예전 모델','일반 Luna','고추론 Luna'])
-        self.assertEqual(len(res['rows']),6);self.assertEqual(res['sum']['일반 Luna']['score'],4.0);self.assertGreaterEqual(res['sum']['예전 모델']['promise'],1)
+        res=bench.last();self.assertTrue(res['done']);self.assertEqual(res['models'],['일반 Luna','고추론 Luna'])
+        self.assertEqual(len(res['rows']),6);self.assertEqual(res['sum']['일반 Luna']['score'],4.0);self.assertGreaterEqual(res['sum']['일반 Luna']['promise'],1);self.assertEqual(res['sum']['고추론 Luna']['promise'],0)
         self.assertEqual({r['kind']:r['level'] for r in res['rows']}['강한 불만'],'high');self.assertEqual({r['kind']:r['level'] for r in res['rows']}['환불 절차'],'low')
         self.assertIn('같은 질문으로 비교',o.get('/biz/ops/ai').get_data(as_text=True))
 

@@ -1,4 +1,4 @@
-"""운영 > AI 모델 > 같은 질문으로 비교: 예전 모델(4.1-mini)과 Luna 낮은·높은 추론에 같은 고객 질문을 보내고
+"""운영 > AI 모델 > 같은 질문으로 비교: Luna 낮은·높은 추론(켰으면 Sol도)에 같은 고객 질문을 보내고
 응답시간·토큰·비용·답을 나란히 남긴다. 답은 채점 모델(Sol, 없으면 Luna 높은 추론)이 기준표로 1~5점을 매긴다.
 실제 고객 데이터는 쓰지 않는다 (아래 샘플 가게 정보만). 오래 걸려서 뒤에서 돌리고, 결과는 settings 'ai_bench'에 둔다."""
 import json, threading, time
@@ -28,7 +28,7 @@ RUBRIC=('너는 쇼핑몰 고객센터 답변 채점자다. 가게 정보, 고�
 RUNNING=threading.Lock()
 
 def lineup():
-    pl=ai.plan();out=[('예전 모델',ai.OLD_MODEL,''),('일반 Luna',ai.LUNA,'low'),('고추론 Luna',ai.LUNA,'high')]
+    pl=ai.plan();out=[('일반 Luna',ai.LUNA,'low'),('고추론 Luna',ai.LUNA,'high')]
     if pl['sol']:out.append(('GPT-6.1 Sol',ai.SOL,'high'))
     return out
 
