@@ -367,7 +367,11 @@ def chat_answer(company_id,f):
         with conn() as db:
             facts=chatbot.company_facts(db,co);mine=chat_orders(db,co)
         if mine:facts+='\n\n'+chatbot.order_facts(mine)
-        ai=chatbot.answer(co,facts,text,f.get('history'))
+        meta={'company_id':co['id'],'purpose':'chat'}
+        ai=chatbot.answer(co,facts,text,f.get('history'),meta=meta)
+        if ai and ai.get('promise'):  # 환불·보상·취소 결정은 AI가 약속하지 않고 사장님께 넘긴다
+            ai.update(answer='이 부분은 담당자가 확인하고 결정해야 해요. 담당자에게 전달해 드릴게요.',handoff=True)
+        chatbot.ai.outcome(meta,('handoff' if ai['handoff'] else 'answered') if ai else 'failed')
         if ai:
             cat=ai['category']
             with conn() as db:

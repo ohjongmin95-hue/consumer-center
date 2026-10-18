@@ -1,0 +1,50 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}AI 모델 · {{ BNAME }} 운영{% endblock %}
+{% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
+{% block body %}
+<div class="narrow">
+<div class="phead"><div><h1>AI 모델</h1><p>평소 문의는 GPT-6 Luna 낮은 추론으로 빠르게, 분쟁·불량 책임·강한 불만·반복 문의는 같은 Luna의 높은 추론으로 답해요. 어느 모델이 실패해도 예전 모델({{ OLD }})로 한 번 더 물어요</p></div></div>
+{% if not ready %}<div class="warn" style="margin-bottom:var(--ds-gap)">OpenAI 키가 없어요. <a class="link" href="{{ url_for('ops_keys') }}">서비스 키</a>에서 넣어 주세요.</div>{% endif %}
+<form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<div class="ph">상담 모델</div>
+<label class="check"><input type="radio" name="model" value="{{ LUNA }}" {{ 'checked' if pl.model!=OLD }}><span class="bx"></span>GPT-6 Luna (추천)</label>
+<label class="check"><input type="radio" name="model" value="{{ OLD }}" {{ 'checked' if pl.model==OLD }}><span class="bx"></span>예전 모델 {{ OLD }} (문제가 생기면 여기로 되돌려요)</label>
+<label class="fld"><span>Luna로 옮길 회사 비율 (%)</span><input class="inp" name="rollout" inputmode="numeric" value="{{ pl.rollout }}" aria-label="Luna로 옮길 회사 비율"></label>
+<p class="sub" style="font-size:14px;margin:0">단계적으로 옮길 때 써요. 30이면 회사 번호 기준으로 30%만 Luna, 나머지는 예전 모델이에요. 100이면 모두 Luna예요.</p>
+<label class="check"><input type="checkbox" name="sol" value="1" {{ 'checked' if pl.sol }}><span class="bx"></span>Luna 높은 추론으로도 부족하면 {{ SOL }} 자동 호출</label>
+<p class="sub" style="font-size:14px;margin:0">Luna 높은 추론이 실패하거나 확신이 없다고 할 때만 불러요. 요청당 비용이 Luna보다 약 20배 비싸서 처음엔 꺼 두었어요.</p>
+<div><button class="btn">저장</button></div></form>
+
+<section class="panel stack" style="margin-top:var(--ds-gap)"><div class="ph">연결 시험{% if chk %}<span class="pill gray" style="margin-left:auto">{{ chk.at[:16] }}</span>{% endif %}</div>
+<p class="sub" style="font-size:14px;margin:0">이 서버의 OpenAI 키로 각 모델과 추론 수준을 짧게 불러, 실제로 받는지 확인해요. 한 번에 몇 원 정도 들어요.</p>
+{% if chk and chk.rows %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>구분</th><th>모델</th><th>추론</th><th class="r">결과</th><th class="r">시간</th></tr></thead><tbody>
+{% for r in chk.rows %}<tr><td>{{ r.label }}</td><td>{{ r.model }}</td><td>{{ r.effort }}</td><td class="r">{% if r.ok %}<span class="pill ok">받음</span>{% else %}<span class="pill bad" title="{{ r.msg }}">안 받음 {{ r.code }}</span>{% endif %}</td><td class="r">{{ '{:,}'.format(r.ms) }}ms</td></tr>
+{% if not r.ok and r.msg %}<tr><td colspan="5" class="sub" style="font-size:13px">{{ r.msg }}</td></tr>{% endif %}{% endfor %}</tbody></table></div>{% endif %}
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="check"><button class="btn md gray"{{ ' disabled' if not ready }}>지금 시험하기</button></form></section>
+
+<section class="panel stack" style="margin-top:var(--ds-gap)"><div class="ph">같은 질문으로 비교{% if bench %}<span class="pill {{ 'ok' if bench.done else 'gray' }}" style="margin-left:auto">{{ bench.at[:16] }}{{ '' if bench.done else ' · 진행 중' }}</span>{% endif %}</div>
+<p class="sub" style="font-size:14px;margin:0">샘플 가게 정보로 고객 질문 {{ 6 }}개를 예전 모델과 Luna 낮은·높은 추론{{ '·Sol' if pl.sol }}에 똑같이 보내고, 응답시간·비용·답을 나란히 봐요. 점수는 채점 모델(Sol, 안 되면 Luna 높은 추론)이 정확성·약속 금지·공감 기준으로 매긴 1~5점이에요. 실제 고객 데이터는 쓰지 않아요. 한 번에 100원 안팎 들어요.</p>
+{% if bench and bench.sum %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>모델</th><th class="r">답함</th><th class="r">평균 시간</th><th class="r">6개 비용</th><th class="r">평균 점수</th><th class="r">약속한 답</th></tr></thead><tbody>
+{% for m in bench.models %}{% set x=bench.sum[m] %}<tr><td>{{ m }}</td><td class="r">{{ x.ok }}/{{ x.n }}</td><td class="r">{{ '{:,}ms'.format(x.ms) if x.ms else '–' }}</td><td class="r">${{ '%.4f'|format(x.cost) }}</td><td class="r">{{ x.score if x.score else '–' }}</td><td class="r">{{ x.promise }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% if bench and bench.rows %}{% for r in bench.rows %}<details class="pl-side" style="background:var(--fill)"><summary><span class="pl-tx"><b>{{ r.kind }} · {{ '고추론' if r.level=='high' else '일반' }}으로 분류</b><span>{{ r.q }}</span></span><span class="chev"></span></summary>
+<div class="pl-edit">{% for m in bench.models %}{% set c=r.by.get(m) %}{% if c %}<div><b style="font-size:14px">{{ m }}</b> <small class="sub">{{ '{:,}'.format(c.ms) }}ms · ${{ '%.5f'|format(c.cost) }}{% if c.score %} · {{ c.score }}점{% endif %}{% if c.promise %} · 약속함{% endif %}</small>
+<p style="margin:4px 0 0;font-size:14.5px;line-height:1.6;white-space:pre-wrap">{{ c.answer or ('실패: '+c.error) }}</p>{% if c.note %}<p class="sub" style="font-size:13px;margin:2px 0 0">채점: {{ c.note }}</p>{% endif %}</div>{% endif %}{% endfor %}</div></details>{% endfor %}{% endif %}
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="bench"><button class="btn md gray"{{ ' disabled' if not ready }}>{{ '다시 비교하기' if bench else '비교 시작' }}</button></form></section>
+
+<section class="panel stack" style="margin-top:var(--ds-gap)"><div class="ph">최근 30일 비교</div>
+<p class="sub" style="font-size:14px;margin:0">고객 문의 한 건(요청)을 마지막으로 답한 모델로 묶어요. 비용과 시간은 실패한 앞 시도까지 더해요. 해결률은 AI 답으로 끝난 비율이에요. 사장님께 넘어갔거나, 답한 뒤 고객이 다시 물었으면 해결 못 한 것으로 세요.</p>
+<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>구분</th><th class="r">요청</th><th class="r">평균 시간</th><th class="r">평균 토큰 (입력/출력)</th><th class="r">요청당 비용</th><th class="r">합계 비용</th><th class="r">해결률</th></tr></thead><tbody>
+{% for g in rep %}<tr><td>{{ g.label }}{% if g.up %}<br><small class="sub">낮은 추론에서 올라옴 {{ g.up }}</small>{% endif %}</td><td class="r">{{ '{:,}'.format(g.n) }}</td><td class="r">{{ '{:,}'.format(g.avg_ms) if g.n else '–' }}{{ 'ms' if g.n }}</td>
+<td class="r">{{ ('{:,} / {:,}'.format(g.avg_in,g.avg_out)) if g.n else '–' }}</td><td class="r">{{ '${:.4f}'.format(g.avg_cost) if g.n else '–' }}</td><td class="r">{{ '${:.2f}'.format(g.cost) if g.n else '–' }}</td>
+<td class="r">{{ (g.rate|string)+'%' if g.rate is not none else '–' }}{% if g.judged %} <small class="sub">({{ g.solved }}/{{ g.judged }})</small>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+<p class="sub" style="font-size:13px;margin:0">비용은 OpenAI 가격표(100만 토큰당 달러) 기준 추정이에요: Luna 입력 $0.10·출력 $0.50, Sol 입력 $2·출력 $10, 4.1-mini 입력 $0.40·출력 $1.60. 생각에 쓴 토큰도 출력으로 계산돼요.</p></section>
+
+<section class="panel" style="margin-top:var(--ds-gap)"><div class="ph">최근 호출 {{ calls|length }}</div>
+{% if calls %}<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>시각</th><th>회사·용도</th><th>모델·추론</th><th class="r">토큰</th><th class="r">비용</th><th class="r">시간</th><th class="r">결과</th></tr></thead><tbody>
+{% for c in calls %}<tr><td>{{ c.created[5:16] }}</td><td>{{ c.co_name or '–' }} · {{ {'chat':'상담창','auto':'자동 답변','draft':'답변 초안','pdf':'PDF 상품','check':'연결 시험'}.get(c.purpose,c.purpose or '기타') }}{% if c.why %}<br><small class="sub">{{ c.why }}</small>{% endif %}</td>
+<td>{{ c.model }}{% if c.effort %} · {{ c.effort }}{% endif %}</td><td class="r">{{ '{:,}'.format(c.in_tok) }} / {{ '{:,}'.format(c.out_tok) }}{% if c.reason_tok %}<br><small class="sub">생각 {{ '{:,}'.format(c.reason_tok) }}</small>{% endif %}</td>
+<td class="r">{{ '${:.5f}'.format(c.cost) if c.cost is not none else '–' }}</td><td class="r">{{ '{:,}'.format(c.ms) }}ms</td>
+<td class="r">{% if not c.ok %}<span class="pill bad" title="{{ c.error }}">실패</span>{% else %}{{ {'sent':'보냄','answered':'답함','handoff':'사장님께','followup':'다시 물음','failed':'실패','skipped':'건너뜀'}.get(c.outcome,'–') }}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="sub" style="margin:0">아직 없어요.</p>{% endif %}</section>
+</div>
+{% endblock %}

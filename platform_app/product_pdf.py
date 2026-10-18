@@ -97,12 +97,12 @@ def extract(raw):
         parts=chunks(pages)
         if len(parts)>MAX_CHUNKS:raise ValueError(f'PDF가 너무 길어요. {MAX_CHUNKS*CHUNK//2000}쪽 안팎으로 나눠 올려 주세요')
         for part in parts:
-            d=ai.chat_json(PROMPT,[{'role':'user','content':'[상품소개서 글자]\n'+part}],max_tokens=16000,timeout=150,temperature=0)
+            d=ai.chat_json(PROMPT,[{'role':'user','content':'[상품소개서 글자]\n'+part}],max_tokens=16000,timeout=150,temperature=0,meta={'purpose':'pdf'})
             if not isinstance(d,dict):raise ValueError('AI가 상품을 읽지 못했어요. 잠시 후 다시 올려 주세요')
             found+=d.get('products') or []
     else:
         if ai.provider()!='openai':raise ValueError('글자를 읽을 수 없는 PDF예요(이미지로 된 PDF). 글자가 들어 있는 PDF나 엑셀(CSV)로 올려 주세요')
-        d=ai.chat_json(PROMPT,[{'role':'user','content':'첨부한 상품소개서 PDF에서 상품을 모두 찾아 주세요.'}],max_tokens=16000,timeout=180,temperature=0,files=[('catalog.pdf',raw)])
+        d=ai.chat_json(PROMPT,[{'role':'user','content':'첨부한 상품소개서 PDF에서 상품을 모두 찾아 주세요.'}],max_tokens=16000,timeout=180,temperature=0,files=[('catalog.pdf',raw)],meta={'purpose':'pdf'})
         if not isinstance(d,dict):raise ValueError('AI가 상품을 읽지 못했어요. 잠시 후 다시 올려 주세요')
         found=d.get('products') or [];source=None  # 글자 원문이 없어 대조는 못 한다
     items,seen=[],set()
