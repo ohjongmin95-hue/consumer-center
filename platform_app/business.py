@@ -668,9 +668,15 @@ def send_via(db,c):
     if not r:return ''
     if r['shop'] in ('email','instagram'):return f"누르면 고객에게 {SEND_VIA.get(c['channel']) or ('메일로' if r['shop']=='email' else '인스타그램 DM으로')} 바로 가요"
     return f"누르면 {c['channel']}에 바로 올라가요"
+OUT_ACTS=('ask','ship_track','comp')  # 답변하기 말고도 고객에게 말이 나가는 일
+def unsent(db,c):
+    """고객에게 못 보냈을 때: '답함'으로 두지 않고 (7일 뒤 저절로 끝나지 않게) 사장님께 알린다. 이유는 진행 기록에 남아 있다."""
+    db.execute("UPDATE cases SET status='seen' WHERE id=? AND status IN ('answered','info')",(c['id'],))
+    core.alert(core.company(db,c['company_id']),'link',f"{c['channel']}에 답을 보내지 못했어요",core.short(c['title'],60),case_id=c['id'],db=db)
 def post_to_shop(db,c,text):
     """답변 하나를 받은 곳(판매처·메일·인스타그램)으로 보낸다. -> (안내, ok|error)"""
     msg,level=core.deliver_reply(db,c,text)
+    if level=='error':unsent(db,c)
     return (msg,level) if level else ('판매처에서 가져온 문의가 아니에요.','error')
 def post_later(case_id,text):
     """화면은 바로 넘기고 답변은 뒤에서 보낸다 (인스타그램 등이 응답에 몇 초 걸려 화면이 멈춰 보였음, 운영자 요청 2026-10-18).
@@ -679,7 +685,7 @@ def post_later(case_id,text):
         try:
             with conn() as db:
                 c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
-                if c:core.deliver_reply(db,c,text)
+                if c and core.deliver_reply(db,c,text)[1]=='error':unsent(db,c)
         except Exception:app.logger.exception('답변 보내기 실패 (요청 %s)',case_id)
     @after_this_request
     def start(resp):
@@ -719,7 +725,8 @@ def case_act(db,c,form):
         what=clean(form.get('comp'),100)
         if not what:return '보상 내용을 적어 주세요','error'
         db.execute("UPDATE cases SET comp=?,comp_status='given' WHERE id=?",(what,c['id']))
-        core.add_event(db,c['id'],'co','보상: '+what,f'불편을 드려 죄송합니다. 사과의 뜻으로 {what}을(를) 드릴게요.')
+        g.c_out=f'불편을 드려 죄송합니다. 사과의 뜻으로 {what}을(를) 드릴게요.'
+        core.add_event(db,c['id'],'co','보상: '+what,g.c_out)
         notify_consumer(c,f'[{core.CNAME}] 보상 안내가 도착했어요',f"{c['company_name']}: {what}")
         return '보상을 승인하고 고객에게 알렸습니다','ok'
     if act=='comp_skip' and core.comp_open(c):
@@ -737,7 +744,7 @@ def case_act(db,c,form):
         link=core.COURIERS.get(courier,'')
         msg=f"주문하신 상품은 {courier} 송장번호 {tracking}(으)로 보냈어요."+(' 배송 상태가 바뀌면 이 화면과 알림으로 바로 알려 드릴게요.' if on else (f' 택배사 홈페이지({link})에서 지금 위치를 확인하실 수 있어요.' if link else ''))
         db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' WHEN 'ai' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
-        core.add_event(db,c['id'],'co','송장번호를 알렸어요',msg);orders_mod.sync_case(db,c,'shipped',courier,tracking)
+        core.add_event(db,c['id'],'co','송장번호를 알렸어요',msg);orders_mod.sync_case(db,c,'shipped',courier,tracking);g.c_out=msg
         notify_consumer(c,f'[{core.CNAME}] 송장번호를 알려 드려요',f"{c['company_name']}: {courier} 송장번호 {tracking}")
         return '고객에게 송장번호를 알렸습니다','ok'
     if act=='approve' and c['decision'] not in ('approved','auto'):
@@ -754,7 +761,7 @@ def case_act(db,c,form):
     if act=='ask':
         ask=clean(form.get('ask'),300) or ('불량 부분 사진과 주문번호를 보내 주세요.' if c['category']=='제품 불량' else '주문번호와 확인할 수 있는 사진이나 캡처를 보내 주세요.')
         db.execute("UPDATE cases SET decision='info',status='info',info_ask=? WHERE id=?",(ask,c['id']))
-        core.add_event(db,c['id'],'co','자료 요청: '+ask);notify_consumer(c,f'[{core.CNAME}] 기업이 자료를 요청했어요',ask);return '자료를 요청했습니다','ok'
+        core.add_event(db,c['id'],'co','자료 요청: '+ask);g.c_out=ask;notify_consumer(c,f'[{core.CNAME}] 기업이 자료를 요청했어요',ask);return '자료를 요청했습니다','ok'
     if act=='reply':
         msg=clean(form.get('msg'),3000)
         if not msg:return '답변 내용을 적어 주세요','error'
@@ -794,6 +801,8 @@ def case(case_id):
             if level=='ok' and act=='reply' and send_via(db,c):  # 인스타·메일 요청은 '보내기'를 누르면 그 채널로 바로 간다 (뒤에서)
                 post_later(c['id'],clean(request.form.get('msg'),3000))
                 msg='답변을 저장하고 보내는 중이에요. 몇 초 뒤 진행 기록에 결과가 남아요.'
+            elif level=='ok' and act in OUT_ACTS and g.get('c_out') and send_via(db,c):  # 자료 요청·송장·보상 안내도 고객이 있는 곳(카페24·DM·메일)으로
+                post_later(c['id'],g.c_out);msg+=' 고객에게도 보내는 중이에요.'
             if level=='ok' and act=='reply' and request.form.get('macro','').isdigit():inbox.used_macro(db,me(),c,int(request.form['macro']))
             if msg:flash(msg,level)
             if level=='ok' and act in ('reply','approve','ask','ship_track') and not in_demo() and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',me()['id'])
@@ -1585,8 +1594,9 @@ def api_biz_case(case_id):
         if request.method=='POST':
             f=api_form();msg,level=case_act(db,c,f)
             if level!='ok':return jsonify(error=msg or '처리할 수 없어요.'),400
-            if f.get('act')=='reply' and send_via(db,c):  # 웹과 같이: 답변하기 한 번이면 가져온 곳(메일·인스타그램·판매처)으로 바로 간다
-                sent,lv=post_to_shop(db,c,clean(f.get('msg'),3000))
+            out=clean(f.get('msg'),3000) if f.get('act')=='reply' else (g.get('c_out') if f.get('act') in OUT_ACTS else '')
+            if out and send_via(db,c):  # 웹과 같이: 답변하기·자료 요청·송장·보상 안내는 가져온 곳(메일·인스타그램·판매처)으로 바로 간다
+                sent,lv=post_to_shop(db,c,out)
                 if lv=='ok':msg=sent
                 else:msg,warn='',sent
             if f.get('act')=='reply' and str(f.get('macro','')).isdigit():inbox.used_macro(db,co,c,int(f['macro']))

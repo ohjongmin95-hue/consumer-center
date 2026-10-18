@@ -294,19 +294,23 @@ def sync_boards(db,co):
                 if not no or a.get('notice')=='T' or (a.get('deleted') or 'F')!='F':continue  # 공지·지운 글은 빼고
                 if (parent and parent!=no) or int(a.get('reply_depth') or 0)>1:  # 답글: 고객이 같은 문의에 이어 쓴 것만 그 요청에 붙인다
                     follow(db,co,lk,bno,parent,f"a{bno}:{no}",a.get('writer') or a.get('nick_name') or '',text_of(a.get('content')),a.get('secret')=='T');continue
-                if no in answered:continue  # 가게가 이미 답글을 단 글 (처음 연결할 때 지난 글)
+                if no in answered or a.get('reply_status')=='C':continue  # 가게가 이미 답한 글 (처음 연결할 때 지난 글, 카페24 관리자에서 답한 글)
                 at=str(a.get('created_date') or '')[:19].replace('T',' ')
                 ext=f"b{bno}:{no}:{'s' if a.get('secret')=='T' else 'p'}"
                 if db.execute("SELECT 1 FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id=?",(co['id'],ext)).fetchone():continue  # 이미 가져온 글 (회원 주문을 다시 찾지 않게)
-                ono=str(a.get('order_id') or '')
+                body=text_of(a.get('content'));import chatbot
+                typed=chatbot.ORDER_RE.search((a.get('title') or '')+'\n'+body)
+                ono=str(a.get('order_id') or '');by='shop' if ono else ''  # 카페24가 붙여 준 주문 (회원이 주문 내역에서 쓴 글)
+                if typed and typed.group(1)!=ono:ono,by=typed.group(1),''  # 본문에 적은 주문번호가 먼저 (본인 주문인지는 AI가 답하기 전에 본다)
                 if not ono and (a.get('member_id') or '').strip():  # 회원 글: 주문번호를 안 적었으면 그 회원의 최근 주문을 붙인다
                     mid=str(a['member_id']).strip()
                     if mid not in seen_m:seen_m[mid]=member_order(db,co,mid)
-                    ono=seen_m[mid]
-                c=shops._case(db,co,'cafe24',dict(ext_id=ext,title=a.get('title') or '',body=text_of(a.get('content')),
-                    name=a.get('writer') or a.get('nick_name') or '',order_no=ono,product=product_name(db,co['id'],a.get('product_no')),at=at[:16],channel='카페24',
-                    ai=bool(at) and at>=max(lk['created'] or '',co['ai_reply'] or '')))  # AI는 연결·켠 뒤에 올라온 글에만 답한다 (지난 글은 승인 목록으로)
-                if c:new.append(c)
+                    ono=seen_m[mid];by='shop' if ono else ''
+                c=shops._case(db,co,'cafe24',dict(ext_id=ext,title=a.get('title') or '',body=body,
+                    name=a.get('writer') or a.get('nick_name') or '',order_no=ono,product=product_name(db,co['id'],a.get('product_no')),at=at[:16],channel='카페24'))  # 아직 답이 없는 글이면 연결 전에 올라왔어도 AI가 먼저 본다 (승인 목록엔 AI가 넘긴 것만)
+                if c:
+                    if by:db.execute("UPDATE cases SET order_by=? WHERE id=?",(by,c['id']));c=db.execute('SELECT * FROM cases WHERE id=?',(c['id'],)).fetchone()
+                    new.append(c)
             if len(rows)<100:break
             offset+=100
     new+=sync_urgent(db,co,lk,frm,now)
@@ -331,9 +335,15 @@ def sync_urgent(db,co,lk,frm,now):
             if mid:
                 if mid not in seen_m:seen_m[mid]=member_order(db,co,mid)
                 ono=seen_m[mid]
-            c=shops._case(db,co,'cafe24',dict(ext_id=ext,title='[긴급문의] '+(a.get('title') or ''),body=text_of(a.get('content')),
-                name=a.get('writer') or '',order_no=ono,product='',at=at[:16],channel='카페24',ai=bool(at) and at>=max(lk['created'] or '',co['ai_reply'] or '')))
-            if c:new.append(c)
+            body=text_of(a.get('content'));import chatbot
+            typed=chatbot.ORDER_RE.search((a.get('title') or '')+'\n'+body)
+            by='shop' if ono else ''
+            if typed and typed.group(1)!=ono:ono,by=typed.group(1),''
+            c=shops._case(db,co,'cafe24',dict(ext_id=ext,title='[긴급문의] '+(a.get('title') or ''),body=body,
+                name=a.get('writer') or '',order_no=ono,product='',at=at[:16],channel='카페24'))
+            if c:
+                if by:db.execute("UPDATE cases SET order_by=? WHERE id=?",(by,c['id']))
+                new.append(c)
         if len(rows)<100:break
         offset+=100
     return new
@@ -344,7 +354,7 @@ def sync_comments(db,co,lk):
     rows=db.execute(f'''SELECT s.ext_id,c.id FROM shop_seen s JOIN cases c ON c.id=s.case_id WHERE s.company_id=? AND s.shop='cafe24' AND s.ext_id LIKE 'b%'
         AND c.status NOT IN ({fin}) ORDER BY c.updated DESC LIMIT ?''',(co['id'],*core.FINAL,OPEN_COMMENTS)).fetchall()
     for r in rows:
-        m=re.fullmatch(r'b(\d+):(\d+):([sp])',r['ext_id'])
+        m=re.fullmatch(r'b(\d+):(\d+):([sp])(?::.*)?',r['ext_id'])  # 끝난 문의에 다시 쓴 글로 연 요청은 뒤에 그 글 표시가 붙는다
         if not m:continue
         bno,no=int(m[1]),int(m[2])
         db.commit()  # 카페24를 기다리는 동안 DB를 잠그지 않게
@@ -360,11 +370,16 @@ def mine(co,lk,writer):
 def follow(db,co,lk,bno,parent,ext,writer,text,secret):
     """카페24 문의 글에 이어진 답글·댓글 하나. 진행 중이면 그 요청에 붙이고, 끝난 요청이면 새 요청으로 받는다."""
     if mine(co,lk,writer) or db.execute("SELECT 1 FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id=?",(co['id'],ext)).fetchone():return None
-    root=db.execute("SELECT case_id FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id IN (?,?) ORDER BY rowid LIMIT 1",(co['id'],f'b{bno}:{parent}:s',f'b{bno}:{parent}:p')).fetchone()
+    root=db.execute("SELECT case_id FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id LIKE ? ORDER BY rowid DESC LIMIT 1",(co['id'],f'b{bno}:{parent}:%')).fetchone()
     if not root:return None  # 소보루가 가져온 적 없는 글에 달린 것
-    c=db.execute('SELECT * FROM cases WHERE id=?',(root['case_id'],)).fetchone()
-    if c and c['name'] and clean(writer,20)!=c['name']:return None  # 처음 글쓴 고객이 쓴 것만 (다른 사람·가게 답글은 빼고)
+    c=db.execute('SELECT * FROM cases WHERE id=?',(root['case_id'],)).fetchone()  # 그 글로 만든 가장 최근 요청 (끝난 뒤 다시 연 요청이 있으면 그쪽)
     text=text or '(내용 없음)'
+    if c and c['name'] and clean(writer,20)!=c['name']:  # 고객이 아닌 사람이 쓴 것. 답글(댓글 말고)이면 카페24 관리자 화면에서 가게가 직접 답한 것으로 본다
+        if ext.startswith('a') and c['status'] in ('forwarded','seen') and c['decision'] in ('pending','ai','hold','info'):
+            db.execute("UPDATE cases SET status='answered',decision='direct',updated=? WHERE id=?",(core.iso(),c['id']))
+            core.add_event(db,c['id'],'co','카페24 관리자 화면에서 답했어요',text)
+            db.execute("INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)",(co['id'],'cafe24',ext,c['id']))
+        return None
     if c and c['status'] not in core.FINAL:
         core.add_event(db,c['id'],'me',text)
         if c['status'] in ('answered','info'):db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],))
@@ -619,9 +634,9 @@ def launch():
     with conn() as db:lk=link(db,co['id'])
     if lk and lk['mall_id']==mall and lk['status']=='ok':
         session.pop('c24_launch',None);return redirect(url_for('decide'))
-    if not co['member']:return redirect(url_for('c24.page'))  # 회사 인증 전: 연결 화면에서 안내
+    # 카페24가 서명해 보낸 실행(=그 쇼핑몰 관리자)이고, 이어서 카페24 로그인·권한 동의까지 하면 회사 인증으로 본다 (카페24 입점 심사를 거친 쇼핑몰)
     nonce=secrets.token_urlsafe(12);session['c24_nonce']=nonce
-    return redirect(authorize_url(mall,core.signer('c24').dumps({'co':co['id'],'mall':mall,'n':nonce})))
+    return redirect(authorize_url(mall,core.signer('c24').dumps({'co':co['id'],'mall':mall,'n':nonce,'l':1})))
 
 @bp.route('/connect/cafe24',methods=['GET','POST'])
 def page():
@@ -658,13 +673,14 @@ def page():
                 except shops.ShopError as e:flash(str(e),'error')
             else:
                 if not ready():flash('카페24 연결은 소보루가 카페24 앱 등록을 마치면 열려요.','error')
-                elif not co['member']:flash('판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 할 수 있어요.','error')
                 else:
                     mall=clean(request.form.get('mall_id'),40).lower().removesuffix('.cafe24.com')
-                    if not MALL_RE.match(mall):flash('카페24 쇼핑몰 아이디를 확인해 주세요 (관리자 로그인 아이디, 예: myshop)','error')
+                    launched=bool(mall) and session.get('c24_launch')==mall  # 카페24 관리자에서 앱을 열고 온 쇼핑몰
+                    if not co['member'] and not launched:flash('판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 할 수 있어요. 카페24 관리자에서 소보루 CS 앱을 열면 바로 연결할 수 있어요.','error')
+                    elif not MALL_RE.match(mall):flash('카페24 쇼핑몰 아이디를 확인해 주세요 (관리자 로그인 아이디, 예: myshop)','error')
                     else:
                         nonce=secrets.token_urlsafe(12);session['c24_nonce']=nonce
-                        state=core.signer('c24').dumps({'co':co['id'],'mall':mall,'n':nonce})
+                        state=core.signer('c24').dumps(dict({'co':co['id'],'mall':mall,'n':nonce},**({'l':1} if launched else {})))
                         return redirect(authorize_url(mall,state))
         return redirect(url_for('c24.page'))
     with conn() as db:lk=link(db,co['id'])
@@ -693,6 +709,9 @@ def callback():
     except shops.ShopError as e:flash(str(e),'error');return redirect(url_for('c24.page'))
     with conn() as db:
         store(db,co['id'],st['mall'],data);session.pop('c24_launch',None)
+        if st.get('l') and not co['member']:  # 카페24에서 연 앱 + 그 쇼핑몰 관리자 동의 = 회사 인증 (국세청·이메일 확인을 기다리지 않는다)
+            import onboard;onboard.make_member(db,co);co=core.company(db,co['id'])
+            log.warning('카페24 관리자 동의로 회사 인증: 회사 %s, 쇼핑몰 %s',co['id'],st['mall'])
         try:sync_orders(db,co)
         except shops.ShopError:pass
         try:sync_products(db,co,force=True)

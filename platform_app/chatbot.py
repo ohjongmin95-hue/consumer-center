@@ -166,17 +166,33 @@ def mask(t):
     """AI에 보내기 전에 이메일·전화번호·주민번호·카드번호를 가린다."""
     for r,w in MASKS:t=r.sub(w,t or '')
     return t
+MONEY_CATS=('주문 취소','반품·환불','제품 불량')  # AI가 유형을 못 정했을 때 낱말 분류를 그대로 믿는 유형 (돈·물건이 오가는 것)
 ORDER_RE=re.compile(r'(?<![\d-])(\d{8}-\d{7}|\d{12,20})(?![\d-])')  # 카페24 주문번호(20261018-0000012)나 긴 주문번호 (휴대폰 번호 11자리는 빼고)
-ASK_ORDER='주문하신 상품의 배송 상태를 바로 확인해 드릴게요. 이 글에 주문번호(또는 주문하신 분 성함과 주문일)를 남겨 주시면 이어서 안내해 드릴게요.'
+ASK_ORDER='주문하신 상품의 배송 상태를 바로 확인해 드릴게요. 이 글에 주문번호를 남겨 주시면 이어서 안내해 드릴게요. (주문번호는 쇼핑몰 마이페이지 > 주문 내역에 있어요)'
 def again(db,c,text):
     """진행 중인 문의(판매처 게시판·DM·메일)에 고객이 말을 더 했을 때: AI가 맡던 대화(AI가 답함·확인 중)면 AI가 다시 보고, 아니면 사장님께 알린다.
     주문번호를 적어 보냈으면 요청에 붙인다 (AI가 그 주문으로 답하게)."""
     m=ORDER_RE.search(text or '')
-    if m and not c['order_no']:db.execute('UPDATE cases SET order_no=? WHERE id=?',(m.group(1),c['id']))
+    if m and m.group(1)!=c['order_no']:db.execute("UPDATE cases SET order_no=?,order_by='' WHERE id=?",(m.group(1),c['id']))  # 고객이 적은 번호가 먼저 (판매처가 붙인 최근 주문과 다르면 바꾼다)
+    db.execute("UPDATE cases SET ai_draft='',ai_why='' WHERE id=?",(c['id'],))  # 고객이 말을 더 했으니 예전 초안은 맞지 않는다
     if c['decision'] in ('auto','ai') and auto_on(core.company(db,c['company_id'])):
         db.execute("UPDATE cases SET decision='ai',ai_tried='' WHERE id=?",(c['id'],));return True
     if c['decision'] in ('auto','ai'):db.execute("UPDATE cases SET decision='pending' WHERE id=?",(c['id'],))
     core.notify_company_msg(db,c['id'],text);return False
+def owns(o,c,said):
+    """고객이 적은 주문번호가 그 고객 주문인지: 주문자 이름이 글쓴이와 같거나, 주문 휴대폰 번호(뒤 4자리 이상)를 고객이 말했을 때.
+    판매처가 붙여 준 주문(order_by 'shop')은 따로 확인하지 않는다."""
+    if c['order_by']=='shop':return True
+    n=lambda x:re.sub(r'\s','',x or '')
+    if o['buyer'] and c['name'] and n(o['buyer'])==n(c['name']):return True
+    ph=core.digits(o['phone'] or '')
+    return len(ph)>=8 and bool(re.search(r'(?<!\d)'+ph[-4:]+r'(?!\d)',re.sub(r'(?<=\d)[-\s.](?=\d)','',said or '')))
+def turns(db,c):
+    """요청의 대화 [(who,text)]: 처음 글, 그 뒤 고객이 더 쓴 말('me')과 보낸 답('co')."""
+    out=[('me',f"{c['title']}\n{c['body']}".strip())]
+    for e in core.events(db,c['id']):
+        if e['kind'] in ('me','co') and (e['reply'] or e['text']).strip():out.append(('me' if e['kind']=='me' else 'bot',e['reply'] or e['text']))
+    return out
 def _note(db,c,text):db.execute('INSERT INTO notes(case_id,company_id,author,text,created) VALUES(?,?,?,?,?)',(c['id'],c['company_id'],'AI',text[:2000],core.iso()))
 def _to_owner(db,c,note=''):
     """사장님 승인 목록으로 넘기고 알린다 (AI가 먼저 보는 문의는 들어올 때 알리지 않았다)."""
@@ -192,25 +208,38 @@ def auto_reply(case_id):
         c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone();co=core.company(db,c['company_id'])
         facts=company_facts(db,co,c['product'])
         o=db.execute('SELECT * FROM orders WHERE company_id=? AND order_no=?',(co['id'],c['order_no'])).fetchone() if c['order_no'] else None
-        if o:facts+='\n\n'+order_facts([orders.customer_view(o)])  # 판매처가 주문자 본인 글로 붙여 준 주문번호 (이름·연락처·주소는 안 보냄)
-        hist=[{'role':'user' if e['kind']=='me' else 'assistant','content':mask(e['reply'] or e['text'])} for e in core.events(db,c['id']) if e['kind'] in ('me','co')]
+        talk=turns(db,c)
+        seen=db.execute('SELECT ext_id FROM shop_seen WHERE company_id=? AND case_id=? ORDER BY rowid LIMIT 1',(co['id'],c['id'])).fetchone()
+        public=c['channel']=='카페24' and bool(seen and re.match(r'b\d+:\d+:p',seen['ext_id']))  # 누구나 보는 게시판 글: 송장번호는 답에 쓰지 않는다
         ok={cat:core.rule_for(db,co['id'],cat)['ai_ok'] for cat in core.CATS}  # '내 승인 후'로 정한 유형이면 AI가 답할 수 있어도 넘긴다 (기본: 취소·변경·교환·반품·환불·불량)
         c24=c['order_no'] and not o and c['channel']=='카페24'
     if c24:  # 장부에 없는 카페24 주문번호 (고객이 적은 번호, 14일보다 오래된 주문): 카페24에서 바로 찾아본다
         import cafe24
-        with core.conn() as db:
-            o=cafe24.fetch_order(db,co,c['order_no'])
-            if o:facts+='\n\n'+order_facts([orders.customer_view(o)])
-    q=mask(f"{c['title']}\n{c['body']}")
+        with core.conn() as db:o=cafe24.fetch_order(db,co,c['order_no'])
+    said='\n'.join(t for w,t in talk if w=='me')
+    other=bool(o) and not owns(o,c,said)  # 남의 주문번호: 주문 내용을 AI에 주지 않고 사장님께
+    if o and not other:
+        v=orders.customer_view(o)
+        if public:v=dict(v,invoice='',track='')
+        facts+='\n\n'+order_facts([v])  # 이름·연락처·주소는 안 보냄
+    # 마지막 고객 말이 이번 질문, 그 앞은 대화 기록 (댓글·DM·메일 답장으로 이어 물으면 앞 대화를 보고 답한다)
+    last=max(i for i,(w,_) in enumerate(talk) if w=='me')
+    hist=[{'who':w,'text':mask(t)} for w,t in talk[:last]]
+    q=mask(talk[last][1])
     if c['product']:q=f"(문의한 상품: {c['product']})\n"+q
     ai=answer(co,facts,q,hist)
     with core.conn() as db:
         if not ai:_to_owner(db,c);return 'failed'
-        why=[f"'{x}' 유형은 승인 후 답하기로 정해 두셨어요" for x in dict.fromkeys((c['category'],ai['category'])) if x and not ok.get(x,True)]
+        if ai['category'] and ai['category']!=c['category']:db.execute('UPDATE cases SET category=? WHERE id=?',(ai['category'],c['id']))  # 낱말로 고른 유형보다 AI가 읽은 유형
+        cat=ai['category'] or (c['category'] if c['category'] in MONEY_CATS else None)  # '사이즈'·'색상' 같은 낱말만으로 교환·변경으로 넘기지 않는다
+        why=[f"'{cat}' 유형은 승인 후 답하기로 정해 두셨어요"] if cat and not ok.get(cat,True) else []
+        if other:why.append('고객이 적은 주문번호의 주문자가 글쓴이와 달라 보여요. 본인 주문인지 확인해 주세요')
+        if c['ai_hold']:why.append('메일함을 잇기 전에 받은 메일이라 이미 답하셨을 수 있어 보내지 않았어요')
         ask=ai['lookup'] and not o and not why  # 주문을 모르면 넘기지 않고 주문번호를 묻는다 (고객이 남기면 AI가 이어서 답한다)
         if ask:ai['answer']=ASK_ORDER
         if ai['handoff'] and not why and not ask:why.append('AI가 사람 확인이 필요하다고 봤어요 (정보가 없거나, 처리가 필요하거나, 불만이 커요)')
         if why:
+            db.execute('UPDATE cases SET ai_draft=?,ai_why=? WHERE id=?',(ai['answer'] if ai['answer'] and not ai['handoff'] and not ask else '',' · '.join(why)[:300],c['id']))
             _to_owner(db,c,'AI가 답하지 않고 넘겼어요: '+' · '.join(why)+('\n'+ai['summary'] if ai['summary'] else '')+('\n\nAI 답변 초안:\n'+ai['answer'] if ai['answer'] and not ai['handoff'] else ''))
             return 'handoff'
         # 보내기 직전에 다시 맡는다: 그사이 사장님이 답했거나 승인했으면 보내지 않는다

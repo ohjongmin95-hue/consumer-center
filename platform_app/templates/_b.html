@@ -46,7 +46,8 @@
 {% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}
 <article class="dcard">
 {% if not detail %}<a class="body" href="{{ url_for('case',case_id=c.id) }}"><div class="meta">{{ i.cat_icon(c.category,20) }}<span>{{ c.category }}</span><span class="sp"></span>{% if overdue(c) %}<span class="t-bad">기한 지남</span>{% elif c.due %}<span>{{ fmt_day(c.due) }}까지</span>{% endif %}</div><div class="tt">{{ c.title }}</div><div class="want">원하는 해결 {{ c.want }}</div>{{ law_chip(c) }}</a>{% endif %}
-<div class="reco"><div class="l">처리 방법</div><div class="r">{{ p.title }}</div></div>
+{% if c.ai_why %}<div class="reco"><div class="l">AI가 넘긴 이유</div><div class="r">{{ c.ai_why }}</div></div>{% endif %}
+{% if c.ai_draft %}<div class="reco"><div class="l">승인하면 보낼 답</div><div class="r" style="white-space:pre-line">{{ c.ai_draft }}</div></div>{% else %}<div class="reco"><div class="l">처리 방법</div><div class="r">{{ p.title }}</div></div>{% endif %}
 <form method="post" action="{{ url_for('case',case_id=c.id) }}" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 {% if can('decide') %}<button class="btn md" name="act" value="approve">승인</button>{% endif %}<button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form>
 </article>

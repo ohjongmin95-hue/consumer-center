@@ -1804,6 +1804,83 @@ class PlatformTest(unittest.TestCase):
                 with self.core.conn() as db:self.assertTrue(any('지워서' in e['text'] for e in self.core.events(db,q['id'])))
         finally:c24.BACKGROUND=True
 
+    def test_cafe24_ai_followup_and_handoff(self):
+        """AI 자동 답변 검수 고침: 댓글로 이어 물으면 앞 대화를 보고 마지막 말에 답한다. '사이즈' 같은 낱말만으로 승인 목록에 넘기지 않는다.
+        남의 주문번호면 주문 내용을 AI에 주지 않고 넘긴다. 승인하면 AI 초안을 보낸다. 카페24 관리자에서 단 답글은 '답함'으로."""
+        shops=sys.modules['shops'];c24=sys.modules['cafe24'];bot=sys.modules['chatbot']
+        b,o,cid=self.signup_and_approve('AI검수상점','c24fix@example.com')
+        soon=lambda m:(self.core.now()+__import__('datetime').timedelta(minutes=m)).strftime('%Y-%m-%dT%H:%M:%S+09:00')
+        sent=[];comments={}
+        arts=[{'article_no':40,'parent_article_no':40,'title':'사이즈 문의','content':'키 165인데 M 사이즈로 바꾸면 맞을까요?','writer':'김손님','deleted':'F','notice':'F','secret':'T','created_date':soon(1)},
+              {'article_no':41,'parent_article_no':41,'title':'배송','content':'20261018-0000099 언제 와요?','writer':'박손님','deleted':'F','notice':'F','created_date':soon(2)},
+              {'article_no':43,'parent_article_no':43,'title':'환불','content':'환불해 주세요','writer':'최손님','deleted':'F','notice':'F','created_date':soon(3)}]
+        order={'order_id':'20261018-0000099','order_date':'2026-10-18T10:00:00+09:00','billing_name':'다른사람',
+               'items':[{'order_status':'N30','product_name':'티셔츠','quantity':1,'tracking_no':'123456789012','shipping_company_name':'CJ대한통운'}],'receivers':[{'name':'다른사람','cellphone':'010-9999-8888'}]}
+        def fake(method,url,headers=None,body=None):
+            path=url.split('/api/v2')[1].split('?')[0]
+            if method=='POST':sent.append((path,json.loads(body)));return 201,{}
+            if path=='/admin/boards':return 200,{'boards':[{'board_no':6,'board_name':'상품 Q&A'}]}
+            if path=='/admin/boards/6/articles':return 200,{'articles':arts}
+            if path=='/admin/urgentinquiry':return 200,{'urgentinquiry':[]}
+            m=re.fullmatch(r'/admin/boards/6/articles/(\d+)/comments',path)
+            if m:return 200,{'comments':comments.get(int(m[1]),[])}
+            if path=='/admin/orders/20261018-0000099':return 200,{'order':order}
+            return 404,{}
+        asked=[]
+        def fake_answer(co,facts,text,history=None):
+            asked.append((facts,text,bot.clean_history(history)))
+            if 'L은요' in text:return {'answer':'L은 조금 클 거예요.','category':None,'handoff':False,'lookup':False,'summary':''}
+            if '사이즈' in text:return {'answer':'165면 M이 맞아요.','category':None,'handoff':False,'lookup':False,'summary':''}
+            if '언제' in text:return {'answer':'곧 도착해요.','category':'배송 조회','handoff':False,'lookup':True,'summary':''}
+            return {'answer':'확인해 볼게요','category':'반품·환불','handoff':True,'lookup':False,'summary':'환불 요청'}
+        bot.BACKGROUND=False
+        with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec'}),patch.object(shops,'http',fake),patch.object(bot,'ready',lambda:True),patch.object(bot,'answer',fake_answer):
+            with self.core.conn() as db:
+                c24.store(db,cid,'fixshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order','mall.read_community','mall.write_community']})
+                cs={c['title']:c for c in c24.sync_boards(db,self.core.company(db,cid))}
+            bot.auto_reply_all()
+            def get(t):
+                with self.core.conn() as db:return db.execute('SELECT * FROM cases WHERE id=?',(cs[t]['id'],)).fetchone()
+            self.assertEqual((get('사이즈 문의')['status'],get('사이즈 문의')['decision']),('answered','auto'))  # 낱말로는 '교환'이어도 AI가 상품 문의로 봤으니 답한다
+            p=get('배송');self.assertEqual(p['decision'],'pending');self.assertIn('주문자',p['ai_why']);self.assertEqual(p['ai_draft'],'곧 도착해요.')
+            self.assertFalse(any('티셔츠' in f for f,t,h in asked if '언제' in t))  # 남의 주문은 AI에 안 준다
+            self.assertEqual(get('환불')['decision'],'pending')
+            # 고객이 댓글로 이어 물으면 앞 대화를 보고 마지막 말에 답한다
+            comments[40]=[{'comment_no':1,'writer':'김손님','content':'그럼 L은요?','created_date':soon(4)}]
+            arts.append({'article_no':44,'parent_article_no':43,'reply_depth':1,'title':'RE: 환불','content':'환불 접수했어요','writer':'운영팀','deleted':'F','notice':'F','created_date':soon(5)})
+            with self.core.conn() as db:c24.sync_boards(db,self.core.company(db,cid))
+            bot.auto_reply_all()
+            f,t,h=asked[-1];self.assertIn('L은요',t);self.assertNotIn('사이즈 문의',t)
+            self.assertEqual([x['role'] for x in h],['user','assistant']);self.assertIn('165',h[0]['content']);self.assertIn('M이 맞아요',h[1]['content'])
+            self.assertIn('L은 조금 클 거예요.',sent[-1][1]['requests'][0]['content'])
+            self.assertEqual((get('환불')['status'],get('환불')['decision']),('answered','direct'))  # 카페24 관리자에서 단 답글
+            # 승인하면 AI 초안을 보낸다 (기본 문구가 아니라)
+            self.post(b,f"/biz/case/{cs['배송']['id']}",{'act':'approve'})
+            self.assertIn('곧 도착해요.',sent[-1][1]['requests'][0]['content']);self.assertEqual(get('배송')['status'],'answered')
+
+    def test_cafe24_launch_verifies_company(self):
+        """카페24에서 연 앱으로 권한 동의까지 하면 회사 인증(국세청·이메일 확인)을 기다리지 않고 연결된다. 아이디만 넣은 연결은 인증이 있어야."""
+        import base64,hashlib,hmac as _h,time,urllib.parse
+        shops=sys.modules['shops']
+        def q(mall):
+            p=[('mall_id',mall),('shop_no','1'),('timestamp',str(int(time.time()))),('user_id','owner')];s=urllib.parse.urlencode(p)
+            return s+'&hmac='+urllib.parse.quote(base64.b64encode(_h.new(b'csec',s.encode(),hashlib.sha256).digest()).decode())
+        def fake(method,url,headers=None,body=None):
+            if '/oauth/token' in url:return 200,{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','refresh_token_expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order','mall.read_community']}
+            return 200,{}
+        b=self.client()
+        self.post(b,'/biz/signup',{'name':'새카페24상점','biz_no':self.bizno(),'owner_name':'대표','phone':'010-1111-2222','contact':'1588-0000','login_id':'c24new@example.com','password':'longpassword1','terms':'1'})
+        with self.core.conn() as db:co=db.execute("SELECT * FROM companies WHERE login_id='c24new@example.com'").fetchone()
+        self.assertEqual(co['member'],0)
+        with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec'}),patch.object(shops,'http',fake):
+            self.assertIn('회사 인증이 끝난 뒤',self.post(b,'/biz/connect/cafe24',{'act':'connect','mall_id':'othershop'},follow_redirects=True).get_data(as_text=True))
+            loc=b.get('/biz/cafe24/launch?'+q('newshop')).headers['Location'];self.assertIn('newshop.cafe24api.com',loc)
+            state=urllib.parse.parse_qs(urllib.parse.urlparse(loc).query)['state'][0]
+            b.get('/biz/connect/cafe24/callback?'+urllib.parse.urlencode({'state':state,'code':'abc'}))
+        with self.core.conn() as db:
+            self.assertEqual(db.execute('SELECT member FROM companies WHERE id=?',(co['id'],)).fetchone()[0],1)
+            self.assertEqual(db.execute('SELECT mall_id FROM cafe24_links WHERE company_id=?',(co['id'],)).fetchone()[0],'newshop')
+
     def test_cafe24_products_and_ai_reply(self):
         """카페24 상품 -> 상품정보 (사장님이 고친 안내는 그대로, 상품 권한 없는 예전 연결은 건너뜀). 상품 문의엔 상품 이름.
         AI 초안은 상품정보를 본다. AI 자동 답변: 단순 문의는 답해서 카페24에 올리고 완료, 반품 등은 안 보내고 메모. 개인정보는 가려서 보낸다."""
