@@ -13,7 +13,7 @@
 </div></header>
 {% if co and tab not in ('login','intro','signup') %}<nav class="bside" aria-label="사장님 메뉴">{{ menu(tab,True) }}</nav>{{ notices(tab) }}{% endif %}
 {% if co and tab not in ('login','intro','signup') %}<nav class="mbar" aria-label="사장님 아래 메뉴">
-{% for key,ep,label,ic in [('home','decide','홈','inbox'),('all','all_cases','요청','list'),('approve','approvals','승인','approve'),('rules','rules','자동 응대','bolt')] if (key!='rules' or can('manage')) %}<a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{{ i.icon(ic,24) }}<span>{{ label }}</span>{% if key=='approve' and n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>{% endfor %}
+{% for key,ep,label,ic in [('home','decide','홈','inbox'),('chat','chat','상담','chat'),('approve','approvals','승인','approve'),('rules','rules','자동 응대','bolt')] if (key!='rules' or can('manage')) %}<a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{{ i.icon(ic,24) }}<span>{{ label }}</span>{% if key=='approve' and n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>{% endfor %}
 <details><summary>{{ i.icon('list',24) }}<span>전체</span></summary><div class="sheet">{{ menu(tab,True) }}{% if can('manage') %}<a href="{{ url_for('settings') }}" class="{{ 'on' if tab=='settings' }}">{{ i.icon('gear',22) }}<span>설정</span></a>{% endif %}
 <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button>{{ i.icon('user',22) }}<span>로그아웃</span></button></form></div></details></nav>{% endif %}
 {%- endmacro %}

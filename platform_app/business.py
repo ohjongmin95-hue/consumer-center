@@ -781,6 +781,7 @@ def case(case_id):
             if act=='note':
                 if team.add_note(db,me(),c,who(),request.form.get('note')):flash('메모를 남겼어요. 고객에게는 보이지 않아요.','ok')
                 else:flash('메모 내용을 적어 주세요','error')
+                if request.form.get('back')=='chat':return redirect(url_for('chat',case_id=case_id))
                 return redirect(url_for('case',case_id=case_id)+'#notes')
             if act=='post_shop':
                 last=next((e for e in reversed(core.events(db,c['id'])) if e['kind']=='co' and e['reply']),None)
@@ -795,7 +796,7 @@ def case(case_id):
                 if name is not None:flash(f'담당자를 {name}(으)로 정했어요' if name else '담당자를 비웠어요','ok')
                 return redirect(url_for('case',case_id=case_id))
             if act in DECIDE_ACTS and not team.can(who(),'decide'):
-                flash('승인·보상·환불 완료는 대표나 관리자만 할 수 있어요. 메모로 부탁해 주세요.','error');return redirect(url_for('case',case_id=case_id))
+                flash('승인·보상·환불 완료는 대표나 관리자만 할 수 있어요. 메모로 부탁해 주세요.','error');return redirect(url_for('chat' if request.form.get('back')=='chat' else 'case',case_id=case_id))
             msg,level=case_act(db,c,request.form)
             if level=='bad':abort(400)
             if level=='ok' and act=='reply' and send_via(db,c):  # 인스타·메일 요청은 '보내기'를 누르면 그 채널로 바로 간다 (뒤에서)
@@ -809,6 +810,7 @@ def case(case_id):
             st=onboard.setup_state(real())
             if level=='ok' and st.get('test_case')==c['id'] and st.get('test')!='done':
                 onboard.mark(db,real(),'test','done');flash('시험 문의 처리 단계를 마쳤어요.','ok')
+            if request.form.get('back')=='chat':return redirect(url_for('chat',case_id=case_id))  # 상담 화면의 결정 카드에서 눌렀으면 그 대화방으로
             return redirect(url_for('case',case_id=case_id))
         if c['status']=='forwarded':
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
@@ -829,6 +831,97 @@ def case(case_id):
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='all',
         ctags=ctags,all_tags=all_tags,sla=sla,closable=closable(c),reopenable=reopenable(c),send_via=sv,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
+# ---------- 상담 (채널톡처럼: 왼쪽 대화방 목록, 가운데 대화, 오른쪽 고객·주문) ----------
+# 요청 하나 = 대화방 하나. 고객 말·AI 답·사장님 답이 말풍선으로 이어지고, 처리할 일(환불·취소 등)은 대화 안의 '결정' 카드로 뜬다.
+# 자세한 처리(교환·환불 완료·보상·태그 등)는 지금처럼 요청 상세 화면에서 한다.
+CHAT_TABS=(('open','진행 중'),('hold','보류'),('done','종료'))
+CH_MARK={'카페24':('C','c24'),'인스타그램':('IG','ig'),'이메일':('M','mail'),'스마트스토어':('N','nv'),'쿠팡':('CP','cp')}
+def first_text(c):
+    t,b=(c['title'] or '').rstrip('…. '),(c['body'] or '').strip()
+    return b if b.startswith(t) else (f"{c['title']}\n{b}".strip() if b else c['title'])
+def chat_rows(db,co,tab,q=''):
+    """대화방 목록: 마지막 말 미리보기, 결정 필요·AI 표시, 안 읽음. 최근 활동 순."""
+    nowi=core.iso();snz=lambda r:bool(r['snooze_until'] and r['snooze_until']>nowi)
+    rows=[r for r in my_cases(db,co) if (r['status'] in core.FINAL if tab=='done' else (r['status'] not in core.FINAL and snz(r)) if tab=='hold' else (r['status'] not in core.FINAL and not snz(r)))]
+    if q:rows=[r for r in rows if q.lower() in ' '.join((r['title'],r['body'],r['no'],r['name'] or '')).lower()]
+    rows=sorted(rows,key=lambda r:r['updated'] or r['created'],reverse=True)[:200]
+    ids=[r['id'] for r in rows];last={}
+    for i in range(0,len(ids),400):
+        part=ids[i:i+400]
+        for e in db.execute(f"SELECT e.* FROM events e JOIN (SELECT case_id,MAX(id) m FROM events WHERE kind IN ('me','co') AND case_id IN ({','.join('?'*len(part))}) GROUP BY case_id) x ON e.id=x.m",part):last[e['case_id']]=e
+    out=[]
+    for r in rows:
+        e=last.get(r['id']);text=(e['reply'] or e['text']) if e else first_text(r);who='me' if not e or e['kind']=='me' else 'co'
+        out.append(dict(id=r['id'],name=r['name'] or '고객',channel=r['channel'] or '상담창',mark=CH_MARK.get(r['channel'] or '',('W','web')),
+            text=core.short(' '.join((text or '').split()),60),who=who,when=chat_when(r['updated'] or r['created']),
+            need=r['decision']=='pending' and r['status'] not in core.FINAL,ai={'ai':'AI 확인 중','auto':'AI 답함'}.get(r['decision'],''),
+            unread=r['status']=='forwarded' or (who=='me' and r['status'] not in core.FINAL),cat=r['category']))
+    return out
+def chat_when(ts):
+    d=core.parse(ts)
+    if not d:return ''
+    n=core.now()
+    if d.date()==n.date():return f'{d:%H:%M}'
+    return f'{d.month}.{d.day}'
+def chat_msgs(db,c,after=0):
+    """대화: [{id,who: me|ai|co|sys|note, by, text, at}]. 처음 글(요청 본문)은 id 0. 메모는 사장님 쪽만 보는 노란 말풍선."""
+    out=[] if after else [dict(id=0,who='me',by=c['name'] or '고객',text=first_text(c),at=core.fmt(c['created']),ts=c['created'])]
+    for e in db.execute('SELECT * FROM events WHERE case_id=? AND id>? ORDER BY id',(c['id'],after)):
+        if e['kind']=='me':out.append(dict(id=e['id'],who='me',by=c['name'] or '고객',text=e['text'],at=core.fmt(e['created']),ts=e['created']))
+        elif e['kind']=='co' and e['reply']:
+            ai=e['text'].startswith('AI')
+            out.append(dict(id=e['id'],who='ai' if ai else 'co',by='AI' if ai else (e['actor'] or '사장님'),text=e['reply'],at=core.fmt(e['created']),ts=e['created']))
+        elif e['kind'] in ('co','sys'):out.append(dict(id=e['id'],who='sys',by='',text=e['text'],at=core.fmt(e['created']),ts=e['created']))
+    if not after:
+        for n in team.notes(db,c['id']):out.append(dict(id=-n['id'],who='note',by=n['author'],text=n['text'],at=core.fmt(n['created']),ts=n['created']))
+        out.sort(key=lambda m:(m['ts'],m['id']>0))
+    return out
+
+@app.route('/chat')
+@app.route('/chat/<int:case_id>')
+@login_required
+def chat(case_id=None):
+    tab=request.args.get('t','open');tab=tab if tab in dict(CHAT_TABS) else 'open';q=clean(request.args.get('q'),40)
+    with conn() as db:
+        c=my_case(db,case_id) if case_id else None
+        if c and c['status']=='forwarded':
+            db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요');c=my_case(db,case_id)
+        rows=chat_rows(db,me(),tab,q);cnt={k:len(chat_rows(db,me(),k)) for k,_ in CHAT_TABS}
+        ctx={}
+        if c:
+            core.read_alerts(db,me()['id'],c['id'])
+            ctx=dict(c=c,msgs=chat_msgs(db,c),last=livechat.last_id(db,c['id']),order=orders_mod.for_case(db,c),profile=inbox.customer(db,me(),c),
+                     assignee=team.assignee_name(db,me(),c['assignee']),ctags=inbox.tags_by_case(db,me()['id'],{c['id']}).get(c['id'],[]),send_via=send_via(db,c),
+                     can_decide=team.can(who(),'decide'),STATUS=core.STATUS,OSTATUS=orders_mod.STATUS)
+    return render_template('b_chat.html',tab_c=tab,TABS=CHAT_TABS,rows=rows,cnt=cnt,q=q,cur=case_id,tab='chat',**ctx)
+
+@app.route('/chat/list.json')
+@login_required
+def chat_list():
+    tab=request.args.get('t','open');tab=tab if tab in dict(CHAT_TABS) else 'open'
+    with conn() as db:return jsonify(rows=chat_rows(db,me(),tab,clean(request.args.get('q'),40)))
+
+@app.route('/chat/<int:case_id>/msgs')
+@login_required
+def chat_more(case_id):
+    """열어 둔 대화방의 새 말 (after 다음)과 지금 상태."""
+    after=request.args.get('after','0');after=int(after) if after.isdigit() else 0
+    with conn() as db:
+        c=my_case(db,case_id);ms=chat_msgs(db,c,after)
+        return jsonify(msgs=ms,last=livechat.last_id(db,c['id']),need=c['decision']=='pending' and c['status'] not in core.FINAL,decision=c['decision'],status=c['status'])
+
+@app.route('/chat/<int:case_id>/send',methods=['POST'])
+@login_required
+def chat_send(case_id):
+    """대화방에서 답 보내기: 요청 상세의 '답변하기'와 같다 (카페24·DM·메일이면 그곳으로)."""
+    with conn() as db:
+        c=my_case(db,case_id);text=clean(request.form.get('text'),3000)
+        msg,level=case_act(db,c,{'act':'reply','msg':text})
+        if level!='ok':return jsonify(error=msg or '보내지 못했어요'),400
+        if send_via(db,c):post_later(c['id'],text)
+        if not in_demo() and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',me()['id'])
+        return jsonify(ok=True)
+
 @app.route('/case/<int:case_id>/live',methods=['GET','POST'])
 @login_required
 def case_live(case_id):
@@ -856,13 +949,13 @@ def notify_poll():
         me_=db.execute('SELECT COALESCE(MAX(e.id),0) FROM events e JOIN cases c ON c.id=e.case_id WHERE c.company_id=?',(co['id'],)).fetchone()[0]
         if c0 is not None and e0 is not None:
             new=db.execute("SELECT id,title,channel,name FROM cases WHERE company_id=? AND member=1 AND consent=1 AND id>? ORDER BY id DESC LIMIT 5",(co['id'],c0)).fetchall()
-            for r in new:out.append(dict(case=r['id'],kind='new',title='새 요청'+(f" · {r['channel']}" if r['channel'] else ''),text=r['title'],url=url_for('case',case_id=r['id'])))
+            for r in new:out.append(dict(case=r['id'],kind='new',title='새 요청'+(f" · {r['channel']}" if r['channel'] else ''),text=r['title'],url=url_for('chat',case_id=r['id'])))
             seen={r['id'] for r in new}
             for r in db.execute("""SELECT e.case_id,e.text,c.title,c.channel FROM events e JOIN cases c ON c.id=e.case_id WHERE c.company_id=? AND c.member=1 AND c.consent=1
                     AND e.kind='me' AND e.id>? ORDER BY e.id DESC LIMIT 10""",(co['id'],e0)).fetchall():
                 if r['case_id'] in seen:continue
                 seen.add(r['case_id'])
-                out.append(dict(case=r['case_id'],kind='msg',title='고객의 새 메시지'+(f" · {r['channel']}" if r['channel'] else ''),text=core.short(' '.join((r['text'] or '').split()),60),url=url_for('case',case_id=r['case_id'])))
+                out.append(dict(case=r['case_id'],kind='msg',title='고객의 새 메시지'+(f" · {r['channel']}" if r['channel'] else ''),text=core.short(' '.join((r['text'] or '').split()),60),url=url_for('chat',case_id=r['case_id'])))
     return jsonify(c=mc,e=me_,items=out[:5])
 
 def case_inbox(db,c,act,f):
