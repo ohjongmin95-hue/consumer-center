@@ -7,7 +7,8 @@ import { useAuth } from '../../lib/auth';
 import { usePending } from '../../lib/badge';
 import { C, FONT } from '../../lib/theme';
 
-// 아래 탭은 휴대폰 웹(소보루 CS 홈페이지)과 같은 다섯 칸: 홈 · 요청 · 승인 · 자동 응대 · 전체
+// 아래 탭은 휴대폰 웹(소보루 CS 홈페이지)과 같은 다섯 칸: 홈 · 상담 · 승인 · 자동 응대 · 전체
+// 요청 목록은 상담으로 바뀌었고, 홈의 숫자·찾기 링크로만 연다 (탭에는 안 보임)
 export default function TabsLayout() {
   const { ready, session } = useAuth();
   const n = usePending();
@@ -26,7 +27,8 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: '홈', tabBarIcon: ({ focused }) => <Tab name="home" on={focused} /> }} />
-      <Tabs.Screen name="cases" options={{ title: '요청', tabBarIcon: ({ focused }) => <Tab name="list" on={focused} /> }} />
+      <Tabs.Screen name="chat" options={{ title: '상담', tabBarIcon: ({ focused }) => <Tab name="chat" on={focused} /> }} />
+      <Tabs.Screen name="cases" options={{ href: null, title: '요청' }} />
       <Tabs.Screen name="approvals" options={{ title: '승인', tabBarIcon: ({ focused }) => <Tab name="check" on={focused} n={n} /> }} />
       <Tabs.Screen name="auto" options={{ title: '자동 응대', tabBarIcon: ({ focused }) => <Tab name="bolt" on={focused} /> }} />
       <Tabs.Screen name="more" options={{ title: '전체', tabBarIcon: ({ focused }) => <Tab name="menu" on={focused} /> }} />

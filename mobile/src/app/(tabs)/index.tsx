@@ -94,9 +94,9 @@ export default function HomeTab() {
         </Card>
 
         <View style={st.tiles}>
-          <Tile icon="inbox" label="오늘 들어온 요청" value={home.counts.today ?? 0} onPress={() => router.navigate('/cases')} />
+          <Tile icon="inbox" label="오늘 들어온 요청" value={home.counts.today ?? 0} onPress={() => router.navigate('/chat')} />
           <Tile icon="check" label="승인 대기" value={home.counts.pending} tone="acc" onPress={() => router.navigate('/approvals')} />
-          <Tile icon="speech" label="답변할 요청" value={home.counts.open} onPress={() => router.navigate('/cases?f=open')} />
+          <Tile icon="speech" label="답변할 요청" value={home.counts.open} onPress={() => router.navigate('/chat')} />
           <Tile icon="clock" label="기한 지난 요청" value={home.counts.late} tone="red" onPress={() => router.navigate('/cases?f=bad')} />
         </View>
 
@@ -112,7 +112,7 @@ export default function HomeTab() {
           </Text>
           {pend.slice(0, 5).map((c) => (
             <View key={c.id} style={st.pRow}>
-              <Pressable onPress={() => router.push(`/case/${c.id}`)} style={({ pressed }) => [{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }, pressed && { opacity: 0.6 }]}>
+              <Pressable onPress={() => router.push(`/chat/${c.id}`)} style={({ pressed }) => [{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }, pressed && { opacity: 0.6 }]}>
                 <TfTile name={catTf(c.category)} size={24} box={44} />
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={st.pTitle} numberOfLines={1}>

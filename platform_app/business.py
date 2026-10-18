@@ -1721,6 +1721,41 @@ def api_biz_case(case_id):
         core.read_alerts(db,co['id'],case_id)
         c=api_my_case(db,co,case_id);d=biz_detail(db,c,co)
     return jsonify(dict(d,message=msg,warn=warn))
+# 앱의 상담 탭: 웹 상담방(/chat)과 같은 목록·대화·결정 카드. 보내기는 화면을 바로 넘기고 판매처·DM·메일로는 뒤에서 간다.
+def api_chat_state(db,co,c):
+    need=c['decision']=='pending' and c['status'] not in core.FINAL
+    return dict(id=c['id'],no=c['no'],name=c['name'] or '고객',channel=c['channel'] or '상담창',category=c['category'],status=c['status'],status_label=core.STATUS[c['status']][0],
+        need=need,why=c['ai_why'] or '',draft=c['ai_draft'] or '',decision=c['decision'],can_reply=c['status'] not in ('resolved','unresolved','withdrawn'),
+        send_via=send_via(db,c) or '',last=livechat.last_id(db,c['id']))
+@app.route('/api/v1/chat')
+def api_chat_list():
+    co=api_co();tab=request.args.get('t','open');tab=tab if tab in dict(CHAT_TABS) else 'open'
+    with conn() as db:
+        return jsonify(rows=chat_rows(db,co,tab,clean(request.args.get('q'),40)),counts={k:len(chat_rows(db,co,k)) for k,_ in CHAT_TABS},tabs=[dict(key=k,label=v) for k,v in CHAT_TABS])
+@app.route('/api/v1/chat/<int:case_id>',methods=['GET','POST'])
+def api_chat_room(case_id):
+    """GET: 대화 (after 다음의 새 말만 받을 수 있다)와 지금 상태. POST: text로 답 보내기, act=approve|hold로 결정 카드 누르기."""
+    co=api_co()
+    with conn() as db:
+        c=api_my_case(db,co,case_id);msg=''
+        if request.method=='POST':
+            f=api_form();act=f.get('act') or 'reply'
+            if act not in ('reply','approve','hold','note'):return jsonify(error='할 수 없는 일이에요.'),400
+            if act=='note':
+                if not team.add_note(db,co,c,who(),f.get('text')):return jsonify(error='메모 내용을 적어 주세요'),400
+            else:
+                text=clean(f.get('text'),3000)
+                msg,level=case_act(db,c,{'act':'reply','msg':text} if act=='reply' else {'act':act})
+                if level!='ok':return jsonify(error=msg or '처리할 수 없어요.'),400
+                out=text if act=='reply' else (g.get('c_send') if act=='approve' else '')
+                if out and send_via(db,c):post_later(c['id'],out)
+                if act in ('reply','approve') and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',co['id'])
+            c=api_my_case(db,co,case_id)
+        elif c['status']=='forwarded':
+            db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요');c=api_my_case(db,co,case_id)
+        core.read_alerts(db,co['id'],case_id)
+        after=request.values.get('after','0');after=int(after) if str(after).isdigit() else 0
+        return jsonify(dict(api_chat_state(db,co,c),msgs=chat_msgs(db,c,after),message=msg))
 @app.route('/api/v1/cases/<int:case_id>/draft',methods=['POST'])
 def api_biz_draft(case_id):
     co=api_co()
