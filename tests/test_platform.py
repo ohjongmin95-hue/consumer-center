@@ -2357,7 +2357,7 @@ class PlatformTest(unittest.TestCase):
     def test_data_deletion_page(self):
         """메타 앱 설정에 넣는 데이터 삭제 안내 페이지가 열리고, 연결 끊기와 요청 방법이 적혀 있다."""
         r=self.client().get('/data-deletion');page=r.get_data(as_text=True)
-        self.assertEqual(r.status_code,200);self.assertIn('연결 끊기',page);self.assertIn('Data deletion',page)
+        self.assertEqual(r.status_code,200);self.assertIn('연결 끊기',page);self.assertIn('Data deletion',page);self.assertIn('id="account"',page);self.assertIn('회원 탈퇴',page)  # 구글 플레이 계정 삭제 안내 주소
 
     def test_chat_law_grounding(self):
         """상담창: 법률 질문이면 찾은 법령 원문을 '[관련 법령 원문]'으로 주고 인터넷 검색을 끈다. 일반 질문은 예전처럼 검색을 쓴다."""
