@@ -85,9 +85,10 @@ set -a; . /etc/soboru-platform.env; set +a
 cd /opt/soboru/app/platform_app && runuser -u soboru -- /opt/soboru/venv/bin/python notify_late.py >/dev/null 2>&1
 CRON
   chmod 755 /etc/cron.hourly/soboru-platform-late
-  # 스마트스토어·쿠팡 문의와 주문 가져오기 (10분마다, 연결한 기업만)
+  # 스마트스토어·쿠팡·인스타그램 등 (10분마다) + 카페24·이메일 문의와 AI 자동 답변 (1분마다). 같은 잠금으로 겹치지 않게
   cat > /etc/cron.d/soboru-platform-shops <<'CRON'
-*/10 * * * * root set -a; . /etc/soboru-platform.env; set +a; cd /opt/soboru/app/platform_app && runuser -u soboru -- /opt/soboru/venv/bin/python shops.py >/dev/null 2>&1
+*/10 * * * * root set -a; . /etc/soboru-platform.env; set +a; cd /opt/soboru/app/platform_app && flock -w 300 /run/soboru-platform-sync.lock runuser -u soboru -- /opt/soboru/venv/bin/python shops.py >/dev/null 2>&1
+* * * * * root set -a; . /etc/soboru-platform.env; set +a; cd /opt/soboru/app/platform_app && flock -n /run/soboru-platform-sync.lock runuser -u soboru -- /opt/soboru/venv/bin/python quick_sync.py >/dev/null 2>&1
 CRON
   chmod 644 /etc/cron.d/soboru-platform-shops
 fi

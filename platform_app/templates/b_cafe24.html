@@ -12,6 +12,7 @@
 <dl class="kv"><dt>쇼핑몰 아이디</dt><dd>{{ lk.mall_id }}{% if lk.shop_name %} · {{ lk.shop_name }}{% endif %}</dd><dt>동의한 권한</dt><dd>{{ scope_text(lk.scopes) or lk.scopes or '–' }}</dd>
 <dt>연결 유지 기한</dt><dd>{{ lk.refresh_expires[:10] if lk.refresh_expires else '–' }} <small class="t-mute">(쓸 때마다 자동으로 늘어나요)</small></dd>
 <dt>마지막으로 가져온 때</dt><dd>{{ fmt(lk.synced) if lk.synced else '아직 없어요' }}</dd><dt>가져온 주문</dt><dd>{{ lk.n_ord }}건</dd><dt>가져온 문의</dt><dd>{{ lk.n_inq }}건</dd><dt>상품</dt><dd>{{ lk.n_prod }}개{% if lk.synced_p %} <small class="t-mute">({{ fmt(lk.synced_p) }})</small>{% endif %}</dd></dl>
+<p class="cap" style="margin:12px 0 0">새 주문과 게시판 문의는 1분마다 알아서 가져오고, 상품은 6시간마다 새로 가져와요. 바로 확인하고 싶을 때만 지금 가져오기를 눌러 주세요.</p>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="sync" {{ 'disabled' if lk.status!='ok' }}>지금 가져오기</button></form>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md gray" name="act" value="check">연결 확인</button></form>
