@@ -1723,6 +1723,43 @@ class PlatformTest(unittest.TestCase):
             self.assertEqual(j['prefs']['new'],{'push':1,'email':1});self.assertEqual(j['prefs']['ai'],{'push':0,'email':0})
         finally:core.expo_push,core.send_mail=old_push,old_mail
 
+    def test_cafe24_product_details(self):
+        """카페24 상품 안내: 요약·정가·옵션·모델명·검색어·상세 설명 글자를 담고, 사진·쇼핑몰 주소를 붙이고, 고친 안내는 되돌릴 수 있다."""
+        c24=sys.modules['cafe24']
+        p={'product_no':5,'price':'15000.00','retail_price':'20000.00','summary_description':'순한 클렌저','model_name':'CL-01','product_tag':['세안','클렌징'],
+           'description':'<p>약산성 포뮬러로 매일 쓰기 좋아요.</p><img src="x.jpg">','list_image':'//img.cafe24.com/a.jpg',
+           'options':{'has_option':'T','options':[{'option_name':'용량','option_value':[{'value_name':'150ml'},{'value_name':'300ml'}]}]}}
+        info=c24.product_info(p)
+        for want in ('순한 클렌저','정가 20,000원 (지금 15,000원)','옵션 용량: 150ml, 300ml','모델명 CL-01','검색어 세안, 클렌징','상세 설명: 약산성 포뮬러'):self.assertIn(want,info)
+        self.assertEqual(c24.product_image(p),'https://img.cafe24.com/a.jpg');self.assertEqual(c24.product_url('myshop',5),'https://myshop.cafe24.com/product/detail.html?product_no=5')
+        b,o,cid=self.signup_and_approve('상품되돌림상점','revert@example.com')
+        with self.core.conn() as db:pid=db.execute("INSERT INTO products(company_id,name,price,stock,info,updated,src,ext_id,src_info) VALUES(?,?,?,?,?,?,'cafe24','5','카페24 안내')",(cid,'클렌저','','있음','고친 안내',self.core.iso())).lastrowid
+        page=b.get('/biz/rules').get_data(as_text=True);self.assertIn('카페24 내용으로 되돌리기',page);self.assertIn('카페24에서 가져온 상품 1개',page)
+        self.post(b,'/biz/products',{'id':str(pid),'act':'revert'},form_path='/biz/rules')
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT info FROM products WHERE id=?',(pid,)).fetchone()[0],'카페24 안내')
+
+    def test_cafe24_app_deleted_hook(self):
+        """카페24 앱 삭제 웹훅: 인증정보가 맞으면 바로, 없으면 카페24에 물어 토큰이 막혔을 때만 연결을 거둔다. 가짜 이벤트로는 살아 있는 연결이 안 끊긴다."""
+        shops=sys.modules['shops'];c24=sys.modules['cafe24']
+        b,o,cid=self.signup_and_approve('카페24삭제상점','c24del@example.com')
+        alive=[True]
+        def fake(method,url,headers=None,body=None):
+            if '/oauth/token' in url:return 400,{'error':'invalid_grant'}
+            return (200,{'store':{}}) if alive[0] else (401,{})
+        ev={'event_no':90077,'resource':{'mall_id':'delshop','client_id':'cid','app_name':'소보루 CS'}}
+        with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec','CAFE24_WEBHOOK_KEY':'hookkey'}),patch.object(shops,'http',fake):
+            with self.core.conn() as db:c24.store(db,cid,'delshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
+            def st():
+                with self.core.conn() as db:return db.execute('SELECT status FROM cafe24_links WHERE company_id=?',(cid,)).fetchone()[0]
+            self.assertEqual(b.post('/biz/hook/cafe24',json=ev).status_code,200);self.assertEqual(st(),'ok')  # 인증정보 없고 토큰이 살아 있음: 그대로
+            self.assertEqual(b.post('/biz/hook/cafe24',json=dict(ev,resource=dict(ev['resource'],client_id='other')),headers={'X-Api-Key':'hookkey'}).status_code,200);self.assertEqual(st(),'ok')  # 다른 앱
+            alive[0]=False;b.post('/biz/hook/cafe24',json=ev);self.assertEqual(st(),'removed')  # 토큰이 막힘: 거둔다
+            with self.core.conn() as db:
+                self.assertEqual(db.execute('SELECT creds FROM cafe24_links WHERE company_id=?',(cid,)).fetchone()[0],'')
+                self.assertTrue(db.execute("SELECT 1 FROM biz_alerts WHERE company_id=? AND kind='link'",(cid,)).fetchone())
+                c24.store(db,cid,'delshop',{'access_token':'A2','refresh_token':'R2','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
+            alive[0]=True;b.post('/biz/hook/cafe24',json=ev,headers={'X-Api-Key':'hookkey'});self.assertEqual(st(),'removed')  # 인증정보가 맞으면 묻지 않고 거둔다
+
     def test_cafe24_products_and_ai_reply(self):
         """카페24 상품 -> 상품정보 (사장님이 고친 안내는 그대로, 상품 권한 없는 예전 연결은 건너뜀). 상품 문의엔 상품 이름.
         AI 초안은 상품정보를 본다. AI 자동 답변: 단순 문의는 답해서 카페24에 올리고 완료, 반품 등은 안 보내고 메모. 개인정보는 가려서 보낸다."""

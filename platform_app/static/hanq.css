@@ -1941,3 +1941,6 @@ body.v2 main .lform textarea.inp,.lform textarea.inp{height:48px;min-height:48px
 .aprefs td.c,.aprefs th.c{text-align:center;width:72px}
 .aprefs td small{display:block;color:var(--fg3);font-size:13px;margin-top:2px}
 .aprefs .check{justify-content:center;width:auto;padding:0}
+.prow{display:flex;align-items:center;gap:10px;min-width:0}
+.prow img{width:36px;height:36px;border-radius:8px;object-fit:cover;flex:none;background:var(--fill)}
+.prow .pill{flex:none}

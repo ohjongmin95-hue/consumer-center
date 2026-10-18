@@ -117,18 +117,20 @@ def _take(db,co,own,m):
         r=db.execute(f'SELECT case_id FROM shop_seen WHERE company_id=? AND shop=? AND ext_id IN ({q}) ORDER BY rowid DESC LIMIT 1',(co['id'],SHOP,*m['refs'])).fetchone()
         c=db.execute('SELECT * FROM cases WHERE id=?',(r['case_id'],)).fetchone() if r else None
         if c and c['status'] not in core.FINAL:
-            core.add_event(db,c['id'],'me',body);core.notify_company_msg(db,c['id'],body)
+            core.add_event(db,c['id'],'me',body)
             if c['status'] in ('answered','info'):db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],))
             db.execute('UPDATE cases SET updated=? WHERE id=?',(core.iso(),c['id']))
+            import chatbot;chatbot.again(db,c,body)  # AI가 맡던 대화면 AI가 이어서 답한다
             db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,m['msgid'],c['id']))
             return None
     from werkzeug.security import generate_password_hash
+    import chatbot
     title=clean(m['subject'],60) or clean(re.sub(r'\s+',' ',body),40)
     cat=core.classify(title+' '+body) or '기타';t=core.iso()
     due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))
     cid=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
-        VALUES(?,?,?,1,?,?,?,?,'',?,'',?,?,1,'forwarded','pending',?,?,?,'','',?)''',(core.new_case_no(db),co['id'],co['name'],cat,title,body,core.WANT_OF.get(cat,'기타'),
-        clean(m['name'],20),clean(m['addr'],120),generate_password_hash(secrets.token_hex(16)),due,t,t,CHANNEL)).lastrowid
+        VALUES(?,?,?,1,?,?,?,?,'',?,'',?,?,1,'forwarded',?,?,?,?,'','',?)''',(core.new_case_no(db),co['id'],co['name'],cat,title,body,core.WANT_OF.get(cat,'기타'),
+        clean(m['name'],20),clean(m['addr'],120),generate_password_hash(secrets.token_hex(16)),'ai' if chatbot.auto_on(co) else 'pending',due,t,t,CHANNEL)).lastrowid  # AI 자동 답변을 켰으면 AI가 먼저 본다
     core.add_event(db,cid,'sys','이메일 문의를 가져왔어요'+(f" ({m['at'].strftime('%m.%d %H:%M')} 받음)" if m['at'] else ''))
     db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,m['msgid'],cid))
     c=db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()

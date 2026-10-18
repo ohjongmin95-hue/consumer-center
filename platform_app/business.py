@@ -686,7 +686,7 @@ def post_later(case_id,text):
         if app.config.get('TESTING'):run()
         else:threading.Thread(target=run,daemon=True).start()
         return resp
-def closable(c):return (c['channel'] in SEND_VIA or bool(c['live'])) and c['status'] not in core.FINAL
+def closable(c):return (c['channel'] in SEND_VIA or c['channel'] in ('카페24','스마트스토어','쿠팡') or bool(c['live'])) and c['status'] not in core.FINAL  # 판매처 게시판 고객도 '해결됐어요'를 누를 화면이 없다
 def reopenable(c):return c['status']=='closed'  # 응대한 사람이 끝낸 요청만 다시 연다 (고객이 '해결됐어요'를 고른 요청은 그대로)
 
 def can_ship_track(db,c):
@@ -991,6 +991,9 @@ def save_product(db,co,f):
         if pid:db.execute('DELETE FROM product_private WHERE product_id=? AND company_id=?',(pid,co['id']));db.execute('DELETE FROM products WHERE id=? AND company_id=?',(pid,co['id']))
         return '삭제했습니다','ok'
     cur=db.execute('SELECT * FROM products WHERE id=?',(pid,)).fetchone() if pid else None
+    if f.get('act')=='revert':  # 카페24에서 가져온 안내로 되돌리기 (다음 가져오기부터 다시 카페24 내용을 따른다)
+        if not cur or cur['src']!='cafe24':return '카페24에서 가져온 상품만 되돌릴 수 있어요','error'
+        db.execute('UPDATE products SET info=src_info,updated=? WHERE id=?',(core.iso(),pid));return '카페24 내용으로 되돌렸어요','ok'
     keep=lambda k,n:clean(f.get(k),n) if k in f or not cur else cur[k]  # 고칠 때 보내지 않은 항목은 그대로 둔다
     name,price,info=keep('name',60),keep('price',30),keep('info',2000)
     stock=keep('stock',10);stock=stock if stock in core.STOCKS else ''
