@@ -167,7 +167,7 @@ class PlatformTest(unittest.TestCase):
             with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key='billing_plan'")
         self.assertIn('/pricing</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True));self.assertIn('요금 안내',t.get_data(as_text=True))
         self.assertIn('코리아포트원',c.get('/privacy').get_data(as_text=True))
-        for pg in (page,t.get_data(as_text=True),c.get('/biz/').get_data(as_text=True)):self.assertIn('전화. 010-5531-4247',pg);self.assertIn('대표자.',pg)  # 결제대행사 심사: 사업자 정보
+        for pg in (page,t.get_data(as_text=True),c.get('/biz/').get_data(as_text=True)):self.assertIn('전화. 02-749-7515',pg);self.assertIn('대표자.',pg)  # 결제대행사 심사: 사업자 정보
         self.assertIn('/biz/refund',t.get_data(as_text=True));self.assertIn('/refund</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True))
 
     def test_biz_app_inapp_pages(self):
