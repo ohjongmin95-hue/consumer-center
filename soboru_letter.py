@@ -592,11 +592,9 @@ def install(S):
         if request.method == 'POST':
             act = request.form.get('act', 'save')
             if act == 'delete':
-                if L['status'] == 'sent': flash('보낸 호는 지울 수 없어요.')
-                else:
-                    with conn() as db: db.execute('DELETE FROM letters WHERE id=?', (lid,)); db.execute('DELETE FROM letter_sends WHERE letter_id=?', (lid,))
-                    flash(f"{L['no']}호 초안을 지웠어요."); return redirect(url_for('admin_letter'))
-                return redirect(url_for('admin_letter_edit', lid=lid))
+                # 보낸 호도 지울 수 있음 (사이트의 지난 레터에서 사라짐. 이미 받은 메일은 그대로)
+                with conn() as db: db.execute('DELETE FROM letters WHERE id=?', (lid,)); db.execute('DELETE FROM letter_sends WHERE letter_id=?', (lid,))
+                flash(f"{L['no']}호를 지웠어요."); return redirect(url_for('admin_letter'))
             if L['status'] == 'draft' and act in ('save', 'test', 'send'):
                 problems = save_edit(lid, request.form)
                 if act == 'save': flash('저장했어요.' + (f' 검토 필요 {len(problems)}곳이 있어요.' if problems else ' 숫자·문장 검사를 통과했어요.'))

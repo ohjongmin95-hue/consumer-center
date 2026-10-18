@@ -456,6 +456,24 @@ def install(S):
         art = app.extensions.get('soboru_art')
         if art: art['auto']('life', article_id)
 
+    def delete_article(db, article_id):
+        # 글과 딸린 AI 기록·일러스트 기록까지 함께 지움
+        db.execute('DELETE FROM articles WHERE id=?', (article_id,))
+        tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if 'ai_articles' in tables: db.execute('DELETE FROM ai_articles WHERE article_id=?', (article_id,))
+        if 'soboru_art' in tables: db.execute("DELETE FROM soboru_art WHERE kind='life' AND target_id=?", (article_id,))
+
+    @app.route('/admin/life/<int:article_id>/delete', methods=['POST'])
+    @S.admin_only
+    def admin_life_delete(article_id):
+        # 관리자 목록·글 화면의 '지우기'
+        with conn() as db:
+            if not db.execute('SELECT 1 FROM articles WHERE id=?', (article_id,)).fetchone(): abort(404)
+            delete_article(db, article_id)
+        flash('글을 지웠어요.')
+        back = S.safe_back(url_for('admin_life'))
+        return redirect(url_for('life') if back.startswith('/life/') else back)
+
     @app.route('/admin/life/<int:article_id>', methods=['GET', 'POST'])
     @S.admin_only
     def admin_life_edit(article_id):
@@ -465,7 +483,7 @@ def install(S):
             if request.method == 'POST':
                 act = request.form.get('act', 'save')
                 if act == 'delete':
-                    db.execute('DELETE FROM articles WHERE id=?', (article_id,)); flash('글을 지웠어요.'); return redirect(url_for('admin_life'))
+                    delete_article(db, article_id); flash('글을 지웠어요.'); return redirect(url_for('admin_life'))
                 v = form_values()
                 if not v['title']: flash('제목을 적어 주세요.'); return redirect(url_for('admin_life_edit', article_id=article_id))
                 status = {'publish': 'published', 'unpublish': 'draft'}.get(act, a['status'])

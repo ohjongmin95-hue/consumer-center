@@ -2007,3 +2007,5 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 
 /* 소비자제보센터 화면 배경: 회색 대신 흰색 (운영자 요청 2026-10-17) */
 html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.console):not(.newsroom){background:#fff}
+/* 관리자만 보이는 '관리자 삭제' */
+.admin-del{display:inline-block;margin:0}.admin-del-btn{color:#d93a2b!important;font-weight:700}

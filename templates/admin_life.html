@@ -51,6 +51,7 @@
   <div class="form-panel admin-item">
     <p class="meta">#{{ r['id'] }} · {{ r['category'] }} · {{ '게시 중' if r['status'] == 'published' else '초안' }}{% if r['origin'] == 'auto' %} · 자동 수집{% endif %}{% if r['origin'] == 'ai' and ai_marks is defined %}{% set m = ai_marks().get(r['id']) %} · AI 초안{% if m %} · {% if m.ok %}<span class="aw-badge ok">숫자 확인됨</span>{% else %}<span class="aw-badge bad">검토 필요 {{ m.problems|length }}곳</span>{% endif %}{% endif %}{% endif %}{% if r['featured'] %} · 고정{% endif %} · 조회 {{ r['views'] }} · {{ (r['published_at'] or r['created'])[:16] }}</p>
     <h3><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['title'] }}</a></h3>
+    <form method="post" action="{{ url_for('admin_life_delete', article_id=r['id']) }}" onsubmit="return confirm('이 글을 지울까요? 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button class="secondary danger" type="submit">지우기</button></form>
   </div>
   {% else %}<p class="meta">아직 글이 없어요.</p>{% endfor %}
 </div></main>

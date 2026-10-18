@@ -36,6 +36,7 @@
       <div class="form-panel">
         <label class="field">맺음말<textarea name="outro" rows="2"{% if not draft %} readonly{% endif %}>{{ L.outro }}</textarea></label>
         <p class="meta">소보루 픽 인기 리뷰 {{ L.sections.reviews|length }}개 · 리뷰 주제 {{ '있음' if L.sections.campaign else '없음' }} · 생활정보 {{ L.sections.life|length }}개는 만들 때의 DB에서 가져왔어요.</p>
+        {% if not draft %}<div class="admin-actions"><button type="submit" name="act" value="delete" class="secondary danger" onclick="return confirm('이 호를 지울까요? 사이트의 지난 레터에서 사라지고 되돌릴 수 없어요. 이미 보낸 메일은 그대로예요.')">이 호 지우기</button></div>{% endif %}
         {% if draft %}<div class="admin-actions"><button type="submit" name="act" value="save" class="primary">저장하고 다시 검사</button><button type="submit" name="act" value="delete" class="secondary danger" onclick="return confirm('이 초안을 지울까요?')">초안 지우기</button></div>{% endif %}
       </div>
       <div class="form-panel lt-ad-send">

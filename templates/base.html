@@ -28,6 +28,7 @@
   <meta name="twitter:title" content="{{ page_title }}">
   <meta name="twitter:description" content="{{ page_desc }}">
   <meta name="twitter:image" content="{{ og_img }}">
+  <meta name="twitter:domain" content="{{ txt('site.name') }}">
   {% if request.path == '/' %}{% if verification_code('seo.naver_verification') %}<meta name="naver-site-verification" content="{{ verification_code('seo.naver_verification') }}">{% endif %}
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}{% endif %}
   <link rel="alternate" type="application/rss+xml" title="{{ txt('site.name') }}" href="{{ url_for('rss_xml', _external=True) }}">

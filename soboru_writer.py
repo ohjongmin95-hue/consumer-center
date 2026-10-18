@@ -40,7 +40,7 @@ KINDS = {
                      about='네이버 쇼핑인사이트의 분야별 클릭 추이로 요즘 어떤 쇼핑 분야에 관심이 몰리는지 분석하고, 그 분야를 살 때 소비자가 챙길 점을 알려 준다.'),
     'news': dict(name='이번 주 소비자 뉴스 해설', needs=('naver',), category='생활', emoji='📰', tone='t1',
                  about='이번 주 소비자 뉴스를 쉽게 풀어 주고, 함께 준 법 조문을 근거로 소비자가 알아 둘 권리를 설명한다. 뉴스에 없는 내용은 보태지 않는다.'),
-    'reports': dict(name='소보루 제보 동향', needs=('site',), category='생활', emoji='📊', tone='t3',
+    'reports': dict(name='소보루 제보 동향', needs=('site',), category='생활', emoji='📊', tone='t3', every=7,  # 30일 집계라 매일 쓰면 같은 글이 됨: 1주에 한 번
                     about='소보루에 공개·게시된 제보 집계로 최근 어떤 피해 제보가 많았는지, 기업 답변은 어땠는지 숫자로만 전한다.'),
     'law': dict(name='법 바뀐 것 해설', needs=('law',), category='생활', emoji='⚖️', tone='t5',
                 about='최근 시행됐거나 곧 시행되는 소비자 관련 법령을 쉽게 풀어 준다. 시행일·개정 이유는 자료 그대로 전한다.'),
@@ -420,12 +420,25 @@ def install(S):
         key = f"ai:{kind}:{day or datetime.date.today().isoformat()}"
         with conn() as db: old = db.execute('SELECT id,status FROM articles WHERE ext_key=?', (key,)).fetchone()
         if old and (not force or old['status'] != 'draft'): return {'status': 'exists', 'id': old['id'], 'reason': '오늘 이미 만든 초안이 있어요'}
+        every = KINDS[kind].get('every', 1)
+        if trigger == 'daily' and every > 1:
+            since = (datetime.date.fromisoformat(day or datetime.date.today().isoformat()) - datetime.timedelta(days=every - 1)).isoformat()
+            with conn() as db:
+                recent = db.execute("SELECT 1 FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.kind=? AND substr(x.created,1,10)>=?", (kind, since)).fetchone()
+            if recent:
+                res = {'status': 'skip', 'reason': '%d일에 한 번만 써요' % every}; log(dict(res, kind=kind, trigger=trigger)); return res
         try:
             got = collect(kind)
             title, summary, body, cat = assemble(ask_ai(kind, got['facts']), kind)
         except Skip as e: res = {'status': 'skip', 'reason': str(e)}; log(dict(res, kind=kind, trigger=trigger)); return res
         except RuntimeError as e: res = {'status': 'error', 'reason': str(e)}; log(dict(res, kind=kind, trigger=trigger)); return res
         title, summary, body = (clean_personal(desk.scrub, t) for t in (title, summary, body))  # 연락처처럼 보이는 것은 지움
+        if trigger == 'daily':  # 최근 30일 안에 같은 제목 글이 있으면 또 올리지 않음
+            since = (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
+            with conn() as db:
+                same = [r['id'] for r in db.execute('SELECT id,title FROM articles WHERE substr(created,1,10)>=?', (since,)) if ''.join(r['title'].split()) == ''.join(title.split()) and (not old or r['id'] != old['id'])]
+            if same:
+                res = {'status': 'skip', 'reason': '같은 제목의 글이 이미 있어요'}; log(dict(res, kind=kind, trigger=trigger)); return res
         k = KINDS[kind]; cat = got.get('category') or cat; first = got['sources'][0] if got['sources'] else {'name': '', 'url': ''}
         facts_s, sources_s = json.dumps(got['facts'], ensure_ascii=False), json.dumps(got['sources'], ensure_ascii=False)
         with conn() as db:

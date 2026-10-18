@@ -1417,6 +1417,17 @@ def board_delete(kind,item_id):
     flash(ui_text('msg.m16','삭제했어요.'))
     return redirect(url_for('board') if kind=='p' else url_for('board_post',post_id=post_id)+'#comments')
 
+def admin_delete(kind,item_id,label='관리자 삭제'):
+    # 운영자는 화면에 올라간 것을 무엇이든 그 자리에서 지울 수 있음 (글·댓글·제보 댓글·생활정보 글). 되돌릴 수 없어 한 번 묻고 지움.
+    if not admin_active():return ''
+    if kind=='life':action=url_for('admin_life_delete',article_id=item_id)
+    elif kind in ('p','c','k'):action=url_for('admin_board')
+    else:return ''
+    return Markup('<form class="admin-del" method="post" action="%s" onsubmit="return confirm(\'운영자 권한으로 완전히 지울까요? 되돌릴 수 없어요.\')"><input type="hidden" name="_csrf" value="%s"><input type="hidden" name="kind" value="%s"><input type="hidden" name="id" value="%d"><input type="hidden" name="action" value="delete"><input type="hidden" name="next" value="%s"><button class="text-btn admin-del-btn" type="submit">%s</button></form>')%(action,csrf(),kind,item_id,request.full_path.rstrip('?'),label)
+app.jinja_env.globals['admin_delete']=admin_delete
+def safe_back(default):
+    nxt=request.form.get('next','')
+    return nxt if nxt.startswith('/') and not nxt.startswith('//') else default
 def delete_board_item(db,kind,item_id):
     # 작성자·운영자 삭제 모두 원문을 바로 지움 (개인정보 처리방침: 삭제 시 즉시 파기).
     if kind=='p':
@@ -1446,7 +1457,9 @@ def admin_board():
                 db.execute(f'UPDATE {table} SET hidden=? WHERE id=?',(int(action=='hide'),item_id))
                 if kind=='c':refresh_comment_count(db,db.execute('SELECT post_id FROM comments WHERE id=?',(item_id,)).fetchone()['post_id'])
             flash({'hide':'숨겼어요.','show':'다시 보이게 했어요.','delete':'삭제했어요.'}[action])
-            return redirect(url_for('admin_board',view=request.args.get('view','')))
+            back=safe_back(url_for('admin_board',view=request.args.get('view','')))
+            if action=='delete' and kind=='p' and back.startswith(('/board/','/pick/')) and not back.startswith('/board/write'):back=url_for('board')  # 지운 글 화면으로 돌아가지 않게
+            return redirect(back)
         flagged=request.args.get('view')!='all'
         cond='WHERE flags>0 OR hidden=1' if flagged else ''
         posts=db.execute(f'SELECT id,kind,category,nickname,title,body,created,hidden,likes,comments,flags,target,rating FROM posts {cond} ORDER BY flags DESC,id DESC LIMIT 200').fetchall()

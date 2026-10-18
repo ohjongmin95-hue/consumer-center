@@ -19,6 +19,7 @@
     {% if ai and ai.sources %}<div class="sb-source sb-sources"><b>{{ ui('life.sources', '출처') }}</b><ul>{% for s in ai.sources %}<li>{% if s.url %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name }} ↗</a>{% else %}{{ s.name }}{% endif %} <span>{{ s.fetched_at[:10].replace('-', '.') }} 기준</span></li>{% endfor %}</ul>
       <p class="sb-ai-note">{{ ui('life.ai_note', '이 글은 AI가 위 자료의 숫자만으로 초안을 쓰고, {site} 운영자가 확인한 뒤 올렸어요. 법률 자문이 아닌 일반 정보예요.', site=txt('site.name')) }}</p></div>
     {% elif a['source_name'] or a['source_url'] %}<p class="sb-source">{{ ui('life.source', '출처') }}: {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
+  {{ admin_delete('life', a['id'], '관리자: 이 글 지우기') }}
   </article>
   <div class="sb-report-box sb-report-mini">
     <img src="{{ asset('img/soboru-character.png') }}" alt="" width="76" height="59">

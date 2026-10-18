@@ -1529,6 +1529,25 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('제보센터 질문', admin.get('/admin/lists').get_data(as_text=True))
         self.assertTrue(default)
 
+    def test_admin_can_delete_anything(self):
+        # 관리자는 올라간 글·댓글·생활정보 글을 그 화면에서 바로 지울 수 있음
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            aid = db.execute("INSERT INTO articles(title,summary,body,status,created,updated,published_at) VALUES('지울 글','요약','본문','published',?,?,?)", (now, now, now)).lastrowid
+            pid = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created) VALUES('꿀팁','남','','남의 글','내용','x',?)", (now,)).lastrowid
+        self.assertNotIn('admin-del', self.client.get(f'/life/{aid}').get_data(as_text=True))  # 손님에게는 안 보임
+        admin = self.login_admin()
+        self.assertIn('admin-del', admin.get(f'/life/{aid}').get_data(as_text=True))
+        self.assertIn('admin-del', admin.get(f'/board/{pid}').get_data(as_text=True))
+        tok = self.csrf(admin, '/admin/life')
+        r = admin.post(f'/admin/life/{aid}/delete', data={'_csrf': tok, 'next': f'/life/{aid}'})
+        self.assertEqual(r.headers['Location'], '/life')
+        r = admin.post('/admin/board', data={'_csrf': tok, 'kind': 'p', 'id': pid, 'action': 'delete', 'next': f'/board/{pid}'})
+        self.assertEqual(r.headers['Location'], '/board')
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM articles WHERE id=?', (aid,)).fetchone())
+            self.assertIsNone(db.execute('SELECT 1 FROM posts WHERE id=?', (pid,)).fetchone())
+
     def test_cross_site_login(self):
         # 소비자제보센터에서 가입·로그인하면 소보루에도 로그인, 로그아웃도 같이. 표는 한 번만 쓰고 다른 브라우저 상태값으론 안 됨
         J, M = 'https://consumerjebo.co.kr', 'https://soboru.co.kr'
@@ -3177,7 +3196,7 @@ class SiteTest(unittest.TestCase):
             sent.append(body)
             facts = json.loads(body['messages'][1]['content'].split('[자료]\n', 1)[1])
             nums = [v for v in facts.values() if isinstance(v, int)][:1] or [1372]
-            out = {'title': f'요즘 소비자 이야기, 숫자로 보면 {nums[0]}', 'summary': ['첫 줄 요약이에요.', '둘째 줄이에요.', f'셋째 줄, {facts["소비자상담센터 전화번호"]}도 기억해요.'],
+            out = {'title': f'요즘 소비자 이야기, 숫자로 보면 {nums[0]} {"가나다라마바사아자차"[len(sent) % 10]}편', 'summary': ['첫 줄 요약이에요.', '둘째 줄이에요.', f'셋째 줄, {facts["소비자상담센터 전화번호"]}도 기억해요.'],
                    'sections': [{'heading': '무슨 일이에요?', 'paragraphs': [f'자료를 보면 {nums[0]}이라는 숫자가 나와요.' + extra, '자료만으로는 원인을 알 수 없어요.']}],
                    'tips': ['영수증을 챙겨 두세요.', '1372 소비자상담센터에 물어보세요.'], 'category': '생활'}
             return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}

@@ -39,6 +39,7 @@
         {% endif %}
         {% if post['user_id'] and not (g.user and post['user_id'] == g.user['id']) %}{% if g.user %}<form method="post" action="{{ url_for('board_block', kind='p', item_id=post['id']) }}" onsubmit="return confirm({{ ui_text('board.block_confirm', '이 사용자를 차단할까요? 이 사용자의 글과 댓글이 더는 보이지 않아요. 내 정보에서 언제든 풀 수 있어요.')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.block', '이 사용자 차단') }}</button></form>
         {% else %}<a class="text-btn" href="{{ url_for('login', next=request.path) }}" title="{{ ui_text('board.block_login', '로그인하면 차단할 수 있어요') }}">{{ ui('board.block', '이 사용자 차단') }}</a>{% endif %}{% endif %}
+        {{ admin_delete('p', post['id']) }}
         {% if g.user and post['user_id'] == g.user['id'] %}
         <form method="post" action="{{ url_for('board_delete', kind='p', item_id=post['id']) }}" onsubmit="return confirm({{ ui_text('board.delete_confirm', '이 글을 지울까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.delete', '삭제') }}</button></form>
         {% elif not post['user_id'] %}
@@ -60,6 +61,7 @@
           {% if c['user_id'] and not (g.user and c['user_id'] == g.user['id']) %}{% if g.user %}<form method="post" action="{{ url_for('board_block', kind='c', item_id=c['id']) }}" onsubmit="return confirm({{ ui_text('board.block_confirm', '이 사용자를 차단할까요? 이 사용자의 글과 댓글이 더는 보이지 않아요. 내 정보에서 언제든 풀 수 있어요.')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.block_short', '차단') }}</button></form>{% else %}<a class="text-btn" href="{{ url_for('login', next=request.path) }}" title="{{ ui_text('board.block_login', '로그인하면 차단할 수 있어요') }}">{{ ui('board.block_short', '차단') }}</a>{% endif %}{% endif %}
           {% if g.user and c['user_id'] == g.user['id'] %}<form method="post" action="{{ url_for('board_delete', kind='c', item_id=c['id']) }}" onsubmit="return confirm({{ ui_text('board.delete_c_confirm', '이 댓글을 지울까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.delete', '삭제') }}</button></form>
           {% elif not c['user_id'] %}<details class="delete-box"><summary class="text-btn">{{ ui('board.delete', '삭제') }}</summary><form method="post" action="{{ url_for('board_delete', kind='c', item_id=c['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" placeholder="{{ ui('board.comment_pw', '댓글 비밀번호') }}" required aria-label="{{ ui('board.comment_pw', '댓글 비밀번호') }}"><button class="secondary" type="submit">{{ ui('board.delete', '삭제') }}</button></form></details>{% endif %}
+          {{ admin_delete('c', c['id']) }}
         </span>
       </div>
       <p>{{ c['body'] }}</p>
