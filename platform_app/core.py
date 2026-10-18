@@ -250,7 +250,7 @@ init()
 
 # 외부 서비스 키: 운영 화면에서 넣은 값이 있으면 그것을, 없으면 서버 설정(/etc/soboru-platform.env)을 쓴다.
 SECRETS={'SWEETTRACKER_T_KEY':('택배 조회 키','스마트택배(tracking.sweettracker.co.kr)에서 받은 무료 조회 키(t_key)'),
-         'OPENAI_API_KEY':('AI 상담 키 (OpenAI)','OpenAI(platform.openai.com)에서 만든 API 키. sk-로 시작해요. 상담창 AI와 PDF 상품 등록에 써요'),
+         'OPENAI_API_KEY':('AI 상담 키 (OpenAI)','OpenAI(platform.openai.com) > API keys에서 만든 키. sk-로 시작해요. GPT-6 Luna로 상담창·자동 답변·답변 초안·PDF 상품 등록에 써요. 넣은 뒤 운영 > AI 모델에서 연결 시험을 눌러 확인해요'),
          'ANTHROPIC_API_KEY':('AI 상담 키 (Anthropic, 예비)','Anthropic 콘솔(console.anthropic.com)에서 만든 API 키. OpenAI 키가 없을 때만 써요'),
          'NAVER_SEARCH_ID':('네이버 검색 Client ID','네이버 개발자센터(developers.naver.com) > 애플리케이션 등록 > 사용 API "검색"으로 받은 Client ID. 넣으면 AI 상담이 네이버에서 검색해요'),
          'NAVER_SEARCH_SECRET':('네이버 검색 Client Secret','위 애플리케이션의 Client Secret'),

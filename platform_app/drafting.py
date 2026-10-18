@@ -42,11 +42,11 @@ def ask_claude(c,co,rule_reply,history,samples,products=''):
             "인사와 맺음말을 포함해 6문장 이내로, 답변 본문만 출력한다.")
     user=("[요청]\n"+'\n'.join(facts(c))+"\n\n[지금까지 주고받은 내용]\n"+(history or '없음')+
           "\n\n[회사 답변 예시]\n"+(samples or '없음')+"\n\n[이 유형의 기본 조치 문구]\n"+(rule_reply or '없음')+"\n\n[상품정보]\n"+(products or '없음')+"\n\n[관련 조문]\n"+(refs or '없음'))
-    return call(system,[{'role':'user','content':user}])
+    return call(system,[{'role':'user','content':user}],meta={'company_id':co['id'],'case_id':c['id'],'purpose':'draft'})
 
-def call(system,messages,model=None,max_tokens=800,timeout=40):
+def call(system,messages,model=None,max_tokens=800,timeout=40,meta=None):
     """AI에 한 번 묻고 글만 돌려준다. 키가 없거나 실패하면 None."""
-    return ai.chat(system,messages,max_tokens=max_tokens,timeout=timeout,anthropic_model=model or MODEL)
+    return ai.chat(system,messages,max_tokens=max_tokens,timeout=timeout,anthropic_model=model or MODEL,meta=meta)
 
 def product_facts(db,c,cid):
     """초안에 쓸 상품정보 (공개 항목만, 공급가 등 내부 정보는 안 씀). 요청에 붙은 상품이 있으면 그 상품, 없으면 상품 목록."""

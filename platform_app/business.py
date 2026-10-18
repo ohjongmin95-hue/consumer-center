@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import csv, io, urllib.parse
-import core, law, insights, drafting, chatbot
+import core, law, insights, drafting, chatbot, ai, aibench
 import tracking as tracking_mod
 import orders as orders_mod
 import shops, mailin
@@ -1383,6 +1383,26 @@ def ops_billing():
         pays=db.execute("SELECT p.*,c.name co_name FROM billing_payments p JOIN companies c ON c.id=p.company_id ORDER BY p.id DESC LIMIT 50").fetchall()
         n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
     return render_template('o_billing.html',p=billing.plan(),ready=billing.ready(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
+
+@app.route('/ops/ai',methods=['GET','POST'])
+@ops_required
+def ops_ai():
+    """AI 모델(GPT-6 Luna): Sol 자동 호출(처음엔 꺼짐), 연결 시험, 같은 질문 비교, 일반·고추론 비교."""
+    if request.method=='POST':
+        if request.form.get('act')=='bench':
+            if not ai.provider()=='openai':flash('OpenAI 키가 없어요. 서비스 키에서 넣어 주세요','error')
+            elif aibench.start():flash('비교를 시작했어요. 몇 분 걸려요. 잠시 뒤 새로고침해 주세요','ok')
+            else:flash('이미 비교하고 있어요. 잠시 뒤 새로고침해 주세요','ok')
+        elif request.form.get('act')=='check':
+            rows=ai.check()
+            if not rows:flash('OpenAI 키가 없어요. 서비스 키에서 넣어 주세요','error')
+            else:flash('연결 시험을 마쳤어요' if all(r['ok'] for r in rows) else '받지 않는 모델이 있어요. 아래 결과를 확인해 주세요','ok' if all(r['ok'] for r in rows) else 'error')
+        else:
+            ai.save_setting('ai_sol','1' if request.form.get('sol') else '');flash('저장했어요. 바로 적용돼요','ok')
+        return redirect(url_for('ops_ai'))
+    with conn() as db:n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
+    return render_template('o_ai.html',pl=ai.plan(),LUNA=ai.LUNA,SOL=ai.SOL,rep=ai.report(),calls=ai.recent(),chk=ai.last_check(),bench=aibench.last(),
+                           ready=ai.provider()=='openai',n_signup=n_pending,otab='ai')
 
 @app.route('/ops/keys',methods=['GET','POST'])
 @ops_required

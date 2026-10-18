@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','billing'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','billing','aibench'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','billing'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','billing','aibench'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -331,6 +331,66 @@ class PlatformTest(unittest.TestCase):
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
             me.post(f'/chat/{cid3}',data={'csrf':ctok,'text':'선크림 있어요?'})
         self.assertNotIn('선크림',seen['body']['instructions'])
+
+    def test_ai_model_luna_tiers_and_log(self):
+        """AI 상담: Luna 낮은 추론 기본, 어려운 문의는 높은 추론. 예전 4.1-mini는 쓰지 않는다. Sol은 운영에서 켠 경우만. 호출은 모델·추론·토큰·비용·결과로 남는다."""
+        aim=sys.modules['ai'];cb=sys.modules['chatbot'];sent=[]
+        def reply(d):return 200,{'choices':[{'message':{'content':json.dumps(d,ensure_ascii=False)}}],'usage':{'prompt_tokens':1000,'completion_tokens':300,'prompt_tokens_details':{'cached_tokens':200},'completion_tokens_details':{'reasoning_tokens':100}}}
+        script={}
+        def fake(url,headers,body,timeout):
+            sent.append(body);k=(body['model'],body.get('reasoning_effort',''))
+            r=script.get(k,{'answer':'네, 있어요.','handoff':False})
+            return r if isinstance(r,tuple) else reply(r)
+        def ask(text,meta=None):
+            with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake),patch.object(aim,'naver_ready',lambda:False),patch.object(aim,'web_answer',lambda *a,**k:None),\
+                 patch.object(cb,'system_prompt',lambda *a:'sys'),patch.object(cb,'law_context',lambda t:('',False)):
+                return cb.answer(None,'',text,meta=meta)
+        # 평소 문의·환불 절차는 낮은 추론 (temperature 없이, 생각할 자리를 더 둔다)
+        for q in ('이 크림 몇 ml예요?','환불은 어떻게 신청해요?','교환 방법 알려 주세요'):
+            sent.clear();a=ask(q);self.assertEqual((a['tier'],[(b['model'],b['reasoning_effort']) for b in sent]),('low',[('gpt-6-luna','low')]),q)
+        self.assertNotIn('temperature',sent[0]);self.assertGreater(sent[0]['max_completion_tokens'],900)
+        # 분쟁·불량 책임·강한 불만·반복 문의는 높은 추론
+        for q in ('환불 거부하시는 거예요? 소비자원에 신고할게요','쓰다가 깨졌는데 불량 아닌가요? 누구 책임이에요?','몇 번째 문의인데 아직도 답이 없네요'):
+            sent.clear();self.assertEqual(ask(q)['tier'],'high',q);self.assertEqual(sent[0]['reasoning_effort'],'high')
+        # 낱말로 못 잡아도 낮은 추론의 AI가 deep이라고 하면 높은 추론으로 다시 묻는다
+        script[('gpt-6-luna','low')]={'answer':'확인할게요.','deep':True}
+        sent.clear();self.assertEqual(ask('세탁기 돌렸더니 이렇게 됐어요')['tier'],'high');self.assertEqual([b['reasoning_effort'] for b in sent],['low','high'])
+        script.clear()
+        # Sol: 꺼져 있으면 안 부르고, 켜면 높은 추론이 확신 없을 때만
+        script[('gpt-6-luna','high')]={'answer':'아마도요.','sure':False}
+        sent.clear();ask('보상해 주세요');self.assertNotIn('gpt-6.1-sol',[b['model'] for b in sent])
+        aim.save_setting('ai_sol','1')
+        script[('gpt-6.1-sol','high')]={'answer':'규정상 이렇게 돼요.','sure':True}
+        sent.clear();a=ask('보상해 주세요');self.assertEqual((a['answer'],a['tier']),('규정상 이렇게 돼요.','sol'))
+        # 높은 추론이 실패하면 (켠 경우) Sol. 그것도 실패하면 답 없음 (기본 안내·승인으로). 4.1-mini는 부르지 않는다
+        script[('gpt-6-luna','high')]=(500,{'error':{'message':'x'}});script[('gpt-6.1-sol','high')]=(400,{'error':{'message':'y'}})
+        sent.clear();self.assertIsNone(ask('배상하세요'));self.assertEqual([b['model'] for b in sent],['gpt-6-luna','gpt-6.1-sol'])
+        aim.save_setting('ai_sol','');script.clear()
+        self.assertEqual(aim.ladder(7,'low'),[('gpt-6-luna','low')]);self.assertEqual(aim.ladder(7,'high'),[('gpt-6-luna','high')])
+        # 기록: 모델·추론·토큰·비용·결과
+        meta={'company_id':None,'purpose':'chat'};ask('이거 얼마예요?',meta);aim.outcome(meta,'answered')
+        with self.core.conn() as db:r=db.execute('SELECT * FROM ai_calls WHERE req=?',(meta['req'],)).fetchone()
+        self.assertEqual((r['model'],r['effort'],r['in_tok'],r['cached_tok'],r['out_tok'],r['reason_tok'],r['outcome']),('gpt-6-luna','low',1000,200,300,100,'answered'))
+        self.assertAlmostEqual(r['cost'],(800*0.10+200*0.01+300*0.50)/1e6)
+        rep={g['key']:g for g in aim.report()};self.assertGreaterEqual(rep['low']['n'],1);self.assertGreaterEqual(rep['high']['n'],1)
+        # 환불·보상을 약속하는 답은 약속으로 보고(사장님 승인), 절차 안내는 아니다
+        self.assertTrue(cb.promises('바로 환불해 드릴게요.'));self.assertTrue(cb.promises('보상으로 적립금 지급 처리했어요'))
+        self.assertFalse(cb.promises('환불 방법을 안내해 드릴게요.'));self.assertFalse(cb.promises('교환은 마이페이지에서 신청하실 수 있어요.'))
+        # 운영 화면: 설정·비교가 보인다
+        o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+        page=o.get('/biz/ops/ai').get_data(as_text=True);self.assertIn('최근 30일 비교',page);self.assertIn('고추론 Luna',page)
+        self.post(o,'/biz/ops/ai',{'sol':'1'});self.assertEqual(aim.plan(),{'model':'gpt-6-luna','sol':True})
+        self.post(o,'/biz/ops/ai',{});self.assertFalse(aim.plan()['sol'])
+        # 같은 질문으로 비교: 예전 모델·Luna 낮은·높은 추론에 샘플 질문을 보내고 채점해 나란히 남긴다
+        bench=sys.modules['aibench']
+        def bfake(url,headers,body,timeout):
+            if '채점자' in body['messages'][0]['content']:return 200,{'choices':[{'message':{'content':'{"score": 4, "note": "정확해요"}'}}]}
+            return reply({'answer':'바로 환불해 드릴게요.' if body.get('reasoning_effort')=='low' and '환불' in body['messages'][1]['content'] else '안내해 드릴게요.'})
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',bfake):bench.run()
+        res=bench.last();self.assertTrue(res['done']);self.assertEqual(res['models'],['일반 Luna','고추론 Luna'])
+        self.assertEqual(len(res['rows']),6);self.assertEqual(res['sum']['일반 Luna']['score'],4.0);self.assertGreaterEqual(res['sum']['일반 Luna']['promise'],1);self.assertEqual(res['sum']['고추론 Luna']['promise'],0)
+        self.assertEqual({r['kind']:r['level'] for r in res['rows']}['강한 불만'],'high');self.assertEqual({r['kind']:r['level'] for r in res['rows']}['환불 절차'],'low')
+        self.assertIn('같은 질문으로 비교',o.get('/biz/ops/ai').get_data(as_text=True))
 
     def test_pdf_product_import(self):
         """상품소개서 PDF(2쪽, 11개 상품) -> AI 추출 -> 검토·수정 -> 등록. 공급가는 따로 저장되고 상담 AI에 들어가지 않는다."""
@@ -1827,7 +1887,7 @@ class PlatformTest(unittest.TestCase):
             if path=='/admin/orders/20261018-0000099':return 200,{'order':order}
             return 404,{}
         asked=[]
-        def fake_answer(co,facts,text,history=None):
+        def fake_answer(co,facts,text,history=None,**k):
             asked.append((facts,text,bot.clean_history(history)))
             if 'L은요' in text:return {'answer':'L은 조금 클 거예요.','category':None,'handoff':False,'lookup':False,'summary':''}
             if '사이즈' in text:return {'answer':'165면 M이 맞아요.','category':None,'handoff':False,'lookup':False,'summary':''}
@@ -1911,7 +1971,7 @@ class PlatformTest(unittest.TestCase):
                 db.execute("DELETE FROM cases WHERE company_id=?",(cid,));db.execute("DELETE FROM shop_seen WHERE company_id=?",(cid,));db.execute("UPDATE cafe24_links SET since_b='' WHERE company_id=?",(cid,))
                 c24.store(db,cid,'myshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':c24.SCOPES.split(',')})
             asked=[]
-            def fake_answer(co,facts,text,history=None):
+            def fake_answer(co,facts,text,history=None,**k):
                 asked.append((facts,text))
                 return {'answer':'민감성 피부도 쓰실 수 있어요.','category':None,'handoff':False,'lookup':False,'summary':''} if '선크림' in text else {'answer':'반품 도와드릴게요','category':'반품·환불','handoff':False,'lookup':False,'summary':'토너 반품 요청'}
             bot.BACKGROUND=False
@@ -2505,6 +2565,39 @@ class PlatformTest(unittest.TestCase):
             for k,v in old_env.items():
                 if v is None:os.environ.pop(k,None)
                 else:os.environ[k]=v
+
+    def test_followup_in_same_chat_gets_alert_and_ai(self):
+        """같은 대화방(DM 등)에 고객이 이어서 물으면, 사장님이 직접 답하던 대화나 승인을 기다리던 문의라도 알림이 뜨고 AI가 앞 대화까지 보고 답한다.
+        AI가 답을 만드는 사이에 고객이 또 쓰면 그 답은 버리고 다음 차례가 대화 전체에 답한다."""
+        bot=sys.modules['chatbot'];shops=sys.modules['shops']
+        b,o,cid=self.signup_and_approve('이어묻기상점','followup@example.com')
+        with self.core.conn() as db:
+            co=self.core.company(db,cid);t=self.core.iso()
+            case=db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
+                VALUES(?,?,?,1,'기타','안녕하세요','안녕하세요','기타','','','','','x',1,'seen','direct',?,?,?,'','','인스타그램')""",(self.core.new_case_no(db),cid,co['name'],t,t,t)).lastrowid
+            db.execute("INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,'instagram','u:1',?)",(cid,case))
+        said=[];extra=[]
+        def fake_answer(co,facts,text,history=None,**k):
+            said.append(text)
+            if extra:  # 답을 만드는 사이에 고객이 또 씀
+                with self.core.conn() as db:c=db.execute('SELECT * FROM cases WHERE id=?',(case,)).fetchone();self.core.add_event(db,case,'me',extra[0]);bot.again(db,c,extra.pop())
+            return {'answer':'SPF50+예요.','category':None,'handoff':False,'lookup':False,'summary':''}
+        bot.BACKGROUND=False
+        with patch.object(bot,'ready',lambda:True),patch.object(bot,'answer',fake_answer),patch.object(shops,'post_reply',lambda *a:''):
+            with self.core.conn() as db:
+                c=db.execute('SELECT * FROM cases WHERE id=?',(case,)).fetchone();self.core.add_event(db,case,'me','선크림 SPF 몇이에요?');self.assertTrue(bot.again(db,c,'선크림 SPF 몇이에요?'))
+            extra.append('민감성 피부도 돼요?')
+            bot.auto_reply_all()
+            with self.core.conn() as db:
+                r=db.execute('SELECT * FROM cases WHERE id=?',(case,)).fetchone()
+                self.assertEqual((r['decision'],r['ai_tried']),('ai',''))  # 첫 답은 버렸다
+                self.assertTrue(db.execute("SELECT 1 FROM biz_alerts WHERE company_id=? AND kind='msg'",(cid,)).fetchone())  # 사장님께 알림
+            bot.auto_reply_all()
+            with self.core.conn() as db:
+                r=db.execute('SELECT * FROM cases WHERE id=?',(case,)).fetchone()
+                self.assertEqual((r['status'],r['decision']),('answered','auto'))
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM events WHERE case_id=? AND kind='co'",(case,)).fetchone()[0],1)
+        self.assertIn('민감성 피부도 돼요?',said[-1])
 
     def test_instagram_dm(self):
         """인스타그램 DM: 키가 없으면 연동 대기, 로그인으로 잇고, 서명 맞는 웹훅만 받고, 같은 고객은 이어 붙고, 답장은 눌러야 간다."""

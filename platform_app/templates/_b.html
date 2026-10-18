@@ -27,7 +27,7 @@
 {% set OMENU=[('업무',[('all','ops_all','전체 현황','chart'),('non','ops','비입점 요청','inbox'),('co','ops_companies','기업 관리','building')]),
  ('영업',[('leads','sl.ops_leads','상담 신청','list'),('partners','gr.ops_list','파트너·추천','building')]),
  ('콘텐츠',[('content','cms.ops_list','자료실·도움말','note'),('mkt','ops_marketing','마케팅 분석','chart'),('news','ops_news','법·제도 소식','scale'),('visual','ops_visual','화면 보며 고치기','search'),('copy','ops_copy','문구 고치기','note')]),
- ('설정',[('keys','ops_keys','서비스 키','shield'),('billing','ops_billing','요금제·결제','chart')])] %}
+ ('설정',[('keys','ops_keys','서비스 키','shield'),('ai','ops_ai','AI 모델','bolt'),('billing','ops_billing','요금제·결제','chart')])] %}
 <header class="gnb"><div class="wrap">
 <a class="logo biz" href="{{ url_for('ops_all') }}">{{ soboru_logo() }}<small class="w">운영</small></a>
 <div class="right"><details class="omenu"><summary aria-label="운영 메뉴 열기">메뉴{% if n_signup %}<span class="cnt">{{ n_signup }}</span>{% endif %}</summary><div class="sheet">{{ omenu_links(OMENU,tab,n_signup) }}</div></details>
