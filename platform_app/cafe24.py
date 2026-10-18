@@ -376,6 +376,42 @@ def sync_all():
         except Exception:log.exception('카페24 문의 가져오기 실패 (회사 %s)',co['id'])
     return n
 
+# ---------- 앱 삭제 웹훅 ----------
+# 사장님이 카페24 관리자 > 앱에서 소보루 CS를 지우면 카페24가 이벤트 90077을 보낸다. 연결을 '앱 삭제됨'으로 바꾸고 토큰을 지운다
+# (가져온 주문·요청은 그대로 둔다). 인증정보(CAFE24_WEBHOOK_KEY)가 맞으면 그대로 믿고, 없거나 다르면 카페24에 직접 물어
+# 토큰이 정말 막혔을 때만 끊는다: 남이 이 주소로 가짜 이벤트를 보내도 살아 있는 연결은 끊기지 않는다.
+APP_DELETED=90077
+def _still_works(db,cid):
+    """이 연결의 토큰으로 카페24가 아직 응답하면 True. 갱신까지 거절되면 False. 네트워크 오류 등 모르면 None."""
+    try:mall,tok=access_token(db,cid)
+    except shops.ShopError:return False
+    except Exception:return None
+    try:code,_=shops.http('GET',base(mall)+'/admin/store',{'Authorization':'Bearer '+tok},None)
+    except Exception:return None
+    return True if code<400 else False if code in (401,403) else None
+def app_deleted(db,mall,trusted):
+    """mall을 연결한 회사들의 연결을 거둔다 -> 거둔 수."""
+    n=0
+    for lk in db.execute("SELECT * FROM cafe24_links WHERE mall_id=? AND status!='removed'",(mall,)).fetchall():
+        if not trusted and _still_works(db,lk['company_id']) is not False:
+            log.warning('카페24 앱 삭제 이벤트를 확인하지 못해 연결을 그대로 둠: %s',mall);continue
+        db.execute("UPDATE cafe24_links SET status='removed',creds='',note=? WHERE company_id=?",('카페24에서 소보루 CS 앱을 지웠어요. 다시 쓰려면 다시 연결해 주세요.',lk['company_id']))
+        core.notify_company_link_broken(core.company(db,lk['company_id']),'카페24','카페24 관리자에서 소보루 CS 앱을 지웠어요','/connect/cafe24',db);n+=1
+    return n
+@bp.route('/hook/cafe24',methods=['POST'])
+def hook():
+    """카페24 웹훅 (지금은 앱 삭제만). 받으면 늘 200 (카페24가 다시 보내지 않게), 처리는 위 규칙대로."""
+    if not ready():abort(404)
+    key=core.secret('CAFE24_WEBHOOK_KEY');got=request.headers.get('X-Api-Key') or request.headers.get('X-Cafe24-Api-Key') or ''
+    trusted=bool(key and got and _hmac.compare_digest(got,key))
+    d=request.get_json(silent=True) or {};res=d.get('resource') if isinstance(d.get('resource'),dict) else {}
+    if str(d.get('event_no'))==str(APP_DELETED):
+        mall=clean(str(res.get('mall_id') or ''),40);cid=str(res.get('client_id') or '')
+        if mall and (not cid or cid==core.secret('CAFE24_CLIENT_ID')):
+            with conn() as db:n=app_deleted(db,mall,trusted)
+            log.warning('카페24 앱 삭제: %s (거둔 연결 %s, 인증 %s)',mall,n,'맞음' if trusted else '확인함' if n else '안 됨')
+    return {'ok':True}
+
 # ---------- 화면 ----------
 def company():
     import business

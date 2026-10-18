@@ -1723,6 +1723,28 @@ class PlatformTest(unittest.TestCase):
             self.assertEqual(j['prefs']['new'],{'push':1,'email':1});self.assertEqual(j['prefs']['ai'],{'push':0,'email':0})
         finally:core.expo_push,core.send_mail=old_push,old_mail
 
+    def test_cafe24_app_deleted_hook(self):
+        """카페24 앱 삭제 웹훅: 인증정보가 맞으면 바로, 없으면 카페24에 물어 토큰이 막혔을 때만 연결을 거둔다. 가짜 이벤트로는 살아 있는 연결이 안 끊긴다."""
+        shops=sys.modules['shops'];c24=sys.modules['cafe24']
+        b,o,cid=self.signup_and_approve('카페24삭제상점','c24del@example.com')
+        alive=[True]
+        def fake(method,url,headers=None,body=None):
+            if '/oauth/token' in url:return 400,{'error':'invalid_grant'}
+            return (200,{'store':{}}) if alive[0] else (401,{})
+        ev={'event_no':90077,'resource':{'mall_id':'delshop','client_id':'cid','app_name':'소보루 CS'}}
+        with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec','CAFE24_WEBHOOK_KEY':'hookkey'}),patch.object(shops,'http',fake):
+            with self.core.conn() as db:c24.store(db,cid,'delshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
+            def st():
+                with self.core.conn() as db:return db.execute('SELECT status FROM cafe24_links WHERE company_id=?',(cid,)).fetchone()[0]
+            self.assertEqual(b.post('/biz/hook/cafe24',json=ev).status_code,200);self.assertEqual(st(),'ok')  # 인증정보 없고 토큰이 살아 있음: 그대로
+            self.assertEqual(b.post('/biz/hook/cafe24',json=dict(ev,resource=dict(ev['resource'],client_id='other')),headers={'X-Api-Key':'hookkey'}).status_code,200);self.assertEqual(st(),'ok')  # 다른 앱
+            alive[0]=False;b.post('/biz/hook/cafe24',json=ev);self.assertEqual(st(),'removed')  # 토큰이 막힘: 거둔다
+            with self.core.conn() as db:
+                self.assertEqual(db.execute('SELECT creds FROM cafe24_links WHERE company_id=?',(cid,)).fetchone()[0],'')
+                self.assertTrue(db.execute("SELECT 1 FROM biz_alerts WHERE company_id=? AND kind='link'",(cid,)).fetchone())
+                c24.store(db,cid,'delshop',{'access_token':'A2','refresh_token':'R2','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
+            alive[0]=True;b.post('/biz/hook/cafe24',json=ev,headers={'X-Api-Key':'hookkey'});self.assertEqual(st(),'removed')  # 인증정보가 맞으면 묻지 않고 거둔다
+
     def test_cafe24_products_and_ai_reply(self):
         """카페24 상품 -> 상품정보 (사장님이 고친 안내는 그대로, 상품 권한 없는 예전 연결은 건너뜀). 상품 문의엔 상품 이름.
         AI 초안은 상품정보를 본다. AI 자동 답변: 단순 문의는 답해서 카페24에 올리고 완료, 반품 등은 안 보내고 메모. 개인정보는 가려서 보낸다."""

@@ -686,7 +686,7 @@ def post_later(case_id,text):
         if app.config.get('TESTING'):run()
         else:threading.Thread(target=run,daemon=True).start()
         return resp
-def closable(c):return (c['channel'] in SEND_VIA or bool(c['live'])) and c['status'] not in core.FINAL
+def closable(c):return (c['channel'] in SEND_VIA or c['channel'] in ('카페24','스마트스토어','쿠팡') or bool(c['live'])) and c['status'] not in core.FINAL  # 판매처 게시판 고객도 '해결됐어요'를 누를 화면이 없다
 def reopenable(c):return c['status']=='closed'  # 응대한 사람이 끝낸 요청만 다시 연다 (고객이 '해결됐어요'를 고른 요청은 그대로)
 
 def can_ship_track(db,c):

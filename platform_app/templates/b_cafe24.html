@@ -8,7 +8,7 @@
 <div class="cols"><div class="stack">
 {% if not ready %}<section class="panel"><div class="ph">연동 대기 중이에요</div><p class="sub" style="margin:0">소보루가 카페24 개발자센터에 앱을 등록하고 심사를 받는 중이에요. 등록이 끝나면 이 화면에서 바로 연결할 수 있어요. 그동안은 <a class="link" href="{{ url_for('orders_page') }}">주문 엑셀(CSV) 올리기</a>로 주문을 가져와 주세요.</p></section>{% endif %}
 {% if lk %}<section class="panel"><div class="ph">연결 상태</div>
-{% if lk.status!='ok' %}<div class="warn" style="margin-bottom:14px">{{ lk.note }}</div>{% elif 'mall.read_product' not in (lk.scopes or '') %}<div class="warn" style="margin-bottom:14px">상품 정보를 가져오려면 아래 <b>다시 연결하기</b>를 눌러 상품 읽기 권한에 동의해 주세요. 상품을 알아야 AI가 상품 문의에 답할 수 있어요.</div>{% endif %}
+{% if lk.status!='ok' %}<div class="warn" style="margin-bottom:14px"><span>{{ lk.note }}</span></div>{% elif 'mall.read_product' not in (lk.scopes or '') %}<div class="warn" style="margin-bottom:14px"><span>상품 정보를 가져오려면 아래 <b>다시 연결하기</b>에서 '카페24로 이동해 연결'을 눌러 상품 읽기 권한에 동의해 주세요. 상품을 알아야 AI가 상품 문의에 답할 수 있어요.</span></div>{% endif %}
 <dl class="kv"><dt>쇼핑몰 아이디</dt><dd>{{ lk.mall_id }}{% if lk.shop_name %} · {{ lk.shop_name }}{% endif %}</dd><dt>동의한 권한</dt><dd>{{ scope_text(lk.scopes) or lk.scopes or '–' }}</dd>
 <dt>연결 유지 기한</dt><dd>{{ lk.refresh_expires[:10] if lk.refresh_expires else '–' }} <small class="t-mute">(쓸 때마다 자동으로 늘어나요)</small></dd>
 <dt>마지막으로 가져온 때</dt><dd>{{ fmt(lk.synced) if lk.synced else '아직 없어요' }}</dd><dt>가져온 주문</dt><dd>{{ lk.n_ord }}건</dd><dt>가져온 문의</dt><dd>{{ lk.n_inq }}건</dd><dt>상품</dt><dd>{{ lk.n_prod }}개{% if lk.synced_p %} <small class="t-mute">({{ fmt(lk.synced_p) }})</small>{% endif %}</dd></dl>
@@ -27,7 +27,7 @@
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn sm gray" name="act" value="boards" {{ 'disabled' if lk.status!='ok' }}>게시판 바꾸기</button></form>{% endif %}</section>{% endif %}
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="connect">
 <div class="ph">{{ '다시 연결하기' if lk else '연결하기' }}</div>
-{% if launch %}<div class="hint ok">카페24에서 소보루 CS 앱을 열었어요. 쇼핑몰 아이디 <b>{{ launch }}</b>로 연결을 이어서 할게요.</div>{% endif %}
+{% if launch %}<div class="hint ok"><span>카페24에서 소보루 CS 앱을 열었어요. 쇼핑몰 아이디 <b>{{ launch }}</b>로 연결을 이어서 할게요.</span></div>{% endif %}
 <label class="fld"><span>카페24 쇼핑몰 아이디</span><input class="inp" name="mall_id" maxlength="40" value="{{ launch or (lk.mall_id if lk else '') }}" placeholder="예: myshop (myshop.cafe24.com의 앞부분)" required {{ 'disabled' if not ready }}></label>
 <p class="cap" style="margin:0">누르면 카페24 화면으로 넘어가요. 카페24 관리자로 로그인하고 권한에 동의하면 이 화면으로 돌아와요. 소보루는 카페24 비밀번호를 받지 않아요.</p>
 <button class="btn md" {{ 'disabled' if not ready or not trust or not trust.ok }}>카페24로 이동해 연결</button>

@@ -118,18 +118,19 @@ def take(db,co,lk,ev):
         except IgError:pass
     db.execute('UPDATE ig_links SET last_in=? WHERE company_id=?',(core.iso(),co['id']))
     if c and c['status'] not in core.FINAL:  # 같은 고객의 진행 중인 요청에 이어 붙인다
-        core.add_event(db,c['id'],'me',text);core.notify_company_msg(db,c['id'],text)
+        core.add_event(db,c['id'],'me',text)
         if c['status'] in ('answered','info'):db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],))
         db.execute('UPDATE cases SET updated=? WHERE id=?',(core.iso(),c['id']))
+        import chatbot;chatbot.again(db,c,text)  # AI가 맡던 대화면 AI가 이어서 답한다
         db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,'m:'+mid,c['id']))
         return None
     from werkzeug.security import generate_password_hash
-    import datetime as _d
+    import datetime as _d, chatbot
     title=clean(' '.join(text.split()),40)
     cat=core.classify(text) or '기타';t=core.iso();due=core.iso(core.now()+_d.timedelta(days=core.REPLY_DAYS))
     cid=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
-        VALUES(?,?,?,1,?,?,?,?,'',?,'','',?,1,'forwarded','pending',?,?,?,'','',?)''',(core.new_case_no(db),co['id'],co['name'],cat,title,text,core.WANT_OF.get(cat,'기타'),
-        name,generate_password_hash(secrets.token_hex(16)),due,t,t,CHANNEL)).lastrowid
+        VALUES(?,?,?,1,?,?,?,?,'',?,'','',?,1,'forwarded',?,?,?,?,'','',?)''',(core.new_case_no(db),co['id'],co['name'],cat,title,text,core.WANT_OF.get(cat,'기타'),
+        name,generate_password_hash(secrets.token_hex(16)),'ai' if chatbot.auto_on(co) else 'pending',due,t,t,CHANNEL)).lastrowid  # AI 자동 답변을 켰으면 AI가 먼저 본다
     core.add_event(db,cid,'sys','인스타그램 DM을 가져왔어요'+(f' (@{name})' if name else ''))
     # 같은 고객이 끝난 요청 뒤에 다시 보내면 'u:' 줄이 이미 있다. 예전 요청에는 답장 상대를 따로 남기고, 'u:'는 새 요청을 가리키게 바꾼다
     if r:db.execute('INSERT OR IGNORE INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,f"r:{r['case_id']}:{sender}",r['case_id']))
@@ -163,7 +164,8 @@ def receive(payload):
                 except Exception:  # 이상한 메시지 하나 때문에 멈추지 않고, 그 메시지가 반쯤 쓴 것은 되돌린다
                     traceback.print_exc();db.execute('ROLLBACK TO ig_take');db.execute('RELEASE ig_take');c=None
                 if c:new.append((co,c))
-    for co,c in new[:5]:core.notify_company_new(co,c)
+    for co,c in new[:5]:core.notify_company_new(co,c)  # AI가 먼저 보는 DM은 넘겨받을 때 알린다
+    import chatbot;chatbot.auto_reply_later()  # 새 DM·이어진 대화에 AI가 바로 답한다 (켠 회사만, 다음 cron을 기다리지 않게)
     return len(new)
 
 # ---------- 답변 보내기 (사람이 눌렀을 때만) ----------

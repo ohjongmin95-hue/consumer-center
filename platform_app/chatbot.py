@@ -160,12 +160,18 @@ def answer(co,facts,text,history=None):
 AUTO_MAX=20  # 한 번에 한 회사에서 답하는 문의 수 (나머지는 다음 차례에)
 MASKS=[(re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+'),'(이메일)'),(re.compile(r'(?<!\d)\d{6}-?[1-4]\d{6}(?!\d)'),'(주민번호)'),
        (re.compile(r'(?<!\d)\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}(?!\d)'),'(카드번호)'),(re.compile(r'(?<!\d)0\d{1,2}[-\s.]?\d{3,4}[-\s.]?\d{4}(?!\d)'),'(전화번호)')]
-STUCK_MIN=30  # 'AI 확인 중'으로 이만큼 지나면 (AI 장애 등) 승인 목록으로 돌린다
+STUCK_MIN=30  # 'AI 확인 중'으로 (마지막 고객 글부터) 이만큼 지나면 (AI 장애 등) 승인 목록으로 돌린다
 def auto_on(co):return bool(co and co['ai_reply'] and ready())
 def mask(t):
     """AI에 보내기 전에 이메일·전화번호·주민번호·카드번호를 가린다."""
     for r,w in MASKS:t=r.sub(w,t or '')
     return t
+def again(db,c,text):
+    """진행 중인 DM·메일 대화에 고객이 말을 더 했을 때: AI가 맡던 대화(AI가 답함·확인 중)면 AI가 다시 보고, 아니면 사장님께 알린다."""
+    if c['decision'] in ('auto','ai') and auto_on(core.company(db,c['company_id'])):
+        db.execute("UPDATE cases SET decision='ai',ai_tried='' WHERE id=?",(c['id'],));return True
+    if c['decision'] in ('auto','ai'):db.execute("UPDATE cases SET decision='pending' WHERE id=?",(c['id'],))
+    core.notify_company_msg(db,c['id'],text);return False
 def _note(db,c,text):db.execute('INSERT INTO notes(case_id,company_id,author,text,created) VALUES(?,?,?,?,?)',(c['id'],c['company_id'],'AI',text[:2000],core.iso()))
 def _to_owner(db,c,note=''):
     """사장님 승인 목록으로 넘기고 알린다 (AI가 먼저 보는 문의는 들어올 때 알리지 않았다)."""
@@ -213,7 +219,7 @@ def auto_reply_all():
     n=0
     with core.conn() as db:
         old=core.iso(core.now()-datetime.timedelta(minutes=STUCK_MIN))
-        stuck=db.execute("""SELECT * FROM cases WHERE decision='ai' AND (created<? OR status NOT IN ('forwarded','seen') OR NOT ?
+        stuck=db.execute("""SELECT * FROM cases WHERE decision='ai' AND (updated<? OR status NOT IN ('forwarded','seen') OR NOT ?
             OR company_id IN (SELECT id FROM companies WHERE ai_reply='' OR member!=1 OR status!='active'))""",(old,ready())).fetchall()
         for c in stuck:_to_owner(db,c,'AI가 제때 답하지 못해 넘겼어요.' if ready() and c['ai_tried'] else '')
         rows=db.execute("""SELECT id,company_id FROM cases WHERE decision='ai' AND ai_tried=''

@@ -253,6 +253,7 @@ SECRETS={'SWEETTRACKER_T_KEY':('택배 조회 키','스마트택배(tracking.swe
          'GOOGLE_CLIENT_SECRET':('구글 로그인 클라이언트 보안 비밀','위 OAuth 클라이언트의 보안 비밀번호'),
          'CAFE24_CLIENT_ID':('카페24 앱 Client ID','카페24 개발자센터(developers.cafe24.com) > 앱 만들기 > 앱 정보의 Client ID. Redirect URI에 기업 주소/connect/cafe24/callback 을 넣어요. 넣으면 사장님 화면의 카페24 연결이 열려요'),
          'CAFE24_CLIENT_SECRET':('카페24 앱 Client Secret','위 앱의 Client Secret Key'),
+         'CAFE24_WEBHOOK_KEY':('카페24 웹훅 인증정보','카페24 개발자센터 > 앱 > WebHook 화면 아래 인증정보. 수신 URL에 기업 주소/hook/cafe24 를 넣고 이벤트는 \'앱 삭제(90077)\'를 골라요'),
          'PORTONE_STORE_ID':('포트원 상점 아이디','포트원 관리자콘솔 > 연동 정보 > 식별코드·API Keys의 상점 아이디 (store-로 시작). 정기결제용'),
          'PORTONE_CHANNEL_KEY':('포트원 채널 키','포트원 관리자콘솔 > 연동 정보 > 채널 관리에서 정기결제(빌링키) 채널의 채널 키 (channel-key-로 시작). 시험 채널 키로는 실제 돈이 나가지 않아요'),
          'PORTONE_API_SECRET':('포트원 API 시크릿','포트원 관리자콘솔 > 연동 정보 > 식별코드·API Keys의 V2 API Secret'),
