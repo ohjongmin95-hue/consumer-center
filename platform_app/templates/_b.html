@@ -19,7 +19,7 @@
 {%- endmacro %}
 {# 사장님 메뉴: 넓은 화면은 왼쪽 세로 메뉴(bside), 좁은 화면은 위쪽 가로 메뉴 #}
 {% macro menu(tab,side=False) -%}
-{% for key,ep,label,ic in [('home','decide','홈','inbox'),('all','all_cases','요청','list'),('approve','approvals','승인할 일','approve'),('orders','orders_page','주문·배송','truck'),('returns','returns','교환·반품','exchange'),('products','products','상품','box'),('rules','rules','자동 처리','bolt'),('macros','macros','답변 템플릿','note'),('automations','automations_page','자동화 규칙','flow'),('stats','stats','통계','chart'),('guide','guide','응대 가이드','guide'),('connect','connect','서비스 연동','gear'),('team','team_page','팀','user')] if (key not in ('products','rules','macros','automations','connect','team') or can('manage')) %}
+{% for key,ep,label,ic in [('home','decide','홈','inbox'),('chat','chat','상담','chat'),('all','all_cases','요청','list'),('approve','approvals','승인할 일','approve'),('orders','orders_page','주문·배송','truck'),('returns','returns','교환·반품','exchange'),('products','products','상품','box'),('rules','rules','자동 처리','bolt'),('macros','macros','답변 템플릿','note'),('automations','automations_page','자동화 규칙','flow'),('stats','stats','통계','chart'),('guide','guide','응대 가이드','guide'),('connect','connect','서비스 연동','gear'),('team','team_page','팀','user')] if (key not in ('products','rules','macros','automations','connect','team') or can('manage')) %}
 <a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{% if side %}{{ i.icon(ic,22) }}{% endif %}<span>{{ label }}</span>{% if key=='approve' and n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>{% endfor %}
 {%- endmacro %}
 {% macro obar(tab,n_signup) -%}

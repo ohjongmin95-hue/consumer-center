@@ -7,7 +7,7 @@
   · 오래된 방문 기록은 KEEP_DAYS가 지나면 지운다.
 """
 import secrets, urllib.parse, datetime
-from flask import request, session
+from flask import request, session, after_this_request
 import core
 from core import conn, clean
 
@@ -46,11 +46,23 @@ def track(kind,company_id=0,detail='',path=None):
         vid=visitor() if core.has_request_context() else ''
         p=path if path is not None else (request.path if core.has_request_context() else '')
         rf=ref_host() if core.has_request_context() and kind=='visit' else ''
-        with conn() as db:
-            if kind!='visit' and company_id and kind in ('signup','setup_done','first_reply') and db.execute('SELECT 1 FROM funnel WHERE kind=? AND company_id=?',(kind,company_id)).fetchone():return
-            db.execute('INSERT INTO funnel(kind,company_id,visitor,path,ref,source,medium,campaign,detail,created) VALUES(?,?,?,?,?,?,?,?,?,?)',
-                (kind,company_id or 0,vid,(p or '')[:120],rf,u.get('utm_source',''),u.get('utm_medium',''),u.get('utm_campaign',''),clean(detail,120),core.iso()))
-    except Exception:pass
+        at=core.iso()
+    except Exception:return
+    def write():
+        try:
+            with conn() as db:
+                if kind!='visit' and company_id and kind in ('signup','setup_done','first_reply') and db.execute('SELECT 1 FROM funnel WHERE kind=? AND company_id=?',(kind,company_id)).fetchone():return
+                db.execute('INSERT INTO funnel(kind,company_id,visitor,path,ref,source,medium,campaign,detail,created) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                    (kind,company_id or 0,vid,(p or '')[:120],rf,u.get('utm_source',''),u.get('utm_medium',''),u.get('utm_campaign',''),clean(detail,120),at))
+        except Exception:pass
+    # 화면 요청 안에서는 화면 처리가 끝난 뒤에 쓴다: 부르는 쪽이 DB를 쓰는 중이면 그 잠금이 풀릴 때까지 30초를 기다려 '답변하기'가 느렸다
+    if core.has_request_context():
+        try:
+            @after_this_request
+            def later(resp):write();return resp
+            return
+        except Exception:pass
+    write()
 
 def visit():
     """공개 화면 방문 (같은 세션이 같은 페이지를 다시 열면 하루 한 번만)."""
