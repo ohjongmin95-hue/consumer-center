@@ -73,7 +73,7 @@ def log_call(meta,model,effort,res,ms,ok,error=''):
         if ok:meta.update(log_id=lid,model=model,effort=effort or '')
     except Exception as e:LOG.warning('AI 기록 실패: %s',type(e).__name__)
 def outcome(meta,result):
-    """이 요청(req)의 결과: answered(상담창 답함) / sent(자동 답변 보냄) / handoff(사장님께) / failed / followup(답한 뒤 고객이 다시 물음)."""
+    """이 요청(req)의 결과: answered(상담창 답함) / sent(자동 답변 보냄) / action(안내는 보내고 결정은 사장님께) / handoff(사장님께) / failed / followup(답한 뒤 고객이 다시 물음)."""
     if not meta or not meta.get('req'):return
     with core.conn() as db:db.execute('UPDATE ai_calls SET outcome=? WHERE req=?',(result,meta['req']))
 def followed_up(db,case_id):
@@ -225,7 +225,7 @@ def chat_json(system,messages,**kw):
 
 # ---------- 운영 > AI 모델: 비교 보고서와 연결 시험 ----------
 GROUPS=[('low','일반 Luna (낮은 추론)'),('high','고추론 Luna'),('sol','GPT-6.1 Sol'),('old','예전 모델')]
-SOLVED=('sent','answered');UNSOLVED=('handoff','followup','failed')
+SOLVED=('sent','answered');UNSOLVED=('handoff','action','followup','failed')  # action: AI가 안내는 보냈지만 처리 결정은 사장님이 함
 def group_of(r):
     if r['model']==SOL:return 'sol'
     if not thinks(r['model']):return 'old'

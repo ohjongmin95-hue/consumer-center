@@ -748,7 +748,7 @@ def case_act(db,c,form):
         notify_consumer(c,f'[{core.CNAME}] 송장번호를 알려 드려요',f"{c['company_name']}: {courier} 송장번호 {tracking}")
         return '고객에게 송장번호를 알렸습니다','ok'
     if act=='approve' and c['decision'] not in ('approved','auto'):
-        done=core.run_playbook(db,c,'approved')
+        done=core.run_playbook(db,c,'approved',send=lambda r:setattr(g,'c_send',r))  # 보내기는 화면을 넘긴 뒤 (case에서 post_later)
         if done is None:return '이 유형은 미리 정한 답변이 없어요. 아래에서 답변을 직접 적어 보내 주세요.','error'
         if done:notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")
         return '승인했습니다','ok'
@@ -802,6 +802,8 @@ def case(case_id):
             if level=='ok' and act=='reply' and send_via(db,c):  # 인스타·메일 요청은 '보내기'를 누르면 그 채널로 바로 간다 (뒤에서)
                 post_later(c['id'],clean(request.form.get('msg'),3000))
                 msg='답변을 저장하고 보내는 중이에요. 몇 초 뒤 진행 기록에 결과가 남아요.'
+            elif level=='ok' and act=='approve' and g.get('c_send'):  # 승인한 답도 판매처·DM·메일로는 뒤에서 보낸다
+                if send_via(db,c):post_later(c['id'],g.c_send);msg+=' 고객에게 보내는 중이에요.'
             elif level=='ok' and act in OUT_ACTS and g.get('c_out') and send_via(db,c):  # 자료 요청·송장·보상 안내도 고객이 있는 곳(카페24·DM·메일)으로
                 post_later(c['id'],g.c_out);msg+=' 고객에게도 보내는 중이에요.'
             if level=='ok' and act=='reply' and request.form.get('macro','').isdigit():inbox.used_macro(db,me(),c,int(request.form['macro']))
@@ -1247,7 +1249,8 @@ def save_rule(db,co,f):
     cond=f.get('cond','') if 'cond' in f else cur['cond']
     if cond not in core.COND or cat not in COND_CATS:cond=''
     comp=clean(f.get('comp'),100) if 'comp' in f else cur['comp']
-    ai_ok=('1' if str(f['ai_ok']) in ('1','True','true') else '0') if 'ai_ok' in f else ('1' if cur['ai_ok'] else '0')
+    old=db.execute('SELECT ai_ok FROM rules WHERE company_id=? AND category=?',(co['id'],cat)).fetchone()
+    ai_ok=('1' if str(f['ai_ok']) in ('1','True','true') else '0') if 'ai_ok' in f else (old['ai_ok'] if old else '')  # 고르지 않았으면 기본값 그대로 (기본값이 바뀌면 따라간다)
     db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond,comp,ai_ok) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond,comp=excluded.comp,ai_ok=excluded.ai_ok',(co['id'],cat,int(auto),reply,faq,cond,comp,ai_ok))
     return True
 

@@ -377,7 +377,7 @@ def chat_answer(company_id,f):
             with conn() as db:
                 rule=core.rule_for(db,co['id'],cat or '기타')
                 db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],cat or '기타','asked',core.iso()))
-            return dict(category=cat,answer=ai['answer'],handoff=ai['handoff'],lookup=ai['lookup'] and not mine,summary=ai['summary'],faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=True,ask_days=False),200
+            return dict(category=cat,answer=ai['answer'],handoff=ai['handoff'] or ai.get('action',False),lookup=ai['lookup'] and not mine,summary=ai['summary'],faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=True,ask_days=False),200
     cat=f.get('category') if f.get('category') in core.CATS else core.classify(text)
     if not cat:return dict(category=None),200
     if not co:return dict(category=cat,faq=core.CHAT_FAQ[cat],auto=False,cond='',member=False,ask_days=cat in ('교환','반품·환불')),200

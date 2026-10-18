@@ -283,8 +283,8 @@ class PlatformTest(unittest.TestCase):
             hist=json.dumps([{'who':'bot','text':'안녕하세요'},{'who':'me','text':'선크림 있어요?'},{'who':'bot','text':'네, 있어요.'}])
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'얼마예요?','history':hist}).get_json()
         self.assertEqual((j['answer'],j['category'],j['handoff']),('선크림은 19000원이에요.',None,False))
-        self.assertTrue(seen['url'].endswith('/v1/responses'));self.assertEqual(seen['body']['tools'],[{'type':'web_search'}])
-        system=seen['body']['instructions'];msgs=seen['body']['input']
+        self.assertTrue(seen['url'].endswith('/chat/completions'));self.assertNotIn('tools',seen['body'])  # 먼저 검색 없이 (빠르게)
+        system=seen['body']['messages'][0]['content'];msgs=seen['body']['messages'][1:]
         self.assertIn('선크림 / 가격 19000원',system);self.assertIn('보습 크림 / 가격 31000원 / 품절',system);self.assertIn('인터넷 검색',system)
         self.assertEqual([m['role'] for m in msgs],['user','assistant','user']);self.assertEqual(msgs[-1]['content'],'얼마예요?')
         # 검색 답이 JSON이 아니어도 글이면 답으로 쓰고, 출처 링크 표시는 뺀다
@@ -296,13 +296,14 @@ class PlatformTest(unittest.TestCase):
         def nosearch(url,headers,body,timeout):
             urls.append(url)
             if url.endswith('/responses'):return 400,{'error':{'message':'tool not supported'}}
-            return oa(url,'{"category": null, "answer": "네, 있어요.", "handoff": false, "summary": ""}')
+            return oa(url,'{"category": null, "answer": "네, 있어요.", "handoff": false, "summary": "", "sure": false}')
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',nosearch):
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'보습 크림 있어요?'}).get_json()
-        self.assertEqual(j['answer'],'네, 있어요.');self.assertEqual([u.rsplit('/',1)[1] for u in urls],['responses','completions'])
+        self.assertEqual(j['answer'],'네, 있어요.');self.assertEqual([u.rsplit('/',1)[1] for u in urls],['completions','responses','completions'])  # 확신이 없을 때만 검색, 검색이 안 되면 검색 없이
         # 네이버 검색 키가 있으면 AI가 필요할 때 네이버에서 검색하고, 그 결과를 보고 답한다
         calls=[];got=[]
         def nv_post(url,headers,body,timeout):
+            if 'tools' not in body and not calls:return 200,{'choices':[{'message':{'content':'{"answer": "아마 2시간쯤이에요.", "sure": false}'}}]}  # 처음엔 검색 없이: 확신이 없다고 함
             calls.append(body)
             if len(calls)==1:return 200,{'choices':[{'message':{'content':None,'tool_calls':[{'id':'c1','type':'function','function':{'name':'search','arguments':'{"query": "선크림 덧바르는 주기"}'}}]}}]}
             return 200,{'choices':[{'message':{'content':'{"category": null, "answer": "보통 2~3시간마다 덧바르는 게 좋아요.", "handoff": false, "summary": ""}'}}]}
@@ -330,7 +331,7 @@ class PlatformTest(unittest.TestCase):
         b3,_,cid3=self.signup_and_approve('다른가게','other-shop@example.com')
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
             me.post(f'/chat/{cid3}',data={'csrf':ctok,'text':'선크림 있어요?'})
-        self.assertNotIn('선크림',seen['body']['instructions'])
+        self.assertNotIn('선크림',seen['body']['messages'][0]['content'])
 
     def test_ai_model_luna_tiers_and_log(self):
         """AI 상담: Luna 낮은 추론 기본, 어려운 문의는 높은 추론. 예전 4.1-mini는 쓰지 않는다. Sol은 운영에서 켠 경우만. 호출은 모델·추론·토큰·비용·결과로 남는다."""
@@ -1973,7 +1974,7 @@ class PlatformTest(unittest.TestCase):
             asked=[]
             def fake_answer(co,facts,text,history=None,**k):
                 asked.append((facts,text))
-                return {'answer':'민감성 피부도 쓰실 수 있어요.','category':None,'handoff':False,'lookup':False,'summary':''} if '선크림' in text else {'answer':'반품 도와드릴게요','category':'반품·환불','handoff':False,'lookup':False,'summary':'토너 반품 요청'}
+                return {'answer':'민감성 피부도 쓰실 수 있어요.','category':None,'handoff':False,'lookup':False,'summary':''} if '선크림' in text else {'answer':'반품은 받은 날부터 7일 안에 신청하실 수 있어요. 주문번호를 알려 주시면 담당자가 확인한 뒤 알려 드릴게요.','category':'반품·환불','handoff':False,'action':True,'lookup':False,'summary':'토너 반품 요청'}
             bot.BACKGROUND=False
             with patch.object(bot,'ready',lambda:True),patch.object(bot,'answer',fake_answer):  # AI 자동 답변 (가입하면 켜져 있음): 가져오자마자 답한다
                 r=self.post(b,'/biz/connect/cafe24',{'act':'sync'},follow_redirects=True).get_data(as_text=True)
@@ -1998,23 +1999,26 @@ class PlatformTest(unittest.TestCase):
             self.assertEqual(res['by'],'ai');self.assertIn('[상품정보]\n- 선크림 / 가격 21,000원',seen['u']);self.assertNotIn('토너',seen['u'].split('[상품정보]')[1].split('[관련 조문]')[0])
             # AI 자동 답변 결과
             self.assertTrue(any('(전화번호)' in t and '010-1234-5678' not in t for _,t in asked));self.assertIn('선크림 / 가격 19,000원',asked[0][0])
-            self.assertEqual(len(sent),1);self.assertEqual(sent[0][1]['requests'][0]['reply_article_no'],20)
+            self.assertEqual(len(sent),2);self.assertEqual(sent[0][1]['requests'][0]['reply_article_no'],20)  # 반품 문의에도 안내는 바로 나간다
             with self.core.conn() as db:
                 a=db.execute('SELECT * FROM cases WHERE id=?',(cs['선크림 문의']['id'],)).fetchone();r2=db.execute('SELECT * FROM cases WHERE id=?',(cs['반품하고 싶어요']['id'],)).fetchone()
                 self.assertEqual((a['status'],a['decision']),('answered','auto'))
                 self.assertTrue(any(e['kind']=='co' and e['reply']=='민감성 피부도 쓰실 수 있어요.' for e in self.core.events(db,a['id'])))
-                self.assertEqual((r2['status'],r2['decision']),('forwarded','pending'))  # 반품은 사장님 승인으로
+                self.assertEqual((r2['status'],r2['decision']),('seen','pending'))  # 반품: AI가 조건·방법은 안내하고, 처리 결정만 사장님께
+                self.assertTrue(any(e['kind']=='co' and e['reply'].startswith('반품은 받은 날부터') for e in self.core.events(db,r2['id'])));self.assertIn('처리할지 정해 주세요',r2['ai_why'])
                 self.assertIn('토너 반품 요청',db.execute('SELECT text FROM notes WHERE case_id=?',(r2['id'],)).fetchone()[0])
             # 승인 목록엔 AI가 넘긴 것만, AI 확인 중인 건 안 보인다
             with self.core.conn() as db:db.execute("UPDATE cases SET decision='ai' WHERE id=?",(cs['선크림 문의']['id'],));db.execute("UPDATE cases SET status='forwarded' WHERE id=?",(cs['선크림 문의']['id'],))
             biz=sys.modules['business']
             with self.core.conn() as db:self.assertEqual(sum(map(biz.is_pending,db.execute('SELECT * FROM cases WHERE company_id=?',(cid,)).fetchall())),1)
             with self.core.conn() as db:db.execute("UPDATE cases SET decision='auto',status='answered' WHERE id=?",(cs['선크림 문의']['id'],))
-            # 유형별로 'AI가 바로 답함 / 내 승인 후'를 고른다 (기본: 반품·환불은 승인 후)
-            with self.core.conn() as db:self.assertFalse(self.core.rule_for(db,cid,'반품·환불')['ai_ok']);self.assertTrue(self.core.rule_for(db,cid,'기타')['ai_ok'])
-            self.assertIn('내 승인 후 답함',b.get('/biz/rules').get_data(as_text=True))
-            self.post(b,'/biz/rules',{'category':'반품·환불','ai_ok':'1'});self.post(b,'/biz/rules',{'category':'기타','ai_ok':'0'})
-            with self.core.conn() as db:self.assertTrue(self.core.rule_for(db,cid,'반품·환불')['ai_ok']);self.assertFalse(self.core.rule_for(db,cid,'기타')['ai_ok'])
+            # 유형별로 'AI가 바로 안내 / 답도 내 승인 후'를 고른다 (기본: 모두 AI가 안내). 다른 설정을 저장해도 기본값을 굳히지 않는다
+            with self.core.conn() as db:self.assertTrue(self.core.rule_for(db,cid,'반품·환불')['ai_ok']);self.assertTrue(self.core.rule_for(db,cid,'기타')['ai_ok'])
+            self.assertIn('답도 내 승인 후',b.get('/biz/rules').get_data(as_text=True))
+            self.post(b,'/biz/rules',{'category':'교환','faq':'교환 안내'})
+            with self.core.conn() as db:self.assertEqual(db.execute("SELECT ai_ok FROM rules WHERE company_id=? AND category='교환'",(cid,)).fetchone()[0],'')
+            self.post(b,'/biz/rules',{'category':'반품·환불','ai_ok':'0'});self.post(b,'/biz/rules',{'category':'기타','ai_ok':'0'})
+            with self.core.conn() as db:self.assertFalse(self.core.rule_for(db,cid,'반품·환불')['ai_ok']);self.assertFalse(self.core.rule_for(db,cid,'기타')['ai_ok'])
             # 끄면 새 문의에 답하지 않는다
             self.post(b,'/biz/ai-reply',{'on':'0'},form_path='/biz/rules')
             with self.core.conn() as db:self.assertEqual(self.core.company(db,cid)['ai_reply'],'')
@@ -2599,13 +2603,48 @@ class PlatformTest(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT COUNT(*) FROM events WHERE case_id=? AND kind='co'",(case,)).fetchone()[0],1)
         self.assertIn('민감성 피부도 돼요?',said[-1])
 
+    def test_ai_guides_then_owner_decides(self):
+        """AI는 늘 먼저 응대한다: 불만이 커도 짧은 응대는 보내고 사장님께. '답도 내 승인 후'로 고른 유형만 보내지 않는다.
+        답은 검색 없이 먼저 만들고, AI가 확신이 없다고 할 때만 검색으로 다시 묻는다."""
+        bot=sys.modules['chatbot'];shops=sys.modules['shops']
+        b,o,cid=self.signup_and_approve('먼저응대상점','guide-first@example.com')
+        def mk(title,ext):
+            with self.core.conn() as db:
+                co=self.core.company(db,cid);t=self.core.iso()
+                case=db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
+                    VALUES(?,?,?,1,'기타',?,?,'기타','','','','','x',1,'forwarded','ai','2099-01-01 00:00:00',?,?,'','','인스타그램')""",(self.core.new_case_no(db),cid,co['name'],title,title,t,t)).lastrowid
+                db.execute("INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,'instagram',?,?)",(cid,ext,case))
+            return case
+        angry=mk('세 번째 문의예요 너무 화나요','u:a');swap=mk('사이즈 교환하고 싶어요','u:b')
+        replies={'세 번째':{'answer':'불편을 드려 정말 죄송해요. 담당자가 바로 이어서 답드릴게요.','category':None,'handoff':True,'lookup':False,'summary':'반복 문의 불만'},
+                 '교환':{'answer':'교환은 7일 안에 신청하실 수 있어요.','category':'교환','handoff':False,'action':True,'lookup':False,'summary':'사이즈 교환'}}
+        posted=[]
+        with self.core.conn() as db:db.execute("INSERT INTO rules(company_id,category,auto,ai_ok) VALUES(?,'교환',0,'0')",(cid,))  # 교환은 답도 내 승인 후
+        bot.BACKGROUND=False
+        with patch.object(bot,'ready',lambda:True),patch.object(bot,'answer',lambda co,facts,text,history=None,**k:next(v for key,v in replies.items() if key in text)),\
+             patch.object(shops,'post_reply',lambda db,co,c,text:posted.append(text) or ''):
+            bot.auto_reply_all()
+        with self.core.conn() as db:
+            a=db.execute('SELECT * FROM cases WHERE id=?',(angry,)).fetchone();s_=db.execute('SELECT * FROM cases WHERE id=?',(swap,)).fetchone()
+        self.assertEqual(posted,['불편을 드려 정말 죄송해요. 담당자가 바로 이어서 답드릴게요.'])
+        self.assertEqual((a['status'],a['decision']),('seen','pending'));self.assertIn('AI가 먼저 응대했어요',a['ai_why'])
+        self.assertEqual((s_['status'],s_['decision']),('forwarded','pending'));self.assertIn('답도 승인 후',s_['ai_why'])
+        # 검색은 확신이 없을 때만
+        aim=sys.modules['ai'];webs=[]
+        def fake_chat(system,msgs,**k):
+            webs.append(k.get('web'));return '{"answer":"네","sure":%s}'%('true' if k.get('web') else 'false')
+        with patch.object(aim,'ready',lambda:True),patch.object(aim,'chat',fake_chat):
+            r=bot.answer({'id':cid,'name':'x','tone':'polite'},'','선크림 몇 ml예요?')
+        self.assertEqual((webs,r['answer']),([False,True],'네'))
+
     def test_chat_inbox(self):
         """상담 화면: 대화방 목록(결정 필요 표시), 대화 열기(확인 처리), 새 말 받기, 대화방에서 답·메모, 남의 대화방은 못 연다."""
         b,o,cid=self.signup_and_approve('상담방상점','chatinbox@example.com')
         with self.core.conn() as db:
             co=self.core.company(db,cid);t=self.core.iso()
             case=db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel,ai_why,ai_draft)
-                VALUES(?,?,?,1,'환불','환불해 주세요','환불해 주세요','환불','','김고객','','','x',1,'forwarded','pending',?,?,?,'','','인스타그램','환불 요청','확인 후 안내드릴게요.')""",(self.core.new_case_no(db),cid,co['name'],t,t,t)).lastrowid
+                VALUES(?,?,?,1,'환불','환불해 주세요','환불해 주세요','환불','','김고객','','','x',1,'forwarded','pending','2099-01-01 00:00:00',?,?,'','','인스타그램','환불 요청','확인 후 안내드릴게요.')""",(self.core.new_case_no(db),cid,co['name'],t,t)).lastrowid
+        side=b.get('/biz/').get_data(as_text=True).split('class="bside"')[1].split('</nav>')[0];self.assertIn('href="/biz/chat"',side)  # 컴퓨터 옆 메뉴에도 상담
         j=b.get('/biz/chat/list.json').get_json()['rows']
         self.assertEqual([(r['id'],r['need'],r['mark'][0]) for r in j],[(case,True,'IG')])
         h=b.get(f'/biz/chat/{case}').get_data(as_text=True)
@@ -2753,7 +2792,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(r.status_code,200);self.assertIn('연결 끊기',page);self.assertIn('Data deletion',page);self.assertIn('id="account"',page);self.assertIn('회원 탈퇴',page)  # 구글 플레이 계정 삭제 안내 주소
 
     def test_chat_law_grounding(self):
-        """상담창: 법률 질문이면 찾은 법령 원문을 '[관련 법령 원문]'으로 주고 인터넷 검색을 끈다. 일반 질문은 예전처럼 검색을 쓴다."""
+        """상담창: 법률 질문이면 찾은 법령 원문을 '[관련 법령 원문]'으로 주고 인터넷 검색을 끈다. 일반 질문에는 조문을 넣지 않는다."""
         b,o,cid=self.signup_and_approve('법령마켓','lawshop@example.com')
         me=self.client();page=me.get(f'/to/{cid}').get_data(as_text=True);ctok=re.search(r'data-csrf="([^"]+)"',page).group(1)
         seen=[]
@@ -2774,11 +2813,11 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('전자상거래법 제17조 (청약철회등)',system)
         self.assertIn('7일',system.split('[관련 법령 원문]')[-1])
         self.assertLess(system.index('[회사 정보]'),system.index('[관련 법령 원문]'))
-        # 법과 상관없는 일반 질문은 조문을 넣지 않고 예전처럼 검색을 쓸 수 있다
+        # 법과 상관없는 일반 질문은 조문을 넣지 않는다 (검색은 AI가 확신이 없다고 할 때만)
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
             me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'비타민C 세럼은 아침에 써도 돼요?'})
         url,body=seen[-1]
-        self.assertTrue(url.endswith('/responses'));self.assertNotIn('[관련 법령 원문]',body['instructions'])
+        self.assertNotIn('[관련 법령 원문]',body.get('instructions') or body['messages'][0]['content'])
 
 
 class LawCorpusTest(unittest.TestCase):

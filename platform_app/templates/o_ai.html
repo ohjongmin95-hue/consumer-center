@@ -40,7 +40,7 @@
 {% for c in calls %}<tr><td>{{ c.created[5:16] }}</td><td>{{ c.co_name or '–' }} · {{ {'chat':'상담창','auto':'자동 답변','draft':'답변 초안','pdf':'PDF 상품','check':'연결 시험'}.get(c.purpose,c.purpose or '기타') }}{% if c.why %}<br><small class="sub">{{ c.why }}</small>{% endif %}</td>
 <td>{{ c.model }}{% if c.effort %} · {{ c.effort }}{% endif %}</td><td class="r">{{ '{:,}'.format(c.in_tok) }} / {{ '{:,}'.format(c.out_tok) }}{% if c.reason_tok %}<br><small class="sub">생각 {{ '{:,}'.format(c.reason_tok) }}</small>{% endif %}</td>
 <td class="r">{{ '${:.5f}'.format(c.cost) if c.cost is not none else '–' }}</td><td class="r">{{ '{:,}'.format(c.ms) }}ms</td>
-<td class="r">{% if not c.ok %}<span class="pill bad" title="{{ c.error }}">실패</span>{% else %}{{ {'sent':'보냄','answered':'답함','handoff':'사장님께','followup':'다시 물음','failed':'실패','skipped':'건너뜀'}.get(c.outcome,'–') }}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+<td class="r">{% if not c.ok %}<span class="pill bad" title="{{ c.error }}">실패</span>{% else %}{{ {'sent':'보냄','answered':'답함','action':'안내 후 사장님께','handoff':'사장님께','followup':'다시 물음','failed':'실패','skipped':'건너뜀'}.get(c.outcome,'–') }}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
 {% else %}<p class="sub" style="margin:0">아직 없어요.</p>{% endif %}</section>
 </div>
 {% endblock %}

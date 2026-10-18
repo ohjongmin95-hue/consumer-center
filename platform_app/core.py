@@ -162,6 +162,7 @@ def conn():
     finally:db.close()
 
 def init():
+    with sqlite3.connect(DB,timeout=30) as db:db.execute('PRAGMA journal_mode=WAL')  # 쓰는 중에도 읽기(상담방 새 말 받기·알림)가 기다리지 않게. 파일에 남는 설정
     with conn() as db:
         db.executescript('''
         CREATE TABLE IF NOT EXISTS companies(id INTEGER PRIMARY KEY,name TEXT NOT NULL,member INTEGER NOT NULL DEFAULT 0,
@@ -242,6 +243,9 @@ def init():
         if 'actor' not in {r[1] for r in db.execute('PRAGMA table_info(events)')}:db.execute("ALTER TABLE events ADD COLUMN actor TEXT NOT NULL DEFAULT ''")
         if 'assignee' not in {r[1] for r in db.execute('PRAGMA table_info(cases)')}:db.execute("ALTER TABLE cases ADD COLUMN assignee TEXT NOT NULL DEFAULT ''")
         if 'comp' not in cols:db.execute("ALTER TABLE rules ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
+        if not db.execute("SELECT 1 FROM settings WHERE key='ai_ok_v2'").fetchone():  # 예전 기본값을 그대로 저장한 '0'(승인 후)을 새 기본값(AI 안내)으로 한 번 되돌린다
+            db.execute("UPDATE rules SET ai_ok='' WHERE ai_ok='0' AND category IN ('주문 취소','주문 변경','교환','반품·환불','제품 불량')")
+            db.execute("INSERT INTO settings(key,value,updated) VALUES('ai_ok_v2','1',?)",(iso(),))
         # 받은 요청함 도구(inbox.py): 우선순위, 미루기, 합친 곳
         ccols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         for col,kind in (('priority',"TEXT NOT NULL DEFAULT 'normal'"),('snooze_until',"TEXT NOT NULL DEFAULT ''"),('merged_into',"INTEGER NOT NULL DEFAULT 0")):
@@ -346,8 +350,10 @@ def rule_for(db,cid,cat):
     return {'auto':bool(r and r['auto']),'reply':(r['reply'] if r and r['reply'] is not None else pb['reply']),
             'faq':(r['faq'] if r and r['faq'] is not None else CHAT_FAQ.get(cat,CHAT_FAQ['기타'])),'cond':(r['cond'] if r and r['cond'] in COND else ''),
             'comp':(r['comp'] if r else ''),
-            'ai_ok':(r['ai_ok']=='1') if r and r['ai_ok'] in ('0','1') else cat not in AI_HUMAN_CATS}
-AI_HUMAN_CATS=('주문 취소','주문 변경','교환','반품·환불','제품 불량')  # AI 자동 답변 기본값: 이 유형은 사장님 승인 후 (운영자 결정 2026-10-18, 유형별로 바꿀 수 있음)
+            'ai_ok':r['ai_ok']!='0' if r else True}
+# AI 자동 답변 기본값: 모든 유형에 AI가 바로 안내한다. 취소·교환·반품·환불처럼 실제 처리가 필요하면 안내는 보내고 처리 결정만 사장님께 (chatbot.action).
+# 사장님이 '답도 내 승인 후'로 고른 유형만 답까지 기다린다 (운영자 결정 2026-10-18: "안내는 다 하고 결정만 물어봐").
+# 예전 기본값은 취소·변경·교환·반품·환불·불량을 '승인 후'로 두었다. 그때 저장된 '0'은 init()에서 한 번 새 기본값으로 되돌린다 (ai_ok_v2)
 
 # 보상: 기업이 유형별로 정해 둔 보상(예: 적립금 3,000원)을 요청마다 추천하고, 사장님이 승인해야 고객에게 간다. 자동으로 주지는 않는다.
 COMP_CATS=('배송 조회','제품 불량','고객 응대')  # 정해 둔 보상이 없어도 보상 칸을 보여 주는 유형 (불만이 큰 유형)
@@ -381,8 +387,9 @@ def add_event(db,case_id,kind,text,reply=''):
     return cur.lastrowid
 def events(db,case_id):return db.execute('SELECT * FROM events WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
 def case_files(db,case_id):return db.execute('SELECT * FROM files WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
-def run_playbook(db,c,how):
-    """추천 조치를 실행: 후속 업무를 차례로 기록하고 기업 답변을 남긴다. how: 'auto' | 'approved'"""
+def run_playbook(db,c,how,send=None):
+    """추천 조치를 실행: 후속 업무를 차례로 기록하고 기업 답변을 남긴다. how: 'auto' | 'approved'
+    send: 주면 판매처·DM·메일로 보내는 일을 여기서 기다리지 않고 send(답)에 맡긴다 (화면이 몇 초씩 멈추지 않게)."""
     pb=PLAYBOOK.get(c['category'],PLAYBOOK['기타']);rule=rule_for(db,c['company_id'],c['category'])
     if how=='approved' and not (rule['reply'] or '').strip() and not (c['ai_draft'] or '').strip():return None  # 보낼 답변이 없으면 승인만으로는 처리하지 않는다 (직접 답변해야 함)
     add_event(db,c['id'],'sys',('자동 처리 규칙 실행: ' if how=='auto' else '대표 승인: ')+pb['title'])
@@ -398,7 +405,8 @@ def run_playbook(db,c,how):
         reply+='\n\n보내실 곳은 따로 안내드릴게요.';db.execute("UPDATE cases SET ret_status='guided' WHERE id=?",(c['id'],))
     if reply:add_event(db,c['id'],'co','답변을 보냈어요.',reply)
     db.execute('UPDATE cases SET status=?,decision=?,info_ask=? WHERE id=?',('answered' if reply else 'seen',how,'',c['id']))
-    if reply and how=='approved' and deliver_reply(db,c,reply)[1]=='error':  # 사람이 승인했을 때만: 인스타그램·메일·판매처에서 온 요청이면 그곳으로도 보낸다
+    if reply and how=='approved' and send:send(reply)
+    elif reply and how=='approved' and deliver_reply(db,c,reply)[1]=='error':  # 사람이 승인했을 때만: 인스타그램·메일·판매처에서 온 요청이면 그곳으로도 보낸다
         db.execute("UPDATE cases SET status='seen',decision='pending' WHERE id=?",(c['id'],))  # 못 보냈으면 '완료'로 두지 않는다 (진행 기록에 이유가 남음)
     if c['category']=='주문 취소':
         import orders;o=orders.for_case(db,c)
