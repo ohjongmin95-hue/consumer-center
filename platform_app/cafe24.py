@@ -4,6 +4,7 @@
   · 접근 토큰은 2시간, 갱신 토큰은 2주. 쓸 때마다 만료 5분 전이면 갱신하고, 갱신 토큰도 새로 바뀐다(카페24 방식).
   · 갱신이 안 되면(2주 넘게 안 썼거나 앱 삭제) '다시 연결 필요'로 바꾸고 사장님께 다시 연결을 안내한다.
   · 주문 가져오기, 문의 게시판(Q&A·1:1 상담) 글 가져오기 -> 소보루 요청, 소보루에서 쓴 답변을 게시판 답글로 올리기.
+  · 상품 가져오기 -> 상품정보 (이름·가격·판매 상태·요약 설명). 상품 문의 글엔 상품 이름을 붙인다. 사장님이 고친 안내는 덮지 않는다.
   · 취소·반품: 사장님(대표·관리자)이 주문 화면에서 누를 때만 카페24에 보낸다. 같은 주문은 한 번만 (cafe24_actions 잠금).
 문서: apidocs.cafe24.com > Admin API (Authentication, order/cancellation, return, community/boards)
 시험 운영: 문서대로 만들었고, 실제 쇼핑몰로는 OH 시험 쇼핑몰에서 먼저 확인한다.
@@ -14,7 +15,7 @@ import core, shops, orders
 from core import conn, clean, digits
 
 bp=Blueprint('c24',__name__)
-SCOPES='mall.read_store,mall.read_order,mall.write_order,mall.read_community,mall.write_community'
+SCOPES='mall.read_store,mall.read_product,mall.read_order,mall.write_order,mall.read_community,mall.write_community'
 SCOPE_NAMES={'store':'상점','order':'주문','community':'게시판','customer':'회원','product':'상품'}
 def scope_text(scopes):
     """'mall.read_order,mall.write_order' -> '주문 읽기·쓰기'"""
@@ -35,8 +36,12 @@ def init():
         CREATE TABLE IF NOT EXISTS cafe24_actions(company_id INTEGER NOT NULL,order_no TEXT NOT NULL,kind TEXT NOT NULL,state TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',
           actor TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,PRIMARY KEY(company_id,order_no,kind),FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE)''')
         cols={r[1] for r in db.execute('PRAGMA table_info(cafe24_links)')}
-        for col,kind in (('boards',"TEXT NOT NULL DEFAULT ''"),('since_b',"TEXT NOT NULL DEFAULT ''"),('n_inq','INTEGER NOT NULL DEFAULT 0')):
+        for col,kind in (('boards',"TEXT NOT NULL DEFAULT ''"),('since_b',"TEXT NOT NULL DEFAULT ''"),('n_inq','INTEGER NOT NULL DEFAULT 0'),
+                         ('synced_p',"TEXT NOT NULL DEFAULT ''"),('n_prod','INTEGER NOT NULL DEFAULT 0')):
             if col not in cols:db.execute(f'ALTER TABLE cafe24_links ADD COLUMN {col} {kind}')
+        pc={r[1] for r in db.execute('PRAGMA table_info(products)')}
+        for col in ('src','ext_id','src_info'):  # src 'cafe24' + 카페24 상품번호. src_info: 마지막으로 카페24에서 받은 안내 (사장님이 고쳤는지 보려고)
+            if col not in pc:db.execute(f"ALTER TABLE products ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         if 'src' not in {r[1] for r in db.execute('PRAGMA table_info(orders)')}:db.execute("ALTER TABLE orders ADD COLUMN src TEXT NOT NULL DEFAULT ''")  # 'cafe24': 카페24에서 가져온 주문
 init()
 
@@ -124,6 +129,58 @@ def sync_orders(db,co):
     db.execute("UPDATE cafe24_links SET status='ok',note='',synced=?,since=?,n_ord=n_ord+? WHERE company_id=?",(core.iso(now),core.iso(now),n,co['id']))
     return n
 
+# ---------- 상품 ----------
+PRODUCT_EVERY=datetime.timedelta(hours=6)  # 자동으로는 6시간마다 ('지금 가져오기'는 바로)
+def has_scope(lk,scope):return scope in str(lk['scopes'] or '').replace(' ','').split(',')
+def won(v):
+    try:n=int(float(str(v or '').replace(',','')))
+    except ValueError:return ''
+    return f'{n:,}원' if n>0 else ''
+def product_info(p):
+    """카페24 상품 -> 상담에 쓰는 안내 글 (요약·간단 설명만. 상세 설명은 대부분 이미지라 안 쓴다)."""
+    bits=[]
+    for k in ('summary_description','simple_description'):
+        t=text_of(p.get(k))
+        if t and t not in bits:bits.append(t)
+    return clean('\n'.join(bits),2000)
+def sync_products(db,co,force=False):
+    """카페24 상품 -> 상품정보. 이름·가격·판매 상태는 카페24 기준, 안내는 사장님이 고치지 않았을 때만 바꾼다. 가져온 개수 (권한이 없거나 아직 때가 아니면 None)."""
+    lk=link(db,co['id']);now=core.now()
+    if not has_scope(lk,'mall.read_product'):return None  # 예전 연결: 다시 연결해야 상품 권한이 생긴다
+    last=core.parse(lk['synced_p']) if lk['synced_p'] else None
+    if not force and last and now-last<PRODUCT_EVERY:return None
+    mine={r['ext_id']:r for r in db.execute("SELECT * FROM products WHERE company_id=? AND src='cafe24'",(co['id'],))}
+    byname={r['name']:r for r in db.execute("SELECT * FROM products WHERE company_id=? AND src=''",(co['id'],))}
+    count=db.execute('SELECT COUNT(*) FROM products WHERE company_id=?',(co['id'],)).fetchone()[0]
+    n=0;offset=0;t=core.iso()
+    while offset<=5000:
+        db.commit()
+        rows=api(db,co['id'],'/admin/products',{'limit':100,'offset':offset}).get('products') or []
+        for p in rows:
+            no=str(p.get('product_no') or '');name=clean(p.get('product_name'),60)
+            if not no or not name:continue
+            price=won(p.get('price'));info=product_info(p)
+            stock='품절' if p.get('sold_out')=='T' or p.get('selling')=='F' else '있음'
+            cur=mine.get(no) or byname.pop(name,None)  # 사장님이 먼저 같은 이름으로 적어 둔 상품은 이어 쓴다
+            if cur:
+                keep=cur['info'] and cur['info']!=cur['src_info']  # 사장님이 직접 고친 안내는 그대로
+                db.execute("UPDATE products SET name=?,price=?,stock=?,info=?,src='cafe24',ext_id=?,src_info=?,updated=? WHERE id=?",
+                           (name,price or cur['price'],stock,cur['info'] if keep else info,no,info,t,cur['id']))
+            elif count<core.MAX_PRODUCTS:
+                db.execute("INSERT INTO products(company_id,name,price,stock,info,updated,src,ext_id,src_info) VALUES(?,?,?,?,?,?,'cafe24',?,?)",(co['id'],name,price,stock,info,t,no,info))
+                count+=1
+            else:continue
+            n+=1
+        if len(rows)<100:break
+        offset+=100
+    db.execute('UPDATE cafe24_links SET synced_p=?,n_prod=? WHERE company_id=?',(core.iso(now),n,co['id']))
+    return n
+def product_name(db,cid,no):
+    """카페24 상품번호 -> 가져온 상품 이름 (모르면 '')."""
+    if not no or str(no)=='0':return ''
+    r=db.execute("SELECT name FROM products WHERE company_id=? AND src='cafe24' AND ext_id=?",(cid,str(no))).fetchone()
+    return r['name'] if r else ''
+
 # ---------- 문의 게시판 (Q&A·1:1 상담) ----------
 def text_of(h):
     """게시판 본문(HTML) -> 글."""
@@ -163,7 +220,7 @@ def sync_boards(db,co):
                 if (parent and parent!=no) or int(a.get('reply_depth') or 0)>1:  # 답글: 고객이 같은 문의에 이어 쓴 것만 그 요청에 붙인다
                     follow(db,co,lk,bno,parent,f"a{bno}:{no}",a.get('writer') or a.get('nick_name') or '',text_of(a.get('content')),a.get('secret')=='T');continue
                 c=shops._case(db,co,'cafe24',dict(ext_id=f"b{bno}:{no}:{'s' if a.get('secret')=='T' else 'p'}",title=a.get('title') or '',body=text_of(a.get('content')),
-                    name=a.get('writer') or a.get('nick_name') or '',order_no=str(a.get('order_id') or ''),product='',at=str(a.get('created_date') or '')[:16].replace('T',' '),channel='카페24'))
+                    name=a.get('writer') or a.get('nick_name') or '',order_no=str(a.get('order_id') or ''),product=product_name(db,co['id'],a.get('product_no')),at=str(a.get('created_date') or '')[:16].replace('T',' '),channel='카페24'))
                 if c:new.append(c)
             if len(rows)<100:break
             offset+=100
@@ -282,6 +339,9 @@ def sync_all():
             with conn() as db:n+=sync_orders(db,co)
         except shops.ShopError:pass
         try:
+            with conn() as db:sync_products(db,co)  # 상품을 먼저 (상품 문의에 이름을 붙이려고)
+        except shops.ShopError:pass
+        try:
             with conn() as db:new=sync_boards(db,co);n+=len(new)
             for c in new[:5]:core.notify_company_new(co,c)  # 한꺼번에 많이 들어와도 알림은 5건까지
         except shops.ShopError:pass  # 게시판 권한이 없는 예전 연결은 주문만
@@ -345,8 +405,12 @@ def page():
                 db.execute('DELETE FROM cafe24_links WHERE company_id=?',(co['id'],));flash('카페24 연결을 끊었어요. 저장한 연결 정보도 지웠어요. 카페24 관리자 > 앱에서 소보루 앱을 지우면 권한도 완전히 거둬져요.','ok')
             elif act=='sync':
                 try:
-                    n=sync_orders(db,co);new=sync_boards(db,co)
-                    flash(f'주문 {n}건, 새 문의 {len(new)}건을 가져왔어요','ok')
+                    n=sync_orders(db,co)
+                    try:p=sync_products(db,co,force=True)
+                    except shops.ShopError:p=None
+                    new=sync_boards(db,co)
+                    flash(f'주문 {n}건, 새 문의 {len(new)}건'+(f', 상품 {p}개' if p is not None else '')+'를 가져왔어요','ok')
+                    if new:db.commit();import chatbot;chatbot.auto_reply_later()
                 except shops.ShopError as e:flash(str(e),'error')
             elif act=='boards':
                 try:bs=all_boards(db,co['id'])
@@ -402,7 +466,10 @@ def callback():
         store(db,co['id'],st['mall'],data);session.pop('c24_launch',None)
         try:sync_orders(db,co)
         except shops.ShopError:pass
-        try:sync_boards(db,co)
+        try:sync_products(db,co,force=True)
         except shops.ShopError:pass
-    flash(f"카페24({st['mall']})에 연결했어요. 주문과 문의 게시판을 가져올게요.",'ok')
+        try:new=sync_boards(db,co)
+        except shops.ShopError:new=[]
+    if new:import chatbot;chatbot.auto_reply_later()
+    flash(f"카페24({st['mall']})에 연결했어요. 주문, 상품, 문의 게시판을 가져올게요.",'ok')
     return redirect(url_for('c24.page'))

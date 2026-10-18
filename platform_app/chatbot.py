@@ -9,7 +9,7 @@
     환불 기간·표시사항처럼 법이 정한 내용은 이 원문만 근거로 말하게 한다. 법률 질문이 분명하면 인터넷 검색을 쓰지 않는다
 키가 없거나 실패하면 None을 돌려주고, 상담창은 예전처럼 유형별 안내 문구로 답한다.
 """
-import json, re
+import datetime, json, re, threading
 import core, drafting, ai, law_corpus
 
 MAX_TURNS=12  # 앞에서 주고받은 말은 이만큼만 같이 보낸다
@@ -138,3 +138,73 @@ def answer(co,facts,text,history=None):
     cat=d.get('category') if d.get('category') in core.CATS else None
     ans=re.sub(r'\s*\(\[[^\]]*\]\([^)]*\)\)','',ans);ans=re.sub(r'\[([^\]]+)\]\((https?://[^)]+)\)',r'\1',ans)  # 검색 출처 링크 표시는 뺀다
     return {'answer':ans[:1500],'category':cat,'handoff':bool(d.get('handoff')),'lookup':bool(d.get('lookup')),'summary':str(d.get('summary') or '').strip()[:600]}
+
+# ---------- 판매처·메일·인스타그램 문의 AI 자동 답변 ----------
+# 사장님이 'AI 자동 답변'을 켜면, 연결된 곳(카페24·스마트스토어·쿠팡·메일·인스타그램)에서 가져온 새 문의에 상담창과 같은 AI가 답하고 그곳으로 보낸다.
+# 사장님이 '내 승인 후'로 정한 유형(기본: 취소·변경·교환·반품·환불·불량)과 강한 불만, 회사 정보로 답할 수 없는 것은 보내지 않고 담당자용 요약을 메모로 남긴다.
+# 새로 가입한 기업은 처음부터 켜져 있다 (onboard.py).
+# 켜져 있으면 가져온 문의는 decision 'ai'(AI 확인 중)로 들어와 승인 목록에 안 보인다. AI가 답하면 'auto', 사람에게 넘기거나 실패하면 'pending'(승인 목록).
+# 10분 cron(shops.py)과 '지금 가져오기' 뒤에 돈다. 한 번 본 문의(ai_tried)는 다시 보지 않는다.
+AUTO_MAX=20  # 한 번에 답하는 문의 수 (AI 호출이 몰리지 않게)
+MASKS=[(re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+'),'(이메일)'),(re.compile(r'(?<!\d)\d{6}-?[1-4]\d{6}(?!\d)'),'(주민번호)'),
+       (re.compile(r'(?<!\d)\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}(?!\d)'),'(카드번호)'),(re.compile(r'(?<!\d)0\d{1,2}[-\s.]?\d{3,4}[-\s.]?\d{4}(?!\d)'),'(전화번호)')]
+STUCK_MIN=30  # 'AI 확인 중'으로 이만큼 지나면 (AI 장애 등) 승인 목록으로 돌린다
+def auto_on(co):return bool(co and co['ai_reply'] and ready())
+def mask(t):
+    """AI에 보내기 전에 이메일·전화번호·주민번호·카드번호를 가린다."""
+    for r,w in MASKS:t=r.sub(w,t or '')
+    return t
+def auto_reply(db,co,c):
+    """문의 하나에 AI 자동 답변. -> 'sent' | 'handoff' | 'failed' | None (대상 아님)"""
+    import orders
+    db.execute("UPDATE cases SET ai_tried=? WHERE id=?",(core.iso(),c['id']))
+    facts=company_facts(db,co)
+    o=db.execute('SELECT * FROM orders WHERE company_id=? AND order_no=?',(co['id'],c['order_no'])).fetchone() if c['order_no'] else None
+    if o:facts+='\n\n'+order_facts([orders.customer_view(o)])  # 판매처가 주문자 본인 글로 붙여 준 주문번호 (이름·연락처·주소는 안 보냄)
+    q=mask(f"{c['title']}\n{c['body']}")
+    if c['product']:q=f"(문의한 상품: {c['product']})\n"+q
+    hist=[{'role':'user' if e['kind']=='me' else 'assistant','content':mask(e['reply'] or e['text'])} for e in core.events(db,c['id']) if e['kind'] in ('me','co')]
+    ai=answer(co,facts,q,hist)
+    if not ai:
+        db.execute("UPDATE cases SET decision='pending' WHERE id=? AND decision='ai'",(c['id'],));return 'failed'
+    ok=lambda cat:core.rule_for(db,co['id'],cat)['ai_ok']  # 사장님이 '내 승인 후'로 정한 유형이면 AI가 답할 수 있어도 넘긴다 (기본: 취소·변경·교환·반품·환불·불량)
+    if ai['handoff'] or ai['lookup'] or not ok(c['category']) or (ai['category'] and not ok(ai['category'])):
+        note='AI가 사람 확인이 필요하다고 봐서 답하지 않았어요.'+('\n'+ai['summary'] if ai['summary'] else '')
+        db.execute('INSERT INTO notes(case_id,company_id,author,text,created) VALUES(?,?,?,?,?)',(c['id'],co['id'],'AI',note[:2000],core.iso()))
+        db.execute("UPDATE cases SET decision='pending' WHERE id=? AND decision='ai'",(c['id'],))
+        return 'handoff'
+    msg,level=core.deliver_reply(db,c,ai['answer'])
+    if level!='ok':
+        db.execute('INSERT INTO notes(case_id,company_id,author,text,created) VALUES(?,?,?,?,?)',(c['id'],co['id'],'AI','AI가 쓴 답변 (보내지 못했어요. 확인하고 보내 주세요):\n'+ai['answer'],core.iso()))
+        db.execute("UPDATE cases SET decision='pending' WHERE id=? AND decision='ai'",(c['id'],))
+        return 'failed'
+    db.execute("UPDATE cases SET status='answered',decision='auto' WHERE id=?",(c['id'],))
+    core.add_event(db,c['id'],'co','AI가 자동으로 답했어요',ai['answer'])
+    return 'sent'
+def auto_reply_all():
+    """AI 확인 중('ai')인 문의에 답한다. 껐거나 AI를 못 쓰면, 그리고 너무 오래 걸린 건 승인 목록으로 돌린다. -> 보낸 수"""
+    n=0
+    with core.conn() as db:
+        old=core.iso(core.now()-datetime.timedelta(minutes=STUCK_MIN))
+        db.execute("""UPDATE cases SET decision='pending' WHERE decision='ai' AND (created<? OR status NOT IN ('forwarded','seen')
+            OR company_id IN (SELECT id FROM companies WHERE ai_reply='' OR member!=1 OR status!='active'))""",(old,))
+        if not ready():
+            db.execute("UPDATE cases SET decision='pending' WHERE decision='ai'");return 0
+        rows=db.execute("""SELECT * FROM cases WHERE decision='ai' AND ai_tried=''
+              AND EXISTS (SELECT 1 FROM shop_seen s WHERE s.company_id=cases.company_id AND s.case_id=cases.id)
+            ORDER BY id LIMIT ?""",(AUTO_MAX,)).fetchall()
+    for c in rows:
+        try:
+            with core.conn() as db:
+                co=core.company(db,c['company_id']);c=db.execute('SELECT * FROM cases WHERE id=?',(c['id'],)).fetchone()
+                if c['decision']=='ai' and not c['ai_tried']:n+=auto_reply(db,co,c)=='sent'
+        except Exception:  # 한 건이 실패해도 나머지는 계속. 그 건은 승인 목록으로
+            with core.conn() as db:db.execute("UPDATE cases SET decision='pending',ai_tried=? WHERE id=? AND decision='ai'",(core.iso(),c['id']))
+    return n
+BACKGROUND=True  # 시험에서는 False (바로 돈다)
+def auto_reply_later():
+    """화면은 바로 넘기고 AI 답변은 뒤에서 ('지금 가져오기', 카페24 연결 직후)."""
+    if not ready():return
+    if BACKGROUND:threading.Thread(target=auto_reply_all,daemon=True).start()
+    else:auto_reply_all()
+

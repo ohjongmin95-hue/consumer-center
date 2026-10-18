@@ -182,12 +182,13 @@ def init():
         # 나중에 더한 칸: 이미 있는 DB에도 붙인다
         cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
-        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status'):
+        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status','ai_tried'):
             if col not in cols:db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         cols={r[1] for r in db.execute('PRAGMA table_info(companies)')}
         for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),
                          ('return_courier',"TEXT NOT NULL DEFAULT ''"),('return_memo',"TEXT NOT NULL DEFAULT ''"),('kakao',"INTEGER NOT NULL DEFAULT 0"),('report_mail',"INTEGER NOT NULL DEFAULT 1"),
-                         ('widget_seen',"TEXT NOT NULL DEFAULT ''"),('widget_host',"TEXT NOT NULL DEFAULT ''")):
+                         ('widget_seen',"TEXT NOT NULL DEFAULT ''"),('widget_host',"TEXT NOT NULL DEFAULT ''"),
+                         ('ai_reply',"TEXT NOT NULL DEFAULT ''")):  # ai_reply: 'AI 자동 답변'을 켠 때 ('' = 꺼짐). 켠 뒤에 들어온 문의에만 답한다
             if col not in cols:db.execute(f'ALTER TABLE companies ADD COLUMN {col} {kind}')
         db.executescript('''
         CREATE TABLE IF NOT EXISTS news(id INTEGER PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,source_url TEXT NOT NULL,created TEXT NOT NULL);
@@ -228,6 +229,7 @@ def init():
         cols={r[1] for r in db.execute('PRAGMA table_info(rules)')}
         if 'faq' not in cols:db.execute('ALTER TABLE rules ADD COLUMN faq TEXT')
         if 'cond' not in cols:db.execute("ALTER TABLE rules ADD COLUMN cond TEXT NOT NULL DEFAULT ''")
+        if 'ai_ok' not in cols:db.execute("ALTER TABLE rules ADD COLUMN ai_ok TEXT NOT NULL DEFAULT ''")  # AI 자동 답변: '1' AI가 바로 답함, '0' 사장님 승인 후, '' 기본값
         if 'actor' not in {r[1] for r in db.execute('PRAGMA table_info(events)')}:db.execute("ALTER TABLE events ADD COLUMN actor TEXT NOT NULL DEFAULT ''")
         if 'assignee' not in {r[1] for r in db.execute('PRAGMA table_info(cases)')}:db.execute("ALTER TABLE cases ADD COLUMN assignee TEXT NOT NULL DEFAULT ''")
         if 'comp' not in cols:db.execute("ALTER TABLE rules ADD COLUMN comp TEXT NOT NULL DEFAULT ''")
@@ -333,7 +335,9 @@ def rule_for(db,cid,cat):
     pb=PLAYBOOK.get(cat,PLAYBOOK['기타'])
     return {'auto':bool(r and r['auto']),'reply':(r['reply'] if r and r['reply'] is not None else pb['reply']),
             'faq':(r['faq'] if r and r['faq'] is not None else CHAT_FAQ.get(cat,CHAT_FAQ['기타'])),'cond':(r['cond'] if r and r['cond'] in COND else ''),
-            'comp':(r['comp'] if r else '')}
+            'comp':(r['comp'] if r else ''),
+            'ai_ok':(r['ai_ok']=='1') if r and r['ai_ok'] in ('0','1') else cat not in AI_HUMAN_CATS}
+AI_HUMAN_CATS=('주문 취소','주문 변경','교환','반품·환불','제품 불량')  # AI 자동 답변 기본값: 이 유형은 사장님 승인 후 (운영자 결정 2026-10-18, 유형별로 바꿀 수 있음)
 
 # 보상: 기업이 유형별로 정해 둔 보상(예: 적립금 3,000원)을 요청마다 추천하고, 사장님이 승인해야 고객에게 간다. 자동으로 주지는 않는다.
 COMP_CATS=('배송 조회','제품 불량','고객 응대')  # 정해 둔 보상이 없어도 보상 칸을 보여 주는 유형 (불만이 큰 유형)

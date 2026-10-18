@@ -54,7 +54,7 @@ def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
 # 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
-MANAGE_EPS={'macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','connect_email','ig.page','ig.callback','team_page'}
+MANAGE_EPS={'ai_reply','macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','connect_email','ig.page','ig.callback','team_page'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
 # 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
@@ -722,7 +722,7 @@ def case_act(db,c,form):
         on=tracking_mod.register(db,c['id'],'ship',courier,tracking)
         link=core.COURIERS.get(courier,'')
         msg=f"주문하신 상품은 {courier} 송장번호 {tracking}(으)로 보냈어요."+(' 배송 상태가 바뀌면 이 화면과 알림으로 바로 알려 드릴게요.' if on else (f' 택배사 홈페이지({link})에서 지금 위치를 확인하실 수 있어요.' if link else ''))
-        db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
+        db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' WHEN 'ai' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
         core.add_event(db,c['id'],'co','송장번호를 알렸어요',msg);orders_mod.sync_case(db,c,'shipped',courier,tracking)
         notify_consumer(c,f'[{core.CNAME}] 송장번호를 알려 드려요',f"{c['company_name']}: {courier} 송장번호 {tracking}")
         return '고객에게 송장번호를 알렸습니다','ok'
@@ -744,7 +744,7 @@ def case_act(db,c,form):
     if act=='reply':
         msg=clean(form.get('msg'),3000)
         if not msg:return '답변 내용을 적어 주세요','error'
-        db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
+        db.execute("UPDATE cases SET status='answered',decision=CASE decision WHEN 'pending' THEN 'direct' WHEN '' THEN 'direct' WHEN 'ai' THEN 'direct' ELSE decision END WHERE id=?",(c['id'],))
         core.add_event(db,c['id'],'co','답변을 보냈어요',msg)
         if not (c['live'] and livechat.online(db,c['id'],'me')):notify_consumer(c,f'[{core.CNAME}] 기업 답변이 도착했어요',f"{c['company_name']}이(가) 답변했어요.")  # 채팅방을 보고 있으면 메일은 보내지 않는다
         return '보냈습니다','ok'
@@ -959,6 +959,15 @@ def ai_profile():
     with conn() as db:chatbot.save_profile(db,co['id'],request.form)
     flash('AI 상담 설정을 저장했습니다','ok');return redirect(url_for('rules')+'#ai')
 
+@app.route('/ai-reply',methods=['POST'])
+@login_required
+def ai_reply():
+    """AI 자동 답변 켜기·끄기: 연결된 곳(판매처·메일·인스타그램)에서 온 새 문의에 AI가 답해 그곳으로 보낸다. 켠 뒤에 들어온 문의에만."""
+    if not team.can(who(),'decide'):flash('AI 자동 답변은 대표나 관리자만 바꿀 수 있어요','error');return redirect(url_for('rules')+'#ai')
+    co=me();on=request.form.get('on')=='1'
+    with conn() as db:db.execute('UPDATE companies SET ai_reply=? WHERE id=?',(core.iso() if on else '',co['id']))
+    flash('AI 자동 답변을 켰어요. 지금부터 들어오는 문의에 답해요' if on else 'AI 자동 답변을 껐어요','ok');return redirect(url_for('rules')+'#ai')
+
 # ---------- 상품정보 (상담창 AI가 가격·재고·사용법 문의에 답할 때 본다) ----------
 def save_product(db,co,f):
     """상품 하나 추가·수정·삭제(웹·앱 공용). (안내 문구, 'ok'|'error')."""
@@ -1103,7 +1112,8 @@ def save_rule(db,co,f):
     cond=f.get('cond','') if 'cond' in f else cur['cond']
     if cond not in core.COND or cat not in COND_CATS:cond=''
     comp=clean(f.get('comp'),100) if 'comp' in f else cur['comp']
-    db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond,comp) VALUES(?,?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond,comp=excluded.comp',(co['id'],cat,int(auto),reply,faq,cond,comp))
+    ai_ok=('1' if str(f['ai_ok']) in ('1','True','true') else '0') if 'ai_ok' in f else ('1' if cur['ai_ok'] else '0')
+    db.execute('INSERT INTO rules(company_id,category,auto,reply,faq,cond,comp,ai_ok) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(company_id,category) DO UPDATE SET auto=excluded.auto,reply=excluded.reply,faq=excluded.faq,cond=excluded.cond,comp=excluded.comp,ai_ok=excluded.ai_ok',(co['id'],cat,int(auto),reply,faq,cond,comp,ai_ok))
     return True
 
 @app.route('/team',methods=['GET','POST'])

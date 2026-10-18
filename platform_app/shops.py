@@ -266,9 +266,11 @@ def _case(db,co,shop,q):
     title=clean(q['title'],60) or clean(re.sub(r'\s+',' ',body),40)
     cat=core.classify(title+' '+body) or '기타';t=core.iso()
     due=core.iso(core.now()+datetime.timedelta(days=core.REPLY_DAYS))
+    import chatbot
+    dec='ai' if chatbot.auto_on(core.company(db,co['id'])) else 'pending'  # AI 자동 답변이 켜져 있으면 AI가 먼저 본다 (승인 목록엔 AI가 넘긴 것만)
     cid=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
-        VALUES(?,?,?,1,?,?,?,?,?,?,'','',?,1,'forwarded','pending',?,?,?,?,'',?)''',(core.new_case_no(db),co['id'],co['name'],cat,title,body,core.WANT_OF.get(cat,'기타'),
-        clean(q['order_no'],40),clean(q['name'],20),generate_password_hash(secrets.token_hex(16)),due,t,t,clean(q['product'],60),ch)).lastrowid
+        VALUES(?,?,?,1,?,?,?,?,?,?,'','',?,1,'forwarded',?,?,?,?,?,'',?)''',(core.new_case_no(db),co['id'],co['name'],cat,title,body,core.WANT_OF.get(cat,'기타'),
+        clean(q['order_no'],40),clean(q['name'],20),generate_password_hash(secrets.token_hex(16)),dec,due,t,t,clean(q['product'],60),ch)).lastrowid
     core.add_event(db,cid,'sys',f"{ch} 문의를 가져왔어요"+(f" ({q['at']} 접수)" if q.get('at') else ''))
     db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],shop,q['ext_id'],cid))
     c=db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
@@ -329,5 +331,7 @@ def sync_all():
 if __name__=='__main__':
     core.MAIL_ASYNC=False
     print(f'판매처 가져오기 {sync_all()}건')
-    import cafe24, openapi, mailin, instagram, billing  # 같은 10분 cron에서 카페24 주문, 이메일 문의, 인스타그램 토큰 갱신, 외부 API 웹훅, 요금 자동결제도 처리한다
+    import cafe24, openapi, mailin, instagram, billing  # 같은 10분 cron에서 카페24 주문, 이메일 문의, 인스타그램 토큰 갱신, 외부 API 웹훅, 요금 자동결제, AI 자동 답변도 처리한다
     print(f'카페24 주문 {cafe24.sync_all()}건, 이메일 문의 {mailin.sync_all()}건, 인스타그램 토큰 갱신 {instagram.refresh_all()}건, 웹훅 {openapi.dispatch()}건, 요금 결제 {billing.renew_all()}건')
+    import chatbot
+    print(f'AI 자동 답변 {chatbot.auto_reply_all()}건')  # 위에서 가져온 문의까지 (켠 기업만)

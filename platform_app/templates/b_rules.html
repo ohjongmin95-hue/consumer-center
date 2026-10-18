@@ -14,6 +14,8 @@
 {% if cat in ('교환','반품·환불') %}<form method="post" class="cond"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
 <label>자동 처리 조건<select class="inp" name="cond" onchange="this.form.submit()">{% for k,v in COND.items() %}<option value="{{ k }}" {{ 'selected' if r.cond==k }}>{{ v }}</option>{% endfor %}</select></label>
 {% if r.cond=='within7' %}<small>상품 받은 날을 적은 접수 중 7일 이내만 바로 처리하고, 나머지는 승인 대기로 옵니다</small>{% endif %}</form>{% endif %}
+{% if co.ai_reply %}<form method="post" class="cond"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
+<label>판매처·DM 문의<select class="inp" name="ai_ok" onchange="this.form.submit()" aria-label="{{ cat }} AI 자동 답변"><option value="1" {{ 'selected' if r.ai_ok }}>AI가 바로 답함</option><option value="0" {{ 'selected' if not r.ai_ok }}>내 승인 후 답함</option></select></label></form>{% endif %}
 <details><summary>상담창 안내 문구 고치기<span class="chev"></span></summary>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="category" value="{{ cat }}"><input type="hidden" name="anchor" value="r{{ loop.index }}">
 <textarea class="inp" name="faq">{{ r.faq }}</textarea><button class="btn md gray">저장</button></form></details>
@@ -27,6 +29,11 @@
 </div>{% endfor %}</div>
 
 <div class="phead" id="ai"><div><h2>AI 상담 설정</h2><p>{% if ai %}가격·배송·반품 같은 우리 가게 정보는 이 내용과 아래 상품정보로만 답해요. 성분·사용법 같은 일반 지식은 AI가 아는 내용과 인터넷 검색으로 사람처럼 설명해요. 여기 없는 가게 정보는 지어내지 않고 담당자에게 넘겨요{% else %}AI 상담이 켜지면 이 내용으로 답해요{% endif %}</p></div></div>
+<form method="post" class="panel stack" action="{{ url_for('ai_reply') }}" id="ai-reply" style="margin-bottom:var(--ds-gap)"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="{{ '0' if co.ai_reply else '1' }}">
+<div class="ph">AI 자동 답변 {% if co.ai_reply %}<span class="pill ok">켜짐</span>{% else %}<span class="pill gray">꺼짐</span>{% endif %}</div>
+<p class="sub" style="margin:0">카페24·스마트스토어·쿠팡·메일·인스타그램에서 들어온 문의에 AI가 이 설정과 상품정보, 소비자 법령을 보고 바로 답해서 그곳으로 보내요. 보낸 문의는 '답변·조치 완료'가 되고 진행 기록에 남아요. 주문 취소·변경, 교환·반품·환불, 제품 불량, 강한 불만처럼 사장님이 판단할 문의는 보내지 않고 요약 메모를 붙여 승인 목록에 남겨요. 이름·전화번호·이메일은 가리고 AI에 보내요.</p>
+{% if co.ai_reply %}<p class="cap" style="margin:0">{{ fmt(co.ai_reply) }}부터 들어온 문의에 답하고 있어요</p>{% endif %}
+<div><button class="btn md{{ ' gray' if co.ai_reply }}" {{ 'disabled' if not ai and not co.ai_reply }}>{{ '끄기' if co.ai_reply else '켜기' }}</button></div></form>
 <div class="list prod-list aiset">{% for k,label in PROFILE %}
 <div class="li"><details{{ ' open' if loop.first and not prof[k] }}><summary><span>{{ label }}{% if prof[k] %} · 적어 둠{% endif %}</span><span class="chev"></span></summary>
 <form method="post" class="prod" action="{{ url_for('ai_profile') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">

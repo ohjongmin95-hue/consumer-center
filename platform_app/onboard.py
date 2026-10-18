@@ -73,9 +73,9 @@ def signup(db,d,pw_hash,via='email',google_sub=''):
     if st=='none':return None,'국세청에 등록되지 않은 사업자번호예요. 번호를 확인해 주세요.'
     t=core.iso()
     cid=db.execute("""INSERT INTO companies(name,member,status,contact,login_id,pw_hash,biz_no,owner_name,phone,notify_email,industry,created,
-        email_verified,biz_status,biz_checked,plan,plan_since,signup_via,google_sub) VALUES(?,0,'active',?,?,?,?,?,?,?,?,?,?,?,?,'pilot',?,?,?)""",
+        email_verified,biz_status,biz_checked,plan,plan_since,signup_via,google_sub,ai_reply) VALUES(?,0,'active',?,?,?,?,?,?,?,?,?,?,?,?,'pilot',?,?,?,?)""",
         (d['name'],d.get('contact',''),d['login_id'].lower(),pw_hash,b,d['owner_name'],digits(d.get('phone','')),d['login_id'].lower(),d.get('industry',''),t,
-         1 if via=='google' else 0,st,t if st else '',t,via,google_sub)).lastrowid
+         1 if via=='google' else 0,st,t if st else '',t,via,google_sub,t)).lastrowid  # ai_reply: AI 자동 답변은 처음부터 켬 (운영자 결정 2026-10-18)
     import growth;growth.attach(db,cid)  # 추천 링크로 들어왔으면 이어 붙인다
     co=core.company(db,cid)
     if via!='google':send_verify(co)
