@@ -159,6 +159,7 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('/terms</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True))
         r=c.get('/biz/refund');self.assertEqual(r.status_code,200);page=r.get_data(as_text=True)  # 결제대행사 심사에 내는 환불 정책 (로그인 없이)
         self.assertIn('환불 정책',page);self.assertIn('7일 이내',page);self.assertNotIn('noindex',page)
+        for pg in (page,t.get_data(as_text=True),c.get('/biz/').get_data(as_text=True)):self.assertIn('전화. 010-5531-4247',pg);self.assertIn('대표자.',pg)  # 결제대행사 심사: 사업자 정보
         self.assertIn('/biz/refund',t.get_data(as_text=True));self.assertIn('/refund</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True))
 
     def test_biz_app_inapp_pages(self):
