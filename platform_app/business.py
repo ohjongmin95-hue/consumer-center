@@ -86,11 +86,13 @@ def ops_required(f):
     return w
 @app.context_processor
 def ctx():
-    co=me();n=0
+    co=me();n=na=0
     if co:
-        with conn() as db:n=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND member=1 AND consent=1 AND decision='pending' AND status IN ('forwarded','seen')",(co['id'],)).fetchone()[0]
+        with conn() as db:
+            n=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND member=1 AND consent=1 AND decision='pending' AND status IN ('forwarded','seen')",(co['id'],)).fetchone()[0]
+            na=core.unread_alerts(db,co['id'])
     a=who() if co else None;rc=real() if co else None
-    return {'PUB_NAV':pub_nav(),'n_leads':sales.n_new() if session.get('ops') and request.path.startswith('/ops') else 0,'co':co,'n_pending':n,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES,
+    return {'PUB_NAV':pub_nav(),'n_leads':sales.n_new() if session.get('ops') and request.path.startswith('/ops') else 0,'co':co,'n_pending':n,'n_alerts':na,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES,
             'real_co':rc,'in_demo':in_demo() if co else False,'trust':onboard.trust(rc) if rc else None,'setup':onboard.progress(rc) if rc else None}
 
 def pub_nav():
@@ -402,6 +404,18 @@ def approvals():
     with conn() as db:rows=my_cases(db,me());comps=core.comp_rules(db,me()['id'])
     pend=[r for r in rows if is_pending(r)]
     return render_template('b_approvals.html',pend=pend,n_comp=sum(core.comp_pending(r,comps) for r in rows),tab='approve')
+
+@app.route('/alerts',methods=['GET','POST'])
+@login_required
+def alerts():
+    """알림: 들어온 알림 목록(열면 모두 읽음)과 종류별로 받을 곳(앱 알림·이메일) 설정."""
+    co=me()
+    with conn() as db:
+        if request.method=='POST':
+            if not team.can(who(),'manage'):abort(403)
+            core.save_alert_prefs(db,co,request.form);flash('알림 설정을 저장했어요','ok');return redirect(url_for('alerts')+'#prefs')
+        rows=core.list_alerts(db,co['id']);core.read_alerts(db,co['id'])
+    return render_template('b_alerts.html',rows=rows,prefs=core.alert_prefs(co),ALERTS=core.ALERTS,tab='alerts')
 
 RET_CATS=('교환','반품·환불','제품 불량')
 RET_STAGES=[('new','새로 접수'),('back','회수 중'),('next','다음 처리 대기'),('done','처리 완료')]
@@ -800,7 +814,7 @@ def case(case_id):
         sla=workflow.state(me(),c,workflow.first_replies(db,me()['id']).get(c['id']));
         profile=inbox.customer(db,me(),c);merged=db.execute('SELECT id,no FROM cases WHERE id=?',(c['merged_into'],)).fetchone() if c['merged_into'] else None
     comp_show=core.comp_open(c) and (rule['comp'] or c['category'] in core.COMP_CATS)
-    with conn() as db:order=orders_mod.for_case(db,c);blocked=orders_mod.cancel_blocked(db,c)
+    with conn() as db:order=orders_mod.for_case(db,c);blocked=orders_mod.cancel_blocked(db,c);core.read_alerts(db,me()['id'],c['id'])  # 문의를 열면 그 문의 알림은 읽음
     ms=[dict(id=x['id'],name=x['name'],body=inbox.fill(x['body'],c,me(),order)) for x in ms]
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
     return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
@@ -1528,12 +1542,12 @@ def api_biz_home():
     co=api_co()
     with conn() as db:
         rows=my_cases(db,co);n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(co['id'],)).fetchone()[0]
-        warn=insights.alerts(db,co);news=db.execute('SELECT id,title,created FROM news ORDER BY id DESC LIMIT 3').fetchall();comps=core.comp_rules(db,co['id'])
+        warn=insights.alerts(db,co);unread=core.unread_alerts(db,co['id']);news=db.execute('SELECT id,title,created FROM news ORDER BY id DESC LIMIT 3').fetchall();comps=core.comp_rules(db,co['id'])
     pend=[r for r in rows if is_pending(r)];today=core.now().date().isoformat();h=core.now().hour
     with conn() as db:ocnt=orders_mod.counts(db,co['id'])
     cnt=dict(late=sum(map(core.overdue,rows)),ret=sum(r['ret_status']=='sent' for r in rows))
     return jsonify(company=co_info(co),kpi=kpis(rows),brief=briefing(rows,cnt,ocnt),hello='좋은 아침이에요' if h<11 else '좋은 오후예요' if h<18 else '오늘도 수고 많으셨어요',
-        counts={'comp':sum(core.comp_pending(r,comps) for r in rows),'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows),'today':sum(r['created'][:10]==today for r in rows)},
+        counts={'comp':sum(core.comp_pending(r,comps) for r in rows),'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows),'today':sum(r['created'][:10]==today for r in rows),'alerts':unread},
         pending=[biz_summary(r) for r in pend],recent=[biz_summary(r) for r in rows[:6]],
         alerts=[dict(kind=w['kind'],label=w['label'],n=w['n'],cats=w['cats']) for w in warn],news=[dict(r) for r in news])
 @app.route('/api/v1/cases')
@@ -1559,6 +1573,7 @@ def api_biz_case(case_id):
             if f.get('act')=='reply' and str(f.get('macro','')).isdigit():inbox.used_macro(db,co,c,int(f['macro']))
         elif c['status']=='forwarded':
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요')
+        core.read_alerts(db,co['id'],case_id)
         c=api_my_case(db,co,case_id);d=biz_detail(db,c,co)
     return jsonify(dict(d,message=msg,warn=warn))
 @app.route('/api/v1/cases/<int:case_id>/draft',methods=['POST'])
@@ -1684,6 +1699,19 @@ def api_biz_settings():
         out['message']=msg
         if f.get('act')=='password':out['token']=co_token(co)  # 예전 토큰은 못 쓰게 되니 새 토큰을 준다
     return jsonify(dict(settings_json(co),**out))
+@app.route('/api/v1/alerts',methods=['GET','POST'])
+def api_biz_alerts():
+    """앱 알림 화면: 목록(열면 모두 읽음)과 종류별 받을 곳. POST {act:'prefs', 'new.push':true, ...}"""
+    co=api_co();msg=''
+    with conn() as db:
+        if request.method=='POST':
+            f=api_form()
+            if f.get('act')!='prefs':return jsonify(error='알 수 없는 요청이에요.'),400
+            core.save_alert_prefs(db,co,f);co=core.company(db,co['id']);msg='알림 설정을 저장했어요'
+        rows=core.list_alerts(db,co['id'])
+        if request.method=='GET':core.read_alerts(db,co['id'])
+    return jsonify(message=msg,items=[dict(id=r['id'],kind=r['kind'],title=r['title'],body=r['body'],case_id=r['case_id'],created=r['created'],new=not r['read_at']) for r in rows],
+        prefs=core.alert_prefs(co),kinds=[dict(key=k,label=l,sub=sub) for k,l,sub,_ in core.ALERTS])
 @app.route('/api/v1/guide')
 def api_biz_guide():
     api_co()

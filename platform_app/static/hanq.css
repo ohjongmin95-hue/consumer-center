@@ -1924,3 +1924,20 @@ body.v2 main .lform textarea.inp,.lform textarea.inp{height:48px;min-height:48px
 .ntx:hover{background:var(--fill);color:var(--fg2)}
 .ntask .btn{flex:none}
 @media (max-width:1023.98px){.ntbox{right:16px;left:16px;width:auto;bottom:calc(var(--ds-h-tab) + 12px + env(safe-area-inset-bottom,0px))}}
+/* 알림 목록 (/alerts) */
+.alist{display:flex;flex-direction:column}
+.arow{display:flex;gap:12px;align-items:flex-start;padding:14px 4px;border-top:1px solid var(--line);color:inherit;text-decoration:none}
+.arow:first-child{border-top:0}
+.arow .adot{width:8px;height:8px;border-radius:50%;margin-top:7px;flex:none;background:transparent}
+.arow.new .adot{background:var(--accent)}
+.arow .atx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.arow .atx b{font-size:15px;font-weight:600}
+.arow.new .atx b{font-weight:700}
+.arow .atx span{font-size:14px;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arow time{flex:none;font-size:13px;color:var(--fg3)}
+.aprefs{width:100%;border-collapse:collapse}
+.aprefs th,.aprefs td{padding:12px 6px;border-top:1px solid var(--line);text-align:left;font-size:15px}
+.aprefs th{font-size:13px;color:var(--fg3);font-weight:600;border-top:0}
+.aprefs td.c,.aprefs th.c{text-align:center;width:72px}
+.aprefs td small{display:block;color:var(--fg3);font-size:13px;margin-top:2px}
+.aprefs .check{justify-content:center;width:auto;padding:0}

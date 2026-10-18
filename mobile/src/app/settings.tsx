@@ -111,6 +111,7 @@ function Notify({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void })
       <Toggle title="월간 리포트 메일" sub="매달 1일 지난달 리포트를 이메일로 보내 드립니다" value={f.report_mail} onChange={(v) => setF({ ...f, report_mail: v })} />
       {msg.t ? <Notice text={msg.t} tone={msg.ok ? 'ok' : 'error'} flat /> : null}
       <Btn title="저장" onPress={() => save({ act: 'notify', ...f })} busy={busy} />
+      <Btn title="알림 종류별로 받을 곳 정하기" kind="soft" onPress={() => router.push('/alerts')} />
     </Section>
   );
 }
