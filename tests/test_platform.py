@@ -283,8 +283,8 @@ class PlatformTest(unittest.TestCase):
             hist=json.dumps([{'who':'bot','text':'안녕하세요'},{'who':'me','text':'선크림 있어요?'},{'who':'bot','text':'네, 있어요.'}])
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'얼마예요?','history':hist}).get_json()
         self.assertEqual((j['answer'],j['category'],j['handoff']),('선크림은 19000원이에요.',None,False))
-        self.assertTrue(seen['url'].endswith('/v1/responses'));self.assertEqual(seen['body']['tools'],[{'type':'web_search'}])
-        system=seen['body']['instructions'];msgs=seen['body']['input']
+        self.assertTrue(seen['url'].endswith('/chat/completions'));self.assertNotIn('tools',seen['body'])  # 먼저 검색 없이 (빠르게)
+        system=seen['body']['messages'][0]['content'];msgs=seen['body']['messages'][1:]
         self.assertIn('선크림 / 가격 19000원',system);self.assertIn('보습 크림 / 가격 31000원 / 품절',system);self.assertIn('인터넷 검색',system)
         self.assertEqual([m['role'] for m in msgs],['user','assistant','user']);self.assertEqual(msgs[-1]['content'],'얼마예요?')
         # 검색 답이 JSON이 아니어도 글이면 답으로 쓰고, 출처 링크 표시는 뺀다
@@ -296,13 +296,14 @@ class PlatformTest(unittest.TestCase):
         def nosearch(url,headers,body,timeout):
             urls.append(url)
             if url.endswith('/responses'):return 400,{'error':{'message':'tool not supported'}}
-            return oa(url,'{"category": null, "answer": "네, 있어요.", "handoff": false, "summary": ""}')
+            return oa(url,'{"category": null, "answer": "네, 있어요.", "handoff": false, "summary": "", "sure": false}')
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',nosearch):
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'보습 크림 있어요?'}).get_json()
-        self.assertEqual(j['answer'],'네, 있어요.');self.assertEqual([u.rsplit('/',1)[1] for u in urls],['responses','completions'])
+        self.assertEqual(j['answer'],'네, 있어요.');self.assertEqual([u.rsplit('/',1)[1] for u in urls],['completions','responses','completions'])  # 확신이 없을 때만 검색, 검색이 안 되면 검색 없이
         # 네이버 검색 키가 있으면 AI가 필요할 때 네이버에서 검색하고, 그 결과를 보고 답한다
         calls=[];got=[]
         def nv_post(url,headers,body,timeout):
+            if 'tools' not in body and not calls:return 200,{'choices':[{'message':{'content':'{"answer": "아마 2시간쯤이에요.", "sure": false}'}}]}  # 처음엔 검색 없이: 확신이 없다고 함
             calls.append(body)
             if len(calls)==1:return 200,{'choices':[{'message':{'content':None,'tool_calls':[{'id':'c1','type':'function','function':{'name':'search','arguments':'{"query": "선크림 덧바르는 주기"}'}}]}}]}
             return 200,{'choices':[{'message':{'content':'{"category": null, "answer": "보통 2~3시간마다 덧바르는 게 좋아요.", "handoff": false, "summary": ""}'}}]}
@@ -330,7 +331,7 @@ class PlatformTest(unittest.TestCase):
         b3,_,cid3=self.signup_and_approve('다른가게','other-shop@example.com')
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
             me.post(f'/chat/{cid3}',data={'csrf':ctok,'text':'선크림 있어요?'})
-        self.assertNotIn('선크림',seen['body']['instructions'])
+        self.assertNotIn('선크림',seen['body']['messages'][0]['content'])
 
     def test_ai_model_luna_tiers_and_log(self):
         """AI 상담: Luna 낮은 추론 기본, 어려운 문의는 높은 추론. 예전 4.1-mini는 쓰지 않는다. Sol은 운영에서 켠 경우만. 호출은 모델·추론·토큰·비용·결과로 남는다."""
@@ -2611,7 +2612,7 @@ class PlatformTest(unittest.TestCase):
             with self.core.conn() as db:
                 co=self.core.company(db,cid);t=self.core.iso()
                 case=db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
-                    VALUES(?,?,?,1,'기타',?,?,'기타','','','','','x',1,'forwarded','ai',?,?,?,'','','인스타그램')""",(self.core.new_case_no(db),cid,co['name'],title,title,t,t,t)).lastrowid
+                    VALUES(?,?,?,1,'기타',?,?,'기타','','','','','x',1,'forwarded','ai','2099-01-01 00:00:00',?,?,'','','인스타그램')""",(self.core.new_case_no(db),cid,co['name'],title,title,t,t)).lastrowid
                 db.execute("INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,'instagram',?,?)",(cid,ext,case))
             return case
         angry=mk('세 번째 문의예요 너무 화나요','u:a');swap=mk('사이즈 교환하고 싶어요','u:b')
@@ -2642,7 +2643,7 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:
             co=self.core.company(db,cid);t=self.core.iso()
             case=db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel,ai_why,ai_draft)
-                VALUES(?,?,?,1,'환불','환불해 주세요','환불해 주세요','환불','','김고객','','','x',1,'forwarded','pending',?,?,?,'','','인스타그램','환불 요청','확인 후 안내드릴게요.')""",(self.core.new_case_no(db),cid,co['name'],t,t,t)).lastrowid
+                VALUES(?,?,?,1,'환불','환불해 주세요','환불해 주세요','환불','','김고객','','','x',1,'forwarded','pending','2099-01-01 00:00:00',?,?,'','','인스타그램','환불 요청','확인 후 안내드릴게요.')""",(self.core.new_case_no(db),cid,co['name'],t,t)).lastrowid
         side=b.get('/biz/').get_data(as_text=True).split('class="bside"')[1].split('</nav>')[0];self.assertIn('href="/biz/chat"',side)  # 컴퓨터 옆 메뉴에도 상담
         j=b.get('/biz/chat/list.json').get_json()['rows']
         self.assertEqual([(r['id'],r['need'],r['mark'][0]) for r in j],[(case,True,'IG')])
@@ -2791,7 +2792,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(r.status_code,200);self.assertIn('연결 끊기',page);self.assertIn('Data deletion',page);self.assertIn('id="account"',page);self.assertIn('회원 탈퇴',page)  # 구글 플레이 계정 삭제 안내 주소
 
     def test_chat_law_grounding(self):
-        """상담창: 법률 질문이면 찾은 법령 원문을 '[관련 법령 원문]'으로 주고 인터넷 검색을 끈다. 일반 질문은 예전처럼 검색을 쓴다."""
+        """상담창: 법률 질문이면 찾은 법령 원문을 '[관련 법령 원문]'으로 주고 인터넷 검색을 끈다. 일반 질문에는 조문을 넣지 않는다."""
         b,o,cid=self.signup_and_approve('법령마켓','lawshop@example.com')
         me=self.client();page=me.get(f'/to/{cid}').get_data(as_text=True);ctok=re.search(r'data-csrf="([^"]+)"',page).group(1)
         seen=[]
@@ -2812,11 +2813,11 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('전자상거래법 제17조 (청약철회등)',system)
         self.assertIn('7일',system.split('[관련 법령 원문]')[-1])
         self.assertLess(system.index('[회사 정보]'),system.index('[관련 법령 원문]'))
-        # 법과 상관없는 일반 질문은 조문을 넣지 않고 예전처럼 검색을 쓸 수 있다
+        # 법과 상관없는 일반 질문은 조문을 넣지 않는다 (검색은 AI가 확신이 없다고 할 때만)
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake):
             me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'비타민C 세럼은 아침에 써도 돼요?'})
         url,body=seen[-1]
-        self.assertTrue(url.endswith('/responses'));self.assertNotIn('[관련 법령 원문]',body['instructions'])
+        self.assertNotIn('[관련 법령 원문]',body.get('instructions') or body['messages'][0]['content'])
 
 
 class LawCorpusTest(unittest.TestCase):
