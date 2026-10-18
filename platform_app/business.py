@@ -1325,7 +1325,7 @@ def ops_billing():
         subs=db.execute("SELECT b.*,c.name co_name FROM billing b JOIN companies c ON c.id=b.company_id WHERE b.status!='none' ORDER BY b.next_charge").fetchall()
         pays=db.execute("SELECT p.*,c.name co_name FROM billing_payments p JOIN companies c ON c.id=p.company_id ORDER BY p.id DESC LIMIT 50").fetchall()
         n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
-    return render_template('o_billing.html',p=billing.plan(),ready=billing.ready(),test=billing.test_mode(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
+    return render_template('o_billing.html',p=billing.plan(),ready=billing.ready(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
 
 @app.route('/ops/keys',methods=['GET','POST'])
 @ops_required

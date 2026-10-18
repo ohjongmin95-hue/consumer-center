@@ -1,17 +1,23 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
 {% block title %}요금·결제 · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('settings') }}{% endblock %}
-{% block script %}{% if ready and p and may and bl %}<script src="https://js.tosspayments.com/v2/standard"></script>
+{% block script %}{% if ready and p and may and bl %}<script src="{{ sdk }}"></script>
 <script>document.querySelectorAll('[data-card]').forEach(function(btn){btn.onclick=function(){
   btn.disabled=true;
-  TossPayments({{ client_key|tojson }}).payment({customerKey:{{ bl.customer_key|tojson }}}).requestBillingAuth({method:'CARD',successUrl:{{ ok_url|tojson }},failUrl:{{ fail_url|tojson }},customerName:{{ co.name|tojson }}})
-    .catch(function(){btn.disabled=false;});
+  var cu={customerId:{{ bl.customer_key|tojson }},fullName:{{ co.name|tojson }}};{% if mail %}cu.email={{ mail|tojson }};{% endif %}
+  PortOne.requestIssueBillingKey({storeId:{{ store_id|tojson }},channelKey:{{ channel_key|tojson }},billingKeyMethod:'CARD',
+    issueName:{{ (BNAME~' 정기결제')|tojson }},issueId:{{ bl.customer_key|tojson }}+'-'+Date.now(),customer:cu,redirectUrl:{{ ok_url|tojson }}})
+  .then(function(r){  /* PC는 여기로 결과가 오고, 모바일은 redirectUrl로 이동해요 */
+    if(!r){btn.disabled=false;return;}
+    if(r.code!==undefined){location.href={{ fail_url|tojson }}+'?code='+encodeURIComponent(r.code)+'&message='+encodeURIComponent(r.message||'');return;}
+    location.href={{ ok_url|tojson }}+'?billingKey='+encodeURIComponent(r.billingKey);
+  }).catch(function(){btn.disabled=false;});
 };});</script>{% endif %}{% endblock %}
 {% block body %}
 <div class="crumb"><a href="{{ url_for('settings') }}">설정</a><span>›</span><span>요금·결제</span></div>
 <div class="chead"><div class="l"><div class="tagrow">
 {% if bl and bl.status=='active' %}<span class="pill ok">결제 중</span>{% elif bl and bl.status=='canceled' %}<span class="pill gray">해지 예약</span>{% elif bl and bl.status=='past_due' %}<span class="pill bad">결제 실패</span>{% elif bl and bl.status=='stopped' %}<span class="pill bad">결제 멈춤</span>{% else %}<span class="pill gray">무료 시범</span>{% endif %}
-{% if test %}<span class="pill gray">시험 모드 · 실제 돈이 나가지 않아요</span>{% endif %}</div>
+</div>
 <h1>요금·결제</h1></div></div>
 <div class="cols">
 <div class="stack">
@@ -42,7 +48,7 @@
 <li>카드를 등록하면 첫 달 요금이 바로 결제되고, 그다음부터 매달 같은 날 자동으로 결제돼요.</li>
 <li>해지하면 다음 결제일까지 그대로 쓰고, 그날부터 결제하지 않아요.</li>
 <li>결제가 안 되면 메일로 알려 드리고 다음 날 다시 시도해요. 3번 안 되면 멈춰요.</li>
-<li>결제는 토스페이먼츠가 처리해요. 카드 번호는 소보루에 저장되지 않아요.</li>
+<li>결제는 포트원과 결제대행사(PG)가 처리해요. 카드 번호는 소보루에 저장되지 않아요.</li>
 <li>환불 기준은 <a class="link" href="{{ url_for('refund_policy') }}" target="_blank" rel="noopener">환불 정책</a>에서 볼 수 있어요.</li>
 </ul></section>
 </aside>

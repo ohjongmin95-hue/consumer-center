@@ -1,20 +1,22 @@
-"""요금 결제 (토스페이먼츠 자동결제·빌링). 운영자가 키(TOSS_CLIENT_KEY·TOSS_SECRET_KEY)와 요금제(이름·월 금액)를 넣기 전까지는 '준비 중'.
+"""요금 결제 (포트원 V2 정기결제·빌링키, PG는 포트원 콘솔에서 정한 채널: KG이니시스 등).
+운영자가 키(PORTONE_STORE_ID·PORTONE_CHANNEL_KEY·PORTONE_API_SECRET)와 요금제(이름·월 금액)를 넣기 전까지는 '준비 중'.
 
-  · 사장님(대표·관리자)이 '카드 등록하고 시작'을 누르면 토스페이먼츠 카드 등록 창이 뜬다 -> 돌아오면 authKey로 빌링키를 받아
-    암호화해 저장하고, 첫 달 요금을 바로 결제한다. 결제가 되면 다음 결제일은 한 달 뒤.
+  · 사장님(대표·관리자)이 '카드 등록하고 시작'을 누르면 포트원 카드 등록 창이 뜬다 -> 빌링키를 받아 돌아오면
+    포트원에 그 빌링키가 우리 고객 키로 발급된 것인지 확인한 뒤 암호화해 저장하고, 첫 달 요금을 바로 결제한다. 결제가 되면 다음 결제일은 한 달 뒤.
   · 다음 결제일이 되면 cron(10분마다, shops.py)이 하루 한 번만 결제를 시도한다. 실패하면 '결제 실패'로 두고 다음 날 다시,
     3번 연속 실패하면 멈추고 무료 시범으로 돌린다. 기능은 막지 않는다 (요금제가 정해지면 그때 정한다).
   · 해지하면 다음 결제일까지 쓰고 그날부터 결제하지 않는다. 다음 결제일 전에는 다시 이어 쓸 수 있다.
-  · 시험 키(test_)로는 실제 돈이 나가지 않는다. 화면에 '시험 모드'를 띄운다.
-문서: docs.tosspayments.com > 자동결제(빌링) API (POST /v1/billing/authorizations/issue, POST /v1/billing/{billingKey})
+  · 포트원 시험 채널로는 실제 돈이 나가지 않는다 (채널을 실연동으로 바꾸면 실제 결제).
+문서: developers.portone.io > 빌링키 결제 (POST /payments/{paymentId}/billing-key, GET·DELETE /billing-keys/{billingKey})
 """
-import base64, calendar, datetime, json, secrets
+import calendar, datetime, json, secrets, urllib.parse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, session, current_app
 import core, shops
 from core import conn, clean
 
 bp=Blueprint('pay',__name__)
-API='https://api.tosspayments.com'
+API='https://api.portone.io'
+SDK='https://cdn.portone.io/v2/browser-sdk.js'
 MAX_FAILS=3
 
 def init():
@@ -28,8 +30,7 @@ def init():
           FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE)''')
 init()
 
-def ready():return bool(core.secret('TOSS_CLIENT_KEY') and core.secret('TOSS_SECRET_KEY'))
-def test_mode():return core.secret('TOSS_SECRET_KEY').startswith('test_')
+def ready():return all(core.secret(k) for k in ('PORTONE_STORE_ID','PORTONE_CHANNEL_KEY','PORTONE_API_SECRET'))
 def plan():
     """운영자가 정한 요금제 {name, price} 또는 None (금액은 부가세 포함, 원)."""
     with conn() as db:r=db.execute("SELECT value FROM settings WHERE key='billing_plan'").fetchone()
@@ -49,12 +50,19 @@ def add_month(d):
 
 class PayError(Exception):
     """사장님께 그대로 보여 줄 우리말 안내."""
-def _call(path,body):
-    """(상태, JSON). 시크릿 키는 Basic 인증으로만 보낸다."""
-    auth=base64.b64encode((core.secret('TOSS_SECRET_KEY')+':').encode()).decode()
-    try:return shops.http('POST',API+path,{'Authorization':'Basic '+auth,'Content-Type':'application/json'},json.dumps(body).encode())
-    except shops.ShopError:raise PayError('토스페이먼츠에 연결하지 못했어요. 잠시 후 다시 해 주세요.')
-def _msg(d,s):return clean((d or {}).get('message') or f'결제 오류 ({s})',200)
+def _call(method,path,body=None):
+    """(상태, JSON). API 시크릿은 Authorization 헤더로만 보낸다."""
+    h={'Authorization':'PortOne '+core.secret('PORTONE_API_SECRET'),'Content-Type':'application/json'}
+    try:return shops.http(method,API+path,h,json.dumps(body).encode() if body is not None else None)
+    except shops.ShopError:raise PayError('결제사에 연결하지 못했어요. 잠시 후 다시 해 주세요.')
+def _msg(d,s):
+    d=d or {};return clean(d.get('pgMessage') or d.get('message') or f'결제 오류 ({s})',200)
+def _q(s):return urllib.parse.quote(s,safe='')
+def store_q():return '?storeId='+_q(core.secret('PORTONE_STORE_ID'))
+def drop_key(key):
+    """더 안 쓰는 빌링키를 포트원에서 지운다 (실패해도 넘어간다: 우리 쪽에서는 이미 지웠다)."""
+    try:_call('DELETE','/billing-keys/'+_q(key)+store_q())
+    except PayError:pass
 
 def charge(db,co,b):
     """한 달 요금을 결제한다. -> '' 또는 실패 이유. 결제 기록은 성공·실패 모두 남긴다."""
@@ -62,12 +70,19 @@ def charge(db,co,b):
     if not c or not c.get('billing_key'):return '등록된 카드가 없어요.'
     order=f"SOBORU-{co['id']}-{core.now():%Y%m%d%H%M%S}-{secrets.token_hex(3)}"
     db.execute("INSERT INTO billing_payments(company_id,order_id,amount,status,created) VALUES(?,?,?,'try',?)",(co['id'],order,b['price'],core.iso()))
-    body={'customerKey':b['customer_key'],'amount':b['price'],'orderId':order,'orderName':f"{core.BNAME} {b['plan_name']} (1개월)",'customerName':clean(co['name'],60)}
-    if mail_of(co):body['customerEmail']=mail_of(co)
-    try:s,d=_call('/v1/billing/'+c['billing_key'],body)
+    cu={'id':b['customer_key'],'name':{'full':clean(co['name'],60)}}
+    if mail_of(co):cu['email']=mail_of(co)
+    body={'storeId':core.secret('PORTONE_STORE_ID'),'billingKey':c['billing_key'],'orderName':f"{core.BNAME} {b['plan_name']} (1개월)",
+          'customer':cu,'amount':{'total':b['price']},'currency':'KRW'}
+    try:s,d=_call('POST','/payments/'+_q(order)+'/billing-key',body)
     except PayError as e:s,d=0,{'message':str(e)}
-    if s==200 and d.get('status')=='DONE':
-        db.execute("UPDATE billing_payments SET status='done',payment_key=?,receipt=? WHERE order_id=?",(clean(d.get('paymentKey'),200),clean((d.get('receipt') or {}).get('url'),500),order))
+    if s==200 and (d.get('payment') or {}).get('paidAt'):
+        receipt=''
+        try:  # 영수증 주소는 결제 조회에만 있다 (없어도 결제는 된 것)
+            s2,p=_call('GET','/payments/'+_q(order)+store_q())
+            if s2==200:receipt=clean(p.get('receiptUrl'),500)
+        except PayError:pass
+        db.execute("UPDATE billing_payments SET status='done',payment_key=?,receipt=? WHERE order_id=?",(clean(d['payment'].get('pgTxId'),200),receipt,order))
         return ''
     e=_msg(d,s);db.execute("UPDATE billing_payments SET status='fail',error=? WHERE order_id=?",(e,order))
     return e
@@ -83,6 +98,8 @@ def renew_all():
     for b in due:
         with conn() as db:
             if b['status']=='canceled':
+                c=shops.unseal(b['creds']) if b['creds'] else None
+                if c and c.get('billing_key'):drop_key(c['billing_key'])
                 db.execute("UPDATE billing SET status='ended',creds='' WHERE company_id=?",(b['company_id'],))
                 db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=?",(core.iso(),b['company_id']));continue
             # 10분마다 도는 cron이 같은 날 두 번 결제하지 않게 먼저 '오늘 시도함'을 잡는다
@@ -129,29 +146,34 @@ def page():
                 else:paid(db,co['id'],today());flash('결제했어요.','ok')
             return redirect(url_for('pay.page'))
         pays=db.execute('SELECT * FROM billing_payments WHERE company_id=? ORDER BY id DESC LIMIT 24',(co['id'],)).fetchall()
-        if ready() and can and not b:  # 토스페이먼츠에 줄 고객 키: 추측할 수 없는 값으로 한 번 만들어 둔다
+        if ready() and can and not b:  # 포트원에 줄 고객 키: 추측할 수 없는 값으로 한 번 만들어 둔다
             db.execute('INSERT INTO billing(company_id,customer_key) VALUES(?,?)',(co['id'],'cs_'+secrets.token_urlsafe(24)));b=row(db,co['id'])
-    return render_template('b_billing.html',co=co,bl=b,pays=pays,p=plan(),ready=ready(),test=test_mode(),may=can,client_key=core.secret('TOSS_CLIENT_KEY'),
-                           ok_url=url_for('pay.done',_external=True),fail_url=url_for('pay.fail',_external=True),tab='settings')
+    return render_template('b_billing.html',co=co,bl=b,pays=pays,p=plan(),ready=ready(),may=can,sdk=SDK,store_id=core.secret('PORTONE_STORE_ID'),
+                           channel_key=core.secret('PORTONE_CHANNEL_KEY'),mail=mail_of(co),ok_url=url_for('pay.done',_external=True),
+                           fail_url=url_for('pay.fail',_external=True),tab='settings')
 
 @bp.route('/billing/done')
 def done():
-    """카드 등록 창에서 돌아옴: authKey -> 빌링키 -> (처음이면) 첫 달 결제."""
+    """카드 등록 창에서 돌아옴 (?billingKey=). 포트원에 그 빌링키가 이 회사 고객 키로 발급됐는지 확인 -> 저장 -> (처음이면) 첫 달 결제."""
     if not session.get('co_id'):return redirect(url_for('login'))
     co,can=company()
     if not can:abort(403)
-    p=plan()
-    with conn() as db:
-        b=row(db,co['id'])
-        if not b or not p or not ready() or request.args.get('customerKey')!=b['customer_key'] or not request.args.get('authKey'):
-            flash('카드 등록 요청이 맞지 않아요. 다시 해 주세요.','error');return redirect(url_for('pay.page'))
-    try:s,d=_call('/v1/billing/authorizations/issue',{'authKey':clean(request.args.get('authKey'),300),'customerKey':b['customer_key']})
+    if request.args.get('code'):return fail()
+    p=plan();key=clean(request.args.get('billingKey'),200)
+    with conn() as db:b=row(db,co['id'])
+    if not b or not p or not ready() or not key:
+        flash('카드 등록 요청이 맞지 않아요. 다시 해 주세요.','error');return redirect(url_for('pay.page'))
+    try:s,d=_call('GET','/billing-keys/'+_q(key)+store_q())
     except PayError as e:flash(str(e),'error');return redirect(url_for('pay.page'))
-    if s!=200 or not d.get('billingKey'):flash('카드를 등록하지 못했어요: '+_msg(d,s),'error');return redirect(url_for('pay.page'))
-    card=' '.join(x for x in (clean(d.get('cardCompany'),20),clean(d.get('cardNumber') or (d.get('card') or {}).get('number'),30)) if x)
+    if s!=200 or d.get('status')!='ISSUED' or (d.get('customer') or {}).get('id')!=b['customer_key']:  # 남의 빌링키를 끼워 넣지 못하게
+        flash('카드를 등록하지 못했어요: '+(_msg(d,s) if s!=200 else '등록 정보가 맞지 않아요.'),'error');return redirect(url_for('pay.page'))
+    cd=next(((m.get('card') or {}) for m in d.get('methods') or [] if m.get('card')),{})
+    card=' '.join(x for x in (clean(cd.get('name') or cd.get('issuer'),20),clean(cd.get('number'),30)) if x)
     with conn() as db:
-        first=b['status'] in ('none','ended','stopped')
-        db.execute('UPDATE billing SET creds=?,card=? WHERE company_id=?',(shops.seal({'billing_key':d['billingKey']}),card,co['id']))
+        b=row(db,co['id']);first=b['status'] in ('none','ended','stopped')
+        old=shops.unseal(b['creds']) if b['creds'] else None
+        db.execute('UPDATE billing SET creds=?,card=? WHERE company_id=?',(shops.seal({'billing_key':key}),card,co['id']))
+        if old and old.get('billing_key') and old['billing_key']!=key:drop_key(old['billing_key'])
         if not first:flash('카드를 바꿨어요. 다음 결제부터 이 카드로 결제해요.','ok');return redirect(url_for('pay.page'))
         db.execute("UPDATE billing SET plan_name=?,price=?,started=?,canceled='',fails=0 WHERE company_id=?",(p['name'],int(p['price']),core.iso(),co['id']))
         e=charge(db,co,row(db,co['id']))

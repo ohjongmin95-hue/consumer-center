@@ -2145,30 +2145,36 @@ class PlatformTest(unittest.TestCase):
             if old_env is None:os.environ.pop('IG_APP_SECRET',None)
             else:os.environ['IG_APP_SECRET']=old_env
 
-    def test_toss_billing(self):
-        """토스페이먼츠 자동결제: 키·요금제가 없으면 준비 중, 카드 등록하면 첫 달 결제, 결제일엔 하루 한 번만, 3번 실패하면 멈춤, 해지하면 결제일에 끝."""
-        import json as _j, base64 as _b, datetime as _d
+    def test_portone_billing(self):
+        """포트원 정기결제: 키·요금제가 없으면 준비 중, 카드 등록하면 첫 달 결제, 남의 빌링키는 거절, 결제일엔 하루 한 번만, 3번 실패하면 멈춤, 해지하면 결제일에 끝."""
+        import json as _j, datetime as _d
         bl=sys.modules['billing'];shops=sys.modules['shops']
         b,o,cid=self.signup_and_approve('결제상점','pay-co@example.com')
         self.assertIn('요금제를 준비하고 있어요',b.get('/biz/billing').get_data(as_text=True))
         self.assertEqual(self.client().get('/biz/billing').status_code,302)
-        env={'TOSS_CLIENT_KEY':'test_ck_abc','TOSS_SECRET_KEY':'test_sk_xyz'};old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
-        calls=[];res={'pay':(200,{'status':'DONE','paymentKey':'pk-1','receipt':{'url':'https://receipt.example/1'}})}
+        env={'PORTONE_STORE_ID':'store-abc','PORTONE_CHANNEL_KEY':'channel-key-xyz','PORTONE_API_SECRET':'po-secret-1'};old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
+        calls=[];res={'pay':(200,{'payment':{'pgTxId':'pg-1','paidAt':'2026-10-18T00:00:00Z'}}),'owner':None}
         def http(method,url,headers=None,body=None,**kw):
-            calls.append((url,headers,_j.loads(body or b'{}')))
-            if url.endswith('/authorizations/issue'):return 200,{'billingKey':'bk-secret-1','cardCompany':'신한','cardNumber':'1234****5678'}
-            return res['pay']
+            calls.append((method,url,headers,_j.loads(body) if body else None))
+            if '/billing-keys/' in url and method=='GET':
+                return 200,{'status':'ISSUED','billingKey':url.split('/billing-keys/')[1].split('?')[0],'customer':{'id':res['owner']},
+                            'methods':[{'type':'BillingKeyPaymentMethodCard','card':{'name':'신한카드','number':'1234-****-****-5678'}}]}
+            if method=='DELETE':return 200,{'deletedAt':'x'}
+            if url.endswith('/billing-key'):return res['pay']
+            if '/payments/' in url and method=='GET':return 200,{'status':'PAID','receiptUrl':'https://receipt.example/1'}
+            return 404,{}
         old=shops.http;shops.http=http
         def st():
             with self.core.conn() as db:return db.execute('SELECT * FROM billing WHERE company_id=?',(cid,)).fetchone()
         def plan_of():
             with self.core.conn() as db:return db.execute('SELECT plan FROM companies WHERE id=?',(cid,)).fetchone()[0]
-        def pays(status=None):
-            with self.core.conn() as db:return db.execute('SELECT COUNT(*) FROM billing_payments WHERE company_id=?'+(' AND status=?' if status else ''),(cid,)+((status,) if status else ())).fetchone()[0]
+        def pays(status):
+            with self.core.conn() as db:return db.execute('SELECT COUNT(*) FROM billing_payments WHERE company_id=? AND status=?',(cid,status)).fetchone()[0]
         def due_today(**kw):
             with self.core.conn() as db:
                 db.execute('UPDATE billing SET next_charge=? WHERE company_id=?',(bl.today().isoformat(),cid))
                 for k,v in kw.items():db.execute(f'UPDATE billing SET {k}=? WHERE company_id=?',(v,cid))
+        def pay_calls():return [c for c in calls if c[1].endswith('/billing-key')]
         try:
             self.assertIn('요금제를 준비하고 있어요',b.get('/biz/billing').get_data(as_text=True))  # 키만 있고 요금제가 없으면 아직
             self.post(o,'/biz/ops/billing',{'name':'베이직','price':'50'})
@@ -2176,38 +2182,46 @@ class PlatformTest(unittest.TestCase):
             self.post(o,'/biz/ops/billing',{'name':'베이직','price':'33,000'})
             self.assertEqual(bl.plan(),{'name':'베이직','price':33000})
             h=b.get('/biz/billing').get_data(as_text=True)
-            self.assertIn('data-card',h);self.assertIn('시험 모드',h);self.assertIn('test_ck_abc',h);self.assertNotIn('test_sk_xyz',h)
+            self.assertIn('data-card',h);self.assertIn('cdn.portone.io/v2/browser-sdk.js',h);self.assertIn('channel-key-xyz',h);self.assertNotIn('po-secret-1',h)
             key=st()['customer_key'];self.assertTrue(key.startswith('cs_'))
-            # 고객 키가 다르면 받지 않는다
-            b.get('/biz/billing/done?customerKey=cs_other&authKey=a1');self.assertEqual(calls,[]);self.assertEqual(st()['status'],'none')
-            b.get(f'/biz/billing/done?customerKey={key}&authKey=a1')
-            self.assertEqual(calls[0][2],{'authKey':'a1','customerKey':key})
-            self.assertEqual(calls[0][1]['Authorization'],'Basic '+_b.b64encode(b'test_sk_xyz:').decode())
-            self.assertTrue(calls[1][0].endswith('/v1/billing/bk-secret-1'));self.assertEqual(calls[1][2]['amount'],33000);self.assertEqual(calls[1][2]['customerKey'],key)
-            s=st();self.assertEqual(s['status'],'active');self.assertNotIn('bk-secret-1',s['creds']);self.assertEqual(s['card'],'신한 1234****5678')
+            # 다른 고객 키로 발급된 빌링키는 받지 않는다
+            res['owner']='cs_someone_else';b.get('/biz/billing/done?billingKey=bk-other')
+            self.assertEqual(st()['status'],'none');self.assertEqual(st()['creds'],'');self.assertEqual(pay_calls(),[])
+            res['owner']=key;b.get('/biz/billing/done?billingKey=bk-secret-1')
+            g=[c for c in calls if c[0]=='GET' and '/billing-keys/bk-secret-1' in c[1]][0]
+            self.assertIn('storeId=store-abc',g[1]);self.assertEqual(g[2]['Authorization'],'PortOne po-secret-1')
+            p1=pay_calls()[0][3];self.assertEqual(p1['billingKey'],'bk-secret-1');self.assertEqual(p1['amount'],{'total':33000});self.assertEqual(p1['currency'],'KRW')
+            self.assertEqual(p1['customer']['id'],key);self.assertEqual(p1['storeId'],'store-abc')
+            s=st();self.assertEqual(s['status'],'active');self.assertNotIn('bk-secret-1',s['creds']);self.assertEqual(s['card'],'신한카드 1234-****-****-5678')
             self.assertEqual(s['next_charge'],bl.add_month(bl.today()).isoformat());self.assertEqual(plan_of(),'paid');self.assertEqual(pays('done'),1)
             self.assertIn('https://receipt.example/1',b.get('/biz/billing').get_data(as_text=True))
             self.assertEqual(bl.add_month(_d.date(2026,1,31)),_d.date(2026,2,28));self.assertEqual(bl.add_month(_d.date(2026,12,5)),_d.date(2027,1,5))
+            # 카드 바꾸기: 새 빌링키로 바꾸고 예전 것은 포트원에서 지운다 (결제는 하지 않음)
+            n=len(pay_calls());b.get('/biz/billing/done?billingKey=bk-secret-2')
+            self.assertEqual(len(pay_calls()),n);self.assertTrue(any(c[0]=='DELETE' and '/billing-keys/bk-secret-1' in c[1] for c in calls))
+            # 등록 창에서 취소하면 실패 안내
+            self.assertIn('/biz/billing',b.get('/biz/billing/done?code=FAILURE_TYPE_PG&message=x').headers['Location'])
             # 결제일: 운영자가 바꾼 금액으로, 하루 한 번만
             self.post(o,'/biz/ops/billing',{'name':'베이직','price':'44000'})
             self.assertIn('44,000',b.get('/biz/billing').get_data(as_text=True))
-            due_today();n=len(calls);self.assertEqual(bl.renew_all(),1);self.assertEqual(calls[-1][2]['amount'],44000);self.assertEqual(pays('done'),2)
-            self.assertEqual(st()['next_charge'],bl.add_month(bl.today()).isoformat())
-            due_today();self.assertEqual(bl.renew_all(),0);self.assertEqual(len(calls),n+1)  # 같은 날 두 번 결제하지 않는다
+            due_today();self.assertEqual(bl.renew_all(),1);self.assertEqual(pay_calls()[-1][3]['amount'],{'total':44000});self.assertEqual(pay_calls()[-1][3]['billingKey'],'bk-secret-2')
+            self.assertEqual(pays('done'),2);self.assertEqual(st()['next_charge'],bl.add_month(bl.today()).isoformat())
+            n=len(pay_calls());due_today();self.assertEqual(bl.renew_all(),0);self.assertEqual(len(pay_calls()),n)  # 같은 날 두 번 결제하지 않는다
             # 실패: 결제 실패 -> 3번째에 멈추고 무료 시범으로
-            res['pay']=(400,{'code':'REJECT_CARD_COMPANY','message':'카드사에서 거절했어요'})
+            res['pay']=(400,{'type':'PG_PROVIDER','message':'PG사 오류','pgCode':'CARD_REJECT','pgMessage':'카드사에서 거절했어요'})
             due_today(last_try='');bl.renew_all();s=st()
             self.assertEqual((s['status'],s['fails']),('past_due',1));self.assertIn('카드사에서 거절',s['note']);self.assertEqual(plan_of(),'paid');self.assertEqual(pays('fail'),1)
             due_today(last_try='',fails=2);bl.renew_all();s=st()
             self.assertEqual(s['status'],'stopped');self.assertEqual(plan_of(),'pilot')
-            res['pay']=(200,{'status':'DONE','paymentKey':'pk-2'})
+            res['pay']=(200,{'payment':{'pgTxId':'pg-2','paidAt':'2026-10-18T00:00:00Z'}})
             self.post(b,'/biz/billing',{'act':'retry'});self.assertEqual(st()['status'],'active');self.assertEqual(plan_of(),'paid')
-            # 해지: 결제일까지 쓰고 그날 끝, 이어 쓰기도 된다
+            # 해지: 결제일까지 쓰고 그날 끝 (빌링키도 지움), 이어 쓰기도 된다
             self.post(b,'/biz/billing',{'act':'cancel'});self.assertEqual(st()['status'],'canceled')
             self.post(b,'/biz/billing',{'act':'resume'});self.assertEqual(st()['status'],'active')
-            self.post(b,'/biz/billing',{'act':'cancel'});n=len(calls)
+            self.post(b,'/biz/billing',{'act':'cancel'});n=len(pay_calls())
             due_today(last_try='');bl.renew_all();s=st()
-            self.assertEqual((s['status'],s['creds']),('ended',''));self.assertEqual(plan_of(),'pilot');self.assertEqual(len(calls),n)
+            self.assertEqual((s['status'],s['creds']),('ended',''));self.assertEqual(plan_of(),'pilot');self.assertEqual(len(pay_calls()),n)
+            self.assertTrue(any(c[0]=='DELETE' and '/billing-keys/bk-secret-2' in c[1] for c in calls))
             self.assertIn('결제상점',o.get('/biz/ops/billing').get_data(as_text=True))
         finally:
             shops.http=old

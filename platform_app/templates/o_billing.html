@@ -3,8 +3,8 @@
 {% block bar %}{{ b.obar(otab,n_signup) }}{% endblock %}
 {% block body %}
 <div class="narrow">
-<div class="phead"><div><h1>요금제·결제</h1><p>토스페이먼츠 자동결제. 키는 <a class="link" href="{{ url_for('ops_keys') }}">서비스 키</a>에서 넣어요{% if test %} · 지금은 시험 키라 실제 돈이 나가지 않아요{% endif %}</p></div></div>
-{% if not ready %}<div class="warn" style="margin-bottom:var(--ds-gap)">토스페이먼츠 키가 아직 없어요. 키와 요금제가 모두 있어야 사장님 화면에 결제가 열려요.</div>{% endif %}
+<div class="phead"><div><h1>요금제·결제</h1><p>포트원 정기결제(빌링키). 상점 아이디·채널 키·API 시크릿은 <a class="link" href="{{ url_for('ops_keys') }}">서비스 키</a>에서 넣어요. 포트원 시험 채널로는 실제 돈이 나가지 않아요</p></div></div>
+{% if not ready %}<div class="warn" style="margin-bottom:var(--ds-gap)">포트원 키가 아직 없어요. 키와 요금제가 모두 있어야 사장님 화면에 결제가 열려요.</div>{% endif %}
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <div class="ph">요금제{% if p %}<span class="pill ok" style="margin-left:auto">{{ p.name }} · 월 {{ '{:,}'.format(p.price|int) }}원</span>{% else %}<span class="pill gray" style="margin-left:auto">없음</span>{% endif %}</div>
 <p class="sub" style="font-size:15px;margin:0">금액은 부가세를 포함한 월 요금이에요. 바꾸면 이미 결제 중인 회사는 다음 결제부터 새 금액이 되고, 사장님 화면에 미리 보여요.</p>

@@ -248,8 +248,9 @@ SECRETS={'SWEETTRACKER_T_KEY':('택배 조회 키','스마트택배(tracking.swe
          'GOOGLE_CLIENT_SECRET':('구글 로그인 클라이언트 보안 비밀','위 OAuth 클라이언트의 보안 비밀번호'),
          'CAFE24_CLIENT_ID':('카페24 앱 Client ID','카페24 개발자센터(developers.cafe24.com) > 앱 만들기 > 앱 정보의 Client ID. Redirect URI에 기업 주소/connect/cafe24/callback 을 넣어요. 넣으면 사장님 화면의 카페24 연결이 열려요'),
          'CAFE24_CLIENT_SECRET':('카페24 앱 Client Secret','위 앱의 Client Secret Key'),
-         'TOSS_CLIENT_KEY':('토스페이먼츠 클라이언트 키','토스페이먼츠 개발자센터 > API 키의 클라이언트 키 (자동결제용). 시험은 test_ck_, 실제는 live_ck_로 시작해요'),
-         'TOSS_SECRET_KEY':('토스페이먼츠 시크릿 키','위와 같은 곳의 시크릿 키. test_sk_로 시작하면 실제 돈이 나가지 않는 시험 모드예요'),
+         'PORTONE_STORE_ID':('포트원 상점 아이디','포트원 관리자콘솔 > 연동 정보 > 식별코드·API Keys의 상점 아이디 (store-로 시작). 정기결제용'),
+         'PORTONE_CHANNEL_KEY':('포트원 채널 키','포트원 관리자콘솔 > 연동 정보 > 채널 관리에서 정기결제(빌링키) 채널의 채널 키 (channel-key-로 시작). 시험 채널 키로는 실제 돈이 나가지 않아요'),
+         'PORTONE_API_SECRET':('포트원 API 시크릿','포트원 관리자콘솔 > 연동 정보 > 식별코드·API Keys의 V2 API Secret'),
          'NAVER_SITE_VERIFICATION_BIZ':('네이버 서치어드바이저 소유 확인 (기업 사이트)','searchadvisor.naver.com > 사이트 등록 > HTML 태그 방식의 content 값만 넣어요'),
          'GOOGLE_SITE_VERIFICATION_BIZ':('구글 서치 콘솔 소유 확인 (기업 사이트)','search.google.com/search-console > URL 접두어 > HTML 태그 방식의 content 값만 넣어요')}
 def secret(name):
