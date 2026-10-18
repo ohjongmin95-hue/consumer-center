@@ -299,7 +299,7 @@ class PlatformTest(unittest.TestCase):
             return oa(url,'{"category": null, "answer": "네, 있어요.", "handoff": false, "summary": "", "sure": false}')
         with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',nosearch):
             j=me.post(f'/chat/{cid}',data={'csrf':ctok,'text':'보습 크림 있어요?'}).get_json()
-        self.assertEqual(j['answer'],'네, 있어요.');self.assertEqual([u.rsplit('/',1)[1] for u in urls],['completions','responses','completions'])  # 확신이 없을 때만 검색, 검색이 안 되면 검색 없이
+        self.assertEqual(j['answer'],'네, 있어요.');self.assertEqual([u.rsplit('/',1)[1] for u in urls],['completions','completions','responses','completions'])  # 생각 없이 → 낮은 추론 → 확신이 없을 때만 검색, 검색이 안 되면 검색 없이
         # 네이버 검색 키가 있으면 AI가 필요할 때 네이버에서 검색하고, 그 결과를 보고 답한다
         calls=[];got=[]
         def nv_post(url,headers,body,timeout):
@@ -346,16 +346,25 @@ class PlatformTest(unittest.TestCase):
             with patch.dict(os.environ,{'OPENAI_API_KEY':'test'}),patch.object(aim,'post',fake),patch.object(aim,'naver_ready',lambda:False),patch.object(aim,'web_answer',lambda *a,**k:None),\
                  patch.object(cb,'system_prompt',lambda *a:'sys'),patch.object(cb,'law_context',lambda t:('',False)):
                 return cb.answer(None,'',text,meta=meta)
+        # 쉬운 첫 질문은 생각 없이 바로. 운영에서 끄면 낮은 추론
+        sent.clear();a=ask('이 크림 몇 ml예요?');self.assertEqual((a['tier'],[(b['model'],b['reasoning_effort']) for b in sent]),('fast',[('gpt-6-luna','none')]))
+        aim.save_setting('ai_fast','0')
+        sent.clear();self.assertEqual(ask('이 크림 몇 ml예요?')['tier'],'low');self.assertEqual(sent[0]['reasoning_effort'],'low')
+        aim.save_setting('ai_fast','1')
+        # 쉬워 보여도 AI가 확신이 없거나 처리가 필요하다고 하면 낮은 추론으로 다시
+        script[('gpt-6-luna','none')]={'answer':'아마 50ml?','sure':False}
+        sent.clear();a=ask('이 크림 몇 ml예요?');self.assertEqual((a['tier'],[b['reasoning_effort'] for b in sent]),('low',['none','low']))
+        script.clear()
         # 평소 문의·환불 절차는 낮은 추론 (temperature 없이, 생각할 자리를 더 둔다)
-        for q in ('이 크림 몇 ml예요?','환불은 어떻게 신청해요?','교환 방법 알려 주세요'):
+        for q in ('이 크림 사용 방법이 궁금한데 아침 저녁 둘 다 발라도 되나요? 지성 피부라 너무 번들거릴까 봐 걱정이에요. 그리고 선크림 전에 발라야 하는지 후에 발라야 하는지도 알려 주세요. 다른 제품이랑 같이 써도 괜찮을까요?','환불은 어떻게 신청해요?','교환 방법 알려 주세요'):
             sent.clear();a=ask(q);self.assertEqual((a['tier'],[(b['model'],b['reasoning_effort']) for b in sent]),('low',[('gpt-6-luna','low')]),q)
         self.assertNotIn('temperature',sent[0]);self.assertGreater(sent[0]['max_completion_tokens'],900)
         # 분쟁·불량 책임·강한 불만·반복 문의는 높은 추론
         for q in ('환불 거부하시는 거예요? 소비자원에 신고할게요','쓰다가 깨졌는데 불량 아닌가요? 누구 책임이에요?','몇 번째 문의인데 아직도 답이 없네요'):
             sent.clear();self.assertEqual(ask(q)['tier'],'high',q);self.assertEqual(sent[0]['reasoning_effort'],'high')
         # 낱말로 못 잡아도 낮은 추론의 AI가 deep이라고 하면 높은 추론으로 다시 묻는다
-        script[('gpt-6-luna','low')]={'answer':'확인할게요.','deep':True}
-        sent.clear();self.assertEqual(ask('세탁기 돌렸더니 이렇게 됐어요')['tier'],'high');self.assertEqual([b['reasoning_effort'] for b in sent],['low','high'])
+        script[('gpt-6-luna','none')]=script[('gpt-6-luna','low')]={'answer':'확인할게요.','deep':True}
+        sent.clear();self.assertEqual(ask('세탁기 돌렸더니 이렇게 됐어요')['tier'],'high');self.assertEqual([b['reasoning_effort'] for b in sent],['none','low','high'])
         script.clear()
         # Sol: 꺼져 있으면 안 부르고, 켜면 높은 추론이 확신 없을 때만
         script[('gpt-6-luna','high')]={'answer':'아마도요.','sure':False}
@@ -371,17 +380,18 @@ class PlatformTest(unittest.TestCase):
         # 기록: 모델·추론·토큰·비용·결과
         meta={'company_id':None,'purpose':'chat'};ask('이거 얼마예요?',meta);aim.outcome(meta,'answered')
         with self.core.conn() as db:r=db.execute('SELECT * FROM ai_calls WHERE req=?',(meta['req'],)).fetchone()
-        self.assertEqual((r['model'],r['effort'],r['in_tok'],r['cached_tok'],r['out_tok'],r['reason_tok'],r['outcome']),('gpt-6-luna','low',1000,200,300,100,'answered'))
+        self.assertEqual((r['model'],r['effort'],r['in_tok'],r['cached_tok'],r['out_tok'],r['reason_tok'],r['outcome']),('gpt-6-luna','none',1000,200,300,100,'answered'))  # 쉬운 질문
         self.assertAlmostEqual(r['cost'],(800*0.10+200*0.01+300*0.50)/1e6)
-        rep={g['key']:g for g in aim.report()};self.assertGreaterEqual(rep['low']['n'],1);self.assertGreaterEqual(rep['high']['n'],1)
+        rep={g['key']:g for g in aim.report()};self.assertGreaterEqual(rep['fast']['n'],1);self.assertGreaterEqual(rep['low']['n'],1);self.assertGreaterEqual(rep['high']['n'],1)
         # 환불·보상을 약속하는 답은 약속으로 보고(사장님 승인), 절차 안내는 아니다
         self.assertTrue(cb.promises('바로 환불해 드릴게요.'));self.assertTrue(cb.promises('보상으로 적립금 지급 처리했어요'))
         self.assertFalse(cb.promises('환불 방법을 안내해 드릴게요.'));self.assertFalse(cb.promises('교환은 마이페이지에서 신청하실 수 있어요.'))
         # 운영 화면: 설정·비교가 보인다
         o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
         page=o.get('/biz/ops/ai').get_data(as_text=True);self.assertIn('최근 30일 비교',page);self.assertIn('고추론 Luna',page)
-        self.post(o,'/biz/ops/ai',{'sol':'1'});self.assertEqual(aim.plan(),{'model':'gpt-6-luna','sol':True})
-        self.post(o,'/biz/ops/ai',{});self.assertFalse(aim.plan()['sol'])
+        self.assertIn('쉬운 문의는 생각 없이 바로 답하기',page);self.assertIn('빠른 Luna',page)
+        self.post(o,'/biz/ops/ai',{'sol':'1'});self.assertEqual(aim.plan(),{'model':'gpt-6-luna','sol':True,'fast':False})
+        self.post(o,'/biz/ops/ai',{'fast':'1'});self.assertEqual(aim.plan(),{'model':'gpt-6-luna','sol':False,'fast':True})
         # 같은 질문으로 비교: 예전 모델·Luna 낮은·높은 추론에 샘플 질문을 보내고 채점해 나란히 남긴다
         bench=sys.modules['aibench']
         def bfake(url,headers,body,timeout):
@@ -2687,7 +2697,7 @@ class PlatformTest(unittest.TestCase):
             webs.append(k.get('web'));return '{"answer":"네","sure":%s}'%('true' if k.get('web') else 'false')
         with patch.object(aim,'ready',lambda:True),patch.object(aim,'chat',fake_chat):
             r=bot.answer({'id':cid,'name':'x','tone':'polite'},'','선크림 몇 ml예요?')
-        self.assertEqual((webs,r['answer']),([False,True],'네'))
+        self.assertEqual((webs,r['answer']),([False,False,True],'네'))  # 쉬운 문의(생각 없이) → 낮은 추론 → 검색
 
     def test_chat_inbox(self):
         """상담 화면: 대화방 목록(결정 필요 표시), 대화 열기(확인 처리), 새 말 받기, 대화방에서 답·메모, 남의 대화방은 못 연다."""

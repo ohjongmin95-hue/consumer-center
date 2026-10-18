@@ -7,13 +7,14 @@ import base64, html, json, logging, os, re, time, uuid, urllib.error, urllib.par
 import core
 
 LOG=logging.getLogger(__name__)
-# 모델: 기본은 GPT-6 Luna. 평소 문의는 낮은 추론(low), 어려운 문의(tier='high')는 같은 Luna의 높은 추론(high).
+# 모델: 기본은 GPT-6 Luna. 쉬운 문의(tier='fast')는 생각 없이(none), 평소 문의는 낮은 추론(low), 어려운 문의(tier='high')는 같은 Luna의 높은 추론(high).
+# 쉬운 문의를 생각 없이 답하는 것은 운영 화면에서 끌 수 있다 (settings: ai_fast, 기본 켬). 답이 늦다는 운영자 요청 2026-10-18.
 # Luna 높은 추론으로도 안 되면(실패·확신 없음) 운영 화면에서 켠 경우에만 GPT-6.1 Sol (settings: ai_sol). 예전 gpt-4.1-mini는 쓰지 않는다.
 # 모두 실패하면 None: 부른 쪽이 기본 안내로 답하거나 사장님 승인 목록으로 넘긴다.
 LUNA='gpt-6-luna';SOL='gpt-6.1-sol'
 OPENAI_MODEL=LUNA
 PRICES={'gpt-6-luna':(0.10,0.01,0.50),'gpt-6.1-sol':(2.00,0.10,10.00),'gpt-6-sol':(2.00,0.10,10.00),'gpt-4.1-mini':(0.40,0.10,1.60),'gpt-4.1':(2.00,0.50,8.00)}  # 100만 토큰당 달러 (입력, 캐시 입력, 출력). OpenAI 가격표 2026-10
-EFFORTS={'low':'low','high':'high','sol':'high'}
+EFFORTS={'fast':'none','low':'low','high':'high','sol':'high'}
 ANTHROPIC_MODEL=os.getenv('CHAT_MODEL','claude-haiku-5-5')
 VENDORS={'openai':dict(name='OpenAI, L.L.C.',contact='OpenAI, L.L.C. (미국, privacy@openai.com)',train='OpenAI는 API로 받은 내용을 기본적으로 AI 학습에 쓰지 않아요.',keep='답변을 만든 뒤 OpenAI의 보관 정책(최대 30일)에 따라 삭제'),
          'anthropic':dict(name='Anthropic, PBC',contact='Anthropic, PBC (미국, privacy@anthropic.com)',train='Anthropic은 받은 내용을 AI 학습에 쓰지 않아요.',keep='답변을 만든 뒤 Anthropic의 보관 정책에 따라 삭제')}
@@ -33,8 +34,8 @@ def setting(key):
 def save_setting(key,value):
     with core.conn() as db:db.execute('INSERT INTO settings(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,core.iso()))
 def plan():
-    """{'model': 상담 모델, 'sol': Sol 자동 호출}"""
-    return {'model':LUNA,'sol':setting('ai_sol')=='1'}
+    """{'model': 상담 모델, 'sol': Sol 자동 호출, 'fast': 쉬운 문의는 생각 없이 바로}"""
+    return {'model':LUNA,'sol':setting('ai_sol')=='1','fast':setting('ai_fast')!='0'}
 def thinks(model):
     """생각하는 모델(gpt-5 이후, o 시리즈): temperature를 받지 않고, 생각에 쓰는 토큰까지 출력 한도에 든다."""
     return bool(re.match(r'(gpt-([5-9]|\d\d)|o\d)',model or ''))
@@ -158,6 +159,7 @@ def ladder(company_id,tier):
     pl=plan();out=[]
     if tier=='sol' and pl['sol']:out.append((SOL,'high'))
     out.append((LUNA,EFFORTS.get(tier,'low')))
+    if tier=='fast':out.append((LUNA,'low'))  # 생각 없이 답하기가 실패하면 낮은 추론으로
     if tier=='high' and pl['sol']:out.append((SOL,'high'))  # Luna 높은 추론이 실패하면 (켠 경우에만) Sol
     return out
 
@@ -224,11 +226,12 @@ def chat_json(system,messages,**kw):
     return parse_json(chat(system,messages,json_mode=True,**kw))
 
 # ---------- 운영 > AI 모델: 비교 보고서와 연결 시험 ----------
-GROUPS=[('low','일반 Luna (낮은 추론)'),('high','고추론 Luna'),('sol','GPT-6.1 Sol'),('old','예전 모델')]
+GROUPS=[('fast','빠른 Luna (생각 없이)'),('low','일반 Luna (낮은 추론)'),('high','고추론 Luna'),('sol','GPT-6.1 Sol'),('old','예전 모델')]
 SOLVED=('sent','answered');UNSOLVED=('handoff','action','followup','failed')  # action: AI가 안내는 보냈지만 처리 결정은 사장님이 함
 def group_of(r):
     if r['model']==SOL:return 'sol'
     if not thinks(r['model']):return 'old'
+    if r['tier']=='fast' and r['effort']=='none':return 'fast'
     return 'high' if r['effort'] in ('high','xhigh','max') else 'low'
 def report(days=30):
     """요청(req)마다 마지막으로 답한 모델·추론 수준으로 묶어 요청 수·응답시간·토큰·비용·해결률을 센다. 비용·시간은 실패한 앞 시도까지 더한다."""
@@ -242,7 +245,7 @@ def report(days=30):
         last=([r for r in rs if r['ok']] or rs)[-1];g=out[group_of(last)]
         g['n']+=1;g['ms']+=sum(r['ms'] for r in rs);g['in_tok']+=sum(r['in_tok'] for r in rs);g['out_tok']+=sum(r['out_tok'] for r in rs)
         g['reason_tok']+=sum(r['reason_tok'] for r in rs);g['cost']+=sum(r['cost'] or 0 for r in rs)
-        if last['tier']!='low' and any(r['tier']=='low' for r in rs):g['up']+=1  # 낮은 추론에서 AI가 올려 보낸 요청
+        if last['tier'] not in ('fast','low') and any(r['tier'] in ('fast','low') for r in rs) or (last['tier']=='low' and any(r['tier']=='fast' for r in rs)):g['up']+=1  # 낮은 단계에서 AI가 올려 보낸 요청
         if last['outcome'] in SOLVED:g['solved']+=1;g['judged']+=1
         elif last['outcome'] in UNSOLVED:g['judged']+=1
     for g in out.values():
