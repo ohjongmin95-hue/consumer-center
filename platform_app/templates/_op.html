@@ -1,2 +1,2 @@
 {# 사업자 정보 (푸터): 두 줄, "항목. 값" #}
-{% macro opinfo() %}<div class="opinfo"><ul><li>상호. {{ OPERATOR.name }}</li><li>소재지. {{ OPERATOR.address }}</li></ul><ul><li>사업자등록번호. {{ OPERATOR.biz_no }}</li><li>관리자. {{ OPERATOR.manager }}</li></ul></div>{% endmacro %}
+{% macro opinfo() %}<div class="opinfo"><ul><li>상호. {{ OPERATOR.name }}</li><li>대표자. {{ OPERATOR.ceo }}</li><li>소재지. {{ OPERATOR.address }}</li></ul><ul><li>사업자등록번호. {{ OPERATOR.biz_no }}</li>{% if OPERATOR.mail_order %}<li>통신판매업 신고번호. {{ OPERATOR.mail_order }}</li>{% endif %}<li>전화. {{ OPERATOR.phone }}</li><li>관리자. {{ OPERATOR.manager }}</li></ul></div>{% endmacro %}

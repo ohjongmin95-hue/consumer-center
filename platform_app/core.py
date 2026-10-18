@@ -23,7 +23,7 @@ CNAME=os.getenv('CONSUMER_NAME','소보루 CS')  # 소비자 서비스 이름 (�
 BNAME=os.getenv('BUSINESS_NAME','소보루 CS')
 COPY_SITES={'me':'고객센터','biz':'기업용','all':'두 곳 모두'}  # 문구 고치기 적용 범위  # 기업 서비스 이름
 # 개인정보 처리방침에 적는 운영 주체 (개인정보 보호법 제30조). 보호책임자는 대표자 (같은 법 제31조, 시행령 제32조제2항제2호가목)
-OPERATOR={'name':'소보루','ceo':'오규섭','biz_no':'129-14-81596','address':'서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)','manager':'오민주'}
+OPERATOR={'name':'소보루','ceo':'오규섭','biz_no':'129-14-81596','address':'서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)','manager':'오민주','phone':'010-5531-4247','mail_order':''}  # mail_order: 통신판매업 신고번호 (신고하면 넣는다, 비어 있으면 안 보임)
 PRIVACY_SINCE='2026년 10월 12일'
 TERMS_SINCE='2026년 10월 13일'  # 소보루 CS 기업 회원 이용약관 시행일
 REFUND_SINCE='2026년 10월 18일'  # 환불 정책 시행일
