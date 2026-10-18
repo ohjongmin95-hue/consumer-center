@@ -113,6 +113,15 @@ export type AlertPrefs = Record<string, { push: number; email: number }>;
 export type BizAlert = { id: number; kind: string; title: string; body: string; case_id: number | null; created: string; new: boolean };
 export type Alerts = { items: BizAlert[]; prefs: AlertPrefs; kinds: AlertKind[]; message?: string };
 
+// 상담 탭 (웹 상담방과 같은 목록·대화·결정 카드)
+export type ChatRow = { id: number; name: string; channel: string; mark: [string, string]; text: string; who: 'me' | 'co'; when: string; need: boolean; ai: string; unread: boolean; cat: string };
+export type ChatList = { rows: ChatRow[]; counts: Record<string, number>; tabs: { key: string; label: string }[] };
+export type ChatMsg = { id: number; who: 'me' | 'ai' | 'co' | 'sys' | 'note'; by: string; text: string; at: string; ts: string; tmp?: boolean };
+export type ChatRoom = {
+  id: number; no: string; name: string; channel: string; category: string; status: string; status_label: string;
+  need: boolean; why: string; draft: string; decision: string; can_reply: boolean; send_via: string; last: number; msgs: ChatMsg[]; message?: string;
+};
+
 export class ApiError extends Error {
   constructor(message: string, public status = 0) {
     super(message);
@@ -171,6 +180,9 @@ export const api = {
   saveMacro: (t: string, f: { id?: number; name?: string; body?: string; tags?: string; act?: 'delete' }) => call<Macros>('/api/v1/macros', json(f), t),
   alerts: (t: string) => call<Alerts>('/api/v1/alerts', {}, t),
   saveAlerts: (t: string, f: Record<string, string | boolean>) => call<Alerts>('/api/v1/alerts', json({ act: 'prefs', ...f }), t),
+  chatList: (t: string, tab: string, q = '') => call<ChatList>(`/api/v1/chat?t=${tab}&q=${encodeURIComponent(q)}`, {}, t),
+  chat: (t: string, id: number, after = 0) => call<ChatRoom>(`/api/v1/chat/${id}?after=${after}`, {}, t),
+  chatAct: (t: string, id: number, f: { text?: string; act?: 'reply' | 'approve' | 'hold' | 'note' }) => call<ChatRoom>('/api/v1/chat/' + id, json(f), t),
   leave: (t: string, password: string) => call<{ ok: boolean; message: string }>('/api/v1/leave', json({ password }), t),
 };
 

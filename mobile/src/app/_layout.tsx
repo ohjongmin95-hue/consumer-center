@@ -48,12 +48,12 @@ function Intro() {
 }
 
 export default function RootLayout() {
-  // 알림을 누르면 그 요청 화면으로
+  // 알림을 누르면 그 상담 대화방으로
   useEffect(() => {
     if (!Notifications) return;
     const sub = Notifications.addNotificationResponseReceivedListener((r) => {
       const id = (r.notification.request.content.data as { case_id?: number } | undefined)?.case_id;
-      router.push(id ? `/case/${id}` : '/alerts'); // 연결 끊김처럼 요청이 없는 알림은 알림 화면으로
+      router.push(id ? `/chat/${id}` : '/alerts'); // 연결 끊김처럼 요청이 없는 알림은 알림 화면으로
     });
     return () => sub.remove();
   }, []);
@@ -73,6 +73,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false, contentStyle: { backgroundColor: C.card } }} />
+          <Stack.Screen name="chat/[id]" options={{ title: '상담' }} />
           <Stack.Screen name="case/[id]" options={{ title: '요청 처리' }} />
           <Stack.Screen name="order/[id]" options={{ title: '주문' }} />
           <Stack.Screen name="signup" options={{ title: '가입 신청', headerStyle: { backgroundColor: C.band } }} />

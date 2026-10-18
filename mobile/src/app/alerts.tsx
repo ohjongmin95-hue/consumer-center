@@ -22,7 +22,7 @@ export default function AlertsScreen() {
           data.items.map((a, i) => (
             <Pressable
               key={a.id}
-              onPress={() => (a.case_id ? router.push(`/case/${a.case_id}`) : undefined)}
+              onPress={() => (a.case_id ? router.push(`/chat/${a.case_id}`) : undefined)}
               style={({ pressed }) => [st.row, i > 0 && st.line, pressed && a.case_id ? { opacity: 0.6 } : null]}
             >
               <View style={[st.dot, a.new && { backgroundColor: C.accent }]} />

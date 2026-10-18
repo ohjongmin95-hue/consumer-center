@@ -2715,6 +2715,32 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(b2.get(f'/biz/chat/{case}').status_code,404)
         self.assertEqual(b2.get('/biz/chat/list.json').get_json()['rows'],[])
 
+    def test_app_chat_api(self):
+        """앱 상담 탭: 대화방 목록·대화·새 말만 받기, 답 보내기, 결정 카드 승인(답이 고객에게 감), 메모, 남의 대화방은 못 연다."""
+        b,o,cid=self.signup_and_approve('앱상담상점','appchat@example.com')
+        a=self.client();tok=a.post('/biz/api/v1/login',json={'login_id':'appchat@example.com','password':'longpassword1'}).get_json()['token'];auth={'Authorization':'Bearer '+tok}
+        with self.core.conn() as db:
+            co=self.core.company(db,cid);t=self.core.iso()
+            case=db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel,ai_why,ai_draft)
+                VALUES(?,?,?,1,'반품·환불','반품하고 싶어요','반품하고 싶어요','환불','','이고객','','','x',1,'forwarded','pending','2099-01-01 00:00:00',?,?,'','','','반품 승인 필요','반품 접수해 드릴게요.')""",(self.core.new_case_no(db),cid,co['name'],t,t)).lastrowid
+        self.assertEqual(a.get('/biz/api/v1/chat').status_code,401)
+        j=a.get('/biz/api/v1/chat',headers=auth).get_json()
+        self.assertEqual([(r['id'],r['need']) for r in j['rows']],[(case,True)]);self.assertEqual(j['counts']['open'],1);self.assertEqual(j['tabs'][0]['label'],'진행 중')
+        d=a.get(f'/biz/api/v1/chat/{case}',headers=auth).get_json()
+        self.assertEqual((d['status'],d['need'],d['draft'],d['why']),('seen',True,'반품 접수해 드릴게요.','반품 승인 필요'))
+        self.assertEqual(d['msgs'][0]['text'],'반품하고 싶어요');last=d['last']
+        d=a.post(f'/biz/api/v1/chat/{case}',headers=auth,json={'text':'주문번호 알려 주시겠어요?','after':last}).get_json()
+        self.assertEqual([(m['who'],m['text']) for m in d['msgs'] if m['who']=='co'],[('co','주문번호 알려 주시겠어요?')])
+        self.assertEqual(a.post(f'/biz/api/v1/chat/{case}',headers=auth,json={'text':''}).status_code,400)
+        self.assertEqual(a.post(f'/biz/api/v1/chat/{case}',headers=auth,json={'act':'delete'}).status_code,400)
+        d=a.post(f'/biz/api/v1/chat/{case}',headers=auth,json={'act':'approve'}).get_json()
+        self.assertFalse(d['need']);self.assertEqual(d['status'],'answered');self.assertTrue(any(m['who']=='co' and '반품 접수' in m['text'] for m in d['msgs']))
+        d=a.post(f'/biz/api/v1/chat/{case}',headers=auth,json={'act':'note','text':'내일 회수'}).get_json()
+        self.assertIn(('note','내일 회수'),[(m['who'],m['text']) for m in d['msgs']])
+        b2,_,_=self.signup_and_approve('남의앱상점','appchat2@example.com')
+        t2=a.post('/biz/api/v1/login',json={'login_id':'appchat2@example.com','password':'longpassword1'}).get_json()['token']
+        self.assertEqual(a.get(f'/biz/api/v1/chat/{case}',headers={'Authorization':'Bearer '+t2}).status_code,404)
+
     def test_instagram_dm(self):
         """인스타그램 DM: 키가 없으면 연동 대기, 로그인으로 잇고, 서명 맞는 웹훅만 받고, 같은 고객은 이어 붙고, 답장은 눌러야 간다."""
         import instagram, hmac as _h, hashlib, json as _j, urllib.parse as up
