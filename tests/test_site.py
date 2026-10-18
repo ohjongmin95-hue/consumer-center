@@ -1332,10 +1332,12 @@ class SiteTest(unittest.TestCase):
         admin = self.login_admin()
         admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'seo',
             'seo.naver_verification': '<meta name="naver-site-verification" content="abc123naver" />',
-            'seo.google_verification': 'goog-XYZ_789', 'seo.daum_robots': 'DaumWebMasterTool:pin:id'})
+            'seo.google_verification': 'goog-XYZ_789', 'seo.daum_robots': 'DaumWebMasterTool:pin:id',
+            'seo.facebook_verification': '<meta name="facebook-domain-verification" content="fbdv123abc" />'})
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('<meta name="naver-site-verification" content="abc123naver">', home)
         self.assertIn('<meta name="google-site-verification" content="goog-XYZ_789">', home)
+        self.assertIn('<meta name="facebook-domain-verification" content="fbdv123abc">', home)
         self.assertTrue(self.client.get('/robots.txt').get_data(as_text=True).startswith('#DaumWebMasterTool:pin:id'))
         self.assertIn('noindex', admin.get('/admin').get_data(as_text=True))
         # 네이버 RSS 제출용 피드와 채널 정보 마크업

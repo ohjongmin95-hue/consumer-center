@@ -178,7 +178,7 @@ def install(S):
             return redirect('https://' + S.main_host() + request.full_path.rstrip('?'), 301)
         if jebo_face:
             for key, jkey in JEBO_KEYS.items(): g.content[key] = g.content.get(jkey) or OLD_NAME
-            for key in ('seo.naver_verification', 'seo.google_verification'):  # 검색엔진 소유확인은 주소마다 따로
+            for key in ('seo.naver_verification', 'seo.google_verification', 'seo.facebook_verification'):  # 검색엔진 소유확인은 주소마다 따로
                 g.content[key] = g.content.get(key.replace('seo.', 'jebo.'), '')
             return
         for k, v in g.content.items():  # 예전에 저장해 둔 문구 속 옛 이름도 소보루로
