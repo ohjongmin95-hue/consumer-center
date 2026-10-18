@@ -105,8 +105,8 @@ def parse(raw):
                           or str(msg.get('Auto-Submitted') or 'no').lower()!='no'))
 
 # ---------- 가져오기 ----------
-def _take(db,co,own,m):
-    """메일 하나 -> 새 요청 또는 이어 붙이기. -> 새 요청 row 또는 None"""
+def _take(db,co,own,m,since=''):
+    """메일 하나 -> 새 요청 또는 이어 붙이기. -> 새 요청 row 또는 None. since: 메일함을 이은 때 (그 전에 받은 메일엔 AI가 초안만 쓰고 보내지 않는다)"""
     if not m['msgid'] or not m['addr'] or '@' not in m['addr']:return None
     if m['bulk'] or SKIP_FROM.search(m['addr'].partition('@')[0]) or m['addr']==own:return None
     if db.execute('SELECT 1 FROM shop_seen WHERE company_id=? AND shop=? AND ext_id=?',(co['id'],SHOP,m['msgid'])).fetchone():return None
@@ -131,6 +131,8 @@ def _take(db,co,own,m):
     cid=db.execute('''INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
         VALUES(?,?,?,1,?,?,?,?,'',?,'',?,?,1,'forwarded',?,?,?,?,'','',?)''',(core.new_case_no(db),co['id'],co['name'],cat,title,body,core.WANT_OF.get(cat,'기타'),
         clean(m['name'],20),clean(m['addr'],120),generate_password_hash(secrets.token_hex(16)),'ai' if chatbot.auto_on(co) else 'pending',due,t,t,CHANNEL)).lastrowid  # AI 자동 답변을 켰으면 AI가 먼저 본다
+    if since and m['at'] and core.iso(m['at'].astimezone().replace(tzinfo=None,microsecond=0))<since:  # 잇기 전에 받은 메일: 이미 답했을 수도 있어 AI가 바로 보내지 않는다
+        db.execute("UPDATE cases SET ai_hold='1' WHERE id=?",(cid,))
     core.add_event(db,cid,'sys','이메일 문의를 가져왔어요'+(f" ({m['at'].strftime('%m.%d %H:%M')} 받음)" if m['at'] else ''))
     db.execute('INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)',(co['id'],SHOP,m['msgid'],cid))
     c=db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
@@ -156,7 +158,7 @@ def sync(co):
     new=[];last=lk['last_uid'] if uv==lk['uidvalidity'] else 0
     with conn() as db:
         for uid,raw in raws:
-            try:c=_take(db,co,lk['address'],parse(raw))
+            try:c=_take(db,co,lk['address'],parse(raw),lk['created'])
             except Exception:traceback.print_exc();c=None  # 이상한 메일 하나 때문에 멈추지 않는다
             if c:new.append(c)
             last=max(last,uid)

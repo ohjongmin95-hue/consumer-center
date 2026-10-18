@@ -19,7 +19,7 @@
 {%- endmacro %}
 {# 사장님 메뉴: 넓은 화면은 왼쪽 세로 메뉴(bside), 좁은 화면은 위쪽 가로 메뉴 #}
 {% macro menu(tab,side=False) -%}
-{% for key,ep,label,ic in [('home','decide','홈','inbox'),('all','all_cases','요청','list'),('approve','approvals','승인할 일','approve'),('orders','orders_page','주문·배송','truck'),('returns','returns','교환·반품','exchange'),('rules','rules','자동 처리','bolt'),('macros','macros','답변 템플릿','note'),('automations','automations_page','자동화 규칙','flow'),('stats','stats','통계','chart'),('guide','guide','응대 가이드','guide'),('connect','connect','서비스 연동','gear'),('team','team_page','팀','user')] if (key not in ('rules','macros','automations','connect','team') or can('manage')) %}
+{% for key,ep,label,ic in [('home','decide','홈','inbox'),('all','all_cases','요청','list'),('approve','approvals','승인할 일','approve'),('orders','orders_page','주문·배송','truck'),('returns','returns','교환·반품','exchange'),('products','products','상품','box'),('rules','rules','자동 처리','bolt'),('macros','macros','답변 템플릿','note'),('automations','automations_page','자동화 규칙','flow'),('stats','stats','통계','chart'),('guide','guide','응대 가이드','guide'),('connect','connect','서비스 연동','gear'),('team','team_page','팀','user')] if (key not in ('products','rules','macros','automations','connect','team') or can('manage')) %}
 <a href="{{ url_for(ep) }}" class="{{ 'on' if tab==key }}">{% if side %}{{ i.icon(ic,22) }}{% endif %}<span>{{ label }}</span>{% if key=='approve' and n_pending %}<span class="cnt">{{ n_pending }}</span>{% endif %}</a>{% endfor %}
 {%- endmacro %}
 {% macro obar(tab,n_signup) -%}
@@ -46,7 +46,8 @@
 {% set p=PLAYBOOK.get(c.category,PLAYBOOK['기타']) %}
 <article class="dcard">
 {% if not detail %}<a class="body" href="{{ url_for('case',case_id=c.id) }}"><div class="meta">{{ i.cat_icon(c.category,20) }}<span>{{ c.category }}</span><span class="sp"></span>{% if overdue(c) %}<span class="t-bad">기한 지남</span>{% elif c.due %}<span>{{ fmt_day(c.due) }}까지</span>{% endif %}</div><div class="tt">{{ c.title }}</div><div class="want">원하는 해결 {{ c.want }}</div>{{ law_chip(c) }}</a>{% endif %}
-<div class="reco"><div class="l">처리 방법</div><div class="r">{{ p.title }}</div></div>
+{% if c.ai_why %}<div class="reco"><div class="l">AI가 넘긴 이유</div><div class="r">{{ c.ai_why }}</div></div>{% endif %}
+{% if c.ai_draft %}<div class="reco"><div class="l">승인하면 보낼 답</div><div class="r" style="white-space:pre-line">{{ c.ai_draft }}</div></div>{% else %}<div class="reco"><div class="l">처리 방법</div><div class="r">{{ p.title }}</div></div>{% endif %}
 <form method="post" action="{{ url_for('case',case_id=c.id) }}" class="dact"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 {% if can('decide') %}<button class="btn md" name="act" value="approve">승인</button>{% endif %}<button class="btn md gray" name="act" value="hold">보류</button><button class="btn md gray" name="act" value="ask">자료 요청</button></form>
 </article>

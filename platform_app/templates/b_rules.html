@@ -40,32 +40,7 @@
 <textarea class="inp" name="{{ k }}" maxlength="3000" aria-label="{{ label }}" placeholder="{{ PROFILE_HINT[k] }}">{{ prof[k] }}</textarea><button class="btn md gray">저장</button></form></details></div>
 {% endfor %}</div>
 
-<div class="phead" id="products"><div><h2>상품정보</h2><p>상품 가격·재고·사용법을 적어 두면 상담창에서 상품 문의에 바로 답합니다{% if not ai %} (AI 상담이 켜지면 사용돼요){% endif %}</p></div></div>
-{% set n_c24=products|selectattr('src','equalto','cafe24')|list|length %}{% if n_c24 %}<p class="t-sub" style="margin:0 0 10px">카페24에서 가져온 상품 {{ n_c24 }}개 · 이름·가격·품절은 6시간마다 카페24 기준으로 바뀌어요. 안내는 고치면 다음에 가져와도 그대로 둬요. <a class="link" href="{{ url_for('c24.page') }}">카페24 연결</a></p>{% endif %}
-<div class="list prod-list">{% for p in products %}
-<div class="li"><details><summary><span class="prow">{% if p.image %}<img src="{{ p.image }}" alt="" width="36" height="36" loading="lazy">{% endif %}<span>{{ p.name }}{% if p.price %} · {{ p.price }}{% endif %}{% if p.stock=='품절' %} · 품절{% endif %}</span>{% if p.src=='cafe24' %}<span class="pill gray">카페24</span>{% endif %}</span><span class="chev"></span></summary>
-<form method="post" class="prod" action="{{ url_for('products') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ p.id }}">
-{% if p.src=='cafe24' %}<p class="t-sub" style="margin:0">카페24 상품번호 {{ p.ext_id }}{% if p.url %} · <a class="link" href="{{ p.url }}" target="_blank" rel="noopener">쇼핑몰에서 보기</a>{% endif %}{% if p.info!=p.src_info %} · 안내를 고쳐 두셨어요 (카페24에서 다시 가져와도 그대로){% endif %}</p>{% endif %}
-<input class="inp" name="name" maxlength="60" value="{{ p.name }}" placeholder="상품 이름" aria-label="상품 이름"><input class="inp" name="price" maxlength="30" value="{{ p.price }}" placeholder="가격 (예: 29,000원)" aria-label="가격">
-<select class="inp" name="stock" aria-label="재고">{% for k,v in STOCKS.items() %}<option value="{{ k }}" {{ 'selected' if p.stock==k }}>{{ v }}</option>{% endfor %}</select>
-<textarea class="inp" name="info" maxlength="2000" placeholder="사용법, 사이즈, 주의사항 등" aria-label="상품 안내">{{ p.info }}</textarea>
-<label class="t-sub" for="pv{{ p.id }}">내부 정보 (공급가·마진 등 · 고객 상담에는 쓰이지 않아요)</label>
-<textarea class="inp" id="pv{{ p.id }}" name="private" maxlength="1000" placeholder="예: 공급가 12,000원" style="min-height:60px">{{ priv.get(p.id,'') }}</textarea>
-<button class="btn md gray">저장</button>{% if p.src=='cafe24' and p.src_info and p.info!=p.src_info %} <button class="btn md gray" name="act" value="revert">카페24 내용으로 되돌리기</button>{% endif %} <button class="btn md gray" name="act" value="delete">삭제</button></form></details></div>
-{% endfor %}
-<div class="li"><details{{ ' open' if not products }}><summary><span>상품 추가</span><span class="chev"></span></summary>
-<form method="post" class="prod" action="{{ url_for('products') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
-<input class="inp" name="name" maxlength="60" placeholder="상품 이름" aria-label="상품 이름" required><input class="inp" name="price" maxlength="30" placeholder="가격 (예: 29,000원)" aria-label="가격">
-<select class="inp" name="stock" aria-label="재고">{% for k,v in STOCKS.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
-<textarea class="inp" name="info" maxlength="2000" placeholder="사용법, 사이즈, 주의사항 등" aria-label="상품 안내"></textarea>
-<button class="btn md gray">추가</button></form></details></div>
-<div class="li"><details><summary><span>상품소개서 PDF로 올리기</span><span class="chev"></span></summary>
-<form method="post" class="prod" action="{{ url_for('products_pdf') }}" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
-<p class="t-sub">상품소개서 PDF를 올리면 AI가 상품을 하나씩 찾아 정리해요. 등록하기 전에 확인하고 고칠 수 있어요. 공급가·마진 같은 내부 정보는 따로 저장하고 고객 상담에는 쓰지 않아요.</p>
-<input class="inp" type="file" name="file" accept=".pdf,application/pdf" aria-label="PDF 파일"><button class="btn md gray">올리기</button></form></details></div>
-<div class="li"><details><summary><span>엑셀로 한꺼번에 올리기</span><span class="chev"></span></summary>
-<form method="post" class="prod" action="{{ url_for('products') }}" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="csv">
-<p class="t-sub">첫 줄에 상품명, 가격, 재고, 안내 칸을 두고 엑셀에서 'CSV(쉼표로 분리)'로 저장해 올려 주세요. 이름이 같은 상품은 새 내용으로 바뀝니다.</p>
-<input class="inp" type="file" name="file" accept=".csv,text/csv" aria-label="CSV 파일"><button class="btn md gray">올리기</button></form></details></div>
-</div></div>
+<div class="phead" id="products"><div><h2>상품정보</h2><p>AI는 상품 페이지에 정리된 이름·가격·재고·안내를 보고 상품 문의에 답해요{% if not ai %} (AI 상담이 켜지면 사용돼요){% endif %}</p></div></div>
+<p style="margin:0 0 24px"><a class="btn md gray" href="{{ url_for('products') }}">상품 {{ products|length }}개 보기·고치기</a></p>
+</div>
 {% endblock %}

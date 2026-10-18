@@ -1,9 +1,9 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
 {% block title %}PDF 상품 등록 · {{ BNAME }}{% endblock %}
-{% block bar %}{{ b.bar('rules') }}{% endblock %}
+{% block bar %}{{ b.bar('products') }}{% endblock %}
 {% block head %}{% if j.status=='running' %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
 {% block body %}
-<div class="crumb"><a href="{{ url_for('rules') }}#products">상품정보</a><span>›</span><span>PDF로 올리기</span></div>
+<div class="crumb"><a href="{{ url_for('products') }}">상품</a><span>›</span><span>PDF로 올리기</span></div>
 <div class="chead"><div class="l"><div class="tagrow">{% if j.status=='running' %}<span class="pill acc">읽는 중</span>{% elif j.status=='ready' %}<span class="pill ok">확인해 주세요</span>{% elif j.status=='done' %}<span class="pill gray">등록 끝</span>{% else %}<span class="pill bad">실패</span>{% endif %}</div>
 <h1>{{ j.filename or '상품소개서' }}</h1></div></div>
 {% if j.status=='running' %}
@@ -11,9 +11,9 @@
 <p class="sub" style="font-size:15px;margin:0">상품이 많으면 1~2분 걸려요. 이 화면은 저절로 새로고침돼요.</p></section>
 {% elif j.status=='error' %}
 <section class="panel"><div class="ph">상품을 읽지 못했어요</div>
-<p class="sub" style="font-size:15px;margin:0 0 12px">{{ j.error }}</p><a class="btn md gray" href="{{ url_for('rules') }}#products">돌아가기</a></section>
+<p class="sub" style="font-size:15px;margin:0 0 12px">{{ j.error }}</p><a class="btn md gray" href="{{ url_for('products') }}">돌아가기</a></section>
 {% elif j.status=='done' %}
-<section class="panel"><p class="sub" style="font-size:15px;margin:0 0 12px">이미 등록을 마쳤어요.</p><a class="btn md gray" href="{{ url_for('rules') }}#products">상품정보 보기</a></section>
+<section class="panel"><p class="sub" style="font-size:15px;margin:0 0 12px">이미 등록을 마쳤어요.</p><a class="btn md gray" href="{{ url_for('products') }}">상품 보기</a></section>
 {% else %}
 <form method="post" class="stack"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <section class="panel"><div class="ph">상품 {{ j['items']|length }}개를 찾았어요</div>
@@ -30,7 +30,7 @@
 {% if it.internal %}<div class="private"><span class="cap">내부 정보 · 상담에 쓰이지 않아요</span>
 <dl class="kv">{% for k,label in INTERNAL %}{% if it.internal.get(k) %}<dt>{{ label }}</dt><dd>{{ it.internal[k] }}</dd>{% endif %}{% endfor %}</dl></div>{% endif %}
 </section>{% endfor %}
-<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn md">고른 상품 등록</button><a class="btn md gray" href="{{ url_for('rules') }}#products">취소</a></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn md">고른 상품 등록</button><a class="btn md gray" href="{{ url_for('products') }}">취소</a></div>
 </form>
 {% endif %}
 {% endblock %}

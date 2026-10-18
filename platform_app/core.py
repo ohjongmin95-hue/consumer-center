@@ -85,6 +85,12 @@ PLAYBOOK={
   '고객 응대':{'title':'사과 답변 + 담당자 연락','steps':['사과 답변','담당자 확인'],'reply':'응대 과정에서 불쾌하셨던 점 진심으로 사과드립니다. 담당자가 직접 연락드려 자세히 듣고 바로잡겠습니다.','auto_ok':False},
   '기타':{'title':'담당자 직접 답변','steps':['담당자 확인','직접 답변'],'reply':'','auto_ok':False},
 }
+# 판매처·메일·DM에서 온 요청을 승인할 때 기본 문구 대신 보내는 말: 아직 하지 않은 일을 했다고 하지 않고, 고객에게 없는 화면을 안내하지 않는다
+EXT_REPLY={
+  '주문 취소':'주문 취소 요청 확인했습니다. 취소를 진행하고, 끝나면 다시 알려 드릴게요. 결제하신 수단으로 환불돼요.',
+  '주문 변경':'주문 변경 요청 확인했습니다. 바꿀 수 있는지 확인해서 처리한 뒤 다시 알려 드릴게요. 이미 보낸 뒤라면 다른 방법을 안내해 드릴게요.',
+  '반품·환불':'반품 접수가 완료되었습니다. 상품을 보내 주시면 도착을 확인한 날부터 3영업일 안에 결제하신 수단으로 환불해 드릴게요.',
+}
 # 상담창(자동응답): 고객이 편하게 쓴 문장에서 이 단어들을 찾아 유형을 짐작한다. 띄어쓰기는 무시한다.
 # 앞에 있는 유형일수록 같은 점수일 때 우선한다 (불량이면서 반품을 원하는 경우 불량으로).
 INTENTS={
@@ -182,7 +188,7 @@ def init():
         # 나중에 더한 칸: 이미 있는 DB에도 붙인다
         cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
-        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status','ai_tried'):
+        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status','ai_tried','order_by','ai_draft','ai_why','ai_hold'):  # order_by 'shop': 판매처가 붙여 준 주문 (회원 본인 주문). '': 고객이 적은 번호. ai_draft·ai_why: AI가 넘길 때 남긴 답변 초안과 넘긴 이유 (승인 카드에 보인다). ai_hold '1': AI는 초안만 (연결 전에 받은 메일)
             if col not in cols:db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         cols={r[1] for r in db.execute('PRAGMA table_info(companies)')}
         for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),
@@ -378,11 +384,13 @@ def case_files(db,case_id):return db.execute('SELECT * FROM files WHERE case_id=
 def run_playbook(db,c,how):
     """추천 조치를 실행: 후속 업무를 차례로 기록하고 기업 답변을 남긴다. how: 'auto' | 'approved'"""
     pb=PLAYBOOK.get(c['category'],PLAYBOOK['기타']);rule=rule_for(db,c['company_id'],c['category'])
-    if how=='approved' and not (rule['reply'] or '').strip():return None  # 보낼 답변이 없으면 승인만으로는 처리하지 않는다 (직접 답변해야 함)
+    if how=='approved' and not (rule['reply'] or '').strip() and not (c['ai_draft'] or '').strip():return None  # 보낼 답변이 없으면 승인만으로는 처리하지 않는다 (직접 답변해야 함)
     add_event(db,c['id'],'sys',('자동 처리 규칙 실행: ' if how=='auto' else '대표 승인: ')+pb['title'])
     for s in pb['steps']:add_event(db,c['id'],'sys','✓ '+s)
     reply=(rule['reply'] or '').strip()
     ext=bool(db.execute('SELECT 1 FROM shop_seen WHERE company_id=? AND case_id=?',(c['company_id'],c['id'])).fetchone())  # 판매처·메일·DM에서 온 요청 (고객에게 접수 화면이 없다)
+    if ext and (c['ai_draft'] or '').strip():reply=c['ai_draft'].strip()  # AI가 써 둔 초안을 승인한 것 (이 문의에 맞춘 답)
+    elif ext and reply==pb['reply'] and c['category'] in EXT_REPLY:reply=EXT_REPLY[c['category']]  # 기본 문구는 '취소했어요'·'이 화면에서 계좌 등록'처럼 소보루 접수 화면 기준이라 바꿔 보낸다
     guide=return_guide(company(db,c['company_id']),ext) if c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status'] else ''
     if reply and guide:reply+='\n\n'+guide;db.execute("UPDATE cases SET ret_status='guided' WHERE id=?",(c['id'],))
     elif reply and c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status']:
