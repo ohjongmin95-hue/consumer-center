@@ -9,7 +9,7 @@
 문서: apidocs.cafe24.com > Admin API (Authentication, order/cancellation, return, community/boards)
 시험 운영: 문서대로 만들었고, 실제 쇼핑몰로는 OH 시험 쇼핑몰에서 먼저 확인한다.
 """
-import base64, datetime, hashlib, hmac as _hmac, html, json, logging, re, secrets, time, urllib.parse
+import base64, datetime, hashlib, hmac as _hmac, html, json, logging, os, re, secrets, time, urllib.parse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, session, current_app
 import core, shops, orders
 from core import conn, clean, digits
@@ -40,7 +40,7 @@ def init():
                          ('synced_p',"TEXT NOT NULL DEFAULT ''"),('n_prod','INTEGER NOT NULL DEFAULT 0'),('full_o',"TEXT NOT NULL DEFAULT ''")):
             if col not in cols:db.execute(f'ALTER TABLE cafe24_links ADD COLUMN {col} {kind}')
         pc={r[1] for r in db.execute('PRAGMA table_info(products)')}
-        for col in ('src','ext_id','src_info'):  # src 'cafe24' + 카페24 상품번호. src_info: 마지막으로 카페24에서 받은 안내 (사장님이 고쳤는지 보려고)
+        for col in ('src','ext_id','src_info','image','url'):  # src 'cafe24' + 카페24 상품번호. src_info: 마지막으로 카페24에서 받은 안내 (사장님이 고쳤는지 보려고). image·url: 목록 사진과 쇼핑몰 상품 주소
             if col not in pc:db.execute(f"ALTER TABLE products ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         if 'src' not in {r[1] for r in db.execute('PRAGMA table_info(orders)')}:db.execute("ALTER TABLE orders ADD COLUMN src TEXT NOT NULL DEFAULT ''")  # 'cafe24': 카페24에서 가져온 주문
 init()
@@ -123,6 +123,39 @@ def status_of(code):
     code=str(code or '')
     return C_STATUS.get(code) or {'C':'canceled','R':'returned','E':'exchanged'}.get(code[:1],'paid')
 FULL_DAYS=14;FULL_EVERY=datetime.timedelta(hours=1)  # 주문일로만 찾아지므로, 한 시간마다 최근 14일 주문을 다시 읽어 배송·취소 변화를 반영한다
+def put_order(db,co,o):
+    """카페24 주문 하나(embed=items,receivers) -> 주문 장부. 넣거나 고쳤으면 1."""
+    items=o.get('items') or [];rc=(o.get('receivers') or [{}])[0]
+    st=status_of((items[0] if items else {}).get('order_status'))
+    names=[i.get('product_name') or '' for i in items]
+    n=shops._order(db,co,'cafe24',dict(channel='자사몰',order_no=str(o.get('order_id','')),ordered_on=str(o.get('order_date') or '')[:10],buyer=o.get('billing_name') or rc.get('name') or '',
+        phone=digits(rc.get('cellphone') or rc.get('phone') or ''),address=' '.join(x for x in (rc.get('address1'),rc.get('address2')) if x),
+        product=(names[0] if names else '')+(f' 외 {len(names)-1}건' if len(names)>1 else ''),qty=sum(int(i.get('quantity') or 0) for i in items) or 1,
+        amount=int(float(o.get('actual_payment_amount') or o.get('payment_amount') or 0)),status=st,
+        courier=shops.courier_of((items[0] if items else {}).get('shipping_company_name')),invoice=digits((items[0] if items else {}).get('tracking_no') or '')))
+    db.execute("UPDATE orders SET src='cafe24' WHERE company_id=? AND order_no=? AND src=''",(co['id'],str(o.get('order_id',''))))
+    return n
+def fetch_order(db,co,order_no):
+    """카페24 주문번호 하나를 카페24에서 찾아 주문 장부에 넣고 그 줄을 돌려준다. 없거나 못 읽으면 None."""
+    if not re.fullmatch(r'[\w-]{6,30}',order_no or ''):return None
+    try:d=api(db,co['id'],'/admin/orders/'+order_no,{'embed':'items,receivers'})
+    except shops.ShopError:return None
+    o=d.get('order') if isinstance(d.get('order'),dict) else None
+    if not o or not o.get('order_id'):return None
+    put_order(db,co,o)
+    return db.execute('SELECT * FROM orders WHERE company_id=? AND order_no=?',(co['id'],str(o['order_id']))).fetchone()
+MEMBER_DAYS=90
+def member_order(db,co,member_id):
+    """게시판 글쓴이가 쇼핑몰 회원이면 그 회원의 가장 최근 주문번호 (주문 장부에도 넣는다). 없거나 못 찾으면 ''.
+    고객이 주문번호를 안 적어도 '배송이 안 와요' 같은 문의에 AI가 그 주문의 상태·송장으로 답할 수 있게."""
+    if not member_id:return ''
+    now=core.now();db.commit()
+    try:d=api(db,co['id'],'/admin/orders',{'member_id':member_id,'start_date':(now-datetime.timedelta(days=MEMBER_DAYS)).strftime('%Y-%m-%d'),'end_date':now.strftime('%Y-%m-%d'),'embed':'items,receivers','limit':20})
+    except shops.ShopError:return ''
+    rows=[o for o in d.get('orders') or [] if o.get('order_id') and str(o.get('member_id') or member_id)==member_id]
+    if not rows:return ''
+    o=max(rows,key=lambda x:str(x.get('order_date') or ''));put_order(db,co,o)
+    return str(o['order_id'])
 def sync_orders(db,co):
     """카페24 주문 -> 주문 장부 (채널 '자사몰'). 넣거나 고친 수."""
     lk=link(db,co['id']);now=core.now()
@@ -134,16 +167,7 @@ def sync_orders(db,co):
         db.commit()  # 카페24를 기다리는 동안 DB를 잠가 두지 않는다 (그사이 사장님 화면의 저장이 'database is locked'로 실패했다)
         d=api(db,co['id'],'/admin/orders',{'start_date':frm.strftime('%Y-%m-%d'),'end_date':now.strftime('%Y-%m-%d'),'embed':'items,receivers','limit':100,'offset':offset})
         rows=d.get('orders') or []
-        for o in rows:
-            items=o.get('items') or [];rc=(o.get('receivers') or [{}])[0]
-            st=status_of((items[0] if items else {}).get('order_status'))
-            names=[i.get('product_name') or '' for i in items]
-            n+=shops._order(db,co,'cafe24',dict(channel='자사몰',order_no=str(o.get('order_id','')),ordered_on=str(o.get('order_date') or '')[:10],buyer=o.get('billing_name') or rc.get('name') or '',
-                phone=digits(rc.get('cellphone') or rc.get('phone') or ''),address=' '.join(x for x in (rc.get('address1'),rc.get('address2')) if x),
-                product=(names[0] if names else '')+(f' 외 {len(names)-1}건' if len(names)>1 else ''),qty=sum(int(i.get('quantity') or 0) for i in items) or 1,
-                amount=int(float(o.get('actual_payment_amount') or o.get('payment_amount') or 0)),status=st,
-                courier=shops.courier_of((items[0] if items else {}).get('shipping_company_name')),invoice=digits((items[0] if items else {}).get('tracking_no') or '')))
-            db.execute("UPDATE orders SET src='cafe24' WHERE company_id=? AND order_no=? AND src=''",(co['id'],str(o.get('order_id',''))))
+        for o in rows:n+=put_order(db,co,o)
         if len(rows)<100:break
         offset+=100
     db.execute("UPDATE cafe24_links SET status='ok',note='',synced=?,since=?,n_ord=n_ord+? WHERE company_id=?",(core.iso(now),core.iso(now),n,co['id']))
@@ -157,13 +181,39 @@ def won(v):
     try:n=int(float(str(v or '').replace(',','')))
     except ValueError:return ''
     return f'{n:,}원' if n>0 else ''
+def _num(v):
+    try:return int(float(str(v or '').replace(',','')))
+    except ValueError:return 0
+def options_text(p):
+    """카페24 옵션(embed=options) -> '색상: 빨강, 파랑 / 사이즈: S, M'. 모양이 달라도 읽을 수 있는 만큼만."""
+    o=p.get('options');o=o.get('options') if isinstance(o,dict) else o
+    out=[]
+    for x in o if isinstance(o,list) else []:
+        if not isinstance(x,dict):continue
+        vals=x.get('option_value') or x.get('option_values') or []
+        vals=[clean(str(v.get('value_name') or v.get('option_text') or v.get('name') or '') if isinstance(v,dict) else str(v),30) for v in (vals if isinstance(vals,list) else [vals])]
+        name=clean(str(x.get('option_name') or x.get('name') or ''),20);vals=[v for v in vals if v][:15]
+        if name and vals:out.append(f"{name}: {', '.join(vals)}")
+    return ' / '.join(out)
 def product_info(p):
-    """카페24 상품 -> 상담에 쓰는 안내 글 (요약·간단 설명만. 상세 설명은 대부분 이미지라 안 쓴다)."""
+    """카페24 상품 -> 상담에 쓰는 안내 글: 요약·간단 설명, 정가(할인 중이면), 옵션, 모델명, 검색어, 상세 설명의 글자 부분(대부분 이미지라 있을 때만)."""
     bits=[]
     for k in ('summary_description','simple_description'):
         t=text_of(p.get(k))
         if t and t not in bits:bits.append(t)
+    if _num(p.get('retail_price'))>_num(p.get('price'))>0:bits.append(f"정가 {won(p.get('retail_price'))} (지금 {won(p.get('price'))})")
+    opt=options_text(p)
+    if opt:bits.append('옵션 '+opt)
+    if p.get('model_name'):bits.append('모델명 '+clean(str(p['model_name']),40))
+    tags=p.get('product_tag');tags=', '.join(tags) if isinstance(tags,list) else str(tags or '')
+    if tags.strip():bits.append('검색어 '+clean(tags,120))
+    d=text_of(p.get('description'))
+    if len(d)>=10:bits.append('상세 설명: '+d[:1200])
     return clean('\n'.join(bits),2000)
+def product_url(mall,no):return f'https://{mall}.cafe24.com/product/detail.html?product_no={no}'
+def product_image(p):
+    u=str(p.get('list_image') or p.get('small_image') or p.get('tiny_image') or '')
+    return u if u.startswith('https://') else ('https:'+u if u.startswith('//') else '')
 def sync_products(db,co,force=False):
     """카페24 상품 -> 상품정보. 이름·가격·판매 상태는 카페24 기준, 안내는 사장님이 고치지 않았을 때만 바꾼다. 가져온 개수 (권한이 없거나 아직 때가 아니면 None)."""
     lk=link(db,co['id']);now=core.now()
@@ -173,22 +223,25 @@ def sync_products(db,co,force=False):
     mine={r['ext_id']:r for r in db.execute("SELECT * FROM products WHERE company_id=? AND src='cafe24'",(co['id'],))}
     byname={r['name']:r for r in db.execute("SELECT * FROM products WHERE company_id=? AND src=''",(co['id'],))}
     count=db.execute('SELECT COUNT(*) FROM products WHERE company_id=?',(co['id'],)).fetchone()[0]
-    n=0;offset=0;t=core.iso()
+    n=0;offset=0;t=core.iso();embed={'embed':'options'}
     while offset<=5000:
         db.commit()
-        rows=api(db,co['id'],'/admin/products',{'limit':100,'offset':offset}).get('products') or []
+        try:rows=api(db,co['id'],'/admin/products',{'limit':100,'offset':offset,**embed}).get('products') or []
+        except shops.ShopError:
+            if not embed or link(db,co['id'])['status']!='ok':raise
+            embed={};rows=api(db,co['id'],'/admin/products',{'limit':100,'offset':offset}).get('products') or []  # 옵션 함께 받기를 안 받아 주면 옵션 없이
         for p in rows:
             no=str(p.get('product_no') or '');name=clean(p.get('product_name'),60)
             if not no or not name:continue
-            price=won(p.get('price'));info=product_info(p)
+            price=won(p.get('price'));info=product_info(p);img=product_image(p);url=product_url(lk['mall_id'],no)
             stock='품절' if p.get('sold_out')=='T' or p.get('selling')=='F' else '있음'
             cur=mine.get(no) or byname.pop(name,None)  # 사장님이 먼저 같은 이름으로 적어 둔 상품은 이어 쓴다
             if cur:
                 keep=cur['info'] and cur['info']!=cur['src_info']  # 사장님이 직접 고친 안내는 그대로
-                db.execute("UPDATE products SET name=?,price=?,stock=?,info=?,src='cafe24',ext_id=?,src_info=?,updated=? WHERE id=?",
-                           (name,price or cur['price'],stock,cur['info'] if keep else info,no,info,t,cur['id']))
+                db.execute("UPDATE products SET name=?,price=?,stock=?,info=?,src='cafe24',ext_id=?,src_info=?,image=?,url=?,updated=? WHERE id=?",
+                           (name,price or cur['price'],stock,cur['info'] if keep else info,no,info,img,url,t,cur['id']))
             elif count<core.MAX_PRODUCTS:
-                db.execute("INSERT INTO products(company_id,name,price,stock,info,updated,src,ext_id,src_info) VALUES(?,?,?,?,?,?,'cafe24',?,?)",(co['id'],name,price,stock,info,t,no,info))
+                db.execute("INSERT INTO products(company_id,name,price,stock,info,updated,src,ext_id,src_info,image,url) VALUES(?,?,?,?,?,?,'cafe24',?,?,?,?)",(co['id'],name,price,stock,info,t,no,info,img,url))
                 count+=1
             else:continue
             n+=1
@@ -228,7 +281,7 @@ def sync_boards(db,co):
     bs=boards_of(lk)
     if bs is None:bs=pick_boards(db,co['id'])
     frm=(core.parse(lk['since_b']) if lk['since_b'] else now-datetime.timedelta(days=shops.FIRST_DAYS))-datetime.timedelta(minutes=10)
-    new=[]
+    new=[];seen_m={}
     for bno,bname in bs:
         offset=0
         while offset<2000:
@@ -243,8 +296,15 @@ def sync_boards(db,co):
                     follow(db,co,lk,bno,parent,f"a{bno}:{no}",a.get('writer') or a.get('nick_name') or '',text_of(a.get('content')),a.get('secret')=='T');continue
                 if no in answered:continue  # 가게가 이미 답글을 단 글 (처음 연결할 때 지난 글)
                 at=str(a.get('created_date') or '')[:19].replace('T',' ')
-                c=shops._case(db,co,'cafe24',dict(ext_id=f"b{bno}:{no}:{'s' if a.get('secret')=='T' else 'p'}",title=a.get('title') or '',body=text_of(a.get('content')),
-                    name=a.get('writer') or a.get('nick_name') or '',order_no=str(a.get('order_id') or ''),product=product_name(db,co['id'],a.get('product_no')),at=at[:16],channel='카페24',
+                ext=f"b{bno}:{no}:{'s' if a.get('secret')=='T' else 'p'}"
+                if db.execute("SELECT 1 FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id=?",(co['id'],ext)).fetchone():continue  # 이미 가져온 글 (회원 주문을 다시 찾지 않게)
+                ono=str(a.get('order_id') or '')
+                if not ono and (a.get('member_id') or '').strip():  # 회원 글: 주문번호를 안 적었으면 그 회원의 최근 주문을 붙인다
+                    mid=str(a['member_id']).strip()
+                    if mid not in seen_m:seen_m[mid]=member_order(db,co,mid)
+                    ono=seen_m[mid]
+                c=shops._case(db,co,'cafe24',dict(ext_id=ext,title=a.get('title') or '',body=text_of(a.get('content')),
+                    name=a.get('writer') or a.get('nick_name') or '',order_no=ono,product=product_name(db,co['id'],a.get('product_no')),at=at[:16],channel='카페24',
                     ai=bool(at) and at>=max(lk['created'] or '',co['ai_reply'] or '')))  # AI는 연결·켠 뒤에 올라온 글에만 답한다 (지난 글은 승인 목록으로)
                 if c:new.append(c)
             if len(rows)<100:break
@@ -281,10 +341,10 @@ def follow(db,co,lk,bno,parent,ext,writer,text,secret):
     if c and c['name'] and clean(writer,20)!=c['name']:return None  # 처음 글쓴 고객이 쓴 것만 (다른 사람·가게 답글은 빼고)
     text=text or '(내용 없음)'
     if c and c['status'] not in core.FINAL:
-        core.add_event(db,c['id'],'me',text);core.notify_company_msg(db,c['id'],text)
+        core.add_event(db,c['id'],'me',text)
         if c['status'] in ('answered','info'):db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],))
-        if c['decision'] in ('auto','ai'):db.execute("UPDATE cases SET decision='pending' WHERE id=?",(c['id'],))  # AI가 답한 글에 고객이 다시 쓰면 사장님이 본다
         db.execute('UPDATE cases SET updated=? WHERE id=?',(core.iso(),c['id']))
+        import chatbot;chatbot.again(db,c,text)  # AI가 답한 글에 고객이 다시 쓰면 AI가 이어서 답한다 (AI를 껐으면 사장님이 본다)
         db.execute("INSERT INTO shop_seen(company_id,shop,ext_id,case_id) VALUES(?,?,?,?)",(co['id'],'cafe24',ext,c['id']));return c
     # 끝난 요청에 다시 쓰면 새 요청 (답변은 처음 글에 답글로 올라간다)
     n=shops._case(db,co,'cafe24',dict(ext_id=f"b{bno}:{parent}:{'s' if secret else 'p'}:{ext}",title='다시 문의: '+((c['title'] if c else '') or '카페24 문의'),body=text,
@@ -398,9 +458,43 @@ def app_deleted(db,mall,trusted):
         db.execute("UPDATE cafe24_links SET status='removed',creds='',note=? WHERE company_id=?",('카페24에서 소보루 CS 앱을 지웠어요. 다시 쓰려면 다시 연결해 주세요.',lk['company_id']))
         core.notify_company_link_broken(core.company(db,lk['company_id']),'카페24','카페24 관리자에서 소보루 CS 앱을 지웠어요','/connect/cafe24',db);n+=1
     return n
+# 게시물 등록·댓글 이벤트는 '지금 그 쇼핑몰 게시판을 가져오라'는 신호로만 쓴다 (내용은 믿지 않고 카페24 API로 다시 읽는다).
+# 그래서 가짜 이벤트가 와도 할 수 있는 건 가져오기를 한 번 더 하는 것뿐이다. 같은 회사는 몇 초에 한 번만.
+POST_EVENTS={'90033','90034','90039'}  # 게시물 등록, 댓글 등록, 게시물 수정
+SYNC_LOCK=os.getenv('PLATFORM_SYNC_LOCK','/run/soboru-platform-sync.lock')  # 1분 cron(quick_sync.py)과 같은 잠금: 겹쳐 돌지 않게
+_kick={}
+def boards_now(mall):
+    """그 쇼핑몰을 연결한 회사들의 게시판을 바로 가져오고 AI가 답한다 (뒤에서). 1분 cron을 기다리지 않게."""
+    import threading
+    def job():
+        import fcntl, chatbot
+        fh=None
+        for mode in ('r','a+'):  # cron(root)이 만든 잠금 파일은 읽기로 열어도 잠글 수 있다
+            try:fh=open(SYNC_LOCK,mode);break
+            except OSError:pass
+        try:
+            if fh:
+                try:fcntl.flock(fh,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                except OSError:return  # cron이 가져오는 중: 그쪽이 곧 처리한다
+            with conn() as db:rows=db.execute("SELECT c.* FROM cafe24_links l JOIN companies c ON c.id=l.company_id WHERE l.mall_id=? AND l.status='ok' AND c.member=1 AND c.status='active'",(mall,)).fetchall()
+            for co in rows:
+                try:
+                    with conn() as db:new=sync_boards(db,co)
+                    for c in [c for c in new if c['decision']!='ai'][:5]:core.notify_company_new(co,c)
+                except shops.ShopError:pass
+                except Exception:log.exception('카페24 웹훅 가져오기 실패 (회사 %s)',co['id'])
+            chatbot.auto_reply_all()
+        finally:
+            if fh:fh.close()
+    t=time.time()
+    if t-_kick.get(mall,0)<5:return False
+    _kick[mall]=t
+    threading.Thread(target=job,daemon=True).start() if BACKGROUND else job()
+    return True
+BACKGROUND=True  # 시험에서는 False
 @bp.route('/hook/cafe24',methods=['POST'])
 def hook():
-    """카페24 웹훅 (지금은 앱 삭제만). 받으면 늘 200 (카페24가 다시 보내지 않게), 처리는 위 규칙대로."""
+    """카페24 웹훅: 앱 삭제(연결 거두기), 게시물·댓글 등록(바로 가져오기). 받으면 늘 200 (카페24가 다시 보내지 않게)."""
     if not ready():abort(404)
     key=core.secret('CAFE24_WEBHOOK_KEY');got=request.headers.get('X-Api-Key') or request.headers.get('X-Cafe24-Api-Key') or ''
     trusted=bool(key and got and _hmac.compare_digest(got,key))
@@ -410,6 +504,9 @@ def hook():
         if mall and (not cid or cid==core.secret('CAFE24_CLIENT_ID')):
             with conn() as db:n=app_deleted(db,mall,trusted)
             log.warning('카페24 앱 삭제: %s (거둔 연결 %s, 인증 %s)',mall,n,'맞음' if trusted else '확인함' if n else '안 됨')
+    elif str(d.get('event_no')) in POST_EVENTS:
+        mall=clean(str(res.get('mall_id') or ''),40)
+        if re.fullmatch(r'[a-z0-9_-]{2,40}',mall or ''):boards_now(mall)
     return {'ok':True}
 
 # ---------- 화면 ----------

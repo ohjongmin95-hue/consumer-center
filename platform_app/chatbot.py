@@ -166,8 +166,13 @@ def mask(t):
     """AI에 보내기 전에 이메일·전화번호·주민번호·카드번호를 가린다."""
     for r,w in MASKS:t=r.sub(w,t or '')
     return t
+ORDER_RE=re.compile(r'(?<![\d-])(\d{8}-\d{7}|\d{12,20})(?![\d-])')  # 카페24 주문번호(20261018-0000012)나 긴 주문번호 (휴대폰 번호 11자리는 빼고)
+ASK_ORDER='주문하신 상품의 배송 상태를 바로 확인해 드릴게요. 이 글에 주문번호(또는 주문하신 분 성함과 주문일)를 남겨 주시면 이어서 안내해 드릴게요.'
 def again(db,c,text):
-    """진행 중인 DM·메일 대화에 고객이 말을 더 했을 때: AI가 맡던 대화(AI가 답함·확인 중)면 AI가 다시 보고, 아니면 사장님께 알린다."""
+    """진행 중인 문의(판매처 게시판·DM·메일)에 고객이 말을 더 했을 때: AI가 맡던 대화(AI가 답함·확인 중)면 AI가 다시 보고, 아니면 사장님께 알린다.
+    주문번호를 적어 보냈으면 요청에 붙인다 (AI가 그 주문으로 답하게)."""
+    m=ORDER_RE.search(text or '')
+    if m and not c['order_no']:db.execute('UPDATE cases SET order_no=? WHERE id=?',(m.group(1),c['id']))
     if c['decision'] in ('auto','ai') and auto_on(core.company(db,c['company_id'])):
         db.execute("UPDATE cases SET decision='ai',ai_tried='' WHERE id=?",(c['id'],));return True
     if c['decision'] in ('auto','ai'):db.execute("UPDATE cases SET decision='pending' WHERE id=?",(c['id'],))
@@ -190,14 +195,21 @@ def auto_reply(case_id):
         if o:facts+='\n\n'+order_facts([orders.customer_view(o)])  # 판매처가 주문자 본인 글로 붙여 준 주문번호 (이름·연락처·주소는 안 보냄)
         hist=[{'role':'user' if e['kind']=='me' else 'assistant','content':mask(e['reply'] or e['text'])} for e in core.events(db,c['id']) if e['kind'] in ('me','co')]
         ok={cat:core.rule_for(db,co['id'],cat)['ai_ok'] for cat in core.CATS}  # '내 승인 후'로 정한 유형이면 AI가 답할 수 있어도 넘긴다 (기본: 취소·변경·교환·반품·환불·불량)
+        c24=c['order_no'] and not o and c['channel']=='카페24'
+    if c24:  # 장부에 없는 카페24 주문번호 (고객이 적은 번호, 14일보다 오래된 주문): 카페24에서 바로 찾아본다
+        import cafe24
+        with core.conn() as db:
+            o=cafe24.fetch_order(db,co,c['order_no'])
+            if o:facts+='\n\n'+order_facts([orders.customer_view(o)])
     q=mask(f"{c['title']}\n{c['body']}")
     if c['product']:q=f"(문의한 상품: {c['product']})\n"+q
     ai=answer(co,facts,q,hist)
     with core.conn() as db:
         if not ai:_to_owner(db,c);return 'failed'
         why=[f"'{x}' 유형은 승인 후 답하기로 정해 두셨어요" for x in dict.fromkeys((c['category'],ai['category'])) if x and not ok.get(x,True)]
-        if ai['lookup']:why.append('주문 정보가 없어 답할 수 없어요')
-        if ai['handoff'] and not why:why.append('AI가 사람 확인이 필요하다고 봤어요 (정보가 없거나, 처리가 필요하거나, 불만이 커요)')
+        ask=ai['lookup'] and not o and not why  # 주문을 모르면 넘기지 않고 주문번호를 묻는다 (고객이 남기면 AI가 이어서 답한다)
+        if ask:ai['answer']=ASK_ORDER
+        if ai['handoff'] and not why and not ask:why.append('AI가 사람 확인이 필요하다고 봤어요 (정보가 없거나, 처리가 필요하거나, 불만이 커요)')
         if why:
             _to_owner(db,c,'AI가 답하지 않고 넘겼어요: '+' · '.join(why)+('\n'+ai['summary'] if ai['summary'] else '')+('\n\nAI 답변 초안:\n'+ai['answer'] if ai['answer'] and not ai['handoff'] else ''))
             return 'handoff'
