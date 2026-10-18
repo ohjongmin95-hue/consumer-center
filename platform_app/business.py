@@ -3,8 +3,8 @@
 기업: 가입 → 운영자 승인 → 로그인 → 승인 카드(승인·보류·자료 요청), 전체 요청, 자동 처리 규칙, 설정.
 운영자: 기업 가입 승인, 기업 목록, 비입점 기업 요청 처리(전달 시도·회신 기록·피해구제 안내).
 """
-import os, re, hmac, json, functools, datetime
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, g, jsonify
+import os, re, hmac, json, functools, datetime, threading
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_file, g, jsonify, after_this_request
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import csv, io
@@ -647,6 +647,20 @@ def post_to_shop(db,c,text):
     """답변 하나를 받은 곳(판매처·메일·인스타그램)으로 보낸다. -> (안내, ok|error)"""
     msg,level=core.deliver_reply(db,c,text)
     return (msg,level) if level else ('판매처에서 가져온 문의가 아니에요.','error')
+def post_later(case_id,text):
+    """화면은 바로 넘기고 답변은 뒤에서 보낸다 (인스타그램 등이 응답에 몇 초 걸려 화면이 멈춰 보였음, 운영자 요청 2026-10-18).
+    보냈는지·못 보냈는지는 요청의 진행 기록에 남는다. 요청이 끝나 저장된 뒤(after_this_request) 시작한다."""
+    def run():
+        try:
+            with conn() as db:
+                c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+                if c:core.deliver_reply(db,c,text)
+        except Exception:app.logger.exception('답변 보내기 실패 (요청 %s)',case_id)
+    @after_this_request
+    def start(resp):
+        if app.config.get('TESTING'):run()
+        else:threading.Thread(target=run,daemon=True).start()
+        return resp
 def closable(c):return (c['channel'] in SEND_VIA or bool(c['live'])) and c['status'] not in core.FINAL
 def reopenable(c):return c['status']=='closed'  # 응대한 사람이 끝낸 요청만 다시 연다 (고객이 '해결됐어요'를 고른 요청은 그대로)
 
@@ -752,8 +766,9 @@ def case(case_id):
                 flash('승인·보상·환불 완료는 대표나 관리자만 할 수 있어요. 메모로 부탁해 주세요.','error');return redirect(url_for('case',case_id=case_id))
             msg,level=case_act(db,c,request.form)
             if level=='bad':abort(400)
-            if level=='ok' and act=='reply' and send_via(db,c):  # 인스타·메일 요청은 '보내기'를 누르면 그 채널로 바로 간다
-                msg,level=post_to_shop(db,c,clean(request.form.get('msg'),3000))
+            if level=='ok' and act=='reply' and send_via(db,c):  # 인스타·메일 요청은 '보내기'를 누르면 그 채널로 바로 간다 (뒤에서)
+                post_later(c['id'],clean(request.form.get('msg'),3000))
+                msg='답변을 저장하고 보내는 중이에요. 몇 초 뒤 진행 기록에 결과가 남아요.'
             if level=='ok' and act=='reply' and request.form.get('macro','').isdigit():inbox.used_macro(db,me(),c,int(request.form['macro']))
             if msg:flash(msg,level)
             if level=='ok' and act in ('reply','approve','ask','ship_track') and not in_demo() and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',me()['id'])
