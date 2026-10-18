@@ -3232,8 +3232,16 @@ class SiteTest(unittest.TestCase):
         clean = self.site.soboru_writer.clean_personal
         self.assertEqual(clean(self.site.companydesk.scrub, '2026-07-18 ~ 2026-10-16, 문의 010-1234-5678'), '2026-07-18 ~ 2026-10-16, 문의 [개인정보 삭제]')
 
+    def test_writer_reports_paused(self):
+        admin = self.login_admin()
+        page = admin.get('/admin/life/ai').get_data(as_text=True)
+        self.assertNotIn('소보루 제보 동향', page)
+        r = admin.post('/admin/life/ai', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'kind': 'reports'}, follow_redirects=True)
+        self.assertIn('멈춰 두었어요', r.get_data(as_text=True))
+
     def test_writer_reports_draft_check_dedupe_and_admin_only(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        p = patch.object(self.site.soboru_writer, 'PAUSED', set()); p.start(); self.addCleanup(p.stop)  # 다시 켤 때를 위해 글 쓰기 자체는 계속 시험
         w = self.site.app.extensions['soboru_writer']
         co, secret = self.writer_cases(n_private=0)
         with self.site.app.app_context(): base = w['collect']('reports')['facts']
@@ -3349,7 +3357,7 @@ class SiteTest(unittest.TestCase):
             made = [r for r in out if r['status'] == 'made']
             self.assertEqual(len(made), 2)  # 하루 2개로 고른 대로
             self.assertEqual(out[0]['kind'], 'trend')  # 첫날은 순서표 맨 앞부터, 제보 동향은 공개 제보가 적어 건너뜀
-            self.assertIn('reports', [r['kind'] for r in out if r['status'] == 'skip'])
+            self.assertNotIn('reports', [r['kind'] for r in out])  # 제보로 쓰는 글은 멈춰 둠 (운영자 요청)
             self.assertEqual(w['daily'](), [])  # 같은 날 다시 돌려도 더 만들지 않음
             with self.site.conn() as db:
                 rows = db.execute("SELECT a.*,x.kind,x.facts,x.sources FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE a.origin='ai'").fetchall()
@@ -3375,7 +3383,7 @@ class SiteTest(unittest.TestCase):
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'per_day': '1'})
             with self.site.conn() as db: db.execute("UPDATE ai_articles SET created='2000-01-01T07:00:00'")  # 오늘 만든 개수에서 빼서 다음 날처럼
             out = w['daily'](tomorrow)
-            self.assertEqual((out[0]['kind'], out[0]['status']), ('reports', 'skip'))
+            self.assertNotIn('reports', [r['kind'] for r in out])
             self.assertEqual([r['kind'] for r in out if r['status'] == 'made'], ['news'])
             with self.site.conn() as db:
                 self.assertEqual(db.execute("SELECT status FROM articles WHERE origin='ai' ORDER BY id DESC LIMIT 1").fetchone()[0], 'draft')  # 바로 게시를 끄면 초안

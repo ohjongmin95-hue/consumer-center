@@ -69,6 +69,7 @@ KINDS = {
                     about='[주제] 쇼핑 분야 하나의 클릭 추이와 성별·연령·기기별 비중, 다른 분야와 견준 순위를 깊이 분석하고, 그 분야를 살 때 소비자가 챙길 점을 알려 준다.'),
 }
 ORDER = ['trend', 'reports', 'news', 'shopping', 'law']  # 매일 아침 돌아가며 시작하는 순서
+PAUSED = {'reports'}  # 운영자 요청 2026-10-18: 제보로 쓰는 글은 아직 쓰지 않음 (매일·관리자 버튼 모두). 다시 쓰려면 여기서 뺌
 EXTRA = ['rights', 'word', 'shopcat']  # ORDER를 한 바퀴 돈 뒤에도 하루 몫이 남으면 돌아가며 채우는 주제별 글
 
 SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 소비자에게 쓸모 있는 분석 기사를 쓴다.\n'
@@ -607,6 +608,7 @@ def install(S):
         for i in range(len(ORDER)):
             if want <= 0: break
             kind = ORDER[(turn + i) % len(ORDER)]
+            if kind in PAUSED: continue
             ok, why = kind_ready(kind)
             if not ok: out.append({'status': 'skip', 'kind': kind, 'reason': why}); continue
             r = dict(generate(kind, 'daily', day=day), kind=kind); out.append(r)
@@ -657,6 +659,7 @@ def install(S):
         if request.method == 'POST':
             kind = request.form.get('kind', '')
             if kind not in KINDS: abort(400)
+            if kind in PAUSED: flash('이 글 종류는 지금 쓰지 않도록 멈춰 두었어요.'); return redirect(url_for('admin_life_ai'))
             if not desk.ai_ready(): flash('OpenAI API 키가 없어서 기사를 쓸 수 없어요.'); return redirect(url_for('admin_life_ai'))
             ok, why = kind_ready(kind)
             if not ok: flash(why); return redirect(url_for('admin_life_ai'))
@@ -675,7 +678,7 @@ def install(S):
             return redirect(url_for('admin_life_ai_job'))
         with conn() as db:
             rows = db.execute("SELECT a.id,a.title,a.status,a.category,a.created,x.* FROM ai_articles x JOIN articles a ON a.id=x.article_id AND a.origin='ai' ORDER BY a.id DESC LIMIT 60").fetchall()
-        kinds = [dict(KINDS[k], key=k, ready=kind_ready(k)[0], why=kind_ready(k)[1]) for k in ORDER + EXTRA]
+        kinds = [dict(KINDS[k], key=k, ready=kind_ready(k)[0], why=kind_ready(k)[1]) for k in ORDER + EXTRA if k not in PAUSED]
         items = [dict(ai_info(r), id=r['id'], title=r['title'], status=r['status'], category=r['category']) for r in rows]
         return render_template('admin_life_ai.html', kinds=kinds, items=items, cfg=settings(), ai_ready=desk.ai_ready(), logs=setting('writer_log', [])[:10],
                                per_day=PER_DAY, sources={k: f()[0] for k, f in SOURCES.items()})
