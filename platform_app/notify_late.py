@@ -5,10 +5,11 @@
   · 답변 후 응답이 없는 요청 자동 종료
   · 보관 기간이 지난 요청 파기 (개인정보 처리방침의 보유 기간)
   · 배송 조회 (스마트택배 무료 조회 키가 있을 때, 아직 배송 완료가 안 된 송장)
+  · 카페24 앱을 지우고 90일이 지난 쇼핑몰에서 가져온 데이터 파기 (cafe24.purge_removed)
 사용법: cd platform_app && python notify_late.py
 """
-import core, insights, tracking
+import core, insights, tracking, cafe24
 
 if __name__=='__main__':
     core.MAIL_ASYNC=False
-    print(f'지연 알림 {core.notify_late()}건 · 경보 {insights.send_alerts()}건 · 월간 리포트 {insights.send_monthly_reports()}건 · 자동 종료 {core.close_idle()}건 · 파기 {core.purge_old()}건 · 배송 조회 {tracking.poll()}건')
+    print(f'지연 알림 {core.notify_late()}건 · 경보 {insights.send_alerts()}건 · 월간 리포트 {insights.send_monthly_reports()}건 · 자동 종료 {core.close_idle()}건 · 파기 {core.purge_old()}건 · 카페24 앱 삭제 파기 {cafe24.purge_removed()}곳 · 배송 조회 {tracking.poll()}건')

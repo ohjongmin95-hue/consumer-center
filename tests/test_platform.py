@@ -1836,6 +1836,34 @@ class PlatformTest(unittest.TestCase):
                 self.assertTrue(db.execute("SELECT 1 FROM biz_alerts WHERE company_id=? AND kind='link'",(cid,)).fetchone())
                 c24.store(db,cid,'delshop',{'access_token':'A2','refresh_token':'R2','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
             alive[0]=True;b.post('/biz/hook/cafe24',json=ev,headers={'X-Api-Key':'hookkey'});self.assertEqual(st(),'removed')  # 인증정보가 맞으면 묻지 않고 거둔다
+        # 90일 안에 다시 연결하지 않으면 카페24에서 가져온 것만 지운다 (다른 채널 문의·직접 올린 주문·상품은 남김)
+        import datetime
+        with self.core.conn() as db:
+            co=self.core.company(db,cid);t=self.core.iso()
+            def mk(ch):
+                return db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
+                    VALUES(?,?,?,1,'상품 문의','문의','문의','','','고객','','','x',1,'seen','','2099-01-01 00:00:00',?,?,'','',?)""",(self.core.new_case_no(db),cid,co['name'],t,t,ch)).lastrowid
+            c_c24,c_ig=mk('카페24'),mk('인스타그램');self.core.add_event(db,c_c24,'me','몇 ml예요?')
+            for no,ch in (('20261018-0000012','자사몰'),('직접-1','자사몰'),('20261018-0000013','스마트스토어')):
+                db.execute("INSERT INTO orders(company_id,order_no,channel,created,updated) VALUES(?,?,?,?,?)",(cid,no,ch,t,t))
+            db.execute("INSERT INTO products(company_id,name,updated,src) VALUES(?,'카페24 크림',?,'cafe24')",(cid,t));db.execute("INSERT INTO products(company_id,name,updated) VALUES(?,'직접 올린 크림',?)",(cid,t))
+            self.assertIn('90일 안에',db.execute('SELECT note FROM cafe24_links WHERE company_id=?',(cid,)).fetchone()[0])
+        self.assertEqual(c24.purge_removed(),0)  # 아직 90일 안
+        self.assertEqual(c24.purge_removed(self.core.now()+datetime.timedelta(days=91)),1)
+        with self.core.conn() as db:
+            self.assertEqual([r[0] for r in db.execute('SELECT id FROM cases WHERE company_id=?',(cid,))],[c_ig])
+            self.assertFalse(db.execute('SELECT 1 FROM events WHERE case_id=?',(c_c24,)).fetchone())
+            self.assertEqual(sorted(r[0] for r in db.execute('SELECT order_no FROM orders WHERE company_id=?',(cid,))),['20261018-0000013','직접-1'])
+            self.assertEqual([r[0] for r in db.execute('SELECT name FROM products WHERE company_id=?',(cid,))],['직접 올린 크림'])
+            self.assertFalse(db.execute('SELECT 1 FROM cafe24_links WHERE company_id=?',(cid,)).fetchone())
+            self.assertTrue(self.core.company(db,cid))  # 사장님 계정은 그대로
+        # 다시 연결한 쇼핑몰은 지우지 않는다
+        with self.core.conn() as db:
+            c24.store(db,cid,'delshop',{'access_token':'A3','refresh_token':'R3','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
+            db.execute("UPDATE cafe24_links SET status='removed',removed_at='2020-01-01 00:00:00' WHERE company_id=?",(cid,))
+            c24.store(db,cid,'delshop',{'access_token':'A4','refresh_token':'R4','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
+            self.assertEqual(db.execute('SELECT status,removed_at FROM cafe24_links WHERE company_id=?',(cid,)).fetchone()[:],('ok',''))
+        self.assertEqual(c24.purge_removed(),0)
 
     def test_cafe24_urgent_and_deleted(self):
         """카페24 긴급문의: 답하지 않은 것만 요청이 되고, 답변은 긴급문의 답변으로 올라간다.

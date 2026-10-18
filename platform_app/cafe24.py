@@ -42,7 +42,7 @@ def init():
           actor TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,PRIMARY KEY(company_id,order_no,kind),FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE)''')
         cols={r[1] for r in db.execute('PRAGMA table_info(cafe24_links)')}
         for col,kind in (('boards',"TEXT NOT NULL DEFAULT ''"),('since_b',"TEXT NOT NULL DEFAULT ''"),('n_inq','INTEGER NOT NULL DEFAULT 0'),
-                         ('synced_p',"TEXT NOT NULL DEFAULT ''"),('n_prod','INTEGER NOT NULL DEFAULT 0'),('full_o',"TEXT NOT NULL DEFAULT ''")):
+                         ('synced_p',"TEXT NOT NULL DEFAULT ''"),('n_prod','INTEGER NOT NULL DEFAULT 0'),('full_o',"TEXT NOT NULL DEFAULT ''"),('removed_at',"TEXT NOT NULL DEFAULT ''")):
             if col not in cols:db.execute(f'ALTER TABLE cafe24_links ADD COLUMN {col} {kind}')
         pc={r[1] for r in db.execute('PRAGMA table_info(products)')}
         for col in ('src','ext_id','src_info','image','url'):  # src 'cafe24' + 카페24 상품번호. src_info: 마지막으로 카페24에서 받은 안내 (사장님이 고쳤는지 보려고). image·url: 목록 사진과 쇼핑몰 상품 주소
@@ -77,7 +77,7 @@ def store(db,cid,mall,data):
         db.execute("DELETE FROM shop_seen WHERE company_id=? AND shop='cafe24'",(cid,))
         db.execute("UPDATE cafe24_links SET since='',since_b='',full_o='',synced_p='',boards='',created=? WHERE company_id=?",(core.iso(),cid))
     db.execute('''INSERT INTO cafe24_links(company_id,mall_id,creds,status,note,scopes,expires,refresh_expires,created) VALUES(?,?,?,'ok','',?,?,?,?)
-        ON CONFLICT(company_id) DO UPDATE SET mall_id=excluded.mall_id,creds=excluded.creds,status='ok',note='',scopes=excluded.scopes,expires=excluded.expires,refresh_expires=excluded.refresh_expires''',
+        ON CONFLICT(company_id) DO UPDATE SET mall_id=excluded.mall_id,creds=excluded.creds,status='ok',note='',removed_at='',scopes=excluded.scopes,expires=excluded.expires,refresh_expires=excluded.refresh_expires''',
         (cid,mall,shops.seal(creds),','.join(data.get('scopes') or []) if isinstance(data.get('scopes'),list) else str(data.get('scopes') or ''),
          _parse_exp(data.get('expires_at')),_parse_exp(data.get('refresh_token_expires_at')),core.iso()))
 
@@ -507,8 +507,37 @@ def app_deleted(db,mall,trusted):
     for lk in db.execute("SELECT * FROM cafe24_links WHERE mall_id=? AND status!='removed'",(mall,)).fetchall():
         if not trusted and _still_works(db,lk['company_id']) is not False:
             log.warning('카페24 앱 삭제 이벤트를 확인하지 못해 연결을 그대로 둠: %s',mall);continue
-        db.execute("UPDATE cafe24_links SET status='removed',creds='',note=? WHERE company_id=?",('카페24에서 소보루 CS 앱을 지웠어요. 다시 쓰려면 다시 연결해 주세요.',lk['company_id']))
+        db.execute("UPDATE cafe24_links SET status='removed',creds='',removed_at=?,note=? WHERE company_id=?",(core.iso(),f'카페24에서 소보루 CS 앱을 지웠어요. 다시 쓰려면 다시 연결해 주세요. {KEEP_DAYS}일 안에 다시 연결하지 않으면 카페24에서 가져온 문의·주문·상품을 지워요.',lk['company_id']))
         core.notify_company_link_broken(core.company(db,lk['company_id']),'카페24','카페24 관리자에서 소보루 CS 앱을 지웠어요','/connect/cafe24',db);n+=1
+    return n
+
+# ---------- 앱을 지운 쇼핑몰의 데이터 파기 ----------
+# 앱을 지우고 KEEP_DAYS일 안에 다시 연결하지 않으면 카페24에서 가져온 것만 지운다: 채널 '카페24' 요청(대화·첨부·메모 포함),
+# 카페24 주문(채널 '자사몰' + 카페24 주문번호 모양 YYYYMMDD-숫자), 카페24 상품(src 'cafe24'), 처리 기록과 연결 자체.
+# 사장님 계정, 다른 채널(인스타그램·메일·상담창·직접 등록) 문의와 직접 올린 주문·상품은 그대로 둔다. 운영자 결정 2026-10-18 (카페24 심사 대비).
+KEEP_DAYS=90
+def purge_removed(today=None):
+    """앱을 지운 지 KEEP_DAYS일이 지난 연결의 가져온 데이터를 지운다 -> 처리한 연결 수. 1시간 cron(notify_late.py)에서 부른다."""
+    import datetime
+    cut=core.iso((today or core.now())-datetime.timedelta(days=KEEP_DAYS));n=0
+    with core.conn() as db:
+        for lk in db.execute("SELECT * FROM cafe24_links WHERE status='removed' AND removed_at!='' AND removed_at<?",(cut,)).fetchall():
+            cid=lk['company_id']
+            ids=[r[0] for r in db.execute("SELECT id FROM cases WHERE company_id=? AND channel='카페24'",(cid,))]
+            for i in range(0,len(ids),500):
+                part=ids[i:i+500];q=','.join('?'*len(part))
+                for f in db.execute(f'SELECT stored FROM files WHERE case_id IN ({q})',part).fetchall():
+                    try:(core.UPLOAD/f['stored']).unlink()
+                    except FileNotFoundError:pass
+                for tbl in ('events','files','notes','tracks','app_push','biz_alerts'):
+                    try:db.execute(f'DELETE FROM {tbl} WHERE case_id IN ({q})',part)
+                    except Exception:pass
+                db.execute(f'DELETE FROM cases WHERE id IN ({q})',part)
+            db.execute("DELETE FROM orders WHERE company_id=? AND channel='자사몰' AND order_no GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9]*'",(cid,))
+            db.execute("DELETE FROM products WHERE company_id=? AND src='cafe24'",(cid,))
+            db.execute('DELETE FROM cafe24_actions WHERE company_id=?',(cid,))
+            db.execute('DELETE FROM cafe24_links WHERE company_id=?',(cid,))
+            log.warning('카페24 앱 삭제 %s일 지남: 회사 %s, 쇼핑몰 %s에서 가져온 데이터를 지움 (요청 %s건)',KEEP_DAYS,cid,lk['mall_id'],len(ids));n+=1
     return n
 # 게시물 등록·댓글 이벤트는 '지금 그 쇼핑몰 게시판을 가져오라'는 신호로만 쓴다 (내용은 믿지 않고 카페24 API로 다시 읽는다).
 # 그래서 가짜 이벤트가 와도 할 수 있는 건 가져오기를 한 번 더 하는 것뿐이다. 같은 회사는 몇 초에 한 번만.
