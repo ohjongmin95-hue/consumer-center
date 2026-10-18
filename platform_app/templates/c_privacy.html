@@ -31,7 +31,7 @@
 
 <section><h2>5. 처리 위탁</h2>
 <p>서비스 운영을 위해 아래 업체에 개인정보 처리를 맡기고 있어요. 위탁 계약에서 개인정보를 안전하게 다루도록 정하고 관리해요.</p>
-<dl class="kv"><dt>네이버클라우드 주식회사</dt><dd>서버 운영과 데이터 보관</dd>{% if mail_vendor %}<dt>{{ mail_vendor }}</dt><dd>알림 이메일 발송</dd>{% endif %}{% if kakao and kakao_vendor %}<dt>{{ kakao_vendor }}</dt><dd>카카오 알림톡 발송</dd>{% endif %}{% if ai %}<dt>{{ ai.name }}</dt><dd>AI 상담 답변, 기업 답변 초안 작성, 상품소개서 정리</dd>{% endif %}</dl>
+<dl class="kv"><dt>네이버클라우드 주식회사</dt><dd>서버 운영과 데이터 보관</dd>{% if mail_vendor %}<dt>{{ mail_vendor }}</dt><dd>알림 이메일 발송</dd>{% endif %}{% if kakao and kakao_vendor %}<dt>{{ kakao_vendor }}</dt><dd>카카오 알림톡 발송</dd>{% endif %}{% if pay %}<dt>코리아포트원 주식회사, {{ pay }}</dt><dd>기업 회원의 요금 결제 처리 (카드 정보는 회사가 보관하지 않음)</dd>{% endif %}{% if ai %}<dt>{{ ai.name }}</dt><dd>AI 상담 답변, 기업 답변 초안 작성, 상품소개서 정리</dd>{% endif %}</dl>
 {% if ai %}<h3>개인정보 국외 이전</h3>
 <p>AI 상담 답변과 답변 초안을 만들기 위해 아래와 같이 개인정보를 국외로 보내요. {{ ai.train }}</p>
 <dl class="kv"><dt>이전받는 자</dt><dd>{{ ai.contact }}</dd><dt>이전 국가</dt><dd>미국</dd>
