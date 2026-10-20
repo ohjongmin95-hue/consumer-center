@@ -1,7 +1,7 @@
-# 소보루 AI 분석 기사 초안 쓰기 (매일 아침 soboru-writer.timer가 부름). 게시는 하지 않고 초안만 만듦.
+# 소보루 AI 분석 기사 쓰기 (아침·오후·저녁 soboru-writer.timer가 부름). 숫자 검사를 통과한 글은 관리자 설정에 따라 바로 게시.
 # 설치·끄기: sudo bash /opt/soboru/app/deploy/set-writer.sh  (관리자 > 생활정보 글 > AI 기사 만들기에서도 끌 수 있음)
 [Unit]
-Description=소보루 AI 분석 기사 초안 (매일 아침)
+Description=소보루 AI 분석 기사 (아침·오후·저녁)
 After=network-online.target soboru.service
 Wants=network-online.target
 
