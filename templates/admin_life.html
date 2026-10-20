@@ -12,8 +12,8 @@
   <div class="form-panel aw-check{{ ' ok' if ai.ok else ' bad' }}" id="ai-check">
     <h2>AI 초안 · {{ ai.kind_name }}</h2>
     {% if ai.ok %}<p><span class="aw-badge ok">숫자 확인됨</span> 글 속 숫자가 모두 모은 자료 안에 있어요. 내용을 읽어 보고 게시해 주세요.</p>
-    {% else %}<p><span class="aw-badge bad">검토 필요 {{ ai.problems|length }}곳</span> 자료에 없는 숫자나 기업을 평가하는 말이 있어요. 아래 줄을 고치고 저장하면 다시 확인해요.</p>
-    <ul class="aw-problems">{% for p in ai.problems %}<li>{% if p.numbers %}<b>자료에 없는 숫자 {{ p.numbers|join(', ') }}</b>{% else %}<b>평가로 읽힐 말 {{ p.words|join(', ') }}</b>{% endif %}<span>{{ p.line }}</span></li>{% endfor %}</ul>{% endif %}
+    {% else %}<p><span class="aw-badge bad">검토 필요 {{ ai.problems|length }}곳</span> 자료에 없는 숫자, 다른 대상에 붙은 숫자, 기업을 평가하는 말이 있어요. 아래 줄을 고치고 저장하면 다시 확인해요.</p>
+    <ul class="aw-problems">{% for p in ai.problems %}<li>{% if p.numbers %}<b>자료에 없는 숫자 {{ p.numbers|join(', ') }}</b>{% elif p.pair %}<b>숫자 짝이 달라요: {{ p.pair }}</b>{% else %}<b>평가로 읽힐 말 {{ p.words|join(', ') }}</b>{% endif %}<span>{{ p.line }}</span></li>{% endfor %}</ul>{% endif %}
     <p class="meta">출처 {{ ai.sources|length }}곳 (글 아래에 자동으로 붙어요): {% for s in ai.sources %}{% if s.url %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}{{ ', ' if not loop.last }}{% endfor %}</p>
     <details><summary>AI에 넘긴 자료 보기</summary><pre class="aw-facts">{{ ai.facts }}</pre></details>
     <p class="meta">{{ '매일 아침 자동으로' if ai.trigger == 'daily' else '관리자가 직접' }} 만듦 · {{ ai.created[:16].replace('T', ' ') }} · 마지막 확인 {{ ai.checked[:16].replace('T', ' ') }}</p>
