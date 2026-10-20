@@ -101,6 +101,8 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉�
           '지켜야 할 것:\n'
           '- [자료]에 있는 사실과 숫자만 쓴다. 자료에 없는 숫자(날짜·금액·비율·건수·순위·기간 모두)는 절대 쓰지 않는다.\n'
           '- 숫자를 새로 계산하지 않는다(더하기·빼기·몇 배·평균 금지). 자료에 계산돼 있는 값을 그대로 옮긴다.\n'
+          '- 숫자는 자료에서 그 숫자가 붙어 있는 대상(회사·기관·지역·상품)·기간·단위와 함께 그대로 옮긴다. 여러 대상을 "각각"으로 묶을 때는 대상마다 자료의 숫자를 다시 확인한다.\n'
+          '- 뉴스끼리 숫자가 다르면 한쪽을 고르지 말고 "보도마다 달라요"라고 쓰거나 그 숫자를 뺀다.\n'
           "- 날짜는 '10월 17일'처럼 풀어 쓴다.\n"
           "- 목록이나 팁 개수를 숫자로 세지 않는다('3가지' 대신 '이렇게').\n"
           '- 인터넷 검색이나 네가 알고 있는 지식으로 사실을 보태지 않는다. 자료가 말하지 않는 원인·전망은 짐작하지 말고 필요하면 "자료만으로는 알 수 없어요"라고 쓴다.\n'
@@ -655,6 +657,24 @@ def install(S):
         db.execute('UPDATE ai_articles SET check_ok=?,problems=?,checked=? WHERE article_id=?', (0 if problems else 1, json.dumps(problems, ensure_ascii=False), stamp(), article_id))
         return problems
 
+    PAIR_SYSTEM = ('너는 잡지 교열 기자야. [자료]와 [글]을 비교해서, 글 속 숫자가 자료와 다른 대상·기간·단위에 붙은 문장만 찾아. '
+                   '예: 자료는 "국민 119명, 하나 89명"인데 글은 "국민은행과 하나은행이 각각 119명". 숫자가 자료에 있는지가 아니라 누구의·무엇의 숫자인지가 맞는지를 봐. '
+                   '문제가 없으면 빈 목록. JSON만: {"problems": [{"line": "글의 그 문장", "why": "자료에서는 무엇이 몇인지 짧게"}]}')
+
+    def pair_check(title, summary, body, facts):
+        """숫자가 맞는 대상에 붙었는지 AI 교열 (숫자 검사는 자료에 그 숫자가 있는지만 봐서, 은행 A의 숫자를 은행 B에 붙여도 통과함).
+        문제 [{line, pair}]. 교열을 못 하면 바로 게시하지 않게 문제 하나로 돌려줌."""
+        text = '\n'.join([title, summary, body])
+        if not NUM.search(text): return []
+        user = '[자료]\n' + json.dumps(facts, ensure_ascii=False)[:12000] + '\n\n[글]\n' + text[:12000]
+        try: got = chat(PAIR_SYSTEM, user, 1500)
+        except RuntimeError as e: return [{'line': '숫자 짝 검사를 못 했어요', 'pair': str(e)[:120]}]
+        out = []
+        for p in (got.get('problems') or [])[:10] if isinstance(got, dict) else []:
+            if isinstance(p, dict) and str(p.get('line', '')).strip():
+                out.append({'line': _plain(p['line'], 300), 'pair': _plain(p.get('why', ''), 200) or '숫자가 다른 대상에 붙었어요'})
+        return out
+
     def generate(kind, trigger='admin', force=False, day=None, topic=None, avoid=()):
         """{status: made|exists|skip|error, id, reason, published}. 관리자가 만든 글은 초안(draft). 매일 자동으로 쓴 글은
         '바로 게시'가 켜져 있고 숫자 검사를 통과하면 게시하고, 아니면 초안으로 남긴다."""
@@ -700,6 +720,11 @@ def install(S):
             db.execute('INSERT OR REPLACE INTO ai_articles(article_id,kind,facts,sources,trigger,created,checked) VALUES(?,?,?,?,?,?,?)',
                        (aid, kind, facts_s, sources_s, trigger, stamp(), stamp()))
             problems = save_check(db, aid, title, summary, body, got['facts'])
+        if not problems:  # 숫자가 다 자료에 있어도, 누구의 숫자인지 바뀌었으면 초안으로 (운영자 지적 2026-10-20: 하나은행 89명 → 119명)
+            problems = pair_check(title, summary, body, got['facts'])
+            if problems:
+                with conn() as db: db.execute('UPDATE ai_articles SET check_ok=0,problems=? WHERE article_id=?', (json.dumps(problems, ensure_ascii=False), aid))
+        with conn() as db:
             published = trigger == 'daily' and not problems and settings()['publish'] == 1
             if published: db.execute("UPDATE articles SET status='published',published_at=?,updated=? WHERE id=?", (stamp(), stamp(), aid))
         art = app.extensions.get('soboru_art')  # 저장한 글처럼 AI 일러스트 자동 그리기 (키가 있을 때만)
@@ -856,12 +881,32 @@ def install(S):
         return old_edit(article_id)
     app.view_functions['admin_life_edit'] = admin_life_edit  # 원래 함수가 이미 admin_only라 로그인 확인은 그쪽에서
 
-    app.extensions['soboru_writer'] = {'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'check_text': check_text}
+    def recheck(days=7):
+        """최근 days일에 게시된 AI 글을 숫자 검사 + 숫자 짝 검사로 다시 봄. 걸린 글은 초안으로 돌리고 어디가 문제인지 남김
+        (관리자 > 생활정보 글에서 고치고 다시 게시). [{id, title, problems}]"""
+        since = (datetime.date.today() - datetime.timedelta(days=days)).isoformat()
+        with conn() as db:
+            rows = db.execute("SELECT a.id,a.title,a.summary,a.body,x.facts FROM articles a JOIN ai_articles x ON x.article_id=a.id "
+                              "WHERE a.origin='ai' AND a.status='published' AND substr(a.created,1,10)>=? ORDER BY a.id", (since,)).fetchall()
+        out = []
+        for r in rows:
+            try: facts = json.loads(r['facts'])
+            except ValueError: continue
+            problems = check_text('\n'.join([r['title'], r['summary'] or '', r['body'] or '']), facts) or pair_check(r['title'], r['summary'] or '', r['body'] or '', facts)
+            if not problems or problems[0].get('line') == '숫자 짝 검사를 못 했어요': continue  # 검사를 못 한 글은 그대로 둠
+            with conn() as db:
+                db.execute("UPDATE articles SET status='draft',updated=? WHERE id=?", (stamp(), r['id']))
+                db.execute('UPDATE ai_articles SET check_ok=0,problems=?,checked=? WHERE article_id=?', (json.dumps(problems, ensure_ascii=False), stamp(), r['id']))
+            out.append({'id': r['id'], 'title': r['title'], 'problems': problems})
+        log({'status': 'recheck', 'kind': '', 'trigger': 'recheck', 'reason': f'최근 {days}일 게시 글 {len(rows)}개 중 {len(out)}개를 초안으로 돌렸어요'})
+        return out
+
+    app.extensions['soboru_writer'] = {'recheck': recheck, 'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'check_text': check_text}
     S.writer_daily = daily
 
 
 def main(argv):
-    """서버 예약 작업: python -m soboru_writer [--kind 종류] [--dry]. --dry는 자료만 모아 보여 줌(AI·저장 없음)."""
+    """서버 예약 작업: python -m soboru_writer [--kind 종류] [--dry] [--recheck 일수]. --recheck는 게시된 글을 다시 검사해 걸린 글을 초안으로, --dry는 자료만 모아 보여 줌(AI·저장 없음)."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import app as site
     import soboru_writer as mod  # app.py가 붙인 모듈 (python -m으로 부르면 이 파일은 __main__이라 Skip이 다른 클래스)
@@ -872,6 +917,12 @@ def main(argv):
             for k in ([argv[argv.index('--kind') + 1]] if '--kind' in argv else dict.fromkeys(ORDER + EXTRA)):
                 try: print(k, json.dumps(w['collect'](k), ensure_ascii=False, indent=1)[:3000])
                 except Skip as e: print(k, '건너뜀:', e)
+            return 0
+        if '--recheck' in argv:  # 게시된 글 다시 검사: python -m soboru_writer --recheck [일수]
+            i = argv.index('--recheck'); days = int(argv[i + 1]) if len(argv) > i + 1 and argv[i + 1].isdigit() else 7
+            got = w['recheck'](days)
+            for r in got: print('초안으로', r['id'], r['title'], '·', '; '.join(p.get('pair') or ', '.join(p.get('numbers') or p.get('words') or []) for p in r['problems']))
+            print(f'{len(got)}개를 초안으로 돌렸어요')
             return 0
         if '--kind' in argv:
             out = [dict(w['generate'](argv[argv.index('--kind') + 1], 'daily'), kind=argv[argv.index('--kind') + 1])]

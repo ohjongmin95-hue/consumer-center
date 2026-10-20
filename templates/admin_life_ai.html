@@ -61,7 +61,7 @@
 
   {% if logs %}
   <h2 class="aw-h">최근 기록</h2>
-  <ul class="aw-log">{% for l in logs %}<li><span>{{ l.at[5:16].replace('T', ' ') }}</span> {{ '자동' if l.trigger == 'daily' else '직접' }} · {{ kinds|selectattr('key', 'equalto', l.kind)|map(attribute='name')|first or l.kind }} · {{ {'made': '초안 만듦', 'skip': '건너뜀', 'error': '실패', 'exists': '이미 있음'}.get(l.status, l.status) }}{% if l.reason %} — {{ l.reason }}{% endif %}</li>{% endfor %}</ul>
+  <ul class="aw-log">{% for l in logs %}<li><span>{{ l.at[5:16].replace('T', ' ') }}</span> {{ {'daily': '자동', 'recheck': '다시 검사'}.get(l.trigger, '직접') }} · {{ kinds|selectattr('key', 'equalto', l.kind)|map(attribute='name')|first or l.kind }} · {{ {'made': '초안 만듦', 'skip': '건너뜀', 'error': '실패', 'exists': '이미 있음', 'recheck': '게시 글 검사'}.get(l.status, l.status) }}{% if l.reason %} — {{ l.reason }}{% endif %}</li>{% endfor %}</ul>
   {% endif %}
   {% endif %}
 </div></main>

@@ -3191,10 +3191,14 @@ class SiteTest(unittest.TestCase):
             db.execute("DELETE FROM cases WHERE receipt LIKE 'AIW-%'"); db.execute("DELETE FROM companies WHERE biz_no='AIW'")
             db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
 
-    def writer_ai(self, sent, extra=''):
-        """가짜 OpenAI: 받은 자료([자료] JSON)의 숫자만 써서 기사를 돌려줌. extra는 자료에 없는 말을 섞을 때."""
+    def writer_ai(self, sent, extra='', pair=None):
+        """가짜 OpenAI: 받은 자료([자료] JSON)의 숫자만 써서 기사를 돌려줌. extra는 자료에 없는 말을 섞을 때.
+        숫자 짝 검사(교열) 부름에는 pair(문제 목록, 없으면 문제 없음)를 돌려줌."""
         def fake(url, headers, body, timeout):
             if 'images' in url: return 500, {'error': {'message': 'no images in test'}}
+            if body['messages'][0]['content'].startswith('너는 잡지 교열'):
+                self.pair_calls = getattr(self, 'pair_calls', []) + [body]
+                return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps({'problems': pair or []}, ensure_ascii=False)}}]}
             sent.append(body)
             facts = json.loads(body['messages'][1]['content'].split('[자료]\n', 1)[1])
             nums = [v for v in facts.values() if isinstance(v, int)][:1] or [1372]
@@ -3402,6 +3406,40 @@ class SiteTest(unittest.TestCase):
             top = shop['facts']['가장 많이 오른 분야']
             self.assertEqual(shop['facts'][f'{top} 클릭 비중']['성별 클릭 비중(%)'], {'여성': 60, '남성': 40})
             self.assertEqual(shop['category'], '쇼핑')
+
+    def test_writer_pair_check_holds_wrong_subject_numbers(self):
+        """숫자가 자료에 있어도 다른 대상에 붙었으면(하나은행 89명 → 119명) 바로 게시하지 않고, 게시된 글도 다시 검사해 초안으로."""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls = [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        bad = [{'line': '국민은행과 하나은행도 각각 119명과 119명', 'why': '자료에서는 하나은행 89명'}]
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, pair=bad)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            self.pair_calls = []
+            r = w['generate']('trend', 'daily')
+            self.assertEqual(r['status'], 'made'); self.assertFalse(r['published'])
+            self.assertTrue(self.pair_calls)
+            self.assertIn('[자료]', self.pair_calls[0]['messages'][1]['content']); self.assertIn('[글]', self.pair_calls[0]['messages'][1]['content'])
+            with self.site.conn() as db:
+                row = db.execute('SELECT a.status,x.check_ok,x.problems FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE a.id=?', (r['id'],)).fetchone()
+            self.assertEqual((row['status'], row['check_ok']), ('draft', 0))
+            self.assertEqual(json.loads(row['problems'])[0]['pair'], '자료에서는 하나은행 89명')
+            admin = self.login_admin()
+            self.assertIn('숫자 짝이 달라요: 자료에서는 하나은행 89명', admin.get(f'/admin/life/{r["id"]}').get_data(as_text=True))
+        # 문제 없는 글은 게시되고, 나중에 다시 검사해서 걸리면 초안으로
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            ok = w['generate']('news', 'daily')
+            self.assertTrue(ok['published'])
+            self.assertEqual(w['recheck'](7), [])  # 문제 없으면 그대로
+        with patch.dict(os.environ, env), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, pair=bad)):
+            got = w['recheck'](7)
+            self.assertEqual([g['id'] for g in got], [ok['id']])
+            with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (ok['id'],)).fetchone()[0], 'draft')
+        with patch.dict(os.environ, env), patch.object(self.site.companydesk, 'post_json', lambda *a, **k: (500, {'error': {'message': 'down'}})):
+            with self.site.conn() as db: db.execute("UPDATE articles SET status='published' WHERE id=?", (ok['id'],))
+            self.assertEqual(w['recheck'](7), [])  # 교열을 못 하면 게시된 글은 건드리지 않음
 
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
