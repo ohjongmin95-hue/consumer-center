@@ -3191,14 +3191,18 @@ class SiteTest(unittest.TestCase):
             db.execute("DELETE FROM cases WHERE receipt LIKE 'AIW-%'"); db.execute("DELETE FROM companies WHERE biz_no='AIW'")
             db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
 
-    def writer_ai(self, sent, extra='', pair=None):
+    def writer_ai(self, sent, extra='', pair=None, fix=None):
         """가짜 OpenAI: 받은 자료([자료] JSON)의 숫자만 써서 기사를 돌려줌. extra는 자료에 없는 말을 섞을 때.
         숫자 짝 검사(교열) 부름에는 pair(문제 목록, 없으면 문제 없음)를 돌려줌."""
         def fake(url, headers, body, timeout):
             if 'images' in url: return 500, {'error': {'message': 'no images in test'}}
             if body['messages'][0]['content'].startswith('너는 잡지 교열'):
+                if '[문제]' in body['messages'][0]['content']:  # 재교열: 걸린 문장 고치기
+                    self.fix_calls = getattr(self, 'fix_calls', []) + [body]
+                    return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps({'fixes': fix or []}, ensure_ascii=False)}}]}
                 self.pair_calls = getattr(self, 'pair_calls', []) + [body]
-                return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps({'problems': pair or []}, ensure_ascii=False)}}]}
+                got = pair(body) if callable(pair) else pair
+                return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps({'problems': got or []}, ensure_ascii=False)}}]}
             sent.append(body)
             facts = json.loads(body['messages'][1]['content'].split('[자료]\n', 1)[1])
             nums = [v for v in facts.values() if isinstance(v, int)][:1] or [1372]
@@ -3440,6 +3444,40 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, env), patch.object(self.site.companydesk, 'post_json', lambda *a, **k: (500, {'error': {'message': 'down'}})):
             with self.site.conn() as db: db.execute("UPDATE articles SET status='published' WHERE id=?", (ok['id'],))
             self.assertEqual(w['recheck'](7), [])  # 교열을 못 하면 게시된 글은 건드리지 않음
+
+    def test_writer_proofread_fixes_published_article(self):
+        """관리자 '재교열하기': 걸린 문장을 자료대로 고치고, 고친 뒤 깨끗하면 게시 그대로. 남으면 초안으로."""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls = [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            r = w['generate']('news', 'daily'); self.assertTrue(r['published'])
+        with self.site.conn() as db:
+            db.execute("UPDATE articles SET body=body || ?, updated=updated WHERE id=?", ('\n\n국민은행과 하나은행도 각각 119명과 119명의 정보가 유출됐어요.', r['id']))
+            f = json.loads(db.execute('SELECT facts FROM ai_articles WHERE article_id=?', (r['id'],)).fetchone()[0])
+            f['은행 해킹 뉴스'] = '신한 2만5천명·국민 119명·하나 89명 정보 유출'
+            db.execute('UPDATE ai_articles SET facts=? WHERE article_id=?', (json.dumps(f, ensure_ascii=False), r['id']))
+        wrong = '국민은행과 하나은행도 각각 119명과 119명의 정보가 유출됐어요.'
+        pair = lambda body: [{'line': wrong, 'why': '자료에서는 하나은행 89명'}] if wrong in body['messages'][1]['content'] else []
+        fix = [{'before': wrong, 'after': '국민은행은 119명, 하나은행은 89명의 정보가 유출됐어요.'}]
+        admin = self.login_admin()
+        with patch.dict(os.environ, env), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, pair=pair, fix=fix)):
+            res = admin.post(f'/admin/life/{r["id"]}/proofread', data={'_csrf': self.csrf(admin, f'/admin/life/{r["id"]}')})
+        self.assertEqual(res.status_code, 302)
+        with self.site.conn() as db: a = db.execute('SELECT status,body FROM articles WHERE id=?', (r['id'],)).fetchone()
+        self.assertIn('하나은행은 89명', a['body']); self.assertNotIn(wrong, a['body'])
+        self.assertEqual(a['status'], 'published')  # 고친 뒤 문제가 없으면 게시 그대로
+        page = admin.get(f'/admin/life/{r["id"]}').get_data(as_text=True)
+        self.assertIn('1곳을 자료대로 고쳤어요', page); self.assertIn('하나은행은 89명', page); self.assertIn('재교열하기', page)
+        self.assertNotIn('1곳을 자료대로 고쳤어요', admin.get(f'/admin/life/{r["id"]}').get_data(as_text=True))  # 결과는 한 번만
+        # 고쳐도 문제가 남으면 게시를 내림
+        always = [{'line': '첫 줄 요약이에요.', 'why': '자료와 다른 대상'}]
+        with patch.dict(os.environ, env), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, pair=always, fix=[])):
+            out = w['proofread'](r['id'])
+        self.assertEqual((out['status'], out['unpublished']), ('left', True))
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (r['id'],)).fetchone()[0], 'draft')
 
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)

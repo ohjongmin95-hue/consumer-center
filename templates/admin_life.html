@@ -15,8 +15,15 @@
     {% else %}<p><span class="aw-badge bad">검토 필요 {{ ai.problems|length }}곳</span> 자료에 없는 숫자, 다른 대상에 붙은 숫자, 기업을 평가하는 말이 있어요. 아래 줄을 고치고 저장하면 다시 확인해요.</p>
     <ul class="aw-problems">{% for p in ai.problems %}<li>{% if p.numbers %}<b>자료에 없는 숫자 {{ p.numbers|join(', ') }}</b>{% elif p.pair %}<b>숫자 짝이 달라요: {{ p.pair }}</b>{% else %}<b>평가로 읽힐 말 {{ p.words|join(', ') }}</b>{% endif %}<span>{{ p.line }}</span></li>{% endfor %}</ul>{% endif %}
     <p class="meta">출처 {{ ai.sources|length }}곳 (글 아래에 자동으로 붙어요): {% for s in ai.sources %}{% if s.url %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}{{ ', ' if not loop.last }}{% endfor %}</p>
+    {% set pf = proof_state(a['id']) if proof_state is defined else None %}
+    {% if pf %}<div class="aw-proof">{% if pf.state == 'running' %}<p><b>재교열하는 중이에요.</b> AI가 자료와 글을 맞춰 보고 있어요. 1분쯤 뒤 <a href="{{ url_for('admin_life_edit', article_id=a['id']) }}#ai-check">새로고침</a>해 주세요.</p>
+    {% elif pf.status == 'error' %}<p><b>재교열하지 못했어요:</b> {{ pf.reason }}</p>
+    {% elif pf.status == 'ok' %}<p><b>재교열 결과: 고칠 곳이 없어요.</b> 숫자와 그 대상이 모두 자료와 맞아요.</p>
+    {% else %}<p><b>재교열 결과: {{ pf.fixed|length }}곳을 자료대로 고쳤어요.</b>{% if pf.status == 'left' %} 아직 확인할 곳이 남아 있어{% if pf.unpublished %} 게시를 내리고 초안으로 돌렸어요{% else %}요{% endif %}. 위 줄을 직접 고쳐 주세요.{% else %} 다시 검사했더니 문제가 없어요.{% endif %}</p>
+    {% if pf.fixed %}<ul class="aw-problems">{% for f in pf.fixed %}<li><b>고친 문장</b><span>{{ f.after }}</span><span class="meta">전: {{ f.before }}</span></li>{% endfor %}</ul>{% endif %}{% endif %}</div>{% endif %}
+    {% if a['origin'] == 'ai' %}<form method="post" action="{{ url_for('admin_life_proofread', article_id=a['id']) }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='재교열하는 중…'"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit" class="secondary">🔍 재교열하기</button> <span class="meta">AI가 자료와 다시 맞춰 보고, 숫자가 틀리거나 다른 대상에 붙은 문장을 자료대로 고쳐요. 게시 중인 글도 바로 고쳐져요.</span></form>{% endif %}
     <details><summary>AI에 넘긴 자료 보기</summary><pre class="aw-facts">{{ ai.facts }}</pre></details>
-    <p class="meta">{{ '매일 아침 자동으로' if ai.trigger == 'daily' else '관리자가 직접' }} 만듦 · {{ ai.created[:16].replace('T', ' ') }} · 마지막 확인 {{ ai.checked[:16].replace('T', ' ') }}</p>
+    <p class="meta">{{ '자동으로' if ai.trigger == 'daily' else '관리자가 직접' }} 만듦 · {{ ai.created[:16].replace('T', ' ') }} · 마지막 확인 {{ ai.checked[:16].replace('T', ' ') }}</p>
   </div>
   {% endif %}
   <form class="form-panel" method="post" action="{{ url_for('admin_life_edit', article_id=a['id']) if a else url_for('admin_life') }}">

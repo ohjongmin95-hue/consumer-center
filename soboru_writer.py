@@ -881,6 +881,67 @@ def install(S):
         return old_edit(article_id)
     app.view_functions['admin_life_edit'] = admin_life_edit  # 원래 함수가 이미 admin_only라 로그인 확인은 그쪽에서
 
+    FIX_SYSTEM = ('너는 잡지 교열 기자야. [문제]에 적힌 문장을 [자료]대로 고쳐. 자료에 없는 숫자는 새로 넣지 말고, 맞는 숫자를 자료에서 찾을 수 없으면 그 숫자 부분을 빼고 문장을 자연스럽게 다듬어. '
+                  '말투(해요체)와 나머지 내용은 그대로 둬. JSON만: {"fixes": [{"before": "글에 있는 문장 그대로(한 글자도 바꾸지 말고)", "after": "고친 문장"}]}')
+
+    def proofread(article_id):
+        """재교열: 숫자 검사 + 숫자 짝 검사 → 걸린 문장을 AI가 자료대로 고쳐 저장 → 다시 검사.
+        다시 검사해도 문제가 남으면 게시 중인 글은 초안으로 내림. {status: ok|fixed|left|error, fixed: [...], problems: [...]}"""
+        with conn() as db:
+            r = db.execute("SELECT a.id,a.title,a.summary,a.body,a.status,x.facts FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE a.id=?", (article_id,)).fetchone()
+        if not r: return {'status': 'error', 'reason': 'AI 글이 아니에요'}
+        facts = json.loads(r['facts']); parts = {'title': r['title'] or '', 'summary': r['summary'] or '', 'body': r['body'] or ''}
+        def check(p):
+            got = check_text('\n'.join(p.values()), facts)
+            return got + [x for x in pair_check(p['title'], p['summary'], p['body'], facts) if x not in got]
+        problems = check(parts)
+        if any(x.get('line') == '숫자 짝 검사를 못 했어요' for x in problems): return {'status': 'error', 'reason': problems[0].get('pair', 'AI 교열을 못 했어요')}
+        fixed = []
+        if problems:
+            user = ('[자료]\n' + json.dumps(facts, ensure_ascii=False)[:12000] + '\n\n[문제]\n' + json.dumps(problems, ensure_ascii=False)
+                    + '\n\n[글]\n' + '\n'.join(parts.values())[:12000])
+            try: got = chat(FIX_SYSTEM, user, 2500)
+            except RuntimeError as e: return {'status': 'error', 'reason': str(e)}
+            for f in (got.get('fixes') or [])[:15] if isinstance(got, dict) else []:
+                if not isinstance(f, dict): continue
+                before, after = str(f.get('before', '')).strip(), str(f.get('after', '')).strip()
+                if not before or before == after: continue
+                for k in parts:
+                    if before in parts[k]: parts[k] = parts[k].replace(before, clean_personal(desk.scrub, after)); fixed.append({'before': before[:300], 'after': after[:300]}); break
+            if fixed: problems = check(parts)
+        with conn() as db:
+            if fixed: db.execute('UPDATE articles SET title=?,summary=?,body=?,updated=? WHERE id=?', (parts['title'][:120], parts['summary'], parts['body'], stamp(), article_id))
+            db.execute('UPDATE ai_articles SET check_ok=?,problems=?,checked=? WHERE article_id=?', (0 if problems else 1, json.dumps(problems, ensure_ascii=False), stamp(), article_id))
+            if problems and r['status'] == 'published': db.execute("UPDATE articles SET status='draft',updated=? WHERE id=?", (stamp(), article_id))
+        return {'status': 'left' if problems else ('fixed' if fixed else 'ok'), 'fixed': fixed, 'problems': problems, 'unpublished': bool(problems and r['status'] == 'published')}
+
+    @app.route('/admin/life/<int:article_id>/proofread', methods=['POST'])
+    @S.admin_only
+    def admin_life_proofread(article_id):
+        """관리자 글 화면 '재교열하기' 버튼. AI를 두세 번 불러 오래 걸릴 수 있어 뒤에서 돌리고 글 화면에 결과를 보여 줌."""
+        if not desk.ai_ready(): flash('OpenAI API 키가 없어서 재교열할 수 없어요.'); return redirect(url_for('admin_life_edit', article_id=article_id))
+        def run():
+            try: res = proofread(article_id)
+            except Exception as e: res = {'status': 'error', 'reason': f'재교열하지 못했어요 ({type(e).__name__})'}
+            jobs = setting('writer_proof', {}); jobs = jobs if isinstance(jobs, dict) else {}
+            jobs[str(article_id)] = dict(res, state='done', at=stamp()); put('writer_proof', jobs)
+        jobs = setting('writer_proof', {}); jobs = jobs if isinstance(jobs, dict) else {}
+        jobs[str(article_id)] = {'state': 'running', 'at': stamp()}; put('writer_proof', jobs)
+        if app.config.get('TESTING'): run()
+        else: threading.Thread(target=run, daemon=True).start()
+        return redirect(url_for('admin_life_edit', article_id=article_id) + '#ai-check')
+
+    def proof_state(article_id):
+        """글 화면에 보여 줄 재교열 결과 (한 번 보여 주면 지움, 돌고 있으면 그대로)"""
+        jobs = setting('writer_proof', {}); jobs = jobs if isinstance(jobs, dict) else {}
+        j = jobs.get(str(article_id))
+        if not j: return None
+        if j.get('state') == 'running' and j.get('at', '') < (datetime.datetime.now() - datetime.timedelta(minutes=5)).isoformat():
+            j = {'state': 'done', 'status': 'error', 'reason': '시간이 너무 걸려서 멈췄어요. 다시 눌러 주세요.'}
+        if j.get('state') == 'done': jobs.pop(str(article_id), None); put('writer_proof', jobs)
+        return j
+    app.jinja_env.globals.update(proof_state=proof_state)
+
     def recheck(days=7):
         """최근 days일에 게시된 AI 글을 숫자 검사 + 숫자 짝 검사로 다시 봄. 걸린 글은 초안으로 돌리고 어디가 문제인지 남김
         (관리자 > 생활정보 글에서 고치고 다시 게시). [{id, title, problems}]"""
@@ -901,7 +962,7 @@ def install(S):
         log({'status': 'recheck', 'kind': '', 'trigger': 'recheck', 'reason': f'최근 {days}일 게시 글 {len(rows)}개 중 {len(out)}개를 초안으로 돌렸어요'})
         return out
 
-    app.extensions['soboru_writer'] = {'recheck': recheck, 'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'check_text': check_text}
+    app.extensions['soboru_writer'] = {'recheck': recheck, 'proofread': proofread, 'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'check_text': check_text}
     S.writer_daily = daily
 
 
