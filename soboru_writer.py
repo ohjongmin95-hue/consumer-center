@@ -795,7 +795,7 @@ def install(S):
             if published: db.execute("UPDATE articles SET status='published',published_at=?,updated=? WHERE id=?", (stamp(), stamp(), aid))
         art = app.extensions.get('soboru_art')  # 저장한 글처럼 AI 일러스트 자동 그리기 (키가 있을 때만)
         if art: art['auto']('life', aid, wait=trigger == 'daily')
-        res = {'status': 'made', 'id': aid, 'published': published, 'reason': '숫자 검토 필요 %d곳' % len(problems) if problems else ('바로 게시했어요' if published else '')}
+        res = {'status': 'made', 'id': aid, 'published': published, 'topic': topic, 'reason': '숫자 검토 필요 %d곳' % len(problems) if problems else ('바로 게시했어요' if published else '')}
         log(dict(res, kind=kind, trigger=trigger))
         return res
 
@@ -813,34 +813,41 @@ def install(S):
         cfg = settings(); day = today or datetime.date.today().isoformat()
         if not cfg['auto']: return [{'status': 'off', 'reason': '자동 쓰기를 꺼 두었어요'}]
         if not desk.ai_ready(): log({'status': 'skip', 'kind': '', 'trigger': 'daily', 'reason': 'OpenAI API 키가 없어요'}); return [{'status': 'skip', 'reason': 'OpenAI API 키가 없어요'}]
+        # 몫은 게시된 글로 셈 (운영자 지적 2026-10-20: 검사에 걸려 초안으로 남은 글까지 세면 저녁에 5개가 안 올라옴). 바로 게시를 꺼 뒀으면 초안도 셈.
+        pub_only = cfg['publish'] == 1
         with conn() as db:
-            done = db.execute("SELECT COUNT(*) FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.trigger='daily' AND substr(x.created,1,10)=?", (day,)).fetchone()[0]
+            done = db.execute("SELECT COUNT(*) FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.trigger='daily' AND substr(x.created,1,10)=?"
+                              + (" AND a.status='published'" if pub_only else ''), (day,)).fetchone()[0]
         want = cfg['per_run'] * slots_passed(now) - done; turn = setting('writer_turn', 0)
         turn = turn if isinstance(turn, int) else 0
         if want <= 0: return []  # 오늘 몫은 이미 다 씀 (순서도 그대로)
+        budget = want * 2 + 2  # 걸린 글 대신 더 쓰더라도 AI를 끝없이 부르지 않게: 한 번에 만드는 글은 몫의 두 배까지
+        counts = lambda r: r['status'] == 'made' and (r.get('published') or not pub_only)
         out = []
         for i in range(len(ORDER)):
-            if want <= 0: break
+            if want <= 0 or budget <= 0: break
             kind = ORDER[(turn + i) % len(ORDER)]
             if kind in PAUSED: continue
             ok, why = kind_ready(kind)
             if not ok: out.append({'status': 'skip', 'kind': kind, 'reason': why}); continue
             r = dict(generate(kind, 'daily', day=day), kind=kind); out.append(r)
-            if r['status'] == 'made': want -= 1
+            if r['status'] == 'made': budget -= 1
+            if counts(r): want -= 1
         put('writer_turn', (turn + 1) % len(ORDER))
         # 아직 하루 몫이 남으면 주제별 깊이 보기 글로 돌아가며 채움 (실패가 이어져도 AI를 끝없이 부르지 않게 횟수를 막음)
         xturn = setting('writer_xturn', 0); xturn = xturn if isinstance(xturn, int) else 0
-        dead, tried = set(), set()  # tried: 이번에 못 쓴 주제 (같은 제목·자료 모자람) — 같은 주제로 AI를 다시 부르지 않게
+        dead, tried = set(), set()  # tried: 이번에 못 쓴 주제 (같은 제목·자료 모자람·검사에 걸림) — 같은 주제로 AI를 다시 부르지 않게
         nxt = xturn
-        for i in range(want + len(EXTRA) * 2):
-            if want <= 0 or len(dead) == len(EXTRA): break
+        for i in range(want * 2 + len(EXTRA) * 2):
+            if want <= 0 or budget <= 0 or len(dead) == len(EXTRA): break
             kind = EXTRA[(xturn + i) % len(EXTRA)]
             if kind in dead: continue
             ok, why = kind_ready(kind)
             if not ok: dead.add(kind); out.append({'status': 'skip', 'kind': kind, 'reason': why}); continue
             r = dict(generate(kind, 'daily', day=day, avoid=tried), kind=kind); out.append(r)
             nxt = xturn + i + 1
-            if r['status'] == 'made': want -= 1
+            if r['status'] == 'made': budget -= 1
+            if counts(r): want -= 1
             elif r['status'] == 'skip' and '주제를 다 썼어요' in r.get('reason', ''): dead.add(kind)
             elif r.get('topic'): tried.add(r['topic'])
         put('writer_xturn', nxt % len(EXTRA))  # 다음 때는 이번에 멈춘 바로 다음 종류부터

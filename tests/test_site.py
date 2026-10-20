@@ -3500,6 +3500,28 @@ class SiteTest(unittest.TestCase):
         self.assertIn('국민은행과 하나은행은 각각 119명, 89명이다.', got['facts']['뉴스'][0]['원문 속 숫자 문장(원문 확인)'])
         self.assertEqual(self.site.soboru_writer.check_text('하나은행은 89명이에요.', got['facts']), [])  # 원문 숫자는 숫자 검사도 통과
 
+    def test_writer_daily_replaces_held_articles(self):
+        """검사에 걸려 초안으로 남은 글은 몫에 세지 않고 다른 글을 더 써서 채움 (한 번에 몫의 두 배까지만)"""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls, n = [], [], [0]
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        def pair(body):
+            n[0] += 1
+            return [{'line': '첫 줄 요약이에요.', 'why': '다른 대상'}] if n[0] <= 2 else []
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, pair=pair)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            out = w['daily'](now=datetime.datetime(2026, 10, 20, 7, 30))
+            made = [r for r in out if r['status'] == 'made']
+            self.assertEqual(sum(1 for r in made if r['published']), 5)  # 걸린 2개 대신 더 써서 게시 5개
+            self.assertEqual(len(made), 7)
+            self.assertEqual(w['daily'](now=datetime.datetime(2026, 10, 20, 8, 0)), [])
+        always = lambda body: [{'line': '첫 줄 요약이에요.', 'why': '다른 대상'}]
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, pair=always)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            out = w['daily'](now=datetime.datetime(2026, 10, 20, 13, 30))
+            self.assertLessEqual(len([r for r in out if r['status'] == 'made']), 12)  # 다 걸려도 몫(5)의 두 배 + 2까지만
+
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
         w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
