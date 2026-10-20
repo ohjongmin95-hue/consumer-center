@@ -16,7 +16,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
 - 공공데이터(data.go.kr 리콜 등)는 아직 키가 없다. 키가 생기면 SOURCES에 준비 확인을, KINDS에 collector 하나를 더하면 된다
   (plans/소보루_매일콘텐츠_공공데이터.md). 리콜처럼 사실만 옮기는 글도 처음에는 초안으로 쌓는다.
 """
-import datetime, json, os, re, statistics, sys, threading, urllib.error, urllib.parse, urllib.request
+import concurrent.futures, datetime, html, ipaddress, json, os, re, socket, statistics, sys, threading, urllib.error, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
 from flask import abort, flash, g, redirect, render_template, request, url_for
 
@@ -103,6 +103,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉�
           '- 숫자를 새로 계산하지 않는다(더하기·빼기·몇 배·평균 금지). 자료에 계산돼 있는 값을 그대로 옮긴다.\n'
           '- 숫자는 자료에서 그 숫자가 붙어 있는 대상(회사·기관·지역·상품)·기간·단위와 함께 그대로 옮긴다. 여러 대상을 "각각"으로 묶을 때는 대상마다 자료의 숫자를 다시 확인한다.\n'
           '- 뉴스끼리 숫자가 다르면 한쪽을 고르지 말고 "보도마다 달라요"라고 쓰거나 그 숫자를 뺀다.\n'
+          '- 뉴스에 "원문 속 숫자 문장(원문 확인)"이 있으면 요약보다 그 원문 문장을 믿고, 숫자는 원문 문장에서 대상과 함께 옮긴다.\n'
           '- 뉴스 요약은 중간에 잘려 "..."로 끝날 수 있다. 잘린 문장의 숫자는 누구의 숫자인지 끝까지 보이지 않으면 쓰지 않는다(예: "국민은행과 하나은행은 각각 119명..."은 하나은행 숫자가 잘린 것이니 각각의 숫자를 쓰지 않는다).\n'
           "- 날짜는 '10월 17일'처럼 풀어 쓴다.\n"
           "- 목록이나 팁 개수를 숫자로 세지 않는다('3가지' 대신 '이렇게').\n"
@@ -260,6 +261,57 @@ def http_get(url, timeout=15):
     except urllib.error.HTTPError as e: return e.code, ''
 
 
+def _public_host(url):
+    """뉴스 원문 주소가 http(s)이고 서버 안쪽(사설·루프백) 주소가 아닌지"""
+    u = urllib.parse.urlparse(url or '')
+    if u.scheme not in ('http', 'https') or not u.hostname: return False
+    try: addrs = {a[4][0] for a in socket.getaddrinfo(u.hostname, u.port or (443 if u.scheme == 'https' else 80), proto=socket.IPPROTO_TCP)}
+    except (socket.gaierror, UnicodeError, ValueError): return False
+    return bool(addrs) and all(ipaddress.ip_address(a.split('%')[0]).is_global for a in addrs)
+
+
+class _NoRedirectToPrivate(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _public_host(newurl): return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def fetch_page(url, timeout=6, limit=1_500_000):
+    """뉴스 원문 HTML (확인용으로만 읽고 싣지 않음). 못 읽으면 ''. 테스트에서 바꿔 끼운다."""
+    if not _public_host(url): return ''
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; soboru-factcheck)', 'Accept': 'text/html'})
+    try:
+        with urllib.request.build_opener(_NoRedirectToPrivate).open(req, timeout=timeout) as r:
+            if 'html' not in (r.headers.get('Content-Type') or 'text/html'): return ''
+            raw = r.read(limit); cs = r.headers.get_content_charset()
+    except (urllib.error.URLError, OSError, ValueError): return ''
+    if not cs:
+        m = re.search(rb'charset=["\']?([\w-]+)', raw[:4000], re.I); cs = m.group(1).decode() if m else 'utf-8'
+    try: return raw.decode(cs, 'replace')
+    except LookupError: return raw.decode('utf-8', 'replace')
+
+
+_real_fetch_page = fetch_page
+
+
+def number_sentences(page, n=8):
+    """원문 HTML → 숫자가 든 본문 문장 n개 (요약은 잘려서 누구의 숫자인지 빠질 수 있어, 원문 문장으로 대조)"""
+    t = re.sub(r'(?is)<(script|style|noscript|header|footer|nav|aside|form)[^>]*>.*?</\1>', ' ', page or '')
+    t = re.sub(r'(?i)<br\s*/?>|</p>|</div>|</li>', '\n', t)
+    t = html.unescape(re.sub(r'<[^>]+>', ' ', t))
+    out, seen = [], set()
+    for line in t.split('\n'):
+        line = ' '.join(line.split())
+        for sent in re.split(r'(?<=[다요음함됨]\.)\s+|(?<=\.)\s+(?=[가-힣A-Z"“‘\'])', line):
+            sent = sent.strip()
+            if not (20 <= len(sent) <= 260) or not re.search(r'\d', sent) or not re.search(r'[가-힣]{2}', sent): continue
+            if re.search(r'@|무단|전재|재배포|Copyright|저작권|구독|기자\s*=|ⓒ|©|입력\s*\d|수정\s*\d|\d{2,4}-\d{3,4}-\d{4}', sent, re.I): continue
+            if sent in seen: continue
+            seen.add(sent); out.append(sent)
+            if len(out) >= n: return out
+    return out
+
+
 def law_oc(): return os.getenv('LAW_OC', '').strip()
 
 
@@ -347,7 +399,7 @@ def install(S):
         scrub = lambda t: clean_personal(desk.scrub, t)
         hits = corpus.related(' '.join(i['title'] + ' ' + i['summary'] for i in items[:3]), limit=3)
         facts = {'자료': '네이버 뉴스 검색 (제목·요약만)', '기간': f'{since.isoformat()} ~ {datetime.date.today().isoformat()}',
-                 '뉴스': [{'제목': scrub(i['title']), '요약': scrub(i['summary']), '언론사': i['source'], '날짜': i['date']} for i in items],
+                 '뉴스': news_facts(items),
                  '관련 법 조문(법령 원문)': [{'조문': h['label'], '원문': corpus.clip(h['text'], 700)} for h in hits]}
         sources = [src(f"{i['source']} · {i['title'][:40]}", i['url']) for i in items] + [src(f"국가법령정보센터 · {h['label']}", h['source']) for h in hits]
         return {'facts': facts, 'sources': sources, 'topic': items[0]['title']}
@@ -437,9 +489,22 @@ def install(S):
             if day >= since: out.append(it)
         return out[:n]
 
+    def originals(items):
+        """뉴스마다 원문을 열어 숫자가 든 문장을 모음 {url: [문장]} (네이버 요약은 100자 안팎이라 잘림). 테스트에서는 fetch_page를 바꿔 끼울 때만."""
+        if app.config.get('TESTING') and fetch_page is _real_fetch_page: return {}
+        urls = [i['url'] for i in items if i.get('url')]
+        def one(u):
+            try: return u, number_sentences(fetch_page(u))
+            except Exception: return u, []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex: return dict(ex.map(one, urls))
+
     def news_facts(items):
-        scrub = lambda t: clean_personal(desk.scrub, t)
-        return [{'제목': scrub(i['title']), '요약': scrub(i['summary']), '언론사': i['source'], '날짜': i['date']} for i in items]
+        scrub = lambda t: clean_personal(desk.scrub, t); orig = originals(items); out = []
+        for i in items:
+            row = {'제목': scrub(i['title']), '요약': scrub(i['summary']), '언론사': i['source'], '날짜': i['date']}
+            if orig.get(i['url']): row['원문 속 숫자 문장(원문 확인)'] = [scrub(x) for x in orig[i['url']]]
+            out.append(row)
+        return out
 
     def collect_rights(topic):
         hits = corpus.related(topic, limit=5)
@@ -659,7 +724,7 @@ def install(S):
         return problems
 
     PAIR_SYSTEM = ('너는 잡지 교열 기자야. [자료]와 [글]을 비교해서, 글 속 숫자가 자료와 다른 대상·기간·단위에 붙은 문장만 찾아. '
-                   '예: 자료는 "국민 119명, 하나 89명"인데 글은 "국민은행과 하나은행이 각각 119명". 뉴스 요약이 "..."로 잘려 대상과 숫자의 짝이 끝까지 보이지 않는데 글이 짝을 지어 쓴 문장도 찾아. 숫자가 자료에 있는지가 아니라 누구의·무엇의 숫자인지가 맞는지를 봐. '
+                   '예: 자료는 "국민 119명, 하나 89명"인데 글은 "국민은행과 하나은행이 각각 119명". 뉴스 요약이 "..."로 잘려 대상과 숫자의 짝이 끝까지 보이지 않는데 글이 짝을 지어 쓴 문장도 찾아. 숫자가 자료에 있는지가 아니라 누구의·무엇의 숫자인지가 맞는지를 봐. 뉴스에 "원문 속 숫자 문장(원문 확인)"이 있으면 요약보다 그 원문 문장을 기준으로 봐. '
                    '문제가 없으면 빈 목록. JSON만: {"problems": [{"line": "글의 그 문장", "why": "자료에서는 무엇이 몇인지 짧게"}]}')
 
     def pair_check(title, summary, body, facts):
@@ -667,7 +732,7 @@ def install(S):
         문제 [{line, pair}]. 교열을 못 하면 바로 게시하지 않게 문제 하나로 돌려줌."""
         text = '\n'.join([title, summary, body])
         if not NUM.search(text): return []
-        user = '[자료]\n' + json.dumps(facts, ensure_ascii=False)[:12000] + '\n\n[글]\n' + text[:12000]
+        user = '[자료]\n' + json.dumps(facts, ensure_ascii=False)[:24000] + '\n\n[글]\n' + text[:12000]
         try: got = chat(PAIR_SYSTEM, user, 1500)
         except RuntimeError as e: return [{'line': '숫자 짝 검사를 못 했어요', 'pair': str(e)[:120]}]
         out = []
@@ -899,7 +964,7 @@ def install(S):
         if any(x.get('line') == '숫자 짝 검사를 못 했어요' for x in problems): return {'status': 'error', 'reason': problems[0].get('pair', 'AI 교열을 못 했어요')}
         fixed = []
         if problems:
-            user = ('[자료]\n' + json.dumps(facts, ensure_ascii=False)[:12000] + '\n\n[문제]\n' + json.dumps(problems, ensure_ascii=False)
+            user = ('[자료]\n' + json.dumps(facts, ensure_ascii=False)[:24000] + '\n\n[문제]\n' + json.dumps(problems, ensure_ascii=False)
                     + '\n\n[글]\n' + '\n'.join(parts.values())[:12000])
             try: got = chat(FIX_SYSTEM, user, 2500)
             except RuntimeError as e: return {'status': 'error', 'reason': str(e)}

@@ -3479,6 +3479,27 @@ class SiteTest(unittest.TestCase):
         self.assertEqual((out['status'], out['unpublished']), ('left', True))
         with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (r['id'],)).fetchone()[0], 'draft')
 
+    def test_writer_reads_news_originals_for_numbers(self):
+        """뉴스 요약이 잘려도 원문에서 숫자 문장을 가져와 자료에 넣음 (하나은행 89명이 요약에서 잘렸던 일)"""
+        mod = self.site.soboru_writer
+        page = ('<html><head><meta charset="utf-8"><script>var a=1234;</script></head><body><nav>메뉴 2026</nav><div class="art">'
+                '<p>신한은행은 약 2만5000명의 개인정보가 유출됐다. 국민은행과 하나은행은 각각 119명, 89명이다.</p>'
+                '<p>홍길동 기자 hong@news.kr 010-1234-5678</p><p>무단 전재 및 재배포 금지 2026</p></div></body></html>')
+        sents = mod.number_sentences(page)
+        self.assertIn('국민은행과 하나은행은 각각 119명, 89명이다.', sents)
+        self.assertFalse([x for x in sents if '1234' in x or '@' in x or '재배포' in x or '메뉴' in x])
+        self.assertFalse(mod._public_host('http://127.0.0.1/a')); self.assertFalse(mod._public_host('file:///etc/passwd')); self.assertFalse(mod._public_host('http://10.0.0.5/'))
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls, opened = [], [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)), \
+                patch.object(mod, 'fetch_page', lambda u: (opened.append(u), page)[1]):
+            with self.site.app.app_context(): got = w['collect']('news')
+        self.assertTrue(opened)
+        self.assertIn('국민은행과 하나은행은 각각 119명, 89명이다.', got['facts']['뉴스'][0]['원문 속 숫자 문장(원문 확인)'])
+        self.assertEqual(self.site.soboru_writer.check_text('하나은행은 89명이에요.', got['facts']), [])  # 원문 숫자는 숫자 검사도 통과
+
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
         w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
