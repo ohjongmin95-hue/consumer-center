@@ -3198,7 +3198,7 @@ class SiteTest(unittest.TestCase):
             sent.append(body)
             facts = json.loads(body['messages'][1]['content'].split('[자료]\n', 1)[1])
             nums = [v for v in facts.values() if isinstance(v, int)][:1] or [1372]
-            out = {'title': f'요즘 소비자 이야기, 숫자로 보면 {nums[0]} {"가나다라마바사아자차"[len(sent) % 10]}편', 'summary': ['첫 줄 요약이에요.', '둘째 줄이에요.', f'셋째 줄, {facts["소비자상담센터 전화번호"]}도 기억해요.'],
+            out = {'title': f'요즘 소비자 이야기, 숫자로 보면 {nums[0]} {facts.get("주제", "")} {"가나다라마바사아자차"[len(sent) % 10]}편', 'summary': ['첫 줄 요약이에요.', '둘째 줄이에요.', f'셋째 줄, {facts["소비자상담센터 전화번호"]}도 기억해요.'],
                    'sections': [{'heading': '무슨 일이에요?', 'paragraphs': [f'자료를 보면 {nums[0]}이라는 숫자가 나와요.' + extra, '자료만으로는 원인을 알 수 없어요.']}],
                    'tips': ['영수증을 챙겨 두세요.', '1372 소비자상담센터에 물어보세요.'], 'category': '생활'}
             return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
@@ -3352,15 +3352,16 @@ class SiteTest(unittest.TestCase):
         # 다른 시험이 넣은 공개 제보 수와 상관없이 '제보 동향'은 건너뛰게 (최소 건수를 아주 크게)
         with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)), \
                 patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
-            self.assertEqual(w['settings']()['per_day'], 6)  # 기본은 하루 6개
+            self.assertEqual((w['settings']()['per_run'], w['settings']()['per_day']), (5, 15))  # 기본은 아침·오후·저녁 5개씩
             admin = self.login_admin()
-            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'publish': '1', 'per_day': '2'})
-            out = w['daily']()
+            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'publish': '1', 'per_run': '2'})
+            morning = datetime.datetime(2026, 10, 20, 7, 30)
+            out = w['daily'](now=morning)
             made = [r for r in out if r['status'] == 'made']
-            self.assertEqual(len(made), 2)  # 하루 2개로 고른 대로
+            self.assertEqual(len(made), 2)  # 한 번에 2개로 고른 대로
             self.assertEqual(out[0]['kind'], 'trend')  # 첫날은 순서표 맨 앞부터, 제보 동향은 공개 제보가 적어 건너뜀
             self.assertNotIn('reports', [r['kind'] for r in out])  # 제보로 쓰는 글은 멈춰 둠 (운영자 요청)
-            self.assertEqual(w['daily'](), [])  # 같은 날 다시 돌려도 더 만들지 않음
+            self.assertEqual(w['daily'](now=morning), [])  # 같은 때 다시 돌려도 더 만들지 않음
             with self.site.conn() as db:
                 rows = db.execute("SELECT a.*,x.kind,x.facts,x.sources FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE a.origin='ai'").fetchall()
             with self.site.conn() as db: checks = {r[0]: r[1] for r in db.execute('SELECT article_id,check_ok FROM ai_articles')}
@@ -3379,22 +3380,22 @@ class SiteTest(unittest.TestCase):
             for r in rows: (self.assertIn if checks[r['id']] else self.assertNotIn)(r['title'], life)
             # 다음 날은 다음 종류부터, 자동 쓰기를 끄면 아무것도 안 함
             tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
-            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'per_day': '1'})
-            self.assertEqual(w['settings'](), {'auto': 0, 'per_day': 1, 'publish': 0})
+            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'per_run': '1'})
+            self.assertEqual(w['settings'](), {'auto': 0, 'per_run': 1, 'per_day': 3, 'publish': 0})
             self.assertEqual(w['daily'](tomorrow)[0]['status'], 'off')
-            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'per_day': '1'})
+            admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'per_run': '1'})
             with self.site.conn() as db: db.execute("UPDATE ai_articles SET created='2000-01-01T07:00:00'")  # 오늘 만든 개수에서 빼서 다음 날처럼
-            out = w['daily'](tomorrow)
+            out = w['daily'](tomorrow, now=morning)
             self.assertNotIn('reports', [r['kind'] for r in out])
             self.assertEqual([r['kind'] for r in out if r['status'] == 'made'], ['news'])
             with self.site.conn() as db:
                 self.assertEqual(db.execute("SELECT status FROM articles WHERE origin='ai' ORDER BY id DESC LIMIT 1").fetchone()[0], 'draft')  # 바로 게시를 끄면 초안
             # 맨 위 '자동 게시 멈추기'는 게시만 끄고 글은 계속 씀, '다시 켜기'는 게시를 켬
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'start'})
-            self.assertEqual(w['settings'](), {'auto': 1, 'per_day': 1, 'publish': 1})
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 1})
             self.assertIn('자동 게시 중이에요', admin.get('/admin/life/ai').get_data(as_text=True))
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'stop'})
-            self.assertEqual(w['settings'](), {'auto': 1, 'per_day': 1, 'publish': 0})
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 0})
             self.assertIn('자동 게시를 멈췄어요', admin.get('/admin/life/ai').get_data(as_text=True))
             # 쇼핑 관심도: 가장 많이 오른 분야와 그 분야 클릭 비중
             with self.site.app.app_context(): shop = w['collect']('shopping')
@@ -3409,12 +3410,25 @@ class SiteTest(unittest.TestCase):
         env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
         with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)), \
                 patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
-            out = w['daily']()  # 기본 6개: 순서표(검색 추이·뉴스·쇼핑) 다음 주제별 깊이 보기 글로 채움
+            out = w['daily'](now=datetime.datetime(2026, 10, 20, 7, 30))  # 아침 5개: 순서표(검색 추이·뉴스·쇼핑) 다음 기획 기사·주제별 글로 채움
             made = [r for r in out if r['status'] == 'made']
-            self.assertEqual(len(made), 6)
-            self.assertEqual([r['kind'] for r in made][3:], ['rights', 'word', 'shopcat'])
+            self.assertEqual([r['kind'] for r in made][3:], ['feature', 'rights'])
+            out = w['daily'](now=datetime.datetime(2026, 10, 20, 19, 30))  # 저녁에 돌면 오후 몫까지 채워 하루 15개
+            made += [r for r in out if r['status'] == 'made']
+            self.assertEqual(len(made), 15)
+            self.assertEqual([r['kind'] for r in made][5:8], ['word', 'feature', 'shopcat'])
             with self.site.conn() as db:
-                rows = {r['kind']: r for r in db.execute("SELECT a.ext_key,x.kind,x.facts FROM articles a JOIN ai_articles x ON x.article_id=a.id")}
+                feats = db.execute("SELECT a.title,a.category,a.ext_key,x.facts FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE x.kind='feature'").fetchall()
+                titles = [r[0] for r in db.execute("SELECT title FROM articles WHERE origin='ai'")]
+            self.assertGreaterEqual(len(feats), 4)
+            self.assertEqual(len({r['category'] for r in feats}), len(feats))  # 기획 기사는 글이 적은 분야부터: 분야가 겹치지 않게
+            self.assertEqual(len(set(titles)), len(titles))  # 같은 제목은 다시 안 씀
+            f = json.loads(feats[0]['facts'])
+            self.assertIn('최근 관련 뉴스(제목·요약만)', f); self.assertIn('검색 추이(네이버 데이터랩)', f)
+            self.assertIn('[분량] 잡지 기획 기사', json.dumps(sent, ensure_ascii=False))
+            with self.site.conn() as db:
+                rows = {}
+                for r in db.execute("SELECT a.ext_key,x.kind,x.facts FROM articles a JOIN ai_articles x ON x.article_id=a.id ORDER BY a.id"): rows.setdefault(r['kind'], r)  # 종류별 첫 글
             self.assertTrue(rows['rights']['ext_key'].startswith('ai:rights:온라인 쇼핑 청약철회:'))
             self.assertIn('전자상거래법 제17조', rows['rights']['facts'])
             word = json.loads(rows['word']['facts'])
