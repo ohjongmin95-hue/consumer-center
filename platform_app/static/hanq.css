@@ -2065,3 +2065,7 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .cx-msgs{padding:14px}.cx-comp{margin-inline:10px}.cx-note{margin-inline:10px}
 .cx-mh .btn{display:none}
 }
+
+/* 무료 체험 안내 띠 */
+.trialbar{margin:14px 0 0;padding:12px 16px;border-radius:14px;background:var(--orange-soft,#fff4e0);font-size:14.5px;color:var(--fg2)}.trialbar b{color:var(--fg)}.trialbar a{margin-left:6px;font-weight:700;color:var(--orange,#ef920e)}
+.trialbar.over{background:var(--red-soft)}.trialbar.over a{color:var(--red)}

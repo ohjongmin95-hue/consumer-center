@@ -16,29 +16,30 @@
 {% block body %}
 <div class="crumb"><a href="{{ url_for('settings') }}">설정</a><span>›</span><span>요금·결제</span></div>
 <div class="chead"><div class="l"><div class="tagrow">
-{% if bl and bl.status=='active' %}<span class="pill ok">결제 중</span>{% elif bl and bl.status=='canceled' %}<span class="pill gray">해지 예약</span>{% elif bl and bl.status=='past_due' %}<span class="pill bad">결제 실패</span>{% elif bl and bl.status=='stopped' %}<span class="pill bad">결제 멈춤</span>{% else %}<span class="pill gray">무료 시범</span>{% endif %}
+{% if bl and bl.status=='trial' %}<span class="pill ok">무료 체험 중</span>{% elif bl and bl.status=='active' %}<span class="pill ok">결제 중</span>{% elif bl and bl.status=='canceled' %}<span class="pill gray">해지 예약</span>{% elif bl and bl.status=='past_due' %}<span class="pill bad">결제 실패</span>{% elif bl and bl.status=='stopped' %}<span class="pill bad">결제 멈춤</span>{% else %}<span class="pill gray">무료 시범</span>{% endif %}
 </div>
 <h1>요금·결제</h1></div></div>
+{% if locked %}<div class="warn" style="margin-bottom:16px"><span><b>{{ '카드를 등록하면 바로 시작할 수 있어요' if not bl or not bl.started else '결제가 확인되지 않아 소보루 CS 기능이 멈췄어요' }}</b><small>{{ ('카드를 등록하면 %d일 동안 모든 기능을 무료로 써요. 등록할 때는 결제되지 않아요.'%trial_days()) if not bl or not bl.started else '받은 문의와 설정은 그대로 있어요. 결제하면 바로 다시 쓸 수 있어요.' }}</small></span></div>{% endif %}
 <div class="cols">
 <div class="stack">
-{% if not p or (not ready and not c24) %}<section class="panel"><div class="ph">준비 중</div><div class="warn">요금제를 준비하고 있어요. 지금은 기간·건수 제한 없이 무료로 쓰실 수 있어요. 요금제가 생기면 미리 알려 드리고, 동의 없이 결제되지 않아요.</div></section>
+{% if not p or (not ready and not c24) %}<section class="panel"><div class="ph">{{ p.name }} · 월 {{ '{:,}'.format(p.price|int) }}원</div><div class="warn">결제 연결을 준비하고 있어요. 그동안은 무료로 쓰실 수 있고, 결제가 열리면 미리 알려 드려요. 동의 없이 결제되지 않아요.</div></section>
 {% else %}
-<section class="panel"><div class="ph">{{ (bl.plan_name if bl and bl.status in ('active','canceled','past_due') else p.name) }}</div>
-<dl class="kv"><dt>월 요금</dt><dd>{{ '{:,}'.format(bl.price if bl and bl.status in ('active','canceled','past_due') else p.price|int) }}원 (부가세 포함)</dd>
+<section class="panel"><div class="ph">{{ (bl.plan_name if bl and bl.status in ('trial','active','canceled','past_due') else p.name) }}</div>
+<dl class="kv"><dt>월 요금</dt><dd>{{ '{:,}'.format(bl.price if bl and bl.status in ('trial','active','canceled','past_due') else p.price|int) }}원 (부가세 포함)</dd>
 {% if bl and bl.card %}<dt>카드</dt><dd>{{ bl.card }}</dd>{% endif %}
-{% if bl and bl.status in ('active','past_due') %}<dt>다음 결제일</dt><dd>{{ bl.next_charge }}</dd>{% elif bl and bl.status=='canceled' %}<dt>이용 기간</dt><dd>{{ bl.next_charge }}까지 (그날부터 결제하지 않아요)</dd>{% endif %}
-{% if bl and bl.status in ('active','past_due','canceled') and bl.price!=(p.price|int) %}<dt>다음 결제부터</dt><dd>{{ p.name }} {{ '{:,}'.format(p.price|int) }}원으로 바뀌어요</dd>{% endif %}</dl>
+{% if bl and bl.status=='trial' %}<dt>무료 체험</dt><dd>{{ bl.next_charge }}까지{% if bl.source!='cafe24' %} (그날 첫 달 요금을 결제해요){% endif %}</dd>{% elif bl and bl.status in ('active','past_due') %}<dt>다음 결제일</dt><dd>{{ bl.next_charge }}</dd>{% elif bl and bl.status=='canceled' %}<dt>이용 기간</dt><dd>{{ bl.next_charge }}까지 (그날부터 결제하지 않아요)</dd>{% endif %}
+{% if bl and bl.status in ('trial','active','past_due','canceled') and bl.price!=(p.price|int) %}<dt>다음 결제부터</dt><dd>{{ p.name }} {{ '{:,}'.format(p.price|int) }}원으로 바뀌어요</dd>{% endif %}</dl>
 {% if bl and bl.note %}<div class="warn" style="margin-top:14px">{{ bl.note }}</div>{% endif %}
-{% if may and bl and bl.source=='cafe24' %}<p class="cap" style="margin:14px 0 0">카페24로 결제 중이에요. 매달 카페24가 결제하고, 해지는 카페24 관리자의 앱 관리에서 할 수 있어요.</p>
-{% elif may and c24 and (not bl or bl.status in ('none','ended','stopped')) %}<div style="margin-top:16px">{% if c24_old %}<p class="cap" style="margin:0 0 10px">카페24 앱 결제 권한이 필요해요. <a class="link" href="{{ url_for('c24.page') }}">카페24 다시 연결하기</a></p>
+{% if may and bl and bl.source=='cafe24' and bl.status!='trial' %}<p class="cap" style="margin:14px 0 0">카페24로 결제 중이에요. 매달 카페24가 결제하고, 해지는 카페24 관리자의 앱 관리에서 할 수 있어요.</p>
+{% elif may and c24 and (not bl or bl.status in ('none','ended','stopped') or (bl.status=='trial' and bl.source=='cafe24')) %}<div style="margin-top:16px">{% if c24_old %}<p class="cap" style="margin:0 0 10px">카페24 앱 결제 권한이 필요해요. <a class="link" href="{{ url_for('c24.page') }}">카페24 다시 연결하기</a></p>
 {% else %}<form method="post" action="{{ url_for('pay.c24_start') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md">카페24로 결제하고 시작하기</button></form>
 <p class="cap" style="margin:10px 0 0">카페24 결제 화면에서 결제해요. 다음 달부터는 카페24가 매달 결제해요.</p>{% endif %}</div>
 {% elif may %}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
-{% if not bl or bl.status in ('none','ended') %}<button class="btn md" type="button" data-card>카드 등록하고 시작하기</button>
+{% if not bl or bl.status in ('none','ended') %}{% if not bl or not bl.started %}<button class="btn md" type="button" data-card>카드 등록하고 {{ trial_days() }}일 무료로 시작하기</button><p class="cap" style="margin:4px 0 0;flex-basis:100%">등록할 때는 결제되지 않아요. 체험이 끝나는 날 첫 달 요금이 결제되고, 그 전에 해지하면 결제되지 않아요.</p>{% else %}<button class="btn md" type="button" data-card>카드 등록하고 시작하기</button>{% endif %}
 {% elif bl.status=='stopped' %}<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="retry">다시 결제하기</button></form><button class="btn md gray" type="button" data-card>카드 바꾸기</button>
 {% else %}<button class="btn md gray" type="button" data-card>카드 바꾸기</button>
 {% if bl.status=='past_due' %}<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="retry">지금 다시 결제하기</button></form>{% endif %}
-{% if bl.status in ('active','past_due') %}<form method="post" onsubmit="return confirm('해지할까요? 다음 결제일까지는 그대로 쓰실 수 있어요.')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md gray" name="act" value="cancel">해지하기</button></form>{% endif %}
+{% if bl.status in ('trial','active','past_due') %}<form method="post" onsubmit="return confirm('{{ '해지할까요? 체험이 끝나는 날까지 쓰고 결제되지 않아요.' if bl.status=='trial' else '해지할까요? 다음 결제일까지는 그대로 쓰실 수 있어요.' }}')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md gray" name="act" value="cancel">해지하기</button></form>{% endif %}
 {% if bl.status=='canceled' %}<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="resume">해지 취소하고 이어 쓰기</button></form>{% endif %}
 {% endif %}</div>
 {% else %}<p class="cap" style="margin:14px 0 0">요금·결제는 대표나 관리자만 바꿀 수 있어요.</p>{% endif %}
@@ -49,11 +50,12 @@
 <aside class="stack">
 <section class="panel"><div class="ph">이렇게 돼요</div>
 <ul class="dots">
-{% if c24 or (bl and bl.source=='cafe24') %}<li>카페24 쇼핑몰을 연결하셨으면 카페24 앱 결제로 결제해요. 첫 달은 카페24 결제 화면에서 결제하고, 그다음부터 카페24가 매달 결제해요.</li>
+{% if c24 or (bl and bl.source=='cafe24') %}<li>카페24 쇼핑몰을 연결하셨으면 카페24 앱 결제로 결제해요. 처음 연결한 날부터 {{ trial_days() or 5 }}일은 무료이고, 첫 달은 카페24 결제 화면에서 결제하고, 그다음부터 카페24가 매달 결제해요.</li>
 <li>해지와 결제 내역은 카페24 관리자의 앱 관리에서 볼 수 있어요.</li>
-{% else %}<li>카드를 등록하면 첫 달 요금이 바로 결제되고, 그다음부터 매달 같은 날 자동으로 결제돼요.</li>
+{% else %}<li>처음 카드를 등록하면 {{ trial_days() or 5 }}일 무료 체험이 시작되고, 체험이 끝나는 날 첫 달 요금이 결제돼요. 그다음부터 매달 같은 날 자동으로 결제돼요.</li>
+<li>결제가 되지 않으면 결제할 때까지 소보루 CS 기능이 멈춰요. 받은 문의와 설정은 그대로 남아요.</li>
 <li>해지하면 다음 결제일까지 그대로 쓰고, 그날부터 결제하지 않아요.</li>
-<li>결제가 안 되면 메일로 알려 드리고 다음 날 다시 시도해요. 3번 안 되면 멈춰요.</li>
+<li>결제가 안 되면 메일로 알려 드리고 다음 날 다시 시도해요 (3번까지). 결제될 때까지 기능은 멈춰요.</li>
 <li>결제는 포트원과 결제대행사(PG)가 처리해요. 카드 번호는 소보루에 저장되지 않아요.</li>{% endif %}
 <li>환불 기준은 <a class="link" href="{{ url_for('refund_policy') }}" target="_blank" rel="noopener">환불 정책</a>에서 볼 수 있어요.</li>
 </ul></section>

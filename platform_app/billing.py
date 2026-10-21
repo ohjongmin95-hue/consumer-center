@@ -33,15 +33,38 @@ with conn() as _db:  # 카페24 앱 결제: source 'cafe24'면 카페24가 매�
     if 'source' not in {r[1] for r in _db.execute('PRAGMA table_info(billing)')}:_db.execute("ALTER TABLE billing ADD COLUMN source TEXT NOT NULL DEFAULT ''")
 
 def ready():return all(core.secret(k) for k in ('PORTONE_STORE_ID','PORTONE_CHANNEL_KEY','PORTONE_API_SECRET'))
+PLAN={'name':'소보루 CS','price':19900}  # 운영자 결정 2026-10-21: 상품은 하나, 월 19,900원 (부가세 포함). 운영 화면에서 바꾸면 그 값을 쓴다
 def plan():
-    """운영자가 정한 요금제 {name, price} 또는 None (금액은 부가세 포함, 원)."""
+    """요금제 {name, price} (금액은 부가세 포함, 원). 운영자가 따로 정하지 않았으면 PLAN."""
     with conn() as db:r=db.execute("SELECT value FROM settings WHERE key='billing_plan'").fetchone()
     try:p=json.loads(r['value']) if r else None
     except ValueError:p=None
-    return p if p and p.get('name') and int(p.get('price') or 0)>0 else None
+    return p if p and p.get('name') and int(p.get('price') or 0)>0 else dict(PLAN)
 def save_plan(name,price):
     with conn() as db:db.execute("INSERT INTO settings(key,value,updated) VALUES('billing_plan',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated",
                                  (json.dumps({'name':name,'price':price},ensure_ascii=False),core.iso()))
+TRIAL_DAYS=5  # 운영자 결정 2026-10-21: 카드를 먼저 등록하고 5일 무료, 5일째 첫 결제. 해지하지 않으면 매달 결제, 결제가 없으면 모든 기능을 멈춘다
+def live():
+    """요금을 받기 시작했는지: 결제할 길(포트원 키 또는 카페24 앱 결제)이 있을 때. 그 전에는 모두 무료 시범으로 쓴다."""
+    return ready() or c24_on()
+def open_ok(co):
+    """이 회사가 소보루 CS를 쓸 수 있는지. 운영자가 요금을 정하기 전에는 모두 쓴다(무료 시범).
+    정한 뒤에는 무료 체험 중('trial')이거나 결제 중('paid')인 회사만. 나머지는 요금·결제 화면만 열린다 (데이터는 지우지 않는다)."""
+    if not co:return False
+    return co['plan'] in ('paid','trial') or not live()
+def trial_days_left(co,b):
+    if not co or co['plan']!='trial' or not b or not b['next_charge']:return None
+    try:return max((datetime.date.fromisoformat(b['next_charge'])-today()).days,0)
+    except ValueError:return None
+def start_c24_trial(db,cid):
+    """카페24 앱스토어로 설치한 쇼핑몰: 카페24 결제는 미리 카드를 받아 둘 수 없어서, 처음 연결한 날부터 5일 무료로 열고 그 안에 카페24로 결제하게 한다 (회사마다 한 번)."""
+    if not plan() or not c24_on():return
+    b=row(db,cid)
+    if b and (b['started'] or b['status'] not in ('none','')):return
+    if not b:db.execute('INSERT INTO billing(company_id,customer_key) VALUES(?,?)',(cid,'cs_'+secrets.token_urlsafe(24)))
+    p=plan();end=today()+datetime.timedelta(days=TRIAL_DAYS)
+    db.execute("UPDATE billing SET status='trial',source='cafe24',plan_name=?,price=?,started=?,next_charge=? WHERE company_id=?",(p['name'],int(p['price']),core.iso(),end.isoformat(),cid))
+    db.execute("UPDATE companies SET plan='trial',plan_since=? WHERE id=? AND plan!='paid'",(core.iso(),cid))
 def row(db,cid):return db.execute('SELECT * FROM billing WHERE company_id=?',(cid,)).fetchone()
 def today():return core.now().date()
 def mail_of(co):return co['notify_email'] or (co['login_id'] if '@' in (co['login_id'] or '') else '')
@@ -97,7 +120,7 @@ def renew_all():
     """cron: 결제일이 된 회사를 하루 한 번만 결제. 해지한 회사는 결제일에 무료 시범으로 돌린다."""
     n=0;t=today().isoformat()
     c24_expire()
-    with conn() as db:due=db.execute("SELECT * FROM billing WHERE status IN ('active','past_due','canceled') AND source!='cafe24' AND next_charge!='' AND next_charge<=?",(t,)).fetchall()
+    with conn() as db:due=db.execute("SELECT * FROM billing WHERE status IN ('trial','active','past_due','canceled') AND source!='cafe24' AND next_charge!='' AND next_charge<=?",(t,)).fetchall()
     for b in due:
         with conn() as db:
             if b['status']=='canceled':
@@ -115,11 +138,12 @@ def renew_all():
             e=charge(db,co,b)
             if not e:paid(db,b['company_id'],datetime.date.fromisoformat(b['next_charge']));n+=1;continue
             fails=b['fails']+1
+            db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=?",(core.iso(),b['company_id']))  # 결제가 안 되면 모든 기능을 멈춘다 (다시 결제되면 paid()가 켠다)
             if fails>=MAX_FAILS:
                 db.execute("UPDATE billing SET status='stopped',fails=?,note=? WHERE company_id=?",(fails,f'결제가 {fails}번 실패해 멈췄어요: {e}',b['company_id']))
                 db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=?",(core.iso(),b['company_id']))
-            else:db.execute("UPDATE billing SET status='past_due',fails=?,note=? WHERE company_id=?",(fails,f'결제하지 못했어요: {e} 내일 다시 시도해요.',b['company_id']))
-            if mail_of(co):core.send_mail(mail_of(co),f'[{core.BNAME}] 요금 결제를 하지 못했어요',f"{co['name']} 요금 결제가 되지 않았어요.\n이유: {e}\n설정 > 요금·결제에서 카드를 바꾸거나 다시 결제해 주세요.")
+            else:db.execute("UPDATE billing SET status='past_due',fails=?,note=? WHERE company_id=?",(fails,f'결제하지 못했어요: {e} 결제될 때까지 소보루 CS를 쓸 수 없어요. 내일 다시 시도해요.',b['company_id']))
+            if mail_of(co):core.send_mail(mail_of(co),f'[{core.BNAME}] 요금 결제를 하지 못했어요',f"{co['name']} 요금 결제가 되지 않았어요.\n이유: {e}\n결제될 때까지 소보루 CS 기능이 멈춰요. 설정 > 요금·결제에서 카드를 바꾸거나 다시 결제해 주세요.")
     return n
 
 # ---------- 카페24 앱 결제 (카페24 앱스토어에서 설치한 쇼핑몰) ----------
@@ -187,7 +211,11 @@ def c24_event(mall,ev,res):
             elif ev=='90158':
                 core.alert(core.company(db,b['company_id']),'link','카페24에 앱 환불 요청이 들어왔어요','카페24 관리자에서 처리돼요',db=db)
 def c24_expire():
-    """cron: 이용 기간이 사흘 넘게 지난 카페24 결제를 카페24에 다시 묻고, 새 결제가 없으면 무료 시범으로."""
+    """cron: 이용 기간이 사흘 넘게 지난 카페24 결제를 카페24에 다시 묻고, 새 결제가 없으면 멈춘다. 카페24 무료 체험은 끝나는 날 멈춘다."""
+    with conn() as db:
+        for b in db.execute("SELECT * FROM billing WHERE source='cafe24' AND status='trial' AND next_charge!='' AND next_charge<=?",(today().isoformat(),)).fetchall():
+            db.execute("UPDATE billing SET status='ended',note='무료 체험이 끝났어요. 카페24로 결제하면 이어서 쓸 수 있어요.' WHERE company_id=?",(b['company_id'],))
+            db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=? AND plan='trial'",(core.iso(),b['company_id']))
     t=(today()-datetime.timedelta(days=C24_GRACE)).isoformat()
     with conn() as db:due=db.execute("SELECT * FROM billing WHERE source='cafe24' AND status='active' AND next_charge!='' AND next_charge<?",(t,)).fetchall()
     for b in due:
@@ -255,11 +283,12 @@ def page():
             act=request.form.get('act')
             if not can:flash('요금·결제는 대표나 관리자만 바꿀 수 있어요.','error')
             elif b and b['source']=='cafe24':flash('카페24로 결제 중이에요. 해지는 카페24 관리자의 앱 관리에서 해 주세요.','error')
-            elif act=='cancel' and b and b['status'] in ('active','past_due'):
+            elif act=='cancel' and b and b['status'] in ('trial','active','past_due'):
                 db.execute("UPDATE billing SET status='canceled',canceled=? WHERE company_id=?",(core.iso(),co['id']))
-                flash(f"해지했어요. {b['next_charge']}까지 그대로 쓰고, 그날부터 결제하지 않아요.",'ok')
+                flash(f"해지했어요. {b['next_charge']}까지 그대로 쓰고, 그날부터 결제하지 않아요."+(' 체험 기간이라 결제된 금액은 없어요.' if b['status']=='trial' else ''),'ok')
             elif act=='resume' and b and b['status']=='canceled':
-                db.execute("UPDATE billing SET status='active',canceled='' WHERE company_id=?",(co['id'],));flash('다시 이어서 쓰기로 했어요.','ok')
+                back='trial' if co['plan']=='trial' else 'active'  # 체험 중에 해지했다가 되돌리면 다시 체험 (끝나는 날 첫 결제)
+                db.execute("UPDATE billing SET status=?,canceled='' WHERE company_id=?",(back,co['id']));flash('다시 이어서 쓰기로 했어요.','ok')
             elif act=='retry' and b and b['status'] in ('past_due','stopped'):
                 e=charge(db,co,b)
                 if e:flash('결제하지 못했어요: '+e,'error')
@@ -269,7 +298,7 @@ def page():
         c24=c24_link(db,co['id'])
         if (ready() or c24) and can and not b:  # 포트원에 줄 고객 키: 추측할 수 없는 값으로 한 번 만들어 둔다
             db.execute('INSERT INTO billing(company_id,customer_key) VALUES(?,?)',(co['id'],'cs_'+secrets.token_urlsafe(24)));b=row(db,co['id'])
-    return render_template('b_billing.html',co=co,bl=b,pays=pays,p=plan(),ready=ready(),may=can,c24=c24,c24_old=isinstance(c24,tuple),sdk=SDK,store_id=core.secret('PORTONE_STORE_ID'),
+    return render_template('b_billing.html',co=co,bl=b,locked=not open_ok(co),pays=pays,p=plan(),ready=ready(),may=can,c24=c24,c24_old=isinstance(c24,tuple),sdk=SDK,store_id=core.secret('PORTONE_STORE_ID'),
                            channel_key=core.secret('PORTONE_CHANNEL_KEY'),mail=mail_of(co),ok_url=url_for('pay.done',_external=True),
                            fail_url=url_for('pay.fail',_external=True),tab='settings')
 
@@ -296,7 +325,14 @@ def done():
         db.execute('UPDATE billing SET creds=?,card=? WHERE company_id=?',(shops.seal({'billing_key':key}),card,co['id']))
         if old and old.get('billing_key') and old['billing_key']!=key:drop_key(old['billing_key'])
         if not first:flash('카드를 바꿨어요. 다음 결제부터 이 카드로 결제해요.','ok');return redirect(url_for('pay.page'))
-        db.execute("UPDATE billing SET plan_name=?,price=?,started=?,canceled='',fails=0 WHERE company_id=?",(p['name'],int(p['price']),core.iso(),co['id']))
+        trial=not b['started']  # 무료 체험은 회사마다 한 번 (해지했다가 다시 등록하면 바로 결제)
+        db.execute("UPDATE billing SET plan_name=?,price=?,started=CASE started WHEN '' THEN ? ELSE started END,canceled='',fails=0,note='' WHERE company_id=?",(p['name'],int(p['price']),core.iso(),co['id']))
+        if trial:
+            end=today()+datetime.timedelta(days=TRIAL_DAYS)
+            db.execute("UPDATE billing SET status='trial',source='',next_charge=? WHERE company_id=?",(end.isoformat(),co['id']))
+            db.execute("UPDATE companies SET plan='trial',plan_since=? WHERE id=?",(core.iso(),co['id']))
+            flash(f"카드를 등록했어요. {end.month}월 {end.day}일까지 무료로 쓰시고, 그날 첫 달 요금 {int(p['price']):,}원이 결제돼요. 그 전에 해지하면 결제되지 않아요.",'ok')
+            return redirect(url_for('decide'))
         e=charge(db,co,row(db,co['id']))
         if e:db.execute("UPDATE billing SET status='stopped',note=? WHERE company_id=?",('첫 결제를 하지 못했어요: '+e,co['id']));flash('카드는 등록했지만 결제하지 못했어요: '+e,'error')
         else:paid(db,co['id'],today());flash(f"{p['name']} 요금제를 시작했어요. 첫 달 요금을 결제했어요.",'ok')
