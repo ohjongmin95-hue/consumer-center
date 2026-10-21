@@ -2547,6 +2547,35 @@ class PlatformTest(unittest.TestCase):
                 if v is None:os.environ.pop(k,None)
                 else:os.environ[k]=v
 
+    def test_free_trial_stops_only_ai_auto_reply(self):
+        """무료 체험 5일: 요금을 정하기 전엔 기간 제한 없음, 정한 뒤엔 가입일(또는 요금 정한 날)부터 5일. 끝나면 AI 자동 답변만 멈추고 화면은 그대로, 결제하면 다시."""
+        import datetime as _d
+        bl=sys.modules['billing'];cb=sys.modules['chatbot']
+        b,o,cid=self.signup_and_approve('체험상점','trial-co@example.com')
+        def co():
+            with self.core.conn() as db:return self.core.company(db,cid)
+        with self.core.conn() as db:db.execute("UPDATE companies SET ai_reply=? WHERE id=?",(self.core.iso(),cid))
+        old_ready=cb.ready;cb.ready=lambda:True
+        try:
+            self.assertIsNone(bl.trial_end(co()));self.assertTrue(cb.auto_on(co()))
+            self.assertNotIn('class="trialbar',b.get('/biz/settings').get_data(as_text=True))
+            bl.save_plan('소보루 CS 기본',19900)
+            self.assertEqual(bl.trial_end(co()),bl.today()+_d.timedelta(days=5))
+            self.assertIn('무료 체험 5일 남았어요',b.get('/biz/settings').get_data(as_text=True));self.assertTrue(cb.auto_on(co()))
+            self.assertIn('무료 체험 5일',self.client().get('/biz/pricing').get_data(as_text=True))
+            old=self.core.iso(self.core.now()-_d.timedelta(days=6))
+            with self.core.conn() as db:
+                db.execute('UPDATE companies SET created=? WHERE id=?',(old,cid))
+                self.assertFalse(bl.trial_over(co()))  # 요금을 오늘 정했으니 기존 회사도 오늘부터 5일
+                db.execute("UPDATE settings SET updated=? WHERE key='billing_plan'",(old,))
+            self.assertTrue(bl.trial_over(co()));self.assertFalse(cb.auto_on(co()))
+            h=b.get('/biz/settings').get_data(as_text=True);self.assertIn('무료 체험이 끝났어요',h);self.assertEqual(b.get('/biz/settings').status_code,200)
+            with self.core.conn() as db:db.execute("UPDATE companies SET plan='paid' WHERE id=?",(cid,))
+            self.assertIsNone(bl.trial_end(co()));self.assertTrue(cb.auto_on(co()))
+        finally:
+            cb.ready=old_ready
+            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key='billing_plan'")
+
     def test_portone_billing(self):
         """포트원 정기결제: 키·요금제가 없으면 준비 중, 카드 등록하면 첫 달 결제, 남의 빌링키는 거절, 결제일엔 하루 한 번만, 3번 실패하면 멈춤, 해지하면 결제일에 끝."""
         import json as _j, datetime as _d

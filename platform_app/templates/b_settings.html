@@ -5,7 +5,7 @@
 {% block body %}
 <div class="phead"><div><h1>설정</h1><p>{{ co.name }} · {{ co.login_id }}</p></div></div>
 <div class="panel" style="margin-bottom:20px"><div class="ph">이용 현황 <span class="pill ok">{{ PLANS.get(co.plan,{}).get('name','무료 시범') }} 이용 중</span></div>
-<p class="sub" style="margin:0 0 14px">{{ fmt_day(co.plan_since or co.created) }}부터 이용 중이에요. {% if co.plan=='paid' %}매달 자동으로 결제돼요.{% else %}지금은 기간·건수 제한 없이 무료예요. 요금제가 생기면 미리 알려 드리고, 동의 없이 바뀌지 않아요.{% endif %}</p>
+<p class="sub" style="margin:0 0 14px">{{ fmt_day(co.plan_since or co.created) }}부터 이용 중이에요. {% if co.plan=='paid' %}매달 자동으로 결제돼요.{% elif trial %}{% if trial.over %}무료 체험이 끝나 AI 자동 답변이 멈췄어요. 결제하시면 다시 켜져요.{% else %}무료 체험 중이에요. {{ fmt_day(trial.end.isoformat()) }}까지 모든 기능을 쓸 수 있어요.{% endif %}{% else %}지금은 기간·건수 제한 없이 무료예요. 요금제가 생기면 미리 알려 드리고, 동의 없이 바뀌지 않아요.{% endif %}</p>
 <div class="sumrow" style="margin:0"><div class="sum" style="background:var(--fill)"><span>이번 달 받은 요청</span><b>{{ use.cases }}</b></div><div class="sum" style="background:var(--fill)"><span>답장한 요청</span><b>{{ use.replied }}</b></div><div class="sum" style="background:var(--fill)"><span>자동 처리</span><b>{{ use.auto }}</b></div><div class="sum" style="background:var(--fill)"><span>AI 상담 질문</span><b>{{ use.ai_chats }}</b></div></div>
 <p class="cap" style="margin:12px 0 0">답장한 요청은 직원이나 자동 처리가 한 번 이상 답한 요청이에요. 직원 수로는 요금을 받지 않아요.</p>
 <p style="margin:12px 0 0"><a class="link" href="{{ url_for('pay.page') }}">요금·결제 보기 ›</a></p></div>

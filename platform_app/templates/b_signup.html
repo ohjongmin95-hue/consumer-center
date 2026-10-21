@@ -5,7 +5,7 @@
 <div class="signup"><div class="pitch"><h1>우리 회사 요청,<br><em>한 곳에서</em> 관리하세요</h1><p>소비자가 {{ CNAME }}에 접수한 우리 회사 요청을 한 화면에서 승인하고 처리합니다.</p>
 <div class="feats">{% for ic,t,s in [('approve','원클릭 승인','요약과 처리 방법을 보고 승인, 보류, 자료 요청 중 하나만 고르면 됩니다'),('bolt','자동 처리','배송 조회·교환·반품처럼 정해진 유형은 접수 즉시 처리합니다'),('chart','한눈에 현황','처리율, 해결률, 기한 지난 요청을 바로 확인합니다')] %}
 <div>{{ i.icon(ic,40) }}<b>{{ t }}</b><span>{{ s }}</span></div>{% endfor %}</div></div>
-<form method="post" class="panel stack" style="gap:14px"><div class="ph">무료로 시작하기</div><p class="cap" style="margin:-6px 0 4px">가입하면 바로 작업 공간이 생겨요. 기간 제한 없는 무료 시범으로 시작하고, 카드 등록은 없어요.</p>
+<form method="post" class="panel stack" style="gap:14px"><div class="ph">무료로 시작하기</div><p class="cap" style="margin:-6px 0 4px">가입하면 바로 작업 공간이 생겨요. {% if trial_days() %}{{ trial_days() }}일 무료 체험으로 시작하고{% else %}기간 제한 없는 무료 시범으로 시작하고{% endif %}, 카드 등록은 없어요.</p>
 {% if g_ %}<div class="flash ok" style="margin:0">구글 계정 {{ g_.email }}로 가입해요. 회사 정보만 적어 주세요.</div>{% elif google %}<a class="btn full gray" href="{{ url_for('google_login') }}">구글 계정으로 시작하기</a><div class="cap" style="text-align:center">또는 이메일로 가입</div>{% endif %}<input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <label class="fld"><span>회사 이름</span><input class="inp" name="name" maxlength="40" value="{{ d.name or '' }}" required></label>
 <label class="fld"><span>사업자등록번호</span><input class="inp" name="biz_no" inputmode="numeric" maxlength="20" placeholder="000-00-00000" value="{{ d.biz_no or '' }}" required></label>

@@ -2,7 +2,7 @@
 import os, re, datetime, json, urllib.parse
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-import core, law, chatbot, workflow, livechat
+import billing, core, law, chatbot, workflow, livechat
 import tracking as tracking_mod
 import orders as orders_mod
 import ai as ai_mod
@@ -362,7 +362,7 @@ def chat_answer(company_id,f):
             with conn() as db:db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],f['category'],f['outcome'],core.iso()))
         return dict(ok=True),200
     text=clean(f.get('text'),500)
-    if co and text and f.get('category') not in core.CATS and core.active_member(co) and chatbot.ready():
+    if co and text and f.get('category') not in core.CATS and core.active_member(co) and chatbot.ready() and not billing.trial_over(co):  # 무료 체험이 끝나고 결제 안 함: 기본 안내 문구로
         # 입점 기업 상담창에 고객이 직접 쓴 문장: AI가 회사 정보를 보고 답한다 (실패하면 아래 기본 안내로)
         with conn() as db:
             facts=chatbot.company_facts(db,co);mine=chat_orders(db,co)

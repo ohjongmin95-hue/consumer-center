@@ -42,6 +42,19 @@ def plan():
 def save_plan(name,price):
     with conn() as db:db.execute("INSERT INTO settings(key,value,updated) VALUES('billing_plan',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated",
                                  (json.dumps({'name':name,'price':price},ensure_ascii=False),core.iso()))
+TRIAL_DAYS=5  # 무료 체험 (운영자 결정 2026-10-21: 5일)
+def trial_end(co):
+    """무료 체험이 끝나는 날(date) 또는 None (유료 이용 중이거나, 운영자가 아직 요금을 정하지 않아 기간 제한이 없을 때).
+    가입일부터 TRIAL_DAYS일. 요금을 정하기 전에 가입한 회사는 요금을 정한 날부터 (기존 시범 회사가 하루아침에 막히지 않게)."""
+    if not co or co['plan']=='paid':return None
+    with conn() as db:r=db.execute("SELECT value,updated FROM settings WHERE key='billing_plan'").fetchone()
+    if not r or not plan():return None
+    start=max((co['created'] or '')[:10],(r['updated'] or '')[:10])
+    try:return datetime.date.fromisoformat(start)+datetime.timedelta(days=TRIAL_DAYS)
+    except ValueError:return None
+def trial_over(co):
+    """무료 체험이 끝났고 결제하지 않음: AI 자동 답변만 멈추고 요청함·직접 답변은 그대로 쓴다 (운영자 결정 2026-10-21)."""
+    e=trial_end(co);return bool(e and today()>=e)
 def row(db,cid):return db.execute('SELECT * FROM billing WHERE company_id=?',(cid,)).fetchone()
 def today():return core.now().date()
 def mail_of(co):return co['notify_email'] or (co['login_id'] if '@' in (co['login_id'] or '') else '')

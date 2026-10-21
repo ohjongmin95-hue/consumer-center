@@ -17,7 +17,7 @@ import team, inbox, workflow, automations, livechat, onboard, demo, funnel, mark
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
-app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS)
+app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS,trial_days=lambda:billing.TRIAL_DAYS if billing.plan() else 0)
 OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 # 소개 화면의 앱 받기 버튼: 스토어 주소를 서버 설정(.env)에 넣으면 '곧 출시' 대신 버튼이 나온다
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
@@ -93,7 +93,14 @@ def ctx():
             na=core.unread_alerts(db,co['id'])
     a=who() if co else None;rc=real() if co else None
     return {'PUB_NAV':pub_nav(),'n_leads':sales.n_new() if session.get('ops') and request.path.startswith('/ops') else 0,'co':co,'n_pending':n,'n_alerts':na,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES,
-            'real_co':rc,'in_demo':in_demo() if co else False,'trust':onboard.trust(rc) if rc else None,'setup':onboard.progress(rc) if rc else None}
+            'real_co':rc,'in_demo':in_demo() if co else False,'trust':onboard.trust(rc) if rc else None,'setup':onboard.progress(rc) if rc else None,'trial':trial_info(rc) if rc else None}
+
+def trial_info(co):
+    """무료 체험 안내 띠: {'left':남은 날, 'over':끝남} 또는 None (유료이거나 요금이 아직 없음)."""
+    e=billing.trial_end(co)
+    if not e:return None
+    left=(e-billing.today()).days
+    return {'left':max(left,0),'over':left<=0,'end':e}
 
 def pub_nav():
     """로그인 전 위쪽 메뉴: 각 공개 화면 모듈이 내놓는 메뉴를 차례로."""
@@ -120,7 +127,7 @@ def terms():
 @app.route('/pricing')
 def pricing():
     """공개 요금 안내 (상품·금액·정기결제·환불: 결제대행사·카드사 심사가 이 페이지를 본다)."""
-    return render_template('b_pricing.html',op=core.OPERATOR,p=billing.plan())
+    return render_template('b_pricing.html',op=core.OPERATOR,p=billing.plan(),trial_days=billing.TRIAL_DAYS)
 
 @app.route('/refund')
 def refund_policy():
