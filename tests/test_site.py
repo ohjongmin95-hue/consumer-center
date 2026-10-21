@@ -3539,7 +3539,7 @@ class SiteTest(unittest.TestCase):
             self.assertTrue(any('뉴스' in s['name'] or '·' in s['name'] for s in got['sources']))
             r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
         prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
-        self.assertIn('[분량] 종합 기사', prompt); self.assertIn('최근 관련 뉴스', prompt)
+        self.assertIn('[분량·구성]', prompt); self.assertIn('4000자', prompt); self.assertIn('최근 관련 뉴스', prompt)
 
     def test_writer_skips_similar_topic_within_30_days(self):
         """제목이 달라도 소재가 같은 글(외식비·외식 물가)은 30일 안에 다시 쓰지 않음"""
@@ -3599,6 +3599,32 @@ class SiteTest(unittest.TestCase):
             with self.site.app.app_context(): w['collect']('trend')
         self.assertFalse([u for u in urls if 'kosis' in u])
 
+    def test_writer_stat_kind_from_cpi_by_item(self):
+        """'숫자로 보는 생활비': 전국 코드를 찾아 품목 전부를 받고, 1년 새 많이 움직인 품목을 주제로 긴 기사 (운영자 요청 2026-10-21)"""
+        mod = self.site.soboru_writer; mod._KOSIS_MEMO.clear()
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        months = [f'2025{m:02d}' for m in range(9, 13)] + [f'2026{m:02d}' for m in range(1, 10)]
+        region = [{'C1': c, 'C1_NM': n, 'ITM_NM': '소비자물가지수(총지수)', 'PRD_DE': p, 'DT': '115'} for c, n in (('T10', '전국'), ('T11', '서울')) for p in months]
+        items = [{'C1': 'T10', 'C1_NM': '전국', 'C2_NM': n, 'ITM_NM': '소비자물가지수', 'PRD_DE': p, 'DT': str(base + step * i)}
+                 for n, base, step in (('총지수', 110, 0.25), ('외식', 120, 0.5), ('쌀', 100, 2), ('휘발유', 130, -1)) for i, p in enumerate(months)]
+        def get(url, timeout=15):
+            q = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url).query))
+            if q.get('tblId') == 'DT_1J22003': return 200, json.dumps(items if q.get('objL1') == 'T10' and q.get('objL2') == 'ALL' else region)
+            return 200, json.dumps({'err': '30', 'errMsg': '데이터가 존재하지 않습니다.'})
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value', 'KOSIS_API_KEY': 'kosis-test-key'}
+        sent, calls = [], []
+        with patch.dict(os.environ, env), patch.object(mod, 'http_get', get), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)):
+            self.assertEqual([n for n, _ in mod.cpi_movers()], ['쌀', '휘발유', '외식'])  # 1년 상승률 큰 순, 총지수 빼고
+            with self.site.app.app_context():
+                got = w['collect']('stat')
+            self.assertEqual(got['facts']['1년 전 같은 달보다(%)'], 24.0); self.assertEqual(got['facts']['기준 달'], '2026년 9월')
+            self.assertEqual(got['facts']['전체 물가(총지수) 1년 상승률(%)'], round(3 / 110 * 100, 1))
+            self.assertEqual(len(got['facts']['달별 지수']), 13)
+            r = w['generate']('stat', 'daily'); self.assertIn(r['status'], ('made', 'skip'))
+        prompts = [b['messages'][1]['content'] for b in sent if b['messages'][0]['content'].startswith('너는 소보루')]
+        self.assertTrue(prompts); self.assertIn('[분량·구성]', prompts[-1]); self.assertIn('쌀', prompts[-1])
+
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
         w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
@@ -3621,7 +3647,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(len(set(titles)), len(titles))  # 같은 제목은 다시 안 씀
             f = json.loads(feats[0]['facts'])
             self.assertIn('최근 관련 뉴스(제목·요약만)', f); self.assertIn('검색 추이(네이버 데이터랩)', f)
-            self.assertIn('[분량] 잡지 기획 기사', json.dumps(sent, ensure_ascii=False))
+            self.assertIn('[분량·구성]', json.dumps(sent, ensure_ascii=False))
             with self.site.conn() as db:
                 rows = {}
                 for r in db.execute("SELECT a.ext_key,x.kind,x.facts FROM articles a JOIN ai_articles x ON x.article_id=a.id ORDER BY a.id"): rows.setdefault(r['kind'], r)  # 종류별 첫 글
