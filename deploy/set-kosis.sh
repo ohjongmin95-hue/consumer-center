@@ -11,11 +11,14 @@ read -r -s -p "KOSIS 인증키: " KEY; echo
 KEY="${KEY//[$'\r\n\t ']/}"
 [[ -n $KEY ]] || { echo "인증키를 넣어 주세요."; exit 1; }
 # 품목별 소비자물가지수 최근 한 달을 받아 봐서 키가 통하는지 확인 (키는 화면에 찍지 않음)
-RES=$(curl -s -m 20 "https://kosis.kr/openapi/Param/statisticsParameterData.do?method=getList&apiKey=$KEY&format=json&jsonVD=Y&orgId=101&tblId=DT_1J22003&itmId=ALL&objL1=ALL&prdSe=M&newEstPrdCnt=1" || true)
+# 키에 + = / 같은 글자가 있어도 그대로 넘어가게 주소용으로 바꿔 넣음
+EKEY=$(KEY="$KEY" python3 -c 'import os,urllib.parse;print(urllib.parse.quote(os.environ["KEY"],safe=""))')
+RES=$(curl -s -m 20 "https://kosis.kr/openapi/Param/statisticsParameterData.do?method=getList&apiKey=$EKEY&format=json&jsonVD=Y&orgId=101&tblId=DT_1J22003&itmId=ALL&objL1=ALL&prdSe=M&newEstPrdCnt=1" || true)
 if grep -q '"C1_NM"' <<<"$RES"; then echo "확인: 통계청에서 소비자물가지수를 받아 왔어요."
 else
   echo "주의: KOSIS 응답에서 통계를 찾지 못했어요."
   echo "     응답 앞부분: $(head -c 300 <<<"${RES//$KEY/***}" | tr -d '\n')"
+  echo "     (err 10·11: 키가 틀렸거나 아직 승인 전 · 20·21: 요청 형식 문제라 저에게 알려 주세요 · 40: 잠시 뒤 다시)"
   read -r -p "그래도 저장할까요? (y/N) " YES; [[ $YES == y || $YES == Y ]] || exit 1
 fi
 TMP=$(mktemp); grep -vE '^KOSIS_API_KEY=' "$ENV_FILE" > "$TMP" || true
