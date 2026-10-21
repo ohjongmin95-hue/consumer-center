@@ -1,0 +1,22 @@
+{% extends 'console.html' %}
+{% block title %}사기 주의 신고 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">사기 주의 신고</h1>
+  <p>회원이 보낸 사기 신고예요. '공개'로 바꾸기 전에는 사이트 어디에도 보이지 않아요. 공개 화면에서는 전화번호·계좌번호가 일부만 보이고, 본문 속 연락처는 가려져요. 특정인을 근거 없이 지목하거나 개인정보가 담긴 신고는 '공개 안 함'으로 두세요.</p></div>
+  <nav class="tabs" style="display:flex;gap:8px;margin:0 0 16px">{% for k, name in statuses.items() %}<a class="{{ 'primary' if show == k else 'secondary' }}" style="padding:8px 14px;font-size:14px" href="{{ url_for('admin_scam', show=k) }}">{{ name }} {{ counts.get(k, 0) }}</a>{% endfor %}</nav>
+  {% for r in rows %}
+  <form class="form-panel takedown-item" method="post" action="{{ url_for('admin_scam', show=show) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}">
+    <p class="meta">#{{ r['id'] }} · {{ r['created']|replace('T', ' ') }} · {{ kinds.get(r['kind'], ('',''))[0] }} · {{ r['region'] }} · 신고한 회원 {{ r['nickname'] or '-' }}</p>
+    <h3>{{ r['title'] }}</h3>
+    <p style="white-space:pre-wrap">{{ r['story'] }}</p>
+    {% if r['target'] %}<p><b>{{ targets.get(r['target_type']) }}</b> {{ r['target'] }} <span class="meta">(공개 화면: {{ masked(r['target_type'], r['target']) }})</span></p>{% endif %}
+    <p class="meta">{% if r['amount'] %}피해 {{ '{:,}'.format(r['amount']) }}원 · {% endif %}{% if r['occurred_on'] %}일어난 날 {{ r['occurred_on'] }}{% endif %}</p>
+    <div class="field"><label>상태</label><select name="status">{% for k, name in statuses.items() %}<option value="{{ k }}"{% if k == r['status'] %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>메모 (내부용)</label><textarea name="admin_note" maxlength="2000" rows="2">{{ r['admin_note'] }}</textarea></div>
+    <button class="secondary" type="submit">저장</button>
+  </form>
+  {% else %}<div class="form-panel"><p>{{ statuses[show] }} 신고가 없어요.</p></div>{% endfor %}
+</div></main>
+{% endblock %}

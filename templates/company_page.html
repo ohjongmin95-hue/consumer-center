@@ -11,6 +11,24 @@
     {% if co['status'] == 'active' %}<p class="co-verified-note">{{ ui('company.verified_note', '인증 기업은 센터가 사업자등록번호와 담당자 소속을 확인한 기업이에요. 인증 기업의 답변은 기업 담당자가 직접 등록해요. 서비스 품질을 보증하는 표시는 아니에요.') }}</p>{% endif %}
   </div>
 
+  <section class="co-score" aria-labelledby="co-score-h">
+    <div class="co-grade g-{{ gr.tone }}">
+      <div class="co-grade-badge"><span>{{ ui('company.grade_label', '소보루 등급') }}</span><b>{{ gr.grade or '–' }}</b>{% if gr.grade %}<em>{{ gr.score }}{{ ui('company.grade_pt', '점') }}</em>{% endif %}</div>
+      <div class="co-grade-txt">
+        <h2 id="co-score-h">{% if gr.grade %}{{ gr.word }}{% else %}{{ ui('company.grade_none', '아직 등급을 매기기엔 제보가 적어요') }}{% endif %}</h2>
+        <p>{% if gr.grade %}{{ ui('company.grade_base', '최근 %d년 동안 기업에 전달된 제보 %d건으로 매겼어요.')|format(gr.years, gr.scored) }}{% else %}{{ ui('company.grade_wait', '기업에 전달된 제보가 %d건 모이면 등급이 나와요. 지금은 %d건이에요.')|format(gr.min_n, gr.scored) }}{% endif %}</p>
+        {% if gr.grade %}<ul class="co-parts">{% for key, label, got, full, hint in gr.parts %}<li><span>{{ label }}</span><i><b style="width:{{ (100 * got / full)|round|int }}%"></b></i><em>{{ got }}<small>/{{ full }}</small></em><small class="co-part-hint">{{ hint }}</small></li>{% endfor %}</ul>{% endif %}
+        <a class="co-grade-how" href="{{ url_for('company_grade_guide') }}">{{ ui('company.grade_how', '등급은 이렇게 매겨요') }} ›</a>
+      </div>
+    </div>
+    <dl class="co-sum">
+      <div><dt>{{ ui('company.sum_years', '최근 %d년 제보')|format(gr.years) }}</dt><dd>{{ gr.n }}<small>{{ ui('company.unit_case', '건') }}</small></dd></div>
+      <div class="ok"><dt>{{ ui('company.sum_resolved', '최근 1년 해결') }}</dt><dd>{{ gr.resolved_year }}<small>{{ ui('company.unit_case', '건') }}</small></dd></div>
+      <div{% if gr.silent %} class="warn"{% endif %}><dt>{{ ui('company.sum_silent', '답변 없음') }}</dt><dd>{{ gr.silent }}<small>{{ ui('company.unit_case', '건') }}</small></dd></div>
+    </dl>
+    {% if gr.n %}<p class="co-sum-line">{{ ui('company.sum_line', '최근 %d년 동안 확인된 제보 %d건 중 %d건에 기업이 답했어요.')|format(gr.years, gr.n, gr.answered) }}{% if gr.resolved %} {{ ui('company.sum_line_ok', '제보자 %d명은 해결됐다고 알려 줬어요.')|format(gr.resolved) }}{% endif %}{% if gr.silent %} <b>{{ ui('company.sum_line_silent', '%d건은 전달하고 %d일이 넘도록 답이 없어요.')|format(gr.silent, gr.days) }}</b>{% endif %}</p>{% endif %}
+  </section>
+
   <section class="form-panel co-stats" aria-labelledby="co-stats-h">
     <h2 id="co-stats-h">{{ ui('company.stats', '제보 현황') }}</h2>
     <dl class="co-nums">
@@ -33,7 +51,7 @@
   <section class="co-cases" aria-labelledby="co-cases-h">
     <div class="co-cases-head"><h2 id="co-cases-h">{{ ui('company.cases', '공개 제보') }}</h2><a class="primary" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a></div>
     {% if by_cat %}<nav class="co-cats" aria-label="{{ ui('reports.all_types', '전체 유형') }}"><a href="{{ url_for('company_page', company_id=co['id']) }}"{% if not cat %} aria-current="true"{% endif %}>{{ ui('reports.all_types', '전체 유형') }}</a>{% for name, n in by_cat|dictsort %}<a href="{{ url_for('company_page', company_id=co['id'], category=name) }}"{% if cat == name %} aria-current="true"{% endif %}>{{ name }} <span>{{ n }}</span></a>{% endfor %}</nav>{% endif %}
-    <ul class="co-case-list">{% for c in cases %}<li><a href="{{ url_for('public_case', case_id=c.id) }}"><span class="co-case-top"><span class="case-cat">{{ c.category }}</span><span class="muted">No. {{ c.id }} · {{ c.created }}</span></span><b class="co-case-title">{{ c.subject }}</b><span class="co-case-body">{{ c.body|truncate(110, True, '…') }}</span><span class="co-case-foot"><span class="co-step">{{ c.step }}/3 · {{ pub_names()[c.step - 1] }}</span><span class="co-ans{% if c.answered %} on{% endif %}">{{ ui('company.answered', '공식 답변 있음') if c.answered else ui('case.answer_none', '공식 답변 미등록') }}</span></span></a></li>
+    <ul class="co-case-list">{% for c in cases %}<li><a href="{{ url_for('public_case', case_id=c.id) }}"><span class="co-case-top"><span class="case-cat">{{ c.category }}</span><span class="muted">No. {{ c.id }} · {{ c.created }}</span></span><b class="co-case-title">{{ c.subject }}</b><span class="co-case-body">{{ c.body|truncate(110, True, '…') }}</span><span class="co-case-foot"><span class="co-step">{{ c.step }}/3 · {{ pub_names()[c.step - 1] }}</span>{% if c.answered and c.outcome == 'resolved' %}<span class="co-ans on good">{{ ui('company.tag_resolved', '해결됐어요') }}</span>{% elif c.answered and c.outcome == 'unresolved' %}<span class="co-ans bad">{{ ui('company.tag_unresolved', '해결 안 됨') }}</span>{% elif c.answered %}<span class="co-ans on">{{ ui('company.answered', '공식 답변 있음') }}</span>{% elif c.silent %}<span class="co-ans silent">{{ ui('company.tag_silent', '답변 없음') }}</span>{% else %}<span class="co-ans">{{ ui('case.answer_none', '공식 답변 미등록') }}</span>{% endif %}</span></a></li>
     {% else %}<li class="co-empty">{{ ui('company.no_cases', '아직 공개된 제보가 없어요.') }}</li>{% endfor %}</ul>
     {% if pages > 1 %}<nav class="pager" aria-label="페이지">{% if page > 1 %}<a href="{{ url_for('company_page', company_id=co['id'], category=cat or None, page=page - 1) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}{% for p in range([1, page - 2]|max, [pages, page + 2]|min + 1) %}{% if p == page %}<b aria-current="page">{{ p }}</b>{% else %}<a href="{{ url_for('company_page', company_id=co['id'], category=cat or None, page=p) }}">{{ p }}</a>{% endif %}{% endfor %}{% if page < pages %}<a href="{{ url_for('company_page', company_id=co['id'], category=cat or None, page=page + 1) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}</nav>{% endif %}
   </section>

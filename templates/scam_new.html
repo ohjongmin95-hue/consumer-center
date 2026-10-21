@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('scam.report', '사기 신고하기') }} | {{ txt('site.name') }}{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap sc sc-form-wrap">
+  <a class="back-link" href="{{ url_for('scam_home') }}">← {{ ui('scam.title', '사기 주의') }}</a>
+  <h1 class="page-title">{{ ui('scam.new_h1', '어떤 사기였나요?') }}</h1>
+  <p class="sc-form-lead">{{ ui('scam.new_lead', '운영자가 확인한 뒤 공개돼요. 내 이름과 연락처는 공개되지 않아요.') }}</p>
+  <form class="sc-form" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <fieldset><legend>{{ ui('scam.f_kind', '사기 종류') }}</legend>
+      <div class="sc-pick">{% for k, name, emo in kinds %}<label><input type="radio" name="kind" value="{{ k }}" required{% if f.get('kind') == k %} checked{% endif %}><span><b aria-hidden="true">{{ emo }}</b>{{ name }}</span></label>{% endfor %}</div></fieldset>
+    <div class="field"><label for="sc-title">{{ ui('scam.f_title', '한 줄 요약') }}</label><input id="sc-title" name="title" maxlength="60" required value="{{ f.get('title', '') }}" placeholder="{{ ui('scam.f_title_ph', '예: 중고 아이패드 입금했는데 연락이 끊겼어요') }}"></div>
+    <div class="field"><label for="sc-story">{{ ui('scam.f_story', '어떻게 당했나요?') }}</label><textarea id="sc-story" name="story" rows="6" maxlength="2000" required placeholder="{{ ui('scam.f_story_ph', '어디서 처음 연락이 왔는지, 무엇을 요구했는지 순서대로 적어 주세요. 내 이름이나 연락처는 적지 마세요.') }}">{{ f.get('story', '') }}</textarea></div>
+    <div class="sc-row">
+      <div class="field"><label for="sc-tt">{{ ui('scam.f_ttype', '사기에 쓰인 것') }}</label><select id="sc-tt" name="target_type">{% for k, name in targets.items() %}<option value="{{ k }}"{% if f.get('target_type', 'site') == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+      <div class="field grow"><label for="sc-target">{{ ui('scam.f_target', '주소·번호') }}</label><input id="sc-target" name="target" maxlength="120" value="{{ f.get('target', '') }}" placeholder="{{ ui('scam.f_target_ph', '예: abc-shop.kr, 010-1234-5678, 국민 123456789012') }}"></div>
+    </div>
+    <div class="sc-row">
+      <div class="field"><label for="sc-region">{{ ui('scam.f_region', '지역') }}</label><select id="sc-region" name="region" required>{% for r in regions %}<option{% if f.get('region', '온라인·모름') == r %} selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="sc-amount">{{ ui('scam.f_amount', '피해 금액 (원, 선택)') }}</label><input id="sc-amount" name="amount" inputmode="numeric" maxlength="15" value="{{ f.get('amount', '') }}" placeholder="0"></div>
+      <div class="field"><label for="sc-date">{{ ui('scam.f_date', '일어난 날 (선택)') }}</label><input id="sc-date" name="occurred_on" type="date" value="{{ f.get('occurred_on', '') }}"></div>
+    </div>
+    <label class="sc-check"><input type="checkbox" name="truth" value="1" required> {{ ui('scam.f_truth', '사실대로 적었어요. 거짓 신고는 법적 책임이 생길 수 있다는 걸 알아요.') }}</label>
+    <button class="sc-cta big" type="submit">{{ ui('scam.f_send', '신고 보내기') }}</button>
+    <p class="sc-form-note">💸 {{ ui('scam.sos', '이미 돈을 보냈다면 바로 보낸 은행에 지급정지를 요청하고, 112에 신고하세요.') }}</p>
+  </form>
+</div></main>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('grade.title', '소보루 등급 기준') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('grade.meta', '기업 등급(A+~F)을 무엇으로, 어떻게 매기는지 그대로 공개해요.') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap co-wrap gd">
+  <div class="page-intro gd-hero">
+    <a class="back-link" href="{{ url_for('companies') }}">← {{ ui('companies.title', '기업별 제보') }}</a>
+    <h1 class="page-title">{{ ui('grade.h1', '소보루 등급은\n이렇게 매겨요') }}</h1>
+    <p>{{ ui('grade.lead', '기업이 소비자 제보에 얼마나 답하고, 얼마나 해결하고, 얼마나 빨리 움직이는지로 매겨요. 기업이 돈을 내거나 가입해서 등급을 올릴 수는 없어요.') }}</p>
+  </div>
+
+  <ol class="gd-scale" aria-label="{{ ui('grade.scale', '등급 단계') }}">{% for cut, g in cuts %}<li class="g-{{ g[0]|lower }}"><b>{{ g }}</b><span>{% if cut %}{{ cut }}{{ ui('grade.over', '점+') }}{% else %}{{ ui('grade.under', '60점 미만') }}{% endif %}</span></li>{% endfor %}</ol>
+
+  <section class="gd-sec">
+    <h2>{{ ui('grade.h_score', '100점 만점, 세 가지로 나눠요') }}</h2>
+    <div class="gd-cards">
+      <article class="gd-card"><em>{{ pts.answer }}{{ ui('company.grade_pt', '점') }}</em><h3>{{ ui('grade.c1_t', '답변') }}</h3><p>{{ ui('grade.c1_p', '기업에 전달된 제보 중 공식 답변을 한 비율이에요. 다 답하면 %d점이에요.')|format(pts.answer) }}</p></article>
+      <article class="gd-card"><em>{{ pts.resolve }}{{ ui('company.grade_pt', '점') }}</em><h3>{{ ui('grade.c2_t', '해결') }}</h3><p>{{ ui('grade.c2_p', '답을 받은 제보자가 직접 해결됐다고 알려 준 비율이에요. 알려 준 사람이 %d명보다 적으면 절반(%d점)으로 계산해요.')|format(min_n, pts.resolve // 2) }}</p></article>
+      <article class="gd-card"><em>{{ pts.speed }}{{ ui('company.grade_pt', '점') }}</em><h3>{{ ui('grade.c3_t', '속도') }}</h3><p>{{ ui('grade.c3_p', '전달부터 첫 답변까지 걸린 시간(중앙값)이에요.') }}</p>
+        <ul class="gd-speed">{% for h, p in speed %}<li><span>{{ ui('grade.speed_h', '%s 안')|format('%d시간' % h if h < 48 else '%d일' % (h // 24)) }}</span><b>{{ p }}{{ ui('company.grade_pt', '점') }}</b></li>{% endfor %}<li><span>{{ ui('grade.speed_slow', '그보다 늦으면') }}</span><b>0{{ ui('company.grade_pt', '점') }}</b></li></ul></article>
+    </div>
+  </section>
+
+  <section class="gd-sec">
+    <h2>{{ ui('grade.h_rule', '이런 기준을 지켜요') }}</h2>
+    <ul class="gd-rules">
+      <li><b>{{ ui('grade.r1_t', '최근 %d년만 봐요')|format(years) }}</b><span>{{ ui('grade.r1_p', '오래된 제보보다 지금의 응대를 보여 주려고요.') }}</span></li>
+      <li><b>{{ ui('grade.r2_t', '운영자가 확인한 제보만 세요') }}</b><span>{{ ui('grade.r2_p', '중복이거나 기준에 맞지 않아 제외된 제보는 빼요.') }}</span></li>
+      <li><b>{{ ui('grade.r3_t', '%d일 동안은 기다려요')|format(days) }}</b><span>{{ ui('grade.r3_p', '전달하고 %d일이 안 된 제보는 아직 답을 기다리는 중이라 점수에 넣지 않아요. %d일이 넘도록 답이 없으면 답변 없음으로 남아요.')|format(days, days) }}</span></li>
+      <li><b>{{ ui('grade.r4_t', '%d건이 모여야 등급이 나와요')|format(min_n) }}</b><span>{{ ui('grade.r4_p', '제보 한두 건으로 기업을 판단하지 않으려고요.') }}</span></li>
+      <li><b>{{ ui('grade.r5_t', '등급은 품질 보증이 아니에요') }}</b><span>{{ ui('grade.r5_p', '제보에 대한 응대를 보여 줄 뿐, 상품이나 서비스가 좋다는 뜻은 아니에요.') }}</span></li>
+    </ul>
+  </section>
+
+  <section class="gd-end">
+    <h2>{{ ui('grade.end_t', '기업 담당자이신가요?') }}</h2>
+    <p>{{ ui('grade.end_p', '기업 회원으로 가입하면 제보를 바로 받고 답할 수 있어요. 답을 잘할수록 등급이 올라가요.') }}</p>
+    <a class="primary" href="{{ url_for('biz_signup') }}">{{ ui('grade.end_btn', '기업 회원 가입') }}</a>
+  </section>
+  <p class="public-case-notice">{{ ui('company.disclaimer', '제보는 제보자가 직접 작성한 주장이에요. 기업의 답변 여부만으로 위법 행위나 책임이 확인되는 것은 아니에요. 소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요.')|branded }}</p>
+</div></main>
+{% endblock %}

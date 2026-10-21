@@ -349,4 +349,27 @@ if hasattr(m, 'soboru_letter') and os.environ.get('VRT_NAVER'):
                        (_e, 'vrt-%d' % _k, _st, (_now - _dt.timedelta(days=10 - _k)).isoformat(timespec='seconds'),
                         (_now - _dt.timedelta(days=9 - _k)).isoformat(timespec='seconds') if _st == 'active' else None, ['home', 'letter', 'life', 'home', 'issue'][_k]))
 print('ready', ids, eid, flush=True)
+# 소보루 등급·사기 주의 미리보기: 순위용 기업 제보를 20일 전에 전달한 것으로 바꾸고 해결 확인을 몇 개 넣음, 공개된 사기 신고 몇 개
+if hasattr(m, 'scamwatch') and os.environ.get('VRT_NN'):
+    import datetime as _dt
+    def _ago_d(d): return (_dt.datetime.now() - _dt.timedelta(days=d)).isoformat(timespec='seconds')
+    with m.conn() as db:
+        for row in db.execute("SELECT c.id,c.company FROM cases c WHERE c.id<0").fetchall():
+            db.execute('UPDATE cases SET created=?,forwarded_at=? WHERE id=?', (_ago_d(40), _ago_d(30), row[0]))
+            db.execute("UPDATE messages SET created=? WHERE case_id=? AND author='기업 답변'", (_ago_d(29.5 if row[1] == '소보루마트' else 27), row[0]))
+        for name, outs in [('소보루마트', ['resolved'] * 5), ('보루텔레콤', ['resolved', 'resolved', 'resolved', 'unresolved']), ('오소보쇼핑', ['resolved', 'unresolved', 'unresolved'])]:
+            ids = [r[0] for r in db.execute("SELECT c.id FROM cases c WHERE c.company=? AND c.id<0 AND EXISTS(SELECT 1 FROM messages WHERE case_id=c.id AND author='기업 답변') ORDER BY c.id", (name,))]
+            for cid_, o in zip(ids, outs): db.execute('UPDATE cases SET outcome=?,confirmed_at=? WHERE id=?', (o, _ago_d(20), cid_))
+        uid = db.execute('SELECT id FROM users LIMIT 1').fetchone()
+        for kind, region, title, story, tt, target, amount, d in [
+                ('used', '서울', '중고 아이패드 입금했는데 연락이 끊겼어요', '중고거래 앱에서 아이패드를 보고 판매자가 보낸 안전결제 링크로 45만 원을 보냈어요. 결제 뒤 판매자 계정이 사라졌어요.', 'site', 'https://safe-pay-check.kr/order/123', 450000, 2),
+                ('shop', '온라인·모름', '명품 운동화 70% 할인 쇼핑몰, 배송이 안 와요', '인스타 광고로 본 쇼핑몰에서 운동화를 샀는데 한 달째 배송이 없어요. 사업자 정보도 가짜였어요.', 'site', 'www.brand-outlet-kr.shop', 189000, 5),
+                ('sms', '경기', '택배 주소 확인 문자 누르니 앱이 깔렸어요', '택배 주소가 잘못됐다는 문자에 링크가 있어서 눌렀더니 이상한 앱이 설치됐어요.', 'phone', '010-2389-4471', 0, 3),
+                ('call', '부산', '검찰이라며 계좌가 범죄에 쓰였대요', '검찰 수사관이라는 사람이 전화해서 내 계좌가 범죄에 쓰였다며 안전 계좌로 옮기라고 했어요.', 'account', '국민 123456789012', 3000000, 8),
+                ('invest', '대구', '리딩방에서 코인 투자하라고 해서 입금했어요', '원금 보장에 한 달 30% 수익이라며 리딩방에 초대받았어요. 처음엔 수익이 보이더니 출금이 안 돼요.', 'sns', '@coin_master_vip', 5200000, 12),
+                ('used', '서울', '중고 카메라 판매자가 선입금만 요구해요', '직거래는 안 되고 선입금만 된다고 했어요. 같은 계좌로 다른 사람도 당했대요.', 'account', '신한 110987654321', 320000, 15),
+                ('shop', '인천', '해외 직구 대행 사이트가 결제 후 사라졌어요', '대행 수수료가 싸서 맡겼는데 결제하고 나서 사이트가 닫혔어요.', 'site', 'buy-for-you.co', 640000, 20)]:
+            db.execute("INSERT INTO scam_reports(kind,region,title,story,target_type,target,target_norm,amount,occurred_on,user_id,ip_hash,status,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,'public',?)",
+                       (kind, region, title, story, tt, target, m.scamwatch.norm_target(tt, target), amount, _ago_d(d + 1)[:10], uid[0] if uid else None, 'seed', _ago_d(d)))
+        db.execute("INSERT INTO scam_reports(kind,region,title,story,target_type,target,target_norm,status,created) VALUES('etc','서울','확인 전 신고 (보이면 안 됨)','운영자가 아직 확인하지 않은 신고예요. 공개 화면에 나오면 안 돼요.','none','','','pending',?)", (_ago_d(0),))
 app.run(host='127.0.0.1', port=PORT)
