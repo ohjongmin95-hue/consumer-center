@@ -23,10 +23,10 @@
   </section>
   {% elif blk == 'quick' %}
   <nav class="nn-quick" aria-label="{{ ui_text('home.quick_aria', '소보루에서 할 수 있는 일') }}">
-    <a href="{{ url_for('reports') }}"><span class="nn-wi t1" aria-hidden="true">📋</span><b>{{ ui('home.quick_reports', '올라온 제보') }}</b></a>
+    <a href="{{ url_for('reports') }}"><span class="nn-wi t1" aria-hidden="true">📮</span><b>{{ ui('home.quick_reports', '올라온 제보') }}</b></a>
     <a href="{{ url_for('board') }}"><span class="nn-wi t6" aria-hidden="true">⭐</span><b>{{ ui('home.quick_board', '제품·업체 리뷰') }}</b></a>
     <a href="{{ url_for('life') }}"><span class="nn-wi t3" aria-hidden="true">💡</span><b>{{ ui('home.quick_life', '생활정보') }}</b></a>
-    {% if ask_on() %}<a href="{{ url_for('law_ask') }}"><span class="nn-wi t5" aria-hidden="true">💬</span><b>{{ ui('home.quick_ask', 'AI 소비자 상담') }}</b></a>{% endif %}
+    {% if ask_on() %}<a href="{{ url_for('law_ask') }}"><span class="nn-wi t5" aria-hidden="true">🤖</span><b>{{ ui('home.quick_ask', 'AI 소비자 상담') }}</b></a>{% endif %}
     <a href="{{ url_for('companies') }}"><span class="nn-wi t2" aria-hidden="true">🏢</span><b>{{ ui('home.quick_companies', '기업 답변 기록') }}</b></a>
   </nav>
   {% elif blk == 'live' %}
@@ -44,11 +44,11 @@
   </section>
   {% elif blk == 'life' %}
   <section class="nn-sec">
-    <div class="nn-sec-head"><h2><span class="tf" aria-hidden="true">💡</span> {{ ui('home.life_title', '알아 두면 돈 버는 소비 이야기') }}</h2><a href="{{ url_for('life') }}">{{ ui('home.life_more', '더 보기 ›') }}</a></div>
+    <div class="nn-sec-head"><h2><span class="tf" aria-hidden="true">💸</span> {{ ui('home.life_title', '알아 두면 돈 버는 소비 이야기') }}</h2><a href="{{ url_for('life') }}">{{ ui('home.life_more', '더 보기 ›') }}</a></div>
     <div class="nn-chips" role="tablist">
       <button type="button" class="on" data-chip="all">{{ ui('home.chip_all', '전체') }}</button>
-      <button type="button" data-chip="life">💡 {{ ui('home.chip_life', '생활정보') }}</button>
-      <button type="button" data-chip="report">📣 {{ ui('home.chip_report', '제보 리포트') }}</button>
+      <button type="button" data-chip="life">📰 {{ ui('home.chip_life', '생활정보') }}</button>
+      <button type="button" data-chip="report">📊 {{ ui('home.chip_report', '제보 리포트') }}</button>
       {% for cat in cats %}<button type="button" data-chip="c-{{ cat }}">{% if LIFE_EMOJI.get(cat) %}{{ LIFE_EMOJI[cat] }} {% endif %}{{ cat }}</button>{% endfor %}
     </div>
     <div class="nn-list">
@@ -66,7 +66,7 @@
   {% elif blk == 'pick' %}
   <section class="nn-sec nn-pick">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '써 본 소비자가 직접 골랐어요') }}</p><h2><span class="tf" aria-hidden="true">⭐</span> {{ ui('home.pick_title', '소보루 픽') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '제품·업체 추천부터 솔직한 리뷰, 살까 말까 고민될 때 질문까지. 광고 없이 소비자끼리만 나눠요.') }}</p></div>
+      <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '써 본 소비자가 직접 골랐어요') }}</p><h2><span class="tf" aria-hidden="true">🏆</span> {{ ui('home.pick_title', '소보루 픽') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '제품·업체 추천부터 솔직한 리뷰, 살까 말까 고민될 때 질문까지. 광고 없이 소비자끼리만 나눠요.') }}</p></div>
       <a class="nn-more" href="{{ url_for('board') }}">{{ ui('home.pick_more', '소보루 픽 전체 보기 ›') }}</a>
     </div>
     {% set camp = current_campaign() %}{% if camp %}{{ campaign_card(camp, campaign_review_count(camp['id']), 'cp-home') }}{% endif %}
@@ -84,24 +84,24 @@
       <div class="nn-pick-feed">
         {% for p in posts %}<a class="sb-cm-card k-{{ p['kind'] }}" href="{{ url_for('board_post', post_id=p['id']) }}">{{ cm_top(p) }}<h3>{% if p['kind'] == 'question' %}<span class="cm-q">Q.</span>{% endif %}{{ p['title'] }}</h3>{{ cm_sub(p) }}{{ cm_foot(p) }}</a>{% endfor %}
         {# 글이 4개보다 적으면 빈 칸 대신 첫 글을 부르는 카드로 채움 (리뷰·질문·추천 순서) #}
-        {% set fill = [('review', '⭐', ui('home.fill1_title', '써 본 제품, 솔직하게 알려 주세요'), ui('home.fill1_body', '좋았던 점·아쉬운 점 한 줄이면 충분해요. 다음 사람의 돈을 아껴 줘요.'), ui('home.fill1_btn', '리뷰 쓰기')),
-                       ('question', '🙋', ui('home.fill2_title', '살까 말까, 먼저 물어보세요'), ui('home.fill2_body', '써 본 소비자가 직접 답해 줘요. 광고 없이요.'), ui('home.fill2_btn', '질문하기')),
-                       ('review', '👍', ui('home.fill3_title', '돈값 한 제품·업체가 있나요?'), ui('home.fill3_body', '믿고 맡길 수 있었던 곳을 추천하면 TOP 5 순위에 반영돼요.'), ui('home.fill3_btn', '추천하기')),
-                       ('review', '📝', ui('home.fill4_title', '첫 리뷰의 주인공이 되어 보세요'), ui('home.fill4_body', '리뷰가 쌓이면 여기에 최신 글이 보여요.'), ui('home.fill4_btn', '리뷰 쓰기'))] %}
+        {% set fill = [('review', '✍️', ui('home.fill1_title', '써 본 제품, 솔직하게 알려 주세요'), ui('home.fill1_body', '좋았던 점·아쉬운 점 한 줄이면 충분해요. 다음 사람의 돈을 아껴 줘요.'), ui('home.fill1_btn', '리뷰 쓰기')),
+                       ('question', '🤔', ui('home.fill2_title', '살까 말까, 먼저 물어보세요'), ui('home.fill2_body', '써 본 소비자가 직접 답해 줘요. 광고 없이요.'), ui('home.fill2_btn', '질문하기')),
+                       ('review', '💯', ui('home.fill3_title', '돈값 한 제품·업체가 있나요?'), ui('home.fill3_body', '믿고 맡길 수 있었던 곳을 추천하면 TOP 5 순위에 반영돼요.'), ui('home.fill3_btn', '추천하기')),
+                       ('review', '🌱', ui('home.fill4_title', '첫 리뷰의 주인공이 되어 보세요'), ui('home.fill4_body', '리뷰가 쌓이면 여기에 최신 글이 보여요.'), ui('home.fill4_btn', '리뷰 쓰기'))] %}
         {% for f in fill[:4 - (posts|length)] %}<a class="sb-cm-card nn-fill" href="{{ url_for('board_write', type=f[0]) }}"><span class="nn-fill-ic tf" aria-hidden="true">{{ f[1] }}</span><h3>{{ f[2] }}</h3><p>{{ f[3] }}</p><span class="nn-fill-go">{{ f[4] }} ›</span></a>{% endfor %}
       </div>
     </div>
     <div class="nn-write{{ ' has-fill' if posts|length < 4 }}">{# 넓은 화면에선 위 빈 칸 카드가 글쓰기를 대신함 #}
-      <a href="{{ url_for('board_write', type='review') }}"><span class="nn-wi t6" aria-hidden="true">⭐</span><b>{{ ui('home.write1', '리뷰 쓰기') }}</b><small>{{ ui('home.write1_sub', '써 본 제품·서비스 솔직 후기') }}</small></a>
+      <a href="{{ url_for('board_write', type='review') }}"><span class="nn-wi t6" aria-hidden="true">📝</span><b>{{ ui('home.write1', '리뷰 쓰기') }}</b><small>{{ ui('home.write1_sub', '써 본 제품·서비스 솔직 후기') }}</small></a>
       <a href="{{ url_for('board_write', type='review') }}"><span class="nn-wi t1" aria-hidden="true">👍</span><b>{{ ui('home.write2', '제품 추천') }}</b><small>{{ ui('home.write2_sub', '이건 돈값 했다 싶은 것') }}</small></a>
-      <a href="{{ url_for('board_write', type='review') }}"><span class="nn-wi t2" aria-hidden="true">🏢</span><b>{{ ui('home.write3', '업체 추천') }}</b><small>{{ ui('home.write3_sub', '믿고 맡길 수 있었던 곳') }}</small></a>
+      <a href="{{ url_for('board_write', type='review') }}"><span class="nn-wi t2" aria-hidden="true">🤝</span><b>{{ ui('home.write3', '업체 추천') }}</b><small>{{ ui('home.write3_sub', '믿고 맡길 수 있었던 곳') }}</small></a>
       <a href="{{ url_for('board_write', type='question') }}"><span class="nn-wi t3" aria-hidden="true">🙋</span><b>{{ ui('home.write4', '질문하기') }}</b><small>{{ ui('home.write4_sub', '살까 말까 고민될 때') }}</small></a>
     </div>
   </section>
   {% elif blk == 'answer' %}
   <section class="nn-sec nn-answer">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">{{ ui('home.answer_eyebrow', '최근 {days}일 · 제보 {n}건 이상 받은 기업', days=rank.days, n=rank.min_n) }}</p><h2><span class="tf" aria-hidden="true">🏢</span> {{ ui('home.answer_title', '기업 답변 기록') }}</h2><p class="nn-sub">{{ ui('home.answer_sub', '소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.') }}</p></div>
+      <div><p class="nn-eyebrow">{{ ui('home.answer_eyebrow', '최근 {days}일 · 제보 {n}건 이상 받은 기업', days=rank.days, n=rank.min_n) }}</p><h2><span class="tf" aria-hidden="true">🧾</span> {{ ui('home.answer_title', '기업 답변 기록') }}</h2><p class="nn-sub">{{ ui('home.answer_sub', '소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.') }}</p></div>
       <a class="nn-more" href="{{ url_for('companies') }}">{{ ui('home.answer_more', '기업 찾기 ›') }}</a>
     </div>
     <div class="nn-ans-grid">
@@ -119,7 +119,7 @@
       </div>
     </div>
     <a class="nn-biz" href="{{ url_for('biz_login') if biz_on() else url_for('companies') }}">
-      <span class="nn-wi t2" aria-hidden="true">🏢</span>
+      <span class="nn-wi t2" aria-hidden="true">💼</span>
       <div><b>{{ ui('home.biz_title', '업체이신가요?') }}</b><p>{{ ui('home.biz_body', '소보루에 업체를 등록하면 소비자 리뷰와 제보에 직접 답할 수 있어요.') }}</p></div>
       <span class="nn-biz-go">{{ ui('home.biz_btn', '업체 등록 안내 ›') }}</span>
     </a>

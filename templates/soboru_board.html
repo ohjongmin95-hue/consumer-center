@@ -1,7 +1,7 @@
 {# 소보루 커뮤니티 첫 화면: 쓰기 고르기 · 종류 탭 · 글 목록 · 이번 주 인기 · 별점 모아 보기. board.html이 씀 #}
 {% from 'community_macros.html' import feed_item, stars, kind_chip, campaign_card %}
 {% set camp = current_campaign() %}
-{% set pick_emoji = {'review': '⭐', 'tip': '💡', 'question': '🙋', 'post': '💬'} %}
+{% set pick_emoji = {'review': '📝', 'tip': '🍯', 'question': '🙋', 'post': '💬'} %}
 {% set pick_label = {'review': ui('cm.pick_review', '리뷰 쓰기'), 'tip': ui('cm.pick_tip', '꿀팁 나누기'), 'question': ui('cm.pick_question', '질문하기'), 'post': ui('cm.pick_post', '이야기 쓰기')} %}
 {# 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['board']) #}
 <main class="sb-wrap cm">
