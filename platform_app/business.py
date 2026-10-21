@@ -393,7 +393,7 @@ def intro_videos():
 def decide():
     if request.args.get('mall_id') and request.args.get('hmac'):  # 카페24 App URL이 첫 화면이면 앱 실행으로
         return redirect(url_for('c24.launch')+'?'+request.query_string.decode())
-    if not me():return render_template('b_intro.html',app_links=APP_LINKS,vid=intro_videos(),p=billing.plan(),trial_n=billing.TRIAL_DAYS if billing.live() else 0)  # 로그인 전: 서비스 소개
+    if not me():return render_template('b_intro.html',app_links=APP_LINKS,vid=intro_videos(),industries=market.INDUSTRY_PAGES,p=billing.plan(),trial_n=billing.TRIAL_DAYS if billing.live() else 0)  # 로그인 전: 서비스 소개
     if session.get('c24_launch'):return redirect(url_for('c24.page'))  # 카페24에서 열고 가입·로그인한 뒤 이어서
     with conn() as db:
         rows=my_cases(db,me());n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(me()['id'],)).fetchone()[0]

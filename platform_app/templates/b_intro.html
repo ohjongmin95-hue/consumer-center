@@ -9,15 +9,22 @@
 {% else %}<img class="{{ cls }}" src="{{ url_for('static',filename='tour/chat-d.jpg') }}" alt="{{ BNAME }} 상담 화면">{% endif %}
 {%- endmacro %}
 {% block main %}<main class="intro tp">
+{% if trial_n %}<a class="tp-promo" href="{{ url_for('signup') }}">카드만 등록하면 {{ trial_n }}일 동안 0원, 체험 중에 해지하면 결제되지 않아요 <span>›</span></a>{% endif %}
 
-<section class="tp-hero"><div class="wrap">
+<section class="tp-hero">{% if vid.hero %}<video class="tp-bgv" autoplay muted loop playsinline preload="auto" poster="{{ url_for('static',filename='tour/hero-poster.jpg') }}" aria-hidden="true">{% if vid.hero.webm %}<source src="{{ url_for('static',filename='tour/hero.webm') }}" type="video/webm">{% endif %}<source src="{{ url_for('static',filename='tour/hero.mp4') }}" type="video/mp4"></video>{% endif %}<div class="tp-shade"></div><div class="wrap tp-load">
 <span class="tp-eyebrow">카페24·자사몰 쇼핑몰 CS</span>
 <h1>쇼핑몰 문의,<br>AI가 먼저 답해요</h1>
 <p>게시판, 인스타그램 DM, 메일 문의를 한 화면에 모으고<br class="pc"> 배송·교환·사용법 안내는 AI가 바로 답해요.<br class="pc"> 사장님은 환불 같은 결정만 승인하면 돼요.</p>
-<div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a><a class="btn gray tp-btn" href="#tour">▶ 영상으로 보기</a></div>
+<div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a><a class="btn tp-btn glass" href="#tour">▶ 영상으로 보기</a></div>
 <small class="tp-note">{% if trial_n %}카드를 등록해도 {{ trial_n }}일 동안은 결제되지 않아요{% else %}가입하면 바로 쓸 수 있어요{% endif %}</small>
-<div class="tp-frame rv-up"><div class="tp-bar"><i></i><i></i><i></i><span>biz.soboru.co.kr</span></div>{{ video('hero','tp-media') }}</div>
 </div></section>
+
+<section class="tp-ticker" aria-label="이런 문의가 매일 들어와요"><p class="tp-tick-t">이런 문의, 매일 들어오죠</p>
+{% set asks=[('c24','C','배송 언제 와요?'),('ig','IG','사이즈 교환되나요?'),('mail','M','영수증 받을 수 있을까요?'),('own','💬','재입고 언제예요?'),('c24','C','주문 취소하고 싶어요'),('ig','IG','세탁기 돌려도 되나요?'),('mail','M','송장번호가 안 보여요'),('own','💬','쿠폰은 어디서 받아요?')] %}
+{% for row in [asks, asks[4:]+asks[:4]] %}<div class="tp-track{{ ' rev' if loop.index==2 }}" aria-hidden="true"><div>{% for _ in range(2) %}{% for cls,mk,q in row %}<span class="tp-q"><span class="tp-mark sm {{ cls }}">{{ mk }}</span>{{ q }}</span>{% endfor %}{% endfor %}</div></div>{% endfor %}
+</section>
+
+<section class="tp-shot"><div class="wrap"><div class="tp-frame tp-grow" id="tpGrow"><div class="tp-bar"><i></i><i></i><i></i><span>biz.soboru.co.kr</span></div>{{ video('hero','tp-media') }}</div></div></section>
 
 <section class="tp-sec tp-gray" id="channels"><div class="wrap">
 <h2 class="rv-up">흩어진 문의를<br>한곳에 모아요</h2>
@@ -53,6 +60,8 @@
 </div>
 </div></section>
 
+<section class="tp-sec tp-say" aria-label="소보루 CS가 하는 일"><div class="wrap"><p class="tp-words" id="tpWords">{% for w in '반복되는 문의는 AI가 먼저 답하고, 사장님은 정말 중요한 결정만 내리면 돼요.'.split(' ') %}<span>{{ w }}</span> {% endfor %}</p></div></section>
+
 <section class="tp-sec" id="tour"><div class="wrap">
 <h2 class="rv-up">1분 영상으로<br>둘러보세요</h2>
 <p class="tp-sub rv-up">견본 데이터를 넣은 실제 {{ BNAME }} 화면이에요.</p>
@@ -68,8 +77,15 @@
 {% endfor %}</div>
 </div></section>
 
-<section class="tp-sec" id="price"><div class="wrap">
+<section class="tp-sec" id="pick"><div class="wrap">
+<h2 class="rv-up">어떤 쇼핑몰을<br>운영하세요?</h2>
+<p class="tp-sub rv-up">업종을 고르면 자주 오는 문의와 맞춤 응대 방법을 보여 드려요.</p>
+<div class="tp-pick rv-up">{% for slug,x in industries.items() %}<a href="{{ url_for('mk.industry',slug=slug) }}">{{ x.name }}<span>›</span></a>{% endfor %}</div>
+</div></section>
+
+<section class="tp-sec tp-gray" id="price"><div class="wrap">
 <h2 class="rv-up">요금은 하나,<br>한 달에 {{ '{:,}'.format(p.price|int) if p else '19,900' }}원</h2>
+<div class="tp-zero rv-up">{% for n,t in [('0원','설치비·가입비'),('0원','직원 계정 추가'),(('%d일'%trial_n) if trial_n else '0원','무료 체험' if trial_n else '약정')] %}<div><b>{{ n }}</b><span>{{ t }}</span></div>{% endfor %}</div>
 <div class="tp-price rv-up">
 <div class="tp-pt"><b>{{ p.name if p else BNAME+' 기본' }}</b><span>월 <strong>{{ '{:,}'.format(p.price|int) if p else '19,900' }}</strong>원</span><small>부가세 포함 · 매달 자동 결제</small></div>
 <ul class="tp-list">{% for t in ['카페24·자사몰 상담창·인스타그램 DM·메일 문의 한 화면','AI 자동 답변과 답변 초안','자동 처리 규칙, 교환·반품 관리, 통계','직원 계정과 사장님 앱'] %}<li>{{ i.tf('check',20) }}{{ t }}</li>{% endfor %}</ul>
@@ -78,12 +94,23 @@
 </div>
 </div></section>
 
-<section class="tp-sec tp-gray" id="faq"><div class="wrap tp-narrow">
+<section class="tp-sec" id="faq"><div class="wrap tp-narrow">
 <h2 class="rv-up">자주 묻는 질문</h2>
 <div class="tp-faq">
 {% for q,a in [('카페24 말고 자사몰도 되나요?','네. 쇼핑몰 HTML에 스크립트 한 줄을 넣으면 문의 버튼이 생기고, 메일과 인스타그램 DM도 같은 화면에서 받아요.'),('카페24 비밀번호를 알려 줘야 하나요?','아니요. 카페24 관리자로 로그인해 권한에 동의하는 방식(OAuth)이라 비밀번호는 받지 않아요.'),('AI가 마음대로 환불해 주면 어떡하죠?','AI는 환불·보상·취소를 약속하거나 실행하지 않아요. 방법은 안내하고, 결정은 사장님 승인 뒤에만 나가요.'),('AI가 모르는 걸 지어내지 않나요?','가격·재고·배송·반품 정책은 넣어 둔 정보로만 답해요. 없으면 지어내지 않고 담당자 확인을 안내해요.'),('무료 체험이 끝나면 어떻게 되나요?','체험이 끝나는 날 첫 달 요금이 결제돼요. 그 전에 해지하면 결제되지 않고, 받은 문의와 설정은 지우지 않아요.')] %}
 <details class="rv-up"><summary>{{ q }}<span class="chev"></span></summary><p>{{ a }}</p></details>
 {% endfor %}</div>
+</div></section>
+
+<section class="tp-sec tp-gray" id="help"><div class="wrap tp-narrow">
+<h2 class="rv-up">어떤 도움이 필요하세요?</h2>
+<form class="tp-search rv-up" action="{{ url_for('cms.help_home') }}" method="get" role="search"><input name="q" maxlength="40" placeholder="예: 카페24 연결" aria-label="도움말 검색"><button class="btn tp-btn">검색</button></form>
+<div class="tp-pick tp-chips rv-up">{% for q in ['카페24 연결','자사몰 상담창 달기','인스타그램 DM','AI 답변 고치기','결제·해지'] %}<a href="{{ url_for('cms.help_home',q=q.split(' ')[0]) }}">{{ q }}<span>›</span></a>{% endfor %}</div>
+<div class="tp-contact rv-up">
+<a href="tel:{{ OPERATOR.phone|replace('-','') }}">{{ i.tf_tile('phone',28) }}<b>{{ OPERATOR.phone }}</b><span>전화 문의</span></a>
+{% if has_ep('sl.consult') %}<a href="{{ url_for('sl.consult') }}">{{ i.tf_tile('speech',28) }}<b>1:1 상담 신청</b><span>남겨 주시면 연락드려요</span></a>{% endif %}
+<a href="{{ url_for('cms.blog') }}">{{ i.tf_tile('memo',28) }}<b>사장님 자료실</b><span>쇼핑몰 CS 노하우</span></a>
+</div>
 </div></section>
 
 <section class="tp-end"><div class="wrap">
@@ -92,6 +119,7 @@
 <div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a>{% if has_ep('sl.consult') %}<a class="btn tp-btn ghost" href="{{ url_for('sl.consult') }}">상담 신청</a>{% endif %}</div>
 </div></section>
 
+{% if has_ep('sl.consult') %}<a class="tp-float" href="{{ url_for('sl.consult') }}">{{ i.tf('speech',22) }}빠른 상담 받기</a>{% endif %}
 <div class="tp-sticky"><a class="btn tp-btn full" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a></div>
 </main>{% endblock %}
 {% block script %}<script>
@@ -101,6 +129,11 @@ if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion: red
 els.forEach(function(e){e.classList.add('rv');});
 var io=new IntersectionObserver(function(es){es.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');if(x.target===chat)chat.classList.add('play');io.unobserve(x.target);}});},{threshold:.2});
 els.forEach(function(e){io.observe(e);});if(chat)io.observe(chat);
+var grow=document.getElementById('tpGrow'),words=[].slice.call(document.querySelectorAll('#tpWords span'));
+function onScroll(){var h=innerHeight;
+ if(grow){var r=grow.getBoundingClientRect(),t=Math.min(1,Math.max(0,(h-r.top)/(h*.9)));grow.style.setProperty('--g',t.toFixed(3));}
+ if(words.length){var w=document.getElementById('tpWords').getBoundingClientRect(),p=Math.min(1,Math.max(0,(h*.85-w.top)/(w.height+h*.35))),n=Math.round(p*words.length);words.forEach(function(x,k){x.classList.toggle('on',k<n);});}}
+addEventListener('scroll',onScroll,{passive:true});onScroll();
 var st=document.querySelector('.tp-sticky'),hero=document.querySelector('.tp-hero .tp-cta');
 if(st&&hero)new IntersectionObserver(function(es){st.classList.toggle('on',!es[0].isIntersecting);}).observe(hero);})();
 </script>{% endblock %}
