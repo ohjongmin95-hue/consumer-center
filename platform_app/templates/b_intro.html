@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
-{% block title %}{{ BNAME }} · 카페24 문의, AI가 먼저 답해요{% endblock %}
+{% block title %}{{ BNAME }} · 쇼핑몰 문의, AI가 먼저 답해요{% endblock %}
 {% block description %}카페24 게시판·자사몰 상담창·인스타그램 DM·메일 문의를 한 화면에 모으고, 배송·교환·사용법 안내는 AI가 바로 답해요. 환불 같은 결정만 사장님이 승인해요.{% endblock %}
 {% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": BNAME, "applicationCategory": "BusinessApplication", "operatingSystem": "Web, Android", "url": request.url_root, "description": DESCRIPTION[site], "inLanguage": "ko", "publisher": {"@type": "Organization", "name": OPERATOR.name}}]|tojson }}</script>{% endblock %}
 {% block bar %}{{ b.bar('intro') }}{% endblock %}
@@ -11,8 +11,8 @@
 {% block main %}<main class="intro tp">
 
 <section class="tp-hero"><div class="wrap">
-<span class="tp-eyebrow">카페24 쇼핑몰 CS</span>
-<h1>카페24 문의,<br>AI가 먼저 답해요</h1>
+<span class="tp-eyebrow">카페24·자사몰 쇼핑몰 CS</span>
+<h1>쇼핑몰 문의,<br>AI가 먼저 답해요</h1>
 <p>게시판, 인스타그램 DM, 메일 문의를 한 화면에 모으고<br class="pc"> 배송·교환·사용법 안내는 AI가 바로 답해요.<br class="pc"> 사장님은 환불 같은 결정만 승인하면 돼요.</p>
 <div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a><a class="btn gray tp-btn" href="#tour">▶ 영상으로 보기</a></div>
 <small class="tp-note">{% if trial_n %}카드를 등록해도 {{ trial_n }}일 동안은 결제되지 않아요{% else %}가입하면 바로 쓸 수 있어요{% endif %}</small>

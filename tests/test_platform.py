@@ -859,12 +859,12 @@ class PlatformTest(unittest.TestCase):
         # 색이 섞인 제목도 조각마다 고친다 (화면에서 고친 경우 shown=1)
         self.post(o,'/biz/ops/copy',{'site':'biz','src':'AI가 먼저 답해요','dst':'한 곳에서','shown':'1'})
         self.post(o,'/biz/ops/copy',{'site':'biz','src':'한 곳에서','dst':'바로','shown':'1'})  # 이미 바꾼 글자를 다시 고치면 같은 기록을 고친다
-        self.assertIn('<h1>카페24 문의,<br>바로</h1>',self.client().get('/biz/').get_data(as_text=True))
+        self.assertIn('<h1>쇼핑몰 문의,<br>바로</h1>',self.client().get('/biz/').get_data(as_text=True))
         # 줄을 비우면 그 줄바꿈도 같이 사라져 아래 글이 당겨진다, 칸 안의 줄바꿈은 그대로 줄바꿈
         self.post(o,'/biz/ops/copy',{'site':'biz','src':'바로','dst':'','shown':'1'})
-        biz=self.client().get('/biz/').get_data(as_text=True);self.assertIn('<h1>카페24 문의,</',biz);self.assertNotIn('카페24 문의,<br></',biz)
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'카페24 문의,','dst':'카페24 문의,\n끝','shown':'1'})
-        self.assertIn('<h1>카페24 문의,<br>끝</',self.client().get('/biz/').get_data(as_text=True))
+        biz=self.client().get('/biz/').get_data(as_text=True);self.assertIn('<h1>쇼핑몰 문의,</',biz);self.assertNotIn('쇼핑몰 문의,<br></',biz)
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'쇼핑몰 문의,','dst':'쇼핑몰 문의,\n끝','shown':'1'})
+        self.assertIn('<h1>쇼핑몰 문의,<br>끝</',self.client().get('/biz/').get_data(as_text=True))
         with self.core.conn() as db:db.execute('DELETE FROM copy_edits')
 
     def test_visual_edit_stays_on_its_page(self):

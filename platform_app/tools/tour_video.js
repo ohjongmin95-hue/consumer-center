@@ -135,7 +135,7 @@ h1 em{font-style:normal;color:#ef920e}
 .price i{width:6px;height:6px;border-radius:50%;background:#ef920e}
 @keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 </style></head><body><div class="w"><img src="${CHAR}" alt=""><div class="brand">소보루 CS</div>
-<h1>카페24 문의, <em>AI가 먼저</em> 답해요</h1><div class="price">월 19,900원<i></i>5일 무료 체험</div></div></body></html>`;
+<h1>쇼핑몰 문의, <em>AI가 먼저</em> 답해요</h1><div class="price">월 19,900원<i></i>5일 무료 체험</div></div></body></html>`;
 
 (async()=>{
   fs.mkdirSync(OUT,{recursive:true});
