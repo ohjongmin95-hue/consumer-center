@@ -585,7 +585,8 @@ ALERTS=(('new','승인할 문의','AI가 넘기거나 사장님 승인이 필요
         ('msg','고객의 새 메시지','진행 중인 문의에 고객이 말을 더 했을 때',dict(push=1,email=0)),
         ('ai','AI가 답한 문의','AI가 단순 문의에 답했을 때 (목록에서 확인)',dict(push=0,email=0)),
         ('late','답변 기한','답변 기한이 지났을 때',dict(push=1,email=1)),
-        ('link','연결 끊김','카페24·인스타그램·이메일 연결이 멈췄을 때',dict(push=1,email=1)))
+        ('link','연결 끊김','카페24·인스타그램·이메일 연결이 멈췄을 때',dict(push=1,email=1)),
+        ('plan','상담 건수','이번 달 상담이 요금 구간의 80%·100%에 닿았을 때',dict(push=1,email=1)))
 ALERT_KEEP_DAYS=90
 def alert_prefs(co):
     """{종류: {'push':0|1,'email':0|1}} — 저장한 값이 없으면 기본값."""

@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}{% import '_tiers.html' as tr with context %}
 {% block title %}{{ BNAME }} · 쇼핑몰 문의, AI가 먼저 답해요{% endblock %}
 {% block description %}카페24 게시판·자사몰 상담창·인스타그램 DM·메일 문의를 한 화면에 모으고, 배송·교환·사용법 안내는 AI가 바로 답해요. 환불 같은 결정만 사장님이 승인해요.{% endblock %}
 {% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": BNAME, "applicationCategory": "BusinessApplication", "operatingSystem": "Web, Android", "url": request.url_root, "description": DESCRIPTION[site], "inLanguage": "ko", "publisher": {"@type": "Organization", "name": OPERATOR.name}}]|tojson }}</script>{% endblock %}
@@ -84,14 +84,11 @@
 </div></section>
 
 <section class="tp-sec tp-gray" id="price"><div class="wrap">
-<h2 class="rv-up">요금은 하나,<br>한 달에 {{ '{:,}'.format(p.price|int) if p else '19,900' }}원</h2>
+<h2 class="rv-up">받은 상담만큼만,<br>한 달 {{ '{:,}'.format(tiers[0].price) }}원부터</h2>
+<p class="tp-sub rv-up">기능은 모든 구간이 같아요. 한 달에 받는 상담 건수로만 나눠요.</p>
 <div class="tp-zero rv-up">{% for n,t in [('0원','설치비·가입비'),('0원','직원 계정 추가'),(('%d일'%trial_n) if trial_n else '0원','무료 체험' if trial_n else '약정')] %}<div><b>{{ n }}</b><span>{{ t }}</span></div>{% endfor %}</div>
-<div class="tp-price rv-up">
-<div class="tp-pt"><b>{{ p.name if p else BNAME+' 기본' }}</b><span>월 <strong>{{ '{:,}'.format(p.price|int) if p else '19,900' }}</strong>원</span><small>부가세 포함 · 매달 자동 결제</small></div>
-<ul class="tp-list">{% for t in ['카페24·자사몰 상담창·인스타그램 DM·메일 문의 한 화면','AI 자동 답변과 답변 초안','자동 처리 규칙, 교환·반품 관리, 통계','직원 계정과 사장님 앱'] %}<li>{{ i.tf('check',20) }}{{ t }}</li>{% endfor %}</ul>
-<a class="btn tp-btn full" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a>
-<small class="tp-note">{% if trial_n %}체험이 끝나는 날 첫 결제가 되고, 그 전에 해지하면 결제되지 않아요.{% endif %} <a class="link" href="{{ url_for('pricing') }}">요금 안내</a> · <a class="link" href="{{ url_for('refund_policy') }}">환불 정책</a></small>
-</div>
+<div class="rv-up">{{ tr.cards(tiers,trial_n) }}</div>
+<p class="tp-tnote rv-up">{% if trial_n %}체험이 끝나는 날 첫 결제가 되고, 그 전에 해지하면 결제되지 않아요. {% endif %}<a class="link" href="{{ url_for('pricing') }}">요금 자세히 보기</a> · <a class="link" href="{{ url_for('refund_policy') }}">환불 정책</a></p>
 </div></section>
 
 <section class="tp-sec" id="faq"><div class="wrap tp-narrow">

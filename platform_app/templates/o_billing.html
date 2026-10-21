@@ -6,10 +6,11 @@
 <div class="phead"><div><h1>요금제·결제</h1><p>포트원 정기결제(빌링키). 상점 아이디·채널 키·API 시크릿은 <a class="link" href="{{ url_for('ops_keys') }}">서비스 키</a>에서 넣어요. 포트원 시험 채널로는 실제 돈이 나가지 않아요</p></div></div>
 {% if not ready %}<div class="warn" style="margin-bottom:var(--ds-gap)">포트원 키가 아직 없어요. 키와 요금제가 모두 있어야 사장님 화면에 결제가 열려요.</div>{% endif %}
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
-<div class="ph">요금제{% if p %}<span class="pill ok" style="margin-left:auto">{{ p.name }} · 월 {{ '{:,}'.format(p.price|int) }}원</span>{% else %}<span class="pill gray" style="margin-left:auto">없음</span>{% endif %}</div>
-<p class="sub" style="font-size:15px;margin:0">금액은 부가세를 포함한 월 요금이에요. 바꾸면 이미 결제 중인 회사는 다음 결제부터 새 금액이 되고, 사장님 화면에 미리 보여요.</p>
-<input class="inp" name="name" maxlength="30" placeholder="요금제 이름 (예: 베이직)" value="{{ p.name if p }}" required aria-label="요금제 이름">
-<input class="inp" name="price" inputmode="numeric" placeholder="월 금액 (원)" value="{{ p.price if p }}" required aria-label="월 금액">
+<div class="ph">요금 구간 (상담 건수)</div>
+<p class="sub" style="font-size:15px;margin:0">금액은 부가세를 포함한 월 요금이에요. 상담 1건은 답장이 한 번이라도 나간 문의예요. 넘으면 막지 않고 다음 결제에 추가 요금을 더해요. 바꾸면 이미 결제 중인 회사는 다음 결제부터 새 금액이 되고, 사장님 화면에 미리 보여요.</p>
+{% for t in tiers %}<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="min-width:88px">{{ t.name }}</b><span class="cap" style="min-width:90px">상담 {{ '{:,}'.format(t.tickets) }}건</span>
+<input class="inp" style="flex:1 1 140px" name="{{ t.key }}.price" inputmode="numeric" value="{{ t.price }}" aria-label="{{ t.name }} 월 금액">
+<span class="cap">원 · 넘으면 {{ t.over_n }}건마다</span><input class="inp" style="flex:1 1 110px" name="{{ t.key }}.over" inputmode="numeric" value="{{ t.over_price }}" aria-label="{{ t.name }} 추가 요금"><span class="cap">원</span></div>{% endfor %}
 <div><button class="btn">저장</button></div></form>
 <form class="panel stack" method="post" style="margin-top:var(--ds-gap)"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="c24">
 <div class="ph">카페24 앱 결제{% if c24_on %}<span class="pill ok" style="margin-left:auto">켜짐</span>{% else %}<span class="pill gray" style="margin-left:auto">꺼짐</span>{% endif %}</div>
@@ -17,10 +18,10 @@
 <label class="check"><input type="checkbox" name="on" value="1" {{ 'checked' if c24_on }}><span class="bx"></span>카페24 앱 결제 쓰기</label>
 <div><button class="btn md gray">저장</button></div></form>
 <section class="panel" style="margin-top:var(--ds-gap)"><div class="ph">결제 중인 회사 {{ subs|length }}</div>
-{% if subs %}<ul class="dots">{% for s in subs %}<li>{{ s.co_name }} · {{ '카페24 · ' if s.source=='cafe24' }}{{ {'active':'결제 중','canceled':'해지 예약','past_due':'결제 실패','stopped':'멈춤','ended':'끝남'}.get(s.status,s.status) }} · {{ s.plan_name }} {{ '{:,}'.format(s.price) }}원 · 다음 {{ s.next_charge or '–' }}{% if s.note %} · {{ s.note }}{% endif %}</li>{% endfor %}</ul>
+{% if subs %}<ul class="dots">{% for s in subs %}<li>{{ s.co_name }} · {{ '카페24 · ' if s.source=='cafe24' }}{{ {'active':'결제 중','canceled':'해지 예약','past_due':'결제 실패','stopped':'멈춤','ended':'끝남'}.get(s.status,s.status) }} · {{ s.plan_name }} {{ '{:,}'.format(s.price) }}원{% if s.want_tier %} (다음부터 {{ s.want_tier }}){% endif %} · 다음 {{ s.next_charge or '–' }}{% if s.note %} · {{ s.note }}{% endif %}</li>{% endfor %}</ul>
 {% else %}<p class="sub" style="margin:0">아직 없어요.</p>{% endif %}</section>
 <section class="panel" style="margin-top:var(--ds-gap)"><div class="ph">최근 결제</div>
-{% if pays %}<ul class="dots">{% for x in pays %}<li>{{ x.created[:16] }} · {{ x.co_name }} · {{ '{:,}'.format(x.amount) }}원 · {{ {'done':'결제됨','fail':'실패','try':'처리 중'}.get(x.status,x.status) }}{% if x.error %} · {{ x.error }}{% endif %}{% if x.receipt %} · <a class="link" href="{{ x.receipt }}" target="_blank" rel="noopener">영수증</a>{% endif %}</li>{% endfor %}</ul>
+{% if pays %}<ul class="dots">{% for x in pays %}<li>{{ x.created[:16] }} · {{ x.co_name }} · {{ '{:,}'.format(x.amount) }}원{% if x.memo %} ({{ x.memo }}){% endif %} · {{ {'done':'결제됨','fail':'실패','try':'처리 중'}.get(x.status,x.status) }}{% if x.error %} · {{ x.error }}{% endif %}{% if x.receipt %} · <a class="link" href="{{ x.receipt }}" target="_blank" rel="noopener">영수증</a>{% endif %}</li>{% endfor %}</ul>
 {% else %}<p class="sub" style="margin:0">아직 없어요.</p>{% endif %}</section>
 </div>
 {% endblock %}

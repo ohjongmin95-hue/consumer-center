@@ -1,18 +1,18 @@
-{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}{% import '_tiers.html' as tr with context %}
 {% block title %}요금 안내 · {{ BNAME }}{% endblock %}
-{% block description %}{{ BNAME }} 요금제와 월 요금, 정기결제·해지·환불 방법을 안내합니다.{% endblock %}
+{% block description %}{{ BNAME }} 요금: 한 달 상담 건수로 고르는 4가지 구간, 월 {{ '{:,}'.format(tiers[0].price) }}원부터. 정기결제·해지·환불 방법도 안내합니다.{% endblock %}
 {% block bar %}{{ b.bar('pricing') }}{% endblock %}
-{% block main %}{% set price='{:,}'.format(p.price|int) if p else '' %}<main class="intro">
+{% block main %}<main class="intro">
 <section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">요금 안내</span>
-<h1>{% if p %}요금은 하나,<br>한 달 {{ price }}원{% else %}{{ BNAME }} 요금{% endif %}</h1>
-<p>기능을 나누지 않았어요. 가입하면 모든 기능을 다 써요.</p></div></div></section>
+<h1>받은 상담만큼만,<br>한 달 {{ '{:,}'.format(tiers[0].price) }}원부터</h1>
+<p>기능은 모든 구간이 같아요. 한 달에 받는 상담 건수로만 나눠요.</p></div></div></section>
 
 <section><div class="wrap mk-one">
 <div class="tp-zero">{% for n,t in [('0원','설치비·가입비'),('0원','직원 계정 추가'),(('%d일'%trial_days) if trial_days else '0원','무료 체험' if trial_days else '약정·위약금')] %}<div><b>{{ n }}</b><span>{{ t }}</span></div>{% endfor %}</div>
+{{ tr.cards(tiers,trial_days) }}
 <div class="tp-price">
-<div class="tp-pt"><b>{{ p.name if p else '유료 요금제' }}</b>{% if p %}<span>월 <strong>{{ price }}</strong>원</span><small>부가세 포함 · 매달 자동 정기결제</small>{% else %}<span>요금을 준비하고 있어요</span><small>정해지면 이 페이지에 금액을 먼저 알려 드려요</small>{% endif %}</div>
-<ul class="tp-list">{% for t in ['카페24 게시판·자사몰 상담창·인스타그램 DM·메일 문의를 한 화면에','AI 자동 답변과 답변 초안','자동 처리 규칙, 교환·반품 관리, 통계','직원 계정과 사장님 앱'] %}<li>{{ i.tf('check',20) }}{{ t }}</li>{% endfor %}</ul>
-<a class="btn tp-btn full" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_days if trial_days else '무료로 시작하기' }}</a>
+<div class="tp-pt"><b>모든 구간에 들어 있어요</b></div>
+<ul class="tp-list">{% for t in ['카페24 게시판·자사몰 상담창·인스타그램 DM·메일 문의를 한 화면에','AI 자동 답변과 답변 초안 (AI 요금 따로 없음)','자동 처리 규칙, 교환·반품 관리, 통계','직원 계정과 사장님 앱'] %}<li>{{ i.tf('check',20) }}{{ t }}</li>{% endfor %}</ul>
 {% if trial_days %}<small class="tp-note">무료 체험 {{ trial_days }}일 · 카드를 등록해도 체험 중에는 결제되지 않아요</small>{% endif %}
 </div>
 </div></section>
@@ -20,7 +20,9 @@
 <section><div class="wrap mk-one tp-narrow">
 <h2>결제·해지·환불</h2>
 <div class="tp-faq">
-{% set qa=[] %}
+{% set qa=[('상담 1건은 어떻게 세나요?','고객에게 답장이 한 번이라도 나간 문의를 1건으로 세요. AI가 답한 문의도 포함이에요. 같은 고객과 여러 번 주고받아도 한 문의면 1건이고, 답장 없이 닫은 문의와 스팸, 영업시간 외 자동 안내만 나간 문의는 세지 않아요.'),
+('구간을 넘으면 멈추나요?','멈추지 않아요. 넘은 만큼만 다음 결제 때 더해져요. 스타터는 1건에 '+'{:,}'.format(tiers[0].over_price)+'원, 베이직은 100건에 '+'{:,}'.format(tiers[1].over_price)+'원, 프로·어드밴스드는 100건에 '+'{:,}'.format(tiers[2].over_price)+'원이에요. 80%와 100%에 닿으면 알림으로 미리 알려 드려요.'),
+('구간은 언제 바꿀 수 있나요?','설정 > 요금·결제에서 언제든 바꿀 수 있어요. 결제 중에 바꾸면 다음 결제일부터 새 구간이 돼요. 체험 중이면 바로 바뀌어요.')] %}
 {% if trial_days %}{% set _=qa.append(('무료 체험이 끝나면 어떻게 되나요?','체험이 끝나는 날 첫 달 요금이 결제되고, 그다음부터 매달 같은 날 결제돼요. 체험 중에 해지하면 결제되지 않아요. 카페24 앱스토어로 설치했다면 처음 연결한 날부터 %d일 무료예요.'%trial_days)) %}{% endif %}
 {% set _=qa.append(('결제는 어떻게 하나요?','로그인한 뒤 설정 > 요금·결제에서 카드를 등록해요. 매달 같은 날 자동으로 결제되는 정기결제예요. 결제는 포트원과 결제대행사(PG)가 처리하고, 카드 번호는 '+op.name+'에 저장되지 않아요.')) %}
 {% set _=qa.append(('결제가 안 되면요?','결제할 때까지 '+BNAME+' 기능이 멈춰요. 받은 문의와 설정은 지우지 않으니, 결제하면 그대로 다시 쓸 수 있어요.')) %}
