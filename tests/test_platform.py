@@ -2596,6 +2596,12 @@ class PlatformTest(unittest.TestCase):
             with self.core.conn() as db:db.execute('UPDATE billing SET next_charge=? WHERE company_id=?',(bl.today().isoformat(),c2))
             bl.renew_all();self.assertEqual(len(pays()),1);self.assertEqual(st(c2)['status'],'ended');self.assertEqual(co(c2)['plan'],'pilot')
             self.assertFalse(bl.open_ok(co(c2)));self.assertEqual(b2.get('/biz/').status_code,302)
+            # 운영자가 '결제 없이 쓰게 하기'를 누르면 (심사용 계정) 다시 열리고, 끄면 다시 잠긴다
+            o=self.client();self.post(o,'/biz/ops/login',{'password':self.ops_pw})
+            self.assertIn('결제 없이 쓰게 하기',o.get('/biz/ops/company/%d'%c2).get_data(as_text=True))
+            self.post(o,'/biz/ops/companies',{'act':'free','id':str(c2)});self.assertEqual(co(c2)['plan'],'free');self.assertEqual(b2.get('/biz/').status_code,200)
+            bl.renew_all();bl.c24_expire();self.assertEqual(co(c2)['plan'],'free')
+            self.post(o,'/biz/ops/companies',{'act':'free','id':str(c2)});self.assertEqual(co(c2)['plan'],'pilot')
             h=b2.get('/biz/billing').get_data(as_text=True);self.assertIn('결제가 확인되지 않아',h);self.assertNotIn('5일 무료로 시작하기',h)  # 체험은 한 번
             # 결제가 실패하면 바로 멈춘다
             with self.core.conn() as db:db.execute('UPDATE billing SET next_charge=?,last_try=? WHERE company_id=?',(bl.today().isoformat(),'',cid))

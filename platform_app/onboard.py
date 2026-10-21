@@ -12,7 +12,7 @@ import core
 from core import conn, clean, digits
 
 LOG=logging.getLogger(__name__)
-PLANS={'pilot':{'name':'무료 시범','limit':None},'trial':{'name':'무료 체험','limit':None},'paid':{'name':'유료','limit':None}}  # 'paid': 포트원 정기결제 중 (billing.py, 요금제 이름·금액은 운영 화면에서)
+PLANS={'pilot':{'name':'무료 시범','limit':None},'trial':{'name':'무료 체험','limit':None},'paid':{'name':'유료','limit':None},'free':{'name':'무료 제공','limit':None}}  # 'paid': 포트원 정기결제 중 (billing.py, 요금제 이름·금액은 운영 화면에서)
 VERIFY_HOURS=48
 
 def init():
