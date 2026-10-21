@@ -5,8 +5,13 @@
 {% block main %}<main class="intro">
 <section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">요금 안내</span><h1>{{ BNAME }} 요금</h1><p>쇼핑몰·판매자를 위한 고객 응대(CS) 도구 · 한 달 단위 정기결제(구독)</p></div></div></section>
 <section class="doc-sec"><div class="wrap mk-one"><div class="panel privacy terms doc">
-<section><h2>{{ '무료 체험 %d일'%trial_days if p else '무료 시범' }}</h2>
-<p><b>0원</b> · 가입하면 바로 모든 기능을 쓸 수 있어요. 카드를 등록하기 전에는 결제되지 않아요.{% if p %} 체험이 끝나면 AI 자동 답변만 멈추고, 요청함과 직접 답변은 계속 쓸 수 있어요.{% endif %}</p></section>
+<section><h2>{{ '무료 체험 %d일'%trial_days if trial_days else '무료 시범' }}</h2>
+{% if trial_days %}<p><b>0원</b> · 가입한 뒤 카드를 등록하면 {{ trial_days }}일 동안 모든 기능을 무료로 써요. 등록할 때는 결제되지 않아요.</p>
+<ul><li>체험이 끝나는 날 첫 달 요금이 결제되고, 그다음부터 매달 같은 날 자동으로 결제돼요.</li>
+<li>체험 중에 해지하면 결제되지 않아요.</li>
+<li>결제가 되지 않으면 결제할 때까지 소보루 CS 기능이 멈춰요. 받은 문의와 설정은 지우지 않아요.</li>
+<li>카페24 앱스토어로 설치하면 카페24에 처음 연결한 날부터 {{ trial_days }}일 무료이고, 그 안에 카페24 결제로 이어서 쓰면 돼요.</li></ul>
+{% else %}<p><b>0원</b> · 가입하면 바로 쓸 수 있어요. 카드를 등록하기 전에는 결제되지 않아요.</p>{% endif %}</section>
 
 <section><h2>{{ p.name if p else '유료 요금제' }}</h2>
 {% if p %}<p style="font-size:22px;margin:4px 0 8px"><b>월 {{ '{:,}'.format(p.price|int) }}원</b> <span class="sub" style="font-size:15px">(부가세 포함, 매월 자동 결제)</span></p>{% else %}<p>요금을 준비하고 있어요. 정해지면 이 페이지에 금액을 먼저 알려 드려요.</p>{% endif %}
@@ -19,8 +24,8 @@
 </ul></section>
 
 <section><h2>결제와 이용 방법</h2><ul>
-<li>로그인 후 설정 &gt; 요금·결제에서 카드를 등록하면 첫 달 요금이 바로 결제되고, 그다음부터 매달 같은 날 자동으로 결제돼요.</li>
-<li>결제 즉시 유료 요금제가 시작되고, 다음 결제일까지 쓰실 수 있어요.</li>
+<li>로그인 후 설정 &gt; 요금·결제에서 카드를 등록해요. 처음이면 무료 체험이 끝나는 날, 체험을 이미 쓰셨다면 등록하는 날 첫 달 요금이 결제돼요.</li>
+<li>그다음부터 매달 같은 날 자동으로 결제되고, 다음 결제일까지 쓰실 수 있어요.</li>
 <li>결제는 포트원과 결제대행사(PG)를 통해 신용·체크카드로 처리해요. 카드 번호는 {{ op.name }}에 저장되지 않아요.</li></ul></section>
 
 <section><h2>해지와 환불</h2><ul>

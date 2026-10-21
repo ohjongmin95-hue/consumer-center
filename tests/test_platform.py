@@ -2547,33 +2547,62 @@ class PlatformTest(unittest.TestCase):
                 if v is None:os.environ.pop(k,None)
                 else:os.environ[k]=v
 
-    def test_free_trial_stops_only_ai_auto_reply(self):
-        """무료 체험 5일: 요금을 정하기 전엔 기간 제한 없음, 정한 뒤엔 가입일(또는 요금 정한 날)부터 5일. 끝나면 AI 자동 답변만 멈추고 화면은 그대로, 결제하면 다시."""
-        import datetime as _d
-        bl=sys.modules['billing'];cb=sys.modules['chatbot']
+    def test_card_first_trial_then_charge_or_lock(self):
+        """카드 먼저 등록 -> 5일 무료(결제 없음) -> 5일째 첫 결제. 해지하면 결제 없이 끝나고, 결제가 없으면 요금·결제 화면만 열린다. 요금·결제 길이 없으면 아무도 막지 않는다."""
+        import json as _j, datetime as _d
+        bl=sys.modules['billing'];shops=sys.modules['shops'];cb=sys.modules['chatbot']
         b,o,cid=self.signup_and_approve('체험상점','trial-co@example.com')
-        def co():
-            with self.core.conn() as db:return self.core.company(db,cid)
+        def co(i=None):
+            with self.core.conn() as db:return self.core.company(db,i or cid)
+        def st(i=None):
+            with self.core.conn() as db:return db.execute('SELECT * FROM billing WHERE company_id=?',(i or cid,)).fetchone()
         with self.core.conn() as db:db.execute("UPDATE companies SET ai_reply=? WHERE id=?",(self.core.iso(),cid))
         old_ready=cb.ready;cb.ready=lambda:True
+        bl.save_plan('소보루 CS 기본',19900)
+        self.assertTrue(bl.open_ok(co()));self.assertEqual(b.get('/biz/').status_code,200)  # 결제 키가 없으면 아직 막지 않는다
+        env={'PORTONE_STORE_ID':'store-t','PORTONE_CHANNEL_KEY':'ch-t','PORTONE_API_SECRET':'sec-t'};old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
+        calls=[];res={'owner':None,'pay':(200,{'payment':{'pgTxId':'pg-t','paidAt':'2026-10-21T00:00:00Z'}})}
+        def http(method,url,headers=None,body=None,**kw):
+            calls.append((method,url))
+            if '/billing-keys/' in url and method=='GET':return 200,{'status':'ISSUED','customer':{'id':res['owner']},'methods':[{'card':{'name':'신한카드','number':'1234-****'}}]}
+            if url.endswith('/billing-key'):return res['pay']
+            if '/payments/' in url and method=='GET':return 200,{'status':'PAID'}
+            return 200,{}
+        old_http=shops.http;shops.http=http
+        pays=lambda:[c for c in calls if c[1].endswith('/billing-key')]
         try:
-            self.assertIsNone(bl.trial_end(co()));self.assertTrue(cb.auto_on(co()))
-            self.assertNotIn('class="trialbar',b.get('/biz/settings').get_data(as_text=True))
-            bl.save_plan('소보루 CS 기본',19900)
-            self.assertEqual(bl.trial_end(co()),bl.today()+_d.timedelta(days=5))
-            self.assertIn('무료 체험 5일 남았어요',b.get('/biz/settings').get_data(as_text=True));self.assertTrue(cb.auto_on(co()))
+            self.assertFalse(bl.open_ok(co()));self.assertFalse(cb.auto_on(co()))
+            r=b.get('/biz/');self.assertEqual(r.status_code,302);self.assertIn('/biz/billing',r.headers['Location'])
+            self.assertEqual(b.get('/biz/settings').status_code,302)
+            h=b.get('/biz/billing').get_data(as_text=True);self.assertIn('카드 등록하고 5일 무료로 시작하기',h);self.assertIn('카드를 등록하면 바로 시작할 수 있어요',h)
             self.assertIn('무료 체험 5일',self.client().get('/biz/pricing').get_data(as_text=True))
-            old=self.core.iso(self.core.now()-_d.timedelta(days=6))
-            with self.core.conn() as db:
-                db.execute('UPDATE companies SET created=? WHERE id=?',(old,cid))
-                self.assertFalse(bl.trial_over(co()))  # 요금을 오늘 정했으니 기존 회사도 오늘부터 5일
-                db.execute("UPDATE settings SET updated=? WHERE key='billing_plan'",(old,))
-            self.assertTrue(bl.trial_over(co()));self.assertFalse(cb.auto_on(co()))
-            h=b.get('/biz/settings').get_data(as_text=True);self.assertIn('무료 체험이 끝났어요',h);self.assertEqual(b.get('/biz/settings').status_code,200)
-            with self.core.conn() as db:db.execute("UPDATE companies SET plan='paid' WHERE id=?",(cid,))
-            self.assertIsNone(bl.trial_end(co()));self.assertTrue(cb.auto_on(co()))
+            res['owner']=st()['customer_key'];b.get('/biz/billing/done?billingKey=bk-t1')
+            self.assertEqual(pays(),[])  # 등록할 때는 결제하지 않는다
+            self.assertEqual(co()['plan'],'trial');self.assertEqual(st()['status'],'trial');self.assertEqual(st()['next_charge'],(bl.today()+_d.timedelta(days=5)).isoformat())
+            self.assertTrue(cb.auto_on(co()));self.assertIn('무료 체험 5일 남았어요',b.get('/biz/').get_data(as_text=True))
+            bl.renew_all();self.assertEqual(pays(),[])
+            with self.core.conn() as db:db.execute('UPDATE billing SET next_charge=? WHERE company_id=?',(bl.today().isoformat(),cid))
+            bl.renew_all();self.assertEqual(len(pays()),1);self.assertEqual(co()['plan'],'paid');self.assertEqual(st()['status'],'active')
+            # 두 번째 회사: 체험 중 해지 -> 결제 없이 끝나고 잠김
+            for k in env:os.environ.pop(k)
+            b2,_,c2=self.signup_and_approve('해지상점','trial-co2@example.com')  # 가입 도우미 화면을 거치므로 잠기기 전에 만든다
+            os.environ.update(env)
+            b2.get('/biz/billing');res['owner']=st(c2)['customer_key'];b2.get('/biz/billing/done?billingKey=bk-t2')
+            self.assertEqual(co(c2)['plan'],'trial')
+            self.post(b2,'/biz/billing',{'act':'cancel'});self.assertEqual(st(c2)['status'],'canceled')
+            with self.core.conn() as db:db.execute('UPDATE billing SET next_charge=? WHERE company_id=?',(bl.today().isoformat(),c2))
+            bl.renew_all();self.assertEqual(len(pays()),1);self.assertEqual(st(c2)['status'],'ended');self.assertEqual(co(c2)['plan'],'pilot')
+            self.assertFalse(bl.open_ok(co(c2)));self.assertEqual(b2.get('/biz/').status_code,302)
+            h=b2.get('/biz/billing').get_data(as_text=True);self.assertIn('결제가 확인되지 않아',h);self.assertNotIn('5일 무료로 시작하기',h)  # 체험은 한 번
+            # 결제가 실패하면 바로 멈춘다
+            with self.core.conn() as db:db.execute('UPDATE billing SET next_charge=?,last_try=? WHERE company_id=?',(bl.today().isoformat(),'',cid))
+            res['pay']=(400,{'message':'한도 초과'});bl.renew_all()
+            self.assertEqual(st()['status'],'past_due');self.assertEqual(co()['plan'],'pilot');self.assertFalse(cb.auto_on(co()))
         finally:
-            cb.ready=old_ready
+            shops.http=old_http;cb.ready=old_ready
+            for k,v in old_env.items():
+                if v is None:os.environ.pop(k,None)
+                else:os.environ[k]=v
             with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key='billing_plan'")
 
     def test_portone_billing(self):
@@ -2618,6 +2647,7 @@ class PlatformTest(unittest.TestCase):
             # 다른 고객 키로 발급된 빌링키는 받지 않는다
             res['owner']='cs_someone_else';b.get('/biz/billing/done?billingKey=bk-other')
             self.assertEqual(st()['status'],'none');self.assertEqual(st()['creds'],'');self.assertEqual(pay_calls(),[])
+            with self.core.conn() as db:db.execute("UPDATE billing SET started='2026-01-01T00:00:00' WHERE company_id=?",(cid,))  # 무료 체험을 이미 쓴 회사: 등록하면 바로 결제 (체험 흐름은 test_card_first_trial_then_charge_or_lock)
             res['owner']=key;b.get('/biz/billing/done?billingKey=bk-secret-1')
             g=[c for c in calls if c[0]=='GET' and '/billing-keys/bk-secret-1' in c[1]][0]
             self.assertIn('storeId=store-abc',g[1]);self.assertEqual(g[2]['Authorization'],'PortOne po-secret-1')
@@ -2638,10 +2668,10 @@ class PlatformTest(unittest.TestCase):
             due_today();self.assertEqual(bl.renew_all(),1);self.assertEqual(pay_calls()[-1][3]['amount'],{'total':44000});self.assertEqual(pay_calls()[-1][3]['billingKey'],'bk-secret-2')
             self.assertEqual(pays('done'),2);self.assertEqual(st()['next_charge'],bl.add_month(bl.today()).isoformat())
             n=len(pay_calls());due_today();self.assertEqual(bl.renew_all(),0);self.assertEqual(len(pay_calls()),n)  # 같은 날 두 번 결제하지 않는다
-            # 실패: 결제 실패 -> 3번째에 멈추고 무료 시범으로
+            # 실패: 결제 실패 -> 바로 기능을 멈추고 매일 다시 시도, 3번째에 결제 시도도 멈춤
             res['pay']=(400,{'type':'PG_PROVIDER','message':'PG사 오류','pgCode':'CARD_REJECT','pgMessage':'카드사에서 거절했어요'})
             due_today(last_try='');bl.renew_all();s=st()
-            self.assertEqual((s['status'],s['fails']),('past_due',1));self.assertIn('카드사에서 거절',s['note']);self.assertEqual(plan_of(),'paid');self.assertEqual(pays('fail'),1)
+            self.assertEqual((s['status'],s['fails']),('past_due',1));self.assertIn('카드사에서 거절',s['note']);self.assertEqual(plan_of(),'pilot');self.assertEqual(pays('fail'),1)  # 결제가 안 되면 바로 멈춘다 (다시 시도는 계속)
             due_today(last_try='',fails=2);bl.renew_all();s=st()
             self.assertEqual(s['status'],'stopped');self.assertEqual(plan_of(),'pilot')
             res['pay']=(200,{'payment':{'pgTxId':'pg-2','paidAt':'2026-10-18T00:00:00Z'}})

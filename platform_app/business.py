@@ -17,7 +17,7 @@ import team, inbox, workflow, automations, livechat, onboard, demo, funnel, mark
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
-app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS,trial_days=lambda:billing.TRIAL_DAYS if billing.plan() else 0)
+app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS,trial_days=lambda:billing.TRIAL_DAYS if billing.live() else 0)
 OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 # 소개 화면의 앱 받기 버튼: 스토어 주소를 서버 설정(.env)에 넣으면 '곧 출시' 대신 버튼이 나온다
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
@@ -72,6 +72,18 @@ def role_guard():
     if in_demo() and ep in DEMO_BLOCKED:
         flash('데모에서는 판매처 연결·팀·설정·주문 올리기를 할 수 없어요. 데모를 끝내고 해 주세요.','error')
         return redirect(url_for('decide'))
+# 결제가 없으면(무료 체험 끝, 결제 실패, 카드 미등록) 요금·결제 화면만 연다 (billing.open_ok). 데이터는 그대로 둔다.
+PAY_OPEN={'logout','login','signup','terms','refund_policy','pricing','c24.page','c24.callback','c24.launch','verify','verify_again','forgot','reset'}
+@app.before_request
+def pay_guard():
+    if request.path.startswith(('/hook/','/ops','/static')):return
+    ep=request.endpoint or ''
+    if ep.startswith(('pay.','mk.','cms.','static')) or ep in PAY_OPEN:return
+    if request.path.startswith('/api/'):return  # 앱 API는 api_co()에서 막는다
+    co=real()
+    if co and not billing.open_ok(co):
+        if request.method=='GET':return redirect(url_for('pay.page'))
+        flash('결제가 확인되지 않아 소보루 CS를 쓸 수 없어요. 카드를 등록하거나 결제해 주세요.','error');return redirect(url_for('pay.page'))
 def login_required(f):
     @functools.wraps(f)
     def w(*a,**k):
@@ -96,11 +108,13 @@ def ctx():
             'real_co':rc,'in_demo':in_demo() if co else False,'trust':onboard.trust(rc) if rc else None,'setup':onboard.progress(rc) if rc else None,'trial':trial_info(rc) if rc else None}
 
 def trial_info(co):
-    """무료 체험 안내 띠: {'left':남은 날, 'over':끝남} 또는 None (유료이거나 요금이 아직 없음)."""
-    e=billing.trial_end(co)
-    if not e:return None
-    left=(e-billing.today()).days
-    return {'left':max(left,0),'over':left<=0,'end':e}
+    """위쪽 안내 띠: 무료 체험 중이면 {'left','end'}, 결제가 안 돼 멈췄으면 {'locked'}. 아니면 None."""
+    if not billing.live():return None
+    if not billing.open_ok(co):return {'locked':True}
+    if co['plan']!='trial':return None
+    with conn() as db:b=billing.row(db,co['id'])
+    left=billing.trial_days_left(co,b)
+    return {'left':left,'end':b['next_charge'],'canceled':b['status']=='canceled','c24':b['source']=='cafe24'} if left is not None else None
 
 def pub_nav():
     """로그인 전 위쪽 메뉴: 각 공개 화면 모듈이 내놓는 메뉴를 차례로."""
@@ -127,7 +141,7 @@ def terms():
 @app.route('/pricing')
 def pricing():
     """공개 요금 안내 (상품·금액·정기결제·환불: 결제대행사·카드사 심사가 이 페이지를 본다)."""
-    return render_template('b_pricing.html',op=core.OPERATOR,p=billing.plan(),trial_days=billing.TRIAL_DAYS)
+    return render_template('b_pricing.html',op=core.OPERATOR,p=billing.plan(),trial_days=billing.TRIAL_DAYS if billing.live() else 0)
 
 @app.route('/refund')
 def refund_policy():
@@ -1645,6 +1659,7 @@ def api_co():
     except Exception:d=None
     with conn() as db:co=core.company(db,d.get('id')) if isinstance(d,dict) else None
     if not co or co['status']!='active' or co['pw_hash'][-16:]!=d.get('h'):abort(401)  # 인증 전 회사도 앱을 쓴다 (판매처 연결·소비자 접수만 인증 뒤)
+    if not billing.open_ok(co):abort(app.response_class(json.dumps({'error':'결제가 확인되지 않아 쓸 수 없어요. 홈페이지의 설정 > 요금·결제에서 카드를 등록하거나 결제해 주세요.'},ensure_ascii=False),402,mimetype='application/json'))
     g.co=co;g.who=team.owner_actor(co);g.actor=g.who['name'];return co
 def api_form():j=request.get_json(silent=True);return j if isinstance(j,dict) and j else request.form
 def co_info(co):

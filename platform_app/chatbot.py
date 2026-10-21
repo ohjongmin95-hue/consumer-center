@@ -211,7 +211,7 @@ MASKS=[(re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+'),'(이메일)'),(re.compile(r
 STUCK_MIN=30  # 'AI 확인 중'으로 (마지막 고객 글부터) 이만큼 지나면 (AI 장애 등) 승인 목록으로 돌린다
 def auto_on(co):
     import billing  # (billing → shops → chatbot 순서로 불러오므로 여기서)
-    return bool(co and co['ai_reply'] and ready() and not billing.trial_over(co))  # 무료 체험이 끝나고 결제하지 않으면 AI 자동 답변만 멈춘다
+    return bool(co and co['ai_reply'] and ready() and billing.open_ok(co))  # 무료 체험이 끝나고 결제하지 않으면 멈춘다
 def mask(t):
     """AI에 보내기 전에 이메일·전화번호·주민번호·카드번호를 가린다."""
     for r,w in MASKS:t=r.sub(w,t or '')
@@ -259,7 +259,7 @@ def auto_reply(case_id):
         token=core.iso()+'#'+secrets.token_hex(3)  # 이 차례의 표시: 그사이 고객이 말을 더 하면(again) 지워져서, 이 답은 버리고 다음 차례가 대화 전체에 답한다
         if not db.execute("UPDATE cases SET ai_tried=? WHERE id=? AND ai_tried='' AND decision='ai'",(token,case_id)).rowcount:return None  # 다른 작업이 이미 맡음
         c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone();co=core.company(db,c['company_id'])
-        if not auto_on(co):_to_owner(db,c,'무료 체험이 끝나 AI 자동 답변을 멈췄어요. 결제하시면 다시 답해요.');return 'handoff'  # 체험이 끝난 뒤 남은 'AI 확인 중' 문의
+        if not auto_on(co):_to_owner(db,c,'결제가 되지 않아 AI 자동 답변을 멈췄어요. 결제하시면 다시 답해요.');return 'handoff'  # 체험이 끝난 뒤 남은 'AI 확인 중' 문의
         facts=company_facts(db,co,c['product'])
         o=db.execute('SELECT * FROM orders WHERE company_id=? AND order_no=?',(co['id'],c['order_no'])).fetchone() if c['order_no'] else None
         talk=turns(db,c)
