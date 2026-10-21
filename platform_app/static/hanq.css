@@ -747,15 +747,15 @@ main.pg.split{padding-block:40px 80px}
 /* 로그인 화면은 한 화면에 맞춤 */
 body.v2 main.pg.split{padding-block:24px;min-height:100vh;min-height:100dvh;display:flex;align-items:center}
 body.v2 main.pg.split>.wrap{width:100%}
-.bsplit .flogo{align-self:center;margin-bottom:24px;gap:10px}.bsplit .logo.flogo .ch{height:52px}.bsplit .logo.flogo .wm{font-size:27px}
-.bsplit .flegal{margin-top:28px;display:flex;justify-content:center;gap:16px;font-size:13px}.bsplit .flegal a{color:var(--fg3)}
+.bsplit .flogo{align-self:center;margin-bottom:20px;gap:10px}.bsplit .logo.flogo .ch{height:56px}.bsplit .logo.flogo .wm{font-size:30px}
 .bsplit{height:calc(100vh - 48px);height:calc(100dvh - 48px);min-height:560px;max-height:720px}
 .bsplit .brand{padding:48px 52px 0}
 .bsplit .brand h1{font-size:44px;margin-top:20px}
 .bsplit .brand p{font-size:17px;margin-top:16px}
 .bsplit .stage{padding-top:40px}
 .bsplit .form{padding:48px 56px}
-.bsplit .form h2{margin-bottom:32px}
+.bsplit .form h2{margin-bottom:32px;font-size:24px;color:var(--fg2)}
+.bsplit{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .foot-mini{padding-block:0 20px;font-size:13px;color:var(--fg3);text-align:center}
 @media (max-width:960px){.bsplit{height:auto;max-height:none;min-height:0}.bsplit .brand{padding:36px 24px 0}.bsplit .brand h1{font-size:34px}.bsplit .form{padding:36px 22px 40px}}
 body.v2:has(>.pilot) main.pg.split{min-height:calc(100vh - 34px);min-height:calc(100dvh - 34px)}
