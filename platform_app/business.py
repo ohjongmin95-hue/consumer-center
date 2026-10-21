@@ -17,7 +17,7 @@ import team, inbox, workflow, automations, livechat, onboard, demo, funnel, mark
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
-app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS,trial_days=lambda:billing.TRIAL_DAYS if billing.live() else 0,price_plan=billing.plan)
+app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS,trial_days=lambda:billing.TRIAL_DAYS if billing.live() else 0,price_plan=billing.usage_of)
 OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 # 소개 화면의 앱 받기 버튼: 스토어 주소를 서버 설정(.env)에 넣으면 '곧 출시' 대신 버튼이 나온다
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
@@ -141,7 +141,7 @@ def terms():
 @app.route('/pricing')
 def pricing():
     """공개 요금 안내 (상품·금액·정기결제·환불: 결제대행사·카드사 심사가 이 페이지를 본다)."""
-    return render_template('b_pricing.html',op=core.OPERATOR,p=billing.plan(),trial_days=billing.TRIAL_DAYS if billing.live() else 0)
+    return render_template('b_pricing.html',op=core.OPERATOR,p=billing.plan(),tiers=billing.tiers(),trial_days=billing.TRIAL_DAYS if billing.live() else 0)
 
 @app.route('/refund')
 def refund_policy():
@@ -393,7 +393,7 @@ def intro_videos():
 def decide():
     if request.args.get('mall_id') and request.args.get('hmac'):  # 카페24 App URL이 첫 화면이면 앱 실행으로
         return redirect(url_for('c24.launch')+'?'+request.query_string.decode())
-    if not me():return render_template('b_intro.html',app_links=APP_LINKS,vid=intro_videos(),industries=market.INDUSTRY_PAGES,p=billing.plan(),trial_n=billing.TRIAL_DAYS if billing.live() else 0)  # 로그인 전: 서비스 소개
+    if not me():return render_template('b_intro.html',app_links=APP_LINKS,vid=intro_videos(),industries=market.INDUSTRY_PAGES,p=billing.plan(),tiers=billing.tiers(),trial_n=billing.TRIAL_DAYS if billing.live() else 0)  # 로그인 전: 서비스 소개
     if session.get('c24_launch'):return redirect(url_for('c24.page'))  # 카페24에서 열고 가입·로그인한 뒤 이어서
     with conn() as db:
         rows=my_cases(db,me());n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(me()['id'],)).fetchone()[0]
@@ -1498,20 +1498,19 @@ def ops_news():
 @app.route('/ops/billing',methods=['GET','POST'])
 @ops_required
 def ops_billing():
-    """요금제(이름·월 금액)와 결제 현황. 키는 서비스 키에서. 금액을 바꾸면 이미 결제 중인 회사는 다음 결제부터 새 금액."""
+    """요금 구간(월 금액·추가 요금)과 결제 현황. 키는 서비스 키에서. 금액을 바꾸면 이미 결제 중인 회사는 다음 결제부터 새 금액."""
     if request.method=='POST' and request.form.get('act')=='c24':  # 카페24 앱 결제 켜기·끄기 (카페24 앱 등록에 결제 권한을 넣은 뒤)
         with conn() as db:db.execute("INSERT INTO settings(key,value,updated) VALUES('c24_billing',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated",('1' if request.form.get('on')=='1' else '0',core.iso()))
         flash('카페24 앱 결제를 켰어요. 이제 카페24로 연결할 때 앱 결제 권한도 받아요.' if request.form.get('on')=='1' else '카페24 앱 결제를 껐어요.','ok');return redirect(url_for('ops_billing'))
     if request.method=='POST':
-        name=clean(request.form.get('name'),30);price=int(digits(request.form.get('price',''))[:9] or 0)
-        if not name or price<100:flash('요금제 이름과 금액(100원 이상)을 넣어 주세요','error')
-        else:billing.save_plan(name,price);flash('요금제를 저장했어요','ok')
+        num=lambda k:int(digits(request.form.get(k,''))[:9] or 0)
+        billing.save_tiers({t['key']:{'price':num(t['key']+'.price'),'over_price':num(t['key']+'.over')} for t in billing.TIERS});flash('요금 구간을 저장했어요 (100원 미만은 기본값)','ok')
         return redirect(url_for('ops_billing'))
     with conn() as db:
         subs=db.execute("SELECT b.*,c.name co_name FROM billing b JOIN companies c ON c.id=b.company_id WHERE b.status!='none' ORDER BY b.next_charge").fetchall()
         pays=db.execute("SELECT p.*,c.name co_name FROM billing_payments p JOIN companies c ON c.id=p.company_id ORDER BY p.id DESC LIMIT 50").fetchall()
         n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
-    return render_template('o_billing.html',p=billing.plan(),ready=billing.ready(),c24_on=billing.c24_on(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
+    return render_template('o_billing.html',p=billing.plan(),tiers=billing.tiers(),ready=billing.ready(),c24_on=billing.c24_on(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
 
 @app.route('/ops/ai',methods=['GET','POST'])
 @ops_required

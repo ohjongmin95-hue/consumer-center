@@ -161,10 +161,12 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('환불 정책',page);self.assertIn('7일 이내',page);self.assertNotIn('noindex',page)
         pr=c.get('/biz/pricing');self.assertEqual(pr.status_code,200);ph=pr.get_data(as_text=True)  # 공개 요금 안내 (요금제를 정하면 금액이 보인다)
         self.assertIn('정기결제',ph);self.assertIn('/biz/refund',ph);self.assertIn('/biz/pricing',c.get('/biz/').get_data(as_text=True))
-        with self.core.conn() as db:db.execute("INSERT OR REPLACE INTO settings(key,value,updated) VALUES('billing_plan','{\"name\":\"베이직\",\"price\":29000}','x')")
-        try:self.assertIn('한 달 29,000원',c.get('/biz/pricing').get_data(as_text=True))
+        self.assertIn('한 달 14,900원부터',ph);self.assertIn('상담 <b>300건</b>까지',ph);self.assertIn('월 <strong>690,000</strong>원',ph)  # 고르기아스처럼 상담 건수 구간 4개
+        self.assertIn('한 달 14,900원부터',c.get('/biz/').get_data(as_text=True))  # 소개 페이지에도 같은 구간
+        with self.core.conn() as db:db.execute("INSERT OR REPLACE INTO settings(key,value,updated) VALUES('billing_tiers','{\"starter\":{\"price\":29000}}','x')")
+        try:self.assertIn('한 달 29,000원부터',c.get('/biz/pricing').get_data(as_text=True))
         finally:
-            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key='billing_plan'")
+            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key='billing_tiers'")
         self.assertIn('/pricing</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True));self.assertIn('요금 안내',t.get_data(as_text=True))
         self.assertIn('코리아포트원',c.get('/privacy').get_data(as_text=True))
         for pg in (page,t.get_data(as_text=True),c.get('/biz/').get_data(as_text=True)):self.assertIn('전화. 02-749-7515',pg);self.assertIn('대표자.',pg)  # 결제대행사 심사: 사업자 정보
@@ -2551,7 +2553,7 @@ class PlatformTest(unittest.TestCase):
         def plan_of():
             with self.core.conn() as db:return db.execute('SELECT plan FROM companies WHERE id=?',(cid,)).fetchone()[0]
         try:
-            self.post(o,'/biz/ops/billing',{'name':'베이직','price':'29000'})
+            self.post(o,'/biz/ops/billing',{'basic.price':'29000','basic.over':'19000'})
             with self.core.conn() as db:c24.store(db,cid,'myshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':c24.SCOPES.split(',')})
             self.assertNotIn('카페24로 결제하고',b.get('/biz/billing').get_data(as_text=True))  # 꺼져 있으면 안 보임
             self.assertNotIn('application',c24.scopes())
@@ -2578,7 +2580,7 @@ class PlatformTest(unittest.TestCase):
             st['pays']=[];hook(90078);self.assertEqual((row()['status'],plan_of()),('ended','pilot'))
         finally:
             shops.http=old
-            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key IN ('billing_plan','c24_billing')")  # 다른 시험에 요금제가 남지 않게
+            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key IN ('billing_plan','billing_tiers','c24_billing')")  # 다른 시험에 요금제가 남지 않게
             for k,v in old_env.items():
                 if v is None:os.environ.pop(k,None)
                 else:os.environ[k]=v
@@ -2594,7 +2596,6 @@ class PlatformTest(unittest.TestCase):
             with self.core.conn() as db:return db.execute('SELECT * FROM billing WHERE company_id=?',(i or cid,)).fetchone()
         with self.core.conn() as db:db.execute("UPDATE companies SET ai_reply=? WHERE id=?",(self.core.iso(),cid))
         old_ready=cb.ready;cb.ready=lambda:True
-        bl.save_plan('소보루 CS 기본',19900)
         self.assertTrue(bl.open_ok(co()));self.assertEqual(b.get('/biz/').status_code,200)  # 결제 키가 없으면 아직 막지 않는다
         env={'PORTONE_STORE_ID':'store-t','PORTONE_CHANNEL_KEY':'ch-t','PORTONE_API_SECRET':'sec-t'};old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
         calls=[];res={'owner':None,'pay':(200,{'payment':{'pgTxId':'pg-t','paidAt':'2026-10-21T00:00:00Z'}})}
@@ -2645,14 +2646,76 @@ class PlatformTest(unittest.TestCase):
             for k,v in old_env.items():
                 if v is None:os.environ.pop(k,None)
                 else:os.environ[k]=v
-            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key='billing_plan'")
+            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key IN ('billing_plan','billing_tiers')")
+
+    def test_ticket_tiers_usage_and_overage(self):
+        """상담 건수 구간: 답장이 나간 문의만 1건 (자동 안내·데모·답장 없음은 빼고), 80%·100%에 알림, 넘으면 다음 결제에 추가 요금, 구간 바꾸기는 다음 결제부터."""
+        import datetime as _d
+        bl=sys.modules['billing'];shops=sys.modules['shops'];wf=sys.modules['workflow']
+        b,o,cid=self.signup_and_approve('구간상점','tier-co@example.com')
+        start=bl.today()-_d.timedelta(days=10);due=bl.add_month(start)
+        with self.core.conn() as db:
+            db.execute("INSERT INTO billing(company_id,customer_key,creds,status,tier,plan_name,price,next_charge,started) VALUES(?,?,?,'active','starter','스타터',14900,?,?)",
+                       (cid,'cs_tier_t',shops.seal({'billing_key':'bk-tier'}),due.isoformat(),start.isoformat()))
+            db.execute("UPDATE companies SET plan='paid' WHERE id=?",(cid,))
+        def add(n,text='답변을 보냈어요',reply='안녕하세요',channel='직접',when=None):
+            with self.core.conn() as db:
+                co=self.core.company(db,cid);t=when or self.core.iso()
+                for _ in range(n):
+                    k=db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
+                        VALUES(?,?,?,1,'기타','문의','문의','기타','','','','','x',1,'answered','direct',?,?,?,'','',?)""",(self.core.new_case_no(db),cid,co['name'],t,t,t,channel)).lastrowid
+                    db.execute("INSERT INTO events(case_id,kind,text,reply,created,actor) VALUES(?,'co',?,?,?,'')",(k,text,reply,t))
+                    if reply and text!=wf.AWAY_TEXT:db.execute("INSERT INTO events(case_id,kind,text,reply,created,actor) VALUES(?,'co','답변을 보냈어요','한 번 더',?,'')",(k,t))  # 같은 문의에 두 번 답해도 1건
+        def use():
+            with self.core.conn() as db:return bl.usage(db,self.core.company(db,cid))
+        add(30);add(5,text=wf.AWAY_TEXT);add(4,reply='');add(3,channel='데모');add(6,when=(start-_d.timedelta(days=3)).isoformat()+'T10:00:00')
+        u=use();self.assertEqual((u['used'],u['over'],u['fee'],u['tier']['tickets']),(30,0,0,50))
+        self.assertIn('<b>30</b>건 <span>/ 50건</span>',b.get('/biz/billing').get_data(as_text=True))
+        self.assertIn('이번 기간 상담 30/50건',b.get('/biz/settings').get_data(as_text=True))
+        add(12);bl.warn_usage()  # 42건 = 84%
+        with self.core.conn() as db:al=[r['title'] for r in db.execute("SELECT title FROM biz_alerts WHERE company_id=? AND kind='plan'",(cid,))]
+        self.assertEqual(len(al),1);self.assertIn('80%',al[0]);bl.warn_usage()
+        with self.core.conn() as db:self.assertEqual(db.execute("SELECT COUNT(*) FROM biz_alerts WHERE company_id=? AND kind='plan'",(cid,)).fetchone()[0],1)  # 같은 단계는 한 번만
+        add(18);bl.warn_usage()  # 60건: 10건 넘음 -> 1건 200원
+        with self.core.conn() as db:self.assertIn('다 썼어요',db.execute("SELECT title FROM biz_alerts WHERE company_id=? AND kind='plan' ORDER BY id DESC",(cid,)).fetchone()[0])
+        u=use();self.assertEqual((u['used'],u['over'],u['fee']),(60,10,2000))
+        self.assertEqual(bl.over_fee(bl.tier('basic'),301),(1,19000));self.assertEqual(bl.over_fee(bl.tier('basic'),400),(100,19000));self.assertEqual(bl.over_fee(bl.tier('pro'),2101),(101,30000))
+        # 구간 바꾸기: 결제 중이면 다음 결제부터
+        self.post(b,'/biz/billing',{'act':'tier','tier':'basic'})
+        with self.core.conn() as db:r=db.execute('SELECT tier,want_tier,price FROM billing WHERE company_id=?',(cid,)).fetchone()
+        self.assertEqual(tuple(r),('starter','basic',14900));self.assertIn('<label class="bl-tier on"><input type="radio" name="tier" value="basic" checked>',b.get('/biz/billing').get_data(as_text=True))
+        env={'PORTONE_STORE_ID':'store-t','PORTONE_CHANNEL_KEY':'ch-t','PORTONE_API_SECRET':'sec-t'};old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
+        sent=[]
+        def http(method,url,headers=None,body=None,**kw):
+            import json as _j
+            if url.endswith('/billing-key'):sent.append(_j.loads(body));return 200,{'payment':{'pgTxId':'pg-t','paidAt':'2026-10-21T00:00:00Z'}}
+            return 200,{}
+        old=shops.http;shops.http=http
+        try:
+            y=(bl.today()-_d.timedelta(days=1)).isoformat()+'T09:00:00'
+            with self.core.conn() as db:  # 결제일이 오늘이 되도록 기간을 당기고, 이번 기간 답장은 어제로
+                db.execute('UPDATE billing SET next_charge=? WHERE company_id=?',(bl.today().isoformat(),cid))
+                db.execute("UPDATE events SET created=? WHERE created>=? AND case_id IN (SELECT id FROM cases WHERE company_id=?)",(y,bl.today().isoformat(),cid))
+            add(2,when=y)  # 62건 + 기간 안으로 들어온 6건
+            bl.renew_all()
+            self.assertEqual(sent[-1]['amount'],{'total':49000+18*200});self.assertIn('추가 상담',sent[-1]['orderName'])  # 새 구간(베이직) 요금 + 지난 기간 스타터에서 넘은 18건 (기간을 당겨 앞서 뺀 6건도 들어옴)
+            with self.core.conn() as db:
+                r=db.execute('SELECT tier,want_tier,plan_name,price,warned FROM billing WHERE company_id=?',(cid,)).fetchone()
+                memo=db.execute('SELECT memo FROM billing_payments WHERE company_id=? ORDER BY id DESC',(cid,)).fetchone()[0]
+            self.assertEqual(tuple(r),('basic','','베이직',49000,''));self.assertIn('추가 상담 18건 3,600원',memo)
+            self.assertEqual(use()['used'],0)  # 새 기간
+        finally:
+            shops.http=old
+            for k,v in old_env.items():
+                if v is None:os.environ.pop(k,None)
+                else:os.environ[k]=v
 
     def test_portone_billing(self):
         """포트원 정기결제: 키·요금제가 없으면 준비 중, 카드 등록하면 첫 달 결제, 남의 빌링키는 거절, 결제일엔 하루 한 번만, 3번 실패하면 멈춤, 해지하면 결제일에 끝."""
         import json as _j, datetime as _d
         bl=sys.modules['billing'];shops=sys.modules['shops']
         b,o,cid=self.signup_and_approve('결제상점','pay-co@example.com')
-        h=b.get('/biz/billing').get_data(as_text=True);self.assertIn('결제 연결을 준비하고 있어요',h);self.assertIn('월 19,900원',h)  # 상품은 하나 (월 19,900원), 결제 키 전에는 준비 중
+        h=b.get('/biz/billing').get_data(as_text=True);self.assertIn('결제 연결을 준비하고 있어요',h);self.assertIn('베이직 · 월 49,000원',h)  # 기본 구간은 베이직 (월 49,000원), 결제 키 전에는 준비 중
         self.assertEqual(self.client().get('/biz/billing').status_code,302)
         env={'PORTONE_STORE_ID':'store-abc','PORTONE_CHANNEL_KEY':'channel-key-xyz','PORTONE_API_SECRET':'po-secret-1'};old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
         calls=[];res={'pay':(200,{'payment':{'pgTxId':'pg-1','paidAt':'2026-10-18T00:00:00Z'}}),'owner':None}
@@ -2679,10 +2742,10 @@ class PlatformTest(unittest.TestCase):
         def pay_calls():return [c for c in calls if c[1].endswith('/billing-key')]
         try:
             self.assertIn('data-card',b.get('/biz/billing').get_data(as_text=True))  # 키가 들어가면 기본 요금제로 바로 카드 등록
-            self.post(o,'/biz/ops/billing',{'name':'베이직','price':'50'})
-            self.assertEqual(bl.plan(),{'name':'소보루 CS','price':19900})  # 잘못된 금액은 저장하지 않고 기본 요금제
-            self.post(o,'/biz/ops/billing',{'name':'베이직','price':'33,000'})
-            self.assertEqual(bl.plan(),{'name':'베이직','price':33000})
+            self.post(o,'/biz/ops/billing',{'basic.price':'50'})
+            self.assertEqual((bl.plan()['name'],bl.plan()['price']),('베이직',49000))  # 잘못된 금액은 저장하지 않고 기본 금액
+            self.post(o,'/biz/ops/billing',{'basic.price':'33,000','basic.over':'19000'})
+            self.assertEqual((bl.plan()['name'],bl.plan()['price'],bl.plan()['tickets']),('베이직',33000,300))
             h=b.get('/biz/billing').get_data(as_text=True)
             self.assertIn('data-card',h);self.assertIn('cdn.portone.io/v2/browser-sdk.js',h);self.assertIn('channel-key-xyz',h);self.assertNotIn('po-secret-1',h)
             key=st()['customer_key'];self.assertTrue(key.startswith('cs_'))
@@ -2705,7 +2768,7 @@ class PlatformTest(unittest.TestCase):
             # 등록 창에서 취소하면 실패 안내
             self.assertIn('/biz/billing',b.get('/biz/billing/done?code=FAILURE_TYPE_PG&message=x').headers['Location'])
             # 결제일: 운영자가 바꾼 금액으로, 하루 한 번만
-            self.post(o,'/biz/ops/billing',{'name':'베이직','price':'44000'})
+            self.post(o,'/biz/ops/billing',{'basic.price':'44000','basic.over':'19000'})
             self.assertIn('44,000',b.get('/biz/billing').get_data(as_text=True))
             due_today();self.assertEqual(bl.renew_all(),1);self.assertEqual(pay_calls()[-1][3]['amount'],{'total':44000});self.assertEqual(pay_calls()[-1][3]['billingKey'],'bk-secret-2')
             self.assertEqual(pays('done'),2);self.assertEqual(st()['next_charge'],bl.add_month(bl.today()).isoformat())
@@ -2728,7 +2791,7 @@ class PlatformTest(unittest.TestCase):
             self.assertIn('결제상점',o.get('/biz/ops/billing').get_data(as_text=True))
         finally:
             shops.http=old
-            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key='billing_plan'")
+            with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key IN ('billing_plan','billing_tiers')")
             for k,v in old_env.items():
                 if v is None:os.environ.pop(k,None)
                 else:os.environ[k]=v

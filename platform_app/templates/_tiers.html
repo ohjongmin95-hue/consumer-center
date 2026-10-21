@@ -1,0 +1,10 @@
+{# 상담 건수 구간 카드 (소개·요금 안내 공용). 기능은 모두 같고 한 달 상담 건수만 다르다 (billing.TIERS) #}
+{% macro cards(tiers,trial) %}<div class="tp-tiers">{% for t in tiers %}
+<div class="tp-tier{{ ' best' if t.key=='basic' }}">{% if t.key=='basic' %}<span class="tp-best">가장 많이 골라요</span>{% endif %}
+<b class="tp-tn">{{ t.name }}</b>
+<span class="tp-tp">월 <strong>{{ '{:,}'.format(t.price) }}</strong>원</span>
+<span class="tp-tc">상담 <b>{{ '{:,}'.format(t.tickets) }}건</b>까지</span>
+<small class="tp-tx">1건에 약 {{ '{:,}'.format((t.price/t.tickets)|round|int) }}원 · 넘으면 {{ ('%s건마다 '%'{:,}'.format(t.over_n)) if t.over_n>1 else '1건 ' }}{{ '{:,}'.format(t.over_price) }}원</small>
+<a class="btn tp-btn full{{ '' if t.key=='basic' else ' gray' }}" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial if trial else '시작하기' }}</a>
+</div>{% endfor %}</div>
+<p class="tp-tnote">부가세 포함 · 모든 구간에서 모든 기능을 써요 · 상담 1건은 고객에게 답장이 한 번이라도 나간 문의예요 (AI 답장 포함)</p>{% endmacro %}

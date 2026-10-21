@@ -22,13 +22,18 @@
 {% if locked %}<div class="warn" style="margin-bottom:16px"><span><b>{{ '카드를 등록하면 바로 시작할 수 있어요' if not bl or not bl.started else '결제가 확인되지 않아 소보루 CS 기능이 멈췄어요' }}</b><small>{{ ('카드를 등록하면 %d일 동안 모든 기능을 무료로 써요. 등록할 때는 결제되지 않아요.'%trial_days()) if not bl or not bl.started else '받은 문의와 설정은 그대로 있어요. 결제하면 바로 다시 쓸 수 있어요.' }}</small></span></div>{% endif %}
 <div class="cols">
 <div class="stack">
+<section class="panel"><div class="ph">이번 기간 상담<span class="pill {{ 'bad' if use.over else 'ok' }}" style="margin-left:auto">{{ use.tier.name }}</span></div>
+<p class="bl-use"><b>{{ '{:,}'.format(use.used) }}</b>건 <span>/ {{ '{:,}'.format(use.tier.tickets) }}건</span></p>
+<div class="bl-bar" role="progressbar" aria-valuenow="{{ use.pct }}" aria-valuemin="0" aria-valuemax="100"><i style="width:{{ use.pct }}%"{% if use.pct>=80 %} class="hot"{% endif %}></i></div>
+<p class="cap" style="margin:10px 0 0">{{ use.start.month }}월 {{ use.start.day }}일부터 {{ use.end.month }}월 {{ use.end.day }}일 전까지 · 고객에게 답장이 한 번이라도 나간 문의를 1건으로 세요.
+{% if use.over and use.free %}체험 기간이라 넘어도 추가 요금이 없어요.{% elif use.over and use.c24 %}{{ '{:,}'.format(use.over) }}건 넘었어요. 카페24 결제는 구간 요금만 받으니 다음 달엔 구간을 올려 주세요.{% elif use.over %}{{ '{:,}'.format(use.over) }}건 넘어 다음 결제에 {{ '{:,}'.format(use.fee) }}원이 더해져요.{% else %}넘어도 멈추지 않아요. {{ '{:,}'.format(use.tier.over_n) }}건마다 {{ '{:,}'.format(use.tier.over_price) }}원이 다음 결제에 더해져요.{% endif %}</p></section>
 {% if not p or (not ready and not c24) %}<section class="panel"><div class="ph">{{ p.name }} · 월 {{ '{:,}'.format(p.price|int) }}원</div><div class="warn">결제 연결을 준비하고 있어요. 그동안은 무료로 쓰실 수 있고, 결제가 열리면 미리 알려 드려요. 동의 없이 결제되지 않아요.</div></section>
 {% else %}
 <section class="panel"><div class="ph">{{ (bl.plan_name if bl and bl.status in ('trial','active','canceled','past_due') else p.name) }}</div>
-<dl class="kv"><dt>월 요금</dt><dd>{{ '{:,}'.format(bl.price if bl and bl.status in ('trial','active','canceled','past_due') else p.price|int) }}원 (부가세 포함)</dd>
+<dl class="kv"><dt>상담 포함</dt><dd>한 달 {{ '{:,}'.format(use.tier.tickets) }}건</dd><dt>월 요금</dt><dd>{{ '{:,}'.format(bl.price if bl and bl.status in ('trial','active','canceled','past_due') else p.price|int) }}원 (부가세 포함)</dd>
 {% if bl and bl.card %}<dt>카드</dt><dd>{{ bl.card }}</dd>{% endif %}
 {% if bl and bl.status=='trial' %}<dt>무료 체험</dt><dd>{{ bl.next_charge }}까지{% if bl.source!='cafe24' %} (그날 첫 달 요금을 결제해요){% endif %}</dd>{% elif bl and bl.status in ('active','past_due') %}<dt>다음 결제일</dt><dd>{{ bl.next_charge }}</dd>{% elif bl and bl.status=='canceled' %}<dt>이용 기간</dt><dd>{{ bl.next_charge }}까지 (그날부터 결제하지 않아요)</dd>{% endif %}
-{% if bl and bl.status in ('trial','active','past_due','canceled') and bl.price!=(p.price|int) %}<dt>다음 결제부터</dt><dd>{{ p.name }} {{ '{:,}'.format(p.price|int) }}원으로 바뀌어요</dd>{% endif %}</dl>
+{% if bl and bl.status in ('trial','active','past_due','canceled') and (bl.price!=(p.price|int) or use.next_tier) %}<dt>다음 결제부터</dt><dd>{{ p.name }} {{ '{:,}'.format(p.price|int) }}원으로 바뀌어요</dd>{% endif %}</dl>
 {% if bl and bl.note %}<div class="warn" style="margin-top:14px">{{ bl.note }}</div>{% endif %}
 {% if may and bl and bl.source=='cafe24' and bl.status!='trial' %}<p class="cap" style="margin:14px 0 0">카페24로 결제 중이에요. 매달 카페24가 결제하고, 해지는 카페24 관리자의 앱 관리에서 할 수 있어요.</p>
 {% elif may and c24 and (not bl or bl.status in ('none','ended','stopped') or (bl.status=='trial' and bl.source=='cafe24')) %}<div style="margin-top:16px">{% if c24_old %}<p class="cap" style="margin:0 0 10px">카페24 앱 결제 권한이 필요해요. <a class="link" href="{{ url_for('c24.page') }}">카페24 다시 연결하기</a></p>
@@ -44,8 +49,15 @@
 {% endif %}</div>
 {% else %}<p class="cap" style="margin:14px 0 0">요금·결제는 대표나 관리자만 바꿀 수 있어요.</p>{% endif %}
 </section>{% endif %}
+{% if may %}<form class="panel" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="tier">
+<div class="ph">요금 구간</div>
+<p class="cap" style="margin:0 0 12px">기능은 모두 같고, 한 달에 받는 상담 건수만 달라요. {% if bl and bl.status in ('active','past_due','canceled') %}바꾸면 다음 결제일부터 적용돼요.{% else %}고른 구간으로 첫 결제가 돼요.{% endif %}</p>
+<div class="bl-tiers">{% for t in tiers %}{% set cur=(use.next_tier.key if use.next_tier else use.tier.key)==t.key %}
+<label class="bl-tier{{ ' on' if cur }}"><input type="radio" name="tier" value="{{ t.key }}" {{ 'checked' if cur }}><span class="bl-tn">{{ t.name }}{% if t.key=='basic' %}<em>추천</em>{% endif %}</span>
+<span class="bl-tp">월 <b>{{ '{:,}'.format(t.price) }}</b>원</span><span class="bl-tc">상담 {{ '{:,}'.format(t.tickets) }}건 · 넘으면 {{ '%s건마다 '%('{:,}'.format(t.over_n)) if t.over_n>1 else '1건 ' }}{{ '{:,}'.format(t.over_price) }}원</span></label>{% endfor %}</div>
+<div style="margin-top:14px"><button class="btn md gray">이 구간으로 하기</button></div></form>{% endif %}
 {% if pays %}<section class="panel"><div class="ph">결제 내역</div>
-<ul class="dots">{% for x in pays %}<li>{{ x.created[:10] }} · {{ '{:,}'.format(x.amount) }}원 · {{ {'done':'결제됨','fail':'실패','try':'처리 중'}.get(x.status,x.status) }}{% if x.receipt %} · <a class="link" href="{{ x.receipt }}" target="_blank" rel="noopener">영수증</a>{% endif %}{% if x.error %} · {{ x.error }}{% endif %}</li>{% endfor %}</ul></section>{% endif %}
+<ul class="dots">{% for x in pays %}<li>{{ x.created[:10] }} · {{ '{:,}'.format(x.amount) }}원{% if x.memo %} ({{ x.memo }}){% endif %} · {{ {'done':'결제됨','fail':'실패','try':'처리 중'}.get(x.status,x.status) }}{% if x.receipt %} · <a class="link" href="{{ x.receipt }}" target="_blank" rel="noopener">영수증</a>{% endif %}{% if x.error %} · {{ x.error }}{% endif %}</li>{% endfor %}</ul></section>{% endif %}
 </div>
 <aside class="stack">
 <section class="panel"><div class="ph">이렇게 돼요</div>

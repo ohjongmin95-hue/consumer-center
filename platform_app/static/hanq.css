@@ -2286,3 +2286,24 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .intro:not(.tp) .tp-links{text-align:center;margin-top:28px!important}
 .intro:not(.tp) .tp-zero{margin-top:0}
 .intro:not(.tp) .tp-zero{max-width:460px;gap:8px}
+/* 상담 건수 구간 카드 (소개·요금 안내) */
+.tp-tiers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:56px auto 0;max-width:1080px}
+.tp-tier{position:relative;background:#fff;border-radius:24px;padding:30px 22px 24px;box-shadow:0 1px 0 rgba(25,31,40,.04),0 0 0 1px rgba(25,31,40,.06);display:flex;flex-direction:column;text-align:left}
+.tp-tier.best{box-shadow:0 24px 60px -24px rgba(25,31,40,.22),0 0 0 2px var(--accent)}
+.tp-best{position:absolute;top:-13px;left:22px;background:var(--accent);color:var(--on-accent);font-size:13px;font-weight:700;padding:5px 11px;border-radius:999px}
+.tp-tn{font-size:18px}
+.tp-tp{display:block;font-size:17px;margin-top:10px}.tp-tp strong{font-size:34px;letter-spacing:-.04em}
+.tp-tc{display:block;margin-top:14px;font-size:16px;color:var(--fg2)}.tp-tc b{color:var(--fg)}
+.tp-tx{display:block;margin:6px 0 22px;color:var(--fg3);font-size:13.5px;line-height:1.5}
+.tp-tier .tp-btn{margin-top:auto;height:52px;font-size:16px;border-radius:14px}
+.tp-tnote{text-align:center;color:var(--fg3);font-size:14.5px;margin:20px auto 0!important;max-width:720px}
+@media (max-width:960px){.tp-tiers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.tp-tiers{grid-template-columns:minmax(0,1fr);gap:20px}}
+/* 요금·결제: 이번 기간 상담 */
+.bl-use{margin:4px 0 10px;font-size:15px;color:var(--fg2)}.bl-use b{font-size:30px;letter-spacing:-.03em;color:var(--fg)}
+.bl-bar{height:10px;border-radius:5px;background:var(--fill);overflow:hidden}.bl-bar i{display:block;height:100%;background:var(--accent);border-radius:5px}.bl-bar i.hot{background:var(--red)}
+.bl-tiers{display:grid;gap:8px}
+.bl-tier{display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto;column-gap:12px;align-items:center;padding:14px 16px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);cursor:pointer}
+.bl-tier input{grid-row:1/3}.bl-tier.on,.bl-tier:has(input:checked){box-shadow:inset 0 0 0 2px var(--accent);background:var(--accent-soft)}
+.bl-tn{font-weight:700}.bl-tn em{font-style:normal;font-size:12px;font-weight:700;color:var(--accent-ink);margin-left:6px}
+.bl-tp{grid-column:3;grid-row:1;font-size:15px}.bl-tc{grid-column:2/4;color:var(--fg3);font-size:13.5px}
