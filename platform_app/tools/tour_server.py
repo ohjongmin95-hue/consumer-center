@@ -19,7 +19,7 @@ with core.conn() as db:
     co=core.company(db,cid);dm=demo.create(db,co)
     # 견본 데이터를 견본 회사로 옮겨 데모 표시 없이 찍는다 (이 임시 DB에서만)
     for t in ('orders','products','rules'):db.execute(f'UPDATE {t} SET company_id=? WHERE company_id=?',(cid,dm['id']))
-    db.execute("UPDATE cases SET company_id=?,company_name=?,channel=CASE id%3 WHEN 0 THEN '스마트스토어' WHEN 1 THEN '쿠팡' ELSE '한큐' END WHERE company_id=?",(cid,co['name'],dm['id']))
+    db.execute("UPDATE cases SET company_id=?,company_name=?,channel=CASE id%3 WHEN 0 THEN '카페24' WHEN 1 THEN '이메일' ELSE '한큐' END WHERE company_id=?",(cid,co['name'],dm['id']))
     db.execute('DELETE FROM ai_profile WHERE company_id=?',(dm['id'],));db.execute('DELETE FROM companies WHERE id=?',(dm['id'],))
     chatbot.save_profile(db,cid,demo.PROFILE)
     # 상담창 주문 조회 화면 (견본 주문 하나에 견본 휴대폰 번호)
@@ -34,4 +34,4 @@ with core.conn() as db:
     if 'boards' in lc:db.execute("UPDATE cafe24_links SET boards=?,n_inq=3 WHERE company_id=?",('[[6,"상품 Q&A"],[9,"1:1 맞춤상담"]]',cid))
 print('company',cid,flush=True)
 from werkzeug.serving import run_simple
-run_simple('127.0.0.1',8811,hanq.app,use_reloader=False,threaded=True)
+run_simple('127.0.0.1',int(os.getenv('TOUR_PORT') or 8811),hanq.app,use_reloader=False,threaded=True)

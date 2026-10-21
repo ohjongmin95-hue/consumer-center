@@ -857,14 +857,14 @@ class PlatformTest(unittest.TestCase):
         self.assertNotIn('cp-moves',me.get('/guide').get_data(as_text=True))
         self.assertEqual(self.client().get('/biz/ops/visual').status_code,302)  # 운영자만
         # 색이 섞인 제목도 조각마다 고친다 (화면에서 고친 경우 shown=1)
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'승인 한 번으로','dst':'한 곳에서','shown':'1'})
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'AI가 먼저 답해요','dst':'한 곳에서','shown':'1'})
         self.post(o,'/biz/ops/copy',{'site':'biz','src':'한 곳에서','dst':'바로','shown':'1'})  # 이미 바꾼 글자를 다시 고치면 같은 기록을 고친다
-        self.assertIn('고객 요청,<br>바로<br>끝냅니다',self.client().get('/biz/').get_data(as_text=True))
+        self.assertIn('<h1>카페24 문의,<br>바로</h1>',self.client().get('/biz/').get_data(as_text=True))
         # 줄을 비우면 그 줄바꿈도 같이 사라져 아래 글이 당겨진다, 칸 안의 줄바꿈은 그대로 줄바꿈
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'끝냅니다','dst':'','shown':'1'})
-        biz=self.client().get('/biz/').get_data(as_text=True);self.assertIn('고객 요청,<br>바로</',biz);self.assertNotIn('바로<br></',biz)
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'바로','dst':'바로\n끝','shown':'1'})
-        self.assertIn('고객 요청,<br>바로<br>끝</',self.client().get('/biz/').get_data(as_text=True))
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'바로','dst':'','shown':'1'})
+        biz=self.client().get('/biz/').get_data(as_text=True);self.assertIn('<h1>카페24 문의,</',biz);self.assertNotIn('카페24 문의,<br></',biz)
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'카페24 문의,','dst':'카페24 문의,\n끝','shown':'1'})
+        self.assertIn('<h1>카페24 문의,<br>끝</',self.client().get('/biz/').get_data(as_text=True))
         with self.core.conn() as db:db.execute('DELETE FROM copy_edits')
 
     def test_visual_edit_stays_on_its_page(self):
@@ -875,13 +875,13 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('<br>승인 한 번으로<br>',self.client().get('/biz/login').get_data(as_text=True))
         self.assertIn('클릭 한 번으로',o.get('/biz/ops/copy?pg=edited').get_data(as_text=True))
         # 목록에서 일부 글자를 바꾼 뒤 화면에서 그 줄을 다시 고쳐도 반영된다 (원래 글자로 저장)
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'고객 요청','dst':'우리 요청'})
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'결정은 사장님이','dst':'결정은 우리가'})
         fr=o.get('/biz/ops/visual/frame?p=6').get_data(as_text=True)
         m=json.loads(re.search(r'<script type="application/json" id="cp-map">(.*?)</script>',fr).group(1))
-        self.assertEqual(m['우리 요청,']['o'],'고객 요청,');self.assertEqual(m['클릭 한 번으로']['o'],'승인 한 번으로')
-        self.post(o,'/biz/ops/copy',{'site':'biz','tpl':'b_intro.html','src':'고객 요청,','dst':'우리 회사 요청,'})
-        h=self.client().get('/biz/').get_data(as_text=True);self.assertIn('<h1>우리 회사 요청,<br>클릭 한 번으로<br>끝냅니다</h1>',h)
-        self.assertNotIn('우리 회사 우리',h)  # 바꾼 글자를 다시 바꾸지 않는다
+        self.assertEqual(m['결정은 우리가,']['o'],'결정은 사장님이,');self.assertEqual(m['클릭 한 번으로']['o'],'승인 한 번으로')
+        self.post(o,'/biz/ops/copy',{'site':'biz','tpl':'b_intro.html','src':'결정은 사장님이,','dst':'결정은 우리 회사가,'})
+        h=self.client().get('/biz/').get_data(as_text=True);self.assertIn('<h2>결정은 우리 회사가,<br>클릭 한 번으로</h2>',h)
+        self.assertNotIn('결정은 우리가',h)  # 바꾼 글자를 다시 바꾸지 않는다
         with self.core.conn() as db:db.execute('DELETE FROM copy_edits');db.execute('DELETE FROM copy_page_edits')
 
     def test_password_links_and_consumer_kakao(self):
@@ -1383,8 +1383,11 @@ class PlatformTest(unittest.TestCase):
         c=self.client()
         page=c.get('/biz/tour').get_data(as_text=True)
         self.assertEqual(page.count('class="tour-step'),8);self.assertIn('/static/tour/home-d.jpg',page);self.assertNotIn('noindex',page)
-        for slug in ('smartstore','coupang','cafe24'):
-            r=c.get('/biz/for/'+slug);self.assertEqual(r.status_code,200)
+        for slug in ('cafe24','own'):
+            r=c.get('/biz/for/'+slug);self.assertEqual(r.status_code,200);self.assertNotIn('스마트스토어',r.get_data(as_text=True))
+        for slug in ('smartstore','coupang'):  # 홍보는 카페24·자사몰만 (운영자 결정 2026-10-21)
+            self.assertEqual(c.get('/biz/for/'+slug).status_code,301)
+        self.assertNotIn('쿠팡',c.get('/biz/').get_data(as_text=True))
         page=c.get('/biz/for/cafe24').get_data(as_text=True);self.assertIn('지금 됨',page);self.assertNotIn('>연동 대기<',page)
         self.assertEqual(c.get('/biz/for/nope').status_code,404)
         page=c.get('/biz/industries').get_data(as_text=True)
@@ -1399,7 +1402,7 @@ class PlatformTest(unittest.TestCase):
         m=sys.modules['market'].calc({'inquiries':'abc','minutes':'-5','wage':'1','auto':'500'})
         self.assertEqual((m['v']['inquiries'],m['v']['minutes'],m['v']['wage'],m['v']['auto']),(300,1,1000,100))
         sm=c.get('/biz/sitemap.xml').get_data(as_text=True)
-        self.assertIn('/for/coupang</loc>',sm);self.assertIn('/industries/food</loc>',sm);self.assertIn('/calculator</loc>',sm)
+        self.assertIn('/for/own</loc>',sm);self.assertNotIn('/for/coupang</loc>',sm);self.assertIn('/industries/food</loc>',sm);self.assertIn('/calculator</loc>',sm)
         self.assertIn('제품 둘러보기',c.get('/biz/').get_data(as_text=True))
         # 방문 기록: UTM 첫 유입을 기억해 가입에 붙인다 (IP는 저장하지 않음)
         v=self.client();v.get('/biz/for/smartstore?utm_source=naver&utm_medium=cpc&utm_campaign=fall')

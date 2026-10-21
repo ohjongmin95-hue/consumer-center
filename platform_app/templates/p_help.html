@@ -4,7 +4,7 @@
 {% block bar %}{{ b.bar(tab) }}{% endblock %}
 {% block main %}<main class="intro">
 <section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">도움말</span><h1>무엇을 도와드릴까요?</h1>
-<form class="addline helpq" method="get" role="search"><input class="inp" name="q" value="{{ q }}" placeholder="예: 스마트스토어 연결, 직원 초대" aria-label="도움말 검색"><button class="btn md">검색</button></form></div></div></section>
+<form class="addline helpq" method="get" role="search"><input class="inp" name="q" value="{{ q }}" placeholder="예: 카페24 연결, 직원 초대" aria-label="도움말 검색"><button class="btn md">검색</button></form></div></div></section>
 <section><div class="wrap mk-one">
 {% if q %}<p class="sub">‘{{ q }}’ 검색 결과 {{ n }}건{% if q %} · <a class="link" href="{{ url_for('cms.help_home') }}">전체 보기</a>{% endif %}</p>{% endif %}
 {% for c,items in groups %}<h2 class="hgrp">{{ c }}</h2><div class="rows hrows">{% for r in items %}<a class="rowi" href="{{ url_for('cms.help_post',slug=r.slug) }}"><div class="tx"><div class="t">{% if r.video_url %}▶ {% endif %}{{ r.title }}</div><div class="s">{{ r.summary }}</div></div><span class="chev"></span></a>{% endfor %}</div>
