@@ -1967,6 +1967,7 @@ def report_detail(case_id):
                 if review in jebo.NOT_VALID and case['published']:db.execute('UPDATE cases SET published=0 WHERE id=?',(case_id,));log_case(db,case_id,'비공개로 전환')
                 if review!=case['review']:log_case(db,case_id,f"검토 결과: {jebo.REVIEWS[case['review']]} → {jebo.REVIEWS[review]}")
                 flash(f"검토 결과를 '{jebo.REVIEWS[review]}'(으)로 저장했어요."+(' 공개 목록에서 빠져요.' if review in jebo.NOT_VALID else ''))
+                if review=='ok':(lambda m:m and flash(m))(ops_auto_forward(db,case_id))  # 승인하면 기업에 자동 전달 (운영자 결정 2026-10-21)
             elif form=='company_new':
                 # 제보에 적힌 이름으로 기업을 등록 (가입하지 않은 기업). 이름이 같은 기업이 있으면 그 기업에 연결.
                 name=(request.form.get('name','') or case['company']).strip()[:120]
@@ -1977,6 +1978,7 @@ def report_detail(case_id):
                     found=db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone()
                 db.execute('UPDATE cases SET company_id=? WHERE id=?',(found['id'],case_id));log_case(db,case_id,f"기업 연결: {found['name']}")
                 flash(f"{found['name']}에 연결했어요.")
+                (lambda m:m and flash(m))(ops_auto_forward(db,case_id))
             elif form=='forward':
                 # 가입한 기업 담당자 화면에 보내기 (기업 전달 동의가 있는 제보만)
                 linked=db.execute("SELECT * FROM companies WHERE id=? AND status='active'",(case['company_id'],)).fetchone() if case['company_id'] else None
@@ -1997,6 +1999,7 @@ def report_detail(case_id):
                     if linked['status']=='active' and case['share_company']:
                         jebo.mark(db,case_id,'forwarded_at');flash(f"{linked['name']}에 연결했어요. 기업 담당자 화면에 바로 보여요.")
                     else:flash(f"{linked['name']}에 연결했어요. 기업 페이지에 모여요.")
+                    (lambda m:m and flash(m))(ops_auto_forward(db,case_id))
                 else:
                     db.execute('UPDATE cases SET company_id=NULL WHERE id=?',(case_id,));log_case(db,case_id,'기업 연결 해제');flash('기업 연결을 해제했어요.')
             elif form=='answer_public':
@@ -2720,7 +2723,7 @@ _jebo=types.SimpleNamespace(**globals());jebo.install(_jebo)
 send_company_verify=_jebo.send_company_verify
 # 3차 운영 자동화: 심사 보조·기업 통지·알림·정정·삭제·이의·운영 통계 (ops.py)
 _ops=types.SimpleNamespace(**globals());ops.install(_ops)
-for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras'):globals()[_k]=getattr(_ops,_k)
+for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras','ops_auto_forward'):globals()[_k]=getattr(_ops,_k)
 # 기업 대응 관리: AI 기업 입장 요청서, 기업 연락처, 전달 기록, 기업 답변 등록 (companydesk.py)
 _desk=types.SimpleNamespace(**globals());companydesk.install(_desk)
 for _k in ('desk_context','desk_handle_form','DESK_FORMS','desk_after_submit','desk_generate'):globals()[_k]=getattr(_desk,_k)

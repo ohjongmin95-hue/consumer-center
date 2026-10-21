@@ -24,7 +24,7 @@ def branded(text):
     return text if name == '소비자제보센터' else text.replace('소비자제보센터', name)
 EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변', 'company': '기업 답변', 'supplement': '보완 요청', 'seen': '기업 전달 확인',
           'admin_answer': '운영자: 기업 답변', 'admin_request': '운영자: 정정·삭제·이의', 'admin_risk': '운영자: 개인정보 위험',
-          'company_notice': '기업 공식 안내', 'company_new': '기업: 새 제보', 'company_opinion': '기업: 제보자 추가 의견', 'company_files': '기업: 추가 자료'}
+          'company_notice': '기업 공식 안내', 'company_new': '기업: 새 제보', 'company_opinion': '기업: 제보자 추가 의견', 'company_files': '기업: 추가 자료', 'company_nudge': '기업: 제보자 독촉'}
 
 # 이메일 본문. 카카오 템플릿과 같은 내용 + 조회 주소
 EMAIL_TEXT = {

@@ -2926,6 +2926,56 @@ class SiteTest(unittest.TestCase):
         self.assertIn('추가자료 요청 <b>1</b>', listing)
         self.assertNotIn('단계 확인 제보', admin.get('/admin/reports?status=검토 중').get_data(as_text=True))
 
+    def test_ops_auto_forward_on_approval_and_reporter_nudge(self):
+        """검토 '정상'으로 승인하면 기업에 자동 전달 + 단계 '기업 답변 대기' 알림, 답이 없으면 제보자가 독촉 (운영자 결정 2026-10-21)"""
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        mails = []
+        env = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'ops@example.com'}
+        patcher = patch.dict(os.environ, env); patcher.start(); self.addCleanup(patcher.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/companies', {'action': 'create', 'name': '독촉상점', 'official_email': 'cs@nudge-shop.example'})
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '독촉상점', 'description': '환불이 2주째 안 돼요',
+                'reporter_name': '김소비', 'phone': '010-7777-1212', 'contact': 'nudge@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', dict(base, subject='독촉상점 환불 지연', share_company='on'))
+        self.post_form(self.client, '/report', dict(base, subject='독촉상점 전달 안 함', phone='010-7777-3434', share_company='on'))
+        with self.site.conn() as db:
+            first, second = [r['id'] for r in db.execute("SELECT id FROM cases WHERE company='독촉상점' ORDER BY id")]
+            db.execute('UPDATE cases SET share_company=0 WHERE id=?', (second,))  # 기업 전달 동의 없음
+        mails.clear()
+        self.post_form(admin, '/admin/reports/%d' % first, {'form': 'review', 'review': 'ok'})
+        sent = [m for m in mails if m[0] == 'cs@nudge-shop.example']
+        self.assertEqual(len(sent), 1); self.assertIn('/company/%d/' % first, sent[0][2])
+        self.assertTrue(any(m[0] == 'nudge@example.com' and '진행' in m[1] for m in mails))  # 제보자에게 단계 알림
+        with self.site.conn() as db:
+            row = db.execute('SELECT status,forwarded_at FROM cases WHERE id=?', (first,)).fetchone()
+            self.assertEqual(row['status'], '기업 답변 대기'); self.assertTrue(row['forwarded_at'])
+        mails.clear()
+        self.post_form(admin, '/admin/reports/%d' % second, {'form': 'review', 'review': 'ok'})
+        self.assertFalse([m for m in mails if m[0] == 'cs@nudge-shop.example'])  # 동의 없으면 보내지 않음
+        # 제보자: 전달 뒤 3일 전에는 못 누름
+        reporter = self.site.app.test_client()
+        self.post_form(reporter, '/lookup', {'mode': 'phone', 'phone': '010-7777-1212', 'password': '1234'})
+        reporter.post('/lookup/%d' % first, data={'_csrf': self.csrf(reporter, '/lookup')})
+        page = reporter.get('/case').get_data(as_text=True)
+        self.assertIn('기업 답변이 늦어지고 있나요?', page); self.assertIn('3일이 지나면', page); self.assertNotIn('기업에 답변 독촉하기', page)
+        old = (datetime.datetime.now() - datetime.timedelta(days=4)).isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            db.execute('UPDATE cases SET forwarded_at=? WHERE id=?', (old, first)); db.execute('UPDATE company_notices SET created=? WHERE case_id=?', (old, first))
+        self.assertIn('기업에 답변 독촉하기', reporter.get('/case').get_data(as_text=True))
+        mails.clear()
+        reporter.post('/case/nudge', data={'_csrf': self.csrf(reporter, '/case')})
+        sent = [m for m in mails if m[0] == 'cs@nudge-shop.example']
+        self.assertEqual(len(sent), 1); self.assertIn('답변을 기다리고', sent[0][2])
+        page = reporter.get('/case').get_data(as_text=True)
+        self.assertIn('1번 독촉했어요', page); self.assertNotIn('기업에 답변 독촉하기', page)  # 바로 다시는 못 누름
+        mails.clear()
+        reporter.post('/case/nudge', data={'_csrf': self.csrf(reporter, '/case')})
+        self.assertFalse([m for m in mails if m[0] == 'cs@nudge-shop.example'])
+
     def test_ops_review_notice_requests_stats(self):
         # 3차: 심사 확인(개인정보 의심·중복 후보), 보완 요청, 추가 자료, 기업 안내 메일(빈도 제한·수신 거부), 정정·삭제·이의 신청, 운영 통계
         notify = self.site.notify
