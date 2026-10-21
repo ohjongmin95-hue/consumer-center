@@ -3196,6 +3196,10 @@ class SiteTest(unittest.TestCase):
         숫자 짝 검사(교열) 부름에는 pair(문제 목록, 없으면 문제 없음)를 돌려줌."""
         def fake(url, headers, body, timeout):
             if 'images' in url: return 500, {'error': {'message': 'no images in test'}}
+            if body['messages'][0]['content'].startswith('너는 잡지 편집장'):  # 비슷한 주제 판단: 같은 소재 표시('외식')가 든 글끼리만 같다고 봄
+                user = body['messages'][1]['content']; new, recent = user.split('[최근 30일 기사]')
+                hit = '외식' in new.split('\n')[1] and '외식' in recent
+                return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps({'same': hit, 'title': '외식비 부담' if hit else ''}, ensure_ascii=False)}}]}
             if body['messages'][0]['content'].startswith('너는 잡지 교열'):
                 if '[문제]' in body['messages'][0]['content']:  # 재교열: 걸린 문장 고치기
                     self.fix_calls = getattr(self, 'fix_calls', []) + [body]
@@ -3499,6 +3503,64 @@ class SiteTest(unittest.TestCase):
         self.assertTrue(opened)
         self.assertIn('국민은행과 하나은행은 각각 119명, 89명이다.', got['facts']['뉴스'][0]['원문 속 숫자 문장(원문 확인)'])
         self.assertEqual(self.site.soboru_writer.check_text('하나은행은 89명이에요.', got['facts']), [])  # 원문 숫자는 숫자 검사도 통과
+
+    def test_writer_daily_replaces_held_articles(self):
+        """검사에 걸려 초안으로 남은 글은 몫에 세지 않고 다른 글을 더 써서 채움 (한 번에 몫의 두 배까지만)"""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls, n = [], [], [0]
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        def pair(body):
+            n[0] += 1
+            return [{'line': '첫 줄 요약이에요.', 'why': '다른 대상'}] if n[0] <= 2 else []
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, pair=pair)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            out = w['daily'](now=datetime.datetime(2026, 10, 20, 7, 30))
+            made = [r for r in out if r['status'] == 'made']
+            self.assertEqual(sum(1 for r in made if r['published']), 5)  # 걸린 2개 대신 더 써서 게시 5개
+            self.assertEqual(len(made), 7)
+            self.assertEqual(w['daily'](now=datetime.datetime(2026, 10, 20, 8, 0)), [])
+        always = lambda body: [{'line': '첫 줄 요약이에요.', 'why': '다른 대상'}]
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, pair=always)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            out = w['daily'](now=datetime.datetime(2026, 10, 20, 13, 30))
+            self.assertLessEqual(len([r for r in out if r['status'] == 'made']), 12)  # 다 걸려도 몫(5)의 두 배 + 2까지만
+
+    def test_writer_every_kind_is_a_long_combined_article(self):
+        """모든 글을 종합 기사로: 검색 추이 글에도 뉴스·법 조문을 곁들이고, 길게 쓰라고 함 (운영자 요청 2026-10-21)"""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls = [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)):
+            with self.site.app.app_context(): got = w['collect']('trend')
+            self.assertIn('최근 관련 뉴스(제목·요약만)', got['facts'])
+            self.assertTrue(any('뉴스' in s['name'] or '·' in s['name'] for s in got['sources']))
+            r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
+        prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
+        self.assertIn('[분량] 종합 기사', prompt); self.assertIn('최근 관련 뉴스', prompt)
+
+    def test_writer_skips_similar_topic_within_30_days(self):
+        """제목이 달라도 소재가 같은 글(외식비·외식 물가)은 30일 안에 다시 쓰지 않음"""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls = [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            db.execute("INSERT INTO articles(title,summary,body,category,emoji,tone,source_name,source_url,status,origin,ext_key,created,updated) VALUES('외식비 부담 얼마나 늘었나','s','b','음식','📌','t1','','','published','ai','ai:feature:외식비:x',?,?)", (now, now))
+        fake = self.writer_ai(sent)
+        def ai(url, headers, body, timeout):  # 새 기사 제목에 '외식'을 넣어 비슷한 주제로 만듦
+            st, res = fake(url, headers, body, timeout)
+            if body['messages'][0]['content'].startswith('너는 소보루'):
+                out = json.loads(res['choices'][0]['message']['content']); out['title'] = '외식 물가, 요즘 얼마나 올랐을까 ' + out['title']
+                res = {'model': 'test-model', 'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+            return st, res
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', ai):
+            r = w['generate']('trend', 'daily')
+        self.assertEqual(r['status'], 'skip'); self.assertIn('비슷한 주제', r['reason'])
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', fake):
+            self.assertEqual(w['generate']('trend', 'daily')['status'], 'made')  # 다른 소재면 씀
 
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)

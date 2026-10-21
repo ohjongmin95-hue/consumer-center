@@ -113,7 +113,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉�
           '- 출처·링크·주소는 본문에 쓰지 않는다(화면에서 따로 붙인다). HTML·마크다운 기호는 쓰지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"title": 40자 안팎 제목, "summary": [세 줄 요약, 문자열 3개], '
           '"highlight": 글 전체에서 가장 중요한 한 문장(자료의 사실·숫자로만), '
-          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 2~4개]}] 4~6개, '
+          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 3~4개]}] 5~6개, '
           '"tips": ["이렇게 하세요"에 넣을 행동 요령 2~4개], "category": 분야 목록 중 하나}\n'
           '심층 분석 기사다: 숫자를 나열만 하지 말고 무엇이 눈에 띄는지, 소비자에게 어떤 뜻인지를 문단마다 풀어 쓴다(자료 안에서만).\n'
           '쓸 수 있는 이모지: ' + EMOJI)
@@ -591,7 +591,7 @@ def install(S):
         with conn() as db: titles = [r[0] for r in db.execute("SELECT title FROM articles WHERE origin='ai' AND substr(created,1,10)>=? ORDER BY id DESC LIMIT 80", (since,))]
         user = ('[최근 소비자 뉴스 제목]\n' + '\n'.join('- ' + h for h in heads[:80]) + '\n[최근 우리가 쓴 기사 제목]\n' + '\n'.join('- ' + t for t in titles))
         system = ('너는 소비자 잡지 소보루의 편집장이다. 뉴스 제목들을 보고 소비자에게 쓸모 있고 읽고 싶어질 기획 기사 주제(야마)를 12개 고른다.\n'
-                  '- 같은 일을 다룬 뉴스는 하나의 주제로 묶는다. 우리가 최근 쓴 기사와 겹치는 주제는 고르지 않는다. 주제끼리도 겹치지 않게 한다.\n'
+                  '- 같은 일을 다룬 뉴스는 하나의 주제로 묶는다. 우리가 최근 쓴 기사와 소재가 겹치는 주제는 낱말이 달라도 고르지 않는다(외식비·외식 물가는 같은 소재). 주제끼리도 겹치지 않게 한다.\n'
                   '- topic은 뉴스 검색에 넣을 2~12자 낱말(예: 배달앱 수수료), angle은 기사의 각도 한 문장(숫자 없이), category는 '
                   + ', '.join(CATS) + ' 가운데 하나. 분야가 한쪽으로 몰리지 않게 고르게 고른다.\n'
                   'JSON으로만 답한다: {"ideas": [{"topic": ..., "angle": ..., "category": ...}]}')
@@ -623,6 +623,39 @@ def install(S):
                 if r[0] in got: got[r[0]] = r[1]
         return got
 
+    def trend_fact(q):
+        """검색어 하나의 1년 검색 추이 요약 (통계는 곁들이는 자료라 못 가져오면 None)"""
+        if not SOURCES['naver']()[0]: return None
+        try:
+            import naverhub
+            series = naver()['trend']([q], 12); start, end, unit = naverhub.periods(12)
+            vals = series[0][1] if series else []
+            if len(vals) < 6: return None
+            v = [x for _, x in vals]; last, prev = statistics.mean(v[-3:]), statistics.mean(v[-6:-3]); peak = max(vals, key=lambda p: p[1])
+            return {'검색어': q, '기간': f'{start} ~ {end}', '단위': '달', '지수 설명': '기간 안에서 가장 많이 찾은 달을 100으로 둔 상대 지수예요',
+                    '최근 3달 평균 지수': round(last, 1), '그 전 3달 평균 지수': round(prev, 1),
+                    '증감률(%)': round((last - prev) / prev * 100) if prev else None, '가장 많이 찾은 달': f'{peak[0][:4]}년 {int(peak[0][5:7])}월'}
+        except Exception: return None
+
+    def enrich(got, kind, topic):
+        """모든 글을 종합 기사로 (운영자 요청 2026-10-21): 자료에 뉴스·법 조문·검색 추이가 없으면 주제로 찾아 곁들임. 못 찾으면 있는 자료로만."""
+        facts, sources = got['facts'], got['sources']
+        q = clean_topic(topic or got.get('topic') or '')
+        if not q: return got
+        keys = ' '.join(facts)
+        if '뉴스' not in keys:
+            news = recent_news(q, days=30, n=5)
+            if news: facts['최근 관련 뉴스(제목·요약만)'] = news_facts(news); sources += [src(f"{i['source']} · {i['title'][:40]}", i['url']) for i in news]
+        if '조문' not in keys and '법령' not in keys:
+            hits = corpus.related(q, limit=3)
+            if hits:
+                facts['관련 법 조문(원문)'] = [{'조문': h['label'], '원문': corpus.clip(h['text'], 600)} for h in hits]
+                sources += [src(f"국가법령정보센터 · {h['label']}", h['source']) for h in hits]
+        if '추이' not in keys and kind not in ('shopping', 'shopcat', 'reports'):
+            tf = trend_fact(q)
+            if tf: facts['검색 추이(네이버 데이터랩)'] = tf; sources.append(src('네이버 데이터랩 검색어트렌드 (NAVER API HUB)', 'https://datalab.naver.com/keyword/trendSearch.naver'))
+        return got
+
     def collect_feature(topic):
         today = datetime.date.today().isoformat()
         idea = next((i for i in feature_pool(today) if i['topic'] == topic), {'angle': '', 'category': '생활'})
@@ -633,17 +666,8 @@ def install(S):
         if idea['angle']: facts['기획 각도'] = idea['angle']
         if news: facts['최근 관련 뉴스(제목·요약만)'] = news_facts(news)
         sources = [src(f"{i['source']} · {i['title'][:40]}", i['url']) for i in news]
-        try:
-            import naverhub
-            series = naver()['trend']([topic], 12); start, end, unit = naverhub.periods(12)
-            vals = series[0][1] if series else []
-            if len(vals) >= 6:
-                v = [x for _, x in vals]; last, prev = statistics.mean(v[-3:]), statistics.mean(v[-6:-3]); peak = max(vals, key=lambda p: p[1])
-                facts['검색 추이(네이버 데이터랩)'] = {'기간': f'{start} ~ {end}', '단위': '달', '지수 설명': '기간 안에서 가장 많이 찾은 달을 100으로 둔 상대 지수예요',
-                                              '최근 3달 평균 지수': round(last, 1), '그 전 3달 평균 지수': round(prev, 1),
-                                              '증감률(%)': round((last - prev) / prev * 100) if prev else None, '가장 많이 찾은 달': f'{peak[0][:4]}년 {int(peak[0][5:7])}월'}
-                sources.append(src('네이버 데이터랩 검색어트렌드 (NAVER API HUB)', 'https://datalab.naver.com/keyword/trendSearch.naver'))
-        except Exception: pass  # 통계는 곁들이는 자료라 못 가져와도 글은 씀
+        tf = trend_fact(topic)
+        if tf: facts['검색 추이(네이버 데이터랩)'] = tf; sources.append(src('네이버 데이터랩 검색어트렌드 (NAVER API HUB)', 'https://datalab.naver.com/keyword/trendSearch.naver'))
         if hits:
             facts['관련 법 조문(원문)'] = [{'조문': h['label'], '원문': corpus.clip(h['text'], 700)} for h in hits]
             sources += [src(f"국가법령정보센터 · {h['label']}", h['source']) for h in hits]
@@ -683,6 +707,9 @@ def install(S):
         except Skip: raise
         except Exception as e:  # 네이버 오류 문구(NaverError)는 그대로, 그 밖은 이름만 (키가 섞이지 않게)
             raise Skip(str(e)[:120] if type(e).__name__ == 'NaverError' else f'자료를 가져오지 못했어요 ({type(e).__name__})')
+        if kind != 'reports':  # 제보 동향은 제보 집계만 (다른 자료와 섞지 않음)
+            try: got = enrich(got, kind, topic)
+            except Exception: pass
         got['facts'] = dict(got['facts'], **CONST)
         return got
 
@@ -712,16 +739,34 @@ def install(S):
     # ---- AI로 쓰기 · 저장 -------------------------------------------------------
     def ask_ai(kind, facts, topic=None):
         k = KINDS[kind]
+        # 모든 글을 뉴닉처럼 읽을거리 있는 종합 기사로 (운영자 요청 2026-10-21)
         long = ("[분량] 잡지 기획 기사다. 소제목 5~6개, 소제목마다 문단 3~4개로 넉넉히 쓴다. 뉴스(무슨 일)·통계(얼마나)·법 조문(어떤 권리)을 "
-                "한 이야기로 엮고, 마지막 소제목은 소비자가 할 일로 마무리한다.\n") if k.get('long') else ''
+                "한 이야기로 엮고, 마지막 소제목은 소비자가 할 일로 마무리한다.\n") if k.get('long') else (
+               "[분량] 종합 기사다. 소제목 5개 안팎, 소제목마다 문단 3개 안팎으로 읽을거리 있게 쓴다. 통계를 다루더라도 숫자만 늘어놓지 말고, "
+               "자료에 있는 뉴스(무슨 일)·법 조문(어떤 권리)을 엮어 '왜 이런 숫자가 나왔는지, 나에게 무슨 뜻인지'를 이야기처럼 풀고, 마지막은 소비자가 할 일로 마무리한다.\n")
         user = (f"[글 종류] {k['name']}: {k['about']}\n" + (f"[주제] {topic}\n" if topic else '') + long + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
-        return chat(SYSTEM, user, 6000 if k.get('long') else 4500, AI_TIMEOUT * 2 if k.get('long') else AI_TIMEOUT)
+        return chat(SYSTEM, user, 6000, AI_TIMEOUT * 2)
 
     def save_check(db, article_id, title, summary, body, facts):
         problems = check_text('\n'.join([title, summary, body]), facts)
         db.execute('UPDATE ai_articles SET check_ok=?,problems=?,checked=? WHERE article_id=?', (0 if problems else 1, json.dumps(problems, ensure_ascii=False), stamp(), article_id))
         return problems
+
+    SAME_SYSTEM = ('너는 잡지 편집장이야. [새 기사]가 [최근 30일 기사] 가운데 하나와 같은 주제인지 판단해. 같은 주제란 독자가 "이거 얼마 전에 읽은 얘기네" 할 만큼 '
+                   '핵심 소재가 같은 것(예: "외식비 부담 늘었다"와 "외식 물가 얼마나 올랐나"). 같은 분야라도 소재가 다르면 다른 주제야. '
+                   'JSON만: {"same": true 또는 false, "title": "같은 주제인 최근 기사 제목(없으면 빈 문자열)"}')
+
+    def same_topic(title, summary, exclude=None):
+        """최근 30일 AI 글과 같은 주제면 그 글 제목 (운영자 지적 2026-10-21: 외식비 글이 또 올라옴). 판단을 못 하면 None(쓰기는 막지 않음)."""
+        since = (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
+        with conn() as db:
+            titles = [r['title'] for r in db.execute("SELECT id,title FROM articles WHERE origin='ai' AND substr(created,1,10)>=? ORDER BY id DESC LIMIT 500", (since,)) if r['id'] != exclude]
+        if not titles: return None
+        user = '[새 기사]\n' + title + '\n' + (summary or '')[:300] + '\n\n[최근 30일 기사]\n' + '\n'.join('- ' + t for t in titles)
+        try: got = chat(SAME_SYSTEM, user, 300)
+        except RuntimeError: return None
+        return (str(got.get('title') or '비슷한 글') if isinstance(got, dict) and got.get('same') is True else None)
 
     PAIR_SYSTEM = ('너는 잡지 교열 기자야. [자료]와 [글]을 비교해서, 글 속 숫자가 자료와 다른 대상·기간·단위에 붙은 문장만 찾아. '
                    '예: 자료는 "국민 119명, 하나 89명"인데 글은 "국민은행과 하나은행이 각각 119명". 뉴스 요약이 "..."로 잘려 대상과 숫자의 짝이 끝까지 보이지 않는데 글이 짝을 지어 쓴 문장도 찾아. 숫자가 자료에 있는지가 아니라 누구의·무엇의 숫자인지가 맞는지를 봐. 뉴스에 "원문 속 숫자 문장(원문 확인)"이 있으면 요약보다 그 원문 문장을 기준으로 봐. '
@@ -773,6 +818,9 @@ def install(S):
                 same = [r['id'] for r in db.execute('SELECT id,title FROM articles WHERE substr(created,1,10)>=?', (since,)) if ''.join(r['title'].split()) == ''.join(title.split()) and (not old or r['id'] != old['id'])]
             if same:
                 res = {'status': 'skip', 'reason': '같은 제목의 글이 이미 있어요', 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
+            dup = same_topic(title, summary, old['id'] if old else None)
+            if dup:
+                res = {'status': 'skip', 'reason': f'최근 30일 안에 비슷한 주제의 글이 있어요 ({dup[:40]})', 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         k = KINDS[kind]; cat = got.get('category') or cat; first = got['sources'][0] if got['sources'] else {'name': '', 'url': ''}
         facts_s, sources_s = json.dumps(got['facts'], ensure_ascii=False), json.dumps(got['sources'], ensure_ascii=False)
         with conn() as db:
@@ -795,7 +843,7 @@ def install(S):
             if published: db.execute("UPDATE articles SET status='published',published_at=?,updated=? WHERE id=?", (stamp(), stamp(), aid))
         art = app.extensions.get('soboru_art')  # 저장한 글처럼 AI 일러스트 자동 그리기 (키가 있을 때만)
         if art: art['auto']('life', aid, wait=trigger == 'daily')
-        res = {'status': 'made', 'id': aid, 'published': published, 'reason': '숫자 검토 필요 %d곳' % len(problems) if problems else ('바로 게시했어요' if published else '')}
+        res = {'status': 'made', 'id': aid, 'published': published, 'topic': topic, 'reason': '숫자 검토 필요 %d곳' % len(problems) if problems else ('바로 게시했어요' if published else '')}
         log(dict(res, kind=kind, trigger=trigger))
         return res
 
@@ -813,34 +861,41 @@ def install(S):
         cfg = settings(); day = today or datetime.date.today().isoformat()
         if not cfg['auto']: return [{'status': 'off', 'reason': '자동 쓰기를 꺼 두었어요'}]
         if not desk.ai_ready(): log({'status': 'skip', 'kind': '', 'trigger': 'daily', 'reason': 'OpenAI API 키가 없어요'}); return [{'status': 'skip', 'reason': 'OpenAI API 키가 없어요'}]
+        # 몫은 게시된 글로 셈 (운영자 지적 2026-10-20: 검사에 걸려 초안으로 남은 글까지 세면 저녁에 5개가 안 올라옴). 바로 게시를 꺼 뒀으면 초안도 셈.
+        pub_only = cfg['publish'] == 1
         with conn() as db:
-            done = db.execute("SELECT COUNT(*) FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.trigger='daily' AND substr(x.created,1,10)=?", (day,)).fetchone()[0]
+            done = db.execute("SELECT COUNT(*) FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.trigger='daily' AND substr(x.created,1,10)=?"
+                              + (" AND a.status='published'" if pub_only else ''), (day,)).fetchone()[0]
         want = cfg['per_run'] * slots_passed(now) - done; turn = setting('writer_turn', 0)
         turn = turn if isinstance(turn, int) else 0
         if want <= 0: return []  # 오늘 몫은 이미 다 씀 (순서도 그대로)
+        budget = want * 2 + 2  # 걸린 글 대신 더 쓰더라도 AI를 끝없이 부르지 않게: 한 번에 만드는 글은 몫의 두 배까지
+        counts = lambda r: r['status'] == 'made' and (r.get('published') or not pub_only)
         out = []
         for i in range(len(ORDER)):
-            if want <= 0: break
+            if want <= 0 or budget <= 0: break
             kind = ORDER[(turn + i) % len(ORDER)]
             if kind in PAUSED: continue
             ok, why = kind_ready(kind)
             if not ok: out.append({'status': 'skip', 'kind': kind, 'reason': why}); continue
             r = dict(generate(kind, 'daily', day=day), kind=kind); out.append(r)
-            if r['status'] == 'made': want -= 1
+            if r['status'] == 'made': budget -= 1
+            if counts(r): want -= 1
         put('writer_turn', (turn + 1) % len(ORDER))
         # 아직 하루 몫이 남으면 주제별 깊이 보기 글로 돌아가며 채움 (실패가 이어져도 AI를 끝없이 부르지 않게 횟수를 막음)
         xturn = setting('writer_xturn', 0); xturn = xturn if isinstance(xturn, int) else 0
-        dead, tried = set(), set()  # tried: 이번에 못 쓴 주제 (같은 제목·자료 모자람) — 같은 주제로 AI를 다시 부르지 않게
+        dead, tried = set(), set()  # tried: 이번에 못 쓴 주제 (같은 제목·자료 모자람·검사에 걸림) — 같은 주제로 AI를 다시 부르지 않게
         nxt = xturn
-        for i in range(want + len(EXTRA) * 2):
-            if want <= 0 or len(dead) == len(EXTRA): break
+        for i in range(want * 2 + len(EXTRA) * 2):
+            if want <= 0 or budget <= 0 or len(dead) == len(EXTRA): break
             kind = EXTRA[(xturn + i) % len(EXTRA)]
             if kind in dead: continue
             ok, why = kind_ready(kind)
             if not ok: dead.add(kind); out.append({'status': 'skip', 'kind': kind, 'reason': why}); continue
             r = dict(generate(kind, 'daily', day=day, avoid=tried), kind=kind); out.append(r)
             nxt = xturn + i + 1
-            if r['status'] == 'made': want -= 1
+            if r['status'] == 'made': budget -= 1
+            if counts(r): want -= 1
             elif r['status'] == 'skip' and '주제를 다 썼어요' in r.get('reason', ''): dead.add(kind)
             elif r.get('topic'): tried.add(r['topic'])
         put('writer_xturn', nxt % len(EXTRA))  # 다음 때는 이번에 멈춘 바로 다음 종류부터
