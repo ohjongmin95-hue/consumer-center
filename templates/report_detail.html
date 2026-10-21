@@ -263,13 +263,13 @@
         {% else %}<p class="cs-muted">제보자가 기업 전달에 동의하지 않아 기업에 내용을 보낼 수 없어요. 기업 페이지 연결은 할 수 있어요.</p>{% endif %}
       </section>
 
-      {# 2-1. 기업 안내: 운영자가 누를 때만 공식 이메일로 답변 링크를 보냄. 보낸 기록·직접 연락 기록 #}
+      {# 2-1. 기업 안내: 검토 '정상' 승인 때 자동으로, 또는 버튼으로 공식 이메일에 답변 링크를 보냄. 보낸 기록·직접 연락 기록 #}
       {% if case['share_company'] %}
       <section class="cs-panel cs-card" id="notice">
         <h2>기업 안내 {% if case['seen_at'] %}<span class="cs-pill on">기업이 열어 봄</span>{% elif case['forwarded_at'] %}<span class="cs-pill">전달 시도</span>{% endif %}</h2>
         {% if ops.notice_block %}<p class="cs-hint">{{ ops.notice_block }}</p>
         {% else %}<form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice"><span class="cs-hint">{{ ops.company['name'] }} 공식 이메일({{ ops.notice_to }})로 이 제보만 볼 수 있는 답변 링크를 보내요.</span><button class="cs-btn" type="submit" onclick="return confirm('{{ ops.company['name'] }}에 안내 메일을 보낼까요?')">{{ '재안내 보내기' if ops.notices|selectattr('status', 'equalto', '보냄')|list else '안내 메일 보내기' }}</button></form>{% endif %}
-        <p class="cs-hint">메일은 같은 제보로 3번까지, 72시간 간격으로 보낼 수 있어요. 기업이 링크를 열어야 '기업 전달 확인'이 돼요.</p>
+        <p class="cs-hint">검토 결과를 '정상'으로 저장하면 첫 안내가 자동으로 나가요. 제보자가 '답변 독촉'을 누르면 재안내가 나가요. 메일은 같은 제보로 3번까지, 72시간 간격이에요. 기업이 링크를 열어야 '기업 전달 확인'이 돼요.</p>
         {% if ops.notices %}<ol class="ops-notices">{% for n in ops.notices %}<li><span>{{ n['created'][5:16]|replace('T', ' ')|replace('-', '.') }}</span><b>{{ OPS_NOTICE_KINDS.get(n['kind'], n['kind']) }}</b> {{ n['status'] }}{% if n['target'] %} · {{ n['target'] }}{% endif %}{% if n['memo'] %} · {{ n['memo'] }}{% endif %}</li>{% endfor %}</ol>{% endif %}
         <details class="cs-more" id="notice_manual"><summary>전화·우편 등 직접 연락 기록</summary>
           <form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice_manual"><input name="memo" maxlength="300" required placeholder="예: 고객센터에 전화로 안내 (담당 김OO)" aria-label="연락 기록"><button class="cs-btn" type="submit">기록</button></form>

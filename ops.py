@@ -1,6 +1,7 @@
 """소비자제보센터 3차: 운영 자동화.
 - 운영자 제보 검토: 중복 제보 후보, 개인정보 노출 의심, 보완 요청
-- 기업 통지와 이력: 운영자가 누를 때만 기업 공식 이메일로 안내(답변 링크), 발송·직접 연락 기록, 빈도 제한, 수신 거부
+- 기업 통지와 이력: 기업 공식 이메일로 안내(답변 링크), 발송·직접 연락 기록, 빈도 제한, 수신 거부
+  운영자 결정 2026-10-21: 검토 '정상'으로 승인하면 기업에 자동 전달, 답이 없으면 제보자가 '답변 독촉'을 누를 수 있음
 - 이메일 알림: 소비자(보완 요청·전달 확인), 가입 기업(새 제보·추가 의견·추가 자료), 운영자(기업 답변·정정·삭제·이의, 개인정보 위험)
 - 정정·삭제 요청(제보자)과 이의 신청(기업): 접수 → 운영자 처리 → 결과 안내
 - 운영 통계: 실제 DB로 계산하고 집계 기간과 산식을 함께 보여 줌
@@ -19,6 +20,8 @@ NOTICE_MAX_PER_COMPANY_DAY = 20  # 기업 한 곳에 하루에 보내는 안내 
 ALERT_GAP_MINUTES = 30         # 가입 기업 알림(추가 의견·자료)은 같은 제보로 이 간격 안에 한 번만
 DELAY_DAYS = 7                 # 이만큼 아무 처리 기록이 없으면 '처리 지연'
 MAX_CASE_FILES = 10            # 제보 하나에 붙일 수 있는 첨부 파일 (처음 + 추가 자료)
+NUDGE_AFTER_DAYS = 3           # 기업에 전달된 뒤 이만큼 답이 없으면 제보자가 독촉할 수 있음
+NUDGE_MAX = 2                  # 제보 하나에 독촉 횟수
 STAT_PERIODS = {'30': '최근 30일', '90': '최근 90일', '365': '최근 1년', 'all': '전체 기간'}
 
 RISK = [('전화번호', re.compile(r'01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}')),
@@ -96,7 +99,8 @@ def install(S):
         co = db.execute("SELECT * FROM companies WHERE id=? AND status='active'", (case['company_id'],)).fetchone()
         if not co or co['notice_optout'] or not co['contact_email'] or not notify.email_ready(): return
         if db.execute("SELECT 1 FROM notifications WHERE case_id=? AND event=? AND channel='company_email' AND created>=?", (case['id'], event, ago(minutes=ALERT_GAP_MINUTES))).fetchone(): return
-        what = {'company_new': '새 제보가 전달됐습니다', 'company_opinion': '제보자가 추가 의견을 남겼습니다', 'company_files': '제보자가 추가 자료를 냈습니다'}[event]
+        what = {'company_new': '새 제보가 전달됐습니다', 'company_opinion': '제보자가 추가 의견을 남겼습니다', 'company_files': '제보자가 추가 자료를 냈습니다',
+                'company_nudge': '제보자가 답변을 기다리고 있습니다'}[event]
         body = (f"{co['name']} 담당자님, {notify.site_name()}에서 알려 드립니다.\n\n{what}.\n■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n\n"
                 f"기업 회원 화면에서 확인해 주세요.\n{url_for('biz_case', case_id=case['id'], _external=True)}\n\n"
                 f"{notify.site_name()}는 공공기관이 아닌 민간 플랫폼이며, 답변 등록은 무료입니다.\n이런 메일을 그만 받으려면: {optout_url(db, co)}")
@@ -184,8 +188,9 @@ def install(S):
     S.ops_handle_form = handle_form
     S.OPS_FORMS = ('supplement', 'notice', 'notice_manual', 'request_done')
 
-    def send_notice(db, case, company):
-        """기업 공식 이메일로 답변 링크를 보냄. 운영자가 누를 때만. 메일을 보냈다고 '기업이 확인했다'고 표시하지 않음(열어 봐야 확인)."""
+    def send_notice(db, case, company, quiet=False, actor=None, nudge=False):
+        """기업 공식 이메일로 답변 링크를 보냄 (운영자 버튼, 승인 시 자동 전달, 제보자 독촉). 보냈으면 True.
+        메일을 보냈다고 '기업이 확인했다'고 표시하지 않음(열어 봐야 확인)."""
         cid = case['id']; to = notice_target(company)
         token = secrets.token_urlsafe(32)
         db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created) VALUES(?,?,?,?)', (cid, hashlib.sha256(token.encode()).hexdigest(), company['name'], now()))
@@ -194,6 +199,7 @@ def install(S):
         subject = f"[{notify.site_name()}] {company['name']} 관련 소비자 제보 안내 ({case['receipt']})" + (' - 재안내' if kind == 'remind' else '')
         body = (f"{company['name']} 고객 담당자님께,\n\n{notify.site_name()}에 {company['name']}와(과) 관련된 소비자 제보가 접수돼 안내드립니다.\n\n"
                 f"■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n■ 접수일: {case['created'][:10]}\n\n"
+                + ("제보자가 아직 답변을 받지 못해 답변을 기다리고 있다고 알려 왔습니다.\n\n" if nudge else '') +
                 f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남길 수 있습니다. 답변 등록은 무료이며, 링크는 이 제보 하나만 볼 수 있습니다.\n{link}\n\n"
                 "제보는 소비자 개인의 경험과 주장이며, 센터가 사실관계를 확인한 내용이 아닙니다. 답변 여부와 내용은 귀사가 정합니다.\n"
                 f"{notify.site_name()}는 공공기관이 아닌 민간 플랫폼입니다.\n\n"
@@ -203,13 +209,73 @@ def install(S):
         except Exception as e:
             status, memo = '실패', str(e)[:200]
         db.execute('INSERT INTO company_notices(case_id,company_id,kind,target,status,memo,actor,created) VALUES(?,?,?,?,?,?,?,?)',
-                   (cid, company['id'], kind, notify.mask(to), status, memo, S.actor_name(), now()))
+                   (cid, company['id'], kind, notify.mask(to), status, memo, actor or S.actor_name(), now()))
         if status == '보냄':
             jebo.mark(db, cid, 'forwarded_at')
             S.log_case(db, cid, f"기업 {NOTICE_KINDS[kind]} 보냄 ({notify.mask(to)})")
-            flash(f"{company['name']}에 {NOTICE_KINDS[kind]}을 보냈어요. 기업이 링크를 열어야 '기업 전달 확인'으로 바뀌어요.")
-        else:
-            S.log_case(db, cid, f'기업 안내 메일 실패: {memo[:60]}'); flash('메일을 보내지 못했어요: ' + memo)
+            if not quiet: flash(f"{company['name']}에 {NOTICE_KINDS[kind]}을 보냈어요. 기업이 링크를 열어야 '기업 전달 확인'으로 바뀌어요.")
+            to_wait(db, cid)
+            return True
+        S.log_case(db, cid, f'기업 안내 메일 실패: {memo[:60]}')
+        if not quiet: flash('메일을 보내지 못했어요: ' + memo)
+        return False
+
+    def to_wait(db, cid):
+        """기업에 전달되면 진행 단계를 '기업 답변 대기'로 올리고 제보자에게 알림 (이미 그 뒤 단계면 그대로)"""
+        case = db.execute('SELECT status FROM cases WHERE id=?', (cid,)).fetchone()
+        if jebo.STATUS_MY.get(case['status'], 0) >= jebo.STATUS_MY['기업 답변 대기']: return
+        db.execute("UPDATE cases SET status='기업 답변 대기' WHERE id=?", (cid,)); jebo.mark(db, cid, 'reviewed_at')
+        S.log_case(db, cid, f"진행 단계 변경: {case['status']} → 기업 답변 대기"); S.notify_later(cid, 'status')
+
+    def auto_forward(db, cid):
+        """검토 '정상'으로 승인된 제보를 기업에 자동 전달 (운영자 결정 2026-10-21). 관리자에게 보일 문구('' 이면 할 일 없음).
+        가입 기업은 담당자 화면으로, 아니면 공식 이메일로 답변 링크. 제보자 동의·수신 거부·횟수 제한은 버튼으로 보낼 때와 같음."""
+        case = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
+        if case['review'] != 'ok' or case['forwarded_at'] or not case['share_company'] or not case['company_id']: return ''
+        company = db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone()
+        if company['status'] == 'active':
+            jebo.mark(db, cid, 'forwarded_at'); S.log_case(db, cid, f"기업 담당자 화면에 자동 전달: {company['name']}")
+            member_alert(db, db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone(), 'company_new'); to_wait(db, cid)
+            return f"{company['name']} 담당자 화면에 자동으로 보냈어요."
+        block = notice_block(db, case, company)
+        if block:
+            S.log_case(db, cid, '기업 자동 전달 못 함: ' + block); return '기업 자동 전달은 못 했어요. ' + block
+        if send_notice(db, case, company, quiet=True, actor='자동 전달'): return f"{company['name']}에 안내 메일을 자동으로 보냈어요."
+        return '기업 안내 메일을 보내지 못했어요. 처리 기록을 확인해 주세요.'
+    S.ops_auto_forward = auto_forward
+
+    # ---- 제보자: 기업 답변 독촉 -------------------------------------------------------
+    def nudges(db, cid):
+        return db.execute("SELECT created FROM case_log WHERE case_id=? AND action LIKE '제보자 답변 독촉%' ORDER BY id DESC", (cid,)).fetchall()
+
+    def nudge_state(db, case):
+        """제보자 화면의 '답변 독촉' 칸. 보일 때가 아니면 None, 아니면 {'why': 지금 못 누르는 이유('' 이면 누를 수 있음), 'count': 누른 횟수}"""
+        if not case['forwarded_at'] or jebo.STATUS_MY.get(case['status'], 0) != jebo.STATUS_MY['기업 답변 대기']: return None
+        done = nudges(db, case['id']); why = ''
+        if len(done) >= NUDGE_MAX: why = f'독촉은 {NUDGE_MAX}번까지 보낼 수 있어요. 센터가 계속 확인할게요.'
+        elif case['forwarded_at'] > ago(days=NUDGE_AFTER_DAYS): why = f'기업에 전달된 지 {NUDGE_AFTER_DAYS}일이 지나면 누를 수 있어요.'
+        elif done and done[0]['created'] > ago(hours=NOTICE_GAP_HOURS): why = f'마지막 독촉 뒤 {NOTICE_GAP_HOURS // 24}일이 지나면 다시 누를 수 있어요.'
+        return dict(why=why, count=len(done))
+
+    @app.route('/case/nudge', methods=['POST'])
+    def case_nudge():
+        with conn() as db:
+            case = reporter_case(db)
+            if not case: return redirect(url_for('lookup'))
+            st = nudge_state(db, case)
+            if not st: flash('지금은 독촉할 수 없는 단계예요.'); return redirect(url_for('case_detail'))
+            if st['why']: flash(st['why']); return redirect(url_for('case_detail') + '#nudge')
+            company = db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone() if case['company_id'] else None
+            how = '센터에 알림'
+            if company and company['status'] == 'active' and company['contact_email']:
+                member_alert(db, case, 'company_nudge'); how = '기업 담당자에게 알림 메일'
+            elif company and not notice_block(db, case, company) and send_notice(db, case, company, quiet=True, actor='제보자', nudge=True):
+                how = '기업 공식 이메일로 재안내'
+            db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)', (case['id'], '제보자', f'제보자 답변 독촉 ({how})', now()))
+            if how == '센터에 알림':  # 메일로 못 보내면 운영자가 직접 연락하도록
+                admin_alert(case, 'admin_request', '제보자 답변 독촉', [f"■ 업체: {case['company']}", '기업에 메일로 보낼 수 없어 운영자 연락이 필요해요.'])
+        flash('기업에 답변을 독촉했어요. 답변이 오면 바로 알려 드릴게요.')
+        return redirect(url_for('case_detail') + '#nudge')
 
     # ---- 기업 수신 거부 ----------------------------------------------------------
     @app.route('/company/optout/<token>', methods=['GET', 'POST'])
@@ -278,7 +344,7 @@ def install(S):
         return dict(requests=db.execute("SELECT * FROM case_requests WHERE case_id=? AND who='reporter' ORDER BY id DESC", (case['id'],)).fetchall(),
                     alerts=db.execute("SELECT event,channel,status,created FROM notifications WHERE case_id=? AND channel IN ('kakao','email') ORDER BY id DESC LIMIT 20", (case['id'],)).fetchall(),
                     files=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?', (case['id'],)).fetchone()[0], max_files=MAX_CASE_FILES,
-                    supplement=case['supplement_at'] and case['status'] == STATUSES[2])
+                    supplement=case['supplement_at'] and case['status'] == STATUSES[2], nudge=nudge_state(db, case))
     S.ops_reporter_extras = reporter_extras
 
     # ---- 기업: 이의 신청 (가입 기업 화면, 답변 링크 화면) -----------------------------
