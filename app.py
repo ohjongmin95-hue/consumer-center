@@ -2177,6 +2177,8 @@ def admin_new_cases():
         last=db.execute('SELECT id,subject FROM cases ORDER BY id DESC LIMIT 1').fetchone()
     info['subject']=last['subject'] if last else ''
     info['url']=url_for('admin_report',case_id=last['id']) if last else url_for('admin_reports')
+    aa=app.extensions['aialert']['load']() if 'aialert' in app.extensions else None
+    info['ai']=aa['kind']+':'+aa['since'] if aa else ''  # OpenAI 충전금·키 알림 (aialert.py)
     return info
 @app.route('/admin')
 @admin_only
@@ -2755,5 +2757,6 @@ import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  
 import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
+import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
 
 if __name__=='__main__':app.run(debug=False)

@@ -116,6 +116,29 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('060점', guide)
         self.assertIn('/companies/grade', self.client.get('/companies').get_data(as_text=True))
 
+    def test_openai_credit_alert(self):
+        # OpenAI 충전금이 바닥나면(429 insufficient_quota) 관리자 화면 맨 위에 알림, 충전 뒤 호출이 성공하면 저절로 사라짐
+        desk = self.site.companydesk
+        admin = self.login_admin()
+        self.assertNotIn('class="ad-ai-alert"', admin.get('/admin').get_data(as_text=True))
+        quota = (429, {'error': {'message': 'You exceeded your current quota', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}})
+        with patch.object(desk, '_post_json', return_value=quota):
+            self.assertEqual(desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)[0], 429)
+        page = admin.get('/admin').get_data(as_text=True)
+        self.assertIn('OpenAI 충전금이 바닥났어요', page)
+        self.assertIn('AI 글쓰기·답변', page)
+        self.assertNotIn('ad-ai-alert', self.client.get('/').get_data(as_text=True))  # 방문자에게는 안 보임
+        with patch.object(desk, '_post_json', return_value=(429, {'error': {'code': 'rate_limit_exceeded'}})):
+            desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)  # 잠깐 몰린 것(속도 제한)은 충전 알림이 아님
+        self.assertIn('충전금이 바닥났어요', admin.get('/admin').get_data(as_text=True))
+        with patch.object(desk, '_post_json', return_value=(200, {'choices': []})):
+            desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)
+        self.assertNotIn('class="ad-ai-alert"', admin.get('/admin').get_data(as_text=True))
+        with patch.object(desk, '_post_json', return_value=(401, {'error': {'code': 'invalid_api_key'}})):
+            desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)
+        self.assertIn('OpenAI 키가 막혔어요', admin.get('/admin').get_data(as_text=True))
+        with patch.object(desk, '_post_json', return_value=(200, {})): desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)
+
     def test_scam_watch(self):
         # 사기 주의: 회원만 신고, 운영자가 '공개'로 바꾸기 전에는 어디에도 안 보임, 번호는 일부만 보이고 검색은 전체 번호로
         import scamwatch
