@@ -346,7 +346,7 @@ def _kosis_get(path, **params):
     try: data = json.loads(body)
     except ValueError: raise RuntimeError('KOSIS 응답을 읽지 못했어요')
     if isinstance(data, dict):
-        if data.get('err') in ('30', '31'): return []  # 30: 결과 없음
+        if str(data.get('err')) == '30': return []  # 30: 결과 없음 (31·41은 한 번에 4만 칸 넘음, 10·11은 키 문제 → 오류로)
         raise RuntimeError('KOSIS: ' + str(data.get('errMsg') or data.get('err'))[:80])
     return [r for r in data if isinstance(r, dict)]
 
