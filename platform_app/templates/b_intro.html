@@ -21,7 +21,7 @@
 
 <section class="tp-ticker" aria-label="이런 문의가 매일 들어와요"><p class="tp-tick-t">이런 문의, 매일 들어오죠</p>
 {% set asks=[('c24','C','배송 언제 와요?'),('ig','IG','사이즈 교환되나요?'),('mail','M','영수증 받을 수 있을까요?'),('own','💬','재입고 언제예요?'),('c24','C','주문 취소하고 싶어요'),('ig','IG','세탁기 돌려도 되나요?'),('mail','M','송장번호가 안 보여요'),('own','💬','쿠폰은 어디서 받아요?')] %}
-{% for row in [asks, asks[4:]+asks[:4]] %}<div class="tp-track{{ ' rev' if loop.index==2 }}" aria-hidden="true"><div>{% for _ in range(2) %}{% for cls,mk,q in row %}<span class="tp-q"><span class="tp-mark sm {{ cls }}">{{ mk }}</span>{{ q }}</span>{% endfor %}{% endfor %}</div></div>{% endfor %}
+{% for row in [asks, asks[4:]+asks[:4]] %}<div class="tp-track{{ ' rev' if loop.index==2 }}" aria-hidden="true"><div>{% for _ in range(2) %}{% for cls,mk,q in row %}<span class="tp-q"><img class="tp-ico" src="{{ url_for('static',filename='ch/'+('web' if cls=='own' else cls)+'.svg') }}" alt="" width="28" height="28">{{ q }}</span>{% endfor %}{% endfor %}</div></div>{% endfor %}
 </section>
 
 <section class="tp-shot"><div class="wrap"><div class="tp-frame tp-grow" id="tpGrow"><div class="tp-bar"><i></i><i></i><i></i><span>biz.soboru.co.kr</span></div>{{ video('hero','tp-media') }}</div></div></section>
@@ -31,7 +31,7 @@
 <p class="tp-sub rv-up">채널마다 따로 들어가 확인하지 않아도 돼요. 들어온 곳은 아이콘으로 구분해 보여 드려요.</p>
 <div class="tp-ch">
 {% for mark,cls,name,desc in [('C','c24','카페24 게시판','상품 Q&A·1:1 맞춤상담 글을 자동으로 가져오고 답글도 소보루에서 달아요'),('💬','own','자사몰 상담창','스크립트 한 줄이면 쇼핑몰 오른쪽 아래에 문의 버튼이 생겨요'),('IG','ig','인스타그램 DM','비즈니스 계정을 이으면 DM이 그대로 상담으로 들어와요'),('M','mail','메일','고객센터 메일함을 이으면 받은 메일에 바로 답장해요')] %}
-<div class="tp-card rv-up"><span class="tp-mark {{ cls }}">{{ mark }}</span><b>{{ name }}</b><p>{{ desc }}</p></div>
+<div class="tp-card rv-up"><img class="tp-ico big" src="{{ url_for('static',filename='ch/tile/'+('web' if cls=='own' else cls)+'.svg') }}" alt="" width="48" height="48"><b>{{ name }}</b><p>{{ desc }}</p></div>
 {% endfor %}</div>
 </div></section>
 
@@ -40,7 +40,7 @@
 <p>주문번호로 송장을 찾아 배송 상황을 알려 주고, 상품 정보와 배송·반품 정책을 읽고 답해요. 교환·반품도 방법과 절차까지 먼저 안내해요.</p>
 <ul class="tp-list"><li>{{ i.tf('truck',22) }}배송 조회는 주문을 찾아 바로 답해요</li><li>{{ i.tf('memo',22) }}상품·사이즈·사용법은 넣어 둔 정보로만 답해요</li><li>{{ i.tf('clock',22) }}밤이나 주말에 온 문의도 기다리지 않게</li></ul></div>
 <div class="tp-chat" id="tpChat" aria-hidden="true">
-<div class="tp-chathead"><span class="tp-mark c24 sm">C</span><b>상품 Q&amp;A</b><small>카페24</small></div>
+<div class="tp-chathead"><img class="tp-ico" src="{{ url_for('static',filename='ch/c24.svg') }}" alt="" width="28" height="28"><b>상품 Q&amp;A</b><small>카페24</small></div>
 <div class="bub me">어제 주문했는데 언제 받을 수 있나요? 주문번호 20261020-0000123이에요</div>
 <div class="bub typing"><i></i><i></i><i></i></div>
 <div class="bub ai"><span class="who">AI 답변</span>주문하신 린넨 셔츠는 오늘 오전 CJ대한통운으로 출고됐어요. 내일 도착 예정이고, 송장번호는 마이페이지 &gt; 주문 내역에서 확인하실 수 있어요.</div>

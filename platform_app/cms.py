@@ -133,13 +133,14 @@ def can_publish(p):
     if not p['body'].strip():return '본문이 비어 있어요'
     return ''
 
+PAUSED={('help','smartstore'),('help','coupang')}  # 운영자 결정 2026-10-21: 처음엔 카페24·자사몰만. 글은 지우지 않고 공개 화면에서만 숨긴다
 def published(db,kind,category=None):
     sql='SELECT * FROM posts WHERE kind=? AND published=1';a=[kind]
     if category:sql+=' AND category=?';a.append(category)
-    return db.execute(sql+' ORDER BY sort,published_at DESC,id DESC',a).fetchall()
+    return [r for r in db.execute(sql+' ORDER BY sort,published_at DESC,id DESC',a).fetchall() if (kind,r['slug']) not in PAUSED]
 def get(db,kind,slug):
     p=db.execute('SELECT * FROM posts WHERE kind=? AND slug=?',(kind,slug)).fetchone()
-    if not p or (not p['published'] and not session.get('ops')):abort(404)
+    if not p or ((not p['published'] or (kind,slug) in PAUSED) and not session.get('ops')):abort(404)
     return p
 
 # ---------- 공개 화면 ----------
@@ -203,6 +204,7 @@ def sitemap_entries():
     out=[('/blog',''),('/help',''),('/customers','')]
     with conn() as db:
         for p in db.execute('SELECT kind,slug,updated FROM posts WHERE published=1').fetchall():
+            if (p['kind'],p['slug']) in PAUSED:continue
             out.append(({'blog':'/blog/','help':'/help/','story':'/customers/'}[p['kind']]+p['slug'],p['updated'][:10]))
     return out
 
