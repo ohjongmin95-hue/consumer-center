@@ -12,36 +12,53 @@ import { Tf, TfName } from './Tf';
 
 // 웹 머리글과 같은 줄: 왼쪽 소보루 CS 로고, 오른쪽 알림 종(안 읽은 수)과 회사 이름
 export function TopBar() {
-  const { session } = useAuth();
+  const { session, logout } = useAuth();
   const name = session?.company.name ?? '';
   const unread = useAlerts();
+  // 둘러보기 중이면 가입하기: 견본 상점에서 나와 가입 신청 화면으로
+  const join = async () => {
+    await logout();
+    router.replace('/login');
+    router.push('/signup');
+  };
   // 홈을 거치지 않고 다른 탭부터 열었으면 승인 탭 숫자를 한 번 받아 온다
   useEffect(() => {
     if (session && !pendingKnown()) api.cases(session.token, 'pending').then((r) => setPending(r.cases.length), () => {});
   }, [session]);
   return (
-    <View style={s.top}>
-      <Pressable onPress={() => router.navigate('/')} style={s.logo} hitSlop={6}>
-        <Image source={require('../../assets/soboru-char.png')} style={{ width: 34, height: 26 }} resizeMode="contain" />
-        <Text style={s.logoText}>소보루 CS</Text>
-      </Pressable>
-      <Pressable onPress={() => router.push('/alerts')} style={({ pressed }) => [s.bell, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]} hitSlop={6} accessibilityLabel={`알림 ${unread}건 안 읽음`}>
-        <Icon name="bell" size={26} />
-        {unread ? (
-          <View style={s.bellCnt}>
-            <Text style={s.bellCntText}>{unread > 99 ? '99+' : unread}</Text>
-          </View>
-        ) : null}
-      </Pressable>
-      <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, pressed && { opacity: 0.7 }]}>
-        <View style={s.coDot}>
-          <Text style={s.coDotText}>{name.slice(0, 1)}</Text>
+    <>
+      {session?.guest ? (
+        <View style={s.guest}>
+          <Text style={s.guestText}>둘러보기 중이에요</Text>
+          <Text style={s.guestDot}>·</Text>
+          <Pressable onPress={join} hitSlop={8} accessibilityRole="button">
+            <Text style={s.guestJoin}>가입하기</Text>
+          </Pressable>
         </View>
-        <Text style={s.coName} numberOfLines={1}>
-          {name}
-        </Text>
-      </Pressable>
-    </View>
+      ) : null}
+      <View style={s.top}>
+        <Pressable onPress={() => router.navigate('/')} style={s.logo} hitSlop={6}>
+          <Image source={require('../../assets/soboru-char.png')} style={{ width: 34, height: 26 }} resizeMode="contain" />
+          <Text style={s.logoText}>소보루 CS</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/alerts')} style={({ pressed }) => [s.bell, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]} hitSlop={6} accessibilityLabel={`알림 ${unread}건 안 읽음`}>
+          <Icon name="bell" size={26} />
+          {unread ? (
+            <View style={s.bellCnt}>
+              <Text style={s.bellCntText}>{unread > 99 ? '99+' : unread}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+        <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, pressed && { opacity: 0.7 }]}>
+          <View style={s.coDot}>
+            <Text style={s.coDotText}>{name.slice(0, 1)}</Text>
+          </View>
+          <Text style={s.coName} numberOfLines={1}>
+            {name}
+          </Text>
+        </Pressable>
+      </View>
+    </>
   );
 }
 
@@ -272,6 +289,10 @@ export function Loading() {
 }
 
 export const s = StyleSheet.create({
+  guest: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 7, backgroundColor: C.accentSoft },
+  guestText: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.accentInk },
+  guestDot: { fontFamily: FONT, fontSize: 13, color: C.accentInk },
+  guestJoin: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.accentInk, textDecorationLine: 'underline' },
   top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
   logo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   logoText: { fontFamily: FONT, fontSize: 19, fontWeight: '800', color: C.brand, letterSpacing: -0.6 },
