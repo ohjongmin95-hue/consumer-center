@@ -1351,6 +1351,39 @@ class PlatformTest(unittest.TestCase):
         self.assertNotIn('데모 화면',home);self.assertNotIn('주문한 지 5일째',home)
         self.assertEqual(b.get(f'/biz/case/{ids[0]}').status_code,404)
 
+    def test_app_guest_demo(self):
+        """로그인 없이 둘러보기: 견본 상점 토큰으로 읽기·연습은 되고, AI·설정·탈퇴·알림 등록은 403. 하루 지난 둘러보기만 지운다."""
+        a=self.client();j=a.post('/biz/api/v1/demo').get_json()
+        self.assertTrue(j['guest']);self.assertTrue(j['company']['guest']);self.assertIn('둘러보기',j['company']['name'])
+        auth={'Authorization':'Bearer '+j['token']};gid=j['company']['id']
+        h=a.get('/biz/api/v1/home',headers=auth).get_json();self.assertTrue(h['guest']);self.assertGreaterEqual(h['counts']['all'],8)
+        cs=a.get('/biz/api/v1/cases',headers=auth).get_json()['cases'];self.assertGreaterEqual(len(cs),8)
+        self.assertEqual(a.get('/biz/api/v1/chat',headers=auth).status_code,200)
+        self.assertEqual(sys.modules['business'].CH_MARK['인스타그램 DM'][1],'ig')  # 인스타그램 DM 문의는 인스타그램 아이콘 (상담창 아이콘이 아니라)
+        cid=cs[0]['id'];self.assertEqual(a.get(f'/biz/api/v1/cases/{cid}',headers=auth).status_code,200)
+        for path,body in ((f'/biz/api/v1/cases/{cid}/draft',{}),('/biz/api/v1/settings',{'act':'info'}),('/biz/api/v1/new',{}),('/biz/api/v1/leave',{'password':''}),('/biz/api/v1/push',{'push_token':'ExponentPushToken[g]'})):
+            r=a.post(path,headers=auth,json=body);self.assertEqual(r.status_code,403,path);self.assertIn('둘러보기',r.get_json()['error'])
+        self.assertEqual(a.get('/biz/api/v1/settings',headers=auth).status_code,200)
+        # 견본 요청에 답해 보기: 기록만 되고 메일·알림은 나가지 않는다
+        sent=[]
+        with patch.object(self.core,'send_mail',lambda to,sub,body:sent.append(to)):
+            self.assertEqual(a.post(f'/biz/api/v1/chat/{cid}',headers=auth,json={'text':'확인해 볼게요'}).status_code,200)
+        self.assertEqual([x for x in sent if x],[])
+        # 진짜 회사와 그 데모는 그대로, 하루 지난 둘러보기만 지운다
+        b,o,real=self.signup_and_approve('둘러보기옆상점','guestside@example.com')
+        demo=sys.modules['demo']
+        with self.core.conn() as db:
+            rd=demo.create(db,self.core.company(db,real))
+            old=self.core.iso(self.core.now()-__import__('datetime').timedelta(hours=30))
+            db.execute('UPDATE companies SET created=? WHERE id IN (?,?,?)',(old,gid,rd['id'],real))
+            self.assertEqual(demo.sweep_guests(db),1)
+            self.assertIsNone(self.core.company(db,gid));self.assertEqual(db.execute('SELECT COUNT(*) FROM cases WHERE company_id=?',(gid,)).fetchone()[0],0)
+            self.assertEqual(self.core.company(db,rd['id'])['status'],'demo');self.assertEqual(self.core.company(db,real)['status'],'active')
+        self.assertEqual(a.get('/biz/api/v1/home',headers=auth).status_code,401)
+        # 진짜 회사의 데모 작업 공간은 앱 토큰으로 열리지 않는다 (예전과 같다)
+        with self.core.conn() as db:rd=self.core.company(db,rd['id'])
+        self.assertEqual(a.get('/biz/api/v1/home',headers={'Authorization':'Bearer '+sys.modules['business'].co_token(rd)}).status_code,401)
+
     def test_google_signup_login(self):
         """구글로 가입·로그인 (모의 응답). 키가 없으면 버튼이 없고 이메일 가입으로 안내."""
         ob=sys.modules['onboard']
