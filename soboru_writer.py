@@ -88,6 +88,10 @@ KINDS = {
     'shopcat': dict(name='쇼핑 분야 깊이 보기', needs=('naver',), category='쇼핑', emoji='🛒', tone='t4', topics=True,
                     about='[주제] 쇼핑 분야 하나의 클릭 추이와 성별·연령·기기별 비중, 다른 분야와 견준 순위를 깊이 분석하고, 그 분야를 살 때 소비자가 챙길 점을 알려 준다.'),
     # 기획 기사 (운영자 요청 2026-10-20): 뉴스·통계·법령을 엮은 잡지 기사. 주제는 최근 뉴스에서 AI가 고른 '야마'
+    # 숫자로 보는 생활비 (운영자 요청 2026-10-21): 통계청 품목별 물가에서 1년 새 크게 움직인 품목 하나를 골라 뉴스·법·통계로 풀어 씀
+    'stat': dict(name='숫자로 보는 생활비', needs=('kosis',), category='생활', emoji='🧾', tone='t3', topics=True, long=True,
+                 about='[주제] 품목의 물가가 1년 새 얼마나 움직였는지 통계청 자료로 보여 주고, 왜 그런지(자료의 뉴스·통계로 알 수 있는 만큼만), '
+                       '내 지갑에 어떤 뜻인지, 아끼거나 피해를 막으려면 무엇을 하면 되는지를 이야기처럼 풀어 쓴다. 달별 지수는 흐름(오르다 내렸다)으로 풀어 쓴다.'),
     'feature': dict(name='소보루 기획 기사', needs=('naver',), category='생활', emoji='📌', tone='t1', topics=True, long=True,
                     about='[주제]를 소비자 잡지의 기획 기사로 깊이 쓴다. 최근 뉴스(무슨 일이 있었는지), 검색 추이 같은 통계(얼마나 관심이 몰리는지), '
                           '법 조문(소비자에게 어떤 권리가 있는지)을 엮어 하나의 이야기로 쓰고, 그래서 소비자는 무엇을 하면 되는지로 마무리한다. '
@@ -95,7 +99,7 @@ KINDS = {
 }
 ORDER = ['trend', 'reports', 'news', 'shopping', 'law']  # 하루 한 번씩 쓰는 종류 (돌아가며 시작하는 순서)
 PAUSED = {'reports'}  # 운영자 요청 2026-10-18: 제보로 쓰는 글은 아직 쓰지 않음 (매일·관리자 버튼 모두). 다시 쓰려면 여기서 뺌
-EXTRA = ['feature', 'rights', 'word', 'feature', 'shopcat']  # ORDER를 한 바퀴 돈 뒤 몫이 남으면 돌아가며 채우는 주제별 글 (기획 기사를 더 자주)
+EXTRA = ['feature', 'stat', 'rights', 'word', 'feature', 'stat', 'shopcat']  # ORDER를 한 바퀴 돈 뒤 몫이 남으면 돌아가며 채우는 주제별 글 (기획 기사를 더 자주)
 
 SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 소비자에게 쓸모 있는 분석 기사를 쓴다.\n'
           '지켜야 할 것:\n'
@@ -113,7 +117,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉�
           '- 출처·링크·주소는 본문에 쓰지 않는다(화면에서 따로 붙인다). HTML·마크다운 기호는 쓰지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"title": 40자 안팎 제목, "summary": [세 줄 요약, 문자열 3개], '
           '"highlight": 글 전체에서 가장 중요한 한 문장(자료의 사실·숫자로만), '
-          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 3~4개]}] 5~6개, '
+          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 3~5개]}] 6~7개, '
           '"tips": ["이렇게 하세요"에 넣을 행동 요령 2~4개], "category": 분야 목록 중 하나}\n'
           '심층 분석 기사다: 숫자를 나열만 하지 말고 무엇이 눈에 띄는지, 소비자에게 어떤 뜻인지를 문단마다 풀어 쓴다(자료 안에서만).\n'
           '쓸 수 있는 이모지: ' + EMOJI)
@@ -224,11 +228,11 @@ def assemble(out, kind):
     if isinstance(summary, str): summary = [x for x in re.split(r'\n+', summary)]
     summary = [_plain(x, 130) for x in summary if _plain(x)][:3]
     parts = []
-    for sec in (out.get('sections') or [])[:7]:
+    for sec in (out.get('sections') or [])[:8]:
         if not isinstance(sec, dict): continue
         paras = sec.get('paragraphs') or []
         if isinstance(paras, str): paras = re.split(r'\n\s*\n|\n', paras)
-        paras = [_plain(p) for p in paras if _plain(p)][:5]
+        paras = [_plain(p) for p in paras if _plain(p)][:6]
         if not paras: continue
         head = _plain(sec.get('heading'), 60)
         emo = str(sec.get('emoji') or '').strip().replace('\ufe0f', '')
@@ -382,19 +386,47 @@ def kosis_rows(rows, words, n=24):
     return out
 
 
-def kosis_cpi(words):
-    """품목별 소비자물가지수: 낱말이 든 품목 + 총지수, 최근 달과 1년 전 같은 달 견준 상승률(%)"""
-    rows = kosis_get('Param/statisticsParameterData.do', orgId=CPI_TABLE[0], tblId=CPI_TABLE[1], itmId='ALL', objL1='ALL', prdSe='M', newEstPrdCnt='13')
+def cpi_series():
+    """품목별 소비자물가지수 최근 13달 {품목: [(YYYYMM, 지수)]} (전국, 지수 항목만, 같은 달 두 번이면 앞의 것).
+    이 표는 첫 분류가 지역(전국·시도), 둘째가 품목이라: 전국 코드를 먼저 찾고 그 아래 품목 전부를 받음."""
+    q = dict(orgId=CPI_TABLE[0], tblId=CPI_TABLE[1], itmId='ALL', prdSe='M')
+    rows = kosis_get('Param/statisticsParameterData.do', objL1='ALL', newEstPrdCnt='13', **q)
+    nat = next((r.get('C1') for r in rows if r.get('C1_NM') == '전국' and r.get('C1')), None)
+    if nat:
+        try: rows = kosis_get('Param/statisticsParameterData.do', objL1=nat, objL2='ALL', newEstPrdCnt='13', **q) or rows
+        except RuntimeError: pass  # 둘째 분류가 없는 표면 처음 받은 것 그대로
     by = {}
     for r in rows:
-        try: by.setdefault(r.get('C1_NM', ''), []).append((str(r.get('PRD_DE', '')), float(r.get('DT'))))
+        if r.get('ITM_NM') and '지수' not in str(r.get('ITM_NM')): continue  # 전년동월비 같은 다른 항목이 섞여 오면 지수만
+        name = r.get('C2_NM') or r.get('C1_NM', '')
+        try: by.setdefault(name, {}).setdefault(str(r.get('PRD_DE', '')), float(r.get('DT')))
         except (TypeError, ValueError): continue
+    return {n: sorted(d.items()) for n, d in by.items() if n}
+
+
+def yoy(pts):
+    return round((pts[-1][1] - pts[-13][1]) / pts[-13][1] * 100, 1) if len(pts) >= 13 and pts[-13][1] else None
+
+
+def cpi_movers(n=30):
+    """1년 전보다 가장 많이 오르거나 내린 품목 [(품목, 상승률%)] (총지수·큰 묶음 빼고)"""
+    out = []
+    for name, pts in cpi_series().items():
+        if not name or name == '총지수' or name.endswith(('부문', '지수')): continue
+        y = yoy(pts)
+        if y is not None: out.append((name, y))
+    return sorted(out, key=lambda x: -abs(x[1]))[:n]
+
+
+def kosis_cpi(words):
+    """품목별 소비자물가지수: 낱말이 든 품목 + 총지수, 최근 달과 1년 전 같은 달 견준 상승률(%)"""
+    by = cpi_series()
     pick = [n for n in by if n == '총지수'] + [n for n in by if n != '총지수' and any(w and (w in n or (len(n) >= 2 and n in w)) for w in words)][:6]
     out = []
     for n in pick:
-        pts = sorted(by[n]); prd, v = pts[-1]
+        pts = by[n]; prd, v = pts[-1]
         row = {'품목': n, '기준 달': f'{prd[:4]}년 {int(prd[4:6])}월', '지수(2020=100)': v}
-        if len(pts) >= 13 and pts[-13][1]: row['1년 전 같은 달보다(%)'] = round((v - pts[-13][1]) / pts[-13][1] * 100, 1)
+        if yoy(pts) is not None: row['1년 전 같은 달보다(%)'] = yoy(pts)
         if len(pts) >= 2 and pts[-2][1]: row['전달보다(%)'] = round((v - pts[-2][1]) / pts[-2][1] * 100, 1)
         out.append(row)
     return out if len(out) > 1 else []
@@ -784,9 +816,26 @@ def install(S):
             sources += [src(f"국가법령정보센터 · {h['label']}", h['source']) for h in hits]
         return {'facts': facts, 'sources': sources, 'topic': topic, 'category': idea['category']}
 
+    def collect_stat(topic):
+        by = cpi_series(); pts = by.get(topic)
+        if not pts or yoy(pts) is None: raise Skip(f'"{topic}" 물가 자료가 모자라요')
+        month = lambda p: f'{p[:4]}년 {int(p[4:6])}월'
+        cat = next((c for c, ws in CAT_CPI.items() if any(w in topic or topic in w for w in ws)), '생활')
+        total = by.get('총지수')
+        facts = {'자료': '통계청 소비자물가조사 (품목별 소비자물가지수, 2020=100)', '주제': topic, '기준 달': month(pts[-1][0]),
+                 '1년 전 같은 달보다(%)': yoy(pts), '전달보다(%)': round((pts[-1][1] - pts[-2][1]) / pts[-2][1] * 100, 1) if pts[-2][1] else None,
+                 '달별 지수': [[month(p), v] for p, v in pts]}
+        if total and yoy(total) is not None: facts['전체 물가(총지수) 1년 상승률(%)'] = yoy(total)
+        try: facts['1년 새 많이 움직인 다른 품목(%)'] = [{'품목': n, '1년 상승률(%)': y} for n, y in cpi_movers(8) if n != topic][:6]
+        except RuntimeError: pass
+        return {'facts': facts, 'sources': [src('통계청 소비자물가조사 (KOSIS)', 'https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1J22003')], 'topic': topic, 'category': cat}
+
     def topic_list(kind):
         import naverhub
         if kind == 'feature': return [i['topic'] for i in feature_pool(datetime.date.today().isoformat())]
+        if kind == 'stat':
+            try: return [n for n, _ in cpi_movers()]
+            except RuntimeError: return []
         return {'rights': RIGHTS_TOPICS, 'word': list(WORD_TOPICS), 'shopcat': [n for _, n in naverhub.SHOP_CATS]}[kind]
 
     def pick_topic(kind, day, avoid=()):
@@ -806,7 +855,7 @@ def install(S):
         return min(free, key=lambda t: last.get(t, '')) if free else None
 
     COLLECT = {'trend': collect_trend, 'shopping': collect_shopping, 'news': collect_news, 'reports': collect_reports, 'law': collect_law,
-               'rights': collect_rights, 'word': collect_word, 'shopcat': collect_shopcat, 'feature': collect_feature}
+               'rights': collect_rights, 'word': collect_word, 'shopcat': collect_shopcat, 'feature': collect_feature, 'stat': collect_stat}
 
     def collect(kind, topic=None):
         ok, why = kind_ready(kind)
@@ -850,14 +899,14 @@ def install(S):
     # ---- AI로 쓰기 · 저장 -------------------------------------------------------
     def ask_ai(kind, facts, topic=None):
         k = KINDS[kind]
-        # 모든 글을 뉴닉처럼 읽을거리 있는 종합 기사로 (운영자 요청 2026-10-21)
-        long = ("[분량] 잡지 기획 기사다. 소제목 5~6개, 소제목마다 문단 3~4개로 넉넉히 쓴다. 뉴스(무슨 일)·통계(얼마나)·법 조문(어떤 권리)을 "
-                "한 이야기로 엮고, 마지막 소제목은 소비자가 할 일로 마무리한다.\n") if k.get('long') else (
-               "[분량] 종합 기사다. 소제목 5개 안팎, 소제목마다 문단 3개 안팎으로 읽을거리 있게 쓴다. 통계를 다루더라도 숫자만 늘어놓지 말고, "
-               "자료에 있는 뉴스(무슨 일)·법 조문(어떤 권리)을 엮어 '왜 이런 숫자가 나왔는지, 나에게 무슨 뜻인지'를 이야기처럼 풀고, 마지막은 소비자가 할 일로 마무리한다.\n")
+        # 모든 글을 뉴닉처럼 읽을거리 있는 긴 종합 기사로 (운영자 요청 2026-10-21: 분량이 너무 작아)
+        long = ("[분량·구성] 뉴닉처럼 읽는 맛이 있는 긴 종합 기사다. 본문은 4000자 안팎으로 넉넉히 쓴다. 소제목 6~7개, 소제목마다 문단 3~5개. "
+                "첫 소제목은 독자에게 말 걸듯 '요즘 이런 일이 있었어요'로 시작해 왜 읽어야 하는지 알려 준다. 소제목은 '그래서 얼마나 올랐냐면', '왜 이런 거예요?', "
+                "'내 지갑엔 무슨 뜻일까', '법은 어떻게 돼 있어요?'처럼 독자가 궁금해할 질문·말투로 쓴다. 뉴스(무슨 일)·통계(얼마나)·법 조문(어떤 권리)을 한 이야기로 엮고, "
+                "통계는 숫자만 늘어놓지 말고 '이게 무슨 뜻이냐면'으로 풀어 준다. 어려운 말은 바로 뒤에 쉬운 말로 풀고, 마지막 소제목은 소비자가 당장 할 일로 마무리한다.\n")
         user = (f"[글 종류] {k['name']}: {k['about']}\n" + (f"[주제] {topic}\n" if topic else '') + long + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
-        return chat(SYSTEM, user, 6000, AI_TIMEOUT * 2)
+        return chat(SYSTEM, user, 9000, AI_TIMEOUT * 3)
 
     def save_check(db, article_id, title, summary, body, facts):
         problems = check_text('\n'.join([title, summary, body]), facts)
