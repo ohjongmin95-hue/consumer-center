@@ -1,7 +1,7 @@
 /* 토스페이스 이모지 (© Viva Republica, https://toss.im/tossface/copyright). 쓰는 이모지만 남긴 파일이라 가볍고, 이모지가 화면에 있을 때만 받음. */
 @font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F370,U+1F371,U+1F373,U+1F381,U+1F389,U+1F393,U+1F3AE,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F431,U+1F436,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F45F,U+1F48A,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
 /* 소보루 브랜드 (뉴닉식 화면). 관리자 설정 '브랜드'가 소보루일 때만 style.css 뒤에 붙음. */
-.sb{font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;--sb-ink:#1d1d1f;--sb-sub:#6b6f76;--sb-mute:#9a9ea5;--sb-line:#ececec;--sb-soft:#f5f5f4;--sb-orange:#ef7300;--sb-orange-soft:#fff1e3;--sb-brown:#652D1C;--sb-gray:#f2f4f6;--sb-gray-ink:#4e5968;--sb-ease:cubic-bezier(.2,.8,.2,1);background:#fff;color:var(--sb-ink);word-break:keep-all;-webkit-font-smoothing:antialiased}
+.sb{font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;--sb-ink:#1d1d1f;--sb-sub:#6b6f76;--sb-mute:#9a9ea5;--sb-line:#ececec;--sb-soft:#f5f5f4;--sb-orange:#ef920e;--sb-orange-soft:#fff4e0;--orange:#ef920e;--sb-brown:#652D1C;--sb-gray:#f2f4f6;--sb-gray-ink:#4e5968;--sb-ease:cubic-bezier(.2,.8,.2,1);background:#fff;color:var(--sb-ink);word-break:keep-all;-webkit-font-smoothing:antialiased}
 .sb main.sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;min-height:auto}
 .sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px}
 .sb-preview{background:#1d1d1f;color:#fff;text-align:center;font-size:13px;padding:8px 16px}
@@ -1108,7 +1108,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 @media(max-width:680px){.sb .title-cell.has-emo{padding-left:54px}.sb .sbr-emo{width:40px;height:40px;font-size:20px;border-radius:12px}.sb .gd-ic.gd-emo{font-size:30px;border-radius:20px}}
 
 /* 첫 화면: 뉴닉식 귤색 바탕 카드, 흰 글자, 갈색 제보하기 버튼, 오른쪽에 캐릭터와 말풍선 */
-.nn-intro{background:#ff6f00;border-radius:32px;padding:64px 64px 64px 72px;color:#fff;overflow:hidden}
+.nn-intro{background:var(--sb-orange);border-radius:32px;padding:64px 64px 64px 72px;color:#fff;overflow:hidden}
 .nn-intro .nn-intro-kicker{color:#fff;font-weight:800}.nn-intro .nn-intro-kicker b{color:#2b1206}
 .nn-intro .nn-intro-name{color:#fff;font-weight:900;text-shadow:0 2px 0 rgba(120,50,0,.18)}
 .nn-intro .nn-intro-sub{color:#fff;font-weight:700;text-shadow:0 1px 0 rgba(120,50,0,.15)}
@@ -1218,7 +1218,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .cp-home{margin:0 0 24px}
 /* 안내 화면 /pick/<주소> */
 .sb main.cp{max-width:1080px}
-.cp-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:center;gap:24px;background:#ff6f00;border-radius:32px;padding:52px 56px 0 60px;color:#fff;overflow:hidden}
+.cp-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:center;gap:24px;background:var(--sb-orange);border-radius:32px;padding:52px 56px 0 60px;color:#fff;overflow:hidden}
 .cp-hero-copy{padding-bottom:52px}
 .cp-hero .cp-eyebrow{color:#2b1206}
 .cp-hero h1{margin:10px 0 0;font-size:38px;font-weight:900;letter-spacing:-.045em;line-height:1.3;text-shadow:0 2px 0 rgba(120,50,0,.15);overflow-wrap:anywhere}
