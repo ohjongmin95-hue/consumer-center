@@ -162,7 +162,7 @@ class PlatformTest(unittest.TestCase):
         pr=c.get('/biz/pricing');self.assertEqual(pr.status_code,200);ph=pr.get_data(as_text=True)  # 공개 요금 안내 (요금제를 정하면 금액이 보인다)
         self.assertIn('정기결제',ph);self.assertIn('/biz/refund',ph);self.assertIn('/biz/pricing',c.get('/biz/').get_data(as_text=True))
         with self.core.conn() as db:db.execute("INSERT OR REPLACE INTO settings(key,value,updated) VALUES('billing_plan','{\"name\":\"베이직\",\"price\":29000}','x')")
-        try:self.assertIn('월 29,000원',c.get('/biz/pricing').get_data(as_text=True))
+        try:self.assertIn('한 달 29,000원',c.get('/biz/pricing').get_data(as_text=True))
         finally:
             with self.core.conn() as db:db.execute("DELETE FROM settings WHERE key='billing_plan'")
         self.assertIn('/pricing</loc>',c.get('/biz/sitemap.xml').get_data(as_text=True));self.assertIn('요금 안내',t.get_data(as_text=True))
