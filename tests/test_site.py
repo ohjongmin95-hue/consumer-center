@@ -77,6 +77,76 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('noindex', self.client.get('/reports').get_data(as_text=True))
         self.assertIn('noindex,follow', self.client.get('/reports?q=환불').get_data(as_text=True))
 
+    def test_company_grade_and_summary(self):
+        # 소보루 등급: 답변 50 + 해결 30 + 속도 20, 전달하고 14일이 안 된 제보는 빼고, 14일 넘게 답이 없으면 '답변 없음'
+        import datetime, jebo
+        self.assertEqual([jebo.grade_of(s) for s in (100, 97, 96, 90, 80, 60, 59, 0)], ['A+', 'A+', 'A', 'A-', 'B-', 'D-', 'F', 'F'])
+        today = datetime.date.today()
+        ago = lambda d, h=0: (datetime.datetime.combine(today, datetime.time(9)) - datetime.timedelta(days=d, hours=-h)).isoformat(timespec='seconds')
+        self.assertTrue(jebo.no_answer({'forwarded_at': ago(15)}, False))
+        self.assertFalse(jebo.no_answer({'forwarded_at': ago(15)}, True))
+        self.assertFalse(jebo.no_answer({'forwarded_at': ago(3)}, False))
+        self.assertFalse(jebo.no_answer({'forwarded_at': ''}, False))
+        with self.site.conn() as db:
+            co = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES('등급몰','1','active','','','','x')").lastrowid
+            def case(n, answer_h=None, outcome='', fw=30):
+                cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,company_id,subject,description,request_text,created,forwarded_at,reviewed_at,status,outcome,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,1,1)",
+                                 (f'GR-{n}', 'x', '배송·환불', '등급몰', co, f'제보 {n}', '환불이 안 돼요', '환불', ago(fw + 1), ago(fw), ago(fw), '기업 전달', outcome)).lastrowid
+                if answer_h is not None:
+                    db.execute("INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)", (cid, '기업 답변', '확인할게요', ago(fw, answer_h)))
+            for i in range(4): case(i, 10, 'resolved')
+            gr = jebo.company_grade(db, co)
+            self.assertEqual(gr['grade'], '')  # 4건이면 아직 등급 없음
+            case(4, 30)
+            case(5, None, fw=3)  # 전달 3일째: 기다리는 중, 점수에 안 들어감
+            gr = jebo.company_grade(db, co)
+            self.assertEqual((gr['scored'], gr['answered'], gr['silent'], gr['told'], gr['resolved']), (5, 5, 0, 4, 4))
+            self.assertEqual((gr['score'], gr['grade']), (50 + 15 + 20, 'B'))  # 해결을 알려 준 사람이 5명 미만이면 해결 점수는 절반
+            case(6, None, fw=20)  # 20일째 답 없음
+            gr = jebo.company_grade(db, co)
+            self.assertEqual(gr['silent'], 1)
+            self.assertEqual(gr['score'], round(50 * 5 / 6) + 15 + 20)
+        page = self.client.get(f'/companies/{co}').get_data(as_text=True)
+        self.assertIn('co-grade g-', page)
+        self.assertIn('1건은 전달하고 14일이 넘도록 답이 없어요', page)
+        self.assertIn('해결됐어요', page)
+        self.assertIn('>답변 없음<', page)
+        guide = self.client.get('/companies/grade').get_data(as_text=True)
+        self.assertIn('60점 미만', guide)
+        self.assertNotIn('060점', guide)
+        self.assertIn('/companies/grade', self.client.get('/companies').get_data(as_text=True))
+
+    def test_scam_watch(self):
+        # 사기 주의: 회원만 신고, 운영자가 '공개'로 바꾸기 전에는 어디에도 안 보임, 번호는 일부만 보이고 검색은 전체 번호로
+        import scamwatch
+        self.assertEqual(scamwatch.mask_target('phone', '010-2389-4471'), '010-23**-**71')
+        self.assertEqual(scamwatch.mask_target('account', '신한 110-123-456789'), '신한 110*******89')
+        self.assertEqual(scamwatch.norm_target('site', 'https://www.Abc-Shop.kr/item?id=1'), 'abc-shop.kr')
+        self.assertEqual(scamwatch.guess_norm('010 2389 4471'), ['01023894471'])
+        with self.site.conn() as db: db.execute('DELETE FROM scam_reports')
+        self.assertEqual(self.client.get('/scam').status_code, 200)
+        self.assertIn('/login', self.client.get('/scam/new').headers['Location'])
+        member = self.site.app.test_client()
+        self.signup(member)
+        data = {'kind': 'used', 'title': '중고 카메라 선입금 사기', 'story': '직거래는 안 되고 선입금만 된다고 했어요. 입금하니 연락이 끊겼어요.',
+                'target_type': 'phone', 'target': '010-2389-4471', 'region': '서울', 'amount': '320,000', 'truth': '1'}
+        self.assertEqual(self.post_form(member, '/scam/new', {**data, 'truth': ''}).status_code, 400)
+        self.assertEqual(self.post_form(member, '/scam/new', data).status_code, 302)
+        hidden = self.client.get('/scam?q=010-2389-4471').get_data(as_text=True)
+        self.assertNotIn('중고 카메라 선입금 사기', hidden)
+        self.assertIn('아직 공개된 신고는 없어요', hidden)
+        admin = self.login_admin()
+        self.assertIn('중고 카메라 선입금 사기', admin.get('/admin/scam').get_data(as_text=True))
+        with self.site.conn() as db: sid = db.execute('SELECT id FROM scam_reports').fetchone()[0]
+        token = self.csrf(admin, '/admin/scam')
+        admin.post('/admin/scam', data={'_csrf': token, 'id': sid, 'status': 'public', 'admin_note': ''})
+        found = self.client.get('/scam?q=01023894471').get_data(as_text=True)
+        self.assertIn('사기 신고가 1건 있어요', found)
+        self.assertIn('010-23**-**71', found)
+        self.assertNotIn('010-2389-4471', found)
+        self.assertIn('32만 원', found)
+        self.assertIn('사기 주의', self.client.get('/').get_data(as_text=True))
+
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
