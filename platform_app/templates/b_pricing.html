@@ -1,39 +1,35 @@
-{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}
 {% block title %}요금 안내 · {{ BNAME }}{% endblock %}
 {% block description %}{{ BNAME }} 요금제와 월 요금, 정기결제·해지·환불 방법을 안내합니다.{% endblock %}
 {% block bar %}{{ b.bar('pricing') }}{% endblock %}
-{% block main %}<main class="intro">
-<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">요금 안내</span><h1>{{ BNAME }} 요금</h1><p>쇼핑몰·판매자를 위한 고객 응대(CS) 도구 · 한 달 단위 정기결제(구독)</p></div></div></section>
-<section class="doc-sec"><div class="wrap mk-one"><div class="panel privacy terms doc">
-<section><h2>{{ '무료 체험 %d일'%trial_days if trial_days else '무료 시범' }}</h2>
-{% if trial_days %}<p><b>0원</b> · 가입한 뒤 카드를 등록하면 {{ trial_days }}일 동안 모든 기능을 무료로 써요. 등록할 때는 결제되지 않아요.</p>
-<ul><li>체험이 끝나는 날 첫 달 요금이 결제되고, 그다음부터 매달 같은 날 자동으로 결제돼요.</li>
-<li>체험 중에 해지하면 결제되지 않아요.</li>
-<li>결제가 되지 않으면 결제할 때까지 소보루 CS 기능이 멈춰요. 받은 문의와 설정은 지우지 않아요.</li>
-<li>카페24 앱스토어로 설치하면 카페24에 처음 연결한 날부터 {{ trial_days }}일 무료이고, 그 안에 카페24 결제로 이어서 쓰면 돼요.</li></ul>
-{% else %}<p><b>0원</b> · 가입하면 바로 쓸 수 있어요. 카드를 등록하기 전에는 결제되지 않아요.</p>{% endif %}</section>
+{% block main %}{% set price='{:,}'.format(p.price|int) if p else '' %}<main class="intro">
+<section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">요금 안내</span>
+<h1>{% if p %}요금은 하나,<br>한 달 {{ price }}원{% else %}{{ BNAME }} 요금{% endif %}</h1>
+<p>기능을 나누지 않았어요. 가입하면 모든 기능을 다 써요.</p></div></div></section>
 
-<section><h2>{{ p.name if p else '유료 요금제' }}</h2>
-{% if p %}<p style="font-size:22px;margin:4px 0 8px"><b>월 {{ '{:,}'.format(p.price|int) }}원</b> <span class="sub" style="font-size:15px">(부가세 포함, 매월 자동 결제)</span></p>{% else %}<p>요금을 준비하고 있어요. 정해지면 이 페이지에 금액을 먼저 알려 드려요.</p>{% endif %}
-<ul>
-<li>고객 요청함: 고객 화면, 이메일, 인스타그램 DM, 카페24 게시판 문의를 한곳에서 받아 답변</li>
-<li>AI 상담과 답변 초안: 자주 묻는 질문에 바로 답하고, 처리 방법과 답변 초안을 정리</li>
-<li>자동 처리 규칙과 답변 템플릿, 담당자 배정과 내부 메모</li>
-<li>교환·반품·환불 요청 처리와 답변 기한 안내, 관련 법령·소비자분쟁해결기준 참고 자료</li>
-<li>통계, 팀(직원 계정), 사장님 모바일 앱</li>
-</ul></section>
+<section><div class="wrap mk-one">
+<div class="tp-zero">{% for n,t in [('0원','설치비·가입비'),('0원','직원 계정 추가'),(('%d일'%trial_days) if trial_days else '0원','무료 체험' if trial_days else '약정·위약금')] %}<div><b>{{ n }}</b><span>{{ t }}</span></div>{% endfor %}</div>
+<div class="tp-price">
+<div class="tp-pt"><b>{{ p.name if p else '유료 요금제' }}</b>{% if p %}<span>월 <strong>{{ price }}</strong>원</span><small>부가세 포함 · 매달 자동 정기결제</small>{% else %}<span>요금을 준비하고 있어요</span><small>정해지면 이 페이지에 금액을 먼저 알려 드려요</small>{% endif %}</div>
+<ul class="tp-list">{% for t in ['카페24 게시판·자사몰 상담창·인스타그램 DM·메일 문의를 한 화면에','AI 자동 답변과 답변 초안','자동 처리 규칙, 교환·반품 관리, 통계','직원 계정과 사장님 앱'] %}<li>{{ i.tf('check',20) }}{{ t }}</li>{% endfor %}</ul>
+<a class="btn tp-btn full" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_days if trial_days else '무료로 시작하기' }}</a>
+{% if trial_days %}<small class="tp-note">무료 체험 {{ trial_days }}일 · 카드를 등록해도 체험 중에는 결제되지 않아요</small>{% endif %}
+</div>
+</div></section>
 
-<section><h2>결제와 이용 방법</h2><ul>
-<li>로그인 후 설정 &gt; 요금·결제에서 카드를 등록해요. 처음이면 무료 체험이 끝나는 날, 체험을 이미 쓰셨다면 등록하는 날 첫 달 요금이 결제돼요.</li>
-<li>그다음부터 매달 같은 날 자동으로 결제되고, 다음 결제일까지 쓰실 수 있어요.</li>
-<li>결제는 포트원과 결제대행사(PG)를 통해 신용·체크카드로 처리해요. 카드 번호는 {{ op.name }}에 저장되지 않아요.</li></ul></section>
+<section><div class="wrap mk-one tp-narrow">
+<h2>결제·해지·환불</h2>
+<div class="tp-faq">
+{% set qa=[] %}
+{% if trial_days %}{% set _=qa.append(('무료 체험이 끝나면 어떻게 되나요?','체험이 끝나는 날 첫 달 요금이 결제되고, 그다음부터 매달 같은 날 결제돼요. 체험 중에 해지하면 결제되지 않아요. 카페24 앱스토어로 설치했다면 처음 연결한 날부터 %d일 무료예요.'%trial_days)) %}{% endif %}
+{% set _=qa.append(('결제는 어떻게 하나요?','로그인한 뒤 설정 > 요금·결제에서 카드를 등록해요. 매달 같은 날 자동으로 결제되는 정기결제예요. 결제는 포트원과 결제대행사(PG)가 처리하고, 카드 번호는 '+op.name+'에 저장되지 않아요.')) %}
+{% set _=qa.append(('결제가 안 되면요?','결제할 때까지 '+BNAME+' 기능이 멈춰요. 받은 문의와 설정은 지우지 않으니, 결제하면 그대로 다시 쓸 수 있어요.')) %}
+{% set _=qa.append(('해지는 언제든 되나요?','네. 설정 > 요금·결제에서 언제든 해지할 수 있어요. 남은 기간까지 쓰고, 다음 결제일부터 결제되지 않아요.')) %}
+{% set _=qa.append(('환불은 어떻게 되나요?','결제 후 7일 안에 쓰지 않으셨다면 전액 환불해 드려요. 자세한 기준은 환불 정책에 있어요.')) %}
+{% for q,a in qa %}<details><summary>{{ q }}<span class="chev"></span></summary><p>{{ a }}</p></details>{% endfor %}
+</div>
+<p class="cap tp-links"><a class="link" href="{{ url_for('refund_policy') }}">환불 정책</a> · <a class="link" href="{{ url_for('terms') }}">이용약관</a> · <a class="link" href="{{ site_url('me','/privacy') }}">개인정보 처리방침</a>{% if p %} · <a class="link" href="{{ url_for('pay.page') }}">요금제 결제하기</a>{% endif %}</p>
+</div></section>
 
-<section><h2>해지와 환불</h2><ul>
-<li>설정 &gt; 요금·결제에서 언제든 해지할 수 있어요. 남은 기간까지 쓰고 다음 결제일부터 결제되지 않아요.</li>
-<li>결제 후 7일 안에 쓰지 않으셨다면 전액 환불해 드려요. 자세한 기준은 <a href="{{ url_for('refund_policy') }}">환불 정책</a>을 봐 주세요.</li></ul></section>
-
-<section><h2>시작하기</h2>
-<p><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a>{% if p %} <a class="btn gray" href="{{ url_for('pay.page') }}">요금제 결제하기</a>{% endif %}</p>
-<p class="cap"><a href="{{ url_for('terms') }}">이용약관</a> · <a href="{{ site_url('me','/privacy') }}">개인정보 처리방침</a> · <a href="{{ url_for('refund_policy') }}">환불 정책</a></p></section>
-</div></div></section>
+<section class="in-end"><div class="wrap"><h2>반복 문의는 AI에게,<br>사장님은 중요한 일만</h2><a class="btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_days if trial_days else '무료로 시작하기' }}</a></div></section>
 </main>{% endblock %}
