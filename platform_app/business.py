@@ -17,7 +17,7 @@ import team, inbox, workflow, automations, livechat, onboard, demo, funnel, mark
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
-app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS,trial_days=lambda:billing.TRIAL_DAYS if billing.live() else 0)
+app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS,trial_days=lambda:billing.TRIAL_DAYS if billing.live() else 0,price_plan=billing.plan)
 OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 # 소개 화면의 앱 받기 버튼: 스토어 주소를 서버 설정(.env)에 넣으면 '곧 출시' 대신 버튼이 나온다
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
