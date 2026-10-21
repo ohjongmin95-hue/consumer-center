@@ -702,7 +702,7 @@ body.v2 .steps3 p{font-size:18px;line-height:1.55}
 .bsplit .stage .ok i{width:22px;height:22px;border-radius:50%;background:#12a26a;color:#fff;font-style:normal;display:grid;place-items:center;font-size:13px}
 .bsplit .form{padding:72px 64px;display:flex;flex-direction:column;justify-content:center;align-items:stretch;max-width:520px;width:100%;justify-self:center}
 .bsplit .form .who{align-self:center;background:var(--accent-soft);color:var(--accent-ink);border-radius:999px;padding:6px 14px;font-size:14px;font-weight:700}
-.bsplit .form h2{margin:14px 0 40px;text-align:center;font-size:32px;letter-spacing:-.04em;font-weight:800}
+.bsplit .form h2{margin:0 0 36px;text-align:center;font-size:28px;letter-spacing:-.04em;font-weight:800}
 .bsplit .ifld{display:flex;align-items:center;gap:12px;background:var(--fill);border-radius:16px;padding:0 18px;height:60px;transition:box-shadow .15s}
 .bsplit .ifld:focus-within{box-shadow:0 0 0 2px var(--accent)}
 .bsplit .ifld svg{flex:none;width:22px;height:22px;color:var(--fg3)}
@@ -747,7 +747,8 @@ main.pg.split{padding-block:40px 80px}
 /* 로그인 화면은 한 화면에 맞춤 */
 body.v2 main.pg.split{padding-block:24px;min-height:100vh;min-height:100dvh;display:flex;align-items:center}
 body.v2 main.pg.split>.wrap{width:100%}
-.bsplit .flogo{align-self:center;margin-bottom:28px}
+.bsplit .flogo{align-self:center;margin-bottom:24px;gap:10px}.bsplit .logo.flogo .ch{height:52px}.bsplit .logo.flogo .wm{font-size:27px}
+.bsplit .flegal{margin-top:28px;display:flex;justify-content:center;gap:16px;font-size:13px}.bsplit .flegal a{color:var(--fg3)}
 .bsplit{height:calc(100vh - 48px);height:calc(100dvh - 48px);min-height:560px;max-height:720px}
 .bsplit .brand{padding:48px 52px 0}
 .bsplit .brand h1{font-size:44px;margin-top:20px}
