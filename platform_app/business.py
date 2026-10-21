@@ -1438,6 +1438,10 @@ def ops_companies():
             elif act=='resume' and co and co['status']=='suspended':db.execute("UPDATE companies SET status='active',member=susp_member WHERE id=?",(co['id'],));flash('다시 이용할 수 있게 했습니다','ok')
             elif act=='pwlink' and co and co['status']=='active' and co['pw_hash']:
                 flash(f"{co['name']} 비밀번호 재설정 링크예요. 1시간 동안 열려요. 복사해서 사장님께 보내 주세요: {reset_link(co)}",'ok')
+            elif act=='free' and co and co['status']=='active':  # 심사용·시범 계정은 결제 없이 쓰게 (다시 누르면 무료 시범으로)
+                on=co['plan']!='free';db.execute('UPDATE companies SET plan=?,plan_since=? WHERE id=?',('free' if on else 'pilot',core.iso(),co['id']))
+                flash(f"{co['name']}: "+('결제 없이 쓸 수 있게 했어요' if on else '무료 제공을 껐어요. 이제 결제해야 써요'),'ok')
+                return redirect(url_for('ops_company',cid=co['id']))
             elif act=='contact' and co:db.execute('UPDATE companies SET contact=? WHERE id=?',(clean(request.form.get('contact'),60),co['id']));flash('저장했습니다','ok')
             elif act=='add':
                 name=clean(request.form.get('name'),40)
@@ -1664,7 +1668,7 @@ def api_co():
     except Exception:d=None
     with conn() as db:co=core.company(db,d.get('id')) if isinstance(d,dict) else None
     if not co or co['status']!='active' or co['pw_hash'][-16:]!=d.get('h'):abort(401)  # 인증 전 회사도 앱을 쓴다 (판매처 연결·소비자 접수만 인증 뒤)
-    if not billing.open_ok(co):abort(app.response_class(json.dumps({'error':'결제가 확인되지 않아 쓸 수 없어요. 홈페이지의 설정 > 요금·결제에서 카드를 등록하거나 결제해 주세요.'},ensure_ascii=False),402,mimetype='application/json'))
+    if not billing.open_ok(co):abort(app.response_class(json.dumps({'error':'결제가 확인되지 않아 지금은 쓸 수 없어요. 웹 관리 화면의 설정에서 확인해 주세요.'},ensure_ascii=False),402,mimetype='application/json'))
     g.co=co;g.who=team.owner_actor(co);g.actor=g.who['name'];return co
 def api_form():j=request.get_json(silent=True);return j if isinstance(j,dict) and j else request.form
 def co_info(co):

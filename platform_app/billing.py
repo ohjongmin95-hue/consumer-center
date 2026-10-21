@@ -51,7 +51,7 @@ def open_ok(co):
     """이 회사가 소보루 CS를 쓸 수 있는지. 운영자가 요금을 정하기 전에는 모두 쓴다(무료 시범).
     정한 뒤에는 무료 체험 중('trial')이거나 결제 중('paid')인 회사만. 나머지는 요금·결제 화면만 열린다 (데이터는 지우지 않는다)."""
     if not co:return False
-    return co['plan'] in ('paid','trial') or not live()
+    return co['plan'] in ('paid','trial','free') or not live()  # 'free': 운영자가 무료로 열어 준 회사 (심사용·시범 계정)
 def trial_days_left(co,b):
     if not co or co['plan']!='trial' or not b or not b['next_charge']:return None
     try:return max((datetime.date.fromisoformat(b['next_charge'])-today()).days,0)
@@ -64,7 +64,7 @@ def start_c24_trial(db,cid):
     if not b:db.execute('INSERT INTO billing(company_id,customer_key) VALUES(?,?)',(cid,'cs_'+secrets.token_urlsafe(24)))
     p=plan();end=today()+datetime.timedelta(days=TRIAL_DAYS)
     db.execute("UPDATE billing SET status='trial',source='cafe24',plan_name=?,price=?,started=?,next_charge=? WHERE company_id=?",(p['name'],int(p['price']),core.iso(),end.isoformat(),cid))
-    db.execute("UPDATE companies SET plan='trial',plan_since=? WHERE id=? AND plan!='paid'",(core.iso(),cid))
+    db.execute("UPDATE companies SET plan='trial',plan_since=? WHERE id=? AND plan NOT IN ('paid','free')",(core.iso(),cid))
 def row(db,cid):return db.execute('SELECT * FROM billing WHERE company_id=?',(cid,)).fetchone()
 def today():return core.now().date()
 def mail_of(co):return co['notify_email'] or (co['login_id'] if '@' in (co['login_id'] or '') else '')
@@ -127,7 +127,7 @@ def renew_all():
                 c=shops.unseal(b['creds']) if b['creds'] else None
                 if c and c.get('billing_key'):drop_key(c['billing_key'])
                 db.execute("UPDATE billing SET status='ended',creds='' WHERE company_id=?",(b['company_id'],))
-                db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=?",(core.iso(),b['company_id']));continue
+                db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=? AND plan!='free'",(core.iso(),b['company_id']));continue
             # 10분마다 도는 cron이 같은 날 두 번 결제하지 않게 먼저 '오늘 시도함'을 잡는다
             if not db.execute('UPDATE billing SET last_try=? WHERE company_id=? AND last_try<?',(t,b['company_id'],t)).rowcount:continue
             co=core.company(db,b['company_id'])
@@ -138,10 +138,10 @@ def renew_all():
             e=charge(db,co,b)
             if not e:paid(db,b['company_id'],datetime.date.fromisoformat(b['next_charge']));n+=1;continue
             fails=b['fails']+1
-            db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=?",(core.iso(),b['company_id']))  # 결제가 안 되면 모든 기능을 멈춘다 (다시 결제되면 paid()가 켠다)
+            db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=? AND plan!='free'",(core.iso(),b['company_id']))  # 결제가 안 되면 모든 기능을 멈춘다 (다시 결제되면 paid()가 켠다)
             if fails>=MAX_FAILS:
                 db.execute("UPDATE billing SET status='stopped',fails=?,note=? WHERE company_id=?",(fails,f'결제가 {fails}번 실패해 멈췄어요: {e}',b['company_id']))
-                db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=?",(core.iso(),b['company_id']))
+                db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=? AND plan!='free'",(core.iso(),b['company_id']))
             else:db.execute("UPDATE billing SET status='past_due',fails=?,note=? WHERE company_id=?",(fails,f'결제하지 못했어요: {e} 결제될 때까지 소보루 CS를 쓸 수 없어요. 내일 다시 시도해요.',b['company_id']))
             if mail_of(co):core.send_mail(mail_of(co),f'[{core.BNAME}] 요금 결제를 하지 못했어요',f"{co['name']} 요금 결제가 되지 않았어요.\n이유: {e}\n결제될 때까지 소보루 CS 기능이 멈춰요. 설정 > 요금·결제에서 카드를 바꾸거나 다시 결제해 주세요.")
     return n
@@ -330,7 +330,7 @@ def done():
         if trial:
             end=today()+datetime.timedelta(days=TRIAL_DAYS)
             db.execute("UPDATE billing SET status='trial',source='',next_charge=? WHERE company_id=?",(end.isoformat(),co['id']))
-            db.execute("UPDATE companies SET plan='trial',plan_since=? WHERE id=?",(core.iso(),co['id']))
+            db.execute("UPDATE companies SET plan='trial',plan_since=? WHERE id=? AND plan!='free'",(core.iso(),co['id']))
             flash(f"카드를 등록했어요. {end.month}월 {end.day}일까지 무료로 쓰시고, 그날 첫 달 요금 {int(p['price']):,}원이 결제돼요. 그 전에 해지하면 결제되지 않아요.",'ok')
             return redirect(url_for('decide'))
         e=charge(db,co,row(db,co['id']))
