@@ -9,6 +9,7 @@ import tempfile
 import threading
 _REAL_THREAD = threading.Thread
 import unittest
+import urllib.parse
 from unittest.mock import patch
 
 from werkzeug.security import generate_password_hash
@@ -3561,6 +3562,42 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(r['status'], 'skip'); self.assertIn('비슷한 주제', r['reason'])
         with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', fake):
             self.assertEqual(w['generate']('trend', 'daily')['status'], 'made')  # 다른 소재면 씀
+
+    def test_writer_uses_kosis_stats(self):
+        """KOSIS 키가 있으면 품목별 소비자물가와 주제로 찾은 통계표를 자료에 넣음 (값·증감률은 미리 계산해 넣고 AI는 옮기기만)"""
+        mod = self.site.soboru_writer; mod._KOSIS_MEMO.clear()
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        months = [f'2025{m:02d}' for m in range(9, 13)] + [f'2026{m:02d}' for m in range(1, 10)]  # 13달
+        cpi = [{'C1_NM': n, 'PRD_DE': p, 'DT': str(base + i)} for n, base in (('총지수', 110), ('외식', 120), ('휘발유', 130)) for i, p in enumerate(months)]
+        urls = []
+        def get(url, timeout=15):
+            urls.append(url); q = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url).query))
+            self.assertEqual(q['apiKey'], 'kosis-test-key')
+            if 'statisticsSearch' in url: return 200, json.dumps([{'ORG_ID': '117', 'TBL_ID': 'DT_X', 'TBL_NM': '외식업 경영 실태'}])
+            if q.get('tblId') == 'DT_1J22003': return 200, json.dumps(cpi)
+            if q.get('tblId') == 'DT_X' and q['prdSe'] == 'Y' and 'objL2' not in q:
+                return 200, json.dumps([{'C1_NM': '전체', 'ITM_NM': '월평균 매출액', 'UNIT_NM': '만원', 'PRD_DE': p, 'DT': d} for p, d in (('2023', '1000'), ('2024', '1100'))])
+            return 200, json.dumps({'err': '20', 'errMsg': '필수요청변수값이 누락되었습니다.'})
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value', 'KOSIS_API_KEY': 'kosis-test-key'}
+        sent, calls = [], []
+        with patch.dict(os.environ, env), patch.object(mod, 'http_get', get), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)):
+            with self.site.app.app_context():
+                st = w['kosis_facts']('외식비', '음식')
+                got = w['collect']('trend')
+        cpi_rows = st['소비자물가지수(통계청 KOSIS, 품목별)']
+        self.assertEqual([r['품목'] for r in cpi_rows], ['총지수', '외식'])  # 음식 분야: 외식, 휘발유는 빼고
+        self.assertEqual(cpi_rows[1]['1년 전 같은 달보다(%)'], round(12 / 120 * 100, 1)); self.assertEqual(cpi_rows[1]['기준 달'], '2026년 9월')
+        table = st['관련 통계: 외식업 경영 실태 (통계청 KOSIS)'][0]
+        self.assertEqual((table['값'], table['앞 기간 대비 증감률(%)'], table['단위']), (1100.0, 10.0, '만원'))
+        self.assertTrue(any('통계청 KOSIS' in k for k in got['facts']))  # 검색 추이 글에도 주제로 찾은 통계표
+        self.assertIn('통계청 국가통계포털(KOSIS)', [s['name'] for s in got['sources']])
+        self.assertEqual(self.site.soboru_writer.check_text('외식 물가는 1년 전보다 10% 올랐어요.', st), [])  # 미리 계산한 증감률은 숫자 검사도 통과
+        # 키가 없으면 KOSIS는 부르지 않음
+        urls.clear(); mod._KOSIS_MEMO.clear()
+        with patch.dict(os.environ, {k: v for k, v in env.items() if k != 'KOSIS_API_KEY'}), patch.object(mod, 'http_get', get), patch.object(hub, 'http', self.writer_naver(calls)):
+            with self.site.app.app_context(): w['collect']('trend')
+        self.assertFalse([u for u in urls if 'kosis' in u])
 
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)

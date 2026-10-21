@@ -315,6 +315,91 @@ def number_sentences(page, n=8):
 def law_oc(): return os.getenv('LAW_OC', '').strip()
 
 
+# ---- 통계청 KOSIS (운영자 요청 2026-10-21: 물가만이 아니라 주제마다 맞는 통계표를 찾아 씀) --------------
+KOSIS = 'https://kosis.kr/openapi/'
+CPI_TABLE = ('101', 'DT_1J22003')  # 소비자물가지수(품목별)
+CAT_CPI = {'음식': ['외식', '식료품', '커피', '라면', '쌀'], '통신': ['휴대전화료', '인터넷', '통신'], '여행': ['국제항공료', '숙박', '해외단체여행비', '국내단체여행비'],
+           '자동차': ['휘발유', '경유', '자동차보험료', '자동차'], '쇼핑': ['의류', '신발', '가전', '생활용품'], '생활': ['전기료', '도시가스', '상수도', '관리비'],
+           '금융': ['보험', '수수료'], '리콜': []}
+
+
+def kosis_key(): return os.getenv('KOSIS_API_KEY', '').strip()
+
+
+_KOSIS_MEMO = {}  # 한 번 도는 동안 같은 요청은 다시 안 보냄 (기사 여러 편이 같은 물가표를 씀)
+
+
+def kosis_get(path, **params):
+    """KOSIS 오픈API → 목록(dict들). 오류면 RuntimeError(키는 문구에 안 넣음)."""
+    memo = (path, datetime.date.today().isoformat(), tuple(sorted(params.items())))
+    if memo in _KOSIS_MEMO: return _KOSIS_MEMO[memo]
+    out = _kosis_get(path, **params)
+    if len(_KOSIS_MEMO) > 200: _KOSIS_MEMO.clear()
+    _KOSIS_MEMO[memo] = out
+    return out
+
+
+def _kosis_get(path, **params):
+    try: st, body = http_get(KOSIS + path + '?' + urllib.parse.urlencode(dict(method='getList', apiKey=kosis_key(), format='json', jsonVD='Y', **params)), 20)
+    except (urllib.error.URLError, OSError, ValueError) as e: raise RuntimeError(f'KOSIS에 연결하지 못했어요 ({type(e).__name__})')
+    if st != 200: raise RuntimeError(f'KOSIS 응답 오류 ({st})')
+    try: data = json.loads(body)
+    except ValueError: raise RuntimeError('KOSIS 응답을 읽지 못했어요')
+    if isinstance(data, dict):
+        if data.get('err') in ('30', '31'): return []  # 30: 결과 없음
+        raise RuntimeError('KOSIS: ' + str(data.get('errMsg') or data.get('err'))[:80])
+    return [r for r in data if isinstance(r, dict)]
+
+
+def kosis_table(org, tbl, recent=2):
+    """통계표 최근 값. 표마다 항목·분류 칸 수와 주기(월·분기·연)가 달라, 차례로 시도해 처음 되는 것."""
+    for prd in ('M', 'Q', 'Y'):
+        for objs in ({'objL1': 'ALL'}, {'objL1': 'ALL', 'objL2': 'ALL'}, {'objL1': 'ALL', 'objL2': 'ALL', 'objL3': 'ALL'}):
+            try: rows = kosis_get('Param/statisticsParameterData.do', orgId=org, tblId=tbl, itmId='ALL', prdSe=prd, newEstPrdCnt=str(recent), **objs)
+            except RuntimeError: continue
+            if rows: return rows
+    return []
+
+
+def kosis_rows(rows, words, n=24):
+    """표의 줄을 글에 넣을 만큼만: 주제 낱말이 든 분류 먼저, 다음은 전체·계. 같은 줄의 앞 기간 값과 견준 증감률(%)도 붙임."""
+    series = {}
+    for r in rows:
+        key = (r.get('C1_NM', ''), r.get('C2_NM', ''), r.get('C3_NM', ''), r.get('ITM_NM', ''))
+        try: v = float(str(r.get('DT', '')).replace(',', ''))
+        except ValueError: continue
+        series.setdefault(key, []).append((str(r.get('PRD_DE', '')), v, r.get('UNIT_NM', '')))
+    def score(k):
+        name = ' '.join(k)
+        return (-sum(1 for w in words if w and w in name), 0 if any(t in name for t in ('계', '전체', '전국', '총')) else 1, len(name))
+    out = []
+    for k in sorted(series, key=score)[:n]:
+        pts = sorted(series[k]); prd, v, unit = pts[-1]
+        row = {'분류': ' · '.join(x for x in k[:3] if x), '항목': k[3], '기간': prd, '값': v, '단위': unit}
+        if len(pts) >= 2 and pts[-2][1]:
+            row['앞 기간'] = pts[-2][0]; row['앞 기간 값'] = pts[-2][1]; row['앞 기간 대비 증감률(%)'] = round((v - pts[-2][1]) / pts[-2][1] * 100, 1)
+        out.append(row)
+    return out
+
+
+def kosis_cpi(words):
+    """품목별 소비자물가지수: 낱말이 든 품목 + 총지수, 최근 달과 1년 전 같은 달 견준 상승률(%)"""
+    rows = kosis_get('Param/statisticsParameterData.do', orgId=CPI_TABLE[0], tblId=CPI_TABLE[1], itmId='ALL', objL1='ALL', prdSe='M', newEstPrdCnt='13')
+    by = {}
+    for r in rows:
+        try: by.setdefault(r.get('C1_NM', ''), []).append((str(r.get('PRD_DE', '')), float(r.get('DT'))))
+        except (TypeError, ValueError): continue
+    pick = [n for n in by if n == '총지수'] + [n for n in by if n != '총지수' and any(w and (w in n or (len(n) >= 2 and n in w)) for w in words)][:6]
+    out = []
+    for n in pick:
+        pts = sorted(by[n]); prd, v = pts[-1]
+        row = {'품목': n, '기준 달': f'{prd[:4]}년 {int(prd[4:6])}월', '지수(2020=100)': v}
+        if len(pts) >= 13 and pts[-13][1]: row['1년 전 같은 달보다(%)'] = round((v - pts[-13][1]) / pts[-13][1] * 100, 1)
+        if len(pts) >= 2 and pts[-2][1]: row['전달보다(%)'] = round((v - pts[-2][1]) / pts[-2][1] * 100, 1)
+        out.append(row)
+    return out if len(out) > 1 else []
+
+
 def stamp(): return datetime.datetime.now().isoformat(timespec='seconds')
 
 
@@ -332,6 +417,7 @@ def install(S):
     SOURCES = {
         'naver': lambda: (bool(naver()) and naver()['ready'](), '네이버 API HUB 키가 없어요 (deploy/set-naver.sh)'),
         'law': lambda: (bool(law_oc()), '법제처 인증키(LAW_OC)가 없어요 (deploy/set-law.sh)'),
+        'kosis': lambda: (bool(kosis_key()), '통계청 KOSIS 인증키(KOSIS_API_KEY)가 없어요 (deploy/set-kosis.sh)'),
         'site': lambda: (True, ''),
     }
 
@@ -637,6 +723,27 @@ def install(S):
                     '증감률(%)': round((last - prev) / prev * 100) if prev else None, '가장 많이 찾은 달': f'{peak[0][:4]}년 {int(peak[0][5:7])}월'}
         except Exception: return None
 
+    def kosis_facts(q, category):
+        """주제에 맞는 KOSIS 통계: 품목별 소비자물가 + 주제로 찾은 통계표 두 개까지. 하루 동안은 같은 검색을 다시 하지 않음(KOSIS 호출 줄이기)."""
+        words = [w for w in q.split() if len(w) >= 2] + [q] + CAT_CPI.get(category, [])
+        cache = setting('writer_kosis', {}); cache = cache if isinstance(cache, dict) and cache.get('day') == datetime.date.today().isoformat() else {'day': datetime.date.today().isoformat()}
+        out = {}
+        try:
+            cpi = kosis_cpi(words)
+            if cpi: out['소비자물가지수(통계청 KOSIS, 품목별)'] = cpi
+        except RuntimeError: pass
+        found = cache.get('q:' + q)
+        if found is None:
+            try: found = [(t['ORG_ID'], t['TBL_ID'], _plain(t.get('TBL_NM', ''), 80)) for t in kosis_get('statisticsSearch.do', searchNm=q, resultCount='5', sort='RANK') if t.get('ORG_ID') and t.get('TBL_ID')]
+            except RuntimeError: found = []
+            cache['q:' + q] = found; put('writer_kosis', cache)
+        n = 0
+        for org, tbl, name in found:
+            if n >= 2 or (org, tbl) == CPI_TABLE: continue
+            rows = kosis_rows(kosis_table(org, tbl), words)
+            if rows: out[f'관련 통계: {name} (통계청 KOSIS)'] = rows; n += 1
+        return out
+
     def enrich(got, kind, topic):
         """모든 글을 종합 기사로 (운영자 요청 2026-10-21): 자료에 뉴스·법 조문·검색 추이가 없으면 주제로 찾아 곁들임. 못 찾으면 있는 자료로만."""
         facts, sources = got['facts'], got['sources']
@@ -651,6 +758,10 @@ def install(S):
             if hits:
                 facts['관련 법 조문(원문)'] = [{'조문': h['label'], '원문': corpus.clip(h['text'], 600)} for h in hits]
                 sources += [src(f"국가법령정보센터 · {h['label']}", h['source']) for h in hits]
+        if SOURCES['kosis']()[0]:
+            st = kosis_facts(q, got.get('category') or KINDS[kind]['category'])
+            for name, val in st.items(): facts[name] = val
+            if st: sources.append(src('통계청 국가통계포털(KOSIS)', 'https://kosis.kr'))
         if '추이' not in keys and kind not in ('shopping', 'shopcat', 'reports'):
             tf = trend_fact(q)
             if tf: facts['검색 추이(네이버 데이터랩)'] = tf; sources.append(src('네이버 데이터랩 검색어트렌드 (NAVER API HUB)', 'https://datalab.naver.com/keyword/trendSearch.naver'))
@@ -1083,12 +1194,12 @@ def install(S):
         log({'status': 'recheck', 'kind': '', 'trigger': 'recheck', 'reason': f'최근 {days}일 게시 글 {len(rows)}개 중 {len(out)}개를 초안으로 돌렸어요'})
         return out
 
-    app.extensions['soboru_writer'] = {'recheck': recheck, 'proofread': proofread, 'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'check_text': check_text}
+    app.extensions['soboru_writer'] = {'kosis_facts': kosis_facts, 'recheck': recheck, 'proofread': proofread, 'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'check_text': check_text}
     S.writer_daily = daily
 
 
 def main(argv):
-    """서버 예약 작업: python -m soboru_writer [--kind 종류] [--dry] [--recheck 일수]. --recheck는 게시된 글을 다시 검사해 걸린 글을 초안으로, --dry는 자료만 모아 보여 줌(AI·저장 없음)."""
+    """서버 예약 작업: python -m soboru_writer [--kind 종류] [--dry] [--recheck 일수] [--kosis 검색어]. --kosis는 통계청 연결 확인, --recheck는 게시된 글을 다시 검사해 걸린 글을 초안으로, --dry는 자료만 모아 보여 줌(AI·저장 없음)."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import app as site
     import soboru_writer as mod  # app.py가 붙인 모듈 (python -m으로 부르면 이 파일은 __main__이라 Skip이 다른 클래스)
@@ -1099,6 +1210,10 @@ def main(argv):
             for k in ([argv[argv.index('--kind') + 1]] if '--kind' in argv else dict.fromkeys(ORDER + EXTRA)):
                 try: print(k, json.dumps(w['collect'](k), ensure_ascii=False, indent=1)[:3000])
                 except Skip as e: print(k, '건너뜀:', e)
+            return 0
+        if '--kosis' in argv:  # KOSIS 연결 확인: python -m soboru_writer --kosis 외식비
+            i = argv.index('--kosis'); q = argv[i + 1] if len(argv) > i + 1 else '외식비'
+            print(json.dumps(w['kosis_facts'](q, '생활'), ensure_ascii=False, indent=1)[:4000] or '찾은 통계가 없어요')
             return 0
         if '--recheck' in argv:  # 게시된 글 다시 검사: python -m soboru_writer --recheck [일수]
             i = argv.index('--recheck'); days = int(argv[i + 1]) if len(argv) > i + 1 and argv[i + 1].isdigit() else 7
