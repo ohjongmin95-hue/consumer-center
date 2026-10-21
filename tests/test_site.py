@@ -3659,7 +3659,27 @@ class SiteTest(unittest.TestCase):
             self.assertTrue(any('뉴스' in s['name'] or '·' in s['name'] for s in got['sources']))
             r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
         prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
-        self.assertIn('[분량·구성]', prompt); self.assertIn('2000자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+        self.assertIn('[분량·구성]', prompt); self.assertIn('3500~4500자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+
+    def test_writer_long_read_format(self):
+        # 뉴닉 롱리드처럼: 소제목 없는 도입 → 핵심 상자 → 소제목 + 번호 요점 + 용어 풀이 → 이렇게 하세요 → 마무리 (운영자 2026-10-21)
+        import soboru_writer as sw
+        out = {'title': '첫 신용카드, 이것부터 알아 두세요', 'summary': ['하나', '둘', '셋'], 'highlight': '결제일을 놓치면 신용점수가 떨어질 수 있어요.',
+               'intro': ['처음이라는 말은 늘 설레요.', '이 글은 첫 카드를 앞둔 분께 전하고 싶은 이야기예요.'],
+               'sections': [{'emoji': '💳', 'heading': '쓰면서 꼭 기억해야 할 것들', 'paragraphs': ['처음부터 습관이 중요해요.'],
+                             'points': [{'title': '1. 일시불을 써 보세요', 'text': '할부는 미래의 돈을 당겨 쓰는 거예요.'}, {'title': '결제일을 기억하세요', 'text': '알림을 꼭 켜 두세요.'}],
+                             'terms': [{'word': '리볼빙', 'meaning': '카드값 일부만 내고 나머지를 미루는 서비스예요.'}]}],
+               'tips': ['결제일 알림을 켜세요'], 'closing': {'heading': '소보루와 함께 시작해요', 'paragraphs': ['수상한 결제 문자를 받았다면 사기 주의에서 번호를 찾아보세요.']}}
+        title, summary, body, cat = sw.assemble(out, 'feature')
+        self.assertTrue(body.startswith('처음이라는 말은 늘 설레요.'))
+        self.assertLess(body.index('> 💡'), body.index('## 💳'))
+        self.assertIn('### 일시불을 써 보세요', body)  # 번호는 본문에 넣지 않음 (숫자 검사)
+        self.assertIn('※ 리볼빙: 카드값 일부만', body)
+        self.assertLess(body.index('## ✅ 이렇게 하세요'), body.index('## 🤝 소보루와 함께 시작해요'))
+        with self.site.app.test_request_context('/'): html = str(self.site.app.jinja_env.globals['life_body'](body))
+        self.assertIn('<span class="sb-point-n" aria-hidden="true">2</span>결제일을 기억하세요', html)
+        self.assertIn('<p class="sb-term"><b>리볼빙</b>', html)
+        self.assertNotIn('###', html)
 
     def test_writer_skips_similar_topic_within_30_days(self):
         """제목이 달라도 소재가 같은 글(외식비·외식 물가)은 30일 안에 다시 쓰지 않음"""
