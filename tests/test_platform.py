@@ -2610,7 +2610,7 @@ class PlatformTest(unittest.TestCase):
         import json as _j, datetime as _d
         bl=sys.modules['billing'];shops=sys.modules['shops']
         b,o,cid=self.signup_and_approve('결제상점','pay-co@example.com')
-        self.assertIn('요금제를 준비하고 있어요',b.get('/biz/billing').get_data(as_text=True))
+        h=b.get('/biz/billing').get_data(as_text=True);self.assertIn('결제 연결을 준비하고 있어요',h);self.assertIn('월 19,900원',h)  # 상품은 하나 (월 19,900원), 결제 키 전에는 준비 중
         self.assertEqual(self.client().get('/biz/billing').status_code,302)
         env={'PORTONE_STORE_ID':'store-abc','PORTONE_CHANNEL_KEY':'channel-key-xyz','PORTONE_API_SECRET':'po-secret-1'};old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
         calls=[];res={'pay':(200,{'payment':{'pgTxId':'pg-1','paidAt':'2026-10-18T00:00:00Z'}}),'owner':None}
@@ -2636,9 +2636,9 @@ class PlatformTest(unittest.TestCase):
                 for k,v in kw.items():db.execute(f'UPDATE billing SET {k}=? WHERE company_id=?',(v,cid))
         def pay_calls():return [c for c in calls if c[1].endswith('/billing-key')]
         try:
-            self.assertIn('요금제를 준비하고 있어요',b.get('/biz/billing').get_data(as_text=True))  # 키만 있고 요금제가 없으면 아직
+            self.assertIn('data-card',b.get('/biz/billing').get_data(as_text=True))  # 키가 들어가면 기본 요금제로 바로 카드 등록
             self.post(o,'/biz/ops/billing',{'name':'베이직','price':'50'})
-            self.assertIsNone(bl.plan())
+            self.assertEqual(bl.plan(),{'name':'소보루 CS','price':19900})  # 잘못된 금액은 저장하지 않고 기본 요금제
             self.post(o,'/biz/ops/billing',{'name':'베이직','price':'33,000'})
             self.assertEqual(bl.plan(),{'name':'베이직','price':33000})
             h=b.get('/biz/billing').get_data(as_text=True)

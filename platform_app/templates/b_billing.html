@@ -22,7 +22,7 @@
 {% if locked %}<div class="warn" style="margin-bottom:16px"><span><b>{{ '카드를 등록하면 바로 시작할 수 있어요' if not bl or not bl.started else '결제가 확인되지 않아 소보루 CS 기능이 멈췄어요' }}</b><small>{{ ('카드를 등록하면 %d일 동안 모든 기능을 무료로 써요. 등록할 때는 결제되지 않아요.'%trial_days()) if not bl or not bl.started else '받은 문의와 설정은 그대로 있어요. 결제하면 바로 다시 쓸 수 있어요.' }}</small></span></div>{% endif %}
 <div class="cols">
 <div class="stack">
-{% if not p or (not ready and not c24) %}<section class="panel"><div class="ph">준비 중</div><div class="warn">요금제를 준비하고 있어요. 지금은 기간·건수 제한 없이 무료로 쓰실 수 있어요. 요금제가 생기면 미리 알려 드리고, 동의 없이 결제되지 않아요.</div></section>
+{% if not p or (not ready and not c24) %}<section class="panel"><div class="ph">{{ p.name }} · 월 {{ '{:,}'.format(p.price|int) }}원</div><div class="warn">결제 연결을 준비하고 있어요. 그동안은 무료로 쓰실 수 있고, 결제가 열리면 미리 알려 드려요. 동의 없이 결제되지 않아요.</div></section>
 {% else %}
 <section class="panel"><div class="ph">{{ (bl.plan_name if bl and bl.status in ('trial','active','canceled','past_due') else p.name) }}</div>
 <dl class="kv"><dt>월 요금</dt><dd>{{ '{:,}'.format(bl.price if bl and bl.status in ('trial','active','canceled','past_due') else p.price|int) }}원 (부가세 포함)</dd>

@@ -33,19 +33,20 @@ with conn() as _db:  # 카페24 앱 결제: source 'cafe24'면 카페24가 매�
     if 'source' not in {r[1] for r in _db.execute('PRAGMA table_info(billing)')}:_db.execute("ALTER TABLE billing ADD COLUMN source TEXT NOT NULL DEFAULT ''")
 
 def ready():return all(core.secret(k) for k in ('PORTONE_STORE_ID','PORTONE_CHANNEL_KEY','PORTONE_API_SECRET'))
+PLAN={'name':'소보루 CS','price':19900}  # 운영자 결정 2026-10-21: 상품은 하나, 월 19,900원 (부가세 포함). 운영 화면에서 바꾸면 그 값을 쓴다
 def plan():
-    """운영자가 정한 요금제 {name, price} 또는 None (금액은 부가세 포함, 원)."""
+    """요금제 {name, price} (금액은 부가세 포함, 원). 운영자가 따로 정하지 않았으면 PLAN."""
     with conn() as db:r=db.execute("SELECT value FROM settings WHERE key='billing_plan'").fetchone()
     try:p=json.loads(r['value']) if r else None
     except ValueError:p=None
-    return p if p and p.get('name') and int(p.get('price') or 0)>0 else None
+    return p if p and p.get('name') and int(p.get('price') or 0)>0 else dict(PLAN)
 def save_plan(name,price):
     with conn() as db:db.execute("INSERT INTO settings(key,value,updated) VALUES('billing_plan',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated",
                                  (json.dumps({'name':name,'price':price},ensure_ascii=False),core.iso()))
 TRIAL_DAYS=5  # 운영자 결정 2026-10-21: 카드를 먼저 등록하고 5일 무료, 5일째 첫 결제. 해지하지 않으면 매달 결제, 결제가 없으면 모든 기능을 멈춘다
 def live():
-    """요금을 받기 시작했는지: 운영자가 요금을 정했고, 결제할 길(포트원 키 또는 카페24 앱 결제)이 있을 때. 그 전에는 모두 무료 시범으로 쓴다."""
-    return bool(plan()) and (ready() or c24_on())
+    """요금을 받기 시작했는지: 결제할 길(포트원 키 또는 카페24 앱 결제)이 있을 때. 그 전에는 모두 무료 시범으로 쓴다."""
+    return ready() or c24_on()
 def open_ok(co):
     """이 회사가 소보루 CS를 쓸 수 있는지. 운영자가 요금을 정하기 전에는 모두 쓴다(무료 시범).
     정한 뒤에는 무료 체험 중('trial')이거나 결제 중('paid')인 회사만. 나머지는 요금·결제 화면만 열린다 (데이터는 지우지 않는다)."""
