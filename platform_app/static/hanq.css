@@ -757,7 +757,7 @@ body.v2 main.pg.split>.wrap{width:100%}
 .bsplit .form h2{margin-bottom:32px;font-size:24px;color:var(--fg2)}
 .bsplit{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .foot-mini{padding-block:0 20px;font-size:13px;color:var(--fg3);text-align:center}
-@media (max-width:960px){.bsplit{height:auto;max-height:none;min-height:0}.bsplit .brand{padding:36px 24px 0}.bsplit .brand h1{font-size:34px}.bsplit .form{padding:36px 22px 40px}}
+@media (max-width:960px){.bsplit{grid-template-columns:minmax(0,1fr);height:auto;max-height:none;min-height:0}.bsplit .brand{display:none}.bsplit .form{padding:40px 22px 44px}}  /* 휴대폰·태블릿: 반반 대신 로그인만 (위에서 2칸으로 다시 정한 것을 되돌림) */
 body.v2:has(>.pilot) main.pg.split{min-height:calc(100vh - 34px);min-height:calc(100dvh - 34px)}
 /* ---------- 법 기준 · 응대 가이드 ---------- */
 .ph .btn.sm{margin-left:auto;height:34px;font-size:13.5px;padding:0 12px;border-radius:10px}
