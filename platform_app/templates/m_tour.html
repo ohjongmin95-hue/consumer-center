@@ -4,9 +4,11 @@
 {% block bar %}{{ b.bar(tab) }}{% endblock %}
 {% block main %}<main class="intro">
 <section class="in-hero mk-hero"><div class="wrap mk-one">
-<div><span class="in-eyebrow">제품 둘러보기 · 약 3분</span><h1>실제 화면으로<br>하루 CS를 따라가 봐요</h1>
-<p>견본 데이터를 넣은 실제 {{ BNAME }} 화면이에요. 반짝이는 곳을 누르거나 다음을 눌러 넘겨 보세요.</p></div>
+<div><span class="in-eyebrow">제품 둘러보기</span><h1>실제 화면으로<br>하루 CS를 따라가 봐요</h1>
+<p>견본 데이터를 넣은 실제 {{ BNAME }} 화면이에요. 영상으로 먼저 보시고, 아래에서 한 장씩 넘겨 보세요.</p></div>
 </div></section>
+{% if vid and vid.tour %}<section class="tp tour-vid"><div class="wrap"><div class="tp-frame big" style="margin-top:0"><div class="tp-bar"><i></i><i></i><i></i><span>제품 둘러보기</span></div>
+<video class="tp-media" controls autoplay muted playsinline preload="auto" poster="{{ url_for('static',filename='tour/tour-poster.jpg') }}" aria-label="{{ BNAME }} 제품 둘러보기 영상">{% if vid.tour.webm %}<source src="{{ url_for('static',filename='tour/tour.webm') }}" type="video/webm">{% endif %}<source src="{{ url_for('static',filename='tour/tour.mp4') }}" type="video/mp4"></video></div></div></section>{% endif %}
 <section class="tour-sec"><div class="wrap">
 {% if steps %}
 <div class="tour" id="tour" data-n="{{ steps|length }}">
