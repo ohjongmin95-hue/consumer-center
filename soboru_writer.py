@@ -591,7 +591,7 @@ def install(S):
         with conn() as db: titles = [r[0] for r in db.execute("SELECT title FROM articles WHERE origin='ai' AND substr(created,1,10)>=? ORDER BY id DESC LIMIT 80", (since,))]
         user = ('[최근 소비자 뉴스 제목]\n' + '\n'.join('- ' + h for h in heads[:80]) + '\n[최근 우리가 쓴 기사 제목]\n' + '\n'.join('- ' + t for t in titles))
         system = ('너는 소비자 잡지 소보루의 편집장이다. 뉴스 제목들을 보고 소비자에게 쓸모 있고 읽고 싶어질 기획 기사 주제(야마)를 12개 고른다.\n'
-                  '- 같은 일을 다룬 뉴스는 하나의 주제로 묶는다. 우리가 최근 쓴 기사와 겹치는 주제는 고르지 않는다. 주제끼리도 겹치지 않게 한다.\n'
+                  '- 같은 일을 다룬 뉴스는 하나의 주제로 묶는다. 우리가 최근 쓴 기사와 소재가 겹치는 주제는 낱말이 달라도 고르지 않는다(외식비·외식 물가는 같은 소재). 주제끼리도 겹치지 않게 한다.\n'
                   '- topic은 뉴스 검색에 넣을 2~12자 낱말(예: 배달앱 수수료), angle은 기사의 각도 한 문장(숫자 없이), category는 '
                   + ', '.join(CATS) + ' 가운데 하나. 분야가 한쪽으로 몰리지 않게 고르게 고른다.\n'
                   'JSON으로만 답한다: {"ideas": [{"topic": ..., "angle": ..., "category": ...}]}')
@@ -753,6 +753,21 @@ def install(S):
         db.execute('UPDATE ai_articles SET check_ok=?,problems=?,checked=? WHERE article_id=?', (0 if problems else 1, json.dumps(problems, ensure_ascii=False), stamp(), article_id))
         return problems
 
+    SAME_SYSTEM = ('너는 잡지 편집장이야. [새 기사]가 [최근 30일 기사] 가운데 하나와 같은 주제인지 판단해. 같은 주제란 독자가 "이거 얼마 전에 읽은 얘기네" 할 만큼 '
+                   '핵심 소재가 같은 것(예: "외식비 부담 늘었다"와 "외식 물가 얼마나 올랐나"). 같은 분야라도 소재가 다르면 다른 주제야. '
+                   'JSON만: {"same": true 또는 false, "title": "같은 주제인 최근 기사 제목(없으면 빈 문자열)"}')
+
+    def same_topic(title, summary, exclude=None):
+        """최근 30일 AI 글과 같은 주제면 그 글 제목 (운영자 지적 2026-10-21: 외식비 글이 또 올라옴). 판단을 못 하면 None(쓰기는 막지 않음)."""
+        since = (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
+        with conn() as db:
+            titles = [r['title'] for r in db.execute("SELECT id,title FROM articles WHERE origin='ai' AND substr(created,1,10)>=? ORDER BY id DESC LIMIT 500", (since,)) if r['id'] != exclude]
+        if not titles: return None
+        user = '[새 기사]\n' + title + '\n' + (summary or '')[:300] + '\n\n[최근 30일 기사]\n' + '\n'.join('- ' + t for t in titles)
+        try: got = chat(SAME_SYSTEM, user, 300)
+        except RuntimeError: return None
+        return (str(got.get('title') or '비슷한 글') if isinstance(got, dict) and got.get('same') is True else None)
+
     PAIR_SYSTEM = ('너는 잡지 교열 기자야. [자료]와 [글]을 비교해서, 글 속 숫자가 자료와 다른 대상·기간·단위에 붙은 문장만 찾아. '
                    '예: 자료는 "국민 119명, 하나 89명"인데 글은 "국민은행과 하나은행이 각각 119명". 뉴스 요약이 "..."로 잘려 대상과 숫자의 짝이 끝까지 보이지 않는데 글이 짝을 지어 쓴 문장도 찾아. 숫자가 자료에 있는지가 아니라 누구의·무엇의 숫자인지가 맞는지를 봐. 뉴스에 "원문 속 숫자 문장(원문 확인)"이 있으면 요약보다 그 원문 문장을 기준으로 봐. '
                    '문제가 없으면 빈 목록. JSON만: {"problems": [{"line": "글의 그 문장", "why": "자료에서는 무엇이 몇인지 짧게"}]}')
@@ -803,6 +818,9 @@ def install(S):
                 same = [r['id'] for r in db.execute('SELECT id,title FROM articles WHERE substr(created,1,10)>=?', (since,)) if ''.join(r['title'].split()) == ''.join(title.split()) and (not old or r['id'] != old['id'])]
             if same:
                 res = {'status': 'skip', 'reason': '같은 제목의 글이 이미 있어요', 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
+            dup = same_topic(title, summary, old['id'] if old else None)
+            if dup:
+                res = {'status': 'skip', 'reason': f'최근 30일 안에 비슷한 주제의 글이 있어요 ({dup[:40]})', 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         k = KINDS[kind]; cat = got.get('category') or cat; first = got['sources'][0] if got['sources'] else {'name': '', 'url': ''}
         facts_s, sources_s = json.dumps(got['facts'], ensure_ascii=False), json.dumps(got['sources'], ensure_ascii=False)
         with conn() as db:

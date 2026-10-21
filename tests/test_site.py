@@ -3196,6 +3196,10 @@ class SiteTest(unittest.TestCase):
         숫자 짝 검사(교열) 부름에는 pair(문제 목록, 없으면 문제 없음)를 돌려줌."""
         def fake(url, headers, body, timeout):
             if 'images' in url: return 500, {'error': {'message': 'no images in test'}}
+            if body['messages'][0]['content'].startswith('너는 잡지 편집장'):  # 비슷한 주제 판단: 같은 소재 표시('외식')가 든 글끼리만 같다고 봄
+                user = body['messages'][1]['content']; new, recent = user.split('[최근 30일 기사]')
+                hit = '외식' in new.split('\n')[1] and '외식' in recent
+                return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps({'same': hit, 'title': '외식비 부담' if hit else ''}, ensure_ascii=False)}}]}
             if body['messages'][0]['content'].startswith('너는 잡지 교열'):
                 if '[문제]' in body['messages'][0]['content']:  # 재교열: 걸린 문장 고치기
                     self.fix_calls = getattr(self, 'fix_calls', []) + [body]
@@ -3535,6 +3539,28 @@ class SiteTest(unittest.TestCase):
             r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
         prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
         self.assertIn('[분량] 종합 기사', prompt); self.assertIn('최근 관련 뉴스', prompt)
+
+    def test_writer_skips_similar_topic_within_30_days(self):
+        """제목이 달라도 소재가 같은 글(외식비·외식 물가)은 30일 안에 다시 쓰지 않음"""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls = [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            db.execute("INSERT INTO articles(title,summary,body,category,emoji,tone,source_name,source_url,status,origin,ext_key,created,updated) VALUES('외식비 부담 얼마나 늘었나','s','b','음식','📌','t1','','','published','ai','ai:feature:외식비:x',?,?)", (now, now))
+        fake = self.writer_ai(sent)
+        def ai(url, headers, body, timeout):  # 새 기사 제목에 '외식'을 넣어 비슷한 주제로 만듦
+            st, res = fake(url, headers, body, timeout)
+            if body['messages'][0]['content'].startswith('너는 소보루'):
+                out = json.loads(res['choices'][0]['message']['content']); out['title'] = '외식 물가, 요즘 얼마나 올랐을까 ' + out['title']
+                res = {'model': 'test-model', 'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+            return st, res
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', ai):
+            r = w['generate']('trend', 'daily')
+        self.assertEqual(r['status'], 'skip'); self.assertIn('비슷한 주제', r['reason'])
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', fake):
+            self.assertEqual(w['generate']('trend', 'daily')['status'], 'made')  # 다른 소재면 씀
 
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
