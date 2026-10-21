@@ -3522,6 +3522,20 @@ class SiteTest(unittest.TestCase):
             out = w['daily'](now=datetime.datetime(2026, 10, 20, 13, 30))
             self.assertLessEqual(len([r for r in out if r['status'] == 'made']), 12)  # 다 걸려도 몫(5)의 두 배 + 2까지만
 
+    def test_writer_every_kind_is_a_long_combined_article(self):
+        """모든 글을 종합 기사로: 검색 추이 글에도 뉴스·법 조문을 곁들이고, 길게 쓰라고 함 (운영자 요청 2026-10-21)"""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
+        sent, calls = [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)):
+            with self.site.app.app_context(): got = w['collect']('trend')
+            self.assertIn('최근 관련 뉴스(제목·요약만)', got['facts'])
+            self.assertTrue(any('뉴스' in s['name'] or '·' in s['name'] for s in got['sources']))
+            r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
+        prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
+        self.assertIn('[분량] 종합 기사', prompt); self.assertIn('최근 관련 뉴스', prompt)
+
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
         w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub

@@ -113,7 +113,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉�
           '- 출처·링크·주소는 본문에 쓰지 않는다(화면에서 따로 붙인다). HTML·마크다운 기호는 쓰지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"title": 40자 안팎 제목, "summary": [세 줄 요약, 문자열 3개], '
           '"highlight": 글 전체에서 가장 중요한 한 문장(자료의 사실·숫자로만), '
-          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 2~4개]}] 4~6개, '
+          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 3~4개]}] 5~6개, '
           '"tips": ["이렇게 하세요"에 넣을 행동 요령 2~4개], "category": 분야 목록 중 하나}\n'
           '심층 분석 기사다: 숫자를 나열만 하지 말고 무엇이 눈에 띄는지, 소비자에게 어떤 뜻인지를 문단마다 풀어 쓴다(자료 안에서만).\n'
           '쓸 수 있는 이모지: ' + EMOJI)
@@ -623,6 +623,39 @@ def install(S):
                 if r[0] in got: got[r[0]] = r[1]
         return got
 
+    def trend_fact(q):
+        """검색어 하나의 1년 검색 추이 요약 (통계는 곁들이는 자료라 못 가져오면 None)"""
+        if not SOURCES['naver']()[0]: return None
+        try:
+            import naverhub
+            series = naver()['trend']([q], 12); start, end, unit = naverhub.periods(12)
+            vals = series[0][1] if series else []
+            if len(vals) < 6: return None
+            v = [x for _, x in vals]; last, prev = statistics.mean(v[-3:]), statistics.mean(v[-6:-3]); peak = max(vals, key=lambda p: p[1])
+            return {'검색어': q, '기간': f'{start} ~ {end}', '단위': '달', '지수 설명': '기간 안에서 가장 많이 찾은 달을 100으로 둔 상대 지수예요',
+                    '최근 3달 평균 지수': round(last, 1), '그 전 3달 평균 지수': round(prev, 1),
+                    '증감률(%)': round((last - prev) / prev * 100) if prev else None, '가장 많이 찾은 달': f'{peak[0][:4]}년 {int(peak[0][5:7])}월'}
+        except Exception: return None
+
+    def enrich(got, kind, topic):
+        """모든 글을 종합 기사로 (운영자 요청 2026-10-21): 자료에 뉴스·법 조문·검색 추이가 없으면 주제로 찾아 곁들임. 못 찾으면 있는 자료로만."""
+        facts, sources = got['facts'], got['sources']
+        q = clean_topic(topic or got.get('topic') or '')
+        if not q: return got
+        keys = ' '.join(facts)
+        if '뉴스' not in keys:
+            news = recent_news(q, days=30, n=5)
+            if news: facts['최근 관련 뉴스(제목·요약만)'] = news_facts(news); sources += [src(f"{i['source']} · {i['title'][:40]}", i['url']) for i in news]
+        if '조문' not in keys and '법령' not in keys:
+            hits = corpus.related(q, limit=3)
+            if hits:
+                facts['관련 법 조문(원문)'] = [{'조문': h['label'], '원문': corpus.clip(h['text'], 600)} for h in hits]
+                sources += [src(f"국가법령정보센터 · {h['label']}", h['source']) for h in hits]
+        if '추이' not in keys and kind not in ('shopping', 'shopcat', 'reports'):
+            tf = trend_fact(q)
+            if tf: facts['검색 추이(네이버 데이터랩)'] = tf; sources.append(src('네이버 데이터랩 검색어트렌드 (NAVER API HUB)', 'https://datalab.naver.com/keyword/trendSearch.naver'))
+        return got
+
     def collect_feature(topic):
         today = datetime.date.today().isoformat()
         idea = next((i for i in feature_pool(today) if i['topic'] == topic), {'angle': '', 'category': '생활'})
@@ -633,17 +666,8 @@ def install(S):
         if idea['angle']: facts['기획 각도'] = idea['angle']
         if news: facts['최근 관련 뉴스(제목·요약만)'] = news_facts(news)
         sources = [src(f"{i['source']} · {i['title'][:40]}", i['url']) for i in news]
-        try:
-            import naverhub
-            series = naver()['trend']([topic], 12); start, end, unit = naverhub.periods(12)
-            vals = series[0][1] if series else []
-            if len(vals) >= 6:
-                v = [x for _, x in vals]; last, prev = statistics.mean(v[-3:]), statistics.mean(v[-6:-3]); peak = max(vals, key=lambda p: p[1])
-                facts['검색 추이(네이버 데이터랩)'] = {'기간': f'{start} ~ {end}', '단위': '달', '지수 설명': '기간 안에서 가장 많이 찾은 달을 100으로 둔 상대 지수예요',
-                                              '최근 3달 평균 지수': round(last, 1), '그 전 3달 평균 지수': round(prev, 1),
-                                              '증감률(%)': round((last - prev) / prev * 100) if prev else None, '가장 많이 찾은 달': f'{peak[0][:4]}년 {int(peak[0][5:7])}월'}
-                sources.append(src('네이버 데이터랩 검색어트렌드 (NAVER API HUB)', 'https://datalab.naver.com/keyword/trendSearch.naver'))
-        except Exception: pass  # 통계는 곁들이는 자료라 못 가져와도 글은 씀
+        tf = trend_fact(topic)
+        if tf: facts['검색 추이(네이버 데이터랩)'] = tf; sources.append(src('네이버 데이터랩 검색어트렌드 (NAVER API HUB)', 'https://datalab.naver.com/keyword/trendSearch.naver'))
         if hits:
             facts['관련 법 조문(원문)'] = [{'조문': h['label'], '원문': corpus.clip(h['text'], 700)} for h in hits]
             sources += [src(f"국가법령정보센터 · {h['label']}", h['source']) for h in hits]
@@ -683,6 +707,9 @@ def install(S):
         except Skip: raise
         except Exception as e:  # 네이버 오류 문구(NaverError)는 그대로, 그 밖은 이름만 (키가 섞이지 않게)
             raise Skip(str(e)[:120] if type(e).__name__ == 'NaverError' else f'자료를 가져오지 못했어요 ({type(e).__name__})')
+        if kind != 'reports':  # 제보 동향은 제보 집계만 (다른 자료와 섞지 않음)
+            try: got = enrich(got, kind, topic)
+            except Exception: pass
         got['facts'] = dict(got['facts'], **CONST)
         return got
 
@@ -712,11 +739,14 @@ def install(S):
     # ---- AI로 쓰기 · 저장 -------------------------------------------------------
     def ask_ai(kind, facts, topic=None):
         k = KINDS[kind]
+        # 모든 글을 뉴닉처럼 읽을거리 있는 종합 기사로 (운영자 요청 2026-10-21)
         long = ("[분량] 잡지 기획 기사다. 소제목 5~6개, 소제목마다 문단 3~4개로 넉넉히 쓴다. 뉴스(무슨 일)·통계(얼마나)·법 조문(어떤 권리)을 "
-                "한 이야기로 엮고, 마지막 소제목은 소비자가 할 일로 마무리한다.\n") if k.get('long') else ''
+                "한 이야기로 엮고, 마지막 소제목은 소비자가 할 일로 마무리한다.\n") if k.get('long') else (
+               "[분량] 종합 기사다. 소제목 5개 안팎, 소제목마다 문단 3개 안팎으로 읽을거리 있게 쓴다. 통계를 다루더라도 숫자만 늘어놓지 말고, "
+               "자료에 있는 뉴스(무슨 일)·법 조문(어떤 권리)을 엮어 '왜 이런 숫자가 나왔는지, 나에게 무슨 뜻인지'를 이야기처럼 풀고, 마지막은 소비자가 할 일로 마무리한다.\n")
         user = (f"[글 종류] {k['name']}: {k['about']}\n" + (f"[주제] {topic}\n" if topic else '') + long + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
-        return chat(SYSTEM, user, 6000 if k.get('long') else 4500, AI_TIMEOUT * 2 if k.get('long') else AI_TIMEOUT)
+        return chat(SYSTEM, user, 6000, AI_TIMEOUT * 2)
 
     def save_check(db, article_id, title, summary, body, facts):
         problems = check_text('\n'.join([title, summary, body]), facts)
