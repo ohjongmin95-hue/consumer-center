@@ -66,6 +66,7 @@
   </nav>
   <div class="ad-main">
     {% if current_face() == 'jebo' and request.endpoint in ('admin_site', 'admin_lists', 'admin_content') %}<div class="ad-face-note" role="note"><b>소비자제보센터를 고치는 중이에요.</b> 여기서 바꾼 문구와 구성은 consumerjebo.co.kr에만 보이고 소보루에는 영향이 없어요. 사업자 정보와 약관은 두 사이트가 같이 써요.{% if request.args.get('face') == 'jebo' %} <a href="{{ url_for(request.endpoint) }}">소보루로 돌아가기</a>{% endif %}</div>{% endif %}
+    {% set aa = ai_alert() if ai_alert is defined else None %}{% if aa %}<div class="ad-ai-alert" role="alert"><b>{% if aa.kind == 'quota' %}OpenAI 충전금이 바닥났어요.{% else %}OpenAI 키가 막혔어요.{% endif %}</b> {{ aa.where }}이(가) {{ aa.since|replace('T', ' ') }}부터 멈춰 있어서 생활정보 글이 올라가지 않아요. {% if aa.kind == 'quota' %}<a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noopener">OpenAI 결제 화면</a>에서 충전하면, 다음 AI 호출이 성공할 때 이 알림이 저절로 사라져요.{% else %}<a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI 키 화면</a>에서 키를 확인하고 서버 설정의 키를 바꿔 주세요.{% endif %}</div>{% endif %}
     {% with msgs = get_flashed_messages() %}{% if msgs %}<div class="cs-flash" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}{% endwith %}
     {% block content %}{% endblock %}
   </div>
@@ -86,6 +87,13 @@
           if (window.Notification && Notification.permission === 'granted') {
             var n = new Notification('새 제보가 들어왔습니다', {body: d.subject, icon: '{{ url_for('static', filename='apple-touch-icon.png') }}', tag: 'new-case'});
             n.onclick = function () { window.focus(); location.href = d.url; };
+          }
+        }
+        if (d.ai && window.Notification && Notification.permission === 'granted') {  // OpenAI 충전금·키 알림은 같은 일로 한 번만
+          var seen = ''; try { seen = localStorage.getItem('ad-ai-alert') || ''; } catch (e) {}
+          if (seen !== d.ai) {
+            try { localStorage.setItem('ad-ai-alert', d.ai); } catch (e) {}
+            new Notification(d.ai.indexOf('quota') === 0 ? 'OpenAI 충전금이 바닥났어요' : 'OpenAI 키가 막혔어요', {body: '생활정보 글이 올라가지 않아요. 충전하거나 키를 확인해 주세요.', icon: '{{ url_for('static', filename='apple-touch-icon.png') }}', tag: 'ai-alert'});
           }
         }
       }).catch(function () {});

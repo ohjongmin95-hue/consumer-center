@@ -51,8 +51,15 @@ def migrate(db):
 # ---- AI 호출 ---------------------------------------------------------------------
 def ai_ready():return bool(os.getenv('OPENAI_API_KEY','').strip())
 def ai_model():return os.getenv('OPENAI_MODEL','').strip() or 'gpt-4.1-mini'
+AI_WATCH=[]  # (주소, 상태 코드, JSON)을 받아 보는 함수들 — 충전금 알림(aialert.py)
 def post_json(url,headers,body,timeout):
     """(상태 코드, JSON). 테스트에서 바꿔 끼운다."""
+    st,res=_post_json(url,headers,body,timeout)
+    for f in AI_WATCH:
+        try:f(url,st,res)
+        except Exception:logging.getLogger(__name__).warning('AI 알림 기록 실패',exc_info=True)
+    return st,res
+def _post_json(url,headers,body,timeout):
     req=urllib.request.Request(url,data=json.dumps(body,ensure_ascii=False).encode(),method='POST',headers=headers)
     try:
         with urllib.request.urlopen(req,timeout=timeout) as r:return r.status,json.loads(r.read().decode() or '{}')
