@@ -3539,7 +3539,7 @@ class SiteTest(unittest.TestCase):
             self.assertTrue(any('뉴스' in s['name'] or '·' in s['name'] for s in got['sources']))
             r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
         prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
-        self.assertIn('[분량·구성]', prompt); self.assertIn('4000자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+        self.assertIn('[분량·구성]', prompt); self.assertIn('2000자', prompt); self.assertIn('최근 관련 뉴스', prompt)
 
     def test_writer_skips_similar_topic_within_30_days(self):
         """제목이 달라도 소재가 같은 글(외식비·외식 물가)은 30일 안에 다시 쓰지 않음"""
