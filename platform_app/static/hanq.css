@@ -2041,10 +2041,12 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .cx-why{margin:0;font-size:14px;color:var(--fg2);line-height:1.55}
 .cx-draft{background:var(--fill);border-radius:12px;padding:10px 12px}.cx-draft small{font-size:12px;color:var(--fg3);font-weight:600}.cx-draft div{font-size:14.5px;line-height:1.55;white-space:pre-wrap;margin-top:2px}
 .cx-da{display:flex;gap:8px;flex-wrap:wrap}
-.cx-comp{margin:10px 20px 0;background:var(--card);border-radius:16px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.cx-comp{margin:10px 20px 0;background:var(--card);border:2px solid var(--fg4);border-radius:16px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.cx-comp:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.cx-comp textarea::placeholder{color:var(--fg2)}
 .cx-comp textarea{width:100%;border:0;outline:none;resize:none;font-size:15px;line-height:1.5;min-height:46px;max-height:180px;background:none}
 .cx-ca{display:flex;align-items:center;gap:8px}.cx-err{font-size:13px;color:var(--red)}
-.cx-note{margin:6px 20px 14px}.cx-note summary{font-size:13px;color:var(--fg3);font-weight:500}
+.cx-note{margin:6px 20px 14px}.cx-note summary{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--fg2);font-weight:600;background:var(--fill);border:1px dashed var(--fg4);border-radius:999px;padding:6px 12px;cursor:pointer;list-style:none}.cx-note summary::-webkit-details-marker{display:none}.cx-note summary::before{content:'📝'}
 .cx-nf{display:flex;gap:8px;margin-top:6px}.cx-nf .inp{padding:9px 12px;font-size:14px;background:var(--card)}
 .cx-blank{align-items:center;justify-content:center;text-align:center}
 .cx-blank div{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:340px;color:var(--fg3);font-size:14.5px;line-height:1.6}.cx-blank b{color:var(--fg);font-size:17px}
