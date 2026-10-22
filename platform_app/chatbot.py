@@ -110,7 +110,10 @@ def system_prompt(co,facts,law_text=''):
         f"말투: {tone}. 한국어로 답한다.\n"
         "대화 방식:\n"
         "- 앞의 대화를 기억하고 이어서 답한다. '그거', '두 번째 거'처럼 앞에서 말한 것을 가리키면 앞 대화에서 찾아 이해한다.\n"
+        "- 마지막 고객 말이 이번에 답할 말이다. 앞 대화는 그 말을 이해하는 데만 쓴다. 마지막 말이 인사·장난·잡담·감사처럼 앞 주제와 상관없으면 앞 주제(환불 등)를 다시 꺼내거나 앞의 안내·사과를 되풀이하지 말고, 그 말에 맞게 짧고 자연스럽게 답한 뒤 무엇을 도와드릴지 묻는다. 이때 action·handoff는 false, category는 null이다.\n"
+        "- 고객 말 앞에 '(…만에 다시 보낸 말)'이 붙어 있으면 시간이 지난 뒤 새로 말을 건 것이다. 앞 주제가 이어진다는 말이 없으면 새 대화로 보고 답한다.\n"
         "- 질문이 여러 개면 하나씩 모두 답한다. 고객이 이미 말한 것을 다시 묻지 않는다.\n"
+        "- 고객과 편하게 대화한다. 인사·안부·농담·잡담에도 사람처럼 짧고 다정하게 맞장구치며 대화를 이어 가고, 자연스러운 때에 쇼핑이나 문의로 도울 일이 있는지 살짝 묻는다. 잡담이라고 담당자에게 넘기지 않는다 (handoff false).\n"
         "- 사람 상담원처럼 자연스럽게 말한다. 보통 2~5문장으로 답하고, 비교·설명이 필요할 때만 더 길게 쓴다. 매번 인사하거나 같은 사과를 반복하지 않는다. 링크·마크다운 기호는 쓰지 않는다.\n"
         "- 불편이나 불만에는 짧게 공감하고, 할 수 있는 해결 절차를 바로 안내한다.\n"
         "- 답에 꼭 필요한 정보가 없으면 가장 중요한 것 하나만 되묻는다 (예: 주문번호).\n"
@@ -239,12 +242,31 @@ def owns(o,c,said):
     if o['buyer'] and c['name'] and n(o['buyer'])==n(c['name']):return True
     ph=core.digits(o['phone'] or '')
     return len(ph)>=8 and bool(re.search(r'(?<!\d)'+ph[-4:]+r'(?!\d)',re.sub(r'(?<=\d)[-\s.](?=\d)','',said or '')))
+GAP_HOURS=6  # 앞 말에서 이만큼 지나 다시 온 고객 말은 '(…만에 다시 보낸 말)'로 표시해 AI가 새 대화인지 가려 읽게 한다
+def gap_mark(a,b):
+    """두 시각(iso) 사이가 GAP_HOURS 이상이면 '(2일 만에 다시 보낸 말)' 같은 표시, 아니면 ''."""
+    try:h=(core.parse(b)-core.parse(a)).total_seconds()/3600
+    except Exception:return ''
+    if h<GAP_HOURS:return ''
+    return f"({int(h//24)}일 만에 다시 보낸 말)" if h>=24 else f"({int(h)}시간 만에 다시 보낸 말)"
 def turns(db,c):
-    """요청의 대화 [(who,text)]: 처음 글, 그 뒤 고객이 더 쓴 말('me')과 보낸 답('co')."""
-    out=[('me',f"{c['title']}\n{c['body']}".strip())]
+    """요청의 대화 [(who,text)]: 처음 글, 그 뒤 고객이 더 쓴 말('me')과 보낸 답('co'). 오래 지나 다시 온 고객 말에는 표시를 붙인다."""
+    out=[('me',f"{c['title']}\n{c['body']}".strip())];last=c['created']
     for e in core.events(db,c['id']):
-        if e['kind'] in ('me','co') and (e['reply'] or e['text']).strip():out.append(('me' if e['kind']=='me' else 'bot',e['reply'] or e['text']))
+        if e['kind'] in ('me','co') and (e['reply'] or e['text']).strip():
+            t=e['reply'] or e['text']
+            if e['kind']=='me':
+                m=gap_mark(last,e['created']);t=(m+'\n'+t) if m else t
+            out.append(('me' if e['kind']=='me' else 'bot',t));last=e['created'] or last
     return out
+def asks_since_gap(talk):
+    """마지막으로 오래 지나 다시 온 말부터 센 고객 말 수 (예전 대화까지 '반복 문의'로 세지 않는다)."""
+    n=0
+    for w,t in reversed(talk):
+        if w!='me':continue
+        n+=1
+        if '만에 다시 보낸 말)' in t.split('\n',1)[0]:break
+    return n
 def _note(db,c,text):db.execute('INSERT INTO notes(case_id,company_id,author,text,created) VALUES(?,?,?,?,?)',(c['id'],c['company_id'],'AI',text[:2000],core.iso()))
 def _to_owner(db,c,note=''):
     """사장님 승인 목록으로 넘기고 알린다 (AI가 먼저 보는 문의는 들어올 때 알리지 않았다)."""
@@ -284,7 +306,7 @@ def auto_reply(case_id):
     meta={'company_id':co['id'],'case_id':c['id'],'purpose':'auto'}
     if any(w=='bot' for w,_ in talk[:last]):
         with core.conn() as db:ai_mod.followed_up(db,c['id'])  # 답한 뒤 다시 물음: 앞 답은 해결 못 한 것으로 센다
-    ai=answer(co,facts,q,hist,meta=meta,asks=sum(1 for w,_ in talk if w=='me'))
+    ai=answer(co,facts,q,hist,meta=meta,asks=asks_since_gap(talk))
     res=_auto_reply(case_id,c,co,o,ask_ok=ok,other=other,ai=ai,token=token)
     ai_mod.outcome(meta,res or 'skipped')
     return res
