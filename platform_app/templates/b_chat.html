@@ -33,7 +33,7 @@
 {% if c.status not in ('resolved','unresolved','withdrawn') %}
 <form class="cx-comp" id="cxComp" method="post" action="{{ url_for('chat_send',case_id=c.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <textarea name="text" rows="1" maxlength="3000" placeholder="{{ c.name or '고객' }}님에게 답하기{% if send_via %} · {{ send_via }}{% endif %}" aria-label="답변"></textarea>
-<div class="cx-ca"><span class="cx-err" id="cxErr" role="alert"></span><span class="sp"></span><button class="btn md" id="cxSend">보내기</button></div></form>
+<div class="cx-ca"><span class="cx-err" id="cxErr" role="alert"></span><span class="sp"></span><button class="btn md" id="cxSend" aria-label="보내기" title="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></form>
 <form class="cx-note" method="post" action="{{ url_for('case',case_id=c.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="note"><input type="hidden" name="back" value="chat">
 <details><summary>메모 남기기 (고객에게 안 보여요)</summary><div class="cx-nf"><input class="inp" name="note" maxlength="2000" placeholder="팀에게 남길 메모" aria-label="메모"><button class="btn sm gray">남기기</button></div></details></form>
 {% endif %}
