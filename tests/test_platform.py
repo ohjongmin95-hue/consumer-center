@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','billing','aibench'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','billing','aibench'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -3042,6 +3042,85 @@ class PlatformTest(unittest.TestCase):
         """메타 앱 설정에 넣는 데이터 삭제 안내 페이지가 열리고, 연결 끊기와 요청 방법이 적혀 있다."""
         r=self.client().get('/data-deletion');page=r.get_data(as_text=True)
         self.assertEqual(r.status_code,200);self.assertIn('연결 끊기',page);self.assertIn('Data deletion',page);self.assertIn('id="account"',page);self.assertIn('회원 탈퇴',page)  # 구글 플레이 계정 삭제 안내 주소
+
+    def test_kakao_channel(self):
+        """카카오톡 채널(오픈빌더 스킬): 회사마다 다른 주소로만 받고, 고객마다 대화가 이어지고, AI 답은 콜백으로, 나중 답은 다음 말에 전해진다."""
+        import kakao, billing as bl, datetime as _d
+        bot=sys.modules['chatbot']
+        b,o,cid=self.signup_and_approve('카톡상점','kakao-co@example.com')
+        page=b.get('/biz/connect/kakao').get_data(as_text=True);self.assertIn('스킬 주소 만들기',page);self.assertIn('폴백 블록',page)
+        self.assertIn('카카오톡 채널',b.get('/biz/connect').get_data(as_text=True))
+        self.post(b,'/biz/connect/kakao',{'act':'new'},'/biz/connect/kakao')
+        page=b.get('/biz/connect/kakao').get_data(as_text=True);tok=re.search(r'/hook/kakao/([A-Za-z0-9_-]+)',page).group(1)
+        self.assertIn('아직 카카오톡에서 받은 말이 없어요',page)
+        with self.core.conn() as db:self.assertNotIn(tok,str(dict(kakao.link(db,cid))))  # 토큰은 그대로 저장하지 않는다
+        def say(text,user='bk1',cb=None,t=None):
+            ur={'utterance':text,'user':{'id':user,'type':'botUserKey','properties':{}},'block':{'id':'b1','name':'폴백 블록'}}
+            if cb:ur['callbackUrl']=cb
+            r=self.client().post('/biz/hook/kakao/'+(t or tok),json={'bot':{'id':'bot-1','name':'카톡상점'},'userRequest':ur,'action':{'params':{}}})
+            return r if r.status_code!=200 else r.get_json()
+        outs=lambda r:[x['simpleText']['text'] for x in r['template']['outputs']]
+        self.assertEqual(say('안녕',t='wrong-token').status_code,404)
+        # AI를 안 켰으면: 문의가 상담에 들어오고 '받았어요'만 답한다
+        r=say('반품하고 싶어요. 사이즈가 커요');self.assertEqual(r['version'],'2.0');self.assertEqual(outs(r),[kakao.HOLD])
+        say('주문번호 몰라요')
+        with self.core.conn() as db:
+            rows=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='카카오톡'",(cid,)).fetchall();self.assertEqual(len(rows),1);c=rows[0]
+            self.assertEqual(c['decision'],'pending');self.assertEqual(kakao.link(db,cid)['bot_id'],'bot-1')
+            self.assertEqual([e[0] for e in db.execute("SELECT text FROM events WHERE case_id=? AND kind='me'",(c['id'],))],['주문번호 몰라요'])
+        self.assertIn('chm kk',b.get('/biz/chat').get_data(as_text=True))
+        self.assertIn('고객이 카톡으로 다시 말을 걸면 전해져요',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))
+        # 사장님 답은 담아 뒀다가 고객이 다음에 말을 걸 때 앞에 붙여 전한다 (한 번만)
+        self.post(b,f'/biz/case/{c["id"]}',{'act':'reply','msg':'S로 교환해 드릴 수 있는지 확인해 볼게요.'},f'/biz/case/{c["id"]}')
+        self.assertIn('고객에게 전할 답 1개',b.get('/biz/connect/kakao').get_data(as_text=True))
+        r=say('네 기다릴게요');self.assertEqual(outs(r),['S로 교환해 드릴 수 있는지 확인해 볼게요.','말씀 잘 받았어요. 담당자가 확인하고 답해 드릴게요.'])
+        self.assertEqual(outs(say('아직이요?')),[kakao.HOLD])
+        with self.core.conn() as db:self.assertTrue(db.execute("SELECT 1 FROM events WHERE case_id=? AND text='카카오톡으로 답변을 전했어요'",(c['id'],)).fetchone())
+        # AI 자동 답변: '잠시만요'를 먼저, AI 답은 콜백으로
+        with self.core.conn() as db:db.execute("UPDATE companies SET ai_reply=? WHERE id=?",(self.core.iso(),cid))
+        replies={'SPF':{'answer':'SPF50+예요.','category':None,'handoff':False,'lookup':False,'summary':''},
+                 '불량':{'answer':'불편을 드려 죄송해요. 사진을 남겨 주시면 확인할게요.','category':'제품 불량','handoff':False,'action':True,'lookup':False,'summary':'불량 교환 요청'},
+                 '보상':{'answer':'','category':'반품·환불','handoff':True,'lookup':False,'summary':'보상 요구'}}
+        posted=[];ok=[True]
+        def fake_post(url,data):posted.append((url,data));return ok[0]
+        kakao.BACKGROUND=False
+        try:
+            with patch.object(bot,'ready',lambda:True),patch.object(bot,'answer',lambda co,facts,text,history=None,**k:next(v for key,v in replies.items() if key in text)),patch.object(kakao,'_post',fake_post):
+                cb='https://bot-api.kakao.com/v1/bots/bot-1/callback/abc'
+                r=say('선크림 SPF 몇이에요?',user='bk2',cb=cb)
+                self.assertEqual(r,{'version':'2.0','useCallback':True,'data':{'text':kakao.WAIT}})
+                self.assertEqual(posted[-1][0],cb);self.assertEqual(outs(posted[-1][1]),['SPF50+예요.'])
+                with self.core.conn() as db:
+                    c2=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='카카오톡' ORDER BY id DESC",(cid,)).fetchone()
+                    self.assertEqual((c2['status'],c2['decision']),('answered','auto'))
+                # 카카오가 아닌 콜백 주소는 쓰지 않는다 (5초 안에 바로 답)
+                n=len(posted);r=say('다른 선크림도 SPF 같아요?',user='bk2',cb='https://evil.example.com/cb')
+                self.assertEqual(len(posted),n);self.assertEqual(outs(r),['SPF50+예요.'])
+                # 환불·교환 같은 결정은 안내만 보내고 사장님께
+                r=say('받은 상품이 불량이에요',user='bk3',cb=cb);self.assertTrue(r['useCallback'])
+                self.assertEqual(outs(posted[-1][1]),['불편을 드려 죄송해요. 사진을 남겨 주시면 확인할게요.'])
+                with self.core.conn() as db:
+                    c3=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='카카오톡' ORDER BY id DESC",(cid,)).fetchone()
+                    self.assertEqual(c3['decision'],'pending');self.assertIn('처리할지 정해 주세요',c3['ai_why'])
+                # AI가 답하지 않고 넘기면 '받았어요'를 콜백으로. 콜백이 실패한 답은 다음 말에 전한다
+                say('보상해 주세요',user='bk4',cb=cb);self.assertEqual(outs(posted[-1][1]),[kakao.HOLD])
+                with self.core.conn() as db:
+                    c4=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='카카오톡' ORDER BY id DESC",(cid,)).fetchone()
+                    self.assertEqual(c4['decision'],'pending');self.assertTrue(db.execute("SELECT 1 FROM biz_alerts WHERE company_id=? AND case_id=? AND kind='new'",(cid,c4['id'])).fetchone())
+                ok[0]=False;say('SPF 다시 알려 주세요',user='bk2',cb=cb)
+                ok[0]=True;n=len(posted);r=say('보상도 되나요?',user='bk2',cb=cb)  # 이어진 대화: AI가 다시 보고, 못 전한 답도 같이
+                self.assertEqual(outs(posted[-1][1])[0],'SPF50+예요.')
+        finally:kakao.BACKGROUND=True
+        # 요금 세기: 고객에게 답이 나간 문의만 (받았어요 안내는 세지 않음)
+        with self.core.conn() as db:
+            t=_d.date.today();used=bl.tickets_used(db,cid,t-_d.timedelta(days=1),t+_d.timedelta(days=1))
+            answered=db.execute("SELECT COUNT(DISTINCT e.case_id) FROM events e JOIN cases c ON c.id=e.case_id WHERE c.company_id=? AND e.kind='co' AND e.reply!=''",(cid,)).fetchone()[0]
+        self.assertEqual(used,answered);self.assertEqual(used,3)  # 사장님 답 1 + AI 답 2 (bk4는 넘김만)
+        # 주소 새로 만들기: 예전 주소는 안 듣는다. 연결 끊기
+        self.post(b,'/biz/connect/kakao',{'act':'new'},'/biz/connect/kakao')
+        self.assertEqual(say('안녕').status_code,404)
+        self.post(b,'/biz/connect/kakao',{'act':'delete'},'/biz/connect/kakao')
+        with self.core.conn() as db:self.assertIsNone(kakao.link(db,cid))
 
     def test_chat_law_grounding(self):
         """상담창: 법률 질문이면 찾은 법령 원문을 '[관련 법령 원문]'으로 주고 인터넷 검색을 끈다. 일반 질문에는 조문을 넣지 않는다."""
