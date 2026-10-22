@@ -21,11 +21,12 @@
 {% block head %}{% endblock %}
 <link rel="icon" type="image/png" href="{{ url_for('static',filename='soboru-favicon.png') }}?v=3"><link rel="apple-touch-icon" href="{{ url_for('static',filename='soboru-touch.png') }}?v=3">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='hanq.css') }}?v=89">
+<link rel="stylesheet" href="{{ url_for('static',filename='hanq.css') }}?v=97">
 </head>
 <body class="v2{{ ' fbiz' if site!='me' }}">
 {% block bar %}{% endblock %}
 {% with msgs=get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flashes {% block fwidth %}wrap{% endblock %}">{% for cat,msg in msgs %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+{% if site!='me' and trial and not trial.locked and request.endpoint not in ('login','signup') %}<div class="wrap"><div class="trialbar"><b>무료 체험 {{ trial.left }}일 남았어요.</b> {% if trial.canceled %}해지했어요. {{ trial.end }}까지 쓰고 결제되지 않아요.{% elif trial.c24 %}{{ trial.end }}까지 카페24로 결제하면 이어서 쓸 수 있어요.{% else %}{{ trial.end }}에 첫 달 요금이 결제돼요.{% endif %} <a href="{{ url_for('pay.page') }}">요금·결제</a></div></div>{% endif %}
 {% block main %}<main class="pg"><div class="{% block width %}wrap{% endblock %}">{% block body %}{% endblock %}</div></main>{% endblock %}
 {% import '_op.html' as op with context %}
 {% block foot %}{% set ffold=site!='me' and (co or is_ops) and request.endpoint!='pay.page' %}<footer class="foot2{{ ' ffold' if ffold }}">{% if ffold %}<details class="ftd"><summary>회사 정보</summary>{% endif %}<div class="wrap">

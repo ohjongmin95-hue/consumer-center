@@ -168,6 +168,7 @@ def sync(co):
 def sync_all():
     n=0
     with conn() as db:rows=db.execute("SELECT c.* FROM mail_links l JOIN companies c ON c.id=l.company_id WHERE c.member=1 AND c.status='active'").fetchall()
+    import billing;rows=[r for r in rows if billing.open_ok(r)]  # 결제가 없으면(체험 끝·결제 실패) 가져오지 않는다
     for r in rows:
         try:n+=sync(r)
         except MailError:pass

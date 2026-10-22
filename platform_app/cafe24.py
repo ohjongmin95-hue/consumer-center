@@ -472,6 +472,7 @@ def sync_all():
     if not ready():return 0
     n=0
     with conn() as db:rows=db.execute("SELECT c.* FROM cafe24_links l JOIN companies c ON c.id=l.company_id WHERE l.status='ok' AND c.member=1 AND c.status='active'").fetchall()
+    import billing;rows=[r for r in rows if billing.open_ok(r)]  # 결제가 없으면(체험 끝·결제 실패) 가져오지 않는다
     for co in rows:  # 한 쇼핑몰·한 단계가 실패해도 나머지는 계속 (예상 못 한 오류도 기록만 하고 넘어간다)
         try:
             with conn() as db:n+=sync_orders(db,co)
@@ -721,6 +722,7 @@ def callback():
     except shops.ShopError as e:flash(str(e),'error');return redirect(url_for('c24.page'))
     with conn() as db:
         store(db,co['id'],st['mall'],data);session.pop('c24_launch',None)
+        import billing;billing.start_c24_trial(db,co['id'])  # 카페24로 처음 연결: 5일 무료 체험 (그 안에 카페24로 결제)
         if st.get('l') and not co['member']:  # 카페24에서 연 앱 + 그 쇼핑몰 관리자 동의 = 회사 인증 (국세청·이메일 확인을 기다리지 않는다)
             import onboard;onboard.make_member(db,co);co=core.company(db,co['id'])
             log.warning('카페24 관리자 동의로 회사 인증: 회사 %s, 쇼핑몰 %s',co['id'],st['mall'])

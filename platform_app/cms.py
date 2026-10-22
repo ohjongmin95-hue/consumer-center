@@ -133,13 +133,14 @@ def can_publish(p):
     if not p['body'].strip():return '본문이 비어 있어요'
     return ''
 
+PAUSED={('help','smartstore'),('help','coupang')}  # 운영자 결정 2026-10-21: 처음엔 카페24·자사몰만. 글은 지우지 않고 공개 화면에서만 숨긴다
 def published(db,kind,category=None):
     sql='SELECT * FROM posts WHERE kind=? AND published=1';a=[kind]
     if category:sql+=' AND category=?';a.append(category)
-    return db.execute(sql+' ORDER BY sort,published_at DESC,id DESC',a).fetchall()
+    return [r for r in db.execute(sql+' ORDER BY sort,published_at DESC,id DESC',a).fetchall() if (kind,r['slug']) not in PAUSED]
 def get(db,kind,slug):
     p=db.execute('SELECT * FROM posts WHERE kind=? AND slug=?',(kind,slug)).fetchone()
-    if not p or (not p['published'] and not session.get('ops')):abort(404)
+    if not p or ((not p['published'] or (kind,slug) in PAUSED) and not session.get('ops')):abort(404)
     return p
 
 # ---------- 공개 화면 ----------
@@ -203,6 +204,7 @@ def sitemap_entries():
     out=[('/blog',''),('/help',''),('/customers','')]
     with conn() as db:
         for p in db.execute('SELECT kind,slug,updated FROM posts WHERE published=1').fetchall():
+            if (p['kind'],p['slug']) in PAUSED:continue
             out.append(({'blog':'/blog/','help':'/help/','story':'/customers/'}[p['kind']]+p['slug'],p['updated'][:10]))
     return out
 
@@ -262,7 +264,7 @@ SEED_HELP=[
 
 ## 회사 인증 뒤에 열리는 것
 - 소비자가 우리 회사로 접수한 요청 받기
-- 스마트스토어·쿠팡 연결 (실제 고객 정보를 가져오는 일이라서요)
+- 카페24·판매처 연결 (실제 고객 정보를 가져오는 일이라서요)
 
 ## 회사 인증은 어떻게 되나요
 1. 가입할 때 적은 로그인 이메일로 온 확인 메일의 링크를 눌러요.
@@ -274,7 +276,7 @@ SEED_HELP=[
   """처음 설정은 단계마다 저장돼요. 중간에 나가도 다음에 이어서 할 수 있어요.
 
 1. **기업 정보**: 업종, 대표 연락처
-2. **쇼핑몰 종류**: 스마트스토어, 쿠팡, 카페24, 자사몰 등
+2. **쇼핑몰 종류**: 카페24, 자사몰 등
 3. **고객센터 정보**: 고객에게 보일 연락처, 상담 시간, 알림 받을 이메일
 4. **교환·반품·환불 정책**: 배송 정책, 반품 규정, 반품 주소, 택배사
 5. **판매처 연결**: 회사 인증 뒤에 할 수 있어요. 나중에 하기를 눌러도 돼요

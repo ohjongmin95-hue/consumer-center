@@ -77,6 +77,99 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('noindex', self.client.get('/reports').get_data(as_text=True))
         self.assertIn('noindex,follow', self.client.get('/reports?q=환불').get_data(as_text=True))
 
+    def test_company_grade_and_summary(self):
+        # 소보루 등급: 답변 50 + 해결 30 + 속도 20, 전달하고 14일이 안 된 제보는 빼고, 14일 넘게 답이 없으면 '답변 없음'
+        import datetime, jebo
+        self.assertEqual([jebo.grade_of(s) for s in (100, 97, 96, 90, 80, 60, 59, 0)], ['A+', 'A+', 'A', 'A-', 'B-', 'D-', 'F', 'F'])
+        today = datetime.date.today()
+        ago = lambda d, h=0: (datetime.datetime.combine(today, datetime.time(9)) - datetime.timedelta(days=d, hours=-h)).isoformat(timespec='seconds')
+        self.assertTrue(jebo.no_answer({'forwarded_at': ago(15)}, False))
+        self.assertFalse(jebo.no_answer({'forwarded_at': ago(15)}, True))
+        self.assertFalse(jebo.no_answer({'forwarded_at': ago(3)}, False))
+        self.assertFalse(jebo.no_answer({'forwarded_at': ''}, False))
+        with self.site.conn() as db:
+            co = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES('등급몰','1','active','','','','x')").lastrowid
+            def case(n, answer_h=None, outcome='', fw=30):
+                cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,company_id,subject,description,request_text,created,forwarded_at,reviewed_at,status,outcome,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,1,1)",
+                                 (f'GR-{n}', 'x', '배송·환불', '등급몰', co, f'제보 {n}', '환불이 안 돼요', '환불', ago(fw + 1), ago(fw), ago(fw), '기업 전달', outcome)).lastrowid
+                if answer_h is not None:
+                    db.execute("INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)", (cid, '기업 답변', '확인할게요', ago(fw, answer_h)))
+            for i in range(4): case(i, 10, 'resolved')
+            gr = jebo.company_grade(db, co)
+            self.assertEqual(gr['grade'], '')  # 4건이면 아직 등급 없음
+            case(4, 30)
+            case(5, None, fw=3)  # 전달 3일째: 기다리는 중, 점수에 안 들어감
+            gr = jebo.company_grade(db, co)
+            self.assertEqual((gr['scored'], gr['answered'], gr['silent'], gr['told'], gr['resolved']), (5, 5, 0, 4, 4))
+            self.assertEqual((gr['score'], gr['grade']), (50 + 15 + 20, 'B'))  # 해결을 알려 준 사람이 5명 미만이면 해결 점수는 절반
+            case(6, None, fw=20)  # 20일째 답 없음
+            gr = jebo.company_grade(db, co)
+            self.assertEqual(gr['silent'], 1)
+            self.assertEqual(gr['score'], round(50 * 5 / 6) + 15 + 20)
+        page = self.client.get(f'/companies/{co}').get_data(as_text=True)
+        self.assertIn('co-grade g-', page)
+        self.assertIn('1건은 전달하고 14일이 넘도록 답이 없어요', page)
+        self.assertIn('해결됐어요', page)
+        self.assertIn('>답변 없음<', page)
+        guide = self.client.get('/companies/grade').get_data(as_text=True)
+        self.assertIn('60점 미만', guide)
+        self.assertNotIn('060점', guide)
+        self.assertIn('/companies/grade', self.client.get('/companies').get_data(as_text=True))
+
+    def test_openai_credit_alert(self):
+        # OpenAI 충전금이 바닥나면(429 insufficient_quota) 관리자 화면 맨 위에 알림, 충전 뒤 호출이 성공하면 저절로 사라짐
+        desk = self.site.companydesk
+        admin = self.login_admin()
+        self.assertNotIn('class="ad-ai-alert"', admin.get('/admin').get_data(as_text=True))
+        quota = (429, {'error': {'message': 'You exceeded your current quota', 'type': 'insufficient_quota', 'code': 'insufficient_quota'}})
+        with patch.object(desk, '_post_json', return_value=quota):
+            self.assertEqual(desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)[0], 429)
+        page = admin.get('/admin').get_data(as_text=True)
+        self.assertIn('OpenAI 충전금이 바닥났어요', page)
+        self.assertIn('AI 글쓰기·답변', page)
+        self.assertNotIn('ad-ai-alert', self.client.get('/').get_data(as_text=True))  # 방문자에게는 안 보임
+        with patch.object(desk, '_post_json', return_value=(429, {'error': {'code': 'rate_limit_exceeded'}})):
+            desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)  # 잠깐 몰린 것(속도 제한)은 충전 알림이 아님
+        self.assertIn('충전금이 바닥났어요', admin.get('/admin').get_data(as_text=True))
+        with patch.object(desk, '_post_json', return_value=(200, {'choices': []})):
+            desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)
+        self.assertNotIn('class="ad-ai-alert"', admin.get('/admin').get_data(as_text=True))
+        with patch.object(desk, '_post_json', return_value=(401, {'error': {'code': 'invalid_api_key'}})):
+            desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)
+        self.assertIn('OpenAI 키가 막혔어요', admin.get('/admin').get_data(as_text=True))
+        with patch.object(desk, '_post_json', return_value=(200, {})): desk.post_json('https://api.openai.com/v1/chat/completions', {}, {}, 5)
+
+    def test_scam_watch(self):
+        # 사기 주의: 회원만 신고, 운영자가 '공개'로 바꾸기 전에는 어디에도 안 보임, 번호는 일부만 보이고 검색은 전체 번호로
+        import scamwatch
+        self.assertEqual(scamwatch.mask_target('phone', '010-2389-4471'), '010-23**-**71')
+        self.assertEqual(scamwatch.mask_target('account', '신한 110-123-456789'), '신한 110*******89')
+        self.assertEqual(scamwatch.norm_target('site', 'https://www.Abc-Shop.kr/item?id=1'), 'abc-shop.kr')
+        self.assertEqual(scamwatch.guess_norm('010 2389 4471'), ['01023894471'])
+        with self.site.conn() as db: db.execute('DELETE FROM scam_reports')
+        self.assertEqual(self.client.get('/scam').status_code, 200)
+        self.assertIn('/login', self.client.get('/scam/new').headers['Location'])
+        member = self.site.app.test_client()
+        self.signup(member)
+        data = {'kind': 'used', 'title': '중고 카메라 선입금 사기', 'story': '직거래는 안 되고 선입금만 된다고 했어요. 입금하니 연락이 끊겼어요.',
+                'target_type': 'phone', 'target': '010-2389-4471', 'region': '서울', 'amount': '320,000', 'truth': '1'}
+        self.assertEqual(self.post_form(member, '/scam/new', {**data, 'truth': ''}).status_code, 400)
+        self.assertEqual(self.post_form(member, '/scam/new', data).status_code, 302)
+        hidden = self.client.get('/scam?q=010-2389-4471').get_data(as_text=True)
+        self.assertNotIn('중고 카메라 선입금 사기', hidden)
+        self.assertIn('아직 공개된 신고는 없어요', hidden)
+        admin = self.login_admin()
+        self.assertIn('중고 카메라 선입금 사기', admin.get('/admin/scam').get_data(as_text=True))
+        with self.site.conn() as db: sid = db.execute('SELECT id FROM scam_reports').fetchone()[0]
+        token = self.csrf(admin, '/admin/scam')
+        admin.post('/admin/scam', data={'_csrf': token, 'id': sid, 'status': 'public', 'admin_note': ''})
+        found = self.client.get('/scam?q=01023894471').get_data(as_text=True)
+        self.assertIn('사기 신고가 1건 있어요', found)
+        self.assertIn('010-23**-**71', found)
+        self.assertNotIn('010-2389-4471', found)
+        self.assertIn('32만 원', found)
+        self.assertIn('사기 주의', self.client.get('/').get_data(as_text=True))
+
     def setUp(self):
         self.client = self.site.app.test_client()
         with self.site.conn() as db:
@@ -3589,7 +3682,27 @@ class SiteTest(unittest.TestCase):
             self.assertTrue(any('뉴스' in s['name'] or '·' in s['name'] for s in got['sources']))
             r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
         prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
-        self.assertIn('[분량·구성]', prompt); self.assertIn('2000자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+        self.assertIn('[분량·구성]', prompt); self.assertIn('3500~4500자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+
+    def test_writer_long_read_format(self):
+        # 뉴닉 롱리드처럼: 소제목 없는 도입 → 핵심 상자 → 소제목 + 번호 요점 + 용어 풀이 → 이렇게 하세요 → 마무리 (운영자 2026-10-21)
+        import soboru_writer as sw
+        out = {'title': '첫 신용카드, 이것부터 알아 두세요', 'summary': ['하나', '둘', '셋'], 'highlight': '결제일을 놓치면 신용점수가 떨어질 수 있어요.',
+               'intro': ['처음이라는 말은 늘 설레요.', '이 글은 첫 카드를 앞둔 분께 전하고 싶은 이야기예요.'],
+               'sections': [{'emoji': '💳', 'heading': '쓰면서 꼭 기억해야 할 것들', 'paragraphs': ['처음부터 습관이 중요해요.'],
+                             'points': [{'title': '1. 일시불을 써 보세요', 'text': '할부는 미래의 돈을 당겨 쓰는 거예요.'}, {'title': '결제일을 기억하세요', 'text': '알림을 꼭 켜 두세요.'}],
+                             'terms': [{'word': '리볼빙', 'meaning': '카드값 일부만 내고 나머지를 미루는 서비스예요.'}]}],
+               'tips': ['결제일 알림을 켜세요'], 'closing': {'heading': '소보루와 함께 시작해요', 'paragraphs': ['수상한 결제 문자를 받았다면 사기 주의에서 번호를 찾아보세요.']}}
+        title, summary, body, cat = sw.assemble(out, 'feature')
+        self.assertTrue(body.startswith('처음이라는 말은 늘 설레요.'))
+        self.assertLess(body.index('> 💡'), body.index('## 💳'))
+        self.assertIn('### 일시불을 써 보세요', body)  # 번호는 본문에 넣지 않음 (숫자 검사)
+        self.assertIn('※ 리볼빙: 카드값 일부만', body)
+        self.assertLess(body.index('## ✅ 이렇게 하세요'), body.index('## 🤝 소보루와 함께 시작해요'))
+        with self.site.app.test_request_context('/'): html = str(self.site.app.jinja_env.globals['life_body'](body))
+        self.assertIn('<span class="sb-point-n" aria-hidden="true">2</span>결제일을 기억하세요', html)
+        self.assertIn('<p class="sb-term"><b>리볼빙</b>', html)
+        self.assertNotIn('###', html)
 
     def test_writer_skips_similar_topic_within_30_days(self):
         """제목이 달라도 소재가 같은 글(외식비·외식 물가)은 30일 안에 다시 쓰지 않음"""

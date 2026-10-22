@@ -6,7 +6,7 @@ import { api, CompanyInfo, Meta } from './api';
 import { pushToken, registerPush } from './push';
 
 const KEY = 'soboru.biz.session';
-type Session = { token: string; company: CompanyInfo };
+type Session = { token: string; company: CompanyInfo; guest?: boolean }; // guest: 로그인 없이 둘러보기 (견본 상점)
 
 async function load(): Promise<Session | null> {
   try {
@@ -43,6 +43,7 @@ type Auth = {
   session: Session | null;
   meta: Meta | null;
   login: (id: string, pw: string) => Promise<void>;
+  guest: () => Promise<void>;
   logout: () => Promise<void>;
   setToken: (token: string) => Promise<void>;
   lastId: string;
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     load().then((s) => {
       setSession(s);
       setReady(true);
-      if (s) registerPush(s.token);
+      if (s && !s.guest) registerPush(s.token);
     });
     api.meta().then(setMeta).catch(() => {});
   }, []);
@@ -72,9 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(s);
     registerPush(s.token);
   }, []);
+  // 둘러보기: 알림은 등록하지 않는다 (견본 상점은 하루 뒤 지워진다)
+  const guest = useCallback(async () => {
+    const r = await api.demo();
+    const s = { token: r.token, company: r.company, guest: true };
+    await save(s);
+    setSession(s);
+  }, []);
   const logout = useCallback(async () => {
     const s = await load();
-    const t = await pushToken();
+    const t = s?.guest ? null : await pushToken();
     if (s && t) api.logout(s.token, t).catch(() => {});
     await save(null);
     setSession(null);
@@ -87,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await save(n);
     setSession(n);
   }, []);
-  const value = useMemo(() => ({ ready, session, meta, login, logout, setToken, lastId }), [ready, session, meta, login, logout, setToken, lastId]);
+  const value = useMemo(() => ({ ready, session, meta, login, guest, logout, setToken, lastId }), [ready, session, meta, login, guest, logout, setToken, lastId]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

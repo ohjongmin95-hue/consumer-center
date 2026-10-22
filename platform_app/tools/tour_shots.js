@@ -2,7 +2,7 @@
 // 각 단계: 화면을 열고, 짚을 요소를 화면 안으로 스크롤한 뒤 보이는 화면만 찍고, 그 요소 가운데 위치(%)를 기록한다.
 const path=require('path'),fs=require('fs');
 const { chromium } = require(process.env.PLAYWRIGHT_PATH||'playwright');
-const BASE='http://127.0.0.1:8811',OUT=path.join(__dirname,'..','static','tour');
+const BASE='http://127.0.0.1:'+(process.env.TOUR_PORT||8811),OUT=path.join(__dirname,'..','static','tour');
 const STEPS=[ // [키, 주소(데모 기준), 짚을 요소]
   ['home','/biz/','.brief'],
   ['inbox','/biz/all','table.tbl2 tbody tr'],

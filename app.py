@@ -364,7 +364,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-120'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-123'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -2177,6 +2177,8 @@ def admin_new_cases():
         last=db.execute('SELECT id,subject FROM cases ORDER BY id DESC LIMIT 1').fetchone()
     info['subject']=last['subject'] if last else ''
     info['url']=url_for('admin_report',case_id=last['id']) if last else url_for('admin_reports')
+    aa=app.extensions['aialert']['load']() if 'aialert' in app.extensions else None
+    info['ai']=aa['kind']+':'+aa['since'] if aa else ''  # OpenAI 충전금·키 알림 (aialert.py)
     return info
 @app.route('/admin')
 @admin_only
@@ -2753,5 +2755,8 @@ _writer=types.SimpleNamespace(**globals());soboru_writer.install(_writer)
 _rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
 import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  # 소보루 레터: 주간 뉴스레터·구독·발송 (soboru_letter.py)
 import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
+
+import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
+import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
 
 if __name__=='__main__':app.run(debug=False)

@@ -117,8 +117,11 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉�
           '- 출처·링크·주소는 본문에 쓰지 않는다(화면에서 따로 붙인다). HTML·마크다운 기호는 쓰지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"title": 40자 안팎 제목, "summary": [세 줄 요약, 문자열 3개], '
           '"highlight": 글 전체에서 가장 중요한 한 문장(자료의 사실·숫자로만), '
-          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 2~3개]}] 4~5개, '
-          '"tips": ["이렇게 하세요"에 넣을 행동 요령 2~4개], "category": 분야 목록 중 하나}\n'
+          '"intro": [소제목 앞 도입 문단 2~3개], '
+          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 3~5개], '
+          '"points": [{"title": 짧은 요점 제목, "text": 그 요점을 2~4문장으로 푼 설명}] (요점을 하나씩 짚어 줄 소제목에만, 없으면 빈 목록), '
+          '"terms": [{"word": 이 소제목에 나온 어려운 말, "meaning": 쉬운 풀이 한두 문장}] (없으면 빈 목록)}] 3~5개, '
+          '"tips": ["이렇게 하세요"에 넣을 행동 요령 2~4개], "closing": {"heading": 마무리 소제목, "paragraphs": [마무리 문단 1~2개]}, "category": 분야 목록 중 하나}\n'
           '심층 분석 기사다: 숫자를 나열만 하지 말고 무엇이 눈에 띄는지, 소비자에게 어떤 뜻인지를 문단마다 풀어 쓴다(자료 안에서만).\n'
           '쓸 수 있는 이모지: ' + EMOJI)
 
@@ -237,13 +240,32 @@ def assemble(out, kind):
         head = _plain(sec.get('heading'), 60)
         emo = str(sec.get('emoji') or '').strip().replace('\ufe0f', '')
         if head and emo and emo in EMOJI and len(emo) <= 2: head = emo + ' ' + head  # 글꼴에 있는 이모지만
-        parts.append(('## ' + head + '\n\n' if head else '') + '\n\n'.join(paras))
+        block = ('## ' + head + '\n\n' if head else '') + '\n\n'.join(paras)
+        for pt in (sec.get('points') or [])[:8]:  # '### 제목' + 설명. 번호는 화면에서 붙임 (본문에 숫자를 넣으면 숫자 검사에 걸림)
+            if not isinstance(pt, dict): continue
+            t, x = _plain(pt.get('title'), 80), _plain(pt.get('text'), 800)
+            if t and x: block += '\n\n### ' + re.sub(r'^\s*\d+[.)]\s*', '', t) + '\n\n' + x
+        for tm in (sec.get('terms') or [])[:3]:  # '※ 낱말: 풀이' 용어 풀이
+            if not isinstance(tm, dict): continue
+            w, mean = _plain(tm.get('word'), 40), _plain(tm.get('meaning'), 300)
+            if w and mean: block += '\n\n※ ' + w + ': ' + mean
+        parts.append(block)
+    intro = out.get('intro') or []
+    if isinstance(intro, str): intro = re.split(r'\n\s*\n|\n', intro)
+    intro = [_plain(p) for p in intro if _plain(p)][:4]
     tips = out.get('tips') or []
     if isinstance(tips, str): tips = tips.split('\n')
     tips = [re.sub(r'^\s*(\d+[.)]|[-•·])\s*', '', _plain(t, 300)) for t in tips if _plain(t)][:5]
     if tips: parts.append('## ✅ 이렇게 하세요\n' + '\n'.join('- ' + t for t in tips))
+    end = out.get('closing')
+    if isinstance(end, dict):
+        paras = end.get('paragraphs') or []
+        if isinstance(paras, str): paras = [paras]
+        paras = [_plain(p) for p in paras if _plain(p)][:3]
+        if paras: parts.append('## 🤝 ' + (_plain(end.get('heading'), 60) or '소보루가 도와드릴게요') + '\n\n' + '\n\n'.join(paras))
     hl = _plain(out.get('highlight'), 200)
-    if hl and parts: parts.insert(0, '> 💡 ' + hl)  # 맨 앞 '핵심만 쏙' 상자
+    if hl and parts: parts.insert(0, '> 💡 ' + hl)  # 도입 문단 바로 뒤 '핵심만 쏙' 상자
+    if intro and parts: parts.insert(0, '\n\n'.join(intro))  # 소제목 없는 도입 (뉴닉처럼 말 걸며 시작)
     if not title or not parts: raise RuntimeError('AI가 기사를 채우지 못했어요')
     cat = out.get('category') if out.get('category') in CATS else KINDS[kind]['category']
     return title, '\n'.join(summary), '\n\n'.join(parts), cat
@@ -899,15 +921,20 @@ def install(S):
     # ---- AI로 쓰기 · 저장 -------------------------------------------------------
     def ask_ai(kind, facts, topic=None):
         k = KINDS[kind]
-        # 뉴닉처럼 여러 자료를 엮되 읽기 쉬운 길이로 (운영자 2026-10-21: 4000자는 너무 김, 가독성이 먼저)
-        long = ("[분량·구성] 뉴닉처럼 술술 읽히는 종합 기사다. 본문은 2000자 안팎. 소제목 4~5개, 소제목마다 문단 2~3개, 문단은 2~3문장으로 짧게. "
-                "한 문장에는 한 가지만 말하고, 같은 말을 되풀이하거나 분량을 채우려고 늘이지 않는다. "
-                "첫 소제목은 독자에게 말 걸듯 '요즘 이런 일이 있었어요'로 시작해 왜 읽어야 하는지 알려 준다. 소제목은 '그래서 얼마나 올랐냐면', '왜 이런 거예요?', "
-                "'내 지갑엔 무슨 뜻일까', '법은 어떻게 돼 있어요?'처럼 독자가 궁금해할 질문·말투로 쓴다. 뉴스(무슨 일)·통계(얼마나)·법 조문(어떤 권리)을 한 이야기로 엮고, "
-                "통계는 숫자만 늘어놓지 말고 '이게 무슨 뜻이냐면'으로 풀어 준다. 어려운 말은 바로 뒤에 쉬운 말로 풀고, 마지막 소제목은 소비자가 당장 할 일로 마무리한다.\n")
+        # 뉴닉 롱리드처럼 (운영자 2026-10-21 밤: 뉴닉 신용카드 글 같은 분량·문체로, 지금은 너무 짧음 → 2000자에서 4000자 안팎으로 다시 늘림)
+        long = ("[분량·구성] 뉴닉 롱리드처럼 이야기하듯 술술 읽히는 기사다. 본문은 3500~4500자. "
+                "도입(intro)은 소제목 없이 2~3문단으로, 독자가 겪을 법한 장면이나 마음(처음 해 보는 일, 막막했던 순간)으로 공감하며 시작하고 "
+                "'이 글은 ~하는 분께 전하고 싶은 이야기예요'처럼 누구를 위한 글인지 밝힌다. 도입에도 자료에 없는 사실·숫자는 쓰지 않는다. "
+                "소제목은 3~5개, 소제목마다 문단 3~5개, 문단은 3~5문장. 소제목은 '~하기 위한 조건', '~인데도 ~하는 경우', '~하면서 꼭 기억해야 할 것들'처럼 "
+                "독자가 궁금해할 순서대로 이야기를 이어 간다. 한 소제목은 points로 요점을 하나씩 짚는다(요점마다 짧은 제목 + 왜 그런지와 어떻게 하면 되는지 2~4문장). "
+                "어려운 말은 문장 안에서 쉽게 풀거나 terms로 따로 풀이한다. 통계·법 조문은 '이게 무슨 뜻이냐면'처럼 내 생활에 어떤 뜻인지 풀어 준다. "
+                "'세 살 버릇 여든까지 간다'처럼 익숙한 말로 비유해도 좋다. 같은 말을 되풀이하거나 분량을 채우려고 늘이지 않는다. "
+                "closing은 독자를 응원하며 끝내고, 글과 맞는 소보루 기능 하나를 자연스럽게 권한다: "
+                "소비자 제보(피해를 남기면 기업에 전달해 답을 받아 줘요), 소보루 픽(실제 이용 후기와 추천), 사기 주의(돈 보내기 전에 사이트 주소·전화번호·계좌번호 검색), "
+                "법률 질문(소비자 법 궁금증), 기업 답변(기업별 제보와 소보루 등급).\n")
         user = (f"[글 종류] {k['name']}: {k['about']}\n" + (f"[주제] {topic}\n" if topic else '') + long + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
-        return chat(SYSTEM, user, 5000, AI_TIMEOUT * 2)
+        return chat(SYSTEM, user, 12000, AI_TIMEOUT * 3)
 
     def save_check(db, article_id, title, summary, body, facts):
         problems = check_text('\n'.join([title, summary, body]), facts)

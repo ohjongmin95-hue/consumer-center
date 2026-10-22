@@ -8,13 +8,14 @@ import { useAuth } from '../lib/auth';
 import { C, FONT } from '../lib/theme';
 
 export default function Login() {
-  const { session, login, lastId } = useAuth();
+  const { session, login, guest, lastId } = useAuth();
   const [id, setId] = useState('');
   useEffect(() => {
     if (lastId) setId((v) => v || lastId);
   }, [lastId]);
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
+  const [tour, setTour] = useState(false);
   const [err, setErr] = useState('');
   if (session) return <Redirect href="/" />;
 
@@ -28,6 +29,19 @@ export default function Login() {
       setErr((e as Error).message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  // 로그인 없이 둘러보기: 견본 상점으로 화면을 미리 써 본다
+  const browse = async () => {
+    setTour(true);
+    setErr('');
+    try {
+      await guest();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setTour(false);
     }
   };
 
@@ -49,7 +63,9 @@ export default function Login() {
             <Field placeholder="로그인 이메일" value={id} onChangeText={setId} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="username" />
             <PwField placeholder="비밀번호" value={pw} onChangeText={setPw} autoComplete="password" textContentType="password" onSubmitEditing={submit} returnKeyType="go" />
             {err ? <Notice text={err} /> : null}
-            <Btn title="로그인" onPress={submit} busy={busy} style={{ marginTop: 4 }} />
+            <Btn title="로그인" onPress={submit} busy={busy} disabled={tour} style={{ marginTop: 4 }} />
+            <Btn title="로그인 없이 둘러보기" kind="soft" onPress={browse} busy={tour} disabled={busy} />
+            <Text style={st.cap}>견본 상점으로 미리 써 볼 수 있어요</Text>
             <View style={st.links}>
               <Pressable onPress={() => router.push('/forgot')}>
                 <Text style={st.link}>비밀번호 찾기</Text>
@@ -78,4 +94,5 @@ const st = StyleSheet.create({
   links: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 8 },
   link: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg3, paddingVertical: 6 },
   dot: { color: C.fg4 },
+  cap: { fontFamily: FONT, fontSize: 13, color: C.fg3, textAlign: 'center', marginTop: -4 },
 });

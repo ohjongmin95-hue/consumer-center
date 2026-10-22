@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('scam.title', '사기 주의') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('scam.meta', '돈을 보내기 전에 사이트 주소, 전화번호, 계좌번호가 사기로 신고된 적이 있는지 찾아보세요.') }}{% endblock %}
+{% macro won(n) %}{% if n >= 10000 %}{{ '{:,}'.format(n // 10000) }}{{ ui('scam.manwon', '만 원') }}{% else %}{{ '{:,}'.format(n) }}{{ ui('scam.won', '원') }}{% endif %}{% endmacro %}
+{% macro item(r) %}<li class="sc-item"><span class="sc-emo" aria-hidden="true">{{ r.emoji }}</span><div>
+  <p class="sc-meta"><span class="sc-kind">{{ r.kind_name }}</span>{{ r.region }} · {{ r.created }}</p>
+  <h3>{{ r.title }}</h3><p class="sc-story">{{ r.story|truncate(140, True, '…') }}</p>
+  {% if r.target or r.amount %}<p class="sc-facts">{% if r.target %}<span><em>{{ r.target_label }}</em>{{ r.target }}</span>{% endif %}{% if r.amount %}<span><em>{{ ui('scam.loss', '피해') }}</em>{{ won(r.amount) }}</span>{% endif %}</p>{% endif %}
+</div></li>{% endmacro %}
+{% block content %}
+<main class="page"><div class="wrap sc">
+  <section class="sc-hero">
+    <span class="sc-eyebrow">🚨 {{ ui('scam.title', '사기 주의') }}</span>
+    <h1>{{ ui('scam.h1', '돈 보내기 전에,\n먼저 검색해 보세요') }}</h1>
+    <p>{{ ui('scam.lead', '사이트 주소, 전화번호, 계좌번호를 넣으면 다른 소비자가 사기로 신고한 적이 있는지 알려 드려요.') }}</p>
+    <form class="sc-search" method="get" action="{{ url_for('scam_home') }}" role="search">
+      <span aria-hidden="true">🔍</span><input name="q" type="search" value="{{ q }}" maxlength="100" autocomplete="off" aria-label="{{ ui('scam.ph', '사이트 주소, 전화번호, 계좌번호') }}" placeholder="{{ ui('scam.ph', '사이트 주소, 전화번호, 계좌번호') }}">
+      <button type="submit">{{ ui('reports.search', '검색') }}</button>
+    </form>
+    {% if found %}
+    <div class="sc-found{% if found.n %} hit{% endif %}" role="status">
+      {% if found.n %}<b>🚨 {{ ui('scam.hit', '사기 신고가 %d건 있어요')|format(found.n) }}</b><p>{{ ui('scam.hit_p', '마지막 신고는 %s이에요. 돈을 보내기 전에 꼭 한 번 더 확인하세요.')|format(found.last) }}</p>
+      {% else %}<b>🛡️ {{ ui('scam.miss', '아직 공개된 신고는 없어요') }}</b><p>{{ ui('scam.miss_p', '신고가 없다고 안전하다는 뜻은 아니에요. 아래 사기 신호를 한 번 확인해 보세요.') }}</p>{% endif %}
+    </div>
+    {% if found.n %}<ul class="sc-list">{% for r in found.rows %}{{ item(r) }}{% endfor %}</ul>{% endif %}
+    {% endif %}
+  </section>
+
+  <p class="sc-sos">💸 {{ ui('scam.sos', '이미 돈을 보냈다면 바로 보낸 은행에 지급정지를 요청하고, 112에 신고하세요.') }}</p>
+
+  <dl class="sc-nums">
+    <div><dt>{{ ui('scam.n_recent', '최근 30일 신고') }}</dt><dd>{{ recent }}<small>{{ ui('company.unit_case', '건') }}</small></dd></div>
+    <div><dt>{{ ui('scam.n_total', '공개된 신고') }}</dt><dd>{{ total }}<small>{{ ui('company.unit_case', '건') }}</small></dd></div>
+    <div><dt>{{ ui('scam.n_online', '온라인·지역 모름') }}</dt><dd>{{ online }}<small>{{ ui('company.unit_case', '건') }}</small></dd></div>
+  </dl>
+
+  <section class="sc-sec sc-mapsec" aria-labelledby="sc-map-h">
+    <div class="sc-sec-head"><h2 id="sc-map-h">{{ ui('scam.map', '어디서 많이 당했을까요') }}</h2><p>{{ ui('scam.map_p', '지역을 누르면 그 지역 신고만 볼 수 있어요.') }}</p></div>
+    <div class="sc-mapgrid"><div class="sc-map" role="list">{% for t in tiles %}<a role="listitem" class="sc-tile lv{{ t.level }}{% if region == t.name %} on{% endif %}" style="grid-column:{{ t.col + 1 }};grid-row:{{ t.row + 1 }}" href="{{ url_for('scam_home', region=None if region == t.name else t.name, kind=kind or None) }}#sc-list-h"><span>{{ t.name }}</span><b>{{ t.n }}</b></a>{% endfor %}
+      <p class="sc-legend" style="grid-column:2 / 5;grid-row:5"><i class="lv1"></i>{{ ui('scam.lg_low', '적음') }}<i class="lv2"></i><i class="lv3"></i><i class="lv4"></i>{{ ui('scam.lg_high', '많음') }}</p></div>
+    <div class="sc-side"><h3>{{ ui('scam.by_kind', '어떤 사기가 많을까요') }}</h3>
+      <ul class="sc-bars">{% set top = (by_kind.values()|list + [1])|max %}{% for k, name, emo in kinds %}<li><span><b aria-hidden="true">{{ emo }}</b>{{ name }}</span><i><s style="width:{{ (100 * by_kind.get(k, 0) / top)|round|int }}%"></s></i><em>{{ by_kind.get(k, 0) }}{{ ui('company.unit_case', '건') }}</em></li>{% endfor %}</ul></div>
+    </div>
+  </section>
+
+  <section class="sc-sec" aria-labelledby="sc-list-h">
+    <div class="sc-sec-head"><h2 id="sc-list-h">{{ ui('scam.recent', '최근 신고') }}{% if region %} · {{ region }}{% endif %}</h2><a class="sc-cta" href="{{ url_for('scam_new') }}">{{ ui('scam.report', '사기 신고하기') }}</a></div>
+    <nav class="sc-chips" aria-label="{{ ui('scam.kinds', '사기 종류') }}"><a href="{{ url_for('scam_home', region=region or None) }}#sc-list-h"{% if not kind %} class="on"{% endif %}>{{ ui('sb.chip_all', '전체') }}</a>{% for k, name, emo in kinds %}<a href="{{ url_for('scam_home', kind=k, region=region or None) }}#sc-list-h"{% if kind == k %} class="on"{% endif %}>{{ emo }} {{ name }}{% if by_kind.get(k) %} <small>{{ by_kind[k] }}</small>{% endif %}</a>{% endfor %}</nav>
+    <ul class="sc-list">{% for r in rows %}{{ item(r) }}{% else %}<li class="sc-empty">{{ ui('scam.empty', '아직 공개된 신고가 없어요.') }}</li>{% endfor %}</ul>
+  </section>
+
+  <section class="sc-sec" aria-labelledby="sc-tip-h">
+    <div class="sc-sec-head"><h2 id="sc-tip-h">{{ ui('scam.tips', '이럴 땐 일단 멈추세요') }}</h2></div>
+    <div class="sc-tips">
+      <article><span aria-hidden="true">💳</span><h3>{{ ui('scam.t1', '안전결제 링크를 따로 보내요') }}</h3><p>{{ ui('scam.t1p', '중고거래에서 판매자가 보낸 결제 링크는 가짜인 경우가 많아요. 앱 안의 결제만 쓰세요.') }}</p></article>
+      <article><span aria-hidden="true">💸</span><h3>{{ ui('scam.t2', '시세보다 너무 싸요') }}</h3><p>{{ ui('scam.t2p', '인기 상품을 절반 값에 판다면, 계좌 이체만 받는다면 의심하세요.') }}</p></article>
+      <article><span aria-hidden="true">📞</span><h3>{{ ui('scam.t3', '기관·가족이라며 돈을 요구해요') }}</h3><p>{{ ui('scam.t3p', '검찰, 은행, 가족을 사칭하면 전화를 끊고 알고 있는 번호로 직접 확인하세요.') }}</p></article>
+      <article><span aria-hidden="true">📈</span><h3>{{ ui('scam.t4', '원금 보장, 높은 수익을 약속해요') }}</h3><p>{{ ui('scam.t4p', '원금을 보장하는 고수익 투자는 없어요. 리딩방 초대도 조심하세요.') }}</p></article>
+    </div>
+  </section>
+
+  <section class="sc-end">
+    <h2>{{ ui('scam.end', '당했거나, 수상한 걸 봤나요?') }}</h2>
+    <p>{{ ui('scam.end_p', '알려 주시면 운영자가 확인한 뒤 공개해서 다음 사람이 피할 수 있어요.') }}</p>
+    <a class="sc-cta big" href="{{ url_for('scam_new') }}">{{ ui('scam.report', '사기 신고하기') }}</a>
+  </section>
+  <p class="public-case-notice">{{ ui('scam.notice', '신고 내용은 신고한 사람의 주장이에요. 운영자가 개인정보와 내용을 확인한 뒤 공개하고, 전화번호와 계좌번호는 일부만 보여요. 잘못된 신고는 정정·게시중단 요청으로 알려 주세요.') }} <a href="{{ url_for('takedown') }}">{{ ui('company.correction', '정정·게시중단 요청 →') }}</a></p>
+</div></main>
+{% endblock %}

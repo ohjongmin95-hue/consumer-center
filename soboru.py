@@ -210,9 +210,9 @@ def install(S):
     LIFE_DEFAULT_EMOJI = ('📌', '🔍', '💬', '📊', '👀')
 
     def life_body(text):
-        # 본문: 빈 줄은 문단, "## "는 소제목(앞에 이모지), "- "는 목록, "> "는 '핵심만 쏙' 상자. HTML은 쓰지 않음.
+        # 본문: 빈 줄은 문단, "## "는 소제목(앞에 이모지), "### "는 번호 붙은 요점, "※ 낱말: 풀이"는 용어 풀이, "- "는 목록, "> "는 '핵심만 쏙' 상자. HTML은 쓰지 않음.
         # 뉴스레터처럼: 소제목마다 이모지 칸, '이렇게 하세요'는 체크 목록. 이모지가 없는 예전 글은 차례로 기본 이모지를 붙임.
-        out, items, n_head, check = [], [], 0, False
+        out, items, n_head, check, n_point = [], [], 0, False, 0
         def flush():
             nonlocal check
             if items:
@@ -223,7 +223,14 @@ def install(S):
             for line in lines:
                 if line.startswith('- '): items.append(line[2:]); continue
                 flush()
-                if line.startswith('## '):
+                if line.startswith('### '):  # 요점: 소제목 안에서 1, 2, 3… 번호를 붙여 하나씩
+                    n_point += 1
+                    out.append(Markup('<h3 class="sb-point"><span class="sb-point-n" aria-hidden="true">%d</span>%s</h3>') % (n_point, line[4:].strip()))
+                elif line.startswith('※ '):  # 용어 풀이
+                    word, _, mean = line[2:].partition(':')
+                    out.append(Markup('<p class="sb-term"><b>%s</b>%s</p>') % (word.strip(), mean.strip()) if mean else Markup('<p class="sb-term">%s</p>') % line[2:])
+                elif line.startswith('## '):
+                    n_point = 0
                     head = line[3:].strip(); emo = head[:1]
                     if emo in BODY_EMOJI: head = head[1:].strip()
                     else: emo = '✅' if '이렇게 하세요' in head else LIFE_DEFAULT_EMOJI[n_head % len(LIFE_DEFAULT_EMOJI)]
@@ -370,7 +377,8 @@ def install(S):
         ('life', '생활정보', lambda: url_for('life'), ['life.html', 'life_article.html', 'soboru_life_macros.html', 'life_tabs.html', 'life_search.html', 'life_trend.html', 'life_shopping.html', 'life_nv_macros.html']),
         ('board', '소보루 픽', lambda: url_for('board'), ['board.html', 'soboru_board.html', 'soboru_board_post.html', 'soboru_board_write.html', 'board_post.html', 'board_write.html', 'community_macros.html']),
         ('report', '제보', lambda: url_for('report'), ['report.html', 'reports.html', 'report_rows.html', 'public_case.html', 'soboru_case.html', 'case_talk.html', 'success.html', 'lookup.html', 'case.html', 'guide.html', 'info.html', 'process_cards.html']),
-        ('company', '기업', lambda: url_for('companies'), ['companies.html', 'company_page.html']),
+        ('company', '기업', lambda: url_for('companies'), ['companies.html', 'company_page.html', 'company_grade.html']),
+        ('scam', '사기 주의', lambda: url_for('scam_home'), ['scam.html', 'scam_new.html']),
         ('ask', '법률 질문', lambda: url_for('law_ask'), ['soboru_ask.html', 'soboru_ask_v2.html']),
         ('letter', '소보루 레터', lambda: url_for('letter_home'), ['letter.html', 'letter_issue.html', 'letter_msg.html', 'letter_macros.html']),
         ('common', '공통 머리글·바닥글', lambda: url_for('home'), ['base.html', 'soboru_header.html', 'soboru_tabbar.html']),

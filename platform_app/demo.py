@@ -83,9 +83,26 @@ def remove(db,co):
             try:db.execute(f'DELETE FROM {tbl} WHERE case_id=?',(cid,))
             except Exception:pass
     db.execute('DELETE FROM cases WHERE company_id=?',(d['id'],))
-    for tbl in ('orders','products','rules','ai_profile','chat_log','shop_links','shop_seen','staff'):
+    for tbl in ('orders','products','product_private','rules','ai_profile','chat_log','shop_links','shop_seen','staff','macros','biz_alerts'):
         try:db.execute(f'DELETE FROM {tbl} WHERE company_id=?',(d['id'],))
         except Exception:pass
     db.execute("DELETE FROM companies WHERE id=? AND status='demo'",(d['id'],))
 
 def reset(db,co):remove(db,co);return create(db,co)
+
+# ---------- 로그인 없이 둘러보기 (앱 심사·처음 써 보는 사람) ----------
+# 진짜 회사 없이 만드는 데모: demo_of가 음수라 어떤 진짜 회사와도 이어지지 않는다. 하루 지나면 sweep_guests가 지운다.
+GUEST=dict(name='소보루 둘러보기 상점',owner_name='대표',industry='패션·잡화',tone='polite')
+GUEST_HOURS=24
+def is_guest(co):return bool(co) and co['status']=='demo' and (co['demo_of'] or 0)<0
+def guest(db):
+    """둘러보기용 데모 회사를 새로 만든다 (견본은 create와 같다)."""
+    while True:
+        key=-secrets.randbelow(2**31-1)-1
+        if not db.execute('SELECT 1 FROM companies WHERE demo_of=?',(key,)).fetchone():break
+    return create(db,dict(GUEST,id=key))
+def sweep_guests(db,hours=GUEST_HOURS):
+    """만든 지 하루가 지난 둘러보기 회사를 지운다. 진짜 회사의 데모(demo_of>0)와 진짜 회사는 건드리지 않는다."""
+    old=core.iso(core.now()-datetime.timedelta(hours=hours));n=0
+    for r in db.execute("SELECT demo_of FROM companies WHERE status='demo' AND demo_of<0 AND created<?",(old,)).fetchall():remove(db,{'id':r['demo_of']});n+=1
+    return n

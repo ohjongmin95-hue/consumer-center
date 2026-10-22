@@ -29,6 +29,14 @@ MY_STEPS=[('접수','소비자가 민원 제출'),('검토','플랫폼에서 내
 PUB_STAGES=['접수','처리 중','종결']
 MY_COLOR=[1,2,3,5,6];PUB_COLOR=[1,5,6]
 STATUS_MY={'접수':1,'검토 중':2,'추가 확인':2,'기업 답변 대기':3,'기업 답변 도착':4,'종결':5}
+# 소보루 등급 (BBB처럼 A+~F): 최근 3년, 기업에 전달된 확인된 제보로 매김. 기준은 /companies/grade에 공개
+ANSWER_DAYS=14  # 기업에 전달하고 이 날수가 지나도록 답이 없으면 '답변 없음'
+GRADE_YEARS=3
+GRADE_PTS={'answer':50,'resolve':30,'speed':20}
+GRADE_CUTS=[(97,'A+'),(94,'A'),(90,'A-'),(87,'B+'),(84,'B'),(80,'B-'),(77,'C+'),(74,'C'),(70,'C-'),(67,'D+'),(64,'D'),(60,'D-'),(0,'F')]
+GRADE_SPEED=[(24,20),(72,16),(168,10),(336,5)]  # 첫 답변까지 걸린 시간(중앙값, 시간) → 점수
+GRADE_WORDS={'A':'제보에 빠르게 답하고, 해결도 잘 하는 기업이에요','B':'대체로 답하지만 아쉬운 점이 조금 있어요','C':'답이 늦거나 해결되지 않은 제보가 자주 있어요',
+             'D':'답 없이 남은 제보가 많아요','F':'제보에 거의 답하지 않아요'}
 
 def migrate(db):
     cols={r['name'] for r in db.execute('PRAGMA table_info(cases)')}
@@ -103,6 +111,49 @@ def company_stats(db,company_id,months=6):
             'rating':(lambda v:f'{sum(v)/len(v):.1f}' if len(v)>=MIN_N else '–')([r['rating'] for r in good if r['rating']]),
             'monthly':monthly,'top':top,'enough':n>=MIN_N,'total':len(rows),'since':min((r['created'][:10] for r in rows),default='')}
 
+def days_since(stamp,today=None):
+    try:return ((today or datetime.date.today())-datetime.date.fromisoformat(stamp[:10])).days
+    except (TypeError,ValueError):return None
+def no_answer(case,has_answer,today=None):
+    """기업에 전달하고 ANSWER_DAYS일이 지나도록 공식 답변이 없으면 True ('답변 없음')."""
+    if has_answer or not case['forwarded_at']:return False
+    d=days_since(case['forwarded_at'],today)
+    return d is not None and d>=ANSWER_DAYS
+
+def grade_of(score):
+    return next(g for cut,g in GRADE_CUTS if score>=cut)
+
+def company_grade(db,company_id,today=None):
+    """소보루 등급과 기업 요약 숫자. 표본이 MIN_N건보다 적으면 grade=''.
+    점수(100) = 답변 비율 50 + 해결 비율 30 + 답변 속도 20. 전달하고 아직 ANSWER_DAYS일이 안 된 제보는 '기다리는 중'이라 빼고 셈."""
+    today=today or datetime.date.today()
+    since=(today-datetime.timedelta(days=365*GRADE_YEARS)).isoformat();year=(today-datetime.timedelta(days=365)).isoformat()
+    rows=[r for r in db.execute('SELECT id,status,review,reviewed_at,created,forwarded_at,confirmed_at,outcome FROM cases WHERE company_id=? AND created>=?',(company_id,since)) if valid(r)]
+    first=first_answers(db,[r['id'] for r in rows])
+    fw=[r for r in rows if r['forwarded_at']]
+    silent={r['id'] for r in fw if no_answer(r,r['id'] in first,today)}
+    scored=[r for r in fw if r['id'] in first or r['id'] in silent]
+    answered=[r for r in scored if r['id'] in first]
+    told=[r for r in answered if r['outcome'] in ('resolved','unresolved')]
+    resolved=[r for r in told if r['outcome']=='resolved']
+    waits=sorted(h for h in (hours(r['forwarded_at'],first[r['id']]) for r in answered) if h is not None and h>=0)
+    out={'n':len(rows),'scored':len(scored),'silent':len(silent),'answered':len(answered),'told':len(told),'resolved':len(resolved),
+         'resolved_year':sum(1 for r in rows if r['outcome']=='resolved' and r['created']>=year),'n_year':sum(1 for r in rows if r['created']>=year),
+         'grade':'','score':None,'parts':[],'word':'','tone':'none','min_n':MIN_N,'days':ANSWER_DAYS,'years':GRADE_YEARS}
+    if len(scored)<MIN_N:return out
+    a=len(answered)/len(scored)
+    # 해결 비율은 결과를 알려 준 제보자가 MIN_N명보다 적으면 알 수 없어 중간값(절반)으로 둠
+    r=len(resolved)/len(told) if len(told)>=MIN_N else None
+    med=statistics.median(waits) if waits else None
+    sp=next((p for h,p in GRADE_SPEED if med is not None and med<=h),0)
+    pa=round(GRADE_PTS['answer']*a);pr=round(GRADE_PTS['resolve']*(r if r is not None else .5));score=pa+pr+sp
+    g=grade_of(score)
+    out.update(grade=g,score=score,word=GRADE_WORDS[g[0]],tone=g[0].lower(),resolve_known=r is not None,
+               parts=[('answer','답변',pa,GRADE_PTS['answer'],f'{round(100*a)}% 답변'),
+                      ('resolve','해결',pr,GRADE_PTS['resolve'],f'{round(100*r)}% 해결' if r is not None else '확인 적음 · 절반으로 계산'),
+                      ('speed','속도',sp,GRADE_PTS['speed'],f'보통 {fmt_hours(med)}' if med is not None else '답변 없음')])
+    return out
+
 def timeline(db,case,mask):
     """개별 제보의 진행 이력. 실제로 일어난 일만 시간순으로. (이력, 지금 단계 번호 1~7)"""
     ev=[('me','제보 접수',case['created'],'')]
@@ -148,7 +199,7 @@ def install(S):
     app=S.app;conn=S.conn;mask=S.mask_personal;norm=S.norm_company
     S.COMPANY_STATUSES['listed']='등록 (미가입)'
     with conn() as db:migrate(db)
-    app.jinja_env.globals.update(cat_label=cat_label,PUBLIC_STEPS=PUBLIC_STEPS,MY_COLOR=MY_COLOR,PUB_COLOR=PUB_COLOR,my_step=my_step,pub_step=pub_step,JEBO_MIN_N=MIN_N)
+    app.jinja_env.globals.update(jebo_no_answer=no_answer,JEBO_ANSWER_DAYS=ANSWER_DAYS,cat_label=cat_label,PUBLIC_STEPS=PUBLIC_STEPS,MY_COLOR=MY_COLOR,PUB_COLOR=PUB_COLOR,my_step=my_step,pub_step=pub_step,JEBO_MIN_N=MIN_N)
 
     def names(co):return [co['name'],co['brand'],co['biz_name']]+[a.strip() for a in (co['aliases'] or '').split(',') if a.strip()]
     def search(db,q,limit=30):
@@ -173,7 +224,13 @@ def install(S):
             found=search(db,q) if q else []
             busy=[] if q else db.execute("""SELECT co.*,COUNT(c.id) AS n_public FROM companies co JOIN cases c ON c.company_id=co.id AND c.public_consent=1 AND c.published=1
                 WHERE co.status IN ('active','listed') GROUP BY co.id ORDER BY n_public DESC,co.name LIMIT 30""").fetchall()
-        return render_template('companies.html',q=q,found=found,busy=busy)
+            grades={c['id']:company_grade(db,c['id'])['grade'] for c in list(found)+list(busy)}
+        return render_template('companies.html',q=q,found=found,busy=busy,grades=grades)
+
+    @app.route('/companies/grade')
+    def company_grade_guide():
+        # 소보루 등급 기준 공개 페이지 (BBB처럼 무엇으로 매기는지 그대로 보여 줌)
+        return render_template('company_grade.html',cuts=GRADE_CUTS,pts=GRADE_PTS,speed=GRADE_SPEED,words=GRADE_WORDS,days=ANSWER_DAYS,years=GRADE_YEARS,min_n=MIN_N)
 
     @app.route('/companies/suggest')
     def companies_suggest():
@@ -190,7 +247,7 @@ def install(S):
         with conn() as db:
             co=visible_company(db,company_id)
             if not co:abort(404)
-            st=company_stats(db,company_id)
+            st=company_stats(db,company_id);gr=company_grade(db,company_id)
             where="company_id=? AND public_consent=1 AND published=1";args=[company_id]
             if cat in S.report_categories():
                 where+=f" AND category IN ({','.join('?'*len(cat_names(cat)))})";args+=cat_names(cat)
@@ -201,9 +258,10 @@ def install(S):
             cats=db.execute("SELECT category,COUNT(*) AS n FROM cases WHERE company_id=? AND public_consent=1 AND published=1 GROUP BY category",(company_id,)).fetchall()
         by_cat={}
         for r in cats:by_cat[cat_label(r['category'])]=by_cat.get(cat_label(r['category']),0)+r['n']
-        cases=[dict(id=r['id'],category=cat_label(r['category']),created=r['created'][:10],status=r['status'],answered=r['id'] in first,confirmed=bool(r['confirmed_at']),step=pub_step(my_step(r,r['id'] in first)),**pub(r,mask)) for r in rows]
+        cases=[dict(id=r['id'],category=cat_label(r['category']),created=r['created'][:10],status=r['status'],answered=r['id'] in first,confirmed=bool(r['confirmed_at']),step=pub_step(my_step(r,r['id'] in first)),
+                    silent=no_answer(r,r['id'] in first),outcome=r['outcome'],**pub(r,mask)) for r in rows]
         indexable=bool(total or co['statement'])
-        return render_template('company_page.html',co=co,st=st,cases=cases,total=total,page=page,pages=max(1,-(-total//size)),cat=cat,by_cat=by_cat,
+        return render_template('company_page.html',co=co,st=st,gr=gr,cases=cases,total=total,page=page,pages=max(1,-(-total//size)),cat=cat,by_cat=by_cat,
                                categories=S.report_categories(),indexable=indexable,today=datetime.date.today().isoformat(),aka=[n for n in names(co)[1:] if n and n!=co['name']])
 
     # ---- 2차: 기업 공식 이메일 인증, 공식 입장, 답변 수정 이력, 소비자 해결 확인 ----

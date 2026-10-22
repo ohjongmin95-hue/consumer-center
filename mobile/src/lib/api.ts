@@ -9,7 +9,7 @@ export const SITE_BASE = configured; // 약관처럼 브라우저로 여는 사�
 
 export type Operator = { name: string; ceo: string; biz_no: string; address: string; manager: string };
 export type Meta = { name: string; cats: string[]; industries?: string[]; couriers: string[]; operator: Operator; signup: string; forgot: string; privacy: string };
-export type CompanyInfo = { id: number; name: string; login_id: string; link: string };
+export type CompanyInfo = { id: number; name: string; login_id: string; link: string; guest?: boolean };
 export type BizCase = {
   id: number;
   no: string;
@@ -61,6 +61,7 @@ export type BizDetail = BizCase & {
 export type Kpi = { n: number; auto: number; res: number | null; late: number };
 export type Home = {
   company: CompanyInfo;
+  guest?: boolean;
   hello?: string;
   brief?: string[];
   kpi: Kpi;
@@ -148,6 +149,8 @@ const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Cont
 export const api = {
   meta: () => call<Meta>('/api/v1/meta'),
   login: (login_id: string, password: string) => call<{ token: string; company: CompanyInfo }>('/api/v1/login', json({ login_id, password })),
+  // 로그인 없이 둘러보기: 서버가 견본 상점을 새로 만들어 그 토큰을 준다 (하루 지나면 지워진다)
+  demo: () => call<{ token: string; company: CompanyInfo; guest: boolean }>('/api/v1/demo', json({})),
   home: (t: string) => call<Home>('/api/v1/home', {}, t),
   cases: (t: string, f: string, q = '') => call<{ cases: BizCase[]; counts: Record<string, number> }>(`/api/v1/cases?f=${f}&q=${encodeURIComponent(q)}`, {}, t),
   case: (t: string, id: number) => call<BizDetail>('/api/v1/cases/' + id, {}, t),

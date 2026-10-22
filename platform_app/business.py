@@ -17,7 +17,7 @@ import team, inbox, workflow, automations, livechat, onboard, demo, funnel, mark
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
-app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS)
+app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='biz',now_iso=core.iso,law_check=law.check,is_direct=core.is_direct,BIZ_STATUS=onboard.BIZ_STATUS,PLANS=onboard.PLANS,trial_days=lambda:billing.TRIAL_DAYS if billing.live() else 0,price_plan=billing.usage_of)
 OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 # 소개 화면의 앱 받기 버튼: 스토어 주소를 서버 설정(.env)에 넣으면 '곧 출시' 대신 버튼이 나온다
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
@@ -72,6 +72,18 @@ def role_guard():
     if in_demo() and ep in DEMO_BLOCKED:
         flash('데모에서는 판매처 연결·팀·설정·주문 올리기를 할 수 없어요. 데모를 끝내고 해 주세요.','error')
         return redirect(url_for('decide'))
+# 결제가 없으면(무료 체험 끝, 결제 실패, 카드 미등록) 요금·결제 화면만 연다 (billing.open_ok). 데이터는 그대로 둔다.
+PAY_OPEN={'logout','login','signup','terms','refund_policy','pricing','c24.page','c24.callback','c24.launch','verify','verify_again','forgot','reset'}
+@app.before_request
+def pay_guard():
+    if request.path.startswith(('/hook/','/ops','/static')):return
+    ep=request.endpoint or ''
+    if ep.startswith(('pay.','mk.','cms.','static')) or ep in PAY_OPEN:return
+    if request.path.startswith('/api/'):return  # 앱 API는 api_co()에서 막는다
+    co=real()
+    if co and not billing.open_ok(co):
+        if request.method=='GET':return redirect(url_for('pay.page'))
+        flash('결제가 확인되지 않아 소보루 CS를 쓸 수 없어요. 카드를 등록하거나 결제해 주세요.','error');return redirect(url_for('pay.page'))
 def login_required(f):
     @functools.wraps(f)
     def w(*a,**k):
@@ -93,7 +105,16 @@ def ctx():
             na=core.unread_alerts(db,co['id'])
     a=who() if co else None;rc=real() if co else None
     return {'PUB_NAV':pub_nav(),'n_leads':sales.n_new() if session.get('ops') and request.path.startswith('/ops') else 0,'co':co,'n_pending':n,'n_alerts':na,'is_ops':bool(session.get('ops')),'actor':a,'can':lambda what:team.can(a,what),'ROLES':team.ROLES,
-            'real_co':rc,'in_demo':in_demo() if co else False,'trust':onboard.trust(rc) if rc else None,'setup':onboard.progress(rc) if rc else None}
+            'real_co':rc,'in_demo':in_demo() if co else False,'trust':onboard.trust(rc) if rc else None,'setup':onboard.progress(rc) if rc else None,'trial':trial_info(rc) if rc else None}
+
+def trial_info(co):
+    """위쪽 안내 띠: 무료 체험 중이면 {'left','end'}, 결제가 안 돼 멈췄으면 {'locked'}. 아니면 None."""
+    if not billing.live():return None
+    if not billing.open_ok(co):return {'locked':True}
+    if co['plan']!='trial':return None
+    with conn() as db:b=billing.row(db,co['id'])
+    left=billing.trial_days_left(co,b)
+    return {'left':left,'end':b['next_charge'],'canceled':b['status']=='canceled','c24':b['source']=='cafe24'} if left is not None else None
 
 def pub_nav():
     """로그인 전 위쪽 메뉴: 각 공개 화면 모듈이 내놓는 메뉴를 차례로."""
@@ -120,7 +141,7 @@ def terms():
 @app.route('/pricing')
 def pricing():
     """공개 요금 안내 (상품·금액·정기결제·환불: 결제대행사·카드사 심사가 이 페이지를 본다)."""
-    return render_template('b_pricing.html',op=core.OPERATOR,p=billing.plan())
+    return render_template('b_pricing.html',op=core.OPERATOR,p=billing.plan(),tiers=billing.tiers(),trial_days=billing.TRIAL_DAYS if billing.live() else 0)
 
 @app.route('/refund')
 def refund_policy():
@@ -363,11 +384,16 @@ def by_cat(rows):
     n=len(rows) or 1
     return [(cat,cnt,round(cnt/n*100)) for cat in core.CATS for cnt in [sum(r['category']==cat for r in rows)]]
 
+def intro_videos():
+    """소개 영상 (static/tour/*.mp4, tools/tour_video.js로 다시 찍는다). 없으면 그림으로 대신한다."""
+    d=os.path.join(app.static_folder,'tour')
+    return {k:({'webm':os.path.exists(os.path.join(d,k+'.webm'))} if os.path.exists(os.path.join(d,k+'.mp4')) else None) for k in ('hero','tour')}
+
 @app.route('/')
 def decide():
     if request.args.get('mall_id') and request.args.get('hmac'):  # 카페24 App URL이 첫 화면이면 앱 실행으로
         return redirect(url_for('c24.launch')+'?'+request.query_string.decode())
-    if not me():return render_template('b_intro.html',app_links=APP_LINKS)  # 로그인 전: 서비스 소개
+    if not me():return render_template('b_intro.html',app_links=APP_LINKS,vid=intro_videos(),industries=market.INDUSTRY_PAGES,p=billing.plan(),tiers=billing.tiers(),trial_n=billing.TRIAL_DAYS if billing.live() else 0)  # 로그인 전: 서비스 소개
     if session.get('c24_launch'):return redirect(url_for('c24.page'))  # 카페24에서 열고 가입·로그인한 뒤 이어서
     with conn() as db:
         rows=my_cases(db,me());n_auto=db.execute('SELECT COUNT(*) FROM rules WHERE company_id=? AND auto=1',(me()['id'],)).fetchone()[0]
@@ -837,7 +863,7 @@ def case(case_id):
 # 요청 하나 = 대화방 하나. 고객 말·AI 답·사장님 답이 말풍선으로 이어지고, 처리할 일(환불·취소 등)은 대화 안의 '결정' 카드로 뜬다.
 # 자세한 처리(교환·환불 완료·보상·태그 등)는 지금처럼 요청 상세 화면에서 한다.
 CHAT_TABS=(('open','진행 중'),('hold','보류'),('done','종료'))
-CH_MARK={'카페24':('C','c24'),'인스타그램':('IG','ig'),'이메일':('M','mail'),'스마트스토어':('N','nv'),'쿠팡':('CP','cp')}
+CH_MARK={'카페24':('C','c24'),instagram.CHANNEL:('IG','ig'),'인스타그램':('IG','ig'),'이메일':('M','mail'),'스마트스토어':('N','nv'),'쿠팡':('CP','cp')}
 def first_text(c):
     t,b=(c['title'] or '').rstrip('…. '),(c['body'] or '').strip()
     return b if b.startswith(t) else (f"{c['title']}\n{b}".strip() if b else c['title'])
@@ -1412,6 +1438,10 @@ def ops_companies():
             elif act=='resume' and co and co['status']=='suspended':db.execute("UPDATE companies SET status='active',member=susp_member WHERE id=?",(co['id'],));flash('다시 이용할 수 있게 했습니다','ok')
             elif act=='pwlink' and co and co['status']=='active' and co['pw_hash']:
                 flash(f"{co['name']} 비밀번호 재설정 링크예요. 1시간 동안 열려요. 복사해서 사장님께 보내 주세요: {reset_link(co)}",'ok')
+            elif act=='free' and co and co['status']=='active':  # 심사용·시범 계정은 결제 없이 쓰게 (다시 누르면 무료 시범으로)
+                on=co['plan']!='free';db.execute('UPDATE companies SET plan=?,plan_since=? WHERE id=?',('free' if on else 'pilot',core.iso(),co['id']))
+                flash(f"{co['name']}: "+('결제 없이 쓸 수 있게 했어요' if on else '무료 제공을 껐어요. 이제 결제해야 써요'),'ok')
+                return redirect(url_for('ops_company',cid=co['id']))
             elif act=='contact' and co:db.execute('UPDATE companies SET contact=? WHERE id=?',(clean(request.form.get('contact'),60),co['id']));flash('저장했습니다','ok')
             elif act=='add':
                 name=clean(request.form.get('name'),40)
@@ -1468,20 +1498,19 @@ def ops_news():
 @app.route('/ops/billing',methods=['GET','POST'])
 @ops_required
 def ops_billing():
-    """요금제(이름·월 금액)와 결제 현황. 키는 서비스 키에서. 금액을 바꾸면 이미 결제 중인 회사는 다음 결제부터 새 금액."""
+    """요금 구간(월 금액·추가 요금)과 결제 현황. 키는 서비스 키에서. 금액을 바꾸면 이미 결제 중인 회사는 다음 결제부터 새 금액."""
     if request.method=='POST' and request.form.get('act')=='c24':  # 카페24 앱 결제 켜기·끄기 (카페24 앱 등록에 결제 권한을 넣은 뒤)
         with conn() as db:db.execute("INSERT INTO settings(key,value,updated) VALUES('c24_billing',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated",('1' if request.form.get('on')=='1' else '0',core.iso()))
         flash('카페24 앱 결제를 켰어요. 이제 카페24로 연결할 때 앱 결제 권한도 받아요.' if request.form.get('on')=='1' else '카페24 앱 결제를 껐어요.','ok');return redirect(url_for('ops_billing'))
     if request.method=='POST':
-        name=clean(request.form.get('name'),30);price=int(digits(request.form.get('price',''))[:9] or 0)
-        if not name or price<100:flash('요금제 이름과 금액(100원 이상)을 넣어 주세요','error')
-        else:billing.save_plan(name,price);flash('요금제를 저장했어요','ok')
+        num=lambda k:int(digits(request.form.get(k,''))[:9] or 0)
+        billing.save_tiers({t['key']:{'price':num(t['key']+'.price'),'over_price':num(t['key']+'.over')} for t in billing.TIERS});flash('요금 구간을 저장했어요 (100원 미만은 기본값)','ok')
         return redirect(url_for('ops_billing'))
     with conn() as db:
         subs=db.execute("SELECT b.*,c.name co_name FROM billing b JOIN companies c ON c.id=b.company_id WHERE b.status!='none' ORDER BY b.next_charge").fetchall()
         pays=db.execute("SELECT p.*,c.name co_name FROM billing_payments p JOIN companies c ON c.id=p.company_id ORDER BY p.id DESC LIMIT 50").fetchall()
         n_pending=db.execute("SELECT COUNT(*) FROM companies WHERE "+onboard.WAITING_SQL).fetchone()[0]
-    return render_template('o_billing.html',p=billing.plan(),ready=billing.ready(),c24_on=billing.c24_on(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
+    return render_template('o_billing.html',p=billing.plan(),tiers=billing.tiers(),ready=billing.ready(),c24_on=billing.c24_on(),subs=subs,pays=pays,n_signup=n_pending,otab='billing')
 
 @app.route('/ops/ai',methods=['GET','POST'])
 @ops_required
@@ -1637,11 +1666,19 @@ def api_co():
     try:d=core.signer('app-biz').loads(tok)
     except Exception:d=None
     with conn() as db:co=core.company(db,d.get('id')) if isinstance(d,dict) else None
-    if not co or co['status']!='active' or co['pw_hash'][-16:]!=d.get('h'):abort(401)  # 인증 전 회사도 앱을 쓴다 (판매처 연결·소비자 접수만 인증 뒤)
+    g.guest=demo.is_guest(co)  # 로그인 없이 둘러보기: 진짜 회사 없는 데모. 결제 확인 없이 읽기·연습만 된다
+    if not co or (co['status']!='active' and not g.guest) or co['pw_hash'][-16:]!=d.get('h'):abort(401)  # 인증 전 회사도 앱을 쓴다 (판매처 연결·소비자 접수만 인증 뒤)
+    if not g.guest and not billing.open_ok(co):abort(app.response_class(json.dumps({'error':'결제가 확인되지 않아 지금은 쓸 수 없어요. 웹 관리 화면의 설정에서 확인해 주세요.'},ensure_ascii=False),402,mimetype='application/json'))
     g.co=co;g.who=team.owner_actor(co);g.actor=g.who['name'];return co
+GUEST_NO='둘러보기에서는 이 기능을 쓸 수 없어요. 가입하면 바로 쓸 수 있어요.'
+def api_owner():
+    """api_co와 같고, 둘러보기면 403: AI·알림 등록·설정·탈퇴처럼 돈이 들거나 밖으로 나가는 일."""
+    co=api_co()
+    if g.guest:abort(app.response_class(json.dumps({'error':GUEST_NO},ensure_ascii=False),403,mimetype='application/json'))
+    return co
 def api_form():j=request.get_json(silent=True);return j if isinstance(j,dict) and j else request.form
 def co_info(co):
-    return dict(id=co['id'],name=co['name'],login_id=co['login_id'],link=core.site_url('me','/to/%d'%co['id']),verified=bool(co['member']),plan=onboard.PLANS.get(co['plan'],{}).get('name',''))
+    return dict(id=co['id'],name=co['name'],login_id=co['login_id'] or '',guest=demo.is_guest(co),link=core.site_url('me','/to/%d'%co['id']),verified=bool(co['member']),plan=onboard.PLANS.get(co['plan'],{}).get('name',''))
 def biz_summary(c):
     return dict(id=c['id'],no=c['no'],channel=c['channel'] or '',category=c['category'],title=c['title'],name=c['name'] or '',status=c['status'],status_label=core.status_label(c['status']),
         decision=c['decision'],decision_label=core.DECISION.get(c['decision'],''),pending=is_pending(c),overdue=core.overdue(c),due=c['due'],created=c['created'],updated=c['updated'],
@@ -1684,6 +1721,12 @@ def api_biz_login():
     if co['status']=='pending':return jsonify(error='가입 승인을 기다리고 있습니다. 승인되면 이메일로 알려 드립니다.'),400
     if co['status']!='active':return jsonify(error='이용할 수 없는 계정입니다. 센터에 문의해 주세요.'),400
     return jsonify(token=co_token(co),company=co_info(co))
+@app.route('/api/v1/demo',methods=['POST'])
+def api_biz_demo():
+    """로그인 없이 둘러보기: 견본 상점을 새로 만들어 그 토큰을 준다 (하루 지나면 지워진다). 앱 심사·처음 써 보는 사람용."""
+    if core.throttled('guest',limit=5,minutes=60):return jsonify(error='잠시 후 다시 시도해 주세요.'),429
+    with conn() as db:demo.sweep_guests(db);co=demo.guest(db)
+    return jsonify(token=co_token(co),company=co_info(co),guest=True)
 @app.route('/api/v1/home')
 def api_biz_home():
     co=api_co()
@@ -1693,7 +1736,7 @@ def api_biz_home():
     pend=[r for r in rows if is_pending(r)];today=core.now().date().isoformat();h=core.now().hour
     with conn() as db:ocnt=orders_mod.counts(db,co['id'])
     cnt=dict(late=sum(map(core.overdue,rows)),ret=sum(r['ret_status']=='sent' for r in rows))
-    return jsonify(company=co_info(co),kpi=kpis(rows),brief=briefing(rows,cnt,ocnt),hello='좋은 아침이에요' if h<11 else '좋은 오후예요' if h<18 else '오늘도 수고 많으셨어요',
+    return jsonify(company=co_info(co),guest=g.guest,kpi=kpis(rows),brief=briefing(rows,cnt,ocnt),hello='좋은 아침이에요' if h<11 else '좋은 오후예요' if h<18 else '오늘도 수고 많으셨어요',
         counts={'comp':sum(core.comp_pending(r,comps) for r in rows),'all':len(rows),'pending':len(pend),'open':sum(map(is_open,rows)),'late':sum(map(core.overdue,rows)),'auto_rules':n_auto,'ret':sum(r['ret_status']=='sent' for r in rows),'today':sum(r['created'][:10]==today for r in rows),'alerts':unread},
         pending=[biz_summary(r) for r in pend],recent=[biz_summary(r) for r in rows[:6]],
         alerts=[dict(kind=w['kind'],label=w['label'],n=w['n'],cats=w['cats']) for w in warn],news=[dict(r) for r in news])
@@ -1711,7 +1754,9 @@ def api_biz_case(case_id):
     with conn() as db:
         c=api_my_case(db,co,case_id);msg=warn=''
         if request.method=='POST':
-            f=api_form();msg,level=case_act(db,c,f)
+            f=api_form()
+            if g.guest and f.get('act') in ('ship_track','out_ship'):return jsonify(error=GUEST_NO),403  # 송장 추적은 택배 조회 서비스에 맡겨진다
+            msg,level=case_act(db,c,f)
             if level!='ok':return jsonify(error=msg or '처리할 수 없어요.'),400
             out=clean(f.get('msg'),3000) if f.get('act')=='reply' else (g.get('c_out') if f.get('act') in OUT_ACTS else '')
             if out and send_via(db,c):  # 웹과 같이: 답변하기·자료 요청·송장·보상 안내는 가져온 곳(메일·인스타그램·판매처)으로 바로 간다
@@ -1752,7 +1797,7 @@ def api_chat_room(case_id):
                 if level!='ok':return jsonify(error=msg or '처리할 수 없어요.'),400
                 out=text if act=='reply' else (g.get('c_send') if act=='approve' else '')
                 if out and send_via(db,c):post_later(c['id'],out)
-                if act in ('reply','approve') and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',co['id'])
+                if act in ('reply','approve') and not g.guest and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',co['id'])
             c=api_my_case(db,co,case_id)
         elif c['status']=='forwarded':
             db.execute("UPDATE cases SET status='seen' WHERE id=?",(c['id'],));core.add_event(db,c['id'],'sys','기업이 확인했어요');c=api_my_case(db,co,case_id)
@@ -1761,7 +1806,7 @@ def api_chat_room(case_id):
         return jsonify(dict(api_chat_state(db,co,c),msgs=chat_msgs(db,c,after),message=msg))
 @app.route('/api/v1/cases/<int:case_id>/draft',methods=['POST'])
 def api_biz_draft(case_id):
-    co=api_co()
+    co=api_owner()  # AI 비용이 든다
     if core.throttled('draft',limit=30,minutes=10):return jsonify(error='잠시 후 다시 시도해 주세요'),429
     with conn() as db:c=api_my_case(db,co,case_id);res=drafting.draft(db,c,co)
     return jsonify(res)
@@ -1786,7 +1831,7 @@ def api_biz_approve_many():
 @app.route('/api/v1/push',methods=['POST'])
 def api_biz_push():
     """사장님 앱 알림 토큰 등록. 같은 휴대폰은 마지막에 로그인한 회사로 옮겨진다."""
-    co=api_co();t=clean(api_form().get('push_token'),200)
+    co=api_owner();t=clean(api_form().get('push_token'),200)
     if not t.startswith('ExponentPushToken['):return jsonify(error='알림 토큰을 확인해 주세요.'),400
     with conn() as db:db.execute('INSERT INTO biz_push(token,company_id,created) VALUES(?,?,?) ON CONFLICT(token) DO UPDATE SET company_id=excluded.company_id,created=excluded.created',(t,co['id'],core.iso()))
     return jsonify(ok=True)
@@ -1876,6 +1921,7 @@ def settings_json(co):
 def api_biz_settings():
     co=api_co();out={}
     if request.method=='POST':
+        api_owner()
         f=api_form()
         with conn() as db:msg,level=save_settings(db,co,f);co=core.company(db,co['id'])
         if level!='ok':return jsonify(error=msg),400
@@ -1906,6 +1952,7 @@ def api_biz_guide():
 @app.route('/api/v1/new',methods=['GET','POST'])
 def api_biz_new():
     co=api_co()
+    if request.method=='POST':api_owner()  # 직접 등록하면 자동 응대(AI)가 돌 수 있다
     if request.method=='GET':return jsonify(channels=core.CHANNELS,cats=core.CATS,wants=core.WANTS,hints=core.CAT_HINT)
     d,err,cid=new_case_apply(co,api_form())
     if err:return jsonify(error=err),400
@@ -1955,7 +2002,7 @@ def api_biz_news():
 @app.route('/api/v1/leave',methods=['POST'])
 def api_biz_leave():
     """회원 탈퇴 요청. 진행 중인 요청 기록이 있어 운영팀이 확인하고 처리한다."""
-    co=api_co()
+    co=api_owner()
     if not check_password_hash(co['pw_hash'],api_form().get('password','')):return jsonify(error='비밀번호가 맞지 않습니다.'),400
     core.send_mail(os.getenv('OPS_EMAIL',''),f"[{core.CNAME} 운영] 기업 탈퇴 요청: {co['name']}",f"{co['name']} ({co['login_id']})이 앱에서 탈퇴를 요청했습니다.\n{core.site_url('biz','/ops/companies')}")
     return jsonify(ok=True,message='탈퇴 요청을 받았습니다. 처리되면 이메일로 알려 드립니다.')

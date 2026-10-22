@@ -11,6 +11,6 @@
 <div class="mk-grid">{% for t,d in p.feats %}<div class="mk-card"><b>{{ t }}</b><p>{{ d }}</p></div>{% endfor %}</div>
 <div class="ac-law" style="margin-top:28px;background:var(--bg)"><small>응대 팁</small><b style="font-weight:500">{{ p.tip }}</b></div>
 </div></section>
-<section style="background:var(--bg)"><div class="wrap mk-one"><h2>다른 업종</h2><div class="mk-chips">{% for k,x in pages.items() if k!=slug %}<a href="{{ url_for('mk.industry',slug=k) }}">{{ x.title }}</a>{% endfor %}</div></div></section>
+<section><div class="wrap mk-one"><h2>다른 업종</h2><div class="mk-chips">{% for k,x in pages.items() if k!=slug %}<a href="{{ url_for('mk.industry',slug=k) }}">{{ x.title }}</a>{% endfor %}</div></div></section>
 <section class="in-end"><div class="wrap"><h2>{{ p.title }} CS,<br>오늘 정리해 보세요</h2><p>가입하면 바로 데모로 써 볼 수 있어요.</p><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div></section>
 </main>{% endblock %}
