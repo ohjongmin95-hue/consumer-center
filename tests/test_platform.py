@@ -1355,7 +1355,10 @@ class PlatformTest(unittest.TestCase):
 
     def test_app_guest_demo(self):
         """로그인 없이 둘러보기: 견본 상점 토큰으로 읽기·연습은 되고, AI·설정·탈퇴·알림 등록은 403. 하루 지난 둘러보기만 지운다."""
-        a=self.client();j=a.post('/biz/api/v1/demo').get_json()
+        a=self.client()
+        self.assertTrue(a.get('/biz/api/v1/meta').get_json()['auto_guest'])  # 비공개 테스트 동안 앱은 로그인 없이 견본 상점으로 바로
+        with patch.dict(os.environ,{'APP_AUTO_GUEST':'0'}):self.assertFalse(a.get('/biz/api/v1/meta').get_json()['auto_guest'])
+        j=a.post('/biz/api/v1/demo').get_json()
         self.assertTrue(j['guest']);self.assertTrue(j['company']['guest']);self.assertIn('둘러보기',j['company']['name'])
         auth={'Authorization':'Bearer '+j['token']};gid=j['company']['id']
         h=a.get('/biz/api/v1/home',headers=auth).get_json();self.assertTrue(h['guest']);self.assertGreaterEqual(h['counts']['all'],8)

@@ -2,7 +2,7 @@
   "expo": {
     "name": "소보루 CS",
     "slug": "soboru",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -19,7 +19,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "kr.co.soboru.cs",
-      "versionCode": 5,
+      "versionCode": 6,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
@@ -85,6 +85,15 @@
                 ]
               }
             ]
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
           }
         }
       ]
