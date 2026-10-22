@@ -12,7 +12,10 @@
       "bundleIdentifier": "kr.co.consumerjebo.soboru",
       "supportsTablet": false,
       "usesAppleSignIn": true,
-      "associatedDomains": ["applinks:soboru.co.kr", "applinks:consumerjebo.co.kr"],
+      "associatedDomains": [
+        "applinks:soboru.co.kr",
+        "applinks:consumerjebo.co.kr"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "제보나 글에 붙일 사진을 찍을 때 카메라를 써요.",
@@ -21,7 +24,21 @@
       }
     },
     "android": {
-      "package": "kr.co.consumerjebo.soboru"
+      "package": "kr.co.consumerjebo.soboru",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF1E3",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-apple-authentication",

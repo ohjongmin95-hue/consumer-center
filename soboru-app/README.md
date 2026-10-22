@@ -17,3 +17,8 @@ npx eas-cli@latest build -p android --profile production   # 안드로이드 (.a
 ```
 
 `npx tsc --noEmit`으로 타입 검사.
+
+안드로이드 푸시 알림: Firebase에 패키지 `kr.co.consumerjebo.soboru`로 앱을 만들어 받은 `google-services.json`을
+expo.dev > soboru-app > Environment variables에 파일 변수 `GOOGLE_SERVICES_JSON`(production)으로 올려요(`app.config.js`가 읽음).
+소보루 CS 앱의 Firebase 설정과 섞으면 안 돼요. 없어도 앱은 돌아가고 푸시만 안 와요.
+플레이 출시 순서·스토어 문구: 프로젝트 파일 `app-release/soboru/소보루_구글플레이_출시안내.md`.
