@@ -29,6 +29,7 @@ ask KAKAO_TPL_MESSAGE "③ 센터 답변"
 ask KAKAO_TPL_COMPANY "④ 기업 답변"
 ask KAKAO_TPL_SUPPLEMENT "⑤ 보완 요청"
 ask KAKAO_TPL_SEEN "⑥ 기업 확인"
+ask KAKAO_TPL_ADMIN "⑦ 운영자 새 제보 알림 (받는 번호는 set-alert.sh)"
 echo "문자로 대신 보낼 발신번호 (솔라피에 등록한 번호, 없으면 엔터)"
 ask SOLAPI_SENDER "발신번호"
 [[ -n ${NEW[SOLAPI_API_KEY]} && -n ${NEW[SOLAPI_API_SECRET]} && -n ${NEW[SOLAPI_PFID]} ]] || { echo "API Key·Secret·pfId는 꼭 있어야 해요."; exit 1; }
@@ -53,6 +54,7 @@ for k in "${!NEW[@]}"; do [[ -n ${NEW[$k]} ]] && printf '%s=%s\n' "$k" "${NEW[$k
 cat "$TMP" > "$ENV_FILE"; rm -f "$TMP"
 systemctl restart soboru
 echo "저장했어요. 템플릿 ID를 넣은 알림부터 제보자 휴대폰으로 카카오톡이 가요."
-for k in KAKAO_TPL_RECEIVED KAKAO_TPL_STATUS KAKAO_TPL_MESSAGE KAKAO_TPL_COMPANY KAKAO_TPL_SUPPLEMENT KAKAO_TPL_SEEN; do
+for k in KAKAO_TPL_RECEIVED KAKAO_TPL_STATUS KAKAO_TPL_MESSAGE KAKAO_TPL_COMPANY KAKAO_TPL_SUPPLEMENT KAKAO_TPL_SEEN KAKAO_TPL_ADMIN; do
   [[ -n ${NEW[$k]} ]] && echo "  켜짐: $k" || echo "  아직: $k (템플릿 심사 뒤 다시 실행해서 넣어 주세요)"
 done
+[[ -n ${NEW[KAKAO_TPL_ADMIN]} ]] && ! grep -q '^ADMIN_ALERT_PHONE=.' "$ENV_FILE" && echo "참고: 운영자 알림을 받을 번호는 sudo bash /opt/soboru/app/deploy/set-alert.sh 010-0000-0000 으로 넣어 주세요." || true
