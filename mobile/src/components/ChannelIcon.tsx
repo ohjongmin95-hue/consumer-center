@@ -1,7 +1,7 @@
-// 상담이 들어온 곳 아이콘 (웹 platform_app/static/ch/*.svg와 같은 그림): 카페24 · 인스타그램 · 카카오톡 · 메일 · 네이버 · 쿠팡 · 상담창
+// 상담이 들어온 곳 아이콘 (웹 platform_app/static/ch/*.svg와 같은 그림): 카페24 · 인스타그램 · 카카오톡 · 네이버 톡톡 · 메일 · 네이버 · 쿠팡 · 상담창
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 
-const BG: Record<string, string> = { c24: '#2F6BFF', mail: '#5F6B7A', nv: '#03C75A', cp: '#E52528', kk: '#FEE500', web: '#F89B00' };
+const BG: Record<string, string> = { c24: '#2F6BFF', mail: '#5F6B7A', nv: '#03C75A', cp: '#E52528', kk: '#FEE500', nt: '#03C75A', web: '#F89B00' };
 
 export function ChannelIcon({ mark, size = 22 }: { mark: string; size?: number }) {
   const w = { stroke: '#fff', fill: 'none', strokeWidth: 1.8 };
@@ -36,6 +36,13 @@ export function ChannelIcon({ mark, size = 22 }: { mark: string; size?: number }
         <Path d="M8 7h3.1l2.3 3.6V7H16v10h-3.1l-2.3-3.6V17H8z" fill="#fff" />
       ) : mark === 'kk' ? (
         <Path d="M12 6.2c-3.6 0-6.5 2.3-6.5 5.1 0 1.8 1.2 3.4 3 4.3l-.7 2.6c-.1.3.2.5.4.3l3-2c.3 0 .5.1.8.1 3.6 0 6.5-2.3 6.5-5.2S15.6 6.2 12 6.2z" fill="#3C1E1E" />
+      ) : mark === 'nt' ? (
+        <>
+          <Path d="M7.8 6.5h8.4a2.3 2.3 0 0 1 2.3 2.3v5.1a2.3 2.3 0 0 1-2.3 2.3h-3.6l-3.3 2.6c-.3.2-.6 0-.6-.3v-2.3h-.9a2.3 2.3 0 0 1-2.3-2.3V8.8a2.3 2.3 0 0 1 2.3-2.3z" fill="#fff" />
+          <Circle cx="9.3" cy="11.4" r="1" fill="#03C75A" />
+          <Circle cx="12" cy="11.4" r="1" fill="#03C75A" />
+          <Circle cx="14.7" cy="11.4" r="1" fill="#03C75A" />
+        </>
       ) : mark === 'cp' ? (
         <>
           <Path d="M7.5 9.5h9l-.8 8h-7.4z" fill="#fff" />

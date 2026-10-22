@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','navertalk','billing','aibench'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','navertalk','billing','aibench'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -3121,6 +3121,81 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(say('안녕').status_code,404)
         self.post(b,'/biz/connect/kakao',{'act':'delete'},'/biz/connect/kakao')
         with self.core.conn() as db:self.assertIsNone(kakao.link(db,cid))
+
+    def test_naver_talktalk(self):
+        """네이버 톡톡(챗봇 API): 회사마다 다른 주소로만 받고, 고객마다 대화가 이어지고, echo는 무시하고, AI·사장님 답은 보내기 API로 바로 간다."""
+        import navertalk
+        bot=sys.modules['chatbot'];shops=sys.modules['shops']
+        b,o,cid=self.signup_and_approve('톡톡상점','talktalk-co@example.com')
+        page=b.get('/biz/connect/navertalk').get_data(as_text=True);self.assertIn('파트너 ID·인증키 넣기',page);self.assertIn('이벤트 받을 URL',page);self.assertIn('쇼핑챗봇',page)
+        self.assertIn('네이버 톡톡',b.get('/biz/connect').get_data(as_text=True))
+        self.post(b,'/biz/connect/navertalk',{'act':'save','partner_id':'wc 12','auth_key':'k'},'/biz/connect/navertalk')
+        with self.core.conn() as db:self.assertIsNone(navertalk.link(db,cid))  # 틀린 파트너 ID는 저장하지 않는다
+        key='ct_wc8b1i_Pb1AXDQ0RZWuCccpzdNL'
+        self.post(b,'/biz/connect/navertalk',{'act':'save','partner_id':'wc1234','auth_key':key},'/biz/connect/navertalk')
+        page=b.get('/biz/connect/navertalk').get_data(as_text=True);tok=re.search(r'/hook/navertalk/([A-Za-z0-9_-]+)',page).group(1)
+        self.assertIn('아직 톡톡에서 받은 말이 없어요',page);self.assertIn('••••'+key[-4:],page);self.assertNotIn(key,page)
+        with self.core.conn() as db:
+            row=str(dict(navertalk.link(db,cid)));self.assertNotIn(tok,row);self.assertNotIn(key,row)  # 토큰·인증키는 그대로 저장하지 않는다
+        sent=[];resp=[(200,{'success':True,'resultCode':'00'})]
+        def fake_http(method,url,headers=None,body=None):
+            sent.append((method,url,headers,json.loads(body)));return resp[0]
+        def ev(event,user='al-u1',text=None,t=None,**extra):
+            p={'event':event,'user':user,'options':{'inflow':'none'},**extra}
+            if text is not None:p['textContent']={'text':text,'inputType':'typing'}
+            return self.client().post('/biz/hook/navertalk/'+(t or tok),json=p)
+        with patch.object(shops,'http',fake_http):
+            self.assertEqual(ev('send',text='안녕',t='wrong-token').status_code,404)
+            self.assertEqual(ev('open').status_code,200)
+            self.assertIn('잘 이어져 있어요',b.get('/biz/connect/navertalk').get_data(as_text=True))
+            # AI를 안 켰으면: 문의가 상담에 들어오고 아무것도 보내지 않는다
+            r=ev('send',text='반품하고 싶어요. 사이즈가 커요');self.assertEqual(r.status_code,200)
+            ev('send',text='주문번호 몰라요');ev('echo',text='우리가 보낸 말',echoedEvent='send');ev('leave')
+            ev('send',user='al-u9',imageContent={'imageUrl':'https://example.com/a.jpg'})
+            self.assertEqual(sent,[])
+            with self.core.conn() as db:
+                rows=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='네이버 톡톡' ORDER BY id",(cid,)).fetchall();self.assertEqual(len(rows),2);c=rows[0]
+                self.assertEqual(c['decision'],'pending');self.assertEqual(rows[1]['body'],navertalk.NO_TEXT)
+                self.assertEqual([e[0] for e in db.execute("SELECT text FROM events WHERE case_id=? AND kind='me'",(c['id'],))],['주문번호 몰라요'])  # echo는 붙지 않는다
+            self.assertIn('chm nt',b.get('/biz/chat').get_data(as_text=True))
+            self.assertIn('누르면 고객에게 네이버 톡톡으로 바로 가요',b.get(f'/biz/case/{c["id"]}').get_data(as_text=True))
+            # 사장님 답은 보내기 API로 바로
+            self.post(b,f'/biz/case/{c["id"]}',{'act':'reply','msg':'S로 교환해 드릴 수 있는지 확인해 볼게요.'},f'/biz/case/{c["id"]}')
+            self.assertEqual(sent[-1],('POST','https://gw.talk.naver.com/chatbot/v1/event',{'Authorization':key,'Content-Type':'application/json;charset=UTF-8'},
+                                       {'event':'send','user':'al-u1','textContent':{'text':'S로 교환해 드릴 수 있는지 확인해 볼게요.'}}))
+            with self.core.conn() as db:
+                self.assertTrue(db.execute("SELECT 1 FROM events WHERE case_id=? AND text='네이버 톡톡으로 답변을 보냈어요'",(c['id'],)).fetchone())
+                self.assertEqual(navertalk.link(db,cid)['n_sent'],1)
+            # AI 자동 답변: 받으면 바로 200, AI 답은 같은 auto_reply 길로 보내기 API에
+            with self.core.conn() as db:db.execute("UPDATE companies SET ai_reply=? WHERE id=?",(self.core.iso(),cid))
+            replies={'SPF':{'answer':'SPF50+예요.','category':None,'handoff':False,'lookup':False,'summary':''},
+                     '보상':{'answer':'','category':'반품·환불','handoff':True,'lookup':False,'summary':'보상 요구'}}
+            bot.BACKGROUND=False
+            try:
+                with patch.object(bot,'ready',lambda:True),patch.object(bot,'answer',lambda co,facts,text,history=None,**k:next(v for key,v in replies.items() if key in text)):
+                    n=len(sent);ev('send',user='al-u2',text='선크림 SPF 몇이에요?')
+                    self.assertEqual(len(sent),n+1);self.assertEqual(sent[-1][3],{'event':'send','user':'al-u2','textContent':{'text':'SPF50+예요.'}})
+                    with self.core.conn() as db:
+                        c2=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='네이버 톡톡' ORDER BY id DESC",(cid,)).fetchone()
+                        self.assertEqual((c2['status'],c2['decision']),('answered','auto'))
+                    n=len(sent);ev('send',user='al-u3',text='보상해 주세요');self.assertEqual(len(sent),n)  # 결정은 사장님께
+                    with self.core.conn() as db:
+                        c3=db.execute("SELECT * FROM cases WHERE company_id=? AND channel='네이버 톡톡' ORDER BY id DESC",(cid,)).fetchone();self.assertEqual(c3['decision'],'pending')
+                    # 인증키가 틀리면 보내지 못하고 '확인 필요'로
+                    resp[0]=(401,{'success':False,'resultCode':'02'});ev('send',user='al-u2',text='SPF 다시 알려 주세요')
+                    with self.core.conn() as db:
+                        self.assertEqual(navertalk.link(db,cid)['status'],'error')
+                        self.assertEqual(db.execute('SELECT decision FROM cases WHERE id=?',(c2['id'],)).fetchone()[0],'pending')  # 못 보낸 답은 사장님 손으로
+            finally:bot.BACKGROUND=True
+        self.assertEqual(sum(1 for m,u,h,bd in sent if u!=navertalk.SEND_URL),0)  # 밖으로는 gw.talk.naver.com만
+        # 인증키를 다시 넣으면 이어지고 주소는 그대로. 주소 새로 만들기·연결 끊기
+        self.post(b,'/biz/connect/navertalk',{'act':'save','partner_id':'wc1234','auth_key':'new-key-1234'},'/biz/connect/navertalk')
+        with self.core.conn() as db:self.assertEqual(navertalk.link(db,cid)['status'],'ok')
+        self.assertIn(tok,b.get('/biz/connect/navertalk').get_data(as_text=True))
+        self.post(b,'/biz/connect/navertalk',{'act':'renew'},'/biz/connect/navertalk')
+        self.assertEqual(ev('open').status_code,404)
+        self.post(b,'/biz/connect/navertalk',{'act':'delete'},'/biz/connect/navertalk')
+        with self.core.conn() as db:self.assertIsNone(navertalk.link(db,cid))
 
     def test_chat_law_grounding(self):
         """상담창: 법률 질문이면 찾은 법령 원문을 '[관련 법령 원문]'으로 주고 인터넷 검색을 끈다. 일반 질문에는 조문을 넣지 않는다."""
