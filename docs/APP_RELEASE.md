@@ -1,4 +1,4 @@
-# 소보루 앱 출시 안내 (안드로이드 먼저, 아이폰은 나중에)
+# 소보루 앱 출시 안내
 
 사이트(consumerjebo.co.kr)를 그대로 감싸는 앱입니다. 안드로이드는 **TWA(Trusted Web Activity)**, 아이폰은 나중에 **Capacitor**로 포장합니다.
 화면·기능을 고치면 앱을 다시 올리지 않아도 바로 반영돼요.
@@ -77,25 +77,19 @@ bubblewrap build          # app-release-bundle.aab 생성
    데이터 보안 양식(이름·전화번호·이메일·사용자 콘텐츠·기기 알림 토큰 수집, 전송 중 암호화, 삭제 요청 가능), 콘텐츠 등급 설문(사용자 간 소통 있음).
 6. 프로덕션 출시.
 
-## 아이폰 (나중에)
+## 아이폰 — `soboru-app/` (Expo)
 
-1. **Apple Developer Program 조직 가입** (연 129,000원, D-U-N-S 필요).
-2. **Apple로 로그인 켜기** — 카카오·네이버 로그인이 있으면 심사 4.8에 따라 필수예요.
-   Identifiers에서 Services ID(예: `kr.co.consumerjebo.soboru.web`, Return URL `https://consumerjebo.co.kr/auth/apple/callback`)와 Sign in with Apple 키(.p8)를 만든 뒤:
-   ```bash
-   scp AuthKey_XXXXXXXXXX.p8 서버:/tmp/
-   sudo bash /opt/soboru/app/deploy/set-apple.sh /tmp/AuthKey_XXXXXXXXXX.p8
-   ```
-3. **Capacitor로 포장** (맥, Xcode 필요):
-   ```bash
-   npm init @capacitor/app soboru-ios -- --name 소보루 --app-id kr.co.consumerjebo.soboru
-   cd soboru-ios && npm i @capacitor/ios @capacitor/push-notifications && npx cap add ios
-   ```
-   `capacitor.config.json`에 `"server": {"url": "https://consumerjebo.co.kr/?src=app"}`를 넣고, Xcode > Signing & Capabilities에
-   **Associated Domains**(`applinks:consumerjebo.co.kr`, `webcredentials:consumerjebo.co.kr`)와 **Push Notifications**를 추가.
-4. 유니버설 링크: `set-app.sh`에서 Apple Team ID와 번들 ID(`kr.co.consumerjebo.soboru`)를 넣으면 AASA 파일이 열려요.
-5. **푸시(APNs)**: 아이폰 앱 안의 웹뷰는 웹 푸시를 못 받아요. Apple 푸시 키(.p8)를 만들고, 앱이 받은 기기 토큰을 서버에 저장해 APNs로 보내는 부분을 새로 만들어야 해요(지금 사이트에는 없음).
-6. 심사 4.2(최소 기능) 대비: 웹사이트만 띄운 앱은 거절될 수 있어요. 푸시 알림, 앱 안 Apple 로그인, 공유 시트 같은 기기 기능을 넣고, 심사 메모에 시험 계정과 신고·차단·탈퇴 위치를 적어 주세요.
+Capacitor 대신 `soboru-app/` Expo 앱(사이트를 웹뷰로 띄움)으로 갑니다. EAS가 클라우드에서 굽고 올려서 **맥이 없어도 돼요.**
+앱이 직접 맡는 것(심사 4.2 '웹사이트만 띄운 앱' 대비): 아래 탭, 푸시 알림(Expo → APNs), 기기 Apple 로그인 창, 공유 시트, 당겨서 새로고침, 오프라인 화면.
+
+| 사이트 쪽 | 내용 |
+|---|---|
+| 앱 알아보기 | 앱이 사용자 에이전트 끝에 `SoboruApp/버전 (ios|android)`를 붙임 → `appready.app_client()`. 앱에선 웹 탭바를 숨기고 `templates/app_bridge.html`을 넣음 |
+| 앱 푸시 | `/me/push/app`이 Expo 토큰을 `push_subscriptions`(endpoint `expo:…`)에 저장, 알림은 Expo 푸시 서버로 (서버 키 필요 없음) |
+| Apple 로그인 | 아이폰 앱은 기기 창에서 받은 코드를 `/auth/apple/native`로 보냄. client_id = 번들 ID(`IOS_BUNDLE_ID`, 기본 `kr.co.consumerjebo.soboru`). `set-apple.sh`에서 Services ID는 비워도 됨 |
+| 유니버설 링크 | `set-app.sh`에 Team ID를 넣으면 AASA가 열림 (앱의 associatedDomains: soboru.co.kr, consumerjebo.co.kr) |
+
+출시 절차·스토어 문구·심사 메모는 프로젝트 폴더 `app-release/soboru/소보루_앱스토어_출시안내.md`에 있어요.
 
 ## 확인할 것
 - 약관·개인정보 처리방침은 관리자 화면에서 고쳐 저장한 적이 있으면 이번에 바뀐 기본 문구(무관용·차단·푸시·Apple)가 안 보여요. 관리자 > 사이트 문구에서 확인해 주세요.

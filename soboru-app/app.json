@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "소보루",
+    "slug": "soboru-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFFFFF",
+    "scheme": "soboru",
+    "ios": {
+      "bundleIdentifier": "kr.co.consumerjebo.soboru",
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "associatedDomains": [
+        "applinks:soboru.co.kr",
+        "applinks:consumerjebo.co.kr"
+      ],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "제보나 글에 붙일 사진을 찍을 때 카메라를 써요.",
+        "NSPhotoLibraryUsageDescription": "제보나 글에 붙일 사진을 고를 때 사진 보관함을 써요.",
+        "NSMicrophoneUsageDescription": "동영상을 찍어 붙일 때 마이크를 써요."
+      }
+    },
+    "android": {
+      "package": "kr.co.consumerjebo.soboru",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF1E3",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-apple-authentication",
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#F89B00"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFF1E3"
+        }
+      ]
+    ],
+    "extra": {
+      "site": "https://soboru.co.kr"
+    }
+  }
+}
