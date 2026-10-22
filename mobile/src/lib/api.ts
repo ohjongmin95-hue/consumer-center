@@ -8,7 +8,7 @@ export const API_BASE = Platform.OS === 'web' ? '' : configured;
 export const SITE_BASE = configured; // 약관처럼 브라우저로 여는 사장님 사이트 주소
 
 export type Operator = { name: string; ceo: string; biz_no: string; address: string; manager: string };
-export type Meta = { name: string; cats: string[]; industries?: string[]; couriers: string[]; operator: Operator; signup: string; forgot: string; privacy: string };
+export type Meta = { name: string; cats: string[]; industries?: string[]; couriers: string[]; operator: Operator; signup: string; forgot: string; privacy: string; auto_guest?: boolean };
 export type CompanyInfo = { id: number; name: string; login_id: string; link: string; guest?: boolean };
 export type BizCase = {
   id: number;

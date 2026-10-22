@@ -8,7 +8,7 @@ import { useAuth } from '../lib/auth';
 import { C, FONT } from '../lib/theme';
 
 export default function Login() {
-  const { session, login, guest, lastId } = useAuth();
+  const { ready, session, meta, login, guest, lastId, stayOnLogin } = useAuth();
   const [id, setId] = useState('');
   useEffect(() => {
     if (lastId) setId((v) => v || lastId);
@@ -17,6 +17,14 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [tour, setTour] = useState(false);
   const [err, setErr] = useState('');
+  const [autoTried, setAutoTried] = useState(false);
+  // 비공개 테스트 동안(서버 auto_guest): 앱을 열면 로그인 없이 견본 상점으로 바로 들어간다. 로그아웃하면 이 화면에 머문다
+  const auto = !!meta?.auto_guest && ready && !session && !stayOnLogin && !autoTried;
+  useEffect(() => {
+    if (!auto) return;
+    setAutoTried(true);
+    browse();
+  }, [auto]); // eslint-disable-line react-hooks/exhaustive-deps
   if (session) return <Redirect href="/" />;
 
   const submit = async () => {

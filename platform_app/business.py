@@ -1711,7 +1711,8 @@ def api_my_case(db,co,case_id):
 @app.route('/api/v1/meta')
 def api_biz_meta():
     return jsonify(cats=core.CATS,couriers=list(core.COURIERS),operator=core.OPERATOR,name=core.BNAME,industries=core.INDUSTRIES,
-        signup=core.site_url('biz','/signup'),forgot=core.site_url('biz','/forgot'),privacy=core.site_url('me','/privacy'))
+        signup=core.site_url('biz','/signup'),forgot=core.site_url('biz','/forgot'),privacy=core.site_url('me','/privacy'),
+        auto_guest=os.getenv('APP_AUTO_GUEST','1')!='0')  # 앱 비공개 테스트 동안: 로그인 화면 없이 견본 상점으로 바로 (APP_AUTO_GUEST=0이면 끔)
 @app.route('/api/v1/login',methods=['POST'])
 def api_biz_login():
     f=api_form();lid=clean(f.get('login_id'),80).lower();pw=f.get('password','')
@@ -1724,7 +1725,7 @@ def api_biz_login():
 @app.route('/api/v1/demo',methods=['POST'])
 def api_biz_demo():
     """로그인 없이 둘러보기: 견본 상점을 새로 만들어 그 토큰을 준다 (하루 지나면 지워진다). 앱 심사·처음 써 보는 사람용."""
-    if core.throttled('guest',limit=5,minutes=60):return jsonify(error='잠시 후 다시 시도해 주세요.'),429
+    if core.throttled('guest',limit=30,minutes=60):return jsonify(error='잠시 후 다시 시도해 주세요.'),429
     with conn() as db:demo.sweep_guests(db);co=demo.guest(db)
     return jsonify(token=co_token(co),company=co_info(co),guest=True)
 @app.route('/api/v1/home')

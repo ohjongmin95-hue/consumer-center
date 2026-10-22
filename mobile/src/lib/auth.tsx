@@ -44,6 +44,7 @@ type Auth = {
   meta: Meta | null;
   login: (id: string, pw: string) => Promise<void>;
   guest: () => Promise<void>;
+  stayOnLogin: boolean; // 직접 로그아웃했으면 견본 상점으로 저절로 넘기지 않는다
   logout: () => Promise<void>;
   setToken: (token: string) => Promise<void>;
   lastId: string;
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [lastId, setLastId] = useState('');
+  const [stayOnLogin, setStayOnLogin] = useState(false);
   useEffect(() => {
     getItem(ID_KEY).then((v) => setLastId(v ?? ''));
     load().then((s) => {
@@ -85,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const t = s?.guest ? null : await pushToken();
     if (s && t) api.logout(s.token, t).catch(() => {});
     await save(null);
+    setStayOnLogin(true);
     setSession(null);
   }, []);
   // 비밀번호를 바꾸면 서버가 새 토큰을 준다: 로그아웃 없이 계속 쓴다
@@ -95,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await save(n);
     setSession(n);
   }, []);
-  const value = useMemo(() => ({ ready, session, meta, login, guest, logout, setToken, lastId }), [ready, session, meta, login, guest, logout, setToken, lastId]);
+  const value = useMemo(() => ({ ready, session, meta, login, guest, logout, setToken, lastId, stayOnLogin }), [ready, session, meta, login, guest, logout, setToken, lastId, stayOnLogin]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
