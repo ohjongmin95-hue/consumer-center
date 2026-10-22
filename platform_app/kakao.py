@@ -22,6 +22,8 @@ CB_HOSTS=('kakao.com','kakaoenterprise.com')  # 콜백 주소는 카카오 주�
 WAIT='잠시만 기다려 주세요. 확인하고 바로 답해 드릴게요.'
 HOLD='문의 잘 받았어요. 담당자가 확인하고 답해 드릴게요. 답이 준비되면 이 채팅방에 아무 말이나 보내 주세요. 바로 전해 드릴게요.'
 OFF='지금은 이 채널에서 상담을 받지 못하고 있어요. 잠시 후 다시 보내 주세요.'
+SKILL_TEST='발화 내용'  # 스킬 테스트 화면이 기본으로 보내는 말
+TEST_OK='소보루와 잘 이어졌어요. 이제 카카오톡 채널에서 직접 말을 걸어 보세요.'
 BUSY='메시지가 너무 많이 와서 잠시 쉬고 있어요. 조금 뒤에 다시 보내 주세요.'
 NO_TEXT='(사진이나 첨부를 보냈어요. 카카오톡 채널 관리자센터에서 확인해 주세요)'
 BACKGROUND=True  # 시험에서는 False (바로 돈다)
@@ -140,6 +142,7 @@ def receive(lk,payload):
         if not co or not co['member'] or co['status']!='active' or lk['status']!='ok':return simple([OFF])
         if bot and bot!=lk['bot_id']:db.execute('UPDATE kakao_links SET bot_id=? WHERE company_id=?',(bot,co['id']))
         if not key:return simple([OFF])
+        if text==SKILL_TEST:return simple([TEST_OK])  # 챗봇 관리자센터의 스킬 테스트: 상담에 남기지 않는다
         if not text:  # 빈 말(웰컴 블록 등): 요청은 만들지 않고 기다리던 답만 전한다
             mark,texts=claim(db,co['id'],key);done(db,mark)
             return simple(texts or [f"안녕하세요, {core.short(co['name'],30)}이에요. 궁금한 점을 남겨 주시면 바로 답해 드릴게요."])
