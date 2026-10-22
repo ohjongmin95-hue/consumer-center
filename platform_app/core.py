@@ -416,7 +416,7 @@ def run_playbook(db,c,how,send=None):
     return bool(reply)
 
 VIA={'email':'메일로','instagram':'인스타그램 DM으로','kakao':'카카오톡으로'}
-HELD={'kakao':'카카오톡으로 보낼 답변을 담았어요. 지금 대화 중이면 바로, 아니면 고객이 카톡으로 다시 말을 걸 때 전해져요'}  # 챗봇은 고객이 말을 걸 때만 답할 수 있다 (kakao.py)
+HELD={'kakao':'카카오톡 답변 전송 대기 중이에요. 카톡 챗봇은 고객이 말을 걸어야 답할 수 있어서, 고객이 다음 말을 보내면 그때 함께 전해져요'}  # 챗봇은 고객이 말을 걸 때만 답할 수 있다 (kakao.py)
 def deliver_reply(db,c,text):
     """답변 하나를 요청이 들어온 곳(판매처·메일·인스타그램)으로 보낸다. 그런 곳이 없으면 ("",""). -> (안내, ok|error)"""
     r=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=? ORDER BY rowid LIMIT 1',(c['company_id'],c['id'])).fetchone()
