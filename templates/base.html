@@ -46,7 +46,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">{# 소보루 글꼴 Pretendard (SIL OFL), 화면에 쓰는 글자만 나눠 받음 #}
   <link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}
 </head>
-<body{% if is_soboru() %} class="sb"{% endif %}>
+<body{% if is_soboru() or app_client() %} class="{{ 'sb' if is_soboru() }}{{ ' in-app' if app_client() }}"{% endif %}>
 {% if is_soboru() %}{% include 'soboru_header.html' %}{% else %}{% include 'jebo_header.html' %}{% endif %}
 {% with msgs = get_flashed_messages() %}
 {% if msgs %}<div class="flash-wrap" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
@@ -85,7 +85,8 @@
     })();
   </script>
 </footer>
-{% if is_soboru() %}{% include 'soboru_tabbar.html' %}
+{% if app_client() %}{% include 'app_bridge.html' %}{% endif %}
+{% if is_soboru() %}{% if not app_client() %}{% include 'soboru_tabbar.html' %}{% endif %}{# 앱에서는 앱의 아래 탭을 씀 #}
 <script>if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); });</script>{# 오프라인 안내·정적 파일 캐시·푸시 (static/sw.js) #}{% endif %}
 {% if editing() %}
 {# 관리자 편집 모드: 점선으로 표시된 문장을 누르면 바로 고칠 수 있음 #}

@@ -53,6 +53,7 @@
       {% for p in SOCIAL_NAMES if p in methods or p in social_providers() %}
       <div class="me-method"><span class="me-method-name"><i class="social-dot social-{{ p }}" aria-hidden="true"></i>{{ SOCIAL_NAMES[p] }}</span>
         {% if p in methods %}<form method="post" action="{{ url_for('social_unlink', provider=p) }}" onsubmit="return confirm({{ (SOCIAL_NAMES[p] ~ ' 연결을 해제할까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><span class="me-method-on">{{ ui('member.linked', '연결됨') }}</span> <button class="text-button" type="submit"{% if methods|length <= 1 %} disabled title="로그인 방법이 하나만 남아 있어요"{% endif %}>{{ ui('member.unlink', '해제') }}</button></form>
+        {% elif p == 'apple' and app_apple() %}<a class="text-link" href="#" data-app="apple-login" data-link="1">{{ ui('member.link', '연결하기') }}</a>
         {% else %}<a class="text-link" href="{{ url_for('social_start', provider=p, link=1) }}">{{ ui('member.link', '연결하기') }}</a>{% endif %}</div>
       {% endfor %}
     </div>

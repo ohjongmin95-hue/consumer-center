@@ -1,0 +1,35 @@
+{# 소보루 앱(soboru-app/) 안에서만: 웹 화면과 앱을 잇는 다리. 앱이 사용자 에이전트에 'SoboruApp/버전 (ios|android)'를 붙여 들어옴 (appready.app_client)
+   화면 → 앱: data-app 버튼(apple-login·push-enable)과 페이지 정보(로그인 여부). 앱 → 화면: 아래 SoboruApp 함수를 불러 결과를 돌려줌 #}
+<script>
+  (function () {
+    var csrf = '{{ csrf_token() }}';
+    function send(m) { if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(m)); }
+    function post(url, fields) {
+      var body = new FormData(); body.append('_csrf', csrf); Object.keys(fields).forEach(function (k) { body.append(k, fields[k]); });
+      return fetch(url, { method: 'POST', body: body, credentials: 'same-origin' }).then(function (r) { return r.json(); });
+    }
+    function say(text) { var m = document.querySelector('.app-push .push-msg'); if (m) m.textContent = text; }
+    window.SoboruApp = {
+      // 앱이 받은 푸시 토큰을 로그인한 회원에게 저장
+      registerPush: function (token) { return post('{{ url_for('push_app_subscribe') }}', { token: token }).catch(function () { return { ok: false }; }); },
+      pushResult: function (state) {
+        say(state === 'on' ? {{ ui_text('push.app_on', '이 휴대폰으로 알림을 보내 드려요. 끄려면 휴대폰 설정 > 소보루 > 알림에서 꺼 주세요.')|tojson }}
+          : state === 'denied' ? {{ ui_text('push.denied', '알림 권한이 꺼져 있어요. 휴대폰 설정에서 소보루 알림을 허용해 주세요.')|tojson }}
+          : {{ ui_text('push.fail', '켜지 못했어요. 잠시 뒤 다시 시도해 주세요.')|tojson }});
+        var b = document.querySelector('.app-push .push-btn'); if (b && state === 'on') b.hidden = true;
+      },
+      // 기기에서 Apple 로그인을 마치면 인가 코드를 이 화면(로그인 쿠키가 붙는 곳)에서 서버로 보냄
+      appleDone: function (r) {
+        var f = document.createElement('form'); f.method = 'post'; f.action = '{{ url_for('apple_native') }}'; f.hidden = true;
+        var v = { _csrf: csrf, code: r.code || '', user: r.user || '', next: r.next || '', link: r.link || '' };
+        Object.keys(v).forEach(function (k) { var i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v[k]; f.appendChild(i); });
+        document.body.appendChild(f); f.submit();
+      }
+    };
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('[data-app]'); if (!a) return;
+      e.preventDefault(); send({ type: a.dataset.app, next: a.dataset.next || '', link: a.dataset.link || '' });
+    });
+    send({ type: 'page', member: {{ 'true' if g.get('user') else 'false' }}, path: location.pathname });
+  })();
+</script>

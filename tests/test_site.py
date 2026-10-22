@@ -4408,6 +4408,84 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(self.site.appready.webpush_send(dict(sub, id=1), {}, self.site.app.logger), (False, False))
         self.assertIn('pywebpush', logs.output[0])
 
+    APP_UA = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) SoboruApp/1.0.0 (ios)'}
+
+    def test_app_bridge_and_app_push(self):
+        # 소보루 앱(soboru-app) 안: 웹 탭바 대신 앱 탭, 앱과 잇는 다리 스크립트
+        web = self.client.get('/').get_data(as_text=True)
+        self.assertIn('sb-tabbar', web); self.assertNotIn('ReactNativeWebView', web)
+        app = self.client.get('/', headers=self.APP_UA).get_data(as_text=True)
+        self.assertNotIn('class="sb-tabbar"', app); self.assertIn('in-app', app); self.assertIn('ReactNativeWebView', app)
+        self.assertIn('member: false', app)
+        alice, a_id = self.member_client('alice_app', '앱앨리스')
+        bob, _ = self.member_client('bob_app', '앱밥')
+        page = alice.get('/me/alerts', headers=self.APP_UA).get_data(as_text=True)
+        self.assertIn('data-app="push-enable"', page); self.assertNotIn('pushManager', page)  # 웹 푸시 키가 없어도 앱 알림은 켬
+        self.assertIn('member: true', page)
+        token = self.csrf(alice, '/me')
+        expo = 'ExponentPushToken[abcDEF1234567890xyz]'
+        self.assertEqual(alice.post('/me/push/app', data={'_csrf': token, 'token': 'https://evil.test'}).status_code, 400)
+        self.assertEqual(alice.post('/me/push/app', data={'token': expo}).status_code, 400)  # 위조 방지 값 없음
+        self.assertEqual(alice.post('/me/push/app', data={'_csrf': token, 'token': expo}).get_json(), {'ok': True})
+        alice.post('/me/push/app', data={'_csrf': token, 'token': expo})  # 같은 기기는 한 줄
+        with self.site.conn() as db:
+            self.assertEqual([tuple(r) for r in db.execute('SELECT user_id,endpoint FROM push_subscriptions')], [(a_id, 'expo:' + expo)])
+            q = db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,user_id,kind) VALUES('꿀팁','앱앨리스','','앱 꿀팁','꿀팁 본문입니다 열 글자 넘게','x','2026-10-17T10:00:00',?,'tip')", (a_id,)).lastrowid
+            db.execute("INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth,created) VALUES(?,?,'','',?)", (a_id, 'expo:ExponentPushToken[goneGONEgone12345]', 'x'))
+        sent = []
+        def fake_expo(tokens, payload, log):
+            sent.append((sorted(tokens), payload)); return [t for t in tokens if 'gone' in t]
+        # 웹 푸시 키(VAPID)가 없어도 앱 기기로는 보냄. 앱을 지운 기기는 지움
+        with patch.object(self.site.appready, 'ASYNC', False), patch.object(self.site.appready, 'expo_send', fake_expo):
+            bob.post(f'/board/{q}/comment', data={'_csrf': self.csrf(bob, f'/board/{q}'), 'body': '앱에서 봤어요 고마워요'})
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0][0], ['ExponentPushToken[abcDEF1234567890xyz]', 'ExponentPushToken[goneGONEgone12345]'])
+        self.assertEqual(sent[0][1]['body'], '내 글에 댓글이 달렸어요: 앱 꿀팁'); self.assertTrue(sent[0][1]['url'].startswith(f'/board/{q}#c'))
+        with self.site.conn() as db:
+            self.assertEqual([r[0] for r in db.execute('SELECT endpoint FROM push_subscriptions')], ['expo:' + expo])
+        # 끄기·탈퇴는 웹 푸시와 같은 주소
+        self.assertEqual(alice.post('/me/push/unsubscribe', data={'_csrf': token, 'endpoint': 'expo:' + expo}).get_json(), {'ok': True})
+        with self.site.conn() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM push_subscriptions').fetchone()[0], 0)
+
+    def test_apple_login_in_ios_app(self):
+        import base64, time
+        key, env = self.apple_env()
+        env.pop('APPLE_SERVICE_ID')  # 앱은 Services ID 없이 번들 ID로
+        members = self.site.members
+        self.assertEqual(self.client.post('/auth/apple/native', data={'_csrf': self.csrf(self.client, '/login'), 'code': 'x'}).status_code, 404)
+        with patch.dict(os.environ, env):
+            self.assertNotIn('social-apple', self.client.get('/login').get_data(as_text=True))  # 브라우저에서는 웹 Apple 로그인 설정이 있어야 보임
+            login = self.client.get('/login?next=/life', headers=self.APP_UA).get_data(as_text=True)
+            self.assertIn('data-app="apple-login" data-next="/life"', login); self.assertIn('Apple로 계속하기', login)
+            claims = {'iss': 'https://appleid.apple.com', 'aud': 'kr.co.consumerjebo.soboru', 'exp': int(time.time()) + 600, 'sub': '000777.app.uid',
+                      'email': 'me@example.com', 'email_verified': 'true'}
+            calls = []
+            def fake(method, url, data=None, headers=None, timeout=10):
+                calls.append((url, data))
+                if url.endswith('/auth/token'):
+                    return 200, {'id_token': 'h.' + base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip('=') + '.s', 'refresh_token': 'refresh-app'}
+                return 200, {}
+            form = {'code': 'app-code', 'user': json.dumps({'name': {'firstName': '보루', 'lastName': '소'}}), 'next': '/life'}
+            self.assertEqual(self.client.post('/auth/apple/native', data=form).status_code, 400)  # 위조 방지 값 없음
+            with patch.object(members, 'http', fake):
+                r = self.client.post('/auth/apple/native', data=dict(form, _csrf=self.csrf(self.client, '/login')), headers=self.APP_UA)
+            self.assertEqual(r.headers['Location'], '/auth/join')
+            self.assertEqual(calls[0][1]['client_id'], 'kr.co.consumerjebo.soboru'); self.assertNotIn('redirect_uri', calls[0][1])
+            body = json.loads(base64.urlsafe_b64decode(calls[0][1]['client_secret'].split('.')[1] + '=='))
+            self.assertEqual(body['sub'], 'kr.co.consumerjebo.soboru')
+            r = self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            with self.site.conn() as db:
+                user = db.execute("SELECT * FROM users WHERE real_name='소보루'").fetchone()
+                tok = db.execute('SELECT refresh_token,client FROM apple_tokens').fetchone()
+            self.assertEqual(user['email'], 'me@example.com')
+            self.assertEqual(tuple(tok), ('refresh-app', 'kr.co.consumerjebo.soboru'))
+            # 탈퇴하면 앱에서 받은 토큰은 번들 ID로 취소
+            calls.clear()
+            with patch.object(members, 'http', fake):
+                self.client.post('/me/withdraw', data={'_csrf': self.csrf(self.client, '/me'), 'confirm': 'on'})
+            revoke = [c for c in calls if c[0].endswith('/auth/revoke')]
+            self.assertEqual([(c[1]['client_id'], c[1]['token']) for c in revoke], [('kr.co.consumerjebo.soboru', 'refresh-app')])
+
     def apple_env(self):
         from cryptography.hazmat.primitives.asymmetric import ec
         from cryptography.hazmat.primitives import serialization

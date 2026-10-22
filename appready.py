@@ -8,6 +8,9 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 주소�
 - 알림함(/me/alerts): 내 글 댓글, 내 질문 답변, 답변한 질문 해결, 회원으로 접수한 제보의 진행 소식.
 - 웹 푸시: VAPID 키(VAPID_PUBLIC_KEY·VAPID_PRIVATE_KEY·VAPID_SUBJECT, deploy/set-push.sh)가 있을 때만 켜짐.
   구독 정보(브라우저가 준 주소·암호 키)만 저장하고, 탈퇴하거나 구독을 끄면 바로 지운다.
+- 앱 푸시: 소보루 앱(soboru-app/, 아이폰·안드로이드)은 웹뷰라 웹 푸시를 못 받아서, 앱이 받은 Expo 푸시 토큰을
+  push_subscriptions에 endpoint 'expo:토큰'으로 넣고 Expo 푸시 서버(애플 APNs·구글 FCM으로 전달)로 보낸다. 서버 키 없이 동작
+  (Expo 계정에서 '푸시 보안'을 켰다면 EXPO_ACCESS_TOKEN). 앱은 사용자 에이전트 끝에 'SoboruApp/버전 (ios|android)'를 붙인다.
 """
 import datetime, json, os, re, threading
 from flask import Response, abort, after_this_request, g, has_request_context, jsonify, redirect, render_template, request, url_for
@@ -19,6 +22,9 @@ B64URL_RE = re.compile(r'^[A-Za-z0-9_\-=]{8,200}$')
 ALERT_KEEP_DAYS = 90
 ALERT_PAGE = 50
 SUBS_PER_USER = 10
+APP_UA_RE = re.compile(r'SoboruApp/[\d.]+ \((ios|android)\)')
+EXPO_TOKEN_RE = re.compile(r'^Expo(nent)?PushToken\[[A-Za-z0-9_\-]{10,200}\]$')
+EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
 CASE_EVENTS = {'status': ('alert.case_status', '내 제보 진행 단계가 바뀌었어요'), 'company': ('alert.case_company', '내 제보에 기업 답변이 도착했어요'),
                'message': ('alert.case_message', '소보루가 내 제보에 메시지를 남겼어요')}
 ALERT_ICONS = {'comment': 'chat', 'answer': 'chat', 'solved': 'check', 'case': 'doc'}
@@ -28,6 +34,13 @@ def env(name, default=''): return os.getenv(name, '').strip() or default
 def push_ready(): return bool(env('VAPID_PUBLIC_KEY') and env('VAPID_PRIVATE_KEY'))
 def android_fingerprints():
     return [f for f in (x.strip().upper() for x in env('ANDROID_SHA256').split(',')) if FINGERPRINT_RE.match(f)]
+
+
+def app_client():
+    """소보루 앱 안에서 연 화면이면 'ios' 또는 'android', 브라우저면 ''."""
+    if not has_request_context(): return ''
+    m = APP_UA_RE.search(request.headers.get('User-Agent', ''))
+    return m.group(1) if m else ''
 
 
 def migrate(db):
@@ -56,6 +69,20 @@ def webpush_send(sub, payload, log):
         log.warning('웹 푸시 실패: %s', type(e).__name__); return False, False
 
 
+def expo_send(tokens, payload, log):
+    """앱 푸시 보내기 → 지울 토큰(앱을 지웠거나 알림을 끈 기기). 시험에서 바꿔 끼운다."""
+    import urllib.request
+    msgs = [{'to': t, 'title': payload['title'], 'body': payload['body'], 'data': {'url': payload['url']}, 'sound': 'default'} for t in tokens]
+    head = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+    if env('EXPO_ACCESS_TOKEN'): head['Authorization'] = 'Bearer ' + env('EXPO_ACCESS_TOKEN')
+    try:
+        req = urllib.request.Request(EXPO_PUSH_URL, data=json.dumps(msgs, ensure_ascii=False).encode(), headers=head, method='POST')
+        with urllib.request.urlopen(req, timeout=10) as r: res = json.loads(r.read().decode() or '{}').get('data') or []
+    except (OSError, ValueError) as e:  # urllib.error.URLError 포함. 알림함에는 남아 있으니 기록만
+        log.warning('앱 푸시 실패: %s', type(e).__name__); return []
+    return [t for t, r in zip(tokens, res) if isinstance(r, dict) and (r.get('details') or {}).get('error') == 'DeviceNotRegistered']
+
+
 def install(S):
     app = S.app; conn = S.conn; now = S.now; ui_text = S.ui_text
     with conn() as db: migrate(db)
@@ -68,7 +95,12 @@ def install(S):
     def send_push(uid, payload):
         with conn() as db: subs = db.execute('SELECT * FROM push_subscriptions WHERE user_id=?', (uid,)).fetchall()
         gone = []
+        apps = [s for s in subs if s['endpoint'].startswith('expo:')]
+        if apps:
+            dead = set(expo_send([s['endpoint'][5:] for s in apps], payload, log))
+            gone += [s['id'] for s in apps if s['endpoint'][5:] in dead]
         for sub in subs:
+            if sub['endpoint'].startswith('expo:') or not push_ready(): continue
             ok, drop = webpush_send(sub, payload, log)
             if drop: gone.append(sub['id'])
         if gone:
@@ -83,7 +115,7 @@ def install(S):
         if not uid: return
         db.execute('INSERT INTO member_alerts(user_id,kind,body,link,created) VALUES(?,?,?,?,?)', (uid, kind, body[:200], link[:300], now()))
         db.execute('DELETE FROM member_alerts WHERE created<?', (keep_since(),))  # 90일 지난 알림은 파기 (개인정보 처리방침)
-        if not push or not push_ready(): return
+        if not push: return
         payload = push_payload(body, link)
         if has_request_context():
             @after_this_request
@@ -99,7 +131,7 @@ def install(S):
         body = f"{ui_text(key, default)}: {(case['subject'] or '')[:40]}"
         link = url_for('my_case', case_id=case['id']) if has_request_context() else ''
         with conn() as db: member_alert(db, case['user_id'], 'case', body, link, push=False)
-        if push_ready(): run_later(lambda: send_push(case['user_id'], push_payload(body, link)))
+        run_later(lambda: send_push(case['user_id'], push_payload(body, link)))
     S.case_alert = case_alert
 
     def delete_app_extras(db, uid):
@@ -114,7 +146,8 @@ def install(S):
         if 'alert_unread' not in g:
             with conn() as db: g.alert_unread = db.execute("SELECT COUNT(*) FROM member_alerts WHERE user_id=? AND read_at=''", (g.user['id'],)).fetchone()[0]
         return g.alert_unread
-    app.jinja_env.globals.update(alert_unread=alert_unread, push_on=push_ready, push_public_key=lambda: env('VAPID_PUBLIC_KEY') if push_ready() else '', ALERT_ICONS=ALERT_ICONS)
+    S.app_client = app_client
+    app.jinja_env.globals.update(alert_unread=alert_unread, push_on=push_ready, app_client=app_client, push_public_key=lambda: env('VAPID_PUBLIC_KEY') if push_ready() else '', ALERT_ICONS=ALERT_ICONS)
 
     # ---- 서비스 워커·오프라인 화면 ----------------------------------------------
     @app.route('/sw.js')
@@ -185,6 +218,18 @@ def install(S):
         with conn() as db:
             db.execute('DELETE FROM push_subscriptions WHERE endpoint=?', (f['endpoint'],))  # 같은 기기에서 다른 회원으로 로그인하면 새 회원에게 옮김
             db.execute('INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth,created) VALUES(?,?,?,?,?)', (g.user['id'], f['endpoint'], f['p256dh'], f['auth'], now()))
+            db.execute('DELETE FROM push_subscriptions WHERE user_id=? AND id NOT IN (SELECT id FROM push_subscriptions WHERE user_id=? ORDER BY id DESC LIMIT ?)', (g.user['id'], g.user['id'], SUBS_PER_USER))
+        return jsonify(ok=True)
+
+    @app.route('/me/push/app', methods=['POST'])
+    @S.member_only
+    def push_app_subscribe():
+        # 소보루 앱이 받은 Expo 푸시 토큰 저장 (앱이 로그인한 화면에서 보냄). 같은 기기에서 다른 회원으로 로그인하면 새 회원에게 옮김
+        token = request.form.get('token', '').strip()
+        if not EXPO_TOKEN_RE.match(token): return jsonify(ok=False, error=ui_text('push.bad', '이 브라우저에서는 푸시 알림을 켤 수 없어요.')), 400
+        with conn() as db:
+            db.execute('DELETE FROM push_subscriptions WHERE endpoint=?', ('expo:' + token,))
+            db.execute("INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth,created) VALUES(?,?,'','',?)", (g.user['id'], 'expo:' + token, now()))
             db.execute('DELETE FROM push_subscriptions WHERE user_id=? AND id NOT IN (SELECT id FROM push_subscriptions WHERE user_id=? ORDER BY id DESC LIMIT ?)', (g.user['id'], g.user['id'], SUBS_PER_USER))
         return jsonify(ok=True)
 

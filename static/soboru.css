@@ -1545,3 +1545,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .sb-letter-cta{display:flex;align-items:center;gap:0;margin:34px 0 0;padding:18px 20px;border-radius:18px;background:#fff7ee;color:inherit;text-decoration:none}
 .sb-letter-cta span:nth-child(2){flex:1;display:grid;gap:3px}.sb-letter-cta small{color:var(--sb-sub);font-size:14px}.sb-letter-cta em{font-style:normal;font-weight:800;color:var(--sb-orange);white-space:nowrap;margin-left:12px}
 @media(max-width:680px){.sb-h-emo{width:34px;height:34px;font-size:19px;margin-right:10px}.sb-letter-cta em{display:none}}
+/* 소보루 앱(soboru-app) 안: 아래 탭은 앱이 그려서 웹 탭바 자리를 비움 */
+.in-app .sb-tabbar{display:none!important}
+.sb.in-app .site-footer{padding-bottom:24px}
+.sb.in-app .to-top{bottom:20px}

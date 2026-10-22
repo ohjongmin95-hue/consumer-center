@@ -9,7 +9,15 @@
     <a class="secondary" href="{{ url_for('mypage') }}">{{ ui('common.my_info', '내 정보') }}</a>
   </div>
 
-  {% if push_on() %}
+  {% if app_client() %}{# 소보루 앱: 웹 푸시 대신 앱 알림 (app_bridge.html → 앱이 권한을 묻고 토큰을 저장) #}
+  <section class="form-panel me-section push-box app-push" id="push">
+    <div class="push-row">
+      <span class="alert-ic ic-push" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <div class="push-text"><b>{{ ui('push.title', '푸시 알림') }}</b><p class="meta push-msg" role="status">{{ ui('push.hint', '댓글·답변·제보 소식을 휴대폰 알림으로 받아요.') }}</p></div>
+      <button class="primary push-btn" type="button" data-app="push-enable">{{ ui_text('push.on_btn', '푸시 알림 받기') }}</button>
+    </div>
+  </section>
+  {% elif push_on() %}
   <section class="form-panel me-section push-box" id="push" data-key="{{ push_public_key() }}" data-subs="{{ subs }}">
     <div class="push-row">
       <span class="alert-ic ic-push" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
@@ -34,7 +42,7 @@
     {% endfor %}
   </section>
 </div></main>
-{% if push_on() %}
+{% if push_on() and not app_client() %}
 <script>
   // 푸시 알림 켜기·끄기: 서비스 워커에 구독을 만들고, 주소·암호 키만 서버에 저장해요.
   (function () {
