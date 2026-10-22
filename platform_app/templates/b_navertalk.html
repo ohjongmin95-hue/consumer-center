@@ -1,0 +1,56 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}네이버 톡톡 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('connect') }}{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('connect') }}">서비스 연동</a><span>›</span><span>네이버 톡톡</span></div>
+<div class="chead"><div class="l"><div class="tagrow">{% if lk and lk.status=='ok' and lk.last_at %}<span class="pill ok">연결됨</span>{% elif lk and lk.status=='ok' %}<span class="pill acc">설정 중</span>{% elif lk %}<span class="pill bad">확인 필요</span>{% else %}<span class="pill gray">연결 전</span>{% endif %}</div>
+<h1>네이버 톡톡</h1><div class="cmeta"><span>톡톡 챗봇 API로 우리 가게 톡톡 문의를 소보루 상담에서 받고 답해요</span></div></div></div>
+<div class="cols">
+<div class="stack">
+{% if lk %}<section class="panel stack"><div class="ph">이벤트 받을 URL</div>
+{% if lk.status!='ok' %}<div class="warn">{{ lk.note }}</div>{% endif %}
+<p class="sub" style="margin:0;font-size:15px">{% if lk.status!='ok' %}인증키를 다시 넣으면 이어져요.{% elif lk.last_at %}잘 이어져 있어요. 마지막으로 받은 때는 {{ fmt(lk.last_at) }}이에요. 지금까지 문의 {{ lk.n_inq }}건을 받았고, 답 {{ lk.n_sent }}번을 보냈어요.{% else %}아직 톡톡에서 받은 말이 없어요. 아래 주소를 파트너센터에 넣고 내 톡톡에 말을 걸어 보세요.{% endif %}</p>
+{% if url %}<div class="addline"><input class="inp" id="nturl" value="{{ url }}" readonly aria-label="이벤트 받을 URL"><button class="btn md" type="button" data-copy="nturl">복사</button></div>
+<p class="cap" style="margin:0">이 주소를 아는 사람은 내 상담에 글을 넣을 수 있어요. 다른 사람에게 보여 주지 마세요.</p>
+{% else %}<div class="warn">주소를 다시 보여 드릴 수 없어요. 주소를 새로 만들고 인증키도 다시 넣어 주세요.</div>{% endif %}
+<dl class="kv"><dt>파트너 ID</dt><dd>{{ lk.partner_id }}</dd><dt>보내기 API 인증키</dt><dd>{% if hint %}••••{{ hint }}{% else %}다시 넣어 주세요{% endif %}</dd></dl>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<form method="post" onsubmit="return confirm('주소를 새로 만들까요? 예전 주소는 바로 안 들어요. 톡톡 파트너센터의 이벤트 받을 URL도 바꿔야 해요.')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="renew"><button class="btn md gray">주소 새로 만들기</button></form>
+<form method="post" onsubmit="return confirm('네이버 톡톡 연결을 끊을까요? 저장한 인증키를 지우고, 이미 받은 문의는 그대로 둬요.')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="delete"><button class="btn md gray">연결 끊기</button></form>
+</div></section>{% endif %}
+<form class="panel stack" method="post" autocomplete="off"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="save">
+<div class="ph">{{ '파트너 ID·인증키 바꾸기' if lk else '파트너 ID·인증키 넣기' }}</div>
+{% if not lk %}<p class="sub" style="margin:0;font-size:15px">우리 가게 네이버 톡톡에 들어온 말을 소보루 상담으로 받아요. 톡톡 파트너센터에서 받은 파트너 ID와 인증키를 넣으면 이벤트 받을 URL이 나와요.</p>{% endif %}
+<label class="fld"><span>파트너 ID</span><input class="inp" name="partner_id" value="{{ lk.partner_id if lk else '' }}" autocomplete="off" spellcheck="false" required maxlength="40" placeholder="예: wc1234"></label>
+<label class="fld"><span>보내기 API 인증키 (Authorization){% if lk %} · 바꿀 때만 넣어요{% endif %}</span><input class="inp" name="auth_key" type="password" autocomplete="off" spellcheck="false"{% if not lk %} required{% endif %} maxlength="200"></label>
+<p class="cap" style="margin:0">인증키는 암호화해서 보관하고 화면에는 끝 4자리만 보여요. 인증키가 맞는지는 첫 답을 보낼 때 확인돼요.</p>
+<button class="btn md">저장</button></form>
+<section class="panel"><div class="ph">이렇게 설정해요</div>
+<ol class="dots">
+<li><b>챗봇 API 신청</b> · <a class="link" href="https://partner.talk.naver.com" target="_blank" rel="noopener">톡톡 파트너센터</a>에서 우리 가게 계정을 고르고 <b>개발자도구 → 챗봇API 설정</b>에서 <b>신청하기</b>를 눌러요.</li>
+<li><b>파트너 ID·인증키 넣기</b> · 파트너 ID는 톡톡 주소(talk.naver.com/<b>wc1234</b>)의 끝부분이에요. <b>보내기 API</b>에서 <b>생성</b>을 눌러 받은 인증키(Authorization)와 함께 위에 넣고 저장해요.</li>
+<li><b>이벤트 받을 URL 넣기</b> · 소보루가 보여 준 주소를 복사해 <b>이벤트 받을 URL</b>에 붙여 넣어요.</li>
+<li><b>받을 이벤트 고르기</b> · <b>send, open, leave, echo</b>를 골라 저장해요.</li>
+<li><b>말 걸어 보기</b> · 내 휴대폰 네이버 앱에서 우리 톡톡에 "배송 언제 와요?"처럼 보내 보세요. 소보루 <b>상담</b>에 초록 톡톡 표시로 뜨면 끝이에요.</li>
+</ol></section>
+</div>
+<aside class="stack">
+<section class="panel"><div class="ph">이렇게 돼요</div>
+<ul class="dots">
+<li>톡톡 문의가 바로 <b>상담</b>으로 들어와요. 초록 톡톡 표시가 붙어요.</li>
+<li>같은 고객이 또 보내면 진행 중인 대화에 이어 붙어요.</li>
+<li>AI 자동 답변을 켰으면 AI가 먼저 답해요. 환불·교환·취소·보상은 약속하지 않고 사장님께 넘겨요.</li>
+<li>상담방에서 쓴 답은 <b>톡톡으로 바로</b> 가요.</li>
+</ul></section>
+<section class="panel"><div class="ph">알아 두세요</div>
+<ul class="dots">
+<li>스마트스토어 <b>톡톡 쇼핑챗봇·AI FAQ</b>는 꺼 주세요. 켜 두면 답이 겹쳐요.</li>
+<li>톡톡 계정 하나만 이을 수 있어요. 계정이 여럿이면 가장 문의가 많은 곳을 골라 주세요.</li>
+<li>파트너센터의 상담 상태(상담 중·완료)는 저절로 바뀌지 않아요.</li>
+<li>네이버가 고객 이름은 알려 주지 않아요. 상담에는 '고객'으로 보여요.</li>
+<li>사진·파일은 받지 못해요. 그런 건 톡톡 파트너센터에서 봐 주세요.</li>
+</ul></section>
+</aside>
+</div>
+{% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했어요';},function(){b.textContent='선택했어요';});};});</script>{% endblock %}
