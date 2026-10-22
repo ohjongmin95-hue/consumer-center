@@ -1967,6 +1967,27 @@ class PlatformTest(unittest.TestCase):
             self.post(b,f"/biz/case/{cs['배송']['id']}",{'act':'approve'})
             self.assertIn('곧 도착해요.',sent[-1][1]['requests'][0]['content']);self.assertEqual(get('배송')['status'],'answered')
 
+    def test_ai_reads_new_talk_after_gap(self):
+        """며칠 지나 같은 고객이 다시 말을 걸면 AI가 새 대화로 읽게 표시하고, 예전 말까지 '반복 문의'로 세지 않는다. 인사·잡담에는 앞 주제를 다시 꺼내지 않게 지시한다."""
+        import datetime as _d
+        bot=sys.modules['chatbot']
+        b,o,cid=self.signup_and_approve('맥락상점','ctx@example.com')
+        old=self.core.iso(self.core.now()-_d.timedelta(days=3))
+        with self.core.conn() as db:
+            k=db.execute("""INSERT INTO cases(no,company_id,company_name,member,category,title,body,want,order_no,name,phone,email,lookup_hash,consent,status,decision,due,created,updated,product,received_on,channel)
+                VALUES(?,?,?,1,'반품·환불','반품','반품하고 싶어요','환불','','손님','','','x',1,'seen','pending',?,?,?,'','','인스타그램 DM')""",(self.core.new_case_no(db),cid,'맥락상점',self.core.iso(self.core.now()+_d.timedelta(days=3)),old,old)).lastrowid
+            db.execute("INSERT INTO events(case_id,kind,text,reply,created,actor) VALUES(?,'co','AI가 자동으로 답했어요','수령 후 7일 안에 신청해 주세요.',?,'')",(k,old))
+            db.execute("INSERT INTO events(case_id,kind,text,reply,created,actor) VALUES(?,'me','왜 안 돼요?','',?,'')",(k,old))
+            self.core.add_event(db,k,'me','안녕 감자야')
+            talk=bot.turns(db,db.execute('SELECT * FROM cases WHERE id=?',(k,)).fetchone())
+        self.assertEqual(talk[-1][1].split('\n')[0],'(3일 만에 다시 보낸 말)');self.assertTrue(talk[-1][1].endswith('안녕 감자야'))
+        self.assertNotIn('만에',talk[2][1])  # 바로 이어진 말에는 표시가 없다
+        self.assertEqual(bot.asks_since_gap(talk),1)
+        self.assertEqual(bot.asks_since_gap([('me','a'),('bot','b'),('me','c')]),2)
+        with self.core.conn() as db:p=bot.system_prompt(self.core.company(db,cid),'')
+        self.assertIn('앞 주제(환불 등)를 다시 꺼내거나',p);self.assertIn('만에 다시 보낸 말',p)
+        self.assertIn('잡담',p)
+
     def test_cafe24_launch_verifies_company(self):
         """카페24에서 연 앱으로 권한 동의까지 하면 회사 인증(국세청·이메일 확인)을 기다리지 않고 연결된다. 아이디만 넣은 연결은 인증이 있어야."""
         import base64,hashlib,hmac as _h,time,urllib.parse
