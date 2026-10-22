@@ -3061,6 +3061,8 @@ class PlatformTest(unittest.TestCase):
             return r if r.status_code!=200 else r.get_json()
         outs=lambda r:[x['simpleText']['text'] for x in r['template']['outputs']]
         self.assertEqual(say('안녕',t='wrong-token').status_code,404)
+        self.assertEqual(outs(say('발화 내용',user='tester')),[kakao.TEST_OK])  # 스킬 테스트는 상담에 남기지 않는다
+        with self.core.conn() as db:self.assertFalse(db.execute("SELECT 1 FROM cases WHERE company_id=? AND channel='카카오톡'",(cid,)).fetchone())
         # AI를 안 켰으면: 문의가 상담에 들어오고 '받았어요'만 답한다
         r=say('반품하고 싶어요. 사이즈가 커요');self.assertEqual(r['version'],'2.0');self.assertEqual(outs(r),[kakao.HOLD])
         say('주문번호 몰라요')
