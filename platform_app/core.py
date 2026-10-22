@@ -415,7 +415,8 @@ def run_playbook(db,c,how,send=None):
         else:orders.sync_case(db,c,'cancel')  # 이어진 주문도 '취소'로
     return bool(reply)
 
-VIA={'email':'메일로','instagram':'인스타그램 DM으로'}
+VIA={'email':'메일로','instagram':'인스타그램 DM으로','kakao':'카카오톡으로'}
+HELD={'kakao':'카카오톡으로 보낼 답변을 담았어요. 지금 대화 중이면 바로, 아니면 고객이 카톡으로 다시 말을 걸 때 전해져요'}  # 챗봇은 고객이 말을 걸 때만 답할 수 있다 (kakao.py)
 def deliver_reply(db,c,text):
     """답변 하나를 요청이 들어온 곳(판매처·메일·인스타그램)으로 보낸다. 그런 곳이 없으면 ("",""). -> (안내, ok|error)"""
     r=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=? ORDER BY rowid LIMIT 1',(c['company_id'],c['id'])).fetchone()
@@ -423,7 +424,7 @@ def deliver_reply(db,c,text):
     import shops
     e=shops.post_reply(db,company(db,c['company_id']),c,text);via=VIA.get(r['shop'])
     if e:add_event(db,c['id'],'sys',(f'{via} 보내지 못했어요: ' if via else f"{c['channel']}에 답변을 올리지 못했어요: ")+e);return e,'error'
-    done=f'{via} 답변을 보냈어요' if via else f"{c['channel']}에 답변을 올렸어요"
+    done=HELD.get(r['shop']) or (f'{via} 답변을 보냈어요' if via else f"{c['channel']}에 답변을 올렸어요")
     add_event(db,c['id'],'sys',done);return done,'ok'
 def return_guide(co,ext=False):
     """설정에 반품 주소가 있으면 소비자에게 보낼 반품 안내 문구. 택배사는 소개만 하고 연동하지 않는다. ext: 판매처·메일·DM 고객 (접수 화면이 없음)"""
