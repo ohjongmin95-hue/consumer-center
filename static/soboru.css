@@ -1109,7 +1109,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 
 /* 첫 화면: 뉴닉식 귤색 바탕 카드, 흰 글자, 갈색 제보하기 버튼, 오른쪽에 캐릭터와 말풍선 */
 .nn-intro{background:var(--sb-orange);border-radius:32px;padding:64px 64px 64px 72px;color:#fff;overflow:hidden}
-.nn-intro .nn-intro-kicker{color:#fff;font-weight:800}.nn-intro .nn-intro-kicker b{color:#2b1206}
+.nn-intro .nn-intro-kicker{color:#fff;font-weight:800}.nn-intro .nn-intro-kicker b{color:var(--sb-brown)}
 .nn-intro .nn-intro-name{color:#fff;font-weight:900;text-shadow:0 2px 0 rgba(120,50,0,.18)}
 .nn-intro .nn-intro-sub{color:#fff;font-weight:700;text-shadow:0 1px 0 rgba(120,50,0,.15)}
 .nn-intro .nn-intro-btns .sb-cta{background:var(--sb-brown);color:#fff;box-shadow:none}
@@ -1514,7 +1514,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .ed-hiddenblocks{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:24px 0;padding:12px;border-radius:12px;background:#f2f4f6;font-size:13px}
 .ed-hiddenblocks .ed-blockbar{margin:0;display:inline-flex}
 .sb-ft-why strong{color:var(--sb-orange);font-weight:800}
-.nn-intro-kicker strong{color:var(--sb-orange)}.nn-intro .nn-intro-kicker strong{color:#2b1206}
+.nn-intro-kicker strong{color:var(--sb-orange)}.nn-intro .nn-intro-kicker strong{color:var(--sb-brown)}
 @media(max-width:680px){body.sb .ed-bar{bottom:calc(74px + env(safe-area-inset-bottom))}body.sb .ed-bar form:has(.ed-bar-out){display:none}}  /* 폰: 편집 막대가 화면 밖으로 안 넘치게 로그아웃은 관리자 화면에서 */
 .lt-card.lt-card-pop{margin-top:20px;background:var(--sb-orange-soft)}
 .lt-card-pop h2{font-size:24px}
