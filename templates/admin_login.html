@@ -4,12 +4,12 @@
 {# 경기일보 통합CMS식 로그인 (운영자 결정 2026-10-24): 위에 큰 로고와 문구, 가운데 가로 띠 안에 로그인 칸, 아래 안내 #}
 <main class="sl-page gg-page">
   <header class="gg-top">
-    <div class="gg-art" aria-hidden="true"><span class="gg-emo gg-emo-1">📋</span><span class="gg-emo gg-emo-2">🏢</span><span class="gg-emo gg-emo-3">📣</span><span class="gg-emo gg-emo-4">🔍</span><span class="gg-emo gg-emo-5">💬</span><span class="gg-emo gg-emo-6">✅</span></div>
     <img class="gg-logo" src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="272" height="64">
     <p class="gg-kicker">관리자</p>
     <h1 class="gg-title">소보루와 제보센터를 <em>한곳에서</em> 관리해요</h1>
   </header>
   <section class="gg-band">
+    <div class="gg-art" aria-hidden="true"><span class="gg-emo gg-emo-1">📋</span><span class="gg-emo gg-emo-2">🏢</span><span class="gg-emo gg-emo-3">📣</span><span class="gg-emo gg-emo-4">🔍</span><span class="gg-emo gg-emo-5">💬</span><span class="gg-emo gg-emo-6">✅</span></div>
     <form class="gg-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <label class="gg-field"><span class="sr-only">비밀번호</span><input type="password" name="password" required autocomplete="current-password" placeholder="관리자 비밀번호" autofocus></label>
       <button class="gg-submit" type="submit">로그인</button>

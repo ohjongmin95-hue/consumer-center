@@ -4,12 +4,12 @@
 {# 경기일보 통합CMS식 로그인 (운영자 결정 2026-10-24): 위에 큰 로고와 문구, 가운데 가로 띠 안에 로그인 칸, 아래 안내 #}
 <main class="sl-page gg-page">
   <header class="gg-top">
-    <div class="gg-art" aria-hidden="true"><span class="gg-emo gg-emo-1">📰</span><span class="gg-emo gg-emo-2">✍️</span><span class="gg-emo gg-emo-3">📣</span><span class="gg-emo gg-emo-4">🔍</span><span class="gg-emo gg-emo-5">💬</span><span class="gg-emo gg-emo-6">📸</span></div>
     <img class="gg-logo" src="{{ asset('img/soboru-logo-orange.png') }}" alt="SOBORU" width="272" height="64">
     <p class="gg-kicker">기자실</p>
     <h1 class="gg-title">소비자의 목소리를 <em>기사로</em> 만드는 곳</h1>
   </header>
   <section class="gg-band">
+    <div class="gg-art" aria-hidden="true"><span class="gg-emo gg-emo-1">📰</span><span class="gg-emo gg-emo-2">✍️</span><span class="gg-emo gg-emo-3">📣</span><span class="gg-emo gg-emo-4">🔍</span><span class="gg-emo gg-emo-5">💬</span><span class="gg-emo gg-emo-6">📸</span></div>
     <form class="gg-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
       <label class="gg-field"><span class="sr-only">아이디</span><input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="아이디" value="{{ request.form.get('login_id','') }}"></label>
