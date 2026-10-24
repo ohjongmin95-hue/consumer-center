@@ -20,7 +20,7 @@
     <details><summary class="meta">예전 키라 ID와 Secret이 따로 있어요</summary><label>API Secret {% if masked.hf_secret %}<span class="badge ok">저장됨</span>{% endif %}<input type="password" name="hf_secret" autocomplete="off" placeholder="위 칸에는 ID를 넣고 여기에 Secret"></label></details>
     {% if cfg.hf_id %}<label class="check"><input type="checkbox" name="clear_hf_id" value="1"> 힉스필드 키 지우기</label>{% endif %}
     <label>이미지 모델<select name="hf_model">{% for k, name in hf_models %}<option value="{{ k }}"{% if cfg.hf_model == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
-    <label class="check"><input type="checkbox" name="hf_auto" value="1"{% if cfg.hf_auto %} checked{% endif %}> 새 카드뉴스를 만들 때 힉스필드 API로 이미지도 자동으로 만들기 (장마다 크레딧)</label>
+    <label class="check"><input type="checkbox" name="hf_auto" value="1"{% if cfg.hf_auto2 %} checked{% endif %}> 새 카드뉴스를 만들면 힉스필드 API로 이미지도 자동으로 만들기 (기본 켜짐, 장마다 크레딧)</label>
     <p class="meta">이미지에는 실존 인물 얼굴·로고·글자가 나오지 않게 요청해요. 이미지 위에는 글자를 넣지 않아요. AI로 만든 사진이라는 표시는 캡션에 직접 적어 주세요 (체크리스트가 알려 줘요).</p>
   </div>
   <div class="panel"><h2>카카오톡 나에게 보내기 {% if kakao_ok %}<span class="badge ok">연결됨</span>{% else %}<span class="badge">연결 안 됨</span>{% endif %}</h2>

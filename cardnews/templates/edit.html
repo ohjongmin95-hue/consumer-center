@@ -24,6 +24,8 @@
 .cn-check small{display:block;margin-left:24px;color:#6b6f76}
 </style>{% endblock %}
 {% block content %}
+{% if img_job and img_job.left %}<meta http-equiv="refresh" content="6"><div class="flash" role="status">🎨 힉스필드로 이미지를 만들고 있어요 ({{ img_job.total - img_job.left }} / {{ img_job.total }}) — 한 장에 30초~1분쯤, 다 되면 카드에 저절로 들어가요</div>
+{% elif img_job and img_job.err %}<div class="warn" role="alert">힉스필드 이미지를 만들지 못한 장이 있어요: {{ img_job.err }}</div>{% endif %}
 <h1>카드뉴스 #{{ c.id }}</h1>
 <p class="meta"><a href="{{ url_for('home') }}">← 목록</a> · 기사: <a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ c.title or c.url }}</a>
   · {% if c.status == 'ready' %}<span class="badge ok">체크리스트 통과</span>{% else %}<span class="badge bad">확인 필요</span>{% endif %}</p>
@@ -91,6 +93,7 @@
       </div>
       {% endfor %}
       <div class="actions">
+        <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="hf_all" class="primary"{% if not hf %} disabled title="설정에서 힉스필드 API 키를 넣으면 쓸 수 있어요"{% endif %}>이미지 전부 힉스필드로 만들기</button></form>
         <form method="post" onsubmit="return confirm('이 카드뉴스를 지울까요? 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="delete" class="danger">지우기</button></form>
       </div>
     </div>

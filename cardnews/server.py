@@ -37,7 +37,7 @@ PORT = int(os.getenv('CARDNEWS_PORT') or 5050)
 PER_DAY = (1, 2, 3, 4, 5)
 MODELS = (('claude-opus-5-5', 'Claude Opus 5.5 (기본, 가장 꼼꼼)'), ('claude-sonnet-5-5', 'Claude Sonnet 5.5 (더 싸고 빠름)'))
 DEFAULTS = {'key': '', 'model': 'claude-opus-5-5', 'auto': 0, 'per_day': 3, 'hour': 8, 'web_search': 1,
-            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_style': 'mix', 'hf_auto': 0, 'theme': 'ref', 'accent': 'tangerine',
+            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_style': 'mix', 'hf_auto2': 1, 'theme': 'ref', 'accent': 'tangerine',
             'kakao_key': '', 'kakao_secret': '', 'kakao_token': {}, 'kakao_auto': 1}
 SECRETS = ('key', 'naver_secret', 'hf_id', 'hf_secret', 'kakao_secret')  # 화면에 다시 보여 주지 않는 값
 IMG_STYLES = (('mix', '표지는 사진, 본문은 일러스트'), ('photo', '모두 사진'), ('illust', '모두 일러스트'))
@@ -147,29 +147,38 @@ def save_photo(raw, slot, src):
     slot.update(photo=name, src=src)
 
 
-def hf_photos(d, which=None):
-    """힉스필드로 이미지 만들기 (API 크레딧). which: 자리 이름 목록 (None이면 설정 '새 카드뉴스 만들 때 힉스필드로 자동'이 켜졌을 때 전부).
-    자리마다 고른 스타일(사진/일러스트)로. 못 만든 자리는 비워 두고 이유를 돌려줌."""
+IMGJOB = {}  # 카드뉴스 번호 → {'total', 'left', 'err'}: 힉스필드 이미지를 뒤에서 만드는 중
+
+
+def start_images(cid, which=None):
+    """힉스필드로 이미지 만들기를 뒤에서 시작 (which=None: 자동 설정이 켜져 있으면 모든 자리). 하나 될 때마다 저장해서 화면에 바로 보임."""
     cfg = config()
-    cards.slots(d, cfg['img_style'])  # 새 카드뉴스면 기본 스타일을 정해 둠
-    if which is None and not cfg['hf_auto']: return []
-    if not cards.hf_ready(cfg): return ['힉스필드 키가 없어요']
-    want = which if which is not None else [n for n, _, _ in cards.slots(d)]
-    errs = []
-    for name, scene, slot in cards.slots(d):
-        if name not in want: continue
-        try: save_photo(cards.higgsfield_photo(cfg, scene, slot['style']), slot, 'hf')
-        except (RuntimeError, ValueError) as e: errs.append(str(e))
-    return errs[:1]
+    if not cards.hf_ready(cfg) or (which is None and not cfg['hf_auto2']): return False
+    if IMGJOB.get(cid, {}).get('left'): return False  # 이미 만드는 중
+    names = which or [n for n, _, _ in cards.slots(load(cid)['data'])]
+    job = IMGJOB[cid] = {'total': len(names), 'left': len(names), 'err': ''}
+    def run():
+        for name in names:
+            try:
+                cur = load(cid); sl = {n: (sc, x) for n, sc, x in cards.slots(cur['data'])}
+                raw = cards.higgsfield_photo(config(), sl[name][0], sl[name][1]['style'])
+                cur = load(cid); slot = {n: x for n, _, x in cards.slots(cur['data'])}[name]  # 그사이 글을 고쳤을 수 있어 다시 읽음
+                save_photo(raw, slot, 'hf'); resave(cid, cur['data'], cur['facts'], cur['confirmed'])
+            except (RuntimeError, ValueError) as e: job['err'] = str(e); log(f'힉스필드 #{cid}: {e}')
+            except Exception as e: job['err'] = f'이미지를 만들지 못했어요 ({type(e).__name__})'; log(f'힉스필드 #{cid}: {type(e).__name__}')
+            job['left'] -= 1
+    if app.config.get('TESTING'): run()
+    else: threading.Thread(target=run, daemon=True).start()
+    return True
 
 
 def make(url, trigger='manual', art=None):
     r = cards.make(config(), url, art)
     if r['status'] != 'made': log(f"{'자동 · ' if trigger == 'daily' else ''}못 만듦: {r['reason']} ({(url or (art or {}).get('title', ''))[:80]})"); return r
-    errs = hf_photos(r['data'])
-    if errs: r['reason'] = ' · '.join(filter(None, [r.get('reason'), f'사진: {errs[0]}']))
+    cards.slots(r['data'], config()['img_style'])  # 자리마다 사진/일러스트 기본값
     r['checks'] = cards.run_checks(r['data'], r['facts'])
     cid = store(r, trigger)
+    start_images(cid)  # 힉스필드 이미지는 카드뉴스를 연 뒤 뒤에서 하나씩
     log(f"{'자동 · ' if trigger == 'daily' else ''}만듦 #{cid}" + (f" · {r['reason']}" if r.get('reason') else ''))
     return {'status': 'made', 'id': cid}
 
@@ -350,18 +359,16 @@ def card(cid):
             try: save_photo(f.read(), slot, 'upload')
             except ValueError as e: flash(str(e)); return redirect(url_for('card', cid=cid))
             resave(cid, c['data'], c['facts'], c['confirmed']); flash('사진을 넣었어요.'); return redirect(url_for('card', cid=cid))
-        if act == 'hf':
-            name, style = request.form.get('slot', ''), request.form.get('style', '')
-            if name not in [n for n, _, _ in cards.slots(c['data'])]: abort(400)
-            def photo():
-                cur = load(cid)
-                if style in cards.STYLES: dict((n, x) for n, _, x in cards.slots(cur['data']))[name]['style'] = style  # 화면에서 막 고른 스타일로
-                errs = hf_photos(cur['data'], [name])
-                if errs: return {'status': 'error', 'reason': errs[0]}
-                resave(cid, cur['data'], cur['facts'], cur['confirmed']); return {'status': 'made', 'id': cid}
-            if app.config.get('TESTING'): return finish(photo())
-            if not background('힉스필드 이미지 만들기', photo): flash('다른 작업을 하고 있어요. 다 되면 다시 눌러 주세요.')
-            return redirect(url_for('job'))
+        if act in ('hf', 'hf_all'):  # 힉스필드로 이미지 만들기 (한 자리 / 전부): 뒤에서 만들고 카드 화면은 그대로
+            names = [n for n, _, _ in cards.slots(c['data'])]
+            if act == 'hf':
+                name, style = request.form.get('slot', ''), request.form.get('style', '')
+                if name not in names: abort(400)
+                if style in cards.STYLES: dict((n, x) for n, _, x in cards.slots(c['data']))[name]['style'] = style; resave(cid, c['data'], c['facts'], c['confirmed'])
+                names = [name]
+            if not cards.hf_ready(config()): flash('설정에서 힉스필드 API 키를 넣어 주세요.')
+            elif not start_images(cid, names): flash('이미지를 만들고 있어요. 다 되면 다시 눌러 주세요.')
+            return redirect(url_for('card', cid=cid))
         try: new = json.loads(request.form.get('data', ''))
         except ValueError: abort(400)
         d = c['data']  # 화면에서 고칠 수 있는 글만 받음 (그림·출처 링크·검사 메모는 저장된 것 그대로)
@@ -387,7 +394,7 @@ def card(cid):
         return redirect(url_for('card', cid=cid))
     sl = [(n, '표지' if n == 'cover' else f'{int(n[4:]) + 2}번째 장', x, {k: cards.photo_prompt(scene, k) for k in cards.STYLES})
           for n, scene, x in cards.slots(c['data'], config()['img_style'])]
-    return render_template('edit.html', def_theme=config()['theme'], def_accent=config()['accent'], c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, hf=cards.hf_ready(config()),
+    return render_template('edit.html', img_job=IMGJOB.get(cid), def_theme=config()['theme'], def_accent=config()['accent'], c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, hf=cards.hf_ready(config()),
                            key=bool(config()['key']), styles=cards.STYLES, saved=str(out_dir(c)) if out_dir(c).is_dir() else '')
 
 
@@ -399,9 +406,8 @@ def paste(cid):
     if request.method == 'POST':
         try: d = cards.from_paste(request.form.get('answer', ''), c['data']['art'])
         except ValueError as e: flash(str(e)); return redirect(url_for('paste', cid=cid))
-        errs = hf_photos(d)
-        resave(cid, d, c['facts'], 0); log(f'붙여넣기로 만듦 #{cid}')
-        flash('카드뉴스를 만들었어요. 이미지는 아래 \'이미지 (힉스필드)\'에서 넣어 주세요.' + (f' (힉스필드: {errs[0]})' if errs else ''))
+        cards.slots(d, config()['img_style']); resave(cid, d, c['facts'], 0); log(f'붙여넣기로 만듦 #{cid}')
+        flash('카드뉴스를 만들었어요.' + (' 힉스필드 이미지는 뒤에서 만들고 있어요.' if start_images(cid) else " 이미지는 아래 '이미지 (힉스필드)'에서 넣어 주세요."))
         return redirect(url_for('card', cid=cid))
     return render_template('paste.html', c=c, prompt=c['data']['prompt'])
 
@@ -502,7 +508,7 @@ def img(name):
 def settings():
     c = config()
     if request.method == 'POST':
-        f = request.form; had_hf = cards.hf_ready(c)
+        f = request.form
         if f.get('naver_id', '').strip() and f.get('naver_id', '').strip() != c['naver_id'] and not f.get('naver_secret', '').strip():
             flash('네이버 Client ID를 바꿀 때는 Client Secret도 같이 넣어 주세요 (예전 Secret과 짝이 안 맞아요).'); return redirect(url_for('settings'))
         for k in SECRETS + ('naver_id',):
@@ -515,7 +521,7 @@ def settings():
         if f.get('clear_kakao'): c['kakao_key'] = c['kakao_secret'] = ''; c['kakao_token'] = {}
         c['kakao_auto'] = 1 if f.get('kakao_auto') else 0
         c['img_style'] = f.get('img_style') if f.get('img_style') in dict(IMG_STYLES) else 'mix'
-        c['hf_auto'] = 1 if f.get('hf_auto') or (cards.hf_ready(c) and not had_hf) else 0  # 힉스필드 키를 처음 넣으면 자동 이미지도 켬
+        c['hf_auto2'] = 1 if f.get('hf_auto') else 0
         if c['key'] and not c['key'].startswith('sk-ant-'): flash("Claude API 키는 'sk-ant-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))
         c['model'] = f.get('model') if f.get('model') in dict(MODELS) else DEFAULTS['model']
         c['naver_kind'] = f.get('naver_kind') if f.get('naver_kind') in cards.NAVER else 'dev'
