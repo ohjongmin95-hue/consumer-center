@@ -352,11 +352,17 @@ def run_checks(d, facts):
     bait = sorted({w for c in covers for w in BAIT if w in c.get('line1', '') + c.get('line2', '')})
     engage = sorted({w for w in ASK_ENGAGE if w in text})
     pol = sorted({w for w in POLITICS if w in text})
-    arts = [d.get('cover_art', '')] + [c.get('art', '') for c in d.get('cards') or []]
+    sl = slots(d)
+    arts = [(x['mode'] == 'photo' and x['photo']) or art for (_, _, x), art in zip(sl, [d.get('cover_art', '')] + [c.get('art', '') for c in d.get('cards') or []])]
+    up = [n for n, _, x in sl if x['mode'] == 'photo' and x['photo'] and x.get('src') == 'upload']
+    ai_photo = any(x['mode'] == 'photo' and x['photo'] and x.get('src') == 'hf' for _, _, x in sl)
     src_ok = bool((d.get('source') or {}).get('media') and (d.get('source') or {}).get('date'))
     need = d.get('confirm_needed') or []
     return [
-        {'label': '이미지: 기사 사진 없이 새로 그렸나', 'ok': all(arts) or None, 'note': '모든 그림을 새로 그렸어요' if all(arts) else "그림이 빠진 장이 있어요. '그림 다시 그리기'를 눌러 주세요"},
+        {'label': '이미지: 기사 사진 없이 새로 만들었나', 'ok': None if not all(arts) or up or ai_photo else True,
+         'note': "그림이 빠진 장이 있어요. '그림 다시 그리기'나 사진 넣기를 해 주세요" if not all(arts) else
+                 ('직접 올린 사진이 있어요. 기사 사진·남의 사진이 아닌지(내가 찍었거나 AI로 만든 것) 봐 주세요' if up else '모든 그림·사진을 새로 만들었어요')
+                 + (" · AI로 만든 사진을 썼어요. 캡션에 'AI로 만든 이미지예요' 같은 말을 직접 적어 주세요" if ai_photo or up else '')},
         {'label': '사람: 실존 인물 얼굴이 없나', 'ok': None, 'note': '그림에 실존 인물·기업 로고가 없는지 눈으로 한 번 봐 주세요'},
         {'label': '글: 기사 문장을 옮기지 않았나', 'ok': not copy, 'note': '기사와 너무 비슷한 줄: ' + ' / '.join(copy[:3]) if copy else '기사 문장과 겹치는 줄이 없어요'},
         {'label': '사실: 기사 2개 이상에서 확인했나', 'ok': bool(others) and not need,
@@ -442,9 +448,68 @@ def draw_claude(cfg, d):
     return d
 
 
-# 그림 담당 고르기 (설정 '그림 담당'). 힉스필드: 키가 생기면 draw_higgsfield(cfg, d)를 만들어 여기에 더함
-# (장면 설명 d['cover_scene']·card['scene']를 그대로 쓰고, 받은 그림을 cover_art·art에 <svg><image href="data:…"/></svg>로 넣음)
+# 그림 담당 (설정 '그림 담당'). 사진은 아래 힉스필드가 따로 맡고, 장마다 그림/사진을 고른다 (slots)
 ARTISTS = {'claude': draw_claude}
+
+
+# ---- 사진 (힉스필드) ---------------------------------------------------------------
+# 공식 SDK higgsfield-client: https://api.higgsfield.ai, 'Authorization: Key 아이디:시크릿', 요청을 넣고 끝날 때까지 상태를 물어봄
+HF_MODELS = (('bytedance/seedream/v4/text-to-image', 'Seedream 4 (기본, 사실적인 사진)'),)
+HF_TIMEOUT = 240
+PHOTO_STYLE = ('Photorealistic editorial news photo for a Korean consumer news card, natural light, clean composition, landscape 4:3. Scene: {scene}. '
+               'No text, no letters, no logos, no brand names, no real or famous people; people only from behind, hands only, or out of focus.')
+
+
+def slots(d):
+    """그림 자리마다 [(이름, 장면 설명, 자리 dict)]. 자리: {'mode': 'art'|'photo', 'photo': 파일 이름, 'src': 'hf'|'upload'}"""
+    d.setdefault('cover_img', {'mode': 'art', 'photo': ''})
+    out = [('cover', d.get('cover_scene') or d.get('topic', ''), d['cover_img'])]
+    for i, c in enumerate(d.get('cards') or []):
+        c.setdefault('img', {'mode': 'art', 'photo': ''})
+        out.append((f'card{i}', c.get('scene') or c.get('title', ''), c['img']))
+    return out
+
+
+def hf_ready(cfg): return bool(cfg.get('hf_id') and cfg.get('hf_secret'))
+
+
+def higgsfield_photo(cfg, scene):
+    """장면 설명 → 사진 JPEG/PNG 바이트. 테스트에서 바꿔 끼운다."""
+    import time, higgsfield_client as hf
+    if not hf_ready(cfg): raise RuntimeError("힉스필드 키가 없어요. '설정'에서 넣어 주세요")
+    client = hf.SyncClient(api_key=f"{cfg['hf_id']}:{cfg['hf_secret']}", timeout=60)
+    try:
+        job = client.submit(cfg.get('hf_model') or HF_MODELS[0][0], arguments={'prompt': PHOTO_STYLE.format(scene=scene), 'aspect_ratio': '4:3', 'resolution': '2K'})
+        end = time.time() + HF_TIMEOUT
+        for st in job.poll_request_status(delay=2):
+            if time.time() > end:
+                try: job.cancel()
+                except Exception: pass
+                raise RuntimeError('힉스필드가 4분 안에 사진을 못 만들었어요')
+        if isinstance(st, hf.NSFW): raise RuntimeError('힉스필드가 안전 기준에 걸린다고 사진을 만들지 않았어요')
+        if not isinstance(st, hf.Completed): raise RuntimeError('힉스필드가 사진을 만들지 못했어요')
+        url = (job.get().get('images') or [{}])[0].get('url', '')
+    except hf.CredentialsMissedError: raise RuntimeError('힉스필드 키가 없어요')
+    except hf.HiggsfieldClientError as e: raise RuntimeError(f'힉스필드 오류: {str(e)[:120]}')
+    except (OSError, ValueError) as e: raise RuntimeError(f'힉스필드에 연결하지 못했어요 ({type(e).__name__})')
+    if not url.startswith('https://'): raise RuntimeError('힉스필드 답에 사진 주소가 없어요')
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'soboru-cardnews'}), timeout=60) as r: return r.read(25_000_000)
+    except (urllib.error.URLError, OSError) as e: raise RuntimeError(f'힉스필드 사진을 받지 못했어요 ({type(e).__name__})')
+
+
+def clean_photo(raw, max_side=1600):
+    """올린·받은 사진 → 다시 저장한 JPEG 바이트 (사진 속 위치 정보 등은 지움). 사진이 아니면 ValueError."""
+    import io
+    from PIL import Image
+    try:
+        im = Image.open(io.BytesIO(raw)); im.verify(); im = Image.open(io.BytesIO(raw))
+        from PIL import ImageOps
+        im = ImageOps.exif_transpose(im).convert('RGB')
+    except Exception: raise ValueError('사진 파일이 아니에요 (JPG·PNG·WEBP)')
+    im.thumbnail((max_side, max_side))
+    out = io.BytesIO(); im.save(out, 'JPEG', quality=88, optimize=True)
+    return out.getvalue()
 
 
 # ---- 만들기 ---------------------------------------------------------------------

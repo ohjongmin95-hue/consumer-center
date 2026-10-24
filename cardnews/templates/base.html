@@ -37,9 +37,10 @@ code{background:#f4efe8;border-radius:6px;padding:1px 6px}
 </style>{% block head %}{% endblock %}</head>
 <body>
 <header class="top"><a class="brand" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='soboru-character.png') }}" alt="">SOBORU <em>카드뉴스</em></a>
-  <nav><a href="{{ url_for('home') }}"{% if request.endpoint == 'home' %} class="on"{% endif %}>만들기</a><a href="{{ url_for('settings') }}"{% if request.endpoint == 'settings' %} class="on"{% endif %}>설정</a></nav></header>
+  <nav><a href="{{ url_for('home', skip=1) }}"{% if request.endpoint == 'home' %} class="on"{% endif %}>만들기</a><a href="{{ url_for('settings') }}"{% if request.endpoint == 'settings' %} class="on"{% endif %}>설정</a>
+    <form method="post" action="{{ url_for('quit_app') }}" style="display:inline" onsubmit="return confirm('프로그램을 끌까요? 만드는 중인 카드뉴스가 있으면 멈춰요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button style="margin-left:14px;padding:6px 14px">끄기</button></form></nav></header>
 <main class="wrap">
   {% for m in get_flashed_messages() %}<div class="flash" role="status">{{ m }}</div>{% endfor %}
-  {% block content %}{% endblock %}
+  {% if bye is defined and bye %}<h1>껐어요</h1><p class="meta">이 창은 닫아도 돼요. 다시 쓰려면 소보루카드뉴스 실행 파일을 또 누르세요.</p>{% else %}{% block content %}{% endblock %}{% endif %}
 </main>
 </body></html>

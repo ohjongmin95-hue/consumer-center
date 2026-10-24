@@ -1,30 +1,45 @@
 """소보루 카드뉴스 만들기 화면 (내 컴퓨터에서만 열림: http://127.0.0.1:5050).
 
-실행: 시작하기.command(맥) / 시작하기.bat(윈도우), 또는 python server.py
-- 데이터는 이 폴더의 data/ 안에만 둔다: cards.sqlite3(만든 카드뉴스), config.json(API 키·설정), secret.key(화면 보호용 비밀키).
+실행: 소보루카드뉴스.exe(윈도우)·소보루카드뉴스.app(맥) 더블클릭 (build.py로 만든 실행 파일), 또는 python server.py
+- 데이터: 개발할 때는 이 폴더의 data/, 실행 파일은 '문서/소보루 카드뉴스' 폴더 (실행 파일을 지우거나 새 버전으로 바꿔도 남음).
+  cards.sqlite3(만든 카드뉴스), config.json(API 키·설정), secret.key(화면 보호용 비밀키).
+- 이미 켜져 있을 때 또 누르면 새로 켜지 않고 브라우저만 연다. 끌 때는 화면 위 '끄기'.
 - 켜져 있는 동안 매일 아침 8시(설정에서 바꿈)가 지나면 소비자 뉴스로 초안을 만든다. 꺼져 있던 날은 다음에 켤 때 한 번 만든다.
 - 만드는 일은 cards.py. 이 파일은 화면·저장·예약만.
 """
-import datetime, json, os, re, secrets, sqlite3, sys, threading, time, webbrowser
+import datetime, json, os, re, secrets, socket, sqlite3, sys, threading, time, webbrowser
 from pathlib import Path
-from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, send_from_directory, session, url_for
 import cards
 
 HERE = Path(__file__).resolve().parent
-DATA = Path(os.getenv('CARDNEWS_DATA') or HERE / 'data')
+FROZEN = getattr(sys, 'frozen', False)  # PyInstaller로 만든 실행 파일
+RES = Path(getattr(sys, '_MEIPASS', HERE))  # 화면 파일(templates·static) 있는 곳
+
+
+def data_dir():
+    if os.getenv('CARDNEWS_DATA'): return Path(os.getenv('CARDNEWS_DATA'))
+    if not FROZEN: return HERE / 'data'
+    docs = Path.home() / 'Documents'
+    return (docs if docs.is_dir() else Path.home()) / '소보루 카드뉴스'
+
+
+DATA = data_dir()
 PORT = int(os.getenv('CARDNEWS_PORT') or 5050)
 PER_DAY = (1, 2, 3, 4, 5)
 MODELS = (('claude-opus-5-5', 'Claude Opus 5.5 (기본, 가장 꼼꼼)'), ('claude-sonnet-5-5', 'Claude Sonnet 5.5 (더 싸고 빠름)'))
 DEFAULTS = {'key': '', 'model': 'claude-opus-5-5', 'art': 'claude', 'auto': 0, 'per_day': 3, 'hour': 8, 'web_search': 1,
-            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': ''}
-SECRETS = ('key', 'naver_secret')  # 화면에 다시 보여 주지 않는 값
+            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_default': 'art'}
+SECRETS = ('key', 'naver_secret', 'hf_secret')  # 화면에 다시 보여 주지 않는 값
+IMG_DEFAULTS = (('art', '모두 그림 (Claude, 돈 안 듦)'), ('cover_photo', '표지만 사진 (힉스필드), 나머지는 그림'), ('photo', '모두 사진 (힉스필드)'))
 
 DATA.mkdir(parents=True, exist_ok=True)
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(RES / 'templates'), static_folder=str(RES / 'static'))
 key_file = DATA / 'secret.key'
 if not key_file.exists(): key_file.write_text(secrets.token_hex(32))
 app.secret_key = key_file.read_text().strip()
-app.config.update(SESSION_COOKIE_SAMESITE='Strict', MAX_CONTENT_LENGTH=4 * 1024 * 1024)
+app.config.update(SESSION_COOKIE_SAMESITE='Strict', MAX_CONTENT_LENGTH=20 * 1024 * 1024)
+IMAGES = DATA / 'images'; IMAGES.mkdir(exist_ok=True)  # 사진(힉스필드로 만든 것·직접 올린 것)
 
 
 def conn():
@@ -98,9 +113,32 @@ def resave(cid, d, facts, confirmed):
     return cards.status_of(checks)
 
 
+def save_photo(raw, slot, src):
+    """사진 바이트 → images/에 저장하고 자리에 붙임 (ValueError: 사진이 아님)"""
+    name = secrets.token_hex(8) + '.jpg'
+    (IMAGES / name).write_bytes(cards.clean_photo(raw))
+    slot.update(mode='photo', photo=name, src=src)
+
+
+def hf_photos(d, which=None):
+    """힉스필드로 사진 만들기. which: 자리 이름 목록 (None이면 설정 '사진 기본값'대로). 못 만든 자리는 그림으로 남기고 이유를 돌려줌."""
+    cfg = config()
+    if not cards.hf_ready(cfg): return ['힉스필드 키가 없어 사진은 건너뛰었어요']
+    want = which if which is not None else {'art': [], 'cover_photo': ['cover'], 'photo': [n for n, _, _ in cards.slots(d)]}[cfg['img_default']]
+    errs = []
+    for name, scene, slot in cards.slots(d):
+        if name not in want: continue
+        try: save_photo(cards.higgsfield_photo(cfg, scene), slot, 'hf')
+        except (RuntimeError, ValueError) as e: errs.append(str(e))
+    return errs[:1]
+
+
 def make(url, trigger='manual'):
     r = cards.make(config(), url)
     if r['status'] != 'made': log(f"{'자동 · ' if trigger == 'daily' else ''}못 만듦: {r['reason']} ({url[:80]})"); return r
+    errs = hf_photos(r['data'])
+    if config()['img_default'] != 'art' and errs: r['reason'] = ' · '.join(filter(None, [r.get('reason'), f'사진: {errs[0]}']))
+    r['checks'] = cards.run_checks(r['data'], r['facts'])
     cid = store(r, trigger)
     log(f"{'자동 · ' if trigger == 'daily' else ''}만듦 #{cid}" + (f" · {r['reason']}" if r.get('reason') else ''))
     return {'status': 'made', 'id': cid}
@@ -169,6 +207,8 @@ def home():
         if app.config.get('TESTING'): return finish(make(url))
         if not background('새 카드뉴스', lambda: make(url)): flash('다른 카드뉴스를 만들고 있어요. 다 되면 다시 눌러 주세요.')
         return redirect(url_for('job'))
+    if not config()['key'] and not request.args.get('skip'):
+        flash('처음 오셨네요! Claude API 키를 한 번만 넣어 주세요. 다음부터는 바로 쓸 수 있어요.'); return redirect(url_for('settings'))
     with conn() as db:
         rows = [dict(r) for r in db.execute('SELECT id,url,title,status,trigger,created,data FROM cards ORDER BY id DESC LIMIT 100')]
         logs = [dict(r) for r in db.execute('SELECT at,what FROM log ORDER BY id DESC LIMIT 8')]
@@ -204,6 +244,23 @@ def card(cid):
             if app.config.get('TESTING'): return finish(redraw())
             if not background('그림 다시 그리기', redraw): flash('다른 작업을 하고 있어요. 다 되면 다시 눌러 주세요.')
             return redirect(url_for('job'))
+        if act == 'upload':  # 직접 올린 사진 (힉스필드 사이트에서 만든 것 등)
+            slot = dict((n, x) for n, _, x in cards.slots(c['data'])).get(request.form.get('slot', ''))
+            f = request.files.get('photo')
+            if slot is None or not f: abort(400)
+            try: save_photo(f.read(), slot, 'upload')
+            except ValueError as e: flash(str(e)); return redirect(url_for('card', cid=cid))
+            resave(cid, c['data'], c['facts'], c['confirmed']); flash('사진을 넣었어요.'); return redirect(url_for('card', cid=cid))
+        if act == 'hf':
+            name = request.form.get('slot', '')
+            if name not in [n for n, _, _ in cards.slots(c['data'])]: abort(400)
+            def photo():
+                cur = load(cid); errs = hf_photos(cur['data'], [name])
+                if errs: return {'status': 'error', 'reason': errs[0]}
+                resave(cid, cur['data'], cur['facts'], cur['confirmed']); return {'status': 'made', 'id': cid}
+            if app.config.get('TESTING'): return finish(photo())
+            if not background('힉스필드 사진 만들기', photo): flash('다른 작업을 하고 있어요. 다 되면 다시 눌러 주세요.')
+            return redirect(url_for('job'))
         try: new = json.loads(request.form.get('data', ''))
         except ValueError: abort(400)
         d = c['data']  # 화면에서 고칠 수 있는 글만 받음 (그림·출처 링크·검사 메모는 저장된 것 그대로)
@@ -215,13 +272,23 @@ def card(cid):
         for old, nc in zip(d['cards'], new.get('cards') or []): old.update(kicker=s(nc.get('kicker'), 30), title=s(nc.get('title'), 40), body=s(nc.get('body'), 200))
         d['tips'] = [s(t, 40) for t in (new.get('tips') or d['tips'])[:3]]
         d['end'] = new.get('end') if new.get('end') in cards.ENDS else 'save'; d['share_line'] = s(new.get('share_line'), 30)
+        newslots = [new.get('cover_img') or {}] + [(nc.get('img') or {}) for nc in (new.get('cards') or [])]
+        for (_, _, slot), ns in zip(cards.slots(d), newslots):  # 그림/사진 고르기만 (사진 파일은 올리기로만 바뀜)
+            slot['mode'] = 'photo' if ns.get('mode') == 'photo' and slot.get('photo') else 'art'
         d['caption'] = s(new.get('caption'), 1500)
         d['hashtags'] = [re.sub(r'[#\s]', '', str(h))[:20] for h in (new.get('hashtags') or [])[:8] if re.sub(r'[#\s]', '', str(h))]
         src = new.get('source') or {}; d['source'].update(media=s(src.get('media'), 30), date=s(src.get('date'), 12))
         status = resave(cid, d, c['facts'], 1 if request.form.get('confirmed') else 0)
         flash('저장했어요.' + (' 체크리스트에 걸린 항목이 있어요.' if status == 'check' else ''))
         return redirect(url_for('card', cid=cid))
-    return render_template('edit.html', c=c, d=c['data'], caption=cards.caption_full(c['data']))
+    sl = [(n, '표지' if n == 'cover' else f'{int(n[4:]) + 2}번째 장', x) for n, _, x in cards.slots(c['data'])]
+    return render_template('edit.html', c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, hf=cards.hf_ready(config()))
+
+
+@app.route('/img/<name>')
+def img(name):
+    if not re.fullmatch(r'[0-9a-f]{16}\.jpg', name): abort(404)
+    return send_from_directory(IMAGES, name, max_age=86400)
 
 
 @app.route('/settings', methods=['GET', 'POST'])
@@ -229,10 +296,13 @@ def settings():
     c = config()
     if request.method == 'POST':
         f = request.form
-        for k in SECRETS + ('naver_id',):
+        for k in SECRETS + ('naver_id', 'hf_id'):
             v = f.get(k, '').strip()
             if v or f.get('clear_' + k): c[k] = '' if f.get('clear_' + k) else v  # 비워 두면 그대로, '지우기'를 고르면 지움
         if f.get('clear_naver_id'): c['naver_secret'] = ''
+        if f.get('clear_hf_id'): c['hf_secret'] = ''
+        c['hf_model'] = f.get('hf_model') if f.get('hf_model') in dict(cards.HF_MODELS) else cards.HF_MODELS[0][0]
+        c['img_default'] = f.get('img_default') if f.get('img_default') in dict(IMG_DEFAULTS) else 'art'
         if c['key'] and not c['key'].startswith('sk-ant-'): flash("Claude API 키는 'sk-ant-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))
         c['model'] = f.get('model') if f.get('model') in dict(MODELS) else DEFAULTS['model']
         c['art'] = f.get('art') if f.get('art') in cards.ARTISTS else 'claude'
@@ -242,12 +312,36 @@ def settings():
         c['hour'] = min(max(f.get('hour', type=int) or 8, 0), 23)
         save_config(c); flash('설정을 저장했어요.'); return redirect(url_for('settings'))
     mask = lambda v: (v[:7] + '…' + v[-4:]) if len(v) > 14 else ('있음' if v else '')
-    return render_template('settings.html', cfg=c, masked={k: mask(c[k]) for k in SECRETS}, models=MODELS, artists=list(cards.ARTISTS), per_day=PER_DAY,
-                           env_key=bool(os.getenv('ANTHROPIC_API_KEY')))
+    return render_template('settings.html', cfg=c, masked={k: mask(c[k]) for k in SECRETS}, models=MODELS, artists=list(cards.ARTISTS), per_day=PER_DAY, hf_models=cards.HF_MODELS, img_defaults=IMG_DEFAULTS,
+                           env_key=bool(os.getenv('ANTHROPIC_API_KEY')), data_dir=str(DATA))
+
+
+@app.route('/quit', methods=['POST'])
+def quit_app():
+    if not app.config.get('TESTING'): threading.Timer(0.5, lambda: os._exit(0)).start()
+    return render_template('base.html', bye=True)
+
+
+def running():
+    """이미 켜져 있는지 (같은 칸을 누가 쓰고 있는지)"""
+    with socket.socket() as s:
+        s.settimeout(0.5)
+        return s.connect_ex(('127.0.0.1', PORT)) == 0
+
+
+def main():
+    url = f'http://127.0.0.1:{PORT}'
+    if sys.stdout is None: sys.stdout = sys.stderr = open(os.devnull, 'w')  # 검은 창 없는 실행 파일: 출력할 곳이 없음
+    if FROZEN:  # 실행 파일 안의 Python은 컴퓨터의 인증서 목록을 못 찾을 수 있어 기사 읽기용으로 함께 넣은 목록을 씀
+        import certifi
+        os.environ.setdefault('SSL_CERT_FILE', certifi.where())
+    if running():  # 두 번 눌렀으면 브라우저만 다시 열기
+        webbrowser.open(url); return
+    threading.Thread(target=scheduler, daemon=True).start()
+    print(f'\n  소보루 카드뉴스 만들기를 켰어요 → {url}\n  끄려면 화면 위 [끄기]를 누르거나 이 창을 닫으세요.\n  데이터: {DATA}\n')
+    if '--no-browser' not in sys.argv: threading.Timer(1.2, lambda: webbrowser.open(url)).start()
+    app.run(host='127.0.0.1', port=PORT, debug=False, threaded=True)
 
 
 if __name__ == '__main__':
-    threading.Thread(target=scheduler, daemon=True).start()
-    print(f'\n  소보루 카드뉴스 만들기를 켰어요 → http://127.0.0.1:{PORT}\n  끄려면 이 창에서 Ctrl+C 를 누르거나 창을 닫으세요.\n')
-    if '--no-browser' not in sys.argv: threading.Timer(1.2, lambda: webbrowser.open(f'http://127.0.0.1:{PORT}')).start()
-    app.run(host='127.0.0.1', port=PORT, debug=False, threaded=True)
+    main()

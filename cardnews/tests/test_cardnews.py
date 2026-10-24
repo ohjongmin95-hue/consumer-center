@@ -49,7 +49,7 @@ class CardNewsTest(unittest.TestCase):
         with server.conn() as db: db.execute('DELETE FROM cards'); db.execute('DELETE FROM log')
         server.save_config(dict(server.DEFAULTS, key='sk-ant-test-key-1234567890', web_search=0))
 
-    def token(self, path='/'):
+    def token(self, path='/settings'):
         return re.search(r'name="_csrf" value="([^"]+)"', self.client.get(path).get_data(as_text=True))[1]
 
     def make(self, url='https://news.test/a/1', **kw):
@@ -106,7 +106,9 @@ class CardNewsTest(unittest.TestCase):
         server.save_config(dict(server.DEFAULTS))
         cid, sent, r = self.make()
         self.assertIsNone(cid); self.assertEqual(sent, [])
-        self.assertIn('Claude API 키가 없어요', self.client.get('/').get_data(as_text=True))
+        r = self.client.get('/'); self.assertIn('/settings', r.headers['Location'])  # 키가 없으면 처음에 설정으로
+        self.assertIn('Claude API 키가 아직 없어요', self.client.get('/?skip=1').get_data(as_text=True))
+        self.assertEqual(self.client.post('/quit', data={'_csrf': self.token('/settings')}).status_code, 200)
         t = self.token('/settings')
         self.client.post('/settings', data={'_csrf': t, 'key': 'sk-ant-abcdefghijklmnopqrstuvwxyz', 'naver_id': 'nid', 'naver_secret': 'nsec', 'naver_kind': 'hub', 'auto': '1', 'per_day': '2', 'hour': '9', 'model': 'claude-sonnet-5-5'})
         c = server.config()
@@ -130,6 +132,67 @@ class CardNewsTest(unittest.TestCase):
                          '본문\n\n출처: 소보루일보 2026.10.22 보도\nhttps://news.test/a/1\n\n#환불')
         self.assertEqual(cards.json_in('찾았어요\n```json\n{"others": [1]}\n```'), {'others': [1]})
         self.assertFalse(cards._public_host('http://127.0.0.1/x'))  # 내 컴퓨터 주소는 열지 않음
+
+    def test_photos_higgsfield_upload_and_modes(self):
+        import io
+        from PIL import Image
+        def png(color):
+            b = io.BytesIO(); Image.new('RGB', (40, 30), color).save(b, 'PNG'); return b.getvalue()
+        server.save_config(dict(server.config(), hf_id='hid', hf_secret='hsec', img_default='cover_photo'))
+        asked = []
+        with patch.object(cards, 'higgsfield_photo', lambda cfg, scene: asked.append(scene) or png('orange')):
+            cid, _, _ = self.make()
+            d, checks, _ = self.row(cid)
+            self.assertEqual(asked, ['a parcel box and a calendar'])  # 설정대로 표지만 사진
+            self.assertEqual((d['cover_img']['mode'], d['cover_img']['src']), ('photo', 'hf'))
+            self.assertIsNone(checks['이미']['ok']); self.assertIn('캡션에', checks['이미']['note'])  # AI 사진 표시는 캡션에 직접
+            self.assertEqual(d['cards'][0]['img']['mode'], 'art')
+            name = d['cover_img']['photo']; self.assertRegex(name, r'^[0-9a-f]{16}\.jpg$')
+            r = self.client.get('/img/' + name); self.assertEqual((r.status_code, r.data[:2]), (200, b'\xff\xd8')); r.close()  # JPEG로 다시 저장
+            self.assertEqual(self.client.get('/img/../config.json').status_code, 404)
+            self.assertIn('힉스필드로 사진 만들기', self.client.get(f'/card/{cid}').get_data(as_text=True))
+            # 본문 1장도 힉스필드로
+            self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'hf', 'slot': 'card0'})
+            d, _, _ = self.row(cid); self.assertEqual(d['cards'][0]['img']['mode'], 'photo'); self.assertEqual(len(asked), 2)
+        # 직접 올리기: 사진이 아니면 거절, 사진이면 넣고 '직접 올린 사진' 확인 항목이 생김
+        r = self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'upload', 'slot': 'card1', 'photo': (io.BytesIO(b'not an image'), 'x.png')},
+                             content_type='multipart/form-data', follow_redirects=True)
+        self.assertIn('사진 파일이 아니에요', r.get_data(as_text=True))
+        self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'upload', 'slot': 'card1', 'photo': (io.BytesIO(png('blue')), 'x.png')}, content_type='multipart/form-data')
+        d, checks, _ = self.row(cid)
+        self.assertEqual((d['cards'][1]['img']['mode'], d['cards'][1]['img']['src']), ('photo', 'upload'))
+        self.assertIsNone(checks['이미']['ok']); self.assertIn('직접 올린 사진', checks['이미']['note'])
+        # 저장으로 그림/사진 바꾸기 (사진이 없는 자리는 사진으로 못 바꿈)
+        d['cover_img']['mode'] = 'art'; d['cards'][1]['img']['mode'] = 'art'
+        d2 = dict(d); d2['cards'] = [dict(d['cards'][0], img={'mode': 'photo'}), d['cards'][1]]
+        self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'data': json.dumps(d2)})
+        d, _, _ = self.row(cid)
+        self.assertEqual((d['cover_img']['mode'], d['cards'][1]['img']['mode'], d['cards'][0]['img']['mode']), ('art', 'art', 'photo'))
+        self.assertTrue(d['cards'][0]['img']['photo'].endswith('.jpg'))  # 화면에서 보낸 파일 이름은 안 받음
+
+    def test_higgsfield_photo_uses_sdk(self):
+        import higgsfield_client as hf
+        calls = {}
+        class Job:
+            def poll_request_status(self, delay=0): yield hf.Queued(); yield hf.Completed()
+            def get(self): return {'images': [{'url': 'https://cdn.test/p.png'}]}
+        class Client:
+            def __init__(self, api_key=None, timeout=0): calls['key'] = api_key
+            def submit(self, model, arguments): calls['model'], calls['args'] = model, arguments; return Job()
+        class Resp:
+            def __enter__(self): return self
+            def __exit__(self, *a): pass
+            def read(self, n): return b'PNGDATA'
+        cfg = {'hf_id': 'hid', 'hf_secret': 'hsec', 'hf_model': cards.HF_MODELS[0][0]}
+        with patch.object(hf, 'SyncClient', Client), patch.object(cards.urllib.request, 'urlopen', lambda req, timeout=0: Resp()):
+            self.assertEqual(cards.higgsfield_photo(cfg, 'a receipt on a table'), b'PNGDATA')
+        self.assertEqual(calls['key'], 'hid:hsec'); self.assertEqual(calls['model'], 'bytedance/seedream/v4/text-to-image')
+        self.assertIn('a receipt on a table', calls['args']['prompt']); self.assertIn('no logos', calls['args']['prompt'])
+        class NsfwJob(Job):
+            def poll_request_status(self, delay=0): yield hf.NSFW()
+        with patch.object(hf, 'SyncClient', type('C', (Client,), {'submit': lambda self, m, arguments: NsfwJob()})):
+            with self.assertRaisesRegex(RuntimeError, '안전 기준'): cards.higgsfield_photo(cfg, 'x')
+        with self.assertRaisesRegex(RuntimeError, '키가 없어요'): cards.higgsfield_photo({}, 'x')
 
 
 if __name__ == '__main__':
