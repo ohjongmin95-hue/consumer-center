@@ -4310,6 +4310,23 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             return c, db.execute('SELECT id FROM users WHERE login_id=?', (login_id,)).fetchone()[0]
 
+    def test_soboru_tools_calc_dict_law(self):
+        # 소비자 상담소: 계산기 첫 화면·계산기 칸, 사전 찾기·분야·첫 글자, 법령 찾기(AI 없이 모음에서)
+        home = self.client.get('/tools').get_data(as_text=True)
+        self.assertIn('소비자 상담소', home); self.assertIn('/tools/calc/fitness', home); self.assertIn('/tools/calc/loan', home)
+        for c in self.site.soboru_tools.CALCS:
+            page = self.client.get('/tools/calc/' + c['slug']).get_data(as_text=True)
+            self.assertIn(c['name'], page); self.assertIn('data-calc="%s"' % c['slug'], page); self.assertIn('soboru-calc.js', page)
+        self.assertEqual(self.client.get('/tools/calc/nope').status_code, 404)
+        d = self.client.get('/tools/dict?q=청약').get_data(as_text=True).split('<main')[1]
+        self.assertIn('청약철회', d); self.assertNotIn('기준금리', d)
+        self.assertIn('기준금리', self.client.get('/tools/dict?c=경제 흐름').get_data(as_text=True).split('<main')[1])
+        self.assertNotIn('위약금', self.client.get('/tools/dict?k=ㄱ').get_data(as_text=True).split('tl-words')[-1])
+        self.assertEqual(self.site.soboru_tools.initial('쌍용'), 'ㅅ'); self.assertEqual(self.site.soboru_tools.initial('DSR'), 'A')
+        law = self.client.get('/tools/law?q=청약철회').get_data(as_text=True)
+        self.assertIn('법령 찾기', law); self.assertIn('law.go.kr', law)
+        self.assertEqual(self.client.get('/tools/law?q=' + 'ㅋ' * 300).status_code, 200)
+
     def test_soboru_people_profile_and_follow(self):
         # 브런치식 이웃: 프로필 사진·소개, 이웃 페이지, 구독(토글·알림), 새 글 알림, 탈퇴하면 정리
         from PIL import Image

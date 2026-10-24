@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{# 소비자·경제 사전. 낱말은 soboru_tools.py DICT #}
+{% block title %}{{ ui('dict.title', '소비자·경제 사전') }}{% if q %} · {{ q }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('dict.meta', '청약철회, 위약금, 기준금리, DSR처럼 소비자와 경제 뉴스에 자주 나오는 말을 쉽게 풀었어요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap cm tl tl-dict">
+  <a class="cm-back" href="{{ url_for('tools') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('tools.title', '소비자 상담소') }}</a>
+  <header class="tl-head"><h1><span class="tf" aria-hidden="true">📚</span> {{ ui('dict.title', '소비자·경제 사전') }}</h1><p>{{ ui('dict.intro', '계약서·뉴스에 나오는 어려운 말 {n}개를 쉽게 풀었어요.', n=total) }}</p></header>
+  <form class="tl-search" method="get" role="search"><input name="q" value="{{ q }}" maxlength="30" placeholder="{{ ui('dict.ph', '궁금한 말을 적어 보세요') }}" aria-label="{{ ui('dict.ph', '궁금한 말을 적어 보세요') }}">{% if cat %}<input type="hidden" name="c" value="{{ cat }}">{% endif %}<button type="submit">{{ ui('tools.law_go', '찾기') }}</button></form>
+  <nav class="cm-rcs" aria-label="{{ ui('dict.cat_aria', '분야') }}">
+    <a href="{{ url_for('dictionary', q=q or None) }}"{% if not cat %} class="on"{% endif %}>{{ ui('board.all', '전체') }}</a>
+    {% for x in cats %}<a href="{{ url_for('dictionary', c=x, q=q or None) }}"{% if cat == x %} class="on"{% endif %}>{{ x }}</a>{% endfor %}
+  </nav>
+  {% if not q %}<nav class="tl-cho" aria-label="{{ ui('dict.cho_aria', '첫 글자') }}">{% for k in chos %}<a href="{{ url_for('dictionary', k=None if cho == k else k, c=cat or None) }}"{% if cho == k %} class="on"{% endif %}>{{ k }}</a>{% endfor %}</nav>{% endif %}
+  {% if rows %}
+  <dl class="tl-words">{% for r in rows %}<div id="{{ r.id }}"><dt>{{ r.word }}<small>{{ r.cat }}</small></dt><dd>{{ r.text }}</dd></div>{% endfor %}</dl>
+  {% else %}
+  <div class="cm-empty"><p>{{ ui('dict.empty', '‘{q}’ 풀이가 아직 없어요.', q=q) if q else ui('dict.empty2', '이 글자로 시작하는 말이 아직 없어요.') }}</p>{% if q %}<a class="cm-btn" href="{{ url_for('law_find', q=q) }}">{{ ui('dict.to_law', '법령에서 찾아보기') }}</a>{% endif %}</div>
+  {% endif %}
+</main>
+{% endblock %}

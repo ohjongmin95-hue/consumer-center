@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{# 법령 찾기: AI 상담과 같은 법령 모음에서 낱말로 조문 찾기 (AI 안 부름). soboru_tools.py law_find() #}
+{% block title %}{{ ui('law.title', '법령 찾기') }}{% if q %} · {{ q }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('law.meta', '전자상거래법, 소비자기본법, 약관법 같은 소비자 법령 조문을 낱말로 찾아 원문과 함께 봐요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap tl tl-law">
+  <a class="cm-back" href="{{ url_for('tools') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('tools.title', '소비자 상담소') }}</a>
+  <header class="tl-head"><h1><span class="tf" aria-hidden="true">⚖️</span> {{ ui('law.title', '법령 찾기') }}</h1><p>{{ ui('law.intro', '소비자 법령 조문을 낱말로 찾아요. 찾은 조문은 국가법령정보센터 원문으로 이어져요.') }}</p></header>
+  <form class="tl-search" method="get" role="search">
+    <input name="q" value="{{ q }}" maxlength="60" placeholder="{{ ui('tools.law_ph', '예: 헬스장 환불, 청약철회') }}" aria-label="{{ ui('law.q_aria', '찾을 낱말') }}">
+    {% if laws %}<select name="law" aria-label="{{ ui('law.pick_aria', '법령 고르기') }}"><option value="">{{ ui('law.all', '모든 법령') }}</option>{% for l in laws %}<option value="{{ l.key }}"{% if pick == l.key %} selected{% endif %}>{{ l.short or l.name }}</option>{% endfor %}</select>{% endif %}
+    <button type="submit">{{ ui('tools.law_go', '찾기') }}</button>
+  </form>
+  {% if not q %}<p class="tl-samples">{% for s in samples %}<a href="{{ url_for('law_find', q=s) }}">{{ s }}</a>{% endfor %}</p>{% endif %}
+  {% if q %}
+    {% if rows %}
+    <p class="tl-count">{{ ui('law.count', '‘{q}’ 관련 조문 {n}개', q=q, n=rows|length) }}</p>
+    <div class="tl-arts">{% for r in rows %}
+      <article class="tl-art"><p class="tl-art-k">{{ r.law }}</p><h2>{{ r.art }}{% if r.title %} <span>({{ r.title }})</span>{% endif %}</h2><p class="tl-art-t">{{ r.text }}</p>
+        {% if r.source %}<a href="{{ r.source }}" target="_blank" rel="noopener">{{ ui('law.source', '원문 보기') }} ›</a>{% endif %}</article>
+    {% endfor %}</div>
+    {% else %}<div class="cm-empty"><p>{{ ui('law.none', '모아 둔 소비자 법령에서는 ‘{q}’ 조문을 찾지 못했어요.', q=q) }}</p></div>{% endif %}
+    <p class="tl-law-more"><a href="https://www.law.go.kr/LSW/lsSc.do?query={{ q|urlencode }}" target="_blank" rel="noopener">{{ ui('law.more', '국가법령정보센터에서 더 찾기') }} ›</a>{% if ask_on() %}<a href="{{ url_for('law_ask') }}">{{ ui('law.ask', '내 상황은 AI 소비자 상담에 물어보기') }} ›</a>{% endif %}</p>
+  {% endif %}
+  <p class="tl-foot">{{ ui('law.foot', '조문은 정보 제공용이에요. 법령은 바뀔 수 있으니 중요한 일은 원문과 시행일을 꼭 확인하세요.') }}</p>
+</main>
+{% endblock %}
