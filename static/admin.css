@@ -475,3 +475,20 @@ body.console .sl-field input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px #f2f
 .sl-submit:hover{background:#e08508;box-shadow:0 8px 20px rgba(239,146,14,.3)}
 body.console .sl-field input:focus{border-color:var(--sl-logo);box-shadow:0 0 0 4px rgba(239,146,14,.14)}
 .sl-brand em{background:#fff4e0;color:#b86e00}
+/* 로그인 창을 화면 가운데로 (운영자 결정 2026-10-24): 화면 전체가 연한 귤색, 이모지 칸은 창 양옆에 흩어 두고, 흰 로그인 창은 한가운데 */
+@media(min-width:701px){
+  body.console main.sl-page{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(160deg,#fff6e8 0%,#ffe9c7 100%)}
+  .sl-hero{position:absolute;inset:0;padding:48px 56px;background:none}
+  .sl-hero-title{position:absolute;left:56px;bottom:48px;font-size:32px}
+  .sl-art{position:absolute;inset:0;margin:0;min-height:0}
+  .sl-emo-main{left:calc(50% - 400px);top:calc(50% - 40px);width:160px;height:160px;border-radius:46px;font-size:88px}
+  .sl-emo-1{left:calc(50% + 300px);top:calc(50% - 210px)}
+  .sl-emo-2{left:calc(50% - 400px);top:calc(50% - 250px)}
+  .sl-emo-3{left:calc(50% + 330px);top:calc(50% + 120px)}
+  .sl-emo-4{left:calc(50% - 300px);top:calc(50% + 150px)}
+  .sl-art::before{left:calc(50% + 290px);top:calc(50% - 20px)}
+  .sl-art::after{left:calc(50% - 250px);top:calc(50% - 150px)}
+  .sl-page>.sl-box{position:relative;z-index:1;max-width:440px;padding:48px 40px 44px;border-radius:28px;background:#fff;box-shadow:0 24px 64px rgba(180,110,0,.14)}
+  .sl-brand{margin-bottom:32px}
+}
+@media(min-width:701px) and (max-width:1100px){.sl-art,.sl-hero-title{display:none}}
