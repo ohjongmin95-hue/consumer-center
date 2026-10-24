@@ -31,17 +31,17 @@
       <p class="nn-sub">{{ ui('home.about_sub', '억울한 일은 함께 목소리를 내고, 써 본 건 솔직하게 나눠요. 광고 없이, 직접 겪은 소비자 이야기만 모여요.') }}</p>
     </div>
     <div class="nn-about-grid">
-      <a class="nn-about-card main" href="{{ url_for('report') }}"><span class="nn-about-e" aria-hidden="true">📮</span><b>{{ ui('home.about1', '억울한 일은 제보') }}</b><p>{{ ui('home.about1_sub', '내용을 정리해 기업에 전달하고, 답변이 올 때까지 진행 상황을 알려 드려요.') }}</p><span class="nn-about-go">{{ ui('home.about1_btn', '제보하기') }} ›</span></a>
-      <a class="nn-about-card" href="{{ url_for('feed') }}"><span class="nn-about-e" aria-hidden="true">🧾</span><b>{{ ui('home.about2', '내돈내산 후기') }}</b><p>{{ ui('home.about2_sub', '직접 돈 내고 산 것, 다녀온 곳만. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}</p><span class="nn-about-go">{{ ui('home.about2_btn', '후기 보기') }} ›</span></a>
-      <a class="nn-about-card" href="{{ url_for('vs_home') }}"><span class="nn-about-e" aria-hidden="true">🤔</span><b>{{ ui('home.about3', '골라주세요') }}</b><p>{{ ui('home.about3_sub', '살까 말까, A냐 B냐. 고민을 올리면 이웃들이 30초 만에 골라 줘요.') }}</p><span class="nn-about-go">{{ ui('home.about3_btn', '골라 주러 가기') }} ›</span></a>
-      <a class="nn-about-card" href="{{ url_for('suda') }}"><span class="nn-about-e" aria-hidden="true">💬</span><b>{{ ui('home.about4', '수다방') }}</b><p>{{ ui('home.about4_sub', '지름 인증부터 직장 고민까지. 매너 있게, 광고 없이 아무 얘기나.') }}</p><span class="nn-about-go">{{ ui('home.about4_btn', '수다 보러 가기') }} ›</span></a>
+      <a class="nn-about-card main" href="{{ url_for('report') }}"><b>{{ ui('home.about1', '억울한 일은 제보') }}</b><p>{{ ui('home.about1_sub', '내용을 정리해 기업에 전달하고, 답변이 올 때까지 진행 상황을 알려 드려요.') }}</p><span class="nn-about-go">{{ ui('home.about1_btn', '제보하기') }} ›</span></a>
+      <a class="nn-about-card" href="{{ url_for('feed') }}"><b>{{ ui('home.about2', '내돈내산 후기') }}</b><p>{{ ui('home.about2_sub', '직접 돈 내고 산 것, 다녀온 곳만. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}</p><span class="nn-about-go">{{ ui('home.about2_btn', '후기 보기') }} ›</span></a>
+      <a class="nn-about-card" href="{{ url_for('vs_home') }}"><b>{{ ui('home.about3', '골라주세요') }}</b><p>{{ ui('home.about3_sub', '살까 말까, A냐 B냐. 고민을 올리면 이웃들이 30초 만에 골라 줘요.') }}</p><span class="nn-about-go">{{ ui('home.about3_btn', '골라 주러 가기') }} ›</span></a>
+      <a class="nn-about-card" href="{{ url_for('suda') }}"><b>{{ ui('home.about4', '수다방') }}</b><p>{{ ui('home.about4_sub', '지름 인증부터 직장 고민까지. 매너 있게, 광고 없이 아무 얘기나.') }}</p><span class="nn-about-go">{{ ui('home.about4_btn', '수다 보러 가기') }} ›</span></a>
     </div>
     <p class="nn-about-more">{{ ui('home.about_more', '이것도 있어요') }}
-      <a href="{{ url_for('life') }}">💡 {{ ui('home.quick_life', '생활정보') }}</a>
-      {% if ask_on() %}<a href="{{ url_for('law_ask') }}">🤖 {{ ui('home.quick_ask', 'AI 소비자 상담') }}</a>{% endif %}
-      <a href="{{ url_for('companies') }}">🏢 {{ ui('home.quick_companies', '기업 답변 기록') }}</a>
-      <a href="{{ url_for('scam_home') }}">🚨 {{ ui('home.quick_scam', '사기 주의') }}</a>
-      <a href="{{ url_for('my_points') if g.user else url_for('signup') }}">🎁 {{ ui('home.quick_points', '글 쓰면 포인트') }}</a>
+      <a href="{{ url_for('life') }}">{{ ui('home.quick_life', '생활정보') }}</a>
+      {% if ask_on() %}<a href="{{ url_for('law_ask') }}">{{ ui('home.quick_ask', 'AI 소비자 상담') }}</a>{% endif %}
+      <a href="{{ url_for('companies') }}">{{ ui('home.quick_companies', '기업 답변 기록') }}</a>
+      <a href="{{ url_for('scam_home') }}">{{ ui('home.quick_scam', '사기 주의') }}</a>
+      <a href="{{ url_for('my_points') if g.user else url_for('signup') }}">{{ ui('home.quick_points', '글 쓰면 포인트') }}</a>
     </p>
   </section>
   {% elif blk == 'live' %}
@@ -62,9 +62,9 @@
     <div class="nn-sec-head"><h2><span class="tf" aria-hidden="true">💸</span> {{ ui('home.life_title', '알아 두면 돈 버는 소비 이야기') }}</h2><a href="{{ url_for('life') }}">{{ ui('home.life_more', '더 보기 ›') }}</a></div>
     <div class="nn-chips" role="tablist">
       <button type="button" class="on" data-chip="all">{{ ui('home.chip_all', '전체') }}</button>
-      <button type="button" data-chip="life">📰 {{ ui('home.chip_life', '생활정보') }}</button>
-      <button type="button" data-chip="report">📊 {{ ui('home.chip_report', '제보 리포트') }}</button>
-      {% for cat in cats %}<button type="button" data-chip="c-{{ cat }}">{% if LIFE_EMOJI.get(cat) %}{{ LIFE_EMOJI[cat] }} {% endif %}{{ cat }}</button>{% endfor %}
+      <button type="button" data-chip="life">{{ ui('home.chip_life', '생활정보') }}</button>
+      <button type="button" data-chip="report">{{ ui('home.chip_report', '제보 리포트') }}</button>
+      {% for cat in cats %}<button type="button" data-chip="c-{{ cat }}">{{ cat }}</button>{% endfor %}
     </div>
     <div class="nn-list">
       {% for it in feed %}
@@ -107,10 +107,10 @@
       </div>
     </div>
     <div class="nn-write{{ ' has-fill' if posts|length < 4 }}">{# 넓은 화면에선 위 빈 칸 카드가 글쓰기를 대신함 #}
-      <a href="{{ url_for('board_write', type='review') }}"><span class="nn-wi t6" aria-hidden="true">📝</span><b>{{ ui('home.write1', '후기 쓰기') }}</b><small>{{ ui('home.write1_sub', '영수증 인증하면 200P') }}</small></a>
-      <a href="{{ url_for('vs_new') }}"><span class="nn-wi t1" aria-hidden="true">⚖️</span><b>{{ ui('home.write2', '고민 올리기') }}</b><small>{{ ui('home.write2_sub', 'A냐 B냐, 골라 주세요') }}</small></a>
-      <a href="{{ url_for('board_write', type='post') }}"><span class="nn-wi t2" aria-hidden="true">✏️</span><b>{{ ui('home.write3', '수다 떨기') }}</b><small>{{ ui('home.write3_sub', '아무 얘기나 편하게') }}</small></a>
-      <a href="{{ url_for('editor') }}"><span class="nn-wi t3" aria-hidden="true">✍️</span><b>{{ ui('home.write4', '에디터 지원') }}</b><small>{{ ui('home.write4_sub', '후기 1건 원고료') }}</small></a>
+      <a href="{{ url_for('board_write', type='review') }}"><b>{{ ui('home.write1', '후기 쓰기') }}</b><small>{{ ui('home.write1_sub', '영수증 인증하면 200P') }}</small></a>
+      <a href="{{ url_for('vs_new') }}"><b>{{ ui('home.write2', '고민 올리기') }}</b><small>{{ ui('home.write2_sub', 'A냐 B냐, 골라 주세요') }}</small></a>
+      <a href="{{ url_for('board_write', type='post') }}"><b>{{ ui('home.write3', '수다 떨기') }}</b><small>{{ ui('home.write3_sub', '아무 얘기나 편하게') }}</small></a>
+      <a href="{{ url_for('editor') }}"><b>{{ ui('home.write4', '에디터 지원') }}</b><small>{{ ui('home.write4_sub', '후기 1건 원고료') }}</small></a>
     </div>
   </section>
   {% elif blk == 'answer' %}
@@ -145,7 +145,7 @@
     <div class="nn-talk-grid">
       <div class="nn-talk-col">
         <div class="nn-sec-head"><h2>{{ ui('home.vs_title', '골라주세요') }}</h2><a href="{{ url_for('vs_home') }}">{{ ui('home.vs_more', '고민 더 보기 ›') }}</a></div>
-        <div class="vs-grid one">{% for p in vs_list %}{{ vs_card(p, '/vs/' ~ p['id']) }}{% else %}<a class="sb-cm-card nn-fill" href="{{ url_for('vs_new') }}"><span class="nn-fill-ic tf" aria-hidden="true">⚖️</span><h3>{{ ui('home.vs_empty', '살까 말까, 이웃에게 물어보세요') }}</h3><p>{{ ui('home.vs_empty_sub', 'A와 B만 적으면 30초 만에 올라가요.') }}</p><span class="nn-fill-go">{{ ui('vs.new', '고민 올리기') }} ›</span></a>{% endfor %}</div>
+        <div class="vs-grid one">{% for p in vs_list %}{{ vs_card(p, '/vs/' ~ p['id']) }}{% else %}<a class="sb-cm-card nn-fill" href="{{ url_for('vs_new') }}"><h3>{{ ui('home.vs_empty', '살까 말까, 이웃에게 물어보세요') }}</h3><p>{{ ui('home.vs_empty_sub', 'A와 B만 적으면 30초 만에 올라가요.') }}</p><span class="nn-fill-go">{{ ui('vs.new', '고민 올리기') }} ›</span></a>{% endfor %}</div>
       </div>
       <div class="nn-talk-col">
         <div class="nn-sec-head"><h2>{{ ui('home.suda_title', '수다방') }}</h2><a href="{{ url_for('suda') }}">{{ ui('home.suda_more', '수다 더 보기 ›') }}</a></div>

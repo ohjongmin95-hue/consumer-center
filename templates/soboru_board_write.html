@@ -29,7 +29,7 @@
     {% if campaign %}<input type="hidden" name="campaign" value="{{ campaign['slug'] }}">{% endif %}
     <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
     <fieldset class="cm-kinds"><legend class="sr-only">{{ ui('cm.tabs_aria', '글 종류') }}</legend>
-      {% for k in ('review', 'post') %}<label><input type="radio" name="kind" value="{{ k }}"{% if cur == k %} checked{% endif %}><span><i aria-hidden="true">{{ pick_emoji[k] }}</i><b>{{ pick_label2[k] }}</b><small>{{ pick_desc2[k] }}</small></span></label>{% endfor %}
+      {% for k in ('review', 'post') %}<label><input type="radio" name="kind" value="{{ k }}"{% if cur == k %} checked{% endif %}><span><b>{{ pick_label2[k] }}</b><small>{{ pick_desc2[k] }}</small></span></label>{% endfor %}
     </fieldset>
 
     {% if first_review %}<p class="cm-first" data-for="review"><span aria-hidden="true">⭐</span><span><b>{{ ui('cm.first_title', '첫 리뷰를 남기면 소보루 픽 순위가 생겨요') }}</b>{{ ui('cm.first_sub', '별점과 한 줄 평만 있어도 충분해요. 써 본 그대로 솔직하게 알려 주세요.') }}</span></p>{% endif %}
@@ -42,7 +42,7 @@
     {% for t, cats in RV_CATS.items() %}
     <div class="cm-f" data-for="review" data-rvt="{{ t }}">
       <span class="cm-l">{{ ui('cm.f_rvcat', '분류') }}</span>
-      <div class="cm-cats">{% for name, emo in cats %}<label><input type="radio" name="rv_cat" value="{{ name }}"{% if rv_t == t and f.get('rv_cat') == name %} checked{% endif %}{% if rv_t != t %} disabled{% endif %}><span><i aria-hidden="true">{{ emo }}</i>{{ name }}</span></label>{% endfor %}</div>
+      <div class="cm-cats">{% for name, emo in cats %}<label><input type="radio" name="rv_cat" value="{{ name }}"{% if rv_t == t and f.get('rv_cat') == name %} checked{% endif %}{% if rv_t != t %} disabled{% endif %}><span>{{ name }}</span></label>{% endfor %}</div>
     </div>
     {% endfor %}
     <div class="cm-f" data-for="review">

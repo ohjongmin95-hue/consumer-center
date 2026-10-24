@@ -1569,7 +1569,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .pf-item:last-child{border-bottom:0}
 .pf-item:active{transform:scale(.99)}
 .pf-thumb{flex:none;width:92px;height:92px;border-radius:16px;background:#f2f4f6;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.pf-thumb i{font-style:normal;font-size:38px;line-height:1}
+.pf-thumb i{font-style:normal;font-size:13px;font-weight:700;color:#8b95a1;letter-spacing:-.02em}
 .pf-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .pf-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
 .pf-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
@@ -1730,7 +1730,7 @@ h1.vs-title{font-size:28px}
 @media (max-width:760px){
   .cm-head .cm-btn{height:42px;padding:0 16px;font-size:15px}
   .pf-banner{flex-wrap:wrap;padding:16px}.pf-banner-go{margin-left:48px}
-  .pf-thumb{width:76px;height:76px;border-radius:14px}.pf-thumb i{font-size:30px}
+  .pf-thumb{width:76px;height:76px;border-radius:14px}
   .pf-title{font-size:16px}
   .cm-bar{flex-wrap:wrap}
   .vs-card{padding:16px;border-radius:20px}
@@ -1744,3 +1744,9 @@ h1.vs-title{font-size:28px}
   .nn-about-card{padding:18px 16px;border-radius:18px}.nn-about-e{font-size:28px}
   .nn-about-card b{font-size:16px}.nn-about-card p{font-size:13px}
 }
+/* 토스처럼: 이모지 없이 글자·여백으로 (운영자 요청 2026-10-24) */
+.nn-about-card{gap:8px;padding:24px 22px}
+.nn-about-card b{font-size:19px}
+.nn-about-more a{height:32px}
+.nn-write a{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.cm-kinds span{padding:16px 16px 15px}

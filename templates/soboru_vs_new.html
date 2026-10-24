@@ -8,7 +8,7 @@
   <form class="cm-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
     <div class="cm-f"><span class="cm-l">{{ ui('vs.f_cat', '분야') }}</span>
-      <div class="cm-cats">{% for name, emo in VS_CATS %}<label><input type="radio" name="cat" value="{{ name }}" required{% if f.get('cat') == name %} checked{% endif %}><span><i aria-hidden="true">{{ emo }}</i>{{ name }}</span></label>{% endfor %}</div></div>
+      <div class="cm-cats">{% for name, emo in VS_CATS %}<label><input type="radio" name="cat" value="{{ name }}" required{% if f.get('cat') == name %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}</div></div>
     <div class="cm-two">
       <div class="cm-f"><label class="cm-l" for="v-a">{{ ui('vs.f_a', 'A') }}</label><input id="v-a" name="a" maxlength="30" required value="{{ f.get('a', '') }}" placeholder="{{ ui('vs.f_a_ph', '예: 에어팟 프로') }}"></div>
       <div class="cm-f"><label class="cm-l" for="v-b">{{ ui('vs.f_b', 'B') }}</label><input id="v-b" name="b" maxlength="30" required value="{{ f.get('b', '') }}" placeholder="{{ ui('vs.f_b_ph', '예: 갤럭시 버즈') }}"></div>

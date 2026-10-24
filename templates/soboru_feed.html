@@ -15,7 +15,6 @@
   </header>
 
   <section class="pf-banner" aria-label="{{ ui('feed.banner_aria', '영수증 인증 안내') }}">
-    <span class="pf-banner-e" aria-hidden="true">🧾</span>
     <div><b>{{ ui('feed.banner_title', '영수증을 함께 올리면 영수증 인증 후기가 돼요') }}</b>
       <p>{{ ui('feed.banner_body', '영수증은 운영자만 보고 공개되지 않아요. 인증되면 200P를 드려요.') }}</p></div>
     <a class="pf-banner-go" href="{{ url_for('editor') }}">{{ ui('feed.banner_editor', '후기 에디터 모집 중') }} ›</a>
@@ -30,13 +29,13 @@
       {% if t %}
       <nav class="cm-rcs" aria-label="{{ ui('feed.cat_aria', '분류') }}">
         <a href="{{ url_for('feed', **dict(qs, c=None)) }}"{% if not c %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
-        {% for name, emo in RV_CATS[t] %}<a href="{{ url_for('feed', **dict(qs, c=name)) }}"{% if c == name %} class="on" aria-current="true"{% endif %}><span aria-hidden="true">{{ emo }}</span> {{ name }}</a>{% endfor %}
+        {% for name, emo in RV_CATS[t] %}<a href="{{ url_for('feed', **dict(qs, c=name)) }}"{% if c == name %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
       </nav>
       {% endif %}
       <div class="cm-bar">
         <p>{% if q %}‘{{ q }}’ {{ ui('cm.found', '검색 결과') }} {% endif %}<b>{{ total }}</b>{{ ui('feed.count_tail', '개의 후기') }}</p>
         <div class="pf-tools">
-          <a class="pf-ok-toggle{{ ' on' if ok }}" href="{{ url_for('feed', **dict(qs, ok=None if ok else '1')) }}" aria-pressed="{{ 'true' if ok else 'false' }}"><span aria-hidden="true">✅</span> {{ ui('feed.only_ok', '영수증 인증만') }}{% if n_ok %} <small>{{ n_ok }}</small>{% endif %}</a>
+          <a class="pf-ok-toggle{{ ' on' if ok }}" href="{{ url_for('feed', **dict(qs, ok=None if ok else '1')) }}" aria-pressed="{{ 'true' if ok else 'false' }}">{{ ui('feed.only_ok', '영수증 인증만') }}{% if n_ok %} <small>{{ n_ok }}</small>{% endif %}</a>
           <div class="cm-sort" role="group" aria-label="{{ ui('board.sort_aria', '정렬') }}">
             <a href="{{ url_for('feed', **dict(qs, sort=None)) }}"{% if sort == 'new' %} class="on"{% endif %}>{{ ui('board.sort_new', '최신순') }}</a>
             <a href="{{ url_for('feed', **dict(qs, sort='views')) }}"{% if sort == 'views' %} class="on"{% endif %}>{{ ui('feed.sort_views', '많이 본 순') }}</a>

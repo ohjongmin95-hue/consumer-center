@@ -8,7 +8,7 @@
 
 {# 내돈내산 후기 한 줄: 사진(없으면 분류 이모지) · 분류 · 영수증 인증 · 구매한지 +N일 · 제목 · 상품·가격 · 재구매 의사 · 별점 #}
 {% macro rv_item(p) %}<a class="pf-item" href="{{ url_for('board_post', post_id=p['id']) }}">
-  <span class="pf-thumb{{ ' ph' if p['photo'] }}" aria-hidden="true">{% if p['photo'] %}<img src="{{ url_for('board_photo', name=p['photo']) }}" alt="" loading="lazy" width="92" height="92">{% else %}<i>{{ p['cat_emoji'] }}</i>{% endif %}</span>
+  {% if p['photo'] %}<span class="pf-thumb" aria-hidden="true"><img src="{{ url_for('board_photo', name=p['photo']) }}" alt="" loading="lazy" width="92" height="92"></span>{% endif %}
   <span class="pf-body">
     <span class="pf-meta">{% if p['rv_cat'] %}<span class="pf-cat">{{ p['rv_cat'] }}</span>{% endif %}{% if p['receipt_state'] == 'ok' %}<span class="pf-ok">{{ ui('feed.ok_badge', '영수증 인증') }}</span>{% endif %}{% if p['editor'] %}<span class="cm-editor">{{ ui('cm.editor_badge', '소보루 에디터') }}</span>{% endif %}{% if p['since'] is not none %}<span class="pf-since">{{ ui('feed.since', '구매한지 +{n}일', n=p['since']) }}</span>{% elif p['visit'] %}<span class="pf-since">{{ ui('feed.visit', '{d} 방문', d=p['visit']) }}</span>{% endif %}</span>
     <b class="pf-title">{{ p['title'] }}</b>
@@ -20,7 +20,7 @@
 
 {# 골라주세요 카드: 아직 안 골랐고 진행 중이면 고르기 버튼, 골랐거나 마감이면 결과 막대 #}
 {% macro vs_card(p, here='/vs', big=False) %}<article class="vs-card{{ ' big' if big }}">
-  <header class="vs-top"><span class="cm-av">{{ p['nickname'][:1] }}</span><span class="vs-who"><b>{{ p['nickname'] }}</b><small>{{ p['emoji'] }} {{ p['cat'] }} · {{ ui('vs.n_picked', '{n}명 골라줌', n=p['n']) }}</small></span>
+  <header class="vs-top"><span class="cm-av">{{ p['nickname'][:1] }}</span><span class="vs-who"><b>{{ p['nickname'] }}</b><small>{{ p['cat'] }} · {{ ui('vs.n_picked', '{n}명 골라줌', n=p['n']) }}</small></span>
     <span class="vs-state s-{{ p['state'] }}">{{ ui('vs.s_open', '고르는 중') if p['state'] == 'open' else (ui('vs.s_wait', '결말 기다리는 중') if p['state'] == 'wait' else ui('vs.s_done', '결말 나옴')) }}</span></header>
   {% if big %}<h1 class="vs-title">{{ p['title'] }}</h1>{% else %}<h3 class="vs-title"><a href="{{ url_for('vs_post', poll_id=p['id']) }}">{{ p['title'] }}</a></h3>{% endif %}
   {% if p['body'] %}<p class="vs-body">{{ mask_personal(p['body']) if big else mask_personal(p['body'])|truncate(90, True, '…') }}</p>{% endif %}
