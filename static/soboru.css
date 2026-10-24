@@ -1813,3 +1813,6 @@ h1.vs-title{font-size:28px}
   .nn-about .nn-about-card,.nn-about .nn-about-card.main{column-gap:14px;padding:14px 4px;border-radius:16px}.nn-about .nn-about-card .bread{width:52px;height:52px;border-radius:16px;font-size:30px}
   .nn-about .nn-about-card b{font-size:17px}.nn-about .nn-about-card p{font-size:14px}.nn-about .nn-about-more{padding-left:4px}}
 .nn-talk-box{background:#f9fafb}.nn-talk-box:hover{background:#f2f4f6}.nn-talk-box span{color:#4e5968}
+/* 소보루 픽 바로 아래 골라주세요·수다방: 한 덩어리로 보이게 간격을 좁힘 */
+.nn-pick+.nn-talk{margin-top:40px}
+@media (max-width:760px){.nn-pick+.nn-talk{margin-top:32px}}
