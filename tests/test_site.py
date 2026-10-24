@@ -2394,7 +2394,7 @@ class SiteTest(unittest.TestCase):
         made = self.post_form(self.client, '/board/write', {'category': '꿀팁', 'title': '회원 글이에요', 'body': '회원으로 쓰는 글입니다. 반가워요.', 'agree': 'on'})
         post_id = int(made.headers['Location'].rstrip('/').split('/')[-1])
         page = self.client.get(f'/board/{post_id}').get_data(as_text=True)
-        self.assertIn('소보루<span class="cm-member">회원</span>', page)
+        self.assertIn('소보루</a><span class="cm-member">회원</span>', page)
         token = self.csrf(evil, f'/board/{post_id}')
         evil.post(f'/board/delete/p/{post_id}', data={'_csrf': token, 'password': ''})
         with self.site.conn() as db:
@@ -4303,6 +4303,51 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.signup(c, login_id=login_id, nickname=nickname).status_code, 302)
         with self.site.conn() as db:
             return c, db.execute('SELECT id FROM users WHERE login_id=?', (login_id,)).fetchone()[0]
+
+    def test_soboru_people_profile_and_follow(self):
+        # 브런치식 이웃: 프로필 사진·소개, 이웃 페이지, 구독(토글·알림), 새 글 알림, 탈퇴하면 정리
+        from PIL import Image
+        a, aid = self.member_client('pp_writer', '빵순이')
+        b, bid = self.member_client('pp_reader', '빵돌이')
+        buf = io.BytesIO(); Image.new('RGB', (60, 60), (240, 146, 14)).save(buf, 'PNG')
+        token = self.csrf(a, '/me/people')
+        r = a.post('/me/people', data={'_csrf': token, 'bio': '  자취 5년 차   살림꾼 ' + 'x' * 100, 'photo': (io.BytesIO(buf.getvalue()), 'me.png')}, content_type='multipart/form-data')
+        self.assertEqual(r.headers['Location'], f'/u/{aid}')
+        with self.site.conn() as db:
+            p = db.execute('SELECT * FROM profiles WHERE user_id=?', (aid,)).fetchone()
+        self.assertTrue(p['bio'].startswith('자취 5년 차 살림꾼')); self.assertEqual(len(p['bio']), 80)
+        self.assertEqual(self.client.get(f'/people/photo/{p["photo"]}').status_code, 200)
+        self.assertEqual(self.client.get('/people/photo/../app.py').status_code, 404)
+        page = self.client.get(f'/u/{aid}').get_data(as_text=True)
+        self.assertIn('빵순이', page); self.assertIn('자취 5년 차', page); self.assertIn(p['photo'], page)
+        self.assertEqual(self.client.get('/u/99999').status_code, 404)
+        # 구독: 회원만, 나 자신은 안 됨, 한 번 더 누르면 취소
+        follow = lambda c: c.post(f'/u/{aid}/follow', data={'_csrf': self.csrf(c, f'/u/{aid}' if c is self.client else '/me')})
+        self.assertEqual(follow(self.client).status_code, 302)
+        with self.site.conn() as db: self.assertIsNone(db.execute('SELECT 1 FROM follows').fetchone())
+        self.assertEqual(follow(a).status_code, 400)
+        follow(b)
+        with self.site.conn() as db:
+            self.assertTrue(db.execute('SELECT 1 FROM follows WHERE follower=? AND followee=?', (bid, aid)).fetchone())
+            self.assertIn('빵돌이님이 나를 구독했어요', db.execute("SELECT body FROM member_alerts WHERE user_id=? AND kind='follow'", (aid,)).fetchone()[0])
+        self.assertIn('구독 중', b.get(f'/u/{aid}').get_data(as_text=True))
+        # 구독한 이웃이 글을 쓰면 알림 + 구독 피드
+        self.post_form(a, '/board/write?type=post', {'kind': 'post', 'head': '잡담', 'title': '오늘 장 본 이야기', 'body': '마트 세일 소식 나눠요.', 'agree': '1'})
+        with self.site.conn() as db:
+            self.assertIn('오늘 장 본 이야기', db.execute("SELECT body FROM member_alerts WHERE user_id=? AND kind='follow'", (bid,)).fetchone()[0])
+        feed = b.get('/me/following').get_data(as_text=True)
+        self.assertIn('오늘 장 본 이야기', feed); self.assertIn('빵순이', feed)
+        with self.site.conn() as db: pid = db.execute("SELECT id FROM posts WHERE title='오늘 장 본 이야기'").fetchone()[0]
+        self.assertIn('pp-card', b.get(f'/board/{pid}').get_data(as_text=True))
+        follow(b)
+        with self.site.conn() as db: self.assertIsNone(db.execute('SELECT 1 FROM follows').fetchone())
+        follow(b)
+        # 탈퇴: 프로필·사진·구독도 지움
+        with self.site.conn() as db: self.site.delete_member(db, aid, True)
+        with self.site.conn() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM profiles WHERE user_id=?', (aid,)).fetchone())
+            self.assertIsNone(db.execute('SELECT 1 FROM follows').fetchone())
+        self.assertFalse((self.site.UPLOAD / 'avatars' / p['photo']).exists())
 
     def test_soboru_community_feed_vs_suda(self):
         # 품앗히식 커뮤니티: 수다 말머리→종류, 후기 정보·영수증 인증, 골라주세요 투표·결말 (포인트는 뺌 2026-10-24)

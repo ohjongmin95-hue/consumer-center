@@ -81,7 +81,7 @@ def report(db,days=30):
     since=core.iso(core.now()-datetime.timedelta(days=days))
     q=lambda sql,*a:db.execute(sql,a).fetchall()
     steps=[]
-    for k in ('visit','tour','calc','signup','setup_done','demo','first_reply','consult'):
+    for k in ('visit','tour','signup','setup_done','demo','first_reply','consult'):
         n=db.execute('SELECT COUNT(DISTINCT CASE WHEN company_id>0 THEN company_id ELSE visitor END) FROM funnel WHERE kind=? AND created>=?',(k,since)).fetchone()[0]
         steps.append((k,KINDS[k],n))
     by_source=q("""SELECT CASE WHEN source='' THEN '(직접 방문)' ELSE source END src,SUM(kind='visit') v,SUM(kind='signup') s,SUM(kind='consult') c

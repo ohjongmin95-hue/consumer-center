@@ -4,7 +4,7 @@
 {% block bar %}{{ b.bar(tab) }}{% endblock %}
 {% block main %}<main class="intro">
 <section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">{{ p.title }}</span><h1>{{ p.title }}<br>고객 문의, 이렇게 처리해요</h1><p>{{ p.lead }}</p>
-<div class="in-cta"><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a><a class="btn gray" href="{{ url_for('mk.calculator') }}">절감 계산해 보기</a></div></div></div></section>
+<div class="in-cta"><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a><a class="btn gray" href="{{ url_for('mk.tour') }}">제품 둘러보기</a></div></div></div></section>
 <section><div class="wrap mk-one"><h2>자주 오는 문의</h2>
 <div class="mk-chips">{% for a in p.asks %}<span>“{{ a }}”</span>{% endfor %}</div>
 <h2 style="margin-top:56px">{{ BNAME }}가 돕는 방법</h2>

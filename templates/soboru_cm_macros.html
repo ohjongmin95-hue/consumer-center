@@ -14,7 +14,7 @@
     <b class="pf-title">{{ p['title'] }}</b>
     <span class="pf-target">{{ mask_personal(p['target']) }}{% if p['won'] %} · {{ p['won'] }}{% endif %}{% if p['where'] %} · <span class="pf-wh">{{ p['where'] }}{{ ui('feed.shop_tail', '에서 샀어요') if p['rv_type'] == 'product' else '' }}</span>{% endif %}</span>
     <span class="pf-score">{% if p['rating'] %}<em class="pf-star">★ {{ p['rating'] }}.0</em>{% endif %}{% if p['again_word'] %}<em class="pf-again{{ ' no' if not p['again'] }}">{{ p['again_word'] }}</em>{% endif %}</span>
-    <span class="cm-foot"><span class="cm-who">{{ p['nickname'] }}</span><span>{{ ago_text(p['created']) }}</span><span class="cm-dot"></span><span>{{ ui('feed.views', '조회') }} {{ p['views'] }}</span><span>{{ ui('feed.comments', '댓글') }} {{ p['comments'] }}</span><span>{{ ui('cm.likes', '공감') }} {{ p['likes'] }}</span></span>
+    <span class="cm-foot"><span class="cm-who">{{ av(p['user_id'], p['nickname'], 'xs') }}{{ p['nickname'] }}</span><span>{{ ago_text(p['created']) }}</span><span class="cm-dot"></span><span>{{ ui('feed.views', '조회') }} {{ p['views'] }}</span><span>{{ ui('feed.comments', '댓글') }} {{ p['comments'] }}</span><span>{{ ui('cm.likes', '공감') }} {{ p['likes'] }}</span></span>
   </span>
 </a>{% endmacro %}
 
@@ -46,5 +46,11 @@
   <span class="sd-no">{{ p['id'] }}</span>
   <span class="sd-main"><span class="sd-t"><em class="sd-head">{{ p['head'] }}</em><b>{{ p['title'] }}</b>{% if p['comments'] %}<small class="sd-c">[{{ p['comments'] }}]</small>{% endif %}</span>
     {% if p['body'] %}<span class="sd-ex">{{ mask_personal(p['body'][:80]) }}</span>{% endif %}
-    <span class="cm-foot"><span class="cm-who">{{ p['nickname'] }}</span><span>{{ ago_text(p['created']) }}</span><span class="cm-dot"></span><span>{{ ui('feed.views', '조회') }} {{ p['views'] }}</span><span class="sd-like{{ ' on' if p['likes'] }}">{{ ui('suda.likes', '추천 {n}', n=p['likes']) if p['likes'] else ui('suda.no_like', '첫 추천을 기다려요') }}</span></span></span>
+    <span class="cm-foot"><span class="cm-who">{{ av(p['user_id'], p['nickname'], 'xs') }}{{ p['nickname'] }}</span><span>{{ ago_text(p['created']) }}</span><span class="cm-dot"></span><span>{{ ui('feed.views', '조회') }} {{ p['views'] }}</span><span class="sd-like{{ ' on' if p['likes'] }}">{{ ui('suda.likes', '추천 {n}', n=p['likes']) if p['likes'] else ui('suda.no_like', '첫 추천을 기다려요') }}</span></span></span>
 </a>{% endmacro %}
+
+{# 이웃 사진 (없으면 닉네임 첫 글자). soboru_people.py avatar_url #}
+{% macro av(user_id, nickname, cls='') %}{% set src = avatar_url(user_id) %}{% if src %}<img class="cm-av {{ cls }} pp-img" src="{{ src }}" alt="" loading="lazy">{% else %}<span class="cm-av {{ cls }}" aria-hidden="true">{{ (nickname or '?')[:1] }}</span>{% endif %}{% endmacro %}
+
+{# 구독 버튼 (회원이 아니면 로그인으로) #}
+{% macro follow_btn(user_id, cls='') %}{% if not g.user or g.user['id'] != user_id %}<form class="pp-follow-f" method="post" action="{{ url_for('follow', user_id=user_id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">{% set on = is_following(user_id) %}<button type="submit" class="pp-follow {{ cls }}{{ ' on' if on }}">{{ ui('pp.following', '구독 중') if on else ui('pp.follow', '구독하기') }}</button></form>{% endif %}{% endmacro %}

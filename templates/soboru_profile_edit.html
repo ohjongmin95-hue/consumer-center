@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{# 내 프로필 고치기: 사진·소개 (닉네임은 내 정보에서). soboru_people.py my_profile() #}
+{% from 'soboru_cm_macros.html' import av with context %}
+{% block title %}{{ ui('pp.edit', '프로필 고치기') }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap cm cx cm-post pp">
+  <a class="cm-back" href="{{ url_for('person', user_id=p.id) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('pp.my_page', '내 이웃 페이지') }}</a>
+  <header class="cm-head"><div><h1>{{ ui('pp.edit', '프로필 고치기') }}</h1><p>{{ ui('pp.edit_intro', '사진과 소개는 내 글과 이웃 페이지에 보여요. 닉네임은 내 정보에서 바꿀 수 있어요.') }}</p></div></header>
+  <form class="pp-form" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="pp-form-av">{{ av(p.id, p.nickname, 'xxl') }}<div><b>{{ p.nickname }}</b>
+      <label class="pp-file">{{ ui('pp.photo_pick', '사진 고르기') }}<input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label>
+      {% if p.photo %}<label class="pp-drop"><input type="checkbox" name="drop_photo" value="1"> {{ ui('pp.photo_drop', '사진 지우기') }}</label>{% endif %}
+      <small>{{ ui('pp.photo_hint', 'JPG·PNG·WEBP, 8MB까지. 찍은 위치 같은 정보는 지우고 올려요.') }}</small></div></div>
+    <label class="pp-l" for="pp-bio">{{ ui('pp.bio', '소개 한 줄') }}</label>
+    <input id="pp-bio" name="bio" maxlength="{{ bio_max }}" value="{{ p.bio }}" placeholder="{{ ui('pp.bio_ph', '예: 써 보고 좋은 것만 추천하는 자취 5년 차') }}">
+    <button class="cm-btn" type="submit">{{ ui('pp.save', '저장하기') }}</button>
+  </form>
+</main>
+{% endblock %}

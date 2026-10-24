@@ -1765,6 +1765,7 @@ def withdraw():
     flash(ui_text('msg.m40','탈퇴를 마쳤어요. 그동안 함께해 주셔서 고마워요.'))
     return redirect(url_for('home'))
 
+MEMBER_DELETE_HOOKS=[]
 def delete_member(db,uid,delete_posts):
     # 회원 정보는 바로 지움. 제보는 휴대폰 번호·조회 비밀번호로 계속 확인할 수 있도록 회원 연결만 끊음.
     if delete_posts:
@@ -1776,6 +1777,7 @@ def delete_member(db,uid,delete_posts):
     db.execute('UPDATE cases SET user_id=NULL WHERE user_id=?',(uid,))
     db.execute('DELETE FROM user_blocks WHERE blocker=? OR blocked=?',(uid,uid))
     delete_member_extras(db,uid);delete_app_extras(db,uid)  # 소셜 연결·기업 소속 신청 / 알림·푸시 구독
+    for hook in MEMBER_DELETE_HOOKS:hook(db,uid)  # 소보루 이웃 프로필·구독·담아 둔 글 (soboru_people.py)
     db.execute('DELETE FROM users WHERE id=?',(uid,))
 
 # ---- 회원 차단 (게시판 글·댓글의 '이 사용자 차단') ----------------------------------
@@ -2766,5 +2768,6 @@ import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소�
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
 import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
 import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·사장님 소식 (soboru_cm.py)
+import soboru_people;soboru_people.install(types.SimpleNamespace(**globals()))  # 소보루 이웃: 프로필·이웃 페이지·구독 (soboru_people.py)
 
 if __name__=='__main__':app.run(debug=False)

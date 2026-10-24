@@ -24,7 +24,7 @@
 </div>
 <aside class="stack" style="gap:var(--ds-gap)">
 <section class="panel stack"><div class="ph">UTM 주소 만들기</div>
-<label class="fld"><span>보낼 화면</span><select class="inp" id="u_p"><option value="">첫 화면</option><option value="tour">제품 둘러보기</option><option value="calculator">절감 계산기</option><option value="industries">업종별</option><option value="contact">상담 신청</option><option value="signup">가입</option><option value="blog">자료실</option></select></label>
+<label class="fld"><span>보낼 화면</span><select class="inp" id="u_p"><option value="">첫 화면</option><option value="tour">제품 둘러보기</option><option value="industries">업종별</option><option value="contact">상담 신청</option><option value="signup">가입</option><option value="blog">자료실</option></select></label>
 <label class="fld"><span>출처 (utm_source)</span><input class="inp" id="u_s" placeholder="naver, instagram, newsletter" maxlength="60"></label>
 <label class="fld"><span>매체 (utm_medium)</span><input class="inp" id="u_m" placeholder="cpc, social, email" maxlength="60"></label>
 <label class="fld"><span>캠페인 (utm_campaign)</span><input class="inp" id="u_c" placeholder="2026-fall-launch" maxlength="60"></label>
@@ -32,7 +32,7 @@
 <section class="panel"><div class="ph">어떻게 세나요</div><p class="cap" style="margin:0">로그인하지 않은 방문자에게 무작위 번호를 붙여 세션 안에서만 구분해요. IP 주소·이름·연락처는 남기지 않아요. 처음 들어온 출처(UTM 또는 들어온 사이트)를 기억해 가입·상담 신청에 이어 붙여요. 방문 기록은 {{ keep }}일 뒤 지워요. 외부 분석 도구(GA 등)는 쓰지 않아요.</p></section>
 </aside></div>
 {% endblock %}
-{% block script %}<script>(function(){var base='{{ site.rstrip('/') }}/';var paths={'':'','tour':'tour','calculator':'calculator','industries':'industries','contact':'contact','signup':'signup','blog':'blog'};
+{% block script %}<script>(function(){var base='{{ site.rstrip('/') }}/';var paths={'':'','tour':'tour','industries':'industries','contact':'contact','signup':'signup','blog':'blog'};
 function upd(){var q=[];[['utm_source','u_s'],['utm_medium','u_m'],['utm_campaign','u_c']].forEach(function(x){var v=document.getElementById(x[1]).value.trim();if(v)q.push(x[0]+'='+encodeURIComponent(v));});
 document.getElementById('u_out').value=base+paths[document.getElementById('u_p').value]+(q.length?'?'+q.join('&'):'');}
 ['u_p','u_s','u_m','u_c'].forEach(function(i){document.getElementById(i).oninput=upd;document.getElementById(i).onchange=upd;});upd();

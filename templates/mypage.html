@@ -61,6 +61,9 @@
 
   {% if is_soboru() %}
   <section class="form-panel me-section" id="soboru-links">
+    <a class="me-row me-row-link" href="{{ url_for('person', user_id=g.user['id']) }}"><span class="me-row-main"><b>{{ ui('pp.my_page', '내 이웃 페이지') }}</b><span class="meta">{{ ui('pp.me_hint', '내 사진·소개와 쓴 글, 구독자') }}</span></span></a>
+    <a class="me-row me-row-link" href="{{ url_for('my_profile') }}"><span class="me-row-main"><b>{{ ui('pp.edit', '프로필 고치기') }}</b><span class="meta">{{ ui('pp.edit_hint', '사진과 소개 한 줄') }}</span></span></a>
+    <a class="me-row me-row-link" href="{{ url_for('following') }}"><span class="me-row-main"><b>{{ ui('pp.feed_title', '구독') }}</b><span class="meta">{{ ui('pp.feed_hint', '구독한 이웃의 새 글') }}</span></span></a>
     <a class="me-row me-row-link" href="{{ url_for('my_saved') }}"><span class="me-row-main"><b>{{ ui('saved.title', '담아 둔 글') }}</b><span class="meta">{{ ui('saved.me_hint', '나중에 다시 볼 후기와 수다') }}</span></span></a>
   </section>
   {% endif %}

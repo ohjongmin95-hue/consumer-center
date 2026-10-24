@@ -27,29 +27,33 @@
       <p>{{ ui('feed.banner_body', '영수증은 운영자만 보고 공개되지 않아요.') }}</p></div>
   </section>
 
-  <div class="cm-body">
+  <div class="cm-body solo">{# 인기 후기는 위 띠로 보여 주고 목록은 넓게 #}
     <div class="cm-main">
       <nav class="cm-tabs" aria-label="{{ ui('feed.tabs_aria', '후기 종류') }}">
         <a href="{{ url_for('feed', **dict(qs, t=None, c=None)) }}"{% if not t %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
-        {% for k, name in RV_TYPES %}<a href="{{ url_for('feed', **dict(qs, t=k, c=None)) }}"{% if t == k %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
+        {% for k, name in RV_TYPES %}<a href="{{ url_for('feed', **dict(qs, t=k, c=None)) }}"{% if t == k %} class="on" aria-current="true"{% endif %}>{{ ui('feed.tab_' ~ k, {'product': '물건 내돈내산', 'place': '동네 내돈내산'}[k]) }}</a>{% endfor %}
       </nav>
-      {# 분류 아이콘 줄 (품앗히식): 전체 탭이면 상품·장소 분류를 모두, 탭을 고르면 그 분류만 #}
-      <nav class="pf-cats" aria-label="{{ ui('feed.cat_aria', '분류') }}">
-        {% for k, tname in RV_TYPES if not t or t == k %}{% for name, emo in RV_CATS[k] if not (name == '기타' and not t) %}
-        <a href="{{ url_for('feed', **dict(qs, t=k, c=None if (c == name and t == k) else name)) }}"{% if c == name and t == k %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">{{ emo }}</span>{{ name }}</a>
-        {% endfor %}{% endfor %}
-      </nav>
+      {# 분류 아이콘: 전체 탭이면 물건·동네 두 줄, 탭을 고르면 그 줄만. 칸은 폭에 맞게 고르게 나눔 #}
+      {% for k, tname in RV_TYPES if not t or t == k %}
+      <div class="pf-cat-row">
+        {% if not t %}<p class="pf-cat-l">{{ ui('feed.row_' ~ k, {'product': '써 본 물건', 'place': '다녀온 동네 가게'}[k]) }}</p>{% endif %}
+        <nav class="pf-cats" aria-label="{{ ui('feed.cat_aria', '분류') }}">
+        {% for name, emo in RV_CATS[k] if not (name == '기타' and not t) %}<a href="{{ url_for('feed', **dict(qs, t=k, c=None if (c == name and t == k) else name)) }}"{% if c == name and t == k %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">{{ emo }}</span>{{ name }}</a>{% endfor %}
+        </nav>
+      </div>
+      {% endfor %}
       {% if t == 'product' %}
       {# 어디서 샀어요?: 산 곳별로 모아 보기 #}
       <nav class="pf-where" aria-label="{{ ui('feed.shop_aria', '어디서 샀어요') }}"><span>{{ ui('feed.shop_l', '어디서 샀어요?') }}</span>
         <a href="{{ url_for('feed', **dict(qs, s=None)) }}"{% if not shop %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
         {% for name in SHOPS %}<a href="{{ url_for('feed', **dict(qs, s=name)) }}"{% if shop == name %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
       </nav>
-      {% elif t == 'place' %}
-      {# 우리 동네 후기: 시·도별로 모아 보기 #}
-      <nav class="pf-where" aria-label="{{ ui('feed.area_aria', '우리 동네 후기') }}"><span>{{ ui('feed.area_l', '우리 동네') }}</span>
+      {% endif %}
+      {% if t != 'product' %}
+      {# 우리 동네 후기: 시·도별로 모아 보기. 전체 탭에서도 보이고, 누르면 동네 내돈내산으로 #}
+      <nav class="pf-where" aria-label="{{ ui('feed.area_aria', '우리 동네 후기') }}"><span>{{ ui('feed.area_l', '우리 동네 후기') }}</span>
         <a href="{{ url_for('feed', **dict(qs, a=None)) }}"{% if not sido %} class="on" aria-current="true"{% endif %}>{{ ui('feed.area_all', '전국') }}</a>
-        {% for name in SIDO %}<a href="{{ url_for('feed', **dict(qs, a=name)) }}"{% if sido == name %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
+        {% for name in SIDO %}<a href="{{ url_for('feed', **dict(qs, t='place', a=name)) }}"{% if sido == name %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
       </nav>
       {% endif %}
       <div class="cm-bar">
@@ -81,14 +85,6 @@
         <input type="search" name="q" value="{{ q }}" placeholder="{{ ui('feed.search_ph', '궁금한 상품·가게 검색') }}" aria-label="{{ ui('feed.search_aria', '후기 검색') }}">
         <button class="cm-btn sm" type="submit">{{ ui('feed.search_btn', '검색') }}</button>
       </form>
-    </div>
-    <div class="cm-side">
-    {% if hot %}
-    <section class="cm-hot" aria-labelledby="pf-hot-h">
-      <h2 id="pf-hot-h">{{ ui('feed.hot_title', '이번 주 많이 본 후기') }}</h2>
-      <ol>{% for p in hot %}<li><a href="{{ url_for('board_post', post_id=p['id']) }}"><span class="cm-rank">{{ loop.index }}</span><span class="cm-hot-t"><b>{{ p['title'] }}</b><small>{{ mask_personal(p['target']) }} · {{ ui('feed.views', '조회') }} {{ p['views'] }}</small></span></a></li>{% endfor %}</ol>
-    </section>
-    {% endif %}
     </div>
   </div>
 </main>
