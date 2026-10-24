@@ -1,0 +1,21 @@
+{% extends 'console.html' %}
+{% block title %}영수증 확인 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">영수증 확인</h1>
+  <p>후기에 같이 올라온 영수증이에요. 영수증은 여기서만 보이고 공개되지 않아요. 후기 속 상품·가게와 영수증이 맞으면 '인증'을 눌러 주세요. 인증하면 후기에 '영수증 인증' 표시가 붙고, 회원이면 200P가 들어가요.</p></div>
+  <nav class="tabs" style="display:flex;gap:8px;margin:0 0 16px">{% for k, name in [('wait', '확인 전'), ('ok', '인증'), ('no', '인증 안 함')] %}<a class="{{ 'primary' if show == k else 'secondary' }}" style="padding:8px 14px;font-size:14px" href="{{ url_for('admin_receipts', show=k) }}">{{ name }} {{ counts.get(k, 0) }}</a>{% endfor %}</nav>
+  {% for r in rows %}
+  <div class="form-panel takedown-item" style="display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:start">
+    <a href="{{ url_for('feed_receipt', name=r['receipt']) }}" target="_blank" rel="noopener"><img src="{{ url_for('feed_receipt', name=r['receipt']) }}" alt="영수증" style="width:200px;border-radius:10px;border:1px solid #eee"></a>
+    <div>
+      <p class="meta">#{{ r['id'] }} · {{ r['created']|replace('T', ' ') }} · {{ r['nickname'] }}{% if not r['user_id'] %} (손님){% endif %} · {{ r['rv_cat'] or '분류 없음' }}</p>
+      <h3><a href="{{ url_for('board_post', post_id=r['id']) }}" target="_blank" rel="noopener">{{ r['title'] }}</a></h3>
+      <p><b>{{ r['target'] }}</b>{% if r['won'] %} · {{ r['won'] }}{% endif %}{% if r['bought'] %} · 구매·방문일 {{ r['bought'] }}{% endif %}</p>
+      <form method="post" action="{{ url_for('admin_receipts', show=show) }}" style="display:flex;gap:8px"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}">
+        <button class="primary" name="act" value="ok" type="submit">인증</button><button class="secondary" name="act" value="no" type="submit">인증 안 함</button></form>
+    </div>
+  </div>
+  {% else %}<div class="form-panel"><p>여기에 있는 영수증이 없어요.</p></div>{% endfor %}
+</div></main>
+{% endblock %}

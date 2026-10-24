@@ -1,0 +1,50 @@
+{# 소보루 커뮤니티(soboru_cm.py) 조각: 후기 한 줄 · 골라주세요 카드 · 수다방 한 줄 · 쪽 넘기기 #}
+{% macro pager(endpoint, page, pages, qs) %}{% if pages > 1 %}
+<nav class="cm-pager" aria-label="page">
+  {% if page > 1 %}<a href="{{ url_for(endpoint, page=page - 1, **qs) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}
+  <span>{{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a href="{{ url_for(endpoint, page=page + 1, **qs) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}
+</nav>{% endif %}{% endmacro %}
+
+{# 내돈내산 후기 한 줄: 사진(없으면 분류 이모지) · 분류 · 영수증 인증 · 구매한지 +N일 · 제목 · 상품·가격 · 재구매 의사 · 별점 #}
+{% macro rv_item(p) %}<a class="pf-item" href="{{ url_for('board_post', post_id=p['id']) }}">
+  {% if p['photo'] %}<span class="pf-thumb" aria-hidden="true"><img src="{{ url_for('board_photo', name=p['photo']) }}" alt="" loading="lazy" width="92" height="92"></span>{% endif %}
+  <span class="pf-body">
+    <span class="pf-meta">{% if p['rv_cat'] %}<span class="pf-cat">{{ p['rv_cat'] }}</span>{% endif %}{% if p['receipt_state'] == 'ok' %}<span class="pf-ok">{{ ui('feed.ok_badge', '영수증 인증') }}</span>{% endif %}{% if p['editor'] %}<span class="cm-editor">{{ ui('cm.editor_badge', '소보루 에디터') }}</span>{% endif %}{% if p['since'] is not none %}<span class="pf-since">{{ ui('feed.since', '구매한지 +{n}일', n=p['since']) }}</span>{% elif p['visit'] %}<span class="pf-since">{{ ui('feed.visit', '{d} 방문', d=p['visit']) }}</span>{% endif %}</span>
+    <b class="pf-title">{{ p['title'] }}</b>
+    <span class="pf-target">{{ mask_personal(p['target']) }}{% if p['won'] %} · {{ p['won'] }}{% endif %}</span>
+    <span class="pf-score">{% if p['rating'] %}<em class="pf-star">★ {{ p['rating'] }}.0</em>{% endif %}{% if p['again_word'] %}<em class="pf-again{{ ' no' if not p['again'] }}">{{ p['again_word'] }}</em>{% endif %}</span>
+    <span class="cm-foot"><span class="cm-who">{{ p['nickname'] }}</span><span>{{ ago_text(p['created']) }}</span><span class="cm-dot"></span><span>{{ ui('feed.views', '조회') }} {{ p['views'] }}</span><span>{{ ui('feed.comments', '댓글') }} {{ p['comments'] }}</span><span>{{ ui('cm.likes', '공감') }} {{ p['likes'] }}</span></span>
+  </span>
+</a>{% endmacro %}
+
+{# 골라주세요 카드: 아직 안 골랐고 진행 중이면 고르기 버튼, 골랐거나 마감이면 결과 막대 #}
+{% macro vs_card(p, here='/vs', big=False) %}<article class="vs-card{{ ' big' if big }}">
+  <header class="vs-top"><span class="cm-av">{{ p['nickname'][:1] }}</span><span class="vs-who"><b>{{ p['nickname'] }}</b><small>{{ p['cat'] }} · {{ ui('vs.n_picked', '{n}명 골라줌', n=p['n']) }}</small></span>
+    <span class="vs-state s-{{ p['state'] }}">{{ ui('vs.s_open', '고르는 중') if p['state'] == 'open' else (ui('vs.s_wait', '결말 기다리는 중') if p['state'] == 'wait' else ui('vs.s_done', '결말 나옴')) }}</span></header>
+  {% if big %}<h1 class="vs-title">{{ p['title'] }}</h1>{% else %}<h3 class="vs-title"><a href="{{ url_for('vs_post', poll_id=p['id']) }}">{{ p['title'] }}</a></h3>{% endif %}
+  {% if p['body'] %}<p class="vs-body">{{ mask_personal(p['body']) if big else mask_personal(p['body'])|truncate(90, True, '…') }}</p>{% endif %}
+  {% if p['state'] == 'open' and not p['mine'] %}
+  <form class="vs-pick" method="post" action="{{ url_for('vs_vote', poll_id=p['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+    <button type="submit" name="pick" value="a"><i>A</i>{{ p['a'] }}</button><span class="vs-vs" aria-hidden="true">VS</span><button type="submit" name="pick" value="b"><i>B</i>{{ p['b'] }}</button>
+    {% if big %}<label class="vs-used"><input type="checkbox" name="used" value="1"><span>{{ ui('vs.used', '둘 중 하나를 써 봤어요') }}</span></label>{% endif %}
+  </form>
+  {% else %}
+  <div class="vs-result">
+    {% for k in ('a', 'b') %}{% set win = (p['ending'] == k) or (not p['ending'] and p['pct_' + k] > 50) %}
+    <div class="vs-bar{{ ' win' if win }}{{ ' mine' if p['mine'] == k }}"><i style="width:{{ p['pct_' + k] }}%"></i><span><b>{{ k|upper }}</b>{{ p[k] }}{% if p['mine'] == k %}<small>{{ ui('vs.my_pick', '내 선택') }}</small>{% endif %}{% if p['ending'] == k %}<small class="end">{{ ui('vs.final', '최종 선택') }}</small>{% endif %}</span><em>{{ p['pct_' + k] }}%</em></div>
+    {% endfor %}
+    {% if big and (p['used_a'] or p['used_b']) %}<p class="vs-used-n">{{ ui('vs.used_n', '써 본 사람 {n}명 중 A {a}명 · B {b}명', n=p['used_a'] + p['used_b'], a=p['used_a'], b=p['used_b']) }}</p>{% endif %}
+  </div>
+  {% endif %}
+  {% if p['ending'] and p['ending_note'] %}<p class="vs-ending"><b>{{ ui('vs.ending', '결말') }}</b> {{ mask_personal(p['ending_note']) }}</p>{% endif %}
+  {% if not big %}<footer class="cm-foot"><span>{{ ui('feed.views', '조회') }} {{ p['views'] }}</span><span>{{ ui('vs.talks', '한마디') }} {{ p['talks'] }}</span><a class="vs-more" href="{{ url_for('vs_post', poll_id=p['id']) }}">{{ ui('vs.see', '결과 보기') }} ›</a></footer>{% endif %}
+</article>{% endmacro %}
+
+{# 수다방 한 줄: 번호 · 말머리 · 제목 · 미리보기 · 닉네임 · 댓글 · 조회 · 추천 #}
+{% macro suda_row(p) %}<a class="sd-row" href="{{ url_for('board_post', post_id=p['id']) }}">
+  <span class="sd-no">{{ p['id'] }}</span>
+  <span class="sd-main"><span class="sd-t"><em class="sd-head">{{ p['head'] }}</em><b>{{ p['title'] }}</b>{% if p['comments'] %}<small class="sd-c">[{{ p['comments'] }}]</small>{% endif %}</span>
+    {% if p['body'] %}<span class="sd-ex">{{ mask_personal(p['body'][:80]) }}</span>{% endif %}
+    <span class="cm-foot"><span class="cm-who">{{ p['nickname'] }}</span><span>{{ ago_text(p['created']) }}</span><span class="cm-dot"></span><span>{{ ui('feed.views', '조회') }} {{ p['views'] }}</span><span class="sd-like{{ ' on' if p['likes'] }}">{{ ui('suda.likes', '추천 {n}', n=p['likes']) if p['likes'] else ui('suda.no_like', '첫 추천을 기다려요') }}</span></span></span>
+</a>{% endmacro %}

@@ -1,0 +1,21 @@
+{% extends 'console.html' %}
+{% block title %}에디터 신청 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">에디터 신청</h1>
+  <p>후기 에디터 모집(/editor)에 들어온 신청서예요. '선정'으로 바꾸면 그 제품 남은 자리가 줄어요. 새 신청·선정 안 함은 {{ keep }}일이 지나면 저절로 지워져요 (신청 화면에 알린 그대로). 원고료와 모집 제품은 화면 편집 > 문구의 editor.pay, editor.products(한 줄에 ‘제품|자리 수’)에서 바꿔요.</p>
+  <p>{% for name, cap, l in left %}<span class="pill">{{ name }} {{ cap - l }}/{{ cap }}</span> {% endfor %}</p></div>
+  <nav class="tabs" style="display:flex;gap:8px;margin:0 0 16px">{% for k, name in statuses.items() %}<a class="{{ 'primary' if show == k else 'secondary' }}" style="padding:8px 14px;font-size:14px" href="{{ url_for('admin_editors', show=k) }}">{{ name }} {{ counts.get(k, 0) }}</a>{% endfor %}</nav>
+  {% for r in rows %}
+  <form class="form-panel takedown-item" method="post" action="{{ url_for('admin_editors', show=show) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}">
+    <p class="meta">#{{ r['id'] }} · {{ r['created']|replace('T', ' ') }}{% if r['user_id'] %} · 회원{% endif %}</p>
+    <h3>{{ r['name'] }} · {{ r['phone'][:3] }}-{{ r['phone'][3:-4] }}-{{ r['phone'][-4:] }}</h3>
+    <p>{{ r['products']|join(', ') }} · 영수증 {{ '있어요' if r['receipt'] else '없어요' }}</p>
+    <div class="field"><label>상태</label><select name="status">{% for k, name in statuses.items() %}<option value="{{ k }}"{% if k == r['status'] %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>메모 (내부용)</label><textarea name="note" maxlength="1000" rows="2">{{ r['note'] }}</textarea></div>
+    <button class="secondary" type="submit">저장</button>
+  </form>
+  {% else %}<div class="form-panel"><p>{{ statuses[show] }} 신청이 없어요.</p></div>{% endfor %}
+</div></main>
+{% endblock %}

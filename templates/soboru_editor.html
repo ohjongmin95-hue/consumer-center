@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{# 후기 에디터 모집 (품앗히 에디터 모집처럼). 원고료·제품·자리는 관리자 > 화면 편집 문구에서 바꿈. soboru_cm.py editor() #}
+{% block title %}{{ ui('editor.title', '후기 에디터 모집') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('editor.meta', '내돈내산 후기를 써 주실 소보루 에디터를 모집해요. 협찬이 아니라 아쉬운 점도 그대로 써요.') }}{% endblock %}
+{% block content %}
+{% set picked = f.getlist('product') if f.getlist is defined else [] %}
+<main class="sb-wrap cm cx er">
+  <section class="er-hero"><span class="bread hero" aria-hidden="true">🍰</span>
+    <p class="er-k">{{ ui('editor.kicker', '소보루 후기 에디터 모집') }}</p>
+    <h1>{{ ui('editor.h1', '내돈내산 후기 써 주실 분 모집해요') }}</h1>
+    <p>{{ ui('editor.sub', '이미 쓰고 있는 제품의 솔직한 후기를 써 주세요. 협찬이 아니라서 아쉬운 점도 그대로 쓰면 돼요.') }}</p>
+    <div class="er-pay"><b>{{ ui('editor.pay', '후기 1건 1만 원') }}</b><span>{{ ui('editor.pay_sub', '글이 올라가고 영업일 2일 안에 입금해요') }}</span></div>
+    <a class="cm-btn" href="#apply">{{ ui('editor.go', '신청하기') }}</a>
+  </section>
+
+  <section class="er-sec" aria-labelledby="er-seat-h">
+    <h2 id="er-seat-h">{{ ui('editor.seat_title', '모집 중인 제품') }}</h2>
+    <p class="er-note">{{ ui('editor.seat_sub', '제품마다 선착순이에요. 자리가 다 차면 마감돼요.') }}</p>
+    <ul class="er-seats">{% for name, cap, left in rows %}<li class="{{ 'off' if not left }}"><b>{{ name }}</b><span>{% if left %}{{ ui('editor.left', '{n}자리 남음', n=left) }}{% else %}{{ ui('editor.full', '마감') }}{% endif %}</span><i style="width:{{ (100 * (cap - left) / cap)|round|int if cap else 100 }}%"></i></li>{% endfor %}</ul>
+  </section>
+
+  <section class="er-sec er-two">
+    <div><h2>{{ ui('editor.who_title', '이런 분을 찾아요') }}</h2>
+      <ul class="sb-check"><li>{{ ui('editor.who1', '모집 중인 제품을 지금 쓰고 있어요') }}</li><li>{{ ui('editor.who2', '영수증이나 주문 내역 화면이 있어요') }}</li><li>{{ ui('editor.who3', '선물 받은 게 아니라 직접 돈 내고 샀어요') }}</li></ul></div>
+    <div><h2>{{ ui('editor.do_title', '이렇게 써 주세요') }}</h2>
+      <ul class="sb-check"><li>{{ ui('editor.do1', '직접 찍은 사진 2장 이상') }}</li><li>{{ ui('editor.do2', '좋았던 점과 아쉬운 점 하나씩은 꼭') }}</li><li>{{ ui('editor.do3', '영수증 첨부 (운영자만 봐요)') }}</li><li>{{ ui('editor.do4', '한 분이 최대 2건까지') }}</li></ul></div>
+  </section>
+
+  <section class="er-sec" aria-labelledby="er-step-h">
+    <h2 id="er-step-h">{{ ui('editor.step_title', '진행 순서') }}</h2>
+    <ol class="er-steps"><li><b>1</b><span>{{ ui('editor.step1', '신청') }}</span><small>{{ ui('editor.step1_sub', '아래 신청서를 보내요') }}</small></li><li><b>2</b><span>{{ ui('editor.step2', '후기 쓰기') }}</span><small>{{ ui('editor.step2_sub', '선정 문자를 받으면 후기를 올려요') }}</small></li><li><b>3</b><span>{{ ui('editor.step3', '원고료 입금') }}</span><small>{{ ui('editor.step3_sub', '확인 뒤 영업일 2일 안에') }}</small></li></ol>
+    <p class="er-note">{{ ui('editor.disclose', '에디터 후기에는 ‘소보루 에디터 · 원고료를 받았어요’ 표시가 붙어요. 좋은 평가를 조건으로 원고료를 주지 않아요.') }}</p>
+  </section>
+
+  <section class="er-sec er-apply" id="apply" aria-labelledby="er-apply-h">
+    <h2 id="er-apply-h">{{ ui('editor.apply_title', '에디터 신청서') }}</h2>
+    <form class="cm-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <div class="cm-two">
+        <div class="cm-f"><label class="cm-l" for="e-name">{{ ui('editor.f_name', '호칭') }}</label><input id="e-name" name="name" maxlength="20" required value="{{ f.get('name', g.user['nickname'] if g.user else '') }}" placeholder="{{ ui('editor.f_name_ph', '불러 드릴 이름') }}"></div>
+        <div class="cm-f"><label class="cm-l" for="e-phone">{{ ui('editor.f_phone', '휴대폰') }}</label><input id="e-phone" name="phone" inputmode="tel" maxlength="13" required value="{{ f.get('phone', '') }}" placeholder="010-0000-0000"></div>
+      </div>
+      <div class="cm-f"><span class="cm-l">{{ ui('editor.f_product', '쓰고 있는 제품 (2개까지)') }}</span>
+        <div class="cm-cats">{% for name, cap, left in rows %}<label><input type="checkbox" name="product" value="{{ name }}"{% if not left %} disabled{% endif %}{% if name in picked %} checked{% endif %}><span>{{ name }}{% if not left %} · {{ ui('editor.full', '마감') }}{% endif %}</span></label>{% endfor %}</div>
+        <input name="other" maxlength="40" value="{{ f.get('other', '') }}" placeholder="{{ ui('editor.f_other', '목록에 없는 제품이면 적어 주세요 (선택)') }}"></div>
+      <div class="cm-f"><span class="cm-l">{{ ui('editor.f_receipt', '영수증이나 주문 내역이 있나요?') }}</span>
+        <div class="cm-seg"><label><input type="radio" name="receipt" value="1" required{% if f.get('receipt') == '1' %} checked{% endif %}><span>{{ ui('editor.r_yes', '있어요') }}</span></label><label><input type="radio" name="receipt" value="0"{% if f.get('receipt') == '0' %} checked{% endif %}><span>{{ ui('editor.r_no', '없어요') }}</span></label></div></div>
+      <label class="cm-agree"><input type="checkbox" name="agree" required><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('editor.agree', '호칭·휴대폰 번호·제품을 에디터 선정 연락에만 쓰는 데 동의해요. 선정되지 않으면 30일 안에 지워요.') }} <a href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></span></label>
+      <button class="cm-submit" type="submit">{{ ui('editor.submit', '신청 보내기') }}</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

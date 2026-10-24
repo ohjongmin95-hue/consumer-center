@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{# 골라주세요 (품앗히 골라주세요처럼): A vs B 고민에 다 같이 골라 줌. soboru_cm.py vs_home() #}
+{% from 'soboru_cm_macros.html' import vs_card, pager with context %}
+{% block title %}{{ ui('vs.title', '골라주세요') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('vs.meta', '살까 말까, A냐 B냐. 소비 고민을 올리면 소보루 이웃들이 골라 줘요.') }}{% endblock %}
+{% block content %}
+{% set qs = {'cat': cat or None, 'state': state or None} %}
+<main class="sb-wrap cm cx">
+  <header class="cm-head">
+    <div>
+      <h1><span class="bread h" aria-hidden="true">🥐</span>{{ ui('vs.title', '골라주세요') }}</h1>
+      <p>{{ ui('vs.intro', '고민은 30초, 결정은 다 같이. 누구나 골라 줄 수 있고, 써 본 사람이 고른 표는 따로 보여 줘요.') }}</p>
+    </div>
+    <a class="cm-btn" href="{{ url_for('vs_new') }}">{{ ui('vs.new', '고민 올리기') }}</a>
+  </header>
+  <p class="cx-points">{{ ui('vs.points', '회원이 골라 주면 5P (하루 3번), 고민을 올리고 결말을 남기면 50P를 드려요.') }} <a href="{{ url_for('my_points') }}">{{ ui('cx.my_points', '내 포인트') }} ›</a></p>
+  <nav class="cm-rcs" aria-label="{{ ui('vs.cat_aria', '분야') }}">
+    <a href="{{ url_for('vs_home', state=state or None) }}"{% if not cat %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+    {% for name, emo in VS_CATS %}<a href="{{ url_for('vs_home', cat=name, state=state or None) }}"{% if cat == name %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
+  </nav>
+  <div class="cm-bar">
+    <p><b>{{ total }}</b>{{ ui('vs.count_tail', '개의 고민') }}</p>
+    <div class="cm-sort" role="group" aria-label="{{ ui('vs.state_aria', '진행 상태') }}">
+      <a href="{{ url_for('vs_home', cat=cat or None) }}"{% if not state %} class="on"{% endif %}>{{ ui('board.all', '전체') }}</a>
+      <a href="{{ url_for('vs_home', cat=cat or None, state='open') }}"{% if state == 'open' %} class="on"{% endif %}>{{ ui('vs.s_open', '고르는 중') }}</a>
+      <a href="{{ url_for('vs_home', cat=cat or None, state='done') }}"{% if state == 'done' %} class="on"{% endif %}>{{ ui('vs.s_done', '결말 나옴') }}</a>
+    </div>
+  </div>
+  <div class="vs-grid">
+    {% for p in rows %}{{ vs_card(p, request.full_path.rstrip('?')) }}
+    {% else %}<div class="cm-empty"><p>{{ ui('vs.empty', '아직 올라온 고민이 없어요. 첫 고민을 올려 보세요.') }}</p><a class="cm-btn" href="{{ url_for('vs_new') }}">{{ ui('vs.new', '고민 올리기') }}</a></div>{% endfor %}
+  </div>
+  {{ pager('vs_home', page, pages, qs) }}
+</main>
+{% endblock %}

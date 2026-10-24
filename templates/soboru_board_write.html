@@ -2,7 +2,14 @@
 {% set f = request.form %}
 {% set cur = f.get('kind') or kind or request.args.get('type') or 'review' %}
 {% set cur = cur if cur in POST_KIND_NAMES else 'review' %}
-{% set pick_emoji = {'review': '⭐', 'tip': '💡', 'question': '🙋', 'post': '💬'} %}
+{# 소보루: 고르는 건 내돈내산 후기와 수다 두 가지. 꿀팁·질문은 수다의 말머리(정보·질문)로 (soboru_cm.py) #}
+{% set head_now = f.get('head') or request.args.get('head') or {'question': '질문', 'tip': '정보'}.get(cur, '') %}
+{% set head_now = head_now if head_now in SUDA_HEADS else '' %}
+{% set cur = 'post' if cur in ('tip', 'question') else cur %}
+{% set rv_t = f.get('rv_type') or request.args.get('t') or ('place' if (campaign and campaign['topic'] == '배달음식') or request.args.get('rc') == '배달음식' else 'product') %}{% set rv_t = rv_t if rv_t in RV_CATS else 'product' %}
+{% set pick_label2 = {'review': ui('cm.k_review', '내돈내산 후기'), 'post': ui('cm.k_suda', '수다')} %}
+{% set pick_desc2 = {'review': ui('cm.k_review_sub', '직접 돈 내고 산 것, 다녀온 곳'), 'post': ui('cm.k_suda_sub', '질문·정보·잡담 무엇이든')} %}
+{% set pick_emoji = {'review': '🧾', 'post': '💬'} %}
 {% set rate_words = ['', ui_text('cm.rate1', '별로예요'), ui_text('cm.rate2', '아쉬워요'), ui_text('cm.rate3', '보통이에요'), ui_text('cm.rate4', '좋아요'), ui_text('cm.rate5', '최고예요')] %}
 {% from 'community_macros.html' import reward_box %}
 <main class="sb-wrap cm cm-write">
@@ -22,15 +29,22 @@
     {% if campaign %}<input type="hidden" name="campaign" value="{{ campaign['slug'] }}">{% endif %}
     <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
     <fieldset class="cm-kinds"><legend class="sr-only">{{ ui('cm.tabs_aria', '글 종류') }}</legend>
-      {% for k, name, desc in POST_KINDS %}<label><input type="radio" name="kind" value="{{ k }}"{% if cur == k %} checked{% endif %}><span><i aria-hidden="true">{{ pick_emoji[k] }}</i><b>{{ name }}</b><small>{{ desc }}</small></span></label>{% endfor %}
+      {% for k in ('review', 'post') %}<label><input type="radio" name="kind" value="{{ k }}"{% if cur == k %} checked{% endif %}><span><b>{{ pick_label2[k] }}</b><small>{{ pick_desc2[k] }}</small></span></label>{% endfor %}
     </fieldset>
 
     {% if first_review %}<p class="cm-first" data-for="review"><span aria-hidden="true">⭐</span><span><b>{{ ui('cm.first_title', '첫 리뷰를 남기면 소보루 픽 순위가 생겨요') }}</b>{{ ui('cm.first_sub', '별점과 한 줄 평만 있어도 충분해요. 써 본 그대로 솔직하게 알려 주세요.') }}</span></p>{% endif %}
     {% set rc_now = f.get('review_cat', (campaign['topic'] if campaign and campaign['topic'] in REVIEW_CATS else request.args.get('rc', ''))) %}
+    {% if rc_now in REVIEW_CATS %}<input type="hidden" name="review_cat" value="{{ rc_now }}">{% endif %}
     <div class="cm-f" data-for="review">
-      <span class="cm-l">{{ ui('cm.f_rc', '어떤 리뷰인가요?') }} <small>{{ ui('cm.optional', '선택') }}</small></span>
-      <div class="cm-cats">{% for c in REVIEW_CATS %}<label><input type="radio" name="review_cat" value="{{ c }}"{% if rc_now == c %} checked{% endif %}><span><i aria-hidden="true">{{ REVIEW_CAT_EMOJI[c] }}</i>{{ c }}</span></label>{% endfor %}</div>
+      <span class="cm-l">{{ ui('cm.f_rvtype', '무엇의 후기인가요?') }}</span>
+      <div class="cm-seg">{% for k, name in RV_TYPES %}<label><input type="radio" name="rv_type" value="{{ k }}"{% if rv_t == k %} checked{% endif %}><span>{{ ui('cm.rv_product', '산 물건 (상품)') if k == 'product' else ui('cm.rv_place', '다녀온 곳 (장소)') }}</span></label>{% endfor %}</div>
     </div>
+    {% for t, cats in RV_CATS.items() %}
+    <div class="cm-f" data-for="review" data-rvt="{{ t }}">
+      <span class="cm-l">{{ ui('cm.f_rvcat', '분류') }}</span>
+      <div class="cm-cats">{% for name, emo in cats %}<label><input type="radio" name="rv_cat" value="{{ name }}"{% if rv_t == t and f.get('rv_cat') == name %} checked{% endif %}{% if rv_t != t %} disabled{% endif %}><span>{{ name }}</span></label>{% endfor %}</div>
+    </div>
+    {% endfor %}
     <div class="cm-f" data-for="review">
       <label class="cm-l" for="w-target" data-food="{{ ui('cm.f_target_food', '업체명 (어느 가게에서 시켰나요?)') }}" data-plain="{{ ui('cm.f_target', '어떤 회사·제품인가요?') }}">{{ ui('cm.f_target_food', '업체명 (어느 가게에서 시켰나요?)') if campaign or rc_now == '배달음식' else ui('cm.f_target', '어떤 회사·제품인가요?') }}</label>
       <input id="w-target" name="target" maxlength="40" placeholder="{{ ui('cm.f_target_food_ph', '예: 소보루치킨 역삼점') if campaign or rc_now == '배달음식' else ui('cm.f_target_ph', '예: 오소보쇼핑, 무선 이어폰 A') }}" data-food="{{ ui('cm.f_target_food_ph', '예: 소보루치킨 역삼점') }}" data-plain="{{ ui('cm.f_target_ph', '예: 오소보쇼핑, 무선 이어폰 A') }}" value="{{ f.get('target', request.args.get('target', ''))[:40] }}">
@@ -40,6 +54,10 @@
       <label class="cm-l" for="w-menu">{{ ui('cm.f_menu', '주문 메뉴') }}</label>
       <input id="w-menu" name="menu" maxlength="40" placeholder="{{ ui('cm.f_menu_ph', '예: 후라이드 반 양념 반, 치즈볼') }}" value="{{ f.get('menu', '')[:40] }}">
     </div>
+    <div class="cm-two" data-for="review">
+      <div class="cm-f"><label class="cm-l" for="w-price">{{ ui('cm.f_price', '얼마 냈나요?') }} <small>{{ ui('cm.optional', '선택') }}</small></label><input id="w-price" name="price" inputmode="numeric" maxlength="12" value="{{ f.get('price', '') }}" placeholder="{{ ui('cm.f_price_ph', '예: 32,000') }}"></div>
+      <div class="cm-f"><label class="cm-l" for="w-bought" data-product="{{ ui('cm.f_bought', '산 날') }}" data-place="{{ ui('cm.f_visit', '다녀온 날') }}">{{ ui('cm.f_visit', '다녀온 날') if rv_t == 'place' else ui('cm.f_bought', '산 날') }} <small>{{ ui('cm.optional', '선택') }}</small></label><input id="w-bought" type="date" name="bought" value="{{ f.get('bought', '') }}"></div>
+    </div>
     <div class="cm-f" data-for="review">
       <span class="cm-l" id="w-rate-l">{{ ui('cm.f_rating', '별점을 매겨 주세요') }}</span>
       <div class="cm-rate-row">
@@ -48,12 +66,16 @@
       </div>
     </div>
     <div class="cm-f" data-for="review">
+      <span class="cm-l" data-product="{{ ui('cm.f_again', '또 살 건가요?') }}" data-place="{{ ui('cm.f_again_place', '또 갈 건가요?') }}">{{ ui('cm.f_again_place', '또 갈 건가요?') if rv_t == 'place' else ui('cm.f_again', '또 살 건가요?') }}</span>
+      <div class="cm-seg"><label><input type="radio" name="again" value="1"{% if f.get('again') == '1' %} checked{% endif %}><span>{{ ui('cm.again_yes', '네, 또 할래요') }}</span></label><label><input type="radio" name="again" value="0"{% if f.get('again') == '0' %} checked{% endif %}><span>{{ ui('cm.again_no', '아니요') }}</span></label></div>
+    </div>
+    <div class="cm-f" data-for="review">
       <span class="cm-l">{{ ui('cm.f_rec', '다른 분께 추천하나요?') }}</span>
       <div class="cm-seg"><label><input type="radio" name="recommend" value="1"{% if f.get('recommend') == '1' %} checked{% endif %}><span>👍 {{ ui('cm.rec_yes', '추천해요') }}</span></label><label><input type="radio" name="recommend" value="0"{% if f.get('recommend') == '0' %} checked{% endif %}><span>{{ ui('cm.rec_no', '추천하지 않아요') }}</span></label></div>
     </div>
-    <div class="cm-f" data-for="post">
-      <span class="cm-l">{{ ui('board.cat_aria', '분류') }}</span>
-      <div class="cm-cats">{% for c in story_categories() %}<label><input type="radio" name="category" value="{{ c }}"{% if f.get('category', story_categories()[0]) == c %} checked{% endif %}><span>{{ c }}</span></label>{% endfor %}</div>
+    <div class="cm-f" data-for="post tip question">
+      <span class="cm-l">{{ ui('cm.f_head', '말머리') }}</span>
+      <div class="cm-cats">{% for h in SUDA_HEADS %}<label><input type="radio" name="head" value="{{ h }}"{% if (head_now or '잡담') == h %} checked{% endif %}><span>{{ h }}</span></label>{% endfor %}</div>
     </div>
 
     {% if g.user %}
@@ -68,7 +90,7 @@
 
     <div class="cm-f">
       <label class="cm-l" for="w-title" data-l-review="{{ ui('cm.l_title_review', '한 줄 평') }}" data-l-tip="{{ ui('cm.l_title_tip', '제목') }}" data-l-question="{{ ui('cm.l_title_q', '무엇이 궁금한가요?') }}" data-l-post="{{ ui('board.f_title', '제목') }}">{{ ui('board.f_title', '제목') }}</label>
-      <input id="w-title" name="title" maxlength="100" required value="{{ f.get('title','') }}" placeholder="{{ ui('board.f_title_ph', '어떤 일이 있었는지 한 줄로') }}"
+      <input id="w-title" name="title" maxlength="100" required value="{{ f.get('title', request.args.get('topic', '')[:100]) }}" placeholder="{{ ui('board.f_title_ph', '어떤 일이 있었는지 한 줄로') }}"
         data-p-review="{{ ui('cm.p_title_review', '예: 배송은 빨랐는데 포장이 아쉬웠어요') }}" data-p-tip="{{ ui('cm.p_title_tip', '예: 택배 분실 보상, 이렇게 받았어요') }}" data-p-question="{{ ui('cm.p_title_q', '예: 헬스장 중도 해지하면 위약금이 얼마인가요?') }}" data-p-post="{{ ui('board.f_title_ph', '어떤 일이 있었는지 한 줄로') }}">
     </div>
     <div class="cm-f" data-for="tip">
@@ -90,6 +112,11 @@
       <label class="cm-photo" for="w-photo"><input id="w-photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp" data-photo><img alt="" hidden data-photo-preview><span data-photo-label><b>＋</b>{{ ui('cm.f_photo_add', '사진 한 장 올리기') }}</span></label>
       <p class="cm-hint">{{ ui('cm.f_photo_hint', 'JPG·PNG·WEBP 한 장, 8MB까지예요. 사진 속 위치 정보는 지우고 올려요. 영수증·주소·얼굴이 보이지 않게 찍어 주세요.') }}</p>
     </div>
+    <div class="cm-f cm-receipt" data-for="review">
+      <span class="cm-l">{{ ui('cm.f_receipt', '영수증·주문 내역') }} <small>{{ ui('cm.f_receipt_tag', '올리면 영수증 인증 + 200P') }}</small></span>
+      <label class="cm-photo" for="w-receipt"><input id="w-receipt" type="file" name="receipt" accept="image/jpeg,image/png,image/webp"><span><b>＋</b>{{ ui('cm.f_receipt_add', '영수증이나 주문 내역 캡처 올리기') }}</span></label>
+      <p class="cm-hint">{{ ui('cm.f_receipt_hint', '운영자만 보고 공개되지 않아요. 확인이 끝나면 후기에 ‘영수증 인증’ 표시가 붙어요. 카드 번호는 가려서 올려 주세요.') }}</p>
+    </div>
     {% if admin_active() %}
     <label class="cm-agree cm-editor-pick"><input type="checkbox" name="editor" value="1"{% if f.get('editor') == '1' %} checked{% endif %}><span><b>{{ ui('cm.editor_badge', '소보루 에디터') }}</b> {{ ui('cm.editor_pick', '글로 올려요. 소보루 에디터 표시가 붙고, 소비자 별점·순위에는 들어가지 않아요. (관리자에게만 보여요)') }}</span></label>
     {% endif %}
@@ -106,19 +133,24 @@
     var form = document.querySelector('[data-cm-form]'); if (!form) return;
     function apply() {
       var k = (form.querySelector('input[name=kind]:checked') || {}).value || 'review';
+      var head = (form.querySelector('input[name=head]:checked') || {}).value;
+      if (k === 'post') k = {'질문': 'question', '정보': 'tip'}[head] || 'post';
+      var t = (form.querySelector('input[name=rv_type]:checked') || {}).value || 'product';
+      form.querySelectorAll('[data-rvt]').forEach(function (el) { var on = el.getAttribute('data-rvt') === t; el.hidden = !on || k !== 'review'; el.querySelectorAll('input').forEach(function (i) { i.disabled = !on; }); });
+      form.querySelectorAll('[data-product]').forEach(function (el) { var small = el.querySelector('small'); el.textContent = el.getAttribute('data-' + t) + ' '; if (small) el.appendChild(small); });
       form.setAttribute('data-kind', k);
-      form.querySelectorAll('[data-for]').forEach(function (el) { el.hidden = el.getAttribute('data-for').split(' ').indexOf(k) < 0; });
+      form.querySelectorAll('[data-for]').forEach(function (el) { if (!el.hasAttribute('data-rvt')) el.hidden = el.getAttribute('data-for').split(' ').indexOf(k) < 0; });
       form.querySelectorAll('[data-l-' + k + ']').forEach(function (el) { el.textContent = el.getAttribute('data-l-' + k); });
       form.querySelectorAll('[data-p-' + k + ']').forEach(function (el) { el.placeholder = el.getAttribute('data-p-' + k); });
       form.querySelectorAll('[data-s-' + k + ']').forEach(function (el) { el.textContent = el.getAttribute('data-s-' + k); });
       var body = form.querySelector('#w-body'); body.required = k !== 'review'; body.maxLength = k === 'tip' ? 10000 : 5000;
       form.querySelector('#w-target').required = k === 'review';
       // 배달음식이거나 리뷰 주제로 쓰면 '업체명·주문 메뉴'
-      var food = form.hasAttribute('data-campaign') || ((form.querySelector('input[name=review_cat]:checked') || {}).value === '배달음식');
+      var food = form.hasAttribute('data-campaign') || ((form.querySelector('input[name=rv_cat]:checked') || {}).value === '맛집·카페');
       form.querySelector('[data-menu]').hidden = !(k === 'review' && food);
       form.querySelectorAll('label[for=w-target], #w-target').forEach(function (el) { var t = el.getAttribute(food ? 'data-food' : 'data-plain'); if (el.tagName === 'LABEL') el.textContent = t; else el.placeholder = t; });
     }
-    form.querySelectorAll('input[name=kind], input[name=review_cat]').forEach(function (r) { r.addEventListener('change', apply); });
+    form.querySelectorAll('input[name=kind], input[name=head], input[name=rv_type], input[name=rv_cat]').forEach(function (r) { r.addEventListener('change', apply); });
     // 사진 미리 보기
     var photo = form.querySelector('[data-photo]'), pv = form.querySelector('[data-photo-preview]'), pl = form.querySelector('[data-photo-label]');
     photo.addEventListener('change', function () {

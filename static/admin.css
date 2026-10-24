@@ -404,7 +404,7 @@ body.console:has(.sl-page) .cs-flash{position:fixed;z-index:5;top:20px;right:20p
 body.console:has(.sl-page) .cs-flash .alert{margin:0;border:0;border-radius:14px;background:#fff0ee;box-shadow:none;color:#d63b2b;font-size:14px;font-weight:600}
 body.console main.sl-page{max-width:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100vh;background:#fff}
 .sl-page>.sl-box{align-self:center;justify-self:center;padding:64px 24px}
-@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2) format('woff2');font-display:swap;unicode-range:U+200D,U+270D,U+FE0F,U+1F3E2,U+1F4AC,U+1F4CB,U+1F4E3,U+1F4F0,U+1F50D}
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2?v=2) format('woff2');font-display:swap;unicode-range:U+200D,U+270D,U+FE0F,U+1F3E2,U+1F4AC,U+1F4CB,U+1F4E3,U+1F4F0,U+1F50D}
 .sl-hero{position:relative;overflow:hidden;display:flex;flex-direction:column;padding:56px 56px 56px;background:#f2f4f6;color:var(--ad-ink)}
 .sl-hero-kicker{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;margin:0;font-size:14px;font-weight:700;letter-spacing:.04em;color:var(--ad-sub)}
 .sl-hero-kicker::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ad-orange)}
