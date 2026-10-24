@@ -35,7 +35,7 @@
       </nav>
       {# 분류 아이콘: 전체 탭이면 물건·동네 두 줄, 탭을 고르면 그 줄만. 칸은 폭에 맞게 고르게 나눔 #}
       {% for k, tname in RV_TYPES if not t or t == k %}
-      <div class="pf-cat-row">
+      <div class="pf-cat-row{{ ' two' if not t }}">
         {% if not t %}<p class="pf-cat-l">{{ ui('feed.row_' ~ k, {'product': '써 본 물건', 'place': '다녀온 동네 가게'}[k]) }}</p>{% endif %}
         <nav class="pf-cats" aria-label="{{ ui('feed.cat_aria', '분류') }}">
         {% for name, emo in RV_CATS[k] if not (name == '기타' and not t) %}<a href="{{ url_for('feed', **dict(qs, t=k, c=None if (c == name and t == k) else name)) }}"{% if c == name and t == k %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">{{ emo }}</span>{{ name }}</a>{% endfor %}
