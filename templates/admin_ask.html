@@ -60,11 +60,11 @@
     {% if tests %}
     <p class="cs-hint">{{ test_batch[:16]|replace('T', ' ') }}에 돌린 결과 {{ tests|length }}개{% if tests|length < test_total %} (아직 도는 중){% endif %}. 칸마다 답에 들어간 부분이에요.</p>
     <div class="tablewrap"><table class="ak-table">
-      <thead><tr><th>질문</th><th>유형</th>{% for p in parts_all %}<th class="ak-p">{{ p }}</th>{% endfor %}<th>출처</th><th>결과</th><th>시간</th></tr></thead>
+      <thead><tr><th>질문</th><th>유형</th>{% for p in parts_all %}<th class="ak-p">{{ p }}</th>{% endfor %}<th>출처</th><th>근거 점검</th><th>결과</th><th>시간</th></tr></thead>
       <tbody>{% for r in tests %}{% set ps = loads(r.parts) %}
         <tr><td><a href="{{ url_for('admin_ask_log', log_id=r.id) }}">{{ r.question }}</a></td><td>{{ r.dtype }}</td>
           {% for p in parts_all %}<td class="ak-p">{% if p in ps %}<span class="ak-yes" title="{{ p }}">●</span>{% else %}<span class="ak-no">·</span>{% endif %}</td>{% endfor %}
-          <td>{{ loads(r.refs)|length }}</td><td><span class="ak-st s-{{ r.status }}">{{ ST.get(r.status, r.status) }}</span>{% if r.flags not in ('', '[]') %}<span class="ak-st s-flag" title="근거 확인으로 뺀 문장">확인 {{ loads(r.flags)|length }}</span>{% endif %}</td><td>{{ '%.1f'|format(r.latency_ms / 1000) }}초</td></tr>
+          <td>{{ loads(r.refs)|length }}</td><td>{% if r.status in ('ok', 'ask_more') %}{% set gr = grade(r.question, loads(r.refs)) %}<span class="ak-st {{ 's-ok' if gr[0] else 's-error' }}">{{ gr[1] }}</span>{% else %}-{% endif %}</td><td><span class="ak-st s-{{ r.status }}">{{ ST.get(r.status, r.status) }}</span>{% if r.flags not in ('', '[]') %}<span class="ak-st s-flag" title="근거 확인으로 뺀 문장">확인 {{ loads(r.flags)|length }}</span>{% endif %}</td><td>{{ '%.1f'|format(r.latency_ms / 1000) }}초</td></tr>
       {% endfor %}</tbody>
     </table></div>
     {% else %}<p class="ak-empty">아직 돌린 적이 없어요. 배달 음식 이물질, 구독 중도 해지, 헬스장 6개월권 환불, 2주째 안 오는 택배 같은 질문 {{ test_total }}개를 차례로 물어봐요.</p>{% endif %}

@@ -4054,6 +4054,20 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('010-1111-2222', json.dumps(chat, ensure_ascii=False))
         self.assertEqual(html2.count('class="sbv-a sbv-old"'), 3)
 
+    def test_ask_v2_sale_channel_scope(self):
+        # 유튜브 구독(온라인)에 방문판매법 방문판매·전화권유·다단계 조항(제5~29조)을 쓰지 않음. 계속거래(제30~34조)는 남김
+        import lawrag
+        self.assertEqual(lawrag.channel_of('유튜브 프리미엄 구독 해지 위약금'), 'online')
+        self.assertEqual(lawrag.channel_of('집으로 찾아온 판매원에게 산 학습지'), 'door')
+        self.assertEqual(lawrag.channel_of('헬스장 6개월권 해지'), '')
+        self.assertTrue(lawrag.out_of_scope('online', 'door', '제7조')); self.assertTrue(lawrag.out_of_scope('online', 'door', '제8조'))
+        self.assertFalse(lawrag.out_of_scope('online', 'door', '제32조')); self.assertFalse(lawrag.out_of_scope('door', 'door', '제8조'))
+        self.assertFalse(lawrag.out_of_scope('', 'door', '제7조'))
+        q = '유튜브 프리미엄 구독을 중도 해지하려는데 위약금이 있나요?'
+        self.assertEqual(lawrag.grade(q, ['door:제7조', 'ecom:제17조'])[0], False)
+        self.assertEqual(lawrag.grade(q, ['ecom:제17조']), (True, '맞음'))
+        self.assertIn('[적용 범위]', lawrag.SYSTEM)
+
     def test_ask_v2_verify_drops_invented_content(self):
         import lawrag
         cards = [{'id': 'c1', 'ref': 'ecom:제17조', 'art': '제17조', 'short': '전자상거래법', 'law': '전자상거래 등에서의 소비자보호에 관한 법률', 'title': '청약철회등',
@@ -4139,7 +4153,7 @@ class SiteTest(unittest.TestCase):
             lab = admin.post('/admin/ask/lab', data={'_csrf': self.csrf(admin, '/admin/ask/lab'), 'q': '온라인에서 산 옷 7일 지나서 환불 되나요?'}).get_data(as_text=True)
         with self.site.conn() as db:
             rows = db.execute("SELECT * FROM ask_logs WHERE kind='test'").fetchall()
-        self.assertEqual(len(rows), len(lawrag.TEST_QUESTIONS)); self.assertEqual(len(rows), 20)
+        self.assertEqual(len(rows), len(lawrag.TEST_QUESTIONS)); self.assertEqual(len(rows), 22)
         self.assertIn('배달 음식에서 바퀴벌레', dash); self.assertIn('품질 시험', dash); self.assertIn('ak-yes', dash)
         self.assertTrue(any(json.loads(r['parts']) == ['핵심 결론'] for r in rows))
         self.assertIn('예전 답', lab); self.assertIn('AI 소비자 상담', lab); self.assertIn('남은 기간 이용료', lab)
