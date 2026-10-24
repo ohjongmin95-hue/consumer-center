@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {# 사장님 소식: 업체가 직접 올리는 할인·새 상품·오픈 소식. 후기·수다와 섞이지 않게 따로. soboru_cm.py owners() #}
 {% from 'soboru_cm_macros.html' import pager with context %}
+{% from 'soboru_jobs_macros.html' import region_js with context %}
 {% block title %}{{ ui('owners.title', '사장님 소식') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui('owners.meta', '가게와 브랜드가 직접 올리는 할인·새 상품·오픈 소식. 소비자 후기와 섞이지 않게 따로 모았어요.') }}{% endblock %}
 {% block content %}
@@ -13,20 +14,27 @@
     <a class="cm-btn" href="{{ url_for('owners_new') }}">{{ ui('owners.write', '소식 올리기') }}</a>
   </header>
   <p class="cx-points">{{ ui('owners.rule', '모든 글은 업체가 올린 홍보예요. 하루에 한 번 올릴 수 있고, 후기처럼 꾸민 글이나 과장된 글은 운영자가 내려요.') }}</p>
+  <form class="ow-region" method="get" action="{{ url_for('owners') }}" data-autosubmit>
+    <span class="ow-region-k"><i class="tf" aria-hidden="true">📍</i>{{ ui('owners.region', '우리 동네') }}</span>
+    <label class="jb-sel"><span class="sr-only">{{ ui('jobs.sido', '시·도') }}</span><select name="sido" data-sido="ow-sgg" data-go><option value="">{{ ui('owners.all_kr', '전국') }}</option>{% for s in JOB_REGIONS %}<option{% if sido == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+    <label class="jb-sel"><span class="sr-only">{{ ui('jobs.sgg', '시·군·구') }}</span><select name="sgg" id="ow-sgg" data-cur="{{ sgg }}" data-go><option value="">{{ ui('jobs.sgg_all', '시·군·구 전체') }}</option>{% for x in JOB_REGIONS.get(sido, []) %}<option{% if sgg == x %} selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
+    {% if biz %}<input type="hidden" name="b" value="{{ biz }}">{% endif %}{% if head %}<input type="hidden" name="h" value="{{ head }}">{% endif %}
+    <noscript><button class="jb-go" type="submit">{{ ui('jobs.go', '찾기') }}</button></noscript>
+  </form>
   <nav class="cm-rcs ow-bizs" aria-label="{{ ui('owners.biz_aria', '업종') }}">
-    <a href="{{ url_for('owners', h=head or None) }}"{% if not biz %} class="on" aria-current="true"{% endif %}>{{ ui('owners.all_biz', '모든 업종') }}</a>
-    {% for b, (emo, n) in OWNER_BIZ.items() %}<a href="{{ url_for('owners', b=b, h=head or None) }}"{% if biz == b %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">{{ emo }}</span>{{ b }}</a>{% endfor %}
+    <a href="{{ url_for('owners', h=head or None, sido=sido or None, sgg=sgg or None) }}"{% if not biz %} class="on" aria-current="true"{% endif %}>{{ ui('owners.all_biz', '모든 업종') }}</a>
+    {% for b, (emo, n) in OWNER_BIZ.items() %}<a href="{{ url_for('owners', b=b, h=head or None, sido=sido or None, sgg=sgg or None) }}"{% if biz == b %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">{{ emo }}</span>{{ b }}</a>{% endfor %}
   </nav>
   <nav class="cm-rcs ow-heads" aria-label="{{ ui('owners.head_aria', '소식 종류') }}">
-    <a href="{{ url_for('owners', b=biz or None) }}"{% if not head %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
-    {% for h in OWNER_HEADS %}<a href="{{ url_for('owners', h=h, b=biz or None) }}"{% if head == h %} class="on" aria-current="true"{% endif %}>{{ h }}</a>{% endfor %}
+    <a href="{{ url_for('owners', b=biz or None, sido=sido or None, sgg=sgg or None) }}"{% if not head %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+    {% for h in OWNER_HEADS %}<a href="{{ url_for('owners', h=h, b=biz or None, sido=sido or None, sgg=sgg or None) }}"{% if head == h %} class="on" aria-current="true"{% endif %}>{{ h }}</a>{% endfor %}
   </nav>
   <div class="ow-list">
     {% for r in rows %}
     {% set bz = r['biz'] if r['biz'] in OWNER_BIZ else '기타' %}{% set emo, n = OWNER_BIZ[bz] %}
     <article class="ow-card z{{ n }}">
       <span class="ow-awn" aria-hidden="true"></span>
-      <p class="ow-top"><span class="ow-sign tf" aria-hidden="true">{{ emo }}</span><span class="ow-name"><b class="ow-shop">{{ r['shop'] }}</b><small>{{ bz }}</small></span><span class="ow-when">{{ ago_text(r['created']) }}</span></p>
+      <p class="ow-top"><span class="ow-sign tf" aria-hidden="true">{{ emo }}</span><span class="ow-name"><b class="ow-shop">{{ r['shop'] }}</b><small>{{ bz }}<span class="ow-where"> · {{ r['sgg'] or r['sido'] or ui('owners.nationwide', '전국·온라인') }}</span></small></span><span class="ow-when">{{ ago_text(r['created']) }}</span></p>
       <p class="ow-tags"><em class="ow-ad">{{ ui('owners.ad', '홍보') }}</em><span class="ow-head">{{ r['head'] }}</span></p>
       <h2>{{ r['title'] }}</h2>
       <p class="ow-body">{{ mask_personal(r['body']) }}</p>
@@ -43,4 +51,5 @@
   </div>
   {{ pager('owners', page, pages, {'h': head or None, 'b': biz or None}) }}
 </main>
+{{ region_js() }}
 {% endblock %}

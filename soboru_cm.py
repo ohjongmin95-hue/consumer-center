@@ -67,6 +67,9 @@ def migrate(db):
         db.execute("ALTER TABLE owner_news ADD COLUMN biz TEXT NOT NULL DEFAULT ''")
     for r in db.execute("SELECT id,shop FROM owner_news WHERE biz=''").fetchall():
         db.execute('UPDATE owner_news SET biz=? WHERE id=?', (guess_biz(r['shop']), r['id']))
+    for col in ('sido', 'sgg'):   # 가게 지역 (빈칸 = 전국·온라인)
+        if col not in {r['name'] for r in db.execute('PRAGMA table_info(owner_news)')}:
+            db.execute(f"ALTER TABLE owner_news ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('DROP TABLE IF EXISTS editor_apps')  # 에디터 모집을 빼면서 신청서(휴대폰 번호)도 지움
 
 
@@ -410,20 +413,29 @@ def install(S):
 
     app.jinja_env.globals.update(is_saved=is_saved)
 
+    def region_of(a):
+        from soboru_jobs import REGIONS   # 동네일자리와 같은 시·도 / 시·군·구 목록
+        sido = a.get('sido', ''); sido = sido if sido in REGIONS else ''
+        sgg = a.get('sgg', ''); sgg = sgg if sido and sgg in REGIONS[sido] else ''
+        return sido, sgg
+
     # ---- 사장님 소식: 업체 홍보는 후기·수다와 섞이지 않게 따로 모음 (회원이 쓰고, 운영자·글쓴이가 내림) ----
     @app.route('/owners')
     def owners():
         page = max(1, request.args.get('page', 1, type=int)); head = request.args.get('h', ''); head = head if head in OWNER_HEADS else ''
         biz = request.args.get('b', ''); biz = biz if biz in OWNER_BIZ else ''
+        sido, sgg = region_of(request.args)
         where, args = ['hidden=0'], []
         if head: where.append('head=?'); args.append(head)
         if biz: where.append('biz=?'); args.append(biz)
+        if sido:   # 고른 동네 소식 + 전국·온라인 소식
+            where.append("(sido='' OR (sido=?" + (" AND sgg IN (?, ''))" if sgg else ')') + ')'); args += [sido, sgg] if sgg else [sido]
         with conn() as db:
             total = db.execute('SELECT COUNT(*) FROM owner_news WHERE ' + ' AND '.join(where), args).fetchone()[0]
             rows = db.execute('SELECT * FROM owner_news WHERE ' + ' AND '.join(where) + ' ORDER BY id DESC LIMIT ? OFFSET ?', args + [PAGE, (page - 1) * PAGE]).fetchall()
         pages = max(1, -(-total // PAGE))
         if page > pages: abort(404)
-        return render_template('soboru_owners.html', rows=rows, head=head, biz=biz, page=page, pages=pages, total=total)
+        return render_template('soboru_owners.html', rows=rows, head=head, biz=biz, sido=sido, sgg=sgg, page=page, pages=pages, total=total)
 
     @app.route('/owners/new', methods=['GET', 'POST'])
     @S.member_only
@@ -433,6 +445,7 @@ def install(S):
             if f.get('website'): abort(400)
             shop = ' '.join(f.get('shop', '').split()); title = ' '.join(f.get('title', '').split()); body = f.get('body', '').strip()
             head = f.get('head', ''); link = f.get('link', '').strip(); biz = f.get('biz', '')
+            sido, sgg = region_of(f)
             err = None
             if head not in OWNER_HEADS: err = S.ui_text('owners.e_head', '소식 종류를 골라 주세요.')
             elif biz not in OWNER_BIZ: err = S.ui_text('owners.e_biz', '업종을 골라 주세요.')
@@ -444,8 +457,8 @@ def install(S):
                 if not err and db.execute('SELECT COUNT(*) FROM owner_news WHERE user_id=? AND created>=?', (g.user['id'], datetime.date.today().isoformat())).fetchone()[0] >= 1:
                     err = S.ui_text('owners.e_daily', '사장님 소식은 하루에 한 번 올릴 수 있어요.')
                 if err: flash(err); return render_template('soboru_owners_new.html', f=f), 400
-                db.execute('INSERT INTO owner_news(user_id,nickname,shop,head,title,body,link,ip_hash,created,biz) VALUES(?,?,?,?,?,?,?,?,?,?)',
-                           (g.user['id'], g.user['nickname'], shop, head, title, body, link, S.ip_hash(), stamp(), biz))
+                db.execute('INSERT INTO owner_news(user_id,nickname,shop,head,title,body,link,ip_hash,created,biz,sido,sgg) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                           (g.user['id'], g.user['nickname'], shop, head, title, body, link, S.ip_hash(), stamp(), biz, sido, sgg))
             flash(S.ui_text('owners.sent', '소식을 올렸어요.'))
             return redirect(url_for('owners'))
         return render_template('soboru_owners_new.html', f={})

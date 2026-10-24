@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {# 사장님 소식 올리기 (회원만, 하루 한 번). soboru_cm.py owners_new() #}
 {% block title %}{{ ui('owners.write', '소식 올리기') }} | {{ ui('owners.title', '사장님 소식') }}{% endblock %}
+{% from 'soboru_jobs_macros.html' import region_js with context %}
 {% block content %}
 <main class="sb-wrap cm cm-write cx">
   <a class="cm-back" href="{{ url_for('owners') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('owners.title', '사장님 소식') }}</a>
@@ -11,6 +12,9 @@
       <div class="cm-cats">{% for h in OWNER_HEADS %}<label><input type="radio" name="head" value="{{ h }}" required{% if f.get('head') == h %} checked{% endif %}><span>{{ h }}</span></label>{% endfor %}</div></div>
     <div class="cm-f"><span class="cm-l">{{ ui('owners.f_biz', '업종') }}</span>
       <div class="cm-cats">{% for b, (emo, n) in OWNER_BIZ.items() %}<label><input type="radio" name="biz" value="{{ b }}" required{% if f.get('biz') == b %} checked{% endif %}><span><span class="tf" aria-hidden="true">{{ emo }}</span> {{ b }}</span></label>{% endfor %}</div></div>
+    <div class="cm-f"><span class="cm-l">{{ ui('owners.f_region', '가게 지역') }} <small>{{ ui('owners.f_region_s', '온라인·전국 브랜드는 비워 두세요') }}</small></span>
+      <div class="ow-region-f"><label class="jb-sel"><span class="sr-only">{{ ui('jobs.sido', '시·도') }}</span><select name="sido" data-sido="o-sgg"><option value="">{{ ui('owners.nationwide', '전국·온라인') }}</option>{% for s in JOB_REGIONS %}<option{% if f.get('sido') == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+      <label class="jb-sel"><span class="sr-only">{{ ui('jobs.sgg', '시·군·구') }}</span><select name="sgg" id="o-sgg" data-cur="{{ f.get('sgg', '') }}"><option value="">{{ ui('jobs.sgg_all', '시·군·구 전체') }}</option></select></label></div></div>
     <div class="cm-f"><label class="cm-l" for="o-shop">{{ ui('owners.f_shop', '가게·브랜드 이름') }}</label><input id="o-shop" name="shop" maxlength="30" required value="{{ f.get('shop', '') }}" placeholder="{{ ui('owners.f_shop_ph', '예: 소보루베이커리 역삼점') }}"></div>
     <div class="cm-f"><label class="cm-l" for="o-title">{{ ui('board.f_title', '제목') }}</label><input id="o-title" name="title" maxlength="60" required value="{{ f.get('title', '') }}" placeholder="{{ ui('owners.f_title_ph', '예: 이번 주말 소보루빵 1+1') }}"></div>
     <div class="cm-f"><label class="cm-l" for="o-body">{{ ui('owners.f_body', '내용') }}</label><textarea id="o-body" name="body" maxlength="1000" rows="6" required placeholder="{{ ui('owners.f_body_ph', '기간, 조건, 위치처럼 손님이 알아야 할 것을 적어 주세요.') }}">{{ f.get('body', '') }}</textarea></div>
@@ -19,4 +23,5 @@
     <button class="cm-submit" type="submit">{{ ui('owners.submit', '소식 올리기') }}</button>
   </form>
 </main>
+{{ region_js() }}
 {% endblock %}

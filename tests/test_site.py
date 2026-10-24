@@ -4521,11 +4521,13 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db: db.execute('DELETE FROM owner_news')
         bad = self.post_form(me, '/owners/new', {'head': '할인', 'biz': '빵·디저트', 'shop': '소보루빵집', 'title': '주말 1+1', 'body': '토요일 오후 3시부터 소보루빵 1+1이에요.', 'link': 'javascript:alert(1)'})
         self.assertEqual(bad.status_code, 400)
-        self.assertEqual(self.post_form(me, '/owners/new', {'head': '할인', 'biz': '빵·디저트', 'shop': '소보루빵집', 'title': '주말 1+1', 'body': '토요일 오후 3시부터 소보루빵 1+1이에요.', 'link': 'https://soboru.example/sale'}).status_code, 302)
+        self.assertEqual(self.post_form(me, '/owners/new', {'head': '할인', 'biz': '빵·디저트', 'shop': '소보루빵집', 'title': '주말 1+1', 'body': '토요일 오후 3시부터 소보루빵 1+1이에요.', 'link': 'https://soboru.example/sale', 'sido': '서울', 'sgg': '강남구'}).status_code, 302)
         self.assertEqual(self.post_form(me, '/owners/new', {'head': '오픈', 'biz': '빵·디저트', 'shop': '소보루빵집', 'title': '또 올림', 'body': '하루에 두 번째 소식이에요. 막혀야 해요.'}).status_code, 400)
         with self.site.conn() as db: self.assertEqual(db.execute('SELECT biz FROM owner_news').fetchone()[0], '빵·디저트')
         self.assertEqual(self.site.soboru_cm.guess_biz('오소보카페'), '카페'); self.assertEqual(self.site.soboru_cm.guess_biz('무명상회'), '기타')
         self.assertIn('주말 1+1', self.client.get('/owners?b=빵·디저트').get_data(as_text=True)); self.assertNotIn('주말 1+1', self.client.get('/owners?b=카페').get_data(as_text=True))
+        # 지역: 고른 동네(서울 강남구) 소식은 보이고 다른 동네(부산)에선 안 보임
+        self.assertIn('주말 1+1', self.client.get('/owners?sido=서울&sgg=강남구').get_data(as_text=True)); self.assertNotIn('주말 1+1', self.client.get('/owners?sido=부산').get_data(as_text=True))
         page = self.client.get('/owners').get_data(as_text=True)
         self.assertIn('주말 1+1', page); self.assertIn('홍보', page); self.assertIn('rel="nofollow sponsored noopener"', page)
         with self.site.conn() as db: nid = db.execute('SELECT id FROM owner_news').fetchone()[0]
