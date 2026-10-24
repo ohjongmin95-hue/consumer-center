@@ -3,7 +3,8 @@
 실행: MinjuCardNews.exe(윈도우) 더블클릭 (build.py로 만든 실행 파일), 또는 python server.py
 - 데이터: 개발할 때는 이 폴더의 data/, 실행 파일은 '문서/민주의 카드뉴스 제작 프로그램' 폴더 (실행 파일을 지우거나 새 버전으로 바꿔도 남음).
   cards.sqlite3(만든 카드뉴스), config.json(API 키·설정), secret.key(화면 보호용 비밀키).
-- 이미 켜져 있을 때 또 누르면 새로 켜지 않고 브라우저만 연다. 끌 때는 화면 위 '끄기'.
+- 브라우저가 아니라 프로그램 창(pywebview·Edge WebView2)으로 열린다. 창을 닫으면 꺼진다. 창을 못 열면 브라우저로 연다(--browser로 일부러도).
+- 처음 켤 때 바탕화면에 바로가기를 만든다. 이미 켜져 있을 때 또 누르면 창만 하나 더 연다.
 - 켜져 있는 동안 매일 아침 8시(설정에서 바꿈)가 지나면 소비자 뉴스로 초안을 만든다. 꺼져 있던 날은 다음에 켤 때 한 번 만든다.
 - 만드는 일은 cards.py. 이 파일은 화면·저장·예약만.
 """
@@ -413,18 +414,63 @@ def running():
         return s.connect_ex(('127.0.0.1', PORT)) == 0
 
 
+def app_window(url):
+    """브라우저 대신 프로그램 창으로 열기 (윈도우의 Edge WebView2). 창을 닫을 때까지 기다림. 못 열면 False."""
+    try:
+        import webview
+        webview.settings['ALLOW_DOWNLOADS'] = True  # zip 내려받기
+        webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True  # 기사·claude.ai·힉스필드 링크는 브라우저로
+        webview.create_window(NAME, url, width=1320, height=900, min_size=(980, 680))
+        webview.start()
+        return True
+    except Exception as e:
+        log(f'프로그램 창을 못 열어 브라우저로 열었어요 ({type(e).__name__})')
+        return False
+
+
+def desktop_shortcut():
+    """처음 켤 때 한 번: 바탕화면에 바로가기 (윈도우 실행 파일일 때만)"""
+    mark = DATA / 'shortcut-made'
+    if not (FROZEN and sys.platform.startswith('win')) or mark.exists(): return
+    exe = sys.executable.replace("'", "''")
+    ps = ("$d=[Environment]::GetFolderPath('Desktop');$s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d '" + NAME + ".lnk'));"
+          f"$s.TargetPath='{exe}';$s.WorkingDirectory=(Split-Path '{exe}');$s.IconLocation='{exe},0';$s.Save()")
+    try:
+        import subprocess
+        subprocess.run(['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps], timeout=20, creationflags=0x08000000)  # 창 안 띄움
+        mark.write_text(cards.stamp())
+    except Exception: pass
+
+
 def main():
     url = f'http://127.0.0.1:{PORT}'
     if sys.stdout is None: sys.stdout = sys.stderr = open(os.devnull, 'w')  # 검은 창 없는 실행 파일: 출력할 곳이 없음
     if FROZEN:  # 실행 파일 안의 Python은 컴퓨터의 인증서 목록을 못 찾을 수 있어 기사 읽기용으로 함께 넣은 목록을 씀
         import certifi
         os.environ.setdefault('SSL_CERT_FILE', certifi.where())
-    if running():  # 두 번 눌렀으면 브라우저만 다시 열기
-        webbrowser.open(url); return
+    if '--check' in sys.argv:  # 빌드 확인용: 창 엔진을 불러올 수 있는지만 보고 끝
+        import webview  # noqa: F401
+        return
+    browser = '--browser' in sys.argv
+    if running():  # 이미 켜져 있으면 새로 켜지 않고 창(또는 브라우저)만 하나 더
+        if browser or not app_window(url): webbrowser.open(url)
+        return
+    desktop_shortcut()
     threading.Thread(target=scheduler, daemon=True).start()
-    print(f'\n  {NAME}을 켰어요 → {url}\n  끄려면 화면 위 [끄기]를 누르거나 이 창을 닫으세요.\n  데이터: {DATA}\n')
-    if '--no-browser' not in sys.argv: threading.Timer(1.2, lambda: webbrowser.open(url)).start()
-    app.run(host='127.0.0.1', port=PORT, debug=False, threaded=True)
+    print(f'\n  {NAME}을 켰어요 → {url}\n  끄려면 화면 위 [끄기]를 누르거나 창을 닫으세요.\n  데이터: {DATA}\n')
+    if '--no-browser' in sys.argv: return app.run(host='127.0.0.1', port=PORT, debug=False, threaded=True)
+    from werkzeug.serving import make_server
+    srv = make_server('127.0.0.1', PORT, app, threaded=True)
+    if browser:
+        threading.Timer(1.2, lambda: webbrowser.open(url)).start(); return srv.serve_forever()
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    if app_window(url): os._exit(0)  # 프로그램 창을 닫으면 끝
+    webbrowser.open(url); srv_thread_wait()
+
+
+def srv_thread_wait():
+    """프로그램 창을 못 열어 브라우저로 열었을 때: '끄기'를 누를 때까지 켜 둠"""
+    while True: time.sleep(3600)
 
 
 if __name__ == '__main__':

@@ -1,47 +1,85 @@
 {% extends 'base.html' %}
+{% block head %}
+<style>
+/* 첫 화면 (토스처럼): 큰 인사말 · 단계별 흰 카드 · 고르는 타일 · 꽉 찬 파란 버튼 · 목록은 한 줄씩 */
+.hello{margin:6px 0 22px}.hello h1{font-size:30px}.hello p{color:#6B7684;margin:4px 0 0;font-size:16px}
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+.step{display:flex;align-items:center;gap:10px;margin:0 0 14px}.step i{font-style:normal;width:26px;height:26px;border-radius:50%;background:#E8F3FF;color:#3182F6;display:grid;place-items:center;font-size:14px}
+.step b{font-size:19px}
+.big input[type=url]{font-size:17px;padding:16px 18px}
+.toggle{display:inline-block;margin-top:10px;color:#3182F6;font-size:14px;cursor:pointer}
+.tiles{display:grid;gap:10px}
+.tile{position:relative;display:flex;gap:14px;align-items:center;padding:16px 18px;border-radius:18px;background:#F9FAFB;border:2px solid transparent;cursor:pointer;margin:0;transition:background .15s,border-color .15s}
+.tile:hover{background:#F2F4F6}.tile input{position:absolute;opacity:0;pointer-events:none}
+.tile:has(input:checked){background:#E8F3FF;border-color:#3182F6}
+.tile:has(input:disabled){opacity:.5;cursor:not-allowed}
+.tile .ico{width:44px;height:44px;border-radius:14px;background:#fff;display:grid;place-items:center;font-size:22px;flex:none;box-shadow:0 1px 4px rgba(0,27,55,.06)}
+.tile b{display:block;font-size:16px;color:#191F28}.tile small{display:block;color:#6B7684;font-size:13px;margin-top:2px}
+.tile .price{margin-left:auto;font-size:12px;font-weight:800;padding:4px 9px;border-radius:8px;background:#fff;color:#4E5968;white-space:nowrap}
+.tile .price.free{background:#E5F8EF;color:#00A661}
+.go{width:100%;padding:17px;font-size:17px;border-radius:16px;margin-top:18px}
+.status{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}.status span{font-size:13px;padding:6px 11px;border-radius:10px;background:#F2F4F6;color:#4E5968}
+.status span.on{background:#E5F8EF;color:#00A661}
+.list h2{display:flex;align-items:center;justify-content:space-between}
+.rowlink{display:flex;align-items:center;gap:14px;padding:14px 6px;border-top:1px solid #F2F4F6;text-decoration:none;color:#191F28}
+.rowlink:first-of-type{border-top:0}.rowlink:hover{background:#F9FAFB;border-radius:14px}
+.rowlink .num{width:40px;height:40px;border-radius:12px;background:#FFF3E0;color:#E8740C;display:grid;place-items:center;font-size:13px;flex:none}
+.rowlink .t{flex:1;min-width:0}.rowlink .t b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowlink .t small{display:block;color:#8B95A1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{color:#8B95A1;text-align:center;padding:30px 0}
+.empty b{display:block;font-size:40px;margin-bottom:6px}
+</style>
+{% endblock %}
 {% block content %}
 {% if waiting is defined and waiting %}
 <meta http-equiv="refresh" content="5">
-<h1>카드뉴스 만들기</h1>
-<div class="panel wait"><span class="spin" aria-hidden="true"></span><div><b>{{ waiting }}: 만드는 중이에요</b><p class="meta">기사를 읽고, 다른 기사로 사실을 맞춰 보고, Claude가 글과 그림을 만드는 데 2~4분쯤 걸려요. 다 되면 카드가 바로 열려요. 이 화면은 5초마다 새로 고쳐져요.</p></div></div>
+<div class="hello"><h1>{{ waiting }}</h1><p>조금만 기다려 주세요</p></div>
+<div class="panel wait"><span class="spin" aria-hidden="true"></span><div><b>만드는 중이에요</b><p class="meta">기사를 읽고, 다른 기사로 사실을 맞춰 보고, 글을 쓰고 있어요. 2~4분쯤 걸리고, 다 되면 카드가 바로 열려요.</p></div></div>
 {% else %}
-<h1>카드뉴스 만들기</h1>
-<p class="meta">뉴스 링크나 기사 글을 넣으면 SOBORU 인스타 카드뉴스(표지 문구 5개 + 본문 + 이미지 + 캡션)를 만들어요. 기사 사진은 쓰지 않고 이미지는 힉스필드로 새로 만들어요. 기사 문장은 옮기지 않고 사실만 가져와요. 인스타그램에는 직접 올려 주세요.</p>
-{% if not naver and not cfg.key %}<p class="meta">네이버 키가 없으면 다른 기사로 사실을 맞춰 보지 못해서, 만든 카드는 '확인 필요'로 남아요. 직접 확인하고 체크하면 돼요.</p>{% endif %}
+<div class="hello"><h1>오늘은 어떤 기사로 만들까요?</h1><p>기사를 넣으면 SOBORU 인스타 카드뉴스를 만들어 드려요</p></div>
 
-<form class="panel" method="post" data-go>
+<div class="grid">
+<form class="panel big" method="post" data-go>
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-  <h2>1. 기사</h2>
-  <label>뉴스 링크<input type="url" name="url" placeholder="https://www.example.co.kr/news/article/123"></label>
-  <details{% if not cfg.key %} open{% endif %}><summary class="meta">기사 글을 갖고 있으면 직접 붙여 넣기 (링크가 안 열릴 때도)</summary>
-    <label>기사 본문<textarea name="text" rows="7" placeholder="기사 본문을 그대로 붙여 넣어 주세요. 사실만 가져오고 문장은 새로 써요."></textarea></label>
-    <div class="row"><label>기사 제목<input type="text" name="title"></label><label>매체<input type="text" name="media" placeholder="○○일보"></label><label>보도 날짜<input type="text" name="date" placeholder="2026.10.24"></label></div>
-    <p class="meta">본문을 붙여 넣으면 위 링크는 캡션의 출처 링크로만 써요.</p>
+  <div class="step"><i>1</i><b>기사</b></div>
+  <input type="url" name="url" placeholder="뉴스 링크를 붙여 넣어 주세요" aria-label="뉴스 링크">
+  <details{% if not cfg.key %} open{% endif %}><summary class="toggle">기사 글을 직접 붙여 넣을래요</summary>
+    <label>기사 본문<textarea name="text" rows="6" placeholder="기사 본문을 그대로 붙여 넣어 주세요. 사실만 가져오고 문장은 새로 써요."></textarea></label>
+    <div class="row"><label>기사 제목<input type="text" name="title"></label><label>매체<input type="text" name="media" placeholder="예: 소보루일보"></label><label>보도 날짜<input type="text" name="date" placeholder="예: 2026.10.24"></label></div>
   </details>
 
-  <h2 style="margin-top:20px">2. 글은 누가 쓸까요?</h2>
-  <label class="check"><input type="radio" name="mode" value="paste"{% if not cfg.key %} checked{% endif %}> <span><b>claude.ai에 붙여넣기 (추가 비용 없음)</b> — 요청 글을 복사해 claude.ai 채팅(구독)에 붙여 넣고, 답을 다시 붙여 넣어요</span></label>
-  <label class="check"><input type="radio" name="mode" value="manual"> <span><b>직접 쓰기 (비용 없음)</b> — 빈 카드에 우리가 글을 써요</span></label>
-  <label class="check"><input type="radio" name="mode" value="auto"{% if cfg.key %} checked{% else %} disabled{% endif %}> <span><b>Claude 자동 (API 크레딧)</b> — 링크만 넣으면 끝까지 자동{% if not cfg.key %} · <a href="{{ url_for('settings') }}">설정</a>에서 키를 넣으면 쓸 수 있어요{% endif %}</span></label>
-  <p class="meta">이미지는 다음 화면에서 장마다 사진·일러스트를 골라 힉스필드로 만들어요: 힉스필드 사이트에서 만들어 올리기 · 힉스필드 API로 바로 만들기(크레딧)</p>
-  <div class="actions"><button class="primary">만들기</button></div>
-  <p class="meta">사실 확인: {% if naver %}네이버 뉴스 검색{% if cfg.web_search and cfg.key %} + Claude 웹 검색{% endif %}{% elif cfg.web_search and cfg.key %}Claude 웹 검색 (네이버 키를 넣으면 같이 써요){% else %}꺼짐 (네이버 키를 넣으면 켜져요){% endif %}
-    · 매일 자동: {% if cfg.auto and cfg.key %}켜짐 (아침 {{ cfg.hour }}시, 하루 {{ cfg.per_day }}개, 이 프로그램이 켜져 있을 때){% else %}꺼짐 (Claude 키가 있어야 해요){% endif %} · <a href="{{ url_for('settings') }}">바꾸기</a></p>
+  <div class="step" style="margin-top:26px"><i>2</i><b>글은 누가 쓸까요?</b></div>
+  <div class="tiles">
+    <label class="tile"><input type="radio" name="mode" value="paste"{% if not cfg.key %} checked{% endif %}><span class="ico">💬</span><span><b>claude.ai에 붙여넣기</b><small>요청 글을 복사해 claude.ai(구독)에 붙여 넣어요</small></span><span class="price free">추가 비용 없음</span></label>
+    <label class="tile"><input type="radio" name="mode" value="manual"><span class="ico">✍️</span><span><b>직접 쓰기</b><small>빈 카드에 우리가 글을 써요</small></span><span class="price free">무료</span></label>
+    <label class="tile"><input type="radio" name="mode" value="auto"{% if cfg.key %} checked{% else %} disabled{% endif %}><span class="ico">⚡</span><span><b>자동으로 만들기</b><small>{% if cfg.key %}링크만 넣으면 끝까지 자동{% else %}설정에서 Claude 키를 넣으면 쓸 수 있어요{% endif %}</small></span><span class="price">API 크레딧</span></label>
+  </div>
+  <p class="meta" style="margin-top:12px">이미지는 다음 화면에서 장마다 사진·일러스트를 골라 힉스필드로 만들어요.</p>
+  <button class="primary go">카드뉴스 만들기</button>
+  <div class="status">
+    <span class="{{ 'on' if cfg.key }}">Claude {{ '연결됨' if cfg.key else '키 없음' }}</span>
+    <span class="{{ 'on' if cfg.hf_id and cfg.hf_secret }}">힉스필드 {{ '연결됨' if cfg.hf_id and cfg.hf_secret else '키 없음' }}</span>
+    <span class="{{ 'on' if naver }}">사실 확인 {{ '네이버' if naver else ('Claude 웹 검색' if cfg.web_search and cfg.key else '꺼짐') }}</span>
+    <span class="{{ 'on' if cfg.auto and cfg.key }}">매일 자동 {{ ('아침 %d시' % cfg.hour) if cfg.auto and cfg.key else '꺼짐' }}</span>
+    <a href="{{ url_for('settings') }}" style="font-size:13px;padding:6px 4px">설정 바꾸기</a>
+  </div>
 </form>
 
-{% if logs %}<details class="panel"><summary>최근 기록</summary>{% for l in logs %}<p class="meta">{{ l.at[5:16].replace('T', ' ') }} · {{ l.what }}</p>{% endfor %}</details>{% endif %}
-
-<h2>만든 카드뉴스 ({{ rows|length }})</h2>
-<form method="post" action="{{ url_for('open_all') }}" style="margin:-4px 0 14px"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button>저장 폴더 열기</button>
-  <span class="meta">PNG·캡션은 <code>{{ out }}</code>에 카드뉴스마다 폴더로 저장돼요.</span></form>
-{% for r in rows %}
-<div class="panel item">
-  <p class="meta">#{{ r.id }} · {{ r.media or '언론사 모름' }} · {{ '자동' if r.trigger == 'daily' else '직접 만듦' }} · {{ r.created[:16].replace('T', ' ') }}</p>
-  <h3><a href="{{ url_for('card', cid=r.id) }}">{{ r.cover or r.title }}</a></h3>
-  <p class="meta">{{ r.title }}</p>
-  {% if r.status == 'ready' %}<span class="badge ok">체크리스트 통과</span>{% elif r.status == 'paste' %}<span class="badge">claude.ai 답 기다림</span>{% else %}<span class="badge bad">확인 필요</span>{% endif %}
+<div>
+  <div class="panel list">
+    <h2>만든 카드뉴스 <span class="meta" style="margin:0">{{ rows|length }}개</span></h2>
+    {% for r in rows %}
+    <a class="rowlink" href="{{ url_for('card', cid=r.id) }}"><span class="num">{{ r.id }}</span>
+      <span class="t"><b>{{ r.cover or r.title }}</b><small>{{ r.media or '언론사 모름' }} · {{ r.created[5:16].replace('T', ' ') }}{% if r.trigger == 'daily' %} · 자동{% endif %}</small></span>
+      {% if r.status == 'ready' %}<span class="badge ok">통과</span>{% elif r.status == 'paste' %}<span class="badge">claude.ai 답 기다림</span>{% else %}<span class="badge bad">확인 필요</span>{% endif %}</a>
+    {% else %}<div class="empty"><b>🗞️</b>아직 만든 카드뉴스가 없어요</div>{% endfor %}
+    <form method="post" action="{{ url_for('open_all') }}" class="actions"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button style="width:100%">📁 저장 폴더 열기</button></form>
+    <p class="meta">PNG·캡션 저장 위치: <code>{{ out }}</code></p>
+  </div>
+  {% if logs %}<details class="panel"><summary><b>최근 기록</b></summary>{% for l in logs %}<p class="meta">{{ l.at[5:16].replace('T', ' ') }} · {{ l.what }}</p>{% endfor %}</details>{% endif %}
 </div>
-{% else %}<p class="meta">아직 만든 카드뉴스가 없어요.</p>{% endfor %}
+</div>
 {% endif %}
-<script>document.querySelectorAll('[data-go]').forEach(function(f){f.addEventListener('submit',function(){setTimeout(function(){var b=f.querySelector('button');b.disabled=true;b.textContent='보내는 중…'},0)})})</script>
+<script>document.querySelectorAll('[data-go]').forEach(function(f){f.addEventListener('submit',function(){setTimeout(function(){var b=f.querySelector('.go');b.disabled=true;b.textContent='보내는 중…'},0)})})</script>
 {% endblock %}
