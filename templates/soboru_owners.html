@@ -13,14 +13,21 @@
     <a class="cm-btn" href="{{ url_for('owners_new') }}">{{ ui('owners.write', '소식 올리기') }}</a>
   </header>
   <p class="cx-points">{{ ui('owners.rule', '모든 글은 업체가 올린 홍보예요. 하루에 한 번 올릴 수 있고, 후기처럼 꾸민 글이나 과장된 글은 운영자가 내려요.') }}</p>
-  <nav class="cm-rcs" aria-label="{{ ui('owners.head_aria', '소식 종류') }}">
-    <a href="{{ url_for('owners') }}"{% if not head %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
-    {% for h in OWNER_HEADS %}<a href="{{ url_for('owners', h=h) }}"{% if head == h %} class="on" aria-current="true"{% endif %}>{{ h }}</a>{% endfor %}
+  <nav class="cm-rcs ow-bizs" aria-label="{{ ui('owners.biz_aria', '업종') }}">
+    <a href="{{ url_for('owners', h=head or None) }}"{% if not biz %} class="on" aria-current="true"{% endif %}>{{ ui('owners.all_biz', '모든 업종') }}</a>
+    {% for b, (emo, n) in OWNER_BIZ.items() %}<a href="{{ url_for('owners', b=b, h=head or None) }}"{% if biz == b %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">{{ emo }}</span>{{ b }}</a>{% endfor %}
+  </nav>
+  <nav class="cm-rcs ow-heads" aria-label="{{ ui('owners.head_aria', '소식 종류') }}">
+    <a href="{{ url_for('owners', b=biz or None) }}"{% if not head %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+    {% for h in OWNER_HEADS %}<a href="{{ url_for('owners', h=h, b=biz or None) }}"{% if head == h %} class="on" aria-current="true"{% endif %}>{{ h }}</a>{% endfor %}
   </nav>
   <div class="ow-list">
     {% for r in rows %}
-    <article class="ow-card">
-      <p class="ow-top"><em class="ow-ad">{{ ui('owners.ad', '홍보') }}</em><span class="ow-head">{{ r['head'] }}</span><b class="ow-shop">{{ r['shop'] }}</b><span class="ow-when">{{ ago_text(r['created']) }}</span></p>
+    {% set bz = r['biz'] if r['biz'] in OWNER_BIZ else '기타' %}{% set emo, n = OWNER_BIZ[bz] %}
+    <article class="ow-card z{{ n }}">
+      <span class="ow-awn" aria-hidden="true"></span>
+      <p class="ow-top"><span class="ow-sign tf" aria-hidden="true">{{ emo }}</span><span class="ow-name"><b class="ow-shop">{{ r['shop'] }}</b><small>{{ bz }}</small></span><span class="ow-when">{{ ago_text(r['created']) }}</span></p>
+      <p class="ow-tags"><em class="ow-ad">{{ ui('owners.ad', '홍보') }}</em><span class="ow-head">{{ r['head'] }}</span></p>
       <h2>{{ r['title'] }}</h2>
       <p class="ow-body">{{ mask_personal(r['body']) }}</p>
       <footer>
@@ -34,6 +41,6 @@
     <div class="cm-empty"><p>{{ ui('owners.empty', '아직 올라온 소식이 없어요. 사장님이라면 첫 소식을 올려 보세요.') }}</p><a class="cm-btn" href="{{ url_for('owners_new') }}">{{ ui('owners.write', '소식 올리기') }}</a></div>
     {% endfor %}
   </div>
-  {{ pager('owners', page, pages, {'h': head or None}) }}
+  {{ pager('owners', page, pages, {'h': head or None, 'b': biz or None}) }}
 </main>
 {% endblock %}

@@ -4335,8 +4335,8 @@ class SiteTest(unittest.TestCase):
         follow(b)
         with self.site.conn() as db:
             self.assertTrue(db.execute('SELECT 1 FROM follows WHERE follower=? AND followee=?', (bid, aid)).fetchone())
-            self.assertIn('빵돌이님이 나를 구독했어요', db.execute("SELECT body FROM member_alerts WHERE user_id=? AND kind='follow'", (aid,)).fetchone()[0])
-        self.assertIn('구독 중', b.get(f'/u/{aid}').get_data(as_text=True))
+            self.assertIn('빵돌이님이 나와 이웃을 맺었어요', db.execute("SELECT body FROM member_alerts WHERE user_id=? AND kind='follow'", (aid,)).fetchone()[0])
+        self.assertIn('이웃이에요', b.get(f'/u/{aid}').get_data(as_text=True))
         # 구독한 이웃이 글을 쓰면 알림 + 구독 피드
         self.post_form(a, '/board/write?type=post', {'kind': 'post', 'head': '잡담', 'title': '오늘 장 본 이야기', 'body': '마트 세일 소식 나눠요.', 'agree': '1'})
         with self.site.conn() as db:
@@ -4438,10 +4438,13 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('국물이 진해요', me.get('/me/saved').get_data(as_text=True))
         # 사장님 소식: 회원이 하루 한 번, '홍보' 표시, https 링크만, 글쓴이·운영자가 내림
         with self.site.conn() as db: db.execute('DELETE FROM owner_news')
-        bad = self.post_form(me, '/owners/new', {'head': '할인', 'shop': '소보루빵집', 'title': '주말 1+1', 'body': '토요일 오후 3시부터 소보루빵 1+1이에요.', 'link': 'javascript:alert(1)'})
+        bad = self.post_form(me, '/owners/new', {'head': '할인', 'biz': '빵·디저트', 'shop': '소보루빵집', 'title': '주말 1+1', 'body': '토요일 오후 3시부터 소보루빵 1+1이에요.', 'link': 'javascript:alert(1)'})
         self.assertEqual(bad.status_code, 400)
-        self.assertEqual(self.post_form(me, '/owners/new', {'head': '할인', 'shop': '소보루빵집', 'title': '주말 1+1', 'body': '토요일 오후 3시부터 소보루빵 1+1이에요.', 'link': 'https://soboru.example/sale'}).status_code, 302)
-        self.assertEqual(self.post_form(me, '/owners/new', {'head': '오픈', 'shop': '소보루빵집', 'title': '또 올림', 'body': '하루에 두 번째 소식이에요. 막혀야 해요.'}).status_code, 400)
+        self.assertEqual(self.post_form(me, '/owners/new', {'head': '할인', 'biz': '빵·디저트', 'shop': '소보루빵집', 'title': '주말 1+1', 'body': '토요일 오후 3시부터 소보루빵 1+1이에요.', 'link': 'https://soboru.example/sale'}).status_code, 302)
+        self.assertEqual(self.post_form(me, '/owners/new', {'head': '오픈', 'biz': '빵·디저트', 'shop': '소보루빵집', 'title': '또 올림', 'body': '하루에 두 번째 소식이에요. 막혀야 해요.'}).status_code, 400)
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT biz FROM owner_news').fetchone()[0], '빵·디저트')
+        self.assertEqual(self.site.soboru_cm.guess_biz('오소보카페'), '카페'); self.assertEqual(self.site.soboru_cm.guess_biz('무명상회'), '기타')
+        self.assertIn('주말 1+1', self.client.get('/owners?b=빵·디저트').get_data(as_text=True)); self.assertNotIn('주말 1+1', self.client.get('/owners?b=카페').get_data(as_text=True))
         page = self.client.get('/owners').get_data(as_text=True)
         self.assertIn('주말 1+1', page); self.assertIn('홍보', page); self.assertIn('rel="nofollow sponsored noopener"', page)
         with self.site.conn() as db: nid = db.execute('SELECT id FROM owner_news').fetchone()[0]

@@ -90,11 +90,11 @@ def install(S):
         with conn() as db:
             if not profile(db, user_id): abort(404)
             if db.execute('DELETE FROM follows WHERE follower=? AND followee=?', (g.user['id'], user_id)).rowcount:
-                flash(S.ui_text('pp.unfollowed', '구독을 취소했어요.'))
+                flash(S.ui_text('pp.unfollowed', '이웃을 끊었어요.'))
             else:
                 db.execute('INSERT INTO follows(follower,followee,created) VALUES(?,?,?)', (g.user['id'], user_id, stamp()))
-                S.member_alert(db, user_id, 'follow', S.ui_text('pp.alert_follow', '{name}님이 나를 구독했어요').replace('{name}', g.user['nickname']), url_for('person', user_id=g.user['id']))
-                flash(S.ui_text('pp.followed', '구독했어요. 새 글이 올라오면 알려 드릴게요.'))
+                S.member_alert(db, user_id, 'follow', S.ui_text('pp.alert_follow', '{name}님이 나와 이웃을 맺었어요').replace('{name}', g.user['nickname']), url_for('person', user_id=g.user['id']))
+                flash(S.ui_text('pp.followed', '이웃을 맺었어요. 새 글이 올라오면 알려 드릴게요.'))
         back = request.form.get('next', '')
         return redirect(back if back.startswith('/') and not back.startswith('//') else url_for('person', user_id=user_id))
 

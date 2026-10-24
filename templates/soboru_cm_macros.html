@@ -60,8 +60,23 @@
   {% if p['photo'] %}<span class="sd-pic" aria-hidden="true"><img src="{{ url_for('board_photo', name=p['photo']) }}" alt="" loading="lazy" width="88" height="88"></span>{% endif %}
 </a>{% endmacro %}
 
+{# 수다방 영수증 카드 (/suda): 영수증 번호·시각 · 말머리 도장 · 제목·미리보기 · 조회·댓글 · 추천 합계 · 글쓴이 #}
+{% macro suda_card(p) %}{% set tone = (SUDA_HEADS.index(p['head']) % 8) if p['head'] in SUDA_HEADS else 2 %}{% set c = p['created'] or '' %}<a class="rc" href="{{ url_for('board_post', post_id=p['id']) }}">
+  <span class="rc-top"><span class="rc-shop">SOBORU TALK</span><span class="rc-no">No.{{ '%04d'|format(p['id']) }}</span></span>
+  <span class="rc-date">{{ c[:10]|replace('-', '.') }} {{ c[11:16] }}</span>
+  <em class="rc-stamp s{{ tone }}">{{ p['head'] }}</em>
+  <span class="rc-main">
+    <span class="rc-txt"><b class="rc-t">{{ p['title'] }}</b>{% if p['body'] %}<span class="rc-ex">{{ mask_personal(p['body'][:120]) }}</span>{% endif %}</span>
+    {% if p['photo'] %}<span class="rc-pic" aria-hidden="true"><img src="{{ url_for('board_photo', name=p['photo']) }}" alt="" loading="lazy" width="72" height="72"></span>{% endif %}
+  </span>
+  <span class="rc-lines"><span><i>{{ ui('feed.views', '조회') }}</i><s></s><i>{{ p['views'] }}</i></span><span><i>{{ ui('suda.comments', '댓글') }}</i><s></s><i>{{ p['comments'] or 0 }}</i></span></span>
+  <span class="rc-total"><i>{{ ui('suda.like_total', '추천 합계') }}</i><b>{{ p['likes'] or 0 }}</b></span>
+  <span class="rc-who">{{ av(p['user_id'], p['nickname'], 'xs') }}<span>{{ p['nickname'] }}</span><small>{{ ago_text(p['created']) }}</small></span>
+  <span class="rc-bar" aria-hidden="true"></span>
+</a>{% endmacro %}
+
 {# 이웃 사진 (없으면 닉네임 첫 글자). soboru_people.py avatar_url #}
 {% macro av(user_id, nickname, cls='') %}{% set src = avatar_url(user_id) %}{% if src %}<img class="cm-av {{ cls }} pp-img" src="{{ src }}" alt="" loading="lazy">{% else %}<span class="cm-av {{ cls }}" aria-hidden="true">{{ (nickname or '?')[:1] }}</span>{% endif %}{% endmacro %}
 
-{# 구독 버튼 (회원이 아니면 로그인으로) #}
-{% macro follow_btn(user_id, cls='') %}{% if not g.user or g.user['id'] != user_id %}<form class="pp-follow-f" method="post" action="{{ url_for('follow', user_id=user_id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">{% set on = is_following(user_id) %}<button type="submit" class="pp-follow {{ cls }}{{ ' on' if on }}">{{ ui('pp.following', '구독 중') if on else ui('pp.follow', '구독하기') }}</button></form>{% endif %}{% endmacro %}
+{# 이웃 맺기 버튼 (회원이 아니면 로그인으로) #}
+{% macro follow_btn(user_id, cls='') %}{% if not g.user or g.user['id'] != user_id %}<form class="pp-follow-f" method="post" action="{{ url_for('follow', user_id=user_id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">{% set on = is_following(user_id) %}<button type="submit" class="pp-follow {{ cls }}{{ ' on' if on }}">{{ ui('pp.following', '이웃이에요') if on else ui('pp.follow', '이웃 맺기') }}</button></form>{% endif %}{% endmacro %}

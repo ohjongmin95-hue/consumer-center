@@ -27,6 +27,18 @@ PAGE = 20
 # 어디서 샀어요? (상품 후기) · 우리 동네 후기 (장소 후기: 시·도 + 구·군)
 SHOPS = ['쿠팡', '네이버', '올리브영', '11번가', 'G마켓·옥션', '컬리', '오늘의집', '무신사', '카카오', '공식몰', '오프라인 매장', '기타']
 OWNER_HEADS = ['할인', '새 상품', '오픈', '이벤트', '알림']  # 사장님 소식 말머리
+# 사장님 소식 업종: 이름 → (이모지, 카드 색 번호). 업종마다 카드 차양 색·간판 이모지가 달라요 (운영자 요청 2026-10-24)
+OWNER_BIZ = {'음식점': ('🍜', 0), '카페': ('☕', 1), '빵·디저트': ('🍞', 2), '꽃·식물': ('💐', 3), '뷰티·미용': ('💄', 4), '옷·잡화': ('👗', 5),
+             '마트·생활': ('🛒', 6), '운동·건강': ('💪', 7), '학원·배움': ('✏️', 8), '반려동물': ('🐶', 9), '기타': ('🛍️', 10)}
+BIZ_WORDS = [('빵·디저트', ('빵', '베이커리', '제과', '디저트', '케이크', '떡')), ('카페', ('카페', '커피', '티하우스')), ('꽃·식물', ('꽃', '플라워', '화원', '식물')),
+             ('음식점', ('식당', '피자', '치킨', '국밥', '분식', '고기', '횟집', '반점', '김밥', '버거')), ('뷰티·미용', ('미용', '헤어', '네일', '뷰티', '피부')),
+             ('마트·생활', ('마트', '편의점', '생활', '리빙')), ('운동·건강', ('헬스', '필라테스', '요가', '짐', '약국')), ('학원·배움', ('학원', '교습', '공방', '스터디')),
+             ('반려동물', ('애견', '펫', '동물')), ('옷·잡화', ('옷', '의류', '패션', '잡화', '신발'))]
+
+
+def guess_biz(shop):
+    """업종을 고르지 않은 예전 소식: 가게 이름으로 짐작 (못 찾으면 기타)."""
+    return next((b for b, words in BIZ_WORDS if any(w in (shop or '') for w in words)), '기타')
 SIDO = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주']
 
 
@@ -51,6 +63,10 @@ def migrate(db):
     db.execute('CREATE TABLE IF NOT EXISTS saves(user_id INTEGER NOT NULL,post_id INTEGER NOT NULL,created TEXT NOT NULL,PRIMARY KEY(user_id,post_id))')  # 담아 두기
     db.execute('''CREATE TABLE IF NOT EXISTS owner_news(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,nickname TEXT NOT NULL,shop TEXT NOT NULL,head TEXT NOT NULL,
         title TEXT NOT NULL,body TEXT NOT NULL,link TEXT NOT NULL DEFAULT '',hidden INTEGER NOT NULL DEFAULT 0,ip_hash TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
+    if 'biz' not in {r['name'] for r in db.execute('PRAGMA table_info(owner_news)')}:
+        db.execute("ALTER TABLE owner_news ADD COLUMN biz TEXT NOT NULL DEFAULT ''")
+    for r in db.execute("SELECT id,shop FROM owner_news WHERE biz=''").fetchall():
+        db.execute('UPDATE owner_news SET biz=? WHERE id=?', (guess_biz(r['shop']), r['id']))
     db.execute('DROP TABLE IF EXISTS editor_apps')  # 에디터 모집을 빼면서 신청서(휴대폰 번호)도 지움
 
 
@@ -398,14 +414,16 @@ def install(S):
     @app.route('/owners')
     def owners():
         page = max(1, request.args.get('page', 1, type=int)); head = request.args.get('h', ''); head = head if head in OWNER_HEADS else ''
+        biz = request.args.get('b', ''); biz = biz if biz in OWNER_BIZ else ''
         where, args = ['hidden=0'], []
         if head: where.append('head=?'); args.append(head)
+        if biz: where.append('biz=?'); args.append(biz)
         with conn() as db:
             total = db.execute('SELECT COUNT(*) FROM owner_news WHERE ' + ' AND '.join(where), args).fetchone()[0]
             rows = db.execute('SELECT * FROM owner_news WHERE ' + ' AND '.join(where) + ' ORDER BY id DESC LIMIT ? OFFSET ?', args + [PAGE, (page - 1) * PAGE]).fetchall()
         pages = max(1, -(-total // PAGE))
         if page > pages: abort(404)
-        return render_template('soboru_owners.html', rows=rows, head=head, page=page, pages=pages, total=total)
+        return render_template('soboru_owners.html', rows=rows, head=head, biz=biz, page=page, pages=pages, total=total)
 
     @app.route('/owners/new', methods=['GET', 'POST'])
     @S.member_only
@@ -414,9 +432,10 @@ def install(S):
         if request.method == 'POST':
             if f.get('website'): abort(400)
             shop = ' '.join(f.get('shop', '').split()); title = ' '.join(f.get('title', '').split()); body = f.get('body', '').strip()
-            head = f.get('head', ''); link = f.get('link', '').strip()
+            head = f.get('head', ''); link = f.get('link', '').strip(); biz = f.get('biz', '')
             err = None
             if head not in OWNER_HEADS: err = S.ui_text('owners.e_head', '소식 종류를 골라 주세요.')
+            elif biz not in OWNER_BIZ: err = S.ui_text('owners.e_biz', '업종을 골라 주세요.')
             elif not 1 <= len(shop) <= 30: err = S.ui_text('owners.e_shop', '가게·브랜드 이름을 30자 안으로 적어 주세요.')
             elif not 2 <= len(title) <= 60: err = S.ui_text('owners.e_title', '제목은 2~60자로 적어 주세요.')
             elif not 10 <= len(body) <= 1000: err = S.ui_text('owners.e_body', '내용은 10~1,000자로 적어 주세요.')
@@ -425,8 +444,8 @@ def install(S):
                 if not err and db.execute('SELECT COUNT(*) FROM owner_news WHERE user_id=? AND created>=?', (g.user['id'], datetime.date.today().isoformat())).fetchone()[0] >= 1:
                     err = S.ui_text('owners.e_daily', '사장님 소식은 하루에 한 번 올릴 수 있어요.')
                 if err: flash(err); return render_template('soboru_owners_new.html', f=f), 400
-                db.execute('INSERT INTO owner_news(user_id,nickname,shop,head,title,body,link,ip_hash,created) VALUES(?,?,?,?,?,?,?,?,?)',
-                           (g.user['id'], g.user['nickname'], shop, head, title, body, link, S.ip_hash(), stamp()))
+                db.execute('INSERT INTO owner_news(user_id,nickname,shop,head,title,body,link,ip_hash,created,biz) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                           (g.user['id'], g.user['nickname'], shop, head, title, body, link, S.ip_hash(), stamp(), biz))
             flash(S.ui_text('owners.sent', '소식을 올렸어요.'))
             return redirect(url_for('owners'))
         return render_template('soboru_owners_new.html', f={})
@@ -441,7 +460,7 @@ def install(S):
         flash(S.ui_text('owners.hidden', '소식을 내렸어요.'))
         return redirect(url_for('owners'))
 
-    app.jinja_env.globals.update(OWNER_HEADS=OWNER_HEADS)
+    app.jinja_env.globals.update(OWNER_HEADS=OWNER_HEADS, OWNER_BIZ=OWNER_BIZ)
 
     @app.route('/editor')
     def editor():

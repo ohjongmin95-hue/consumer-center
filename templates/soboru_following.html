@@ -1,19 +1,19 @@
 {% extends 'base.html' %}
 {# 구독한 이웃의 새 글 (회원만). soboru_people.py following() #}
 {% from 'soboru_cm_macros.html' import rv_card, suda_row, av, follow_btn with context %}
-{% block title %}{{ ui('pp.feed_title', '구독') }} | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ ui('pp.feed_title', '이웃 소식') }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="sb-wrap cm cx pp">
-  <header class="cm-head"><div><h1>{{ ui('pp.feed_title', '구독') }}</h1><p>{{ ui('pp.feed_intro', '구독한 이웃이 쓴 새 글을 모아 봐요. 글쓴이 이름을 누르면 구독할 수 있어요.') }}</p></div>
+  <header class="cm-head"><div><h1>{{ ui('pp.feed_title', '이웃 소식') }}</h1><p>{{ ui('pp.feed_intro', '이웃이 쓴 새 글을 모아 봐요. 글쓴이 이름을 누르면 이웃을 맺을 수 있어요.') }}</p></div>
     <a class="cm-btn" href="{{ url_for('person', user_id=g.user['id']) }}">{{ ui('pp.my_page', '내 이웃 페이지') }}</a></header>
-  {% if people %}<div class="pp-strip" aria-label="{{ ui('pp.strip_aria', '구독한 이웃') }}">{% for x in people %}<a href="{{ url_for('person', user_id=x.id) }}">{{ av(x.id, x.nickname, 'lg') }}<span>{{ x.nickname }}</span></a>{% endfor %}</div>{% endif %}
+  {% if people %}<div class="pp-strip" aria-label="{{ ui('pp.strip_aria', '내 이웃') }}">{% for x in people %}<a href="{{ url_for('person', user_id=x.id) }}">{{ av(x.id, x.nickname, 'lg') }}<span>{{ x.nickname }}</span></a>{% endfor %}</div>{% endif %}
   {% set rvs = rows|selectattr("kind", "equalto", "review")|list %}{% set talks = rows|rejectattr("kind", "equalto", "review")|list %}
   {% if rvs %}<div class="pc-grid">{% for r in rvs %}{{ rv_card(review_view(r)) }}{% endfor %}</div>{% endif %}
   {% if talks %}<div class="pf-list">{% for r in talks %}{{ suda_row(suda_view(r)) }}{% endfor %}</div>{% endif %}
-  {% if not rows %}<div class="cm-empty"><p>{{ ui('pp.feed_empty', '아직 구독한 이웃의 글이 없어요. 아래 이웃을 구독해 보세요.') if not people else ui('pp.feed_quiet', '구독한 이웃이 아직 새 글을 쓰지 않았어요.') }}</p></div>{% endif %}
+  {% if not rows %}<div class="cm-empty"><p>{{ ui('pp.feed_empty', '아직 이웃이 없어요. 글쓴이 이름을 눌러 이웃을 맺어 보세요.') if not people else ui('pp.feed_quiet', '이웃이 아직 새 글을 쓰지 않았어요.') }}</p></div>{% endif %}
   {% if top %}
   <section class="pp-top" aria-labelledby="pp-top-h"><h2 id="pp-top-h" class="pp-h">{{ ui('pp.top_title', '요즘 좋아요를 많이 받은 이웃') }}</h2>
-    <div class="pp-grid">{% for x in top %}<div class="pp-mini"><a href="{{ url_for('person', user_id=x.id) }}">{{ av(x.id, x.nickname, 'lg') }}<b>{{ x.nickname }}</b><small>{{ x.bio or ui('pp.stat_line', '글 {a} · 구독자 {b}', a=x.posts, b=x.followers) }}</small></a>{{ follow_btn(x.id) }}</div>{% endfor %}</div>
+    <div class="pp-grid">{% for x in top %}<div class="pp-mini"><a href="{{ url_for('person', user_id=x.id) }}">{{ av(x.id, x.nickname, 'lg') }}<b>{{ x.nickname }}</b><small>{{ x.bio or ui('pp.stat_line', '글 {a} · 이웃 {b}', a=x.posts, b=x.followers) }}</small></a>{{ follow_btn(x.id) }}</div>{% endfor %}</div>
   </section>{% endif %}
 </main>
 {% endblock %}
