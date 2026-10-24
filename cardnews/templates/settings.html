@@ -14,10 +14,10 @@
     <label>모델<select name="model">{% for k, name in models %}<option value="{{ k }}"{% if cfg.model == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
   </div>
   <div class="panel"><h2>힉스필드 (이미지)</h2>
-    <p class="meta">카드뉴스 이미지는 모두 힉스필드로 만들어요. 장마다 사진·일러스트를 고르고, 설명을 복사해 힉스필드 사이트에서 만들어 올리면 키가 없어도 돼요. 키를 넣으면 프로그램에서 바로 만들 수 있어요 (cloud.higgsfield.ai → API Keys → Create API key, API 잔액 필요). <b>Secret은 키를 만들 때 한 번만 보여요</b> — 그때 바로 복사해 넣어 주세요. 'ID:Secret' 한 줄이면 ID 칸에 그대로 붙여 넣어도 돼요.</p>
+    <p class="meta">카드뉴스 이미지는 모두 힉스필드로 만들어요. 장마다 사진·일러스트를 고르고, 설명을 복사해 힉스필드 사이트에서 만들어 올리면 키가 없어도 돼요. 키를 넣으면 프로그램에서 바로 만들 수 있어요 (cloud.higgsfield.ai → API Keys → Create API key, API 잔액 필요). <b>키는 만들 때 한 번만 보여요</b> — 나온 창에서 [Copy API key]를 눌러 바로 붙여 넣어 주세요.</p>
     <label>기본 이미지 스타일<select name="img_style">{% for k, name in img_styles %}<option value="{{ k }}"{% if cfg.img_style == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
-    <div class="row"><label>API Key (ID){% if cfg.hf_id %} <span class="badge ok">저장됨</span>{% endif %}<input type="text" name="hf_id" autocomplete="off" placeholder="{{ cfg.hf_id or '' }}"></label>
-      <label>API Secret {% if masked.hf_secret %}<span class="badge ok">저장됨</span>{% endif %}<input type="password" name="hf_secret" autocomplete="off"></label></div>
+    <label>힉스필드 API 키 {% if masked.hf_id %}<span class="badge ok">저장됨 {{ masked.hf_id }}</span>{% endif %}<input type="password" name="hf_id" autocomplete="off" placeholder="키를 만들 때 나온 창의 [Copy API key]로 복사해 붙여 넣기"></label>
+    <details><summary class="meta">예전 키라 ID와 Secret이 따로 있어요</summary><label>API Secret {% if masked.hf_secret %}<span class="badge ok">저장됨</span>{% endif %}<input type="password" name="hf_secret" autocomplete="off" placeholder="위 칸에는 ID를 넣고 여기에 Secret"></label></details>
     {% if cfg.hf_id %}<label class="check"><input type="checkbox" name="clear_hf_id" value="1"> 힉스필드 키 지우기</label>{% endif %}
     <label>이미지 모델<select name="hf_model">{% for k, name in hf_models %}<option value="{{ k }}"{% if cfg.hf_model == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
     <label class="check"><input type="checkbox" name="hf_auto" value="1"{% if cfg.hf_auto %} checked{% endif %}> 새 카드뉴스를 만들 때 힉스필드 API로 이미지도 자동으로 만들기 (장마다 크레딧)</label>

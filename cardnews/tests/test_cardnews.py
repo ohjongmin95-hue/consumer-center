@@ -206,6 +206,8 @@ class CardNewsTest(unittest.TestCase):
             self.assertEqual(cards.higgsfield_photo(cfg, 'a receipt on a table'), b'PNGDATA')
         self.assertEqual(calls['key'], 'hid:hsec'); self.assertEqual(calls['model'], 'bytedance/seedream/v4/text-to-image')
         self.assertIn('a receipt on a table', calls['args']['prompt']); self.assertIn('no logos', calls['args']['prompt'])
+        self.assertEqual(cards.hf_key({'hf_id': 'abfa-one-key', 'hf_secret': ''}), 'abfa-one-key')  # 요즘 힉스필드 키는 한 줄
+        self.assertTrue(cards.hf_ready({'hf_id': 'abfa-one-key', 'hf_secret': ''}))
         class NsfwJob(Job):
             def poll_request_status(self, delay=0): yield hf.NSFW()
         with patch.object(hf, 'SyncClient', type('C', (Client,), {'submit': lambda self, m, arguments: NsfwJob()})):

@@ -483,14 +483,19 @@ def photo_prompt(scene, style='photo'):
     return STYLES.get(style, STYLES['photo'])[1].format(scene=scene or 'a calm everyday consumer scene') + SAFE
 
 
-def hf_ready(cfg): return bool(cfg.get('hf_id') and cfg.get('hf_secret'))
+def hf_ready(cfg): return bool(cfg.get('hf_id'))
+
+
+def hf_key(cfg):
+    """힉스필드 키: 요즘 키는 'Copy API key'로 복사한 한 줄, 예전 키는 ID:Secret"""
+    return cfg['hf_id'] + (':' + cfg['hf_secret'] if cfg.get('hf_secret') and ':' not in cfg['hf_id'] else '')
 
 
 def higgsfield_photo(cfg, scene, style='photo'):
     """장면 설명 → 사진 JPEG/PNG 바이트. 테스트에서 바꿔 끼운다."""
     import time, higgsfield_client as hf
     if not hf_ready(cfg): raise RuntimeError("힉스필드 키가 없어요. '설정'에서 넣어 주세요")
-    client = hf.SyncClient(api_key=f"{cfg['hf_id']}:{cfg['hf_secret']}", timeout=60)
+    client = hf.SyncClient(api_key=hf_key(cfg), timeout=60)
     try:
         job = client.submit(cfg.get('hf_model') or HF_MODELS[0][0], arguments={'prompt': photo_prompt(scene, style), 'aspect_ratio': '3:4', 'resolution': '2K'})
         end = time.time() + HF_TIMEOUT

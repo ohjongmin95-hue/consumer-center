@@ -39,7 +39,7 @@ MODELS = (('claude-opus-5-5', 'Claude Opus 5.5 (기본, 가장 꼼꼼)'), ('clau
 DEFAULTS = {'key': '', 'model': 'claude-opus-5-5', 'auto': 0, 'per_day': 3, 'hour': 8, 'web_search': 1,
             'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_style': 'mix', 'hf_auto': 0,
             'kakao_key': '', 'kakao_secret': '', 'kakao_token': {}, 'kakao_auto': 1}
-SECRETS = ('key', 'naver_secret', 'hf_secret', 'kakao_secret')  # 화면에 다시 보여 주지 않는 값
+SECRETS = ('key', 'naver_secret', 'hf_id', 'hf_secret', 'kakao_secret')  # 화면에 다시 보여 주지 않는 값
 IMG_STYLES = (('mix', '표지는 사진, 본문은 일러스트'), ('photo', '모두 사진'), ('illust', '모두 일러스트'))
 
 DATA.mkdir(parents=True, exist_ok=True)
@@ -111,7 +111,7 @@ def sidebar():
         cover = 'claude.ai 답을 기다려요' if d.get('pending') else (c.get('line1', '') + ' ' + c.get('line2', '')).strip()
         items.append({'id': r['id'], 'cover': cover or r['title'] or '(제목 없음)', 'status': r['status'], 'created': r['created'], 'daily': r['trigger'] == 'daily'})
     cfg = config()
-    return {'side_items': items, 'side_cfg': {'claude': bool(cfg['key']), 'hf': bool(cfg['hf_id'] and cfg['hf_secret']), 'naver': bool(cfg['naver_id'] and cfg['naver_secret'])},
+    return {'side_items': items, 'side_cfg': {'claude': bool(cfg['key']), 'hf': cards.hf_ready(cfg), 'naver': bool(cfg['naver_id'] and cfg['naver_secret'])},
             'side_cid': (request.view_args or {}).get('cid')}
 
 
@@ -499,19 +499,18 @@ def img(name):
 def settings():
     c = config()
     if request.method == 'POST':
-        f = request.form; had_hf = bool(c['hf_id'] and c['hf_secret'])
-        for k in SECRETS + ('naver_id', 'hf_id'):
+        f = request.form; had_hf = cards.hf_ready(c)
+        for k in SECRETS + ('naver_id',):
             v = f.get(k, '').strip()
             if v or f.get('clear_' + k): c[k] = '' if f.get('clear_' + k) else v  # 비워 두면 그대로, '지우기'를 고르면 지움
         if f.get('clear_naver_id'): c['naver_secret'] = ''
-        if ':' in c['hf_id']: c['hf_id'], _, sec = c['hf_id'].partition(':'); c['hf_secret'] = sec.strip() or c['hf_secret']  # 'ID:Secret' 한 줄로 붙여 넣어도 됨
         if f.get('clear_hf_id'): c['hf_secret'] = ''
         c['hf_model'] = f.get('hf_model') if f.get('hf_model') in dict(cards.HF_MODELS) else cards.HF_MODELS[0][0]
         if f.get('kakao_key', '').strip(): c['kakao_key'] = f.get('kakao_key').strip()
         if f.get('clear_kakao'): c['kakao_key'] = c['kakao_secret'] = ''; c['kakao_token'] = {}
         c['kakao_auto'] = 1 if f.get('kakao_auto') else 0
         c['img_style'] = f.get('img_style') if f.get('img_style') in dict(IMG_STYLES) else 'mix'
-        c['hf_auto'] = 1 if f.get('hf_auto') or (c['hf_id'] and c['hf_secret'] and not had_hf) else 0  # 힉스필드 키를 처음 넣으면 자동 이미지도 켬
+        c['hf_auto'] = 1 if f.get('hf_auto') or (cards.hf_ready(c) and not had_hf) else 0  # 힉스필드 키를 처음 넣으면 자동 이미지도 켬
         if c['key'] and not c['key'].startswith('sk-ant-'): flash("Claude API 키는 'sk-ant-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))
         c['model'] = f.get('model') if f.get('model') in dict(MODELS) else DEFAULTS['model']
         c['naver_kind'] = f.get('naver_kind') if f.get('naver_kind') in cards.NAVER else 'dev'
