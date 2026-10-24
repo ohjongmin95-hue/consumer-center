@@ -154,7 +154,6 @@ function Main() {
           pullToRefreshEnabled
           allowsInlineMediaPlayback
           setSupportMultipleWindows={false}
-          decelerationRate="normal"
           textZoom={100}
           style={s.web}
         />
