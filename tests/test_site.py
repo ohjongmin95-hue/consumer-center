@@ -4259,7 +4259,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             for t in ('points', 'vs_votes', 'vs_comments', 'vs_polls', 'editor_apps'): db.execute('DELETE FROM ' + t)
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('nn-about', home); self.assertIn('소보루에서는 이런 걸 해요', home); self.assertIn('nn-talk', home)
+        self.assertIn('nn-about', home); self.assertIn('억울하면 제보하고, 좋으면 자랑하고', home); self.assertIn('nn-talk', home)
         me, uid = self.member_client('cm_writer', '수다쟁이')
         r = self.post_form(me, '/board/write?type=post', {'kind': 'post', 'head': '질문', 'title': '헬스장 환불 되나요?', 'body': '두 달 다니고 이사 가요. 환불 되나요?', 'agree': '1'})
         self.assertEqual(r.status_code, 302)
