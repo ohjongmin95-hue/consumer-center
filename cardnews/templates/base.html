@@ -15,7 +15,7 @@ a{color:var(--link)}
 .brand img{width:32px;height:32px;border-radius:9px}
 .brand b{display:block;font:800 17px/1.2 Pretendard,sans-serif;letter-spacing:-.03em}.brand b em{font-style:normal;color:#3182F6}
 .brand small{display:none}
-.top nav{display:flex;align-items:center;gap:2px}
+.top nav{display:flex;align-items:center;gap:2px;align-self:stretch}
 .top nav a{padding:7px 13px;border-radius:10px;text-decoration:none;color:#4E5968;font-weight:800;font-size:15px}.top nav a:hover{background:var(--grey)}.top nav a.on{color:var(--ink);background:var(--grey)}
 .top nav .quit{padding:7px 13px;font-size:14px;border-radius:10px;background:transparent;color:var(--sub)}.top nav .quit:hover{background:var(--grey)}
 /* 창 안에 꼭 맞게 (토스 포스처럼): 화면 전체는 안 밀리고, 가운데 작업 화면만 안에서 내려감 */
@@ -69,6 +69,12 @@ button[disabled]{opacity:.4;cursor:not-allowed}
 .wait{display:flex;gap:16px;align-items:center}
 code{background:var(--grey);border-radius:6px;padding:1px 6px;font-size:13px}
 details>summary{cursor:pointer}
+/* 제목 줄 없는 프로그램 창: 위쪽 막대 빈 곳을 잡고 옮기고(두 번 누르면 최대화), 오른쪽 끝에 — ▢ ✕ */
+.top .drag{flex:1;align-self:stretch}
+.winbtns{display:flex;margin:0 -24px 0 10px;align-self:stretch}.winbtns[hidden]{display:none}
+.winbtns button{width:46px;height:60px;border-radius:0;background:transparent;padding:0;color:#4E5968}
+.winbtns button:hover:not([disabled]){background:var(--grey)}.winbtns button.x:hover:not([disabled]){background:#F04452;color:#fff}
+.winbtns svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.2}
 /* 종료할까요? (토스 포스처럼 가운데 흰 창 + 회색 취소 / 빨간 종료하기) */
 .modal{position:fixed;inset:0;z-index:20;background:rgba(0,12,30,.36);display:grid;place-items:center;animation:fade .15s ease-out}.modal[hidden]{display:none}
 .sheet{width:min(400px,calc(100% - 32px));background:#fff;border-radius:24px;padding:28px 24px 22px;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:pop .18s ease-out}
@@ -81,8 +87,10 @@ details>summary{cursor:pointer}
 </style>{% block head %}{% endblock %}</head>
 <body class="{% if not (bye is defined and bye) %}shell{% endif %}">
 <header class="top"><a class="brand" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='app-icon.png') }}" alt=""><span><b>민주의 <em>카드뉴스</em> 제작 프로그램</b><small>SOBORU 카드뉴스 만들기</small></span></a>
+  <div class="drag pywebview-drag-region" ondblclick="cnWin('toggle')"></div>
   <nav><span class="clock" id="clock"></span><a href="{{ url_for('home') }}"{% if request.endpoint == 'home' %} class="on"{% endif %}>만들기</a><a href="{{ url_for('settings') }}"{% if request.endpoint == 'settings' %} class="on"{% endif %}>설정</a>
-    <button type="button" class="quit" onclick="cnQuit()" style="margin-left:8px">끄기</button></nav></header>
+    <button type="button" class="quit" onclick="cnQuit()" style="margin-left:8px">끄기</button>
+    <span class="winbtns" id="winbtns" hidden><button type="button" title="최소화" aria-label="최소화" onclick="cnWin('minimize')"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button><button type="button" title="최대화 / 이전 크기" aria-label="최대화" onclick="cnWin('toggle')"><svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1"/></svg></button><button type="button" class="x" title="닫기" aria-label="닫기" onclick="cnQuit()"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button></span></nav></header>
 {% if bye is defined and bye %}<main class="bye"><img src="{{ url_for('static', filename='app-icon.png') }}" alt=""><b>종료하는 중이에요</b><span>다시 쓰려면 바탕화면의 '민주의 카드뉴스'를 눌러 주세요</span></main>{% else %}
 <div class="app">
   <aside class="side" aria-label="카드뉴스 목록">
@@ -106,6 +114,8 @@ details>summary{cursor:pointer}
 {% if request.endpoint != 'home' %}<a class="fab" href="{{ url_for('home') }}" title="새 카드뉴스" aria-label="새 카드뉴스">+</a>{% endif %}
 <script>
 (function(){var c=document.getElementById('clock'),w='일월화수목금토';function t(){var d=new Date(),h=d.getHours();c.innerHTML='<b>'+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+w[d.getDay()]+')</b>'+(h<12?'오전 ':'오후 ')+((h%12)||12)+':'+String(d.getMinutes()).padStart(2,'0')}t();setInterval(t,15000);})();
+function cnWin(a){try{window.pywebview.api[a]()}catch(e){}}
+window.addEventListener('pywebviewready',function(){document.getElementById('winbtns').hidden=false});
 function cnQuit(show){var m=document.getElementById('quit');m.hidden=show===false;if(!m.hidden)m.querySelector('.red').focus()}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')cnQuit(false)});
 document.getElementById('quit').addEventListener('click',function(e){if(e.target===this)cnQuit(false)});

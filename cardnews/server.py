@@ -513,7 +513,19 @@ def quit_app():
     return render_template('base.html', bye=True)
 
 
-WIN = {'quit': False}
+WIN = {'quit': False, 'w': None, 'max': True}
+
+
+class WinApi:
+    """제목 줄 없는 창의 버튼 (화면 JS에서 window.pywebview.api.… 로 부름)"""
+    def minimize(self):
+        if WIN['w']: WIN['w'].minimize()
+
+    def toggle(self):
+        if not WIN['w']: return
+        if WIN['max']: WIN['w'].restore()
+        else: WIN['w'].maximize()
+        WIN['max'] = not WIN['max']
 
 
 @app.route('/start')
@@ -535,7 +547,10 @@ def app_window(url):
         import webview
         webview.settings['ALLOW_DOWNLOADS'] = True  # zip 내려받기
         webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True  # 기사·claude.ai·힉스필드 링크는 브라우저로
-        w = webview.create_window(NAME, url + '/start', width=1320, height=820, min_size=(1000, 640), maximized=True, background_color='#F2F4F6')  # 토스 포스처럼 화면 가득
+        # 토스 포스처럼 화면 가득, 윈도우 제목 줄 없이 (최소화·최대화·닫기는 화면 위쪽 막대에 우리 버튼으로)
+        w = webview.create_window(NAME, url + '/start', width=1320, height=820, min_size=(1000, 640), maximized=True, frameless=True, easy_drag=False,
+                                  background_color='#F2F4F6', js_api=WinApi())
+        WIN['w'] = w
         def closing():  # 창의 ✕를 눌러도 바로 끄지 않고 토스처럼 '종료할까요?'를 물어봄
             if WIN['quit']: return True
             def ask():
