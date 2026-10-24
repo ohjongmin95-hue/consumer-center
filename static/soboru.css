@@ -1118,8 +1118,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-intro .nn-intro-btns .sb-cta{background:var(--sb-brown);color:#fff;box-shadow:none}
 .nn-intro .nn-intro-btns .sb-cta:hover{background:#4f2215}
 .nn-intro .nn-intro-link{color:var(--sb-brown);font-weight:800}.nn-intro .nn-intro-link:hover{color:var(--sb-brown);text-decoration:underline}
-.nn-intro-btns .nn-intro-write{display:inline-flex;align-items:center;gap:8px;height:56px;padding:0 24px 0 18px;border-radius:16px;background:#fff;color:var(--sb-brown);font-size:17px;font-weight:800;box-shadow:0 4px 0 rgba(91,58,30,.12);transition:transform .15s,box-shadow .15s}
-.nn-intro-btns .nn-intro-write .tf{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:11px;background:#fff4e6;font-size:20px}
+.nn-intro-btns .nn-intro-write{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;height:56px;padding:0 28px;border-radius:16px;background:#fff;color:var(--sb-brown);font-size:17px;font-weight:800;box-shadow:0 4px 0 rgba(91,58,30,.12);transition:transform .15s,box-shadow .15s}
 .nn-intro-btns .nn-intro-write:hover{transform:translateY(-2px);box-shadow:0 6px 0 rgba(91,58,30,.14)}
 .nn-intro .nn-intro-art{aspect-ratio:auto;max-width:420px;display:flex;flex-direction:column;align-items:flex-end;justify-self:end}
 .nn-bubble{position:relative;align-self:flex-end;margin:0 4% 14px 0;padding:11px 18px;border-radius:999px;background:#ffd6a5;color:#5a2410;font-size:16px;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
@@ -2483,7 +2482,8 @@ img.cm-av{object-fit:cover;background:#f2f4f6}
   .sr-group{padding:16px 16px 6px;border-radius:18px}
   .sr-start div{padding:16px}
 }
-@media(max-width:680px){.nn-intro-btns{gap:8px}.nn-intro-btns .sb-cta,.nn-intro-btns .nn-intro-write{flex:1;justify-content:center;height:52px;font-size:15.5px;padding:0 12px}.nn-intro-btns .nn-intro-write .tf{width:28px;height:28px;font-size:17px}}
+@media(max-width:680px){.nn-intro-btns{gap:8px}.nn-intro-btns .sb-cta,.nn-intro-btns .nn-intro-write{flex:1 1 0;min-width:0;justify-content:center;white-space:nowrap;height:52px;font-size:15.5px;padding:0 10px}}
+@media(max-width:360px){.nn-intro-btns .sb-cta,.nn-intro-btns .nn-intro-write{font-size:14.5px;padding:0 6px}}
 /* 바닥글 글씨 살짝 키움 (운영자 2026-10-24) */
 .sb .sb-ft-why{font-size:14.5px}
 .sb .ft-links{font-size:15px}.sb .ft-row li{font-size:14px}.sb .ft-notice{font-size:14px}.sb .ft-copy{font-size:13.5px}
