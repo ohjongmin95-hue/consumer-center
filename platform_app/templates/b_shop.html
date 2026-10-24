@@ -28,15 +28,15 @@
 <ul class="dots">
 <li>문의는 <b>요청</b>에 "{{ spec.channel }}" 표시로 들어와요. 유형을 자동으로 나누고 답변 초안도 만들어 드려요.</li>
 <li>요청 화면에서 <b>답변하기</b>를 누르면 {{ spec.name }}에 바로 올라가요 (시험 운영){% if shop=='coupang' %} (Wing 로그인 아이디 필요){% endif %}. 처음 몇 번은 <a class="link" href="{{ spec.admin }}" target="_blank" rel="noopener">{{ spec.name }} 판매자 화면</a>에서 잘 올라갔는지 확인해 주세요.</li>
-<li>주문은 <b>주문·배송</b>에 들어와요. 주문번호가 같으면 상태와 송장만 고치고, SOBORU CS에서 처리한 취소·반품 결과는 덮지 않아요.</li>
+<li>주문은 <b>주문·배송</b>에 들어와요. 주문번호가 같으면 상태와 송장만 고치고, 소보루에서 처리한 취소·반품 결과는 덮지 않아요.</li>
 </ul></section>
 </div>
 <aside class="stack">
 <section class="panel"><div class="ph">키 발급 방법</div>
 {% if shop=='naver' %}<ol class="steps">
 <li><a class="link" href="https://apicenter.commerce.naver.com" target="_blank" rel="noopener">커머스API센터</a>에 스마트스토어 통합매니저 계정으로 로그인해요.</li>
-<li><b>애플리케이션 등록</b>을 누르고, 연결할 스토어를 고른 뒤 이름(예: SOBORU CS)을 적어요.</li>
-<li>API 호출 IP에 아래 <b>SOBORU CS 서버 IP</b>를 넣어요.</li>
+<li><b>애플리케이션 등록</b>을 누르고, 연결할 스토어를 고른 뒤 이름(예: 소보루 CS)을 적어요.</li>
+<li>API 호출 IP에 아래 <b>소보루 서버 IP</b>를 넣어요.</li>
 <li>API 그룹에서 <b>주문</b>과 <b>문의</b>를 추가하고 등록해요.</li>
 <li>내 스토어 애플리케이션에서 <b>애플리케이션 ID</b>와 <b>시크릿</b>을 복사해 이 화면의 키 칸에 넣어요.</li>
 </ol>
@@ -44,13 +44,13 @@
 {% else %}<ol class="steps">
 <li><a class="link" href="https://wing.coupang.com" target="_blank" rel="noopener">쿠팡 윙</a>에 로그인하고, 오른쪽 위 내 아이디 → <b>판매자정보</b>(또는 추가판매정보)로 가요.</li>
 <li>아래쪽 <b>API Key 발급</b>에서 OPEN API를 고르고 약관에 동의해요.</li>
-<li>연동 방식은 <b>자체개발</b>을 고르고, IP에 아래 <b>SOBORU CS 서버 IP</b>를, URL에 {{ site_url("biz","/") }}를 넣어요.</li>
+<li>연동 방식은 <b>자체개발</b>을 고르고, IP에 아래 <b>소보루 서버 IP</b>를, URL에 {{ site_url("biz","/") }}를 넣어요.</li>
 <li>나온 <b>Access Key</b>, <b>Secret Key</b>와 판매자정보의 <b>업체코드</b>(A로 시작)를 이 화면의 키 칸에 넣어요.</li>
 </ol>
 <p class="cap" style="margin:10px 0 0">쿠팡 키는 처음 발급하면 쓸 수 있기까지 하루 정도 걸릴 수 있어요. 키는 180일마다 다시 발급해야 하고, 다시 발급하면 여기에서 키를 바꿔 주세요.</p>{% endif %}
-<div class="fld" style="margin-top:14px"><span>SOBORU CS 서버 IP</span>
+<div class="fld" style="margin-top:14px"><span>소보루 서버 IP</span>
 {% if ip %}<div class="addline"><input class="inp" value="{{ ip }}" readonly><button class="btn md gray" type="button" data-copy="{{ ip }}">복사</button></div>
-{% else %}<div class="warn">서버 IP를 준비하고 있어요. SOBORU CS에 문의해 주세요.</div>{% endif %}</div>
+{% else %}<div class="warn">서버 IP를 준비하고 있어요. 소보루에 문의해 주세요.</div>{% endif %}</div>
 </section>
 </aside>
 </div>

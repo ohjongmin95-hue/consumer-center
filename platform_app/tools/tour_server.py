@@ -14,7 +14,7 @@ import hanq, core, demo, chatbot
 core.throttled=lambda *a,**k:False
 with core.conn() as db:
     cid=db.execute("""INSERT INTO companies(name,member,status,contact,login_id,pw_hash,biz_no,owner_name,phone,notify_email,industry,created,email_verified,biz_status,plan,plan_since,setup)
-      VALUES('봄날옷장',1,'active','02-000-0000','tour@example.com',?,'0000000000','김대표','','','패션·잡화',?,1,'01','pilot',?,'{"company":"done","shop":"done","center":"done","policy":"done","connect":"done","ai":"done","widget":"done","test":"done"}')""",
+      VALUES('소보루 견본상점',1,'active','02-000-0000','tour@example.com',?,'0000000000','김대표','','','패션·잡화',?,1,'01','pilot',?,'{"company":"done","shop":"done","center":"done","policy":"done","connect":"done","ai":"done","widget":"done","test":"done"}')""",
       (generate_password_hash('tourpassword1'),core.iso(),core.iso())).lastrowid
     co=core.company(db,cid);dm=demo.create(db,co)
     # 견본 데이터를 견본 회사로 옮겨 데모 표시 없이 찍는다 (이 임시 DB에서만)
@@ -27,7 +27,7 @@ with core.conn() as db:
     # 카페24 연결 화면·카페24 주문 화면 (가짜 토큰, 밖으로 나가지 않는다)
     import cafe24, shops
     db.execute("INSERT INTO cafe24_links(company_id,mall_id,creds,shop_name,scopes,expires,refresh_expires,synced,n_ord,created) VALUES(?,?,?,?,?,?,?,?,?,?)",
-               (cid,'soborushop',shops.seal({'access_token':'x','refresh_token':'y'}),'봄날옷장',cafe24.SCOPES,'2099-01-01 00:00:00','2099-01-14 00:00:00',core.iso(),2,core.iso()))
+               (cid,'soborushop',shops.seal({'access_token':'x','refresh_token':'y'}),'소보루 견본몰',cafe24.SCOPES,'2099-01-01 00:00:00','2099-01-14 00:00:00',core.iso(),2,core.iso()))
     oc={r[1] for r in db.execute('PRAGMA table_info(orders)')}
     if 'src' in oc:db.execute("UPDATE orders SET src='cafe24',channel='자사몰' WHERE id=(SELECT MIN(id) FROM orders WHERE company_id=? AND status IN ('paid','ready'))",(cid,))
     lc={r[1] for r in db.execute('PRAGMA table_info(cafe24_links)')}

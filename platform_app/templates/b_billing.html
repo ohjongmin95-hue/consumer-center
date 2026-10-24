@@ -30,7 +30,7 @@ document.querySelectorAll('[data-once]').forEach(function(btn){btn.onclick=funct
 {% if bl and bl.status=='trial' %}<span class="pill ok">무료 체험 중</span>{% elif bl and bl.status=='active' %}<span class="pill ok">결제 중</span>{% elif bl and bl.status=='canceled' %}<span class="pill gray">해지 예약</span>{% elif bl and bl.status=='past_due' %}<span class="pill bad">결제 실패</span>{% elif bl and bl.status=='stopped' %}<span class="pill bad">결제 멈춤</span>{% else %}<span class="pill gray">무료 시범</span>{% endif %}
 </div>
 <h1>요금·결제</h1></div></div>
-{% if locked %}<div class="warn" style="margin-bottom:16px"><span><b>{{ '카드를 등록하면 바로 시작할 수 있어요' if not bl or not bl.started else '결제가 확인되지 않아 SOBORU CS 기능이 멈췄어요' }}</b><small>{{ ('카드를 등록하면 %d일 동안 모든 기능을 무료로 써요. 등록할 때는 결제되지 않아요.'%trial_days()) if not bl or not bl.started else '받은 문의와 설정은 그대로 있어요. 결제하면 바로 다시 쓸 수 있어요.' }}</small></span></div>{% endif %}
+{% if locked %}<div class="warn" style="margin-bottom:16px"><span><b>{{ '카드를 등록하면 바로 시작할 수 있어요' if not bl or not bl.started else '결제가 확인되지 않아 소보루 CS 기능이 멈췄어요' }}</b><small>{{ ('카드를 등록하면 %d일 동안 모든 기능을 무료로 써요. 등록할 때는 결제되지 않아요.'%trial_days()) if not bl or not bl.started else '받은 문의와 설정은 그대로 있어요. 결제하면 바로 다시 쓸 수 있어요.' }}</small></span></div>{% endif %}
 <div class="cols">
 <div class="stack">
 <section class="panel"><div class="ph">이번 기간 상담<span class="pill {{ 'bad' if use.over else 'ok' }}" style="margin-left:auto">{{ use.tier.name }}</span></div>
@@ -76,10 +76,10 @@ document.querySelectorAll('[data-once]').forEach(function(btn){btn.onclick=funct
 {% if c24 or (bl and bl.source=='cafe24') %}<li>카페24 쇼핑몰을 연결하셨으면 카페24 앱 결제로 결제해요. 처음 연결한 날부터 {{ trial_days() or 5 }}일은 무료이고, 첫 달은 카페24 결제 화면에서 결제하고, 그다음부터 카페24가 매달 결제해요.</li>
 <li>해지와 결제 내역은 카페24 관리자의 앱 관리에서 볼 수 있어요.</li>
 {% else %}<li>처음 카드를 등록하면 {{ trial_days() or 5 }}일 무료 체험이 시작되고, 체험이 끝나는 날 첫 달 요금이 결제돼요. 그다음부터 매달 같은 날 자동으로 결제돼요.</li>
-<li>결제가 되지 않으면 결제할 때까지 SOBORU CS 기능이 멈춰요. 받은 문의와 설정은 그대로 남아요.</li>
+<li>결제가 되지 않으면 결제할 때까지 소보루 CS 기능이 멈춰요. 받은 문의와 설정은 그대로 남아요.</li>
 <li>해지하면 다음 결제일까지 그대로 쓰고, 그날부터 결제하지 않아요.</li>
 <li>결제가 안 되면 메일로 알려 드리고 다음 날 다시 시도해요 (3번까지). 결제될 때까지 기능은 멈춰요.</li>
-<li>결제는 포트원과 결제대행사(PG)가 처리해요. 카드 번호는 SOBORU CS에 저장되지 않아요.</li>{% endif %}
+<li>결제는 포트원과 결제대행사(PG)가 처리해요. 카드 번호는 소보루에 저장되지 않아요.</li>{% endif %}
 <li>환불 기준은 <a class="link" href="{{ url_for('refund_policy') }}" target="_blank" rel="noopener">환불 정책</a>에서 볼 수 있어요.</li>
 </ul></section>
 </aside>

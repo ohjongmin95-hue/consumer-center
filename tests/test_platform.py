@@ -68,7 +68,7 @@ class PlatformTest(unittest.TestCase):
         return int(r.headers['Location'].rstrip('/').split('/')[-1])
 
     def test_app_api(self):
-        """SOBORU CS 앱 API: 쿠키 없이 요청별 토큰으로 접수·조회·답변 확인·알림 등록."""
+        """소보루 CS 앱 API: 쿠키 없이 요청별 토큰으로 접수·조회·답변 확인·알림 등록."""
         b,o,cid=self.signup_and_approve('앱테스트상점','apptest@example.com')
         a=self.client()
         meta=a.get('/api/v1/meta').get_json();self.assertEqual(meta['cats'][0],{'name':'배송 조회','hint':'배송이 안 오거나 늦어요'})
@@ -677,7 +677,7 @@ class PlatformTest(unittest.TestCase):
         b,o,cid=self.signup_and_approve('한화면상회','oneview@example.com')
         me=self.client();c1=self.file_case(me,'한화면상회','교환',str(cid),title='사이즈가 안 맞아요');c2=self.file_case(me,'한화면상회','배송 조회',str(cid),title='언제 와요')
         home=b.get('/biz/').get_data(as_text=True)
-        for t in ('사장님','오늘 들어온 요청','승인할 요청이','AI 브리핑','사장님 승인이 필요한 요청이 2건','사이즈가 안 맞아요','class="bside"','서비스 연동'):self.assertIn(t,home)
+        for t in ('사장님','오늘 들어온 요청','승인할 요청이','소보루 브리핑','사장님 승인이 필요한 요청이 2건','사이즈가 안 맞아요','class="bside"','서비스 연동'):self.assertIn(t,home)
         ap=b.get('/biz/approvals').get_data(as_text=True);self.assertIn('사이즈가 안 맞아요',ap);self.assertIn('언제 와요',ap)
         r=b.get('/biz/returns').get_data(as_text=True);self.assertIn('사이즈가 안 맞아요',r);self.assertNotIn('언제 와요',r);self.assertIn('새로 접수',r)
         self.post(b,f'/biz/case/{c1}',{'act':'approve'})
@@ -859,14 +859,14 @@ class PlatformTest(unittest.TestCase):
         self.assertNotIn('cp-moves',me.get('/guide').get_data(as_text=True))
         self.assertEqual(self.client().get('/biz/ops/visual').status_code,302)  # 운영자만
         # 색이 섞인 제목도 조각마다 고친다 (화면에서 고친 경우 shown=1)
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'AI가 먼저','dst':'한 곳에서','shown':'1'})
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'AI가 먼저 답해요','dst':'한 곳에서','shown':'1'})
         self.post(o,'/biz/ops/copy',{'site':'biz','src':'한 곳에서','dst':'바로','shown':'1'})  # 이미 바꾼 글자를 다시 고치면 같은 기록을 고친다
-        self.assertIn('<h1>쇼핑몰 문의,<br><em>바로</em> 답해요</h1>',self.client().get('/biz/').get_data(as_text=True))
+        self.assertIn('<h1>쇼핑몰 문의,<br>바로</h1>',self.client().get('/biz/').get_data(as_text=True))
         # 줄을 비우면 그 줄바꿈도 같이 사라져 아래 글이 당겨진다, 칸 안의 줄바꿈은 그대로 줄바꿈
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'사장님은 중요한 일만','dst':'','shown':'1'})
-        biz=self.client().get('/biz/').get_data(as_text=True);self.assertIn('<h2>반복 문의는 AI에게,</',biz);self.assertNotIn('반복 문의는 AI에게,<br></',biz)
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'반복 문의는 AI에게,','dst':'반복 문의는 AI에게,\n끝','shown':'1'})
-        self.assertIn('<h2>반복 문의는 AI에게,<br>끝</',self.client().get('/biz/').get_data(as_text=True))
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'바로','dst':'','shown':'1'})
+        biz=self.client().get('/biz/').get_data(as_text=True);self.assertIn('<h1>쇼핑몰 문의,</',biz);self.assertNotIn('쇼핑몰 문의,<br></',biz)
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'쇼핑몰 문의,','dst':'쇼핑몰 문의,\n끝','shown':'1'})
+        self.assertIn('<h1>쇼핑몰 문의,<br>끝</',self.client().get('/biz/').get_data(as_text=True))
         with self.core.conn() as db:db.execute('DELETE FROM copy_edits')
 
     def test_visual_edit_stays_on_its_page(self):
@@ -978,7 +978,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(me.get('/to/99999').status_code,404)
         self.assertIn('value="바른가전"',me.get(f'/new?company_id={cid}').get_data(as_text=True))
         page=b.get('/biz/settings').get_data(as_text=True)
-        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · SOBORU CS',page);self.assertIn('soboru-cs-wordmark.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
+        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 CS',page);self.assertIn('soboru-char.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
         case_id=self.file_case(me,'바른가전','교환',str(cid),title='세탁기 소음')
         self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
         # 답변 목표일이 지나면 한 번만 지연 알림
@@ -1701,7 +1701,7 @@ class PlatformTest(unittest.TestCase):
             with patch.object(self.core,'send_mail',lambda to,sub,body:mails.append(sub)):
                 r=self.post(b,'/biz/connect/cafe24',{'act':'sync'},follow_redirects=True);self.assertIn('만료됐어요',r.get_data(as_text=True))
                 self.post(b,'/biz/connect/cafe24',{'act':'sync'})
-            self.assertEqual(mails,['[SOBORU CS] 카페24 연결을 확인해 주세요'])  # 처음 끊겼을 때 한 번만
+            self.assertEqual(mails,['[소보루 CS] 카페24 연결을 확인해 주세요'])  # 처음 끊겼을 때 한 번만
             with self.core.conn() as db:self.assertEqual(c24.link(db,cid)['status'],'reconnect')
             self.assertIn('다시 연결 필요',b.get('/biz/connect/cafe24').get_data(as_text=True))
             self.post(b,'/biz/connect/cafe24',{'act':'delete'})
@@ -1857,7 +1857,7 @@ class PlatformTest(unittest.TestCase):
         def fake(method,url,headers=None,body=None):
             if '/oauth/token' in url:return 400,{'error':'invalid_grant'}
             return (200,{'store':{}}) if alive[0] else (401,{})
-        ev={'event_no':90077,'resource':{'mall_id':'delshop','client_id':'cid','app_name':'SOBORU CS'}}
+        ev={'event_no':90077,'resource':{'mall_id':'delshop','client_id':'cid','app_name':'소보루 CS'}}
         with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec','CAFE24_WEBHOOK_KEY':'hookkey'}),patch.object(shops,'http',fake):
             with self.core.conn() as db:c24.store(db,cid,'delshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
             def st():

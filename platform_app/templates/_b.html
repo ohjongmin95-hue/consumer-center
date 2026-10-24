@@ -1,6 +1,6 @@
 {# 기업 서비스 공용: 상단 메뉴, 지표, 승인 카드 #}
 {% import '_i.html' as i %}
-{% macro soboru_logo() -%}<img class="cswm" src="{{ url_for('static',filename='soboru-cs-wordmark.png') }}?v=1" alt="SOBORU CS" width="713" height="103">{%- endmacro %}
+{% macro soboru_logo() -%}<img class="ch" src="{{ url_for('static',filename='soboru-char.png') }}?v=3" alt="" width="125" height="96"><span class="wm">소보루 CS</span>{%- endmacro %}
 {% macro bar(tab) -%}
 <header class="gnb"><div class="wrap">
 <a class="logo biz" href="{{ url_for('decide') }}">{{ soboru_logo() }}</a>

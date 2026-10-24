@@ -18,7 +18,7 @@ function stopServer(){if(server&&server.exitCode===null)server.kill('SIGTERM');}
 const OUT=path.join(__dirname,'..','static','tour');
 const TMP=fs.mkdtempSync(path.join(process.env.VIDEO_TMP||os.tmpdir(),'tourvid-'));
 const FF='/usr/bin/ffmpeg',VP={width:1280,height:800},FPS=30,XF=0.45;
-const WORDMARK='data:image/png;base64,'+fs.readFileSync(path.join(__dirname,'..','static','soboru-cs-wordmark.png')).toString('base64');
+const CHAR='data:image/png;base64,'+fs.readFileSync(path.join(__dirname,'..','static','soboru-char.png')).toString('base64');
 // 끝 화면 가격: billing.py의 가장 싼 구간 금액을 그대로 읽는다 (영상 속 가격이 요금표와 어긋나지 않게)
 const START_PRICE=(()=>{const m=[...fs.readFileSync(path.join(__dirname,'..','billing.py'),'utf8').matchAll(/price=(\d+),tickets=/g)].map(x=>+x[1]);return Math.min(...m).toLocaleString('ko-KR')})();
 const TRIAL_DAYS=(fs.readFileSync(path.join(__dirname,'..','billing.py'),'utf8').match(/TRIAL_DAYS\s*=\s*(\d+)/)||[0,5])[1];
@@ -130,13 +130,14 @@ const END_CARD=`<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;height:100%;background:#fff;font-family:Pretendard,-apple-system,'Apple SD Gothic Neo',sans-serif;color:#191f28;letter-spacing:-.02em}
 .w{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;text-align:center}
 .w>*{opacity:0;animation:in .7s cubic-bezier(.2,.8,.2,1) forwards}
-img{width:300px;height:auto;animation-delay:.1s!important}
+img{width:150px;height:auto;animation-delay:.05s!important}
+.brand{font-size:30px;font-weight:800;color:#5a3416;margin-top:14px;animation-delay:.2s!important}
 h1{font-size:50px;font-weight:800;margin:34px 0 0;line-height:1.25;animation-delay:.45s!important}
 h1 em{font-style:normal;color:#ef920e}
 .price{margin-top:32px;display:inline-flex;gap:12px;align-items:center;background:#fff6e8;color:#b8660a;border-radius:999px;padding:14px 28px;font-size:24px;font-weight:700;animation-delay:.75s!important}
 .price i{width:6px;height:6px;border-radius:50%;background:#ef920e}
 @keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-</style></head><body><div class="w"><img src="${WORDMARK}" alt="SOBORU CS">
+</style></head><body><div class="w"><img src="${CHAR}" alt=""><div class="brand">소보루 CS</div>
 <h1>쇼핑몰 문의, <em>AI가 먼저</em> 답해요</h1><div class="price">월 ${START_PRICE}원부터<i></i>${TRIAL_DAYS}일 무료 체험</div></div></body></html>`;
 
 (async()=>{

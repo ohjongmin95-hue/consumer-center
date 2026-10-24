@@ -1,6 +1,6 @@
 """외부 연동 API (Gorgias의 REST API·Webhooks에 해당). 보안 점검 전이라 공개하지 않는다.
 
-  · SOBORU CS 운영자가 회사별로 켜야 쓸 수 있다(companies.api_enabled). 켜지 않은 회사에는 메뉴도 안 보인다.
+  · 소보루 운영자가 회사별로 켜야 쓸 수 있다(companies.api_enabled). 켜지 않은 회사에는 메뉴도 안 보인다.
   · 키는 회사마다 만든다. 원문은 만들 때 한 번만 보여 주고 SHA-256 해시만 저장한다.
     sk_test_ 키는 그 회사의 데모 작업 공간(견본 데이터)에만 닿는다. 실제 고객 데이터에 닿지 않고 시험해 볼 수 있다.
   · 웹훅: 새 문의·답변을 회사가 정한 https 주소로 보낸다. 본문에 HMAC-SHA256 서명을 붙이고, 보낸 기록을 남긴다.
@@ -228,7 +228,7 @@ def manage():
                 if wh and act=='hook_del':db.execute('DELETE FROM webhooks WHERE id=?',(wh['id'],));db.execute('DELETE FROM webhook_log WHERE webhook_id=?',(wh['id'],));flash('웹훅을 지웠어요','ok')
                 elif wh and act=='hook_on':db.execute('UPDATE webhooks SET active=1,fails=0 WHERE id=?',(wh['id'],));flash('웹훅을 다시 켰어요','ok')
                 elif wh:
-                    ok=deliver(db,wh,'ping','',{'message':'SOBORU CS 웹훅 시험이에요'})
+                    ok=deliver(db,wh,'ping','',{'message':'소보루 CS 웹훅 시험이에요'})
                     flash('시험 알림을 보냈어요' if ok else '시험 알림을 보내지 못했어요. 아래 보낸 기록을 확인해 주세요','ok' if ok else 'error')
             if not new_key:return redirect(url_for('api.manage'))
         keys=db.execute('SELECT * FROM api_keys WHERE company_id=? ORDER BY revoked!=\'\',id DESC',(co['id'],)).fetchall()

@@ -1,8 +1,8 @@
 """인스타그램 DM 받기 (Instagram API with Instagram Login).
-SOBORU CS가 메타 개발자 앱을 만들고 키(IG_APP_ID·IG_APP_SECRET·IG_VERIFY_TOKEN)를 서버에 넣기 전까지는 '연동 대기'.
+소보루가 메타 개발자 앱을 만들고 키(IG_APP_ID·IG_APP_SECRET·IG_VERIFY_TOKEN)를 서버에 넣기 전까지는 '연동 대기'.
 
   · 사장님이 '인스타그램으로 로그인'을 누르면 인스타그램 권한 동의 화면으로 간다 -> 돌아오면 장기 토큰(60일)을 암호화해 저장하고,
-    그 계정의 DM 알림(웹훅)을 SOBORU CS로 받도록 신청한다. 토큰은 cron이 30일마다 새로 바꾼다.
+    그 계정의 DM 알림(웹훅)을 소보루로 받도록 신청한다. 토큰은 cron이 30일마다 새로 바꾼다.
   · 고객이 DM을 보내면 메타가 /hook/instagram 으로 알려 준다(서명 X-Hub-Signature-256을 앱 시크릿으로 확인).
     같은 고객의 DM은 끝나지 않은 요청에 이어 붙고, 없으면 새 요청('인스타그램 DM')이 된다.
   · 답변은 사람이 요청 화면에서 '인스타그램 DM으로 답변 보내기'를 눌러야 나간다. 인스타그램 규칙상 고객이 마지막으로 보낸 지 24시간 안에만 보낼 수 있다.
@@ -208,7 +208,7 @@ def hook():
     receive(payload)
     return jsonify(ok=True)
 
-# 메타 앱 설정 '콜백 URL 승인 취소'·'데이터 삭제 요청 URL': 사장님이 인스타그램에서 SOBORU CS 권한을 거두면
+# 메타 앱 설정 '콜백 URL 승인 취소'·'데이터 삭제 요청 URL': 사장님이 인스타그램에서 소보루 권한을 거두면
 # 메타가 signed_request(앱 시크릿으로 서명)를 보낸다 -> 그 계정의 연결과 저장한 토큰을 지운다. 이미 받은 요청(고객 문의)은 회사 기록이라 그대로.
 def signed_data(sr):
     sec=core.secret('IG_APP_SECRET')
@@ -245,8 +245,8 @@ def page():
         act=request.form.get('act','connect')
         if act=='delete':
             with conn() as db:db.execute('DELETE FROM ig_links WHERE company_id=?',(co['id'],))
-            flash('인스타그램 연결을 끊었어요. 저장한 토큰도 지웠어요. 인스타그램 설정 > 앱 및 웹사이트에서 SOBORU CS를 지우면 권한도 완전히 거둬져요.','ok')
-        elif not ready():flash('인스타그램 연결은 SOBORU CS가 메타 앱 준비를 마치면 열려요.','error')
+            flash('인스타그램 연결을 끊었어요. 저장한 토큰도 지웠어요. 인스타그램 설정 > 앱 및 웹사이트에서 소보루를 지우면 권한도 완전히 거둬져요.','ok')
+        elif not ready():flash('인스타그램 연결은 소보루가 메타 앱 준비를 마치면 열려요.','error')
         elif not co['member']:flash('인스타그램 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 할 수 있어요.','error')
         else:
             nonce=secrets.token_urlsafe(12);session['ig_nonce']=nonce

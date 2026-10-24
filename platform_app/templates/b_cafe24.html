@@ -4,9 +4,9 @@
 {% block body %}
 <div class="crumb"><a href="{{ url_for('connect') }}">서비스 연동</a><span>›</span><span>카페24</span></div>
 <div class="chead"><div class="l"><div class="tagrow">{% if not ready %}<span class="pill gray">연동 대기</span>{% elif lk and lk.status=='ok' %}<span class="pill ok">연결됨</span>{% elif lk %}<span class="pill bad">다시 연결 필요</span>{% else %}<span class="pill gray">연결 전</span>{% endif %}</div>
-<h1>카페24 연결</h1><div class="cmeta"><span>카페24 쇼핑몰 관리자 계정으로 로그인해 권한에 동의하면, 주문·상품·게시판 문의를 SOBORU CS로 가져오고 단순 문의엔 AI가 답글로 답해요</span></div></div></div>
+<h1>카페24 연결</h1><div class="cmeta"><span>카페24 쇼핑몰 관리자 계정으로 로그인해 권한에 동의하면, 주문·상품·게시판 문의를 소보루로 가져오고 단순 문의엔 AI가 답글로 답해요</span></div></div></div>
 <div class="cols"><div class="stack">
-{% if not ready %}<section class="panel"><div class="ph">연동 대기 중이에요</div><p class="sub" style="margin:0">SOBORU CS가 카페24 개발자센터에 앱을 등록하고 심사를 받는 중이에요. 등록이 끝나면 이 화면에서 바로 연결할 수 있어요. 그동안은 <a class="link" href="{{ url_for('orders_page') }}">주문 엑셀(CSV) 올리기</a>로 주문을 가져와 주세요.</p></section>{% endif %}
+{% if not ready %}<section class="panel"><div class="ph">연동 대기 중이에요</div><p class="sub" style="margin:0">소보루가 카페24 개발자센터에 앱을 등록하고 심사를 받는 중이에요. 등록이 끝나면 이 화면에서 바로 연결할 수 있어요. 그동안은 <a class="link" href="{{ url_for('orders_page') }}">주문 엑셀(CSV) 올리기</a>로 주문을 가져와 주세요.</p></section>{% endif %}
 {% if lk %}<section class="panel"><div class="ph">연결 상태</div>
 {% if lk.status!='ok' %}<div class="warn" style="margin-bottom:14px"><span>{{ lk.note }}</span></div>{% elif 'mall.read_product' not in (lk.scopes or '') %}<div class="warn" style="margin-bottom:14px"><span>상품 정보를 가져오려면 아래 <b>다시 연결하기</b>에서 '카페24로 이동해 연결'을 눌러 상품 읽기 권한에 동의해 주세요. 상품을 알아야 AI가 상품 문의에 답할 수 있어요.</span></div>{% endif %}
 <dl class="kv"><dt>쇼핑몰 아이디</dt><dd>{{ lk.mall_id }}{% if lk.shop_name %} · {{ lk.shop_name }}{% endif %}</dd><dt>동의한 권한</dt><dd>{{ scope_text(lk.scopes) or lk.scopes or '–' }}</dd>
@@ -19,7 +19,7 @@
 <form method="post" onsubmit="return confirm('카페24 연결을 끊을까요? 이미 가져온 주문과 문의는 그대로 둬요.')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md gray" name="act" value="delete">연결 끊기</button></form></div></section>
 <section class="panel" id="boards"><div class="ph">지켜보는 문의 게시판</div>
 {% if pick is not none %}<form method="post" class="stack"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="boards_save">
-<p class="sub" style="margin:0">고객 문의가 올라오는 게시판을 골라 주세요. 고른 게시판의 새 글이 SOBORU CS 요청으로 들어와요.</p>
+<p class="sub" style="margin:0">고객 문의가 올라오는 게시판을 골라 주세요. 고른 게시판의 새 글이 소보루 요청으로 들어와요.</p>
 <div class="chk-grid">{% for n,nm,on in pick %}<label class="check"><input type="checkbox" name="board" value="{{ n }}" {{ 'checked' if on }}><span class="bx"></span><span>{{ nm }}</span></label>{% else %}<p class="cap" style="margin:0">쇼핑몰에 게시판이 없어요.</p>{% endfor %}</div>
 <div style="display:flex;gap:8px"><button class="btn md">저장</button><a class="btn md gray" href="{{ url_for('c24.page') }}">취소</a></div></form>
 {% else %}{% if watch %}<div class="tagrow">{% for n,nm in watch %}<span class="pill gray">{{ nm }}</span>{% endfor %}</div>{% elif watch is none %}<p class="sub" style="margin:0">처음 가져올 때 이름에 Q&amp;A·문의·상담이 들어간 게시판을 알아서 골라요.</p>{% else %}<p class="sub" style="margin:0">지켜보는 게시판이 없어요.</p>{% endif %}
@@ -27,18 +27,18 @@
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn sm gray" name="act" value="boards" {{ 'disabled' if lk.status!='ok' }}>게시판 바꾸기</button></form>{% endif %}</section>{% endif %}
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="connect">
 <div class="ph">{{ '다시 연결하기' if lk else '연결하기' }}</div>
-{% if launch %}<div class="hint ok"><span>카페24에서 SOBORU CS 앱을 열었어요. 쇼핑몰 아이디 <b>{{ launch }}</b>로 연결을 이어서 할게요.</span></div>{% endif %}
+{% if launch %}<div class="hint ok"><span>카페24에서 소보루 CS 앱을 열었어요. 쇼핑몰 아이디 <b>{{ launch }}</b>로 연결을 이어서 할게요.</span></div>{% endif %}
 <label class="fld"><span>카페24 쇼핑몰 아이디</span><input class="inp" name="mall_id" maxlength="40" value="{{ launch or (lk.mall_id if lk else '') }}" placeholder="예: myshop (myshop.cafe24.com의 앞부분)" required {{ 'disabled' if not ready }}></label>
-<p class="cap" style="margin:0">누르면 카페24 화면으로 넘어가요. 카페24 관리자로 로그인하고 권한에 동의하면 이 화면으로 돌아와요. SOBORU CS는 카페24 비밀번호를 받지 않아요.</p>
+<p class="cap" style="margin:0">누르면 카페24 화면으로 넘어가요. 카페24 관리자로 로그인하고 권한에 동의하면 이 화면으로 돌아와요. 소보루는 카페24 비밀번호를 받지 않아요.</p>
 <button class="btn md" {{ 'disabled' if not ready or ((not trust or not trust.ok) and not launch) }}>카페24로 이동해 연결</button>
-{% if ready and trust and not trust.ok %}<p class="cap" style="margin:0">{{ '카페24에서 권한에 동의하면 회사 인증도 함께 끝나요.' if launch else '회사 인증이 끝나면 연결할 수 있어요. 카페24 관리자에서 SOBORU CS 앱을 열면 바로 연결할 수 있어요.' }}</p>{% endif %}</form>
+{% if ready and trust and not trust.ok %}<p class="cap" style="margin:0">{{ '카페24에서 권한에 동의하면 회사 인증도 함께 끝나요.' if launch else '회사 인증이 끝나면 연결할 수 있어요. 카페24 관리자에서 소보루 CS 앱을 열면 바로 연결할 수 있어요.' }}</p>{% endif %}</form>
 </div>
 <aside class="stack"><section class="panel"><div class="ph">가져오는 것</div>
 <ul class="dots"><li><b>쇼핑몰 정보 읽기</b>: 연결이 맞는지 확인해요.</li><li><b>주문</b>: 주문·배송 화면에 '자사몰'로 들어와요. 주문번호가 같으면 상태와 송장만 고쳐요.</li>
 <li><b>상품</b>: 이름·가격·옵션·품절 여부·설명을 <a class="link" href="{{ url_for('products') }}">상품</a> 화면으로 가져와요. 사장님이 고친 안내는 덮지 않아요.</li>
 <li><b>게시판 문의</b>: 고른 게시판의 새 글이 '카페24' 요청으로 들어와요. AI 자동 답변이 켜져 있으면 단순 문의엔 AI가 바로 답글을 달고, 취소·반품·환불 같은 문의는 승인 목록에 남아요. 연결하기 전 3일 안에 올라와 아직 답이 없는 글도 AI가 먼저 봐요. 카페24 관리자에서 직접 답하면 그 요청은 답한 것으로 바뀌어요. 고객이 글을 지우면 그 요청은 닫혀요.</li>
 <li><b>긴급문의</b>: 카페24 긴급문의도 같은 방식으로 들어오고, 답변은 그 긴급문의의 답변으로 올라가요.</li>
-<li><b>취소·반품</b>: 대표·관리자가 주문 화면에서 누를 때만 카페24에 보내요. SOBORU CS가 알아서 취소하지 않아요.</li></ul>
-<p class="cap" style="margin:12px 0 0">연결을 완전히 거두려면 카페24 관리자 &gt; 앱 &gt; 마이앱에서 SOBORU CS 앱을 지워 주세요.</p></section></aside>
+<li><b>취소·반품</b>: 대표·관리자가 주문 화면에서 누를 때만 카페24에 보내요. 소보루가 알아서 취소하지 않아요.</li></ul>
+<p class="cap" style="margin:12px 0 0">연결을 완전히 거두려면 카페24 관리자 &gt; 앱 &gt; 마이앱에서 소보루 앱을 지워 주세요.</p></section></aside>
 </div>
 {% endblock %}

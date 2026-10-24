@@ -20,7 +20,7 @@
 {% else %}<section class="panel stack"><div class="ph">계정 잇기</div>
 {% if ready %}<p class="sub" style="margin:0;font-size:15px">인스타그램으로 로그인하고 권한에 동의하면 끝나요.</p>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="connect"><button class="btn md">인스타그램으로 로그인</button></form>
-{% else %}<div class="warn">SOBORU CS가 메타 앱 준비를 마치면 열려요. 조금만 기다려 주세요.</div>{% endif %}
+{% else %}<div class="warn">소보루가 메타 앱 준비를 마치면 열려요. 조금만 기다려 주세요.</div>{% endif %}
 </section>{% endif %}
 </div>
 <aside class="stack">

@@ -1,9 +1,9 @@
-"""카페24 연결 (OAuth 2.0). SOBORU CS가 카페24 개발자센터에 앱을 등록하고 키(CAFE24_CLIENT_ID·SECRET)를 넣기 전까지는 '연동 대기'.
+"""카페24 연결 (OAuth 2.0). 소보루가 카페24 개발자센터에 앱을 등록하고 키(CAFE24_CLIENT_ID·SECRET)를 넣기 전까지는 '연동 대기'.
 
   · 사장님이 쇼핑몰 아이디(mall_id)를 넣으면 카페24 로그인·권한 동의 화면으로 보낸다 -> 돌아오면 토큰을 암호화해 저장.
   · 접근 토큰은 2시간, 갱신 토큰은 2주. 쓸 때마다 만료 5분 전이면 갱신하고, 갱신 토큰도 새로 바뀐다(카페24 방식).
   · 갱신이 안 되면(2주 넘게 안 썼거나 앱 삭제) '다시 연결 필요'로 바꾸고 사장님께 다시 연결을 안내한다.
-  · 주문 가져오기, 문의 게시판(Q&A·1:1 상담) 글 가져오기 -> SOBORU CS 요청, SOBORU CS에서 쓴 답변을 게시판 답글로 올리기.
+  · 주문 가져오기, 문의 게시판(Q&A·1:1 상담) 글 가져오기 -> 소보루 요청, 소보루에서 쓴 답변을 게시판 답글로 올리기.
   · 상품 가져오기 -> 상품정보 (이름·가격·판매 상태·요약 설명). 상품 문의 글엔 상품 이름을 붙인다. 사장님이 고친 안내는 덮지 않는다.
   · 취소·반품: 사장님(대표·관리자)이 주문 화면에서 누를 때만 카페24에 보낸다. 같은 주문은 한 번만 (cafe24_actions 잠금).
 문서: apidocs.cafe24.com > Admin API (Authentication, order/cancellation, return, community/boards)
@@ -124,7 +124,7 @@ def api(db,cid,path,params=None,method='GET',payload=None):
 C_STATUS={'N00':'paid','N10':'paid','N20':'ready','N21':'ready','N22':'ready','N30':'shipped','N40':'delivered','N50':'delivered',  # N00 입금 전도 '결제 완료'로 둔다 (입금 대기 상태가 따로 없음)
           'C00':'paid','C11':'paid','R00':'delivered','R11':'delivered','R12':'delivered','E00':'delivered','E11':'delivered','E12':'delivered'}  # 신청·거부·보류는 아직 끝난 게 아니다
 def status_of(code):
-    """카페24 주문 상태 코드 -> SOBORU CS 주문 상태. 취소(C)·반품(R)·교환(E)의 처리 중·완료는 앞글자로."""
+    """카페24 주문 상태 코드 -> 소보루 주문 상태. 취소(C)·반품(R)·교환(E)의 처리 중·완료는 앞글자로."""
     code=str(code or '')
     return C_STATUS.get(code) or {'C':'canceled','R':'returned','E':'exchanged'}.get(code[:1],'paid')
 FULL_DAYS=14;FULL_EVERY=datetime.timedelta(hours=1)  # 주문일로만 찾아지므로, 한 시간마다 최근 14일 주문을 다시 읽어 배송·취소 변화를 반영한다
@@ -281,7 +281,7 @@ def pick_boards(db,cid,picked=None):
     db.execute('UPDATE cafe24_links SET boards=? WHERE company_id=?',(json.dumps(bs,ensure_ascii=False),cid))
     return bs
 def sync_boards(db,co):
-    """지켜보는 게시판의 새 글 -> SOBORU CS 요청 (채널 '카페24'). 새로 만든 요청 목록."""
+    """지켜보는 게시판의 새 글 -> 소보루 요청 (채널 '카페24'). 새로 만든 요청 목록."""
     lk=link(db,co['id']);now=core.now()
     bs=boards_of(lk)
     if bs is None:bs=pick_boards(db,co['id'])
@@ -323,7 +323,7 @@ def sync_boards(db,co):
     db.execute('UPDATE cafe24_links SET since_b=?,n_inq=n_inq+? WHERE company_id=?',(core.iso(now),len(new),co['id']))
     return new
 def sync_urgent(db,co,lk,frm,now):
-    """카페24 긴급문의 -> SOBORU CS 요청 (답변은 그 긴급문의의 답변으로 올라간다). 이미 답한 긴급문의는 빼고. 새로 만든 요청 목록."""
+    """카페24 긴급문의 -> 소보루 요청 (답변은 그 긴급문의의 답변으로 올라간다). 이미 답한 긴급문의는 빼고. 새로 만든 요청 목록."""
     new=[];seen_m={};offset=0
     while offset<2000:
         db.commit()  # 카페24를 기다리는 동안 DB를 잠그지 않게
@@ -369,14 +369,14 @@ def sync_comments(db,co,lk):
             if not cm.get('comment_no'):continue
             follow(db,co,lk,bno,no,f"c{bno}:{no}:{cm['comment_no']}",cm.get('writer') or cm.get('nick_name') or '',text_of(cm.get('content')),m[3]=='s')
 def mine(co,lk,writer):
-    """우리(가게)가 쓴 글·댓글인지: SOBORU CS가 올린 답글의 글쓴이와 같거나 관리자 이름."""
+    """우리(가게)가 쓴 글·댓글인지: 소보루가 올린 답글의 글쓴이와 같거나 관리자 이름."""
     w=(writer or '').strip()
     return bool(w) and w in {clean(lk['shop_name'] or co['name'],40),co['name'],lk['shop_name'] or '','관리자','운영자'}
 def follow(db,co,lk,bno,parent,ext,writer,text,secret):
     """카페24 문의 글에 이어진 답글·댓글 하나. 진행 중이면 그 요청에 붙이고, 끝난 요청이면 새 요청으로 받는다."""
     if mine(co,lk,writer) or db.execute("SELECT 1 FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id=?",(co['id'],ext)).fetchone():return None
     root=db.execute("SELECT case_id FROM shop_seen WHERE company_id=? AND shop='cafe24' AND ext_id LIKE ? ORDER BY rowid DESC LIMIT 1",(co['id'],f'b{bno}:{parent}:%')).fetchone()
-    if not root:return None  # SOBORU CS가 가져온 적 없는 글에 달린 것
+    if not root:return None  # 소보루가 가져온 적 없는 글에 달린 것
     c=db.execute('SELECT * FROM cases WHERE id=?',(root['case_id'],)).fetchone()  # 그 글로 만든 가장 최근 요청 (끝난 뒤 다시 연 요청이 있으면 그쪽)
     text=text or '(내용 없음)'
     if c and c['name'] and clean(writer,20)!=c['name']:  # 고객이 아닌 사람이 쓴 것. 답글(댓글 말고)이면 카페24 관리자 화면에서 가게가 직접 답한 것으로 본다
@@ -397,7 +397,7 @@ def follow(db,co,lk,bno,parent,ext,writer,text,secret):
     if n:core.notify_company_new(co,n,db)
     return n
 def post_reply(db,co,c,ext_id,text):
-    """SOBORU CS에서 쓴 답변을 카페24 게시판 답글(긴급문의는 긴급문의 답변)로 올린다. 올리면 '', 못 올리면 이유."""
+    """소보루에서 쓴 답변을 카페24 게시판 답글(긴급문의는 긴급문의 답변)로 올린다. 올리면 '', 못 올리면 이유."""
     u=re.fullmatch(r'u(\d+)',ext_id or '')
     if u:
         lk=link(db,co['id'])
@@ -490,7 +490,7 @@ def sync_all():
     return n
 
 # ---------- 앱 삭제 웹훅 ----------
-# 사장님이 카페24 관리자 > 앱에서 SOBORU CS를 지우면 카페24가 이벤트 90077을 보낸다. 연결을 '앱 삭제됨'으로 바꾸고 토큰을 지운다
+# 사장님이 카페24 관리자 > 앱에서 소보루 CS를 지우면 카페24가 이벤트 90077을 보낸다. 연결을 '앱 삭제됨'으로 바꾸고 토큰을 지운다
 # (가져온 주문·요청은 그대로 둔다). 인증정보(CAFE24_WEBHOOK_KEY)가 맞으면 그대로 믿고, 없거나 다르면 카페24에 직접 물어
 # 토큰이 정말 막혔을 때만 끊는다: 남이 이 주소로 가짜 이벤트를 보내도 살아 있는 연결은 끊기지 않는다.
 APP_DELETED=90077
@@ -508,8 +508,8 @@ def app_deleted(db,mall,trusted):
     for lk in db.execute("SELECT * FROM cafe24_links WHERE mall_id=? AND status!='removed'",(mall,)).fetchall():
         if not trusted and _still_works(db,lk['company_id']) is not False:
             log.warning('카페24 앱 삭제 이벤트를 확인하지 못해 연결을 그대로 둠: %s',mall);continue
-        db.execute("UPDATE cafe24_links SET status='removed',creds='',note=? WHERE company_id=?",('카페24에서 SOBORU CS 앱을 지웠어요. 다시 쓰려면 다시 연결해 주세요.',lk['company_id']))
-        core.notify_company_link_broken(core.company(db,lk['company_id']),'카페24','카페24 관리자에서 SOBORU CS 앱을 지웠어요','/connect/cafe24',db);n+=1
+        db.execute("UPDATE cafe24_links SET status='removed',creds='',note=? WHERE company_id=?",('카페24에서 소보루 CS 앱을 지웠어요. 다시 쓰려면 다시 연결해 주세요.',lk['company_id']))
+        core.notify_company_link_broken(core.company(db,lk['company_id']),'카페24','카페24 관리자에서 소보루 CS 앱을 지웠어요','/connect/cafe24',db);n+=1
     return n
 # 게시물 등록·댓글 이벤트는 '지금 그 쇼핑몰 게시판을 가져오라'는 신호로만 쓴다 (내용은 믿지 않고 카페24 API로 다시 읽는다).
 # 그래서 가짜 이벤트가 와도 할 수 있는 건 가져오기를 한 번 더 하는 것뿐이다. 같은 회사는 몇 초에 한 번만.
@@ -632,7 +632,7 @@ def launch_ok(raw_query):
 
 @bp.route('/cafe24/launch')
 def launch():
-    """카페24에서 'SOBORU CS' 앱을 누르면 오는 곳. 로그인돼 있으면 바로 연결(권한 동의)로, 아니면 가입·로그인 뒤 이어서."""
+    """카페24에서 '소보루 CS' 앱을 누르면 오는 곳. 로그인돼 있으면 바로 연결(권한 동의)로, 아니면 가입·로그인 뒤 이어서."""
     if not ready():abort(404)
     mall=launch_ok(request.query_string.decode())
     if not mall:
@@ -641,7 +641,7 @@ def launch():
         return redirect(url_for('login'))
     session['c24_launch']=mall
     if not session.get('co_id'):
-        flash(f'카페24 쇼핑몰({mall})을 SOBORU CS에 연결할게요. 먼저 가입하거나 로그인해 주세요.','ok')
+        flash(f'카페24 쇼핑몰({mall})을 소보루 CS에 연결할게요. 먼저 가입하거나 로그인해 주세요.','ok')
         return redirect(url_for('signup'))
     co=company()
     with conn() as db:lk=link(db,co['id'])
@@ -659,7 +659,7 @@ def page():
         act=request.form.get('act','connect')
         with conn() as db:
             if act=='delete':
-                db.execute('DELETE FROM cafe24_links WHERE company_id=?',(co['id'],));flash('카페24 연결을 끊었어요. 저장한 연결 정보도 지웠어요. 카페24 관리자 > 앱에서 SOBORU CS 앱을 지우면 권한도 완전히 거둬져요.','ok')
+                db.execute('DELETE FROM cafe24_links WHERE company_id=?',(co['id'],));flash('카페24 연결을 끊었어요. 저장한 연결 정보도 지웠어요. 카페24 관리자 > 앱에서 소보루 앱을 지우면 권한도 완전히 거둬져요.','ok')
             elif act=='sync':
                 try:
                     n=sync_orders(db,co)
@@ -685,11 +685,11 @@ def page():
                     db.execute('UPDATE cafe24_links SET shop_name=? WHERE company_id=?',(name,co['id']));flash(f'연결이 잘 돼 있어요{": "+name if name else ""}','ok')
                 except shops.ShopError as e:flash(str(e),'error')
             else:
-                if not ready():flash('카페24 연결은 SOBORU CS가 카페24 앱 등록을 마치면 열려요.','error')
+                if not ready():flash('카페24 연결은 소보루가 카페24 앱 등록을 마치면 열려요.','error')
                 else:
                     mall=clean(request.form.get('mall_id'),40).lower().removesuffix('.cafe24.com')
                     launched=bool(mall) and session.get('c24_launch')==mall  # 카페24 관리자에서 앱을 열고 온 쇼핑몰
-                    if not co['member'] and not launched:flash('판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 할 수 있어요. 카페24 관리자에서 SOBORU CS 앱을 열면 바로 연결할 수 있어요.','error')
+                    if not co['member'] and not launched:flash('판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 할 수 있어요. 카페24 관리자에서 소보루 CS 앱을 열면 바로 연결할 수 있어요.','error')
                     elif not MALL_RE.match(mall):flash('카페24 쇼핑몰 아이디를 확인해 주세요 (관리자 로그인 아이디, 예: myshop)','error')
                     else:
                         nonce=secrets.token_urlsafe(12);session['c24_nonce']=nonce

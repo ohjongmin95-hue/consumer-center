@@ -187,7 +187,7 @@ def help_post(slug):return show('help',slug,'p_post.html')
 @bp.route('/customers')
 def stories():
     with conn() as db:rows=published(db,'story')
-    return render_template('p_list.html',kind='story',rows=rows,cat=None,cats=[],title='고객 사례',lead='SOBORU CS를 쓰는 회사의 실제 이야기예요. 회사가 공개에 동의한 사례만 올려요.',tab='cms.stories')
+    return render_template('p_list.html',kind='story',rows=rows,cat=None,cats=[],title='고객 사례',lead='소보루 CS를 쓰는 회사의 실제 이야기예요. 회사가 공개에 동의한 사례만 올려요.',tab='cms.stories')
 @bp.route('/customers/<slug>')
 def story(slug):return show('story',slug,'p_post.html')
 
@@ -301,16 +301,16 @@ SEED_HELP=[
  ('smartstore','판매처 연동','스마트스토어 연결하기','네이버 커머스API센터에서 키를 발급받아 스마트스토어 문의와 주문을 가져오는 방법이에요.',
   """1. 네이버 커머스API센터에 판매자 계정으로 로그인해요.
 2. 애플리케이션을 등록해요 (판매자 직접 사용).
-3. API 호출 IP에 SOBORU CS 서버 IP를 넣어요. IP는 서비스 연동 > 스마트스토어 화면에 있어요.
-4. 애플리케이션 ID와 시크릿을 SOBORU CS 서비스 연동 화면에 넣어요.
+3. API 호출 IP에 소보루 서버 IP를 넣어요. IP는 서비스 연동 > 스마트스토어 화면에 있어요.
+4. 애플리케이션 ID와 시크릿을 소보루 서비스 연동 화면에 넣어요.
 
 연결하면 답하지 않은 고객 문의와 주문을 10분마다 가져와요. 키는 암호화해서 저장하고 화면에는 끝 4자리만 보여요.
 
 > 회사 인증이 끝나야 연결할 수 있어요."""),
  ('coupang','판매처 연동','쿠팡 연결하기','쿠팡 Wing에서 OPEN API 키를 발급받아 쿠팡 문의와 주문을 가져오는 방법이에요.',
   """1. 쿠팡 Wing > 판매자 정보 > 추가판매정보에서 OPEN API 키를 발급해요.
-2. 허용 IP에 SOBORU CS 서버 IP를 넣어요.
-3. 업체코드, Access Key, Secret Key를 SOBORU CS 서비스 연동 화면에 넣어요.
+2. 허용 IP에 소보루 서버 IP를 넣어요.
+3. 업체코드, Access Key, Secret Key를 소보루 서비스 연동 화면에 넣어요.
 
 쿠팡 키는 발급 후 실제로 쓸 수 있을 때까지 하루 정도 걸릴 수 있어요."""),
  ('rules','자동 처리','자동 처리 규칙 만들기','배송 조회처럼 자주 오는 요청을 들어오는 즉시 처리하는 방법이에요.',
