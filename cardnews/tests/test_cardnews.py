@@ -8,7 +8,7 @@ sys.path.insert(0, str(HERE))
 TMP = tempfile.TemporaryDirectory()
 os.environ['CARDNEWS_DATA'] = TMP.name
 os.environ.pop('ANTHROPIC_API_KEY', None)
-import cards, server  # noqa: E402
+import cards, kakao, server  # noqa: E402
 
 PAGE = ('<html><head><meta property="og:title" content="온라인몰 환불 지연하면 하루 0.1% 배상금"><meta property="og:site_name" content="소보루일보">'
         '<meta property="article:published_time" content="2026-10-22T09:00:00+09:00"></head><body><nav>메뉴 메뉴 메뉴 메뉴 메뉴 메뉴 메뉴 메뉴</nav><article>'
@@ -238,6 +238,43 @@ class CardNewsTest(unittest.TestCase):
         cid2, _, _ = self.make(bait=True)  # 체크리스트에 걸리고 확인 안 한 카드는 저장 안 됨
         data = {'_csrf': self.token(), 'png': [(io.BytesIO(png), 'a.png')]}
         self.assertEqual(self.client.post(f'/card/{cid2}/files', data=data, content_type='multipart/form-data').status_code, 400)
+
+    def test_kakao_send_to_me(self):
+        import io, time as _t
+        calls = []
+        def fake_http(method, url, data=None, headers=None, body=None, timeout=20):
+            calls.append((url.split('kakao.com')[1], dict(data or {}), dict(headers or {})))
+            if url.endswith('/oauth/token'): return 200, {'access_token': 'acc-' + data['grant_type'], 'expires_in': 21599, 'refresh_token': 'ref-1'}
+            if url.endswith('/image/upload'): return 200, {'infos': {'original': {'url': 'https://k.kakaocdn.net/cover.png'}}}
+            if url.endswith('/memo/default/send'): return 200, {'result_code': 0}
+            return 404, {}
+        server.save_config(dict(server.config(), naver_id='id', naver_secret='secret', kakao_key='rest-key'))
+        cid, _, _ = self.make()
+        with patch.object(kakao, 'http', fake_http):
+            r = self.client.get('/kakao/login'); self.assertIn('kauth.kakao.com/oauth/authorize', r.headers['Location']); self.assertIn('scope=talk_message', r.headers['Location'])
+            state = re.search(r'state=([^&]+)', r.headers['Location'])[1]
+            self.assertEqual(self.client.get('/kakao/callback?code=c1&state=wrong').status_code, 400)  # 다른 곳에서 꾸민 응답은 막음
+            with self.client.session_transaction() as ss: ss['kakao_state'] = state
+            self.client.get(f'/kakao/callback?code=c1&state={state}')
+            tok = server.config()['kakao_token']; self.assertEqual((tok['access'], tok['refresh']), ('acc-authorization_code', 'ref-1'))
+            self.assertIn('연결됐어요', json.loads(calls[-1][1]['template_object'])['text'])  # 시험 메시지
+            self.assertIn('연결됨', self.client.get('/settings').get_data(as_text=True))
+            png = b'\x89PNG\r\n\x1a\n' + b'0' * 40
+            r = self.client.post(f'/card/{cid}/kakao', data={'_csrf': self.token(), 'png': (io.BytesIO(png), 'cover.png')}, content_type='multipart/form-data')
+            self.assertEqual(r.get_json(), {'ok': True, 'image': True})
+            up, feed, cap = calls[-3:]
+            self.assertEqual(up[0], '/v2/api/talk/message/image/upload'); self.assertEqual(up[2]['Authorization'], 'KakaoAK rest-key')
+            t = json.loads(feed[1]['template_object']); self.assertEqual((t['object_type'], t['content']['image_url']), ('feed', 'https://k.kakaocdn.net/cover.png'))
+            self.assertEqual(feed[2]['Authorization'], 'Bearer acc-authorization_code')
+            self.assertIn('출처: 소보루일보', json.loads(cap[1]['template_object'])['text'])
+            # 토큰이 만료되면 리프레시 토큰으로 새로 받음
+            c = server.config(); c['kakao_token']['expires'] = int(_t.time()) - 5; server.save_config(c)
+            self.client.post(f'/card/{cid}/kakao', data={'_csrf': self.token()}, content_type='multipart/form-data')
+            self.assertEqual(server.config()['kakao_token']['access'], 'acc-refresh_token')
+            self.assertEqual(json.loads(calls[-1][1]['template_object'])['object_type'], 'text')  # 이미지가 없으면 글로만
+        server.save_config(dict(server.config(), kakao_token={}))
+        r = self.client.post(f'/card/{cid}/kakao', data={'_csrf': self.token()}, content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 400); self.assertIn('연결되지 않았어요', r.get_json()['error'])
 
 
 if __name__ == '__main__':

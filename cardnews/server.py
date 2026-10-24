@@ -11,9 +11,10 @@
 import datetime, json, os, re, secrets, socket, sqlite3, sys, threading, time, webbrowser
 from pathlib import Path
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_from_directory, session, url_for
-import cards
+import cards, kakao
 
 NAME = '민주의 카드뉴스 제작 프로그램'
+SHORT = '민주의 카드뉴스'  # 바탕화면 바로가기 이름 (토스POS처럼 짧게)
 HERE = Path(__file__).resolve().parent
 FROZEN = getattr(sys, 'frozen', False)  # PyInstaller로 만든 실행 파일
 RES = Path(getattr(sys, '_MEIPASS', HERE))  # 화면 파일(templates·static) 있는 곳
@@ -36,8 +37,9 @@ PORT = int(os.getenv('CARDNEWS_PORT') or 5050)
 PER_DAY = (1, 2, 3, 4, 5)
 MODELS = (('claude-opus-5-5', 'Claude Opus 5.5 (기본, 가장 꼼꼼)'), ('claude-sonnet-5-5', 'Claude Sonnet 5.5 (더 싸고 빠름)'))
 DEFAULTS = {'key': '', 'model': 'claude-opus-5-5', 'auto': 0, 'per_day': 3, 'hour': 8, 'web_search': 1,
-            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_style': 'mix', 'hf_auto': 0}
-SECRETS = ('key', 'naver_secret', 'hf_secret')  # 화면에 다시 보여 주지 않는 값
+            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_style': 'mix', 'hf_auto': 0,
+            'kakao_key': '', 'kakao_secret': '', 'kakao_token': {}, 'kakao_auto': 1}
+SECRETS = ('key', 'naver_secret', 'hf_secret', 'kakao_secret')  # 화면에 다시 보여 주지 않는 값
 IMG_STYLES = (('mix', '표지는 사진, 본문은 일러스트'), ('photo', '모두 사진'), ('illust', '모두 일러스트'))
 
 DATA.mkdir(parents=True, exist_ok=True)
@@ -184,9 +186,19 @@ def daily():
     try: urls = cards.find_news(c, c['per_day'] - done, used)
     except RuntimeError as e: log(f'자동 · 뉴스를 고르지 못했어요: {e}'); return
     if not urls: log('자동 · 새로 만들 소비자 뉴스를 찾지 못했어요'); return
+    made = []
     for url in urls:
         if done >= c['per_day']: break
-        if make(url, 'daily').get('status') == 'made': done += 1
+        r = make(url, 'daily')
+        if r.get('status') == 'made': done += 1; made.append(r['id'])
+    if made and c['kakao_auto'] and kakao.ready(c):  # 아침 초안이 생겼다고 내 카톡으로
+        with conn() as db: rows = [db.execute('SELECT title FROM cards WHERE id=?', (i,)).fetchone()[0] for i in made]
+        try: kakao.send_note(c, save_kakao, f'☀️ 오늘의 카드뉴스 초안 {len(made)}개가 만들어졌어요\n' + '\n'.join('· ' + t[:40] for t in rows) + '\n\n프로그램에서 확인하고 올려 주세요.')
+        except RuntimeError as e: log(f'카톡 알림 실패: {e}')
+
+
+def save_kakao(tok):
+    c = config(); c['kakao_token'] = tok; save_config(c)
 
 
 # ---- 뒤에서 하는 일 (Claude가 몇 분 걸려서) ------------------------------------------------
@@ -385,6 +397,43 @@ def open_all():
     return redirect(url_for('home', skip=1))
 
 
+@app.route('/kakao/login')
+def kakao_login():
+    c = config()
+    if not c['kakao_key']: flash('카카오 REST API 키를 먼저 넣고 저장해 주세요.'); return redirect(url_for('settings'))
+    session['kakao_state'] = secrets.token_urlsafe(16)
+    return redirect(kakao.login_url(c, PORT, session['kakao_state']))
+
+
+@app.route('/kakao/callback')
+def kakao_callback():
+    if request.args.get('error'): flash('카카오 로그인을 취소했어요.'); return redirect(url_for('settings'))
+    if not request.args.get('state') or request.args.get('state') != session.pop('kakao_state', None): abort(400)
+    c = config()
+    try: c['kakao_token'] = kakao.exchange(c, request.args.get('code', ''), PORT)
+    except RuntimeError as e: flash(str(e)); return redirect(url_for('settings'))
+    save_config(c)
+    try: kakao.send_note(c, save_kakao, '✅ 민주의 카드뉴스 제작 프로그램과 연결됐어요. 앞으로 카드뉴스를 이 채팅으로 보내 드릴게요.')
+    except RuntimeError as e: flash(f'연결은 됐는데 시험 메시지를 못 보냈어요: {e}'); return redirect(url_for('settings'))
+    flash('카카오톡을 연결했어요. 내 카톡(나와의 채팅)에 시험 메시지를 보냈어요.'); return redirect(url_for('settings'))
+
+
+@app.route('/card/<int:cid>/kakao', methods=['POST'])
+def kakao_card(cid):
+    """카드뉴스를 내 카톡으로: 화면이 만든 표지 PNG(있으면) + 캡션"""
+    c = load(cid); cfg = config()
+    if c['data'].get('pending'): abort(400)
+    if not kakao.ready(cfg): return jsonify(error="카카오톡이 아직 연결되지 않았어요. '설정'에서 연결해 주세요"), 400
+    f = request.files.get('png'); png = f.read() if f else None
+    if png and not png.startswith(b'\x89PNG\r\n\x1a\n'): abort(400)
+    d = c['data']; cs = d.get('covers') or [{}]; cv = cs[min(d.get('cover_pick', 0), len(cs) - 1)]
+    title = (cv.get('line1', '') + ' ' + cv.get('line2', '')).strip() or c['title']
+    try: with_img = kakao.send_card(cfg, save_kakao, title, cards.caption_full(d), d.get('source', {}).get('url') or c['url'], png)
+    except RuntimeError as e: return jsonify(error=str(e)), 400
+    log(f'카톡으로 보냄 #{cid}')
+    return jsonify(ok=True, image=with_img)
+
+
 @app.route('/img/<name>')
 def img(name):
     if not re.fullmatch(r'[0-9a-f]{16}\.jpg', name): abort(404)
@@ -402,6 +451,9 @@ def settings():
         if f.get('clear_naver_id'): c['naver_secret'] = ''
         if f.get('clear_hf_id'): c['hf_secret'] = ''
         c['hf_model'] = f.get('hf_model') if f.get('hf_model') in dict(cards.HF_MODELS) else cards.HF_MODELS[0][0]
+        if f.get('kakao_key', '').strip(): c['kakao_key'] = f.get('kakao_key').strip()
+        if f.get('clear_kakao'): c['kakao_key'] = c['kakao_secret'] = ''; c['kakao_token'] = {}
+        c['kakao_auto'] = 1 if f.get('kakao_auto') else 0
         c['img_style'] = f.get('img_style') if f.get('img_style') in dict(IMG_STYLES) else 'mix'
         c['hf_auto'] = 1 if f.get('hf_auto') else 0
         if c['key'] and not c['key'].startswith('sk-ant-'): flash("Claude API 키는 'sk-ant-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))
@@ -413,7 +465,8 @@ def settings():
         save_config(c); flash('설정을 저장했어요.'); return redirect(url_for('settings'))
     mask = lambda v: (v[:7] + '…' + v[-4:]) if len(v) > 14 else ('있음' if v else '')
     return render_template('settings.html', cfg=c, masked={k: mask(c[k]) for k in SECRETS}, models=MODELS, per_day=PER_DAY, hf_models=cards.HF_MODELS, img_styles=IMG_STYLES,
-                           env_key=bool(os.getenv('ANTHROPIC_API_KEY')), data_dir=str(DATA))
+                           env_key=bool(os.getenv('ANTHROPIC_API_KEY')), data_dir=str(DATA),
+                           kakao_ok=kakao.ready(c), kakao_redirect=kakao.redirect_uri(PORT))
 
 
 @app.route('/quit', methods=['POST'])
@@ -445,10 +498,11 @@ def app_window(url):
 
 def desktop_shortcut():
     """처음 켤 때 한 번: 바탕화면에 바로가기 (윈도우 실행 파일일 때만)"""
-    mark = DATA / 'shortcut-made'
+    mark = DATA / 'shortcut-made-2'  # 아이콘·이름을 바꿔서(토스POS처럼) 한 번 더 만듦
     if not (FROZEN and sys.platform.startswith('win')) or mark.exists(): return
     exe = sys.executable.replace("'", "''")
-    ps = ("$d=[Environment]::GetFolderPath('Desktop');$s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d '" + NAME + ".lnk'));"
+    old = "$o=Join-Path $d '" + NAME + ".lnk';if(Test-Path $o){Remove-Item $o};"  # 예전 긴 이름 바로가기는 지움
+    ps = ("$d=[Environment]::GetFolderPath('Desktop');" + old + "$s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d '" + SHORT + ".lnk'));"
           f"$s.TargetPath='{exe}';$s.WorkingDirectory=(Split-Path '{exe}');$s.IconLocation='{exe},0';$s.Save()")
     try:
         import subprocess

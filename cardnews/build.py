@@ -16,7 +16,7 @@ HERE = Path(__file__).resolve().parent
 NAME = 'MinjuCardNews'
 os.chdir(HERE)
 sep = os.pathsep
-args = ['server.py', '--name', NAME, '--noconfirm', '--clean', '--icon', 'static/app-icon.png',
+args = ['server.py', '--name', NAME, '--noconfirm', '--clean', '--icon', 'static/app-icon.ico',
         f'--add-data=templates{sep}templates', f'--add-data=static{sep}static', '--collect-data', 'certifi']
 system = platform.system()
 if system == 'Darwin': args += ['--windowed', '--osx-bundle-identifier', 'kr.soboru.cardnews']  # .app (검은 창 없이)

@@ -22,6 +22,23 @@
     <label class="check"><input type="checkbox" name="hf_auto" value="1"{% if cfg.hf_auto %} checked{% endif %}> 새 카드뉴스를 만들 때 힉스필드 API로 이미지도 자동으로 만들기 (장마다 크레딧)</label>
     <p class="meta">이미지에는 실존 인물 얼굴·로고·글자가 나오지 않게 요청해요. 이미지 위에는 글자를 넣지 않아요. AI로 만든 사진이라는 표시는 캡션에 직접 적어 주세요 (체크리스트가 알려 줘요).</p>
   </div>
+  <div class="panel"><h2>카카오톡 나에게 보내기 {% if kakao_ok %}<span class="badge ok">연결됨</span>{% else %}<span class="badge">연결 안 됨</span>{% endif %}</h2>
+    <p class="meta">다 만든 카드뉴스(표지 이미지 + 캡션)를 내 카톡 '나와의 채팅'으로 받아요. 무료예요. 한 번만 준비하면 돼요.</p>
+    <details{% if not cfg.kakao_key %} open{% endif %}><summary class="meta"><b>준비 방법 (처음 한 번)</b></summary>
+      <ol class="meta" style="line-height:1.9">
+        <li><a href="https://developers.kakao.com" target="_blank" rel="noopener">developers.kakao.com</a> 로그인 → <b>내 애플리케이션 → 애플리케이션 추가하기</b> (이름: 민주의 카드뉴스)</li>
+        <li><b>앱 키</b>에서 <b>REST API 키</b>를 복사해 아래 칸에 넣고 저장</li>
+        <li><b>카카오 로그인</b> → 활성화 <b>ON</b> → <b>Redirect URI</b>에 <code>{{ kakao_redirect }}</code> 등록</li>
+        <li><b>카카오 로그인 → 동의항목</b>에서 <b>카카오톡 메시지 전송</b>을 '선택 동의'로 켜기</li>
+        <li><b>플랫폼 → Web</b>에 사이트 도메인 <code>{{ kakao_redirect.rsplit("/kakao", 1)[0] }}</code> 등록</li>
+        <li>아래 <b>카카오 로그인 연결</b>을 누르고 동의하면 끝 (내 카톡으로 시험 메시지가 와요)</li>
+      </ol></details>
+    <div class="row"><label>REST API 키{% if cfg.kakao_key %} <span class="badge ok">저장됨</span>{% endif %}<input type="text" name="kakao_key" autocomplete="off" placeholder="{{ cfg.kakao_key or '' }}"></label>
+      <label>Client Secret (켰을 때만){% if masked.kakao_secret %} <span class="badge ok">저장됨</span>{% endif %}<input type="password" name="kakao_secret" autocomplete="off"></label></div>
+    <label class="check"><input type="checkbox" name="kakao_auto" value="1"{% if cfg.kakao_auto %} checked{% endif %}> 매일 자동 초안이 만들어지면 카톡으로 알려 주기</label>
+    {% if cfg.kakao_key %}<label class="check"><input type="checkbox" name="clear_kakao" value="1"> 카카오 연결 지우기</label>
+    <div class="actions"><a href="{{ url_for('kakao_login') }}"><button type="button" class="primary">{{ '다시 연결하기' if kakao_ok else '카카오 로그인 연결' }}</button></a></div>{% endif %}
+  </div>
   <div class="panel"><h2>사실 확인용 기사 찾기</h2>
     <p class="meta">같은 뉴스를 다룬 다른 언론사 기사를 찾아 숫자·사실을 맞춰 봐요. 네이버 키가 있으면 네이버 뉴스 검색을 먼저 쓰고, 모자라면 Claude 웹 검색으로 채워요.</p>
     <label>네이버 키 종류<select name="naver_kind"><option value="dev"{% if cfg.naver_kind == 'dev' %} selected{% endif %}>네이버 개발자센터 검색 API (developers.naver.com)</option><option value="hub"{% if cfg.naver_kind == 'hub' %} selected{% endif %}>네이버 클라우드 API HUB</option></select></label>

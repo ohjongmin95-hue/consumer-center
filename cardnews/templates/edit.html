@@ -31,6 +31,7 @@
     <div class="actions">
       <button type="button" class="primary" id="cn-save"{% if not (c.status == 'ready' or c.confirmed) %} disabled{% endif %}>내 컴퓨터 폴더에 저장</button>
       <button type="button" id="cn-open"{% if not saved %} hidden{% endif %}>폴더 열기</button>
+      <button type="button" id="cn-kakao"{% if not (c.status == 'ready' or c.confirmed) %} disabled{% endif %}>💬 카톡으로 보내기</button>
       <button type="button" id="cn-down"{% if not (c.status == 'ready' or c.confirmed) %} disabled{% endif %}>zip으로 내려받기</button>
       <button type="button" id="cn-copy">캡션 복사</button>
     </div>
@@ -89,7 +90,7 @@
     </div>
   </section>
 </div>
-<script id="cn-json" type="application/json">{{ {'d': d, 'id': c.id, 'assets': {'title': url_for('static', filename='fonts/Pretendard-ExtraBold.otf'), 'body': url_for('static', filename='fonts/Pretendard-Bold.otf'), 'character': url_for('static', filename='soboru-character.png')}, 'img': '/img/', 'csrf': csrf_token(), 'saveUrl': url_for('save_files', cid=c.id), 'openUrl': url_for('open_folder', cid=c.id)}|tojson }}</script>
+<script id="cn-json" type="application/json">{{ {'d': d, 'id': c.id, 'assets': {'title': url_for('static', filename='fonts/Pretendard-ExtraBold.otf'), 'body': url_for('static', filename='fonts/Pretendard-Bold.otf'), 'character': url_for('static', filename='soboru-character.png')}, 'img': '/img/', 'csrf': csrf_token(), 'saveUrl': url_for('save_files', cid=c.id), 'openUrl': url_for('open_folder', cid=c.id), 'kakaoUrl': url_for('kakao_card', cid=c.id)}|tojson }}</script>
 <script>
 (function(){
 // 소보루 카드 모양: 크림 바탕 · 갈색 큰 제목 + 주황 밑줄 · 주황 말풍선 · 둥근 그림 액자 · 소보루 부스러기 · 마지막 장 캐릭터
@@ -205,7 +206,7 @@ function render(){
     J.char=a[2];J.exp=1;var s=slides();J.exp=0;J.char=J.assets.character;J.imgs=null;var files=[],chain=Promise.resolve();
     s.forEach(function(x,i){chain=chain.then(function(){return png(wrapSvg(x,style))}).then(function(b){files.push({name:'soboru-card-'+String(i+1).padStart(2,'0')+'.png',data:b})})});
     return chain.then(function(){return files})})}
-function busy(b,on,label){document.querySelectorAll('#cn-save,#cn-down').forEach(function(x){x.disabled=on});if(on)msg.textContent=label}
+function busy(b,on,label){document.querySelectorAll('#cn-save,#cn-down,#cn-kakao').forEach(function(x){x.disabled=on});if(on)msg.textContent=label}
 // 내 컴퓨터 폴더에 저장: 문서\소보루 카드뉴스\카드뉴스\번호_제목\ 에 PNG + caption.txt
 var save=document.getElementById('cn-save'),open_=document.getElementById('cn-open');
 save.onclick=function(){busy(save,true,'PNG를 만들어 저장하는 중이에요…');
@@ -213,6 +214,13 @@ save.onclick=function(){busy(save,true,'PNG를 만들어 저장하는 중이에�
     return fetch(J.saveUrl,{method:'POST',body:f}).then(function(r){if(!r.ok)throw 0;return r.json()})}).then(function(r){
     msg.textContent='저장했어요 ('+r.count+'장 + caption.txt): '+r.folder;open_.hidden=false;busy(save,false)
   }).catch(function(){msg.textContent='저장하지 못했어요. 다시 눌러 주세요.';busy(save,false)})};
+// 카톡으로 보내기 (나에게): 표지 PNG + 캡션
+var kk=document.getElementById('cn-kakao');
+kk.onclick=function(){busy(kk,true,'카톡으로 보내는 중이에요…');
+  render().then(function(files){var f=new FormData();f.append('_csrf',J.csrf);f.append('png',new Blob([files[0].data],{type:'image/png'}),'cover.png');
+    return fetch(J.kakaoUrl,{method:'POST',body:f}).then(function(r){return r.json()})}).then(function(r){
+    msg.textContent=r.ok?('내 카톡으로 보냈어요'+(r.image?' (표지 이미지 + 캡션)':' (캡션만, 이미지는 못 올렸어요)')):(r.error||'보내지 못했어요');busy(kk,false)
+  }).catch(function(){msg.textContent='카톡으로 보내지 못했어요. 다시 눌러 주세요.';busy(kk,false)})};
 open_.onclick=function(){var f=new FormData();f.append('_csrf',J.csrf);fetch(J.openUrl,{method:'POST',body:f})};
 down.onclick=function(){busy(down,true,'PNG를 만드는 중이에요…');
   render().then(function(files){files.push({name:'caption.txt',data:new TextEncoder().encode(caption())});var l=document.createElement('a');l.href=URL.createObjectURL(zip(files));l.download='soboru-cardnews-'+J.id+'.zip';document.body.appendChild(l);l.click();l.remove();
