@@ -55,6 +55,7 @@ PAGE_BLOCKS = {
     'letter': ('소보루 레터', [('hero', '맨 위 구독 신청'), ('feats', '레터에 담기는 것 (3가지)'), ('archive', '지난 레터')]),
 }
 # 예전 '메인 화면 순서' 저장값(top·life·rank 켜고 끄기)을 새 묶음으로 옮길 때
+BLOCKS_OFF = {'home': ('quick',)}  # 처음엔 숨겨 두는 묶음 (관리자 > 화면 편집에서 다시 켤 수 있음). '이런 곳' 소개는 제보·픽이 먼저 보이니 빼 둠 (운영자 2026-10-24)
 OLD_HOME_SECTIONS = {'top': ('intro', 'quick', 'live'), 'life': ('life',), 'rank': ('pick', 'talk', 'answer')}
 # 제보 카드 대표 그림: 제보 유형별 이모지·바탕색
 REPORT_EMOJI = {'배송·교환·환불': '📦', '계약·해지': '📝', '요금·결제': '💳', '품질·하자·AS': '🛠️', '허위·과장 광고': '📢',
@@ -106,7 +107,7 @@ def clean_blocks(page, raw):
         if k in seen: continue
         prev = order[n - 1] if n else None
         at = next((i + 1 for i, (b, _) in enumerate(out) if b == prev), len(out))
-        out.insert(at, [k, 1]); seen.add(k)
+        out.insert(at, [k, 0 if k in BLOCKS_OFF.get(page, ()) else 1]); seen.add(k)
     return out
 
 
@@ -297,7 +298,7 @@ def install(S):
         if page == 'home' and row and saved and not any(isinstance(x, list) and x[:1] == ['_v2'] for x in saved):
             # 2026-10-24 운영자 요청: 제보·픽을 소개 바로 아래로 (검은고양이처럼). 예전에 저장한 순서도 한 번만 새 순서로, 켜고 끈 건 그대로
             on = {x[0]: x[1] for x in saved if isinstance(x, list) and len(x) == 2}
-            saved = [[b, on.get(b, 1)] for b, _ in PAGE_BLOCKS['home'][1]]
+            saved = [[b, 0 if b in BLOCKS_OFF['home'] else on.get(b, 1)] for b, _ in PAGE_BLOCKS['home'][1]]
             with conn() as db:
                 db.execute('INSERT OR REPLACE INTO soboru_settings(key,value) VALUES(?,?)', ('blocks:home', json.dumps(clean_blocks('home', saved) + [['_v2', 1]])))
         return clean_blocks(page, saved)
