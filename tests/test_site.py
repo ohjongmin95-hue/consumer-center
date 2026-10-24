@@ -370,7 +370,7 @@ class SiteTest(unittest.TestCase):
         try:
             home = self.client.get('/').get_data(as_text=True)
             order = lambda html: [k for k in ('nn-intro', 'nn-about', 'nn-live', 'nn-pick', 'nn-answer', 'lt-card') if k in html]
-            self.assertEqual(order(home), ['nn-intro', 'nn-about', 'nn-live', 'nn-pick', 'nn-answer', 'lt-card'])
+            self.assertEqual(order(home), ['nn-intro', 'nn-live', 'nn-pick', 'nn-answer', 'lt-card'])  # '이런 곳' 소개는 처음엔 숨김
             self.assertLess(home.index('nn-intro'), home.index('nn-live'))
             self.assertIn('생활정보 카드 제목', home)
             self.assertIn('공개 제보 카드 제목', home)
@@ -422,6 +422,15 @@ class SiteTest(unittest.TestCase):
                 db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('home',?)", (json.dumps({'sections': [['top', 1], ['life', 1], ['rank', 0]]}),))
             home = self.client.get('/').get_data(as_text=True)
             self.assertIn('nn-intro', home); self.assertNotIn('nn-pick', home); self.assertNotIn('nn-answer', home)
+            # 2026-10-24 전에 저장한 순서는 한 번만 새 순서(소개 → 제보 → 픽 → 골라주세요·수다방 → 이런 곳)로, 숨긴 건 그대로
+            with self.site.conn() as db:
+                db.execute("DELETE FROM soboru_settings WHERE key='home'")
+                db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('blocks:home',?)", (json.dumps([['intro', 1], ['quick', 1], ['live', 1], ['pick', 1], ['answer', 0]]),))
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertLess(home.index('nn-live'), home.index('nn-pick')); self.assertNotIn('nn-about', home)
+            self.assertNotIn('nn-answer', home)
+            with self.site.conn() as db:
+                self.assertIn('_v2', db.execute("SELECT value FROM soboru_settings WHERE key='blocks:home'").fetchone()[0])
         finally:
             with self.site.conn() as db:
                 db.execute("DELETE FROM soboru_settings WHERE key IN ('home','blocks:home')")
@@ -4259,7 +4268,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             for t in ('points', 'vs_votes', 'vs_comments', 'vs_polls', 'editor_apps'): db.execute('DELETE FROM ' + t)
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('nn-about', home); self.assertIn('소보루에서는 이런 걸 해요', home); self.assertIn('nn-talk', home)
+        self.assertNotIn('nn-about', home); self.assertIn('nn-talk', home)
         me, uid = self.member_client('cm_writer', '수다쟁이')
         r = self.post_form(me, '/board/write?type=post', {'kind': 'post', 'head': '질문', 'title': '헬스장 환불 되나요?', 'body': '두 달 다니고 이사 가요. 환불 되나요?', 'agree': '1'})
         self.assertEqual(r.status_code, 302)

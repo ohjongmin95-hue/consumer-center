@@ -1771,3 +1771,31 @@ h1.vs-title{font-size:28px}
 /* 메인 캐릭터 말풍선: 두 줄 (억울한 일은 제보하고, / 제품 후기는 나눠요!) */
 .nn-intro .nn-bubble{white-space:nowrap;border-radius:20px;line-height:1.45;text-align:left;padding:12px 18px}
 @media(max-width:680px){.nn-intro .nn-bubble{border-radius:16px;padding:9px 13px}}
+/* 홈 골라주세요 · 수다방: 두 칸 같은 모양 (안내 상자 + 최신 4줄) */
+.nn-talk-box{display:flex;flex-direction:column;gap:6px;min-height:132px;box-sizing:border-box;padding:20px 22px;border-radius:20px;background:#f7f4ef;transition:background .2s}
+.nn-talk-box:hover{background:#f2ede4}
+.nn-talk-box p{margin:0;font-size:13px;font-weight:700;color:var(--sb-orange)}
+.nn-talk-box b{font-size:17px;letter-spacing:-.03em;line-height:1.45}
+.nn-talk-box span{margin-top:auto;font-size:14px;font-weight:700;color:var(--sb-brown)}
+.nn-trows{margin-top:6px}
+.nn-trow{display:flex;flex-direction:column;justify-content:center;gap:6px;min-height:76px;padding:12px 2px;border-bottom:1px solid #f2f4f6}
+.nn-trow:last-child{border-bottom:0}
+.nn-trow-t{display:flex;align-items:center;gap:8px;min-width:0}
+.nn-trow-t b{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;letter-spacing:-.03em}
+.nn-trow:hover b{text-decoration:underline;text-underline-offset:3px}
+.nn-tag{flex:none;font-style:normal;font-size:12px;font-weight:700;color:#6b7684;background:#f2f4f6;border-radius:6px;padding:3px 7px}
+.nn-tag.on{color:#c45f00;background:var(--sb-orange-soft)}
+.nn-c{flex:none;font-size:13px;font-weight:700;color:var(--sb-orange)}
+.nn-trow-m{display:flex;align-items:center;gap:10px;min-width:0;font-size:13px;color:#8b95a1}
+.nn-trow-m>span{flex:none}
+.nn-trow-m .nn-ab{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4e5968}
+.nn-ab i{font-style:normal;font-weight:800;color:var(--sb-orange);margin-right:3px}
+.nn-ab small{color:#b0b8c1;margin:0 4px;font-size:12px}
+.nn-talk .nn-empty{padding:28px 2px;margin:0;color:#8b95a1;font-size:14px}
+@media (max-width:760px){.nn-talk-box{min-height:0;padding:16px 18px}.nn-talk-box b{font-size:16px}.nn-trow{min-height:68px}.nn-trow-t b{font-size:15px}}
+.nn-talk-box{background:#f9fafb}.nn-talk-box:hover{background:#f2f4f6}.nn-talk-box span{color:#4e5968}
+/* 소보루 픽 바로 아래 골라주세요·수다방: 한 덩어리로 보이게 간격을 좁힘 */
+.nn-pick+.nn-talk{margin-top:40px}
+@media (max-width:760px){.nn-pick+.nn-talk{margin-top:32px}}
+/* 휴대폰: 소보루 픽은 최신 글이 TOP 5보다 먼저 (올라온 글이 바로 보이게) */
+@media (max-width:760px){.nn-pick-grid{display:flex;flex-direction:column}.nn-pick-grid .nn-pick-feed{order:-1}}
