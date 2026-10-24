@@ -4,7 +4,6 @@
 {% block description %}{{ ui('law.meta', '전자상거래법, 소비자기본법, 약관법 같은 소비자 법령 조문을 낱말로 찾아 원문과 함께 봐요.') }}{% endblock %}
 {% block content %}
 <main class="sb-wrap tl tl-law">
-  <a class="cm-back" href="{{ url_for('tools') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('tools.title', '소비자 상담소') }}</a>
   <header class="tl-head"><h1><span class="tf" aria-hidden="true">⚖️</span> {{ ui('law.title', '법령 찾기') }}</h1><p>{{ ui('law.intro', '소비자 법령 조문을 낱말로 찾아요. 찾은 조문은 국가법령정보센터 원문으로 이어져요.') }}</p></header>
   <form class="tl-search" method="get" role="search">
     <input name="q" value="{{ q }}" maxlength="60" placeholder="{{ ui('tools.law_ph', '예: 헬스장 환불, 청약철회') }}" aria-label="{{ ui('law.q_aria', '찾을 낱말') }}">

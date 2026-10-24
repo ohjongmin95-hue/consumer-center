@@ -4,7 +4,7 @@
 {% block description %}{{ c.desc }}. {{ c.note[:90] }}{% endblock %}
 {% block content %}
 <main class="sb-wrap tl tl-calc">
-  <a class="cm-back" href="{{ url_for('tools') }}#calc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('tools.title', '소비자 상담소') }}</a>
+  <a class="cm-back" href="{{ url_for('tools') }}#calc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('tools.back', '계산기 모두 보기') }}</a>
   <header class="tl-calc-head"><span class="tf tl-emo" aria-hidden="true">{{ c.emoji }}</span><div><h1>{{ c.name }}</h1><p>{{ c.desc }}</p></div></header>
   <div class="tl-calc-body">
     <form class="tl-form" data-calc="{{ c.slug }}" novalidate>

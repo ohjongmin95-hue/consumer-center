@@ -1,24 +1,13 @@
 {% extends 'base.html' %}
-{# 소보루 상담소 첫 화면: AI 상담 · 계산기 · 사전 · 법령 찾기. soboru_tools.py tools() #}
-{% block title %}{{ ui('tools.title', '소비자 상담소') }} | {{ txt('site.name') }}{% endblock %}
-{% block description %}{{ ui('tools.meta', '환불·위약금 계산기, 대출·예적금 이자 계산기, 소비자·경제 사전, 법령 찾기와 AI 소비자 상담을 한곳에서.') }}{% endblock %}
+{# 계산기 모음 (AI 소비자 상담 옆 칸). soboru_tools.py tools() #}
+{% block title %}{{ ui('tools.title', '계산기') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('tools.meta', '헬스장·학원 환불, 청약철회 기한, 카드 할부, 대출·예적금 이자를 바로 계산해요.') }}{% endblock %}
 {% block content %}
 <main class="sb-wrap tl">
   <header class="tl-head">
-    <h1>{{ ui('tools.h1', '소비자 상담소') }}</h1>
-    <p>{{ ui('tools.intro', '억울한 일이 생겼을 때, 돈 계산이 헷갈릴 때, 어려운 말이 나올 때 여기서 찾아보세요.') }}</p>
+    <h1>{{ ui('tools.h1', '계산기') }}</h1>
+    <p>{{ ui('tools.intro', '환불·위약금, 할부·이자처럼 헷갈리는 돈 계산을 바로 해 봐요.') }}</p>
   </header>
-  <nav class="tl-quick" aria-label="{{ ui('tools.quick_aria', '상담소 메뉴') }}">
-    {% if ask_on() %}<a class="q1" href="{{ url_for('law_ask') }}"><span class="tf" aria-hidden="true">🤖</span><b>{{ ask_label() }}</b><small>{{ ui('tools.q_ask_d', '내 상황을 적으면 법령을 찾아 답해요') }}</small></a>{% endif %}
-    <a class="q2" href="#calc"><span class="tf" aria-hidden="true">🧮</span><b>{{ ui('tools.q_calc', '계산기') }}</b><small>{{ ui('tools.q_calc_d', '환불·할부·이자를 바로 셈해요') }}</small></a>
-    <a class="q3" href="{{ url_for('dictionary') }}"><span class="tf" aria-hidden="true">📚</span><b>{{ ui('tools.q_dict', '소비자·경제 사전') }}</b><small>{{ ui('tools.q_dict_d', '어려운 말 {n}개를 쉽게 풀었어요', n=n_words) }}</small></a>
-    <a class="q4" href="{{ url_for('law_find') }}"><span class="tf" aria-hidden="true">⚖️</span><b>{{ ui('tools.q_law', '법령 찾기') }}</b><small>{{ ui('tools.q_law_d', '낱말로 소비자 법 조문을 찾아요') }}</small></a>
-  </nav>
-  <form class="tl-lawbox" action="{{ url_for('law_find') }}" method="get" role="search">
-    <label for="tl-q">{{ ui('tools.law_label', '법령에서 찾아보기') }}</label>
-    <div><input id="tl-q" name="q" maxlength="60" placeholder="{{ ui('tools.law_ph', '예: 헬스장 환불, 청약철회') }}"><button type="submit">{{ ui('tools.law_go', '찾기') }}</button></div>
-    <p>{% for s in samples %}<a href="{{ url_for('law_find', q=s) }}">{{ s }}</a>{% endfor %}</p>
-  </form>
   {% for g_key, g_title, g_desc in groups %}
   <section class="tl-sec" id="{{ 'calc' if loop.first else 'calc-' ~ loop.index }}" aria-labelledby="tl-h{{ loop.index }}">
     <div class="tl-sec-head"><h2 id="tl-h{{ loop.index }}">{{ g_title }}</h2><p>{{ g_desc }}</p></div>
