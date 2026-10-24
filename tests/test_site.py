@@ -341,7 +341,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('택배 분실 보상 정리', visitor.get('/life').get_data(as_text=True))
         admin.post(f'/admin/life/{aid}', data={'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'act': 'publish', 'title': '택배 분실 보상 정리', 'summary': '요약', 'body': '첫 문단\n\n## 소제목\n- 목록', 'category': '쇼핑'})
         art = visitor.get(f'/life/{aid}').get_data(as_text=True)
-        self.assertIn('<span class="sb-h-emo" aria-hidden="true">📌</span>소제목</h2>', art)  # 이모지 없는 예전 글도 이모지 칸
+        self.assertIn('<span class="sb-h-emo" aria-hidden="true">📌</span><span class="sb-h-t"><small>01</small>소제목</span></h2>', art)  # 이모지 없는 예전 글도 이모지 칸, 소제목 번호
         self.assertIn('"@type": "Article"', art)
         self.assertIn(f'<link>http://localhost/life/{aid}</link>', visitor.get('/rss.xml').get_data(as_text=True))  # RSS에 생활정보 기사도
         self.assertEqual(visitor.get('/', base_url='http://www.consumerjebo.co.kr').headers['Location'], 'https://consumerjebo.co.kr/')  # www는 https 대표 주소로 한 번에
@@ -3772,6 +3772,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<span class="sb-point-n" aria-hidden="true">2</span>결제일을 기억하세요', html)
         self.assertIn("<dl class=\"sb-terms\">", html); self.assertIn("<dt>리볼빙</dt>", html)  # 용어 풀이는 상자 하나로
         self.assertNotIn('###', html)
+        with self.site.app.test_request_context('/'): hl = str(self.site.app.jinja_env.globals['life_body']('앞 **꼭 기억할 말** 뒤 <b>x</b> **'))
+        self.assertIn('<strong class="sb-hl">꼭 기억할 말</strong>', hl); self.assertIn('&lt;b&gt;', hl); self.assertNotIn('**', hl)  # 형광펜 강조, 태그는 글자로
 
     def test_writer_skips_similar_topic_within_30_days(self):
         """제목이 달라도 소재가 같은 글(외식비·외식 물가)은 30일 안에 다시 쓰지 않음"""

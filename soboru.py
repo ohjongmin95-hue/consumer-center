@@ -223,7 +223,7 @@ def install(S):
         def flush():
             nonlocal check
             if items:
-                out.append(Markup('<ul class="sb-check">' if check else '<ul>') + Markup('').join(Markup('<li>%s</li>') % i for i in items) + Markup('</ul>'))
+                out.append(Markup('<ul class="sb-check">' if check else '<ul>') + Markup('').join(Markup('<li>%s</li>') % hl(i) for i in items) + Markup('</ul>'))
                 items.clear()
             if terms:
                 out.append(Markup('<dl class="sb-terms"><p class="sb-terms-h">%s</p>') % S.ui_text('life.terms', '용어 풀이')
@@ -246,14 +246,18 @@ def install(S):
                     n_point = 0
                     emo, head = life_head(line, n_head)
                     n_head += 1; check = emo == '✅'
-                    out.append(Markup('<h2 class="sb-h" id="s%d"><span class="sb-h-emo" aria-hidden="true">%s</span>%s</h2>') % (n_head, emo, head))
+                    out.append(Markup('<h2 class="sb-h" id="s%d"><span class="sb-h-emo" aria-hidden="true">%s</span><span class="sb-h-t"><small>%02d</small>%s</span></h2>') % (n_head, emo, n_head, head))
                 elif line.startswith('> '):
                     note = line[2:].strip(); emo = note[:1] if note[:1] in BODY_EMOJI else '💡'
                     if note[:1] in BODY_EMOJI: note = note[1:].strip()
                     out.append(Markup('<aside class="sb-callout"><span class="sb-h-emo" aria-hidden="true">%s</span><div><b>%s</b><p>%s</p></div></aside>') % (emo, S.ui_text('life.callout', '핵심만 쏙'), note))
-                else: out.append(Markup('<p>%s</p>') % line)
+                else: out.append(Markup('<p>%s</p>') % hl(line))
             flush()
         return Markup('\n').join(out)
+
+    def hl(text):
+        # **말** -> 형광펜 강조 (뉴닉처럼). 글은 먼저 이스케이프하고 강조만 태그로
+        return Markup(re.sub(r'\*\*(.{1,60}?)\*\*', r'<strong class="sb-hl">\1</strong>', str(escape(text)))).replace('**', '')
 
     def life_head(line, n):
         head = line[3:].strip(); emo = head[:1]
