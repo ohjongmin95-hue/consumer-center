@@ -26,7 +26,7 @@
     "android": {
       "package": "kr.co.consumerjebo.soboru",
       "adaptiveIcon": {
-        "backgroundColor": "#FFF1E3",
+        "backgroundColor": "#EF920E",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -55,7 +55,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#FFF1E3"
+          "backgroundColor": "#EF920E"
         }
       ]
     ],
