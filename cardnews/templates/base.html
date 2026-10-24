@@ -5,8 +5,8 @@
 <style>
 @font-face{font-family:Pretendard;font-weight:700;src:url({{ url_for('static', filename='fonts/Pretendard-Bold.otf') }}) format('opentype')}
 @font-face{font-family:Pretendard;font-weight:800;src:url({{ url_for('static', filename='fonts/Pretendard-ExtraBold.otf') }}) format('opentype')}
-/* 민주의 카드뉴스 제작 프로그램: UI는 토스처럼 (파란 포인트·흰 카드·큰 글씨), 바탕은 초록 스위스 알프스. 만드는 카드뉴스만 뉴닉+소보루 */
-:root{--or:#3182F6;--or-deep:#1B64DA;--or-soft:#E8F3FF;--brown:#191F28;--ink:#191F28;--sub:#6B7684;--line:#E5E8EB;--bg:#EEF7F0;--ok:#00A661;--bad:#F04452;--shadow:0 4px 20px rgba(24,68,46,.08)}
+/* 민주의 카드뉴스 제작 프로그램: UI는 토스처럼 (스위스 초록 포인트·흰 카드·큰 글씨), 바탕은 초록 스위스 알프스. 만드는 카드뉴스만 뉴닉+소보루 */
+:root{--or:#1F9D61;--or-deep:#167A4B;--or-soft:#E4F5EB;--brown:#191F28;--ink:#191F28;--sub:#6B7684;--line:#E5E8EB;--bg:#EEF7F0;--ok:#00A661;--bad:#F04452;--shadow:0 4px 20px rgba(24,68,46,.08)}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:url({{ url_for('static', filename='alps.svg') }}) center bottom/100% auto no-repeat fixed,linear-gradient(180deg,#E8F4FA 0%,#EFF8F2 42%,#E3F2E7 100%) fixed;color:var(--ink);font:15px/1.6 Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-weight:700;word-break:keep-all}
 a{color:var(--or-deep)}
 .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 28px;background:rgba(255,255,255,.82);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.6)}
