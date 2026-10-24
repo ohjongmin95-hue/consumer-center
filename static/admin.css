@@ -479,17 +479,6 @@ body.console .sl-field input:focus{border-color:var(--sl-logo);box-shadow:0 0 0 
 body.console main.gg-page{display:flex;flex-direction:column;align-items:stretch;justify-content:center;min-height:100vh;background:#f7f4ef}
 .gg-top{display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 24px 40px;text-align:center}
 .gg-logo{display:block;width:auto;height:60px;transform:translateX(-9%)}  /* 캐릭터가 왼쪽에 붙은 로고라 그림 가운데와 글자 가운데(151px/851px 오른쪽)의 중간을 화면 가운데에 맞춤 (눈으로 보는 가운데) */
-.gg-band{position:relative;overflow:hidden}
-.gg-form{position:relative;z-index:1}
-.gg-art{position:absolute;inset:0;pointer-events:none}
-.gg-emo{position:absolute;top:50%;display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:22px;background:#fff;box-shadow:0 12px 28px rgba(150,80,0,.22);font-family:Tossface,sans-serif;font-size:36px;line-height:1}
-.gg-emo-1{left:calc(50% - 400px);width:96px;height:96px;border-radius:30px;font-size:50px;transform:translateY(-70%) rotate(-8deg)}
-.gg-emo-2{left:calc(50% + 310px);width:96px;height:96px;border-radius:30px;font-size:50px;transform:translateY(-30%) rotate(8deg)}
-.gg-emo-3{left:calc(50% - 560px);transform:translateY(-10%) rotate(10deg);background:#fff4e0}
-.gg-emo-4{left:calc(50% + 480px);transform:translateY(-90%) rotate(-10deg);background:#fff4e0}
-.gg-emo-5{left:calc(50% - 720px);width:56px;height:56px;border-radius:18px;font-size:28px;transform:translateY(-80%) rotate(-6deg)}
-.gg-emo-6{left:calc(50% + 660px);width:56px;height:56px;border-radius:18px;font-size:28px;transform:translateY(0) rotate(6deg)}
-@media(max-width:1000px){.gg-art{display:none}}
 .gg-kicker{margin:0;padding:4px 12px;border-radius:999px;background:#fff4e0;color:#b86e00;font-size:13px;font-weight:700}
 .gg-title{margin:4px 0 0;font-size:30px;line-height:1.35;font-weight:800;letter-spacing:-.04em;color:var(--ad-ink)}
 .gg-title em{font-style:normal;color:#ef920e}
