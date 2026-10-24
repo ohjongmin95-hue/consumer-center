@@ -1,4 +1,4 @@
-"""소보루 커뮤니티 (품앗히식, 운영자 요청 2026-10-24): 내돈내산 후기 피드 · 골라주세요 · 수다방 · 포인트 · 후기 에디터 모집.
+"""소보루 커뮤니티 (품앗히식, 운영자 요청 2026-10-24): 내돈내산 후기 피드 · 골라주세요 · 수다방 · 포인트.
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 주소를 붙인다. 글·댓글은 게시판(posts·comments)을 그대로 쓰고,
 app.py의 BOARD_HOOKS로 글이 올라갈 때 후기 정보·말머리·영수증·포인트를 더한다.
@@ -7,7 +7,7 @@ app.py의 BOARD_HOOKS로 글이 올라갈 때 후기 정보·말머리·영수�
 - 골라주세요(/vs): A vs B 투표. 누구나 한 번 고를 수 있고, 써 본 사람 표는 따로 셈. 마감 뒤 글쓴이가 결말을 남김.
 - 수다방(/suda): 이야기·꿀팁·질문 글을 말머리로 모아 봄. 질문 말머리는 질문 글, 정보 말머리는 꿀팁 글이 됨.
 - 포인트(/me/points): 회원만. 쓰는 곳은 아직 없고 쌓이기만 함.
-- 에디터 모집(/editor): 신청서(호칭·휴대폰·제품·영수증 유무). 선정하지 않은 신청은 30일이 지나면 지움.
+- 에디터 모집은 뺌 (운영자 2026-10-24: 에디터 글은 다른 창구로 받아 관리자가 '소보루 에디터' 표시로 올림). /editor는 후기 피드로.
 """
 import datetime, json, re, secrets
 from flask import abort, flash, g, redirect, render_template, request, send_file, url_for
@@ -26,8 +26,6 @@ KIND_HEAD = {'question': '질문', 'tip': '정보', 'post': '잡담'}  # 말머�
 # 포인트: (이름, 점수, 하루에 받는 횟수. 0은 제한 없음)
 POINTS = {'review_ok': ('영수증 인증 후기', 200, 0), 'vote': ('골라주세요 투표', 5, 3), 'vs_end': ('골라주세요 결말', 50, 0),
           'suda': ('수다 글', 10, 3), 'suda_first': ('첫 수다', 100, 0), 'comment': ('댓글', 10, 5)}
-EDITOR_STATUS = {'new': '새 신청', 'pick': '선정', 'paid': '입금 완료', 'no': '선정 안 함'}
-EDITOR_KEEP_DAYS = 30
 PAGE = 20
 
 
@@ -49,8 +47,7 @@ def migrate(db):
     db.execute('CREATE INDEX IF NOT EXISTS vs_comments_poll ON vs_comments(poll_id)')
     db.execute('''CREATE TABLE IF NOT EXISTS points(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,amount INTEGER NOT NULL,reason TEXT NOT NULL,ref TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
     db.execute('CREATE INDEX IF NOT EXISTS points_user ON points(user_id)')
-    db.execute('''CREATE TABLE IF NOT EXISTS editor_apps(id INTEGER PRIMARY KEY,name TEXT NOT NULL,phone TEXT NOT NULL,products TEXT NOT NULL,receipt INTEGER NOT NULL DEFAULT 0,
-        user_id INTEGER,status TEXT NOT NULL DEFAULT 'new',note TEXT NOT NULL DEFAULT '',ip_hash TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
+    db.execute('DROP TABLE IF EXISTS editor_apps')  # 에디터 모집을 빼면서 신청서(휴대폰 번호)도 지움
 
 
 def stamp(): return datetime.datetime.now().isoformat(timespec='seconds')
@@ -383,69 +380,9 @@ def install(S):
             rows = db.execute('SELECT * FROM points WHERE user_id=? ORDER BY id DESC LIMIT 100', (g.user['id'],)).fetchall()
         return render_template('soboru_points.html', rows=rows, total=point_total(g.user['id']))
 
-    # ---- 후기 에디터 모집 ----------------------------------------------------
-    def editor_products():
-        out = []
-        for line in S.ui_text('editor.products', '무선 이어폰|25\n에어프라이어|25\n선크림|25\n물걸레 로봇청소기|25').split('\n'):
-            name, _, cap = line.partition('|')
-            if name.strip(): out.append((name.strip()[:40], int(cap) if cap.strip().isdigit() else 25))
-        return out
-
-    def drop_old_apps(db):
-        # 선정하지 않은(새 신청·선정 안 함) 신청서는 30일이 지나면 지움 (신청 화면에 알린 그대로)
-        since = (datetime.datetime.now() - datetime.timedelta(days=EDITOR_KEEP_DAYS)).isoformat(timespec='seconds')
-        db.execute("DELETE FROM editor_apps WHERE status IN ('new','no') AND created<?", (since,))
-
-    def seats(db):
-        taken = {}
-        for r in db.execute("SELECT products FROM editor_apps WHERE status IN ('pick','paid')"):
-            for name in json.loads(r['products'] or '[]'): taken[name] = taken.get(name, 0) + 1
-        return [(name, cap, max(0, cap - taken.get(name, 0))) for name, cap in editor_products()]
-
-    @app.route('/editor', methods=['GET', 'POST'])
+    @app.route('/editor')
     def editor():
-        f = request.form
-        with conn() as db:
-            drop_old_apps(db)
-            rows = seats(db)
-            if request.method == 'POST':
-                if f.get('website'): abort(400)
-                name = ' '.join(f.get('name', '').split()); phone = re.sub(r'[^\d]', '', f.get('phone', ''))
-                open_names = [n for n, _, left in rows if left]
-                picked = [p for p in f.getlist('product') if p in open_names][:2]
-                other = ' '.join(f.get('other', '').split())[:40]
-                if other: picked.append('그 밖에: ' + other)
-                err = None
-                if not 1 <= len(name) <= 20: err = S.ui_text('editor.e_name', '호칭을 20자 안으로 적어 주세요.')
-                elif not re.fullmatch(r'01\d{8,9}', phone): err = S.ui_text('editor.e_phone', '휴대폰 번호를 확인해 주세요.')
-                elif not picked: err = S.ui_text('editor.e_product', '쓰고 있는 제품을 골라 주세요.')
-                elif f.get('receipt') not in ('1', '0'): err = S.ui_text('editor.e_receipt', '영수증이나 주문 내역이 있는지 골라 주세요.')
-                elif not f.get('agree'): err = S.ui_text('editor.e_agree', '개인정보 수집에 동의해 주세요.')
-                elif db.execute('SELECT COUNT(*) FROM editor_apps WHERE ip_hash=? AND created>=?', (S.ip_hash(), datetime.date.today().isoformat())).fetchone()[0] >= 3:
-                    err = S.ui_text('msg.m13', '잠시 후 다시 남겨 주세요.')
-                if err:
-                    flash(err); return render_template('soboru_editor.html', rows=rows, f=f), 400
-                db.execute('INSERT INTO editor_apps(name,phone,products,receipt,user_id,ip_hash,created) VALUES(?,?,?,?,?,?,?)',
-                           (name, phone, json.dumps(picked, ensure_ascii=False), int(f['receipt']), g.user['id'] if g.user else None, S.ip_hash(), stamp()))
-                flash(S.ui_text('editor.sent', '신청을 받았어요. 선정되면 적어 주신 번호로 연락드릴게요.'))
-                return redirect(url_for('editor') + '#apply')
-        return render_template('soboru_editor.html', rows=rows, f={})
-
-    @app.route('/admin/editors', methods=['GET', 'POST'])
-    @S.admin_only
-    def admin_editors():
-        with conn() as db:
-            drop_old_apps(db)
-            if request.method == 'POST':
-                status = request.form.get('status', '')
-                if status not in EDITOR_STATUS: abort(400)
-                db.execute('UPDATE editor_apps SET status=?,note=? WHERE id=?', (status, request.form.get('note', '').strip()[:1000], request.form.get('id', type=int)))
-                flash('저장했어요.'); return redirect(url_for('admin_editors', show=request.args.get('show', 'new')))
-            show = request.args.get('show', 'new'); show = show if show in EDITOR_STATUS else 'new'
-            rows = [dict(r, products=json.loads(r['products'] or '[]')) for r in db.execute('SELECT * FROM editor_apps WHERE status=? ORDER BY id DESC LIMIT 300', (show,))]
-            counts = dict(db.execute('SELECT status,COUNT(*) FROM editor_apps GROUP BY status').fetchall())
-            left = seats(db)
-        return render_template('admin_editors.html', rows=rows, show=show, statuses=EDITOR_STATUS, counts=counts, left=left, keep=EDITOR_KEEP_DAYS)
+        return redirect(url_for('feed'), 301)  # 에디터 모집은 뺌. 예전 주소는 후기 피드로
 
     app.jinja_env.globals.update(receipts_waiting=receipts_waiting, vs_rows=vs_rows, suda_rows=suda_rows, today_topic=today_topic)
     S.award = award

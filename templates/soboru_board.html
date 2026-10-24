@@ -30,7 +30,7 @@
     </div>
   </section>
   {% elif blk == 'feed' %}
-  <div class="cm-body">
+  <div class="cm-body{{ ' solo' if not (hot or rated) }}">{# 옆 칸(인기·리뷰 모아 보기)이 없으면 목록이 위 카드 줄과 같은 폭으로 #}
     <div class="cm-main">
       <nav class="cm-tabs" aria-label="{{ ui('cm.tabs_aria', '글 종류') }}">
         <a href="{{ url_for('board', sort=sort if sort == 'top' else None, q=q or None) }}"{% if not kind %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
