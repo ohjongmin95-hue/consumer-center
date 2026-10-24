@@ -1037,12 +1037,12 @@ class SiteTest(unittest.TestCase):
                 'phone': '010-2222-3333', 'contact': 'me@example.com', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
                 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
         # 설정이 없으면 아무것도 안 보냄
-        with patch.object(notify, 'http_post', side_effect=lambda *a: kakao.append(a) or {}), patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+        with patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: kakao.append(a) or {}), patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
             self.post_form(self.client, '/report', base)
         self.assertEqual((kakao, mails), ([], []))
         keys = {'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_PFID': 'pf', 'KAKAO_TPL_RECEIVED': 'T1', 'KAKAO_TPL_STATUS': 'T2', 'KAKAO_TPL_MESSAGE': 'T3',
                 'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}
-        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: kakao.append(a) or {'statusCode': '2000'}), \
+        with patch.dict(os.environ, keys), patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: kakao.append(a) or {'statusCode': '2000'}), \
              patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
             self.post_form(self.client, '/report', dict(base, subject='알림 두번째'))
             self.assertEqual(len(kakao), 1)
@@ -1064,7 +1064,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T3')
             self.assertNotIn('확인 중입니다', mails[-1][2])
             # 실패도 기록되고, 관리자 화면에 보임
-            with patch.object(notify, 'http_post', side_effect=OSError('down')):
+            with patch.object(notify.bizmsg, 'http_post', side_effect=OSError('down')):
                 self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'message', 'message': '두 번째'})
             page = admin.get('/admin/reports/%d' % case_id).get_data(as_text=True)
         self.assertIn('카톡 켜짐', page)
@@ -1075,6 +1075,47 @@ class SiteTest(unittest.TestCase):
             rows = db.execute('SELECT channel,event,status FROM notifications WHERE case_id=? ORDER BY id', (case_id,)).fetchall()
         self.assertEqual([tuple(r) for r in rows], [('kakao', 'received', 'sent'), ('email', 'received', 'sent'), ('kakao', 'status', 'sent'), ('email', 'status', 'sent'),
                                                    ('kakao', 'message', 'sent'), ('email', 'message', 'sent'), ('kakao', 'message', 'failed'), ('email', 'message', 'sent')])
+        notify.ASYNC = True
+
+    def test_aligo_vendor(self):
+        # MSG_VENDOR=aligo: 알리고에서 승인된 템플릿 문구를 받아 변수를 채워 보냄. 솔라피 값은 그대로 둬도 안 씀
+        notify, bizmsg = self.site.notify, self.site.notify.bizmsg
+        notify.ASYNC = False
+        bizmsg._aligo_templates.clear()
+        calls = []
+        tpl = {'templtCode': 'AT1', 'templtName': '제보 접수', 'templtTitle': '제보가 접수됐어요',
+               'templtContent': '#{이름}님, 제보가 접수됐습니다.\n\n■ 접수번호: #{접수번호}\n■ 제목: #{제목}',
+               'buttons': [{'ordering': '1', 'name': '진행 상황 보기', 'linkType': 'WL', 'linkTypeName': '웹링크', 'linkMo': 'https://soboru.co.kr/lookup', 'linkPc': 'https://soboru.co.kr/lookup'}]}
+
+        def fake(url, payload, headers=None, form=False):
+            calls.append((url, payload, form))
+            if 'template/list' in url:
+                return {'code': 0, 'message': '성공', 'list': [tpl]}
+            return {'code': 0, 'message': '성공'} if 'kakaoapi' in url else {'result_code': '1', 'message': 'success'}
+        keys = {'MSG_VENDOR': 'aligo', 'ALIGO_API_KEY': 'ak', 'ALIGO_USER_ID': 'soboru', 'ALIGO_SENDER_KEY': 'sk', 'ALIGO_SENDER': '02-749-7515',
+                'ALIGO_KAKAO_TPL_RECEIVED': 'AT1', 'KAKAO_TPL_RECEIVED': 'SOLAPI-ID', 'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_PFID': 'pf'}
+        with patch.dict(os.environ, keys):
+            self.assertTrue(notify.kakao_ready('received'))
+            self.assertFalse(notify.kakao_ready('status'))  # 알리고 템플릿이 없으면 솔라피 ID가 있어도 꺼짐
+            with patch.object(bizmsg, 'http_post', side_effect=fake):
+                notify.send_kakao('010-2222-3333', 'received', {'name': '김소비', 'receipt': 'R-1', 'subject': '알리고 제보', 'status': '접수'})
+                notify.send_kakao('010-2222-3333', 'received', {'name': '이소비', 'receipt': 'R-2', 'subject': '두번째', 'status': '접수'})
+                notify.send_sms('010-9999-8888', '새 제보')
+        self.assertEqual([c[0] for c in calls], ['https://kakaoapi.aligo.in/akv10/template/list/', 'https://kakaoapi.aligo.in/akv10/alimtalk/send/',
+                                                 'https://kakaoapi.aligo.in/akv10/alimtalk/send/', 'https://apis.aligo.in/send/'])  # 템플릿은 한 번만 받아 옴
+        self.assertTrue(all(c[2] for c in calls))
+        sent = calls[1][1]
+        self.assertEqual((sent['tpl_code'], sent['senderkey'], sent['sender'], sent['receiver_1']), ('AT1', 'sk', '027497515', '01022223333'))
+        self.assertEqual(sent['message_1'], '김소비님, 제보가 접수됐습니다.\n\n■ 접수번호: R-1\n■ 제목: 알리고 제보')
+        self.assertEqual(sent['emtitle_1'], '제보가 접수됐어요')
+        self.assertEqual(json.loads(sent['button_1'])['button'][0]['linkMo'], 'https://soboru.co.kr/lookup')
+        self.assertNotIn('failover', sent)
+        self.assertEqual((calls[3][1]['sender'], calls[3][1]['receiver'], calls[3][1]['msg']), ('027497515', '01099998888', '새 제보'))
+        # 실패 응답은 오류로
+        with patch.dict(os.environ, keys), patch.object(bizmsg, 'http_post', return_value={'code': -99, 'message': '발신프로필 오류'}):
+            with self.assertRaisesRegex(RuntimeError, '발신프로필 오류'):
+                notify.send_kakao('010-2222-3333', 'received', {'name': '김', 'receipt': 'R', 'subject': 'S', 'status': ''})
+        bizmsg._aligo_templates.clear()
         notify.ASYNC = True
 
     def test_admin_new_case_alert(self):
@@ -1089,7 +1130,8 @@ class SiteTest(unittest.TestCase):
                 'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_SENDER': '02-123-4567', 'ADMIN_ALERT_PHONE': '010-9999-8888'}
         admin = self.login_admin()
         before = admin.get('/admin/new-cases').get_json()
-        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'statusCode': '2000'}), \
+        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'ok': True}), \
+             patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: sms.append(a) or {'statusCode': '2000'}), \
              patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
             self.post_form(self.client, '/report', base)
         self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
@@ -1105,7 +1147,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('알림상점', sms[0][1]['message']['text'])
         self.assertIn('김소비 010-2222-3333', sms[0][1]['message']['text'])
         # 알림톡 템플릿이 있으면 카카오톡으로 (실패하면 문자로 대신)
-        with patch.dict(os.environ, dict(keys, SOLAPI_PFID='pf', KAKAO_TPL_ADMIN='TA')), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'statusCode': '2000'}), \
+        with patch.dict(os.environ, dict(keys, SOLAPI_PFID='pf', KAKAO_TPL_ADMIN='TA')), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'ok': True}), \
+             patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: sms.append(a) or {'statusCode': '2000'}), \
              patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
             self.post_form(self.client, '/report', dict(base, subject='카톡 알림 제보'))
         message = sms[-1][1]['message']

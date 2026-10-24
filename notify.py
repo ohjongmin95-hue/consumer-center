@@ -1,4 +1,4 @@
-"""제보자에게 진행 상황 알림 보내기: 카카오 알림톡(솔라피)과 이메일(SMTP).
+"""제보자에게 진행 상황 알림 보내기: 카카오 알림톡(솔라피·알리고, bizmsg.py)과 이메일(SMTP).
 새 제보가 들어오면 운영자에게 텔레그램(TELEGRAM_BOT_TOKEN·TELEGRAM_CHAT_ID, 무료), 메일(ADMIN_ALERT_EMAIL),
 카카오 알림톡(ADMIN_ALERT_PHONE·KAKAO_TPL_ADMIN, 없으면 문자)으로 알림.
 
@@ -6,9 +6,11 @@
 보내는 일은 뒤에서(스레드) 처리해서 화면이 느려지지 않게 하고, 결과는 notifications 표에 남김.
 카카오 알림톡 문구는 카카오 심사를 받은 템플릿과 글자 하나까지 같아야 함 -> docs/notifications.md
 """
-import datetime, hashlib, hmac, json, os, secrets, smtplib, threading, urllib.error, urllib.request
+import datetime, json, os, smtplib, threading, urllib.error, urllib.request
 from email.message import EmailMessage
 from email.utils import formataddr
+
+import bizmsg
 
 ASYNC = True  # 테스트에서는 False로 바꿔 바로 실행
 
@@ -60,8 +62,7 @@ def email_ready():
 
 
 def kakao_ready(event=None):
-    base = env('SOLAPI_API_KEY') and env('SOLAPI_API_SECRET') and env('SOLAPI_PFID')
-    return bool(base and (event is None or env(KAKAO_TEMPLATE_ENV[event])))
+    return bool(bizmsg.kakao_ready() and (event is None or bizmsg.template(KAKAO_TEMPLATE_ENV[event])))
 
 
 def digits(phone):
@@ -102,55 +103,30 @@ def send_email(to, subject, body, html=None, headers=None, from_name=None):
         server.send_message(msg)
 
 
-def solapi_auth():
-    # 솔라피 API 인증: HMAC-SHA256(date + salt, API secret)
-    date = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
-    salt = secrets.token_hex(16)
-    sig = hmac.new(env('SOLAPI_API_SECRET').encode(), (date + salt).encode(), hashlib.sha256).hexdigest()
-    return f"HMAC-SHA256 apiKey={env('SOLAPI_API_KEY')}, date={date}, salt={salt}, signature={sig}"
-
-
 def http_post(url, payload, headers):
     req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={'Content-Type': 'application/json', **headers}, method='POST')
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             return json.loads(resp.read().decode() or '{}')
-    except urllib.error.HTTPError as e:  # 솔라피는 거절 이유를 본문에 담아 줌
+    except urllib.error.HTTPError as e:  # 거절 이유가 본문에 담겨 옴
         raise RuntimeError(f'{e.code} {e.read().decode(errors="replace")[:200]}') from None
 
 
 def send_kakao(phone, event, values):
-    message = {'to': phone, 'kakaoOptions': {
-        'pfId': env('SOLAPI_PFID'), 'templateId': env(KAKAO_TEMPLATE_ENV[event]), 'disableSms': True,
-        'variables': {'#{이름}': values['name'], '#{접수번호}': values['receipt'], '#{제목}': values['subject'], '#{단계}': values['status']}}}
-    if env('SOLAPI_SENDER'):
-        message['from'] = digits(env('SOLAPI_SENDER'))
-    result = http_post('https://api.solapi.com/messages/v4/send', {'message': message}, {'Authorization': solapi_auth()})
-    status = str(result.get('statusCode', ''))
-    if status and status not in ('2000', '3000', '4000'):
-        raise RuntimeError(f"{status} {result.get('statusMessage', '')}".strip())
+    bizmsg.alimtalk(phone, bizmsg.template(KAKAO_TEMPLATE_ENV[event]),
+                    {'#{이름}': values['name'], '#{접수번호}': values['receipt'], '#{제목}': values['subject'], '#{단계}': values['status']})
 
 
 def send_sms(phone, text):
-    # 운영자 알림 문자. 솔라피가 길이에 따라 단문/장문을 알아서 고름. 발신번호(SOLAPI_SENDER)는 솔라피에 등록된 번호여야 함
-    message = {'to': phone, 'from': digits(env('SOLAPI_SENDER')), 'text': text}
-    result = http_post('https://api.solapi.com/messages/v4/send', {'message': message}, {'Authorization': solapi_auth()})
-    status = str(result.get('statusCode', ''))
-    if status and status not in ('2000', '3000', '4000'):
-        raise RuntimeError(f"{status} {result.get('statusMessage', '')}".strip())
+    # 운영자 알림 문자. 발신번호는 업체(솔라피·알리고)에 등록된 번호여야 함
+    bizmsg.sms(phone, text)
 
 
 def send_admin_kakao(phone, values):
-    # 운영자 알림톡. 템플릿 심사가 끝나기 전이거나 실패하면 발신번호가 있을 때 솔라피가 같은 내용을 문자로 대신 보냄
-    message = {'to': phone, 'kakaoOptions': {
-        'pfId': env('SOLAPI_PFID'), 'templateId': env('KAKAO_TPL_ADMIN'), 'disableSms': not digits(env('SOLAPI_SENDER')),
-        'variables': {'#{접수번호}': values['receipt'], '#{이름}': values['name'], '#{연락처}': values['phone'], '#{업체}': values['company'], '#{제목}': values['subject']}}}
-    if digits(env('SOLAPI_SENDER')):  # 대신 보내는 문자는 솔라피가 템플릿 내용 그대로 씀
-        message['from'] = digits(env('SOLAPI_SENDER'))
-    result = http_post('https://api.solapi.com/messages/v4/send', {'message': message}, {'Authorization': solapi_auth()})
-    status = str(result.get('statusCode', ''))
-    if status and status not in ('2000', '3000', '4000'):
-        raise RuntimeError(f"{status} {result.get('statusMessage', '')}".strip())
+    # 운영자 알림톡. 템플릿 심사가 끝나기 전이거나 실패하면 발신번호가 있을 때 같은 내용을 문자로 대신 보냄
+    bizmsg.alimtalk(phone, bizmsg.template('KAKAO_TPL_ADMIN'),
+                    {'#{접수번호}': values['receipt'], '#{이름}': values['name'], '#{연락처}': values['phone'], '#{업체}': values['company'], '#{제목}': values['subject']},
+                    fallback=True)
 
 
 def send_telegram(chat_id, text):
@@ -169,8 +145,7 @@ def admin_targets():
     """운영자 알림 받을 곳: (이메일 목록, 휴대폰 목록, 휴대폰 채널). 쉼표로 여러 개 적을 수 있음.
     휴대폰 채널은 알림톡 템플릿(KAKAO_TPL_ADMIN)이 있으면 'kakao', 발신번호만 있으면 'sms'."""
     emails = [e.strip() for e in env('ADMIN_ALERT_EMAIL').split(',') if '@' in e] if email_ready() else []
-    keys = env('SOLAPI_API_KEY') and env('SOLAPI_API_SECRET')
-    channel = 'kakao' if keys and env('SOLAPI_PFID') and env('KAKAO_TPL_ADMIN') else 'sms' if keys and digits(env('SOLAPI_SENDER')) else ''
+    channel = 'kakao' if bizmsg.kakao_ready() and bizmsg.template('KAKAO_TPL_ADMIN') else 'sms' if bizmsg.keys_ready() and bizmsg.sender() else ''
     phones = [digits(p) for p in env('ADMIN_ALERT_PHONE').split(',') if digits(p).startswith('01')] if channel else []
     return emails, phones, channel
 
