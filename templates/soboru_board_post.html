@@ -73,6 +73,10 @@
       <form method="post" action="{{ url_for('board_like', post_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <button class="cm-like{% if liked %} on{% endif %}" type="submit"{% if not enabled %} disabled{% endif %} aria-pressed="{{ 'true' if liked else 'false' }}">{{ heart_i() }}{{ ui('board.liked', '공감했어요') if liked else (ui('cm.helpful', '도움이 됐어요') if k in ('review', 'tip') else ui('board.like_do', '공감해요')) }} <b>{{ post['likes'] }}</b></button>
       </form>
+      {% if is_soboru() %}{% set sv = is_saved(post['id']) %}
+      <form method="post" action="{{ url_for('save_toggle', post_id=post['id']) if g.user else url_for('login', next=request.path) }}"{% if not g.user %} onsubmit="location.href=this.action;return false"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="cm-save{% if sv %} on{% endif %}" type="submit" aria-pressed="{{ 'true' if sv else 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>{{ ui('saved.on', '담아 뒀어요') if sv else ui('saved.do', '담아 두기') }}</button>
+      </form>{% endif %}
       <div class="cm-tools">
         {% if not mine %}{{ more_menu('p', post['id'], flagged, post['user_id']) }}{% endif %}
         {{ admin_delete('p', post['id']) }}

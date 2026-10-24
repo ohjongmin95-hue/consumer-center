@@ -79,7 +79,7 @@
   {% elif blk == 'pick' %}
   <section class="nn-sec nn-pick">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '써 본 소비자가 직접 골랐어요') }}</p><h2><span class="tf" aria-hidden="true">🏆</span> {{ ui('home.pick_title', '소보루 픽') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '내돈내산 후기부터 골라주세요, 수다방까지. 광고 없이 소비자끼리만 나눠요.') }}</p></div>
+      <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '공짜 체험단 없이, 진짜 산 사람만') }}</p><h2><span class="tf" aria-hidden="true">🏆</span> {{ ui('home.pick_title', '소보루 픽') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '가짜 후기에 지친 당신에게. 직접 돈 내고 산 사람들의 솔직한 이야기만 모았어요.') }}</p></div>
       <a class="nn-more" href="{{ url_for('board') }}">{{ ui('home.pick_more', '소보루 픽 전체 보기 ›') }}</a>
     </div>
     {% set camp = current_campaign() %}{% if camp %}{{ campaign_card(camp, campaign_review_count(camp['id']), 'cp-home') }}{% endif %}

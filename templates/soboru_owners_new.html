@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{# 사장님 소식 올리기 (회원만, 하루 한 번). soboru_cm.py owners_new() #}
+{% block title %}{{ ui('owners.write', '소식 올리기') }} | {{ ui('owners.title', '사장님 소식') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap cm cm-write cx">
+  <a class="cm-back" href="{{ url_for('owners') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('owners.title', '사장님 소식') }}</a>
+  <h1>{{ ui('owners.new_title', '어떤 소식을 알릴까요?') }}</h1>
+  <form class="cm-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <div class="cm-f"><span class="cm-l">{{ ui('owners.f_head', '소식 종류') }}</span>
+      <div class="cm-cats">{% for h in OWNER_HEADS %}<label><input type="radio" name="head" value="{{ h }}" required{% if f.get('head') == h %} checked{% endif %}><span>{{ h }}</span></label>{% endfor %}</div></div>
+    <div class="cm-f"><label class="cm-l" for="o-shop">{{ ui('owners.f_shop', '가게·브랜드 이름') }}</label><input id="o-shop" name="shop" maxlength="30" required value="{{ f.get('shop', '') }}" placeholder="{{ ui('owners.f_shop_ph', '예: 소보루베이커리 역삼점') }}"></div>
+    <div class="cm-f"><label class="cm-l" for="o-title">{{ ui('board.f_title', '제목') }}</label><input id="o-title" name="title" maxlength="60" required value="{{ f.get('title', '') }}" placeholder="{{ ui('owners.f_title_ph', '예: 이번 주말 소보루빵 1+1') }}"></div>
+    <div class="cm-f"><label class="cm-l" for="o-body">{{ ui('owners.f_body', '내용') }}</label><textarea id="o-body" name="body" maxlength="1000" rows="6" required placeholder="{{ ui('owners.f_body_ph', '기간, 조건, 위치처럼 손님이 알아야 할 것을 적어 주세요.') }}">{{ f.get('body', '') }}</textarea></div>
+    <div class="cm-f"><label class="cm-l" for="o-link">{{ ui('owners.f_link', '링크') }} <small>{{ ui('cm.optional', '선택') }}</small></label><input id="o-link" name="link" type="url" maxlength="300" value="{{ f.get('link', '') }}" placeholder="https://"></div>
+    <p class="cm-hint">{{ ui('owners.f_hint', '‘홍보’ 표시가 붙어 올라가요. 하루에 한 번 올릴 수 있어요. 소비자 후기처럼 꾸민 글은 운영자가 내려요.') }}</p>
+    <button class="cm-submit" type="submit">{{ ui('owners.submit', '소식 올리기') }}</button>
+  </form>
+</main>
+{% endblock %}

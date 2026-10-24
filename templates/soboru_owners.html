@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{# 사장님 소식: 업체가 직접 올리는 할인·새 상품·오픈 소식. 후기·수다와 섞이지 않게 따로. soboru_cm.py owners() #}
+{% from 'soboru_cm_macros.html' import pager with context %}
+{% block title %}{{ ui('owners.title', '사장님 소식') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('owners.meta', '가게와 브랜드가 직접 올리는 할인·새 상품·오픈 소식. 소비자 후기와 섞이지 않게 따로 모았어요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap cm cx">
+  <header class="cm-head">
+    <div>
+      <h1><span class="bread h" aria-hidden="true">🥯</span>{{ ui('owners.title', '사장님 소식') }}</h1>
+      <p>{{ ui('owners.intro', '가게와 브랜드가 직접 올리는 할인·새 상품·오픈 소식이에요. 소비자 후기와 섞이지 않게 여기에만 모아요.') }}</p>
+    </div>
+    <a class="cm-btn" href="{{ url_for('owners_new') }}">{{ ui('owners.write', '소식 올리기') }}</a>
+  </header>
+  <p class="cx-points">{{ ui('owners.rule', '모든 글은 업체가 올린 홍보예요. 하루에 한 번 올릴 수 있고, 후기처럼 꾸민 글이나 과장된 글은 운영자가 내려요.') }}</p>
+  <nav class="cm-rcs" aria-label="{{ ui('owners.head_aria', '소식 종류') }}">
+    <a href="{{ url_for('owners') }}"{% if not head %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+    {% for h in OWNER_HEADS %}<a href="{{ url_for('owners', h=h) }}"{% if head == h %} class="on" aria-current="true"{% endif %}>{{ h }}</a>{% endfor %}
+  </nav>
+  <div class="ow-list">
+    {% for r in rows %}
+    <article class="ow-card">
+      <p class="ow-top"><em class="ow-ad">{{ ui('owners.ad', '홍보') }}</em><span class="ow-head">{{ r['head'] }}</span><b class="ow-shop">{{ r['shop'] }}</b><span class="ow-when">{{ ago_text(r['created']) }}</span></p>
+      <h2>{{ r['title'] }}</h2>
+      <p class="ow-body">{{ mask_personal(r['body']) }}</p>
+      <footer>
+        {% if r['link'] %}<a class="ow-link" href="{{ r['link'] }}" rel="nofollow sponsored noopener" target="_blank">{{ ui('owners.go', '자세히 보러 가기') }} ›</a>{% endif %}
+        {% if admin_active() or (g.user and g.user['id'] == r['user_id']) %}
+        <form method="post" action="{{ url_for('owners_hide', news_id=r['id']) }}" onsubmit="return confirm({{ ui_text('owners.hide_confirm', '이 소식을 내릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('owners.hide', '내리기') }}</button></form>
+        {% endif %}
+      </footer>
+    </article>
+    {% else %}
+    <div class="cm-empty"><p>{{ ui('owners.empty', '아직 올라온 소식이 없어요. 사장님이라면 첫 소식을 올려 보세요.') }}</p><a class="cm-btn" href="{{ url_for('owners_new') }}">{{ ui('owners.write', '소식 올리기') }}</a></div>
+    {% endfor %}
+  </div>
+  {{ pager('owners', page, pages, {'h': head or None}) }}
+</main>
+{% endblock %}

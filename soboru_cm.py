@@ -27,13 +27,18 @@ KIND_HEAD = {'question': '질문', 'tip': '정보', 'post': '잡담'}  # 말머�
 POINTS = {'review_ok': ('영수증 인증 후기', 200, 0), 'vote': ('골라주세요 투표', 5, 3), 'vs_end': ('골라주세요 결말', 50, 0),
           'suda': ('수다 글', 10, 3), 'suda_first': ('첫 수다', 100, 0), 'comment': ('댓글', 10, 5)}
 PAGE = 20
+# 어디서 샀어요? (상품 후기) · 우리 동네 후기 (장소 후기: 시·도 + 구·군)
+SHOPS = ['쿠팡', '네이버', '올리브영', '11번가', 'G마켓·옥션', '컬리', '오늘의집', '무신사', '카카오', '공식몰', '오프라인 매장', '기타']
+OWNER_HEADS = ['할인', '새 상품', '오픈', '이벤트', '알림']  # 사장님 소식 말머리
+SIDO = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주']
 
 
 def migrate(db):
     have = {r['name'] for r in db.execute('PRAGMA table_info(posts)')}
     for col, ddl in (('rv_type', "TEXT NOT NULL DEFAULT ''"), ('rv_cat', "TEXT NOT NULL DEFAULT ''"), ('price', 'INTEGER NOT NULL DEFAULT 0'),
                      ('bought', "TEXT NOT NULL DEFAULT ''"), ('again', 'INTEGER'), ('receipt', "TEXT NOT NULL DEFAULT ''"),
-                     ('receipt_state', "TEXT NOT NULL DEFAULT ''"), ('views', 'INTEGER NOT NULL DEFAULT 0'), ('head', "TEXT NOT NULL DEFAULT ''")):
+                     ('receipt_state', "TEXT NOT NULL DEFAULT ''"), ('views', 'INTEGER NOT NULL DEFAULT 0'), ('head', "TEXT NOT NULL DEFAULT ''"),
+                     ('shop', "TEXT NOT NULL DEFAULT ''"), ('sido', "TEXT NOT NULL DEFAULT ''"), ('gu', "TEXT NOT NULL DEFAULT ''")):
         if col not in have: db.execute(f'ALTER TABLE posts ADD COLUMN {col} {ddl}')
     for old, (t, c) in OLD_CAT.items():
         db.execute("UPDATE posts SET rv_type=?,rv_cat=? WHERE kind='review' AND rv_type='' AND review_cat=?", (t, c, old))
@@ -47,6 +52,9 @@ def migrate(db):
     db.execute('CREATE INDEX IF NOT EXISTS vs_comments_poll ON vs_comments(poll_id)')
     db.execute('''CREATE TABLE IF NOT EXISTS points(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,amount INTEGER NOT NULL,reason TEXT NOT NULL,ref TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
     db.execute('CREATE INDEX IF NOT EXISTS points_user ON points(user_id)')
+    db.execute('CREATE TABLE IF NOT EXISTS saves(user_id INTEGER NOT NULL,post_id INTEGER NOT NULL,created TEXT NOT NULL,PRIMARY KEY(user_id,post_id))')  # 담아 두기
+    db.execute('''CREATE TABLE IF NOT EXISTS owner_news(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,nickname TEXT NOT NULL,shop TEXT NOT NULL,head TEXT NOT NULL,
+        title TEXT NOT NULL,body TEXT NOT NULL,link TEXT NOT NULL DEFAULT '',hidden INTEGER NOT NULL DEFAULT 0,ip_hash TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
     db.execute('DROP TABLE IF EXISTS editor_apps')  # 에디터 모집을 빼면서 신청서(휴대폰 번호)도 지움
 
 
@@ -109,7 +117,11 @@ def install(S):
                         receipt = secrets.token_hex(16) + '.' + ext; (RECEIPT_DIR / receipt).write_bytes(data); state = 'wait'
                         flash(S.ui_text('feed.receipt_sent', '영수증을 받았어요. 운영자가 확인하면 영수증 인증 표시와 200P가 붙어요.'))
                     else: flash(S.ui_text('feed.receipt_bad', '영수증 사진은 8MB 이하 JPG·PNG·WEBP로 다시 올려 주세요. 후기는 올라갔어요.'))
-                db.execute('UPDATE posts SET rv_type=?,rv_cat=?,price=?,bought=?,again=?,receipt=?,receipt_state=? WHERE id=?', (t, c, price, bought, again, receipt, state, pid))
+                shop = f.get('shop', '') if t == 'product' and f.get('shop', '') in SHOPS else ''
+                sido = f.get('sido', '') if t == 'place' and f.get('sido', '') in SIDO else ''
+                gu = re.sub(r'[^가-힣0-9 ]', '', f.get('gu', ''))[:12].strip() if sido else ''
+                db.execute('UPDATE posts SET rv_type=?,rv_cat=?,price=?,bought=?,again=?,receipt=?,receipt_state=?,shop=?,sido=?,gu=? WHERE id=?',
+                           (t, c, price, bought, again, receipt, state, shop, sido, gu, pid))
             else:
                 head = f.get('head', '')
                 db.execute('UPDATE posts SET head=? WHERE id=?', (head if head in SUDA_HEADS else KIND_HEAD.get(kind, ''), pid))
@@ -131,12 +143,13 @@ def install(S):
         p['visit'] = p['bought'][5:].replace('-', '.') if t == 'place' and p.get('bought') else ''
         p['again_word'] = '' if p.get('again') is None else (('재방문' if t == 'place' else '재구매') + (' 의사 있어요' if p['again'] else ' 안 해요'))
         p['won'] = won(p.get('price') or 0)
+        p['where'] = (p.get('shop') or '') if t == 'product' else ' '.join(x for x in (p.get('sido'), p.get('gu')) if x)
         return p
 
     def suda_view(p):
         p = dict(p); p['head'] = p.get('head') or KIND_HEAD.get(p.get('kind'), '잡담'); return p
 
-    app.jinja_env.globals.update(RV_TYPES=RV_TYPES, RV_CATS=RV_CATS, VS_CATS=VS_CATS, SUDA_HEADS=SUDA_HEADS, POINTS=POINTS, point_total=point_total,
+    app.jinja_env.globals.update(RV_TYPES=RV_TYPES, RV_CATS=RV_CATS, SHOPS=SHOPS, SIDO=SIDO, VS_CATS=VS_CATS, SUDA_HEADS=SUDA_HEADS, POINTS=POINTS, point_total=point_total,
                                  review_view=review_view, suda_view=suda_view)
 
     def search_like(q):
@@ -150,12 +163,16 @@ def install(S):
         c = a.get('c', ''); c = c if t and c in cat_emoji[t] else ''
         sort = a.get('sort', 'new'); sort = sort if sort in ('new', 'views', 'likes') else 'new'
         ok = a.get('ok') == '1'
+        shop = a.get('s', ''); shop = shop if t == 'product' and shop in SHOPS else ''
+        sido = a.get('a', ''); sido = sido if t == 'place' and sido in SIDO else ''
         q = a.get('q', '').strip()[:60]; field = a.get('f', 'all'); field = field if field in ('all', 'target', 'who') else 'all'
         page = max(1, a.get('page', 1, type=int))
         where = ["kind='review'", 'hidden=0' + S.not_blocked()]; args = []
         if t: where.append('rv_type=?'); args.append(t)
         if c: where.append('rv_cat=?'); args.append(c)
         if ok: where.append("receipt_state='ok'")
+        if shop: where.append('shop=?'); args.append(shop)
+        if sido: where.append('sido=?'); args.append(sido)
         if q:
             like = search_like(q)
             if field == 'target': where.append("target LIKE ? ESCAPE '\\'"); args.append(like)
@@ -168,11 +185,11 @@ def install(S):
             rows = db.execute(f'SELECT * FROM posts WHERE {sql} ORDER BY {order} LIMIT ? OFFSET ?', args + [PAGE, (page - 1) * PAGE]).fetchall()
             n_ok = db.execute("SELECT COUNT(*) FROM posts WHERE kind='review' AND hidden=0 AND receipt_state='ok'").fetchone()[0]
             week = (datetime.datetime.now() - datetime.timedelta(days=7)).isoformat(timespec='seconds')
-            hot = db.execute("SELECT id,title,target,views FROM posts WHERE kind='review' AND hidden=0" + S.not_blocked() + ' AND created>=? ORDER BY views DESC,likes DESC,id DESC LIMIT 5', (week,)).fetchall()
+            hot = db.execute("SELECT id,title,target,views,likes FROM posts WHERE kind='review' AND hidden=0" + S.not_blocked() + ' AND created>=? ORDER BY views DESC,likes DESC,id DESC LIMIT 5', (week,)).fetchall()
         pages = max(1, -(-total // PAGE))
         if page > pages: abort(404)
         return render_template('soboru_feed.html', rows=[review_view(r) for r in rows], t=t, c=c, sort=sort, ok=ok, q=q, field=field, page=page, pages=pages,
-                               total=total, n_ok=n_ok, hot=hot, cat_emoji=cat_emoji)
+                               total=total, n_ok=n_ok, hot=hot, cat_emoji=cat_emoji, shop=shop, sido=sido)
 
     @app.route('/feed/receipt/<name>')
     @S.admin_only
@@ -379,6 +396,79 @@ def install(S):
         with conn() as db:
             rows = db.execute('SELECT * FROM points WHERE user_id=? ORDER BY id DESC LIMIT 100', (g.user['id'],)).fetchall()
         return render_template('soboru_points.html', rows=rows, total=point_total(g.user['id']))
+
+    # ---- 담아 두기 (찜): 나중에 다시 볼 글을 내 정보에 모아 둠 -------------------------
+    def is_saved(post_id):
+        if not g.user: return False
+        with conn() as db: return bool(db.execute('SELECT 1 FROM saves WHERE user_id=? AND post_id=?', (g.user['id'], post_id)).fetchone())
+
+    @app.route('/me/saved/<int:post_id>', methods=['POST'])
+    @S.member_only
+    def save_toggle(post_id):
+        with conn() as db:
+            if not db.execute('SELECT 1 FROM posts WHERE id=? AND hidden=0', (post_id,)).fetchone(): abort(404)
+            if db.execute('DELETE FROM saves WHERE user_id=? AND post_id=?', (g.user['id'], post_id)).rowcount == 0:
+                db.execute('INSERT INTO saves(user_id,post_id,created) VALUES(?,?,?)', (g.user['id'], post_id, stamp()))
+                flash(S.ui_text('saved.added', '담아 뒀어요. 내 정보 > 담아 둔 글에서 다시 볼 수 있어요.'))
+        return redirect(url_for('board_post', post_id=post_id))
+
+    @app.route('/me/saved')
+    @S.member_only
+    def my_saved():
+        with conn() as db:
+            rows = db.execute('SELECT p.* FROM saves s JOIN posts p ON p.id=s.post_id WHERE s.user_id=? AND p.hidden=0 ORDER BY s.created DESC LIMIT 200', (g.user['id'],)).fetchall()
+        return render_template('soboru_saved.html', rows=[review_view(r) if r['kind'] == 'review' else suda_view(r) for r in rows])
+
+    app.jinja_env.globals.update(is_saved=is_saved)
+
+    # ---- 사장님 소식: 업체 홍보는 후기·수다와 섞이지 않게 따로 모음 (회원이 쓰고, 운영자·글쓴이가 내림) ----
+    @app.route('/owners')
+    def owners():
+        page = max(1, request.args.get('page', 1, type=int)); head = request.args.get('h', ''); head = head if head in OWNER_HEADS else ''
+        where, args = ['hidden=0'], []
+        if head: where.append('head=?'); args.append(head)
+        with conn() as db:
+            total = db.execute('SELECT COUNT(*) FROM owner_news WHERE ' + ' AND '.join(where), args).fetchone()[0]
+            rows = db.execute('SELECT * FROM owner_news WHERE ' + ' AND '.join(where) + ' ORDER BY id DESC LIMIT ? OFFSET ?', args + [PAGE, (page - 1) * PAGE]).fetchall()
+        pages = max(1, -(-total // PAGE))
+        if page > pages: abort(404)
+        return render_template('soboru_owners.html', rows=rows, head=head, page=page, pages=pages, total=total)
+
+    @app.route('/owners/new', methods=['GET', 'POST'])
+    @S.member_only
+    def owners_new():
+        f = request.form
+        if request.method == 'POST':
+            if f.get('website'): abort(400)
+            shop = ' '.join(f.get('shop', '').split()); title = ' '.join(f.get('title', '').split()); body = f.get('body', '').strip()
+            head = f.get('head', ''); link = f.get('link', '').strip()
+            err = None
+            if head not in OWNER_HEADS: err = S.ui_text('owners.e_head', '소식 종류를 골라 주세요.')
+            elif not 1 <= len(shop) <= 30: err = S.ui_text('owners.e_shop', '가게·브랜드 이름을 30자 안으로 적어 주세요.')
+            elif not 2 <= len(title) <= 60: err = S.ui_text('owners.e_title', '제목은 2~60자로 적어 주세요.')
+            elif not 10 <= len(body) <= 1000: err = S.ui_text('owners.e_body', '내용은 10~1,000자로 적어 주세요.')
+            elif link and not re.fullmatch(r'https://[^\s<>"]{4,300}', link): err = S.ui_text('owners.e_link', '링크는 https://로 시작하는 주소만 넣을 수 있어요.')
+            with conn() as db:
+                if not err and db.execute('SELECT COUNT(*) FROM owner_news WHERE user_id=? AND created>=?', (g.user['id'], datetime.date.today().isoformat())).fetchone()[0] >= 1:
+                    err = S.ui_text('owners.e_daily', '사장님 소식은 하루에 한 번 올릴 수 있어요.')
+                if err: flash(err); return render_template('soboru_owners_new.html', f=f), 400
+                db.execute('INSERT INTO owner_news(user_id,nickname,shop,head,title,body,link,ip_hash,created) VALUES(?,?,?,?,?,?,?,?,?)',
+                           (g.user['id'], g.user['nickname'], shop, head, title, body, link, S.ip_hash(), stamp()))
+            flash(S.ui_text('owners.sent', '소식을 올렸어요.'))
+            return redirect(url_for('owners'))
+        return render_template('soboru_owners_new.html', f={})
+
+    @app.route('/owners/<int:news_id>/hide', methods=['POST'])
+    def owners_hide(news_id):
+        with conn() as db:
+            r = db.execute('SELECT user_id FROM owner_news WHERE id=?', (news_id,)).fetchone()
+            if not r: abort(404)
+            if not (S.admin_active() or (g.user and g.user['id'] == r['user_id'])): abort(403)
+            db.execute('UPDATE owner_news SET hidden=1 WHERE id=?', (news_id,))
+        flash(S.ui_text('owners.hidden', '소식을 내렸어요.'))
+        return redirect(url_for('owners'))
+
+    app.jinja_env.globals.update(OWNER_HEADS=OWNER_HEADS)
 
     @app.route('/editor')
     def editor():
