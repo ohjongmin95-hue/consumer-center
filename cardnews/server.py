@@ -37,7 +37,7 @@ PORT = int(os.getenv('CARDNEWS_PORT') or 5050)
 PER_DAY = (1, 2, 3, 4, 5)
 MODELS = (('claude-opus-5-5', 'Claude Opus 5.5 (기본, 가장 꼼꼼)'), ('claude-sonnet-5-5', 'Claude Sonnet 5.5 (더 싸고 빠름)'))
 DEFAULTS = {'key': '', 'model': 'claude-opus-5-5', 'auto': 0, 'per_day': 3, 'hour': 8, 'web_search': 1,
-            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_style': 'mix', 'hf_auto': 0,
+            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_style': 'mix', 'hf_auto': 0, 'theme': 'ref', 'accent': 'tangerine',
             'kakao_key': '', 'kakao_secret': '', 'kakao_token': {}, 'kakao_auto': 1}
 SECRETS = ('key', 'naver_secret', 'hf_id', 'hf_secret', 'kakao_secret')  # 화면에 다시 보여 주지 않는 값
 IMG_STYLES = (('mix', '표지는 사진, 본문은 일러스트'), ('photo', '모두 사진'), ('illust', '모두 일러스트'))
@@ -373,6 +373,9 @@ def card(cid):
         for old, nc in zip(d['cards'], new.get('cards') or []): old.update(kicker=s(nc.get('kicker'), 30), title=s(nc.get('title'), 40), body=s(nc.get('body'), 200))
         d['tips'] = [s(t, 40) for t in (new.get('tips') or d['tips'])[:3]]
         d['end'] = new.get('end') if new.get('end') in cards.ENDS else 'save'; d['share_line'] = s(new.get('share_line'), 30)
+        if new.get('theme') in cards.THEMES and new.get('accent') in cards.ACCENTS:  # 디자인: 이 카드뉴스에 저장하고 다음 카드뉴스 기본값으로
+            d['theme'], d['accent'] = new['theme'], new['accent']; cf = config()
+            if (cf['theme'], cf['accent']) != (d['theme'], d['accent']): cf['theme'], cf['accent'] = d['theme'], d['accent']; save_config(cf)
         newslots = [new.get('cover_img') or {}] + [(nc.get('img') or {}) for nc in (new.get('cards') or [])]
         for (_, _, slot), ns in zip(cards.slots(d), newslots):  # 사진/일러스트 고르기만 (이미지 파일은 올리기·힉스필드로만 바뀜)
             if ns.get('style') in cards.STYLES: slot['style'] = ns['style']
@@ -384,7 +387,7 @@ def card(cid):
         return redirect(url_for('card', cid=cid))
     sl = [(n, '표지' if n == 'cover' else f'{int(n[4:]) + 2}번째 장', x, {k: cards.photo_prompt(scene, k) for k in cards.STYLES})
           for n, scene, x in cards.slots(c['data'], config()['img_style'])]
-    return render_template('edit.html', c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, hf=cards.hf_ready(config()),
+    return render_template('edit.html', def_theme=config()['theme'], def_accent=config()['accent'], c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, hf=cards.hf_ready(config()),
                            key=bool(config()['key']), styles=cards.STYLES, saved=str(out_dir(c)) if out_dir(c).is_dir() else '')
 
 

@@ -17,6 +17,8 @@ import xml.etree.ElementTree as ET
 AI_TIMEOUT = 600
 COPY_RUN = 18  # 기사와 띄어쓰기 빼고 이만큼 연달아 같으면 '기사 문장 옮김'
 ARROWS = ('up', 'down', '')
+THEMES = ('ref', 'newneek', 'magazine', 'poster', 'clean', 'dark')  # 카드 디자인 (기본: 레퍼런스북식)
+ACCENTS = ('tangerine', 'blue', 'green', 'red', 'ink')
 ENDS = ('save', 'share')  # 마지막 장 마무리: 저장 유도(기본) / 공유형 (캐러셀 레퍼런스북: 저장이 기본, 공유 명분은 기획에서)
 # 저작권 기준표 Ch2·Ch10: 표지 낚시말, 마지막 장 참여 유도, 조심할 정치 말
 BAIT = ('충격', '결국', '경악', '소름', '실화냐', '역대급', '난리', '발칵')
