@@ -662,7 +662,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<strong>굵게</strong> &lt;i&gt;기울임&lt;/i&gt;', home)
         self.assertIn('지금 막 온 제보', home)
         self.assertNotIn('써 본 건 추천하고', home)
-        self.assertIn('>제보하기</a><a class="nn-intro-link"', home)  # required field left blank falls back to default
+        self.assertIn('>제보하기</a><a class="nn-intro-write"', home)  # required field left blank falls back to default
         admin.post('/admin/content', data={'_csrf': token, 'reset_section': 'home'})
         self.assertIn('억울한 일은 제보하고', self.client.get('/').get_data(as_text=True))
 

@@ -27,7 +27,6 @@
         <button type="button" class="sb-sch-x" data-sch-close aria-label="{{ ui('search.close', '검색 닫기') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </form>
       <div class="sb-sch-rows">
-        <p class="sb-sch-recent" data-sch-recent hidden><span>{{ ui('search.recent', '최근 찾은 말') }}</span></p>
         <p><span>{{ ui('search.popular', '많이 찾는 말') }}</span>{% for w in SEARCH_POPULAR %}<a href="{{ url_for('site_search', q=w) }}">{{ w }}</a>{% endfor %}</p>
       </div>
     </div>
@@ -35,16 +34,11 @@
   <script>
   (function () {
     var box = document.getElementById('sb-sch'), op = document.querySelector('[data-sch-open]'); if (!box || !op) return;
-    var q = document.getElementById('sb-sch-q'), rec = box.querySelector('[data-sch-recent]'), KEY = 'soboru_recent_q';
-    function load() { try { return JSON.parse(localStorage.getItem(KEY) || '[]').slice(0, 6); } catch (e) { return []; } }
-    function draw() { var xs = load(); rec.hidden = !xs.length; rec.querySelectorAll('a').forEach(function (a) { a.remove(); });
-      xs.forEach(function (w) { var a = document.createElement('a'); a.href = '{{ url_for('site_search') }}?q=' + encodeURIComponent(w); a.textContent = w; rec.appendChild(a); }); }
-    function show(on) { box.hidden = !on; op.setAttribute('aria-expanded', on ? 'true' : 'false'); if (on) { draw(); q.focus(); } }
+    var q = document.getElementById('sb-sch-q');
+    function show(on) { box.hidden = !on; op.setAttribute('aria-expanded', on ? 'true' : 'false'); if (on) q.focus(); }
     op.addEventListener('click', function (e) { e.preventDefault(); show(box.hidden); });
     box.querySelector('[data-sch-close]').addEventListener('click', function () { show(false); op.focus(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) { show(false); op.focus(); } });
-    box.querySelector('form').addEventListener('submit', function () { var w = q.value.trim(); if (!w) return;
-      try { var xs = load().filter(function (x) { return x !== w; }); xs.unshift(w); localStorage.setItem(KEY, JSON.stringify(xs.slice(0, 6))); } catch (e) {} });
   })();
   </script>
   <nav class="sb-chips" aria-label="주요 메뉴">{% for href, label, on, sub in sb_nav %}<a href="{{ href }}"{% if on %} class="on"{% endif %}>{{ ui('sb.chip_all', '전체') if loop.first else label }}</a>{% endfor %}</nav>
