@@ -17,17 +17,18 @@ from flask import abort, flash, g, redirect, render_template, request, send_file
 
 KINDS = ('report', 'life')
 PHOTO = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
-# 토스 피드 그림 느낌: 단색 배경 가운데 반질한 3D 아이콘 하나, 장면·사람·글자 없음
-# 그림체를 바꾸면 STYLE_V를 올림. 관리자 화면에서 옛 그림체 그림을 새로 그릴 수 있음
-STYLE_V = 2
-STYLE = ('A single cute 3D icon, in the style of the glossy 3D emoji illustrations used in the Toss app (Korean fintech) feed thumbnails. '
-         'High-quality Blender render: chunky rounded shapes, smooth glossy plastic and soft matte clay materials, soft studio light from the upper left, '
-         'gentle highlights, a soft contact shadow directly below. '
-         'Exactly one main object (optionally one tiny companion object), centered, about 45% of the image height, front three-quarter view, '
-         'simple and iconic with minimal details, bright clean colors that stand out from the background. '
-         'Pure flat solid {bg} background filling the whole image: no gradient, no floor, no scenery, no extra props, no patterns. '
-         'No people, no faces, no hands. Absolutely no text, no letters, no numbers, no logos, no brand names.')
-BGS = ('soft sky blue (#9dbcef)', 'deep teal (#2b9db5)', 'bright blue (#3a8ef6)', 'warm apricot (#ffb56b)', 'fresh mint (#7fd1ae)', 'soft lavender (#b7a6f0)')
+# 매거진 그림 (운영자 2026-10-24: 3D 아이콘 대신 2D 일러스트, 색은 소보루 색에 묶지 말고 기사와 어울리게)
+# 뉴닉·잡지 기사 그림처럼 평면 일러스트로 기사 내용을 보여 주는 작은 장면. 그림체를 바꾸면 STYLE_V를 올림(관리자 화면에서 옛 그림 다시 그리기)
+STYLE_V = 3
+STYLE = ('A flat 2D editorial illustration for a Korean consumer-life magazine article, in the style of modern Korean newsletter and magazine illustrations: '
+         'simple geometric shapes, clean confident lines, flat color fills with a subtle paper grain texture, no 3D, no gloss, no gradients, no photorealism. '
+         'Show a small, warm everyday scene or a clear arrangement of two or three objects that explains the topic at a glance. '
+         'Choose a harmonious palette of 3 to 5 colors that fits the mood of this topic (for example cool blues for travel, fresh greens for food, '
+         'calm navy and mint for money and finance, warm reds for safety warnings); {bg}. '
+         'Generous empty space, the main subject centered and about half the image height, plain light background in one color that suits the palette. '
+         'People may appear as simple stylized figures without detailed faces. Friendly and calm, never scary or gory. '
+         'Absolutely no text, no letters, no numbers, no logos, no brand names, no speech bubbles with writing.')
+BGS = ('keep it light and airy', 'use one bold accent color', 'use soft muted tones', 'use bright cheerful tones', 'use a calm cool palette', 'use a cozy warm palette')
 
 
 def image_model(): return os.getenv('OPENAI_IMAGE_MODEL', '').strip() or 'gpt-image-1-mini'
@@ -37,9 +38,9 @@ def image_quality(): return os.getenv('OPENAI_IMAGE_QUALITY', '').strip() or 'me
 def make_prompt(category, title, extra=(), seed=0):
     from companydesk import scrub
     clean = lambda t: re.sub(r'\[[^\]]*삭제\]', '', scrub(t or '', extra)).strip()
-    return (STYLE.format(bg=BGS[seed % len(BGS)]) + '\nPick one simple, instantly recognizable object that symbolizes this Korean consumer topic '
-            '(for example a parcel box for delivery, a credit card for payments, a smartphone for apps and subscriptions, a receipt for refunds, '
-            'a house for rent, a plane for travel, a shield for safety). Do not draw a scene and do not write the words. '
+    return (STYLE.format(bg=BGS[seed % len(BGS)]) + '\nIllustrate what this Korean consumer article is about, so a reader can guess the topic from the picture '
+            '(for example a person checking a long card statement for subscriptions, a delivery box with a broken corner for damaged parcels, '
+            'a suitcase and a hotel key with a price tag for travel fees). Do not write the headline words. '
             f'Category "{clean(category)}", headline "{clean(title)}".')
 
 
