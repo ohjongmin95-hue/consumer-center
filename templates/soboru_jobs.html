@@ -7,14 +7,24 @@
 {% block content %}
 <main class="sb-wrap jb">
   <header class="jb-hero">
-    <div>
+    
+    <div class="jb-hero-t">
+      <p class="jb-hero-k"><i class="tf" aria-hidden="true">📍</i>{{ (f.sgg or f.sido) ~ ' ' if f.sgg or f.sido else '' }}{{ ui('jobs.kicker', '동네 게시판에 새 구인 글이 붙었어요') }}</p>
       <h1>{{ ui('jobs.h1', '동네일자리') }}</h1>
       <p>{{ ui('jobs.intro', '우리 동네 사장님이 직접 올린 공고와 공공 채용정보를 한곳에서 찾아요. 올리는 것도, 지원하는 것도 무료예요.') }}</p>
+      <div class="jb-hero-btns">
+        <a class="jb-btn" href="{{ url_for('jobs_manage') if biz and biz['state'] == 'ok' else url_for('job_new') }}">{{ ui('jobs.manage', '내 공고 관리') if biz and biz['state'] == 'ok' else ui('jobs.post', '사장님, 공고 올리기') }}</a>
+        <a class="jb-btn white" href="{{ url_for('jobs_my') }}">{{ ui('jobs.my', '내 지원·관심') }}</a>
+      </div>
     </div>
-    <div class="jb-hero-btns">
-      <a class="jb-btn ghost" href="{{ url_for('jobs_my') }}">{{ ui('jobs.my', '내 지원·관심') }}</a>
-      <a class="jb-btn" href="{{ url_for('jobs_manage') if biz and biz['state'] == 'ok' else url_for('job_new') }}">{{ ui('jobs.manage', '내 공고 관리') if biz and biz['state'] == 'ok' else ui('jobs.post', '사장님, 공고 올리기') }}</a>
+    <div class="jb-board" aria-hidden="true">
+      {% for t, w, e, z in [('알바 구함', '주말 오전 · 빵집', '🍜', 0), ('직원 구함', '평일 저녁 · 마트', '🛒', 1), ('배달 기사', '점심 피크 · 역삼', '🛵', 3)] %}<span class="jb-note-p z{{ z }}"><i class="pin"></i><b>{{ t }}</b><small>{{ w }}</small><em class="tf">{{ e }}</em><span class="strips"><u></u><u></u><u></u><u></u></span></span>{% endfor %}
     </div>
+    <dl class="jb-stats">
+      <div><dt>{{ ui('jobs.st_new', '오늘 새 공고') }}</dt><dd>{{ '{:,}'.format(counts.new) }}<small>개</small></dd></div>
+      <div><dt>{{ ui('jobs.st_shops', '공고 올린 가게') }}</dt><dd>{{ '{:,}'.format(counts.shops) }}<small>곳</small></dd></div>
+      <div><dt>{{ ui('jobs.st_all', '모집 중') }}</dt><dd>{{ '{:,}'.format(counts.own + counts.ext) }}<small>개</small></dd></div>
+    </dl>
   </header>
   <form class="jb-form" method="get" action="{{ url_for('jobs') }}" data-autosubmit>
     <div class="jb-search">
@@ -24,10 +34,14 @@
       <label class="jb-in q"><span class="sr-only">{{ ui('jobs.q', '찾을 낱말') }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg><input name="q" value="{{ f.q }}" maxlength="40" placeholder="{{ ui('jobs.q_ph', '하는 일, 가게 이름') }}"></label>
       <button class="jb-go" type="submit">{{ ui('jobs.go', '찾기') }}</button>
     </div>
+    <nav class="jb-cats" aria-label="{{ ui('jobs.f_ind', '업종') }}">
+      <a href="{{ url_for('jobs', **job_qs(f, ind=None, page=None)) }}"{% if not f.ind %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">🏘️</span>{{ ui('jobs.cat_all', '전체') }}</a>
+      {% for k, n, e in JOB_INDUSTRIES %}<a href="{{ url_for('jobs', **job_qs(f, ind=[k], page=None)) }}"{% if f.ind == [k] %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">{{ e }}</span>{{ n.split('·')[0] }}</a>{% endfor %}
+    </nav>
     <div class="jb-body">
       <details class="jb-filter" open id="jb-filter">
         <summary><span>{{ ui('jobs.filter', '조건') }}{% if n_filter %} <b>{{ n_filter }}</b>{% endif %}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="jb-fg"><p>{{ ui('jobs.f_ind', '업종') }}</p><div class="jb-chips">{% for k, n, e in JOB_INDUSTRIES %}<label><input type="checkbox" name="ind" value="{{ k }}"{% if k in f.ind %} checked{% endif %}><span><i class="tf" aria-hidden="true">{{ e }}</i>{{ n }}</span></label>{% endfor %}</div></div>
+        {% for k in f.ind %}<input type="hidden" name="ind" value="{{ k }}">{% endfor %}
         <div class="jb-fg"><p>{{ ui('jobs.f_time', '근무 시간대') }}</p><div class="jb-chips">{% for k, n, a, b2 in JOB_TIMES %}<label><input type="checkbox" name="time" value="{{ k }}"{% if k in f.time %} checked{% endif %}><span>{{ n }}</span></label>{% endfor %}</div></div>
         <div class="jb-fg"><p>{{ ui('jobs.f_days', '근무 요일') }}</p><div class="jb-chips">{% for k, n in [('', '상관없음'), ('weekday', '평일'), ('weekend', '주말')] %}<label><input type="radio" name="days" value="{{ k }}"{% if f.days == k %} checked{% endif %}><span>{{ n }}</span></label>{% endfor %}</div></div>
         <div class="jb-fg"><p>{{ ui('jobs.f_term', '근무 기간') }}</p><div class="jb-chips">{% for k, n in [('', '상관없음'), ('short', '단기'), ('long', '장기')] %}<label><input type="radio" name="term" value="{{ k }}"{% if f.term == k %} checked{% endif %}><span>{{ n }}</span></label>{% endfor %}</div></div>
@@ -41,15 +55,16 @@
           <h2 id="jb-count">{% if f.sgg or f.sido %}{{ f.sgg or f.sido }}{% if f.dong %} {{ f.dong }}{% endif %} {% endif %}{{ ui('jobs.count', '공고 {n}개', n='{:,}'.format(total)) }}</h2>
           <nav class="jb-sort" aria-label="{{ ui('jobs.sort', '정렬') }}">{% for k, n in [('new', '최신순'), ('pay', '시급 높은순'), ('close', '마감 임박순')] %}<a href="{{ url_for('jobs', **job_qs(f, sort=k)) }}"{% if f.sort == k %} class="on" aria-current="true"{% endif %}>{{ n }}</a>{% endfor %}</nav>
         </div>
-        {% for j in rows %}{{ job_card(j) }}
+        {% if rows %}<div class="jb-grid">{% for j in rows %}{{ job_card(j, outer=true) }}{% endfor %}</div>
         {% else %}
         <div class="jb-empty"><span class="tf" aria-hidden="true">🔍</span><b>{{ ui('jobs.empty', '조건에 맞는 공고가 아직 없어요') }}</b><p>{{ ui('jobs.empty_d', '동네를 넓히거나 조건을 줄여 보세요. 사장님이라면 첫 공고를 올려 주세요.') }}</p><a class="jb-btn" href="{{ url_for('job_new') }}">{{ ui('jobs.post', '사장님, 공고 올리기') }}</a></div>
-        {% endfor %}
+        {% endif %}
         {{ pager('jobs', page, pages, job_qs(f)) }}
         <p class="jb-note">{% if ext_on %}{{ ui('jobs.note_ext', '공공 채용정보는 고용24(한국고용정보원) 채용정보를 받아 보여 주고, 지원은 원문에서 해요.') }} {% endif %}{{ ui('jobs.note', '최저임금보다 적거나 성별·나이를 정해 뽑는 공고, 돈·통장을 먼저 요구하는 공고는 신고해 주세요.') }}</p>
       </section>
     </div>
   </form>
+  <form id="jb-savef" method="post" hidden><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"></form>
 </main>
 {{ region_js() }}
 <script>(function () { var d = document.getElementById('jb-filter'); if (d && window.matchMedia('(max-width: 860px)').matches && {{ 'false' if n_filter else 'true' }}) d.open = false; })();</script>
