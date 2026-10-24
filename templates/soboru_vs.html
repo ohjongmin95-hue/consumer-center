@@ -13,7 +13,6 @@
     </div>
     <a class="cm-btn" href="{{ url_for('vs_new') }}">{{ ui('vs.new', '고민 올리기') }}</a>
   </header>
-  <p class="cx-points">{{ ui('vs.points', '회원이 골라 주면 5P (하루 3번), 고민을 올리고 결말을 남기면 50P를 드려요.') }} <a href="{{ url_for('my_points') }}">{{ ui('cx.my_points', '내 포인트') }} ›</a></p>
   <nav class="cm-rcs" aria-label="{{ ui('vs.cat_aria', '분야') }}">
     <a href="{{ url_for('vs_home', state=state or None) }}"{% if not cat %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
     {% for name, emo in VS_CATS %}<a href="{{ url_for('vs_home', cat=name, state=state or None) }}"{% if cat == name %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}

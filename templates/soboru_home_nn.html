@@ -39,7 +39,6 @@
       {% if ask_on() %}<a href="{{ url_for('law_ask') }}">{{ ui('home.quick_ask', 'AI 소비자 상담') }}</a>{% endif %}
       <a href="{{ url_for('companies') }}">{{ ui('home.quick_companies', '기업 답변 기록') }}</a>
       <a href="{{ url_for('scam_home') }}">{{ ui('home.quick_scam', '사기 주의') }}</a>
-      <a href="{{ url_for('my_points') if g.user else url_for('signup') }}">{{ ui('home.quick_points', '글 쓰면 포인트') }}</a>
     </p>
   </section>
   {% elif blk == 'live' %}
@@ -105,7 +104,7 @@
       </div>
     </div>
     <div class="nn-write{{ ' has-fill' if posts|length < 4 }}">{# 넓은 화면에선 위 빈 칸 카드가 글쓰기를 대신함 #}
-      <a href="{{ url_for('board_write', type='review') }}"><b>{{ ui('home.write1', '후기 쓰기') }}</b><small>{{ ui('home.write1_sub', '영수증 인증하면 200P') }}</small></a>
+      <a href="{{ url_for('board_write', type='review') }}"><b>{{ ui('home.write1', '후기 쓰기') }}</b><small>{{ ui('home.write1_sub', '산 거라면 무엇이든') }}</small></a>
       <a href="{{ url_for('vs_new') }}"><b>{{ ui('home.write2', '고민 올리기') }}</b><small>{{ ui('home.write2_sub', 'A냐 B냐, 골라 주세요') }}</small></a>
       <a href="{{ url_for('board_write', type='post') }}"><b>{{ ui('home.write3', '수다 떨기') }}</b><small>{{ ui('home.write3_sub', '아무 얘기나 편하게') }}</small></a>
     </div>

@@ -4294,11 +4294,12 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             return c, db.execute('SELECT id FROM users WHERE login_id=?', (login_id,)).fetchone()[0]
 
-    def test_soboru_community_feed_vs_suda_points_editor(self):
-        # 품앗히식 커뮤니티: 수다 말머리→종류, 후기 정보·영수증 인증, 골라주세요 투표·결말, 포인트, 에디터 모집
+    def test_soboru_community_feed_vs_suda(self):
+        # 품앗히식 커뮤니티: 수다 말머리→종류, 후기 정보·영수증 인증, 골라주세요 투표·결말 (포인트는 뺌 2026-10-24)
         from PIL import Image
         with self.site.conn() as db:
-            for t in ('points', 'vs_votes', 'vs_comments', 'vs_polls'): db.execute('DELETE FROM ' + t)
+            for t in ('vs_votes', 'vs_comments', 'vs_polls'): db.execute('DELETE FROM ' + t)
+            self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='points'").fetchone())  # 포인트 기록 표도 지움
         home = self.client.get('/').get_data(as_text=True)
         self.assertNotIn('nn-about', home); self.assertIn('nn-talk', home)
         me, uid = self.member_client('cm_writer', '수다쟁이')
@@ -4307,7 +4308,6 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             q = db.execute("SELECT * FROM posts WHERE title='헬스장 환불 되나요?'").fetchone()
             self.assertEqual((q['kind'], q['head']), ('question', '질문'))
-            self.assertEqual(db.execute('SELECT SUM(amount) FROM points WHERE user_id=?', (uid,)).fetchone()[0], 110)  # 수다 10 + 첫 수다 100
         self.assertIn('헬스장 환불 되나요?', self.client.get('/suda?head=질문').get_data(as_text=True))
         self.assertNotIn('헬스장 환불 되나요?', self.client.get('/suda?head=지름').get_data(as_text=True))
         # 후기: 장소·분류·가격·방문일·재방문 의사·영수증
@@ -4345,10 +4345,12 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<b>1</b>개의 후기', self.client.get('/feed?ok=1').get_data(as_text=True))
         self.client.get('/board/%d' % rv['id'])
         with self.site.conn() as db:
-            self.assertEqual(db.execute('SELECT SUM(amount) FROM points WHERE user_id=?', (uid,)).fetchone()[0], 310)
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM member_alerts WHERE user_id=? AND kind='review'", (uid,)).fetchone()[0], 1)  # 인증 알림
             self.assertEqual(db.execute('SELECT views FROM posts WHERE id=?', (rv['id'],)).fetchone()[0], 1)
-        self.post_form(admin, '/admin/receipts', {'id': rv['id'], 'act': 'ok'})  # 두 번 눌러도 포인트는 한 번
-        self.assertIn('310', me.get('/me/points').get_data(as_text=True))
+        self.post_form(admin, '/admin/receipts', {'id': rv['id'], 'act': 'ok'})  # 두 번 눌러도 알림은 한 번
+        with self.site.conn() as db: self.assertEqual(db.execute("SELECT COUNT(*) FROM member_alerts WHERE user_id=? AND kind='review'", (uid,)).fetchone()[0], 1)
+        self.assertIn('/me', me.get('/me/points').headers['Location'])  # 예전 포인트 주소는 내 정보로
+        self.assertNotIn('포인트', me.get('/me').get_data(as_text=True)); self.assertNotIn('200P', self.client.get('/feed').get_data(as_text=True))
         # 골라주세요: 회원만 올림, 누구나 한 번 고름, 글쓴이가 결말
         self.assertEqual(self.client.get('/vs/new').status_code, 302)
         r = self.post_form(me, '/vs/new', {'cat': '먹거리', 'a': '치킨', 'b': '피자', 'body': '둘이 먹어요', 'days': '3'})
@@ -4365,9 +4367,6 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(other.post('/vs/%d/end' % poll['id'], data={'_csrf': self.csrf(other, '/vs/%d' % poll['id']), 'ending': 'a'}).status_code, 403)
         me.post('/vs/%d/end' % poll['id'], data={'_csrf': self.csrf(me, '/vs/%d' % poll['id']), 'ending': 'a', 'note': '치킨 먹었어요'})
         self.assertIn('결말 나옴', self.client.get('/vs').get_data(as_text=True))
-        with self.site.conn() as db:
-            self.assertEqual(db.execute("SELECT SUM(amount) FROM points WHERE user_id=? AND reason='vote'", (oid,)).fetchone()[0], 5)
-            self.assertEqual(db.execute("SELECT SUM(amount) FROM points WHERE user_id=? AND reason='vs_end'", (uid,)).fetchone()[0], 50)
         # 담아 두기: 회원만, 한 번 더 누르면 빠짐
         self.assertIn('/login', self.client.post('/me/saved/%d' % rv['id']).headers.get('Location', '') or '/login')
         sv = lambda: me.post('/me/saved/%d' % rv['id'], data={'_csrf': self.csrf(me, '/board/%d' % rv['id'])})

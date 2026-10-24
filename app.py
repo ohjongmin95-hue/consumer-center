@@ -1078,7 +1078,7 @@ def not_blocked(col='user_id'):
     return f" AND ({col} IS NULL OR {col} NOT IN ({','.join(str(int(i)) for i in sorted(ids))}))" if ids else ''
 def soboru_on():return bool(app.jinja_env.globals.get('is_soboru',lambda:False)())  # soboru.py가 맨 끝에 붙임
 def board_enabled():return os.getenv('ENABLE_BOARD')=='1'
-BOARD_HOOKS=[]  # 글 올리기 전('prepare')·올린 뒤('post')·댓글('comment')·글 열기('view')에 부르는 함수 (soboru_cm.py가 후기 정보·말머리·포인트·조회수를 붙임)
+BOARD_HOOKS=[]  # 글 올리기 전('prepare')·올린 뒤('post')·댓글('comment')·글 열기('view')에 부르는 함수 (soboru_cm.py가 후기 정보·말머리·조회수를 붙임)
 def board_hook(event,db,**kw):
     for h in BOARD_HOOKS:h(event,db,**kw)
 # 글 종류: (키, 이름, 쓰기 버튼 설명). 리뷰·꿀팁·질문은 분류가 자동으로 정해지고, 이야기는 분류를 고름.
@@ -2765,6 +2765,6 @@ import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소�
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
 import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
-import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·포인트·에디터 모집 (soboru_cm.py)
+import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·사장님 소식 (soboru_cm.py)
 
 if __name__=='__main__':app.run(debug=False)

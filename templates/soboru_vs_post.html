@@ -11,7 +11,7 @@
   {% if own and not p['ending'] %}
   <form class="vs-end" method="post" action="{{ url_for('vs_end', poll_id=p['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <h2>{{ ui('vs.end_title', '결국 무엇을 골랐나요?') }}</h2>
-    <p>{{ ui('vs.end_sub', '결말을 남기면 골라 준 이웃들에게 큰 도움이 돼요. 남기면 투표가 끝나고 50P를 받아요.') }}</p>
+    <p>{{ ui('vs.end_sub', '결말을 남기면 골라 준 이웃들에게 큰 도움이 돼요. 남기면 투표가 끝나요.') }}</p>
     <div class="cm-seg"><label><input type="radio" name="ending" value="a" required><span>A · {{ p['a'] }}</span></label><label><input type="radio" name="ending" value="b"><span>B · {{ p['b'] }}</span></label></div>
     <textarea name="note" maxlength="300" rows="2" placeholder="{{ ui('vs.end_ph', '예: 결국 B로 샀는데 대만족이에요!') }}"></textarea>
     <button class="cm-btn sm" type="submit">{{ ui('vs.end_btn', '결말 남기기') }}</button>
