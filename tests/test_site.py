@@ -422,6 +422,15 @@ class SiteTest(unittest.TestCase):
                 db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('home',?)", (json.dumps({'sections': [['top', 1], ['life', 1], ['rank', 0]]}),))
             home = self.client.get('/').get_data(as_text=True)
             self.assertIn('nn-intro', home); self.assertNotIn('nn-pick', home); self.assertNotIn('nn-answer', home)
+            # 2026-10-24 전에 저장한 순서는 한 번만 새 순서(소개 → 제보 → 픽 → 골라주세요·수다방 → 이런 곳)로, 숨긴 건 그대로
+            with self.site.conn() as db:
+                db.execute("DELETE FROM soboru_settings WHERE key='home'")
+                db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('blocks:home',?)", (json.dumps([['intro', 1], ['quick', 1], ['live', 1], ['pick', 1], ['answer', 0]]),))
+            home = self.client.get('/').get_data(as_text=True)
+            self.assertLess(home.index('nn-live'), home.index('nn-pick')); self.assertLess(home.index('nn-pick'), home.index('nn-about'))
+            self.assertNotIn('nn-answer', home)
+            with self.site.conn() as db:
+                self.assertIn('_v2', db.execute("SELECT value FROM soboru_settings WHERE key='blocks:home'").fetchone()[0])
         finally:
             with self.site.conn() as db:
                 db.execute("DELETE FROM soboru_settings WHERE key IN ('home','blocks:home')")
