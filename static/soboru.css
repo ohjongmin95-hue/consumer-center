@@ -1793,16 +1793,23 @@ h1.vs-title{font-size:28px}
 .nn-ab small{color:#b0b8c1;margin:0 4px;font-size:12px}
 .nn-talk .nn-empty{padding:28px 2px;margin:0;color:#8b95a1;font-size:14px}
 @media (max-width:760px){.nn-talk-box{min-height:0;padding:16px 18px}.nn-talk-box b{font-size:16px}.nn-trow{min-height:68px}.nn-trow-t b{font-size:15px}}
-/* 소개 묶음: 크림색 큰 판 + 오른쪽 위 빵 이모지 줄 + 흰 카드(카드마다 다른 연한 색 이모지 칸) */
-.nn-about{position:relative;padding:44px 44px 36px;border-radius:32px;background:#fff6e8;overflow:hidden}
-.nn-about-head{position:relative;display:flex;flex-direction:column}
-.nn-about-head h2{font-size:34px}
-.nn-about-deco{position:absolute;right:0;top:-6px;display:flex;gap:10px}
-.nn-about-deco i{display:flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%;background:#fff;box-shadow:0 10px 24px rgba(201,120,20,.12);font-family:Tossface,sans-serif;font-style:normal;font-size:34px;animation:nn-float 6s ease-in-out infinite}
-.nn-about-deco i:nth-child(2){transform:translateY(14px);animation-delay:-1.2s}.nn-about-deco i:nth-child(3){animation-delay:-2.4s}.nn-about-deco i:nth-child(4){transform:translateY(14px);animation-delay:-3.6s}.nn-about-deco i:nth-child(5){animation-delay:-4.8s}
-.nn-about .nn-about-card,.nn-about .nn-about-card.main{background:#fff;box-shadow:0 2px 10px rgba(120,70,10,.05)}
-.nn-about .nn-about-card:hover{background:#fff;transform:translateY(-3px);box-shadow:0 12px 28px rgba(120,70,10,.1)}
-.nn-about-card .bread{background:#fff1dc}.nn-about-card.c2 .bread{background:#ffeef3}.nn-about-card.c3 .bread{background:#fff7d6}.nn-about-card.c4 .bread{background:#f3ece6}
-.nn-about .nn-about-more a{background:#fff}
-@media (max-width:1000px){.nn-about-deco{display:none}}
-@media (max-width:760px){.nn-about{padding:28px 18px 24px;border-radius:24px;margin-left:-4px;margin-right:-4px}.nn-about-head h2{font-size:24px}}
+/* 소개 묶음 (토스식): 흰 바탕, 큰 굵은 제목, 회색 이모지 칸 + 제목·설명 + 꺾쇠 한 줄씩. 그림자·판·장식 없음 */
+.nn-about{padding:0;background:none}
+.nn-about-head h2{font-size:30px;font-weight:800;letter-spacing:-.04em}
+.nn-about-head .nn-sub{margin-top:8px;font-size:17px;color:#6b7684}
+.nn-about-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 24px;margin-top:24px}
+.nn-about .nn-about-card,.nn-about .nn-about-card.main{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:18px;row-gap:4px;align-items:center;padding:18px 16px;border-radius:20px;background:#fff;box-shadow:none}
+.nn-about .nn-about-card:hover{background:#f9fafb;transform:none;box-shadow:none}
+.nn-about .nn-about-card:active{background:#f2f4f6;transform:scale(.985)}
+.nn-about .nn-about-card .bread{grid-row:1/3;width:64px;height:64px;margin:0;border-radius:20px;background:#f2f4f6;font-size:36px}
+.nn-about .nn-about-card b{grid-column:2;align-self:end;font-size:19px;font-weight:700;color:#191f28}
+.nn-about .nn-about-card p{grid-column:2;align-self:start;margin:0;font-size:15px;line-height:1.55;color:#6b7684}
+.nn-about .nn-about-go{grid-column:3;grid-row:1/3;margin:0;font-size:0;color:#b0b8c1}
+.nn-about .nn-about-go::after{content:'';display:block;width:9px;height:9px;border-top:2px solid currentColor;border-right:2px solid currentColor;transform:rotate(45deg);margin-right:4px}
+.nn-about .nn-about-card.main .nn-about-go{color:#b0b8c1}
+.nn-about .nn-about-more{margin-top:18px;padding-left:16px}
+.nn-about .nn-about-more a{background:#f2f4f6}
+@media (max-width:760px){.nn-about-head h2{font-size:24px}.nn-about-head .nn-sub{font-size:15px}.nn-about-grid{grid-template-columns:minmax(0,1fr);gap:0;margin-top:16px}
+  .nn-about .nn-about-card,.nn-about .nn-about-card.main{column-gap:14px;padding:14px 4px;border-radius:16px}.nn-about .nn-about-card .bread{width:52px;height:52px;border-radius:16px;font-size:30px}
+  .nn-about .nn-about-card b{font-size:17px}.nn-about .nn-about-card p{font-size:14px}.nn-about .nn-about-more{padding-left:4px}}
+.nn-talk-box{background:#f9fafb}.nn-talk-box:hover{background:#f2f4f6}.nn-talk-box span{color:#4e5968}
