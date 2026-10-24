@@ -2817,6 +2817,14 @@ class PlatformTest(unittest.TestCase):
                 if v is None:os.environ.pop(k,None)
                 else:os.environ[k]=v
 
+    def test_boots_from_platform_folder(self):
+        """서버처럼 platform_app 폴더에서 저장소 최상위 없이 띄워도 뜬다 (gunicorn hanq:app, cron shops.py). 최상위 모듈(bizmsg 등)을 못 찾으면 502."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as d:
+            env={'PATH':os.environ.get('PATH',''),'PLATFORM_DATABASE_PATH':d+'/p.db','PLATFORM_UPLOAD_DIR':d+'/up','SECRET_KEY':'x'*64}
+            r=subprocess.run([sys.executable,'-I','-c',"import sys;sys.path.insert(0,'.');import hanq"],cwd=ROOT/'platform_app',env=env,capture_output=True,text=True,timeout=120)
+            self.assertEqual(r.returncode,0,r.stderr[-800:])
+
     def test_portone_pay_once(self):
         """첫 달 바로 결제 (카드사 심사용: 결제창 금액 = 화면 금액): 이 세션이 만든 결제 번호만, 포트원에 PAID·금액을 확인한 뒤 켠다. 다음 달은 카드 등록이 있어야 결제된다."""
         bl=sys.modules['billing'];shops=sys.modules['shops']
