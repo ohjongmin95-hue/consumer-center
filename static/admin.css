@@ -456,3 +456,9 @@ body.console .sl-field input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px #f2f
 .jl-meta{color:#6b7684}
 .jl-meta .jl-meta-co{font-weight:700;color:var(--ad-ink)}
 @media(min-width:1181px){.jl-table col.w-as{width:110px}}
+/* 이모지 칸 귤색 꾸밈: 가운데는 귤색 그라데이션, 둘레 두 칸은 연한 귤색, 작은 귤색 점 */
+.sl-emo-main{background:linear-gradient(145deg,#ffb15c 0%,#ef7300 100%);box-shadow:0 24px 60px rgba(239,115,0,.35)}
+.sl-emo-1,.sl-emo-3{background:var(--ad-orange-soft);box-shadow:0 12px 32px rgba(239,115,0,.14)}
+.sl-art::before,.sl-art::after{content:"";position:absolute;border-radius:50%;background:var(--ad-orange)}
+.sl-art::before{width:14px;height:14px;left:calc(50% + 40px);top:calc(50% - 170px);opacity:.9}
+.sl-art::after{width:10px;height:10px;left:calc(50% - 90px);top:calc(50% + 150px);opacity:.5}
