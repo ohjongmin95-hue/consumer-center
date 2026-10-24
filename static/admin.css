@@ -353,7 +353,7 @@ body.console .jl-pend{display:flex;align-items:center;justify-content:space-betw
 .jl-pend .cs-btn{padding:8px 14px;font-size:14px}
 .jl-wrap{overflow:visible}
 .jl-table{width:100%;border-collapse:collapse;table-layout:fixed}
-.jl-table col.w-co{width:150px}.jl-table col.w-st{width:190px}.jl-table col.w-as{width:88px}.jl-table col.w-dt{width:92px}
+.jl-table col.w-co{width:180px}.jl-table col.w-st{width:190px}.jl-table col.w-as{width:88px}.jl-table col.w-dt{width:92px}
 .jl-table th{padding:16px 12px 10px;color:var(--ad-mute);font-size:13px;font-weight:600;text-align:left;white-space:nowrap}
 .jl-table th:first-child,.jl-table td:first-child{padding-left:24px}
 .jl-table th:last-child,.jl-table td:last-child{padding-right:24px;text-align:right}
@@ -399,9 +399,20 @@ body.console .jl-pend{display:flex;align-items:center;justify-content:space-betw
 
 /* 관리자·기자 로그인 (토스식): 카드 없이 흰 바탕, 왼쪽 정렬 큰 제목, 칸 이름은 칸 위에, 귤색 버튼 */
 body.console:has(.sl-page){background:#fff}
-body.console:has(.sl-page) .cs-flash{max-width:432px;margin:48px auto -24px;padding:0 16px}
+body.console:has(.sl-page) .cs-flash{position:fixed;z-index:5;top:20px;right:20px;width:min(400px,calc(100% - 40px));margin:0;padding:0}
+.cs-main:has(.sl-page){padding:0}
 body.console:has(.sl-page) .cs-flash .alert{margin:0;border:0;border-radius:14px;background:#fff0ee;box-shadow:none;color:#d63b2b;font-size:14px;font-weight:600}
-.sl-page{display:flex;justify-content:center;min-height:100vh;padding:12vh 16px 64px;background:#fff}
+body.console main.sl-page{max-width:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100vh;background:#fff}
+.sl-page>.sl-box{align-self:center;justify-self:center;padding:64px 24px}
+.sl-hero{position:relative;overflow:hidden;display:flex;flex-direction:column;padding:56px 56px 0;background:linear-gradient(160deg,#ff9a3c 0%,#ef7300 55%,#e06200 100%);color:#fff}
+.sl-hero::before{content:"";position:absolute;width:520px;height:520px;right:-160px;top:-180px;border-radius:50%;background:rgba(255,255,255,.12)}
+.sl-hero::after{content:"";position:absolute;width:320px;height:320px;left:-120px;bottom:-120px;border-radius:50%;background:rgba(255,255,255,.08)}
+.sl-hero-kicker{position:relative;margin:0;font-size:14px;font-weight:700;letter-spacing:.04em;opacity:.85}
+.sl-hero-title{position:relative;margin:auto 0 28px;font-size:40px;line-height:1.3;font-weight:800;letter-spacing:-.04em}
+.sl-steps{position:relative;display:flex;flex-wrap:wrap;gap:8px;margin:0 0 40px;padding:0;list-style:none}
+.sl-steps li{display:inline-flex;align-items:center;gap:8px;padding:10px 16px 10px 10px;border-radius:999px;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);font-size:15px;font-weight:700}
+.sl-steps b{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#fff;color:#e06200;font-size:13px}
+.sl-hero-art{position:relative;display:block;width:min(360px,70%);height:auto;margin:0 0 -6px auto;filter:drop-shadow(0 18px 30px rgba(120,50,0,.25))}
 .sl-box{width:100%;max-width:400px}
 .sl-brand{display:flex;align-items:center;gap:10px;margin:0 0 40px}
 .sl-brand img{display:block;height:30px;width:auto}
@@ -421,10 +432,23 @@ body.console .sl-field input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px #f2f
 .sl-submit:active{transform:scale(.98)}
 .sl-foot{margin:20px 0 0;text-align:center;font-size:13px;color:var(--ad-mute)}
 @media(max-width:700px){
-  .sl-page{padding:48px 24px 40px}
+  body.console main.sl-page{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .sl-page>.sl-box{align-self:start;padding:32px 24px 40px}
+  .sl-hero{flex-direction:row;align-items:flex-end;justify-content:space-between;padding:24px 20px 0;min-height:150px}
+  .sl-hero-kicker,.sl-steps{display:none}
+  .sl-hero-title{margin:0 0 20px;font-size:22px}
+  .sl-hero-art{width:120px;margin:0 -4px -4px 0}
   .sl-brand{margin-bottom:32px}
   .sl-title{font-size:26px}
 }
 .jl-table th,.jl-table td{border:0}
 .jl-table thead th{border-bottom:1px solid #f2f4f6}
 .jl-meta .tri-story,.jl-meta .tri-auto{padding:0;background:none;border:0;border-radius:0}
+/* 이름이 잘 보이게: 업체는 진하게, 담당자는 머리글자 동그라미 + 이름 */
+.jl-table td.jl-co{color:var(--ad-ink);font-size:15px;font-weight:700;letter-spacing:-.02em}
+.jl-table td.jl-as{color:var(--ad-ink);font-size:14px;font-weight:600}
+.jl-ava{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-right:7px;border-radius:50%;background:var(--ad-orange-soft);color:#c45f00;font-size:12px;font-weight:700;vertical-align:middle}
+.jl-table td.jl-as.is-none{color:#b0b8c1;font-weight:500}
+.jl-meta{color:#6b7684}
+.jl-meta .jl-meta-co{font-weight:700;color:var(--ad-ink)}
+@media(min-width:1181px){.jl-table col.w-as{width:110px}}

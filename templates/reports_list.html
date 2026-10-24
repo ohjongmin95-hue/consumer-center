@@ -71,7 +71,7 @@
         </td>
         <td class="jl-co" title="{{ c['company'] }}">{{ c['company'] }}</td>
         <td class="jl-st"><span class="cs-status s{{ stage_of(c['status']) }}">{{ stage_names()[stage_of(c['status']) - 1] }}</span>{% if c['review'] != 'ok' %}<span class="rv-chip rv-{{ c['review'] or 'new' }}">{{ reviews[c['review']] if c['review'] in reviews else c['review'] }}</span>{% endif %}</td>
-        <td class="jl-as{% if not c['assignee'] %} is-none{% endif %}" title="{{ c['assignee'] or '' }}">{{ c['assignee'] or '미배정' }}</td>
+        <td class="jl-as{% if not c['assignee'] %} is-none{% endif %}" title="{{ c['assignee'] or '' }}">{% if c['assignee'] %}<span class="jl-ava" aria-hidden="true">{{ c['assignee'][:1] }}</span>{% endif %}{{ c['assignee'] or '미배정' }}</td>
         <td class="c-dt" title="{{ c['created'][:16]|replace('T', ' ') }}">{{ c['created'][5:10]|replace('-', '.') }}</td>
       </tr>
       {% else %}

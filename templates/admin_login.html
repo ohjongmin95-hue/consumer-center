@@ -3,6 +3,12 @@
 {% block content %}
 {# 토스식 로그인: 기자 로그인(reporter_login.html)과 같은 모양 #}
 <main class="sl-page">
+  <aside class="sl-hero" aria-hidden="true">
+    <p class="sl-hero-kicker">SOBORU 관리자</p>
+    <p class="sl-hero-title">소보루와 제보센터를<br>한곳에서 관리해요</p>
+    <ul class="sl-steps"><li><b>1</b>제보 처리</li><li><b>2</b>기업 연결</li><li><b>3</b>사이트 편집</li></ul>
+    <img class="sl-hero-art" src="{{ asset('img/soboru-character-hero.png') }}" alt="" width="579" height="479">
+  </aside>
   <div class="sl-box">
     <p class="sl-brand"><img src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="136" height="32"><em>관리자</em></p>
     <h1 class="sl-title">관리자 비밀번호를<br>입력해 주세요</h1>
