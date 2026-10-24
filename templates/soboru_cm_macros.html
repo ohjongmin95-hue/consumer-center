@@ -18,6 +18,16 @@
   </span>
 </a>{% endmacro %}
 
+{# 내돈내산 후기 카드 (사진이 크게): 사진(없으면 분류 아이콘 바탕) 위에 구매한지·방문·영수증 인증, 아래 분류·별점·가격·제목·글쓴이 #}
+{% macro rv_card(p) %}<a class="pc-card" href="{{ url_for('board_post', post_id=p['id']) }}">
+  <span class="pc-pic{{ ' t' ~ p['tone'] if not p['photo'] }}" aria-hidden="true">{% if p['photo'] %}<img src="{{ url_for('board_photo', name=p['photo']) }}" alt="" loading="lazy" width="320" height="320">{% else %}<span class="tf">{{ p['cat_emoji'] }}</span>{% endif %}
+    <span class="pc-tags">{% if p['since'] is not none %}<em>{{ ui('feed.since', '구매한지 +{n}일', n=p['since']) }}</em>{% elif p['visit'] %}<em>{{ ui('feed.visit', '{d} 방문', d=p['visit']) }}</em>{% endif %}{% if p['receipt_state'] == 'ok' %}<em class="ok">{{ ui('feed.ok_badge', '영수증 인증') }}</em>{% endif %}</span></span>
+  <span class="pc-cat">{{ p['rv_cat'] or ui('feed.title', '내돈내산 후기') }}{% if p['where'] %} · {{ p['where'] }}{{ ui('feed.shop_tail', '에서 샀어요') if p['rv_type'] == 'product' else '' }}{% endif %}</span>
+  <span class="pc-score">{% if p['rating'] %}<em class="pc-star">★ {{ p['rating'] }}.0</em>{% endif %}{% if p['won'] %}<b>{{ p['won'] }}</b>{% endif %}{% if p['again'] %}<em class="pc-again">{{ p['again_word'] }}</em>{% endif %}</span>
+  <b class="pc-title">{{ p['title'] }}</b>
+  <span class="pc-foot">{{ av(p['user_id'], p['nickname'], 'xs') }}<span class="pc-who">{{ p['nickname'] }}</span><span>· {{ ui('feed.views', '조회') }} {{ p['views'] }} · {{ ui('feed.comments', '댓글') }} {{ p['comments'] }}</span></span>
+</a>{% endmacro %}
+
 {# 골라주세요 카드: 아직 안 골랐고 진행 중이면 고르기 버튼, 골랐거나 마감이면 결과 막대 #}
 {% macro vs_card(p, here='/vs', big=False) %}<article class="vs-card{{ ' big' if big }}">
   <header class="vs-top"><span class="cm-av">{{ p['nickname'][:1] }}</span><span class="vs-who"><b>{{ p['nickname'] }}</b><small>{{ p['cat'] }} · {{ ui('vs.n_picked', '{n}명 골라줌', n=p['n']) }}</small></span>
@@ -47,6 +57,7 @@
   <span class="sd-main"><span class="sd-t"><em class="sd-head">{{ p['head'] }}</em><b>{{ p['title'] }}</b>{% if p['comments'] %}<small class="sd-c">[{{ p['comments'] }}]</small>{% endif %}</span>
     {% if p['body'] %}<span class="sd-ex">{{ mask_personal(p['body'][:80]) }}</span>{% endif %}
     <span class="cm-foot"><span class="cm-who">{{ av(p['user_id'], p['nickname'], 'xs') }}{{ p['nickname'] }}</span><span>{{ ago_text(p['created']) }}</span><span class="cm-dot"></span><span>{{ ui('feed.views', '조회') }} {{ p['views'] }}</span><span class="sd-like{{ ' on' if p['likes'] }}">{{ ui('suda.likes', '추천 {n}', n=p['likes']) if p['likes'] else ui('suda.no_like', '첫 추천을 기다려요') }}</span></span></span>
+  {% if p['photo'] %}<span class="sd-pic" aria-hidden="true"><img src="{{ url_for('board_photo', name=p['photo']) }}" alt="" loading="lazy" width="88" height="88"></span>{% endif %}
 </a>{% endmacro %}
 
 {# 이웃 사진 (없으면 닉네임 첫 글자). soboru_people.py avatar_url #}

@@ -8,7 +8,7 @@ APP_DIR = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.
 PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 8822
 d = tempfile.mkdtemp()
 os.environ.update(DATABASE_PATH=d + '/c.db', UPLOAD_DIR=d + '/up', SECRET_KEY='x' * 64, ADMIN_PASSWORD_HASH=generate_password_hash('adminshotpw1'),
-                  ENABLE_INTAKE='1', ENABLE_BOARD='1', ENABLE_BIZ_MEMBERS='1', HTTPS_ONLY='0', SOBORU_GUEST_WRITE='1')  # 미리보기는 손님 글쓰기 허용 (소보루 실서비스는 로그인 필수)
+                  ENABLE_INTAKE='1', ENABLE_BOARD='1', ENABLE_BIZ_MEMBERS='1', HTTPS_ONLY='0', SOBORU_GUEST_WRITE='1', SOBORU_EXAMPLES='0')  # 미리보기는 손님 글쓰기 허용 (소보루 실서비스는 로그인 필수)
 for k in ('SMTP_HOST', 'SOLAPI_API_KEY'): os.environ.pop(k, None)  # 알림은 보내지 않음
 sys.path.insert(0, APP_DIR); os.chdir(APP_DIR)
 spec = importlib.util.spec_from_file_location('site_under_test', os.path.join(APP_DIR, 'app.py'))
@@ -135,6 +135,14 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
                             'place' if target in ('오소보카페', '루트호텔') else 'product', {'오소보카페': '맛집·카페', '루트호텔': '숙소·여행', '소보루마트': '식품', '보루텔레콤': '디지털·가전'}.get(target, '디지털·가전'),
                             '서울' if target in ('오소보카페', '루트호텔') else '', '마포구' if target in ('오소보카페', '루트호텔') else ''))
                 if uid > 1: db.execute('INSERT OR IGNORE INTO follows(follower,followee,created) VALUES(?,?,?)', (uid, 1, ago(1)))
+                if uid % 2:  # 사진 카드 미리보기: 사진 있는 후기 몇 개 (그림으로 만든 가짜 사진)
+                    from PIL import Image, ImageDraw, ImageFilter
+                    c1, c2 = [((236, 214, 190), (120, 84, 60)), ((200, 222, 240), (40, 70, 120)), ((226, 236, 214), (70, 110, 60))][uid % 3]
+                    ph = Image.new('RGB', (600, 600), c1); dr = ImageDraw.Draw(ph)
+                    dr.ellipse((150, 330, 450, 420), fill=tuple(int(v * .8) for v in c1)); dr.rounded_rectangle((200, 170, 400, 390), 40, fill=c2); dr.ellipse((230, 140, 370, 210), fill=tuple(min(255, v + 60) for v in c2))
+                    ph = ph.filter(ImageFilter.GaussianBlur(1.2)); pname = '%032x.jpg' % (uid + 999)
+                    ph.save(str(m.BOARD_PHOTO_DIR / pname), quality=85)
+                    db.execute('UPDATE posts SET photo=? WHERE user_id=?', (pname, uid))
             for name, ans, wait_h in [('소보루마트', 5, 20), ('보루텔레콤', 4, 50), ('오소보쇼핑', 3, 90), ('루트호텔', 1, 0), ('가나다몰', 0, 0)]:
                 co = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES(?,?,?,?,?,?,?)", (name, '000', 'active', '-', '-', '-', ago(500))).lastrowid
                 for k in range(5):

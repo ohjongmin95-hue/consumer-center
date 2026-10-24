@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {# 내돈내산 후기 피드 (품앗히 피드처럼): 상품·장소 탭, 분류, 정렬, 영수증 인증만 보기. soboru_cm.py feed() #}
-{% from 'soboru_cm_macros.html' import rv_item, pager with context %}
+{% from 'soboru_cm_macros.html' import rv_item, rv_card, pager with context %}
 {% block title %}{{ ui('feed.title', '내돈내산 후기') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui('feed.meta', '직접 돈 내고 산 상품, 다녀온 장소의 솔직한 후기. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}{% endblock %}
 {% block content %}
@@ -31,12 +31,12 @@
     <div class="cm-main">
       <nav class="cm-tabs" aria-label="{{ ui('feed.tabs_aria', '후기 종류') }}">
         <a href="{{ url_for('feed', **dict(qs, t=None, c=None)) }}"{% if not t %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
-        {% for k, name in RV_TYPES %}<a href="{{ url_for('feed', **dict(qs, t=k, c=None)) }}"{% if t == k %} class="on" aria-current="true"{% endif %}>{{ ui('feed.tab_' ~ k, {'product': '물건 내돈내산', 'place': '동네 내돈내산'}[k]) }}</a>{% endfor %}
+        {% for k, name in RV_TYPES %}<a href="{{ url_for('feed', **dict(qs, t=k, c=None)) }}"{% if t == k %} class="on" aria-current="true"{% endif %}>{{ ui('feed.tab_' ~ k, {'product': '내돈내산 물건', 'place': '내돈내산 장소'}[k]) }}</a>{% endfor %}
       </nav>
       {# 분류 아이콘: 전체 탭이면 물건·동네 두 줄, 탭을 고르면 그 줄만. 칸은 폭에 맞게 고르게 나눔 #}
       {% for k, tname in RV_TYPES if not t or t == k %}
       <div class="pf-cat-row{{ ' two' if not t }}">
-        {% if not t %}<p class="pf-cat-l">{{ ui('feed.row_' ~ k, {'product': '써 본 물건', 'place': '다녀온 동네 가게'}[k]) }}</p>{% endif %}
+        {% if not t %}<p class="pf-cat-l">{{ ui('feed.row_' ~ k, {'product': '써 본 물건', 'place': '다녀온 장소'}[k]) }}</p>{% endif %}
         <nav class="pf-cats" aria-label="{{ ui('feed.cat_aria', '분류') }}">
         {% for name, emo in RV_CATS[k] if not (name == '기타' and not t) %}<a href="{{ url_for('feed', **dict(qs, t=k, c=None if (c == name and t == k) else name)) }}"{% if c == name and t == k %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">{{ emo }}</span>{{ name }}</a>{% endfor %}
         </nav>
@@ -67,8 +67,8 @@
           </div>
         </div>
       </div>
-      <div class="pf-list">
-        {% for p in rows %}{{ rv_item(p) }}
+      <div class="pc-grid">
+        {% for p in rows %}{{ rv_card(p) }}
         {% else %}
         <div class="cm-empty"><p>{{ ui('board.no_results', '검색 결과가 없어요.') if q or ok else ui('feed.empty', '아직 후기가 없어요. 첫 후기를 남겨 주세요.') }}</p>
           {% if not q %}<a class="cm-btn" href="{{ url_for('board_write', type='review') }}">{{ ui('feed.write', '후기 쓰기') }}</a>{% endif %}</div>

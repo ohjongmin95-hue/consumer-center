@@ -5,6 +5,9 @@
 
   python -m soboru_examples add      예시 글 넣기 (이미 있으면 건너뜀)
   python -m soboru_examples remove   예시 글 모두 지우기
+
+배포하면 사이트가 뜰 때 auto()가 한 번만 넣는다 (운영자 요청 2026-10-24: 예시 글이 있어야 사람들이 따라 씀).
+한 번 넣은 뒤에는 remove로 지워도 다시 넣지 않는다. SOBORU_EXAMPLES=0이면 넣지 않는다(시험용).
 """
 import datetime, sys
 
@@ -99,6 +102,20 @@ def remove(site):
             db.execute('DELETE FROM vs_polls WHERE id=?', (poll,))
         news = db.execute('DELETE FROM owner_news WHERE ip_hash=? AND nickname=?', (MARK, NICK)).rowcount
     print(f'예시 글을 지웠어요: 후기·수다 {len(ids)}개, 골라주세요 {len(polls)}개, 사장님 소식 {news}개.'); return 0
+
+
+def auto(site):
+    import os
+    if os.getenv('SOBORU_EXAMPLES', '1') == '0': return 0
+    with site.conn() as db:
+        db.execute('CREATE TABLE IF NOT EXISTS soboru_flags(key TEXT PRIMARY KEY,created TEXT NOT NULL)')
+        # 여러 프로세스가 같이 떠도 한 곳만 넣게: 표시를 먼저 차지한 쪽만
+        first = db.execute("INSERT OR IGNORE INTO soboru_flags(key,created) VALUES('examples',?)", (ago(),)).rowcount
+    if not first: return 0
+    try:
+        return add(site)
+    except Exception as e:  # 예시 글 때문에 사이트가 안 뜨면 안 됨
+        print('예시 글을 넣지 못했어요:', e); return 1
 
 
 def main(argv):
