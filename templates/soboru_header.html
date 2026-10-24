@@ -12,11 +12,41 @@
     <a class="sb-logo" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈"><img class="sb-wm" src="{{ asset('img/soboru-logo.png') }}" alt="SOBORU" width="152" height="36"></a>
     <nav class="sb-nav" aria-label="주요 메뉴">{% for href, label, on, sub in sb_nav %}{% if sub %}<span class="sb-dd"><a href="{{ href }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ label }}</a><span class="sb-dd-menu">{% for h, l, o in sub %}<a href="{{ h }}"{% if o %} class="on"{% endif %}>{{ l }}</a>{% endfor %}</span></span>{% else %}<a href="{{ href }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endif %}{% endfor %}</nav>
     <span class="sb-sp"></span>
-    <a class="sb-search" href="{{ url_for('companies') }}" aria-label="기업 검색"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L20 20" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></a>
+    <a class="sb-search" href="{{ url_for('site_search') }}" role="button" aria-controls="sb-sch" aria-expanded="false" aria-label="{{ ui('search.open', '검색') }}" data-sch-open><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L20 20" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></a>
     {% if g.user %}{% set n_alert = alert_unread() %}<a class="sb-bell{{ ' on' if request.path.startswith('/me/alerts') }}" href="{{ url_for('me_alerts') }}" aria-label="알림{% if n_alert %} {{ n_alert }}개 안 읽음{% endif %}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{% if n_alert %}<b>{{ n_alert if n_alert < 100 else '99+' }}</b>{% endif %}</a><a class="sb-login sb-me" href="{{ url_for('mypage') }}" title="{{ ui('common.my_info', '내 정보') }}"><b>{{ g.user['nickname'] }}</b>{{ ui('common.nim', '님') }}</a>
     {% else %}<a class="sb-login" href="{{ url_for('login', next=request.full_path.rstrip('?')) if request.endpoint not in ('login', 'signup', 'member_logout') else url_for('login') }}">{{ ui('common.login', '로그인') }}</a><a class="sb-join" href="{{ url_for('signup') }}">{{ ui('common.signup', '회원가입') }}</a>{% endif %}
     {% if request.path != '/' %}<a class="sb-cta" href="{{ url_for('report') }}">{{ ui('sb.cta', '제보하기') }}</a>{% endif %}{# 메인은 맨 위 소개에 제보하기가 있어 겹치지 않게 #}
   </div>
+  <div class="sb-sch" id="sb-sch" hidden>
+    <div class="sb-wrap">
+      <form class="sb-sch-f" action="{{ url_for('site_search') }}" method="get" role="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg>
+        <label class="sr-only" for="sb-sch-q">{{ ui('search.label', '검색어') }}</label>
+        <input id="sb-sch-q" name="q" maxlength="40" autocomplete="off" placeholder="{{ ui('search.ph', '업체 이름, 제품, 피해 내용, 궁금한 말') }}">
+        <button type="submit">{{ ui('search.go', '찾기') }}</button>
+        <button type="button" class="sb-sch-x" data-sch-close aria-label="{{ ui('search.close', '검색 닫기') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </form>
+      <div class="sb-sch-rows">
+        <p class="sb-sch-recent" data-sch-recent hidden><span>{{ ui('search.recent', '최근 찾은 말') }}</span></p>
+        <p><span>{{ ui('search.popular', '많이 찾는 말') }}</span>{% for w in SEARCH_POPULAR %}<a href="{{ url_for('site_search', q=w) }}">{{ w }}</a>{% endfor %}</p>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function () {
+    var box = document.getElementById('sb-sch'), op = document.querySelector('[data-sch-open]'); if (!box || !op) return;
+    var q = document.getElementById('sb-sch-q'), rec = box.querySelector('[data-sch-recent]'), KEY = 'soboru_recent_q';
+    function load() { try { return JSON.parse(localStorage.getItem(KEY) || '[]').slice(0, 6); } catch (e) { return []; } }
+    function draw() { var xs = load(); rec.hidden = !xs.length; rec.querySelectorAll('a').forEach(function (a) { a.remove(); });
+      xs.forEach(function (w) { var a = document.createElement('a'); a.href = '{{ url_for('site_search') }}?q=' + encodeURIComponent(w); a.textContent = w; rec.appendChild(a); }); }
+    function show(on) { box.hidden = !on; op.setAttribute('aria-expanded', on ? 'true' : 'false'); if (on) { draw(); q.focus(); } }
+    op.addEventListener('click', function (e) { e.preventDefault(); show(box.hidden); });
+    box.querySelector('[data-sch-close]').addEventListener('click', function () { show(false); op.focus(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) { show(false); op.focus(); } });
+    box.querySelector('form').addEventListener('submit', function () { var w = q.value.trim(); if (!w) return;
+      try { var xs = load().filter(function (x) { return x !== w; }); xs.unshift(w); localStorage.setItem(KEY, JSON.stringify(xs.slice(0, 6))); } catch (e) {} });
+  })();
+  </script>
   <nav class="sb-chips" aria-label="주요 메뉴">{% for href, label, on, sub in sb_nav %}<a href="{{ href }}"{% if on %} class="on"{% endif %}>{{ ui('sb.chip_all', '전체') if loop.first else label }}</a>{% endfor %}</nav>
 {% if sb_jebo_on %}<nav class="sb-sub" aria-label="제보 메뉴"><div class="sb-wrap">{% for h, l, o in sb_jebo %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
 {% if sb_cm_on %}<nav class="sb-sub" aria-label="커뮤니티 메뉴"><div class="sb-wrap">{% for h, l, o in sb_cm %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}

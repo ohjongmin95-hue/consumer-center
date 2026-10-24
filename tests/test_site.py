@@ -4374,6 +4374,16 @@ class SiteTest(unittest.TestCase):
     def _ext_id(self, ext):
         with self.site.conn() as db: return db.execute('SELECT id FROM jobs WHERE ext_id=?', (ext,)).fetchone()[0]
 
+    def test_soboru_site_search(self):
+        # 통합 검색: 머리글 검색창, 한 화면에서 사전·매거진·커뮤니티 등을 같이 찾고 찾은 말에 형광펜
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('id="sb-sch"', home); self.assertIn('data-sch-open', home)
+        page = self.client.get('/search?q=청약철회').get_data(as_text=True)
+        self.assertIn('소비자·경제 사전', page); self.assertIn('<mark>청약철회</mark>', page)
+        self.assertIn('무엇이든 찾아보세요', self.client.get('/search').get_data(as_text=True))
+        self.assertEqual(self.client.get('/search?q=<script>&t=dict').status_code, 200)
+        self.assertNotIn('<script>alert', self.client.get('/search?q=<script>alert(1)</script>').get_data(as_text=True))
+
     def test_soboru_tools_calc_dict_law(self):
         # AI 소비자 상담 옆 칸: 계산기 모음·계산기 칸, 사전 찾기·분야·첫 글자, 법령 찾기(AI 없이 모음에서)
         home = self.client.get('/tools').get_data(as_text=True)

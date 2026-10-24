@@ -238,7 +238,7 @@ def canonical_url(path=None):
 # 두 사이트에 같이 뜨는 화면은 검색엔진에 한 주소만 대표로 알림: 제보 화면은 소비자제보센터, 소보루 화면(생활정보·소보루 픽 등)은 소보루.
 # 홈·약관처럼 양쪽에 따로 있는 화면은 각자 자기 주소. 소비자제보센터 화면을 켜지 않았으면(JEBO_HOST 없음) 나누지 않음
 JEBO_OWN=('/reports','/report','/companies','/guide','/process','/types','/faq','/lookup')
-SOBORU_OWN=('/life','/letter','/pick','/ask','/board','/tools','/jobs')
+SOBORU_OWN=('/life','/letter','/pick','/ask','/board','/tools','/jobs','/search')
 def owner_site(path):
     jebo=sorted(h for h in JEBO_HOSTS if not h.startswith('www.'))
     if not jebo or CANONICAL_HOST in JEBO_HOSTS:return ''
@@ -2771,6 +2771,7 @@ import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보
 import soboru_people;soboru_people.install(types.SimpleNamespace(**globals()))  # 소보루 이웃: 프로필·이웃 페이지·구독 (soboru_people.py)
 import soboru_tools;soboru_tools.install(types.SimpleNamespace(**globals()))  # 소비자 상담소: 계산기·사전·법령 찾기 (soboru_tools.py)
 import soboru_jobs;soboru_jobs.install(types.SimpleNamespace(**globals()))  # 동네일자리: 무료 구인·구직 + 공공 채용정보 (soboru_jobs.py)
+import soboru_search;soboru_search.install(types.SimpleNamespace(**globals()))  # 통합 검색: 머리글 검색창 + /search (soboru_search.py)
 import soboru_examples;soboru_examples.auto(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
 
 if __name__=='__main__':app.run(debug=False)
