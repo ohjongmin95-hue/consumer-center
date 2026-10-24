@@ -1,5 +1,5 @@
 # 민주의 카드뉴스 제작 프로그램(cardnews/)을 윈도우 실행 파일 하나로 만들어 Releases의 'cardnews-latest'에 올립니다.
-# 받는 곳: 저장소 > Releases > 민주의 카드뉴스 제작 프로그램 (최신) > MinjuCardNews.exe
+# 받는 곳: 저장소 > Releases > 민주의 카드뉴스 제작 프로그램 (최신) > MinjuCardNews-Setup.exe (설치) 또는 MinjuCardNews.exe (바로 실행)
 name: 민주의 카드뉴스 제작 프로그램 만들기
 on:
   push:
@@ -32,16 +32,25 @@ jobs:
         run: |
           $p = Start-Process -FilePath dist\MinjuCardNews.exe -ArgumentList '--check' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "exe --check 실패 ($($p.ExitCode))" }
+      - name: 설치 파일 만들기 (Inno Setup → MinjuCardNews-Setup.exe)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          & $iscc "/DAppVer=1.0.${{ github.run_number }}" installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "설치 파일 만들기 실패" }
       - uses: actions/upload-artifact@v4
         with:
           name: MinjuCardNews-windows
-          path: cardnews/dist/MinjuCardNews.exe
+          path: |
+            cardnews/dist/MinjuCardNews-Setup.exe
+            cardnews/dist/MinjuCardNews.exe
       - name: Releases에 올리기
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete cardnews-latest --yes --cleanup-tag || true
-          gh release create cardnews-latest dist/MinjuCardNews.exe --prerelease --target "$GITHUB_SHA" \
+          gh release create cardnews-latest dist/MinjuCardNews-Setup.exe dist/MinjuCardNews.exe --prerelease --target "$GITHUB_SHA" \
             --title "민주의 카드뉴스 제작 프로그램 (최신)" \
-            --notes "MinjuCardNews.exe 를 내려받아 더블클릭하세요. 키 없이도 쓸 수 있고, 자동으로 만들려면 설정에서 키를 넣어요. 브랜치 ${GITHUB_REF_NAME} · $(date -u +%Y-%m-%d)"
+            --notes "MinjuCardNews-Setup.exe 를 내려받아 설치하면 바탕화면에 '민주의 카드뉴스'가 생겨요 (설치 없이 바로 쓰려면 MinjuCardNews.exe). 키 없이도 쓸 수 있고, 자동으로 만들려면 설정에서 키를 넣어요. 브랜치 ${GITHUB_REF_NAME} · $(date -u +%Y-%m-%d)"

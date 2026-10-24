@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ app_name }}</title>
+<style>
+/* 켤 때 첫 화면 (토스 포스처럼): 가운데 아이콘·이름·켜는 중 막대, 잠깐 뒤 만들기 화면으로 */
+@font-face{font-family:Pretendard;font-weight:800;src:url({{ url_for('static', filename='fonts/Pretendard-ExtraBold.otf') }}) format('opentype')}
+@font-face{font-family:Pretendard;font-weight:700;src:url({{ url_for('static', filename='fonts/Pretendard-Bold.otf') }}) format('opentype')}
+html,body{margin:0;height:100%}
+body{display:grid;place-items:center;background:#fff;color:#191F28;font:700 15px Pretendard,'Malgun Gothic',sans-serif;overflow:hidden}
+.box{display:flex;flex-direction:column;align-items:center;gap:14px;animation:in .5s ease-out both}
+img{width:96px;height:96px;border-radius:26px;box-shadow:0 10px 30px rgba(0,27,55,.14)}
+b{font:800 26px/1.2 Pretendard,sans-serif;letter-spacing:-.03em;margin-top:8px}b em{font-style:normal;color:#3182F6}
+small{color:#8B95A1;font-size:14px}
+.bar{width:160px;height:4px;border-radius:2px;background:#F2F4F6;overflow:hidden;margin-top:18px}
+.bar i{display:block;height:100%;width:40%;border-radius:2px;background:#3182F6;animation:go 1s ease-in-out infinite}
+.foot{position:fixed;bottom:28px;left:0;right:0;text-align:center;color:#B0B8C1;font-size:12px}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+@keyframes go{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+</style></head>
+<body>
+<div class="box"><img src="{{ url_for('static', filename='app-icon.png') }}" alt=""><b>민주의 <em>카드뉴스</em></b><small>SOBORU 카드뉴스 제작 프로그램</small><div class="bar"><i></i></div></div>
+<div class="foot">켜는 중이에요</div>
+<script>setTimeout(function(){location.replace('{{ url_for('home') }}')},1300)</script>
+</body></html>

@@ -18,10 +18,12 @@ a{color:var(--link)}
 .top nav{display:flex;align-items:center;gap:2px}
 .top nav a{padding:7px 13px;border-radius:10px;text-decoration:none;color:#4E5968;font-weight:800;font-size:15px}.top nav a:hover{background:var(--grey)}.top nav a.on{color:var(--ink);background:var(--grey)}
 .top nav .quit{padding:7px 13px;font-size:14px;border-radius:10px;background:transparent;color:var(--sub)}.top nav .quit:hover{background:var(--grey)}
-.wrap{width:100%;max-width:1240px;justify-self:center;padding:32px 36px 110px;min-width:0}
+/* 창 안에 꼭 맞게 (토스 포스처럼): 화면 전체는 안 밀리고, 가운데 작업 화면만 안에서 내려감 */
+body.shell{height:100vh;overflow:hidden}
+.wrap{min-width:0;min-height:0;height:100%;overflow:auto;padding:26px max(28px,calc((100% - 1280px)/2)) 40px}
 /* 프로그램 틀 (토스 플레이스처럼): 왼쪽 사이드바 + 가운데 작업 화면 */
-.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:calc(100vh - 60px)}
-.side{position:sticky;top:60px;height:calc(100vh - 60px);overflow:auto;padding:18px 14px;background:rgba(255,255,255,.94);border-right:1px solid #EEF0F3;display:flex;flex-direction:column;gap:12px}
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);height:calc(100vh - 60px)}
+.side{min-height:0;overflow:auto;padding:18px 14px;background:rgba(255,255,255,.94);border-right:1px solid #EEF0F3;display:flex;flex-direction:column;gap:12px}
 .side .new{display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;background:var(--or);color:#fff;border-radius:12px;height:46px;font-weight:800;font-size:15px}.side .new:hover{background:var(--or-deep)}
 .side h4{margin:8px 8px 0;font-size:13px;color:var(--sub2);display:flex;justify-content:space-between;font-weight:700}
 .side nav{display:flex;flex-direction:column;gap:2px}
@@ -36,13 +38,9 @@ a{color:var(--link)}
 .dots{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.dots span{font-size:12px;padding:4px 8px;border-radius:7px;background:var(--grey);color:var(--sub)}.dots span.on{background:#E3F7EE;color:var(--ok)}.dots a{font-size:12px;color:var(--sub);margin-left:auto}
 .fab{position:fixed;right:28px;bottom:28px;width:56px;height:56px;border-radius:50%;background:var(--or);color:#fff;display:grid;place-items:center;font-size:30px;font-weight:400;text-decoration:none;box-shadow:0 6px 18px rgba(49,130,246,.35);z-index:6}
 .fab:hover{background:var(--or-deep)}
-.tip{position:fixed;right:28px;bottom:28px;z-index:6;display:flex;align-items:flex-end;gap:6px}.tip[hidden]{display:none}
-.tip .bubble{background:#fff;border-radius:18px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,27,55,.14);max-width:240px}
-.tip .bubble b{display:block;font-size:14px;margin-bottom:8px}.tip .bubble .actions{margin:0}.tip .bubble button{padding:7px 12px;font-size:13px;border-radius:9px}
-.tip img{width:76px;height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,0,.12))}
 .clock{font-size:13px;color:var(--sub);margin-right:10px;font-weight:700}.clock b{color:var(--ink);margin-right:4px}
-@media (max-width:900px){.app{grid-template-columns:minmax(0,1fr)}.side{display:none}.wrap{padding:24px 18px 100px}.clock{display:none}}
-h1{font:800 28px/1.35 Pretendard,sans-serif;letter-spacing:-.035em;margin:0 0 6px}
+@media (max-width:900px){.app{grid-template-columns:minmax(0,1fr)}.side{display:none}.wrap{padding:20px 16px 90px}.clock{display:none}}
+h1{font:800 26px/1.35 Pretendard,sans-serif;letter-spacing:-.035em;margin:0 0 6px}
 h2{font:800 19px/1.4 Pretendard,sans-serif;letter-spacing:-.025em;margin:0 0 12px}
 .panel{background:#fff;border:0;border-radius:20px;padding:24px 26px;margin:0 0 16px;box-shadow:var(--shadow)}
 .meta{color:var(--sub);font-size:13px;margin:6px 0;font-weight:700}
@@ -71,12 +69,21 @@ button[disabled]{opacity:.4;cursor:not-allowed}
 .wait{display:flex;gap:16px;align-items:center}
 code{background:var(--grey);border-radius:6px;padding:1px 6px;font-size:13px}
 details>summary{cursor:pointer}
+/* 종료할까요? (토스 포스처럼 가운데 흰 창 + 회색 취소 / 빨간 종료하기) */
+.modal{position:fixed;inset:0;z-index:20;background:rgba(0,12,30,.36);display:grid;place-items:center;animation:fade .15s ease-out}.modal[hidden]{display:none}
+.sheet{width:min(400px,calc(100% - 32px));background:#fff;border-radius:24px;padding:28px 24px 22px;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:pop .18s ease-out}
+.sheet b{display:block;font:800 20px/1.4 Pretendard,sans-serif;letter-spacing:-.02em}.sheet span{display:block;color:var(--sub);font-size:14px;margin-top:4px}
+.sheet .two{display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:22px}.sheet .two button{height:54px;font-size:16px;border-radius:14px}
+.sheet .red{background:var(--bad);color:#fff}.sheet .red:hover:not([disabled]){background:#D9303E}
+@keyframes fade{from{opacity:0}}@keyframes pop{from{opacity:0;transform:scale(.96)}}
+.bye{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#fff}.bye img{width:72px;height:72px;border-radius:20px;margin-bottom:6px}
+.bye b{font:800 22px Pretendard,sans-serif}.bye span{color:var(--sub);font-size:14px}
 </style>{% block head %}{% endblock %}</head>
-<body>
+<body class="{% if not (bye is defined and bye) %}shell{% endif %}">
 <header class="top"><a class="brand" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='app-icon.png') }}" alt=""><span><b>민주의 <em>카드뉴스</em> 제작 프로그램</b><small>SOBORU 카드뉴스 만들기</small></span></a>
   <nav><span class="clock" id="clock"></span><a href="{{ url_for('home') }}"{% if request.endpoint == 'home' %} class="on"{% endif %}>만들기</a><a href="{{ url_for('settings') }}"{% if request.endpoint == 'settings' %} class="on"{% endif %}>설정</a>
-    <form method="post" action="{{ url_for('quit_app') }}" style="display:inline;margin-left:8px" onsubmit="return confirm('프로그램을 끌까요? 만드는 중인 카드뉴스가 있으면 멈춰요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="quit">끄기</button></form></nav></header>
-{% if bye is defined and bye %}<main class="wrap"><h1>껐어요</h1><p class="meta">이 창은 닫아도 돼요. 다시 쓰려면 바탕화면의 '{{ app_name }}'을 또 누르세요.</p></main>{% else %}
+    <button type="button" class="quit" onclick="cnQuit()" style="margin-left:8px">끄기</button></nav></header>
+{% if bye is defined and bye %}<main class="bye"><img src="{{ url_for('static', filename='app-icon.png') }}" alt=""><b>종료하는 중이에요</b><span>다시 쓰려면 바탕화면의 '민주의 카드뉴스'를 눌러 주세요</span></main>{% else %}
 <div class="app">
   <aside class="side" aria-label="카드뉴스 목록">
     <a class="new" href="{{ url_for('home') }}">＋ 새 카드뉴스</a>
@@ -88,17 +95,19 @@ details>summary{cursor:pointer}
       <div class="dots"><span class="{{ 'on' if side_cfg.claude }}">Claude</span><span class="{{ 'on' if side_cfg.hf }}">힉스필드</span><span class="{{ 'on' if side_cfg.naver }}">네이버</span><a href="{{ url_for('settings') }}" style="font-size:12px;padding:5px 2px">설정</a></div>
     </div>
   </aside>
-  <main class="wrap">
+  <main class="wrap {% block wrapclass %}{% endblock %}">
     {% for m in get_flashed_messages() %}<div class="flash" role="status">{{ m }}</div>{% endfor %}
     {% block content %}{% endblock %}
   </main>
 </div>
+<div class="modal" id="quit" hidden role="dialog" aria-modal="true" aria-labelledby="quit-t"><form class="sheet" method="post" action="{{ url_for('quit_app') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <b id="quit-t">민주의 카드뉴스를 종료할까요?</b><span>만드는 중인 카드뉴스가 있으면 멈춰요</span>
+  <div class="two"><button type="button" onclick="cnQuit(false)">취소</button><button class="red">종료하기</button></div></form></div>
 {% if request.endpoint != 'home' %}<a class="fab" href="{{ url_for('home') }}" title="새 카드뉴스" aria-label="새 카드뉴스">+</a>{% endif %}
-<div class="tip" id="tip" hidden><div class="bubble"><b>안녕하세요! 오늘의 소비자 뉴스, 카드뉴스로 만들어 볼까요?</b><div class="actions"><button type="button" id="tip-close">닫기</button></div></div>
-  <img src="{{ url_for('static', filename='soboru-character.png') }}" alt=""></div>
 <script>
-(function(){var c=document.getElementById('clock'),w='일월화수목금토';function t(){var d=new Date(),h=d.getHours();c.innerHTML='<b>'+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+w[d.getDay()]+')</b>'+(h<12?'오전 ':'오후 ')+((h%12)||12)+':'+String(d.getMinutes()).padStart(2,'0')}t();setInterval(t,15000);
- var tip=document.getElementById('tip'),k='tip-'+new Date().toDateString();try{if(!localStorage.getItem(k)&&{{ 'true' if request.endpoint == 'home' else 'false' }}){tip.hidden=false;setTimeout(function(){tip.hidden=true},9000)}}catch(e){}
- document.getElementById('tip-close').onclick=function(){tip.hidden=true;try{localStorage.setItem(k,'1')}catch(e){}}})();
+(function(){var c=document.getElementById('clock'),w='일월화수목금토';function t(){var d=new Date(),h=d.getHours();c.innerHTML='<b>'+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+w[d.getDay()]+')</b>'+(h<12?'오전 ':'오후 ')+((h%12)||12)+':'+String(d.getMinutes()).padStart(2,'0')}t();setInterval(t,15000);})();
+function cnQuit(show){var m=document.getElementById('quit');m.hidden=show===false;if(!m.hidden)m.querySelector('.red').focus()}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')cnQuit(false)});
+document.getElementById('quit').addEventListener('click',function(e){if(e.target===this)cnQuit(false)});
 </script>{% endif %}
 </body></html>

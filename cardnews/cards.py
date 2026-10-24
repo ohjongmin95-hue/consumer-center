@@ -11,7 +11,7 @@
 - 카드 모양(글자·주황 박스·태그)은 화면(templates/edit.html)이 데이터로 그리고, PNG(1080×1350)와 캡션을 한 번에 내려받는다.
   인스타그램에는 직접 올린다(외부 자동 업로드 봇은 계정 정지 위험).
 """
-import datetime, html, ipaddress, json, re, secrets, socket, urllib.error, urllib.parse, urllib.request
+import datetime, email.utils, html, ipaddress, json, re, secrets, socket, urllib.error, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
 
 AI_TIMEOUT = 600
@@ -25,7 +25,7 @@ POLITICS = ('대통령', '국회의원', '정당', '후보', '선거', '여당',
 ALWAYS_OK = {'1372'}  # 원고 끝 안내에 늘 쓰는 번호 (소비자상담센터)
 # 매일 자동으로 고를 뉴스 주제 (소비자 권익)
 DAILY_TOPICS = ('소비자 피해, 환불·위약금 분쟁, 한국소비자원 발표, 공정위 제재, 리콜, 요금·가격 인상, 소비자 주의보, 피해구제, '
-                '그리고 유통·생활경제(편의점·마트·이커머스·배달앱·식품 가격)와 금융·부동산·물가·요금·세금·환율 등 경제 섹션 뉴스 전부(소비자 생활에 닿는 것 먼저)')
+                '그리고 유통·생활경제(편의점·마트·이커머스·배달앱·식품 가격)와 금융·부동산·물가·요금·세금·환율 등 경제 섹션 뉴스 전부(분야를 고르게)')
 
 WRITE_SYSTEM = """너는 소비자 권익 서비스 '소보루(SOBORU)'의 인스타그램 카드뉴스 에디터야. 뉴닉처럼 친근하고 쉬운 해요체로 쓴다.
 기사 한 편과 같은 뉴스를 다룬 다른 기사를 받는다. 이걸로 카드뉴스 원고를 JSON으로 쓴다.
@@ -218,6 +218,9 @@ NAVER = {'hub': ('https://naverapihub.apigw.ntruss.com/search/v1/news', 'X-NCP-A
          'dev': ('https://openapi.naver.com/v1/search/news.json', 'X-Naver-Client-Id', 'X-Naver-Client-Secret')}         # 네이버 개발자센터 검색 API
 
 
+NAVER_ERR = {'msg': ''}
+
+
 def naver_news(cfg, q, display=10, sort='sim'):
     """네이버 뉴스 검색 [{title,url,summary,date(YYYY-MM-DD)}]. 키가 없거나 실패하면 []. 테스트에서 바꿔 끼운다."""
     if not (cfg.get('naver_id') and cfg.get('naver_secret')): return []
@@ -226,14 +229,17 @@ def naver_news(cfg, q, display=10, sort='sim'):
                                  headers={hid: cfg['naver_id'], hsec: cfg['naver_secret']})
     try:
         with urllib.request.urlopen(req, timeout=10) as r: res = json.loads(r.read().decode('utf-8'))
-    except (urllib.error.URLError, OSError, ValueError): return []
+    except urllib.error.HTTPError as e:
+        NAVER_ERR['msg'] = {401: '네이버 키가 맞지 않아요 (키 종류·ID·Secret 확인)', 403: '네이버 앱에 검색 API 사용 권한이 없어요', 429: '오늘 네이버 검색 횟수를 다 썼어요'}.get(e.code, f'네이버 검색 오류 {e.code}'); return []
+    except (urllib.error.URLError, OSError, ValueError): NAVER_ERR['msg'] = '네이버에 연결하지 못했어요 (인터넷 확인)'; return []
+    NAVER_ERR['msg'] = ''
     clean = lambda t: ' '.join(html.unescape(re.sub(r'<[^>]+>', '', t or '')).split())
     out = []
     for it in res.get('items') or []:
         url = it.get('originallink') or it.get('link') or ''
         if not re.match(r'https?://', url): continue
-        try: day = datetime.datetime.strptime(it.get('pubDate', ''), '%a, %d %b %Y %H:%M:%S %z').date().isoformat()
-        except ValueError: day = ''
+        try: day = email.utils.parsedate_to_datetime(it.get('pubDate', '')).date().isoformat()  # 윈도우 한국어 설정에서도 되게 (strptime %a·%b는 언어를 탐)
+        except (TypeError, ValueError, IndexError): day = ''
         out.append({'title': clean(it.get('title')), 'url': url, 'summary': clean(it.get('description')), 'date': day})
     return out
 
@@ -266,7 +272,7 @@ def find_others(cfg, art, n=2):
 
 
 # 네이버 검색 API는 '경제 섹션'을 바로 고를 수 없어서, 경제 섹션 전체(생활경제·유통·금융·부동산·산업·경제일반)를 덮는 검색어로 찾는다.
-# 앞쪽 묶음일수록 먼저 보여 줌: 소비자 > 유통·생활경제 > 금융·부동산 > 경제 일반
+# 묶음끼리는 똑같이: 소비자 → 유통 → 금융·부동산 → 경제 → 소비자 … 돌아가며 하나씩
 NEWS_GROUPS = [
     ('소비자', ['소비자 피해', '한국소비자원', '환불 분쟁', '공정위 과징금', '리콜', '소비자 주의보', '피해구제', '요금 인상']),
     ('유통', ['유통업계', '편의점', '대형마트', '이커머스', '배달앱', '백화점', '식품 가격', '외식 가격', '할인 행사', '홈쇼핑']),
@@ -274,7 +280,7 @@ NEWS_GROUPS = [
     ('경제', ['물가', '공공요금', '전기요금', '통신비', '기름값', '환율', '세금', '연말정산', '최저임금', '고용', '소상공인', '수출', '자동차', '항공권']),
 ]
 QUERY_GROUP = {q: g for g, qs in NEWS_GROUPS for q in qs}
-DAILY_QUERIES = [q for _, qs in NEWS_GROUPS for q in qs]
+DAILY_QUERIES = [qs[i] for i in range(max(len(qs) for _, qs in NEWS_GROUPS)) for _, qs in NEWS_GROUPS if i < len(qs)]  # 묶음을 번갈아
 
 
 def find_news(cfg, n, avoid=()):
@@ -298,7 +304,7 @@ def find_news(cfg, n, avoid=()):
 
 
 def news_list(cfg, avoid=(), k=40):
-    """첫 화면 '오늘의 뉴스': 네이버 뉴스에서 최근 이틀 경제 섹션 전체(소비자·유통 먼저)를 검색어마다 고르게 섞어
+    """첫 화면 '오늘의 뉴스': 네이버 뉴스에서 최근 이틀 경제 섹션 전체를 묶음끼리 똑같이, 검색어마다 고르게 섞어
     [{title,url,summary,date,host,topic,group}]. 검색어가 많아서 한꺼번에 물어본다."""
     from concurrent.futures import ThreadPoolExecutor
     since = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()

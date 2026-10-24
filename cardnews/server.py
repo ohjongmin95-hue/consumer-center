@@ -222,7 +222,8 @@ def news():
     if not (c['naver_id'] and c['naver_secret']): return jsonify(ok=False, items=[])
     if time.time() - NEWS['at'] > 600 or request.args.get('fresh'): NEWS.update(at=time.time(), items=cards.news_list(c))
     used = used_urls()
-    return jsonify(ok=True, items=[dict(it, made=it['url'] in used) for it in NEWS['items']])
+    if not NEWS['items']: NEWS['at'] = 0  # 못 찾았으면 다음에 다시 물어봄
+    return jsonify(ok=True, error=cards.NAVER_ERR['msg'], items=[dict(it, made=it['url'] in used) for it in NEWS['items']])
 
 
 def save_kakao(tok):
@@ -507,8 +508,18 @@ def settings():
 
 @app.route('/quit', methods=['POST'])
 def quit_app():
-    if not app.config.get('TESTING'): threading.Timer(0.5, lambda: os._exit(0)).start()
+    WIN['quit'] = True
+    if not app.config.get('TESTING'): threading.Timer(1.2, lambda: os._exit(0)).start()  # '종료하는 중' 화면을 잠깐 보여 주고 끔
     return render_template('base.html', bye=True)
+
+
+WIN = {'quit': False}
+
+
+@app.route('/start')
+def start():
+    """켤 때 잠깐 보이는 첫 화면 (토스 포스처럼 로고 + 켜는 중)"""
+    return render_template('start.html')
 
 
 def running():
@@ -524,7 +535,16 @@ def app_window(url):
         import webview
         webview.settings['ALLOW_DOWNLOADS'] = True  # zip 내려받기
         webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True  # 기사·claude.ai·힉스필드 링크는 브라우저로
-        webview.create_window(NAME, url, width=1320, height=900, min_size=(980, 680))
+        w = webview.create_window(NAME, url + '/start', width=1320, height=860, min_size=(1000, 660), background_color='#F2F4F6')
+        def closing():  # 창의 ✕를 눌러도 바로 끄지 않고 토스처럼 '종료할까요?'를 물어봄
+            if WIN['quit']: return True
+            def ask():
+                try: shown = w.evaluate_js("typeof cnQuit==='function'?(cnQuit(),1):0")
+                except Exception: shown = 0
+                if not shown: WIN['quit'] = True; w.destroy()
+            threading.Thread(target=ask, daemon=True).start()
+            return False
+        w.events.closing += closing
         webview.start()
         return True
     except Exception as e:
@@ -536,6 +556,7 @@ def desktop_shortcut():
     """처음 켤 때 한 번: 바탕화면에 바로가기 (윈도우 실행 파일일 때만)"""
     mark = DATA / 'shortcut-made-2'  # 아이콘·이름을 바꿔서(토스POS처럼) 한 번 더 만듦
     if not (FROZEN and sys.platform.startswith('win')) or mark.exists(): return
+    if (Path(sys.executable).parent / 'unins000.exe').exists(): return  # 설치 프로그램으로 깔았으면 바로가기는 설치가 만듦
     exe = sys.executable.replace("'", "''")
     old = "$o=Join-Path $d '" + NAME + ".lnk';if(Test-Path $o){Remove-Item $o};"  # 예전 긴 이름 바로가기는 지움
     ps = ("$d=[Environment]::GetFolderPath('Desktop');" + old + "$s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d '" + SHORT + ".lnk'));"
