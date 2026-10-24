@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{# 담아 둔 글 (회원만). soboru_cm.py my_saved() #}
+{% from 'soboru_cm_macros.html' import rv_item, suda_row with context %}
+{% block title %}{{ ui('saved.title', '담아 둔 글') }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap cm cx cm-post">
+  <a class="cm-back" href="{{ url_for('mypage') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('common.my_info', '내 정보') }}</a>
+  <header class="cm-head"><div><h1>{{ ui('saved.title', '담아 둔 글') }}</h1><p>{{ ui('saved.intro', '나중에 다시 보려고 담아 둔 후기와 수다예요. 글에서 ‘담아 두기’를 한 번 더 누르면 빠져요.') }}</p></div></header>
+  <div class="pf-list">
+    {% for p in rows %}{% if p['kind'] == 'review' %}{{ rv_item(p) }}{% else %}{{ suda_row(p) }}{% endif %}
+    {% else %}<div class="cm-empty"><p>{{ ui('saved.empty', '아직 담아 둔 글이 없어요. 마음에 드는 후기에서 ‘담아 두기’를 눌러 보세요.') }}</p><a class="cm-btn" href="{{ url_for('feed') }}">{{ ui('feed.title', '내돈내산 후기') }}</a></div>{% endfor %}
+  </div>
+</main>
+{% endblock %}

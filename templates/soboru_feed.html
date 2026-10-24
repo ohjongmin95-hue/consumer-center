@@ -4,15 +4,23 @@
 {% block title %}{{ ui('feed.title', '내돈내산 후기') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui('feed.meta', '직접 돈 내고 산 상품, 다녀온 장소의 솔직한 후기. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}{% endblock %}
 {% block content %}
-{% set qs = {'t': t or None, 'c': c or None, 'sort': sort if sort != 'new' else None, 'ok': '1' if ok else None, 'q': q or None, 'f': field if q and field != 'all' else None} %}
+{% set qs = {'t': t or None, 'c': c or None, 's': shop or None, 'a': sido or None, 'sort': sort if sort != 'new' else None, 'ok': '1' if ok else None, 'q': q or None, 'f': field if q and field != 'all' else None} %}
 <main class="sb-wrap cm cx">
   <header class="cm-head">
     <div>
       <h1><span class="bread h" aria-hidden="true">🧁</span>{{ ui('feed.title', '내돈내산 후기') }}</h1>
-      <p>{{ ui('feed.intro', '직접 돈 내고 산 것, 다녀온 곳만. 광고 없이 소비자끼리 나누는 솔직한 후기예요.') }}</p>
+      <p>{{ ui('feed.intro', '직접 사서 써 본 이웃들의 솔직한 후기를 모았어요. 어디서 샀는지, 어느 동네인지로 골라 보세요.') }}</p>
     </div>
     <a class="cm-btn" href="{{ url_for('board_write', type='review') }}">{{ ui('feed.write', '후기 쓰기') }}</a>
   </header>
+
+  {% if hot %}
+  {# 품앗히식 실시간 인기 후기 한 줄 띠: 3초마다 다음 글로 #}
+  <a class="pf-ticker" href="{{ url_for('board_post', post_id=hot[0]['id']) }}" aria-label="{{ ui('feed.hot_title', '이번 주 많이 본 후기') }}">
+    <span class="pf-tick-l">{{ ui('feed.hot_now', '지금 뜨는 후기') }}</span><span class="pf-tick-box">
+    {% for p in hot %}<span class="pf-tick{{ ' on' if loop.first }}" data-href="{{ url_for('board_post', post_id=p['id']) }}"><b>{{ loop.index }}</b><span class="pf-tick-t">{{ p['title'] }}</span><em>▲ {{ p['views'] }}</em></span>{% endfor %}</span>
+  </a>
+  {% endif %}
 
   <section class="pf-banner" aria-label="{{ ui('feed.banner_aria', '영수증 인증 안내') }}">
     <div><b>{{ ui('feed.banner_title', '영수증을 함께 올리면 영수증 인증 후기가 돼요') }}</b>
@@ -25,10 +33,23 @@
         <a href="{{ url_for('feed', **dict(qs, t=None, c=None)) }}"{% if not t %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
         {% for k, name in RV_TYPES %}<a href="{{ url_for('feed', **dict(qs, t=k, c=None)) }}"{% if t == k %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
       </nav>
-      {% if t %}
-      <nav class="cm-rcs" aria-label="{{ ui('feed.cat_aria', '분류') }}">
-        <a href="{{ url_for('feed', **dict(qs, c=None)) }}"{% if not c %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
-        {% for name, emo in RV_CATS[t] %}<a href="{{ url_for('feed', **dict(qs, c=name)) }}"{% if c == name %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
+      {# 분류 아이콘 줄 (품앗히식): 전체 탭이면 상품·장소 분류를 모두, 탭을 고르면 그 분류만 #}
+      <nav class="pf-cats" aria-label="{{ ui('feed.cat_aria', '분류') }}">
+        {% for k, tname in RV_TYPES if not t or t == k %}{% for name, emo in RV_CATS[k] if not (name == '기타' and not t) %}
+        <a href="{{ url_for('feed', **dict(qs, t=k, c=None if (c == name and t == k) else name)) }}"{% if c == name and t == k %} class="on" aria-current="true"{% endif %}><span class="tf" aria-hidden="true">{{ emo }}</span>{{ name }}</a>
+        {% endfor %}{% endfor %}
+      </nav>
+      {% if t == 'product' %}
+      {# 어디서 샀어요?: 산 곳별로 모아 보기 #}
+      <nav class="pf-where" aria-label="{{ ui('feed.shop_aria', '어디서 샀어요') }}"><span>{{ ui('feed.shop_l', '어디서 샀어요?') }}</span>
+        <a href="{{ url_for('feed', **dict(qs, s=None)) }}"{% if not shop %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+        {% for name in SHOPS %}<a href="{{ url_for('feed', **dict(qs, s=name)) }}"{% if shop == name %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
+      </nav>
+      {% elif t == 'place' %}
+      {# 우리 동네 후기: 시·도별로 모아 보기 #}
+      <nav class="pf-where" aria-label="{{ ui('feed.area_aria', '우리 동네 후기') }}"><span>{{ ui('feed.area_l', '우리 동네') }}</span>
+        <a href="{{ url_for('feed', **dict(qs, a=None)) }}"{% if not sido %} class="on" aria-current="true"{% endif %}>{{ ui('feed.area_all', '전국') }}</a>
+        {% for name in SIDO %}<a href="{{ url_for('feed', **dict(qs, a=name)) }}"{% if sido == name %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
       </nav>
       {% endif %}
       <div class="cm-bar">
@@ -61,12 +82,23 @@
         <button class="cm-btn sm" type="submit">{{ ui('feed.search_btn', '검색') }}</button>
       </form>
     </div>
+    <div class="cm-side">
     {% if hot %}
-    <section class="cm-side cm-hot" aria-labelledby="pf-hot-h">
+    <section class="cm-hot" aria-labelledby="pf-hot-h">
       <h2 id="pf-hot-h">{{ ui('feed.hot_title', '이번 주 많이 본 후기') }}</h2>
       <ol>{% for p in hot %}<li><a href="{{ url_for('board_post', post_id=p['id']) }}"><span class="cm-rank">{{ loop.index }}</span><span class="cm-hot-t"><b>{{ p['title'] }}</b><small>{{ mask_personal(p['target']) }} · {{ ui('feed.views', '조회') }} {{ p['views'] }}</small></span></a></li>{% endfor %}</ol>
     </section>
     {% endif %}
+    </div>
   </div>
 </main>
+<script>
+  // 인기 후기 띠: 3초마다 다음 글 (움직임 줄이기 설정이면 멈춤)
+  (function () {
+    var bar = document.querySelector('.pf-ticker'); if (!bar) return;
+    var items = bar.querySelectorAll('.pf-tick'), i = 0;
+    if (items.length < 2 || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    setInterval(function () { items[i].classList.remove('on'); i = (i + 1) % items.length; items[i].classList.add('on'); bar.href = items[i].dataset.href; }, 3000);
+  })();
+</script>
 {% endblock %}

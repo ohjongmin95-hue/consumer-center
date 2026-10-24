@@ -1101,7 +1101,7 @@ def review_stats(db,company_id=None,limit=5):
     # 리뷰가 쌓인 곳: 같은 기업(또는 같은 이름)끼리 묶어 평균 별점. 소보루 에디터 리뷰는 소비자 별점에 넣지 않음
     where="kind='review' AND hidden=0 AND editor=0 AND rating BETWEEN 1 AND 5"+(' AND company_id=?' if company_id else '')
     return db.execute(f"SELECT MAX(target) AS target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg FROM posts WHERE {where} GROUP BY COALESCE(company_id,lower(replace(target,' ',''))) ORDER BY n DESC,avg DESC LIMIT ?",((company_id,) if company_id else ())+(limit,)).fetchall()
-FEED_COLS='id,kind,category,nickname,user_id,title,substr(body,1,160) AS excerpt,length(body) AS body_len,likes,comments,created,target,company_id,rating,pros,cons,recommend,summary,solved,menu,photo,campaign_id,editor,reward,review_cat,views,head,receipt_state,rv_type,rv_cat,price,again,bought'  # 뒤의 칸들은 soboru_cm.py가 붙임
+FEED_COLS='id,kind,category,nickname,user_id,title,substr(body,1,160) AS excerpt,length(body) AS body_len,likes,comments,created,target,company_id,rating,pros,cons,recommend,summary,solved,menu,photo,campaign_id,editor,reward,review_cat,views,head,receipt_state,rv_type,rv_cat,price,again,bought,shop,sido,gu'  # 뒤의 칸들은 soboru_cm.py가 붙임
 def community_feed(limit=4):
     # 메인 화면 커뮤니티: 최근 30일 반응 많은 글을 종류별로 하나씩 먼저, 나머지는 반응순 → 모자라면 최신순
     since=(datetime.datetime.now()-datetime.timedelta(days=30)).isoformat(timespec='seconds');nb=not_blocked()

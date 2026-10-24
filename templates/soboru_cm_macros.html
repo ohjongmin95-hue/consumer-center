@@ -12,7 +12,7 @@
   <span class="pf-body">
     <span class="pf-meta">{% if p['rv_cat'] %}<span class="pf-cat">{{ p['rv_cat'] }}</span>{% endif %}{% if p['receipt_state'] == 'ok' %}<span class="pf-ok">{{ ui('feed.ok_badge', '영수증 인증') }}</span>{% endif %}{% if p['editor'] %}<span class="cm-editor">{{ ui('cm.editor_badge', '소보루 에디터') }}</span>{% endif %}{% if p['since'] is not none %}<span class="pf-since">{{ ui('feed.since', '구매한지 +{n}일', n=p['since']) }}</span>{% elif p['visit'] %}<span class="pf-since">{{ ui('feed.visit', '{d} 방문', d=p['visit']) }}</span>{% endif %}</span>
     <b class="pf-title">{{ p['title'] }}</b>
-    <span class="pf-target">{{ mask_personal(p['target']) }}{% if p['won'] %} · {{ p['won'] }}{% endif %}</span>
+    <span class="pf-target">{{ mask_personal(p['target']) }}{% if p['won'] %} · {{ p['won'] }}{% endif %}{% if p['where'] %} · <span class="pf-wh">{{ p['where'] }}{{ ui('feed.shop_tail', '에서 샀어요') if p['rv_type'] == 'product' else '' }}</span>{% endif %}</span>
     <span class="pf-score">{% if p['rating'] %}<em class="pf-star">★ {{ p['rating'] }}.0</em>{% endif %}{% if p['again_word'] %}<em class="pf-again{{ ' no' if not p['again'] }}">{{ p['again_word'] }}</em>{% endif %}</span>
     <span class="cm-foot"><span class="cm-who">{{ p['nickname'] }}</span><span>{{ ago_text(p['created']) }}</span><span class="cm-dot"></span><span>{{ ui('feed.views', '조회') }} {{ p['views'] }}</span><span>{{ ui('feed.comments', '댓글') }} {{ p['comments'] }}</span><span>{{ ui('cm.likes', '공감') }} {{ p['likes'] }}</span></span>
   </span>

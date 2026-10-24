@@ -1800,3 +1800,52 @@ h1.vs-title{font-size:28px}
 /* 휴대폰: 소보루 픽은 최신 글이 TOP 5보다 먼저 (올라온 글이 바로 보이게) */
 @media (max-width:760px){.nn-pick-grid{display:flex;flex-direction:column}.nn-pick-grid .nn-pick-feed{order:-1}}
 .cm-body.solo{display:block}
+/* 내돈내산 후기 (품앗히 참고): 약속 3줄 · 인기 후기 띠 · 분류 아이콘 · 이런 분께 */
+.pf-ticker{display:block;position:relative;height:48px;margin:0 0 12px;border-radius:14px;background:#f9fafb;overflow:hidden}
+.pf-tick{position:absolute;inset:0;display:flex;align-items:center;gap:10px;padding:0 16px;opacity:0;transform:translateY(12px);transition:opacity .35s,transform .35s var(--sb-ease)}
+.pf-tick.on{opacity:1;transform:none}
+.pf-tick>b{flex:none;width:22px;height:22px;border-radius:7px;background:#fff1e0;color:#c45f00;font-size:12.5px;display:flex;align-items:center;justify-content:center}
+.pf-tick-t{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-weight:600;color:#191f28}
+.pf-tick em{flex:none;font-style:normal;font-size:13px;font-weight:700;color:var(--sb-orange)}
+.pf-cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:14px -2px 4px;padding:2px}
+.pf-cats::-webkit-scrollbar{display:none}
+.pf-cats a{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:76px;padding:12px 0 10px;border-radius:16px;font-size:13px;font-weight:600;color:#4e5968;transition:background .15s}
+.pf-cats a .tf{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:16px;background:#f2f4f6;font-size:28px;line-height:1}
+.pf-cats a:hover{background:#f9fafb}
+.pf-cats a.on{background:#fff4e0;color:#c45f00}.pf-cats a.on .tf{background:#fff}
+@media (max-width:760px){.pf-ticker{height:44px}.pf-tick-t{font-size:14px}.pf-cats a{width:68px}.pf-cats a .tf{width:44px;height:44px;font-size:26px}}
+/* 어디서 샀어요? · 우리 동네: 분류 아이콘 아래 한 줄 칩 (가로로 밀어 보기) */
+.pf-where{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;margin:6px 0 2px;padding:2px 0}
+.pf-where::-webkit-scrollbar{display:none}
+.pf-where>span{flex:none;margin-right:4px;font-size:13px;font-weight:700;color:#8b95a1}
+.pf-where a{flex:none;height:32px;display:inline-flex;align-items:center;padding:0 12px;border-radius:999px;background:#f2f4f6;color:#4e5968;font-size:13.5px;font-weight:600}
+.pf-where a.on{background:#191f28;color:#fff}
+.pf-wh{color:#4e5968}
+.cm-area select,.cm-area input{width:100%}
+.pf-ticker{display:flex;align-items:center;gap:12px;padding-left:16px}
+.pf-tick-l{flex:none;font-size:13px;font-weight:800;color:var(--sb-orange)}
+.pf-tick-box{position:relative;flex:1;min-width:0;height:100%}
+.pf-tick{padding:0 16px 0 0}
+.pf-cats a{width:auto;min-width:72px;padding:12px 6px 10px;white-space:nowrap}
+/* 담아 두기: 공감 버튼 옆, 같은 모양 */
+.cm-actions{justify-content:flex-start}.cm-actions .cm-tools{margin-left:auto}
+.cm-save{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 20px;border:1px solid var(--cm-line2,#e5e8eb);border-radius:999px;background:#fff;font:inherit;font-size:15.5px;font-weight:700;color:var(--cm-ink,#191f28);cursor:pointer;transition:transform .15s var(--sb-ease),background .2s}
+.cm-save svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
+.cm-save.on{background:#fff4e0;border-color:#ffd59e;color:#c45f00}.cm-save.on svg{fill:currentColor}
+.cm-save:active{transform:scale(.97)}
+@media(max-width:860px){.cm-save{width:100%}.cm-actions .cm-tools{margin-left:0}}
+@media(max-width:860px){.cm-actions:has(.cm-save){display:grid;grid-template-columns:1fr 1fr;gap:8px}.cm-actions:has(.cm-save) .cm-tools{grid-column:1/-1}.cm-actions:has(.cm-save) .cm-like,.cm-actions:has(.cm-save) .cm-save{padding:0 12px;font-size:15px}}
+/* 사장님 소식: 카드 목록 (홍보 표시가 맨 앞) */
+.ow-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.ow-list>.cm-empty{grid-column:1/-1}
+.ow-card{display:flex;flex-direction:column;gap:8px;padding:22px 22px 18px;border:1px solid #eef0f3;border-radius:20px;background:#fff}
+.ow-top{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;color:#8b95a1;min-width:0}
+.ow-ad{flex:none;font-style:normal;font-weight:800;font-size:12px;color:#fff;background:#8b95a1;border-radius:6px;padding:2px 7px}
+.ow-head{flex:none;font-weight:700;color:#c45f00;background:#fff4e0;border-radius:6px;padding:2px 7px;font-size:12px}
+.ow-shop{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4e5968}
+.ow-when{flex:none;margin-left:auto}
+.ow-card h2{margin:2px 0 0;font-size:18px;letter-spacing:-.03em;line-height:1.4}
+.ow-body{margin:0;font-size:14.5px;line-height:1.65;color:#4e5968;white-space:pre-line;flex:1}
+.ow-card footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;min-height:22px}
+.ow-link{font-size:14px;font-weight:700;color:var(--sb-orange)}
+@media(max-width:760px){.ow-list{grid-template-columns:minmax(0,1fr);gap:10px}.ow-card{padding:18px}.ow-card h2{font-size:16.5px}}

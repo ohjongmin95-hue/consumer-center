@@ -2,7 +2,7 @@
 {% set p = request.path %}
 <nav class="sb-tabbar" aria-label="바로가기">
   <a href="{{ url_for('home') }}"{% if p == '/' %} class="on" aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>{{ ui('sb.tab_home', '홈') }}</a>
-  <a href="{{ url_for('feed') }}"{% if p.startswith(('/board', '/feed', '/vs', '/suda', '/editor')) %} class="on" aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>{{ ui('sb.nav_board', '소보루 픽') }}</a>
+  <a href="{{ url_for('feed') }}"{% if p.startswith(('/board', '/feed', '/vs', '/suda', '/owners')) %} class="on" aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>{{ ui('sb.nav_board', '소보루 픽') }}</a>
   <a class="sb-tab-plus" href="{{ url_for('report') }}"{% if p.startswith('/report') and not p.startswith('/reports') %} aria-current="page"{% endif %}><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>{{ ui('sb.tab_report', '제보') }}</a>
   <a href="{{ url_for('life') }}"{% if p.startswith('/life') %} class="on" aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 14h8M8 18h5"/></svg>{{ ui('sb.tab_life', '생활정보') }}</a>
   <a href="{{ url_for('mypage') if g.user else url_for('lookup') }}"{% if p.startswith(('/me', '/lookup')) %} class="on" aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 21c.9-4 4-6 8-6s7.1 2 8 6"/></svg>{{ ui('sb.tab_my', 'MY') if g.user else ui('sb.tab_lookup', '내 제보') }}</a>

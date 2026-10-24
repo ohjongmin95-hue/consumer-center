@@ -4283,7 +4283,8 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(me, '/board/write?type=review')
         day = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
         r = me.post('/board/write', data={'_csrf': token, 'kind': 'review', 'rv_type': 'place', 'rv_cat': '맛집·카페', 'target': '소보루식당', 'rating': '5', 'price': '21,000', 'bought': day,
-                                          'again': '1', 'title': '국물이 진해요', 'body': '점심에 다녀왔는데 국물이 진했어요.', 'agree': '1', 'receipt': (io.BytesIO(buf.getvalue()), 'r.jpg')},
+                                          'again': '1', 'title': '국물이 진해요', 'body': '점심에 다녀왔는데 국물이 진했어요.', 'agree': '1', 'receipt': (io.BytesIO(buf.getvalue()), 'r.jpg'),
+                                          'sido': '서울', 'gu': '강남구<b>', 'shop': '쿠팡'},
                     content_type='multipart/form-data')
         self.assertEqual(r.status_code, 302)
         with self.site.conn() as db:
@@ -4292,6 +4293,18 @@ class SiteTest(unittest.TestCase):
         feed = self.client.get('/feed?t=place').get_data(as_text=True)
         self.assertIn('국물이 진해요', feed); self.assertIn('21,000원', feed); self.assertIn('재방문 의사 있어요', feed)
         self.assertNotIn(rv['receipt'], feed)  # 영수증은 공개 화면에 안 나감
+        # 우리 동네 후기: 장소 후기는 시·도·구 (산 곳은 상품 후기에만), 동네별로 모아 보기
+        self.assertEqual((rv['sido'], rv['gu'], rv['shop']), ('서울', '강남구', ''))
+        self.assertIn('서울 강남구', feed)
+        self.assertIn('국물이 진해요', self.client.get('/feed?t=place&a=서울').get_data(as_text=True))
+        self.assertIn('<b>0</b>개의 후기', self.client.get('/feed?t=place&a=부산').get_data(as_text=True))  # 제목은 옆 인기 후기엔 나올 수 있음
+        # 어디서 샀어요?: 상품 후기의 산 곳
+        r = self.post_form(me, '/board/write?type=review', {'kind': 'review', 'rv_type': 'product', 'rv_cat': '뷰티', 'target': '소보루 선크림', 'rating': '4', 'shop': '올리브영',
+                                                            'title': '백탁 없는 선크림', 'body': '여름 내내 썼는데 백탁이 없었어요.', 'agree': '1'})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('백탁 없는 선크림', self.client.get('/feed?t=product&s=올리브영').get_data(as_text=True))
+        self.assertIn('<b>0</b>개의 후기', self.client.get('/feed?t=product&s=쿠팡').get_data(as_text=True))
+        self.assertIn('올리브영에서 샀어요', self.client.get('/feed?t=product').get_data(as_text=True))
         self.assertIn('<b>0</b>개의 후기', self.client.get('/feed?ok=1').get_data(as_text=True))
         self.assertNotEqual(self.client.get('/feed/receipt/' + rv['receipt']).status_code, 200)
         admin = self.login_admin()
@@ -4323,6 +4336,26 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertEqual(db.execute("SELECT SUM(amount) FROM points WHERE user_id=? AND reason='vote'", (oid,)).fetchone()[0], 5)
             self.assertEqual(db.execute("SELECT SUM(amount) FROM points WHERE user_id=? AND reason='vs_end'", (uid,)).fetchone()[0], 50)
+        # 담아 두기: 회원만, 한 번 더 누르면 빠짐
+        self.assertIn('/login', self.client.post('/me/saved/%d' % rv['id']).headers.get('Location', '') or '/login')
+        sv = lambda: me.post('/me/saved/%d' % rv['id'], data={'_csrf': self.csrf(me, '/board/%d' % rv['id'])})
+        self.assertEqual(sv().status_code, 302)
+        self.assertIn('국물이 진해요', me.get('/me/saved').get_data(as_text=True))
+        self.assertIn('담아 뒀어요', me.get('/board/%d' % rv['id']).get_data(as_text=True))
+        sv()
+        self.assertNotIn('국물이 진해요', me.get('/me/saved').get_data(as_text=True))
+        # 사장님 소식: 회원이 하루 한 번, '홍보' 표시, https 링크만, 글쓴이·운영자가 내림
+        with self.site.conn() as db: db.execute('DELETE FROM owner_news')
+        bad = self.post_form(me, '/owners/new', {'head': '할인', 'shop': '소보루빵집', 'title': '주말 1+1', 'body': '토요일 오후 3시부터 소보루빵 1+1이에요.', 'link': 'javascript:alert(1)'})
+        self.assertEqual(bad.status_code, 400)
+        self.assertEqual(self.post_form(me, '/owners/new', {'head': '할인', 'shop': '소보루빵집', 'title': '주말 1+1', 'body': '토요일 오후 3시부터 소보루빵 1+1이에요.', 'link': 'https://soboru.example/sale'}).status_code, 302)
+        self.assertEqual(self.post_form(me, '/owners/new', {'head': '오픈', 'shop': '소보루빵집', 'title': '또 올림', 'body': '하루에 두 번째 소식이에요. 막혀야 해요.'}).status_code, 400)
+        page = self.client.get('/owners').get_data(as_text=True)
+        self.assertIn('주말 1+1', page); self.assertIn('홍보', page); self.assertIn('rel="nofollow sponsored noopener"', page)
+        with self.site.conn() as db: nid = db.execute('SELECT id FROM owner_news').fetchone()[0]
+        self.assertEqual(other.post('/owners/%d/hide' % nid, data={'_csrf': self.csrf(other, '/owners/new')}).status_code, 403)
+        me.post('/owners/%d/hide' % nid, data={'_csrf': self.csrf(me, '/owners')})
+        self.assertNotIn('주말 1+1', self.client.get('/owners').get_data(as_text=True))
         # 에디터 모집은 뺌: 예전 주소는 후기 피드로, 메뉴에도 없음
         self.assertEqual(self.client.get('/editor').headers['Location'], '/feed')
         self.assertNotIn('에디터 모집', self.client.get('/feed').get_data(as_text=True))

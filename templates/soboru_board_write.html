@@ -45,6 +45,17 @@
       <div class="cm-cats">{% for name, emo in cats %}<label><input type="radio" name="rv_cat" value="{{ name }}"{% if rv_t == t and f.get('rv_cat') == name %} checked{% endif %}{% if rv_t != t %} disabled{% endif %}><span>{{ name }}</span></label>{% endfor %}</div>
     </div>
     {% endfor %}
+    <div class="cm-f" data-for="review" data-rvt="product">
+      <span class="cm-l">{{ ui('cm.f_shop', '어디서 샀어요?') }} <small>{{ ui('cm.optional', '선택') }}</small></span>
+      <div class="cm-cats">{% for name in SHOPS %}<label><input type="radio" name="shop" value="{{ name }}"{% if f.get('shop') == name %} checked{% endif %}{% if rv_t != 'product' %} disabled{% endif %}><span>{{ name }}</span></label>{% endfor %}</div>
+    </div>
+    <div class="cm-f" data-for="review" data-rvt="place">
+      <span class="cm-l">{{ ui('cm.f_area', '어느 동네예요?') }} <small>{{ ui('cm.f_area_tag', '우리 동네 후기로 모여요') }}</small></span>
+      <div class="cm-two cm-area">
+        <select name="sido" aria-label="{{ ui('cm.f_sido', '시·도') }}"{% if rv_t != 'place' %} disabled{% endif %}><option value="">{{ ui('cm.f_sido', '시·도') }}</option>{% for a in SIDO %}<option{% if f.get('sido') == a %} selected{% endif %}>{{ a }}</option>{% endfor %}</select>
+        <input name="gu" maxlength="12" placeholder="{{ ui('cm.f_gu_ph', '구·군·시 (예: 강남구)') }}" value="{{ f.get('gu', '')[:12] }}"{% if rv_t != 'place' %} disabled{% endif %}>
+      </div>
+    </div>
     <div class="cm-f" data-for="review">
       <label class="cm-l" for="w-target" data-food="{{ ui('cm.f_target_food', '업체명 (어느 가게에서 시켰나요?)') }}" data-plain="{{ ui('cm.f_target', '어떤 회사·제품인가요?') }}">{{ ui('cm.f_target_food', '업체명 (어느 가게에서 시켰나요?)') if campaign or rc_now == '배달음식' else ui('cm.f_target', '어떤 회사·제품인가요?') }}</label>
       <input id="w-target" name="target" maxlength="40" placeholder="{{ ui('cm.f_target_food_ph', '예: 소보루치킨 역삼점') if campaign or rc_now == '배달음식' else ui('cm.f_target_ph', '예: 오소보쇼핑, 무선 이어폰 A') }}" data-food="{{ ui('cm.f_target_food_ph', '예: 소보루치킨 역삼점') }}" data-plain="{{ ui('cm.f_target_ph', '예: 오소보쇼핑, 무선 이어폰 A') }}" value="{{ f.get('target', request.args.get('target', ''))[:40] }}">
@@ -136,7 +147,7 @@
       var head = (form.querySelector('input[name=head]:checked') || {}).value;
       if (k === 'post') k = {'질문': 'question', '정보': 'tip'}[head] || 'post';
       var t = (form.querySelector('input[name=rv_type]:checked') || {}).value || 'product';
-      form.querySelectorAll('[data-rvt]').forEach(function (el) { var on = el.getAttribute('data-rvt') === t; el.hidden = !on || k !== 'review'; el.querySelectorAll('input').forEach(function (i) { i.disabled = !on; }); });
+      form.querySelectorAll('[data-rvt]').forEach(function (el) { var on = el.getAttribute('data-rvt') === t; el.hidden = !on || k !== 'review'; el.querySelectorAll('input,select').forEach(function (i) { i.disabled = !on; }); });
       form.querySelectorAll('[data-product]').forEach(function (el) { var small = el.querySelector('small'); el.textContent = el.getAttribute('data-' + t) + ' '; if (small) el.appendChild(small); });
       form.setAttribute('data-kind', k);
       form.querySelectorAll('[data-for]').forEach(function (el) { if (!el.hasAttribute('data-rvt')) el.hidden = el.getAttribute('data-for').split(' ').indexOf(k) < 0; });
