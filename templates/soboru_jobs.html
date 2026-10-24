@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{# 동네일자리: 지역·조건으로 공고 찾기 (자체 공고 + 공공 채용정보). soboru_jobs.py jobs() #}
+{% from 'soboru_jobs_macros.html' import job_card, region_js with context %}
+{% from 'soboru_cm_macros.html' import pager with context %}
+{% block title %}{{ ui('jobs.title', '동네일자리') }}{% if f.sgg or f.sido %} · {{ f.sido }} {{ f.sgg }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('jobs.meta', '우리 동네 사장님이 직접 올린 알바·일자리와 공공 채용정보를 지역·시급·요일로 찾아요. 구인·구직 모두 무료예요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap jb">
+  <header class="jb-hero">
+    <div>
+      <h1>{{ ui('jobs.h1', '동네일자리') }}</h1>
+      <p>{{ ui('jobs.intro', '우리 동네 사장님이 직접 올린 공고와 공공 채용정보를 한곳에서 찾아요. 올리는 것도, 지원하는 것도 무료예요.') }}</p>
+    </div>
+    <div class="jb-hero-btns">
+      <a class="jb-btn ghost" href="{{ url_for('jobs_my') }}">{{ ui('jobs.my', '내 지원·관심') }}</a>
+      <a class="jb-btn" href="{{ url_for('jobs_manage') if biz and biz['state'] == 'ok' else url_for('job_new') }}">{{ ui('jobs.manage', '내 공고 관리') if biz and biz['state'] == 'ok' else ui('jobs.post', '사장님, 공고 올리기') }}</a>
+    </div>
+  </header>
+  <form class="jb-form" method="get" action="{{ url_for('jobs') }}" data-autosubmit>
+    <div class="jb-search">
+      <label class="jb-sel"><span class="sr-only">{{ ui('jobs.sido', '시·도') }}</span><select name="sido" data-sido="jb-sgg" data-go><option value="">{{ ui('jobs.all_kr', '전국') }}</option>{% for s in JOB_REGIONS %}<option{% if f.sido == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+      <label class="jb-sel"><span class="sr-only">{{ ui('jobs.sgg', '시·군·구') }}</span><select name="sgg" id="jb-sgg" data-cur="{{ f.sgg }}" data-go><option value="">{{ ui('jobs.sgg_all', '시·군·구 전체') }}</option>{% for x in JOB_REGIONS.get(f.sido, []) %}<option{% if f.sgg == x %} selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
+      <label class="jb-in dong"><span class="sr-only">{{ ui('jobs.dong', '읍·면·동') }}</span><input name="dong" value="{{ f.dong }}" maxlength="10" placeholder="{{ ui('jobs.dong_ph', '읍·면·동 (예: 역삼동)') }}"></label>
+      <label class="jb-in q"><span class="sr-only">{{ ui('jobs.q', '찾을 낱말') }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg><input name="q" value="{{ f.q }}" maxlength="40" placeholder="{{ ui('jobs.q_ph', '하는 일, 가게 이름') }}"></label>
+      <button class="jb-go" type="submit">{{ ui('jobs.go', '찾기') }}</button>
+    </div>
+    <div class="jb-body">
+      <details class="jb-filter" open id="jb-filter">
+        <summary><span>{{ ui('jobs.filter', '조건') }}{% if n_filter %} <b>{{ n_filter }}</b>{% endif %}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="jb-fg"><p>{{ ui('jobs.f_ind', '업종') }}</p><div class="jb-chips">{% for k, n, e in JOB_INDUSTRIES %}<label><input type="checkbox" name="ind" value="{{ k }}"{% if k in f.ind %} checked{% endif %}><span><i class="tf" aria-hidden="true">{{ e }}</i>{{ n }}</span></label>{% endfor %}</div></div>
+        <div class="jb-fg"><p>{{ ui('jobs.f_time', '근무 시간대') }}</p><div class="jb-chips">{% for k, n, a, b2 in JOB_TIMES %}<label><input type="checkbox" name="time" value="{{ k }}"{% if k in f.time %} checked{% endif %}><span>{{ n }}</span></label>{% endfor %}</div></div>
+        <div class="jb-fg"><p>{{ ui('jobs.f_days', '근무 요일') }}</p><div class="jb-chips">{% for k, n in [('', '상관없음'), ('weekday', '평일'), ('weekend', '주말')] %}<label><input type="radio" name="days" value="{{ k }}"{% if f.days == k %} checked{% endif %}><span>{{ n }}</span></label>{% endfor %}</div></div>
+        <div class="jb-fg"><p>{{ ui('jobs.f_term', '근무 기간') }}</p><div class="jb-chips">{% for k, n in [('', '상관없음'), ('short', '단기'), ('long', '장기')] %}<label><input type="radio" name="term" value="{{ k }}"{% if f.term == k %} checked{% endif %}><span>{{ n }}</span></label>{% endfor %}</div></div>
+        <div class="jb-fg"><p>{{ ui('jobs.f_pay', '급여 형태') }}</p><div class="jb-chips">{% for k in JOB_PAY_TYPES %}<label><input type="checkbox" name="pay" value="{{ k }}"{% if k in f.pay %} checked{% endif %}><span>{{ k }}</span></label>{% endfor %}</div></div>
+        <div class="jb-fg"><p>{{ ui('jobs.f_wage', '시급') }}</p><select name="wage" data-go><option value="">{{ ui('jobs.wage_any', '상관없음') }}</option>{% for w in [JOB_MIN_WAGE(), 11000, 12000, 13000, 15000, 20000] %}<option value="{{ w }}"{% if f.wage == w %} selected{% endif %}>{{ '{:,}'.format(w) }}원 이상{% if loop.first %} (최저임금){% endif %}</option>{% endfor %}</select></div>
+        <div class="jb-fg"><p>{{ ui('jobs.f_src', '공고 출처') }}</p><div class="jb-chips">{% for k, n in [('', '전체'), ('own', '사장님 직접'), ('ext', '공공 채용정보')] %}<label><input type="radio" name="src" value="{{ k }}"{% if f.src == k %} checked{% endif %}><span>{{ n }}</span></label>{% endfor %}</div></div>
+        <div class="jb-f-btns"><a href="{{ url_for('jobs', sido=f.sido or '', sgg=f.sgg or None) }}">{{ ui('jobs.reset', '조건 지우기') }}</a><button type="submit">{{ ui('jobs.apply', '적용') }}</button></div>
+      </details>
+      <section class="jb-list" aria-labelledby="jb-count">
+        <div class="jb-list-head">
+          <h2 id="jb-count">{% if f.sgg or f.sido %}{{ f.sgg or f.sido }}{% if f.dong %} {{ f.dong }}{% endif %} {% endif %}{{ ui('jobs.count', '공고 {n}개', n='{:,}'.format(total)) }}</h2>
+          <nav class="jb-sort" aria-label="{{ ui('jobs.sort', '정렬') }}">{% for k, n in [('new', '최신순'), ('pay', '시급 높은순'), ('close', '마감 임박순')] %}<a href="{{ url_for('jobs', **job_qs(f, sort=k)) }}"{% if f.sort == k %} class="on" aria-current="true"{% endif %}>{{ n }}</a>{% endfor %}</nav>
+        </div>
+        {% for j in rows %}{{ job_card(j) }}
+        {% else %}
+        <div class="jb-empty"><span class="tf" aria-hidden="true">🔍</span><b>{{ ui('jobs.empty', '조건에 맞는 공고가 아직 없어요') }}</b><p>{{ ui('jobs.empty_d', '동네를 넓히거나 조건을 줄여 보세요. 사장님이라면 첫 공고를 올려 주세요.') }}</p><a class="jb-btn" href="{{ url_for('job_new') }}">{{ ui('jobs.post', '사장님, 공고 올리기') }}</a></div>
+        {% endfor %}
+        {{ pager('jobs', page, pages, job_qs(f)) }}
+        <p class="jb-note">{% if ext_on %}{{ ui('jobs.note_ext', '공공 채용정보는 고용24(한국고용정보원) 채용정보를 받아 보여 주고, 지원은 원문에서 해요.') }} {% endif %}{{ ui('jobs.note', '최저임금보다 적거나 성별·나이를 정해 뽑는 공고, 돈·통장을 먼저 요구하는 공고는 신고해 주세요.') }}</p>
+      </section>
+    </div>
+  </form>
+</main>
+{{ region_js() }}
+<script>(function () { var d = document.getElementById('jb-filter'); if (d && window.matchMedia('(max-width: 860px)').matches && {{ 'false' if n_filter else 'true' }}) d.open = false; })();</script>
+{% endblock %}

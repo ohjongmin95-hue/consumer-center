@@ -1,0 +1,48 @@
+{% extends 'console.html' %}
+{# 관리자 > 동네일자리: 외부 채용정보 연동 상태, 사업자 인증 승인, 신고·가린 공고 (soboru_jobs.py) #}
+{% block title %}동네일자리 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="ad-page ak">
+  <header class="ad-head"><div><h1>동네일자리</h1><p>자체 공고와 공공 채용정보(외부 API) 공고를 함께 관리해요. API 키는 서버 환경변수에만 두고, 여기서는 연결 상태만 봐요.</p></div>
+    <a class="ad-btn" href="{{ url_for('jobs') }}" target="_blank" rel="noopener">동네일자리 보기 ↗</a></header>
+  <section class="ops-kpis">
+    <div class="ad-panel"><span>자체 공고 (모집 중)</span><b>{{ '{:,}'.format(k.own) }}</b></div>
+    <div class="ad-panel"><span>외부 공고 (모집 중)</span><b>{{ '{:,}'.format(k.ext) }}</b></div>
+    <div class="ad-panel"><span>지원서</span><b>{{ '{:,}'.format(k.apps) }}</b><small>마감 90일 뒤 저절로 지움</small></div>
+    <div class="ad-panel"><span>가린 공고</span><b class="{{ 'ak-bad' if k.hidden }}">{{ k.hidden }}</b><small>신고 {{ 3 }}번이면 바로 가려짐</small></div>
+  </section>
+  <section class="ad-panel">
+    <div class="ad-panel-head ak-row"><h2>외부 채용정보 연동</h2>
+      <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="sync"><button class="primary" type="submit"{% if running or not provs|selectattr('key')|list %} disabled{% endif %}>{{ '가져오는 중…' if running else '지금 가져오기' }}</button></form></div>
+    <div class="tablewrap"><table class="ak-table">
+      <thead><tr><th>출처</th><th>키 (환경변수)</th><th>상태</th><th>마지막 가져오기</th><th>넣음 · 고침 · 마감</th><th>오류</th></tr></thead>
+      <tbody>{% for x in provs %}<tr><td><b>{{ x.p.name }}</b><br><small>{{ x.p.terms }}</small></td>
+        <td><code>{{ x.p.env }}</code><br><small>{{ x.masked if x.key else '없음' }}</small></td>
+        <td>{% if not x.key %}<span class="ak-st s-fallback">키 없음 · 자체 공고만</span>{% elif x.sync and x.sync.ok %}<span class="ak-st s-ok">연결됨</span>{% elif x.sync %}<span class="ak-st s-error">오류</span>{% else %}<span class="ak-st">아직 안 가져옴</span>{% endif %}</td>
+        <td>{{ x.sync.at[:16]|replace('T', ' ') if x.sync else '-' }}</td><td>{% if x.sync %}{{ x.sync.added }} · {{ x.sync.updated }} · {{ x.sync.closed }}{% else %}-{% endif %}</td><td><small>{{ x.sync.error if x.sync else '' }}</small></td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="cs-hint">키를 받으면 서버 <code>/etc/soboru.env</code>에 <code>WORK24_API_KEY=발급받은키</code>를 넣고 사이트를 다시 시작하면 돼요(배포 스크립트가 다시 시작해요). 6시간마다 저절로 가져오고, 허용된 칸(제목·회사·지역·급여·마감일·원문 링크 등)만 저장해요. 연락처는 저장하지 않아요. 마감일이 지나면 마감하고, 마감 30일 뒤 지워요.</p>
+    <p class="cs-hint">사업자 진위확인(국세청 API, <code>NTS_API_KEY</code>): {{ '켜짐 · 인증 신청을 바로 확인해요' if nts else '꺼짐 · 아래에서 운영자가 확인해 승인해요 (국세청 홈택스 사업자 상태 조회)' }}</p>
+  </section>
+  <section class="ad-panel">
+    <div class="ad-panel-head"><h2>사업자 인증 기다림 <small>{{ pending|length }}건</small></h2></div>
+    {% if pending %}<div class="tablewrap"><table class="ak-table"><thead><tr><th>회원</th><th>상호</th><th>사업자번호</th><th>대표자</th><th>개업일</th><th>신청</th><th></th></tr></thead><tbody>
+      {% for b in pending %}<tr><td>{{ b.nickname }}</td><td>{{ b.name }}</td><td>{{ b.biz_no[:3] }}-{{ b.biz_no[3:5] }}-{{ b.biz_no[5:] }}</td><td>{{ b.owner }}</td><td>{{ b.open_date }}</td><td>{{ b.created[5:16]|replace('T', ' ') }}</td>
+        <td><form method="post" class="inline-actions"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="user" value="{{ b.user_id }}"><button class="primary" name="act" value="biz_ok">승인</button><button class="secondary" name="act" value="biz_no" onclick="return confirm('반려할까요?')">반려</button></form></td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="ak-empty">기다리는 신청이 없어요.</p>{% endif %}
+  </section>
+  <section class="ad-panel">
+    <div class="ad-panel-head"><h2>신고·가린 공고</h2></div>
+    {% if reported %}<div class="tablewrap"><table class="ak-table"><thead><tr><th>공고</th><th>출처</th><th>신고</th><th>이유</th><th>상태</th><th></th></tr></thead><tbody>
+      {% for j in reported %}<tr><td><a href="{{ url_for('job', job_id=j.id) }}" target="_blank" rel="noopener">{{ j.title }}</a><br><small>{{ j.company }}</small></td><td>{{ '자체' if j.src == 'own' else j.src }}</td><td>{{ j.reports }}</td><td><small>{{ j.why or '' }}</small></td><td>{{ '가려짐' if j.hidden else '보임' }}</td>
+        <td><form method="post" class="inline-actions"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="job" value="{{ j.id }}">{% if j.hidden %}<button class="secondary" name="act" value="show">다시 보이기</button>{% else %}<button class="secondary" name="act" value="hide">가리기</button>{% endif %}<button class="secondary" name="act" value="delete" onclick="return confirm('공고와 지원서를 지울까요? 되돌릴 수 없어요.')">지우기</button></form></td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="ak-empty">신고된 공고가 없어요.</p>{% endif %}
+  </section>
+  <section class="ad-panel">
+    <div class="ad-panel-head"><h2>최근 자체 공고</h2></div>
+    {% if recent %}<div class="tablewrap"><table class="ak-table"><thead><tr><th>올린 때</th><th>공고</th><th>지역</th><th>급여</th><th>상태</th></tr></thead><tbody>
+      {% for j in recent %}<tr><td>{{ j.created[5:16]|replace('T', ' ') }}</td><td><a href="{{ url_for('job', job_id=j.id) }}" target="_blank" rel="noopener">{{ j.title }}</a><br><small>{{ j.company }}</small></td><td>{{ j.sido }} {{ j.sigungu }}</td><td>{{ j.pay_type }} {{ '{:,}'.format(j.pay) }}원</td><td>{{ '가려짐' if j.hidden else ('모집 중' if j.status == 'open' else '마감') }}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="ak-empty">아직 올라온 공고가 없어요.</p>{% endif %}
+  </section>
+</main>
+{% endblock %}

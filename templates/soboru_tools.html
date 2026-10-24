@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{# 계산기 모음 (AI 소비자 상담 옆 칸). soboru_tools.py tools() #}
+{% block title %}{{ ui('tools.title', '계산기') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('tools.meta', '헬스장·학원 환불, 청약철회 기한, 카드 할부, 대출·예적금 이자를 바로 계산해요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap tl">
+  <header class="tl-head">
+    <h1>{{ ui('tools.h1', '계산기') }}</h1>
+    <p>{{ ui('tools.intro', '환불·위약금, 할부·이자처럼 헷갈리는 돈 계산을 바로 해 봐요.') }}</p>
+  </header>
+  {% for g_key, g_title, g_desc in groups %}
+  <section class="tl-sec" id="{{ 'calc' if loop.first else 'calc-' ~ loop.index }}" aria-labelledby="tl-h{{ loop.index }}">
+    <div class="tl-sec-head"><h2 id="tl-h{{ loop.index }}">{{ g_title }}</h2><p>{{ g_desc }}</p></div>
+    <div class="tl-grid">{% for c in calcs if c.group == g_key %}
+      <a class="tl-card" href="{{ url_for('calc', slug=c.slug) }}"><span class="tf tl-emo" aria-hidden="true">{{ c.emoji }}</span><b>{{ c.name }}</b><small>{{ c.desc }}</small><em>{{ ui('tools.go', '계산하기') }} ›</em></a>
+    {% endfor %}</div>
+  </section>
+  {% endfor %}
+  <p class="tl-foot">{{ ui('tools.foot', '계산 결과와 풀이는 이해를 돕는 참고용이에요. 실제 금액은 계약서·약관과 업체 사정에 따라 달라질 수 있어요.') }}</p>
+</main>
+{% endblock %}

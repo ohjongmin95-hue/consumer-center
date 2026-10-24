@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{# 동네일자리 공고 한 개. 자체 공고는 간편 지원, 외부 공고는 출처·원문 링크. soboru_jobs.py job() #}
+{% from 'soboru_jobs_macros.html' import job_card, save_btn with context %}
+{% block title %}{{ j.title }} · {{ j.company }} | {{ ui('jobs.title', '동네일자리') }}{% endblock %}
+{% block description %}{{ j.place }} · {{ j.pay_label }}{% if j.days_label %} · {{ j.days_label }}{% endif %}{% if j.time_label %} {{ j.time_label }}{% endif %}. {{ j.body[:80] }}{% endblock %}
+{% block content %}
+<main class="sb-wrap jb jb-view">
+  <a class="cm-back" href="{{ url_for('jobs', sido=j.sido or None, sgg=j.sigungu or None) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('jobs.title', '동네일자리') }}</a>
+  {% if j.hidden %}<p class="jb-alert">{{ ui('jobs.hidden_note', '신고가 쌓여 지금은 다른 사람에게 보이지 않는 공고예요. 운영자가 확인하고 있어요.') }}</p>{% endif %}
+  <div class="jb-view-grid">
+    <article class="jb-doc">
+      <p class="jb-card-top"><span class="jb-src {{ 'own' if j.own else 'ext' }}">{{ j.source }}</span><span class="jb-dday">{{ j.dday }}</span>{% if j.own %}<span class="jb-ind"><i class="tf" aria-hidden="true">{{ j.ind_emoji }}</i>{{ j.ind_name }}</span>{% endif %}</p>
+      <h1>{{ j.title }}</h1>
+      <p class="jb-co big">{{ j.company }}{% if j.own %} <span class="jb-verified">{{ ui('jobs.verified', '사업자 인증') }}</span>{% endif %}</p>
+      <dl class="jb-facts">
+        <div><dt>{{ ui('jobs.d_pay', '급여') }}</dt><dd class="pay">{{ j.pay_label }}</dd></div>
+        <div><dt>{{ ui('jobs.d_place', '근무지') }}</dt><dd>{{ j.sido }} {{ j.sigungu }} {{ j.dong }}{% if j.addr and j.own %}<small>{{ j.addr }}</small>{% elif j.addr %}<small>{{ j.addr }}</small>{% endif %}</dd></div>
+        {% if j.days_label %}<div><dt>{{ ui('jobs.d_days', '요일') }}</dt><dd>{{ j.days_label }}</dd></div>{% endif %}
+        {% if j.time_label %}<div><dt>{{ ui('jobs.d_time', '시간') }}</dt><dd>{{ j.time_label }}</dd></div>{% endif %}
+        <div><dt>{{ ui('jobs.d_term', '기간') }}</dt><dd>{{ j.term_label }}</dd></div>
+        {% if j.own %}<div><dt>{{ ui('jobs.d_head', '모집 인원') }}</dt><dd>{{ j.headcount }}명</dd></div>{% endif %}
+        <div><dt>{{ ui('jobs.d_close', '마감') }}</dt><dd>{{ j.close_date or ui('jobs.always', '채용할 때까지') }}</dd></div>
+      </dl>
+      <section class="jb-text"><h2>{{ ui('jobs.d_body', '하는 일') if j.own else ui('jobs.d_info', '공고 정보') }}</h2><p>{{ mask_personal(j.body) or ui('jobs.no_body', '자세한 내용은 원문에서 확인해 주세요.') }}</p></section>
+      {% if not j.own and provider %}<p class="jb-credit">{{ ui('jobs.credit', '이 공고는 {name}에서 받아 보여 줘요. 내용이 바뀌었을 수 있으니 지원 전에 원문을 꼭 확인하세요.', name=provider.terms) }}</p>{% endif %}
+      <details class="jb-report">
+        <summary>{{ ui('jobs.report', '이 공고 신고하기') }}</summary>
+        {% if reported %}<p>{{ ui('jobs.reported_already', '이미 신고했어요. 운영자가 확인할게요.') }}</p>
+        {% elif g.user %}<form method="post" action="{{ url_for('job_report', job_id=j.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <div class="jb-chips col">{% for r in JOB_REASONS %}<label><input type="radio" name="reason" value="{{ r }}" required><span>{{ r }}</span></label>{% endfor %}</div>
+          <button type="submit" class="jb-btn ghost sm">{{ ui('jobs.report_go', '신고하기') }}</button></form>
+        {% else %}<p><a href="{{ url_for('login', next=request.path) }}">{{ ui('jobs.login_report', '로그인하고 신고하기') }}</a></p>{% endif %}
+      </details>
+    </article>
+    <aside class="jb-side">
+      <div class="jb-side-card">
+        <p class="jb-side-k">{{ j.pay_type if j.pay else '' }}</p>
+        <p class="jb-side-pay">{% if j.pay %}{{ '{:,}'.format(j.pay) }}원{% if j.pay_max %}<small> ~ {{ '{:,}'.format(j.pay_max) }}원</small>{% endif %}{% else %}{{ j.pay_label }}{% endif %}</p>
+        {% if j.pay_type == '시급' and j.pay %}<p class="jb-side-sub">{{ ui('jobs.minwage', '올해 최저임금 {w}원', w='{:,}'.format(JOB_MIN_WAGE())) }}</p>{% endif %}
+        {% if mine %}
+          <a class="jb-btn full" href="{{ url_for('job_applicants', job_id=j.id) }}">{{ ui('jobs.see_apps', '지원자 보기') }} ({{ n_apps }})</a>
+          <a class="jb-btn ghost full" href="{{ url_for('job_edit', job_id=j.id) }}">{{ ui('jobs.edit', '공고 고치기') }}</a>
+        {% elif j.status != 'open' %}<p class="jb-btn off full">{{ ui('jobs.closed', '마감된 공고예요.') }}</p>
+        {% elif j.own %}
+          {% if applied %}<p class="jb-btn off full">{{ ui('jobs.applied_state', '지원 완료 · {s}', s=JOB_APP_STATE[applied['state']]) }}</p>
+          {% else %}<a class="jb-btn full" href="{{ url_for('job_apply', job_id=j.id) }}">{{ ui('jobs.apply_go', '간편 지원하기') }}</a>{% endif %}
+        {% elif j.apply_url %}<a class="jb-btn full" href="{{ j.apply_url }}" target="_blank" rel="noopener nofollow">{{ ui('jobs.ext_go', '{name}에서 지원하기', name=j.source) }} ↗</a>
+        {% endif %}
+        {% if not mine %}{% if g.user %}{{ save_btn(j, true) }}{% else %}<a class="jb-btn ghost full" href="{{ url_for('login', next=request.path) }}">{{ ui('jobs.login_save', '로그인하고 관심 공고 담기') }}</a>{% endif %}{% endif %}
+        {% if j.own and not mine %}<p class="jb-side-note">{{ ui('jobs.apply_note', '지원하면 이름·연락처·한마디가 이 사장님에게만 전달돼요.') }}</p>{% endif %}
+      </div>
+    </aside>
+  </div>
+  {# 휴대폰: 아래에 늘 보이는 지원 줄 #}
+  {% if not mine and j.status == 'open' and (j.own and not applied or (not j.own and j.apply_url)) %}
+  <div class="jb-mcta"><span><small>{{ j.pay_type if j.pay else '' }}</small><b>{{ '{:,}'.format(j.pay) ~ '원' if j.pay else j.pay_label }}</b></span>
+    {% if j.own %}<a class="jb-btn" href="{{ url_for('job_apply', job_id=j.id) }}">{{ ui('jobs.apply_go', '간편 지원하기') }}</a>{% else %}<a class="jb-btn" href="{{ j.apply_url }}" target="_blank" rel="noopener nofollow">{{ ui('jobs.ext_go_s', '원문에서 지원') }} ↗</a>{% endif %}</div>
+  {% endif %}
+  {% if near %}<section class="jb-near"><h2>{{ ui('jobs.near', '{p}의 다른 공고', p=j.sigungu) }}</h2><div class="jb-near-grid">{% for x in near %}{{ job_card(x, true) }}{% endfor %}</div></section>{% endif %}
+</main>
+{% endblock %}

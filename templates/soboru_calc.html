@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{# 계산기 한 개: 칸은 soboru_tools.py CALCS, 계산은 static/soboru-calc.js (브라우저에서만) #}
+{% block title %}{{ c.name }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ c.desc }}. {{ c.note[:90] }}{% endblock %}
+{% block content %}
+<main class="sb-wrap tl tl-calc">
+  <a class="cm-back" href="{{ url_for('tools') }}#calc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('tools.back', '계산기 모두 보기') }}</a>
+  <header class="tl-calc-head"><span class="tf tl-emo" aria-hidden="true">{{ c.emoji }}</span><div><h1>{{ c.name }}</h1><p>{{ c.desc }}</p></div></header>
+  <div class="tl-calc-body">
+    <form class="tl-form" data-calc="{{ c.slug }}" novalidate>
+      {% for name, label, kind, default, extra in c.fields %}
+      <div class="tl-f">
+        <label for="f-{{ name }}">{{ label }}</label>
+        {% if kind == 'pick' %}
+        <div class="tl-pick" role="radiogroup" aria-label="{{ label }}">{% for v, l in extra %}<label><input type="radio" name="{{ name }}" value="{{ v }}"{% if v == default %} checked{% endif %}><span>{{ l }}</span></label>{% endfor %}</div>
+        {% elif kind == 'date' %}
+        <input id="f-{{ name }}" name="{{ name }}" type="date" value="{{ default }}">
+        {% else %}
+        <div class="tl-in"><input id="f-{{ name }}" name="{{ name }}" inputmode="decimal" autocomplete="off"{% if kind == 'won' %} data-won value="{{ '{:,}'.format(default) if default != '' else '' }}"{% else %} value="{{ default }}"{% endif %}><span>{{ extra }}</span></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      <noscript><p class="tl-note">{{ ui('tools.noscript', '계산기는 자바스크립트를 켜야 움직여요.') }}</p></noscript>
+    </form>
+    <section class="tl-out" aria-live="polite" data-calc-out><p class="tc-wait">{{ ui('tools.wait', '칸을 채우면 바로 계산해요.') }}</p></section>
+  </div>
+  <section class="tl-why"><h2>{{ ui('tools.why', '이렇게 셈했어요') }}</h2><p>{{ c.note }}</p>
+    <p class="tl-why-go">{% if ask_on() %}<a href="{{ url_for('law_ask') }}">{{ ui('tools.ask_more', 'AI 소비자 상담에 내 상황 물어보기') }} ›</a>{% endif %}<a href="{{ url_for('report') }}">{{ ui('tools.report_more', '업체가 안 들어주면 제보하기') }} ›</a></p></section>
+  {% if more %}<section class="tl-sec"><div class="tl-sec-head"><h2>{{ ui('tools.more', '다른 계산기') }}</h2></div>
+    <div class="tl-grid sm">{% for x in more %}<a class="tl-card" href="{{ url_for('calc', slug=x.slug) }}"><span class="tf tl-emo" aria-hidden="true">{{ x.emoji }}</span><b>{{ x.name }}</b><small>{{ x.desc }}</small></a>{% endfor %}</div></section>{% endif %}
+</main>
+<script src="{{ asset('soboru-calc.js') }}" defer></script>
+{% endblock %}

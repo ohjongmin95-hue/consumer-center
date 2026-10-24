@@ -445,4 +445,46 @@ if hasattr(m, 'soboru_cm') and os.environ.get('VRT_NN'):
                 db.execute('INSERT INTO vs_votes(poll_id,voter,pick,used,created) VALUES(?,?,?,?,?)', (vid, 'seed%d-%d' % (vid, i), 'a' if i < va else 'b', 1 if i % 4 == 0 else 0, _ago3(h / 2)))
             for nick2, body2, pick in [('경험자', '저는 써 봤는데 이쪽이 훨씬 나았어요.', 'a'), ('지나가던이웃', '저라면 이거요. 가성비가 좋아요.', 'b')][: 2 if va + vb > 20 else 1]:
                 db.execute('INSERT INTO vs_comments(poll_id,nickname,body,pick,created) VALUES(?,?,?,?,?)', (vid, nick2, body2, pick, _ago3(h / 3)))
+# 동네일자리 미리보기 (soboru_jobs.py): 사업자 인증한 사장님 공고 몇 개 + 가짜 고용24 응답(XML)을 실제 파서로 넣음 (실제 API는 안 부름)
+if hasattr(m, 'soboru_jobs') and os.environ.get('VRT_NN'):
+    import datetime as _dt
+    J = m.soboru_jobs
+    def _agoj(h): return (_dt.datetime.now() - _dt.timedelta(hours=h)).isoformat(timespec='seconds')
+    def _dayj(d): return (_dt.date.today() + _dt.timedelta(days=d)).isoformat()
+    with m.conn() as db:
+        def _u(login, nick):
+            r = db.execute('SELECT id FROM users WHERE login_id=?', (login,)).fetchone()
+            return r[0] if r else db.execute("INSERT INTO users(login_id,pw_hash,nickname,terms_version,agreed_at,created) VALUES(?,?,?,?,?,?)", (login, 'x', nick, 'v1', _agoj(900), _agoj(900))).lastrowid
+        owners = [(_u('vrt_job1', '역삼베이커리'), '소보루베이커리 역삼점'), (_u('vrt_job2', '논현카페'), '오소보커피 논현점'), (_u('vrt_job3', '마트사장'), '소보루마트 대치점')]
+        for uid, name in owners:
+            db.execute("INSERT OR REPLACE INTO jobs_biz(user_id,biz_no,name,owner,open_date,state,how,created,decided) VALUES(?,?,?,?,?,'ok','admin',?,?)", (uid, '1291481596', name, '오사장', '2020-01-02', _agoj(500), _agoj(500)))
+        for o, title, ind, sgg, dong, pt, pay, days, st, et, term, close, body, h in [
+                (0, '주말 오전 베이커리 매장 알바 (빵 포장·계산)', 'food', '강남구', '역삼동', '시급', 12000, '토,일', '08:00', '13:00', 'long', 14, '갓 구운 빵 포장과 계산을 해 주실 분을 찾아요. 처음이어도 하루면 배울 수 있어요. 남은 빵은 퇴근할 때 챙겨 드려요.', 3),
+                (1, '평일 오후 카페 바리스타 (경력 무관)', 'food', '강남구', '논현동', '시급', 11500, '월,화,수,목,금', '14:00', '19:00', 'long', 0, '음료 제조와 매장 정리를 맡아 주세요. 바리스타 자격증은 없어도 괜찮아요. 근무 중 음료 무료.', 9),
+                (2, '마트 진열·재고 정리 단기 알바 (2주)', 'store', '강남구', '대치동', '일급', 110000, '월,화,수,목,금', '09:00', '18:00', 'short', 3, '추석 뒤 재고 정리를 같이 해 주실 분. 점심 제공, 무거운 짐은 지게차로 옮겨요.', 20),
+                (0, '새벽 제빵 보조 (경력자 우대)', 'food', '강남구', '역삼동', '월급', 2600000, '월,화,수,목,금,토', '04:00', '11:00', 'long', 30, '반죽·성형 보조 일을 해요. 4대 보험, 식사 제공.', 40),
+                (1, '토요일 하루 행사 도우미', 'service', '서초구', '서초동', '일급', 120000, '토', '10:00', '18:00', 'short', 5, '매장 시음 행사 안내 도우미예요. 밝게 인사해 주실 분이면 충분해요.', 50)]:
+            uid, name = owners[o]
+            db.execute("INSERT INTO jobs(src,user_id,title,company,sido,sigungu,dong,addr,industry,pay_type,pay,days,start_t,end_t,term,headcount,body,close_date,views,dkey,created,updated) "
+                       "VALUES('own',?,?,?,'서울',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                       (uid, title, name, sgg, dong, dong + ' 역 근처', ind, pt, pay, days, st, et, term, 2, body, _dayj(close) if close else '', 20 + h, J.dkey(name, title, '서울', sgg), _agoj(h), _agoj(h)))
+        xml = """<?xml version="1.0" encoding="UTF-8"?><wantedRoot><total>3</total><startPage>1</startPage><display>100</display>
+<wanted><wantedAuthNo>K151612610240011</wantedAuthNo><company>(주)소보루물류</company><title>물류센터 상품 분류·포장원 (주간)</title><salTpNm>시급</salTpNm><sal>시급 11,000원 ~ 12,500원</sal><minSal>11000</minSal><maxSal>12500</maxSal><region>서울 강남구</region><holidayTpNm>주5일근무</holidayTpNm><minEdubg>학력무관</minEdubg><career>관계없음</career><regDt>26-10-22</regDt><closeDt>26-11-21</closeDt><wantedInfoUrl>https://www.work24.go.kr/wk/a/b/1500/empDetailAuthView.do?wantedAuthNo=K151612610240011</wantedInfoUrl><basicAddr>서울특별시 강남구 남부순환로 2806</basicAddr><empTpNm>기간의 정함이 없는 근로계약</empTpNm></wanted>
+<wanted><wantedAuthNo>K151612610240012</wantedAuthNo><company>소보루요양원</company><title>요양보호사 (주야 교대)</title><salTpNm>월급</salTpNm><sal>월급 2,400,000원 ~ 2,800,000원</sal><minSal>2400000</minSal><maxSal>2800000</maxSal><region>서울 강남구</region><holidayTpNm>주4일근무</holidayTpNm><minEdubg>학력무관</minEdubg><career>신입</career><regDt>26-10-23</regDt><closeDt>채용시까지 26-12-20</closeDt><wantedInfoUrl>https://www.work24.go.kr/wk/a/b/1500/empDetailAuthView.do?wantedAuthNo=K151612610240012</wantedInfoUrl><basicAddr>서울특별시 강남구 도곡로 120</basicAddr><empTpNm>기간의 정함이 없는 근로계약</empTpNm></wanted>
+<wanted><wantedAuthNo>K151612610240013</wantedAuthNo><company>소보루학원</company><title>초등 수학 보조강사 (단기 계약)</title><salTpNm>시급</salTpNm><sal>시급 15,000원</sal><minSal>15000</minSal><maxSal></maxSal><region>서울 서초구</region><holidayTpNm>주5일근무</holidayTpNm><minEdubg>대졸(2~3년)</minEdubg><career>관계없음</career><regDt>26-10-24</regDt><closeDt>26-11-05</closeDt><wantedInfoUrl>https://www.work24.go.kr/wk/a/b/1500/empDetailAuthView.do?wantedAuthNo=K151612610240013</wantedInfoUrl><basicAddr>서울특별시 서초구 서초대로 77길</basicAddr><empTpNm>기간의 정함이 있는 근로계약(단기)</empTpNm></wanted>
+</wantedRoot>"""
+        p = J.PROVIDER['work24']
+        J.save_external(db, [J.to_row(p, r) for r in J.parse_items(p, xml.encode())])
+        db.execute("INSERT OR REPLACE INTO jobs_sync(src,at,ok,added,updated,closed,error) VALUES('work24',?,1,3,0,0,'')", (_agoj(1),))
+        me = db.execute("SELECT id FROM users WHERE login_id='vrt_member'").fetchone()
+        if me:
+            jid = db.execute("SELECT id FROM jobs WHERE src='own' ORDER BY id LIMIT 1").fetchone()[0]
+            db.execute("INSERT OR IGNORE INTO jobs_apps(job_id,user_id,name,phone,msg,state,created) VALUES(?,?,?,?,?,?,?)", (jid, me[0], '김알뜰', '01012345678', '주말 오전 가능해요!', 'contact', _agoj(2)))
+            db.execute("INSERT OR IGNORE INTO jobs_saves(user_id,job_id,created) VALUES(?,?,?)", (me[0], jid + 1, _agoj(1)))
+            # vrt_member도 사장님: 인증 + 공고 1개 + 지원자 3명 (내 공고 관리·지원자 화면용)
+            db.execute("INSERT OR REPLACE INTO jobs_biz(user_id,biz_no,name,owner,open_date,state,how,created,decided) VALUES(?,?,?,?,?,'ok','admin',?,?)", (me[0], '1291481596', '알뜰분식 역삼점', '김알뜰', '2021-03-02', _agoj(300), _agoj(300)))
+            mj = db.execute("INSERT INTO jobs(src,user_id,title,company,sido,sigungu,dong,industry,pay_type,pay,days,start_t,end_t,term,headcount,body,views,dkey,created,updated) "
+                            "VALUES('own',?,'점심 피크 홀 서빙 (11시~3시)','알뜰분식 역삼점','서울','강남구','역삼동','food','시급',12500,'월,화,수,목,금','11:00','15:00','long',1,'점심시간 홀 서빙과 정리를 도와주실 분을 찾아요. 식사 제공.',87,'x',?,?)", (me[0], _agoj(30), _agoj(30))).lastrowid
+            for i, (nm, ph, msg, stt) in enumerate([('이하늘', '01023456789', '근처 대학생이에요. 평일 점심 다 가능해요!', 'new'), ('박소연', '01034567890', '분식집 서빙 1년 해 봤어요.', 'contact'), ('최민준', '01045678901', '', 'seen')]):
+                db.execute("INSERT INTO jobs_apps(job_id,user_id,name,phone,msg,state,created) VALUES(?,?,?,?,?,?,?)", (mj, 900000 + i, nm, ph, msg, stt, _agoj(3 + i * 5)))
 app.run(host='127.0.0.1', port=PORT)
