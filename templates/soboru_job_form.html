@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{# 사장님 공고 올리기·고치기 (사업자 인증 뒤). soboru_jobs.py job_new() job_edit() #}
+{% from 'soboru_jobs_macros.html' import region_js with context %}
+{% block title %}{{ ui('jobs.edit', '공고 고치기') if edit else ui('jobs.new_title', '공고 올리기') }} | {{ ui('jobs.title', '동네일자리') }}{% endblock %}
+{% block content %}
+{% set fd = f.getlist('days') if f.getlist is defined else (f.get('days') or []) %}
+<main class="sb-wrap jb jb-narrow">
+  <a class="cm-back" href="{{ url_for('jobs_manage') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('jobs.manage', '내 공고 관리') }}</a>
+  <h1 class="jb-h1">{{ ui('jobs.edit', '공고 고치기') if edit else ui('jobs.new_h1', '어떤 분을 찾고 있나요?') }}</h1>
+  <p class="jb-lead">{{ b['name'] }} · {{ ui('jobs.free', '공고 올리기는 무료예요.') }}</p>
+  <form class="jb-form-card" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h2>{{ ui('jobs.s_basic', '기본 정보') }}</h2>
+    <label class="jb-f"><span>{{ ui('jobs.f_title', '공고 제목') }}</span><input name="title" value="{{ f.get('title', '') }}" maxlength="60" required placeholder="{{ ui('jobs.f_title_ph', '예: 주말 오전 베이커리 매장 알바') }}"></label>
+    <div class="jb-f"><span>{{ ui('jobs.f_ind', '업종') }}</span><div class="jb-chips">{% for k, n, e in JOB_INDUSTRIES %}<label><input type="radio" name="industry" value="{{ k }}" required{% if f.get('industry') == k %} checked{% endif %}><span><i class="tf" aria-hidden="true">{{ e }}</i>{{ n }}</span></label>{% endfor %}</div></div>
+    <h2>{{ ui('jobs.s_place', '근무지') }}</h2>
+    <div class="jb-f3">
+      <label class="jb-f"><span>{{ ui('jobs.sido', '시·도') }}</span><select name="sido" data-sido="jf-sgg" required><option value="">{{ ui('jobs.pick', '고르기') }}</option>{% for s in JOB_REGIONS %}<option{% if f.get('sido') == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+      <label class="jb-f"><span>{{ ui('jobs.sgg', '시·군·구') }}</span><select name="sgg" id="jf-sgg" data-cur="{{ f.get('sgg', '') }}" required><option value="">{{ ui('jobs.pick', '고르기') }}</option>{% for x in JOB_REGIONS.get(f.get('sido'), []) %}<option{% if f.get('sgg') == x %} selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
+      <label class="jb-f"><span>{{ ui('jobs.dong', '읍·면·동') }}</span><input name="dong" value="{{ f.get('dong', '') }}" maxlength="12" placeholder="{{ ui('jobs.dong_ex', '예: 역삼동') }}"></label>
+    </div>
+    <label class="jb-f"><span>{{ ui('jobs.f_addr', '상세 위치') }} <small>{{ ui('cm.optional', '선택') }}</small></span><input name="addr" value="{{ f.get('addr', '') }}" maxlength="80" placeholder="{{ ui('jobs.f_addr_ph', '예: 역삼역 3번 출구 도보 2분') }}"></label>
+    <h2>{{ ui('jobs.s_work', '근무 조건') }}</h2>
+    <div class="jb-f"><span>{{ ui('jobs.f_term', '근무 기간') }}</span><div class="jb-chips">{% for k, n in JOB_TERMS %}<label><input type="radio" name="term" value="{{ k }}" required{% if f.get('term') == k %} checked{% endif %}><span>{{ n }}</span></label>{% endfor %}</div></div>
+    <div class="jb-f"><span>{{ ui('jobs.f_workdays', '근무 요일') }}</span><div class="jb-chips days">{% for d in JOB_DAYS %}<label><input type="checkbox" name="days" value="{{ d }}"{% if d in fd %} checked{% endif %}><span>{{ d }}</span></label>{% endfor %}</div></div>
+    <div class="jb-f"><span>{{ ui('jobs.f_worktime', '근무 시간') }}</span><div class="jb-time"><input type="time" name="start_t" value="{{ f.get('start_t', '') }}" step="1800" aria-label="시작"><span>~</span><input type="time" name="end_t" value="{{ f.get('end_t', '') }}" step="1800" aria-label="끝"><label class="jb-check sm"><input type="checkbox" name="time_nego" value="1"{% if f.get('time_nego') in ('1', 1) %} checked{% endif %}><span>{{ ui('jobs.nego', '시간 협의') }}</span></label></div></div>
+    <h2>{{ ui('jobs.s_pay', '급여') }}</h2>
+    <div class="jb-f2">
+      <label class="jb-f"><span>{{ ui('jobs.f_paytype', '급여 형태') }}</span><select name="pay_type" required>{% for k in JOB_PAY_TYPES %}<option{% if f.get('pay_type', '시급') == k %} selected{% endif %}>{{ k }}</option>{% endfor %}</select></label>
+      <label class="jb-f"><span>{{ ui('jobs.f_amount', '금액') }}</span><span class="jb-won"><input name="pay" value="{{ f.get('pay', '') }}" inputmode="numeric" required placeholder="{{ JOB_MIN_WAGE() }}"><i>원</i></span></label>
+    </div>
+    <p class="jb-hint">{{ ui('jobs.wage_hint', '{y} 최저임금은 시급 {w}원이에요. 이보다 적은 시급은 올릴 수 없어요. 주 15시간 넘게 일하면 주휴수당도 챙겨 주세요.', y='올해', w='{:,}'.format(JOB_MIN_WAGE())) }}</p>
+    <h2>{{ ui('jobs.s_more', '모집 내용') }}</h2>
+    <div class="jb-f2">
+      <label class="jb-f"><span>{{ ui('jobs.f_head', '모집 인원') }}</span><input name="headcount" type="number" min="1" max="99" value="{{ f.get('headcount', 1) }}"></label>
+      <label class="jb-f"><span>{{ ui('jobs.f_close', '마감일') }} <small>{{ ui('jobs.f_close_s', '비우면 채용할 때까지') }}</small></span><input name="close_date" type="date" value="{{ f.get('close_date', '') }}"></label>
+    </div>
+    <label class="jb-f"><span>{{ ui('jobs.f_body', '하는 일·우대 사항') }}</span><textarea name="body" rows="7" maxlength="2000" required placeholder="{{ ui('jobs.f_body_ph', '하는 일, 필요한 경험, 쉬는 시간, 식사·교통비 같은 복지를 적어 주세요.') }}">{{ f.get('body', '') }}</textarea></label>
+    <div class="jb-rules"><b>{{ ui('jobs.rules_t', '올리기 전에 꼭 확인해 주세요') }}</b><ul>
+      <li>{{ ui('jobs.rule1', '성별·나이를 정해 뽑는 표현은 쓸 수 없어요 (남녀고용평등법·고령자고용법).') }}</li>
+      <li>{{ ui('jobs.rule2', '실제와 다른 급여·조건, 교육비·통장을 요구하는 공고는 거짓 구인광고예요 (직업안정법).') }}</li>
+      <li>{{ ui('jobs.rule3', '지원자 연락처는 채용 연락에만 쓰고, 다른 곳에 넘기지 마세요.') }}</li></ul></div>
+    <button class="jb-btn full big" type="submit">{{ ui('jobs.save_edit', '고친 내용 저장') if edit else ui('jobs.post_send', '무료로 공고 올리기') }}</button>
+  </form>
+</main>
+{{ region_js() }}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{# 간편 지원: 이름·연락처·한마디, 개인정보 제공 동의. soboru_jobs.py job_apply() #}
+{% block title %}{{ ui('jobs.apply_title', '간편 지원') }} · {{ j.title }} | {{ ui('jobs.title', '동네일자리') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap jb jb-narrow">
+  <a class="cm-back" href="{{ url_for('job', job_id=j.id) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('jobs.back_job', '공고로 돌아가기') }}</a>
+  <h1 class="jb-h1">{{ ui('jobs.apply_h1', '간편 지원') }}</h1>
+  <div class="jb-mini-job"><b>{{ j.title }}</b><span>{{ j.company }} · {{ j.place }} · {{ j.pay_label }}</span></div>
+  <form class="jb-form-card" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label class="jb-f"><span>{{ ui('jobs.f_name', '이름') }}</span><input name="name" value="{{ f.get('name', '') }}" maxlength="20" required autocomplete="name"></label>
+    <label class="jb-f"><span>{{ ui('jobs.f_phone', '휴대폰 번호') }}</span><input name="phone" value="{{ f.get('phone', '') }}" inputmode="numeric" maxlength="13" placeholder="01012345678" required autocomplete="tel"></label>
+    <label class="jb-f"><span>{{ ui('jobs.f_msg', '사장님께 한마디') }} <small>{{ ui('cm.optional', '선택') }}</small></span><textarea name="msg" rows="4" maxlength="300" placeholder="{{ ui('jobs.f_msg_ph', '예: 평일 오후에 일할 수 있어요. 카페 일 6개월 해 봤어요.') }}">{{ f.get('msg', '') }}</textarea></label>
+    <div class="jb-consent">
+      <p><b>{{ ui('jobs.c_title', '개인정보 제3자 제공 동의 (필수)') }}</b></p>
+      <ul><li>{{ ui('jobs.c_to', '받는 사람: 이 공고를 올린 사업자 ({c})', c=j.company) }}</li><li>{{ ui('jobs.c_items', '항목: 이름, 휴대폰 번호, 한마디') }}</li><li>{{ ui('jobs.c_why', '목적: 채용 연락과 면접 일정 잡기') }}</li><li>{{ ui('jobs.c_keep', '보관: 공고가 마감되고 90일 뒤 지워요') }}</li></ul>
+      <p class="jb-c-no">{{ ui('jobs.c_no', '동의하지 않을 수 있지만, 그러면 간편 지원을 할 수 없어요.') }}</p>
+      <label class="jb-check"><input type="checkbox" name="agree" value="1" required><span>{{ ui('jobs.c_ok', '위 내용을 확인했고 동의해요') }}</span></label>
+    </div>
+    <button class="jb-btn full big" type="submit">{{ ui('jobs.apply_send', '지원하기') }}</button>
+  </form>
+</main>
+{% endblock %}

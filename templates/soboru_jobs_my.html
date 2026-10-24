@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{# 구직자: 지원한 공고·관심 공고. soboru_jobs.py jobs_my() #}
+{% from 'soboru_jobs_macros.html' import job_card with context %}
+{% block title %}{{ ui('jobs.my', '내 지원·관심') }} | {{ ui('jobs.title', '동네일자리') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap jb jb-mid">
+  <a class="cm-back" href="{{ url_for('jobs') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('jobs.title', '동네일자리') }}</a>
+  <h1 class="jb-h1">{{ ui('jobs.my', '내 지원·관심') }}</h1>
+  <nav class="jb-tabs"><a href="{{ url_for('jobs_my') }}"{% if tab == 'apps' %} class="on" aria-current="page"{% endif %}>{{ ui('jobs.t_apps', '지원한 공고') }} <b>{{ apps|length }}</b></a><a href="{{ url_for('jobs_my', t='saved') }}"{% if tab == 'saved' %} class="on" aria-current="page"{% endif %}>{{ ui('jobs.t_saved', '관심 공고') }} <b>{{ saved|length }}</b></a></nav>
+  {% if tab == 'apps' %}
+    {% for j in apps %}<div class="jb-app-row"><span class="jb-state s-{{ j.app_state }}">{{ JOB_APP_STATE[j.app_state] }}</span><small>{{ j.applied[:10]|replace('-', '.') }} {{ ui('jobs.applied_on', '지원') }}</small>{{ job_card(j, true) }}</div>
+    {% else %}<div class="jb-empty"><span class="tf" aria-hidden="true">📋</span><b>{{ ui('jobs.no_apps', '아직 지원한 공고가 없어요') }}</b><a class="jb-btn" href="{{ url_for('jobs') }}">{{ ui('jobs.find', '동네 공고 보러 가기') }}</a></div>{% endfor %}
+  {% else %}
+    {% for j in saved %}{{ job_card(j) }}
+    {% else %}<div class="jb-empty"><span class="tf" aria-hidden="true">💡</span><b>{{ ui('jobs.no_saved', '담아 둔 공고가 없어요') }}</b><p>{{ ui('jobs.no_saved_d', '공고의 하트를 누르면 여기 모여요.') }}</p></div>{% endfor %}
+  {% endif %}
+</main>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{# 사장님 사업자 인증. 국세청 진위확인(키가 있을 때) 또는 운영자 확인. soboru_jobs.py jobs_biz() #}
+{% block title %}{{ ui('jobs.biz_title', '사업자 인증') }} | {{ ui('jobs.title', '동네일자리') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap jb jb-narrow">
+  <a class="cm-back" href="{{ url_for('jobs') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('jobs.title', '동네일자리') }}</a>
+  <h1 class="jb-h1">{{ ui('jobs.biz_h1', '사장님 인증하고 무료로 공고 올리기') }}</h1>
+  <p class="jb-lead">{{ ui('jobs.biz_lead', '구직자가 안심하고 지원할 수 있게, 공고는 사업자 인증을 마친 사장님만 올릴 수 있어요. 인증은 한 번이면 돼요.') }}</p>
+  {% if b and b['state'] == 'ok' %}
+    <div class="jb-status ok"><b>{{ ui('jobs.biz_done', '인증을 마쳤어요') }}</b><span>{{ b['name'] }} · {{ b['biz_no'][:3] }}-{{ b['biz_no'][3:5] }}-*****</span><a class="jb-btn" href="{{ url_for('job_new') }}">{{ ui('jobs.post_go', '공고 올리기') }}</a></div>
+  {% elif b and b['state'] == 'pending' %}
+    <div class="jb-status wait"><b>{{ ui('jobs.biz_pending', '운영자가 확인하고 있어요') }}</b><span>{{ ui('jobs.biz_pending_d', '보통 하루 안에 끝나고, 끝나면 알림으로 알려 드려요.') }}</span></div>
+  {% endif %}
+  {% if not b or b['state'] != 'ok' %}
+  {% if b and b['state'] == 'rejected' %}<p class="jb-alert">{{ ui('jobs.biz_rejected', '지난 신청은 확인되지 않았어요. 사업자등록증과 똑같이 다시 적어 주세요.') }}</p>{% endif %}
+  <form class="jb-form-card" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label class="jb-f"><span>{{ ui('jobs.f_bizno', '사업자등록번호') }}</span><input name="biz_no" value="{{ f.get('biz_no', '') }}" inputmode="numeric" maxlength="12" placeholder="000-00-00000" required></label>
+    <label class="jb-f"><span>{{ ui('jobs.f_bizname', '상호 (공고에 보이는 이름)') }}</span><input name="name" value="{{ f.get('name', '') }}" maxlength="40" required placeholder="{{ ui('jobs.f_bizname_ph', '예: 소보루베이커리 역삼점') }}"></label>
+    <div class="jb-f2">
+      <label class="jb-f"><span>{{ ui('jobs.f_owner', '대표자 이름') }}</span><input name="owner" value="{{ f.get('owner', '') }}" maxlength="20" required></label>
+      <label class="jb-f"><span>{{ ui('jobs.f_open', '개업일') }}</span><input name="open_date" type="date" value="{{ f.get('open_date', '') }}" required></label>
+    </div>
+    <p class="jb-hint">{{ ui('jobs.biz_how_nts', '적은 정보는 국세청 사업자등록 정보와 바로 맞춰 봐요.') if nts else ui('jobs.biz_how_admin', '적은 정보는 운영자가 국세청 사업자등록 상태 조회로 확인해요.') }} {{ ui('jobs.biz_keep', '대표자 이름·개업일은 확인에만 쓰고 공고에는 상호만 보여요.') }}</p>
+    <label class="jb-check"><input type="checkbox" name="agree" value="1" required><span>{{ ui('jobs.biz_agree', '사업자 정보 확인에 동의하고, 거짓 구인광고·차별 공고를 올리지 않을게요') }}</span></label>
+    <button class="jb-btn full big" type="submit">{{ ui('jobs.biz_send', '인증하기') }}</button>
+  </form>
+  {% endif %}
+</main>
+{% endblock %}

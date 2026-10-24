@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{# 사장님: 공고 한 개의 지원자. 연락처는 이 화면에서만. soboru_jobs.py job_applicants() #}
+{% block title %}{{ ui('jobs.applicants', '지원자') }} · {{ j.title }} | {{ ui('jobs.title', '동네일자리') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap jb jb-mid">
+  <a class="cm-back" href="{{ url_for('jobs_manage') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('jobs.manage', '내 공고 관리') }}</a>
+  <h1 class="jb-h1">{{ ui('jobs.applicants', '지원자') }} <span class="jb-n">{{ apps|length }}</span></h1>
+  <div class="jb-mini-job"><b>{{ j.title }}</b><span>{{ j.place }} · {{ j.pay_label }} · {{ j.dday }}</span></div>
+  <p class="jb-hint">{{ ui('jobs.app_privacy', '지원자 연락처는 채용 연락에만 써 주세요. 공고가 마감되고 90일 뒤 저절로 지워져요.') }}</p>
+  <div class="jb-apps">{% for a in apps %}
+    <article class="jb-app">
+      <div class="jb-app-who"><span class="jb-av" aria-hidden="true">{{ a['name'][:1] }}</span><div><b>{{ a['name'] }}</b><a href="tel:{{ a['phone'] }}">{{ a['phone'][:3] }}-{{ a['phone'][3:-4] }}-{{ a['phone'][-4:] }}</a></div><small>{{ a['created'][:16]|replace('T', ' ')|replace('-', '.') }}</small></div>
+      {% if a['msg'] %}<p class="jb-app-msg">{{ a['msg'] }}</p>{% endif %}
+      <form method="post" class="jb-app-st"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="app" value="{{ a['id'] }}">
+        {% for k, n in JOB_APP_STATES if k != 'new' %}<button type="submit" name="state" value="{{ k }}"{% if a['state'] == k %} class="on" aria-pressed="true"{% endif %}>{{ n }}</button>{% endfor %}</form>
+    </article>
+  {% else %}<div class="jb-empty"><span class="tf" aria-hidden="true">📭</span><b>{{ ui('jobs.no_apps_yet', '아직 지원자가 없어요') }}</b><p>{{ ui('jobs.no_apps_d', '지원이 들어오면 알림으로 알려 드려요.') }}</p></div>{% endfor %}</div>
+</main>
+{% endblock %}

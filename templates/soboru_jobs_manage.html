@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{# 사장님: 내 공고와 지원자 수, 마감·다시 열기. soboru_jobs.py jobs_manage() #}
+{% block title %}{{ ui('jobs.manage', '내 공고 관리') }} | {{ ui('jobs.title', '동네일자리') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap jb jb-mid">
+  <a class="cm-back" href="{{ url_for('jobs') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('jobs.title', '동네일자리') }}</a>
+  <div class="jb-h1-row"><h1 class="jb-h1">{{ ui('jobs.manage', '내 공고 관리') }}</h1>{% if b and b['state'] == 'ok' %}<a class="jb-btn" href="{{ url_for('job_new') }}">{{ ui('jobs.post_new', '새 공고 올리기') }}</a>{% else %}<a class="jb-btn" href="{{ url_for('jobs_biz') }}">{{ ui('jobs.biz_go', '사업자 인증하기') }}</a>{% endif %}</div>
+  {% if b %}<p class="jb-lead">{{ b['name'] }} · {{ {'ok': '사업자 인증 완료', 'pending': '인증 확인 중', 'rejected': '인증 반려'}[b['state']] }}</p>{% endif %}
+  <div class="jb-mg">{% for j in rows %}
+    <article class="jb-mg-card{{ ' closed' if j.status != 'open' }}">
+      <div class="jb-mg-main"><p class="jb-card-top"><span class="jb-st {{ 'on' if j.status == 'open' and not j.hidden else 'off' }}">{{ '가려짐' if j.hidden else ('모집 중' if j.status == 'open' else '마감') }}</span><span class="jb-dday">{{ j.dday }}</span></p>
+        <a href="{{ url_for('job', job_id=j.id) }}"><b>{{ j.title }}</b></a><span class="jb-co">{{ j.place }} · {{ j.pay_label }} · {{ ui('jobs.views', '조회 {n}', n=j.views) }}</span></div>
+      <a class="jb-mg-apps" href="{{ url_for('job_applicants', job_id=j.id) }}"><b>{{ j.n_apps }}</b><span>{{ ui('jobs.applicants', '지원자') }}{% if j.n_new %} <em>{{ ui('jobs.new_n', '새 {n}', n=j.n_new) }}</em>{% endif %}</span></a>
+      <div class="jb-mg-btns"><a href="{{ url_for('job_edit', job_id=j.id) }}">{{ ui('jobs.edit_s', '고치기') }}</a>
+        <form method="post" action="{{ url_for('job_close', job_id=j.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% if j.status != 'open' %}<input type="hidden" name="open" value="1">{% endif %}<button type="submit">{{ ui('jobs.reopen', '다시 열기') if j.status != 'open' else ui('jobs.close', '마감하기') }}</button></form></div>
+    </article>
+  {% else %}<div class="jb-empty"><span class="tf" aria-hidden="true">📢</span><b>{{ ui('jobs.no_mine', '아직 올린 공고가 없어요') }}</b><p>{{ ui('jobs.no_mine_d', '사업자 인증을 마치면 무료로 공고를 올릴 수 있어요.') }}</p></div>{% endfor %}</div>
+</main>
+{% endblock %}

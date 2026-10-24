@@ -4310,10 +4310,74 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             return c, db.execute('SELECT id FROM users WHERE login_id=?', (login_id,)).fetchone()[0]
 
+    def test_soboru_jobs(self):
+        # 동네일자리: 사업자 인증 → 공고(최저임금·차별 문구 검사) → 찾기 필터 → 간편 지원(동의) → 지원자 관리, 신고 3번이면 가림, 외부 공고 수집·중복·마감
+        J = self.site.soboru_jobs
+        self.assertTrue(J.biz_no_ok('129-14-81596')); self.assertFalse(J.biz_no_ok('1234567890'))
+        self.assertEqual(J.split_region('서울특별시 강남구 역삼동 1'), ('서울', '강남구', '역삼동')); self.assertEqual(J.parse_date('채용시까지 26-11-30'), '2026-11-30')
+        self.assertTrue(J.bad_words('여자만 뽑아요')); self.assertTrue(J.bad_words('25세 이하')); self.assertFalse(J.bad_words('천여만 원 매출 가게'))
+        self.assertEqual(self.client.get('/jobs').status_code, 200)
+        boss, bid = self.member_client('job_boss', '빵집사장')
+        self.assertIn('/jobs/biz', boss.get('/jobs/new').headers['Location'])
+        self.assertEqual(self.post_form(boss, '/jobs/biz', {'biz_no': '1234567890', 'name': '소보루빵집', 'owner': '오사장', 'open_date': '2020-01-02', 'agree': '1'}).status_code, 400)
+        with patch.dict(os.environ, {'NTS_API_KEY': ''}):
+            self.assertEqual(self.post_form(boss, '/jobs/biz', {'biz_no': '129-14-81596', 'name': '소보루빵집', 'owner': '오사장', 'open_date': '2020-01-02', 'agree': '1'}).status_code, 302)
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT state FROM jobs_biz WHERE user_id=?', (bid,)).fetchone()[0], 'pending')
+        self.assertIn('/jobs/biz', boss.get('/jobs/new').headers['Location'])   # 승인 전에는 못 올림
+        adm = self.login_admin()
+        self.assertEqual(self.post_form(adm, '/admin/jobs', {'act': 'biz_ok', 'user': bid}).status_code, 302)
+        form = {'title': '주말 오전 빵집 알바', 'industry': 'food', 'sido': '서울', 'sgg': '강남구', 'dong': '역삼동', 'term': 'long', 'days': ['토', '일'], 'start_t': '08:00', 'end_t': '13:00',
+                'pay_type': '시급', 'pay': '9000', 'headcount': '1', 'body': '빵 포장과 계산을 해 주실 분을 찾아요. 처음이어도 괜찮아요.'}
+        r = self.post_form(boss, '/jobs/new', form); self.assertEqual(r.status_code, 400); self.assertIn('최저임금', r.get_data(as_text=True))
+        r = self.post_form(boss, '/jobs/new', dict(form, pay='12000', body='여자만 지원 가능해요. 빵 포장과 계산을 해 주실 분을 찾아요.')); self.assertEqual(r.status_code, 400)
+        self.assertEqual(self.post_form(boss, '/jobs/new', dict(form, pay='12000')).status_code, 302)
+        with self.site.conn() as db: jid = db.execute("SELECT id FROM jobs WHERE title='주말 오전 빵집 알바'").fetchone()[0]
+        self.assertIn('주말 오전 빵집 알바', self.client.get('/jobs?sido=서울&sgg=강남구&days=weekend&time=morning&wage=11000').get_data(as_text=True))
+        self.assertNotIn('주말 오전 빵집 알바', self.client.get('/jobs?sido=서울&sgg=강남구&time=evening').get_data(as_text=True).split('<main')[1])
+        self.assertNotIn('주말 오전 빵집 알바', self.client.get('/jobs?sido=부산').get_data(as_text=True).split('<main')[1])
+        # 지원: 동의 없으면 안 됨, 사장님만 연락처를 봄
+        seek, sid = self.member_client('job_seek', '알바구함')
+        self.assertEqual(self.post_form(seek, f'/jobs/{jid}/apply', {'name': '김구직', 'phone': '010-1234-5678', 'msg': '주말 가능해요'}).status_code, 400)
+        self.assertEqual(self.post_form(seek, f'/jobs/{jid}/apply', {'name': '김구직', 'phone': '010-1234-5678', 'msg': '주말 가능해요', 'agree': '1'}).status_code, 302)
+        self.assertIn('010-1234-5678', boss.get(f'/jobs/{jid}/applicants').get_data(as_text=True))
+        self.assertEqual(seek.get(f'/jobs/{jid}/applicants').status_code, 403)
+        self.assertNotIn('01012345678', self.client.get(f'/jobs/{jid}').get_data(as_text=True))
+        with self.site.conn() as db: aid = db.execute('SELECT id FROM jobs_apps WHERE job_id=?', (jid,)).fetchone()[0]
+        boss.post(f'/jobs/{jid}/applicants', data={'_csrf': self.csrf(boss, f'/jobs/{jid}/applicants'), 'app': aid, 'state': 'contact'})
+        self.assertIn('연락함', seek.get('/jobs/my').get_data(as_text=True))
+        seek.post(f'/jobs/{jid}/save', data={'_csrf': self.csrf(seek, f'/jobs/{jid}')}); self.assertIn('주말 오전 빵집 알바', seek.get('/jobs/my?t=saved').get_data(as_text=True))
+        # 신고 3번이면 가림
+        with self.site.conn() as db:   # 다른 회원 두 명이 이미 신고
+            db.executemany("INSERT INTO jobs_reports(job_id,user_id,reason,created) VALUES(?,?,'허위·과장 공고','2026-01-01')", [(jid, 990001), (jid, 990002)])
+            db.execute('UPDATE jobs SET reports=2 WHERE id=?', (jid,))
+        seek.post(f'/jobs/{jid}/report', data={'_csrf': self.csrf(seek, f'/jobs/{jid}'), 'reason': '허위·과장 공고'})
+        seek.post(f'/jobs/{jid}/report', data={'_csrf': self.csrf(boss, f'/jobs/{jid}'), 'reason': '허위·과장 공고'})
+        self.assertEqual(adm.get(f'/jobs/{jid}').status_code, 200)   # 관리자는 봄
+        self.assertEqual(seek.get(f'/jobs/{jid}').status_code, 404)
+        # 외부 공고: 가짜 응답, 허용된 칸만, 중복·마감
+        xml = ('<?xml version="1.0" encoding="UTF-8"?><wantedRoot><wanted><wantedAuthNo>K1</wantedAuthNo><company>소보루물류</company><title>상품 포장원</title><salTpNm>시급</salTpNm>'
+               '<minSal>11000</minSal><region>서울 강남구</region><closeDt>채용시까지 99-12-31</closeDt><wantedInfoUrl>https://www.work24.go.kr/x?K1</wantedInfoUrl><contactTelNo>02-000-0000</contactTelNo></wanted>'
+               '<wanted><wantedAuthNo>K2</wantedAuthNo><company>지난회사</company><title>마감된 공고</title><region>경기 수원시 장안구</region><closeDt>20-01-01</closeDt></wanted></wantedRoot>').encode()
+        p = J.PROVIDER['work24']
+        out = self.site.app.extensions['soboru_jobs']['sync'](fetcher=lambda prov, page: J.parse_items(prov, xml) if page == 1 else [])
+        self.assertEqual(out['work24'][0], 2)
+        self.site.app.extensions['soboru_jobs']['sync'](fetcher=lambda prov, page: J.parse_items(prov, xml) if page == 1 else [])
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM jobs WHERE src='work24'").fetchone()[0], 2)
+            self.assertEqual(db.execute("SELECT status FROM jobs WHERE ext_id='K2'").fetchone()[0], 'closed')
+            self.assertNotIn('02-000-0000', ' '.join(str(v) for v in db.execute("SELECT * FROM jobs WHERE ext_id='K1'").fetchone()))
+        page = self.client.get('/jobs?src=ext').get_data(as_text=True)
+        self.assertIn('상품 포장원', page); self.assertIn('고용24', page); self.assertNotIn('마감된 공고', page)
+        self.assertIn('work24.go.kr', self.client.get('/jobs?q=상품 포장원').get_data(as_text=True) and self.client.get('/jobs/%d' % self._ext_id('K1')).get_data(as_text=True))
+        self.assertIn('WORK24_API_KEY', adm.get('/admin/jobs').get_data(as_text=True))
+
+    def _ext_id(self, ext):
+        with self.site.conn() as db: return db.execute('SELECT id FROM jobs WHERE ext_id=?', (ext,)).fetchone()[0]
+
     def test_soboru_tools_calc_dict_law(self):
-        # 소비자 상담소: 계산기 첫 화면·계산기 칸, 사전 찾기·분야·첫 글자, 법령 찾기(AI 없이 모음에서)
+        # AI 소비자 상담 옆 칸: 계산기 모음·계산기 칸, 사전 찾기·분야·첫 글자, 법령 찾기(AI 없이 모음에서)
         home = self.client.get('/tools').get_data(as_text=True)
-        self.assertIn('소비자 상담소', home); self.assertIn('/tools/calc/fitness', home); self.assertIn('/tools/calc/loan', home)
+        self.assertIn('<h1>계산기</h1>', home); self.assertIn('/tools/calc/fitness', home); self.assertIn('/tools/calc/loan', home)
         for c in self.site.soboru_tools.CALCS:
             page = self.client.get('/tools/calc/' + c['slug']).get_data(as_text=True)
             self.assertIn(c['name'], page); self.assertIn('data-calc="%s"' % c['slug'], page); self.assertIn('soboru-calc.js', page)
