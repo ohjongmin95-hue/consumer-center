@@ -46,6 +46,7 @@
     <div class="row"><label>Client ID{% if cfg.naver_id %} <span class="badge ok">저장됨</span>{% endif %}<input type="text" name="naver_id" autocomplete="off" placeholder="{{ cfg.naver_id or '' }}"></label>
       <label>Client Secret {% if masked.naver_secret %}<span class="badge ok">저장됨</span>{% endif %}<input type="password" name="naver_secret" autocomplete="off"></label></div>
     {% if cfg.naver_id %}<label class="check"><input type="checkbox" name="clear_naver_id" value="1"> 네이버 키 지우기</label>{% endif %}
+    {% if cfg.naver_id %}<div class="actions"><button class="weak" formaction="{{ url_for('naver_test') }}" formmethod="post">네이버 연결 확인</button><span class="meta">키 종류를 잘못 골랐으면 맞는 쪽으로 알아서 바꿔요</span></div>{% endif %}
     <label class="check"><input type="checkbox" name="web_search" value="1"{% if cfg.web_search %} checked{% endif %}> Claude 웹 검색도 쓰기 (검색 1번에 약 15원, Claude 콘솔에서 웹 검색이 켜져 있어야 해요)</label>
   </div>
   <div class="panel"><h2>매일 자동 만들기</h2>

@@ -230,22 +230,39 @@ def _naver_wait():
         _NAVER_GAP['last'] = time.monotonic()
 
 
-def naver_news(cfg, q, display=10, sort='sim'):
-    """네이버 뉴스 검색 [{title,url,summary,date(YYYY-MM-DD)}]. 키가 없거나 실패하면 []. 테스트에서 바꿔 끼운다."""
-    if not (cfg.get('naver_id') and cfg.get('naver_secret')): return []
-    base, hid, hsec = NAVER.get(cfg.get('naver_kind'), NAVER['dev'])
+def _naver_get(cfg, kind, q, display, sort):
+    """네이버에 한 번 물어봄 → (상태 코드, 답 dict). 1초에 너무 많이 물어 잠깐 막히면(429) 쉬었다 다시."""
+    base, hid, hsec = NAVER[kind]
     req = urllib.request.Request(base + '?' + urllib.parse.urlencode({'query': q, 'display': display, 'sort': sort}),
                                  headers={hid: cfg['naver_id'], hsec: cfg['naver_secret']})
     for n in range(4):
         _naver_wait()
         try:
-            with urllib.request.urlopen(req, timeout=10) as r: res = json.loads(r.read().decode('utf-8'))
-            break
+            with urllib.request.urlopen(req, timeout=10) as r: return 200, json.loads(r.read().decode('utf-8'))
         except urllib.error.HTTPError as e:
-            if e.code == 429 and n < 3: time.sleep(0.8 * (n + 1)); continue  # 1초에 너무 많이 물으면 네이버가 잠깐 막음 → 조금 쉬었다 다시
-            NAVER_ERR['msg'] = {401: '네이버 키가 맞지 않아요 (키 종류·ID·Secret 확인)', 403: '네이버 앱에 검색 API 사용 권한이 없어요',
-                                429: '네이버가 잠깐 막았어요 (한꺼번에 많이 물어봄). 1분 뒤 새로고침해 주세요'}.get(e.code, f'네이버 검색 오류 {e.code}'); return []
-        except (urllib.error.URLError, OSError, ValueError): NAVER_ERR['msg'] = '네이버에 연결하지 못했어요 (인터넷 확인)'; return []
+            if e.code == 429 and n < 3: time.sleep(0.8 * (n + 1)); continue
+            try: body = json.loads(e.read().decode('utf-8') or '{}')
+            except (ValueError, OSError): body = {}
+            return e.code, body if isinstance(body, dict) else {}
+        except (urllib.error.URLError, OSError, ValueError): return 0, {}
+    return 429, {}
+
+
+def naver_news(cfg, q, display=10, sort='sim'):
+    """네이버 뉴스 검색 [{title,url,summary,date(YYYY-MM-DD)}]. 키가 없거나 실패하면 []. 테스트에서 바꿔 끼운다.
+    키 종류(개발자센터 / API HUB)를 잘못 골라 거절(401)되면 다른 종류로 한 번 더 물어보고, 되면 그 종류를 NAVER_ERR['kind']에 남김."""
+    if not (cfg.get('naver_id') and cfg.get('naver_secret')): return []
+    kind = NAVER_ERR.get('kind') or (cfg.get('naver_kind') if cfg.get('naver_kind') in NAVER else 'dev')
+    st, res = _naver_get(cfg, kind, q, display, sort)
+    if st in (401, 403) and not NAVER_ERR.get('kind'):
+        other = 'hub' if kind == 'dev' else 'dev'
+        st2, res2 = _naver_get(cfg, other, q, display, sort)
+        if st2 == 200: st, res = st2, res2; NAVER_ERR['kind'] = other
+    if st != 200:
+        why = ' · '.join(str(x) for x in (res.get('errorMessage') or res.get('message') or (res.get('error') or {}).get('message', ''), res.get('errorCode') or (res.get('error') or {}).get('errorCode', '')) if x)
+        NAVER_ERR['msg'] = ({401: '네이버가 키를 받아 주지 않았어요', 403: '네이버 앱에 검색 API 권한이 없어요', 429: '네이버가 잠깐 막았어요. 1분 뒤 새로고침해 주세요',
+                             0: '네이버에 연결하지 못했어요 (인터넷 확인)'}.get(st, f'네이버 검색 오류 {st}') + (f' (네이버: {why})' if why else '') + (f' [{st}]' if st else ''))
+        return []
     NAVER_ERR['msg'] = ''
     clean = lambda t: ' '.join(html.unescape(re.sub(r'<[^>]+>', '', t or '')).split())
     out = []

@@ -220,10 +220,28 @@ def news():
     """첫 화면 오른쪽 '오늘의 소비자 뉴스' (네이버, 10분 동안 기억)"""
     c = config()
     if not (c['naver_id'] and c['naver_secret']): return jsonify(ok=False, items=[])
-    if time.time() - NEWS['at'] > 600 or request.args.get('fresh'): NEWS.update(at=time.time(), items=cards.news_list(c))
+    if time.time() - NEWS['at'] > 600 or request.args.get('fresh'): NEWS.update(at=time.time(), items=cards.news_list(c)); fix_naver_kind()
     used = used_urls()
     if not NEWS['items']: NEWS['at'] = 0  # 못 찾았으면 다음에 다시 물어봄
     return jsonify(ok=True, error=cards.NAVER_ERR['msg'], items=[dict(it, made=it['url'] in used) for it in NEWS['items']])
+
+
+@app.route('/naver/test', methods=['POST'])
+def naver_test():
+    """설정의 '네이버 연결 확인': 한 번 물어보고 결과를 그대로 보여 줌"""
+    c = config()
+    if not (c['naver_id'] and c['naver_secret']): flash('네이버 Client ID와 Secret을 먼저 넣고 저장해 주세요.'); return redirect(url_for('settings'))
+    cards.NAVER_ERR.pop('kind', None); NEWS['at'] = 0
+    got = cards.naver_news(c, '물가', display=1); fix_naver_kind()
+    names = {'dev': '네이버 개발자센터', 'hub': '네이버 클라우드 API HUB'}
+    flash(f"네이버 연결 OK ({names[config()['naver_kind']]}). 뉴스를 잘 받아 와요." if got else '네이버 연결 안 됨: ' + (cards.NAVER_ERR['msg'] or '받은 뉴스가 없어요'))
+    return redirect(url_for('settings'))
+
+
+def fix_naver_kind():
+    """키 종류를 잘못 골라 두었는데 다른 종류로 됐으면 설정에 저장"""
+    k = cards.NAVER_ERR.get('kind')
+    if k and config()['naver_kind'] != k: c = config(); c['naver_kind'] = k; save_config(c); log(f'네이버 키 종류를 {k}로 바꿨어요 (그쪽으로 연결됨)')
 
 
 def save_kakao(tok):
@@ -496,6 +514,7 @@ def settings():
         if c['key'] and not c['key'].startswith('sk-ant-'): flash("Claude API 키는 'sk-ant-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))
         c['model'] = f.get('model') if f.get('model') in dict(MODELS) else DEFAULTS['model']
         c['naver_kind'] = f.get('naver_kind') if f.get('naver_kind') in cards.NAVER else 'dev'
+        cards.NAVER_ERR.pop('kind', None); NEWS['at'] = 0  # 키를 바꿨으면 처음부터 다시
         c['auto'] = 1 if f.get('auto') else 0; c['web_search'] = 1 if f.get('web_search') else 0
         c['per_day'] = f.get('per_day', type=int) if f.get('per_day', type=int) in PER_DAY else 3
         c['hour'] = min(max(f.get('hour', type=int) or 8, 0), 23)
