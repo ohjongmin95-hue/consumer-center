@@ -432,7 +432,7 @@ def data_deletion():
 def privacy():
     return render_template('c_privacy.html',op=core.OPERATOR,since=core.PRIVACY_SINCE,years=core.RETENTION_YEARS,contact=os.getenv('PRIVACY_EMAIL') or os.getenv('OPS_EMAIL',''),phone=os.getenv('PRIVACY_PHONE',''),
         mail_vendor=os.getenv('MAIL_VENDOR',''),ai=ai_mod.vendor(),kakao=core.kakao_ready() or core.kakao_ready('CS_KAKAO_TPL_REPLY'),kakao_vendor=os.getenv('KAKAO_VENDOR',''),
-        pay=os.getenv('PG_VENDOR','주식회사 케이지이니시스'))  # 기업 회원 요금 결제 (billing.py, 포트원 채널의 PG)
+        pay=os.getenv('PG_VENDOR','엔에이치엔케이씨피 주식회사'))  # 기업 회원 요금 결제 (billing.py, 포트원 채널의 PG)
 
 # ---------- 소보루 CS 앱 API (/api/v1) ----------
 # 앱은 쿠키를 쓰지 않는다. 접수하거나 조회하면 요청마다 토큰을 받아 휴대폰에 두고, 그 토큰으로만 요청을 연다.

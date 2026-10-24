@@ -12,7 +12,18 @@
     if(r.code!==undefined){location.href={{ fail_url|tojson }}+'?code='+encodeURIComponent(r.code)+'&message='+encodeURIComponent(r.message||'');return;}
     location.href={{ ok_url|tojson }}+'?billingKey='+encodeURIComponent(r.billingKey);
   }).catch(function(){btn.disabled=false;});
-};});</script>{% endif %}{% endblock %}
+};});{% if once %}
+document.querySelectorAll('[data-once]').forEach(function(btn){btn.onclick=function(){
+  btn.disabled=true;
+  var cu={customerId:{{ bl.customer_key|tojson }},fullName:{{ co.name|tojson }}};{% if mail %}cu.email={{ mail|tojson }};{% endif %}
+  PortOne.requestPayment({storeId:{{ store_id|tojson }},channelKey:{{ pay_channel_key|tojson }},paymentId:{{ once.id|tojson }},
+    orderName:{{ (BNAME~' '~p.name~' (1개월)')|tojson }},totalAmount:{{ once.amount }},currency:'KRW',payMethod:'CARD',customer:cu,redirectUrl:{{ once_url|tojson }}})
+  .then(function(r){
+    if(!r){btn.disabled=false;return;}
+    if(r.code!==undefined){location.href={{ once_url|tojson }}+'?code='+encodeURIComponent(r.code)+'&message='+encodeURIComponent(r.message||'');return;}
+    location.href={{ once_url|tojson }}+'?paymentId='+encodeURIComponent(r.paymentId);
+  }).catch(function(){btn.disabled=false;});
+};});{% endif %}</script>{% endif %}{% endblock %}
 {% block body %}
 <div class="crumb"><a href="{{ url_for('settings') }}">설정</a><span>›</span><span>요금·결제</span></div>
 <div class="chead"><div class="l"><div class="tagrow">
@@ -40,9 +51,9 @@
 {% else %}<form method="post" action="{{ url_for('pay.c24_start') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md">카페24로 결제하고 시작하기</button></form>
 <p class="cap" style="margin:10px 0 0">카페24 결제 화면에서 결제해요. 다음 달부터는 카페24가 매달 결제해요.</p>{% endif %}</div>
 {% elif may %}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
-{% if not bl or bl.status in ('none','ended') %}{% if not bl or not bl.started %}<button class="btn md" type="button" data-card>카드 등록하고 {{ trial_days() }}일 무료로 시작하기</button><p class="cap" style="margin:4px 0 0;flex-basis:100%">등록할 때는 결제되지 않아요. 체험이 끝나는 날 첫 달 요금이 결제되고, 그 전에 해지하면 결제되지 않아요.</p>{% else %}<button class="btn md" type="button" data-card>카드 등록하고 시작하기</button>{% endif %}
+{% if not bl or bl.status in ('none','ended') %}{% if not bl or not bl.started %}<button class="btn md" type="button" data-card>카드 등록하고 {{ trial_days() }}일 무료로 시작하기</button>{% if once %}<button class="btn md gray" type="button" data-once>첫 달 {{ '{:,}'.format(once.amount) }}원 바로 결제하기</button>{% endif %}<p class="cap" style="margin:4px 0 0;flex-basis:100%">카드 등록할 때는 결제되지 않아요. 체험이 끝나는 날 첫 달 요금이 결제되고, 그 전에 해지하면 결제되지 않아요.{% if once %} 바로 결제하면 체험 없이 오늘부터 한 달 쓰고, 결제창에 {{ p.name }} {{ '{:,}'.format(once.amount) }}원이 그대로 나와요.{% endif %}</p>{% else %}<button class="btn md" type="button" data-card>카드 등록하고 시작하기</button>{% if once %}<button class="btn md gray" type="button" data-once>첫 달 {{ '{:,}'.format(once.amount) }}원 바로 결제하기</button>{% endif %}{% endif %}
 {% elif bl.status=='stopped' %}<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="retry">다시 결제하기</button></form><button class="btn md gray" type="button" data-card>카드 바꾸기</button>
-{% else %}<button class="btn md gray" type="button" data-card>카드 바꾸기</button>
+{% else %}{% if bl.card %}<button class="btn md gray" type="button" data-card>카드 바꾸기</button>{% else %}<button class="btn md" type="button" data-card>카드 등록하기 (다음 달부터 자동 결제)</button><p class="cap" style="margin:4px 0 0;flex-basis:100%">첫 달은 바로 결제로 냈어요. {{ bl.next_charge }} 전에 카드를 등록하지 않으면 그날부터 기능이 멈춰요.</p>{% endif %}
 {% if bl.status=='past_due' %}<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="retry">지금 다시 결제하기</button></form>{% endif %}
 {% if bl.status in ('trial','active','past_due') %}<form method="post" onsubmit="return confirm('{{ '해지할까요? 체험이 끝나는 날까지 쓰고 결제되지 않아요.' if bl.status=='trial' else '해지할까요? 다음 결제일까지는 그대로 쓰실 수 있어요.' }}')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md gray" name="act" value="cancel">해지하기</button></form>{% endif %}
 {% if bl.status=='canceled' %}<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn md" name="act" value="resume">해지 취소하고 이어 쓰기</button></form>{% endif %}
