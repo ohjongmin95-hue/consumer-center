@@ -26,13 +26,12 @@
   {# 소보루가 어떤 곳인지: 제보 · 커뮤니티(후기·골라주세요·수다방) 셋을 먼저, 정보는 아래 한 줄 (운영자 요청 2026-10-24) #}
   <section class="nn-about" aria-labelledby="nn-about-h">
     <div class="nn-about-head">
-      <p class="nn-eyebrow">{{ ui('home.about_eyebrow', '처음 오셨나요?') }}</p>
       <h2 id="nn-about-h">{{ ui('home.about_title', '소보루는 소비자끼리 돕는 커뮤니티예요') }}</h2>
       <p class="nn-sub">{{ ui('home.about_sub', '억울한 일은 함께 목소리를 내고, 써 본 건 솔직하게 나눠요. 광고 없이, 직접 겪은 소비자 이야기만 모여요.') }}</p>
     </div>
     <div class="nn-about-grid">
-      <a class="nn-about-card main" href="{{ url_for('reports') }}"><img class="bread" src="{{ asset('img/bread/soboro.svg') }}" alt="" width="52" height="52"><b>{{ ui('home.about1', '억울한 일은 제보') }}</b><p>{{ ui('home.about1_sub', '내용을 정리해 기업에 전달하고, 답변이 올 때까지 진행 상황을 알려 드려요.') }}</p><span class="nn-about-go">{{ ui('home.about1_btn', '올라온 제보 보기') }} ›</span></a>
-      <a class="nn-about-card" href="{{ url_for('feed') }}"><img class="bread" src="{{ asset('img/bread/baguette.svg') }}" alt="" width="52" height="52"><b>{{ ui('home.about2', '내돈내산 후기') }}</b><p>{{ ui('home.about2_sub', '직접 돈 내고 산 것, 다녀온 곳만. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}</p><span class="nn-about-go">{{ ui('home.about2_btn', '후기 보기') }} ›</span></a>
+      <a class="nn-about-card main" href="{{ url_for('info_page', page='guide') }}"><img class="bread" src="{{ asset('img/bread/soboro.svg') }}" alt="" width="52" height="52"><b>{{ ui('home.about1', '억울한 일은 제보') }}</b><p>{{ ui('home.about1_sub', '내용을 정리해 기업에 전달하고, 답변이 올 때까지 진행 상황을 알려 드려요.') }}</p><span class="nn-about-go">{{ ui('home.about1_btn', '제보는 이렇게 해요') }} ›</span></a>
+      <a class="nn-about-card" href="{{ url_for('feed') }}"><img class="bread" src="{{ asset('img/bread/creambun.svg') }}" alt="" width="52" height="52"><b>{{ ui('home.about2', '내돈내산 후기') }}</b><p>{{ ui('home.about2_sub', '직접 돈 내고 산 것, 다녀온 곳만. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}</p><span class="nn-about-go">{{ ui('home.about2_btn', '후기 보기') }} ›</span></a>
       <a class="nn-about-card" href="{{ url_for('vs_home') }}"><img class="bread" src="{{ asset('img/bread/croissant.svg') }}" alt="" width="52" height="52"><b>{{ ui('home.about3', '골라주세요') }}</b><p>{{ ui('home.about3_sub', '살까 말까, A냐 B냐. 고민을 올리면 이웃들이 30초 만에 골라 줘요.') }}</p><span class="nn-about-go">{{ ui('home.about3_btn', '골라 주러 가기') }} ›</span></a>
       <a class="nn-about-card" href="{{ url_for('suda') }}"><img class="bread" src="{{ asset('img/bread/talkbun.svg') }}" alt="" width="52" height="52"><b>{{ ui('home.about4', '수다방') }}</b><p>{{ ui('home.about4_sub', '지름 인증부터 직장 고민까지. 매너 있게, 광고 없이 아무 얘기나.') }}</p><span class="nn-about-go">{{ ui('home.about4_btn', '수다 보러 가기') }} ›</span></a>
     </div>
