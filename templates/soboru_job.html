@@ -9,9 +9,17 @@
   {% if j.hidden %}<p class="jb-alert">{{ ui('jobs.hidden_note', '신고가 쌓여 지금은 다른 사람에게 보이지 않는 공고예요. 운영자가 확인하고 있어요.') }}</p>{% endif %}
   <div class="jb-view-grid">
     <article class="jb-doc">
-      <p class="jb-card-top"><span class="jb-src {{ 'own' if j.own else 'ext' }}">{{ j.source }}</span><span class="jb-dday">{{ j.dday }}</span>{% if j.own %}<span class="jb-ind"><i class="tf" aria-hidden="true">{{ j.ind_emoji }}</i>{{ j.ind_name }}</span>{% endif %}</p>
-      <h1>{{ j.title }}</h1>
-      <p class="jb-co big">{{ j.company }}{% if j.own %} <span class="jb-verified">{{ ui('jobs.verified', '사업자 인증') }}</span>{% endif %}</p>
+      <header class="jb-store z{{ j.zi }}">
+        <span class="jb-awn" aria-hidden="true"></span>
+        <div class="jb-store-in">
+          <span class="jb-sign-emo tf" aria-hidden="true">{{ j.ind_emoji if j.own else '💼' }}</span>
+          <div class="jb-store-t">
+            <p class="jb-card-top"><span class="jb-src {{ 'own' if j.own else 'ext' }}">{{ j.source }}</span><span class="jb-dday">{{ j.dday }}</span>{% if j.own %}<span class="jb-ind"><i class="tf" aria-hidden="true">{{ j.ind_emoji }}</i>{{ j.ind_name }}</span>{% endif %}</p>
+            <h1>{{ j.title }}</h1>
+            <p class="jb-co big">{{ j.company }}{% if j.own %} <span class="jb-verified">{{ ui('jobs.verified', '사업자 인증') }}</span>{% endif %}<small> · {{ j.place }}</small></p>
+          </div>
+        </div>
+      </header>
       <dl class="jb-facts">
         <div><dt>{{ ui('jobs.d_pay', '급여') }}</dt><dd class="pay">{{ j.pay_label }}</dd></div>
         <div><dt>{{ ui('jobs.d_place', '근무지') }}</dt><dd>{{ j.sido }} {{ j.sigungu }} {{ j.dong }}{% if j.addr and j.own %}<small>{{ j.addr }}</small>{% elif j.addr %}<small>{{ j.addr }}</small>{% endif %}</dd></div>

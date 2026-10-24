@@ -25,6 +25,7 @@ base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'com
 for s, cat in [('반품 후 2주째 환불이 안 돼요', '배송·교환·환불'), ('불량 제품 교환을 거부해요', '품질·하자·AS'), ('해지 후에도 요금이 나가요', '요금·결제')]:
     post(u, '/report', dict(base, subject=s, category=cat, phone='010-9999-0000'))
 with m.conn() as db: ids = [r[0] for r in db.execute('SELECT id FROM cases ORDER BY id')]
+with m.conn() as db: db.execute("INSERT INTO admin_settings(key,value,updated) VALUES('ask_v2','1','x') ON CONFLICT(key) DO UPDATE SET value='1'")  # 실제 사이트처럼 AI 소비자 상담 새 화면
 for i in ids: post(a, '/admin/reports/%d' % i, {'form': 'publish_review', 'decision': 'approve'})
 r = a.post('/admin/invite/%d' % ids[0], data={'_csrf': csrf(a, '/admin/reports/%d' % ids[0])})
 inv = re.search(r'<strong>http://localhost(/company/[^<]+)</strong>', r.get_data(as_text=True))[1]

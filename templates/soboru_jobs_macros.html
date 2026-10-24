@@ -1,13 +1,18 @@
 {# 동네일자리 조각 (soboru_jobs.py): 공고 카드 · 지역 고르기 · 관심 버튼 #}
-{% macro job_card(j, mini=false) %}<article class="jb-card{{ ' mini' if mini }}{{ ' closed' if j.status == 'closed' }}">
-  <a class="jb-card-main" href="{{ url_for('job', job_id=j.id) }}">
+{# 가게 앞 모습 카드: 업종 색 차양 · 간판(업종 그림 + 가게 이름) · 하는 일 · 조건 · 급여 #}
+{% macro job_card(j, mini=false) %}<article class="jb-shop z{{ j.zi }}{{ ' mini' if mini }}{{ ' closed' if j.status == 'closed' }}{{ ' ext' if not j.own }}">
+  <span class="jb-awn" aria-hidden="true"></span>
+  <div class="jb-sign">
+    <span class="jb-sign-emo tf" aria-hidden="true">{{ j.ind_emoji if j.own else '💼' }}</span>
+    <span class="jb-sign-t"><b>{{ j.company or '회사 이름 없음' }}</b><small>{{ j.place }}{% if j.own %} · {{ j.ind_name }}{% endif %}</small></span>
+    {% if not mini %}{{ save_btn(j) }}{% endif %}
+  </div>
+  <a class="jb-shop-main" href="{{ url_for('job', job_id=j.id) }}">
     <span class="jb-card-top"><span class="jb-src {{ 'own' if j.own else 'ext' }}">{{ j.source }}</span><span class="jb-dday{{ ' soon' if j.dday.startswith('D-') and j.dday[2:]|int <= 3 or j.dday == '오늘 마감' }}">{{ j.dday }}</span>{% if j.new and j.own %}<span class="jb-new">NEW</span>{% endif %}</span>
     <b class="jb-title">{{ j.title }}</b>
-    <span class="jb-co">{{ j.company or '회사 이름 없음' }} · {{ j.place }}</span>
-    <span class="jb-tags">{% if j.own %}<span><i class="tf" aria-hidden="true">{{ j.ind_emoji }}</i>{{ j.ind_name }}</span>{% endif %}{% if j.days_label %}<span>{{ j.days_label }}</span>{% endif %}{% if j.time_label %}<span>{{ j.time_label }}</span>{% endif %}<span>{{ j.term_label }}</span></span>
+    <span class="jb-tags">{% if j.days_label %}<span><i class="tf" aria-hidden="true">📅</i>{{ j.days_label }}</span>{% endif %}{% if j.time_label %}<span><i class="tf" aria-hidden="true">⏰</i>{{ j.time_label }}</span>{% endif %}<span>{{ j.term_label }}</span></span>
+    <span class="jb-price">{% if j.pay %}<small>{{ j.pay_type }}</small><b>{{ '{:,}'.format(j.pay) }}<em>원</em></b>{% if j.pay_max %}<small class="mx">~ {{ '{:,}'.format(j.pay_max) }}원</small>{% endif %}{% else %}<b class="nego">{{ j.pay_label }}</b>{% endif %}</span>
   </a>
-  <span class="jb-pay">{% if j.pay %}<small>{{ j.pay_type }}</small><b>{{ '{:,}'.format(j.pay) }}<em>원</em></b>{% if j.pay_max %}<small class="mx">~ {{ '{:,}'.format(j.pay_max) }}원</small>{% endif %}{% else %}<b class="nego">{{ j.pay_label }}</b>{% endif %}</span>
-  {% if not mini %}{{ save_btn(j) }}{% endif %}
 </article>{% endmacro %}
 
 {% macro save_btn(j, big=false) %}<form class="jb-save-f" method="post" action="{{ url_for('job_save', job_id=j.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% if not big %}<input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">{% endif %}<button type="submit" class="jb-save{{ ' on' if j.saved }}{{ ' big' if big }}" aria-pressed="{{ 'true' if j.saved else 'false' }}" aria-label="{{ '관심 공고에서 빼기' if j.saved else '관심 공고에 담기' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>{% if big %}<span>{{ '관심 공고' if j.saved else '관심 공고 담기' }}</span>{% endif %}</button></form>{% endmacro %}

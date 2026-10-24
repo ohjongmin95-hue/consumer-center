@@ -51,6 +51,7 @@ INDUSTRIES = [('food', '음식점·카페', '🍜'), ('store', '편의점·마�
               ('logistics', '물류·생산', '📦'), ('office', '사무·회계', '💼'), ('edu', '교육·강사', '✏️'), ('care', '돌봄·간호', '🩺'),
               ('it', 'IT·디자인', '💻'), ('site', '건설·현장', '🦺'), ('etc', '기타', '✨')]
 IND = {k: (n, e) for k, n, e in INDUSTRIES}
+IND_Z = {k: i for i, (k, n, e) in enumerate(INDUSTRIES)}   # 간판·차양 색 번호 (soboru.css .jb-shop.z0~z10)
 PAY_TYPES = ['시급', '일급', '주급', '월급', '연봉', '건당']
 DAYS = ['월', '화', '수', '목', '금', '토', '일']
 TIMES = [('morning', '오전', 6, 12), ('afternoon', '오후', 12, 18), ('evening', '저녁', 18, 24), ('night', '새벽', 0, 6)]
@@ -301,6 +302,7 @@ def install(S):
         r['term_label'] = '단기' if r['term'] == 'short' else '장기'
         r['source'] = PROVIDER[r['src']]['name'] if r['src'] in PROVIDER else ('사장님 직접' if r['src'] == 'own' else r['src'])
         r['own'] = r['src'] == 'own'
+        r['zi'] = IND_Z.get(r['industry'], 10) if r['own'] else 10
         if r['close_date']:
             left = (datetime.date.fromisoformat(r['close_date']) - datetime.date.today()).days
             r['dday'] = '오늘 마감' if left == 0 else (f'D-{left}' if left > 0 else '마감')
@@ -378,7 +380,9 @@ def install(S):
         pages = max(1, -(-total // PAGE))
         with conn() as db:
             counts = {'own': db.execute("SELECT COUNT(*) FROM jobs WHERE status='open' AND hidden=0 AND src='own'").fetchone()[0],
-                      'ext': db.execute("SELECT COUNT(*) FROM jobs WHERE status='open' AND hidden=0 AND src!='own'").fetchone()[0]}
+                      'ext': db.execute("SELECT COUNT(*) FROM jobs WHERE status='open' AND hidden=0 AND src!='own'").fetchone()[0],
+                      'new': db.execute("SELECT COUNT(*) FROM jobs WHERE status='open' AND hidden=0 AND created>=?", ((datetime.datetime.now() - datetime.timedelta(days=1)).isoformat(),)).fetchone()[0],
+                      'shops': db.execute("SELECT COUNT(DISTINCT user_id) FROM jobs WHERE status='open' AND hidden=0 AND src='own'").fetchone()[0]}
         n_filter = len(f['ind']) + len(f['pay']) + len(f['time']) + bool(f['wage']) + bool(f['term']) + bool(f['days']) + bool(f['src'])
         resp = app.make_response(render_template('soboru_jobs.html', rows=rows, total=total, page=page, pages=pages, f=f, counts=counts, n_filter=n_filter,
                                                  ext_on=any(provider_key(p) for p in PROVIDERS), biz=biz_of(g.user['id']) if g.user else None))
