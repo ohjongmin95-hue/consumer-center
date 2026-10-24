@@ -10,6 +10,8 @@ from email.message import EmailMessage
 from flask import session, request, abort, g, has_request_context
 from markupsafe import Markup, escape
 import law
+import sys
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # bizmsg.py는 저장소 최상위에 있다 (소보루와 같이 씀). 서버는 platform_app 폴더에서 띄운다
 import bizmsg
 
 BASE=Path(__file__).parent
