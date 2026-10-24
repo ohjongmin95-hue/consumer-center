@@ -117,6 +117,8 @@ def install(S):
         p = dict(p)
         t = p.get('rv_type') or ''
         p['cat_emoji'] = cat_emoji.get(t, {}).get(p.get('rv_cat'), '📝')
+        names = [n for n, _ in RV_CATS.get(t, [])]
+        p['tone'] = (names.index(p['rv_cat']) if p.get('rv_cat') in names else 0) % 6  # 사진 없는 카드 바탕색
         p['since'] = days_between(p.get('bought'), p.get('created')) if t == 'product' else None
         p['visit'] = p['bought'][5:].replace('-', '.') if t == 'place' and p.get('bought') else ''
         p['again_word'] = '' if p.get('again') is None else (('재방문' if t == 'place' else '재구매') + (' 의사 있어요' if p['again'] else ' 안 해요'))

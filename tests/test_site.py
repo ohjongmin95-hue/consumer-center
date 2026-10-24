@@ -30,7 +30,7 @@ class SiteTest(unittest.TestCase):
             'ENABLE_INTAKE': '1',
             'ENABLE_BOARD': '1',
             'HTTPS_ONLY': '0',
-            'SOBORU_GUEST_WRITE': '1',  # 예전 테스트는 비회원 글쓰기로 돎. 소보루 로그인 글쓰기는 test_soboru_login_to_write에서
+            'SOBORU_GUEST_WRITE': '1', 'SOBORU_EXAMPLES': '0',  # 예전 테스트는 비회원 글쓰기로 돎. 소보루 로그인 글쓰기는 test_soboru_login_to_write에서
         })
         cls.env.start()
         spec = importlib.util.spec_from_file_location('site_under_test', ROOT / 'app.py')
@@ -748,6 +748,12 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM posts WHERE ip_hash='example'").fetchone()[0], 0)
             self.assertEqual(db.execute("SELECT COUNT(*) FROM vs_polls WHERE ip_hash='example'").fetchone()[0], 0)
+        # 배포하면 저절로 한 번만: 지운 뒤에는 다시 넣지 않음
+        with patch.dict(os.environ, {'SOBORU_EXAMPLES': ''}):
+            ex.auto(self.site); ex.auto(self.site)
+            with self.site.conn() as db: self.assertEqual(db.execute("SELECT COUNT(*) FROM posts WHERE ip_hash='example'").fetchone()[0], len(ex.REVIEWS) + len(ex.SUDA))
+            ex.remove(self.site); ex.auto(self.site)
+            with self.site.conn() as db: self.assertEqual(db.execute("SELECT COUNT(*) FROM posts WHERE ip_hash='example'").fetchone()[0], 0)
 
     def test_consumer_board(self):
         home = self.client.get('/').get_data(as_text=True)

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {# 이웃 페이지 (브런치처럼): 사진·닉네임·소개, 글·구독자·좋아요, 구독하기, 쓴 글. soboru_people.py person() #}
-{% from 'soboru_cm_macros.html' import rv_item, suda_row, av, follow_btn with context %}
+{% from 'soboru_cm_macros.html' import rv_card, suda_row, av, follow_btn with context %}
 {% block title %}{{ p.nickname }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ p.bio or ui('pp.meta', '{name}님이 소보루에 쓴 글을 모아 봐요.', name=p.nickname) }}{% endblock %}
 {% block content %}
@@ -19,9 +19,9 @@
     <small class="pp-since">{{ ui('pp.since', '{d}부터 소보루 이웃', d=p.since) }}</small>
   </header>
   <h2 class="pp-h">{{ ui('pp.posts_title', '쓴 글') }} <span>{{ rows|length }}</span></h2>
-  <div class="pf-list">
-    {% for r in rows %}{% if r['kind'] == 'review' %}{{ rv_item(review_view(r)) }}{% else %}{{ suda_row(suda_view(r)) }}{% endif %}
-    {% else %}<div class="cm-empty"><p>{{ ui('pp.empty', '아직 쓴 글이 없어요.') }}</p>{% if mine %}<a class="cm-btn" href="{{ url_for('board_write', type='review') }}">{{ ui('feed.write', '후기 쓰기') }}</a>{% endif %}</div>{% endfor %}
-  </div>
+  {% set rvs = rows|selectattr("kind", "equalto", "review")|list %}{% set talks = rows|rejectattr("kind", "equalto", "review")|list %}
+  {% if rvs %}<div class="pc-grid">{% for r in rvs %}{{ rv_card(review_view(r)) }}{% endfor %}</div>{% endif %}
+  {% if talks %}<div class="pf-list">{% for r in talks %}{{ suda_row(suda_view(r)) }}{% endfor %}</div>{% endif %}
+  {% if not rows %}<div class="cm-empty"><p>{{ ui('pp.empty', '아직 쓴 글이 없어요.') }}</p>{% if mine %}<a class="cm-btn" href="{{ url_for('board_write', type='review') }}">{{ ui('feed.write', '후기 쓰기') }}</a>{% endif %}</div>{% endif %}
 </main>
 {% endblock %}
