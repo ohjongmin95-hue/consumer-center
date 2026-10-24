@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 620" preserveAspectRatio="xMidYMax slice">
+  <!-- 프로그램 바탕: 스위스 알프스 (멀리 눈 덮인 산, 초록 들판, 전나무, 작은 산장) -->
+  <defs>
+    <linearGradient id="m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C7DDE6"/><stop offset="1" stop-color="#DCEBEF"/></linearGradient>
+    <linearGradient id="h1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CBE9D1"/><stop offset="1" stop-color="#BFE3C7"/></linearGradient>
+    <linearGradient id="h2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ADDDB8"/><stop offset="1" stop-color="#9ED4AB"/></linearGradient>
+    <linearGradient id="h3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FCB9D"/><stop offset="1" stop-color="#7FC190"/></linearGradient>
+  </defs>
+  <path d="M0 330 L170 190 L260 250 L420 90 L540 210 L640 150 L780 280 L900 120 L1030 240 L1150 170 L1300 290 L1430 160 L1600 270 L1600 620 L0 620 Z" fill="url(#m)" opacity=".85"/>
+  <path d="M420 90 L470 140 L452 136 L438 152 L420 132 L404 150 L392 134 L376 135 Z M900 120 L948 168 L930 164 L916 180 L900 160 L884 178 L872 162 L856 164 Z M1430 160 L1472 202 L1456 198 L1444 212 L1430 194 L1416 210 L1404 197 L1390 199 Z M170 190 L206 222 L192 220 L182 232 L170 216 L158 230 L148 220 L136 222 Z" fill="#fff" opacity=".95"/>
+  <path d="M0 400 C220 330 380 360 560 380 C760 400 900 320 1100 340 C1300 360 1450 320 1600 350 L1600 620 L0 620 Z" fill="url(#h1)"/>
+  <path d="M0 470 C200 420 420 440 640 460 C860 480 1020 420 1240 430 C1400 440 1500 420 1600 430 L1600 620 L0 620 Z" fill="url(#h2)"/>
+  <g fill="#5FA874">
+    <path d="M1180 438 l18 -46 l18 46 z M1214 444 l14 -36 l14 36 z M1250 440 l16 -40 l16 40 z"/>
+    <path d="M240 452 l16 -42 l16 42 z M270 458 l13 -32 l13 32 z"/>
+  </g>
+  <g transform="translate(1300 420)"><rect x="0" y="12" width="40" height="26" fill="#FFF8EE"/><path d="M-6 14 L20 -6 L46 14 Z" fill="#C8644A"/><rect x="15" y="22" width="10" height="16" fill="#8A4A35"/></g>
+  <path d="M0 540 C260 500 520 520 800 530 C1080 540 1300 500 1600 515 L1600 620 L0 620 Z" fill="url(#h3)"/>
+</svg>
