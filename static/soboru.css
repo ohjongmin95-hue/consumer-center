@@ -1971,15 +1971,15 @@ img.cm-av{object-fit:cover;background:#f2f4f6}
 /* 수다방 영수증 카드 (운영자 요청 2026-10-24: 나열식 말고 영수증·쇼핑백 느낌) */
 .rc-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:34px 22px;margin-top:18px;padding-bottom:10px}
 .rc-list>.cm-empty{grid-column:1/-1}
-.rc{--paper:#fffdf9;position:relative;display:flex;flex-direction:column;gap:12px;padding:22px 22px 18px;margin-bottom:9px;background:var(--paper);color:inherit;filter:drop-shadow(0 0 1px rgba(60,40,20,.18)) drop-shadow(0 8px 14px rgba(60,40,20,.06));transition:transform .18s var(--sb-ease)}
+.rc{--paper:#fff;position:relative;display:flex;flex-direction:column;gap:12px;padding:22px 22px 18px;margin-bottom:9px;background:var(--paper);color:inherit;filter:drop-shadow(0 0 1px rgba(0,25,60,.12)) drop-shadow(0 4px 12px rgba(0,25,60,.05));transition:transform .18s var(--sb-ease)}
 .rc::after{content:"";position:absolute;left:0;right:0;bottom:-9px;height:9px;background:conic-gradient(from -45deg at 50% 100%,var(--paper) 90deg,transparent 0) 0 0/18px 9px repeat-x}
 .rc:hover{transform:translateY(-3px) rotate(-.4deg)}
 .rc-top{display:flex;justify-content:space-between;align-items:baseline;font:700 12.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.06em;color:#4e5968;padding-right:64px}
-.rc-shop{color:var(--sb-brown,#5b3a1e)}
+.rc-shop{color:#333d4b}
 .rc-date{margin-top:-6px;font:12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#8b95a1}
 .rc-stamp{position:absolute;top:14px;right:16px;width:56px;height:56px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;font-size:13px;transform:rotate(-14deg);opacity:.82;box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px currentColor}
 .rc-stamp.s0{color:#e8590c}.rc-stamp.s1{color:#1c7ed6}.rc-stamp.s2{color:#8d6e4c}.rc-stamp.s3{color:#2b8a3e}.rc-stamp.s4{color:#d6336c}.rc-stamp.s5{color:#6741d9}.rc-stamp.s6{color:#0c8599}.rc-stamp.s7{color:#e67700}
-.rc-main{display:flex;gap:12px;padding:14px 0;border-top:1.5px dashed #d9d2c7;border-bottom:1.5px dashed #d9d2c7;flex:1}
+.rc-main{display:flex;gap:12px;padding:14px 0;border-top:1.5px dashed #e5e8eb;border-bottom:1.5px dashed #e5e8eb;flex:1}
 .rc-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .rc-t{font-size:16.5px;font-weight:800;letter-spacing:-.03em;line-height:1.42;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .rc-ex{font-size:14px;line-height:1.6;color:#6b6f76;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -1989,17 +1989,17 @@ img.cm-av{object-fit:cover;background:#f2f4f6}
 .rc-lines>span,.rc-total{display:flex;align-items:baseline;gap:6px}
 .rc-lines i,.rc-total i{font-style:normal}
 .rc-lines s{flex:1;border-bottom:1.5px dotted #d1d6db;text-decoration:none;transform:translateY(-3px)}
-.rc-total{justify-content:space-between;padding-top:9px;border-top:2px solid #333d4b;font-weight:800;font-size:14.5px}
+.rc-total{justify-content:space-between;padding-top:9px;border-top:1.5px solid #e5e8eb;font-weight:800;font-size:14.5px}
 .rc-total b{font:800 18px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#c45f00}
 .rc-who{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#4e5968;min-width:0}
 .rc-who>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rc-who small{margin-left:auto;flex:none;font-weight:400;color:#8b95a1;font-size:12.5px}
 .rc-bar{height:22px;margin:2px 18% 0;background:repeating-linear-gradient(90deg,#333d4b 0 2px,transparent 2px 4px,#333d4b 4px 5px,transparent 5px 8px,#333d4b 8px 11px,transparent 11px 13px);opacity:.75}
 /* 오늘의 수다: 쇼핑백 */
-.sd-today.bag{position:relative;margin-top:34px;background:#fdecd2;border-radius:6px 6px 18px 18px;padding:26px 26px 24px;box-shadow:inset 0 10px 0 #f6dcb6}
-.sd-today.bag::before,.sd-today.bag::after{content:"";position:absolute;top:-26px;width:74px;height:40px;border:5px solid #c58d55;border-bottom:0;border-radius:40px 40px 0 0}
+.sd-today.bag{position:relative;margin-top:34px;background:#fff;border:1px solid #e5e8eb;border-radius:8px 8px 20px 20px;padding:26px 26px 24px;box-shadow:0 4px 12px rgba(0,25,60,.04)}
+.sd-today.bag::before,.sd-today.bag::after{content:"";position:absolute;top:-26px;width:74px;height:40px;border:4px solid #d1d6db;border-bottom:0;border-radius:40px 40px 0 0}
 .sd-today.bag::before{left:16%}.sd-today.bag::after{right:16%}
-.sd-today.bag .sd-today-k{color:#b35400}
+.sd-today.bag .sd-today-k{color:var(--sb-orange)}
 @media (max-width:1000px){.rc-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){.rc-list{grid-template-columns:minmax(0,1fr);gap:28px}.rc-lines{display:none}.rc-bar{height:16px}.rc{padding:20px 18px 16px}.sd-today.bag::before{left:10%}.sd-today.bag::after{right:10%}}
 /* 사장님 소식: 업종마다 가게 차양 색 + 간판 이모지 (운영자 요청 2026-10-24) */
@@ -2017,3 +2017,7 @@ img.cm-av{object-fit:cover;background:#f2f4f6}
 .ow-tags{display:flex;gap:6px;margin:2px 0 0}
 @media (min-width:761px){.ow-bizs{flex-wrap:wrap;overflow:visible}}.ow-bizs a{display:inline-flex;align-items:center;gap:5px}.ow-bizs .tf{font-size:16px}
 .ow-heads{margin-top:-4px}
+/* 글을 쓴 이웃: 소비자 리포터 배지 (운영자 2026-10-24) */
+.pp-badge{display:inline-flex;align-items:center;margin-top:14px;padding:4px 10px;border-radius:999px;background:#fff1e3;color:#c45f00;font-size:12.5px;font-weight:800;font-style:normal;letter-spacing:-.01em}
+.pp-badge.sm{margin:0 0 0 4px;padding:2px 7px;font-size:11.5px;vertical-align:2px}
+.pp-head .pp-badge+h1{margin-top:8px}

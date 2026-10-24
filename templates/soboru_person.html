@@ -7,6 +7,7 @@
 <main class="sb-wrap cm cx pp">
   <header class="pp-head">
     {{ av(p.id, p.nickname, 'xxl') }}
+    {% if p.posts %}<span class="pp-badge">{{ ui('pp.reporter', '소비자 리포터') }}</span>{% endif %}
     <h1>{{ p.nickname }}</h1>
     <p class="pp-bio">{{ p.bio or ui('pp.no_bio', '소보루 이웃') }}</p>
     <ul class="pp-stats">
