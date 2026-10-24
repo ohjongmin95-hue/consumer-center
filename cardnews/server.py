@@ -98,6 +98,21 @@ def guard():
 app.jinja_env.globals.update(csrf_token=csrf_token, app_name=NAME)
 
 
+@app.context_processor
+def sidebar():
+    """왼쪽 사이드바: 만든 카드뉴스 목록·연결 상태 (모든 화면)"""
+    if request.endpoint in ('static', 'img', None): return {}
+    with conn() as db: rows = db.execute('SELECT id,title,status,trigger,created,data FROM cards ORDER BY id DESC LIMIT 60').fetchall()
+    items = []
+    for r in rows:
+        d = json.loads(r['data']); cs = d.get('covers') or [{}]; c = cs[min(d.get('cover_pick', 0), len(cs) - 1)]
+        cover = 'claude.ai 답을 기다려요' if d.get('pending') else (c.get('line1', '') + ' ' + c.get('line2', '')).strip()
+        items.append({'id': r['id'], 'cover': cover or r['title'] or '(제목 없음)', 'status': r['status'], 'created': r['created'], 'daily': r['trigger'] == 'daily'})
+    cfg = config()
+    return {'side_items': items, 'side_cfg': {'claude': bool(cfg['key']), 'hf': bool(cfg['hf_id'] and cfg['hf_secret']), 'naver': bool(cfg['naver_id'] and cfg['naver_secret'])},
+            'side_cid': (request.view_args or {}).get('cid')}
+
+
 # ---- 저장 ------------------------------------------------------------------------
 MODES = ('auto', 'paste', 'manual')  # 글 쓰는 방법: Claude API 키로 자동 / claude.ai(구독)에 붙여넣기 / 직접 쓰기
 
