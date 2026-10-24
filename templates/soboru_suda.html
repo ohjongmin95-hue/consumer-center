@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{# 수다방 (품앗히 수다방처럼): 이야기·꿀팁·질문 글을 말머리로. 쓰기는 게시판 글쓰기. soboru_cm.py suda() #}
+{% from 'soboru_cm_macros.html' import suda_row, pager with context %}
+{% block title %}{{ ui('suda.title', '수다방') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('suda.meta', '지름 인증부터 직장 고민까지. 소보루 이웃들과 매너 있게, 광고 없이 아무 얘기나.') }}{% endblock %}
+{% block content %}
+{% set qs = {'head': head or None, 'sort': 'hot' if hot else None} %}
+<main class="sb-wrap cm cx">
+  <header class="cm-head">
+    <div>
+      <h1>{{ ui('suda.title', '수다방') }}</h1>
+      <p>{{ ui('suda.intro', '매너 있게, 광고 없이, 아무 얘기나. 궁금한 건 질문 말머리로 물어보세요.') }}</p>
+    </div>
+    <a class="cm-btn" href="{{ url_for('board_write', type='post', head=head or None) }}">{{ ui('suda.write', '수다 떨기') }}</a>
+  </header>
+  {% if topic %}
+  <section class="sd-today" aria-labelledby="sd-today-h">
+    <p class="sd-today-k" id="sd-today-h">{{ ui('suda.today', '오늘의 수다') }}</p>
+    <b>{{ topic }}</b>
+    <a href="{{ url_for('board_write', type='post', head='잡담', topic=topic) }}">{{ ui('suda.today_go', '이 주제로 쓰기') }} ›</a>
+  </section>
+  {% endif %}
+  <p class="cx-points">{{ ui('suda.points', '회원이 수다를 쓰면 10P (하루 3번), 첫 수다는 100P, 댓글은 10P를 드려요. 광고·홍보 글은 운영자가 내려요.') }} <a href="{{ url_for('my_points') }}">{{ ui('cx.my_points', '내 포인트') }} ›</a></p>
+  <nav class="cm-tabs" aria-label="{{ ui('suda.sort_aria', '정렬') }}">
+    <a href="{{ url_for('suda', head=head or None) }}"{% if not hot %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+    <a href="{{ url_for('suda', head=head or None, sort='hot') }}"{% if hot %} class="on" aria-current="true"{% endif %}>{{ ui('suda.hot', '인기') }}</a>
+  </nav>
+  <nav class="cm-rcs" aria-label="{{ ui('suda.head_aria', '말머리') }}">
+    <a href="{{ url_for('suda', sort='hot' if hot else None) }}"{% if not head %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+    {% for h in SUDA_HEADS %}<a href="{{ url_for('suda', head=h, sort='hot' if hot else None) }}"{% if head == h %} class="on" aria-current="true"{% endif %}>{{ h }}</a>{% endfor %}
+  </nav>
+  <div class="sd-list">
+    {% for p in rows %}{{ suda_row(p) }}
+    {% else %}<div class="cm-empty"><p>{{ ui('suda.empty', '아직 수다가 없어요. 첫 수다를 떨어 보세요.') }}</p><a class="cm-btn" href="{{ url_for('board_write', type='post', head=head or None) }}">{{ ui('suda.write', '수다 떨기') }}</a></div>{% endfor %}
+  </div>
+  {{ pager('suda', page, pages, qs) }}
+  <p class="cm-foot-note">{{ ui('suda.rules', '서로 존중해 주세요. 욕설·비방·광고·개인정보가 담긴 글은 알리기가 쌓이면 가려지고 운영자가 내려요.') }} <a href="{{ url_for('takedown') }}">{{ ui('board.foot_link', '게시중단 요청') }}</a></p>
+</main>
+{% endblock %}

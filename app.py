@@ -1078,6 +1078,9 @@ def not_blocked(col='user_id'):
     return f" AND ({col} IS NULL OR {col} NOT IN ({','.join(str(int(i)) for i in sorted(ids))}))" if ids else ''
 def soboru_on():return bool(app.jinja_env.globals.get('is_soboru',lambda:False)())  # soboru.py가 맨 끝에 붙임
 def board_enabled():return os.getenv('ENABLE_BOARD')=='1'
+BOARD_HOOKS=[]  # 글 올리기 전('prepare')·올린 뒤('post')·댓글('comment')·글 열기('view')에 부르는 함수 (soboru_cm.py가 후기 정보·말머리·포인트·조회수를 붙임)
+def board_hook(event,db,**kw):
+    for h in BOARD_HOOKS:h(event,db,**kw)
 # 글 종류: (키, 이름, 쓰기 버튼 설명). 리뷰·꿀팁·질문은 분류가 자동으로 정해지고, 이야기는 분류를 고름.
 POST_KINDS=[('review','리뷰','써 본 후기를 솔직하게'),('tip','꿀팁','아는 만큼 아끼는 정보'),('question','질문','궁금한 건 물어보세요'),('post','이야기','겪은 일, 편하게 나눠요')]
 POST_KIND_NAMES=dict((k,n) for k,n,_ in POST_KINDS)
@@ -1098,7 +1101,7 @@ def review_stats(db,company_id=None,limit=5):
     # 리뷰가 쌓인 곳: 같은 기업(또는 같은 이름)끼리 묶어 평균 별점. 소보루 에디터 리뷰는 소비자 별점에 넣지 않음
     where="kind='review' AND hidden=0 AND editor=0 AND rating BETWEEN 1 AND 5"+(' AND company_id=?' if company_id else '')
     return db.execute(f"SELECT MAX(target) AS target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg FROM posts WHERE {where} GROUP BY COALESCE(company_id,lower(replace(target,' ',''))) ORDER BY n DESC,avg DESC LIMIT ?",((company_id,) if company_id else ())+(limit,)).fetchall()
-FEED_COLS='id,kind,category,nickname,user_id,title,substr(body,1,160) AS excerpt,length(body) AS body_len,likes,comments,created,target,company_id,rating,pros,cons,recommend,summary,solved,menu,photo,campaign_id,editor,reward,review_cat'
+FEED_COLS='id,kind,category,nickname,user_id,title,substr(body,1,160) AS excerpt,length(body) AS body_len,likes,comments,created,target,company_id,rating,pros,cons,recommend,summary,solved,menu,photo,campaign_id,editor,reward,review_cat,views,head,receipt_state,rv_type,rv_cat,price,again,bought'  # 뒤의 칸들은 soboru_cm.py가 붙임
 def community_feed(limit=4):
     # 메인 화면 커뮤니티: 최근 30일 반응 많은 글을 종류별로 하나씩 먼저, 나머지는 반응순 → 모자라면 최신순
     since=(datetime.datetime.now()-datetime.timedelta(days=30)).isoformat(timespec='seconds');nb=not_blocked()
@@ -1261,6 +1264,7 @@ def board_write():
     if request.method=='POST':
         if not board_enabled():abort(503,description='게시판 글쓰기 준비 중입니다.')
         f={k:request.form.get(k,'').strip() for k in ('category','nickname','password','title','body','kind','target','pros','cons','summary','menu','review_cat')}
+        board_hook('prepare',None,form=f)
         if f['kind'] in ('','post') or f['kind'] not in POST_KIND_NAMES:f['kind']=category_kind(f['category'])  # 종류 없이 오면(예전 화면) 분류로 정함
         else:f['category']=kind_category(f['kind'])
         rating=request.form.get('rating',0,type=int) if f['kind']=='review' else 0
@@ -1304,6 +1308,7 @@ def board_write():
                 f['kind'],f['target'],match_company(db,f['target']) if f['target'] else None,rating,f['pros'],f['cons'],recommend,f['summary'],f['menu'],save_board_photo(*photo) if photo[0] else '',
                 camp['id'] if camp else None,editor,1 if camp and camp['reward_on'] and not editor else 0,f['review_cat']))
             if f['kind']=='review' and not editor:ad_event('review',db)
+            board_hook('post',db,post_id=cur.lastrowid,kind=f['kind'],review_cat=f['review_cat'])
         return redirect(url_for('board_post',post_id=cur.lastrowid))
     kind=request.args.get('type','')
     camp=campaign_by_slug(request.args.get('campaign'))
@@ -1325,6 +1330,7 @@ def board_post(post_id):
         company=db.execute("SELECT id,name FROM companies WHERE id=? AND status IN ('active','listed')",(post['company_id'],)).fetchone() if post['company_id'] else None
         related=db.execute(f'SELECT {FEED_COLS} FROM posts WHERE hidden=0{not_blocked()} AND kind=? AND id!=? ORDER BY likes DESC,id DESC LIMIT 3',(post['kind'],post_id)).fetchall()
         camp=db.execute('SELECT * FROM review_campaigns WHERE id=?',(post['campaign_id'],)).fetchone() if post['campaign_id'] else None
+        if not post['hidden']:board_hook('view',db,post_id=post_id)
     blocked=bool(post['user_id'] and post['user_id'] in blocked_ids())  # 차단한 회원의 글: 본문 대신 안내와 차단 풀기
     return render_template('board_post.html',post=post,comments=comments,categories=board_categories(),liked=('likep:%d'%post_id) in mine,flagged=('flagp:%d'%post_id) in mine,enabled=board_enabled(),company=company,related=related,campaign=camp,blocked=blocked)
 
@@ -1379,6 +1385,7 @@ def board_comment(post_id):
             flash(ui_text('msg.m13','잠시 후 다시 남겨 주세요.'));return redirect(url_for('board_post',post_id=post_id)+'#comment-form')
         cid=db.execute('INSERT INTO comments(post_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,?,?,?,?,?,?)',(post_id,nickname,'' if g.user else generate_password_hash(password),body,ip_hash(),datetime.datetime.now().isoformat(timespec='seconds'),g.user['id'] if g.user else None)).lastrowid
         refresh_comment_count(db,post_id)
+        board_hook('comment',db,post_id=post_id,comment_id=cid)
         # 회원 글에 다른 사람이 댓글을 달면 글쓴이에게 알림 (글쓴이가 차단한 회원의 댓글은 알리지 않음)
         me=g.user['id'] if g.user else None
         if post['user_id'] and post['user_id']!=me and not (me and db.execute('SELECT 1 FROM user_blocks WHERE blocker=? AND blocked=?',(post['user_id'],me)).fetchone()):
@@ -2758,5 +2765,6 @@ import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소�
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
 import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
+import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·포인트·에디터 모집 (soboru_cm.py)
 
 if __name__=='__main__':app.run(debug=False)

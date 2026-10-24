@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{# 골라주세요 한 건: 고르기(써 봤어요 표시) · 결과 · 결말 남기기(글쓴이) · 한마디. soboru_cm.py vs_post() #}
+{% from 'soboru_cm_macros.html' import vs_card with context %}
+{% block title %}{{ p['title'] }} | {{ ui('vs.title', '골라주세요') }}{% endblock %}
+{% block description %}{{ p['a'] }} vs {{ p['b'] }} · {{ ui('vs.meta', '살까 말까, A냐 B냐. 소비 고민을 올리면 소보루 이웃들이 골라 줘요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap cm cx cm-post">
+  <a class="cm-back" href="{{ url_for('vs_home') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('vs.title', '골라주세요') }}</a>
+  {{ vs_card(p, url_for('vs_post', poll_id=p['id']), True) }}
+  <p class="vs-meta">{{ ui('feed.views', '조회') }} {{ p['views'] }} · {{ ago_text(p['created']) }} · {% if p['state'] == 'open' %}{{ ui('vs.until', '{d}까지 골라 주세요', d=p['ends'][5:10].replace('-', '.')) }}{% else %}{{ ui('vs.closed_s', '마감됐어요') }}{% endif %}</p>
+  {% if own and not p['ending'] %}
+  <form class="vs-end" method="post" action="{{ url_for('vs_end', poll_id=p['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h2>{{ ui('vs.end_title', '결국 무엇을 골랐나요?') }}</h2>
+    <p>{{ ui('vs.end_sub', '결말을 남기면 골라 준 이웃들에게 큰 도움이 돼요. 남기면 투표가 끝나고 50P를 받아요.') }}</p>
+    <div class="cm-seg"><label><input type="radio" name="ending" value="a" required><span>A · {{ p['a'] }}</span></label><label><input type="radio" name="ending" value="b"><span>B · {{ p['b'] }}</span></label></div>
+    <textarea name="note" maxlength="300" rows="2" placeholder="{{ ui('vs.end_ph', '예: 결국 B로 샀는데 대만족이에요!') }}"></textarea>
+    <button class="cm-btn sm" type="submit">{{ ui('vs.end_btn', '결말 남기기') }}</button>
+  </form>
+  {% endif %}
+  <section class="vs-talk" id="talk" aria-labelledby="vs-talk-h">
+    <h2 id="vs-talk-h">{{ ui('vs.talks', '한마디') }} <small>{{ talks|length }}</small></h2>
+    {% if g.user %}
+    <form class="vs-talk-form" method="post" action="{{ url_for('vs_talk', poll_id=p['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input name="body" maxlength="300" required placeholder="{{ ui('vs.talk_ph', '왜 그걸 골랐는지 한마디 남겨 주세요') }}"><button class="cm-btn sm" type="submit">{{ ui('vs.talk_btn', '남기기') }}</button>
+    </form>
+    {% else %}<p class="cm-hint"><a href="{{ url_for('login', next=request.path) }}">{{ ui('common.login', '로그인') }}</a>{{ ui('vs.talk_login', '하면 한마디를 남길 수 있어요.') }}</p>{% endif %}
+    <ul>{% for t in talks %}<li><span class="cm-av">{{ t['nickname'][:1] }}</span><div><p class="vs-talk-who"><b>{{ t['nickname'] }}</b>{% if t['pick'] %}<em>{{ t['pick']|upper }} {{ ui('vs.picked', '골랐어요') }}</em>{% endif %}<small>{{ ago_text(t['created']) }}</small></p><p>{{ mask_personal(t['body']) }}</p></div></li>
+    {% else %}<li class="cm-empty">{{ ui('vs.talk_empty', '첫 한마디를 남겨 주세요.') }}</li>{% endfor %}</ul>
+  </section>
+  {% if own or admin_active() %}<form method="post" action="{{ url_for('vs_delete', poll_id=p['id']) }}" onsubmit="return confirm('지울까요?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="cm-btn sm ghost" type="submit">{{ ui('vs.delete', '고민 지우기') }}</button></form>{% endif %}
+  {% if more %}<section class="vs-more-list"><h2>{{ ui('vs.more_title', '이런 고민도 골라 주세요') }}</h2><div class="vs-grid">{% for m in more %}{{ vs_card(m, url_for('vs_post', poll_id=p['id'])) }}{% endfor %}</div></section>{% endif %}
+</main>
+{% endblock %}

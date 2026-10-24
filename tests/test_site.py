@@ -4253,6 +4253,79 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             return c, db.execute('SELECT id FROM users WHERE login_id=?', (login_id,)).fetchone()[0]
 
+    def test_soboru_community_feed_vs_suda_points_editor(self):
+        # 품앗히식 커뮤니티: 수다 말머리→종류, 후기 정보·영수증 인증, 골라주세요 투표·결말, 포인트, 에디터 모집
+        from PIL import Image
+        with self.site.conn() as db:
+            for t in ('points', 'vs_votes', 'vs_comments', 'vs_polls', 'editor_apps'): db.execute('DELETE FROM ' + t)
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('nn-about', home); self.assertIn('소보루는 소비자끼리 돕는 커뮤니티예요', home); self.assertIn('nn-talk', home)
+        me, uid = self.member_client('cm_writer', '수다쟁이')
+        r = self.post_form(me, '/board/write?type=post', {'kind': 'post', 'head': '질문', 'title': '헬스장 환불 되나요?', 'body': '두 달 다니고 이사 가요. 환불 되나요?', 'agree': '1'})
+        self.assertEqual(r.status_code, 302)
+        with self.site.conn() as db:
+            q = db.execute("SELECT * FROM posts WHERE title='헬스장 환불 되나요?'").fetchone()
+            self.assertEqual((q['kind'], q['head']), ('question', '질문'))
+            self.assertEqual(db.execute('SELECT SUM(amount) FROM points WHERE user_id=?', (uid,)).fetchone()[0], 110)  # 수다 10 + 첫 수다 100
+        self.assertIn('헬스장 환불 되나요?', self.client.get('/suda?head=질문').get_data(as_text=True))
+        self.assertNotIn('헬스장 환불 되나요?', self.client.get('/suda?head=지름').get_data(as_text=True))
+        # 후기: 장소·분류·가격·방문일·재방문 의사·영수증
+        buf = io.BytesIO(); Image.new('RGB', (40, 30), (255, 255, 255)).save(buf, 'JPEG')
+        token = self.csrf(me, '/board/write?type=review')
+        day = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
+        r = me.post('/board/write', data={'_csrf': token, 'kind': 'review', 'rv_type': 'place', 'rv_cat': '맛집·카페', 'target': '소보루식당', 'rating': '5', 'price': '21,000', 'bought': day,
+                                          'again': '1', 'title': '국물이 진해요', 'body': '점심에 다녀왔는데 국물이 진했어요.', 'agree': '1', 'receipt': (io.BytesIO(buf.getvalue()), 'r.jpg')},
+                    content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 302)
+        with self.site.conn() as db:
+            rv = db.execute("SELECT * FROM posts WHERE title='국물이 진해요'").fetchone()
+        self.assertEqual((rv['rv_type'], rv['rv_cat'], rv['price'], rv['bought'], rv['again'], rv['receipt_state']), ('place', '맛집·카페', 21000, day, 1, 'wait'))
+        feed = self.client.get('/feed?t=place').get_data(as_text=True)
+        self.assertIn('국물이 진해요', feed); self.assertIn('21,000원', feed); self.assertIn('재방문 의사 있어요', feed)
+        self.assertNotIn(rv['receipt'], feed)  # 영수증은 공개 화면에 안 나감
+        self.assertIn('<b>0</b>개의 후기', self.client.get('/feed?ok=1').get_data(as_text=True))
+        self.assertNotEqual(self.client.get('/feed/receipt/' + rv['receipt']).status_code, 200)
+        admin = self.login_admin()
+        self.assertEqual(admin.get('/feed/receipt/' + rv['receipt']).status_code, 200)
+        self.assertEqual(self.post_form(admin, '/admin/receipts', {'id': rv['id'], 'act': 'ok'}).status_code, 302)
+        self.assertIn('<b>1</b>개의 후기', self.client.get('/feed?ok=1').get_data(as_text=True))
+        self.client.get('/board/%d' % rv['id'])
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT SUM(amount) FROM points WHERE user_id=?', (uid,)).fetchone()[0], 310)
+            self.assertEqual(db.execute('SELECT views FROM posts WHERE id=?', (rv['id'],)).fetchone()[0], 1)
+        self.post_form(admin, '/admin/receipts', {'id': rv['id'], 'act': 'ok'})  # 두 번 눌러도 포인트는 한 번
+        self.assertIn('310', me.get('/me/points').get_data(as_text=True))
+        # 골라주세요: 회원만 올림, 누구나 한 번 고름, 글쓴이가 결말
+        self.assertEqual(self.client.get('/vs/new').status_code, 302)
+        r = self.post_form(me, '/vs/new', {'cat': '먹거리', 'a': '치킨', 'b': '피자', 'body': '둘이 먹어요', 'days': '3'})
+        self.assertEqual(r.status_code, 302)
+        with self.site.conn() as db: poll = db.execute('SELECT * FROM vs_polls').fetchone()
+        self.assertEqual(poll['title'], '치킨 vs 피자')
+        guest_token = self.csrf(self.client, '/vs/%d' % poll['id'])
+        self.client.post('/vs/%d/vote' % poll['id'], data={'_csrf': guest_token, 'pick': 'a', 'used': '1'})
+        self.client.post('/vs/%d/vote' % poll['id'], data={'_csrf': guest_token, 'pick': 'b'})  # 두 번째는 무시
+        other, oid = self.member_client('cm_voter', '골라줌')
+        other.post('/vs/%d/vote' % poll['id'], data={'_csrf': self.csrf(other, '/vs/%d' % poll['id']), 'pick': 'b'})
+        page = self.client.get('/vs/%d' % poll['id']).get_data(as_text=True)
+        self.assertIn('50%', page); self.assertIn('2명 골라줌', page); self.assertIn('써 본 사람 1명', page)
+        self.assertEqual(other.post('/vs/%d/end' % poll['id'], data={'_csrf': self.csrf(other, '/vs/%d' % poll['id']), 'ending': 'a'}).status_code, 403)
+        me.post('/vs/%d/end' % poll['id'], data={'_csrf': self.csrf(me, '/vs/%d' % poll['id']), 'ending': 'a', 'note': '치킨 먹었어요'})
+        self.assertIn('결말 나옴', self.client.get('/vs').get_data(as_text=True))
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT SUM(amount) FROM points WHERE user_id=? AND reason='vote'", (oid,)).fetchone()[0], 5)
+            self.assertEqual(db.execute("SELECT SUM(amount) FROM points WHERE user_id=? AND reason='vs_end'", (uid,)).fetchone()[0], 50)
+        # 에디터 모집: 신청서 확인, 선정 안 한 신청은 30일 뒤 지움
+        page = self.client.get('/editor').get_data(as_text=True)
+        self.assertIn('내돈내산 후기 써 주실 분 모집해요', page); self.assertIn('무선 이어폰', page)
+        self.assertEqual(self.post_form(self.client, '/editor', {'name': '이웃', 'phone': '123', 'product': '무선 이어폰', 'receipt': '1', 'agree': '1'}).status_code, 400)
+        self.assertEqual(self.post_form(self.client, '/editor', {'name': '이웃', 'phone': '010-1234-5678', 'product': '무선 이어폰', 'receipt': '1', 'agree': '1'}).status_code, 302)
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT phone FROM editor_apps').fetchone()[0], '01012345678')
+            db.execute("UPDATE editor_apps SET created='2020-01-01T00:00:00'")
+        self.assertIn('에디터 신청', admin.get('/admin/editors').get_data(as_text=True))
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM editor_apps').fetchone()[0], 0)
+
     def test_service_worker_and_offline_page(self):
         r = self.client.get('/sw.js')
         self.assertEqual(r.status_code, 200)

@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{# 내돈내산 후기 피드 (품앗히 피드처럼): 상품·장소 탭, 분류, 정렬, 영수증 인증만 보기. soboru_cm.py feed() #}
+{% from 'soboru_cm_macros.html' import rv_item, pager with context %}
+{% block title %}{{ ui('feed.title', '내돈내산 후기') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('feed.meta', '직접 돈 내고 산 상품, 다녀온 장소의 솔직한 후기. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}{% endblock %}
+{% block content %}
+{% set qs = {'t': t or None, 'c': c or None, 'sort': sort if sort != 'new' else None, 'ok': '1' if ok else None, 'q': q or None, 'f': field if q and field != 'all' else None} %}
+<main class="sb-wrap cm cx">
+  <header class="cm-head">
+    <div>
+      <h1>{{ ui('feed.title', '내돈내산 후기') }}</h1>
+      <p>{{ ui('feed.intro', '직접 돈 내고 산 것, 다녀온 곳만. 광고 없이 소비자끼리 나누는 솔직한 후기예요.') }}</p>
+    </div>
+    <a class="cm-btn" href="{{ url_for('board_write', type='review') }}">{{ ui('feed.write', '후기 쓰기') }}</a>
+  </header>
+
+  <section class="pf-banner" aria-label="{{ ui('feed.banner_aria', '영수증 인증 안내') }}">
+    <span class="pf-banner-e" aria-hidden="true">🧾</span>
+    <div><b>{{ ui('feed.banner_title', '영수증을 함께 올리면 영수증 인증 후기가 돼요') }}</b>
+      <p>{{ ui('feed.banner_body', '영수증은 운영자만 보고 공개되지 않아요. 인증되면 200P를 드려요.') }}</p></div>
+    <a class="pf-banner-go" href="{{ url_for('editor') }}">{{ ui('feed.banner_editor', '후기 에디터 모집 중') }} ›</a>
+  </section>
+
+  <div class="cm-body">
+    <div class="cm-main">
+      <nav class="cm-tabs" aria-label="{{ ui('feed.tabs_aria', '후기 종류') }}">
+        <a href="{{ url_for('feed', **dict(qs, t=None, c=None)) }}"{% if not t %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+        {% for k, name in RV_TYPES %}<a href="{{ url_for('feed', **dict(qs, t=k, c=None)) }}"{% if t == k %} class="on" aria-current="true"{% endif %}>{{ name }}</a>{% endfor %}
+      </nav>
+      {% if t %}
+      <nav class="cm-rcs" aria-label="{{ ui('feed.cat_aria', '분류') }}">
+        <a href="{{ url_for('feed', **dict(qs, c=None)) }}"{% if not c %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
+        {% for name, emo in RV_CATS[t] %}<a href="{{ url_for('feed', **dict(qs, c=name)) }}"{% if c == name %} class="on" aria-current="true"{% endif %}><span aria-hidden="true">{{ emo }}</span> {{ name }}</a>{% endfor %}
+      </nav>
+      {% endif %}
+      <div class="cm-bar">
+        <p>{% if q %}‘{{ q }}’ {{ ui('cm.found', '검색 결과') }} {% endif %}<b>{{ total }}</b>{{ ui('feed.count_tail', '개의 후기') }}</p>
+        <div class="pf-tools">
+          <a class="pf-ok-toggle{{ ' on' if ok }}" href="{{ url_for('feed', **dict(qs, ok=None if ok else '1')) }}" aria-pressed="{{ 'true' if ok else 'false' }}"><span aria-hidden="true">✅</span> {{ ui('feed.only_ok', '영수증 인증만') }}{% if n_ok %} <small>{{ n_ok }}</small>{% endif %}</a>
+          <div class="cm-sort" role="group" aria-label="{{ ui('board.sort_aria', '정렬') }}">
+            <a href="{{ url_for('feed', **dict(qs, sort=None)) }}"{% if sort == 'new' %} class="on"{% endif %}>{{ ui('board.sort_new', '최신순') }}</a>
+            <a href="{{ url_for('feed', **dict(qs, sort='views')) }}"{% if sort == 'views' %} class="on"{% endif %}>{{ ui('feed.sort_views', '많이 본 순') }}</a>
+            <a href="{{ url_for('feed', **dict(qs, sort='likes')) }}"{% if sort == 'likes' %} class="on"{% endif %}>{{ ui('feed.sort_likes', '공감 많은 순') }}</a>
+          </div>
+        </div>
+      </div>
+      <div class="pf-list">
+        {% for p in rows %}{{ rv_item(p) }}
+        {% else %}
+        <div class="cm-empty"><p>{{ ui('board.no_results', '검색 결과가 없어요.') if q or ok else ui('feed.empty', '아직 후기가 없어요. 첫 후기를 남겨 주세요.') }}</p>
+          {% if not q %}<a class="cm-btn" href="{{ url_for('board_write', type='review') }}">{{ ui('feed.write', '후기 쓰기') }}</a>{% endif %}</div>
+        {% endfor %}
+      </div>
+      {{ pager('feed', page, pages, qs) }}
+      <form class="pf-search" method="get" role="search">
+        {% for k, v in qs.items() if v and k not in ('q', 'f') %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+        <select name="f" aria-label="{{ ui('feed.search_field', '검색할 곳') }}">
+          <option value="all"{% if field == 'all' %} selected{% endif %}>{{ ui('feed.f_all', '제목+내용') }}</option>
+          <option value="target"{% if field == 'target' %} selected{% endif %}>{{ ui('feed.f_target', '상품·장소 이름') }}</option>
+          <option value="who"{% if field == 'who' %} selected{% endif %}>{{ ui('feed.f_who', '글쓴이') }}</option>
+        </select>
+        <input type="search" name="q" value="{{ q }}" placeholder="{{ ui('feed.search_ph', '궁금한 상품·가게 검색') }}" aria-label="{{ ui('feed.search_aria', '후기 검색') }}">
+        <button class="cm-btn sm" type="submit">{{ ui('feed.search_btn', '검색') }}</button>
+      </form>
+    </div>
+    {% if hot %}
+    <section class="cm-side cm-hot" aria-labelledby="pf-hot-h">
+      <h2 id="pf-hot-h">{{ ui('feed.hot_title', '이번 주 많이 본 후기') }}</h2>
+      <ol>{% for p in hot %}<li><a href="{{ url_for('board_post', post_id=p['id']) }}"><span class="cm-rank">{{ loop.index }}</span><span class="cm-hot-t"><b>{{ p['title'] }}</b><small>{{ mask_personal(p['target']) }} · {{ ui('feed.views', '조회') }} {{ p['views'] }}</small></span></a></li>{% endfor %}</ol>
+    </section>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

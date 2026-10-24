@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{# 골라주세요 고민 올리기 (회원만). soboru_cm.py vs_new() #}
+{% block title %}{{ ui('vs.new', '고민 올리기') }} | {{ ui('vs.title', '골라주세요') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap cm cm-write cx">
+  <a class="cm-back" href="{{ url_for('vs_home') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('vs.title', '골라주세요') }}</a>
+  <h1>{{ ui('vs.new_title', '무엇이 고민인가요?') }}</h1>
+  <form class="cm-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <div class="cm-f"><span class="cm-l">{{ ui('vs.f_cat', '분야') }}</span>
+      <div class="cm-cats">{% for name, emo in VS_CATS %}<label><input type="radio" name="cat" value="{{ name }}" required{% if f.get('cat') == name %} checked{% endif %}><span><i aria-hidden="true">{{ emo }}</i>{{ name }}</span></label>{% endfor %}</div></div>
+    <div class="cm-two">
+      <div class="cm-f"><label class="cm-l" for="v-a">{{ ui('vs.f_a', 'A') }}</label><input id="v-a" name="a" maxlength="30" required value="{{ f.get('a', '') }}" placeholder="{{ ui('vs.f_a_ph', '예: 에어팟 프로') }}"></div>
+      <div class="cm-f"><label class="cm-l" for="v-b">{{ ui('vs.f_b', 'B') }}</label><input id="v-b" name="b" maxlength="30" required value="{{ f.get('b', '') }}" placeholder="{{ ui('vs.f_b_ph', '예: 갤럭시 버즈') }}"></div>
+    </div>
+    <div class="cm-f"><label class="cm-l" for="v-title">{{ ui('board.f_title', '제목') }} <small>{{ ui('cm.optional', '선택') }}</small></label><input id="v-title" name="title" maxlength="80" value="{{ f.get('title', '') }}" placeholder="{{ ui('vs.f_title_ph', '비워 두면 ‘A vs B’로 올라가요') }}"></div>
+    <div class="cm-f"><label class="cm-l" for="v-body">{{ ui('vs.f_body', '고민 내용') }} <small>{{ ui('cm.optional', '선택') }}</small></label><textarea id="v-body" name="body" maxlength="1000" rows="4" placeholder="{{ ui('vs.f_body_ph', '예산, 쓰는 곳, 망설이는 이유를 적으면 더 잘 골라 줘요.') }}">{{ f.get('body', '') }}</textarea></div>
+    <div class="cm-f"><span class="cm-l">{{ ui('vs.f_days', '얼마 동안 골라 받을까요?') }}</span>
+      <div class="cm-seg">{% for d in (1, 3, 7) %}<label><input type="radio" name="days" value="{{ d }}"{% if (f.get('days') or '3') == d|string %} checked{% endif %}><span>{{ ui('vs.days', '{n}일', n=d) }}</span></label>{% endfor %}</div></div>
+    <p class="cm-hint">{{ ui('vs.f_hint', '마감되면 결말(결국 무엇을 골랐는지)을 남겨 주세요. 광고·홍보 고민은 운영자가 내려요.') }}</p>
+    <button class="cm-submit" type="submit">{{ ui('vs.submit', '고민 올리기') }}</button>
+  </form>
+</main>
+{% endblock %}

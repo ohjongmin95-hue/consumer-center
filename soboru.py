@@ -16,7 +16,7 @@ NEW_NAME = '소보루'
 # 예전 브랜드 시절 소보루로 덮어쓰던 문구. 소보루 하나만 쓰면서 기본값이 소보루 문구가 됐으니, 그때 저장해 둔 값(화면에 안 보이던 값)은 한 번 지움
 RETIRED_KEYS = ('site.brand', 'site.name', 'seo.home_title', 'seo.description', 'board.title')
 # 소비자제보센터 화면(consumerjebo.co.kr): 소보루와 같은 제보·게시판·관리자를 쓰고, 이름·제목만 이 칸의 값으로 바꿔 보여 줌
-SOBORU_ONLY = ('/life', '/letter', '/pick/', '/ask')
+SOBORU_ONLY = ('/life', '/letter', '/pick/', '/ask', '/feed', '/vs', '/suda', '/editor', '/me/points')
 JEBO_KEYS = {'site.name': 'jebo.site_name', 'seo.home_title': 'jebo.home_title', 'seo.description': 'jebo.description', 'board.title': 'jebo.board_title'}
 
 # AI 소비자 상담 새 버전(lawrag.py)을 켰을 때만 쓰는 메뉴·제목 문구. 꺼져 있으면 old_nav 그대로
@@ -46,16 +46,16 @@ LIFE_PAGE = 12
 RANK_DAYS = 30
 # 화면 편집 (관리자 > 화면 편집): 페이지마다 큰 묶음(블록)의 순서와 보이기. 잘게 나누지 않고 화면에서 한눈에 보이는 덩어리 단위
 PAGE_BLOCKS = {
-    'home': ('홈', [('intro', '맨 위 소개 (소보루 큰 문구 · 제보하기 버튼)'), ('quick', '바로가기 아이콘 줄'), ('live', '소비자의 소리 (실시간 제보)'),
-                   ('letter', '소보루 레터 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('pick', '소보루 픽 (추천 TOP 5 · 최신 글 · 글쓰기)'),
-                   ('answer', '기업 답변 기록')]),
+    'home': ('홈', [('intro', '맨 위 소개 (소보루 큰 문구 · 제보하기 버튼)'), ('quick', '소보루는 이런 곳 (제보 · 후기 · 골라주세요 · 수다방)'), ('live', '소비자의 소리 (실시간 제보)'),
+                   ('pick', '소보루 픽 (추천 TOP 5 · 최신 글 · 글쓰기)'), ('talk', '골라주세요 · 수다방'),
+                   ('letter', '소보루 레터 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('answer', '기업 답변 기록')]),
     'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '소보루 레터 구독')]),
     'board': ('소보루 픽', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
                          ('feed', '글 목록 · 이번 주 인기 · 리뷰 모아 보기'), ('foot', '맨 아래 안내')]),
     'letter': ('소보루 레터', [('hero', '맨 위 구독 신청'), ('feats', '레터에 담기는 것 (3가지)'), ('archive', '지난 레터')]),
 }
 # 예전 '메인 화면 순서' 저장값(top·life·rank 켜고 끄기)을 새 묶음으로 옮길 때
-OLD_HOME_SECTIONS = {'top': ('intro', 'quick', 'live'), 'life': ('life',), 'rank': ('pick', 'answer')}
+OLD_HOME_SECTIONS = {'top': ('intro', 'quick', 'live'), 'life': ('life',), 'rank': ('pick', 'talk', 'answer')}
 # 제보 카드 대표 그림: 제보 유형별 이모지·바탕색
 REPORT_EMOJI = {'배송·교환·환불': '📦', '계약·해지': '📝', '요금·결제': '💳', '품질·하자·AS': '🛠️', '허위·과장 광고': '📢',
                 '고객 응대': '☎️', '개인정보': '🔐', '안전·위해': '⚠️'}
@@ -95,13 +95,19 @@ def report_art(industry, extra=()):
 
 
 def clean_blocks(page, raw):
-    # 저장된 값이 이상해도 화면이 깨지지 않게: 모르는 묶음은 빼고, 빠진 묶음은 맨 뒤에 켜서 붙임
-    names = dict(PAGE_BLOCKS[page][1])
+    # 저장된 값이 이상해도 화면이 깨지지 않게: 모르는 묶음은 빼고, 빠진 묶음(새로 생긴 묶음)은 켜서
+    # 기본 순서에서 바로 앞 묶음 뒤에 붙임 (앞 묶음이 없으면 맨 뒤)
+    names = dict(PAGE_BLOCKS[page][1]); order = list(names)
     seen, out = set(), []
     for item in raw or []:
         if isinstance(item, (list, tuple)) and len(item) == 2 and item[0] in names and item[0] not in seen:
             seen.add(item[0]); out.append([item[0], 1 if item[1] else 0])
-    return out + [[k, 1] for k in names if k not in seen]
+    for n, k in enumerate(order):
+        if k in seen: continue
+        prev = order[n - 1] if n else None
+        at = next((i + 1 for i, (b, _) in enumerate(out) if b == prev), len(out))
+        out.insert(at, [k, 1]); seen.add(k)
+    return out
 
 
 def move_block(rows, key, act):

@@ -372,4 +372,42 @@ if hasattr(m, 'scamwatch') and os.environ.get('VRT_NN'):
             db.execute("INSERT INTO scam_reports(kind,region,title,story,target_type,target,target_norm,amount,occurred_on,user_id,ip_hash,status,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,'public',?)",
                        (kind, region, title, story, tt, target, m.scamwatch.norm_target(tt, target), amount, _ago_d(d + 1)[:10], uid[0] if uid else None, 'seed', _ago_d(d)))
         db.execute("INSERT INTO scam_reports(kind,region,title,story,target_type,target,target_norm,status,created) VALUES('etc','서울','확인 전 신고 (보이면 안 됨)','운영자가 아직 확인하지 않은 신고예요. 공개 화면에 나오면 안 돼요.','none','','','pending',?)", (_ago_d(0),))
+# 소보루 커뮤니티 미리보기 (soboru_cm.py): 후기 정보·영수증 인증, 골라주세요, 수다방 말머리, 포인트
+if hasattr(m, 'soboru_cm') and os.environ.get('VRT_NN'):
+    import datetime as _dt
+    def _ago3(h): return (_dt.datetime.now() - _dt.timedelta(hours=h)).isoformat(timespec='seconds')
+    def _day3(d): return (_dt.date.today() - _dt.timedelta(days=d)).isoformat()
+    with m.conn() as db:
+        RV = {'소보루마트': ('product', '식품', 18900, 9, 1, 'ok', 132), '오소보카페': ('place', '맛집·카페', 6500, 3, 1, 'ok', 88), '보루텔레콤': ('product', '디지털·가전', 33000, 40, 1, '', 61),
+              '루트호텔': ('place', '숙소·여행', 129000, 12, 0, 'ok', 54), '소보루전자': ('product', '디지털·가전', 0, 70, 1, '', 40), '소보루사운드': ('product', '디지털·가전', 89000, 30, 0, 'ok', 77),
+              '오소보쇼핑': ('product', '집·생활', 24000, 6, 0, '', 35), '소보루치킨 역삼점': ('place', '맛집·카페', 21000, 2, 1, 'ok', 95), '오소보분식': ('place', '맛집·카페', 14000, 1, 1, '', 49), '보루피자': ('place', '맛집·카페', 27900, 4, 1, '', 30)}
+        for pid, target, created in db.execute("SELECT id,target,created FROM posts WHERE kind='review'").fetchall():
+            t, c, price, d, again, ok, views = RV.get(target, ('product', '기타', 0, 5, None, '', 12))
+            bought = (_dt.date.fromisoformat(created[:10]) - _dt.timedelta(days=d)).isoformat()
+            db.execute('UPDATE posts SET rv_type=?,rv_cat=?,price=?,bought=?,again=?,receipt_state=?,receipt=?,views=? WHERE id=?', (t, c, price, bought, again, ok, 'seed.jpg' if ok else '', views, pid))
+        HEADS = {'post': '잡담', 'tip': '정보', 'question': '질문'}
+        for pid, kind in db.execute("SELECT id,kind FROM posts WHERE kind!='review'").fetchall():
+            db.execute('UPDATE posts SET head=?,views=? WHERE id=?', (HEADS.get(kind, '잡담'), 20 + pid * 7 % 90, pid))
+        for head, nick, title, body, likes, h in [('지름', '월급루팡', '결국 질렀습니다… 로봇청소기 인증해요', '3개월 고민하다 할인할 때 샀어요. 물걸레까지 되니까 신세계예요.', 6, 3),
+                                                  ('직장', '야근요정', '회사 근처 점심 만 원 넘는 게 기본이 됐네요', '도시락 싸 다니시는 분들 메뉴 추천 좀 해 주세요.', 2, 5),
+                                                  ('인증', '알뜰살뜰', '통신비 3만 원 줄인 인증합니다', '알뜰폰으로 바꾸고 첫 달 고지서 받았어요. 생각보다 불편한 거 없어요.', 9, 8),
+                                                  ('운동', '헬린이', '헬스장 PT 10회 결제 전에 꼭 물어볼 것', '환불 규정이랑 양도 되는지는 꼭 계약서에 적어 달라고 하세요.', 4, 12)]:
+            db.execute("INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind,likes,head,views) VALUES('칭찬해요',?,'',?,?,'seed',?,'post',?,?,?)", (nick, title, body, _ago3(h), likes, head, 30 + likes * 11))
+        me = db.execute("SELECT id FROM users WHERE login_id='vrt_member'").fetchone()
+        uid = me[0] if me else None
+        for cat, title, body, a, b, nick, days, ending, note, va, vb, h in [
+                ('가전·디지털', '에어팟 프로 vs 갤럭시 버즈, 아이폰 아니면 뭐가 나아요?', '안드로이드 쓰는데 노이즈 캔슬링 좋은 걸로 사고 싶어요. 예산 30만 원이에요.', '에어팟 프로', '갤럭시 버즈', '이어폰고민', 3, '', '', 14, 23, 5),
+                ('먹거리', '오늘 저녁 치킨 vs 피자', '둘이 먹을 거예요. 둘 다 배달비 3천 원.', '치킨', '피자', '배고픈곰', 1, '', '', 31, 12, 2),
+                ('살까말까', '20만 원짜리 무선 청소기, 살까 말까', '원룸이라 유선도 크게 불편하진 않은데 선이 자꾸 걸려요.', '산다', '안 산다', '자취3년차', 3, 'a', '결국 샀어요! 선 없는 게 이렇게 편한 줄 몰랐어요.', 19, 8, 60),
+                ('선물', '부모님 결혼기념일 선물, 안마기 vs 외식 상품권', '', '안마기', '외식 상품권', '효도하자', 7, '', '', 9, 11, 20)]:
+            ends = (_dt.datetime.now() + _dt.timedelta(days=days) - _dt.timedelta(hours=h)).isoformat(timespec='seconds')
+            vid = db.execute('INSERT INTO vs_polls(cat,title,body,a,b,user_id,nickname,ends,ending,ending_note,views,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                             (cat, title, body, a, b, None, nick, ends, ending, note, (va + vb) * 3, _ago3(h))).lastrowid
+            for i in range(va + vb):
+                db.execute('INSERT INTO vs_votes(poll_id,voter,pick,used,created) VALUES(?,?,?,?,?)', (vid, 'seed%d-%d' % (vid, i), 'a' if i < va else 'b', 1 if i % 4 == 0 else 0, _ago3(h / 2)))
+            for nick2, body2, pick in [('경험자', '저는 써 봤는데 이쪽이 훨씬 나았어요.', 'a'), ('지나가던이웃', '저라면 이거요. 가성비가 좋아요.', 'b')][: 2 if va + vb > 20 else 1]:
+                db.execute('INSERT INTO vs_comments(poll_id,nickname,body,pick,created) VALUES(?,?,?,?,?)', (vid, nick2, body2, pick, _ago3(h / 3)))
+        if uid:
+            for reason, ref, h in [('suda_first', 'first', 100), ('suda', 'p1', 100), ('review_ok', 'p2', 50), ('vote', 'v1', 20), ('comment', 'c1', 3)]:
+                db.execute('INSERT INTO points(user_id,amount,reason,ref,created) VALUES(?,?,?,?,?)', (uid, m.soboru_cm.POINTS[reason][1], reason, ref, _ago3(h)))
 app.run(host='127.0.0.1', port=PORT)
