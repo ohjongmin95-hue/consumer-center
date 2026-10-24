@@ -24,7 +24,8 @@ ASK_ENGAGE = ('댓글', '좋아요 눌러', '팔로우하면', '공유하면', '
 POLITICS = ('대통령', '국회의원', '정당', '후보', '선거', '여당', '야당', '국민의힘', '민주당')
 ALWAYS_OK = {'1372'}  # 원고 끝 안내에 늘 쓰는 번호 (소비자상담센터)
 # 매일 자동으로 고를 뉴스 주제 (소비자 권익)
-DAILY_TOPICS = '소비자 피해, 환불·위약금 분쟁, 한국소비자원 발표, 공정위 제재, 리콜, 요금·가격 인상, 소비자 주의보, 피해구제'
+DAILY_TOPICS = ('소비자 피해, 환불·위약금 분쟁, 한국소비자원 발표, 공정위 제재, 리콜, 요금·가격 인상, 소비자 주의보, 피해구제, '
+                '그리고 유통·생활경제(편의점·마트·이커머스·배달앱·식품 가격)와 금융·부동산·물가·요금·세금·환율 등 경제 섹션 뉴스 전부(소비자 생활에 닿는 것 먼저)')
 
 WRITE_SYSTEM = """너는 소비자 권익 서비스 '소보루(SOBORU)'의 인스타그램 카드뉴스 에디터야. 뉴닉처럼 친근하고 쉬운 해요체로 쓴다.
 기사 한 편과 같은 뉴스를 다룬 다른 기사를 받는다. 이걸로 카드뉴스 원고를 JSON으로 쓴다.
@@ -264,7 +265,16 @@ def find_others(cfg, art, n=2):
     return out
 
 
-DAILY_QUERIES = ['소비자 피해', '한국소비자원', '환불 분쟁', '공정위 과징금', '리콜', '요금 인상', '소비자 주의보', '피해구제']
+# 네이버 검색 API는 '경제 섹션'을 바로 고를 수 없어서, 경제 섹션 전체(생활경제·유통·금융·부동산·산업·경제일반)를 덮는 검색어로 찾는다.
+# 앞쪽 묶음일수록 먼저 보여 줌: 소비자 > 유통·생활경제 > 금융·부동산 > 경제 일반
+NEWS_GROUPS = [
+    ('소비자', ['소비자 피해', '한국소비자원', '환불 분쟁', '공정위 과징금', '리콜', '소비자 주의보', '피해구제', '요금 인상']),
+    ('유통', ['유통업계', '편의점', '대형마트', '이커머스', '배달앱', '백화점', '식품 가격', '외식 가격', '할인 행사', '홈쇼핑']),
+    ('금융·부동산', ['금리', '대출', '예금', '카드 혜택', '보험료', '전세', '월세', '아파트 분양']),
+    ('경제', ['물가', '공공요금', '전기요금', '통신비', '기름값', '환율', '세금', '연말정산', '최저임금', '고용', '소상공인', '수출', '자동차', '항공권']),
+]
+QUERY_GROUP = {q: g for g, qs in NEWS_GROUPS for q in qs}
+DAILY_QUERIES = [q for _, qs in NEWS_GROUPS for q in qs]
 
 
 def find_news(cfg, n, avoid=()):
@@ -287,13 +297,16 @@ def find_news(cfg, n, avoid=()):
     return urls[:n + 3]
 
 
-def news_list(cfg, avoid=(), k=12):
-    """첫 화면 '오늘의 소비자 뉴스': 네이버 뉴스에서 최근 이틀 소비자 뉴스를 검색어마다 고르게 섞어 [{title,url,summary,date,host,topic}]"""
+def news_list(cfg, avoid=(), k=40):
+    """첫 화면 '오늘의 뉴스': 네이버 뉴스에서 최근 이틀 경제 섹션 전체(소비자·유통 먼저)를 검색어마다 고르게 섞어
+    [{title,url,summary,date,host,topic,group}]. 검색어가 많아서 한꺼번에 물어본다."""
+    from concurrent.futures import ThreadPoolExecutor
     since = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
-    per = [[dict(it, topic=q, host=urllib.parse.urlparse(it['url']).netloc.removeprefix('www.')) for it in naver_news(cfg, q, display=6, sort='date')
-            if it['date'] >= since and it['url'] not in avoid] for q in DAILY_QUERIES]
+    with ThreadPoolExecutor(8) as ex: found = list(ex.map(lambda q: naver_news(cfg, q, display=5, sort='date'), DAILY_QUERIES))
+    per = [[dict(it, topic=q, group=QUERY_GROUP[q], host=urllib.parse.urlparse(it['url']).netloc.removeprefix('www.')) for it in lst
+            if it['date'] >= since and it['url'] not in avoid] for q, lst in zip(DAILY_QUERIES, found)]
     out, seen = [], set()
-    for i in range(6):  # 검색어를 돌아가며 하나씩 (같은 사건은 제목 앞부분으로 거름)
+    for i in range(5):  # 검색어를 돌아가며 하나씩 (같은 사건은 제목 앞부분으로 거름)
         for lst in per:
             if i < len(lst):
                 it = lst[i]; key = re.sub(r'\W', '', it['title'])[:14]
