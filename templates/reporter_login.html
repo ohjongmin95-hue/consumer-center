@@ -1,11 +1,11 @@
 {% extends 'reporter_base.html' %}
 {% block title %}소보루 기자 로그인 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
-{# 토스식 로그인: PC는 왼쪽 귤색 브랜드 화면(문구만) + 오른쪽 흰 로그인, 모바일은 위에 귤색 띠 #}
+{# 토스식 로그인: PC는 왼쪽 짙은 남색 화면(문구만, 귤색은 포인트) + 오른쪽 흰 로그인, 모바일은 위에 귤색 띠 #}
 <main class="sl-page">
   <aside class="sl-hero" aria-hidden="true">
     <p class="sl-hero-kicker">SOBORU 기자실</p>
-    <p class="sl-hero-title">소비자의 목소리를<br>기사로 만드는 곳</p>
+    <p class="sl-hero-title">소비자의 목소리를<br><em>기사로</em> 만드는 곳</p>
   </aside>
   <div class="sl-box">
     <p class="sl-brand"><img src="{{ asset('img/soboru-logo-orange.png') }}" alt="SOBORU" width="136" height="32"><em>기자실</em></p>
