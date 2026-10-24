@@ -1,13 +1,13 @@
 """소보루 카드뉴스 만들기: 뉴스 링크 하나로 인스타 카드뉴스(표지 문구 5개 + 본문 + 그림 + 캡션) 초안을 Claude로 만든다.
 
 소보루 사이트와 따로 돌아가는 프로그램이다 (server.py가 화면, 이 파일이 만드는 일).
-- 순서: 기사 가져오기 → 같은 뉴스를 다룬 다른 기사 1~2개 찾아 읽기(사실 확인: 네이버 뉴스 검색 먼저, 모자라면 Claude 웹 검색) → Claude가 원고(JSON) → Claude가 그림(SVG) → 코드 검사.
+- 순서: 기사 가져오기 → 같은 뉴스를 다룬 다른 기사 1~2개 찾아 읽기(사실 확인: 네이버 뉴스 검색 먼저, 모자라면 Claude 웹 검색) → 원고(JSON: Claude API·claude.ai 붙여넣기·직접 쓰기) → 힉스필드 사진 → 코드 검사.
 - 규칙은 「인스타 수익화 올인원 패키지 3권 · 저작권 기준표」(2026.10)를 따른다:
   사실만 가져오고 기사 문장은 옮기지 않음(띄어쓰기 빼고 18자 넘게 같으면 걸림) · 표지 낚시말(충격·결국·경악) 금지 · '댓글에 ○○' 대신 저장 유도 ·
   기사 사진 안 씀(그림은 새로 그림) · 실존 인물 얼굴·기업 로고·유명 캐릭터 안 그림 · 캡션에 '출처: 매체명 날짜 보도' + 링크.
   다른 기사로 확인하지 못했거나 기사에 없는 숫자가 있으면 '확인 필요'로 두고, '직접 확인했어요'에 체크해야 내려받을 수 있다.
-- 그림: 표지는 플랫 일러스트, 본문은 인포그래픽, 마지막 장은 소보루 캐릭터(static/soboru-character.png).
-  그림 담당은 ARTISTS에서 고른다 (설정 '그림 담당', 기본 claude). 힉스필드는 키가 생기면 ARTISTS에 하나 더 붙인다.
+- 이미지: 힉스필드로만 (운영자 2026-10-24). 장마다 사진/일러스트를 고르고, 힉스필드에 붙여 넣을 설명(photo_prompt)을 준다.
+  힉스필드 사이트에서 만든 이미지를 올리거나(비용 없음) 키가 있으면 바로 주문. 마지막 장은 소보루 캐릭터(static/soboru-character.png).
 - 카드 모양(글자·주황 박스·태그)은 화면(templates/edit.html)이 데이터로 그리고, PNG(1080×1350)와 캡션을 한 번에 내려받는다.
   인스타그램에는 직접 올린다(외부 자동 업로드 봇은 계정 정지 위험).
 """
@@ -25,11 +25,6 @@ POLITICS = ('대통령', '국회의원', '정당', '후보', '선거', '여당',
 ALWAYS_OK = {'1372'}  # 원고 끝 안내에 늘 쓰는 번호 (소비자상담센터)
 # 매일 자동으로 고를 뉴스 주제 (소비자 권익)
 DAILY_TOPICS = '소비자 피해, 환불·위약금 분쟁, 한국소비자원 발표, 공정위 제재, 리콜, 요금·가격 인상, 소비자 주의보, 피해구제'
-
-STYLE_COVER = ('Flat vector illustration, Korean news card style, clean geometric shapes, soft gradients allowed. '
-               'Palette: warm orange #EF920E, cream #F7D49E, dark brown #652D1C, plus calm sky blue #CFE3F7, light gray #EEF0F3 and white.')
-STYLE_INFO = ('Infographic illustration: one or two big simple icons plus a simple chart shape (bars, arrow, pie, calendar, receipt) that matches the idea. '
-              'Same palette: orange #EF920E, cream #F7D49E, dark brown #652D1C, sky blue #CFE3F7, light gray #EEF0F3, white.')
 
 WRITE_SYSTEM = """너는 소비자 권익 서비스 '소보루(SOBORU)'의 인스타그램 카드뉴스 에디터야. 뉴닉처럼 친근하고 쉬운 해요체로 쓴다.
 기사 한 편과 같은 뉴스를 다룬 다른 기사를 받는다. 이걸로 카드뉴스 원고를 JSON으로 쓴다.
@@ -51,13 +46,13 @@ WRITE_SYSTEM = """너는 소비자 권익 서비스 '소보루(SOBORU)'의 인�
   저장을 부르는 제목 패턴도 써 본다: '저장해 두면 도움 되는 ○○', '○○ 총정리', 'N가지'.
   '충격·결국·경악·소름·역대급' 같은 낚시말 금지. 궁금증을 만들면 본문에 반드시 답이 있어야 한다.
 - cover_tags: 표지 흰 박스 태그 0~2개 (예: {"text":"전세 매물은 줄고","dir":"down"}). dir은 up/down/'' 중 하나. 12자 안쪽.
-- cover_scene: 표지 그림 장면을 영어로 묘사 (사람은 뒷모습·실루엣이나 아예 없이, 실존 인물·기업 로고·브랜드·글자 없이).
+- cover_scene: 표지 사진 장면을 영어로 묘사 (실제 사진처럼 찍을 수 있는 장면, 사람은 뒷모습·손·흐릿하게만, 실존 인물·기업 로고·브랜드·글자 없이).
 
 [본문 cards] 3~4장. 한 장에 메시지 하나.
 - 앞 2~3장: '언제부터 / 누가 해당돼요 / 무엇이 달라져요' 흐름으로 사실을 쉽게 푼다.
 - 마지막 1장은 인사이트: kicker는 '그래서 나한테 뭐가 달라지는데?', 소비자 입장에서 의미와 주의점을 짚는다.
 - 각 장: kicker(작은 줄, 20자 안쪽), title(주황 박스 제목, 한 줄 16자 안쪽, 두 줄이면 줄바꿈 \\n 하나), body(본문 2~4문장, 120자 안쪽),
-  tags(수치 태그 0~2개, cover_tags와 같은 모양), scene(그 장 인포그래픽 그림을 영어로: 아이콘·차트 모양, 글자·숫자 없이).
+  tags(수치 태그 0~2개, cover_tags와 같은 모양), scene(그 장 사진 장면을 영어로: 내용이 떠오르는 사물·장소, 글자·숫자·로고 없이).
 
 [마지막 장]
 - tips: 소비자가 실제로 할 수 있는 행동 팁 정확히 3개 (각 30자 안쪽, 예: '1372 소비자상담센터에 먼저 물어보기').
@@ -71,15 +66,6 @@ WRITE_SYSTEM = """너는 소비자 권익 서비스 '소보루(SOBORU)'의 인�
 [출처]
 - source_media: 기사 매체명, source_date: 보도 날짜 YYYY.MM.DD (기사에서 못 찾으면 빈칸).
 - facts_used: 원고에 쓴 사실을 기사에서 확인할 수 있는 짧은 메모 목록."""
-
-ART_SYSTEM = """You draw illustrations for Korean Instagram card news as standalone SVG code.
-Rules for every SVG:
-- Root: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 720"> (landscape; it is shown inside a rounded frame). Fill the whole canvas with a background.
-- Only shapes: g, path, rect, circle, ellipse, line, polyline, polygon, linearGradient, radialGradient, stop, defs, clipPath. No text, letters, numbers, images, filters, scripts, CSS, or external links.
-- Center the main subject with some margin on every side (edges may be cropped a little).
-- Never draw real people's faces, celebrities, politicians, company logos, brand names, or famous characters. People only as simple faceless figures seen from behind or as silhouettes, or no people at all.
-- Keep each SVG under 7000 characters: bold, simple, iconic shapes; few details.
-Return JSON {"svgs": [...]} with exactly one SVG string per requested scene, in order."""
 
 FIND_SYSTEM = """You help fact-check Korean news for consumer card news. Use web search, then answer with JSON only (no other text)."""
 
@@ -95,7 +81,6 @@ WRITE_SCHEMA = {'type': 'object', 'additionalProperties': False,
         'tips': {'type': 'array', 'items': {'type': 'string'}}, 'share_line': {'type': 'string'}, 'caption': {'type': 'string'}, 'hashtags': {'type': 'array', 'items': {'type': 'string'}},
         'source_media': {'type': 'string'}, 'source_date': {'type': 'string'},
         'facts_used': {'type': 'array', 'items': {'type': 'string'}}, 'confirm_needed': {'type': 'array', 'items': {'type': 'string'}}}}
-ART_SCHEMA = {'type': 'object', 'properties': {'svgs': {'type': 'array', 'items': {'type': 'string'}}}, 'required': ['svgs'], 'additionalProperties': False}
 
 
 def stamp(): return datetime.datetime.now().isoformat(timespec='seconds')
@@ -353,16 +338,16 @@ def run_checks(d, facts):
     engage = sorted({w for w in ASK_ENGAGE if w in text})
     pol = sorted({w for w in POLITICS if w in text})
     sl = slots(d)
-    arts = [(x['mode'] == 'photo' and x['photo']) or art for (_, _, x), art in zip(sl, [d.get('cover_art', '')] + [c.get('art', '') for c in d.get('cards') or []])]
-    up = [n for n, _, x in sl if x['mode'] == 'photo' and x['photo'] and x.get('src') == 'upload']
-    ai_photo = any(x['mode'] == 'photo' and x['photo'] and x.get('src') == 'hf' for _, _, x in sl)
+    arts = [x['photo'] for _, _, x in sl]
+    up = [n for n, _, x in sl if x['photo'] and x.get('src') == 'upload']
+    ai_photo = any(x['photo'] for _, _, x in sl)
     src_ok = bool((d.get('source') or {}).get('media') and (d.get('source') or {}).get('date'))
     need = d.get('confirm_needed') or []
     return [
         {'label': '이미지: 기사 사진 없이 새로 만들었나', 'ok': None if not all(arts) or up or ai_photo else True,
-         'note': "그림이 빠진 장이 있어요. '그림 다시 그리기'나 사진 넣기를 해 주세요" if not all(arts) else
-                 ('직접 올린 사진이 있어요. 기사 사진·남의 사진이 아닌지(내가 찍었거나 AI로 만든 것) 봐 주세요' if up else '모든 그림·사진을 새로 만들었어요')
-                 + (" · AI로 만든 사진을 썼어요. 캡션에 'AI로 만든 이미지예요' 같은 말을 직접 적어 주세요" if ai_photo or up else '')},
+         'note': "사진이 빠진 장이 있어요. 힉스필드에서 만든 사진을 올려 주세요" if not all(arts) else
+                 ('올린 사진이 힉스필드로 만든 것(기사 사진·남의 사진 아님)인지 봐 주세요' if up else '모든 사진을 힉스필드로 새로 만들었어요')
+                 + (" · 캡션에 'AI로 만든 이미지예요' 같은 말을 직접 적어 주세요" if ai_photo else '')},
         {'label': '사람: 실존 인물 얼굴이 없나', 'ok': None, 'note': '그림에 실존 인물·기업 로고가 없는지 눈으로 한 번 봐 주세요'},
         {'label': '글: 기사 문장을 옮기지 않았나', 'ok': not copy, 'note': '기사와 너무 비슷한 줄: ' + ' / '.join(copy[:3]) if copy else '기사 문장과 겹치는 줄이 없어요'},
         {'label': '사실: 기사 2개 이상에서 확인했나', 'ok': bool(others) and not need,
@@ -379,38 +364,6 @@ def run_checks(d, facts):
 def status_of(checks): return 'ready' if all(c['ok'] is not False for c in checks) else 'check'
 
 
-# ---- 그림 SVG 걸러 내기 -------------------------------------------------------------
-SVG_NS = 'http://www.w3.org/2000/svg'
-SVG_TAGS = {'svg', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'defs', 'linearGradient', 'radialGradient', 'stop', 'clipPath'}
-SVG_ATTRS = {'d', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'fx', 'fy', 'width', 'height', 'points', 'transform', 'fill', 'stroke',
-             'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-opacity', 'fill-opacity', 'fill-rule', 'clip-rule', 'opacity',
-             'offset', 'stop-color', 'stop-opacity', 'gradientUnits', 'gradientTransform', 'clip-path', 'id', 'viewBox', 'spreadMethod', 'preserveAspectRatio'}
-
-
-def clean_svg(svg):
-    """Claude가 그린 SVG에서 허용한 도형·속성만 남김 (스크립트·외부 링크·글자 없음). id는 장마다 겹치지 않게 앞에 표시를 붙임. 못 읽으면 ''."""
-    try: root = ET.fromstring((svg or '').strip())
-    except ET.ParseError: return ''
-    tag = lambda el: el.tag.split('}')[-1] if isinstance(el.tag, str) else ''
-    if tag(root) != 'svg': return ''
-    pre = 'a' + secrets.token_hex(3) + '-'
-    def val(v):
-        v = re.sub(r'url\(\s*#([\w-]+)\s*\)', lambda m: 'url(#%s%s)' % (pre, m.group(1)), v)
-        return '' if re.search(r'url\((?!#)|javascript:|expression|[<>]', v, re.I) else v
-    def walk(el):
-        attrs = []
-        for k, v in el.attrib.items():
-            k = k.split('}')[-1]
-            if k not in SVG_ATTRS: continue
-            v = pre + v if k == 'id' else val(v)
-            if v: attrs.append(' %s="%s"' % (k, html.escape(v, quote=True)))
-        inner = ''.join(walk(c) for c in el if tag(c) in SVG_TAGS and tag(c) != 'svg')
-        return '<%s%s>%s</%s>' % (tag(el), ''.join(attrs), inner, tag(el))
-    root.attrib.pop('width', None); root.attrib.pop('height', None); root.set('viewBox', '0 0 1080 720')
-    out = walk(root).replace('<svg', '<svg xmlns="%s"' % SVG_NS, 1)
-    return out if len(out) < 60000 else ''
-
-
 # ---- 원고 다듬기 ------------------------------------------------------------------
 def tidy(raw, art):
     """Claude 원고 → 화면이 그리는 카드 데이터 (길이·개수 맞추기)"""
@@ -419,10 +372,10 @@ def tidy(raw, art):
     cards = []
     for c in (raw.get('cards') or [])[:4]:
         title = '\n'.join(clip(x, 18) for x in str(c.get('title') or '').split('\n')[:2] if x.strip())
-        cards.append({'kicker': clip(c.get('kicker'), 30), 'title': title, 'body': clip(c.get('body'), 160), 'tags': tags(c.get('tags')), 'scene': clip(c.get('scene'), 400), 'art': ''})
+        cards.append({'kicker': clip(c.get('kicker'), 30), 'title': title, 'body': clip(c.get('body'), 160), 'tags': tags(c.get('tags')), 'scene': clip(c.get('scene'), 400)})
     return {'topic': clip(raw.get('topic'), 60), 'emoji': clip(raw.get('emoji'), 4),
             'covers': [{'line1': clip(c.get('line1'), 18), 'line2': clip(c.get('line2'), 18)} for c in (raw.get('covers') or [])[:5]], 'cover_pick': 0,
-            'cover_tags': tags(raw.get('cover_tags')), 'cover_scene': clip(raw.get('cover_scene'), 400), 'cover_art': '', 'cards': cards,
+            'cover_tags': tags(raw.get('cover_tags')), 'cover_scene': clip(raw.get('cover_scene'), 400), 'cards': cards,
             'tips': [clip(t, 40) for t in (raw.get('tips') or [])[:3]], 'end': 'save', 'share_line': clip(raw.get('share_line'), 30) or '꼭 필요한 친구한테 보내 주세요', 'caption': str(raw.get('caption') or '').strip()[:1500],
             'hashtags': [re.sub(r'[#\s]', '', h)[:20] for h in (raw.get('hashtags') or [])[:8] if re.sub(r'[#\s]', '', h)],
             'source': {'media': clip(raw.get('source_media') or art.get('media'), 30), 'date': clip(raw.get('source_date') or art.get('date'), 12), 'title': art.get('title', ''), 'url': art.get('url', '')},
@@ -436,56 +389,51 @@ def caption_full(d):
     return '\n\n'.join(x for x in [d.get('caption', '').strip(), src, ' '.join('#' + h for h in d.get('hashtags') or [])] if x)
 
 
-# ---- 그림 담당 ---------------------------------------------------------------------
-def draw_claude(cfg, d):
-    """표지(플랫 일러스트)·본문(인포그래픽) 그림을 Claude가 SVG로 한 번에. 마지막 장은 캐릭터라 안 그림."""
-    scenes = [('cover', STYLE_COVER, d.get('cover_scene') or d.get('topic', ''))] + [('info', STYLE_INFO, c.get('scene') or c.get('title', '')) for c in d.get('cards') or []]
-    ask = '\n'.join('%d. [%s] %s\nScene: %s' % (i + 1, k, style, scene) for i, (k, style, scene) in enumerate(scenes))
-    got = claude(cfg, ART_SYSTEM, f'Draw {len(scenes)} SVG illustrations, one per scene:\n\n{ask}', ART_SCHEMA, 64000)
-    svgs = [clean_svg(s) for s in (got.get('svgs') or [])] + [''] * len(scenes)
-    d['cover_art'] = svgs[0]
-    for c, s in zip(d.get('cards') or [], svgs[1:]): c['art'] = s
-    return d
-
-
-# 그림 담당 (설정 '그림 담당'). 사진은 아래 힉스필드가 따로 맡고, 장마다 그림/사진을 고른다 (slots)
-ARTISTS = {'claude': draw_claude}
-
-
 # ---- 사진 (힉스필드) ---------------------------------------------------------------
 # 공식 SDK higgsfield-client: https://api.higgsfield.ai, 'Authorization: Key 아이디:시크릿', 요청을 넣고 끝날 때까지 상태를 물어봄
 HF_MODELS = (('bytedance/seedream/v4/text-to-image', 'Seedream 4 (기본, 사실적인 사진)'),)
 HF_TIMEOUT = 240
-PHOTO_STYLE = ('Photorealistic editorial news photo for a Korean consumer news card, natural light, clean composition, landscape 4:3. Scene: {scene}. '
-               'No text, no letters, no logos, no brand names, no real or famous people; people only from behind, hands only, or out of focus.')
+# 이미지 스타일: 사진 / 일러스트 (둘 다 힉스필드). 일러스트는 소보루 색(주황·크림·갈색)
+STYLES = {'photo': ('사진', 'Photorealistic editorial news photo for a Korean consumer news card, natural light, clean composition, portrait 3:4, main subject in the lower half, calm uncluttered upper third (headline text goes there). Scene: {scene}. '),
+          'illust': ('일러스트', 'Flat vector illustration for a Korean consumer news card, clean geometric shapes, soft shading, warm palette of orange #EF920E, '
+                     'cream #F7D49E, dark brown #652D1C with sky blue and white accents, portrait 3:4, main subject in the lower half, calm uncluttered upper third, friendly and simple. Scene: {scene}. ')}
+SAFE = 'No text, no letters, no numbers, no logos, no brand names, no real or famous people; people only from behind, hands only, or out of focus.'
+MIXES = {'mix': ('photo', 'illust'), 'photo': ('photo', 'photo'), 'illust': ('illust', 'illust')}  # 기본 스타일: (표지, 본문)
 
 
-def slots(d):
-    """그림 자리마다 [(이름, 장면 설명, 자리 dict)]. 자리: {'mode': 'art'|'photo', 'photo': 파일 이름, 'src': 'hf'|'upload'}"""
-    d.setdefault('cover_img', {'mode': 'art', 'photo': ''})
+def slots(d, mix='mix'):
+    """이미지 자리마다 [(이름, 장면 설명, 자리 dict)]. 자리: {'photo': 파일 이름, 'src': 'hf'|'upload', 'style': 'photo'|'illust'}
+    mix: 자리가 처음 생길 때의 기본 스타일 (설정 '기본 이미지 스타일')"""
+    cover, body = MIXES.get(mix, MIXES['mix'])
+    d.setdefault('cover_img', {'photo': '', 'style': cover}).setdefault('style', cover)
     out = [('cover', d.get('cover_scene') or d.get('topic', ''), d['cover_img'])]
     for i, c in enumerate(d.get('cards') or []):
-        c.setdefault('img', {'mode': 'art', 'photo': ''})
+        c.setdefault('img', {'photo': '', 'style': body}).setdefault('style', body)
         out.append((f'card{i}', c.get('scene') or c.get('title', ''), c['img']))
     return out
+
+
+def photo_prompt(scene, style='photo'):
+    """힉스필드에 붙여 넣을 이미지 설명 (사진/일러스트)"""
+    return STYLES.get(style, STYLES['photo'])[1].format(scene=scene or 'a calm everyday consumer scene') + SAFE
 
 
 def hf_ready(cfg): return bool(cfg.get('hf_id') and cfg.get('hf_secret'))
 
 
-def higgsfield_photo(cfg, scene):
+def higgsfield_photo(cfg, scene, style='photo'):
     """장면 설명 → 사진 JPEG/PNG 바이트. 테스트에서 바꿔 끼운다."""
     import time, higgsfield_client as hf
     if not hf_ready(cfg): raise RuntimeError("힉스필드 키가 없어요. '설정'에서 넣어 주세요")
     client = hf.SyncClient(api_key=f"{cfg['hf_id']}:{cfg['hf_secret']}", timeout=60)
     try:
-        job = client.submit(cfg.get('hf_model') or HF_MODELS[0][0], arguments={'prompt': PHOTO_STYLE.format(scene=scene), 'aspect_ratio': '4:3', 'resolution': '2K'})
+        job = client.submit(cfg.get('hf_model') or HF_MODELS[0][0], arguments={'prompt': photo_prompt(scene, style), 'aspect_ratio': '3:4', 'resolution': '2K'})
         end = time.time() + HF_TIMEOUT
         for st in job.poll_request_status(delay=2):
             if time.time() > end:
                 try: job.cancel()
                 except Exception: pass
-                raise RuntimeError('힉스필드가 4분 안에 사진을 못 만들었어요')
+                raise RuntimeError('힉스필드가 4분 안에 이미지를 못 만들었어요')
         if isinstance(st, hf.NSFW): raise RuntimeError('힉스필드가 안전 기준에 걸린다고 사진을 만들지 않았어요')
         if not isinstance(st, hf.Completed): raise RuntimeError('힉스필드가 사진을 만들지 못했어요')
         url = (job.get().get('images') or [{}])[0].get('url', '')
@@ -553,8 +501,6 @@ def make(cfg, url, art=None):
         d = tidy(claude(cfg, WRITE_SYSTEM, write_request(art, others), WRITE_SCHEMA, 32000), art)
         if len(d['covers']) < 5 or len(d['cards']) < 2: raise RuntimeError('원고가 모자라게 왔어요 (표지 5개·본문 2장 이상)')
         note = ''
-        try: d = ARTISTS.get(cfg.get('art'), draw_claude)(cfg, d)
-        except RuntimeError as e: note = f'그림은 못 그렸어요: {e}'  # 글은 살리고 그림만 나중에 다시
     except RuntimeError as e: return {'status': 'error', 'reason': str(e)}
     return {'status': 'made', 'data': d, 'facts': facts, 'checks': run_checks(d, facts), 'reason': note}
 
@@ -575,14 +521,6 @@ def paste_prompt(art, others):
             + json.dumps(_skeleton(WRITE_SCHEMA), ensure_ascii=False, indent=1) + '\n```\n\n' + write_request(art, others))
 
 
-def art_prompt(d):
-    """claude.ai에 붙여 넣을 그림 요청 글 (표지·본문 장면)"""
-    scenes = [('cover', STYLE_COVER, d.get('cover_scene') or d.get('topic', ''))] + [('info', STYLE_INFO, c.get('scene') or c.get('title', '')) for c in d.get('cards') or []]
-    ask = '\n'.join('%d. [%s] %s\nScene: %s' % (i + 1, k, style, scene) for i, (k, style, scene) in enumerate(scenes))
-    return (ART_SYSTEM + f'\n\nAnswer with only one ```json code block: {{"svgs": ["<svg …>…</svg>", …]}} (exactly {len(scenes)} items).\n\n'
-            + f'Draw {len(scenes)} SVG illustrations, one per scene:\n\n{ask}')
-
-
 def from_paste(text, art):
     """붙여 넣은 Claude 답 → 카드 데이터. 못 읽으면 ValueError(이유)"""
     raw = json_in(text)
@@ -590,17 +528,6 @@ def from_paste(text, art):
     d = tidy(raw, art)
     if len(d['cards']) < 2: raise ValueError('본문이 2장보다 적어요. Claude에게 다시 써 달라고 해 주세요')
     return d
-
-
-def art_from_paste(text, d):
-    """붙여 넣은 그림 답(SVG들) → 그림 자리에 넣음. 넣은 개수를 돌려줌"""
-    svgs = [clean_svg(x) for x in (json_in(text).get('svgs') or [])]
-    if not any(svgs): svgs = [clean_svg(m) for m in re.findall(r'<svg[\s\S]*?</svg>', text or '')]  # JSON이 아니어도 SVG만 있으면
-    svgs += [''] * (1 + len(d.get('cards') or []))
-    if svgs[0]: d['cover_art'] = svgs[0]
-    for c, x in zip(d.get('cards') or [], svgs[1:]):
-        if x: c['art'] = x
-    return sum(1 for x in svgs if x)
 
 
 def blank(art):

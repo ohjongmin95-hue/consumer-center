@@ -1,6 +1,6 @@
-# 카드뉴스 만들기(cardnews/)를 윈도우 실행 파일 하나로 만들어 Releases의 'cardnews-latest'에 올립니다.
-# 받는 곳: 저장소 > Releases > 소보루 카드뉴스 (최신) > SoboruCardNews.exe
-name: 카드뉴스 실행 파일 만들기
+# 민주의 카드뉴스 제작 프로그램(cardnews/)을 윈도우 실행 파일 하나로 만들어 Releases의 'cardnews-latest'에 올립니다.
+# 받는 곳: 저장소 > Releases > 민주의 카드뉴스 제작 프로그램 (최신) > MinjuCardNews.exe
+name: 민주의 카드뉴스 제작 프로그램 만들기
 on:
   push:
     paths: ['cardnews/**', '.github/workflows/cardnews-build.yml']
@@ -29,14 +29,14 @@ jobs:
         run: python build.py
       - uses: actions/upload-artifact@v4
         with:
-          name: SoboruCardNews-windows
-          path: cardnews/dist/SoboruCardNews.exe
+          name: MinjuCardNews-windows
+          path: cardnews/dist/MinjuCardNews.exe
       - name: Releases에 올리기
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete cardnews-latest --yes --cleanup-tag || true
-          gh release create cardnews-latest dist/SoboruCardNews.exe --prerelease --target "$GITHUB_SHA" \
-            --title "소보루 카드뉴스 (최신)" \
-            --notes "SoboruCardNews.exe 를 내려받아 더블클릭하세요. 처음 한 번은 설정에서 Claude API 키를 넣어요. 브랜치 ${GITHUB_REF_NAME} · $(date -u +%Y-%m-%d)"
+          gh release create cardnews-latest dist/MinjuCardNews.exe --prerelease --target "$GITHUB_SHA" \
+            --title "민주의 카드뉴스 제작 프로그램 (최신)" \
+            --notes "MinjuCardNews.exe 를 내려받아 더블클릭하세요. 키 없이도 쓸 수 있고, 자동으로 만들려면 설정에서 키를 넣어요. 브랜치 ${GITHUB_REF_NAME} · $(date -u +%Y-%m-%d)"

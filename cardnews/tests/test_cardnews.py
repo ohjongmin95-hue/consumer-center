@@ -18,9 +18,6 @@ PAGE = ('<html><head><meta property="og:title" content="온라인몰 환불 지�
         '<p>공정위는 소비자가 환불을 요청한 날짜를 남겨 두면 나중에 배상금을 받을 때 도움이 된다고 안내했다.</p>'
         '<p>ⓒ 소보루일보 무단전재 및 재배포 금지</p></article></body></html>')
 OTHER = PAGE.replace('소보루일보', '다른일보').replace('공정거래위원회는 22일', '공정위가 22일 발표한 내용에 따르면')
-BAD_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="alert(1)"><script>alert(1)</script><defs><linearGradient id="g"><stop offset="0" stop-color="#fff"/>'
-           '</linearGradient></defs><rect width="10" height="10" fill="url(#g)"/><image href="https://evil.test/x.png"/><text>글자</text><circle cx="5" cy="5" r="3" fill="url(https://evil.test/a)"/></svg>')
-
 
 def pages(url, timeout=10, limit=0):
     return {'https://news.test/a/1': PAGE, 'https://other.test/b/2': OTHER, 'https://news.test/a/2': PAGE}.get(url, '')
@@ -29,7 +26,6 @@ def pages(url, timeout=10, limit=0):
 def fake_claude(sent, copy=False, bait=False, number='3영업일'):
     def fake(cfg, system, user, schema, max_tokens, effort='medium'):
         sent.append(user)
-        if 'svgs' in schema['properties']: return {'svgs': [BAD_SVG] * user.count('Scene:')}
         body = '공정위가 22일 온라인 쇼핑몰이 환불을 3영업일 넘게 미루면 지연 배상금을 물리는 개정안을 발표했다고 밝혔다' if copy else f'환불이 {number} 넘게 늦어지면 배상금이 붙어요.'
         return {'topic': '환불 | 늦어지면 배상금 붙어요', 'emoji': '💸',
                 'covers': [{'line1': '충격! 환불 늦으면?' if bait and i == 0 else '환불 늦어지면?' + 'ㄱㄴㄷㄹㅁ'[i], 'line2': '하루 0.1% 배상'} for i in range(5)],
@@ -64,7 +60,7 @@ class CardNewsTest(unittest.TestCase):
         with server.conn() as db: r = db.execute('SELECT * FROM cards WHERE id=?', (cid,)).fetchone()
         return json.loads(r['data']), {k['label'][:2]: k for k in json.loads(r['checks'])}, r
 
-    def test_make_checks_and_clean_art(self):
+    def test_make_and_checks(self):
         server.save_config(dict(server.config(), naver_id='id', naver_secret='secret'))
         cid, sent, _ = self.make()
         self.assertIn('소보루일보', sent[0]); self.assertNotIn('무단전재', sent[0])  # 본문만 보내고 저작권 꼬리 줄은 뺌
@@ -72,8 +68,8 @@ class CardNewsTest(unittest.TestCase):
         d, checks, row = self.row(cid)
         self.assertEqual((d['source']['media'], d['source']['date']), ('소보루일보', '2026.10.22'))  # Claude가 비워도 기사에서 채움
         self.assertEqual((d['hashtags'], d['end'], d['share_line']), (['환불', '소보루'], 'save', '온라인 쇼핑 자주 하는 친구한테'))
-        for bad in ('script', 'onload', 'evil.test', '<image', '<text', '글자'): self.assertNotIn(bad, d['cover_art'])
-        self.assertIn('viewBox="0 0 1080 720"', d['cover_art']); self.assertRegex(d['cover_art'], r'id="a[0-9a-f]{6}-g"'); self.assertRegex(d['cover_art'], r'url\(#a[0-9a-f]{6}-g\)')
+        self.assertEqual(len(sent), 1)  # 이미지는 힉스필드 몫: Claude에는 원고만 부탁함
+        self.assertEqual((d['cover_img'], d['cards'][0]['img']['style']), ({'photo': '', 'style': 'photo'}, 'illust'))  # 기본: 표지 사진, 본문 일러스트
         self.assertIs(checks['사실']['ok'], True); self.assertIs(checks['숫자']['ok'], True); self.assertIs(checks['글:']['ok'], True); self.assertIs(checks['표지']['ok'], True)
         self.assertEqual(row['status'], 'ready')
         page = self.client.get(f'/card/{cid}').get_data(as_text=True)
@@ -84,11 +80,11 @@ class CardNewsTest(unittest.TestCase):
         d, checks, row = self.row(cid)
         self.assertIs(checks['사실']['ok'], False); self.assertEqual(row['status'], 'check')
         self.assertIn('아직 내려받을 수 없어요', self.client.get(f'/card/{cid}').get_data(as_text=True))
-        d['cards'][0]['body'] = '환불이 7일 넘게 늦어지면 배상금이 붙어요.'; d['cover_pick'] = 2; d['cover_art'] = '<svg onload="x"/>'; d['end'] = 'share'
+        d['cards'][0]['body'] = '환불이 7일 넘게 늦어지면 배상금이 붙어요.'; d['cover_pick'] = 2; d['cover_img'] = {'photo': '../x.jpg', 'style': 'illust'}; d['end'] = 'share'
         self.client.post(f'/card/{cid}', data={'_csrf': self.token(f'/card/{cid}'), 'data': json.dumps(d), 'confirmed': '1'})
         d2, checks, row = self.row(cid)
         self.assertEqual((d2['cover_pick'], d2['end'], d2['cards'][0]['body'][:6]), (2, 'share', '환불이 7일'))
-        self.assertNotIn('onload', d2['cover_art'])  # 그림은 화면에서 못 바꿈
+        self.assertEqual(d2['cover_img'], {'photo': '', 'style': 'illust'})  # 스타일만 바꿀 수 있고 파일 이름은 화면에서 못 바꿈
         self.assertIs(checks['숫자']['ok'], False); self.assertIn('7', checks['숫자']['note']); self.assertEqual(row['confirmed'], 1)
         self.assertNotIn('아직 내려받을 수 없어요', self.client.get(f'/card/{cid}').get_data(as_text=True))
 
@@ -139,37 +135,36 @@ class CardNewsTest(unittest.TestCase):
         from PIL import Image
         def png(color):
             b = io.BytesIO(); Image.new('RGB', (40, 30), color).save(b, 'PNG'); return b.getvalue()
-        server.save_config(dict(server.config(), hf_id='hid', hf_secret='hsec', img_default='cover_photo'))
+        server.save_config(dict(server.config(), hf_id='hid', hf_secret='hsec', hf_auto=1, img_style='mix'))
         asked = []
-        with patch.object(cards, 'higgsfield_photo', lambda cfg, scene: asked.append(scene) or png('orange')):
+        with patch.object(cards, 'higgsfield_photo', lambda cfg, scene, style='photo': asked.append((scene, style)) or png('orange')):
             cid, _, _ = self.make()
             d, checks, _ = self.row(cid)
-            self.assertEqual(asked, ['a parcel box and a calendar'])  # 설정대로 표지만 사진
-            self.assertEqual((d['cover_img']['mode'], d['cover_img']['src']), ('photo', 'hf'))
+            self.assertEqual(asked, [('a parcel box and a calendar', 'photo'), ('calendar', 'illust'), ('receipt', 'illust')])  # 자동 켜짐: 표지 사진·본문 일러스트
+            self.assertEqual((d['cover_img']['style'], d['cover_img']['src']), ('photo', 'hf'))
             self.assertIsNone(checks['이미']['ok']); self.assertIn('캡션에', checks['이미']['note'])  # AI 사진 표시는 캡션에 직접
-            self.assertEqual(d['cards'][0]['img']['mode'], 'art')
             name = d['cover_img']['photo']; self.assertRegex(name, r'^[0-9a-f]{16}\.jpg$')
             r = self.client.get('/img/' + name); self.assertEqual((r.status_code, r.data[:2]), (200, b'\xff\xd8')); r.close()  # JPEG로 다시 저장
             self.assertEqual(self.client.get('/img/../config.json').status_code, 404)
-            self.assertIn('힉스필드로 사진 만들기', self.client.get(f'/card/{cid}').get_data(as_text=True))
-            # 본문 1장도 힉스필드로
-            self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'hf', 'slot': 'card0'})
-            d, _, _ = self.row(cid); self.assertEqual(d['cards'][0]['img']['mode'], 'photo'); self.assertEqual(len(asked), 2)
+            page = self.client.get(f'/card/{cid}').get_data(as_text=True)
+            self.assertIn('힉스필드로 바로 만들기', page); self.assertIn('Photorealistic', page); self.assertIn('Flat vector illustration', page)  # 장마다 사진·일러스트 설명
+            # 1장을 사진으로 바꿔 다시 만들기 (화면에서 막 고른 스타일로)
+            self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'hf', 'slot': 'card0', 'style': 'photo'})
+            d, _, _ = self.row(cid); self.assertEqual(d['cards'][0]['img']['style'], 'photo'); self.assertEqual(asked[-1], ('calendar', 'photo'))
         # 직접 올리기: 사진이 아니면 거절, 사진이면 넣고 '직접 올린 사진' 확인 항목이 생김
         r = self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'upload', 'slot': 'card1', 'photo': (io.BytesIO(b'not an image'), 'x.png')},
                              content_type='multipart/form-data', follow_redirects=True)
         self.assertIn('사진 파일이 아니에요', r.get_data(as_text=True))
         self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'upload', 'slot': 'card1', 'photo': (io.BytesIO(png('blue')), 'x.png')}, content_type='multipart/form-data')
         d, checks, _ = self.row(cid)
-        self.assertEqual((d['cards'][1]['img']['mode'], d['cards'][1]['img']['src']), ('photo', 'upload'))
-        self.assertIsNone(checks['이미']['ok']); self.assertIn('직접 올린 사진', checks['이미']['note'])
-        # 저장으로 그림/사진 바꾸기 (사진이 없는 자리는 사진으로 못 바꿈)
-        d['cover_img']['mode'] = 'art'; d['cards'][1]['img']['mode'] = 'art'
-        d2 = dict(d); d2['cards'] = [dict(d['cards'][0], img={'mode': 'photo'}), d['cards'][1]]
-        self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'data': json.dumps(d2)})
-        d, _, _ = self.row(cid)
-        self.assertEqual((d['cover_img']['mode'], d['cards'][1]['img']['mode'], d['cards'][0]['img']['mode']), ('art', 'art', 'photo'))
-        self.assertTrue(d['cards'][0]['img']['photo'].endswith('.jpg'))  # 화면에서 보낸 파일 이름은 안 받음
+        self.assertEqual(d['cards'][1]['img']['src'], 'upload')
+        self.assertIsNone(checks['이미']['ok']); self.assertIn('힉스필드로 만든 것', checks['이미']['note'])
+        # 저장으로 스타일 바꾸기 (이상한 값은 무시)
+        d['cover_img']['style'] = 'illust'; d['cards'][1]['img']['style'] = 'oil-painting'
+        self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'data': json.dumps(d)})
+        d2, _, _ = self.row(cid)
+        self.assertEqual((d2['cover_img']['style'], d2['cards'][1]['img']['style']), ('illust', 'illust'))
+        self.assertTrue(d2['cards'][0]['img']['photo'].endswith('.jpg'))
 
     def test_higgsfield_photo_uses_sdk(self):
         import higgsfield_client as hf
@@ -212,11 +207,7 @@ class CardNewsTest(unittest.TestCase):
             self.assertNotIn('pending', d); self.assertEqual(len(d['covers']), 5); self.assertEqual(d['source']['media'], '소보루일보')
             self.assertIs(checks['숫자']['ok'], True); self.assertIsNone(checks['이미']['ok'])  # 그림이 아직 없음
             page = self.client.get(f'/card/{cid}').get_data(as_text=True)
-            self.assertIn('claude.ai로 그림 받기', page); self.assertIn('Draw 3 SVG', page); self.assertRegex(page, r'value="art" disabled')
-            # 그림도 claude.ai 답을 붙여 넣어 받음 (JSON이 아니어도 SVG만 찾아 넣고, 위험한 건 걸러 냄)
-            self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'artpaste', 'answer': '여기요 ' + BAD_SVG + ' 그리고 ' + BAD_SVG})
-            d, checks, _ = self.row(cid)
-            self.assertTrue(d['cover_art'] and d['cards'][0]['art']); self.assertFalse(d['cards'][1]['art']); self.assertNotIn('script', d['cover_art'])
+            self.assertIn('① 설명 복사', page); self.assertIn('② 이미지 올리기', page); self.assertRegex(page, r'value="hf" disabled')  # 키 없으면 바로 만들기는 꺼짐
             # 직접 쓰기 + 기사 글 직접 붙여 넣기 (링크 없이)
             text = '\n'.join(re.sub(r'<[^>]+>', '', x) for x in re.findall(r'<p>(.*?)</p>', PAGE)[:4])
             r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'manual', 'text': text, 'title': '환불 지연 배상금', 'media': '우리일보', 'date': '2026.10.23'})
@@ -226,6 +217,27 @@ class CardNewsTest(unittest.TestCase):
             self.assertEqual(row['status'], 'check')  # 빈 원고는 표지·출처 등 검사에서 걸림 → 채우고 확인해야 내려받기
             r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'manual', 'text': '짧음'}, follow_redirects=True)
             self.assertIn('너무 짧아요', r.get_data(as_text=True))
+
+    def test_save_files_to_folder(self):
+        import io
+        server.save_config(dict(server.config(), naver_id='id', naver_secret='secret'))
+        cid, _, _ = self.make()  # 체크리스트 통과
+        png = b'\x89PNG\r\n\x1a\n' + b'0' * 50
+        data = {'_csrf': self.token(), 'caption': '본문\n\n출처: 소보루일보', 'png': [(io.BytesIO(png), 'a.png'), (io.BytesIO(png), 'b.png')]}
+        r = self.client.post(f'/card/{cid}/files', data=data, content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 200)
+        folder = Path(r.get_json()['folder'])
+        self.assertEqual(folder.parent, server.OUT); self.assertRegex(folder.name, r'^\d{3}_환불 늦어지면')
+        self.assertEqual(sorted(p.name for p in folder.iterdir()), ['caption.txt', 'soboru-card-01.png', 'soboru-card-02.png'])
+        self.assertEqual((folder / 'caption.txt').read_text(encoding='utf-8-sig'), '본문\n\n출처: 소보루일보')
+        self.assertIn('저장된 곳', self.client.get(f'/card/{cid}').get_data(as_text=True))
+        self.assertEqual(self.client.post(f'/card/{cid}/open', data={'_csrf': self.token()}).status_code, 204)
+        bad = {'_csrf': self.token(), 'png': [(io.BytesIO(b'GIF89a'), 'x.png')]}
+        self.assertEqual(self.client.post(f'/card/{cid}/files', data=bad, content_type='multipart/form-data').status_code, 400)  # PNG만
+        self.assertEqual(self.client.post(f'/card/{cid}/files', data={'png': [(io.BytesIO(png), 'a.png')]}, content_type='multipart/form-data').status_code, 400)  # 토큰 없으면 막음
+        cid2, _, _ = self.make(bait=True)  # 체크리스트에 걸리고 확인 안 한 카드는 저장 안 됨
+        data = {'_csrf': self.token(), 'png': [(io.BytesIO(png), 'a.png')]}
+        self.assertEqual(self.client.post(f'/card/{cid2}/files', data=data, content_type='multipart/form-data').status_code, 400)
 
 
 if __name__ == '__main__':

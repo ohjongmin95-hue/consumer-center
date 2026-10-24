@@ -1,46 +1,54 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}소보루 카드뉴스{% endblock %}</title>
-<link rel="icon" href="{{ url_for('static', filename='soboru-character.png') }}">
+<title>{% block title %}{{ app_name }}{% endblock %}</title>
+<link rel="icon" href="{{ url_for('static', filename='app-icon.png') }}">
 <style>
 @font-face{font-family:Pretendard;font-weight:700;src:url({{ url_for('static', filename='fonts/Pretendard-Bold.otf') }}) format('opentype')}
 @font-face{font-family:Pretendard;font-weight:800;src:url({{ url_for('static', filename='fonts/Pretendard-ExtraBold.otf') }}) format('opentype')}
-:root{--or:#EF920E;--or-soft:#FFF4E0;--brown:#652D1C;--cream:#FFF8EC;--ink:#1d1d1f;--sub:#6b6f76;--line:#eee6da;--ok:#0a7a50;--bad:#c22}
-*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;word-break:keep-all}
-a{color:var(--brown)}
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;background:#fff;border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--brown);font:800 20px/1 Pretendard,sans-serif;letter-spacing:-.03em}
-.brand img{width:40px;height:auto}.brand em{font-style:normal;color:var(--or)}
-.top nav a{margin-left:16px;text-decoration:none;font-weight:700}.top nav a.on{color:var(--or)}
-.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
-h1{font:800 28px/1.3 Pretendard,sans-serif;letter-spacing:-.03em;color:var(--brown);margin:0 0 8px}
-h2{font:800 19px/1.4 Pretendard,sans-serif;color:var(--brown);margin:0 0 12px}
-.panel{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px;margin:0 0 18px}
-.meta{color:var(--sub);font-size:13px;margin:6px 0}
-.warn{background:#fff1e6;border:1px solid #ffd2a8;color:#8a3d00;border-radius:12px;padding:10px 14px;margin:8px 0}
-.flash{background:var(--brown);color:#fff;border-radius:12px;padding:12px 16px;margin:0 0 16px}
-input[type=text],input[type=url],input[type=password],input[type=number],select,textarea{width:100%;padding:10px 12px;border:1px solid #ddd3c4;border-radius:10px;font:inherit;background:#fff}
+/* 민주의 카드뉴스 제작 프로그램: 화면은 토스처럼 (파란 포인트·회색 바탕·흰 카드·큰 글씨). 만드는 카드뉴스만 뉴닉+소보루 */
+:root{--or:#3182F6;--or-deep:#1B64DA;--or-soft:#E8F3FF;--brown:#191F28;--ink:#191F28;--sub:#6B7684;--line:#E5E8EB;--bg:#F2F4F6;--ok:#00A661;--bad:#F04452;--shadow:0 2px 12px rgba(0,27,55,.06)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-weight:700;word-break:keep-all}
+a{color:var(--or-deep)}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 28px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.brand img{width:38px;height:38px;border-radius:11px}
+.brand b{display:block;font:800 18px/1.15 Pretendard,sans-serif;letter-spacing:-.03em}.brand b em{font-style:normal;color:var(--or)}
+.brand small{display:block;font-size:12px;color:var(--sub);font-weight:700;margin-top:2px}
+.top nav{display:flex;align-items:center;gap:4px}
+.top nav a{padding:8px 14px;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:800}.top nav a:hover{background:var(--bg)}.top nav a.on{background:var(--or-soft);color:var(--or-deep)}
+.wrap{max-width:1200px;margin:0 auto;padding:30px 24px 90px}
+h1{font:800 30px/1.3 Pretendard,sans-serif;letter-spacing:-.035em;margin:0 0 6px}
+h2{font:800 19px/1.4 Pretendard,sans-serif;letter-spacing:-.02em;margin:0 0 12px}
+.panel{background:#fff;border:0;border-radius:24px;padding:26px 28px;margin:0 0 16px;box-shadow:var(--shadow)}
+.meta{color:var(--sub);font-size:13px;margin:6px 0;font-weight:700}
+.warn{background:#FFF4E5;border:0;color:#B25E09;border-radius:14px;padding:10px 14px;margin:8px 0}
+.flash{background:#333D4B;color:#fff;border-radius:16px;padding:14px 18px;margin:0 0 18px;box-shadow:var(--shadow)}
+input[type=text],input[type=url],input[type=password],input[type=number],select,textarea{width:100%;padding:13px 15px;border:1.5px solid transparent;border-radius:14px;font:inherit;font-weight:700;background:#F2F4F6;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or);background:#fff;box-shadow:0 0 0 4px var(--or-soft)}
 textarea{min-height:70px;resize:vertical}
-label{display:block;margin:8px 0;font-size:13px;font-weight:700;color:#5a4a3f}
-label.check{display:flex;gap:8px;align-items:center;font-weight:600}label.check input{width:auto}
+label{display:block;margin:12px 0;font-size:14px;font-weight:800;color:#4E5968}
+label.check{display:flex;gap:10px;align-items:flex-start;font-weight:700}label.check input{width:auto;margin-top:4px;accent-color:var(--or)}
 .row{display:flex;gap:12px;flex-wrap:wrap}.row>label{flex:1;min-width:160px}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-button{font:700 14px Pretendard,sans-serif;padding:10px 18px;border-radius:999px;border:1px solid #ddd3c4;background:#fff;color:var(--brown);cursor:pointer}
-button.primary{background:var(--or);border-color:var(--or);color:#fff}button.danger{color:var(--bad);border-color:#f3c4c4}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+button{font:800 15px Pretendard,sans-serif;padding:12px 20px;border-radius:14px;border:0;background:#F2F4F6;color:#333D4B;cursor:pointer;transition:transform .1s,box-shadow .15s}
+button:hover:not([disabled]){filter:brightness(.97)}button:active:not([disabled]){transform:translateY(1px)}
+button.primary{background:var(--or);color:#fff}button.primary:hover:not([disabled]){background:var(--or-deep);filter:none}
+button.danger{color:var(--bad);background:#FFEEEE}
 button[disabled]{opacity:.45;cursor:not-allowed}
-.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#f2ede6;color:var(--sub)}
-.badge.ok{background:#e3f6ee;color:var(--ok)}.badge.bad{background:#fde8e8;color:var(--bad)}
-.item h3{margin:4px 0;font:800 17px/1.4 Pretendard,sans-serif}.item h3 a{text-decoration:none}
-.spin{width:28px;height:28px;border:4px solid var(--or-soft);border-top-color:var(--or);border-radius:50%;animation:s 1s linear infinite;flex:none}@keyframes s{to{transform:rotate(360deg)}}
+.badge{display:inline-block;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:800;background:#F2F4F6;color:#4E5968}
+.badge.ok{background:#E5F8EF;color:var(--ok)}.badge.bad{background:#FFEEEE;color:var(--bad)}
+.item h3{margin:4px 0;font:800 18px/1.4 Pretendard,sans-serif;letter-spacing:-.02em}.item h3 a{text-decoration:none;color:var(--ink)}.item h3 a:hover{color:var(--or-deep)}
+.spin{width:30px;height:30px;border:4px solid var(--or-soft);border-top-color:var(--or);border-radius:50%;animation:s 1s linear infinite;flex:none}@keyframes s{to{transform:rotate(360deg)}}
 .wait{display:flex;gap:16px;align-items:center}
-code{background:#f4efe8;border-radius:6px;padding:1px 6px}
+code{background:#F2F4F6;border-radius:6px;padding:1px 6px;font-size:13px}
+details>summary{cursor:pointer}
 </style>{% block head %}{% endblock %}</head>
 <body>
-<header class="top"><a class="brand" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='soboru-character.png') }}" alt="">SOBORU <em>카드뉴스</em></a>
-  <nav><a href="{{ url_for('home', skip=1) }}"{% if request.endpoint == 'home' %} class="on"{% endif %}>만들기</a><a href="{{ url_for('settings') }}"{% if request.endpoint == 'settings' %} class="on"{% endif %}>설정</a>
-    <form method="post" action="{{ url_for('quit_app') }}" style="display:inline" onsubmit="return confirm('프로그램을 끌까요? 만드는 중인 카드뉴스가 있으면 멈춰요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button style="margin-left:14px;padding:6px 14px">끄기</button></form></nav></header>
+<header class="top"><a class="brand" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='app-icon.png') }}" alt=""><span><b>민주의 <em>카드뉴스</em> 제작 프로그램</b><small>SOBORU 카드뉴스 만들기</small></span></a>
+  <nav><a href="{{ url_for('home') }}"{% if request.endpoint == 'home' %} class="on"{% endif %}>만들기</a><a href="{{ url_for('settings') }}"{% if request.endpoint == 'settings' %} class="on"{% endif %}>설정</a>
+    <form method="post" action="{{ url_for('quit_app') }}" style="display:inline;margin-left:8px" onsubmit="return confirm('프로그램을 끌까요? 만드는 중인 카드뉴스가 있으면 멈춰요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button style="padding:7px 14px">끄기</button></form></nav></header>
 <main class="wrap">
   {% for m in get_flashed_messages() %}<div class="flash" role="status">{{ m }}</div>{% endfor %}
-  {% if bye is defined and bye %}<h1>껐어요</h1><p class="meta">이 창은 닫아도 돼요. 다시 쓰려면 소보루카드뉴스 실행 파일을 또 누르세요.</p>{% else %}{% block content %}{% endblock %}{% endif %}
+  {% if bye is defined and bye %}<h1>껐어요</h1><p class="meta">이 창은 닫아도 돼요. 다시 쓰려면 MinjuCardNews 실행 파일을 또 누르세요.</p>{% else %}{% block content %}{% endblock %}{% endif %}
 </main>
 </body></html>

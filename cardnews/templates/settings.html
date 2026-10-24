@@ -1,25 +1,26 @@
 {% extends 'base.html' %}
-{% block title %}설정 · 소보루 카드뉴스{% endblock %}
+{% block title %}설정 · {{ app_name }}{% endblock %}
 {% block content %}
 <h1>설정</h1>
 <p class="meta">키는 이 컴퓨터의 <code>{{ data_dir }}</code> 폴더(config.json)에만 저장돼요. 한 번 넣으면 끄고 다시 켜도 기억해요. 저장한 키는 화면에 다시 보여 주지 않아요. 바꿀 때만 새로 넣고, 그대로 두려면 칸을 비워 두세요.</p>
 <form method="post">
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-  <div class="panel"><h2>Claude (글·그림)</h2>
+  <div class="panel"><h2>Claude (글) · 선택</h2>
+    <p class="meta">없어도 돼요. 키가 없으면 'claude.ai에 붙여넣기'(구독, 추가 비용 없음)나 '직접 쓰기'로 만들어요. 키를 넣으면 '자동으로 만들기'와 '매일 자동'을 쓸 수 있어요 (API 크레딧).</p>
     {% if env_key %}<p class="meta">컴퓨터 환경변수 ANTHROPIC_API_KEY의 키를 쓰고 있어요.</p>{% endif %}
     <label>Claude API 키 {% if masked.key %}<span class="badge ok">저장됨 {{ masked.key }}</span>{% endif %}<input type="password" name="key" autocomplete="off" placeholder="sk-ant-로 시작 (platform.claude.com > API Keys)"></label>
     {% if masked.key %}<label class="check"><input type="checkbox" name="clear_key" value="1"> 저장한 키 지우기</label>{% endif %}
     <label>모델<select name="model">{% for k, name in models %}<option value="{{ k }}"{% if cfg.model == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
-    <label>그림 담당<select name="art">{% for a in artists %}<option value="{{ a }}"{% if cfg.art == a %} selected{% endif %}>{{ {'claude': 'Claude (도형 일러스트·인포그래픽)'}.get(a, a) }}</option>{% endfor %}</select></label>
   </div>
-  <div class="panel"><h2>힉스필드 (사진)</h2>
-    <p class="meta">뉴닉처럼 실제 사진 같은 이미지를 쓰고 싶을 때 써요. 장마다 그림(Claude)과 사진(힉스필드)을 고를 수 있어요. 키 만드는 곳: cloud.higgsfield.ai → API Keys (크레딧 충전 필요)</p>
+  <div class="panel"><h2>힉스필드 (이미지)</h2>
+    <p class="meta">카드뉴스 이미지는 모두 힉스필드로 만들어요. 장마다 사진·일러스트를 고르고, 설명을 복사해 힉스필드 사이트에서 만들어 올리면 키가 없어도 돼요. 키를 넣으면 프로그램에서 바로 만들 수 있어요 (cloud.higgsfield.ai → API Keys, 크레딧 필요).</p>
+    <label>기본 이미지 스타일<select name="img_style">{% for k, name in img_styles %}<option value="{{ k }}"{% if cfg.img_style == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
     <div class="row"><label>API Key (ID){% if cfg.hf_id %} <span class="badge ok">저장됨</span>{% endif %}<input type="text" name="hf_id" autocomplete="off" placeholder="{{ cfg.hf_id or '' }}"></label>
       <label>API Secret {% if masked.hf_secret %}<span class="badge ok">저장됨</span>{% endif %}<input type="password" name="hf_secret" autocomplete="off"></label></div>
     {% if cfg.hf_id %}<label class="check"><input type="checkbox" name="clear_hf_id" value="1"> 힉스필드 키 지우기</label>{% endif %}
-    <label>사진 모델<select name="hf_model">{% for k, name in hf_models %}<option value="{{ k }}"{% if cfg.hf_model == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
-    <label>새 카드뉴스를 만들 때<select name="img_default">{% for k, name in img_defaults %}<option value="{{ k }}"{% if cfg.img_default == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
-    <p class="meta">사진에는 실존 인물 얼굴·로고·글자가 나오지 않게 요청해요. 사진 위에는 글자를 넣지 않아요. AI로 만든 사진이라는 표시는 캡션에 직접 적어 주세요 (체크리스트가 알려 줘요).</p>
+    <label>이미지 모델<select name="hf_model">{% for k, name in hf_models %}<option value="{{ k }}"{% if cfg.hf_model == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+    <label class="check"><input type="checkbox" name="hf_auto" value="1"{% if cfg.hf_auto %} checked{% endif %}> 새 카드뉴스를 만들 때 힉스필드 API로 이미지도 자동으로 만들기 (장마다 크레딧)</label>
+    <p class="meta">이미지에는 실존 인물 얼굴·로고·글자가 나오지 않게 요청해요. 이미지 위에는 글자를 넣지 않아요. AI로 만든 사진이라는 표시는 캡션에 직접 적어 주세요 (체크리스트가 알려 줘요).</p>
   </div>
   <div class="panel"><h2>사실 확인용 기사 찾기</h2>
     <p class="meta">같은 뉴스를 다룬 다른 언론사 기사를 찾아 숫자·사실을 맞춰 봐요. 네이버 키가 있으면 네이버 뉴스 검색을 먼저 쓰고, 모자라면 Claude 웹 검색으로 채워요.</p>

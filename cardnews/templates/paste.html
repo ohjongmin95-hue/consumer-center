@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}claude.ai에 붙여넣기 · 소보루 카드뉴스{% endblock %}
+{% block title %}claude.ai에 붙여넣기 · {{ app_name }}{% endblock %}
 {% block content %}
 <h1>claude.ai에 붙여넣기</h1>
 <p class="meta"><a href="{{ url_for('home') }}">← 목록</a> · 기사: {{ c.title or '(제목 없음)' }}{% if c.facts.others %} · 맞춰 볼 다른 기사 {{ c.facts.others|length }}개 함께 넣음{% endif %}</p>
