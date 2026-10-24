@@ -10,6 +10,7 @@ from email.message import EmailMessage
 from flask import session, request, abort, g, has_request_context
 from markupsafe import Markup, escape
 import law
+import bizmsg
 
 BASE=Path(__file__).parent
 DB=Path(os.getenv('PLATFORM_DATABASE_PATH',str(BASE/'platform.sqlite3')))
@@ -503,21 +504,13 @@ def files_ok(uploads):
 
 # ---------- 새 요청 알림 ----------
 # 알림톡 템플릿: BIZ_KAKAO_TPL_NEW(기업에 새 요청), CS_KAKAO_TPL_REPLY(소비자에게 기업 답변·진행 알림)
-def kakao_ready(tpl='BIZ_KAKAO_TPL_NEW'):return bool(os.getenv('SOLAPI_API_KEY') and os.getenv('SOLAPI_API_SECRET') and os.getenv('SOLAPI_PFID') and os.getenv(tpl))
+def kakao_ready(tpl='BIZ_KAKAO_TPL_NEW'):return bool(bizmsg.kakao_ready() and bizmsg.template(tpl))
 def send_kakao(phone,variables,tpl='BIZ_KAKAO_TPL_NEW',label='새 요청 알림톡'):
-    """솔라피로 카카오 알림톡 1건. 문구는 카카오 심사를 받은 템플릿과 같아야 한다 -> docs/platform.md"""
+    """카카오 알림톡 1건 (솔라피·알리고, bizmsg.py). 문구는 카카오 심사를 받은 템플릿과 같아야 한다 -> docs/platform.md"""
     phone=digits(phone)
     if not phone.startswith('01') or not kakao_ready(tpl):return
     def job():
-        try:
-            date=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds');salt=secrets.token_hex(16)
-            sig=hmac.new(os.getenv('SOLAPI_API_SECRET').encode(),(date+salt).encode(),hashlib.sha256).hexdigest()
-            msg={'to':phone,'kakaoOptions':{'pfId':os.getenv('SOLAPI_PFID'),'templateId':os.getenv(tpl),'disableSms':True,'variables':variables}}
-            if os.getenv('SOLAPI_SENDER'):msg['from']=digits(os.getenv('SOLAPI_SENDER'))
-            req=urllib.request.Request('https://api.solapi.com/messages/v4/send',data=json.dumps({'message':msg}).encode(),method='POST',
-                headers={'Content-Type':'application/json','Authorization':f"HMAC-SHA256 apiKey={os.getenv('SOLAPI_API_KEY')}, date={date}, salt={salt}, signature={sig}"})
-            with urllib.request.urlopen(req,timeout=15) as r:res=json.loads(r.read().decode() or '{}')
-            code=str(res.get('statusCode',''));status='sent' if not code or code in ('2000','3000','4000') else 'failed: '+code
+        try:bizmsg.alimtalk(phone,bizmsg.template(tpl),variables);status='sent'
         except Exception as e:status='failed: '+type(e).__name__
         with conn() as db:db.execute('INSERT INTO mail_log(target,subject,status,created) VALUES(?,?,?,?)',('kakao:'+phone[:3]+'****'+phone[-4:],label,status,iso()))
     threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
