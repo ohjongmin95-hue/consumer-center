@@ -404,14 +404,20 @@ body.console:has(.sl-page) .cs-flash{position:fixed;z-index:5;top:20px;right:20p
 body.console:has(.sl-page) .cs-flash .alert{margin:0;border:0;border-radius:14px;background:#fff0ee;box-shadow:none;color:#d63b2b;font-size:14px;font-weight:600}
 body.console main.sl-page{max-width:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100vh;background:#fff}
 .sl-page>.sl-box{align-self:center;justify-self:center;padding:64px 24px}
-.sl-hero{position:relative;overflow:hidden;display:flex;flex-direction:column;padding:56px 56px 48px;background:#191f28;color:#fff}
-.sl-hero::before{content:"";position:absolute;width:640px;height:640px;right:-220px;bottom:-260px;border-radius:50%;background:radial-gradient(circle,rgba(239,115,0,.55) 0,rgba(239,115,0,0) 68%)}
-.sl-hero::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:48px 48px;-webkit-mask-image:linear-gradient(180deg,#000,transparent 75%);mask-image:linear-gradient(180deg,#000,transparent 75%)}
-.sl-hero-kicker{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;margin:0;font-size:14px;font-weight:700;letter-spacing:.04em;color:#b0b8c1}
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2) format('woff2');font-display:swap;unicode-range:U+200D,U+270D,U+FE0F,U+1F3E2,U+1F4AC,U+1F4CB,U+1F4E3,U+1F4F0,U+1F50D}
+.sl-hero{position:relative;overflow:hidden;display:flex;flex-direction:column;padding:56px 56px 56px;background:#f2f4f6;color:var(--ad-ink)}
+.sl-hero-kicker{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;margin:0;font-size:14px;font-weight:700;letter-spacing:.04em;color:var(--ad-sub)}
 .sl-hero-kicker::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ad-orange)}
-.sl-hero-title em{font-style:normal;color:#ff9a3c}
-.sl-hero-title{position:relative;z-index:1;margin:0 0 24px;font-size:40px;line-height:1.3;font-weight:800;letter-spacing:-.04em}
-.sl-hero-title{margin-top:auto}
+.sl-hero-title{position:relative;z-index:1;margin:0;font-size:40px;line-height:1.3;font-weight:800;letter-spacing:-.04em}
+.sl-hero-title em{font-style:normal;color:var(--ad-orange)}
+/* 토스페이스 이모지를 흰 둥근 칸에 띄운 그림 (꾸밈용) */
+.sl-art{position:relative;flex:1;min-height:320px;margin:24px 0 32px}
+.sl-emo{position:absolute;display:flex;align-items:center;justify-content:center;width:88px;height:88px;border-radius:28px;background:#fff;box-shadow:0 12px 32px rgba(0,27,55,.08);font-family:Tossface,sans-serif;font-size:44px;line-height:1}
+.sl-emo-main{left:50%;top:50%;width:200px;height:200px;border-radius:56px;font-size:112px;transform:translate(-50%,-50%) rotate(-6deg);box-shadow:0 24px 60px rgba(0,27,55,.12)}
+.sl-emo-1{left:calc(50% + 110px);top:calc(50% - 150px);transform:rotate(10deg)}
+.sl-emo-2{left:calc(50% - 210px);top:calc(50% - 110px);transform:rotate(-12deg)}
+.sl-emo-3{left:calc(50% - 170px);top:calc(50% + 90px);width:72px;height:72px;border-radius:24px;font-size:36px;transform:rotate(8deg)}
+.sl-emo-4{left:calc(50% + 120px);top:calc(50% + 70px);width:76px;height:76px;border-radius:24px;font-size:38px;transform:rotate(-8deg)}
 .sl-box{width:100%;max-width:400px}
 .sl-brand{display:flex;align-items:center;gap:10px;margin:0 0 40px}
 .sl-brand img{display:block;height:30px;width:auto}
@@ -433,10 +439,9 @@ body.console .sl-field input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px #f2f
 @media(max-width:700px){
   body.console main.sl-page{grid-template-columns:1fr;grid-template-rows:auto 1fr}
   .sl-page>.sl-box{align-self:start;padding:32px 24px 40px}
-  .sl-hero{justify-content:flex-end;padding:24px 20px 0;min-height:132px}
-  .sl-hero-kicker{display:none}
-  .sl-hero::before{width:300px;height:300px;right:-120px;bottom:-180px;opacity:.7}
-  .sl-hero-title{margin:0 0 22px;font-size:22px}
+  .sl-hero{justify-content:flex-end;padding:28px 24px 24px;min-height:0}
+  .sl-hero-kicker,.sl-art{display:none}
+  .sl-hero-title{font-size:22px}
   .sl-brand{margin-bottom:32px}
   .sl-title{font-size:26px}
 }
