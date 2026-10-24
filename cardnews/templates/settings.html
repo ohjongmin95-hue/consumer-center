@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}설정 · {{ app_name }}{% endblock %}
+{% block head %}<style>.wrap{max-width:980px}</style>{% endblock %}
 {% block content %}
 <h1>설정</h1>
 <p class="meta">키는 이 컴퓨터의 <code>{{ data_dir }}</code> 폴더(config.json)에만 저장돼요. 한 번 넣으면 끄고 다시 켜도 기억해요. 저장한 키는 화면에 다시 보여 주지 않아요. 바꿀 때만 새로 넣고, 그대로 두려면 칸을 비워 두세요.</p>

@@ -197,6 +197,34 @@ def daily():
         except RuntimeError as e: log(f'카톡 알림 실패: {e}')
 
 
+def used_urls():
+    with conn() as db: return {r[0] for r in db.execute('SELECT url FROM cards')}
+
+
+def auto_pick():
+    """'알아서 골라 만들기': 네이버 뉴스에서 아직 안 만든 소비자 뉴스를 골라 끝까지 자동으로 (안 되면 다음 기사)"""
+    urls = cards.find_news(config(), 1, used_urls())
+    if not urls: return {'status': 'skip', 'reason': '네이버 뉴스에서 고를 기사를 찾지 못했어요. 설정에 네이버 키를 넣거나 링크를 직접 넣어 주세요.'}
+    r = {}
+    for url in urls[:3]:
+        r = make(url)
+        if r.get('status') == 'made' or r.get('status') == 'skip': break
+    return r
+
+
+NEWS = {'at': 0, 'items': []}
+
+
+@app.route('/news')
+def news():
+    """첫 화면 오른쪽 '오늘의 소비자 뉴스' (네이버, 10분 동안 기억)"""
+    c = config()
+    if not (c['naver_id'] and c['naver_secret']): return jsonify(ok=False, items=[])
+    if time.time() - NEWS['at'] > 600 or request.args.get('fresh'): NEWS.update(at=time.time(), items=cards.news_list(c))
+    used = used_urls()
+    return jsonify(ok=True, items=[dict(it, made=it['url'] in used) for it in NEWS['items']])
+
+
 def save_kakao(tok):
     c = config(); c['kakao_token'] = tok; save_config(c)
 
@@ -243,10 +271,18 @@ def finish(r):
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
-        f = request.form; url = f.get('url', '').strip()
+        f = request.form; pick = f.get('pick', '').strip()
+        url = pick if pick.startswith(('http://', 'https://')) else f.get('url', '').strip()
         mode = f.get('mode') if f.get('mode') in MODES else ('auto' if config()['key'] else 'paste')
         # 기사 글을 붙여 넣었으면 그걸 쓰고(링크는 출처로만), 아니면 링크에서 읽어 옴
-        art = cards.given_article(f.get('text', ''), f.get('title', ''), f.get('media', ''), f.get('date', ''), url) if f.get('text', '').strip() else None
+        art = cards.given_article(f.get('text', ''), f.get('title', ''), f.get('media', ''), f.get('date', ''), url) if f.get('text', '').strip() and not pick else None
+        if not url and not art:  # 링크도 글도 없으면: 네이버 뉴스에서 오늘의 소비자 뉴스를 알아서 고름
+            if mode == 'auto':
+                if not background('네이버 뉴스에서 고른 기사', auto_pick): flash('다른 카드뉴스를 만들고 있어요. 다 되면 다시 눌러 주세요.')
+                return redirect(url_for('job'))
+            urls = cards.find_news(config(), 1, used_urls())
+            if not urls: flash('네이버 뉴스에서 고를 기사를 찾지 못했어요. 설정에 네이버 키를 넣거나 링크를 직접 넣어 주세요.'); return redirect(url_for('home'))
+            url = urls[0]
         if mode == 'auto':
             if app.config.get('TESTING'): return finish(make(url, art=art))
             if not background('새 카드뉴스', lambda: make(url, art=art)): flash('다른 카드뉴스를 만들고 있어요. 다 되면 다시 눌러 주세요.')

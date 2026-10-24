@@ -287,6 +287,21 @@ def find_news(cfg, n, avoid=()):
     return urls[:n + 3]
 
 
+def news_list(cfg, avoid=(), k=12):
+    """첫 화면 '오늘의 소비자 뉴스': 네이버 뉴스에서 최근 이틀 소비자 뉴스를 검색어마다 고르게 섞어 [{title,url,summary,date,host,topic}]"""
+    since = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
+    per = [[dict(it, topic=q, host=urllib.parse.urlparse(it['url']).netloc.removeprefix('www.')) for it in naver_news(cfg, q, display=6, sort='date')
+            if it['date'] >= since and it['url'] not in avoid] for q in DAILY_QUERIES]
+    out, seen = [], set()
+    for i in range(6):  # 검색어를 돌아가며 하나씩 (같은 사건은 제목 앞부분으로 거름)
+        for lst in per:
+            if i < len(lst):
+                it = lst[i]; key = re.sub(r'\W', '', it['title'])[:14]
+                if it['url'] in seen or key in seen: continue
+                seen.update((it['url'], key)); out.append(it)
+    return out[:k]
+
+
 # ---- 검사 -----------------------------------------------------------------------
 NUM = re.compile(r'\d[\d,]*(?:\.\d+)?')
 

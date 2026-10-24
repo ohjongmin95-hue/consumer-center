@@ -101,7 +101,7 @@ class CardNewsTest(unittest.TestCase):
         self.assertEqual(self.client.get('/', headers={'Host': 'evil.test'}).status_code, 403)
         server.save_config(dict(server.DEFAULTS))
         page = self.client.get('/').get_data(as_text=True)  # 키가 없어도 바로 쓸 수 있고, 자동은 꺼져 있음
-        self.assertIn('claude.ai에 붙여넣기', page); self.assertRegex(page, r'value="auto" disabled')
+        self.assertIn('claude.ai', page); self.assertIn('네이버 키 넣기', page); self.assertRegex(page, r'value="auto" disabled')
         with patch.object(cards, 'claude', fake_claude(sent := [])), patch.object(cards, 'fetch_page', pages):
             r = self.client.post('/', data={'_csrf': self.token(), 'url': 'https://news.test/a/1', 'mode': 'auto'}, follow_redirects=True)
         self.assertEqual(sent, []); self.assertIn('Claude API 키가 없어요', r.get_data(as_text=True))
@@ -129,6 +129,28 @@ class CardNewsTest(unittest.TestCase):
                          '본문\n\n출처: 소보루일보 2026.10.22 보도\nhttps://news.test/a/1\n\n#환불')
         self.assertEqual(cards.json_in('찾았어요\n```json\n{"others": [1]}\n```'), {'others': [1]})
         self.assertFalse(cards._public_host('http://127.0.0.1/x'))  # 내 컴퓨터 주소는 열지 않음
+
+    def test_auto_pick_from_naver_news(self):
+        # 링크 없이 '알아서 골라 만들기' → 네이버 뉴스에서 아직 안 만든 기사를 골라 끝까지 / 목록에서 고른 기사로 만들기
+        import datetime
+        today = datetime.date.today().isoformat()
+        nn = lambda cfg, q, display=10, sort='sim': [{'title': q + ' 기사', 'url': 'https://news.test/a/1' if q == '소비자 피해' else 'https://other.test/b/2', 'summary': '', 'date': today}] if cfg.get('naver_id') else []
+        server.save_config(dict(server.config(), naver_id='nid', naver_secret='nsec'))
+        with patch.object(cards, 'claude', fake_claude([])), patch.object(cards, 'fetch_page', pages), patch.object(cards, 'naver_news', nn):
+            got = self.client.get('/news?fresh=1').get_json()
+            self.assertTrue(got['ok']); self.assertEqual(got['items'][0]['url'], 'https://news.test/a/1'); self.assertEqual(got['items'][0]['host'], 'news.test')
+            self.assertEqual(len({i['url'] for i in got['items']}), len(got['items']))
+            server.auto_pick()
+            with server.conn() as db: self.assertEqual([r[0] for r in db.execute('SELECT url FROM cards')], ['https://news.test/a/1'])
+            self.assertTrue(self.client.get('/news').get_json()['items'][0]['made'])
+            r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'manual', 'pick': 'https://news.test/a/2', 'url': ''})
+            self.assertIn('/card/', r.headers['Location'])
+            with server.conn() as db: self.assertEqual(db.execute('SELECT url FROM cards ORDER BY id DESC').fetchone()[0], 'https://news.test/a/2')
+        server.save_config(dict(server.config(), naver_id='', naver_secret=''))
+        with patch.object(cards, 'naver_news', nn):
+            r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'paste'}, follow_redirects=True)
+        self.assertIn('네이버 뉴스에서 고를 기사를 찾지 못했어요', r.get_data(as_text=True))
+        self.assertFalse(self.client.get('/news').get_json()['ok'])
 
     def test_photos_higgsfield_upload_and_modes(self):
         import io

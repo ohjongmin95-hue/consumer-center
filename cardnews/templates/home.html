@@ -1,34 +1,45 @@
 {% extends 'base.html' %}
 {% block head %}
 <style>
-/* 첫 화면 (토스처럼): 큰 인사말 · 단계별 흰 카드 · 고르는 타일 · 꽉 찬 파란 버튼 · 목록은 한 줄씩 */
-.hello{margin:6px 0 22px}.hello h1{font-size:30px}.hello p{color:#6B7684;margin:4px 0 0;font-size:16px}
-.grid{max-width:860px}
-@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
-.step{display:flex;align-items:center;gap:10px;margin:0 0 14px}.step i{font-style:normal;width:26px;height:26px;border-radius:50%;background:#FFF1DE;color:#F7931E;display:grid;place-items:center;font-size:14px}
-.step b{font-size:19px}
-.big input[type=url]{font-size:17px;padding:16px 18px}
-.toggle{display:inline-block;margin-top:10px;color:#E8740C;font-size:14px;cursor:pointer}
-.tiles{display:grid;gap:10px}
-.tile{position:relative;display:flex;gap:14px;align-items:center;padding:16px 18px;border-radius:18px;background:#F9FAFB;border:2px solid transparent;cursor:pointer;margin:0;transition:background .15s,border-color .15s}
-.tile:hover{background:#F2F4F6}.tile input{position:absolute;opacity:0;pointer-events:none}
-.tile:has(input:checked){background:#FFF6EA;border-color:#F7931E}
-.tile:has(input:disabled){opacity:.5;cursor:not-allowed}
-.tile .ico{width:44px;height:44px;border-radius:14px;background:#fff;display:grid;place-items:center;font-size:22px;flex:none;box-shadow:0 1px 4px rgba(0,27,55,.06)}
-.tile b{display:block;font-size:16px;color:#191F28}.tile small{display:block;color:#6B7684;font-size:13px;margin-top:2px}
-.tile .price{margin-left:auto;font-size:12px;font-weight:800;padding:4px 9px;border-radius:8px;background:#fff;color:#4E5968;white-space:nowrap}
-.tile .price.free{background:#E5F8EF;color:#00A661}
-.go{width:100%;padding:17px;font-size:17px;border-radius:16px;margin-top:18px}
-.status{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}.status span{font-size:13px;padding:6px 11px;border-radius:10px;background:#F2F4F6;color:#4E5968}
-.status span.on{background:#E5F8EF;color:#00A661}
-.list h2{display:flex;align-items:center;justify-content:space-between}
-.rowlink{display:flex;align-items:center;gap:14px;padding:14px 6px;border-top:1px solid #F2F4F6;text-decoration:none;color:#191F28}
-.rowlink:first-of-type{border-top:0}.rowlink:hover{background:#F9FAFB;border-radius:14px}
-.rowlink .num{width:40px;height:40px;border-radius:12px;background:#FFF3E0;color:#E8740C;display:grid;place-items:center;font-size:13px;flex:none}
-.rowlink .t{flex:1;min-width:0}.rowlink .t b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rowlink .t small{display:block;color:#8B95A1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.empty{color:#8B95A1;text-align:center;padding:30px 0}
-.empty b{display:block;font-size:40px;margin-bottom:6px}
+.hello{margin:6px 0 22px}.hello p{color:var(--sub);margin:4px 0 0;font-size:16px}
+/* 첫 화면 (토스 플레이스처럼): 제목 + 오른쪽 모드 고르기 · 왼쪽 네이버 뉴스 목록 · 오른쪽 직접 넣기 */
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin:0 0 22px}
+.lead{color:var(--sub);margin:2px 0 0;font-size:16px}
+.seg{display:flex;background:rgba(255,255,255,.9);border-radius:14px;padding:4px;gap:2px;box-shadow:var(--shadow)}
+.seg label{margin:0;cursor:pointer}.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;padding:8px 16px;border-radius:10px;font-size:14px;color:#4E5968;text-align:center;transition:background .15s}
+.seg small{display:block;font-size:11px;color:var(--sub2);font-weight:700;margin-top:-2px}
+.seg label:hover span{background:var(--grey)}
+.seg input:checked+span{background:var(--or);color:#fff}.seg input:checked+span small{color:rgba(255,255,255,.8)}
+.seg input:disabled+span{opacity:.4;cursor:not-allowed}
+.cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);gap:16px;align-items:start}
+@media (max-width:1100px){.cols{grid-template-columns:minmax(0,1fr)}}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}.ph h2{margin:0}.ph .meta{margin:2px 0 0}
+.nlist{display:flex;flex-direction:column}
+.nrow{display:flex;align-items:center;gap:14px;padding:14px 10px;margin:0 -10px;border-radius:14px;border-top:1px solid #F2F4F6}
+.nrow:first-child{border-top-color:transparent}.nrow:hover{background:#F9FAFB}
+.nrow .t{flex:1;min-width:0}
+.nrow .t b{display:block;font-size:16px;line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.nrow .t small{display:block;color:var(--sub2);font-size:13px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nrow .tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:6px;background:var(--or-soft);color:var(--or-deep);margin-right:6px}
+.nrow .done{font-size:12px;color:var(--ok);margin-right:6px}
+.nrow a.o{color:var(--sub2);font-size:13px;text-decoration:none;flex:none}.nrow a.o:hover{color:var(--ink)}
+.nrow button{flex:none}
+.skel span{display:block;height:14px;border-radius:7px;background:linear-gradient(90deg,#F2F4F6,#E9ECEF,#F2F4F6);background-size:200% 100%;animation:sk 1.2s infinite}
+.skel{flex-direction:column;align-items:stretch;gap:8px}.skel span:last-child{width:45%}@keyframes sk{to{background-position:-200% 0}}
+.nempty{text-align:center;color:var(--sub);padding:38px 10px;display:flex;flex-direction:column;align-items:center;gap:10px}.nempty b{font-size:36px}
+.nfoot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid #F2F4F6}.nfoot[hidden]{display:none}
+.own h2{margin-bottom:12px}
+.right{position:sticky;top:92px;display:flex;flex-direction:column}
+@media (max-width:1100px){.right{position:static}}
+.how ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.how li{display:flex;gap:12px;align-items:flex-start}.how i{font-style:normal;flex:none;width:24px;height:24px;border-radius:50%;background:var(--or-soft);color:var(--or-deep);display:grid;place-items:center;font-size:12px;margin-top:1px}
+.how b{display:block;font-size:15px}.how small{display:block;color:var(--sub);font-size:13px}
+label.f{margin:0 0 12px;font-size:13px;color:var(--sub)}label.f input,label.f textarea{margin-top:6px}
+.toggle{display:inline-block;margin:0 0 12px;color:var(--or);font-size:14px;list-style:none}.toggle::-webkit-details-marker{display:none}
+.go{width:100%;height:54px;font-size:16px;border-radius:14px;margin-top:4px}
+.status{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 0}.status span{font-size:12px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.85);color:var(--sub)}
+.status span.on{color:var(--ok)}.status span.on::before{content:'● ';font-size:9px;vertical-align:1px}.status a{font-size:12px;color:var(--sub);margin-left:4px}
 </style>
 {% endblock %}
 {% block content %}
@@ -37,36 +48,70 @@
 <div class="hello"><h1>{{ waiting }}</h1><p>조금만 기다려 주세요</p></div>
 <div class="panel wait"><span class="spin" aria-hidden="true"></span><div><b>만드는 중이에요</b><p class="meta">기사를 읽고, 다른 기사로 사실을 맞춰 보고, 글을 쓰고 있어요. 2~4분쯤 걸리고, 다 되면 카드가 바로 열려요.</p></div></div>
 {% else %}
-<div class="hello" style="max-width:860px"><h1>오늘은 어떤 기사로 만들까요?</h1><p>기사를 넣으면 SOBORU 인스타 카드뉴스를 만들어 드려요</p></div>
-
-<div class="grid">
-<form class="panel big" method="post" data-go>
-  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-  <div class="step"><i>1</i><b>기사</b></div>
-  <input type="url" name="url" placeholder="뉴스 링크를 붙여 넣어 주세요" aria-label="뉴스 링크">
-  <details{% if not cfg.key %} open{% endif %}><summary class="toggle">기사 글을 직접 붙여 넣을래요</summary>
-    <label>기사 본문<textarea name="text" rows="6" placeholder="기사 본문을 그대로 붙여 넣어 주세요. 사실만 가져오고 문장은 새로 써요."></textarea></label>
-    <div class="row"><label>기사 제목<input type="text" name="title"></label><label>매체<input type="text" name="media" placeholder="예: 소보루일보"></label><label>보도 날짜<input type="text" name="date" placeholder="예: 2026.10.24"></label></div>
-  </details>
-
-  <div class="step" style="margin-top:26px"><i>2</i><b>글은 누가 쓸까요?</b></div>
-  <div class="tiles">
-    <label class="tile"><input type="radio" name="mode" value="paste"{% if not cfg.key %} checked{% endif %}><span class="ico">💬</span><span><b>claude.ai에 붙여넣기</b><small>요청 글을 복사해 claude.ai(구독)에 붙여 넣어요</small></span><span class="price free">추가 비용 없음</span></label>
-    <label class="tile"><input type="radio" name="mode" value="manual"><span class="ico">✍️</span><span><b>직접 쓰기</b><small>빈 카드에 우리가 글을 써요</small></span><span class="price free">무료</span></label>
-    <label class="tile"><input type="radio" name="mode" value="auto"{% if cfg.key %} checked{% else %} disabled{% endif %}><span class="ico">⚡</span><span><b>자동으로 만들기</b><small>{% if cfg.key %}링크만 넣으면 끝까지 자동{% else %}설정에서 Claude 키를 넣으면 쓸 수 있어요{% endif %}</small></span><span class="price">API 크레딧</span></label>
+<form method="post" data-go>
+<input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+<div class="head">
+  <div><h1>오늘은 어떤 기사로 만들까요?</h1><p class="lead">네이버 뉴스에서 고르거나, 기사를 직접 넣어 주세요</p></div>
+  <div class="seg" role="radiogroup" aria-label="글은 누가 쓸까요">
+    <label><input type="radio" name="mode" value="auto"{% if cfg.key %} checked{% else %} disabled{% endif %}><span>⚡ 자동<small>{{ 'Claude가 끝까지' if cfg.key else 'Claude 키 필요' }}</small></span></label>
+    <label><input type="radio" name="mode" value="paste"{% if not cfg.key %} checked{% endif %}><span>💬 claude.ai<small>구독으로 무료</small></span></label>
+    <label><input type="radio" name="mode" value="manual"><span>✍️ 직접 쓰기<small>빈 카드에</small></span></label>
   </div>
-  <p class="meta" style="margin-top:12px">이미지는 다음 화면에서 장마다 사진·일러스트를 골라 힉스필드로 만들어요.</p>
-  <button class="primary go">카드뉴스 만들기</button>
-  <div class="status">
-    <span class="{{ 'on' if cfg.key }}">Claude {{ '연결됨' if cfg.key else '키 없음' }}</span>
-    <span class="{{ 'on' if cfg.hf_id and cfg.hf_secret }}">힉스필드 {{ '연결됨' if cfg.hf_id and cfg.hf_secret else '키 없음' }}</span>
-    <span class="{{ 'on' if naver }}">사실 확인 {{ '네이버' if naver else ('Claude 웹 검색' if cfg.web_search and cfg.key else '꺼짐') }}</span>
-    <span class="{{ 'on' if cfg.auto and cfg.key }}">매일 자동 {{ ('아침 %d시' % cfg.hour) if cfg.auto and cfg.key else '꺼짐' }}</span>
-    <a href="{{ url_for('settings') }}" style="font-size:13px;padding:6px 4px">설정 바꾸기</a>
-  </div>
-</form>
-
 </div>
+
+<div class="cols">
+  <section class="panel news">
+    <div class="ph"><div><h2>오늘의 소비자 뉴스</h2><p class="meta">네이버 뉴스 · 최근 이틀 · 소비자 피해·환불·리콜·과징금</p></div>
+      <button class="primary" name="pick" value="auto">알아서 골라 만들기</button></div>
+    <div id="news" class="nlist">{% if naver %}{% for i in range(5) %}<div class="nrow skel"><span></span><span></span></div>{% endfor %}{% else %}
+      <div class="nempty"><b>🔎</b>네이버 키를 넣으면 오늘의 소비자 뉴스를 여기서 바로 골라요<a class="btn weak small" href="{{ url_for('settings') }}">네이버 키 넣기</a></div>{% endif %}</div>
+    <div class="nfoot" id="nfoot" hidden><span class="meta" id="nwhen"></span><button type="button" class="small" id="nre">새로고침</button></div>
+  </section>
+
+  <div class="right">
+  <section class="panel own">
+    <h2>직접 넣기</h2>
+    <p class="meta" style="margin:-6px 0 14px">기사 링크나 본문이 있으면 그걸로 만들어요</p>
+    <label class="f">뉴스 링크<input type="url" name="url" placeholder="https://" aria-label="뉴스 링크"></label>
+    <details><summary class="toggle">＋ 기사 본문 직접 붙여 넣기</summary>
+      <label class="f">기사 본문<textarea name="text" rows="6" placeholder="기사 본문을 그대로 붙여 넣어 주세요. 사실만 가져오고 문장은 새로 써요."></textarea></label>
+      <label class="f">기사 제목<input type="text" name="title"></label>
+      <div class="row"><label class="f">매체<input type="text" name="media" placeholder="예: 소보루일보"></label><label class="f">보도 날짜<input type="text" name="date" placeholder="예: 2026.10.24"></label></div>
+    </details>
+    <button class="primary go">이 기사로 만들기</button>
+  </section>
+  <section class="panel how">
+    <h2>이렇게 만들어져요</h2>
+    <ol><li><i>1</i><span><b>기사 고르기</b><small>네이버 뉴스에서 고르거나 링크·본문을 넣어요</small></span></li>
+      <li><i>2</i><span><b>글 쓰기</b><small>사실만 가져와 표지 5개·본문·캡션을 새로 써요</small></span></li>
+      <li><i>3</i><span><b>이미지 · 확인</b><small>장마다 힉스필드로 그리고 10초 체크리스트를 봐요</small></span></li>
+      <li><i>4</i><span><b>저장 · 보내기</b><small>PNG와 캡션을 폴더에 저장하고 카톡으로 받아요</small></span></li></ol>
+  </section>
+  </div>
+</div>
+
+<div class="status">
+  <span class="{{ 'on' if cfg.key }}">Claude {{ '연결됨' if cfg.key else '키 없음' }}</span>
+  <span class="{{ 'on' if naver }}">네이버 뉴스 {{ '연결됨' if naver else '키 없음' }}</span>
+  <span class="{{ 'on' if cfg.hf_id and cfg.hf_secret }}">힉스필드 {{ '연결됨' if cfg.hf_id and cfg.hf_secret else '키 없음' }}</span>
+  <span class="{{ 'on' if cfg.auto and cfg.key }}">매일 자동 {{ ('아침 %d시' % cfg.hour) if cfg.auto and cfg.key else '꺼짐' }}</span>
+  <a href="{{ url_for('settings') }}">설정 바꾸기</a>
+</div>
+</form>
 {% endif %}
-<script>document.querySelectorAll('[data-go]').forEach(function(f){f.addEventListener('submit',function(){setTimeout(function(){var b=f.querySelector('.go');b.disabled=true;b.textContent='보내는 중…'},0)})})</script>
+<script>
+document.querySelectorAll('[data-go]').forEach(function(f){f.addEventListener('submit',function(e){var b=e.submitter||f.querySelector('.go');setTimeout(function(){f.querySelectorAll('button').forEach(function(x){x.disabled=true});if(b)b.textContent='보내는 중…'},0)})});
+(function(){var box=document.getElementById('news');if(!box||!{{ 'true' if naver else 'false' }})return;
+ function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+ function load(fresh){fetch('{{ url_for('news') }}'+(fresh?'?fresh=1':'')).then(function(r){return r.json()}).then(function(d){box.textContent='';
+  if(!d.items.length){var n=el('div','nempty');n.appendChild(el('b','','🗞'));n.appendChild(document.createTextNode('최근 이틀 안에 나온 소비자 뉴스를 못 찾았어요. 링크를 직접 넣어 주세요.'));box.appendChild(n)}
+  d.items.forEach(function(it){var r=el('div','nrow'),t=el('div','t'),b=el('b','',it.title),s=el('small');
+   s.appendChild(el('span','tag',it.topic));if(it.made)s.appendChild(el('span','done','✓ 만든 기사'));s.appendChild(document.createTextNode(it.host+' · '+it.date.slice(5).replace('-','.')+(it.summary?' · '+it.summary:'')));
+   t.appendChild(b);t.appendChild(s);r.appendChild(t);
+   var o=el('a','o','원문');o.href=it.url;o.target='_blank';o.rel='noopener';r.appendChild(o);
+   var g=el('button','weak small','만들기');g.name='pick';g.value=it.url;r.appendChild(g);box.appendChild(r)});
+  document.getElementById('nfoot').hidden=false;var w=new Date();document.getElementById('nwhen').textContent=w.getHours()+':'+String(w.getMinutes()).padStart(2,'0')+' 기준 · '+d.items.length+'개'
+ }).catch(function(){box.textContent='';box.appendChild(el('div','nempty','네이버 뉴스를 불러오지 못했어요. 인터넷과 네이버 키를 확인해 주세요.'))})}
+ load(false);document.getElementById('nre').onclick=function(){box.innerHTML='<div class="nrow skel"><span></span><span></span></div>'.repeat(5);load(true)}})();
+</script>
 {% endblock %}
