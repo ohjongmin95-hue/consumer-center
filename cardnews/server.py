@@ -535,7 +535,7 @@ def app_window(url):
         import webview
         webview.settings['ALLOW_DOWNLOADS'] = True  # zip 내려받기
         webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True  # 기사·claude.ai·힉스필드 링크는 브라우저로
-        w = webview.create_window(NAME, url + '/start', width=1320, height=860, min_size=(1000, 660), background_color='#F2F4F6')
+        w = webview.create_window(NAME, url + '/start', width=1320, height=820, min_size=(1000, 640), maximized=True, background_color='#F2F4F6')  # 토스 포스처럼 화면 가득
         def closing():  # 창의 ✕를 눌러도 바로 끄지 않고 토스처럼 '종료할까요?'를 물어봄
             if WIN['quit']: return True
             def ask():

@@ -11,7 +11,7 @@
 - 카드 모양(글자·주황 박스·태그)은 화면(templates/edit.html)이 데이터로 그리고, PNG(1080×1350)와 캡션을 한 번에 내려받는다.
   인스타그램에는 직접 올린다(외부 자동 업로드 봇은 계정 정지 위험).
 """
-import datetime, email.utils, html, ipaddress, json, re, secrets, socket, urllib.error, urllib.parse, urllib.request
+import datetime, email.utils, html, threading, time, ipaddress, json, re, secrets, socket, urllib.error, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
 
 AI_TIMEOUT = 600
@@ -219,6 +219,15 @@ NAVER = {'hub': ('https://naverapihub.apigw.ntruss.com/search/v1/news', 'X-NCP-A
 
 
 NAVER_ERR = {'msg': ''}
+_NAVER_GAP = {'lock': threading.Lock(), 'last': 0.0}
+
+
+def _naver_wait():
+    """네이버 검색은 1초에 10번쯤까지라, 물어보는 사이를 0.12초 이상 띄움 (하루 25,000번 무료라 횟수는 걱정 없음)"""
+    with _NAVER_GAP['lock']:
+        gap = _NAVER_GAP['last'] + 0.12 - time.monotonic()
+        if gap > 0: time.sleep(gap)
+        _NAVER_GAP['last'] = time.monotonic()
 
 
 def naver_news(cfg, q, display=10, sort='sim'):
@@ -227,11 +236,16 @@ def naver_news(cfg, q, display=10, sort='sim'):
     base, hid, hsec = NAVER.get(cfg.get('naver_kind'), NAVER['dev'])
     req = urllib.request.Request(base + '?' + urllib.parse.urlencode({'query': q, 'display': display, 'sort': sort}),
                                  headers={hid: cfg['naver_id'], hsec: cfg['naver_secret']})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as r: res = json.loads(r.read().decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        NAVER_ERR['msg'] = {401: '네이버 키가 맞지 않아요 (키 종류·ID·Secret 확인)', 403: '네이버 앱에 검색 API 사용 권한이 없어요', 429: '오늘 네이버 검색 횟수를 다 썼어요'}.get(e.code, f'네이버 검색 오류 {e.code}'); return []
-    except (urllib.error.URLError, OSError, ValueError): NAVER_ERR['msg'] = '네이버에 연결하지 못했어요 (인터넷 확인)'; return []
+    for n in range(4):
+        _naver_wait()
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r: res = json.loads(r.read().decode('utf-8'))
+            break
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and n < 3: time.sleep(0.8 * (n + 1)); continue  # 1초에 너무 많이 물으면 네이버가 잠깐 막음 → 조금 쉬었다 다시
+            NAVER_ERR['msg'] = {401: '네이버 키가 맞지 않아요 (키 종류·ID·Secret 확인)', 403: '네이버 앱에 검색 API 사용 권한이 없어요',
+                                429: '네이버가 잠깐 막았어요 (한꺼번에 많이 물어봄). 1분 뒤 새로고침해 주세요'}.get(e.code, f'네이버 검색 오류 {e.code}'); return []
+        except (urllib.error.URLError, OSError, ValueError): NAVER_ERR['msg'] = '네이버에 연결하지 못했어요 (인터넷 확인)'; return []
     NAVER_ERR['msg'] = ''
     clean = lambda t: ' '.join(html.unescape(re.sub(r'<[^>]+>', '', t or '')).split())
     out = []
@@ -308,7 +322,7 @@ def news_list(cfg, avoid=(), k=40):
     [{title,url,summary,date,host,topic,group}]. 검색어가 많아서 한꺼번에 물어본다."""
     from concurrent.futures import ThreadPoolExecutor
     since = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
-    with ThreadPoolExecutor(8) as ex: found = list(ex.map(lambda q: naver_news(cfg, q, display=5, sort='date'), DAILY_QUERIES))
+    with ThreadPoolExecutor(4) as ex: found = list(ex.map(lambda q: naver_news(cfg, q, display=5, sort='date'), DAILY_QUERIES))
     per = [[dict(it, topic=q, group=QUERY_GROUP[q], host=urllib.parse.urlparse(it['url']).netloc.removeprefix('www.')) for it in lst
             if it['date'] >= since and it['url'] not in avoid] for q, lst in zip(DAILY_QUERIES, found)]
     out, seen = [], set()
