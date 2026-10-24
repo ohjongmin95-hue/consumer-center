@@ -44,18 +44,19 @@ label.f{margin:0 0 12px;font-size:13px;color:var(--sub)}label.f input,label.f te
 .home .panel{margin:0}
 .news{display:flex;flex-direction:column;min-height:0}
 .news .nlist{flex:1;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;margin:0 -8px;padding:0 8px}
-.right{display:flex;flex-direction:column;gap:16px;min-height:0}
-.buddy{flex:1;min-height:200px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
+.right{display:flex;flex-direction:column;gap:16px;min-height:0;overflow:auto}
+.buddy{flex:1 0 auto;display:flex;flex-direction:column;gap:14px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.chips span{font-size:12px;padding:4px 9px;border-radius:7px;background:var(--grey);color:var(--sub)}
 .chips span.on{background:#E3F7EE;color:var(--ok)}.chips span.on::before{content:'● ';font-size:8px;vertical-align:1px}.chips a{font-size:12px;color:var(--sub);margin-left:auto}
-.how{list-style:none;margin:0;padding:0;display:flex;gap:6px;flex-wrap:wrap}.how li{display:flex;align-items:center;gap:6px;font-size:13px;color:#4E5968}
+.how{list-style:none;margin:0;padding:0;display:flex;gap:4px 6px;flex-wrap:wrap}.how li{display:flex;align-items:center;gap:6px;font-size:13px;color:#4E5968}
 .how li+li::before{content:'›';color:#C5CCD3;margin-right:2px}
 .how i{font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--or-soft);color:var(--or-deep);display:grid;place-items:center;font-size:11px}
-.mascot{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:0}
-.mascot .bubble{position:relative;background:#fff;border-radius:16px;padding:12px 16px;box-shadow:0 4px 18px rgba(0,27,55,.12);text-align:center;max-width:280px}
-.mascot .bubble::after{content:'';position:absolute;left:50%;bottom:-7px;margin-left:-7px;border:7px solid transparent;border-bottom:0;border-top-color:#fff}
+.mascot{margin-top:auto;display:flex;flex-direction:row-reverse;align-items:center;justify-content:center;gap:10px}
+.mascot .bubble{position:relative;background:#fff;border-radius:16px;padding:12px 16px;box-shadow:0 4px 18px rgba(0,27,55,.12);text-align:left;max-width:300px}
+.mascot .bubble::after{content:'';position:absolute;left:-7px;top:50%;margin-top:-7px;border:7px solid transparent;border-left:0;border-right-color:#fff}
 .mascot .bubble b{display:block;font-size:14px}.mascot .bubble span{display:block;font-size:12px;color:var(--sub)}
-.mascot img{width:auto;height:min(130px,16vh);min-height:60px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.1))}
+.mascot img{width:96px;height:auto;flex:none;filter:drop-shadow(0 6px 10px rgba(0,0,0,.1))}
+@media (max-height:820px){.mascot{display:none}}  /* 창이 낮으면 캐릭터가 잘리지 않게 아예 숨김 */
 @media (max-width:1100px),(max-height:640px){.wrap.home{display:block}.home .cols{grid-template-columns:minmax(0,1fr)}.news .nlist{max-height:60vh}.buddy{min-height:0}}
 </style>
 {% endblock %}
