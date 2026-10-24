@@ -30,6 +30,7 @@ class SiteTest(unittest.TestCase):
             'ENABLE_INTAKE': '1',
             'ENABLE_BOARD': '1',
             'HTTPS_ONLY': '0',
+            'SOBORU_GUEST_WRITE': '1',  # 예전 테스트는 비회원 글쓰기로 돎. 소보루 로그인 글쓰기는 test_soboru_login_to_write에서
         })
         cls.env.start()
         spec = importlib.util.spec_from_file_location('site_under_test', ROOT / 'app.py')
@@ -722,6 +723,15 @@ class SiteTest(unittest.TestCase):
     def post_form(self, client, path, data):
         token = self.csrf(client, path)
         return client.post(path, data={'_csrf': token, **data})
+
+    def test_soboru_login_to_write(self):
+        # 소보루는 로그인해야 제보·글·댓글을 씀 (운영자 2026-10-24)
+        with patch.dict(os.environ, {'SOBORU_GUEST_WRITE': ''}):
+            for path in ('/report', '/board/write?type=review'):
+                r = self.client.get(path); self.assertEqual(r.status_code, 302); self.assertIn('/login?next=', r.headers['Location'])
+            me, _ = self.member_client('login_writer', '로그인작가')
+            self.assertEqual(me.get('/report').status_code, 200)
+            self.assertEqual(me.get('/board/write?type=review').status_code, 200)
 
     def test_soboru_examples(self):
         # 커뮤니티 예시 글: 글쓴이 '소보루 예시' + 본문에 예시 표시, 두 번 넣어도 한 번만, remove로 모두 지움

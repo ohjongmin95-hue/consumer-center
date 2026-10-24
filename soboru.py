@@ -4,7 +4,7 @@
 - 저장해 둔 문구 속 '소비자제보센터'는 화면에 낼 때 '소보루'로 바꿔 보여 줌.
 - 생활정보(/life): 운영자가 쓰거나, 나중에 공공데이터 자동 수집이 초안으로 넣는 글. 게시한 글만 보임.
 """
-import datetime, json, re, statistics
+import datetime, json, os, re, statistics, urllib.parse
 import site_content
 import soboru_writer
 from flask import abort, flash, g, has_request_context, redirect, render_template, request, session, url_for
@@ -16,6 +16,7 @@ NEW_NAME = '소보루'
 # 예전 브랜드 시절 소보루로 덮어쓰던 문구. 소보루 하나만 쓰면서 기본값이 소보루 문구가 됐으니, 그때 저장해 둔 값(화면에 안 보이던 값)은 한 번 지움
 RETIRED_KEYS = ('site.brand', 'site.name', 'seo.home_title', 'seo.description', 'board.title')
 # 소비자제보센터 화면(consumerjebo.co.kr): 소보루와 같은 제보·게시판·관리자를 쓰고, 이름·제목만 이 칸의 값으로 바꿔 보여 줌
+LOGIN_TO_WRITE = ('report', 'board_write', 'board_comment', 'case_comment')  # 소보루 화면에서 로그인해야 쓰는 곳
 SOBORU_ONLY = ('/life', '/letter', '/pick/', '/ask', '/feed', '/vs', '/suda', '/editor', '/me/saved', '/owners')
 JEBO_KEYS = {'site.name': 'jebo.site_name', 'seo.home_title': 'jebo.home_title', 'seo.description': 'jebo.description', 'board.title': 'jebo.board_title'}
 
@@ -190,6 +191,11 @@ def install(S):
             return
         for k, v in g.content.items():  # 예전에 저장해 둔 문구 속 옛 이름도 소보루로
             if OLD_NAME in v: g.content[k] = v.replace(OLD_NAME, NEW_NAME)
+        # 소보루는 로그인해야 글을 씀 (운영자 2026-10-24: 제보·후기·수다·댓글 모두). 소비자제보센터 주소는 지금처럼 비회원도 제보
+        if request.endpoint in LOGIN_TO_WRITE and not g.get('user') and os.getenv('SOBORU_GUEST_WRITE') != '1':
+            flash(S.ui_text('sb.login_to_write', '소보루는 로그인하면 글을 쓸 수 있어요. 카카오로 3초 만에 시작해요.'))
+            back = request.full_path.rstrip('?') if request.method == 'GET' else urllib.parse.urlsplit(request.referrer or '').path or '/'
+            return redirect(url_for('login', next=back if back.startswith('/') and not back.startswith('//') else '/'))
 
     def site_name():
         """메일·알림·AI 초안에 쓰는 사이트 이름 (요청 밖에서도 DB 설정을 읽음)."""
