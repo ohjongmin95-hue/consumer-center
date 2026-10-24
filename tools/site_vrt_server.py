@@ -65,6 +65,9 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
                                   ('모르는 결제 문자, 카드사에 먼저 전화해야 하는 이유', '💳', 't4', '금융', ''), ('어린이 킥보드 일부 모델, 브레이크 결함으로 회수', '🛴', 't1', '리콜', '')]:
         post(a, '/admin/life', {'title': t, 'summary': SUMS.get(e, '꼭 알아야 할 것만 정리했어요.'), 'body': '먼저 판매자에게 알리세요.\n\n## 얼마까지 받을 수 있나요\n- 운송장에 적은 물품 가격 기준\n- 적지 않았다면 최대 50만 원',
                                 'category': cat, 'emoji': e, 'tone': tone, 'source_name': '공정거래위원회 소비자24', 'source_url': 'https://www.consumer.go.kr', 'featured': feat, 'publish': '1'})
+    if os.environ.get('VRT_LONG'):  # 매거진 긴 글 미리보기: VRT_LONG=본문 파일
+        post(a, '/admin/life', {'title': '매달 새는 구독료, 3분 만에 찾고 돌려받는 법', 'summary': '무료 체험은 끝나는 날 정상 요금으로 바뀌는 경우가 많아요\n카드사 앱 정기 결제 메뉴에서 한 번에 찾을 수 있어요\n쓰지 않은 기간 요금은 환불을 요청해 보세요',
+                                'body': open(os.environ['VRT_LONG'], encoding='utf-8').read(), 'category': '생활', 'emoji': '💳', 'tone': 't2', 'source_name': '공정거래위원회 소비자24', 'source_url': 'https://www.consumer.go.kr', 'publish': '1'})
     # 커뮤니티 글: 리뷰·꿀팁·질문·이야기 (종류마다 화면이 달라 골고루)
     import datetime as _dt
     def ago(h): return (_dt.datetime.now() - _dt.timedelta(hours=h)).isoformat(timespec='seconds')

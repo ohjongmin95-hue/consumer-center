@@ -1849,3 +1849,37 @@ h1.vs-title{font-size:28px}
 .ow-card footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;min-height:22px}
 .ow-link{font-size:14px;font-weight:700;color:var(--sb-orange)}
 @media(max-width:760px){.ow-list{grid-template-columns:minmax(0,1fr);gap:10px}.ow-card{padding:18px}.ow-card h2{font-size:16.5px}}
+/* 매거진 글 (운영자 2026-10-24: 토스처럼 깔끔하게, 뉴닉처럼 알차게) — 테두리·줄 대신 여백과 회색 면으로 나눔 */
+.sb-art-head .sb-article-cat{font-size:15px;font-weight:700;color:var(--sb-orange)}
+.sb-article .sb-art-head h1{font-size:34px;font-weight:800;line-height:1.38;letter-spacing:-.04em;margin:12px 0 0;word-break:keep-all}
+.sb-article .sb-art-head .sb-meta{margin:14px 0 0;font-size:14.5px;color:#8b95a1}
+.sb-article .sb-sumbox{background:#f9fafb;border:0;border-radius:20px;padding:22px 24px;margin:32px 0 0;font-size:16.5px;color:#333d4b}
+.sb-article .sb-sum-h{font-size:14px;font-weight:700;color:#8b95a1;margin:0 0 12px}
+.sb-article .sb-sum3 li:before{background:#b0b8c1}
+.sb-toc{margin:16px 0 0;padding:20px 24px;border-radius:20px;background:#f9fafb}
+.sb-toc p{margin:0 0 10px;font-size:14px;font-weight:700;color:#8b95a1}
+.sb-toc ol{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.sb-toc a{display:flex;align-items:baseline;gap:10px;padding:6px 0;font-size:16px;font-weight:600;color:#333d4b;text-decoration:none;word-break:keep-all}
+.sb-toc a:hover{color:var(--sb-orange)}
+.sb-toc-n{flex:none;font-size:14px;font-weight:800;color:var(--sb-orange);font-variant-numeric:tabular-nums}
+.sb-article .sb-article-body{font-size:17.5px;line-height:1.85;color:#333d4b;margin-top:40px;word-break:keep-all}
+.sb-article .sb-article-body p{margin:0 0 22px}
+.sb-article .sb-article-body h2.sb-h{display:block;font-size:24px;font-weight:800;line-height:1.45;letter-spacing:-.035em;color:#191f28;margin:64px 0 18px;padding:0;border:0;scroll-margin-top:90px}
+.sb-article .sb-article-body h2.sb-h .sb-h-emo{display:block;width:auto;height:auto;background:none;border-radius:0;font-size:30px;margin:0 0 10px}
+.sb-article .sb-article-body h3.sb-point{font-size:18px;color:#191f28;margin:32px 0 8px}
+.sb-article .sb-point-n{width:24px;height:24px;border-radius:50%;font-size:13px}
+.sb-terms{margin:4px 0 26px;padding:18px 22px;border-radius:16px;background:#f2f4f6;display:grid;gap:6px}
+.sb-article .sb-article-body .sb-terms-h{margin:0;font-size:13.5px;font-weight:700;color:#8b95a1}
+.sb-terms div{font-size:15px;line-height:1.65;color:#4e5968}.sb-terms dt{display:inline;font-weight:700;color:#191f28;margin-right:8px}.sb-terms dd{display:inline;margin:0}
+.sb-article .sb-callout{background:#fff8ef;border-radius:20px;padding:20px 22px;margin:8px 0 30px}
+.sb-article .sb-callout .sb-h-emo{background:none;width:auto;height:auto;font-size:24px;margin-right:12px}
+.sb-article .sb-callout b{font-size:13.5px}
+.sb-article .sb-callout p{font-size:17px;color:#191f28}
+.sb-article .sb-article-body ul.sb-check{background:#f9fafb;padding:20px 22px;border-radius:20px;gap:12px}
+@media(max-width:680px){
+  .sb-article .sb-art-head h1{font-size:26px}
+  .sb-article .sb-sumbox,.sb-toc{padding:18px 20px;border-radius:16px}
+  .sb-article .sb-article-body{font-size:16.5px;line-height:1.8;margin-top:32px}
+  .sb-article .sb-article-body h2.sb-h{font-size:21px;margin:52px 0 14px}
+  .sb-article .sb-article-body h2.sb-h .sb-h-emo{font-size:26px}
+}

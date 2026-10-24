@@ -3770,7 +3770,7 @@ class SiteTest(unittest.TestCase):
         self.assertLess(body.index('## ✅ 이렇게 하세요'), body.index('## 🤝 소보루와 함께 시작해요'))
         with self.site.app.test_request_context('/'): html = str(self.site.app.jinja_env.globals['life_body'](body))
         self.assertIn('<span class="sb-point-n" aria-hidden="true">2</span>결제일을 기억하세요', html)
-        self.assertIn('<p class="sb-term"><b>리볼빙</b>', html)
+        self.assertIn("<dl class=\"sb-terms\">", html); self.assertIn("<dt>리볼빙</dt>", html)  # 용어 풀이는 상자 하나로
         self.assertNotIn('###', html)
 
     def test_writer_skips_similar_topic_within_30_days(self):

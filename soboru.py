@@ -218,31 +218,35 @@ def install(S):
 
     def life_body(text):
         # 본문: 빈 줄은 문단, "## "는 소제목(앞에 이모지), "### "는 번호 붙은 요점, "※ 낱말: 풀이"는 용어 풀이, "- "는 목록, "> "는 '핵심만 쏙' 상자. HTML은 쓰지 않음.
-        # 뉴스레터처럼: 소제목마다 이모지 칸, '이렇게 하세요'는 체크 목록. 이모지가 없는 예전 글은 차례로 기본 이모지를 붙임.
-        out, items, n_head, check, n_point = [], [], 0, False, 0
+        # 매거진처럼 (운영자 2026-10-24: 토스처럼 깔끔하게): 소제목은 큰 글씨에 작은 이모지, 이어진 용어 풀이는 상자 하나로, 소제목마다 차례용 id(s1, s2…).
+        out, items, terms, n_head, check, n_point = [], [], [], 0, False, 0
         def flush():
             nonlocal check
             if items:
                 out.append(Markup('<ul class="sb-check">' if check else '<ul>') + Markup('').join(Markup('<li>%s</li>') % i for i in items) + Markup('</ul>'))
                 items.clear()
+            if terms:
+                out.append(Markup('<dl class="sb-terms"><p class="sb-terms-h">%s</p>') % S.ui_text('life.terms', '용어 풀이')
+                           + Markup('').join((Markup('<div><dt>%s</dt><dd>%s</dd></div>') % (w, m)) if m else Markup('<div><dd>%s</dd></div>') % w for w, m in terms) + Markup('</dl>'))
+                terms.clear()
         for block in re.split(r'\n\s*\n', (text or '').strip()):
             lines = [l.strip() for l in block.split('\n') if l.strip()]
             for line in lines:
-                if line.startswith('- '): items.append(line[2:]); continue
+                if line.startswith('- '):
+                    if terms: flush()
+                    items.append(line[2:]); continue
+                if line.startswith('※ '):  # 용어 풀이: 이어진 것끼리 상자 하나
+                    if items: flush()
+                    word, _, mean = line[2:].partition(':'); terms.append((word.strip(), mean.strip())); continue
                 flush()
                 if line.startswith('### '):  # 요점: 소제목 안에서 1, 2, 3… 번호를 붙여 하나씩
                     n_point += 1
                     out.append(Markup('<h3 class="sb-point"><span class="sb-point-n" aria-hidden="true">%d</span>%s</h3>') % (n_point, line[4:].strip()))
-                elif line.startswith('※ '):  # 용어 풀이
-                    word, _, mean = line[2:].partition(':')
-                    out.append(Markup('<p class="sb-term"><b>%s</b>%s</p>') % (word.strip(), mean.strip()) if mean else Markup('<p class="sb-term">%s</p>') % line[2:])
                 elif line.startswith('## '):
                     n_point = 0
-                    head = line[3:].strip(); emo = head[:1]
-                    if emo in BODY_EMOJI: head = head[1:].strip()
-                    else: emo = '✅' if '이렇게 하세요' in head else LIFE_DEFAULT_EMOJI[n_head % len(LIFE_DEFAULT_EMOJI)]
+                    emo, head = life_head(line, n_head)
                     n_head += 1; check = emo == '✅'
-                    out.append(Markup('<h2 class="sb-h"><span class="sb-h-emo" aria-hidden="true">%s</span>%s</h2>') % (emo, head))
+                    out.append(Markup('<h2 class="sb-h" id="s%d"><span class="sb-h-emo" aria-hidden="true">%s</span>%s</h2>') % (n_head, emo, head))
                 elif line.startswith('> '):
                     note = line[2:].strip(); emo = note[:1] if note[:1] in BODY_EMOJI else '💡'
                     if note[:1] in BODY_EMOJI: note = note[1:].strip()
@@ -250,6 +254,16 @@ def install(S):
                 else: out.append(Markup('<p>%s</p>') % line)
             flush()
         return Markup('\n').join(out)
+
+    def life_head(line, n):
+        head = line[3:].strip(); emo = head[:1]
+        if emo in BODY_EMOJI: return emo, head[1:].lstrip('\ufe0f').strip()  # ⚖️처럼 뒤에 붙는 글자 모양 표시는 제목에서 뺌
+        return ('✅' if '이렇게 하세요' in head else LIFE_DEFAULT_EMOJI[n % len(LIFE_DEFAULT_EMOJI)]), head
+
+    def life_toc(text):
+        # 차례: 소제목 (번호, 이모지, 제목). life_body의 id(s1, s2…)와 같은 순서
+        heads = [l.strip() for l in (text or '').split('\n') if l.strip().startswith('## ')]
+        return [(i + 1,) + life_head(h, i) for i, h in enumerate(heads)]
 
     # ---- 이달의 기업 답변 순위 (숫자로만) ------------------------------------
     def company_rank(limit=5, days=RANK_DAYS):
@@ -279,7 +293,7 @@ def install(S):
         wait = sorted([p for p in out if p['waiting']], key=lambda p: (-p['waiting'], p['rate'], -p['n']))[:limit]
         return {'best': best, 'wait': wait, 'days': days, 'min_n': jebo.MIN_N}
 
-    app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, company_rank=company_rank,
+    app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, life_toc=life_toc, company_rank=company_rank,
                                  ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES, LIFE_EMOJI=LIFE_EMOJI, GUIDE_EMOJI=GUIDE_EMOJI,
                                  report_look=report_look, life_art=lambda cat: LIFE_ART.get(cat, 'other'), report_art=lambda ind: report_art(ind, S.items('guide_industries')))
 
