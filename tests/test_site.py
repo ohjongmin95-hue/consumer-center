@@ -4266,7 +4266,7 @@ class SiteTest(unittest.TestCase):
         # 품앗히식 커뮤니티: 수다 말머리→종류, 후기 정보·영수증 인증, 골라주세요 투표·결말, 포인트, 에디터 모집
         from PIL import Image
         with self.site.conn() as db:
-            for t in ('points', 'vs_votes', 'vs_comments', 'vs_polls', 'editor_apps'): db.execute('DELETE FROM ' + t)
+            for t in ('points', 'vs_votes', 'vs_comments', 'vs_polls'): db.execute('DELETE FROM ' + t)
         home = self.client.get('/').get_data(as_text=True)
         self.assertNotIn('nn-about', home); self.assertIn('nn-talk', home)
         me, uid = self.member_client('cm_writer', '수다쟁이')
@@ -4323,17 +4323,9 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertEqual(db.execute("SELECT SUM(amount) FROM points WHERE user_id=? AND reason='vote'", (oid,)).fetchone()[0], 5)
             self.assertEqual(db.execute("SELECT SUM(amount) FROM points WHERE user_id=? AND reason='vs_end'", (uid,)).fetchone()[0], 50)
-        # 에디터 모집: 신청서 확인, 선정 안 한 신청은 30일 뒤 지움
-        page = self.client.get('/editor').get_data(as_text=True)
-        self.assertIn('내돈내산 후기 써 주실 분 모집해요', page); self.assertIn('무선 이어폰', page)
-        self.assertEqual(self.post_form(self.client, '/editor', {'name': '이웃', 'phone': '123', 'product': '무선 이어폰', 'receipt': '1', 'agree': '1'}).status_code, 400)
-        self.assertEqual(self.post_form(self.client, '/editor', {'name': '이웃', 'phone': '010-1234-5678', 'product': '무선 이어폰', 'receipt': '1', 'agree': '1'}).status_code, 302)
-        with self.site.conn() as db:
-            self.assertEqual(db.execute('SELECT phone FROM editor_apps').fetchone()[0], '01012345678')
-            db.execute("UPDATE editor_apps SET created='2020-01-01T00:00:00'")
-        self.assertIn('에디터 신청', admin.get('/admin/editors').get_data(as_text=True))
-        with self.site.conn() as db:
-            self.assertEqual(db.execute('SELECT COUNT(*) FROM editor_apps').fetchone()[0], 0)
+        # 에디터 모집은 뺌: 예전 주소는 후기 피드로, 메뉴에도 없음
+        self.assertEqual(self.client.get('/editor').headers['Location'], '/feed')
+        self.assertNotIn('에디터 모집', self.client.get('/feed').get_data(as_text=True))
 
     def test_service_worker_and_offline_page(self):
         r = self.client.get('/sw.js')
