@@ -1799,3 +1799,4 @@ h1.vs-title{font-size:28px}
 @media (max-width:760px){.nn-pick+.nn-talk{margin-top:32px}}
 /* 휴대폰: 소보루 픽은 최신 글이 TOP 5보다 먼저 (올라온 글이 바로 보이게) */
 @media (max-width:760px){.nn-pick-grid{display:flex;flex-direction:column}.nn-pick-grid .nn-pick-feed{order:-1}}
+.cm-body.solo{display:block}
