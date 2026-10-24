@@ -1,6 +1,6 @@
 """SOBORU 플랫폼 공통: DB, 처리 규칙(플레이북), 사건 처리 동작, 보안 도우미.
 
-소비자용 고객센터(소보루 CS)과 기업용(소보루 CS)이 같은 DB의 같은 사건을 다룬다.
+소비자용 고객센터(SOBORU CS)과 기업용(SOBORU CS)이 같은 DB의 같은 사건을 다룬다.
 홈페이지(소비자제보센터, 저장소 최상위 app.py)와는 DB도 서비스도 따로 쓴다.
 """
 import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, threading, json, urllib.request, urllib.error
@@ -11,7 +11,7 @@ from flask import session, request, abort, g, has_request_context
 from markupsafe import Markup, escape
 import law
 import sys
-sys.path.append(str(Path(__file__).resolve().parent.parent))  # bizmsg.py는 저장소 최상위에 있다 (소보루와 같이 씀). 서버는 platform_app 폴더에서 띄운다
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # bizmsg.py는 저장소 최상위에 있다 (소보루 사이트와 같이 씀). 서버는 platform_app 폴더에서 띄운다
 import bizmsg
 
 BASE=Path(__file__).parent
@@ -22,13 +22,13 @@ SECRET=os.getenv('SECRET_KEY') or secrets.token_hex(32)
 CONSUMER_HOST=os.getenv('CONSUMER_HOST','').strip().lower()
 BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
 PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'
-CNAME=os.getenv('CONSUMER_NAME','소보루 CS')  # 소비자 서비스 이름 (로고·제목·메일)
-BNAME=os.getenv('BUSINESS_NAME','소보루 CS')
+CNAME=os.getenv('CONSUMER_NAME','SOBORU CS')  # 소비자 서비스 이름 (로고·제목·메일)
+BNAME=os.getenv('BUSINESS_NAME','SOBORU CS')
 COPY_SITES={'me':'고객센터','biz':'기업용','all':'두 곳 모두'}  # 문구 고치기 적용 범위  # 기업 서비스 이름
 # 개인정보 처리방침에 적는 운영 주체 (개인정보 보호법 제30조). 보호책임자는 대표자 (같은 법 제31조, 시행령 제32조제2항제2호가목)
 OPERATOR={'name':'소보루','ceo':'오규섭','biz_no':'129-14-81596','address':'서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)','manager':'오민주','phone':'02-749-7515','mail_order':''}  # mail_order: 통신판매업 신고번호 (신고하면 넣는다, 비어 있으면 안 보임)
 PRIVACY_SINCE='2026년 10월 12일'
-TERMS_SINCE='2026년 10월 13일'  # 소보루 CS 기업 회원 이용약관 시행일
+TERMS_SINCE='2026년 10월 13일'  # SOBORU CS 기업 회원 이용약관 시행일
 REFUND_SINCE='2026년 10월 18일'  # 환불 정책 시행일
 RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 요청은 purge_old()가 파기
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 요청, 운영 등)는 noindex
@@ -401,7 +401,7 @@ def run_playbook(db,c,how,send=None):
     reply=(rule['reply'] or '').strip()
     ext=bool(db.execute('SELECT 1 FROM shop_seen WHERE company_id=? AND case_id=?',(c['company_id'],c['id'])).fetchone())  # 판매처·메일·DM에서 온 요청 (고객에게 접수 화면이 없다)
     if ext and (c['ai_draft'] or '').strip():reply=c['ai_draft'].strip()  # AI가 써 둔 초안을 승인한 것 (이 문의에 맞춘 답)
-    elif ext and reply==pb['reply'] and c['category'] in EXT_REPLY:reply=EXT_REPLY[c['category']]  # 기본 문구는 '취소했어요'·'이 화면에서 계좌 등록'처럼 소보루 접수 화면 기준이라 바꿔 보낸다
+    elif ext and reply==pb['reply'] and c['category'] in EXT_REPLY:reply=EXT_REPLY[c['category']]  # 기본 문구는 '취소했어요'·'이 화면에서 계좌 등록'처럼 SOBORU CS 접수 화면 기준이라 바꿔 보낸다
     guide=return_guide(company(db,c['company_id']),ext) if c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status'] else ''
     if reply and guide:reply+='\n\n'+guide;db.execute("UPDATE cases SET ret_status='guided' WHERE id=?",(c['id'],))
     elif reply and c['category'] in ('교환','반품·환불','제품 불량') and not c['ret_status']:
@@ -529,7 +529,7 @@ def notify_consumer(c,subject,text):
     send_kakao(c['phone'],{'#{회사}':short(c['company_name'],20),'#{내용}':short(text.split('\n')[0],40),'#{접수번호}':c['no'],'#{링크}':site_url('me','/mine')},'CS_KAKAO_TPL_REPLY','소비자 알림톡')
     send_push(c['id'],c['company_name'],text.split('\n')[0])
 def send_push(case_id,title,body):
-    """소보루 CS 앱에서 이 요청을 열어 둔 휴대폰에 알림 (Expo 푸시). 앱을 안 쓰면 아무것도 안 한다."""
+    """SOBORU CS 앱에서 이 요청을 열어 둔 휴대폰에 알림 (Expo 푸시). 앱을 안 쓰면 아무것도 안 한다."""
     with conn() as db:toks=[r[0] for r in db.execute('SELECT token FROM app_push WHERE case_id=?',(case_id,))]
     expo_push(toks,title,body,{'case_id':case_id},'app_push')
 def send_biz_push(company_id,title,body,case_id):

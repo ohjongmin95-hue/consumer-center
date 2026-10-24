@@ -1,4 +1,4 @@
-"""소비자용 '소보루 CS' 고객센터: 어느 기업이든 한곳에서 요청 접수·조회."""
+"""소비자용 'SOBORU CS' 고객센터: 어느 기업이든 한곳에서 요청 접수·조회."""
 import os, re, datetime, json, urllib.parse
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -321,7 +321,7 @@ def widget_js():
     """쇼핑몰에 붙이는 '문의하기' 버튼. 누르면 그 회사 고객센터 화면을 새 창으로 연다 (쇼핑몰 화면에 다른 내용을 끼워 넣지 않는다)."""
     cid=request.args.get('c','')
     with conn() as db:co=core.company(db,int(cid)) if cid.isdigit() else None
-    if not co or co['status']!='active':return app.response_class('/* 소보루 CS: 회사를 찾을 수 없어요 */',mimetype='application/javascript')
+    if not co or co['status']!='active':return app.response_class('/* SOBORU CS: 회사를 찾을 수 없어요 */',mimetype='application/javascript')
     url=core.site_url('me','/to/%d'%co['id'])
     seen_widget(co)
     js=("(function(){if(window.__soboruCS)return;window.__soboruCS=1;var u=%s;var b=document.createElement('button');b.type='button';b.textContent='문의하기';"
@@ -434,7 +434,7 @@ def privacy():
         mail_vendor=os.getenv('MAIL_VENDOR',''),ai=ai_mod.vendor(),kakao=core.kakao_ready() or core.kakao_ready('CS_KAKAO_TPL_REPLY'),kakao_vendor=os.getenv('KAKAO_VENDOR',''),
         pay=os.getenv('PG_VENDOR','엔에이치엔케이씨피 주식회사'))  # 기업 회원 요금 결제 (billing.py, 포트원 채널의 PG)
 
-# ---------- 소보루 CS 앱 API (/api/v1) ----------
+# ---------- SOBORU CS 앱 API (/api/v1) ----------
 # 앱은 쿠키를 쓰지 않는다. 접수하거나 조회하면 요청마다 토큰을 받아 휴대폰에 두고, 그 토큰으로만 요청을 연다.
 def case_token(case_id):return core.signer('app-case').dumps(case_id)
 def token_case(tok):

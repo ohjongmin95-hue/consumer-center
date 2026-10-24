@@ -1,4 +1,4 @@
-"""기업용 소보루 CS (+ 센터 운영 화면 /ops).
+"""기업용 SOBORU CS (+ 센터 운영 화면 /ops).
 
 기업: 가입 → 운영자 승인 → 로그인 → 승인 카드(승인·보류·자료 요청), 전체 요청, 자동 처리 규칙, 설정.
 운영자: 기업 가입 승인, 기업 목록, 비입점 기업 요청 처리(전달 시도·회신 기록·피해구제 안내).
@@ -83,7 +83,7 @@ def pay_guard():
     co=real()
     if co and not billing.open_ok(co):
         if request.method=='GET':return redirect(url_for('pay.page'))
-        flash('결제가 확인되지 않아 소보루 CS를 쓸 수 없어요. 카드를 등록하거나 결제해 주세요.','error');return redirect(url_for('pay.page'))
+        flash('결제가 확인되지 않아 SOBORU CS를 쓸 수 없어요. 카드를 등록하거나 결제해 주세요.','error');return redirect(url_for('pay.page'))
 def login_required(f):
     @functools.wraps(f)
     def w(*a,**k):
@@ -290,7 +290,7 @@ def google_callback():
     return redirect(url_for('signup'))
 
 # ---------- 처음 설정 도우미 (/start) ----------
-TEST_CASE=dict(channel='기타',category='배송 조회',title='[시험 문의] 주문한 상품은 언제 오나요?',body='소보루 CS 시험 문의예요. 실제 고객이 아니에요. 답변을 보내 보세요.',want='배송 확인',name='시험 고객')
+TEST_CASE=dict(channel='기타',category='배송 조회',title='[시험 문의] 주문한 상품은 언제 오나요?',body='SOBORU CS 시험 문의예요. 실제 고객이 아니에요. 답변을 보내 보세요.',want='배송 확인',name='시험 고객')
 @app.route('/start',methods=['GET','POST'])
 @login_required
 def start():
@@ -407,7 +407,7 @@ def decide():
         hello=hello,brief=briefing(rows,counts,ocnt),tab='home')
 
 def briefing(rows,counts,ocnt):
-    """홈의 '소보루 브리핑': 실제 요청·주문 숫자로 사장님이 먼저 볼 것을 몇 줄로 정리."""
+    """홈의 'AI 브리핑': 실제 요청·주문 숫자로 사장님이 먼저 볼 것을 몇 줄로 정리."""
     week=(core.now().date()-datetime.timedelta(days=6)).isoformat();r7=[r for r in rows if r['created'][:10]>=week]
     out=[]
     if r7:
@@ -480,17 +480,17 @@ def connect():
     rows+=[dict(group='판매처',name=nm,desc=f'주문 {by[ch]}건 · 주문 엑셀(CSV)로 올리는 중' if by.get(ch) else '주문 엑셀(CSV)을 올리면 바로 쓸 수 있어요',
                state='csv' if by.get(ch) else 'ready',href=url_for('orders_page')) for nm,ch in (('자사몰','자사몰'),('오픈마켓','오픈마켓'))]
     if real()['api_enabled']:rows.append(dict(group='개발',name='외부 API·웹훅 (시범)',desc='우리 회사 프로그램에서 문의를 읽고 답하고, 새 문의를 웹훅으로 받아요',state='link',href=url_for('api.manage')))
-    rows+=[dict(group='택배',name='택배 배송 조회',desc='송장번호로 고객·사장님 화면에서 위치를 바로 보여 줘요' if track_on else '소보루가 연결을 준비하고 있어요',state='on' if track_on else 'soon',href=''),
-           dict(group='알림',name='이메일 알림',desc='새 요청과 답변을 이메일로 알려 드려요' if core.mail_ready() else '소보루가 연결을 준비하고 있어요',state='on' if core.mail_ready() else 'soon',href=url_for('settings')),
+    rows+=[dict(group='택배',name='택배 배송 조회',desc='송장번호로 고객·사장님 화면에서 위치를 바로 보여 줘요' if track_on else 'SOBORU CS가 연결을 준비하고 있어요',state='on' if track_on else 'soon',href=''),
+           dict(group='알림',name='이메일 알림',desc='새 요청과 답변을 이메일로 알려 드려요' if core.mail_ready() else 'SOBORU CS가 연결을 준비하고 있어요',state='on' if core.mail_ready() else 'soon',href=url_for('settings')),
            dict(group='알림',name='카카오 알림톡',desc='고객에게 진행 상황을 카카오톡으로 보내요',state='soon',href=''),
            dict(group='상담',name='이메일 문의',desc=((f"{ml['address']} · 문의 {ml['n_inq']}건 가져옴"+(f" · {core.fmt(ml['synced'])}" if ml['synced'] else ' · 곧 가져와요')) if ml['status']=='ok' else ml['note']) if ml else '회사 메일함을 이으면 메일 문의가 요청으로 들어와요',
                 state=('on' if ml['status']=='ok' else 'err') if ml else 'link',href=url_for('connect_email')),
-           dict(group='상담',name='인스타그램 DM',desc=((f"@{ig['username']} · DM {ig['n_inq']}건 받음") if ig['status']=='ok' else ig['note']) if ig else ('인스타그램으로 로그인하면 DM이 요청으로 들어와요' if instagram.ready() else '소보루가 메타 앱 준비를 마치면 열려요'),
+           dict(group='상담',name='인스타그램 DM',desc=((f"@{ig['username']} · DM {ig['n_inq']}건 받음") if ig['status']=='ok' else ig['note']) if ig else ('인스타그램으로 로그인하면 DM이 요청으로 들어와요' if instagram.ready() else 'SOBORU CS가 메타 앱 준비를 마치면 열려요'),
                 state=('on' if ig['status']=='ok' else 'err') if ig else ('link' if instagram.ready() else 'wait'),href=url_for('ig.page')),
-           dict(group='상담',name='카카오톡 채널',desc=((f"문의 {kk['n_inq']}건 받음"+(f" · {core.fmt(kk['last_at'])}" if kk['last_at'] else ' · 챗봇 설정을 마치면 들어와요')) if kk['status']=='ok' else kk['note']) if kk else '카카오톡 채널 챗봇에 소보루 주소를 넣으면 카톡 문의가 상담으로 들어와요',
+           dict(group='상담',name='카카오톡 채널',desc=((f"문의 {kk['n_inq']}건 받음"+(f" · {core.fmt(kk['last_at'])}" if kk['last_at'] else ' · 챗봇 설정을 마치면 들어와요')) if kk['status']=='ok' else kk['note']) if kk else '카카오톡 채널 챗봇에 SOBORU CS 주소를 넣으면 카톡 문의가 상담으로 들어와요',
                 state=('on' if kk['status']=='ok' else 'err') if kk else 'link',href=url_for('kk.page')),
            dict(group='상담',name='쇼핑몰 문의 버튼',desc=(f"{real()['widget_host']}에 붙어 있어요 · {core.fmt(real()['widget_seen'])} 확인" if real()['widget_seen'] else '쇼핑몰에 한 줄만 붙이면 문의하기 버튼이 생겨요'),state='on' if real()['widget_seen'] else 'link',href=url_for('connect_widget')),
-           dict(group='상담',name='AI 상담',desc='고객 채팅에 AI가 먼저 답해요' if chatbot.ready() else '소보루가 연결을 준비하고 있어요',state='on' if chatbot.ready() else 'soon',href=url_for('rules')+'#ai' if chatbot.ready() else '')]
+           dict(group='상담',name='AI 상담',desc='고객 채팅에 AI가 먼저 답해요' if chatbot.ready() else 'SOBORU CS가 연결을 준비하고 있어요',state='on' if chatbot.ready() else 'soon',href=url_for('rules')+'#ai' if chatbot.ready() else '')]
     return render_template('b_connect.html',rows=rows,tab='connect')
 
 @app.route('/connect/widget')
@@ -1557,7 +1557,7 @@ def ops_keys():
 COPY_PAGES=[('c_home.html','고객 첫 화면'),('c_new.html','요청 접수'),('c_done.html','접수 완료'),('c_mine.html','내 접수'),('c_case.html','접수 상세'),
  ('c_company.html','기업별 고객센터'),('c_guide.html','이용 안내'),('c_relief.html','피해구제 안내'),('c_privacy.html','개인정보 처리방침'),('c_error.html','오류 화면'),
  ('_c.html','고객 공통 메뉴'),('_chat.html','상담 챗봇'),('consumer.py','고객 안내 메시지'),
- ('b_intro.html','소보루 CS 소개'),('b_login.html','로그인'),('b_signup.html','가입'),('b_start.html','처음 설정'),('b_forgot.html','비밀번호 찾기'),
+ ('b_intro.html','SOBORU CS 소개'),('b_login.html','로그인'),('b_signup.html','가입'),('b_start.html','처음 설정'),('b_forgot.html','비밀번호 찾기'),
  ('b_decide.html','사장님 홈'),('b_all.html','요청 목록'),('b_case.html','요청 상세'),('b_new.html','직접 등록'),('b_rules.html','자동 처리'),('b_stats.html','통계'),
  ('b_report.html','리포트'),('insights.py','리포트 분석 문구'),('b_guide.html','응대 가이드'),('law.py','응대 가이드 상황별 문구'),('b_news.html','법·제도 소식'),
  ('b_settings.html','설정'),('b_record.html','처리 기록'),('b_terms.html','약관'),('b_refund.html','환불 정책'),('b_pricing.html','요금 안내'),('_b.html','기업 공통 메뉴'),('business.py','기업 안내 메시지'),
@@ -1566,7 +1566,7 @@ COPY_PAGES=[('c_home.html','고객 첫 화면'),('c_new.html','요청 접수'),(
 @app.route('/ops/copy',methods=['GET','POST'])
 @ops_required
 def ops_copy():
-    """문구 고치기: 고객센터·소보루 CS 화면의 문구를 바꾼다. 템플릿은 그대로 두고 화면에 내보낼 때만 바꾼다.
+    """문구 고치기: 고객센터·SOBORU CS 화면의 문구를 바꾼다. 템플릿은 그대로 두고 화면에 내보낼 때만 바꾼다.
     저장하면 그대로 유지되고, 같은 자리에서 언제든 다시 고칠 수 있다."""
     q=clean(request.values.get('q'),100);pg=request.values.get('pg','')
     ajax=request.headers.get('X-Requested-With')=='fetch'
@@ -1610,7 +1610,7 @@ def ops_copy():
 
 
 VISUAL_PAGES=[('me','/','고객 첫 화면',0),('me','/new','요청 접수',0),('me','/guide','이용 안내',0),('me','/mine','내 접수',0),('me','/to/','기업별 고객센터',0),('me','/privacy','개인정보 처리방침',0),
- ('biz','/','소보루 CS 소개',0),('biz','/login','로그인',0),('biz','/signup','가입',0),('biz','/forgot','비밀번호 찾기',0),('biz','/terms','약관',0),('biz','/pricing','요금 안내',0),('biz','/refund','환불 정책',0),
+ ('biz','/','SOBORU CS 소개',0),('biz','/login','로그인',0),('biz','/signup','가입',0),('biz','/forgot','비밀번호 찾기',0),('biz','/terms','약관',0),('biz','/pricing','요금 안내',0),('biz','/refund','환불 정책',0),
  ('biz','/','사장님 홈',1),('biz','/all','요청 목록',1),('biz','/rules','자동 처리',1),('biz','/stats','통계',1),('biz','/report','리포트',1),('biz','/guide','응대 가이드',1),('biz','/news','법·제도 소식',1),('biz','/new','직접 등록',1),('biz','/settings','설정',1)]
 
 def visual_companies():

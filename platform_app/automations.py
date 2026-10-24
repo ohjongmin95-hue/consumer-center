@@ -13,7 +13,7 @@ from core import conn, clean
 MAX_RULES=30;MAX_CONDS=5;MAX_ACTS=5
 FIELDS={'text':'제목·내용에','category':'유형이','channel':'들어온 곳이','order':'주문번호가','hours':'들어온 때가'}
 ACTS={'tag':'태그 붙이기','prio':'우선순위 바꾸기','assign':'담당자 정하기','note':'내부 메모 남기기'}
-SOBORU='소보루 CS'
+SOBORU='SOBORU CS'
 def channels():return [SOBORU,'스마트스토어','쿠팡','카페24']+[c for c in core.CHANNELS if c not in ('기타',)]+['기타']
 
 def init():

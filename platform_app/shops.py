@@ -1,6 +1,6 @@
-"""판매처 연결: 사장님이 스마트스토어·쿠팡에서 직접 발급한 키를 넣으면, 문의와 주문을 소보루로 가져온다.
-소보루가 판매처와 따로 계약하지 않는다. 키는 암호화해서 저장하고 화면에는 끝 4자리만 보인다.
-  · 문의 -> 소보루 요청 (채널 '스마트스토어'/'쿠팡'). 답변은 판매처에 올려야 고객에게 보인다.
+"""판매처 연결: 사장님이 스마트스토어·쿠팡에서 직접 발급한 키를 넣으면, 문의와 주문을 SOBORU CS로 가져온다.
+SOBORU CS가 판매처와 따로 계약하지 않는다. 키는 암호화해서 저장하고 화면에는 끝 4자리만 보인다.
+  · 문의 -> SOBORU CS 요청 (채널 '스마트스토어'/'쿠팡'). 답변은 판매처에 올려야 고객에게 보인다.
   · 주문 -> 주문 장부 (주문번호가 같으면 상태·송장만 고친다)
 서버 cron이 10분마다 sync_all()을 부른다. 판매처 문서: 네이버 커머스API센터, developers.coupang.com"""
 import base64, datetime, traceback, hashlib, hmac, json, os, re, secrets, time, urllib.error, urllib.parse, urllib.request
@@ -64,7 +64,7 @@ def http(method,url,headers=None,body=None):
     except Exception as e:raise ShopError('판매처 서버에 연결하지 못했어요. 잠시 후 다시 해 주세요.') from e
 def _check(code,data,shop):
     if code in (401,403):
-        raise ShopError('키가 맞지 않거나, 판매처에 소보루 서버 IP가 등록되지 않았어요. 발급 안내를 다시 확인해 주세요.'+
+        raise ShopError('키가 맞지 않거나, 판매처에 SOBORU CS 서버 IP가 등록되지 않았어요. 발급 안내를 다시 확인해 주세요.'+
                         (' 쿠팡 키는 발급 후 사용까지 하루 정도 걸릴 수 있어요.' if shop=='coupang' else ''))
     if code==429:raise ShopError('판매처가 잠시 요청을 막았어요. 몇 분 뒤 자동으로 다시 가져와요.')
     if code>=400:
@@ -262,7 +262,7 @@ def remove(db,co,shop):
     db.execute('DELETE FROM shop_seen WHERE company_id=? AND shop=?',(co['id'],shop))
 
 def _case(db,co,shop,q):
-    """판매처 문의 하나 -> 소보루 요청. 같은 문의는 한 번만."""
+    """판매처 문의 하나 -> SOBORU CS 요청. 같은 문의는 한 번만."""
     if db.execute('SELECT 1 FROM shop_seen WHERE company_id=? AND shop=? AND ext_id=?',(co['id'],shop,q['ext_id'])).fetchone():return None
     from werkzeug.security import generate_password_hash
     body=clean(q['body'],core.BIG) or '(내용 없음)';ch=SHOPS[shop]['channel'] if shop in SHOPS else q['channel']
@@ -280,7 +280,7 @@ def _case(db,co,shop,q):
     import workflow;workflow.on_new(db,core.company(db,co['id']),c)  # 자동 배정 (판매처에는 영업시간 밖 안내를 올리지 않는다)
     return db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
 def _order(db,co,shop,o):
-    """판매처 주문 하나 -> 주문 장부. 소보루에서 처리한 취소·반품 결과는 덮지 않는다."""
+    """판매처 주문 하나 -> 주문 장부. SOBORU CS에서 처리한 취소·반품 결과는 덮지 않는다."""
     o={**o,'channel':SHOPS[shop]['channel'] if shop in SHOPS else o['channel'],'buyer':clean(o['buyer'],30),'phone':o['phone'][:11],'address':clean(o['address'],200),
        'product':clean(o['product'],200),'qty':max(1,min(int(o['qty'] or 1),9999)),'amount':max(0,int(o['amount'] or 0)),'order_no':clean(o['order_no'],60)}
     if not o['order_no']:return 0

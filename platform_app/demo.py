@@ -92,7 +92,7 @@ def reset(db,co):remove(db,co);return create(db,co)
 
 # ---------- 로그인 없이 둘러보기 (앱 심사·처음 써 보는 사람) ----------
 # 진짜 회사 없이 만드는 데모: demo_of가 음수라 어떤 진짜 회사와도 이어지지 않는다. 하루 지나면 sweep_guests가 지운다.
-GUEST=dict(name='소보루 둘러보기 상점',owner_name='대표',industry='패션·잡화',tone='polite')
+GUEST=dict(name='SOBORU CS 둘러보기 상점',owner_name='대표',industry='패션·잡화',tone='polite')
 GUEST_HOURS=24
 def is_guest(co):return bool(co) and co['status']=='demo' and (co['demo_of'] or 0)<0
 def guest(db):

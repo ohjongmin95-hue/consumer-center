@@ -37,7 +37,7 @@ chatbot.answer=fake_answer;chatbot.ready=lambda:True;ai.ready=lambda:True;ai.cha
 
 with core.conn() as db:
     cid=db.execute("""INSERT INTO companies(name,member,status,contact,login_id,pw_hash,biz_no,owner_name,phone,notify_email,industry,created,email_verified,biz_status,plan,plan_since,setup,ai_reply)
-      VALUES('소보루 견본상점',1,'active','02-000-0000','tour@example.com',?,'0000000000','김대표','','','패션·잡화',?,1,'01','pilot',?,'{"company":"done","shop":"done","center":"done","policy":"done","connect":"done","ai":"done","widget":"done","test":"done"}',?)""",
+      VALUES('봄날옷장',1,'active','02-000-0000','tour@example.com',?,'0000000000','김대표','','','패션·잡화',?,1,'01','pilot',?,'{"company":"done","shop":"done","center":"done","policy":"done","connect":"done","ai":"done","widget":"done","test":"done"}',?)""",
       (generate_password_hash('tourpassword1'),core.iso(),core.iso(),core.iso(core.now()-datetime.timedelta(days=12)))).lastrowid
     co=core.company(db,cid);dm=demo.create(db,co)
     for t in ('orders','products','rules'):db.execute(f'UPDATE {t} SET company_id=? WHERE company_id=?',(cid,dm['id']))
@@ -81,7 +81,7 @@ with core.conn() as db:
     # 카페24 연결 (가짜 토큰, 밖으로 나가지 않는다)
     import cafe24, shops
     db.execute("INSERT INTO cafe24_links(company_id,mall_id,creds,shop_name,scopes,expires,refresh_expires,synced,n_ord,created) VALUES(?,?,?,?,?,?,?,?,?,?)",
-               (cid,'soborushop',shops.seal({'access_token':'x','refresh_token':'y'}),'소보루 견본몰',cafe24.SCOPES,'2099-01-01 00:00:00','2099-01-14 00:00:00',core.iso(),2,core.iso()))
+               (cid,'soborushop',shops.seal({'access_token':'x','refresh_token':'y'}),'봄날옷장',cafe24.SCOPES,'2099-01-01 00:00:00','2099-01-14 00:00:00',core.iso(),2,core.iso()))
     lc={r[1] for r in db.execute('PRAGMA table_info(cafe24_links)')}
     if 'boards' in lc:db.execute("UPDATE cafe24_links SET boards=?,n_inq=3 WHERE company_id=?",('[[6,"상품 Q&A"],[9,"1:1 맞춤상담"]]',cid))
 # 카페24 등으로 실제로 보내지 않는다

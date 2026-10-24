@@ -39,7 +39,7 @@ def start(db,co,filename,raw):
     """추출을 시작하고 토큰을 돌려준다. 잘못된 파일이면 ValueError."""
     if not raw.startswith(b'%PDF-'):raise ValueError('PDF 파일만 올릴 수 있어요')
     if len(raw)>MAX_BYTES:raise ValueError('PDF는 15MB까지 올릴 수 있어요')
-    if not ai.ready():raise ValueError('AI 상담 키가 아직 설정되지 않았어요. 소보루에 문의해 주세요')
+    if not ai.ready():raise ValueError('AI 상담 키가 아직 설정되지 않았어요. SOBORU CS에 문의해 주세요')
     token=secrets.token_urlsafe(18)
     db.execute('INSERT INTO product_imports(token,company_id,filename,status,created) VALUES(?,?,?,?,?)',(token,co['id'],core.clean(filename,120),'running',core.iso()))
     db.commit()

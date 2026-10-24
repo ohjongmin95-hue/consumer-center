@@ -3,10 +3,10 @@
 {% block bar %}{{ b.bar('connect') }}{% endblock %}
 {% block body %}
 <div class="crumb"><a href="{{ url_for('connect') }}">서비스 연동</a><span>›</span><span>외부 API</span></div>
-<div class="phead"><div><h1>외부 API <span class="pill gray">시범</span></h1><p>우리 회사 프로그램에서 문의를 읽고 답하고, 새 문의를 웹훅으로 받아요. 보안 점검을 마치기 전까지 소보루가 켠 회사만 써요.</p></div></div>
+<div class="phead"><div><h1>외부 API <span class="pill gray">시범</span></h1><p>우리 회사 프로그램에서 문의를 읽고 답하고, 새 문의를 웹훅으로 받아요. 보안 점검을 마치기 전까지 SOBORU CS가 켠 회사만 써요.</p></div></div>
 {% if new_key %}<section class="panel" style="margin-bottom:var(--ds-gap);background:var(--accent-soft)"><div class="ph">새 API 키 (지금 한 번만 보여요)</div>
 <div class="addline"><input class="inp mono" id="nk" value="{{ new_key }}" readonly><button class="btn md gray" type="button" data-copy="nk">복사</button></div>
-<p class="cap" style="margin:10px 0 0">안전한 곳에 저장해 주세요. 소보루는 원문을 보관하지 않아 다시 보여 드릴 수 없어요.</p></section>{% endif %}
+<p class="cap" style="margin:10px 0 0">안전한 곳에 저장해 주세요. SOBORU CS는 원문을 보관하지 않아 다시 보여 드릴 수 없어요.</p></section>{% endif %}
 <div class="cols"><div class="stack" style="gap:var(--ds-gap)">
 <section class="panel"><div class="ph">API 키</div>
 {% for k in keys %}<div class="drow"><div class="tx"><b style="font-weight:500">{{ k.name }} <span class="pill {{ 'acc' if k.mode=='test' else 'ok' }}">{{ '시험 (데모 데이터)' if k.mode=='test' else '운영' }}</span>{% if k.revoked %} <span class="pill gray">폐기됨</span>{% endif %}</b>

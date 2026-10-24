@@ -34,7 +34,7 @@ def counts(path):
 def main(pdf_path=None,hook=None):
     """hook: 코드를 불러온 직후 부를 함수 (개발용, AI 호출을 가짜로 바꿀 때)."""
     if 'core' in sys.modules:raise SystemExit('점검은 앱 코드를 불러오기 전에 시작해야 해요 (운영 DB 보호)')
-    print('소보루CS 점검 (운영 DB 복사본 사용, 운영 데이터는 바뀌지 않아요)')
+    print('SOBORU CSCS 점검 (운영 DB 복사본 사용, 운영 데이터는 바뀌지 않아요)')
     copy=copy_db();before=counts(copy)
     os.environ.update(PLATFORM_DATABASE_PATH=copy,PLATFORM_UPLOAD_DIR=os.path.join(TMP,'uploads'),HTTPS_ONLY='0')
     for k in [k for k in os.environ if k.startswith(('SMTP_','TELEGRAM_','ALERT_'))]:os.environ.pop(k)  # 점검 중 메일·알림을 보내지 않는다

@@ -106,7 +106,7 @@ def live():
     """요금을 받기 시작했는지: 결제할 길(포트원 키 또는 카페24 앱 결제)이 있을 때. 그 전에는 모두 무료 시범으로 쓴다."""
     return ready() or c24_on()
 def open_ok(co):
-    """이 회사가 소보루 CS를 쓸 수 있는지. 운영자가 요금을 정하기 전에는 모두 쓴다(무료 시범).
+    """이 회사가 SOBORU CS를 쓸 수 있는지. 운영자가 요금을 정하기 전에는 모두 쓴다(무료 시범).
     정한 뒤에는 무료 체험 중('trial')이거나 결제 중('paid')인 회사만. 나머지는 요금·결제 화면만 열린다 (데이터는 지우지 않는다)."""
     if not co:return False
     return co['plan'] in ('paid','trial','free') or not live()  # 'free': 운영자가 무료로 열어 준 회사 (심사용·시범 계정)
@@ -222,8 +222,8 @@ def renew_all():
             if fails>=MAX_FAILS:
                 db.execute("UPDATE billing SET status='stopped',fails=?,note=? WHERE company_id=?",(fails,f'결제가 {fails}번 실패해 멈췄어요: {e}',b['company_id']))
                 db.execute("UPDATE companies SET plan='pilot',plan_since=? WHERE id=? AND plan!='free'",(core.iso(),b['company_id']))
-            else:db.execute("UPDATE billing SET status='past_due',fails=?,note=? WHERE company_id=?",(fails,f'결제하지 못했어요: {e} 결제될 때까지 소보루 CS를 쓸 수 없어요. 내일 다시 시도해요.',b['company_id']))
-            if mail_of(co):core.send_mail(mail_of(co),f'[{core.BNAME}] 요금 결제를 하지 못했어요',f"{co['name']} 요금 결제가 되지 않았어요.\n이유: {e}\n결제될 때까지 소보루 CS 기능이 멈춰요. 설정 > 요금·결제에서 카드를 바꾸거나 다시 결제해 주세요.")
+            else:db.execute("UPDATE billing SET status='past_due',fails=?,note=? WHERE company_id=?",(fails,f'결제하지 못했어요: {e} 결제될 때까지 SOBORU CS를 쓸 수 없어요. 내일 다시 시도해요.',b['company_id']))
+            if mail_of(co):core.send_mail(mail_of(co),f'[{core.BNAME}] 요금 결제를 하지 못했어요',f"{co['name']} 요금 결제가 되지 않았어요.\n이유: {e}\n결제될 때까지 SOBORU CS 기능이 멈춰요. 설정 > 요금·결제에서 카드를 바꾸거나 다시 결제해 주세요.")
     return n
 
 # ---------- 카페24 앱 결제 (카페24 앱스토어에서 설치한 쇼핑몰) ----------

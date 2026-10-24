@@ -11,26 +11,37 @@
 {% block main %}<main class="intro tp">
 {% if trial_n %}<a class="tp-promo" href="{{ url_for('signup') }}">카드만 등록하면 {{ trial_n }}일 동안 0원, 체험 중에 해지하면 결제되지 않아요 <span>›</span></a>{% endif %}
 
-<section class="tp-hero">{% if vid.hero %}<video class="tp-bgv" autoplay muted loop playsinline preload="auto" poster="{{ url_for('static',filename='tour/hero-poster.jpg') }}" aria-hidden="true">{% if vid.hero.webm %}<source src="{{ url_for('static',filename='tour/hero.webm') }}" type="video/webm">{% endif %}<source src="{{ url_for('static',filename='tour/hero.mp4') }}" type="video/mp4"></video>{% endif %}<div class="tp-shade"></div><div class="wrap tp-load">
+<section class="tp-hero tp2-hero"><div class="wrap tp2-hero-in">
+<div class="tp2-copy tp-load">
 <span class="tp-eyebrow">카페24·자사몰 쇼핑몰 CS</span>
-<h1>쇼핑몰 문의,<br>AI가 먼저 답해요</h1>
-<p>게시판, 인스타그램 DM, 메일 문의를 한 화면에 모으고<br class="pc"> 배송·교환·사용법 안내는 AI가 바로 답해요.<br class="pc"> 사장님은 환불 같은 결정만 승인하면 돼요.</p>
-<div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a><a class="btn tp-btn glass" href="#tour">▶ 영상으로 보기</a></div>
-<small class="tp-note">{% if trial_n %}카드를 등록해도 {{ trial_n }}일 동안은 결제되지 않아요{% else %}가입하면 바로 쓸 수 있어요{% endif %}</small>
-</div></section>
+<h1>쇼핑몰 문의,<br><em>AI가 먼저</em> 답해요</h1>
+<p>게시판, 인스타그램 DM, 메일 문의를 한 화면에 모으고 배송·교환·사용법 안내는 AI가 바로 답해요. 사장님은 환불 같은 결정만 승인하면 돼요.</p>
+<div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a><a class="btn tp-btn line" href="#tour">▶ 1분 영상 보기</a></div>
+<small class="tp-note">{% if trial_n %}카드를 등록해도 {{ trial_n }}일 동안은 결제되지 않아요{% else %}가입하면 바로 쓸 수 있어요{% endif %} · 설치비 0원</small>
+</div>
+<div class="tp2-media tp-load"><div class="tp-frame"><div class="tp-bar"><i></i><i></i><i></i><span>biz.soboru.co.kr</span></div>{{ video('hero','tp-media') }}</div></div>
+</div>
+<div class="wrap"><ul class="tp2-chs" aria-label="한 화면에 모으는 채널">{% for f,n in [('c24','카페24 게시판'),('web','자사몰 상담창'),('ig','인스타그램 DM'),('mail','메일'),('kk','카카오톡 채널')] %}<li><img src="{{ url_for('static',filename='ch/'+f+'.svg') }}" alt="" width="28" height="28">{{ n }}</li>{% endfor %}</ul></div>
+</section>
+
+<section class="tp2-stats"><div class="wrap"><ul>
+<li><b>24시간</b><span>밤·주말 문의도 AI가 바로 답해요</span></li>
+{% set t1 = tiers[1] if tiers|length > 1 else tiers[0] %}<li><b>건당 {{ '{:,}'.format((t1.price / t1.tickets)|round|int) }}원</b><span>{{ t1.name }} {{ '{:,}'.format(t1.tickets) }}건 요금 기준</span></li>
+<li><b>0원</b><span>설치비·가입비·직원 계정 추가</span></li>
+<li><b>승인 1번</b><span>환불·교환 같은 결정만 사장님이</span></li>
+</ul></div></section>
 
 <section class="tp-ticker" aria-label="이런 문의가 매일 들어와요"><p class="tp-tick-t">이런 문의, 매일 들어오죠</p>
 {% set asks=[('c24','C','배송 언제 와요?'),('ig','IG','사이즈 교환되나요?'),('mail','M','영수증 받을 수 있을까요?'),('own','💬','재입고 언제예요?'),('c24','C','주문 취소하고 싶어요'),('ig','IG','세탁기 돌려도 되나요?'),('mail','M','송장번호가 안 보여요'),('own','💬','쿠폰은 어디서 받아요?')] %}
 {% for row in [asks, asks[4:]+asks[:4]] %}<div class="tp-track{{ ' rev' if loop.index==2 }}" aria-hidden="true"><div>{% for _ in range(2) %}{% for cls,mk,q in row %}<span class="tp-q"><img class="tp-ico" src="{{ url_for('static',filename='ch/'+('web' if cls=='own' else cls)+'.svg') }}" alt="" width="28" height="28">{{ q }}</span>{% endfor %}{% endfor %}</div></div>{% endfor %}
 </section>
 
-<section class="tp-shot"><div class="wrap"><div class="tp-frame tp-grow" id="tpGrow"><div class="tp-bar"><i></i><i></i><i></i><span>biz.soboru.co.kr</span></div>{{ video('hero','tp-media') }}</div></div></section>
 
 <section class="tp-sec tp-gray" id="channels"><div class="wrap">
 <h2 class="rv-up">흩어진 문의를<br>한곳에 모아요</h2>
 <p class="tp-sub rv-up">채널마다 따로 들어가 확인하지 않아도 돼요. 들어온 곳은 아이콘으로 구분해 보여 드려요.</p>
 <div class="tp-ch">
-{% for mark,cls,name,desc in [('C','c24','카페24 게시판','상품 Q&A·1:1 맞춤상담 글을 자동으로 가져오고 답글도 소보루에서 달아요'),('💬','own','자사몰 상담창','스크립트 한 줄이면 쇼핑몰 오른쪽 아래에 문의 버튼이 생겨요'),('IG','ig','인스타그램 DM','비즈니스 계정을 이으면 DM이 그대로 상담으로 들어와요'),('M','mail','메일','고객센터 메일함을 이으면 받은 메일에 바로 답장해요')] %}
+{% for mark,cls,name,desc in [('C','c24','카페24 게시판','상품 Q&A·1:1 맞춤상담 글을 자동으로 가져오고 답글도 SOBORU CS에서 달아요'),('💬','own','자사몰 상담창','스크립트 한 줄이면 쇼핑몰 오른쪽 아래에 문의 버튼이 생겨요'),('IG','ig','인스타그램 DM','비즈니스 계정을 이으면 DM이 그대로 상담으로 들어와요'),('M','mail','메일','고객센터 메일함을 이으면 받은 메일에 바로 답장해요')] %}
 <div class="tp-card rv-up"><img class="tp-ico big" src="{{ url_for('static',filename='ch/tile/'+('web' if cls=='own' else cls)+'.svg') }}" alt="" width="48" height="48"><b>{{ name }}</b><p>{{ desc }}</p></div>
 {% endfor %}</div>
 </div></section>
@@ -60,7 +71,6 @@
 </div>
 </div></section>
 
-<section class="tp-sec tp-say" aria-label="소보루 CS가 하는 일"><div class="wrap"><p class="tp-words" id="tpWords">{% for w in '반복되는 문의는 AI가 먼저 답하고, 사장님은 정말 중요한 결정만 내리면 돼요.'.split(' ') %}<span>{{ w }}</span> {% endfor %}</p></div></section>
 
 <section class="tp-sec" id="tour"><div class="wrap">
 <h2 class="rv-up">1분 영상으로<br>둘러보세요</h2>
@@ -91,6 +101,9 @@
 <p class="tp-tnote rv-up">{% if trial_n %}체험이 끝나는 날 첫 결제가 되고, 그 전에 해지하면 결제되지 않아요. {% endif %}<a class="link" href="{{ url_for('pricing') }}">요금 자세히 보기</a> · <a class="link" href="{{ url_for('refund_policy') }}">환불 정책</a></p>
 </div></section>
 
+<section class="tp2-band"><div class="wrap"><div><h2>아직 고민되시나요?</h2><p>{{ '%d일 동안 무료로 써 보고 정하세요. 체험 중에 해지하면 결제되지 않아요.'%trial_n if trial_n else '가입하고 바로 써 보세요. 설치비는 없어요.' }}</p></div>
+<div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">무료로 시작하기</a>{% if has_ep('sl.consult') %}<a class="btn tp-btn line" href="{{ url_for('sl.consult') }}">도입 상담 받기</a>{% endif %}</div></div></section>
+
 <section class="tp-sec" id="faq"><div class="wrap tp-narrow">
 <h2 class="rv-up">자주 묻는 질문</h2>
 <div class="tp-faq">
@@ -111,9 +124,9 @@
 </div></section>
 
 <section class="tp-end"><div class="wrap">
-<img src="{{ url_for('static',filename='soboru-char.png') }}?v=3" alt="" width="125" height="96">
+<img class="tp2-endwm" src="{{ url_for('static',filename='soboru-cs-wordmark.png') }}?v=1" alt="SOBORU CS" width="713" height="103">
 <h2>반복 문의는 AI에게,<br>사장님은 중요한 일만</h2>
-<div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a>{% if has_ep('sl.consult') %}<a class="btn tp-btn ghost" href="{{ url_for('sl.consult') }}">상담 신청</a>{% endif %}</div>
+<div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a>{% if has_ep('sl.consult') %}<a class="btn tp-btn line" href="{{ url_for('sl.consult') }}">상담 신청</a>{% endif %}</div>
 </div></section>
 
 {% if has_ep('sl.consult') %}<a class="tp-float" href="{{ url_for('sl.consult') }}">{{ i.tf('speech',22) }}빠른 상담 받기</a>{% endif %}

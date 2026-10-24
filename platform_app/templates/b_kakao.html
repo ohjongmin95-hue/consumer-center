@@ -19,7 +19,7 @@
 <form method="post" onsubmit="return confirm('카카오톡 채널 연결을 끊을까요? 이미 받은 문의는 그대로 둬요.')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="delete"><button class="btn md gray">연결 끊기</button></form>
 </div>
 {% else %}
-<p class="sub" style="margin:0;font-size:15px">우리 가게 카카오톡 채널에 들어온 말을 소보루 상담으로 받아요. 먼저 스킬 주소를 만들고, 아래 순서대로 챗봇 관리자센터에 넣어 주세요.</p>
+<p class="sub" style="margin:0;font-size:15px">우리 가게 카카오톡 채널에 들어온 말을 SOBORU CS 상담으로 받아요. 먼저 스킬 주소를 만들고, 아래 순서대로 챗봇 관리자센터에 넣어 주세요.</p>
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="new"><button class="btn md">스킬 주소 만들기</button></form>
 {% endif %}
 </section>
@@ -27,13 +27,13 @@
 <ol class="dots">
 <li><b>카카오톡 채널 준비</b> · 카카오비즈니스(business.kakao.com)에 우리 가게 채널이 있으면 돼요. 없으면 먼저 만들어 주세요.</li>
 <li><b>챗봇 만들기</b> · 카카오 챗봇 관리자센터(chatbot.kakao.com)에서 <b>봇 만들기 → 카카오톡 챗봇</b>을 골라요. 봇 설정에서 <b>AI 챗봇 전환</b>을 신청하면 AI 답이 바로 나가요. 승인 전에도 쓸 수 있지만 그동안 AI 답은 고객이 다음 말을 걸 때 전해져요.</li>
-<li><b>스킬 넣기</b> · 왼쪽 <b>스킬 → 생성</b>에서 이름은 '소보루', URL에는 위의 스킬 주소를 붙여 넣고 저장해요.</li>
-<li><b>폴백 블록에 잇기</b> · <b>시나리오 → 폴백 블록</b>을 열고, 파라미터 설정의 스킬에서 '소보루'를 골라요. 봇 응답은 <b>스킬데이터 사용</b>으로 바꿔요.</li>
+<li><b>스킬 넣기</b> · 왼쪽 <b>스킬 → 생성</b>에서 이름은 'SOBORU CS', URL에는 위의 스킬 주소를 붙여 넣고 저장해요.</li>
+<li><b>폴백 블록에 잇기</b> · <b>시나리오 → 폴백 블록</b>을 열고, 파라미터 설정의 스킬에서 'SOBORU CS'를 골라요. 봇 응답은 <b>스킬데이터 사용</b>으로 바꿔요.</li>
 <li><b>콜백 켜기</b> · 같은 폴백 블록 오른쪽 위 <b>⋯ → Callback 설정</b>을 켜요. 기다리는 말은 "잠시만 기다려 주세요"처럼 적어 주세요. AI가 생각하는 동안 이 말이 먼저 나가요.</li>
 <li><b>배포하고 채널 잇기</b> · <b>설정 → 카카오톡 채널 연결</b>에서 우리 채널을 고르고, <b>배포 → 배포하기</b>를 눌러요.</li>
-<li><b>말 걸어 보기</b> · 내 휴대폰 카카오톡에서 우리 채널에 "배송 언제 와요?"처럼 보내 보세요. 소보루 <b>상담</b>에 노란 카카오톡 표시로 뜨면 끝이에요.</li>
+<li><b>말 걸어 보기</b> · 내 휴대폰 카카오톡에서 우리 채널에 "배송 언제 와요?"처럼 보내 보세요. SOBORU CS <b>상담</b>에 노란 카카오톡 표시로 뜨면 끝이에요.</li>
 </ol>
-<p class="cap" style="margin:12px 0 0">웰컴 블록은 그대로 둬도 돼요. 다른 블록에 따로 답을 만들어 두면 그 말은 소보루로 오지 않아요.</p></section>
+<p class="cap" style="margin:12px 0 0">웰컴 블록은 그대로 둬도 돼요. 다른 블록에 따로 답을 만들어 두면 그 말은 SOBORU CS로 오지 않아요.</p></section>
 </div>
 <aside class="stack">
 <section class="panel"><div class="ph">이렇게 돼요</div>
@@ -45,7 +45,7 @@
 </ul></section>
 <section class="panel"><div class="ph">알아 두세요</div>
 <ul class="dots">
-<li>소보루에 따로 드는 비용은 없어요. 카카오 챗봇도 무료로 만들 수 있어요.</li>
+<li>SOBORU CS에 따로 드는 비용은 없어요. 카카오 챗봇도 무료로 만들 수 있어요.</li>
 <li>카카오가 고객 이름은 알려 주지 않아요. 상담에는 '고객'으로 보여요.</li>
 <li>사진·파일은 받지 못해요. 그런 건 카카오톡 채널 관리자센터에서 봐 주세요.</li>
 </ul></section>

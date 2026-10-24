@@ -5,7 +5,7 @@
 {% block main %}<main class="intro">
 <section class="in-hero mk-hero"><div class="wrap mk-one">
 <nav class="mk-tabs" aria-label="판매처">{% for k,x in pages.items() %}<a href="{{ url_for('mk.shop_page',slug=k) }}" class="{{ 'on' if k==slug }}">{{ x.short }}</a>{% endfor %}</nav>
-<div><span class="in-eyebrow">{{ p.name }} 연동</span><h1>{{ p.name }} 문의,<br>소보루 한 화면에서</h1><p>{{ p.lead }}</p>
+<div><span class="in-eyebrow">{{ p.name }} 연동</span><h1>{{ p.name }} 문의,<br>SOBORU CS 한 화면에서</h1><p>{{ p.lead }}</p>
 <div class="in-cta"><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a><a class="btn gray" href="{{ url_for('mk.tour') }}">제품 둘러보기</a></div></div>
 </div></section>
 <section><div class="wrap mk-one">
@@ -16,7 +16,7 @@
 <section class="in-steps"><div class="wrap">
 <h2>연결 방법</h2><p style="margin-inline:auto;text-align:center">{{ p.how }}</p>
 <ol>{% for s in p.steps %}<li><span>{{ loop.index }}</span><b>{{ s }}</b></li>{% endfor %}</ol>
-{% if p.shop and ip %}<p class="cap" style="text-align:center;margin-top:20px">소보루 서버 IP: <b>{{ ip }}</b></p>{% endif %}
+{% if p.shop and ip %}<p class="cap" style="text-align:center;margin-top:20px">SOBORU CS 서버 IP: <b>{{ ip }}</b></p>{% endif %}
 </div></section>
 <section class="in-end"><div class="wrap"><h2>{{ p.short }} 문의 정리,<br>오늘 시작하세요</h2><p>{{ '%d일 동안 무료로 써 보세요. 체험 중에 해지하면 결제되지 않아요.'%trial_days() if trial_days() else '가입하면 바로 쓸 수 있어요.' }}</p><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div></section>
 </main>{% endblock %}

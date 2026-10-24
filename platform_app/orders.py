@@ -133,7 +133,7 @@ def import_csv(db,co,raw,channel=''):
                status=status_from(get('status'),inv),courier=cour,invoice=inv)
         if no in have:
             old=have[no]
-            if old['status'] in ('canceled','returned','refunded','exchanged') and d['status'] in ('paid','ready','shipped'):d['status']=old['status']  # 소보루에서 처리한 결과를 덮지 않는다
+            if old['status'] in ('canceled','returned','refunded','exchanged') and d['status'] in ('paid','ready','shipped'):d['status']=old['status']  # SOBORU CS에서 처리한 결과를 덮지 않는다
             if not d['invoice']:d['invoice'],d['courier']=old['invoice'],old['courier']
             db.execute('UPDATE orders SET '+','.join(f'{k}=?' for k in d)+',updated=? WHERE id=?',list(d.values())+[t,old['id']]);n_upd+=1
         else:

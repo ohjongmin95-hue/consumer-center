@@ -18,7 +18,10 @@ function stopServer(){if(server&&server.exitCode===null)server.kill('SIGTERM');}
 const OUT=path.join(__dirname,'..','static','tour');
 const TMP=fs.mkdtempSync(path.join(process.env.VIDEO_TMP||os.tmpdir(),'tourvid-'));
 const FF='/usr/bin/ffmpeg',VP={width:1280,height:800},FPS=30,XF=0.45;
-const CHAR='data:image/png;base64,'+fs.readFileSync(path.join(__dirname,'..','static','soboru-char.png')).toString('base64');
+const WORDMARK='data:image/png;base64,'+fs.readFileSync(path.join(__dirname,'..','static','soboru-cs-wordmark.png')).toString('base64');
+// 끝 화면 가격: billing.py의 가장 싼 구간 금액을 그대로 읽는다 (영상 속 가격이 요금표와 어긋나지 않게)
+const START_PRICE=(()=>{const m=[...fs.readFileSync(path.join(__dirname,'..','billing.py'),'utf8').matchAll(/price=(\d+),tickets=/g)].map(x=>+x[1]);return Math.min(...m).toLocaleString('ko-KR')})();
+const TRIAL_DAYS=(fs.readFileSync(path.join(__dirname,'..','billing.py'),'utf8').match(/TRIAL_DAYS\s*=\s*(\d+)/)||[0,5])[1];
 
 // ---------- 화면에 넣는 것: 자막·커서·글자 정리 ----------
 const OVERLAY=`(()=>{
@@ -127,15 +130,14 @@ const END_CARD=`<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;height:100%;background:#fff;font-family:Pretendard,-apple-system,'Apple SD Gothic Neo',sans-serif;color:#191f28;letter-spacing:-.02em}
 .w{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;text-align:center}
 .w>*{opacity:0;animation:in .7s cubic-bezier(.2,.8,.2,1) forwards}
-img{width:150px;height:auto;animation-delay:.05s!important}
-.brand{font-size:30px;font-weight:800;color:#5a3416;margin-top:14px;animation-delay:.2s!important}
+img{width:300px;height:auto;animation-delay:.1s!important}
 h1{font-size:50px;font-weight:800;margin:34px 0 0;line-height:1.25;animation-delay:.45s!important}
 h1 em{font-style:normal;color:#ef920e}
 .price{margin-top:32px;display:inline-flex;gap:12px;align-items:center;background:#fff6e8;color:#b8660a;border-radius:999px;padding:14px 28px;font-size:24px;font-weight:700;animation-delay:.75s!important}
 .price i{width:6px;height:6px;border-radius:50%;background:#ef920e}
 @keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-</style></head><body><div class="w"><img src="${CHAR}" alt=""><div class="brand">소보루 CS</div>
-<h1>쇼핑몰 문의, <em>AI가 먼저</em> 답해요</h1><div class="price">월 19,900원<i></i>5일 무료 체험</div></div></body></html>`;
+</style></head><body><div class="w"><img src="${WORDMARK}" alt="SOBORU CS">
+<h1>쇼핑몰 문의, <em>AI가 먼저</em> 답해요</h1><div class="price">월 ${START_PRICE}원부터<i></i>${TRIAL_DAYS}일 무료 체험</div></div></body></html>`;
 
 (async()=>{
   fs.mkdirSync(OUT,{recursive:true});
@@ -244,7 +246,8 @@ h1 em{font-style:normal;color:#ef920e}
   // 7. 끝 화면
   clips.push(await scene('s7_end','html:'+END_CARD,async p=>{await wait(p,3600)}));
 
-  // 이어 붙이기 (짧은 크로스페이드)
+  // 이어 붙이기 (짧은 크로스페이드). 잘라 낸 뒤 실제 길이로 맞춰야 xfade가 중간에 끊기지 않는다
+  clips.forEach(c=>{const d=parseFloat(execFileSync('/usr/bin/ffprobe',['-v','error','-show_entries','format=duration','-of','csv=p=0',c.clip]).toString());if(d>0)c.dur=Math.min(c.dur,d)});
   const inputs=[],fc=[];let off=0,last='[0:v]';
   clips.forEach(c=>inputs.push('-i',c.clip));
   for(let i=1;i<clips.length;i++){off+=clips[i-1].dur-XF;const o=i===clips.length-1?'[vout]':`[x${i}]`;fc.push(`${last}[${i}:v]xfade=transition=fade:duration=${XF}:offset=${off.toFixed(3)}${o}`);last=o;}
