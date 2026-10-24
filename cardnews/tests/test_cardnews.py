@@ -247,7 +247,7 @@ class CardNewsTest(unittest.TestCase):
             self.assertNotIn('pending', d); self.assertEqual(len(d['covers']), 5); self.assertEqual(d['source']['media'], '소보루일보')
             self.assertIs(checks['숫자']['ok'], True); self.assertIsNone(checks['이미']['ok'])  # 그림이 아직 없음
             page = self.client.get(f'/card/{cid}').get_data(as_text=True)
-            self.assertIn('① 설명 복사', page); self.assertIn('② 이미지 올리기', page); self.assertRegex(page, r'value="hf" disabled')  # 키 없으면 바로 만들기는 꺼짐
+            self.assertIn('>설명 복사<', page); self.assertIn('>이미지 올리기<', page); self.assertIn('한 번에 올리기', page); self.assertRegex(page, r'value="hf" disabled')  # 키 없으면 바로 만들기는 꺼짐
             # 직접 쓰기 + 기사 글 직접 붙여 넣기 (링크 없이)
             text = '\n'.join(re.sub(r'<[^>]+>', '', x) for x in re.findall(r'<p>(.*?)</p>', PAGE)[:4])
             r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'manual', 'text': text, 'title': '환불 지연 배상금', 'media': '우리일보', 'date': '2026.10.23'})
