@@ -499,7 +499,7 @@ def img(name):
 def settings():
     c = config()
     if request.method == 'POST':
-        f = request.form
+        f = request.form; had_hf = bool(c['hf_id'] and c['hf_secret'])
         for k in SECRETS + ('naver_id', 'hf_id'):
             v = f.get(k, '').strip()
             if v or f.get('clear_' + k): c[k] = '' if f.get('clear_' + k) else v  # 비워 두면 그대로, '지우기'를 고르면 지움
@@ -510,7 +510,7 @@ def settings():
         if f.get('clear_kakao'): c['kakao_key'] = c['kakao_secret'] = ''; c['kakao_token'] = {}
         c['kakao_auto'] = 1 if f.get('kakao_auto') else 0
         c['img_style'] = f.get('img_style') if f.get('img_style') in dict(IMG_STYLES) else 'mix'
-        c['hf_auto'] = 1 if f.get('hf_auto') else 0
+        c['hf_auto'] = 1 if f.get('hf_auto') or (c['hf_id'] and c['hf_secret'] and not had_hf) else 0  # 힉스필드 키를 처음 넣으면 자동 이미지도 켬
         if c['key'] and not c['key'].startswith('sk-ant-'): flash("Claude API 키는 'sk-ant-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))
         c['model'] = f.get('model') if f.get('model') in dict(MODELS) else DEFAULTS['model']
         c['naver_kind'] = f.get('naver_kind') if f.get('naver_kind') in cards.NAVER else 'dev'
