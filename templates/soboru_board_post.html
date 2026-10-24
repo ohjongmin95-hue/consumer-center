@@ -72,7 +72,7 @@
 
     {% set pp = people_profile(post['user_id']) if is_soboru() else None %}{% if pp %}
     <aside class="pp-card" aria-label="{{ ui('pp.card_aria', '글쓴이') }}">
-      <a class="pp-card-who" href="{{ url_for('person', user_id=pp.id) }}">{{ av(pp.id, pp.nickname, 'xl') }}<span><b>{{ pp.nickname }}</b><small>{{ pp.bio or ui('pp.no_bio', '소보루 이웃') }}</small><em>{{ ui('pp.stat_line', '글 {a} · 구독자 {b}', a=pp.posts, b=pp.followers) }}</em></span></a>
+      <a class="pp-card-who" href="{{ url_for('person', user_id=pp.id) }}">{{ av(pp.id, pp.nickname, 'xl') }}<span><b>{{ pp.nickname }}{% if pp.posts %} <i class="pp-badge sm">{{ ui('pp.reporter', '소비자 리포터') }}</i>{% endif %}</b><small>{{ pp.bio or ui('pp.no_bio', '소보루 이웃') }}</small><em>{{ ui('pp.stat_line', '글 {a} · 이웃 {b}', a=pp.posts, b=pp.followers) }}</em></span></a>
       {{ follow_btn(pp.id) }}
     </aside>{% endif %}
     <div class="cm-actions">

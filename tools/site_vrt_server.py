@@ -419,9 +419,10 @@ if hasattr(m, 'soboru_cm') and os.environ.get('VRT_NN'):
                 ('소보루베이커리 역삼점', '할인', '이번 주말 소보루빵 1+1', '토·일 오후 3시부터 소보루빵을 하나 사면 하나 더 드려요. 매장 방문 손님만, 하루 100개 한정이에요.', ''),
                 ('오소보카페', '새 상품', '가을 한정 밤라떼 나왔어요', '국산 밤 페이스트로 만든 밤라떼가 11월 말까지 나와요. 디카페인으로도 바꿀 수 있어요.', 'https://example.com/cafe'),
                 ('보루피자 강남점', '오픈', '강남역 11번 출구 앞에 새로 열었어요', '오픈 기념으로 10월 31일까지 포장 주문 20% 할인해 드려요.', ''),
+                ('소보루헤어 논현점', '알림', '11월 휴무일 알려 드려요', '11월 둘째 주 화·수는 쉬어요. 예약은 앱으로 미리 해 주세요.', ''),
                 ('소보루마트', '이벤트', '장바구니 3만 원 이상 배송비 무료', '앱에서 주문하면 이번 달 내내 3만 원 이상 배송비가 무료예요.', 'https://example.com/mart')]):
-            db.execute('INSERT INTO owner_news(user_id,nickname,shop,head,title,body,link,created) VALUES(?,?,?,?,?,?,?,?)',
-                       (1, '사장님', shop, head, title, body, link, (_dt.datetime.now() - _dt.timedelta(hours=3 + i * 9)).isoformat(timespec='seconds')))
+            db.execute('INSERT INTO owner_news(user_id,nickname,shop,head,title,body,link,created,biz) VALUES(?,?,?,?,?,?,?,?,?)',
+                       (1, '사장님', shop, head, title, body, link, (_dt.datetime.now() - _dt.timedelta(hours=3 + i * 9)).isoformat(timespec='seconds'), m.soboru_cm.guess_biz(shop)))
         HEADS = {'post': '잡담', 'tip': '정보', 'question': '질문'}
         for pid, kind in db.execute("SELECT id,kind FROM posts WHERE kind!='review'").fetchall():
             db.execute('UPDATE posts SET head=?,views=? WHERE id=?', (HEADS.get(kind, '잡담'), 20 + pid * 7 % 90, pid))

@@ -1,5 +1,5 @@
 /* 토스페이스 이모지 (© Viva Republica, https://toss.im/tossface/copyright). 쓰는 이모지만 남긴 파일이라 가볍고, 이모지가 화면에 있을 때만 받음. */
-@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2?v=2) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270D,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F369,U+1F36A,U+1F36F,U+1F370,U+1F371,U+1F373,U+1F381,U+1F382,U+1F389,U+1F393,U+1F3AE,U+1F3AF,U+1F3C6,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F431,U+1F436,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F45F,U+1F48A,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4BC,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CA,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DC,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4EE,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F914,U+1F916,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F95E,U+1F96F,U+1F9C1,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2?v=3) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270D,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F369,U+1F36A,U+1F36F,U+1F370,U+1F371,U+1F373,U+1F381,U+1F382,U+1F389,U+1F393,U+1F3AE,U+1F3AF,U+1F3C6,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F431,U+1F436,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F457,U+1F45F,U+1F484,U+1F48A,U+1F490,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4BC,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CA,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DC,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4EE,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CD,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F914,U+1F916,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F95E,U+1F96F,U+1F9C1,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
 /* 소보루 브랜드 (뉴닉식 화면). 관리자 설정 '브랜드'가 소보루일 때만 style.css 뒤에 붙음. */
 .sb{font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;--sb-ink:#1d1d1f;--sb-sub:#6b6f76;--sb-mute:#9a9ea5;--sb-line:#ececec;--sb-soft:#f5f5f4;--sb-orange:#ef920e;--sb-orange-soft:#fff4e0;--orange:#ef920e;--sb-brown:#652D1C;--sb-gray:#f2f4f6;--sb-gray-ink:#4e5968;--sb-ease:cubic-bezier(.2,.8,.2,1);background:#fff;color:var(--sb-ink);word-break:keep-all;-webkit-font-smoothing:antialiased}
 .sb main.sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;min-height:auto}
@@ -1968,3 +1968,56 @@ img.cm-av{object-fit:cover;background:#f2f4f6}
 @media (max-width:760px){.pc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 12px}.pc-pic{border-radius:14px}.pc-pic .tf{font-size:48px}.pc-title{font-size:14.5px}.pc-score b{font-size:15.5px}.sd-pic{width:72px;height:72px}}
 .pc-foot{white-space:nowrap;overflow:hidden}.pc-foot>span:last-child{overflow:hidden;text-overflow:ellipsis}
 @media (max-width:760px){.pc-foot .pc-who{max-width:none}.pc-foot>span:last-child{display:none}.pc-tags{left:8px;top:8px}.pc-tags em{font-size:11px;padding:4px 7px}.pc-cat{font-size:12px}}
+/* 수다방 영수증 카드 (운영자 요청 2026-10-24: 나열식 말고 영수증·쇼핑백 느낌) */
+.rc-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:34px 22px;margin-top:18px;padding-bottom:10px}
+.rc-list>.cm-empty{grid-column:1/-1}
+.rc{--paper:#fff;position:relative;display:flex;flex-direction:column;gap:12px;padding:22px 22px 18px;margin-bottom:9px;background:var(--paper);color:inherit;filter:drop-shadow(0 0 1px rgba(0,25,60,.12)) drop-shadow(0 4px 12px rgba(0,25,60,.05));transition:transform .18s var(--sb-ease)}
+.rc::after{content:"";position:absolute;left:0;right:0;bottom:-9px;height:9px;background:conic-gradient(from -45deg at 50% 100%,var(--paper) 90deg,transparent 0) 0 0/18px 9px repeat-x}
+.rc:hover{transform:translateY(-3px) rotate(-.4deg)}
+.rc-top{display:flex;justify-content:space-between;align-items:baseline;font:700 12.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.06em;color:#4e5968;padding-right:64px}
+.rc-shop{color:#333d4b}
+.rc-date{margin-top:-6px;font:12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#8b95a1}
+.rc-stamp{position:absolute;top:14px;right:16px;width:56px;height:56px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;font-size:13px;transform:rotate(-14deg);opacity:.82;box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px currentColor}
+.rc-stamp.s0{color:#e8590c}.rc-stamp.s1{color:#1c7ed6}.rc-stamp.s2{color:#8d6e4c}.rc-stamp.s3{color:#2b8a3e}.rc-stamp.s4{color:#d6336c}.rc-stamp.s5{color:#6741d9}.rc-stamp.s6{color:#0c8599}.rc-stamp.s7{color:#e67700}
+.rc-main{display:flex;gap:12px;padding:14px 0;border-top:1.5px dashed #e5e8eb;border-bottom:1.5px dashed #e5e8eb;flex:1}
+.rc-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.rc-t{font-size:16.5px;font-weight:800;letter-spacing:-.03em;line-height:1.42;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rc-ex{font-size:14px;line-height:1.6;color:#6b6f76;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rc-pic{flex:none;width:72px;height:72px;border-radius:10px;overflow:hidden;background:#f2f4f6}
+.rc-pic img{width:100%;height:100%;object-fit:cover;display:block}
+.rc-lines{display:flex;flex-direction:column;gap:5px;font:13px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#6b6f76}
+.rc-lines>span,.rc-total{display:flex;align-items:baseline;gap:6px}
+.rc-lines i,.rc-total i{font-style:normal}
+.rc-lines s{flex:1;border-bottom:1.5px dotted #d1d6db;text-decoration:none;transform:translateY(-3px)}
+.rc-total{justify-content:space-between;padding-top:9px;border-top:1.5px solid #e5e8eb;font-weight:800;font-size:14.5px}
+.rc-total b{font:800 18px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#c45f00}
+.rc-who{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#4e5968;min-width:0}
+.rc-who>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-who small{margin-left:auto;flex:none;font-weight:400;color:#8b95a1;font-size:12.5px}
+.rc-bar{height:22px;margin:2px 18% 0;background:repeating-linear-gradient(90deg,#333d4b 0 2px,transparent 2px 4px,#333d4b 4px 5px,transparent 5px 8px,#333d4b 8px 11px,transparent 11px 13px);opacity:.75}
+/* 오늘의 수다: 쇼핑백 */
+.sd-today.bag{position:relative;margin-top:34px;background:#fff;border:1px solid #e5e8eb;border-radius:8px 8px 20px 20px;padding:26px 26px 24px;box-shadow:0 4px 12px rgba(0,25,60,.04)}
+.sd-today.bag::before,.sd-today.bag::after{content:"";position:absolute;top:-26px;width:74px;height:40px;border:4px solid #d1d6db;border-bottom:0;border-radius:40px 40px 0 0}
+.sd-today.bag::before{left:16%}.sd-today.bag::after{right:16%}
+.sd-today.bag .sd-today-k{color:var(--sb-orange)}
+@media (max-width:1000px){.rc-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.rc-list{grid-template-columns:minmax(0,1fr);gap:28px}.rc-lines{display:none}.rc-bar{height:16px}.rc{padding:20px 18px 16px}.sd-today.bag::before{left:10%}.sd-today.bag::after{right:10%}}
+/* 사장님 소식: 업종마다 가게 차양 색 + 간판 이모지 (운영자 요청 2026-10-24) */
+.ow-card{position:relative;overflow:hidden;padding-top:50px}
+.ow-card.z0{--aw:#f76707}.ow-card.z1{--aw:#9c6b43}.ow-card.z2{--aw:#f59f00}.ow-card.z3{--aw:#e64980}.ow-card.z4{--aw:#be4bdb}.ow-card.z5{--aw:#4c6ef5}
+.ow-card.z6{--aw:#12b886}.ow-card.z7{--aw:#fa5252}.ow-card.z8{--aw:#228be6}.ow-card.z9{--aw:#74b816}.ow-card.z10{--aw:#868e96}
+.ow-awn{position:absolute;top:0;left:0;right:0;height:30px;background:repeating-linear-gradient(90deg,var(--aw) 0 28px,color-mix(in srgb,var(--aw) 22%,#fff) 28px 56px);
+  -webkit-mask:radial-gradient(circle 14px at 14px 16px,#000 97%,transparent 100%) 0 0/28px 30px repeat-x,linear-gradient(#000,#000) 0 0/100% 16px no-repeat;
+  mask:radial-gradient(circle 14px at 14px 16px,#000 97%,transparent 100%) 0 0/28px 30px repeat-x,linear-gradient(#000,#000) 0 0/100% 16px no-repeat;filter:saturate(.85)}
+.ow-card .ow-top{gap:12px;font-size:13px}
+.ow-sign{flex:none;width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;background:color-mix(in srgb,var(--aw) 12%,#fff)}
+.ow-name{min-width:0;display:flex;flex-direction:column;gap:2px}
+.ow-name .ow-shop{font-size:15px;color:#333d4b}
+.ow-name small{font-size:12.5px;font-weight:700;color:var(--aw)}
+.ow-tags{display:flex;gap:6px;margin:2px 0 0}
+@media (min-width:761px){.ow-bizs{flex-wrap:wrap;overflow:visible}}.ow-bizs a{display:inline-flex;align-items:center;gap:5px}.ow-bizs .tf{font-size:16px}
+.ow-heads{margin-top:-4px}
+/* 글을 쓴 이웃: 소비자 리포터 배지 (운영자 2026-10-24) */
+.pp-badge{display:inline-flex;align-items:center;margin-top:14px;padding:4px 10px;border-radius:999px;background:#fff1e3;color:#c45f00;font-size:12.5px;font-weight:800;font-style:normal;letter-spacing:-.01em}
+.pp-badge.sm{margin:0 0 0 4px;padding:2px 7px;font-size:11.5px;vertical-align:2px}
+.pp-head .pp-badge+h1{margin-top:8px}

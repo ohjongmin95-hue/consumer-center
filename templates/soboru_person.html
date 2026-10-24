@@ -7,14 +7,15 @@
 <main class="sb-wrap cm cx pp">
   <header class="pp-head">
     {{ av(p.id, p.nickname, 'xxl') }}
+    {% if p.posts %}<span class="pp-badge">{{ ui('pp.reporter', '소비자 리포터') }}</span>{% endif %}
     <h1>{{ p.nickname }}</h1>
     <p class="pp-bio">{{ p.bio or ui('pp.no_bio', '소보루 이웃') }}</p>
     <ul class="pp-stats">
       <li><b>{{ '{:,}'.format(p.posts) }}</b>{{ ui('pp.s_posts', '글') }}</li>
-      <li><b>{{ '{:,}'.format(p.followers) }}</b>{{ ui('pp.s_followers', '구독자') }}</li>
+      <li><b>{{ '{:,}'.format(p.followers) }}</b>{{ ui('pp.s_followers', '이웃') }}</li>
       <li><b>{{ '{:,}'.format(p.likes) }}</b>{{ ui('pp.s_likes', '받은 좋아요') }}</li>
     </ul>
-    {% if mine %}<div class="pp-btns"><a class="pp-follow" href="{{ url_for('my_profile') }}">{{ ui('pp.edit', '프로필 고치기') }}</a><a class="pp-follow on" href="{{ url_for('following') }}">{{ ui('pp.my_feed', '구독한 이웃 글') }}</a></div>
+    {% if mine %}<div class="pp-btns"><a class="pp-follow" href="{{ url_for('my_profile') }}">{{ ui('pp.edit', '프로필 고치기') }}</a><a class="pp-follow on" href="{{ url_for('following') }}">{{ ui('pp.my_feed', '이웃 소식') }}</a></div>
     {% else %}{{ follow_btn(p.id, 'lg') }}{% endif %}
     <small class="pp-since">{{ ui('pp.since', '{d}부터 소보루 이웃', d=p.since) }}</small>
   </header>

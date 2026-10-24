@@ -10,6 +10,7 @@
 한 번 넣은 뒤에는 remove로 지워도 다시 넣지 않는다. SOBORU_EXAMPLES=0이면 넣지 않는다(시험용).
 """
 import datetime, sys
+from soboru_cm import guess_biz
 
 NICK = '소보루 예시'
 MARK = 'example'  # ip_hash 자리에 넣어 지울 때 찾음
@@ -85,8 +86,8 @@ def add(site):
             db.execute('INSERT INTO vs_polls(cat,title,body,a,b,user_id,nickname,ends,ip_hash,created) VALUES(?,?,?,?,?,?,?,?,?,?)',
                        (cat, title, (body + NOTE).strip(), a, b, None, NICK, ends, MARK, ago(hours=1 + i * 3))); n += 1
         for i, (head, shop, title, body) in enumerate(OWNERS):
-            db.execute('INSERT INTO owner_news(user_id,nickname,shop,head,title,body,link,ip_hash,created) VALUES(?,?,?,?,?,?,?,?,?)',
-                       (0, NICK, shop, head, title, body + NOTE, '', MARK, ago(hours=3 + i * 6))); n += 1
+            db.execute('INSERT INTO owner_news(user_id,nickname,shop,head,title,body,link,ip_hash,created,biz) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                       (0, NICK, shop, head, title, body + NOTE, '', MARK, ago(hours=3 + i * 6), guess_biz(shop))); n += 1
     print(f'예시 글 {n}개를 넣었어요.'); return 0
 
 
