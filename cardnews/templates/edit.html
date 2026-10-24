@@ -22,6 +22,7 @@
 .cn-check{padding:0;margin:0}.cn-check li{margin:6px 0;list-style:none}.cn-check b{display:inline-block;width:24px}
 .cn-check .ok b{color:#0a7a50}.cn-check .bad b{color:#c22}.cn-check .eye b{color:#c77700}.cn-slot{border-top:1px solid #E5E8EB;padding:12px 0}.cn-prompt{font-size:12px;color:#4E5968;margin-top:6px}.cn-slot label.check{display:inline-flex;margin:4px 14px 4px 0}
 .cn-check small{display:block;margin-left:24px;color:#6b6f76}
+.bulk{background:#F2F8FF;border-radius:16px;padding:16px 18px;margin:6px 0 14px}.bulk ol{margin:8px 0 0;padding-left:20px;line-height:2.1}
 </style>{% endblock %}
 {% block content %}
 {% if img_job and img_job.left %}<meta http-equiv="refresh" content="6"><div class="flash" role="status">🎨 힉스필드로 이미지를 만들고 있어요 ({{ img_job.total - img_job.left }} / {{ img_job.total }}) — 한 장에 30초~1분쯤, 다 되면 카드에 저절로 들어가요</div>
@@ -76,17 +77,25 @@
     </form>
 
     <div class="panel"><h2>이미지 (힉스필드)</h2>
-      <p class="meta">장마다 <b>사진</b>이나 <b>일러스트</b>를 골라요. ① 설명을 복사해 힉스필드에 붙여 넣고 만들어요 → ② 만든 이미지를 내려받아 올려요 (비용은 힉스필드 쪽만). 이미지는 카드 전체 배경으로 깔려요. 마지막 장은 소보루 캐릭터예요.</p>
+      <div class="bulk">
+        <b>힉스필드 구독으로 한 번에 (키 없이, 추가 비용 없음)</b>
+        <ol class="meta"><li><button type="button" class="weak small" id="cn-copyall">설명 전부 복사</button> — 장마다 번호가 붙은 설명이 한꺼번에 복사돼요</li>
+          <li><a href="https://higgsfield.ai" target="_blank" rel="noopener">힉스필드 열기 ↗</a> — 번호 순서대로 하나씩 붙여 넣어 만들고 내려받아요 (세로 3:4 · 4:5, 글자 없이)</li>
+          <li>내려받은 이미지를 <b>한 번에 골라</b> 올려요 — 파일 이름 순서대로 표지 → 2번째 장 → … 에 들어가요 (이름을 1, 2, 3…으로 바꿔 두면 확실해요)</li></ol>
+        <form method="post" enctype="multipart/form-data" class="actions"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple required style="width:260px"><button name="act" value="upload_many" class="primary">한 번에 올리기</button></form>
+      </div>
+      <p class="meta">장마다 따로 하려면 아래에서 <b>사진</b>이나 <b>일러스트</b>를 골라요. 설명을 복사해 힉스필드에 붙여 넣고 만들어요 → 만든 이미지를 내려받아 올려요 (비용은 힉스필드 쪽만). 이미지는 카드 전체 배경으로 깔려요. 마지막 장은 소보루 캐릭터예요.</p>
       {% for name, label, x, prompts in slots %}
       <div class="cn-slot">
         <b>{{ label }}</b>{% if x.photo %} <span class="badge ok">이미지 있음</span>{% else %} <span class="badge">아직 없음</span>{% endif %}
         {% for k, v in styles.items() %}<label class="check"><input type="radio" name="s-{{ name }}" value="{{ k }}" data-style="{{ name }}"{% if x.style == k %} checked{% endif %}> {{ v[0] }}</label>{% endfor %}
         {% for k, p in prompts.items() %}<textarea class="cn-prompt" data-prompt="{{ name }}:{{ k }}" rows="3" readonly{% if x.style != k %} hidden{% endif %}>{{ p }}</textarea>{% endfor %}
         <div class="actions">
-          <button type="button" data-copy="{{ name }}">① 설명 복사</button>
+          <button type="button" data-copy="{{ name }}">설명 복사</button>
           <a href="https://higgsfield.ai" target="_blank" rel="noopener"><button type="button">힉스필드 열기 ↗</button></a>
           <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="slot" value="{{ name }}">
-            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required style="width:210px"><button name="act" value="upload" class="primary">② 이미지 올리기</button></form>
+            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required style="width:210px"><button name="act" value="upload" class="primary">이미지 올리기</button></form>
           <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="slot" value="{{ name }}"><input type="hidden" name="style" value="{{ x.style }}" data-style-of="{{ name }}">
             <button name="act" value="hf"{% if not hf %} disabled title="설정에서 힉스필드 API 키를 넣으면 바로 만들 수 있어요"{% endif %} data-busy="만드는 중…">힉스필드로 바로 만들기 (API 크레딧)</button></form>
         </div>
@@ -275,6 +284,9 @@ document.querySelectorAll('[data-style]').forEach(function(r){r.onchange=functio
   document.querySelectorAll('[data-prompt^="'+n+':"]').forEach(function(t){t.hidden=t.dataset.prompt!==n+':'+r.value});document.querySelector('[data-style-of="'+n+'"]').value=r.value}});
 document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var n=b.dataset.copy,t=document.querySelector('[data-prompt="'+n+':'+slotOf(n).style+'"]');
   navigator.clipboard.writeText(t.value).then(function(){msg.textContent='설명을 복사했어요. 힉스필드에 붙여 넣고 만들어 주세요.'},function(){t.select();document.execCommand('copy')})}});
+document.getElementById('cn-copyall').onclick=function(){var lab={cover:'1번 (표지)'},all=[];(d.cards||[]).forEach(function(_,k){lab['card'+k]=(k+2)+'번째 장'});
+  Object.keys(lab).forEach(function(n){var t=document.querySelector('[data-prompt="'+n+':'+slotOf(n).style+'"]');if(t)all.push('['+lab[n]+']\n'+t.value)});
+  navigator.clipboard.writeText(all.join('\n\n')).then(function(){msg.textContent='설명 '+all.length+'개를 복사했어요. 힉스필드에서 번호 순서대로 하나씩 붙여 넣어 만들어 주세요.'})};
 document.querySelectorAll('[data-busy]').forEach(function(b){b.form.addEventListener('submit',function(){setTimeout(function(){b.disabled=true;b.textContent=b.dataset.busy},0)})});
 document.getElementById('cn-form').addEventListener('submit',function(){document.getElementById('cn-data').value=JSON.stringify(d)});
 document.querySelectorAll('[data-art]').forEach(function(f){f.addEventListener('submit',function(){setTimeout(function(){var b=f.querySelector('button');b.disabled=true;b.textContent='그리는 중…'},0)})});

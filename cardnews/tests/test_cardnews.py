@@ -192,6 +192,11 @@ class CardNewsTest(unittest.TestCase):
         d, checks, _ = self.row(cid)
         self.assertEqual(d['cards'][1]['img']['src'], 'upload')
         self.assertIsNone(checks['이미']['ok']); self.assertIn('힉스필드로 만든 것', checks['이미']['note'])
+        # 구독으로 만든 이미지 여러 장 한 번에: 파일 이름 순서대로 표지 → 2번째 장
+        self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'upload_many', 'photos': [(io.BytesIO(png('red')), '2.png'), (io.BytesIO(png('green')), '1.png')]},
+                         content_type='multipart/form-data')
+        d, _, _ = self.row(cid)
+        self.assertEqual((d['cover_img']['src'], d['cards'][0]['img']['src']), ('upload', 'upload'))
         # 저장으로 스타일 바꾸기 (이상한 값은 무시)
         d['cover_img']['style'] = 'illust'; d['cards'][1]['img']['style'] = 'oil-painting'
         self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'data': json.dumps(d)})

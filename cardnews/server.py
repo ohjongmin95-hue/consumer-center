@@ -359,6 +359,16 @@ def card(cid):
             try: save_photo(f.read(), slot, 'upload')
             except ValueError as e: flash(str(e)); return redirect(url_for('card', cid=cid))
             resave(cid, c['data'], c['facts'], c['confirmed']); flash('사진을 넣었어요.'); return redirect(url_for('card', cid=cid))
+        if act == 'upload_many':  # 힉스필드 구독으로 만든 이미지 여러 장을 한 번에: 고른 순서대로 표지 → 2번째 장 → …
+            fs = [f for f in request.files.getlist('photos') if f and f.filename][:len(cards.slots(c['data']))]
+            if not fs: flash('올릴 이미지를 골라 주세요.'); return redirect(url_for('card', cid=cid))
+            fs.sort(key=lambda f: f.filename)  # 파일 이름 순서 (1.png, 2.png … 처럼 이름을 붙이면 그 순서)
+            put = 0
+            for (name, _, slot), f in zip(cards.slots(c['data']), fs):
+                try: save_photo(f.read(), slot, 'upload'); put += 1
+                except ValueError: flash(f'{f.filename}: 사진 파일이 아니에요.')
+            resave(cid, c['data'], c['facts'], c['confirmed']); flash(f'이미지 {put}장을 순서대로 넣었어요 (표지부터). 자리가 바뀌었으면 장마다 다시 올려 주세요.')
+            return redirect(url_for('card', cid=cid))
         if act in ('hf', 'hf_all'):  # 힉스필드로 이미지 만들기 (한 자리 / 전부): 뒤에서 만들고 카드 화면은 그대로
             names = [n for n, _, _ in cards.slots(c['data'])]
             if act == 'hf':
