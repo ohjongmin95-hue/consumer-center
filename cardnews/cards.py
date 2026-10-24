@@ -267,7 +267,7 @@ def find_others(cfg, art, n=2):
         page = fetch_page(url); body = article_text(page, 4000) if page else ''
         if len(body) >= 150: out.append({'media': (media or _meta(page, 'og:site_name') or host(url))[:40], 'title': title[:200], 'url': url, 'text': body, 'via': via})
     for it in naver_news(cfg, search_words(art['title'])): add(it['url'], '', it['title'], '네이버')
-    if len(out) < n and cfg.get('web_search', 1):
+    if len(out) < n and cfg.get('web_search', 1) and cfg.get('key'):  # 키가 없으면(붙여넣기 방식) 네이버로만
         q = (f"이 한국 뉴스와 같은 사건을 보도한 '다른 언론사' 기사 {n}개를 웹 검색으로 찾아 줘 ({host(art['url'])} 기사는 빼고).\n"
              f"제목: {art['title']}\n매체: {art['media']} · 날짜: {art['date']}\n본문 앞부분: {art['text'][:600]}\n\n"
              '답은 JSON만: {"others": [{"url": "...", "media": "언론사 이름", "title": "기사 제목"}]}')
@@ -288,7 +288,7 @@ def find_news(cfg, n, avoid=()):
     for q in DAILY_QUERIES:
         for it in naver_news(cfg, q, sort='date'):
             if it['date'] >= since and it['url'] not in avoid and it['url'] not in urls: urls.append(it['url']); break
-    if len(urls) < n + 2 and cfg.get('web_search', 1):
+    if len(urls) < n + 2 and cfg.get('web_search', 1) and cfg.get('key'):
         q = (f'오늘은 {datetime.date.today().isoformat()}이야. 최근 이틀 안에 나온 한국 소비자 권익 뉴스 기사 {n + 3}개를 웹 검색으로 찾아 줘. '
              f'주제: {DAILY_TOPICS}. 고르는 기준: 읽자마자 "내 얘기네" 싶은 것(공감), 많이 보거나 댓글이 많은 것(관심), 제목만 봐도 다음이 궁금한 것(궁금). '
              '서로 다른 사건으로, 언론사 기사 페이지 주소(목록·포털 첫 화면 말고)만.\n'
@@ -513,24 +513,98 @@ def clean_photo(raw, max_side=1600):
 
 
 # ---- 만들기 ---------------------------------------------------------------------
-def make(cfg, url):
-    """뉴스 링크 → {'status': 'made', 'data', 'facts', 'checks'} 또는 {'status': 'skip'|'error', 'reason'}"""
-    url = (url or '').strip()
-    if not re.match(r'https?://', url): return {'status': 'skip', 'reason': '뉴스 링크(https://로 시작)를 넣어 주세요'}
-    if not cfg.get('key'): return {'status': 'skip', 'reason': "Claude API 키가 없어요. '설정'에서 넣어 주세요"}
-    page = fetch_page(url)
-    art = read_article(page, url) if page else {}
-    if len(art.get('text', '')) < 200: return {'status': 'skip', 'reason': '기사 본문을 읽지 못했어요. 다른 언론사 링크로 해 주세요'}
+def given_article(text, title='', media='', date='', url=''):
+    """직접 붙여 넣은 기사 글 → 기사 자료 (링크 없이도 됨)"""
+    lines = [' '.join(x.split()) for x in str(text or '').splitlines()]
+    body = '\n'.join(x for x in lines if x)[:9000]
+    first = next((x for x in lines if x), '')
+    return {'url': (url or '').strip() if re.match(r'https?://', (url or '').strip()) else '', 'title': (title or first)[:200].strip(),
+            'media': (media or '')[:40].strip(), 'date': (date or '')[:12].strip(), 'text': body}
+
+
+def read(cfg, url, art=None):
+    """뉴스 링크(또는 붙여 넣은 기사 art) → ((기사, 다른 기사들, 사실 자료), '') 또는 (None, 이유)"""
+    if art is None:
+        url = (url or '').strip()
+        if not re.match(r'https?://', url): return None, '뉴스 링크(https://로 시작)를 넣거나 기사 글을 붙여 넣어 주세요'
+        page = fetch_page(url)
+        art = read_article(page, url) if page else {}
+        if len(art.get('text', '')) < 200: return None, '기사 본문을 읽지 못했어요. 기사 글을 직접 붙여 넣어 주세요'
+    elif len(art.get('text', '')) < 100: return None, '붙여 넣은 기사 글이 너무 짧아요'
+    url = art.get('url', '')
+    others = find_others(cfg, art)  # 사실 확인을 못 해도 원고는 쓰고 '확인 필요'로 남김
+    return (art, others, {'title': art['title'], 'media': art['media'], 'date': art['date'], 'url': url, 'text': art['text'], 'others': others}), ''
+
+
+def write_request(art, others):
+    """Claude에게 줄 기사 자료 글"""
+    return (f"[기사] {art['title']}\n매체: {art['media'] or '(모름)'} · 날짜: {art['date'] or '(모름)'}\n\n{art['text']}\n\n"
+            + ''.join(f"[같은 뉴스, 다른 기사 {i + 1}] {o['media']} · {o['title']}\n{o['text'][:2500]}\n\n" for i, o in enumerate(others))
+            + ('' if others else '[다른 기사] 찾지 못했어요. 한 기사에만 있는 사실은 confirm_needed에 적어 주세요.\n'))
+
+
+def make(cfg, url, art=None):
+    """뉴스 링크(또는 붙여 넣은 기사) → {'status': 'made', 'data', 'facts', 'checks'} 또는 {'status': 'skip'|'error', 'reason'} (Claude API 키로 자동)"""
+    if not cfg.get('key'): return {'status': 'skip', 'reason': "Claude API 키가 없어요. 'claude.ai에 붙여넣기'나 '직접 쓰기'를 고르거나, '설정'에서 키를 넣어 주세요"}
+    got, why = read(cfg, url, art)
+    if not got: return {'status': 'skip', 'reason': why}
+    art, others, facts = got
     try:
-        others = find_others(cfg, art)  # 사실 확인을 못 해도 원고는 쓰고 '확인 필요'로 남김
-        user = (f"[기사] {art['title']}\n매체: {art['media'] or '(모름)'} · 날짜: {art['date'] or '(모름)'}\n\n{art['text']}\n\n"
-                + ''.join(f"[같은 뉴스, 다른 기사 {i + 1}] {o['media']} · {o['title']}\n{o['text'][:2500]}\n\n" for i, o in enumerate(others))
-                + ('' if others else '[다른 기사] 찾지 못했어요. 한 기사에만 있는 사실은 confirm_needed에 적어 주세요.\n'))
-        d = tidy(claude(cfg, WRITE_SYSTEM, user, WRITE_SCHEMA, 32000), art)
+        d = tidy(claude(cfg, WRITE_SYSTEM, write_request(art, others), WRITE_SCHEMA, 32000), art)
         if len(d['covers']) < 5 or len(d['cards']) < 2: raise RuntimeError('원고가 모자라게 왔어요 (표지 5개·본문 2장 이상)')
         note = ''
         try: d = ARTISTS.get(cfg.get('art'), draw_claude)(cfg, d)
         except RuntimeError as e: note = f'그림은 못 그렸어요: {e}'  # 글은 살리고 그림만 나중에 다시
     except RuntimeError as e: return {'status': 'error', 'reason': str(e)}
-    facts = {'title': art['title'], 'media': art['media'], 'date': art['date'], 'url': url, 'text': art['text'], 'others': others}
     return {'status': 'made', 'data': d, 'facts': facts, 'checks': run_checks(d, facts), 'reason': note}
+
+
+# ---- 키 없이: claude.ai(구독) 채팅에 붙여 넣는 방식 ------------------------------------------
+# 프로그램이 요청 글을 만들고 → 사람이 claude.ai에 붙여 넣고 → Claude 답(JSON)을 다시 붙여 넣으면 같은 검사·카드로 이어짐
+def _skeleton(schema):
+    """JSON 모양 예시 (스키마에서)"""
+    t = schema.get('type')
+    if t == 'object': return {k: _skeleton(v) for k, v in schema['properties'].items()}
+    if t == 'array': return [_skeleton(schema['items'])]
+    return '…' if t == 'string' else None
+
+
+def paste_prompt(art, others):
+    """claude.ai에 붙여 넣을 원고 요청 글 (규칙 + 기사 + 답 모양)"""
+    return (WRITE_SYSTEM + '\n\n[답하는 법] 설명 없이 아래 모양의 JSON 하나만 ```json 코드 블록으로 답해 줘. covers는 5개, cards는 3~4개, tips는 3개.\n```json\n'
+            + json.dumps(_skeleton(WRITE_SCHEMA), ensure_ascii=False, indent=1) + '\n```\n\n' + write_request(art, others))
+
+
+def art_prompt(d):
+    """claude.ai에 붙여 넣을 그림 요청 글 (표지·본문 장면)"""
+    scenes = [('cover', STYLE_COVER, d.get('cover_scene') or d.get('topic', ''))] + [('info', STYLE_INFO, c.get('scene') or c.get('title', '')) for c in d.get('cards') or []]
+    ask = '\n'.join('%d. [%s] %s\nScene: %s' % (i + 1, k, style, scene) for i, (k, style, scene) in enumerate(scenes))
+    return (ART_SYSTEM + f'\n\nAnswer with only one ```json code block: {{"svgs": ["<svg …>…</svg>", …]}} (exactly {len(scenes)} items).\n\n'
+            + f'Draw {len(scenes)} SVG illustrations, one per scene:\n\n{ask}')
+
+
+def from_paste(text, art):
+    """붙여 넣은 Claude 답 → 카드 데이터. 못 읽으면 ValueError(이유)"""
+    raw = json_in(text)
+    if not raw.get('covers') or not raw.get('cards'): raise ValueError("Claude 답에서 원고(JSON)를 찾지 못했어요. 답 전체를 복사해서 붙여 넣어 주세요")
+    d = tidy(raw, art)
+    if len(d['cards']) < 2: raise ValueError('본문이 2장보다 적어요. Claude에게 다시 써 달라고 해 주세요')
+    return d
+
+
+def art_from_paste(text, d):
+    """붙여 넣은 그림 답(SVG들) → 그림 자리에 넣음. 넣은 개수를 돌려줌"""
+    svgs = [clean_svg(x) for x in (json_in(text).get('svgs') or [])]
+    if not any(svgs): svgs = [clean_svg(m) for m in re.findall(r'<svg[\s\S]*?</svg>', text or '')]  # JSON이 아니어도 SVG만 있으면
+    svgs += [''] * (1 + len(d.get('cards') or []))
+    if svgs[0]: d['cover_art'] = svgs[0]
+    for c, x in zip(d.get('cards') or [], svgs[1:]):
+        if x: c['art'] = x
+    return sum(1 for x in svgs if x)
+
+
+def blank(art):
+    """직접 쓰기: 빈 원고 (표지 5개·본문 3장·팁 3개 칸)"""
+    return tidy({'topic': '', 'covers': [{'line1': '', 'line2': ''} for _ in range(5)],
+                 'cards': [{'kicker': k, 'title': '', 'body': '', 'tags': [], 'scene': ''} for k in ('언제부터', '누가 해당돼요', '그래서 나한테 뭐가 달라지는데?')],
+                 'tips': ['', '', ''], 'caption': '', 'hashtags': ['소보루', '소비자권익']}, art) | {'covers': [{'line1': '', 'line2': ''} for _ in range(5)], 'tips': ['', '', '']}

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}claude.ai에 붙여넣기 · 소보루 카드뉴스{% endblock %}
+{% block content %}
+<h1>claude.ai에 붙여넣기</h1>
+<p class="meta"><a href="{{ url_for('home') }}">← 목록</a> · 기사: {{ c.title or '(제목 없음)' }}{% if c.facts.others %} · 맞춰 볼 다른 기사 {{ c.facts.others|length }}개 함께 넣음{% endif %}</p>
+<div class="panel">
+  <h2>① 요청 글 복사하기</h2>
+  <p class="meta">아래 글에는 소보루 카드뉴스 규칙(저작권·표지·마지막 장)과 기사가 들어 있어요.</p>
+  <textarea id="prompt" rows="8" readonly>{{ prompt }}</textarea>
+  <div class="actions"><button type="button" class="primary" id="copy">요청 글 복사</button>
+    <a href="https://claude.ai/new" target="_blank" rel="noopener"><button type="button">claude.ai 새 채팅 열기 ↗</button></a></div>
+  <p class="meta" id="msg" role="status"></p>
+</div>
+<div class="panel">
+  <h2>② claude.ai에 붙여 넣고 보내기</h2>
+  <p class="meta">claude.ai 새 채팅에 붙여 넣고 보내면, Claude가 원고를 코드 블록(JSON)으로 답해요.</p>
+</div>
+<form class="panel" method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h2>③ Claude 답을 여기에 붙여 넣기</h2>
+  <p class="meta">답 전체를 복사해서 붙여 넣어도 돼요 (앞뒤 설명이 있어도 원고만 찾아 읽어요). 코드 블록 오른쪽 위 '복사' 버튼을 써도 돼요.</p>
+  <textarea name="answer" rows="10" required placeholder='```json&#10;{ "topic": "…", "covers": [ … ] … }&#10;```'></textarea>
+  <div class="actions"><button class="primary">카드뉴스 만들기</button></div>
+</form>
+<form method="post" action="{{ url_for('card', cid=c.id) }}" onsubmit="return confirm('지울까요?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="delete" class="danger">이 초안 지우기</button></form>
+<script>document.getElementById('copy').onclick=function(){var t=document.getElementById('prompt');navigator.clipboard.writeText(t.value).then(function(){document.getElementById('msg').textContent='복사했어요. claude.ai 채팅에 붙여 넣으세요 (Ctrl+V).'},function(){t.select();document.execCommand('copy');document.getElementById('msg').textContent='복사했어요.'})}</script>
+{% endblock %}

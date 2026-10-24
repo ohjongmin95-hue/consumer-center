@@ -6,17 +6,27 @@
 <div class="panel wait"><span class="spin" aria-hidden="true"></span><div><b>{{ waiting }}: 만드는 중이에요</b><p class="meta">기사를 읽고, 다른 기사로 사실을 맞춰 보고, Claude가 글과 그림을 만드는 데 2~4분쯤 걸려요. 다 되면 카드가 바로 열려요. 이 화면은 5초마다 새로 고쳐져요.</p></div></div>
 {% else %}
 <h1>카드뉴스 만들기</h1>
-<p class="meta">뉴스 링크 하나를 넣으면 인스타 카드뉴스(표지 문구 5개 + 본문 + 그림 + 캡션) 초안을 만들어요. 기사 사진은 쓰지 않고 그림은 새로 그려요. 기사 문장은 옮기지 않고 사실만 가져와요. 인스타그램에는 직접 올려 주세요.</p>
-{% if not cfg.key %}<p class="warn">Claude API 키가 아직 없어요. <a href="{{ url_for('settings') }}">설정</a>에서 넣어 주세요.</p>{% endif %}
-{% if not naver and not cfg.web_search %}<p class="warn">네이버 키도 없고 Claude 웹 검색도 꺼져 있어서, 다른 기사로 사실을 맞춰 보지 못해요. 만든 카드는 '확인 필요'로 남아요.</p>{% endif %}
+<p class="meta">뉴스 링크나 기사 글을 넣으면 인스타 카드뉴스(표지 문구 5개 + 본문 + 그림 + 캡션)를 만들어요. 기사 사진은 쓰지 않고 그림은 새로 그려요. 기사 문장은 옮기지 않고 사실만 가져와요. 인스타그램에는 직접 올려 주세요.</p>
+{% if not naver and not cfg.key %}<p class="meta">네이버 키가 없으면 다른 기사로 사실을 맞춰 보지 못해서, 만든 카드는 '확인 필요'로 남아요. 직접 확인하고 체크하면 돼요.</p>{% endif %}
 
 <form class="panel" method="post" data-go>
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-  <h2>뉴스 링크로 만들기</h2>
-  <label>뉴스 링크<input type="url" name="url" required placeholder="https://www.example.co.kr/news/article/123"></label>
-  <div class="actions"><button class="primary"{% if not cfg.key %} disabled{% endif %}>만들기</button></div>
-  <p class="meta">사실 확인: {% if naver %}네이버 뉴스 검색{% if cfg.web_search %} + Claude 웹 검색{% endif %}{% elif cfg.web_search %}Claude 웹 검색 (네이버 키를 넣으면 같이 써요){% else %}꺼짐{% endif %}
-    · 매일 자동: {% if cfg.auto %}켜짐 (아침 {{ cfg.hour }}시, 하루 {{ cfg.per_day }}개, 이 프로그램이 켜져 있을 때){% else %}꺼짐{% endif %} · <a href="{{ url_for('settings') }}">바꾸기</a></p>
+  <h2>1. 기사</h2>
+  <label>뉴스 링크<input type="url" name="url" placeholder="https://www.example.co.kr/news/article/123"></label>
+  <details{% if not cfg.key %} open{% endif %}><summary class="meta">기사 글을 갖고 있으면 직접 붙여 넣기 (링크가 안 열릴 때도)</summary>
+    <label>기사 본문<textarea name="text" rows="7" placeholder="기사 본문을 그대로 붙여 넣어 주세요. 사실만 가져오고 문장은 새로 써요."></textarea></label>
+    <div class="row"><label>기사 제목<input type="text" name="title"></label><label>매체<input type="text" name="media" placeholder="○○일보"></label><label>보도 날짜<input type="text" name="date" placeholder="2026.10.24"></label></div>
+    <p class="meta">본문을 붙여 넣으면 위 링크는 캡션의 출처 링크로만 써요.</p>
+  </details>
+
+  <h2 style="margin-top:20px">2. 글은 누가 쓸까요?</h2>
+  <label class="check"><input type="radio" name="mode" value="paste"{% if not cfg.key %} checked{% endif %}> <span><b>claude.ai에 붙여넣기 (추가 비용 없음)</b> — 요청 글을 복사해 claude.ai 채팅(구독)에 붙여 넣고, 답을 다시 붙여 넣어요</span></label>
+  <label class="check"><input type="radio" name="mode" value="manual"> <span><b>직접 쓰기 (비용 없음)</b> — 빈 카드에 우리가 글을 써요</span></label>
+  <label class="check"><input type="radio" name="mode" value="auto"{% if cfg.key %} checked{% else %} disabled{% endif %}> <span><b>Claude 자동 (API 크레딧)</b> — 링크만 넣으면 끝까지 자동{% if not cfg.key %} · <a href="{{ url_for('settings') }}">설정</a>에서 키를 넣으면 쓸 수 있어요{% endif %}</span></label>
+  <p class="meta">사진·그림은 다음 화면에서 장마다 골라요: 내 사진 올리기(비용 없음) · claude.ai로 그림 받기(비용 없음) · 힉스필드 사진(크레딧) · Claude 자동 그림(API 크레딧)</p>
+  <div class="actions"><button class="primary">만들기</button></div>
+  <p class="meta">사실 확인: {% if naver %}네이버 뉴스 검색{% if cfg.web_search and cfg.key %} + Claude 웹 검색{% endif %}{% elif cfg.web_search and cfg.key %}Claude 웹 검색 (네이버 키를 넣으면 같이 써요){% else %}꺼짐 (네이버 키를 넣으면 켜져요){% endif %}
+    · 매일 자동: {% if cfg.auto and cfg.key %}켜짐 (아침 {{ cfg.hour }}시, 하루 {{ cfg.per_day }}개, 이 프로그램이 켜져 있을 때){% else %}꺼짐 (Claude 키가 있어야 해요){% endif %} · <a href="{{ url_for('settings') }}">바꾸기</a></p>
 </form>
 
 {% if logs %}<details class="panel"><summary>최근 기록</summary>{% for l in logs %}<p class="meta">{{ l.at[5:16].replace('T', ' ') }} · {{ l.what }}</p>{% endfor %}</details>{% endif %}
@@ -27,7 +37,7 @@
   <p class="meta">#{{ r.id }} · {{ r.media or '언론사 모름' }} · {{ '자동' if r.trigger == 'daily' else '직접 만듦' }} · {{ r.created[:16].replace('T', ' ') }}</p>
   <h3><a href="{{ url_for('card', cid=r.id) }}">{{ r.cover or r.title }}</a></h3>
   <p class="meta">{{ r.title }}</p>
-  {% if r.status == 'ready' %}<span class="badge ok">체크리스트 통과</span>{% else %}<span class="badge bad">확인 필요</span>{% endif %}
+  {% if r.status == 'ready' %}<span class="badge ok">체크리스트 통과</span>{% elif r.status == 'paste' %}<span class="badge">claude.ai 답 기다림</span>{% else %}<span class="badge bad">확인 필요</span>{% endif %}
 </div>
 {% else %}<p class="meta">아직 만든 카드뉴스가 없어요.</p>{% endfor %}
 {% endif %}

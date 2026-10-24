@@ -104,10 +104,11 @@ class CardNewsTest(unittest.TestCase):
         self.assertEqual(self.client.post('/', data={'url': 'https://news.test/a/1'}).status_code, 400)
         self.assertEqual(self.client.get('/', headers={'Host': 'evil.test'}).status_code, 403)
         server.save_config(dict(server.DEFAULTS))
-        cid, sent, r = self.make()
-        self.assertIsNone(cid); self.assertEqual(sent, [])
-        r = self.client.get('/'); self.assertIn('/settings', r.headers['Location'])  # 키가 없으면 처음에 설정으로
-        self.assertIn('Claude API 키가 아직 없어요', self.client.get('/?skip=1').get_data(as_text=True))
+        page = self.client.get('/').get_data(as_text=True)  # 키가 없어도 바로 쓸 수 있고, 자동은 꺼져 있음
+        self.assertIn('claude.ai에 붙여넣기', page); self.assertRegex(page, r'value="auto" disabled')
+        with patch.object(cards, 'claude', fake_claude(sent := [])), patch.object(cards, 'fetch_page', pages):
+            r = self.client.post('/', data={'_csrf': self.token(), 'url': 'https://news.test/a/1', 'mode': 'auto'}, follow_redirects=True)
+        self.assertEqual(sent, []); self.assertIn('Claude API 키가 없어요', r.get_data(as_text=True))
         self.assertEqual(self.client.post('/quit', data={'_csrf': self.token('/settings')}).status_code, 200)
         t = self.token('/settings')
         self.client.post('/settings', data={'_csrf': t, 'key': 'sk-ant-abcdefghijklmnopqrstuvwxyz', 'naver_id': 'nid', 'naver_secret': 'nsec', 'naver_kind': 'hub', 'auto': '1', 'per_day': '2', 'hour': '9', 'model': 'claude-sonnet-5-5'})
@@ -193,6 +194,38 @@ class CardNewsTest(unittest.TestCase):
         with patch.object(hf, 'SyncClient', type('C', (Client,), {'submit': lambda self, m, arguments: NsfwJob()})):
             with self.assertRaisesRegex(RuntimeError, '안전 기준'): cards.higgsfield_photo(cfg, 'x')
         with self.assertRaisesRegex(RuntimeError, '키가 없어요'): cards.higgsfield_photo({}, 'x')
+
+    def test_keyless_paste_manual_and_art_paste(self):
+        server.save_config(dict(server.DEFAULTS))  # 키 없음
+        with patch.object(cards, 'fetch_page', pages), patch.object(cards, 'claude', lambda *a, **k: self.fail('키 없이 Claude API를 부르면 안 됨')):
+            r = self.client.post('/', data={'_csrf': self.token(), 'url': 'https://news.test/a/1', 'mode': 'paste'})
+            cid = int(re.search(r'/card/(\d+)/paste', r.headers['Location'])[1])
+            page = self.client.get(f'/card/{cid}').get_data(as_text=True)  # 답을 넣기 전에는 붙여넣기 화면으로
+            page = self.client.get(f'/card/{cid}/paste').get_data(as_text=True)
+            self.assertIn('요청 글 복사', page); self.assertIn('저작권 규칙', page); self.assertIn('3영업일', page); self.assertIn('&#34;covers&#34;', page)
+            self.assertIn('claude.ai 답 기다림', self.client.get('/').get_data(as_text=True))
+            r = self.client.post(f'/card/{cid}/paste', data={'_csrf': self.token(), 'answer': '음…'}, follow_redirects=True)
+            self.assertIn('원고(JSON)를 찾지 못했어요', r.get_data(as_text=True))
+            answer = '네, 만들었어요!\n```json\n' + json.dumps(fake_claude([])(None, '', '', cards.WRITE_SCHEMA, 0), ensure_ascii=False) + '\n```\n필요하면 더 말씀해 주세요.'
+            self.client.post(f'/card/{cid}/paste', data={'_csrf': self.token(), 'answer': answer})
+            d, checks, row = self.row(cid)
+            self.assertNotIn('pending', d); self.assertEqual(len(d['covers']), 5); self.assertEqual(d['source']['media'], '소보루일보')
+            self.assertIs(checks['숫자']['ok'], True); self.assertIsNone(checks['이미']['ok'])  # 그림이 아직 없음
+            page = self.client.get(f'/card/{cid}').get_data(as_text=True)
+            self.assertIn('claude.ai로 그림 받기', page); self.assertIn('Draw 3 SVG', page); self.assertRegex(page, r'value="art" disabled')
+            # 그림도 claude.ai 답을 붙여 넣어 받음 (JSON이 아니어도 SVG만 찾아 넣고, 위험한 건 걸러 냄)
+            self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'artpaste', 'answer': '여기요 ' + BAD_SVG + ' 그리고 ' + BAD_SVG})
+            d, checks, _ = self.row(cid)
+            self.assertTrue(d['cover_art'] and d['cards'][0]['art']); self.assertFalse(d['cards'][1]['art']); self.assertNotIn('script', d['cover_art'])
+            # 직접 쓰기 + 기사 글 직접 붙여 넣기 (링크 없이)
+            text = '\n'.join(re.sub(r'<[^>]+>', '', x) for x in re.findall(r'<p>(.*?)</p>', PAGE)[:4])
+            r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'manual', 'text': text, 'title': '환불 지연 배상금', 'media': '우리일보', 'date': '2026.10.23'})
+            cid2 = int(re.search(r'/card/(\d+)$', r.headers['Location'])[1])
+            d, checks, row = self.row(cid2)
+            self.assertEqual((d['source']['media'], d['source']['date'], d['source']['url'], len(d['covers']), len(d['cards'])), ('우리일보', '2026.10.23', '', 5, 3))
+            self.assertEqual(row['status'], 'check')  # 빈 원고는 표지·출처 등 검사에서 걸림 → 채우고 확인해야 내려받기
+            r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'manual', 'text': '짧음'}, follow_redirects=True)
+            self.assertIn('너무 짧아요', r.get_data(as_text=True))
 
 
 if __name__ == '__main__':

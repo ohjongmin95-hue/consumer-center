@@ -78,9 +78,16 @@
       </div>
       {% endfor %}
       {% if not hf %}<p class="meta">힉스필드로 바로 만들려면 <a href="{{ url_for('settings') }}">설정</a>에서 힉스필드 키를 넣어 주세요.</p>{% endif %}
-      <p class="meta">그림이 마음에 안 들면 다시 그려요 (글·사진은 그대로, 1~3분).</p>
+      <details class="cn-slot"{% if not key %} open{% endif %}><summary><b>claude.ai로 그림 받기 (추가 비용 없음)</b></summary>
+        <p class="meta">① 아래 요청 글을 복사해 claude.ai 새 채팅에 붙여 넣고 보내요 → ② Claude 답 전체를 복사해 아래 칸에 붙여 넣어요. 표지·본문 그림이 한 번에 들어가요.</p>
+        <textarea id="art-prompt" rows="4" readonly>{{ art_prompt }}</textarea>
+        <div class="actions"><button type="button" id="art-copy">요청 글 복사</button><a href="https://claude.ai/new" target="_blank" rel="noopener"><button type="button">claude.ai 열기 ↗</button></a></div>
+        <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><textarea name="answer" rows="4" required placeholder="Claude 답(SVG가 든 코드 블록)을 붙여 넣기"></textarea>
+          <div class="actions"><button name="act" value="artpaste" class="primary">그림 넣기</button></div></form>
+      </details>
+      <p class="meta">{% if key %}Claude 키로 그림을 자동으로 다시 그려요 (글·사진은 그대로, 1~3분, API 크레딧).{% else %}키가 없어서 자동 그리기는 꺼져 있어요. 위의 claude.ai 방법이나 사진 올리기를 쓰세요.{% endif %}</p>
       <div class="actions">
-        <form method="post" data-art><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="art">그림 다시 그리기</button></form>
+        <form method="post" data-art><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="art"{% if not key %} disabled{% endif %}>그림 자동으로 다시 그리기</button></form>
         <form method="post" onsubmit="return confirm('이 카드뉴스를 지울까요? 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="delete" class="danger">지우기</button></form>
       </div>
     </div>
@@ -164,6 +171,7 @@ document.querySelectorAll('[name=cn-end]').forEach(function(r){r.checked=r.value
 function slotOf(n){return n==='cover'?d.cover_img:d.cards[+n.slice(4)].img}
 document.querySelectorAll('[data-slot]').forEach(function(r){var x=slotOf(r.dataset.slot);r.checked=r.value===(x.mode||'art');r.onchange=function(){x.mode=r.value;draw()}});
 document.querySelectorAll('[data-busy]').forEach(function(b){b.form.addEventListener('submit',function(){setTimeout(function(){b.disabled=true;b.textContent=b.dataset.busy},0)})});
+document.getElementById('art-copy').onclick=function(){var t=document.getElementById('art-prompt');navigator.clipboard.writeText(t.value).then(function(){msg.textContent='그림 요청 글을 복사했어요. claude.ai에 붙여 넣으세요.'})};
 document.getElementById('cn-form').addEventListener('submit',function(){document.getElementById('cn-data').value=JSON.stringify(d)});
 document.querySelectorAll('[data-art]').forEach(function(f){f.addEventListener('submit',function(){setTimeout(function(){var b=f.querySelector('button');b.disabled=true;b.textContent='그리는 중…'},0)})});
 

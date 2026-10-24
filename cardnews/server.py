@@ -31,7 +31,7 @@ MODELS = (('claude-opus-5-5', 'Claude Opus 5.5 (기본, 가장 꼼꼼)'), ('clau
 DEFAULTS = {'key': '', 'model': 'claude-opus-5-5', 'art': 'claude', 'auto': 0, 'per_day': 3, 'hour': 8, 'web_search': 1,
             'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_default': 'art'}
 SECRETS = ('key', 'naver_secret', 'hf_secret')  # 화면에 다시 보여 주지 않는 값
-IMG_DEFAULTS = (('art', '모두 그림 (Claude, 돈 안 듦)'), ('cover_photo', '표지만 사진 (힉스필드), 나머지는 그림'), ('photo', '모두 사진 (힉스필드)'))
+IMG_DEFAULTS = (('art', '모두 그림 (힉스필드 크레딧 안 듦)'), ('cover_photo', '표지만 사진 (힉스필드), 나머지는 그림'), ('photo', '모두 사진 (힉스필드)'))
 
 DATA.mkdir(parents=True, exist_ok=True)
 app = Flask(__name__, template_folder=str(RES / 'templates'), static_folder=str(RES / 'static'))
@@ -92,10 +92,13 @@ app.jinja_env.globals.update(csrf_token=csrf_token)
 
 
 # ---- 저장 ------------------------------------------------------------------------
-def store(r, trigger):
+MODES = ('auto', 'paste', 'manual')  # 글 쓰는 방법: Claude API 키로 자동 / claude.ai(구독)에 붙여넣기 / 직접 쓰기
+
+
+def store(r, trigger, status=None):
     with conn() as db:
         return db.execute('INSERT INTO cards(url,title,status,data,facts,checks,trigger,created,updated) VALUES(?,?,?,?,?,?,?,?,?)',
-                          (r['facts']['url'], r['facts']['title'], cards.status_of(r['checks']), json.dumps(r['data'], ensure_ascii=False),
+                          (r['facts']['url'], r['facts']['title'], status or cards.status_of(r['checks']), json.dumps(r['data'], ensure_ascii=False),
                            json.dumps(r['facts'], ensure_ascii=False), json.dumps(r['checks'], ensure_ascii=False), trigger, cards.stamp(), cards.stamp())).lastrowid
 
 
@@ -133,9 +136,9 @@ def hf_photos(d, which=None):
     return errs[:1]
 
 
-def make(url, trigger='manual'):
-    r = cards.make(config(), url)
-    if r['status'] != 'made': log(f"{'자동 · ' if trigger == 'daily' else ''}못 만듦: {r['reason']} ({url[:80]})"); return r
+def make(url, trigger='manual', art=None):
+    r = cards.make(config(), url, art)
+    if r['status'] != 'made': log(f"{'자동 · ' if trigger == 'daily' else ''}못 만듦: {r['reason']} ({(url or (art or {}).get('title', ''))[:80]})"); return r
     errs = hf_photos(r['data'])
     if config()['img_default'] != 'art' and errs: r['reason'] = ' · '.join(filter(None, [r.get('reason'), f'사진: {errs[0]}']))
     r['checks'] = cards.run_checks(r['data'], r['facts'])
@@ -203,17 +206,29 @@ def finish(r):
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
-        url = request.form.get('url', '')
-        if app.config.get('TESTING'): return finish(make(url))
-        if not background('새 카드뉴스', lambda: make(url)): flash('다른 카드뉴스를 만들고 있어요. 다 되면 다시 눌러 주세요.')
-        return redirect(url_for('job'))
-    if not config()['key'] and not request.args.get('skip'):
-        flash('처음 오셨네요! Claude API 키를 한 번만 넣어 주세요. 다음부터는 바로 쓸 수 있어요.'); return redirect(url_for('settings'))
+        f = request.form; url = f.get('url', '').strip()
+        mode = f.get('mode') if f.get('mode') in MODES else ('auto' if config()['key'] else 'paste')
+        # 기사 글을 붙여 넣었으면 그걸 쓰고(링크는 출처로만), 아니면 링크에서 읽어 옴
+        art = cards.given_article(f.get('text', ''), f.get('title', ''), f.get('media', ''), f.get('date', ''), url) if f.get('text', '').strip() else None
+        if mode == 'auto':
+            if app.config.get('TESTING'): return finish(make(url, art=art))
+            if not background('새 카드뉴스', lambda: make(url, art=art)): flash('다른 카드뉴스를 만들고 있어요. 다 되면 다시 눌러 주세요.')
+            return redirect(url_for('job'))
+        got, why = cards.read(config(), url, art)  # 키 없는 방법: 기사 읽기·다른 기사 찾기(네이버 키가 있을 때)만
+        if not got: flash(why); return redirect(url_for('home'))
+        a, others, facts = got
+        if mode == 'manual':
+            d = cards.blank(a); cid = store({'data': d, 'facts': facts, 'checks': cards.run_checks(d, facts)}, 'manual')
+            log(f'직접 쓰기 #{cid}'); flash('빈 카드뉴스를 만들었어요. 오른쪽 칸에 글을 써 주세요.'); return redirect(url_for('card', cid=cid))
+        cid = store({'data': {'pending': True, 'prompt': cards.paste_prompt(a, others), 'art': a}, 'facts': facts, 'checks': []}, 'manual', status='paste')
+        return redirect(url_for('paste', cid=cid))
     with conn() as db:
         rows = [dict(r) for r in db.execute('SELECT id,url,title,status,trigger,created,data FROM cards ORDER BY id DESC LIMIT 100')]
         logs = [dict(r) for r in db.execute('SELECT at,what FROM log ORDER BY id DESC LIMIT 8')]
     for r in rows:
-        d = json.loads(r.pop('data')); cs = d.get('covers') or [{}]; c = cs[min(d.get('cover_pick', 0), len(cs) - 1)]
+        d = json.loads(r.pop('data')); cs = d.get('covers') or [{}]
+        if d.get('pending'): r['cover'] = 'claude.ai 답을 붙여 넣어 주세요'; r['media'] = d['art'].get('media', ''); continue
+        c = cs[min(d.get('cover_pick', 0), len(cs) - 1)]
         r['cover'] = (c.get('line1', '') + ' ' + c.get('line2', '')).strip(); r['media'] = (d.get('source') or {}).get('media', '')
     cfg = config()
     return render_template('home.html', rows=rows, cfg=cfg, logs=logs, naver=bool(cfg['naver_id'] and cfg['naver_secret']))
@@ -230,8 +245,14 @@ def job():
 @app.route('/card/<int:cid>', methods=['GET', 'POST'])
 def card(cid):
     c = load(cid)
+    if c['data'].get('pending') and not (request.method == 'POST' and request.form.get('act') == 'delete'): return redirect(url_for('paste', cid=cid))
     if request.method == 'POST':
         act = request.form.get('act', 'save')
+        if act == 'artpaste':  # 키 없이 그림: claude.ai가 준 SVG를 붙여 넣음
+            n = cards.art_from_paste(request.form.get('answer', ''), c['data'])
+            if not n: flash('붙여 넣은 글에서 그림(SVG)을 찾지 못했어요. Claude 답 전체를 복사해 주세요.'); return redirect(url_for('card', cid=cid))
+            for _, _, slot in cards.slots(c['data']): slot['mode'] = slot['mode'] if slot.get('photo') else 'art'
+            resave(cid, c['data'], c['facts'], c['confirmed']); flash(f'그림 {n}개를 넣었어요.'); return redirect(url_for('card', cid=cid))
         if act == 'delete':
             with conn() as db: db.execute('DELETE FROM cards WHERE id=?', (cid,))
             flash('카드뉴스를 지웠어요.'); return redirect(url_for('home'))
@@ -282,7 +303,23 @@ def card(cid):
         flash('저장했어요.' + (' 체크리스트에 걸린 항목이 있어요.' if status == 'check' else ''))
         return redirect(url_for('card', cid=cid))
     sl = [(n, '표지' if n == 'cover' else f'{int(n[4:]) + 2}번째 장', x) for n, _, x in cards.slots(c['data'])]
-    return render_template('edit.html', c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, hf=cards.hf_ready(config()))
+    return render_template('edit.html', c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, hf=cards.hf_ready(config()),
+                           key=bool(config()['key']), art_prompt=cards.art_prompt(c['data']))
+
+
+@app.route('/card/<int:cid>/paste', methods=['GET', 'POST'])
+def paste(cid):
+    """키 없이: 요청 글 복사 → claude.ai에 붙여 넣기 → Claude 답 붙여 넣기"""
+    c = load(cid)
+    if not c['data'].get('pending'): return redirect(url_for('card', cid=cid))
+    if request.method == 'POST':
+        try: d = cards.from_paste(request.form.get('answer', ''), c['data']['art'])
+        except ValueError as e: flash(str(e)); return redirect(url_for('paste', cid=cid))
+        errs = hf_photos(d)
+        resave(cid, d, c['facts'], 0); log(f'붙여넣기로 만듦 #{cid}')
+        flash('카드뉴스를 만들었어요. 그림은 아래 \'그림 · 사진\'에서 사진을 올리거나 claude.ai로 받아 넣어 주세요.' + (f' (사진: {errs[0]})' if errs and config()['img_default'] != 'art' else ''))
+        return redirect(url_for('card', cid=cid))
+    return render_template('paste.html', c=c, prompt=c['data']['prompt'])
 
 
 @app.route('/img/<name>')
