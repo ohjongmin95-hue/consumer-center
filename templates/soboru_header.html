@@ -4,7 +4,7 @@
 {% set sb_cm = [(url_for('feed'), ui('sb.sub_feed', '내돈내산 후기'), request.path.startswith('/feed')), (url_for('vs_home'), ui('sb.sub_vs', '골라주세요'), request.path.startswith('/vs')), (url_for('suda'), ui('sb.sub_suda', '수다방'), request.path.startswith('/suda')), (url_for('board'), ui('sb.sub_board', '전체 글'), request.path.startswith('/board')), (url_for('owners'), ui('sb.sub_owners', '사장님 소식'), request.path.startswith('/owners'))] %}
 {% set sb_cm_on = request.path.startswith(('/board', '/feed', '/vs', '/suda', '/owners')) %}
 {# (주소, 이름, 지금 화면인지, 펼침 메뉴) #}
-{% set sb_nav = [(url_for('home'), ui('sb.nav_home', '홈'), request.path == '/', None), (url_for('reports'), ui('sb.nav_reports', '소비자 제보'), sb_jebo_on, sb_jebo), (url_for('feed'), ui('sb.nav_board', '소보루 픽'), sb_cm_on, sb_cm), (url_for('life'), ui('sb.nav_life', '생활정보'), request.path.startswith('/life'), None), (url_for('companies'), ui('sb.nav_companies', '기업 답변'), request.path.startswith('/companies'), None), (url_for('scam_home'), ui('sb.nav_scam', '사기 주의'), request.path.startswith('/scam'), None)] + ([(url_for('law_ask'), ask_label(), request.path.startswith('/ask'), None)] if ask_on() else []) %}
+{% set sb_nav = [(url_for('home'), ui('sb.nav_home', '홈'), request.path == '/', None), (url_for('reports'), ui('sb.nav_reports', '소비자 제보'), sb_jebo_on, sb_jebo), (url_for('feed'), ui('sb.nav_board', '커뮤니티'), sb_cm_on, sb_cm), (url_for('life'), ui('sb.nav_life', '매거진'), request.path.startswith('/life'), None), (url_for('companies'), ui('sb.nav_companies', '기업 답변'), request.path.startswith('/companies'), None), (url_for('scam_home'), ui('sb.nav_scam', '사기 주의'), request.path.startswith('/scam'), None)] + ([(url_for('law_ask'), ask_label(), request.path.startswith('/ask'), None)] if ask_on() else []) %}
 <header class="sb-header">
   <div class="sb-wrap sb-hd">
     <a class="sb-logo" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈"><img class="sb-wm" src="{{ asset('img/soboru-logo.png') }}" alt="SOBORU" width="152" height="36"></a>
@@ -17,5 +17,5 @@
   </div>
   <nav class="sb-chips" aria-label="주요 메뉴">{% for href, label, on, sub in sb_nav %}<a href="{{ href }}"{% if on %} class="on"{% endif %}>{{ ui('sb.chip_all', '전체') if loop.first else label }}</a>{% endfor %}</nav>
 {% if sb_jebo_on %}<nav class="sb-sub" aria-label="제보 메뉴"><div class="sb-wrap">{% for h, l, o in sb_jebo %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
-{% if sb_cm_on %}<nav class="sb-sub" aria-label="소보루 픽 메뉴"><div class="sb-wrap">{% for h, l, o in sb_cm %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
+{% if sb_cm_on %}<nav class="sb-sub" aria-label="커뮤니티 메뉴"><div class="sb-wrap">{% for h, l, o in sb_cm %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
 </header>

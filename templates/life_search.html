@@ -20,7 +20,7 @@
   <nav class="nv-kinds" aria-label="검색 종류"><a href="{{ url_for('life_search', q=q) }}"{% if tab == 'all' %} class="on" aria-current="page"{% endif %}>전체</a>{% for k, (label, _) in kinds.items() %}<a href="{{ url_for('life_search', q=q, tab=k) }}"{% if tab == k %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
   {% if error %}<p class="nv-error">{{ error }}</p>{% endif %}
   {% if own %}
-  <section class="nv-sec"><div class="nv-sec-head"><h2>{{ ui('life.search_own', '소보루 생활정보') }}</h2></div>
+  <section class="nv-sec"><div class="nv-sec-head"><h2>{{ ui('life.search_own', '소보루 매거진') }}</h2></div>
     <div class="sb-grid">{% for a in own %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{{ meta(a) }}</a>{% endfor %}</div></section>
   {% endif %}
   {% if tab == 'all' %}<div class="nv-all">

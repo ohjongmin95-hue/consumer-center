@@ -1,3 +1,3 @@
 {# 생활정보 위쪽 탭: 생활정보 글 · 통합 검색 · 검색 추이 · 쇼핑 관심도 (네이버 API HUB 연결 전엔 글만) #}
-{% set nv_tabs = [('life', url_for('life'), ui('life.tab_life', '생활정보')), ('search', url_for('life_search'), ui('life.tab_search', '통합 검색')), ('trend', url_for('life_trend'), ui('life.tab_trend', '검색 추이')), ('shopping', url_for('life_shopping'), ui('life.tab_shop', '쇼핑 관심도'))] %}
-<nav class="nv-tabs" aria-label="생활정보 메뉴">{% for k, href, label in nv_tabs %}<a href="{{ href }}"{% if nv_tab == k %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+{% set nv_tabs = [('life', url_for('life'), ui('life.tab_life', '매거진')), ('search', url_for('life_search'), ui('life.tab_search', '통합 검색')), ('trend', url_for('life_trend'), ui('life.tab_trend', '검색 추이')), ('shopping', url_for('life_shopping'), ui('life.tab_shop', '쇼핑 관심도'))] %}
+<nav class="nv-tabs" aria-label="매거진 메뉴">{% for k, href, label in nv_tabs %}<a href="{{ href }}"{% if nv_tab == k %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>

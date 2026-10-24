@@ -13,7 +13,7 @@
 {% set rate_words = ['', ui_text('cm.rate1', '별로예요'), ui_text('cm.rate2', '아쉬워요'), ui_text('cm.rate3', '보통이에요'), ui_text('cm.rate4', '좋아요'), ui_text('cm.rate5', '최고예요')] %}
 {% from 'community_macros.html' import reward_box %}
 <main class="sb-wrap cm cm-write">
-  <a class="cm-back" href="{{ url_for('board') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('cm.title', '소보루 픽') }}</a>
+  <a class="cm-back" href="{{ url_for('board') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('cm.title', '커뮤니티') }}</a>
   <h1>{{ ui('cm.pick_title', '무엇을 올릴까요?') }}</h1>
   {% if not enabled %}<div class="alert">{{ ui('board.closed', '게시판 글쓰기는 곧 열려요. 조금만 기다려 주세요.') }}</div>{% endif %}
   {% if campaign %}

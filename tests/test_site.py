@@ -377,7 +377,7 @@ class SiteTest(unittest.TestCase):
             self.assertIn('소비자의 소리', home); self.assertLess(home.index('nn-live'), home.index('id="letter-sub"'))  # 제보 목록 바로 밑에 레터 구독
             self.assertNotIn('nn-stats', home)  # 맨 위 건수 현황은 뺌
             self.assertIn('🔒 비밀 제보 카드 제목', home)  # 비밀글도 제목·업체는 보이고 본문만 잠금
-            self.assertIn('소보루 픽', home)  # 메뉴 이름 (커뮤니티 → 소보루 픽)
+            self.assertIn('커뮤니티', home)  # 메뉴 이름 (소보루 픽 → 커뮤니티, 2026-10-24)
             self.assertIn('AI 학습 이용을 금지', home)  # 하단 무단 이용 금지 문구
             self.assertIn('User-agent: GPTBot', self.client.get('/robots.txt').get_data(as_text=True))
             self.assertIn('자주 묻는 질문', home); self.assertNotIn('피해 유형별 안내', home)  # 피해 유형별 안내는 메뉴에서 뺌(운영자 요청)
@@ -386,7 +386,7 @@ class SiteTest(unittest.TestCase):
             # 화면 편집: 예전 '메인 화면 순서' 주소는 화면 편집으로
             self.assertIn('/admin/screens#page-home', admin.get('/admin/home-plan').headers['Location'])
             page = admin.get('/admin/screens').get_data(as_text=True)
-            for name in ('화면 편집', '홈', '생활정보', '소보루 픽', '제보', '기업', '법률 질문', '소보루 레터', '공통 머리글·바닥글', '소비자의 소리', '이 페이지 문구 모두 보기'):
+            for name in ('화면 편집', '홈', '매거진', '커뮤니티', '제보', '기업', '법률 질문', '소보루 레터', '공통 머리글·바닥글', '소비자의 소리', '이 페이지 문구 모두 보기'):
                 self.assertIn(name, page)
             token = self.csrf(admin, '/admin/screens')
             # 순서표 통째로: 레터를 맨 위로, 기업 답변 기록은 숨김
@@ -723,9 +723,25 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(client, path)
         return client.post(path, data={'_csrf': token, **data})
 
+    def test_soboru_examples(self):
+        # 커뮤니티 예시 글: 글쓴이 '소보루 예시' + 본문에 예시 표시, 두 번 넣어도 한 번만, remove로 모두 지움
+        import soboru_examples as ex
+        ex.add(self.site); ex.add(self.site)
+        with self.site.conn() as db:
+            rows = db.execute("SELECT nickname,body FROM posts WHERE ip_hash='example'").fetchall()
+            self.assertEqual(len(rows), len(ex.REVIEWS) + len(ex.SUDA))
+            self.assertTrue(all(r['nickname'] == '소보루 예시' and '예시 글' in r['body'] for r in rows))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM vs_polls WHERE ip_hash='example'").fetchone()[0], len(ex.POLLS))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM owner_news WHERE ip_hash='example'").fetchone()[0], len(ex.OWNERS))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM cases WHERE subject LIKE '%예시%'").fetchone()[0], 0)  # 제보에는 안 넣음
+        ex.remove(self.site)
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM posts WHERE ip_hash='example'").fetchone()[0], 0)
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM vs_polls WHERE ip_hash='example'").fetchone()[0], 0)
+
     def test_consumer_board(self):
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('>소보루 픽</a>', home)
+        self.assertIn('>커뮤니티</a>', home)
         self.assertIn('>이용 안내</a>', home)
         self.assertNotIn('제보 유형</a>', home)
         writer = self.site.app.test_client()

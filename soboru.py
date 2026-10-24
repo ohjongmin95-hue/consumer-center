@@ -47,10 +47,10 @@ RANK_DAYS = 30
 # 화면 편집 (관리자 > 화면 편집): 페이지마다 큰 묶음(블록)의 순서와 보이기. 잘게 나누지 않고 화면에서 한눈에 보이는 덩어리 단위
 PAGE_BLOCKS = {
     'home': ('홈', [('intro', '맨 위 소개 (소보루 큰 문구 · 제보하기 버튼)'), ('live', '소비자의 소리 (실시간 제보)'),
-                   ('pick', '소보루 픽 (추천 TOP 5 · 최신 글 · 글쓰기)'), ('talk', '골라주세요 · 수다방'), ('quick', '소보루는 이런 곳 (제보 · 후기 · 골라주세요 · 수다방)'),
+                   ('pick', '커뮤니티 (추천 TOP 5 · 최신 글 · 글쓰기)'), ('talk', '골라주세요 · 수다방'), ('quick', '소보루는 이런 곳 (제보 · 후기 · 골라주세요 · 수다방)'),
                    ('letter', '소보루 레터 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('answer', '기업 답변 기록')]),
     'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '소보루 레터 구독')]),
-    'board': ('소보루 픽', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
+    'board': ('커뮤니티', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
                          ('feed', '글 목록 · 이번 주 인기 · 리뷰 모아 보기'), ('foot', '맨 아래 안내')]),
     'letter': ('소보루 레터', [('hero', '맨 위 구독 신청'), ('feats', '레터에 담기는 것 (3가지)'), ('archive', '지난 레터')]),
 }
@@ -387,8 +387,8 @@ def install(S):
     # 관리자 > 화면 편집: 페이지별로 '화면에서 바로 고치기' 열기, 묶음 순서·보이기, 그 페이지 문구 전체
     SCREENS = [  # (키, 이름, 주소 만드는 함수, 문구를 모을 템플릿 파일)
         ('home', '홈', lambda: url_for('home'), ['soboru_home_nn.html', 'letter_macros.html']),
-        ('life', '생활정보', lambda: url_for('life'), ['life.html', 'life_article.html', 'soboru_life_macros.html', 'life_tabs.html', 'life_search.html', 'life_trend.html', 'life_shopping.html', 'life_nv_macros.html']),
-        ('board', '소보루 픽', lambda: url_for('board'), ['board.html', 'soboru_board.html', 'soboru_board_post.html', 'soboru_board_write.html', 'board_post.html', 'board_write.html', 'community_macros.html']),
+        ('life', '매거진', lambda: url_for('life'), ['life.html', 'life_article.html', 'soboru_life_macros.html', 'life_tabs.html', 'life_search.html', 'life_trend.html', 'life_shopping.html', 'life_nv_macros.html']),
+        ('board', '커뮤니티', lambda: url_for('board'), ['board.html', 'soboru_board.html', 'soboru_board_post.html', 'soboru_board_write.html', 'board_post.html', 'board_write.html', 'community_macros.html']),
         ('report', '제보', lambda: url_for('report'), ['report.html', 'reports.html', 'report_rows.html', 'public_case.html', 'soboru_case.html', 'case_talk.html', 'success.html', 'lookup.html', 'case.html', 'guide.html', 'info.html', 'process_cards.html']),
         ('company', '기업', lambda: url_for('companies'), ['companies.html', 'company_page.html', 'company_grade.html']),
         ('scam', '사기 주의', lambda: url_for('scam_home'), ['scam.html', 'scam_new.html']),

@@ -17,7 +17,7 @@
 </details>
 {% endmacro %}
 <main class="sb-wrap cm cm-post">
-  <a class="cm-back" href="{{ url_for('board', type=k) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('cm.title', '소보루 픽') }} · {{ POST_KIND_NAMES[k] }}</a>
+  <a class="cm-back" href="{{ url_for('board', type=k) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('cm.title', '커뮤니티') }} · {{ POST_KIND_NAMES[k] }}</a>
   {% if blocked %}
   <section class="cm-blocked" aria-live="polite">
     <span class="cm-blocked-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg></span>
