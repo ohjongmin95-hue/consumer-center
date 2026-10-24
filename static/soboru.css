@@ -1,5 +1,5 @@
 /* 토스페이스 이모지 (© Viva Republica, https://toss.im/tossface/copyright). 쓰는 이모지만 남긴 파일이라 가볍고, 이모지가 화면에 있을 때만 받음. */
-@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270D,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F36F,U+1F370,U+1F371,U+1F373,U+1F381,U+1F389,U+1F393,U+1F3AE,U+1F3AF,U+1F3C6,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F431,U+1F436,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F45F,U+1F48A,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4BC,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CA,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DC,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4EE,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F914,U+1F916,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2?v=2) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270D,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F369,U+1F36A,U+1F36F,U+1F370,U+1F371,U+1F373,U+1F381,U+1F382,U+1F389,U+1F393,U+1F3AE,U+1F3AF,U+1F3C6,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F431,U+1F436,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F45F,U+1F48A,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4BC,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CA,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DC,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4EE,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F914,U+1F916,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F95E,U+1F96F,U+1F9C1,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
 /* 소보루 브랜드 (뉴닉식 화면). 관리자 설정 '브랜드'가 소보루일 때만 style.css 뒤에 붙음. */
 .sb{font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;--sb-ink:#1d1d1f;--sb-sub:#6b6f76;--sb-mute:#9a9ea5;--sb-line:#ececec;--sb-soft:#f5f5f4;--sb-orange:#ef920e;--sb-orange-soft:#fff4e0;--orange:#ef920e;--sb-brown:#652D1C;--sb-gray:#f2f4f6;--sb-gray-ink:#4e5968;--sb-ease:cubic-bezier(.2,.8,.2,1);background:#fff;color:var(--sb-ink);word-break:keep-all;-webkit-font-smoothing:antialiased}
 .sb main.sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;min-height:auto}
@@ -633,6 +633,7 @@ details[open]>summary .sba-chev{transform:rotate(180deg)}
 }
 @media(prefers-reduced-motion:reduce){.sba-q p,.sba-a,.sba-dots i{animation:none}}
 /* 머리글: 메뉴가 6개(법률 질문)여도 한 줄에 들어가게 */
+@media(max-width:1340px){.sb-nav{gap:20px;margin-left:22px}}
 @media(max-width:1180px){.sb-nav{gap:20px;margin-left:22px;font-size:15px}}
 @media(max-width:1000px){.sb-nav{gap:14px;margin-left:14px;font-size:14.5px}.sb-hd{gap:10px}}
 .sb-nav a{white-space:nowrap}
@@ -1729,7 +1730,7 @@ h1.vs-title{font-size:28px}
 }
 @media (max-width:760px){
   .cm-head .cm-btn{height:42px;padding:0 16px;font-size:15px}
-  .pf-banner{flex-wrap:wrap;padding:16px}.pf-banner-go{margin-left:48px}
+  .pf-banner{flex-direction:column;align-items:flex-start;gap:12px;padding:16px}.pf-banner>div{width:100%}.pf-banner-go{margin-left:0}
   .pf-thumb{width:76px;height:76px;border-radius:14px}
   .pf-title{font-size:16px}
   .cm-bar{flex-wrap:wrap}
@@ -1750,10 +1751,23 @@ h1.vs-title{font-size:28px}
 .nn-about-more a{height:32px}
 .nn-write a{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .cm-kinds span{padding:16px 16px 15px}
-/* 소보루 빵 아이콘 (static/img/bread, 토스 이모지 느낌) */
-img.bread{display:inline-block;vertical-align:middle;flex:none}
-.nn-about-card img.bread{width:52px;height:52px;margin:-4px 0 6px -4px}
-.nn-talk h2 img.bread{width:30px;height:30px;margin:-4px 2px 0 0}
-.cm-head h1 img.bread.h{width:40px;height:40px;margin:-6px 6px 0 -2px}
-.er-hero img.bread.hero{display:block;width:72px;height:72px;margin:0 auto 6px}
-@media (max-width:760px){.cm-head h1 img.bread.h{width:34px;height:34px}.nn-about-card img.bread{width:44px;height:44px}}
+/* 빵·디저트 토스페이스 이모지 (🍞 제보 · 🧁 후기 · 🥐 골라주세요 · 🍩 수다방 · 🍰 에디터) */
+.sb .bread{display:inline-flex;align-items:center;justify-content:center;flex:none;font-family:Tossface,sans-serif;font-style:normal;line-height:1}
+.nn-about-card .bread{width:60px;height:60px;border-radius:18px;background:#fff;font-size:34px;margin-bottom:14px}
+.nn-talk h2 .bread{font-size:26px;margin:0 6px 0 0;vertical-align:-3px}
+.cm-head h1 .bread.h{font-size:34px;margin:0 10px 0 0;vertical-align:-4px}
+.er-hero .bread.hero{display:flex;font-size:60px;margin:0 auto 10px}
+/* 뉴닉식 소개: 굵고 큰 제목, 넉넉한 여백, 짧은 설명 */
+.nn-about{margin-top:72px}
+.nn-about-head h2{font-size:32px;font-weight:800;letter-spacing:-.04em;line-height:1.3}
+.nn-about-head .nn-sub{margin:10px 0 0;font-size:16px;color:var(--sb-sub)}
+.nn-about-grid{gap:14px;margin-top:28px}
+.nn-about-card{gap:0;padding:26px 24px 24px;border-radius:24px}
+.nn-about-card b{font-size:20px;font-weight:800;letter-spacing:-.035em;line-height:1.35}
+.nn-about-card p{margin-top:8px;font-size:15px;line-height:1.65;letter-spacing:-.02em}
+.nn-about-go{margin-top:18px}
+@media (max-width:760px){.cm-head h1 .bread.h{font-size:28px}.nn-about{margin-top:48px}.nn-about-head h2{font-size:24px}.nn-about-head .nn-sub{font-size:14px}
+  .nn-about-card{padding:20px 18px}.nn-about-card .bread{width:48px;height:48px;font-size:28px;border-radius:14px;margin-bottom:12px}.nn-about-card b{font-size:17px}.nn-about-card p{font-size:13.5px}.nn-about-go{margin-top:14px;font-size:13px}}
+/* 메인 캐릭터 말풍선: 두 줄 (억울한 일은 제보하고, / 제품 후기는 나눠요!) */
+.nn-intro .nn-bubble{white-space:nowrap;border-radius:20px;line-height:1.45;text-align:left;padding:12px 18px}
+@media(max-width:680px){.nn-intro .nn-bubble{border-radius:16px;padding:9px 13px}}

@@ -651,7 +651,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('<script>x</script>', home)
         self.assertIn('<strong>굵게</strong> &lt;i&gt;기울임&lt;/i&gt;', home)
         self.assertIn('지금 막 온 제보', home)
-        self.assertNotIn('억울한 일은 제보하고', home)
+        self.assertNotIn('써 본 건 추천하고', home)
         self.assertIn('>제보하기</a><a class="nn-intro-link"', home)  # required field left blank falls back to default
         admin.post('/admin/content', data={'_csrf': token, 'reset_section': 'home'})
         self.assertIn('억울한 일은 제보하고', self.client.get('/').get_data(as_text=True))
@@ -4259,7 +4259,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             for t in ('points', 'vs_votes', 'vs_comments', 'vs_polls', 'editor_apps'): db.execute('DELETE FROM ' + t)
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('nn-about', home); self.assertIn('소보루는 소비자끼리 돕는 커뮤니티예요', home); self.assertIn('nn-talk', home)
+        self.assertIn('nn-about', home); self.assertIn('소보루에서는 이런 걸 해요', home); self.assertIn('nn-talk', home)
         me, uid = self.member_client('cm_writer', '수다쟁이')
         r = self.post_form(me, '/board/write?type=post', {'kind': 'post', 'head': '질문', 'title': '헬스장 환불 되나요?', 'body': '두 달 다니고 이사 가요. 환불 되나요?', 'agree': '1'})
         self.assertEqual(r.status_code, 302)

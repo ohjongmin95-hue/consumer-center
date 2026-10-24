@@ -8,7 +8,7 @@
 <main class="sb-wrap cm cx">
   <header class="cm-head">
     <div>
-      <h1><img class="bread h" src="{{ asset('img/bread/creambun.svg') }}" alt="" width="40" height="40">{{ ui('feed.title', '내돈내산 후기') }}</h1>
+      <h1><span class="bread h" aria-hidden="true">🧁</span>{{ ui('feed.title', '내돈내산 후기') }}</h1>
       <p>{{ ui('feed.intro', '직접 돈 내고 산 것, 다녀온 곳만. 광고 없이 소비자끼리 나누는 솔직한 후기예요.') }}</p>
     </div>
     <a class="cm-btn" href="{{ url_for('board_write', type='review') }}">{{ ui('feed.write', '후기 쓰기') }}</a>

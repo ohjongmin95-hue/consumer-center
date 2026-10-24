@@ -8,7 +8,7 @@
 <main class="sb-wrap cm cx">
   <header class="cm-head">
     <div>
-      <h1><img class="bread h" src="{{ asset('img/bread/talkbun.svg') }}" alt="" width="40" height="40">{{ ui('suda.title', '수다방') }}</h1>
+      <h1><span class="bread h" aria-hidden="true">🍩</span>{{ ui('suda.title', '수다방') }}</h1>
       <p>{{ ui('suda.intro', '매너 있게, 광고 없이, 아무 얘기나. 궁금한 건 질문 말머리로 물어보세요.') }}</p>
     </div>
     <a class="cm-btn" href="{{ url_for('board_write', type='post', head=head or None) }}">{{ ui('suda.write', '수다 떨기') }}</a>
