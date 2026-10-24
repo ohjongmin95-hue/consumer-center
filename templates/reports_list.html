@@ -2,67 +2,80 @@
 {% block title %}제보 목록 | {{ txt('site.name') }}{% endblock %}
 {% macro qs() %}{% set kw = kwargs %}{{ url_for(ep.list, status=kw.get('status', status) or None, review=kw.get('review', review) or None, sort=kw.get('sort', sort) or None, q=kw.get('q', q) or None, mine=('1' if kw.get('mine', mine) else None), track=kw.get('track', track) or None, assignee=kw.get('assignee', assignee) or None, page=kw.get('page') ) }}{% endmacro %}
 {% block content %}
-<main class="cs-page">
-  <div class="cs-head">
-    <h1 class="cs-title">제보 목록</h1>
-    <form class="cs-search" method="get" role="search">
+{# 토스식 목록: 단계는 밑줄 탭 한 줄, 분류·담당·검토는 펼치는 칩 한 줄, 표는 제목 칸에 접수번호·유형을 함께 적어 열을 줄임 #}
+{% set filtered = track or assignee or review %}
+{% set track_label = '미분류' if track == 'none' else TRIAGE_TRACKS.get(track, '') %}
+{% set rv_label = reviews[review_keys[review]] if review else '' %}
+<main class="cs-page jl-page">
+  <div class="jl-head">
+    <h1 class="cs-title">제보 목록 <span class="jl-total">{{ total }}건</span></h1>
+    <form class="jl-search" method="get" role="search">
       {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}{% if review %}<input type="hidden" name="review" value="{{ review }}">{% endif %}{% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}{% if mine %}<input type="hidden" name="mine" value="1">{% endif %}{% if track %}<input type="hidden" name="track" value="{{ track }}">{% endif %}{% if assignee %}<input type="hidden" name="assignee" value="{{ assignee }}">{% endif %}
-      <input type="search" name="q" value="{{ q }}" placeholder="접수번호, 제목, 업체로 찾기" aria-label="제보 검색"><button class="cs-btn" type="submit">찾기</button>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+      <input type="search" name="q" value="{{ q }}" placeholder="접수번호, 제목, 업체로 찾기" aria-label="제보 검색"><button type="submit" class="jl-search-go">찾기</button>
     </form>
   </div>
 
-  <nav class="cs-tabs" aria-label="진행 단계별 보기">
-    <a href="{{ qs(status='') }}"{% if not status %} class="on"{% endif %}>전체 <b>{{ all_count }}</b></a>
-    {% for s in STAGE_STATUS %}<a href="{{ qs(status=s) }}"{% if status == s %} class="on"{% endif %}>{{ stage_names()[loop.index0] }} <b>{{ counts.get(s, 0) }}</b></a>{% endfor %}
-    {% if layout == 'reporter_base.html' %}<a class="cs-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
+  <nav class="jl-tabs" aria-label="진행 단계별 보기">
+    <a href="{{ qs(status='') }}"{% if not status %} class="on" aria-current="page"{% endif %}>전체 <b>{{ all_count }}</b></a>
+    {% for s in STAGE_STATUS %}<a href="{{ qs(status=s) }}"{% if status == s %} class="on" aria-current="page"{% endif %}>{{ stage_names()[loop.index0] }} <b>{{ counts.get(s, 0) }}</b></a>{% endfor %}
+    {% if layout == 'reporter_base.html' %}<a class="jl-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
   </nav>
 
   {% if legacy_pending %}
-  <form class="pend-bar" method="post" action="{{ url_for('admin_publish_pending') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    <p><b>승인을 기다리던 공개 제보가 {{ legacy_pending }}건 있어요.</b> 자동 게시로 바뀌기 전에 들어와서 아직 사이트에 '비공개'로 보여요.</p>
+  <form class="pend-bar jl-pend" method="post" action="{{ url_for('admin_publish_pending') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <p><b>승인을 기다리던 공개 제보 {{ legacy_pending }}건</b>이 아직 '비공개'로 보여요.</p>
     <button class="cs-btn cs-btn-main" type="submit" onclick="return confirm('{{ legacy_pending }}건을 지금 게시할까요? 전화번호·이메일은 자동으로 가려져요.')">한 번에 게시하기</button>
   </form>
   {% endif %}
-  {# AI 분류와 담당자별 몰아 보기. 개수는 전체 제보 기준 #}
-  <div class="tri-bar">
-    <nav class="rv-filter" aria-label="AI 분류별 보기">
-      <a href="{{ qs(track='', page=None) }}"{% if not track %} class="on"{% endif %}>분류 전체</a>
-      {% for k, v in TRIAGE_TRACKS.items() %}<a href="{{ qs(track=k, page=None) }}"{% if track == k %} class="on"{% endif %}>{{ v }} <b>{{ track_counts.get(k, 0) }}</b></a>{% endfor %}
-      <a href="{{ qs(track='none', page=None) }}"{% if track == 'none' %} class="on"{% endif %}>미분류 <b>{{ track_counts.get('', 0) }}</b></a>
-    </nav>
-    <nav class="rv-filter" aria-label="담당자별 보기">
-      <a href="{{ qs(assignee='', page=None) }}"{% if not assignee %} class="on"{% endif %}>담당 전체</a>
-      {% for a in assignee_counts %}<a href="{{ qs(assignee=(a['name'] or '-'), page=None) }}"{% if assignee == (a['name'] or '-') %} class="on"{% endif %}>{{ a['name'] or '미배정' }} <b>{{ a['n'] }}</b></a>{% endfor %}
-    </nav>
-  </div>
-  {# 검토 결과(미검토·정상·중복·제외)는 진행 단계와 따로 거름. 개수는 전체 제보 기준 #}
-  <div class="rv-bar">
-    <nav class="rv-filter" aria-label="검토 결과별 보기">
-      <a href="{{ qs(review='', page=None) }}"{% if not review %} class="on"{% endif %}>검토 전체</a>
-      {% for key, val in review_keys.items() %}<a class="rv-f-{{ key }}{% if review == key %} on{% endif %}" href="{{ qs(review=key, page=None) }}">{{ reviews[val] }} <b>{{ review_counts[key] }}</b></a>{% endfor %}
-    </nav>
-    <a class="rv-sort{% if sort %} on{% endif %}" href="{{ qs(sort=('' if sort else 'new_first'), page=None) }}" aria-pressed="{{ 'true' if sort else 'false' }}"><span class="rv-sort-box" aria-hidden="true"></span>미검토 먼저 보기</a>
+
+  {# 거르기 칩: 누르면 목록이 펼쳐짐. 개수는 전체 제보 기준 #}
+  <div class="jl-filters">
+    <details class="jl-pick{% if review %} on{% endif %}">
+      <summary>{{ rv_label or '검토' }}{% if not review and review_counts['new'] %} <em>미검토 {{ review_counts['new'] }}</em>{% endif %}</summary>
+      <div class="jl-menu" aria-label="검토 결과별 보기">
+        <a href="{{ qs(review='', page=None) }}"{% if not review %} class="on"{% endif %}>전체</a>
+        {% for key, val in review_keys.items() %}<a class="{{ 'on' if review == key }}" href="{{ qs(review=key, page=None) }}">{{ reviews[val] }} <b>{{ review_counts[key] }}</b></a>{% endfor %}
+      </div>
+    </details>
+    <details class="jl-pick{% if track %} on{% endif %}">
+      <summary>{{ track_label or 'AI 분류' }}</summary>
+      <div class="jl-menu" aria-label="AI 분류별 보기">
+        <a href="{{ qs(track='', page=None) }}"{% if not track %} class="on"{% endif %}>전체</a>
+        {% for k, v in TRIAGE_TRACKS.items() %}<a href="{{ qs(track=k, page=None) }}"{% if track == k %} class="on"{% endif %}>{{ v }} <b>{{ track_counts.get(k, 0) }}</b></a>{% endfor %}
+        <a href="{{ qs(track='none', page=None) }}"{% if track == 'none' %} class="on"{% endif %}>미분류 <b>{{ track_counts.get('', 0) }}</b></a>
+      </div>
+    </details>
+    <details class="jl-pick{% if assignee %} on{% endif %}">
+      <summary>{{ ('미배정' if assignee == '-' else assignee) if assignee else '담당자' }}</summary>
+      <div class="jl-menu" aria-label="담당자별 보기">
+        <a href="{{ qs(assignee='', page=None) }}"{% if not assignee %} class="on"{% endif %}>전체</a>
+        {% for a in assignee_counts %}<a href="{{ qs(assignee=(a['name'] or '-'), page=None) }}"{% if assignee == (a['name'] or '-') %} class="on"{% endif %}>{{ a['name'] or '미배정' }} <b>{{ a['n'] }}</b></a>{% endfor %}
+      </div>
+    </details>
+    {% if filtered %}<a class="jl-reset" href="{{ qs(track='', assignee='', review='', page=None) }}">초기화</a>{% endif %}
+    <a class="jl-switch{% if sort %} on{% endif %}" href="{{ qs(sort=('' if sort else 'new_first'), page=None) }}" role="switch" aria-checked="{{ 'true' if sort else 'false' }}"><span class="jl-switch-track" aria-hidden="true"></span>미검토 먼저</a>
   </div>
 
-  <div class="cs-table-wrap">
-    <table class="cs-table cs-table-list">
-      <colgroup><col class="w-no"><col class="w-cat"><col><col class="w-co"><col class="w-pub"><col class="w-rv"><col class="w-st"><col class="w-as"><col class="w-dt"></colgroup>
-      <thead><tr><th class="c-no">접수번호</th><th class="c-cat">유형</th><th class="c-sub">제목</th><th class="c-co">업체</th><th class="c-pub">공개</th><th class="c-rv">검토</th><th class="c-st">단계</th><th class="c-as">담당</th><th class="c-dt">접수일</th></tr></thead>
+  <div class="cs-table-wrap jl-wrap">
+    <table class="jl-table">
+      <colgroup><col><col class="w-co"><col class="w-st"><col class="w-as"><col class="w-dt"></colgroup>
+      <thead><tr><th>제보</th><th>업체</th><th>상태</th><th>담당</th><th class="c-dt">접수일</th></tr></thead>
       <tbody>
       {% for c in cases %}
+      {% set tr = track_of.get(c['id']) %}
       <tr class="{{ 'is-new' if c['status'] == STATUSES[0] }}" data-href="{{ url_for(ep.case, case_id=c['id']) }}">
-        <td class="mono c-no"><a href="{{ url_for(ep.case, case_id=c['id']) }}">{{ c['receipt'] }}</a></td>
-        <td class="c-cat" title="{{ (c['industry'] ~ ' · ' if c['industry']) ~ c['category'] }}">{{ c['category'] }}</td>
-        <td class="cs-subject c-sub">{% set tr = track_of.get(c['id']) %}{% if tr and tr['track'] %}<span class="tri-chip tri-{{ tr['track'] }}">{{ '취재' if tr['track'] == 'story' else '자동' }}</span>{% endif %}<a href="{{ url_for(ep.case, case_id=c['id']) }}" title="{{ c['subject'] }}">{{ c['subject'] }}</a></td>
-        <td class="c-co" title="{{ c['company'] }}">{{ c['company'] }}</td>
-        <td class="c-pub">{% if not c['public_consent'] %}<span class="pub-chip is-secret" title="제보자가 비밀글로 접수">비밀</span>{% elif c['published'] %}<span class="pub-chip is-on" title="사이트에 게시 중">공개</span>{% else %}<span class="pub-chip is-off" title="게시되지 않음 (운영자가 내림)">비공개</span>{% endif %}</td>
-        <td class="c-rv"><span class="rv-chip rv-{{ c['review'] or 'new' }}">{{ reviews[c['review']] if c['review'] in reviews else c['review'] }}</span></td>
-        <td class="c-st"><span class="cs-status s{{ stage_of(c['status']) }}">{{ stage_names()[stage_of(c['status']) - 1] }}</span></td>
-        <td class="c-as" title="{{ c['assignee'] or '' }}">{{ c['assignee'] or '—' }}</td>
-        <td class="mono c-dt" title="{{ c['created'][:16]|replace('T', ' ') }}">{{ c['created'][2:10]|replace('-', '.') }}</td>
+        <td class="jl-sub">
+          <a href="{{ url_for(ep.case, case_id=c['id']) }}" title="{{ c['subject'] }}">{{ c['subject'] }}</a>
+          <span class="jl-meta"><span class="jl-meta-co">{{ c['company'] }}</span><span class="mono">{{ c['receipt'] }}</span><span title="{{ (c['industry'] ~ ' · ' if c['industry']) ~ c['category'] }}">{{ c['category'] }}</span>{% if tr and tr['track'] %}<span class="tri-{{ tr['track'] }}">{{ '취재' if tr['track'] == 'story' else '자동 응답' }}</span>{% endif %}{% if not c['public_consent'] %}<span class="jl-lock" title="제보자가 비밀글로 접수">비밀</span>{% elif not c['published'] %}<span title="게시되지 않음 (운영자가 내림)">비공개</span>{% endif %}</span>
+        </td>
+        <td class="jl-co" title="{{ c['company'] }}">{{ c['company'] }}</td>
+        <td class="jl-st"><span class="cs-status s{{ stage_of(c['status']) }}">{{ stage_names()[stage_of(c['status']) - 1] }}</span>{% if c['review'] != 'ok' %}<span class="rv-chip rv-{{ c['review'] or 'new' }}">{{ reviews[c['review']] if c['review'] in reviews else c['review'] }}</span>{% endif %}</td>
+        <td class="jl-as{% if not c['assignee'] %} is-none{% endif %}" title="{{ c['assignee'] or '' }}">{% if c['assignee'] %}<span class="jl-ava" aria-hidden="true">{{ c['assignee'][:1] }}</span>{% endif %}{{ c['assignee'] or '미배정' }}</td>
+        <td class="c-dt" title="{{ c['created'][:16]|replace('T', ' ') }}">{{ c['created'][5:10]|replace('-', '.') }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="9" class="cs-empty">{{ '조건에 맞는 제보가 없어요.' if q or status or mine or review or track or assignee else '아직 접수된 제보가 없어요.' }}</td></tr>
+      <tr><td colspan="5" class="cs-empty">{{ '조건에 맞는 제보가 없어요.' if q or status or mine or review or track or assignee else '아직 접수된 제보가 없어요.' }}</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -75,4 +88,10 @@
   </nav>
   {% endif %}
 </main>
+<script>
+  // 거르기 칩: 하나를 펼치면 나머지는 닫고, 바깥을 누르면 닫음
+  document.addEventListener('click', function (e) {
+    document.querySelectorAll('.jl-pick[open]').forEach(function (d) { if (!d.contains(e.target)) d.open = false; });
+  });
+</script>
 {% endblock %}

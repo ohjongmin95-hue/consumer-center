@@ -1,16 +1,24 @@
 {% extends 'reporter_base.html' %}
 {% block title %}소보루 기자 로그인 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
-<main class="auth-page">
-  <div class="auth-card">
-    <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+{# 토스식 로그인: PC는 왼쪽 밝은 회색 화면(토스페이스 이모지 그림 + 문구)  + 오른쪽 흰 로그인, 모바일은 위에 귤색 띠 #}
+<main class="sl-page">
+  <aside class="sl-hero" aria-hidden="true">
+    <p class="sl-hero-kicker">SOBORU 기자실</p>
+    <div class="sl-art"><span class="sl-emo sl-emo-main">📰</span><span class="sl-emo sl-emo-1">✍️</span><span class="sl-emo sl-emo-2">📣</span><span class="sl-emo sl-emo-3">🔍</span><span class="sl-emo sl-emo-4">💬</span></div>
+    <p class="sl-hero-title">소비자의 목소리를<br><em>기사로</em> 만드는 곳</p>
+  </aside>
+  <div class="sl-box">
+    <p class="sl-brand"><img src="{{ asset('img/soboru-logo-orange.png') }}" alt="SOBORU" width="136" height="32"><em>기자실</em></p>
+    <h1 class="sl-title">기자 계정으로<br>로그인해 주세요</h1>
+    <p class="sl-lead">관리자가 만들어 준 아이디와 비밀번호를 넣어 주세요.</p>
+    <form class="sl-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
-      <p class="auth-logo"><img class="auth-wm" src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="154" height="30"></p>
-      <h1 class="auth-title">소보루 기자 로그인</h1>
-      <input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="아이디" aria-label="아이디" value="{{ request.form.get('login_id','') }}">
-      <input type="password" name="password" maxlength="64" required autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호">
-      <button class="auth-submit" type="submit">로그인</button>
+      <label class="sl-field"><span>아이디</span><input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="아이디 입력" value="{{ request.form.get('login_id','') }}"></label>
+      <label class="sl-field"><span>비밀번호</span><input type="password" name="password" maxlength="64" required autocomplete="current-password" placeholder="비밀번호 입력"></label>
+      <button class="sl-submit" type="submit">로그인</button>
     </form>
+    <p class="sl-foot">비밀번호를 잊었다면 관리자에게 새 비밀번호를 요청해 주세요.</p>
   </div>
 </main>
 {% endblock %}

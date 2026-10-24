@@ -996,7 +996,8 @@ class SiteTest(unittest.TestCase):
         admin = self.login_admin()
         self.assertIn('pub-chip is-on">공개 중', admin.get('/admin/reports/%d' % ids['public']).get_data(as_text=True))
         listing = admin.get('/admin/reports').get_data(as_text=True)
-        self.assertIn('pub-chip is-on', listing)
+        # 목록은 공개가 기본이라 따로 안 적고, 비밀글만 표시
+        self.assertIn('jl-lock" title="제보자가 비밀글로 접수">비밀', listing)
         self.assertIn('rv-chip rv-new">미검토', listing)
         # 운영자가 사후에 게시를 내리면 목록에는 '비공개'로 제목만, 누르면 조회 비밀번호 창
         self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'hold'})
@@ -2205,7 +2206,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('단순 반품·환불 문의라', page)
         listing = admin.get('/admin/reports').get_data(as_text=True)
         self.assertIn('자동 응답 <b>1</b>', listing)
-        self.assertIn('<span class="tri-chip tri-auto">자동</span>', listing)
+        self.assertIn('<span class="tri-auto">자동 응답</span>', listing)
         self.assertNotIn('환불이 안 돼요', admin.get('/admin/reports?track=story').get_data(as_text=True))
         # 확인하고 보내기: 제보자 메시지로 들어가고 다시 누르면 막음
         body = t['body'].replace('안내드려요.', '안내드려요. (담당자 확인)')
@@ -3017,7 +3018,7 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, '/admin/reports/%d' % ids['내린 제보'], {'form': 'publish_review', 'decision': 'hold'})
         with self.site.conn() as db:
             db.execute('UPDATE cases SET published=0 WHERE id=?', (ids['예전 대기 제보'],))  # 예전 규칙으로 승인 대기
-        self.assertIn('승인을 기다리던 공개 제보가 1건', admin.get('/admin/reports').get_data(as_text=True))
+        self.assertIn('승인을 기다리던 공개 제보 1건', admin.get('/admin/reports').get_data(as_text=True))
         admin.post('/admin/reports/publish-pending', data={'_csrf': self.csrf(admin, '/admin/reports')})
         with self.site.conn() as db:
             pub = {r['subject']: r['published'] for r in db.execute('SELECT subject,published FROM cases')}
