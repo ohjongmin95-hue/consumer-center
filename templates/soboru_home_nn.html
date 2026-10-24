@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% from 'community_macros.html' import top_line as cm_top, sub_line as cm_sub, foot_line as cm_foot, campaign_card %}
-{% from 'soboru_cm_macros.html' import vs_card, suda_row with context %}
 {% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
 {# 뉴닉식 홈: 그림은 맨 위 캐릭터 하나만, 나머지는 글과 토스페이스 이모지.
    글자는 모두 ui('home.…')라 관리자 편집 모드에서 눌러 고치고, 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['home']) #}
@@ -26,14 +25,15 @@
   {# 소보루가 어떤 곳인지: 제보 · 커뮤니티(후기·골라주세요·수다방) 셋을 먼저, 정보는 아래 한 줄 (운영자 요청 2026-10-24) #}
   <section class="nn-about" aria-labelledby="nn-about-h">
     <div class="nn-about-head">
-      <h2 id="nn-about-h">{{ ui('home.about_title', '억울하면 제보하고, 좋으면 자랑하고, 고민되면 물어봐요') }}</h2>
+      <h2 id="nn-about-h">{{ ui('home.about_title', '소보루에서는 이런 걸 해요') }}</h2>
       <p class="nn-sub">{{ ui('home.about_sub', '광고 없이, 직접 겪은 소비자 이야기만 모여요.') }}</p>
+      <span class="nn-about-deco" aria-hidden="true"><i>🍞</i><i>🧁</i><i>🥐</i><i>🍩</i><i>🍰</i></span>
     </div>
     <div class="nn-about-grid">
       <a class="nn-about-card main" href="{{ url_for('info_page', page='guide') }}"><span class="bread" aria-hidden="true">🍞</span><b>{{ ui('home.about1', '억울한 일은 제보') }}</b><p>{{ ui('home.about1_sub', '내용을 정리해 기업에 전달하고, 답변이 올 때까지 진행 상황을 알려 드려요.') }}</p><span class="nn-about-go">{{ ui('home.about1_btn', '제보는 이렇게 해요') }} ›</span></a>
-      <a class="nn-about-card" href="{{ url_for('feed') }}"><span class="bread" aria-hidden="true">🧁</span><b>{{ ui('home.about2', '내돈내산 후기') }}</b><p>{{ ui('home.about2_sub', '직접 돈 내고 산 것, 다녀온 곳만. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}</p><span class="nn-about-go">{{ ui('home.about2_btn', '후기 보기') }} ›</span></a>
-      <a class="nn-about-card" href="{{ url_for('vs_home') }}"><span class="bread" aria-hidden="true">🥐</span><b>{{ ui('home.about3', '골라주세요') }}</b><p>{{ ui('home.about3_sub', '살까 말까, A냐 B냐. 고민을 올리면 이웃들이 30초 만에 골라 줘요.') }}</p><span class="nn-about-go">{{ ui('home.about3_btn', '골라 주러 가기') }} ›</span></a>
-      <a class="nn-about-card" href="{{ url_for('suda') }}"><span class="bread" aria-hidden="true">🍩</span><b>{{ ui('home.about4', '수다방') }}</b><p>{{ ui('home.about4_sub', '지름 인증부터 직장 고민까지. 매너 있게, 광고 없이 아무 얘기나.') }}</p><span class="nn-about-go">{{ ui('home.about4_btn', '수다 보러 가기') }} ›</span></a>
+      <a class="nn-about-card c2" href="{{ url_for('feed') }}"><span class="bread" aria-hidden="true">🧁</span><b>{{ ui('home.about2', '내돈내산 후기') }}</b><p>{{ ui('home.about2_sub', '직접 돈 내고 산 것, 다녀온 곳만. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}</p><span class="nn-about-go">{{ ui('home.about2_btn', '후기 보기') }} ›</span></a>
+      <a class="nn-about-card c3" href="{{ url_for('vs_home') }}"><span class="bread" aria-hidden="true">🥐</span><b>{{ ui('home.about3', '골라주세요') }}</b><p>{{ ui('home.about3_sub', '살까 말까, A냐 B냐. 고민을 올리면 이웃들이 30초 만에 골라 줘요.') }}</p><span class="nn-about-go">{{ ui('home.about3_btn', '골라 주러 가기') }} ›</span></a>
+      <a class="nn-about-card c4" href="{{ url_for('suda') }}"><span class="bread" aria-hidden="true">🍩</span><b>{{ ui('home.about4', '수다방') }}</b><p>{{ ui('home.about4_sub', '지름 인증부터 직장 고민까지. 매너 있게, 광고 없이 아무 얘기나.') }}</p><span class="nn-about-go">{{ ui('home.about4_btn', '수다 보러 가기') }} ›</span></a>
     </div>
     <p class="nn-about-more">{{ ui('home.about_more', '이것도 있어요') }}
       <a href="{{ url_for('life') }}">{{ ui('home.quick_life', '생활정보') }}</a>
@@ -139,17 +139,26 @@
     </a>
   </section>
   {% elif blk == 'talk' %}
-  {% set vs_list = vs_rows(2, state='open')[0] or vs_rows(2)[0] %}{% set sd_list = suda_rows(5)[0] %}
+  {# 골라주세요 · 수다방 두 칸: 똑같은 모양(위 안내 상자 + 아래 최신 4줄). 골라주세요 결과(%)는 고른 사람만 보니 여기선 A vs B만 #}
+  {% set vs_list = vs_rows(4)[0] %}{% set sd_list = suda_rows(4)[0] %}{% set topic = today_topic() %}
   <section class="nn-sec nn-talk">
     <div class="nn-talk-grid">
       <div class="nn-talk-col">
         <div class="nn-sec-head"><h2><span class="bread" aria-hidden="true">🥐</span> {{ ui('home.vs_title', '골라주세요') }}</h2><a href="{{ url_for('vs_home') }}">{{ ui('home.vs_more', '고민 더 보기 ›') }}</a></div>
-        <div class="vs-grid one">{% for p in vs_list %}{{ vs_card(p, '/vs/' ~ p['id']) }}{% else %}<a class="sb-cm-card nn-fill" href="{{ url_for('vs_new') }}"><h3>{{ ui('home.vs_empty', '살까 말까, 이웃에게 물어보세요') }}</h3><p>{{ ui('home.vs_empty_sub', 'A와 B만 적으면 30초 만에 올라가요.') }}</p><span class="nn-fill-go">{{ ui('vs.new', '고민 올리기') }} ›</span></a>{% endfor %}</div>
+        <a class="nn-talk-box" href="{{ url_for('vs_new') }}"><p>{{ ui('home.vs_box_k', '고민될 땐') }}</p><b>{{ ui('home.vs_empty', '살까 말까, 이웃에게 물어보세요') }}</b><span>{{ ui('vs.new', '고민 올리기') }} ›</span></a>
+        <div class="nn-trows">{% for p in vs_list %}<a class="nn-trow" href="{{ url_for('vs_post', poll_id=p['id']) }}">
+          <span class="nn-trow-t"><em class="nn-tag{{ ' on' if p['state'] == 'open' }}">{{ ui('vs.s_open', '고르는 중') if p['state'] == 'open' else ui('vs.s_done', '결말 나옴') if p['state'] == 'done' else ui('vs.s_wait', '결말 기다리는 중') }}</em><b>{{ p['title'] }}</b></span>
+          <span class="nn-trow-m"><span class="nn-ab"><i>A</i>{{ p['a'] }} <small>vs</small> <i>B</i>{{ p['b'] }}</span><span>{{ ui('vs.n_picked', '{n}명 골라줌', n=p['n']) }}</span></span></a>
+        {% else %}<p class="nn-empty">{{ ui('home.vs_none', '아직 올라온 고민이 없어요. 첫 고민을 올려 보세요.') }}</p>{% endfor %}</div>
       </div>
       <div class="nn-talk-col">
         <div class="nn-sec-head"><h2><span class="bread" aria-hidden="true">🍩</span> {{ ui('home.suda_title', '수다방') }}</h2><a href="{{ url_for('suda') }}">{{ ui('home.suda_more', '수다 더 보기 ›') }}</a></div>
-        {% set topic = today_topic() %}{% if topic %}<a class="sd-today mini" href="{{ url_for('board_write', type='post', head='잡담', topic=topic) }}"><p class="sd-today-k">{{ ui('suda.today', '오늘의 수다') }}</p><b>{{ topic }}</b><span>{{ ui('suda.today_go', '이 주제로 쓰기') }} ›</span></a>{% endif %}
-        <div class="sd-list">{% for p in sd_list %}{{ suda_row(p) }}{% else %}<p class="nn-empty">{{ ui('suda.empty', '아직 수다가 없어요. 첫 수다를 떨어 보세요.') }}</p>{% endfor %}</div>
+        {% if topic %}<a class="nn-talk-box" href="{{ url_for('board_write', type='post', head='잡담', topic=topic) }}"><p>{{ ui('suda.today', '오늘의 수다') }}</p><b>{{ topic }}</b><span>{{ ui('suda.today_go', '이 주제로 쓰기') }} ›</span></a>
+        {% else %}<a class="nn-talk-box" href="{{ url_for('board_write', type='post') }}"><p>{{ ui('suda.today', '오늘의 수다') }}</p><b>{{ ui('home.suda_box', '오늘 있었던 일, 편하게 얘기해요') }}</b><span>{{ ui('suda.write', '수다 떨기') }} ›</span></a>{% endif %}
+        <div class="nn-trows">{% for p in sd_list %}<a class="nn-trow" href="{{ url_for('board_post', post_id=p['id']) }}">
+          <span class="nn-trow-t"><em class="nn-tag">{{ p['head'] }}</em><b>{{ p['title'] }}</b>{% if p['comments'] %}<small class="nn-c">{{ p['comments'] }}</small>{% endif %}</span>
+          <span class="nn-trow-m"><span>{{ p['nickname'] }}</span><span>{{ ago_text(p['created']) }}</span><span>{{ ui('suda.likes', '추천 {n}', n=p['likes']) }}</span></span></a>
+        {% else %}<p class="nn-empty">{{ ui('suda.empty', '아직 수다가 없어요. 첫 수다를 떨어 보세요.') }}</p>{% endfor %}</div>
       </div>
     </div>
   </section>
