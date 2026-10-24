@@ -60,7 +60,10 @@
       ]
     ],
     "extra": {
-      "site": "https://soboru.co.kr"
+      "site": "https://soboru.co.kr",
+      "eas": {
+        "projectId": "e3bf6ae9-e0d5-4794-b564-03e496b5d815"
+      }
     }
   }
 }
