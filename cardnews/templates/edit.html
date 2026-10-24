@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% block title %}카드뉴스 #{{ c.id }} · 소보루 카드뉴스{% endblock %}
+{% block head %}
+<style>
+.cn{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:900px){.cn{grid-template-columns:minmax(0,1fr)}}
+.cn-view{position:sticky;top:16px}
+.cn-stage{position:relative;width:100%;aspect-ratio:4/5;overflow:hidden;border-radius:16px;background:#f2ece2;box-shadow:0 8px 28px rgba(101,45,28,.16);touch-action:pan-y;user-select:none;outline:none}
+.cn-track{display:flex;height:100%;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.cn-slide{flex:0 0 100%;height:100%}.cn-slide svg{display:block;width:100%;height:100%}
+.cn-nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.92);box-shadow:0 1px 6px rgba(0,0,0,.2);font-size:20px;padding:0;color:#652D1C}
+.cn-nav.prev{left:8px}.cn-nav.next{right:8px}.cn-nav[disabled]{opacity:0;pointer-events:none}
+.cn-dots{display:flex;justify-content:center;gap:6px;margin:12px 0 2px}.cn-dots button{width:7px;height:7px;border-radius:50%;border:0;padding:0;background:#d9cbb8}.cn-dots button.on{background:#EF920E;width:18px;border-radius:4px}
+.cn-count{text-align:center;font-size:13px;color:#6b6f76;margin:0}
+.cn-form h3{margin:22px 0 6px;font:800 16px Pretendard,sans-serif;color:#652D1C}
+.cn-cover{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;align-items:center;margin:4px 0}
+.cn-check{padding:0;margin:0}.cn-check li{margin:6px 0;list-style:none}.cn-check b{display:inline-block;width:24px}
+.cn-check .ok b{color:#0a7a50}.cn-check .bad b{color:#c22}.cn-check .eye b{color:#c77700}.cn-check small{display:block;margin-left:24px;color:#6b6f76}
+</style>{% endblock %}
+{% block content %}
+<h1>카드뉴스 #{{ c.id }}</h1>
+<p class="meta"><a href="{{ url_for('home') }}">← 목록</a> · 기사: <a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ c.title or c.url }}</a>
+  · {% if c.status == 'ready' %}<span class="badge ok">체크리스트 통과</span>{% else %}<span class="badge bad">확인 필요</span>{% endif %}</p>
+
+<div class="cn">
+  <section class="cn-view" aria-label="카드 미리보기">
+    <div class="cn-stage" id="cn-stage"><div class="cn-track" id="cn-track"></div>
+      <button type="button" class="cn-nav prev" id="cn-prev" aria-label="이전 카드">‹</button><button type="button" class="cn-nav next" id="cn-next" aria-label="다음 카드">›</button></div>
+    <div class="cn-dots" id="cn-dots"></div><p class="cn-count" id="cn-count"></p>
+    <div class="actions">
+      <button type="button" class="primary" id="cn-down"{% if not (c.status == 'ready' or c.confirmed) %} disabled{% endif %}>PNG + 캡션 내려받기</button>
+      <button type="button" id="cn-copy">캡션 복사</button>
+    </div>
+    {% if not (c.status == 'ready' or c.confirmed) %}<p class="meta">체크리스트에 걸린 항목이 있어서 아직 내려받을 수 없어요. 확인하고 '직접 확인했어요'에 체크해 저장해 주세요.</p>{% endif %}
+    <p class="meta" id="cn-msg" role="status"></p>
+  </section>
+
+  <section>
+    <div class="panel"><h2>올리기 전 10초 체크리스트</h2>
+      <ul class="cn-check">{% for k in c.checks %}<li class="{{ 'ok' if k.ok == true else ('bad' if k.ok == false else 'eye') }}"><b>{{ '✓' if k.ok == true else ('✕' if k.ok == false else '👀') }}</b>{{ k.label }}<small>{{ k.note }}</small></li>{% endfor %}</ul>
+      {% if c.facts.others %}<p class="meta">맞춰 본 다른 기사: {% for o in c.facts.others %}<a href="{{ o.url }}" target="_blank" rel="noopener noreferrer">{{ o.media or '기사' }}</a> ({{ o.via }}){{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+    </div>
+
+    <form class="panel cn-form" method="post" id="cn-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="data" id="cn-data">
+      <h2>글 고치기</h2><p class="meta">고치면 왼쪽 카드에 바로 보여요. 다 고치면 저장을 눌러 주세요 (저장할 때 체크리스트를 다시 검사해요).</p>
+      <h3>표지</h3>
+      <label>맨 위 줄 ('주제어 | 한 줄 설명', 주제어는 주황 말풍선에 들어가요)<input type="text" data-k="topic"></label>
+      <label>이모지 (맨 위 줄 끝)<input type="text" data-k="emoji"></label>
+      <p class="meta">표지 문구 후보 5개 중 하나를 골라요 (첫째 줄: 궁금증, 둘째 줄: 핵심 숫자·사실)</p>
+      <div id="cn-covers"></div>
+      <div id="cn-cards"></div>
+      <h3>마지막 장: 행동 팁 3개</h3><div id="cn-tips"></div>
+      <p class="meta">마무리 한 줄 (기본은 저장 유도. 공유형은 가끔만)</p>
+      <label class="check"><input type="radio" name="cn-end" value="save"> 헷갈리면 저장해 두세요</label>
+      <label class="check"><input type="radio" name="cn-end" value="share"> 공유형 (아래 문구)</label>
+      <input type="text" data-k="share_line" aria-label="공유형 마무리 문구">
+      <h3>캡션</h3>
+      <label>캡션 본문 (출처 줄과 해시태그는 자동으로 붙어요)<textarea data-k="caption" rows="6"></textarea></label>
+      <label>해시태그 (띄어쓰기로 구분)<input type="text" id="cn-tags"></label>
+      <div class="row"><label>출처 매체<input type="text" data-k="source.media"></label><label>보도 날짜<input type="text" data-k="source.date" placeholder="2026.10.24"></label></div>
+      <label class="check"><input type="checkbox" name="confirmed" value="1"{% if c.confirmed %} checked{% endif %}> 기사 원문과 숫자·사실을 직접 확인했어요 (체크리스트에 걸린 항목이 있어도 내려받을 수 있게)</label>
+      <div class="actions"><button type="submit" class="primary" name="act" value="save">저장</button></div>
+    </form>
+
+    <div class="panel"><h2>그림</h2>
+      <p class="meta">표지는 플랫 일러스트, 본문은 인포그래픽, 마지막 장은 소보루 캐릭터예요. 그림이 마음에 안 들면 다시 그려요 (글은 그대로, 1~3분).</p>
+      <div class="actions">
+        <form method="post" data-art><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="art">그림 다시 그리기</button></form>
+        <form method="post" onsubmit="return confirm('이 카드뉴스를 지울까요? 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="delete" class="danger">지우기</button></form>
+      </div>
+    </div>
+  </section>
+</div>
+<script id="cn-json" type="application/json">{{ {'d': d, 'id': c.id, 'assets': {'title': url_for('static', filename='fonts/Pretendard-ExtraBold.otf'), 'body': url_for('static', filename='fonts/Pretendard-Bold.otf'), 'character': url_for('static', filename='soboru-character.png')}}|tojson }}</script>
+<script>
+(function(){
+// 소보루 카드 모양: 크림 바탕 · 갈색 큰 제목 + 주황 밑줄 · 주황 말풍선 · 둥근 그림 액자 · 소보루 부스러기 · 마지막 장 캐릭터
+var J=JSON.parse(document.getElementById('cn-json').textContent),d=J.d,W=1080,H=1350;
+var C={or:'#EF920E',brown:'#652D1C',cream:'#FFF6E6',crumb:'#F7D49E',hi:'#FFD99E',text:'#4A3A30',sub:'#8A6F5A',line:'#F1D3A6',blue:'#3D7BE0'};
+var ctx=document.createElement('canvas').getContext('2d'),cur=0;
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fam(f){return f==='T'?'CardTitle':'CardBody'}
+function tw(t,px,f){ctx.font=px+'px '+fam(f)+', sans-serif';return ctx.measureText(t).width}
+// 낱말 단위로 줄바꿈 (keep-all), 한 낱말이 너무 길면 글자로 자름
+function wrap(t,px,f,max){var out=[];String(t||'').split('\n').forEach(function(p){var line='';p.split(/\s+/).filter(Boolean).forEach(function(w){var c=line?line+' '+w:w;if(tw(c,px,f)<=max){line=c;return}if(line)out.push(line);while(tw(w,px,f)>max){var k=w.length;while(k>1&&tw(w.slice(0,k),px,f)>max)k--;out.push(w.slice(0,k));w=w.slice(k)}line=w});if(line)out.push(line)});return out}
+function text(x,y,s,px,f,fill,anchor){return '<text x="'+x+'" y="'+y+'" font-family="'+fam(f)+'" font-size="'+px+'" fill="'+fill+'"'+(anchor?' text-anchor="'+anchor+'"':'')+'>'+esc(s)+'</text>'}
+function chip(x,y,s,bg,fg){var px=30,w=Math.ceil(tw(s,px,'T'))+48;return {w:w,s:'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="58" rx="29" fill="'+bg+'"/>'+text(x+24,y+40,s,px,'T',fg)}}
+// 소보루 부스러기 (모서리 장식)
+function crumbs(x,y,k){var p=[[0,0,16],[34,-14,10],[52,18,13],[20,30,8],[78,0,7],[66,-30,6],[-20,24,6]],s='';p.forEach(function(q,i){s+='<circle cx="'+(x+q[0]*k)+'" cy="'+(y+q[1]*k)+'" r="'+(q[2]*k)+'" fill="'+(i%3===1?C.or:C.crumb)+'"'+(i%3===1?' fill-opacity=".55"':'')+'/>'});return s}
+// 큰 제목: 줄마다 글자 뒤에 형광펜 밑줄 (hl이면)
+function headline(lines,y,px,lh,fill,hl){var s='';lines.forEach(function(l){if(hl)s+='<rect x="54" y="'+(y-px*0.36)+'" width="'+(Math.ceil(tw(l,px,'T'))+14)+'" height="'+Math.round(px*0.42)+'" rx="10" fill="'+hl+'"/>';s+=text(60,y,l,px,'T',fill);y+=lh});return {s:s,y:y-lh}}
+function tags(list,y,dark){var s='',x=60,cx=x,px=30,h=56;(list||[]).forEach(function(t){if(!t.text)return;var w=Math.ceil(tw(t.text,px,'B'))+(t.dir?84:44);if(cx+w>W-60&&cx>x){cx=x;y+=h+12}
+  s+='<rect x="'+cx+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="28" fill="'+(dark?'#7A3B27':'#fff')+'" stroke="'+(dark?'#9A5A42':C.line)+'" stroke-width="3"/>'+text(cx+22,y+38,t.text,px,'B',dark?C.cream:C.brown);
+  var ax=cx+w-38,ay=y+h/2;if(t.dir)s+='<circle cx="'+ax+'" cy="'+ay+'" r="17" fill="'+(t.dir==='up'?C.or:C.blue)+'"/>'+(t.dir==='up'?'<path d="M'+ax+' '+(ay-9)+'l9 10h-5v8h-8v-8h-5z" fill="#fff"/>':'<path d="M'+ax+' '+(ay+9)+'l9 -10h-5v-8h-8v8h-5z" fill="#fff"/>');
+  cx+=w+12});return {s:s,y:list&&list.filter(function(t){return t.text}).length?y+h:y-12}}
+// 그림은 둥근 액자 안에 (아래쪽 주제가 보이게 맞춤)
+function frame(svg,i,top,dark){var bottom=1222,h=Math.max(bottom-top,260);top=bottom-h;var id='clip'+i;
+  var inner=svg?svg.replace(/^<svg[^>]*>/,'<svg x="60" y="'+top+'" width="960" height="'+h+'" viewBox="0 0 1080 720" preserveAspectRatio="xMidYMid slice">'):'<rect x="60" y="'+top+'" width="960" height="'+h+'" fill="'+(dark?'#7A3B27':'#F3E7D3')+'"/>';
+  return '<defs><clipPath id="'+id+'"><rect x="60" y="'+top+'" width="960" height="'+h+'" rx="48"/></clipPath></defs><g clip-path="url(#'+id+')">'+inner+'</g><rect x="60" y="'+top+'" width="960" height="'+h+'" rx="48" fill="none" stroke="'+(dark?'#9A5A42':C.line)+'" stroke-width="4"/>'}
+function foot(i,n,dark){var label=(i+1)+' / '+n;return text(60,1296,'SOBORU',34,'T',dark?C.crumb:C.brown)+'<rect x="900" y="1262" width="120" height="48" rx="24" fill="'+(dark?'#7A3B27':'#fff')+'" stroke="'+(dark?'#9A5A42':C.line)+'" stroke-width="2"/>'+text(960,1295,label,26,'B',dark?C.cream:C.brown,'middle')}
+function head(topic,y,dark){var p=String(topic||'').split('|'),k=p.length>1?p[0].trim():'소보루 체크',rest=(p.length>1?p.slice(1).join('|'):p[0]).trim();var c=chip(60,y,k,C.or,'#fff');
+  var r=wrap(rest,28,'B',W-60-(80+c.w))[0]||'';return c.s+text(80+c.w,y+39,r,28,'B',dark?C.crumb:C.sub)}
+function cover(i,n){var c=d.covers[d.cover_pick]||{line1:'',line2:''},a=headline(wrap(c.line1,66,'T',960),262,66,86,C.brown),b=headline(wrap(c.line2,74,'T',960),a.y+100,74,94,C.or,C.hi),t=tags(d.cover_tags,b.y+44);
+  return '<rect width="'+W+'" height="'+H+'" fill="'+C.cream+'"/>'+crumbs(950,96,1.3)+head(d.topic+(d.emoji?' '+d.emoji:''),88)+a.s+b.s+t.s+frame(d.cover_art,i,Math.max(t.y+44,600))+foot(i,n)}
+function body(c,i,n,dark){var tl=String(c.title||'').split('\n').filter(Boolean).reduce(function(a,l){return a.concat(wrap(l,60,'T',960))},[]),a=headline(tl,250,60,80,dark?C.cream:C.brown,dark?'#9A4A2E':C.hi),y=a.y+70,s='';
+  wrap(c.body,38,'B',960).forEach(function(l){s+=text(60,y,l,38,'B',dark?C.crumb:C.text);y+=58});var t=tags(c.tags,y-14,dark);
+  return '<rect width="'+W+'" height="'+H+'" fill="'+(dark?C.brown:C.cream)+'"/>'+(dark?crumbs(960,100,1.1):'')+'<g>'+chip(60,88,c.kicker||'',dark?C.or:C.brown,'#fff').s+'</g>'+a.s+s+t.s+frame(c.art,i,Math.max(t.y+40,700),dark)+foot(i,n,dark)}
+function last(i,n){var a=headline(['이것만 챙겨요'],262,66,86,C.brown,C.hi),y=a.y+56,s='';(d.tips||[]).forEach(function(tip,k){var ls=wrap(tip,38,'B',800),h=Math.max(104,ls.length*54+50);
+  s+='<rect x="60" y="'+y+'" width="960" height="'+h+'" rx="34" fill="#fff" stroke="'+C.line+'" stroke-width="3"/><circle cx="124" cy="'+(y+h/2)+'" r="32" fill="'+C.or+'"/>'+text(124,y+h/2+12,k+1,34,'T','#fff','middle');
+  ls.forEach(function(l,j){s+=text(180,y+h/2-(ls.length-1)*27+j*54+13,l,38,'B',C.text)});y+=h+20});
+  // 마무리: 저장 유도(책갈피) 또는 공유형(종이비행기)
+  var share=d.end==='share',end=share?(d.share_line||'꼭 필요한 친구한테 보내 주세요'):'헷갈리면 저장해 두세요',ew=Math.min(Math.ceil(tw(end,38,'T')),760),sy=Math.max(y+30,880);
+  var icon=share?'<path d="M92 '+(sy+40)+'l34-16-10 34-7-12z" fill="'+C.crumb+'"/><path d="M92 '+(sy+40)+'l17 6 17-22z" fill="'+C.or+'"/>':'<path d="M96 '+(sy+20)+'h26v38l-13-9-13 9z" fill="'+C.crumb+'"/>';
+  var save='<rect x="60" y="'+sy+'" width="'+(ew+110)+'" height="76" rx="38" fill="'+C.brown+'"/>'+icon+text(140,sy+51,end,38,'T',C.cream),src=d.source||{};
+  return '<rect width="'+W+'" height="'+H+'" fill="'+C.cream+'"/>'+crumbs(950,96,1.3)+chip(60,88,'소보루 체크리스트',C.or,'#fff').s+a.s+s+save
+    +'<image href="'+J.char+'" x="640" y="930" width="380" height="293"/>'
+    +text(60,1060+Math.max(0,sy-880),'출처: '+(src.media||'기사')+' '+(src.date||'')+' 보도',26,'B',C.sub)+text(60,1098+Math.max(0,sy-880),'그림은 AI로 새로 그렸어요',26,'B',C.sub)+foot(i,n)}
+function slides(){var n=(d.cards||[]).length+2,out=[cover(0,n)];(d.cards||[]).forEach(function(c,k){out.push(body(c,k+1,n,k===d.cards.length-1))});out.push(last(n-1,n));return out}
+function wrapSvg(inner,style){return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">'+(style||'')+inner+'</svg>'}
+
+// ---- 미리보기 (인스타처럼 옆으로 넘김) ----
+var track=document.getElementById('cn-track'),dots=document.getElementById('cn-dots');
+function draw(){J.char=J.assets.character;var s=slides();track.innerHTML=s.map(function(x){return '<div class="cn-slide">'+wrapSvg(x)+'</div>'}).join('');
+  dots.innerHTML=s.map(function(_,i){return '<button type="button" aria-label="'+(i+1)+'번째 카드"></button>'}).join('');
+  dots.querySelectorAll('button').forEach(function(b,i){b.onclick=function(){go(i)}});go(Math.min(cur,s.length-1))}
+function go(i){var n=track.children.length;cur=Math.max(0,Math.min(n-1,i));track.style.transform='translateX(-'+(cur*100)+'%)';
+  dots.querySelectorAll('button').forEach(function(b,k){b.classList.toggle('on',k===cur)});document.getElementById('cn-count').textContent=(cur+1)+' / '+n;
+  document.getElementById('cn-prev').disabled=cur===0;document.getElementById('cn-next').disabled=cur===n-1}
+document.getElementById('cn-prev').onclick=function(){go(cur-1)};document.getElementById('cn-next').onclick=function(){go(cur+1)};
+var stage=document.getElementById('cn-stage'),sx=null;stage.tabIndex=0;
+stage.addEventListener('pointerdown',function(e){sx=e.clientX});stage.addEventListener('pointerup',function(e){if(sx!==null&&Math.abs(e.clientX-sx)>40)go(cur+(e.clientX<sx?1:-1));sx=null});
+stage.addEventListener('keydown',function(e){if(e.key==='ArrowRight')go(cur+1);if(e.key==='ArrowLeft')go(cur-1)});
+
+// ---- 글 고치기 칸 ----
+function field(label,val,on,area){var l=document.createElement('label');l.textContent=label;var x=document.createElement(area?'textarea':'input');if(!area)x.type='text';x.value=val||'';x.oninput=function(){on(x.value);draw()};l.appendChild(x);return l}
+function getK(k){return k.split('.').reduce(function(o,p){return o[p]},d)}
+function setK(k,v){var p=k.split('.'),o=d;while(p.length>1)o=o[p.shift()];o[p[0]]=v}
+document.querySelectorAll('[data-k]').forEach(function(x){x.value=getK(x.dataset.k)||'';x.oninput=function(){setK(x.dataset.k,x.value);draw()}});
+var hx=document.getElementById('cn-tags');hx.value=(d.hashtags||[]).map(function(h){return '#'+h}).join(' ');hx.oninput=function(){d.hashtags=hx.value.split(/\s+/).map(function(h){return h.replace(/#/g,'')}).filter(Boolean)};
+var cv=document.getElementById('cn-covers');d.covers.forEach(function(c,i){var row=document.createElement('div');row.className='cn-cover';var r=document.createElement('input');r.type='radio';r.name='cn-pick';r.checked=i===d.cover_pick;r.setAttribute('aria-label',(i+1)+'번 후보 고르기');r.onchange=function(){d.cover_pick=i;draw();go(0)};row.appendChild(r);
+  ['line1','line2'].forEach(function(k){var x=document.createElement('input');x.type='text';x.value=c[k];x.setAttribute('aria-label',(i+1)+'번 후보 '+(k==='line1'?'첫째':'둘째')+' 줄');x.oninput=function(){c[k]=x.value;draw()};row.appendChild(x)});cv.appendChild(row)});
+var cc=document.getElementById('cn-cards');(d.cards||[]).forEach(function(c,i){var h=document.createElement('h3');h.textContent=(i+2)+'번째 장'+(i===d.cards.length-1?' (인사이트)':'');cc.appendChild(h);
+  cc.appendChild(field('말풍선',c.kicker,function(v){c.kicker=v}));cc.appendChild(field('큰 제목 (두 줄이면 줄바꿈)',c.title,function(v){c.title=v},true));cc.appendChild(field('본문',c.body,function(v){c.body=v},true))});
+var tp=document.getElementById('cn-tips');(d.tips||[]).forEach(function(t,i){tp.appendChild(field((i+1)+'번 팁',t,function(v){d.tips[i]=v}))});
+document.querySelectorAll('[name=cn-end]').forEach(function(r){r.checked=r.value===(d.end||'save');r.onchange=function(){d.end=r.value;draw();go(track.children.length-1)}});
+document.getElementById('cn-form').addEventListener('submit',function(){document.getElementById('cn-data').value=JSON.stringify(d)});
+document.querySelectorAll('[data-art]').forEach(function(f){f.addEventListener('submit',function(){setTimeout(function(){var b=f.querySelector('button');b.disabled=true;b.textContent='그리는 중…'},0)})});
+
+// ---- 내려받기: 카드마다 PNG(1080×1350) + caption.txt를 zip 하나로 ----
+function caption(){var s=d.source||{},src=['출처:',s.media||'기사',s.date||'','보도'].filter(Boolean).join(' ')+(s.url?'\n'+s.url:'');return [String(d.caption||'').trim(),src,(d.hashtags||[]).map(function(h){return '#'+h}).join(' ')].filter(Boolean).join('\n\n')}
+function asData(u,type){return fetch(u).then(function(r){return r.arrayBuffer()}).then(function(b){var a=new Uint8Array(b),s='';for(var i=0;i<a.length;i+=32768)s+=String.fromCharCode.apply(null,a.subarray(i,i+32768));return 'data:'+type+';base64,'+btoa(s)})}
+function png(svg){return new Promise(function(ok,no){var img=new Image(),u=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));img.onload=function(){setTimeout(function(){var cv=document.createElement('canvas');cv.width=W;cv.height=H;var g=cv.getContext('2d');g.drawImage(img,0,0,W,H);URL.revokeObjectURL(u);cv.toBlob(function(b){b?b.arrayBuffer().then(function(x){ok(new Uint8Array(x))}):no()},'image/png')},150)};img.onerror=no;img.src=u})}
+var T=new Uint32Array(256);for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[n]=c>>>0}
+function crc(a){var c=0xFFFFFFFF;for(var i=0;i<a.length;i++)c=T[(c^a[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0}
+function put(v,fields){fields.forEach(function(f){f[2]===4?v.setUint32(f[0],f[1],true):v.setUint16(f[0],f[1],true)})}
+function zip(files){var parts=[],dir=[],off=0;files.forEach(function(f){var name=new TextEncoder().encode(f.name),cr=crc(f.data),h=new DataView(new ArrayBuffer(30)),e=new DataView(new ArrayBuffer(46));
+  put(h,[[0,0x04034b50,4],[4,20,2],[6,0x0800,2],[8,0,2],[10,0,2],[12,0x21,2],[14,cr,4],[18,f.data.length,4],[22,f.data.length,4],[26,name.length,2],[28,0,2]]);
+  put(e,[[0,0x02014b50,4],[4,20,2],[6,20,2],[8,0x0800,2],[10,0,2],[12,0,2],[14,0x21,2],[16,cr,4],[20,f.data.length,4],[24,f.data.length,4],[28,name.length,2],[30,0,2],[32,0,2],[34,0,2],[36,0,2],[38,0,4],[42,off,4]]);
+  parts.push(h.buffer,name,f.data);dir.push(e.buffer,name);off+=30+name.length+f.data.length});
+  var size=dir.reduce(function(a,b){return a+b.byteLength},0),end=new DataView(new ArrayBuffer(22));put(end,[[0,0x06054b50,4],[8,files.length,2],[10,files.length,2],[12,size,4],[16,off,4]]);
+  return new Blob(parts.concat(dir,[end.buffer]),{type:'application/zip'})}
+var msg=document.getElementById('cn-msg'),down=document.getElementById('cn-down');
+down.onclick=function(){down.disabled=true;msg.textContent='PNG를 만드는 중이에요…';
+  Promise.all([asData(J.assets.title,'font/otf'),asData(J.assets.body,'font/otf'),asData(J.assets.character,'image/png')]).then(function(a){
+    var style='<defs><style>@font-face{font-family:CardTitle;src:url('+a[0]+') format("opentype")}@font-face{font-family:CardBody;src:url('+a[1]+') format("opentype")}</style></defs>';
+    J.char=a[2];var s=slides();J.char=J.assets.character;var files=[],chain=Promise.resolve();
+    s.forEach(function(x,i){chain=chain.then(function(){return png(wrapSvg(x,style))}).then(function(b){files.push({name:'soboru-card-'+String(i+1).padStart(2,'0')+'.png',data:b})})});
+    return chain.then(function(){files.push({name:'caption.txt',data:new TextEncoder().encode(caption())});var l=document.createElement('a');l.href=URL.createObjectURL(zip(files));l.download='soboru-cardnews-'+J.id+'.zip';document.body.appendChild(l);l.click();l.remove();
+      msg.textContent='내려받았어요: 카드 '+s.length+'장 + caption.txt';down.disabled=false})
+  }).catch(function(){msg.textContent='PNG를 만들지 못했어요. 크롬에서 다시 해 주세요.';down.disabled=false})};
+document.getElementById('cn-copy').onclick=function(){navigator.clipboard.writeText(caption()).then(function(){msg.textContent='캡션을 복사했어요 (출처·해시태그 포함).'})};
+
+Promise.all([new FontFace('CardTitle','url('+J.assets.title+')').load(),new FontFace('CardBody','url('+J.assets.body+')').load()]).then(function(f){f.forEach(function(x){document.fonts.add(x)});draw()}).catch(draw);
+})();
+</script>
+{% endblock %}

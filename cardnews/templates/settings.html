@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}설정 · 소보루 카드뉴스{% endblock %}
+{% block content %}
+<h1>설정</h1>
+<p class="meta">키는 이 컴퓨터의 <code>data/config.json</code>에만 저장돼요. 저장한 키는 화면에 다시 보여 주지 않아요. 바꿀 때만 새로 넣고, 그대로 두려면 칸을 비워 두세요.</p>
+<form method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="panel"><h2>Claude (글·그림)</h2>
+    {% if env_key %}<p class="meta">컴퓨터 환경변수 ANTHROPIC_API_KEY의 키를 쓰고 있어요.</p>{% endif %}
+    <label>Claude API 키 {% if masked.key %}<span class="badge ok">저장됨 {{ masked.key }}</span>{% endif %}<input type="password" name="key" autocomplete="off" placeholder="sk-ant-로 시작 (platform.claude.com > API Keys)"></label>
+    {% if masked.key %}<label class="check"><input type="checkbox" name="clear_key" value="1"> 저장한 키 지우기</label>{% endif %}
+    <label>모델<select name="model">{% for k, name in models %}<option value="{{ k }}"{% if cfg.model == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+    <label>그림 담당<select name="art">{% for a in artists %}<option value="{{ a }}"{% if cfg.art == a %} selected{% endif %}>{{ {'claude': 'Claude (도형 일러스트·인포그래픽)'}.get(a, a) }}</option>{% endfor %}</select></label>
+    <p class="meta">힉스필드는 API 키를 받으면 여기에 추가할 수 있게 자리를 만들어 뒀어요.</p>
+  </div>
+  <div class="panel"><h2>사실 확인용 기사 찾기</h2>
+    <p class="meta">같은 뉴스를 다룬 다른 언론사 기사를 찾아 숫자·사실을 맞춰 봐요. 네이버 키가 있으면 네이버 뉴스 검색을 먼저 쓰고, 모자라면 Claude 웹 검색으로 채워요.</p>
+    <label>네이버 키 종류<select name="naver_kind"><option value="dev"{% if cfg.naver_kind == 'dev' %} selected{% endif %}>네이버 개발자센터 검색 API (developers.naver.com)</option><option value="hub"{% if cfg.naver_kind == 'hub' %} selected{% endif %}>네이버 클라우드 API HUB</option></select></label>
+    <div class="row"><label>Client ID{% if cfg.naver_id %} <span class="badge ok">저장됨</span>{% endif %}<input type="text" name="naver_id" autocomplete="off" placeholder="{{ cfg.naver_id or '' }}"></label>
+      <label>Client Secret {% if masked.naver_secret %}<span class="badge ok">저장됨</span>{% endif %}<input type="password" name="naver_secret" autocomplete="off"></label></div>
+    {% if cfg.naver_id %}<label class="check"><input type="checkbox" name="clear_naver_id" value="1"> 네이버 키 지우기</label>{% endif %}
+    <label class="check"><input type="checkbox" name="web_search" value="1"{% if cfg.web_search %} checked{% endif %}> Claude 웹 검색도 쓰기 (검색 1번에 약 15원, Claude 콘솔에서 웹 검색이 켜져 있어야 해요)</label>
+  </div>
+  <div class="panel"><h2>매일 자동 만들기</h2>
+    <label class="check"><input type="checkbox" name="auto" value="1"{% if cfg.auto %} checked{% endif %}> 매일 최근 소비자 뉴스로 초안 만들기</label>
+    <div class="row"><label>시각<select name="hour">{% for h in range(5, 23) %}<option value="{{ h }}"{% if cfg.hour == h %} selected{% endif %}>{{ h }}시</option>{% endfor %}</select></label>
+      <label>하루<select name="per_day">{% for n in per_day %}<option value="{{ n }}"{% if cfg.per_day == n %} selected{% endif %}>{{ n }}개</option>{% endfor %}</select></label></div>
+    <p class="meta">이 프로그램이 켜져 있을 때 정한 시각이 지나면 만들어요. 그 시각에 꺼져 있었으면 다음에 켤 때 만들어요.</p>
+  </div>
+  <div class="actions"><button class="primary">저장</button></div>
+</form>
+{% endblock %}
