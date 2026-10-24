@@ -462,3 +462,16 @@ body.console .sl-field input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px #f2f
 .sl-art::before,.sl-art::after{content:"";position:absolute;border-radius:50%;background:var(--ad-orange)}
 .sl-art::before{width:14px;height:14px;left:calc(50% + 40px);top:calc(50% - 170px);opacity:.9}
 .sl-art::after{width:10px;height:10px;left:calc(50% - 90px);top:calc(50% + 150px);opacity:.5}
+/* 로그인: 왼쪽 배경은 연한 귤색, 버튼·강조는 로고 귤색(#ef920e) */
+.sl-page{--sl-logo:#ef920e}
+.sl-hero{background:linear-gradient(160deg,#fff6e8 0%,#ffe9c7 100%)}
+.sl-hero-kicker{color:#8a5a12}
+.sl-hero-kicker::before,.sl-art::before,.sl-art::after{background:var(--sl-logo)}
+.sl-hero-title em{color:var(--sl-logo)}
+.sl-emo-main{background:linear-gradient(145deg,#ffc766 0%,var(--sl-logo) 100%);box-shadow:0 24px 60px rgba(239,146,14,.35)}
+.sl-emo-1,.sl-emo-3{background:#fff;box-shadow:0 12px 32px rgba(180,110,0,.12)}
+.sl-emo{box-shadow:0 12px 32px rgba(180,110,0,.12)}
+.sl-submit{background:var(--sl-logo)}
+.sl-submit:hover{background:#e08508;box-shadow:0 8px 20px rgba(239,146,14,.3)}
+body.console .sl-field input:focus{border-color:var(--sl-logo);box-shadow:0 0 0 4px rgba(239,146,14,.14)}
+.sl-brand em{background:#fff4e0;color:#b86e00}
