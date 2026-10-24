@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{# 소보루 통합 검색: 제보 · 기업 · 커뮤니티 · 매거진 · 동네일자리 · 사전. soboru_search.py site_search() #}
+{% block title %}{% if q %}‘{{ q }}’ {{ ui('search.title_q', '검색 결과') }}{% else %}{{ ui('search.title', '검색') }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('search.meta', '소비자 제보, 기업, 내돈내산 후기, 매거진, 동네일자리, 소비자·경제 사전을 한 번에 찾아요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap sr">
+  <section class="sr-hero">
+    <h1>{{ ui('search.h1', '무엇이든 찾아보세요') }}</h1>
+    <form class="sr-box" action="{{ url_for('site_search') }}" method="get" role="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg>
+      <label class="sr-only" for="sr-q">{{ ui('search.label', '검색어') }}</label>
+      <input id="sr-q" name="q" value="{{ q }}" maxlength="40" placeholder="{{ ui('search.ph', '업체 이름, 제품, 피해 내용, 궁금한 말') }}" autocomplete="off"{% if not q %} autofocus{% endif %}>
+      {% if only %}<input type="hidden" name="t" value="{{ only }}">{% endif %}
+      <button type="submit">{{ ui('search.go', '찾기') }}</button>
+    </form>
+    <p class="sr-pop"><span>{{ ui('search.popular', '많이 찾는 말') }}</span>{% for w in SEARCH_POPULAR %}<a href="{{ url_for('site_search', q=w) }}">{{ w }}</a>{% endfor %}</p>
+  </section>
+  {% if q %}
+  <nav class="sr-tabs" aria-label="{{ ui('search.tabs', '찾을 곳') }}">
+    <a href="{{ url_for('site_search', q=q) }}"{% if not only %} class="on" aria-current="true"{% endif %}>{{ ui('search.all', '전체') }}</a>
+    {% for k, n, e in sections %}<a href="{{ url_for('site_search', q=q, t=k) }}"{% if only == k %} class="on" aria-current="true"{% endif %}><i class="tf" aria-hidden="true">{{ e }}</i>{{ n }}{% if not only and res[k] %} <b>{{ res[k]|length }}{% if res[k]|length >= 5 %}+{% endif %}</b>{% endif %}</a>{% endfor %}
+  </nav>
+  {% if total %}
+  <div class="sr-groups">
+    {% for k, n, e in sections if res[k] %}
+    <section class="sr-group s-{{ k }}" aria-labelledby="sr-h-{{ k }}">
+      <header><span class="sr-ico tf" aria-hidden="true">{{ e }}</span><h2 id="sr-h-{{ k }}">{{ n }}</h2>{% if not only and k in more %}<a href="{{ more[k] }}{{ q|urlencode }}">{{ ui('search.more', '더 보기') }} ›</a>{% elif not only %}<a href="{{ url_for('site_search', q=q, t=k) }}">{{ ui('search.more', '더 보기') }} ›</a>{% endif %}</header>
+      <ul>{% for x in res[k] %}
+        <li><a href="{{ x.href }}">
+          <span class="sr-top">{% if x.tag %}<em>{{ x.tag }}</em>{% endif %}<b>{{ x.title|hl(q) }}</b></span>
+          {% if x.sub %}<small>{{ x.sub|hl(q) }}</small>{% endif %}
+          {% if x.text %}<span class="sr-text">{{ x.text|hl(q) }}</span>{% endif %}
+        </a></li>{% endfor %}
+      </ul>
+    </section>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="sr-empty"><span class="tf" aria-hidden="true">🔍</span><b>{{ ui('search.none', '‘{q}’로 찾은 게 없어요', q=q) }}</b><p>{{ ui('search.none_d', '낱말을 줄이거나 다른 말로 찾아보세요. 억울한 일이라면 바로 제보할 수 있어요.') }}</p>
+    <a class="sr-cta" href="{{ url_for('report') }}">{{ ui('sb.cta', '제보하기') }}</a></div>
+  {% endif %}
+  {% else %}
+  <div class="sr-start">
+    {% for k, n, e in sections %}<div class="s-{{ k }}"><span class="tf" aria-hidden="true">{{ e }}</span><b>{{ n }}</b><small>{{ {'report': '다른 사람이 겪은 피해와 기업 답변', 'company': '업체 이름·브랜드로 등급과 제보', 'post': '내돈내산 후기·수다·질문', 'life': '알아 두면 돈이 되는 생활 기사', 'job': '우리 동네 알바·일자리', 'dict': '청약철회·리볼빙 같은 어려운 말'}[k] }}</small></div>{% endfor %}
+  </div>
+  {% endif %}
+</main>
+{% endblock %}
