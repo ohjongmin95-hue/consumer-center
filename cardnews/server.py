@@ -500,6 +500,8 @@ def settings():
     c = config()
     if request.method == 'POST':
         f = request.form; had_hf = cards.hf_ready(c)
+        if f.get('naver_id', '').strip() and f.get('naver_id', '').strip() != c['naver_id'] and not f.get('naver_secret', '').strip():
+            flash('네이버 Client ID를 바꿀 때는 Client Secret도 같이 넣어 주세요 (예전 Secret과 짝이 안 맞아요).'); return redirect(url_for('settings'))
         for k in SECRETS + ('naver_id',):
             v = f.get(k, '').strip()
             if v or f.get('clear_' + k): c[k] = '' if f.get('clear_' + k) else v  # 비워 두면 그대로, '지우기'를 고르면 지움
