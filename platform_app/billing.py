@@ -391,9 +391,42 @@ def page():
         if (ready() or c24) and can and not b:  # 포트원에 줄 고객 키: 추측할 수 없는 값으로 한 번 만들어 둔다
             db.execute('INSERT INTO billing(company_id,customer_key) VALUES(?,?)',(co['id'],'cs_'+secrets.token_urlsafe(24)));b=row(db,co['id'])
         use=usage(db,co,b)
-    return render_template('b_billing.html',co=co,bl=b,locked=not open_ok(co),pays=pays,p=plan((b['want_tier'] or b['tier']) if b else None),tiers=tiers(),use=use,ready=ready(),may=can,c24=c24,c24_old=isinstance(c24,tuple),sdk=SDK,store_id=core.secret('PORTONE_STORE_ID'),
-                           channel_key=core.secret('PORTONE_CHANNEL_KEY'),mail=mail_of(co),ok_url=url_for('pay.done',_external=True),
-                           fail_url=url_for('pay.fail',_external=True),tab='settings')
+    p=plan((b['want_tier'] or b['tier']) if b else None);once=None
+    if ready() and can and b and b['status'] in ('none','ended') and not c24:  # 첫 달 바로 결제: 결제 번호는 여기서 정해 이 브라우저 세션에만 둔다
+        once=dict(id=f"SOBORU1-{co['id']}-{core.now():%Y%m%d%H%M%S}-{secrets.token_hex(3)}",tier=p['key'],amount=int(p['price']))
+        session['pay_once']=once
+    return render_template('b_billing.html',co=co,bl=b,locked=not open_ok(co),pays=pays,p=p,tiers=tiers(),use=use,ready=ready(),may=can,c24=c24,c24_old=isinstance(c24,tuple),sdk=SDK,store_id=core.secret('PORTONE_STORE_ID'),
+                           channel_key=core.secret('PORTONE_CHANNEL_KEY'),pay_channel_key=core.secret('PORTONE_PAY_CHANNEL_KEY') or core.secret('PORTONE_CHANNEL_KEY'),mail=mail_of(co),ok_url=url_for('pay.done',_external=True),
+                           fail_url=url_for('pay.fail',_external=True),once=once,once_url=url_for('pay.once',_external=True),tab='settings')
+
+@bp.route('/billing/once')
+def once():
+    """'첫 달 요금 바로 결제' 창에서 돌아옴 (?paymentId=). 운영자 결정 2026-10-24: 카드사 심사는 결제창 금액 = 화면 금액이어야 해서,
+    체험 없이 첫 달을 일반 결제로 바로 받는 길을 둔다. 이 브라우저에서 만든 결제 번호만, 포트원에 상태·금액을 직접 확인한 뒤 켠다.
+    빌링키가 없으니 다음 달 자동 결제는 카드를 등록해야 된다 (안 하면 결제일에 '등록된 카드가 없어요'로 멈춘다)."""
+    if not session.get('co_id'):return redirect(url_for('login'))
+    co,can=company()
+    if not can:abort(403)
+    if request.args.get('code'):
+        flash('결제를 취소했거나 하지 못했어요. '+clean(request.args.get('message'),150),'error');return redirect(url_for('pay.page'))
+    o=session.get('pay_once') or {};pid=clean(request.args.get('paymentId'),100)
+    if not ready() or not pid or pid!=o.get('id'):flash('결제 요청이 맞지 않아요. 다시 해 주세요.','error');return redirect(url_for('pay.page'))
+    try:s,d=_call('GET','/payments/'+_q(pid)+store_q())
+    except PayError as e:flash(str(e),'error');return redirect(url_for('pay.page'))
+    amt=int(o.get('amount') or 0)
+    if s!=200 or d.get('status')!='PAID' or int((d.get('amount') or {}).get('total') or 0)!=amt or d.get('currency')!='KRW':  # 금액을 바꿔 결제한 것은 받지 않는다
+        flash('결제가 확인되지 않았어요: '+(_msg(d,s) if s!=200 else '결제 상태나 금액이 맞지 않아요.'),'error');return redirect(url_for('pay.page'))
+    t=tier(o.get('tier'))
+    with conn() as db:
+        if not db.execute('SELECT 1 FROM billing_payments WHERE order_id=?',(pid,)).fetchone():
+            db.execute("INSERT INTO billing_payments(company_id,order_id,amount,status,payment_key,receipt,created,memo) VALUES(?,?,?,'done',?,?,?,?)",
+                       (co['id'],pid,amt,clean(d.get('pgTxId'),200),clean(d.get('receiptUrl'),500),core.iso(),f"{t['name']} {amt:,}원 (첫 달 바로 결제)"))
+            db.execute("UPDATE billing SET tier=?,want_tier='',plan_name=?,price=?,source='',started=CASE started WHEN '' THEN ? ELSE started END,canceled='',fails=0,note='',warned='' WHERE company_id=?",
+                       (t['key'],t['name'],amt,core.iso(),co['id']))
+            paid(db,co['id'],today())
+    session.pop('pay_once',None)
+    flash(f"{t['name']} 첫 달 요금 {amt:,}원을 결제했어요. 다음 달부터 자동으로 결제하려면 카드를 등록해 주세요.",'ok')
+    return redirect(url_for('pay.page'))
 
 @bp.route('/billing/done')
 def done():

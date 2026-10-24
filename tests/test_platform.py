@@ -2817,6 +2817,43 @@ class PlatformTest(unittest.TestCase):
                 if v is None:os.environ.pop(k,None)
                 else:os.environ[k]=v
 
+    def test_portone_pay_once(self):
+        """첫 달 바로 결제 (카드사 심사용: 결제창 금액 = 화면 금액): 이 세션이 만든 결제 번호만, 포트원에 PAID·금액을 확인한 뒤 켠다. 다음 달은 카드 등록이 있어야 결제된다."""
+        bl=sys.modules['billing'];shops=sys.modules['shops']
+        b,o,cid=self.signup_and_approve('바로결제상점','pay-once@example.com')
+        env={'PORTONE_STORE_ID':'store-abc','PORTONE_CHANNEL_KEY':'channel-key-bill','PORTONE_PAY_CHANNEL_KEY':'channel-key-once','PORTONE_API_SECRET':'po-secret-1'}
+        old_env={k:os.environ.get(k) for k in env};os.environ.update(env)
+        res={'pay':(200,{'status':'PAID','amount':{'total':49000},'currency':'KRW','pgTxId':'kcp-1','receiptUrl':'https://receipt.example/once'})};calls=[]
+        def http(method,url,headers=None,body=None,**kw):
+            calls.append((method,url))
+            if '/payments/' in url and method=='GET':return res['pay']
+            return 404,{}
+        old=shops.http;shops.http=http
+        def st():
+            with self.core.conn() as db:return db.execute('SELECT * FROM billing WHERE company_id=?',(cid,)).fetchone()
+        def plan_of():
+            with self.core.conn() as db:return db.execute('SELECT plan FROM companies WHERE id=?',(cid,)).fetchone()[0]
+        try:
+            h=b.get('/biz/billing').get_data(as_text=True)
+            self.assertIn('data-once',h);self.assertIn('첫 달 49,000원 바로 결제하기',h);self.assertIn('totalAmount:49000',h);self.assertIn('channel-key-once',h)
+            pid=re.search(r'paymentId:"(SOBORU1-[^"]+)"',h).group(1)
+            b.get('/biz/billing/once?paymentId=SOBORU1-forged');self.assertEqual(st()['status'],'none');self.assertEqual(calls,[])  # 이 세션이 만든 번호가 아니면 묻지도 않는다
+            res['pay']=(200,{'status':'PAID','amount':{'total':100},'currency':'KRW'})
+            b.get('/biz/billing/once?paymentId='+pid);self.assertEqual(st()['status'],'none');self.assertEqual(plan_of()=='paid',False)  # 금액이 다르면 받지 않는다
+            res['pay']=(200,{'status':'PAID','amount':{'total':49000},'currency':'KRW','pgTxId':'kcp-1','receiptUrl':'https://receipt.example/once'})
+            b.get('/biz/billing/once?paymentId='+pid);s=st()
+            self.assertEqual((s['status'],s['tier'],s['price']),('active','basic',49000));self.assertEqual(plan_of(),'paid');self.assertTrue(s['started'])
+            self.assertEqual(s['next_charge'],bl.add_month(bl.today()).isoformat())
+            h=b.get('/biz/billing').get_data(as_text=True)
+            self.assertIn('https://receipt.example/once',h);self.assertIn('카드 등록하기 (다음 달부터 자동 결제)',h);self.assertNotIn('data-once',h)
+            b.get('/biz/billing/once?paymentId='+pid)
+            with self.core.conn() as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM billing_payments WHERE company_id=?',(cid,)).fetchone()[0],1)  # 같은 결제는 한 번만
+        finally:
+            shops.http=old
+            for k,v in old_env.items():
+                if v is None:os.environ.pop(k,None)
+                else:os.environ[k]=v
+
     def test_followup_in_same_chat_gets_alert_and_ai(self):
         """같은 대화방(DM 등)에 고객이 이어서 물으면, 사장님이 직접 답하던 대화나 승인을 기다리던 문의라도 알림이 뜨고 AI가 앞 대화까지 보고 답한다.
         AI가 답을 만드는 사이에 고객이 또 쓰면 그 답은 버리고 다음 차례가 대화 전체에 답한다."""

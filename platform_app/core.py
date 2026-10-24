@@ -266,6 +266,7 @@ SECRETS={'SWEETTRACKER_T_KEY':('택배 조회 키','스마트택배(tracking.swe
          'CAFE24_WEBHOOK_KEY':('카페24 웹훅 인증정보','카페24 개발자센터 > 앱 > WebHook 화면 아래 인증정보. 수신 URL에 기업 주소/hook/cafe24 를 넣고 이벤트는 \'앱 삭제(90077)\'를 골라요'),
          'PORTONE_STORE_ID':('포트원 상점 아이디','포트원 관리자콘솔 > 연동 정보 > 식별코드·API Keys의 상점 아이디 (store-로 시작). 정기결제용'),
          'PORTONE_CHANNEL_KEY':('포트원 채널 키','포트원 관리자콘솔 > 연동 정보 > 채널 관리에서 정기결제(빌링키) 채널의 채널 키 (channel-key-로 시작). 시험 채널 키로는 실제 돈이 나가지 않아요'),
+         'PORTONE_PAY_CHANNEL_KEY':('포트원 일반결제 채널 키 (선택)','\'첫 달 바로 결제\'에 쓸 일반결제 채널의 채널 키. NHN KCP처럼 일반결제와 정기결제 채널이 따로면 넣어요. 비우면 위 채널 키를 써요'),
          'PORTONE_API_SECRET':('포트원 API 시크릿','포트원 관리자콘솔 > 연동 정보 > 식별코드·API Keys의 V2 API Secret'),
          'NAVER_SITE_VERIFICATION_BIZ':('네이버 서치어드바이저 소유 확인 (기업 사이트)','searchadvisor.naver.com > 사이트 등록 > HTML 태그 방식의 content 값만 넣어요'),
          'GOOGLE_SITE_VERIFICATION_BIZ':('구글 서치 콘솔 소유 확인 (기업 사이트)','search.google.com/search-console > URL 접두어 > HTML 태그 방식의 content 값만 넣어요')}
