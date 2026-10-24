@@ -5,8 +5,8 @@
 <style>
 @font-face{font-family:Pretendard;font-weight:700;src:url({{ url_for('static', filename='fonts/Pretendard-Bold.otf') }}) format('opentype')}
 @font-face{font-family:Pretendard;font-weight:800;src:url({{ url_for('static', filename='fonts/Pretendard-ExtraBold.otf') }}) format('opentype')}
-/* 민주의 카드뉴스 제작 프로그램: UI는 토스처럼, 로고는 토스 파랑, 나머지는 알프스 (빙하 호수 청록 버튼·링크, 안개 같은 흰 카드, 하늘·설산·들판 배경), 바탕은 초록 스위스 알프스. 만드는 카드뉴스만 뉴닉+소보루 */
-:root{--or:#1F7A8C;--or-deep:#17606E;--or-soft:#E3F2F4;--link:#1F7A8C;--brown:#191F28;--ink:#191F28;--sub:#6B7684;--line:#E5E8EB;--bg:#EEF7F0;--ok:#00A661;--bad:#F04452;--shadow:0 4px 20px rgba(24,68,46,.08)}
+/* 민주의 카드뉴스 제작 프로그램: UI는 토스처럼, 로고는 토스 파랑, 배경은 알프스(하늘·설산·들판), 버튼·포인트는 귤색, 카드는 안개 같은 흰색, 바탕은 초록 스위스 알프스. 만드는 카드뉴스만 뉴닉+소보루 */
+:root{--or:#F7931E;--or-deep:#E8740C;--or-soft:#FFF1DE;--link:#E8740C;--brown:#191F28;--ink:#191F28;--sub:#6B7684;--line:#E5E8EB;--bg:#EEF7F0;--ok:#00A661;--bad:#F04452;--shadow:0 4px 20px rgba(24,68,46,.08)}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:url({{ url_for('static', filename='alps.svg') }}) center bottom/100% auto no-repeat fixed,linear-gradient(180deg,#E8F4FA 0%,#EFF8F2 42%,#E3F2E7 100%) fixed;color:var(--ink);font:15px/1.6 Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-weight:700;word-break:keep-all}
 a{color:var(--link)}
 .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 28px;background:rgba(255,255,255,.82);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.6)}
@@ -32,7 +32,7 @@ a{color:var(--link)}
 .side .foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
 .side .foot button{width:100%;background:#fff}
 .dots{display:flex;flex-wrap:wrap;gap:6px}.dots span{font-size:12px;padding:5px 9px;border-radius:9px;background:#F2F4F6;color:#6B7684}.dots span.on{background:#E5F8EF;color:var(--ok)}
-.fab{position:fixed;right:30px;bottom:30px;width:64px;height:64px;border-radius:50%;background:var(--or);color:#fff;display:grid;place-items:center;font-size:34px;font-weight:400;text-decoration:none;box-shadow:0 8px 22px rgba(31,122,140,.38);z-index:6}
+.fab{position:fixed;right:30px;bottom:30px;width:64px;height:64px;border-radius:50%;background:var(--or);color:#fff;display:grid;place-items:center;font-size:34px;font-weight:400;text-decoration:none;box-shadow:0 8px 22px rgba(232,116,12,.38);z-index:6}
 .fab:hover{background:var(--or-deep)}
 .tip{position:fixed;right:30px;bottom:110px;z-index:6;display:flex;align-items:flex-end;gap:6px}.tip[hidden]{display:none}
 .tip .bubble{background:#fff;border-radius:20px;padding:16px 18px;box-shadow:0 8px 28px rgba(0,27,55,.14);max-width:260px}
