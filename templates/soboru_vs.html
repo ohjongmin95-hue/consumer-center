@@ -8,7 +8,7 @@
 <main class="sb-wrap cm cx">
   <header class="cm-head">
     <div>
-      <h1>{{ ui('vs.title', '골라주세요') }}</h1>
+      <h1><img class="bread h" src="{{ asset('img/bread/croissant.svg') }}" alt="" width="40" height="40">{{ ui('vs.title', '골라주세요') }}</h1>
       <p>{{ ui('vs.intro', '고민은 30초, 결정은 다 같이. 누구나 골라 줄 수 있고, 써 본 사람이 고른 표는 따로 보여 줘요.') }}</p>
     </div>
     <a class="cm-btn" href="{{ url_for('vs_new') }}">{{ ui('vs.new', '고민 올리기') }}</a>

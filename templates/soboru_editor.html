@@ -5,7 +5,7 @@
 {% block content %}
 {% set picked = f.getlist('product') if f.getlist is defined else [] %}
 <main class="sb-wrap cm cx er">
-  <section class="er-hero">
+  <section class="er-hero"><img class="bread hero" src="{{ asset('img/bread/toast.svg') }}" alt="" width="72" height="72">
     <p class="er-k">{{ ui('editor.kicker', '소보루 후기 에디터 모집') }}</p>
     <h1>{{ ui('editor.h1', '내돈내산 후기 써 주실 분 모집해요') }}</h1>
     <p>{{ ui('editor.sub', '이미 쓰고 있는 제품의 솔직한 후기를 써 주세요. 협찬이 아니라서 아쉬운 점도 그대로 쓰면 돼요.') }}</p>

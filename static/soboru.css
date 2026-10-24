@@ -1750,3 +1750,10 @@ h1.vs-title{font-size:28px}
 .nn-about-more a{height:32px}
 .nn-write a{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .cm-kinds span{padding:16px 16px 15px}
+/* 소보루 빵 아이콘 (static/img/bread, 토스 이모지 느낌) */
+img.bread{display:inline-block;vertical-align:middle;flex:none}
+.nn-about-card img.bread{width:52px;height:52px;margin:-4px 0 6px -4px}
+.nn-talk h2 img.bread{width:30px;height:30px;margin:-4px 2px 0 0}
+.cm-head h1 img.bread.h{width:40px;height:40px;margin:-6px 6px 0 -2px}
+.er-hero img.bread.hero{display:block;width:72px;height:72px;margin:0 auto 6px}
+@media (max-width:760px){.cm-head h1 img.bread.h{width:34px;height:34px}.nn-about-card img.bread{width:44px;height:44px}}
