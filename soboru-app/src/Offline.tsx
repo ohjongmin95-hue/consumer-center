@@ -17,7 +17,7 @@ export default function Offline({ onRetry }: { onRetry: () => void }) {
 
 const s = StyleSheet.create({
   wrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 32 },
-  img: { width: 150, height: 51, marginBottom: 28 },
+  img: { width: 160, height: 32, marginBottom: 28 },
   title: { fontSize: 19, fontWeight: '700', color: '#1F1A17', marginBottom: 8 },
   body: { fontSize: 15, color: '#6B625B', textAlign: 'center', marginBottom: 24 },
   btn: { backgroundColor: ORANGE, borderRadius: 12, paddingHorizontal: 28, paddingVertical: 13 },
