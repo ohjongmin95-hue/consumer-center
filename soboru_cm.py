@@ -1,12 +1,12 @@
-"""소보루 커뮤니티 (품앗히식, 운영자 요청 2026-10-24): 내돈내산 후기 피드 · 골라주세요 · 수다방 · 포인트.
+"""소보루 커뮤니티 (품앗히식, 운영자 요청 2026-10-24): 내돈내산 후기 피드 · 골라주세요 · 수다방.
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 주소를 붙인다. 글·댓글은 게시판(posts·comments)을 그대로 쓰고,
-app.py의 BOARD_HOOKS로 글이 올라갈 때 후기 정보·말머리·영수증·포인트를 더한다.
+app.py의 BOARD_HOOKS로 글이 올라갈 때 후기 정보·말머리·영수증을 더한다.
 - 후기 피드(/feed): 리뷰 글에 상품/장소, 분류, 가격, 구매·방문일, 재구매·재방문 의사, 영수증.
-  영수증은 운영자만 보고(관리자 > 영수증 확인), 확인하면 '영수증 인증' 표시와 포인트.
+  영수증은 운영자만 보고(관리자 > 영수증 확인), 확인하면 '영수증 인증' 표시.
 - 골라주세요(/vs): A vs B 투표. 누구나 한 번 고를 수 있고, 써 본 사람 표는 따로 셈. 마감 뒤 글쓴이가 결말을 남김.
 - 수다방(/suda): 이야기·꿀팁·질문 글을 말머리로 모아 봄. 질문 말머리는 질문 글, 정보 말머리는 꿀팁 글이 됨.
-- 포인트(/me/points): 회원만. 쓰는 곳은 아직 없고 쌓이기만 함.
+- 포인트는 뺌 (운영자 2026-10-24: 쓸 곳 없는 포인트는 안 함). 쌓인 기록(points 표)도 지움. /me/points는 내 정보로.
 - 에디터 모집은 뺌 (운영자 2026-10-24: 에디터 글은 다른 창구로 받아 관리자가 '소보루 에디터' 표시로 올림). /editor는 후기 피드로.
 """
 import datetime, json, re, secrets
@@ -23,9 +23,6 @@ VS_DAYS = (1, 3, 7)
 SUDA_HEADS = ['지름', '질문', '잡담', '정보', '연애', '직장', '인증', '운동']
 HEAD_KIND = {'질문': 'question', '정보': 'tip'}  # 나머지 말머리는 이야기 글
 KIND_HEAD = {'question': '질문', 'tip': '정보', 'post': '잡담'}  # 말머리 없이 쓴 예전 글
-# 포인트: (이름, 점수, 하루에 받는 횟수. 0은 제한 없음)
-POINTS = {'review_ok': ('영수증 인증 후기', 200, 0), 'vote': ('골라주세요 투표', 5, 3), 'vs_end': ('골라주세요 결말', 50, 0),
-          'suda': ('수다 글', 10, 3), 'suda_first': ('첫 수다', 100, 0), 'comment': ('댓글', 10, 5)}
 PAGE = 20
 # 어디서 샀어요? (상품 후기) · 우리 동네 후기 (장소 후기: 시·도 + 구·군)
 SHOPS = ['쿠팡', '네이버', '올리브영', '11번가', 'G마켓·옥션', '컬리', '오늘의집', '무신사', '카카오', '공식몰', '오프라인 매장', '기타']
@@ -50,8 +47,7 @@ def migrate(db):
     db.execute('''CREATE TABLE IF NOT EXISTS vs_comments(id INTEGER PRIMARY KEY,poll_id INTEGER NOT NULL,user_id INTEGER,nickname TEXT NOT NULL,body TEXT NOT NULL,
         pick TEXT NOT NULL DEFAULT '',hidden INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL)''')
     db.execute('CREATE INDEX IF NOT EXISTS vs_comments_poll ON vs_comments(poll_id)')
-    db.execute('''CREATE TABLE IF NOT EXISTS points(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,amount INTEGER NOT NULL,reason TEXT NOT NULL,ref TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
-    db.execute('CREATE INDEX IF NOT EXISTS points_user ON points(user_id)')
+    db.execute('DROP TABLE IF EXISTS points')  # 포인트를 빼면서 쌓인 기록도 지움 (운영자 2026-10-24)
     db.execute('CREATE TABLE IF NOT EXISTS saves(user_id INTEGER NOT NULL,post_id INTEGER NOT NULL,created TEXT NOT NULL,PRIMARY KEY(user_id,post_id))')  # 담아 두기
     db.execute('''CREATE TABLE IF NOT EXISTS owner_news(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,nickname TEXT NOT NULL,shop TEXT NOT NULL,head TEXT NOT NULL,
         title TEXT NOT NULL,body TEXT NOT NULL,link TEXT NOT NULL DEFAULT '',hidden INTEGER NOT NULL DEFAULT 0,ip_hash TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
@@ -78,20 +74,7 @@ def install(S):
     cat_emoji = {t: dict(rows) for t, rows in RV_CATS.items()}
     vs_emoji = dict(VS_CATS)
 
-    # ---- 포인트 -----------------------------------------------------------
-    def award(db, user_id, reason, ref=''):
-        """포인트 주기. 같은 일(ref)로는 한 번만, 하루 횟수가 정해진 일은 그만큼만. 준 점수(못 주면 0)."""
-        if not user_id or reason not in POINTS: return 0
-        _, amount, cap = POINTS[reason]
-        if ref and db.execute('SELECT 1 FROM points WHERE user_id=? AND reason=? AND ref=?', (user_id, reason, ref)).fetchone(): return 0
-        if cap and db.execute('SELECT COUNT(*) FROM points WHERE user_id=? AND reason=? AND created>=?', (user_id, reason, datetime.date.today().isoformat())).fetchone()[0] >= cap: return 0
-        db.execute('INSERT INTO points(user_id,amount,reason,ref,created) VALUES(?,?,?,?,?)', (user_id, amount, reason, ref, stamp()))
-        return amount
-
-    def point_total(user_id):
-        with conn() as db: return db.execute('SELECT COALESCE(SUM(amount),0) FROM points WHERE user_id=?', (user_id,)).fetchone()[0]
-
-    # ---- 게시판에 붙는 일: 글 올리기 전 말머리→종류, 올린 뒤 후기 정보·영수증·포인트, 열 때 조회수 ----
+    # ---- 게시판에 붙는 일 (후기 정보·말머리·조회수) -----------------------
     def on_board(event, db, **kw):
         f = request.form
         if event == 'prepare':
@@ -115,7 +98,7 @@ def install(S):
                     data, ext = S.clean_photo(up.stream.read(S.BOARD_PHOTO_MAX + 1))
                     if data:
                         receipt = secrets.token_hex(16) + '.' + ext; (RECEIPT_DIR / receipt).write_bytes(data); state = 'wait'
-                        flash(S.ui_text('feed.receipt_sent', '영수증을 받았어요. 운영자가 확인하면 영수증 인증 표시와 200P가 붙어요.'))
+                        flash(S.ui_text('feed.receipt_sent', '영수증을 받았어요. 운영자가 확인하면 영수증 인증 표시가 붙어요.'))
                     else: flash(S.ui_text('feed.receipt_bad', '영수증 사진은 8MB 이하 JPG·PNG·WEBP로 다시 올려 주세요. 후기는 올라갔어요.'))
                 shop = f.get('shop', '') if t == 'product' and f.get('shop', '') in SHOPS else ''
                 sido = f.get('sido', '') if t == 'place' and f.get('sido', '') in SIDO else ''
@@ -125,11 +108,6 @@ def install(S):
             else:
                 head = f.get('head', '')
                 db.execute('UPDATE posts SET head=? WHERE id=?', (head if head in SUDA_HEADS else KIND_HEAD.get(kind, ''), pid))
-                if g.user:
-                    got = award(db, g.user['id'], 'suda', 'p%d' % pid) + award(db, g.user['id'], 'suda_first', 'first')
-                    if got: flash(S.ui_text('suda.got', '수다 포인트 {n}P를 받았어요.').replace('{n}', str(got)))
-        elif event == 'comment':
-            if g.user: award(db, g.user['id'], 'comment', 'c%d' % kw['comment_id'])
         elif event == 'view':
             db.execute('UPDATE posts SET views=views+1 WHERE id=?', (kw['post_id'],))
     S.BOARD_HOOKS.append(on_board)
@@ -149,7 +127,7 @@ def install(S):
     def suda_view(p):
         p = dict(p); p['head'] = p.get('head') or KIND_HEAD.get(p.get('kind'), '잡담'); return p
 
-    app.jinja_env.globals.update(RV_TYPES=RV_TYPES, RV_CATS=RV_CATS, SHOPS=SHOPS, SIDO=SIDO, VS_CATS=VS_CATS, SUDA_HEADS=SUDA_HEADS, POINTS=POINTS, point_total=point_total,
+    app.jinja_env.globals.update(RV_TYPES=RV_TYPES, RV_CATS=RV_CATS, SHOPS=SHOPS, SIDO=SIDO, VS_CATS=VS_CATS, SUDA_HEADS=SUDA_HEADS, 
                                  review_view=review_view, suda_view=suda_view)
 
     def search_like(q):
@@ -209,8 +187,8 @@ def install(S):
                 post = db.execute("SELECT * FROM posts WHERE id=? AND kind='review'", (pid,)).fetchone()
                 if not post or act not in ('ok', 'no'): abort(400)
                 db.execute('UPDATE posts SET receipt_state=? WHERE id=?', (act, pid))
-                if act == 'ok' and post['user_id'] and award(db, post['user_id'], 'review_ok', 'p%d' % pid):
-                    S.member_alert(db, post['user_id'], 'points', S.ui_text('feed.alert_ok', '후기 영수증이 인증됐어요. 200P를 드렸어요') + f": {post['title'][:40]}", url_for('board_post', post_id=pid))
+                if act == 'ok' and post['user_id'] and post['receipt_state'] != 'ok':
+                    S.member_alert(db, post['user_id'], 'review', S.ui_text('feed.alert_ok', '후기 영수증이 인증됐어요') + f": {post['title'][:40]}", url_for('board_post', post_id=pid))
                 flash('영수증 인증을 저장했어요.' if act == 'ok' else '인증하지 않음으로 저장했어요.')
                 return redirect(url_for('admin_receipts', show=request.args.get('show', 'wait')))
             show = request.args.get('show', 'wait'); show = show if show in ('wait', 'ok', 'no') else 'wait'
@@ -314,8 +292,7 @@ def install(S):
             if poll_state(p) != 'open': flash(S.ui_text('vs.closed', '마감된 고민이에요.'))
             elif db.execute('INSERT OR IGNORE INTO vs_votes(poll_id,voter,pick,used,user_id,created) VALUES(?,?,?,?,?,?)',
                             (poll_id, S.voter_id(), pick, 1 if request.form.get('used') else 0, g.user['id'] if g.user else None, stamp())).rowcount:
-                got = award(db, g.user['id'], 'vote', 'v%d' % poll_id) if g.user and p['user_id'] != g.user['id'] else 0
-                flash(S.ui_text('vs.voted_p', '골라 줘서 고마워요! {n}P를 받았어요.').replace('{n}', str(got)) if got else S.ui_text('vs.voted', '골라 줘서 고마워요!'))
+                flash(S.ui_text('vs.voted', '골라 줘서 고마워요!'))
             else: flash(S.ui_text('vs.already', '이미 골라 준 고민이에요.'))
         back = request.form.get('next', '')
         return redirect(back if back.startswith('/vs') and '//' not in back else url_for('vs_post', poll_id=poll_id))
@@ -330,9 +307,8 @@ def install(S):
             elif db.execute('SELECT COUNT(*) FROM vs_comments WHERE user_id=? AND created>=?', (g.user['id'], (datetime.datetime.now() - datetime.timedelta(minutes=2)).isoformat(timespec='seconds'))).fetchone()[0] >= 5: flash(S.ui_text('msg.m13', '잠시 후 다시 남겨 주세요.'))
             else:
                 mine = db.execute('SELECT pick FROM vs_votes WHERE poll_id=? AND voter=?', (poll_id, S.voter_id())).fetchone()
-                cid = db.execute('INSERT INTO vs_comments(poll_id,user_id,nickname,body,pick,created) VALUES(?,?,?,?,?,?)',
-                                 (poll_id, g.user['id'], g.user['nickname'], body, mine['pick'] if mine else '', stamp())).lastrowid
-                award(db, g.user['id'], 'comment', 'vc%d' % cid)
+                db.execute('INSERT INTO vs_comments(poll_id,user_id,nickname,body,pick,created) VALUES(?,?,?,?,?,?)',
+                           (poll_id, g.user['id'], g.user['nickname'], body, mine['pick'] if mine else '', stamp()))
         return redirect(url_for('vs_post', poll_id=poll_id) + '#talk')
 
     @app.route('/vs/<int:poll_id>/end', methods=['POST'])
@@ -345,8 +321,7 @@ def install(S):
             if p['user_id'] != g.user['id']: abort(403)
             if pick not in ('a', 'b') or p['ending']: abort(400)
             db.execute('UPDATE vs_polls SET ending=?,ending_note=?,ends=MIN(ends,?) WHERE id=?', (pick, note, stamp(), poll_id))
-            got = award(db, g.user['id'], 'vs_end', 'e%d' % poll_id)
-        flash(S.ui_text('vs.ended', '결말을 남겼어요. {n}P를 받았어요.').replace('{n}', str(got)))
+        flash(S.ui_text('vs.ended', '결말을 남겼어요.'))
         return redirect(url_for('vs_post', poll_id=poll_id))
 
     @app.route('/vs/<int:poll_id>/delete', methods=['POST'])
@@ -389,13 +364,9 @@ def install(S):
         if page > pages: abort(404)
         return render_template('soboru_suda.html', rows=rows, head=head, hot=hot, page=page, pages=pages, total=total, topic=today_topic())
 
-    # ---- 포인트 통장 -------------------------------------------------------
     @app.route('/me/points')
-    @S.member_only
-    def my_points():
-        with conn() as db:
-            rows = db.execute('SELECT * FROM points WHERE user_id=? ORDER BY id DESC LIMIT 100', (g.user['id'],)).fetchall()
-        return render_template('soboru_points.html', rows=rows, total=point_total(g.user['id']))
+    def my_points():  # 포인트를 뺌: 예전 주소는 내 정보로
+        return redirect(url_for('mypage'), 301)
 
     # ---- 담아 두기 (찜): 나중에 다시 볼 글을 내 정보에 모아 둠 -------------------------
     def is_saved(post_id):
@@ -475,5 +446,4 @@ def install(S):
         return redirect(url_for('feed'), 301)  # 에디터 모집은 뺌. 예전 주소는 후기 피드로
 
     app.jinja_env.globals.update(receipts_waiting=receipts_waiting, vs_rows=vs_rows, suda_rows=suda_rows, today_topic=today_topic)
-    S.award = award
-    app.extensions['soboru_cm'] = {'award': award, 'point_total': point_total, 'vs_rows': vs_rows, 'suda_rows': suda_rows, 'today_topic': today_topic}
+    app.extensions['soboru_cm'] = {'vs_rows': vs_rows, 'suda_rows': suda_rows, 'today_topic': today_topic}

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{# 이웃 페이지 (브런치처럼): 사진·닉네임·소개, 글·구독자·좋아요, 구독하기, 쓴 글. soboru_people.py person() #}
+{% from 'soboru_cm_macros.html' import rv_item, suda_row, av, follow_btn with context %}
+{% block title %}{{ p.nickname }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ p.bio or ui('pp.meta', '{name}님이 소보루에 쓴 글을 모아 봐요.', name=p.nickname) }}{% endblock %}
+{% block content %}
+<main class="sb-wrap cm cx pp">
+  <header class="pp-head">
+    {{ av(p.id, p.nickname, 'xxl') }}
+    <h1>{{ p.nickname }}</h1>
+    <p class="pp-bio">{{ p.bio or ui('pp.no_bio', '소보루 이웃') }}</p>
+    <ul class="pp-stats">
+      <li><b>{{ '{:,}'.format(p.posts) }}</b>{{ ui('pp.s_posts', '글') }}</li>
+      <li><b>{{ '{:,}'.format(p.followers) }}</b>{{ ui('pp.s_followers', '구독자') }}</li>
+      <li><b>{{ '{:,}'.format(p.likes) }}</b>{{ ui('pp.s_likes', '받은 좋아요') }}</li>
+    </ul>
+    {% if mine %}<div class="pp-btns"><a class="pp-follow" href="{{ url_for('my_profile') }}">{{ ui('pp.edit', '프로필 고치기') }}</a><a class="pp-follow on" href="{{ url_for('following') }}">{{ ui('pp.my_feed', '구독한 이웃 글') }}</a></div>
+    {% else %}{{ follow_btn(p.id, 'lg') }}{% endif %}
+    <small class="pp-since">{{ ui('pp.since', '{d}부터 소보루 이웃', d=p.since) }}</small>
+  </header>
+  <h2 class="pp-h">{{ ui('pp.posts_title', '쓴 글') }} <span>{{ rows|length }}</span></h2>
+  <div class="pf-list">
+    {% for r in rows %}{% if r['kind'] == 'review' %}{{ rv_item(review_view(r)) }}{% else %}{{ suda_row(suda_view(r)) }}{% endif %}
+    {% else %}<div class="cm-empty"><p>{{ ui('pp.empty', '아직 쓴 글이 없어요.') }}</p>{% if mine %}<a class="cm-btn" href="{{ url_for('board_write', type='review') }}">{{ ui('feed.write', '후기 쓰기') }}</a>{% endif %}</div>{% endfor %}
+  </div>
+</main>
+{% endblock %}

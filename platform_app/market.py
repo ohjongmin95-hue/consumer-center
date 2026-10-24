@@ -1,8 +1,8 @@
-"""공개 마케팅 화면: 제품 둘러보기, 판매처별·업종별 소개, CS 절감 계산기 (Gorgias의 Product tour·통합 페이지·업종 페이지·ROI 계산기에 해당).
+"""공개 마케팅 화면: 제품 둘러보기, 판매처별·업종별 소개 (Gorgias의 Product tour·통합 페이지·업종 페이지에 해당).
 
 원칙
   · 지금 실제로 되는 기능만 '지금 됨'으로 적는다. 키·승인이 필요한 것은 '연동 대기', 아직 안 만든 것은 '개발 예정'.
-  · 고객 수·성과 숫자·후기를 지어내지 않는다. 계산기는 사장님이 넣은 값으로만 계산하고 가정을 밝힌다.
+  · 고객 수·성과 숫자·후기를 지어내지 않는다.
   · 둘러보기 화면은 실제 화면을 견본 데이터로 찍은 것이다 (tools/tour_shots.js로 다시 찍는다).
 """
 import json
@@ -89,22 +89,6 @@ INDUSTRY_PAGES={
    tip='전화로 받은 문의도 직접 등록해 두면 기록이 남고 통계에 함께 잡혀요.'),
 }
 
-# ---------- 절감 계산기 ----------
-MIN_WAGE_2026=10320  # 2026년 최저임금 (시간급, 고용노동부 고시)
-CALC_DEFAULT=dict(inquiries=300,minutes=6,wage=MIN_WAGE_2026,auto=30)
-CALC_LIMIT=dict(inquiries=(1,1000000),minutes=(1,240),wage=(1000,200000),auto=(0,100))
-def num(v,lo,hi,dflt):
-    try:x=float(str(v).replace(',',''))
-    except (TypeError,ValueError):return dflt
-    return max(lo,min(hi,x))
-def calc(args):
-    """넣은 값만으로 계산한다. 결과는 원 단위로 반올림."""
-    v={k:num(args.get(k),*CALC_LIMIT[k],d) for k,d in CALC_DEFAULT.items()}
-    hours=v['inquiries']*v['minutes']/60
-    saved_h=hours*v['auto']/100
-    month=round(saved_h*v['wage'])
-    return dict(v=v,hours=round(hours,1),saved_h=round(saved_h,1),month=month,year=month*12,cost=round(hours*v['wage']))
-
 # ---------- 제품 둘러보기 ----------
 # (그림 키, 제목, 설명, 덧붙임). 3분 안팎으로 읽히게 8단계.
 TOUR=[('home','오늘 먼저 볼 일만 모아요','로그인하면 승인할 요청, 답할 요청, 기한이 지난 요청 수와 소보루 브리핑이 먼저 보여요. 브리핑은 실제 요청·주문 숫자로 만들어요.',''),
@@ -129,7 +113,7 @@ def count_visit():
     if ep.startswith(('mk.','cms.')) or ep in PUBLIC:funnel.visit()
 
 def nav():
-    return [('mk.tour','제품 둘러보기'),('mk.shop_page','판매처 연결'),('mk.industries','업종별'),('mk.calculator','절감 계산기')]
+    return [('mk.tour','제품 둘러보기'),('mk.shop_page','판매처 연결'),('mk.industries','업종별')]
 
 @bp.route('/tour')
 def tour():
@@ -156,9 +140,7 @@ def industry(slug):
 
 @bp.route('/calculator')
 def calculator():
-    r=calc(request.args)
-    if any(k in request.args for k in CALC_DEFAULT):funnel.track('calc',detail=f"{int(r['v']['inquiries'])}건")
-    return render_template('m_calc.html',r=r,MIN_WAGE=MIN_WAGE_2026,LIMIT=CALC_LIMIT,tab='mk.calculator')
+    return redirect(url_for('mk.tour'),301)  # 절감 계산기는 뺐다 (운영자 요청 2026-10-24). 예전 링크는 제품 둘러보기로
 
 def sitemap_paths():
-    return ['/tour','/calculator','/industries']+['/for/'+k for k in SHOP_PAGES]+['/industries/'+k for k in INDUSTRY_PAGES]
+    return ['/tour','/industries']+['/for/'+k for k in SHOP_PAGES]+['/industries/'+k for k in INDUSTRY_PAGES]

@@ -19,6 +19,9 @@ const OUT=path.join(__dirname,'..','static','tour');
 const TMP=fs.mkdtempSync(path.join(process.env.VIDEO_TMP||os.tmpdir(),'tourvid-'));
 const FF='/usr/bin/ffmpeg',VP={width:1280,height:800},FPS=30,XF=0.45;
 const CHAR='data:image/png;base64,'+fs.readFileSync(path.join(__dirname,'..','static','soboru-char.png')).toString('base64');
+// 끝 화면 가격: billing.py의 가장 싼 구간 금액을 그대로 읽는다 (영상 속 가격이 요금표와 어긋나지 않게)
+const START_PRICE=(()=>{const m=[...fs.readFileSync(path.join(__dirname,'..','billing.py'),'utf8').matchAll(/price=(\d+),tickets=/g)].map(x=>+x[1]);return Math.min(...m).toLocaleString('ko-KR')})();
+const TRIAL_DAYS=(fs.readFileSync(path.join(__dirname,'..','billing.py'),'utf8').match(/TRIAL_DAYS\s*=\s*(\d+)/)||[0,5])[1];
 
 // ---------- 화면에 넣는 것: 자막·커서·글자 정리 ----------
 const OVERLAY=`(()=>{
@@ -135,7 +138,7 @@ h1 em{font-style:normal;color:#ef920e}
 .price i{width:6px;height:6px;border-radius:50%;background:#ef920e}
 @keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 </style></head><body><div class="w"><img src="${CHAR}" alt=""><div class="brand">소보루 CS</div>
-<h1>쇼핑몰 문의, <em>AI가 먼저</em> 답해요</h1><div class="price">월 19,900원<i></i>5일 무료 체험</div></div></body></html>`;
+<h1>쇼핑몰 문의, <em>AI가 먼저</em> 답해요</h1><div class="price">월 ${START_PRICE}원부터<i></i>${TRIAL_DAYS}일 무료 체험</div></div></body></html>`;
 
 (async()=>{
   fs.mkdirSync(OUT,{recursive:true});
@@ -244,7 +247,8 @@ h1 em{font-style:normal;color:#ef920e}
   // 7. 끝 화면
   clips.push(await scene('s7_end','html:'+END_CARD,async p=>{await wait(p,3600)}));
 
-  // 이어 붙이기 (짧은 크로스페이드)
+  // 이어 붙이기 (짧은 크로스페이드). 잘라 낸 뒤 실제 길이로 맞춰야 xfade가 중간에 끊기지 않는다
+  clips.forEach(c=>{const d=parseFloat(execFileSync('/usr/bin/ffprobe',['-v','error','-show_entries','format=duration','-of','csv=p=0',c.clip]).toString());if(d>0)c.dur=Math.min(c.dur,d)});
   const inputs=[],fc=[];let off=0,last='[0:v]';
   clips.forEach(c=>inputs.push('-i',c.clip));
   for(let i=1;i<clips.length;i++){off+=clips[i-1].dur-XF;const o=i===clips.length-1?'[vout]':`[x${i}]`;fc.push(`${last}[${i}:v]xfade=transition=fade:duration=${XF}:offset=${off.toFixed(3)}${o}`);last=o;}

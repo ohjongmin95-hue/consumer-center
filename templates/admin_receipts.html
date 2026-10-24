@@ -3,7 +3,7 @@
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro"><h1 class="page-title">영수증 확인</h1>
-  <p>후기에 같이 올라온 영수증이에요. 영수증은 여기서만 보이고 공개되지 않아요. 후기 속 상품·가게와 영수증이 맞으면 '인증'을 눌러 주세요. 인증하면 후기에 '영수증 인증' 표시가 붙고, 회원이면 200P가 들어가요.</p></div>
+  <p>후기에 같이 올라온 영수증이에요. 영수증은 여기서만 보이고 공개되지 않아요. 후기 속 상품·가게와 영수증이 맞으면 '인증'을 눌러 주세요. 인증하면 후기에 '영수증 인증' 표시가 붙고, 회원이면 알림이 가요.</p></div>
   <nav class="tabs" style="display:flex;gap:8px;margin:0 0 16px">{% for k, name in [('wait', '확인 전'), ('ok', '인증'), ('no', '인증 안 함')] %}<a class="{{ 'primary' if show == k else 'secondary' }}" style="padding:8px 14px;font-size:14px" href="{{ url_for('admin_receipts', show=k) }}">{{ name }} {{ counts.get(k, 0) }}</a>{% endfor %}</nav>
   {% for r in rows %}
   <div class="form-panel takedown-item" style="display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:start">

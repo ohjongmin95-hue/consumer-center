@@ -1,5 +1,6 @@
 {# 소보루 커뮤니티 글 보기: 종류별 머리(리뷰 별점·좋았던 점/아쉬운 점, 꿀팁 요약, 질문 해결 여부) + 공감·댓글. board_post.html이 씀 #}
 {% from 'community_macros.html' import stars, kind_chip, feed_item, heart_i, bubble_i, editor_badge %}
+{% from 'soboru_cm_macros.html' import av, follow_btn with context %}
 {% set k = post['kind'] if post['kind'] in POST_KIND_NAMES else 'post' %}
 {% set rate_words = ['', ui_text('cm.rate1', '별로예요'), ui_text('cm.rate2', '아쉬워요'), ui_text('cm.rate3', '보통이에요'), ui_text('cm.rate4', '좋아요'), ui_text('cm.rate5', '최고예요')] %}
 {% set mine = (g.user and post['user_id'] == g.user['id']) %}
@@ -30,7 +31,7 @@
     {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨김 처리된 글입니다. 운영자에게만 보입니다.') }}</div>{% endif %}
     <div class="cm-kicker">{{ kind_chip(k) }}{% if k == 'post' %}<span>{{ post['category'] }}</span>{% elif k == 'tip' %}<span>{{ ui('cm.read_min', '{n}분이면 읽어요', n=read_minutes(post['body'])) }}</span>{% elif k == 'question' %}{% if post['solved'] %}<span class="cm-solved">{{ ui('cm.solved', '해결됨') }}</span>{% else %}<span>{{ ui('cm.waiting', '답변을 기다려요') }}</span>{% endif %}{% endif %}</div>
     <h1>{% if k == 'question' %}<span class="cm-q">Q.</span>{% endif %}{{ post['title'] }}</h1>
-    <div class="cm-author"><span class="cm-av">{{ post['nickname'][:1] }}</span><div><b>{{ post['nickname'] }}{% if post['user_id'] %}<span class="cm-member">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ editor_badge(post) }}</b><small>{{ post['created']|ago }} · {{ ui('cm.likes', '공감') }} {{ post['likes'] }} · {{ ui('cm.answers', '답변') if k == 'question' else ui('cm.comments', '댓글') }} {{ comments|length }}</small></div></div>
+    <div class="cm-author">{% if post['user_id'] %}<a href="{{ url_for('person', user_id=post['user_id']) }}">{{ av(post['user_id'], post['nickname']) }}</a>{% else %}<span class="cm-av">{{ post['nickname'][:1] }}</span>{% endif %}<div><b>{% if post['user_id'] %}<a class="pp-name" href="{{ url_for('person', user_id=post['user_id']) }}">{{ post['nickname'] }}</a>{% else %}{{ post['nickname'] }}{% endif %}{% if post['user_id'] %}<span class="cm-member">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ editor_badge(post) }}</b><small>{{ post['created']|ago }} · {{ ui('cm.likes', '공감') }} {{ post['likes'] }} · {{ ui('cm.answers', '답변') if k == 'question' else ui('cm.comments', '댓글') }} {{ comments|length }}</small></div></div>
     {% if post['editor'] %}<p class="cm-editor-note">{{ ui('cm.editor_note', '소보루 에디터가 직접 써 보고 남긴 리뷰예요. 소비자 별점과 순위에는 넣지 않아요.') }}</p>{% endif %}
     {% if post['reward'] %}<p class="cm-disclose lg"><span aria-hidden="true">🎁</span> <span><b>{{ ui('cm.reward_label', '소보루 이벤트 참여 리뷰 · 혜택을 받을 수 있어요') }}</b>{% if campaign %}‘<a href="{{ url_for('campaign_page', slug=campaign['slug']) }}">{{ campaign['title'] }}</a>’ {{ ui('cm.reward_note', '주제에 참여한 리뷰예요.') }}{% endif %}</span></p>
     {% elif campaign %}<p class="cm-camp-link"><a href="{{ url_for('campaign_page', slug=campaign['slug']) }}">{{ ui('cp.eyebrow', '이번 주 리뷰 주제') }} · {{ campaign['title'] }} ›</a></p>{% endif %}
@@ -69,6 +70,11 @@
     </div>
     {% endif %}
 
+    {% set pp = people_profile(post['user_id']) if is_soboru() else None %}{% if pp %}
+    <aside class="pp-card" aria-label="{{ ui('pp.card_aria', '글쓴이') }}">
+      <a class="pp-card-who" href="{{ url_for('person', user_id=pp.id) }}">{{ av(pp.id, pp.nickname, 'xl') }}<span><b>{{ pp.nickname }}</b><small>{{ pp.bio or ui('pp.no_bio', '소보루 이웃') }}</small><em>{{ ui('pp.stat_line', '글 {a} · 구독자 {b}', a=pp.posts, b=pp.followers) }}</em></span></a>
+      {{ follow_btn(pp.id) }}
+    </aside>{% endif %}
     <div class="cm-actions">
       <form method="post" action="{{ url_for('board_like', post_id=post['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <button class="cm-like{% if liked %} on{% endif %}" type="submit"{% if not enabled %} disabled{% endif %} aria-pressed="{{ 'true' if liked else 'false' }}">{{ heart_i() }}{{ ui('board.liked', '공감했어요') if liked else (ui('cm.helpful', '도움이 됐어요') if k in ('review', 'tip') else ui('board.like_do', '공감해요')) }} <b>{{ post['likes'] }}</b></button>
@@ -103,7 +109,7 @@
     {% endif %}
     {% for c in comments %}
     <div class="cm-c" id="c{{ c['id'] }}">
-      <span class="cm-av sm">{{ c['nickname'][:1] }}</span>
+      {% if c['user_id'] %}<a href="{{ url_for('person', user_id=c['user_id']) }}">{{ av(c['user_id'], c['nickname'], 'sm') }}</a>{% else %}<span class="cm-av sm">{{ c['nickname'][:1] }}</span>{% endif %}
       <div class="cm-c-b">
         <div class="cm-c-h"><b>{{ c['nickname'] }}{% if c['user_id'] %}<span class="cm-member">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{% if c['nickname'] == post['nickname'] and ((c['user_id'] and c['user_id'] == post['user_id']) or (not c['user_id'] and not post['user_id'])) %}<span class="cm-op">{{ ui('cm.op', '글쓴이') }}</span>{% endif %}</b><small>{{ c['created']|ago }}</small>
           <span class="cm-c-tools">

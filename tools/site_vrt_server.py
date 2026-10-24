@@ -8,7 +8,7 @@ APP_DIR = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.
 PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 8822
 d = tempfile.mkdtemp()
 os.environ.update(DATABASE_PATH=d + '/c.db', UPLOAD_DIR=d + '/up', SECRET_KEY='x' * 64, ADMIN_PASSWORD_HASH=generate_password_hash('adminshotpw1'),
-                  ENABLE_INTAKE='1', ENABLE_BOARD='1', ENABLE_BIZ_MEMBERS='1', HTTPS_ONLY='0')
+                  ENABLE_INTAKE='1', ENABLE_BOARD='1', ENABLE_BIZ_MEMBERS='1', HTTPS_ONLY='0', SOBORU_GUEST_WRITE='1')  # 미리보기는 손님 글쓰기 허용 (소보루 실서비스는 로그인 필수)
 for k in ('SMTP_HOST', 'SOLAPI_API_KEY'): os.environ.pop(k, None)  # 알림은 보내지 않음
 sys.path.insert(0, APP_DIR); os.chdir(APP_DIR)
 spec = importlib.util.spec_from_file_location('site_under_test', os.path.join(APP_DIR, 'app.py'))
@@ -120,8 +120,21 @@ if os.environ.get('VRT_BRAND') and hasattr(m, 'soboru'):
             for nick, title, target, rating, rec, likes, h in [('살림9단', '소보루마트 신선식품, 이 가격에 이 품질이면 추천', '소보루마트', 5, 1, 31, 30), ('매일커피', '오소보카페 구독권, 한 달 써 보니 돈값 해요', '오소보카페', 5, 1, 18, 50),
                                                               ('통신박사', '보루텔레콤 알뜰요금제 6개월 사용기', '보루텔레콤', 4, 1, 22, 26), ('출장러', '루트호텔 체크인 대기만 빼면 만족', '루트호텔', 4, 1, 9, 80),
                                                               ('수리왕', '소보루전자 출장 수리, 두 번째도 친절했어요', '소보루전자', 5, 1, 15, 60)]:
-                db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind,target,rating,recommend,likes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-                           ('경험 공유', nick, generate_password_hash('1234'), title, '직접 써 보고 남기는 후기예요.', 'seed', ago(h), 'review', target, rating, rec, likes))
+                # 이웃 미리보기: 글쓴이를 회원으로 (프로필 사진·소개 몇 개)
+                uid = db.execute("INSERT INTO users(login_id,pw_hash,nickname,terms_version,agreed_at,created) VALUES(?,?,?,?,?,?)", ('vrt_' + target, 'x', nick, 'v1', ago(900), ago(900))).lastrowid
+                if True:
+                    try:
+                        from PIL import Image, ImageDraw
+                        col = [(255, 214, 165), (190, 227, 248), (200, 236, 200), (255, 200, 210), (220, 210, 250)][uid % 5]
+                        im = Image.new('RGB', (160, 160), col); dr = ImageDraw.Draw(im); dr.ellipse((50, 30, 110, 90), fill=(255, 255, 255)); dr.ellipse((25, 95, 135, 200), fill=(255, 255, 255))
+                        name = '%032x.png' % uid; os.makedirs(d + '/up/avatars', exist_ok=True); im.save(d + '/up/avatars/' + name)
+                        db.execute("INSERT OR REPLACE INTO profiles(user_id,bio,photo,updated) VALUES(?,?,?,?)", (uid, ['장보기는 꼼꼼하게, 후기는 솔직하게', '커피 한 잔에 진심인 직장인', '', '출장 다니며 묵은 숙소 기록', '고쳐 쓰는 걸 좋아해요'][uid % 5], name if uid % 3 else '', ago(1)))
+                    except Exception as e: print('avatar seed', e)
+                db.execute('INSERT INTO posts(category,nickname,pw_hash,title,body,ip_hash,created,kind,target,rating,recommend,likes,user_id,rv_type,rv_cat,sido,gu) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                           ('경험 공유', nick, generate_password_hash('1234'), title, '직접 써 보고 남기는 후기예요.', 'seed', ago(h), 'review', target, rating, rec, likes, uid,
+                            'place' if target in ('오소보카페', '루트호텔') else 'product', {'오소보카페': '맛집·카페', '루트호텔': '숙소·여행', '소보루마트': '식품', '보루텔레콤': '디지털·가전'}.get(target, '디지털·가전'),
+                            '서울' if target in ('오소보카페', '루트호텔') else '', '마포구' if target in ('오소보카페', '루트호텔') else ''))
+                if uid > 1: db.execute('INSERT OR IGNORE INTO follows(follower,followee,created) VALUES(?,?,?)', (uid, 1, ago(1)))
             for name, ans, wait_h in [('소보루마트', 5, 20), ('보루텔레콤', 4, 50), ('오소보쇼핑', 3, 90), ('루트호텔', 1, 0), ('가나다몰', 0, 0)]:
                 co = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES(?,?,?,?,?,?,?)", (name, '000', 'active', '-', '-', '-', ago(500))).lastrowid
                 for k in range(5):
@@ -423,7 +436,4 @@ if hasattr(m, 'soboru_cm') and os.environ.get('VRT_NN'):
                 db.execute('INSERT INTO vs_votes(poll_id,voter,pick,used,created) VALUES(?,?,?,?,?)', (vid, 'seed%d-%d' % (vid, i), 'a' if i < va else 'b', 1 if i % 4 == 0 else 0, _ago3(h / 2)))
             for nick2, body2, pick in [('경험자', '저는 써 봤는데 이쪽이 훨씬 나았어요.', 'a'), ('지나가던이웃', '저라면 이거요. 가성비가 좋아요.', 'b')][: 2 if va + vb > 20 else 1]:
                 db.execute('INSERT INTO vs_comments(poll_id,nickname,body,pick,created) VALUES(?,?,?,?,?)', (vid, nick2, body2, pick, _ago3(h / 3)))
-        if uid:
-            for reason, ref, h in [('suda_first', 'first', 100), ('suda', 'p1', 100), ('review_ok', 'p2', 50), ('vote', 'v1', 20), ('comment', 'c1', 3)]:
-                db.execute('INSERT INTO points(user_id,amount,reason,ref,created) VALUES(?,?,?,?,?)', (uid, m.soboru_cm.POINTS[reason][1], reason, ref, _ago3(h)))
 app.run(host='127.0.0.1', port=PORT)

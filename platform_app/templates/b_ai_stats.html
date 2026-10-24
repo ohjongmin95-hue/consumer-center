@@ -23,6 +23,6 @@
 <section class="panel"><div class="ph">답변 초안</div>
 <dl class="kv"><dt>초안을 만든 문의</dt><dd>{{ r.n_draft }}건</dd><dt>그중 AI가 쓴 초안</dt><dd>{{ r.n_draft_ai }}건 <small class="t-mute">(나머지는 규칙 문구로 만든 초안)</small></dd><dt>초안을 만든 뒤 답한 문의</dt><dd>{{ r.n_draft_used }}건</dd></dl>
 <p class="cap" style="margin:10px 0 0">초안을 얼마나 고쳐서 보냈는지는 세지 않아요.</p></section>
-<section class="panel"><div class="ph">세는 방법</div><p class="cap" style="margin:0">가져온 지난 문의와 시험 문의는 빼요. 절약한 시간·비용처럼 추정이 필요한 숫자는 보여 주지 않아요. 절감액이 궁금하면 <a class="link" href="{{ url_for('mk.calculator') }}">절감 계산기</a>에 직접 넣어 보세요.</p></section>
+<section class="panel"><div class="ph">세는 방법</div><p class="cap" style="margin:0">가져온 지난 문의와 시험 문의는 빼요. 절약한 시간·비용처럼 추정이 필요한 숫자는 보여 주지 않아요.</p></section>
 </div>
 {% endblock %}

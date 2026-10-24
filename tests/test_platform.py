@@ -1429,15 +1429,11 @@ class PlatformTest(unittest.TestCase):
         for slug in ('fashion','beauty','food','living','digital','furniture'):
             self.assertIn(f'/industries/{slug}',page);self.assertEqual(c.get('/biz/industries/'+slug).status_code,200)
         self.assertEqual(c.get('/biz/industries/nope').status_code,404)
-        # 계산기: 1000건 × 6분 = 100시간, 40% 자동 = 40시간 × 12,000원 = 480,000원/월
-        page=c.get('/biz/calculator?inquiries=1000&minutes=6&wage=12000&auto=40').get_data(as_text=True)
-        self.assertIn('480,000',page);self.assertIn('5,760,000',page);self.assertIn('보장하지 않아요',page)
-        page=c.get('/biz/calculator?inquiries=abc&minutes=-5&wage=1&auto=500').get_data(as_text=True)  # 이상한 값은 범위 안으로
-        self.assertEqual(c.get('/biz/calculator?inquiries=abc').status_code,200)
-        m=sys.modules['market'].calc({'inquiries':'abc','minutes':'-5','wage':'1','auto':'500'})
-        self.assertEqual((m['v']['inquiries'],m['v']['minutes'],m['v']['wage'],m['v']['auto']),(300,1,1000,100))
+        # 절감 계산기는 뺐다: 예전 주소는 제품 둘러보기로
+        r=c.get('/biz/calculator?inquiries=1000');self.assertEqual(r.status_code,301);self.assertIn('/tour',r.headers['Location'])
+        self.assertNotIn('계산기',c.get('/biz/').get_data(as_text=True))
         sm=c.get('/biz/sitemap.xml').get_data(as_text=True)
-        self.assertIn('/for/own</loc>',sm);self.assertNotIn('/for/coupang</loc>',sm);self.assertIn('/industries/food</loc>',sm);self.assertIn('/calculator</loc>',sm)
+        self.assertIn('/for/own</loc>',sm);self.assertNotIn('/for/coupang</loc>',sm);self.assertIn('/industries/food</loc>',sm);self.assertNotIn('/calculator</loc>',sm)
         self.assertIn('제품 둘러보기',c.get('/biz/').get_data(as_text=True))
         # 방문 기록: UTM 첫 유입을 기억해 가입에 붙인다 (IP는 저장하지 않음)
         v=self.client();v.get('/biz/for/smartstore?utm_source=naver&utm_medium=cpc&utm_campaign=fall')
@@ -1451,7 +1447,7 @@ class PlatformTest(unittest.TestCase):
 
     def test_consult_request_and_sales_pipeline(self):
         """상담 신청: 검사·저장·운영 알림·UTM, 봇 칸, 운영 영업 관리(단계·담당자·일정·메모·연락 기록), 운영 로그인 없이는 못 봄."""
-        c=self.client();c.get('/biz/calculator?utm_source=blog&utm_campaign=guide1')
+        c=self.client();c.get('/biz/tour?utm_source=blog&utm_campaign=guide1')
         r=self.post(c,'/biz/contact',{'company':'상담상점','name':'박담당','email':'bad'})
         self.assertEqual(r.status_code,400);self.assertIn('이메일',r.get_data(as_text=True))
         r=self.post(c,'/biz/contact',{'company':'상담상점','name':'박담당','email':'lead@example.com','phone':'010-3333-4444','shop_url':'https://shop.example.com',

@@ -20,7 +20,6 @@
     <a href="{{ url_for('board_write', type='post', head='잡담', topic=topic) }}">{{ ui('suda.today_go', '이 주제로 쓰기') }} ›</a>
   </section>
   {% endif %}
-  <p class="cx-points">{{ ui('suda.points', '회원이 수다를 쓰면 10P (하루 3번), 첫 수다는 100P, 댓글은 10P를 드려요. 광고·홍보 글은 운영자가 내려요.') }} <a href="{{ url_for('my_points') }}">{{ ui('cx.my_points', '내 포인트') }} ›</a></p>
   <nav class="cm-tabs" aria-label="{{ ui('suda.sort_aria', '정렬') }}">
     <a href="{{ url_for('suda', head=head or None) }}"{% if not hot %} class="on" aria-current="true"{% endif %}>{{ ui('board.all', '전체') }}</a>
     <a href="{{ url_for('suda', head=head or None, sort='hot') }}"{% if hot %} class="on" aria-current="true"{% endif %}>{{ ui('suda.hot', '인기') }}</a>
