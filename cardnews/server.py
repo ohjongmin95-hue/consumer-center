@@ -504,6 +504,7 @@ def settings():
             v = f.get(k, '').strip()
             if v or f.get('clear_' + k): c[k] = '' if f.get('clear_' + k) else v  # 비워 두면 그대로, '지우기'를 고르면 지움
         if f.get('clear_naver_id'): c['naver_secret'] = ''
+        if ':' in c['hf_id']: c['hf_id'], _, sec = c['hf_id'].partition(':'); c['hf_secret'] = sec.strip() or c['hf_secret']  # 'ID:Secret' 한 줄로 붙여 넣어도 됨
         if f.get('clear_hf_id'): c['hf_secret'] = ''
         c['hf_model'] = f.get('hf_model') if f.get('hf_model') in dict(cards.HF_MODELS) else cards.HF_MODELS[0][0]
         if f.get('kakao_key', '').strip(): c['kakao_key'] = f.get('kakao_key').strip()
