@@ -9,12 +9,7 @@
   <header class="cm-head">
     <div>
       <h1><span class="bread h" aria-hidden="true">🧁</span>{{ ui('feed.title', '내돈내산 후기') }}</h1>
-      <p>{{ ui('feed.intro', '공짜로 받고 쓰는 광고 같은 후기 말고, 직접 돈 내고 산 사람들의 솔직한 이야기만 모았어요.') }}</p>
-      <ul class="pf-promise">
-        <li><span class="tf" aria-hidden="true">🙅</span>{{ ui('feed.promise1', '공짜 체험단 없음') }}</li>
-        <li><span class="tf" aria-hidden="true">🧾</span>{{ ui('feed.promise2', '영수증으로 구매 확인') }}</li>
-        <li><span class="tf" aria-hidden="true">🚫</span>{{ ui('feed.promise3', '광고·협찬 글은 내려요') }}</li>
-      </ul>
+      <p>{{ ui('feed.intro', '직접 사서 써 본 이웃들의 솔직한 후기를 모았어요. 어디서 샀는지, 어느 동네인지로 골라 보세요.') }}</p>
     </div>
     <a class="cm-btn" href="{{ url_for('board_write', type='review') }}">{{ ui('feed.write', '후기 쓰기') }}</a>
   </header>
@@ -88,14 +83,6 @@
       </form>
     </div>
     <div class="cm-side">
-    <section class="pf-for" aria-labelledby="pf-for-h">
-      <h2 id="pf-for-h">{{ ui('feed.for_title', '이런 분께 딱이에요') }}</h2>
-      <ul>
-        <li>{{ ui('feed.for1', '살 때마다 후기가 다 광고 같아 못 믿었던 분') }}</li>
-        <li>{{ ui('feed.for2', '진짜 써 본 사람의 솔직한 별점이 궁금한 분') }}</li>
-        <li>{{ ui('feed.for3', '쿠팡·네이버·올리브영, 어디서 샀든 내 후기를 남기고 싶은 분') }}</li>
-      </ul>
-    </section>
     {% if hot %}
     <section class="cm-hot" aria-labelledby="pf-hot-h">
       <h2 id="pf-hot-h">{{ ui('feed.hot_title', '이번 주 많이 본 후기') }}</h2>

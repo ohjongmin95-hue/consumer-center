@@ -1801,9 +1801,6 @@ h1.vs-title{font-size:28px}
 @media (max-width:760px){.nn-pick-grid{display:flex;flex-direction:column}.nn-pick-grid .nn-pick-feed{order:-1}}
 .cm-body.solo{display:block}
 /* 내돈내산 후기 (품앗히 참고): 약속 3줄 · 인기 후기 띠 · 분류 아이콘 · 이런 분께 */
-.pf-promise{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;margin:12px 0 0;padding:0;font-size:14px;font-weight:600;color:#4e5968}
-.pf-promise li{display:inline-flex;align-items:center;gap:5px}
-.pf-promise .tf{font-size:16px}
 .pf-ticker{display:block;position:relative;height:48px;margin:0 0 12px;border-radius:14px;background:#f9fafb;overflow:hidden}
 .pf-tick{position:absolute;inset:0;display:flex;align-items:center;gap:10px;padding:0 16px;opacity:0;transform:translateY(12px);transition:opacity .35s,transform .35s var(--sb-ease)}
 .pf-tick.on{opacity:1;transform:none}
@@ -1816,11 +1813,6 @@ h1.vs-title{font-size:28px}
 .pf-cats a .tf{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:16px;background:#f2f4f6;font-size:28px;line-height:1}
 .pf-cats a:hover{background:#f9fafb}
 .pf-cats a.on{background:#fff4e0;color:#c45f00}.pf-cats a.on .tf{background:#fff}
-.pf-for{padding:20px;border-radius:18px;background:#f9fafb;margin-bottom:20px}
-.pf-for h2{margin:0 0 10px}
-.pf-for ul{display:flex;flex-direction:column;gap:8px}
-.pf-for li{position:relative;padding-left:14px;font-size:14px;line-height:1.55;color:#4e5968}
-.pf-for li::before{content:'';position:absolute;left:2px;top:9px;width:5px;height:5px;border-radius:50%;background:var(--sb-orange)}
 @media (max-width:760px){.pf-ticker{height:44px}.pf-tick-t{font-size:14px}.pf-cats a{width:68px}.pf-cats a .tf{width:44px;height:44px;font-size:26px}}
 /* 어디서 샀어요? · 우리 동네: 분류 아이콘 아래 한 줄 칩 (가로로 밀어 보기) */
 .pf-where{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;margin:6px 0 2px;padding:2px 0}
