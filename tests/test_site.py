@@ -369,8 +369,8 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '생활정보 카드 제목', 'summary': '요약', 'body': '본문', 'category': '쇼핑', 'publish': '1'})
         try:
             home = self.client.get('/').get_data(as_text=True)
-            order = lambda html: [k for k in ('nn-intro', 'nn-quick', 'nn-live', 'nn-pick', 'nn-answer', 'lt-card') if k in html]
-            self.assertEqual(order(home), ['nn-intro', 'nn-quick', 'nn-live', 'nn-pick', 'nn-answer', 'lt-card'])
+            order = lambda html: [k for k in ('nn-intro', 'nn-about', 'nn-live', 'nn-pick', 'nn-answer', 'lt-card') if k in html]
+            self.assertEqual(order(home), ['nn-intro', 'nn-about', 'nn-live', 'nn-pick', 'nn-answer', 'lt-card'])
             self.assertLess(home.index('nn-intro'), home.index('nn-live'))
             self.assertIn('생활정보 카드 제목', home)
             self.assertIn('공개 제보 카드 제목', home)
@@ -394,7 +394,7 @@ class SiteTest(unittest.TestCase):
                                                    'show_letter': '1', 'show_intro': '1', 'show_quick': '1', 'show_live': '1', 'show_life': '1', 'show_pick': '1'})
             self.assertEqual(r.status_code, 302)
             home = self.client.get('/').get_data(as_text=True)
-            self.assertEqual(order(home), ['nn-intro', 'nn-quick', 'nn-live', 'nn-pick', 'lt-card'])
+            self.assertEqual(order(home), ['nn-intro', 'nn-about', 'nn-live', 'nn-pick', 'lt-card'])
             self.assertLess(home.index('lt-card'), home.index('nn-intro'))
             self.assertNotIn('nn-answer', home)
             # 한 칸씩: 레터 아래로, 기업 답변 다시 보이기, 소개 숨기기 (편집 모드 막대가 쓰는 주소)
@@ -404,7 +404,7 @@ class SiteTest(unittest.TestCase):
             home = self.client.get('/').get_data(as_text=True)
             self.assertNotIn('nn-intro', home)
             self.assertIn('nn-answer', home)
-            self.assertLess(home.index('lt-card'), home.index('nn-quick'))
+            self.assertLess(home.index('lt-card'), home.index('nn-about'))
             with self.site.app.test_request_context('/'):
                 self.assertEqual(self.site.app.extensions['soboru']['page_blocks']('home')[:3], [['intro', 0], ['letter', 1], ['quick', 1]])
             # 이상한 값은 무시하고, 모르는 묶음은 빠지고 빠진 묶음은 뒤에 붙음
@@ -811,7 +811,7 @@ class SiteTest(unittest.TestCase):
         only = self.client.get('/board?type=question').get_data(as_text=True)
         self.assertIn('위약금 얼마인가요?', only)
         self.assertNotIn('환불이 빨랐어요', only)
-        self.assertIn('data-kind="tip"', self.client.get('/board/write?type=tip').get_data(as_text=True))
+        self.assertIn('value="정보" checked', self.client.get('/board/write?type=tip').get_data(as_text=True))  # 꿀팁은 수다의 '정보' 말머리로
         post = self.client.get(f'/board/{rid}').get_data(as_text=True)
         self.assertIn('cm-review', post)
         self.assertIn('좋았던 점', post)
