@@ -7,10 +7,10 @@ ENV_FILE=/etc/soboru.env; VENV=/opt/soboru/venv
 DB=$(grep -E '^DATABASE_PATH=' "$ENV_FILE" | cut -d= -f2-)
 [[ -n $DB && -f $DB ]] || { echo "DB 파일을 찾지 못했습니다: ${DB:-(DATABASE_PATH 없음)}"; exit 1; }
 while true; do
-  read -rsp "새 관리자 비밀번호 (영문+숫자 12자 이상): " PW </dev/tty; echo
+  read -rsp "새 관리자 비밀번호 (4자 이상, 숫자만도 돼요): " PW </dev/tty; echo
   read -rsp "한 번 더 입력: " PW2 </dev/tty; echo
   if [[ $PW != "$PW2" ]]; then echo "두 비밀번호가 다릅니다."; continue; fi
-  if [[ ${#PW} -lt 12 || ! $PW =~ [A-Za-z] || ! $PW =~ [0-9] ]]; then echo "영문과 숫자를 섞어 12자 이상으로 정해 주세요."; continue; fi
+  if [[ ${#PW} -lt 4 ]]; then echo "4자 이상으로 정해 주세요."; continue; fi
   break
 done
 PW="$PW" DB="$DB" "$VENV/bin/python" - <<'PY'

@@ -475,3 +475,26 @@ body.console .sl-field input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px #f2f
 .sl-submit:hover{background:#e08508;box-shadow:0 8px 20px rgba(239,146,14,.3)}
 body.console .sl-field input:focus{border-color:var(--sl-logo);box-shadow:0 0 0 4px rgba(239,146,14,.14)}
 .sl-brand em{background:#fff4e0;color:#b86e00}
+/* 경기일보 통합CMS식 로그인 (운영자 결정 2026-10-24): 밝은 바탕 + 위 큰 로고·문구 + 가운데 귤색 가로 띠 안에 로그인 칸 + 아래 안내 */
+body.console main.gg-page{display:flex;flex-direction:column;align-items:stretch;justify-content:center;min-height:100vh;background:#f7f4ef}
+.gg-top{display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 24px 40px;text-align:center}
+.gg-logo{display:block;width:auto;height:60px;transform:translateX(-9%)}  /* 캐릭터가 왼쪽에 붙은 로고라 그림 가운데와 글자 가운데(151px/851px 오른쪽)의 중간을 화면 가운데에 맞춤 (눈으로 보는 가운데) */
+.gg-kicker{margin:0;padding:4px 12px;border-radius:999px;background:#fff4e0;color:#b86e00;font-size:13px;font-weight:700}
+.gg-title{margin:4px 0 0;font-size:30px;line-height:1.35;font-weight:800;letter-spacing:-.04em;color:var(--ad-ink)}
+.gg-title em{font-style:normal;color:#ef920e}
+.gg-band{padding:40px 24px;background:linear-gradient(120deg,#f6a21f 0%,#ef920e 55%,#e5850a 100%)}
+.gg-form{display:flex;flex-direction:column;gap:14px;width:100%;max-width:460px;margin:0 auto}
+body.console .gg-field input{width:100%;height:56px;padding:0 18px;border:0;border-radius:12px;background:#fff;font-size:17px;color:var(--ad-ink);outline:0;box-shadow:0 2px 0 rgba(150,80,0,.12)}
+body.console .gg-field input::placeholder{color:#b0b8c1}
+body.console .gg-field input:focus{box-shadow:0 0 0 4px rgba(255,255,255,.45)}
+.gg-submit{height:56px;margin-top:6px;border:0;border-radius:12px;background:#5b3a1e;color:#fff;font-size:17px;font-weight:700;cursor:pointer;transition:background .2s,transform .15s}
+.gg-submit:hover{background:#4a2f17}
+.gg-submit:active{transform:scale(.98)}
+.gg-note{max-width:460px;margin:28px auto 0;padding:0 24px;text-align:center;font-size:14px;line-height:1.6;color:var(--ad-sub)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+@media(max-width:700px){
+  .gg-logo{height:44px}
+  .gg-title{font-size:22px}
+  .gg-top{padding-bottom:28px}
+  .gg-band{padding:28px 20px}
+}

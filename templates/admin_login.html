@@ -1,21 +1,19 @@
 {% extends 'console.html' %}
 {% block title %}관리자 로그인 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
-{# 토스식 로그인: 기자 로그인(reporter_login.html)과 같은 모양 #}
-<main class="sl-page">
-  <aside class="sl-hero" aria-hidden="true">
-    <p class="sl-hero-kicker">SOBORU 관리자</p>
-    <div class="sl-art"><span class="sl-emo sl-emo-main">📋</span><span class="sl-emo sl-emo-1">🏢</span><span class="sl-emo sl-emo-2">📣</span><span class="sl-emo sl-emo-3">🔍</span><span class="sl-emo sl-emo-4">💬</span></div>
-    <p class="sl-hero-title">소보루와 제보센터를<br><em>한곳에서</em> 관리해요</p>
-  </aside>
-  <div class="sl-box">
-    <p class="sl-brand"><img src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="136" height="32"><em>관리자</em></p>
-    <h1 class="sl-title">관리자 비밀번호를<br>입력해 주세요</h1>
-    <p class="sl-lead">소보루와 소비자제보센터를 함께 관리하는 화면이에요.</p>
-    <form class="sl-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <label class="sl-field"><span>비밀번호</span><input type="password" name="password" required autocomplete="current-password" placeholder="관리자 비밀번호"></label>
-      <button class="sl-submit" type="submit">로그인</button>
+{# 경기일보 통합CMS식 로그인 (운영자 결정 2026-10-24): 위에 큰 로고와 문구, 가운데 가로 띠 안에 로그인 칸, 아래 안내 #}
+<main class="sl-page gg-page">
+  <header class="gg-top">
+    <img class="gg-logo" src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="272" height="64">
+    <p class="gg-kicker">관리자</p>
+    <h1 class="gg-title">소보루와 제보센터를 <em>한곳에서</em> 관리해요</h1>
+  </header>
+  <section class="gg-band">
+    <form class="gg-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="gg-field"><span class="sr-only">비밀번호</span><input type="password" name="password" required autocomplete="current-password" placeholder="관리자 비밀번호" autofocus></label>
+      <button class="gg-submit" type="submit">로그인</button>
     </form>
-  </div>
+  </section>
+  <p class="gg-note">소보루와 소비자제보센터를 함께 관리하는 화면이에요.</p>
 </main>
 {% endblock %}

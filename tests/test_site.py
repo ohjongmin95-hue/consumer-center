@@ -2482,8 +2482,8 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(admin, '/admin/password')
         wrong = admin.post('/admin/password', data={'_csrf': token, 'current': 'nope', 'password': 'NewAdminPass99', 'password2': 'NewAdminPass99'}, follow_redirects=True)
         self.assertIn('지금 비밀번호가 맞지 않아요', wrong.get_data(as_text=True))
-        short = admin.post('/admin/password', data={'_csrf': token, 'current': self.password, 'password': 'short1', 'password2': 'short1'}, follow_redirects=True)
-        self.assertIn('12자 이상', short.get_data(as_text=True))
+        short = admin.post('/admin/password', data={'_csrf': token, 'current': self.password, 'password': '123', 'password2': '123'}, follow_redirects=True)
+        self.assertIn('4자 이상', short.get_data(as_text=True))
         done = admin.post('/admin/password', data={'_csrf': token, 'current': self.password, 'password': 'NewAdminPass99', 'password2': 'NewAdminPass99'})
         self.assertEqual(done.headers['Location'], '/admin')
         self.assertEqual(admin.get('/admin').status_code, 200)  # 바꾼 화면은 그대로 로그인

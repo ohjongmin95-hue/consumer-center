@@ -848,7 +848,7 @@ def admin_password():
     if request.method=='POST':
         cur=request.form.get('current','');pw=request.form.get('password','');pw2=request.form.get('password2','')
         if not check_password_hash(admin_password_hash(),cur):flash('지금 비밀번호가 맞지 않아요.')
-        elif not (12<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):flash('새 비밀번호는 영문과 숫자를 섞어 12자 이상으로 정해 주세요.')
+        elif not 4<=len(pw)<=64:flash('새 비밀번호는 4자 이상으로 정해 주세요.')  # 운영자 결정 2026-10-24: 숫자 4~6자리도 허용 (틀리면 10분 잠금은 그대로)
         elif pw!=pw2:flash('새 비밀번호 확인이 일치하지 않아요.')
         elif check_password_hash(admin_password_hash(),pw):flash('지금 비밀번호와 다른 비밀번호로 정해 주세요.')
         else:
