@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% from 'soboru_life_macros.html' import thumb, meta %}
-{% block title %}{{ ui('life.title', '생활정보') }}{% if cat %} · {{ cat }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ ui('life.title', '매거진') }}{% if cat %} · {{ cat }}{% endif %} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui('life.description', '환불, 해지, 리콜처럼 알아 두면 돈 버는 소비자 생활정보를 쉽게 풀어 드려요.') }}{% endblock %}
 {% block content %}
 {# 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['life']) #}
 <main class="sb-wrap sb-life">
   {% for blk in blocks('life') %}{{ ed_block('life', blk) }}
   {% if blk == 'head' %}
-  <div class="sb-page-head"><h1>{{ ui('life.title', '생활정보') }}</h1><p>{{ ui('life.intro', '알아 두면 돈 버는 소비자 정보를 쉽게 풀어 드려요.') }}</p></div>
+  <div class="sb-page-head"><h1>{{ ui('life.title', '매거진') }}</h1><p>{{ ui('life.intro', '알아 두면 돈 버는 소비자 정보를 쉽게 풀어 드려요.') }}</p></div>
   {% set nv_tab = 'life' %}{% if naver_ready() %}{% include 'life_tabs.html' %}{% endif %}
   <nav class="sb-cats" aria-label="분야">
     <a href="{{ url_for('life') }}"{% if not cat %} class="on" aria-current="page"{% endif %}>{{ ui('life.cat_all', '전체') }}</a>

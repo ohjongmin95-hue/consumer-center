@@ -1849,3 +1849,34 @@ h1.vs-title{font-size:28px}
 .ow-card footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;min-height:22px}
 .ow-link{font-size:14px;font-weight:700;color:var(--sb-orange)}
 @media(max-width:760px){.ow-list{grid-template-columns:minmax(0,1fr);gap:10px}.ow-card{padding:18px}.ow-card h2{font-size:16.5px}}
+/* 매거진 글 (운영자 2026-10-24): 예전 느낌(이모지 칸 소제목·나눔 줄·따뜻한 요약 상자)에 뉴닉처럼 조금 더 꾸밈
+   분야 색 표지, 소제목 번호, 형광펜 강조(**말**), 첫 문단 크게, 차례·용어 풀이 상자 */
+.sb-cover{position:relative;height:220px;border-radius:24px;margin-top:8px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.sb-cover.t1{background:#fff1e3}.sb-cover.t2{background:#e8f1fb}.sb-cover.t3{background:#e7f5ea}.sb-cover.t4{background:#fdeef2}.sb-cover.t5{background:#f1ecfb}.sb-cover.t6{background:#fbf5dc}
+.sb-cover-e{font-family:Tossface,sans-serif;font-size:100px;line-height:1;transform:rotate(-6deg)}
+.sb-cover-k{position:absolute;left:22px;top:20px;padding:6px 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:800;color:var(--sb-brown)}
+.sb-article .sb-art-head{margin-top:26px}
+.sb-article .sb-art-head .sb-article-cat{display:inline-block;padding:5px 11px;border-radius:8px;background:var(--sb-orange-soft);font-size:13.5px;font-weight:800}
+.sb-article .sb-art-head h1{font-size:33px;font-weight:800;line-height:1.4;letter-spacing:-.04em;margin:12px 0 0;word-break:keep-all}
+.sb-article .sb-art-head .sb-meta{margin:12px 0 0}
+.sb-sum-h .tf{font-family:Tossface,sans-serif;font-size:18px;margin-right:6px}
+.sb-toc{margin:14px 0 0;padding:18px 22px;border-radius:16px;border:1.5px dashed #f3cf9f;background:#fff}
+.sb-toc p{margin:0 0 8px;font-size:14px;font-weight:800;color:var(--sb-brown)}
+.sb-toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.sb-toc a{display:flex;align-items:baseline;gap:10px;padding:5px 0;font-size:15.5px;font-weight:600;color:#333d4b;text-decoration:none;word-break:keep-all}
+.sb-toc a:hover{color:var(--sb-orange)}
+.sb-toc-n{flex:none;font-size:13px;font-weight:800;color:var(--sb-orange);font-variant-numeric:tabular-nums}
+.sb-article-body{word-break:keep-all}
+.sb-article-body > p:first-child{font-size:1.08em;font-weight:500;color:#191f28}
+.sb-article-body h2.sb-h{scroll-margin-top:90px}
+.sb-h-t{display:flex;flex-direction:column;gap:2px}
+.sb-h-t small{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--sb-orange);font-variant-numeric:tabular-nums}
+.sb-hl{font-weight:700;color:#191f28;background:linear-gradient(transparent 58%,#ffe2b8 58%);padding:0 2px}
+.sb-terms{margin:4px 0 24px;padding:16px 20px;border-radius:14px;background:var(--sb-gray);display:grid;gap:6px}
+.sb-article .sb-article-body .sb-terms-h{margin:0;font-size:13px;font-weight:800;color:#6b7684}
+.sb-terms div{font-size:14.5px;line-height:1.65;color:#4e5968}.sb-terms dt{display:inline;font-weight:700;color:#191f28;margin-right:8px}.sb-terms dd{display:inline;margin:0}
+.sb-callout{border-left:4px solid var(--sb-orange);border-radius:4px 16px 16px 4px}
+@media(max-width:680px){
+  .sb-cover{height:170px;border-radius:18px}.sb-cover-e{font-size:76px}.sb-cover-k{left:14px;top:14px}
+  .sb-article .sb-art-head h1{font-size:25px}
+}

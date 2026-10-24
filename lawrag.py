@@ -61,6 +61,33 @@ AGENCIES = {'': [('1372 소비자상담센터', '전화 1372 · ccn.go.kr', 'htt
 STEPS = ['업체에 문자·게시판·메일처럼 기록이 남는 방법으로 원하는 해결(환불·교환·수리 등)을 먼저 요청해요.',
          '주문·계약 내역, 결제 내역, 사진, 업체와 나눈 대화 화면을 모아 두세요.',
          '업체가 응하지 않으면 1372 소비자상담센터에서 상담을 받고, 필요하면 한국소비자원에 피해구제를 신청할 수 있어요.']
+# 거래 방식 (운영자 2026-10-24: 유튜브 구독 질문에 방문판매법 '방문판매자 정보제공의무'가 붙음).
+# 법은 이름이 아니라 조문에 적힌 적용 대상으로 고른다: 방문판매·전화권유판매·다단계 조항은 그렇게 산 경우에만, 계속거래 조항은 판매 방식과 상관없이 후보로 둔다.
+CHANNELS = {'online': ('온라인', '인터넷', '앱', '어플', '웹', '사이트', '쇼핑몰', '스마트스토어', '오픈마켓', '유튜브', '넷플릭스', '티빙', '웨이브', '왓챠', '디즈니',
+                       '쿠팡', '멜론', '스포티파이', 'OTT', '스트리밍', '라이브커머스', '홈쇼핑', '직구', '해외구매', '택배', '배송', '주문'),
+            'door': ('방문판매', '방문 판매', '집으로 찾아', '집에 찾아', '찾아와', '방문해서', '길거리', '길에서', '홍보관', '체험관', '전화로 권유', '전화 권유', '전화권유',
+                     '텔레마케팅', '전화가 와서', '전화로 가입', '다단계', '후원방문')}
+CHANNEL_NAME = {'online': '온라인·앱으로 산 거래', 'door': '방문·전화권유·다단계로 산 거래'}
+# 방문판매법 제2장 방문판매·전화권유판매(제5~12조)와 제3장 다단계·후원방문판매(제13~29조)는 그 판매 방식 전용.
+# 제4장 계속거래·사업권유거래(제30~34조)와 총칙·소비자권익 보호는 판매 방식과 상관없이 후보로 둔다.
+DOOR_ONLY = (5, 29)
+
+
+def channel_of(text):
+    """'online' / 'door' / '' (모름이나 둘 다). 결론을 바꾸므로 확실할 때만."""
+    t = text or ''
+    has = {k for k, words in CHANNELS.items() if any(w.lower() in t.lower() for w in words)}
+    return has.pop() if len(has) == 1 else ''
+
+
+def out_of_scope(channel, key, art):
+    """이 거래 방식에 쓰면 안 되는 조문인가 (art: '제7조', '제8조의2'). 온라인 거래에 방문판매법 방문판매·전화권유·다단계 조항을 쓰지 않는다."""
+    if channel == 'online' and key == 'door':
+        m = re.match(r'제(\d+)조', art or '')
+        return bool(m) and DOOR_ONLY[0] <= int(m.group(1)) <= DOOR_ONLY[1]
+    return False
+
+
 EXAMPLES = ['헬스장 6개월권, 두 달 다니고 해지하면 얼마나 돌려받나요?', '주문한 상품이 2주째 안 와요', '배달 음식에서 이물질이 나왔어요',
             '구독 서비스 중도 해지하는데 위약금을 내래요', '받은 옷이 광고 사진이랑 너무 달라요', '중고거래로 산 물건이 설명과 달라요']
 TEST_QUESTIONS = ['배달 음식에서 바퀴벌레 같은 이물질이 나왔어요. 환불이나 보상을 받을 수 있나요?', '구독 서비스를 중도 해지하려는데 위약금을 내라고 해요.',
@@ -72,13 +99,35 @@ TEST_QUESTIONS = ['배달 음식에서 바퀴벌레 같은 이물질이 나왔�
                   '항공권이 결항됐는데 여행사가 수수료를 떼고 환불해 준대요.', '신용카드 할부로 산 회원권 업체가 폐업했어요. 남은 할부금을 안 낼 수 있나요?',
                   '보험 가입할 때 설명을 제대로 못 들었어요. 계약을 취소할 수 있나요?', '약관에 환불 불가라고 적혀 있으면 정말 환불이 안 되나요?',
                   '식당에서 먹은 음식 때문에 식중독에 걸렸어요.', '방문판매로 계약한 정수기 렌탈을 취소하고 싶어요.',
-                  '전기장판에서 불이 나서 다쳤어요. 제조사에 배상받을 수 있나요?', '편의점에서 유통기한이 지난 우유를 팔았어요.']
+                  '전기장판에서 불이 나서 다쳤어요. 제조사에 배상받을 수 있나요?', '편의점에서 유통기한이 지난 우유를 팔았어요.',
+                  '유튜브 프리미엄 구독을 중도 해지하려는데 위약금이 있나요?', '집으로 찾아온 판매원에게 산 학습지 1년 계약을 해지하고 싶어요.']
+# 품질 시험 자체 점검: 질문마다 근거에 꼭 하나는 있어야 할 법(key). 판매 방식이 다른 조문(out_of_scope)이 끼면 틀림.
+TEST_EXPECT = {TEST_QUESTIONS[0]: ('food', 'food_rule', 'kca', 'kca_appx'), TEST_QUESTIONS[2]: ('sports', 'kca', 'kca_appx', 'door'),
+               TEST_QUESTIONS[3]: ('ecom',), TEST_QUESTIONS[4]: ('ecom', 'ecom_dec'), TEST_QUESTIONS[5]: ('ecom', 'adlabel'),
+               TEST_QUESTIONS[8]: ('ecom', 'ecom_dec', 'terms'), TEST_QUESTIONS[13]: ('installment',), TEST_QUESTIONS[14]: ('fincon',),
+               TEST_QUESTIONS[15]: ('terms',), TEST_QUESTIONS[17]: ('door',), TEST_QUESTIONS[18]: ('pl',),
+               TEST_QUESTIONS[20]: ('ecom', 'ecom_dec', 'terms', 'door'), TEST_QUESTIONS[21]: ('door',)}
+
+
+def grade(question, refs):
+    """품질 시험 한 줄 점검 -> (맞음 여부, 설명). refs: ['key:제n조', …]"""
+    ch = channel_of(question); keys = [r.split(':', 1)[0] for r in refs]
+    wrong = [r for r in refs if out_of_scope(ch, *r.split(':', 1))]
+    if wrong: return False, '판매 방식이 다른 조문: ' + ', '.join(wrong)
+    want = TEST_EXPECT.get(question)
+    if want and not any(k in want for k in keys): return False, '꼭 필요한 법이 빠짐'
+    return True, '맞음' if want else '기준 없음'
+
+
 SYSTEM = ('너는 소보루의 AI 소비자 상담 도우미다. 상담사가 아니라 AI이고, 법률 자문이 아닌 일반 정보를 준다.\n'
           '[근거]\n- 아래 [근거 후보]의 원문만 근거로 쓴다. 인터넷 검색이나 네가 아는 일반 지식으로 법 내용·기간·금액·예외·판례를 채우지 않는다.\n'
           '- 후보에 없는 법령·조항·고시·판례·사건번호를 쓰지 않는다. 금액·비율은 후보 원문이나 소비자 질문에 적힌 것만 쓴다.\n'
           '- 후보의 종류를 지킨다. (법률 조문)은 법적 효력이 있다. (분쟁해결기준(권고))은 당사자 합의·권고의 기준이라 강제력이 없다. '
           '(생활법령 해설(효력 없음))은 참고용 해설이다. 기준이나 해설을 법처럼 단정하지 않는다.\n'
           '- 후보가 질문을 다루지 않으면 covered를 false로 하고 법적 결론을 내리지 않는다.\n'
+          '[적용 범위]\n- 법 이름이 아니라 조문에 적힌 적용 대상(통신판매업자, 방문판매자, 전화권유판매자, 계속거래업자, 체육시설업자 등)과 거래가 맞는지 먼저 확인하고, 맞는 조문만 근거로 쓴다.\n'
+          '- [거래 방식]이 주어지면 그 방식에 맞지 않는 조문은 쓰지 않는다(예: 온라인·앱 구독에 방문판매자의 의무 조항). 판매 방식이 결론을 바꾸는데 질문에서 알 수 없으면 확인 질문으로 묻는다.\n'
+          '- 질문이 한 가지(예: 위약금)를 물으면 그 물음에 대한 답을 핵심 결론 첫 문장에 쓰고, 관련 없는 조문 설명으로 채우지 않는다.\n'
           '[확인 질문]\n- 결론을 바꿀 사실(무엇을 어디서 어떻게 샀는지, 언제 받았는지, 계약 기간·금액, 업체의 답 등)이 빠졌으면 need_more를 true로 하고 '
           'questions에 짧은 확인 질문 1~3개를 쓴다. 이때 parts에는 핵심 결론 하나만 "이 점을 알려 주시면 더 정확히 답할 수 있어요" 꼴로 짧게 쓴다.\n'
           '[구성]\n- parts에는 다음 7가지 중 이 질문에 필요한 것만 골라 이 순서로 쓴다: 핵심 결론, 관련 법령, 환불·보상 가능성, 증거, 대응 절차, 신고·상담기관, 출처.\n'
@@ -321,13 +370,14 @@ def install(S):
                 info['error'] = str(e)[:160]; LOG.warning('임베딩 검색 실패: %s', info['error'])
         info['weak'] = not kw_ok and emb_top < EMB_SURE
         if not score: return dtype, [], info
-        laws = rc._load()['laws']
+        laws = rc._load()['laws']; ch = channel_of(text)
         def boost(ref):
             key, art = ref.split(':', 1); b = 1.0
             if key == lawsync.APPENDIX_KEY:
                 item = laws[key]['articles'][art].get('item', '') + laws[key]['articles'][art].get('title', '')
                 b *= TYPE_BOOST if t and any(w in item for w in t[4]) else 0.8
             elif t and key in t[3]: b *= TYPE_BOOST
+            if ch == 'online' and key in ('ecom', 'ecom_dec'): b *= TYPE_BOOST   # 온라인으로 산 거래는 전자상거래법 먼저
             if key == 'easylaw': b *= 0.9
             if key == 'civil': b *= 0.8
             return b
@@ -335,6 +385,7 @@ def install(S):
         out, guides, appx = [], 0, 0
         for r in ranked:
             k = r.split(':', 1)[0]
+            if out_of_scope(ch, k, r.split(':', 1)[1]): continue   # 판매 방식이 다른 조문
             if k == 'easylaw':
                 if guides >= MAX_GUIDE: continue
                 guides += 1
@@ -362,7 +413,8 @@ def install(S):
         msgs = [{'role': 'system', 'content': SYSTEM.replace('소보루', S.notify.site_name())}]
         for h in history[-(HISTORY_TURNS // 2):]:
             msgs += [{'role': 'user', 'content': mask(h['q'])}, {'role': 'assistant', 'content': mask(h['a'])[:900]}]
-        msgs.append({'role': 'user', 'content': '[질문]\n' + mask(question) + '\n\n[근거 후보]\n' + cand_block(cards)})
+        ch = channel_of(' '.join([h['q'] for h in history] + [question]))
+        msgs.append({'role': 'user', 'content': '[질문]\n' + mask(question) + (f'\n\n[거래 방식]\n{CHANNEL_NAME[ch]} (질문에서 짐작)' if ch else '') + '\n\n[근거 후보]\n' + cand_block(cards)})
         body = {'model': desk.ai_model(), 'temperature': 0.2, 'response_format': {'type': 'json_object'}, 'messages': msgs}
         st, res = post('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, 45)
         if st != 200: raise RuntimeError(f'AI 응답 오류 ({st}) ' + str(((res or {}).get('error') or {}).get('message', ''))[:120].replace(key, '***'))
@@ -600,7 +652,7 @@ def install(S):
                 on = request.form.get('on') == '1'; set_v2(on)
                 flash('AI 상담 새 버전을 켰어요. 손님에게 새 화면이 보여요.' if on else 'AI 상담 새 버전을 껐어요. 손님에게 예전 화면이 보여요.')
             elif act == 'test':
-                flash('품질 시험을 시작했어요. 질문 20개를 차례로 묻느라 몇 분 걸려요. 잠시 뒤 새로고침해 주세요.' if background('test', run_tests, stamp()) else '품질 시험이 이미 돌고 있어요.')
+                flash('품질 시험을 시작했어요. 질문 %d개를 차례로 묻느라 몇 분 걸려요. 잠시 뒤 새로고침해 주세요.' % len(TEST_QUESTIONS) if background('test', run_tests, stamp()) else '품질 시험이 이미 돌고 있어요.')
             elif act == 'embed':
                 if not has_key(): flash('OpenAI 키가 없어 임베딩을 만들 수 없어요.')
                 else: flash('임베딩을 만들기 시작했어요. 바뀐 조문만 만들어요.' if background('embed', build_embeddings) else '임베딩을 이미 만들고 있어요.')
@@ -616,7 +668,7 @@ def install(S):
         d = docs(); emb.load(); have = sum(1 for x in d if x['hash'] in emb.index)
         return render_template('admin_ask.html', on=v2_on(), s=stats(rows), recent=recent, tests=tests, test_batch=last['batch'] if last else '', jobs=dict(jobs),
                                test_total=len(TEST_QUESTIONS), emb={'have': have, 'total': len(d)}, keep_days=KEEP_DAYS, price=PRICE, model=desk.ai_model(),
-                               embed_model=lawsync.EMBED_MODEL, oc=bool(lawsync.oc()), key=has_key(), loads=json.loads, parts_all=PARTS)
+                               embed_model=lawsync.EMBED_MODEL, oc=bool(lawsync.oc()), key=has_key(), loads=json.loads, parts_all=PARTS, grade=grade)
 
     @app.route('/admin/ask/logs/<int:log_id>')
     @S.admin_only

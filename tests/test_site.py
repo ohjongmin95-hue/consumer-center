@@ -341,7 +341,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('택배 분실 보상 정리', visitor.get('/life').get_data(as_text=True))
         admin.post(f'/admin/life/{aid}', data={'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'act': 'publish', 'title': '택배 분실 보상 정리', 'summary': '요약', 'body': '첫 문단\n\n## 소제목\n- 목록', 'category': '쇼핑'})
         art = visitor.get(f'/life/{aid}').get_data(as_text=True)
-        self.assertIn('<span class="sb-h-emo" aria-hidden="true">📌</span>소제목</h2>', art)  # 이모지 없는 예전 글도 이모지 칸
+        self.assertIn('<span class="sb-h-emo" aria-hidden="true">📌</span><span class="sb-h-t"><small>01</small>소제목</span></h2>', art)  # 이모지 없는 예전 글도 이모지 칸, 소제목 번호
         self.assertIn('"@type": "Article"', art)
         self.assertIn(f'<link>http://localhost/life/{aid}</link>', visitor.get('/rss.xml').get_data(as_text=True))  # RSS에 생활정보 기사도
         self.assertEqual(visitor.get('/', base_url='http://www.consumerjebo.co.kr').headers['Location'], 'https://consumerjebo.co.kr/')  # www는 https 대표 주소로 한 번에
@@ -377,7 +377,7 @@ class SiteTest(unittest.TestCase):
             self.assertIn('소비자의 소리', home); self.assertLess(home.index('nn-live'), home.index('id="letter-sub"'))  # 제보 목록 바로 밑에 레터 구독
             self.assertNotIn('nn-stats', home)  # 맨 위 건수 현황은 뺌
             self.assertIn('🔒 비밀 제보 카드 제목', home)  # 비밀글도 제목·업체는 보이고 본문만 잠금
-            self.assertIn('소보루 픽', home)  # 메뉴 이름 (커뮤니티 → 소보루 픽)
+            self.assertIn('커뮤니티', home)  # 메뉴 이름 (소보루 픽 → 커뮤니티, 2026-10-24)
             self.assertIn('AI 학습 이용을 금지', home)  # 하단 무단 이용 금지 문구
             self.assertIn('User-agent: GPTBot', self.client.get('/robots.txt').get_data(as_text=True))
             self.assertIn('자주 묻는 질문', home); self.assertNotIn('피해 유형별 안내', home)  # 피해 유형별 안내는 메뉴에서 뺌(운영자 요청)
@@ -386,7 +386,7 @@ class SiteTest(unittest.TestCase):
             # 화면 편집: 예전 '메인 화면 순서' 주소는 화면 편집으로
             self.assertIn('/admin/screens#page-home', admin.get('/admin/home-plan').headers['Location'])
             page = admin.get('/admin/screens').get_data(as_text=True)
-            for name in ('화면 편집', '홈', '생활정보', '소보루 픽', '제보', '기업', '법률 질문', '소보루 레터', '공통 머리글·바닥글', '소비자의 소리', '이 페이지 문구 모두 보기'):
+            for name in ('화면 편집', '홈', '매거진', '커뮤니티', '제보', '기업', '법률 질문', '소보루 레터', '공통 머리글·바닥글', '소비자의 소리', '이 페이지 문구 모두 보기'):
                 self.assertIn(name, page)
             token = self.csrf(admin, '/admin/screens')
             # 순서표 통째로: 레터를 맨 위로, 기업 답변 기록은 숨김
@@ -723,9 +723,25 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(client, path)
         return client.post(path, data={'_csrf': token, **data})
 
+    def test_soboru_examples(self):
+        # 커뮤니티 예시 글: 글쓴이 '소보루 예시' + 본문에 예시 표시, 두 번 넣어도 한 번만, remove로 모두 지움
+        import soboru_examples as ex
+        ex.add(self.site); ex.add(self.site)
+        with self.site.conn() as db:
+            rows = db.execute("SELECT nickname,body FROM posts WHERE ip_hash='example'").fetchall()
+            self.assertEqual(len(rows), len(ex.REVIEWS) + len(ex.SUDA))
+            self.assertTrue(all(r['nickname'] == '소보루 예시' and '예시 글' in r['body'] for r in rows))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM vs_polls WHERE ip_hash='example'").fetchone()[0], len(ex.POLLS))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM owner_news WHERE ip_hash='example'").fetchone()[0], len(ex.OWNERS))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM cases WHERE subject LIKE '%예시%'").fetchone()[0], 0)  # 제보에는 안 넣음
+        ex.remove(self.site)
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM posts WHERE ip_hash='example'").fetchone()[0], 0)
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM vs_polls WHERE ip_hash='example'").fetchone()[0], 0)
+
     def test_consumer_board(self):
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('>소보루 픽</a>', home)
+        self.assertIn('>커뮤니티</a>', home)
         self.assertIn('>이용 안내</a>', home)
         self.assertNotIn('제보 유형</a>', home)
         writer = self.site.app.test_client()
@@ -3754,8 +3770,10 @@ class SiteTest(unittest.TestCase):
         self.assertLess(body.index('## ✅ 이렇게 하세요'), body.index('## 🤝 소보루와 함께 시작해요'))
         with self.site.app.test_request_context('/'): html = str(self.site.app.jinja_env.globals['life_body'](body))
         self.assertIn('<span class="sb-point-n" aria-hidden="true">2</span>결제일을 기억하세요', html)
-        self.assertIn('<p class="sb-term"><b>리볼빙</b>', html)
+        self.assertIn("<dl class=\"sb-terms\">", html); self.assertIn("<dt>리볼빙</dt>", html)  # 용어 풀이는 상자 하나로
         self.assertNotIn('###', html)
+        with self.site.app.test_request_context('/'): hl = str(self.site.app.jinja_env.globals['life_body']('앞 **꼭 기억할 말** 뒤 <b>x</b> **'))
+        self.assertIn('<strong class="sb-hl">꼭 기억할 말</strong>', hl); self.assertIn('&lt;b&gt;', hl); self.assertNotIn('**', hl)  # 형광펜 강조, 태그는 글자로
 
     def test_writer_skips_similar_topic_within_30_days(self):
         """제목이 달라도 소재가 같은 글(외식비·외식 물가)은 30일 안에 다시 쓰지 않음"""
@@ -4038,6 +4056,20 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('010-1111-2222', json.dumps(chat, ensure_ascii=False))
         self.assertEqual(html2.count('class="sbv-a sbv-old"'), 3)
 
+    def test_ask_v2_sale_channel_scope(self):
+        # 유튜브 구독(온라인)에 방문판매법 방문판매·전화권유·다단계 조항(제5~29조)을 쓰지 않음. 계속거래(제30~34조)는 남김
+        import lawrag
+        self.assertEqual(lawrag.channel_of('유튜브 프리미엄 구독 해지 위약금'), 'online')
+        self.assertEqual(lawrag.channel_of('집으로 찾아온 판매원에게 산 학습지'), 'door')
+        self.assertEqual(lawrag.channel_of('헬스장 6개월권 해지'), '')
+        self.assertTrue(lawrag.out_of_scope('online', 'door', '제7조')); self.assertTrue(lawrag.out_of_scope('online', 'door', '제8조'))
+        self.assertFalse(lawrag.out_of_scope('online', 'door', '제32조')); self.assertFalse(lawrag.out_of_scope('door', 'door', '제8조'))
+        self.assertFalse(lawrag.out_of_scope('', 'door', '제7조'))
+        q = '유튜브 프리미엄 구독을 중도 해지하려는데 위약금이 있나요?'
+        self.assertEqual(lawrag.grade(q, ['door:제7조', 'ecom:제17조'])[0], False)
+        self.assertEqual(lawrag.grade(q, ['ecom:제17조']), (True, '맞음'))
+        self.assertIn('[적용 범위]', lawrag.SYSTEM)
+
     def test_ask_v2_verify_drops_invented_content(self):
         import lawrag
         cards = [{'id': 'c1', 'ref': 'ecom:제17조', 'art': '제17조', 'short': '전자상거래법', 'law': '전자상거래 등에서의 소비자보호에 관한 법률', 'title': '청약철회등',
@@ -4123,7 +4155,7 @@ class SiteTest(unittest.TestCase):
             lab = admin.post('/admin/ask/lab', data={'_csrf': self.csrf(admin, '/admin/ask/lab'), 'q': '온라인에서 산 옷 7일 지나서 환불 되나요?'}).get_data(as_text=True)
         with self.site.conn() as db:
             rows = db.execute("SELECT * FROM ask_logs WHERE kind='test'").fetchall()
-        self.assertEqual(len(rows), len(lawrag.TEST_QUESTIONS)); self.assertEqual(len(rows), 20)
+        self.assertEqual(len(rows), len(lawrag.TEST_QUESTIONS)); self.assertEqual(len(rows), 22)
         self.assertIn('배달 음식에서 바퀴벌레', dash); self.assertIn('품질 시험', dash); self.assertIn('ak-yes', dash)
         self.assertTrue(any(json.loads(r['parts']) == ['핵심 결론'] for r in rows))
         self.assertIn('예전 답', lab); self.assertIn('AI 소비자 상담', lab); self.assertIn('남은 기간 이용료', lab)

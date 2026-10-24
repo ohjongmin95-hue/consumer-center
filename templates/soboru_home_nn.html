@@ -35,7 +35,7 @@
       <a class="nn-about-card c4" href="{{ url_for('suda') }}"><span class="bread" aria-hidden="true">🍩</span><b>{{ ui('home.about4', '수다방') }}</b><p>{{ ui('home.about4_sub', '지름 인증부터 직장 고민까지. 매너 있게, 광고 없이 아무 얘기나.') }}</p><span class="nn-about-go">{{ ui('home.about4_btn', '수다 보러 가기') }} ›</span></a>
     </div>
     <p class="nn-about-more">{{ ui('home.about_more', '이것도 있어요') }}
-      <a href="{{ url_for('life') }}">{{ ui('home.quick_life', '생활정보') }}</a>
+      <a href="{{ url_for('life') }}">{{ ui('home.quick_life', '매거진') }}</a>
       {% if ask_on() %}<a href="{{ url_for('law_ask') }}">{{ ui('home.quick_ask', 'AI 소비자 상담') }}</a>{% endif %}
       <a href="{{ url_for('companies') }}">{{ ui('home.quick_companies', '기업 답변 기록') }}</a>
       <a href="{{ url_for('scam_home') }}">{{ ui('home.quick_scam', '사기 주의') }}</a>
@@ -60,7 +60,7 @@
     <div class="nn-sec-head"><h2><span class="tf" aria-hidden="true">💸</span> {{ ui('home.life_title', '알아 두면 돈 버는 소비 이야기') }}</h2><a href="{{ url_for('life') }}">{{ ui('home.life_more', '더 보기 ›') }}</a></div>
     <div class="nn-chips" role="tablist">
       <button type="button" class="on" data-chip="all">{{ ui('home.chip_all', '전체') }}</button>
-      <button type="button" data-chip="life">{{ ui('home.chip_life', '생활정보') }}</button>
+      <button type="button" data-chip="life">{{ ui('home.chip_life', '매거진') }}</button>
       <button type="button" data-chip="report">{{ ui('home.chip_report', '제보 리포트') }}</button>
       {% for cat in cats %}<button type="button" data-chip="c-{{ cat }}">{{ cat }}</button>{% endfor %}
     </div>
@@ -68,7 +68,7 @@
       {% for it in feed %}
       <a class="nn-item" href="{{ it.url }}" data-kind="{{ it.kind }}" data-cat="c-{{ it.label }}">
         <span class="nn-emo {{ it.tone }}" aria-hidden="true">{{ it.emoji }}</span>
-        <div><p class="nn-tag">{{ ui('home.tag_life', '생활정보') if it.kind == 'life' else ui('home.tag_report', '제보 리포트') }} · {{ it.label }}</p>
+        <div><p class="nn-tag">{{ ui('home.tag_life', '매거진') if it.kind == 'life' else ui('home.tag_report', '제보 리포트') }} · {{ it.label }}</p>
           <h3>{{ it.title }}</h3>
           {% if it.summary %}<p class="nn-sum">{{ it.summary }}</p>{% endif %}
           <p class="nn-date">{{ (it.stamp or '')[:10].replace('-', '.') }}</p></div>
@@ -79,8 +79,8 @@
   {% elif blk == 'pick' %}
   <section class="nn-sec nn-pick">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '직접 써 본 이웃들의 후기') }}</p><h2><span class="tf" aria-hidden="true">🏆</span> {{ ui('home.pick_title', '소보루 픽') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '가짜 후기에 지친 당신에게. 직접 돈 내고 산 사람들의 솔직한 이야기만 모았어요.') }}</p></div>
-      <a class="nn-more" href="{{ url_for('board') }}">{{ ui('home.pick_more', '소보루 픽 전체 보기 ›') }}</a>
+      <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '직접 써 본 이웃들의 후기') }}</p><h2><span class="tf" aria-hidden="true">🏆</span> {{ ui('home.pick_title', '커뮤니티') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '가짜 후기에 지친 당신에게. 직접 돈 내고 산 사람들의 솔직한 이야기만 모았어요.') }}</p></div>
+      <a class="nn-more" href="{{ url_for('board') }}">{{ ui('home.pick_more', '커뮤니티 전체 보기 ›') }}</a>
     </div>
     {% set camp = current_campaign() %}{% if camp %}{{ campaign_card(camp, campaign_review_count(camp['id']), 'cp-home') }}{% endif %}
     <div class="nn-pick-grid">

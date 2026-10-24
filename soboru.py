@@ -47,10 +47,10 @@ RANK_DAYS = 30
 # 화면 편집 (관리자 > 화면 편집): 페이지마다 큰 묶음(블록)의 순서와 보이기. 잘게 나누지 않고 화면에서 한눈에 보이는 덩어리 단위
 PAGE_BLOCKS = {
     'home': ('홈', [('intro', '맨 위 소개 (소보루 큰 문구 · 제보하기 버튼)'), ('live', '소비자의 소리 (실시간 제보)'),
-                   ('pick', '소보루 픽 (추천 TOP 5 · 최신 글 · 글쓰기)'), ('talk', '골라주세요 · 수다방'), ('quick', '소보루는 이런 곳 (제보 · 후기 · 골라주세요 · 수다방)'),
+                   ('pick', '커뮤니티 (추천 TOP 5 · 최신 글 · 글쓰기)'), ('talk', '골라주세요 · 수다방'), ('quick', '소보루는 이런 곳 (제보 · 후기 · 골라주세요 · 수다방)'),
                    ('letter', '소보루 레터 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('answer', '기업 답변 기록')]),
     'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '소보루 레터 구독')]),
-    'board': ('소보루 픽', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
+    'board': ('커뮤니티', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
                          ('feed', '글 목록 · 이번 주 인기 · 리뷰 모아 보기'), ('foot', '맨 아래 안내')]),
     'letter': ('소보루 레터', [('hero', '맨 위 구독 신청'), ('feats', '레터에 담기는 것 (3가지)'), ('archive', '지난 레터')]),
 }
@@ -218,38 +218,56 @@ def install(S):
 
     def life_body(text):
         # 본문: 빈 줄은 문단, "## "는 소제목(앞에 이모지), "### "는 번호 붙은 요점, "※ 낱말: 풀이"는 용어 풀이, "- "는 목록, "> "는 '핵심만 쏙' 상자. HTML은 쓰지 않음.
-        # 뉴스레터처럼: 소제목마다 이모지 칸, '이렇게 하세요'는 체크 목록. 이모지가 없는 예전 글은 차례로 기본 이모지를 붙임.
-        out, items, n_head, check, n_point = [], [], 0, False, 0
+        # 매거진처럼 (운영자 2026-10-24: 토스처럼 깔끔하게): 소제목은 큰 글씨에 작은 이모지, 이어진 용어 풀이는 상자 하나로, 소제목마다 차례용 id(s1, s2…).
+        out, items, terms, n_head, check, n_point = [], [], [], 0, False, 0
         def flush():
             nonlocal check
             if items:
-                out.append(Markup('<ul class="sb-check">' if check else '<ul>') + Markup('').join(Markup('<li>%s</li>') % i for i in items) + Markup('</ul>'))
+                out.append(Markup('<ul class="sb-check">' if check else '<ul>') + Markup('').join(Markup('<li>%s</li>') % hl(i) for i in items) + Markup('</ul>'))
                 items.clear()
+            if terms:
+                out.append(Markup('<dl class="sb-terms"><p class="sb-terms-h">%s</p>') % S.ui_text('life.terms', '용어 풀이')
+                           + Markup('').join((Markup('<div><dt>%s</dt><dd>%s</dd></div>') % (w, m)) if m else Markup('<div><dd>%s</dd></div>') % w for w, m in terms) + Markup('</dl>'))
+                terms.clear()
         for block in re.split(r'\n\s*\n', (text or '').strip()):
             lines = [l.strip() for l in block.split('\n') if l.strip()]
             for line in lines:
-                if line.startswith('- '): items.append(line[2:]); continue
+                if line.startswith('- '):
+                    if terms: flush()
+                    items.append(line[2:]); continue
+                if line.startswith('※ '):  # 용어 풀이: 이어진 것끼리 상자 하나
+                    if items: flush()
+                    word, _, mean = line[2:].partition(':'); terms.append((word.strip(), mean.strip())); continue
                 flush()
                 if line.startswith('### '):  # 요점: 소제목 안에서 1, 2, 3… 번호를 붙여 하나씩
                     n_point += 1
                     out.append(Markup('<h3 class="sb-point"><span class="sb-point-n" aria-hidden="true">%d</span>%s</h3>') % (n_point, line[4:].strip()))
-                elif line.startswith('※ '):  # 용어 풀이
-                    word, _, mean = line[2:].partition(':')
-                    out.append(Markup('<p class="sb-term"><b>%s</b>%s</p>') % (word.strip(), mean.strip()) if mean else Markup('<p class="sb-term">%s</p>') % line[2:])
                 elif line.startswith('## '):
                     n_point = 0
-                    head = line[3:].strip(); emo = head[:1]
-                    if emo in BODY_EMOJI: head = head[1:].strip()
-                    else: emo = '✅' if '이렇게 하세요' in head else LIFE_DEFAULT_EMOJI[n_head % len(LIFE_DEFAULT_EMOJI)]
+                    emo, head = life_head(line, n_head)
                     n_head += 1; check = emo == '✅'
-                    out.append(Markup('<h2 class="sb-h"><span class="sb-h-emo" aria-hidden="true">%s</span>%s</h2>') % (emo, head))
+                    out.append(Markup('<h2 class="sb-h" id="s%d"><span class="sb-h-emo" aria-hidden="true">%s</span><span class="sb-h-t"><small>%02d</small>%s</span></h2>') % (n_head, emo, n_head, head))
                 elif line.startswith('> '):
                     note = line[2:].strip(); emo = note[:1] if note[:1] in BODY_EMOJI else '💡'
                     if note[:1] in BODY_EMOJI: note = note[1:].strip()
                     out.append(Markup('<aside class="sb-callout"><span class="sb-h-emo" aria-hidden="true">%s</span><div><b>%s</b><p>%s</p></div></aside>') % (emo, S.ui_text('life.callout', '핵심만 쏙'), note))
-                else: out.append(Markup('<p>%s</p>') % line)
+                else: out.append(Markup('<p>%s</p>') % hl(line))
             flush()
         return Markup('\n').join(out)
+
+    def hl(text):
+        # **말** -> 형광펜 강조 (뉴닉처럼). 글은 먼저 이스케이프하고 강조만 태그로
+        return Markup(re.sub(r'\*\*(.{1,60}?)\*\*', r'<strong class="sb-hl">\1</strong>', str(escape(text)))).replace('**', '')
+
+    def life_head(line, n):
+        head = line[3:].strip(); emo = head[:1]
+        if emo in BODY_EMOJI: return emo, head[1:].lstrip('\ufe0f').strip()  # ⚖️처럼 뒤에 붙는 글자 모양 표시는 제목에서 뺌
+        return ('✅' if '이렇게 하세요' in head else LIFE_DEFAULT_EMOJI[n % len(LIFE_DEFAULT_EMOJI)]), head
+
+    def life_toc(text):
+        # 차례: 소제목 (번호, 이모지, 제목). life_body의 id(s1, s2…)와 같은 순서
+        heads = [l.strip() for l in (text or '').split('\n') if l.strip().startswith('## ')]
+        return [(i + 1,) + life_head(h, i) for i, h in enumerate(heads)]
 
     # ---- 이달의 기업 답변 순위 (숫자로만) ------------------------------------
     def company_rank(limit=5, days=RANK_DAYS):
@@ -279,7 +297,7 @@ def install(S):
         wait = sorted([p for p in out if p['waiting']], key=lambda p: (-p['waiting'], p['rate'], -p['n']))[:limit]
         return {'best': best, 'wait': wait, 'days': days, 'min_n': jebo.MIN_N}
 
-    app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, company_rank=company_rank,
+    app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, life_toc=life_toc, company_rank=company_rank,
                                  ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES, LIFE_EMOJI=LIFE_EMOJI, GUIDE_EMOJI=GUIDE_EMOJI,
                                  report_look=report_look, life_art=lambda cat: LIFE_ART.get(cat, 'other'), report_art=lambda ind: report_art(ind, S.items('guide_industries')))
 
@@ -387,8 +405,8 @@ def install(S):
     # 관리자 > 화면 편집: 페이지별로 '화면에서 바로 고치기' 열기, 묶음 순서·보이기, 그 페이지 문구 전체
     SCREENS = [  # (키, 이름, 주소 만드는 함수, 문구를 모을 템플릿 파일)
         ('home', '홈', lambda: url_for('home'), ['soboru_home_nn.html', 'letter_macros.html']),
-        ('life', '생활정보', lambda: url_for('life'), ['life.html', 'life_article.html', 'soboru_life_macros.html', 'life_tabs.html', 'life_search.html', 'life_trend.html', 'life_shopping.html', 'life_nv_macros.html']),
-        ('board', '소보루 픽', lambda: url_for('board'), ['board.html', 'soboru_board.html', 'soboru_board_post.html', 'soboru_board_write.html', 'board_post.html', 'board_write.html', 'community_macros.html']),
+        ('life', '매거진', lambda: url_for('life'), ['life.html', 'life_article.html', 'soboru_life_macros.html', 'life_tabs.html', 'life_search.html', 'life_trend.html', 'life_shopping.html', 'life_nv_macros.html']),
+        ('board', '커뮤니티', lambda: url_for('board'), ['board.html', 'soboru_board.html', 'soboru_board_post.html', 'soboru_board_write.html', 'board_post.html', 'board_write.html', 'community_macros.html']),
         ('report', '제보', lambda: url_for('report'), ['report.html', 'reports.html', 'report_rows.html', 'public_case.html', 'soboru_case.html', 'case_talk.html', 'success.html', 'lookup.html', 'case.html', 'guide.html', 'info.html', 'process_cards.html']),
         ('company', '기업', lambda: url_for('companies'), ['companies.html', 'company_page.html', 'company_grade.html']),
         ('scam', '사기 주의', lambda: url_for('scam_home'), ['scam.html', 'scam_new.html']),

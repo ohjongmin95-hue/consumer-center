@@ -8,12 +8,18 @@
 <main class="sb-wrap sb-article">
   <article>
     {% if a['status'] != 'published' %}<p class="sb-draft">{{ ui('life.draft_note', '아직 게시하지 않은 초안이에요. 관리자에게만 보여요.') }}</p>{% endif %}
-    <a class="sb-article-cat" href="{{ url_for('life', category=a['category']) }}">{{ a['category'] }}</a>
-    <h1>{{ a['title'] }}</h1>
-    <div class="sb-meta">{{ (a['published_at'] or a['created'])[:10].replace('-', '.') }}</div>
-    {% if a['summary'] %}<div class="sb-article-sum sb-sumbox"><p class="sb-sum-h"><span class="sb-h-emo" aria-hidden="true">☕</span>{{ ui('life.sum_title', '바쁜 이웃님을 위한 3줄 요약') }}</p>
+    {% set art = art_url('life', a['id']) %}
+    {% if art %}<div class="sbc-art" aria-hidden="true"><img src="{{ art }}" alt="">{% if '/art/' not in art %}<span class="sb-art-l">{{ ui('case.photo_label', '제보자 사진') }}</span>{% else %}<span class="sb-art-ai">AI</span>{% endif %}</div>{% else %}<div class="sb-cover {{ a['tone'] if a['tone'] in ('t1', 't2', 't3', 't4', 't5', 't6') else 't1' }}" aria-hidden="true"><span class="sb-cover-k">{{ ui('life.title', '매거진') }}</span><span class="sb-cover-e">{{ a['emoji'] or LIFE_EMOJI.get(a['category'], '📰') }}</span></div>{% endif %}
+    <header class="sb-art-head">
+      <a class="sb-article-cat" href="{{ url_for('life', category=a['category']) }}">{{ a['category'] }}</a>
+      <h1>{{ a['title'] }}</h1>
+      <p class="sb-meta">{{ (a['published_at'] or a['created'])[:10].replace('-', '.') }}<span aria-hidden="true"> · </span>{{ ui('life.read_min', '{n}분이면 읽어요', n=read_minutes(a['body'])) }}</p>
+    </header>
+    {% if a['summary'] %}<div class="sb-article-sum sb-sumbox"><p class="sb-sum-h"><span class="tf" aria-hidden="true">☕</span>{{ ui('life.sum_title', '바쁜 이웃님을 위한 3줄 요약') }}</p>
     {% if '\n' in a['summary'] %}<ul class="sb-sum3">{% for line in a['summary'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>{% else %}<p>{{ a['summary'] }}</p>{% endif %}</div>{% endif %}
-    {% set art = art_url('life', a['id']) %}{% if art %}<div class="sbc-art" aria-hidden="true"><img src="{{ art }}" alt="">{% if '/art/' not in art %}<span class="sb-art-l">{{ ui('case.photo_label', '제보자 사진') }}</span>{% else %}<span class="sb-art-ai">AI</span>{% endif %}</div>{% endif %}
+    {% set toc = life_toc(a['body']) %}{% if toc|length >= 3 %}
+    <nav class="sb-toc" aria-labelledby="sb-toc-h"><p id="sb-toc-h">{{ ui('life.toc', '이 글의 순서') }}</p>
+      <ol>{% for n, emo, head in toc %}<li><a href="#s{{ n }}"><span class="sb-toc-n">{{ n }}</span>{{ head }}</a></li>{% endfor %}</ol></nav>{% endif %}
     <div class="sb-article-body">{{ life_body(a['body']) }}</div>
     {% set ai = ai_article(a['id']) if a['origin'] == 'ai' and ai_article is defined else None %}
     {% if ai and ai.sources %}<div class="sb-source sb-sources"><b>{{ ui('life.sources', '출처') }}</b><ul>{% for s in ai.sources %}<li>{% if s.url %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name }} ↗</a>{% else %}{{ s.name }}{% endif %} <span>{{ s.fetched_at[:10].replace('-', '.') }} 기준</span></li>{% endfor %}</ul>
