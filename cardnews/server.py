@@ -206,9 +206,9 @@ def auto_pick():
     urls = cards.find_news(config(), 1, used_urls())
     if not urls: return {'status': 'skip', 'reason': '네이버 뉴스에서 고를 기사를 찾지 못했어요. 설정에 네이버 키를 넣거나 링크를 직접 넣어 주세요.'}
     r = {}
-    for url in urls[:3]:
+    for url in urls[:4]:  # 본문을 못 읽는 기사면 다음 기사로
         r = make(url)
-        if r.get('status') == 'made' or r.get('status') == 'skip': break
+        if r.get('status') == 'made' or 'API 키' in (r.get('reason') or ''): break
     return r
 
 
@@ -534,18 +534,34 @@ def quit_app():
     return render_template('base.html', bye=True)
 
 
-WIN = {'quit': False, 'w': None, 'max': True}
+WIN = {'quit': False, 'w': None, 'max': False}
+
+
+def work_area():
+    """작업 표시줄을 뺀 화면 칸 (x, y, 너비, 높이; 창 크기와 같은 단위). 윈도우가 아니면 None"""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        r = wintypes.RECT(); ctypes.windll.user32.SystemParametersInfoW(0x30, 0, ctypes.byref(r), 0)  # SPI_GETWORKAREA
+        k = (ctypes.windll.shcore.GetScaleFactorForDevice(0) or 100) / 100
+        return round(r.left / k), round(r.top / k), round((r.right - r.left) / k), round((r.bottom - r.top) / k)
+    except Exception: return None
 
 
 class WinApi:
-    """제목 줄 없는 창의 버튼 (화면 JS에서 window.pywebview.api.… 로 부름)"""
+    """제목 줄 없는 창의 버튼 (화면 JS에서 window.pywebview.api.… 로 부름).
+    제목 줄 없는 창을 윈도우 '최대화'로 키우면 작업 표시줄까지 덮고 가장자리가 잘려서, 작업 표시줄 위 칸에 딱 맞춰 키움."""
     def minimize(self):
         if WIN['w']: WIN['w'].minimize()
 
     def toggle(self):
-        if not WIN['w']: return
-        if WIN['max']: WIN['w'].restore()
-        else: WIN['w'].maximize()
+        w, wa = WIN['w'], work_area()
+        if not w: return
+        if not wa: w.toggle_fullscreen(); return
+        if WIN['max']:
+            W, H = min(1280, wa[2] - 40), min(820, wa[3] - 40)
+            w.resize(W, H); w.move(wa[0] + (wa[2] - W) // 2, wa[1] + (wa[3] - H) // 2)
+        else: w.move(wa[0], wa[1]); w.resize(wa[2], wa[3])
         WIN['max'] = not WIN['max']
 
 
@@ -569,8 +585,9 @@ def app_window(url):
         webview.settings['ALLOW_DOWNLOADS'] = True  # zip 내려받기
         webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True  # 기사·claude.ai·힉스필드 링크는 브라우저로
         # 토스 포스처럼 화면 가득, 윈도우 제목 줄 없이 (최소화·최대화·닫기는 화면 위쪽 막대에 우리 버튼으로)
-        w = webview.create_window(NAME, url + '/start', width=1320, height=820, min_size=(1000, 640), maximized=True, frameless=True, easy_drag=False,
-                                  background_color='#F2F4F6', js_api=WinApi())
+        wa = work_area(); W, H = (min(1280, wa[2] - 40), min(820, wa[3] - 40)) if wa else (1280, 820)
+        w = webview.create_window(NAME, url + '/start', width=W, height=H, min_size=(1000, 640), frameless=True, easy_drag=False,
+                                  background_color='#F2F4F6', js_api=WinApi())  # 처음엔 토스 포스 정도 크기로 가운데
         WIN['w'] = w
         def closing():  # 창의 ✕를 눌러도 바로 끄지 않고 토스처럼 '종료할까요?'를 물어봄
             if WIN['quit']: return True

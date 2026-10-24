@@ -164,7 +164,8 @@ class _NoRedirectToPrivate(urllib.request.HTTPRedirectHandler):
 def fetch_page(url, timeout=10, limit=2_000_000):
     """기사 HTML. 못 읽으면 ''. 테스트에서 바꿔 끼운다."""
     if not _public_host(url): return ''
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; soboru-cardnews)', 'Accept': 'text/html'})
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',  # 봇처럼 보이면 막는 언론사가 많음
+                                                'Accept': 'text/html', 'Accept-Language': 'ko-KR,ko;q=0.9'})
     try:
         with urllib.request.build_opener(_NoRedirectToPrivate).open(req, timeout=timeout) as r:
             if 'html' not in (r.headers.get('Content-Type') or 'text/html'): return ''
@@ -219,6 +220,7 @@ NAVER = {'hub': ('https://naverapihub.apigw.ntruss.com/search/v1/news', 'X-NCP-A
 
 
 NAVER_ERR = {'msg': ''}
+NAVER_LINK = {}  # 언론사 기사 주소 → 같은 기사의 네이버 뉴스 주소 (언론사 페이지를 못 읽으면 여기서 읽음)
 _NAVER_GAP = {'lock': threading.Lock(), 'last': 0.0}
 
 
@@ -271,6 +273,7 @@ def naver_news(cfg, q, display=10, sort='sim'):
         if not re.match(r'https?://', url): continue
         try: day = email.utils.parsedate_to_datetime(it.get('pubDate', '')).date().isoformat()  # 윈도우 한국어 설정에서도 되게 (strptime %a·%b는 언어를 탐)
         except (TypeError, ValueError, IndexError): day = ''
+        if 'n.news.naver.com' in (it.get('link') or ''): NAVER_LINK[url] = it['link']
         out.append({'title': clean(it.get('title')), 'url': url, 'summary': clean(it.get('description')), 'date': day})
     return out
 
@@ -310,6 +313,8 @@ NEWS_GROUPS = [
     ('금융·부동산', ['금리', '대출', '예금', '카드 혜택', '보험료', '전세', '월세', '아파트 분양']),
     ('경제', ['물가', '공공요금', '전기요금', '통신비', '기름값', '환율', '세금', '연말정산', '최저임금', '고용', '소상공인', '수출', '자동차', '항공권']),
 ]
+# 카드뉴스로 안 쓰는 기사: 퀴즈 정답·운세·로또·부고·인사·포토, 그리고 정치(중립 원칙)
+JUNK = re.compile(r'정답|퀴즈|운세|로또|부고|별세|\[인사\]|인사\s*\]|\[포토|포토\]|\[사진|오늘의\s*날씨|민주당|국민의힘|대통령|국회의원|여당|야당|탄핵|선거|총선|대선|지방선거|북한')
 QUERY_GROUP = {q: g for g, qs in NEWS_GROUPS for q in qs}
 DAILY_QUERIES = [qs[i] for i in range(max(len(qs) for _, qs in NEWS_GROUPS)) for _, qs in NEWS_GROUPS if i < len(qs)]  # 묶음을 번갈아
 
@@ -319,7 +324,7 @@ def find_news(cfg, n, avoid=()):
     since = (datetime.date.today() - datetime.timedelta(days=2)).isoformat(); urls = []
     for q in DAILY_QUERIES:
         for it in naver_news(cfg, q, sort='date'):
-            if it['date'] >= since and it['url'] not in avoid and it['url'] not in urls: urls.append(it['url']); break
+            if it['date'] >= since and it['url'] not in avoid and it['url'] not in urls and not JUNK.search(it['title']): urls.append(it['url']); break
     if len(urls) < n + 2 and cfg.get('web_search', 1) and cfg.get('key'):
         q = (f'오늘은 {datetime.date.today().isoformat()}이야. 최근 이틀 안에 나온 한국 소비자 권익 뉴스 기사 {n + 3}개를 웹 검색으로 찾아 줘. '
              f'주제: {DAILY_TOPICS}. 고르는 기준: 읽자마자 "내 얘기네" 싶은 것(공감), 많이 보거나 댓글이 많은 것(관심), 제목만 봐도 다음이 궁금한 것(궁금). '
@@ -341,7 +346,7 @@ def news_list(cfg, avoid=(), k=40):
     since = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
     with ThreadPoolExecutor(4) as ex: found = list(ex.map(lambda q: naver_news(cfg, q, display=5, sort='date'), DAILY_QUERIES))
     per = [[dict(it, topic=q, group=QUERY_GROUP[q], host=urllib.parse.urlparse(it['url']).netloc.removeprefix('www.')) for it in lst
-            if it['date'] >= since and it['url'] not in avoid] for q, lst in zip(DAILY_QUERIES, found)]
+            if it['date'] >= since and it['url'] not in avoid and not JUNK.search(it['title'])] for q, lst in zip(DAILY_QUERIES, found)]
     out, seen = [], set()
     for i in range(5):  # 검색어를 돌아가며 하나씩 (같은 사건은 제목 앞부분으로 거름)
         for lst in per:
@@ -547,6 +552,11 @@ def read(cfg, url, art=None):
         if not re.match(r'https?://', url): return None, '뉴스 링크(https://로 시작)를 넣거나 기사 글을 붙여 넣어 주세요'
         page = fetch_page(url)
         art = read_article(page, url) if page else {}
+        if len(art.get('text', '')) < 200 and NAVER_LINK.get(url):  # 언론사가 막으면 네이버 뉴스에 실린 같은 기사로 (출처는 언론사 주소 그대로)
+            page = fetch_page(NAVER_LINK[url]); nav = read_article(page, url) if page else {}
+            if len(nav.get('text', '')) >= 200:
+                media = re.split(r'\s*\|\s*', _meta(page, 'og:article:author') or '')[0] if page else ''
+                art = dict(nav, media=media if media and '네이버' not in media else (art.get('media') or host(url)), title=art.get('title') or nav['title'])
         if len(art.get('text', '')) < 200: return None, '기사 본문을 읽지 못했어요. 기사 글을 직접 붙여 넣어 주세요'
     elif len(art.get('text', '')) < 100: return None, '붙여 넣은 기사 글이 너무 짧아요'
     url = art.get('url', '')

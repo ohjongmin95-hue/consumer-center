@@ -152,6 +152,17 @@ class CardNewsTest(unittest.TestCase):
         self.assertIn('네이버 뉴스에서 고를 기사를 찾지 못했어요', r.get_data(as_text=True))
         self.assertFalse(self.client.get('/news').get_json()['ok'])
 
+    def test_blocked_site_reads_naver_copy(self):
+        # 언론사 페이지를 못 읽으면 네이버 뉴스에 실린 같은 기사로 읽고, 출처는 언론사 주소·이름 그대로
+        naver_page = PAGE.replace('<meta property="og:site_name" content="소보루일보">', '<meta property="og:article:author" content="소보루일보 | 네이버">')
+        cards.NAVER_LINK['https://blocked.test/a/9'] = 'https://n.news.naver.com/mnews/article/001/1'
+        fetch = lambda url, timeout=10, limit=0: {'https://n.news.naver.com/mnews/article/001/1': naver_page}.get(url, '')
+        with patch.object(cards, 'fetch_page', fetch), patch.object(cards, 'naver_news', lambda *a, **k: []):
+            got, why = cards.read({}, 'https://blocked.test/a/9')
+        self.assertEqual(why, ''); self.assertEqual(got[0]['url'], 'https://blocked.test/a/9'); self.assertEqual(got[0]['media'], '소보루일보')
+        self.assertIn('0.1%', got[0]['text'])
+        self.assertTrue(cards.JUNK.search("'캐시닥 용돈퀴즈' 10월 24일 정답")); self.assertFalse(cards.JUNK.search('편의점 도시락 가격 올라'))
+
     def test_photos_higgsfield_upload_and_modes(self):
         import io
         from PIL import Image
