@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{# 우리 동네 정보 한 곳: 추천 글 · 나도 추천해요 · 이웃 한마디 · 같은 동네 다른 곳. soboru_town.py town_place() #}
+{% from 'soboru_town_macros.html' import place_card, pin with context %}
+{% block title %}{{ p.name }} · {{ p.sgg }} {{ p.cat }} | {{ ui('town.title', '우리 동네 정보') }}{% endblock %}
+{% block description %}{{ p.sido }} {{ p.area }} {{ p.cat }} {{ p.name }}: {{ mask_personal(p.tip)|truncate(110) }}{% endblock %}
+{% block content %}
+<main class="sb-wrap tw tw-one">
+  <a class="cm-back" href="{{ url_for('town', sido=p.sido, sgg=p.sgg) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('town.back', '{w} 동네 정보', w=p.sgg) }}</a>
+  <article class="tw-big z{{ p.z }}">
+    <div class="tw-big-map" aria-hidden="true"><span class="tw-map"><i class="r1"></i><i class="r2"></i><i class="blk"></i><i class="blk2"></i></span>{{ pin(p.emoji, 'big') }}</div>
+    <div class="tw-big-b">
+      <p class="tw-big-k"><span class="tw-cat">{{ p.cat }}</span><span>{{ p.sido }} {{ p.area }}</span>{% if p.hidden %}<em class="tw-hid">{{ ui('town.hidden_tag', '가려진 글') }}</em>{% endif %}</p>
+      <h1>{{ p.name }}</h1>
+      {% if p.addr %}<p class="tw-addr"><i class="tf" aria-hidden="true">📍</i>{{ p.addr }}</p>{% endif %}
+      <p class="tw-big-tip">{{ mask_personal(p.tip) }}</p>
+      {% if p.goods_list %}<p class="tw-goods">{% for x in p.goods_list %}<em>{{ x }}</em>{% endfor %}</p>{% endif %}
+      <p class="tw-meta">{{ p.nickname }} · {{ ago_text(p.created) }} · {{ ui('town.views', '조회 {n}', n=p.views) }}</p>
+      <div class="tw-acts">
+        <form method="post" action="{{ url_for('town_like', place_id=p.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="tw-like big{% if liked %} on{% endif %}" type="submit" aria-pressed="{{ 'true' if liked else 'false' }}"{% if mine %} disabled{% endif %}><i class="tf" aria-hidden="true">👍</i>{{ ui('town.like', '나도 추천해요') }} <b>{{ p.likes }}</b></button></form>
+        <a class="tw-mapgo" href="https://map.naver.com/p/search/{{ (p.sido ~ ' ' ~ p.sgg ~ ' ' ~ p.name)|urlencode }}" target="_blank" rel="noopener nofollow">{{ ui('town.map', '지도에서 보기') }} ↗</a>
+      </div>
+    </div>
+  </article>
+
+  <section class="tw-talks" id="talks" aria-labelledby="tw-talk-h">
+    <h2 id="tw-talk-h">{{ ui('town.talks', '이웃 한마디') }} <small>{{ talks|length }}</small></h2>
+    {% for t in talks %}
+    <div class="tw-talk"><b>{{ t['nickname'] }}</b><p>{{ mask_personal(t['body']) }}</p><small>{{ ago_text(t['created']) }}</small>
+      {% if g.user and (g.user['id'] == t['user_id'] or admin_active()) %}<form method="post" action="{{ url_for('town_talk_hide', talk_id=t['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('town.talk_del', '지우기') }}</button></form>{% endif %}</div>
+    {% else %}
+    <p class="tw-talk-none">{{ ui('town.talks_none', '가 본 적 있다면 한마디 남겨 주세요. 요즘 분위기나 바뀐 점도 좋아요.') }}</p>
+    {% endfor %}
+    {% if g.user %}
+    <form class="tw-talk-f" method="post" action="{{ url_for('town_talk', place_id=p.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="sr-only" for="tw-talk">{{ ui('town.talks', '이웃 한마디') }}</label><input id="tw-talk" name="body" maxlength="300" required placeholder="{{ ui('town.talk_ph', '예: 저도 가 봤어요. 주말엔 예약하고 가세요!') }}"><button type="submit">{{ ui('town.talk_go', '남기기') }}</button></form>
+    {% else %}
+    <a class="tw-talk-login" href="{{ url_for('login', next=request.path) }}">{{ ui('town.talk_login', '로그인하고 한마디 남기기') }}</a>
+    {% endif %}
+  </section>
+
+  {% if near %}
+  <section class="tw-near" aria-labelledby="tw-near-h">
+    <h2 id="tw-near-h">{{ ui('town.near', '{w}의 다른 곳', w=p.sgg) }}</h2>
+    <div class="tw-grid">{% for x in near %}{{ place_card(x) }}{% endfor %}</div>
+  </section>
+  {% endif %}
+
+  <div class="tw-foot">
+    {% if mine or admin_active() %}
+    <form method="post" action="{{ url_for('town_hide', place_id=p.id) }}" onsubmit="return confirm({{ ui_text('town.hide_confirm', '이 동네 정보를 내릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('town.hide', '내리기') }}</button></form>
+    {% endif %}
+    {% if g.user and not mine and not reported %}
+    <details class="tw-report"><summary>{{ ui('town.report', '신고하기') }}</summary>
+      <form method="post" action="{{ url_for('town_report', place_id=p.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        {% for r in reasons %}<label><input type="radio" name="reason" value="{{ r }}" required> {{ r }}</label>{% endfor %}
+        <button class="text-btn" type="submit">{{ ui('town.report_go', '신고 보내기') }}</button></form></details>
+    {% elif reported %}<span class="tw-reported">{{ ui('town.reported_tag', '신고한 글이에요') }}</span>{% endif %}
+  </div>
+</main>
+{% endblock %}

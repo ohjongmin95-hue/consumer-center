@@ -1,0 +1,24 @@
+{# 우리 동네 정보 카드: 위쪽은 분류 색 지도 조각 + 핀, 아래는 이름·동네·추천 이유·좋은 점. soboru_town.py #}
+{% macro pin(emoji, cls='') %}<span class="tw-pin {{ cls }}" aria-hidden="true"><i class="tf">{{ emoji }}</i></span>{% endmacro %}
+
+{% macro place_card(p, liked=false) %}
+<article class="tw-card z{{ p.z }}">
+  <a class="tw-card-a" href="{{ url_for('town_place', place_id=p.id) }}">
+    <span class="tw-map" aria-hidden="true"><i class="r1"></i><i class="r2"></i><i class="blk"></i></span>
+    {{ pin(p.emoji) }}
+    <span class="tw-cat">{{ p.cat }}</span>
+    <span class="tw-card-b">
+      <b class="tw-name">{{ p.name }}</b>
+      <small class="tw-area">{{ p.area }}</small>
+      <span class="tw-tip">{{ mask_personal(p.tip) }}</span>
+      {% if p.goods_list %}<span class="tw-goods">{% for x in p.goods_list %}<em>{{ x }}</em>{% endfor %}</span>{% endif %}
+    </span>
+  </a>
+  <footer class="tw-card-f">
+    <span class="tw-by">{{ p.nickname }}</span>
+    <span class="tw-n"><i class="tf" aria-hidden="true">💬</i>{{ p.talks }}</span>
+    <form method="post" action="{{ url_for('town_like', place_id=p.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+      <button class="tw-like{% if liked %} on{% endif %}" type="submit" aria-pressed="{{ 'true' if liked else 'false' }}"><i class="tf" aria-hidden="true">👍</i>{{ ui('town.like_s', '추천') }} {{ p.likes }}</button></form>
+  </footer>
+</article>
+{% endmacro %}

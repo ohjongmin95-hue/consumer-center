@@ -4371,6 +4371,36 @@ class SiteTest(unittest.TestCase):
         self.assertIn('work24.go.kr', self.client.get('/jobs?q=상품 포장원').get_data(as_text=True) and self.client.get('/jobs/%d' % self._ext_id('K1')).get_data(as_text=True))
         self.assertIn('WORK24_API_KEY', adm.get('/admin/jobs').get_data(as_text=True))
 
+    def test_soboru_town(self):
+        # 우리 동네 정보: 회원만 올림, 동네·분류로 보기, 나도 추천해요(내 글은 안 됨), 이웃 한마디, 같은 이름 막기, 신고 3번이면 가림, 검색·관리자
+        self.assertEqual(self.client.get('/town').status_code, 200)
+        self.assertIn('/login', self.client.get('/town/new').headers['Location'])
+        me, mid = self.member_client('town_me', '동네주민')
+        form = {'sido': '서울', 'sgg': '강남구', 'dong': '논현동', 'cat': '병원·약국', 'name': '논현 바른소아과', 'tip': '선생님이 친절하고 토요일 오전에도 진료해요.', 'goods': ['친절해요', '주말에도 열어요']}
+        self.assertEqual(self.post_form(me, '/town/new', dict(form, sgg='')).status_code, 400)
+        self.assertEqual(self.post_form(me, '/town/new', dict(form, goods=['친절해요', '깨끗해요', '주차 돼요', '양이 많아요'])).status_code, 400)
+        self.assertEqual(self.post_form(me, '/town/new', form).status_code, 302)
+        self.assertEqual(self.post_form(me, '/town/new', form).status_code, 400)   # 같은 동네 같은 이름
+        with self.site.conn() as db: pid = db.execute("SELECT id FROM town_places WHERE name='논현 바른소아과'").fetchone()[0]
+        self.assertIn('논현 바른소아과', self.client.get('/town?sido=서울&sgg=강남구&c=병원·약국').get_data(as_text=True))
+        self.assertNotIn('논현 바른소아과', self.client.get('/town?sido=부산').get_data(as_text=True).split('<main')[1])
+        self.assertIn(f'href="/town/{pid}"', self.client.get('/search?q=소아과').get_data(as_text=True))
+        me.post(f'/town/{pid}/like', data={'_csrf': self.csrf(me, f'/town/{pid}')})
+        nb, nid = self.member_client('town_nb', '옆집')
+        nb.post(f'/town/{pid}/like', data={'_csrf': self.csrf(nb, f'/town/{pid}')})
+        nb.post(f'/town/{pid}/talk', data={'_csrf': self.csrf(nb, f'/town/{pid}'), 'body': '저도 다녀요. 주사도 안 아프게 놔 주세요.'})
+        with self.site.conn() as db: self.assertEqual(tuple(db.execute('SELECT likes,talks FROM town_places WHERE id=?', (pid,)).fetchone()), (1, 1))
+        self.assertIn('주사도 안 아프게', self.client.get(f'/town/{pid}').get_data(as_text=True))
+        with self.site.conn() as db:
+            db.executemany("INSERT INTO town_reports(place_id,user_id,reason,created) VALUES(?,?,'광고·홍보 글','2026-01-01')", [(pid, 990001), (pid, 990002)])
+            db.execute('UPDATE town_places SET reports=2 WHERE id=?', (pid,))
+        nb.post(f'/town/{pid}/report', data={'_csrf': self.csrf(nb, f'/town/{pid}'), 'reason': '광고·홍보 글'})
+        self.assertEqual(self.client.get(f'/town/{pid}').status_code, 404)
+        adm = self.login_admin()
+        self.assertIn('논현 바른소아과', adm.get('/admin/town').get_data(as_text=True))
+        self.post_form(adm, '/admin/town', {'act': 'show', 'place': pid})
+        self.assertEqual(self.client.get(f'/town/{pid}').status_code, 200)
+
     def _ext_id(self, ext):
         with self.site.conn() as db: return db.execute('SELECT id FROM jobs WHERE ext_id=?', (ext,)).fetchone()[0]
 

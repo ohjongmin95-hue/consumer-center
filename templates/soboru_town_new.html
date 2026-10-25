@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{# 우리 동네 정보 올리기 (회원만, 하루 5곳). soboru_town.py town_new() #}
+{% from 'soboru_jobs_macros.html' import region_js with context %}
+{% block title %}{{ ui('town.write', '우리 동네 정보 올리기') }} | {{ ui('town.title', '우리 동네 정보') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap cm cm-write tw tw-write">
+  <a class="cm-back" href="{{ url_for('town', sido=f.get('sido') or None, sgg=f.get('sgg') or None) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('town.title', '우리 동네 정보') }}</a>
+  <h1>{{ ui('town.new_title', '이웃에게 어떤 곳을 알려 줄까요?') }}</h1>
+  <p class="tw-write-d">{{ ui('town.new_d', '직접 가 본 곳만 올려 주세요. 가게 홍보는 사장님 소식에 올릴 수 있어요.') }}</p>
+  <form class="cm-form" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <div class="cm-f"><span class="cm-l">{{ ui('town.f_area', '동네') }}</span>
+      <div class="ow-region-f"><label class="jb-sel"><span class="sr-only">{{ ui('jobs.sido', '시·도') }}</span><select name="sido" data-sido="t-sgg" required><option value="">{{ ui('jobs.sido', '시·도') }}</option>{% for s in JOB_REGIONS %}<option{% if f.get('sido') == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+      <label class="jb-sel"><span class="sr-only">{{ ui('jobs.sgg', '시·군·구') }}</span><select name="sgg" id="t-sgg" data-cur="{{ f.get('sgg', '') }}" required><option value="">{{ ui('jobs.sgg', '시·군·구') }}</option></select></label></div></div>
+    <div class="cm-f"><span class="cm-l">{{ ui('town.f_cat', '어떤 곳이에요?') }}</span>
+      <div class="tw-pickcat">{% for c, (e, z) in TOWN_CATS.items() %}<label class="z{{ z }}"><input type="radio" name="cat" value="{{ c }}" required{% if f.get('cat') == c %} checked{% endif %}><span><i class="tw-dot" aria-hidden="true"><i class="tf">{{ e }}</i></i>{{ c }}</span></label>{% endfor %}</div></div>
+    <div class="cm-f tw-two">
+      <div><label class="cm-l" for="t-name">{{ ui('town.f_name', '장소 이름') }}</label><input id="t-name" name="name" maxlength="30" required value="{{ f.get('name', '') }}" placeholder="{{ ui('town.f_name_ph', '예: 논현 연세소아과') }}"></div>
+      <div><label class="cm-l" for="t-dong">{{ ui('town.f_dong', '읍·면·동') }} <small>{{ ui('common.optional', '선택') }}</small></label><input id="t-dong" name="dong" maxlength="10" value="{{ f.get('dong', '') }}" placeholder="{{ ui('town.f_dong_ph', '예: 논현동') }}"></div>
+    </div>
+    <div class="cm-f"><label class="cm-l" for="t-addr">{{ ui('town.f_addr', '찾아가는 길') }} <small>{{ ui('town.f_addr_s', '선택 · 큰길 이름이나 가까운 역') }}</small></label><input id="t-addr" name="addr" maxlength="60" value="{{ f.get('addr', '') }}" placeholder="{{ ui('town.f_addr_ph', '예: 학동역 3번 출구 앞 2층') }}"></div>
+    <div class="cm-f"><label class="cm-l" for="t-tip">{{ ui('town.f_tip', '추천하는 이유') }}</label><textarea id="t-tip" name="tip" maxlength="500" rows="6" required placeholder="{{ ui('town.f_tip_ph', '이웃이 가기 전에 알면 좋은 걸 적어 주세요. 예: 선생님이 아이 눈높이로 설명해 줘요. 토요일 오전엔 9시 전에 가야 덜 기다려요.') }}">{{ f.get('tip', '') }}</textarea></div>
+    <div class="cm-f"><span class="cm-l">{{ ui('town.f_goods', '좋은 점') }} <small>{{ ui('town.f_goods_s', '3개까지') }}</small></span>
+      <div class="cm-cats tw-goodpick" data-max="3">{% for x in TOWN_GOODS %}<label><input type="checkbox" name="goods" value="{{ x }}"{% if x in goods %} checked{% endif %}><span>{{ x }}</span></label>{% endfor %}</div></div>
+    <button class="cm-submit" type="submit">{{ ui('town.submit', '올리기') }}</button>
+  </form>
+</main>
+{{ region_js() }}
+<script>
+document.querySelectorAll('[data-max]').forEach(function (box) {
+  var max = +box.getAttribute('data-max');
+  box.addEventListener('change', function (e) { var on = box.querySelectorAll('input:checked'); if (on.length > max) e.target.checked = false; });
+});
+</script>
+{% endblock %}

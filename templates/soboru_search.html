@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {# 소보루 통합 검색: 제보 · 기업 · 커뮤니티 · 매거진 · 동네일자리 · 사전. soboru_search.py site_search() #}
 {% block title %}{% if q %}‘{{ q }}’ {{ ui('search.title_q', '검색 결과') }}{% else %}{{ ui('search.title', '검색') }}{% endif %} | {{ txt('site.name') }}{% endblock %}
-{% block description %}{{ ui('search.meta', '소비자 제보, 기업, 내돈내산 후기, 매거진, 동네일자리, 소비자·경제 사전을 한 번에 찾아요.') }}{% endblock %}
+{% block description %}{{ ui('search.meta', '소비자 제보, 기업, 내돈내산 후기, 매거진, 우리 동네 정보, 동네일자리, 소비자·경제 사전을 한 번에 찾아요.') }}{% endblock %}
 {% block content %}
 <main class="sb-wrap sr">
   <section class="sr-hero">
@@ -41,7 +41,7 @@
   {% endif %}
   {% else %}
   <div class="sr-start">
-    {% for k, n, e in sections %}<div class="s-{{ k }}"><span class="tf" aria-hidden="true">{{ e }}</span><b>{{ n }}</b><small>{{ {'report': '다른 사람이 겪은 피해와 기업 답변', 'company': '업체 이름·브랜드로 등급과 제보', 'post': '내돈내산 후기·수다·질문', 'life': '알아 두면 돈이 되는 생활 기사', 'job': '우리 동네 알바·일자리', 'dict': '청약철회·리볼빙 같은 어려운 말'}[k] }}</small></div>{% endfor %}
+    {% for k, n, e in sections %}<div class="s-{{ k }}"><span class="tf" aria-hidden="true">{{ e }}</span><b>{{ n }}</b><small>{{ {'report': '다른 사람이 겪은 피해와 기업 답변', 'company': '업체 이름·브랜드로 등급과 제보', 'post': '내돈내산 후기·수다·질문', 'life': '알아 두면 돈이 되는 생활 기사', 'town': '이웃이 추천하는 동네 맛집·병원', 'job': '우리 동네 알바·일자리', 'dict': '청약철회·리볼빙 같은 어려운 말'}[k] }}</small></div>{% endfor %}
   </div>
   {% endif %}
 </main>
