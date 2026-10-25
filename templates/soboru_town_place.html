@@ -7,8 +7,8 @@
 <main class="sb-wrap tw tw-one">
   <a class="cm-back" href="{{ url_for('town', sido=p.sido, sgg=p.sgg) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('town.back', '{w} 동네 정보', w=p.sgg) }}</a>
   <article class="tw-big z{{ p.z }}">
-    <div class="tw-big-map" aria-hidden="true"><span class="tw-map"><i class="r1"></i><i class="r2"></i><i class="blk"></i><i class="blk2"></i></span>{{ pin(p.emoji, 'big') }}</div>
     <div class="tw-big-b">
+      {{ pin(p.emoji, 'big') }}
       <p class="tw-big-k"><span class="tw-cat">{{ p.cat }}</span><span>{{ p.sido }} {{ p.area }}</span>{% if p.hidden %}<em class="tw-hid">{{ ui('town.hidden_tag', '가려진 글') }}</em>{% endif %}</p>
       <h1>{{ p.name }}</h1>
       {% if p.addr %}<p class="tw-addr"><i class="tf" aria-hidden="true">📍</i>{{ p.addr }}</p>{% endif %}
