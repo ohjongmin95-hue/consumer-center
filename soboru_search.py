@@ -12,7 +12,7 @@ from flask import render_template, request
 
 import jebo
 
-SECTIONS = [('report', '소비자 제보', '📣'), ('company', '기업', '🏢'), ('post', '커뮤니티', '💬'), ('life', '매거진', '📰'), ('job', '동네일자리', '💼'), ('dict', '소비자·경제 사전', '📚')]
+SECTIONS = [('report', '소비자 제보', '📣'), ('company', '기업', '🏢'), ('post', '커뮤니티', '💬'), ('life', '매거진', '📰'), ('town', '우리 동네 정보', '📍'), ('job', '동네일자리', '💼'), ('dict', '소비자·경제 사전', '📚')]
 POPULAR = ['환불', '헬스장', '택배 분실', '청약철회', '구독 해지', '중고거래']
 
 
@@ -68,6 +68,9 @@ def install(S):
             rows, total, f = app.extensions['soboru_jobs']['search'](MultiDict({'q': q}), 1, per)
             for j in rows:
                 out['job'].append({'href': f'/jobs/{j["id"]}', 'title': j['title'], 'sub': f"{j['company']} · {j['place']}", 'text': j['pay_label'], 'tag': j['source']})
+        if only in ('', 'town') and 'soboru_town' in app.extensions:
+            for p in app.extensions['soboru_town']['search'](q, per):
+                out['town'].append({'href': f'/town/{p["id"]}', 'title': p['name'], 'sub': f"{p['sido']} {p['area']}", 'text': snippet(p['tip'], q), 'tag': p['cat']})
         if only in ('', 'dict'):
             try:
                 import soboru_tools

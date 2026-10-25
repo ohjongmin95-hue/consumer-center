@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{# 우리 동네 정보: 동네 이웃이 추천하는 맛집·병원·시장·놀 곳. soboru_town.py town() #}
+{% from 'soboru_town_macros.html' import place_card, pin with context %}
+{% from 'soboru_jobs_macros.html' import region_js with context %}
+{% from 'soboru_cm_macros.html' import pager with context %}
+{% set here = sgg or sido %}
+{% block title %}{{ ui('town.title', '우리 동네 정보') }}{% if here %} · {{ sido }} {{ sgg }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('town.meta', '동네 이웃이 직접 다녀 보고 추천하는 맛집, 병원, 시장, 아이랑 갈 곳을 동네별로 모았어요.') }}{% endblock %}
+{% block content %}
+<main class="sb-wrap tw">
+  <header class="tw-hero">
+    <div class="tw-hero-t">
+      <p class="tw-kick"><i class="tf" aria-hidden="true">📍</i>{{ ui('town.kicker', '이웃이 다녀 보고 추천해요') }}</p>
+      <h1>{% if here %}<span class="tw-here">{{ here }}</span> {% endif %}{{ ui('town.h1', '우리 동네 정보') }}</h1>
+      <p class="tw-intro">{{ ui('town.intro', '어느 소아과가 친절한지, 시장은 몇 시에 가야 좋은지. 검색으론 안 나오는 동네 이야기를 이웃이 직접 알려 줘요.') }}</p>
+      <form class="tw-pick" method="get" action="{{ url_for('town') }}" data-autosubmit>
+        <span class="tw-pick-k">{{ ui('town.pick', '어느 동네예요?') }}</span>
+        <label class="jb-sel"><span class="sr-only">{{ ui('jobs.sido', '시·도') }}</span><select name="sido" data-sido="tw-sgg" data-go><option value="">{{ ui('town.all_kr', '전국') }}</option>{% for s in JOB_REGIONS %}<option{% if sido == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+        <label class="jb-sel"><span class="sr-only">{{ ui('jobs.sgg', '시·군·구') }}</span><select name="sgg" id="tw-sgg" data-cur="{{ sgg }}" data-go><option value="">{{ ui('jobs.sgg_all', '시·군·구 전체') }}</option>{% for x in JOB_REGIONS.get(sido, []) %}<option{% if sgg == x %} selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
+        {% if cat %}<input type="hidden" name="c" value="{{ cat }}">{% endif %}
+        <noscript><button class="jb-go" type="submit">{{ ui('jobs.go', '찾기') }}</button></noscript>
+      </form>
+      <a class="tw-btn" href="{{ url_for('town_new', sido=sido or None, sgg=sgg or None) }}">{{ ui('town.write', '우리 동네 정보 올리기') }}</a>
+    </div>
+    <div class="tw-hero-map" aria-hidden="true">
+      <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+        <rect width="400" height="300" fill="#f4f5f7"/>
+        <path d="M-10 236 C 90 206, 160 270, 250 232 S 360 196, 420 214 L 420 252 C 350 236, 300 278, 240 274 S 80 246, -10 276 Z" fill="#e8f3ff"/>
+        <g fill="#eceef1"><rect x="18" y="14" width="58" height="36" rx="8"/><rect x="112" y="14" width="62" height="36" rx="8"/><rect x="18" y="82" width="58" height="30" rx="8"/><rect x="112" y="82" width="62" height="30" rx="8"/>
+          <rect x="226" y="152" width="76" height="44" rx="8"/><rect x="316" y="152" width="70" height="34" rx="8"/><rect x="18" y="152" width="72" height="40" rx="8"/><rect x="104" y="152" width="72" height="40" rx="8"/></g>
+        <rect x="232" y="20" width="136" height="90" rx="18" fill="#dff3e4"/>
+        <g fill="#fff"><rect x="0" y="122" width="400" height="18"/><rect x="192" y="0" width="18" height="300"/><rect x="88" y="0" width="10" height="122"/><rect x="0" y="60" width="192" height="10"/></g>
+      </svg>
+      {% for e, n, t, x, y in [('🏥', '바른소아과', '이웃 추천 24', 8, 10), ('🛒', '동네 시장', '저녁 7시 떨이', 50, 30), ('☕', '소보루 굽는 집', '아침 8시 오픈', 14, 70)] %}<span class="tw-label" style="left:{{ x }}%;top:{{ y }}%"><i class="tf">{{ e }}</i><span><b>{{ n }}</b><small>{{ t }}</small></span></span>{% endfor %}
+      <span class="tw-you"><i></i>{{ here or ui('town.you', '우리 동네') }}</span>
+    </div>
+  </header>
+
+  <nav class="tw-legend" aria-label="{{ ui('town.cats', '분류') }}">
+    <a class="tw-lg{% if not cat %} on{% endif %}" href="{{ url_for('town', sido=sido or None, sgg=sgg or None, s=None if sort == 'new' else sort) }}"{% if not cat %} aria-current="true"{% endif %}><span class="tw-dot all" aria-hidden="true"><i class="tf">🏘️</i></span><b>{{ ui('town.all', '전체') }}</b><small>{{ counts.values()|sum }}</small></a>
+    {% for c, (e, z) in TOWN_CATS.items() %}<a class="tw-lg z{{ z }}{% if cat == c %} on{% endif %}" href="{{ url_for('town', c=c, sido=sido or None, sgg=sgg or None, s=None if sort == 'new' else sort) }}"{% if cat == c %} aria-current="true"{% endif %}><span class="tw-dot" aria-hidden="true"><i class="tf">{{ e }}</i></span><b>{{ c }}</b><small>{{ counts.get(c, 0) }}</small></a>{% endfor %}
+  </nav>
+
+  <div class="tw-body">
+    <section class="tw-main" aria-labelledby="tw-count">
+      {% if best|length >= 2 %}
+      <div class="tw-best">
+        <h2>{{ ui('town.best', '{w} 이웃 추천 많은 곳', w=here or '전국') }}</h2>
+        <ol>{% for p in best %}<li class="z{{ p.z }}"><a href="{{ url_for('town_place', place_id=p.id) }}"><span class="tw-rank">{{ loop.index }}</span>{{ pin(p.emoji, 'sm') }}<span class="tw-best-t"><b>{{ p.name }}</b><small>{{ p.cat }} · {{ p.area }}</small></span><em><i class="tf" aria-hidden="true">👍</i>{{ p.likes }}</em></a></li>{% endfor %}</ol>
+      </div>
+      {% endif %}
+      <div class="tw-list-head">
+        <h2 id="tw-count">{% if here %}{{ here }} {% endif %}{{ cat ~ ' ' if cat else '' }}{{ ui('town.count', '{n}곳', n='{:,}'.format(total)) }}</h2>
+        <nav class="jb-sort" aria-label="{{ ui('jobs.sort', '정렬') }}">{% for k, n in [('new', '새로 올라온 순'), ('like', '추천 많은 순')] %}<a href="{{ url_for('town', c=cat or None, sido=sido or None, sgg=sgg or None, s=None if k == 'new' else k) }}"{% if sort == k %} class="on" aria-current="true"{% endif %}>{{ n }}</a>{% endfor %}</nav>
+      </div>
+      {% if rows %}
+      <div class="tw-grid">{% for p in rows %}{{ place_card(p, p.id in liked) }}{% endfor %}</div>
+      {% else %}
+      <div class="tw-empty">
+        {{ pin(TOWN_CATS[cat][0] if cat else '📍', 'big') }}
+        <b>{% if here %}{{ ui('town.empty_here', '{w}의 첫 동네 정보를 기다리고 있어요', w=here) }}{% else %}{{ ui('town.empty', '아직 올라온 동네 정보가 없어요') }}{% endif %}</b>
+        <p>{{ ui('town.empty_d', '자주 가는 단골집, 친절했던 병원, 아이랑 놀기 좋은 공원을 이웃에게 알려 주세요.') }}</p>
+        <a class="tw-btn" href="{{ url_for('town_new', sido=sido or None, sgg=sgg or None, c=cat or None) }}">{{ ui('town.write_first', '첫 번째로 올리기') }}</a>
+      </div>
+      {% endif %}
+      {{ pager('town', page, pages, {'c': cat or None, 'sido': sido or None, 'sgg': sgg or None, 's': None if sort == 'new' else sort}) }}
+    </section>
+
+    <aside class="tw-side">
+      {% if here %}
+      <section class="tw-box">
+        <h2><i class="tf" aria-hidden="true">🧁</i>{{ ui('town.nb_reviews', '{w} 내돈내산 후기', w=here) }}</h2>
+        {% if nb.reviews %}<ul>{% for r in nb.reviews %}<li><a href="{{ url_for('board_post', post_id=r['id']) }}">{{ r['title'] }}</a></li>{% endfor %}</ul>
+        {% else %}<p>{{ ui('town.nb_reviews_none', '아직 이 동네 장소 후기가 없어요.') }}</p>{% endif %}
+        <a class="tw-more" href="{{ url_for('feed', t='place', a=sido) }}">{{ ui('town.nb_more', '더 보기') }} ›</a>
+      </section>
+      <section class="tw-box">
+        <h2><i class="tf" aria-hidden="true">🥯</i>{{ ui('town.nb_owners', '{w} 사장님 소식', w=here) }}</h2>
+        {% if nb.owners %}<ul>{% for r in nb.owners %}<li><a href="{{ url_for('owners', sido=sido, sgg=sgg or None) }}"><em>{{ r['head'] }}</em>{{ r['shop'] }} · {{ r['title'] }}</a></li>{% endfor %}</ul>
+        {% else %}<p>{{ ui('town.nb_owners_none', '아직 이 동네 가게 소식이 없어요.') }}</p>{% endif %}
+        <a class="tw-more" href="{{ url_for('owners', sido=sido, sgg=sgg or None) }}">{{ ui('town.nb_more', '더 보기') }} ›</a>
+      </section>
+      <section class="tw-box">
+        <h2><i class="tf" aria-hidden="true">💼</i>{{ ui('town.nb_jobs', '{w} 동네일자리', w=here) }} <small>{{ nb.n_jobs }}</small></h2>
+        {% if nb.jobs %}<ul>{% for j in nb.jobs %}<li><a href="{{ url_for('job', job_id=j['id']) }}">{{ j['title'] }}<small> · {{ j['company'] }}</small></a></li>{% endfor %}</ul>
+        {% else %}<p>{{ ui('town.nb_jobs_none', '지금 이 동네 공고는 없어요.') }}</p>{% endif %}
+        <a class="tw-more" href="{{ url_for('jobs', sido=sido, sgg=sgg or None) }}">{{ ui('town.nb_more', '더 보기') }} ›</a>
+      </section>
+      {% else %}
+      <section class="tw-box tw-areas">
+        <h2><i class="tf" aria-hidden="true">🏘️</i>{{ ui('town.areas', '이웃이 많이 올린 동네') }}</h2>
+        {% if areas %}<p class="tw-chips">{% for a in areas %}<a href="{{ url_for('town', sido=a['sido'], sgg=a['sgg']) }}">{{ a['sgg'] }}<small>{{ a['n'] }}</small></a>{% endfor %}</p>
+        {% else %}<p>{{ ui('town.areas_none', '동네를 고르면 그 동네 후기·가게 소식·일자리도 함께 보여요.') }}</p>{% endif %}
+      </section>
+      {% endif %}
+      <section class="tw-box tw-rule">
+        <h2><i class="tf" aria-hidden="true">🤝</i>{{ ui('town.rule_t', '이웃끼리 지키는 약속') }}</h2>
+        <ul><li>{{ ui('town.rule1', '직접 가 본 곳만 추천해요.') }}</li><li>{{ ui('town.rule2', '가게 홍보는 사장님 소식에 올려 주세요.') }}</li><li>{{ ui('town.rule3', '신고가 3번 쌓이면 글이 가려져요.') }}</li></ul>
+      </section>
+    </aside>
+  </div>
+</main>
+{{ region_js() }}
+{% endblock %}

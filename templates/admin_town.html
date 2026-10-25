@@ -1,0 +1,25 @@
+{% extends 'console.html' %}
+{# 관리자 > 우리 동네 정보: 신고·가린 글, 최근 글 (soboru_town.py) #}
+{% block title %}우리 동네 정보 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="ad-page ak">
+  <header class="ad-head"><div><h1>우리 동네 정보</h1><p>이웃이 추천한 동네 장소예요. 신고가 3번 쌓이면 저절로 가려지고, 여기서 다시 보이게 하거나 지울 수 있어요.</p></div>
+    <a class="ad-btn" href="{{ url_for('town') }}" target="_blank" rel="noopener">우리 동네 정보 보기 ↗</a></header>
+  <section class="ops-kpis">
+    <div class="ad-panel"><span>보이는 글</span><b>{{ '{:,}'.format(k.open) }}</b></div>
+    <div class="ad-panel"><span>동네 수</span><b>{{ '{:,}'.format(k.areas) }}</b></div>
+    <div class="ad-panel"><span>이웃 한마디</span><b>{{ '{:,}'.format(k.talks) }}</b></div>
+    <div class="ad-panel"><span>가린 글</span><b class="{{ 'ak-bad' if k.hidden }}">{{ k.hidden }}</b></div>
+  </section>
+  {% for title, rows in [('신고·가린 글', reported), ('최근 올라온 글', recent)] %}
+  <section class="ad-panel">
+    <div class="ad-panel-head"><h2>{{ title }} <small>{{ rows|length }}건</small></h2></div>
+    {% if rows %}<div class="tablewrap"><table class="ak-table"><thead><tr><th>장소</th><th>동네</th><th>분류</th><th>글쓴이</th><th>추천 · 신고</th>{% if loop.first %}<th>신고 이유</th>{% endif %}<th></th></tr></thead><tbody>
+      {% for r in rows %}<tr><td><a href="{{ url_for('town_place', place_id=r['id']) }}" target="_blank" rel="noopener">{{ r['name'] }}</a>{% if r['hidden'] %} <span class="ak-st s-error">가림</span>{% endif %}</td><td>{{ r['sido'] }} {{ r['sgg'] }} {{ r['dong'] }}</td><td>{{ r['cat'] }}</td><td>{{ r['nickname'] }}</td><td>{{ r['likes'] }} · {{ r['reports'] }}</td>{% if loop.first %}<td><small>{{ r['why'] or '' }}</small></td>{% endif %}
+        <td><form method="post" style="display:inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="place" value="{{ r['id'] }}"><button name="act" value="{{ 'show' if r['hidden'] else 'hide' }}" type="submit">{{ '다시 보이기' if r['hidden'] else '가리기' }}</button>
+          <button name="act" value="delete" type="submit" onclick="return confirm('지울까요? 되돌릴 수 없어요.')">지우기</button></form></td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="cs-hint">없어요.</p>{% endif %}
+  </section>
+  {% endfor %}
+</main>
+{% endblock %}
