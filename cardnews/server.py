@@ -669,8 +669,10 @@ def main():
     url = f'http://127.0.0.1:{PORT}'
     if sys.stdout is None: sys.stdout = sys.stderr = open(os.devnull, 'w')  # 검은 창 없는 실행 파일: 출력할 곳이 없음
     if FROZEN:  # 실행 파일 안의 Python은 컴퓨터의 인증서 목록을 못 찾을 수 있어 기사 읽기용으로 함께 넣은 목록을 씀
-        import certifi
-        os.environ.setdefault('SSL_CERT_FILE', certifi.where())
+        try:
+            import certifi
+            os.environ.setdefault('SSL_CERT_FILE', certifi.where())
+        except ImportError: pass  # 없으면 윈도우 기본 목록으로 (켜지지도 않는 것보다 나음)
     if '--check' in sys.argv:  # 빌드 확인용: 창 엔진을 불러올 수 있는지만 보고 끝 (오류는 창 대신 파일로 남김 — 오류 창은 빌드를 멈춰 세움)
         try:
             import webview  # noqa: F401
