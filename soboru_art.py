@@ -18,21 +18,21 @@ from flask import abort, flash, g, redirect, render_template, request, send_file
 KINDS = ('report', 'life')
 PHOTO = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
 # 매거진 그림 (운영자 2026-10-24: 3D 아이콘 대신 2D 일러스트, 색은 소보루 색에 묶지 말고 기사와 어울리게)
-# 토스 피드 그림처럼: 단색 바탕(겨자·연보라·하늘 등) + 팔다리 긴 납작한 사람이 큰 물건을 든 장면. 그림체를 바꾸면 STYLE_V를 올림(관리자 화면에서 옛 그림 다시 그리기)
+# 토스 피드 그림 느낌(색은 따라 하지 않고 글 주제에 맞춤): 단색 바탕 + 팔다리 긴 납작한 사람이 큰 물건을 든 장면. 그림체를 바꾸면 STYLE_V를 올림(관리자 화면에서 옛 그림 다시 그리기)
 # STYLE_V 4 (OH 2026-10-26): 새로 쓰는 매거진 글부터 적용, 예전 그림은 관리자가 누를 때만 다시 그림
 STYLE_V = 4
-STYLE = ('A flat 2D editorial illustration in the style of the Toss app feed and Toss magazine thumbnails: '
-         'the whole image filled edge to edge with one solid background color ({bg}) with a very subtle fine paper grain, no gradient, no pattern. '
-         'One playful stylized person with short black hair, a simple side or three-quarter profile, a tiny nose and no detailed eyes or mouth, '
-         'slightly elongated arms and legs, simple flat clothes in two or three bold colors (a stripe or simple pattern is fine), '
-         'holding up or using one or two oversized everyday objects that show the topic (for example a car, a cloud, a phone, a card, a parcel, a coin). '
+STYLE = ('A flat 2D editorial illustration with the feel of Toss app feed and Toss magazine thumbnails (follow the drawing style only, not their colors): '
+         'one plain solid background color filling the whole image with a very subtle fine paper grain, no gradient, no pattern. '
+         'One playful stylized person with short dark hair, a simple side or three-quarter profile, a tiny nose and no detailed eyes or mouth, '
+         'slightly elongated arms and legs, simple flat clothes, holding up or using one or two oversized everyday objects that show the topic. '
          'Or, instead of a person, a neat arrangement of a few objects such as cards, receipts or products scattered on the background. '
          'Crisp geometric shapes, flat fills, no outlines, no 3D, no gloss, no photorealism, at most a soft flat shadow. '
+         'Choose a harmonious palette of 3 to 5 colors that fits the mood of this particular topic (for example cool blues for travel, fresh greens for food, '
+         'calm navy and mint for money and finance, warm reds for safety warnings); {bg}. '
          'Generous negative space, the subject centered and about half to two thirds of the image height, nothing touching the edges. '
          'Friendly, witty and calm, never scary or gory. '
          'Absolutely no text, no letters, no numbers, no logos, no brand names, no speech bubbles with writing.')
-BGS = ('warm mustard orange like #e89a1c', 'soft periwinkle lavender like #cfd6fb', 'clear sky blue like #5aa9e6', 'bright lemon yellow like #f5d63d',
-       'soft violet like #b9adf2', 'calm mint like #bfe8d7', 'deep royal blue like #3d5afe')
+BGS = ('keep it light and airy', 'use one bold accent color', 'use soft muted tones', 'use bright cheerful tones', 'use a calm cool palette', 'use a cozy warm palette')
 
 
 def image_model(): return os.getenv('OPENAI_IMAGE_MODEL', '').strip() or 'gpt-image-1-mini'
