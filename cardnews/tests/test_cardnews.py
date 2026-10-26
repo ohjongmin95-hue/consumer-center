@@ -68,7 +68,7 @@ class CardNewsTest(unittest.TestCase):
         d, checks, row = self.row(cid)
         self.assertEqual((d['source']['media'], d['source']['date']), ('소보루일보', '2026.10.22'))  # Claude가 비워도 기사에서 채움
         self.assertEqual((d['hashtags'], d['end'], d['share_line']), (['환불', '소보루'], 'save', '온라인 쇼핑 자주 하는 친구한테'))
-        self.assertEqual(len(sent), 1)  # 이미지는 힉스필드 몫: Claude에는 원고만 부탁함
+        self.assertEqual(len(sent), 1)  # 이미지 자동이 꺼져 있으면 Claude에는 원고만 부탁함
         self.assertEqual((d['cover_img'], d['cards'][0]['img']['style']), ({'photo': '', 'style': 'photo'}, 'illust'))  # 기본: 표지 사진, 본문 일러스트
         self.assertIs(checks['사실']['ok'], True); self.assertIs(checks['숫자']['ok'], True); self.assertIs(checks['글:']['ok'], True); self.assertIs(checks['표지']['ok'], True)
         self.assertEqual(row['status'], 'ready')
@@ -171,26 +171,26 @@ class CardNewsTest(unittest.TestCase):
         self.assertEqual(cards.rank_news({}, items), items)  # 키 없으면 그대로
         self.assertIn('발단', cards.KINDS['issue']); self.assertEqual(cards.blank({'title': '', 'media': '', 'date': '', 'url': '', 'text': ''})['cards'][1]['kicker'], '숫자')
 
-    def test_photos_higgsfield_upload_and_modes(self):
+    def test_photos_ai_upload_and_modes(self):
         import io
         from PIL import Image
         def png(color):
             b = io.BytesIO(); Image.new('RGB', (40, 30), color).save(b, 'PNG'); return b.getvalue()
-        server.save_config(dict(server.config(), hf_id='hid', hf_secret='hsec', hf_auto=1, img_style='mix'))
+        server.save_config(dict(server.config(), img_engine='openai', openai_key='sk-test', img_auto=1, img_style='mix'))
         asked = []
-        with patch.object(cards, 'higgsfield_photo', lambda cfg, scene, style='photo': asked.append((scene, style)) or png('orange')):
+        with patch.object(cards, 'make_image', lambda cfg, scene, style='photo': (asked.append((scene, style)) or png('orange'), 'jpg')):
             cid, _, _ = self.make()
             d, checks, _ = self.row(cid)
             self.assertEqual(asked, [('a parcel box and a calendar', 'photo'), ('calendar', 'illust'), ('receipt', 'illust')])  # 자동 켜짐: 표지 사진·본문 일러스트
-            self.assertEqual((d['cover_img']['style'], d['cover_img']['src']), ('photo', 'hf'))
+            self.assertEqual((d['cover_img']['style'], d['cover_img']['src']), ('photo', 'openai'))
             self.assertIsNone(checks['이미']['ok']); self.assertIn('캡션에', checks['이미']['note'])  # AI 사진 표시는 캡션에 직접
             name = d['cover_img']['photo']; self.assertRegex(name, r'^[0-9a-f]{16}\.jpg$')
             r = self.client.get('/img/' + name); self.assertEqual((r.status_code, r.data[:2]), (200, b'\xff\xd8')); r.close()  # JPEG로 다시 저장
             self.assertEqual(self.client.get('/img/../config.json').status_code, 404)
             page = self.client.get(f'/card/{cid}').get_data(as_text=True)
-            self.assertIn('힉스필드로 바로 만들기', page); self.assertIn('Photorealistic', page); self.assertIn('Flat vector illustration', page)  # 장마다 사진·일러스트 설명
+            self.assertIn('ChatGPT로 이 장 만들기', page); self.assertIn('Photorealistic', page); self.assertIn('Flat vector illustration', page)  # 장마다 사진·일러스트 설명
             # 1장을 사진으로 바꿔 다시 만들기 (화면에서 막 고른 스타일로)
-            self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'hf', 'slot': 'card0', 'style': 'photo'})
+            self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'ai', 'slot': 'card0', 'style': 'photo'})
             d, _, _ = self.row(cid); self.assertEqual(d['cards'][0]['img']['style'], 'photo'); self.assertEqual(asked[-1], ('calendar', 'photo'))
         # 직접 올리기: 사진이 아니면 거절, 사진이면 넣고 '직접 올린 사진' 확인 항목이 생김
         r = self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'upload', 'slot': 'card1', 'photo': (io.BytesIO(b'not an image'), 'x.png')},
@@ -199,7 +199,7 @@ class CardNewsTest(unittest.TestCase):
         self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'upload', 'slot': 'card1', 'photo': (io.BytesIO(png('blue')), 'x.png')}, content_type='multipart/form-data')
         d, checks, _ = self.row(cid)
         self.assertEqual(d['cards'][1]['img']['src'], 'upload')
-        self.assertIsNone(checks['이미']['ok']); self.assertIn('힉스필드로 만든 것', checks['이미']['note'])
+        self.assertIsNone(checks['이미']['ok']); self.assertIn('AI로 새로 만든 것', checks['이미']['note'])
         # 구독으로 만든 이미지 여러 장 한 번에: 파일 이름 순서대로 표지 → 2번째 장
         self.client.post(f'/card/{cid}', data={'_csrf': self.token(), 'act': 'upload_many', 'photos': [(io.BytesIO(png('red')), '2.png'), (io.BytesIO(png('green')), '1.png')]},
                          content_type='multipart/form-data')
@@ -212,31 +212,29 @@ class CardNewsTest(unittest.TestCase):
         self.assertEqual((d2['cover_img']['style'], d2['cards'][1]['img']['style']), ('illust', 'illust'))
         self.assertTrue(d2['cards'][0]['img']['photo'].endswith('.jpg'))
 
-    def test_higgsfield_photo_uses_sdk(self):
-        import higgsfield_client as hf
-        calls = {}
-        class Job:
-            def poll_request_status(self, delay=0): yield hf.Queued(); yield hf.Completed()
-            def get(self): return {'images': [{'url': 'https://cdn.test/p.png'}]}
-        class Client:
-            def __init__(self, api_key=None, timeout=0): calls['key'] = api_key
-            def submit(self, model, arguments): calls['model'], calls['args'] = model, arguments; return Job()
+    def test_openai_and_claude_images(self):
+        import base64
+        sent = {}
         class Resp:
+            def __init__(self, body): self.body = body
             def __enter__(self): return self
             def __exit__(self, *a): pass
-            def read(self, n): return b'PNGDATA'
-        cfg = {'hf_id': 'hid', 'hf_secret': 'hsec', 'hf_model': cards.HF_MODELS[0][0]}
-        with patch.object(hf, 'SyncClient', Client), patch.object(cards.urllib.request, 'urlopen', lambda req, timeout=0: Resp()):
-            self.assertEqual(cards.higgsfield_photo(cfg, 'a receipt on a table'), b'PNGDATA')
-        self.assertEqual(calls['key'], 'hid:hsec'); self.assertEqual(calls['model'], 'bytedance/seedream/v4/text-to-image')
-        self.assertIn('a receipt on a table', calls['args']['prompt']); self.assertIn('no logos', calls['args']['prompt'])
-        self.assertEqual(cards.hf_key({'hf_id': 'abfa-one-key', 'hf_secret': ''}), 'abfa-one-key')  # 요즘 힉스필드 키는 한 줄
-        self.assertTrue(cards.hf_ready({'hf_id': 'abfa-one-key', 'hf_secret': ''}))
-        class NsfwJob(Job):
-            def poll_request_status(self, delay=0): yield hf.NSFW()
-        with patch.object(hf, 'SyncClient', type('C', (Client,), {'submit': lambda self, m, arguments: NsfwJob()})):
-            with self.assertRaisesRegex(RuntimeError, '안전 기준'): cards.higgsfield_photo(cfg, 'x')
-        with self.assertRaisesRegex(RuntimeError, '키가 없어요'): cards.higgsfield_photo({}, 'x')
+            def read(self, n=0): return self.body
+        def opener(req, timeout=0):
+            sent['url'], sent['auth'], sent['body'] = req.full_url, req.headers.get('Authorization'), json.loads(req.data)
+            return Resp(json.dumps({'data': [{'b64_json': base64.b64encode(b'PNGDATA').decode()}]}).encode())
+        cfg = {'img_engine': 'openai', 'openai_key': 'sk-test', 'openai_model': 'gpt-image-1'}
+        with patch.object(cards.urllib.request, 'urlopen', opener):
+            self.assertEqual(cards.make_image(cfg, 'a receipt on a table'), (b'PNGDATA', 'jpg'))
+        self.assertEqual((sent['url'], sent['auth'], sent['body']['model'], sent['body']['size']), ('https://api.openai.com/v1/images/generations', 'Bearer sk-test', 'gpt-image-1', '1024x1536'))
+        self.assertIn('a receipt on a table', sent['body']['prompt']); self.assertIn('no logos', sent['body']['prompt'])
+        with self.assertRaisesRegex(RuntimeError, '키가 없어요'): cards.openai_image({}, 'x')
+        # Claude는 일러스트를 SVG로: 스크립트·바깥 링크는 지움
+        draw = lambda cfg, system, user, schema, max_tokens, effort='medium': {'svg': '<svg onload="x()"><script>x()</script><rect fill="#EF920E" width="1080" height="1350"/><image href="http://evil.test/a.png"/></svg>'}
+        with patch.object(cards, 'claude', draw):
+            svg, ext = cards.make_image({'img_engine': 'claude', 'key': 'sk-ant-x'}, 'a parcel')
+        self.assertEqual(ext, 'svg'); self.assertIn(b'<rect', svg); self.assertNotIn(b'script', svg); self.assertNotIn(b'evil', svg); self.assertNotIn(b'onload', svg)
+        self.assertTrue(cards.img_ready({'img_engine': 'claude', 'key': 'k'})); self.assertFalse(cards.img_ready({'img_engine': 'openai', 'key': 'k'}))
 
     def test_keyless_paste_manual_and_art_paste(self):
         server.save_config(dict(server.DEFAULTS))  # 키 없음
@@ -255,7 +253,7 @@ class CardNewsTest(unittest.TestCase):
             self.assertNotIn('pending', d); self.assertEqual(len(d['covers']), 5); self.assertEqual(d['source']['media'], '소보루일보')
             self.assertIs(checks['숫자']['ok'], True); self.assertIsNone(checks['이미']['ok'])  # 그림이 아직 없음
             page = self.client.get(f'/card/{cid}').get_data(as_text=True)
-            self.assertIn('>설명 복사<', page); self.assertIn('>이미지 올리기<', page); self.assertIn('한 번에 올리기', page); self.assertRegex(page, r'value="hf" disabled')  # 키 없으면 바로 만들기는 꺼짐
+            self.assertIn('>설명 복사<', page); self.assertIn('>이미지 올리기<', page); self.assertIn('한 번에 올리기', page); self.assertRegex(page, r'value="ai" disabled')  # 키 없으면 바로 만들기는 꺼짐
             # 직접 쓰기 + 기사 글 직접 붙여 넣기 (링크 없이)
             text = '\n'.join(re.sub(r'<[^>]+>', '', x) for x in re.findall(r'<p>(.*?)</p>', PAGE)[:4])
             r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'manual', 'text': text, 'title': '환불 지연 배상금', 'media': '우리일보', 'date': '2026.10.23'})

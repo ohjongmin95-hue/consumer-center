@@ -25,8 +25,8 @@
 .bulk{background:#F2F8FF;border-radius:16px;padding:16px 18px;margin:6px 0 14px}.bulk ol{margin:8px 0 0;padding-left:20px;line-height:2.1}
 </style>{% endblock %}
 {% block content %}
-{% if img_job and img_job.left %}<meta http-equiv="refresh" content="6"><div class="flash" role="status">🎨 힉스필드로 이미지를 만들고 있어요 ({{ img_job.total - img_job.left }} / {{ img_job.total }}) — 한 장에 30초~1분쯤, 다 되면 카드에 저절로 들어가요</div>
-{% elif img_job and img_job.err %}<div class="warn" role="alert">힉스필드 이미지를 만들지 못한 장이 있어요: {{ img_job.err }}</div>{% endif %}
+{% if img_job and img_job.left %}<meta http-equiv="refresh" content="6"><div class="flash" role="status">🎨 {{ img_name }}로 이미지를 만들고 있어요 ({{ img_job.total - img_job.left }} / {{ img_job.total }}) — 한 장에 30초~1분쯤, 다 되면 카드에 저절로 들어가요</div>
+{% elif img_job and img_job.err %}<div class="warn" role="alert">이미지를 만들지 못한 장이 있어요: {{ img_job.err }}</div>{% endif %}
 <h1>카드뉴스 #{{ c.id }}</h1>
 <p class="meta"><a href="{{ url_for('home') }}">← 목록</a> · 기사: <a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ c.title or c.url }}</a>
   · {% if c.status == 'ready' %}<span class="badge ok">체크리스트 통과</span>{% else %}<span class="badge bad">확인 필요</span>{% endif %}</p>
@@ -76,16 +76,17 @@
       <div class="actions"><button type="submit" class="primary" name="act" value="save">저장</button></div>
     </form>
 
-    <div class="panel"><h2>이미지 (힉스필드)</h2>
+    <div class="panel"><h2>이미지</h2>
+      <div class="actions" style="margin:0 0 14px"><form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="ai_all" class="primary"{% if not img_ok %} disabled title="설정에서 ChatGPT 또는 Claude 키를 넣으면 쓸 수 있어요"{% endif %}>이미지 전부 {{ img_name }}로 만들기</button></form><span class="meta">{{ img_name }}가 장마다 자동으로 만들어요 (설정에서 ChatGPT·Claude 바꾸기)</span></div>
       <div class="bulk">
-        <b>힉스필드 구독으로 한 번에 (키 없이, 추가 비용 없음)</b>
+        <b>직접 만든 이미지 넣기 (ChatGPT 앱·다른 곳에서 만든 것)</b>
         <ol class="meta"><li><button type="button" class="weak small" id="cn-copyall">설명 전부 복사</button> — 장마다 번호가 붙은 설명이 한꺼번에 복사돼요</li>
-          <li><a href="https://higgsfield.ai" target="_blank" rel="noopener">힉스필드 열기 ↗</a> — 번호 순서대로 하나씩 붙여 넣어 만들고 내려받아요 (세로 3:4 · 4:5, 글자 없이)</li>
+          <li><a href="https://chatgpt.com" target="_blank" rel="noopener">ChatGPT 열기 ↗</a> — 번호 순서대로 하나씩 붙여 넣어 만들고 내려받아요 (세로 3:4 · 4:5, 글자 없이)</li>
           <li>내려받은 이미지를 <b>한 번에 골라</b> 올려요 — 파일 이름 순서대로 표지 → 2번째 장 → … 에 들어가요 (이름을 1, 2, 3…으로 바꿔 두면 확실해요)</li></ol>
         <form method="post" enctype="multipart/form-data" class="actions"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
           <input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple required style="width:260px"><button name="act" value="upload_many" class="primary">한 번에 올리기</button></form>
       </div>
-      <p class="meta">장마다 따로 하려면 아래에서 <b>사진</b>이나 <b>일러스트</b>를 골라요. 설명을 복사해 힉스필드에 붙여 넣고 만들어요 → 만든 이미지를 내려받아 올려요 (비용은 힉스필드 쪽만). 이미지는 카드 전체 배경으로 깔려요. 마지막 장은 소보루 캐릭터예요.</p>
+      <p class="meta">장마다 <b>사진</b>이나 <b>일러스트</b>를 고르고 그 장만 만들거나 올릴 수 있어요. 이미지는 카드에 깔리고, 마지막 장은 소보루 캐릭터예요. Claude는 일러스트만 그려요(사진을 고르면 일러스트로 그려요).</p>
       {% for name, label, x, prompts in slots %}
       <div class="cn-slot">
         <b>{{ label }}</b>{% if x.photo %} <span class="badge ok">이미지 있음</span>{% else %} <span class="badge">아직 없음</span>{% endif %}
@@ -93,16 +94,15 @@
         {% for k, p in prompts.items() %}<textarea class="cn-prompt" data-prompt="{{ name }}:{{ k }}" rows="3" readonly{% if x.style != k %} hidden{% endif %}>{{ p }}</textarea>{% endfor %}
         <div class="actions">
           <button type="button" data-copy="{{ name }}">설명 복사</button>
-          <a href="https://higgsfield.ai" target="_blank" rel="noopener"><button type="button">힉스필드 열기 ↗</button></a>
+          <a href="https://chatgpt.com" target="_blank" rel="noopener"><button type="button">ChatGPT 열기 ↗</button></a>
           <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="slot" value="{{ name }}">
             <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required style="width:210px"><button name="act" value="upload" class="primary">이미지 올리기</button></form>
           <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="slot" value="{{ name }}"><input type="hidden" name="style" value="{{ x.style }}" data-style-of="{{ name }}">
-            <button name="act" value="hf"{% if not hf %} disabled title="설정에서 힉스필드 API 키를 넣으면 바로 만들 수 있어요"{% endif %} data-busy="만드는 중…">힉스필드로 바로 만들기 (API 크레딧)</button></form>
+            <button name="act" value="ai"{% if not img_ok %} disabled title="설정에서 ChatGPT 또는 Claude 키를 넣으면 바로 만들 수 있어요"{% endif %}>{{ img_name }}로 이 장 만들기</button></form>
         </div>
       </div>
       {% endfor %}
       <div class="actions">
-        <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="hf_all" class="primary"{% if not hf %} disabled title="설정에서 힉스필드 API 키를 넣으면 쓸 수 있어요"{% endif %}>이미지 전부 힉스필드로 만들기</button></form>
         <form method="post" onsubmit="return confirm('이 카드뉴스를 지울까요? 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="delete" class="danger">지우기</button></form>
       </div>
     </div>
@@ -289,10 +289,10 @@ function slotOf(n){return n==='cover'?d.cover_img:d.cards[+n.slice(4)].img}
 document.querySelectorAll('[data-style]').forEach(function(r){r.onchange=function(){var n=r.dataset.style;slotOf(n).style=r.value;
   document.querySelectorAll('[data-prompt^="'+n+':"]').forEach(function(t){t.hidden=t.dataset.prompt!==n+':'+r.value});document.querySelector('[data-style-of="'+n+'"]').value=r.value}});
 document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var n=b.dataset.copy,t=document.querySelector('[data-prompt="'+n+':'+slotOf(n).style+'"]');
-  navigator.clipboard.writeText(t.value).then(function(){msg.textContent='설명을 복사했어요. 힉스필드에 붙여 넣고 만들어 주세요.'},function(){t.select();document.execCommand('copy')})}});
+  navigator.clipboard.writeText(t.value).then(function(){msg.textContent='설명을 복사했어요. ChatGPT 등에 붙여 넣고 만들어 주세요.'},function(){t.select();document.execCommand('copy')})}});
 document.getElementById('cn-copyall').onclick=function(){var lab={cover:'1번 (표지)'},all=[];(d.cards||[]).forEach(function(_,k){lab['card'+k]=(k+2)+'번째 장'});
   Object.keys(lab).forEach(function(n){var t=document.querySelector('[data-prompt="'+n+':'+slotOf(n).style+'"]');if(t)all.push('['+lab[n]+']\n'+t.value)});
-  navigator.clipboard.writeText(all.join('\n\n')).then(function(){msg.textContent='설명 '+all.length+'개를 복사했어요. 힉스필드에서 번호 순서대로 하나씩 붙여 넣어 만들어 주세요.'})};
+  navigator.clipboard.writeText(all.join('\n\n')).then(function(){msg.textContent='설명 '+all.length+'개를 복사했어요. ChatGPT 등에서 번호 순서대로 하나씩 붙여 넣어 만들어 주세요.'})};
 document.querySelectorAll('[data-busy]').forEach(function(b){b.form.addEventListener('submit',function(){setTimeout(function(){b.disabled=true;b.textContent=b.dataset.busy},0)})});
 document.getElementById('cn-form').addEventListener('submit',function(){document.getElementById('cn-data').value=JSON.stringify(d)});
 document.querySelectorAll('[data-art]').forEach(function(f){f.addEventListener('submit',function(){setTimeout(function(){var b=f.querySelector('button');b.disabled=true;b.textContent='그리는 중…'},0)})});
@@ -314,7 +314,7 @@ var msg=document.getElementById('cn-msg'),down=document.getElementById('cn-down'
 // 카드 PNG(1080×1350) 바이트들 만들기 (글꼴·캐릭터·사진을 SVG 안에 넣어 그림)
 function render(){
   var photos=[d.cover_img].concat((d.cards||[]).map(function(c){return c.img})).filter(function(x){return x&&x.photo}).map(function(x){return x.photo});
-  return Promise.all([asData(J.assets.title,'font/otf'),asData(J.assets.body,'font/otf'),asData(J.assets.character,'image/png')].concat(photos.map(function(p){return asData(J.img+p,'image/jpeg')}))).then(function(a){
+  return Promise.all([asData(J.assets.title,'font/otf'),asData(J.assets.body,'font/otf'),asData(J.assets.character,'image/png')].concat(photos.map(function(p){return asData(J.img+p,/\.svg$/.test(p)?'image/svg+xml':'image/jpeg')}))).then(function(a){
     J.imgs={};photos.forEach(function(p,k){J.imgs[p]=a[3+k]});
     var style='<defs><style>@font-face{font-family:CardTitle;src:url('+a[0]+') format("opentype")}@font-face{font-family:CardBody;src:url('+a[1]+') format("opentype")}</style></defs>';
     J.char=a[2];J.exp=1;var s=slides();J.exp=0;J.char=J.assets.character;J.imgs=null;var files=[],chain=Promise.resolve();

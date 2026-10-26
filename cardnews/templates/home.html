@@ -102,7 +102,7 @@ label.f{margin:0 0 12px;font-size:13px;color:var(--sub)}label.f input,label.f te
   </section>
   <section class="panel buddy">
     <div class="chips">
-      <span class="{{ 'on' if cfg.key }}">Claude</span><span class="{{ 'on' if naver }}">네이버</span><span class="{{ 'on' if cfg.hf_id }}">힉스필드</span>
+      <span class="{{ 'on' if cfg.key }}">Claude</span><span class="{{ 'on' if naver }}">네이버</span><span class="{{ 'on' if side_cfg.img }}">이미지 AI</span>
       <span class="{{ 'on' if cfg.auto and cfg.key }}">매일 자동 {{ ('%d시' % cfg.hour) if cfg.auto and cfg.key else '꺼짐' }}</span><a href="{{ url_for('settings') }}">설정</a></div>
     <ol class="how"><li><i>1</i>기사 고르기</li><li><i>2</i>글 쓰기</li><li><i>3</i>이미지·확인</li><li><i>4</i>저장·카톡</li></ol>
     <div class="mascot">

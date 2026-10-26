@@ -37,9 +37,9 @@ PORT = int(os.getenv('CARDNEWS_PORT') or 5050)
 PER_DAY = (1, 2, 3, 4, 5)
 MODELS = (('claude-opus-5-5', 'Claude Opus 5.5 (기본, 가장 꼼꼼)'), ('claude-sonnet-5-5', 'Claude Sonnet 5.5 (더 싸고 빠름)'))
 DEFAULTS = {'key': '', 'model': 'claude-opus-5-5', 'auto': 0, 'per_day': 3, 'hour': 8, 'web_search': 1,
-            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'hf_id': '', 'hf_secret': '', 'hf_model': cards.HF_MODELS[0][0], 'img_style': 'mix', 'hf_auto2': 1, 'theme': 'ref', 'accent': 'tangerine',
+            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'img_engine': 'openai', 'openai_key': '', 'openai_model': cards.OPENAI_MODEL, 'img_style': 'mix', 'img_auto': 1, 'theme': 'ref', 'accent': 'tangerine',
             'kakao_key': '', 'kakao_secret': '', 'kakao_token': {}, 'kakao_auto': 1}
-SECRETS = ('key', 'naver_secret', 'hf_id', 'hf_secret', 'kakao_secret')  # 화면에 다시 보여 주지 않는 값
+SECRETS = ('key', 'naver_secret', 'openai_key', 'kakao_secret')  # 화면에 다시 보여 주지 않는 값
 IMG_STYLES = (('mix', '표지는 사진, 본문은 일러스트'), ('photo', '모두 사진'), ('illust', '모두 일러스트'))
 
 DATA.mkdir(parents=True, exist_ok=True)
@@ -48,7 +48,7 @@ key_file = DATA / 'secret.key'
 if not key_file.exists(): key_file.write_text(secrets.token_hex(32))
 app.secret_key = key_file.read_text().strip()
 app.config.update(SESSION_COOKIE_SAMESITE='Strict', MAX_CONTENT_LENGTH=20 * 1024 * 1024)
-IMAGES = DATA / 'images'; IMAGES.mkdir(exist_ok=True)  # 사진(힉스필드로 만든 것·직접 올린 것)
+IMAGES = DATA / 'images'; IMAGES.mkdir(exist_ok=True)  # 이미지(ChatGPT·Claude로 만든 것, 직접 올린 것)
 
 
 def conn():
@@ -111,7 +111,7 @@ def sidebar():
         cover = 'claude.ai 답을 기다려요' if d.get('pending') else (c.get('line1', '') + ' ' + c.get('line2', '')).strip()
         items.append({'id': r['id'], 'cover': cover or r['title'] or '(제목 없음)', 'status': r['status'], 'created': r['created'], 'daily': r['trigger'] == 'daily'})
     cfg = config()
-    return {'side_items': items, 'side_cfg': {'claude': bool(cfg['key']), 'hf': cards.hf_ready(cfg), 'naver': bool(cfg['naver_id'] and cfg['naver_secret'])},
+    return {'side_items': items, 'side_cfg': {'claude': bool(cfg['key']), 'img': cards.img_ready(cfg), 'naver': bool(cfg['naver_id'] and cfg['naver_secret'])},
             'side_cid': (request.view_args or {}).get('cid')}
 
 
@@ -140,20 +140,20 @@ def resave(cid, d, facts, confirmed):
     return cards.status_of(checks)
 
 
-def save_photo(raw, slot, src):
-    """사진 바이트 → images/에 저장하고 자리에 붙임 (ValueError: 사진이 아님)"""
-    name = secrets.token_hex(8) + '.jpg'
-    (IMAGES / name).write_bytes(cards.clean_photo(raw))
+def save_photo(raw, slot, src, ext='jpg'):
+    """이미지 바이트 → images/에 저장하고 자리에 붙임 (ValueError: 이미지가 아님). Claude 그림은 SVG로"""
+    name = secrets.token_hex(8) + ('.svg' if ext == 'svg' else '.jpg')
+    (IMAGES / name).write_bytes(cards.clean_svg(raw.decode('utf-8', 'replace')) if ext == 'svg' else cards.clean_photo(raw))
     slot.update(photo=name, src=src)
 
 
-IMGJOB = {}  # 카드뉴스 번호 → {'total', 'left', 'err'}: 힉스필드 이미지를 뒤에서 만드는 중
+IMGJOB = {}  # 카드뉴스 번호 → {'total', 'left', 'err'}: 이미지를 뒤에서 만드는 중
 
 
 def start_images(cid, which=None):
-    """힉스필드로 이미지 만들기를 뒤에서 시작 (which=None: 자동 설정이 켜져 있으면 모든 자리). 하나 될 때마다 저장해서 화면에 바로 보임."""
+    """이미지 AI(ChatGPT 또는 Claude)로 이미지 만들기를 뒤에서 시작 (which=None: 자동 설정이 켜져 있으면 모든 자리). 하나 될 때마다 저장해서 화면에 바로 보임."""
     cfg = config()
-    if not cards.hf_ready(cfg) or (which is None and not cfg['hf_auto2']): return False
+    if not cards.img_ready(cfg) or (which is None and not cfg['img_auto']): return False
     if IMGJOB.get(cid, {}).get('left'): return False  # 이미 만드는 중
     names = which or [n for n, _, _ in cards.slots(load(cid)['data'])]
     job = IMGJOB[cid] = {'total': len(names), 'left': len(names), 'err': ''}
@@ -161,11 +161,11 @@ def start_images(cid, which=None):
         for name in names:
             try:
                 cur = load(cid); sl = {n: (sc, x) for n, sc, x in cards.slots(cur['data'])}
-                raw = cards.higgsfield_photo(config(), sl[name][0], sl[name][1]['style'])
+                cf = config(); raw, ext = cards.make_image(cf, sl[name][0], sl[name][1]['style'])
                 cur = load(cid); slot = {n: x for n, _, x in cards.slots(cur['data'])}[name]  # 그사이 글을 고쳤을 수 있어 다시 읽음
-                save_photo(raw, slot, 'hf'); resave(cid, cur['data'], cur['facts'], cur['confirmed'])
-            except (RuntimeError, ValueError) as e: job['err'] = str(e); log(f'힉스필드 #{cid}: {e}')
-            except Exception as e: job['err'] = f'이미지를 만들지 못했어요 ({type(e).__name__})'; log(f'힉스필드 #{cid}: {type(e).__name__}')
+                save_photo(raw, slot, cf['img_engine'], ext); resave(cid, cur['data'], cur['facts'], cur['confirmed'])
+            except (RuntimeError, ValueError) as e: job['err'] = str(e); log(f'이미지 #{cid}: {e}')
+            except Exception as e: job['err'] = f'이미지를 만들지 못했어요 ({type(e).__name__})'; log(f'이미지 #{cid}: {type(e).__name__}')
             job['left'] -= 1
     if app.config.get('TESTING'): run()
     else: threading.Thread(target=run, daemon=True).start()
@@ -180,7 +180,7 @@ def make(url, trigger='manual', art=None):
     if made % 5 == 4: r['data']['end'] = 'share'  # 레퍼런스북: 마무리는 저장 유도가 기본, 다섯 개 중 하나는 공유형
     r['checks'] = cards.run_checks(r['data'], r['facts'])
     cid = store(r, trigger)
-    start_images(cid)  # 힉스필드 이미지는 카드뉴스를 연 뒤 뒤에서 하나씩
+    start_images(cid)  # 이미지는 카드뉴스를 연 뒤 뒤에서 하나씩
     log(f"{'자동 · ' if trigger == 'daily' else ''}만듦 #{cid}" + (f" · {r['reason']}" if r.get('reason') else ''))
     return {'status': 'made', 'id': cid}
 
@@ -354,14 +354,14 @@ def card(cid):
         if act == 'delete':
             with conn() as db: db.execute('DELETE FROM cards WHERE id=?', (cid,))
             flash('카드뉴스를 지웠어요.'); return redirect(url_for('home'))
-        if act == 'upload':  # 힉스필드 사이트에서 만든 이미지 올리기 (비용 없음)
+        if act == 'upload':  # ChatGPT 앱·다른 곳에서 만든 이미지 올리기
             slot = dict((n, x) for n, _, x in cards.slots(c['data'])).get(request.form.get('slot', ''))
             f = request.files.get('photo')
             if slot is None or not f: abort(400)
             try: save_photo(f.read(), slot, 'upload')
             except ValueError as e: flash(str(e)); return redirect(url_for('card', cid=cid))
             resave(cid, c['data'], c['facts'], c['confirmed']); flash('사진을 넣었어요.'); return redirect(url_for('card', cid=cid))
-        if act == 'upload_many':  # 힉스필드 구독으로 만든 이미지 여러 장을 한 번에: 고른 순서대로 표지 → 2번째 장 → …
+        if act == 'upload_many':  # 다른 곳에서 만든 이미지 여러 장을 한 번에: 고른 순서대로 표지 → 2번째 장 → …
             fs = [f for f in request.files.getlist('photos') if f and f.filename][:len(cards.slots(c['data']))]
             if not fs: flash('올릴 이미지를 골라 주세요.'); return redirect(url_for('card', cid=cid))
             fs.sort(key=lambda f: f.filename)  # 파일 이름 순서 (1.png, 2.png … 처럼 이름을 붙이면 그 순서)
@@ -371,14 +371,14 @@ def card(cid):
                 except ValueError: flash(f'{f.filename}: 사진 파일이 아니에요.')
             resave(cid, c['data'], c['facts'], c['confirmed']); flash(f'이미지 {put}장을 순서대로 넣었어요 (표지부터). 자리가 바뀌었으면 장마다 다시 올려 주세요.')
             return redirect(url_for('card', cid=cid))
-        if act in ('hf', 'hf_all'):  # 힉스필드로 이미지 만들기 (한 자리 / 전부): 뒤에서 만들고 카드 화면은 그대로
+        if act in ('ai', 'ai_all'):  # 이미지 AI로 만들기 (한 자리 / 전부): 뒤에서 만들고 카드 화면은 그대로
             names = [n for n, _, _ in cards.slots(c['data'])]
-            if act == 'hf':
+            if act == 'ai':
                 name, style = request.form.get('slot', ''), request.form.get('style', '')
                 if name not in names: abort(400)
                 if style in cards.STYLES: dict((n, x) for n, _, x in cards.slots(c['data']))[name]['style'] = style; resave(cid, c['data'], c['facts'], c['confirmed'])
                 names = [name]
-            if not cards.hf_ready(config()): flash('설정에서 힉스필드 API 키를 넣어 주세요.')
+            if not cards.img_ready(config()): flash('설정에서 이미지 AI(ChatGPT 또는 Claude) 키를 넣어 주세요.')
             elif not start_images(cid, names): flash('이미지를 만들고 있어요. 다 되면 다시 눌러 주세요.')
             return redirect(url_for('card', cid=cid))
         try: new = json.loads(request.form.get('data', ''))
@@ -397,7 +397,7 @@ def card(cid):
             d['theme'], d['accent'] = new['theme'], new['accent']; cf = config()
             if (cf['theme'], cf['accent']) != (d['theme'], d['accent']): cf['theme'], cf['accent'] = d['theme'], d['accent']; save_config(cf)
         newslots = [new.get('cover_img') or {}] + [(nc.get('img') or {}) for nc in (new.get('cards') or [])]
-        for (_, _, slot), ns in zip(cards.slots(d), newslots):  # 사진/일러스트 고르기만 (이미지 파일은 올리기·힉스필드로만 바뀜)
+        for (_, _, slot), ns in zip(cards.slots(d), newslots):  # 사진/일러스트 고르기만 (이미지 파일은 올리기·이미지 AI로만 바뀜)
             if ns.get('style') in cards.STYLES: slot['style'] = ns['style']
         d['caption'] = s(new.get('caption'), 1500)
         d['hashtags'] = [re.sub(r'[#\s]', '', str(h))[:20] for h in (new.get('hashtags') or [])[:8] if re.sub(r'[#\s]', '', str(h))]
@@ -407,7 +407,7 @@ def card(cid):
         return redirect(url_for('card', cid=cid))
     sl = [(n, '표지' if n == 'cover' else f'{int(n[4:]) + 2}번째 장', x, {k: cards.photo_prompt(scene, k) for k in cards.STYLES})
           for n, scene, x in cards.slots(c['data'], config()['img_style'])]
-    return render_template('edit.html', img_job=IMGJOB.get(cid), def_theme=config()['theme'], def_accent=config()['accent'], c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, hf=cards.hf_ready(config()),
+    return render_template('edit.html', img_job=IMGJOB.get(cid), def_theme=config()['theme'], def_accent=config()['accent'], c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, img_ok=cards.img_ready(config()), img_name='Claude' if config()['img_engine'] == 'claude' else 'ChatGPT',
                            key=bool(config()['key']), styles=cards.STYLES, saved=str(out_dir(c)) if out_dir(c).is_dir() else '')
 
 
@@ -420,7 +420,7 @@ def paste(cid):
         try: d = cards.from_paste(request.form.get('answer', ''), c['data']['art'])
         except ValueError as e: flash(str(e)); return redirect(url_for('paste', cid=cid))
         cards.slots(d, config()['img_style']); resave(cid, d, c['facts'], 0); log(f'붙여넣기로 만듦 #{cid}')
-        flash('카드뉴스를 만들었어요.' + (' 힉스필드 이미지는 뒤에서 만들고 있어요.' if start_images(cid) else " 이미지는 아래 '이미지 (힉스필드)'에서 넣어 주세요."))
+        flash('카드뉴스를 만들었어요.' + (' 이미지는 뒤에서 만들고 있어요.' if start_images(cid) else " 이미지는 아래 '이미지 (힉스필드)'에서 넣어 주세요."))
         return redirect(url_for('card', cid=cid))
     return render_template('paste.html', c=c, prompt=c['data']['prompt'])
 
@@ -513,8 +513,10 @@ def kakao_card(cid):
 
 @app.route('/img/<name>')
 def img(name):
-    if not re.fullmatch(r'[0-9a-f]{16}\.jpg', name): abort(404)
-    return send_from_directory(IMAGES, name, max_age=86400)
+    if not re.fullmatch(r'[0-9a-f]{16}\.(jpg|svg)', name): abort(404)
+    r = send_from_directory(IMAGES, name, max_age=86400)
+    if name.endswith('.svg'): r.headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'"  # 그림 안에서 아무것도 실행 못 하게
+    return r
 
 
 @app.route('/settings', methods=['GET', 'POST'])
@@ -528,13 +530,14 @@ def settings():
             v = f.get(k, '').strip()
             if v or f.get('clear_' + k): c[k] = '' if f.get('clear_' + k) else v  # 비워 두면 그대로, '지우기'를 고르면 지움
         if f.get('clear_naver_id'): c['naver_secret'] = ''
-        if f.get('clear_hf_id'): c['hf_secret'] = ''
-        c['hf_model'] = f.get('hf_model') if f.get('hf_model') in dict(cards.HF_MODELS) else cards.HF_MODELS[0][0]
+        c['img_engine'] = f.get('img_engine') if f.get('img_engine') in dict(cards.IMG_ENGINES) else 'openai'
+        c['openai_model'] = f.get('openai_model', '').strip() if re.fullmatch(r'[\w.-]{2,40}', f.get('openai_model', '').strip()) else cards.OPENAI_MODEL
         if f.get('kakao_key', '').strip(): c['kakao_key'] = f.get('kakao_key').strip()
         if f.get('clear_kakao'): c['kakao_key'] = c['kakao_secret'] = ''; c['kakao_token'] = {}
         c['kakao_auto'] = 1 if f.get('kakao_auto') else 0
         c['img_style'] = f.get('img_style') if f.get('img_style') in dict(IMG_STYLES) else 'mix'
-        c['hf_auto2'] = 1 if f.get('hf_auto') else 0
+        c['img_auto'] = 1 if f.get('img_auto') else 0
+        if c['openai_key'] and not c['openai_key'].startswith('sk-'): flash("ChatGPT(OpenAI) API 키는 'sk-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))
         if c['key'] and not c['key'].startswith('sk-ant-'): flash("Claude API 키는 'sk-ant-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))
         c['model'] = f.get('model') if f.get('model') in dict(MODELS) else DEFAULTS['model']
         c['naver_kind'] = f.get('naver_kind') if f.get('naver_kind') in cards.NAVER else 'dev'
@@ -544,7 +547,7 @@ def settings():
         c['hour'] = min(max(f.get('hour', type=int) or 8, 0), 23)
         save_config(c); flash('설정을 저장했어요.'); return redirect(url_for('settings'))
     mask = lambda v: (v[:7] + '…' + v[-4:]) if len(v) > 14 else ('있음' if v else '')
-    return render_template('settings.html', cfg=c, masked={k: mask(c[k]) for k in SECRETS}, models=MODELS, per_day=PER_DAY, hf_models=cards.HF_MODELS, img_styles=IMG_STYLES,
+    return render_template('settings.html', cfg=c, masked={k: mask(c[k]) for k in SECRETS}, models=MODELS, per_day=PER_DAY, img_engines=cards.IMG_ENGINES, img_styles=IMG_STYLES,
                            env_key=bool(os.getenv('ANTHROPIC_API_KEY')), data_dir=str(DATA),
                            kakao_ok=kakao.ready(c), kakao_redirect=kakao.redirect_uri(PORT))
 
@@ -560,14 +563,21 @@ WIN = {'quit': False, 'w': None, 'max': False}
 
 
 def work_area():
-    """작업 표시줄을 뺀 화면 칸 (x, y, 너비, 높이; 창 크기와 같은 단위). 윈도우가 아니면 None"""
+    """작업 표시줄을 뺀 화면 칸 (x, y, 너비, 높이: 실제 화면 점 단위, k: 윈도우 배율 1.25 등). 윈도우가 아니면 None.
+    pywebview(윈도우)는 창 크기를 실제 점 단위로, 창 위치(move)는 배율을 곱해서 다룸"""
     try:
         import ctypes
         from ctypes import wintypes
         r = wintypes.RECT(); ctypes.windll.user32.SystemParametersInfoW(0x30, 0, ctypes.byref(r), 0)  # SPI_GETWORKAREA
         k = (ctypes.windll.shcore.GetScaleFactorForDevice(0) or 100) / 100
-        return round(r.left / k), round(r.top / k), round((r.right - r.left) / k), round((r.bottom - r.top) / k)
+        return r.left, r.top, r.right - r.left, r.bottom - r.top, k
     except Exception: return None
+
+
+def start_size(wa):
+    """처음 창 크기: 토스 포스 정도 (화면 배율을 곱한 1280×820, 화면보다 크면 줄임)"""
+    if not wa: return 1280, 820
+    return min(round(1280 * wa[4]), wa[2] - 40), min(round(820 * wa[4]), wa[3] - 40)
 
 
 class WinApi:
@@ -576,14 +586,26 @@ class WinApi:
     def minimize(self):
         if WIN['w']: WIN['w'].minimize()
 
+    def size(self):
+        w = WIN['w']
+        return [w.width, w.height] if w else [0, 0]
+
+    def resize(self, width, height, edge='se'):
+        """가장자리를 마우스로 끌어 크기 바꾸기 (edge: 끄는 쪽 n/s/e/w 조합). 반대쪽 모서리는 그대로 둠"""
+        w = WIN['w']
+        if not w: return
+        from webview.window import FixPoint
+        fix = (FixPoint.SOUTH if 'n' in edge else FixPoint.NORTH) | (FixPoint.EAST if 'w' in edge else FixPoint.WEST)
+        w.resize(max(900, int(width)), max(560, int(height)), fix_point=fix); WIN['max'] = False
+
     def toggle(self):
         w, wa = WIN['w'], work_area()
         if not w: return
         if not wa: w.toggle_fullscreen(); return
+        x, y, ww, hh, k = wa
         if WIN['max']:
-            W, H = min(1280, wa[2] - 40), min(820, wa[3] - 40)
-            w.resize(W, H); w.move(wa[0] + (wa[2] - W) // 2, wa[1] + (wa[3] - H) // 2)
-        else: w.move(wa[0], wa[1]); w.resize(wa[2], wa[3])
+            W, H = start_size(wa); w.resize(W, H); w.move((x + (ww - W) / 2) / k, (y + (hh - H) / 2) / k)
+        else: w.move(x / k, y / k); w.resize(ww, hh)
         WIN['max'] = not WIN['max']
 
 
@@ -605,9 +627,9 @@ def app_window(url):
     try:
         import webview
         webview.settings['ALLOW_DOWNLOADS'] = True  # zip 내려받기
-        webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True  # 기사·claude.ai·힉스필드 링크는 브라우저로
+        webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True  # 기사·claude.ai·ChatGPT 링크는 브라우저로
         # 토스 포스처럼 화면 가득, 윈도우 제목 줄 없이 (최소화·최대화·닫기는 화면 위쪽 막대에 우리 버튼으로)
-        wa = work_area(); W, H = (min(1280, wa[2] - 40), min(820, wa[3] - 40)) if wa else (1280, 820)
+        W, H = start_size(work_area())
         w = webview.create_window(NAME, url + '/start', width=W, height=H, min_size=(1000, 640), frameless=True, easy_drag=False,
                                   background_color='#F2F4F6', js_api=WinApi())  # 처음엔 토스 포스 정도 크기로 가운데
         WIN['w'] = w

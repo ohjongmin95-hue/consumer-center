@@ -1,13 +1,14 @@
 """소보루 카드뉴스 만들기: 뉴스 링크 하나로 인스타 카드뉴스(표지 문구 5개 + 본문 + 그림 + 캡션) 초안을 Claude로 만든다.
 
 소보루 사이트와 따로 돌아가는 프로그램이다 (server.py가 화면, 이 파일이 만드는 일).
-- 순서: 기사 가져오기 → 같은 뉴스를 다룬 다른 기사 1~2개 찾아 읽기(사실 확인: 네이버 뉴스 검색 먼저, 모자라면 Claude 웹 검색) → 원고(JSON: Claude API·claude.ai 붙여넣기·직접 쓰기) → 힉스필드 사진 → 코드 검사.
+- 순서: 기사 가져오기 → 같은 뉴스를 다룬 다른 기사 1~2개 찾아 읽기(사실 확인: 네이버 뉴스 검색 먼저, 모자라면 Claude 웹 검색) → 원고(JSON: Claude API·claude.ai 붙여넣기·직접 쓰기) → 이미지(ChatGPT 또는 Claude) → 코드 검사.
 - 규칙은 「인스타 수익화 올인원 패키지 3권 · 저작권 기준표」(2026.10)를 따른다:
   사실만 가져오고 기사 문장은 옮기지 않음(띄어쓰기 빼고 18자 넘게 같으면 걸림) · 표지 낚시말(충격·결국·경악) 금지 · '댓글에 ○○' 대신 저장 유도 ·
   기사 사진 안 씀(그림은 새로 그림) · 실존 인물 얼굴·기업 로고·유명 캐릭터 안 그림 · 캡션에 '출처: 매체명 날짜 보도' + 링크.
   다른 기사로 확인하지 못했거나 기사에 없는 숫자가 있으면 '확인 필요'로 두고, '직접 확인했어요'에 체크해야 내려받을 수 있다.
-- 이미지: 힉스필드로만 (운영자 2026-10-24). 장마다 사진/일러스트를 고르고, 힉스필드에 붙여 넣을 설명(photo_prompt)을 준다.
-  힉스필드 사이트에서 만든 이미지를 올리거나(비용 없음) 키가 있으면 바로 주문. 마지막 장은 소보루 캐릭터(static/soboru-character.png).
+- 이미지: ChatGPT(OpenAI 이미지 API) 또는 Claude(SVG 일러스트)로 자동 (운영자 2026-10-26, 힉스필드 자동은 뺌). 장마다 사진/일러스트를 고르고,
+  다른 곳에서 만든 이미지를 올려도 된다. 마지막 장은 소보루 캐릭터(static/soboru-character.png).
+- 구성: 캐러셀 레퍼런스북의 경제형(배경→숫자→원인→교훈) / 이슈형(발단→전개→영향→현재) 6장 공식만 쓴다.
 - 카드 모양(글자·주황 박스·태그)은 화면(templates/edit.html)이 데이터로 그리고, PNG(1080×1350)와 캡션을 한 번에 내려받는다.
   인스타그램에는 직접 올린다(외부 자동 업로드 봇은 계정 정지 위험).
 """
@@ -457,8 +458,8 @@ def run_checks(d, facts):
     need = d.get('confirm_needed') or []
     return [
         {'label': '이미지: 기사 사진 없이 새로 만들었나', 'ok': None if not all(arts) or up or ai_photo else True,
-         'note': "사진이 빠진 장이 있어요. 힉스필드에서 만든 사진을 올려 주세요" if not all(arts) else
-                 ('올린 사진이 힉스필드로 만든 것(기사 사진·남의 사진 아님)인지 봐 주세요' if up else '모든 사진을 힉스필드로 새로 만들었어요')
+         'note': "이미지가 빠진 장이 있어요. AI로 만들거나 새로 만든 이미지를 올려 주세요" if not all(arts) else
+                 ('올린 이미지가 AI로 새로 만든 것(기사 사진·남의 사진 아님)인지 봐 주세요' if up else '모든 이미지를 AI로 새로 만들었어요')
                  + (" · 캡션에 'AI로 만든 이미지예요' 같은 말을 직접 적어 주세요" if ai_photo else '')},
         {'label': '사람: 실존 인물 얼굴이 없나', 'ok': None, 'note': '그림에 실존 인물·기업 로고가 없는지 눈으로 한 번 봐 주세요'},
         {'label': '글: 기사 문장을 옮기지 않았나', 'ok': not copy, 'note': '기사와 너무 비슷한 줄: ' + ' / '.join(copy[:3]) if copy else '기사 문장과 겹치는 줄이 없어요'},
@@ -501,11 +502,12 @@ def caption_full(d):
     return '\n\n'.join(x for x in [d.get('caption', '').strip(), src, ' '.join('#' + h for h in d.get('hashtags') or [])] if x)
 
 
-# ---- 사진 (힉스필드) ---------------------------------------------------------------
-# 공식 SDK higgsfield-client: https://api.higgsfield.ai, 'Authorization: Key 아이디:시크릿', 요청을 넣고 끝날 때까지 상태를 물어봄
-HF_MODELS = (('bytedance/seedream/v4/text-to-image', 'Seedream 4 (기본, 사실적인 사진)'),)
-HF_TIMEOUT = 240
-# 이미지 스타일: 사진 / 일러스트 (둘 다 힉스필드). 일러스트는 소보루 색(주황·크림·갈색)
+# ---- 이미지 (ChatGPT 또는 Claude) ---------------------------------------------------------
+# ChatGPT: OpenAI 이미지 API (platform.openai.com의 API 키, ChatGPT 구독과는 따로 결제) → 사진·일러스트 JPG
+# Claude: 사진은 못 만들고, 일러스트를 SVG(벡터 그림)로 직접 그림 → 설정의 Claude API 키로
+IMG_ENGINES = (('openai', 'ChatGPT (OpenAI 이미지) — 사진·일러스트'), ('claude', 'Claude — 일러스트만 (직접 그린 벡터 그림)'))
+OPENAI_MODEL = 'gpt-image-1'
+# 이미지 스타일: 사진 / 일러스트. 일러스트는 소보루 색(주황·크림·갈색)
 STYLES = {'photo': ('사진', 'Photorealistic editorial news photo for a Korean consumer news card, natural light, clean composition, portrait 3:4, main subject in the lower half, calm uncluttered upper third (headline text goes there). Scene: {scene}. '),
           'illust': ('일러스트', 'Flat vector illustration for a Korean consumer news card, clean geometric shapes, soft shading, warm palette of orange #EF920E, '
                      'cream #F7D49E, dark brown #652D1C with sky blue and white accents, portrait 3:4, main subject in the lower half, calm uncluttered upper third, friendly and simple. Scene: {scene}. ')}
@@ -514,7 +516,7 @@ MIXES = {'mix': ('photo', 'illust'), 'photo': ('photo', 'photo'), 'illust': ('il
 
 
 def slots(d, mix='mix'):
-    """이미지 자리마다 [(이름, 장면 설명, 자리 dict)]. 자리: {'photo': 파일 이름, 'src': 'hf'|'upload', 'style': 'photo'|'illust'}
+    """이미지 자리마다 [(이름, 장면 설명, 자리 dict)]. 자리: {'photo': 파일 이름, 'src': 'openai'|'claude'|'upload', 'style': 'photo'|'illust'}
     mix: 자리가 처음 생길 때의 기본 스타일 (설정 '기본 이미지 스타일')"""
     cover, body = MIXES.get(mix, MIXES['mix'])
     d.setdefault('cover_img', {'photo': '', 'style': cover}).setdefault('style', cover)
@@ -526,41 +528,77 @@ def slots(d, mix='mix'):
 
 
 def photo_prompt(scene, style='photo'):
-    """힉스필드에 붙여 넣을 이미지 설명 (사진/일러스트)"""
+    """이미지 AI에 줄 설명 (사진/일러스트). ChatGPT 앱 등에 직접 붙여 넣어도 됨"""
     return STYLES.get(style, STYLES['photo'])[1].format(scene=scene or 'a calm everyday consumer scene') + SAFE
 
 
-def hf_ready(cfg): return bool(cfg.get('hf_id'))
+def img_ready(cfg):
+    """고른 이미지 AI의 키가 있나"""
+    return bool(cfg.get('openai_key')) if cfg.get('img_engine', 'openai') == 'openai' else bool(cfg.get('key'))
 
 
-def hf_key(cfg):
-    """힉스필드 키: 요즘 키는 'Copy API key'로 복사한 한 줄, 예전 키는 ID:Secret"""
-    return cfg['hf_id'] + (':' + cfg['hf_secret'] if cfg.get('hf_secret') and ':' not in cfg['hf_id'] else '')
+def make_image(cfg, scene, style='photo'):
+    """장면 설명 → (이미지 바이트, 'jpg'|'svg'). 설정에서 고른 AI로. 테스트에서 바꿔 끼운다."""
+    if cfg.get('img_engine', 'openai') == 'claude': return claude_svg(cfg, scene), 'svg'
+    return openai_image(cfg, scene, style), 'jpg'
 
 
-def higgsfield_photo(cfg, scene, style='photo'):
-    """장면 설명 → 사진 JPEG/PNG 바이트. 테스트에서 바꿔 끼운다."""
-    import time, higgsfield_client as hf
-    if not hf_ready(cfg): raise RuntimeError("힉스필드 키가 없어요. '설정'에서 넣어 주세요")
-    client = hf.SyncClient(api_key=hf_key(cfg), timeout=60)
+def openai_image(cfg, scene, style='photo'):
+    """OpenAI 이미지 API로 세로 이미지 (PNG/JPEG 바이트)"""
+    import base64
+    if not cfg.get('openai_key'): raise RuntimeError("ChatGPT(OpenAI) API 키가 없어요. '설정'에서 넣어 주세요")
+    body = json.dumps({'model': cfg.get('openai_model') or OPENAI_MODEL, 'prompt': photo_prompt(scene, style), 'size': '1024x1536', 'n': 1}).encode()
+    req = urllib.request.Request('https://api.openai.com/v1/images/generations', data=body, method='POST',
+                                 headers={'Authorization': 'Bearer ' + cfg['openai_key'], 'Content-Type': 'application/json'})
     try:
-        job = client.submit(cfg.get('hf_model') or HF_MODELS[0][0], arguments={'prompt': photo_prompt(scene, style), 'aspect_ratio': '3:4', 'resolution': '2K'})
-        end = time.time() + HF_TIMEOUT
-        for st in job.poll_request_status(delay=2):
-            if time.time() > end:
-                try: job.cancel()
-                except Exception: pass
-                raise RuntimeError('힉스필드가 4분 안에 이미지를 못 만들었어요')
-        if isinstance(st, hf.NSFW): raise RuntimeError('힉스필드가 안전 기준에 걸린다고 사진을 만들지 않았어요')
-        if not isinstance(st, hf.Completed): raise RuntimeError('힉스필드가 사진을 만들지 못했어요')
-        url = (job.get().get('images') or [{}])[0].get('url', '')
-    except hf.CredentialsMissedError: raise RuntimeError('힉스필드 키가 없어요')
-    except hf.HiggsfieldClientError as e: raise RuntimeError(f'힉스필드 오류: {str(e)[:120]}')
-    except (OSError, ValueError) as e: raise RuntimeError(f'힉스필드에 연결하지 못했어요 ({type(e).__name__})')
-    if not url.startswith('https://'): raise RuntimeError('힉스필드 답에 사진 주소가 없어요')
-    try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'soboru-cardnews'}), timeout=60) as r: return r.read(25_000_000)
-    except (urllib.error.URLError, OSError) as e: raise RuntimeError(f'힉스필드 사진을 받지 못했어요 ({type(e).__name__})')
+        with urllib.request.urlopen(req, timeout=240) as r: res = json.loads(r.read().decode('utf-8'))
+    except urllib.error.HTTPError as e:
+        try: err = (json.loads(e.read().decode('utf-8') or '{}').get('error') or {})
+        except (ValueError, OSError): err = {}
+        msg, code = str(err.get('message') or '')[:160], str(err.get('code') or err.get('type') or '')
+        if e.code == 401: raise RuntimeError('ChatGPT(OpenAI) API 키가 맞지 않아요 (설정에서 다시 넣어 주세요)')
+        if 'quota' in code or 'billing' in code or 'quota' in msg.lower(): raise RuntimeError('OpenAI API 잔액이 없어요. ChatGPT 구독과 별개로 platform.openai.com → Billing에서 충전해야 해요')
+        if e.code == 403: raise RuntimeError('OpenAI가 이 이미지 모델을 막았어요: ' + (msg or '조직 인증(Verify organization)이 필요할 수 있어요'))
+        if e.code == 429: raise RuntimeError('OpenAI 요청이 많아 잠깐 막혔어요. 조금 뒤 다시 해 주세요')
+        if 'safety' in msg.lower() or 'moderation' in code: raise RuntimeError('OpenAI가 안전 기준에 걸린다고 이미지를 만들지 않았어요')
+        raise RuntimeError(f'OpenAI 이미지 오류 ({e.code}): {msg}')
+    except (urllib.error.URLError, OSError, ValueError) as e: raise RuntimeError(f'OpenAI에 연결하지 못했어요 ({type(e).__name__})')
+    item = (res.get('data') or [{}])[0]
+    if item.get('b64_json'): return base64.b64decode(item['b64_json'])
+    if str(item.get('url', '')).startswith('https://'):
+        with urllib.request.urlopen(item['url'], timeout=60) as r: return r.read(25_000_000)
+    raise RuntimeError('OpenAI 답에 이미지가 없어요')
+
+
+SVG_SYSTEM = """You are an illustrator for SOBORU, a Korean consumer-news Instagram account. Draw ONE flat vector illustration as a single SVG.
+Rules: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350">, portrait card. Fill the whole canvas with a background.
+Clean geometric shapes, soft gradients allowed, warm palette: orange #EF920E, cream #F7D49E / #FFF6E6, dark brown #652D1C, with sky blue and white accents.
+Main subject in the lower 60%; keep the top third calm and simple (headline text is placed there later).
+Absolutely no text, letters, numbers, logos, brand names, real or famous people (people only as simple silhouettes from behind or hands).
+Only basic SVG elements (rect, circle, ellipse, path, polygon, line, g, defs, linearGradient, radialGradient, stop). No script, no images, no external links, no filters heavier than a soft blur.
+Answer with JSON only: {"svg": "<svg ...>...</svg>"}"""
+
+
+def claude_svg(cfg, scene):
+    """Claude가 일러스트를 SVG로 직접 그림 (사진은 못 만듦) → 안전하게 다듬은 SVG 바이트"""
+    if not cfg.get('key'): raise RuntimeError("Claude API 키가 없어요. '설정'에서 넣어 주세요")
+    res = claude(cfg, SVG_SYSTEM, 'Scene: ' + (scene or 'a calm everyday consumer scene'), {'type': 'object', 'additionalProperties': False, 'required': ['svg'], 'properties': {'svg': {'type': 'string'}}}, 16000)
+    return clean_svg(res.get('svg', ''))
+
+
+def clean_svg(text, limit=400_000):
+    """SVG 글 → 안전한 SVG 바이트 (스크립트·바깥 링크·이벤트 속성 제거, 크기 고정). 그림이 아니면 ValueError."""
+    t = str(text or '')
+    m = re.search(r'(?is)<svg\b.*</svg>', t)
+    if not m or len(m.group(0)) > limit: raise ValueError('Claude가 그림(SVG)을 제대로 주지 않았어요. 다시 해 주세요')
+    t = m.group(0)
+    t = re.sub(r'(?is)<(script|foreignObject|iframe|object|embed|image|use|a|style)\b.*?(</\1>|/>)', '', t)
+    t = re.sub(r'(?is)<(script|foreignObject|iframe|object|embed|image|use|a|style)\b[^>]*>', '', t)
+    t = re.sub(r'(?i)\s(on\w+|href|xlink:href|src)\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)', '', t)
+    t = re.sub(r'(?i)url\(\s*([^#)\s][^)]*)\)', 'none', t)  # 바깥 주소는 지우고 #그라데이션만 남김
+    if re.search(r'(?i)javascript:|<!entity|<!doctype', t): raise ValueError('그림에 쓸 수 없는 내용이 있어요')
+    t = re.sub(r'(?is)^<svg\b[^>]*>', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350" preserveAspectRatio="xMidYMid slice">', t, count=1)
+    return t.encode('utf-8')
 
 
 def clean_photo(raw, max_side=1600):

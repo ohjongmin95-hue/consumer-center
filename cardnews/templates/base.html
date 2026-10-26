@@ -69,6 +69,11 @@ button[disabled]{opacity:.4;cursor:not-allowed}
 .wait{display:flex;gap:16px;align-items:center}
 code{background:var(--grey);border-radius:6px;padding:1px 6px;font-size:13px}
 details>summary{cursor:pointer}
+.grip[hidden]{display:none}.grip i{position:fixed;z-index:30;display:block}
+.grip [data-e=n]{top:0;left:10px;right:10px;height:5px;cursor:ns-resize}.grip [data-e=s]{bottom:0;left:10px;right:10px;height:6px;cursor:ns-resize}
+.grip [data-e=e]{right:0;top:10px;bottom:10px;width:6px;cursor:ew-resize}.grip [data-e=w]{left:0;top:10px;bottom:10px;width:6px;cursor:ew-resize}
+.grip [data-e=ne]{top:0;right:0;width:12px;height:12px;cursor:nesw-resize}.grip [data-e=sw]{bottom:0;left:0;width:12px;height:12px;cursor:nesw-resize}
+.grip [data-e=nw]{top:0;left:0;width:12px;height:12px;cursor:nwse-resize}.grip [data-e=se]{bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize}
 /* 제목 줄 없는 프로그램 창: 위쪽 막대 빈 곳을 잡고 옮기고(두 번 누르면 최대화), 오른쪽 끝에 — ▢ ✕ */
 .top .drag{flex:1;align-self:stretch}
 .winbtns{display:flex;margin:0 -24px 0 10px;align-self:stretch}.winbtns[hidden]{display:none}
@@ -100,7 +105,7 @@ details>summary{cursor:pointer}
       <span><b>{{ it.cover }}</b><small>#{{ it.id }} · {{ it.created[5:16].replace('T', ' ') }}{% if it.daily %} · 자동{% endif %}</small></span></a>{% else %}<p class="empty">아직 만든 카드뉴스가 없어요</p>{% endfor %}</nav>
     <div class="foot">
       <form method="post" action="{{ url_for('open_all') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button>📁 저장 폴더 열기</button></form>
-      <div class="dots"><span class="{{ 'on' if side_cfg.claude }}">Claude</span><span class="{{ 'on' if side_cfg.hf }}">힉스필드</span><span class="{{ 'on' if side_cfg.naver }}">네이버</span><a href="{{ url_for('settings') }}" style="font-size:12px;padding:5px 2px">설정</a></div>
+      <div class="dots"><span class="{{ 'on' if side_cfg.claude }}">Claude</span><span class="{{ 'on' if side_cfg.img }}">이미지 AI</span><span class="{{ 'on' if side_cfg.naver }}">네이버</span><a href="{{ url_for('settings') }}" style="font-size:12px;padding:5px 2px">설정</a></div>
     </div>
   </aside>
   <main class="wrap {% block wrapclass %}{% endblock %}">
@@ -112,6 +117,17 @@ details>summary{cursor:pointer}
   <b id="quit-t">민주의 카드뉴스를 종료할까요?</b><span>만드는 중인 카드뉴스가 있으면 멈춰요</span>
   <div class="two"><button type="button" onclick="cnQuit(false)">취소</button><button class="red">종료하기</button></div></form></div>
 {% if request.endpoint != 'home' %}<a class="fab" href="{{ url_for('home') }}" title="새 카드뉴스" aria-label="새 카드뉴스">+</a>{% endif %}
+<div class="grip" id="grip" hidden><i data-e="n"></i><i data-e="s"></i><i data-e="e"></i><i data-e="w"></i><i data-e="ne"></i><i data-e="nw"></i><i data-e="se"></i><i data-e="sw"></i></div>
+<script>
+// 제목 줄 없는 프로그램 창: 가장자리·모서리를 마우스로 끌어 크기 바꾸기
+window.addEventListener('pywebviewready',function(){var g=document.getElementById('grip');g.hidden=false;
+  g.querySelectorAll('i').forEach(function(h){h.addEventListener('pointerdown',function(e){var ed=h.dataset.e,sx=e.screenX,sy=e.screenY,busy=false,last=null;e.preventDefault();h.setPointerCapture(e.pointerId);
+    window.pywebview.api.size().then(function(sz){function go(){if(!last){busy=false;return}var r=window.devicePixelRatio||1,dx=(last[0]-sx)*r,dy=(last[1]-sy)*r;last=null;  // 창 크기는 실제 점 단위
+        var w=sz[0]+(ed.indexOf('e')>=0?dx:ed.indexOf('w')>=0?-dx:0),hh=sz[1]+(ed.indexOf('s')>=0?dy:ed.indexOf('n')>=0?-dy:0);
+        window.pywebview.api.resize(w,hh,ed).then(function(){setTimeout(go,16)},function(){busy=false})}
+      h.onpointermove=function(m){last=[m.screenX,m.screenY];if(!busy){busy=true;go()}};
+      h.onpointerup=function(){h.onpointermove=null;h.onpointerup=null}})})})});
+</script>
 <script>
 (function(){var c=document.getElementById('clock'),w='일월화수목금토';function t(){var d=new Date(),h=d.getHours();c.innerHTML='<b>'+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+w[d.getDay()]+')</b>'+(h<12?'오전 ':'오후 ')+((h%12)||12)+':'+String(d.getMinutes()).padStart(2,'0')}t();setInterval(t,15000);})();
 function cnWin(a){try{window.pywebview.api[a]()}catch(e){}}
