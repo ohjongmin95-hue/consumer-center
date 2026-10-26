@@ -21,7 +21,7 @@
     <p class="cp-count">{% if n %}{{ ui('cp.count1', '벌써') }} <b>{{ ui('cp.count_n', '{n}개', n=n) }}</b>{{ ui('cp.count2', '의 리뷰가 모였어요') }}{% else %}{{ ui('cp.first', '첫 리뷰를 남기면 소보루 픽 순위가 생겨요') }}{% endif %}</p>
     <div class="cp-card-btns"><a class="cm-btn" href="{{ url_for('board_write', type='review', campaign=c['slug']) }}">{{ ui('cp.write', '리뷰 쓰기') }}</a><a class="cp-more" href="{{ url_for('campaign_page', slug=c['slug']) }}">{{ ui('cp.more', '자세히 보기') }} ›</a></div>
   </div>
-  <img class="cp-card-art" src="{{ asset('img/soboru-character-hero.png') }}" alt="" width="579" height="479" loading="lazy">
+  <img class="cp-card-art" src="{{ asset('img/soboru-character-hero.png') }}" alt="소보루 캐릭터" width="579" height="479" loading="lazy">
 </section>{% endmacro %}
 {# 혜택 규칙 상자: 기간·대상·지급 방법·유의사항 #}
 {% macro reward_box(c) %}<section class="cp-reward" aria-labelledby="cp-reward-h">
