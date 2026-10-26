@@ -671,9 +671,14 @@ def main():
     if FROZEN:  # 실행 파일 안의 Python은 컴퓨터의 인증서 목록을 못 찾을 수 있어 기사 읽기용으로 함께 넣은 목록을 씀
         import certifi
         os.environ.setdefault('SSL_CERT_FILE', certifi.where())
-    if '--check' in sys.argv:  # 빌드 확인용: 창 엔진을 불러올 수 있는지만 보고 끝
-        import webview  # noqa: F401
-        return
+    if '--check' in sys.argv:  # 빌드 확인용: 창 엔진을 불러올 수 있는지만 보고 끝 (오류는 창 대신 파일로 남김 — 오류 창은 빌드를 멈춰 세움)
+        try:
+            import webview  # noqa: F401
+            import webview.window  # noqa: F401
+        except BaseException:
+            import traceback
+            Path(sys.executable).with_name('check-error.txt').write_text(traceback.format_exc(), encoding='utf-8'); os._exit(3)
+        os._exit(0)
     browser = '--browser' in sys.argv
     if running():  # 이미 켜져 있으면 새로 켜지 않고 창(또는 브라우저)만 하나 더
         if browser or not app_window(url): webbrowser.open(url)

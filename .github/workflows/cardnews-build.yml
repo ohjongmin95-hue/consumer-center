@@ -13,6 +13,7 @@ concurrency:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: cardnews
@@ -30,7 +31,9 @@ jobs:
       - name: 실행 파일 확인 (프로그램 창 엔진을 불러오는지)
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath dist\MinjuCardNews.exe -ArgumentList '--check' -Wait -PassThru
+          $p = Start-Process -FilePath dist\MinjuCardNews.exe -ArgumentList '--check' -PassThru
+          if (-not $p.WaitForExit(90000)) { Get-Process MinjuCardNews -ErrorAction SilentlyContinue | Stop-Process -Force; throw "exe --check가 90초 안에 끝나지 않음" }
+          if (Test-Path dist\check-error.txt) { Get-Content dist\check-error.txt }
           if ($p.ExitCode -ne 0) { throw "exe --check 실패 ($($p.ExitCode))" }
       - name: 설치 파일 만들기 (Inno Setup → MinjuCardNews-Setup.exe)
         shell: pwsh
