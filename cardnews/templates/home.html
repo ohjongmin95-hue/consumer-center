@@ -27,7 +27,7 @@
 .nrow a.o{color:var(--sub2);font-size:13px;text-decoration:none;flex:none}.nrow a.o:hover{color:var(--ink)}
 .nrow button{flex:none}
 .ntabs{display:flex;gap:6px;margin:6px 0 4px}.ntabs[hidden]{display:none}.ntabs button{height:32px;padding:0 13px;font-size:13px;border-radius:999px;background:var(--grey);color:var(--sub)}.ntabs button.on{background:#333D4B;color:#fff}
-.nrow .tag.g1{background:#FFF1E0;color:#D2690C}.nrow .tag.g2{background:#F0EBFF;color:#6B4FD8}.nrow .tag.eco{background:#E3F7EE;color:#038C55}
+.nrow .tag.g1{background:#FFF1E0;color:#D2690C}.nrow .tag.g2{background:#F0EBFF;color:#6B4FD8}.nrow .tag.g3{background:#FFEBEE;color:#D22030}.nrow .tag.eco{background:#E3F7EE;color:#038C55}
 .skel span{display:block;height:14px;border-radius:7px;background:linear-gradient(90deg,#F2F4F6,#E9ECEF,#F2F4F6);background-size:200% 100%;animation:sk 1.2s infinite}
 .skel{flex-direction:column;align-items:stretch;gap:8px}.skel span:last-child{width:45%}@keyframes sk{to{background-position:-200% 0}}
 .nempty{text-align:center;color:var(--sub);padding:38px 10px;display:flex;flex-direction:column;align-items:center;gap:10px}.nempty b{font-size:36px}
@@ -82,7 +82,7 @@ label.f{margin:0 0 12px;font-size:13px;color:var(--sub)}label.f input,label.f te
   <section class="panel news">
     <div class="ph"><div><h2>오늘의 뉴스</h2><p class="meta">네이버 뉴스 · 최근 이틀 · 경제 섹션 전체 · 분야 고르게</p></div>
       <button class="primary" name="pick" value="auto">알아서 골라 만들기</button></div>
-    <div class="ntabs" id="ntabs" hidden><button type="button" class="on" data-g="">전체</button><button type="button" data-g="소비자">소비자</button><button type="button" data-g="유통">유통·생활</button><button type="button" data-g="금융·부동산">금융·부동산</button><button type="button" data-g="경제">경제 일반</button></div>
+    <div class="ntabs" id="ntabs" hidden><button type="button" class="on" data-g="">전체</button><button type="button" data-g="소비자">소비자</button><button type="button" data-g="유통">유통·생활</button><button type="button" data-g="금융·부동산">금융·부동산</button><button type="button" data-g="이슈">이슈</button><button type="button" data-g="경제">경제 일반</button></div>
     <div id="news" class="nlist">{% if naver %}{% for i in range(5) %}<div class="nrow skel"><span></span><span></span></div>{% endfor %}{% else %}
       <div class="nempty"><b>🔎</b>네이버 키를 넣으면 오늘의 소비자 뉴스를 여기서 바로 골라요<a class="btn weak small" href="{{ url_for('settings') }}">네이버 키 넣기</a></div>{% endif %}</div>
     <div class="nfoot" id="nfoot" hidden><span class="meta" id="nwhen"></span><button type="button" class="small" id="nre">새로고침</button></div>
@@ -121,7 +121,7 @@ document.querySelectorAll('[data-go]').forEach(function(f){f.addEventListener('s
  function load(fresh){fetch('{{ url_for('news') }}'+(fresh?'?fresh=1':'')).then(function(r){return r.json()}).then(function(d){box.textContent='';
   if(!d.items.length){var n=el('div','nempty');n.appendChild(el('b','','🗞'));n.appendChild(document.createTextNode(d.error?d.error+' — 설정에서 네이버 키를 확인해 주세요.':'최근 이틀 안에 나온 뉴스를 못 찾았어요. 새로고침하거나 링크를 직접 넣어 주세요.'));box.appendChild(n)}
   d.items.forEach(function(it){var r=el('div','nrow');r.dataset.g=it.group||'',t=el('div','t'),b=el('b','',it.title),s=el('small');
-   s.appendChild(el('span','tag'+({'유통':' g1','금융·부동산':' g2','경제':' eco'}[it.group]||''),it.topic));if(it.made)s.appendChild(el('span','done','✓ 만든 기사'));s.appendChild(document.createTextNode(it.host+' · '+it.date.slice(5).replace('-','.')+(it.summary?' · '+it.summary:'')));
+   s.appendChild(el('span','tag'+({'유통':' g1','금융·부동산':' g2','경제':' eco','이슈':' g3'}[it.group]||''),it.topic));if(it.made)s.appendChild(el('span','done','✓ 만든 기사'));s.appendChild(document.createTextNode(it.host+' · '+it.date.slice(5).replace('-','.')+(it.summary?' · '+it.summary:'')));
    t.appendChild(b);t.appendChild(s);r.appendChild(t);
    var o=el('a','o','원문');o.href=it.url;o.target='_blank';o.rel='noopener';r.appendChild(o);
    var g=el('button','weak small','만들기');g.name='pick';g.value=it.url;r.appendChild(g);box.appendChild(r)});

@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 AI_TIMEOUT = 600
 COPY_RUN = 18  # 기사와 띄어쓰기 빼고 이만큼 연달아 같으면 '기사 문장 옮김'
 ARROWS = ('up', 'down', '')
+KINDS = {'economy': ('배경', '숫자', '원인', '교훈'), 'issue': ('발단', '전개', '영향', '현재')}  # 레퍼런스북 공식: 경제형 / 이슈형
 THEMES = ('ref', 'newneek', 'magazine', 'poster', 'clean', 'dark')  # 카드 디자인 (기본: 레퍼런스북식)
 ACCENTS = ('tangerine', 'blue', 'green', 'red', 'ink')
 ENDS = ('save', 'share')  # 마지막 장 마무리: 저장 유도(기본) / 공유형 (캐러셀 레퍼런스북: 저장이 기본, 공유 명분은 기획에서)
@@ -39,28 +40,45 @@ WRITE_SYSTEM = """너는 소비자 권익 서비스 '소보루(SOBORU)'의 인�
 - 실존 인물을 조롱·비하하거나 기업을 평가·비난하는 말(악덕, 최악, 갑질 등)은 쓰지 않는다. 사실만 전한다.
 - 정치 뉴스는 양쪽 입장을 사실로만 나열하고 '언제부터 / 누가 해당 / 내가 챙길 것'으로 생활 영향만 쓴다. 참사·범죄는 자극적으로 묘사하지 않고 예방·대처 정보 위주.
 
-[표지]
-- topic: 맨 위 작은 줄. '주제어 | 한 줄 설명' (예: '부동산 | 서울 아파트 임대차 거래에서 월세 비중 51%'). 40자 안팎.
+[구성 — 캐러셀 레퍼런스북 공식, 기사에 맞는 것 하나를 골라 kind에 적고 꼭 그 순서로 6장]
+kind='economy' (경제) — 뿌리: 욕망 충족(돈 벌고 싶다·아끼고 싶다). 기업·돈·가격·금리·유통 이야기를 뉴스보다 쉽고 재밌게.
+ 1장 표지 → 2장 배경(처음엔 어땠나) → 3장 숫자(꺾인·바뀐 시점의 숫자 하나) → 4장 원인(결정적 이유 세 가지) → 5장 교훈(우리가 배울 점 한 줄) → 6장 마무리(출처 · 저장해 두고 다시 보기)
+ 예: '잘나가던 ○○는 왜 망했을까' → '처음엔 이렇게 잘됐다' → '매출이 꺾인 시점' → '결정적 실수 세 가지' → '우리가 배울 점 한 줄'
+ 주의: 특정 종목·상품 투자를 권하는 것처럼 보이면 안 된다(투자 자문 아님). 숫자·날짜는 기사에 있는 그대로만.
+kind='issue' (이슈) — 뿌리: 흥미 유발. 화제가 된 뉴스를 사실만 골라 내 문장으로 정리.
+ 1장 표지 → 2장 발단(무슨 일이 있었나) → 3장 전개(논란이 커진 이유) → 4장 영향(내 생활에 뭐가 달라지나) → 5장 현재(지금 상황 · 확인된 사실만) → 6장 마무리(출처 · 헷갈리면 저장)
+ 예: '지금 난리 난 ○○, 내 월급엔 무슨 일?' → '무슨 일이 있었나' → '논란이 커진 이유' → '내 생활에 뭐가 달라지나' → '지금 상황 · 확인된 사실만'
+ 주의: 확인되지 않은 일은 쓰지 않는다. 한쪽 주장만 사실처럼 쓰지 않는다.
+고르는 법: 기업 실적·가격·금리·돈의 흐름이 중심이면 economy, 사건·논란·화제가 중심이면 issue.
+둘 다 한 장에 메시지 하나. 출처는 꼭 남긴다.
+
+[1장 표지]
+- topic: 맨 위 작은 줄. '주제어 | 한 줄 설명' (예: '유통 | 편의점 도시락 평균 가격 300원 올라'). 40자 안팎.
 - emoji: topic 끝에 붙일 이모지 1개.
 - covers: 표지 문구 후보 정확히 5개. 각 후보는 두 줄(line1, line2), 한 줄 15자 안쪽.
-  line1은 궁금증(질문이나 말 걸기), line2는 핵심 숫자나 사실. 기사 제목을 그대로 쓰지 말고 '내 얘기'로 바꾼 한 줄로 쓴다
-  (예: '○○법 개정안 통과' 대신 '오늘 통과된 법, 내 환불은 뭐가 달라질까?'). 큰 숫자 하나가 들어가면 좋다.
-  5개는 서로 다른 틀로: 경고·금지 / 변화·비포애프터 / 쉬운 방법·지름길 / 후회·경험 / 원칙·권위 중에서 고르게.
-  저장을 부르는 제목 패턴도 써 본다: '저장해 두면 도움 되는 ○○', '○○ 총정리', 'N가지'.
-  '충격·결국·경악·소름·역대급' 같은 낚시말 금지. 궁금증을 만들면 본문에 반드시 답이 있어야 한다.
-- cover_tags: 표지 흰 박스 태그 0~2개 (예: {"text":"전세 매물은 줄고","dir":"down"}). dir은 up/down/'' 중 하나. 12자 안쪽.
-- cover_scene: 표지 사진 장면을 영어로 묘사 (실제 사진처럼 찍을 수 있는 장면, 사람은 뒷모습·손·흐릿하게만, 실존 인물·기업 로고·브랜드·글자 없이).
+  궁금한 한 줄 + 크게 박은 숫자 하나. line1은 궁금증(질문이나 말 걸기), line2는 핵심 숫자나 사실.
+  기사 제목을 그대로 쓰지 말고 '내 월급·내 통장·내 장바구니' 얘기로 바꾼다 (예: '○○ 매출 감소' 대신 '잘나가던 ○○, 왜 꺾였을까?').
+  결론은 숨기고 다음 장이 궁금하게 ('…알고 보니 ○○' 처럼 제목에 답을 다 주지 않는다). 단, 답은 반드시 본문에 있어야 한다.
+  5개는 후킹 틀 6가지 중 서로 다른 것으로: 후회·경험 / 변화·비포애프터 / 경고·금지 / 쉬운 방법·지름길 / 비밀·희소 / 원칙·권위.
+  저장되는 제목 패턴도 하나쯤: '저장해 두면 도움 되는 ○○', '○○ 총정리', 'N가지'.
+  '충격·결국·경악·소름·역대급' 같은 낚시말 금지.
+- cover_tags: 표지에 크게 박을 숫자 태그 1개(+ 보조 1개까지). 예: {"text":"매출 32% 감소","dir":"down"}. dir은 up/down/'' 중 하나. 12자 안쪽.
+- cover_scene: 표지 장면을 영어로 묘사 (강렬한 장면 하나, 사람은 뒷모습·손·흐릿하게만, 실존 인물·기업 로고·브랜드·글자 없이).
 
-[본문 cards] 3~4장. 한 장에 메시지 하나.
-- 앞 2~3장: '언제부터 / 누가 해당돼요 / 무엇이 달라져요' 흐름으로 사실을 쉽게 푼다.
-- 마지막 1장은 인사이트: kicker는 '그래서 나한테 뭐가 달라지는데?', 소비자 입장에서 의미와 주의점을 짚는다.
-- 각 장: kicker(작은 줄, 20자 안쪽), title(주황 박스 제목, 한 줄 16자 안쪽, 두 줄이면 줄바꿈 \\n 하나), body(본문 2~4문장, 120자 안쪽),
-  tags(수치 태그 0~2개, cover_tags와 같은 모양), scene(그 장 사진 장면을 영어로: 내용이 떠오르는 사물·장소, 글자·숫자·로고 없이).
+[2~5장 cards] 정확히 4장, kicker는 고른 kind의 이름 그대로 이 순서로.
+ economy: '배경', '숫자', '원인', '교훈'
+ - 배경: '처음엔 이렇게 잘됐다'처럼 전 상황. / 숫자: 꺾인·바뀐 시점 한 줄, tags 첫 번째에 핵심 숫자 하나를 꼭(크게 보여 줌).
+ - 원인: '결정적 이유 세 가지'처럼, body는 '① … ② … ③ …'로 짧게. / 교훈: '우리가 배울 점 한 줄', 내 돈·내 생활에 가져갈 한 줄.
+ issue: '발단', '전개', '영향', '현재'
+ - 발단: 무슨 일이 있었나(언제·누가·무엇을). / 전개: 논란이 커진 이유(양쪽 사실만).
+ - 영향: 내 생활에 뭐가 달라지나, tags 첫 번째에 생활에 닿는 숫자 하나. / 현재: 지금 상황, 확인된 사실만 (확인 안 된 건 '아직 정해지지 않았어요').
+- 각 장: kicker(위 이름 그대로), title(제목, 한 줄 16자 안쪽, 두 줄이면 줄바꿈 \\n 하나), body(2~4문장, 120자 안쪽),
+  tags(수치 태그 0~2개, cover_tags와 같은 모양), scene(그 장 이미지 장면을 영어로: 내용이 떠오르는 사물·장소, 글자·숫자·로고 없이).
 
-[마지막 장]
+[6장 마무리]
 - tips: 소비자가 실제로 할 수 있는 행동 팁 정확히 3개 (각 30자 안쪽, 예: '1372 소비자상담센터에 먼저 물어보기').
-- 마지막 장에 '댓글에 ○○ 남기면' 같은 참여 유도는 넣지 않는다. 화면이 기본으로 '헷갈리면 저장해 두세요'를 붙인다.
-- share_line: 공유형 마무리 한 줄 (이 정보가 꼭 필요한 '누구'에게 보내라는 말, 20자 안쪽, 예: '자취하는 친구한테 꼭 보내 주세요').
+- 마무리는 저장 유도가 기본 (화면이 economy는 '저장해 두고 다시 보세요', issue는 '헷갈리면 저장해 두세요'를 붙임). '댓글에 ○○ 남기면' 같은 참여 유도는 넣지 않는다.
+- share_line: 공유형 마무리 한 줄 (가끔 씀. 이 정보가 꼭 필요한 '누구'에게 보내라는 말, 20자 안쪽, 예: '이번 달 카드값 걱정인 친구한테').
 
 [캡션]
 - caption: 인스타 캡션 본문. 공감형으로 짧게 ('나도 그래' 싶게), 3~5줄 + 행동 팁 한 줄. 출처 줄은 쓰지 마 (화면이 자동으로 붙임). 참여 유도 금지.
@@ -74,9 +92,9 @@ FIND_SYSTEM = """You help fact-check Korean news for consumer card news. Use web
 
 ITEM_TAG = {'type': 'object', 'properties': {'text': {'type': 'string'}, 'dir': {'type': 'string', 'enum': list(ARROWS)}}, 'required': ['text', 'dir'], 'additionalProperties': False}
 WRITE_SCHEMA = {'type': 'object', 'additionalProperties': False,
-    'required': ['topic', 'emoji', 'covers', 'cover_tags', 'cover_scene', 'cards', 'tips', 'share_line', 'caption', 'hashtags', 'source_media', 'source_date', 'facts_used', 'confirm_needed'],
+    'required': ['kind', 'topic', 'emoji', 'covers', 'cover_tags', 'cover_scene', 'cards', 'tips', 'share_line', 'caption', 'hashtags', 'source_media', 'source_date', 'facts_used', 'confirm_needed'],
     'properties': {
-        'topic': {'type': 'string'}, 'emoji': {'type': 'string'},
+        'kind': {'type': 'string', 'enum': ['economy', 'issue']}, 'topic': {'type': 'string'}, 'emoji': {'type': 'string'},
         'covers': {'type': 'array', 'items': {'type': 'object', 'properties': {'line1': {'type': 'string'}, 'line2': {'type': 'string'}}, 'required': ['line1', 'line2'], 'additionalProperties': False}},
         'cover_tags': {'type': 'array', 'items': ITEM_TAG}, 'cover_scene': {'type': 'string'},
         'cards': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['kicker', 'title', 'body', 'tags', 'scene'],
@@ -308,11 +326,12 @@ def find_others(cfg, art, n=2):
 
 
 # 네이버 검색 API는 '경제 섹션'을 바로 고를 수 없어서, 경제 섹션 전체(생활경제·유통·금융·부동산·산업·경제일반)를 덮는 검색어로 찾는다.
-# 묶음끼리는 똑같이: 소비자 → 유통 → 금융·부동산 → 경제 → 소비자 … 돌아가며 하나씩
+# 묶음끼리는 똑같이: 소비자 → 유통 → 금융·부동산 → 이슈 → 경제 → … 돌아가며 하나씩 (카드뉴스는 경제형·이슈형 두 공식으로만)
 NEWS_GROUPS = [
     ('소비자', ['소비자 피해', '한국소비자원', '환불 분쟁', '공정위 과징금', '리콜', '소비자 주의보', '피해구제', '요금 인상']),
     ('유통', ['유통업계', '편의점', '대형마트', '이커머스', '배달앱', '백화점', '식품 가격', '외식 가격', '할인 행사', '홈쇼핑']),
     ('금융·부동산', ['금리', '대출', '예금', '카드 혜택', '보험료', '전세', '월세', '아파트 분양']),
+    ('이슈', ['개인정보 유출', '서비스 장애', '먹통', '집단소송', '불매', '논란 해명', '과태료', '소비자 분통']),
     ('경제', ['물가', '공공요금', '전기요금', '통신비', '기름값', '환율', '세금', '연말정산', '최저임금', '고용', '소상공인', '수출', '자동차', '항공권']),
 ]
 # 카드뉴스로 안 쓰는 기사: 퀴즈 정답·운세·로또·부고·인사·포토, 그리고 정치(중립 원칙)
@@ -321,12 +340,33 @@ QUERY_GROUP = {q: g for g, qs in NEWS_GROUPS for q in qs}
 DAILY_QUERIES = [qs[i] for i in range(max(len(qs) for _, qs in NEWS_GROUPS)) for _, qs in NEWS_GROUPS if i < len(qs)]  # 묶음을 번갈아
 
 
+RANK_SYSTEM = """너는 소비자 경제 인스타 카드뉴스 '소보루'의 기획자야. 캐러셀 레퍼런스북의 소재 고르기 체크 3개로 오늘 만들 기사를 고른다.
+1 공감 — 읽자마자 "어, 내 얘기네?" 싶은가 (내 월급·통장·장바구니·생활에 닿나). 남 얘기·신기하기만 한 건 안 고름.
+2 관심 — 이미 많은 사람이 보는 큰 뉴스인가 (여러 언론이 다루는 사건, 많이 쓰는 서비스·회사·가격).
+3 궁금 — 제목만 봐도 다음이 궁금한가. 제목에 결론이 다 나온 건 안 고름.
+그리고 경제형(기업·돈·가격·금리·유통의 흐름) 또는 이슈형(화제·논란·사건)으로 카드뉴스를 만들 수 있어야 한다. 정치·선거·참사·연예는 고르지 않는다.
+셋을 모두 통과한 것만, 좋은 순서로 최대 8개. 답은 JSON만."""
+RANK_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['picks'],
+               'properties': {'picks': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['i', 'kind', 'why'],
+                   'properties': {'i': {'type': 'integer'}, 'kind': {'type': 'string', 'enum': ['economy', 'issue']}, 'why': {'type': 'string'}}}}}}
+
+
+def rank_news(cfg, items):
+    """후보 기사를 공감·관심·궁금 체크로 골라 좋은 순서로 (Claude 키가 있을 때). 키가 없거나 실패하면 그대로."""
+    if not cfg.get('key') or len(items) < 2: return items
+    lst = '\n'.join(f"{i}. [{it.get('topic', '')}] {it['title']} — {it.get('summary', '')[:90]}" for i, it in enumerate(items[:30]))
+    try: res = claude(cfg, RANK_SYSTEM, '오늘 후보 기사:\n' + lst, RANK_SCHEMA, 2000, effort='low')
+    except RuntimeError: return items
+    picked = [items[p['i']] for p in res.get('picks') or [] if isinstance(p.get('i'), int) and 0 <= p['i'] < len(items[:30])]
+    out = []
+    for x in picked:
+        if x not in out: out.append(x)
+    return out or items
+
+
 def find_news(cfg, n, avoid=()):
-    """매일 자동: 최근 이틀 한국 소비자 권익 뉴스 기사 주소 (검색어마다 하나씩 고르게). 네이버 먼저, 모자라면 Claude 웹 검색."""
-    since = (datetime.date.today() - datetime.timedelta(days=2)).isoformat(); urls = []
-    for q in DAILY_QUERIES:
-        for it in naver_news(cfg, q, sort='date'):
-            if it['date'] >= since and it['url'] not in avoid and it['url'] not in urls and not JUNK.search(it['title']): urls.append(it['url']); break
+    """알아서 고르기·매일 자동: 최근 이틀 네이버 뉴스(경제 섹션 전체)에서 공감·관심·궁금 체크로 고른 기사 주소. 모자라면 Claude 웹 검색."""
+    urls = [it['url'] for it in rank_news(cfg, news_list(cfg, avoid, k=30))]
     if len(urls) < n + 2 and cfg.get('web_search', 1) and cfg.get('key'):
         q = (f'오늘은 {datetime.date.today().isoformat()}이야. 최근 이틀 안에 나온 한국 소비자 권익 뉴스 기사 {n + 3}개를 웹 검색으로 찾아 줘. '
              f'주제: {DAILY_TOPICS}. 고르는 기준: 읽자마자 "내 얘기네" 싶은 것(공감), 많이 보거나 댓글이 많은 것(관심), 제목만 봐도 다음이 궁금한 것(궁금). '
@@ -426,7 +466,7 @@ def run_checks(d, facts):
          'note': (f'다른 기사 {len(others)}개와 맞춰 봤어요' if others else '같은 뉴스를 다룬 다른 기사를 찾지 못했어요') + (' · 확인할 것: ' + ' / '.join(need[:3]) if need else '')},
         {'label': '숫자: 기사에 있는 숫자만 썼나', 'ok': not odd, 'note': '기사에서 못 찾은 숫자: ' + ', '.join(odd[:12]) if odd else '모든 숫자가 기사에 있어요'},
         {'label': '표지: 낚시말 없이 본문에 답이 있나', 'ok': not bait and len(covers) == 5, 'note': '낚시말: ' + ', '.join(bait) if bait else (f'표지 문구 후보가 {len(covers)}개예요' if len(covers) != 5 else '낚시말이 없어요')},
-        {'label': '마지막 장: 참여 유도 대신 저장 유도인가', 'ok': not engage, 'note': '참여 유도 말: ' + ', '.join(engage) if engage else ('공유형 한 줄로 끝나요' if d.get('end') == 'share' else "'헷갈리면 저장해 두세요'로 끝나요")},
+        {'label': '마지막 장: 참여 유도 대신 저장 유도인가', 'ok': not engage, 'note': '참여 유도 말: ' + ', '.join(engage) if engage else ('공유형 한 줄로 끝나요' if d.get('end') == 'share' else '저장 유도로 끝나요')},
         {'label': '주제: 정치·참사를 자극적으로 다루지 않았나', 'ok': None if pol else True, 'note': '정치 말이 있어요(' + ', '.join(pol) + '). 중립인지, 선거 90일 전~선거일이 아닌지 봐 주세요' if pol else '정치 소재가 아니에요'},
         {'label': '글꼴: 상업 이용 가능한 글꼴인가', 'ok': True, 'note': 'Pretendard (SIL Open Font License)'},
         {'label': "캡션: '출처: 매체명·날짜'가 있나", 'ok': src_ok, 'note': '출처 매체명·날짜를 채워 주세요' if not src_ok else '캡션 끝에 출처와 링크를 붙여요'},
@@ -445,7 +485,7 @@ def tidy(raw, art):
     for c in (raw.get('cards') or [])[:4]:
         title = '\n'.join(clip(x, 18) for x in str(c.get('title') or '').split('\n')[:2] if x.strip())
         cards.append({'kicker': clip(c.get('kicker'), 30), 'title': title, 'body': clip(c.get('body'), 160), 'tags': tags(c.get('tags')), 'scene': clip(c.get('scene'), 400)})
-    return {'topic': clip(raw.get('topic'), 60), 'emoji': clip(raw.get('emoji'), 4),
+    return {'kind': raw.get('kind') if raw.get('kind') in KINDS else 'economy', 'topic': clip(raw.get('topic'), 60), 'emoji': clip(raw.get('emoji'), 4),
             'covers': [{'line1': clip(c.get('line1'), 18), 'line2': clip(c.get('line2'), 18)} for c in (raw.get('covers') or [])[:5]], 'cover_pick': 0,
             'cover_tags': tags(raw.get('cover_tags')), 'cover_scene': clip(raw.get('cover_scene'), 400), 'cards': cards,
             'tips': [clip(t, 40) for t in (raw.get('tips') or [])[:3]], 'end': 'save', 'share_line': clip(raw.get('share_line'), 30) or '꼭 필요한 친구한테 보내 주세요', 'caption': str(raw.get('caption') or '').strip()[:1500],
@@ -599,7 +639,7 @@ def _skeleton(schema):
 
 def paste_prompt(art, others):
     """claude.ai에 붙여 넣을 원고 요청 글 (규칙 + 기사 + 답 모양)"""
-    return (WRITE_SYSTEM + '\n\n[답하는 법] 설명 없이 아래 모양의 JSON 하나만 ```json 코드 블록으로 답해 줘. covers는 5개, cards는 3~4개, tips는 3개.\n```json\n'
+    return (WRITE_SYSTEM + '\n\n[답하는 법] 설명 없이 아래 모양의 JSON 하나만 ```json 코드 블록으로 답해 줘. covers는 5개, kind는 economy 또는 issue, cards는 정확히 4개(그 kind의 순서대로), tips는 3개.\n```json\n'
             + json.dumps(_skeleton(WRITE_SCHEMA), ensure_ascii=False, indent=1) + '\n```\n\n' + write_request(art, others))
 
 
@@ -613,7 +653,7 @@ def from_paste(text, art):
 
 
 def blank(art):
-    """직접 쓰기: 빈 원고 (표지 5개·본문 3장·팁 3개 칸)"""
+    """직접 쓰기: 빈 원고 (레퍼런스북 경제 공식: 표지 5개 · 배경·숫자·원인·교훈 · 팁 3개 칸)"""
     return tidy({'topic': '', 'covers': [{'line1': '', 'line2': ''} for _ in range(5)],
-                 'cards': [{'kicker': k, 'title': '', 'body': '', 'tags': [], 'scene': ''} for k in ('언제부터', '누가 해당돼요', '그래서 나한테 뭐가 달라지는데?')],
+                 'cards': [{'kicker': k, 'title': '', 'body': '', 'tags': [], 'scene': ''} for k in KINDS['economy']],
                  'tips': ['', '', ''], 'caption': '', 'hashtags': ['소보루', '소비자권익']}, art) | {'covers': [{'line1': '', 'line2': ''} for _ in range(5)], 'tips': ['', '', '']}

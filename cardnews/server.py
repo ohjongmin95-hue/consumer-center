@@ -176,6 +176,8 @@ def make(url, trigger='manual', art=None):
     r = cards.make(config(), url, art)
     if r['status'] != 'made': log(f"{'자동 · ' if trigger == 'daily' else ''}못 만듦: {r['reason']} ({(url or (art or {}).get('title', ''))[:80]})"); return r
     cards.slots(r['data'], config()['img_style'])  # 자리마다 사진/일러스트 기본값
+    with conn() as db: made = db.execute("SELECT COUNT(*) FROM cards WHERE status!='paste'").fetchone()[0]
+    if made % 5 == 4: r['data']['end'] = 'share'  # 레퍼런스북: 마무리는 저장 유도가 기본, 다섯 개 중 하나는 공유형
     r['checks'] = cards.run_checks(r['data'], r['facts'])
     cid = store(r, trigger)
     start_images(cid)  # 힉스필드 이미지는 카드뉴스를 연 뒤 뒤에서 하나씩
@@ -390,6 +392,7 @@ def card(cid):
         for old, nc in zip(d['cards'], new.get('cards') or []): old.update(kicker=s(nc.get('kicker'), 30), title=s(nc.get('title'), 40), body=s(nc.get('body'), 200))
         d['tips'] = [s(t, 40) for t in (new.get('tips') or d['tips'])[:3]]
         d['end'] = new.get('end') if new.get('end') in cards.ENDS else 'save'; d['share_line'] = s(new.get('share_line'), 30)
+        if new.get('kind') in cards.KINDS: d['kind'] = new['kind']
         if new.get('theme') in cards.THEMES and new.get('accent') in cards.ACCENTS:  # 디자인: 이 카드뉴스에 저장하고 다음 카드뉴스 기본값으로
             d['theme'], d['accent'] = new['theme'], new['accent']; cf = config()
             if (cf['theme'], cf['accent']) != (d['theme'], d['accent']): cf['theme'], cf['accent'] = d['theme'], d['accent']; save_config(cf)

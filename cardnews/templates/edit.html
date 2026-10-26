@@ -65,7 +65,7 @@
       <div id="cn-cards"></div>
       <h3>마지막 장: 행동 팁 3개</h3><div id="cn-tips"></div>
       <p class="meta">마무리 한 줄 (기본은 저장 유도. 공유형은 가끔만)</p>
-      <label class="check"><input type="radio" name="cn-end" value="save"> 헷갈리면 저장해 두세요</label>
+      <label class="check"><input type="radio" name="cn-end" value="save"> 저장 유도 (경제형: 저장해 두고 다시 보세요 · 이슈형: 헷갈리면 저장해 두세요)</label>
       <label class="check"><input type="radio" name="cn-end" value="share"> 공유형 (아래 문구)</label>
       <input type="text" data-k="share_line" aria-label="공유형 마무리 문구">
       <h3>캡션</h3>
@@ -148,7 +148,7 @@ function foot(i,n,dark,bare){var fg=dark?'#fff':C.brown,bg=dark?'#000':'#fff',op
 function topicLine(t){return String(t||'').replace(/\s*\|\s*/,' | ')}
 function cov(){return d.covers[d.cover_pick]||{line1:'',line2:''}}
 function srcLine(){var s=d.source||{};return '출처: '+(s.media||'기사')+' '+(s.date||'')+' 보도'}
-function endLine(){return d.end==='share'?(d.share_line||'꼭 필요한 친구한테 보내 주세요'):'헷갈리면 저장해 두세요'}
+function endLine(){return d.end==='share'?(d.share_line||'꼭 필요한 친구한테 보내 주세요'):(d.kind==='issue'?'헷갈리면 저장해 두세요':'저장해 두고 다시 보세요')}
 // 마지막 장(팁 3개 + 저장 유도 + 캐릭터) 공통: 바탕·카드 색만 테마마다
 function tipsPage(i,n,o){var s='<rect width="'+W+'" height="'+H+'" fill="'+o.bg+'"/>'+(o.deco||''),y=150;
   s+=text(60,y,o.kicker,30,'B',o.kc);var t=lines(wrap('이것만 챙겨요',76,'T',900),60,y+100,76,92,o.title,'T');s+=t.s;y=t.y+56;
@@ -178,7 +178,9 @@ DS.ref={
   body:function(c,i,n,last){var bgc=last?C.or:'#F2F4F6',ink=last?'#fff':'#191F28',tl=titleLines(c.title,72,940),bl=wrap(c.body,38,'B',940),th=tagsH(c.tags);
     var bottom=1230,ty=bottom-(th>0?th+28:0)-(bl.length?(bl.length-1)*58+30:0)-(bl.length?58:0)-(tl.length-1)*86;
     var s='<rect width="'+W+'" height="'+H+'" fill="'+bgc+'"/>'+this.label(60,80,String(i+1).padStart(2,'0')+' · '+(c.kicker||''),last?C.or:'#4E5968',last?'#fff':'#fff')+text(1020,115,(i+1)+' / '+n,28,'B',last?'#fff':'#8B95A1','end');
-    var top=170,ph=ty-96-top;if(ph>=220)s+=photo(c.img,60,top,960,ph,36,false);
+    var big=(c.kicker==='숫자'||c.kicker==='영향')&&(c.tags||[]).filter(function(t){return t.text})[0],top=170;
+    if(big){var bp=Math.min(150,Math.floor(940/Math.max(tw(big.text,1,'T'),1)));s+=text(60,top+bp,big.text,bp,'T',last?'#fff':C.or)+(big.dir?text(60+Math.ceil(tw(big.text,bp,'T'))+20,top+bp,big.dir==='up'?'▲':'▼',bp*0.5,'T',last?'#fff':(big.dir==='up'?C.or:C.blue)):'');top+=bp+50}  // 이 장의 핵심 숫자를 크게
+    var ph=ty-96-top;if(ph>=220)s+=photo(c.img,60,top,960,ph,36,false);
     s+=this.hl(tl,60,ty,72,86,ink,last?null:C.soft==='#FFF1DE'?'#FFD99E':C.soft);var b=lines(bl,60,ty+(tl.length-1)*86+74,38,58,last?'#fff':'#4E5968');
     return s+b.s+tags(c.tags,60,b.y+28,{bg:last?C.brown:'#fff',fg:last?'#fff':'#333D4B'}).s},
   last:function(i,n){var Y='#FFDF6B',s='<rect width="'+W+'" height="'+H+'" fill="'+Y+'"/>'+this.label(60,80,'SOBORU 체크리스트','#191F28','#fff')+text(1020,115,n+' / '+n,28,'B','#5C4A00','end'),y=210;
@@ -273,8 +275,12 @@ document.querySelectorAll('[data-k]').forEach(function(x){x.value=getK(x.dataset
 var hx=document.getElementById('cn-tags');hx.value=(d.hashtags||[]).map(function(h){return '#'+h}).join(' ');hx.oninput=function(){d.hashtags=hx.value.split(/\s+/).map(function(h){return h.replace(/#/g,'')}).filter(Boolean)};
 var cv=document.getElementById('cn-covers');d.covers.forEach(function(c,i){var row=document.createElement('div');row.className='cn-cover';var r=document.createElement('input');r.type='radio';r.name='cn-pick';r.checked=i===d.cover_pick;r.setAttribute('aria-label',(i+1)+'번 후보 고르기');r.onchange=function(){d.cover_pick=i;draw();go(0)};row.appendChild(r);
   ['line1','line2'].forEach(function(k){var x=document.createElement('input');x.type='text';x.value=c[k];x.setAttribute('aria-label',(i+1)+'번 후보 '+(k==='line1'?'첫째':'둘째')+' 줄');x.oninput=function(){c[k]=x.value;draw()};row.appendChild(x)});cv.appendChild(row)});
-var cc=document.getElementById('cn-cards');(d.cards||[]).forEach(function(c,i){var h=document.createElement('h3');h.textContent=(i+2)+'번째 장'+(i===d.cards.length-1?' (인사이트)':'');cc.appendChild(h);
-  cc.appendChild(field('맨 위 작은 줄',c.kicker,function(v){c.kicker=v}));cc.appendChild(field('귤색 박스 제목 (두 줄이면 줄바꿈)',c.title,function(v){c.title=v},true));cc.appendChild(field('본문',c.body,function(v){c.body=v},true))});
+var KIND={economy:['경제형','배경','숫자','원인','교훈'],issue:['이슈형','발단','전개','영향','현재']};if(!KIND[d.kind])d.kind='economy';
+var kd=document.createElement('div');kd.className='actions';kd.innerHTML='<b style="margin-right:6px">공식</b>';Object.keys(KIND).forEach(function(k){var l=document.createElement('label');l.className='check';l.style.margin='0 10px 0 0';
+  var r=document.createElement('input');r.type='radio';r.name='cn-kind';r.checked=d.kind===k;r.onchange=function(){d.kind=k;(d.cards||[]).forEach(function(c,i){if(KIND[k][i+1])c.kicker=KIND[k][i+1]});document.querySelectorAll('[data-kick]').forEach(function(x,i){x.value=d.cards[i].kicker;x.dispatchEvent(new Event('input'))});draw()};
+  l.appendChild(r);l.appendChild(document.createTextNode(' '+KIND[k][0]+' ('+KIND[k].slice(1).join('·')+')'));kd.appendChild(l)});
+var cc=document.getElementById('cn-cards');cc.appendChild(kd);(d.cards||[]).forEach(function(c,i){var h=document.createElement('h3');h.textContent=(i+2)+'번째 장 · '+(c.kicker||'');cc.appendChild(h);
+  var kf=field('꼬리표 (공식 이름)',c.kicker,function(v){c.kicker=v;h.textContent=(i+2)+'번째 장 · '+v});kf.querySelector('input').dataset.kick='1';cc.appendChild(kf);cc.appendChild(field('제목 (두 줄이면 줄바꿈)',c.title,function(v){c.title=v},true));cc.appendChild(field('본문',c.body,function(v){c.body=v},true))});
 var tp=document.getElementById('cn-tips');(d.tips||[]).forEach(function(t,i){tp.appendChild(field((i+1)+'번 팁',t,function(v){d.tips[i]=v}))});
 document.querySelectorAll('[name=cn-end]').forEach(function(r){r.checked=r.value===(d.end||'save');r.onchange=function(){d.end=r.value;draw();go(track.children.length-1)}});
 // 그림/사진 고르기 (저장 때 같이 보냄)

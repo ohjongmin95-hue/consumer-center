@@ -163,6 +163,14 @@ class CardNewsTest(unittest.TestCase):
         self.assertIn('0.1%', got[0]['text'])
         self.assertTrue(cards.JUNK.search("'캐시닥 용돈퀴즈' 10월 24일 정답")); self.assertFalse(cards.JUNK.search('편의점 도시락 가격 올라'))
 
+    def test_rank_news_by_three_checks(self):
+        items = [{'title': f'기사 {i}', 'url': f'https://n.test/{i}', 'summary': '', 'topic': '물가'} for i in range(4)]
+        ask = lambda cfg, system, user, schema, max_tokens, effort='medium': {'picks': [{'i': 2, 'kind': 'economy', 'why': '공감'}, {'i': 2, 'kind': 'economy', 'why': ''}, {'i': 0, 'kind': 'issue', 'why': ''}, {'i': 9, 'kind': 'issue', 'why': ''}]}
+        with patch.object(cards, 'claude', ask):
+            self.assertEqual([x['url'] for x in cards.rank_news({'key': 'k'}, items)], ['https://n.test/2', 'https://n.test/0'])
+        self.assertEqual(cards.rank_news({}, items), items)  # 키 없으면 그대로
+        self.assertIn('발단', cards.KINDS['issue']); self.assertEqual(cards.blank({'title': '', 'media': '', 'date': '', 'url': '', 'text': ''})['cards'][1]['kicker'], '숫자')
+
     def test_photos_higgsfield_upload_and_modes(self):
         import io
         from PIL import Image
@@ -253,7 +261,7 @@ class CardNewsTest(unittest.TestCase):
             r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'manual', 'text': text, 'title': '환불 지연 배상금', 'media': '우리일보', 'date': '2026.10.23'})
             cid2 = int(re.search(r'/card/(\d+)$', r.headers['Location'])[1])
             d, checks, row = self.row(cid2)
-            self.assertEqual((d['source']['media'], d['source']['date'], d['source']['url'], len(d['covers']), len(d['cards'])), ('우리일보', '2026.10.23', '', 5, 3))
+            self.assertEqual((d['source']['media'], d['source']['date'], d['source']['url'], len(d['covers']), len(d['cards'])), ('우리일보', '2026.10.23', '', 5, 4))
             self.assertEqual(row['status'], 'check')  # 빈 원고는 표지·출처 등 검사에서 걸림 → 채우고 확인해야 내려받기
             r = self.client.post('/', data={'_csrf': self.token(), 'mode': 'manual', 'text': '짧음'}, follow_redirects=True)
             self.assertIn('너무 짧아요', r.get_data(as_text=True))
