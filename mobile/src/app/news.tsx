@@ -8,7 +8,7 @@ import { C, FONT } from '../lib/theme';
 import { useLoad } from '../lib/useLoad';
 
 export default function News() {
-  const { data, err } = useLoad(api.news);
+  const { data, err, reload } = useLoad(api.news);
   const [open, setOpen] = useState(0);
   if (!data) return err ? <Notice text={err} /> : <Loading />;
   if (!data.news.length)
@@ -18,7 +18,7 @@ export default function News() {
       </Screen>
     );
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <View style={{ height: 8 }} />
       {data.news.map((n) => (
         <Card key={n.id}>

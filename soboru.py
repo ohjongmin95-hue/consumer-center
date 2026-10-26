@@ -49,7 +49,7 @@ RANK_DAYS = 30
 PAGE_BLOCKS = {
     'home': ('홈', [('intro', '맨 위 소개 (소보루 큰 문구 · 제보하기 버튼)'), ('live', '소비자의 소리 (실시간 제보)'),
                    ('pick', '커뮤니티 (추천 TOP 5 · 최신 글 · 글쓰기)'), ('talk', '골라주세요 · 수다방'), ('quick', '소보루는 이런 곳 (제보 · 후기 · 골라주세요 · 수다방)'),
-                   ('letter', '소보루 레터 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('answer', '기업 답변 기록')]),
+                   ('letter', '소보루 레터 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('answer', '기업 답변 기록'), ('faq', '자주 묻는 질문 (AI 검색용 FAQ 포함)')]),
     'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '소보루 레터 구독')]),
     'board': ('커뮤니티', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
                          ('feed', '글 목록 · 이번 주 인기 · 리뷰 모아 보기'), ('foot', '맨 아래 안내')]),
@@ -209,6 +209,16 @@ def install(S):
         # 템플릿에 적힌 기본 문구 속 이름도 지금 브랜드로 (Markup은 Markup 그대로)
         return value.replace(OLD_NAME, site_name()) if value and is_soboru() else value
     app.jinja_env.filters['branded'] = branded
+
+    # 홈 구조화 데이터(AI 검색용): 매거진 글 목록 → Article ItemList, (질문, 답) → FAQPage 질문들
+    def slice_items(rows):
+        org = {'@id': S.canonical_url('/') + '#organization'}
+        return [{'@type': 'ListItem', 'position': i + 1, 'item': {'@type': 'Article', '@id': S.canonical_url(r['url']) + '#article', 'url': S.canonical_url(r['url']), 'headline': r['title'][:110],
+                 'datePublished': (r.get('stamp') or '')[:19], 'author': org, 'publisher': org}} for i, r in enumerate(rows)]
+
+    def faq_items(pairs):
+        return [{'@type': 'Question', 'name': str(q), 'acceptedAnswer': {'@type': 'Answer', 'text': str(a)}} for q, a in pairs]
+    app.jinja_env.filters.update(slice_items=slice_items, faq_items=faq_items)
 
     # ---- 생활정보 --------------------------------------------------------
     def life_rows(limit=12, offset=0, category=None, exclude=()):

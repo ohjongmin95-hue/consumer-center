@@ -565,7 +565,9 @@ def favicon_ico():
 def robots_txt():
     # AI 학습용 수집 봇은 막음(운영자 요청, 2026-10-17). 검색 노출용 봇은 그대로
     ai_bots=['GPTBot','ClaudeBot','anthropic-ai','CCBot','Google-Extended','Applebot-Extended','Bytespider','meta-externalagent']
-    lines=[x for b in ai_bots for x in ('User-agent: '+b,'Disallow: /','')]+['User-agent: Yeti','User-agent: Googlebot','User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /biz','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/*/mine','Disallow: /reports/latest','Disallow: /companies/suggest','','Sitemap: '+canonical_url('/sitemap.xml')]
+    # AI 검색·답변용 봇(학습 아님)은 검색 봇처럼 허용 (2026-10-26 AI 검색 진단): 답변에 소보루 글이 출처로 나오게
+    ai_search=['OAI-SearchBot','ChatGPT-User','PerplexityBot','Perplexity-User','Claude-SearchBot','Claude-User']
+    lines=[x for b in ai_bots for x in ('User-agent: '+b,'Disallow: /','')]+['User-agent: '+b for b in ai_search]+['User-agent: Yeti','User-agent: Googlebot','User-agent: *','Allow: /','Disallow: /admin','Disallow: /staff','Disallow: /reporter','Disallow: /biz','Disallow: /case','Disallow: /company/','Disallow: /board/write','Disallow: /me','Disallow: /reports/*/mine','Disallow: /reports/latest','Disallow: /companies/suggest','','Sitemap: '+canonical_url('/sitemap.xml')]
     daum=g.content.get('seo.daum_robots','').strip()
     if daum:lines.insert(0,daum if daum.startswith('#') else '#'+daum)
     return app.response_class('\n'.join(lines)+'\n',mimetype='text/plain')

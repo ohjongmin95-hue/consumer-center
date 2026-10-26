@@ -2,7 +2,7 @@
 {% from 'page_blocks.html' import generic %}
 {% block title %}{{ txt(page ~ '.title') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ txt(page ~ '.intro') or txt('seo.description') }}{% endblock %}
-{% block head %}{% if page == 'faq' %}{% set qs = [] %}{% for item in items('faq') if item.a %}{% set _ = qs.append({"@type": "Question", "name": item.q|string, "acceptedAnswer": {"@type": "Answer", "text": item.a|string}}) %}{% endfor %}{% if qs %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": qs}|tojson }}</script>{% endif %}{% endif %}{% endblock %}
+{% block head %}{% if page == 'faq' %}{% set qs = [] %}{% for item in items('faq') if item.a %}{% set _ = qs.append({"@type": "Question", "name": item.q|string, "acceptedAnswer": {"@type": "Answer", "text": item.a|string}}) %}{% endfor %}{% if qs %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": qs}|tojson }}</script>{% endif %}{% endif %}{% if page == 'guide' %}{% set steps = [] %}{% for st in g.lists.get('guide_steps', []) if st.title %}{% set _ = steps.append({"@type": "HowToStep", "position": loop.index, "name": st.title|string, "text": st.title|string}) %}{% endfor %}{% if steps %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "HowTo", "@id": canonical_url() ~ "#howto", "name": ui_text('guide.howto_name', '소비자 피해 제보하는 방법'), "inLanguage": "ko", "step": steps, "publisher": {"@id": canonical_url('/') ~ "#organization"}}|tojson }}</script>{% endif %}{% endif %}{% endblock %}
 {% block content %}<main>
 {% if page == 'guide' %}
 {% include 'guide.html' %}

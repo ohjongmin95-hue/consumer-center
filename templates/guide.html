@@ -1,6 +1,6 @@
 {% from 'page_blocks.html' import generic %}
 {% macro cut(n, title, sub, chips) %}<figure>
-  <img src="{{ url_for('static', filename='img/guide-cut%d.svg' % n, v=css_v) }}" alt="" width="300" height="220" loading="lazy">
+  <img src="{{ url_for('static', filename='img/guide-cut%d.svg' % n, v=css_v) }}" alt="{{ title|striptags }} 안내 그림" width="300" height="220" loading="lazy">
   <figcaption><strong>{{ title }}</strong>{% if sub|string %}<small>{{ sub }}</small>{% endif %}<ul class="gd-chips">{% for chip in chips if chip|string %}<li>{{ chip }}</li>{% endfor %}</ul></figcaption>
 </figure>{% endmacro %}
 {% macro tip(title, body) %}{% if title|string %}<div><b>{{ title }}</b>{% if body|string %}<span>{{ body }}</span>{% endif %}</div>{% endif %}{% endmacro %}

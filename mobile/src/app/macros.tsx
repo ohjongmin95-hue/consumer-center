@@ -9,7 +9,7 @@ import { errText, useLoad } from '../lib/useLoad';
 
 export default function Macros() {
   const { logout } = useAuth();
-  const { data, setData, err, token } = useLoad(api.macros);
+  const { data, setData, err, token, reload } = useLoad(api.macros);
   const [edit, setEdit] = useState<Partial<Macro> | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -32,7 +32,7 @@ export default function Macros() {
   };
 
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12 }}>
         {edit ? null : <SmallBtn title="+ 새 템플릿" onPress={() => (setMsg(''), setEdit({ name: '', body: '', tags: '' }))} />}
       </View>

@@ -3,6 +3,19 @@
 {% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
 {# 뉴닉식 홈: 그림은 맨 위 캐릭터 하나만, 나머지는 글과 토스페이스 이모지.
    글자는 모두 ui('home.…')라 관리자 편집 모드에서 눌러 고치고, 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['home']) #}
+{# 홈 자주 묻는 질문: 화면에 보이는 그대로 FAQPage 구조화 데이터로도 넣음 (AI 검색·답변 인용용, 2026-10-26) #}
+{% set home_faq = [(ui_text('home.faq_q1', '소보루는 어떤 곳인가요?'), ui_text('home.faq_a1', '소보루는 소비자를 위한 정보 플랫폼이에요. 억울한 일은 제보하고, 직접 써 본 물건과 다녀온 곳은 내돈내산 후기로 나누고, 내 권리는 AI 소비자 상담과 계산기·사전으로 쉽게 알아볼 수 있어요.')),
+  (ui_text('home.faq_q2', '이용료가 있나요?'), ui_text('home.faq_a2', '아니요. 제보, 후기, 커뮤니티, AI 소비자 상담, 동네일자리 모두 무료예요.')),
+  (ui_text('home.faq_q3', '제보하면 어떻게 되나요?'), ui_text('home.faq_a3', '운영자가 내용을 확인한 뒤, 동의한 제보는 공개하고 해당 기업에 전달해 답변을 요청해요. 진행 상황은 알림으로 알려 드려요.')),
+  (ui_text('home.faq_q4', '제 이름이나 연락처가 공개되나요?'), ui_text('home.faq_a4', '아니요. 공개되는 제보에서는 이름·연락처 같은 개인정보를 가리고, 기업에도 동의한 범위만 전달해요.')),
+  (ui_text('home.faq_q5', '기업도 답변할 수 있나요?'), ui_text('home.faq_a5', '네. 기업 회원으로 등록하면 소비자 제보와 후기에 직접 공식 답변을 남길 수 있어요.'))] %}
+{% block head %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@graph": [
+  {"@type": "WebPage", "@id": canonical_url('/') ~ "#webpage", "url": canonical_url('/'), "name": txt('site.name'), "inLanguage": "ko",
+   "isPartOf": {"@id": canonical_url('/') ~ "#website"}, "about": {"@id": canonical_url('/') ~ "#organization"},
+   "author": {"@id": canonical_url('/') ~ "#organization"}, "publisher": {"@id": canonical_url('/') ~ "#organization"},
+   "datePublished": "2026-10-01", "dateModified": ((feed|map(attribute='stamp')|select|max) or '2026-10-01')[:10],
+   "mainEntity": {"@type": "ItemList", "itemListElement": feed|selectattr('kind', 'equalto', 'life')|list|slice_items}},
+  {"@type": "FAQPage", "@id": canonical_url('/') ~ "#faq", "inLanguage": "ko", "mainEntity": home_faq|faq_items}]}|tojson }}</script>{% endblock %}
 {% block content %}
 <main class="sb-wrap nn-home">
   {% for blk in blocks('home') %}{{ ed_block('home', blk) }}
@@ -18,7 +31,7 @@
     {# 뉴닉식 그림: 귤색 바탕 오른쪽에 소보루 캐릭터 + 말풍선 #}
     <div class="nn-intro-art"{% if not editing() %} aria-hidden="true"{% endif %}>
       <span class="nn-bubble">{{ ui('home.intro_bubble', '억울한 일은 제보하고,\n제품 후기는 나눠요!') }}</span>
-      <img class="nn-char-hero" src="{{ asset('img/soboru-character-hero.png') }}" alt="" width="579" height="479">
+      <img class="nn-char-hero" src="{{ asset('img/soboru-character-hero.png') }}" alt="소보루 캐릭터" width="579" height="479">
     </div>
   </section>
   {% elif blk == 'quick' %}
@@ -103,6 +116,11 @@
         {% for f in fill[:4 - (posts|length)] %}<a class="sb-cm-card nn-fill" href="{{ url_for('board_write', type=f[0]) }}"><span class="nn-fill-ic tf" aria-hidden="true">{{ f[1] }}</span><h3>{{ f[2] }}</h3><p>{{ f[3] }}</p><span class="nn-fill-go">{{ f[4] }} ›</span></a>{% endfor %}
       </div>
     </div>
+  </section>
+  {% elif blk == 'faq' %}
+  <section class="nn-sec nn-faq" aria-labelledby="nn-faq-h">
+    <div class="nn-sec-head"><h2 id="nn-faq-h"><span class="tf" aria-hidden="true">💬</span> {{ ui('home.faq_title', '자주 묻는 질문') }}</h2><a href="{{ url_for('info_page', page='faq') }}">{{ ui('home.faq_more', '더 보기 ›') }}</a></div>
+    <div class="nn-faq-list">{% for q, a in home_faq %}<details{% if loop.first %} open{% endif %}><summary>{{ q }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><p>{{ a }}</p></details>{% endfor %}</div>
   </section>
   {% elif blk == 'answer' %}
   <section class="nn-sec nn-answer">
