@@ -457,10 +457,10 @@ def run_checks(d, facts):
     src_ok = bool((d.get('source') or {}).get('media') and (d.get('source') or {}).get('date'))
     need = d.get('confirm_needed') or []
     return [
-        {'label': '이미지: 기사 사진 없이 새로 만들었나', 'ok': None if not all(arts) or up or ai_photo else True,
+        {'label': '이미지: 기사 사진 없이 새로 만들었나', 'ok': None if not all(arts) or up else True,
          'note': "이미지가 빠진 장이 있어요. AI로 만들거나 새로 만든 이미지를 올려 주세요" if not all(arts) else
                  ('올린 이미지가 AI로 새로 만든 것(기사 사진·남의 사진 아님)인지 봐 주세요' if up else '모든 이미지를 AI로 새로 만들었어요')
-                 + (" · 캡션에 'AI로 만든 이미지예요' 같은 말을 직접 적어 주세요" if ai_photo else '')},
+                 },
         {'label': '사람: 실존 인물 얼굴이 없나', 'ok': None, 'note': '그림에 실존 인물·기업 로고가 없는지 눈으로 한 번 봐 주세요'},
         {'label': '글: 기사 문장을 옮기지 않았나', 'ok': not copy, 'note': '기사와 너무 비슷한 줄: ' + ' / '.join(copy[:3]) if copy else '기사 문장과 겹치는 줄이 없어요'},
         {'label': '사실: 기사 2개 이상에서 확인했나', 'ok': bool(others) and not need,

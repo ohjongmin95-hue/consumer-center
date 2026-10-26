@@ -22,7 +22,7 @@
     <label>OpenAI 이미지 모델<input type="text" name="openai_model" value="{{ cfg.openai_model }}" placeholder="gpt-image-1"></label>
     <label>기본 이미지 스타일<select name="img_style">{% for k, name in img_styles %}<option value="{{ k }}"{% if cfg.img_style == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
     <label class="check"><input type="checkbox" name="img_auto" value="1"{% if cfg.img_auto %} checked{% endif %}> 새 카드뉴스를 만들면 이미지도 자동으로 만들기 (장마다 크레딧)</label>
-    <p class="meta">이미지에는 실존 인물 얼굴·로고·글자가 나오지 않게 요청해요. 이미지 위에는 글자를 넣지 않아요. AI로 만든 이미지라는 표시는 캡션에 직접 적어 주세요 (체크리스트가 알려 줘요).</p>
+    <p class="meta">이미지에는 실존 인물 얼굴·로고·글자가 나오지 않게 요청해요. 이미지 위에는 글자를 넣지 않아요.</p>
   </div>
   <div class="panel"><h2>카카오톡 나에게 보내기 {% if kakao_ok %}<span class="badge ok">연결됨</span>{% else %}<span class="badge">연결 안 됨</span>{% endif %}</h2>
     <p class="meta">다 만든 카드뉴스(표지 이미지 + 캡션)를 내 카톡 '나와의 채팅'으로 받아요. 무료예요. 한 번만 준비하면 돼요.</p>

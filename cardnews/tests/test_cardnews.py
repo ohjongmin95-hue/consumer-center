@@ -183,7 +183,7 @@ class CardNewsTest(unittest.TestCase):
             d, checks, _ = self.row(cid)
             self.assertEqual(asked, [('a parcel box and a calendar', 'photo'), ('calendar', 'illust'), ('receipt', 'illust')])  # 자동 켜짐: 표지 사진·본문 일러스트
             self.assertEqual((d['cover_img']['style'], d['cover_img']['src']), ('photo', 'openai'))
-            self.assertIsNone(checks['이미']['ok']); self.assertIn('캡션에', checks['이미']['note'])  # AI 사진 표시는 캡션에 직접
+            self.assertTrue(checks['이미']['ok']); self.assertNotIn('캡션에', checks['이미']['note'])  # AI로 만든 이미지 표시는 안 붙임 (운영자 결정)
             name = d['cover_img']['photo']; self.assertRegex(name, r'^[0-9a-f]{16}\.jpg$')
             r = self.client.get('/img/' + name); self.assertEqual((r.status_code, r.data[:2]), (200, b'\xff\xd8')); r.close()  # JPEG로 다시 저장
             self.assertEqual(self.client.get('/img/../config.json').status_code, 404)
