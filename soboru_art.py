@@ -18,17 +18,22 @@ from flask import abort, flash, g, redirect, render_template, request, send_file
 KINDS = ('report', 'life')
 PHOTO = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
 # 매거진 그림 (운영자 2026-10-24: 3D 아이콘 대신 2D 일러스트, 색은 소보루 색에 묶지 말고 기사와 어울리게)
-# 뉴닉·잡지 기사 그림처럼 평면 일러스트로 기사 내용을 보여 주는 작은 장면. 그림체를 바꾸면 STYLE_V를 올림(관리자 화면에서 옛 그림 다시 그리기)
-STYLE_V = 3
-STYLE = ('A flat 2D editorial illustration for a Korean consumer-life magazine article, in the style of modern Korean newsletter and magazine illustrations: '
-         'simple geometric shapes, clean confident lines, flat color fills with a subtle paper grain texture, no 3D, no gloss, no gradients, no photorealism. '
-         'Show a small, warm everyday scene or a clear arrangement of two or three objects that explains the topic at a glance. '
-         'Choose a harmonious palette of 3 to 5 colors that fits the mood of this topic (for example cool blues for travel, fresh greens for food, '
-         'calm navy and mint for money and finance, warm reds for safety warnings); {bg}. '
-         'Generous empty space, the main subject centered and about half the image height, plain light background in one color that suits the palette. '
-         'People may appear as simple stylized figures without detailed faces. Friendly and calm, never scary or gory. '
+# 토스 피드 썸네일처럼: 진한 단색 바탕 + 납작한 사람 + 떠 있는 흰 화면 카드. 그림체를 바꾸면 STYLE_V를 올림(관리자 화면에서 옛 그림 다시 그리기)
+# STYLE_V 4 (OH 2026-10-26): 새로 쓰는 매거진 글부터 적용, 예전 그림은 관리자가 누를 때만 다시 그림
+STYLE_V = 4
+STYLE = ('A flat vector illustration in the style of Korean fintech app feed thumbnails (like the Toss app feed): '
+         'the whole image filled edge to edge with one bold, saturated solid background color ({bg}), no gradient, no texture, no paper grain, no pattern. '
+         'One simple stylized person with short black hair, a plain face with no eyes, nose or mouth drawn, and simple solid-colored clothes, '
+         'calmly doing something that shows the topic, or one large clear object instead of a person. '
+         'Add one or two floating clean white rounded UI cards or panels beside the subject, holding only simple icons or shapes '
+         '(for example a card chip, a check mark, a parcel box, a coin, a calendar grid, a toggle) with no writing. '
+         'Crisp geometric shapes, limited palette of the background color plus white, black and one or two soft accent colors, '
+         'at most a very soft flat shadow, no 3D, no gloss, no outlines, no photorealism. '
+         'Lots of negative space, the subject centered or slightly right, about half the image height, nothing touching the edges. '
+         'Friendly and calm, never scary or gory. '
          'Absolutely no text, no letters, no numbers, no logos, no brand names, no speech bubbles with writing.')
-BGS = ('keep it light and airy', 'use one bold accent color', 'use soft muted tones', 'use bright cheerful tones', 'use a calm cool palette', 'use a cozy warm palette')
+BGS = ('royal blue like #3d5afe', 'near-black charcoal like #1f2329', 'clear sky blue like #4dabf7', 'fresh mint green like #20c997',
+       'warm tangerine orange like #ef920e', 'soft violet like #7c6cf2')
 
 
 def image_model(): return os.getenv('OPENAI_IMAGE_MODEL', '').strip() or 'gpt-image-1-mini'
