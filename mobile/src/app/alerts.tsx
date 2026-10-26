@@ -10,13 +10,13 @@ import { C, FONT } from '../lib/theme';
 import { errText, useLoad } from '../lib/useLoad';
 
 export default function AlertsScreen() {
-  const { data, setData, err } = useLoad(api.alerts);
+  const { data, setData, err, reload } = useLoad(api.alerts);
   useEffect(() => {
     if (data) setAlerts(0); // 열면 서버에서 모두 읽음으로 바뀐다
   }, [data]);
   if (!data) return err ? <Notice text={err} /> : <Loading />;
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <Card style={{ gap: 0, paddingVertical: 6 }}>
         {data.items.length ? (
           data.items.map((a, i) => (

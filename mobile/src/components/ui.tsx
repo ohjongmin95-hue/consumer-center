@@ -1,7 +1,7 @@
 // 토스처럼 납작하고 둥근 기본 부품. 색은 소보루 주황.
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
@@ -97,10 +97,26 @@ export function Tile({ icon, label, value, tone, onPress }: { icon: TfName; labe
   );
 }
 
-export function Screen({ children, bg = C.band, edges }: { children: ReactNode; bg?: string; edges?: ('top' | 'bottom')[] }) {
+// onRefresh를 주면 화면을 아래로 당겨 새로고침할 수 있다
+export function Screen({ children, bg = C.band, edges, onRefresh }: { children: ReactNode; bg?: string; edges?: ('top' | 'bottom')[]; onRefresh?: () => Promise<unknown> }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = onRefresh
+    ? (
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={async () => {
+            setRefreshing(true);
+            await onRefresh();
+            setRefreshing(false);
+          }}
+          tintColor={C.accent}
+          colors={[C.accent]}
+        />
+      )
+    : undefined;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: bg }} edges={edges ?? []}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled" refreshControl={refresh}>
         {children}
       </ScrollView>
     </SafeAreaView>

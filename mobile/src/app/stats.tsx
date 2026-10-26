@@ -10,7 +10,7 @@ const pct = (v: number | null | undefined) => (v === null || v === undefined ? '
 const hrs = (v: number | null | undefined) => (v === null || v === undefined ? '-' : `${v}시간`);
 
 export default function Stats() {
-  const { data, err } = useLoad(api.stats);
+  const { data, err, reload } = useLoad(api.stats);
   if (!data) return err ? <Notice text={err} /> : <Loading />;
   const k = data.kpi;
   const maxW = Math.max(1, ...data.weeks.map((w) => w.n));
@@ -18,7 +18,7 @@ export default function Stats() {
   const maxH = Math.max(1, ...data.how.map((w) => w.n));
   const cmp = data.compare;
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <View style={st.grid}>
         <Big label="받은 요청" v={`${k.n}건`} />
         <Big label="자동 처리율" v={`${k.auto}%`} />

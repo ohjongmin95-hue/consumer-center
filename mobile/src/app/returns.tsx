@@ -9,11 +9,11 @@ import { useLoad } from '../lib/useLoad';
 
 export default function Returns() {
   const [stage, setStage] = useState('');
-  const { data, err } = useLoad((t) => api.returns(t));
+  const { data, err, reload } = useLoad((t) => api.returns(t));
   if (!data) return <Screen>{err ? <Notice text={err} /> : <Loading />}</Screen>;
   const rows = data.cases.filter((c) => !stage || c.stage === stage);
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <View style={st.grid}>
         {data.stages.map((s) => (
           <Pressable key={s.key} onPress={() => setStage(stage === s.key ? '' : s.key)} style={({ pressed }) => [st.tile, stage === s.key && st.tileOn, pressed && { opacity: 0.7 }]}>

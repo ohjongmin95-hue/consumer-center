@@ -10,12 +10,12 @@ import { errText, useLoad } from '../lib/useLoad';
 const EMPTY: Product = { id: 0, name: '', price: '', stock: '', info: '' };
 
 export default function ProductsScreen() {
-  const { data, setData, err, token } = useLoad(api.products);
+  const { data, setData, err, token, reload } = useLoad(api.products);
   const [ok, setOk] = useState('');
   if (!data) return err ? <Notice text={err} /> : <Loading />;
   const saved = (d: Products, m: string) => (setData(d), setOk(m));
   return (
-    <Screen>
+    <Screen onRefresh={reload}>
       <View style={st.head}>
         <Text style={st.p}>
           상품 가격·재고·사용법을 적어 두면 상담창에서 상품 문의에 바로 답합니다.{data.ai ? '' : ' (AI 상담이 켜지면 사용돼요)'} 엑셀로 한꺼번에 올리기는 홈페이지의 자동 처리 화면에서 할 수 있어요.
