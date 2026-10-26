@@ -453,14 +453,15 @@ def run_checks(d, facts):
     sl = slots(d)
     arts = [x['photo'] for _, _, x in sl]
     up = [n for n, _, x in sl if x['photo'] and x.get('src') == 'upload']
-    ai_photo = any(x['photo'] for _, _, x in sl)
+    real = [n for n, _, x in sl if x['photo'] and x.get('src') == 'openai' and x.get('style') == 'photo']  # 진짜 사진처럼 보이는 AI 이미지 (ChatGPT 사진)
     src_ok = bool((d.get('source') or {}).get('media') and (d.get('source') or {}).get('date'))
     need = d.get('confirm_needed') or []
     return [
         {'label': '이미지: 기사 사진 없이 새로 만들었나', 'ok': None if not all(arts) or up else True,
          'note': "이미지가 빠진 장이 있어요. AI로 만들거나 새로 만든 이미지를 올려 주세요" if not all(arts) else
-                 ('올린 이미지가 AI로 새로 만든 것(기사 사진·남의 사진 아님)인지 봐 주세요' if up else '모든 이미지를 AI로 새로 만들었어요')
-                 },
+                 ('올린 이미지가 AI로 새로 만든 것(기사 사진·남의 사진 아님)인지 봐 주세요' if up else '모든 이미지를 AI로 새로 만들었어요')},
+        {'label': "인스타: 실제 사진 같은 AI 이미지면 'AI 레이블' 켜기", 'ok': None if real else True,
+         'note': "사진 스타일 AI 이미지가 있어요. 인스타에 올릴 때 마지막 화면 '고급 설정 → AI 레이블 추가'를 켜 주세요 (캡션에는 안 적어도 돼요)" if real else '사진 같은 AI 이미지가 없어요 (일러스트는 안 켜도 돼요)'},
         {'label': '사람: 실존 인물 얼굴이 없나', 'ok': None, 'note': '그림에 실존 인물·기업 로고가 없는지 눈으로 한 번 봐 주세요'},
         {'label': '글: 기사 문장을 옮기지 않았나', 'ok': not copy, 'note': '기사와 너무 비슷한 줄: ' + ' / '.join(copy[:3]) if copy else '기사 문장과 겹치는 줄이 없어요'},
         {'label': '사실: 기사 2개 이상에서 확인했나', 'ok': bool(others) and not need,
@@ -505,7 +506,7 @@ def caption_full(d):
 # ---- 이미지 (ChatGPT 또는 Claude) ---------------------------------------------------------
 # ChatGPT: OpenAI 이미지 API (platform.openai.com의 API 키, ChatGPT 구독과는 따로 결제) → 사진·일러스트 JPG
 # Claude: 사진은 못 만들고, 일러스트를 SVG(벡터 그림)로 직접 그림 → 설정의 Claude API 키로
-IMG_ENGINES = (('openai', 'ChatGPT (OpenAI 이미지) — 사진·일러스트'), ('claude', 'Claude — 일러스트만 (직접 그린 벡터 그림)'))
+IMG_ENGINES = (('auto', '자동 — 사진은 ChatGPT, 일러스트는 Claude (기본)'), ('openai', 'ChatGPT (OpenAI 이미지) — 사진·일러스트 모두'), ('claude', 'Claude — 모두 Claude가 그림 (사진 장은 사실적인 그림)'))
 OPENAI_MODEL = 'gpt-image-1'
 # 이미지 스타일: 사진 / 일러스트. 일러스트는 소보루 색(주황·크림·갈색)
 STYLES = {'photo': ('사진', 'Photorealistic editorial news photo for a Korean consumer news card, natural light, clean composition, portrait 3:4, main subject in the lower half, calm uncluttered upper third (headline text goes there). Scene: {scene}. '),
@@ -533,14 +534,20 @@ def photo_prompt(scene, style='photo'):
 
 
 def img_ready(cfg):
-    """고른 이미지 AI의 키가 있나"""
-    return bool(cfg.get('openai_key')) if cfg.get('img_engine', 'openai') == 'openai' else bool(cfg.get('key'))
+    """이미지를 만들 수 있는 키가 있나 (고른 AI 기준, 자동이면 둘 중 하나)"""
+    eng = cfg.get('img_engine', 'auto')
+    if eng == 'openai': return bool(cfg.get('openai_key'))
+    if eng == 'claude': return bool(cfg.get('key'))
+    return bool(cfg.get('openai_key') or cfg.get('key'))
 
 
 def make_image(cfg, scene, style='photo'):
-    """장면 설명 → (이미지 바이트, 'jpg'|'svg'). 설정에서 고른 AI로. 테스트에서 바꿔 끼운다."""
-    if cfg.get('img_engine', 'openai') == 'claude': return claude_svg(cfg, scene), 'svg'
-    return openai_image(cfg, scene, style), 'jpg'
+    """장면 설명 → (이미지 바이트, 'jpg'|'svg', 만든 AI 'openai'|'claude'). 테스트에서 바꿔 끼운다.
+    자동: 사진 장은 ChatGPT(진짜 사진처럼), 일러스트 장은 Claude. 키가 하나만 있으면 그쪽으로."""
+    eng = cfg.get('img_engine', 'auto')
+    if eng == 'auto': eng = 'openai' if cfg.get('openai_key') and (style == 'photo' or not cfg.get('key')) else 'claude'
+    if eng == 'claude': return claude_svg(cfg, scene, realistic=style == 'photo'), 'svg', 'claude'
+    return openai_image(cfg, scene, style), 'jpg', 'openai'
 
 
 def openai_image(cfg, scene, style='photo'):
@@ -579,10 +586,15 @@ Only basic SVG elements (rect, circle, ellipse, path, polygon, line, g, defs, li
 Answer with JSON only: {"svg": "<svg ...>...</svg>"}"""
 
 
-def claude_svg(cfg, scene):
-    """Claude가 일러스트를 SVG로 직접 그림 (사진은 못 만듦) → 안전하게 다듬은 SVG 바이트"""
+REAL = ('\nThis slide wants a PHOTO-LIKE look: instead of flat shapes, paint it as realistically as SVG allows — natural perspective and proportions, '
+        'layered gradients for light and shadow, soft highlights, depth of field (blurred background shapes), realistic materials and colors of the actual objects '
+        '(not limited to the brand palette). Still no text, no logos, no real people.')
+
+
+def claude_svg(cfg, scene, realistic=False):
+    """Claude가 그림을 SVG로 직접 그림 (진짜 사진은 못 만듦, realistic이면 빛·그림자를 살린 사실적인 그림) → 안전하게 다듬은 SVG 바이트"""
     if not cfg.get('key'): raise RuntimeError("Claude API 키가 없어요. '설정'에서 넣어 주세요")
-    res = claude(cfg, SVG_SYSTEM, 'Scene: ' + (scene or 'a calm everyday consumer scene'), {'type': 'object', 'additionalProperties': False, 'required': ['svg'], 'properties': {'svg': {'type': 'string'}}}, 16000)
+    res = claude(cfg, SVG_SYSTEM + (REAL if realistic else ''), 'Scene: ' + (scene or 'a calm everyday consumer scene'), {'type': 'object', 'additionalProperties': False, 'required': ['svg'], 'properties': {'svg': {'type': 'string'}}}, 16000)
     return clean_svg(res.get('svg', ''))
 
 

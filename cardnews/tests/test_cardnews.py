@@ -43,7 +43,7 @@ class CardNewsTest(unittest.TestCase):
         server.app.config['TESTING'] = True
         self.client = server.app.test_client()
         with server.conn() as db: db.execute('DELETE FROM cards'); db.execute('DELETE FROM log')
-        server.save_config(dict(server.DEFAULTS, key='sk-ant-test-key-1234567890', web_search=0))
+        server.save_config(dict(server.DEFAULTS, key='sk-ant-test-key-1234567890', web_search=0, img_auto=0))
 
     def token(self, path='/settings'):
         return re.search(r'name="_csrf" value="([^"]+)"', self.client.get(path).get_data(as_text=True))[1]
@@ -176,14 +176,15 @@ class CardNewsTest(unittest.TestCase):
         from PIL import Image
         def png(color):
             b = io.BytesIO(); Image.new('RGB', (40, 30), color).save(b, 'PNG'); return b.getvalue()
-        server.save_config(dict(server.config(), img_engine='openai', openai_key='sk-test', img_auto=1, img_style='mix'))
+        server.save_config(dict(server.config(), img_engine='openai', openai_key='sk-test', img_auto=1, img_style2='mix'))
         asked = []
-        with patch.object(cards, 'make_image', lambda cfg, scene, style='photo': (asked.append((scene, style)) or png('orange'), 'jpg')):
+        with patch.object(cards, 'make_image', lambda cfg, scene, style='photo': (asked.append((scene, style)) or png('orange'), 'jpg', 'openai')):
             cid, _, _ = self.make()
             d, checks, _ = self.row(cid)
             self.assertEqual(asked, [('a parcel box and a calendar', 'photo'), ('calendar', 'illust'), ('receipt', 'illust')])  # 자동 켜짐: 표지 사진·본문 일러스트
             self.assertEqual((d['cover_img']['style'], d['cover_img']['src']), ('photo', 'openai'))
             self.assertTrue(checks['이미']['ok']); self.assertNotIn('캡션에', checks['이미']['note'])  # AI로 만든 이미지 표시는 안 붙임 (운영자 결정)
+            self.assertIsNone(checks['인스']['ok']); self.assertIn('AI 레이블', checks['인스']['note'])  # 표지가 ChatGPT 사진이면 인스타 AI 레이블 켜기 안내
             name = d['cover_img']['photo']; self.assertRegex(name, r'^[0-9a-f]{16}\.jpg$')
             r = self.client.get('/img/' + name); self.assertEqual((r.status_code, r.data[:2]), (200, b'\xff\xd8')); r.close()  # JPEG로 다시 저장
             self.assertEqual(self.client.get('/img/../config.json').status_code, 404)
@@ -225,16 +226,22 @@ class CardNewsTest(unittest.TestCase):
             return Resp(json.dumps({'data': [{'b64_json': base64.b64encode(b'PNGDATA').decode()}]}).encode())
         cfg = {'img_engine': 'openai', 'openai_key': 'sk-test', 'openai_model': 'gpt-image-1'}
         with patch.object(cards.urllib.request, 'urlopen', opener):
-            self.assertEqual(cards.make_image(cfg, 'a receipt on a table'), (b'PNGDATA', 'jpg'))
+            self.assertEqual(cards.make_image(cfg, 'a receipt on a table'), (b'PNGDATA', 'jpg', 'openai'))
         self.assertEqual((sent['url'], sent['auth'], sent['body']['model'], sent['body']['size']), ('https://api.openai.com/v1/images/generations', 'Bearer sk-test', 'gpt-image-1', '1024x1536'))
         self.assertIn('a receipt on a table', sent['body']['prompt']); self.assertIn('no logos', sent['body']['prompt'])
         with self.assertRaisesRegex(RuntimeError, '키가 없어요'): cards.openai_image({}, 'x')
         # Claude는 일러스트를 SVG로: 스크립트·바깥 링크는 지움
         draw = lambda cfg, system, user, schema, max_tokens, effort='medium': {'svg': '<svg onload="x()"><script>x()</script><rect fill="#EF920E" width="1080" height="1350"/><image href="http://evil.test/a.png"/></svg>'}
         with patch.object(cards, 'claude', draw):
-            svg, ext = cards.make_image({'img_engine': 'claude', 'key': 'sk-ant-x'}, 'a parcel')
+            svg, ext, who = cards.make_image({'img_engine': 'claude', 'key': 'sk-ant-x'}, 'a parcel')
         self.assertEqual(ext, 'svg'); self.assertIn(b'<rect', svg); self.assertNotIn(b'script', svg); self.assertNotIn(b'evil', svg); self.assertNotIn(b'onload', svg)
         self.assertTrue(cards.img_ready({'img_engine': 'claude', 'key': 'k'})); self.assertFalse(cards.img_ready({'img_engine': 'openai', 'key': 'k'}))
+        # 자동: 사진 장은 ChatGPT, 일러스트 장은 Claude, 키가 하나면 그쪽으로
+        with patch.object(cards, 'openai_image', lambda cfg, scene, style='photo': b'P'), patch.object(cards, 'claude_svg', lambda cfg, scene, realistic=False: b'<svg/>' if not realistic else b'<svg r/>'):
+            both = {'img_engine': 'auto', 'key': 'k', 'openai_key': 'sk-o'}
+            self.assertEqual(cards.make_image(both, 'x', 'photo')[2], 'openai'); self.assertEqual(cards.make_image(both, 'x', 'illust')[2], 'claude')
+            self.assertEqual(cards.make_image({'img_engine': 'auto', 'key': 'k'}, 'x', 'photo')[:2], (b'<svg r/>', 'svg'))  # Claude만 있으면 사실적인 그림
+            self.assertEqual(cards.make_image({'img_engine': 'auto', 'openai_key': 'sk-o'}, 'x', 'illust')[2], 'openai')
 
     def test_keyless_paste_manual_and_art_paste(self):
         server.save_config(dict(server.DEFAULTS))  # 키 없음

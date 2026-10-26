@@ -37,10 +37,10 @@ PORT = int(os.getenv('CARDNEWS_PORT') or 5050)
 PER_DAY = (1, 2, 3, 4, 5)
 MODELS = (('claude-opus-5-5', 'Claude Opus 5.5 (기본, 가장 꼼꼼)'), ('claude-sonnet-5-5', 'Claude Sonnet 5.5 (더 싸고 빠름)'))
 DEFAULTS = {'key': '', 'model': 'claude-opus-5-5', 'auto': 0, 'per_day': 3, 'hour': 8, 'web_search': 1,
-            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'img_engine': 'openai', 'openai_key': '', 'openai_model': cards.OPENAI_MODEL, 'img_style': 'mix', 'img_auto': 1, 'theme': 'ref', 'accent': 'tangerine',
+            'naver_kind': 'dev', 'naver_id': '', 'naver_secret': '', 'img_engine': 'auto', 'openai_key': '', 'openai_model': cards.OPENAI_MODEL, 'img_style2': 'photo', 'img_auto': 1, 'theme': 'ref', 'accent': 'tangerine',
             'kakao_key': '', 'kakao_secret': '', 'kakao_token': {}, 'kakao_auto': 1}
 SECRETS = ('key', 'naver_secret', 'openai_key', 'kakao_secret')  # 화면에 다시 보여 주지 않는 값
-IMG_STYLES = (('mix', '표지는 사진, 본문은 일러스트'), ('photo', '모두 사진'), ('illust', '모두 일러스트'))
+IMG_STYLES = (('photo', '모두 사진 (기본)'), ('mix', '표지는 사진, 본문은 일러스트'), ('illust', '모두 일러스트'))
 
 DATA.mkdir(parents=True, exist_ok=True)
 app = Flask(__name__, template_folder=str(RES / 'templates'), static_folder=str(RES / 'static'))
@@ -161,9 +161,9 @@ def start_images(cid, which=None):
         for name in names:
             try:
                 cur = load(cid); sl = {n: (sc, x) for n, sc, x in cards.slots(cur['data'])}
-                cf = config(); raw, ext = cards.make_image(cf, sl[name][0], sl[name][1]['style'])
+                raw, ext, who = cards.make_image(config(), sl[name][0], sl[name][1]['style'])
                 cur = load(cid); slot = {n: x for n, _, x in cards.slots(cur['data'])}[name]  # 그사이 글을 고쳤을 수 있어 다시 읽음
-                save_photo(raw, slot, cf['img_engine'], ext); resave(cid, cur['data'], cur['facts'], cur['confirmed'])
+                save_photo(raw, slot, who, ext); resave(cid, cur['data'], cur['facts'], cur['confirmed'])
             except (RuntimeError, ValueError) as e: job['err'] = str(e); log(f'이미지 #{cid}: {e}')
             except Exception as e: job['err'] = f'이미지를 만들지 못했어요 ({type(e).__name__})'; log(f'이미지 #{cid}: {type(e).__name__}')
             job['left'] -= 1
@@ -175,7 +175,7 @@ def start_images(cid, which=None):
 def make(url, trigger='manual', art=None):
     r = cards.make(config(), url, art)
     if r['status'] != 'made': log(f"{'자동 · ' if trigger == 'daily' else ''}못 만듦: {r['reason']} ({(url or (art or {}).get('title', ''))[:80]})"); return r
-    cards.slots(r['data'], config()['img_style'])  # 자리마다 사진/일러스트 기본값
+    cards.slots(r['data'], config()['img_style2'])  # 자리마다 사진/일러스트 기본값
     with conn() as db: made = db.execute("SELECT COUNT(*) FROM cards WHERE status!='paste'").fetchone()[0]
     if made % 5 == 4: r['data']['end'] = 'share'  # 레퍼런스북: 마무리는 저장 유도가 기본, 다섯 개 중 하나는 공유형
     r['checks'] = cards.run_checks(r['data'], r['facts'])
@@ -321,7 +321,7 @@ def home():
         if not got: flash(why); return redirect(url_for('home'))
         a, others, facts = got
         if mode == 'manual':
-            d = cards.blank(a); cards.slots(d, config()['img_style']); cid = store({'data': d, 'facts': facts, 'checks': cards.run_checks(d, facts)}, 'manual')
+            d = cards.blank(a); cards.slots(d, config()['img_style2']); cid = store({'data': d, 'facts': facts, 'checks': cards.run_checks(d, facts)}, 'manual')
             log(f'직접 쓰기 #{cid}'); flash('빈 카드뉴스를 만들었어요. 오른쪽 칸에 글을 써 주세요.'); return redirect(url_for('card', cid=cid))
         cid = store({'data': {'pending': True, 'prompt': cards.paste_prompt(a, others), 'art': a}, 'facts': facts, 'checks': []}, 'manual', status='paste')
         return redirect(url_for('paste', cid=cid))
@@ -406,8 +406,8 @@ def card(cid):
         flash('저장했어요.' + (' 체크리스트에 걸린 항목이 있어요.' if status == 'check' else ''))
         return redirect(url_for('card', cid=cid))
     sl = [(n, '표지' if n == 'cover' else f'{int(n[4:]) + 2}번째 장', x, {k: cards.photo_prompt(scene, k) for k in cards.STYLES})
-          for n, scene, x in cards.slots(c['data'], config()['img_style'])]
-    return render_template('edit.html', img_job=IMGJOB.get(cid), def_theme=config()['theme'], def_accent=config()['accent'], c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, img_ok=cards.img_ready(config()), img_name='Claude' if config()['img_engine'] == 'claude' else 'ChatGPT',
+          for n, scene, x in cards.slots(c['data'], config()['img_style2'])]
+    return render_template('edit.html', img_job=IMGJOB.get(cid), def_theme=config()['theme'], def_accent=config()['accent'], c=c, d=c['data'], caption=cards.caption_full(c['data']), slots=sl, img_ok=cards.img_ready(config()), img_name={'claude': 'Claude', 'openai': 'ChatGPT'}.get(config()['img_engine'], 'AI'),
                            key=bool(config()['key']), styles=cards.STYLES, saved=str(out_dir(c)) if out_dir(c).is_dir() else '')
 
 
@@ -419,7 +419,7 @@ def paste(cid):
     if request.method == 'POST':
         try: d = cards.from_paste(request.form.get('answer', ''), c['data']['art'])
         except ValueError as e: flash(str(e)); return redirect(url_for('paste', cid=cid))
-        cards.slots(d, config()['img_style']); resave(cid, d, c['facts'], 0); log(f'붙여넣기로 만듦 #{cid}')
+        cards.slots(d, config()['img_style2']); resave(cid, d, c['facts'], 0); log(f'붙여넣기로 만듦 #{cid}')
         flash('카드뉴스를 만들었어요.' + (' 이미지는 뒤에서 만들고 있어요.' if start_images(cid) else " 이미지는 아래 '이미지 (힉스필드)'에서 넣어 주세요."))
         return redirect(url_for('card', cid=cid))
     return render_template('paste.html', c=c, prompt=c['data']['prompt'])
@@ -530,12 +530,12 @@ def settings():
             v = f.get(k, '').strip()
             if v or f.get('clear_' + k): c[k] = '' if f.get('clear_' + k) else v  # 비워 두면 그대로, '지우기'를 고르면 지움
         if f.get('clear_naver_id'): c['naver_secret'] = ''
-        c['img_engine'] = f.get('img_engine') if f.get('img_engine') in dict(cards.IMG_ENGINES) else 'openai'
+        c['img_engine'] = f.get('img_engine') if f.get('img_engine') in dict(cards.IMG_ENGINES) else 'auto'
         c['openai_model'] = f.get('openai_model', '').strip() if re.fullmatch(r'[\w.-]{2,40}', f.get('openai_model', '').strip()) else cards.OPENAI_MODEL
         if f.get('kakao_key', '').strip(): c['kakao_key'] = f.get('kakao_key').strip()
         if f.get('clear_kakao'): c['kakao_key'] = c['kakao_secret'] = ''; c['kakao_token'] = {}
         c['kakao_auto'] = 1 if f.get('kakao_auto') else 0
-        c['img_style'] = f.get('img_style') if f.get('img_style') in dict(IMG_STYLES) else 'mix'
+        c['img_style2'] = f.get('img_style') if f.get('img_style') in dict(IMG_STYLES) else 'photo'
         c['img_auto'] = 1 if f.get('img_auto') else 0
         if c['openai_key'] and not c['openai_key'].startswith('sk-'): flash("ChatGPT(OpenAI) API 키는 'sk-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))
         if c['key'] and not c['key'].startswith('sk-ant-'): flash("Claude API 키는 'sk-ant-'로 시작해요. 다시 확인해 주세요."); return redirect(url_for('settings'))

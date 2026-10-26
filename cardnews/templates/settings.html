@@ -16,11 +16,11 @@
   <div class="panel"><h2>이미지 (ChatGPT · Claude)</h2>
     <p class="meta">새 카드뉴스를 만들면 장마다 이미지를 자동으로 만들어요. 고른 AI의 API 크레딧이 들어요.</p>
     <label>이미지 만들 AI<select name="img_engine">{% for k, name in img_engines %}<option value="{{ k }}"{% if cfg.img_engine == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
-    <p class="meta">· <b>ChatGPT</b>: 진짜 사진 같은 이미지와 일러스트 둘 다. OpenAI API 키가 필요해요 (platform.openai.com → API keys, <b>ChatGPT 구독과 별개로</b> Billing 충전).<br>· <b>Claude</b>: 사진은 못 만들고 소보루 색 일러스트를 직접 그려요. 위의 Claude API 키를 그대로 써요.</p>
+    <p class="meta">· <b>자동 (기본)</b>: 사진 장은 ChatGPT가 진짜 사진처럼, 일러스트 장은 Claude가 그려요. 키가 하나만 있으면 그쪽이 다 해요.<br>· <b>ChatGPT</b>: 진짜 사진 같은 이미지와 일러스트 둘 다. OpenAI API 키가 필요해요 (platform.openai.com → API keys, <b>ChatGPT 구독과 별개로</b> Billing 충전).<br>· <b>Claude</b>: 진짜 사진은 못 만들어요. 일러스트를 그리고, 사진 장은 빛·그림자를 살린 사실적인 그림으로 그려요. 위의 Claude API 키를 그대로 써요.</p>
     <label>ChatGPT(OpenAI) API 키 {% if masked.openai_key %}<span class="badge ok">저장됨 {{ masked.openai_key }}</span>{% endif %}<input type="password" name="openai_key" autocomplete="off" placeholder="sk-로 시작 (platform.openai.com > API keys)"></label>
     {% if cfg.openai_key %}<label class="check"><input type="checkbox" name="clear_openai_key" value="1"> OpenAI 키 지우기</label>{% endif %}
     <label>OpenAI 이미지 모델<input type="text" name="openai_model" value="{{ cfg.openai_model }}" placeholder="gpt-image-1"></label>
-    <label>기본 이미지 스타일<select name="img_style">{% for k, name in img_styles %}<option value="{{ k }}"{% if cfg.img_style == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+    <label>기본 이미지 스타일<select name="img_style">{% for k, name in img_styles %}<option value="{{ k }}"{% if cfg.img_style2 == k %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
     <label class="check"><input type="checkbox" name="img_auto" value="1"{% if cfg.img_auto %} checked{% endif %}> 새 카드뉴스를 만들면 이미지도 자동으로 만들기 (장마다 크레딧)</label>
     <p class="meta">이미지에는 실존 인물 얼굴·로고·글자가 나오지 않게 요청해요. 이미지 위에는 글자를 넣지 않아요.</p>
   </div>
