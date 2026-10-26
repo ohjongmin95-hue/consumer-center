@@ -2634,3 +2634,12 @@ img.cm-av{object-fit:cover;background:#f2f4f6}
 .tw-best-t{width:100%}
 .tw-best em{position:absolute;right:16px;bottom:16px}
 @media (max-width:900px){.tw-best ol{grid-template-columns:repeat(3,minmax(0,1fr))}.tw-best em{position:static}.tw-best-t small{display:none}}
+/* 홈 자주 묻는 질문 (토스식 펼침 목록) */
+.nn-faq-list{display:flex;flex-direction:column;border-radius:22px;background:#fff;box-shadow:0 0 0 1px #e5e8eb;overflow:hidden}
+.nn-faq-list details{border-top:1px solid #f2f4f6}.nn-faq-list details:first-child{border-top:0}
+.nn-faq-list summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px;font-size:16.5px;font-weight:700;color:#191f28;cursor:pointer;list-style:none}
+.nn-faq-list summary::-webkit-details-marker{display:none}
+.nn-faq-list summary svg{flex:none;width:20px;height:20px;fill:none;stroke:#8b95a1;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.nn-faq-list details[open] summary svg{transform:rotate(180deg)}
+.nn-faq-list p{margin:-6px 22px 20px;font-size:15.5px;line-height:1.75;color:#4e5968}
+@media (max-width:560px){.nn-faq-list summary{padding:18px;font-size:15.5px}.nn-faq-list p{margin:-6px 18px 18px;font-size:15px}}
