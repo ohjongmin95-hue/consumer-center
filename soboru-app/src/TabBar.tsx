@@ -1,4 +1,4 @@
-// 아래 탭 (사이트의 휴대폰 탭바와 같은 다섯 칸). 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
+// 아래 탭 (사이트의 휴대폰 탭바 templates/soboru_tabbar.html과 같은 다섯 칸·순서). 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,9 +13,9 @@ const MUTE = '#9A918A';
 export function tabsFor(member: boolean): Tab[] {
   return [
     { key: 'home', label: '홈', path: '/' },
-    { key: 'life', label: '생활정보', path: '/life' },
+    { key: 'board', label: '커뮤니티', path: '/feed' },
     { key: 'report', label: '제보', path: '/report' },
-    { key: 'board', label: '소보루 픽', path: '/board' },
+    { key: 'life', label: '매거진', path: '/life' },
     member ? { key: 'my', label: 'MY', path: '/me' } : { key: 'my', label: '내 제보', path: '/lookup' },
   ];
 }
@@ -25,7 +25,7 @@ export function activeTab(path: string): string {
   if (path === '/' || path === '') return 'home';
   if (path.startsWith('/life')) return 'life';
   if (path.startsWith('/report') && !path.startsWith('/reports')) return 'report';
-  if (path.startsWith('/board')) return 'board';
+  if (['/board', '/feed', '/vs', '/suda', '/owners', '/u/', '/me/following', '/me/people'].some((x) => path.startsWith(x))) return 'board';
   if (path.startsWith('/me') || path.startsWith('/lookup')) return 'my';
   return '';
 }

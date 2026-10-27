@@ -118,7 +118,8 @@ function Main() {
 
   const onTab = useCallback((t: Tab) => {
     setOffline(false);
-    if (activeTab(path) === t.key && path === t.path) run('window.scrollTo({top:0,behavior:"smooth"})');
+    // 지금 탭을 또 누르면: 아래로 내려가 있으면 맨 위로, 이미 맨 위면 새로고침 (안드로이드는 당겨서 새로고침이 없음)
+    if (activeTab(path) === t.key && path === t.path) run('if(window.scrollY>8)window.scrollTo({top:0,behavior:"smooth"});else location.reload()');
     else go(SITE + t.path);
   }, [path, go, run]);
 
