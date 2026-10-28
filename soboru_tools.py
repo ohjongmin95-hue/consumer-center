@@ -234,4 +234,7 @@ def install(S):
         return render_template('soboru_law.html', q=q, rows=rows, laws=[l for l in laws if l['key'] not in ('easylaw',) and not l['key'].startswith('appx')],
                                pick=request.args.get('law', ''), samples=LAW_SAMPLES)
 
-    app.jinja_env.globals.update(TOOL_CALCS=CALCS)
+    # AI 검색·구글이 낱말 뜻을 바로 읽게 DefinedTerm으로 (2026-10-28 AI 검색 친화)
+    def dict_terms_ld(url):
+        return [{'@type': 'DefinedTerm', 'name': w, 'description': d, 'inDefinedTermSet': url + '#terms'} for w, c, d in DICT]
+    app.jinja_env.globals.update(TOOL_CALCS=CALCS, dict_terms_ld=dict_terms_ld)

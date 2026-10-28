@@ -2,6 +2,7 @@
 {# 소비자·경제 사전. 낱말은 soboru_tools.py DICT #}
 {% block title %}{{ ui('dict.title', '소비자·경제 사전') }}{% if q %} · {{ q }}{% endif %} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui('dict.meta', '청약철회, 위약금, 기준금리, DSR처럼 소비자와 경제 뉴스에 자주 나오는 말을 쉽게 풀었어요.') }}{% endblock %}
+{% block head %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "DefinedTermSet", "@id": canonical_url(url_for('dictionary')) ~ "#terms", "name": ui_text('dict.title', '소비자·경제 사전'), "inLanguage": "ko", "url": canonical_url(url_for('dictionary')), "hasDefinedTerm": dict_terms_ld(canonical_url(url_for('dictionary')))}|tojson }}</script>{% endblock %}
 {% block content %}
 <main class="sb-wrap cm tl tl-dict">
   <header class="tl-head"><h1><span class="tf" aria-hidden="true">📚</span> {{ ui('dict.title', '소비자·경제 사전') }}</h1><p>{{ ui('dict.intro', '계약서·뉴스에 나오는 어려운 말 {n}개를 쉽게 풀었어요.', n=total) }}</p></header>
