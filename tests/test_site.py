@@ -1079,13 +1079,13 @@ class SiteTest(unittest.TestCase):
                 'phone': '010-2222-3333', 'contact': 'me@example.com', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
                 'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
         # 설정이 없으면 아무것도 안 보냄
-        with patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: kakao.append(a) or {}), patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+        with patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: kakao.append(a) or {}), patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
             self.post_form(self.client, '/report', base)
         self.assertEqual((kakao, mails), ([], []))
         keys = {'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_PFID': 'pf', 'KAKAO_TPL_RECEIVED': 'T1', 'KAKAO_TPL_STATUS': 'T2', 'KAKAO_TPL_MESSAGE': 'T3',
                 'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}
         with patch.dict(os.environ, keys), patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: kakao.append(a) or {'statusCode': '2000'}), \
-             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+             patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
             self.post_form(self.client, '/report', dict(base, subject='알림 두번째'))
             self.assertEqual(len(kakao), 1)
             message = kakao[0][1]['message']
@@ -1174,7 +1174,7 @@ class SiteTest(unittest.TestCase):
         before = admin.get('/admin/new-cases').get_json()
         with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'ok': True}), \
              patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: sms.append(a) or {'statusCode': '2000'}), \
-             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+             patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
             self.post_form(self.client, '/report', base)
         self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
         self.assertIn('새 제보: 운영자 알림 제보', mails[0][1])
@@ -1191,7 +1191,7 @@ class SiteTest(unittest.TestCase):
         # 알림톡 템플릿이 있으면 카카오톡으로 (실패하면 문자로 대신)
         with patch.dict(os.environ, dict(keys, SOLAPI_PFID='pf', KAKAO_TPL_ADMIN='TA')), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'ok': True}), \
              patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: sms.append(a) or {'statusCode': '2000'}), \
-             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+             patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
             self.post_form(self.client, '/report', dict(base, subject='카톡 알림 제보'))
         message = sms[-1][1]['message']
         self.assertEqual(message['kakaoOptions']['templateId'], 'TA')
@@ -1214,7 +1214,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('브라우저 알림 켜기', page)
         self.assertIn('운영자 메일', admin.get('/admin/reports/%d' % case_id).get_data(as_text=True))
         with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {}), \
-             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+             patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
         self.assertEqual(len(mails), 2)
         self.assertEqual(len(sms), 1)
@@ -1275,7 +1275,7 @@ class SiteTest(unittest.TestCase):
         # 5) 답변 → 단계 '기업 답변 도착', 제보자에게 알림, 공개는 운영자 확인 뒤
         mails = []
         with patch.dict(os.environ, {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}), \
-             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+             patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
             self.post_form(biz, '/biz/case/%d' % shared, {'response': '내일까지 환불 처리하겠습니다.'})
         self.assertIn('업체가 답변했습니다', mails[-1][2])
         with self.site.conn() as db:
@@ -2920,7 +2920,7 @@ class SiteTest(unittest.TestCase):
         form = {'company_name': '고양이상회', 'biz_no': '123-45-67891', 'contact_name': '김담당', 'contact_phone': '02-123-4567',
                 'contact_email': 'cs@cat.co.kr', 'login_id': 'catshop', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'}
         with patch.dict(os.environ, {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}), \
-             patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)):
+             patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
             self.post_form(biz, '/biz/signup', form)
         verify = [m for m in mails if m[0] == 'cs@cat.co.kr']
         self.assertEqual(len(verify), 1)
@@ -3162,7 +3162,7 @@ class SiteTest(unittest.TestCase):
         mails = []
         env = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'ops@example.com'}
         patcher = patch.dict(os.environ, env); patcher.start(); self.addCleanup(patcher.stop)
-        mailer = patch.object(notify, 'send_email', side_effect=lambda *a: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))); mailer.start(); self.addCleanup(mailer.stop)
         admin = self.login_admin()
         self.post_form(admin, '/admin/companies', {'action': 'create', 'name': '안내상점', 'official_email': 'cs@notice-shop.example'})
         base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '안내상점', 'description': '환불이 안 돼요. 제 번호는 010-5555-6666이에요',
@@ -3214,6 +3214,7 @@ class SiteTest(unittest.TestCase):
         sent = [m for m in mails if m[0] == 'cs@notice-shop.example']
         self.assertEqual(len(sent), 1)
         self.assertIn('민간 플랫폼', sent[0][2])
+        self.assertIn('제보 확인하고 답변하기', sent[0][3]); self.assertIn('/company/optout/', sent[0][3])  # 꾸민 HTML 메일도 함께
         link = re.search(r'http://localhost(/company/\d+/\S+)', sent[0][2])[1]
         optout = re.search(r'http://localhost(/company/optout/\S+)', sent[0][2])[1]
         with self.site.conn() as db:

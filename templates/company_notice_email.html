@@ -1,0 +1,44 @@
+{#- 기업 공식 이메일로 가는 제보 안내 메일 (ops.send_notice). 메일 프로그램은 CSS 파일을 못 읽어서 글꼴·색을 칸마다 직접 씀 -#}
+{%- set F = "font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;" -%}
+{%- set ACC = '#ef920e' if is_soboru() else '#ef7300' -%}
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>{{ subject }}</title></head>
+<body style="margin:0;padding:0;background:#f4f5f7;word-break:keep-all;">
+<div style="display:none;max-height:0;overflow:hidden;">{{ company }} 관련 소비자 제보가 접수됐어요. 링크에서 내용을 확인하고 공식 답변을 남길 수 있어요.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:28px 12px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:20px;">
+  <tr><td style="padding:28px 28px 6px;{{ F }}">{% if is_soboru() %}<img src="{{ canonical_url(url_for('static', filename='img/soboru-logo-orange.png')) }}" width="104" alt="소보루" style="display:block;width:104px;height:auto;border:0;">{% else %}<b style="font-size:19px;color:{{ ACC }};letter-spacing:-0.4px;">{{ site }}</b>{% endif %}</td></tr>
+  <tr><td style="padding:18px 28px 0;{{ F }}">
+    <span style="display:inline-block;background:#fff4e5;color:#b35c00;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;">{{ '답변을 기다리고 있어요' if nudge else ('소비자 제보 재안내' if remind else '소비자 제보 안내') }}</span>
+    <h1 style="margin:14px 0 10px;font-size:23px;line-height:1.42;font-weight:800;color:#191f28;letter-spacing:-0.6px;">{{ company }} 관련<br>소비자 제보가 접수됐어요</h1>
+    <p style="margin:0;font-size:15px;line-height:1.75;color:#4e5968;">{{ company }} 고객 담당자님, 안녕하세요. {{ site }}에 귀사와 관련된 소비자의 이야기가 올라왔어요. 아래 버튼을 누르면 로그인 없이 제보 내용을 보고 공식 답변을 남길 수 있어요.</p>
+  </td></tr>
+  {% if nudge %}<tr><td style="padding:16px 28px 0;{{ F }}"><p style="margin:0;background:#fff8f0;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.65;color:#8a4b00;">제보자가 아직 답변을 받지 못해 기다리고 있다고 알려 왔어요.</p></td></tr>{% endif %}
+  <tr><td style="padding:20px 28px 0;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f9fafb;border:1px dashed #d1d6db;border-radius:14px;">
+      <tr><td style="padding:16px 18px 6px;font-size:12px;font-weight:700;color:#8b95a1;letter-spacing:0.4px;{{ F }}">접수 내역</td></tr>
+      {% for k, v in [('접수번호', receipt), ('분야', category), ('접수일', created)] %}
+      <tr><td style="padding:5px 18px;{{ F }}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="font-size:14px;color:#6b7684;{{ F }}">{{ k }}</td><td align="right" style="font-size:14px;font-weight:700;color:#191f28;{{ F }}">{{ v }}</td></tr></table></td></tr>
+      {% endfor %}
+      <tr><td style="padding:10px 18px 16px;{{ F }}"><div style="border-top:1px dashed #d1d6db;padding-top:10px;font-size:13px;color:#6b7684;">이 링크로는 이 제보 하나만 볼 수 있어요.</div></td></tr>
+    </table>
+  </td></tr>
+  <tr><td style="padding:22px 28px 0;{{ F }}">
+    <a href="{{ link }}" style="display:block;text-align:center;background:{{ ACC }};color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;padding:15px 20px;border-radius:14px;">제보 확인하고 답변하기</a>
+  </td></tr>
+  <tr><td style="padding:26px 28px 0;{{ F }}">
+    <p style="margin:0 0 12px;font-size:15px;font-weight:800;color:#191f28;">답변은 이렇게 전해져요</p>
+    {% for n, t, d in [(1, '제보 확인', '버튼을 누르면 가입·로그인 없이 바로 열려요.'), (2, '공식 답변 등록', '답변 등록은 무료예요. 해결 방법이나 사실과 다른 점을 적어 주세요.'), (3, '제보자에게 전달', '제보자에게 바로 알림이 가고, 기업 페이지의 답변률에 반영돼요.')] %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr>
+      <td width="30" valign="top" style="{{ F }}"><span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:11px;background:#f2f4f6;color:#4e5968;font-size:12px;font-weight:800;">{{ n }}</span></td>
+      <td style="{{ F }}"><b style="font-size:14px;color:#191f28;">{{ t }}</b><br><span style="font-size:13px;line-height:1.6;color:#6b7684;">{{ d }}</span></td></tr></table>
+    {% endfor %}
+  </td></tr>
+  <tr><td style="padding:12px 28px 28px;{{ F }}">
+    <p style="margin:0;font-size:13px;line-height:1.7;color:#8b95a1;">이 메일에 바로 답장하셔도 {{ site }} 담당자가 받아 봐요. 제보는 소비자 개인의 경험과 주장이며, 센터가 사실관계를 확인한 내용이 아니에요. 답변 여부와 내용은 귀사가 정해요. {{ site }}는 공공기관이 아닌 민간 플랫폼이에요.</p>
+  </td></tr>
+</table>
+<p style="margin:16px 0 0;{{ F }}font-size:12px;line-height:1.7;color:#9aa0a6;">{{ txt('operator.name') }}{% if txt('operator.address') %} · {{ txt('operator.address') }}{% endif %}<br><a href="{{ optout }}" style="color:#8b95a1;">이런 안내 메일 그만 받기</a></p>
+</td></tr></table>
+</body></html>
