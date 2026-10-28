@@ -59,8 +59,8 @@ class SiteTest(unittest.TestCase):
         def ld(html):
             return [json.loads(m) for m in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)]
         home = self.client.get('/').get_data(as_text=True)
-        self.assertIn('<title>소보루(SOBORU)</title>', home)
-        self.assertIn('<meta name="title" content="소보루(SOBORU)">', home)
+        self.assertIn('<title>소보루(SOBORU) - 소비자 제보·내돈내산 후기·소비 생활 매거진</title>', home)
+        self.assertIn('<meta name="title" content="소보루(SOBORU) - 소비자 제보·내돈내산 후기·소비 생활 매거진">', home)
         self.assertIn('소비자 피해 제보부터 제품·업체 리뷰와 추천', home)
         self.assertIn('og:locale" content="ko_KR"', home)
         self.assertIn('WebSite', [d.get('@type') for d in ld(home)])
@@ -199,8 +199,8 @@ class SiteTest(unittest.TestCase):
             self.assertIn('noindex', self.client.get(path).get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('nn-intro', home)
-        self.assertIn('<title>소보루(SOBORU)</title>', home)
-        self.assertIn('<meta property="og:title" content="소보루(SOBORU)">', home)
+        self.assertIn('<title>소보루(SOBORU) - 소비자 제보·내돈내산 후기·소비 생활 매거진</title>', home)
+        self.assertIn('<meta property="og:title" content="소보루(SOBORU) - 소비자 제보·내돈내산 후기·소비 생활 매거진">', home)
         self.assertNotIn('brand-by', home)
         self.assertIn('href="/report"', home)
         self.assertNotIn('localStorage', home)
@@ -310,7 +310,7 @@ class SiteTest(unittest.TestCase):
         page = admin.get('/?brand=off').get_data(as_text=True)
         self.assertIn('sb-header', page)
         self.assertNotIn('미리보기 중', page)
-        self.assertIn('<title>소보루(SOBORU)</title>', page)
+        self.assertIn('<title>소보루(SOBORU) - 소비자 제보·내돈내산 후기·소비 생활 매거진</title>', page)
         self.assertIn('<meta name="description" content="소비자 피해 제보부터 제품·업체 리뷰와 추천, 소비자 권리 안내까지. 소비자의 경험을 나누는 소비자 정보 플랫폼, 소보루.">', page)
         # 네이버 기준: 화면마다 다른 제목·설명, 화면 종류별 공유 그림, 개인 화면은 검색 제외
         board = admin.get('/board').get_data(as_text=True)
@@ -4332,6 +4332,8 @@ class SiteTest(unittest.TestCase):
         r = self.post_form(boss, '/jobs/new', dict(form, pay='12000', body='여자만 지원 가능해요. 빵 포장과 계산을 해 주실 분을 찾아요.')); self.assertEqual(r.status_code, 400)
         self.assertEqual(self.post_form(boss, '/jobs/new', dict(form, pay='12000')).status_code, 302)
         with self.site.conn() as db: jid = db.execute("SELECT id FROM jobs WHERE title='주말 오전 빵집 알바'").fetchone()[0]
+        page = self.client.get(f'/jobs/{jid}').get_data(as_text=True)  # 구글 채용 검색용 구조화 데이터
+        self.assertIn('"@type": "JobPosting"', page); self.assertIn('"unitText": "HOUR"', page)
         self.assertIn('주말 오전 빵집 알바', self.client.get('/jobs?sido=서울&sgg=강남구&days=weekend&time=morning&wage=11000').get_data(as_text=True))
         self.assertNotIn('주말 오전 빵집 알바', self.client.get('/jobs?sido=서울&sgg=강남구&time=evening').get_data(as_text=True).split('<main')[1])
         self.assertNotIn('주말 오전 빵집 알바', self.client.get('/jobs?sido=부산').get_data(as_text=True).split('<main')[1])
@@ -4385,6 +4387,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('논현 바른소아과', self.client.get('/town?sido=서울&sgg=강남구&c=병원·약국').get_data(as_text=True))
         self.assertNotIn('논현 바른소아과', self.client.get('/town?sido=부산').get_data(as_text=True).split('<main')[1])
         self.assertIn(f'href="/town/{pid}"', self.client.get('/search?q=소아과').get_data(as_text=True))
+        xml = self.client.get('/sitemap.xml').get_data(as_text=True)  # 사이트맵에 동네 정보·새 화면
+        for u in (f'/town/{pid}<', '/town<', '/feed<', '/tools/dict<', '/tools/calc/fitness<'): self.assertIn(u, xml)
         me.post(f'/town/{pid}/like', data={'_csrf': self.csrf(me, f'/town/{pid}')})
         nb, nid = self.member_client('town_nb', '옆집')
         nb.post(f'/town/{pid}/like', data={'_csrf': self.csrf(nb, f'/town/{pid}')})

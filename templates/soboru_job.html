@@ -3,6 +3,7 @@
 {% from 'soboru_jobs_macros.html' import job_card, save_btn with context %}
 {% block title %}{{ j.title }} · {{ j.company }} | {{ ui('jobs.title', '동네일자리') }}{% endblock %}
 {% block description %}{{ j.place }} · {{ j.pay_label }}{% if j.days_label %} · {{ j.days_label }}{% endif %}{% if j.time_label %} {{ j.time_label }}{% endif %}. {{ j.body[:80] }}{% endblock %}
+{% block head %}{% set ld = job_ld(j, canonical_url(request.path)) %}{% if ld %}<script type="application/ld+json">{{ ld|tojson }}</script>{% endif %}{% endblock %}
 {% block content %}
 <main class="sb-wrap jb jb-view">
   <a class="cm-back" href="{{ url_for('jobs', sido=j.sido or None, sgg=j.sigungu or None) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>{{ ui('jobs.title', '동네일자리') }}</a>

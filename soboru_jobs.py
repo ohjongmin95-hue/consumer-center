@@ -79,6 +79,26 @@ PROVIDER = {p['key']: p for p in PROVIDERS}
 ALLOWED = {f for p in PROVIDERS for f in p['fields']}
 
 
+PAY_UNIT = {'시급': 'HOUR', '일급': 'DAY', '주급': 'WEEK', '월급': 'MONTH', '연봉': 'YEAR'}
+
+
+def job_ld(j, url):
+    """구글 채용 검색용 JobPosting 구조화 데이터 (열린 공고만, 2026-10-28 SEO)"""
+    if j['status'] != 'open' or j['hidden']: return None
+    d = {'@context': 'https://schema.org', '@type': 'JobPosting', 'title': j['title'], 'description': j['body'] or j['title'],
+         'datePosted': j['created'][:10], 'url': url, 'directApply': j['src'] == 'own',
+         'hiringOrganization': {'@type': 'Organization', 'name': j['company'] or '사업장'},
+         'jobLocation': {'@type': 'Place', 'address': {'@type': 'PostalAddress', 'addressCountry': 'KR', 'addressRegion': j['sido'],
+                                                       'addressLocality': ' '.join(x for x in (j['sigungu'], j['dong']) if x), 'streetAddress': j['addr']}}}
+    if j['close_date']: d['validThrough'] = j['close_date'] + 'T23:59:59+09:00'
+    if j['term'] == 'short': d['employmentType'] = 'TEMPORARY'
+    if j['pay'] and j['pay_type'] in PAY_UNIT:
+        v = {'@type': 'QuantitativeValue', 'unitText': PAY_UNIT[j['pay_type']]}
+        v.update({'minValue': j['pay'], 'maxValue': j['pay_max']} if j['pay_max'] else {'value': j['pay']})
+        d['baseSalary'] = {'@type': 'MonetaryAmount', 'currency': 'KRW', 'value': v}
+    return d
+
+
 def now(): return datetime.datetime.now().isoformat(timespec='seconds')
 def today(): return datetime.date.today().isoformat()
 def min_wage(year=None): return MIN_WAGE.get(year or datetime.date.today().year) or MIN_WAGE[max(MIN_WAGE)]
@@ -365,7 +385,7 @@ def install(S):
         d = {k: v for k, v in f.items() if v}; d.update(change)
         return {k: v for k, v in d.items() if v not in (None, '', [], 0)}
 
-    app.jinja_env.globals.update(JOB_REGIONS=REGIONS, JOB_INDUSTRIES=INDUSTRIES, JOB_PAY_TYPES=PAY_TYPES, JOB_DAYS=DAYS, JOB_TIMES=TIMES, JOB_TERMS=TERMS,
+    app.jinja_env.globals.update(job_ld=job_ld, JOB_REGIONS=REGIONS, JOB_INDUSTRIES=INDUSTRIES, JOB_PAY_TYPES=PAY_TYPES, JOB_DAYS=DAYS, JOB_TIMES=TIMES, JOB_TERMS=TERMS,
                                  job_qs=qs, JOB_MIN_WAGE=min_wage, JOB_REASONS=REPORT_REASONS, JOB_APP_STATES=APP_STATES, JOB_APP_STATE=APP_STATE)
 
     # ---- 공고 찾기 --------------------------------------------------------------
