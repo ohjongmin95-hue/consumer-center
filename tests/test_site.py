@@ -4389,6 +4389,9 @@ class SiteTest(unittest.TestCase):
         self.assertIn(f'href="/town/{pid}"', self.client.get('/search?q=소아과').get_data(as_text=True))
         xml = self.client.get('/sitemap.xml').get_data(as_text=True)  # 사이트맵에 동네 정보·새 화면
         for u in (f'/town/{pid}<', '/town<', '/feed<', '/tools/dict<', '/tools/calc/fitness<'): self.assertIn(u, xml)
+        llms = self.client.get('/llms.txt')  # AI 검색용 사이트 안내
+        self.assertEqual(llms.status_code, 200); self.assertIn('## 주요 화면', llms.get_data(as_text=True)); self.assertIn('/town)', llms.get_data(as_text=True))
+        self.assertIn('"@type": "DefinedTermSet"', self.client.get('/tools/dict').get_data(as_text=True))
         me.post(f'/town/{pid}/like', data={'_csrf': self.csrf(me, f'/town/{pid}')})
         nb, nid = self.member_client('town_nb', '옆집')
         nb.post(f'/town/{pid}/like', data={'_csrf': self.csrf(nb, f'/town/{pid}')})
