@@ -41,6 +41,32 @@ def install(S):
     app.jinja_env.globals.update(SEARCH_POPULAR=POPULAR)
     app.jinja_env.filters['hl'] = hl
 
+    # 사이트맵에 새로 생긴 소보루 화면(커뮤니티·골라주세요·수다방·사장님 소식·우리 동네·동네일자리·계산기·사전·법령)을 더함 (2026-10-28 SEO 점검)
+    if 'sitemap_xml' in app.view_functions:
+        old_map = app.view_functions['sitemap_xml']
+
+        def sitemap_xml():
+            resp = old_map()
+            from flask import url_for
+            eps = [e for e in ('feed', 'vs_home', 'suda', 'owners', 'town', 'jobs', 'tools', 'calc_home', 'dictionary', 'law_find') if e in app.view_functions]
+            pages = [(url_for(e), None) for e in eps]
+            if 'calc' in app.view_functions:
+                import soboru_tools
+                pages += [(url_for('calc', slug=c['slug']), None) for c in soboru_tools.CALCS]
+            with conn() as db:
+                if 'vs_post' in app.view_functions:
+                    pages += [(url_for('vs_post', poll_id=r['id']), r['created'][:10]) for r in db.execute('SELECT id,created FROM vs_polls WHERE hidden=0 ORDER BY id DESC LIMIT 2000')]
+                if 'town_place' in app.view_functions:
+                    pages += [(url_for('town_place', place_id=r['id']), r['created'][:10]) for r in db.execute('SELECT id,created FROM town_places WHERE hidden=0 ORDER BY id DESC LIMIT 5000')]
+                if 'job' in app.view_functions:  # 마감·숨김 공고는 빼기
+                    pages += [(url_for('job', job_id=r['id']), r['updated'][:10]) for r in db.execute("SELECT id,updated FROM jobs WHERE status='open' AND hidden=0 ORDER BY id DESC LIMIT 5000")]
+            base = S.canonical_url('')
+            extra = ''.join('<url><loc>%s</loc>%s</url>' % (escape(base + u), '<lastmod>%s</lastmod>' % d if d else '')
+                            for u, d in pages if S.own_page(base + u))
+            resp.set_data(resp.get_data(as_text=True).replace('</urlset>', extra + '</urlset>'))
+            return resp
+        app.view_functions['sitemap_xml'] = sitemap_xml
+
     def find(q, only=''):
         per = 20 if only else 5
         out = {k: [] for k, n, e in SECTIONS}
