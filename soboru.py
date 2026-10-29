@@ -57,6 +57,10 @@ PAGE_BLOCKS = {
 }
 # 예전 '메인 화면 순서' 저장값(top·life·rank 켜고 끄기)을 새 묶음으로 옮길 때
 BLOCKS_OFF = {'home': ('quick',)}  # 처음엔 숨겨 두는 묶음 (관리자 > 화면 편집에서 다시 켤 수 있음). '이런 곳' 소개는 제보·픽이 먼저 보이니 빼 둠 (운영자 2026-10-24)
+# 숨길 수 있는 작은 꾸밈 조각: 키 → (이름, 기본으로 보이기). OH 2026-10-29: 셋 다 처음부터 숨김
+PIECES = {'home.live_tag': ('소비자의 소리 옆 빨간 점 꼬리표', False),
+          'home.vs_box': ('골라주세요 위 "고민될 땐" 안내 상자', False),
+          'home.suda_box': ('수다방 위 "오늘의 수다" 상자', False)}
 OLD_HOME_SECTIONS = {'top': ('intro', 'quick', 'live'), 'life': ('life',), 'rank': ('pick', 'talk', 'answer')}
 # 제보 카드 대표 그림: 제보 유형별 이모지·바탕색
 REPORT_EMOJI = {'배송·교환·환불': '📦', '계약·해지': '📝', '요금·결제': '💳', '품질·하자·AS': '🛠️', '허위·과장 광고': '📢',
@@ -364,7 +368,31 @@ def install(S):
         return (Markup('<div class="ed-hiddenblocks"><b>숨긴 묶음</b>')
                 + Markup('').join(Markup('<span class="ed-blockbar" data-page="%s" data-block="%s">%s <button type="button" data-act="show">보이기</button></span>') % (page, k, names[k]) for k in off)
                 + Markup('</div>'))
-    app.jinja_env.globals.update(blocks=blocks, ed_block=ed_block, ed_hidden_blocks=ed_hidden_blocks)
+    # ---- 작은 꾸밈 조각(꼬리표·안내 상자) 숨기기: 편집 모드에서 조각마다 숨기기/보이기 -------------
+    def pieces():
+        cache = g.setdefault('pieces', None) if has_request_context() else None
+        if cache is None:
+            with conn() as db: row = db.execute("SELECT value FROM soboru_settings WHERE key='pieces'").fetchone()
+            try: saved = json.loads(row[0]) if row else {}
+            except ValueError: saved = {}
+            cache = {k: bool(saved.get(k, on)) for k, (_, on) in PIECES.items()}
+            if has_request_context(): g.pieces = cache
+        return cache
+
+    def piece_on(key):
+        # 템플릿: {% if piece_on('home.vs_box') %}...{% endif %}{{ ed_piece('home.vs_box') }}
+        return pieces().get(key, True)
+
+    def ed_piece(key):
+        if not S.editing() or key not in PIECES: return ''
+        on = piece_on(key)
+        return (Markup('<span class="ed-blockbar ed-piece%s" data-page="_piece" data-block="%s"><b>%s</b><button type="button" data-act="%s">%s</button></span>')
+                % ('' if on else ' off', key, PIECES[key][0] + ('' if on else ' (숨김)'), 'hide' if on else 'show', '숨기기' if on else '다시 보이기'))
+
+    def save_piece(key, on):
+        cur = dict(pieces()); cur[key] = bool(on)
+        with conn() as db: db.execute('INSERT OR REPLACE INTO soboru_settings(key,value) VALUES(?,?)', ('pieces', json.dumps({k: int(v) for k, v in cur.items()})))
+    app.jinja_env.globals.update(blocks=blocks, ed_block=ed_block, ed_hidden_blocks=ed_hidden_blocks, piece_on=piece_on, ed_piece=ed_piece)
 
     def report_items(limit=12, pins=()):
         # 공개 동의 + 게시된 제보만 (비밀글·게시 전·반려·중복은 메인 카드에 안 나감)
@@ -459,6 +487,11 @@ def install(S):
                         else: db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated', (S.db_key(key), value, stamp))
                 flash('문구를 저장했어요.')
                 return redirect(url_for('admin_screens', _anchor='page-' + page))
+            if page == '_piece':  # 작은 꾸밈 조각 숨기기·보이기
+                if f.get('block') not in PIECES or f.get('act') not in ('hide', 'show'): abort(400)
+                save_piece(f['block'], f['act'] == 'show')
+                if f.get('ajax'): return {'ok': True}
+                return redirect(url_for('admin_screens'))
             if page not in PAGE_BLOCKS: abort(400)
             if f.get('act') == 'order':  # 순서표 통째로 저장 (끌어서 옮기기·숫자)
                 keys = [k for k in f.getlist('block') if k in dict(PAGE_BLOCKS[page][1])]
