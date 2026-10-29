@@ -509,4 +509,14 @@ if hasattr(m, 'soboru_town') and os.environ.get('VRT_NN'):
             if i == 0:
                 for j, (n2, b2) in enumerate([('콩콩맘', '저도 여기 다녀요. 주사 놓을 때도 아이를 잘 달래 주세요.'), ('새내기엄마', '토요일 9시 전 꿀팁 감사해요!')]):
                     db.execute("INSERT INTO town_talks(place_id,user_id,nickname,body,created) VALUES(?,?,?,?,?)", (pid, 810000 + j, n2, b2, _agot(30 + j * 20)))
+# 답변 없는 기업: 전달 뒤 14일 넘게 답이 없는 제보 (1건짜리 기업도 공개)
+import datetime as _dt2
+with m.conn() as db:
+    _old = (_dt2.datetime.now() - _dt2.timedelta(days=19)).isoformat(timespec='seconds')
+    db.execute("UPDATE cases SET forwarded_at=?, created=? WHERE id IN (%s)" % ','.join(str(i) for i in ids[1:]), (_old, _old))
+    for nm, d in [('하루배송몰', 23), ('반짝렌탈', 16)]:
+        co_id = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES(?,?,'listed','','','','x')", (nm, nm)).lastrowid
+        _t = (_dt2.datetime.now() - _dt2.timedelta(days=d)).isoformat(timespec='seconds')
+        db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,company_id,subject,description,request_text,created,forwarded_at,reviewed_at,status,review) VALUES(?,?,?,?,?,?,?,?,?,?,?,'기업 답변 대기','ok')",
+                   ('VS-' + nm, 'x', '배송·교환·환불', nm, co_id, '환불이 안 돼요', '환불이 안 돼요', '환불', _t, _t, _t))
 app.run(host='127.0.0.1', port=PORT)
