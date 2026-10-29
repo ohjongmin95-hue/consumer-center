@@ -298,11 +298,11 @@ def install(S):
     def company_rank(limit=5, days=RANK_DAYS):
         since = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat(timespec='seconds')
         with conn() as db:
-            # 제보 많은 기업: 승인 전이라도 기업별로 바로 셈 (운영자 요청 2026-10-29: 관리자가 안 넘겨도 수치가 보이게). 반려·중복은 뺌
+            # 제보 많은 기업: 승인 전이라도 기업별로 바로 셈 (운영자 요청 2026-10-29: 관리자가 안 넘겨도 수치가 보이게). 전체 기간 누적, 반려·중복은 뺌
             bad = tuple(jebo.NOT_VALID)
             most = [dict(r) for r in db.execute("""SELECT co.id,co.name,co.logo,co.logo_at,COUNT(*) AS n FROM cases c JOIN companies co ON co.id=c.company_id
-                WHERE co.status IN ('active','listed') AND c.created>=? AND c.review NOT IN (%s) GROUP BY co.id ORDER BY n DESC, MAX(c.created) DESC LIMIT ?""" % ','.join('?' * len(bad)),
-                (since,) + bad + (limit,)).fetchall()]
+                WHERE co.status IN ('active','listed') AND c.review NOT IN (%s) GROUP BY co.id ORDER BY n DESC, MAX(c.created) DESC LIMIT ?""" % ','.join('?' * len(bad)),
+                bad + (limit,)).fetchall()]
             rows = db.execute("""SELECT c.id,c.company_id,c.status,c.review,c.reviewed_at,c.created,c.forwarded_at,co.name,co.logo,co.logo_at FROM cases c
                 JOIN companies co ON co.id=c.company_id WHERE co.status IN ('active','listed') AND c.forwarded_at IS NOT NULL AND c.created>=?""", (since,)).fetchall()
             good = [r for r in rows if jebo.valid(r)]
