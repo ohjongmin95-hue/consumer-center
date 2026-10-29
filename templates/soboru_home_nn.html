@@ -51,7 +51,7 @@
     <p class="nn-about-more">{{ ui('home.about_more', '이것도 있어요') }}
       <a href="{{ url_for('life') }}">{{ ui('home.quick_life', '매거진') }}</a>
       {% if ask_on() %}<a href="{{ url_for('law_ask') }}">{{ ui('home.quick_ask', 'AI 소비자 상담') }}</a>{% endif %}
-      <a href="{{ url_for('companies') }}">{{ ui('home.quick_companies', '기업 답변 기록') }}</a>
+      <a href="{{ url_for('companies') }}">{{ ui('home.quick_companies', '기업 답변') }}</a>
       <a href="{{ url_for('scam_home') }}">{{ ui('home.quick_scam', '사기 주의') }}</a>
     </p>
   </section>
@@ -95,7 +95,7 @@
       <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '직접 써 본 이웃들의 후기') }}</p><h2><span class="tf" aria-hidden="true">🏆</span> {{ ui('home.pick_title', '커뮤니티') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '가짜 후기에 지친 당신에게. 직접 돈 내고 산 사람들의 솔직한 이야기만 모았어요.') }}</p></div>
       <a class="nn-more" href="{{ url_for('board') }}">{{ ui('home.pick_more', '커뮤니티 전체 보기 ›') }}</a>
     </div>
-    {% set camp = current_campaign() %}{% if camp %}{{ campaign_card(camp, campaign_review_count(camp['id']), 'cp-home') }}{% endif %}
+    {{ ed_piece('home.campaign') }}{% set camp = current_campaign() if piece_on('home.campaign') %}{% if camp %}{{ campaign_card(camp, campaign_review_count(camp['id']), 'cp-home') }}{% endif %}
     <div class="nn-pick-grid">
       <div class="nn-top">
         <h3>{{ ui('home.top_title', '소비자 추천 TOP 5') }}</h3><p class="nn-top-sub">{{ ui('home.top_sub', "리뷰 별점과 '추천해요'로 매긴 순위") }}</p>
@@ -126,7 +126,7 @@
   {% elif blk == 'answer' %}
   <section class="nn-sec nn-answer">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">{{ ui('home.answer_eyebrow', '실제 제보로 쌓인 기록', days=rank.days, n=rank.min_n) }}</p><h2><span class="tf" aria-hidden="true">🏢</span> {{ ui('home.answer_title', '기업 답변 기록') }}</h2><p class="nn-sub">{{ ui('home.answer_sub', '소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.') }}</p></div>
+      <div><p class="nn-eyebrow">{{ ui('home.answer_eyebrow', '실제 제보 기준', days=rank.days, n=rank.min_n) }}</p><h2><span class="tf" aria-hidden="true">🏢</span> {{ ui('home.answer_title', '기업 답변') }}</h2><p class="nn-sub">{{ ui('home.answer_sub', '소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.') }}</p></div>
       <a class="nn-more" href="{{ url_for('companies') }}">{{ ui('home.answer_more', '기업 찾기 ›') }}</a>
     </div>
     {% macro co_mark(p) %}<span class="co-mark" aria-hidden="true">{% if co_logo(p) %}<img src="{{ co_logo(p) }}" alt="" loading="lazy">{% else %}{{ p['name'][:1] }}{% endif %}</span>{% endmacro %}
