@@ -1048,8 +1048,6 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-ans{border:1px solid var(--sb-line);border-radius:24px;padding:22px 22px 8px}
 .nn-ans h3{font-size:17px;font-weight:800;margin:0 0 6px;letter-spacing:-.02em}
 .nn-ans h3 span{font-family:Tossface,sans-serif;margin-right:2px}
-.nn-ans h3 small{display:block;margin-top:3px;font-size:12px;font-weight:600;color:var(--sb-mute);letter-spacing:0}
-.nn-ans-all{display:block;padding:12px 0 14px;border-top:1px solid var(--sb-line);font-size:13px;font-weight:700;color:var(--sb-mute)}.nn-ans-all:hover{color:var(--sb-orange)}
 .nn-ans li{display:flex;align-items:center;gap:12px;padding:13px 0}
 .nn-ans .nm{flex:none;width:120px;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nn-ans .nm:hover{color:var(--sb-orange)}
@@ -2658,3 +2656,13 @@ img.cm-av{object-fit:cover;background:#f2f4f6}
   .nn-intro .nn-bubble::after{right:44px;bottom:-8px;clip-path:polygon(0 0,100% 0,70% 100%)}
   .nn-intro .nn-char-hero{flex:none;width:136px;margin:0 2px -2px 0}
 }
+
+/* 기업 페이지: 기사화 안내 한 줄 */
+.co-press{margin:-4px 0 14px;font-size:13px;line-height:1.6;color:var(--sb-mute,#6b7684)}
+/* 휴대폰에서 화면이 옆으로 밀리지 않게: 넘치는 글·그림은 칸 안에서 줄바꿈하고, 그래도 넘치면 잘라 냄 */
+html{overflow-x:hidden}
+@supports (overflow:clip){html,body{overflow-x:clip}}
+main{overflow-wrap:anywhere}
+main img,main video,main iframe,main table{max-width:100%}
+@media(max-width:400px){.sb-hd{gap:8px}.sb-hd .sb-sp+.sb-search{margin-right:2px}.sb-hd .sb-login,.sb-hd .sb-cta{height:36px;padding:0 11px;font-size:13.5px;border-radius:12px}}
+@media(max-width:350px){.sb-hd .sb-cta{display:none}}

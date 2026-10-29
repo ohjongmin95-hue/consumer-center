@@ -7,7 +7,6 @@
     <h1 class="page-title">{{ ui('companies.title', '기업별 제보') }}</h1>
     <p>{{ ui('companies.lead', '기업 이름, 브랜드, 상호로 찾아보세요. 운영자가 공개를 승인한 제보만 보여요.') }}</p>
     <a class="co-grade-link" href="{{ url_for('company_grade_guide') }}">{{ ui('companies.grade_link', 'A+부터 F까지, 소보루 등급 기준 보기 ›') }}</a>
-    <a class="co-grade-link" href="{{ url_for('companies_silent') }}">{{ ui('companies.silent_link', '답변 없는 기업 보기 ›') }}</a>
   </div>
   <form class="co-search" method="get" action="{{ url_for('companies') }}" role="search" data-co-search>
     <input name="q" type="search" value="{{ q }}" maxlength="60" autocomplete="off" aria-label="{{ ui('companies.ph', '기업 이름 검색') }}" placeholder="{{ ui('companies.ph', '기업 이름 검색') }}">

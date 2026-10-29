@@ -297,8 +297,6 @@ def install(S):
                 JOIN companies co ON co.id=c.company_id WHERE co.status IN ('active','listed') AND c.forwarded_at IS NOT NULL AND c.created>=?""", (since,)).fetchall()
             good = [r for r in rows if jebo.valid(r)]
             first = jebo.first_answers(db, [r['id'] for r in good])
-            # 답변 없는 기업은 제보 수와 상관없이 (1건이어도) 전달 뒤 답이 없으면 올라감
-            silent = jebo.silent_companies(db, limit)
         per = {}
         for r in good:
             p = per.setdefault(r['company_id'], {'id': r['company_id'], 'name': r['name'], 'n': 0, 'answered': 0, 'waits': []})
@@ -313,9 +311,11 @@ def install(S):
             p['rate'] = round(100 * p['answered'] / p['n'])
             p['median_h'] = statistics.median(p['waits']) if p['waits'] else None
             p['median'] = jebo.fmt_hours(p['median_h'])
+            p['waiting'] = p['n'] - p['answered']
             out.append(p)
         best = sorted([p for p in out if p['answered']], key=lambda p: (-p['rate'], p['median_h'] if p['median_h'] is not None else 1e9, -p['n']))[:limit]
-        return {'best': best, 'wait': silent, 'days': days, 'min_n': jebo.MIN_N, 'silent_days': jebo.ANSWER_DAYS}
+        wait = sorted([p for p in out if p['waiting']], key=lambda p: (-p['waiting'], p['rate'], -p['n']))[:limit]
+        return {'best': best, 'wait': wait, 'days': days, 'min_n': jebo.MIN_N}
 
     app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, life_toc=life_toc, company_rank=company_rank,
                                  ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES, LIFE_EMOJI=LIFE_EMOJI, GUIDE_EMOJI=GUIDE_EMOJI,
