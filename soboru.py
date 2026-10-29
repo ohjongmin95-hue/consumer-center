@@ -60,7 +60,8 @@ BLOCKS_OFF = {'home': ('quick',)}  # 처음엔 숨겨 두는 묶음 (관리자 >
 # 숨길 수 있는 작은 꾸밈 조각: 키 → (이름, 기본으로 보이기). OH 2026-10-29: 셋 다 처음부터 숨김
 PIECES = {'home.live_tag': ('소비자의 소리 옆 빨간 점 꼬리표', False),
           'home.vs_box': ('골라주세요 위 "고민될 땐" 안내 상자', False),
-          'home.suda_box': ('수다방 위 "오늘의 수다" 상자', False)}
+          'home.suda_box': ('수다방 위 "오늘의 수다" 상자', False),
+          'home.campaign': ('커뮤니티 위 "이번 주 리뷰 주제" 상자', False)}  # OH 2026-10-29: 지움
 OLD_HOME_SECTIONS = {'top': ('intro', 'quick', 'live'), 'life': ('life',), 'rank': ('pick', 'talk', 'answer')}
 # 제보 카드 대표 그림: 제보 유형별 이모지·바탕색
 REPORT_EMOJI = {'배송·교환·환불': '📦', '계약·해지': '📝', '요금·결제': '💳', '품질·하자·AS': '🛠️', '허위·과장 광고': '📢',

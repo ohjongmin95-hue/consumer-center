@@ -910,7 +910,7 @@ class SiteTest(unittest.TestCase):
             board = self.client.get('/board').get_data(as_text=True)
             self.assertIn('내가 시켜 먹은 배달음식, 솔직히 어땠나요?', board)
             self.assertIn('/board/write?type=review&amp;campaign=delivery-1017', board)
-            self.assertIn('cp-card', self.client.get('/').get_data(as_text=True))
+            self.assertNotIn('cp-card', self.client.get('/').get_data(as_text=True))  # 홈에선 기본으로 지움 (OH 2026-10-29)
             page = self.client.get('/pick/delivery-1017').get_data(as_text=True)
             for text in ('#배달음식', '#내돈내산', '#사진 리뷰', '첫 리뷰를 남기면 소보루 픽 순위가 생겨요', '참여 혜택 안내', '사진 리뷰 중 추첨 20명', 'soboru-character-hero.png'):
                 self.assertIn(text, page)

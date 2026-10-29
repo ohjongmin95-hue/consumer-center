@@ -95,7 +95,7 @@
       <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '직접 써 본 이웃들의 후기') }}</p><h2><span class="tf" aria-hidden="true">🏆</span> {{ ui('home.pick_title', '커뮤니티') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '가짜 후기에 지친 당신에게. 직접 돈 내고 산 사람들의 솔직한 이야기만 모았어요.') }}</p></div>
       <a class="nn-more" href="{{ url_for('board') }}">{{ ui('home.pick_more', '커뮤니티 전체 보기 ›') }}</a>
     </div>
-    {% set camp = current_campaign() %}{% if camp %}{{ campaign_card(camp, campaign_review_count(camp['id']), 'cp-home') }}{% endif %}
+    {{ ed_piece('home.campaign') }}{% set camp = current_campaign() if piece_on('home.campaign') %}{% if camp %}{{ campaign_card(camp, campaign_review_count(camp['id']), 'cp-home') }}{% endif %}
     <div class="nn-pick-grid">
       <div class="nn-top">
         <h3>{{ ui('home.top_title', '소비자 추천 TOP 5') }}</h3><p class="nn-top-sub">{{ ui('home.top_sub', "리뷰 별점과 '추천해요'로 매긴 순위") }}</p>
