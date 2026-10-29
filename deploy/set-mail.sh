@@ -52,7 +52,8 @@ fi
 echo "저장했습니다. 이제 새 제보가 들어오면 $TO 로 메일이 갑니다."
 # 연결 시험: 받을 주소 첫 번째로 시험 메일 한 통 (실패하면 이유를 보여 줌)
 FIRST="${TO%%,*}"
-if (set -a; . "$ENV_FILE"; set +a; cd /opt/soboru/app && /opt/soboru/venv/bin/python -c "import sys, notify; notify.send_email(sys.argv[1], '[소보루] 메일 연결 시험', '서버 메일이 연결됐어요. 이제 기업 안내·제보자 알림 메일이 이 계정으로 나가요.')" "$FIRST") 2>/tmp/soboru-mail-test.err; then
+# 환경 파일은 셸로 읽지 않음 (비밀번호 해시 속 $ 때문에 깨짐) — 서비스와 똑같이 systemd가 읽게 함
+if systemd-run --wait --pipe --quiet -p User=soboru -p EnvironmentFile="$ENV_FILE" -p WorkingDirectory=/opt/soboru/app /opt/soboru/venv/bin/python -c "import sys, notify; notify.send_email(sys.argv[1], '[소보루] 메일 연결 시험', '서버 메일이 연결됐어요. 이제 기업 안내·제보자 알림 메일이 이 계정으로 나가요.')" "$FIRST" 2>/tmp/soboru-mail-test.err; then
   echo "시험 메일을 $FIRST 로 보냈어요. 받은편지함(또는 스팸함)을 확인해 주세요."
 else
   echo "시험 메일을 보내지 못했어요: $(tail -n 1 /tmp/soboru-mail-test.err)"

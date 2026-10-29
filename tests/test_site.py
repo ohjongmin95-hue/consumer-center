@@ -148,6 +148,9 @@ class SiteTest(unittest.TestCase):
         self.assertIn('고민될 땐', self.client.get('/').get_data(as_text=True))
         self.assertEqual(admin.post('/admin/screens', data={'_csrf': token, 'page': '_piece', 'block': 'nope', 'act': 'show'}).status_code, 400)
         admin.post('/admin/screens', data={'_csrf': token, 'page': '_piece', 'block': 'home.vs_box', 'act': 'hide', 'ajax': '1'})
+        screens = admin.get('/admin/screens').get_data(as_text=True)
+        self.assertIn('작은 꾸밈 넣기 · 지우기', screens)
+        self.assertIn('＋ 넣기', screens)
         self.assertNotIn('고민될 땐', self.client.get('/').get_data(as_text=True))
 
     def test_openai_credit_alert(self):

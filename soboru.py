@@ -387,7 +387,7 @@ def install(S):
         if not S.editing() or key not in PIECES: return ''
         on = piece_on(key)
         return (Markup('<span class="ed-blockbar ed-piece%s" data-page="_piece" data-block="%s"><b>%s</b><button type="button" data-act="%s">%s</button></span>')
-                % ('' if on else ' off', key, PIECES[key][0] + ('' if on else ' (숨김)'), 'hide' if on else 'show', '숨기기' if on else '다시 보이기'))
+                % ('' if on else ' off', key, PIECES[key][0] + ('' if on else ' (지움)'), 'hide' if on else 'show', '✕ 지우기' if on else '＋ 넣기'))
 
     def save_piece(key, on):
         cur = dict(pieces()); cur[key] = bool(on)
@@ -491,7 +491,8 @@ def install(S):
                 if f.get('block') not in PIECES or f.get('act') not in ('hide', 'show'): abort(400)
                 save_piece(f['block'], f['act'] == 'show')
                 if f.get('ajax'): return {'ok': True}
-                return redirect(url_for('admin_screens'))
+                flash('%s을(를) %s.' % (PIECES[f['block']][0], '넣었어요' if f['act'] == 'show' else '지웠어요'))
+                return redirect(url_for('admin_screens', _anchor='page-' + f['block'].split('.')[0]))
             if page not in PAGE_BLOCKS: abort(400)
             if f.get('act') == 'order':  # 순서표 통째로 저장 (끌어서 옮기기·숫자)
                 keys = [k for k in f.getlist('block') if k in dict(PAGE_BLOCKS[page][1])]
@@ -503,7 +504,8 @@ def install(S):
             return redirect(url_for('admin_screens', _anchor='page-' + page))
         changed = S.saved_keys('site_content')
         screens = [{'key': k, 'name': n, 'url': u(), 'texts': screen_keys(files), 'blocks': page_blocks(k) if k in PAGE_BLOCKS else None,
-                    'names': dict(PAGE_BLOCKS[k][1]) if k in PAGE_BLOCKS else {}} for k, n, u, files in SCREENS]
+                    'names': dict(PAGE_BLOCKS[k][1]) if k in PAGE_BLOCKS else {},
+                    'pieces': [(pk, PIECES[pk][0], piece_on(pk)) for pk in PIECES if pk.split('.')[0] == k]} for k, n, u, files in SCREENS]
         return render_template('admin_screens.html', screens=screens, fields=site_content.FIELDS, content=S.load_content(), changed=changed)
 
     # ---- 생활정보 화면 ----------------------------------------------------

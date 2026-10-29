@@ -34,6 +34,16 @@
     </form>
     {% endif %}
 
+    {% if sc.pieces %}
+    <div class="sc-blocks sc-pieces">
+      <h3>작은 꾸밈 넣기 · 지우기 <small>꼬리표나 안내 상자 같은 작은 칸이에요. 지워도 여기서 언제든 다시 넣을 수 있어요.</small></h3>
+      <ol>{% for pk, pname, pon in sc.pieces %}
+        <li{% if not pon %} class="off"{% endif %}><span class="sc-name">{{ pname }}{% if not pon %} · 지움{% endif %}</span>
+          <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="page" value="_piece"><input type="hidden" name="block" value="{{ pk }}"><input type="hidden" name="act" value="{{ 'hide' if pon else 'show' }}"><button type="submit">{{ '✕ 지우기' if pon else '＋ 넣기' }}</button></form></li>
+      {% endfor %}</ol>
+    </div>
+    {% endif %}
+
     {% if sc.texts %}
     <details class="sc-texts">
       <summary>이 페이지 문구 모두 보기 ({{ sc.texts|length }}개{% set n = sc.texts|select('in', changed)|list|length %}{% if n %} · 바꾼 문구 {{ n }}개{% endif %})</summary>
@@ -65,6 +75,7 @@
   .sc-blocks ol{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:6px}
   .sc-blocks li{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #e5e8eb;border-radius:12px;background:#fff;cursor:grab}
   .sc-blocks li.off{background:#f6f7f9;color:#8b95a1}
+  .sc-pieces li{cursor:default}.sc-pieces form{margin:0 0 0 auto}
   .sc-blocks li.drag{opacity:.4}
   .sc-grip{color:#b0b8c1;font-size:18px}
   .sc-name{flex:1;font-weight:700;min-width:0}
