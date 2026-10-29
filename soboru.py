@@ -239,7 +239,11 @@ def install(S):
     def life_body(text):
         # 본문: 빈 줄은 문단, "## "는 소제목(앞에 이모지), "### "는 번호 붙은 요점, "※ 낱말: 풀이"는 용어 풀이, "- "는 목록, "> "는 '핵심만 쏙' 상자. HTML은 쓰지 않음.
         # 매거진처럼 (운영자 2026-10-24: 토스처럼 깔끔하게): 소제목은 큰 글씨에 작은 이모지, 이어진 용어 풀이는 상자 하나로, 소제목마다 차례용 id(s1, s2…).
-        out, items, terms, n_head, check, n_point = [], [], [], 0, False, 0
+        out, items, terms, n_head, check, n_point, sec = [], [], [], 0, False, 0, 0
+        points = [0]  # 소제목(## )마다 요점(### ) 수
+        for l in (text or '').split('\n'):
+            if l.strip().startswith('## '): points.append(0)
+            elif l.strip().startswith('### '): points[-1] += 1
         def flush():
             nonlocal check
             if items:
@@ -259,11 +263,12 @@ def install(S):
                     if items: flush()
                     word, _, mean = line[2:].partition(':'); terms.append((word.strip(), mean.strip())); continue
                 flush()
-                if line.startswith('### '):  # 요점: 소제목 안에서 1, 2, 3… 번호를 붙여 하나씩
+                if line.startswith('### '):  # 요점: 소제목 안에 요점이 둘 이상일 때만 1, 2, 3… 번호 (하나뿐이면 번호 없이 굵은 제목)
                     n_point += 1
-                    out.append(Markup('<h3 class="sb-point"><span class="sb-point-n" aria-hidden="true">%d</span>%s</h3>') % (n_point, line[4:].strip()))
+                    if points[sec] > 1: out.append(Markup('<h3 class="sb-point"><span class="sb-point-n" aria-hidden="true">%d</span>%s</h3>') % (n_point, line[4:].strip()))
+                    else: out.append(Markup('<h3 class="sb-point">%s</h3>') % line[4:].strip())
                 elif line.startswith('## '):
-                    n_point = 0
+                    n_point = 0; sec += 1
                     emo, head = life_head(line, n_head)
                     n_head += 1; check = emo == '✅'
                     out.append(Markup('<h2 class="sb-h" id="s%d"><span class="sb-h-emo" aria-hidden="true">%s</span><span class="sb-h-t"><small>%02d</small>%s</span></h2>') % (n_head, emo, n_head, head))

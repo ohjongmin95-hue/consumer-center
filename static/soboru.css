@@ -2703,6 +2703,7 @@ main img,main video,main iframe,main table{max-width:100%}
 .sb-header-min .sb-close{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;color:#4e5968}
 .sb-header-min .sb-close:hover{background:rgba(0,27,55,.05);color:#191f28}
 .sb-close svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.sb:has(.sb-header-min) .site-footer{display:none}  /* 바닥글도 숨김: 쓰는 데만 집중 */
 .sb:has(.auth-page) .sb-header{border-bottom:0;background:transparent;position:absolute;left:0;right:0}
 .sb .auth-page{padding-top:120px;min-height:100vh}
 @media(max-width:560px){.sb .auth-page{padding-top:88px}}

@@ -1635,6 +1635,14 @@ def sign_in(user,remember):
     session['uid']=user['id'];session['uv']=user['session_ver'];session.permanent=bool(remember)
     g.signed_in=True  # 다른 사이트(소보루↔소비자제보센터)도 같이 로그인 (crosslogin.py)
 
+def nickname_error(db,nick):
+    # 닉네임 규칙 (아이디 가입·카카오 가입 공통). 문제가 없으면 ''
+    if not 2<=len(nick)<=12 or not re.match(r'^[0-9A-Za-z가-힣_]+$',nick):return ui_text('msg.m22','닉네임은 한글·영문·숫자로 2~12자로 정해 주세요.')
+    if nick in ('운영자','관리자','탈퇴한회원') or '운영' in nick or '관리자' in nick:return ui_text('msg.m23','사용할 수 없는 닉네임이에요.')
+    if db.execute('SELECT 1 FROM users WHERE nickname=?',(nick,)).fetchone():return ui_text('msg.m26','이미 쓰고 있는 닉네임이에요.')
+    return ''
+def phone_error(phone):
+    return '' if phone else ui_text('msg.phone_bad','휴대폰 번호를 확인해 주세요. (예: 010-1234-5678)')
 @app.route('/signup',methods=['GET','POST'])
 def signup():
     if g.user:return redirect(url_for('mypage'))
@@ -1643,19 +1651,19 @@ def signup():
     if request.form.get('website'):abort(400)
     f={k:request.form.get(k,'').strip() for k in ('login_id','nickname','email')}
     f['login_id']=f['login_id'].lower();pw=request.form.get('password','');pw2=request.form.get('password2','')
+    f['phone']=members.kr_phone(request.form.get('phone',''))  # 휴대폰 번호 (필수, 비공개: 본인 확인·연락용)
     errors=[]
     if not all(request.form.get(k) for k in ('agree_terms','agree_privacy','agree_age')):errors.append(ui_text('msg.m17','필수 동의 항목을 모두 확인해 주세요.'))
     if not LOGIN_ID_RE.match(f['login_id']):errors.append(ui_text('msg.m18','아이디는 영문 소문자·숫자·밑줄(_)로 4~20자로 정해 주세요.'))
     if not (8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):errors.append(ui_text('msg.m19','비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.'))
-    elif pw!=pw2:errors.append(ui_text('msg.m20','비밀번호 확인이 일치하지 않아요.'))
+    elif 'password2' in request.form and pw!=pw2:errors.append(ui_text('msg.m20','비밀번호 확인이 일치하지 않아요.'))  # 가입 화면은 확인 칸 대신 '보기' 버튼 (운영자 2026-10-29, 토스처럼)
     elif f['login_id'] and f['login_id'] in pw.lower():errors.append(ui_text('msg.m21','비밀번호에 아이디를 넣지 말아 주세요.'))
-    if not 2<=len(f['nickname'])<=12 or not re.match(r'^[0-9A-Za-z가-힣_]+$',f['nickname']):errors.append(ui_text('msg.m22','닉네임은 한글·영문·숫자로 2~12자로 정해 주세요.'))
-    elif f['nickname'] in ('운영자','관리자','탈퇴한회원') or '운영' in f['nickname'] or '관리자' in f['nickname']:errors.append(ui_text('msg.m23','사용할 수 없는 닉네임이에요.'))
+    if phone_error(f['phone']):errors.append(phone_error(f['phone']))
     if f['email'] and (len(f['email'])>120 or not MEMBER_EMAIL_RE.match(f['email'])):errors.append(ui_text('msg.m24','이메일 주소를 확인해 주세요.'))
     with conn() as db:
+        if nickname_error(db,f['nickname']):errors.append(nickname_error(db,f['nickname']))
         if not errors:
             if db.execute('SELECT 1 FROM users WHERE login_id=?',(f['login_id'],)).fetchone():errors.append(ui_text('msg.m25','이미 쓰고 있는 아이디예요.'))
-            if db.execute('SELECT 1 FROM users WHERE nickname=?',(f['nickname'],)).fetchone():errors.append(ui_text('msg.m26','이미 쓰고 있는 닉네임이에요.'))
             if f['email'] and db.execute('SELECT 1 FROM users WHERE email=? COLLATE NOCASE',(f['email'],)).fetchone():errors.append(ui_text('msg.email_taken','이미 가입한 이메일이에요. 그 계정으로 로그인해 주세요.'))
         if not errors:
             hour_ago=(datetime.datetime.now()-datetime.timedelta(hours=1)).isoformat(timespec='seconds')
@@ -1663,7 +1671,7 @@ def signup():
         if errors:
             for e in errors:flash(e)
             return render_template('signup.html',enabled=True),400
-        cur=db.execute('INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created) VALUES(?,?,?,?,?,?,?,?)',(f['login_id'],generate_password_hash(pw),f['nickname'],f['email'],TERMS_VERSION,now(),ip_hash(),now()))
+        cur=db.execute('INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created,phone) VALUES(?,?,?,?,?,?,?,?,?)',(f['login_id'],generate_password_hash(pw),f['nickname'],f['email'],TERMS_VERSION,now(),ip_hash(),now(),f['phone']))
         user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
         ad_event('signup',db)
     sign_in(user,False)
@@ -2524,6 +2532,7 @@ def admin_companies():
                 if email and not MEMBER_EMAIL_RE.match(email):flash('이메일 주소를 확인해 주세요.');return redirect(url_for('admin_companies'))
                 name=request.form.get('name','').strip()[:120] or company['name']
                 db.execute('UPDATE companies SET name=?,brand=?,biz_name=?,official_email=? WHERE id=?',(name,request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email,cid))
+                if email!=company['official_email']:db.execute("UPDATE companies SET email_source='' WHERE id=?",(cid,))  # 직접 고친 메일은 '자동 찾음' 표시를 뗌
                 flash(f'{name} 정보를 저장했어요.');return redirect(url_for('admin_companies'))
             if action=='approve' and company['status']=='pending':
                 # 공식 이메일 확인 + 운영자 승인. 메일을 못 보낸 경우엔 운영자가 직접 확인했다고 표시해야 승인돼요.

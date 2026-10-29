@@ -1761,7 +1761,7 @@ class SiteTest(unittest.TestCase):
                 page = c.get('/signup', base_url=J).get_data(as_text=True)
                 self.assertIn('class="site-header"', page)  # 가입 화면은 소비자제보센터 화면 그대로
                 token = re.search(r'name="_csrf" value="([^"]+)"', page)[1]
-                r = c.post('/signup', base_url=J, data={'_csrf': token, 'login_id': 'jebo_user', 'password': 'butter123', 'password2': 'butter123', 'nickname': '제보회원',
+                r = c.post('/signup', base_url=J, data={'_csrf': token, 'login_id': 'jebo_user', 'password': 'butter123', 'password2': 'butter123', 'nickname': '제보회원', 'phone': '010-5555-6666',
                                                         'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
                 self.assertTrue(r.headers['Location'].startswith(M + '/sso/begin?'))
                 r = hop(c, r); self.assertTrue(r.headers['Location'].startswith(J + '/sso/issue?'))
@@ -1801,9 +1801,16 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(admin.post('/admin/lists', data={'_csrf': token, 'list': 'process_steps', 'title': ['x'], 'icon': ['rocket'], 'body': ['']}).status_code, 400)
 
     def signup(self, client, login_id='sobo_ru', nickname='소보루', password='butter123', **extra):
-        data = {'login_id': login_id, 'password': password, 'password2': password, 'nickname': nickname,
+        data = {'login_id': login_id, 'password': password, 'nickname': nickname, 'phone': '010-1234-5678',
                 'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on', **extra}
         return self.post_form(client, '/signup', data)
+
+    def join_form(self, client):
+        # 소셜 가입 화면에 미리 채워진 닉네임을 그대로 써서 가입 (휴대폰 번호가 없으면 시험용 번호)
+        page = client.get('/auth/join').get_data(as_text=True)
+        form = {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on', 'nickname': re.search(r'name="nickname"[^>]*value="([^"]*)"', page)[1]}
+        if 'name="phone"' in page: form['phone'] = '010-2222-0000'
+        return form
 
     def test_signup_requires_consents_and_valid_fields(self):
         page = self.client.get('/signup').get_data(as_text=True)
@@ -1816,12 +1823,14 @@ class SiteTest(unittest.TestCase):
         weak = self.signup(self.client, password='12345678')
         self.assertIn('영문과 숫자를 섞어', weak.get_data(as_text=True))
         self.assertIn('사용할 수 없는 닉네임', self.signup(self.client, nickname='운영자').get_data(as_text=True))
-        made = self.signup(self.client)
+        self.assertIn('휴대폰 번호를 확인해 주세요', self.signup(self.client, phone='1234').get_data(as_text=True))
+        made = self.signup(self.client, phone='01012345678')
         self.assertEqual(made.status_code, 302)
         with self.site.conn() as db:
             user = db.execute('SELECT * FROM users').fetchone()
         self.assertNotEqual(user['pw_hash'], 'butter123')
         self.assertEqual(user['terms_version'], self.site.TERMS_VERSION)
+        self.assertEqual(user['phone'], '010-1234-5678')  # 휴대폰 번호는 하이픈 넣어 저장
         me = self.client.get('/me').get_data(as_text=True)
         self.assertIn('소보루님', me)
         other = self.site.app.test_client()
@@ -1908,9 +1917,10 @@ class SiteTest(unittest.TestCase):
             self.assertIn('카카오로 가입하기', page)
             self.assertIn('김실명', page)
             self.assertIn('010-1234-5678', page)
-            self.assertNotIn('name="nickname"', page)  # 닉네임은 묻지 않고 자동으로 정함
+            self.assertIn('name="nickname"', page)  # 닉네임은 직접 정함 (자동 닉네임을 미리 채워 둠)
+            self.assertNotIn('name="phone"', page)  # 카카오에서 받은 휴대폰 번호가 있으면 묻지 않음
             self.assertEqual(self.post_form(self.client, '/auth/join', {}).status_code, 400)
-            joined = self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            joined = self.post_form(self.client, '/auth/join', self.join_form(self.client))
             self.assertEqual(joined.status_code, 302)
             with self.site.conn() as db:
                 user = db.execute("SELECT * FROM users WHERE real_name='김실명'").fetchone()
@@ -1991,7 +2001,7 @@ class SiteTest(unittest.TestCase):
             state = re.search(r'state=([^&]+)', r.headers['Location'])[1]
             with patch.object(self.site.members, 'http', fake):
                 self.client.get(f'/auth/naver/callback?code=c&state={state}')
-            self.assertEqual(self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'}).status_code, 302)
+            self.assertEqual(self.post_form(self.client, '/auth/join', self.join_form(self.client)).status_code, 302)
             with self.site.conn() as db:
                 u = db.execute("SELECT * FROM users WHERE real_name='박실명'").fetchone()
             self.assertRegex(u['nickname'], r'^소비자\d{4}$')
@@ -3172,6 +3182,40 @@ class SiteTest(unittest.TestCase):
         reporter.post('/case/nudge', data={'_csrf': self.csrf(reporter, '/case')})
         self.assertFalse([m for m in mails if m[0] == 'cs@nudge-shop.example'])
 
+    def test_auto_forward_finds_company_email(self):
+        """등록 안 된 기업도 승인하면 이름으로 연결하고, 공정위 통신판매 신고 정보에서 메일을 찾아 자동으로 보냄 (운영자 요청 2026-10-29)"""
+        import company_mail, tempfile
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        tmp = tempfile.mkdtemp(); mails = []
+        env = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'SELLER_DIR_PATH': os.path.join(tmp, 'dir.sqlite3'),
+               'FTC_API_KEY': '', 'DATA_GO_KR_KEY': '', 'NTS_API_KEY': ''}
+        patcher = patch.dict(os.environ, env); patcher.start(); self.addCleanup(patcher.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        csv_path = os.path.join(tmp, 'seoul.csv')
+        with open(csv_path, 'w', encoding='cp949') as f:
+            f.write('통신판매번호,상호,사업자등록번호,법인여부,전자우편,업소상태\n'
+                    '1,(주)유명마켓,1234567890,법인,help@famous-market.example,통신판매업 신고\n'
+                    '2,유명마켓,9999999999,개인,old@famous-market.example,폐업\n'
+                    '3,동명상회,1111111111,개인,a@same.example,통신판매업 신고\n4,동명상회,2222222222,개인,b@same.example,통신판매업 신고\n')
+        self.assertEqual(company_mail.import_csv([csv_path]), 3)  # 폐업은 뺌
+        self.assertEqual(company_mail.find(['유명마켓'])[0], 'help@famous-market.example')
+        self.assertEqual(company_mail.find(['동명상회'])[0], '')  # 같은 이름이 여럿이면 고르지 않음
+        admin = self.login_admin()
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '유명마켓', 'subject': '유명마켓 환불 지연', 'description': '환불이 안 돼요',
+                'reporter_name': '오소비', 'phone': '010-8888-1212', 'contact': 'famous@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db: cid = db.execute("SELECT id FROM cases WHERE company='유명마켓'").fetchone()['id']
+        mails.clear()
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'review', 'review': 'ok'})
+        self.assertTrue([m for m in mails if m[0] == 'help@famous-market.example'])
+        with self.site.conn() as db:
+            co = db.execute('SELECT co.* FROM companies co JOIN cases c ON c.company_id=co.id WHERE c.id=?', (cid,)).fetchone()
+            self.assertEqual(co['official_email'], 'help@famous-market.example'); self.assertTrue(co['email_source'])
+        self.assertIn('자동으로 찾았어요', admin.get('/admin/companies').get_data(as_text=True))
+
     def test_ops_review_notice_requests_stats(self):
         # 3차: 심사 확인(개인정보 의심·중복 후보), 보완 요청, 추가 자료, 기업 안내 메일(빈도 제한·수신 거부), 정정·삭제·이의 신청, 운영 통계
         notify = self.site.notify
@@ -3807,6 +3851,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<span class="sb-point-n" aria-hidden="true">2</span>결제일을 기억하세요', html)
         self.assertIn("<dl class=\"sb-terms\">", html); self.assertIn("<dt>리볼빙</dt>", html)  # 용어 풀이는 상자 하나로
         self.assertNotIn('###', html)
+        with self.site.app.test_request_context('/'): one = str(self.site.app.jinja_env.globals['life_body']('## 가\n\n### 혼자인 요점\n\n설명\n\n## 나\n\n### 또 혼자\n\n설명'))
+        self.assertNotIn('sb-point-n', one); self.assertIn('<h3 class="sb-point">혼자인 요점</h3>', one)  # 요점이 하나뿐이면 번호 없음 (모두 1로 보이던 문제)
         with self.site.app.test_request_context('/'): hl = str(self.site.app.jinja_env.globals['life_body']('앞 **꼭 기억할 말** 뒤 <b>x</b> **'))
         self.assertIn('<strong class="sb-hl">꼭 기억할 말</strong>', hl); self.assertIn('&lt;b&gt;', hl); self.assertNotIn('**', hl)  # 형광펜 강조, 태그는 글자로
 
@@ -4868,7 +4914,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(calls[0][1]['client_id'], 'kr.co.consumerjebo.soboru'); self.assertNotIn('redirect_uri', calls[0][1])
             body = json.loads(base64.urlsafe_b64decode(calls[0][1]['client_secret'].split('.')[1] + '=='))
             self.assertEqual(body['sub'], 'kr.co.consumerjebo.soboru')
-            r = self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            r = self.post_form(self.client, '/auth/join', self.join_form(self.client))
             with self.site.conn() as db:
                 user = db.execute("SELECT * FROM users WHERE real_name='소보루'").fetchone()
                 tok = db.execute('SELECT refresh_token,client FROM apple_tokens').fetchone()
@@ -4940,7 +4986,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(calls[0][1]['redirect_uri'], 'http://localhost/auth/apple/callback')
             self.assertEqual(calls[0][1]['client_secret'].count('.'), 2)
             self.assertIn('Apple로 가입하기', self.client.get('/auth/join').get_data(as_text=True))
-            self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            self.post_form(self.client, '/auth/join', self.join_form(self.client))
             with self.site.conn() as db:
                 user = db.execute("SELECT * FROM users WHERE real_name='홍길동'").fetchone()
                 ident = db.execute('SELECT * FROM user_identities WHERE user_id=?', (user['id'],)).fetchone()

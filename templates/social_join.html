@@ -1,21 +1,22 @@
 {% extends 'base.html' %}
 {% block title %}{{ provider }}로 가입 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
-<main class="auth-page">
+<main class="auth-page auth-page-login">
+  <h1 class="auth-title auth-title-out">{{ provider }}로 가입하기</h1>
+  <p class="auth-lead auth-lead-out">닉네임만 정하면 가입이 끝나요</p>
   <div class="auth-card auth-card-wide">
     <form class="auth-body" method="post" autocomplete="off"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      {% include 'auth_logo.html' %}
-      <h1 class="auth-title">{{ provider }}로 가입하기</h1>
-      <p class="auth-lead">약관에 동의하면 가입이 끝나요. 제보할 때 이름과 연락처가 자동으로 채워져요.</p>
+      <label class="su-f su-nick"><span>{{ ui('board.nickname', '닉네임') }} <em>{{ ui('member.nick_hint2', '글과 댓글에 보이는 이름이에요') }}</em></span>
+        <input name="nickname" maxlength="12" required placeholder="{{ ui('member.nick_ph2', '한글·영문·숫자 2~12자') }}" value="{{ nick_suggest }}"></label>
+      {% if not phone %}<label class="su-f"><span>{{ ui('member.phone', '휴대폰 번호') }} <em>{{ ui('member.phone_hint', '공개되지 않아요') }}</em></span>
+        <input type="tel" name="phone" maxlength="20" required inputmode="tel" autocomplete="tel" placeholder="010-1234-5678" value="{{ request.form.get('phone','') }}"></label>{% endif %}
       {% if real_name or phone or email %}
       <dl class="join-profile" aria-label="{{ provider }}에서 받은 정보">
         {% if real_name %}<div><dt>이름</dt><dd>{{ real_name }}</dd></div>{% endif %}
-        {% if phone %}<div><dt>휴대전화</dt><dd>{{ phone }}</dd></div>{% endif %}
+        {% if phone %}<div><dt>휴대폰</dt><dd>{{ phone }}</dd></div>{% endif %}
         {% if email %}<div><dt>이메일</dt><dd>{{ email }}</dd></div>{% endif %}
       </dl>
-      <p class="join-profile-note">이름과 연락처는 공개되지 않아요. 제보 확인과 연락에만 쓰여요. 게시판 닉네임은 자동으로 정해지고 내 정보에서 바꿀 수 있어요.</p>
-      {% else %}
-      <p class="join-profile-note">게시판 닉네임은 자동으로 정해지고 내 정보에서 바꿀 수 있어요.</p>
+      <p class="join-profile-note">{{ provider }}에서 받은 정보는 공개되지 않아요. 제보 확인과 연락에만 쓰여요.</p>
       {% endif %}
       <div class="agree-box">
         <label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all', '모두 동의합니다') }}</span></label>

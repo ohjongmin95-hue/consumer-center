@@ -2,22 +2,34 @@
 {% block title %}회원가입 | {{ txt('site.name') }}{% endblock %}
 {% from 'social_macros.html' import social_buttons %}
 {% block content %}
-<main class="auth-page">
+<main class="auth-page auth-page-login su-page">
+  {# 토스식: 제목은 카드 위, 한 화면에 가입 버튼까지 (스크롤 없이) #}
+  <h1 class="auth-title auth-title-out">{{ ui('common.signup', '회원가입') }}</h1>
+  <p class="auth-lead auth-lead-out">{{ ui('member.signup_lead', '닉네임 하나로 제보·후기·수다를 시작해요') }}</p>
   <div class="auth-card auth-card-wide">
     <form class="auth-body" method="post" autocomplete="off"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
-      {% include 'auth_logo.html' %}
-      <h1 class="auth-title">{{ ui('common.signup', '회원가입') }}</h1>
       {% if not enabled %}<p class="auth-note">{{ ui('member.signup_closed', '회원가입은 곧 열려요.') }}</p>{% else %}{{ social_buttons('시작하기') }}{% endif %}
 
-      <input name="login_id" maxlength="20" required pattern="[A-Za-z0-9_]{4,20}" autocapitalize="off" spellcheck="false" placeholder="{{ ui('member.id_ph', '아이디 (영문 소문자·숫자 4~20자)') }}" aria-label="{{ ui('member.id', '아이디') }}" value="{{ request.form.get('login_id','') }}">
-      <input type="password" name="password" minlength="8" maxlength="64" required autocomplete="new-password" placeholder="{{ ui('member.pw_ph', '비밀번호 (영문+숫자 8자 이상)') }}" aria-label="{{ ui('member.pw', '비밀번호') }}">
-      <input type="password" name="password2" minlength="8" maxlength="64" required autocomplete="new-password" placeholder="{{ ui('member.pw2', '비밀번호 확인') }}" aria-label="{{ ui('member.pw2', '비밀번호 확인') }}">
-      <input name="nickname" maxlength="12" required placeholder="{{ ui('member.nick_ph', '닉네임 (2~12자, 게시판에 보여요)') }}" aria-label="{{ ui('board.nickname', '닉네임') }}" value="{{ request.form.get('nickname','') }}">
-      <input type="email" name="email" maxlength="120" placeholder="{{ ui('member.email_ph2', '이메일 (선택, 이메일로도 로그인)') }}" aria-label="{{ ui('member.email_ph', '이메일 (선택)') }}" value="{{ request.form.get('email','') }}">
+      {# 토스식 한 화면: 이름표 대신 칸 안 안내, PC는 두 칸씩 나란히 → 스크롤 없이 가입 버튼까지 #}
+      <div class="su-grid">
+        <label class="su-f"><span class="sr-only">{{ ui('board.nickname', '닉네임') }}</span>
+          <input name="nickname" maxlength="12" required placeholder="{{ ui('member.nick_ph3', '닉네임 (글에 보이는 이름)') }}" value="{{ request.form.get('nickname','') }}"></label>
+        <label class="su-f"><span class="sr-only">{{ ui('member.id', '아이디') }}</span>
+          <input name="login_id" maxlength="20" required pattern="[A-Za-z0-9_]{4,20}" autocapitalize="off" spellcheck="false" placeholder="{{ ui('member.id_ph3', '아이디 (영문·숫자)') }}" value="{{ request.form.get('login_id','') }}"></label>
+        <label class="su-f su-pw"><span class="sr-only">{{ ui('member.pw', '비밀번호') }}</span>
+          <input type="password" name="password" minlength="8" maxlength="64" required autocomplete="new-password" placeholder="{{ ui('member.pw_ph3', '비밀번호 8자 이상') }}">
+          <button type="button" class="su-eye" aria-label="{{ ui('member.pw_show', '비밀번호 보기') }}" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></label>
+        <label class="su-f"><span class="sr-only">{{ ui('member.phone', '휴대폰 번호') }}</span>
+          <input type="tel" name="phone" maxlength="20" required inputmode="tel" autocomplete="tel" placeholder="{{ ui('member.phone_ph3', '휴대폰 번호 (비공개)') }}" value="{{ request.form.get('phone','') }}"></label>
+        <label class="su-f"><span class="sr-only">{{ ui('member.email', '이메일') }}</span>
+          <input type="email" name="email" maxlength="120" autocomplete="email" placeholder="{{ ui('member.email_ph4', '이메일 (선택)') }}" value="{{ request.form.get('email','') }}"></label>
+      </div>
 
       <div class="agree-box">
-        <label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all', '모두 동의합니다') }}</span></label>
+        <div class="agree-all-row"><label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all2', '약관 모두 동의') }} <em>{{ ui('member.agree_all_sub', '이용약관·개인정보·만 14세 이상') }}</em></span></label>
+          <button type="button" class="agree-more" aria-expanded="false" aria-controls="agree-list">{{ ui('member.view', '보기') }}</button></div>
+        <div class="agree-list" id="agree-list" hidden>
         <details class="agree-row">
           <summary><label><input type="checkbox" name="agree_terms" required{% if request.form.get('agree_terms') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_terms', '이용약관 동의') }}</span></label><span class="agree-view">{{ ui('member.view', '보기') }}</span></summary>
           <div class="agree-detail consent-scroll">{{ doc('policy.terms') }}</div>
@@ -33,14 +45,13 @@
           </div>
         </details>
         <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_age" required{% if request.form.get('agree_age') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_age', '만 14세 이상입니다') }}</span></label></div>
+        </div>
       </div>
 
       <button class="auth-submit" type="submit"{% if not enabled %} disabled{% endif %}>{{ ui('member.signup_btn', '가입하기') }}</button>
     </form>
-    <div class="auth-foot auth-foot-one">
-      <a href="{{ url_for('login') }}">{{ ui('member.to_login', '이미 회원이라면 로그인') }}</a>
-    </div>
   </div>
+  <p class="auth-join">{{ ui('member.already', '이미 회원이신가요?') }} <a href="{{ url_for('login') }}">{{ ui('common.login', '로그인') }}</a></p>
 </main>
 <script>
   (function () {
@@ -51,6 +62,15 @@
     boxes.forEach(function (b) { b.addEventListener('change', function () { all.checked = Array.prototype.every.call(boxes, function (x) { return x.checked; }); }); });
     // 체크박스를 누를 때 "{{ ui('member.view', '보기') }}"가 같이 열리지 않도록 함
     document.querySelectorAll('.agree-row summary label').forEach(function (l) { l.addEventListener('click', function (e) { e.stopPropagation(); }); });
+    // 비밀번호 확인 칸 대신 '보기' (토스처럼)
+    var eye = document.querySelector('.su-eye');
+    if (eye) eye.addEventListener('click', function () { var i = eye.previousElementSibling, on = i.type === 'password'; i.type = on ? 'text' : 'password'; eye.setAttribute('aria-pressed', on); eye.classList.toggle('on', on); });
+    // 약관 목록은 접어 두고 '보기'로 펼침. 하나라도 안 했으면 가입할 때 저절로 펼쳐서 알려 줌
+    var more = document.querySelector('.agree-more'), list = document.getElementById('agree-list');
+    function open(v) { list.hidden = !v; more.setAttribute('aria-expanded', v); more.textContent = v ? '{{ ui('member.fold', '접기') }}' : '{{ ui('member.view', '보기') }}'; }
+    more.addEventListener('click', function () { open(list.hidden); });
+    boxes.forEach(function (b) { b.addEventListener('invalid', function () { open(true); }); });
+    {% if request.method == 'POST' %}open(true);{% endif %}
   })();
 </script>
 {% endblock %}
