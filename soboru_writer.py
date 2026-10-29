@@ -110,6 +110,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉�
           '- 뉴스에 "원문 속 숫자 문장(원문 확인)"이 있으면 요약보다 그 원문 문장을 믿고, 숫자는 원문 문장에서 대상과 함께 옮긴다.\n'
           '- 뉴스 요약은 중간에 잘려 "..."로 끝날 수 있다. 잘린 문장의 숫자는 누구의 숫자인지 끝까지 보이지 않으면 쓰지 않는다(예: "국민은행과 하나은행은 각각 119명..."은 하나은행 숫자가 잘린 것이니 각각의 숫자를 쓰지 않는다).\n'
           "- 날짜는 '10월 17일'처럼 풀어 쓴다.\n"
+          "- 검색 추이 같은 통계는 '최근 달'·'최근 3달' 흐름을 중심으로 쓰고 기간을 함께 밝힌다. 몇 달 전 숫자를 요즘 일처럼 쓰지 않는다.\n"
           "- 목록이나 팁 개수를 숫자로 세지 않는다('3가지' 대신 '이렇게').\n"
           '- 인터넷 검색이나 네가 알고 있는 지식으로 사실을 보태지 않는다. 자료가 말하지 않는 원인·전망은 짐작하지 말고 필요하면 "자료만으로는 알 수 없어요"라고 쓴다.\n'
           '- 기업은 자료의 숫자만 전하고 좋다·나쁘다·악덕·갑질 같은 평가나 비난을 하지 않는다. 사람 이름·연락처 같은 개인정보는 쓰지 않는다.\n'
@@ -671,9 +672,10 @@ def install(S):
             if len(vals) < 6: continue
             last, prev = statistics.mean(vals[-3:]), statistics.mean(vals[-6:-3])
             peak = max(s, key=lambda p: p[1])
-            rows.append({'검색어': name, '최근 3달 평균 지수': round(last, 1), '그 전 3달 평균 지수': round(prev, 1),
-                         '증감률(%)': round((last - prev) / prev * 100) if prev else None, '가장 많이 찾은 달': month(peak[0]), '그 달 지수': round(peak[1], 1),
-                         '달별 지수': [[month(p), round(v, 1)] for p, v in s]})
+            row = {'검색어': name, '최근 달': month(s[-1][0]), '최근 달 지수': round(vals[-1], 1), '최근 3달 평균 지수': round(last, 1), '그 전 3달 평균 지수': round(prev, 1),
+                   '증감률(%)': round((last - prev) / prev * 100) if prev else None, '달별 지수': [[month(p), round(v, 1)] for p, v in s[-6:]]}
+            if peak in s[-3:]: row.update({'가장 많이 찾은 달': month(peak[0]), '그 달 지수': round(peak[1], 1)})  # 오래된 정점은 글이 옛날 이야기처럼 보여 뺌
+            rows.append(row)
         if not rows or rows[0]['검색어'] != topic: raise Skip(f'"{topic}" 검색 추이 자료가 모자라요')
         news = recent_news(topic)
         hits = corpus.related(' '.join(words), limit=3)
@@ -771,11 +773,15 @@ def install(S):
             import naverhub
             series = naver()['trend']([q], 12); start, end, unit = naverhub.periods(12)
             vals = series[0][1] if series else []
+            if (datetime.date.fromisoformat(end) + datetime.timedelta(days=1)).day != 1: vals = vals[:-1]  # 덜 찬 이번 달은 뺌
             if len(vals) < 6: return None
+            month = lambda p: f'{p[:4]}년 {int(p[5:7])}월'
             v = [x for _, x in vals]; last, prev = statistics.mean(v[-3:]), statistics.mean(v[-6:-3]); peak = max(vals, key=lambda p: p[1])
-            return {'검색어': q, '기간': f'{start} ~ {end}', '단위': '달', '지수 설명': '기간 안에서 가장 많이 찾은 달을 100으로 둔 상대 지수예요',
-                    '최근 3달 평균 지수': round(last, 1), '그 전 3달 평균 지수': round(prev, 1),
-                    '증감률(%)': round((last - prev) / prev * 100) if prev else None, '가장 많이 찾은 달': f'{peak[0][:4]}년 {int(peak[0][5:7])}월'}
+            out = {'검색어': q, '기간': f'{start} ~ {end}', '단위': '달', '지수 설명': '기간 안에서 가장 많이 찾은 달을 100으로 둔 상대 지수예요',
+                   '최근 달': month(vals[-1][0]), '최근 달 지수': round(v[-1], 1), '최근 3달 평균 지수': round(last, 1), '그 전 3달 평균 지수': round(prev, 1),
+                   '증감률(%)': round((last - prev) / prev * 100) if prev else None}
+            if peak in vals[-3:]: out['가장 많이 찾은 달'] = month(peak[0])
+            return out
         except Exception: return None
 
     def kosis_facts(q, category):
