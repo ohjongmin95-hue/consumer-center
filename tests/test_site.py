@@ -117,6 +117,42 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('060점', guide)
         self.assertIn('/companies/grade', self.client.get('/companies').get_data(as_text=True))
 
+    def test_silent_company_listed_with_one_case(self):
+        # 검은고양이처럼: 제보가 1건이어도 전달 뒤 14일 동안 답이 없으면 '답변 없는 기업'에 공개, 답하면 바로 빠짐
+        import datetime, jebo
+        ago = lambda d: (datetime.datetime.now() - datetime.timedelta(days=d)).isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            co = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES('묵묵부답몰','2','listed','','','','x')").lastrowid
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,company_id,subject,description,request_text,created,forwarded_at,reviewed_at,status,review) VALUES('SL-1','x','배송·환불','묵묵부답몰',?,'환불','환불이 안 돼요','환불',?,?,?,'기업 답변 대기','ok')",
+                             (co, ago(17), ago(16), ago(16))).lastrowid
+            rows = jebo.silent_companies(db)
+            self.assertIn(('묵묵부답몰', 1, 1), [(p['name'], p['n'], p['silent']) for p in rows])
+        self.assertIn('묵묵부답몰', self.client.get('/companies/no-answer').get_data(as_text=True))
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertIn('답변 없는 기업', home)
+        self.assertIn('묵묵부답몰', home)
+        self.assertIn('/companies/no-answer', self.client.get('/companies').get_data(as_text=True))
+        with self.site.conn() as db:
+            db.execute("INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)", (cid, '기업 답변', '확인할게요', ago(0)))
+            self.assertNotIn('묵묵부답몰', [p['name'] for p in jebo.silent_companies(db)])
+
+    def test_home_pieces_hidden_and_toggle(self):
+        # 꾸밈 조각(빨간 점 꼬리표·고민될 땐·오늘의 수다 상자)은 처음부터 숨김, 관리자가 다시 보이게 할 수 있음
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertNotIn('nn-voice-tag', home)
+        self.assertNotIn('고민될 땐', home)
+        self.assertNotIn('nn-talk-box', home)
+        admin = self.login_admin()
+        token = self.csrf(admin, '/admin/screens')
+        self.assertTrue(admin.post('/admin/screens', data={'_csrf': token, 'page': '_piece', 'block': 'home.vs_box', 'act': 'show', 'ajax': '1'}).get_json()['ok'])
+        self.assertIn('고민될 땐', self.client.get('/').get_data(as_text=True))
+        self.assertEqual(admin.post('/admin/screens', data={'_csrf': token, 'page': '_piece', 'block': 'nope', 'act': 'show'}).status_code, 400)
+        admin.post('/admin/screens', data={'_csrf': token, 'page': '_piece', 'block': 'home.vs_box', 'act': 'hide', 'ajax': '1'})
+        screens = admin.get('/admin/screens').get_data(as_text=True)
+        self.assertIn('작은 꾸밈 넣기 · 지우기', screens)
+        self.assertIn('＋ 넣기', screens)
+        self.assertNotIn('고민될 땐', self.client.get('/').get_data(as_text=True))
+
     def test_openai_credit_alert(self):
         # OpenAI 충전금이 바닥나면(429 insufficient_quota) 관리자 화면 맨 위에 알림, 충전 뒤 호출이 성공하면 저절로 사라짐
         desk = self.site.companydesk

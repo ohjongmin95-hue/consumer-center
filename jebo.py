@@ -120,6 +120,23 @@ def no_answer(case,has_answer,today=None):
     d=days_since(case['forwarded_at'],today)
     return d is not None and d>=ANSWER_DAYS
 
+def silent_companies(db,limit=None,today=None,days=365):
+    """답변 없는 기업: 기업에 전달하고 ANSWER_DAYS일이 지나도록 공식 답변이 없는 확인된 제보가 1건이라도 있으면 들어감.
+    제보 수(MIN_N)와 상관없음. 기업이 답하면 그 제보는 바로 빠짐. 최근 days일 동안 접수된 제보만 셈."""
+    today=today or datetime.date.today()
+    since=(today-datetime.timedelta(days=days)).isoformat()
+    rows=[r for r in db.execute("""SELECT c.id,c.company_id,c.status,c.review,c.reviewed_at,c.created,c.forwarded_at,co.name FROM cases c JOIN companies co ON co.id=c.company_id
+        WHERE co.status IN ('active','listed') AND c.forwarded_at IS NOT NULL AND c.forwarded_at!='' AND c.created>=?""",(since,)) if valid(r)]
+    first=first_answers(db,[r['id'] for r in rows])
+    per={}
+    for r in rows:
+        p=per.setdefault(r['company_id'],{'id':r['company_id'],'name':r['name'],'n':0,'silent':0,'oldest':0})
+        p['n']+=1
+        if no_answer(r,r['id'] in first,today):
+            p['silent']+=1;p['oldest']=max(p['oldest'],days_since(r['forwarded_at'],today) or 0)
+    out=sorted([p for p in per.values() if p['silent']],key=lambda p:(-p['silent'],-p['oldest'],p['name']))
+    return out[:limit] if limit else out
+
 def grade_of(score):
     return next(g for cut,g in GRADE_CUTS if score>=cut)
 
@@ -226,6 +243,12 @@ def install(S):
                 WHERE co.status IN ('active','listed') GROUP BY co.id ORDER BY n_public DESC,co.name LIMIT 30""").fetchall()
             grades={c['id']:company_grade(db,c['id'])['grade'] for c in list(found)+list(busy)}
         return render_template('companies.html',q=q,found=found,busy=busy,grades=grades)
+
+    @app.route('/companies/no-answer')
+    def companies_silent():
+        # 답변 없는 기업 (검은고양이처럼): 제보 1건이어도 전달 뒤 ANSWER_DAYS일 동안 답이 없으면 공개
+        with conn() as db:rows=silent_companies(db)
+        return render_template('companies_silent.html',rows=rows,days=ANSWER_DAYS)
 
     @app.route('/companies/grade')
     def company_grade_guide():

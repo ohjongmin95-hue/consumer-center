@@ -1048,6 +1048,8 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-ans{border:1px solid var(--sb-line);border-radius:24px;padding:22px 22px 8px}
 .nn-ans h3{font-size:17px;font-weight:800;margin:0 0 6px;letter-spacing:-.02em}
 .nn-ans h3 span{font-family:Tossface,sans-serif;margin-right:2px}
+.nn-ans h3 small{display:block;margin-top:3px;font-size:12px;font-weight:600;color:var(--sb-mute);letter-spacing:0}
+.nn-ans-all{display:block;padding:12px 0 14px;border-top:1px solid var(--sb-line);font-size:13px;font-weight:700;color:var(--sb-mute)}.nn-ans-all:hover{color:var(--sb-orange)}
 .nn-ans li{display:flex;align-items:center;gap:12px;padding:13px 0}
 .nn-ans .nm{flex:none;width:120px;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nn-ans .nm:hover{color:var(--sb-orange)}
@@ -1518,6 +1520,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .ed-blockbar button:disabled{opacity:.35;cursor:default}
 .ed-hiddenblocks{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:24px 0;padding:12px;border-radius:12px;background:#f2f4f6;font-size:13px}
 .ed-hiddenblocks .ed-blockbar{margin:0;display:inline-flex}
+.ed-piece{display:inline-flex;margin:0 0 8px;padding:4px 6px 4px 10px;font-size:12px;border-style:dotted}.ed-piece.off{background:#f2f4f6;color:#6b7684}
 .sb-ft-why strong{color:var(--sb-orange);font-weight:800}
 .nn-intro-kicker strong{color:var(--sb-orange)}.nn-intro .nn-intro-kicker strong{color:var(--sb-brown)}
 @media(max-width:680px){body.sb .ed-bar{bottom:calc(74px + env(safe-area-inset-bottom))}body.sb .ed-bar form:has(.ed-bar-out){display:none}}  /* 폰: 편집 막대가 화면 밖으로 안 넘치게 로그아웃은 관리자 화면에서 */

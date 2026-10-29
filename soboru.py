@@ -57,6 +57,10 @@ PAGE_BLOCKS = {
 }
 # 예전 '메인 화면 순서' 저장값(top·life·rank 켜고 끄기)을 새 묶음으로 옮길 때
 BLOCKS_OFF = {'home': ('quick',)}  # 처음엔 숨겨 두는 묶음 (관리자 > 화면 편집에서 다시 켤 수 있음). '이런 곳' 소개는 제보·픽이 먼저 보이니 빼 둠 (운영자 2026-10-24)
+# 숨길 수 있는 작은 꾸밈 조각: 키 → (이름, 기본으로 보이기). OH 2026-10-29: 셋 다 처음부터 숨김
+PIECES = {'home.live_tag': ('소비자의 소리 옆 빨간 점 꼬리표', False),
+          'home.vs_box': ('골라주세요 위 "고민될 땐" 안내 상자', False),
+          'home.suda_box': ('수다방 위 "오늘의 수다" 상자', False)}
 OLD_HOME_SECTIONS = {'top': ('intro', 'quick', 'live'), 'life': ('life',), 'rank': ('pick', 'talk', 'answer')}
 # 제보 카드 대표 그림: 제보 유형별 이모지·바탕색
 REPORT_EMOJI = {'배송·교환·환불': '📦', '계약·해지': '📝', '요금·결제': '💳', '품질·하자·AS': '🛠️', '허위·과장 광고': '📢',
@@ -293,6 +297,8 @@ def install(S):
                 JOIN companies co ON co.id=c.company_id WHERE co.status IN ('active','listed') AND c.forwarded_at IS NOT NULL AND c.created>=?""", (since,)).fetchall()
             good = [r for r in rows if jebo.valid(r)]
             first = jebo.first_answers(db, [r['id'] for r in good])
+            # 답변 없는 기업은 제보 수와 상관없이 (1건이어도) 전달 뒤 답이 없으면 올라감
+            silent = jebo.silent_companies(db, limit)
         per = {}
         for r in good:
             p = per.setdefault(r['company_id'], {'id': r['company_id'], 'name': r['name'], 'n': 0, 'answered': 0, 'waits': []})
@@ -307,11 +313,9 @@ def install(S):
             p['rate'] = round(100 * p['answered'] / p['n'])
             p['median_h'] = statistics.median(p['waits']) if p['waits'] else None
             p['median'] = jebo.fmt_hours(p['median_h'])
-            p['waiting'] = p['n'] - p['answered']
             out.append(p)
         best = sorted([p for p in out if p['answered']], key=lambda p: (-p['rate'], p['median_h'] if p['median_h'] is not None else 1e9, -p['n']))[:limit]
-        wait = sorted([p for p in out if p['waiting']], key=lambda p: (-p['waiting'], p['rate'], -p['n']))[:limit]
-        return {'best': best, 'wait': wait, 'days': days, 'min_n': jebo.MIN_N}
+        return {'best': best, 'wait': silent, 'days': days, 'min_n': jebo.MIN_N, 'silent_days': jebo.ANSWER_DAYS}
 
     app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, life_toc=life_toc, company_rank=company_rank,
                                  ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES, LIFE_EMOJI=LIFE_EMOJI, GUIDE_EMOJI=GUIDE_EMOJI,
@@ -364,7 +368,31 @@ def install(S):
         return (Markup('<div class="ed-hiddenblocks"><b>숨긴 묶음</b>')
                 + Markup('').join(Markup('<span class="ed-blockbar" data-page="%s" data-block="%s">%s <button type="button" data-act="show">보이기</button></span>') % (page, k, names[k]) for k in off)
                 + Markup('</div>'))
-    app.jinja_env.globals.update(blocks=blocks, ed_block=ed_block, ed_hidden_blocks=ed_hidden_blocks)
+    # ---- 작은 꾸밈 조각(꼬리표·안내 상자) 숨기기: 편집 모드에서 조각마다 숨기기/보이기 -------------
+    def pieces():
+        cache = g.setdefault('pieces', None) if has_request_context() else None
+        if cache is None:
+            with conn() as db: row = db.execute("SELECT value FROM soboru_settings WHERE key='pieces'").fetchone()
+            try: saved = json.loads(row[0]) if row else {}
+            except ValueError: saved = {}
+            cache = {k: bool(saved.get(k, on)) for k, (_, on) in PIECES.items()}
+            if has_request_context(): g.pieces = cache
+        return cache
+
+    def piece_on(key):
+        # 템플릿: {% if piece_on('home.vs_box') %}...{% endif %}{{ ed_piece('home.vs_box') }}
+        return pieces().get(key, True)
+
+    def ed_piece(key):
+        if not S.editing() or key not in PIECES: return ''
+        on = piece_on(key)
+        return (Markup('<span class="ed-blockbar ed-piece%s" data-page="_piece" data-block="%s"><b>%s</b><button type="button" data-act="%s">%s</button></span>')
+                % ('' if on else ' off', key, PIECES[key][0] + ('' if on else ' (지움)'), 'hide' if on else 'show', '✕ 지우기' if on else '＋ 넣기'))
+
+    def save_piece(key, on):
+        cur = dict(pieces()); cur[key] = bool(on)
+        with conn() as db: db.execute('INSERT OR REPLACE INTO soboru_settings(key,value) VALUES(?,?)', ('pieces', json.dumps({k: int(v) for k, v in cur.items()})))
+    app.jinja_env.globals.update(blocks=blocks, ed_block=ed_block, ed_hidden_blocks=ed_hidden_blocks, piece_on=piece_on, ed_piece=ed_piece)
 
     def report_items(limit=12, pins=()):
         # 공개 동의 + 게시된 제보만 (비밀글·게시 전·반려·중복은 메인 카드에 안 나감)
@@ -459,6 +487,12 @@ def install(S):
                         else: db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated', (S.db_key(key), value, stamp))
                 flash('문구를 저장했어요.')
                 return redirect(url_for('admin_screens', _anchor='page-' + page))
+            if page == '_piece':  # 작은 꾸밈 조각 숨기기·보이기
+                if f.get('block') not in PIECES or f.get('act') not in ('hide', 'show'): abort(400)
+                save_piece(f['block'], f['act'] == 'show')
+                if f.get('ajax'): return {'ok': True}
+                flash('%s을(를) %s.' % (PIECES[f['block']][0], '넣었어요' if f['act'] == 'show' else '지웠어요'))
+                return redirect(url_for('admin_screens', _anchor='page-' + f['block'].split('.')[0]))
             if page not in PAGE_BLOCKS: abort(400)
             if f.get('act') == 'order':  # 순서표 통째로 저장 (끌어서 옮기기·숫자)
                 keys = [k for k in f.getlist('block') if k in dict(PAGE_BLOCKS[page][1])]
@@ -470,7 +504,8 @@ def install(S):
             return redirect(url_for('admin_screens', _anchor='page-' + page))
         changed = S.saved_keys('site_content')
         screens = [{'key': k, 'name': n, 'url': u(), 'texts': screen_keys(files), 'blocks': page_blocks(k) if k in PAGE_BLOCKS else None,
-                    'names': dict(PAGE_BLOCKS[k][1]) if k in PAGE_BLOCKS else {}} for k, n, u, files in SCREENS]
+                    'names': dict(PAGE_BLOCKS[k][1]) if k in PAGE_BLOCKS else {},
+                    'pieces': [(pk, PIECES[pk][0], piece_on(pk)) for pk in PIECES if pk.split('.')[0] == k]} for k, n, u, files in SCREENS]
         return render_template('admin_screens.html', screens=screens, fields=site_content.FIELDS, content=S.load_content(), changed=changed)
 
     # ---- 생활정보 화면 ----------------------------------------------------

@@ -201,12 +201,15 @@ def install(S):
                 f"■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n■ 접수일: {case['created'][:10]}\n\n"
                 + ("제보자가 아직 답변을 받지 못해 답변을 기다리고 있다고 알려 왔습니다.\n\n" if nudge else '') +
                 f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남길 수 있습니다. 답변 등록은 무료이며, 링크는 이 제보 하나만 볼 수 있습니다.\n{link}\n\n"
+                f"{jebo.ANSWER_DAYS}일 동안 답변이 없으면 기업 페이지와 '답변 없는 기업' 목록에 '답변 없음'으로 공개됩니다(제보가 1건이어도 같습니다). "
+                "공개된 제보와 답변 기록은 언론 보도에 인용될 수 있으며, 해결되지 않은 제보는 한국소비자원(1372)·공정거래위원회 등 관계 기관의 피해구제 절차로 연계해 안내합니다. "
+                "답변을 등록하면 '답변 없음' 표시는 바로 사라집니다.\n\n"
                 "이 메일에 바로 답장하셔도 담당자가 받아 봅니다.\n\n"
                 "제보는 소비자 개인의 경험과 주장이며, 센터가 사실관계를 확인한 내용이 아닙니다. 답변 여부와 내용은 귀사가 정합니다.\n"
                 f"{notify.site_name()}는 공공기관이 아닌 민간 플랫폼입니다.\n\n"
                 f"이런 안내 메일을 그만 받으려면: {optout}")
         html = render_template('company_notice_email.html', subject=subject, company=company['name'], site=notify.site_name(), receipt=case['receipt'],
-                               category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind')
+                               category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind', silent_days=jebo.ANSWER_DAYS)
         try:
             notify.send_email(to, subject, body, html=html); status, memo = '보냄', ''
         except Exception as e:

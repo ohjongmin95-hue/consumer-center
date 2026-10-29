@@ -25,7 +25,7 @@
     <div class="nn-intro-copy">
       <p class="nn-intro-kicker">{{ ui_rich('home.intro_kicker', '**소**비자 권익 **보**호를 위한 **루**트') }}</p>
       <h1 class="nn-intro-name">{{ ui('home.intro_title', '소보루') }}</h1>
-      <p class="nn-intro-sub">{{ ui('home.intro_sub', '억울한 일은 제보하고, 써 본 건 추천하고, \n내 권리는 쉽게 알아보는 소비자 정보 플랫폼이에요.') }}</p>
+      <p class="nn-intro-sub">{{ ui('home.intro_sub', '억울한 일은 제보해 기사로도 알리고, \n써 본 건 추천하는 소비자 정보 플랫폼이에요.') }}</p>
       <div class="nn-intro-btns"><a class="sb-cta" href="{{ url_for('report') }}">{{ ui('home.intro_btn', '제보하기') }}</a><a class="nn-intro-write" href="{{ url_for('board_write', type='review') }}">{{ ui('home.write1', '내돈내산 후기 쓰기') }}</a></div>
     </div>
     {# 뉴닉식 그림: 귤색 바탕 오른쪽에 소보루 캐릭터 + 말풍선 #}
@@ -56,7 +56,7 @@
   </section>
   {% elif blk == 'live' %}
   <section class="nn-sec nn-live nn-live-wide">
-    <div class="nn-sec-head nn-voice"><h2><span class="tf" aria-hidden="true">📣</span> {{ ui('home.live_title', '소비자의 소리') }}</h2><span class="nn-voice-tag"><span class="nn-dot" aria-hidden="true"></span>{{ ui('home.live_tag', '소비자가 직접 올린 제보') }}</span><a href="{{ url_for('reports') }}">{{ ui('home.live_more', '전체 보기 ›') }}</a></div>
+    <div class="nn-sec-head nn-voice"><h2><span class="tf" aria-hidden="true">📣</span> {{ ui('home.live_title', '소비자의 소리') }}</h2>{% if piece_on('home.live_tag') %}<span class="nn-voice-tag"><span class="nn-dot" aria-hidden="true"></span>{{ ui('home.live_tag', '소비자가 직접 올린 제보') }}</span>{% endif %}{{ ed_piece('home.live_tag') }}<a href="{{ url_for('reports') }}">{{ ui('home.live_more', '전체 보기 ›') }}</a></div>
     <ol>
       {% for c in cases[:6] %}
       <li><a href="{{ url_for('case_open', case_id=c.no) if (c.secret or c.pending) else url_for('public_case', case_id=c.no) }}">
@@ -125,21 +125,22 @@
   {% elif blk == 'answer' %}
   <section class="nn-sec nn-answer">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">{{ ui('home.answer_eyebrow', '최근 {days}일 · 제보 {n}건 이상 받은 기업', days=rank.days, n=rank.min_n) }}</p><h2><span class="tf" aria-hidden="true">🏢</span> {{ ui('home.answer_title', '기업 답변 기록') }}</h2><p class="nn-sub">{{ ui('home.answer_sub', '소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.') }}</p></div>
+      <div><p class="nn-eyebrow">{{ ui('home.answer_eyebrow', '기업에 전달된 제보로만 세요', days=rank.days, n=rank.min_n) }}</p><h2><span class="tf" aria-hidden="true">🏢</span> {{ ui('home.answer_title', '기업 답변 기록') }}</h2><p class="nn-sub">{{ ui('home.answer_sub', '소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.') }}</p></div>
       <a class="nn-more" href="{{ url_for('companies') }}">{{ ui('home.answer_more', '기업 찾기 ›') }}</a>
     </div>
     <div class="nn-ans-grid">
       <div class="nn-ans">
-        <h3><span aria-hidden="true">👏</span> {{ ui('home.best_title', '답변 잘한 기업') }}</h3>
+        <h3><span aria-hidden="true">👏</span> {{ ui('home.best_title', '답변 잘한 기업') }}<small>{{ ui('home.best_rule', '최근 {days}일 · 제보 {n}건 이상', days=rank.days, n=rank.min_n) }}</small></h3>
         <ol>{% for p in rank.best %}<li><span class="nn-rank{{ ' hi' if loop.index <= 3 }}">{{ loop.index }}</span><a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
           <span class="nn-bar"><i style="width:{{ p['rate'] }}%"></i></span><span class="nn-val"><b>{{ p['rate'] }}%</b>{{ p['median'] }}</span></li>
         {% else %}<li class="nn-empty">{{ ui('home.best_empty', '제보가 쌓이면 기업별 답변 기록이 여기에 나와요.') }}</li>{% endfor %}</ol>
       </div>
       <div class="nn-ans">
-        <h3><span aria-hidden="true">⏳</span> {{ ui('home.wait_title', '답변을 기다리는 기업') }}</h3>
+        <h3><span aria-hidden="true">⏳</span> {{ ui('home.silent_title', '답변 없는 기업') }}<small>{{ ui('home.silent_rule', '전달 뒤 {days}일 넘게 답이 없어요', days=rank.silent_days) }}</small></h3>
         <ol>{% for p in rank.wait %}<li><span class="nn-rank">{{ loop.index }}</span><a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
-          <span class="nn-val w"><b>{{ ui('home.wait_count', '{n}건', n=p['waiting']) }}</b>{{ ui('home.wait_none', '답변 없음') }}</span></li>
-        {% else %}<li class="nn-empty">{{ ui('home.wait_empty', '답변을 미루는 기업이 아직 없어요.') }}</li>{% endfor %}</ol>
+          <span class="nn-val w"><b>{{ ui('home.wait_count', '{n}건', n=p['silent']) }}</b>{{ ui('home.wait_none', '답변 없음') }}</span></li>
+        {% else %}<li class="nn-empty">{{ ui('home.silent_empty', '아직 답변 없는 기업이 없어요.') }}</li>{% endfor %}</ol>
+        {% if rank.wait %}<a class="nn-ans-all" href="{{ url_for('companies_silent') }}">{{ ui('home.silent_all', '답변 없는 기업 모두 보기 ›') }}</a>{% endif %}
       </div>
     </div>
     <a class="nn-biz" href="{{ url_for('biz_login') if biz_on() else url_for('companies') }}">
@@ -155,7 +156,7 @@
     <div class="nn-talk-grid">
       <div class="nn-talk-col">
         <div class="nn-sec-head"><h2><span class="bread" aria-hidden="true">🥐</span> {{ ui('home.vs_title', '골라주세요') }}</h2><a href="{{ url_for('vs_home') }}">{{ ui('home.vs_more', '고민 더 보기 ›') }}</a></div>
-        <a class="nn-talk-box" href="{{ url_for('vs_new') }}"><p>{{ ui('home.vs_box_k', '고민될 땐') }}</p><b>{{ ui('home.vs_empty', '살까 말까, 이웃에게 물어보세요') }}</b><span>{{ ui('vs.new', '고민 올리기') }} ›</span></a>
+        {{ ed_piece('home.vs_box') }}{% if piece_on('home.vs_box') %}<a class="nn-talk-box" href="{{ url_for('vs_new') }}"><p>{{ ui('home.vs_box_k', '고민될 땐') }}</p><b>{{ ui('home.vs_empty', '살까 말까, 이웃에게 물어보세요') }}</b><span>{{ ui('vs.new', '고민 올리기') }} ›</span></a>{% endif %}
         <div class="nn-trows">{% for p in vs_list %}<a class="nn-trow" href="{{ url_for('vs_post', poll_id=p['id']) }}">
           <span class="nn-trow-t"><em class="nn-tag{{ ' on' if p['state'] == 'open' }}">{{ ui('vs.s_open', '고르는 중') if p['state'] == 'open' else ui('vs.s_done', '결말 나옴') if p['state'] == 'done' else ui('vs.s_wait', '결말 기다리는 중') }}</em><b>{{ p['title'] }}</b></span>
           <span class="nn-trow-m"><span class="nn-ab"><i>A</i>{{ p['a'] }} <small>vs</small> <i>B</i>{{ p['b'] }}</span><span>{{ ui('vs.n_picked', '{n}명 골라줌', n=p['n']) }}</span></span></a>
@@ -163,7 +164,7 @@
       </div>
       <div class="nn-talk-col">
         <div class="nn-sec-head"><h2><span class="bread" aria-hidden="true">🍩</span> {{ ui('home.suda_title', '수다방') }}</h2><a href="{{ url_for('suda') }}">{{ ui('home.suda_more', '수다 더 보기 ›') }}</a></div>
-        {% if topic %}<a class="nn-talk-box" href="{{ url_for('board_write', type='post', head='잡담', topic=topic) }}"><p>{{ ui('suda.today', '오늘의 수다') }}</p><b>{{ topic }}</b><span>{{ ui('suda.today_go', '이 주제로 쓰기') }} ›</span></a>
+        {{ ed_piece('home.suda_box') }}{% if not piece_on('home.suda_box') %}{% elif topic %}<a class="nn-talk-box" href="{{ url_for('board_write', type='post', head='잡담', topic=topic) }}"><p>{{ ui('suda.today', '오늘의 수다') }}</p><b>{{ topic }}</b><span>{{ ui('suda.today_go', '이 주제로 쓰기') }} ›</span></a>
         {% else %}<a class="nn-talk-box" href="{{ url_for('board_write', type='post') }}"><p>{{ ui('suda.today', '오늘의 수다') }}</p><b>{{ ui('home.suda_box', '오늘 있었던 일, 편하게 얘기해요') }}</b><span>{{ ui('suda.write', '수다 떨기') }} ›</span></a>{% endif %}
         <div class="nn-trows">{% for p in sd_list %}<a class="nn-trow" href="{{ url_for('board_post', post_id=p['id']) }}">
           <span class="nn-trow-t"><em class="nn-tag">{{ p['head'] }}</em><b>{{ p['title'] }}</b>{% if p['comments'] %}<small class="nn-c">{{ p['comments'] }}</small>{% endif %}</span>
