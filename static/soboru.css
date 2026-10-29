@@ -2646,3 +2646,15 @@ img.cm-av{object-fit:cover;background:#f2f4f6}
 .nn-faq-list details[open] summary svg{transform:rotate(180deg)}
 .nn-faq-list p{margin:-6px 22px 20px;font-size:15.5px;line-height:1.75;color:#4e5968}
 @media (max-width:560px){.nn-faq-list summary{padding:18px;font-size:15.5px}.nn-faq-list p{margin:-6px 18px 18px;font-size:15px}}
+/* 홈 첫 화면 다듬기 (2026-10-29): 소개 문장은 단어 단위로 고르게 줄바꿈, 휴대폰에선 말풍선이 캐릭터 왼쪽에서 캐릭터를 가리킴 */
+.nn-intro .nn-intro-sub{word-break:keep-all;text-wrap:balance;max-width:30em}
+.nn-intro .nn-intro-copy{min-width:0}
+.nn-intro .nn-bubble{word-break:keep-all;max-width:100%}
+@media(max-width:680px){
+  .nn-intro{padding:30px 22px 0}
+  .nn-intro .nn-intro-sub{font-size:16.5px;line-height:1.6;margin-top:12px}
+  .nn-intro .nn-intro-art{margin:22px 0 0;flex-direction:column;align-items:flex-end;gap:12px}
+  .nn-intro .nn-bubble{align-self:flex-end;margin:0 6px 0 0;max-width:100%;font-size:14px;line-height:1.45;padding:10px 15px;border-radius:16px;text-wrap:balance}
+  .nn-intro .nn-bubble::after{right:44px;bottom:-8px;clip-path:polygon(0 0,100% 0,70% 100%)}
+  .nn-intro .nn-char-hero{flex:none;width:136px;margin:0 2px -2px 0}
+}
