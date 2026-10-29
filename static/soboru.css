@@ -1074,7 +1074,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-intro-kicker{font-size:19px;line-height:1.4;font-weight:700;color:var(--sb-sub);letter-spacing:-.02em;margin:0}
 .nn-intro-kicker b{color:var(--sb-orange)}
 .nn-intro-name{font-size:68px;line-height:1.1;font-weight:800;letter-spacing:-.045em;color:var(--sb-ink);margin:12px 0 0}
-.nn-intro-sub{font-size:20px;line-height:1.6;color:var(--sb-gray-ink);margin:20px 0 0;letter-spacing:-.025em}
+.nn-intro-sub{word-break:keep-all;font-size:20px;line-height:1.6;color:var(--sb-gray-ink);margin:20px 0 0;letter-spacing:-.025em}
 .nn-intro-btns{display:flex;align-items:center;gap:12px;margin-top:36px}
 .nn-intro-btns .sb-cta{height:56px;padding:0 30px;border-radius:16px;display:inline-flex;align-items:center;font-size:17px;font-weight:700}
 .nn-intro-link{font-size:17px;font-weight:600;color:var(--sb-sub)}
@@ -1100,7 +1100,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-live-wide li a{display:flex;align-items:center;gap:14px}.nn-live-wide .nn-emo{flex:none;width:44px;height:44px;border-radius:14px;font-size:22px}
 .nn-live-wide li:nth-child(n+3){border-top:1px solid var(--sb-line)}
 @media(max-width:900px){.nn-live-wide ol{grid-template-columns:minmax(0,1fr)}.nn-live-wide li:nth-child(n+2){border-top:1px solid var(--sb-line)}}
-@media(max-width:680px){.nn-intro{grid-template-columns:1fr;gap:8px;margin-top:28px}.nn-intro-art{order:-1;max-width:270px}.nn-tile{font-size:24px}  .nn-intro-kicker{font-size:15px}.nn-intro-name{font-size:48px;margin-top:8px}.nn-intro-sub{font-size:16px;margin-top:14px}.nn-intro-sub br{display:none}.nn-intro-btns{margin-top:24px;gap:16px}.nn-intro-btns .sb-cta{height:52px;padding:0 24px;font-size:16px}
+@media(max-width:680px){.nn-intro{grid-template-columns:1fr;gap:8px;margin-top:28px}.nn-intro-art{order:-1;max-width:270px}.nn-tile{font-size:24px}  .nn-intro-kicker{font-size:15px}.nn-intro-name{font-size:48px;margin-top:8px}.nn-intro-sub{font-size:16px;margin-top:14px}.nn-intro-btns{margin-top:24px;gap:16px}.nn-intro-btns .sb-cta{height:52px;padding:0 24px;font-size:16px}
   .nn-quick{grid-template-columns:1fr 1fr;margin-top:32px}.nn-quick a:last-child:nth-child(odd){grid-column:1/-1}.nn-quick a{padding:14px}.nn-quick b{font-size:14px}}
 
 /* 아이콘 자리에 토스페이스 이모지 타일: 제보 목록, 이용 안내 단계, 법률 질문 순서, 생활정보 분야 */
