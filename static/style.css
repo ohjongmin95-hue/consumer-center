@@ -2176,12 +2176,25 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 .auth-body .agree-box{margin-top:14px;border:0;border-radius:16px;background:#f9fafb}
 .auth-body .agree-all{background:transparent;border-bottom:1px solid #eef0f2}
 @media(max-width:420px){.su-two{grid-template-columns:1fr}}
-/* 회원가입 한 칸씩 (토스식): 한 화면에 질문 하나, 이미 쓴 값은 위에 칩으로 */
-.su-steps .su-now{animation:su-in .25s ease}
-.su-steps [hidden]{display:none!important}
-.su-sum{display:flex;flex-wrap:wrap;gap:6px}
-.su-sum button{border:0;border-radius:999px;background:#f2f4f6;color:#4e5968;font:inherit;font-size:13.5px;font-weight:600;padding:7px 12px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.su-sum button::after{content:' ✎';color:#b0b8c1}
-.su-sum button:hover{background:#e8ebee}
-@keyframes su-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.su-steps .su-now{animation:none}}
+/* 회원가입 한 화면 (토스식): 칸 안 안내만, PC는 두 칸씩 나란히, 약관은 한 줄로 접음 → 스크롤 없이 가입 버튼까지 */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.su-page{padding-top:40px}
+.su-page .auth-title-out{margin-top:0}
+.su-page .auth-body{gap:10px;padding:28px 32px 24px}
+.su-page .auth-body .social-btn{height:50px}
+.su-page .auth-body .social-or{margin:6px 0 2px}
+.su-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.su-page .auth-body input:not([type=checkbox]){height:50px}
+.su-page .agree-box{margin-top:4px}
+.agree-all-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-right:16px}
+.agree-all-row .agree-all{flex:1;border:0;padding:14px 16px}
+.agree-all em{display:block;font-style:normal;font-weight:500;font-size:12.5px;color:#8b95a1;margin-top:2px}
+.agree-more{border:0;background:none;font:inherit;font-size:13.5px;color:#6b7684;text-decoration:underline;cursor:pointer;padding:6px 0}
+.agree-list[hidden]{display:none}
+.su-page .auth-submit{margin-top:2px;height:54px}
+.su-page~.auth-join,.su-page .auth-join{margin-top:14px}
+@media(max-width:560px){.su-page{padding-top:12px}.su-page .auth-lead-out{display:none}.su-page .auth-title-out{font-size:23px;margin-bottom:14px}
+  .su-page .auth-body{padding:20px 18px 18px}.su-grid{grid-template-columns:1fr}.su-grid .su-f:nth-child(3),.su-grid .su-f:nth-child(4){grid-column:auto}
+  .su-page .auth-body input:not([type=checkbox]){height:46px;font-size:15.5px}.su-page .auth-body .social-btn{height:46px}}
+@media(max-width:560px) and (min-width:340px){.su-grid{grid-template-columns:1fr 1fr}.su-grid .su-f:nth-child(1),.su-grid .su-f:nth-child(2),.su-grid .su-f:nth-child(5),.su-grid .su-f:nth-child(6){grid-column:1/-1}}
+.su-page .auth-card{max-width:560px}
