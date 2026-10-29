@@ -1070,7 +1070,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
   .nn-pick-feed,.nn-ans-grid{grid-template-columns:1fr}.nn-write{gap:8px}.nn-write a{padding:14px;column-gap:10px;border-radius:18px}.nn-wi{width:38px;height:38px;font-size:19px;border-radius:12px}
   .nn-write small{font-size:12px}.nn-top,.nn-ans{border-radius:20px;padding:20px 18px 6px}.nn-biz{flex-wrap:wrap;padding:16px 18px}.nn-biz-go{width:100%;padding-left:60px}}
 /* 홈 맨 위 소개 (운영자 요청 2026-10-17): 토스식 흰 바탕, 글 왼쪽·큰 캐릭터 오른쪽, 제보하기 버튼은 하나 */
-.nn-intro{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;margin-top:56px}
+.nn-intro{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:center;margin-top:56px}
 .nn-intro-kicker{font-size:19px;line-height:1.4;font-weight:700;color:var(--sb-sub);letter-spacing:-.02em;margin:0}
 .nn-intro-kicker b{color:var(--sb-orange)}
 .nn-intro-name{font-size:68px;line-height:1.1;font-weight:800;letter-spacing:-.045em;color:var(--sb-ink);margin:12px 0 0}
@@ -1100,7 +1100,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-live-wide li a{display:flex;align-items:center;gap:14px}.nn-live-wide .nn-emo{flex:none;width:44px;height:44px;border-radius:14px;font-size:22px}
 .nn-live-wide li:nth-child(n+3){border-top:1px solid var(--sb-line)}
 @media(max-width:900px){.nn-live-wide ol{grid-template-columns:minmax(0,1fr)}.nn-live-wide li:nth-child(n+2){border-top:1px solid var(--sb-line)}}
-@media(max-width:680px){.nn-intro{grid-template-columns:1fr;gap:8px;margin-top:28px}.nn-intro-art{order:-1;max-width:270px}.nn-tile{font-size:24px}  .nn-intro-kicker{font-size:15px}.nn-intro-name{font-size:48px;margin-top:8px}.nn-intro-sub{font-size:16px;margin-top:14px}.nn-intro-sub br{display:none}.nn-intro-btns{margin-top:24px;gap:16px}.nn-intro-btns .sb-cta{height:52px;padding:0 24px;font-size:16px}
+@media(max-width:680px){.nn-intro{grid-template-columns:minmax(0,1fr);gap:8px;margin-top:28px}.nn-intro-art{order:-1;max-width:270px}.nn-tile{font-size:24px}  .nn-intro-kicker{font-size:15px}.nn-intro-name{font-size:48px;margin-top:8px}.nn-intro-sub{font-size:16px;margin-top:14px}.nn-intro-sub br{display:none}.nn-intro-btns{margin-top:24px;gap:16px}.nn-intro-btns .sb-cta{height:52px;padding:0 24px;font-size:16px}
   .nn-quick{grid-template-columns:1fr 1fr;margin-top:32px}.nn-quick a:last-child:nth-child(odd){grid-column:1/-1}.nn-quick a{padding:14px}.nn-quick b{font-size:14px}}
 
 /* 아이콘 자리에 토스페이스 이모지 타일: 제보 목록, 이용 안내 단계, 법률 질문 순서, 생활정보 분야 */
@@ -1777,7 +1777,7 @@ h1.vs-title{font-size:28px}
   .nn-about-card{padding:20px 18px}.nn-about-card .bread{width:48px;height:48px;font-size:28px;border-radius:14px;margin-bottom:12px}.nn-about-card b{font-size:17px}.nn-about-card p{font-size:13.5px}.nn-about-go{margin-top:14px;font-size:13px}}
 /* 메인 캐릭터 말풍선: 두 줄 (억울한 일은 제보하고, / 제품 후기는 나눠요!) */
 .nn-intro .nn-bubble{white-space:nowrap;border-radius:20px;line-height:1.45;text-align:left;padding:12px 18px}
-@media(max-width:680px){.nn-intro .nn-bubble{border-radius:16px;padding:9px 13px}}
+@media(max-width:680px){.nn-intro .nn-bubble{border-radius:16px;padding:9px 13px;white-space:normal;word-break:keep-all;min-width:0;max-width:62%}}  /* 관리자가 말풍선을 길게 고쳐도 휴대폰에서 화면 밖으로 안 넘치게 */
 /* 홈 골라주세요 · 수다방: 두 칸 같은 모양 (안내 상자 + 최신 4줄) */
 .nn-talk-box{display:flex;flex-direction:column;gap:6px;min-height:132px;box-sizing:border-box;padding:20px 22px;border-radius:20px;background:#f7f4ef;transition:background .2s}
 .nn-talk-box:hover{background:#f2ede4}
@@ -2646,3 +2646,15 @@ img.cm-av{object-fit:cover;background:#f2f4f6}
 .nn-faq-list details[open] summary svg{transform:rotate(180deg)}
 .nn-faq-list p{margin:-6px 22px 20px;font-size:15.5px;line-height:1.75;color:#4e5968}
 @media (max-width:560px){.nn-faq-list summary{padding:18px;font-size:15.5px}.nn-faq-list p{margin:-6px 18px 18px;font-size:15px}}
+/* 홈 첫 화면 다듬기 (2026-10-29): 소개 문장은 단어 단위로 고르게 줄바꿈, 휴대폰에선 말풍선이 캐릭터 왼쪽에서 캐릭터를 가리킴 */
+.nn-intro .nn-intro-sub{word-break:keep-all;text-wrap:balance;max-width:30em}
+.nn-intro .nn-intro-copy{min-width:0}
+.nn-intro .nn-bubble{word-break:keep-all;max-width:100%}
+@media(max-width:680px){
+  .nn-intro{padding:30px 22px 0}
+  .nn-intro .nn-intro-sub{font-size:16.5px;line-height:1.6;margin-top:12px}
+  .nn-intro .nn-intro-art{margin:22px 0 0;flex-direction:column;align-items:flex-end;gap:12px}
+  .nn-intro .nn-bubble{align-self:flex-end;margin:0 6px 0 0;max-width:100%;font-size:14px;line-height:1.45;padding:10px 15px;border-radius:16px;text-wrap:balance}
+  .nn-intro .nn-bubble::after{right:44px;bottom:-8px;clip-path:polygon(0 0,100% 0,70% 100%)}
+  .nn-intro .nn-char-hero{flex:none;width:136px;margin:0 2px -2px 0}
+}
