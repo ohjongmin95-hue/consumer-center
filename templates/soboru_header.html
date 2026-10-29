@@ -12,7 +12,7 @@
 {% set sb_town_on = request.path.startswith(('/town', '/jobs')) %}
 {% set sb_nav = [(url_for('home'), ui('sb.nav_home', '홈'), request.path == '/', None), (url_for('reports'), ui('sb.nav_reports', '소비자 제보'), sb_jebo_on, sb_jebo), (url_for('feed'), ui('sb.nav_board', '커뮤니티'), sb_cm_on, sb_cm), (url_for('town'), ui('sb.nav_town', '우리 동네'), sb_town_on, sb_town), (url_for('life'), ui('sb.nav_life', '매거진'), request.path.startswith('/life'), None), (url_for('scam_home'), ui('sb.nav_scam', '사기 주의'), request.path.startswith('/scam'), None)] + [((url_for('law_ask'), ask_label()) if ask_on() else (url_for('tools'), ui('sb.sub_calc', '계산기'))) + (sb_tools_on, sb_tools)] %}
 {# 글쓰기·로그인·가입 화면은 로고와 닫기(X)만 남긴 간단한 머리글 (쓰는 데만 집중) #}
-{% set sb_min = sb_writing or request.endpoint in ('signup', 'account_help', 'social_join') or request.path.startswith(('/auth/', '/join')) %}
+{% set sb_min = sb_writing or request.endpoint in ('signup', 'account_help', 'social_join', 'company_access') or request.path.startswith(('/auth/', '/join')) %}
 <header class="sb-header{{ ' sb-header-min' if sb_min }}">
   <div class="sb-wrap sb-hd">
     <a class="sb-logo" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈"><img class="sb-wm" src="{{ asset('img/soboru-logo.png') }}" alt="SOBORU" width="152" height="36"></a>

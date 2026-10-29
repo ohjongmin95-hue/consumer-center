@@ -3326,7 +3326,9 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(company.get(link).status_code, 200)
         self.assertTrue(any(m[0] == 'me@example.com' and '확인했습니다' in m[1] for m in mails))
         company.post(link, data={'_csrf': self.csrf(company, link), 'form': 'objection', 'body': '이미 환불을 끝냈습니다. 영수증 있습니다.'})
-        self.assertIn('이미 환불을 끝냈습니다', company.get(link).get_data(as_text=True))
+        page = company.get(link).get_data(as_text=True)
+        self.assertNotIn('name="form" value="objection"', page)  # 답변 화면에는 이의 신청 칸 없음 (OH 2026-10-29). 예전 요청은 그대로 받음
+        self.assertIn('sb-header-min', page)
         with self.site.conn() as db:
             self.assertEqual(db.execute("SELECT kind FROM case_requests WHERE who='company' AND case_id=?", (first,)).fetchone()['kind'], 'objection')
         # 수신 거부하면 다른 제보로도 안내 메일을 못 보냄

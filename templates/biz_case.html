@@ -28,16 +28,7 @@
       <textarea name="response" maxlength="5000" required rows="6" placeholder="확인한 내용과 해결 방안을 적어 주세요. 제보자에게 바로 전달돼요." aria-label="답변"></textarea>
       <button class="cs-btn cs-btn-main" type="submit">{{ '추가 답변 보내기' if answers else '답변 보내기' }}</button>
     </form>{% endif %}
-    <p class="cs-muted">제보자의 이름·연락처·첨부파일은 개인정보 보호를 위해 보이지 않아요. 연락이 필요하면 답변에 회사 고객센터 연락처를 남겨 주세요.{% if case['public_consent'] %} 공개 제보라서, 센터가 확인한 답변은 사이트의 제보 아래에 함께 공개될 수 있어요.{% endif %}</p>
-  </section>
-  <section class="cs-panel" id="objection">
-    <h2>이의 신청</h2>
-    <p class="cs-muted">제보 내용이 사실과 다르거나 공개된 글에 문제가 있다고 보면 근거와 함께 알려 주세요. 센터가 검토한 뒤 여기에 결과를 남겨요. 답변과 달리 제보자에게 바로 전달되지 않아요.</p>
-    {% for o in objections %}<div class="ops-req"><p class="ops-req-head"><span class="cs-pill{{ ' on' if o['status'] == '처리 완료' else (' off' if o['status'] == '반려' else '') }}">{{ o['status'] }}</span> <span class="cs-muted">{{ o['created'][:16]|replace('T', ' ') }}</span></p><p class="cs-text">{{ o['body'] }}</p>{% if o['result'] %}<p class="cs-hint">센터 검토 결과 ({{ o['handled_at'][:10]|replace('-', '.') }}): {{ o['result'] }}</p>{% endif %}</div>{% endfor %}
-    {% if not g.get('biz_preview') %}<form method="post" action="{{ url_for('biz_objection', case_id=case['id']) }}" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <textarea name="body" maxlength="3000" required rows="4" placeholder="사실과 다른 부분과 근거를 적어 주세요." aria-label="이의 신청 내용"></textarea>
-      <button class="cs-btn" type="submit">이의 신청하기</button>
-    </form>{% endif %}
+    <p class="cs-muted">제보자의 이름·연락처·첨부파일은 개인정보 보호를 위해 보이지 않아요. 연락이 필요하면 답변에 회사 고객센터 연락처를 남겨 주세요.{% if case['public_consent'] %} 공개 제보라서, 소보루가 확인한 답변은 사이트의 제보 아래에 함께 공개될 수 있어요.{% endif %}</p>
   </section>
 </main>
 {% endblock %}
