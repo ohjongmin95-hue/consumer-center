@@ -458,7 +458,7 @@ def install(S):
         ('letter', '소보루 레터', lambda: url_for('letter_home'), ['letter.html', 'letter_issue.html', 'letter_msg.html', 'letter_macros.html']),
         ('common', '공통 머리글·바닥글', lambda: url_for('home'), ['base.html', 'soboru_header.html', 'soboru_tabbar.html']),
     ]
-    SCREEN_SKIP = {'site.name'}  # 사이트 이름은 숨은 문구·설정에서
+    SCREEN_SKIP = {'site.name'}  # 사이트 이름은 문구 고치기에서
 
     def screen_keys(files):
         keys = []
@@ -472,7 +472,7 @@ def install(S):
     def admin_screens():
         if request.method == 'POST':
             f = request.form; page = f.get('page', '')
-            if f.get('act') == 'texts':  # 그 페이지 문구 한 번에 저장 (관리자 > 숨은 문구·설정과 같은 규칙)
+            if f.get('act') == 'texts':  # 그 페이지 문구 한 번에 저장 (관리자 > 문구 고치기과 같은 규칙)
                 files = next((x[3] for x in SCREENS if x[0] == page), None)
                 if files is None: abort(400)
                 stamp = now()

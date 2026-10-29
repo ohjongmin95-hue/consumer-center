@@ -5,11 +5,15 @@
 {% set sb_cm_on = request.path.startswith(('/board', '/feed', '/vs', '/suda', '/owners', '/u/', '/me/following', '/me/people')) %}
 {% set sb_tools = ([(url_for('law_ask'), ask_label(), request.path.startswith('/ask'))] if ask_on() else []) + [(url_for('tools'), ui('sb.sub_calc', '계산기'), request.path == '/tools' or request.path.startswith('/tools/calc')), (url_for('dictionary'), ui('sb.sub_dict', '소비자·경제 사전'), request.path.startswith('/tools/dict')), (url_for('law_find'), ui('sb.sub_law', '법령 찾기'), request.path.startswith('/tools/law'))] %}
 {% set sb_tools_on = request.path.startswith(('/ask', '/tools')) %}
+{# 글쓰기·로그인 화면에서는 아래 줄 메뉴(전체 글·후기…)를 숨겨 쓰는 데만 집중하게 함 #}
+{% set sb_writing = request.path in ('/login', '/signup', '/report', '/board/write', '/vs/new', '/owners/new', '/town/new', '/jobs/new', '/scam/new', '/groups/new') or request.path.endswith('/edit') %}
 {# (주소, 이름, 지금 화면인지, 펼침 메뉴) #}
 {% set sb_town = [(url_for('town'), ui('sb.sub_town', '동네 정보'), request.path.startswith('/town')), (url_for('jobs'), ui('sb.nav_jobs', '동네일자리'), request.path.startswith('/jobs')), (url_for('owners'), ui('sb.sub_owners', '사장님 소식'), request.path.startswith('/owners'))] %}
 {% set sb_town_on = request.path.startswith(('/town', '/jobs')) %}
 {% set sb_nav = [(url_for('home'), ui('sb.nav_home', '홈'), request.path == '/', None), (url_for('reports'), ui('sb.nav_reports', '소비자 제보'), sb_jebo_on, sb_jebo), (url_for('feed'), ui('sb.nav_board', '커뮤니티'), sb_cm_on, sb_cm), (url_for('town'), ui('sb.nav_town', '우리 동네'), sb_town_on, sb_town), (url_for('life'), ui('sb.nav_life', '매거진'), request.path.startswith('/life'), None), (url_for('scam_home'), ui('sb.nav_scam', '사기 주의'), request.path.startswith('/scam'), None)] + [((url_for('law_ask'), ask_label()) if ask_on() else (url_for('tools'), ui('sb.sub_calc', '계산기'))) + (sb_tools_on, sb_tools)] %}
-<header class="sb-header">
+{# 글쓰기·로그인·가입 화면은 로고와 닫기(X)만 남긴 간단한 머리글 (쓰는 데만 집중) #}
+{% set sb_min = sb_writing or request.endpoint in ('signup', 'account_help', 'social_join') or request.path.startswith(('/auth/', '/join')) %}
+<header class="sb-header{{ ' sb-header-min' if sb_min }}">
   <div class="sb-wrap sb-hd">
     <a class="sb-logo" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈"><img class="sb-wm" src="{{ asset('img/soboru-logo.png') }}" alt="SOBORU" width="152" height="36"></a>
     <nav class="sb-nav" aria-label="주요 메뉴">{% for href, label, on, sub in sb_nav %}{% if sub %}<span class="sb-dd"><a href="{{ href }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ label }}</a><span class="sb-dd-menu">{% for h, l, o in sub %}<a href="{{ h }}"{% if o %} class="on"{% endif %}>{{ l }}</a>{% endfor %}</span></span>{% else %}<a href="{{ href }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endif %}{% endfor %}</nav>
@@ -17,6 +21,7 @@
     <a class="sb-search" href="{{ url_for('site_search') }}" role="button" aria-controls="sb-sch" aria-expanded="false" aria-label="{{ ui('search.open', '검색') }}" data-sch-open><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L20 20" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></a>
     {% if g.user %}{% set n_alert = alert_unread() %}<a class="sb-bell{{ ' on' if request.path.startswith('/me/alerts') }}" href="{{ url_for('me_alerts') }}" aria-label="알림{% if n_alert %} {{ n_alert }}개 안 읽음{% endif %}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{% if n_alert %}<b>{{ n_alert if n_alert < 100 else '99+' }}</b>{% endif %}</a><a class="sb-login sb-me" href="{{ url_for('mypage') }}" title="{{ ui('common.my_info', '내 정보') }}"><b>{{ g.user['nickname'] }}</b>{{ ui('common.nim', '님') }}</a>
     {% else %}<a class="sb-login" href="{{ url_for('login', next=request.full_path.rstrip('?')) if request.endpoint not in ('login', 'signup', 'member_logout') else url_for('login') }}">{{ ui('common.login', '로그인') }}</a><a class="sb-join" href="{{ url_for('signup') }}">{{ ui('common.signup', '회원가입') }}</a>{% endif %}
+    <a class="sb-close" href="{{ url_for('home') }}" aria-label="{{ ui('sb.close', '닫고 홈으로') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></a>{# 간단한 머리글(sb-header-min)에서만 보임 #}
     {% if request.path != '/' %}<a class="sb-cta" href="{{ url_for('report') }}">{{ ui('sb.cta', '제보하기') }}</a>{% endif %}{# 메인은 맨 위 소개에 제보하기가 있어 겹치지 않게 #}
   </div>
   <div class="sb-sch" id="sb-sch" hidden>
@@ -43,8 +48,8 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) { show(false); op.focus(); } });
   })();
   </script>
-  <nav class="sb-chips" aria-label="주요 메뉴">{% for href, label, on, sub in sb_nav %}<a href="{{ href }}"{% if on %} class="on"{% endif %}>{{ ui('sb.chip_all', '전체') if loop.first else label }}</a>{% endfor %}</nav>
-{% if sb_jebo_on %}<nav class="sb-sub" aria-label="제보 메뉴"><div class="sb-wrap">{% for h, l, o in sb_jebo %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
-{% if sb_cm_on %}<nav class="sb-sub" aria-label="커뮤니티 메뉴"><div class="sb-wrap">{% for h, l, o in sb_cm %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
-{% if sb_tools_on %}<nav class="sb-sub" aria-label="상담 메뉴"><div class="sb-wrap">{% for h, l, o in sb_tools %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
+  <nav class="sb-chips{{ ' sb-chips-off' if sb_writing }}" aria-label="주요 메뉴">{% for href, label, on, sub in sb_nav %}<a href="{{ href }}"{% if on %} class="on"{% endif %}>{{ ui('sb.chip_all', '전체') if loop.first else label }}</a>{% endfor %}</nav>
+{% if sb_jebo_on and not sb_writing %}<nav class="sb-sub" aria-label="제보 메뉴"><div class="sb-wrap">{% for h, l, o in sb_jebo %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
+{% if sb_cm_on and not sb_writing %}<nav class="sb-sub" aria-label="커뮤니티 메뉴"><div class="sb-wrap">{% for h, l, o in sb_cm %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
+{% if sb_tools_on and not sb_writing %}<nav class="sb-sub" aria-label="상담 메뉴"><div class="sb-wrap">{% for h, l, o in sb_tools %}<a href="{{ h }}"{% if o %} class="on" aria-current="page"{% endif %}>{{ l }}</a>{% endfor %}</div></nav>{% endif %}
 </header>

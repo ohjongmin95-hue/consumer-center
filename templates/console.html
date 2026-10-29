@@ -27,6 +27,7 @@
   'layers': '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
   'image': '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/>',
   'text': '<path d="M5 6h14"/><path d="M12 6v13"/><path d="M8 19h8"/>',
+  'search': '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
   'id': '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 16.5c.6-1.6 1.9-2.5 3.5-2.5s2.9.9 3.5 2.5"/><path d="M15 10h3M15 13h3"/>',
   'group': '<circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><path d="M13.5 15c.8-.4 1.6-.5 2.5-.5 2.7 0 4.9 1.5 5.5 4.5"/>',
   'building': '<path d="M4 20V6l8-3v17"/><path d="M12 9h8v11"/><path d="M3 20h18"/><path d="M7 9h2M7 13h2M15 13h2M15 16h2"/>',
@@ -40,8 +41,7 @@
   ('기업', [('admin_companies', 'building', '기업'), ('admin_contacts', 'mail', '기업 연락처')]),
   ('커뮤니티', [('admin_members', 'users', '회원'), ('admin_board', 'chat', '게시판 신고'), ('admin_takedowns', 'flag', '게시중단 요청'), ('admin_scam', 'flag', '사기 주의 신고'), ('admin_jobs', 'id', '동네일자리'), ('admin_town', 'flag', '우리 동네 정보'), ('admin_campaigns', 'layers', '리뷰 주제'), ('admin_receipts', 'flag', '영수증 확인'), ('admin_ads', 'chart', '광고 효과')]),
   ('콘텐츠', [('admin_life', 'text', '생활정보 글'), ('admin_letter', 'mail', '소보루 레터'), ('admin_art', 'image', 'AI 일러스트'), ('admin_laws', 'book', '법령 학습'), ('admin_ask', 'chat', 'AI 상담')]),
-  ('사이트 (소보루)', [('admin_screens', 'edit', '화면 편집'), ('admin_site', 'layers', '사이트 편집'), ('admin_lists', 'layers', '구성 바꾸기'), ('admin_content', 'text', '숨은 문구·설정')]),
-  ('소비자제보센터', [('admin_site', 'edit', '제보센터 화면 편집'), ('admin_lists', 'layers', '제보센터 구성'), ('admin_content', 'text', '제보센터 문구·설정')]),
+  ('사이트 꾸미기', [('admin_screens', 'edit', '화면 편집'), ('admin_lists', 'layers', '메뉴·구성'), ('admin_content', 'text', '문구 고치기'), ('admin_content#operator', 'id', '사업자 정보'), ('admin_content#seo', 'search', '검색 노출')]),
   ('계정', [('admin_staff', 'id', '기자 계정'), ('admin_password', 'key', '비밀번호 변경')]),
 ] %}
 {% set nc = new_case_info() %}
@@ -59,8 +59,12 @@
   <nav class="ad-side" aria-label="관리 메뉴">
     {% for group, links in groups %}
     <div class="ad-group">{% if group %}<p class="ad-group-title">{{ group }}</p>{% endif %}
-      {% set gface = 'jebo' if group == '소비자제보센터' else ('soboru' if group.startswith('사이트') else '') %}
-      {% for e, ico, label in links %}{% set on = active == e and (not gface or gface == current_face()) %}<a href="{{ url_for(e, face='jebo') if gface == 'jebo' else url_for(e) }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span>{% if e == 'admin_reports' %}<em class="ad-badge" id="ad-new-badge"{% if not nc.count %} hidden{% endif %}>{{ nc.count }}</em>{% endif %}</a>{% endfor %}
+      {# 사이트 꾸미기: 지금 고치는 사이트(소보루/소비자제보센터)를 그대로 따라감. '사업자 정보'·'검색 노출'은 문구 고치기 화면의 한 칸으로 바로 감 #}
+      {% if group == '사이트 꾸미기' %}<div class="ad-face-switch" role="group" aria-label="고칠 사이트"><a href="{{ url_for(active if active in ('admin_lists', 'admin_content') else 'admin_screens') }}"{% if current_face() != 'jebo' %} class="on"{% endif %}>소보루</a><a href="{{ url_for(active if active in ('admin_lists', 'admin_content') else 'admin_site', face='jebo') }}"{% if current_face() == 'jebo' %} class="on"{% endif %}>제보센터</a></div>{% endif %}
+      {% for e, ico, label in links %}{% set ep, _, sec = e.partition('#') %}
+      {%- if group == '사이트 꾸미기' %}{% set ep = 'admin_site' if ep == 'admin_screens' and current_face() == 'jebo' else ep %}{% set href = face_url(ep) ~ ('#section-' ~ sec if sec else '') %}{% set on = active == ep and not sec %}
+      {%- else %}{% set href = url_for(ep) %}{% set on = active == ep %}{% endif -%}
+      <a href="{{ href }}"{% if ep == 'admin_content' %} data-sec="{{ sec }}"{% endif %}{% if on %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span>{% if e == 'admin_reports' %}<em class="ad-badge" id="ad-new-badge"{% if not nc.count %} hidden{% endif %}>{{ nc.count }}</em>{% endif %}</a>{% endfor %}
     </div>
     {% endfor %}
   </nav>

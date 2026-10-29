@@ -1396,8 +1396,8 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 .ft-row li + li::before { content: ""; display: inline-block; width: 1px; height: 10px; background: currentColor; opacity: .35; margin: 0 10px; vertical-align: -1px; }
 .ft-bottom { margin-top: 6px; }
 @media (max-width: 760px) { .ft-row:first-child { flex-direction: column; } .ft-row:first-child li + li::before { display: none; } }
-/* 휴대폰: 둘째 줄의 이메일은 줄을 바꿔 새 줄에 (구분선이 줄 앞에 오지 않게) */
-@media (max-width: 760px) { .ft-row:nth-child(2) li:nth-child(3) { flex-basis: 100%; } .ft-row:nth-child(2) li:nth-child(3)::before { display: none; } }
+/* 휴대폰: 관리자 뒤에서 줄을 바꿔 전화, 이메일을 한 줄씩 (줄 앞 짝대기 없이) */
+@media (max-width: 760px) { .ft-row:nth-child(2) { display: block; } .ft-row:nth-child(2) li:nth-child(2)::after, .ft-row:nth-child(2) li:nth-child(3)::after { content: ""; display: block; } .ft-row:nth-child(2) li:nth-child(4)::before { display: none; } .ft-row:nth-child(2) li:nth-child(3)::before { display: none; } }
 /* 새 제보 알림: 메뉴 숫자, 화면 아래 알림, 브라우저 알림 버튼 */
 .ad-badge { margin-left: auto; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: #F89B00; color: #fff; font-size: 12px; font-style: normal; font-weight: 800; text-align: center; }
 .ad-toast { position: fixed; right: 20px; bottom: 20px; z-index: 50; display: flex; flex-direction: column; gap: 2px; max-width: 320px; padding: 14px 18px; border-radius: 14px; background: #191f28; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.18); font-size: 14px; }
@@ -1949,6 +1949,26 @@ h2 .rv-chip, h2 .pub-chip { margin-left: 6px; vertical-align: 2px; }
 .auth-foot a:hover{color:#191f28;background:#f9fafb}
 .auth-note{color:#8b95a1}
 @media(max-width:560px){.auth-page{padding-top:28px}.auth-body{padding:36px 22px 24px}.auth-card{border-radius:24px}}
+/* 로그인 다듬기 (토스식): 번짐 없는 옅은 회색 바탕 + 흰 카드, 큰 제목과 한 줄 설명, 자동 완성돼도 파란 칸 안 됨, 알림은 카드 위 작은 말풍선 */
+body:has(.auth-page){background:#f4f5f7}
+.auth-page{background:none;padding-top:56px;min-height:calc(100vh - 64px)}
+.auth-card{max-width:440px;border-radius:24px;box-shadow:0 1px 2px rgba(0,27,55,.04),0 16px 48px rgba(0,27,55,.06)}
+.auth-body{padding:44px 40px 28px}
+.auth-logo .auth-wm{height:24px}
+.auth-title{margin:22px 0 0;font-size:26px;font-weight:800;letter-spacing:-.04em}
+.auth-lead{margin:6px 0 20px;color:#6b7684;font-size:15px}
+.auth-body input:-webkit-autofill,.auth-body input:-webkit-autofill:hover{-webkit-box-shadow:0 0 0 100px #f2f4f6 inset;-webkit-text-fill-color:#191f28;caret-color:#191f28}
+.auth-body input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 100px #fff inset,0 0 0 4px rgba(239,115,0,.12)}
+.auth-body .social-btn{height:56px;border-radius:16px;font-size:16px}
+.auth-body .social-or{margin:14px 0 6px;font-size:13px}
+.auth-keep{justify-content:flex-start;margin-top:4px;font-size:14px}
+.auth-foot{display:flex;justify-content:center;gap:0;padding:0 0 26px;border-top:0;background:#fff}
+.auth-foot a{padding:4px 14px;font-size:14px;font-weight:500;color:#6b7684}
+.auth-foot a+a{border-left:1px solid #e5e8eb}
+.auth-foot a:hover{background:none;color:#191f28}
+body:has(.auth-page) .flash-wrap{position:fixed;z-index:60;top:84px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:440px;margin:0;padding:0}
+body:has(.auth-page) .flash-wrap .alert{margin:0;border:0;border-radius:14px;background:#191f28;color:#fff;font-size:14px;font-weight:600;text-align:center;padding:12px 16px;box-shadow:0 8px 24px rgba(0,27,55,.16)}
+@media(max-width:560px){.auth-page{padding-top:24px}.auth-body{padding:28px 20px 20px}body:has(.auth-page) .flash-wrap{top:72px}}
 /* 공개 제보: 공감('나도 겪었어요'·'응원해요')과 댓글 */
 .case-talk h2{margin:0 0 4px}
 .talk-sub{margin:0 0 16px;color:#6b7684;font-size:14px}

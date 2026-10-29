@@ -353,7 +353,7 @@ def doc_headings(key):
     return [line.strip()[3:] for line in g.content.get(key,'').split('\n') if line.strip().startswith('## ')]
 app.jinja_env.globals['doc_headings']=doc_headings
 FOOTER_ROWS=[['operator.name','operator.address'],
-             ['operator.biz_no','operator.manager','operator.email']]
+             ['operator.biz_no','operator.manager','operator.phone','operator.email']]
 def footer_label(key):
     # 푸터 항목 이름도 관리자 '사이트 문구'에서 바꿀 수 있음
     return {'operator.name':ui_text('common.ft_name','상호'),'operator.ceo':ui_text('common.ft_ceo','대표'),'operator.address':ui_text('common.ft_address','소재지'),
@@ -365,7 +365,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-124'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-125'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -945,7 +945,11 @@ def admin_content():
     # 소비자제보센터에서는 사이트 이름·검색 제목처럼 '소비자제보센터 화면' 칸에서 따로 정하는 문구도 뺌 (soboru.JEBO_KEYS)
     skip=set(soboru.JEBO_KEYS) if current_face()=='jebo' else set()
     sections=[(sid,title,[it for it in rows if it[0] not in skip]) for sid,title,rows in site_content.SECTIONS if sid!=hide]
-    return render_template('admin_content.html',sections=sections,changed=saved_keys('site_content'),content=load_content(),policy_hint=site_content.POLICY_HINT)
+    # 왼쪽 목록: 섹션을 묶음(기본 설정·제보·커뮤니티…)으로 나눔
+    by_id={sid.removeprefix('ui_'):(sid,title,items) for sid,title,items in sections if items}
+    groups=[(name,[by_id.pop(i) for i in ids if i in by_id]) for name,ids in site_content.SECTION_GROUPS]
+    groups=[(name,secs) for name,secs in groups+[('기타',list(by_id.values()))] if secs]
+    return render_template('admin_content.html',sections=[s for _,secs in groups for s in secs],sec_groups=groups,changed=saved_keys('site_content'),content=load_content(),policy_hint=site_content.POLICY_HINT)
 @app.route('/admin/lists',methods=['GET','POST'])
 @admin_only
 def admin_lists():
@@ -2213,7 +2217,7 @@ def admin():
 @app.route('/admin/site')
 @admin_only
 def admin_site():
-    # 사이트 편집 안내: 화면에서 바로 고치기, 구성 바꾸기, 숨은 문구·설정으로 가는 첫 화면
+    # 사이트 편집 안내: 화면에서 바로 고치기, 메뉴·구성, 문구 고치기으로 가는 첫 화면
     changed=len(saved_keys('site_content'))+len(saved_keys('site_lists'))
     return render_template('admin_site.html',changed=changed,custom_pages=g.lists.get('custom_pages',[]))
 
