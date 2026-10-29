@@ -26,13 +26,14 @@ PROCESS_DEFAULTS = [
 ML = {'multiline': True}
 OPT = {'optional': True}
 OPT_ML = {'optional': True, 'multiline': True}
+ADV = {'optional': True, 'advanced': True}  # 처음 한 번만 넣는 확인 코드 같은 것: 관리자 화면에서 '처음 한 번만 넣는 칸'에 접어 둠
 
 SECTIONS = [
-    ('common', '공통 (헤더·푸터)', [
+    ('common', '머리글·바닥글', [
         ('site.name', '사이트 이름 (브라우저 탭·메일 머리말 등)', '소보루', {}),
     ]),
     # consumerjebo.co.kr로 들어왔을 때만 쓰는 문구. 사이트 이름·제목은 위 소보루 값 대신 이 값이 들어감 (soboru.py JEBO_KEYS)
-    ('jebo', '소비자제보센터 화면 (consumerjebo.co.kr)', [
+    ('jebo', '소비자제보센터 기본 설정', [
         ('jebo.site_name', '사이트 이름', '소비자제보센터', {}),
         ('site.logo_accent', '로고 앞부분 (주황색)', '소비자', OPT),
         ('site.logo_rest', '로고 뒷부분', '제보센터', {}),
@@ -40,23 +41,23 @@ SECTIONS = [
         ('jebo.home_title', '메인 화면 제목 (브라우저 탭·검색 결과·카톡 미리보기)', '소비자제보센터 - 소비자 피해 제보·고발', {}),
         ('jebo.description', '사이트 설명 (검색 결과에 보이는 문장)', '환불 거부, 배송 지연, 불량품 같은 소비자 피해를 제보하고 업체 답변과 처리 과정을 확인하세요. 다른 소비자들의 피해 사례도 볼 수 있습니다.', {}),
         ('jebo.board_title', '게시판 이름', '소비자게시판', {}),
-        ('jebo.naver_verification', '네이버 서치어드바이저 소유확인 코드 (consumerjebo.co.kr용)', '', OPT),
-        ('jebo.google_verification', '구글 서치 콘솔 소유확인 코드 (consumerjebo.co.kr용)', '', OPT),
-        ('jebo.facebook_verification', '메타(페이스북) 도메인 인증 코드 (consumerjebo.co.kr용)', '', OPT),
+        ('jebo.naver_verification', '네이버 확인 코드 (consumerjebo.co.kr)', '', ADV),
+        ('jebo.google_verification', '구글 확인 코드 (consumerjebo.co.kr)', '', ADV),
+        ('jebo.facebook_verification', '페이스북 확인 코드 (consumerjebo.co.kr)', '', ADV),
         ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),
         ('home.latest_title', '메인 최근 제보 제목 (비우면 제목 없이 카드만)', '', OPT),
         ('home.latest_count', '메인에 보여줄 최근 제보 수 (3~20, 4의 배수가 깔끔해요)', '20', {}),
     ]),
-    ('seo', '검색 노출 (네이버·구글)', [
-        ('seo.home_title', '메인 화면 제목 (브라우저 탭·검색 결과·카톡 미리보기 제목)', '소보루(SOBORU) - 소비자 제보·내돈내산 후기·소비 생활 매거진', {}),
-        ('seo.description', '사이트 설명 (검색 결과에 보이는 문장)', '소비자 피해 제보부터 제품·업체 리뷰와 추천, 소비자 권리 안내까지. 소비자의 경험을 나누는 소비자 정보 플랫폼, 소보루.', {}),
-        ('seo.naver_verification', '네이버 서치어드바이저 소유확인 코드 (soboru.co.kr용)', '', OPT),
-        ('seo.google_verification', '구글 서치 콘솔 소유확인 코드 (soboru.co.kr용)', '', OPT),
-        ('seo.facebook_verification', '메타(페이스북) 도메인 인증 코드 (soboru.co.kr용, <meta ...> 줄을 통째로 붙여도 돼요)', '', OPT),
-        ('seo.daum_robots', '다음 웹마스터도구 robots.txt 줄', '', OPT),
-        ('seo.channels', '연관 채널 주소 (네이버 블로그·인스타그램 등, 한 줄에 하나)', '', OPT_ML),
+    ('seo', '검색 노출', [
+        ('seo.home_title', '검색 결과에 보이는 제목 (카톡 미리보기에도 나와요)', '소보루(SOBORU) - 소비자 제보·내돈내산 후기·소비 생활 매거진', {}),
+        ('seo.description', '검색 결과에 보이는 설명', '소비자 피해 제보부터 제품·업체 리뷰와 추천, 소비자 권리 안내까지. 소비자의 경험을 나누는 소비자 정보 플랫폼, 소보루.', {}),
+        ('seo.naver_verification', '네이버 확인 코드', '', ADV),
+        ('seo.google_verification', '구글 확인 코드', '', ADV),
+        ('seo.facebook_verification', '페이스북 확인 코드 (<meta ...> 줄을 통째로 붙여도 돼요)', '', ADV),
+        ('seo.daum_robots', '다음 확인 줄 (robots.txt)', '', ADV),
+        ('seo.channels', '우리 SNS 주소 (블로그·인스타그램 등, 한 줄에 하나)', '', OPT_ML),
     ]),
-    ('operator', '하단 정보 (푸터): 사업자 정보·저작권 · 약관에도 표시', [
+    ('operator', '사업자 정보', [
         ('operator.name', '상호 (운영자)', '소보루', {}),
         ('operator.ceo', '대표자', '오규섭', OPT),
         ('operator.biz_no', '사업자등록번호', '129-14-81596', OPT),
@@ -336,9 +337,21 @@ UI_GROUPS = {
     'done': '제보 완료 화면', 'lookup': '내 제보 조회', 'guide': '이용 안내', 'process': '처리 절차', 'types': '제보 유형',
     'faq': '자주 묻는 질문', 'board': '커뮤니티 (게시판)', 'member': '회원가입·로그인·내 정보', 'takedown': '권리침해 신고',
     'policy': '약관·개인정보 처리방침·게시중단', 'company': '기업 답변 화면', 'msg': '알림 메시지 (입력 오류 등)',
-    'sb': '소보루 머리글·아래 탭', 'life': '생활정보', 'letter': '소보루 레터', 'cm': '소보루 픽', 'cp': '소보루 픽 리뷰 주제', 'case': '공개 제보 화면',
+    'sb': '소보루 머리글·아래 탭', 'life': '매거진', 'letter': '소보루 레터', 'cm': '커뮤니티 (후기)', 'cp': '리뷰 주제', 'case': '공개 제보 화면',
     'ask': '법률 질문', 'ask2': 'AI 소비자 상담', 'grade': '기업 등급 기준', 'scam': '사기 주의',
+    'push': '푸시 알림', 'alert': '알림함', 'case_open': '제보 열어 보기', 'companies': '기업별 제보', 'groups': '공동 대응',
+    'pp': '이웃 (글쓴이 페이지)', 'saved': '담아 둔 글', 'biz': '기업 회원', 'tools': '계산기', 'feed': '내돈내산 후기',
+    'vs': '골라주세요', 'suda': '수다방', 'dict': '소비자·경제 사전', 'search': '통합 검색', 'jobs': '동네일자리',
+    'law': '법령 찾기', 'owners': '사장님 소식', 'town': '우리 동네 정보',
 }
+# 관리자 '문구 고치기' 화면 왼쪽 목록의 묶음 (섹션 id에서 ui_ 를 뗀 이름). 없는 섹션은 '기타'로
+SECTION_GROUPS = [
+    ('기본 설정', ['operator', 'seo', 'common', 'jebo', 'sb', 'msg']),
+    ('제보', ['home', 'report', 'done', 'lookup', 'status', 'reports', 'case', 'case_open', 'company', 'companies', 'grade', 'groups', 'takedown', 'alert', 'push']),
+    ('커뮤니티·동네', ['board', 'cm', 'cp', 'feed', 'vs', 'suda', 'pp', 'saved', 'owners', 'town', 'jobs']),
+    ('매거진·도구', ['life', 'letter', 'ask', 'ask2', 'tools', 'dict', 'law', 'search', 'scam']),
+    ('안내·약관', ['guide', 'process', 'types', 'faq', 'policy', 'member', 'biz']),
+]
 _TXT_CALL = _re.compile(r"""\b(?:txt|ed_attr)\(\s*'([a-z0-9_.]+)'\s*\)""")
 UI_FILES = {}  # 템플릿 파일 이름 → 그 화면에 나오는 문구 키 (관리자 '화면 편집'이 페이지별로 묶어 보여 줌)
 def _scan_ui():
@@ -359,10 +372,10 @@ for _key, _default in UI_TEXTS.items():
     _group = _key.split('.')[0]
     _sid = _group if _group in _section_ids else 'ui_' + _group
     if _sid not in _section_ids:
-        SECTIONS.append((_sid, UI_GROUPS.get(_group, _group) + ' · 버튼·안내 문구', []))
+        SECTIONS.append((_sid, UI_GROUPS.get(_group, _group), []))
         _section_ids.add(_sid)
     _items = next(items for sid, _, items in SECTIONS if sid == _sid)
-    _label = '화면 문구: ' + (_default if len(_default) <= 40 else _default[:40] + '…').replace('\n', ' ')
+    _label = (_default if len(_default) <= 40 else _default[:40] + '…').replace('\n', ' ')
     _items.append((_key, _label, _default, ML if len(_default) > 70 or '\n' in _default else {}))
 
 FIELDS = {key: {'label': label, 'default': default, 'section': sid, **opts}

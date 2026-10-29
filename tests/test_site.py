@@ -210,7 +210,7 @@ class SiteTest(unittest.TestCase):
         for path in ('/', '/reports', '/guide', '/process', '/types', '/faq', '/report', '/lookup', '/terms', '/privacy', '/takedown', '/board', '/board/write'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200, path)
-            self.assertIn('class="sb-header"', response.get_data(as_text=True))  # 소보루 머리글 하나뿐 (예전 소비자제보센터 머리글은 뺌)
+            self.assertIn('class="sb-header', response.get_data(as_text=True))  # 소보루 머리글 하나뿐 (예전 소비자제보센터 머리글은 뺌)
             self.assertNotIn('class="section-nav"', response.get_data(as_text=True))
         for path in ('/admin/login', '/reporter/login'):
             self.assertIn('noindex', self.client.get(path).get_data(as_text=True))
@@ -724,7 +724,8 @@ class SiteTest(unittest.TestCase):
         privacy = self.client.get('/privacy').get_data(as_text=True)
         self.assertIn('새 운영사(이하', privacy)
         footer = self.client.get('/').get_data(as_text=True)
-        self.assertNotIn('<li>이메일.', footer)  # 푸터는 상호·주소·사업자등록번호·관리자만 표시
+        self.assertIn('<li>이메일. help@example.com</li>', footer)  # 관리자 옆에 대표 이메일 (전화는 비어 있어 안 보임)
+        self.assertNotIn('<li>전화.', footer)
         self.assertIn('<li>상호. 새 운영사</li>', footer)
         self.assertIn('<li>관리자. <a class="ft-quiet" href="/admin/login" rel="nofollow">홍</a>민주</li>', footer)
         self.assertNotIn('<li>팩스.', footer)  # 비어 있는 항목은 표시하지 않음
@@ -2460,7 +2461,7 @@ class SiteTest(unittest.TestCase):
         home = admin.get('/admin').get_data(as_text=True)
         self.assertIn('관리자 홈', home)
         self.assertIn('기자 계정', home)
-        for label in ('사이트 편집', '구성 바꾸기', '숨은 문구·설정', '게시판 신고', '제보 처리'):
+        for label in ('사이트 꾸미기', '화면 편집', '메뉴·구성', '문구 고치기', '사업자 정보', '검색 노출', '게시판 신고', '제보 처리'):
             self.assertIn(label, home)
         site = admin.get('/admin/site').get_data(as_text=True)
         self.assertIn('화면에서 바로 고치기', site)

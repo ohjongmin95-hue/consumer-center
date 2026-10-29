@@ -1,52 +1,86 @@
 {% extends 'console.html' %}
-{% block title %}숨은 문구·설정 | {{ site_name() }}{% endblock %}
+{% block title %}문구 고치기 | {{ site_name() }}{% endblock %}
 {% block content %}
-<main class="page"><div class="wrap">
-  <div class="page-intro admin-head">
-    <div><h1 class="page-title">{% if current_face() == 'jebo' %}소비자제보센터 문구·설정{% else %}숨은 문구·설정{% endif %}</h1>
-    <p>사이트의 모든 문구가 모여 있어요. 화면에 보이는 문장은 <a href="{{ face_url('admin_site') }}">사이트 편집</a>에서 고치는 게 쉽고, 여기서는 <b>오류 메시지·입력칸 안내·검색 등록 코드·하단 정보</b>처럼 평소 안 보이는 것을 찾아 고쳐요. 칸을 비우고 저장하면 기본 문구로 돌아가요.</p></div>
+{%- set preview = {'common': face_url('home'), 'home': face_url('home'), 'operator': face_url('home'), 'report': face_url('report'), 'policy': face_url('policy_page', page='privacy'), 'board': face_url('board'), 'status': face_url('lookup'), 'reports': face_url('reports'), 'seo': face_url('home')} -%}
+<main class="ad-page ctx">
+  <header class="ad-head"><div><h1>{% if current_face() == 'jebo' %}소비자제보센터 문구 고치기{% else %}문구 고치기{% endif %}</h1>
+    <p>왼쪽에서 화면을 고르거나 위에서 문구를 검색해 고쳐요. 칸을 비우고 저장하면 처음 문구로 돌아가요. 화면에 보이는 문장은 <a href="{{ url_for('admin_screens') if current_face() != 'jebo' else face_url('admin_site') }}">화면 편집</a>에서 보면서 고치는 게 더 쉬워요.</p></div></header>
+
+  <div class="ctx-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input type="search" id="ctx-q" placeholder="고치고 싶은 문구를 검색하세요 (예: 제보 접수하기)" aria-label="문구 검색"><span id="ctx-count"></span></div>
+
+  <div class="ctx-body">
+    <nav class="ctx-nav" aria-label="화면 고르기">
+      {% for name, secs in sec_groups %}<div class="ctx-group"><p>{{ name }}</p>
+        {% for sid, title, items in secs %}{% set n = items|selectattr(0, 'in', changed)|list|length %}<a href="#section-{{ sid }}" data-sid="{{ sid }}"><span>{{ title }}</span>{% if n %}<em title="고친 칸">{{ n }}</em>{% endif %}</a>{% endfor %}
+      </div>{% endfor %}
+    </nav>
+    <select class="ctx-pick" id="ctx-pick" aria-label="화면 고르기">
+      {% for name, secs in sec_groups %}<optgroup label="{{ name }}">{% for sid, title, _ in secs %}<option value="{{ sid }}">{{ title }}</option>{% endfor %}</optgroup>{% endfor %}
+    </select>
+
+    <div class="ctx-main">
+      {% for sid, title, items in sections %}
+      <form class="ctx-sec" id="section-{{ sid }}" method="post">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="section" value="{{ sid }}">
+        <div class="ctx-sec-head"><h2>{{ title }}{% if sid in ('operator', 'policy') %} <span class="ctx-tag">두 사이트 공통</span>{% endif %}</h2>
+          <a href="{{ preview.get(sid) or (face_url('info_page', page=sid) if sid in ('guide', 'process', 'types', 'faq') else face_url('home')) }}" target="_blank" rel="noopener">화면에서 보기 ↗</a></div>
+        {% if sid == 'operator' %}<p class="ctx-help">사이트 맨 아래와 약관에 들어가는 정보예요. 비워 둔 칸은 화면에 안 나와요.</p>
+        {% elif sid == 'seo' %}<p class="ctx-help">네이버·구글 검색 결과와 카톡 미리보기에 보이는 제목과 설명이에요. 확인 코드는 이미 넣어 두었으니 보통은 고칠 일이 없어요.</p>{% endif %}
+        {% macro field(key, label, default, opts) %}
+        <div class="ctx-field">
+          <label for="f-{{ key }}">{{ label }}{% if key in changed %} <span class="ctx-tag on">고침</span>{% endif %}</label>
+          {% if opts.doc %}<p class="ctx-def">{{ policy_hint }}</p><textarea id="f-{{ key }}" name="{{ key }}" rows="18" maxlength="30000">{{ content[key] }}</textarea>
+          {% elif opts.multiline %}<textarea id="f-{{ key }}" name="{{ key }}" rows="{{ [2, content[key].count('\n') + 2]|max }}" maxlength="2000">{{ content[key] }}</textarea>
+          {% else %}<input id="f-{{ key }}" name="{{ key }}" value="{{ content[key] }}" maxlength="2000">{% endif %}
+          {% if default and content[key] != default and not opts.doc %}<p class="ctx-def">처음 문구: {{ default }}</p>{% endif %}
+        </div>
+        {% endmacro %}
+        {% for key, label, default, opts in items if not opts.advanced %}{{ field(key, label, default, opts) }}{% endfor %}
+        {% for key, label, default, opts in items if opts.advanced %}{% if loop.first %}<details class="ctx-adv"><summary>처음 한 번만 넣는 확인 코드</summary>{% endif %}{{ field(key, label, default, opts) }}{% if loop.last %}</details>{% endif %}{% endfor %}
+        <div class="ctx-actions">
+          <button class="ad-btn ad-btn-main" type="submit">저장</button>
+          <button class="ad-btn" type="submit" name="reset_section" value="{{ sid }}" onclick="return confirm('{{ title }}의 문구를 모두 처음으로 되돌릴까요?')">모두 처음 문구로</button>
+        </div>
+      </form>
+      {% endfor %}
+      <p class="ctx-empty" id="ctx-empty" hidden>찾는 문구가 없어요. 다른 말로 검색해 보세요.</p>
+    </div>
   </div>
-  <div class="content-search"><input type="search" id="content-search" placeholder="바꾸고 싶은 문구를 검색하세요 (예: 제보 접수하기)" aria-label="문구 검색"><span id="content-search-count" class="meta"></span></div>
-  <nav class="content-tabs" aria-label="섹션 바로가기">{% for sid, title, _ in sections %}<a href="#section-{{ sid }}">{{ title }}</a>{% endfor %}</nav>
-  {% for sid, title, items in sections %}
-  <form class="form-panel content-section" id="section-{{ sid }}" method="post">
-    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="section" value="{{ sid }}">
-    <h2>{{ title }}{% if sid in ('operator', 'policy') %} <span class="field-tag">두 사이트 공통</span>{% endif %}</h2>
-    {% for key, label, default, opts in items %}
-    <div class="field">
-      <label for="f-{{ key }}">{{ label }}{% if opts.optional %} <span class="field-tag">선택</span>{% endif %}{% if key in changed %} <span class="field-tag changed">수정됨</span>{% endif %}</label>
-      {% if opts.doc %}<p class="field-default">{{ policy_hint }}</p><textarea id="f-{{ key }}" name="{{ key }}" rows="18" maxlength="30000">{{ content[key] }}</textarea>
-      {% elif opts.multiline %}<textarea id="f-{{ key }}" name="{{ key }}" rows="{{ [2, content[key].count('\n') + 2]|max }}" maxlength="2000">{{ content[key] }}</textarea>
-      {% else %}<input id="f-{{ key }}" name="{{ key }}" value="{{ content[key] }}" maxlength="2000">{% endif %}
-      {% if default and content[key] != default and not opts.doc %}<p class="field-default">기본값: {{ default }}</p>{% endif %}
-    </div>
-    {% endfor %}
-    <div class="content-actions">
-      <button class="primary" type="submit">{{ title }} 저장</button>
-      <button class="secondary" type="submit" name="reset_section" value="{{ sid }}" onclick="return confirm('이 섹션의 문구를 모두 기본값으로 되돌릴까요?')">기본값으로 되돌리기</button>
-      <a class="content-preview" href="{{ {'common': face_url('home'), 'home': face_url('home'), 'operator': face_url('home'), 'report': face_url('report'), 'policy': face_url('policy_page', page='privacy'), 'board': face_url('board'), 'status': face_url('lookup'), 'reports': face_url('reports'), 'seo': face_url('home')}.get(sid) or (face_url('info_page', page=sid) if sid in ('guide', 'process', 'types', 'faq') else face_url('home')) }}" target="_blank" rel="noopener">화면에서 보기 ↗</a>
-    </div>
-  </form>
-  {% endfor %}
-</div></main>
+</main>
 <script>
-  // 문구 검색: 칸 이름이나 지금 문구에 검색어가 들어간 칸만 보여 줍니다.
+  // 한 번에 한 화면(섹션)만 보여 줌. 주소 끝 #section-... 로 고른 화면을 기억함. 검색하면 모든 화면에서 찾음.
   (function () {
-    var box = document.getElementById('content-search'), count = document.getElementById('content-search-count');
-    if (!box) return;
-    box.addEventListener('input', function () {
-      var q = box.value.trim().toLowerCase(), shown = 0;
-      document.querySelectorAll('.content-section').forEach(function (sec) {
+    var secs = [].slice.call(document.querySelectorAll('.ctx-sec')), links = [].slice.call(document.querySelectorAll('.ctx-nav a'));
+    var pick = document.getElementById('ctx-pick'), q = document.getElementById('ctx-q'), count = document.getElementById('ctx-count'), empty = document.getElementById('ctx-empty');
+    if (!secs.length) return;
+    var cur = '';
+    function show(sid) {
+      if (!document.getElementById('section-' + sid)) sid = secs[0].id.slice(8);
+      cur = sid;
+      secs.forEach(function (s) { s.hidden = s.id !== 'section-' + sid; s.querySelectorAll('.ctx-field').forEach(function (f) { f.hidden = false; }); });
+      links.forEach(function (a) { a.classList.toggle('on', a.dataset.sid === sid); });
+      pick.value = sid;
+      document.querySelectorAll('.ad-side a[data-sec]').forEach(function (a) { a.classList.toggle('on', a.dataset.sec === sid || (!a.dataset.sec.length && ['operator', 'seo'].indexOf(sid) < 0)); });
+    }
+    function fromHash() { show((location.hash || '').replace('#section-', '')); }
+    window.addEventListener('hashchange', function () { q.value = ''; count.textContent = ''; empty.hidden = true; fromHash(); });
+    pick.addEventListener('change', function () { location.hash = 'section-' + pick.value; });
+    q.addEventListener('input', function () {
+      var t = q.value.trim().toLowerCase(), n = 0;
+      if (!t) { count.textContent = ''; empty.hidden = true; show(cur); return; }
+      secs.forEach(function (s) {
         var any = false;
-        sec.querySelectorAll('.field').forEach(function (f) {
-          var input = f.querySelector('input, textarea');
-          var hit = !q || f.textContent.toLowerCase().indexOf(q) >= 0 || (input && input.value.toLowerCase().indexOf(q) >= 0);
-          f.hidden = !hit; if (hit) { any = true; shown++; }
+        s.querySelectorAll('.ctx-field').forEach(function (f) {
+          var el = f.querySelector('input, textarea'), hit = f.textContent.toLowerCase().indexOf(t) >= 0 || (el && el.value.toLowerCase().indexOf(t) >= 0);
+          f.hidden = !hit; if (hit) { any = true; n++; if (f.closest('details')) f.closest('details').open = true; }
         });
-        sec.hidden = !any;
+        s.hidden = !any;
       });
-      count.textContent = q ? shown + '개 찾음' : '';
+      links.forEach(function (a) { a.classList.remove('on'); });
+      count.textContent = n + '개'; empty.hidden = n > 0;
     });
+    fromHash();
   })();
 </script>
 {% endblock %}

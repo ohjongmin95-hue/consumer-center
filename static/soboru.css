@@ -222,7 +222,7 @@ a:hover>.sb-thumb b,a:hover .sb-thumb b{transform:scale(1.08) rotate(-4deg)}
 .sb .pill,.sb .co-badge{border-radius:999px}
 .sb .text-btn{color:var(--sb-mute)}
 .sb .text-btn:hover{color:var(--sb-ink)}
-.sb .alert{border:0;border-radius:16px;background:#fff;box-shadow:0 0 0 1px rgba(0,27,55,.05),0 8px 24px rgba(0,27,55,.08);border-left:4px solid var(--sb-orange)}
+.sb .alert{border:0;border-radius:16px;background:#fff;box-shadow:0 0 0 1px rgba(0,27,55,.05),0 8px 24px rgba(0,27,55,.08);font-weight:600;color:#333d4b}
 .sb .consent-card,.sb .info-card{border-radius:20px}
 .sb-metoo{display:inline-block;margin-left:6px;background:var(--sb-orange-soft);color:#c45f00;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px}
 /* ==== 하위 화면 전체: 뉴닉처럼 흰 바탕 + 가는 선으로 구역 나눔, 버튼·입력칸은 토스식 ====
@@ -2666,3 +2666,43 @@ main{overflow-wrap:anywhere}
 main img,main video,main iframe,main table{max-width:100%}
 @media(max-width:400px){.sb-hd{gap:8px}.sb-hd .sb-sp+.sb-search{margin-right:2px}.sb-hd .sb-login,.sb-hd .sb-cta{height:36px;padding:0 11px;font-size:13.5px;border-radius:12px}}
 @media(max-width:350px){.sb-hd .sb-cta{display:none}}
+/* 글쓰기 화면 PC: 폭을 넓히고 글씨·칸을 키움 (휴대폰은 그대로) */
+@media(min-width:900px){
+  .sb main.cm-write{max-width:820px;padding-top:44px}
+  .cm-write>h1{font-size:34px;margin:0 0 26px}
+  .cm-write .cm-back{font-size:15px}
+  .cm-kinds{gap:12px}
+  .cm-kinds:not(:has(label:nth-of-type(3))){grid-template-columns:1fr 1fr}
+  .cm-kinds span{padding:20px 20px 18px;border-radius:20px}
+  .cm-kinds b{font-size:18px}
+  .cm-kinds small{font-size:14px}
+  .cm-write .cm-f{padding-top:30px}
+  .cm-write .cm-l{font-size:17px;margin-bottom:12px}
+  .cm-write .cm-seg span,.cm-write .cm-cats span{height:50px;padding:0 22px;font-size:16px}
+  .sb main.cm-write .cm-form input:not([type=checkbox]):not([type=radio]):not([type=hidden]){height:60px;font-size:17px;padding:0 18px;border-radius:16px}
+  .sb main.cm-write .cm-form textarea{font-size:17px;padding:16px 18px;border-radius:16px}
+  .cm-write .cm-rate svg{width:46px;height:46px}
+  .cm-write .cm-hint{font-size:14px}
+}
+.sb .sb-chips.sb-chips-off{display:none}
+/* 로그인·가입 화면 바탕 (토스증권 로그인처럼): 화면 전체에 옅은 귤색·크림·하늘빛이 섞인 큰 원 + 아래로 갈수록 흰색 */
+.sb:has(.auth-page){background:#fff}
+.sb .auth-page{position:relative;isolation:isolate;max-width:none;min-height:calc(100vh - 64px);padding:56px 16px 72px;
+  background:radial-gradient(ellipse 55% 60% at 12% 0,rgba(253,226,203,.85) 0,rgba(253,226,203,0) 72%),radial-gradient(ellipse 55% 60% at 90% 6%,rgba(222,236,250,.9) 0,rgba(222,236,250,0) 72%),radial-gradient(ellipse 45% 40% at 50% 34%,#fff 0,rgba(255,255,255,0) 100%),linear-gradient(#f7f3ef 0,#fbf9f7 45%,#fff 80%)}
+.sb .auth-page-login{flex-direction:column;align-items:center}
+.auth-title-out{margin:0 0 8px;font-size:34px;font-weight:800;letter-spacing:-.04em;color:#191f28;text-align:center}
+.auth-lead-out{margin:0 0 28px;font-size:16px;color:#6b7684;text-align:center}
+.sb .auth-page-login .auth-card{box-shadow:0 1px 2px rgba(0,27,55,.04),0 20px 50px rgba(0,27,55,.07)}
+.sb .auth-page-login .auth-body{padding:32px 32px 20px}
+.auth-join{margin:28px 0 0;font-size:15px;color:#4e5968;text-align:center}
+.auth-join a{margin-left:6px;color:#d25f00;font-weight:700;text-decoration:underline;text-underline-offset:4px}
+@media(max-width:560px){.sb .auth-page{padding:32px 16px 56px}.auth-title-out{font-size:26px}.auth-lead-out{margin-bottom:20px;font-size:15px}.sb .auth-page-login .auth-card{box-shadow:0 12px 32px rgba(0,27,55,.06);border-radius:22px}.sb .auth-page-login .auth-body{padding:24px 20px 16px}}
+/* 간단한 머리글 (글쓰기·로그인·가입 화면): 위 메뉴·검색·버튼과 아래 탭을 숨기고 로고와 닫기(X)만. 로그인 쪽은 바탕이 이어지게 투명 */
+.sb-close{display:none}
+.sb-header-min .sb-nav,.sb-header-min .sb-search,.sb-header-min .sb-login,.sb-header-min .sb-join,.sb-header-min .sb-cta,.sb-header-min .sb-bell,.sb-header-min .sb-me,.sb-header-min .sb-chips,.sb-header-min~.sb-sub,.sb-header-min .sb-sub,.sb:has(.sb-header-min) .sb-tabbar{display:none!important}
+.sb-header-min .sb-close{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;color:#4e5968}
+.sb-header-min .sb-close:hover{background:rgba(0,27,55,.05);color:#191f28}
+.sb-close svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.sb:has(.auth-page) .sb-header{border-bottom:0;background:transparent;position:absolute;left:0;right:0}
+.sb .auth-page{padding-top:120px;min-height:100vh}
+@media(max-width:560px){.sb .auth-page{padding-top:88px}}
