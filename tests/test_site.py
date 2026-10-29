@@ -1761,7 +1761,7 @@ class SiteTest(unittest.TestCase):
                 page = c.get('/signup', base_url=J).get_data(as_text=True)
                 self.assertIn('class="site-header"', page)  # 가입 화면은 소비자제보센터 화면 그대로
                 token = re.search(r'name="_csrf" value="([^"]+)"', page)[1]
-                r = c.post('/signup', base_url=J, data={'_csrf': token, 'login_id': 'jebo_user', 'password': 'butter123', 'password2': 'butter123', 'nickname': '제보회원',
+                r = c.post('/signup', base_url=J, data={'_csrf': token, 'login_id': 'jebo_user', 'password': 'butter123', 'password2': 'butter123', 'nickname': '제보회원', 'phone': '010-5555-6666',
                                                         'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
                 self.assertTrue(r.headers['Location'].startswith(M + '/sso/begin?'))
                 r = hop(c, r); self.assertTrue(r.headers['Location'].startswith(J + '/sso/issue?'))
@@ -1801,9 +1801,16 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(admin.post('/admin/lists', data={'_csrf': token, 'list': 'process_steps', 'title': ['x'], 'icon': ['rocket'], 'body': ['']}).status_code, 400)
 
     def signup(self, client, login_id='sobo_ru', nickname='소보루', password='butter123', **extra):
-        data = {'login_id': login_id, 'password': password, 'password2': password, 'nickname': nickname,
+        data = {'login_id': login_id, 'password': password, 'password2': password, 'nickname': nickname, 'phone': '010-1234-5678',
                 'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on', **extra}
         return self.post_form(client, '/signup', data)
+
+    def join_form(self, client):
+        # 소셜 가입 화면에 미리 채워진 닉네임을 그대로 써서 가입 (휴대폰 번호가 없으면 시험용 번호)
+        page = client.get('/auth/join').get_data(as_text=True)
+        form = {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on', 'nickname': re.search(r'name="nickname"[^>]*value="([^"]*)"', page)[1]}
+        if 'name="phone"' in page: form['phone'] = '010-2222-0000'
+        return form
 
     def test_signup_requires_consents_and_valid_fields(self):
         page = self.client.get('/signup').get_data(as_text=True)
@@ -1816,12 +1823,14 @@ class SiteTest(unittest.TestCase):
         weak = self.signup(self.client, password='12345678')
         self.assertIn('영문과 숫자를 섞어', weak.get_data(as_text=True))
         self.assertIn('사용할 수 없는 닉네임', self.signup(self.client, nickname='운영자').get_data(as_text=True))
-        made = self.signup(self.client)
+        self.assertIn('휴대폰 번호를 확인해 주세요', self.signup(self.client, phone='1234').get_data(as_text=True))
+        made = self.signup(self.client, phone='01012345678')
         self.assertEqual(made.status_code, 302)
         with self.site.conn() as db:
             user = db.execute('SELECT * FROM users').fetchone()
         self.assertNotEqual(user['pw_hash'], 'butter123')
         self.assertEqual(user['terms_version'], self.site.TERMS_VERSION)
+        self.assertEqual(user['phone'], '010-1234-5678')  # 휴대폰 번호는 하이픈 넣어 저장
         me = self.client.get('/me').get_data(as_text=True)
         self.assertIn('소보루님', me)
         other = self.site.app.test_client()
@@ -1908,9 +1917,10 @@ class SiteTest(unittest.TestCase):
             self.assertIn('카카오로 가입하기', page)
             self.assertIn('김실명', page)
             self.assertIn('010-1234-5678', page)
-            self.assertNotIn('name="nickname"', page)  # 닉네임은 묻지 않고 자동으로 정함
+            self.assertIn('name="nickname"', page)  # 닉네임은 직접 정함 (자동 닉네임을 미리 채워 둠)
+            self.assertNotIn('name="phone"', page)  # 카카오에서 받은 휴대폰 번호가 있으면 묻지 않음
             self.assertEqual(self.post_form(self.client, '/auth/join', {}).status_code, 400)
-            joined = self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            joined = self.post_form(self.client, '/auth/join', self.join_form(self.client))
             self.assertEqual(joined.status_code, 302)
             with self.site.conn() as db:
                 user = db.execute("SELECT * FROM users WHERE real_name='김실명'").fetchone()
@@ -1991,7 +2001,7 @@ class SiteTest(unittest.TestCase):
             state = re.search(r'state=([^&]+)', r.headers['Location'])[1]
             with patch.object(self.site.members, 'http', fake):
                 self.client.get(f'/auth/naver/callback?code=c&state={state}')
-            self.assertEqual(self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'}).status_code, 302)
+            self.assertEqual(self.post_form(self.client, '/auth/join', self.join_form(self.client)).status_code, 302)
             with self.site.conn() as db:
                 u = db.execute("SELECT * FROM users WHERE real_name='박실명'").fetchone()
             self.assertRegex(u['nickname'], r'^소비자\d{4}$')
@@ -3807,6 +3817,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<span class="sb-point-n" aria-hidden="true">2</span>결제일을 기억하세요', html)
         self.assertIn("<dl class=\"sb-terms\">", html); self.assertIn("<dt>리볼빙</dt>", html)  # 용어 풀이는 상자 하나로
         self.assertNotIn('###', html)
+        with self.site.app.test_request_context('/'): one = str(self.site.app.jinja_env.globals['life_body']('## 가\n\n### 혼자인 요점\n\n설명\n\n## 나\n\n### 또 혼자\n\n설명'))
+        self.assertNotIn('sb-point-n', one); self.assertIn('<h3 class="sb-point">혼자인 요점</h3>', one)  # 요점이 하나뿐이면 번호 없음 (모두 1로 보이던 문제)
         with self.site.app.test_request_context('/'): hl = str(self.site.app.jinja_env.globals['life_body']('앞 **꼭 기억할 말** 뒤 <b>x</b> **'))
         self.assertIn('<strong class="sb-hl">꼭 기억할 말</strong>', hl); self.assertIn('&lt;b&gt;', hl); self.assertNotIn('**', hl)  # 형광펜 강조, 태그는 글자로
 
@@ -4868,7 +4880,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(calls[0][1]['client_id'], 'kr.co.consumerjebo.soboru'); self.assertNotIn('redirect_uri', calls[0][1])
             body = json.loads(base64.urlsafe_b64decode(calls[0][1]['client_secret'].split('.')[1] + '=='))
             self.assertEqual(body['sub'], 'kr.co.consumerjebo.soboru')
-            r = self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            r = self.post_form(self.client, '/auth/join', self.join_form(self.client))
             with self.site.conn() as db:
                 user = db.execute("SELECT * FROM users WHERE real_name='소보루'").fetchone()
                 tok = db.execute('SELECT refresh_token,client FROM apple_tokens').fetchone()
@@ -4940,7 +4952,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(calls[0][1]['redirect_uri'], 'http://localhost/auth/apple/callback')
             self.assertEqual(calls[0][1]['client_secret'].count('.'), 2)
             self.assertIn('Apple로 가입하기', self.client.get('/auth/join').get_data(as_text=True))
-            self.post_form(self.client, '/auth/join', {'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
+            self.post_form(self.client, '/auth/join', self.join_form(self.client))
             with self.site.conn() as db:
                 user = db.execute("SELECT * FROM users WHERE real_name='홍길동'").fetchone()
                 ident = db.execute('SELECT * FROM user_identities WHERE user_id=?', (user['id'],)).fetchone()

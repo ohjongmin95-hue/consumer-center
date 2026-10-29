@@ -291,19 +291,26 @@ def install(S):
             session.pop('oauth_join',None);flash('로그인을 다시 시작해 주세요.');return redirect(url_for('login'))
         name=PROVIDERS[pend['p']]['name']
         view=dict(provider=name,real_name=pend.get('name',''),phone=pend.get('phone',''),email=pend.get('email',''))
-        if request.method=='GET':return render_template('social_join.html',**view)
+        if request.method=='GET':
+            with conn() as db:view['nick_suggest']=auto_nickname(db)  # 닉네임 칸에 미리 채워 두는 값 (바꿔도 됨)
+            return render_template('social_join.html',**view)
         with conn() as db:
-            if not all(request.form.get(k) for k in ('agree_terms','agree_privacy','agree_age')):
-                flash(ui_text('msg.m17','필수 동의 항목을 모두 확인해 주세요.'));return render_template('social_join.html',**view),400
+            # 닉네임은 직접 정함 (소보루에서 중요). 카카오에서 휴대폰 번호를 못 받았으면 직접 적음
+            nick=request.form.get('nickname','').strip();phone=pend.get('phone','') or kr_phone(request.form.get('phone',''))
+            errors=[] if all(request.form.get(k) for k in ('agree_terms','agree_privacy','agree_age')) else [ui_text('msg.m17','필수 동의 항목을 모두 확인해 주세요.')]
+            if S.nickname_error(db,nick):errors.append(S.nickname_error(db,nick))
+            if S.phone_error(phone):errors.append(S.phone_error(phone))
+            if errors:
+                for e in errors:flash(e)
+                view['nick_suggest']=nick;return render_template('social_join.html',**view),400
             if db.execute('SELECT 1 FROM user_identities WHERE provider=? AND provider_uid=?',(pend['p'],pend['uid'])).fetchone():
                 session.pop('oauth_join',None);flash('이미 가입된 계정이에요. 다시 로그인해 주세요.');return redirect(url_for('login'))
-            nick=auto_nickname(db)
             for _ in range(5):  # 소셜 회원은 아이디를 쓰지 않음. 겹치지 않는 내부 아이디만 만들어 둠
                 login_id=pend['p'][0]+'_'+secrets.token_hex(5)
                 if not db.execute('SELECT 1 FROM users WHERE login_id=?',(login_id,)).fetchone():break
             email=pend['email'] if pend['email'] and not pend.get('relay') and not db.execute("SELECT 1 FROM users WHERE email=? COLLATE NOCASE",(pend['email'],)).fetchone() else ''
             cur=db.execute("INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created,email_verified_at,real_name,phone) VALUES(?,'',?,?,?,?,?,?,?,?,?)",
-                           (login_id,nick,email,S.TERMS_VERSION,now(),S.ip_hash(),now(),now() if email and pend['email_verified'] else '',pend.get('name',''),pend.get('phone','')))
+                           (login_id,nick,email,S.TERMS_VERSION,now(),S.ip_hash(),now(),now() if email and pend['email_verified'] else '',pend.get('name',''),phone))
             db.execute('INSERT INTO user_identities(user_id,provider,provider_uid,email,linked_at) VALUES(?,?,?,?,?)',(cur.lastrowid,pend['p'],pend['uid'],pend['email'],now()))
             user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
             S.ad_event('signup',db)  # 광고 효과: 처음 들어온 경로별 가입 수

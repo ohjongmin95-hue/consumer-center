@@ -2167,3 +2167,21 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 .sc-form-note{margin:0;color:#6b7684;font-size:14px}
 @media (max-width:640px){.sc-hero{padding:32px 18px 24px;border-radius:22px}.sc-search{padding-left:14px}.sc-nums{gap:8px}.sc-nums div{padding:14px}.sc-nums dd{font-size:22px}.sc-nums dt{font-size:12.5px}
   .sc-tips{grid-template-columns:1fr}.sc-pick{grid-template-columns:repeat(2,minmax(0,1fr))}.sc-item{padding:16px}.sc-emo{width:40px;height:40px;font-size:21px}.sc-tile{padding:10px 8px 8px}.sc-tile b{font-size:17px}}
+/* 회원가입 칸 (토스식): 칸 위에 작은 이름표, 비밀번호는 두 칸 나란히 */
+.su-f{display:block;margin:0}
+.su-f>span{display:flex;align-items:baseline;gap:6px;white-space:nowrap;margin:6px 0 8px;font-size:14px;font-weight:700;color:#333d4b}
+.su-f>span em{font-style:normal;font-weight:500;font-size:12.5px;color:#8b95a1}
+.su-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.su-nick>span{font-size:15px;color:#191f28}
+.auth-body .agree-box{margin-top:14px;border:0;border-radius:16px;background:#f9fafb}
+.auth-body .agree-all{background:transparent;border-bottom:1px solid #eef0f2}
+@media(max-width:420px){.su-two{grid-template-columns:1fr}}
+/* 회원가입 한 칸씩 (토스식): 한 화면에 질문 하나, 이미 쓴 값은 위에 칩으로 */
+.su-steps .su-now{animation:su-in .25s ease}
+.su-steps [hidden]{display:none!important}
+.su-sum{display:flex;flex-wrap:wrap;gap:6px}
+.su-sum button{border:0;border-radius:999px;background:#f2f4f6;color:#4e5968;font:inherit;font-size:13.5px;font-weight:600;padding:7px 12px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.su-sum button::after{content:' ✎';color:#b0b8c1}
+.su-sum button:hover{background:#e8ebee}
+@keyframes su-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.su-steps .su-now{animation:none}}
