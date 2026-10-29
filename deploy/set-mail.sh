@@ -4,7 +4,7 @@
 #   앱 비밀번호는 실행하면 화면에 안 보이게 물어봄 (명령어·기록에 남지 않게). 예전처럼 둘째 칸에 넣어도 됨.
 #   소보루 CS(/etc/soboru-platform.env)는 따로 설정하므로 건드리지 않음. 같은 계정을 넣으려면 맨 끝에 --cs
 #   회사 주소(구글 워크스페이스): sudo bash .../set-mail.sh letter@consumerjebo.co.kr 받을주소
-#   다른 회사 메일: sudo MAIL_HOST=smtp.example.com bash .../set-mail.sh ...
+#   회사 메일은 메일 서버(MX)를 보고 하이웍스(smtps.hiworks.com)·네이버웍스(smtp.worksmobile.com)·구글을 알아서 고름. 직접 정하기: sudo MAIL_HOST=smtp.example.com bash .../set-mail.sh ...
 #   앱 비밀번호: 지메일은 구글 계정 > 보안 > 2단계 인증 > 앱 비밀번호(16자리), 네이버는 메일 환경설정 > POP3/SMTP 사용 후 네이버 비밀번호(또는 애플리케이션 비밀번호)
 # 메일이 켜지면 제보 때 이메일을 적은 제보자에게도 접수·진행 메일이 갑니다.
 set -euo pipefail
@@ -22,7 +22,15 @@ PW="${PW// /}"
 [[ -n $PW ]] || { echo "비밀번호가 비어 있어요."; exit 1; }
 case "${FROM##*@}" in
   gmail.com) HOST=smtp.gmail.com;; naver.com) HOST=smtp.naver.com;; daum.net|hanmail.net) HOST=smtp.daum.net;;
-  *) HOST="${MAIL_HOST:-smtp.gmail.com}"  # 회사 주소(@consumerjebo.co.kr 등)는 구글 워크스페이스로 봄. 하이웍스 등은 MAIL_HOST=smtps.hiworks.com 처럼 앞에 붙여 실행
+  *) # 회사 주소(@soboru.co.kr 등): 메일 서버(MX)를 보고 하이웍스·네이버웍스·구글 워크스페이스를 알아서 고름. 직접 정하려면 MAIL_HOST=... 를 앞에 붙여 실행
+     MX=$( (command -v dig >/dev/null && dig +short MX "${FROM##*@}") || (command -v host >/dev/null && host -t MX "${FROM##*@}") || true)
+     MX=${MX,,}
+     if [[ -n ${MAIL_HOST:-} ]]; then HOST=$MAIL_HOST
+     elif [[ $MX == *hiworks* ]]; then HOST=smtps.hiworks.com
+     elif [[ $MX == *worksmobile* ]]; then HOST=smtp.worksmobile.com
+     elif [[ $MX == *daum* || $MX == *kakao* ]]; then HOST=smtp.daum.net
+     elif [[ $MX == *naver* ]]; then HOST=smtp.naver.com
+     else HOST=smtp.gmail.com; fi
      echo "회사 메일 주소로 보고 $HOST 로 보냅니다.";;
 esac
 [[ -f $ENV_FILE ]] || { echo "$ENV_FILE 이 없습니다. 먼저 setup.sh로 설치해 주세요."; exit 1; }
@@ -42,4 +50,13 @@ if [[ $CS == 1 && -f $PENV ]]; then
   echo "소보루 CS에도 같은 메일 계정을 넣었습니다."
 fi
 echo "저장했습니다. 이제 새 제보가 들어오면 $TO 로 메일이 갑니다."
+# 연결 시험: 받을 주소 첫 번째로 시험 메일 한 통 (실패하면 이유를 보여 줌)
+FIRST="${TO%%,*}"
+if (set -a; . "$ENV_FILE"; set +a; cd /opt/soboru/app && /opt/soboru/venv/bin/python -c "import sys, notify; notify.send_email(sys.argv[1], '[소보루] 메일 연결 시험', '서버 메일이 연결됐어요. 이제 기업 안내·제보자 알림 메일이 이 계정으로 나가요.')" "$FIRST") 2>/tmp/soboru-mail-test.err; then
+  echo "시험 메일을 $FIRST 로 보냈어요. 받은편지함(또는 스팸함)을 확인해 주세요."
+else
+  echo "시험 메일을 보내지 못했어요: $(tail -n 1 /tmp/soboru-mail-test.err)"
+  echo "비밀번호(앱 비밀번호)나 메일 서비스의 SMTP 사용 설정을 확인해 주세요."
+fi
+rm -f /tmp/soboru-mail-test.err
 echo "기업 자동 전달 메일과 제보자 진행 알림 메일도 이 계정으로 나갑니다."

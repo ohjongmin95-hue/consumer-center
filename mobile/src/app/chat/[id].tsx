@@ -20,6 +20,8 @@ export default function ChatRoomScreen() {
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
+  // 자주 쓰는 답장: 이 상담에 맞게 이름·주문번호가 채워진 문구 (요청 화면과 같은 것)
+  const [macros, setMacros] = useState<{ id: number; name: string; body: string }[]>([]);
   const last = useRef(0);
   const need = useRef<boolean | null>(null);
   const scroll = useRef<ScrollView>(null);
@@ -57,6 +59,7 @@ export default function ChatRoomScreen() {
     useCallback(() => {
       if (!token) return;
       api.chat(token, id).then(take, fail);
+      api.case(token, id).then((c) => setMacros(c.macros ?? []), () => {});
       const h = setInterval(poll, 3000);
       return () => clearInterval(h);
     }, [token, id, poll, fail]),
@@ -137,6 +140,15 @@ export default function ChatRoomScreen() {
         </ScrollView>
         <Notice text={err} />
         <Notice text={ok} tone="ok" />
+        {room.can_reply && !note && macros.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={st.macroBar} contentContainerStyle={{ gap: 6, paddingHorizontal: 10 }} keyboardShouldPersistTaps="handled">
+            {macros.map((m) => (
+              <Pressable key={m.id} onPress={() => setText((t) => (t.trim() ? t.trim() + '\n\n' + m.body : m.body))} style={({ pressed }) => [st.macro, pressed && { backgroundColor: C.accentSoft }]} accessibilityRole="button" accessibilityLabel={`자주 쓰는 답장 ${m.name} 넣기`}>
+                <Text style={st.macroT}>{m.name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
         {room.can_reply ? (
           <View style={st.comp}>
             <Pressable onPress={() => setNote((v) => !v)} style={[st.noteBtn, note && { backgroundColor: '#FFF6D6' }]} accessibilityLabel={note ? '메모 쓰는 중' : '메모로 바꾸기'}>
@@ -193,6 +205,9 @@ const st = StyleSheet.create({
   draft: { backgroundColor: C.band, borderRadius: R.sm, padding: 12, gap: 4 },
   draftH: { fontFamily: FONT, fontSize: 12, fontWeight: '700', color: C.fg3 },
   draftT: { fontFamily: FONT, fontSize: 14, color: C.fg, lineHeight: 20 },
+  macroBar: { flexGrow: 0, paddingVertical: 8, backgroundColor: C.card, borderTopWidth: 1, borderTopColor: C.line },
+  macro: { borderRadius: 999, backgroundColor: C.fill, paddingHorizontal: 12, paddingVertical: 7 },
+  macroT: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.fg2 },
   comp: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, backgroundColor: C.card, borderTopWidth: 1, borderTopColor: C.line },
   noteBtn: { height: 44, paddingHorizontal: 10, borderRadius: 12, backgroundColor: C.fill, justifyContent: 'center' },
   noteText: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.fg3 },
