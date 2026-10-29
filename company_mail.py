@@ -6,6 +6,7 @@
 2) 공정위 통신판매사업자 정보파일(CSV, data.go.kr/data/15083251)을 내려받아 넣어 둔 목록 (python -m company_mail import 파일.csv ...)
 같은 이름이 여럿이고 메일이 서로 다르면 고르지 않음(엉뚱한 곳에 보내지 않게). 폐업·취소된 곳은 뺌.
 명령: python -m company_mail find 쿠팡 [사업자번호]  /  python -m company_mail import a.csv b.csv
+      python -m company_mail seed  → data/companies_seed.csv의 큰 기업(이름·법인명·다른 이름)을 미리 등록하고, 메일이 비어 있으면 찾아 채움
 """
 import csv, json, os, re, sqlite3, sys, urllib.parse, urllib.request
 from pathlib import Path
@@ -177,10 +178,65 @@ def find(names, brno=''):
     return (email, SOURCE) if email else ('', '')
 
 
+# ---- 큰 기업 미리 등록 (운영자 요청 2026-10-29: 연락처를 미리 넣어 두기) ----------------------------
+SEED = Path(__file__).resolve().parent / 'data' / 'companies_seed.csv'
+
+
+def seed(path=SEED, lookup=True):
+    """(새로 등록, 메일 채움) 수. 같은 이름(다른 이름 포함)이 이미 있으면 다른 이름만 보탬. 공개 제보가 생겨야 기업 페이지가 열림."""
+    import datetime
+    db = sqlite3.connect(Path(os.getenv('DATABASE_PATH', str(Path(__file__).resolve().parent / 'cases.sqlite3'))))
+    db.row_factory = sqlite3.Row
+    now = datetime.datetime.now().isoformat(timespec='seconds'); added = filled = 0
+    with db:
+        cos = db.execute("SELECT * FROM companies WHERE status IN ('active','listed','pending')").fetchall()
+        names = lambda c: [c['name'], c['brand'], c['biz_name']] + (c['aliases'] or '').split(',')
+        for row in csv.DictReader(Path(path).read_text(encoding='utf-8-sig').splitlines()):
+            name, legal = row['이름'].strip(), row['법인명'].strip()
+            alias = [a.strip() for a in row['다른 이름'].split('|') if a.strip()]
+            keys = {norm(n) for n in [name] + alias if norm(n)}
+            hit = next((c for c in cos if keys & {norm(n) for n in names(c) if n and norm(n)}), None)
+            if hit:
+                have = [a.strip() for a in (hit['aliases'] or '').split(',') if a.strip()]
+                more = [a for a in alias if norm(a) not in {norm(n) for n in names(hit) if n}]
+                if more: db.execute('UPDATE companies SET aliases=? WHERE id=?', (', '.join(have + more)[:300], hit['id']))
+                if legal and not hit['biz_name']: db.execute('UPDATE companies SET biz_name=? WHERE id=?', (legal, hit['id']))
+                cid = hit['id']
+            else:
+                cid = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created,biz_name,aliases) VALUES(?,'','listed','','','',?,?,?)",
+                                 (name, now, legal, ', '.join(alias)[:300])).lastrowid
+                added += 1
+            dom = (row.get('도메인') or '').strip().lower()
+            if dom: db.execute("UPDATE companies SET domain=? WHERE id=? AND domain=''", (dom, cid))  # 로고는 company_logo.py가 받아 둠
+            co = db.execute('SELECT * FROM companies WHERE id=?', (cid,)).fetchone()
+            if lookup and not co['official_email'] and not co['notice_optout'] and co['status'] != 'active':
+                email, src = find([n for n in names(co) if n], co['biz_no'])
+                if email: db.execute('UPDATE companies SET official_email=?,email_source=? WHERE id=?', (email, src, cid)); filled += 1
+            cos = db.execute("SELECT * FROM companies WHERE status IN ('active','listed','pending')").fetchall()
+    db.close()
+    return added, filled
+
+
+def auto(site):
+    """처음 배포할 때 한 번만 큰 기업을 미리 등록 (메일 찾기는 오래 걸릴 수 있어 set-ftc.sh에서)."""
+    if os.getenv('SOBORU_COMPANY_SEED', '1') == '0': return 0
+    import datetime
+    with site.conn() as db:
+        db.execute('CREATE TABLE IF NOT EXISTS soboru_flags(key TEXT PRIMARY KEY,created TEXT NOT NULL)')
+        first = db.execute("INSERT OR IGNORE INTO soboru_flags(key,created) VALUES('company_seed_v1',?)", (datetime.datetime.now().isoformat(timespec='seconds'),)).rowcount
+    if not first: return 0
+    try: return seed(lookup=False)[0]
+    except Exception as e:  # 기업 목록 때문에 사이트가 안 뜨면 안 됨
+        print('큰 기업 목록을 넣지 못했어요:', e); return 0
+
+
 if __name__ == '__main__':
     cmd, args = (sys.argv[1] if len(sys.argv) > 1 else ''), sys.argv[2:]
     if cmd == 'import' and args:
         print(f'{import_csv(args)}곳을 넣었어요 ({dir_path()}).')
+    elif cmd == 'seed':
+        added, filled = seed(args[0] if args else SEED, lookup=bool(api_key() or dir_path().exists()))
+        print(f'큰 기업 {added}곳을 새로 등록했고, {filled}곳의 메일을 공정위 자료에서 찾아 채웠어요.')
     elif cmd == 'find' and args:
         email, src = find([args[0]], args[1] if len(args) > 1 else '')
         print(f'{args[0]}: {email} ({src})' if email else f'{args[0]}: 찾지 못했어요 (이름이 같은 곳이 여럿이거나 신고된 메일이 없어요).')

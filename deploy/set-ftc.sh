@@ -12,7 +12,7 @@ APP=/opt/soboru/app; ENV_FILE=/etc/soboru.env; PY=/opt/soboru/venv/bin/python
 run() { systemd-run --wait --pipe -q -p User=soboru -p EnvironmentFile=$ENV_FILE -p WorkingDirectory=$APP "$PY" -m company_mail "$@"; }
 if [[ $# -gt 0 ]]; then
   for f in "$@"; do [[ -f $f ]] || { echo "$f 파일이 없어요."; exit 1; }; chmod o+r "$f"; done
-  mapfile -t FILES < <(realpath "$@"); run import "${FILES[@]}"; run find 쿠팡; exit 0
+  mapfile -t FILES < <(realpath "$@"); run import "${FILES[@]}"; run seed; exit 0
 fi
 read -r -s -p "공공데이터포털 인증키: " KEY; echo
 KEY="${KEY//[$'\r\n\t ']/}"
@@ -23,3 +23,4 @@ cat "$TMP" > "$ENV_FILE"; rm -f "$TMP"
 systemctl restart soboru
 echo "저장했어요. 유명 기업 몇 곳을 찾아볼게요 (활용신청 승인 직후엔 1~2시간 뒤에 될 수 있어요)."
 for n in 쿠팡 무신사 컬리; do run find "$n" | head -1; done
+echo "미리 등록한 큰 기업들의 메일을 찾아 채울게요 (1~2분)..."; run seed

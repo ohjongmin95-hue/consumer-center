@@ -30,7 +30,7 @@ class SiteTest(unittest.TestCase):
             'ENABLE_INTAKE': '1',
             'ENABLE_BOARD': '1',
             'HTTPS_ONLY': '0',
-            'SOBORU_GUEST_WRITE': '1', 'SOBORU_EXAMPLES': '0',  # 예전 테스트는 비회원 글쓰기로 돎. 소보루 로그인 글쓰기는 test_soboru_login_to_write에서
+            'SOBORU_GUEST_WRITE': '1', 'SOBORU_EXAMPLES': '0', 'SOBORU_COMPANY_SEED': '0', 'SOBORU_LOGO_FETCH': '0',  # 예전 테스트는 비회원 글쓰기로 돎. 소보루 로그인 글쓰기는 test_soboru_login_to_write에서
         })
         cls.env.start()
         spec = importlib.util.spec_from_file_location('site_under_test', ROOT / 'app.py')
@@ -1557,7 +1557,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(guide.count('class="evidence-topic"'), 10)
         self.assertIn('<summary><span>가전·IT</span>', guide)
         self.assertIn('<dt>결제한 금액</dt>', guide)
-        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 3)
+        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 4)
         admin = self.login_admin()
         page = admin.get('/admin/lists').get_data(as_text=True)
         self.assertIn('id="list-guide_topics"', page)
@@ -1585,7 +1585,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('꿀팁', self.client.get('/board').get_data(as_text=True))
         # 기본값으로 되돌리기
         admin.post('/admin/lists', data={'_csrf': token, 'list': 'faq', 'reset': '1'})
-        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 3)
+        self.assertEqual(self.client.get('/faq').get_data(as_text=True).count('class="faq-item"'), 4)
 
     def test_legacy_fixed_slots_carry_over(self):
         with self.site.conn() as db:
@@ -1593,7 +1593,7 @@ class SiteTest(unittest.TestCase):
         faq = self.client.get('/faq').get_data(as_text=True)
         self.assertIn('바뀐 두번째 질문', faq)
         self.assertIn('추가했던 다섯번째', faq)
-        self.assertEqual(faq.count('class="faq-item"'), 4)
+        self.assertEqual(faq.count('class="faq-item"'), 5)
         process = self.client.get('/process').get_data(as_text=True)
         self.assertEqual(process.count('class="process-card"'), 2)
 
@@ -2910,7 +2910,7 @@ class SiteTest(unittest.TestCase):
         self.post_form(self.client, '/report', dict(base, company='새로운상점', subject='다른 제보'))
         with self.site.conn() as db:
             other = db.execute("SELECT id,company_id FROM cases WHERE subject='다른 제보'").fetchone()
-        self.assertIsNone(other['company_id'])
+        self.assertTrue(other['company_id'])  # 이름만 적어도 접수 때 바로 새 기업으로 등록·연결 (2026-10-29)
         self.post_form(admin, '/admin/reports/%d' % other['id'], {'form': 'company_new', 'name': '새로운상점'})
         with self.site.conn() as db:
             new = db.execute("SELECT c.company_id,co.status FROM cases c JOIN companies co ON co.id=c.company_id WHERE c.id=?", (other['id'],)).fetchone()
@@ -3215,6 +3215,41 @@ class SiteTest(unittest.TestCase):
             co = db.execute('SELECT co.* FROM companies co JOIN cases c ON c.company_id=co.id WHERE c.id=?', (cid,)).fetchone()
             self.assertEqual(co['official_email'], 'help@famous-market.example'); self.assertTrue(co['email_source'])
         self.assertIn('자동으로 찾았어요', admin.get('/admin/companies').get_data(as_text=True))
+        # 큰 기업 미리 등록: 다른 이름으로도 연결되고, 두 번 넣어도 겹치지 않음
+        added, _ = company_mail.seed(lookup=False)
+        self.assertGreater(added, 40); self.assertEqual(company_mail.seed(lookup=False)[0], 0)
+        with self.site.conn() as db:
+            self.assertEqual(self.site.pick_company(db, None, '배민')['name'], '배달의민족')
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM companies WHERE name='쿠팡'").fetchone()[0], 1)
+
+    def test_cases_link_companies_and_logos(self):
+        """제보는 들어오면 기업에 자동으로 묶이고(없으면 등록), 예전 제보도 정리되며, 홈 '제보가 많은 기업'에 바로 셈 (운영자 요청 2026-10-29)"""
+        import company_logo, io
+        from PIL import Image
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '처음보는상점', 'subject': '처음보는상점 환불', 'description': '환불이 안 돼요',
+                'reporter_name': '오소비', 'phone': '010-8181-1212', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db:
+            row = db.execute("SELECT c.company_id, co.name, co.status FROM cases c JOIN companies co ON co.id=c.company_id WHERE c.company='처음보는상점'").fetchone()
+            self.assertEqual((row['name'], row['status']), ('처음보는상점', 'listed'))
+            db.execute("UPDATE cases SET company_id=NULL WHERE company='처음보는상점'")
+            db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created) VALUES('OLD-1','x','배송','(주)처음보는상점','옛 제보','내용','요청',?)", (datetime.datetime.now().isoformat(timespec='seconds'),))
+        self.site.link_all_cases()
+        with self.site.conn() as db:
+            ids = {r[0] for r in db.execute("SELECT company_id FROM cases WHERE company LIKE '%처음보는상점'")}
+            self.assertEqual(len(ids), 1); self.assertNotIn(None, ids)  # (주)를 붙여 써도 같은 기업
+        with self.site.app.test_request_context('/'):
+            most = self.site.app.jinja_env.globals['company_rank']()['most']
+        self.assertEqual(next(p for p in most if p['name'] == '처음보는상점')['n'], 2)
+        self.assertIn('제보가 많은 기업', self.site.app.test_client().get('/').get_data(as_text=True))
+        # 로고: 도메인 정리, 작은 아이콘은 안 쓰고 큰 것은 128px PNG로
+        self.assertEqual(company_logo.clean_domain('https://www.Coupang.com/np/x'), 'coupang.com')
+        self.assertEqual(company_logo.clean_domain('localhost'), '')
+        def png(n):
+            b = io.BytesIO(); Image.new('RGB', (n, n), 'orange').save(b, 'PNG'); return b.getvalue()
+        self.assertEqual(company_logo.to_png(png(16)), b'')
+        self.assertEqual(Image.open(io.BytesIO(company_logo.to_png(png(512)))).size, (128, 128))
 
     def test_ops_review_notice_requests_stats(self):
         # 3차: 심사 확인(개인정보 의심·중복 후보), 보완 요청, 추가 자료, 기업 안내 메일(빈도 제한·수신 거부), 정정·삭제·이의 신청, 운영 통계

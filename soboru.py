@@ -25,7 +25,7 @@ ASK_V2_TEXT = {'nav': 'AI 소비자 상담', 'old_nav': '법률 질문', 'title'
                'notice': '상담사가 아닌 AI가 제공하는 일반 정보예요', 'cta': '업체와의 협의가 어려우신가요?'}
 # 검색·공유용 페이지 제목과 설명 (소보루일 때만). 키는 화면 이름, 안내·약관 화면은 '화면:쪽'
 SEO_PAGES = {
-    'report': ('소비자 피해 제보하기 | 소보루', '겪은 소비자 피해를 소보루에 제보하세요. 내용을 정리해 기업에 전달하고, 답변이 올 때까지 진행 상황을 알려 드려요.'),
+    'report': ('소비자 피해 제보하기 | 소보루', '겪은 소비자 피해를 소보루에 제보하세요. 기업에 전달해 답변을 받고 해결을 돕는 중재를 해요. 제보와 답변 기록은 기사로 다뤄질 수 있어요.'),
     'reports': ('소비자 제보 목록 | 소보루', '소비자들이 직접 올린 피해 제보와 기업 답변을 분야별로 모아 볼 수 있어요. 같은 일을 겪었다면 함께 목소리를 내요.'),
     'board': ('제품·업체 리뷰와 추천 | 소보루', '직접 써 본 소비자가 남긴 제품·업체 리뷰와 추천을 모았어요. 광고 없이 솔직한 후기와 살까 말까 고민될 때의 질문까지 나눠요.'),
     'law_ask': ('AI 소비자 상담 | 소보루', '환불·해지·배송·품질 같은 소비자 피해를 AI에게 편하게 물어보세요. 법령 원문을 근거로 소비자 권리와 대응 방법을 안내해 드려요.'),
@@ -298,13 +298,18 @@ def install(S):
     def company_rank(limit=5, days=RANK_DAYS):
         since = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat(timespec='seconds')
         with conn() as db:
-            rows = db.execute("""SELECT c.id,c.company_id,c.status,c.review,c.reviewed_at,c.created,c.forwarded_at,co.name FROM cases c
+            # 제보 많은 기업: 승인 전이라도 기업별로 바로 셈 (운영자 요청 2026-10-29: 관리자가 안 넘겨도 수치가 보이게). 반려·중복은 뺌
+            bad = tuple(jebo.NOT_VALID)
+            most = [dict(r) for r in db.execute("""SELECT co.id,co.name,co.logo,co.logo_at,COUNT(*) AS n FROM cases c JOIN companies co ON co.id=c.company_id
+                WHERE co.status IN ('active','listed') AND c.created>=? AND c.review NOT IN (%s) GROUP BY co.id ORDER BY n DESC, MAX(c.created) DESC LIMIT ?""" % ','.join('?' * len(bad)),
+                (since,) + bad + (limit,)).fetchall()]
+            rows = db.execute("""SELECT c.id,c.company_id,c.status,c.review,c.reviewed_at,c.created,c.forwarded_at,co.name,co.logo,co.logo_at FROM cases c
                 JOIN companies co ON co.id=c.company_id WHERE co.status IN ('active','listed') AND c.forwarded_at IS NOT NULL AND c.created>=?""", (since,)).fetchall()
             good = [r for r in rows if jebo.valid(r)]
             first = jebo.first_answers(db, [r['id'] for r in good])
         per = {}
         for r in good:
-            p = per.setdefault(r['company_id'], {'id': r['company_id'], 'name': r['name'], 'n': 0, 'answered': 0, 'waits': []})
+            p = per.setdefault(r['company_id'], {'id': r['company_id'], 'name': r['name'], 'logo': r['logo'], 'logo_at': r['logo_at'], 'n': 0, 'answered': 0, 'waits': []})
             p['n'] += 1
             if r['id'] in first:
                 p['answered'] += 1
@@ -320,7 +325,7 @@ def install(S):
             out.append(p)
         best = sorted([p for p in out if p['answered']], key=lambda p: (-p['rate'], p['median_h'] if p['median_h'] is not None else 1e9, -p['n']))[:limit]
         wait = sorted([p for p in out if p['waiting']], key=lambda p: (-p['waiting'], p['rate'], -p['n']))[:limit]
-        return {'best': best, 'wait': wait, 'days': days, 'min_n': jebo.MIN_N}
+        return {'best': best, 'wait': wait, 'most': most, 'days': days, 'min_n': jebo.MIN_N}
 
     app.jinja_env.globals.update(brand=brand, is_soboru=is_soboru, site_name=site_name, life_rows=life_rows, life_body=life_body, life_toc=life_toc, company_rank=company_rank,
                                  ago_text=ago_text, LIFE_CATEGORIES=LIFE_CATEGORIES, LIFE_EMOJI=LIFE_EMOJI, GUIDE_EMOJI=GUIDE_EMOJI,

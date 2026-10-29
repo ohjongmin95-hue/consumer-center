@@ -6,7 +6,7 @@
 <main class="page"><div class="wrap co-wrap">
   <div class="page-intro co-head">
     <a class="back-link" href="{{ url_for('companies') }}">← {{ ui('companies.title', '기업별 제보') }}</a>
-    <h1 class="page-title">{{ co['name'] }}</h1>
+    <h1 class="page-title">{% if co_logo(co) %}<img class="co-logo co-logo-lg" src="{{ co_logo(co) }}" alt="{{ co['name'] }} 로고">{% endif %}{{ co['name'] }}</h1>
     <p class="co-tags">{% if co['status'] == 'active' %}<span class="co-badge verified" title="{{ ui('company.verified_tip', '센터가 사업자등록번호와 담당자 소속을 확인한 기업') }}"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z"/><path fill="#fff" d="M7.1 10.6 4.8 8.3l.9-.9 1.4 1.4 3.2-3.2.9.9z"/></svg>{{ ui('companies.verified', '인증 기업') }}</span>{% else %}<span class="co-badge off">{{ ui('company.listed', '미가입 기업') }}</span>{% endif %}{% for a in aka %}<span class="co-aka">{{ a }}</span>{% endfor %}</p>
     {% if co['status'] == 'active' %}<p class="co-verified-note">{{ ui('company.verified_note', '인증 기업은 센터가 사업자등록번호와 담당자 소속을 확인한 기업이에요. 인증 기업의 답변은 기업 담당자가 직접 등록해요. 서비스 품질을 보증하는 표시는 아니에요.') }}</p>{% endif %}
   </div>
