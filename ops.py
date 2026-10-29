@@ -8,6 +8,7 @@
 app.py 끝에서 install(S)로 붙임 (jebo.py와 같은 방식).
 """
 import datetime, hashlib, re, secrets
+import company_mail
 from pathlib import Path
 from flask import request, redirect, url_for, flash, abort, render_template, session, g, has_request_context, after_this_request
 
@@ -44,7 +45,7 @@ def migrate(db):
     db.execute('CREATE INDEX IF NOT EXISTS company_notices_case ON company_notices(case_id)')
     db.execute('CREATE INDEX IF NOT EXISTS case_requests_case ON case_requests(case_id)')
     cols = {r['name'] for r in db.execute('PRAGMA table_info(companies)')}
-    for c in ('notice_optout', 'optout_token'):
+    for c in ('notice_optout', 'optout_token', 'email_source'):
         if c not in cols: db.execute(f"ALTER TABLE companies ADD COLUMN {c} TEXT NOT NULL DEFAULT ''")
     cols = {r['name'] for r in db.execute('PRAGMA table_info(cases)')}
     if 'supplement_at' not in cols: db.execute("ALTER TABLE cases ADD COLUMN supplement_at TEXT NOT NULL DEFAULT ''")
@@ -236,8 +237,23 @@ def install(S):
         """검토 '정상'으로 승인된 제보를 기업에 자동 전달 (운영자 결정 2026-10-21). 관리자에게 보일 문구('' 이면 할 일 없음).
         가입 기업은 담당자 화면으로, 아니면 공식 이메일로 답변 링크. 제보자 동의·수신 거부·횟수 제한은 버튼으로 보낼 때와 같음."""
         case = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
-        if case['review'] != 'ok' or case['forwarded_at'] or not case['share_company'] or not case['company_id']: return ''
+        if case['review'] != 'ok' or case['forwarded_at'] or not case['share_company']: return ''
+        if not case['company_id']:  # 기업 연결 전이면 제보에 적힌 이름으로 연결 (같은 이름이 없으면 새로 등록)
+            if not S.norm_company(case['company']): return ''
+            found = S.pick_company(db, None, case['company'])
+            if not found:
+                new = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES(?,?,'listed','','','',?)", (case['company'].strip()[:120], '', now())).lastrowid
+                found = db.execute('SELECT * FROM companies WHERE id=?', (new,)).fetchone()
+            db.execute('UPDATE cases SET company_id=? WHERE id=?', (found['id'], cid)); S.log_case(db, cid, f"기업 자동 연결: {found['name']}")
+            case = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
         company = db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone()
+        if company['status'] != 'active' and not notice_target(company) and not company['notice_optout']:
+            # 유명 기업은 메일을 일일이 넣지 않아도: 공정위 통신판매 신고 정보에서 찾아 채움 (운영자 요청 2026-10-29)
+            email, src = company_mail.find([company['name'], company['brand'], company['biz_name']] + [a for a in (company['aliases'] or '').split(',')], company['biz_no'])
+            if email:
+                db.execute('UPDATE companies SET official_email=?,email_source=? WHERE id=?', (email, src, company['id']))
+                S.log_case(db, cid, f"기업 메일 자동 찾음: {notify.mask(email)} ({src})")
+                company = db.execute('SELECT * FROM companies WHERE id=?', (company['id'],)).fetchone()
         if company['status'] == 'active':
             jebo.mark(db, cid, 'forwarded_at'); S.log_case(db, cid, f"기업 담당자 화면에 자동 전달: {company['name']}")
             member_alert(db, db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone(), 'company_new'); to_wait(db, cid)

@@ -1656,7 +1656,7 @@ def signup():
     if not all(request.form.get(k) for k in ('agree_terms','agree_privacy','agree_age')):errors.append(ui_text('msg.m17','필수 동의 항목을 모두 확인해 주세요.'))
     if not LOGIN_ID_RE.match(f['login_id']):errors.append(ui_text('msg.m18','아이디는 영문 소문자·숫자·밑줄(_)로 4~20자로 정해 주세요.'))
     if not (8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)):errors.append(ui_text('msg.m19','비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.'))
-    elif pw!=pw2:errors.append(ui_text('msg.m20','비밀번호 확인이 일치하지 않아요.'))
+    elif 'password2' in request.form and pw!=pw2:errors.append(ui_text('msg.m20','비밀번호 확인이 일치하지 않아요.'))  # 가입 화면은 확인 칸 대신 '보기' 버튼 (운영자 2026-10-29, 토스처럼)
     elif f['login_id'] and f['login_id'] in pw.lower():errors.append(ui_text('msg.m21','비밀번호에 아이디를 넣지 말아 주세요.'))
     if phone_error(f['phone']):errors.append(phone_error(f['phone']))
     if f['email'] and (len(f['email'])>120 or not MEMBER_EMAIL_RE.match(f['email'])):errors.append(ui_text('msg.m24','이메일 주소를 확인해 주세요.'))
@@ -2532,6 +2532,7 @@ def admin_companies():
                 if email and not MEMBER_EMAIL_RE.match(email):flash('이메일 주소를 확인해 주세요.');return redirect(url_for('admin_companies'))
                 name=request.form.get('name','').strip()[:120] or company['name']
                 db.execute('UPDATE companies SET name=?,brand=?,biz_name=?,official_email=? WHERE id=?',(name,request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email,cid))
+                if email!=company['official_email']:db.execute("UPDATE companies SET email_source='' WHERE id=?",(cid,))  # 직접 고친 메일은 '자동 찾음' 표시를 뗌
                 flash(f'{name} 정보를 저장했어요.');return redirect(url_for('admin_companies'))
             if action=='approve' and company['status']=='pending':
                 # 공식 이메일 확인 + 운영자 승인. 메일을 못 보낸 경우엔 운영자가 직접 확인했다고 표시해야 승인돼요.

@@ -1801,7 +1801,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(admin.post('/admin/lists', data={'_csrf': token, 'list': 'process_steps', 'title': ['x'], 'icon': ['rocket'], 'body': ['']}).status_code, 400)
 
     def signup(self, client, login_id='sobo_ru', nickname='소보루', password='butter123', **extra):
-        data = {'login_id': login_id, 'password': password, 'password2': password, 'nickname': nickname, 'phone': '010-1234-5678',
+        data = {'login_id': login_id, 'password': password, 'nickname': nickname, 'phone': '010-1234-5678',
                 'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on', **extra}
         return self.post_form(client, '/signup', data)
 
@@ -3181,6 +3181,40 @@ class SiteTest(unittest.TestCase):
         mails.clear()
         reporter.post('/case/nudge', data={'_csrf': self.csrf(reporter, '/case')})
         self.assertFalse([m for m in mails if m[0] == 'cs@nudge-shop.example'])
+
+    def test_auto_forward_finds_company_email(self):
+        """등록 안 된 기업도 승인하면 이름으로 연결하고, 공정위 통신판매 신고 정보에서 메일을 찾아 자동으로 보냄 (운영자 요청 2026-10-29)"""
+        import company_mail, tempfile
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        tmp = tempfile.mkdtemp(); mails = []
+        env = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'SELLER_DIR_PATH': os.path.join(tmp, 'dir.sqlite3'),
+               'FTC_API_KEY': '', 'DATA_GO_KR_KEY': '', 'NTS_API_KEY': ''}
+        patcher = patch.dict(os.environ, env); patcher.start(); self.addCleanup(patcher.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        csv_path = os.path.join(tmp, 'seoul.csv')
+        with open(csv_path, 'w', encoding='cp949') as f:
+            f.write('통신판매번호,상호,사업자등록번호,법인여부,전자우편,업소상태\n'
+                    '1,(주)유명마켓,1234567890,법인,help@famous-market.example,통신판매업 신고\n'
+                    '2,유명마켓,9999999999,개인,old@famous-market.example,폐업\n'
+                    '3,동명상회,1111111111,개인,a@same.example,통신판매업 신고\n4,동명상회,2222222222,개인,b@same.example,통신판매업 신고\n')
+        self.assertEqual(company_mail.import_csv([csv_path]), 3)  # 폐업은 뺌
+        self.assertEqual(company_mail.find(['유명마켓'])[0], 'help@famous-market.example')
+        self.assertEqual(company_mail.find(['동명상회'])[0], '')  # 같은 이름이 여럿이면 고르지 않음
+        admin = self.login_admin()
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '유명마켓', 'subject': '유명마켓 환불 지연', 'description': '환불이 안 돼요',
+                'reporter_name': '오소비', 'phone': '010-8888-1212', 'contact': 'famous@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db: cid = db.execute("SELECT id FROM cases WHERE company='유명마켓'").fetchone()['id']
+        mails.clear()
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'review', 'review': 'ok'})
+        self.assertTrue([m for m in mails if m[0] == 'help@famous-market.example'])
+        with self.site.conn() as db:
+            co = db.execute('SELECT co.* FROM companies co JOIN cases c ON c.company_id=co.id WHERE c.id=?', (cid,)).fetchone()
+            self.assertEqual(co['official_email'], 'help@famous-market.example'); self.assertTrue(co['email_source'])
+        self.assertIn('자동으로 찾았어요', admin.get('/admin/companies').get_data(as_text=True))
 
     def test_ops_review_notice_requests_stats(self):
         # 3차: 심사 확인(개인정보 의심·중복 후보), 보완 요청, 추가 자료, 기업 안내 메일(빈도 제한·수신 거부), 정정·삭제·이의 신청, 운영 통계

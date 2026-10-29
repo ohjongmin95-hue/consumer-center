@@ -17,10 +17,9 @@
           <input name="nickname" maxlength="12" required placeholder="{{ ui('member.nick_ph3', '닉네임 (글에 보이는 이름)') }}" value="{{ request.form.get('nickname','') }}"></label>
         <label class="su-f"><span class="sr-only">{{ ui('member.id', '아이디') }}</span>
           <input name="login_id" maxlength="20" required pattern="[A-Za-z0-9_]{4,20}" autocapitalize="off" spellcheck="false" placeholder="{{ ui('member.id_ph3', '아이디 (영문·숫자)') }}" value="{{ request.form.get('login_id','') }}"></label>
-        <label class="su-f"><span class="sr-only">{{ ui('member.pw', '비밀번호') }}</span>
-          <input type="password" name="password" minlength="8" maxlength="64" required autocomplete="new-password" placeholder="{{ ui('member.pw_ph3', '비밀번호 8자 이상') }}"></label>
-        <label class="su-f"><span class="sr-only">{{ ui('member.pw2', '비밀번호 확인') }}</span>
-          <input type="password" name="password2" minlength="8" maxlength="64" required autocomplete="new-password" placeholder="{{ ui('member.pw2', '비밀번호 확인') }}"></label>
+        <label class="su-f su-pw"><span class="sr-only">{{ ui('member.pw', '비밀번호') }}</span>
+          <input type="password" name="password" minlength="8" maxlength="64" required autocomplete="new-password" placeholder="{{ ui('member.pw_ph3', '비밀번호 8자 이상') }}">
+          <button type="button" class="su-eye" aria-label="{{ ui('member.pw_show', '비밀번호 보기') }}" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></label>
         <label class="su-f"><span class="sr-only">{{ ui('member.phone', '휴대폰 번호') }}</span>
           <input type="tel" name="phone" maxlength="20" required inputmode="tel" autocomplete="tel" placeholder="{{ ui('member.phone_ph3', '휴대폰 번호 (비공개)') }}" value="{{ request.form.get('phone','') }}"></label>
         <label class="su-f"><span class="sr-only">{{ ui('member.email', '이메일') }}</span>
@@ -63,6 +62,9 @@
     boxes.forEach(function (b) { b.addEventListener('change', function () { all.checked = Array.prototype.every.call(boxes, function (x) { return x.checked; }); }); });
     // 체크박스를 누를 때 "{{ ui('member.view', '보기') }}"가 같이 열리지 않도록 함
     document.querySelectorAll('.agree-row summary label').forEach(function (l) { l.addEventListener('click', function (e) { e.stopPropagation(); }); });
+    // 비밀번호 확인 칸 대신 '보기' (토스처럼)
+    var eye = document.querySelector('.su-eye');
+    if (eye) eye.addEventListener('click', function () { var i = eye.previousElementSibling, on = i.type === 'password'; i.type = on ? 'text' : 'password'; eye.setAttribute('aria-pressed', on); eye.classList.toggle('on', on); });
     // 약관 목록은 접어 두고 '보기'로 펼침. 하나라도 안 했으면 가입할 때 저절로 펼쳐서 알려 줌
     var more = document.querySelector('.agree-more'), list = document.getElementById('agree-list');
     function open(v) { list.hidden = !v; more.setAttribute('aria-expanded', v); more.textContent = v ? '{{ ui('member.fold', '접기') }}' : '{{ ui('member.view', '보기') }}'; }
