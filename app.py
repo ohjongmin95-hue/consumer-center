@@ -353,7 +353,8 @@ def doc_headings(key):
     return [line.strip()[3:] for line in g.content.get(key,'').split('\n') if line.strip().startswith('## ')]
 app.jinja_env.globals['doc_headings']=doc_headings
 FOOTER_ROWS=[['operator.name','operator.address'],
-             ['operator.biz_no','operator.manager','operator.email']]
+             ['operator.biz_no','operator.manager'],
+             ['operator.email']]
 def footer_label(key):
     # 푸터 항목 이름도 관리자 '사이트 문구'에서 바꿀 수 있음
     return {'operator.name':ui_text('common.ft_name','상호'),'operator.ceo':ui_text('common.ft_ceo','대표'),'operator.address':ui_text('common.ft_address','소재지'),
