@@ -4,11 +4,12 @@
 {# 뉴닉식 홈: 그림은 맨 위 캐릭터 하나만, 나머지는 글과 토스페이스 이모지.
    글자는 모두 ui('home.…')라 관리자 편집 모드에서 눌러 고치고, 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['home']) #}
 {# 홈 자주 묻는 질문: 화면에 보이는 그대로 FAQPage 구조화 데이터로도 넣음 (AI 검색·답변 인용용, 2026-10-26) #}
-{% set home_faq = [(ui_text('home.faq_q1', '소보루는 어떤 곳인가요?'), ui_text('home.faq_a1', '소보루는 소비자를 위한 정보 플랫폼이에요. 억울한 일은 제보하고, 직접 써 본 물건과 다녀온 곳은 내돈내산 후기로 나누고, 내 권리는 AI 소비자 상담과 계산기·사전으로 쉽게 알아볼 수 있어요.')),
+{% set home_faq = [(ui_text('home.faq_q1', '소보루는 어떤 곳인가요?'), ui_text('home.faq_a1', '소보루는 소비자 제보·정보 플랫폼이에요. 억울한 일을 제보하면 기업에 전달해 답변을 받고 해결을 돕는 중재를 해요. 제보와 답변 기록은 기사로 다뤄질 수 있어요. 직접 써 본 물건과 다녀온 곳은 내돈내산 후기로 나누고, 내 권리는 AI 소비자 상담과 계산기·사전으로 알아볼 수 있어요.')),
   (ui_text('home.faq_q2', '이용료가 있나요?'), ui_text('home.faq_a2', '아니요. 제보, 후기, 커뮤니티, AI 소비자 상담, 동네일자리 모두 무료예요.')),
-  (ui_text('home.faq_q3', '제보하면 어떻게 되나요?'), ui_text('home.faq_a3', '운영자가 내용을 확인한 뒤, 동의한 제보는 공개하고 해당 기업에 전달해 답변을 요청해요. 진행 상황은 알림으로 알려 드려요.')),
+  (ui_text('home.faq_q3', '제보하면 어떻게 되나요?'), ui_text('home.faq_a3', '운영자가 내용을 확인한 뒤 해당 기업에 전달해 답변을 요청하고, 기업과 소비자 사이에서 해결을 돕는 중재를 해요. 기업 답변이 오면 바로 알려 드리고, 해결되지 않으면 한국소비자원(1372) 같은 피해구제 절차도 안내해요.')),
+  (ui_text('home.faq_q6', '제보가 기사로도 나가나요?'), ui_text('home.faq_a6', '제보와 답변 기록은 기사로 다뤄질 수 있어요. 기사에서는 이름·연락처 같은 개인정보를 가리고, 기업이 남긴 답변도 함께 실어 양쪽 입장을 전해요.')),
   (ui_text('home.faq_q4', '제 이름이나 연락처가 공개되나요?'), ui_text('home.faq_a4', '아니요. 공개되는 제보에서는 이름·연락처 같은 개인정보를 가리고, 기업에도 동의한 범위만 전달해요.')),
-  (ui_text('home.faq_q5', '기업도 답변할 수 있나요?'), ui_text('home.faq_a5', '네. 기업 회원으로 등록하면 소비자 제보와 후기에 직접 공식 답변을 남길 수 있어요.'))] %}
+  (ui_text('home.faq_q5', '기업도 답변할 수 있나요?'), ui_text('home.faq_a5', '네. 소보루가 제보를 전달하면 기업은 받은 링크나 기업 회원 화면에서 공식 답변을 남길 수 있어요. 답변은 제보자에게 전달되고 기업 페이지에도 기록돼요.'))] %}
 {% block head %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@graph": [
   {"@type": "WebPage", "@id": canonical_url('/') ~ "#webpage", "url": canonical_url('/'), "name": txt('site.name'), "inLanguage": "ko",
    "isPartOf": {"@id": canonical_url('/') ~ "#website"}, "about": {"@id": canonical_url('/') ~ "#organization"},
@@ -42,7 +43,7 @@
       <p class="nn-sub">{{ ui('home.about_sub', '광고 없이, 직접 겪은 소비자 이야기만 모여요.') }}</p>
     </div>
     <div class="nn-about-grid">
-      <a class="nn-about-card main" href="{{ url_for('info_page', page='guide') }}"><span class="bread" aria-hidden="true">🍞</span><b>{{ ui('home.about1', '억울한 일은 제보') }}</b><p>{{ ui('home.about1_sub', '내용을 정리해 기업에 전달하고, 답변이 올 때까지 진행 상황을 알려 드려요.') }}</p><span class="nn-about-go">{{ ui('home.about1_btn', '제보는 이렇게 해요') }} ›</span></a>
+      <a class="nn-about-card main" href="{{ url_for('info_page', page='guide') }}"><span class="bread" aria-hidden="true">🍞</span><b>{{ ui('home.about1', '억울한 일은 제보') }}</b><p>{{ ui('home.about1_sub', '기업에 전달해 답변을 받고, 해결을 돕는 중재도 해요. 제보와 답변 기록은 기사로 다뤄질 수 있어요.') }}</p><span class="nn-about-go">{{ ui('home.about1_btn', '제보는 이렇게 해요') }} ›</span></a>
       <a class="nn-about-card c2" href="{{ url_for('feed') }}"><span class="bread" aria-hidden="true">🧁</span><b>{{ ui('home.about2', '내돈내산 후기') }}</b><p>{{ ui('home.about2_sub', '직접 돈 내고 산 것, 다녀온 곳만. 영수증으로 확인한 후기에는 인증 표시가 붙어요.') }}</p><span class="nn-about-go">{{ ui('home.about2_btn', '후기 보기') }} ›</span></a>
       <a class="nn-about-card c3" href="{{ url_for('vs_home') }}"><span class="bread" aria-hidden="true">🥐</span><b>{{ ui('home.about3', '골라주세요') }}</b><p>{{ ui('home.about3_sub', '살까 말까, A냐 B냐. 고민을 올리면 이웃들이 30초 만에 골라 줘요.') }}</p><span class="nn-about-go">{{ ui('home.about3_btn', '골라 주러 가기') }} ›</span></a>
       <a class="nn-about-card c4" href="{{ url_for('suda') }}"><span class="bread" aria-hidden="true">🍩</span><b>{{ ui('home.about4', '수다방') }}</b><p>{{ ui('home.about4_sub', '지름 인증부터 직장 고민까지. 매너 있게, 광고 없이 아무 얘기나.') }}</p><span class="nn-about-go">{{ ui('home.about4_btn', '수다 보러 가기') }} ›</span></a>
@@ -125,19 +126,26 @@
   {% elif blk == 'answer' %}
   <section class="nn-sec nn-answer">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">{{ ui('home.answer_eyebrow', '최근 {days}일 · 제보 {n}건 이상 받은 기업', days=rank.days, n=rank.min_n) }}</p><h2><span class="tf" aria-hidden="true">🏢</span> {{ ui('home.answer_title', '기업 답변 기록') }}</h2><p class="nn-sub">{{ ui('home.answer_sub', '소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.') }}</p></div>
+      <div><p class="nn-eyebrow">{{ ui('home.answer_eyebrow', '최근 {days}일 기록', days=rank.days, n=rank.min_n) }}</p><h2><span class="tf" aria-hidden="true">🏢</span> {{ ui('home.answer_title', '기업 답변 기록') }}</h2><p class="nn-sub">{{ ui('home.answer_sub', '소보루에 실제로 기록된 제보와 기업 답변으로만 계산해요. 순위는 평가가 아니라 기록이에요.') }}</p></div>
       <a class="nn-more" href="{{ url_for('companies') }}">{{ ui('home.answer_more', '기업 찾기 ›') }}</a>
     </div>
-    <div class="nn-ans-grid">
+    {% macro co_mark(p) %}<span class="co-mark" aria-hidden="true">{% if co_logo(p) %}<img src="{{ co_logo(p) }}" alt="" loading="lazy">{% else %}{{ p['name'][:1] }}{% endif %}</span>{% endmacro %}
+    <div class="nn-ans-grid three">
+      <div class="nn-ans">
+        <h3><span aria-hidden="true">📣</span> {{ ui('home.most_title', '제보가 많은 기업') }}</h3>
+        <ol>{% for p in rank.most %}<li><span class="nn-rank{{ ' hi' if loop.index <= 3 }}">{{ loop.index }}</span>{{ co_mark(p) }}<a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
+          <span class="nn-val"><b>{{ ui('home.most_count', '{n}건', n=p['n']) }}</b></span></li>
+        {% else %}<li class="nn-empty">{{ ui('home.most_empty', '제보가 들어오면 기업별로 바로 모여요.') }}</li>{% endfor %}</ol>
+      </div>
       <div class="nn-ans">
         <h3><span aria-hidden="true">👏</span> {{ ui('home.best_title', '답변 잘한 기업') }}</h3>
-        <ol>{% for p in rank.best %}<li><span class="nn-rank{{ ' hi' if loop.index <= 3 }}">{{ loop.index }}</span><a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
+        <ol>{% for p in rank.best %}<li><span class="nn-rank{{ ' hi' if loop.index <= 3 }}">{{ loop.index }}</span>{{ co_mark(p) }}<a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
           <span class="nn-bar"><i style="width:{{ p['rate'] }}%"></i></span><span class="nn-val"><b>{{ p['rate'] }}%</b>{{ p['median'] }}</span></li>
-        {% else %}<li class="nn-empty">{{ ui('home.best_empty', '제보가 쌓이면 기업별 답변 기록이 여기에 나와요.') }}</li>{% endfor %}</ol>
+        {% else %}<li class="nn-empty">{{ ui('home.best_empty2', '기업마다 제보가 {n}건 쌓이면 답변율이 나와요.', n=rank.min_n) }}</li>{% endfor %}</ol>
       </div>
       <div class="nn-ans">
         <h3><span aria-hidden="true">⏳</span> {{ ui('home.wait_title', '답변을 기다리는 기업') }}</h3>
-        <ol>{% for p in rank.wait %}<li><span class="nn-rank">{{ loop.index }}</span><a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
+        <ol>{% for p in rank.wait %}<li><span class="nn-rank">{{ loop.index }}</span>{{ co_mark(p) }}<a class="nm" href="{{ url_for('company_page', company_id=p['id']) }}">{{ p['name'] }}</a>
           <span class="nn-val w"><b>{{ ui('home.wait_count', '{n}건', n=p['waiting']) }}</b>{{ ui('home.wait_none', '답변 없음') }}</span></li>
         {% else %}<li class="nn-empty">{{ ui('home.wait_empty', '답변을 미루는 기업이 아직 없어요.') }}</li>{% endfor %}</ol>
       </div>

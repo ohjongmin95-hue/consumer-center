@@ -710,8 +710,7 @@ def report():
         if public:art_later(cur.lastrowid)
         if g.user:  # 다음 제보 때 자동으로 채우도록 회원 정보의 빈칸에만 기억
             db.execute("UPDATE users SET real_name=CASE WHEN real_name='' THEN ? ELSE real_name END,phone=CASE WHEN phone='' THEN ? ELSE phone END WHERE id=?",(data['reporter_name'],data['phone'],g.user['id']))
-        match=pick_company(db,request.form.get('company_id',type=int),data['company'])
-        if match:db.execute('UPDATE cases SET company_id=? WHERE id=?',(match['id'],cur.lastrowid))
+        link_company(db,cur.lastrowid,data['company'],request.form.get('company_id',type=int))  # 기업 자동 연결·등록 (운영자 요청 2026-10-29: 관리자가 안 넘겨도 기업별로 모이게)
         for f,suffix,original in checked:
             stored=secrets.token_hex(20)+suffix;f.save(UPLOAD/stored)
             db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)',(cur.lastrowid,stored,original))
@@ -732,6 +731,22 @@ def pick_company(db,company_id,typed):
         if hit and (same(hit) or company_matches(hit,typed)):return hit
     hits=[c for c in rows if same(c)]
     return hits[0] if len(hits)==1 else None
+def link_company(db,case_id,typed,company_id=None):
+    # 제보를 기업에 연결. 같은 이름(다른 이름 포함)의 기업이 없으면 '등록 기업(listed)'으로 새로 만듦. 기업 페이지는 공개 제보가 생겨야 열림
+    match=pick_company(db,company_id,typed)
+    if not match:
+        name=re.sub(r'\s+',' ',typed or '').strip()[:120]
+        if len(norm_company(name))<2:return None
+        cid=db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES(?,?,'listed','','','',?)",(name,'',now())).lastrowid
+        match=db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone()
+    db.execute('UPDATE cases SET company_id=? WHERE id=?',(match['id'],case_id))
+    return match
+def link_all_cases():
+    # 예전에 들어와 기업에 안 묶인 제보도 한 번에 정리 (배포할 때마다 남은 것만, 소비자제보센터 제보 포함)
+    try:
+        with conn() as db:
+            for r in db.execute("SELECT id,company FROM cases WHERE company_id IS NULL AND company!='' ORDER BY id").fetchall():link_company(db,r['id'],r['company'])
+    except Exception as e:print('제보 기업 연결을 못 했어요:',e)
 def notify_later(case_id,event):
     # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 새 제보면 운영자에게도. 설정이 없으면 아무것도 안 함.
     link=url_for('lookup',_external=True)
@@ -2025,7 +2040,7 @@ def report_detail(case_id):
                     else:flash(f"{linked['name']}에 연결했어요. 기업 페이지에 모여요.")
                     (lambda m:m and flash(m))(ops_auto_forward(db,case_id))
                 else:
-                    db.execute('UPDATE cases SET company_id=NULL WHERE id=?',(case_id,));log_case(db,case_id,'기업 연결 해제');flash('기업 연결을 해제했어요.')
+                    db.execute('UPDATE cases SET company_id=0 WHERE id=?',(case_id,));log_case(db,case_id,'기업 연결 해제')  # 0 = 운영자가 일부러 뗌 (자동 연결이 다시 붙이지 않음);flash('기업 연결을 해제했어요.')
             elif form=='answer_public':
                 mid=request.form.get('message_id',type=int);public=int(request.form.get('public')=='1')
                 msg=db.execute("SELECT id,author FROM messages WHERE id=? AND case_id=? AND author IN ('기업 답변','제보자')",(mid,case_id)).fetchone()
@@ -2532,7 +2547,8 @@ def admin_companies():
                 if email and not MEMBER_EMAIL_RE.match(email):flash('이메일 주소를 확인해 주세요.');return redirect(url_for('admin_companies'))
                 name=request.form.get('name','').strip()[:120] or company['name']
                 db.execute('UPDATE companies SET name=?,brand=?,biz_name=?,official_email=? WHERE id=?',(name,request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email,cid))
-                if email!=company['official_email']:db.execute("UPDATE companies SET email_source='' WHERE id=?",(cid,))  # 직접 고친 메일은 '자동 찾음' 표시를 뗌
+                if email!=company['official_email']:db.execute("UPDATE companies SET email_source='' WHERE id=?",(cid,))
+                if 'domain' in request.form:company_set_domain(db,cid,request.form.get('domain',''))  # 홈페이지 주소 → 로고 자동  # 직접 고친 메일은 '자동 찾음' 표시를 뗌
                 flash(f'{name} 정보를 저장했어요.');return redirect(url_for('admin_companies'))
             if action=='approve' and company['status']=='pending':
                 # 공식 이메일 확인 + 운영자 승인. 메일을 못 보낸 경우엔 운영자가 직접 확인했다고 표시해야 승인돼요.
@@ -2789,6 +2805,9 @@ import soboru_tools;soboru_tools.install(types.SimpleNamespace(**globals()))  # 
 import soboru_jobs;soboru_jobs.install(types.SimpleNamespace(**globals()))  # 동네일자리: 무료 구인·구직 + 공공 채용정보 (soboru_jobs.py)
 import soboru_town;soboru_town.install(types.SimpleNamespace(**globals()))  # 우리 동네 정보: 이웃이 추천하는 동네 장소 (soboru_town.py)
 import soboru_search;soboru_search.install(types.SimpleNamespace(**globals()))  # 통합 검색: 머리글 검색창 + /search (soboru_search.py)
-import soboru_examples;soboru_examples.auto(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
+import soboru_examples;soboru_examples.auto(types.SimpleNamespace(**globals()))
+import company_logo;_cl=types.SimpleNamespace(**globals());company_logo.install(_cl);company_set_domain=_cl.company_set_domain  # 기업 로고: 도메인에서 자동으로 (company_logo.py)
+import company_mail;company_mail.auto(types.SimpleNamespace(**globals()))
+link_all_cases()  # 큰 기업 미리 등록: 처음 배포할 때 한 번만 (company_mail.py, data/companies_seed.csv)  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
 
 if __name__=='__main__':app.run(debug=False)

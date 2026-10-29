@@ -2202,3 +2202,6 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
   .su-page .auth-body{padding:20px 18px 18px}.su-grid{grid-template-columns:1fr}
   .su-page .auth-body input:not([type=checkbox]){height:46px;font-size:15.5px}.su-page .auth-body .social-btn{height:46px}}
 .su-page .auth-card{max-width:560px}
+/* 기업 로고 (company_logo.py) */
+.co-logo{width:22px;height:22px;border-radius:6px;object-fit:contain;background:#fff;vertical-align:-5px;margin-right:8px;box-shadow:0 0 0 1px rgba(0,27,55,.08)}
+.co-logo-lg{width:40px;height:40px;border-radius:12px;vertical-align:-8px;margin-right:12px}

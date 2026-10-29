@@ -8,7 +8,7 @@ APP_DIR = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.
 PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 8822
 d = tempfile.mkdtemp()
 os.environ.update(DATABASE_PATH=d + '/c.db', UPLOAD_DIR=d + '/up', SECRET_KEY='x' * 64, ADMIN_PASSWORD_HASH=generate_password_hash('adminshotpw1'),
-                  ENABLE_INTAKE='1', ENABLE_BOARD='1', ENABLE_BIZ_MEMBERS='1', HTTPS_ONLY='0', SOBORU_GUEST_WRITE='1', SOBORU_EXAMPLES='0')  # 미리보기는 손님 글쓰기 허용 (소보루 실서비스는 로그인 필수)
+                  ENABLE_INTAKE='1', ENABLE_BOARD='1', ENABLE_BIZ_MEMBERS='1', HTTPS_ONLY='0', SOBORU_GUEST_WRITE='1', SOBORU_EXAMPLES='0', SOBORU_COMPANY_SEED='0', SOBORU_LOGO_FETCH='0')  # 미리보기는 손님 글쓰기 허용 (소보루 실서비스는 로그인 필수)
 for k in ('SMTP_HOST', 'SOLAPI_API_KEY'): os.environ.pop(k, None)  # 알림은 보내지 않음
 sys.path.insert(0, APP_DIR); os.chdir(APP_DIR)
 spec = importlib.util.spec_from_file_location('site_under_test', os.path.join(APP_DIR, 'app.py'))

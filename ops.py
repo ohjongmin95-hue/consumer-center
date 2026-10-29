@@ -238,14 +238,10 @@ def install(S):
         가입 기업은 담당자 화면으로, 아니면 공식 이메일로 답변 링크. 제보자 동의·수신 거부·횟수 제한은 버튼으로 보낼 때와 같음."""
         case = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
         if case['review'] != 'ok' or case['forwarded_at'] or not case['share_company']: return ''
+        if case['company_id'] == 0: return ''  # 운영자가 일부러 연결을 뗀 제보
         if not case['company_id']:  # 기업 연결 전이면 제보에 적힌 이름으로 연결 (같은 이름이 없으면 새로 등록)
-            if not S.norm_company(case['company']): return ''
-            found = S.pick_company(db, None, case['company'])
-            if not found:
-                new = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES(?,?,'listed','','','',?)", (case['company'].strip()[:120], '', now())).lastrowid
-                found = db.execute('SELECT * FROM companies WHERE id=?', (new,)).fetchone()
-            db.execute('UPDATE cases SET company_id=? WHERE id=?', (found['id'], cid)); S.log_case(db, cid, f"기업 자동 연결: {found['name']}")
-            case = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
+            if not S.link_company(db, cid, case['company']): return ''
+            S.log_case(db, cid, '기업 자동 연결'); case = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
         company = db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone()
         if company['status'] != 'active' and not notice_target(company) and not company['notice_optout']:
             # 유명 기업은 메일을 일일이 넣지 않아도: 공정위 통신판매 신고 정보에서 찾아 채움 (운영자 요청 2026-10-29)
