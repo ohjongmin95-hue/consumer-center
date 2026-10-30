@@ -3221,6 +3221,23 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertEqual(self.site.pick_company(db, None, '배민')['name'], '배달의민족')
             self.assertEqual(db.execute("SELECT COUNT(*) FROM companies WHERE name='쿠팡'").fetchone()[0], 1)
+        # 등록현황 전체 받기(sync) 뒤 사이트 기업 전부 채우기(fill) (운영자 요청 2026-10-30)
+        import io, json as _json
+        pages = {1: [{'bzmnNm': '주식회사 무신사', 'brno': '2118800000', 'emlAddr': 'cs@musinsa.example', 'operSttusCdNm': '통신판매업 신고'},
+                     {'bzmnNm': '닫은가게', 'brno': '3333333333', 'emlAddr': 'x@closed.example', 'operSttusCdNm': '폐업'}],
+                 2: [{'bzmnNm': '메일없는곳', 'brno': '4444444444'}]}
+        def fake_open(url, timeout=0):
+            q = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url).query)); n = int(q['pageNo'])
+            body = {'response': {'body': {'totalCount': 3, 'items': {'item': pages.get(n, [])}}}}
+            return io.BytesIO(_json.dumps(body).encode())
+        with patch.dict(os.environ, {'FTC_API_KEY': 'k'}), patch.object(company_mail.urllib.request, 'urlopen', side_effect=fake_open):
+            added, done = company_mail.sync(rows=2, say=lambda *a: None)
+        self.assertEqual((added, done), (1, True))
+        with patch.dict(os.environ, {'FTC_API_KEY': ''}):
+            seen, filled = company_mail.fill()
+        self.assertGreater(seen, 1); self.assertGreaterEqual(filled, 1)
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT official_email FROM companies WHERE name='무신사'").fetchone()[0], 'cs@musinsa.example')
 
     def test_cases_link_companies_and_logos(self):
         """제보는 들어오면 기업에 자동으로 묶이고(없으면 등록), 예전 제보도 정리되며, 홈 '제보가 많은 기업'에 바로 셈 (운영자 요청 2026-10-29)"""
@@ -3326,7 +3343,9 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(company.get(link).status_code, 200)
         self.assertTrue(any(m[0] == 'me@example.com' and '확인했습니다' in m[1] for m in mails))
         company.post(link, data={'_csrf': self.csrf(company, link), 'form': 'objection', 'body': '이미 환불을 끝냈습니다. 영수증 있습니다.'})
-        self.assertIn('이미 환불을 끝냈습니다', company.get(link).get_data(as_text=True))
+        page = company.get(link).get_data(as_text=True)
+        self.assertNotIn('name="form" value="objection"', page)  # 답변 화면에는 이의 신청 칸 없음 (OH 2026-10-29). 예전 요청은 그대로 받음
+        self.assertIn('sb-header-min', page)
         with self.site.conn() as db:
             self.assertEqual(db.execute("SELECT kind FROM case_requests WHERE who='company' AND case_id=?", (first,)).fetchone()['kind'], 'objection')
         # 수신 거부하면 다른 제보로도 안내 메일을 못 보냄

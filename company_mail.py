@@ -7,6 +7,8 @@
 같은 이름이 여럿이고 메일이 서로 다르면 고르지 않음(엉뚱한 곳에 보내지 않게). 폐업·취소된 곳은 뺌.
 명령: python -m company_mail find 쿠팡 [사업자번호]  /  python -m company_mail import a.csv b.csv
       python -m company_mail seed  → data/companies_seed.csv의 큰 기업(이름·법인명·다른 이름)을 미리 등록하고, 메일이 비어 있으면 찾아 채움
+      python -m company_mail sync  → 등록현황 API를 처음부터 끝까지 받아 메일 있는 업체를 목록에 넣고(멈추면 이어서), 끝나면 fill
+      python -m company_mail fill  → 사이트에 있는 기업 전부(미리 정한 곳 말고도) 메일이 비어 있으면 찾아 채움
 """
 import csv, json, os, re, sqlite3, sys, urllib.parse, urllib.request
 from pathlib import Path
@@ -178,6 +180,93 @@ def find(names, brno=''):
     return (email, SOURCE) if email else ('', '')
 
 
+# ---- 등록현황 전체 받기 (운영자 요청 2026-10-30: 인증키로 볼 수 있는 업체를 다 넣어 두기) ----------------
+SYNC_TIMEOUT = 30
+
+
+def _sync_db():
+    db = connect()
+    cols = [r[1] for r in db.execute('PRAGMA table_info(sellers)')]
+    if 'src' not in cols: db.execute("ALTER TABLE sellers ADD COLUMN src TEXT NOT NULL DEFAULT 'csv'")
+    db.execute('CREATE TABLE IF NOT EXISTS sync_state(key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+    return db
+
+
+def _total(data):
+    for k in ('totalCount', 'total_count'):
+        if isinstance(data, dict) and k in data:
+            try: return int(data[k])
+            except (TypeError, ValueError): return 0
+    if isinstance(data, dict):
+        for k in ('response', 'body'):
+            if k in data: return _total(data[k])
+    return 0
+
+
+def sync(rows=1000, max_calls=9000, say=print):
+    """등록현황(MllBs_2Service)을 쪽마다 넘기며 메일이 있고 영업 중인 업체를 seller_dir에 넣음.
+    인증키 하루 호출 한도가 있어 중간에 멈추면 다음 실행 때 그 쪽부터 이어 받음. (넣은 수, 다 받았는지)"""
+    if not api_key(): say('인증키(FTC_API_KEY)가 없어요. 먼저 set-ftc.sh를 실행해 주세요.'); return 0, False
+    db = _sync_db()
+    got = db.execute("SELECT value FROM sync_state WHERE key='page'").fetchone()
+    page = int(got[0]) if got else 1
+    if page == 1:
+        with db: db.execute("DELETE FROM sellers WHERE src='api'")
+    added = calls = fails = 0; total = 0; shown = False
+    while calls < max_calls:
+        q = urllib.parse.urlencode({'pageNo': page, 'numOfRows': rows, 'serviceKey': api_key(), 'resultType': 'json'})
+        try:
+            with urllib.request.urlopen(LIST_URL + '?' + q, timeout=SYNC_TIMEOUT) as r:
+                data = json.loads(r.read().decode('utf-8', 'replace') or '{}')
+        except Exception as e:
+            fails += 1
+            if fails >= 3: say(f'{page}쪽에서 계속 실패해 멈췄어요 ({e}). 다시 실행하면 여기서 이어 받아요.'); break
+            continue
+        calls += 1; fails = 0
+        found = items(data); total = total or _total(data)
+        if not shown and found:
+            say('항목 이름: ' + ', '.join(found[0].keys())); shown = True
+        if not found: break
+        batch = []
+        for r in found:
+            mails = emails_in(r)
+            if not mails or item_closed(r): continue
+            name = item_name(r)
+            batch.append((norm(name), name, digits(pick(r, 'brno', 'bizrno', 'bsnmRgstNo')), mails[0],
+                          pick(r, 'operSttusCdNm', 'sttusNm', 'operSttus'), pick(r, 'corpYnNm', 'crpYnNm', 'corpYn', 'crpYn'),
+                          pick(r, 'domnCn', 'dmnNm', 'domainNm'), 'api'))
+        page += 1
+        with db:
+            db.executemany('INSERT INTO sellers(nname,name,brno,email,status,corp,domain,src) VALUES(?,?,?,?,?,?,?,?)', batch)
+            db.execute("INSERT OR REPLACE INTO sync_state VALUES('page',?)", (str(page),))
+        added += len(batch)
+        if calls % 20 == 0: say(f'{page - 1}쪽까지 받았어요' + (f' (전체 약 {-(-total // rows)}쪽)' if total else '') + f', 메일 있는 곳 {added}곳.')
+        if total and (page - 1) * rows >= total: break
+    done = calls < max_calls and fails < 3
+    with db:
+        if done: db.execute("INSERT OR REPLACE INTO sync_state VALUES('page','1')")
+    db.close()
+    say(('다 받았어요. ' if done else '아직 덜 받았어요(내일 다시 실행하면 이어서). ') + f'이번에 메일 있는 곳 {added}곳을 넣었어요.')
+    return added, done
+
+
+def fill():
+    """사이트의 기업 전부(미리 정한 곳 말고도) 중 메일이 비어 있는 곳을 찾아 채움. (살펴본 수, 채운 수)"""
+    db = sqlite3.connect(Path(os.getenv('DATABASE_PATH', str(Path(__file__).resolve().parent / 'cases.sqlite3'))))
+    db.row_factory = sqlite3.Row
+    seen = filled = 0
+    with db:
+        for co in db.execute("SELECT * FROM companies WHERE status IN ('active','listed','pending') AND COALESCE(official_email,'')=''").fetchall():
+            if co['notice_optout'] and str(co['notice_optout']) != '0': continue
+            seen += 1
+            names = [co['name'], co['brand'], co['biz_name']] + (co['aliases'] or '').split(',')
+            email, src = find([n for n in names if n], co['biz_no'])
+            if email:
+                db.execute('UPDATE companies SET official_email=?,email_source=? WHERE id=?', (email, src, co['id'])); filled += 1
+    db.close()
+    return seen, filled
+
+
 # ---- 큰 기업 미리 등록 (운영자 요청 2026-10-29: 연락처를 미리 넣어 두기) ----------------------------
 SEED = Path(__file__).resolve().parent / 'data' / 'companies_seed.csv'
 
@@ -237,6 +326,13 @@ if __name__ == '__main__':
     elif cmd == 'seed':
         added, filled = seed(args[0] if args else SEED, lookup=bool(api_key() or dir_path().exists()))
         print(f'큰 기업 {added}곳을 새로 등록했고, {filled}곳의 메일을 공정위 자료에서 찾아 채웠어요.')
+    elif cmd == 'sync':
+        _, done = sync()
+        seen, filled = fill()
+        print(f'사이트 기업 {seen}곳 중 {filled}곳의 메일을 채웠어요.')
+    elif cmd == 'fill':
+        seen, filled = fill()
+        print(f'사이트 기업 {seen}곳 중 {filled}곳의 메일을 채웠어요.')
     elif cmd == 'find' and args:
         email, src = find([args[0]], args[1] if len(args) > 1 else '')
         print(f'{args[0]}: {email} ({src})' if email else f'{args[0]}: 찾지 못했어요 (이름이 같은 곳이 여럿이거나 신고된 메일이 없어요).')
