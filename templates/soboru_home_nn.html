@@ -104,8 +104,8 @@
   {% elif blk == 'pick' %}
   <section class="nn-sec nn-pick">
     <div class="nn-pick-head">
-      <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '직접 써 본 이웃들의 후기') }}</p><h2><span class="tf" aria-hidden="true">🏆</span> {{ ui('home.pick_title', '커뮤니티') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '가짜 후기에 지친 당신에게. 직접 돈 내고 산 사람들의 솔직한 이야기만 모았어요.') }}</p></div>
-      <a class="nn-more" href="{{ url_for('board') }}">{{ ui('home.pick_more', '커뮤니티 전체 보기 ›') }}</a>
+      <div><p class="nn-eyebrow">{{ ui('home.pick_eyebrow', '직접 써 본 이웃들의 후기') }}</p><h2><span class="tf" aria-hidden="true">🧁</span> {{ ui('home.pick_title', '내돈내산 후기') }}</h2><p class="nn-sub">{{ ui('home.pick_sub', '가짜 후기에 지친 당신에게. 직접 돈 내고 산 사람들의 솔직한 이야기만 모았어요.') }}</p></div>
+      <a class="nn-more" href="{{ url_for('feed') }}">{{ ui('home.pick_more', '후기 전체 보기 ›') }}</a>
     </div>
     {{ ed_piece('home.campaign') }}{% set camp = current_campaign() if piece_on('home.campaign') %}{% if camp %}{{ campaign_card(camp, campaign_review_count(camp['id']), 'cp-home') }}{% endif %}
     <div class="nn-pick-grid">
@@ -121,9 +121,9 @@
       </div>
       <div class="nn-pick-feed">
         {% for p in posts %}<a class="sb-cm-card k-{{ p['kind'] }}" href="{{ url_for('board_post', post_id=p['id']) }}">{{ cm_top(p) }}<h3>{% if p['kind'] == 'question' %}<span class="cm-q">Q.</span>{% endif %}{{ p['title'] }}</h3>{{ cm_sub(p) }}{{ cm_foot(p) }}</a>{% endfor %}
-        {# 글이 4개보다 적으면 빈 칸 대신 첫 글을 부르는 카드로 채움 (리뷰·질문·추천 순서) #}
+        {# 후기가 4개보다 적으면 빈 칸 대신 후기 쓰기를 부르는 카드로 채움 #}
         {% set fill = [('review', '✍️', ui('home.fill1_title', '써 본 제품, 솔직하게 알려 주세요'), ui('home.fill1_body', '좋았던 점·아쉬운 점 한 줄이면 충분해요. 다음 사람의 돈을 아껴 줘요.'), ui('home.fill1_btn', '리뷰 쓰기')),
-                       ('question', '🤔', ui('home.fill2_title', '살까 말까, 먼저 물어보세요'), ui('home.fill2_body', '써 본 소비자가 직접 답해 줘요. 광고 없이요.'), ui('home.fill2_btn', '질문하기')),
+                       ('review', '🧾', ui('home.fill2_title', '영수증 한 장이면 인증 끝'), ui('home.fill2_body', '직접 돈 내고 산 물건·다녀온 곳의 후기를 남겨 주세요.'), ui('home.fill2_btn', '후기 쓰기')),
                        ('review', '💯', ui('home.fill3_title', '돈값 한 제품·업체가 있나요?'), ui('home.fill3_body', '믿고 맡길 수 있었던 곳을 추천하면 TOP 5 순위에 반영돼요.'), ui('home.fill3_btn', '추천하기')),
                        ('review', '🌱', ui('home.fill4_title', '첫 리뷰의 주인공이 되어 보세요'), ui('home.fill4_body', '리뷰가 쌓이면 여기에 최신 글이 보여요.'), ui('home.fill4_btn', '리뷰 쓰기'))] %}
         {% for f in fill[:4 - (posts|length)] %}<a class="sb-cm-card nn-fill" href="{{ url_for('board_write', type=f[0]) }}"><span class="nn-fill-ic tf" aria-hidden="true">{{ f[1] }}</span><h3>{{ f[2] }}</h3><p>{{ f[3] }}</p><span class="nn-fill-go">{{ f[4] }} ›</span></a>{% endfor %}

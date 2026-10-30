@@ -5,6 +5,7 @@
 <main class="auth-page auth-page-login">
   {# 토스식: 큰 제목과 한 줄 설명은 카드 위, 회원가입 안내는 카드 아래 #}
   <h1 class="auth-title auth-title-out">{{ ui('member.login_title', '{site} 로그인', site=site_name()) }}</h1>
+  {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
   <div class="auth-card">
     <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}

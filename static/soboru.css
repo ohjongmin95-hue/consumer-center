@@ -2706,8 +2706,46 @@ main img,main video,main iframe,main table{max-width:100%}
 .sb-close svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .sb:has(.sb-header-min) .site-footer{display:none}  /* 바닥글도 숨김: 쓰는 데만 집중 */
 .sb:has(.auth-page) .sb-header{border-bottom:0;background:transparent;position:absolute;left:0;right:0}
-.sb .auth-page{padding-top:120px;min-height:100vh}
-@media(max-width:560px){.sb .auth-page{padding-top:88px}}
+/* 로그인·가입은 한 화면 (운영자 요청 2026-10-30: 스크롤 없이). 휴대폰 주소창까지 뺀 실제 보이는 높이(dvh)에 맞추고 가운데 정렬 */
+.sb .auth-page{box-sizing:border-box;min-height:100vh;min-height:100dvh;padding:76px 16px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.sb .auth-page .auth-join{margin-top:16px}
+@media(max-width:560px){
+  .sb .auth-page{padding:60px 16px 12px}
+  .sb .auth-page .auth-title-out{font-size:23px;margin:0 0 4px}
+  .sb .auth-page .auth-lead-out,.sb .su-page .auth-lead-out{display:block;margin:0 0 14px;font-size:14px}
+  .sb .auth-page .auth-title-out:not(:has(+ .auth-lead-out)){margin-bottom:14px}
+  .sb .su-page .auth-body{padding:16px 16px 14px}
+  .sb .su-page .su-grid{gap:8px}
+  .sb .su-page .auth-body input:not([type=checkbox]){height:44px}
+  .sb .su-page .auth-body .social-btn{height:44px}
+  .sb .su-page .auth-body .social-or{margin:4px 0 0}
+  .sb .su-page .agree-all-row .agree-all{padding:9px 14px}
+  .sb .su-page .auth-submit{height:48px}
+  .sb .auth-page .auth-join{margin-top:12px;font-size:14px}
+}
+/* 낮은 화면(노트북 브라우저 등): 제목·칸 간격을 줄여 한 화면에 */
+@media(min-width:561px) and (max-height:820px){
+  .sb .auth-page{padding:64px 16px 16px}
+  .sb .auth-page .auth-title-out{font-size:28px;margin:0 0 4px}
+  .sb .auth-page .auth-lead-out{margin:0 0 16px;font-size:15px}
+  .sb .auth-page .auth-title-out:not(:has(+ .auth-lead-out)){margin-bottom:16px}
+  .sb .auth-page-login .auth-body{padding:22px 28px 16px}
+  .sb .su-page .su-grid{gap:8px}
+  .sb .su-page .auth-body input:not([type=checkbox]),.sb .su-page .auth-body .social-btn,.sb .auth-page .auth-body .social-btn{height:46px}
+  .sb .su-page .auth-body .social-or{margin:4px 0 0}
+  .sb .su-page .agree-all-row .agree-all{padding:10px 16px}
+  .sb .su-page .auth-submit{height:50px}
+  .sb .auth-page .auth-join{margin-top:12px}
+}
+@media(max-width:560px) and (max-height:700px){
+  .sb .auth-page{padding-top:52px;padding-bottom:8px}
+  .sb .auth-page .auth-title-out{font-size:21px}
+  .sb .auth-page .auth-lead-out{margin-bottom:10px}
+  .sb .su-page .su-grid{gap:6px}
+  .sb .su-page .auth-body input:not([type=checkbox]),.sb .su-page .auth-body .social-btn{height:42px}
+  .sb .su-page .auth-submit{height:46px}
+  .sb .su-page .agree-all-row .agree-all{padding:8px 14px}
+}
 /* 기업 답변 기록 세 칸 + 기업 로고 (로고가 없으면 이름 첫 글자) */
 .nn-ans-grid.three{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .nn-ans-grid.three .nn-ans .nm{flex:1;width:auto;min-width:0}

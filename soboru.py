@@ -452,6 +452,17 @@ def install(S):
             c.update(open=open_, excerpt=body[:140], answered=c['no'] in first, metoo=talk.get(c['no'], (0, 0))[0], comments=talk.get(c['no'], (0, 0))[1])
         return cases
 
+    def home_reviews(n=4):
+        # 홈 '내돈내산 후기'(운영자 요청, 2026-10-30): 최근 30일 반응 많은 후기 먼저, 모자라면 최신 후기
+        since = (datetime.datetime.now() - datetime.timedelta(days=30)).isoformat(timespec='seconds')
+        nb = S.not_blocked()
+        with conn() as db:
+            rows = db.execute(f"SELECT {S.FEED_COLS} FROM posts WHERE kind='review' AND hidden=0{nb} AND created>=? ORDER BY likes*2+comments DESC,id DESC LIMIT ?", (since, n)).fetchall()
+            if len(rows) < n:
+                seen = {r['id'] for r in rows}
+                rows += [r for r in db.execute(f"SELECT {S.FEED_COLS} FROM posts WHERE kind='review' AND hidden=0{nb} ORDER BY id DESC LIMIT ?", (n * 2,)) if r['id'] not in seen][:n - len(rows)]
+        return rows
+
     def home_nn():
         # 뉴닉식 홈(운영자 요청, 2026-10-17): 맨 위는 소보루 소개만(건수 없음), 바로 아래 실시간 제보.
         # 묶음 순서·보이기는 관리자 > 화면 편집 (PAGE_BLOCKS['home'])
@@ -469,7 +480,7 @@ def install(S):
             picks = [dict(r) for r in db.execute("""SELECT target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg,SUM(recommend=1) AS rec
                 FROM posts WHERE kind='review' AND hidden=0 AND editor=0 AND target!='' GROUP BY target ORDER BY rec DESC,avg DESC,n DESC LIMIT 5""")]
         return render_template('soboru_home_nn.html', cases=live_cards(6), feed=feed[:10], cats=cats,
-                               rank=company_rank(5), posts=S.community_feed(4), picks=picks)
+                               rank=company_rank(5), posts=home_reviews(4), picks=picks)
 
     @app.route('/admin/home-plan')
     @S.admin_only
