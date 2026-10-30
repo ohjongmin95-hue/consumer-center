@@ -3,7 +3,6 @@
 {% block content %}
 <main class="auth-page auth-page-login">
   <h1 class="auth-title auth-title-out">{{ provider }}로 가입하기</h1>
-  <p class="auth-lead auth-lead-out">닉네임만 정하면 가입이 끝나요</p>
   <div class="auth-card auth-card-wide">
     <form class="auth-body" method="post" autocomplete="off"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <label class="su-f su-nick"><span>{{ ui('board.nickname', '닉네임') }} <em>{{ ui('member.nick_hint2', '글과 댓글에 보이는 이름이에요') }}</em></span>

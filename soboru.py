@@ -443,7 +443,8 @@ def install(S):
         with conn() as db:
             rows = {r['id']: r for r in db.execute(f'SELECT id,public_consent,published,public_body,description FROM cases WHERE id IN ({q})', ids)}
             first = jebo.first_answers(db, ids)
-        talk = S.talk_counts(ids) if getattr(S, 'talk_counts', None) else {}
+        tc = app.jinja_env.globals.get('talk_counts')  # casetalk.py가 붙임 (소보루 모듈보다 나중에 설치돼서 S에는 없음)
+        talk = tc(ids) if tc else {}
         for c in cases:
             r = rows.get(c['no'])
             open_ = bool(r and r['public_consent'] and r['published'] and c['title'])

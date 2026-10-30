@@ -244,7 +244,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('비공개 접수', home)
         live = home.split('class="nn-sec nn-live')[1].split('</section>')[0]  # 방금 들어온 제보: 공개 제보만 본문 앞부분, 비밀글·공개 전은 제목·업체만
         self.assertNotIn('비공개 상세 내용', live); self.assertEqual(live.count('공개 본문'), 2)
-        self.assertEqual(live.count('테스트 업체</p>'), 4)
+        self.assertEqual(live.count('<b>테스트 업체</b>'), 4)
         self.assertNotIn('nn-stats', home)  # 메인에는 건수 현황 없음
         self.assertNotIn('비공개 처리된 제보예요', home)
         self.assertNotIn('비밀글로 접수된 제보예요', home)
@@ -1491,6 +1491,10 @@ class SiteTest(unittest.TestCase):
         live = home.split('class="nn-sec nn-live')[1].split('</section>')[0]
         self.assertEqual(live.count('class="nn-vc-card" href="/reports/'), 6)  # 방금 들어온 제보 6건 (콘텐츠 카드)
         self.assertIn('공개 제보 24', home); self.assertIn('class="nn-vc-ex">내용<', live)  # 공개 제보는 본문 앞부분도
+        with self.site.conn() as db:
+            top = db.execute('SELECT MAX(id) FROM cases').fetchone()[0]
+            for k in range(3): db.execute("INSERT INTO board_votes(kind,target,voter,created) VALUES('metoo',?,?,'x')", ('case:%d' % top, 'v%d' % k))
+        self.assertIn('나도 겪었어요 3</span>', self.client.get('/').get_data(as_text=True))  # '나도 겪었어요' 수
         self.assertNotIn('공개 제보 04<', home)
         self.assertIn('href="/reports">', home)  # 메뉴와 전체 보기 링크
         live = self.client.get('/reports/latest')

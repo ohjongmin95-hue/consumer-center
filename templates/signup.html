@@ -5,7 +5,6 @@
 <main class="auth-page auth-page-login su-page">
   {# 토스식: 제목은 카드 위, 한 화면에 가입 버튼까지 (스크롤 없이) #}
   <h1 class="auth-title auth-title-out">{{ ui('common.signup', '회원가입') }}</h1>
-  <p class="auth-lead auth-lead-out">{{ ui('member.signup_lead', '닉네임 하나로 제보·후기·수다를 시작해요') }}</p>
   <div class="auth-card auth-card-wide">
     <form class="auth-body" method="post" autocomplete="off"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
