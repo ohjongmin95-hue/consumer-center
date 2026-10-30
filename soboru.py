@@ -433,6 +433,25 @@ def install(S):
     jebo_home = app.view_functions['home']
     app.view_functions['home'] = lambda: home_nn() if is_soboru() else jebo_home()  # 소비자제보센터 주소면 예전 메인(index.html)
 
+    def live_cards(n):
+        """홈 '소비자의 소리' 카드 (운영자 요청 2026-10-30: 검은고양이처럼 콘텐츠 보듯이): 공개 제보는 본문 앞부분(개인정보 가림)과
+        '나도 겪었어요'·댓글 수, 기업 답변 여부까지. 비밀글·공개 전 제보는 제목·업체·단계만 (본문 없음)"""
+        cases = [dict(c, look=report_look(c['cat'])) for c in S.report_rows(limit=n)]
+        ids = [c['no'] for c in cases]
+        if not ids: return cases
+        q = ','.join('?' * len(ids))
+        with conn() as db:
+            rows = {r['id']: r for r in db.execute(f'SELECT id,public_consent,published,public_body,description FROM cases WHERE id IN ({q})', ids)}
+            first = jebo.first_answers(db, ids)
+        tc = app.jinja_env.globals.get('talk_counts')  # casetalk.py가 붙임 (소보루 모듈보다 나중에 설치돼서 S에는 없음)
+        talk = tc(ids) if tc else {}
+        for c in cases:
+            r = rows.get(c['no'])
+            open_ = bool(r and r['public_consent'] and r['published'] and c['title'])
+            body = ' '.join((r['public_body'] or S.mask_personal(r['description'] or '')).split()) if open_ else ''
+            c.update(open=open_, excerpt=body[:140], answered=c['no'] in first, metoo=talk.get(c['no'], (0, 0))[0], comments=talk.get(c['no'], (0, 0))[1])
+        return cases
+
     def home_nn():
         # 뉴닉식 홈(운영자 요청, 2026-10-17): 맨 위는 소보루 소개만(건수 없음), 바로 아래 실시간 제보.
         # 묶음 순서·보이기는 관리자 > 화면 편집 (PAGE_BLOCKS['home'])
@@ -449,7 +468,7 @@ def install(S):
         with conn() as db:
             picks = [dict(r) for r in db.execute("""SELECT target,MAX(company_id) AS company_id,COUNT(*) AS n,ROUND(AVG(rating),1) AS avg,SUM(recommend=1) AS rec
                 FROM posts WHERE kind='review' AND hidden=0 AND editor=0 AND target!='' GROUP BY target ORDER BY rec DESC,avg DESC,n DESC LIMIT 5""")]
-        return render_template('soboru_home_nn.html', cases=[dict(c, look=report_look(c['cat'])) for c in S.report_rows(limit=6)], feed=feed[:10], cats=cats,
+        return render_template('soboru_home_nn.html', cases=live_cards(6), feed=feed[:10], cats=cats,
                                rank=company_rank(5), posts=S.community_feed(4), picks=picks)
 
     @app.route('/admin/home-plan')
