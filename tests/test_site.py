@@ -3994,6 +3994,26 @@ class SiteTest(unittest.TestCase):
         prompts = [b['messages'][1]['content'] for b in sent if b['messages'][0]['content'].startswith('너는 소보루')]
         self.assertTrue(prompts); self.assertIn('[분량·구성]', prompts[-1]); self.assertIn('쌀', prompts[-1])
 
+    def test_writer_uses_luna_then_falls_back(self):
+        """매거진 글은 GPT-6 Luna(낮은 추론, temperature 없음)로 쓰고, Luna가 오류면 그 한 번만 gpt-4.1-mini로 (운영자 요청 2026-10-30)"""
+        w = self.site.app.extensions['soboru_writer']; bodies = []
+        def fake(url, headers, body, timeout):
+            bodies.append(body)
+            if body['model'] == 'gpt-6-luna': return 400, {'error': {'message': 'bad'}}
+            return 200, {'choices': [{'message': {'content': '{"ok": 1}'}}]}
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', fake):
+            self.assertEqual(w['chat']('s', 'u', 100), {'ok': 1})
+        self.assertEqual([b['model'] for b in bodies], ['gpt-6-luna', 'gpt-4.1-mini'])
+        self.assertEqual((bodies[0]['reasoning_effort'], bodies[0]['max_completion_tokens']), ('low', 1600)); self.assertNotIn('temperature', bodies[0])
+        self.assertEqual((bodies[1]['max_tokens'], bodies[1]['temperature']), (100, 0.4))
+
+    def test_magazine_fix_topic_and_calc_links(self):
+        """피해 해결 글: 검색어 그대로인 주제 + 법령 모음에서 찾을 말, 글 아래엔 맞는 계산기 (운영자 요청 2026-10-30: 검색 노출)"""
+        mod = self.site.soboru_writer; tools = self.site.soboru_tools
+        self.assertIn('헬스장 환불 거부', mod.FIX_TOPICS); self.assertIn('fix', mod.EXTRA)
+        self.assertEqual([c['slug'] for c in tools.calcs_for('헬스장 환불 거부당했다면', '청약철회와 할부')], ['fitness', 'cooling'])
+        self.assertEqual(tools.calcs_for('날씨 이야기', ''), [])
+
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
         w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub

@@ -32,6 +32,7 @@ LAW_WORDS = ('소비자', '전자상거래', '약관', '표시', '광고', '할�
 BANNED = ('악덕', '최악', '사기꾼', '먹튀', '갑질', '양심 없', '양심없', '블랙기업', '불매', '무책임한 기업', '나쁜 기업', '믿을 수 없는 기업')
 CONST = {'소비자상담센터 전화번호': '1372'}  # 글 끝 안내에 늘 쓰는 번호는 자료에 같이 넣음
 AI_TIMEOUT = 90
+WRITER_MODEL = 'gpt-6-luna'  # 매거진 글 쓰는 모델 (소보루CS와 같은 Luna)
 # 소제목에 붙이는 이모지: 사이트의 토스페이스 글꼴(static/fonts/tossface-soboru.woff2)에 들어 있는 것만
 EMOJI = '📊📈📉🔍💡📌📦🛒💳💰💸🧾📱🚗✈🏠🍔🩺💊⚖📢📣📰🔔⚠🚨✅📝📋🤝🙋💬👀🔥✨⏰📅🛡🔒🧸🧴🎁'
 SLOTS = (7, 13, 19)  # 하루 세 번 쓰는 때 (한국 시각, 아침·오후·저녁). deploy/soboru-writer.timer와 같게 둠
@@ -723,14 +724,24 @@ def install(S):
 
     # ---- 기획 기사: 주제(야마) 고르기 · 자료 모으기 ------------------------------------
     def chat(system, user, max_tokens, timeout=AI_TIMEOUT):
+        """매거진 글은 GPT-6 Luna(낮은 추론)로 씀 (운영자 요청 2026-10-30: 소보루CS처럼 더 싼 모델로). WRITER_MODEL로 바꿀 수 있고,
+        Luna가 오류를 내거나 빈 답을 주면 그 한 번만 예전 모델(OPENAI_MODEL, 기본 gpt-4.1-mini)로 다시 물음."""
         key = os.getenv('OPENAI_API_KEY', '').strip()
         if not key: raise RuntimeError('OpenAI API 키가 없어요')
-        body = {'model': desk.ai_model(), 'temperature': 0.4, 'response_format': {'type': 'json_object'}, 'max_tokens': max_tokens,
-                'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]}
-        st, res = desk.post_json('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, timeout)
-        if st != 200: raise RuntimeError(f'AI 응답 오류 ({st}) ' + str((res.get('error') or {}).get('message', ''))[:120].replace(key, '***'))
-        try: return json.loads(res['choices'][0]['message']['content'])
-        except (KeyError, IndexError, TypeError, ValueError): raise RuntimeError('AI 응답을 읽지 못했어요')
+        first = os.getenv('WRITER_MODEL', '').strip() or WRITER_MODEL
+        models = [first] + ([desk.ai_model()] if desk.ai_model() != first else [])
+        err = 'AI 응답을 읽지 못했어요'
+        for model in models:
+            if re.match(r'(gpt-([5-9]|\d\d)|o\d)', model):  # 생각하는 모델: temperature 없음, 생각할 자리만큼 한도를 늘림
+                opts = {'max_completion_tokens': max_tokens + 1500, 'reasoning_effort': 'low'}
+            else: opts = {'max_tokens': max_tokens, 'temperature': 0.4}
+            body = {'model': model, 'response_format': {'type': 'json_object'}, **opts,
+                    'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]}
+            st, res = desk.post_json('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, timeout)
+            if st != 200: err = f'AI 응답 오류 ({st}) ' + str((res.get('error') or {}).get('message', ''))[:120].replace(key, '***'); continue
+            try: return json.loads(res['choices'][0]['message']['content'])
+            except (KeyError, IndexError, TypeError, ValueError): err = 'AI 응답을 읽지 못했어요'
+        raise RuntimeError(err)
 
     def clean_topic(t): return ' '.join(re.sub(r'[:\n\r]', ' ', str(t or '')).split())[:24]
 
@@ -1295,7 +1306,7 @@ def install(S):
         log({'status': 'recheck', 'kind': '', 'trigger': 'recheck', 'reason': f'최근 {days}일 게시 글 {len(rows)}개 중 {len(out)}개를 초안으로 돌렸어요'})
         return out
 
-    app.extensions['soboru_writer'] = {'kosis_facts': kosis_facts, 'recheck': recheck, 'proofread': proofread, 'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'check_text': check_text}
+    app.extensions['soboru_writer'] = {'kosis_facts': kosis_facts, 'recheck': recheck, 'proofread': proofread, 'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'check_text': check_text, 'chat': chat}
     S.writer_daily = daily
 
 
