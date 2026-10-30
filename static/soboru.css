@@ -2786,6 +2786,11 @@ main img,main video,main iframe,main table{max-width:100%}
 .nn-pick .nn-top{background:#fff;border-color:#e5e8eb;box-shadow:0 2px 10px rgba(25,31,40,.06)}
 .nn-pick .sb-cm-card{background:#fff;border:1px solid #e5e8eb;box-shadow:0 2px 10px rgba(25,31,40,.06)}
 .nn-pick .sb-cm-card.nn-fill{background:#fff;border:1px dashed #f3c98d}
+/* 휴대폰에서도 홈 커뮤니티 글은 줄 목록 대신 흰 카드 한 장씩 (2026-10-30: 게시판처럼 보이지 않게) */
+@media(max-width:860px){
+  .nn-pick .nn-pick-feed{display:grid;gap:10px}
+  .nn-pick .sb-cm-card,.nn-pick .sb-cm-card:first-child{border-radius:18px;padding:16px 16px 14px;box-shadow:0 2px 10px rgba(25,31,40,.06)}
+}
 .nn-talk .nn-talk-box{background:#fff;border:1px solid #e5e8eb;box-shadow:0 2px 10px rgba(25,31,40,.06)}.nn-talk .nn-talk-box:hover{background:#fffaf3}
 .nn-talk .nn-trows{display:grid;gap:10px;margin-top:10px}
 .nn-talk .nn-trow{min-height:0;padding:16px 18px;border:1px solid #e5e8eb;border-radius:18px;background:#fff;box-shadow:0 2px 10px rgba(25,31,40,.06);transition:box-shadow .15s,transform .15s}
