@@ -1531,7 +1531,7 @@ a.cm-rv-co:hover em{background:#e5e8eb;color:var(--cm-ink)}
 .nn-voice{justify-content:flex-start;align-items:center;gap:10px}
 .nn-voice>a{margin-left:auto}
 .nn-voice-tag{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--sb-sub);background:var(--sb-soft);border-radius:999px;padding:4px 10px}
-.nn-live.nn-live-wide{border:0;border-radius:28px;padding:28px;background:#f4f5f7}
+.nn-live.nn-live-wide{border:0;border-radius:0;padding:0}
 @media(max-width:680px){.nn-voice{flex-wrap:wrap;row-gap:6px}.nn-voice-tag{order:3}}
 /* 생활정보 글: 뉴스레터처럼 (요약 상자, 이모지 소제목, 핵심만 쏙, 체크 목록, 레터 구독) */
 .sb-h-emo{font-family:Tossface,sans-serif;display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border-radius:12px;background:var(--sb-orange-soft);font-size:22px;line-height:1;margin-right:12px}
@@ -2716,10 +2716,10 @@ main img,main video,main iframe,main table{max-width:100%}
 .co-mark img{width:100%;height:100%;object-fit:contain;background:#fff}
 @media(max-width:1000px){.nn-ans-grid.three{grid-template-columns:1fr}}
 /* 홈 '소비자의 소리' 카드 (2026-10-30: 검은고양이처럼 콘텐츠 보듯이 · 본문 앞부분 · 나도 겪었어요·댓글 수) */
-.nn-live-wide{border:0;border-radius:28px;padding:28px;background:#f4f5f7}
+.nn-live-wide{border:0;border-radius:0;padding:0}
 .nn-vc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.nn-vc-card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:20px;border:1px solid transparent;border-radius:20px;background:#fff;box-shadow:0 1px 3px rgba(25,31,40,.05);color:inherit;text-decoration:none;transition:border-color .15s,box-shadow .15s}
-.nn-vc-card:hover{border-color:#f5d4b7;box-shadow:0 6px 20px rgba(25,31,40,.06)}
+.nn-vc-card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:20px;border:1px solid #e5e8eb;border-radius:20px;background:#fff;box-shadow:0 2px 10px rgba(25,31,40,.06);color:inherit;text-decoration:none;transition:border-color .15s,box-shadow .15s}
+.nn-vc-card:hover{border-color:#f5d4b7;box-shadow:0 8px 24px rgba(25,31,40,.09);transform:translateY(-2px)}
 .nn-vc-card:focus-visible{outline:2px solid var(--sb-orange);outline-offset:2px}
 .nn-vc-top{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sb-mute)}
 .nn-vc-top .nn-emo{flex:none;width:36px;height:36px;border-radius:12px;font-size:19px}
@@ -2742,22 +2742,22 @@ main img,main video,main iframe,main table{max-width:100%}
 .nn-vc-n.on{color:var(--sb-orange);font-weight:700}.nn-vc-n svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round}
 .nn-vc .nn-empty{grid-column:1/-1}
 @media(max-width:1000px){.nn-vc{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.nn-live-wide{padding:20px 0 20px 16px;border-radius:22px}.nn-live-wide .nn-sec-head{padding-right:16px}.nn-vc{padding-right:16px;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:82%;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px}.nn-vc::-webkit-scrollbar{display:none}.nn-vc-card{scroll-snap-align:start}.nn-vc-card{padding:16px;border-radius:18px}.nn-vc-card h3{font-size:16px}.nn-vc-img{width:64px;height:64px}}
-/* 2026-10-30 홈 잘 보이게 (운영자: '하얘서 게시판 같다'): 소비자의 소리·커뮤니티·골라주세요/수다방을 연회색 띠 위 흰 카드로 */
-.nn-pick,.nn-talk{background:#f4f5f7;border-radius:28px;padding:28px}
-.nn-pick .nn-top{background:#fff;border-color:transparent;box-shadow:0 1px 3px rgba(25,31,40,.05)}
-.nn-pick .sb-cm-card{background:#fff;border-color:transparent;box-shadow:0 1px 3px rgba(25,31,40,.05)}
+@media(max-width:640px){.nn-vc{padding:2px 2px 10px;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:82%;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px}.nn-vc::-webkit-scrollbar{display:none}.nn-vc-card{scroll-snap-align:start}.nn-vc-card{padding:16px;border-radius:18px}.nn-vc-card h3{font-size:16px}.nn-vc-img{width:64px;height:64px}}
+/* 2026-10-30 홈 잘 보이게 (운영자: '하얘서 게시판 같다', 회색 띠는 싫음): 흰 바탕 그대로, 카드에 또렷한 테두리·옅은 그림자 */
+
+.nn-pick .nn-top{background:#fff;border-color:#e5e8eb;box-shadow:0 2px 10px rgba(25,31,40,.06)}
+.nn-pick .sb-cm-card{background:#fff;border:1px solid #e5e8eb;box-shadow:0 2px 10px rgba(25,31,40,.06)}
 .nn-pick .sb-cm-card.nn-fill{background:#fff;border:1px dashed #f3c98d}
-.nn-talk .nn-talk-box{background:#fff;box-shadow:0 1px 3px rgba(25,31,40,.05)}.nn-talk .nn-talk-box:hover{background:#fffaf3}
+.nn-talk .nn-talk-box{background:#fff;border:1px solid #e5e8eb;box-shadow:0 2px 10px rgba(25,31,40,.06)}.nn-talk .nn-talk-box:hover{background:#fffaf3}
 .nn-talk .nn-trows{display:grid;gap:10px;margin-top:10px}
-.nn-talk .nn-trow{min-height:0;padding:16px 18px;border:0;border-radius:18px;background:#fff;box-shadow:0 1px 3px rgba(25,31,40,.05);transition:box-shadow .15s}
-.nn-talk .nn-trow:hover{box-shadow:0 6px 20px rgba(25,31,40,.07)}.nn-talk .nn-trow:hover b{text-decoration:none;color:var(--sb-orange)}
+.nn-talk .nn-trow{min-height:0;padding:16px 18px;border:1px solid #e5e8eb;border-radius:18px;background:#fff;box-shadow:0 2px 10px rgba(25,31,40,.06);transition:box-shadow .15s,transform .15s}
+.nn-talk .nn-trow:hover{box-shadow:0 8px 24px rgba(25,31,40,.09);transform:translateY(-2px)}.nn-talk .nn-trow:hover b{text-decoration:none;color:var(--sb-orange)}
 .nn-talk .nn-trow-t b{font-size:16px;font-weight:800}
-.nn-talk .nn-empty{background:#fff;border-radius:18px;padding:18px;margin:10px 0 0}
+.nn-talk .nn-empty{border:1px dashed #e5e8eb;border-radius:18px;padding:18px;margin:10px 0 0}
 .nn-vs2{display:flex;align-items:center;gap:6px;min-width:0;font-size:14px;font-weight:600;color:#4e5968}
 .nn-vs2>span{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:12px;background:#f7f8fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nn-vs2 i{flex:none;font-style:normal;font-weight:800;font-size:12px;width:20px;height:20px;border-radius:7px;display:inline-grid;place-items:center;color:#fff;background:#ef920e}
 .nn-vs2 .nn-vs-b i{background:#4e5968}
 .nn-vs2 small{flex:none;font-size:12px;color:#8b95a1;font-weight:700}
 .nn-like.on{color:var(--sb-orange);font-weight:700}
-@media(max-width:640px){.nn-pick,.nn-talk{padding:20px 16px;border-radius:22px}.nn-talk .nn-trow{padding:14px 16px}}
+@media(max-width:640px){.nn-talk .nn-trow{padding:14px 16px}}
