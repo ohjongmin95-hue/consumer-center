@@ -234,7 +234,7 @@ class SiteTest(unittest.TestCase):
                 ('four', '미동의 접수', '배송·환불', 0, 1),
             ):
                 db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
-                           (receipt, hashlib.sha256(b'test').hexdigest(), category, '테스트 업체', subject, '비공개 상세 내용', '요청', '2026-10-09', consent, published))
+                           (receipt, hashlib.sha256(b'test').hexdigest(), category, '테스트 업체', subject, '공개 본문' if consent and published else '비공개 상세 내용', '요청', '2026-10-09', consent, published))
             db.execute("UPDATE cases SET reviewed_at='2026-10-10T10:00:00' WHERE receipt='three'")  # 운영자가 보고 공개하지 않기로 둔 제보
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('공개 환불 요청', home)
@@ -242,9 +242,9 @@ class SiteTest(unittest.TestCase):
         # 비밀글·공개 전 제보도 제목·업체명은 보이고(눌러도 비밀번호 창), 본문은 안 보임
         self.assertIn('미동의 접수', home)
         self.assertIn('비공개 접수', home)
-        live = home.split('class="nn-sec nn-live')[1].split('</section>')[0]  # 방금 들어온 제보: 제목·업체만, 본문 없음
-        self.assertNotIn('비공개 상세 내용', live)
-        self.assertEqual(live.count('테스트 업체 ·'), 4)
+        live = home.split('class="nn-sec nn-live')[1].split('</section>')[0]  # 방금 들어온 제보: 공개 제보만 본문 앞부분, 비밀글·공개 전은 제목·업체만
+        self.assertNotIn('비공개 상세 내용', live); self.assertEqual(live.count('공개 본문'), 2)
+        self.assertEqual(live.count('테스트 업체</p>'), 4)
         self.assertNotIn('nn-stats', home)  # 메인에는 건수 현황 없음
         self.assertNotIn('비공개 처리된 제보예요', home)
         self.assertNotIn('비밀글로 접수된 제보예요', home)
@@ -1489,8 +1489,8 @@ class SiteTest(unittest.TestCase):
                            ('R%d' % i, 'x', '기타', '업체', '공개 제보 %02d' % i, '내용', '요청', '2026-10-09'))
         home = self.client.get('/').get_data(as_text=True)
         live = home.split('class="nn-sec nn-live')[1].split('</section>')[0]
-        self.assertEqual(live.count('<li><a href="/reports/'), 6)  # 방금 들어온 제보 6건
-        self.assertIn('공개 제보 24', home)
+        self.assertEqual(live.count('class="nn-vc-card" href="/reports/'), 6)  # 방금 들어온 제보 6건 (콘텐츠 카드)
+        self.assertIn('공개 제보 24', home); self.assertIn('class="nn-vc-ex">내용<', live)  # 공개 제보는 본문 앞부분도
         self.assertNotIn('공개 제보 04<', home)
         self.assertIn('href="/reports">', home)  # 메뉴와 전체 보기 링크
         live = self.client.get('/reports/latest')
