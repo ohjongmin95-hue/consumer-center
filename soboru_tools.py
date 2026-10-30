@@ -79,6 +79,21 @@ CALCS = [
      'note': '물가가 해마다 같은 비율로 오른다고 보고 셈했어요. 실제 물가 상승률은 통계청 소비자물가지수로 볼 수 있어요.'},
 ]
 CALC = {c['slug']: c for c in CALCS}
+# 매거진 글 아래 '이 글과 함께 쓰면 좋은 계산기' (운영자 요청 2026-10-30: 검색으로 들어온 사람이 바로 써 보게). 글 제목·본문에 이 말이 있으면 그 계산기
+CALC_WORDS = [('fitness', ('헬스', '필라테스', 'PT', '체육시설')), ('academy', ('학원', '교습비', '수강료')),
+              ('cooling', ('청약철회', '반품', '단순 변심', '방문판매')), ('card', ('할부',)), ('subscription', ('구독', '정기결제', '자동결제')),
+              ('jeonse', ('전세', '월세', '보증금')), ('loan', ('대출',)), ('inflation', ('물가',)), ('discount', ('할인', '1+1'))]
+
+
+def calcs_for(*texts, n=2):
+    """제목이 먼저: 제목에 걸린 계산기부터, 모자라면 본문에서 (n개까지)"""
+    out = []
+    for t in texts:
+        for slug, words in CALC_WORDS:
+            if len(out) < n and slug not in out and any(w in (t or '') for w in words): out.append(slug)
+    return [CALC[s] for s in out]
+
+
 CALC_GROUPS = [('소비자', '소비자 계산기', '환불·위약금·할인처럼 사고 물릴 때'), ('경제', '경제 계산기', '대출·예적금·세금처럼 돈 관리할 때')]
 
 # ---- 소비자·경제 사전 ------------------------------------------------------------------
@@ -237,4 +252,4 @@ def install(S):
     # AI 검색·구글이 낱말 뜻을 바로 읽게 DefinedTerm으로 (2026-10-28 AI 검색 친화)
     def dict_terms_ld(url):
         return [{'@type': 'DefinedTerm', 'name': w, 'description': d, 'inDefinedTermSet': url + '#terms'} for w, c, d in DICT]
-    app.jinja_env.globals.update(TOOL_CALCS=CALCS, dict_terms_ld=dict_terms_ld)
+    app.jinja_env.globals.update(TOOL_CALCS=CALCS, dict_terms_ld=dict_terms_ld, calcs_for=calcs_for)

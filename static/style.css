@@ -1462,6 +1462,8 @@ form.form-panel .group-form-h:not(:first-of-type) { margin-top: 26px; padding-to
 .co-case-list > li > a { display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 18px 20px; }
 .co-case-list > li > a:hover { border-color: #f5d4b7; background: #fffaf4; }
 .co-case-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.co-lock { font-size: 12px; font-weight: 700; color: #6b7684; background: #f2f4f6; border-radius: 6px; padding: 2px 7px; }
+.co-locked .co-case-body { color: #8b95a1; }
 .co-case-title { font-size: 16px; overflow-wrap: anywhere; }
 .co-case-body { color: #5b616a; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
 .co-case-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
