@@ -26,6 +26,8 @@
     {% if ai and ai.sources %}<div class="sb-source sb-sources"><b>{{ ui('life.sources', '출처') }}</b><ul>{% for s in ai.sources %}<li>{% if s.url %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name }} ↗</a>{% else %}{{ s.name }}{% endif %} <span>{{ s.fetched_at[:10].replace('-', '.') }} 기준</span></li>{% endfor %}</ul>
       <p class="sb-ai-note">{{ ui('life.ai_note', '이 글은 AI가 위 자료의 숫자만으로 초안을 쓰고, {site} 운영자가 확인한 뒤 올렸어요. 법률 자문이 아닌 일반 정보예요.', site=txt('site.name')) }}</p></div>
     {% elif a['source_name'] or a['source_url'] %}<p class="sb-source">{{ ui('life.source', '출처') }}: {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
+    {% for c in (calcs_for(a['title'], a['body']) if calcs_for is defined else []) %}<a class="sb-letter-cta sb-calc-cta" href="{{ url_for('calc', slug=c.slug) }}"><span class="sb-h-emo" aria-hidden="true">{{ c.emoji }}</span><span><b>{{ c.name }}</b><small>{{ c.desc }}</small></span><em>{{ ui('life.calc_btn', '계산해 보기') }} ›</em></a>
+    {% endfor %}
     <a class="sb-letter-cta" href="{{ url_for('letter_home') }}"><span class="sb-h-emo" aria-hidden="true">📨</span><span><b>{{ ui('life.letter_title', '이런 글, 아침마다 메일로 받아 볼래요?') }}</b><small>{{ ui('life.letter_body', '소보루 레터를 구독하면 꼭 알아야 할 소비자 소식을 쉽게 풀어 보내 드려요.') }}</small></span><em>{{ ui('life.letter_btn', '구독하기') }} ›</em></a>
   {{ admin_delete('life', a['id'], '관리자: 이 글 지우기') }}
   </article>

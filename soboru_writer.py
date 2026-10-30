@@ -59,6 +59,15 @@ FRESH_DAYS = 14      # 주제별 글(EXTRA)은 같은 주제를 이 기간 안�
 RIGHTS_TOPICS = ['온라인 쇼핑 청약철회', '반품 배송비 부담', '환불 지연 배상', '제품 하자 교환 환불', '불공정 약관 조항', '방문판매 청약철회',
                  '숙박 예약 취소 환불', '택배 분실 배상', '식품 이물질', '식품 소비기한 표시', '화장품 표시 사항', '건강기능식품 광고', '과장 광고',
                  '해외직구 반품', '개인정보 유출', '학원비 환불', '소비자분쟁조정 신청', '소비자 피해구제 신청', '통신판매업자 신원 정보']
+# 피해 해결 글 (운영자 요청 2026-10-30: 검색 노출): 피해를 겪은 사람이 검색창에 그대로 치는 말 → 법령 모음에서 찾을 말
+FIX_TOPICS = {'온라인 쇼핑몰 환불 거부': '청약철회', '단순 변심 반품 거부': '청약철회', '헬스장 환불 거부': '체육시설업 환급', '필라테스 중도 해지 환불': '체육시설업 해지',
+              '학원비 환불 거부': '학원 교습비 반환', '택배 분실 보상 거부': '택배 분실 배상', '택배 파손 보상': '택배 훼손 배상', '항공권 취소 수수료 과다': '항공 취소 수수료',
+              '숙소 예약 취소 환불 거부': '숙박 예약 취소', '정기결제 해지 안 됨': '계속거래 해지', '인터넷 해지 위약금': '인터넷 위약금', '휴대폰 위약금 분쟁': '이동통신 위약금',
+              '렌탈 중도 해지 위약금': '렌탈 해지 위약금', '가전제품 AS 거부': '품질보증기간 수리', '무상 수리 거부': '품질보증기간 무상수리', '배달 음식 이물질': '식품 이물',
+              '세탁소 옷 손상 배상': '세탁업 배상', '이사 파손 배상': '이사화물 배상', '웨딩 계약 해지 위약금': '결혼준비대행 위약금', '산후조리원 계약 해지': '산후조리 계약 해제',
+              '상조 해약 환급금': '선불식 할부거래 해약환급금', '중고차 허위 매물': '중고자동차 성능', '자동차 수리비 과다 청구': '자동차 정비 수리', '해외직구 반품 거부': '국제거래 반품',
+              '카드 할부 항변권': '할부 항변권', '쇼핑몰 배송 지연': '배송 지연 환급', '가품 의심 환불': '허위 표시 환급', '방문판매 계약 취소': '방문판매 청약철회',
+              '온라인 강의 환불 거부': '온라인 강의 환급', '보증금 안 돌려줌': '임대차 보증금 반환'}
 WORD_TOPICS = {'택배 분실': ['택배 파손', '택배 지연', '택배 보상'], '구독 해지': ['정기결제 해지', '자동결제 해지', '구독 환불'],
                '중고거래 사기': ['직거래 사기', '안전거래', '사기 조회'], '항공권 환불': ['항공권 취소 수수료', '항공 지연 보상', '수하물 분실'],
                '헬스장 환불': ['헬스장 양도', 'PT 환불', '필라테스 환불'], '위약금': ['인터넷 위약금', '휴대폰 위약금', '렌탈 위약금'],
@@ -87,6 +96,10 @@ KINDS = {
                  about='[주제] 검색어와 그 곁 검색어의 1년 검색 추이를 견주어 언제 왜 관심이 몰렸는지(자료로 알 수 있는 만큼만) 분석하고, 최근 뉴스와 법 조문으로 소비자가 할 일을 알려 준다.'),
     'shopcat': dict(name='쇼핑 분야 깊이 보기', needs=('naver',), category='쇼핑', emoji='🛒', tone='t4', topics=True,
                     about='[주제] 쇼핑 분야 하나의 클릭 추이와 성별·연령·기기별 비중, 다른 분야와 견준 순위를 깊이 분석하고, 그 분야를 살 때 소비자가 챙길 점을 알려 준다.'),
+    'fix': dict(name='이럴 땐 이렇게 (피해 해결)', needs=(), category='생활', emoji='🙋', tone='t5', topics=True,
+                about='[주제]는 그 일을 겪은 소비자가 검색창에 그대로 치는 말이다. 제목에 이 말을 자연스럽게 담아(예: "헬스장이 환불을 거부한다면, 먼저 확인할 것들") '
+                      '지금 그 상황에 놓인 독자가 순서대로 할 일을 알려 준다: 내게 어떤 권리가 있는지(함께 준 법 조문 근거), 업체에 무엇을 어떻게 요구할지, 증거를 어떻게 남길지, '
+                      '그래도 안 되면 한국소비자원 1372 상담·피해구제 신청과 소보루 제보로 이어 간다. 조문에 없는 기간·금액은 쓰지 않고, 특정 기업 이름은 쓰지 않는다.'),
     # 기획 기사 (운영자 요청 2026-10-20): 뉴스·통계·법령을 엮은 잡지 기사. 주제는 최근 뉴스에서 AI가 고른 '야마'
     # 숫자로 보는 생활비 (운영자 요청 2026-10-21): 통계청 품목별 물가에서 1년 새 크게 움직인 품목 하나를 골라 뉴스·법·통계로 풀어 씀
     'stat': dict(name='숫자로 보는 생활비', needs=('kosis',), category='생활', emoji='🧾', tone='t3', topics=True, long=True,
@@ -99,7 +112,7 @@ KINDS = {
 }
 ORDER = ['trend', 'reports', 'news', 'shopping', 'law']  # 하루 한 번씩 쓰는 종류 (돌아가며 시작하는 순서)
 PAUSED = {'reports'}  # 운영자 요청 2026-10-18: 제보로 쓰는 글은 아직 쓰지 않음 (매일·관리자 버튼 모두). 다시 쓰려면 여기서 뺌
-EXTRA = ['feature', 'stat', 'rights', 'word', 'feature', 'stat', 'shopcat']  # ORDER를 한 바퀴 돈 뒤 몫이 남으면 돌아가며 채우는 주제별 글 (기획 기사를 더 자주)
+EXTRA = ['feature', 'fix', 'stat', 'rights', 'word', 'feature', 'fix', 'stat', 'shopcat']  # ORDER를 한 바퀴 돈 뒤 몫이 남으면 돌아가며 채우는 주제별 글 (기획 기사·피해 해결 글을 더 자주)
 
 SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 소비자에게 쓸모 있는 분석 기사를 쓴다.\n'
           '지켜야 할 것:\n'
@@ -648,10 +661,10 @@ def install(S):
             out.append(row)
         return out
 
-    def collect_rights(topic):
-        hits = corpus.related(topic, limit=5)
+    def collect_rights(topic, q=None):
+        hits = corpus.related(q or topic, limit=5)
         if len(hits) < 2: raise Skip(f'"{topic}"와 맞는 법 조문을 찾지 못했어요')
-        news = recent_news(topic)
+        news = recent_news(q or topic)
         facts = {'자료': '소보루 법령 원문 모음 (국가법령정보센터 법령·소비자분쟁해결기준·찾기 쉬운 생활법령정보)', '주제': topic,
                  '관련 법 조문(원문)': [{'조문': h['label'], '원문': corpus.clip(h['text'], 900)} for h in hits]}
         if news: facts['최근 관련 뉴스(제목·요약만)'] = news_facts(news)
@@ -865,7 +878,7 @@ def install(S):
         if kind == 'stat':
             try: return [n for n, _ in cpi_movers()]
             except RuntimeError: return []
-        return {'rights': RIGHTS_TOPICS, 'word': list(WORD_TOPICS), 'shopcat': [n for _, n in naverhub.SHOP_CATS]}[kind]
+        return {'fix': list(FIX_TOPICS), 'rights': RIGHTS_TOPICS, 'word': list(WORD_TOPICS), 'shopcat': [n for _, n in naverhub.SHOP_CATS]}[kind]
 
     def pick_topic(kind, day, avoid=()):
         """FRESH_DAYS 안에 쓰지 않은 주제 가운데 가장 오래전에 쓴(또는 한 번도 안 쓴) 것. 없으면 None.
@@ -884,7 +897,7 @@ def install(S):
         return min(free, key=lambda t: last.get(t, '')) if free else None
 
     COLLECT = {'trend': collect_trend, 'shopping': collect_shopping, 'news': collect_news, 'reports': collect_reports, 'law': collect_law,
-               'rights': collect_rights, 'word': collect_word, 'shopcat': collect_shopcat, 'feature': collect_feature, 'stat': collect_stat}
+               'rights': collect_rights, 'fix': lambda t: collect_rights(t, FIX_TOPICS.get(t)), 'word': collect_word, 'shopcat': collect_shopcat, 'feature': collect_feature, 'stat': collect_stat}
 
     def collect(kind, topic=None):
         ok, why = kind_ready(kind)

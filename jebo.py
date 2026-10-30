@@ -205,7 +205,7 @@ def install(S):
     def search(db,q,limit=30):
         t=norm(q)
         if not t:return []
-        rows=db.execute("""SELECT co.*,(SELECT COUNT(*) FROM cases c WHERE c.company_id=co.id AND c.public_consent=1 AND c.published=1) AS n_public,
+        rows=db.execute("""SELECT co.*,(SELECT COUNT(*) FROM cases c WHERE c.company_id=co.id AND c.review NOT IN ('rejected','duplicate')) AS n_public,
             (SELECT COUNT(*) FROM cases c WHERE c.company_id=co.id) AS n_all FROM companies co WHERE co.status IN ('active','listed')""").fetchall()
         hits=[]
         for co in rows:
@@ -222,7 +222,7 @@ def install(S):
         q=request.args.get('q','').strip()[:60]
         with conn() as db:
             found=search(db,q) if q else []
-            busy=[] if q else db.execute("""SELECT co.*,COUNT(c.id) AS n_public FROM companies co JOIN cases c ON c.company_id=co.id AND c.public_consent=1 AND c.published=1
+            busy=[] if q else db.execute("""SELECT co.*,COUNT(c.id) AS n_public FROM companies co JOIN cases c ON c.company_id=co.id AND c.review NOT IN ('rejected','duplicate')
                 WHERE co.status IN ('active','listed') GROUP BY co.id ORDER BY n_public DESC,co.name LIMIT 30""").fetchall()
             grades={c['id']:company_grade(db,c['id'])['grade'] for c in list(found)+list(busy)}
         return render_template('companies.html',q=q,found=found,busy=busy,grades=grades)
@@ -248,19 +248,22 @@ def install(S):
             co=visible_company(db,company_id)
             if not co:abort(404)
             st=company_stats(db,company_id);gr=company_grade(db,company_id)
-            where="company_id=? AND public_consent=1 AND published=1";args=[company_id]
+            # 비밀글·공개 전 제보도 목록에 (운영자 요청 2026-10-30): 제목·분류·단계만 보이고 내용은 잠금. 반려·중복만 뺌
+            where="company_id=? AND review NOT IN ('rejected','duplicate')";args=[company_id]
             if cat in S.report_categories():
                 where+=f" AND category IN ({','.join('?'*len(cat_names(cat)))})";args+=cat_names(cat)
             else:cat=''
             total=db.execute('SELECT COUNT(*) FROM cases WHERE '+where,args).fetchone()[0]
             rows=db.execute('SELECT * FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[size,(page-1)*size]).fetchall()
             first=first_answers(db,[r['id'] for r in rows])
-            cats=db.execute("SELECT category,COUNT(*) AS n FROM cases WHERE company_id=? AND public_consent=1 AND published=1 GROUP BY category",(company_id,)).fetchall()
+            cats=db.execute("SELECT category,COUNT(*) AS n FROM cases WHERE company_id=? AND review NOT IN ('rejected','duplicate') GROUP BY category",(company_id,)).fetchall()
+            n_open=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND public_consent=1 AND published=1 AND review NOT IN ('rejected','duplicate')",(company_id,)).fetchone()[0]
         by_cat={}
         for r in cats:by_cat[cat_label(r['category'])]=by_cat.get(cat_label(r['category']),0)+r['n']
         cases=[dict(id=r['id'],category=cat_label(r['category']),created=r['created'][:10],status=r['status'],answered=r['id'] in first,confirmed=bool(r['confirmed_at']),step=pub_step(my_step(r,r['id'] in first)),
-                    silent=no_answer(r,r['id'] in first),outcome=r['outcome'],**pub(r,mask)) for r in rows]
-        indexable=bool(total or co['statement'])
+                    silent=no_answer(r,r['id'] in first),outcome=r['outcome'],locked=not (r['public_consent'] and r['published']),secret=not r['public_consent'],
+                    **(pub(r,mask) if r['public_consent'] and r['published'] else {'subject':r['public_subject'] or mask(r['subject']),'body':'','request':''})) for r in rows]
+        indexable=bool(n_open or co['statement'])
         return render_template('company_page.html',co=co,st=st,gr=gr,cases=cases,total=total,page=page,pages=max(1,-(-total//size)),cat=cat,by_cat=by_cat,
                                categories=S.report_categories(),indexable=indexable,today=datetime.date.today().isoformat(),aka=[n for n in names(co)[1:] if n and n!=co['name']])
 
