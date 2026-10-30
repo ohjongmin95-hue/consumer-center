@@ -2833,7 +2833,7 @@ class SiteTest(unittest.TestCase):
         # 이름만 있는 기업 페이지는 검색엔진에 싣지 않음
         page = self.client.get('/companies/%d' % co['id']).get_data(as_text=True)
         self.assertIn('noindex', page)
-        self.assertIn('아직 공개된 제보가 없어요', page)
+        self.assertIn('아직 들어온 제보가 없어요', page)
         self.assertNotIn('/companies/%d<' % co['id'], self.client.get('/sitemap.xml').get_data(as_text=True))
         # 브랜드 이름으로 제보해도 그 기업에 자동으로 모임. 발생일도 저장
         base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'BC몰', 'subject': '원래 제목 홍길동', 'description': '주문번호 A-123 환불이 안 돼요',
@@ -3994,18 +3994,15 @@ class SiteTest(unittest.TestCase):
         prompts = [b['messages'][1]['content'] for b in sent if b['messages'][0]['content'].startswith('너는 소보루')]
         self.assertTrue(prompts); self.assertIn('[분량·구성]', prompts[-1]); self.assertIn('쌀', prompts[-1])
 
-    def test_writer_uses_luna_then_falls_back(self):
-        """매거진 글은 GPT-6 Luna(낮은 추론, temperature 없음)로 쓰고, Luna가 오류면 그 한 번만 gpt-4.1-mini로 (운영자 요청 2026-10-30)"""
+    def test_writer_uses_luna_only(self):
+        """매거진 글은 GPT-6 Luna(낮은 추론, temperature 없음)로만. 오류면 다른 모델로 다시 쓰지 않음 (운영자 요청 2026-10-30)"""
         w = self.site.app.extensions['soboru_writer']; bodies = []
         def fake(url, headers, body, timeout):
-            bodies.append(body)
-            if body['model'] == 'gpt-6-luna': return 400, {'error': {'message': 'bad'}}
-            return 200, {'choices': [{'message': {'content': '{"ok": 1}'}}]}
+            bodies.append(body); return 400, {'error': {'message': 'bad'}}
         with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', fake):
-            self.assertEqual(w['chat']('s', 'u', 100), {'ok': 1})
-        self.assertEqual([b['model'] for b in bodies], ['gpt-6-luna', 'gpt-4.1-mini'])
+            with self.assertRaises(RuntimeError): w['chat']('s', 'u', 100)
+        self.assertEqual([b['model'] for b in bodies], ['gpt-6-luna'])
         self.assertEqual((bodies[0]['reasoning_effort'], bodies[0]['max_completion_tokens']), ('low', 1600)); self.assertNotIn('temperature', bodies[0])
-        self.assertEqual((bodies[1]['max_tokens'], bodies[1]['temperature']), (100, 0.4))
 
     def test_magazine_fix_topic_and_calc_links(self):
         """피해 해결 글: 검색어 그대로인 주제 + 법령 모음에서 찾을 말, 글 아래엔 맞는 계산기 (운영자 요청 2026-10-30: 검색 노출)"""
@@ -4023,11 +4020,11 @@ class SiteTest(unittest.TestCase):
                 patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
             out = w['daily'](now=datetime.datetime(2026, 10, 20, 7, 30))  # 아침 5개: 순서표(검색 추이·뉴스·쇼핑) 다음 기획 기사·주제별 글로 채움
             made = [r for r in out if r['status'] == 'made']
-            self.assertEqual([r['kind'] for r in made][3:], ['feature', 'rights'])
+            self.assertEqual([r['kind'] for r in made][3:], ['feature', 'fix'])
             out = w['daily'](now=datetime.datetime(2026, 10, 20, 19, 30))  # 저녁에 돌면 오후 몫까지 채워 하루 15개
             made += [r for r in out if r['status'] == 'made']
             self.assertEqual(len(made), 15)
-            self.assertEqual([r['kind'] for r in made][5:8], ['word', 'feature', 'shopcat'])
+            self.assertEqual([r['kind'] for r in made][5:8], ['rights', 'word', 'feature'])
             with self.site.conn() as db:
                 feats = db.execute("SELECT a.title,a.category,a.ext_key,x.facts FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE x.kind='feature'").fetchall()
                 titles = [r[0] for r in db.execute("SELECT title FROM articles WHERE origin='ai'")]
@@ -4041,6 +4038,7 @@ class SiteTest(unittest.TestCase):
                 rows = {}
                 for r in db.execute("SELECT a.ext_key,x.kind,x.facts FROM articles a JOIN ai_articles x ON x.article_id=a.id ORDER BY a.id"): rows.setdefault(r['kind'], r)  # 종류별 첫 글
             self.assertTrue(rows['rights']['ext_key'].startswith('ai:rights:온라인 쇼핑 청약철회:'))
+            self.assertTrue(rows['fix']['ext_key'].startswith('ai:fix:온라인 쇼핑몰 환불 거부:'))  # 피해 해결 글: 검색어 그대로인 주제
             self.assertIn('전자상거래법 제17조', rows['rights']['facts'])
             word = json.loads(rows['word']['facts'])
             self.assertEqual(word['검색어별 추이'][0]['검색어'], word['주제 검색어'])

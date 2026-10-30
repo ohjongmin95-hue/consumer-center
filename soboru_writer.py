@@ -724,24 +724,19 @@ def install(S):
 
     # ---- 기획 기사: 주제(야마) 고르기 · 자료 모으기 ------------------------------------
     def chat(system, user, max_tokens, timeout=AI_TIMEOUT):
-        """매거진 글은 GPT-6 Luna(낮은 추론)로 씀 (운영자 요청 2026-10-30: 소보루CS처럼 더 싼 모델로). WRITER_MODEL로 바꿀 수 있고,
-        Luna가 오류를 내거나 빈 답을 주면 그 한 번만 예전 모델(OPENAI_MODEL, 기본 gpt-4.1-mini)로 다시 물음."""
+        """매거진 글은 GPT-6 Luna(낮은 추론)로만 씀 (운영자 요청 2026-10-30: 더 싼 모델로, 오류가 나도 다른 모델로 다시 쓰지 않음). WRITER_MODEL로 바꿀 수 있음."""
         key = os.getenv('OPENAI_API_KEY', '').strip()
         if not key: raise RuntimeError('OpenAI API 키가 없어요')
-        first = os.getenv('WRITER_MODEL', '').strip() or WRITER_MODEL
-        models = [first] + ([desk.ai_model()] if desk.ai_model() != first else [])
-        err = 'AI 응답을 읽지 못했어요'
-        for model in models:
-            if re.match(r'(gpt-([5-9]|\d\d)|o\d)', model):  # 생각하는 모델: temperature 없음, 생각할 자리만큼 한도를 늘림
-                opts = {'max_completion_tokens': max_tokens + 1500, 'reasoning_effort': 'low'}
-            else: opts = {'max_tokens': max_tokens, 'temperature': 0.4}
-            body = {'model': model, 'response_format': {'type': 'json_object'}, **opts,
-                    'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]}
-            st, res = desk.post_json('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, timeout)
-            if st != 200: err = f'AI 응답 오류 ({st}) ' + str((res.get('error') or {}).get('message', ''))[:120].replace(key, '***'); continue
-            try: return json.loads(res['choices'][0]['message']['content'])
-            except (KeyError, IndexError, TypeError, ValueError): err = 'AI 응답을 읽지 못했어요'
-        raise RuntimeError(err)
+        model = os.getenv('WRITER_MODEL', '').strip() or WRITER_MODEL
+        if re.match(r'(gpt-([5-9]|\d\d)|o\d)', model):  # 생각하는 모델: temperature 없음, 생각할 자리만큼 한도를 늘림
+            opts = {'max_completion_tokens': max_tokens + 1500, 'reasoning_effort': 'low'}
+        else: opts = {'max_tokens': max_tokens, 'temperature': 0.4}
+        body = {'model': model, 'response_format': {'type': 'json_object'}, **opts,
+                'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]}
+        st, res = desk.post_json('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, timeout)
+        if st != 200: raise RuntimeError(f'AI 응답 오류 ({st}) ' + str((res.get('error') or {}).get('message', ''))[:120].replace(key, '***'))
+        try: return json.loads(res['choices'][0]['message']['content'])
+        except (KeyError, IndexError, TypeError, ValueError): raise RuntimeError('AI 응답을 읽지 못했어요')
 
     def clean_topic(t): return ' '.join(re.sub(r'[:\n\r]', ' ', str(t or '')).split())[:24]
 
