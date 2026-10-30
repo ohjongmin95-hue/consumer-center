@@ -394,7 +394,7 @@ class SiteTest(unittest.TestCase):
             self.assertIn('공개 제보 카드 제목', home)
             self.assertIn('소비자의 소리', home); self.assertLess(home.index('nn-live'), home.index('id="letter-sub"'))  # 제보 목록 바로 밑에 레터 구독
             self.assertNotIn('nn-stats', home)  # 맨 위 건수 현황은 뺌
-            self.assertIn('🔒 비밀 제보 카드 제목', home)  # 비밀글도 제목·업체는 보이고 본문만 잠금
+            self.assertIn('</svg>비밀 제보 카드 제목</h3>', home)  # 비밀글도 제목·업체는 보이고 본문만 잠금
             self.assertIn('커뮤니티', home)  # 메뉴 이름 (소보루 픽 → 커뮤니티, 2026-10-24)
             self.assertIn('AI 학습 이용을 금지', home)  # 하단 무단 이용 금지 문구
             self.assertIn('User-agent: GPTBot', self.client.get('/robots.txt').get_data(as_text=True))
