@@ -7,7 +7,7 @@ import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Platform, Share, StyleSheet, View } from 'react-native';
+import { BackHandler, Platform, Share, StyleSheet, ToastAndroid, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
 import { SITE, shouldLoadInside, sitePath, toSiteUrl, openOutside } from './links';
@@ -23,7 +23,7 @@ const UA_SUFFIX = `SoboruApp/${VERSION} (${Platform.OS === 'ios' ? 'ios' : 'andr
 // 사이트의 공유 버튼(navigator.share)을 기기 공유 창으로
 const BEFORE_LOAD = `(function(){try{navigator.share=function(d){d=d||{};window.ReactNativeWebView.postMessage(JSON.stringify({type:'share',title:d.title||'',text:d.text||'',url:d.url||location.href}));return Promise.resolve();};}catch(e){}})();true;`;
 
-type Msg = { type?: string; member?: boolean; path?: string; next?: string; link?: string; title?: string; text?: string; url?: string };
+type Msg = { type?: string; member?: boolean; focus?: boolean; path?: string; next?: string; link?: string; title?: string; text?: string; url?: string };
 
 function Main() {
   const web = useRef<WebView>(null);
@@ -32,6 +32,8 @@ function Main() {
   const [member, setMember] = useState(false);
   const [canBack, setCanBack] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [focus, setFocus] = useState(false);  // 글쓰기·로그인·가입 화면: 아래 탭을 숨겨 한 화면에 (사이트도 자기 탭바를 숨김)
+  const backAt = useRef(0);
   const shown = useRef(false);
   const pushedFor = useRef('');  // 이번 실행에서 토큰을 저장한 회원 상태 (같은 토큰을 매 화면 보내지 않게)
   const pending = useRef('');  // 첫 화면이 뜨기 전에 온 링크(알림·유니버설 링크)는 뜬 뒤에 염
@@ -60,7 +62,11 @@ function Main() {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (canBack) { web.current?.goBack(); return true; }
-      return false;
+      // 첫 화면에서 실수로 눌러 앱이 바로 닫히지 않게: 2초 안에 한 번 더 누르면 닫힘
+      if (Date.now() - backAt.current < 2000) return false;
+      backAt.current = Date.now();
+      ToastAndroid.show('한 번 더 누르면 앱이 닫혀요', ToastAndroid.SHORT);
+      return true;
     });
     return () => sub.remove();
   }, [canBack]);
@@ -93,6 +99,7 @@ function Main() {
     if (m.type === 'page') {
       const isMember = !!m.member;
       setMember(isMember);
+      setFocus(!!m.focus);
       if (isMember && pushedFor.current !== 'member') {
         pushedFor.current = 'member';
         // 로그인한 뒤 처음이면 알림을 받을지 물음 (댓글·답변·제보 소식), 이미 허락했으면 조용히 토큰만 저장
@@ -160,7 +167,7 @@ function Main() {
         />
         {offline && <Offline onRetry={() => { setOffline(false); web.current?.reload(); }} />}
       </View>
-      <TabBar tabs={tabsFor(member)} active={activeTab(path)} onPress={onTab} />
+      {focus ? <SafeAreaView edges={['bottom']} style={s.top} /> : <TabBar tabs={tabsFor(member)} active={activeTab(path)} onPress={onTab} />}
     </View>
   );
 }

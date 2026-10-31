@@ -2770,7 +2770,6 @@ main img,main video,main iframe,main table{max-width:100%}
 .nn-vc-lock{width:15px;height:15px;margin-right:4px;vertical-align:-2px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;color:var(--sb-mute)}
 .nn-vc-ex{font-size:14px;line-height:1.6;color:var(--sb-sub);margin:6px 0 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .is-locked .nn-vc-ex{color:var(--sb-mute)}
-.nn-vc-img{flex:none;width:72px;height:72px;border-radius:12px;object-fit:cover;background:#f2f4f6}
 .nn-vc-foot{display:flex;align-items:center;gap:6px;padding-top:12px;border-top:1px solid var(--sb-line);font-size:13px;color:var(--sb-mute)}
 .nn-vc-foot .sb-badge{font-size:12px;padding:2px 8px;margin:0}
 .nn-vc-ans{font-size:12px;font-weight:700;color:#0ca678;background:#e6f7f1;border-radius:6px;padding:2px 8px}
@@ -2780,7 +2779,7 @@ main img,main video,main iframe,main table{max-width:100%}
 .nn-vc-n.on{color:var(--sb-orange);font-weight:700}.nn-vc-n svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round}
 .nn-vc .nn-empty{grid-column:1/-1}
 @media(max-width:1000px){.nn-vc{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.nn-vc{padding:2px 2px 10px;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:82%;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px}.nn-vc::-webkit-scrollbar{display:none}.nn-vc-card{scroll-snap-align:start}.nn-vc-card{padding:16px;border-radius:18px}.nn-vc-card h3{font-size:16px}.nn-vc-img{width:64px;height:64px}}
+@media(max-width:640px){.nn-vc{padding:2px 2px 10px;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:82%;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px}.nn-vc::-webkit-scrollbar{display:none}.nn-vc-card{scroll-snap-align:start}.nn-vc-card{padding:16px;border-radius:18px}.nn-vc-card h3{font-size:16px}}
 /* 2026-10-30 홈 잘 보이게 (운영자: '하얘서 게시판 같다', 회색 띠는 싫음): 흰 바탕 그대로, 카드에 또렷한 테두리·옅은 그림자 */
 
 .nn-pick .nn-top{background:#fff;border-color:#e5e8eb;box-shadow:0 2px 10px rgba(25,31,40,.06)}
