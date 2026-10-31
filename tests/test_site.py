@@ -4934,6 +4934,8 @@ class SiteTest(unittest.TestCase):
         app = self.client.get('/', headers=self.APP_UA).get_data(as_text=True)
         self.assertNotIn('class="sb-tabbar"', app); self.assertIn('in-app', app); self.assertIn('ReactNativeWebView', app)
         self.assertIn('member: false', app)
+        self.assertIn("focus: !!document.querySelector('.sb-header-min')", app)  # 로그인·글쓰기 화면이면 앱이 아래 탭을 숨김
+        self.assertIn('sb-header-min', self.client.get('/login', headers=self.APP_UA).get_data(as_text=True))
         alice, a_id = self.member_client('alice_app', '앱앨리스')
         bob, _ = self.member_client('bob_app', '앱밥')
         page = alice.get('/me/alerts', headers=self.APP_UA).get_data(as_text=True)
