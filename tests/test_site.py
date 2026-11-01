@@ -5538,6 +5538,7 @@ class SiteTest(unittest.TestCase):
         day = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%a, %d %b %Y 09:00:00 +0900')
         heads = {'경제': ['한국은행 기준금리 동결 결정', '한은 기준금리 동결, 시장 예상대로', '기준금리 동결에 대출 금리도 멈춰', '반도체 수출 석 달째 늘어', '중소기업 대출 연체율 올라'],
                  '산업': ['수능 앞두고 교통 대책 발표', '지하철 파업 예고에 출근길 비상', '지하철 파업 협상 결렬 출근길 대란', '지하철 파업 첫날 출근길 혼잡'],
+                 '물가': ['배추값 한 달 새 두 배'], '증시': ['코스피 외국인 매도에 하락'],
                  '정부 정책': ['정부 내년 예산안 국회 제출', '청년 월세 지원 대상 넓혀'], '리콜': ['전기밥솥 화재 위험 리콜']}
         def fake(method, url, headers, body, timeout):
             q = dict(urllib.parse.parse_qsl(url.split('?', 1)[1]))['query']
@@ -5547,8 +5548,8 @@ class SiteTest(unittest.TestCase):
             mat = self.site.app.extensions['soboru_letter']['collect']()
         news = mat['news']
         titles = [x['title'] for x in news]
-        self.assertEqual([x['kind'] for x in news], ['econ', 'econ', 'econ', 'econ', 'policy', 'policy'])  # 경제 4건 + 정책·제도 2건 (뉴닉식 오늘의 뉴스 6)
-        self.assertEqual(titles[4:], heads['정부 정책'])
+        self.assertEqual({x['kind'] for x in news}, {'econ'})  # 갓 구운 뉴스는 경제 기사만 (정책·제도는 아래 칸)
+        self.assertFalse(set(titles) & set(heads['정부 정책']))
         self.assertEqual([x['title'] for x in mat['harm']], ['전기밥솥 화재 위험 리콜'])  # 피해 예방 뉴스는 따로
         self.assertEqual(len(titles), 6)
         self.assertTrue(mat['comment'] and mat['comment'][0]['title'] == titles[0])  # 에디터 코멘트는 맨 앞 경제 이슈와 같은 이슈 기사들
