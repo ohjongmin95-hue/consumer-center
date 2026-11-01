@@ -5317,6 +5317,34 @@ class SiteTest(unittest.TestCase):
         self.assertEqual((L['status'], L['trigger'], L['stibee_id']), ('sent', 'stibee', 777))
         with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM letter_sends').fetchone()[0], 0)  # 사이트 구독자에게는 안 보냄
 
+    def test_letter_stibee_subscriber_sync(self):
+        # 보내는 곳이 스티비면 사이트 구독·해지가 스티비 주소록에도 반영되고, 기존 구독자는 버튼으로 한 번에 옮김 (운영자 2026-11-01)
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        admin = self.login_admin()
+        admin.post('/admin/letter/settings', data={'_csrf': self.csrf(admin, '/admin/letter'), 'freq': 'daily', 'via': 'stibee', 'stibee_list': '55',
+                                                   'stibee_sender': 'contact@consumerjebo.co.kr', 'stibee_name': '소보루 레터'})
+        self.letter_subs([('old1@example.com', 'active'), ('old2@example.com', 'active'), ('wait@example.com', 'pending')])
+        calls = []
+        def fake(method, path, body=None, ctype='application/json', base=None):
+            calls.append((method, (base or '') + path, body))
+            return (404, 'no') if base and base.endswith('/v2') else (200, '{"Ok": true}')
+        with patch.dict(os.environ, {'STIBEE_API_KEY': 'stb-test'}), patch.object(self.site.soboru_letter, 'stibee_call', fake):
+            page = admin.get('/admin/letter').get_data(as_text=True)
+            self.assertIn('사이트 구독자 2명 스티비 주소록으로 옮기기', page)
+            admin.post('/admin/letter/stibee-sync', data={'_csrf': self.csrf(admin, '/admin/letter')})
+            self.assertEqual(calls[-1][:2], ('POST', 'https://api.stibee.com/v1/lists/55/subscribers'))  # v2에 없으면 v1로
+            self.assertEqual(sorted(x['email'] for x in calls[-1][2]['subscribers']), ['old1@example.com', 'old2@example.com'])
+            self.assertEqual(calls[-1][2]['confirmEmailYN'], 'N')
+            calls.clear()
+            self.client.get('/letter/confirm/tok-wait')   # 확인 메일을 누르면 스티비에도 추가
+            self.assertEqual([c[2]['subscribers'] for c in calls if c[0] == 'POST'][-1], [{'email': 'wait@example.com'}])
+            calls.clear()
+            self.client.get('/letter/unsubscribe/tok-old1')   # 사이트에서 해지하면 스티비에서도 수신 거부
+            self.assertEqual(calls[-1][:3], ('PUT', 'https://api.stibee.com/v1/lists/55/subscribers/unsubscribe', ['old1@example.com']))
+        with patch.dict(os.environ, {'STIBEE_API_KEY': ''}):
+            r = admin.post('/admin/letter/stibee-sync', data={'_csrf': self.csrf(admin, '/admin/letter')}, follow_redirects=True)
+            self.assertIn('API 키가 없어요', r.get_data(as_text=True))
+
     def test_letter_feedback_votes(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         with self.site.conn() as db: db.execute('DELETE FROM letter_feedback')

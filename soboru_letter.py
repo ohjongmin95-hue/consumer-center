@@ -136,7 +136,8 @@ HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 �
          'comment_eyebrow': '오늘의 메인 뉴스', 'comment_kicker': 'TODAY\'S SPECIAL', 'what': '🍞 한 입에 정리하면', 'why': '🔎 왜 이렇게 됐을까요', 'wallet': '👛 내 지갑엔 무슨 일이?',
          'buzz_eyebrow': 'TREND', 'buzz': '요즘 뜨는 소비 트렌드'}
 
-STIBEE_API = 'https://api.stibee.com/v2'
+STIBEE_ROOT = 'https://api.stibee.com'
+STIBEE_API = STIBEE_ROOT + '/v2'
 VIA = {'site': '사이트에서 직접 (Brevo 등 SMTP)', 'stibee': '스티비로 (프로 요금제 API)'}
 
 
@@ -251,14 +252,28 @@ def fetch_market():
     return {'rows': rows, 'top': top, 'at': at}
 
 
-def stibee_call(method, path, body=None, ctype='application/json'):
+def stibee_call(method, path, body=None, ctype='application/json', base=None):
     """스티비 API v2 (운영자 요청 2026-11-01). 키는 서버 설정 STIBEE_API_KEY (deploy/set-stibee.sh). (상태 코드, 응답 글자). 테스트에서 바꿔 끼운다."""
     key = os.getenv('STIBEE_API_KEY', '').strip()
     data = None if body is None else (body if isinstance(body, str) else json.dumps(body, ensure_ascii=False)).encode()
-    req = urllib.request.Request(STIBEE_API + path, data=data, method=method, headers={'AccessToken': key, 'Content-Type': ctype + '; charset=utf-8'})
+    req = urllib.request.Request((base or STIBEE_API) + path, data=data, method=method, headers={'AccessToken': key, 'Content-Type': ctype + '; charset=utf-8'})
     try:
         with urllib.request.urlopen(req, timeout=60) as r: return r.status, r.read().decode('utf-8', 'replace')
     except urllib.error.HTTPError as e: return e.code, e.read().decode('utf-8', 'replace')[:300]
+
+
+def stibee_subs(list_id, emails, on=True):
+    """스티비 주소록에 구독자 넣기(on) / 수신 거부(off). 새 키는 v2라 v2 경로를 먼저, 없으면(404·405) 예전 v1 경로로. (성공 여부, 설명)"""
+    if not list_id or not emails: return False, '주소록 번호나 메일이 없어요'
+    body = {'eventOccuredBy': 'MANUAL', 'confirmEmailYN': 'N', 'subscribers': [{'email': e} for e in emails]} if on else list(emails)
+    last = ''
+    for ver in ('/v2', '/v1'):
+        path = f'/lists/{list_id}/subscribers' + ('' if on else '/unsubscribe')
+        st, res = stibee_call('POST' if on else 'PUT', path, body, base=STIBEE_ROOT + ver)
+        if st in (200, 201): return True, ''
+        last = f'({st}) {res[:120]}'
+        if st not in (404, 405): break
+    return False, last
 
 
 class Skip(Exception):
@@ -344,6 +359,29 @@ def install(S):
                 'stibee_sender': sender if EMAIL_RE.match(sender) else '', 'stibee_name': (s.get('stibee_name') or '').strip()[:40] or NAME}
 
     def stibee_ready(): return bool(os.getenv('STIBEE_API_KEY', '').strip())
+
+    def stibee_sync(email, on=True):
+        """사이트에서 구독·해지가 생기면 스티비 주소록에도 바로 반영 (보내는 곳이 스티비일 때만). 실패해도 사이트 구독은 그대로, 레터 기록에 남김."""
+        cfg = settings()
+        if cfg['via'] != 'stibee' or not stibee_ready() or not cfg['stibee_list'] or not email or email.startswith('x:'): return
+
+        def job():
+            ok, why = stibee_subs(cfg['stibee_list'], [email], on)
+            if not ok: log({'status': 'error', 'reason': f"스티비 주소록 {'추가' if on else '수신 거부'} 실패 {notify.mask(email)} {why}"})
+        if testing(): job()
+        else: threading.Thread(target=lambda: _quiet(job), daemon=True).start()
+
+    def stibee_push_all():
+        """관리자 버튼: 사이트에서 구독을 마친 사람 모두를 스티비 주소록에 넣음 (이미 있으면 스티비가 갱신). 한 번에 500명씩."""
+        cfg = settings()
+        if not stibee_ready(): return False, '스티비 API 키가 없어요 (deploy/set-stibee.sh)'
+        if not cfg['stibee_list']: return False, '스티비 주소록 번호를 먼저 저장해 주세요'
+        with conn() as db: emails = [r[0] for r in db.execute("SELECT email FROM letter_subscribers WHERE status='active' ORDER BY id")]
+        if not emails: return True, '옮길 구독자가 없어요'
+        for i in range(0, len(emails), 500):
+            ok, why = stibee_subs(cfg['stibee_list'], emails[i:i + 500], True)
+            if not ok: return False, f'{i}명까지 옮기고 멈췄어요 {why}'
+        return True, f'{len(emails)}명을 스티비 주소록에 넣었어요'
 
     def stibee_send(L, trigger):
         """스티비에 이메일을 만들고(제목·발신자·주소록) 내용을 넣은 뒤 바로 보냄. 우리 구독자 목록에는 보내지 않음(구독자는 스티비 주소록)."""
@@ -997,6 +1035,7 @@ def install(S):
             if not row or row['status'] == 'unsubscribed': return msg('bad'), 404
             if row['status'] == 'active': return msg('already')
             db.execute("UPDATE letter_subscribers SET status='active',confirmed=? WHERE id=?", (stamp(), row['id']))
+        stibee_sync(row['email'])
         return msg('confirmed', email=notify.mask(row['email']))
 
     @app.route('/letter/unsubscribe/<token>', methods=['GET', 'POST'])
@@ -1005,9 +1044,11 @@ def install(S):
         with conn() as db:
             row = db.execute('SELECT * FROM letter_subscribers WHERE token=?', (token[:64],)).fetchone()
             if not row: return msg('bad')
-            if row['status'] != 'unsubscribed':
+            gone = row['status'] != 'unsubscribed'
+            if gone:
                 db.execute("UPDATE letter_subscribers SET status='unsubscribed',unsubscribed=?,email=? WHERE id=?",
                            (stamp(), row['email'] if row['email'].startswith('x:') else gone_email(row['email']), row['id']))
+        if gone: stibee_sync(row['email'], False)
         if request.method == 'POST': return 'unsubscribed', 200
         return msg('unsubscribed')
 
@@ -1088,6 +1129,13 @@ def install(S):
         flash('레터 설정을 저장했어요.')
         return redirect(url_for('admin_letter'))
 
+    @app.route('/admin/letter/stibee-sync', methods=['POST'])
+    @S.admin_only
+    def admin_letter_stibee_sync():
+        ok, why = stibee_push_all()
+        flash(why if ok else '스티비로 옮기지 못했어요: ' + why)
+        return redirect(url_for('admin_letter') + '#subs')
+
     @app.route('/admin/letter/subscribers', methods=['POST'])
     @S.admin_only
     def admin_letter_subs():
@@ -1098,6 +1146,7 @@ def install(S):
                 db.execute("UPDATE letter_subscribers SET status='unsubscribed',unsubscribed=?,email=? WHERE id=?",
                            (stamp(), row['email'] if row['email'].startswith('x:') else gone_email(row['email']), sid))
                 flash(f"{notify.mask(row['email'])} 구독을 해지했어요.")
+        if row and row['status'] != 'unsubscribed': stibee_sync(row['email'], False)
         return redirect(url_for('admin_letter') + '#subs')
 
     @app.route('/admin/letter/<int:lid>', methods=['GET', 'POST'])
@@ -1160,6 +1209,7 @@ def install(S):
                 db.execute("INSERT INTO letter_subscribers(email,token,status,created,confirmed,ip_hash,asked,place) VALUES(?,?,?,?,?,?,?,'signup')",
                            (email, token, state, at, at if verified else None, S.ip_hash(), at))
         if not verified: return send_confirm(email, token)
+        stibee_sync(email)
         op = operator(); unsub = site_url(f'/letter/unsubscribe/{token}'); when = at.replace('T', ' ')[:16]
         text = (f"{NAME} 수신 동의 안내\n\n회원가입 때 '{NAME} 받기(선택)'에 동의하셔서 {NAME}를 보내 드려요.\n"
                 f"- 동의한 날: {when}\n- 받는 내용: 소비자·경제 소식, 소보루 새 글 안내\n\n"
@@ -1172,7 +1222,7 @@ def install(S):
 
     app.extensions['soboru_letter'] = {'join': join_consent, 'generate': generate, 'weekly': weekly, 'send': send_issue, 'collect': collect_news, 'settings': settings,
                                       'email_parts': email_parts, 'get': get, 'check': check, 'sections': sections,
-                                      'stibee_html': stibee_html, 'stats': stats}
+                                      'stibee_html': stibee_html, 'stats': stats, 'stibee_push_all': stibee_push_all}
 
 
 def main(argv):

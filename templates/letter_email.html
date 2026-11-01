@@ -79,11 +79,20 @@
   {% if sec.comment %}{% set c = sec.comment %}
   {#- 에디터 코멘트: 오늘 가장 큰 경제 이슈를 깊게 -#}
   <tr><td style="padding:40px 32px 4px;{{ F }}" id="comment">
-    {#- 메인 뉴스 머리: 빵집 벽에 걸린 '오늘의 추천 메뉴' 나무 판 -#}
-    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 2px;"><tr><td align="center" style="font-size:0;line-height:0;"><span style="display:inline-block;width:12px;height:12px;border:3px solid #652D1C;border-radius:50%;background:#ffffff;">&nbsp;</span></td></tr>
-      <tr><td align="center" style="font-size:0;line-height:0;"><span style="display:inline-block;width:3px;height:10px;background:#652D1C;">&nbsp;</span></td></tr></table>
-    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 26px;background:#fff6e6;border:3px solid #652D1C;border-radius:18px;"><tr><td align="center" style="padding:12px 26px 6px;{{ F }}font-size:12px;line-height:1.4;font-weight:800;letter-spacing:2px;color:#CE6719;white-space:nowrap;">{{ H.comment_kicker }}</td></tr>
-      <tr><td align="center" style="padding:0 22px 13px;{{ F }}font-size:23px;line-height:1.4;font-weight:800;letter-spacing:-0.5px;color:#652D1C;white-space:nowrap;">{{ ic('baguette', 26) }}&nbsp; {{ H.comment_eyebrow }} &nbsp;{{ ic('butter', 24) }}</td></tr></table>
+    {#- 메인 뉴스 머리: 가게 벽 받침대에 줄 두 개로 매단 귤색 '오늘의 추천' 간판 (운영자 2026-11-01) -#}
+    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+      <tr><td colspan="3" style="padding:0;"><div style="height:8px;background:#652D1C;border-radius:4px;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+      <tr><td width="40" align="right" style="padding:0 0 0 0;font-size:0;line-height:0;"><span style="display:inline-block;width:3px;height:18px;background:#652D1C;">&nbsp;</span></td><td style="font-size:0;line-height:0;">&nbsp;</td><td width="40" align="left" style="font-size:0;line-height:0;"><span style="display:inline-block;width:3px;height:18px;background:#652D1C;">&nbsp;</span></td></tr>
+      <tr><td colspan="3" style="padding:0 6px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#EF920E;border:3px solid #652D1C;border-radius:16px;"><tr><td style="padding:6px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:2px dashed #ffe2b0;border-radius:11px;">
+            <tr><td align="center" style="padding:10px 24px 2px;{{ F }}font-size:12px;line-height:1.4;font-weight:800;letter-spacing:2.5px;color:#fff1d9;white-space:nowrap;">★ {{ H.comment_kicker }} ★</td></tr>
+            <tr><td align="center" style="padding:0 20px 12px;{{ F }}font-size:24px;line-height:1.4;font-weight:800;letter-spacing:-0.5px;color:#ffffff;white-space:nowrap;">{{ ic('baguette', 26) }}&nbsp; {{ H.comment_eyebrow }} &nbsp;{{ ic('butter', 24) }}</td></tr>
+          </table>
+        </td></tr></table>
+      </td></tr>
+    </table>
+    <div style="height:26px;font-size:0;line-height:0;">&nbsp;</div>
     {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" width="576" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:576px;height:auto;border:0;border-radius:16px;"><p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p></div>{% endif %}
     <h2 style="margin:0 0 {{ '8px' if c.tags else '14px' }};font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
     {% if c.tags %}<p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#CE6719;">{% for t in c.tags %}#{{ t }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>{% endif %}

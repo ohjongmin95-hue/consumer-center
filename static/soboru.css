@@ -2887,3 +2887,7 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-numbox>div b::before{content:"TOTAL";float:left;font:700 16px/60px 'Courier New',monospace;color:#1d1d1f}
 .lt-numbox>div p{color:#3a3633;padding:10px 0;border-bottom:2px dashed #d9d2c5}.lt-numbox>div a{display:block;text-align:center;font-family:'Courier New',monospace;font-size:12px;color:#9a928a}
 .lt-numbox{background:#ffe8c7;border-radius:18px;padding-bottom:26px}.lt-numbox>.lt-part{margin-top:0}.lt-numbox>div{background:#fff;max-width:400px}.lt-numbox>div small,.lt-numbox>div b,.lt-numbox>div p{border-color:#b9ad9b}.lt-numbox>div small{font-size:16px;color:#1d1d1f}.lt-numbox>div p{color:#1d1d1f;font-size:17px}.lt-numbox>div a{color:#5a5048;font-size:13px}
+/* 메인 뉴스 간판: 받침대 + 줄 두 개 + 귤색 판 */
+.lt-sign-hook{width:220px;height:8px;border:0;border-radius:4px;background:#652D1C;margin-bottom:18px}.lt-sign-hook::after{display:none}
+.lt-sign{position:relative}.lt-sign::before,.lt-sign::after{content:"";position:absolute;top:8px;width:3px;height:18px;background:#652D1C;left:calc(50% - 80px)}.lt-sign::after{left:calc(50% + 77px)}
+.lt-sign-board{background:#EF920E;border:3px solid #652D1C;box-shadow:inset 0 0 0 6px #EF920E,inset 0 0 0 8px #ffe2b0}.lt-sign-board small{color:#fff1d9}.lt-sign-board b{color:#fff}

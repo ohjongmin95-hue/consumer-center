@@ -16,4 +16,4 @@ TMP=$(mktemp); grep -vE '^STIBEE_API_KEY=' "$ENV_FILE" > "$TMP" || true
 printf 'STIBEE_API_KEY=%s\n' "$KEY" >> "$TMP"
 cat "$TMP" > "$ENV_FILE"; rm -f "$TMP"
 systemctl restart soboru
-echo "저장했어요. 관리자 > 소보루 레터에서 '보내는 곳'을 스티비로 바꿔 주세요."
+echo "저장했어요. 관리자 > 소보루 레터에서 '보내는 곳'을 스티비로 바꾸고 주소록 번호·발신자를 저장한 뒤, '구독자' 칸의 '스티비 주소록으로 옮기기'를 한 번 눌러 주세요."
