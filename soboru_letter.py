@@ -38,7 +38,7 @@ ECON_QUERIES = ['경제', '산업', '물가', '금리', '부동산', '유통', '
 POLICY_QUERIES = ['정부 정책', '제도 개선', '법 개정 시행']
 HARM_QUERIES = ['소비자 피해', '소비자 주의보', '리콜']
 TREND_QUERIES = ['소비 트렌드', '인기 상품', '품절 대란', '오픈런', '편의점 신상', '판매량 급증']  # 요즘 뜨는 소비 트렌드 (운영자 2026-11-01)
-TREND_N = 3
+TREND_N = 5
 LETTER_QUERIES = ECON_QUERIES   # 갓 구운 뉴스 6 = 진짜 경제 기사만 (운영자 2026-11-01: 법·제도·정책은 아래 칸에서)
 KIND_N = {'econ': 6, 'policy': 0}   # 경제 이슈 6건, 정책·제도는 뉴스에 넣지 않음 (운영자 2026-11-01)
 HARM_N = 2                          # 피해 예방에 넘기는 뉴스 수
@@ -60,6 +60,32 @@ SEND_BATCH = 20           # 한 번에 보내는 메일 수
 SEND_PAUSE = 3.0          # 묶음 사이 쉬는 시간(초)
 SUB_LIMIT = 5             # 같은 접속지에서 10분 동안 구독 신청 횟수
 PENDING_DAYS = 7          # 확인 안 한 신청은 7일 뒤 지움
+# 소비 트렌드 칸: 트렌드마다 주제에 맞는 가게(차양 색·간판 그림) — (이름, 토스페이스 그림, 진한 색, 연한 색, 글자 색, 알아보는 낱말)
+SHOPS = {
+    'dessert': ('디저트 가게', 'cupcake', '#f48fab', '#ffe0e8', '#c2416a', '디저트 케이크 빵 베이커리 과자 아이스크림 초콜릿 쿠키 도넛 간식'),
+    'cafe': ('카페', 'coffee', '#a9744f', '#f3e4d6', '#7a4a2a', '커피 카페 음료 차 라떼 티'),
+    'store': ('편의점', 'store', '#22b07d', '#d8f3e7', '#16795a', '편의점 CU GS25 세븐일레븐 이마트24 도시락 삼각김밥'),
+    'beauty': ('뷰티숍', 'lipstick', '#b07cdb', '#efe3f8', '#7b44a8', '화장품 뷰티 다이소 올리브영 립 스킨케어 향수 미용'),
+    'fashion': ('옷 가게', 'dress', '#5b8def', '#e0eafd', '#2f5fbf', '옷 패션 의류 신발 가방 유니클로 무신사 SPA 아웃도어'),
+    'tech': ('전자 매장', 'phone', '#4a5873', '#e2e6ee', '#2f3a52', '스마트폰 휴대폰 아이폰 갤럭시 가전 노트북 전자 AI 이어폰 태블릿'),
+    'grocery': ('장보기 마트', 'leafy', '#7cb342', '#e8f4da', '#4f7d1f', '마트 장보기 채소 과일 식재료 쌀 고기 계란 신선식품 이마트 홈플러스'),
+    'food': ('맛집 골목', 'ramen', '#ef6a5a', '#fde3df', '#b8392a', '외식 식당 라면 맛집 배달 치킨 버거 프랜차이즈 밀키트 먹거리'),
+    'travel': ('여행사', 'plane', '#3fa9db', '#dbf0fa', '#1f78a3', '여행 항공 호텔 숙박 해외 관광 캠핑 레저 공연 축제'),
+    'game': ('놀이 가게', 'gamepad', '#7a6ff0', '#e7e5fd', '#4b40c2', '게임 장난감 피규어 굿즈 캐릭터 팝업 키덜트 콘솔'),
+    'health': ('건강 상점', 'pill', '#2bb3b1', '#d9f3f2', '#18807e', '건강 영양제 약 헬스 운동 다이어트 단백질 웰니스'),
+    'shop': ('잡화점', 'bags', '#EF920E', '#ffead0', '#b35f00', ''),
+}
+
+
+def guess_shop(text):
+    """AI가 고른 가게가 없거나 틀리면 낱말로 고른다 (못 고르면 잡화점)."""
+    best, score = 'shop', 0
+    for k, v in SHOPS.items():
+        n = sum(1 for w in v[5].split() if w and w.lower() in (text or '').lower())
+        if n > score: best, score = k, n
+    return best
+
+
 BOXES = (('number', '숫자로 보는 오늘'), ('buzz', '소비 트렌드'), ('harm', '소비자 피해 예방'), ('lawbox', '법률·제도'))  # 뉴스 말고 AI가 쓰는 칸 (sections에 담음)
 COPY_WORDS = 6            # 기사 원문과 이만큼 어절이 그대로 겹치면 '검토 필요'
 AI_TIMEOUT = 120
@@ -82,11 +108,14 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           '- 기업을 좋다·나쁘다 평가하거나 비난하지 않는다. 피해 예방 칸에서도 특정 기업 이름을 쓰지 않고 피해 유형으로만 쓴다. 정치 이슈는 어느 편도 들지 않고 누가 무엇을 했는지 사실만 쓴다. 사람 이름·연락처 같은 개인정보는 쓰지 않는다(공인이 한 공식 발표는 기관 이름으로 쓴다).\n'
           '- 법 조문은 준 후보 id 가운데 정말 관련 있는 것 하나만 고르고, 맞는 것이 없으면 빈 문자열로 둔다. 법 이야기는 "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다. 분쟁해결기준은 강제력 없는 권고 기준이라고 밝힌다.\n'
           '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다. "소보루 브리핑" 같은 고정된 이름을 제목에 붙이지 않는다.\n'
-          'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 여는 글 2~3문장 — "소보루 이웃님,"으로 시작해 에디터 코멘트 이슈를 우리 생활 장면으로 꺼내고 마지막 문장은 질문으로 끝낸다(예: "…우리는 어떻게 대처해야 할까요?"). 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
+          'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 여는 글 2~3문장 — "빵순이·빵돌이님,"으로 시작해(독자를 부를 땐 늘 빵순이·빵돌이님, "이웃님"은 쓰지 않는다) 에디터 코멘트 이슈를 우리 생활 장면으로 꺼내고 마지막 문장은 질문으로 끝낸다(예: "…우리는 어떻게 대처해야 할까요?"). 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
           '"items": [{"no": 뉴스 번호, "title": 뉴스 제목처럼 핵심 숫자·주체를 담은 30~45자 제목(질문형·감탄·따옴표 인용 가능, 어울리면 끝에 이모지 하나, 예 "미국 기준금리 3.75~4.00% 동결, 12월 추가 인상 가능성은? 🏦"), "body": 딱 3문장(150~230자) — 첫 문장은 언제·누가·무엇을 했는지 핵심 숫자와 함께(예 "28일 미국 연방준비제도(연준)가 기준금리를 연 3.75~4.00%로 동결했어요."), 둘째 문장은 배경이나 덧붙일 사실, 셋째 문장은 왜 그런지·무슨 뜻인지 해석("~라는 해석이 나와요", "~라는 계획이에요"). 기관 이름은 처음에 풀어 쓰고 괄호에 줄임말, 해요체로 짧고 또렷하게(그 뉴스와 "같은 소식 다른 기사" 자료만 쓴다), "tip": "", "law": 고른 조문 id 또는 ""}], '
           '"comment": {"photo": 이슈에 어울리는 사진을 Unsplash에서 찾을 영어 검색어 2~3낱말(장면·물건 위주, 사람 이름·회사 이름·로고 X, 예 "grocery shopping cart"), "title": 30~45자 제목(핵심 주체·숫자를 담고 끝에 어울리는 이모지 1~2개 가능), "tags": [이슈를 나타내는 짧은 낱말 2~3개, # 없이], "lead": 3~4문장 — 독자가 겪을 법한 생활 장면으로 시작해 이슈를 꺼내고 마지막은 질문으로 끝낸다, "what": {"body": 언제 누가 무엇을 발표·확인했는지 1~2문장(끝을 "…살펴보면:"처럼 이어 써도 됨), "points": [{"name": 주체·항목 이름 15자 이내, "text": 1~2문장 — 자료에 있는 숫자를 꼭 넣는다}] 3개}, '
           '"why": {"body": 배경·원인 5~7문장(350~550자), 자료의 숫자와 기관 발표를 들어 구체적으로}, "wallet": {"head": 이 칸 소제목 15자 안팎(예 "내 지갑엔 무슨 일이?", "무엇이 문제일까요?"), "body": 1~2문장(끝을 "…이래요:"처럼 이어 써도 됨), "points": [{"name": 15자 이내 + 끝에 어울리는 이모지 하나, "text": 2문장}] 2~3개}} (자료가 모자라면 null), '
-          '"buzz": {"title": 요즘 소비 트렌드를 담은 25~40자 제목, "body": 2~3문장 — 요즘 무엇이 왜 뜨는지, "points": [{"name": 트렌드·상품 이름 15자 이내, "text": 2문장 — 판매량·증가율·가격·순위 같은 자료의 숫자를 꼭 넣는다}] 2~3개} ([소비 트렌드 뉴스]가 비었으면 null), '
+          '"buzz": {"title": 요즘 소비 트렌드를 담은 25~40자 제목, "body": 트렌드 도입 4~5문장(250~400자) — 요즘 무엇이 왜 뜨는지 생활 장면과 숫자로, '
+          '"points": [{"name": 트렌드·상품 이름 15자 이내, "shop": 이 트렌드에 어울리는 가게 하나(dessert 디저트·cafe 카페·store 편의점·beauty 뷰티·fashion 옷·tech 전자·grocery 장보기·food 외식·travel 여행·game 놀이·health 건강·shop 그 밖), "text": 4~5문장(250~380자) — 무엇이 얼마나 팔리는지(판매량·증가율·가격·순위 같은 자료의 숫자를 여럿), 누가 왜 사는지, 업계가 어떻게 움직이는지를 구체적으로}] 3개, '
+          '"insight": 이 트렌드를 꿰뚫는 분석 4~5문장(250~400자) — 여러 기사의 흐름을 묶어 소비 심리·물가·세대 같은 배경을 짚는다(자료에 없는 숫자·전망은 짓지 않는다), '
+          '"tip": 소비자가 이 트렌드 속에서 챙길 점 2문장(예: 가격 비교, 충동구매 주의, 품절 마케팅 주의)} ([소비 트렌드 뉴스]가 비었으면 null), '
 '"number": {"no": 숫자를 고른 뉴스 번호, "value": 그 뉴스 자료에 있는 숫자 그대로(단위 포함, 예 "3.2%"), "label": 무엇의 숫자인지 15자 안팎, "body": 이 숫자가 무슨 뜻인지 1~2문장} (고를 숫자가 없으면 null), '
           '"harm": {"title": 피해 유형 20자 안팎, "body": 요즘 이런 피해가 생기고 있다는 설명 2~4문장, "steps": [겪었을 때 대응 방법 2~4개, 각각 40자 안팎 한 문장 — 증거 남기기, 판매자에게 기록이 남는 방식으로 요청하기, 카드 결제면 카드사에 문의하기, 1372 소비자상담센터 상담처럼 그 피해에 맞는 것], "law": 피해 예방 뉴스 조문 후보 id 또는 ""} (자료가 없으면 null), '
           '"lawbox": {"title": 25자 안팎 제목, "body": 조문을 쉬운 말로 3~4문장, "point": 꼭 기억할 한 줄 50자 이내, "law": 고른 조문 id} (주제가 null이면 null), '
@@ -95,7 +124,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
 
 # 칸 이름: 뉴닉 문구·이모지를 따라 하지 않고 소보루(빵집)식으로 (운영자 2026-11-01)
 HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 뉴스', 'news_emoji': '🥞', 'more': '기사 원문 ›',
-         'comment_eyebrow': 'TODAY\'S MAIN · 오늘의 메인 뉴스', 'what': '🍞 한 입에 정리하면', 'why': '🔎 왜 이렇게 됐을까요', 'wallet': '👛 내 지갑엔 무슨 일이?',
+         'comment_eyebrow': '오늘의 메인 뉴스', 'comment_kicker': 'TODAY\'S SPECIAL', 'what': '🍞 한 입에 정리하면', 'why': '🔎 왜 이렇게 됐을까요', 'wallet': '👛 내 지갑엔 무슨 일이?',
          'buzz_eyebrow': 'TREND', 'buzz': '요즘 뜨는 소비 트렌드'}
 
 STIBEE_API = 'https://api.stibee.com/v2'
@@ -498,6 +527,7 @@ def install(S):
         subject = W._plain(out.get('subject'), 80) or items[0]['title']
         subject = re.sub(r'^\s*\[?소보루\s*(브리핑|레터)\]?\s*[:：\-·]?\s*', '', subject) or items[0]['title']
         intro, outro = W._plain(out.get('intro'), 600), W._plain(out.get('outro'), 400)
+        intro, outro = (t.replace('소보루 이웃님', '빵순이·빵돌이님').replace('이웃님', '빵순이·빵돌이님') for t in (intro, outro))
         return subject, intro, outro, items, extras(out, mat)
 
     def extras(out, mat):
@@ -547,11 +577,15 @@ def install(S):
             if com['title'] and com['lead'] and (com['what']['body'] or com['what']['points']): ex['comment'] = com
         z, bz = out.get('buzz'), mat.get('buzz') or []
         if isinstance(z, dict) and bz:
-            zp = [{'name': W._plain(p.get('name'), 30), 'text': W._plain(p.get('text'), 300)} for p in (z.get('points') if isinstance(z.get('points'), list) else [])[:3]
-                  if isinstance(p, dict) and W._plain(p.get('name'), 30) and W._plain(p.get('text'), 300)]
-            title, body = W._plain(z.get('title'), 80), W._plain(z.get('body'), 500)
+            zp = [{'name': W._plain(p.get('name'), 30), 'text': W._plain(p.get('text'), 700)} for p in (z.get('points') if isinstance(z.get('points'), list) else [])[:3]
+                  if isinstance(p, dict) and W._plain(p.get('name'), 30) and W._plain(p.get('text'), 700)]
+            for q, p in zip(zp, [p for p in (z.get('points') if isinstance(z.get('points'), list) else [])[:3] if isinstance(p, dict) and W._plain(p.get('name'), 30) and W._plain(p.get('text'), 700)]):
+                k = str(p.get('shop') or '').strip().lower()
+                q['shop'] = k if k in SHOPS else guess_shop(q['name'] + ' ' + q['text'])
+            title, body = W._plain(z.get('title'), 80), W._plain(z.get('body'), 900)
+            insight, tip = W._plain(z.get('insight'), 900), W._plain(z.get('tip'), 300)
             if title and (body or zp):
-                ex['buzz'] = {'title': title, 'body': body, 'points': zp, 'srcs': [{'name': x['source'], 'url': x['url'], 'date': x['date']} for x in bz],
+                ex['buzz'] = {'title': title, 'body': body, 'points': zp, 'insight': insight, 'tip': tip, 'srcs': [{'name': x['source'], 'url': x['url'], 'date': x['date']} for x in bz],
                               '_facts': {'기사': [item_facts(x, None) for x in bz]}, '_source': ' '.join([x['title'] + ' ' + x['summary'] for x in bz] + [o['title'] + ' ' + o['summary'] for x in bz for o in x.get('more') or []])}
         b, lt = out.get('lawbox'), mat.get('law')
         if isinstance(b, dict) and lt:
@@ -569,7 +603,7 @@ def install(S):
 
     def box_text(key, b):
         return '\n'.join([b.get('value', ''), b.get('label', ''), b.get('title', ''), b.get('body', ''), b.get('point', '')] + list(b.get('steps') or [])
-                         + [p['name'] + ' ' + p['text'] for p in b.get('points') or []])
+                         + [p['name'] + ' ' + p['text'] for p in b.get('points') or []] + [b.get('insight', ''), b.get('tip', '')])
 
     def check(title, intro, outro, items, no, sec=None):
         """[{where, line, numbers|words|copy}] — 자료에 없는 숫자, 기업 평가로 읽힐 말, 기사 원문을 그대로 옮긴 부분."""
@@ -643,7 +677,7 @@ def install(S):
                 c[k]['body'] = scrub(c[k]['body'])
                 for p in c[k].get('points') or []: p['name'], p['text'] = scrub(p['name']), scrub(p['text'])
         for b in [v for k, v in ex.items() if k not in ('briefs', 'comment')]:
-            for k in ('value', 'label', 'title', 'body', 'point'):
+            for k in ('value', 'label', 'title', 'body', 'point', 'insight', 'tip'):
                 if k in b: b[k] = scrub(b[k])
             if 'steps' in b: b['steps'] = [scrub(x) for x in b['steps']]
             for pt in b.get('points') or []: pt['name'], pt['text'] = scrub(pt['name']), scrub(pt['text'])
@@ -727,7 +761,7 @@ def install(S):
         for it, icon in zip(L['items'], icons): it['_icon'] = icon
         return {'L': L, 'items': L['items'], 'econ': [it for it in L['items'] if it.get('kind') != 'policy'], 'policy': [it for it in L['items'] if it.get('kind') == 'policy'],
                 'sec': L['sections'], 'H': HEADS, 'purpose': PURPOSE, 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
-                'tf': tf, 'icons': icons, 'mark': site_url('/static/img/soboru-wordmark-orange.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark-orange.png')) else '', 'mark_brown': site_url('/static/img/soboru-wordmark.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark.png')) else '', 'hero': site_url('/static/img/soboru-character-hero.png'), 'editor_img': site_url('/static/img/' + ('editor-croissant.png' if os.path.exists(os.path.join(app.static_folder, 'img/editor-croissant.png')) else 'soboru-character-hero.png')), 'cfg': letter_cfg(),
+                'tf': tf, 'icons': icons, 'SHOPS': SHOPS, 'mark': site_url('/static/img/soboru-wordmark-orange.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark-orange.png')) else '', 'mark_brown': site_url('/static/img/' + ('soboru-logo-brown-h.png' if os.path.exists(os.path.join(app.static_folder, 'img/soboru-logo-brown-h.png')) else 'soboru-wordmark.png')), 'hero': site_url('/static/img/soboru-character-hero.png'), 'editor_img': site_url('/static/img/' + ('editor-croissant.png' if os.path.exists(os.path.join(app.static_folder, 'img/editor-croissant.png')) else 'soboru-character-hero.png')), 'cfg': letter_cfg(),
                 'unsub': token if token == STIBEE_UNSUB else site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME,
                 'stibee': token == STIBEE_UNSUB}
 
@@ -895,7 +929,7 @@ def install(S):
         with conn() as db:
             near = {k: db.execute(f"SELECT no,title FROM letters WHERE status='sent' AND no{op}? ORDER BY no {o} LIMIT 1", (no,)).fetchone()
                     for k, op, o in (('prev', '<', 'DESC'), ('next', '>', 'ASC'))}
-        return render_template('letter_issue.html', L=L, near=near, H=HEADS)
+        return render_template('letter_issue.html', L=L, near=near, H=HEADS, SHOPS=SHOPS)
 
     @app.route('/letter/<int:no>/fb/<vote>')
     def letter_feedback(no, vote):

@@ -37,7 +37,9 @@
 {{ sec.buzz.title }}
 {{ sec.buzz.body }}
 {% for p in sec.buzz.points %}· {{ p.name }}: {{ p.text }}
-{% endfor %}{% endif %}{% if sec.market and sec.market.top %}
+{% endfor %}{% if sec.buzz.insight %}트렌드 읽기: {{ sec.buzz.insight }}
+{% endif %}{% if sec.buzz.tip %}소비자 체크 포인트: {{ sec.buzz.tip }}
+{% endif %}{% endif %}{% if sec.market and sec.market.top %}
 ━━━━━━━━━━━━━━━━
 ■ 코스피 시가총액 TOP {{ sec.market.top|length }}
 {% for r in sec.market.top %}{{ loop.index }}. {{ r.label }} {{ r.value }}원 ({{ r.pct or '0.00%' }})
@@ -51,7 +53,7 @@
 {% for st in sec.harm.steps %}{{ loop.index }}. {{ st }}
 {% endfor %}{% endif %}{% if sec.harm.law %}⚖️ 관련 법: {{ sec.harm.law.label }}{% if sec.harm.law.url %} {{ sec.harm.law.url }}{% endif %}
 {% endif %}{% for s in sec.harm.srcs or [] %}📰 기사 원문({{ s.name or '기사' }}): {{ s.url }}
-{% endfor %}상담은 1372 소비자상담센터, 기업에 알리고 싶다면 소보루 제보: {{ site }}/report
+{% endfor %}
 {% endif %}{% if sec.lawbox %}
 ━━━━━━━━━━━━━━━━
 ■ 알아두면 좋은 법률·제도 · {{ sec.lawbox.topic }}
