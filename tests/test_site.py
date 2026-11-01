@@ -1007,6 +1007,34 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.site.clean_photo(b'GIF89a' + b'\0' * 20), (None, None))
         self.assertEqual(self.site.clean_photo(b'\xff\xd8\xff' + b'\0' * (8 * 1024 * 1024)), (None, None))
 
+    def test_site_visits_by_site_and_source(self):
+        # 방문 통계: 소보루·소비자제보센터를 나눠 방문자(하루 한 번)·들어온 곳·많이 본 화면. 관리자·봇·토큰은 남지 않음
+        with self.site.conn() as db: db.execute('DELETE FROM site_visits'); db.execute('DELETE FROM page_views')
+        hosts = {'consumerjebo.co.kr', 'www.consumerjebo.co.kr'}
+        self.site.JEBO_HOSTS.update(hosts)
+        try:
+            a = self.site.app.test_client()
+            a.get('/', headers={'Referer': 'https://m.search.naver.com/search.naver?query=소보루'})
+            a.get('/feed'); a.get('/reports')  # 같은 날 같은 사이트는 한 사람
+            b = self.site.app.test_client()
+            b.get('/reports', base_url='https://consumerjebo.co.kr', headers={'Referer': 'https://www.google.co.kr/'})
+            b.get('/company/1/abcdefghijklmnopqrstu', base_url='https://consumerjebo.co.kr')
+            self.client.get('/', headers={'User-Agent': 'Mozilla/5.0 (compatible; Yeti/1.1; +https://naver.me/spd)'})  # 봇
+            admin = self.login_admin(); admin.get('/')  # 관리자
+            with self.site.conn() as db:
+                self.assertEqual(sorted(tuple(r) for r in db.execute('SELECT site,source FROM site_visits')), [('jebo', '구글'), ('soboru', '네이버 검색')])
+                views = {(r['site'], r['page']): r['n'] for r in db.execute('SELECT * FROM page_views')}
+            self.assertEqual(views[('soboru', '/')], 1); self.assertEqual(views[('soboru', '/feed')], 1); self.assertEqual(views[('jebo', '/reports')], 1)
+            self.assertFalse(any('abcdefghijklmnop' in k[1] for k in views))
+            page = admin.get('/admin/visits').get_data(as_text=True)
+            self.assertIn('방문 통계', page); self.assertIn('네이버 검색', page); self.assertIn('구글', page); self.assertIn('내돈내산 후기', page)
+            self.assertIn('소비자제보센터 <small>1명</small>', page); self.assertIn('소보루 <small>1명</small>', page)
+            self.assertIn('구글', admin.get('/admin/visits?site=jebo').get_data(as_text=True))
+            self.assertNotIn('네이버 검색', admin.get('/admin/visits?site=jebo').get_data(as_text=True))
+            self.assertEqual(self.client.get('/admin/visits').status_code, 302)
+        finally:
+            self.site.JEBO_HOSTS.difference_update(hosts)
+
     def test_ad_effect_first_touch(self):
         # 광고 효과: 처음 들어온 경로(utm)별 방문·가입·리뷰·재방문. 쿠키 번호는 해시로만 저장
         with self.site.conn() as db:db.execute('DELETE FROM ad_events')

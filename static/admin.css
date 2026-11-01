@@ -550,3 +550,25 @@ body.console .ad-side .ad-face-switch a.on{background:#fff;color:var(--ad-ink);b
   .ctx .ctx-sec{padding:22px 18px 0}
   .ctx .ctx-actions{margin:0 -18px;padding:14px 18px 18px}
 }
+/* 방문 통계 (site_visits.py) */
+body.console .vs-tabs{margin-bottom:14px}
+body.console .vs-tabs a.on{background:#191f28;color:#fff}
+body.console .vs-tabs small{font-weight:700;opacity:.7;margin-left:2px}
+body.console .vs-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:start}
+body.console .vs-grid .cs-panel{margin:0 0 14px}
+body.console .cs-panel h2 small{font-size:13px;font-weight:600;color:var(--ad-mute);margin-left:4px}
+body.console .vs-legend{display:flex;align-items:center;gap:6px;margin:0 0 10px;font-size:13px;color:var(--ad-sub)}
+body.console .vs-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-left:6px}
+body.console .vs-legend i:first-child{margin-left:0}
+body.console .vs-days{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+body.console .vs-days li{display:grid;grid-template-columns:44px minmax(0,1fr) 36px 64px;align-items:center;gap:10px;font-size:13px}
+body.console .vs-days li>span:first-child{color:var(--ad-mute)}
+body.console .vs-days b{text-align:right}
+body.console .vs-days small{color:var(--ad-mute);white-space:nowrap}
+body.console .vs-bar{display:flex;height:10px;border-radius:5px;background:#f2f4f6;overflow:hidden}
+body.console .vs-bar i,body.console .vs-legend i{background:#ef920e}
+body.console .vs-bar i.j,body.console .vs-legend i.j{background:#5b7bd5}
+body.console .vs-table td{padding:9px 12px}
+body.console .vs-table .num{text-align:right;white-space:nowrap}
+body.console .vs-table code{font-size:12px;color:var(--ad-mute)}
+@media(max-width:900px){body.console .vs-grid{grid-template-columns:1fr}body.console .ads-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
