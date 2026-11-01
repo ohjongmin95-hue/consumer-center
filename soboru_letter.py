@@ -132,7 +132,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
 
 
 # 칸 이름: 뉴닉 문구·이모지를 따라 하지 않고 소보루(빵집)식으로 (운영자 2026-11-01)
-HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 뉴스', 'news_emoji': '🥞', 'more': '기사 원문 ›',
+HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 뉴스', 'news_emoji': '🥯', 'more': '기사 원문 ›',
          'comment_eyebrow': '오늘의 메인 뉴스', 'comment_kicker': 'TODAY\'S SPECIAL', 'what': '🍞 한 입에 정리하면', 'why': '🔎 왜 이렇게 됐을까요', 'wallet': '👛 내 지갑엔 무슨 일이?',
          'buzz_eyebrow': 'TREND', 'buzz': '요즘 뜨는 소비 트렌드'}
 
@@ -815,7 +815,7 @@ def install(S):
         for it, icon in zip(L['items'], icons): it['_icon'] = icon
         return {'L': L, 'items': L['items'], 'econ': [it for it in L['items'] if it.get('kind') != 'policy'], 'policy': [it for it in L['items'] if it.get('kind') == 'policy'],
                 'sec': L['sections'], 'H': HEADS, 'purpose': PURPOSE, 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
-                'tf': tf, 'icons': icons, 'SHOPS': SHOPS, 'mark': site_url('/static/img/soboru-wordmark-orange.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark-orange.png')) else '', 'mark_brown': site_url('/static/img/' + ('soboru-logo-brown-h.png' if os.path.exists(os.path.join(app.static_folder, 'img/soboru-logo-brown-h.png')) else 'soboru-wordmark.png')), 'hero': site_url('/static/img/soboru-character-hero.png'), 'editor_img': site_url('/static/img/' + ('editor-croissant.png' if os.path.exists(os.path.join(app.static_folder, 'img/editor-croissant.png')) else 'soboru-character-hero.png')), 'cfg': letter_cfg(),
+                'tf': tf, 'icons': icons, 'SHOPS': SHOPS, 'mark': site_url('/static/img/soboru-wordmark-orange.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark-orange.png')) else '', 'mark_brown': site_url('/static/img/' + ('soboru-logo-brown-h.png' if os.path.exists(os.path.join(app.static_folder, 'img/soboru-logo-brown-h.png')) else 'soboru-wordmark.png')), 'hero': site_url('/static/img/soboru-character-hero.png'), 'peek': site_url('/static/img/soboru-character-peek.png'), 'editor_img': site_url('/static/img/' + ('editor-croissant.png' if os.path.exists(os.path.join(app.static_folder, 'img/editor-croissant.png')) else 'soboru-character-hero.png')), 'cfg': letter_cfg(),
                 'unsub': token if token == STIBEE_UNSUB else site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME,
                 'stibee': token == STIBEE_UNSUB}
 
