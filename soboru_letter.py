@@ -48,6 +48,7 @@ LAW_TOPICS = [('전자상거래 청약철회 기준', '전자상거래 청약철
               ('부당한 표시·광고', '표시광고 부당 광고 금지'), ('제품 결함과 리콜', '제조물 결함 리콜 손해배상')]
 # 뉴스 앞 분야 이름 (뉴닉의 '경제ㅣ…'처럼)
 CAT = {'경제': '경제', '산업': '산업', '물가': '물가', '금리': '금융', '부동산': '부동산', '유통': '유통', '정부 정책': '정책', '제도 개선': '제도', '법 개정 시행': '법·제도'}
+MORE_N = 3                # 오늘의 뉴스마다 같이 넘기는 같은 소식 다른 기사 수
 CLUSTER_N = 6             # 에디터 코멘트에 넘기는 같은 이슈 기사 수
 PER_QUERY = 30            # 분야마다 가져올 기사 수
 PER_TOPIC = 2             # 한 분야에서 고를 수 있는 이슈 수
@@ -79,9 +80,9 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           '- 법 조문은 준 후보 id 가운데 정말 관련 있는 것 하나만 고르고, 맞는 것이 없으면 빈 문자열로 둔다. 법 이야기는 "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다. 분쟁해결기준은 강제력 없는 권고 기준이라고 밝힌다.\n'
           '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다. "소보루 브리핑" 같은 고정된 이름을 제목에 붙이지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 여는 글 2~3문장 — "소보루 이웃님,"으로 시작해 에디터 코멘트 이슈를 우리 생활 장면으로 꺼내고 마지막 문장은 질문으로 끝낸다(예: "…우리는 어떻게 대처해야 할까요?"). 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
-          '"items": [{"no": 뉴스 번호, "title": 뉴스 제목처럼 핵심을 담은 35자 안팎 제목(질문형·감탄 가능), "body": 2~3문장 요약, "tip": "", "law": 고른 조문 id 또는 ""}], '
-          '"comment": {"title": 에디터 코멘트 제목 30자 안팎, "lead": 이슈를 여는 2~3문장, "what": {"body": "👀 무슨 일이야?" 칸 1~2문장, "points": [{"name": 15자 이내 소제목, "text": 1~2문장}] 2~3개}, '
-          '"why": {"body": "🔍 어쩌다 이런 일이 생긴 거야?" 칸 2~4문장}, "wallet": {"body": "☑️ 내 생활·지갑엔 어떤 영향이?" 칸 1문장, "points": [{"name": 15자 이내, "text": 1~2문장}] 2~3개}} (자료가 모자라면 null), '
+          '"items": [{"no": 뉴스 번호, "title": 뉴스 제목처럼 핵심을 담은 35자 안팎 제목(질문형·감탄 가능), "body": 4~6문장(250~400자) — 무슨 일인지, 배경과 자료에 있는 숫자, 누구에게 어떤 의미인지 순서로 뉴닉처럼 친근하게 풀어 쓴다(그 뉴스와 "같은 소식 다른 기사" 자료만 쓴다), "tip": "", "law": 고른 조문 id 또는 ""}], '
+          '"comment": {"title": 에디터 코멘트 제목 30자 안팎, "lead": 이슈를 여는 2~3문장, "what": {"body": "👀 무슨 일이야?" 칸 1~2문장, "points": [{"name": 15자 이내 소제목, "text": 2문장}] 3개}, '
+          '"why": {"body": "🔍 어쩌다 이런 일이 생긴 거야?" 칸 5~7문장}, "wallet": {"body": "☑️ 내 생활·지갑엔 어떤 영향이?" 칸 1~2문장, "points": [{"name": 15자 이내, "text": 2문장}] 3개}} (자료가 모자라면 null), '
           '"number": {"no": 숫자를 고른 뉴스 번호, "value": 그 뉴스 자료에 있는 숫자 그대로(단위 포함, 예 "3.2%"), "label": 무엇의 숫자인지 15자 안팎, "body": 이 숫자가 무슨 뜻인지 1~2문장} (고를 숫자가 없으면 null), '
           '"harm": {"title": 피해 유형 20자 안팎, "body": 요즘 이런 피해가 생기고 있다는 설명 2~4문장, "steps": [겪었을 때 대응 방법 2~4개, 각각 40자 안팎 한 문장 — 증거 남기기, 판매자에게 기록이 남는 방식으로 요청하기, 카드 결제면 카드사에 문의하기, 1372 소비자상담센터 상담처럼 그 피해에 맞는 것], "law": 피해 예방 뉴스 조문 후보 id 또는 ""} (자료가 없으면 null), '
           '"lawbox": {"title": 25자 안팎 제목, "body": 조문을 쉬운 말로 3~4문장, "point": 꼭 기억할 한 줄 50자 이내, "law": 고른 조문 id} (주제가 null이면 null), '
@@ -273,6 +274,10 @@ def install(S):
             return {'no': n, 'title': title, 'summary': summary, 'source': it['source'], 'date': iso_day(it['date']), 'url': it['url'], 'cands': cands,
                     'topic': it.get('topic', ''), 'kind': 'policy' if it.get('topic') in POLICY_QUERIES else 'econ'}
         news = [entry(n, it) for n, it in enumerate(items, 1)]
+        picked = {it['url'] for it in items}
+        for x, it in zip(news, items):  # 뉴닉처럼 길게 쓸 수 있게 같은 소식을 다룬 다른 기사 요약도 (운영자 2026-11-01: 주요 뉴스가 너무 짧음)
+            x['more'] = [{'title': scrub(o['title']), 'summary': scrub(o['summary']), 'source': o['source']}
+                         for o in pool if o['url'] not in picked and related(it, o)][:MORE_N]
         harm = [entry(n, it, 'H') for n, it in enumerate(pick_issues(harm_pool, HARM_N, None), 1)]
         main = next((it for it in items if it['topic'] not in POLICY_QUERIES), items[0])
         cluster = [main] + [it for it in pool if it is not main and related(main, it)][:CLUSTER_N - 1]
@@ -314,6 +319,7 @@ def install(S):
 
     def ai_facts(news):
         return [{'번호': x['no'], '구분': '정책·제도' if x.get('kind') == 'policy' else '경제 이슈', '제목': x['title'], '요약': x['summary'], '언론사': x['source'], '날짜': x['date'],
+                 '같은 소식 다른 기사': [{'제목': o['title'], '요약': o['summary']} for o in x.get('more') or []],
                  '법 조문 후보': [{'id': c['id'], '조문': c['label'], '원문': c['text']} for c in x['cands']]} for x in news]
 
     def ask_ai(mat, no):
@@ -337,6 +343,7 @@ def install(S):
 
     def item_facts(x, law):
         f = {'제목': x['title'], '요약': x['summary'], '날짜': x['date'], '소비자상담센터 전화번호': '1372'}
+        if x.get('more'): f['같은 소식 다른 기사'] = [o['title'] + ' ' + o['summary'] for o in x['more']]
         if law: f['법 조문'] = law['label'] + ' ' + law['text']
         return f
 
@@ -352,13 +359,13 @@ def install(S):
             x = by_no.get(it.get('no')) if isinstance(it.get('no'), int) else None
             x = x or (news[i] if i < len(news) else None)
             if not x or any(y['src']['url'] == x['url'] for y in items): continue
-            title, body = W._plain(it.get('title'), 80), W._plain(it.get('body'), 900)
+            title, body = W._plain(it.get('title'), 80), W._plain(it.get('body'), 1200)
             tip = re.sub(r'^\s*(이럴 땐 이렇게\s*[:：]?\s*)', '', W._plain(it.get('tip'), 160))
             if not title or not body: continue
             law = next((c for c in x['cands'] if c['id'] == it.get('law')), None)
             items.append({'title': title, 'body': body, 'tip': tip, 'topic': x.get('topic', ''), 'cat': CAT.get(x.get('topic', ''), '경제'), 'kind': x.get('kind', 'econ'), 'law': law_ref(law),
                           'src': {'name': x['source'], 'url': x['url'], 'date': x['date'], 'headline': x['title']},
-                          '_facts': item_facts(x, law), '_source': x['title'] + ' ' + x['summary']})
+                          '_facts': item_facts(x, law), '_source': ' '.join([x['title'], x['summary']] + [o['title'] + ' ' + o['summary'] for o in x.get('more') or []])})
         if len(items) < ITEMS[0]: raise RuntimeError('AI가 뉴스를 채우지 못했어요')
         items.sort(key=lambda it: it['kind'] == 'policy')  # 경제 이슈 먼저, 정책·제도 다음
         subject = W._plain(out.get('subject'), 80) or items[0]['title']
@@ -405,7 +412,7 @@ def install(S):
             part = lambda k: c.get(k) if isinstance(c.get(k), dict) else {}
             com = {'title': W._plain(c.get('title'), 60), 'lead': W._plain(c.get('lead'), 600),
                    'what': {'body': W._plain(part('what').get('body'), 400), 'points': pts(part('what').get('points'))},
-                   'why': {'body': W._plain(part('why').get('body'), 900)},
+                   'why': {'body': W._plain(part('why').get('body'), 1400)},
                    'wallet': {'body': W._plain(part('wallet').get('body'), 300), 'points': pts(part('wallet').get('points'))},
                    'srcs': [{'name': x['source'], 'url': x['url'], 'date': x['date']} for x in cm[:3]],
                    '_facts': {'기사': [item_facts(x, None) for x in cm], '소비자상담센터 전화번호': '1372'}, '_source': ' '.join(x['title'] + ' ' + x['summary'] for x in cm)}
