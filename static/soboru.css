@@ -2880,3 +2880,9 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-news{position:relative;background:#f3e7d3;border:0;border-radius:0 0 10px 10px;padding-top:44px}
 .lt-news::before{content:"";position:absolute;left:0;right:0;top:0;height:9px;background:linear-gradient(135deg,#fff 50%,transparent 50%) 0 0/18px 9px repeat-x,linear-gradient(225deg,#fff 50%,transparent 50%) 0 0/18px 9px repeat-x}
 .lt-news::after{content:"";position:absolute;left:0;right:0;top:9px;height:10px;background:#ecdcc2;border-bottom:2px dashed #d6bf9c}
+/* 숫자로 보는 오늘 = 감열지 영수증 */
+.lt-numbox>div{max-width:420px;margin:0 auto;background:#fffdf7;border:0;border-radius:0;padding:22px 22px 18px;text-align:left;position:relative;--z:linear-gradient(135deg,transparent 50%,#fffdf7 50%) 0 0/16px 8px repeat-x,linear-gradient(225deg,transparent 50%,#fffdf7 50%) 0 0/16px 8px repeat-x;filter:drop-shadow(0 1px 2px rgba(0,0,0,.08))}
+.lt-numbox>div small{display:block;background:none;padding:0 0 8px;margin:0;border-bottom:2px dashed #d9d2c5;font-family:'Courier New',monospace;color:#5a5048;font-weight:700;font-size:13px}
+.lt-numbox>div b{display:block;text-align:right;color:#e8590c;font-size:44px;padding:8px 0;border-bottom:2px dashed #d9d2c5}
+.lt-numbox>div b::before{content:"TOTAL";float:left;font:700 16px/60px 'Courier New',monospace;color:#1d1d1f}
+.lt-numbox>div p{color:#3a3633;padding:10px 0;border-bottom:2px dashed #d9d2c5}.lt-numbox>div a{display:block;text-align:center;font-family:'Courier New',monospace;font-size:12px;color:#9a928a}
