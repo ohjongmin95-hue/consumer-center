@@ -2922,3 +2922,4 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-counter .lt-sign-board::before{content:"";position:absolute;left:10px;right:10px;top:0;height:14px;background:#F8D59F;border-radius:0 0 8px 8px}
 .lt-counter .lt-sign-board small{color:#CE6719;font-size:12px;margin-top:14px}.lt-counter .lt-sign-board b{color:#1d1d1f;font-size:25px;text-shadow:none}
 .lt-counter .lt-sign-peek{width:150px;height:130px}
+.lt-note img{width:110px;margin-top:8px}
