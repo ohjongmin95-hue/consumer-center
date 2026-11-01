@@ -37,6 +37,10 @@
 {{ sec.buzz.title }}
 {{ sec.buzz.body }}
 {% for p in sec.buzz.points %}· {{ p.name }}: {{ p.text }}
+{% endfor %}{% endif %}{% if sec.market and sec.market.top %}
+━━━━━━━━━━━━━━━━
+■ 코스피 시가총액 TOP {{ sec.market.top|length }}
+{% for r in sec.market.top %}{{ loop.index }}. {{ r.label }} {{ r.value }}원 ({{ r.pct or '0.00%' }})
 {% endfor %}{% endif %}{% if sec.harm %}
 ━━━━━━━━━━━━━━━━
 ■ 소비자 피해 예방 · {{ sec.harm.title }}

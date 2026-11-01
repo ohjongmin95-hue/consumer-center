@@ -5181,6 +5181,7 @@ class SiteTest(unittest.TestCase):
     def letter_make(self, bad=True):
         sent, calls = [], []
         market = {'https://m.stock.naver.com/api/index/KOSPI/basic': {'closePrice': '5,937.66', 'compareToPreviousClosePrice': '-74.78', 'fluctuationsRatio': '-1.24', 'compareToPreviousPrice': {'name': 'FALLING'}, 'localTradedAt': '2026-10-30T15:30:00+09:00'},
+                  'https://m.stock.naver.com/api/stocks/marketValue/KOSPI?page=1&pageSize=10': {'stocks': [{'stockName': f'종목{k}', 'closePrice': f'{k},000', 'compareToPreviousClosePrice': '100', 'fluctuationsRatio': '1.5', 'compareToPreviousPrice': {'name': 'RISING'}} for k in range(1, 13)] + [{'stockName': '깨진 값'}]},
                   'https://m.stock.naver.com/front-api/marketIndex/productDetail?category=exchange&reutersCode=FX_USDKRW': {'result': {'closePrice': '1,336.80', 'fluctuations': '0.90', 'fluctuationsRatio': '0.07', 'fluctuationsType': {'name': 'RISING'}}}}
         with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), patch.object(self.site.soboru_letter, 'market_call', market.get), \
                 patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent, bad)), patch.object(self.site.triage.corpus, 'related', self.letter_related):
@@ -5273,7 +5274,7 @@ class SiteTest(unittest.TestCase):
         for part in (html, text):
             for word in ('이것만 쓱', '⚡', '👀', 'EDITOR\'S COMMENT'):  # 뉴닉 문구·이모지 X (운영자 2026-11-01)
                 self.assertNotIn(word, html)
-            for word in ('갓 구운 오늘의 뉴스', '크로와상의 깊이 읽기', '한 입에 정리하면', '요즘 뜨는 소비 트렌드', '편의점 신상', '5,937.66', '▼ 74.78 (-1.24%)', '▲ 0.90 (+0.07%)', '직전 거래일', 'by. 에디터 크로와상', '해지하지 않으시면 계속 보내 드릴게요', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '수신거부', 'Unsubscribe', 'SOBORU', '매일 아침'):
+            for word in ('갓 구운 오늘의 뉴스', '크로와상의 깊이 읽기', '한 입에 정리하면', '요즘 뜨는 소비 트렌드', '편의점 신상', '5,937.66', '▼ 74.78 (-1.24%)', '▲ 0.90 (+0.07%)', '직전 거래일', '코스피 시가총액 TOP 10', '종목10', '+1.50%', 'by. 에디터 크로와상', '해지하지 않으시면 계속 보내 드릴게요', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '수신거부', 'Unsubscribe', 'SOBORU', '매일 아침'):
                 self.assertIn(word, part)
         self.assertLess(html.index('id="n1"'), html.index('id="num"')); self.assertLess(html.index('id="num"'), html.index('id="harm"')); self.assertLess(html.index('id="harm"'), html.index('id="law"'))
         self.assertIn('서울시 강남구', html)  # 보내는 곳 주소 (사이트 하단 정보)

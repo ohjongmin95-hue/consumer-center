@@ -51,6 +51,11 @@
       {% for p in b.points %}<div class="lt-bz"><b>{{ p.name }}</b><p>{{ p.text }}</p></div>{% endfor %}
       {% if b.srcs %}<p class="lt-refs">참고한 기사: {% for s in b.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
     </section>{% endif %}
+    {% if sec.market and sec.market.top %}
+    <section class="lt-box" id="top"><h2 class="lt-part">코스피 시가총액 TOP {{ sec.market.top|length }}</h2>
+      <ol class="lt-top">{% for r in sec.market.top %}<li><span>{{ r.label }}</span><b>{{ r.value }}</b><em class="{{ r.dir }}">{{ r.pct or '0.00%' }}</em></li>{% endfor %}</ol>
+      <p class="lt-refs">종가(원)와 직전 거래일 대비 등락률 · 출처 네이버 증권 · 투자 권유가 아닌 시장 정보예요</p>
+    </section>{% endif %}
     {% if sec.harm %}{% set b = sec.harm %}
     <section class="lt-box" id="harm"><h2 class="lt-part">소비자 피해 예방</h2>
       <h3><span class="tf" aria-hidden="true">🚨</span> {{ b.title }}</h3>

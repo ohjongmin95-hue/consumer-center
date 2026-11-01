@@ -111,6 +111,20 @@
     {% if b.srcs %}<p style="margin:4px 0 0;font-size:15px;line-height:1.7;color:#8a827a;">참고한 기사: {% for s in b.srcs %}<a href="{{ s.url }}" style="color:#8a827a;text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
   </td></tr>
   {% endif %}
+  {% if sec.market and sec.market.top %}{% set M = sec.market %}
+  {{ pill('코스피 시가총액 TOP ' ~ M.top|length, False) }}
+  <tr><td style="padding:22px 32px 4px;{{ F }}" id="top">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #eee6dd;border-radius:16px;"><tr><td style="padding:8px 16px;{{ F }}">
+      {% for r in M.top %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"{% if not loop.first %} style="border-top:1px solid #f4eee8;"{% endif %}><tr>
+        <td width="26" style="width:26px;padding:9px 0;{{ F }}font-size:15px;font-weight:800;color:#CE6719;">{{ loop.index }}</td>
+        <td style="padding:9px 6px 9px 0;{{ F }}font-size:16px;font-weight:700;color:#3a3633;">{{ r.label }}</td>
+        <td align="right" style="padding:9px 0;{{ F }}font-size:15px;white-space:nowrap;"><span style="color:#1d1d1f;">{{ r.value }}</span>&nbsp;
+          <b style="color:{{ '#e5484d' if r.dir == 'up' else ('#3182f6' if r.dir == 'down' else '#8a827a') }};">{{ r.pct or '0.00%' }}</b></td>
+      </tr></table>{% endfor %}
+    </td></tr></table>
+    <p style="margin:8px 0 0;font-size:13px;color:#9a928a;">종가(원)와 직전 거래일 대비 등락률 · 출처 네이버 증권 · 투자 권유가 아닌 시장 정보예요</p>
+  </td></tr>
+  {% endif %}
   {% if sec.harm %}{% set b = sec.harm %}
   {{ pill('소비자 피해 예방', False) }}
   <tr><td style="padding:22px 32px 4px;{{ F }}" id="harm">

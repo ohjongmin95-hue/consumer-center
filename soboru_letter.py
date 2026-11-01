@@ -188,12 +188,29 @@ def market_row(label, d):
             'dir': 'down' if down else ('up' if up else 'flat'), 'at': str(d.get('localTradedAt') or '')[:10]}
 
 
+TOP_URL = 'https://m.stock.naver.com/api/stocks/marketValue/KOSPI?page=1&pageSize=10'   # 코스피 시가총액 상위 10 (운영자 요청 2026-11-01)
+TOP_N = 10
+
+
+def fetch_top():
+    d = market_call(TOP_URL)
+    if isinstance(d, dict): d = d.get('stocks') or d.get('result') or d.get('datas') or []
+    out = []
+    for x in d if isinstance(d, list) else []:
+        name = W._plain((x or {}).get('stockName') or (x or {}).get('itemName'), 30) if isinstance(x, dict) else ''
+        r = market_row(name, x) if name else None
+        if r: out.append(r)
+        if len(out) >= TOP_N: break
+    return out
+
+
 def fetch_market():
     rows = [market_row(label, market_call(url)) for label, url in MARKET_SRC]
     rows = [r for r in rows if r]
-    if not rows: return None
-    at = next((r['at'] for r in rows if r['at']), '')
-    return {'rows': rows, 'at': at}
+    top = fetch_top()
+    if not rows and not top: return None
+    at = next((r['at'] for r in rows + top if r['at']), '')
+    return {'rows': rows, 'top': top, 'at': at}
 
 
 def stibee_call(method, path, body=None, ctype='application/json'):
