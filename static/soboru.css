@@ -2901,3 +2901,18 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-sign-board{background:#EF920E;border:0;border-radius:90px 90px 14px 14px;padding:22px 20px 18px}
 .lt-sign-board small{color:#FFF1D9;border-bottom:0;margin:0 0 2px;padding:0;letter-spacing:3px}
 .lt-sign-board b{text-shadow:none}
+.lt-sign-board{background:none;border-radius:0;border-top:6px solid #EF920E;padding:18px 0 0}
+.lt-sign-board small{color:#CE6719;font-size:13px}.lt-sign-board b{color:#1d1d1f;font-size:26px}
+.lt-sign-peek{width:150px;height:92px;margin:0}
+.lt-note{display:flex;gap:12px;align-items:flex-start;margin:6px 0 24px}.lt-note img{width:84px;height:auto;flex:none}
+.lt-note>div{background:#FFF4E2;border-radius:4px 18px 18px 18px;padding:16px 20px 18px}.lt-note b{display:block;font-size:14px;color:#CE6719;margin-bottom:6px}.lt-note p{margin:0;font-size:16px;line-height:1.85;color:#3a3633}
+/* 메인 뉴스 머리 = 요즘 빵집 건물 앞모습 (운영자 2026-11-01) */
+.lt-house{max-width:480px;margin:0 auto 26px;align-items:stretch;background:#B4603D repeating-linear-gradient(0deg,rgba(255,236,214,.18) 0 2px,transparent 2px 14px);padding:0 18px;position:relative}
+.lt-house .lt-roof{display:flex;justify-content:center;align-items:flex-end;gap:20px;height:62px;margin:0 -18px 16px;background:#6E747A;clip-path:polygon(44px 0,calc(100% - 44px) 0,100% 56px,100% 100%,0 100%,0 56px);border-bottom:6px solid #4F5459}
+.lt-house .lt-roof u{display:block;width:26px;height:22px;background:#FFF4E2;border:3px solid #3E4247;border-bottom:0}
+.lt-house .lt-wins{display:flex;justify-content:center;gap:12px}.lt-house .lt-wins u{display:block;width:40px;height:44px;background:#FFE7C2 linear-gradient(#4A2A1C,#4A2A1C) center/3px 100% no-repeat;border:3px solid #4A2A1C;border-radius:3px;box-shadow:0 8px 0 -2px #5E8C4A}
+.lt-house .lt-sign-peek{width:120px;height:74px;margin:14px auto -3px}
+.lt-house .lt-sign-board{background:#EF920E;border:3px solid #652D1C;border-radius:8px;padding:10px 12px 12px;margin-bottom:16px}
+.lt-house .lt-sign-board small{color:#FFF1D9;font-size:12px}.lt-house .lt-sign-board b{color:#fff;font-size:23px}
+.lt-house .lt-base{display:flex;gap:12px;margin:0 -18px;padding:8px 12px 10px;background:#E2CFAE}.lt-house .lt-base u{flex:1;height:32px;background:linear-gradient(#4A4440 0 12px,#FFE7C2 12px);border-radius:3px 3px 0 0}
+.lt-house{background:none;isolation:isolate}.lt-house::before{display:block;content:"";position:absolute;left:0;right:0;top:68px;bottom:0;width:auto;height:auto;z-index:-1;background:#B4603D repeating-linear-gradient(0deg,rgba(255,236,214,.18) 0 2px,transparent 2px 14px)}

@@ -120,7 +120,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 여는 글 2~3문장 — "빵순이·빵돌이님,"으로 시작해(독자를 부를 땐 늘 빵순이·빵돌이님, "이웃님"은 쓰지 않는다) 에디터 코멘트 이슈를 우리 생활 장면으로 꺼내고 마지막 문장은 질문으로 끝낸다(예: "…우리는 어떻게 대처해야 할까요?"). 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
           '"items": [{"no": 뉴스 번호, "title": 뉴스 제목처럼 핵심 숫자·주체를 담은 30~45자 제목(질문형·감탄·따옴표 인용 가능, 어울리면 끝에 이모지 하나, 예 "미국 기준금리 3.75~4.00% 동결, 12월 추가 인상 가능성은? 🏦"), "body": 딱 3문장(150~230자) — 첫 문장은 언제·누가·무엇을 했는지 핵심 숫자와 함께(예 "28일 미국 연방준비제도(연준)가 기준금리를 연 3.75~4.00%로 동결했어요."), 둘째 문장은 배경이나 덧붙일 사실, 셋째 문장은 왜 그런지·무슨 뜻인지 해석("~라는 해석이 나와요", "~라는 계획이에요"). 기관 이름은 처음에 풀어 쓰고 괄호에 줄임말, 해요체로 짧고 또렷하게(그 뉴스와 "같은 소식 다른 기사" 자료만 쓴다), "tip": "", "law": 고른 조문 id 또는 ""}], '
           '"comment": {"photo": 이슈에 어울리는 사진을 Unsplash에서 찾을 영어 검색어 2~3낱말(장면·물건 위주, 사람 이름·회사 이름·로고 X, 예 "grocery shopping cart"), "title": 30~45자 제목(핵심 주체·숫자를 담고 끝에 어울리는 이모지 1~2개 가능), "tags": [이슈를 나타내는 짧은 낱말 2~3개, # 없이], "lead": 3~4문장 — 독자가 겪을 법한 생활 장면으로 시작해 이슈를 꺼내고 마지막은 질문으로 끝낸다, "what": {"body": 언제 누가 무엇을 발표·확인했는지 1~2문장(끝을 "…살펴보면:"처럼 이어 써도 됨), "points": [{"name": 주체·항목 이름 15자 이내, "text": 1~2문장 — 자료에 있는 숫자를 꼭 넣는다}] 3개}, '
-          '"why": {"body": 배경·원인 5~7문장(350~550자), 자료의 숫자와 기관 발표를 들어 구체적으로}, "wallet": {"head": 이 칸 소제목 15자 안팎(예 "내 지갑엔 무슨 일이?", "무엇이 문제일까요?"), "body": 1~2문장(끝을 "…이래요:"처럼 이어 써도 됨), "points": [{"name": 15자 이내 + 끝에 어울리는 이모지 하나, "text": 2문장}] 2~3개}} (자료가 모자라면 null), '
+          '"why": {"body": 배경·원인 5~7문장(350~550자), 자료의 숫자와 기관 발표를 들어 구체적으로}, "wallet": {"head": 이 칸 소제목 15자 안팎(예 "내 지갑엔 무슨 일이?", "무엇이 문제일까요?"), "body": 1~2문장(끝을 "…이래요:"처럼 이어 써도 됨), "points": [{"name": 15자 이내 + 끝에 어울리는 이모지 하나, "text": 2문장}] 2~3개}, "note": 에디터 크로와상의 한마디 2~3문장(120~220자) — 이 이슈를 두고 독자가 오늘 챙겨 보면 좋을 점을 친구에게 말하듯 따뜻하게(기업 평가·단정 X, 자료에 없는 숫자 X)} (자료가 모자라면 null), '
           '"buzz": {"title": 요즘 소비 트렌드를 담은 25~40자 제목, "body": 트렌드 도입 4~5문장(250~400자) — 요즘 무엇이 왜 뜨는지 생활 장면과 숫자로, '
           '"shop": 이번 트렌드 주제에 가장 어울리는 가게 하나(dessert 디저트·toy 완구·flower 꽃·food 식당·bakery 빵·store 편의점·cafe 카페·beauty 뷰티·fashion 옷·tech 전자·grocery 장보기·travel 여행·health 건강·shop 그 밖), "points": [{"name": 트렌드·상품 이름 15자 이내, "text": 4~5문장(250~380자) — 무엇이 얼마나 팔리는지(판매량·증가율·가격·순위 같은 자료의 숫자를 여럿), 누가 왜 사는지, 업계가 어떻게 움직이는지를 구체적으로}] 3개, '
           '"insight": 이 트렌드를 꿰뚫는 분석 4~5문장(250~400자) — 여러 기사의 흐름을 묶어 소비 심리·물가·세대 같은 배경을 짚는다(자료에 없는 숫자·전망은 짓지 않는다), '
@@ -628,6 +628,7 @@ def install(S):
                    'what': {'body': W._plain(part('what').get('body'), 400), 'points': pts(part('what').get('points'))},
                    'why': {'body': W._plain(part('why').get('body'), 1400)},
                    'wallet': {'head': W._plain(part('wallet').get('head'), 30), 'body': W._plain(part('wallet').get('body'), 300), 'points': pts(part('wallet').get('points'))},
+                   'note': W._plain(c.get('note'), 400),
                    'srcs': [{'name': x['source'], 'url': x['url'], 'date': x['date']} for x in cm[:3]],
                    '_facts': {'기사': [item_facts(x, None) for x in cm], '소비자상담센터 전화번호': '1372'}, '_source': ' '.join(x['title'] + ' ' + x['summary'] for x in cm)}
             if com['title'] and com['lead'] and (com['what']['body'] or com['what']['points']): ex['comment'] = com
@@ -651,7 +652,7 @@ def install(S):
         return ex
 
     def comment_text(c):
-        out = [c.get('title', ''), c.get('lead', ''), c['what']['body'], c['why']['body'], c['wallet']['body']]
+        out = [c.get('title', ''), c.get('lead', ''), c['what']['body'], c['why']['body'], c['wallet']['body'], c.get('note', '')]
         for k in ('what', 'wallet'): out += [p['name'] + ' ' + p['text'] for p in c[k]['points']]
         return '\n'.join(x for x in out if x)
 
@@ -726,7 +727,7 @@ def install(S):
         for it in items: it.update(title=scrub(it['title']), body=scrub(it['body']), tip=scrub(it['tip']))
         for b in ex.get('briefs') or []: b['line'] = scrub(b['line'])
         if ex.get('comment'):
-            c = ex['comment']; c['title'], c['lead'] = scrub(c['title']), scrub(c['lead'])
+            c = ex['comment']; c['title'], c['lead'] = scrub(c['title']), scrub(c['lead']); c['note'] = scrub(c.get('note', ''))
             for k in ('what', 'why', 'wallet'):
                 c[k]['body'] = scrub(c[k]['body'])
                 for p in c[k].get('points') or []: p['name'], p['text'] = scrub(p['name']), scrub(p['text'])
@@ -769,6 +770,7 @@ def install(S):
                 if form.get('comment_nophoto'): c.pop('photo', None)
                 if 'comment_title' in form: c['title'] = W._plain(form.get('comment_title'), 60) or c['title']
                 if 'comment_lead' in form: c['lead'] = ' '.join(form.get('comment_lead', '').split())[:600]
+                if 'comment_note' in form: c['note'] = ' '.join(form.get('comment_note', '').split())[:400]
                 for k in ('what', 'why', 'wallet'):
                     if f'comment_{k}' in form: c[k] = dict(c[k], body=' '.join(form.get(f'comment_{k}', '').split())[:900])
                 sec['comment'] = c

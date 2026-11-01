@@ -45,6 +45,7 @@
         <label class="field">🔎 왜 이렇게 됐을까요<textarea name="comment_why" rows="4"{% if not draft %} readonly{% endif %}>{{ c.why.body }}</textarea></label>
         <label class="field">👛 {{ c.wallet.head or '내 지갑엔 무슨 일이?' }}<textarea name="comment_wallet" rows="2"{% if not draft %} readonly{% endif %}>{{ c.wallet.body }}</textarea></label>
         {% for p in c.wallet.points %}<p class="meta">· <b>{{ p.name }}</b> {{ p.text }}</p>{% endfor %}
+        <label class="field">🥐 크로와상의 한마디<textarea name="comment_note" rows="3"{% if not draft %} readonly{% endif %}>{{ c.note }}</textarea></label>
         {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_comment" value="1"> 이 칸 빼기</label></div>{% endif %}
       </div>{% endif %}
       {% if sec.briefs %}<div class="form-panel lt-ad-item">
