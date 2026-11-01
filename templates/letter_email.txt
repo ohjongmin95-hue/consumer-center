@@ -3,20 +3,24 @@
 {{ L.title }}
 
 {{ L.intro }} by. 에디터 크로와상 🥐
-
+{% if sec.market %}
+{% for r in sec.market.rows %}{{ r.label }} {{ r.value }} {{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }}{% if r.pct %} ({{ r.pct }}){% endif %}
+{% endfor %}직전 거래일 오후 3시 30분 기준 · 출처 네이버 증권
+{% endif %}
 ━━━━━━━━━━━━━━━━
-■ 이것만 쓱 보면 끝! 오늘의 뉴스 {{ L['items']|length }}
+■ {{ H.news_title }} {{ L['items']|length }}
 {% for it in econ + policy %}
-{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}ㅣ{{ it.title }}
+[{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}] {{ it.title }}
 {{ it.body }}
-자세히 보기: {{ it.src.url }}
+기사 원문: {{ it.src.url }}
 {% endfor %}{% if sec.comment %}{% set c = sec.comment %}
 ━━━━━━━━━━━━━━━━
-■ EDITOR'S COMMENT · 에디터 크로와상
-{{ c.title }}
+■ {{ H.comment_eyebrow }} · 에디터 크로와상
+{{ c.title }}{% if c.tags %}
+{% for t in c.tags %}#{{ t }} {% endfor %}{% endif %}
 
 {{ c.lead }}
-{% for key, head in (('what', '👀 무슨 일이야?'), ('why', '🔍 어쩌다 이런 일이 생긴 거야?'), ('wallet', '☑️ 내 생활엔 어떤 영향이 있어?')) %}{% set b = c[key] %}{% if b.body or b.points %}
+{% for key in ('what', 'why', 'wallet') %}{% set b = c[key] %}{% set head = H[key] if key != 'wallet' or not b.head else '👛 ' ~ b.head %}{% if b.body or b.points %}
 {{ head }}
 {% if b.body %}{{ b.body }}
 {% endif %}{% for p in b.points or [] %}· {{ p.name }}: {{ p.text }}
@@ -27,7 +31,13 @@
 {{ sec.number.label }}: {{ sec.number.value }}
 {{ sec.number.body }}{% if sec.number.src and sec.number.src.url %}
 원문: {{ sec.number.src.url }}{% endif %}
-{% endif %}{% if sec.harm %}
+{% endif %}{% if sec.buzz %}
+━━━━━━━━━━━━━━━━
+■ {{ H.buzz }}
+{{ sec.buzz.title }}
+{{ sec.buzz.body }}
+{% for p in sec.buzz.points %}· {{ p.name }}: {{ p.text }}
+{% endfor %}{% endif %}{% if sec.harm %}
 ━━━━━━━━━━━━━━━━
 ■ 소비자 피해 예방 · {{ sec.harm.title }}
 
@@ -60,10 +70,9 @@
 {{ L.outro }}
 에디터 크로와상 드림
 
-[발행 정보]
-발행인 소보루 · 발행 목적 {{ purpose }}
-발행 주기 {{ cfg.when }}{% if op.email or op.phone %} · 연락처 {{ op.email }}{% if op.email and op.phone %} / {% endif %}{{ op.phone }}{% endif %}
-더 받고 싶지 않으면 언제든 아래 주소로 해지해 주세요. 해지하지 않으시면 계속 보내 드릴게요.
-구독 해지: {{ unsub }}
+SOBORU · {{ name }} | 매일 아침, 경제·소비자 소식
+{% if op.email %}{{ op.email }}
+{% endif %}{% if op.address %}{{ op.address }}
+{% endif %}{{ name }} 구독에 동의하신 분께 보내 드려요. 해지하지 않으시면 계속 보내 드릴게요.
+수신거부 Unsubscribe: {{ unsub }}
 웹에서 보기: {{ web }}
-{{ op.name }}{% if op.biz_no %} · 사업자등록번호 {{ op.biz_no }}{% endif %}{% if op.address %} · {{ op.address }}{% endif %}

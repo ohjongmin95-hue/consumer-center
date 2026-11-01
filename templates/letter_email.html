@@ -41,15 +41,28 @@
     <h1 style="margin:0 0 16px;font-size:27px;line-height:1.45;font-weight:800;color:#652D1C;letter-spacing:-0.8px;">{{ L.title }}</h1>
     {% if L.intro %}<p style="margin:0;font-size:17px;line-height:1.9;color:#3a3633;">{{ L.intro }} <span style="color:#ef7300;font-weight:800;white-space:nowrap;">by. 에디터 크로와상 🥐</span></p>{% endif %}
   </td></tr>
-  {#- 이것만 쓱 보면 끝! 오늘의 뉴스 (뉴닉식: 분야ㅣ제목, 2~3문장, 자세히 보기) -#}
+  {% if sec.market %}{% set M = sec.market %}
+  {#- 시장 지표: 레터를 만들 때 받은 직전 거래일 값 -#}
+  <tr><td style="padding:26px 32px 0;{{ F }}" id="market">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #eee6dd;border-radius:16px;"><tr><td style="padding:14px 18px;{{ F }}">
+      {% for r in M.rows %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"{% if not loop.first %} style="border-top:1px solid #f4eee8;"{% endif %}><tr>
+        <td style="padding:8px 8px 8px 0;{{ F }}font-size:16px;font-weight:700;color:#3a3633;white-space:nowrap;">{{ r.label }}</td>
+        <td align="right" style="padding:8px 0;{{ F }}font-size:16px;white-space:nowrap;"><b style="color:#1d1d1f;">{{ r.value }}</b>&nbsp;
+          <span style="color:{{ '#e5484d' if r.dir == 'up' else ('#3182f6' if r.dir == 'down' else '#8a827a') }};font-weight:700;">{{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }}{% if r.pct %} ({{ r.pct }}){% endif %}</span></td>
+      </tr></table>{% endfor %}
+      <p style="margin:6px 0 0;font-size:13px;color:#9a928a;">직전 거래일{% if M.at|length == 10 %}({{ M.at[5:7]|int }}월 {{ M.at[8:10]|int }}일){% endif %} 오후 3시 30분 기준 · 출처 네이버 증권</p>
+    </td></tr></table>
+  </td></tr>
+  {% endif %}
+  {#- 갓 구운 오늘의 뉴스 (분야 칩 + 제목, 3문장, 기사 원문) -#}
   <tr><td style="padding:34px 32px 0;{{ F }}" id="news">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff6ec;border-radius:22px;"><tr><td style="padding:24px 22px 8px;{{ F }}">
-      <p style="margin:0 0 4px;font-size:15px;font-weight:800;color:#ef7300;letter-spacing:0.3px;">TODAY'S NEWS</p>
-      <p style="margin:0 0 18px;font-size:22px;line-height:1.4;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">이것만 쓱 보면 끝! 오늘의 뉴스 {{ L['items']|length }} ⚡️</p>
+      <p style="margin:0 0 4px;font-size:15px;font-weight:800;color:#ef7300;letter-spacing:0.3px;">{{ H.news_eyebrow }}</p>
+      <p style="margin:0 0 18px;font-size:22px;line-height:1.4;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ H.news_title }} {{ L['items']|length }} {{ H.news_emoji }}</p>
       {% for it in econ + policy %}
       <div id="n{{ loop.index }}" style="margin:0 0 {{ '18px' if not loop.last else '16px' }};{% if not loop.first %}padding-top:18px;border-top:1px dashed #f0d9bf;{% endif %}">
-        <p style="margin:0 0 8px;font-size:18px;line-height:1.5;font-weight:800;color:#1d1d1f;letter-spacing:-0.3px;"><span style="color:#ef7300;">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span><span style="color:#e3c9ab;font-weight:400;">&nbsp;ㅣ&nbsp;</span>{{ it.title }}</p>
-        <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body }} <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">자세히 보기 ›</a></p>
+        <p style="margin:0 0 8px;font-size:18px;line-height:1.5;font-weight:800;color:#1d1d1f;letter-spacing:-0.3px;"><span style="display:inline-block;margin:0 6px 0 0;padding:1px 9px;border-radius:999px;background:#ffe7c7;color:#CE6719;font-size:14px;font-weight:800;vertical-align:2px;">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span>{{ it.title }}</p>
+        <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body }} <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.more }}</a></p>
       </div>
       {% endfor %}
     </td></tr></table>
@@ -59,12 +72,13 @@
   <tr><td style="padding:40px 32px 4px;{{ F }}" id="comment">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;"><tr>
       <td valign="middle" style="padding-right:12px;"><img src="{{ editor_img }}" width="56" alt="에디터 크로와상" style="display:block;width:56px;height:auto;border:0;"></td>
-      <td valign="middle" style="{{ F }}"><p style="margin:0;font-size:14px;font-weight:800;color:#ef7300;letter-spacing:0.6px;">EDITOR'S COMMENT</p><p style="margin:2px 0 0;font-size:17px;font-weight:800;color:#652D1C;">에디터 크로와상</p></td>
+      <td valign="middle" style="{{ F }}"><p style="margin:0;font-size:14px;font-weight:800;color:#ef7300;letter-spacing:0.2px;">{{ H.comment_eyebrow }}</p><p style="margin:2px 0 0;font-size:17px;font-weight:800;color:#652D1C;">에디터 크로와상</p></td>
     </tr></table>
     {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" width="576" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:576px;height:auto;border:0;border-radius:16px;"><p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p></div>{% endif %}
-    <h2 style="margin:0 0 14px;font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
+    <h2 style="margin:0 0 {{ '8px' if c.tags else '14px' }};font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
+    {% if c.tags %}<p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#CE6719;">{% for t in c.tags %}#{{ t }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>{% endif %}
     <p style="margin:0 0 26px;font-size:17px;line-height:1.9;color:#3a3633;">{{ c.lead }}</p>
-    {% for key, head in (('what', '👀 무슨 일이야?'), ('why', '🔍 어쩌다 이런 일이 생긴 거야?'), ('wallet', '☑️ 내 생활엔 어떤 영향이 있어?')) %}{% set b = c[key] %}
+    {% for key in ('what', 'why', 'wallet') %}{% set b = c[key] %}{% set head = H[key] if key != 'wallet' or not b.head else '👛 ' ~ b.head %}
     {% if b.body or b.points %}
     <p style="margin:0 0 10px;font-size:20px;line-height:1.5;font-weight:800;color:#1d1d1f;">{{ head }}</p>
     {% if b.body %}<p style="margin:0 0 12px;font-size:17px;line-height:1.9;color:#3a3633;">{{ b.body }}</p>{% endif %}
@@ -85,6 +99,16 @@
       <p style="margin:0;font-size:17px;line-height:1.7;color:#fff4e8;">{{ b.body }}</p>
       {% if b.src and b.src.url %}<p style="margin:12px 0 0;font-size:15px;color:#f8d59f;">{{ b.src.name or '기사' }} · <a href="{{ b.src.url }}" style="color:#ffffff;text-decoration:underline;">원문 보기</a></p>{% endif %}
     </td></tr></table>
+  </td></tr>
+  {% endif %}
+  {% if sec.buzz %}{% set b = sec.buzz %}
+  {{ pill(H.buzz, False) }}
+  <tr><td style="padding:22px 32px 4px;{{ F }}" id="buzz">
+    <p style="margin:0 0 10px;font-size:22px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ b.title }}</p>
+    {% if b.body %}<p style="margin:0 0 14px;font-size:17px;line-height:1.9;color:#3a3633;">{{ b.body }}</p>{% endif %}
+    {% for p in b.points %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;background:#fff8ef;border-radius:14px;"><tr><td style="padding:14px 16px;{{ F }}">
+      <p style="margin:0 0 4px;font-size:17px;font-weight:800;color:#652D1C;">{{ p.name }}</p><p style="margin:0;font-size:16px;line-height:1.8;color:#3a3633;">{{ p.text }}</p></td></tr></table>{% endfor %}
+    {% if b.srcs %}<p style="margin:4px 0 0;font-size:15px;line-height:1.7;color:#8a827a;">참고한 기사: {% for s in b.srcs %}<a href="{{ s.url }}" style="color:#8a827a;text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
   </td></tr>
   {% endif %}
   {% if sec.harm %}{% set b = sec.harm %}
@@ -150,16 +174,16 @@
   </td></tr>
 </table>
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
-  <tr><td align="center" style="padding:20px 18px 28px;{{ F }}font-size:13px;line-height:1.7;color:#9a928a;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;border-top:1px solid #e9e2da;border-bottom:1px solid #e9e2da;"><tr><td align="left" style="padding:14px 4px;{{ F }}font-size:13px;line-height:1.8;color:#8a827a;">
-      <b style="color:#6b6f76;">발행 정보</b><br>
-      발행인 소보루 · 발행 목적 {{ purpose }}<br>
-      발행 주기 {{ cfg.when }}{% if op.email or op.phone %} · 연락처 {{ op.email }}{% if op.email and op.phone %} / {% endif %}{{ op.phone }}{% endif %}<br>
-      수신 거부: 아래 '구독 해지'를 누르면 바로 그만 받아요. 메일 앱의 '구독 취소' 버튼으로도 돼요.
-    </td></tr></table>
-    <p style="margin:0 0 8px;">이 메일은 {{ name }} 받기에 동의하신 분께 보내 드려요.<br>더 받고 싶지 않으면 언제든 아래에서 해지해 주세요. 해지하지 않으시면 계속 보내 드릴게요.</p>
-    <p style="margin:0 0 10px;"><a href="{{ web }}" style="color:#6b6f76;text-decoration:underline;">웹에서 보기</a> &nbsp;·&nbsp; <a href="{{ unsub }}" style="color:#6b6f76;text-decoration:underline;">구독 해지</a></p>
-    <p style="margin:0;">{{ op.name }}{% if op.biz_no %} · 사업자등록번호 {{ op.biz_no }}{% endif %}{% if op.address %}<br>{{ op.address }}{% endif %}</p>
+  {#- 바닥글: 뉴닉처럼 가운데 정렬로 깔끔하게 (운영자 2026-11-01, 전화번호 X) -#}
+  <tr><td align="center" style="padding:8px 24px 36px;{{ F }}font-size:15px;line-height:1.9;color:#8a8580;">
+    <div style="border-top:1px solid #d9d4ce;margin:0 0 30px;font-size:0;line-height:0;">&nbsp;</div>
+    <p style="margin:0 0 12px;font-size:34px;line-height:1;font-weight:900;letter-spacing:1px;color:#8a8580;">SOBORU</p>
+    <p style="margin:0 0 6px;font-weight:700;color:#7a7570;">{{ name }} | 매일 아침, 경제·소비자 소식</p>
+    <p style="margin:0 0 6px;"><a href="{{ site }}" style="color:#8a8580;text-decoration:underline;">소보루 홈</a> <b>|</b> <a href="{{ site }}/letter" style="color:#8a8580;text-decoration:underline;">구독하기</a> <b>|</b> <a href="{{ web }}" style="color:#8a8580;text-decoration:underline;">웹에서 보기</a></p>
+    {% if op.email %}<p style="margin:0;">{{ op.email }}</p>{% endif %}
+    {% if op.address %}<p style="margin:0;">{{ op.address }}</p>{% endif %}
+    <p style="margin:14px 0 6px;font-size:13px;line-height:1.7;color:#a39d97;">{{ name }} 구독에 동의하신 분께 보내 드려요. 해지하지 않으시면 계속 보내 드릴게요.</p>
+    <p style="margin:0;"><a href="{{ unsub }}" style="color:#8a8580;text-decoration:underline;">수신거부</a> <a href="{{ unsub }}" style="color:#8a8580;text-decoration:underline;">Unsubscribe</a> 😢</p>
   </td></tr>
 </table>
 </td></tr>

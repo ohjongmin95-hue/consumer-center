@@ -5138,7 +5138,8 @@ class SiteTest(unittest.TestCase):
             news = json.loads(content.split('[이번 호 뉴스]\n', 1)[1].split('\n[에디터 코멘트 자료]', 1)[0])
             cm = json.loads(content.split('[에디터 코멘트 자료]\n', 1)[1].split('\n[한 줄 뉴스]', 1)[0])
             briefs = json.loads(content.split('[한 줄 뉴스]\n', 1)[1].split('\n[피해 예방 뉴스]', 1)[0])
-            harm = json.loads(content.split('[피해 예방 뉴스]\n', 1)[1].split('\n[소보루에', 1)[0])
+            harm = json.loads(content.split('[피해 예방 뉴스]\n', 1)[1].split('\n[소비 트렌드 뉴스]', 1)[0])
+            buzz = json.loads(content.split('[소비 트렌드 뉴스]\n', 1)[1].split('\n[소보루에', 1)[0])
             items = []
             for x in news:
                 n = x['번호']
@@ -5158,6 +5159,7 @@ class SiteTest(unittest.TestCase):
                                'what': {'body': '이런 일이 있었어요.', 'points': [{'name': '첫째', 'text': '이런 일이 있었어요.'}, {'name': '', 'text': '이름 없는 건 빼요'}]},
                                'why': {'body': '여러 이유가 겹쳤다고 해요.' + (' 피해액은 777억 원이래요.' if bad else '')},
                                'wallet': {'body': '내 생활에도 영향이 있어요.', 'points': [{'name': '대출', 'text': '이자 부담을 확인해 보세요.'}]}} if cm else None,
+                   'buzz': {'title': '요즘 뜨는 소비 트렌드', 'body': '요즘 이런 물건이 잘 팔려요.', 'points': [{'name': '편의점 신상', 'text': '관련 상담이 30% 늘었다고 해요.'}, {'name': '', 'text': '빈 이름'}]} if buzz else None,
                    'briefs': [{'no': b['번호'], 'line': '이런 경제 소식도 있었어요' + (' (작년보다 4321억 원)' if bad and k == 1 else '')} for k, b in enumerate(briefs)] + [{'no': 'B99', 'line': '없는 번호'}]}
             return 200, {'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
         return fake
@@ -5178,7 +5180,9 @@ class SiteTest(unittest.TestCase):
 
     def letter_make(self, bad=True):
         sent, calls = [], []
-        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), \
+        market = {'https://m.stock.naver.com/api/index/KOSPI/basic': {'closePrice': '5,937.66', 'compareToPreviousClosePrice': '-74.78', 'fluctuationsRatio': '-1.24', 'compareToPreviousPrice': {'name': 'FALLING'}, 'localTradedAt': '2026-10-30T15:30:00+09:00'},
+                  'https://m.stock.naver.com/front-api/marketIndex/productDetail?category=exchange&reutersCode=FX_USDKRW': {'result': {'closePrice': '1,336.80', 'fluctuations': '0.90', 'fluctuationsRatio': '0.07', 'fluctuationsType': {'name': 'RISING'}}}}
+        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), patch.object(self.site.soboru_letter, 'market_call', market.get), \
                 patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent, bad)), patch.object(self.site.triage.corpus, 'related', self.letter_related):
             r = self.site.app.extensions['soboru_letter']['generate']('admin')
         return r, sent
@@ -5267,7 +5271,9 @@ class SiteTest(unittest.TestCase):
             self.assertIn('/letter/unsubscribe/tok-x', part); self.assertIn('https://www.law.go.kr/', part)
         self.assertIn('max-width:600px', html); self.assertIn('원문 보기 ›', html); self.assertNotIn('써 본 사람들이 추천한 리뷰', html)
         for part in (html, text):
-            for word in ('오늘의 뉴스', 'EDITOR\'S COMMENT', '무슨 일이야?', 'by. 에디터 크로와상', '해지하지 않으시면 계속 보내 드릴게요', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '발행 정보', '발행인 소보루', '경제·소비자 관련 정보 제공', '매일 아침'):
+            for word in ('이것만 쓱', '⚡', '👀', 'EDITOR\'S COMMENT'):  # 뉴닉 문구·이모지 X (운영자 2026-11-01)
+                self.assertNotIn(word, html)
+            for word in ('갓 구운 오늘의 뉴스', '크로와상의 깊이 읽기', '한 입에 정리하면', '요즘 뜨는 소비 트렌드', '편의점 신상', '5,937.66', '▼ 74.78 (-1.24%)', '▲ 0.90 (+0.07%)', '직전 거래일', 'by. 에디터 크로와상', '해지하지 않으시면 계속 보내 드릴게요', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '수신거부', 'Unsubscribe', 'SOBORU', '매일 아침'):
                 self.assertIn(word, part)
         self.assertLess(html.index('id="n1"'), html.index('id="num"')); self.assertLess(html.index('id="num"'), html.index('id="harm"')); self.assertLess(html.index('id="harm"'), html.index('id="law"'))
         self.assertIn('서울시 강남구', html)  # 보내는 곳 주소 (사이트 하단 정보)
@@ -5370,7 +5376,7 @@ class SiteTest(unittest.TestCase):
         code = L['stibee_html'](letter)
         self.assertNotIn('<body', code); self.assertNotIn('<html', code); self.assertNotIn('<meta', code)
         self.assertIn('href="$%unsubscribe%$"', code); self.assertNotIn('/letter/o/', code); self.assertNotIn('/letter/unsubscribe/', code)
-        self.assertIn('발행 정보', code)
+        self.assertIn('수신거부', code); self.assertNotIn('02-749', code)  # 바닥글에 전화번호 X (운영자 2026-11-01)
         page = admin.get(f"/admin/letter/{r['id']}").get_data(as_text=True)
         self.assertIn('HTML 에디터로 만들기', page); self.assertIn('id="lt-stibee"', page)
 

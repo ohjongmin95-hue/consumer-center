@@ -37,13 +37,13 @@
       {% set sec = L.sections %}
       {% if sec.comment %}{% set c = sec.comment %}<div class="form-panel lt-ad-item">
         {% if c.photo %}<img class="lt-ad-photo" src="{{ c.photo.url }}" alt="" loading="lazy">{% if draft %}<label class="check"><input type="checkbox" name="comment_nophoto" value="1"> 사진 빼기</label>{% endif %}{% endif %}
-        <p class="lt-ad-num">에디터 코멘트 (에디터 크로와상)</p>
+        <p class="lt-ad-num">크로와상의 깊이 읽기 (에디터 크로와상){% if c.tags %} · {% for t in c.tags %}#{{ t }} {% endfor %}{% endif %}</p>
         <label class="field">제목<input name="comment_title" value="{{ c.title }}" maxlength="60"{% if not draft %} readonly{% endif %}></label>
         <label class="field">여는 글<textarea name="comment_lead" rows="3"{% if not draft %} readonly{% endif %}>{{ c.lead }}</textarea></label>
-        <label class="field">👀 무슨 일이야?<textarea name="comment_what" rows="2"{% if not draft %} readonly{% endif %}>{{ c.what.body }}</textarea></label>
+        <label class="field">🍞 한 입에 정리하면<textarea name="comment_what" rows="2"{% if not draft %} readonly{% endif %}>{{ c.what.body }}</textarea></label>
         {% for p in c.what.points %}<p class="meta">· <b>{{ p.name }}</b> {{ p.text }}</p>{% endfor %}
-        <label class="field">🔍 어쩌다 이런 일이?<textarea name="comment_why" rows="4"{% if not draft %} readonly{% endif %}>{{ c.why.body }}</textarea></label>
-        <label class="field">☑️ 내 생활엔?<textarea name="comment_wallet" rows="2"{% if not draft %} readonly{% endif %}>{{ c.wallet.body }}</textarea></label>
+        <label class="field">🔎 왜 이렇게 됐을까요<textarea name="comment_why" rows="4"{% if not draft %} readonly{% endif %}>{{ c.why.body }}</textarea></label>
+        <label class="field">👛 {{ c.wallet.head or '내 지갑엔 무슨 일이?' }}<textarea name="comment_wallet" rows="2"{% if not draft %} readonly{% endif %}>{{ c.wallet.body }}</textarea></label>
         {% for p in c.wallet.points %}<p class="meta">· <b>{{ p.name }}</b> {{ p.text }}</p>{% endfor %}
         {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_comment" value="1"> 이 칸 빼기</label></div>{% endif %}
       </div>{% endif %}
@@ -52,6 +52,14 @@
         {% for b in sec.briefs %}<label class="field">{{ b.src.name or '기사' }} · <a href="{{ b.src.url }}" target="_blank" rel="noopener nofollow">원문 ↗</a><input name="brief{{ loop.index0 }}" value="{{ b.line }}" maxlength="90"{% if not draft %} readonly{% endif %}></label>
         {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_brief{{ loop.index0 }}" value="1"> 빼기</label></div>{% endif %}{% endfor %}
       </div>{% endif %}
+      {% if sec.market %}<div class="form-panel lt-ad-item"><p class="lt-ad-num">시장 지표 (레터 만들 때 받은 값)</p>
+        {% for r in sec.market.rows %}<p class="meta">{{ r.label }} {{ r.value }} {{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }} {{ r.pct }}</p>{% endfor %}
+        {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_market" value="1"> 이 칸 빼기</label></div>{% endif %}</div>{% endif %}
+      {% if sec.buzz %}<div class="form-panel lt-ad-item"><p class="lt-ad-num">요즘 뜨는 소비 트렌드</p>
+        <label class="field">제목<input name="buzz_title" value="{{ sec.buzz.title }}" maxlength="60"{% if not draft %} readonly{% endif %}></label>
+        <label class="field">설명<textarea name="buzz_body" rows="3"{% if not draft %} readonly{% endif %}>{{ sec.buzz.body }}</textarea></label>
+        {% for p in sec.buzz.points %}<p class="meta">· <b>{{ p.name }}</b> {{ p.text }}</p>{% endfor %}
+        {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_buzz" value="1"> 이 칸 빼기</label></div>{% endif %}</div>{% endif %}
       {% if sec.number %}<div class="form-panel lt-ad-item">
         <p class="lt-ad-num">숫자로 보는 오늘{% if sec.number.src and sec.number.src.url %} · <a href="{{ sec.number.src.url }}" target="_blank" rel="noopener nofollow">{{ sec.number.src.name }} 원문 ↗</a>{% endif %}</p>
         <label class="field">숫자<input name="number_value" value="{{ sec.number.value }}" maxlength="20"{% if not draft %} readonly{% endif %}></label>
