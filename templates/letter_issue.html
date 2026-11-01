@@ -13,11 +13,14 @@
     <h1>{{ L.title }}</h1>
     <p class="sb-meta">{{ letter_kdate(L.sent_at or L.created) }}</p>
     {% if L.intro %}<p class="lt-intro">{{ L.intro }}</p>{% endif %}
-    <nav class="lt-toc" aria-label="이번 호 소식"><b>이번 호 소식</b><ol>{% for it in L['items'] %}<li><a href="#n{{ loop.index }}">{{ it.title }}</a></li>{% endfor %}</ol></nav>
-    {% for it in L['items'] %}
-    <section class="lt-item" id="n{{ loop.index }}">
+    {% set econ = L['items']|rejectattr('kind', 'equalto', 'policy')|list %}{% set policy = L['items']|selectattr('kind', 'equalto', 'policy')|list %}
+    <nav class="lt-toc" aria-label="이번 호 소식"><b>오늘의 레터</b><ol>{% for it in econ + policy %}<li><a href="#n{{ loop.index }}">{{ it.title }}</a></li>{% endfor %}
+      {% if sec.number %}<li><a href="#num">숫자로 보는 오늘 · {{ sec.number.label }}</a></li>{% endif %}{% if sec.harm %}<li><a href="#harm">피해 예방 · {{ sec.harm.title }}</a></li>{% endif %}
+      {% if sec.lawbox %}<li><a href="#law">법률·제도 · {{ sec.lawbox.title }}</a></li>{% endif %}{% if sec.word %}<li><a href="#word">오늘의 경제 용어 · {{ sec.word.word }}</a></li>{% endif %}</ol></nav>
+    {% macro news(it, n) %}
+    <section class="lt-item" id="n{{ n }}">
       {% set ic = letter_icon(it.topic) %}{% if ic %}<span class="lt-ic tf" aria-hidden="true">{{ ic }}</span>{% endif %}
-      <p class="lt-num">NEWS {{ '%02d' % loop.index }}{% if it.topic %} · {{ it.topic }}{% endif %}</p>
+      <p class="lt-num">{{ 'POLICY' if it.kind == 'policy' else 'NEWS' }} {{ '%02d' % n }}{% if it.topic %} · {{ it.topic }}{% endif %}</p>
       <h2>{{ it.title }}</h2>
       {% for p in it.body|letter_paras %}<p>{{ p }}</p>{% endfor %}
       {% if it.tip %}<div class="lt-tip"><b><span class="tf" aria-hidden="true">💡</span> 나한테는?</b><p>{{ it.tip }}</p></div>{% endif %}
@@ -26,17 +29,39 @@
         <li><span class="tf" aria-hidden="true">📰</span> {{ it.src.name or '기사' }}{% if it.src.date %} · {{ it.src.date.replace('-', '.') }}{% endif %} · <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">기사 원문 보기 ↗</a></li>
       </ul>
     </section>
-    {% endfor %}
-    {% if sec.reviews %}
-    <section class="lt-more">
-      <h2><span class="tf" aria-hidden="true">⭐</span> 소보루 픽 인기 리뷰</h2>
-      <div class="lt-revs">{% for r in sec.reviews %}<a href="{{ r.url }}"><span class="lt-stars" aria-label="별점 {{ r.rating }}점">{{ '★' * r.rating }}<i>{{ '★' * (5 - r.rating) }}</i></span><em>{{ r.target }}</em><b>{{ r.title }}</b>{% if r.line %}<p>{{ r.line }}</p>{% endif %}<small>{{ r.nick }}{% if r.likes %} · 공감 {{ r.likes }}{% endif %}</small></a>{% endfor %}</div>
-    </section>
-    {% endif %}
-    {% if sec.campaign %}<a class="lt-camp" href="{{ sec.campaign.url }}"><small><span class="tf" aria-hidden="true">📝</span> 진행 중인 리뷰 주제{% if sec.campaign.reward %} · 참여하면 혜택{% endif %}</small><b>{{ sec.campaign.title }}</b>{% if sec.campaign.intro %}<p>{{ sec.campaign.intro }}</p>{% endif %}<span class="lt-camp-go">리뷰 남기러 가기 ›</span></a>{% endif %}
+    {% endmacro %}
+    <h2 class="lt-part">오늘의 경제 이슈</h2>
+    {% for it in econ %}{{ news(it, loop.index) }}{% endfor %}
+    {% if policy %}<h2 class="lt-part">정책·제도 변화</h2>{% for it in policy %}{{ news(it, econ|length + loop.index) }}{% endfor %}{% endif %}
+    {% if sec.number %}{% set b = sec.number %}
+    <section class="lt-box lt-numbox" id="num"><h2 class="lt-part">숫자로 보는 오늘</h2>
+      <div><small>{{ b.label }}</small><b>{{ b.value }}</b><p>{{ b.body }}</p>{% if b.src and b.src.url %}<a href="{{ b.src.url }}" target="_blank" rel="noopener nofollow">{{ b.src.name or '기사' }} 원문 ↗</a>{% endif %}</div>
+    </section>{% endif %}
+    {% if sec.harm %}{% set b = sec.harm %}
+    <section class="lt-box" id="harm"><h2 class="lt-part">소비자 피해 예방</h2>
+      <h3><span class="tf" aria-hidden="true">🚨</span> {{ b.title }}</h3>
+      {% for p in b.body|letter_paras %}<p>{{ p }}</p>{% endfor %}
+      {% if b.steps %}<div class="lt-steps"><b><span class="tf" aria-hidden="true">🛡️</span> 이런 일을 겪었다면</b><ol>{% for st in b.steps %}<li>{{ st }}</li>{% endfor %}</ol></div>{% endif %}
+      <ul class="lt-src">
+        {% if b.law %}<li><span class="tf" aria-hidden="true">⚖️</span> 관련 법 · {% if b.law.url %}<a href="{{ b.law.url }}" target="_blank" rel="noopener nofollow">{{ b.law.label }} ↗</a>{% else %}{{ b.law.label }}{% endif %}</li>{% endif %}
+        {% for s in b.srcs or [] %}<li><span class="tf" aria-hidden="true">📰</span> {{ s.name or '기사' }}{% if s.date %} · {{ s.date.replace('-', '.') }}{% endif %} · <a href="{{ s.url }}" target="_blank" rel="noopener nofollow">기사 원문 보기 ↗</a></li>{% endfor %}
+        <li>상담은 1372 소비자상담센터, 기업에 알리고 싶다면 <a href="/report">소보루 제보</a></li>
+      </ul>
+    </section>{% endif %}
+    {% if sec.lawbox %}{% set b = sec.lawbox %}
+    <section class="lt-box" id="law"><h2 class="lt-part">알아두면 좋은 법률·제도</h2>
+      <p class="lt-num">{{ b.topic }}</p><h3><span class="tf" aria-hidden="true">⚖️</span> {{ b.title }}</h3>
+      {% for p in b.body|letter_paras %}<p>{{ p }}</p>{% endfor %}
+      {% if b.point %}<div class="lt-tip"><b>이것만 기억해요</b><p>{{ b.point }}</p></div>{% endif %}
+      {% if b.law %}<ul class="lt-src"><li><span class="tf" aria-hidden="true">📚</span> 근거 · {% if b.law.url %}<a href="{{ b.law.url }}" target="_blank" rel="noopener nofollow">{{ b.law.label }} ↗</a>{% else %}{{ b.law.label }}{% endif %}</li></ul>{% endif %}
+    </section>{% endif %}
+    {% if sec.word %}{% set w = sec.word %}
+    <section class="lt-box lt-word" id="word"><h2 class="lt-part">오늘의 경제 용어</h2>
+      <div><small>{{ w.cat }}</small><b>{{ w.word }}</b><p>{{ w.text }}</p><a href="{{ w.url }}">소비자·경제 사전 더 보기 ›</a></div>
+    </section>{% endif %}
     {% if sec.life %}
     <section class="lt-more">
-      <h2><span class="tf" aria-hidden="true">📚</span> 새로 올라온 생활정보</h2>
+      <h2><span class="tf" aria-hidden="true">📚</span> 더 읽어 볼 매거진</h2>
       <ul class="lt-life">{% for a in sec.life %}<li><a href="{{ a.url }}"><span class="lt-fi lc1 tf" aria-hidden="true">{{ a.emoji }}</span><div><b>{{ a.title }}</b>{% if a.summary %}<p>{{ a.summary }}</p>{% endif %}</div></a></li>{% endfor %}</ul>
     </section>
     {% endif %}

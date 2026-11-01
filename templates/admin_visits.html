@@ -1,0 +1,44 @@
+{% extends 'console.html' %}
+{% block title %}방문 통계 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="cs-page">
+  <h1 class="cs-title">방문 통계</h1>
+  <nav class="cs-tabs vs-tabs">
+    <a href="{{ url_for('admin_visits') }}"{% if not site %} class="on" aria-current="page"{% endif %}>두 사이트 합계</a>
+    {% for k, name in sites.items() %}<a href="{{ url_for('admin_visits', site=k) }}"{% if site == k %} class="on" aria-current="page"{% endif %}>{{ name }} <small>{{ '{:,}'.format(split[k]) }}명</small></a>{% endfor %}
+  </nav>
+
+  <div class="ads-kpis">
+    {% for label, n, pv in kpi %}<div><small>{{ label }} 방문자</small><b>{{ '{:,}'.format(n) }}</b><em>화면 {{ '{:,}'.format(pv) }}번 봄</em></div>{% endfor %}
+  </div>
+
+  <div class="vs-grid">
+    <div class="cs-panel">
+      <h2>날짜별 방문자</h2>
+      {% if not site %}<p class="vs-legend"><i class="s"></i>소보루 <i class="j"></i>소비자제보센터</p>{% endif %}
+      <ol class="vs-days">{% for r in daily|reverse %}{% set n = r[site] if site else r['all'] %}
+        <li><span>{{ r['day'][5:].replace('-', '.') }}</span>
+          <span class="vs-bar">{% if site %}<i class="{{ 's' if site == 'soboru' else 'j' }}" style="width:{{ (100 * n / top)|round(1) }}%"></i>{% else %}<i class="s" style="width:{{ (100 * r['soboru'] / top)|round(1) }}%"></i><i class="j" style="width:{{ (100 * r['jebo'] / top)|round(1) }}%"></i>{% endif %}</span>
+          <b>{{ n }}</b>{% if not site %}<small>{{ r['soboru'] }} · {{ r['jebo'] }}</small>{% endif %}</li>{% endfor %}</ol>
+    </div>
+
+    <div>
+      <div class="cs-panel">
+        <h2>들어온 곳 <small>최근 30일</small></h2>
+        <table class="cs-table vs-table"><tbody>
+        {% for r in sources %}<tr><td>{{ r['source'] }}</td><td class="num">{{ '{:,}'.format(r['n']) }}</td><td class="num"><small>{{ '%.0f' % (100 * r['n'] / src_total) }}%</small></td></tr>
+        {% else %}<tr><td class="cs-empty">아직 기록이 없어요.</td></tr>{% endfor %}
+        </tbody></table>
+      </div>
+      <div class="cs-panel">
+        <h2>많이 본 화면 <small>최근 30일</small></h2>
+        <table class="cs-table vs-table"><tbody>
+        {% for r in pages %}<tr><td>{% if r.name %}<b>{{ r.name }}</b> {% endif %}<code>{{ r.page }}</code></td><td class="num">{{ '{:,}'.format(r.n) }}</td></tr>
+        {% else %}<tr><td class="cs-empty">아직 기록이 없어요.</td></tr>{% endfor %}
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+  <p class="cs-lead ads-note">한 사람은 사이트마다 하루에 한 번만 세요. ‘들어온 곳’은 그날 처음 들어올 때 기준이에요: 광고 링크의 utm_source가 있으면 그 이름, 없으면 앞 화면(네이버·구글·카카오 등), 주소를 직접 쳤거나 즐겨찾기면 ‘직접·즐겨찾기’. 관리자와 검색 봇은 세지 않고, IP·개인정보는 저장하지 않아요. 기록은 2026년 11월 1일부터 쌓여요.</p>
+</main>
+{% endblock %}

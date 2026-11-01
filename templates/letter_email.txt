@@ -3,32 +3,63 @@
 {{ L.title }}
 
 {{ L.intro }}
-
-{% for it in items %}
+{% macro news(it, n) %}
 ━━━━━━━━━━━━━━━━
-NEWS {{ '%02d' % loop.index }}. {{ it.title }}
+{{ 'POLICY' if it.kind == 'policy' else 'NEWS' }} {{ '%02d' % n }}. {{ it.title }}
 
 {{ it.body }}
 {% if it.tip %}
 💡 나한테는? {{ it.tip }}
 {% endif %}{% if it.law %}⚖️ 관련 법: {{ it.law.label }}{% if it.law.url %} {{ it.law.url }}{% endif %}
 {% endif %}📰 기사 원문({{ it.src.name or '기사' }}): {{ it.src.url }}
-{% endfor %}
-{% if sec.reviews %}━━━━━━━━━━━━━━━━
-⭐ 소보루 픽 인기 리뷰
-{% for r in sec.reviews %}- {{ r.title }} ({{ r.target }}, 별점 {{ r.rating }}) {{ site }}{{ r.url }}
-{% endfor %}{% endif %}{% if sec.campaign %}
-📝 이번 주 리뷰 주제: {{ sec.campaign.title }}
-{{ site }}{{ sec.campaign.url }}
+{% endmacro %}
+■ 오늘의 경제 이슈
+{% for it in econ %}{{ news(it, loop.index) }}{% endfor %}{% if policy %}
+■ 정책·제도 변화
+{% for it in policy %}{{ news(it, econ|length + loop.index) }}{% endfor %}{% endif %}{% if sec.number %}
+━━━━━━━━━━━━━━━━
+■ 숫자로 보는 오늘
+{{ sec.number.label }}: {{ sec.number.value }}
+{{ sec.number.body }}{% if sec.number.src and sec.number.src.url %}
+원문: {{ sec.number.src.url }}{% endif %}
+{% endif %}{% if sec.harm %}
+━━━━━━━━━━━━━━━━
+■ 소비자 피해 예방 · {{ sec.harm.title }}
+
+{{ sec.harm.body }}
+{% if sec.harm.steps %}
+이런 일을 겪었다면
+{% for st in sec.harm.steps %}{{ loop.index }}. {{ st }}
+{% endfor %}{% endif %}{% if sec.harm.law %}⚖️ 관련 법: {{ sec.harm.law.label }}{% if sec.harm.law.url %} {{ sec.harm.law.url }}{% endif %}
+{% endif %}{% for s in sec.harm.srcs or [] %}📰 기사 원문({{ s.name or '기사' }}): {{ s.url }}
+{% endfor %}상담은 1372 소비자상담센터, 기업에 알리고 싶다면 소보루 제보: {{ site }}/report
+{% endif %}{% if sec.lawbox %}
+━━━━━━━━━━━━━━━━
+■ 알아두면 좋은 법률·제도 · {{ sec.lawbox.topic }}
+{{ sec.lawbox.title }}
+
+{{ sec.lawbox.body }}
+{% if sec.lawbox.point %}이것만 기억해요: {{ sec.lawbox.point }}
+{% endif %}{% if sec.lawbox.law %}근거: {{ sec.lawbox.law.label }}{% if sec.lawbox.law.url %} {{ sec.lawbox.law.url }}{% endif %}
+{% endif %}{% endif %}{% if sec.word %}
+━━━━━━━━━━━━━━━━
+■ 오늘의 경제 용어 · {{ sec.word.word }}
+{{ sec.word.text }}
+{{ site }}{{ sec.word.url }}
 {% endif %}{% if sec.life %}
-📚 새로 올라온 생활정보
+━━━━━━━━━━━━━━━━
+■ 더 읽어 볼 매거진
 {% for a in sec.life %}- {{ a.title }} {{ site }}{{ a.url }}
 {% endfor %}{% endif %}
 ━━━━━━━━━━━━━━━━
 {{ L.outro }}
 소보루 에디터 드림
+이 레터는 법률 자문이 아닌 일반 정보예요.
 
-이 메일은 {{ name }} 구독을 신청하고 메일 주소 확인을 마친 분께 보내 드려요.
-웹에서 보기: {{ web }}
+[발행 정보]
+발행인 소보루 · 발행 목적 {{ purpose }}
+발행 주기 {{ cfg.when }}{% if op.email or op.phone %} · 연락처 {{ op.email }}{% if op.email and op.phone %} / {% endif %}{{ op.phone }}{% endif %}
+수신 거부: 아래 주소를 누르면 바로 그만 받아요.
 구독 해지: {{ unsub }}
+웹에서 보기: {{ web }}
 {{ op.name }}{% if op.biz_no %} · 사업자등록번호 {{ op.biz_no }}{% endif %}{% if op.address %} · {{ op.address }}{% endif %}

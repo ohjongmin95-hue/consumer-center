@@ -1549,7 +1549,7 @@ def admin_campaigns():
 # ---- 광고 효과: 처음 들어온 경로(utm)별 방문·가입·리뷰·재방문 ------------------------
 # 방문자마다 무작위 쿠키 번호를 주고, 서버 비밀키로 만든 해시만 저장(IP·개인정보 없음). 같은 날 같은 일은 한 번만 세고, 90일 지나면 지움.
 AD_COOKIE='sb_vid';AD_KEEP_DAYS=90
-AD_SKIP=('/static','/admin','/staff','/reporter','/biz','/board/photo','/robots.txt','/sitemap.xml','/favicon','/rss','/feed','/api')
+AD_SKIP=('/static','/admin','/staff','/reporter','/biz','/board/photo','/robots.txt','/sitemap.xml','/favicon','/rss','/feed/receipt','/api')
 AD_BOT=re.compile(r'bot|crawl|spider|slurp|yeti|daum|preview|externalhit|headless|python|curl|wget',re.I)
 AD_EVENTS=['visit','signup','review','return']
 def ad_clean(v):return re.sub(r'[^0-9A-Za-z가-힣_.\-]','',v or '')[:40]
@@ -1690,6 +1690,7 @@ def signup():
         user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
         ad_event('signup',db)
     sign_in(user,False)
+    if request.form.get('agree_letter') and user['email'] and 'soboru_letter' in app.extensions:app.extensions['soboru_letter']['join'](user['email'],False)  # [선택] 레터 받기
     flash(user['nickname']+ui_text('msg.welcome','님, 가입을 환영해요!'))
     return redirect(safe_next('mypage'))
 
@@ -2805,6 +2806,7 @@ import soboru_tools;soboru_tools.install(types.SimpleNamespace(**globals()))  # 
 import soboru_jobs;soboru_jobs.install(types.SimpleNamespace(**globals()))  # 동네일자리: 무료 구인·구직 + 공공 채용정보 (soboru_jobs.py)
 import soboru_town;soboru_town.install(types.SimpleNamespace(**globals()))  # 우리 동네 정보: 이웃이 추천하는 동네 장소 (soboru_town.py)
 import soboru_search;soboru_search.install(types.SimpleNamespace(**globals()))  # 통합 검색: 머리글 검색창 + /search (soboru_search.py)
+import site_visits;site_visits.install(types.SimpleNamespace(**globals()))  # 방문 통계: 사이트별 방문자·들어온 곳·많이 본 화면 (site_visits.py)
 import soboru_examples;soboru_examples.auto(types.SimpleNamespace(**globals()))
 import company_logo;_cl=types.SimpleNamespace(**globals());company_logo.install(_cl);company_set_domain=_cl.company_set_domain  # 기업 로고: 도메인에서 자동으로 (company_logo.py)
 import company_mail;company_mail.auto(types.SimpleNamespace(**globals()))

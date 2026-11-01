@@ -30,6 +30,7 @@
       var a = e.target.closest && e.target.closest('[data-app]'); if (!a) return;
       e.preventDefault(); send({ type: a.dataset.app, next: a.dataset.next || '', link: a.dataset.link || '' });
     });
-    send({ type: 'page', member: {{ 'true' if g.get('user') else 'false' }}, path: location.pathname });
+    // focus: 글쓰기·로그인·가입처럼 머리글이 로고+닫기만인 화면이면 앱도 아래 탭을 숨김 (앱 1.0.4부터)
+    send({ type: 'page', member: {{ 'true' if g.get('user') else 'false' }}, path: location.pathname, focus: !!document.querySelector('.sb-header-min') });
   })();
 </script>

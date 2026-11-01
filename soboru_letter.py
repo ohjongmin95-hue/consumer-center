@@ -1,21 +1,23 @@
-"""소보루 레터: 뉴닉식 뉴스레터. 기본은 평일 아침마다 그날의 주요 이슈(여러 언론이 함께 다룬 뉴스) 3~5개를 AI가 우리 말로 풀고, 소보루 픽 리뷰·리뷰 주제·생활정보를 붙여 메일로 보낸다.
+"""소보루 레터: 매일 아침 경제·소비자 정보 뉴스레터 (운영자 요청 2026-11-01: 정보성 콘텐츠만, 매일 자동으로).
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인다 (soboru_writer.py와 같은 방식).
-- 호 만들기: 네이버 뉴스 검색(분야별 LETTER_QUERIES, 제목·요약 조각만)에서 지난 하루(월요일은 주말 포함, 매주면 7일) 뉴스를 모아
-  여러 기사가 함께 다룬 이슈부터 3~5개(비슷한 기사는 하나로, 한 분야 2개까지) 고르면 → AI(companydesk.post_json)가
-  해요체로 짧은 제목·3~5문장 설명·'이럴 땐 이렇게' 한 줄·관련 법 조문(넘겨 준 후보 중에서만)을 쓴다. 기사 문장은 옮기지 않게 하고,
-  코드로도 원문과 6어절 넘게 겹치는지, 숫자가 그 뉴스 자료에 있는지(soboru_writer.check_text) 검사해 '검토 필요'로 표시한다.
-  각 뉴스에는 기사 원문(언론사) 링크와 법령 출처를 붙인다. 아래 묶음(소보루 픽 인기 리뷰, 진행 중인 리뷰 주제, 새 생활정보)은 DB에서.
+- 한 호 구성: ① 오늘의 경제 이슈(경제·산업 뉴스 3건 + 정부 정책·제도 변화) ② 숫자로 보는 오늘 ③ 소비자 피해 예방(최근 피해 유형·대응 방법)
+  ④ 알아두면 좋은 법률·제도(청약철회·분쟁해결기준·법령 개정 등 LAW_TOPICS를 호마다 돌아가며) ⑤ 오늘의 경제 용어(소비자·경제 사전) ⑥ 발행 정보·수신 거부.
+- 호 만들기: 네이버 뉴스 검색(ECON_QUERIES·POLICY_QUERIES·HARM_QUERIES, 제목·요약 조각만)에서 지난 하루(평일만 보내면 월요일은 주말 포함, 매주면 7일) 뉴스를 모아
+  여러 기사가 함께 다룬 이슈부터 경제 3건·정책 2건(비슷한 기사는 하나로, 한 분야 2개까지) 고르면 → AI(companydesk.post_json)가
+  해요체로 짧은 제목·설명·'나한테는?' 한 줄·관련 법 조문(넘겨 준 후보 중에서만)과 ②③④ 칸을 쓴다. 기사 문장은 옮기지 않게 하고,
+  코드로도 원문과 6어절 넘게 겹치는지, 숫자가 그 칸의 자료에 있는지(soboru_writer.check_text) 검사해 '검토 필요'로 표시한다.
+  각 뉴스에는 기사 원문(언론사) 링크와 법령 출처를 붙인다. ②③④는 sections에 담고, ⑤와 새 매거진 글은 사전·DB에서.
 - 보내기: 관리자 > 소보루 레터에서 운영자가 '보내기'를 누르거나, '자동 보내기'를 켜 두면 검사를 통과한 호만 만든 뒤 바로 보낸다.
   메일은 notify.send_email(SMTP, deploy/set-mail.sh)로 확인을 마친(active) 구독자에게만, 작은 묶음으로 쉬어 가며 뒤에서 보낸다.
   보낸 기록은 letter_sends에 남겨 같은 사람에게 두 번 보내지 않는다(중간에 끊겨도 다시 누르면 남은 사람에게만).
 - 구독: 이메일 + 수집·이용 동의 → 확인 메일(/letter/confirm/<token>)을 눌러야 구독(이중 확인). 모든 메일에 한 번에 해지하는
   /letter/unsubscribe/<token> 링크와 List-Unsubscribe 머리글. 해지하면 이메일 주소는 복원할 수 없는 값으로 바꿔 지운다.
   확인하지 않은 신청은 7일 뒤 지운다.
-- 예약: deploy/soboru-letter.timer가 매일 아침 7시 30분 `python soboru_letter.py weekly`를 부르면, 관리자가 고른 주기(평일 매일·매일·매주 한 요일)에 맞을 때만 한 호를 만든다.
+- 예약: deploy/soboru-letter.timer가 매일 아침 7시 30분 `python soboru_letter.py weekly`를 부르면, 관리자가 고른 주기(기본 매일·평일 매일·매주 한 요일)에 맞을 때만 한 호를 만든다.
 """
-import datetime, hashlib, json, os, re, secrets, sys, threading, time
-from flask import abort, flash, g, redirect, render_template, request, url_for
+import datetime, hashlib, hmac, json, os, re, secrets, sys, threading, time, urllib.parse
+from flask import Response, abort, flash, g, redirect, render_template, request, url_for
 from markupsafe import Markup
 import soboru_writer as W
 
@@ -25,11 +27,24 @@ DAYS = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요
 ITEMS = (3, 5)            # 한 호에 뉴스 몇 개
 NEWS_DAYS = 7             # 매주 보낼 때 뉴스 기간
 # 분야별 토스페이스 그림 (메일은 글꼴을 못 받으므로 static/img/tf/*.png 그림으로, 웹은 같은 이모지 글자로)
-TOPIC_ICON = {'경제': ('money', '💰'), '물가': ('cart', '🛒'), '금리': ('chart', '📈'), '부동산': ('house', '🏠'), '정부 정책': ('speaker', '📢'),
-              '국회': ('bank', '🏦'), '사회': ('mega', '📣'), '국제': ('plane', '✈️'), 'IT 과학': ('laptop', '💻'), '소비자': ('shield', '🛡️'), '리콜': ('siren', '🚨')}
+TOPIC_ICON = {'경제': ('money', '💰'), '산업': ('chart', '📈'), '물가': ('cart', '🛒'), '금리': ('bank', '🏦'), '부동산': ('house', '🏠'), '유통': ('cart', '🛍️'),
+              '정부 정책': ('speaker', '📢'), '제도 개선': ('memo', '📝'), '법 개정 시행': ('scale', '⚖️'),
+              '소비자 피해': ('shield', '🛡️'), '소비자 주의보': ('siren', '🚨'), '리콜': ('siren', '🚨')}
 FREQS = {'weekdays': '평일 매일', 'daily': '매일', 'weekly': '매주 한 번'}
-# 뉴닉처럼 분야를 고루: 분야마다 최근 기사를 모아 여러 언론이 함께 다룬 이슈부터 고름
-LETTER_QUERIES = ['경제', '물가', '금리', '부동산', '정부 정책', '국회', '사회', '국제', 'IT 과학', '소비자', '리콜']
+# 한 호 구성 (운영자 요청 2026-11-01, 정보성 콘텐츠만):
+#   ① 오늘의 경제 이슈(경제·산업 뉴스 3건 + 정부 정책·제도 변화) ② 숫자로 보는 오늘 ③ 소비자 피해 예방(최근 피해 유형·대응 방법)
+#   ④ 알아두면 좋은 법률·제도(청약철회·분쟁해결기준·법령 개정을 호마다 돌아가며) ⑤ 오늘의 경제 용어(사전) ⑥ 발행 정보·수신 거부
+ECON_QUERIES = ['경제', '산업', '물가', '금리', '부동산', '유통']
+POLICY_QUERIES = ['정부 정책', '제도 개선', '법 개정 시행']
+HARM_QUERIES = ['소비자 피해', '소비자 주의보', '리콜']
+LETTER_QUERIES = ECON_QUERIES + POLICY_QUERIES
+KIND_N = {'econ': 3, 'policy': 2}   # 경제 이슈 몇 건, 정책·제도 몇 건 (모자라면 다른 쪽에서 채움)
+HARM_N = 2                          # 피해 예방에 넘기는 뉴스 수
+# ④ 법률·제도: 호 번호로 돌아가며 (검색어는 법령 모음에서 조문을 찾는 말)
+LAW_TOPICS = [('전자상거래 청약철회 기준', '전자상거래 청약철회 7일 반품 비용'), ('소비자분쟁해결기준', '소비자분쟁해결기준 환급 교환 수리'),
+              ('방문판매·전화권유 청약철회', '방문판매 청약철회 14일'), ('할부 거래 철회와 항변권', '할부거래 청약철회 항변권'),
+              ('중도 해지와 위약금', '계속거래 중도 해지 위약금'), ('불공정 약관', '약관 불공정 무효'),
+              ('부당한 표시·광고', '표시광고 부당 광고 금지'), ('제품 결함과 리콜', '제조물 결함 리콜 손해배상')]
 PER_QUERY = 30            # 분야마다 가져올 기사 수
 PER_TOPIC = 2             # 한 분야에서 고를 수 있는 이슈 수
 COMMON_SHARE = 0.4        # 모은 기사 제목의 이만큼 넘게 나오는 낱말은 이슈를 가르는 데 안 씀
@@ -38,21 +53,32 @@ SEND_BATCH = 20           # 한 번에 보내는 메일 수
 SEND_PAUSE = 3.0          # 묶음 사이 쉬는 시간(초)
 SUB_LIMIT = 5             # 같은 접속지에서 10분 동안 구독 신청 횟수
 PENDING_DAYS = 7          # 확인 안 한 신청은 7일 뒤 지움
+BOXES = (('number', '숫자로 보는 오늘'), ('harm', '소비자 피해 예방'), ('lawbox', '법률·제도'))  # 뉴스 말고 AI가 쓰는 칸 (sections에 담음)
 COPY_WORDS = 6            # 기사 원문과 이만큼 어절이 그대로 겹치면 '검토 필요'
 AI_TIMEOUT = 120
 EMAIL_RE = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
 UNSUB_MARK = '__LETTER_UNSUB__'
+STIBEE_UNSUB = '$%unsubscribe%$'      # 스티비에 붙여 넣는 HTML의 수신 거부 치환자 (스티비가 구독자별 링크로 바꿈)
+GIF = bytes.fromhex('47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b')  # 1x1 투명 그림
+PURPOSE = '경제·소비자 관련 정보 제공'   # ⑥ 발행 정보의 발행 목적
 
-SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 뉴스레터 "소보루 레터" 에디터다. 뉴닉처럼 그날의 주요 이슈를 바쁜 사람도 5분이면 따라잡게 정리한다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 쓴다.\n'
+SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제·소비자 뉴스레터 "소보루 레터" 에디터다. 바쁜 사람도 5분이면 오늘의 경제 이슈와 내 지갑을 지키는 정보를 따라잡게 정리한다. '
+          '친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 쓴다. 광고·홍보·이벤트 문구는 쓰지 않는다(정보만 전한다).\n'
+          '이번 호는 이렇게 짠다: ① 오늘의 경제 이슈 — [이번 호 뉴스] 가운데 구분이 "경제 이슈"인 경제·산업 뉴스와 "정책·제도"인 정부 정책·제도 변화 뉴스를 모두 하나씩 풀어 쓴다. '
+          '② 숫자로 보는 오늘 — [이번 호 뉴스] 하나에 나온 숫자 하나를 골라 그 뜻을 풀어 준다. ③ 소비자 피해 예방 — [피해 예방 뉴스]와 [소보루에 최근 많이 들어온 제보 분야]를 보고 요즘 생기는 피해 유형 하나와 겪었을 때 대응 방법을 쓴다. '
+          '④ 알아두면 좋은 법률·제도 — [오늘의 법률·제도 주제]의 조문을 쉬운 말로 풀어 준다.\n'
           '지켜야 할 것:\n'
           '- 뉴스마다 제목과 요약 조각만 준다. 기사 문장을 옮기지 말고 반드시 네 말로 새로 풀어 쓴다. 기사에서 그대로 따오는 말은 몇 낱말을 넘지 않게 하고, 따옴표로 인용하지 않는다.\n'
-          '- 그 뉴스의 [제목]·[요약]·[법 조문 후보]에 있는 사실과 숫자만 쓴다. 없는 숫자(날짜·금액·비율·건수·기간 모두)는 쓰지 않고, 숫자를 새로 계산하지 않는다.\n'
+          '- 각 칸은 그 칸에 준 자료([제목]·[요약]·[조문 후보])에 있는 사실과 숫자만 쓴다. 없는 숫자(날짜·금액·비율·건수·기간 모두)는 쓰지 않고, 숫자를 새로 계산하지 않는다. 대응 방법에도 자료에 없는 기간·금액은 쓰지 않는다.\n'
           '- 요약이 말하지 않는 원인·전망·뒷이야기는 짐작하지 않는다. 더 알 수 없으면 "자세한 내용은 기사 원문에서 확인해 보세요"처럼 쓴다.\n'
-          '- 기업을 좋다·나쁘다 평가하거나 비난하지 않는다. 정치 이슈는 어느 편도 들지 않고 누가 무엇을 했는지 사실만 쓴다. 사람 이름·연락처 같은 개인정보는 쓰지 않는다(공인이 한 공식 발표는 기관 이름으로 쓴다).\n'
-          '- 법 조문은 그 뉴스의 [법 조문 후보] id 가운데 정말 관련 있는 것 하나만 고르고, 맞는 것이 없으면 빈 문자열로 둔다. 법 이야기는 "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다.\n'
-          '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다.\n'
-          'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(이번 호에서 가장 눈길 끄는 소식), "intro": 첫인사 3~4문장 — "소보루 이웃님,"으로 시작해 오늘 가장 큰 소식을 공감하듯 꺼내고, 오늘 무엇을 같이 읽어 볼지 말한 뒤 "그 밖에 ~ 소식도 정리해봤어요"처럼 나머지 소식을 한 문장으로 묶는다. 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
-          '"items": [{"no": 뉴스 번호, "title": 25자 안팎 짧고 눈길 끄는 제목, "body": 3~5문장 설명, "tip": 이 소식이 내 생활·지갑에 어떤 의미인지 또는 할 일 한 줄(60자 이내, 마땅치 않으면 ""), "law": 고른 조문 id 또는 ""}]}')
+          '- 기업을 좋다·나쁘다 평가하거나 비난하지 않는다. 피해 예방 칸에서도 특정 기업 이름을 쓰지 않고 피해 유형으로만 쓴다. 정치 이슈는 어느 편도 들지 않고 누가 무엇을 했는지 사실만 쓴다. 사람 이름·연락처 같은 개인정보는 쓰지 않는다(공인이 한 공식 발표는 기관 이름으로 쓴다).\n'
+          '- 법 조문은 준 후보 id 가운데 정말 관련 있는 것 하나만 고르고, 맞는 것이 없으면 빈 문자열로 둔다. 법 이야기는 "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다. 분쟁해결기준은 강제력 없는 권고 기준이라고 밝힌다.\n'
+          '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다. "소보루 브리핑" 같은 고정된 이름을 제목에 붙이지 않는다.\n'
+          'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 첫인사 2~3문장 — "소보루 이웃님,"으로 시작해 오늘 가장 큰 경제 소식을 꺼내고 오늘 무엇을 같이 볼지 한 문장으로 묶는다. 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
+          '"items": [{"no": 뉴스 번호, "title": 25자 안팎 짧고 눈길 끄는 제목, "body": 3~5문장 설명, "tip": 이 소식이 내 생활·지갑에 어떤 의미인지 한 줄(60자 이내, 마땅치 않으면 ""), "law": 고른 조문 id 또는 ""}], '
+          '"number": {"no": 숫자를 고른 뉴스 번호, "value": 그 뉴스 자료에 있는 숫자 그대로(단위 포함, 예 "3.2%"), "label": 무엇의 숫자인지 15자 안팎, "body": 이 숫자가 무슨 뜻인지 1~2문장} (고를 숫자가 없으면 null), '
+          '"harm": {"title": 피해 유형 20자 안팎, "body": 요즘 이런 피해가 생기고 있다는 설명 2~4문장, "steps": [겪었을 때 대응 방법 2~4개, 각각 40자 안팎 한 문장 — 증거 남기기, 판매자에게 기록이 남는 방식으로 요청하기, 카드 결제면 카드사에 문의하기, 1372 소비자상담센터 상담처럼 그 피해에 맞는 것], "law": 피해 예방 뉴스 조문 후보 id 또는 ""} (자료가 없으면 null), '
+          '"lawbox": {"title": 25자 안팎 제목, "body": 조문을 쉬운 말로 3~4문장, "point": 꼭 기억할 한 줄 50자 이내, "law": 고른 조문 id} (주제가 null이면 null)}')
 
 
 class Skip(Exception):
@@ -108,6 +134,9 @@ def install(S):
         db.execute('''CREATE TABLE IF NOT EXISTS letter_subscribers(id INTEGER PRIMARY KEY,email TEXT NOT NULL UNIQUE,token TEXT NOT NULL UNIQUE,
             status TEXT NOT NULL DEFAULT 'pending',created TEXT NOT NULL,confirmed TEXT,ip_hash TEXT NOT NULL DEFAULT '',asked TEXT,unsubscribed TEXT,
             place TEXT NOT NULL DEFAULT '')''')
+        # 열어 봄·클릭 (운영자 요청 2026-11-01): 한 사람·한 호·종류마다 한 줄 (처음 시각만)
+        db.execute('''CREATE TABLE IF NOT EXISTS letter_events(letter_id INTEGER NOT NULL,sub_id INTEGER NOT NULL,kind TEXT NOT NULL,at TEXT NOT NULL,
+            PRIMARY KEY(letter_id,sub_id,kind))''')
         db.execute('''CREATE TABLE IF NOT EXISTS letter_sends(letter_id INTEGER NOT NULL,sub_id INTEGER NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT '',
             at TEXT NOT NULL,PRIMARY KEY(letter_id,sub_id))''')
 
@@ -126,7 +155,7 @@ def install(S):
     def settings():
         s = setting('letter', {})
         return {'auto': 1 if s.get('auto') == 1 else 0, 'day': s.get('day') if s.get('day') in range(7) else 0,
-                'freq': s.get('freq') if s.get('freq') in FREQS else 'weekdays'}
+                'freq': s.get('freq') if s.get('freq') in FREQS else 'daily'}
 
     def news_days(today=None):
         # 매일 보내면 지난 하루치(평일만 보내면 월요일은 주말까지), 매주면 7일치
@@ -138,36 +167,71 @@ def install(S):
         put('letter_log', ([dict(entry, at=stamp())] + setting('letter_log', []))[:30])
 
     # ---- 자료 모으기 ----------------------------------------------------------
-    def collect_news():
+    def search_pool(queries, since, seen, heads):
+        pool = []
+        for q in queries:
+            for it in naver()['search']('news', q, display=PER_QUERY, sort='date')['items']:
+                try: day = datetime.date(*map(int, it['date'].split('.')))
+                except (ValueError, TypeError): continue
+                head = re.sub(r'\W', '', it['title'])[:14]
+                if day < since or it['url'] in seen or head in heads: continue
+                seen.add(it['url']); heads.add(head); pool.append(dict(it, topic=q))
+        return pool
+
+    def case_trend():
+        # ③ 피해 예방에 참고: 최근 2주 소보루에 많이 들어온 제보 분야 (분야 이름만, 건수·내용은 넘기지 않음)
+        since = (datetime.datetime.now() - datetime.timedelta(days=14)).isoformat(timespec='seconds')
+        try:
+            with conn() as db:
+                rows = db.execute("SELECT category,COUNT(*) AS n FROM cases WHERE created>=? AND status NOT IN ('반려','중복') GROUP BY category ORDER BY n DESC LIMIT 3", (since,)).fetchall()
+        except Exception: return []
+        return [r['category'] for r in rows if r['n'] >= 2 and r['category']]
+
+    def law_topic(no):
+        name, q = LAW_TOPICS[(no - 1) % len(LAW_TOPICS)]
+        hits = corpus.related(q, limit=2)
+        cands = [{'id': f'B-L{k}', 'label': h['label'], 'law': h.get('law', ''), 'text': corpus.clip(h['text'], 700), 'url': h.get('source') or ''} for k, h in enumerate(hits, 1)]
+        return {'name': name, 'cands': cands} if cands else None
+
+    def word_of(no):
+        # ⑤ 오늘의 경제 용어: 소비자·경제 사전(soboru_tools.DICT)에서 호마다 돌아가며 (AI 없이 사전 풀이 그대로)
+        import soboru_tools as T
+        if not T.DICT: return None
+        w, cat, text = T.DICT[((no - 1) * 11) % len(T.DICT)]
+        return {'word': w, 'cat': cat, 'text': text, 'url': '/tools/dict?q=' + w}
+
+    def collect_news(no=None):
+        """{news: 경제 이슈·정책 뉴스, harm: 피해 예방 뉴스, trend: 많이 들어온 제보 분야, law: 오늘의 법률·제도 주제}"""
         nv = naver()
         if not nv or not nv['ready'](): raise Skip('네이버 API HUB 키가 없어요 (deploy/set-naver.sh)')
+        if no is None:
+            with conn() as db: no = (db.execute('SELECT MAX(no) FROM letters').fetchone()[0] or 0) + 1
         days = news_days()
         since = datetime.date.today() - datetime.timedelta(days=days)
-        pool, seen, heads = [], set(), set()
+        seen, heads = set(), set()
         try:
-            for q in LETTER_QUERIES:
-                for it in nv['search']('news', q, display=PER_QUERY, sort='date')['items']:
-                    try: day = datetime.date(*map(int, it['date'].split('.')))
-                    except (ValueError, TypeError): continue
-                    head = re.sub(r'\W', '', it['title'])[:14]
-                    if day < since or it['url'] in seen or head in heads: continue
-                    seen.add(it['url']); heads.add(head); pool.append(dict(it, topic=q))
+            pool = search_pool(LETTER_QUERIES, since, seen, heads)
+            harm_pool = search_pool(HARM_QUERIES, since, seen, heads)
         except Exception as e:  # 네이버 오류 문구(NaverError)는 그대로, 그 밖은 이름만 (키가 섞이지 않게)
             raise Skip(str(e)[:120] if type(e).__name__ == 'NaverError' else f'뉴스를 가져오지 못했어요 ({type(e).__name__})')
         items = pick_issues(pool)
         if len(items) < ITEMS[0]: raise Skip(f'최근 {days}일 주요 뉴스가 {ITEMS[0]}건보다 적어요')
         scrub = lambda t: W.clean_personal(desk.scrub, t)
-        out = []
-        for n, it in enumerate(items, 1):
+
+        def entry(n, it, pre=''):
             title, summary = scrub(it['title']), scrub(it['summary'])
             hits = corpus.related(title + ' ' + summary, limit=3)
-            cands = [{'id': f'{n}-L{k}', 'label': h['label'], 'law': h.get('law', ''), 'text': corpus.clip(h['text'], 500), 'url': h.get('source') or ''} for k, h in enumerate(hits, 1)]
-            out.append({'no': n, 'title': title, 'summary': summary, 'source': it['source'], 'date': iso_day(it['date']), 'url': it['url'], 'cands': cands, 'topic': it.get('topic', '')})
-        return out
+            cands = [{'id': f'{pre}{n}-L{k}', 'label': h['label'], 'law': h.get('law', ''), 'text': corpus.clip(h['text'], 500), 'url': h.get('source') or ''} for k, h in enumerate(hits, 1)]
+            return {'no': n, 'title': title, 'summary': summary, 'source': it['source'], 'date': iso_day(it['date']), 'url': it['url'], 'cands': cands,
+                    'topic': it.get('topic', ''), 'kind': 'policy' if it.get('topic') in POLICY_QUERIES else 'econ'}
+        news = [entry(n, it) for n, it in enumerate(items, 1)]
+        harm = [entry(n, it, 'H') for n, it in enumerate(pick_issues(harm_pool, HARM_N, None), 1)]
+        return {'news': news, 'harm': harm, 'trend': case_trend(), 'law': law_topic(no)}
 
-    def pick_issues(pool):
+    def pick_issues(pool, limit=ITEMS[1], kinds=KIND_N):
         # 주요 이슈 = 여러 기사가 함께 다룬 소식. 제목 낱말이 2개 넘게 겹치는 기사가 많을수록 앞에 둠.
         # 거의 모든 제목에 나오는 낱말(속보·단독 같은 말)은 빼고 셈. 같은 이슈는 하나만, 한 분야는 PER_TOPIC개까지.
+        # kinds가 있으면 경제 이슈 3건 + 정책·제도 2건처럼 나눠 고르고, 모자라면 다른 쪽에서 채움. 경제 이슈를 앞에 둠.
         stem = lambda w: w[:-1] if len(w) >= 3 and w[-1] in '은는이가을를의에도로와과만' else w  # '금리가'·'금리는' → '금리'
         bags = [{stem(w) for w in words(it['title']) if len(w) >= 2 and not w.isdigit()} for it in pool]
         df = {}
@@ -177,25 +241,33 @@ def install(S):
         bags = [b - common for b in bags]
         same = lambda a, b: len(a & b) >= 2
         score = [sum(1 for j, o in enumerate(bags) if j != i and same(b, o)) for i, b in enumerate(bags)]
-        picked, per, order = [], {}, sorted(range(len(pool)), key=lambda i: -score[i])  # 점수가 같으면 분야 순서·최신 순 그대로
-        for cap in (PER_TOPIC, ITEMS[1]):  # 분야를 고루 고르고, 모자라면 한 분야에서 더
+        kind = lambda i: 'policy' if pool[i]['topic'] in POLICY_QUERIES else 'econ'
+        picked, per, per_kind, order = [], {}, {}, sorted(range(len(pool)), key=lambda i: -score[i])  # 점수가 같으면 분야 순서·최신 순 그대로
+        for cap, kcap in ((PER_TOPIC, True), (limit, True), (limit, False)):  # 분야를 고루 고르고, 모자라면 한 분야에서 더, 그래도 모자라면 다른 쪽에서
             for i in order:
                 t = pool[i]['topic']
-                if len(picked) == ITEMS[1]: break
+                if len(picked) == limit: break
                 if i in picked or per.get(t, 0) >= cap or any(same(bags[i], bags[k]) for k in picked): continue
-                picked.append(i); per[t] = per.get(t, 0) + 1
-        return [pool[i] for i in sorted(picked, key=order.index)]
+                if kinds and kcap and per_kind.get(kind(i), 0) >= kinds.get(kind(i), limit): continue
+                picked.append(i); per[t] = per.get(t, 0) + 1; per_kind[kind(i)] = per_kind.get(kind(i), 0) + 1
+        picked.sort(key=lambda i: ((kind(i) == 'policy') if kinds else 0, order.index(i)))
+        return [pool[i] for i in picked]
 
     def ai_facts(news):
-        return [{'번호': x['no'], '제목': x['title'], '요약': x['summary'], '언론사': x['source'], '날짜': x['date'],
+        return [{'번호': x['no'], '구분': '정책·제도' if x.get('kind') == 'policy' else '경제 이슈', '제목': x['title'], '요약': x['summary'], '언론사': x['source'], '날짜': x['date'],
                  '법 조문 후보': [{'id': c['id'], '조문': c['label'], '원문': c['text']} for c in x['cands']]} for x in news]
 
-    def ask_ai(news, no):
+    def ask_ai(mat, no):
         key = os.getenv('OPENAI_API_KEY', '').strip()
         if not key: raise RuntimeError('OpenAI API 키가 없어요')
-        user = (f"[이번 호] {NAME} {no}호 ({datetime.date.today().isoformat()})\n[이번 호 뉴스]\n"
-                f"{json.dumps(ai_facts(news), ensure_ascii=False, indent=1)}")
-        body = {'model': desk.ai_model(), 'temperature': 0.5, 'response_format': {'type': 'json_object'}, 'max_tokens': 2600,
+        law = mat.get('law')
+        dump = lambda v: json.dumps(v, ensure_ascii=False)
+        user = (f"[이번 호] {NAME} {no}호 ({datetime.date.today().isoformat()})\n"
+                f"[이번 호 뉴스]\n{dump(ai_facts(mat['news']))}\n"
+                f"[피해 예방 뉴스]\n{dump(ai_facts(mat['harm']))}\n"
+                f"[소보루에 최근 많이 들어온 제보 분야]\n{dump(mat.get('trend') or [])}\n"
+                f"[오늘의 법률·제도 주제]\n{dump({'주제': law['name'], '조문 후보': [{'id': c['id'], '조문': c['label'], '원문': c['text']} for c in law['cands']]} if law else None)}")
+        body = {'model': desk.ai_model(), 'temperature': 0.5, 'response_format': {'type': 'json_object'}, 'max_tokens': 3600,
                 'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': user}]}
         st, res = desk.post_json('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, AI_TIMEOUT)
         if st != 200: raise RuntimeError(f'AI 응답 오류 ({st}) ' + str((res.get('error') or {}).get('message', ''))[:120].replace(key, '***'))
@@ -207,8 +279,11 @@ def install(S):
         if law: f['법 조문'] = law['label'] + ' ' + law['text']
         return f
 
-    def assemble(out, news):
+    def law_ref(c): return {'label': c['label'], 'url': c['url'], 'text': c['text']} if c else None
+
+    def assemble(out, mat):
         if not isinstance(out, dict) or not isinstance(out.get('items'), list): raise RuntimeError('AI 응답 형식이 달라요')
+        news = mat['news']
         by_no = {x['no']: x for x in news}
         items = []
         for i, it in enumerate(out['items'][:ITEMS[1]]):
@@ -220,18 +295,55 @@ def install(S):
             tip = re.sub(r'^\s*(이럴 땐 이렇게\s*[:：]?\s*)', '', W._plain(it.get('tip'), 160))
             if not title or not body: continue
             law = next((c for c in x['cands'] if c['id'] == it.get('law')), None)
-            items.append({'title': title, 'body': body, 'tip': tip, 'topic': x.get('topic', ''),
-                          'law': {'label': law['label'], 'url': law['url'], 'text': law['text']} if law else None,
+            items.append({'title': title, 'body': body, 'tip': tip, 'topic': x.get('topic', ''), 'kind': x.get('kind', 'econ'), 'law': law_ref(law),
                           'src': {'name': x['source'], 'url': x['url'], 'date': x['date'], 'headline': x['title']},
                           '_facts': item_facts(x, law), '_source': x['title'] + ' ' + x['summary']})
         if len(items) < ITEMS[0]: raise RuntimeError('AI가 뉴스를 채우지 못했어요')
+        items.sort(key=lambda it: it['kind'] == 'policy')  # 경제 이슈 먼저, 정책·제도 다음
         subject = W._plain(out.get('subject'), 80) or items[0]['title']
+        subject = re.sub(r'^\s*\[?소보루\s*(브리핑|레터)\]?\s*[:：\-·]?\s*', '', subject) or items[0]['title']
         intro, outro = W._plain(out.get('intro'), 600), W._plain(out.get('outro'), 400)
-        return subject, intro, outro, items
+        return subject, intro, outro, items, extras(out, mat)
 
-    def check(title, intro, outro, items, no):
+    def extras(out, mat):
+        """② 숫자로 보는 오늘 ③ 피해 예방 ④ 법률·제도 — AI가 못 채웠거나 형식이 다르면 그 칸은 뺌."""
+        ex = {}
+        n = out.get('number')
+        x = next((y for y in mat['news'] if isinstance(n, dict) and y['no'] == n.get('no')), None)
+        if x:
+            value, label, body = W._plain(n.get('value'), 20), W._plain(n.get('label'), 40), W._plain(n.get('body'), 300)
+            if value and re.search(r'\d', value) and label and body:
+                ex['number'] = {'value': value, 'label': label, 'body': body, 'src': {'name': x['source'], 'url': x['url'], 'date': x['date']},
+                                '_facts': item_facts(x, None), '_source': x['title'] + ' ' + x['summary']}
+        h = out.get('harm')
+        if isinstance(h, dict) and (mat['harm'] or mat.get('trend')):
+            title, body = W._plain(h.get('title'), 60), W._plain(h.get('body'), 700)
+            steps = [W._plain(s, 90) for s in (h.get('steps') if isinstance(h.get('steps'), list) else [])][:4]
+            steps = [s for s in steps if s]
+            cands = [c for y in mat['harm'] for c in y['cands']]
+            law = next((c for c in cands if c['id'] == h.get('law')), None)
+            if title and body:
+                facts = {'피해 예방 뉴스': [item_facts(y, None) for y in mat['harm']], '제보 분야': mat.get('trend') or [], '소비자상담센터 전화번호': '1372'}
+                if law: facts['법 조문'] = law['label'] + ' ' + law['text']
+                ex['harm'] = {'title': title, 'body': body, 'steps': steps, 'law': law_ref(law),
+                              'srcs': [{'name': y['source'], 'url': y['url'], 'date': y['date']} for y in mat['harm']],
+                              '_facts': facts, '_source': ' '.join(y['title'] + ' ' + y['summary'] for y in mat['harm'])}
+        b, lt = out.get('lawbox'), mat.get('law')
+        if isinstance(b, dict) and lt:
+            title, body, point = W._plain(b.get('title'), 60), W._plain(b.get('body'), 800), W._plain(b.get('point'), 120)
+            law = next((c for c in lt['cands'] if c['id'] == b.get('law')), lt['cands'][0])
+            if title and body:
+                ex['lawbox'] = {'topic': lt['name'], 'title': title, 'body': body, 'point': point, 'law': law_ref(law),
+                                '_facts': {'법 조문': law['label'] + ' ' + law['text'], '소비자상담센터 전화번호': '1372'}, '_source': ''}
+        return ex
+
+    def box_text(key, b):
+        return '\n'.join([b.get('value', ''), b.get('label', ''), b.get('title', ''), b.get('body', ''), b.get('point', '')] + list(b.get('steps') or []))
+
+    def check(title, intro, outro, items, no, sec=None):
         """[{where, line, numbers|words|copy}] — 자료에 없는 숫자, 기업 평가로 읽힐 말, 기사 원문을 그대로 옮긴 부분."""
         problems = []
+        sec = sec or {}
         every = {'뉴스': [it.get('_facts', {}) for it in items], '호': no, '오늘': datetime.date.today().isoformat(), '소비자상담센터 전화번호': '1372'}
         for where, text in (('메일 제목', title), ('첫인사', intro), ('맺음말', outro)):
             problems += [dict(p, where=where) for p in W.check_text(text, every)]
@@ -241,23 +353,22 @@ def install(S):
             problems += [dict(p, where=where) for p in W.check_text(text, it.get('_facts', {}))]
             same = copied(text, it.get('_source', ''))
             if same: problems.append({'where': where, 'line': same, 'copy': True})
+        for key, where in BOXES:
+            b = sec.get(key)
+            if not b: continue
+            text = box_text(key, b)
+            problems += [dict(p, where=where) for p in W.check_text(text, b.get('_facts', {}))]
+            same = copied(text, b.get('_source', ''))
+            if same: problems.append({'where': where, 'line': same, 'copy': True})
         return problems
 
-    def sections():
-        since = (datetime.datetime.now() - datetime.timedelta(days=REVIEW_DAYS)).isoformat(timespec='seconds')
-        mp = S.mask_personal
+    def sections(no=1):
+        # 정보성 콘텐츠만 (운영자 2026-11-01): 커뮤니티 리뷰·리뷰 주제는 빼고, 새 매거진 글과 오늘의 경제 용어
         with conn() as db:
-            rows = db.execute("""SELECT id,nickname,title,target,rating,likes,comments,pros,summary FROM posts WHERE kind='review' AND hidden=0 AND editor=0 AND created>=?
-                ORDER BY likes DESC,comments DESC,id DESC LIMIT 3""", (since,)).fetchall()
             arts = db.execute("SELECT id,title,summary,emoji,category FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 3").fetchall()
-        reviews = [{'id': r['id'], 'nick': mask_nick(r['nickname']), 'title': mp(r['title'])[:80], 'target': mp(r['target'])[:40], 'rating': r['rating'] or 0,
-                    'likes': r['likes'] or 0, 'line': mp(r['pros'] or r['summary'] or '')[:90], 'url': f"/board/{r['id']}"} for r in rows]
-        c = S.current_campaign()
-        camp = {'title': c['title'], 'topic': c['topic'], 'intro': ' '.join((c['intro'] or '').split())[:140], 'ends': c['ends'], 'reward': bool(c['reward_on']),
-                'url': f"/pick/{c['slug']}"} if c else None
         life = [{'id': a['id'], 'title': a['title'], 'summary': ' '.join((a['summary'] or '').split())[:90], 'emoji': a['emoji'] or '📰', 'category': a['category'],
                  'url': f"/life/{a['id']}"} for a in arts]
-        return {'reviews': reviews, 'campaign': camp, 'life': life}
+        return {'life': life, 'word': word_of(no)}
 
     # ---- 만들기 -----------------------------------------------------------------
     def row_info(r):
@@ -277,17 +388,22 @@ def install(S):
         if not desk.ai_ready(): res = {'status': 'skip', 'reason': 'OpenAI API 키가 없어요'}; log(dict(res, trigger=trigger)); return res
         with conn() as db: no = (db.execute('SELECT MAX(no) FROM letters').fetchone()[0] or 0) + 1
         try:
-            news = collect_news()
-            title, intro, outro, items = assemble(ask_ai(news, no), news)
+            mat = collect_news(no)
+            title, intro, outro, items, ex = assemble(ask_ai(mat, no), mat)
         except Skip as e: res = {'status': 'skip', 'reason': str(e)}; log(dict(res, trigger=trigger)); return res
         except RuntimeError as e: res = {'status': 'error', 'reason': str(e)}; log(dict(res, trigger=trigger)); return res
         scrub = lambda t: W.clean_personal(desk.scrub, t)
         title, intro, outro = scrub(title), scrub(intro), scrub(outro)
         for it in items: it.update(title=scrub(it['title']), body=scrub(it['body']), tip=scrub(it['tip']))
-        problems = check(title, intro, outro, items, no)
+        for b in ex.values():
+            for k in ('value', 'label', 'title', 'body', 'point'):
+                if k in b: b[k] = scrub(b[k])
+            if 'steps' in b: b['steps'] = [scrub(x) for x in b['steps']]
+        sec = dict(sections(no), **ex)
+        problems = check(title, intro, outro, items, no, sec)
         with conn() as db:
             lid = db.execute('INSERT INTO letters(no,title,intro,outro,items,sections,status,created,updated,check_ok,problems,trigger) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-                             (no, title, intro, outro, json.dumps(items, ensure_ascii=False), json.dumps(sections(), ensure_ascii=False), 'draft', stamp(), stamp(),
+                             (no, title, intro, outro, json.dumps(items, ensure_ascii=False), json.dumps(sec, ensure_ascii=False), 'draft', stamp(), stamp(),
                               0 if problems else 1, json.dumps(problems, ensure_ascii=False), trigger)).lastrowid
         res = {'status': 'made', 'id': lid, 'no': no, 'reason': '검토 필요 %d곳' % len(problems) if problems else '', 'ok': not problems}
         log(dict(res, trigger=trigger))
@@ -306,17 +422,29 @@ def install(S):
             if it['title'] and it['body']: items.append(it)
         title = W._plain(form.get('title', L['title']), 80) or L['title']
         intro, outro = ' '.join(form.get('intro', L['intro']).split())[:800], ' '.join(form.get('outro', L['outro']).split())[:600]
-        problems = check(title, intro, outro, items, L['no'])
+        sec = dict(L['sections'])
+        for key, _ in BOXES:
+            b = sec.get(key)
+            if not b: continue
+            if form.get(f'drop_{key}'): sec.pop(key); continue
+            b = dict(b)
+            for k, n in (('value', 20), ('label', 40), ('title', 60), ('point', 120)):
+                if k in b and f'{key}_{k}' in form: b[k] = W._plain(form.get(f'{key}_{k}'), n)
+            if f'{key}_body' in form: b['body'] = ' '.join(form.get(f'{key}_body', '').split())[:900]
+            if 'steps' in b and f'{key}_steps' in form: b['steps'] = [W._plain(x, 90) for x in form.get(f'{key}_steps', '').splitlines() if x.strip()][:4]
+            if b.get('body'): sec[key] = b
+            else: sec.pop(key)
+        problems = check(title, intro, outro, items, L['no'], sec)
         with conn() as db:
-            db.execute('UPDATE letters SET title=?,intro=?,outro=?,items=?,check_ok=?,problems=?,updated=? WHERE id=?',
-                       (title, intro, outro, json.dumps(items, ensure_ascii=False), 0 if problems else 1, json.dumps(problems, ensure_ascii=False), stamp(), lid))
+            db.execute('UPDATE letters SET title=?,intro=?,outro=?,items=?,sections=?,check_ok=?,problems=?,updated=? WHERE id=?',
+                       (title, intro, outro, json.dumps(items, ensure_ascii=False), json.dumps(sec, ensure_ascii=False), 0 if problems else 1, json.dumps(problems, ensure_ascii=False), stamp(), lid))
         return problems
 
     # ---- 메일 -----------------------------------------------------------------
     def operator():
         c = S.load_content()
         return {'name': c.get('operator.name') or '소보루', 'address': c.get('operator.address') or '', 'biz_no': c.get('operator.biz_no') or '',
-                'email': c.get('operator.email') or ''}
+                'email': c.get('operator.email') or '', 'phone': c.get('operator.phone') or ''}
 
     def logo_url():
         for name in ('img/soboru-logo-orange.png', 'img/soboru-logo.png'):
@@ -326,15 +454,69 @@ def install(S):
     def mail_ctx(L, token):
         tf = lambda name: site_url(f'/static/img/tf/{name}.png')
         icons = [tf(TOPIC_ICON.get(it.get('topic', ''), ('news', ''))[0]) for it in L['items']]
-        return {'L': L, 'items': L['items'], 'sec': L['sections'], 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
+        for it, icon in zip(L['items'], icons): it['_icon'] = icon
+        return {'L': L, 'items': L['items'], 'econ': [it for it in L['items'] if it.get('kind') != 'policy'], 'policy': [it for it in L['items'] if it.get('kind') == 'policy'],
+                'sec': L['sections'], 'purpose': PURPOSE, 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
                 'tf': tf, 'icons': icons, 'mark': site_url('/static/img/soboru-wordmark.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark.png')) else '', 'hero': site_url('/static/img/soboru-character-hero.png'), 'cfg': letter_cfg(),
-                'unsub': site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME}
+                'unsub': token if token == STIBEE_UNSUB else site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME,
+                'stibee': token == STIBEE_UNSUB}
+
+    def link_sig(no, url):
+        return hmac.new(app.secret_key.encode(), f'letter:{no}|{url}'.encode(), 'sha256').hexdigest()[:20]
+
+    def tracked(html, no):
+        # 구독자에게 보내는 메일만: 링크는 우리 주소를 거쳐 원래 주소로(클릭 수), 맨 아래 1x1 그림(열어 봄). 토큰 자리는 보낼 때 구독자 것으로 바뀜
+        unsub = site_url(f'/letter/unsubscribe/{UNSUB_MARK}')
+        def wrap(m):
+            url = Markup(m.group(1)).unescape()
+            if url == unsub or not url.startswith(('http://', 'https://')): return m.group(0)
+            q = urllib.parse.urlencode({'u': url, 's': link_sig(no, url)})
+            return 'href="%s"' % Markup.escape(site_url(f'/letter/c/{no}/{UNSUB_MARK}?{q}'))
+        html = re.sub(r'href="([^"]+)"', wrap, html)
+        pixel = f'<img src="{site_url(f"/letter/o/{no}/{UNSUB_MARK}.gif")}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;">'
+        return html.replace('</body>', pixel + '</body>', 1)
 
     def email_parts(L, token=UNSUB_MARK):
         ctx = mail_ctx(L, token)
         html = app.jinja_env.get_template('letter_email.html').render(**ctx)
         text = app.jinja_env.get_template('letter_email.txt').render(**ctx)
+        if token == UNSUB_MARK: html = tracked(html, L['no'])
         return f"[{NAME}] {L['title']}", html, text
+
+    def stibee_html(L):
+        """스티비 'HTML 에디터로 만들기'에 붙여 넣을 코드: html·head·body·meta 태그는 스티비가 막으므로 빼고 바탕색은 바깥 div로, 수신 거부는 스티비 치환자."""
+        _, html, _ = email_parts(L, STIBEE_UNSUB)
+        body = re.search(r'<body[^>]*>(.*)</body>', html, re.S).group(1)
+        return '<div style="margin:0;padding:0;background:#fbf7f2;-webkit-text-size-adjust:100%;word-break:keep-all;">' + body.strip() + '</div>'
+
+    def record(no, token, kind):
+        with conn() as db:
+            L = db.execute('SELECT id FROM letters WHERE no=?', (no,)).fetchone()
+            sub = db.execute('SELECT id FROM letter_subscribers WHERE token=?', ((token or '')[:64],)).fetchone()
+            if not L or not sub: return
+            for k in (('open', 'click') if kind == 'click' else ('open',)):  # 누른 사람은 연 사람
+                db.execute('INSERT OR IGNORE INTO letter_events(letter_id,sub_id,kind,at) VALUES(?,?,?,?)', (L['id'], sub['id'], k, stamp()))
+
+    def stats(lid):
+        with conn() as db:
+            n = dict(db.execute('SELECT kind,COUNT(*) FROM letter_events WHERE letter_id=? GROUP BY kind', (lid,)).fetchall())
+            sent = db.execute("SELECT COUNT(*) FROM letter_sends WHERE letter_id=? AND status='sent'", (lid,)).fetchone()[0]
+        pct = lambda x: round(100 * x / sent) if sent else 0
+        return {'sent': sent, 'open': n.get('open', 0), 'click': n.get('click', 0), 'open_pct': pct(n.get('open', 0)), 'click_pct': pct(n.get('click', 0))}
+
+    @app.route('/letter/o/<int:no>/<token>.gif')
+    def letter_open(no, token):
+        try: record(no, token, 'open')
+        except Exception: pass  # 통계 때문에 메일 그림이 깨지면 안 됨
+        return Response(GIF, mimetype='image/gif', headers={'Cache-Control': 'no-store, max-age=0'})
+
+    @app.route('/letter/c/<int:no>/<token>')
+    def letter_click(no, token):
+        url, sig = request.args.get('u', ''), request.args.get('s', '')
+        if not url.startswith(('http://', 'https://')) or not hmac.compare_digest(sig, link_sig(no, url)): abort(404)  # 서명 없는 주소로는 넘기지 않음 (열린 이동 막기)
+        try: record(no, token, 'click')
+        except Exception: pass
+        return redirect(url, 302)
 
     def mail_headers(token):
         return {'List-Unsubscribe': f'<{site_url("/letter/unsubscribe/" + token)}>', 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'}
@@ -528,6 +710,7 @@ def install(S):
         with conn() as db:
             rows = [row_info(r) for r in db.execute('SELECT * FROM letters ORDER BY no DESC LIMIT 40')]
             subs = db.execute("SELECT id,email,status,created,confirmed,unsubscribed,place FROM letter_subscribers ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,id DESC LIMIT 200").fetchall()
+        for L in rows: L['stats'] = stats(L['id']) if L['status'] == 'sent' else None
         return dict(rows=rows, subs=subs, counts=counts(), cfg=settings(), days=DAYS, freqs=FREQS, ai_ready=desk.ai_ready(), naver_ready=bool(naver()) and naver()['ready'](),
                     mail_ready=notify.email_ready(), logs=setting('letter_log', [])[:10])
 
@@ -568,7 +751,7 @@ def install(S):
     @S.admin_only
     def admin_letter_settings():
         day, freq = request.form.get('day', type=int), request.form.get('freq', '')
-        put('letter', {'auto': 1 if request.form.get('auto') else 0, 'day': day if day in range(7) else 0, 'freq': freq if freq in FREQS else 'weekdays'})
+        put('letter', {'auto': 1 if request.form.get('auto') else 0, 'day': day if day in range(7) else 0, 'freq': freq if freq in FREQS else 'daily'})
         flash('레터 설정을 저장했어요.')
         return redirect(url_for('admin_letter'))
 
@@ -607,6 +790,10 @@ def install(S):
                     subject, html, text = email_parts(L, 'test')
                     try: send_one(to, '[테스트] ' + subject, html, text, 'test'); flash(f'{to}로 테스트 메일을 보냈어요.')
                     except Exception as e: flash(f'테스트 메일을 보내지 못했어요 ({type(e).__name__})')
+            elif act == 'mark_sent' and L['status'] != 'sent':
+                # 스티비 등 다른 곳에서 보낸 호: 사이트 '지난 레터'에 올라가게 보낸 호로 표시 (우리 구독자에게는 보내지 않음)
+                with conn() as db: db.execute("UPDATE letters SET status='sent',sent_at=?,trigger='stibee',updated=? WHERE id=?", (stamp(), stamp(), lid))
+                flash('보낸 호로 표시했어요. 사이트의 지난 레터에 올라가요.')
             elif act == 'send':
                 if L['status'] == 'sent': flash('이미 보낸 호예요.')
                 elif L['problems'] and not request.form.get('ack'):
@@ -620,10 +807,39 @@ def install(S):
         with conn() as db:
             sends = dict(db.execute('SELECT status,COUNT(*) FROM letter_sends WHERE letter_id=? GROUP BY status', (lid,)).fetchall())
         return render_template('admin_letter_edit.html', L=L, preview=html, subject=subject, mail_ready=notify.email_ready(), counts=counts(), sends=sends,
+                               stats=stats(lid), stibee=stibee_html(L), stibee_subject=f"[{NAME}] {L['title']}",
                                test_to=os.getenv('ADMIN_ALERT_EMAIL', '').split(',')[0].strip())
 
-    app.extensions['soboru_letter'] = {'generate': generate, 'weekly': weekly, 'send': send_issue, 'collect': collect_news, 'settings': settings,
-                                      'email_parts': email_parts, 'get': get, 'check': check, 'sections': sections}
+    def join_consent(email, verified):
+        """회원가입 화면의 '[선택] 레터 받기'에 체크한 회원 (운영자 요청 2026-11-01).
+        확인된 메일(카카오 등)이면 바로 구독하고 수신 동의 사실·일시를 메일로 알림(정보통신망법 제50조 제8항),
+        직접 친 메일이면 남의 주소일 수 있어 지금처럼 확인 메일을 눌러야 구독."""
+        email = (email or '').strip().lower()
+        if not EMAIL_RE.match(email) or not notify.email_ready(): return
+        with conn() as db:
+            row = db.execute('SELECT * FROM letter_subscribers WHERE email IN (?,?)', (email, gone_email(email))).fetchone()
+            if row and row['status'] == 'active': return
+            token = secrets.token_urlsafe(24); state = 'active' if verified else 'pending'; at = stamp()
+            if row:
+                db.execute("UPDATE letter_subscribers SET email=?,token=?,status=?,asked=?,confirmed=?,ip_hash=?,place='signup',unsubscribed=NULL WHERE id=?",
+                           (email, token, state, at, at if verified else None, S.ip_hash(), row['id']))
+            else:
+                db.execute("INSERT INTO letter_subscribers(email,token,status,created,confirmed,ip_hash,asked,place) VALUES(?,?,?,?,?,?,?,'signup')",
+                           (email, token, state, at, at if verified else None, S.ip_hash(), at))
+        if not verified: return send_confirm(email, token)
+        op = operator(); unsub = site_url(f'/letter/unsubscribe/{token}'); when = at.replace('T', ' ')[:16]
+        text = (f"{NAME} 수신 동의 안내\n\n회원가입 때 '{NAME} 받기(선택)'에 동의하셔서 {NAME}를 보내 드려요.\n"
+                f"- 동의한 날: {when}\n- 받는 내용: 소비자·경제 소식, 소보루 새 글 안내\n\n"
+                f"원하지 않으면 언제든 한 번에 그만 받을 수 있어요: {unsub}\n\n{op['name']} {op['address']}")
+        html = '<div style="font-family:sans-serif;font-size:15px;line-height:1.7;color:#191f28">' + '<br>'.join(
+            str(Markup.escape(l)) for l in text.split('\n')).replace(str(Markup.escape(unsub)), f'<a href="{Markup.escape(unsub)}">{Markup.escape(unsub)}</a>') + '</div>'
+        job = lambda: send_one(email, f'[{NAME}] 수신 동의 안내', html, text, token)
+        if testing(): job()
+        else: threading.Thread(target=lambda: _quiet(job), daemon=True).start()
+
+    app.extensions['soboru_letter'] = {'join': join_consent, 'generate': generate, 'weekly': weekly, 'send': send_issue, 'collect': collect_news, 'settings': settings,
+                                      'email_parts': email_parts, 'get': get, 'check': check, 'sections': sections,
+                                      'stibee_html': stibee_html, 'stats': stats}
 
 
 def main(argv):
