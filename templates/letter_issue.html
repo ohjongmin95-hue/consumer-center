@@ -48,7 +48,7 @@
     {% if sec.buzz %}{% set b = sec.buzz %}
     <section class="lt-box lt-buzz" id="buzz"><h2 class="lt-part">{{ H.buzz }}</h2>
       <h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
-      {% for p in b.points %}<div class="lt-bz"><b>{{ p.name }}</b><p>{{ p.text }}</p></div>{% endfor %}
+      {% for p in b.points %}<div class="lt-bz lt-bz{{ loop.index0 % 3 }}"><i>TREND<b>{{ '%02d' % loop.index }}</b></i><div><b>{{ p.name }} <span>▲</span></b><p>{{ p.text }}</p></div></div>{% endfor %}
       {% if b.srcs %}<p class="lt-refs">참고한 기사: {% for s in b.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
     </section>{% endif %}
     {% if sec.market and sec.market.top %}

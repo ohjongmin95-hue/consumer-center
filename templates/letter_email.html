@@ -106,8 +106,9 @@
   <tr><td style="padding:22px 32px 4px;{{ F }}" id="buzz">
     <p style="margin:0 0 10px;font-size:22px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ b.title }}</p>
     {% if b.body %}<p style="margin:0 0 14px;font-size:17px;line-height:1.9;color:#3a3633;">{{ b.body }}</p>{% endif %}
-    {% for p in b.points %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;background:#fff8ef;border-radius:14px;"><tr><td style="padding:14px 16px;{{ F }}">
-      <p style="margin:0 0 4px;font-size:17px;font-weight:800;color:#652D1C;">{{ p.name }}</p><p style="margin:0;font-size:16px;line-height:1.8;color:#3a3633;">{{ p.text }}</p></td></tr></table>{% endfor %}
+    {% for p in b.points %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;background:#ffffff;border:1px solid #f0dfcc;border-radius:16px;"><tr>
+      <td width="64" valign="top" style="width:64px;padding:16px 0 16px 16px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" width="48" height="48" style="width:48px;height:48px;border-radius:14px;background:{{ ['#ffe7c7', '#ffe0e0', '#e3efff'][loop.index0 % 3] }};{{ F }}font-size:13px;line-height:1.1;font-weight:800;color:{{ ['#CE6719', '#d6454b', '#2f6fd6'][loop.index0 % 3] }};">TREND<br><span style="font-size:17px;">{{ '%02d' % loop.index }}</span></td></tr></table></td>
+      <td valign="top" style="padding:15px 18px 16px 12px;{{ F }}"><p style="margin:0 0 4px;font-size:17px;font-weight:800;color:#652D1C;">{{ p.name }} <span style="color:#e5484d;font-size:14px;">▲</span></p><p style="margin:0;font-size:16px;line-height:1.8;color:#3a3633;">{{ p.text }}</p></td></tr></table>{% endfor %}
     {% if b.srcs %}<p style="margin:4px 0 0;font-size:15px;line-height:1.7;color:#8a827a;">참고한 기사: {% for s in b.srcs %}<a href="{{ s.url }}" style="color:#8a827a;text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
   </td></tr>
   {% endif %}
@@ -188,16 +189,17 @@
   </td></tr>
 </table>
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
-  {#- 바닥글: 뉴닉처럼 가운데 정렬로 깔끔하게 (운영자 2026-11-01, 전화번호 X) -#}
-  <tr><td align="center" style="padding:8px 24px 36px;{{ F }}font-size:15px;line-height:1.9;color:#8a8580;">
-    <div style="border-top:1px solid #d9d4ce;margin:0 0 30px;font-size:0;line-height:0;">&nbsp;</div>
-    <p style="margin:0 0 12px;font-size:34px;line-height:1;font-weight:900;letter-spacing:1px;color:#8a8580;">SOBORU</p>
-    <p style="margin:0 0 6px;font-weight:700;color:#7a7570;">{{ name }} | 매일 아침, 경제·소비자 소식</p>
-    <p style="margin:0 0 6px;"><a href="{{ site }}" style="color:#8a8580;text-decoration:underline;">소보루 홈</a> <b>|</b> <a href="{{ site }}/letter" style="color:#8a8580;text-decoration:underline;">구독하기</a> <b>|</b> <a href="{{ web }}" style="color:#8a8580;text-decoration:underline;">웹에서 보기</a></p>
-    {% if op.email %}<p style="margin:0;">{{ op.email }}</p>{% endif %}
-    {% if op.address %}<p style="margin:0;">{{ op.address }}</p>{% endif %}
-    <p style="margin:14px 0 6px;font-size:13px;line-height:1.7;color:#a39d97;">{{ name }} 구독에 동의하신 분께 보내 드려요. 해지하지 않으시면 계속 보내 드릴게요.</p>
-    <p style="margin:0;"><a href="{{ unsub }}" style="color:#8a8580;text-decoration:underline;">수신거부</a> <a href="{{ unsub }}" style="color:#8a8580;text-decoration:underline;">Unsubscribe</a> 😢</p>
+  {#- 바닥글: 갈색 소보루 로고 + 왼쪽 정렬 카드 (운영자 2026-11-01: 뉴닉 같지 않게, 전화번호 X) -#}
+  <tr><td style="padding:8px 16px 36px;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6eee4;border-radius:20px;"><tr><td style="padding:26px 24px 22px;{{ F }}">
+      <a href="{{ site }}/" style="text-decoration:none;">{% if mark_brown %}<img src="{{ mark_brown }}" width="128" alt="SOBORU 소보루" style="display:block;width:128px;height:auto;border:0;">{% else %}<b style="font-size:28px;color:#652D1C;">SOBORU</b>{% endif %}</a>
+      <p style="margin:10px 0 16px;font-size:15px;line-height:1.6;font-weight:700;color:#652D1C;">{{ name }} · 매일 아침, 경제·소비자 소식</p>
+      <p style="margin:0 0 8px;font-size:0;line-height:0;"><a href="{{ site }}/" style="display:inline-block;margin:0 6px 8px 0;padding:6px 13px;border:1px solid #d9c3ad;border-radius:999px;background:#ffffff;color:#652D1C;font-size:14px;line-height:1.4;font-weight:700;text-decoration:none;">소보루 홈</a><a href="{{ site }}/letter" style="display:inline-block;margin:0 6px 8px 0;padding:6px 13px;border:1px solid #d9c3ad;border-radius:999px;background:#ffffff;color:#652D1C;font-size:14px;line-height:1.4;font-weight:700;text-decoration:none;">구독하기</a><a href="{{ web }}" style="display:inline-block;margin:0 6px 8px 0;padding:6px 13px;border:1px solid #d9c3ad;border-radius:999px;background:#ffffff;color:#652D1C;font-size:14px;line-height:1.4;font-weight:700;text-decoration:none;">웹에서 보기</a></p>
+      <div style="margin:6px 0 14px;border-top:1px dashed #dccbb8;font-size:0;line-height:0;">&nbsp;</div>
+      {% if op.email %}<p style="margin:0;font-size:13px;line-height:1.7;color:#8a7a6c;">문의 {{ op.email }}</p>{% endif %}
+      {% if op.address %}<p style="margin:0;font-size:13px;line-height:1.7;color:#8a7a6c;">{{ op.address }}</p>{% endif %}
+      <p style="margin:12px 0 0;font-size:13px;line-height:1.7;color:#8a7a6c;">{{ name }} 구독에 동의하신 분께 보내 드려요. 해지하지 않으시면 계속 보내 드릴게요. <a href="{{ unsub }}" style="color:#652D1C;font-weight:700;text-decoration:underline;white-space:nowrap;">수신거부 Unsubscribe</a></p>
+    </td></tr></table>
   </td></tr>
 </table>
 </td></tr>
