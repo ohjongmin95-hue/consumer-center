@@ -47,8 +47,8 @@
     </section>{% endif %}
     {% if sec.buzz %}{% set b = sec.buzz %}
     <section class="lt-buzz" id="buzz"><h2 class="lt-part">{{ H.buzz }}</h2>
-      <div class="lt-tr"><small>TREND REPORT</small><h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
-      {% for p in b.points %}<div class="lt-bz"><i>{{ '%02d' % loop.index }}</i><div><b>{{ p.name }}</b><p>{{ p.text }}</p></div></div>{% endfor %}
+      <div class="lt-tr"><p class="lt-trico" aria-hidden="true"><span class="tf">🍰</span><span class="tf">🧁</span><span class="tf">🍪</span></p><small>TODAY'S SHOWCASE</small><h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
+      {% for p in b.points %}<div class="lt-bz"><i class="tf" aria-hidden="true">{{ ['🧁', '🍰', '🍪'][loop.index0 % 3] }}</i><div><b>{{ p.name }}</b><p>{{ p.text }}</p></div></div>{% endfor %}
       {% if b.srcs %}<p class="lt-trsrc">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}</div>
     </section>{% endif %}
     {% if sec.market and sec.market.top %}
