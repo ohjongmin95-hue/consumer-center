@@ -30,7 +30,7 @@
     </section>
     {% if sec.comment %}{% set c = sec.comment %}
     <section class="lt-comment" id="comment">
-      <div class="lt-sign lt-counter"><img class="lt-sign-peek" src="{{ url_for('static', filename='img/soboru-character-peek.png') }}" alt="소보루"><div class="lt-sign-board"><small>{{ H.comment_kicker }}</small><b><span class="tf">🥖</span> {{ H.comment_eyebrow }} <span class="tf">🧈</span></b></div></div>
+      <div class="lt-sign lt-counter"><img class="lt-sign-peek" src="{{ url_for('static', filename='img/soboru-character-bounce.gif') }}" alt="소보루"><div class="lt-sign-board"><small>{{ H.comment_kicker }}</small><b><span class="tf">🥖</span> {{ H.comment_eyebrow }} <span class="tf">🧈</span></b></div></div>
       {% if c.photo %}{% set PH = c.photo %}<figure class="lt-photo"><img src="{{ PH.url }}" alt="{{ PH.alt }}" loading="lazy"><figcaption>사진: <a href="{{ PH.credit_url }}" target="_blank" rel="noopener">{{ PH.credit }}</a> / <a href="{{ PH.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption></figure>{% endif %}
       <h2>{{ c.title }}</h2>
       {% if c.tags %}<p class="lt-tags">{% for t in c.tags %}<span>#{{ t }}</span>{% endfor %}</p>{% endif %}
