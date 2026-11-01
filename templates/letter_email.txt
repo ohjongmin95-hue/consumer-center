@@ -79,6 +79,6 @@
 SOBORU · {{ name }} | 매일 아침, 경제·소비자 소식
 {% if op.email %}{{ op.email }}
 {% endif %}{% if op.address %}{{ op.address }}
-{% endif %}맛있게 읽고 생활에 도움이 되시라고 보내 드려요. 해지하지 않으시면 계속 보내 드릴게요.
+{% endif %}따로 거부하지 않으시면 계속 보내 드릴게요.
 수신거부 Unsubscribe: {{ unsub }}
 웹에서 보기: {{ web }}

@@ -102,6 +102,7 @@ AI_TIMEOUT = 120
 EMAIL_RE = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
 UNSUB_MARK = '__LETTER_UNSUB__'
 STIBEE_UNSUB = '$%unsubscribe%$'      # 스티비에 붙여 넣는 HTML의 수신 거부 치환자 (스티비가 구독자별 링크로 바꿈)
+STIBEE_SUB_FIELD = 'soboru_sub'     # 스티비 주소록 사용자 정의 필드: 사이트 구독자는 'none' → 메일 맨 위 구독하기 버튼이 숨음 (운영자 2026-11-01)
 GIF = bytes.fromhex('47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b')  # 1x1 투명 그림
 PURPOSE = '경제·소비자 관련 정보 제공'   # ⑥ 발행 정보의 발행 목적
 
@@ -268,14 +269,17 @@ def stibee_call(method, path, body=None, ctype='application/json', base=None):
 def stibee_subs(list_id, emails, on=True):
     """스티비 주소록에 구독자 넣기(on) / 수신 거부(off). 새 키는 v2라 v2 경로를 먼저, 없으면(404·405) 예전 v1 경로로. (성공 여부, 설명)"""
     if not list_id or not emails: return False, '주소록 번호나 메일이 없어요'
-    body = {'eventOccuredBy': 'MANUAL', 'confirmEmailYN': 'N', 'subscribers': [{'email': e} for e in emails]} if on else list(emails)
+    # 사이트 구독자는 구독 필드를 'none'으로 → 스티비 메일 맨 위 구독하기 버튼이 숨음. 주소록에 그 필드가 없어 거절되면 필드 없이 한 번 더
+    tries = [{'eventOccuredBy': 'MANUAL', 'confirmEmailYN': 'N', 'subscribers': [{'email': e, **f} for e in emails]} for f in ({STIBEE_SUB_FIELD: 'none'}, {})] if on else [list(emails)]
     last = ''
-    for ver in ('/v2', '/v1'):
-        path = f'/lists/{list_id}/subscribers' + ('' if on else '/unsubscribe')
-        st, res = stibee_call('POST' if on else 'PUT', path, body, base=STIBEE_ROOT + ver)
-        if st in (200, 201): return True, ''
-        last = f'({st}) {res[:120]}'
-        if st not in (404, 405): break
+    for body in tries:
+        for ver in ('/v2', '/v1'):
+            path = f'/lists/{list_id}/subscribers' + ('' if on else '/unsubscribe')
+            st, res = stibee_call('POST' if on else 'PUT', path, body, base=STIBEE_ROOT + ver)
+            if st in (200, 201): return True, ''
+            last = f'({st}) {res[:120]}'
+            if st not in (404, 405): break
+        if last[1:4] not in ('400', '422'): break
     return False, last
 
 
@@ -1022,7 +1026,8 @@ def install(S):
                 'sec': L['sections'], 'H': HEADS, 'purpose': PURPOSE, 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
                 'tf': tf, 'icons': icons, 'SHOPS': SHOPS, 'mark': site_url('/static/img/soboru-wordmark-orange.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark-orange.png')) else '', 'mark_brown': site_url('/static/img/' + ('soboru-logo-brown-h.png' if os.path.exists(os.path.join(app.static_folder, 'img/soboru-logo-brown-h.png')) else 'soboru-wordmark.png')), 'hero': site_url('/static/img/soboru-character-hero.png'), 'peek': site_url('/static/img/soboru-character-peek.png'), 'bounce': site_url('/static/img/soboru-character-bounce.gif'), 'editor_img': site_url('/static/img/' + ('editor-croissant.png' if os.path.exists(os.path.join(app.static_folder, 'img/editor-croissant.png')) else 'soboru-character-hero.png')), 'cfg': letter_cfg(),
                 'unsub': token if token == STIBEE_UNSUB else site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME,
-                'stibee': token == STIBEE_UNSUB}
+                'stibee': token == STIBEE_UNSUB, 'sub_hide': token == UNSUB_MARK,
+                'sub_style': f'display:$%{STIBEE_SUB_FIELD}%$;' if token == STIBEE_UNSUB else ''}
 
     def link_sig(no, url):
         return hmac.new(app.secret_key.encode(), f'letter:{no}|{url}'.encode(), 'sha256').hexdigest()[:20]

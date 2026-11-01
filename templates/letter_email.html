@@ -32,7 +32,7 @@
   {#- 표지: 얇고 깔끔한 테두리 안에 로고를 크게, 둘레에 빵 이모지·호수 (운영자 2026-11-01) -#}
   <tr><td style="padding:16px 32px 0;">
     {#- 맨 위 인사 + 바로 수신 거부 (운영자 2026-11-01) -#}
-    <p style="margin:0 0 14px;text-align:center;{{ F }}font-size:13px;line-height:1.7;color:#8a827a;">안녕하세요, 소보루예요. 생활에 도움이 되는 소식을 맛있게 구워 먼저 찾아왔어요. 받고 싶지 않으시면 아래 수신 거부하기를 눌러 주세요. 따로 해지하지 않으시면 계속 보내 드릴게요.<br><a href="{{ site }}/letter" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #EF920E;border-radius:999px;background:#EF920E;color:#ffffff;font-weight:700;text-decoration:none;">구독하기</a>&nbsp;&nbsp;<a href="{{ unsub }}" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #d9d2c9;border-radius:999px;color:#6b625a;font-weight:700;text-decoration:none;">수신 거부하기</a><br><span style="display:inline-block;margin-top:6px;font-size:12px;color:#a39a91;">구독하기를 누르시면 소보루 레터(정보성 광고 포함) 받기에 동의하신 것으로 봐요.</span></p>
+    <p style="margin:0 0 14px;text-align:center;{{ F }}font-size:13px;line-height:1.7;color:#4a433d;">안녕하세요, 소보루예요. 소보루 레터는 매일 아침 꼭 알아야 할 경제 뉴스를 골라, 내 지갑과 생활에 어떤 의미인지 쉽게 풀어 드리는 경제 뉴스레터예요. 경제 뉴스는 많고 어려워서 정작 나와 닿은 소식은 놓치기 쉽잖아요. 그 소식을 바쁜 아침 5분 만에 챙기실 수 있도록 먼저 찾아왔어요. 받고 싶지 않으시면 아래 수신 거부하기를 눌러 주세요. 따로 거부하지 않으시면 계속 보내 드릴게요.<br>{#- 구독하기 버튼·동의 안내는 아직 구독하지 않은 분께만 (운영자 2026-11-01): 사이트 발송은 받는 사람이 모두 구독자라 빼고, 스티비는 구독자 필드(sub_style)로 숨김 -#}{% if not sub_hide %}<span style="{{ sub_style }}"><a href="{{ site }}/letter" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #EF920E;border-radius:999px;background:#EF920E;color:#ffffff;font-weight:700;text-decoration:none;">구독하기</a>&nbsp;&nbsp;</span>{% endif %}<a href="{{ unsub }}" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #d9d2c9;border-radius:999px;color:#6b625a;font-weight:700;text-decoration:none;">수신 거부하기</a>{% if not sub_hide %}<span style="{{ sub_style }}"><br><span style="display:inline-block;margin-top:6px;font-size:12px;color:#6b625a;">구독하기를 누르시면 소보루 레터(정보성 광고 포함) 받기에 동의하신 것으로 봐요.</span></span>{% endif %}</p>
     <div style="height:3px;background:#EF920E;font-size:0;line-height:0;">&nbsp;</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
     <tr><td align="center" style="padding:34px 6px 40px;{{ F }}">
@@ -285,8 +285,7 @@
     <p style="margin:0;font-size:13px;line-height:1.8;color:#9a928a;">소보루</p>
     {% if op.email %}<p style="margin:0;font-size:13px;line-height:1.8;color:#9a928a;">{{ op.email }}</p>{% endif %}
     {% if op.address %}<p style="margin:0;font-size:13px;line-height:1.8;color:#9a928a;">{{ op.address }}</p>{% endif %}
-    <p style="margin:10px 0 0;font-size:13px;line-height:1.8;color:#9a928a;">맛있게 읽고 생활에 도움이 되시라고 보내 드려요. 해지하지 않으시면 계속 보내 드릴게요.</p>
-    <p style="margin:2px 0 0;font-size:13px;line-height:1.8;"><a href="{{ web }}" style="color:#9a928a;text-decoration:underline;">웹에서 보기</a> &nbsp; <a href="{{ unsub }}" style="color:#9a928a;text-decoration:underline;">수신거부 Unsubscribe</a></p>
+    <p style="margin:10px 0 0;font-size:13px;line-height:1.8;"><a href="{{ web }}" style="color:#9a928a;text-decoration:underline;">웹에서 보기</a> &nbsp; <a href="{{ unsub }}" style="color:#9a928a;text-decoration:underline;">수신거부 Unsubscribe</a></p>
   </td></tr>
 </table>
 </td></tr>
