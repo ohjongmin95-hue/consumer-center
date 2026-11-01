@@ -194,7 +194,10 @@ def install(S):
         for it in res.get('items') or []:
             url = safe_url(it.get('originallink') if kind == 'news' else None) or safe_url(it.get('link'))
             if not url: continue
-            items.append({'title': clean(it.get('title')), 'summary': clean(it.get('description')), 'source': item_source(kind, it), 'date': item_date(kind, it), 'url': url})
+            row = {'title': clean(it.get('title')), 'summary': clean(it.get('description')), 'source': item_source(kind, it), 'date': item_date(kind, it), 'url': url}
+            nl = safe_url(it.get('link')) if kind == 'news' else None
+            if nl and 'news.naver.com' in nl: row['naver'] = nl  # 네이버 뉴스에 있는 기사면 본문을 읽을 수 있는 주소
+            items.append(row)
         return {'total': min(int(res.get('total') or 0), 1000), 'items': items}
 
     def trend(words, months):

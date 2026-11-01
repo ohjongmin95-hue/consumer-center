@@ -5184,7 +5184,8 @@ class SiteTest(unittest.TestCase):
                   'https://m.stock.naver.com/api/stocks/marketValue/KOSPI?page=1&pageSize=10': {'stocks': [{'stockName': f'종목{k}', 'closePrice': f'{k},000', 'compareToPreviousClosePrice': '100', 'fluctuationsRatio': '1.5', 'compareToPreviousPrice': {'name': 'RISING'}} for k in range(1, 13)] + [{'stockName': '깨진 값'}]},
                   'https://m.stock.naver.com/front-api/marketIndex/productDetail?category=exchange&reutersCode=FX_USDKRW': {'result': {'closePrice': '1,336.80', 'fluctuations': '0.90', 'fluctuationsRatio': '0.07', 'fluctuationsType': {'name': 'RISING'}}}}
         with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), patch.object(self.site.soboru_letter, 'market_call', market.get), patch.object(self.site.soboru_letter, 'TREND_DAYS', tuple(range(7))), \
-                patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent, bad)), patch.object(self.site.triage.corpus, 'related', self.letter_related):
+                patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent, bad)), patch.object(self.site.triage.corpus, 'related', self.letter_related), \
+                patch.object(self.site.soboru_letter, 'article_call', lambda url, timeout=8: (200, '<html><article id="dic_area" class="go_trans">본문 첫 줄 30% 늘었다<br>둘째 줄 무단 전재 금지<br>셋째 줄 1만 2000명</article></div></html>')):
             r = self.site.app.extensions['soboru_letter']['generate']('admin')
         return r, sent
 
@@ -5386,6 +5387,23 @@ class SiteTest(unittest.TestCase):
         html = ext['email_parts'](L, 'tok-x')[1]
         self.assertEqual(html.count('소보루에서 자세히 읽기'), 1)   # 게시된 기사 한 편만 이어짐, 나머지는 원문
         self.assertIn(f'/life/{ids[0]}', html)
+
+    def test_letter_reads_article_body(self):
+        # 요약 조각만 보면 숫자를 지어내서, 네이버 뉴스 기사 본문까지 AI 자료·숫자 검사에 넣음 (운영자 2026-11-01)
+        mod = self.site.soboru_letter
+        page = '<div id="newsct_article"><em>사진 설명</em>코스피가 5,730선으로 마쳤다.<br/>&quot;외국인&quot; 매도<br>홍길동 기자 hong@ex.com</div><div>'
+        with patch.object(mod, 'article_call', lambda url, timeout=8: (200, page)):
+            self.assertEqual(mod.article_body('https://n.news.naver.com/a/1'), '코스피가 5,730선으로 마쳤다. "외국인" 매도')
+            self.assertEqual(mod.article_body('https://news.example.co.kr/1'), '')   # 네이버 뉴스 주소만
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        r, sent = self.letter_make(bad=False)
+        L = self.site.app.extensions['soboru_letter']['get'](r['id'])
+        self.assertIn('셋째 줄 1만 2000명', L['items'][0]['_facts']['기사 본문'])
+        self.assertNotIn('무단', L['items'][0]['_facts']['기사 본문'])
+        self.assertIn('기사 본문', sent[0]['messages'][-1]['content'] if isinstance(sent[0], dict) else json.dumps(sent[0], ensure_ascii=False))
+        W = self.site.soboru_writer
+        self.assertEqual(W.check_text('인텔은 52년 만의 최악 주가 폭락을 겪었다', {'기사': '52년'}), [])
+        self.assertTrue(W.check_text('최악의 기업이다', {}))
 
     def test_letter_feedback_votes(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
@@ -5614,7 +5632,8 @@ class SiteTest(unittest.TestCase):
             q = dict(urllib.parse.parse_qsl(url.split('?', 1)[1]))['query']
             return 200, {'total': 9, 'items': [{'title': t, 'description': t + ' 요약', 'link': f'https://n.news.naver.com/{abs(hash(t))}', 'originallink': f'https://news.example.co.kr/{abs(hash(t))}',
                                                'pubDate': day} for t in heads.get(q, [])]}
-        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', fake), patch.object(self.site.triage.corpus, 'related', self.letter_related):
+        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', fake), patch.object(self.site.triage.corpus, 'related', self.letter_related), \
+                patch.object(self.site.soboru_letter, 'article_call', lambda url, timeout=8: (404, '')):
             mat = self.site.app.extensions['soboru_letter']['collect']()
         news = mat['news']
         titles = [x['title'] for x in news]
@@ -5627,6 +5646,28 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(sum('파업' in t for t in titles), 1)  # 같은 이슈는 하나만
         self.assertEqual(sum('동결' in t for t in titles), 1)
         self.assertTrue({titles[0][:2], titles[1][:2]} & {'지하'} and {titles[0][:2], titles[1][:2]} & {'한국', '한은', '기준'})  # 여러 곳이 다룬 두 이슈가 앞
+
+    def test_letter_prefers_major_papers(self):
+        # 같은 이슈면 매경·한경·서경 등 주요 신문 기사를 대표로, 숫자도 그 기사 본문으로 (운영자 2026-11-01)
+        import urllib.parse
+        with self.site.conn() as db: db.execute('DELETE FROM naver_cache')
+        day = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%a, %d %b %Y 09:00:00 +0900')
+        rows = {'금리': [('대출 한은 기준금리 동결 결정', 'news.example.co.kr'), ('시장 한은 기준금리 동결 결정', 'www.hankyung.com'), ('예상대로 한은 기준금리 동결 결정', 'www.blog-news.kr'),
+                         ('배경은 한은 기준금리 동결 결정', 'biz.chosun.com')],
+                '증시': [('마감 코스피 외국인 매도 하락', 'a.kr'), ('지속 코스피 외국인 매도 하락', 'b.kr'), ('전망 코스피 외국인 매도 하락', 'c.kr'), ('이유 코스피 외국인 매도 하락', 'd.kr')],
+                '물가': [('배추값 한 달 새 두 배', 'e.kr'), ('라면 가격 올라', 'f.kr'), ('우유 납품가 협상', 'g.kr')],
+                '고용': [('청년 취업자 줄어', 'h.kr'), ('제조업 일자리 감소', 'i.kr'), ('공공기관 채용 확대', 'j.kr')]}
+        def fake(method, url, headers, body, timeout):
+            q = dict(urllib.parse.parse_qsl(url.split('?', 1)[1]))['query']
+            return 200, {'total': 9, 'items': [{'title': t, 'description': t + ' 요약', 'link': f'https://n.news.naver.com/{abs(hash(t))}', 'originallink': f'https://{h}/{abs(hash(t))}',
+                                               'pubDate': day} for t, h in rows.get(q, [])]}
+        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', fake), patch.object(self.site.triage.corpus, 'related', self.letter_related), \
+                patch.object(self.site.soboru_letter, 'article_call', lambda url, timeout=8: (200, '<div id="dic_area">기준금리를 연 2.50%로 동결했다.</div><div>')):
+            mat = self.site.app.extensions['soboru_letter']['collect']()
+        first = mat['news'][0]
+        self.assertIn('동결', first['title']); self.assertIn(first['source'], ('한국경제', '조선일보'))   # 주요 신문이 다룬 이슈가 앞, 대표는 주요 신문
+        self.assertIn('2.50%', first['text'])
+        self.assertTrue(any(o['source'] in ('한국경제', '조선일보') and o.get('text') for o in first['more']))   # 다른 주요 신문 본문도 같이
 
     def test_letter_weekly_schedule_and_auto_send(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
