@@ -5183,7 +5183,7 @@ class SiteTest(unittest.TestCase):
         market = {'https://m.stock.naver.com/api/index/KOSPI/basic': {'closePrice': '5,937.66', 'compareToPreviousClosePrice': '-74.78', 'fluctuationsRatio': '-1.24', 'compareToPreviousPrice': {'name': 'FALLING'}, 'localTradedAt': '2026-10-30T15:30:00+09:00'},
                   'https://m.stock.naver.com/api/stocks/marketValue/KOSPI?page=1&pageSize=10': {'stocks': [{'stockName': f'종목{k}', 'closePrice': f'{k},000', 'compareToPreviousClosePrice': '100', 'fluctuationsRatio': '1.5', 'compareToPreviousPrice': {'name': 'RISING'}} for k in range(1, 13)] + [{'stockName': '깨진 값'}]},
                   'https://m.stock.naver.com/front-api/marketIndex/productDetail?category=exchange&reutersCode=FX_USDKRW': {'result': {'closePrice': '1,336.80', 'fluctuations': '0.90', 'fluctuationsRatio': '0.07', 'fluctuationsType': {'name': 'RISING'}}}}
-        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), patch.object(self.site.soboru_letter, 'market_call', market.get), \
+        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), patch.object(self.site.soboru_letter, 'market_call', market.get), patch.object(self.site.soboru_letter, 'TREND_DAYS', tuple(range(7))), \
                 patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent, bad)), patch.object(self.site.triage.corpus, 'related', self.letter_related):
             r = self.site.app.extensions['soboru_letter']['generate']('admin')
         return r, sent
@@ -5228,7 +5228,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(r['status'], 'made', r)
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
         self.assertEqual((L['no'], L['status']), (1, 'draft'))
-        self.assertEqual(len(L['items']), 6)  # 오늘의 뉴스 4~6개
+        self.assertEqual(len(L['items']), 3)  # 오늘의 뉴스 3~6개: 같은 소식 기사가 몰린 게 없으면 최소 3개
         # AI에는 제목·요약 조각만 (기사 주소·연락처는 넘기지 않음), 기사 문장을 옮기지 말라고 함
         prompt = sent[0]['messages'][1]['content']
         self.assertNotIn('news.example.co.kr', prompt); self.assertNotIn('010-5555-6666', prompt)
@@ -5289,7 +5289,7 @@ class SiteTest(unittest.TestCase):
         form['comment_why'] = '여러 이유가 겹쳤다고 해요.'
         admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), **form})
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
-        self.assertEqual(len(L['items']), 5); self.assertTrue(L['check_ok'], L['problems'])
+        self.assertEqual(len(L['items']), 2); self.assertTrue(L['check_ok'], L['problems'])
         self.assertNotIn('number', L['sections']); self.assertEqual(len(L['sections']['harm']['steps']), 2); self.assertEqual(L['sections']['comment']['why']['body'], '여러 이유가 겹쳤다고 해요.')
 
     def test_letter_stibee_api_send(self):
@@ -5533,7 +5533,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.get('/letter/99').status_code, 404)
 
     def test_letter_picks_issues_many_outlets_covered(self):
-        # 여러 언론이 함께 다룬 이슈가 먼저, 같은 이슈는 하나만, 한 분야는 2개까지
+        # 여러 언론이 함께 다룬 이슈가 먼저, 같은 이슈는 하나만, 개수는 기사량 따라 3~6개
         import urllib.parse
         day = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%a, %d %b %Y 09:00:00 +0900')
         heads = {'경제': ['한국은행 기준금리 동결 결정', '한은 기준금리 동결, 시장 예상대로', '기준금리 동결에 대출 금리도 멈춰', '반도체 수출 석 달째 늘어', '중소기업 대출 연체율 올라'],
@@ -5551,12 +5551,12 @@ class SiteTest(unittest.TestCase):
         self.assertEqual({x['kind'] for x in news}, {'econ'})  # 갓 구운 뉴스는 경제 기사만 (정책·제도는 아래 칸)
         self.assertFalse(set(titles) & set(heads['정부 정책']))
         self.assertEqual([x['title'] for x in mat['harm']], ['전기밥솥 화재 위험 리콜'])  # 피해 예방 뉴스는 따로
-        self.assertEqual(len(titles), 6)
+        self.assertEqual(len(titles), 3)  # 개수 고정 아님: 기사가 몰린 이슈 2개 + 최소 3개를 채울 1개 (운영자 2026-11-01)
         self.assertTrue(mat['comment'] and mat['comment'][0]['title'] == titles[0])  # 에디터 코멘트는 맨 앞 경제 이슈와 같은 이슈 기사들
         self.assertIn(titles[0][:4], ('지하철 ', '한국은행', '한은 기준', '기준금리'))  # 3곳이 다룬 이슈가 맨 앞
         self.assertEqual(sum('파업' in t for t in titles), 1)  # 같은 이슈는 하나만
         self.assertEqual(sum('동결' in t for t in titles), 1)
-        self.assertLessEqual(sum(t in heads['경제'] for t in titles), 2)  # 한 분야 2개까지
+        self.assertTrue({titles[0][:2], titles[1][:2]} & {'지하'} and {titles[0][:2], titles[1][:2]} & {'한국', '한은', '기준'})  # 여러 곳이 다룬 두 이슈가 앞
 
     def test_letter_weekly_schedule_and_auto_send(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)

@@ -24,7 +24,8 @@ import soboru_writer as W
 SITE = W.SITE
 NAME = '소보루 레터'
 DAYS = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
-ITEMS = (4, 6)            # 한 호 '오늘의 뉴스' 몇 개 (뉴닉식, 운영자 2026-11-01)
+ITEMS = (3, 6)            # 한 호 '오늘의 뉴스' 최소·최대 개수 — 개수는 고정 아님, 기사가 많이 쏟아진 주요 이슈만 (운영자 2026-11-01)
+MIN_COVER = 3             # 같은 소식을 다룬 다른 기사가 이만큼은 있어야 '주요 이슈'로 봄 (최소 개수를 못 채우면 많은 순으로 채움)
 NEWS_DAYS = 7             # 매주 보낼 때 뉴스 기간
 # 분야별 토스페이스 그림 (메일은 글꼴을 못 받으므로 static/img/tf/*.png 그림으로, 웹은 같은 이모지 글자로)
 TOPIC_ICON = {'경제': ('money', '💰'), '산업': ('chart', '📈'), '물가': ('cart', '🛒'), '금리': ('bank', '🏦'), '부동산': ('house', '🏠'), '유통': ('cart', '🛍️'),
@@ -39,6 +40,7 @@ POLICY_QUERIES = ['정부 정책', '제도 개선', '법 개정 시행']
 HARM_QUERIES = ['소비자 피해', '소비자 주의보', '리콜']
 TREND_QUERIES = ['소비 트렌드', '인기 상품', '품절 대란', '오픈런', '편의점 신상', '판매량 급증']  # 요즘 뜨는 소비 트렌드 (운영자 2026-11-01)
 TREND_N = 5
+TREND_DAYS = (0,)        # 소비 트렌드 칸은 일주일에 한 번 — 월요일 호에만, 지난 7일 기사로 (운영자 2026-11-01). 매주 보내기면 늘 넣음
 LETTER_QUERIES = ECON_QUERIES   # 갓 구운 뉴스 6 = 진짜 경제 기사만 (운영자 2026-11-01: 법·제도·정책은 아래 칸에서)
 KIND_N = {'econ': 6, 'policy': 0}   # 경제 이슈 6건, 정책·제도는 뉴스에 넣지 않음 (운영자 2026-11-01)
 HARM_N = 2                          # 피해 예방에 넘기는 뉴스 수
@@ -52,7 +54,7 @@ LAW_TOPICS = [('전자상거래 청약철회 기준', '전자상거래 청약철
 CAT = {'경제': '경제', '산업': '산업', '물가': '물가', '금리': '금융', '부동산': '부동산', '유통': '유통', '증시': '증시', '환율': '환율', '수출': '무역', '고용': '고용', '정부 정책': '정책', '제도 개선': '제도', '법 개정 시행': '법·제도'}
 MORE_N = 3                # 오늘의 뉴스마다 같이 넘기는 같은 소식 다른 기사 수
 CLUSTER_N = 6             # 에디터 코멘트에 넘기는 같은 이슈 기사 수
-PER_QUERY = 30            # 분야마다 가져올 기사 수
+PER_QUERY = 100           # 분야마다 가져올 기사 수 (네이버 뉴스 검색 최대 100, 기사량으로 주요 이슈를 가리려고 넉넉히)
 PER_TOPIC = 2             # 한 분야에서 고를 수 있는 이슈 수
 COMMON_SHARE = 0.4        # 모은 기사 제목의 이만큼 넘게 나오는 낱말은 이슈를 가르는 데 안 씀
 REVIEW_DAYS = 14
@@ -60,20 +62,27 @@ SEND_BATCH = 20           # 한 번에 보내는 메일 수
 SEND_PAUSE = 3.0          # 묶음 사이 쉬는 시간(초)
 SUB_LIMIT = 5             # 같은 접속지에서 10분 동안 구독 신청 횟수
 PENDING_DAYS = 7          # 확인 안 한 신청은 7일 뒤 지움
-# 소비 트렌드 칸: 트렌드마다 주제에 맞는 가게(차양 색·간판 그림) — (이름, 토스페이스 그림, 진한 색, 연한 색, 글자 색, 알아보는 낱말)
+# 소비 트렌드 칸(일주일에 한 번): 그 주 트렌드 주제에 맞는 가게 하나로 통째 꾸밈 — 지붕 모양(roof)·색·그림이 가게마다 다름 (운영자 2026-11-01)
+# roof: awning 줄무늬 차양 · bunting 삼각 깃발 · garland 꽃 줄 · noren 식당 포렴 · board 나무 간판 · neon 편의점 색띠 · bulbs 거울 전구 · rail 옷걸이 · window 화면 창 · ticket 표
+def _shop(name, en, ko, roof, main, sub, bg, deep, icons, shelf, roof_icons=(), words=''):
+    return {'name': name, 'en': en, 'ko': ko, 'roof': roof, 'main': main, 'sub': sub, 'bg': bg, 'deep': deep, 'icons': icons, 'shelf': shelf, 'roof_icons': roof_icons, 'words': words}
+
+
 SHOPS = {
-    'dessert': ('디저트 가게', 'cupcake', '#f48fab', '#ffe0e8', '#c2416a', '디저트 케이크 빵 베이커리 과자 아이스크림 초콜릿 쿠키 도넛 간식'),
-    'cafe': ('카페', 'coffee', '#a9744f', '#f3e4d6', '#7a4a2a', '커피 카페 음료 차 라떼 티'),
-    'store': ('편의점', 'store', '#22b07d', '#d8f3e7', '#16795a', '편의점 CU GS25 세븐일레븐 이마트24 도시락 삼각김밥'),
-    'beauty': ('뷰티숍', 'lipstick', '#b07cdb', '#efe3f8', '#7b44a8', '화장품 뷰티 다이소 올리브영 립 스킨케어 향수 미용'),
-    'fashion': ('옷 가게', 'dress', '#5b8def', '#e0eafd', '#2f5fbf', '옷 패션 의류 신발 가방 유니클로 무신사 SPA 아웃도어'),
-    'tech': ('전자 매장', 'phone', '#4a5873', '#e2e6ee', '#2f3a52', '스마트폰 휴대폰 아이폰 갤럭시 가전 노트북 전자 AI 이어폰 태블릿'),
-    'grocery': ('장보기 마트', 'leafy', '#7cb342', '#e8f4da', '#4f7d1f', '마트 장보기 채소 과일 식재료 쌀 고기 계란 신선식품 이마트 홈플러스'),
-    'food': ('맛집 골목', 'ramen', '#ef6a5a', '#fde3df', '#b8392a', '외식 식당 라면 맛집 배달 치킨 버거 프랜차이즈 밀키트 먹거리'),
-    'travel': ('여행사', 'plane', '#3fa9db', '#dbf0fa', '#1f78a3', '여행 항공 호텔 숙박 해외 관광 캠핑 레저 공연 축제'),
-    'game': ('놀이 가게', 'gamepad', '#7a6ff0', '#e7e5fd', '#4b40c2', '게임 장난감 피규어 굿즈 캐릭터 팝업 키덜트 콘솔'),
-    'health': ('건강 상점', 'pill', '#2bb3b1', '#d9f3f2', '#18807e', '건강 영양제 약 헬스 운동 다이어트 단백질 웰니스'),
-    'shop': ('잡화점', 'bags', '#EF920E', '#ffead0', '#b35f00', ''),
+    'dessert': _shop('디저트 가게', 'SOBORU DESSERT SHOP', '오늘의 디저트 진열대', 'awning', '#f48fab', '#ffd3df', '#fff0f4', '#c2416a', ('cupcake', 'cake', 'cookie'), ('donut', 'cookie', 'cupcake', 'cake', 'candy'), words='디저트 케이크 과자 아이스크림 초콜릿 쿠키 도넛 간식 탕후루 두쫀쿠'),
+    'toy': _shop('완구점', 'SOBORU TOY SHOP', '이번 주 장난감 진열대', 'bunting', '#4c6ef5', '#ffd43b', '#eef3ff', '#3b4fc4', ('teddy', 'gamepad', 'yoyo'), ('balloon', 'teddy', 'kite', 'train', 'yoyo'), ('#ff6b6b', '#ffd43b', '#51cf66', '#4c6ef5', '#cc5de8'), '장난감 완구 게임 피규어 굿즈 캐릭터 팝업 키덜트 콘솔 레고 인형 키링'),
+    'flower': _shop('꽃집', 'SOBORU FLOWER SHOP', '이번 주 꽃 진열대', 'garland', '#40a35a', '#ffc9de', '#f2f9ee', '#2b7a3f', ('tulip', 'blossom', 'sunflower'), ('bouquet', 'tulip', 'daisy', 'blossom', 'sunflower'), ('tulip', 'daisy', 'blossom', 'sunflower'), '꽃 선물 기념일 데이트 웨딩 결혼 연말 어버이날 화분 식물 인테리어'),
+    'food': _shop('식당', 'SOBORU DINER', '이번 주 맛집 메뉴판', 'noren', '#d9480f', '#ffe3d6', '#fff5f0', '#b23a0b', ('ramen', 'bento', 'dumpling'), ('stew', 'ramen', 'bento', 'dumpling', 'riceball'), ('lantern',), '외식 식당 라면 맛집 배달 치킨 버거 프랜차이즈 밀키트 먹거리 메뉴 뷔페'),
+    'bakery': _shop('빵집', 'SOBORU BAKERY', '이번 주 빵 진열대', 'board', '#b8692a', '#f6d2a2', '#fdf5e8', '#8a4a17', ('bread', 'bagel', 'pretzel'), ('baguette', 'bagel', 'bread', 'pretzel', 'donut'), words='빵 베이커리 제과 식빵 소금빵 베이글 성심당'),
+    'store': _shop('편의점', 'SOBORU 24 STORE', '이번 주 편의점 신상', 'neon', '#12b886', '#ff922b', '#eefaf5', '#0c8a63', ('store', 'riceball', 'cupdrink'), ('riceball', 'cupdrink', 'ramen', 'cookie', 'candy'), ('#12b886', '#ff922b', '#339af0'), '편의점 CU GS25 세븐일레븐 이마트24 도시락 삼각김밥 편의점 신상'),
+    'cafe': _shop('카페', 'SOBORU CAFE', '이번 주 카페 메뉴판', 'awning', '#8c5a3c', '#f3e4d6', '#fbf5ef', '#6b3f22', ('coffee', 'tea', 'cake'), ('coffee', 'tea', 'cookie', 'cake', 'donut'), words='커피 카페 음료 차 라떼 티 저가 커피 디카페인'),
+    'beauty': _shop('뷰티숍', 'SOBORU BEAUTY', '이번 주 뷰티 화장대', 'bulbs', '#ae3ec9', '#ffe066', '#f9f0fc', '#862e9c', ('lipstick', 'nail', 'lotion'), ('lotion', 'lipstick', 'nail', 'sparkle', 'lipstick'), words='화장품 뷰티 다이소 올리브영 립 스킨케어 향수 미용 네일 화장'),
+    'fashion': _shop('옷 가게', 'SOBORU CLOSET', '이번 주 옷걸이', 'rail', '#3b5bdb', '#dbe4ff', '#f0f4ff', '#2f4ab5', ('dress', 'shirt', 'sneaker'), ('shirt', 'jeans', 'dress', 'sneaker', 'bags'), ('shirt', 'dress', 'jeans', 'shirt', 'dress'), '옷 패션 의류 신발 가방 유니클로 무신사 SPA 아웃도어 패딩'),
+    'tech': _shop('전자 매장', 'SOBORU TECH STORE', '이번 주 신제품 진열대', 'window', '#364fc7', '#d0ebff', '#f1f4fa', '#2b3a8f', ('phone', 'laptop', 'headphone'), ('phone', 'headphone', 'watch', 'laptop', 'gamepad'), words='스마트폰 휴대폰 아이폰 갤럭시 가전 노트북 전자 AI 이어폰 태블릿 워치'),
+    'grocery': _shop('장보기 마트', 'SOBORU MARKET', '이번 주 장바구니', 'awning', '#5c940d', '#e9fac8', '#f4fbea', '#4a7a0a', ('leafy', 'apple', 'carrot'), ('apple', 'carrot', 'leafy', 'cart', 'apple'), words='마트 장보기 채소 과일 식재료 쌀 고기 계란 신선식품 이마트 홈플러스 김장'),
+    'travel': _shop('여행사', 'SOBORU TRAVEL', '이번 주 여행 티켓', 'ticket', '#1c7ed6', '#d0ebff', '#eef7fe', '#1864ab', ('plane', 'luggage', 'beach'), ('plane', 'luggage', 'beach', 'house', 'plane'), words='여행 항공 호텔 숙박 해외 관광 캠핑 레저 공연 축제 연휴'),
+    'health': _shop('건강 상점', 'SOBORU WELLNESS', '이번 주 건강 진열대', 'awning', '#0ca678', '#c3fae8', '#effbf6', '#087f5b', ('pill', 'salad', 'muscle'), ('salad', 'pill', 'muscle', 'apple', 'tea'), words='건강 영양제 약 헬스 운동 다이어트 단백질 웰니스 저당 제로'),
+    'shop': _shop('잡화점', 'SOBORU SHOP', '이번 주 트렌드 진열대', 'awning', '#EF920E', '#ffe2b0', '#fff7ea', '#b35f00', ('bags', 'cart', 'star'), ('bags', 'cart', 'star', 'party', 'bags')),
 }
 
 
@@ -81,7 +90,7 @@ def guess_shop(text):
     """AI가 고른 가게가 없거나 틀리면 낱말로 고른다 (못 고르면 잡화점)."""
     best, score = 'shop', 0
     for k, v in SHOPS.items():
-        n = sum(1 for w in v[5].split() if w and w.lower() in (text or '').lower())
+        n = sum(1 for w in v['words'].split() if w and w.lower() in (text or '').lower())
         if n > score: best, score = k, n
     return best
 
@@ -113,7 +122,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           '"comment": {"photo": 이슈에 어울리는 사진을 Unsplash에서 찾을 영어 검색어 2~3낱말(장면·물건 위주, 사람 이름·회사 이름·로고 X, 예 "grocery shopping cart"), "title": 30~45자 제목(핵심 주체·숫자를 담고 끝에 어울리는 이모지 1~2개 가능), "tags": [이슈를 나타내는 짧은 낱말 2~3개, # 없이], "lead": 3~4문장 — 독자가 겪을 법한 생활 장면으로 시작해 이슈를 꺼내고 마지막은 질문으로 끝낸다, "what": {"body": 언제 누가 무엇을 발표·확인했는지 1~2문장(끝을 "…살펴보면:"처럼 이어 써도 됨), "points": [{"name": 주체·항목 이름 15자 이내, "text": 1~2문장 — 자료에 있는 숫자를 꼭 넣는다}] 3개}, '
           '"why": {"body": 배경·원인 5~7문장(350~550자), 자료의 숫자와 기관 발표를 들어 구체적으로}, "wallet": {"head": 이 칸 소제목 15자 안팎(예 "내 지갑엔 무슨 일이?", "무엇이 문제일까요?"), "body": 1~2문장(끝을 "…이래요:"처럼 이어 써도 됨), "points": [{"name": 15자 이내 + 끝에 어울리는 이모지 하나, "text": 2문장}] 2~3개}} (자료가 모자라면 null), '
           '"buzz": {"title": 요즘 소비 트렌드를 담은 25~40자 제목, "body": 트렌드 도입 4~5문장(250~400자) — 요즘 무엇이 왜 뜨는지 생활 장면과 숫자로, '
-          '"points": [{"name": 트렌드·상품 이름 15자 이내, "shop": 이 트렌드에 어울리는 가게 하나(dessert 디저트·cafe 카페·store 편의점·beauty 뷰티·fashion 옷·tech 전자·grocery 장보기·food 외식·travel 여행·game 놀이·health 건강·shop 그 밖), "text": 4~5문장(250~380자) — 무엇이 얼마나 팔리는지(판매량·증가율·가격·순위 같은 자료의 숫자를 여럿), 누가 왜 사는지, 업계가 어떻게 움직이는지를 구체적으로}] 3개, '
+          '"shop": 이번 트렌드 주제에 가장 어울리는 가게 하나(dessert 디저트·toy 완구·flower 꽃·food 식당·bakery 빵·store 편의점·cafe 카페·beauty 뷰티·fashion 옷·tech 전자·grocery 장보기·travel 여행·health 건강·shop 그 밖), "points": [{"name": 트렌드·상품 이름 15자 이내, "text": 4~5문장(250~380자) — 무엇이 얼마나 팔리는지(판매량·증가율·가격·순위 같은 자료의 숫자를 여럿), 누가 왜 사는지, 업계가 어떻게 움직이는지를 구체적으로}] 3개, '
           '"insight": 이 트렌드를 꿰뚫는 분석 4~5문장(250~400자) — 여러 기사의 흐름을 묶어 소비 심리·물가·세대 같은 배경을 짚는다(자료에 없는 숫자·전망은 짓지 않는다), '
           '"tip": 소비자가 이 트렌드 속에서 챙길 점 2문장(예: 가격 비교, 충동구매 주의, 품절 마케팅 주의)} ([소비 트렌드 뉴스]가 비었으면 null), '
 '"number": {"no": 숫자를 고른 뉴스 번호, "value": 그 뉴스 자료에 있는 숫자 그대로(단위 포함, 예 "3.2%"), "label": 무엇의 숫자인지 15자 안팎, "body": 이 숫자가 무슨 뜻인지 1~2문장} (고를 숫자가 없으면 null), '
@@ -412,10 +421,11 @@ def install(S):
         try:
             pool = search_pool(LETTER_QUERIES, since, seen, heads)
             harm_pool = search_pool(HARM_QUERIES, since, seen, heads)
-            trend_pool = search_pool(TREND_QUERIES, since, seen, heads)
+            weekly = settings()['freq'] == 'weekly' or datetime.date.today().weekday() in TREND_DAYS
+            trend_pool = search_pool(TREND_QUERIES, datetime.date.today() - datetime.timedelta(days=7), seen, heads) if weekly else []
         except Exception as e:  # 네이버 오류 문구(NaverError)는 그대로, 그 밖은 이름만 (키가 섞이지 않게)
             raise Skip(str(e)[:120] if type(e).__name__ == 'NaverError' else f'뉴스를 가져오지 못했어요 ({type(e).__name__})')
-        items = pick_issues(pool)
+        items = pick_issues(pool, ITEMS[1], None, cover=MIN_COVER)
         if len(items) < ITEMS[0]: raise Skip(f'최근 {days}일 주요 뉴스가 {ITEMS[0]}건보다 적어요')
         scrub = lambda t: W.clean_personal(desk.scrub, t)
 
@@ -447,7 +457,7 @@ def install(S):
         bag = lambda it: {stem(w) for w in words(it['title'] + ' ' + it.get('summary', '')) if len(w) >= 2 and not w.isdigit()}
         return len(bag(a) & bag(b)) >= 3
 
-    def pick_issues(pool, limit=ITEMS[1], kinds=KIND_N):
+    def pick_issues(pool, limit=ITEMS[1], kinds=KIND_N, cover=None):
         # 주요 이슈 = 여러 기사가 함께 다룬 소식. 제목 낱말이 2개 넘게 겹치는 기사가 많을수록 앞에 둠.
         # 거의 모든 제목에 나오는 낱말(속보·단독 같은 말)은 빼고 셈. 같은 이슈는 하나만, 한 분야는 PER_TOPIC개까지.
         # kinds가 있으면 경제 이슈 3건 + 정책·제도 2건처럼 나눠 고르고, 모자라면 다른 쪽에서 채움. 경제 이슈를 앞에 둠.
@@ -462,6 +472,14 @@ def install(S):
         score = [sum(1 for j, o in enumerate(bags) if j != i and same(b, o)) for i, b in enumerate(bags)]
         kind = lambda i: 'policy' if pool[i]['topic'] in POLICY_QUERIES else 'econ'
         picked, per, per_kind, order = [], {}, {}, sorted(range(len(pool)), key=lambda i: -score[i])  # 점수가 같으면 분야 순서·최신 순 그대로
+        if cover is not None:
+            # 오늘의 뉴스: 분야를 고루 나누지 않고, 같은 소식을 다룬 기사가 많은(헤드라인) 이슈부터. cover건 넘게 다룬 이슈만 넣고,
+            # 그래야 ITEMS[0]개가 안 되면 기사 많은 순으로 채움. 그래서 날마다 3~6개로 달라짐 (운영자 2026-11-01)
+            for i in order:
+                if len(picked) == limit or (score[i] < cover and len(picked) >= ITEMS[0]): break
+                if any(same(bags[i], bags[k]) for k in picked): continue
+                picked.append(i)
+            return [pool[i] for i in picked]
         for cap, kcap in ((PER_TOPIC, True), (limit, True), (limit, False)):  # 분야를 고루 고르고, 모자라면 한 분야에서 더, 그래도 모자라면 다른 쪽에서
             for i in order:
                 t = pool[i]['topic']
@@ -579,13 +597,11 @@ def install(S):
         if isinstance(z, dict) and bz:
             zp = [{'name': W._plain(p.get('name'), 30), 'text': W._plain(p.get('text'), 700)} for p in (z.get('points') if isinstance(z.get('points'), list) else [])[:3]
                   if isinstance(p, dict) and W._plain(p.get('name'), 30) and W._plain(p.get('text'), 700)]
-            for q, p in zip(zp, [p for p in (z.get('points') if isinstance(z.get('points'), list) else [])[:3] if isinstance(p, dict) and W._plain(p.get('name'), 30) and W._plain(p.get('text'), 700)]):
-                k = str(p.get('shop') or '').strip().lower()
-                q['shop'] = k if k in SHOPS else guess_shop(q['name'] + ' ' + q['text'])
             title, body = W._plain(z.get('title'), 80), W._plain(z.get('body'), 900)
             insight, tip = W._plain(z.get('insight'), 900), W._plain(z.get('tip'), 300)
             if title and (body or zp):
-                ex['buzz'] = {'title': title, 'body': body, 'points': zp, 'insight': insight, 'tip': tip, 'srcs': [{'name': x['source'], 'url': x['url'], 'date': x['date']} for x in bz],
+                k = str(z.get('shop') or '').strip().lower()
+                ex['buzz'] = {'title': title, 'body': body, 'points': zp, 'shop': k if k in SHOPS else guess_shop(title + ' ' + body + ' ' + ' '.join(p['name'] + ' ' + p['text'] for p in zp)), 'insight': insight, 'tip': tip, 'srcs': [{'name': x['source'], 'url': x['url'], 'date': x['date']} for x in bz],
                               '_facts': {'기사': [item_facts(x, None) for x in bz]}, '_source': ' '.join([x['title'] + ' ' + x['summary'] for x in bz] + [o['title'] + ' ' + o['summary'] for x in bz for o in x.get('more') or []])}
         b, lt = out.get('lawbox'), mat.get('law')
         if isinstance(b, dict) and lt:

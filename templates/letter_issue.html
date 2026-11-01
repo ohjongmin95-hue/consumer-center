@@ -47,11 +47,14 @@
     </section>{% endif %}
     {% if sec.buzz %}{% set b = sec.buzz %}
     <section class="lt-buzz" id="buzz"><h2 class="lt-part">{{ H.buzz }}</h2>
-      <div class="lt-st"><small>TREND STREET · 오늘의 트렌드 거리</small><h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
-      {% for p in b.points %}{% set S = SHOPS.get(p.shop) or SHOPS['shop'] %}<div class="lt-shop" style="--c:{{ S[2] }};--l:{{ S[3] }};--t:{{ S[4] }}"><i class="lt-awn" aria-hidden="true"></i><div class="lt-shopin"><span class="lt-sign2"><img src="{{ url_for('static', filename='img/tf/' ~ S[1] ~ '.png') }}" alt="">{{ S[0] }}</span><b>{{ p.name }}</b><p>{{ p.text }}</p></div></div>{% endfor %}
-      {% if b.insight %}<div class="lt-bzi2"><b>💡 소보루의 트렌드 읽기</b><p>{{ b.insight }}</p></div>{% endif %}
-      {% if b.tip %}<p class="lt-bztip2"><b>소비자 체크 포인트</b> {{ b.tip }}</p>{% endif %}
-      {% if b.srcs %}<p class="lt-trsrc">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}</div>
+      {% set T = SHOPS.get(b.shop) or SHOPS['shop'] %}
+      <div class="lt-tr lt-roof-{{ T.roof }}" style="--c:{{ T.main }};--s:{{ T.sub }};--b:{{ T.bg }};--d:{{ T.deep }}">
+        <p class="lt-trico" aria-hidden="true">{% for n in T.icons %}<img src="{{ url_for('static', filename='img/tf/' ~ n ~ '.png') }}" alt="">{% endfor %}</p>
+        <small>{{ T.en }} · {{ T.ko }}</small><h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
+        {% for p in b.points %}<div class="lt-bz"><i aria-hidden="true"><img src="{{ url_for('static', filename='img/tf/' ~ T.icons[loop.index0 % 3] ~ '.png') }}" alt=""></i><div><b>{{ p.name }}</b><p>{{ p.text }}</p></div></div>{% endfor %}
+        {% if b.insight %}<div class="lt-bz lt-bzi"><div><b>소보루의 트렌드 읽기</b><p>{{ b.insight }}</p></div></div>{% endif %}
+        {% if b.tip %}<p class="lt-bztip"><b>소비자 체크 포인트</b> {{ b.tip }}</p>{% endif %}
+        {% if b.srcs %}<p class="lt-trsrc">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}</div>
     </section>{% endif %}
     {% if sec.market and sec.market.top %}
     <section class="lt-box" id="top"><h2 class="lt-part">코스피 시가총액 TOP {{ sec.market.top|length }}</h2>

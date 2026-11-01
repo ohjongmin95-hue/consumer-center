@@ -2870,3 +2870,8 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-shopin b{display:block;font-size:19px;margin-bottom:4px}.lt-shopin p{margin:0;line-height:1.85}
 .lt-bzi2{background:#f7f5f2;border-radius:18px;padding:20px;margin:22px 0 12px}.lt-bzi2 b{color:#652D1C}.lt-bzi2 p{margin:8px 0 0;line-height:1.9}
 .lt-bztip2{background:#fff4e0;border-radius:14px;padding:14px 18px;font-size:15px;color:#6b4a1f}.lt-bztip2 b{color:#CE6719}
+.lt-numbox>div{background:#fff1db;border:2px solid #ffd59a}.lt-numbox small{background:#ef7300;color:#fff}.lt-numbox b{color:#d9480f}.lt-numbox p{color:#5a3d22}.lt-numbox a{color:#a6763f}
+/* 소비 트렌드(주 1회): 가게 색은 SHOPS에서 */
+.lt-tr{background:var(--b);border:2px solid var(--c);border-top-width:14px}.lt-tr small{color:var(--d)}.lt-trico img{width:34px;height:34px;margin:0 4px}
+.lt-bz>i img{width:34px;height:34px}.lt-bz div b{color:var(--d)}.lt-bzi b{color:var(--d)!important}.lt-bztip{background:var(--s);color:#3a3633!important}.lt-bztip b{color:var(--d)}
+.lt-roof-awning{border-top:14px dashed var(--c)}.lt-roof-bunting,.lt-roof-garland,.lt-roof-rail{border-top-style:dotted}
