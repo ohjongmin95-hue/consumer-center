@@ -5274,6 +5274,41 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(len(L['items']), 4); self.assertTrue(L['check_ok'], L['problems'])
         self.assertNotIn('number', L['sections']); self.assertEqual(len(L['sections']['harm']['steps']), 2)
 
+    def test_letter_open_click_tracking_and_stibee_html(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        with self.site.conn() as db: db.execute('DELETE FROM letter_events')
+        r, _ = self.letter_make(bad=False)
+        L = self.site.app.extensions['soboru_letter']
+        letter = L['get'](r['id'])
+        self.letter_subs([('a@test.kr', 'active'), ('b@test.kr', 'active')])
+        box = []
+        with patch.dict(os.environ, self.LETTER_MAIL), patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)):
+            self.assertEqual(L['send'](r['id'])['status'], 'sent')
+        html = box[0].get_body(('html',)).get_content()
+        tok = 'tok-' + box[0]['To'].split('@')[0]
+        # 열어 봄: 구독자 토큰이 든 1x1 그림, 링크는 서명된 우리 주소를 거쳐 원래 주소로, 수신 거부 링크는 그대로
+        self.assertIn(f'/letter/o/1/{tok}.gif', html); self.assertIn(f'/letter/unsubscribe/{tok}"', html)
+        click = re.search(r'href="https://[^"]+(/letter/c/1/[^"]+)"', html).group(1).replace('&amp;', '&')
+        self.assertIn(tok, click)
+        g = self.client.get(f'/letter/o/1/{tok}.gif')
+        self.assertEqual((g.status_code, g.mimetype), (200, 'image/gif'))
+        self.client.get(f'/letter/o/1/{tok}.gif')  # 두 번 열어도 한 명
+        r2 = self.client.get(click)
+        self.assertEqual(r2.status_code, 302); self.assertTrue(r2.headers['Location'].startswith('http'))
+        self.assertEqual(self.client.get('/letter/c/1/%s?u=https://evil.example&s=bad' % tok).status_code, 404)  # 서명 없으면 안 넘김
+        self.client.get('/letter/o/1/nobody.gif')  # 모르는 토큰은 무시
+        st = L['stats'](r['id'])
+        self.assertEqual((st['sent'], st['open'], st['click'], st['open_pct']), (2, 1, 1, 50))
+        admin = self.login_admin()
+        self.assertIn('열어 봄 50%', admin.get('/admin/letter').get_data(as_text=True))
+        # 스티비: html·body 태그 없이, 수신 거부는 스티비 치환자, 추적 그림·우리 해지 링크 없음
+        code = L['stibee_html'](letter)
+        self.assertNotIn('<body', code); self.assertNotIn('<html', code); self.assertNotIn('<meta', code)
+        self.assertIn('href="$%unsubscribe%$"', code); self.assertNotIn('/letter/o/', code); self.assertNotIn('/letter/unsubscribe/', code)
+        self.assertIn('발행 정보', code)
+        page = admin.get(f"/admin/letter/{r['id']}").get_data(as_text=True)
+        self.assertIn('HTML 에디터로 만들기', page); self.assertIn('id="lt-stibee"', page)
+
     def test_letter_admin_flow_and_settings(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         self.assertEqual(self.client.get('/admin/letter').status_code, 302)  # 관리자만

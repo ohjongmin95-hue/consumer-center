@@ -16,8 +16,8 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
   확인하지 않은 신청은 7일 뒤 지운다.
 - 예약: deploy/soboru-letter.timer가 매일 아침 7시 30분 `python soboru_letter.py weekly`를 부르면, 관리자가 고른 주기(기본 매일·평일 매일·매주 한 요일)에 맞을 때만 한 호를 만든다.
 """
-import datetime, hashlib, json, os, re, secrets, sys, threading, time
-from flask import abort, flash, g, redirect, render_template, request, url_for
+import datetime, hashlib, hmac, json, os, re, secrets, sys, threading, time, urllib.parse
+from flask import Response, abort, flash, g, redirect, render_template, request, url_for
 from markupsafe import Markup
 import soboru_writer as W
 
@@ -58,6 +58,8 @@ COPY_WORDS = 6            # 기사 원문과 이만큼 어절이 그대로 겹�
 AI_TIMEOUT = 120
 EMAIL_RE = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
 UNSUB_MARK = '__LETTER_UNSUB__'
+STIBEE_UNSUB = '$%unsubscribe%$'      # 스티비에 붙여 넣는 HTML의 수신 거부 치환자 (스티비가 구독자별 링크로 바꿈)
+GIF = bytes.fromhex('47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b')  # 1x1 투명 그림
 PURPOSE = '경제·소비자 관련 정보 제공'   # ⑥ 발행 정보의 발행 목적
 
 SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제·소비자 뉴스레터 "소보루 레터" 에디터다. 바쁜 사람도 5분이면 오늘의 경제 이슈와 내 지갑을 지키는 정보를 따라잡게 정리한다. '
@@ -132,6 +134,9 @@ def install(S):
         db.execute('''CREATE TABLE IF NOT EXISTS letter_subscribers(id INTEGER PRIMARY KEY,email TEXT NOT NULL UNIQUE,token TEXT NOT NULL UNIQUE,
             status TEXT NOT NULL DEFAULT 'pending',created TEXT NOT NULL,confirmed TEXT,ip_hash TEXT NOT NULL DEFAULT '',asked TEXT,unsubscribed TEXT,
             place TEXT NOT NULL DEFAULT '')''')
+        # 열어 봄·클릭 (운영자 요청 2026-11-01): 한 사람·한 호·종류마다 한 줄 (처음 시각만)
+        db.execute('''CREATE TABLE IF NOT EXISTS letter_events(letter_id INTEGER NOT NULL,sub_id INTEGER NOT NULL,kind TEXT NOT NULL,at TEXT NOT NULL,
+            PRIMARY KEY(letter_id,sub_id,kind))''')
         db.execute('''CREATE TABLE IF NOT EXISTS letter_sends(letter_id INTEGER NOT NULL,sub_id INTEGER NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT '',
             at TEXT NOT NULL,PRIMARY KEY(letter_id,sub_id))''')
 
@@ -453,13 +458,65 @@ def install(S):
         return {'L': L, 'items': L['items'], 'econ': [it for it in L['items'] if it.get('kind') != 'policy'], 'policy': [it for it in L['items'] if it.get('kind') == 'policy'],
                 'sec': L['sections'], 'purpose': PURPOSE, 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
                 'tf': tf, 'icons': icons, 'mark': site_url('/static/img/soboru-wordmark.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark.png')) else '', 'hero': site_url('/static/img/soboru-character-hero.png'), 'cfg': letter_cfg(),
-                'unsub': site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME}
+                'unsub': token if token == STIBEE_UNSUB else site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME,
+                'stibee': token == STIBEE_UNSUB}
+
+    def link_sig(no, url):
+        return hmac.new(app.secret_key.encode(), f'letter:{no}|{url}'.encode(), 'sha256').hexdigest()[:20]
+
+    def tracked(html, no):
+        # 구독자에게 보내는 메일만: 링크는 우리 주소를 거쳐 원래 주소로(클릭 수), 맨 아래 1x1 그림(열어 봄). 토큰 자리는 보낼 때 구독자 것으로 바뀜
+        unsub = site_url(f'/letter/unsubscribe/{UNSUB_MARK}')
+        def wrap(m):
+            url = Markup(m.group(1)).unescape()
+            if url == unsub or not url.startswith(('http://', 'https://')): return m.group(0)
+            q = urllib.parse.urlencode({'u': url, 's': link_sig(no, url)})
+            return 'href="%s"' % Markup.escape(site_url(f'/letter/c/{no}/{UNSUB_MARK}?{q}'))
+        html = re.sub(r'href="([^"]+)"', wrap, html)
+        pixel = f'<img src="{site_url(f"/letter/o/{no}/{UNSUB_MARK}.gif")}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;">'
+        return html.replace('</body>', pixel + '</body>', 1)
 
     def email_parts(L, token=UNSUB_MARK):
         ctx = mail_ctx(L, token)
         html = app.jinja_env.get_template('letter_email.html').render(**ctx)
         text = app.jinja_env.get_template('letter_email.txt').render(**ctx)
+        if token == UNSUB_MARK: html = tracked(html, L['no'])
         return f"[{NAME}] {L['title']}", html, text
+
+    def stibee_html(L):
+        """스티비 'HTML 에디터로 만들기'에 붙여 넣을 코드: html·head·body·meta 태그는 스티비가 막으므로 빼고 바탕색은 바깥 div로, 수신 거부는 스티비 치환자."""
+        _, html, _ = email_parts(L, STIBEE_UNSUB)
+        body = re.search(r'<body[^>]*>(.*)</body>', html, re.S).group(1)
+        return '<div style="margin:0;padding:0;background:#fbf7f2;-webkit-text-size-adjust:100%;word-break:keep-all;">' + body.strip() + '</div>'
+
+    def record(no, token, kind):
+        with conn() as db:
+            L = db.execute('SELECT id FROM letters WHERE no=?', (no,)).fetchone()
+            sub = db.execute('SELECT id FROM letter_subscribers WHERE token=?', ((token or '')[:64],)).fetchone()
+            if not L or not sub: return
+            for k in (('open', 'click') if kind == 'click' else ('open',)):  # 누른 사람은 연 사람
+                db.execute('INSERT OR IGNORE INTO letter_events(letter_id,sub_id,kind,at) VALUES(?,?,?,?)', (L['id'], sub['id'], k, stamp()))
+
+    def stats(lid):
+        with conn() as db:
+            n = dict(db.execute('SELECT kind,COUNT(*) FROM letter_events WHERE letter_id=? GROUP BY kind', (lid,)).fetchall())
+            sent = db.execute("SELECT COUNT(*) FROM letter_sends WHERE letter_id=? AND status='sent'", (lid,)).fetchone()[0]
+        pct = lambda x: round(100 * x / sent) if sent else 0
+        return {'sent': sent, 'open': n.get('open', 0), 'click': n.get('click', 0), 'open_pct': pct(n.get('open', 0)), 'click_pct': pct(n.get('click', 0))}
+
+    @app.route('/letter/o/<int:no>/<token>.gif')
+    def letter_open(no, token):
+        try: record(no, token, 'open')
+        except Exception: pass  # 통계 때문에 메일 그림이 깨지면 안 됨
+        return Response(GIF, mimetype='image/gif', headers={'Cache-Control': 'no-store, max-age=0'})
+
+    @app.route('/letter/c/<int:no>/<token>')
+    def letter_click(no, token):
+        url, sig = request.args.get('u', ''), request.args.get('s', '')
+        if not url.startswith(('http://', 'https://')) or not hmac.compare_digest(sig, link_sig(no, url)): abort(404)  # 서명 없는 주소로는 넘기지 않음 (열린 이동 막기)
+        try: record(no, token, 'click')
+        except Exception: pass
+        return redirect(url, 302)
 
     def mail_headers(token):
         return {'List-Unsubscribe': f'<{site_url("/letter/unsubscribe/" + token)}>', 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'}
@@ -653,6 +710,7 @@ def install(S):
         with conn() as db:
             rows = [row_info(r) for r in db.execute('SELECT * FROM letters ORDER BY no DESC LIMIT 40')]
             subs = db.execute("SELECT id,email,status,created,confirmed,unsubscribed,place FROM letter_subscribers ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,id DESC LIMIT 200").fetchall()
+        for L in rows: L['stats'] = stats(L['id']) if L['status'] == 'sent' else None
         return dict(rows=rows, subs=subs, counts=counts(), cfg=settings(), days=DAYS, freqs=FREQS, ai_ready=desk.ai_ready(), naver_ready=bool(naver()) and naver()['ready'](),
                     mail_ready=notify.email_ready(), logs=setting('letter_log', [])[:10])
 
@@ -732,6 +790,10 @@ def install(S):
                     subject, html, text = email_parts(L, 'test')
                     try: send_one(to, '[테스트] ' + subject, html, text, 'test'); flash(f'{to}로 테스트 메일을 보냈어요.')
                     except Exception as e: flash(f'테스트 메일을 보내지 못했어요 ({type(e).__name__})')
+            elif act == 'mark_sent' and L['status'] != 'sent':
+                # 스티비 등 다른 곳에서 보낸 호: 사이트 '지난 레터'에 올라가게 보낸 호로 표시 (우리 구독자에게는 보내지 않음)
+                with conn() as db: db.execute("UPDATE letters SET status='sent',sent_at=?,trigger='stibee',updated=? WHERE id=?", (stamp(), stamp(), lid))
+                flash('보낸 호로 표시했어요. 사이트의 지난 레터에 올라가요.')
             elif act == 'send':
                 if L['status'] == 'sent': flash('이미 보낸 호예요.')
                 elif L['problems'] and not request.form.get('ack'):
@@ -745,6 +807,7 @@ def install(S):
         with conn() as db:
             sends = dict(db.execute('SELECT status,COUNT(*) FROM letter_sends WHERE letter_id=? GROUP BY status', (lid,)).fetchall())
         return render_template('admin_letter_edit.html', L=L, preview=html, subject=subject, mail_ready=notify.email_ready(), counts=counts(), sends=sends,
+                               stats=stats(lid), stibee=stibee_html(L), stibee_subject=f"[{NAME}] {L['title']}",
                                test_to=os.getenv('ADMIN_ALERT_EMAIL', '').split(',')[0].strip())
 
     def join_consent(email, verified):
@@ -775,7 +838,8 @@ def install(S):
         else: threading.Thread(target=lambda: _quiet(job), daemon=True).start()
 
     app.extensions['soboru_letter'] = {'join': join_consent, 'generate': generate, 'weekly': weekly, 'send': send_issue, 'collect': collect_news, 'settings': settings,
-                                      'email_parts': email_parts, 'get': get, 'check': check, 'sections': sections}
+                                      'email_parts': email_parts, 'get': get, 'check': check, 'sections': sections,
+                                      'stibee_html': stibee_html, 'stats': stats}
 
 
 def main(argv):

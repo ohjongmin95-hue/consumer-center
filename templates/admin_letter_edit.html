@@ -1,5 +1,6 @@
 {% extends 'console.html' %}
-{% block title %}소보루 레터 {{ L.no }}호 | {{ site_name() }}{% endblock %}
+{% block title %}소보루 레터 {{ L.no }}호 | {{ site_name() }}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById(b.dataset.copy),o=b.textContent;function ok(){b.textContent=b.dataset.done;setTimeout(function(){b.textContent=o},1800)}if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t.value).then(ok,function(){t.select();document.execCommand('copy');ok()})}else{t.select();document.execCommand('copy');ok()}})})</script>
+{% endblock %}
 {% block content %}
 {% set draft = L.status == 'draft' %}
 <main class="page"><div class="wrap lt-ad-edit">
@@ -61,6 +62,19 @@
         {% if not draft %}<div class="admin-actions"><button type="submit" name="act" value="delete" class="secondary danger" onclick="return confirm('이 호를 지울까요? 사이트의 지난 레터에서 사라지고 되돌릴 수 없어요. 이미 보낸 메일은 그대로예요.')">이 호 지우기</button></div>{% endif %}
         {% if draft %}<div class="admin-actions"><button type="submit" name="act" value="save" class="primary">저장하고 다시 검사</button><button type="submit" name="act" value="delete" class="secondary danger" onclick="return confirm('이 초안을 지울까요?')">초안 지우기</button></div>{% endif %}
       </div>
+      {% if L.status == 'sent' and stats.sent %}<div class="form-panel lt-ad-stats">
+        <h2>읽은 사람</h2>
+        <div class="lt-ad-counts"><div><b>{{ stats.sent }}</b><span>받은 사람</span></div><div><b>{{ stats.open }}</b><span>열어 봄 · {{ stats.open_pct }}%</span></div><div><b>{{ stats.click }}</b><span>링크 누름 · {{ stats.click_pct }}%</span></div></div>
+        <p class="meta">메일 속 작은 그림이 불러와지면 '열어 봄'으로 세요. 그림을 막아 둔 메일 앱은 빠지고, 아이폰 메일은 미리 열어 둬서 더 많이 잡힐 수 있어요. 링크를 누른 사람은 열어 본 사람에도 들어가요.</p>
+      </div>{% endif %}
+      <div class="form-panel lt-ad-stibee">
+        <h2>스티비로 보내기</h2>
+        <p class="meta">스티비 > 새 이메일 > 템플릿에서 <b>HTML 에디터로 만들기</b>를 고르고, 아래 코드를 통째로 붙여 넣어요. 수신 거부 링크는 스티비 치환자(<code>$%unsubscribe%$</code>)로 넣어 두었어요. 제목은 아래 제목을 그대로 쓰면 돼요.</p>
+        <label class="field">메일 제목<input value="{{ stibee_subject }}" readonly></label>
+        <label class="field">HTML 코드<textarea id="lt-stibee" rows="5" readonly>{{ stibee }}</textarea></label>
+        <div class="admin-actions"><button type="button" class="primary" data-copy="lt-stibee" data-done="복사했어요">HTML 복사</button>
+          {% if L.status != 'sent' %}<button type="submit" name="act" value="mark_sent" class="secondary" onclick="return confirm('스티비로 보냈나요? 보낸 호로 표시하면 사이트의 지난 레터에 올라가요. 우리 구독자에게는 따로 보내지 않아요.')">스티비로 보냈어요 (보낸 호로 표시)</button>{% endif %}</div>
+      </div>
       <div class="form-panel lt-ad-send">
         <h2>테스트 메일</h2>
         <div class="lt-ad-inline"><input type="email" name="test_to" value="{{ test_to }}" placeholder="받아 볼 이메일 주소" aria-label="테스트 메일 주소"><button type="submit" name="act" value="test"{% if not mail_ready %} disabled{% endif %}>테스트 메일 보내기</button></div>
@@ -79,4 +93,5 @@
     </div>
   </div>
 </div></main>
+<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById(b.dataset.copy),o=b.textContent;function ok(){b.textContent=b.dataset.done;setTimeout(function(){b.textContent=o},1800)}if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t.value).then(ok,function(){t.select();document.execCommand('copy');ok()})}else{t.select();document.execCommand('copy');ok()}})})</script>
 {% endblock %}

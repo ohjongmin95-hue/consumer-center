@@ -41,7 +41,8 @@
     <span class="aw-badge{{ ' ok' if L.status == 'sent' }}">{{ {'draft': '초안', 'scheduled': '보내는 중', 'sent': '보냄'}.get(L.status, L.status) }}</span>
     {% if L.check_ok %}<span class="aw-badge ok">검사 통과</span>{% else %}<span class="aw-badge bad">검토 필요 {{ L.problems|length }}곳</span>{% endif %}
     <span class="aw-badge">뉴스 {{ L['items']|length }}개</span>
-    {% if L.status == 'sent' %}<span class="aw-badge">{{ L.sent_count }}명에게 보냄{% if L.failed %} · 실패 {{ L.failed }}{% endif %}</span>{% endif %}
+    {% if L.status == 'sent' %}<span class="aw-badge">{% if L.trigger == 'stibee' %}스티비로 보냄{% else %}{{ L.sent_count }}명에게 보냄{% if L.failed %} · 실패 {{ L.failed }}{% endif %}{% endif %}</span>{% endif %}
+    {% if L.stats and L.stats.sent %}<span class="aw-badge">열어 봄 {{ L.stats.open_pct }}% · 링크 누름 {{ L.stats.click_pct }}%</span>{% endif %}
   </div>
   {% else %}<p class="meta">아직 만든 레터가 없어요. '이번 호 만들기'를 눌러 첫 호를 만들어 보세요.</p>{% endfor %}
 
