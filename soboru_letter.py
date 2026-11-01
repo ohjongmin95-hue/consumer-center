@@ -97,7 +97,7 @@ def guess_shop(text):
 
 
 BOXES = (('number', '숫자로 보는 오늘'), ('buzz', '소비 트렌드'), ('harm', '소비자 피해 예방'), ('lawbox', '법률·제도'))  # 뉴스 말고 AI가 쓰는 칸 (sections에 담음)
-COPY_WORDS = 6            # 기사 원문과 이만큼 어절이 그대로 겹치면 '검토 필요'
+COPY_WORDS = 8            # 기사 원문과 이만큼 어절이 그대로 겹치면 '검토 필요'
 AI_TIMEOUT = 120
 EMAIL_RE = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
 UNSUB_MARK = '__LETTER_UNSUB__'
@@ -727,30 +727,33 @@ def install(S):
         """[{where, line, numbers|words|copy}] — 자료에 없는 숫자, 기업 평가로 읽힐 말, 기사 원문을 그대로 옮긴 부분."""
         problems = []
         sec = sec or {}
+        extra = sec.get('_extra') or []   # 숫자 출처를 다시 찾아 확인한 기사 본문 (autofix가 더함)
+        chk = lambda text, facts: W.check_text(text, {'자료': facts, '확인한 기사': extra}) if extra else W.check_text(text, facts)  # 확인한 기사도 자료로
         every = {'뉴스': [it.get('_facts', {}) for it in items], '호': no, '오늘': datetime.date.today().isoformat(), '소비자상담센터 전화번호': '1372'}
         for where, text in (('메일 제목', title), ('첫인사', intro), ('맺음말', outro)):
-            problems += [dict(p, where=where) for p in W.check_text(text, every)]
+            problems += [dict(p, where=where) for p in chk(text, every)]
         for i, it in enumerate(items, 1):
             where = f'{i}번 뉴스'
             text = '\n'.join([it['title'], it['body'], it['tip']])
-            problems += [dict(p, where=where) for p in W.check_text(text, it.get('_facts', {}))]
+            problems += [dict(p, where=where) for p in chk(text, it.get('_facts', {}))]
             same = copied('\n'.join([it['body'], it['tip']]), it.get('_source', ''))  # 제목은 뉴스 헤드라인처럼 짧은 사실이라 겹쳐도 봐줌
             if same: problems.append({'where': where, 'line': same, 'copy': True})
         if sec.get('comment'):
             c = sec['comment']; text = comment_text(c)
-            problems += [dict(p, where='에디터 코멘트') for p in W.check_text(text, c.get('_facts', {}))]
+            # 메인 뉴스는 같은 날 뉴스 꼭지의 기사도 함께 보고 쓰므로 그 자료까지 (운영자 2026-11-01: 2번 뉴스의 9300억 달러가 코멘트에서 '없는 숫자'로 걸림)
+            problems += [dict(p, where='에디터 코멘트') for p in chk(text, {'코멘트': c.get('_facts', {}), '뉴스': [it.get('_facts', {}) for it in items]})]
             same = copied(text, c.get('_source', ''))
             if same: problems.append({'where': '에디터 코멘트', 'line': same, 'copy': True})
         for i, b in enumerate(sec.get('briefs') or [], 1):
             where = f'한 줄 뉴스 {i}'
-            problems += [dict(p, where=where) for p in W.check_text(b['line'], b.get('_facts', {}))]
+            problems += [dict(p, where=where) for p in chk(b['line'], b.get('_facts', {}))]
             same = copied(b['line'], b.get('_source', ''))
             if same: problems.append({'where': where, 'line': same, 'copy': True})
         for key, where in BOXES:
             b = sec.get(key)
             if not b: continue
             text = box_text(key, b)
-            problems += [dict(p, where=where) for p in W.check_text(text, b.get('_facts', {}))]
+            problems += [dict(p, where=where) for p in chk(text, b.get('_facts', {}))]
             same = copied(text, b.get('_source', ''))
             if same: problems.append({'where': where, 'line': same, 'copy': True})
         return problems
@@ -775,6 +778,110 @@ def install(S):
         with conn() as db:
             r = db.execute('SELECT * FROM letters WHERE ' + ('id=?' if lid is not None else 'no=?'), (lid if lid is not None else no,)).fetchone()
         return row_info(r) if r else None
+
+    def text_slots(T, items, sec):
+        """고칠 수 있는 글 칸: [(담은 것, 키, 그 칸의 자료)]"""
+        out = [(T, k, None) for k in ('title', 'intro', 'outro')]
+        for it in items: out += [(it, k, it.get('_facts', {})) for k in ('title', 'body', 'tip')]
+        c = sec.get('comment')
+        if c:
+            f = {'코멘트': c.get('_facts', {}), '뉴스': [it.get('_facts', {}) for it in items]}
+            out += [(c, k, f) for k in ('title', 'lead', 'note')]
+            for k in ('what', 'why', 'wallet'):
+                out.append((c[k], 'body', f))
+                for p in c[k].get('points') or []: out += [(p, 'name', f), (p, 'text', f)]
+        for b in sec.get('briefs') or []: out.append((b, 'line', b.get('_facts', {})))
+        for key, _ in BOXES:
+            b = sec.get(key)
+            if not b: continue
+            out += [(b, k, b.get('_facts', {})) for k in ('value', 'label', 'title', 'body', 'point', 'insight', 'tip') if isinstance(b.get(k), str)]
+            for i in range(len(b.get('steps') or [])): out.append((b['steps'], i, b.get('_facts', {})))
+            for p in b.get('points') or []: out += [(p, 'name', b.get('_facts', {})), (p, 'text', b.get('_facts', {}))]
+        return [s for s in out if isinstance(s[0][s[1]] if isinstance(s[0], list) else s[0].get(s[1]), str)]
+
+    def slot_of(p, slots):
+        for s in slots:
+            v = s[0][s[1]] or ''
+            if p.get('copy'):
+                if p['line'] in ' '.join(words(v)): return s
+            elif p['line'][:200] and p['line'][:200] in ' '.join(v.split()): return s
+        return None
+
+    def sentence_with(text, needle):
+        for sent in re.split(r'(?<=[.!?])\s+', text or ''):
+            if needle in sent: return sent
+        return text or ''
+
+    def find_number_source(sentence, num):
+        """숫자가 나온 기사를 네이버 뉴스에서 다시 찾음 (주요 언론 먼저). 찾으면 {url, source, text}"""
+        nv = naver()
+        if not nv or not nv['ready'](): return None
+        keys = [w for w in words(re.sub(r'\d[\d,.]*', ' ', sentence)) if len(w) >= 2][:5]
+        if not keys: return None
+        try: res = nv['search']('news', ' '.join(keys[:4]), display=20, sort='sim')['items']
+        except Exception: return None
+        res = sorted(res, key=lambda it: not major(it['source']))
+        for it in [x for x in res if x.get('naver')][:4]:
+            body = article_body(it['naver'])
+            if body and not [q for q in W.check_text(sentence, {'기사': body}) if num in q.get('numbers', [])]:
+                return {'url': it['url'], 'source': major(it['source']) or it['source'], 'text': body}
+        return None
+
+    FIX_SYSTEM = ('너는 경제 뉴스레터 교열 기자야. [고칠 글]마다 [왜]에 적힌 문제만 고쳐서 글 전체를 다시 써 줘. '
+                  '자료에 없는 숫자는 그 숫자만 빼고 문장은 살려(숫자 대신 "크게", "역대 최대"처럼 자료가 말하는 만큼만). 기사 문장을 그대로 옮긴 곳은 같은 뜻을 네 말로 바꿔. '
+                  '기업을 평가하는 말은 사실을 전하는 말로 바꿔. 나머지 문장·숫자·말투(해요체)는 그대로 둬. 자료에 없는 새 숫자는 넣지 마. '
+                  'JSON만: {"fixes": [{"id": 번호, "text": "고친 글 전체"}]}')
+
+    def autofix(T, items, no, sec):
+        """검토 필요를 사람이 보지 않아도 되게 (운영자 2026-11-01): ① 자료에 없는 숫자는 네이버에서 그 숫자가 나온 기사를 찾아
+        찾으면 숫자는 그대로 두고 그 기사로 링크(뉴닉처럼) ② 못 찾은 숫자·따라 쓴 문장·평가하는 말은 AI 교열로 그 부분만 고침. 남은 문제를 돌려줌."""
+        problems = check(T['title'], T['intro'], T['outro'], items, no, sec)
+        if not problems: return problems
+        slots = text_slots(T, items, sec)
+        links, extra, todo = list(sec.get('_links') or []), list(sec.get('_extra') or []), []
+        for p in problems:
+            s = slot_of(p, slots)
+            if not s: continue
+            v = s[0][s[1]]
+            left = []
+            for num in p.get('numbers') or []:
+                sent = sentence_with(v, num)
+                got = find_number_source(sent, num)
+                if got:
+                    m = re.search(re.escape(num) + r'[^\s,.)]*', sent)
+                    links.append({'text': m.group() if m else num, 'url': got['url'], 'source': got['source']})
+                    extra.append(got['source'] + ' ' + got['text'])
+                else: left.append(num)
+            why = ('자료에 없는 숫자 ' + ', '.join(left)) if left else ('기사 문장을 그대로 옮김: ' + p['line']) if p.get('copy') else ('평가로 읽힐 말 ' + ', '.join(p.get('words') or [])) if p.get('words') else ''
+            if why: todo.append((s, why))
+        if links: sec['_links'] = links
+        if extra: sec['_extra'] = extra[-20:]
+        if todo and os.getenv('OPENAI_API_KEY', '').strip():
+            seen, ask = set(), []
+            for s, why in todo:
+                if id(s[0]) * 100 + hash(s[1]) % 100 in seen: continue
+                seen.add(id(s[0]) * 100 + hash(s[1]) % 100); ask.append((s, why))
+            user = json.dumps([{'id': i, '고칠 글': s[0][s[1]], '왜': why, '자료': json.dumps(s[2] if s[2] is not None else {'뉴스': [it.get('_facts', {}) for it in items]}, ensure_ascii=False)[:6000]}
+                               for i, (s, why) in enumerate(ask)], ensure_ascii=False)
+            try: out = ai_json(FIX_SYSTEM, user, 3000)
+            except RuntimeError: out = {}
+            for f in (out.get('fixes') if isinstance(out, dict) and isinstance(out.get('fixes'), list) else []):
+                if not isinstance(f, dict) or not isinstance(f.get('id'), int) or not 0 <= f['id'] < len(ask): continue
+                s = ask[f['id']][0]; new = W._plain(f.get('text'), 2000)
+                if new and len(new) >= len(s[0][s[1]]) * 0.4: s[0][s[1]] = new
+        left = check(T['title'], T['intro'], T['outro'], items, no, sec)
+        log({'status': 'info', 'no': no, 'trigger': 'autofix', 'reason': f'검토 필요 {len(problems)}곳 → 기사 링크 {len(links)}개, 남은 곳 {len(left)}곳'})
+        return left
+
+    def ai_json(system, user, max_tokens):
+        key = os.getenv('OPENAI_API_KEY', '').strip()
+        if not key: raise RuntimeError('OpenAI API 키가 없어요')
+        body = {'model': desk.ai_model(), 'temperature': 0.2, 'response_format': {'type': 'json_object'}, 'max_tokens': max_tokens,
+                'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]}
+        st, res = desk.post_json('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, AI_TIMEOUT)
+        if st != 200: raise RuntimeError(f'AI 응답 오류 ({st})')
+        try: return json.loads(res['choices'][0]['message']['content'])
+        except (KeyError, IndexError, TypeError, ValueError): raise RuntimeError('AI 응답을 읽지 못했어요')
 
     def make_articles(no, items):
         """갓 구운 오늘의 뉴스 한 꼭지마다 매거진 기사(/life) 한 편 (운영자 2026-11-01: 뉴스 하나로 레터와 아티클 두 번).
@@ -832,8 +939,10 @@ def install(S):
         mk = fetch_market()
         if mk: ex['market'] = mk
         sec = dict(sections(no), **ex)
+        T = {'title': title, 'intro': intro, 'outro': outro}
+        problems = autofix(T, items, no, sec)
+        title, intro, outro = T['title'], T['intro'], T['outro']
         make_articles(no, items)
-        problems = check(title, intro, outro, items, no, sec)
         with conn() as db:
             lid = db.execute('INSERT INTO letters(no,title,intro,outro,items,sections,status,created,updated,check_ok,problems,trigger) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
                              (no, title, intro, outro, json.dumps(items, ensure_ascii=False), json.dumps(sec, ensure_ascii=False), 'draft', stamp(), stamp(),
@@ -1065,6 +1174,23 @@ def install(S):
         return dict(cfg, day_name=day, when=when, span='이번 주' if cfg['freq'] == 'weekly' else '오늘')
     app.jinja_env.globals.update(letter_counts=counts, letter_kdate=kdate, letter_cfg=letter_cfg, letter_icon=lambda t: TOPIC_ICON.get(t or '', ('', ''))[1])
     app.jinja_env.filters['letter_paras'] = body_lines
+
+    from markupsafe import Markup, escape
+    from jinja2 import pass_context
+
+    @pass_context
+    def srclinks(ctx, text):
+        """숫자 출처 기사 링크(뉴닉처럼): 본문 속 그 숫자에 밑줄 링크"""
+        L = ctx.get('L') or {}
+        links = ((L.get('sections') if isinstance(L, dict) else getattr(L, 'sections', None)) or {}).get('_links') or []
+        out = escape(text or '')
+        for l in links:
+            ph = escape(l.get('text', ''))
+            if ph and ph in out and str(l.get('url', '')).startswith(('https://', 'http://')):
+                a = Markup('<a href="%s" target="_blank" rel="noopener nofollow" title="%s" style="color:inherit;text-decoration:underline;text-decoration-color:#EF920E;text-underline-offset:3px;">%s</a>') % (l['url'], l.get('source', ''), ph)
+                out = Markup(out.replace(ph, a, 1))
+        return Markup(out)
+    app.jinja_env.filters['srclinks'] = srclinks
 
     @app.route('/letter')
     def letter_home():

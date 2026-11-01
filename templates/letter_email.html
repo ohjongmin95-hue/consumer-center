@@ -30,7 +30,9 @@
 <tr><td align="center" style="padding:8px 0 0;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;">
   {#- 표지: 얇고 깔끔한 테두리 안에 로고를 크게, 둘레에 빵 이모지·호수 (운영자 2026-11-01) -#}
-  <tr><td style="padding:24px 32px 0;">
+  <tr><td style="padding:16px 32px 0;">
+    {#- 맨 위 인사 + 바로 수신 거부 (운영자 2026-11-01) -#}
+    <p style="margin:0 0 14px;text-align:center;{{ F }}font-size:13px;line-height:1.7;color:#8a827a;">안녕하세요, 소보루예요. 생활에 도움이 되는 소식을 맛있게 구워 먼저 찾아왔어요. 받고 싶지 않으시면 아래 수신 거부하기를 눌러 주세요. 따로 해지하지 않으시면 계속 보내 드릴게요.<br><a href="{{ site }}/letter" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #EF920E;border-radius:999px;background:#EF920E;color:#ffffff;font-weight:700;text-decoration:none;">구독하기</a>&nbsp;&nbsp;<a href="{{ unsub }}" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #d9d2c9;border-radius:999px;color:#6b625a;font-weight:700;text-decoration:none;">수신 거부하기</a><br><span style="display:inline-block;margin-top:6px;font-size:12px;color:#a39a91;">구독하기를 누르시면 소보루 레터(정보성 광고 포함) 받기에 동의하신 것으로 봐요.</span></p>
     <div style="height:3px;background:#EF920E;font-size:0;line-height:0;">&nbsp;</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
     <tr><td align="center" style="padding:34px 6px 40px;{{ F }}">
@@ -74,7 +76,7 @@
       {% for it in econ + policy %}
       <div id="n{{ loop.index }}" style="margin:0 0 {{ '26px' if not loop.last else '16px' }};">
         <p style="margin:0 0 8px;font-size:18px;line-height:1.5;font-weight:800;color:#1d1d1f;letter-spacing:-0.3px;"><span style="display:inline-block;margin:0 6px 0 0;padding:1px 9px;border-radius:999px;background:#ffe7c7;color:#CE6719;font-size:14px;font-weight:800;vertical-align:2px;">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span>{{ it.title }}</p>
-        <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body }} {% if it.read %}<a href="{{ it.read }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.read }}</a>{% else %}<a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.more }}</a>{% endif %}</p>
+        <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body|srclinks }} <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.more }}</a></p>
       </div>
       {% endfor %}
     </td></tr></table>
@@ -94,14 +96,14 @@
     {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" width="576" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:576px;height:auto;border:0;border-radius:16px;"><p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p></div>{% endif %}
     <h2 style="margin:0 0 {{ '8px' if c.tags else '14px' }};font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
     {% if c.tags %}<p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#CE6719;">{% for t in c.tags %}#{{ t }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>{% endif %}
-    <p style="margin:0 0 26px;font-size:17px;line-height:1.9;color:#3a3633;">{{ c.lead }}</p>
+    <p style="margin:0 0 26px;font-size:17px;line-height:1.9;color:#3a3633;">{{ c.lead|srclinks }}</p>
     {% for key in ('what', 'why', 'wallet') %}{% set b = c[key] %}{% set head = H[key] if key != 'wallet' or not b.head else '👛 ' ~ b.head %}
     {% if b.body or b.points %}
     <p style="margin:0 0 10px;font-size:20px;line-height:1.5;font-weight:800;color:#1d1d1f;">{{ head }}</p>
-    {% if b.body %}<p style="margin:0 0 12px;font-size:17px;line-height:1.9;color:#3a3633;">{{ b.body }}</p>{% endif %}
+    {% if b.body %}<p style="margin:0 0 12px;font-size:17px;line-height:1.9;color:#3a3633;">{{ b.body|srclinks }}</p>{% endif %}
     {% for p in b.points or [] %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;"><tr>
       <td width="20" valign="top" style="width:20px;padding-top:11px;"><span style="display:block;width:7px;height:7px;border-radius:4px;background:#ef7300;font-size:0;line-height:0;">&nbsp;</span></td>
-      <td valign="top" style="{{ F }}font-size:17px;line-height:1.85;color:#3a3633;"><b style="color:#1d1d1f;">{{ p.name }}:</b> {{ p.text }}</td></tr></table>{% endfor %}
+      <td valign="top" style="{{ F }}font-size:17px;line-height:1.85;color:#3a3633;"><b style="color:#1d1d1f;">{{ p.name }}:</b> {{ p.text|srclinks }}</td></tr></table>{% endfor %}
     <div style="height:18px;font-size:0;line-height:0;">&nbsp;</div>
     {% endif %}{% endfor %}
     {% if c.note %}
@@ -131,7 +133,7 @@
           <td valign="bottom" style="font-family:'Courier New',Courier,monospace;font-size:16px;font-weight:700;color:#1d1d1f;padding-bottom:8px;">{{ b.label }}</td></tr>
           <tr><td style="padding:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom" style="font-family:'Courier New',Courier,monospace;font-size:18px;font-weight:700;color:#1d1d1f;padding-bottom:10px;">TOTAL</td><td align="right" valign="bottom" style="{{ F }}font-size:48px;line-height:1.1;font-weight:800;color:#e8590c;letter-spacing:-1px;white-space:nowrap;">{{ b.value }}</td></tr></table></td></tr></table>
         <div style="margin:14px 0;border-top:2px dashed #b9ad9b;font-size:0;line-height:0;">&nbsp;</div>
-        <p style="margin:0;font-size:17px;line-height:1.75;color:#1d1d1f;">{{ b.body }}</p>
+        <p style="margin:0;font-size:17px;line-height:1.75;color:#1d1d1f;">{{ b.body|srclinks }}</p>
         <div style="margin:14px 0;border-top:2px dashed #b9ad9b;font-size:0;line-height:0;">&nbsp;</div>
         {% if b.src and b.src.url %}<p style="margin:0;text-align:center;font-family:'Courier New',Courier,monospace;font-size:13px;color:#5a5048;">출처 {{ b.src.name or '기사' }} · <a href="{{ b.src.url }}" style="color:#5a5048;text-decoration:underline;">원문 보기</a></p>{% endif %}
         <p style="margin:6px 0 0;text-align:center;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:700;color:#5a5048;">THANK YOU · 맛있는 하루 되세요</p>
@@ -184,10 +186,10 @@
       {% if R != 'board' %}<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px;background:#ffffff;border:2px solid {{ T.main }};border-radius:999px;"><tr><td style="padding:8px 18px;{{ F }}font-size:14px;font-weight:800;color:{{ T.deep }};white-space:nowrap;">{{ ic(T.icons[0], 18) }}&nbsp; {{ T.en }} &nbsp;{{ ic(T.icons[1], 18) }}</td></tr></table>{% endif %}
       <p style="margin:0 0 6px;text-align:center;font-size:13px;font-weight:800;letter-spacing:2px;color:{{ T.deep }};">{{ T.ko }}</p>
       <p style="margin:0 0 10px;text-align:center;font-size:22px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ b.title }}</p>
-      {% if b.body %}<p style="margin:0 0 18px;font-size:16px;line-height:1.85;color:#3a3633;">{{ b.body }}</p>{% endif %}
+      {% if b.body %}<p style="margin:0 0 18px;font-size:16px;line-height:1.85;color:#3a3633;">{{ b.body|srclinks }}</p>{% endif %}
       {% for p in b.points %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;background:#ffffff;border:2px dashed {{ T.main }};border-radius:18px;"><tr>
         <td width="66" valign="top" style="width:66px;padding:16px 0 14px 14px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" width="52" height="52" style="width:52px;height:52px;border-radius:26px;background:{{ T.bg }};">{{ ic(T.icons[loop.index0 % 3], 34) }}</td></tr></table></td>
-        <td valign="top" style="padding:15px 16px 15px 10px;{{ F }}"><p style="margin:0 0 5px;font-size:17px;font-weight:800;color:{{ T.deep }};">{{ p.name }} <span style="display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;background:{{ T.main }};color:#ffffff;font-size:12px;font-weight:800;vertical-align:2px;">HOT</span></p><p style="margin:0;font-size:16px;line-height:1.8;color:#3a3633;">{{ p.text }}</p></td></tr></table>{% endfor %}
+        <td valign="top" style="padding:15px 16px 15px 10px;{{ F }}"><p style="margin:0 0 5px;font-size:17px;font-weight:800;color:{{ T.deep }};">{{ p.name }} <span style="display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;background:{{ T.main }};color:#ffffff;font-size:12px;font-weight:800;vertical-align:2px;">HOT</span></p><p style="margin:0;font-size:16px;line-height:1.8;color:#3a3633;">{{ p.text|srclinks }}</p></td></tr></table>{% endfor %}
       {% if b.insight %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 12px;background:#ffffff;border-radius:18px;"><tr><td style="padding:20px 20px 18px;{{ F }}">
         <p style="margin:0 0 8px;font-size:14px;font-weight:800;color:{{ T.deep }};">{{ ic('bulb', 18) }}&nbsp; 소보루의 트렌드 읽기</p>
         <p style="margin:0;font-size:16px;line-height:1.9;color:#3a3633;">{{ b.insight }}</p></td></tr></table>{% endif %}
@@ -216,7 +218,7 @@
   {{ pill('소비자 피해 예방', False) }}
   <tr><td style="padding:22px 32px 4px;{{ F }}" id="harm">
     <p style="margin:0 0 12px;font-size:22px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ ic('siren', 24) }}&nbsp; {{ b.title }}</p>
-    {% for p in b.body|letter_paras %}<p style="margin:0 0 14px;font-size:17px;line-height:1.85;color:#3a3633;">{{ p }}</p>{% endfor %}
+    {% for p in b.body|letter_paras %}<p style="margin:0 0 14px;font-size:17px;line-height:1.85;color:#3a3633;">{{ p|srclinks }}</p>{% endfor %}
     {% if b.steps %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f6;border-radius:16px;"><tr><td style="padding:16px 18px 8px;{{ F }}">
       <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:#652D1C;">{{ ic('shield', 18) }}&nbsp; 이런 일을 겪었다면</p>
       {% for st in b.steps %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;"><tr>
@@ -232,7 +234,7 @@
   <tr><td style="padding:22px 32px 4px;{{ F }}" id="law">
     <p style="margin:0 0 6px;font-size:15px;font-weight:800;color:#ef7300;letter-spacing:0.4px;">{{ b.topic }}</p>
     <p style="margin:0 0 12px;font-size:22px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ ic('scale', 24) }}&nbsp; {{ b.title }}</p>
-    {% for p in b.body|letter_paras %}<p style="margin:0 0 14px;font-size:17px;line-height:1.85;color:#3a3633;">{{ p }}</p>{% endfor %}
+    {% for p in b.body|letter_paras %}<p style="margin:0 0 14px;font-size:17px;line-height:1.85;color:#3a3633;">{{ p|srclinks }}</p>{% endfor %}
     {% if b.point %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff6ec;border-radius:16px;"><tr><td style="padding:14px 18px;{{ F }}">
       <p style="margin:0 0 3px;font-size:15px;font-weight:800;color:#ef7300;">이것만 기억해요</p>
       <p style="margin:0;font-size:17px;line-height:1.65;color:#652D1C;font-weight:600;">{{ b.point }}</p></td></tr></table>{% endif %}

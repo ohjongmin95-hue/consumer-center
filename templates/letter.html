@@ -8,32 +8,38 @@
 <main class="sb-wrap lt-page">
   {% for blk in blocks('letter') %}{{ ed_block('letter', blk) }}
   {% if blk == 'hero' %}
-  <section class="lt-hero" id="sub">
-    <div class="lt-hero-copy">
-      <p class="lt-kicker"><span class="tf" aria-hidden="true">📨</span> {{ ui('letter.kicker', 'SOBORU LETTER') }}</p>
-      <h1>{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }}</h1>
-      <p class="lt-hero-sub">{{ ui('letter.sub', '바빠서 뉴스 볼 틈이 없어도 괜찮아요. 경제·사회·국제·IT부터 내 지갑과 닿은 소비자 소식까지, 꼭 알아야 할 것만 골라 친구처럼 쉽게 풀어 {when} 메일로 보내 드릴게요.', when=cfg.when) }}</p>
-      {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
-                      'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent', '이메일 수집·이용에 동의해야 구독할 수 있어요.')),
-                      'limit': ('bad', ui('letter.n_limit', '신청이 너무 잦아요. 10분쯤 뒤에 다시 해 주세요.')), 'nomail': ('bad', ui('letter.n_nomail', '지금은 메일 발송을 준비하고 있어 구독 신청을 받을 수 없어요. 조금만 기다려 주세요.')),
-                      'fail': ('bad', ui('letter.n_fail', '확인 메일을 보내지 못했어요. 잠시 뒤 다시 해 주세요.'))} %}
-      {% if state in notes %}<p class="lt-note {{ notes[state][0] }}" role="status">{{ notes[state][1] }}</p>{% endif %}
-      {{ subscribe_form('letter', True) }}
+  {# 레터 양식(귤색 선·SOBORU 로고·빵·계산대 소보루)을 그대로 옮김. 설명 글은 넣지 않음 (운영자 2026-11-01) #}
+  <section class="lt-hero lt2" id="sub">
+    <div class="lt2-cover" aria-hidden="true">
+      <span class="tf lt2-b1">🥯</span><span class="tf lt2-b2">🥐</span>
+      <img class="lt2-mark" src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="" width="300">
+      <span class="tf lt2-b3">🍞</span><span class="tf lt2-b4">🍩</span>
     </div>
-    <div class="lt-hero-art" aria-hidden="true">
-      <span class="lt-env tf">✉️</span>
-      <img src="{{ asset('img/soboru-character.png') }}" alt="" width="152" height="118">
+    <h1>{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }}</h1>
+    <div class="lt2-counter">
+      <img class="lt2-bounce" src="{{ asset('img/soboru-character-bounce.gif') }}" alt="" width="150" height="130">
+      <div class="lt2-desk">
+        <p class="lt2-when">{{ ui('letter.when', '{when} 구워 보내요', when=cfg.when) }}</p>
+        {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
+                        'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent', '이메일 수집·이용에 동의해야 구독할 수 있어요.')),
+                        'limit': ('bad', ui('letter.n_limit', '신청이 너무 잦아요. 10분쯤 뒤에 다시 해 주세요.')), 'nomail': ('bad', ui('letter.n_nomail', '지금은 메일 발송을 준비하고 있어 구독 신청을 받을 수 없어요. 조금만 기다려 주세요.')),
+                        'fail': ('bad', ui('letter.n_fail', '확인 메일을 보내지 못했어요. 잠시 뒤 다시 해 주세요.'))} %}
+        {% if state in notes %}<p class="lt-note {{ notes[state][0] }}" role="status">{{ notes[state][1] }}</p>{% endif %}
+        {{ subscribe_form('letter', True) }}
+      </div>
     </div>
   </section>
   {% elif blk == 'feats' %}
-  <ul class="lt-feats">
-    <li><span class="lt-fi lc1 tf" aria-hidden="true">📰</span><div><b>{{ ui('letter.f1', '{span}의 주요 이슈', span=cfg.span) }}</b><p>{{ ui('letter.f1_body', '뉴스 3~5개를 우리 말로 짧게 풀고, 기사 원문 링크도 붙여요.') }}</p></div></li>
-    <li><span class="lt-fi lc3 tf" aria-hidden="true">🎯</span><div><b>{{ ui('letter.f2', '나한테는?') }}</b><p>{{ ui('letter.f2_body', '이 소식이 내 생활과 지갑에 어떤 의미인지 한 줄로 짚어 드려요.') }}</p></div></li>
-    <li><span class="lt-fi lc6 tf" aria-hidden="true">🏆</span><div><b>{{ ui('letter.f3', '소보루 픽') }}</b><p>{{ ui('letter.f3_body', '공감을 많이 받은 리뷰와 지금 진행 중인 리뷰 주제를 모았어요.') }}</p></div></li>
+  {# 레터에 담기는 칸: 이름만, 칸 모양 그대로 #}
+  <ul class="lt-feats lt2-feats">
+    <li class="lt2-bag"><span class="tf" aria-hidden="true">🥯</span><b>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</b></li>
+    <li class="lt2-main"><span class="tf" aria-hidden="true">🥖</span><b>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</b></li>
+    <li class="lt2-rcpt"><span class="tf" aria-hidden="true">🧾</span><b>{{ ui('letter.t3', '숫자로 보는 오늘') }}</b></li>
+    <li class="lt2-crs"><img src="{{ asset('img/editor-croissant.png') }}" alt="" width="64"><b>{{ ui('letter.t4', '크로와상의 한마디') }}</b></li>
   </ul>
   {% elif blk == 'archive' %}
   <section class="lt-archive">
-    <div class="sb-sec-head"><div><h2>{{ ui('letter.archive_title', '지난 레터') }}</h2><p>{{ ui('letter.archive_sub', '보낸 레터는 웹에서도 다시 볼 수 있어요.') }}</p></div></div>
+    <div class="sb-sec-head"><div><h2>{{ ui('letter.archive_title', '지난 레터') }}</h2></div></div>
     {% if rows %}
     <ol class="lt-list">
       {% for L in rows %}

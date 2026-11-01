@@ -2904,8 +2904,8 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-sign-board{background:none;border-radius:0;border-top:6px solid #EF920E;padding:18px 0 0}
 .lt-sign-board small{color:#CE6719;font-size:13px}.lt-sign-board b{color:#1d1d1f;font-size:26px}
 .lt-sign-peek{width:150px;height:92px;margin:0}
-.lt-note{display:flex;gap:12px;align-items:flex-start;margin:6px 0 24px}.lt-note img{width:84px;height:auto;flex:none}
-.lt-note>div{background:#FFF4E2;border-radius:4px 18px 18px 18px;padding:16px 20px 18px}.lt-note b{display:block;font-size:14px;color:#CE6719;margin-bottom:6px}.lt-note p{margin:0;font-size:16px;line-height:1.85;color:#3a3633}
+.lt-cnote{display:flex;gap:12px;align-items:flex-start;margin:6px 0 24px}.lt-cnote img{width:84px;height:auto;flex:none}
+.lt-cnote>div{background:#FFF4E2;border-radius:4px 18px 18px 18px;padding:16px 20px 18px}.lt-cnote b{display:block;font-size:14px;color:#CE6719;margin-bottom:6px}.lt-cnote p{margin:0;font-size:16px;line-height:1.85;color:#3a3633}
 /* 메인 뉴스 머리 = 요즘 빵집 건물 앞모습 (운영자 2026-11-01) */
 .lt-house{max-width:480px;margin:0 auto 26px;align-items:stretch;background:#B4603D repeating-linear-gradient(0deg,rgba(255,236,214,.18) 0 2px,transparent 2px 14px);padding:0 18px;position:relative}
 .lt-house .lt-roof{display:flex;justify-content:center;align-items:flex-end;gap:20px;height:62px;margin:0 -18px 16px;background:#6E747A;clip-path:polygon(44px 0,calc(100% - 44px) 0,100% 56px,100% 100%,0 100%,0 56px);border-bottom:6px solid #4F5459}
@@ -2922,4 +2922,25 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-counter .lt-sign-board::before{content:"";position:absolute;left:10px;right:10px;top:0;height:14px;background:#F8D59F;border-radius:0 0 8px 8px}
 .lt-counter .lt-sign-board small{color:#CE6719;font-size:12px;margin-top:14px}.lt-counter .lt-sign-board b{color:#1d1d1f;font-size:25px;text-shadow:none}
 .lt-counter .lt-sign-peek{width:150px;height:130px}
-.lt-note img{width:110px;margin-top:8px}
+.lt-cnote img{width:110px;margin-top:8px}
+/* 레터 소개 화면 = 레터 양식 그대로 (운영자 2026-11-01): 귤색 선·로고·빵·계산대 소보루, 설명 글 없음 */
+.lt-hero.lt2{display:block;background:#fff;border-radius:0;border-top:3px solid #EF920E;padding:40px 16px 0;text-align:center}
+.lt2-cover{display:flex;justify-content:center;align-items:flex-start;gap:6px}
+.lt2-cover .tf{font-size:30px;line-height:1}.lt2-b2,.lt2-b4{margin-top:38px}.lt2-b2{font-size:40px!important}.lt2-b3{font-size:36px!important}
+.lt2-mark{width:300px;max-width:58vw;height:auto;margin-top:14px}
+.lt-hero.lt2 h1{font-size:30px;margin:22px 0 6px;white-space:pre-line}
+.lt2-counter{display:flex;flex-direction:column;align-items:center;margin:10px auto 0;max-width:560px}
+.lt2-bounce{display:block;width:150px;height:auto;margin:0;position:relative}
+.lt2-desk{width:100%;border-top:8px solid #EF920E;background:#F8D59F33;box-shadow:inset 0 14px 0 #F8D59F;border-radius:0 0 18px 18px;padding:34px 24px 22px;display:flex;flex-direction:column;align-items:center}
+.lt2-desk .lt-form{text-align:left}
+.lt-feats.lt2-feats{list-style:none;padding:0;margin:22px auto 0;max-width:760px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.lt-feats.lt2-feats li{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:116px;padding:16px 10px;text-align:center;border-radius:14px}
+.lt2-feats .tf{font-size:30px;line-height:1}.lt2-feats img{width:64px;height:auto}
+.lt2-feats b{font-size:15px;letter-spacing:-.02em;color:#652D1C}
+.lt-feats .lt2-bag{background:#f3e7d3;border-radius:0 0 14px 14px!important;position:relative;padding-top:24px!important}
+.lt-feats .lt2-bag::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(135deg,#fff 50%,transparent 50%) 0 0/12px 8px repeat-x,linear-gradient(225deg,#fff 50%,transparent 50%) 0 0/12px 8px repeat-x}
+.lt-feats .lt2-main{background:#fff;box-shadow:inset 0 6px 0 #EF920E,0 0 0 1px #efe3d2}
+.lt-feats .lt2-rcpt{background:#fff;box-shadow:inset 0 0 0 1px #efe3d2;border-bottom:3px dashed #EF920E;border-radius:4px 4px 0 0!important}
+.lt-feats .lt2-crs{background:#FFF4E2}
+@media (max-width:640px){.lt-hero.lt2{padding:28px 0 0}.lt-hero.lt2 h1{font-size:24px}.lt2-cover .tf{font-size:22px}.lt2-b2{font-size:28px!important}.lt2-b3{font-size:26px!important}.lt2-b2,.lt2-b4{margin-top:24px}.lt2-desk{padding:28px 16px 18px}.lt-feats.lt2-feats{grid-template-columns:repeat(2,1fr)}.lt-feats.lt2-feats li{min-height:100px;padding:16px 10px}}
+.lt2-when{margin:0 0 14px;font-size:14px;font-weight:800;color:#CE6719}
