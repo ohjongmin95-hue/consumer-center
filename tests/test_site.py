@@ -5147,7 +5147,7 @@ class SiteTest(unittest.TestCase):
                 if bad and n == 2: text += ' 작년보다 98765명 늘었대요.'
                 if bad and n == 3: text += ' ' + x['제목'] + ' ' + x['요약'] + ' 이런 기사였어요.'
                 law = x['법 조문 후보'][0]['id'] if n == 1 and x['법 조문 후보'] else ('9-L9' if n == 2 else '')
-                items.append({'no': n, 'title': ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'][n - 1] + ' 소식, 이것만 알면 돼요', 'photo': 'shopping cart' if n == 1 else '', 'body': text, 'tip': '이럴 땐 이렇게: 영수증과 대화 기록부터 챙겨 두세요.', 'law': law})
+                items.append({'no': n, 'title': ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'][n - 1] + ' 소식, 이것만 알면 돼요', 'body': text, 'tip': '이럴 땐 이렇게: 영수증과 대화 기록부터 챙겨 두세요.', 'law': law})
             out = {'subject': '소보루 브리핑: 이번 주 소비자 뉴스, 이것만 보면 끝', 'intro': '안녕하세요, 소보루 레터예요. 이번 주 꼭 알아 둘 소식을 모았어요.', 'outro': '다음 주에 또 만나요.', 'items': items,
                    'number': {'no': 1, 'value': '30%', 'label': '늘어난 상담', 'body': '관련 상담이 그만큼 늘었다는 뜻이에요.'},
                    'harm': {'title': '요즘 늘어난 환불 거절', 'body': '환불을 미루는 일이 늘고 있어요. 대화 기록을 꼭 남겨 두세요.',
@@ -5327,17 +5327,17 @@ class SiteTest(unittest.TestCase):
             with patch.dict(os.environ, {'UNSPLASH_ACCESS_KEY': 'us-test'}):
                 r, _ = self.letter_make(bad=False)
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
-        self.assertEqual([c[1]['query'] for c in calls if c[1]], ['interest rate bank', 'shopping cart'])  # 영어만 남김
-        self.assertEqual(sum(1 for c in calls if c[0].endswith('/download')), 2)   # 고른 사진은 download 알림
+        self.assertEqual([c[1]['query'] for c in calls if c[1]], ['interest rate bank'])  # 영어만 남김, 오늘의 뉴스엔 사진 없음
+        self.assertEqual(sum(1 for c in calls if c[0].endswith('/download')), 1)   # 고른 사진은 download 알림
         ph = L['sections']['comment']['photo']
         self.assertIn('w=1072', ph['url']); self.assertEqual(ph['credit'], '김작가'); self.assertIn('utm_source=soboru_letter', ph['credit_url'])
-        self.assertIn('photo', L['items'][0]); self.assertNotIn('photo', L['items'][1])
+        self.assertFalse([it for it in L['items'] if 'photo' in it])
         html = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')[1]
-        self.assertIn('images.unsplash.com/photo-shopping-cart', html); self.assertIn('>Unsplash</a>', html); self.assertIn('김작가', html)
+        self.assertIn('images.unsplash.com/photo-interest-rate-bank', html); self.assertIn('>Unsplash</a>', html); self.assertIn('김작가', html)
         admin = self.login_admin()
-        admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), 'act': 'save', 'nophoto0': '1', 'comment_nophoto': '1'})
+        admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), 'act': 'save', 'comment_nophoto': '1'})
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
-        self.assertNotIn('photo', L['items'][0]); self.assertNotIn('photo', L['sections']['comment'])
+        self.assertNotIn('photo', L['sections']['comment'])
 
     def test_letter_open_click_tracking_and_stibee_html(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)

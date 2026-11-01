@@ -19,7 +19,6 @@
       <h2>이것만 쓱 보면 끝! 오늘의 뉴스 {{ L['items']|length }} ⚡️</h2>
       {% for it in econ + policy %}
       <div class="lt-nitem" id="n{{ loop.index }}">
-        {% if it.photo %}{% set PH = it.photo %}<figure class="lt-photo"><img src="{{ PH.url }}" alt="{{ PH.alt }}" loading="lazy"><figcaption>사진: <a href="{{ PH.credit_url }}" target="_blank" rel="noopener">{{ PH.credit }}</a> / <a href="{{ PH.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption></figure>{% endif %}
         <h3><span class="lt-cat">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span><i>ㅣ</i>{{ it.title }}</h3>
         <p>{{ it.body }} <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">자세히 보기 ›</a></p>
       </div>
