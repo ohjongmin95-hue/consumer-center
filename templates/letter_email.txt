@@ -1,4 +1,4 @@
-{{ name }} {{ L.no }}호 · {{ date }}
+{{ name }} · {{ date }}
 
 {{ L.title }}
 

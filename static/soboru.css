@@ -2875,3 +2875,4 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-tr{background:var(--b);border:2px solid var(--c);border-top-width:14px}.lt-tr small{color:var(--d)}.lt-trico img{width:34px;height:34px;margin:0 4px}
 .lt-bz>i img{width:34px;height:34px}.lt-bz div b{color:var(--d)}.lt-bzi b{color:var(--d)!important}.lt-bztip{background:var(--s);color:#3a3633!important}.lt-bztip b{color:var(--d)}
 .lt-roof-awning{border-top:14px dashed var(--c)}.lt-roof-bunting,.lt-roof-garland,.lt-roof-rail{border-top-style:dotted}
+.lt-news{background:#f7f6f3;border-color:#ecebe6}

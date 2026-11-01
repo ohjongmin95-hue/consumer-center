@@ -300,7 +300,7 @@ def gone_email(email): return 'x:' + hashlib.sha256(email.encode()).hexdigest()
 def kdate(iso):
     try: d = datetime.date.fromisoformat((iso or '')[:10])
     except ValueError: return ''
-    return f"{d.year}. {d.month}. {d.day}. ({DAYS[d.weekday()][0]})"
+    return f"{d.year}. {d.month}. {d.day}. {DAYS[d.weekday()]}"  # 요일은 '일요일'처럼 다 씀 (운영자 2026-11-01)
 
 
 def install(S):
