@@ -132,7 +132,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
 
 
 # 칸 이름: 뉴닉 문구·이모지를 따라 하지 않고 소보루(빵집)식으로 (운영자 2026-11-01)
-HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 뉴스', 'news_emoji': '🥯', 'more': '기사 원문 ›',
+HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 뉴스', 'news_emoji': '🥯', 'more': '기사 원문 ›', 'read': '소보루에서 자세히 읽기 ›',
          'comment_eyebrow': '오늘의 메인 뉴스', 'comment_kicker': 'TODAY\'S SPECIAL', 'what': '🍞 한 입에 정리하면', 'why': '🔎 왜 이렇게 됐을까요', 'wallet': '👛 내 지갑엔 무슨 일이?',
          'buzz_eyebrow': 'TREND', 'buzz': '요즘 뜨는 소비 트렌드'}
 
@@ -713,6 +713,35 @@ def install(S):
             r = db.execute('SELECT * FROM letters WHERE ' + ('id=?' if lid is not None else 'no=?'), (lid if lid is not None else no,)).fetchone()
         return row_info(r) if r else None
 
+    def make_articles(no, items):
+        """갓 구운 오늘의 뉴스 한 꼭지마다 매거진 기사(/life) 한 편 (운영자 2026-11-01: 뉴스 하나로 레터와 아티클 두 번).
+        매거진 쓰기(soboru_writer, GPT-6 Luna)가 숫자 검사를 통과하면 바로 게시, 아니면 초안으로 남고 레터는 기사 원문으로 이어짐."""
+        wr = app.extensions.get('soboru_writer')
+        if not wr or (testing() and not app.config.get('LETTER_ARTICLES')): return
+        day = datetime.date.today().isoformat()
+        def one(i, it):
+            facts = {'오늘의 뉴스': {k: v for k, v in it.get('_facts', {}).items() if k != '소비자상담센터 전화번호'}}
+            src = [{'name': it['src']['name'], 'url': it['src']['url'], 'fetched_at': stamp()}] if it['src'].get('url') else []
+            try: return wr['generate']('issue', 'letter', topic=it['src'].get('headline') or it['title'], material={'facts': facts, 'sources': src}, key=f'ai:issue:{day}:{no}-{i}')
+            except Exception as e: return {'status': 'error', 'reason': type(e).__name__}
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+            res = list(ex.map(lambda a: one(*a), enumerate(items)))
+        made = 0
+        for it, r in zip(items, res):
+            if r.get('id'): it['article'] = r['id']; made += 1
+        log({'status': 'info', 'no': no, 'trigger': 'articles', 'reason': f"매거진 기사 {made}편 ({sum(1 for r in res if r.get('published'))}편 바로 게시)"})
+
+    def article_links(L):
+        """레터 꼭지마다 게시된 매거진 기사가 있으면 '소보루에서 자세히 읽기' 주소를 붙임 (초안이면 원문만)."""
+        ids = [it['article'] for it in L['items'] if it.get('article')]
+        if not ids: return L
+        with conn() as db:
+            pub = {r[0] for r in db.execute("SELECT id FROM articles WHERE status='published' AND id IN (%s)" % ','.join('?' * len(ids)), ids)}
+        for it in L['items']:
+            it['read'] = site_url(f"/life/{it['article']}") if it.get('article') in pub else ''
+        return L
+
     def generate(trigger='admin'):
         """{status: made|skip|error, id, no, reason}. 만든 호는 초안(draft)."""
         if not desk.ai_ready(): res = {'status': 'skip', 'reason': 'OpenAI API 키가 없어요'}; log(dict(res, trigger=trigger)); return res
@@ -740,6 +769,7 @@ def install(S):
         mk = fetch_market()
         if mk: ex['market'] = mk
         sec = dict(sections(no), **ex)
+        make_articles(no, items)
         problems = check(title, intro, outro, items, no, sec)
         with conn() as db:
             lid = db.execute('INSERT INTO letters(no,title,intro,outro,items,sections,status,created,updated,check_ok,problems,trigger) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
@@ -812,6 +842,7 @@ def install(S):
         return ''
 
     def mail_ctx(L, token):
+        article_links(L)
         tf = lambda name: site_url(f'/static/img/tf/{name}.png')
         icons = [tf(TOPIC_ICON.get(it.get('topic', ''), ('news', ''))[0]) for it in L['items']]
         for it, icon in zip(L['items'], icons): it['_icon'] = icon
@@ -985,7 +1016,7 @@ def install(S):
         with conn() as db:
             near = {k: db.execute(f"SELECT no,title FROM letters WHERE status='sent' AND no{op}? ORDER BY no {o} LIMIT 1", (no,)).fetchone()
                     for k, op, o in (('prev', '<', 'DESC'), ('next', '>', 'ASC'))}
-        return render_template('letter_issue.html', L=L, near=near, H=HEADS, SHOPS=SHOPS)
+        return render_template('letter_issue.html', L=article_links(L), near=near, H=HEADS, SHOPS=SHOPS)
 
     @app.route('/letter/<int:no>/fb/<vote>')
     def letter_feedback(no, vote):

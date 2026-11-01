@@ -90,6 +90,10 @@ KINDS = {
                     about='소보루에 공개·게시된 제보 집계로 최근 어떤 피해 제보가 많았는지, 기업 답변은 어땠는지 숫자로만 전한다.'),
     'law': dict(name='법 바뀐 것 해설', needs=('law',), category='생활', emoji='⚖️', tone='t5',
                 about='최근 시행됐거나 곧 시행되는 소비자 관련 법령을 쉽게 풀어 준다. 시행일·개정 이유는 자료 그대로 전한다.'),
+    # 소보루 레터의 '갓 구운 오늘의 뉴스' 한 꼭지를 매거진 기사로 (운영자 2026-11-01: 뉴스 하나로 레터와 아티클 두 번 씀).
+    # 자료는 레터가 고른 그 이슈의 기사들이라 generate(..., material=)로만 씀 (매일 돌림 ORDER·EXTRA에는 넣지 않음)
+    'issue': dict(name='오늘의 경제 뉴스 풀어 읽기', needs=(), category='금융', emoji='📰', tone='t1', length='2500~3500',
+                  about='오늘 기사량이 가장 많은 경제·소비 뉴스 하나를, 함께 준 기사들의 사실과 숫자만으로 뉴스레터 독자가 이해하기 쉽게 풀어 쓴다. 무슨 일이 있었나 → 왜 그런가 → 내 지갑엔 무슨 뜻인가 순서. 뉴스에 없는 내용은 보태지 않는다.'),
     # 주제별 깊이 보기 (topics=True): 하루 몫이 남으면 주제를 바꿔 가며 여러 편
     'rights': dict(name='소비자 권리 깊이 보기', needs=(), category='생활', emoji='💡', tone='t5', topics=True,
                    about='[주제] 하나를 골라, 함께 준 법 조문 원문을 근거로 소비자가 가진 권리와 사업자의 의무를 깊이 풀어 준다. 조문에 없는 기간·금액은 쓰지 않고, 주제와 맞지 않는 조문은 쓰지 않는다.'),
@@ -962,6 +966,7 @@ def install(S):
                 "closing은 기사의 한 줄 결론과 앞으로 지켜볼 점으로 맺고, 글과 맞는 소보루 기능 하나를 자연스럽게 권한다: "
                 "소비자 제보(피해를 남기면 기업에 전달해 답을 받아 줘요), 커뮤니티(직접 사서 써 본 후기, 골라주세요 투표, 수다방), 사기 주의(돈 보내기 전에 사이트 주소·전화번호·계좌번호 검색), "
                 "법률 질문(소비자 법 궁금증), 기업 답변(기업별 제보와 소보루 등급).\n")
+        if k.get('length'): long = long.replace('본문은 3500~4500자', f"본문은 {k['length']}자")
         user = (f"[글 종류] {k['name']}: {k['about']}\n" + (f"[주제] {topic}\n" if topic else '') + long + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
         return chat(SYSTEM, user, 12000, AI_TIMEOUT * 3)
@@ -1004,7 +1009,7 @@ def install(S):
                 out.append({'line': _plain(p['line'], 300), 'pair': _plain(p.get('why', ''), 200) or '숫자가 다른 대상에 붙었어요'})
         return out
 
-    def generate(kind, trigger='admin', force=False, day=None, topic=None, avoid=()):
+    def generate(kind, trigger='admin', force=False, day=None, topic=None, avoid=(), material=None, key=None):
         """{status: made|exists|skip|error, id, reason, published}. 관리자가 만든 글은 초안(draft). 매일 자동으로 쓴 글은
         '바로 게시'가 켜져 있고 숫자 검사를 통과하면 게시하고, 아니면 초안으로 남긴다."""
         if kind not in KINDS: return {'status': 'error', 'reason': '모르는 글 종류예요'}
@@ -1014,7 +1019,7 @@ def install(S):
             if not topic:
                 res = {'status': 'skip', 'reason': f'최근 {FRESH_DAYS}일 안에 주제를 다 썼어요'}; log(dict(res, kind=kind, trigger=trigger)); return res
             key = f'ai:{kind}:{topic}:{today}'
-        else: key = f'ai:{kind}:{today}'
+        elif not key: key = f'ai:{kind}:{today}'
         with conn() as db: old = db.execute('SELECT id,status FROM articles WHERE ext_key=?', (key,)).fetchone()
         if old and (not force or old['status'] != 'draft'): return {'status': 'exists', 'id': old['id'], 'reason': '오늘 이미 만든 초안이 있어요'}
         every = KINDS[kind].get('every', 1)
@@ -1025,18 +1030,23 @@ def install(S):
             if recent:
                 res = {'status': 'skip', 'reason': '%d일에 한 번만 써요' % every}; log(dict(res, kind=kind, trigger=trigger)); return res
         try:
-            got = collect(kind, topic)
+            if material is not None:  # 레터처럼 자료를 이미 모아 온 경우: 주제로 뉴스·법 조문·통계를 곁들임
+                got = {'facts': dict(material['facts']), 'sources': list(material.get('sources') or []), 'category': material.get('category', '')}
+                try: got = enrich(got, kind, topic)
+                except Exception: pass
+                got['facts'] = dict(got['facts'], **CONST)
+            else: got = collect(kind, topic)
             title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic), kind)
         except Skip as e: res = {'status': 'skip', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         except RuntimeError as e: res = {'status': 'error', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         title, summary, body = (clean_personal(desk.scrub, t) for t in (title, summary, body))  # 연락처처럼 보이는 것은 지움
-        if trigger == 'daily':  # 최근 30일 안에 같은 제목 글이 있으면 또 올리지 않음
+        if trigger in ('daily', 'letter'):  # 최근 30일 안에 같은 제목 글이 있으면 또 올리지 않음
             since = (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
             with conn() as db:
                 same = [r['id'] for r in db.execute('SELECT id,title FROM articles WHERE substr(created,1,10)>=?', (since,)) if ''.join(r['title'].split()) == ''.join(title.split()) and (not old or r['id'] != old['id'])]
             if same:
                 res = {'status': 'skip', 'reason': '같은 제목의 글이 이미 있어요', 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
-            dup = same_topic(title, summary, old['id'] if old else None)
+            dup = same_topic(title, summary, old['id'] if old else None) if trigger == 'daily' else None  # 레터 뉴스는 그날 큰 이슈라 비슷한 주제여도 씀
             if dup:
                 res = {'status': 'skip', 'reason': f'최근 30일 안에 비슷한 주제의 글이 있어요 ({dup[:40]})', 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         k = KINDS[kind]; cat = got.get('category') or cat; first = got['sources'][0] if got['sources'] else {'name': '', 'url': ''}
@@ -1057,10 +1067,10 @@ def install(S):
             if problems:
                 with conn() as db: db.execute('UPDATE ai_articles SET check_ok=0,problems=? WHERE article_id=?', (json.dumps(problems, ensure_ascii=False), aid))
         with conn() as db:
-            published = trigger == 'daily' and not problems and settings()['publish'] == 1
+            published = trigger in ('daily', 'letter') and not problems and settings()['publish'] == 1
             if published: db.execute("UPDATE articles SET status='published',published_at=?,updated=? WHERE id=?", (stamp(), stamp(), aid))
         art = app.extensions.get('soboru_art')  # 저장한 글처럼 AI 일러스트 자동 그리기 (키가 있을 때만)
-        if art: art['auto']('life', aid, wait=trigger == 'daily')
+        if art: art['auto']('life', aid, wait=trigger in ('daily', 'letter'))
         res = {'status': 'made', 'id': aid, 'published': published, 'topic': topic, 'reason': '숫자 검토 필요 %d곳' % len(problems) if problems else ('바로 게시했어요' if published else '')}
         log(dict(res, kind=kind, trigger=trigger))
         return res

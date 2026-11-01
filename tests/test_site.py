@@ -5364,6 +5364,29 @@ class SiteTest(unittest.TestCase):
         self.assertIn('id="$stb-htmlv3$"', html)   # 받은편지함 미리보기 문구
         self.assertIn('id="$stb-htmlv3$"', ext['stibee_html'](ext['get'](r['id'])))
 
+    def test_letter_news_become_magazine_articles(self):
+        # 갓 구운 오늘의 뉴스 한 꼭지마다 매거진 기사를 쓰고, 게시된 기사가 있으면 레터는 '소보루에서 자세히 읽기'로 이어짐 (운영자 2026-11-01)
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        wr = self.site.app.extensions['soboru_writer']; calls = []
+        with self.site.conn() as db:
+            ids = [db.execute("INSERT INTO articles(title,summary,body,status,origin,ext_key,created,updated) VALUES(?,?,?,?,?,?,?,?)",
+                              (f'풀어 읽기 {k}', '요약', '본문', 'published' if k == 0 else 'draft', 'ai', f'test:issue:{k}', '2026-11-01', '2026-11-01')).lastrowid for k in range(6)]
+        def drop():
+            with self.site.conn() as db: db.execute("DELETE FROM articles WHERE ext_key LIKE 'test:issue:%'")
+        self.addCleanup(drop)
+        def fake(kind, trigger='admin', **kw):
+            calls.append((kind, trigger, kw)); return {'status': 'made', 'id': ids[len(calls) - 1], 'published': len(calls) == 1}
+        self.site.app.config['LETTER_ARTICLES'] = True
+        self.addCleanup(self.site.app.config.pop, 'LETTER_ARTICLES', None)
+        with patch.dict(wr, {'generate': fake}):
+            r, _ = self.letter_make(bad=False)
+        ext = self.site.app.extensions['soboru_letter']; L = ext['get'](r['id'])
+        self.assertEqual(len(calls), len(L['items']))
+        self.assertTrue(all(c[0] == 'issue' and c[1] == 'letter' and '오늘의 뉴스' in c[2]['material']['facts'] for c in calls))
+        html = ext['email_parts'](L, 'tok-x')[1]
+        self.assertEqual(html.count('소보루에서 자세히 읽기'), 1)   # 게시된 기사 한 편만 이어짐, 나머지는 원문
+        self.assertIn(f'/life/{ids[0]}', html)
+
     def test_letter_feedback_votes(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         with self.site.conn() as db: db.execute('DELETE FROM letter_feedback')

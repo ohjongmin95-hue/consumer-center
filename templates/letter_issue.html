@@ -24,7 +24,7 @@
       {% for it in econ + policy %}
       <div class="lt-nitem" id="n{{ loop.index }}">
         <h3><span class="lt-cat">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span>{{ it.title }}</h3>
-        <p>{{ it.body }} <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">{{ H.more }}</a></p>
+        <p>{{ it.body }} {% if it.read %}<a href="{{ it.read }}">{{ H.read }}</a>{% else %}<a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">{{ H.more }}</a>{% endif %}</p>
       </div>
       {% endfor %}
     </section>

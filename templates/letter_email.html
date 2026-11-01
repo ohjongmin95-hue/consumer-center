@@ -74,7 +74,7 @@
       {% for it in econ + policy %}
       <div id="n{{ loop.index }}" style="margin:0 0 {{ '26px' if not loop.last else '16px' }};">
         <p style="margin:0 0 8px;font-size:18px;line-height:1.5;font-weight:800;color:#1d1d1f;letter-spacing:-0.3px;"><span style="display:inline-block;margin:0 6px 0 0;padding:1px 9px;border-radius:999px;background:#ffe7c7;color:#CE6719;font-size:14px;font-weight:800;vertical-align:2px;">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span>{{ it.title }}</p>
-        <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body }} <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.more }}</a></p>
+        <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body }} {% if it.read %}<a href="{{ it.read }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.read }}</a>{% else %}<a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.more }}</a>{% endif %}</p>
       </div>
       {% endfor %}
     </td></tr></table>

@@ -12,7 +12,7 @@
 {% for it in econ + policy %}
 [{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}] {{ it.title }}
 {{ it.body }}
-기사 원문: {{ it.src.url }}
+{% if it.read %}소보루에서 자세히 읽기: {{ it.read }}{% else %}기사 원문: {{ it.src.url }}{% endif %}
 {% endfor %}{% if sec.comment %}{% set c = sec.comment %}
 ━━━━━━━━━━━━━━━━
 ■ {{ H.comment_eyebrow }}
