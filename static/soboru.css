@@ -2892,3 +2892,5 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-sign{position:relative}.lt-sign::before,.lt-sign::after{content:"";position:absolute;top:8px;width:3px;height:18px;background:#652D1C;left:calc(50% - 80px)}.lt-sign::after{left:calc(50% + 77px)}
 .lt-sign-board{background:#EF920E;border:3px solid #652D1C;box-shadow:inset 0 0 0 6px #EF920E,inset 0 0 0 8px #ffe2b0}.lt-sign-board small{color:#fff1d9}.lt-sign-board b{color:#fff}
 .lt-sign-hook{margin-bottom:0}.lt-sign::before,.lt-sign::after{height:92px}.lt-sign-peek{display:block;width:150px;height:92px;margin:0 0 -3px;position:relative}
+.lt-sign::before,.lt-sign::after{display:none}
+.lt-sign-peek{width:180px;height:110px}
