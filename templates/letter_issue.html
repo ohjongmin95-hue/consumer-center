@@ -24,7 +24,7 @@
       {% for it in econ + policy %}
       <div class="lt-nitem" id="n{{ loop.index }}">
         <h3><span class="lt-cat">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span>{{ it.title }}</h3>
-        <p>{{ it.body }} {% if it.read %}<a href="{{ it.read }}">{{ H.read }}</a>{% else %}<a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">{{ H.more }}</a>{% endif %}</p>
+        <p>{{ it.body|srclinks }} <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">{{ H.more }}</a></p>
       </div>
       {% endfor %}
     </section>
@@ -34,25 +34,25 @@
       {% if c.photo %}{% set PH = c.photo %}<figure class="lt-photo"><img src="{{ PH.url }}" alt="{{ PH.alt }}" loading="lazy"><figcaption>사진: <a href="{{ PH.credit_url }}" target="_blank" rel="noopener">{{ PH.credit }}</a> / <a href="{{ PH.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption></figure>{% endif %}
       <h2>{{ c.title }}</h2>
       {% if c.tags %}<p class="lt-tags">{% for t in c.tags %}<span>#{{ t }}</span>{% endfor %}</p>{% endif %}
-      <p>{{ c.lead }}</p>
+      <p>{{ c.lead|srclinks }}</p>
       {% for key in ('what', 'why', 'wallet') %}{% set b = c[key] %}{% set head = H[key] if key != 'wallet' or not b.head else '👛 ' ~ b.head %}
-      {% if b.body or b.points %}<h3>{{ head }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
-      {% if b.points %}<ul>{% for p in b.points %}<li><b>{{ p.name }}:</b> {{ p.text }}</li>{% endfor %}</ul>{% endif %}{% endif %}{% endfor %}
-      {% if c.note %}<div class="lt-note"><img src="{{ url_for('static', filename='img/editor-croissant.png') }}" alt="에디터 크로와상"><div><b>크로와상의 한마디</b><p>{{ c.note }}</p></div></div>{% endif %}
+      {% if b.body or b.points %}<h3>{{ head }}</h3>{% if b.body %}<p>{{ b.body|srclinks }}</p>{% endif %}
+      {% if b.points %}<ul>{% for p in b.points %}<li><b>{{ p.name }}:</b> {{ p.text|srclinks }}</li>{% endfor %}</ul>{% endif %}{% endif %}{% endfor %}
+      {% if c.note %}<div class="lt-cnote"><img src="{{ url_for('static', filename='img/editor-croissant.png') }}" alt="에디터 크로와상"><div><b>크로와상의 한마디</b><p>{{ c.note }}</p></div></div>{% endif %}
       {% if c.srcs %}<p class="lt-refs">참고한 기사: {% for s in c.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
     </section>
     {% endif %}
     {% if sec.number %}{% set b = sec.number %}
     <section class="lt-box lt-numbox" id="num"><h2 class="lt-part">숫자로 보는 오늘</h2>
-      <div><small>{{ b.label }}</small><b>{{ b.value }}</b><p>{{ b.body }}</p>{% if b.src and b.src.url %}<a href="{{ b.src.url }}" target="_blank" rel="noopener nofollow">{{ b.src.name or '기사' }} 원문 ↗</a>{% endif %}</div>
+      <div><small>{{ b.label }}</small><b>{{ b.value }}</b><p>{{ b.body|srclinks }}</p>{% if b.src and b.src.url %}<a href="{{ b.src.url }}" target="_blank" rel="noopener nofollow">{{ b.src.name or '기사' }} 원문 ↗</a>{% endif %}</div>
     </section>{% endif %}
     {% if sec.buzz %}{% set b = sec.buzz %}
     <section class="lt-buzz" id="buzz"><h2 class="lt-part">{{ H.buzz }}</h2>
       {% set T = SHOPS.get(b.shop) or SHOPS['shop'] %}
       <div class="lt-tr lt-roof-{{ T.roof }}" style="--c:{{ T.main }};--s:{{ T.sub }};--b:{{ T.bg }};--d:{{ T.deep }}">
         <p class="lt-trico" aria-hidden="true">{% for n in T.icons %}<img src="{{ url_for('static', filename='img/tf/' ~ n ~ '.png') }}" alt="">{% endfor %}</p>
-        <small>{{ T.en }} · {{ T.ko }}</small><h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
-        {% for p in b.points %}<div class="lt-bz"><i aria-hidden="true"><img src="{{ url_for('static', filename='img/tf/' ~ T.icons[loop.index0 % 3] ~ '.png') }}" alt=""></i><div><b>{{ p.name }}</b><p>{{ p.text }}</p></div></div>{% endfor %}
+        <small>{{ T.en }} · {{ T.ko }}</small><h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body|srclinks }}</p>{% endif %}
+        {% for p in b.points %}<div class="lt-bz"><i aria-hidden="true"><img src="{{ url_for('static', filename='img/tf/' ~ T.icons[loop.index0 % 3] ~ '.png') }}" alt=""></i><div><b>{{ p.name }}</b><p>{{ p.text|srclinks }}</p></div></div>{% endfor %}
         {% if b.insight %}<div class="lt-bz lt-bzi"><div><b>소보루의 트렌드 읽기</b><p>{{ b.insight }}</p></div></div>{% endif %}
         {% if b.tip %}<p class="lt-bztip"><b>소비자 체크 포인트</b> {{ b.tip }}</p>{% endif %}
         {% if b.srcs %}<p class="lt-trsrc">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}</div>
@@ -65,7 +65,7 @@
     {% if sec.harm %}{% set b = sec.harm %}
     <section class="lt-box" id="harm"><h2 class="lt-part">소비자 피해 예방</h2>
       <h3><span class="tf" aria-hidden="true">🚨</span> {{ b.title }}</h3>
-      {% for p in b.body|letter_paras %}<p>{{ p }}</p>{% endfor %}
+      {% for p in b.body|letter_paras %}<p>{{ p|srclinks }}</p>{% endfor %}
       {% if b.steps %}<div class="lt-steps"><b><span class="tf" aria-hidden="true">🛡️</span> 이런 일을 겪었다면</b><ol>{% for st in b.steps %}<li>{{ st }}</li>{% endfor %}</ol></div>{% endif %}
       <ul class="lt-src">
         {% if b.law %}<li><span class="tf" aria-hidden="true">⚖️</span> 관련 법 · {% if b.law.url %}<a href="{{ b.law.url }}" target="_blank" rel="noopener nofollow">{{ b.law.label }} ↗</a>{% else %}{{ b.law.label }}{% endif %}</li>{% endif %}
@@ -75,7 +75,7 @@
     {% if sec.lawbox %}{% set b = sec.lawbox %}
     <section class="lt-box" id="law"><h2 class="lt-part">알아두면 좋은 법률·제도</h2>
       <p class="lt-num">{{ b.topic }}</p><h3><span class="tf" aria-hidden="true">⚖️</span> {{ b.title }}</h3>
-      {% for p in b.body|letter_paras %}<p>{{ p }}</p>{% endfor %}
+      {% for p in b.body|letter_paras %}<p>{{ p|srclinks }}</p>{% endfor %}
       {% if b.point %}<div class="lt-tip"><b>이것만 기억해요</b><p>{{ b.point }}</p></div>{% endif %}
       {% if b.law %}<ul class="lt-src"><li><span class="tf" aria-hidden="true">📚</span> 근거 · {% if b.law.url %}<a href="{{ b.law.url }}" target="_blank" rel="noopener nofollow">{{ b.law.label }} ↗</a>{% else %}{{ b.law.label }}{% endif %}</li></ul>{% endif %}
     </section>{% endif %}

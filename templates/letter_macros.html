@@ -9,7 +9,7 @@
   </div>
   <ul class="lt-note">
     <li>{{ ui('letter.note1', '구독하면 레터 발송을 위한 이메일 수집·이용과 광고성 정보 수신에 동의한 것으로 봐요.') }} <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.agree_more', '자세히') }}</a></li>
-    <li>{{ ui('letter.note2', '확인 메일의 버튼을 눌러야 구독이 시작되고, 모든 레터 아래 수신 거부를 누르면 바로 해지돼요.') }}</li>
+    {% if not big %}<li>{{ ui('letter.note2', '확인 메일의 버튼을 눌러야 구독이 시작되고, 모든 레터 아래 수신 거부를 누르면 바로 해지돼요.') }}</li>{% endif %}
   </ul>
 </form>
 {% endmacro %}

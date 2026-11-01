@@ -1635,7 +1635,7 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(admin, '/admin/screens')
         admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '1', 'next': '/'})
         pages = {'/': ('home.intro_title', 'home.live_title', 'home.pick_title', 'home.answer_eyebrow', 'sb.nav_home', 'sb.tab_home', 'common.ft_why', 'letter.card_title'),
-                 '/life': ('life.title', 'life.cat_all', 'letter.subscribe'), '/board': ('cm.title', 'cm.pick_title'), '/letter': ('letter.h1', 'letter.f2', 'letter.archive_title'),
+                 '/life': ('life.title', 'life.cat_all', 'letter.subscribe'), '/board': ('cm.title', 'cm.pick_title'), '/letter': ('letter.h1', 'letter.t2', 'letter.archive_title'),
                  '/companies': ('sb.nav_companies',), '/ask': ('ask.h1',)}
         for path, keys in pages.items():
             page = admin.get(path).get_data(as_text=True)
@@ -5135,6 +5135,8 @@ class SiteTest(unittest.TestCase):
         def fake(url, headers, body, timeout):
             sent.append(body)
             content = body['messages'][1]['content']
+            if '[이번 호 뉴스]' not in content:  # 검토 필요 고치기(autofix) 요청: 여기선 고치지 않음
+                return 200, {'choices': [{'message': {'content': json.dumps({'fixes': []})}}]}
             news = json.loads(content.split('[이번 호 뉴스]\n', 1)[1].split('\n[에디터 코멘트 자료]', 1)[0])
             cm = json.loads(content.split('[에디터 코멘트 자료]\n', 1)[1].split('\n[한 줄 뉴스]', 1)[0])
             briefs = json.loads(content.split('[한 줄 뉴스]\n', 1)[1].split('\n[피해 예방 뉴스]', 1)[0])
@@ -5178,14 +5180,14 @@ class SiteTest(unittest.TestCase):
             def send_message(self, msg): box.append(msg)
         return FakeSMTP
 
-    def letter_make(self, bad=True):
+    def letter_make(self, bad=True, article=None):
         sent, calls = [], []
         market = {'https://m.stock.naver.com/api/index/KOSPI/basic': {'closePrice': '5,937.66', 'compareToPreviousClosePrice': '-74.78', 'fluctuationsRatio': '-1.24', 'compareToPreviousPrice': {'name': 'FALLING'}, 'localTradedAt': '2026-10-30T15:30:00+09:00'},
                   'https://m.stock.naver.com/api/stocks/marketValue/KOSPI?page=1&pageSize=10': {'stocks': [{'stockName': f'종목{k}', 'closePrice': f'{k},000', 'compareToPreviousClosePrice': '100', 'fluctuationsRatio': '1.5', 'compareToPreviousPrice': {'name': 'RISING'}} for k in range(1, 13)] + [{'stockName': '깨진 값'}]},
                   'https://m.stock.naver.com/front-api/marketIndex/productDetail?category=exchange&reutersCode=FX_USDKRW': {'result': {'closePrice': '1,336.80', 'fluctuations': '0.90', 'fluctuationsRatio': '0.07', 'fluctuationsType': {'name': 'RISING'}}}}
         with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', self.writer_naver(calls)), patch.object(self.site.soboru_letter, 'market_call', market.get), patch.object(self.site.soboru_letter, 'TREND_DAYS', tuple(range(7))), \
                 patch.object(self.site.companydesk, 'post_json', self.letter_ai(sent, bad)), patch.object(self.site.triage.corpus, 'related', self.letter_related), \
-                patch.object(self.site.soboru_letter, 'article_call', lambda url, timeout=8: (200, '<html><article id="dic_area" class="go_trans">본문 첫 줄 30% 늘었다<br>둘째 줄 무단 전재 금지<br>셋째 줄 1만 2000명</article></div></html>')):
+                patch.object(self.site.soboru_letter, 'article_call', article or (lambda url, timeout=8: (200, '<html><article id="dic_area" class="go_trans">본문 첫 줄 30% 늘었다<br>둘째 줄 무단 전재 금지<br>셋째 줄 1만 2000명</article></div></html>'))):
             r = self.site.app.extensions['soboru_letter']['generate']('admin')
         return r, sent
 
@@ -5366,7 +5368,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('id="$stb-htmlv3$"', ext['stibee_html'](ext['get'](r['id'])))
 
     def test_letter_news_become_magazine_articles(self):
-        # 갓 구운 오늘의 뉴스 한 꼭지마다 매거진 기사를 쓰고, 게시된 기사가 있으면 레터는 '소보루에서 자세히 읽기'로 이어짐 (운영자 2026-11-01)
+        # 갓 구운 오늘의 뉴스 한 꼭지마다 매거진 기사를 쓰고, 레터는 신뢰를 위해 늘 기사 원문으로 이어짐 (운영자 2026-11-01)
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         wr = self.site.app.extensions['soboru_writer']; calls = []
         with self.site.conn() as db:
@@ -5385,8 +5387,8 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(len(calls), len(L['items']))
         self.assertTrue(all(c[0] == 'issue' and c[1] == 'letter' and '오늘의 뉴스' in c[2]['material']['facts'] for c in calls))
         html = ext['email_parts'](L, 'tok-x')[1]
-        self.assertEqual(html.count('소보루에서 자세히 읽기'), 1)   # 게시된 기사 한 편만 이어짐, 나머지는 원문
-        self.assertIn(f'/life/{ids[0]}', html)
+        self.assertNotIn('소보루에서 자세히 읽기', html)   # 매거진엔 올라가도 레터 링크는 기사 원문
+        self.assertEqual(html.count('기사 원문 ›'), len(L['items']))
 
     def test_letter_reads_article_body(self):
         # 요약 조각만 보면 숫자를 지어내서, 네이버 뉴스 기사 본문까지 AI 자료·숫자 검사에 넣음 (운영자 2026-11-01)
@@ -5404,6 +5406,22 @@ class SiteTest(unittest.TestCase):
         W = self.site.soboru_writer
         self.assertEqual(W.check_text('인텔은 52년 만의 최악 주가 폭락을 겪었다', {'기사': '52년'}), [])
         self.assertTrue(W.check_text('최악의 기업이다', {}))
+
+    def test_letter_autofix_links_number_source(self):
+        # 검토 필요를 사람이 안 봐도 되게 (운영자 2026-11-01): 자료에 없는 숫자는 네이버에서 그 숫자가 나온 기사를 찾아 링크(뉴닉처럼), 숫자는 그대로
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        mod = self.site.soboru_letter
+        known = set(mod.LETTER_QUERIES + mod.HARM_QUERIES + mod.TREND_QUERIES + mod.ECON_QUERIES + mod.POLICY_QUERIES)
+        def call(url, timeout=8):
+            q = url.split('n.news.naver.com/', 1)[-1].split('/', 1)[0]
+            if q in known: return 200, '<div id="dic_area">상담이 30% 늘었다. 1만 2000명</div><div>'
+            return 200, '<div id="dic_area">올해 상담 건수가 98765명으로 집계됐다.</div><div>'
+        r, sent = self.letter_make(bad=True, article=call)
+        L = self.site.app.extensions['soboru_letter']['get'](r['id'])
+        self.assertFalse([p for p in L['problems'] if '98765명' in p.get('numbers', [])])   # 출처를 찾아 통과
+        self.assertTrue(any(l['text'].startswith('98765') for l in L['sections']['_links']))
+        html = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')[1]
+        self.assertRegex(html, r'<a href="https://[^"]+"[^>]*>98765')   # 본문 속 숫자에 기사 링크
 
     def test_letter_feedback_votes(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
