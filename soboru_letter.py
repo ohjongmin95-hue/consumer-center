@@ -537,7 +537,7 @@ def install(S):
         briefs = [dict(entry(n, it, 'B'), no=f'B{n}', cands=[]) for n, it in enumerate(pick_issues(rest, BRIEF_N, None), 1)]
         buzz = [dict(entry(n, it, 'T'), no=f'T{n}', cands=[]) for n, it in enumerate(pick_issues(trend_pool, TREND_N, None), 1)]
         for x, it in zip(buzz, [it for it in pick_issues(trend_pool, TREND_N, None)]):
-            x['more'] = [{'title': scrub(o['title']), 'summary': scrub(o['summary']), 'source': o['source']} for o in trend_pool if o['url'] != it['url'] and related(it, o)][:MORE_N]
+            x['more'] = [{'title': scrub(o['title']), 'summary': scrub(o['summary']), 'source': o['source']} for o in sorted(trend_pool, key=lambda o: not o.get('major')) if o['url'] != it['url'] and related(it, o)][:MORE_N]
         need = [x for x in news + comment + buzz if x.get('naver')]  # 주요 뉴스·메인 뉴스·트렌드는 기사 본문까지 읽음
         need += [o for x in news for o in (x.get('more') or []) if o.get('naver')][:len(news) * 2]  # 같은 소식을 다룬 주요 신문 기사 본문도 (숫자 맞춰 보기)
         if need:
@@ -570,19 +570,18 @@ def install(S):
         same = lambda a, b: len(a & b) >= 2
         score = [sum(1 for j, o in enumerate(bags) if j != i and same(b, o)) for i, b in enumerate(bags)]
         kind = lambda i: 'policy' if pool[i]['topic'] in POLICY_QUERIES else 'econ'
-        picked, per, per_kind, order = [], {}, {}, sorted(range(len(pool)), key=lambda i: -score[i])  # 점수가 같으면 분야 순서·최신 순 그대로
+        # 주요 신문(MAJOR)이 함께 다룬 이슈를 앞에, 이슈마다 대표 기사는 주요 신문·본문을 읽을 수 있는 기사로 — 뉴스·소비 트렌드 모두 (운영자 2026-11-01)
+        group = lambda i: [i] + [j for j, o in enumerate(bags) if j != i and same(bags[i], o)]
+        weight = lambda i: score[i] + sum(1 for j in group(i) if pool[j].get('major'))
+        best = lambda i: max(group(i), key=lambda j: (bool(pool[j].get('major')) and bool(pool[j].get('naver')), bool(pool[j].get('major')), bool(pool[j].get('naver')), j == i))
+        picked, per, per_kind, order = [], {}, {}, sorted(range(len(pool)), key=lambda i: -weight(i))  # 점수가 같으면 분야 순서·최신 순 그대로
         if cover is not None:
             # 오늘의 뉴스: 분야를 고루 나누지 않고, 같은 소식을 다룬 기사가 많은(헤드라인) 이슈부터. cover건 넘게 다룬 이슈만 넣고,
             # 그래야 ITEMS[0]개가 안 되면 기사 많은 순으로 채움. 그래서 날마다 3~6개로 달라짐 (운영자 2026-11-01)
-            # 주요 신문(MAJOR)이 함께 다룬 이슈를 앞에, 이슈마다 대표 기사는 주요 신문·본문을 읽을 수 있는 기사로
-            group = lambda i: [i] + [j for j, o in enumerate(bags) if j != i and same(bags[i], o)]
-            weight = lambda i: score[i] + sum(1 for j in group(i) if pool[j].get('major'))
-            order = sorted(range(len(pool)), key=lambda i: -weight(i))
             for i in order:
                 if len(picked) == limit or (score[i] < cover and len(picked) >= ITEMS[0]): break
                 if any(same(bags[i], bags[k]) for k in picked): continue
                 picked.append(i)
-            best = lambda i: max(group(i), key=lambda j: (bool(pool[j].get('major')) and bool(pool[j].get('naver')), bool(pool[j].get('major')), bool(pool[j].get('naver')), j == i))
             return [pool[best(i)] for i in picked]
         for cap, kcap in ((PER_TOPIC, True), (limit, True), (limit, False)):  # 분야를 고루 고르고, 모자라면 한 분야에서 더, 그래도 모자라면 다른 쪽에서
             for i in order:
@@ -592,7 +591,7 @@ def install(S):
                 if kinds and kcap and per_kind.get(kind(i), 0) >= kinds.get(kind(i), limit): continue
                 picked.append(i); per[t] = per.get(t, 0) + 1; per_kind[kind(i)] = per_kind.get(kind(i), 0) + 1
         picked.sort(key=lambda i: ((kind(i) == 'policy') if kinds else 0, order.index(i)))
-        return [pool[i] for i in picked]
+        return [pool[best(i)] for i in picked]
 
     def ai_facts(news):
         return [{'번호': x['no'], '구분': '정책·제도' if x.get('kind') == 'policy' else '경제 이슈', '제목': x['title'], '요약': x['summary'], '기사 본문': x.get('text', ''), '언론사': x['source'], '날짜': x['date'],

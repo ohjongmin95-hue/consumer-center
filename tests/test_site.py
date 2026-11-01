@@ -5685,7 +5685,12 @@ class SiteTest(unittest.TestCase):
                          ('배경은 한은 기준금리 동결 결정', 'biz.chosun.com')],
                 '증시': [('마감 코스피 외국인 매도 하락', 'a.kr'), ('지속 코스피 외국인 매도 하락', 'b.kr'), ('전망 코스피 외국인 매도 하락', 'c.kr'), ('이유 코스피 외국인 매도 하락', 'd.kr')],
                 '물가': [('배추값 한 달 새 두 배', 'e.kr'), ('라면 가격 올라', 'f.kr'), ('우유 납품가 협상', 'g.kr')],
-                '고용': [('청년 취업자 줄어', 'h.kr'), ('제조업 일자리 감소', 'i.kr'), ('공공기관 채용 확대', 'j.kr')]}
+                '고용': [('청년 취업자 줄어', 'h.kr'), ('제조업 일자리 감소', 'i.kr'), ('공공기관 채용 확대', 'j.kr')],
+                '소비 트렌드': [('편의점 두바이 쫀득쿠키 품절 행렬', 'k.kr'), ('요즘 편의점 두바이 쫀득쿠키 품절', 'www.mk.co.kr'), ('또 편의점 두바이 쫀득쿠키 품절', 'l.kr')]}
+        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('letter','{\"freq\": \"weekly\"}')")
+        def unset():
+            with self.site.conn() as db: db.execute("DELETE FROM soboru_settings WHERE key='letter'")
+        self.addCleanup(unset)
         def fake(method, url, headers, body, timeout):
             q = dict(urllib.parse.parse_qsl(url.split('?', 1)[1]))['query']
             return 200, {'total': 9, 'items': [{'title': t, 'description': t + ' 요약', 'link': f'https://n.news.naver.com/{abs(hash(t))}', 'originallink': f'https://{h}/{abs(hash(t))}',
@@ -5697,6 +5702,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('동결', first['title']); self.assertIn(first['source'], ('한국경제', '조선일보'))   # 주요 신문이 다룬 이슈가 앞, 대표는 주요 신문
         self.assertIn('2.50%', first['text'])
         self.assertTrue(any(o['source'] in ('한국경제', '조선일보') and o.get('text') for o in first['more']))   # 다른 주요 신문 본문도 같이
+        self.assertEqual(mat['buzz'][0]['source'], '매일경제')   # 소비 트렌드도 주요 신문 기사를 대표로 (운영자 2026-11-01)
 
     def test_letter_weekly_schedule_and_auto_send(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
