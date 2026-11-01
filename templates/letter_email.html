@@ -79,16 +79,19 @@
   {% if sec.comment %}{% set c = sec.comment %}
   {#- 에디터 코멘트: 오늘 가장 큰 경제 이슈를 깊게 -#}
   <tr><td style="padding:40px 32px 4px;{{ F }}" id="comment">
-    {#- 메인 뉴스 머리: 소보루가 뒤에서 들고 있는 귤색 '오늘의 추천' 팻말 (운영자 2026-11-01) -#}
-    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
-      <tr><td colspan="3" align="center" style="padding:0;font-size:0;line-height:0;"><img src="{{ peek }}" width="180" height="110" alt="소보루" style="display:block;margin:0 auto -3px;width:180px;height:110px;border:0;"></td></tr>
-      <tr><td colspan="3" style="padding:0 6px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#EF920E;border:3px solid #652D1C;border-radius:16px;"><tr><td style="padding:6px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:2px dashed #ffe2b0;border-radius:11px;">
-            <tr><td align="center" style="padding:10px 24px 2px;{{ F }}font-size:12px;line-height:1.4;font-weight:800;letter-spacing:2.5px;color:#fff1d9;white-space:nowrap;">★ {{ H.comment_kicker }} ★</td></tr>
-            <tr><td align="center" style="padding:0 20px 12px;{{ F }}font-size:24px;line-height:1.4;font-weight:800;letter-spacing:-0.5px;color:#ffffff;white-space:nowrap;">{{ ic('baguette', 26) }}&nbsp; {{ H.comment_eyebrow }} &nbsp;{{ ic('butter', 24) }}</td></tr>
-          </table>
-        </td></tr></table>
+    {#- 메인 뉴스 머리: 소보루가 뒤에서 들고 있는 빵집 나무 간판, 본문 폭에 맞춤 (운영자 2026-11-01) -#}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td align="center" style="padding:0;font-size:0;line-height:0;"><img src="{{ peek }}" width="180" height="110" alt="소보루" style="display:block;margin:0 auto -3px;width:180px;height:110px;border:0;"></td></tr>
+      <tr><td style="padding:0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#C98A4B;background-image:repeating-linear-gradient(0deg,rgba(101,45,28,0) 0,rgba(101,45,28,0) 9px,rgba(101,45,28,.10) 9px,rgba(101,45,28,.10) 11px);border:3px solid #652D1C;border-radius:10px;">
+          <tr><td width="22" valign="top" style="padding:10px 0 0 12px;font-size:0;line-height:0;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#652D1C;box-shadow:inset 2px 2px 0 #9a6a4a;">&nbsp;</span></td>
+            <td align="center" style="padding:12px 8px 8px;{{ F }}font-size:12px;line-height:1.4;font-weight:800;letter-spacing:2.5px;color:#FFF6E6;white-space:nowrap;">★ {{ H.comment_kicker }} ★</td>
+            <td width="22" valign="top" align="right" style="padding:10px 12px 0 0;font-size:0;line-height:0;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#652D1C;box-shadow:inset 2px 2px 0 #9a6a4a;">&nbsp;</span></td></tr>
+          <tr><td colspan="3" style="padding:0;font-size:0;line-height:0;"><div style="height:2px;background:#9a5f33;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+          <tr><td width="22" valign="bottom" style="padding:0 0 10px 12px;font-size:0;line-height:0;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#652D1C;box-shadow:inset 2px 2px 0 #9a6a4a;">&nbsp;</span></td>
+            <td align="center" style="padding:10px 8px 14px;{{ F }}font-size:24px;line-height:1.4;font-weight:800;letter-spacing:-0.5px;color:#ffffff;white-space:nowrap;text-shadow:0 2px 0 rgba(101,45,28,.35);">{{ ic('baguette', 26) }}&nbsp; {{ H.comment_eyebrow }} &nbsp;{{ ic('butter', 24) }}</td>
+            <td width="22" valign="bottom" align="right" style="padding:0 12px 10px 0;font-size:0;line-height:0;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#652D1C;box-shadow:inset 2px 2px 0 #9a6a4a;">&nbsp;</span></td></tr>
+        </table>
       </td></tr>
     </table>
     <div style="height:26px;font-size:0;line-height:0;">&nbsp;</div>

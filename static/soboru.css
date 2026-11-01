@@ -2894,3 +2894,7 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-sign-hook{margin-bottom:0}.lt-sign::before,.lt-sign::after{height:92px}.lt-sign-peek{display:block;width:150px;height:92px;margin:0 0 -3px;position:relative}
 .lt-sign::before,.lt-sign::after{display:none}
 .lt-sign-peek{width:180px;height:110px}
+.lt-sign{align-items:stretch}.lt-sign-peek{align-self:center}
+.lt-sign-board{width:100%;box-sizing:border-box;background:#C98A4B repeating-linear-gradient(0deg,transparent 0 9px,rgba(101,45,28,.10) 9px 11px);border:3px solid #652D1C;border-radius:10px;box-shadow:none;padding:12px 26px 14px;position:relative}
+.lt-sign-board small{color:#FFE9C7;padding-bottom:10px;margin-bottom:10px;border-bottom:2px solid #9a5f33;margin-left:-26px;margin-right:-26px}
+.lt-sign-board b{color:#fff;text-shadow:0 2px 0 rgba(101,45,28,.35)}
