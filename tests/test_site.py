@@ -5277,7 +5277,7 @@ class SiteTest(unittest.TestCase):
         for part in (html, text):
             for word in ('이것만 쓱', '⚡', '👀', 'EDITOR\'S COMMENT'):  # 뉴닉 문구·이모지 X (운영자 2026-11-01)
                 self.assertNotIn(word, html)
-            for word in ('갓 구운 오늘의 뉴스', '오늘의 메인 뉴스', '한 입에 정리하면', '요즘 뜨는 소비 트렌드', '편의점 신상', '5,937.66', '▼ 74.78 (-1.24%)', '▲ 0.90 (+0.07%)', '직전 거래일', '코스피 시가총액 TOP 10', '종목10', '+1.50%', 'by. 에디터 크로와상', '해지하지 않으시면 계속 보내 드릴게요', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '수신거부', 'Unsubscribe', 'SOBORU', '매일 아침'):
+            for word in ('갓 구운 오늘의 뉴스', '오늘의 메인 뉴스', '한 입에 정리하면', '요즘 뜨는 소비 트렌드', '편의점 신상', '5,937.66', '▼ 74.78 (-1.24%)', '▲ 0.90 (+0.07%)', '직전 거래일', '코스피 시가총액 TOP 10', '종목10', '+1.50%', 'by. 에디터 크로와상', '거부하지 않으시면 계속 보내 드릴게요', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '수신거부', 'Unsubscribe', 'SOBORU', '매일 아침'):
                 self.assertIn(word, part)
         self.assertLess(html.index('id="n1"'), html.index('id="num"')); self.assertLess(html.index('id="num"'), html.index('id="harm"')); self.assertLess(html.index('id="harm"'), html.index('id="law"'))
         self.assertIn('서울시 강남구', html)  # 보내는 곳 주소 (사이트 하단 정보)
@@ -5340,10 +5340,18 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(calls[-1][2]['confirmEmailYN'], 'N')
             calls.clear()
             self.client.get('/letter/confirm/tok-wait')   # 확인 메일을 누르면 스티비에도 추가
-            self.assertEqual([c[2]['subscribers'] for c in calls if c[0] == 'POST'][-1], [{'email': 'wait@example.com'}])
+            self.assertEqual([c[2]['subscribers'] for c in calls if c[0] == 'POST'][-1], [{'email': 'wait@example.com', 'soboru_sub': 'none'}])  # 구독자는 구독하기 버튼 숨김
             calls.clear()
             self.client.get('/letter/unsubscribe/tok-old1')   # 사이트에서 해지하면 스티비에서도 수신 거부
             self.assertEqual(calls[-1][:3], ('PUT', 'https://api.stibee.com/v1/lists/55/subscribers/unsubscribe', ['old1@example.com']))
+        # 주소록에 구독 필드가 없어 거절되면 필드 없이 한 번 더 넣음
+        calls.clear()
+        def picky(method, path, body=None, ctype='application/json', base=None):
+            calls.append((method, (base or '') + path, body))
+            return (400, 'unknown field') if 'soboru_sub' in json.dumps(body) else (200, '{"Ok": true}')
+        with patch.object(self.site.soboru_letter, 'stibee_call', picky):
+            self.assertEqual(self.site.soboru_letter.stibee_subs('55', ['a@example.com']), (True, ''))
+        self.assertEqual(calls[-1][2]['subscribers'], [{'email': 'a@example.com'}])
         with patch.dict(os.environ, {'STIBEE_API_KEY': ''}):
             r = admin.post('/admin/letter/stibee-sync', data={'_csrf': self.csrf(admin, '/admin/letter')}, follow_redirects=True)
             self.assertIn('API 키가 없어요', r.get_data(as_text=True))
@@ -5497,6 +5505,9 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('<body', code); self.assertNotIn('<html', code); self.assertNotIn('<meta', code)
         self.assertIn('href="$%unsubscribe%$"', code); self.assertNotIn('/letter/o/', code); self.assertNotIn('/letter/unsubscribe/', code)
         self.assertIn('수신거부', code); self.assertNotIn('02-749', code)  # 바닥글에 전화번호 X (운영자 2026-11-01)
+        # 맨 위 구독하기 버튼은 아직 구독 안 한 분께만: 스티비는 구독 필드로 숨기고, 사이트 발송(받는 사람 모두 구독자)엔 아예 없음 (운영자 2026-11-01)
+        self.assertEqual(code.count('style="display:$%soboru_sub%$;"'), 2); self.assertIn('>구독하기</a>', code)
+        self.assertNotIn('>구독하기</a>', L['email_parts'](letter)[1]); self.assertIn('수신 거부하기', L['email_parts'](letter)[1])
         page = admin.get(f"/admin/letter/{r['id']}").get_data(as_text=True)
         self.assertIn('HTML 에디터로 만들기', page); self.assertIn('id="lt-stibee"', page)
 
