@@ -35,6 +35,11 @@
       </div>
       {% endfor %}
       {% set sec = L.sections %}
+      {% if sec.briefs %}<div class="form-panel lt-ad-item">
+        <p class="lt-ad-num">한 줄로 보는 경제 뉴스</p>
+        {% for b in sec.briefs %}<label class="field">{{ b.src.name or '기사' }} · <a href="{{ b.src.url }}" target="_blank" rel="noopener nofollow">원문 ↗</a><input name="brief{{ loop.index0 }}" value="{{ b.line }}" maxlength="90"{% if not draft %} readonly{% endif %}></label>
+        {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_brief{{ loop.index0 }}" value="1"> 빼기</label></div>{% endif %}{% endfor %}
+      </div>{% endif %}
       {% if sec.number %}<div class="form-panel lt-ad-item">
         <p class="lt-ad-num">숫자로 보는 오늘{% if sec.number.src and sec.number.src.url %} · <a href="{{ sec.number.src.url }}" target="_blank" rel="noopener nofollow">{{ sec.number.src.name }} 원문 ↗</a>{% endif %}</p>
         <label class="field">숫자<input name="number_value" value="{{ sec.number.value }}" maxlength="20"{% if not draft %} readonly{% endif %}></label>
@@ -80,10 +85,17 @@
         <div class="lt-ad-inline"><input type="email" name="test_to" value="{{ test_to }}" placeholder="받아 볼 이메일 주소" aria-label="테스트 메일 주소"><button type="submit" name="act" value="test"{% if not mail_ready %} disabled{% endif %}>테스트 메일 보내기</button></div>
         <p class="meta">고친 내용을 저장한 뒤 이 주소로 한 통만 보내요. 구독자에게는 가지 않아요.</p>
         {% if L.status != 'sent' %}
+        {% if via == 'stibee' %}
+        <h2>스티비로 보내기</h2>
+        <p>스티비 주소록의 구독자에게 바로 보내요. 관리자 > 소보루 레터의 '보내는 곳' 설정을 따라요.</p>
+        <div class="admin-actions">{% if not L.check_ok %}<label class="check aw-ack"><input type="checkbox" name="ack" value="1"> 검토 필요한 곳을 직접 확인했어요</label>{% endif %}
+          <button type="submit" name="act" value="send" class="primary" onclick="return confirm('{{ L.no }}호를 스티비 구독자에게 보낼까요? 보낸 메일은 되돌릴 수 없어요.')">스티비로 보내기</button></div>
+        {% else %}
         <h2>구독자에게 보내기</h2>
         <p>확인을 마친 구독자 <b>{{ counts.get('active', 0) }}명</b>에게 보내요. {% if L.status == 'scheduled' %}보내는 중이에요. 끊겼다면 다시 누르면 아직 못 받은 분께만 보내요.{% endif %}</p>
         <div class="admin-actions">{% if not L.check_ok %}<label class="check aw-ack"><input type="checkbox" name="ack" value="1"> 검토 필요한 곳을 직접 확인했어요</label>{% endif %}
           <button type="submit" name="act" value="send" class="primary"{% if not mail_ready or not counts.get('active') %} disabled{% endif %} onclick="return confirm('구독자 {{ counts.get('active', 0) }}명에게 {{ L.no }}호를 보낼까요? 보낸 메일은 되돌릴 수 없어요.')">보내기</button></div>
+        {% endif %}
         {% endif %}
       </div>
     </form>

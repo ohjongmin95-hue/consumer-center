@@ -5135,7 +5135,8 @@ class SiteTest(unittest.TestCase):
         def fake(url, headers, body, timeout):
             sent.append(body)
             content = body['messages'][1]['content']
-            news = json.loads(content.split('[이번 호 뉴스]\n', 1)[1].split('\n[피해 예방 뉴스]', 1)[0])
+            news = json.loads(content.split('[이번 호 뉴스]\n', 1)[1].split('\n[한 줄 뉴스]', 1)[0])
+            briefs = json.loads(content.split('[한 줄 뉴스]\n', 1)[1].split('\n[피해 예방 뉴스]', 1)[0])
             harm = json.loads(content.split('[피해 예방 뉴스]\n', 1)[1].split('\n[소보루에', 1)[0])
             items = []
             for x in news:
@@ -5151,7 +5152,8 @@ class SiteTest(unittest.TestCase):
                    'harm': {'title': '요즘 늘어난 환불 거절', 'body': '환불을 미루는 일이 늘고 있어요. 대화 기록을 꼭 남겨 두세요.',
                             'steps': ['주문·결제 화면을 캡처해 두세요.', '판매자에게 기록이 남게 요청하세요.', '1372 소비자상담센터에 상담해요.'] + (['14일 안에 꼭 하세요.'] if bad else []),
                             'law': harm[0]['법 조문 후보'][0]['id'] if harm and harm[0]['법 조문 후보'] else ''},
-                   'lawbox': {'title': '온라인 쇼핑은 7일 안에 물릴 수 있어요', 'body': '물건을 받은 날부터 7일 안이면 청약철회를 할 수 있어요.', 'point': '받은 날부터 7일, 기억해요.', 'law': 'B-L1'}}
+                   'lawbox': {'title': '온라인 쇼핑은 7일 안에 물릴 수 있어요', 'body': '물건을 받은 날부터 7일 안이면 청약철회를 할 수 있어요.', 'point': '받은 날부터 7일, 기억해요.', 'law': 'B-L1'},
+                   'briefs': [{'no': b['번호'], 'line': '이런 경제 소식도 있었어요' + (' (작년보다 4321억 원)' if bad and k == 1 else '')} for k, b in enumerate(briefs)] + [{'no': 'B99', 'line': '없는 번호'}]}
             return 200, {'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
         return fake
 
@@ -5246,18 +5248,21 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(L['title'], '이번 주 소비자 뉴스, 이것만 보면 끝')  # '소보루 브리핑' 같은 고정 이름은 뗌
         self.assertIn({'where': '소비자 피해 예방', 'numbers': ['14']}, [{k: p[k] for k in ('where', 'numbers') if k in p} for p in L['problems']])
         self.assertFalse([p for p in L['problems'] if p['where'] in ('숫자로 보는 오늘', '법률·제도')])  # 30%·7일은 자료에 있는 숫자
+        self.assertTrue(sec.get('briefs'), sec.keys()); self.assertNotIn('없는 번호', json.dumps(sec['briefs'], ensure_ascii=False))
+        self.assertTrue(all(b['src']['url'] not in {it['src']['url'] for it in L['items']} for b in sec['briefs']))  # 자세히 푼 뉴스와 겹치지 않음
+        if len(sec['briefs']) > 1: self.assertIn({'where': '한 줄 뉴스 2', 'numbers': ['4321']}, [{k: p[k] for k in ('where', 'numbers') if k in p} for p in L['problems']])
         # 메일: HTML(표·인라인)과 글 두 가지, 원문·법령 링크, 해지 링크
         subject, html, text = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')
         icon = self.site.soboru_letter.TOPIC_ICON[it1['topic']][0]  # 분야를 남겨 분야 그림(토스페이스)을 붙임
         self.assertIn(f'/static/img/tf/{icon}.png', html)
-        self.assertLess(html.index('soboru-wordmark.png'), html.index('soboru-character-hero.png'))  # 머리는 소보루 레터 그림과 글자 로고, 캐릭터는 아래에서만
+        self.assertLess(html.index('soboru-wordmark-orange.png'), html.index('soboru-character-hero.png'))  # 머리는 소보루 레터 그림과 글자 로고, 캐릭터는 아래에서만
         self.assertIn('이번 주 소비자 뉴스, 이것만 보면 끝', subject)
         for part in (html, text):
             self.assertIn('첫째 소식, 이것만 알면 돼요', part); self.assertIn(it1['src']['url'], part)
             self.assertIn('/letter/unsubscribe/tok-x', part); self.assertIn('https://www.law.go.kr/', part)
         self.assertIn('max-width:600px', html); self.assertIn('원문 보기 ›', html); self.assertNotIn('써 본 사람들이 추천한 리뷰', html)
         for part in (html, text):
-            for word in ('오늘의 경제 이슈', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '발행 정보', '발행인 소보루', '경제·소비자 관련 정보 제공', '매일 아침'):
+            for word in ('오늘의 경제 이슈', '한 줄로 보는 경제 뉴스', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '발행 정보', '발행인 소보루', '경제·소비자 관련 정보 제공', '매일 아침'):
                 self.assertIn(word, part)
         self.assertLess(html.index('id="n1"'), html.index('id="num"')); self.assertLess(html.index('id="num"'), html.index('id="harm"')); self.assertLess(html.index('id="harm"'), html.index('id="law"'))
         self.assertIn('서울시 강남구', html)  # 보내는 곳 주소 (사이트 하단 정보)
@@ -5269,10 +5274,36 @@ class SiteTest(unittest.TestCase):
         for i, it in enumerate(L['items']): form.update({f'title{i}': it['title'], f'body{i}': it['body'], f'tip{i}': it['tip']})
         form['body1'] = '숫자 없이 고쳤어요.'; form['drop2'] = '1'
         form['harm_steps'] = '주문 화면을 캡처해 두세요.\n1372 소비자상담센터에 상담해요.'; form['drop_number'] = '1'
+        form.update({f'drop_brief{i}': '1' for i in range(len(L['sections'].get('briefs') or []))})
         admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), **form})
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
         self.assertEqual(len(L['items']), 4); self.assertTrue(L['check_ok'], L['problems'])
-        self.assertNotIn('number', L['sections']); self.assertEqual(len(L['sections']['harm']['steps']), 2)
+        self.assertNotIn('number', L['sections']); self.assertEqual(len(L['sections']['harm']['steps']), 2); self.assertNotIn('briefs', L['sections'])
+
+    def test_letter_stibee_api_send(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        r, _ = self.letter_make(bad=False)
+        admin = self.login_admin()
+        admin.post('/admin/letter/settings', data={'_csrf': self.csrf(admin, '/admin/letter'), 'freq': 'daily', 'via': 'stibee', 'stibee_list': '4321',
+                                                   'stibee_sender': 'contact@consumerjebo.co.kr', 'stibee_name': '소보루 레터'})
+        cfg = self.site.app.extensions['soboru_letter']['settings']()
+        self.assertEqual((cfg['via'], cfg['stibee_list'], cfg['stibee_sender']), ('stibee', 4321, 'contact@consumerjebo.co.kr'))
+        self.assertIn('스티비로 보내기', admin.get(f"/admin/letter/{r['id']}").get_data(as_text=True))
+        calls = []
+        def fake(method, path, body=None, ctype='application/json'):
+            calls.append((method, path, body, ctype))
+            return (200, '{"id": 777}') if path == '/emails' else (200, 'ok')
+        send = self.site.app.extensions['soboru_letter']['send']
+        with patch.dict(os.environ, {'STIBEE_API_KEY': ''}):
+            self.assertIn('API 키', send(r['id'])['reason'])
+        with patch.dict(os.environ, {'STIBEE_API_KEY': 'stb-test'}), patch.object(self.site.soboru_letter, 'stibee_call', fake):
+            self.assertEqual(send(r['id'])['status'], 'sent')
+        self.assertEqual([c[:2] for c in calls], [('POST', '/emails'), ('POST', '/emails/777/content'), ('POST', '/emails/777/send')])
+        self.assertEqual(calls[0][2]['listId'], 4321); self.assertTrue(calls[0][2]['subject'].startswith('[소보루 레터]'))
+        self.assertEqual(calls[1][3], 'text/html'); self.assertIn('$%unsubscribe%$', calls[1][2]); self.assertIn('<body>', calls[1][2])
+        L = self.site.app.extensions['soboru_letter']['get'](r['id'])
+        self.assertEqual((L['status'], L['trigger'], L['stibee_id']), ('sent', 'stibee', 777))
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM letter_sends').fetchone()[0], 0)  # 사이트 구독자에게는 안 보냄
 
     def test_letter_open_click_tracking_and_stibee_html(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
@@ -5324,10 +5355,10 @@ class SiteTest(unittest.TestCase):
         self.assertIn('/admin/letter/', r.headers['Location'])
         lid = int(r.headers['Location'].rsplit('/', 1)[1])
         # 설정: 기본은 자동 보내기 꺼짐·월요일
-        self.assertEqual(self.site.app.extensions['soboru_letter']['settings'](), {'auto': 0, 'day': 0, 'freq': 'daily'})  # 기본은 매일 아침 (운영자 2026-11-01)
+        self.assertEqual({k: v for k, v in self.site.app.extensions['soboru_letter']['settings']().items() if k in ('auto', 'day', 'freq', 'via')}, {'auto': 0, 'day': 0, 'freq': 'daily', 'via': 'site'})  # 기본은 매일 아침 (운영자 2026-11-01)
         self.assertIn('매일 아침', self.client.get('/letter').get_data(as_text=True))
         admin.post('/admin/letter/settings', data={'_csrf': self.csrf(admin, '/admin/letter'), 'auto': '1', 'day': '3', 'freq': 'weekly'})
-        self.assertEqual(self.site.app.extensions['soboru_letter']['settings'](), {'auto': 1, 'day': 3, 'freq': 'weekly'})
+        self.assertEqual({k: v for k, v in self.site.app.extensions['soboru_letter']['settings']().items() if k in ('auto', 'day', 'freq')}, {'auto': 1, 'day': 3, 'freq': 'weekly'})
         self.assertIn('매주 목요일 아침', self.client.get('/letter').get_data(as_text=True))
         admin.post('/admin/letter/settings', data={'_csrf': self.csrf(admin, '/admin/letter'), 'day': '3', 'freq': 'nope'})
         self.assertEqual(self.site.app.extensions['soboru_letter']['settings']()['freq'], 'daily')  # 모르는 값은 기본으로

@@ -15,7 +15,7 @@
     {% if L.intro %}<p class="lt-intro">{{ L.intro }}</p>{% endif %}
     {% set econ = L['items']|rejectattr('kind', 'equalto', 'policy')|list %}{% set policy = L['items']|selectattr('kind', 'equalto', 'policy')|list %}
     <nav class="lt-toc" aria-label="이번 호 소식"><b>오늘의 레터</b><ol>{% for it in econ + policy %}<li><a href="#n{{ loop.index }}">{{ it.title }}</a></li>{% endfor %}
-      {% if sec.number %}<li><a href="#num">숫자로 보는 오늘 · {{ sec.number.label }}</a></li>{% endif %}{% if sec.harm %}<li><a href="#harm">피해 예방 · {{ sec.harm.title }}</a></li>{% endif %}
+      {% if sec.briefs %}<li><a href="#brief">한 줄로 보는 경제 뉴스 {{ sec.briefs|length }}건</a></li>{% endif %}{% if sec.number %}<li><a href="#num">숫자로 보는 오늘 · {{ sec.number.label }}</a></li>{% endif %}{% if sec.harm %}<li><a href="#harm">피해 예방 · {{ sec.harm.title }}</a></li>{% endif %}
       {% if sec.lawbox %}<li><a href="#law">법률·제도 · {{ sec.lawbox.title }}</a></li>{% endif %}{% if sec.word %}<li><a href="#word">오늘의 경제 용어 · {{ sec.word.word }}</a></li>{% endif %}</ol></nav>
     {% macro news(it, n) %}
     <section class="lt-item" id="n{{ n }}">
@@ -32,6 +32,9 @@
     {% endmacro %}
     <h2 class="lt-part">오늘의 경제 이슈</h2>
     {% for it in econ %}{{ news(it, loop.index) }}{% endfor %}
+    {% if sec.briefs %}<section class="lt-box lt-brief" id="brief"><h2 class="lt-part">한 줄로 보는 경제 뉴스</h2>
+      <ul>{% for b in sec.briefs %}<li>{{ b.line }} <a href="{{ b.src.url }}" target="_blank" rel="noopener nofollow">{{ b.src.name or '기사' }} ↗</a></li>{% endfor %}</ul>
+    </section>{% endif %}
     {% if policy %}<h2 class="lt-part">정책·제도 변화</h2>{% for it in policy %}{{ news(it, econ|length + loop.index) }}{% endfor %}{% endif %}
     {% if sec.number %}{% set b = sec.number %}
     <section class="lt-box lt-numbox" id="num"><h2 class="lt-part">숫자로 보는 오늘</h2>
@@ -65,7 +68,7 @@
       <ul class="lt-life">{% for a in sec.life %}<li><a href="{{ a.url }}"><span class="lt-fi lc1 tf" aria-hidden="true">{{ a.emoji }}</span><div><b>{{ a.title }}</b>{% if a.summary %}<p>{{ a.summary }}</p>{% endif %}</div></a></li>{% endfor %}</ul>
     </section>
     {% endif %}
-    <div class="lt-outro">{% if L.outro %}<p>{{ L.outro }}</p>{% endif %}<b>소보루 에디터 드림</b><small>이 레터는 법률 자문이 아닌 일반 정보예요. 뉴스 내용은 기사 원문에서 확인해 주세요.</small></div>
+    <div class="lt-outro">{% if L.outro %}<p>{{ L.outro }}</p>{% endif %}<b>에디터 크로와상 드림</b><small>이 레터는 법률 자문이 아닌 일반 정보예요. 뉴스 내용은 기사 원문에서 확인해 주세요.</small></div>
   </article>
   {% if near.prev or near.next %}
   <nav class="lt-near" aria-label="다른 호">

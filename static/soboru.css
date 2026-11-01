@@ -2809,6 +2809,7 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-issue .lt-part{margin:44px 0 4px;font-size:15px;font-weight:800;color:var(--sb-orange);letter-spacing:-.2px}
 .lt-issue .lt-box{margin-top:12px}
 .lt-issue .lt-box h3{margin:6px 0 12px;font-size:22px;line-height:1.45;letter-spacing:-.5px;color:#191f28}
+.lt-brief ul{margin:0;padding-left:18px}.lt-brief li{margin:0 0 10px;line-height:1.65}.lt-brief li::marker{color:var(--sb-orange)}.lt-brief a{color:var(--sb-sub);font-size:13px;white-space:nowrap}
 .lt-numbox>div{background:#652D1C;color:#fff;border-radius:20px;padding:26px 22px;text-align:center}
 .lt-numbox small{display:block;color:#f8d59f;font-size:14px;font-weight:700}
 .lt-numbox b{display:block;font-size:40px;line-height:1.2;margin:4px 0 10px;letter-spacing:-1px}

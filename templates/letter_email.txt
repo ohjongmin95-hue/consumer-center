@@ -14,7 +14,10 @@
 {% endif %}📰 기사 원문({{ it.src.name or '기사' }}): {{ it.src.url }}
 {% endmacro %}
 ■ 오늘의 경제 이슈
-{% for it in econ %}{{ news(it, loop.index) }}{% endfor %}{% if policy %}
+{% for it in econ %}{{ news(it, loop.index) }}{% endfor %}{% if sec.briefs %}
+■ 한 줄로 보는 경제 뉴스
+{% for b in sec.briefs %}· {{ b.line }} ({{ b.src.name or '기사' }} {{ b.src.url }})
+{% endfor %}{% endif %}{% if policy %}
 ■ 정책·제도 변화
 {% for it in policy %}{{ news(it, econ|length + loop.index) }}{% endfor %}{% endif %}{% if sec.number %}
 ━━━━━━━━━━━━━━━━
@@ -53,7 +56,7 @@
 {% endfor %}{% endif %}
 ━━━━━━━━━━━━━━━━
 {{ L.outro }}
-소보루 에디터 드림
+에디터 크로와상 드림
 이 레터는 법률 자문이 아닌 일반 정보예요.
 
 [발행 정보]

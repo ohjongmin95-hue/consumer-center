@@ -16,7 +16,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
   확인하지 않은 신청은 7일 뒤 지운다.
 - 예약: deploy/soboru-letter.timer가 매일 아침 7시 30분 `python soboru_letter.py weekly`를 부르면, 관리자가 고른 주기(기본 매일·평일 매일·매주 한 요일)에 맞을 때만 한 호를 만든다.
 """
-import datetime, hashlib, hmac, json, os, re, secrets, sys, threading, time, urllib.parse
+import datetime, hashlib, hmac, json, os, re, secrets, sys, threading, time, urllib.error, urllib.parse, urllib.request
 from flask import Response, abort, flash, g, redirect, render_template, request, url_for
 from markupsafe import Markup
 import soboru_writer as W
@@ -40,6 +40,7 @@ HARM_QUERIES = ['소비자 피해', '소비자 주의보', '리콜']
 LETTER_QUERIES = ECON_QUERIES + POLICY_QUERIES
 KIND_N = {'econ': 3, 'policy': 2}   # 경제 이슈 몇 건, 정책·제도 몇 건 (모자라면 다른 쪽에서 채움)
 HARM_N = 2                          # 피해 예방에 넘기는 뉴스 수
+BRIEF_N = 6                         # '한 줄로 보는 경제 뉴스' 수 (자세히 푼 경제 이슈 말고 그날의 다른 경제 뉴스, 운영자 요청 2026-11-01)
 # ④ 법률·제도: 호 번호로 돌아가며 (검색어는 법령 모음에서 조문을 찾는 말)
 LAW_TOPICS = [('전자상거래 청약철회 기준', '전자상거래 청약철회 7일 반품 비용'), ('소비자분쟁해결기준', '소비자분쟁해결기준 환급 교환 수리'),
               ('방문판매·전화권유 청약철회', '방문판매 청약철회 14일'), ('할부 거래 철회와 항변권', '할부거래 청약철회 항변권'),
@@ -62,11 +63,11 @@ STIBEE_UNSUB = '$%unsubscribe%$'      # 스티비에 붙여 넣는 HTML의 수�
 GIF = bytes.fromhex('47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b')  # 1x1 투명 그림
 PURPOSE = '경제·소비자 관련 정보 제공'   # ⑥ 발행 정보의 발행 목적
 
-SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제·소비자 뉴스레터 "소보루 레터" 에디터다. 바쁜 사람도 5분이면 오늘의 경제 이슈와 내 지갑을 지키는 정보를 따라잡게 정리한다. '
+SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제·소비자 뉴스레터 "소보루 레터"를 쓰는 "에디터 크로와상"이다. 바쁜 사람도 5분이면 오늘의 경제 이슈와 내 지갑을 지키는 정보를 따라잡게 정리한다. '
           '친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 쓴다. 광고·홍보·이벤트 문구는 쓰지 않는다(정보만 전한다).\n'
           '이번 호는 이렇게 짠다: ① 오늘의 경제 이슈 — [이번 호 뉴스] 가운데 구분이 "경제 이슈"인 경제·산업 뉴스와 "정책·제도"인 정부 정책·제도 변화 뉴스를 모두 하나씩 풀어 쓴다. '
           '② 숫자로 보는 오늘 — [이번 호 뉴스] 하나에 나온 숫자 하나를 골라 그 뜻을 풀어 준다. ③ 소비자 피해 예방 — [피해 예방 뉴스]와 [소보루에 최근 많이 들어온 제보 분야]를 보고 요즘 생기는 피해 유형 하나와 겪었을 때 대응 방법을 쓴다. '
-          '④ 알아두면 좋은 법률·제도 — [오늘의 법률·제도 주제]의 조문을 쉬운 말로 풀어 준다.\n'
+          '④ 알아두면 좋은 법률·제도 — [오늘의 법률·제도 주제]의 조문을 쉬운 말로 풀어 준다. ⑤ 한 줄로 보는 경제 뉴스 — [한 줄 뉴스]를 하나씩 한 문장으로 정리한다.\n'
           '지켜야 할 것:\n'
           '- 뉴스마다 제목과 요약 조각만 준다. 기사 문장을 옮기지 말고 반드시 네 말로 새로 풀어 쓴다. 기사에서 그대로 따오는 말은 몇 낱말을 넘지 않게 하고, 따옴표로 인용하지 않는다.\n'
           '- 각 칸은 그 칸에 준 자료([제목]·[요약]·[조문 후보])에 있는 사실과 숫자만 쓴다. 없는 숫자(날짜·금액·비율·건수·기간 모두)는 쓰지 않고, 숫자를 새로 계산하지 않는다. 대응 방법에도 자료에 없는 기간·금액은 쓰지 않는다.\n'
@@ -74,11 +75,26 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           '- 기업을 좋다·나쁘다 평가하거나 비난하지 않는다. 피해 예방 칸에서도 특정 기업 이름을 쓰지 않고 피해 유형으로만 쓴다. 정치 이슈는 어느 편도 들지 않고 누가 무엇을 했는지 사실만 쓴다. 사람 이름·연락처 같은 개인정보는 쓰지 않는다(공인이 한 공식 발표는 기관 이름으로 쓴다).\n'
           '- 법 조문은 준 후보 id 가운데 정말 관련 있는 것 하나만 고르고, 맞는 것이 없으면 빈 문자열로 둔다. 법 이야기는 "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다. 분쟁해결기준은 강제력 없는 권고 기준이라고 밝힌다.\n'
           '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다. "소보루 브리핑" 같은 고정된 이름을 제목에 붙이지 않는다.\n'
-          'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 첫인사 2~3문장 — "소보루 이웃님,"으로 시작해 오늘 가장 큰 경제 소식을 꺼내고 오늘 무엇을 같이 볼지 한 문장으로 묶는다. 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
+          'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 첫인사 2~3문장 — "소보루 이웃님, 에디터 크로와상이에요."로 시작해 오늘 가장 큰 경제 소식을 꺼내고 오늘 무엇을 같이 볼지 한 문장으로 묶는다. 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
           '"items": [{"no": 뉴스 번호, "title": 25자 안팎 짧고 눈길 끄는 제목, "body": 3~5문장 설명, "tip": 이 소식이 내 생활·지갑에 어떤 의미인지 한 줄(60자 이내, 마땅치 않으면 ""), "law": 고른 조문 id 또는 ""}], '
           '"number": {"no": 숫자를 고른 뉴스 번호, "value": 그 뉴스 자료에 있는 숫자 그대로(단위 포함, 예 "3.2%"), "label": 무엇의 숫자인지 15자 안팎, "body": 이 숫자가 무슨 뜻인지 1~2문장} (고를 숫자가 없으면 null), '
           '"harm": {"title": 피해 유형 20자 안팎, "body": 요즘 이런 피해가 생기고 있다는 설명 2~4문장, "steps": [겪었을 때 대응 방법 2~4개, 각각 40자 안팎 한 문장 — 증거 남기기, 판매자에게 기록이 남는 방식으로 요청하기, 카드 결제면 카드사에 문의하기, 1372 소비자상담센터 상담처럼 그 피해에 맞는 것], "law": 피해 예방 뉴스 조문 후보 id 또는 ""} (자료가 없으면 null), '
-          '"lawbox": {"title": 25자 안팎 제목, "body": 조문을 쉬운 말로 3~4문장, "point": 꼭 기억할 한 줄 50자 이내, "law": 고른 조문 id} (주제가 null이면 null)}')
+          '"lawbox": {"title": 25자 안팎 제목, "body": 조문을 쉬운 말로 3~4문장, "point": 꼭 기억할 한 줄 50자 이내, "law": 고른 조문 id} (주제가 null이면 null), '
+          '"briefs": [{"no": [한 줄 뉴스]의 번호(예 "B1"), "line": 그 뉴스를 네 말로 한 문장(45자 이내, 그 뉴스 자료에 있는 사실·숫자만)}] ([한 줄 뉴스]마다 하나씩, 없으면 [])}')
+
+
+STIBEE_API = 'https://api.stibee.com/v2'
+VIA = {'site': '사이트에서 직접 (Brevo 등 SMTP)', 'stibee': '스티비로 (프로 요금제 API)'}
+
+
+def stibee_call(method, path, body=None, ctype='application/json'):
+    """스티비 API v2 (운영자 요청 2026-11-01). 키는 서버 설정 STIBEE_API_KEY (deploy/set-stibee.sh). (상태 코드, 응답 글자). 테스트에서 바꿔 끼운다."""
+    key = os.getenv('STIBEE_API_KEY', '').strip()
+    data = None if body is None else (body if isinstance(body, str) else json.dumps(body, ensure_ascii=False)).encode()
+    req = urllib.request.Request(STIBEE_API + path, data=data, method=method, headers={'AccessToken': key, 'Content-Type': ctype + '; charset=utf-8'})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r: return r.status, r.read().decode('utf-8', 'replace')
+    except urllib.error.HTTPError as e: return e.code, e.read().decode('utf-8', 'replace')[:300]
 
 
 class Skip(Exception):
@@ -139,6 +155,7 @@ def install(S):
             PRIMARY KEY(letter_id,sub_id,kind))''')
         db.execute('''CREATE TABLE IF NOT EXISTS letter_sends(letter_id INTEGER NOT NULL,sub_id INTEGER NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT '',
             at TEXT NOT NULL,PRIMARY KEY(letter_id,sub_id))''')
+        if 'stibee_id' not in {r[1] for r in db.execute('PRAGMA table_info(letters)')}: db.execute('ALTER TABLE letters ADD COLUMN stibee_id INTEGER')
 
     def naver(): return app.extensions.get('naverhub') or {}
     def testing(): return bool(app.config.get('TESTING'))
@@ -154,8 +171,34 @@ def install(S):
 
     def settings():
         s = setting('letter', {})
+        sender = (s.get('stibee_sender') or '').strip()
         return {'auto': 1 if s.get('auto') == 1 else 0, 'day': s.get('day') if s.get('day') in range(7) else 0,
-                'freq': s.get('freq') if s.get('freq') in FREQS else 'daily'}
+                'freq': s.get('freq') if s.get('freq') in FREQS else 'daily', 'via': s.get('via') if s.get('via') in VIA else 'site',
+                'stibee_list': s.get('stibee_list') if isinstance(s.get('stibee_list'), int) else 0,
+                'stibee_sender': sender if EMAIL_RE.match(sender) else '', 'stibee_name': (s.get('stibee_name') or '').strip()[:40] or NAME}
+
+    def stibee_ready(): return bool(os.getenv('STIBEE_API_KEY', '').strip())
+
+    def stibee_send(L, trigger):
+        """스티비에 이메일을 만들고(제목·발신자·주소록) 내용을 넣은 뒤 바로 보냄. 우리 구독자 목록에는 보내지 않음(구독자는 스티비 주소록)."""
+        cfg = settings()
+        if not stibee_ready(): return {'status': 'error', 'reason': '스티비 API 키가 없어요 (deploy/set-stibee.sh)'}
+        if not cfg['stibee_list'] or not cfg['stibee_sender']: return {'status': 'error', 'reason': '스티비 주소록 번호와 발신자 이메일을 설정에 넣어 주세요'}
+        eid = L.get('stibee_id')
+        if not eid:
+            st, res = stibee_call('POST', '/emails', {'listId': cfg['stibee_list'], 'senderEmail': cfg['stibee_sender'], 'senderName': cfg['stibee_name'],
+                                                     'subject': f"[{NAME}] {L['title']}"})
+            try: eid = int(json.loads(res)['id'])
+            except (ValueError, KeyError, TypeError): return {'status': 'error', 'reason': f'스티비에 이메일을 만들지 못했어요 ({st}) {res[:120]}'}
+            with conn() as db: db.execute('UPDATE letters SET stibee_id=? WHERE id=?', (eid, L['id']))
+        html = '<html><head></head><body>' + stibee_html(L) + '</body></html>'
+        st, res = stibee_call('POST', f'/emails/{eid}/content', html, 'text/html')
+        if st != 200: return {'status': 'error', 'reason': f'스티비에 내용을 넣지 못했어요 ({st}) {res[:120]}'}
+        st, res = stibee_call('POST', f'/emails/{eid}/send')
+        if st != 200: return {'status': 'error', 'reason': f'스티비 발송을 시작하지 못했어요 ({st}) {res[:120]}'}
+        with conn() as db: db.execute("UPDATE letters SET status='sent',sent_at=?,trigger=?,updated=? WHERE id=?", (stamp(), 'stibee', stamp(), L['id']))
+        log({'status': 'sent', 'no': L['no'], 'trigger': trigger, 'reason': f'스티비로 보냄 (이메일 {eid})'})
+        return {'status': 'sent', 'reason': ''}
 
     def news_days(today=None):
         # 매일 보내면 지난 하루치(평일만 보내면 월요일은 주말까지), 매주면 7일치
@@ -226,7 +269,10 @@ def install(S):
                     'topic': it.get('topic', ''), 'kind': 'policy' if it.get('topic') in POLICY_QUERIES else 'econ'}
         news = [entry(n, it) for n, it in enumerate(items, 1)]
         harm = [entry(n, it, 'H') for n, it in enumerate(pick_issues(harm_pool, HARM_N, None), 1)]
-        return {'news': news, 'harm': harm, 'trend': case_trend(), 'law': law_topic(no)}
+        used = {it['url'] for it in items}
+        rest = [it for it in pool if it['topic'] in ECON_QUERIES and it['url'] not in used]
+        briefs = [dict(entry(n, it, 'B'), no=f'B{n}', cands=[]) for n, it in enumerate(pick_issues(rest, BRIEF_N, None), 1)]
+        return {'news': news, 'harm': harm, 'briefs': briefs, 'trend': case_trend(), 'law': law_topic(no)}
 
     def pick_issues(pool, limit=ITEMS[1], kinds=KIND_N):
         # 주요 이슈 = 여러 기사가 함께 다룬 소식. 제목 낱말이 2개 넘게 겹치는 기사가 많을수록 앞에 둠.
@@ -264,6 +310,7 @@ def install(S):
         dump = lambda v: json.dumps(v, ensure_ascii=False)
         user = (f"[이번 호] {NAME} {no}호 ({datetime.date.today().isoformat()})\n"
                 f"[이번 호 뉴스]\n{dump(ai_facts(mat['news']))}\n"
+                f"[한 줄 뉴스]\n{dump([{'번호': x['no'], '제목': x['title'], '요약': x['summary']} for x in mat.get('briefs') or []])}\n"
                 f"[피해 예방 뉴스]\n{dump(ai_facts(mat['harm']))}\n"
                 f"[소보루에 최근 많이 들어온 제보 분야]\n{dump(mat.get('trend') or [])}\n"
                 f"[오늘의 법률·제도 주제]\n{dump({'주제': law['name'], '조문 후보': [{'id': c['id'], '조문': c['label'], '원문': c['text']} for c in law['cands']]} if law else None)}")
@@ -328,6 +375,15 @@ def install(S):
                 ex['harm'] = {'title': title, 'body': body, 'steps': steps, 'law': law_ref(law),
                               'srcs': [{'name': y['source'], 'url': y['url'], 'date': y['date']} for y in mat['harm']],
                               '_facts': facts, '_source': ' '.join(y['title'] + ' ' + y['summary'] for y in mat['harm'])}
+        by_no = {x['no']: x for x in mat.get('briefs') or []}
+        briefs = []
+        for bi in (out.get('briefs') if isinstance(out.get('briefs'), list) else [])[:BRIEF_N]:
+            x = by_no.get(bi.get('no')) if isinstance(bi, dict) else None
+            line = W._plain(bi.get('line'), 90) if x else ''
+            if x and line and not any(y['src']['url'] == x['url'] for y in briefs):
+                briefs.append({'line': line, 'topic': x.get('topic', ''), 'src': {'name': x['source'], 'url': x['url'], 'date': x['date']},
+                               '_facts': item_facts(x, None), '_source': x['title'] + ' ' + x['summary']})
+        if briefs: ex['briefs'] = briefs
         b, lt = out.get('lawbox'), mat.get('law')
         if isinstance(b, dict) and lt:
             title, body, point = W._plain(b.get('title'), 60), W._plain(b.get('body'), 800), W._plain(b.get('point'), 120)
@@ -352,6 +408,11 @@ def install(S):
             text = '\n'.join([it['title'], it['body'], it['tip']])
             problems += [dict(p, where=where) for p in W.check_text(text, it.get('_facts', {}))]
             same = copied(text, it.get('_source', ''))
+            if same: problems.append({'where': where, 'line': same, 'copy': True})
+        for i, b in enumerate(sec.get('briefs') or [], 1):
+            where = f'한 줄 뉴스 {i}'
+            problems += [dict(p, where=where) for p in W.check_text(b['line'], b.get('_facts', {}))]
+            same = copied(b['line'], b.get('_source', ''))
             if same: problems.append({'where': where, 'line': same, 'copy': True})
         for key, where in BOXES:
             b = sec.get(key)
@@ -395,7 +456,8 @@ def install(S):
         scrub = lambda t: W.clean_personal(desk.scrub, t)
         title, intro, outro = scrub(title), scrub(intro), scrub(outro)
         for it in items: it.update(title=scrub(it['title']), body=scrub(it['body']), tip=scrub(it['tip']))
-        for b in ex.values():
+        for b in ex.get('briefs') or []: b['line'] = scrub(b['line'])
+        for b in [v for k, v in ex.items() if k != 'briefs']:
             for k in ('value', 'label', 'title', 'body', 'point'):
                 if k in b: b[k] = scrub(b[k])
             if 'steps' in b: b['steps'] = [scrub(x) for x in b['steps']]
@@ -423,6 +485,14 @@ def install(S):
         title = W._plain(form.get('title', L['title']), 80) or L['title']
         intro, outro = ' '.join(form.get('intro', L['intro']).split())[:800], ' '.join(form.get('outro', L['outro']).split())[:600]
         sec = dict(L['sections'])
+        if sec.get('briefs'):
+            briefs = []
+            for i, b in enumerate(sec['briefs']):
+                if form.get(f'drop_brief{i}'): continue
+                b = dict(b, line=W._plain(form.get(f'brief{i}', b['line']), 90))
+                if b['line']: briefs.append(b)
+            if briefs: sec['briefs'] = briefs
+            else: sec.pop('briefs')
         for key, _ in BOXES:
             b = sec.get(key)
             if not b: continue
@@ -457,7 +527,7 @@ def install(S):
         for it, icon in zip(L['items'], icons): it['_icon'] = icon
         return {'L': L, 'items': L['items'], 'econ': [it for it in L['items'] if it.get('kind') != 'policy'], 'policy': [it for it in L['items'] if it.get('kind') == 'policy'],
                 'sec': L['sections'], 'purpose': PURPOSE, 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
-                'tf': tf, 'icons': icons, 'mark': site_url('/static/img/soboru-wordmark.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark.png')) else '', 'hero': site_url('/static/img/soboru-character-hero.png'), 'cfg': letter_cfg(),
+                'tf': tf, 'icons': icons, 'mark': site_url('/static/img/soboru-wordmark-orange.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark-orange.png')) else '', 'hero': site_url('/static/img/soboru-character-hero.png'), 'cfg': letter_cfg(),
                 'unsub': token if token == STIBEE_UNSUB else site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME,
                 'stibee': token == STIBEE_UNSUB}
 
@@ -544,6 +614,7 @@ def install(S):
         L = get(lid)
         if not L: return {'status': 'error', 'reason': '없는 호예요'}
         if L['status'] == 'sent': return {'status': 'error', 'reason': '이미 보낸 호예요'}
+        if settings()['via'] == 'stibee': return stibee_send(L, trigger)
         if not notify.email_ready(): return {'status': 'error', 'reason': '메일 발송 설정(SMTP)이 없어요 (deploy/set-mail.sh)'}
         with conn() as db: db.execute("UPDATE letters SET status='scheduled',updated=? WHERE id=?", (stamp(), lid))
         subject, html, text = email_parts(L)
@@ -710,7 +781,7 @@ def install(S):
             rows = [row_info(r) for r in db.execute('SELECT * FROM letters ORDER BY no DESC LIMIT 40')]
             subs = db.execute("SELECT id,email,status,created,confirmed,unsubscribed,place FROM letter_subscribers ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,id DESC LIMIT 200").fetchall()
         for L in rows: L['stats'] = stats(L['id']) if L['status'] == 'sent' else None
-        return dict(rows=rows, subs=subs, counts=counts(), cfg=settings(), days=DAYS, freqs=FREQS, ai_ready=desk.ai_ready(), naver_ready=bool(naver()) and naver()['ready'](),
+        return dict(rows=rows, subs=subs, counts=counts(), cfg=settings(), days=DAYS, freqs=FREQS, vias=VIA, stibee_ready=stibee_ready(), ai_ready=desk.ai_ready(), naver_ready=bool(naver()) and naver()['ready'](),
                     mail_ready=notify.email_ready(), logs=setting('letter_log', [])[:10])
 
     @app.route('/admin/letter', methods=['GET', 'POST'])
@@ -750,7 +821,10 @@ def install(S):
     @S.admin_only
     def admin_letter_settings():
         day, freq = request.form.get('day', type=int), request.form.get('freq', '')
-        put('letter', {'auto': 1 if request.form.get('auto') else 0, 'day': day if day in range(7) else 0, 'freq': freq if freq in FREQS else 'daily'})
+        via, lst = request.form.get('via', 'site'), request.form.get('stibee_list', type=int)
+        put('letter', {'auto': 1 if request.form.get('auto') else 0, 'day': day if day in range(7) else 0, 'freq': freq if freq in FREQS else 'daily',
+                       'via': via if via in VIA else 'site', 'stibee_list': lst if lst and lst > 0 else 0,
+                       'stibee_sender': (request.form.get('stibee_sender') or '').strip()[:120], 'stibee_name': (request.form.get('stibee_name') or '').strip()[:40]})
         flash('레터 설정을 저장했어요.')
         return redirect(url_for('admin_letter'))
 
@@ -805,7 +879,7 @@ def install(S):
         html = html.replace(site_url('/static/'), request.host_url.rstrip('/') + '/static/')  # 미리보기 그림은 지금 서버에서 (운영 메일은 운영 주소)
         with conn() as db:
             sends = dict(db.execute('SELECT status,COUNT(*) FROM letter_sends WHERE letter_id=? GROUP BY status', (lid,)).fetchall())
-        return render_template('admin_letter_edit.html', L=L, preview=html, subject=subject, mail_ready=notify.email_ready(), counts=counts(), sends=sends,
+        return render_template('admin_letter_edit.html', L=L, via=settings()['via'], preview=html, subject=subject, mail_ready=notify.email_ready(), counts=counts(), sends=sends,
                                stats=stats(lid), stibee=stibee_html(L), stibee_subject=f"[{NAME}] {L['title']}",
                                test_to=os.getenv('ADMIN_ALERT_EMAIL', '').split(',')[0].strip())
 

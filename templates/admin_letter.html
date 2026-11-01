@@ -27,6 +27,11 @@
       <h2>보내는 주기</h2>
       <div class="admin-row"><label>주기<select name="freq">{% for k, v in freqs.items() %}<option value="{{ k }}"{% if cfg.freq == k %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
         <label>매주 한 번일 때 요일<select name="day">{% for d in days %}<option value="{{ loop.index0 }}"{% if cfg.day == loop.index0 %} selected{% endif %}>{{ d }}</option>{% endfor %}</select></label></div>
+      <div class="admin-row"><label>보내는 곳<select name="via">{% for k, v in vias.items() %}<option value="{{ k }}"{% if cfg.via == k %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></label></div>
+      <div class="admin-row"><label>스티비 주소록 번호<input type="number" name="stibee_list" min="0" value="{{ cfg.stibee_list or '' }}" placeholder="주소록 주소의 숫자"></label>
+        <label>스티비 발신자 이메일<input type="email" name="stibee_sender" value="{{ cfg.stibee_sender }}" placeholder="contact@consumerjebo.co.kr"></label>
+        <label>발신자 이름<input name="stibee_name" value="{{ cfg.stibee_name }}" maxlength="40"></label></div>
+      <p class="meta">스티비 API 키: {{ '들어 있어요' if stibee_ready else '아직 없어요 (서버에서 sudo bash deploy/set-stibee.sh)' }}. 스티비로 보내면 사이트 구독자 대신 스티비 주소록에 보내요. 주소록 번호는 스티비에서 주소록을 열었을 때 주소창 /lists/ 뒤의 숫자예요.</p>
       <label class="check"><input type="checkbox" name="auto" value="1"{% if cfg.auto %} checked{% endif %}> 자동 보내기 (만든 호가 검사를 통과하면 바로 구독자에게 보내요)</label>
       <p class="meta">끄면(기본) 보내는 날 아침 7시 30분에 초안만 만들어 두고 운영자가 '보내기'를 누를 때까지 기다려요. 서버에 예약 작업(deploy/set-letter.sh)을 한 번 설치해야 돌아가요.</p>
       <div class="admin-actions"><button type="submit">저장</button></div>
