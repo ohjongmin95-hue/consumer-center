@@ -229,7 +229,7 @@ def check_text(text, facts):
             elif (norm(m.group()), '') in allowed or (line[m.end():m.end() + 1] in MULT and any((n, '') in allowed for n in _variants(v * MULT[line[m.end()]]))):
                 continue
             bad.append(m.group() + (line[m.end():m.end() + 1] if u and u[1] == 1 and line[m.end():m.end() + 1] in UNITS else ''))
-        words = [w for w in BANNED if w in line]
+        words = [w for w in BANNED if w in line and not (w == '최악' and re.search(r'(만의|역대|사상)\s*최악|최악의?\s*(폭락|하락|실적|성적|수준|기록|적자|가뭄|폭염|한파)', line))]  # '52년 만의 최악 폭락' 같은 사실 묘사는 평가가 아님
         if bad: problems.append({'line': line.strip()[:300], 'numbers': bad})
         if words: problems.append({'line': line.strip()[:300], 'words': words})
     return problems
