@@ -5177,6 +5177,24 @@ class SiteTest(unittest.TestCase):
             for email, status in rows:
                 db.execute('INSERT INTO letter_subscribers(email,token,status,created) VALUES(?,?,?,?)', (email, 'tok-' + email.split('@')[0], status, '2026-10-01T09:00:00'))
 
+    def test_signup_optional_letter_consent(self):
+        # 가입 화면 '[선택] 레터 받기' (운영자 요청 2026-11-01): 선택 항목이라 체크 안 하면 구독 없음.
+        # 직접 친 메일은 확인 메일을 눌러야 구독, 확인된 메일(카카오 등)은 바로 구독 + 수신 동의 안내 메일
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        page = self.client.get('/signup').get_data(as_text=True)
+        self.assertIn('name="agree_letter"', page); self.assertNotIn('name="agree_letter" required', page); self.assertIn('[선택]', page)
+        mails = []; notify = self.site.notify
+        with patch.object(notify, 'email_ready', return_value=True), patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)):
+            self.signup(self.site.app.test_client(), login_id='no_letter', nickname='레터안받음', email='no@example.com')
+            self.signup(self.site.app.test_client(), login_id='yes_letter', nickname='레터받음', email='Yes@Example.com', agree_letter='on')
+            with self.site.app.test_request_context('/auth/join'): self.site.app.extensions['soboru_letter']['join']('kakao@example.com', True)
+        with self.site.conn() as db:
+            rows = {r['email']: (r['status'], r['place']) for r in db.execute('SELECT * FROM letter_subscribers')}
+        self.assertEqual(rows, {'yes@example.com': ('pending', 'signup'), 'kakao@example.com': ('active', 'signup')})
+        self.assertEqual([m[0] for m in mails], ['yes@example.com', 'kakao@example.com'])
+        self.assertIn('구독 확인', mails[0][1]); self.assertIn('수신 동의 안내', mails[1][1])
+        self.assertIn('동의한 날', mails[1][2]); self.assertIn('/letter/unsubscribe/', mails[1][2])
+
     def test_letter_generation_checks_numbers_copy_and_links(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         now = datetime.datetime.now().isoformat(timespec='seconds')

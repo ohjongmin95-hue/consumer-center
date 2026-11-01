@@ -315,6 +315,7 @@ def install(S):
             user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
             S.ad_event('signup',db)  # 광고 효과: 처음 들어온 경로별 가입 수
         nxt=pend.get('next') or ''
+        if request.form.get('agree_letter') and user['email'] and 'soboru_letter' in app.extensions:app.extensions['soboru_letter']['join'](user['email'],bool(user['email_verified_at']))  # [선택] 레터 받기
         session.pop('oauth_join',None);S.sign_in(user,True)
         flash(user['nickname']+ui_text('msg.welcome','님, 가입을 환영해요!'))
         return redirect(nxt if nxt.startswith('/') and not nxt.startswith('//') and nxt!='/' else url_for('mypage'))

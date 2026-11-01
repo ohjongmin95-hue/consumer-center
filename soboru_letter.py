@@ -622,7 +622,34 @@ def install(S):
         return render_template('admin_letter_edit.html', L=L, preview=html, subject=subject, mail_ready=notify.email_ready(), counts=counts(), sends=sends,
                                test_to=os.getenv('ADMIN_ALERT_EMAIL', '').split(',')[0].strip())
 
-    app.extensions['soboru_letter'] = {'generate': generate, 'weekly': weekly, 'send': send_issue, 'collect': collect_news, 'settings': settings,
+    def join_consent(email, verified):
+        """회원가입 화면의 '[선택] 레터 받기'에 체크한 회원 (운영자 요청 2026-11-01).
+        확인된 메일(카카오 등)이면 바로 구독하고 수신 동의 사실·일시를 메일로 알림(정보통신망법 제50조 제8항),
+        직접 친 메일이면 남의 주소일 수 있어 지금처럼 확인 메일을 눌러야 구독."""
+        email = (email or '').strip().lower()
+        if not EMAIL_RE.match(email) or not notify.email_ready(): return
+        with conn() as db:
+            row = db.execute('SELECT * FROM letter_subscribers WHERE email IN (?,?)', (email, gone_email(email))).fetchone()
+            if row and row['status'] == 'active': return
+            token = secrets.token_urlsafe(24); state = 'active' if verified else 'pending'; at = stamp()
+            if row:
+                db.execute("UPDATE letter_subscribers SET email=?,token=?,status=?,asked=?,confirmed=?,ip_hash=?,place='signup',unsubscribed=NULL WHERE id=?",
+                           (email, token, state, at, at if verified else None, S.ip_hash(), row['id']))
+            else:
+                db.execute("INSERT INTO letter_subscribers(email,token,status,created,confirmed,ip_hash,asked,place) VALUES(?,?,?,?,?,?,?,'signup')",
+                           (email, token, state, at, at if verified else None, S.ip_hash(), at))
+        if not verified: return send_confirm(email, token)
+        op = operator(); unsub = site_url(f'/letter/unsubscribe/{token}'); when = at.replace('T', ' ')[:16]
+        text = (f"{NAME} 수신 동의 안내\n\n회원가입 때 '{NAME} 받기(선택)'에 동의하셔서 {NAME}를 보내 드려요.\n"
+                f"- 동의한 날: {when}\n- 받는 내용: 소비자·경제 소식, 소보루 새 글 안내\n\n"
+                f"원하지 않으면 언제든 한 번에 그만 받을 수 있어요: {unsub}\n\n{op['name']} {op['address']}")
+        html = '<div style="font-family:sans-serif;font-size:15px;line-height:1.7;color:#191f28">' + '<br>'.join(
+            str(Markup.escape(l)) for l in text.split('\n')).replace(str(Markup.escape(unsub)), f'<a href="{Markup.escape(unsub)}">{Markup.escape(unsub)}</a>') + '</div>'
+        job = lambda: send_one(email, f'[{NAME}] 수신 동의 안내', html, text, token)
+        if testing(): job()
+        else: threading.Thread(target=lambda: _quiet(job), daemon=True).start()
+
+    app.extensions['soboru_letter'] = {'join': join_consent, 'generate': generate, 'weekly': weekly, 'send': send_issue, 'collect': collect_news, 'settings': settings,
                                       'email_parts': email_parts, 'get': get, 'check': check, 'sections': sections}
 
 

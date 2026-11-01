@@ -27,7 +27,7 @@
       </div>
 
       <div class="agree-box">
-        <div class="agree-all-row"><label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all2', '약관 모두 동의') }} <em>{{ ui('member.agree_all_sub', '이용약관·개인정보·만 14세 이상') }}</em></span></label>
+        <div class="agree-all-row"><label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all2', '약관 모두 동의') }} <em>{{ ui('member.agree_all_sub2', '이용약관·개인정보·만 14세 이상·레터(선택)') }}</em></span></label>
           <button type="button" class="agree-more" aria-expanded="false" aria-controls="agree-list">{{ ui('member.view', '보기') }}</button></div>
         <div class="agree-list" id="agree-list" hidden>
         <details class="agree-row">
@@ -45,6 +45,7 @@
           </div>
         </details>
         <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_age" required{% if request.form.get('agree_age') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_age', '만 14세 이상입니다') }}</span></label></div>
+        <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_letter"{% if request.form.get('agree_letter') %} checked{% endif %}><span><b>{{ ui('member.optional_tag', '[선택]') }}</b> {{ ui('member.agree_letter', '소보루 레터·소식 메일 받기') }} <em class="agree-opt-note">{{ ui('member.agree_letter_note', '이메일로 소비자·경제 소식을 보내요. 언제든 해지할 수 있어요.') }}</em></span></label></div>
         </div>
       </div>
 

@@ -1690,6 +1690,7 @@ def signup():
         user=db.execute('SELECT * FROM users WHERE id=?',(cur.lastrowid,)).fetchone()
         ad_event('signup',db)
     sign_in(user,False)
+    if request.form.get('agree_letter') and user['email'] and 'soboru_letter' in app.extensions:app.extensions['soboru_letter']['join'](user['email'],False)  # [선택] 레터 받기
     flash(user['nickname']+ui_text('msg.welcome','님, 가입을 환영해요!'))
     return redirect(safe_next('mypage'))
 
