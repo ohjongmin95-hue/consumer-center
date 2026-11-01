@@ -5632,7 +5632,8 @@ class SiteTest(unittest.TestCase):
             q = dict(urllib.parse.parse_qsl(url.split('?', 1)[1]))['query']
             return 200, {'total': 9, 'items': [{'title': t, 'description': t + ' 요약', 'link': f'https://n.news.naver.com/{abs(hash(t))}', 'originallink': f'https://news.example.co.kr/{abs(hash(t))}',
                                                'pubDate': day} for t in heads.get(q, [])]}
-        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', fake), patch.object(self.site.triage.corpus, 'related', self.letter_related):
+        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', fake), patch.object(self.site.triage.corpus, 'related', self.letter_related), \
+                patch.object(self.site.soboru_letter, 'article_call', lambda url, timeout=8: (404, '')):
             mat = self.site.app.extensions['soboru_letter']['collect']()
         news = mat['news']
         titles = [x['title'] for x in news]
@@ -5645,6 +5646,28 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(sum('파업' in t for t in titles), 1)  # 같은 이슈는 하나만
         self.assertEqual(sum('동결' in t for t in titles), 1)
         self.assertTrue({titles[0][:2], titles[1][:2]} & {'지하'} and {titles[0][:2], titles[1][:2]} & {'한국', '한은', '기준'})  # 여러 곳이 다룬 두 이슈가 앞
+
+    def test_letter_prefers_major_papers(self):
+        # 같은 이슈면 매경·한경·서경 등 주요 신문 기사를 대표로, 숫자도 그 기사 본문으로 (운영자 2026-11-01)
+        import urllib.parse
+        with self.site.conn() as db: db.execute('DELETE FROM naver_cache')
+        day = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%a, %d %b %Y 09:00:00 +0900')
+        rows = {'금리': [('대출 한은 기준금리 동결 결정', 'news.example.co.kr'), ('시장 한은 기준금리 동결 결정', 'www.hankyung.com'), ('예상대로 한은 기준금리 동결 결정', 'www.blog-news.kr'),
+                         ('배경은 한은 기준금리 동결 결정', 'biz.chosun.com')],
+                '증시': [('마감 코스피 외국인 매도 하락', 'a.kr'), ('지속 코스피 외국인 매도 하락', 'b.kr'), ('전망 코스피 외국인 매도 하락', 'c.kr'), ('이유 코스피 외국인 매도 하락', 'd.kr')],
+                '물가': [('배추값 한 달 새 두 배', 'e.kr'), ('라면 가격 올라', 'f.kr'), ('우유 납품가 협상', 'g.kr')],
+                '고용': [('청년 취업자 줄어', 'h.kr'), ('제조업 일자리 감소', 'i.kr'), ('공공기관 채용 확대', 'j.kr')]}
+        def fake(method, url, headers, body, timeout):
+            q = dict(urllib.parse.parse_qsl(url.split('?', 1)[1]))['query']
+            return 200, {'total': 9, 'items': [{'title': t, 'description': t + ' 요약', 'link': f'https://n.news.naver.com/{abs(hash(t))}', 'originallink': f'https://{h}/{abs(hash(t))}',
+                                               'pubDate': day} for t, h in rows.get(q, [])]}
+        with patch.dict(os.environ, self.LETTER_NAVER), patch.object(self.site.naverhub, 'http', fake), patch.object(self.site.triage.corpus, 'related', self.letter_related), \
+                patch.object(self.site.soboru_letter, 'article_call', lambda url, timeout=8: (200, '<div id="dic_area">기준금리를 연 2.50%로 동결했다.</div><div>')):
+            mat = self.site.app.extensions['soboru_letter']['collect']()
+        first = mat['news'][0]
+        self.assertIn('동결', first['title']); self.assertIn(first['source'], ('한국경제', '조선일보'))   # 주요 신문이 다룬 이슈가 앞, 대표는 주요 신문
+        self.assertIn('2.50%', first['text'])
+        self.assertTrue(any(o['source'] in ('한국경제', '조선일보') and o.get('text') for o in first['more']))   # 다른 주요 신문 본문도 같이
 
     def test_letter_weekly_schedule_and_auto_send(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)

@@ -111,6 +111,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           '② 숫자로 보는 오늘 — [이번 호 뉴스] 하나에 나온 숫자 하나를 골라 그 뜻을 풀어 준다. ③ 소비자 피해 예방 — [피해 예방 뉴스]와 [소보루에 최근 많이 들어온 제보 분야]를 보고 요즘 생기는 피해 유형 하나와 겪었을 때 대응 방법을 쓴다. '
           '④ 알아두면 좋은 법률·제도 — [오늘의 법률·제도 주제]의 조문을 쉬운 말로 풀어 준다.\n'
           '지켜야 할 것:\n'
+          '- 숫자는 매일경제·한국경제·서울경제·머니투데이·조선일보·동아일보·중앙일보·경향신문·한겨레·한국일보 기사(언론사 이름으로 표시)에 나온 것을 먼저 쓴다. 신문마다 숫자가 다르면 이 신문들 숫자를 따르고, 그래도 다르면 그 숫자는 쓰지 않는다.\n'
           '- 뉴스마다 [기사 본문]이 있으면 본문을 읽고 쓴다. 숫자·이름·날짜는 본문(없으면 제목·요약)에 쓰인 그대로만 쓰고, 본문에 없는 숫자는 하나도 쓰지 않는다. 모르면 숫자 없이 쓴다.\n'
           '- 숫자가 핵심이다: 모든 칸에 자료에 있는 구체적인 숫자(금액·비율·건수·인원·날짜·순위·증가율)를 최대한 넣는다. 자료에 숫자가 있는데 빼먹지 않는다. "크게 늘었다"보다 "3만 8490명", "18% 늘었다"처럼 쓴다. 여러 기사의 숫자를 모아 써도 된다(단, 숫자를 새로 계산하거나 지어내지는 않는다).\n'
           '- 뉴스마다 제목과 요약 조각만 준다. 기사 문장을 옮기지 말고 반드시 네 말로 새로 풀어 쓴다. 기사에서 그대로 따오는 말은 몇 낱말을 넘지 않게 하고, 따옴표로 인용하지 않는다.\n'
@@ -291,6 +292,16 @@ def site_url(path=''): return (os.getenv('SITE_URL', '').strip() or SITE).rstrip
 def words(text): return [w for w in re.sub(r'[^\w%]+', ' ', text or '').split() if w]
 
 
+# 숫자는 이 신문들 기사로 (운영자 2026-11-01: 신뢰도) — 같은 이슈면 이 신문 기사를 대표로 쓰고, 이 신문들이 많이 다룬 이슈를 앞에 둠
+MAJOR = {'mk.co.kr': '매일경제', 'hankyung.com': '한국경제', 'sedaily.com': '서울경제', 'chosun.com': '조선일보', 'donga.com': '동아일보', 'joongang.co.kr': '중앙일보',
+         'mt.co.kr': '머니투데이', 'khan.co.kr': '경향신문', 'hani.co.kr': '한겨레', 'hankookilbo.com': '한국일보'}
+
+
+def major(source):
+    s = (source or '').lower()
+    return next((v for k, v in MAJOR.items() if s == k or s.endswith('.' + k) or s == v), '')
+
+
 BODY_CHARS = 1800         # AI에 넘기는 기사 본문 길이 (네이버 뉴스 본문 앞부분)
 
 
@@ -449,8 +460,15 @@ def install(S):
                 try: day = datetime.date(*map(int, it['date'].split('.')))
                 except (ValueError, TypeError): continue
                 head = re.sub(r'\W', '', it['title'])[:14]
-                if day < since or it['url'] in seen or head in heads: continue
-                seen.add(it['url']); heads.add(head); pool.append(dict(it, topic=q))
+                if day < since or it['url'] in seen: continue
+                m = major(it['source'])
+                if head in heads:  # 거의 같은 제목: 먼저 잡힌 게 주요 신문이 아니고 이번 게 주요 신문이면 바꿔 끼움
+                    k = next((k for k, o in enumerate(pool) if re.sub(r'\W', '', o['title'])[:14] == head), None)
+                    if m and k is not None and not pool[k].get('major'):
+                        seen.add(it['url']); pool[k] = dict(it, topic=pool[k]['topic'], source=m, major=True)
+                    continue
+                seen.add(it['url']); heads.add(head)
+                pool.append(dict(it, topic=q, source=m or it['source'], major=bool(m)))
         return pool
 
     def case_trend():
@@ -504,8 +522,8 @@ def install(S):
         news = [entry(n, it) for n, it in enumerate(items, 1)]
         picked = {it['url'] for it in items}
         for x, it in zip(news, items):  # 뉴닉처럼 길게 쓸 수 있게 같은 소식을 다룬 다른 기사 요약도 (운영자 2026-11-01: 주요 뉴스가 너무 짧음)
-            x['more'] = [{'title': scrub(o['title']), 'summary': scrub(o['summary']), 'source': o['source']}
-                         for o in pool if o['url'] not in picked and related(it, o)][:MORE_N]
+            x['more'] = [{'title': scrub(o['title']), 'summary': scrub(o['summary']), 'source': o['source'], 'naver': o.get('naver', '') if o.get('major') else ''}
+                         for o in sorted(pool, key=lambda o: not o.get('major')) if o['url'] not in picked and related(it, o)][:MORE_N]
         harm = [entry(n, it, 'H') for n, it in enumerate(pick_issues(harm_pool, HARM_N, None), 1)]
         main = next((it for it in items if it['topic'] not in POLICY_QUERIES), items[0])
         cluster = [main] + [it for it in pool if it is not main and related(main, it)][:CLUSTER_N - 1]
@@ -517,6 +535,7 @@ def install(S):
         for x, it in zip(buzz, [it for it in pick_issues(trend_pool, TREND_N, None)]):
             x['more'] = [{'title': scrub(o['title']), 'summary': scrub(o['summary']), 'source': o['source']} for o in trend_pool if o['url'] != it['url'] and related(it, o)][:MORE_N]
         need = [x for x in news + comment + buzz if x.get('naver')]  # 주요 뉴스·메인 뉴스·트렌드는 기사 본문까지 읽음
+        need += [o for x in news for o in (x.get('more') or []) if o.get('naver')][:len(news) * 2]  # 같은 소식을 다룬 주요 신문 기사 본문도 (숫자 맞춰 보기)
         if need:
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
@@ -551,11 +570,16 @@ def install(S):
         if cover is not None:
             # 오늘의 뉴스: 분야를 고루 나누지 않고, 같은 소식을 다룬 기사가 많은(헤드라인) 이슈부터. cover건 넘게 다룬 이슈만 넣고,
             # 그래야 ITEMS[0]개가 안 되면 기사 많은 순으로 채움. 그래서 날마다 3~6개로 달라짐 (운영자 2026-11-01)
+            # 주요 신문(MAJOR)이 함께 다룬 이슈를 앞에, 이슈마다 대표 기사는 주요 신문·본문을 읽을 수 있는 기사로
+            group = lambda i: [i] + [j for j, o in enumerate(bags) if j != i and same(bags[i], o)]
+            weight = lambda i: score[i] + sum(1 for j in group(i) if pool[j].get('major'))
+            order = sorted(range(len(pool)), key=lambda i: -weight(i))
             for i in order:
                 if len(picked) == limit or (score[i] < cover and len(picked) >= ITEMS[0]): break
                 if any(same(bags[i], bags[k]) for k in picked): continue
                 picked.append(i)
-            return [pool[i] for i in picked]
+            best = lambda i: max(group(i), key=lambda j: (bool(pool[j].get('major')) and bool(pool[j].get('naver')), bool(pool[j].get('major')), bool(pool[j].get('naver')), j == i))
+            return [pool[best(i)] for i in picked]
         for cap, kcap in ((PER_TOPIC, True), (limit, True), (limit, False)):  # 분야를 고루 고르고, 모자라면 한 분야에서 더, 그래도 모자라면 다른 쪽에서
             for i in order:
                 t = pool[i]['topic']
@@ -568,7 +592,7 @@ def install(S):
 
     def ai_facts(news):
         return [{'번호': x['no'], '구분': '정책·제도' if x.get('kind') == 'policy' else '경제 이슈', '제목': x['title'], '요약': x['summary'], '기사 본문': x.get('text', ''), '언론사': x['source'], '날짜': x['date'],
-                 '같은 소식 다른 기사': [{'제목': o['title'], '요약': o['summary']} for o in x.get('more') or []],
+                 '같은 소식 다른 기사': [{'언론사': o['source'], '제목': o['title'], '요약': o['summary'], '기사 본문': o.get('text', '')} for o in x.get('more') or []],
                  '법 조문 후보': [{'id': c['id'], '조문': c['label'], '원문': c['text']} for c in x['cands']]} for x in news]
 
     def ask_ai(mat, no):
@@ -594,7 +618,7 @@ def install(S):
     def item_facts(x, law):
         f = {'제목': x['title'], '요약': x['summary'], '날짜': x['date'], '소비자상담센터 전화번호': '1372'}
         if x.get('text'): f['기사 본문'] = x['text']
-        if x.get('more'): f['같은 소식 다른 기사'] = [o['title'] + ' ' + o['summary'] for o in x['more']]
+        if x.get('more'): f['같은 소식 다른 기사'] = [' '.join(filter(None, [o['source'], o['title'], o['summary'], o.get('text', '')])) for o in x['more']]
         if law: f['법 조문'] = law['label'] + ' ' + law['text']
         return f
 
