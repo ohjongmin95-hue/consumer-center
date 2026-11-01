@@ -5147,14 +5147,14 @@ class SiteTest(unittest.TestCase):
                 if bad and n == 2: text += ' 작년보다 98765명 늘었대요.'
                 if bad and n == 3: text += ' ' + x['제목'] + ' ' + x['요약'] + ' 이런 기사였어요.'
                 law = x['법 조문 후보'][0]['id'] if n == 1 and x['법 조문 후보'] else ('9-L9' if n == 2 else '')
-                items.append({'no': n, 'title': ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'][n - 1] + ' 소식, 이것만 알면 돼요', 'body': text, 'tip': '이럴 땐 이렇게: 영수증과 대화 기록부터 챙겨 두세요.', 'law': law})
+                items.append({'no': n, 'title': ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'][n - 1] + ' 소식, 이것만 알면 돼요', 'photo': 'shopping cart' if n == 1 else '', 'body': text, 'tip': '이럴 땐 이렇게: 영수증과 대화 기록부터 챙겨 두세요.', 'law': law})
             out = {'subject': '소보루 브리핑: 이번 주 소비자 뉴스, 이것만 보면 끝', 'intro': '안녕하세요, 소보루 레터예요. 이번 주 꼭 알아 둘 소식을 모았어요.', 'outro': '다음 주에 또 만나요.', 'items': items,
                    'number': {'no': 1, 'value': '30%', 'label': '늘어난 상담', 'body': '관련 상담이 그만큼 늘었다는 뜻이에요.'},
                    'harm': {'title': '요즘 늘어난 환불 거절', 'body': '환불을 미루는 일이 늘고 있어요. 대화 기록을 꼭 남겨 두세요.',
                             'steps': ['주문·결제 화면을 캡처해 두세요.', '판매자에게 기록이 남게 요청하세요.', '1372 소비자상담센터에 상담해요.'] + (['14일 안에 꼭 하세요.'] if bad else []),
                             'law': harm[0]['법 조문 후보'][0]['id'] if harm and harm[0]['법 조문 후보'] else ''},
                    'lawbox': {'title': '온라인 쇼핑은 7일 안에 물릴 수 있어요', 'body': '물건을 받은 날부터 7일 안이면 청약철회를 할 수 있어요.', 'point': '받은 날부터 7일, 기억해요.', 'law': 'B-L1'},
-                   'comment': {'title': '오늘의 큰 이슈, 무슨 일이야?', 'lead': '요즘 이 소식이 계속 들려요. 내 생활엔 무슨 일이 생길까요?',
+                   'comment': {'photo': 'Interest-rate 2026 bank!', 'title': '오늘의 큰 이슈, 무슨 일이야?', 'lead': '요즘 이 소식이 계속 들려요. 내 생활엔 무슨 일이 생길까요?',
                                'what': {'body': '이런 일이 있었어요.', 'points': [{'name': '첫째', 'text': '이런 일이 있었어요.'}, {'name': '', 'text': '이름 없는 건 빼요'}]},
                                'why': {'body': '여러 이유가 겹쳤다고 해요.' + (' 피해액은 777억 원이래요.' if bad else '')},
                                'wallet': {'body': '내 생활에도 영향이 있어요.', 'points': [{'name': '대출', 'text': '이자 부담을 확인해 보세요.'}]}} if cm else None,
@@ -5309,6 +5309,35 @@ class SiteTest(unittest.TestCase):
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
         self.assertEqual((L['status'], L['trigger'], L['stibee_id']), ('sent', 'stibee', 777))
         with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM letter_sends').fetchone()[0], 0)  # 사이트 구독자에게는 안 보냄
+
+    def test_letter_unsplash_photos(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        calls = []
+        def fake(path, params=None):
+            calls.append((path, params))
+            if path.startswith('http'): return 200, {}
+            q = params['query']
+            return 200, {'results': [{'id': 'p-' + q, 'urls': {'raw': 'https://images.unsplash.com/photo-' + q.replace(' ', '-') + '?ixid=x'}, 'alt_description': q,
+                                      'user': {'name': '김작가', 'links': {'html': 'https://unsplash.com/@kim'}}, 'links': {'download_location': 'https://api.unsplash.com/photos/p/download'}}]}
+        with patch.object(self.site.soboru_letter, 'unsplash_call', fake):
+            with patch.dict(os.environ, {'UNSPLASH_ACCESS_KEY': ''}):
+                r, _ = self.letter_make(bad=False)
+            L = self.site.app.extensions['soboru_letter']['get'](r['id'])
+            self.assertFalse(calls); self.assertNotIn('photo', L['items'][0])   # 키가 없으면 사진 없이
+            with patch.dict(os.environ, {'UNSPLASH_ACCESS_KEY': 'us-test'}):
+                r, _ = self.letter_make(bad=False)
+        L = self.site.app.extensions['soboru_letter']['get'](r['id'])
+        self.assertEqual([c[1]['query'] for c in calls if c[1]], ['interest rate bank', 'shopping cart'])  # 영어만 남김
+        self.assertEqual(sum(1 for c in calls if c[0].endswith('/download')), 2)   # 고른 사진은 download 알림
+        ph = L['sections']['comment']['photo']
+        self.assertIn('w=1072', ph['url']); self.assertEqual(ph['credit'], '김작가'); self.assertIn('utm_source=soboru_letter', ph['credit_url'])
+        self.assertIn('photo', L['items'][0]); self.assertNotIn('photo', L['items'][1])
+        html = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')[1]
+        self.assertIn('images.unsplash.com/photo-shopping-cart', html); self.assertIn('>Unsplash</a>', html); self.assertIn('김작가', html)
+        admin = self.login_admin()
+        admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), 'act': 'save', 'nophoto0': '1', 'comment_nophoto': '1'})
+        L = self.site.app.extensions['soboru_letter']['get'](r['id'])
+        self.assertNotIn('photo', L['items'][0]); self.assertNotIn('photo', L['sections']['comment'])
 
     def test_letter_open_click_tracking_and_stibee_html(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)

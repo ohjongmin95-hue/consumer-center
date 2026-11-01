@@ -80,8 +80,8 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           '- 법 조문은 준 후보 id 가운데 정말 관련 있는 것 하나만 고르고, 맞는 것이 없으면 빈 문자열로 둔다. 법 이야기는 "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다. 분쟁해결기준은 강제력 없는 권고 기준이라고 밝힌다.\n'
           '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다. "소보루 브리핑" 같은 고정된 이름을 제목에 붙이지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 여는 글 2~3문장 — "소보루 이웃님,"으로 시작해 에디터 코멘트 이슈를 우리 생활 장면으로 꺼내고 마지막 문장은 질문으로 끝낸다(예: "…우리는 어떻게 대처해야 할까요?"). 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
-          '"items": [{"no": 뉴스 번호, "title": 뉴스 제목처럼 핵심을 담은 35자 안팎 제목(질문형·감탄 가능), "body": 4~6문장(250~400자) — 무슨 일인지, 배경과 자료에 있는 숫자, 누구에게 어떤 의미인지 순서로 뉴닉처럼 친근하게 풀어 쓴다(그 뉴스와 "같은 소식 다른 기사" 자료만 쓴다), "tip": "", "law": 고른 조문 id 또는 ""}], '
-          '"comment": {"title": 에디터 코멘트 제목 30자 안팎, "lead": 이슈를 여는 2~3문장, "what": {"body": "👀 무슨 일이야?" 칸 1~2문장, "points": [{"name": 15자 이내 소제목, "text": 2문장}] 3개}, '
+          '"items": [{"no": 뉴스 번호, "title": 뉴스 제목처럼 핵심을 담은 35자 안팎 제목(질문형·감탄 가능), "body": 4~6문장(250~400자) — 무슨 일인지, 배경과 자료에 있는 숫자, 누구에게 어떤 의미인지 순서로 뉴닉처럼 친근하게 풀어 쓴다(그 뉴스와 "같은 소식 다른 기사" 자료만 쓴다), "photo": 이 뉴스에 어울리는 사진을 Unsplash에서 찾을 영어 검색어 2~3낱말(장면·물건 위주, 사람 이름·회사 이름·로고 X, 예 "grocery shopping cart"), "tip": "", "law": 고른 조문 id 또는 ""}], '
+          '"comment": {"photo": 이슈에 어울리는 사진의 영어 검색어 2~3낱말, "title": 에디터 코멘트 제목 30자 안팎, "lead": 이슈를 여는 2~3문장, "what": {"body": "👀 무슨 일이야?" 칸 1~2문장, "points": [{"name": 15자 이내 소제목, "text": 2문장}] 3개}, '
           '"why": {"body": "🔍 어쩌다 이런 일이 생긴 거야?" 칸 5~7문장}, "wallet": {"body": "☑️ 내 생활·지갑엔 어떤 영향이?" 칸 1~2문장, "points": [{"name": 15자 이내, "text": 2문장}] 3개}} (자료가 모자라면 null), '
           '"number": {"no": 숫자를 고른 뉴스 번호, "value": 그 뉴스 자료에 있는 숫자 그대로(단위 포함, 예 "3.2%"), "label": 무엇의 숫자인지 15자 안팎, "body": 이 숫자가 무슨 뜻인지 1~2문장} (고를 숫자가 없으면 null), '
           '"harm": {"title": 피해 유형 20자 안팎, "body": 요즘 이런 피해가 생기고 있다는 설명 2~4문장, "steps": [겪었을 때 대응 방법 2~4개, 각각 40자 안팎 한 문장 — 증거 남기기, 판매자에게 기록이 남는 방식으로 요청하기, 카드 결제면 카드사에 문의하기, 1372 소비자상담센터 상담처럼 그 피해에 맞는 것], "law": 피해 예방 뉴스 조문 후보 id 또는 ""} (자료가 없으면 null), '
@@ -91,6 +91,61 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
 
 STIBEE_API = 'https://api.stibee.com/v2'
 VIA = {'site': '사이트에서 직접 (Brevo 등 SMTP)', 'stibee': '스티비로 (프로 요금제 API)'}
+
+
+UNSPLASH_API = 'https://api.unsplash.com'
+UTM = '?utm_source=soboru_letter&utm_medium=referral'   # 언스플래시 규칙: 작가·Unsplash 링크에 붙임
+
+
+def unsplash_call(path, params=None):
+    """언스플래시 API (운영자 요청 2026-11-01: 레터 사진은 unsplash.com에서). 키는 서버 설정 UNSPLASH_ACCESS_KEY (deploy/set-unsplash.sh).
+    (상태 코드, JSON 또는 None). 테스트에서 바꿔 끼운다."""
+    key = os.getenv('UNSPLASH_ACCESS_KEY', '').strip()
+    url = (path if path.startswith('http') else UNSPLASH_API + path) + ('?' + urllib.parse.urlencode(params) if params else '')
+    req = urllib.request.Request(url, headers={'Authorization': 'Client-ID ' + key, 'Accept-Version': 'v1'})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r: return r.status, json.loads(r.read().decode() or 'null')
+    except urllib.error.HTTPError as e: return e.code, None
+    except (urllib.error.URLError, OSError, ValueError): return 0, None
+
+
+def photo_query(q):
+    q = re.sub(r'[^A-Za-z ]', ' ', str(q or ''))
+    return ' '.join(q.split()[:4]).lower()
+
+
+def find_photo(q, used):
+    """검색어로 가로 사진 하나 (이미 쓴 사진은 건너뜀). 고르면 언스플래시 규칙대로 download 주소를 한 번 불러 준다."""
+    q = photo_query(q)
+    if not q or not os.getenv('UNSPLASH_ACCESS_KEY', '').strip(): return None
+    st, res = unsplash_call('/search/photos', {'query': q, 'orientation': 'landscape', 'per_page': 8, 'content_filter': 'high'})
+    if st != 200 or not isinstance(res, dict): return None
+    for ph in res.get('results') or []:
+        try:
+            pid, raw, user = ph['id'], ph['urls']['raw'], ph['user']
+            if pid in used: continue
+            used.add(pid)
+            dl = (ph.get('links') or {}).get('download_location')
+            if dl: unsplash_call(dl)
+            return {'id': pid, 'url': raw + ('&' if '?' in raw else '?') + 'w=1072&h=600&fit=crop&crop=entropy&auto=format&q=75',
+                    'alt': W._plain(ph.get('alt_description') or ph.get('description') or q, 120),
+                    'credit': W._plain(user.get('name') or user.get('username'), 60),
+                    'credit_url': user['links']['html'] + UTM, 'home': 'https://unsplash.com/' + UTM}
+        except (KeyError, TypeError): continue
+    return None
+
+
+def add_photos(items, ex):
+    """에디터 코멘트 맨 위 큰 사진 + 오늘의 뉴스마다 사진. 키가 없거나 못 찾으면 사진 없이 그대로."""
+    used = set()
+    c = ex.get('comment')
+    if c and c.get('_photo_q'):
+        ph = find_photo(c['_photo_q'], used)
+        if ph: c['photo'] = ph
+    for it in items:
+        if it.get('_photo_q'):
+            ph = find_photo(it['_photo_q'], used)
+            if ph: it['photo'] = ph
 
 
 def stibee_call(method, path, body=None, ctype='application/json'):
@@ -365,7 +420,7 @@ def install(S):
             law = next((c for c in x['cands'] if c['id'] == it.get('law')), None)
             items.append({'title': title, 'body': body, 'tip': tip, 'topic': x.get('topic', ''), 'cat': CAT.get(x.get('topic', ''), '경제'), 'kind': x.get('kind', 'econ'), 'law': law_ref(law),
                           'src': {'name': x['source'], 'url': x['url'], 'date': x['date'], 'headline': x['title']},
-                          '_facts': item_facts(x, law), '_source': ' '.join([x['title'], x['summary']] + [o['title'] + ' ' + o['summary'] for o in x.get('more') or []])})
+                          '_photo_q': photo_query(it.get('photo')), '_facts': item_facts(x, law), '_source': ' '.join([x['title'], x['summary']] + [o['title'] + ' ' + o['summary'] for o in x.get('more') or []])})
         if len(items) < ITEMS[0]: raise RuntimeError('AI가 뉴스를 채우지 못했어요')
         items.sort(key=lambda it: it['kind'] == 'policy')  # 경제 이슈 먼저, 정책·제도 다음
         subject = W._plain(out.get('subject'), 80) or items[0]['title']
@@ -410,7 +465,7 @@ def install(S):
             pts = lambda v: [{'name': W._plain(p.get('name'), 30), 'text': W._plain(p.get('text'), 300)} for p in (v if isinstance(v, list) else [])[:3]
                              if isinstance(p, dict) and W._plain(p.get('name'), 30) and W._plain(p.get('text'), 300)]
             part = lambda k: c.get(k) if isinstance(c.get(k), dict) else {}
-            com = {'title': W._plain(c.get('title'), 60), 'lead': W._plain(c.get('lead'), 600),
+            com = {'_photo_q': photo_query(c.get('photo')), 'title': W._plain(c.get('title'), 60), 'lead': W._plain(c.get('lead'), 600),
                    'what': {'body': W._plain(part('what').get('body'), 400), 'points': pts(part('what').get('points'))},
                    'why': {'body': W._plain(part('why').get('body'), 1400)},
                    'wallet': {'body': W._plain(part('wallet').get('body'), 300), 'points': pts(part('wallet').get('points'))},
@@ -509,6 +564,7 @@ def install(S):
             for k in ('value', 'label', 'title', 'body', 'point'):
                 if k in b: b[k] = scrub(b[k])
             if 'steps' in b: b['steps'] = [scrub(x) for x in b['steps']]
+        add_photos(items, ex)
         sec = dict(sections(no), **ex)
         problems = check(title, intro, outro, items, no, sec)
         with conn() as db:
@@ -527,6 +583,7 @@ def install(S):
             if form.get(f'drop{i}'): continue
             it = dict(it, title=W._plain(form.get(f'title{i}', it['title']), 80), body=' '.join(form.get(f'body{i}', it['body']).split())[:1200],
                       tip=W._plain(form.get(f'tip{i}', it['tip']), 160))
+            if form.get(f'nophoto{i}'): it.pop('photo', None)
             if form.get(f'nolaw{i}'):
                 it['law'] = None; it['_facts'] = {k: v for k, v in it.get('_facts', {}).items() if k != '법 조문'}
             if it['title'] and it['body']: items.append(it)
@@ -537,6 +594,7 @@ def install(S):
             if form.get('drop_comment'): sec.pop('comment')
             else:
                 c = dict(sec['comment'])
+                if form.get('comment_nophoto'): c.pop('photo', None)
                 if 'comment_title' in form: c['title'] = W._plain(form.get('comment_title'), 60) or c['title']
                 if 'comment_lead' in form: c['lead'] = ' '.join(form.get('comment_lead', '').split())[:600]
                 for k in ('what', 'why', 'wallet'):

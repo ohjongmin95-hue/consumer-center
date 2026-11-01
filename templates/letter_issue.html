@@ -19,6 +19,7 @@
       <h2>이것만 쓱 보면 끝! 오늘의 뉴스 {{ L['items']|length }} ⚡️</h2>
       {% for it in econ + policy %}
       <div class="lt-nitem" id="n{{ loop.index }}">
+        {% if it.photo %}{% set PH = it.photo %}<figure class="lt-photo"><img src="{{ PH.url }}" alt="{{ PH.alt }}" loading="lazy"><figcaption>사진: <a href="{{ PH.credit_url }}" target="_blank" rel="noopener">{{ PH.credit }}</a> / <a href="{{ PH.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption></figure>{% endif %}
         <h3><span class="lt-cat">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span><i>ㅣ</i>{{ it.title }}</h3>
         <p>{{ it.body }} <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">자세히 보기 ›</a></p>
       </div>
@@ -27,6 +28,7 @@
     {% if sec.comment %}{% set c = sec.comment %}
     <section class="lt-comment" id="comment">
       <div class="lt-ed"><img src="{{ url_for('static', filename='img/editor-croissant.png') }}" alt="" width="56"><div><small>EDITOR'S COMMENT</small><b>에디터 크로와상</b></div></div>
+      {% if c.photo %}{% set PH = c.photo %}<figure class="lt-photo"><img src="{{ PH.url }}" alt="{{ PH.alt }}" loading="lazy"><figcaption>사진: <a href="{{ PH.credit_url }}" target="_blank" rel="noopener">{{ PH.credit }}</a> / <a href="{{ PH.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption></figure>{% endif %}
       <h2>{{ c.title }}</h2>
       <p>{{ c.lead }}</p>
       {% for key, head in (('what', '👀 무슨 일이야?'), ('why', '🔍 어쩌다 이런 일이 생긴 거야?'), ('wallet', '☑️ 내 생활엔 어떤 영향이 있어?')) %}{% set b = c[key] %}

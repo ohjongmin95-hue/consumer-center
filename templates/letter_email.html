@@ -48,6 +48,7 @@
       <p style="margin:0 0 18px;font-size:22px;line-height:1.4;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">이것만 쓱 보면 끝! 오늘의 뉴스 {{ L['items']|length }} ⚡️</p>
       {% for it in econ + policy %}
       <div id="n{{ loop.index }}" style="margin:0 0 {{ '18px' if not loop.last else '16px' }};{% if not loop.first %}padding-top:18px;border-top:1px dashed #f0d9bf;{% endif %}">
+        {% if it.photo %}{% set PH = it.photo %}<div style="margin:0 0 14px;"><img src="{{ PH.url }}" width="532" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:532px;height:auto;border:0;border-radius:14px;"><p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p></div>{% endif %}
         <p style="margin:0 0 8px;font-size:18px;line-height:1.5;font-weight:800;color:#1d1d1f;letter-spacing:-0.3px;"><span style="color:#ef7300;">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span><span style="color:#e3c9ab;font-weight:400;">&nbsp;ㅣ&nbsp;</span>{{ it.title }}</p>
         <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body }} <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">자세히 보기 ›</a></p>
       </div>
@@ -61,6 +62,7 @@
       <td valign="middle" style="padding-right:12px;"><img src="{{ editor_img }}" width="56" alt="에디터 크로와상" style="display:block;width:56px;height:auto;border:0;"></td>
       <td valign="middle" style="{{ F }}"><p style="margin:0;font-size:14px;font-weight:800;color:#ef7300;letter-spacing:0.6px;">EDITOR'S COMMENT</p><p style="margin:2px 0 0;font-size:17px;font-weight:800;color:#652D1C;">에디터 크로와상</p></td>
     </tr></table>
+    {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" width="576" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:576px;height:auto;border:0;border-radius:16px;"><p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p></div>{% endif %}
     <h2 style="margin:0 0 14px;font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
     <p style="margin:0 0 26px;font-size:17px;line-height:1.9;color:#3a3633;">{{ c.lead }}</p>
     {% for key, head in (('what', '👀 무슨 일이야?'), ('why', '🔍 어쩌다 이런 일이 생긴 거야?'), ('wallet', '☑️ 내 생활엔 어떤 영향이 있어?')) %}{% set b = c[key] %}

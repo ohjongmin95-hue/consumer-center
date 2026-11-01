@@ -26,16 +26,18 @@
       </div>
       {% for it in L['items'] %}{% set i = loop.index0 %}
       <div class="form-panel lt-ad-item">
+        {% if it.photo %}<img class="lt-ad-photo" src="{{ it.photo.url }}" alt="" loading="lazy">{% endif %}
         <p class="lt-ad-num">NEWS {{ '%02d' % loop.index }} · <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">{{ it.src.name }} 원문 ↗</a> <span class="meta">{{ it.src.headline }}</span></p>
         <label class="field">제목<input name="title{{ i }}" value="{{ it.title }}" maxlength="80"{% if not draft %} readonly{% endif %}></label>
         <label class="field">설명 (3~5문장)<textarea name="body{{ i }}" rows="5"{% if not draft %} readonly{% endif %}>{{ it.body }}</textarea></label>
         <label class="field">나한테는? (한 줄)<input name="tip{{ i }}" value="{{ it.tip }}" maxlength="160"{% if not draft %} readonly{% endif %}></label>
         <p class="meta">⚖️ 관련 법: {% if it.law %}{% if it.law.url %}<a href="{{ it.law.url }}" target="_blank" rel="noopener nofollow">{{ it.law.label }}</a>{% else %}{{ it.law.label }}{% endif %}{% else %}없음{% endif %}</p>
-        {% if draft %}<div class="lt-ad-checks">{% if it.law %}<label class="check"><input type="checkbox" name="nolaw{{ i }}" value="1"> 관련 법 빼기</label>{% endif %}<label class="check"><input type="checkbox" name="drop{{ i }}" value="1"> 이 뉴스 빼기</label></div>{% endif %}
+        {% if draft %}<div class="lt-ad-checks">{% if it.law %}<label class="check"><input type="checkbox" name="nolaw{{ i }}" value="1"> 관련 법 빼기</label>{% endif %}{% if it.photo %}<label class="check"><input type="checkbox" name="nophoto{{ i }}" value="1"> 사진 빼기</label>{% endif %}<label class="check"><input type="checkbox" name="drop{{ i }}" value="1"> 이 뉴스 빼기</label></div>{% endif %}
       </div>
       {% endfor %}
       {% set sec = L.sections %}
       {% if sec.comment %}{% set c = sec.comment %}<div class="form-panel lt-ad-item">
+        {% if c.photo %}<img class="lt-ad-photo" src="{{ c.photo.url }}" alt="" loading="lazy">{% if draft %}<label class="check"><input type="checkbox" name="comment_nophoto" value="1"> 사진 빼기</label>{% endif %}{% endif %}
         <p class="lt-ad-num">에디터 코멘트 (에디터 크로와상)</p>
         <label class="field">제목<input name="comment_title" value="{{ c.title }}" maxlength="60"{% if not draft %} readonly{% endif %}></label>
         <label class="field">여는 글<textarea name="comment_lead" rows="3"{% if not draft %} readonly{% endif %}>{{ c.lead }}</textarea></label>

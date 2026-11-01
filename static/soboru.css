@@ -2836,4 +2836,6 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-ed small{display:block;font-size:13px;font-weight:800;color:var(--sb-orange);letter-spacing:.6px}.lt-ed b{color:var(--sb-brown)}
 .lt-comment h2{font-size:25px;line-height:1.45;margin:0 0 12px}.lt-comment h3{font-size:20px;margin:26px 0 8px}
 .lt-comment p,.lt-comment li{font-size:17px;line-height:1.9}.lt-comment ul{padding-left:20px}.lt-comment li::marker{color:var(--sb-orange)}
+.lt-photo{margin:0 0 14px}.lt-photo img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px}.lt-photo figcaption{margin-top:6px;font-size:12px;color:var(--sb-sub)}.lt-photo figcaption a{color:inherit}
+.lt-ad-photo{display:block;width:100%;max-width:360px;aspect-ratio:16/9;object-fit:cover;border-radius:10px;margin-bottom:8px}
 .lt-comment .lt-refs{font-size:15px;color:var(--sb-sub)}
