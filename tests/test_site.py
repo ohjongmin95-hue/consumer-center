@@ -5352,12 +5352,10 @@ class SiteTest(unittest.TestCase):
         box = []
         for path in ('/letter', '/life', '/'):
             page = self.client.get(path).get_data(as_text=True)
-            self.assertIn('action="/letter/subscribe"', page, path); self.assertIn('name="website"', page, path); self.assertIn('name="agree"', page, path)
+            self.assertIn('action="/letter/subscribe"', page, path); self.assertIn('name="website"', page, path); self.assertNotIn('name="agree"', page, path); self.assertIn('동의한 것으로 봐요', page, path)
         with patch.dict(os.environ, self.LETTER_MAIL), patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)):
             r = self.letter_post(self.client, {'email': 'not-an-email', 'agree': '1'})
             self.assertIn('s=email', r.headers['Location'])
-            r = self.letter_post(self.client, {'email': 'reader@test.kr'})
-            self.assertIn('s=consent', r.headers['Location'])
             r = self.client.post('/letter/subscribe', data={'_csrf': self.csrf(self.client, '/letter'), 'email': 'bot@test.kr', 'agree': '1', 'website': 'http://spam'})
             self.assertIn('s=check', r.headers['Location'])  # 자동 등록 프로그램에도 같은 말, 저장은 안 함
             with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM letter_subscribers').fetchone()[0], 0)
