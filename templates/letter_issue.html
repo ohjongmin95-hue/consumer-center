@@ -86,7 +86,7 @@
     {% if sec.life %}
     <section class="lt-more">
       <h2><span class="tf" aria-hidden="true">📚</span> 더 읽어 볼 매거진</h2>
-      <ul class="lt-life">{% for a in sec.life %}<li><a href="{{ a.url }}"><span class="lt-fi lc1 tf" aria-hidden="true">{{ a.emoji }}</span><div><b>{{ a.title }}</b>{% if a.summary %}<p>{{ a.summary }}</p>{% endif %}</div></a></li>{% endfor %}</ul>
+      <ul class="lt-life">{% for a in sec.life %}<li><a href="{{ a.url }}"><span class="lt-fi lc1 tf" aria-hidden="true">{{ a.emoji }}</span><div><b>{{ a.title }}</b></div></a></li>{% endfor %}</ul>
     </section>
     {% endif %}
     <div class="lt-outro">{% if L.outro %}<p>{{ L.outro }}</p>{% endif %}<b>에디터 크로와상 드림</b></div>
