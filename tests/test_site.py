@@ -5345,6 +5345,25 @@ class SiteTest(unittest.TestCase):
             r = admin.post('/admin/letter/stibee-sync', data={'_csrf': self.csrf(admin, '/admin/letter')}, follow_redirects=True)
             self.assertIn('API 키가 없어요', r.get_data(as_text=True))
 
+    def test_letter_stibee_unsubscribe_webhook(self):
+        # 스티비에서 수신 거부하면 웹훅으로 사이트 구독자도 해지, 비밀 열쇠 없는 주소는 막음, 구독 추가 알림은 무시 (운영자 2026-11-01)
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        self.letter_subs([('a1@example.com', 'active'), ('a2@example.com', 'active')])
+        ext = self.site.app.extensions['soboru_letter']
+        url = ext['stibee_hook_url']().split('soboru.co.kr', 1)[-1].split('://', 1)[-1]
+        url = url[url.index('/letter/'):]
+        self.assertEqual(self.client.post('/letter/stibee-hook/wrong', json={'action': 'unsubscribe', 'email': 'a1@example.com'}).status_code, 404)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.client.post(url, json={'action': 'subscribe', 'subscribers': [{'email': 'a2@example.com'}]})
+        self.client.post(url, json={'event': 'unsubscribe', 'data': {'subscribers': [{'email': 'A1@example.com'}]}})
+        with self.site.conn() as db:
+            st = dict(db.execute("SELECT token,status FROM letter_subscribers WHERE token IN ('tok-a1','tok-a2')").fetchall())
+        self.assertEqual(st, {'tok-a1': 'unsubscribed', 'tok-a2': 'active'})
+        r, _ = self.letter_make(bad=False)
+        html = ext['email_parts'](ext['get'](r['id']), 'tok-x')[1]
+        self.assertIn('id="$stb-htmlv3$"', html)   # 받은편지함 미리보기 문구
+        self.assertIn('id="$stb-htmlv3$"', ext['stibee_html'](ext['get'](r['id'])))
+
     def test_letter_feedback_votes(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         with self.site.conn() as db: db.execute('DELETE FROM letter_feedback')

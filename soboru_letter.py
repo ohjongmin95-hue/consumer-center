@@ -1054,12 +1054,45 @@ def install(S):
         if request.method == 'POST': return 'unsubscribed', 200
         return msg('unsubscribed')
 
+    def hook_key():
+        return hmac.new(app.secret_key.encode(), b'letter:stibee-hook', 'sha256').hexdigest()[:24]
+
+    def hook_emails(data):
+        # 스티비 웹훅 내용 모양이 바뀌어도 되게: 어디에 있든 이메일 주소를 모두 찾음
+        found = []
+        def walk(v):
+            if isinstance(v, dict): [walk(x) for x in v.values()]
+            elif isinstance(v, list): [walk(x) for x in v]
+            elif isinstance(v, str) and EMAIL_RE.match(v.strip()): found.append(v.strip().lower())
+        walk(data)
+        return list(dict.fromkeys(found))
+
+    @app.route('/letter/stibee-hook/<key>', methods=['GET', 'POST'])
+    def letter_stibee_hook(key):
+        """스티비 주소록 웹훅(수신 거부) → 사이트 구독자도 해지로 맞춤 (운영자 2026-11-01). 주소를 아는 스티비만 부를 수 있게 비밀 열쇠를 주소에 넣음."""
+        if not hmac.compare_digest(key[:40], hook_key()): abort(404)
+        if request.method == 'GET': return 'ok', 200  # 스티비가 주소를 확인할 때
+        data = request.get_json(silent=True)
+        if data is None: data = request.form.to_dict(flat=False) or {}
+        words = json.dumps(data, ensure_ascii=False).lower()
+        if not any(w in words for w in ('unsubscri', 'deny', 'reject', 'opt_out', 'optout', '수신거부', '수신 거부', '해지')):
+            return 'ignored', 200  # 구독 추가 같은 다른 알림은 그냥 넘김 (사이트 구독은 사이트에서만 받음)
+        n = 0
+        with conn() as db:
+            for email in hook_emails(data):
+                row = db.execute("SELECT * FROM letter_subscribers WHERE email=? AND status!='unsubscribed'", (email,)).fetchone()
+                if not row: continue
+                db.execute("UPDATE letter_subscribers SET status='unsubscribed',unsubscribed=?,email=? WHERE id=?", (stamp(), gone_email(email), row['id']))
+                n += 1
+        if n: log({'status': 'info', 'no': 0, 'trigger': 'stibee', 'reason': f'스티비에서 수신 거부한 {n}명을 사이트 구독자에서도 해지했어요'})
+        return 'ok', 200
+
     # 메일 앱이 보내는 한 번 클릭 해지(POST)는 우리 화면에서 온 게 아니라 CSRF 토큰이 없음 → 이 주소만 확인을 건너뜀 (토큰을 아는 사람만 해지 가능)
     funcs = app.before_request_funcs.setdefault(None, [])
     for i, fn in enumerate(funcs):
         if fn.__name__ == 'protect':
             def protect(_orig=fn):
-                if request.path.startswith('/letter/unsubscribe/'): return None
+                if request.path.startswith(('/letter/unsubscribe/', '/letter/stibee-hook/')): return None
                 return _orig()
             funcs[i] = protect
 
@@ -1085,7 +1118,7 @@ def install(S):
             subs = db.execute("SELECT id,email,status,created,confirmed,unsubscribed,place FROM letter_subscribers ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,id DESC LIMIT 200").fetchall()
         for L in rows: L['stats'] = stats(L['id']) if L['status'] == 'sent' else None
         return dict(rows=rows, subs=subs, counts=counts(), cfg=settings(), days=DAYS, freqs=FREQS, vias=VIA, stibee_ready=stibee_ready(), ai_ready=desk.ai_ready(), naver_ready=bool(naver()) and naver()['ready'](),
-                    mail_ready=notify.email_ready(), logs=setting('letter_log', [])[:10])
+                    mail_ready=notify.email_ready(), logs=setting('letter_log', [])[:10], hook_url=site_url('/letter/stibee-hook/' + hook_key()))
 
     @app.route('/admin/letter', methods=['GET', 'POST'])
     @S.admin_only
@@ -1224,7 +1257,7 @@ def install(S):
 
     app.extensions['soboru_letter'] = {'join': join_consent, 'generate': generate, 'weekly': weekly, 'send': send_issue, 'collect': collect_news, 'settings': settings,
                                       'email_parts': email_parts, 'get': get, 'check': check, 'sections': sections,
-                                      'stibee_html': stibee_html, 'stats': stats, 'stibee_push_all': stibee_push_all}
+                                      'stibee_html': stibee_html, 'stats': stats, 'stibee_push_all': stibee_push_all, 'stibee_hook_url': lambda: site_url('/letter/stibee-hook/' + hook_key())}
 
 
 def main(argv):

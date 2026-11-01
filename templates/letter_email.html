@@ -10,6 +10,9 @@
 <title>{{ L.title }}</title>
 </head>
 <body style="margin:0;padding:0;background:#ffffff;-webkit-text-size-adjust:100%;word-break:keep-all;">
+{#- 받은편지함 미리보기 문구: 화면엔 안 보이고 메일 목록 제목 옆에만 보임. 스티비 안내 양식($stb-htmlv3$)과 같은 모양 -#}
+{%- set pre = (L.intro or L.title or '')|striptags -%}
+<table id="$stb-htmlv3$" style="height:0px;max-height:0px;border-width:0px;visibility:hidden;line-height:0px;font-size:0px;overflow:hidden;display:none;mso-hide:all;"><tr><td>{{ pre[:110] }}{% for _ in range(40) %}&#8204;&nbsp;{% endfor %}</td></tr></table>
 {%- macro pill(label, img=True) -%}
   <tr><td align="center" style="padding:40px 28px 6px;">
     {% if img %}<img src="{{ hero }}" width="104" alt="" style="display:block;width:104px;height:auto;border:0;margin:0 auto -6px;">{% endif %}
