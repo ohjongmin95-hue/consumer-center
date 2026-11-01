@@ -97,7 +97,7 @@ def guess_shop(text):
 
 
 BOXES = (('number', '숫자로 보는 오늘'), ('buzz', '소비 트렌드'), ('harm', '소비자 피해 예방'), ('lawbox', '법률·제도'))  # 뉴스 말고 AI가 쓰는 칸 (sections에 담음)
-COPY_WORDS = 6            # 기사 원문과 이만큼 어절이 그대로 겹치면 '검토 필요'
+COPY_WORDS = 8            # 기사 원문과 이만큼 어절이 그대로 겹치면 '검토 필요'
 AI_TIMEOUT = 120
 EMAIL_RE = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
 UNSUB_MARK = '__LETTER_UNSUB__'
@@ -738,7 +738,8 @@ def install(S):
             if same: problems.append({'where': where, 'line': same, 'copy': True})
         if sec.get('comment'):
             c = sec['comment']; text = comment_text(c)
-            problems += [dict(p, where='에디터 코멘트') for p in W.check_text(text, c.get('_facts', {}))]
+            # 메인 뉴스는 같은 날 뉴스 꼭지의 기사도 함께 보고 쓰므로 그 자료까지 (운영자 2026-11-01: 2번 뉴스의 9300억 달러가 코멘트에서 '없는 숫자'로 걸림)
+            problems += [dict(p, where='에디터 코멘트') for p in W.check_text(text, {'코멘트': c.get('_facts', {}), '뉴스': [it.get('_facts', {}) for it in items]})]
             same = copied(text, c.get('_source', ''))
             if same: problems.append({'where': '에디터 코멘트', 'line': same, 'copy': True})
         for i, b in enumerate(sec.get('briefs') or [], 1):
