@@ -75,10 +75,7 @@
   {% if sec.comment %}{% set c = sec.comment %}
   {#- 에디터 코멘트: 오늘 가장 큰 경제 이슈를 깊게 -#}
   <tr><td style="padding:40px 32px 4px;{{ F }}" id="comment">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;"><tr>
-      <td valign="middle" style="padding-right:12px;"><img src="{{ editor_img }}" width="56" alt="에디터 크로와상" style="display:block;width:56px;height:auto;border:0;"></td>
-      <td valign="middle" style="{{ F }}"><p style="margin:0;font-size:14px;font-weight:800;color:#ef7300;letter-spacing:0.2px;">{{ H.comment_eyebrow }}</p><p style="margin:2px 0 0;font-size:17px;font-weight:800;color:#652D1C;">에디터 크로와상</p></td>
-    </tr></table>
+    <p style="margin:0 0 14px;font-size:15px;font-weight:800;letter-spacing:0.5px;color:#ef7300;">{{ H.comment_eyebrow }}</p>
     {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" width="576" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:576px;height:auto;border:0;border-radius:16px;"><p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p></div>{% endif %}
     <h2 style="margin:0 0 {{ '8px' if c.tags else '14px' }};font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
     {% if c.tags %}<p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#CE6719;">{% for t in c.tags %}#{{ t }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>{% endif %}

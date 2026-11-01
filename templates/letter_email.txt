@@ -15,7 +15,7 @@
 기사 원문: {{ it.src.url }}
 {% endfor %}{% if sec.comment %}{% set c = sec.comment %}
 ━━━━━━━━━━━━━━━━
-■ {{ H.comment_eyebrow }} · 에디터 크로와상
+■ {{ H.comment_eyebrow }}
 {{ c.title }}{% if c.tags %}
 {% for t in c.tags %}#{{ t }} {% endfor %}{% endif %}
 

@@ -30,7 +30,7 @@
     </section>
     {% if sec.comment %}{% set c = sec.comment %}
     <section class="lt-comment" id="comment">
-      <div class="lt-ed"><img src="{{ url_for('static', filename='img/editor-croissant.png') }}" alt="" width="56"><div><small>{{ H.comment_eyebrow }}</small><b>에디터 크로와상</b></div></div>
+      <p class="lt-eyebrow">{{ H.comment_eyebrow }}</p>
       {% if c.photo %}{% set PH = c.photo %}<figure class="lt-photo"><img src="{{ PH.url }}" alt="{{ PH.alt }}" loading="lazy"><figcaption>사진: <a href="{{ PH.credit_url }}" target="_blank" rel="noopener">{{ PH.credit }}</a> / <a href="{{ PH.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption></figure>{% endif %}
       <h2>{{ c.title }}</h2>
       {% if c.tags %}<p class="lt-tags">{% for t in c.tags %}<span>#{{ t }}</span>{% endfor %}</p>{% endif %}
