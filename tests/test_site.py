@@ -5317,6 +5317,76 @@ class SiteTest(unittest.TestCase):
         self.assertEqual((L['status'], L['trigger'], L['stibee_id']), ('sent', 'stibee', 777))
         with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM letter_sends').fetchone()[0], 0)  # 사이트 구독자에게는 안 보냄
 
+    def test_letter_stibee_subscriber_sync(self):
+        # 보내는 곳이 스티비면 사이트 구독·해지가 스티비 주소록에도 반영되고, 기존 구독자는 버튼으로 한 번에 옮김 (운영자 2026-11-01)
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        admin = self.login_admin()
+        admin.post('/admin/letter/settings', data={'_csrf': self.csrf(admin, '/admin/letter'), 'freq': 'daily', 'via': 'stibee', 'stibee_list': '55',
+                                                   'stibee_sender': 'contact@consumerjebo.co.kr', 'stibee_name': '소보루 레터'})
+        self.letter_subs([('old1@example.com', 'active'), ('old2@example.com', 'active'), ('wait@example.com', 'pending')])
+        calls = []
+        def fake(method, path, body=None, ctype='application/json', base=None):
+            calls.append((method, (base or '') + path, body))
+            return (404, 'no') if base and base.endswith('/v2') else (200, '{"Ok": true}')
+        with patch.dict(os.environ, {'STIBEE_API_KEY': 'stb-test'}), patch.object(self.site.soboru_letter, 'stibee_call', fake):
+            page = admin.get('/admin/letter').get_data(as_text=True)
+            self.assertIn('사이트 구독자 2명 스티비 주소록으로 옮기기', page)
+            admin.post('/admin/letter/stibee-sync', data={'_csrf': self.csrf(admin, '/admin/letter')})
+            self.assertEqual(calls[-1][:2], ('POST', 'https://api.stibee.com/v1/lists/55/subscribers'))  # v2에 없으면 v1로
+            self.assertEqual(sorted(x['email'] for x in calls[-1][2]['subscribers']), ['old1@example.com', 'old2@example.com'])
+            self.assertEqual(calls[-1][2]['confirmEmailYN'], 'N')
+            calls.clear()
+            self.client.get('/letter/confirm/tok-wait')   # 확인 메일을 누르면 스티비에도 추가
+            self.assertEqual([c[2]['subscribers'] for c in calls if c[0] == 'POST'][-1], [{'email': 'wait@example.com'}])
+            calls.clear()
+            self.client.get('/letter/unsubscribe/tok-old1')   # 사이트에서 해지하면 스티비에서도 수신 거부
+            self.assertEqual(calls[-1][:3], ('PUT', 'https://api.stibee.com/v1/lists/55/subscribers/unsubscribe', ['old1@example.com']))
+        with patch.dict(os.environ, {'STIBEE_API_KEY': ''}):
+            r = admin.post('/admin/letter/stibee-sync', data={'_csrf': self.csrf(admin, '/admin/letter')}, follow_redirects=True)
+            self.assertIn('API 키가 없어요', r.get_data(as_text=True))
+
+    def test_letter_stibee_unsubscribe_webhook(self):
+        # 스티비에서 수신 거부하면 웹훅으로 사이트 구독자도 해지, 비밀 열쇠 없는 주소는 막음, 구독 추가 알림은 무시 (운영자 2026-11-01)
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        self.letter_subs([('a1@example.com', 'active'), ('a2@example.com', 'active')])
+        ext = self.site.app.extensions['soboru_letter']
+        url = ext['stibee_hook_url']().split('soboru.co.kr', 1)[-1].split('://', 1)[-1]
+        url = url[url.index('/letter/'):]
+        self.assertEqual(self.client.post('/letter/stibee-hook/wrong', json={'action': 'unsubscribe', 'email': 'a1@example.com'}).status_code, 404)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.client.post(url, json={'action': 'subscribe', 'subscribers': [{'email': 'a2@example.com'}]})
+        self.client.post(url, json={'event': 'unsubscribe', 'data': {'subscribers': [{'email': 'A1@example.com'}]}})
+        with self.site.conn() as db:
+            st = dict(db.execute("SELECT token,status FROM letter_subscribers WHERE token IN ('tok-a1','tok-a2')").fetchall())
+        self.assertEqual(st, {'tok-a1': 'unsubscribed', 'tok-a2': 'active'})
+        r, _ = self.letter_make(bad=False)
+        html = ext['email_parts'](ext['get'](r['id']), 'tok-x')[1]
+        self.assertIn('id="$stb-htmlv3$"', html)   # 받은편지함 미리보기 문구
+        self.assertIn('id="$stb-htmlv3$"', ext['stibee_html'](ext['get'](r['id'])))
+
+    def test_letter_news_become_magazine_articles(self):
+        # 갓 구운 오늘의 뉴스 한 꼭지마다 매거진 기사를 쓰고, 게시된 기사가 있으면 레터는 '소보루에서 자세히 읽기'로 이어짐 (운영자 2026-11-01)
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        wr = self.site.app.extensions['soboru_writer']; calls = []
+        with self.site.conn() as db:
+            ids = [db.execute("INSERT INTO articles(title,summary,body,status,origin,ext_key,created,updated) VALUES(?,?,?,?,?,?,?,?)",
+                              (f'풀어 읽기 {k}', '요약', '본문', 'published' if k == 0 else 'draft', 'ai', f'test:issue:{k}', '2026-11-01', '2026-11-01')).lastrowid for k in range(6)]
+        def drop():
+            with self.site.conn() as db: db.execute("DELETE FROM articles WHERE ext_key LIKE 'test:issue:%'")
+        self.addCleanup(drop)
+        def fake(kind, trigger='admin', **kw):
+            calls.append((kind, trigger, kw)); return {'status': 'made', 'id': ids[len(calls) - 1], 'published': len(calls) == 1}
+        self.site.app.config['LETTER_ARTICLES'] = True
+        self.addCleanup(self.site.app.config.pop, 'LETTER_ARTICLES', None)
+        with patch.dict(wr, {'generate': fake}):
+            r, _ = self.letter_make(bad=False)
+        ext = self.site.app.extensions['soboru_letter']; L = ext['get'](r['id'])
+        self.assertEqual(len(calls), len(L['items']))
+        self.assertTrue(all(c[0] == 'issue' and c[1] == 'letter' and '오늘의 뉴스' in c[2]['material']['facts'] for c in calls))
+        html = ext['email_parts'](L, 'tok-x')[1]
+        self.assertEqual(html.count('소보루에서 자세히 읽기'), 1)   # 게시된 기사 한 편만 이어짐, 나머지는 원문
+        self.assertIn(f'/life/{ids[0]}', html)
+
     def test_letter_feedback_votes(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         with self.site.conn() as db: db.execute('DELETE FROM letter_feedback')

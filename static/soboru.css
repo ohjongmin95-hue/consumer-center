@@ -2887,3 +2887,39 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-numbox>div b::before{content:"TOTAL";float:left;font:700 16px/60px 'Courier New',monospace;color:#1d1d1f}
 .lt-numbox>div p{color:#3a3633;padding:10px 0;border-bottom:2px dashed #d9d2c5}.lt-numbox>div a{display:block;text-align:center;font-family:'Courier New',monospace;font-size:12px;color:#9a928a}
 .lt-numbox{background:#ffe8c7;border-radius:18px;padding-bottom:26px}.lt-numbox>.lt-part{margin-top:0}.lt-numbox>div{background:#fff;max-width:400px}.lt-numbox>div small,.lt-numbox>div b,.lt-numbox>div p{border-color:#b9ad9b}.lt-numbox>div small{font-size:16px;color:#1d1d1f}.lt-numbox>div p{color:#1d1d1f;font-size:17px}.lt-numbox>div a{color:#5a5048;font-size:13px}
+/* 메인 뉴스 간판: 받침대 + 줄 두 개 + 귤색 판 */
+.lt-sign-hook{width:220px;height:8px;border:0;border-radius:4px;background:#652D1C;margin-bottom:18px}.lt-sign-hook::after{display:none}
+.lt-sign{position:relative}.lt-sign::before,.lt-sign::after{content:"";position:absolute;top:8px;width:3px;height:18px;background:#652D1C;left:calc(50% - 80px)}.lt-sign::after{left:calc(50% + 77px)}
+.lt-sign-board{background:#EF920E;border:3px solid #652D1C;box-shadow:inset 0 0 0 6px #EF920E,inset 0 0 0 8px #ffe2b0}.lt-sign-board small{color:#fff1d9}.lt-sign-board b{color:#fff}
+.lt-sign-hook{margin-bottom:0}.lt-sign::before,.lt-sign::after{height:92px}.lt-sign-peek{display:block;width:150px;height:92px;margin:0 0 -3px;position:relative}
+.lt-sign::before,.lt-sign::after{display:none}
+.lt-sign-peek{width:180px;height:110px}
+.lt-sign{align-items:stretch}.lt-sign-peek{align-self:center}
+.lt-sign-board{width:100%;box-sizing:border-box;background:#C98A4B repeating-linear-gradient(0deg,transparent 0 9px,rgba(101,45,28,.10) 9px 11px);border:3px solid #652D1C;border-radius:10px;box-shadow:none;padding:12px 26px 14px;position:relative}
+.lt-sign-board small{color:#FFE9C7;padding-bottom:10px;margin-bottom:10px;border-bottom:2px solid #9a5f33;margin-left:-26px;margin-right:-26px}
+.lt-sign-board b{color:#fff;text-shadow:0 2px 0 rgba(101,45,28,.35)}
+.lt-sign-board{background:#EF920E;border:0;border-radius:90px 90px 14px 14px;padding:22px 20px 18px}
+.lt-sign-board small{color:#FFF1D9;border-bottom:0;margin:0 0 2px;padding:0;letter-spacing:3px}
+.lt-sign-board b{text-shadow:none}
+.lt-sign-board{background:none;border-radius:0;border-top:6px solid #EF920E;padding:18px 0 0}
+.lt-sign-board small{color:#CE6719;font-size:13px}.lt-sign-board b{color:#1d1d1f;font-size:26px}
+.lt-sign-peek{width:150px;height:92px;margin:0}
+.lt-note{display:flex;gap:12px;align-items:flex-start;margin:6px 0 24px}.lt-note img{width:84px;height:auto;flex:none}
+.lt-note>div{background:#FFF4E2;border-radius:4px 18px 18px 18px;padding:16px 20px 18px}.lt-note b{display:block;font-size:14px;color:#CE6719;margin-bottom:6px}.lt-note p{margin:0;font-size:16px;line-height:1.85;color:#3a3633}
+/* 메인 뉴스 머리 = 요즘 빵집 건물 앞모습 (운영자 2026-11-01) */
+.lt-house{max-width:480px;margin:0 auto 26px;align-items:stretch;background:#B4603D repeating-linear-gradient(0deg,rgba(255,236,214,.18) 0 2px,transparent 2px 14px);padding:0 18px;position:relative}
+.lt-house .lt-roof{display:flex;justify-content:center;align-items:flex-end;gap:20px;height:62px;margin:0 -18px 16px;background:#6E747A;clip-path:polygon(44px 0,calc(100% - 44px) 0,100% 56px,100% 100%,0 100%,0 56px);border-bottom:6px solid #4F5459}
+.lt-house .lt-roof u{display:block;width:26px;height:22px;background:#FFF4E2;border:3px solid #3E4247;border-bottom:0}
+.lt-house .lt-wins{display:flex;justify-content:center;gap:12px}.lt-house .lt-wins u{display:block;width:40px;height:44px;background:#FFE7C2 linear-gradient(#4A2A1C,#4A2A1C) center/3px 100% no-repeat;border:3px solid #4A2A1C;border-radius:3px;box-shadow:0 8px 0 -2px #5E8C4A}
+.lt-house .lt-sign-peek{width:120px;height:74px;margin:14px auto -3px}
+.lt-house .lt-sign-board{background:#EF920E;border:3px solid #652D1C;border-radius:8px;padding:10px 12px 12px;margin-bottom:16px}
+.lt-house .lt-sign-board small{color:#FFF1D9;font-size:12px}.lt-house .lt-sign-board b{color:#fff;font-size:23px}
+.lt-house .lt-base{display:flex;gap:12px;margin:0 -18px;padding:8px 12px 10px;background:#E2CFAE}.lt-house .lt-base u{flex:1;height:32px;background:linear-gradient(#4A4440 0 12px,#FFE7C2 12px);border-radius:3px 3px 0 0}
+.lt-house{background:none;isolation:isolate}.lt-house::before{display:block;content:"";position:absolute;left:0;right:0;top:68px;bottom:0;width:auto;height:auto;z-index:-1;background:#B4603D repeating-linear-gradient(0deg,rgba(255,236,214,.18) 0 2px,transparent 2px 14px)}
+/* 메인 뉴스 머리 = 깔끔한 계산대 (운영자 2026-11-01) */
+.lt-counter{align-items:stretch;margin:0 0 26px}.lt-counter .lt-sign-peek{width:130px;height:79px;margin:0 auto;align-self:center}
+.lt-counter .lt-sign-board{background:none;border:0;border-radius:0;box-shadow:none;padding:16px 0 0;position:relative;border-top:8px solid #EF920E}
+.lt-counter .lt-sign-board::before{content:"";position:absolute;left:10px;right:10px;top:0;height:14px;background:#F8D59F;border-radius:0 0 8px 8px}
+.lt-counter .lt-sign-board small{color:#CE6719;font-size:12px;margin-top:14px}.lt-counter .lt-sign-board b{color:#1d1d1f;font-size:25px;text-shadow:none}
+.lt-counter .lt-sign-peek{width:150px;height:130px}
+.lt-note img{width:110px;margin-top:8px}

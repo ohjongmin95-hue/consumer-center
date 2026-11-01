@@ -120,7 +120,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 여는 글 2~3문장 — "빵순이·빵돌이님,"으로 시작해(독자를 부를 땐 늘 빵순이·빵돌이님, "이웃님"은 쓰지 않는다) 에디터 코멘트 이슈를 우리 생활 장면으로 꺼내고 마지막 문장은 질문으로 끝낸다(예: "…우리는 어떻게 대처해야 할까요?"). 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
           '"items": [{"no": 뉴스 번호, "title": 뉴스 제목처럼 핵심 숫자·주체를 담은 30~45자 제목(질문형·감탄·따옴표 인용 가능, 어울리면 끝에 이모지 하나, 예 "미국 기준금리 3.75~4.00% 동결, 12월 추가 인상 가능성은? 🏦"), "body": 딱 3문장(150~230자) — 첫 문장은 언제·누가·무엇을 했는지 핵심 숫자와 함께(예 "28일 미국 연방준비제도(연준)가 기준금리를 연 3.75~4.00%로 동결했어요."), 둘째 문장은 배경이나 덧붙일 사실, 셋째 문장은 왜 그런지·무슨 뜻인지 해석("~라는 해석이 나와요", "~라는 계획이에요"). 기관 이름은 처음에 풀어 쓰고 괄호에 줄임말, 해요체로 짧고 또렷하게(그 뉴스와 "같은 소식 다른 기사" 자료만 쓴다), "tip": "", "law": 고른 조문 id 또는 ""}], '
           '"comment": {"photo": 이슈에 어울리는 사진을 Unsplash에서 찾을 영어 검색어 2~3낱말(장면·물건 위주, 사람 이름·회사 이름·로고 X, 예 "grocery shopping cart"), "title": 30~45자 제목(핵심 주체·숫자를 담고 끝에 어울리는 이모지 1~2개 가능), "tags": [이슈를 나타내는 짧은 낱말 2~3개, # 없이], "lead": 3~4문장 — 독자가 겪을 법한 생활 장면으로 시작해 이슈를 꺼내고 마지막은 질문으로 끝낸다, "what": {"body": 언제 누가 무엇을 발표·확인했는지 1~2문장(끝을 "…살펴보면:"처럼 이어 써도 됨), "points": [{"name": 주체·항목 이름 15자 이내, "text": 1~2문장 — 자료에 있는 숫자를 꼭 넣는다}] 3개}, '
-          '"why": {"body": 배경·원인 5~7문장(350~550자), 자료의 숫자와 기관 발표를 들어 구체적으로}, "wallet": {"head": 이 칸 소제목 15자 안팎(예 "내 지갑엔 무슨 일이?", "무엇이 문제일까요?"), "body": 1~2문장(끝을 "…이래요:"처럼 이어 써도 됨), "points": [{"name": 15자 이내 + 끝에 어울리는 이모지 하나, "text": 2문장}] 2~3개}} (자료가 모자라면 null), '
+          '"why": {"body": 배경·원인 5~7문장(350~550자), 자료의 숫자와 기관 발표를 들어 구체적으로}, "wallet": {"head": 이 칸 소제목 15자 안팎(예 "내 지갑엔 무슨 일이?", "무엇이 문제일까요?"), "body": 1~2문장(끝을 "…이래요:"처럼 이어 써도 됨), "points": [{"name": 15자 이내 + 끝에 어울리는 이모지 하나, "text": 2문장}] 2~3개}, "note": 에디터 크로와상의 한마디 2~3문장(120~220자) — 이 이슈를 두고 독자가 오늘 챙겨 보면 좋을 점을 친구에게 말하듯 따뜻하게(기업 평가·단정 X, 자료에 없는 숫자 X)} (자료가 모자라면 null), '
           '"buzz": {"title": 요즘 소비 트렌드를 담은 25~40자 제목, "body": 트렌드 도입 4~5문장(250~400자) — 요즘 무엇이 왜 뜨는지 생활 장면과 숫자로, '
           '"shop": 이번 트렌드 주제에 가장 어울리는 가게 하나(dessert 디저트·toy 완구·flower 꽃·food 식당·bakery 빵·store 편의점·cafe 카페·beauty 뷰티·fashion 옷·tech 전자·grocery 장보기·travel 여행·health 건강·shop 그 밖), "points": [{"name": 트렌드·상품 이름 15자 이내, "text": 4~5문장(250~380자) — 무엇이 얼마나 팔리는지(판매량·증가율·가격·순위 같은 자료의 숫자를 여럿), 누가 왜 사는지, 업계가 어떻게 움직이는지를 구체적으로}] 3개, '
           '"insight": 이 트렌드를 꿰뚫는 분석 4~5문장(250~400자) — 여러 기사의 흐름을 묶어 소비 심리·물가·세대 같은 배경을 짚는다(자료에 없는 숫자·전망은 짓지 않는다), '
@@ -132,11 +132,12 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
 
 
 # 칸 이름: 뉴닉 문구·이모지를 따라 하지 않고 소보루(빵집)식으로 (운영자 2026-11-01)
-HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 뉴스', 'news_emoji': '🥞', 'more': '기사 원문 ›',
+HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 뉴스', 'news_emoji': '🥯', 'more': '기사 원문 ›', 'read': '소보루에서 자세히 읽기 ›',
          'comment_eyebrow': '오늘의 메인 뉴스', 'comment_kicker': 'TODAY\'S SPECIAL', 'what': '🍞 한 입에 정리하면', 'why': '🔎 왜 이렇게 됐을까요', 'wallet': '👛 내 지갑엔 무슨 일이?',
          'buzz_eyebrow': 'TREND', 'buzz': '요즘 뜨는 소비 트렌드'}
 
-STIBEE_API = 'https://api.stibee.com/v2'
+STIBEE_ROOT = 'https://api.stibee.com'
+STIBEE_API = STIBEE_ROOT + '/v2'
 VIA = {'site': '사이트에서 직접 (Brevo 등 SMTP)', 'stibee': '스티비로 (프로 요금제 API)'}
 
 
@@ -251,14 +252,28 @@ def fetch_market():
     return {'rows': rows, 'top': top, 'at': at}
 
 
-def stibee_call(method, path, body=None, ctype='application/json'):
+def stibee_call(method, path, body=None, ctype='application/json', base=None):
     """스티비 API v2 (운영자 요청 2026-11-01). 키는 서버 설정 STIBEE_API_KEY (deploy/set-stibee.sh). (상태 코드, 응답 글자). 테스트에서 바꿔 끼운다."""
     key = os.getenv('STIBEE_API_KEY', '').strip()
     data = None if body is None else (body if isinstance(body, str) else json.dumps(body, ensure_ascii=False)).encode()
-    req = urllib.request.Request(STIBEE_API + path, data=data, method=method, headers={'AccessToken': key, 'Content-Type': ctype + '; charset=utf-8'})
+    req = urllib.request.Request((base or STIBEE_API) + path, data=data, method=method, headers={'AccessToken': key, 'Content-Type': ctype + '; charset=utf-8'})
     try:
         with urllib.request.urlopen(req, timeout=60) as r: return r.status, r.read().decode('utf-8', 'replace')
     except urllib.error.HTTPError as e: return e.code, e.read().decode('utf-8', 'replace')[:300]
+
+
+def stibee_subs(list_id, emails, on=True):
+    """스티비 주소록에 구독자 넣기(on) / 수신 거부(off). 새 키는 v2라 v2 경로를 먼저, 없으면(404·405) 예전 v1 경로로. (성공 여부, 설명)"""
+    if not list_id or not emails: return False, '주소록 번호나 메일이 없어요'
+    body = {'eventOccuredBy': 'MANUAL', 'confirmEmailYN': 'N', 'subscribers': [{'email': e} for e in emails]} if on else list(emails)
+    last = ''
+    for ver in ('/v2', '/v1'):
+        path = f'/lists/{list_id}/subscribers' + ('' if on else '/unsubscribe')
+        st, res = stibee_call('POST' if on else 'PUT', path, body, base=STIBEE_ROOT + ver)
+        if st in (200, 201): return True, ''
+        last = f'({st}) {res[:120]}'
+        if st not in (404, 405): break
+    return False, last
 
 
 class Skip(Exception):
@@ -344,6 +359,29 @@ def install(S):
                 'stibee_sender': sender if EMAIL_RE.match(sender) else '', 'stibee_name': (s.get('stibee_name') or '').strip()[:40] or NAME}
 
     def stibee_ready(): return bool(os.getenv('STIBEE_API_KEY', '').strip())
+
+    def stibee_sync(email, on=True):
+        """사이트에서 구독·해지가 생기면 스티비 주소록에도 바로 반영 (보내는 곳이 스티비일 때만). 실패해도 사이트 구독은 그대로, 레터 기록에 남김."""
+        cfg = settings()
+        if cfg['via'] != 'stibee' or not stibee_ready() or not cfg['stibee_list'] or not email or email.startswith('x:'): return
+
+        def job():
+            ok, why = stibee_subs(cfg['stibee_list'], [email], on)
+            if not ok: log({'status': 'error', 'reason': f"스티비 주소록 {'추가' if on else '수신 거부'} 실패 {notify.mask(email)} {why}"})
+        if testing(): job()
+        else: threading.Thread(target=lambda: _quiet(job), daemon=True).start()
+
+    def stibee_push_all():
+        """관리자 버튼: 사이트에서 구독을 마친 사람 모두를 스티비 주소록에 넣음 (이미 있으면 스티비가 갱신). 한 번에 500명씩."""
+        cfg = settings()
+        if not stibee_ready(): return False, '스티비 API 키가 없어요 (deploy/set-stibee.sh)'
+        if not cfg['stibee_list']: return False, '스티비 주소록 번호를 먼저 저장해 주세요'
+        with conn() as db: emails = [r[0] for r in db.execute("SELECT email FROM letter_subscribers WHERE status='active' ORDER BY id")]
+        if not emails: return True, '옮길 구독자가 없어요'
+        for i in range(0, len(emails), 500):
+            ok, why = stibee_subs(cfg['stibee_list'], emails[i:i + 500], True)
+            if not ok: return False, f'{i}명까지 옮기고 멈췄어요 {why}'
+        return True, f'{len(emails)}명을 스티비 주소록에 넣었어요'
 
     def stibee_send(L, trigger):
         """스티비에 이메일을 만들고(제목·발신자·주소록) 내용을 넣은 뒤 바로 보냄. 우리 구독자 목록에는 보내지 않음(구독자는 스티비 주소록)."""
@@ -590,6 +628,7 @@ def install(S):
                    'what': {'body': W._plain(part('what').get('body'), 400), 'points': pts(part('what').get('points'))},
                    'why': {'body': W._plain(part('why').get('body'), 1400)},
                    'wallet': {'head': W._plain(part('wallet').get('head'), 30), 'body': W._plain(part('wallet').get('body'), 300), 'points': pts(part('wallet').get('points'))},
+                   'note': W._plain(c.get('note'), 400),
                    'srcs': [{'name': x['source'], 'url': x['url'], 'date': x['date']} for x in cm[:3]],
                    '_facts': {'기사': [item_facts(x, None) for x in cm], '소비자상담센터 전화번호': '1372'}, '_source': ' '.join(x['title'] + ' ' + x['summary'] for x in cm)}
             if com['title'] and com['lead'] and (com['what']['body'] or com['what']['points']): ex['comment'] = com
@@ -613,7 +652,7 @@ def install(S):
         return ex
 
     def comment_text(c):
-        out = [c.get('title', ''), c.get('lead', ''), c['what']['body'], c['why']['body'], c['wallet']['body']]
+        out = [c.get('title', ''), c.get('lead', ''), c['what']['body'], c['why']['body'], c['wallet']['body'], c.get('note', '')]
         for k in ('what', 'wallet'): out += [p['name'] + ' ' + p['text'] for p in c[k]['points']]
         return '\n'.join(x for x in out if x)
 
@@ -674,6 +713,35 @@ def install(S):
             r = db.execute('SELECT * FROM letters WHERE ' + ('id=?' if lid is not None else 'no=?'), (lid if lid is not None else no,)).fetchone()
         return row_info(r) if r else None
 
+    def make_articles(no, items):
+        """갓 구운 오늘의 뉴스 한 꼭지마다 매거진 기사(/life) 한 편 (운영자 2026-11-01: 뉴스 하나로 레터와 아티클 두 번).
+        매거진 쓰기(soboru_writer, GPT-6 Luna)가 숫자 검사를 통과하면 바로 게시, 아니면 초안으로 남고 레터는 기사 원문으로 이어짐."""
+        wr = app.extensions.get('soboru_writer')
+        if not wr or (testing() and not app.config.get('LETTER_ARTICLES')): return
+        day = datetime.date.today().isoformat()
+        def one(i, it):
+            facts = {'오늘의 뉴스': {k: v for k, v in it.get('_facts', {}).items() if k != '소비자상담센터 전화번호'}}
+            src = [{'name': it['src']['name'], 'url': it['src']['url'], 'fetched_at': stamp()}] if it['src'].get('url') else []
+            try: return wr['generate']('issue', 'letter', topic=it['src'].get('headline') or it['title'], material={'facts': facts, 'sources': src}, key=f'ai:issue:{day}:{no}-{i}')
+            except Exception as e: return {'status': 'error', 'reason': type(e).__name__}
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+            res = list(ex.map(lambda a: one(*a), enumerate(items)))
+        made = 0
+        for it, r in zip(items, res):
+            if r.get('id'): it['article'] = r['id']; made += 1
+        log({'status': 'info', 'no': no, 'trigger': 'articles', 'reason': f"매거진 기사 {made}편 ({sum(1 for r in res if r.get('published'))}편 바로 게시)"})
+
+    def article_links(L):
+        """레터 꼭지마다 게시된 매거진 기사가 있으면 '소보루에서 자세히 읽기' 주소를 붙임 (초안이면 원문만)."""
+        ids = [it['article'] for it in L['items'] if it.get('article')]
+        if not ids: return L
+        with conn() as db:
+            pub = {r[0] for r in db.execute("SELECT id FROM articles WHERE status='published' AND id IN (%s)" % ','.join('?' * len(ids)), ids)}
+        for it in L['items']:
+            it['read'] = site_url(f"/life/{it['article']}") if it.get('article') in pub else ''
+        return L
+
     def generate(trigger='admin'):
         """{status: made|skip|error, id, no, reason}. 만든 호는 초안(draft)."""
         if not desk.ai_ready(): res = {'status': 'skip', 'reason': 'OpenAI API 키가 없어요'}; log(dict(res, trigger=trigger)); return res
@@ -688,7 +756,7 @@ def install(S):
         for it in items: it.update(title=scrub(it['title']), body=scrub(it['body']), tip=scrub(it['tip']))
         for b in ex.get('briefs') or []: b['line'] = scrub(b['line'])
         if ex.get('comment'):
-            c = ex['comment']; c['title'], c['lead'] = scrub(c['title']), scrub(c['lead'])
+            c = ex['comment']; c['title'], c['lead'] = scrub(c['title']), scrub(c['lead']); c['note'] = scrub(c.get('note', ''))
             for k in ('what', 'why', 'wallet'):
                 c[k]['body'] = scrub(c[k]['body'])
                 for p in c[k].get('points') or []: p['name'], p['text'] = scrub(p['name']), scrub(p['text'])
@@ -701,6 +769,7 @@ def install(S):
         mk = fetch_market()
         if mk: ex['market'] = mk
         sec = dict(sections(no), **ex)
+        make_articles(no, items)
         problems = check(title, intro, outro, items, no, sec)
         with conn() as db:
             lid = db.execute('INSERT INTO letters(no,title,intro,outro,items,sections,status,created,updated,check_ok,problems,trigger) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
@@ -731,6 +800,7 @@ def install(S):
                 if form.get('comment_nophoto'): c.pop('photo', None)
                 if 'comment_title' in form: c['title'] = W._plain(form.get('comment_title'), 60) or c['title']
                 if 'comment_lead' in form: c['lead'] = ' '.join(form.get('comment_lead', '').split())[:600]
+                if 'comment_note' in form: c['note'] = ' '.join(form.get('comment_note', '').split())[:400]
                 for k in ('what', 'why', 'wallet'):
                     if f'comment_{k}' in form: c[k] = dict(c[k], body=' '.join(form.get(f'comment_{k}', '').split())[:900])
                 sec['comment'] = c
@@ -772,12 +842,13 @@ def install(S):
         return ''
 
     def mail_ctx(L, token):
+        article_links(L)
         tf = lambda name: site_url(f'/static/img/tf/{name}.png')
         icons = [tf(TOPIC_ICON.get(it.get('topic', ''), ('news', ''))[0]) for it in L['items']]
         for it, icon in zip(L['items'], icons): it['_icon'] = icon
         return {'L': L, 'items': L['items'], 'econ': [it for it in L['items'] if it.get('kind') != 'policy'], 'policy': [it for it in L['items'] if it.get('kind') == 'policy'],
                 'sec': L['sections'], 'H': HEADS, 'purpose': PURPOSE, 'site': site_url(), 'op': operator(), 'logo': logo_url(), 'date': kdate(L.get('sent_at') or L['created']),
-                'tf': tf, 'icons': icons, 'SHOPS': SHOPS, 'mark': site_url('/static/img/soboru-wordmark-orange.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark-orange.png')) else '', 'mark_brown': site_url('/static/img/' + ('soboru-logo-brown-h.png' if os.path.exists(os.path.join(app.static_folder, 'img/soboru-logo-brown-h.png')) else 'soboru-wordmark.png')), 'hero': site_url('/static/img/soboru-character-hero.png'), 'editor_img': site_url('/static/img/' + ('editor-croissant.png' if os.path.exists(os.path.join(app.static_folder, 'img/editor-croissant.png')) else 'soboru-character-hero.png')), 'cfg': letter_cfg(),
+                'tf': tf, 'icons': icons, 'SHOPS': SHOPS, 'mark': site_url('/static/img/soboru-wordmark-orange.png') if os.path.exists(os.path.join(app.static_folder, 'img/soboru-wordmark-orange.png')) else '', 'mark_brown': site_url('/static/img/' + ('soboru-logo-brown-h.png' if os.path.exists(os.path.join(app.static_folder, 'img/soboru-logo-brown-h.png')) else 'soboru-wordmark.png')), 'hero': site_url('/static/img/soboru-character-hero.png'), 'peek': site_url('/static/img/soboru-character-peek.png'), 'bounce': site_url('/static/img/soboru-character-bounce.gif'), 'editor_img': site_url('/static/img/' + ('editor-croissant.png' if os.path.exists(os.path.join(app.static_folder, 'img/editor-croissant.png')) else 'soboru-character-hero.png')), 'cfg': letter_cfg(),
                 'unsub': token if token == STIBEE_UNSUB else site_url(f'/letter/unsubscribe/{token}'), 'web': site_url(f"/letter/{L['no']}"), 'name': NAME,
                 'stibee': token == STIBEE_UNSUB}
 
@@ -945,7 +1016,7 @@ def install(S):
         with conn() as db:
             near = {k: db.execute(f"SELECT no,title FROM letters WHERE status='sent' AND no{op}? ORDER BY no {o} LIMIT 1", (no,)).fetchone()
                     for k, op, o in (('prev', '<', 'DESC'), ('next', '>', 'ASC'))}
-        return render_template('letter_issue.html', L=L, near=near, H=HEADS, SHOPS=SHOPS)
+        return render_template('letter_issue.html', L=article_links(L), near=near, H=HEADS, SHOPS=SHOPS)
 
     @app.route('/letter/<int:no>/fb/<vote>')
     def letter_feedback(no, vote):
@@ -997,6 +1068,7 @@ def install(S):
             if not row or row['status'] == 'unsubscribed': return msg('bad'), 404
             if row['status'] == 'active': return msg('already')
             db.execute("UPDATE letter_subscribers SET status='active',confirmed=? WHERE id=?", (stamp(), row['id']))
+        stibee_sync(row['email'])
         return msg('confirmed', email=notify.mask(row['email']))
 
     @app.route('/letter/unsubscribe/<token>', methods=['GET', 'POST'])
@@ -1005,18 +1077,53 @@ def install(S):
         with conn() as db:
             row = db.execute('SELECT * FROM letter_subscribers WHERE token=?', (token[:64],)).fetchone()
             if not row: return msg('bad')
-            if row['status'] != 'unsubscribed':
+            gone = row['status'] != 'unsubscribed'
+            if gone:
                 db.execute("UPDATE letter_subscribers SET status='unsubscribed',unsubscribed=?,email=? WHERE id=?",
                            (stamp(), row['email'] if row['email'].startswith('x:') else gone_email(row['email']), row['id']))
+        if gone: stibee_sync(row['email'], False)
         if request.method == 'POST': return 'unsubscribed', 200
         return msg('unsubscribed')
+
+    def hook_key():
+        return hmac.new(app.secret_key.encode(), b'letter:stibee-hook', 'sha256').hexdigest()[:24]
+
+    def hook_emails(data):
+        # 스티비 웹훅 내용 모양이 바뀌어도 되게: 어디에 있든 이메일 주소를 모두 찾음
+        found = []
+        def walk(v):
+            if isinstance(v, dict): [walk(x) for x in v.values()]
+            elif isinstance(v, list): [walk(x) for x in v]
+            elif isinstance(v, str) and EMAIL_RE.match(v.strip()): found.append(v.strip().lower())
+        walk(data)
+        return list(dict.fromkeys(found))
+
+    @app.route('/letter/stibee-hook/<key>', methods=['GET', 'POST'])
+    def letter_stibee_hook(key):
+        """스티비 주소록 웹훅(수신 거부) → 사이트 구독자도 해지로 맞춤 (운영자 2026-11-01). 주소를 아는 스티비만 부를 수 있게 비밀 열쇠를 주소에 넣음."""
+        if not hmac.compare_digest(key[:40], hook_key()): abort(404)
+        if request.method == 'GET': return 'ok', 200  # 스티비가 주소를 확인할 때
+        data = request.get_json(silent=True)
+        if data is None: data = request.form.to_dict(flat=False) or {}
+        words = json.dumps(data, ensure_ascii=False).lower()
+        if not any(w in words for w in ('unsubscri', 'deny', 'reject', 'opt_out', 'optout', '수신거부', '수신 거부', '해지')):
+            return 'ignored', 200  # 구독 추가 같은 다른 알림은 그냥 넘김 (사이트 구독은 사이트에서만 받음)
+        n = 0
+        with conn() as db:
+            for email in hook_emails(data):
+                row = db.execute("SELECT * FROM letter_subscribers WHERE email=? AND status!='unsubscribed'", (email,)).fetchone()
+                if not row: continue
+                db.execute("UPDATE letter_subscribers SET status='unsubscribed',unsubscribed=?,email=? WHERE id=?", (stamp(), gone_email(email), row['id']))
+                n += 1
+        if n: log({'status': 'info', 'no': 0, 'trigger': 'stibee', 'reason': f'스티비에서 수신 거부한 {n}명을 사이트 구독자에서도 해지했어요'})
+        return 'ok', 200
 
     # 메일 앱이 보내는 한 번 클릭 해지(POST)는 우리 화면에서 온 게 아니라 CSRF 토큰이 없음 → 이 주소만 확인을 건너뜀 (토큰을 아는 사람만 해지 가능)
     funcs = app.before_request_funcs.setdefault(None, [])
     for i, fn in enumerate(funcs):
         if fn.__name__ == 'protect':
             def protect(_orig=fn):
-                if request.path.startswith('/letter/unsubscribe/'): return None
+                if request.path.startswith(('/letter/unsubscribe/', '/letter/stibee-hook/')): return None
                 return _orig()
             funcs[i] = protect
 
@@ -1042,7 +1149,7 @@ def install(S):
             subs = db.execute("SELECT id,email,status,created,confirmed,unsubscribed,place FROM letter_subscribers ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,id DESC LIMIT 200").fetchall()
         for L in rows: L['stats'] = stats(L['id']) if L['status'] == 'sent' else None
         return dict(rows=rows, subs=subs, counts=counts(), cfg=settings(), days=DAYS, freqs=FREQS, vias=VIA, stibee_ready=stibee_ready(), ai_ready=desk.ai_ready(), naver_ready=bool(naver()) and naver()['ready'](),
-                    mail_ready=notify.email_ready(), logs=setting('letter_log', [])[:10])
+                    mail_ready=notify.email_ready(), logs=setting('letter_log', [])[:10], hook_url=site_url('/letter/stibee-hook/' + hook_key()))
 
     @app.route('/admin/letter', methods=['GET', 'POST'])
     @S.admin_only
@@ -1088,6 +1195,13 @@ def install(S):
         flash('레터 설정을 저장했어요.')
         return redirect(url_for('admin_letter'))
 
+    @app.route('/admin/letter/stibee-sync', methods=['POST'])
+    @S.admin_only
+    def admin_letter_stibee_sync():
+        ok, why = stibee_push_all()
+        flash(why if ok else '스티비로 옮기지 못했어요: ' + why)
+        return redirect(url_for('admin_letter') + '#subs')
+
     @app.route('/admin/letter/subscribers', methods=['POST'])
     @S.admin_only
     def admin_letter_subs():
@@ -1098,6 +1212,7 @@ def install(S):
                 db.execute("UPDATE letter_subscribers SET status='unsubscribed',unsubscribed=?,email=? WHERE id=?",
                            (stamp(), row['email'] if row['email'].startswith('x:') else gone_email(row['email']), sid))
                 flash(f"{notify.mask(row['email'])} 구독을 해지했어요.")
+        if row and row['status'] != 'unsubscribed': stibee_sync(row['email'], False)
         return redirect(url_for('admin_letter') + '#subs')
 
     @app.route('/admin/letter/<int:lid>', methods=['GET', 'POST'])
@@ -1160,6 +1275,7 @@ def install(S):
                 db.execute("INSERT INTO letter_subscribers(email,token,status,created,confirmed,ip_hash,asked,place) VALUES(?,?,?,?,?,?,?,'signup')",
                            (email, token, state, at, at if verified else None, S.ip_hash(), at))
         if not verified: return send_confirm(email, token)
+        stibee_sync(email)
         op = operator(); unsub = site_url(f'/letter/unsubscribe/{token}'); when = at.replace('T', ' ')[:16]
         text = (f"{NAME} 수신 동의 안내\n\n회원가입 때 '{NAME} 받기(선택)'에 동의하셔서 {NAME}를 보내 드려요.\n"
                 f"- 동의한 날: {when}\n- 받는 내용: 소비자·경제 소식, 소보루 새 글 안내\n\n"
@@ -1172,7 +1288,7 @@ def install(S):
 
     app.extensions['soboru_letter'] = {'join': join_consent, 'generate': generate, 'weekly': weekly, 'send': send_issue, 'collect': collect_news, 'settings': settings,
                                       'email_parts': email_parts, 'get': get, 'check': check, 'sections': sections,
-                                      'stibee_html': stibee_html, 'stats': stats}
+                                      'stibee_html': stibee_html, 'stats': stats, 'stibee_push_all': stibee_push_all, 'stibee_hook_url': lambda: site_url('/letter/stibee-hook/' + hook_key())}
 
 
 def main(argv):

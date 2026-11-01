@@ -10,6 +10,9 @@
 <title>{{ L.title }}</title>
 </head>
 <body style="margin:0;padding:0;background:#ffffff;-webkit-text-size-adjust:100%;word-break:keep-all;">
+{#- 받은편지함 미리보기 문구: 화면엔 안 보이고 메일 목록 제목 옆에만 보임. 스티비 안내 양식($stb-htmlv3$)과 같은 모양 -#}
+{%- set pre = (L.intro or L.title or '')|striptags -%}
+<table id="$stb-htmlv3$" style="height:0px;max-height:0px;border-width:0px;visibility:hidden;line-height:0px;font-size:0px;overflow:hidden;display:none;mso-hide:all;"><tr><td>{{ pre[:110] }}{% for _ in range(40) %}&#8204;&nbsp;{% endfor %}</td></tr></table>
 {%- macro pill(label, img=True) -%}
   <tr><td align="center" style="padding:40px 28px 6px;">
     {% if img %}<img src="{{ hero }}" width="104" alt="" style="display:block;width:104px;height:auto;border:0;margin:0 auto -6px;">{% endif %}
@@ -71,7 +74,7 @@
       {% for it in econ + policy %}
       <div id="n{{ loop.index }}" style="margin:0 0 {{ '26px' if not loop.last else '16px' }};">
         <p style="margin:0 0 8px;font-size:18px;line-height:1.5;font-weight:800;color:#1d1d1f;letter-spacing:-0.3px;"><span style="display:inline-block;margin:0 6px 0 0;padding:1px 9px;border-radius:999px;background:#ffe7c7;color:#CE6719;font-size:14px;font-weight:800;vertical-align:2px;">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span>{{ it.title }}</p>
-        <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body }} <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.more }}</a></p>
+        <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body }} {% if it.read %}<a href="{{ it.read }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.read }}</a>{% else %}<a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.more }}</a>{% endif %}</p>
       </div>
       {% endfor %}
     </td></tr></table>
@@ -79,11 +82,15 @@
   {% if sec.comment %}{% set c = sec.comment %}
   {#- 에디터 코멘트: 오늘 가장 큰 경제 이슈를 깊게 -#}
   <tr><td style="padding:40px 32px 4px;{{ F }}" id="comment">
-    {#- 메인 뉴스 머리: 빵집 벽에 걸린 '오늘의 추천 메뉴' 나무 판 -#}
-    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 2px;"><tr><td align="center" style="font-size:0;line-height:0;"><span style="display:inline-block;width:12px;height:12px;border:3px solid #652D1C;border-radius:50%;background:#ffffff;">&nbsp;</span></td></tr>
-      <tr><td align="center" style="font-size:0;line-height:0;"><span style="display:inline-block;width:3px;height:10px;background:#652D1C;">&nbsp;</span></td></tr></table>
-    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 26px;background:#fff6e6;border:3px solid #652D1C;border-radius:18px;"><tr><td align="center" style="padding:12px 26px 6px;{{ F }}font-size:12px;line-height:1.4;font-weight:800;letter-spacing:2px;color:#CE6719;white-space:nowrap;">{{ H.comment_kicker }}</td></tr>
-      <tr><td align="center" style="padding:0 22px 13px;{{ F }}font-size:23px;line-height:1.4;font-weight:800;letter-spacing:-0.5px;color:#652D1C;white-space:nowrap;">{{ ic('baguette', 26) }}&nbsp; {{ H.comment_eyebrow }} &nbsp;{{ ic('butter', 24) }}</td></tr></table>
+    {#- 메인 뉴스 머리: 소보루가 계산대 위로 고개 내밂 + 제목만 — 상자 없이 깔끔하게 (운영자 2026-11-01, 다섯 안 중 5번) -#}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td align="center" style="padding:0;font-size:0;line-height:0;"><img src="{{ bounce }}" width="150" height="130" alt="소보루" style="display:block;margin:0 auto;width:150px;height:130px;border:0;"></td></tr>
+      <tr><td style="padding:0;font-size:0;line-height:0;"><div style="height:8px;background:#EF920E;border-radius:4px;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+      <tr><td style="padding:0 10px;font-size:0;line-height:0;"><div style="height:14px;background:#F8D59F;border-radius:0 0 8px 8px;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+      <tr><td align="center" style="padding:16px 0 0;{{ F }}font-size:12px;line-height:1.4;font-weight:800;letter-spacing:3px;color:#CE6719;white-space:nowrap;">{{ H.comment_kicker }}</td></tr>
+      <tr><td align="center" style="padding:2px 0 0;{{ F }}font-size:25px;line-height:1.4;font-weight:800;letter-spacing:-0.5px;color:#1d1d1f;white-space:nowrap;">{{ ic('baguette', 26) }}&nbsp; {{ H.comment_eyebrow }} &nbsp;{{ ic('butter', 24) }}</td></tr>
+    </table>
+    <div style="height:26px;font-size:0;line-height:0;">&nbsp;</div>
     {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" width="576" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:576px;height:auto;border:0;border-radius:16px;"><p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p></div>{% endif %}
     <h2 style="margin:0 0 {{ '8px' if c.tags else '14px' }};font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
     {% if c.tags %}<p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#CE6719;">{% for t in c.tags %}#{{ t }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>{% endif %}
@@ -97,6 +104,15 @@
       <td valign="top" style="{{ F }}font-size:17px;line-height:1.85;color:#3a3633;"><b style="color:#1d1d1f;">{{ p.name }}:</b> {{ p.text }}</td></tr></table>{% endfor %}
     <div style="height:18px;font-size:0;line-height:0;">&nbsp;</div>
     {% endif %}{% endfor %}
+    {% if c.note %}
+    {#- 크로와상의 한마디: 메인 뉴스 끝, 크로와상 얼굴 + 말풍선 (운영자 2026-11-01) -#}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 24px;"><tr>
+      <td width="110" valign="top" style="width:110px;padding:8px 12px 0 0;"><img src="{{ editor_img }}" width="110" alt="에디터 크로와상" style="display:block;width:110px;height:auto;border:0;"></td>
+      <td valign="top" style="background:#FFF4E2;border-radius:4px 18px 18px 18px;padding:16px 20px 18px;{{ F }}">
+        <p style="margin:0 0 6px;font-size:14px;line-height:1.4;font-weight:800;color:#CE6719;">크로와상의 한마디</p>
+        <p style="margin:0;font-size:16px;line-height:1.85;color:#3a3633;">{{ c.note }}</p>
+      </td></tr></table>
+    {% endif %}
     {% if c.srcs %}<p style="margin:0;font-size:15px;line-height:1.7;color:#8a827a;">참고한 기사: {% for s in c.srcs %}<a href="{{ s.url }}" style="color:#8a827a;text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
   </td></tr>
   {% endif %}
@@ -249,7 +265,7 @@
   {#- 맺음: 스티비 템플릿처럼 회색 상자 → 구독 버튼 → 작은 바닥글, 색·로고는 소보루 (운영자 2026-11-01) -#}
   <tr><td style="padding:34px 32px 0;{{ F }}">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fdf7ed;"><tr><td align="center" style="padding:28px 22px 26px;text-align:center;{{ F }}">
-      <img src="{{ editor_img }}" width="140" alt="에디터 크로와상" style="display:block;width:140px;height:auto;border:0;margin:0 auto 10px;">
+      <img src="{{ editor_img }}" width="220" alt="에디터 크로와상" style="display:block;width:220px;height:auto;border:0;margin:0 auto 10px;">
       <p style="margin:0 0 6px;font-size:17px;font-weight:800;color:#652D1C;">오늘의 소보루 레터는 여기까지</p>
       {% if L.outro %}<p style="margin:0;font-size:16px;line-height:1.8;color:#3a3633;">{{ L.outro }}</p>{% endif %}
       <p style="margin:6px 0 0;font-size:15px;font-weight:700;color:#8a6a55;">에디터 크로와상 드림</p>
