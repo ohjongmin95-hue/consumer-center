@@ -5317,6 +5317,19 @@ class SiteTest(unittest.TestCase):
         self.assertEqual((L['status'], L['trigger'], L['stibee_id']), ('sent', 'stibee', 777))
         with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM letter_sends').fetchone()[0], 0)  # 사이트 구독자에게는 안 보냄
 
+    def test_letter_feedback_votes(self):
+        self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
+        with self.site.conn() as db: db.execute('DELETE FROM letter_feedback')
+        r, _ = self.letter_make(bad=False)
+        L = self.site.app.extensions['soboru_letter']
+        html = L['email_parts'](L['get'](r['id']), 'tok-x')[1]
+        self.assertIn(f"/letter/{r['no']}/fb/good", html); self.assertIn('오늘의 레터는 어땠나요?', html); self.assertIn('소보루 레터 구독하기', html)
+        self.assertEqual(self.client.get(f"/letter/{r['no']}/fb/good").status_code, 302)
+        self.client.get(f"/letter/{r['no']}/fb/meh")   # 같은 사람은 마지막 표만
+        self.assertEqual(self.client.get(f"/letter/{r['no']}/fb/bad").status_code, 404)
+        st = L['stats'](r['id'])
+        self.assertEqual((st['good'], st['meh']), (0, 1))
+
     def test_letter_unsplash_photos(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         calls = []

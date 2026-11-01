@@ -48,6 +48,7 @@
     <span class="aw-badge">뉴스 {{ L['items']|length }}개</span>
     {% if L.status == 'sent' %}<span class="aw-badge">{% if L.trigger == 'stibee' %}스티비로 보냄{% else %}{{ L.sent_count }}명에게 보냄{% if L.failed %} · 실패 {{ L.failed }}{% endif %}{% endif %}</span>{% endif %}
     {% if L.stats and L.stats.sent %}<span class="aw-badge">열어 봄 {{ L.stats.open_pct }}% · 링크 누름 {{ L.stats.click_pct }}%</span>{% endif %}
+    {% if L.stats and (L.stats.good or L.stats.meh) %}<span class="aw-badge">좋았어요 {{ L.stats.good }} · 글쎄요 {{ L.stats.meh }}</span>{% endif %}
   </div>
   {% else %}<p class="meta">아직 만든 레터가 없어요. '이번 호 만들기'를 눌러 첫 호를 만들어 보세요.</p>{% endfor %}
 

@@ -2,7 +2,7 @@
 
 {{ L.title }}
 
-{{ L.intro }} by. 에디터 크로와상 🥐
+{{ L.intro }} by. 에디터 크로와상
 {% if sec.market %}
 {% for r in sec.market.rows %}{{ r.label }} {{ r.value }} {{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }}{% if r.pct %} ({{ r.pct }}){% endif %}
 {% endfor %}직전 거래일 오후 3시 30분 기준 · 출처 네이버 증권

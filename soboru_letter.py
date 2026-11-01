@@ -94,7 +94,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
 
 
 # 칸 이름: 뉴닉 문구·이모지를 따라 하지 않고 소보루(빵집)식으로 (운영자 2026-11-01)
-HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 뉴스', 'news_emoji': '🥐', 'more': '기사 원문 ›',
+HEADS = {'news_eyebrow': 'MORNING BAKERY', 'news_title': '갓 구운 오늘의 뉴스', 'news_emoji': '☕', 'more': '기사 원문 ›',
          'comment_eyebrow': '크로와상의 깊이 읽기', 'what': '🍞 한 입에 정리하면', 'why': '🔎 왜 이렇게 됐을까요', 'wallet': '👛 내 지갑엔 무슨 일이?',
          'buzz_eyebrow': 'TREND', 'buzz': '요즘 뜨는 소비 트렌드'}
 
@@ -279,6 +279,8 @@ def install(S):
         # 열어 봄·클릭 (운영자 요청 2026-11-01): 한 사람·한 호·종류마다 한 줄 (처음 시각만)
         db.execute('''CREATE TABLE IF NOT EXISTS letter_events(letter_id INTEGER NOT NULL,sub_id INTEGER NOT NULL,kind TEXT NOT NULL,at TEXT NOT NULL,
             PRIMARY KEY(letter_id,sub_id,kind))''')
+        # '오늘의 레터는 어땠나요?' 좋았어요/글쎄요 (운영자 2026-11-01)
+        db.execute('''CREATE TABLE IF NOT EXISTS letter_feedback(letter_no INTEGER NOT NULL,who TEXT NOT NULL,vote TEXT NOT NULL,at TEXT NOT NULL,PRIMARY KEY(letter_no,who))''')
         db.execute('''CREATE TABLE IF NOT EXISTS letter_sends(letter_id INTEGER NOT NULL,sub_id INTEGER NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT '',
             at TEXT NOT NULL,PRIMARY KEY(letter_id,sub_id))''')
         if 'stibee_id' not in {r[1] for r in db.execute('PRAGMA table_info(letters)')}: db.execute('ALTER TABLE letters ADD COLUMN stibee_id INTEGER')
@@ -755,7 +757,7 @@ def install(S):
         """스티비 'HTML 에디터로 만들기'에 붙여 넣을 코드: html·head·body·meta 태그는 스티비가 막으므로 빼고 바탕색은 바깥 div로, 수신 거부는 스티비 치환자."""
         _, html, _ = email_parts(L, STIBEE_UNSUB)
         body = re.search(r'<body[^>]*>(.*)</body>', html, re.S).group(1)
-        return '<div style="margin:0;padding:0;background:#fbf7f2;-webkit-text-size-adjust:100%;word-break:keep-all;">' + body.strip() + '</div>'
+        return '<div style="margin:0;padding:0;background:#ffffff;-webkit-text-size-adjust:100%;word-break:keep-all;">' + body.strip() + '</div>'
 
     def record(no, token, kind):
         with conn() as db:
@@ -769,8 +771,9 @@ def install(S):
         with conn() as db:
             n = dict(db.execute('SELECT kind,COUNT(*) FROM letter_events WHERE letter_id=? GROUP BY kind', (lid,)).fetchall())
             sent = db.execute("SELECT COUNT(*) FROM letter_sends WHERE letter_id=? AND status='sent'", (lid,)).fetchone()[0]
+            fb = dict(db.execute('SELECT f.vote,COUNT(*) FROM letter_feedback f JOIN letters l ON l.no=f.letter_no WHERE l.id=? GROUP BY f.vote', (lid,)).fetchall())
         pct = lambda x: round(100 * x / sent) if sent else 0
-        return {'sent': sent, 'open': n.get('open', 0), 'click': n.get('click', 0), 'open_pct': pct(n.get('open', 0)), 'click_pct': pct(n.get('click', 0))}
+        return {'sent': sent, 'open': n.get('open', 0), 'click': n.get('click', 0), 'open_pct': pct(n.get('open', 0)), 'click_pct': pct(n.get('click', 0)), 'good': fb.get('good', 0), 'meh': fb.get('meh', 0)}
 
     @app.route('/letter/o/<int:no>/<token>.gif')
     def letter_open(no, token):
@@ -893,6 +896,15 @@ def install(S):
             near = {k: db.execute(f"SELECT no,title FROM letters WHERE status='sent' AND no{op}? ORDER BY no {o} LIMIT 1", (no,)).fetchone()
                     for k, op, o in (('prev', '<', 'DESC'), ('next', '>', 'ASC'))}
         return render_template('letter_issue.html', L=L, near=near, H=HEADS)
+
+    @app.route('/letter/<int:no>/fb/<vote>')
+    def letter_feedback(no, vote):
+        if vote not in ('good', 'meh') or not get(no=no): abort(404)
+        who = hashlib.sha256(((request.headers.get('X-Forwarded-For') or request.remote_addr or '') .split(',')[0].strip() + str(no)).encode()).hexdigest()[:24]
+        with conn() as db:
+            db.execute('INSERT OR REPLACE INTO letter_feedback(letter_no,who,vote,at) VALUES(?,?,?,?)', (no, who, vote, stamp()))
+        flash('의견 고마워요! 더 맛있는 레터로 구워 올게요' if vote == 'good' else '알려 줘서 고마워요. 더 좋은 레터로 다듬을게요.')
+        return redirect(url_for('letter_issue', no=no))
 
     def back(code):
         return redirect(url_for('letter_home', s=code) + '#sub')

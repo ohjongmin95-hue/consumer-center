@@ -12,7 +12,7 @@
     <a class="lt-kicker" href="{{ url_for('letter_home') }}"><span class="tf" aria-hidden="true">📨</span> 소보루 레터 {{ L.no }}호</a>
     <h1>{{ L.title }}</h1>
     <p class="sb-meta">{{ letter_kdate(L.sent_at or L.created) }}</p>
-    {% if L.intro %}<p class="lt-intro">{{ L.intro }} <b class="lt-by">by. 에디터 크로와상 🥐</b></p>{% endif %}
+    {% if L.intro %}<p class="lt-intro">{{ L.intro }} <b class="lt-by">by. 에디터 크로와상</b></p>{% endif %}
     {% set econ = L['items']|rejectattr('kind', 'equalto', 'policy')|list %}{% set policy = L['items']|selectattr('kind', 'equalto', 'policy')|list %}
     {% if sec.market %}<section class="lt-market" id="market">
       {% for r in sec.market.rows %}<div><span>{{ r.label }}</span><b>{{ r.value }}</b><em class="{{ r.dir }}">{{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }}{% if r.pct %} ({{ r.pct }}){% endif %}</em></div>{% endfor %}

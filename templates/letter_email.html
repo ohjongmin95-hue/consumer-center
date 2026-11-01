@@ -9,7 +9,7 @@
 <meta name="supported-color-schemes" content="light">
 <title>{{ L.title }}</title>
 </head>
-<body style="margin:0;padding:0;background:#fbf7f2;-webkit-text-size-adjust:100%;word-break:keep-all;">
+<body style="margin:0;padding:0;background:#ffffff;-webkit-text-size-adjust:100%;word-break:keep-all;">
 {%- macro pill(label, img=True) -%}
   <tr><td align="center" style="padding:40px 28px 6px;">
     {% if img %}<img src="{{ hero }}" width="104" alt="" style="display:block;width:104px;height:auto;border:0;margin:0 auto -6px;">{% endif %}
@@ -22,9 +22,9 @@
 {%- endmacro -%}
 {%- macro ic(name, size=22) -%}<img src="{{ tf(name) }}" width="{{ size }}" height="{{ size }}" alt="" style="display:inline-block;width:{{ size }}px;height:{{ size }}px;border:0;vertical-align:-{{ (size * 0.22)|int }}px;">{%- endmacro -%}
 <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{ (L.intro or L.title)[:90] }}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf7f2;">
-<tr><td align="center" style="padding:24px 10px 8px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:24px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
+<tr><td align="center" style="padding:8px 0 0;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;">
   <tr><td align="center" style="padding:40px 28px 0;{{ F }}">{# 머리: 뉴닉처럼 하얀 바탕에 글자 로고와 호수만 깔끔하게, 둘레에 빵 이모지 (캐릭터는 아래 구간에서만) #}
     {# 로고 둘레에 토스페이스 빵들을 위아래로 엇갈려 띄움 #}
     <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
@@ -35,11 +35,19 @@
     <p style="margin:8px 0 0;font-size:0;line-height:0;">{{ ic('sparkle', 16) }}&nbsp;&nbsp;&nbsp;{{ ic('baguette', 26) }}&nbsp;&nbsp;&nbsp;{{ ic('donut', 22) }}&nbsp;&nbsp;&nbsp;{{ ic('sparkle', 16) }}</p>
     <p style="margin:16px 0 4px;font-size:21px;font-weight:800;color:#1d1d1f;letter-spacing:-0.4px;">{{ name }} <span style="color:#ef7300;">{{ L.no }}호</span></p>
     <p style="margin:0;font-size:15px;color:#6b6f76;">{{ date }} &nbsp;|&nbsp; <a href="{{ web }}" style="color:#6b6f76;text-decoration:underline;">웹에서 보기</a></p>
-    <div style="margin:26px 0 0;border-top:1px solid #eee6dd;font-size:0;line-height:0;">&nbsp;</div>
+  </td></tr>
+  {#- 표지: 스티비 템플릿처럼 큰 색 블록 + 에디터 크로와상 (운영자 2026-11-01) -#}
+  <tr><td style="padding:26px 32px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F8D59F;"><tr><td align="center" style="padding:34px 20px 30px;{{ F }}">
+      <p style="margin:0 0 14px;font-size:0;line-height:0;">{{ ic('sparkle', 18) }}</p>
+      <img src="{{ editor_img }}" width="260" alt="에디터 크로와상" style="display:block;width:260px;max-width:80%;height:auto;border:0;margin:0 auto;">
+      <p style="margin:16px 0 0;font-size:15px;font-weight:800;letter-spacing:2px;color:#652D1C;">GOOD MORNING, 소보루 이웃님</p>
+    </td></tr></table>
   </td></tr>
   <tr><td style="padding:28px 32px 0;{{ F }}">
     <h1 style="margin:0 0 16px;font-size:27px;line-height:1.45;font-weight:800;color:#652D1C;letter-spacing:-0.8px;">{{ L.title }}</h1>
-    {% if L.intro %}<p style="margin:0;font-size:17px;line-height:1.9;color:#3a3633;">{{ L.intro }} <span style="color:#ef7300;font-weight:800;white-space:nowrap;">by. 에디터 크로와상 🥐</span></p>{% endif %}
+    {% if L.intro %}<p style="margin:0;font-size:17px;line-height:1.9;color:#3a3633;">{{ L.intro }} <span style="color:#ef7300;font-weight:800;white-space:nowrap;">by. 에디터 크로와상</span></p>{% endif %}
+    <div style="margin:28px 0 0;border-top:1px dashed #c9c2bb;font-size:0;line-height:0;">&nbsp;</div>
   </td></tr>
   {% if sec.market %}{% set M = sec.market %}
   {#- 시장 지표: 레터를 만들 때 받은 직전 거래일 값 -#}
@@ -104,16 +112,20 @@
   {% if sec.buzz %}{% set b = sec.buzz %}
   {{ pill(H.buzz, False) }}
   <tr><td style="padding:22px 32px 4px;{{ F }}" id="buzz">
-    {#- 소비 트렌드: 분홍 디저트 진열대 느낌 (운영자 2026-11-01) -#}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff0f3;border:1px solid #f9d3dc;border-radius:22px;"><tr><td style="padding:24px 22px 22px;{{ F }}">
-      <p style="margin:0 0 10px;text-align:center;font-size:0;line-height:0;">{{ ic('cake', 30) }}&nbsp;&nbsp;{{ ic('cupcake', 36) }}&nbsp;&nbsp;{{ ic('cookie', 30) }}</p>
-      <p style="margin:0 0 10px;text-align:center;font-size:12px;font-weight:800;letter-spacing:2.5px;color:#e0567a;">TODAY'S SHOWCASE</p>
+    {#- 소비 트렌드: 귀여운 디저트 가게 (줄무늬 차양·간판·가격표 카드·진열대, 운영자 2026-11-01) -#}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;"><tr><td height="26" style="height:26px;border-radius:22px 0 0 0;background:#f48fab;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</td><td height="26" style="height:26px;border-radius:0 22px 0 0;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;background:#fff0f4;"><tr><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#f48fab;font-size:0;line-height:0;">&nbsp;</div></td><td align="center" style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:#ffd3df;font-size:0;line-height:0;">&nbsp;</div></td></tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff0f4;border-radius:0 0 22px 22px;"><tr><td style="padding:22px 20px 20px;{{ F }}">
+      <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px;background:#ffffff;border:2px solid #f48fab;border-radius:999px;"><tr><td style="padding:8px 20px;{{ F }}font-size:14px;font-weight:800;color:#d6416c;white-space:nowrap;">{{ ic('candy', 18) }}&nbsp; SOBORU DESSERT SHOP &nbsp;{{ ic('candy', 18) }}</td></tr></table>
+      <p style="margin:0 0 6px;text-align:center;font-size:13px;font-weight:800;letter-spacing:2px;color:#e0567a;">오늘의 트렌드 진열대</p>
       <p style="margin:0 0 10px;text-align:center;font-size:22px;line-height:1.45;font-weight:800;color:#652D1C;letter-spacing:-0.5px;">{{ b.title }}</p>
-      {% if b.body %}<p style="margin:0 0 16px;text-align:center;font-size:16px;line-height:1.8;color:#6e5148;">{{ b.body }}</p>{% endif %}
-      {% for p in b.points %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;background:#ffffff;border-radius:16px;"><tr>
-        <td width="58" valign="top" style="width:58px;padding:16px 0 14px 16px;">{{ ic(['cupcake', 'cake', 'cookie'][loop.index0 % 3], 40) }}</td>
-        <td valign="top" style="padding:15px 18px 15px 10px;{{ F }}"><p style="margin:0 0 4px;font-size:17px;font-weight:800;color:#c2416a;">{{ p.name }}</p><p style="margin:0;font-size:16px;line-height:1.8;color:#4a3a35;">{{ p.text }}</p></td></tr></table>{% endfor %}
-      {% if b.srcs %}<p style="margin:8px 0 0;text-align:center;font-size:13px;line-height:1.7;color:#b0848f;">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" style="color:#b0848f;text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+      {% if b.body %}<p style="margin:0 0 18px;text-align:center;font-size:16px;line-height:1.8;color:#6e5148;">{{ b.body }}</p>{% endif %}
+      {% for p in b.points %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;background:#ffffff;border:2px dashed #f7b6c8;border-radius:18px;"><tr>
+        <td width="66" valign="top" style="width:66px;padding:16px 0 14px 14px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" width="52" height="52" style="width:52px;height:52px;border-radius:26px;background:{{ ['#ffe3ec', '#fff1d6', '#e9f3ff'][loop.index0 % 3] }};">{{ ic(['cupcake', 'cake', 'cookie'][loop.index0 % 3], 36) }}</td></tr></table></td>
+        <td valign="top" style="padding:15px 16px 15px 10px;{{ F }}"><p style="margin:0 0 5px;font-size:17px;font-weight:800;color:#c2416a;">{{ p.name }} <span style="display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;background:#ff6b8f;color:#ffffff;font-size:12px;font-weight:800;vertical-align:2px;">HOT</span></p><p style="margin:0;font-size:16px;line-height:1.8;color:#4a3a35;">{{ p.text }}</p></td></tr></table>{% endfor %}
+      <p style="margin:16px 0 0;text-align:center;font-size:0;line-height:0;">{{ ic('donut', 28) }}&nbsp;&nbsp;{{ ic('cookie', 26) }}&nbsp;&nbsp;{{ ic('cupcake', 30) }}&nbsp;&nbsp;{{ ic('cake', 28) }}&nbsp;&nbsp;{{ ic('candy', 26) }}</p>
+      <div style="margin:4px 20px 0;height:6px;border-radius:3px;background:#c9946e;font-size:0;line-height:0;">&nbsp;</div>
+      {% if b.srcs %}<p style="margin:14px 0 0;text-align:center;font-size:13px;line-height:1.7;color:#b0848f;">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" style="color:#b0848f;text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
     </td></tr></table>
   </td></tr>
   {% endif %}
@@ -182,29 +194,29 @@
     {% endfor %}
   </td></tr>
   {% endif %}
-  <tr><td style="padding:30px 32px 36px;{{ F }}">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf7f2;border-radius:20px;"><tr>
-      <td valign="middle" style="padding:22px 6px 22px 22px;{{ F }}">
-        {% if L.outro %}<p style="margin:0 0 10px;font-size:17px;line-height:1.75;color:#3a3633;">{{ L.outro }}</p>{% endif %}
-        <p style="margin:0;font-size:17px;font-weight:800;color:#652D1C;">에디터 크로와상 드림 {{ ic('smile', 18) }}</p>
-      </td>
-      <td width="96" valign="bottom" style="width:96px;padding:12px 14px 0 0;"><img src="{{ editor_img }}" width="84" alt="" style="display:block;width:84px;height:auto;border:0;"></td>
-    </tr></table>
+  {#- 맺음: 스티비 템플릿처럼 회색 상자 → 구독 버튼 → 작은 바닥글, 색·로고는 소보루 (운영자 2026-11-01) -#}
+  <tr><td style="padding:34px 32px 0;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fdf7ed;"><tr><td align="center" style="padding:28px 22px 26px;text-align:center;{{ F }}">
+      <img src="{{ editor_img }}" width="96" alt="" style="display:block;width:96px;height:auto;border:0;margin:0 auto 10px;">
+      <p style="margin:0 0 6px;font-size:17px;font-weight:800;color:#652D1C;">오늘의 소보루 레터는 여기까지</p>
+      {% if L.outro %}<p style="margin:0;font-size:16px;line-height:1.8;color:#3a3633;">{{ L.outro }}</p>{% endif %}
+      <p style="margin:6px 0 0;font-size:15px;font-weight:700;color:#8a6a55;">에디터 크로와상 드림</p>
+      <p style="margin:22px 0 6px;font-size:17px;font-weight:800;color:#652D1C;">오늘의 레터는 어땠나요?</p>
+      <p style="margin:0;font-size:16px;line-height:1.8;color:#c9b9aa;"><a href="{{ site }}/letter/{{ L.no }}/fb/good" style="color:#ef7300;font-weight:700;text-decoration:underline;">맛있었어요! 😋</a>&nbsp; | &nbsp;<a href="{{ site }}/letter/{{ L.no }}/fb/meh" style="color:#ef7300;font-weight:700;text-decoration:underline;">음, 잘 모르겠어요 🤔</a></p>
+    </td></tr></table>
+  </td></tr>
+  <tr><td align="center" style="padding:30px 32px 0;{{ F }}">
+    <a href="{{ site }}/letter" style="display:inline-block;padding:13px 30px;border:2px solid #ef920e;border-radius:999px;color:#ef7300;font-size:17px;font-weight:800;text-decoration:none;">소보루 레터 구독하기</a>
     <p style="margin:16px 0 0;font-size:15px;line-height:1.6;color:#a39d97;">억울한 소비자 피해를 겪었다면 <a href="{{ site }}/report" style="color:#ef7300;font-weight:700;text-decoration:none;">소보루에 제보</a>해 주세요.</p>
   </td></tr>
-</table>
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
-  {#- 바닥글: 갈색 소보루 로고 + 왼쪽 정렬 카드 (운영자 2026-11-01: 뉴닉 같지 않게, 전화번호 X) -#}
-  <tr><td style="padding:8px 16px 36px;{{ F }}">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fdf7ed;border:1px solid #f1e2cf;border-radius:20px;"><tr><td align="center" style="padding:28px 24px 24px;text-align:center;{{ F }}">
-      <a href="{{ site }}/" style="text-decoration:none;">{% if mark_brown %}<img src="{{ mark_brown }}" width="128" alt="SOBORU 소보루" style="display:block;width:128px;height:auto;border:0;margin:0 auto;">{% else %}<b style="font-size:28px;color:#652D1C;">SOBORU</b>{% endif %}</a>
-      <p style="margin:10px 0 16px;font-size:15px;line-height:1.6;font-weight:700;color:#652D1C;">{{ name }} · 매일 아침, 경제·소비자 소식</p>
-      <p style="margin:0 0 8px;font-size:0;line-height:0;"><a href="{{ site }}/" style="display:inline-block;margin:0 6px 8px 0;padding:6px 13px;border:1px solid #d9c3ad;border-radius:999px;background:#ffffff;color:#652D1C;font-size:14px;line-height:1.4;font-weight:700;text-decoration:none;">소보루 홈</a><a href="{{ site }}/letter" style="display:inline-block;margin:0 6px 8px 0;padding:6px 13px;border:1px solid #d9c3ad;border-radius:999px;background:#ffffff;color:#652D1C;font-size:14px;line-height:1.4;font-weight:700;text-decoration:none;">구독하기</a><a href="{{ web }}" style="display:inline-block;margin:0 6px 8px 0;padding:6px 13px;border:1px solid #d9c3ad;border-radius:999px;background:#ffffff;color:#652D1C;font-size:14px;line-height:1.4;font-weight:700;text-decoration:none;">웹에서 보기</a></p>
-      <div style="margin:6px 0 14px;border-top:1px dashed #ecd9c2;font-size:0;line-height:0;">&nbsp;</div>
-      {% if op.email %}<p style="margin:0;font-size:13px;line-height:1.7;color:#8a7a6c;">문의 {{ op.email }}</p>{% endif %}
-      {% if op.address %}<p style="margin:0;font-size:13px;line-height:1.7;color:#8a7a6c;">{{ op.address }}</p>{% endif %}
-      <p style="margin:12px 0 0;font-size:13px;line-height:1.7;color:#8a7a6c;">{{ name }} 구독에 동의하신 분께 보내 드려요. 해지하지 않으시면 계속 보내 드릴게요. <a href="{{ unsub }}" style="color:#652D1C;font-weight:700;text-decoration:underline;white-space:nowrap;">수신거부 Unsubscribe</a></p>
-    </td></tr></table>
+  <tr><td align="center" style="padding:30px 32px 40px;text-align:center;{{ F }}">
+    <a href="{{ site }}/" style="text-decoration:none;">{% if mark_brown %}<img src="{{ mark_brown }}" width="96" alt="SOBORU 소보루" style="display:block;width:96px;height:auto;border:0;margin:0 auto 12px;">{% else %}<b style="font-size:22px;color:#652D1C;">SOBORU</b>{% endif %}</a>
+    <p style="margin:0 0 6px;font-size:14px;line-height:1.6;font-weight:700;color:#8a6a55;">{{ name }} · 매일 아침, 경제·소비자 소식</p>
+    <p style="margin:0;font-size:13px;line-height:1.8;color:#9a928a;">{{ op.name or '소보루' }}</p>
+    {% if op.email %}<p style="margin:0;font-size:13px;line-height:1.8;color:#9a928a;">{{ op.email }}</p>{% endif %}
+    {% if op.address %}<p style="margin:0;font-size:13px;line-height:1.8;color:#9a928a;">{{ op.address }}</p>{% endif %}
+    <p style="margin:10px 0 0;font-size:13px;line-height:1.8;color:#9a928a;">{{ name }} 구독에 동의하신 분께 보내 드려요. 해지하지 않으시면 계속 보내 드릴게요.</p>
+    <p style="margin:2px 0 0;font-size:13px;line-height:1.8;"><a href="{{ web }}" style="color:#9a928a;text-decoration:underline;">웹에서 보기</a> &nbsp; <a href="{{ unsub }}" style="color:#9a928a;text-decoration:underline;">수신거부 Unsubscribe</a></p>
   </td></tr>
 </table>
 </td></tr>
