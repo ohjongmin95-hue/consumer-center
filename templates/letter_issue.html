@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from 'letter_macros.html' import letter_card with context %}
-{% block title %}{{ L.title }} · 소보루 레터 {{ L.no }}호 | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ L.title }} · 소보루 레터 | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ (L.intro or L.title)[:150] }}{% endblock %}
 {% block og_type %}article{% endblock %}
 {% block head %}{% if L.status != 'sent' %}<meta name="robots" content="noindex,nofollow">{% endif %}{% endblock %}
@@ -9,33 +9,57 @@
 <main class="sb-wrap lt-issue">
   <article>
     {% if L.status != 'sent' %}<p class="sb-draft">아직 보내지 않은 레터예요. 관리자에게만 보여요.</p>{% endif %}
-    <a class="lt-kicker" href="{{ url_for('letter_home') }}"><span class="tf" aria-hidden="true">📨</span> 소보루 레터 {{ L.no }}호</a>
+    <a class="lt-kicker" href="{{ url_for('letter_home') }}"><span class="tf" aria-hidden="true">📨</span> 소보루 레터</a>
     <h1>{{ L.title }}</h1>
     <p class="sb-meta">{{ letter_kdate(L.sent_at or L.created) }}</p>
-    {% if L.intro %}<p class="lt-intro">{{ L.intro }}</p>{% endif %}
+    {% if L.intro %}<p class="lt-intro">{{ L.intro }} <b class="lt-by">by. 에디터 크로와상</b></p>{% endif %}
     {% set econ = L['items']|rejectattr('kind', 'equalto', 'policy')|list %}{% set policy = L['items']|selectattr('kind', 'equalto', 'policy')|list %}
-    <nav class="lt-toc" aria-label="이번 호 소식"><b>오늘의 레터</b><ol>{% for it in econ + policy %}<li><a href="#n{{ loop.index }}">{{ it.title }}</a></li>{% endfor %}
-      {% if sec.number %}<li><a href="#num">숫자로 보는 오늘 · {{ sec.number.label }}</a></li>{% endif %}{% if sec.harm %}<li><a href="#harm">피해 예방 · {{ sec.harm.title }}</a></li>{% endif %}
-      {% if sec.lawbox %}<li><a href="#law">법률·제도 · {{ sec.lawbox.title }}</a></li>{% endif %}{% if sec.word %}<li><a href="#word">오늘의 경제 용어 · {{ sec.word.word }}</a></li>{% endif %}</ol></nav>
-    {% macro news(it, n) %}
-    <section class="lt-item" id="n{{ n }}">
-      {% set ic = letter_icon(it.topic) %}{% if ic %}<span class="lt-ic tf" aria-hidden="true">{{ ic }}</span>{% endif %}
-      <p class="lt-num">{{ 'POLICY' if it.kind == 'policy' else 'NEWS' }} {{ '%02d' % n }}{% if it.topic %} · {{ it.topic }}{% endif %}</p>
-      <h2>{{ it.title }}</h2>
-      {% for p in it.body|letter_paras %}<p>{{ p }}</p>{% endfor %}
-      {% if it.tip %}<div class="lt-tip"><b><span class="tf" aria-hidden="true">💡</span> 나한테는?</b><p>{{ it.tip }}</p></div>{% endif %}
-      <ul class="lt-src">
-        {% if it.law %}<li><span class="tf" aria-hidden="true">⚖️</span> 관련 법 · {% if it.law.url %}<a href="{{ it.law.url }}" target="_blank" rel="noopener nofollow">{{ it.law.label }} ↗</a>{% else %}{{ it.law.label }}{% endif %}</li>{% endif %}
-        <li><span class="tf" aria-hidden="true">📰</span> {{ it.src.name or '기사' }}{% if it.src.date %} · {{ it.src.date.replace('-', '.') }}{% endif %} · <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">기사 원문 보기 ↗</a></li>
-      </ul>
+    {% if sec.market %}<section class="lt-market" id="market">
+      {% for r in sec.market.rows %}<div><span>{{ r.label }}</span><b>{{ r.value }}</b><em class="{{ r.dir }}">{{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }}{% if r.pct %} ({{ r.pct }}){% endif %}</em></div>{% endfor %}
+      <small>직전 거래일{% if sec.market.at|length == 10 %}({{ sec.market.at[5:7]|int }}월 {{ sec.market.at[8:10]|int }}일){% endif %} 오후 3시 30분 기준 · 출처 네이버 증권</small>
+    </section>{% endif %}
+    <section class="lt-news" id="news">
+      <p class="lt-newstag">{{ H.news_eyebrow }}</p>
+      <h2>{{ H.news_title }} {{ L['items']|length }} {{ H.news_emoji }}</h2>
+      {% for it in econ + policy %}
+      <div class="lt-nitem" id="n{{ loop.index }}">
+        <h3><span class="lt-cat">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span>{{ it.title }}</h3>
+        <p>{{ it.body }} <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">{{ H.more }}</a></p>
+      </div>
+      {% endfor %}
     </section>
-    {% endmacro %}
-    <h2 class="lt-part">오늘의 경제 이슈</h2>
-    {% for it in econ %}{{ news(it, loop.index) }}{% endfor %}
-    {% if policy %}<h2 class="lt-part">정책·제도 변화</h2>{% for it in policy %}{{ news(it, econ|length + loop.index) }}{% endfor %}{% endif %}
+    {% if sec.comment %}{% set c = sec.comment %}
+    <section class="lt-comment" id="comment">
+      <div class="lt-sign"><i class="lt-sign-hook"></i><div class="lt-sign-board"><small>{{ H.comment_kicker }}</small><b><span class="tf">🥖</span> {{ H.comment_eyebrow }} <span class="tf">🧈</span></b></div></div>
+      {% if c.photo %}{% set PH = c.photo %}<figure class="lt-photo"><img src="{{ PH.url }}" alt="{{ PH.alt }}" loading="lazy"><figcaption>사진: <a href="{{ PH.credit_url }}" target="_blank" rel="noopener">{{ PH.credit }}</a> / <a href="{{ PH.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption></figure>{% endif %}
+      <h2>{{ c.title }}</h2>
+      {% if c.tags %}<p class="lt-tags">{% for t in c.tags %}<span>#{{ t }}</span>{% endfor %}</p>{% endif %}
+      <p>{{ c.lead }}</p>
+      {% for key in ('what', 'why', 'wallet') %}{% set b = c[key] %}{% set head = H[key] if key != 'wallet' or not b.head else '👛 ' ~ b.head %}
+      {% if b.body or b.points %}<h3>{{ head }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
+      {% if b.points %}<ul>{% for p in b.points %}<li><b>{{ p.name }}:</b> {{ p.text }}</li>{% endfor %}</ul>{% endif %}{% endif %}{% endfor %}
+      {% if c.srcs %}<p class="lt-refs">참고한 기사: {% for s in c.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+    </section>
+    {% endif %}
     {% if sec.number %}{% set b = sec.number %}
     <section class="lt-box lt-numbox" id="num"><h2 class="lt-part">숫자로 보는 오늘</h2>
       <div><small>{{ b.label }}</small><b>{{ b.value }}</b><p>{{ b.body }}</p>{% if b.src and b.src.url %}<a href="{{ b.src.url }}" target="_blank" rel="noopener nofollow">{{ b.src.name or '기사' }} 원문 ↗</a>{% endif %}</div>
+    </section>{% endif %}
+    {% if sec.buzz %}{% set b = sec.buzz %}
+    <section class="lt-buzz" id="buzz"><h2 class="lt-part">{{ H.buzz }}</h2>
+      {% set T = SHOPS.get(b.shop) or SHOPS['shop'] %}
+      <div class="lt-tr lt-roof-{{ T.roof }}" style="--c:{{ T.main }};--s:{{ T.sub }};--b:{{ T.bg }};--d:{{ T.deep }}">
+        <p class="lt-trico" aria-hidden="true">{% for n in T.icons %}<img src="{{ url_for('static', filename='img/tf/' ~ n ~ '.png') }}" alt="">{% endfor %}</p>
+        <small>{{ T.en }} · {{ T.ko }}</small><h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
+        {% for p in b.points %}<div class="lt-bz"><i aria-hidden="true"><img src="{{ url_for('static', filename='img/tf/' ~ T.icons[loop.index0 % 3] ~ '.png') }}" alt=""></i><div><b>{{ p.name }}</b><p>{{ p.text }}</p></div></div>{% endfor %}
+        {% if b.insight %}<div class="lt-bz lt-bzi"><div><b>소보루의 트렌드 읽기</b><p>{{ b.insight }}</p></div></div>{% endif %}
+        {% if b.tip %}<p class="lt-bztip"><b>소비자 체크 포인트</b> {{ b.tip }}</p>{% endif %}
+        {% if b.srcs %}<p class="lt-trsrc">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}</div>
+    </section>{% endif %}
+    {% if sec.market and sec.market.top %}
+    <section class="lt-box" id="top"><h2 class="lt-part">코스피 시가총액 TOP {{ sec.market.top|length }}</h2>
+      <ol class="lt-top">{% for r in sec.market.top %}<li><span>{{ r.label }}</span><b>{{ r.value }}</b><em class="{{ r.dir }}">{{ r.pct or '0.00%' }}</em></li>{% endfor %}</ol>
+      <p class="lt-refs">종가(원)와 직전 거래일 대비 등락률 · 출처 네이버 증권 · 투자 권유가 아닌 시장 정보예요</p>
     </section>{% endif %}
     {% if sec.harm %}{% set b = sec.harm %}
     <section class="lt-box" id="harm"><h2 class="lt-part">소비자 피해 예방</h2>
@@ -45,7 +69,6 @@
       <ul class="lt-src">
         {% if b.law %}<li><span class="tf" aria-hidden="true">⚖️</span> 관련 법 · {% if b.law.url %}<a href="{{ b.law.url }}" target="_blank" rel="noopener nofollow">{{ b.law.label }} ↗</a>{% else %}{{ b.law.label }}{% endif %}</li>{% endif %}
         {% for s in b.srcs or [] %}<li><span class="tf" aria-hidden="true">📰</span> {{ s.name or '기사' }}{% if s.date %} · {{ s.date.replace('-', '.') }}{% endif %} · <a href="{{ s.url }}" target="_blank" rel="noopener nofollow">기사 원문 보기 ↗</a></li>{% endfor %}
-        <li>상담은 1372 소비자상담센터, 기업에 알리고 싶다면 <a href="/report">소보루 제보</a></li>
       </ul>
     </section>{% endif %}
     {% if sec.lawbox %}{% set b = sec.lawbox %}
@@ -65,7 +88,7 @@
       <ul class="lt-life">{% for a in sec.life %}<li><a href="{{ a.url }}"><span class="lt-fi lc1 tf" aria-hidden="true">{{ a.emoji }}</span><div><b>{{ a.title }}</b>{% if a.summary %}<p>{{ a.summary }}</p>{% endif %}</div></a></li>{% endfor %}</ul>
     </section>
     {% endif %}
-    <div class="lt-outro">{% if L.outro %}<p>{{ L.outro }}</p>{% endif %}<b>소보루 에디터 드림</b><small>이 레터는 법률 자문이 아닌 일반 정보예요. 뉴스 내용은 기사 원문에서 확인해 주세요.</small></div>
+    <div class="lt-outro">{% if L.outro %}<p>{{ L.outro }}</p>{% endif %}<b>에디터 크로와상 드림</b></div>
   </article>
   {% if near.prev or near.next %}
   <nav class="lt-near" aria-label="다른 호">

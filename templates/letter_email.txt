@@ -1,28 +1,49 @@
-{{ name }} {{ L.no }}호 · {{ date }}
+{{ name }} · {{ date }}
 
 {{ L.title }}
 
-{{ L.intro }}
-{% macro news(it, n) %}
+{{ L.intro }} by. 에디터 크로와상
+{% if sec.market %}
+{% for r in sec.market.rows %}{{ r.label }} {{ r.value }} {{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }}{% if r.pct %} ({{ r.pct }}){% endif %}
+{% endfor %}직전 거래일 오후 3시 30분 기준 · 출처 네이버 증권
+{% endif %}
 ━━━━━━━━━━━━━━━━
-{{ 'POLICY' if it.kind == 'policy' else 'NEWS' }} {{ '%02d' % n }}. {{ it.title }}
-
+■ {{ H.news_title }} {{ L['items']|length }}
+{% for it in econ + policy %}
+[{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}] {{ it.title }}
 {{ it.body }}
-{% if it.tip %}
-💡 나한테는? {{ it.tip }}
-{% endif %}{% if it.law %}⚖️ 관련 법: {{ it.law.label }}{% if it.law.url %} {{ it.law.url }}{% endif %}
-{% endif %}📰 기사 원문({{ it.src.name or '기사' }}): {{ it.src.url }}
-{% endmacro %}
-■ 오늘의 경제 이슈
-{% for it in econ %}{{ news(it, loop.index) }}{% endfor %}{% if policy %}
-■ 정책·제도 변화
-{% for it in policy %}{{ news(it, econ|length + loop.index) }}{% endfor %}{% endif %}{% if sec.number %}
+기사 원문: {{ it.src.url }}
+{% endfor %}{% if sec.comment %}{% set c = sec.comment %}
+━━━━━━━━━━━━━━━━
+■ {{ H.comment_eyebrow }}
+{{ c.title }}{% if c.tags %}
+{% for t in c.tags %}#{{ t }} {% endfor %}{% endif %}
+
+{{ c.lead }}
+{% for key in ('what', 'why', 'wallet') %}{% set b = c[key] %}{% set head = H[key] if key != 'wallet' or not b.head else '👛 ' ~ b.head %}{% if b.body or b.points %}
+{{ head }}
+{% if b.body %}{{ b.body }}
+{% endif %}{% for p in b.points or [] %}· {{ p.name }}: {{ p.text }}
+{% endfor %}{% endif %}{% endfor %}{% endif %}
+{% if sec.number %}
 ━━━━━━━━━━━━━━━━
 ■ 숫자로 보는 오늘
 {{ sec.number.label }}: {{ sec.number.value }}
 {{ sec.number.body }}{% if sec.number.src and sec.number.src.url %}
 원문: {{ sec.number.src.url }}{% endif %}
-{% endif %}{% if sec.harm %}
+{% endif %}{% if sec.buzz %}
+━━━━━━━━━━━━━━━━
+■ {{ H.buzz }}
+{{ sec.buzz.title }}
+{{ sec.buzz.body }}
+{% for p in sec.buzz.points %}· {{ p.name }}: {{ p.text }}
+{% endfor %}{% if sec.buzz.insight %}트렌드 읽기: {{ sec.buzz.insight }}
+{% endif %}{% if sec.buzz.tip %}소비자 체크 포인트: {{ sec.buzz.tip }}
+{% endif %}{% endif %}{% if sec.market and sec.market.top %}
+━━━━━━━━━━━━━━━━
+■ 코스피 시가총액 TOP {{ sec.market.top|length }}
+{% for r in sec.market.top %}{{ loop.index }}. {{ r.label }} {{ r.value }}원 ({{ r.pct or '0.00%' }})
+{% endfor %}{% endif %}{% if sec.harm %}
 ━━━━━━━━━━━━━━━━
 ■ 소비자 피해 예방 · {{ sec.harm.title }}
 
@@ -32,7 +53,7 @@
 {% for st in sec.harm.steps %}{{ loop.index }}. {{ st }}
 {% endfor %}{% endif %}{% if sec.harm.law %}⚖️ 관련 법: {{ sec.harm.law.label }}{% if sec.harm.law.url %} {{ sec.harm.law.url }}{% endif %}
 {% endif %}{% for s in sec.harm.srcs or [] %}📰 기사 원문({{ s.name or '기사' }}): {{ s.url }}
-{% endfor %}상담은 1372 소비자상담센터, 기업에 알리고 싶다면 소보루 제보: {{ site }}/report
+{% endfor %}
 {% endif %}{% if sec.lawbox %}
 ━━━━━━━━━━━━━━━━
 ■ 알아두면 좋은 법률·제도 · {{ sec.lawbox.topic }}
@@ -53,13 +74,11 @@
 {% endfor %}{% endif %}
 ━━━━━━━━━━━━━━━━
 {{ L.outro }}
-소보루 에디터 드림
-이 레터는 법률 자문이 아닌 일반 정보예요.
+에디터 크로와상 드림
 
-[발행 정보]
-발행인 소보루 · 발행 목적 {{ purpose }}
-발행 주기 {{ cfg.when }}{% if op.email or op.phone %} · 연락처 {{ op.email }}{% if op.email and op.phone %} / {% endif %}{{ op.phone }}{% endif %}
-수신 거부: 아래 주소를 누르면 바로 그만 받아요.
-구독 해지: {{ unsub }}
+SOBORU · {{ name }} | 매일 아침, 경제·소비자 소식
+{% if op.email %}{{ op.email }}
+{% endif %}{% if op.address %}{{ op.address }}
+{% endif %}맛있게 읽고 생활에 도움이 되시라고 보내 드려요. 해지하지 않으시면 계속 보내 드릴게요.
+수신거부 Unsubscribe: {{ unsub }}
 웹에서 보기: {{ web }}
-{{ op.name }}{% if op.biz_no %} · 사업자등록번호 {{ op.biz_no }}{% endif %}{% if op.address %} · {{ op.address }}{% endif %}

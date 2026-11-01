@@ -28,13 +28,38 @@
       <div class="form-panel lt-ad-item">
         <p class="lt-ad-num">NEWS {{ '%02d' % loop.index }} · <a href="{{ it.src.url }}" target="_blank" rel="noopener nofollow">{{ it.src.name }} 원문 ↗</a> <span class="meta">{{ it.src.headline }}</span></p>
         <label class="field">제목<input name="title{{ i }}" value="{{ it.title }}" maxlength="80"{% if not draft %} readonly{% endif %}></label>
-        <label class="field">설명 (3~5문장)<textarea name="body{{ i }}" rows="5"{% if not draft %} readonly{% endif %}>{{ it.body }}</textarea></label>
+        <label class="field">설명 (3문장)<textarea name="body{{ i }}" rows="5"{% if not draft %} readonly{% endif %}>{{ it.body }}</textarea></label>
         <label class="field">나한테는? (한 줄)<input name="tip{{ i }}" value="{{ it.tip }}" maxlength="160"{% if not draft %} readonly{% endif %}></label>
         <p class="meta">⚖️ 관련 법: {% if it.law %}{% if it.law.url %}<a href="{{ it.law.url }}" target="_blank" rel="noopener nofollow">{{ it.law.label }}</a>{% else %}{{ it.law.label }}{% endif %}{% else %}없음{% endif %}</p>
         {% if draft %}<div class="lt-ad-checks">{% if it.law %}<label class="check"><input type="checkbox" name="nolaw{{ i }}" value="1"> 관련 법 빼기</label>{% endif %}<label class="check"><input type="checkbox" name="drop{{ i }}" value="1"> 이 뉴스 빼기</label></div>{% endif %}
       </div>
       {% endfor %}
       {% set sec = L.sections %}
+      {% if sec.comment %}{% set c = sec.comment %}<div class="form-panel lt-ad-item">
+        {% if c.photo %}<img class="lt-ad-photo" src="{{ c.photo.url }}" alt="" loading="lazy">{% if draft %}<label class="check"><input type="checkbox" name="comment_nophoto" value="1"> 사진 빼기</label>{% endif %}{% endif %}
+        <p class="lt-ad-num">오늘의 메인 뉴스{% if c.tags %} · {% for t in c.tags %}#{{ t }} {% endfor %}{% endif %}</p>
+        <label class="field">제목<input name="comment_title" value="{{ c.title }}" maxlength="60"{% if not draft %} readonly{% endif %}></label>
+        <label class="field">여는 글<textarea name="comment_lead" rows="3"{% if not draft %} readonly{% endif %}>{{ c.lead }}</textarea></label>
+        <label class="field">🍞 한 입에 정리하면<textarea name="comment_what" rows="2"{% if not draft %} readonly{% endif %}>{{ c.what.body }}</textarea></label>
+        {% for p in c.what.points %}<p class="meta">· <b>{{ p.name }}</b> {{ p.text }}</p>{% endfor %}
+        <label class="field">🔎 왜 이렇게 됐을까요<textarea name="comment_why" rows="4"{% if not draft %} readonly{% endif %}>{{ c.why.body }}</textarea></label>
+        <label class="field">👛 {{ c.wallet.head or '내 지갑엔 무슨 일이?' }}<textarea name="comment_wallet" rows="2"{% if not draft %} readonly{% endif %}>{{ c.wallet.body }}</textarea></label>
+        {% for p in c.wallet.points %}<p class="meta">· <b>{{ p.name }}</b> {{ p.text }}</p>{% endfor %}
+        {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_comment" value="1"> 이 칸 빼기</label></div>{% endif %}
+      </div>{% endif %}
+      {% if sec.briefs %}<div class="form-panel lt-ad-item">
+        <p class="lt-ad-num">한 줄로 보는 경제 뉴스</p>
+        {% for b in sec.briefs %}<label class="field">{{ b.src.name or '기사' }} · <a href="{{ b.src.url }}" target="_blank" rel="noopener nofollow">원문 ↗</a><input name="brief{{ loop.index0 }}" value="{{ b.line }}" maxlength="90"{% if not draft %} readonly{% endif %}></label>
+        {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_brief{{ loop.index0 }}" value="1"> 빼기</label></div>{% endif %}{% endfor %}
+      </div>{% endif %}
+      {% if sec.market %}<div class="form-panel lt-ad-item"><p class="lt-ad-num">시장 지표 (레터 만들 때 받은 값)</p>
+        {% for r in sec.market.rows %}<p class="meta">{{ r.label }} {{ r.value }} {{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }} {{ r.pct }}</p>{% endfor %}
+        {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_market" value="1"> 이 칸 빼기</label></div>{% endif %}</div>{% endif %}
+      {% if sec.buzz %}<div class="form-panel lt-ad-item"><p class="lt-ad-num">요즘 뜨는 소비 트렌드</p>
+        <label class="field">제목<input name="buzz_title" value="{{ sec.buzz.title }}" maxlength="60"{% if not draft %} readonly{% endif %}></label>
+        <label class="field">설명<textarea name="buzz_body" rows="3"{% if not draft %} readonly{% endif %}>{{ sec.buzz.body }}</textarea></label>
+        {% for p in sec.buzz.points %}<p class="meta">· <b>{{ p.name }}</b> {{ p.text }}</p>{% endfor %}
+        {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_buzz" value="1"> 이 칸 빼기</label></div>{% endif %}</div>{% endif %}
       {% if sec.number %}<div class="form-panel lt-ad-item">
         <p class="lt-ad-num">숫자로 보는 오늘{% if sec.number.src and sec.number.src.url %} · <a href="{{ sec.number.src.url }}" target="_blank" rel="noopener nofollow">{{ sec.number.src.name }} 원문 ↗</a>{% endif %}</p>
         <label class="field">숫자<input name="number_value" value="{{ sec.number.value }}" maxlength="20"{% if not draft %} readonly{% endif %}></label>
@@ -80,10 +105,17 @@
         <div class="lt-ad-inline"><input type="email" name="test_to" value="{{ test_to }}" placeholder="받아 볼 이메일 주소" aria-label="테스트 메일 주소"><button type="submit" name="act" value="test"{% if not mail_ready %} disabled{% endif %}>테스트 메일 보내기</button></div>
         <p class="meta">고친 내용을 저장한 뒤 이 주소로 한 통만 보내요. 구독자에게는 가지 않아요.</p>
         {% if L.status != 'sent' %}
+        {% if via == 'stibee' %}
+        <h2>스티비로 보내기</h2>
+        <p>스티비 주소록의 구독자에게 바로 보내요. 관리자 > 소보루 레터의 '보내는 곳' 설정을 따라요.</p>
+        <div class="admin-actions">{% if not L.check_ok %}<label class="check aw-ack"><input type="checkbox" name="ack" value="1"> 검토 필요한 곳을 직접 확인했어요</label>{% endif %}
+          <button type="submit" name="act" value="send" class="primary" onclick="return confirm('{{ L.no }}호를 스티비 구독자에게 보낼까요? 보낸 메일은 되돌릴 수 없어요.')">스티비로 보내기</button></div>
+        {% else %}
         <h2>구독자에게 보내기</h2>
         <p>확인을 마친 구독자 <b>{{ counts.get('active', 0) }}명</b>에게 보내요. {% if L.status == 'scheduled' %}보내는 중이에요. 끊겼다면 다시 누르면 아직 못 받은 분께만 보내요.{% endif %}</p>
         <div class="admin-actions">{% if not L.check_ok %}<label class="check aw-ack"><input type="checkbox" name="ack" value="1"> 검토 필요한 곳을 직접 확인했어요</label>{% endif %}
           <button type="submit" name="act" value="send" class="primary"{% if not mail_ready or not counts.get('active') %} disabled{% endif %} onclick="return confirm('구독자 {{ counts.get('active', 0) }}명에게 {{ L.no }}호를 보낼까요? 보낸 메일은 되돌릴 수 없어요.')">보내기</button></div>
+        {% endif %}
         {% endif %}
       </div>
     </form>
