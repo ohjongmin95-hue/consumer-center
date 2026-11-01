@@ -46,10 +46,10 @@
       <div><small>{{ b.label }}</small><b>{{ b.value }}</b><p>{{ b.body }}</p>{% if b.src and b.src.url %}<a href="{{ b.src.url }}" target="_blank" rel="noopener nofollow">{{ b.src.name or '기사' }} 원문 ↗</a>{% endif %}</div>
     </section>{% endif %}
     {% if sec.buzz %}{% set b = sec.buzz %}
-    <section class="lt-box lt-buzz" id="buzz"><h2 class="lt-part">{{ H.buzz }}</h2>
-      <h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
-      {% for p in b.points %}<div class="lt-bz lt-bz{{ loop.index0 % 3 }}"><i>TREND<b>{{ '%02d' % loop.index }}</b></i><div><b>{{ p.name }} <span>▲</span></b><p>{{ p.text }}</p></div></div>{% endfor %}
-      {% if b.srcs %}<p class="lt-refs">참고한 기사: {% for s in b.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+    <section class="lt-buzz" id="buzz"><h2 class="lt-part">{{ H.buzz }}</h2>
+      <div class="lt-tr"><small>TREND REPORT</small><h3>{{ b.title }}</h3>{% if b.body %}<p>{{ b.body }}</p>{% endif %}
+      {% for p in b.points %}<div class="lt-bz"><i>{{ '%02d' % loop.index }}</i><div><b>{{ p.name }}</b><p>{{ p.text }}</p></div></div>{% endfor %}
+      {% if b.srcs %}<p class="lt-trsrc">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}</div>
     </section>{% endif %}
     {% if sec.market and sec.market.top %}
     <section class="lt-box" id="top"><h2 class="lt-part">코스피 시가총액 TOP {{ sec.market.top|length }}</h2>
