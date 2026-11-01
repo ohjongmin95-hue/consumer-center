@@ -38,57 +38,42 @@
     <div style="margin:26px 0 0;border-top:1px solid #eee6dd;font-size:0;line-height:0;">&nbsp;</div>
   </td></tr>
   <tr><td style="padding:28px 32px 0;{{ F }}">
-    <h1 style="margin:0 0 14px;font-size:27px;line-height:1.45;font-weight:800;color:#652D1C;letter-spacing:-0.8px;">{{ L.title }}</h1>
-    {% if L.intro %}<p style="margin:0;font-size:17px;line-height:1.85;color:#3a3633;">{{ L.intro }}</p>{% endif %}
+    <h1 style="margin:0 0 16px;font-size:27px;line-height:1.45;font-weight:800;color:#652D1C;letter-spacing:-0.8px;">{{ L.title }}</h1>
+    {% if L.intro %}<p style="margin:0;font-size:17px;line-height:1.9;color:#3a3633;">{{ L.intro }} <span style="color:#ef7300;font-weight:800;white-space:nowrap;">by. 에디터 크로와상 🥐</span></p>{% endif %}
   </td></tr>
-  <tr><td style="padding:22px 32px 0;{{ F }}">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff6ec;border-radius:18px;"><tr><td style="padding:18px 20px 12px;{{ F }}">
-      <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:#652D1C;">{{ ic('news', 20) }}&nbsp; 오늘의 레터</p>
-      {% set toc = [] %}{% for it in econ + policy %}{% set _ = toc.append((it._icon, '#n' ~ loop.index, it.title)) %}{% endfor %}
-      {% if sec.briefs %}{% set _ = toc.append((tf('news'), '#brief', '한 줄로 보는 경제 뉴스 ' ~ sec.briefs|length ~ '건')) %}{% endif %}
-      {% if sec.number %}{% set _ = toc.append((tf('chart'), '#num', '숫자로 보는 오늘 · ' ~ sec.number.label)) %}{% endif %}
-      {% if sec.harm %}{% set _ = toc.append((tf('siren'), '#harm', '피해 예방 · ' ~ sec.harm.title)) %}{% endif %}
-      {% if sec.lawbox %}{% set _ = toc.append((tf('scale'), '#law', '법률·제도 · ' ~ sec.lawbox.title)) %}{% endif %}
-      {% if sec.word %}{% set _ = toc.append((tf('memo'), '#word', '오늘의 경제 용어 · ' ~ sec.word.word)) %}{% endif %}
-      {% for icon, href, label in toc %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;"><tr>
-        <td width="30" valign="top" style="width:30px;"><img src="{{ icon }}" width="22" height="22" alt="" style="display:block;width:22px;height:22px;border:0;"></td>
-        <td valign="top" style="{{ F }}font-size:17px;line-height:1.5;color:#3a3633;"><a href="{{ href }}" style="color:#3a3633;text-decoration:none;">{{ label }}</a></td>
-      </tr></table>{% endfor %}
+  {#- 이것만 쓱 보면 끝! 오늘의 뉴스 (뉴닉식: 분야ㅣ제목, 2~3문장, 자세히 보기) -#}
+  <tr><td style="padding:34px 32px 0;{{ F }}" id="news">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff6ec;border-radius:22px;"><tr><td style="padding:24px 22px 8px;{{ F }}">
+      <p style="margin:0 0 4px;font-size:15px;font-weight:800;color:#ef7300;letter-spacing:0.3px;">TODAY'S NEWS</p>
+      <p style="margin:0 0 18px;font-size:22px;line-height:1.4;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">이것만 쓱 보면 끝! 오늘의 뉴스 {{ L['items']|length }} ⚡️</p>
+      {% for it in econ + policy %}
+      <div id="n{{ loop.index }}" style="margin:0 0 {{ '18px' if not loop.last else '16px' }};{% if not loop.first %}padding-top:18px;border-top:1px dashed #f0d9bf;{% endif %}">
+        <p style="margin:0 0 8px;font-size:18px;line-height:1.5;font-weight:800;color:#1d1d1f;letter-spacing:-0.3px;"><span style="color:#ef7300;">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span><span style="color:#e3c9ab;font-weight:400;">&nbsp;ㅣ&nbsp;</span>{{ it.title }}</p>
+        <p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;">{{ it.body }} <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">자세히 보기 ›</a></p>
+      </div>
+      {% endfor %}
     </td></tr></table>
   </td></tr>
-  {%- macro news(it, n, first) -%}
-  <tr><td style="padding:{{ '26px' if first else '34px' }} 32px 4px;{{ F }}" id="n{{ n }}">
-    {% if not first %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px dashed #eadfd4;font-size:0;line-height:0;padding-bottom:30px;">&nbsp;</td></tr></table>{% endif %}
-    <img src="{{ it._icon }}" width="44" height="44" alt="" style="display:block;width:44px;height:44px;border:0;margin:0 0 10px;">
-    <p style="margin:0 0 6px;font-size:15px;font-weight:800;color:#ef7300;letter-spacing:0.4px;">{{ 'POLICY' if it.kind == 'policy' else 'NEWS' }} {{ '%02d' % n }}{% if it.topic %} · {{ it.topic }}{% endif %}</p>
-    <h2 style="margin:0 0 14px;font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ it.title }}</h2>
-    {% for p in it.body|letter_paras %}<p style="margin:0 0 14px;font-size:17px;line-height:1.85;color:#3a3633;">{{ p }}</p>{% endfor %}
-    {% if it.tip %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff6ec;border-radius:16px;"><tr>
-      <td width="52" valign="top" style="width:52px;padding:16px 0 14px 16px;"><img src="{{ tf('bulb') }}" width="30" height="30" alt="" style="display:block;width:30px;height:30px;border:0;"></td>
-      <td valign="top" style="padding:14px 18px 14px 4px;{{ F }}">
-        <p style="margin:0 0 3px;font-size:15px;font-weight:800;color:#ef7300;">나한테는?</p>
-        <p style="margin:0;font-size:17px;line-height:1.65;color:#652D1C;font-weight:600;">{{ it.tip }}</p>
-      </td></tr></table>{% endif %}
-    {% if it.law %}<p style="margin:12px 0 0;font-size:15px;line-height:1.6;color:#6b6f76;">{{ ic('scale', 18) }}&nbsp; 관련 법: {% if it.law.url %}<a href="{{ it.law.url }}" style="color:#652D1C;text-decoration:underline;">{{ it.law.label }}</a>{% else %}{{ it.law.label }}{% endif %} <span style="color:#a39d97;">(국가법령정보센터)</span></p>{% endif %}
-    <p style="margin:8px 0 0;font-size:15px;line-height:1.6;color:#6b6f76;">{{ ic('news', 18) }}&nbsp; {{ it.src.name or '기사' }}{% if it.src.date %} · {{ it.src.date.replace('-', '.') }}{% endif %} · <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;">원문 보기 ›</a></p>
+  {% if sec.comment %}{% set c = sec.comment %}
+  {#- 에디터 코멘트: 오늘 가장 큰 경제 이슈를 깊게 -#}
+  <tr><td style="padding:40px 32px 4px;{{ F }}" id="comment">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;"><tr>
+      <td valign="middle" style="padding-right:12px;"><img src="{{ editor_img }}" width="56" alt="에디터 크로와상" style="display:block;width:56px;height:auto;border:0;"></td>
+      <td valign="middle" style="{{ F }}"><p style="margin:0;font-size:14px;font-weight:800;color:#ef7300;letter-spacing:0.6px;">EDITOR'S COMMENT</p><p style="margin:2px 0 0;font-size:17px;font-weight:800;color:#652D1C;">에디터 크로와상</p></td>
+    </tr></table>
+    <h2 style="margin:0 0 14px;font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
+    <p style="margin:0 0 26px;font-size:17px;line-height:1.9;color:#3a3633;">{{ c.lead }}</p>
+    {% for key, head in (('what', '👀 무슨 일이야?'), ('why', '🔍 어쩌다 이런 일이 생긴 거야?'), ('wallet', '☑️ 내 생활엔 어떤 영향이 있어?')) %}{% set b = c[key] %}
+    {% if b.body or b.points %}
+    <p style="margin:0 0 10px;font-size:20px;line-height:1.5;font-weight:800;color:#1d1d1f;">{{ head }}</p>
+    {% if b.body %}<p style="margin:0 0 12px;font-size:17px;line-height:1.9;color:#3a3633;">{{ b.body }}</p>{% endif %}
+    {% for p in b.points or [] %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;"><tr>
+      <td width="20" valign="top" style="width:20px;padding-top:11px;"><span style="display:block;width:7px;height:7px;border-radius:4px;background:#ef7300;font-size:0;line-height:0;">&nbsp;</span></td>
+      <td valign="top" style="{{ F }}font-size:17px;line-height:1.85;color:#3a3633;"><b style="color:#1d1d1f;">{{ p.name }}:</b> {{ p.text }}</td></tr></table>{% endfor %}
+    <div style="height:18px;font-size:0;line-height:0;">&nbsp;</div>
+    {% endif %}{% endfor %}
+    {% if c.srcs %}<p style="margin:0;font-size:15px;line-height:1.7;color:#8a827a;">참고한 기사: {% for s in c.srcs %}<a href="{{ s.url }}" style="color:#8a827a;text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
   </td></tr>
-  {%- endmacro -%}
-  {{ pill('오늘의 경제 이슈') }}
-  {% for it in econ %}{{ news(it, loop.index, loop.first) }}{% endfor %}
-  {% if sec.briefs %}
-  <tr><td style="padding:30px 32px 4px;{{ F }}" id="brief">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f6;border-radius:18px;"><tr><td style="padding:20px 20px 10px;{{ F }}">
-      <p style="margin:0 0 12px;font-size:17px;font-weight:800;color:#652D1C;">{{ ic('news', 20) }}&nbsp; 한 줄로 보는 경제 뉴스</p>
-      {% for b in sec.briefs %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;"><tr>
-        <td width="18" valign="top" style="width:18px;padding-top:9px;"><span style="display:block;width:6px;height:6px;border-radius:3px;background:#ef7300;font-size:0;line-height:0;">&nbsp;</span></td>
-        <td valign="top" style="{{ F }}font-size:17px;line-height:1.65;color:#3a3633;">{{ b.line }} <a href="{{ b.src.url }}" style="color:#a39d97;font-size:15px;text-decoration:none;white-space:nowrap;">{{ b.src.name or '기사' }} ›</a></td>
-      </tr></table>{% endfor %}
-    </td></tr></table>
-  </td></tr>
-  {% endif %}
-  {% if policy %}
-  {{ pill('정책·제도 변화', False) }}
-  {% for it in policy %}{{ news(it, econ|length + loop.index, loop.first) }}{% endfor %}
   {% endif %}
   {% if sec.number %}{% set b = sec.number %}
   {{ pill('숫자로 보는 오늘', False) }}
@@ -158,9 +143,9 @@
         {% if L.outro %}<p style="margin:0 0 10px;font-size:17px;line-height:1.75;color:#3a3633;">{{ L.outro }}</p>{% endif %}
         <p style="margin:0;font-size:17px;font-weight:800;color:#652D1C;">에디터 크로와상 드림 {{ ic('smile', 18) }}</p>
       </td>
-      <td width="96" valign="bottom" style="width:96px;padding:12px 14px 0 0;"><img src="{{ hero }}" width="84" alt="" style="display:block;width:84px;height:auto;border:0;"></td>
+      <td width="96" valign="bottom" style="width:96px;padding:12px 14px 0 0;"><img src="{{ editor_img }}" width="84" alt="" style="display:block;width:84px;height:auto;border:0;"></td>
     </tr></table>
-    <p style="margin:16px 0 0;font-size:15px;line-height:1.6;color:#a39d97;">억울한 소비자 피해를 겪었다면 <a href="{{ site }}/report" style="color:#ef7300;font-weight:700;text-decoration:none;">소보루에 제보</a>해 주세요. 이 레터는 법률 자문이 아닌 일반 정보예요.</p>
+    <p style="margin:16px 0 0;font-size:15px;line-height:1.6;color:#a39d97;">억울한 소비자 피해를 겪었다면 <a href="{{ site }}/report" style="color:#ef7300;font-weight:700;text-decoration:none;">소보루에 제보</a>해 주세요.</p>
   </td></tr>
 </table>
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
@@ -171,7 +156,7 @@
       발행 주기 {{ cfg.when }}{% if op.email or op.phone %} · 연락처 {{ op.email }}{% if op.email and op.phone %} / {% endif %}{{ op.phone }}{% endif %}<br>
       수신 거부: 아래 '구독 해지'를 누르면 바로 그만 받아요. 메일 앱의 '구독 취소' 버튼으로도 돼요.
     </td></tr></table>
-    <p style="margin:0 0 8px;">이 메일은 {{ name }} 받기에 동의하신 분께 보내 드려요.<br>더 받고 싶지 않으면 언제든 한 번에 해지할 수 있어요.</p>
+    <p style="margin:0 0 8px;">이 메일은 {{ name }} 받기에 동의하신 분께 보내 드려요.<br>더 받고 싶지 않으면 언제든 아래에서 해지해 주세요. 해지하지 않으시면 계속 보내 드릴게요.</p>
     <p style="margin:0 0 10px;"><a href="{{ web }}" style="color:#6b6f76;text-decoration:underline;">웹에서 보기</a> &nbsp;·&nbsp; <a href="{{ unsub }}" style="color:#6b6f76;text-decoration:underline;">구독 해지</a></p>
     <p style="margin:0;">{{ op.name }}{% if op.biz_no %} · 사업자등록번호 {{ op.biz_no }}{% endif %}{% if op.address %}<br>{{ op.address }}{% endif %}</p>
   </td></tr>

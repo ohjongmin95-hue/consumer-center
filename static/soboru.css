@@ -2823,3 +2823,17 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-word b{display:block;font-size:22px;color:var(--sb-brown);margin:2px 0 8px}
 .lt-word p{margin:0 0 10px;font-size:15px;line-height:1.75}
 .lt-word a{font-size:14px;font-weight:700;color:var(--sb-orange)}
+
+/* 소보루 레터 뉴닉식 (2026-11-01): 오늘의 뉴스 + 에디터 코멘트 */
+.lt-issue .lt-by{color:var(--sb-orange);white-space:nowrap}
+.lt-news{margin:28px 0;padding:24px 22px 10px;background:#fff6ec;border-radius:22px}
+.lt-eyebrow{margin:0 0 4px;font-size:14px;font-weight:800;color:var(--sb-orange);letter-spacing:.3px}
+.lt-news>h2{margin:0 0 16px;font-size:22px;line-height:1.4}
+.lt-nitem{padding:16px 0;border-top:1px dashed #f0d9bf}.lt-nitem:first-of-type{border-top:0;padding-top:4px}
+.lt-nitem h3{margin:0 0 6px;font-size:18px;line-height:1.5}.lt-nitem h3 i{font-style:normal;color:#e3c9ab;margin:0 6px;font-weight:400}.lt-cat{color:var(--sb-orange)}
+.lt-nitem p{margin:0;font-size:17px;line-height:1.8}.lt-nitem a{color:var(--sb-orange);font-weight:700;white-space:nowrap}
+.lt-comment{margin:36px 0}.lt-ed{display:flex;align-items:center;gap:12px;margin-bottom:14px}.lt-ed img{width:56px;height:auto}
+.lt-ed small{display:block;font-size:13px;font-weight:800;color:var(--sb-orange);letter-spacing:.6px}.lt-ed b{color:var(--sb-brown)}
+.lt-comment h2{font-size:25px;line-height:1.45;margin:0 0 12px}.lt-comment h3{font-size:20px;margin:26px 0 8px}
+.lt-comment p,.lt-comment li{font-size:17px;line-height:1.9}.lt-comment ul{padding-left:20px}.lt-comment li::marker{color:var(--sb-orange)}
+.lt-comment .lt-refs{font-size:15px;color:var(--sb-sub)}

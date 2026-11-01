@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 460" width="640" height="460">
+  <ellipse cx="270" cy="400" rx="30" ry="18" fill="#E28E3D"/>
+  <ellipse cx="370" cy="400" rx="30" ry="18" fill="#E28E3D"/>
+  <!-- 끝 (아래로 휜 뿔) -->
+  <g transform="rotate(-50 95 330)"><ellipse cx="95" cy="330" rx="56" ry="34" fill="#CE6719"/><ellipse cx="100" cy="324" rx="44" ry="24" fill="#EF920E"/></g>
+  <g transform="rotate(50 545 330)"><ellipse cx="545" cy="330" rx="56" ry="34" fill="#CE6719"/><ellipse cx="540" cy="324" rx="44" ry="24" fill="#EF920E"/></g>
+  <!-- 둘째 칸 -->
+  <g transform="rotate(-30 150 255)"><ellipse cx="150" cy="255" rx="82" ry="66" fill="#CE6719"/><ellipse cx="155" cy="246" rx="70" ry="52" fill="#EF920E"/></g>
+  <g transform="rotate(30 490 255)"><ellipse cx="490" cy="255" rx="82" ry="66" fill="#CE6719"/><ellipse cx="485" cy="246" rx="70" ry="52" fill="#EF920E"/></g>
+  <!-- 가운데 칸 = 몸 -->
+  <ellipse cx="320" cy="240" rx="168" ry="128" fill="#CE6719"/>
+  <ellipse cx="320" cy="232" rx="156" ry="116" fill="#EF920E"/>
+  <!-- 얼굴 자리: 아래쪽 밝은 결 -->
+  <path d="M176 262 Q320 150 464 262 Q470 330 320 350 Q170 330 176 262Z" fill="#F8D59F"/>
+  <!-- 위쪽 결 무늬 -->
+  <path d="M230 150 Q320 112 410 150" stroke="#F8D59F" stroke-width="12" stroke-linecap="round" fill="none" opacity=".75"/>
+  <path d="M262 180 Q320 160 378 180" stroke="#F8D59F" stroke-width="10" stroke-linecap="round" fill="none" opacity=".55"/>
+  <!-- 반짝 선 -->
+  <g stroke="#EF920E" stroke-width="15" stroke-linecap="round">
+    <line x1="120" y1="78" x2="146" y2="118"/><line x1="176" y1="50" x2="184" y2="98"/><line x1="84" y1="132" x2="124" y2="148"/>
+  </g>
+  <!-- 얼굴 -->
+  <ellipse cx="282" cy="268" rx="12" ry="17" fill="#652D1C"/>
+  <ellipse cx="358" cy="268" rx="12" ry="17" fill="#652D1C"/>
+  <path d="M302 302 Q320 320 338 302" stroke="#652D1C" stroke-width="8" stroke-linecap="round" fill="none"/>
+  <ellipse cx="248" cy="302" rx="20" ry="13" fill="#F6BB93"/>
+  <ellipse cx="392" cy="302" rx="20" ry="13" fill="#F6BB93"/>
+  <!-- 펜과 손 -->
+  <g transform="rotate(-28 210 330)"><rect x="196" y="236" width="24" height="112" rx="11" fill="#652D1C"/><path d="M196 344 L220 344 L208 372Z" fill="#652D1C"/><rect x="202" y="248" width="6" height="36" rx="3" fill="#8a4a33"/></g>
+  <ellipse cx="216" cy="336" rx="36" ry="31" fill="#F8D59F"/>
+  <ellipse cx="428" cy="340" rx="34" ry="29" fill="#F8D59F"/>
+</svg>

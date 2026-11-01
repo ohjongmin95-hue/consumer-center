@@ -2,24 +2,26 @@
 
 {{ L.title }}
 
-{{ L.intro }}
-{% macro news(it, n) %}
-━━━━━━━━━━━━━━━━
-{{ 'POLICY' if it.kind == 'policy' else 'NEWS' }} {{ '%02d' % n }}. {{ it.title }}
+{{ L.intro }} by. 에디터 크로와상 🥐
 
+━━━━━━━━━━━━━━━━
+■ 이것만 쓱 보면 끝! 오늘의 뉴스 {{ L['items']|length }}
+{% for it in econ + policy %}
+{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}ㅣ{{ it.title }}
 {{ it.body }}
-{% if it.tip %}
-💡 나한테는? {{ it.tip }}
-{% endif %}{% if it.law %}⚖️ 관련 법: {{ it.law.label }}{% if it.law.url %} {{ it.law.url }}{% endif %}
-{% endif %}📰 기사 원문({{ it.src.name or '기사' }}): {{ it.src.url }}
-{% endmacro %}
-■ 오늘의 경제 이슈
-{% for it in econ %}{{ news(it, loop.index) }}{% endfor %}{% if sec.briefs %}
-■ 한 줄로 보는 경제 뉴스
-{% for b in sec.briefs %}· {{ b.line }} ({{ b.src.name or '기사' }} {{ b.src.url }})
-{% endfor %}{% endif %}{% if policy %}
-■ 정책·제도 변화
-{% for it in policy %}{{ news(it, econ|length + loop.index) }}{% endfor %}{% endif %}{% if sec.number %}
+자세히 보기: {{ it.src.url }}
+{% endfor %}{% if sec.comment %}{% set c = sec.comment %}
+━━━━━━━━━━━━━━━━
+■ EDITOR'S COMMENT · 에디터 크로와상
+{{ c.title }}
+
+{{ c.lead }}
+{% for key, head in (('what', '👀 무슨 일이야?'), ('why', '🔍 어쩌다 이런 일이 생긴 거야?'), ('wallet', '☑️ 내 생활엔 어떤 영향이 있어?')) %}{% set b = c[key] %}{% if b.body or b.points %}
+{{ head }}
+{% if b.body %}{{ b.body }}
+{% endif %}{% for p in b.points or [] %}· {{ p.name }}: {{ p.text }}
+{% endfor %}{% endif %}{% endfor %}{% endif %}
+{% if sec.number %}
 ━━━━━━━━━━━━━━━━
 ■ 숫자로 보는 오늘
 {{ sec.number.label }}: {{ sec.number.value }}
@@ -57,12 +59,11 @@
 ━━━━━━━━━━━━━━━━
 {{ L.outro }}
 에디터 크로와상 드림
-이 레터는 법률 자문이 아닌 일반 정보예요.
 
 [발행 정보]
 발행인 소보루 · 발행 목적 {{ purpose }}
 발행 주기 {{ cfg.when }}{% if op.email or op.phone %} · 연락처 {{ op.email }}{% if op.email and op.phone %} / {% endif %}{{ op.phone }}{% endif %}
-수신 거부: 아래 주소를 누르면 바로 그만 받아요.
+더 받고 싶지 않으면 언제든 아래 주소로 해지해 주세요. 해지하지 않으시면 계속 보내 드릴게요.
 구독 해지: {{ unsub }}
 웹에서 보기: {{ web }}
 {{ op.name }}{% if op.biz_no %} · 사업자등록번호 {{ op.biz_no }}{% endif %}{% if op.address %} · {{ op.address }}{% endif %}

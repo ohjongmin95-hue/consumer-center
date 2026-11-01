@@ -5135,7 +5135,8 @@ class SiteTest(unittest.TestCase):
         def fake(url, headers, body, timeout):
             sent.append(body)
             content = body['messages'][1]['content']
-            news = json.loads(content.split('[이번 호 뉴스]\n', 1)[1].split('\n[한 줄 뉴스]', 1)[0])
+            news = json.loads(content.split('[이번 호 뉴스]\n', 1)[1].split('\n[에디터 코멘트 자료]', 1)[0])
+            cm = json.loads(content.split('[에디터 코멘트 자료]\n', 1)[1].split('\n[한 줄 뉴스]', 1)[0])
             briefs = json.loads(content.split('[한 줄 뉴스]\n', 1)[1].split('\n[피해 예방 뉴스]', 1)[0])
             harm = json.loads(content.split('[피해 예방 뉴스]\n', 1)[1].split('\n[소보루에', 1)[0])
             items = []
@@ -5146,13 +5147,17 @@ class SiteTest(unittest.TestCase):
                 if bad and n == 2: text += ' 작년보다 98765명 늘었대요.'
                 if bad and n == 3: text += ' ' + x['제목'] + ' ' + x['요약'] + ' 이런 기사였어요.'
                 law = x['법 조문 후보'][0]['id'] if n == 1 and x['법 조문 후보'] else ('9-L9' if n == 2 else '')
-                items.append({'no': n, 'title': ['첫째', '둘째', '셋째', '넷째', '다섯째'][n - 1] + ' 소식, 이것만 알면 돼요', 'body': text, 'tip': '이럴 땐 이렇게: 영수증과 대화 기록부터 챙겨 두세요.', 'law': law})
+                items.append({'no': n, 'title': ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'][n - 1] + ' 소식, 이것만 알면 돼요', 'body': text, 'tip': '이럴 땐 이렇게: 영수증과 대화 기록부터 챙겨 두세요.', 'law': law})
             out = {'subject': '소보루 브리핑: 이번 주 소비자 뉴스, 이것만 보면 끝', 'intro': '안녕하세요, 소보루 레터예요. 이번 주 꼭 알아 둘 소식을 모았어요.', 'outro': '다음 주에 또 만나요.', 'items': items,
                    'number': {'no': 1, 'value': '30%', 'label': '늘어난 상담', 'body': '관련 상담이 그만큼 늘었다는 뜻이에요.'},
                    'harm': {'title': '요즘 늘어난 환불 거절', 'body': '환불을 미루는 일이 늘고 있어요. 대화 기록을 꼭 남겨 두세요.',
                             'steps': ['주문·결제 화면을 캡처해 두세요.', '판매자에게 기록이 남게 요청하세요.', '1372 소비자상담센터에 상담해요.'] + (['14일 안에 꼭 하세요.'] if bad else []),
                             'law': harm[0]['법 조문 후보'][0]['id'] if harm and harm[0]['법 조문 후보'] else ''},
                    'lawbox': {'title': '온라인 쇼핑은 7일 안에 물릴 수 있어요', 'body': '물건을 받은 날부터 7일 안이면 청약철회를 할 수 있어요.', 'point': '받은 날부터 7일, 기억해요.', 'law': 'B-L1'},
+                   'comment': {'title': '오늘의 큰 이슈, 무슨 일이야?', 'lead': '요즘 이 소식이 계속 들려요. 내 생활엔 무슨 일이 생길까요?',
+                               'what': {'body': '이런 일이 있었어요.', 'points': [{'name': '첫째', 'text': '이런 일이 있었어요.'}, {'name': '', 'text': '이름 없는 건 빼요'}]},
+                               'why': {'body': '여러 이유가 겹쳤다고 해요.' + (' 피해액은 777억 원이래요.' if bad else '')},
+                               'wallet': {'body': '내 생활에도 영향이 있어요.', 'points': [{'name': '대출', 'text': '이자 부담을 확인해 보세요.'}]}} if cm else None,
                    'briefs': [{'no': b['번호'], 'line': '이런 경제 소식도 있었어요' + (' (작년보다 4321억 원)' if bad and k == 1 else '')} for k, b in enumerate(briefs)] + [{'no': 'B99', 'line': '없는 번호'}]}
             return 200, {'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
         return fake
@@ -5218,7 +5223,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(r['status'], 'made', r)
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
         self.assertEqual((L['no'], L['status']), (1, 'draft'))
-        self.assertEqual(len(L['items']), 5)  # 3~5개
+        self.assertEqual(len(L['items']), 6)  # 오늘의 뉴스 4~6개
         # AI에는 제목·요약 조각만 (기사 주소·연락처는 넘기지 않음), 기사 문장을 옮기지 말라고 함
         prompt = sent[0]['messages'][1]['content']
         self.assertNotIn('news.example.co.kr', prompt); self.assertNotIn('010-5555-6666', prompt)
@@ -5248,21 +5253,21 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(L['title'], '이번 주 소비자 뉴스, 이것만 보면 끝')  # '소보루 브리핑' 같은 고정 이름은 뗌
         self.assertIn({'where': '소비자 피해 예방', 'numbers': ['14']}, [{k: p[k] for k in ('where', 'numbers') if k in p} for p in L['problems']])
         self.assertFalse([p for p in L['problems'] if p['where'] in ('숫자로 보는 오늘', '법률·제도')])  # 30%·7일은 자료에 있는 숫자
-        self.assertTrue(sec.get('briefs'), sec.keys()); self.assertNotIn('없는 번호', json.dumps(sec['briefs'], ensure_ascii=False))
-        self.assertTrue(all(b['src']['url'] not in {it['src']['url'] for it in L['items']} for b in sec['briefs']))  # 자세히 푼 뉴스와 겹치지 않음
-        if len(sec['briefs']) > 1: self.assertIn({'where': '한 줄 뉴스 2', 'numbers': ['4321']}, [{k: p[k] for k in ('where', 'numbers') if k in p} for p in L['problems']])
+        c = sec['comment']  # 에디터 코멘트 (뉴닉식): 이름 없는 요점은 빼고, 자료에 없는 숫자는 검토 필요
+        self.assertEqual(c['title'], '오늘의 큰 이슈, 무슨 일이야?'); self.assertEqual([p['name'] for p in c['what']['points']], ['첫째']); self.assertTrue(c['srcs'])
+        self.assertIn({'where': '에디터 코멘트', 'numbers': ['777']}, [{k: p[k] for k in ('where', 'numbers') if k in p} for p in L['problems']])
         # 메일: HTML(표·인라인)과 글 두 가지, 원문·법령 링크, 해지 링크
         subject, html, text = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')
         icon = self.site.soboru_letter.TOPIC_ICON[it1['topic']][0]  # 분야를 남겨 분야 그림(토스페이스)을 붙임
-        self.assertIn(f'/static/img/tf/{icon}.png', html)
-        self.assertLess(html.index('soboru-wordmark-orange.png'), html.index('soboru-character-hero.png'))  # 머리는 소보루 레터 그림과 글자 로고, 캐릭터는 아래에서만
+        self.assertIn('editor-croissant.png', html)  # 에디터 크로와상 그림
+        self.assertLess(html.index('soboru-wordmark-orange.png'), html.index('editor-croissant.png'))  # 머리는 소보루 레터 그림과 글자 로고, 캐릭터는 아래에서만
         self.assertIn('이번 주 소비자 뉴스, 이것만 보면 끝', subject)
         for part in (html, text):
             self.assertIn('첫째 소식, 이것만 알면 돼요', part); self.assertIn(it1['src']['url'], part)
             self.assertIn('/letter/unsubscribe/tok-x', part); self.assertIn('https://www.law.go.kr/', part)
         self.assertIn('max-width:600px', html); self.assertIn('원문 보기 ›', html); self.assertNotIn('써 본 사람들이 추천한 리뷰', html)
         for part in (html, text):
-            for word in ('오늘의 경제 이슈', '한 줄로 보는 경제 뉴스', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '발행 정보', '발행인 소보루', '경제·소비자 관련 정보 제공', '매일 아침'):
+            for word in ('오늘의 뉴스', 'EDITOR\'S COMMENT', '무슨 일이야?', 'by. 에디터 크로와상', '해지하지 않으시면 계속 보내 드릴게요', '숫자로 보는 오늘', '소비자 피해 예방', '알아두면 좋은 법률·제도', '오늘의 경제 용어', '발행 정보', '발행인 소보루', '경제·소비자 관련 정보 제공', '매일 아침'):
                 self.assertIn(word, part)
         self.assertLess(html.index('id="n1"'), html.index('id="num"')); self.assertLess(html.index('id="num"'), html.index('id="harm"')); self.assertLess(html.index('id="harm"'), html.index('id="law"'))
         self.assertIn('서울시 강남구', html)  # 보내는 곳 주소 (사이트 하단 정보)
@@ -5274,11 +5279,11 @@ class SiteTest(unittest.TestCase):
         for i, it in enumerate(L['items']): form.update({f'title{i}': it['title'], f'body{i}': it['body'], f'tip{i}': it['tip']})
         form['body1'] = '숫자 없이 고쳤어요.'; form['drop2'] = '1'
         form['harm_steps'] = '주문 화면을 캡처해 두세요.\n1372 소비자상담센터에 상담해요.'; form['drop_number'] = '1'
-        form.update({f'drop_brief{i}': '1' for i in range(len(L['sections'].get('briefs') or []))})
+        form['comment_why'] = '여러 이유가 겹쳤다고 해요.'
         admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), **form})
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
-        self.assertEqual(len(L['items']), 4); self.assertTrue(L['check_ok'], L['problems'])
-        self.assertNotIn('number', L['sections']); self.assertEqual(len(L['sections']['harm']['steps']), 2); self.assertNotIn('briefs', L['sections'])
+        self.assertEqual(len(L['items']), 5); self.assertTrue(L['check_ok'], L['problems'])
+        self.assertNotIn('number', L['sections']); self.assertEqual(len(L['sections']['harm']['steps']), 2); self.assertEqual(L['sections']['comment']['why']['body'], '여러 이유가 겹쳤다고 해요.')
 
     def test_letter_stibee_api_send(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
@@ -5493,10 +5498,11 @@ class SiteTest(unittest.TestCase):
             mat = self.site.app.extensions['soboru_letter']['collect']()
         news = mat['news']
         titles = [x['title'] for x in news]
-        self.assertEqual([x['kind'] for x in news], ['econ', 'econ', 'econ', 'policy', 'policy'])  # 경제 이슈 3건 + 정책·제도 2건
-        self.assertEqual(titles[3:], heads['정부 정책'])
+        self.assertEqual([x['kind'] for x in news], ['econ', 'econ', 'econ', 'econ', 'policy', 'policy'])  # 경제 4건 + 정책·제도 2건 (뉴닉식 오늘의 뉴스 6)
+        self.assertEqual(titles[4:], heads['정부 정책'])
         self.assertEqual([x['title'] for x in mat['harm']], ['전기밥솥 화재 위험 리콜'])  # 피해 예방 뉴스는 따로
-        self.assertEqual(len(titles), 5)
+        self.assertEqual(len(titles), 6)
+        self.assertTrue(mat['comment'] and mat['comment'][0]['title'] == titles[0])  # 에디터 코멘트는 맨 앞 경제 이슈와 같은 이슈 기사들
         self.assertIn(titles[0][:4], ('지하철 ', '한국은행', '한은 기준', '기준금리'))  # 3곳이 다룬 이슈가 맨 앞
         self.assertEqual(sum('파업' in t for t in titles), 1)  # 같은 이슈는 하나만
         self.assertEqual(sum('동결' in t for t in titles), 1)
