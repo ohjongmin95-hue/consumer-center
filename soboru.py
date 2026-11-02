@@ -436,7 +436,11 @@ def install(S):
     def live_cards(n):
         """홈 '소비자의 소리' 카드 (운영자 요청 2026-10-30: 검은고양이처럼 콘텐츠 보듯이): 공개 제보는 본문 앞부분(개인정보 가림)과
         '나도 겪었어요'·댓글 수, 기업 답변 여부까지. 비밀글·공개 전 제보는 제목·업체·단계만 (본문 없음)"""
-        cases = [dict(c, look=report_look(c['cat'])) for c in S.report_rows(limit=n)]
+        return card_info(S.report_rows(limit=n))
+
+    def card_info(rows, excerpt=140):
+        """제보 목록 줄(report_rows)에 카드용 정보를 붙임: 본문 앞부분(공개 제보만, 개인정보 가림)·기업 답변 여부·'나도 겪었어요'·댓글 수"""
+        cases = [dict(c, look=report_look(c['cat'])) for c in rows]
         ids = [c['no'] for c in cases]
         if not ids: return cases
         q = ','.join('?' * len(ids))
@@ -449,8 +453,9 @@ def install(S):
             r = rows.get(c['no'])
             open_ = bool(r and r['public_consent'] and r['published'] and c['title'])
             body = ' '.join((r['public_body'] or S.mask_personal(r['description'] or '')).split()) if open_ else ''
-            c.update(open=open_, excerpt=body[:140], answered=c['no'] in first, metoo=talk.get(c['no'], (0, 0))[0], comments=talk.get(c['no'], (0, 0))[1])
+            c.update(open=open_, excerpt=body[:excerpt], answered=c['no'] in first, metoo=talk.get(c['no'], (0, 0))[0], comments=talk.get(c['no'], (0, 0))[1])
         return cases
+    app.jinja_env.globals['report_cards'] = card_info  # 소보루 제보 목록(/reports)도 홈처럼 카드로 (운영자 2026-11-03: 검은고양이처럼)
 
     def home_nn():
         # 뉴닉식 홈(운영자 요청, 2026-10-17): 맨 위는 소보루 소개만(건수 없음), 바로 아래 실시간 제보.

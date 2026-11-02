@@ -5,15 +5,25 @@
 <main>
   <section class="section reports-page" aria-labelledby="reports-heading">
     <div class="reports-head"><h1 id="reports-heading">{{ txt('home.list_title') }}</h1><span class="reports-head-btns"><a class="secondary" href="{{ url_for('companies') }}">{{ ui('companies.title', '기업별 제보') }}</a><a class="primary" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a></span></div>
-    <form class="report-tools" method="get" action="{{ url_for('reports') }}" role="search">
+    <form class="report-tools rf-tools" method="get" action="{{ url_for('reports') }}" role="search">
       <input name="q" type="search" aria-label="{{ txt('home.search_placeholder') }}" placeholder="{{ txt('home.search_placeholder') }}" value="{{ search_query }}">
-      <select name="category" aria-label="{{ ui('reports.all_types', '전체 유형') }}"><option value="">{{ ui('reports.all_types', '전체 유형') }}</option>{% for category in categories %}<option{% if category == selected_category %} selected{% endif %}>{{ category }}</option>{% endfor %}</select>
+      {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
       <button class="search-button" type="submit">{{ ui('reports.search', '검색') }}</button>
     </form>
     {% if open_groups %}<div class="group-banner">{% for gr in open_groups %}<a href="{{ url_for('group_page', group_id=gr['id']) }}"><span class="group-status s-open">{{ ui('groups.open_badge', '공동 대응 참여 모집') }}</span> {{ gr['title'] }} <small>{{ gr['company'] }}</small></a>{% endfor %}<a class="group-banner-all" href="{{ url_for('groups') }}">{{ ui('groups.all', '전체 보기 →') }}</a></div>{% endif %}
+    <nav class="rf-cats" aria-label="{{ ui('reports.all_types', '전체 유형') }}"><a href="{{ url_for('reports', q=search_query or None, sort=sort or None) }}"{% if not selected_category %} class="on" aria-current="true"{% endif %}>{{ ui('reports.cat_all', '전체') }}</a>{% for category in categories %}<a href="{{ url_for('reports', q=search_query or None, category=category, sort=sort or None) }}"{% if category == selected_category %} class="on" aria-current="true"{% endif %}>{{ category }}</a>{% endfor %}</nav>
     <nav class="sort-tabs" aria-label="{{ ui('reports.sort', '정렬') }}"><a href="{{ url_for('reports', q=search_query or None, category=selected_category or None) }}"{% if not sort %} class="on" aria-current="true"{% endif %}>{{ ui('reports.sort_new', '최신순') }}</a><a href="{{ url_for('reports', q=search_query or None, category=selected_category or None, sort='hot') }}"{% if sort %} class="on" aria-current="true"{% endif %}>{{ ui('reports.sort_hot', '공감 많은 순') }}</a></nav>
     {% set empty_text = txt('home.empty_search') if search_query or selected_category else txt('home.empty') %}
-    {% include 'report_rows.html' %}
+    <div class="rf-wrap">
+      <div class="rf-list">
+        {% set pub_badge = True %}{% for c in report_cards(cases, 220) %}{% include 'report_card.html' %}{% else %}<p class="nn-empty">{{ empty_text }}</p>{% endfor %}
+      </div>
+      <aside class="rf-side">
+        <div class="rf-box rf-cta"><b>{{ ui('reports.side_title', '피해를 겪으셨나요?') }}</b><p>{{ ui('reports.side_text', '제보를 올리면 기업에 전달하고, 같은 일을 겪은 사람들과 함께 대응할 수 있어요.') }}</p><a class="primary" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a></div>
+        <dl class="rf-box rf-stats"><div><dt>{{ ui('reports.stat_total', '전체') }}</dt><dd>{{ summary.total }}</dd></div><div><dt>{{ ui('reports.stat_active', '처리 중') }}</dt><dd>{{ summary.active }}</dd></div><div><dt>{{ ui('reports.stat_done', '종결') }}</dt><dd>{{ summary.done }}</dd></div></dl>
+        <a class="rf-box rf-link" href="{{ url_for('companies') }}">{{ ui('companies.title', '기업별 제보') }} <span aria-hidden="true">›</span></a>
+      </aside>
+    </div>
     {% if pages > 1 %}
     <nav class="pager" aria-label="페이지">
       {% if page > 1 %}<a href="{{ url_for('reports', q=search_query or None, category=selected_category or None, sort=sort or None, page=page - 1) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}
