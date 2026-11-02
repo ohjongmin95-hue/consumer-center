@@ -24,6 +24,7 @@ import soboru_writer as W
 
 SITE = W.SITE
 NAME = '소보루 레터'
+SUBJECT_MARK = '🍞'      # 메일 제목 맨 앞 우리 표시 — 받은편지함에서 한눈에 (운영자 2026-11-02, 어피티 💰처럼)
 DAYS = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
 ITEMS = (3, 6)            # 한 호 '오늘의 뉴스' 최소·최대 개수 — 개수는 고정 아님, 기사가 많이 쏟아진 주요 이슈만 (운영자 2026-11-01)
 MIN_COVER = 3             # 같은 소식을 다룬 다른 기사가 이만큼은 있어야 '주요 이슈'로 봄 (최소 개수를 못 채우면 많은 순으로 채움)
@@ -290,6 +291,9 @@ class Skip(Exception):
 def stamp(): return datetime.datetime.now().isoformat(timespec='seconds')
 
 
+def mail_subject(L): return f"{SUBJECT_MARK}[{NAME}] {L['title']}"
+
+
 def site_url(path=''): return (os.getenv('SITE_URL', '').strip() or SITE).rstrip('/') + path
 
 
@@ -434,7 +438,7 @@ def install(S):
         eid = L.get('stibee_id')
         if not eid:
             st, res = stibee_call('POST', '/emails', {'listId': cfg['stibee_list'], 'senderEmail': cfg['stibee_sender'], 'senderName': cfg['stibee_name'],
-                                                     'subject': f"[{NAME}] {L['title']}"})
+                                                     'subject': mail_subject(L)})
             try: eid = int(json.loads(res)['id'])
             except (ValueError, KeyError, TypeError): return {'status': 'error', 'reason': f'스티비에 이메일을 만들지 못했어요 ({st}) {res[:120]}'}
             with conn() as db: db.execute('UPDATE letters SET stibee_id=? WHERE id=?', (eid, L['id']))
@@ -1048,7 +1052,7 @@ def install(S):
         html = app.jinja_env.get_template('letter_email.html').render(**ctx)
         text = app.jinja_env.get_template('letter_email.txt').render(**ctx)
         if token == UNSUB_MARK: html = tracked(html, L['no'])
-        return f"[{NAME}] {L['title']}", html, text
+        return mail_subject(L), html, text
 
     def stibee_html(L):
         """스티비 'HTML 에디터로 만들기'에 붙여 넣을 코드: html·head·body·meta 태그는 스티비가 막으므로 빼고 바탕색은 바깥 div로, 수신 거부는 스티비 치환자."""
@@ -1448,7 +1452,7 @@ def install(S):
         with conn() as db:
             sends = dict(db.execute('SELECT status,COUNT(*) FROM letter_sends WHERE letter_id=? GROUP BY status', (lid,)).fetchall())
         return render_template('admin_letter_edit.html', L=L, via=settings()['via'], preview=html, subject=subject, mail_ready=notify.email_ready(), counts=counts(), sends=sends,
-                               stats=stats(lid), stibee=stibee_html(L), stibee_subject=f"[{NAME}] {L['title']}",
+                               stats=stats(lid), stibee=stibee_html(L), stibee_subject=mail_subject(L),
                                test_to=os.getenv('ADMIN_ALERT_EMAIL', '').split(',')[0].strip())
 
     def join_consent(email, verified):

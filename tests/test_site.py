@@ -5314,7 +5314,7 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, {'STIBEE_API_KEY': 'stb-test'}), patch.object(self.site.soboru_letter, 'stibee_call', fake):
             self.assertEqual(send(r['id'])['status'], 'sent')
         self.assertEqual([c[:2] for c in calls], [('POST', '/emails'), ('POST', '/emails/777/content'), ('POST', '/emails/777/send')])
-        self.assertEqual(calls[0][2]['listId'], 4321); self.assertTrue(calls[0][2]['subject'].startswith('[소보루 레터]'))
+        self.assertEqual(calls[0][2]['listId'], 4321); self.assertTrue(calls[0][2]['subject'].startswith('🍞[소보루 레터]'))
         self.assertEqual(calls[1][3], 'text/html'); self.assertIn('$%unsubscribe%$', calls[1][2]); self.assertIn('<body>', calls[1][2])
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
         self.assertEqual((L['status'], L['trigger'], L['stibee_id']), ('sent', 'stibee', 777))
@@ -5637,7 +5637,7 @@ class SiteTest(unittest.TestCase):
             html, text = m.get_body(('html',)).get_content(), m.get_body(('plain',)).get_content()
             self.assertIn(f'/letter/unsubscribe/{token}', html); self.assertIn(f'/letter/unsubscribe/{token}', text)
             self.assertNotIn('__LETTER_UNSUB__', html + text)
-            self.assertTrue(m['Subject'].startswith('[소보루 레터]'))
+            self.assertTrue(m['Subject'].startswith('🍞[소보루 레터]'))
         sent = L['get'](r['id'])
         self.assertEqual((sent['status'], sent['sent_count'], sent['failed']), ('sent', 2, 0)); self.assertTrue(sent['sent_at'])
         # 공개 보관함·웹 버전·사이트맵
