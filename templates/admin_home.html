@@ -8,25 +8,26 @@
   </header>
 
   {% set new_reports = counts.get(STATUSES[0], 0) %}
-  <section class="ad-todo" aria-label="확인할 일">
-    <a class="ad-todo-item{% if new_reports %} is-on{% endif %}" href="{{ url_for('admin_reports', status=STATUSES[0]) }}"><b>{{ new_reports }}</b><span>새로 접수된 제보</span></a>
-    <a class="ad-todo-item{% if stats.flagged %} is-on{% endif %}" href="{{ url_for('admin_board') }}"><b>{{ stats.flagged }}</b><span>신고된 게시글·댓글</span></a>
-    <a class="ad-todo-item{% if stats.takedowns %} is-on{% endif %}" href="{{ url_for('admin_takedowns') }}"><b>{{ stats.takedowns }}</b><span>처리할 게시중단 요청</span></a>
-    <a class="ad-todo-item{% if ops.n_requests %} is-on{% endif %}" href="{{ url_for('admin_requests') }}"><b>{{ ops.n_requests }}</b><span>정정·삭제·이의 신청</span></a>
-    <a class="ad-todo-item{% if ops.n_late %} is-on{% endif %}" href="#late"><b>{{ ops.n_late }}</b><span>{{ ops.delay_days }}일 넘게 멈춘 제보</span></a>
+  {# 운영자 2026-11-03: 토스 콘솔처럼 '확인이 필요한 일'을 흰 카드 하나에 한 줄씩. 숫자는 검은 글씨, 있으면 빨간 점, 0건은 흐리게 #}
+  {% set todos = [(new_reports, url_for('admin_reports', status=STATUSES[0]), '새로 접수된 제보'), (stats.flagged, url_for('admin_board'), '신고된 게시글·댓글'), (stats.takedowns, url_for('admin_takedowns'), '처리할 게시중단 요청'), (ops.n_requests, url_for('admin_requests'), '정정·삭제·이의 신청'), (ops.n_late, '#late', ops.delay_days ~ '일 넘게 멈춘 제보')] %}
+  <section class="ad-panel ad-todo-card" aria-labelledby="ad-todo-h">
+    <h2 id="ad-todo-h">확인이 필요한 일</h2>
+    <ul class="ad-todo-list">{% for n, href, label in todos|sort(attribute='0', reverse=True) %}
+      <li><a class="{{ 'is-on' if n else 'is-zero' }}" href="{{ href }}"><span class="ad-todo-l">{% if n %}<i class="ad-dot" aria-hidden="true"></i>{% endif %}{{ label }}</span><b>{{ n }}건</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></li>{% endfor %}
+    </ul>
   </section>
 
   {% if ops.late %}
   <section class="ad-panel" id="late">
-    <div class="ad-panel-head"><h2>처리 지연 제보</h2><a class="ad-link" href="{{ url_for('admin_stats') }}">운영 통계 →</a></div>
+    <div class="ad-panel-head"><h2>처리 지연 제보</h2><a class="ad-link" href="{{ url_for('admin_stats') }}">운영 통계 ›</a></div>
     <p class="cs-hint">종결 전인데 {{ ops.delay_days }}일 넘게 처리 기록·메시지가 없는 제보예요. 오래된 순서예요.</p>
-    <ul class="ops-dups">{% for c in ops.late %}<li><a href="{{ url_for('admin_report', case_id=c['id']) }}"><span class="mono">{{ c['receipt'] }}</span> {{ c['subject'] }}</a><span>{{ c['company'] }} · {{ c['status'] }} · 마지막 기록 {{ c['last'][:10]|replace('-', '.') }}</span></li>{% endfor %}</ul>
+    <ul class="ad-rows">{% for c in ops.late %}<li><a href="{{ url_for('admin_report', case_id=c['id']) }}"><span class="ad-row-main"><b>{{ c['subject'] }}</b><small>{{ c['company'] }} · 마지막 기록 {{ c['last'][:10]|replace('-', '.') }}</small></span><span class="ad-row-side"><em>{{ c['status'] }}</em><small>{{ c['receipt'] }}</small></span></a></li>{% endfor %}</ul>
   </section>
   {% endif %}
 
   <div class="ad-grid-2">
     <section class="ad-panel">
-      <div class="ad-panel-head"><h2>제보 현황</h2><a class="ad-link" href="{{ url_for('admin_reports') }}">제보 처리 →</a></div>
+      <div class="ad-panel-head"><h2>제보 현황</h2><a class="ad-link" href="{{ url_for('admin_reports') }}">제보 처리 ›</a></div>
       <div class="ad-kpis">
         <div><span>최근 7일 접수</span><b>{{ stats.new_cases }}</b></div>
         <div><span>처리 중</span><b>{{ stats.open_cases }}</b></div>
