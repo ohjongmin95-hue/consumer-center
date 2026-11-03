@@ -8,7 +8,7 @@
 - 자격증 사진(증빙)은 관리자만 볼 수 있다. 관리자는 언제든 표시를 멈추거나 다시 켤 수 있다.
 """
 import datetime
-import random, os, secrets, uuid
+import random, os, secrets, threading, uuid
 
 from flask import abort, flash, g, redirect, render_template, request, send_file, session, url_for
 
@@ -133,7 +133,23 @@ def install(S):
             else:
                 eid = db.execute('INSERT INTO experts(user_id,name,field,org,intro,phone,email,career,proof,proof2,photo,kind,status,claim,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                                  (uid, *f.values(), proof, proof2, photo, kind, status, claim, now())).lastrowid
+        alert_new_expert(eid, f, kind, status)
         return eid, status, claim
+
+    def alert_new_expert(eid, f, kind, status):
+        """운영자 2026-11-03 (밤): 자문단 가입이 들어오면 바로 하이웍스 메일(contact@)로 알림. EXPERT_ALERT_EMAIL로 바꿀 수 있음."""
+        to = [e.strip() for e in (os.getenv('EXPERT_ALERT_EMAIL') or 'contact@consumerjebo.co.kr').split(',') if '@' in e]
+        if not to or not S.notify.email_ready(): return
+        state = '초대 링크로 가입해 바로 자문단이 됐어요' if status == 'approved' else '직접 신청했어요. 자격 파일을 보고 승인해 주세요'
+        link = S.canonical_url(url_for('admin_experts'))
+        subject = f"[{S.notify.site_name()}] 새 자문단 가입: {f['name']} {f['field']}"
+        body = (f"새 자문단 가입이 들어왔어요.\n\n■ 이름: {f['name']} ({f['field']}{', 사무소·법인' if kind == 'firm' else ''})\n■ 소속: {f['org'] or '-'}\n"
+                f"■ 연락처: {f['phone'] or '-'} / {f['email'] or '-'}\n■ 한 줄 소개: {f['intro'] or '-'}\n■ 상태: {state}\n\n관리자 화면에서 확인해 주세요.\n{link}")
+        def run():
+            for e in to:
+                try: S.notify.send_email(e, subject, body)
+                except Exception as ex: app.logger.warning('expert alert mail failed: %s', ex)
+        threading.Thread(target=run, daemon=True).start()
 
     def form_page(invite=None, f=None):
         people = [r for r in helpers(12) if r['kind'] == 'person' and r['photo_url']]; random.shuffle(people)

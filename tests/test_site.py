@@ -397,18 +397,40 @@ class SiteTest(unittest.TestCase):
         self.assertIn('href="/explore"', home); self.assertNotIn('>전문가<', home)
 
     def test_expert_mail_builder(self):
-        # 운영자 2026-11-03 (밤): 관리자에서 자문단 섭외 메일 코드 만들기 (법인 이름 넣기, 문구 고쳐 저장)
+        # 운영자 2026-11-03 (밤): 관리자에서 자문단 섭외 메일을 화면에서 바로 고쳐 저장, 법인 이름은 화면에서 넣음
         adm = self.login_admin()
-        page = adm.get('/admin/experts/mail?firm=법무법인 한결').get_data(as_text=True)
-        self.assertIn('법무법인 한결 귀중', page)
-        self.assertIn('https://consumerjebo.co.kr/expert/apply', page)
-        self.assertEqual(self.post_form(adm, '/admin/experts/mail', {'act': 'save', 'kick': '새 작은 글씨', 'cta': '참여하기', 'title': '○○ 법무법인 귀중', 'sign': '<script>x</script>'}).status_code, 302)
         page = adm.get('/admin/experts/mail').get_data(as_text=True)
-        self.assertIn('새 작은 글씨', page)
-        self.assertNotIn('<script>x</script>', page)
+        self.assertIn('○○ 법무법인 귀중', page)
+        self.assertIn('https://consumerjebo.co.kr/expert/apply', page)
+        self.assertEqual(self.post_form(adm, '/admin/experts/mail', {'act': 'save', 'subject': '새 제목', 'html': '<p onclick="x()">고친 ○○ 법무법인 메일</p><script>bad()</script>'}).status_code, 302)
+        page = adm.get('/admin/experts/mail').get_data(as_text=True)
+        self.assertIn('고친 ○○ 법무법인 메일', page)
+        self.assertIn('새 제목', page)
+        self.assertNotIn('bad()', page)
+        self.assertNotIn('&lt;p onclick', page)
         self.post_form(adm, '/admin/experts/mail', {'act': 'reset'})
         self.assertIn('소보루 자문단 모집', adm.get('/admin/experts/mail').get_data(as_text=True))
-        self.assertEqual(self.client.get('/admin/experts/mail').status_code in (302, 401, 403, 404), True)
+        self.assertIn(self.client.get('/admin/experts/mail').status_code, (302, 401, 403, 404))
+
+    def test_expert_signup_alert_mail(self):
+        # 운영자 2026-11-03 (밤): 자문단이 가입하면 하이웍스 메일(contact@)로 바로 알림
+        import experts as X
+        from PIL import Image
+        adm = self.login_admin()
+        self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '최변호', 'field': '변호사'})
+        with self.site.conn() as db: token = db.execute("SELECT token FROM experts WHERE name='최변호'").fetchone()[0]
+        class Now:
+            def __init__(self, target, daemon=None): self.t = target
+            def start(self): self.t()
+        sent = []
+        pic = io.BytesIO(); Image.new('RGB', (300, 300), 'blue').save(pic, 'JPEG'); pic.seek(0)
+        with patch.object(self.site.notify, 'email_ready', lambda: True), patch.object(self.site.notify, 'send_email', lambda to, subj, body, **k: sent.append((to, subj, body))), patch.object(X.threading, 'Thread', Now):
+            pro = self.site.app.test_client()
+            self.post_form(pro, '/expert/join/' + token, {'name': '최변호', 'field': '변호사', 'email': 'choi@x.kr', 'agree': '1',
+                                                          'proof': (io.BytesIO(b'%PDF-1.4 t'), 'l.pdf'), 'photo': (pic, 'me.jpg')})
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0][0], 'contact@consumerjebo.co.kr')
+        self.assertIn('최변호', sent[0][1]); self.assertIn('choi@x.kr', sent[0][2])
 
     def test_expert_invite(self):
         # 운영자 2026-11-03: 흑묘 도우미단처럼 제보자가 자문단을 불러요 (기업 답변이 있거나 기한이 지난 제보, 3명까지)

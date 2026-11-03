@@ -1,6 +1,6 @@
 # 운영자 2026-11-03 (밤): 관리자 '자문단 섭외 메일'. 로펌마다 이름만 넣으면 하이웍스에 붙일 HTML 코드가 나옴.
 # 문구는 관리자에서 고쳐 저장 (soboru_settings 'expert_mail'). 메일 안 링크·사진은 consumerjebo.co.kr 주소 그대로라 전달해도 작동.
-import html, json
+import html, json, re
 
 from flask import flash, redirect, render_template, request, url_for
 
@@ -36,7 +36,7 @@ DEFAULTS = {
     'cta_sub': '변호사님별로 소속·분야·사진·변호사 등록증만 올리면 돼요 (3분)',
     'sign': '전달해 주시는 것만으로도 큰 힘이 됩니다. 궁금한 점은 이 메일로 답장 주세요.\n감사합니다.\n\n**오종민 드림**\n소비자제보센터 by SOBORU 대표',
 }
-LABELS = [('subject', '메일 제목', 1), ('kick', '맨 위 작은 글씨', 1), ('title', '큰 제목 (○○ 법무법인 자리에 이름이 들어가요)', 2),
+_LABELS = [('subject', '메일 제목', 1), ('kick', '맨 위 작은 글씨', 1), ('title', '큰 제목 (○○ 법무법인 자리에 이름이 들어가요)', 2),
           ('intro', '인사·소개 (빈 줄로 문단을 나눠요)', 8), ('flow_title', '해결 과정 제목', 1), ('flow', '해결 과정 (한 줄에 하나, 제목 | 설명)', 4),
           ('ask', '모집 안내', 4), ('do_title', '하는 일 제목', 1), ('do', '하는 일 (한 줄에 하나, 제목 | 설명)', 4),
           ('get_title', '좋은 점 제목', 1), ('get', '좋은 점 (한 줄에 하나)', 3), ('note', '참여 안내', 2),
@@ -116,7 +116,14 @@ def install(S):
         with conn() as db: row = db.execute('SELECT value FROM soboru_settings WHERE key=?', (KEY,)).fetchone()
         try: saved = json.loads(row[0]) if row else {}
         except ValueError: saved = {}
-        return {k: saved.get(k, v) if isinstance(saved.get(k, v), str) else v for k, v in DEFAULTS.items()}
+        return saved if isinstance(saved, dict) else {}
+
+    def clean_html(h):
+        """관리자가 메일 화면에서 바로 고친 HTML. 스크립트·이벤트 속성만 걷어 냄."""
+        h = re.sub(r'(?is)<(script|style|iframe|object|embed)\b.*?(</\1>|$)', '', h or '')
+        h = re.sub(r'(?i)\s+on[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)', '', h)
+        h = re.sub(r'(?i)\s+contenteditable\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)', '', h)
+        return re.sub(r'(?i)javascript:', '', h)[:200000]
 
     @app.route('/admin/experts/mail', methods=['GET', 'POST'])
     @S.admin_only
@@ -125,13 +132,13 @@ def install(S):
             act = request.form.get('act')
             with conn() as db:
                 if act == 'reset':
-                    db.execute('DELETE FROM soboru_settings WHERE key=?', (KEY,)); flash('처음 문구로 되돌렸어요.')
+                    db.execute('DELETE FROM soboru_settings WHERE key=?', (KEY,)); flash('처음 메일로 되돌렸어요.')
                 else:
-                    c = {k: (request.form.get(k) or '').replace('\r\n', '\n').strip()[:4000] for k, _, _ in LABELS}
-                    c['sample'] = '1' if request.form.get('sample') else '0'
+                    c = {'subject': ' '.join((request.form.get('subject') or '').split())[:200] or DEFAULTS['subject'],
+                         'html': clean_html(request.form.get('html'))}
                     db.execute('INSERT OR REPLACE INTO soboru_settings(key,value) VALUES(?,?)', (KEY, json.dumps(c, ensure_ascii=False)))
                     flash('저장했어요.')
-            return redirect(url_for('admin_expert_mail', firm=request.form.get('firm', '')))
-        c, firm = load(), (request.args.get('firm') or '').strip()[:40]
-        return render_template('admin_expert_mail.html', c=c, labels=LABELS, firm=firm, placeholder=FIRM,
-                               mail_html=build(c, firm), mail_template=build(c, FIRM), subject=c['subject'].replace(FIRM, firm or FIRM))
+            return redirect(url_for('admin_expert_mail'))
+        saved = load()
+        tpl = saved.get('html') or build(DEFAULTS, FIRM)
+        return render_template('admin_expert_mail.html', placeholder=FIRM, mail_template=tpl, subject=saved.get('subject') or DEFAULTS['subject'])
