@@ -10,9 +10,12 @@
   <a class="xs-feat" href="{{ url_for('companies_rank') }}">
     <div class="xs-feat-art" aria-hidden="true">
       {# 운영자 2026-11-03: 진한 귤색 바탕 + 휴대폰 화면(아래가 잘림) + 그 위에 떠 있는 카드 하나 #}
-      <div class="xs-phone"><div class="xs-screen">
-        <p class="xs-scr-t">{{ ui('explore.rank', '기업 응대 순위') }}</p>
-        {% for n, w, d in [('1', 92, '0.8일'), ('2', 74, '1.4일'), ('3', 58, '2.1일'), ('4', 40, '3.5일')] %}<div class="xs-rank-row"><b>{{ n }}</b><span class="xs-rank-co">소보루{{ ['쇼핑', '항공', '통신', '가전'][loop.index0] }}</span><span class="xs-rank-bar"><i style="width:{{ w }}%"></i></span><small>{{ d }}</small></div>{% endfor %}
+      {# 운영자 2026-11-03: 아이폰 그대로 — 티타늄 테두리·옆 버튼·검은 베젤, 전면 카메라 없음, 상태 표시줄과 실제 앱 화면 #}
+      <div class="xs-phone xs-iphone"><i class="ip-btn ip-act"></i><i class="ip-btn ip-vu"></i><i class="ip-btn ip-vd"></i><i class="ip-btn ip-pw"></i><div class="xs-screen">
+        <div class="ip-status"><b>9:41</b><span><svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 16 12" aria-hidden="true"><path d="M8 11.5l2.4-2.9a3.6 3.6 0 0 0-4.8 0z"/><path d="M8 5.6c1.9 0 3.6.7 4.9 1.9l1.5-1.8A9.4 9.4 0 0 0 8 3.2 9.4 9.4 0 0 0 1.6 5.7l1.5 1.8A7.2 7.2 0 0 1 8 5.6z"/></svg><span class="ip-bat"><i></i></span></span></div>
+        <p class="ip-app"><span>‹</span>{{ ui('explore.rank', '기업 응대 순위') }}</p>
+        <div class="ip-tabs"><b>{{ ui('explore.rank_fast', '답변 빠른 순') }}</b><span>{{ ui('explore.rank_slow', '늦은 순') }}</span></div>
+        {% for n, w, d, c in [('1', 92, '0.8일', '#3182f6'), ('2', 74, '1.4일', '#f04452'), ('3', 58, '2.1일', '#00b493'), ('4', 40, '3.5일', '#8b5cf6')] %}<div class="ip-row"><b>{{ n }}</b><span class="ip-logo" style="background:{{ c }}">{{ ['쇼', '항', '통', '가'][loop.index0] }}</span><span class="ip-co">소보루{{ ['쇼핑', '항공', '통신', '가전'][loop.index0] }}<span class="xs-rank-bar"><i style="width:{{ w }}%"></i></span></span><small>{{ d }}</small></div>{% endfor %}
       </div></div>
       <div class="xs-float"><span class="xs-float-ic">1</span><div><small>{{ ui('explore.feat_float_s', '답변이 가장 빠른 기업') }}</small><b>{{ ui('explore.feat_float', '소보루쇼핑 평균 0.8일') }}</b></div></div>
     </div>
