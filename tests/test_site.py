@@ -329,6 +329,24 @@ class SiteTest(unittest.TestCase):
             row = db.execute('SELECT c.company,co.name FROM cases c LEFT JOIN companies co ON co.id=c.company_id WHERE c.id=?', (cid,)).fetchone()
         self.assertEqual(tuple(row), ('쿠팡', '쿠팡'))
 
+    def test_company_web_email(self):
+        # 운영자 2026-11-03: 기업 공식 홈페이지에서 고객센터·홍보팀 메일을 찾아 연결. 채용·광고·개인정보·noreply·다른 회사 메일은 안 씀
+        import company_web_email as w
+        page = ('<footer>고객센터 1577-0000 | 이메일 : help@coupang.com <a href="mailto:press@coupangcorp.com">보도자료 문의</a> '
+                'recruit@coupang.com privacy@coupang.com noreply@coupang.com ads@coupang.com contact@agency.co.kr logo@2x.png abc@naver.com</footer>')
+        self.assertEqual(w.emails_on(page, 'coupang.com'), [('help@coupang.com', 'cs'), ('press@coupangcorp.com', 'pr')])
+        with self.site.conn() as db:
+            a = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created,domain,official_email,email_source) VALUES('웹몰A','','listed','','','','2026-11-03','weba.com','ftc@weba.com','공정위 통신판매 신고 정보')").lastrowid
+            b = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created,domain,official_email,email_source) VALUES('웹몰B','','listed','','','','2026-11-03','webb.com','boss@webb.com','')").lastrowid
+        fake = lambda d: ('cs@' + d, 'cs', 'https://' + d + '/help', [('cs@' + d, 'cs', 'https://' + d + '/help'), ('pr@' + d, 'pr', 'https://' + d + '/')])
+        w.run(finder=fake, say=lambda *_: None, force=True)
+        with self.site.conn() as db:
+            ra = db.execute('SELECT official_email,email_source FROM companies WHERE id=?', (a,)).fetchone()
+            rb = db.execute('SELECT official_email FROM companies WHERE id=?', (b,)).fetchone()
+        self.assertEqual(tuple(ra), ('cs@weba.com', '공식 홈페이지(고객센터)'))
+        self.assertEqual(rb['official_email'], 'boss@webb.com')  # 관리자가 넣은 메일은 그대로
+        self.assertIn('pr@webb.com(홍보팀)', self.login_admin().get('/admin/companies').get_data(as_text=True))
+
     def test_report_talk_ai_draft(self):
         # 대화로 제보하기 (운영자 2026-11-03): AI가 되물을 것과 초안을 주고, 업종·유형은 목록 안에서만, 개인정보는 지움. 접수는 기존 /report로
         page = self.client.get('/report/talk').get_data(as_text=True)

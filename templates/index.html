@@ -15,7 +15,6 @@
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
       <a class="primary" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
     </div>
-    <p class="hw-note">{{ ui('home.wall_note', '소비자들이 올린 실제 제보 사진이에요.') }}</p>
   </section>
 
   {% elif block.kind in ('hero', 'hero_plain') %}

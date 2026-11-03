@@ -82,3 +82,67 @@ body:not(.sb){--sb-orange:#e8890c;--sb-mute:#8b95a1;--sb-sub:#4e5968;--sb-line:#
   .hw-grid figure:nth-child(n+7),.hw-few figure:nth-child(n+4){display:none}
   .hw-few{grid-template-rows:1fr}
   .hw-grid figure{border-radius:12px}.hw-grid figcaption{display:none}}
+/* 2026-11-03 운영자: 'by SOBORU'의 SOBORU를 검은 글씨 대신 갈색 로고로 (머리글·바닥글) */
+.brand-by{display:inline-flex;align-items:center;gap:4px}
+.brand-by img{display:block;height:.95em;width:auto}
+.ft-logo{display:inline-flex;align-items:baseline}
+.ft-logo .brand-by{margin-left:8px;font-size:11px;font-weight:700;letter-spacing:.1em;color:#652D1C;align-self:center}
+.ft-logo .brand-by img{height:12px}
+.site-header .brand .brand-by{color:#652D1C}
+.site-header .brand .brand-by img{height:12px}
+@media(max-width:420px){.site-header .brand .brand-by img{height:10px}}
+/* 2026-11-03 공개 제보 화면 (소비자제보센터): 토스처럼 깔끔하게, 귤색 포인트 (public_case.html) */
+.pc-page{padding-top:28px}
+.pc-wrap{max-width:720px!important;display:grid;gap:12px}
+.pc-back{display:inline-flex;align-items:center;gap:4px;justify-self:start;color:#6b7684;font-size:15px;font-weight:600;padding:6px 0;margin-bottom:4px}
+.pc-back svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pc-head,.pc-card,.pc-page .case-talk{background:#fff;border:0;border-radius:24px;padding:28px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.pc-who{display:flex;align-items:center;gap:12px}
+.pc-who .nn-vc-av{width:44px;height:44px}
+.pc-who-t{display:grid;gap:2px;flex:1;min-width:0}
+.pc-who-t b{font-size:15px;color:#191f28}
+.pc-who-t time{font-size:13px;color:#8b95a1}
+.pc-title{margin:20px 0 18px;font-size:26px;line-height:1.38;letter-spacing:-.8px;font-weight:800;color:#191f28;word-break:keep-all;overflow-wrap:anywhere;text-wrap:balance}
+.pc-meta{margin:0;display:grid;gap:10px;padding:16px 18px;border-radius:16px;background:#f9fafb}
+.pc-meta>div{display:flex;align-items:center;gap:12px;min-width:0}
+.pc-meta dt{flex:none;width:64px;font-size:14px;color:#8b95a1}
+.pc-meta dd{margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;font-size:15px;font-weight:700;color:#333d4b}
+.pc-co{display:inline-flex;align-items:center;gap:2px;font-weight:800;color:#191f28}
+a.pc-co:hover{color:#CE6719}
+.pc-co svg{width:16px;height:16px;fill:none;stroke:#b0b8c1;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pc-steps{list-style:none;margin:22px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pc-steps li{display:grid;gap:8px;font-size:13px;font-weight:700;color:#b0b8c1;text-align:center}
+.pc-steps i{display:block;height:6px;border-radius:6px;background:#eef0f3}
+.pc-steps li.done i,.pc-steps li.now i{background:#EF920E}
+.pc-steps li.done{color:#CE6719}.pc-steps li.now{color:#191f28}
+.pc-card h2,.pc-page .case-talk h2{margin:0 0 14px;font-size:19px;font-weight:800;letter-spacing:-.4px;color:#191f28}
+.pc-body{margin:0;white-space:pre-line;font-size:16.5px;line-height:1.8;color:#333d4b;overflow-wrap:anywhere}
+.pc-want{margin-top:22px;padding:18px 20px;border-radius:16px;background:#fff6ea}
+.pc-want b{display:block;margin-bottom:6px;font-size:14px;color:#CE6719}
+.pc-want .pc-body{font-size:15.5px;line-height:1.7}
+.pc-ans+.pc-ans{margin-top:18px;padding-top:18px;border-top:1px solid #f2f4f6}
+.pc-ans-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 10px;font-size:15px}
+.pc-ans-head b{color:#191f28}
+.pc-ans-head time{margin-left:auto;font-size:13px;color:#8b95a1}
+.pc-ans-head .ca-verified{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#CE6719}
+.pc-ans-head .ca-verified svg{width:14px;height:14px}
+.pc-wait{display:flex;align-items:center;gap:10px;padding:16px 18px;border-radius:16px;background:#f9fafb;font-size:15px;font-weight:600;color:#4e5968}
+.pc-wait-dot{width:8px;height:8px;border-radius:50%;background:#EF920E;box-shadow:0 0 0 4px #fde7c8}
+.pc-hist ol{list-style:none;margin:0;padding:0 0 0 16px;border-left:2px solid #f2f4f6;display:grid;gap:16px}
+.pc-hist li{position:relative;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:15px}
+.pc-hist li::before{content:"";position:absolute;left:-22px;top:6px;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #EF920E}
+.pc-hist li b{color:#191f28}
+.pc-hist time{font-size:13px;color:#8b95a1}
+.pc-hist p{flex-basis:100%;margin:0;font-size:14px;line-height:1.6;color:#4e5968}
+.pc-page .case-talk{margin:0}
+.pc-page .talk-count{font-size:16px}
+@media(max-width:680px){
+  .pc-page{padding-top:12px}
+  .pc-head,.pc-card,.pc-page .case-talk{border-radius:20px;padding:22px 20px}
+  .pc-title{font-size:22px;margin:16px 0 14px}
+  .pc-body{font-size:16px}
+  .pc-meta dt{width:56px;font-size:13px}
+}
+/* 2026-11-03 운영자: 큰 제목 밑 회색 부연 설명은 빼기 (소비자제보센터 전체). 문구 자체는 관리자에 남아 있음 */
+body:not(.sb) .page-intro>.page-title+p:not(.co-tags):not(.public-case-meta),
+body:not(.sb) .info-intro,body:not(.sb) .guide-intro>p,body:not(.sb) .gd-lead,body:not(.sb) .co-verified-note{display:none}

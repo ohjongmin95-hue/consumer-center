@@ -527,9 +527,10 @@ def public_case(case_id):
         answers=db.execute("SELECT m.body,m.created,m.edited,m.source,co.name AS company_name FROM messages m JOIN cases c ON c.id=m.case_id LEFT JOIN companies co ON co.id=c.company_id WHERE m.case_id=? AND m.author='기업 답변' AND m.public=1 ORDER BY m.id",(case_id,)).fetchall()
         events,step,has_answer=jebo.timeline(db,case,mask_personal)
         co=jebo.visible_company(db,case['company_id']) if case['company_id'] else None
+        author=db.execute("SELECT id,nickname FROM users WHERE id=? AND status='active'",(case['user_id'],)).fetchone() if case['user_id'] else None  # 작성자 닉네임 (목록 카드와 같게)
     text=jebo.pub(case,mask_personal)
     return render_template('public_case.html',case=case,answers=answers,grp=grp,group_statuses=GROUP_STATUSES,company=co['name'] if co else mask_personal(case['company']),co=co,
-                           subject=text['subject'],description=text['body'],request_text=text['request'],events=events,step=step,has_answer=has_answer,category=jebo.cat_label(case['category']))
+                           subject=text['subject'],description=text['body'],request_text=text['request'],events=events,step=step,has_answer=has_answer,category=jebo.cat_label(case['category']),author=author)
 
 CUSTOM_SLUG=re.compile(r'^[a-z0-9][a-z0-9-]{0,39}$')
 def page_layout(page):
@@ -2814,6 +2815,7 @@ import site_visits;site_visits.install(types.SimpleNamespace(**globals()))  # �
 import soboru_examples;soboru_examples.auto(types.SimpleNamespace(**globals()))
 import company_logo;_cl=types.SimpleNamespace(**globals());company_logo.install(_cl);company_set_domain=_cl.company_set_domain  # 기업 로고: 도메인에서 자동으로 (company_logo.py)
 import company_mail;company_mail.auto(types.SimpleNamespace(**globals()))
+import company_web_email;company_web_email.install(types.SimpleNamespace(**globals()))  # 기업 홈페이지에서 고객센터·홍보 메일 찾기 (company_web_email.py)
 company_fix.fix_old_cases(conn,link_company)  # 예전 제보의 큰 기업 이름 오타도 고침 (company_fix.py)
 link_all_cases()  # 큰 기업 미리 등록: 처음 배포할 때 한 번만 (company_mail.py, data/companies_seed.csv)  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
 
