@@ -276,6 +276,14 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('hero-device', home); self.assertIn('video/talk-screen.mp4', home); self.assertNotIn('실제 제보 영상', home)
 
+    def test_guide_toss_jebo(self):
+        # 운영자 2026-11-03: 제보센터 이용 안내 = 토스식 + '대화로 제보하기' 화면 영상 + 업종 칩
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        page = self.client.get('/guide', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        for text in ('tg-page', 'video/talk-screen.mp4', 'data-tg-i="0"', '이 세 가지만'):
+            self.assertIn(text, page)
+        self.assertNotIn('tg-page', self.client.get('/guide').get_data(as_text=True))  # 소보루 화면은 그대로
+
     def test_hero_photos_wall(self):
         # 첫 화면 사진 (운영자 2026-11-03): 관리자가 고른 제보 사진의 가린 사본만 공개, 3장부터 제보센터 첫 화면 뒤에 깔림
         with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('home.hero_media','off','x')")  # 첫 화면 사진은 영상을 껐을 때만 (운영자 2026-11-03: 기본은 '대화로 제보하기' 영상 배너)

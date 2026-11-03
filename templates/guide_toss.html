@@ -1,0 +1,70 @@
+{# 운영자 2026-11-03: 제보센터 이용 안내 = 토스 소개 페이지식 (처리 절차와 같은 틀). 맨 위에 '대화로 제보하기' 실제 화면 영상,
+   이어서 '이 세 가지만' 체크 카드, 업종은 칩을 눌러 하나씩 보기, 끝에 버튼 하나. 문구는 관리자 문구 편집(guide.*)과 항목 관리(guide_industries)로 고침 #}
+{% set inds = items('guide_industries') %}
+<div class="info-wrap tg-page">
+  <h1>{{ txt('guide.title') }}</h1>
+  <div class="ps-list">
+    <section class="ps-row">
+      <div class="ps-copy">
+        <span class="ps-chip">{{ ui('guide.v_chip', '영상으로 보기') }}</span>
+        <h2 class="ps-head">{{ ui('guide.v_head', '말하듯 쓰면\n제보가 끝나요') }}</h2>
+        <p class="ps-body">{{ ui('guide.v_body', '대화로 제보하기에서 겪은 일을 편하게 적으면 AI가 제목과 내용으로 정리해요. 더 필요한 건 AI가 먼저 물어보고, 사진만 더하면 끝이에요.') }}</p>
+        <a class="primary tg-cta" href="{{ url_for('report_talk') }}">{{ ui('guide.v_button', '대화로 제보하기') }}</a>
+      </div>
+      <div class="ps-art tg-art-video"><div class="hd-phone"><div class="hd-screen"><video src="{{ asset('video/talk-screen.mp4') }}" poster="{{ asset('video/talk-screen.jpg') }}" autoplay muted loop playsinline controls preload="metadata" aria-label="{{ ui('guide.v_alt', '대화로 제보하기 화면 녹화') }}"></video></div></div></div>
+    </section>
+
+    <section class="ps-row is-flip">
+      <div class="ps-copy">
+        <span class="ps-chip">{{ ui('guide.c_chip', '준비할 것') }}</span>
+        <h2 class="ps-head">{{ ui('guide.h_three2', '이 세 가지만\n담아 주세요') }}</h2>
+        <p class="ps-body">{{ ui('guide.three_body', '날짜와 금액이 정확하지 않아도 괜찮아요. ‘○월 초쯤’, ‘약 ○만 원’처럼 적으면 돼요.') }}</p>
+      </div>
+      <div class="ps-art" aria-hidden="true"><div class="ps-ui tg-three">
+        {% for t, s in [(ui('guide.c1_title', '무엇을 샀나요'), ui('guide.c1_sub', '언제 · 어디서 · 얼마에')), (ui('guide.c2_title', '무슨 일이 있었나요'), ui('guide.c2_sub', '겪은 일을 순서대로')), (ui('guide.c3_title', '증거를 남겨요'), ui('guide.c3_sub', '전체 → 가까이 → 기록'))] %}
+        <div class="tg-three-row"><span class="tg-n">{{ loop.index }}</span><div><b>{{ t }}</b><small>{{ s }}</small></div></div>
+        {% endfor %}
+      </div></div>
+    </section>
+
+    <section class="ps-row">
+      <div class="ps-copy">
+        <span class="ps-chip">{{ ui('guide.e_chip', '증거 남기기') }}</span>
+        <h2 class="ps-head">{{ ui('guide.e_head', '버리기 전에\n먼저 찍어 두세요') }}</h2>
+        <p class="ps-body">{{ ui('guide.e_body', '처음 상태를 찍고 날짜를 메모해 두세요. 표시는 복사본에 하고 원본은 그대로 두고, 업체와 나눈 대화는 앞뒤까지 캡처해 두면 좋아요.') }}</p>
+      </div>
+      <div class="ps-art" aria-hidden="true"><div class="ps-ui">
+        <ul class="ui-check"><li class="on">{{ ui('guide.c3_k1', '전체 모습') }}</li><li class="on">{{ ui('guide.c3_k2', '문제 부위') }}</li><li class="on">{{ ui('guide.c3_k3', '거래 기록') }}</li></ul>
+      </div></div>
+    </section>
+  </div>
+
+  {% if inds %}
+  <section class="tg-ind" aria-labelledby="tg-ind-h" data-tg>
+    <h2 class="ps-head" id="tg-ind-h">{{ ui('guide.ind_head', '업종별로\n꼭 적어 주세요') }}</h2>
+    <div class="tg-chips" role="tablist">{% for x in inds %}<button type="button" role="tab" class="{{ 'on' if loop.first }}" aria-selected="{{ 'true' if loop.first else 'false' }}" data-tg-i="{{ loop.index0 }}">{{ x.name }}</button>{% endfor %}</div>
+    {% for x in inds %}{% set raw = g.lists.get('guide_industries', [])[loop.index0] %}{% set must_raw = raw.must or (raw.points or '').replace('\n', ', ') %}{% set art = raw.icon or raw.image %}
+    <article class="tg-panel" data-tg-p="{{ loop.index0 }}"{% if not loop.first %} hidden{% endif %}>
+      <div class="tg-panel-copy">
+        <h3>{{ x.name }}</h3>{% if x.examples %}<p class="tg-ex">{{ x.examples }}</p>{% endif %}
+        {% if must_raw %}<p class="tg-label">{{ ui('guide.ind_must', '꼭 적어 주세요') }}</p>
+        <ul class="tg-must">{% for m in must_raw.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul>{% endif %}
+        {% if x.materials %}<p class="tg-label">{{ ui('guide.ind_materials', '있으면 좋은 자료') }}</p>
+        <ul class="tg-mat">{% for m in x.materials.split(',') if m.strip() %}<li>{{ m.strip() }}</li>{% endfor %}</ul>{% endif %}
+        {% if x.tip %}<p class="tg-tip">{{ x.tip }}</p>{% endif %}
+      </div>
+      {% if art in industry_art %}<div class="tg-panel-art" aria-hidden="true"><img src="{{ url_for('static', filename='img/guide-ind-%s.svg' % art, v=css_v) }}" alt="" width="330" height="200" loading="lazy"></div>{% endif %}
+    </article>
+    {% endfor %}{{ ed_list('guide_industries') }}
+  </section>
+  {% endif %}
+
+  <section class="tg-end">
+    <h2>{{ ui('guide.end_head', '준비가 됐다면\n지금 제보해 보세요') }}</h2>
+    <a class="primary" href="{{ url_for('report_talk') }}">{{ ui('guide.end_button', '제보하기') }}</a>
+  </section>
+</div>
+<script>
+(function(){var w=document.querySelector('[data-tg]');if(!w)return;var bs=w.querySelectorAll('[data-tg-i]'),ps=w.querySelectorAll('[data-tg-p]');
+bs.forEach(function(b){b.addEventListener('click',function(){bs.forEach(function(x){var on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-selected',on?'true':'false');});ps.forEach(function(p){p.hidden=p.dataset.tgP!==b.dataset.tgI;});});});})();
+</script>
