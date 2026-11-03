@@ -1,7 +1,7 @@
 {# 소비자제보센터 머리글 (consumerjebo.co.kr로 들어왔을 때) #}
 <header class="site-header">
   <div class="top">
-    <a class="brand brand-lock" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈"><img class="brand-wm" src="{{ asset('img/soboru-jebo-logo.png') }}" alt="{{ txt('site.name') }}" width="181" height="26"></a>
+    <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">{{ txt('site.logo_by') }}</small>{% endif %}</a>
     <nav class="section-nav" aria-label="주요 메뉴">
       {% for item in items('menu') %}{% set href = menu_href(item) %}{% if href %}
       <a href="{{ href }}"{% if menu_active(href) %} class="active" aria-current="page"{% endif %}{% if item.page == 'custom' and href.startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}

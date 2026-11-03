@@ -18,7 +18,6 @@ RETIRED_KEYS = ('site.brand', 'site.name', 'seo.home_title', 'seo.description', 
 # 소비자제보센터 화면(consumerjebo.co.kr): 소보루와 같은 제보·게시판·관리자를 쓰고, 이름·제목만 이 칸의 값으로 바꿔 보여 줌
 LOGIN_TO_WRITE = ('report', 'report_talk', 'report_talk_ai', 'board_write', 'board_comment', 'case_comment')  # 소보루 화면에서 로그인해야 쓰는 곳
 SOBORU_ONLY = ('/life', '/letter', '/pick/', '/ask', '/feed', '/vs', '/suda', '/editor', '/me/saved', '/owners', '/u/', '/people/', '/me/following', '/me/people')
-JEBO_OLD_TEXT = {'jebo.site_name': '소비자제보센터', 'jebo.home_title': '소비자제보센터 - 소비자 피해 제보·고발', 'jebo.description': '환불 거부, 배송 지연, 불량품 같은 소비자 피해를 제보하고 업체 답변과 처리 과정을 확인하세요. 다른 소비자들의 피해 사례도 볼 수 있습니다.'}
 JEBO_KEYS = {'site.name': 'jebo.site_name', 'seo.home_title': 'jebo.home_title', 'seo.description': 'jebo.description', 'board.title': 'jebo.board_title'}
 
 # AI 소비자 상담 새 버전(lawrag.py)을 켰을 때만 쓰는 메뉴·제목 문구. 꺼져 있으면 old_nav 그대로
@@ -138,9 +137,6 @@ def migrate(db):
     # 공공데이터 자동 수집이 같은 항목을 두 번 넣지 않게
     db.execute('CREATE TABLE IF NOT EXISTS soboru_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
     db.execute('CREATE UNIQUE INDEX IF NOT EXISTS articles_ext_key ON articles(ext_key) WHERE ext_key IS NOT NULL')
-    if not db.execute("SELECT 1 FROM soboru_settings WHERE key='jebo_name'").fetchone():  # 소비자제보센터 → 소보루제보 (운영자 2026-11-03): 예전 기본 문구 그대로 저장된 값만 지움
-        for key, value in JEBO_OLD_TEXT.items(): db.execute('DELETE FROM site_content WHERE key=? AND value=?', (key, value))
-        db.execute("INSERT INTO soboru_settings(key,value) VALUES('jebo_name','1')")
     if not db.execute("SELECT 1 FROM soboru_settings WHERE key='brand_only'").fetchone():
         db.execute('DELETE FROM site_content WHERE key IN (%s)' % ','.join('?' * len(RETIRED_KEYS)), RETIRED_KEYS)
         db.execute("INSERT INTO soboru_settings(key,value) VALUES('brand_only','1')")

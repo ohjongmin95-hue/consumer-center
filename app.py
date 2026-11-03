@@ -1955,7 +1955,7 @@ def report_detail(case_id):
                 if g.area!='admin' or request.form.get('confirm')!='1':abort(400)
                 stored=[r['stored'] for r in db.execute('SELECT stored FROM attachments WHERE case_id=? UNION ALL SELECT stored FROM answer_files WHERE case_id=?',(case_id,case_id))]
                 db.execute('DELETE FROM answer_revisions WHERE message_id IN (SELECT id FROM messages WHERE case_id=?)',(case_id,))
-                for table in ('attachments','messages','internal_notes','case_log','notifications','company_invites','company_notices','case_requests','company_requests','answer_files','case_triage'):db.execute(f'DELETE FROM {table} WHERE case_id=?',(case_id,))
+                for table in ('attachments','messages','internal_notes','case_log','notifications','company_invites','company_notices','case_requests','company_requests','answer_files','case_triage','hero_photos'):db.execute(f'DELETE FROM {table} WHERE case_id=?',(case_id,))
                 # 공개 제보의 공감·댓글 (casetalk.py)
                 db.execute("DELETE FROM board_votes WHERE target=? OR target IN (SELECT 'k:'||id FROM case_comments WHERE case_id=?)",('case:%d'%case_id,case_id))
                 db.execute('DELETE FROM case_comments WHERE case_id=?',(case_id,))
@@ -2797,6 +2797,7 @@ _writer=types.SimpleNamespace(**globals());soboru_writer.install(_writer)
 _rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
 import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  # 소보루 레터: 주간 뉴스레터·구독·발송 (soboru_letter.py)
 import report_talk;report_talk.install(types.SimpleNamespace(**globals()))  # 대화로 제보하기: AI가 묻고 초안을 채움 (report_talk.py)
+import hero_photos;hero_photos.install(types.SimpleNamespace(**globals()))  # 첫 화면 배경 사진: 실제 제보 사진을 가린 사본으로 (hero_photos.py)
 import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)

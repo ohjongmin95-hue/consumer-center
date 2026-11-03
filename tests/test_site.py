@@ -270,6 +270,31 @@ class SiteTest(unittest.TestCase):
         empty = self.client.get('/reports?q=missing').get_data(as_text=True)
         self.assertIn('검색 조건에 맞는 제보 내역이 없습니다.', empty)
 
+    def test_hero_photos_wall(self):
+        # 첫 화면 사진 (운영자 2026-11-03): 관리자가 고른 제보 사진의 가린 사본만 공개, 3장부터 제보센터 첫 화면 뒤에 깔림
+        from PIL import Image
+        jebo = 'https://consumerjebo.co.kr'
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))
+        self.assertEqual(self.client.get('/admin/hero-photos').status_code, 302)
+        admin = self.login_admin()
+        token = self.csrf(admin, '/admin/hero-photos')
+        def pic(color):
+            b = io.BytesIO(); Image.new('RGB', (900, 1200), color).save(b, 'JPEG'); b.seek(0); return b
+        for i, color in enumerate(('red', 'green', 'blue')):
+            r = admin.post('/admin/hero-photos/add', data={'_csrf': token, 'mode': 'boxes' if i else 'all', 'boxes': '[[0.1,0.1,0.5,0.5]]', 'caption': '택배 · 파손', 'photo': (pic(color), 'a.jpg')}, content_type='multipart/form-data')
+            self.assertEqual(r.status_code, 302)
+        home = self.client.get('/', base_url=jebo).get_data(as_text=True)
+        self.assertIn('hero-wall', home); self.assertIn('택배 · 파손', home)
+        name = re.search(r'/hero/([0-9a-f]{24}\.jpg)', home).group(1)
+        img = self.client.get('/hero/' + name)
+        self.assertEqual((img.status_code, Image.open(io.BytesIO(img.data)).size), (200, (600, 800)))
+        self.assertEqual(self.client.get('/hero/' + 'a' * 24 + '.jpg').status_code, 404)
+        with self.site.conn() as db: pid = db.execute('SELECT id FROM hero_photos WHERE stored=?', (name,)).fetchone()[0]
+        admin.post('/admin/hero-photos/%d' % pid, data={'_csrf': token, 'act': 'delete'})
+        self.assertEqual(self.client.get('/hero/' + name).status_code, 404)
+        self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))  # 2장이면 예전 그림
+
     def test_report_talk_ai_draft(self):
         # 대화로 제보하기 (운영자 2026-11-03): AI가 되물을 것과 초안을 주고, 업종·유형은 목록 안에서만, 개인정보는 지움. 접수는 기존 /report로
         page = self.client.get('/report/talk').get_data(as_text=True)
@@ -1711,11 +1736,11 @@ class SiteTest(unittest.TestCase):
             with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):  # 관리자는 소보루 주소 하나
                 r = self.client.get('/admin/content?face=jebo', base_url='https://consumerjebo.co.kr')
                 self.assertEqual((r.status_code, r.headers['Location']), (302, 'https://soboru.co.kr/admin/content?face=jebo'))
-            self.assertIn('jebo-favicon.png', jebo); self.assertIn('<meta property="og:site_name" content="소보루제보">', jebo)  # 검색·광고에 뜨는 이름·아이콘
+            self.assertIn('jebo-favicon.png', jebo); self.assertIn('<meta property="og:site_name" content="소비자제보센터">', jebo)  # 검색·광고에 뜨는 이름·아이콘
             self.assertNotEqual(self.client.get('/favicon.ico', base_url='https://consumerjebo.co.kr').data, self.client.get('/favicon.ico').data)
             self.assertIn('class="site-header"', jebo)
             self.assertNotIn('class="sb"', jebo)
-            self.assertIn('<title>소보루제보 | 소비자 불만·피해 신고 플랫폼</title>', jebo); self.assertIn('soboru-jebo-logo.png', jebo)  # 이름 소보루제보 (2026-11-03)
+            self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', jebo)
             self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', jebo)
             self.assertIn('여러분의 제보가', jebo)
             sob = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)

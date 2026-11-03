@@ -35,12 +35,12 @@ SECTIONS = [
     ]),
     # consumerjebo.co.kr로 들어왔을 때만 쓰는 문구. 사이트 이름·제목은 위 소보루 값 대신 이 값이 들어감 (soboru.py JEBO_KEYS)
     ('jebo', '소비자제보센터 기본 설정', [
-        ('jebo.site_name', '사이트 이름', '소보루제보', {}),
+        ('jebo.site_name', '사이트 이름', '소비자제보센터', {}),
         ('site.logo_accent', '로고 앞부분 (주황색)', '소비자', OPT),
         ('site.logo_rest', '로고 뒷부분', '제보센터', {}),
         ('site.logo_by', '로고 옆 작은 글씨 (비우면 숨김)', 'by SOBORU', OPT),
-        ('jebo.home_title', '메인 화면 제목 (브라우저 탭·검색 결과·카톡 미리보기)', '소보루제보 | 소비자 불만·피해 신고 플랫폼', {}),
-        ('jebo.description', '사이트 설명 (검색 결과에 보이는 문장)', '환불 거부, 배송 지연, 불량품 같은 소비자 불만·피해를 제보하면 기업에 전달해 답변을 받아요. 같은 일을 겪은 소비자들과 공감·댓글로 함께 대응할 수 있어요.', {}),
+        ('jebo.home_title', '메인 화면 제목 (브라우저 탭·검색 결과·카톡 미리보기)', '소비자제보센터 - 소비자 피해 제보·고발', {}),
+        ('jebo.description', '사이트 설명 (검색 결과에 보이는 문장)', '환불 거부, 배송 지연, 불량품 같은 소비자 피해를 제보하고 업체 답변과 처리 과정을 확인하세요. 다른 소비자들의 피해 사례도 볼 수 있습니다.', {}),
         ('jebo.board_title', '게시판 이름', '소비자게시판', {}),
         ('jebo.naver_verification', '네이버 확인 코드 (consumerjebo.co.kr)', '', ADV),
         ('jebo.google_verification', '구글 확인 코드 (consumerjebo.co.kr)', '', ADV),
