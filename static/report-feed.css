@@ -1875,3 +1875,43 @@ body:has(main.xf.is-split) .auth-top .brand{color:#191f28}
 .xs-screen{border-radius:39px 39px 0 0!important;background:#fff!important;padding:40px 22px 22px!important}
 @media(max-width:760px){.xs-feat-art{padding:36px 20px 0!important}.xs-phone{width:58%!important;min-height:84%!important;padding:6px 6px 0!important;border-radius:38px 38px 0 0!important}.xs-screen{border-radius:32px 32px 0 0!important;padding:30px 16px 16px!important}}
 .xs-phone{display:flex!important;flex-direction:column}.xs-screen{flex:1 1 auto;height:auto!important}
+/* 운영자 2026-11-03 ("너무 성의없잖아"): 아이폰 그대로 그리기. 티타늄 테두리 + 옆 버튼 + 검은 베젤, 전면 카메라 없음.
+   화면 안 = 상태 표시줄(9:41·신호·와이파이·배터리) + 앱 머리 + 탭 + 기업 순위 줄(로고 동그라미·막대·일수). 아래는 카드 끝에서 잘림 */
+.xs-phone.xs-iphone{position:relative;width:46%!important;min-height:0!important;height:88%!important;padding:4px 4px 0!important;border-radius:58px 58px 0 0!important;background:linear-gradient(90deg,#8d9096 0%,#d9dbde 3%,#f1f2f3 7%,#c9ccd0 20%,#e4e6e8 50%,#c9ccd0 80%,#f1f2f3 93%,#d9dbde 97%,#8d9096 100%)!important;box-shadow:0 30px 60px rgba(101,45,28,.28),0 2px 6px rgba(0,0,0,.18)!important;-webkit-mask-image:none!important;mask-image:none!important;overflow:visible!important}
+.xs-iphone .ip-btn{position:absolute;width:4px;border-radius:2px;background:linear-gradient(90deg,#9a9da2,#d6d8db)}
+.xs-iphone .ip-act{left:-3px;top:15%;height:26px}.xs-iphone .ip-vu{left:-3px;top:25%;height:48px}.xs-iphone .ip-vd{left:-3px;top:37%;height:48px}
+.xs-iphone .ip-pw{right:-3px;top:28%;height:72px;background:linear-gradient(90deg,#d6d8db,#9a9da2)}
+.xs-iphone .xs-screen{position:relative;height:100%!important;border:10px solid #0a0a0b!important;border-bottom:0!important;border-radius:54px 54px 0 0!important;background:#fff!important;padding:14px 18px 0!important;box-sizing:border-box;overflow:hidden;font-family:inherit}
+.ip-status{display:flex;justify-content:space-between;align-items:center;padding:4px 10px 0 14px;height:26px;color:#191f28}
+.ip-status b{font-size:14px;font-weight:700;letter-spacing:0}
+.ip-status>span{display:flex;align-items:center;gap:5px}
+.ip-status svg{width:17px;height:11px;fill:#191f28}
+.ip-bat{position:relative;width:24px;height:11px;border-radius:3.5px;box-shadow:inset 0 0 0 1px rgba(25,31,40,.45);padding:2px;box-sizing:border-box}
+.ip-bat::after{content:"";position:absolute;right:-3px;top:3.5px;width:1.5px;height:4px;border-radius:0 1px 1px 0;background:rgba(25,31,40,.45)}
+.ip-bat i{display:block;width:80%;height:100%;border-radius:1.5px;background:#191f28}
+.ip-app{display:flex;align-items:center;gap:8px;margin:16px 0 0;font-size:18px;line-height:27px;font-weight:700;color:#191f28}
+.ip-app span{font-size:24px;font-weight:400;color:#4e5968;line-height:1;margin-top:-3px}
+.ip-tabs{display:flex;gap:16px;margin:12px 0 4px;border-bottom:1px solid #f2f4f6;font-size:13px}
+.ip-tabs b{padding:0 0 8px;color:#191f28;box-shadow:inset 0 -2px #191f28;font-weight:700}.ip-tabs span{color:#8b95a1;font-weight:600}
+.ip-row{display:grid;grid-template-columns:14px 30px minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 0}
+.ip-row>b{font-size:14px;font-weight:700;color:#CE6719;text-align:center}
+.ip-logo{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700}
+.ip-co{display:grid;gap:5px;font-size:13px;font-weight:600;color:#333d48;white-space:nowrap}
+.ip-co .xs-rank-bar{height:6px}
+.ip-row small{font-size:12px;color:#6b7684;font-variant-numeric:tabular-nums}
+.xs-feat-art:has(.xs-iphone){padding:44px 32px 0!important}
+@media(max-width:760px){
+  .xs-phone.xs-iphone{width:66%!important;border-radius:48px 48px 0 0!important;padding:3px 3px 0!important}
+  .xs-iphone .xs-screen{border-width:8px!important;border-radius:45px 45px 0 0!important;padding:10px 14px 0!important}
+  .xs-iphone .ip-pw{height:56px}.xs-iphone .ip-vu,.xs-iphone .ip-vd{height:38px}
+  .ip-app{font-size:16px;margin-top:10px}.ip-row{padding:8px 0;gap:8px;grid-template-columns:12px 26px minmax(0,1fr) auto}.ip-logo{width:26px;height:26px;font-size:11px}
+  .xs-feat-art:has(.xs-iphone){padding:32px 20px 0!important}
+}
+.xs-phone.xs-iphone{width:54%!important}
+.xs-feat-art:has(.xs-iphone) .xs-float{top:auto!important;bottom:9%!important;left:7%!important}
+.ip-co{min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:760px){.xs-phone.xs-iphone{width:70%!important}.xs-feat-art:has(.xs-iphone) .xs-float{left:5%!important;bottom:7%!important}}
+.xs-feat-art:has(.xs-iphone){padding-top:28px!important}
+.xs-phone.xs-iphone{height:100%!important}
+.xs-feat-art:has(.xs-iphone) .xs-float{left:auto!important;right:5%!important;bottom:7%!important;min-width:0!important}
+@media(max-width:760px){.xs-feat-art:has(.xs-iphone){aspect-ratio:1/1!important;padding-top:24px!important}.xs-feat-art:has(.xs-iphone) .xs-float{right:4%!important;bottom:6%!important}}
