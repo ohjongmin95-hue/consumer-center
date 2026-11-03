@@ -244,9 +244,10 @@ body:not(.sb) .sba-privacy{color:#8b95a1}
   .sbv.is-hero .sbv-hero-t{margin-bottom:20px}
   .sbv.is-hero .sba-privacy{margin-top:8px;font-size:12px;line-height:18px}
   .sbv.is-hero .sba-ex{margin-top:16px}
-  .sbv.is-hero .sba-chips{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;margin:0 -20px;padding:0 20px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-padding-inline:20px}
-  .sbv.is-hero .sba-chips::-webkit-scrollbar{display:none}
-  .sbv.is-hero .sba-chips button,.sbv.is-hero .sbv-faq{flex:none;white-space:nowrap}
+  /* 옆으로 넘기면 끝이 잘려 보여서(운영자) 예시는 3개만, 줄바꿈해서 다 보이게 */
+  .sbv.is-hero .sba-chips{flex-wrap:wrap;justify-content:center}
+  .sbv.is-hero .sba-chips button:nth-child(n+4){display:none}
+  .sbv.is-hero .sba-chips button{max-width:100%;white-space:normal}
   .sbv.is-hero .sbv-tools-nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:24px}
   .sbv-tools-nav a{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;justify-items:center;row-gap:8px;padding:16px 8px;border-radius:16px;text-align:center}
   .sbv-tools-nav .xh-ic{grid-row:auto;width:40px;height:40px;border-radius:12px}
