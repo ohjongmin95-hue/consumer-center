@@ -543,3 +543,21 @@ body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{flex-wrap:wrap;row-
 body:not(.sb) .pc-tags .nn-vc-tag{display:inline-block;padding:4px 10px;border-radius:8px;font-size:13.5px;font-weight:600;background:var(--tg-bg,#f2f4f6);color:var(--tg,#4e5968)}
 body:not(.sb) .pc-tags .nn-vc-ind{background:#f2f4f6;color:#4e5968;border-radius:8px;padding:4px 10px;font-weight:600}
 body:not(.sb) .pc-who .nn-vc-av.is-anon{background:#f3ede6;color:#652d1c}
+/* 운영자 2026-11-03: 첫 화면 사진 벽, 밝은 바탕에 실제 제보 사진 카드가 두 줄로 천천히 흘러감 */
+.hero-board{margin:0 calc(50% - 50vw);padding:72px 0 40px;background:#fff;border:0;text-align:center;overflow:hidden}
+.hero-board .hero-copy{padding:0 20px}
+.hero-board h1{margin:0 0 28px;color:#191f28;word-break:keep-all;text-wrap:balance}
+.hero-board .primary{border-radius:999px;padding:16px 36px;font-size:18px;box-shadow:none}
+.hb-rows{display:grid;gap:14px;margin-top:56px}
+.hb-row{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.hb-track{display:flex;gap:14px;width:max-content;animation:hb-move 70s linear infinite}
+.hb-row.rev .hb-track{animation-direction:reverse;animation-duration:80s}
+.hb-card{position:relative;flex:none;width:220px;height:164px;margin:0;border-radius:18px;overflow:hidden;background:#f2f4f6;box-shadow:inset 0 0 0 1px rgba(0,23,51,.06)}
+.hb-card img{mix-blend-mode:multiply}
+.hb-row.rev .hb-card{width:180px}
+.hb-card img{display:block;width:100%;height:100%;object-fit:cover}
+.hb-card figcaption{position:absolute;left:10px;bottom:10px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.94);color:#333d4b;font-size:12px;font-weight:700}
+.hb-cap{margin:22px 0 0;padding:0 20px;color:#8b95a1;font-size:13px}
+@keyframes hb-move{to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.hb-track{animation:none}}
+@media(max-width:680px){.hero-board{padding:44px 0 28px}.hero-board .hero-copy h1{font-size:28px}.hero-board .primary{padding:15px 30px;font-size:17px}.hb-rows{margin-top:36px;gap:10px}.hb-track{gap:10px}.hb-card{width:150px;height:112px;border-radius:14px}.hb-row.rev .hb-card{width:124px}}
