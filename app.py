@@ -114,8 +114,11 @@ def press_step(rows):
     return rows+[dict(zip(('title','icon','body'),site_content.PRESS_STEP))]
 def experts_menu(rows):
     """운영자 2026-11-03: 상단 메뉴 '소비자게시판' 자리에 '전문가' (저장된 메뉴에도 적용, 게시판 주소는 그대로 열림)."""
-    if not isinstance(rows,list) or any(r.get('page')=='experts' for r in rows):return rows
-    return [{**r,'label':'전문가','page':'experts','url':''} if r.get('page')=='board' else r for r in rows]
+    # 운영자 2026-11-03 나중: '전문가'라는 이름이 어색해서 '소보루 자문단' (헤이마오 '帮帮官'처럼 공식 직함 느낌)
+    if not isinstance(rows,list):return rows
+    if any(r.get('page')=='experts' for r in rows):return [{**r,'label':EXPERTS_MENU} if r.get('page')=='experts' and r.get('label')=='전문가' else r for r in rows]
+    return [{**r,'label':EXPERTS_MENU,'page':'experts','url':''} if r.get('page')=='board' else r for r in rows]
+EXPERTS_MENU='소보루 자문단'
 def load_lists():
     out=_load_lists();out['process_steps']=press_step(out.get('process_steps'))
     if current_face()=='jebo':out['menu']=experts_menu(out.get('menu'))
