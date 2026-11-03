@@ -657,3 +657,27 @@ body.console .cs-status.s1{background:#fff0df;box-shadow:none}body.console .cs-s
 body.console .cs-status.s4,body.console .cs-status.s5{background:#e8f1ff;box-shadow:none}body.console .cs-status.s6{background:#e5f5ec;box-shadow:none}
 body.console .cs-pill.on{background:#e8f6ee;box-shadow:none}body.console .cs-pill.off{background:#fdf0ef;box-shadow:none}body.console .cs-chips span.on{background:#fff4e8;box-shadow:none}
 body.console .cs-msg.from-center{background:#fff4e8;box-shadow:none}body.console .cs-msg.from-company{background:#eef4ff;box-shadow:none}
+/* 운영자 2026-11-03: 관리자 홈 = 토스 콘솔식. 확인할 일은 카드 하나 안의 목록 줄, 숫자 검정, 있으면 빨간 점 */
+body.console .ad-todo-card{padding:24px 24px 8px}
+body.console .ad-todo-card h2{margin:0 0 8px;font-size:18px;font-weight:700;color:#191f28}
+body.console .ad-todo-list{list-style:none;margin:0;padding:0}
+body.console .ad-todo-list a{display:flex;align-items:center;gap:12px;padding:16px 4px;border-top:1px solid #f2f4f6;color:#191f28;text-decoration:none;font-size:16px;transition:background .15s}
+body.console .ad-todo-list li:first-child a{border-top:0}
+body.console .ad-todo-list a:hover{background:#fff7ef}
+body.console .ad-todo-l{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font-weight:500}
+body.console .ad-dot{width:6px;height:6px;border-radius:50%;background:#f04452;flex:none}
+body.console .ad-todo-list b{font-size:16px;font-weight:700;color:#191f28;font-variant-numeric:tabular-nums}
+body.console .ad-todo-list svg{width:18px;height:18px;fill:none;stroke:#b0b8c1;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+body.console .ad-todo-list a.is-zero{color:#8b95a1}
+body.console .ad-todo-list a.is-zero b{color:#b0b8c1;font-weight:600}
+body.console .ad-link{color:#4e5968!important;font-weight:600}
+body.console .ad-rows{list-style:none;margin:8px 0 0;padding:0}
+body.console .ad-rows a{display:flex;align-items:center;gap:16px;padding:14px 4px;border-top:1px solid #f2f4f6;color:#191f28;text-decoration:none}
+body.console .ad-rows li:first-child a{border-top:0}
+body.console .ad-rows a:hover{background:#fff7ef}
+body.console .ad-row-main{flex:1;min-width:0;display:grid;gap:2px}
+body.console .ad-row-main b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.console .ad-row-main small{font-size:13px;color:#8b95a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.console .ad-row-side{flex:none;display:grid;justify-items:end;gap:2px}
+body.console .ad-row-side em{font-style:normal;font-size:13px;font-weight:600;color:#CE6719;background:#fff4e6;border-radius:6px;padding:2px 8px}
+body.console .ad-row-side small{font-size:12px;color:#b0b8c1;font-variant-numeric:tabular-nums}
