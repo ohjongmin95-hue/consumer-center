@@ -1783,3 +1783,89 @@ body:has(main.xf.is-split) .auth-top .brand{color:#191f28}
 .ph-code::placeholder{letter-spacing:0;font-size:17px;font-weight:400}
 .ph-page .auth-card{overflow:visible}
 .rp-alt-ico{background:#fff1e0;color:#EF920E;font-family:inherit}.rp-alt-ico.is-ai{background:#efedfd;color:#8b7cf6}
+/* 운영자 2026-11-03 (밤): '편하게 대화로 제보하기' 더 크고 잘 보이게 */
+.rp-alt.rp-alt{gap:16px;padding:22px 24px;border-radius:20px;background:#f5f3ff;margin:8px 0 28px}
+.rp-alt.rp-alt:hover{background:#ede9fe}
+.rp-alt .rp-alt-ico{width:52px;height:52px;background:#8b7cf6;color:#fff}.rp-alt .rp-alt-ico svg{width:28px;height:28px}
+.rp-alt .rp-alt-ico:not(.is-ai){background:#EF920E}
+.rp-alt .rp-alt-t b{font-size:19px;line-height:28px}.rp-alt .rp-alt-t small{font-size:15px;color:#4e5968}
+.rp-alt>svg{width:24px;height:24px;color:#8b7cf6}
+/* 운영자 2026-11-03 (밤): 자문단 모집 왼쪽 아래 여백 채움 — 장면을 늘 다 보여 주고(움직임 없이), 회색 상자 없이 */
+.xf.is-split .xf-deck+.xf-demo{margin-top:12px;padding:0;background:none;gap:12px}
+.xf.is-split .xf-demo>*{animation:none!important;opacity:1!important;transform:none!important;box-shadow:0 6px 20px rgba(0,27,55,.08)}
+.xf-demo-mail{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;align-items:center;padding:16px 18px;border-radius:16px;background:#fff}
+.xf-demo-mail>span{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#191f28}
+.xf-demo-mail svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linejoin:round}
+.xf-demo-mail small{display:block;font-size:13px;line-height:19px;color:#8b95a1}.xf-demo-mail b{display:block;font-size:16px;line-height:24px;color:#191f28}
+.xf-demo-mail em{display:block;font-style:normal;font-size:14px;line-height:21px;color:#4e5968}
+@media(hover:none){.org-band .org-track li:hover img{filter:grayscale(1) brightness(.78) contrast(1.15)!important;transform:none}}
+/* 운영자 2026-11-03 (밤): 제보 상세 = 토스피드 글처럼 한 단 (TDS: 제목 T1 30/40, 본문 T5 17 줄간 1.8, 정보 T6 15) */
+.pf .pf-wrap{display:block!important;max-width:680px!important;margin:0 auto;padding:24px 24px 80px}
+.pf .pc-back{margin-bottom:32px}
+.pf-head{display:grid;gap:16px;margin:0 0 32px}
+.pf-kicker{display:flex;align-items:center;gap:8px;margin:0}.pf-ind{font-size:14px;font-weight:600;color:#6b7684}
+.pf-title{margin:0;font-size:30px;line-height:40px;font-weight:700;letter-spacing:0;color:#191f28;text-wrap:balance;word-break:keep-all}
+.pf-who{display:flex;align-items:center;gap:10px}.pf-who .pc-who-t b{font-size:15px}.pf-who time{font-size:14px;color:#8b95a1}
+.pf-steps-box{display:grid;gap:20px;padding:24px 0;margin:0 0 36px;border-top:1px solid #f2f4f6;border-bottom:1px solid #f2f4f6}
+.pf-steps{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:0;padding:0;list-style:none;counter-reset:none}
+.pf-steps li{position:relative;display:grid;justify-items:center;gap:8px;text-align:center}
+.pf-steps li::before{content:"";position:absolute;top:15px;left:-50%;width:100%;height:2px;background:#e5e8eb;z-index:0}
+.pf-steps li:first-child::before{display:none}
+.pf-steps li.on::before{background:#EF920E}
+.pf-steps li i{position:relative;z-index:1;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 2px #e5e8eb;font-style:normal;font-size:14px;font-weight:700;color:#b0b8c1}
+.pf-steps li.on i{background:#EF920E;box-shadow:none;color:#fff}
+.pf-steps li.now i{box-shadow:0 0 0 6px #fff1e0}
+.pf-steps li i svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.pf-steps li span{font-size:15px;line-height:22px;font-weight:600;color:#8b95a1}.pf-steps li.on span{color:#191f28}.pf-steps li.now span{color:#CE6719;font-weight:700}
+.pf-co{display:flex!important;align-items:center;gap:12px;padding:12px 0!important;background:none!important;box-shadow:none!important;border-radius:0!important}
+.pf .pc-main{max-width:none}
+.pf .pc-body{font-size:17px;line-height:1.8;color:#333d48}
+.pf .pc-sec h2{font-size:22px;line-height:31px;font-weight:700;margin:0 0 16px}
+.pf .pc-sec+.pc-sec{margin-top:48px}
+.pf-want{margin:28px 0 0;padding:4px 0 4px 18px!important;border-left:3px solid #EF920E;border-radius:0!important;background:none!important}
+.pf-want b{display:block;margin-bottom:4px;font-size:15px;color:#CE6719}
+.pf-end{display:grid;gap:12px;justify-items:center;margin:56px 0 0}
+.pf-cta{display:flex!important;align-items:center;justify-content:center;width:100%;height:56px;border-radius:16px!important;background:#EF920E!important;color:#fff!important;font-size:17px;font-weight:700;text-decoration:none}
+.pf-share{border:0;background:none;color:#6b7684;font-size:15px;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:8px}
+@media(max-width:560px){.pf .pf-wrap{padding:16px 20px 56px}.pf-title{font-size:24px;line-height:33px}.pf .pc-body{font-size:16px}.pf .pc-back{margin-bottom:20px}}
+.pf-steps-box{grid-template-columns:minmax(0,1fr)!important}.pf-steps-box>*{grid-column:1!important;grid-row:auto!important}
+.pf .pc-main>.pc-sec:first-child{border-top:0!important;padding-top:0}
+.pf .pc-sec+.pc-sec{margin-top:16px;padding-top:40px}
+.pf .pc-wait{background:#fff!important;box-shadow:inset 0 0 0 1px #e5e8eb}
+/* 둘러보기 자문단 예시 카드 (운영자 2026-11-03 밤) */
+.xs-person{position:relative}
+.xs-sample{position:absolute;top:12px;left:12px;z-index:2;padding:3px 8px;border-radius:8px;background:rgba(25,31,40,.72);color:#fff;font-size:12px;line-height:18px;font-weight:600}
+/* 운영자 2026-11-03 (밤): 제보 목록 = 게시글처럼 가로 한 줄 (카드 대신 줄). TDS List Row: 패딩 20, 아이콘-글 간격 12, 구분선 #f2f4f6 */
+.rf-one{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:8px 0 8px;border-bottom:1px solid #f2f4f6}
+.rf-one::-webkit-scrollbar{display:none}
+.rf-one a{flex:none;padding:12px 14px;font-size:16px;font-weight:600;color:#8b95a1;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:0!important;background:none!important}
+.rf-one a.on{color:#191f28;border-bottom-color:#191f28}
+.rf-rows.rf-list{display:block!important;grid-template-columns:none!important}
+.rf-rows .nn-vc-card{display:grid!important;grid-template-columns:44px auto minmax(0,1fr) auto;grid-template-areas:"logo co co badge" "logo main main main" "logo tag foot foot";column-gap:12px;row-gap:6px;align-items:center;padding:20px 8px!important;border:0!important;border-bottom:1px solid #f2f4f6!important;border-radius:0!important;box-shadow:none!important;background:#fff;height:auto!important;min-height:0!important}
+.rf-rows .nn-vc-card:hover{background:#f9fafb;transform:none!important}
+.rf-rows .nn-vc-top{display:contents!important}
+.rf-rows .vc-co-logo{grid-area:logo;align-self:start;width:44px!important;height:44px!important}
+.rf-rows .vc-co-name{grid-area:co;display:flex!important;align-items:baseline;gap:6px;min-width:0}.rf-rows .vc-co-name b{font-size:14px;color:#4e5968}.rf-rows .vc-co-name small{font-size:13px;color:#8b95a1}
+.rf-rows .rf-st{grid-area:badge;justify-self:end;margin:0!important}
+.rf-rows .nn-vc-main{grid-area:main;margin:0!important}
+.rf-rows .nn-vc-txt h3{margin:0 0 4px!important;font-size:17px!important;line-height:25px!important;-webkit-line-clamp:1!important}
+.rf-rows .nn-vc-ex{margin:0!important;font-size:15px!important;line-height:22px!important;-webkit-line-clamp:1!important;color:#6b7684}
+.rf-rows .nn-vc-meta{grid-area:tag;margin:0!important;padding:0!important;border:0!important}
+.rf-rows .nn-vc-foot{grid-area:foot;margin:0!important;padding:0!important;border:0!important;font-size:13px;color:#8b95a1}
+@media(max-width:560px){.rf-rows .nn-vc-card{grid-template-columns:40px auto minmax(0,1fr) auto;padding:18px 4px!important;column-gap:10px}.rf-rows .vc-co-logo{width:40px!important;height:40px!important}.rf-rows .nn-vc-txt h3{font-size:16px!important}.rf-rows .nn-vc-ex{font-size:14px!important}.rf-rows .nn-vc-foot .vc-stats{display:none}}
+/* 자주 묻는 질문: 왼쪽 분류 메뉴 없이 한 줄 목록 (운영자 2026-11-03 "깔끔하게") */
+.fq-body.fq-one{display:block;max-width:840px;margin-top:8px}
+.fq-one .fq-item{border-bottom:1px solid #f2f4f6}
+.fq-one .fq-item summary{font-size:18px;line-height:27px;padding:22px 0}
+.fq-one .fq-a{margin:0 0 22px 32px;background:#fff7ef;font-size:16px}
+@media(max-width:860px){.fq-one .fq-item summary{font-size:17px;line-height:25.5px;padding:18px 0;gap:12px}.fq-one .fq-a{margin-left:0;padding:16px 18px}}
+/* 목록 한 줄: 휴대폰에서 회색 띠·좌우 붙음 없애기 (TDS 여백 20) */
+.rf-wrap .rf-rows.rf-list{background:#fff!important;margin:0!important;padding:0!important;gap:0!important}
+@media(max-width:560px){.rf-rows .nn-vc-card{padding:18px 0!important}.rf-rows .nn-vc-card:hover{background:#fff}}
+/* 운영자 2026-11-03 (보낸 토스 휴대폰 틀): 하얀 두꺼운 몸체 + 연회색 화면, 버튼·카메라·은색 테두리·흐림 없음, 아래는 카드 끝에서 잘림 */
+.xs-feat-art{padding:56px 32px 0!important;align-items:flex-end!important}
+.xs-phone{width:44%!important;height:auto!important;min-height:78%;background:#fff!important;padding:12px 12px 0!important;border-radius:64px 64px 0 0!important;box-shadow:0 20px 50px rgba(101,45,28,.18)!important;-webkit-mask-image:none!important;mask-image:none!important}
+.xs-phone::before,.xs-phone::after,.xs-screen::before{content:none!important}
+.xs-screen{border:0!important;border-radius:52px 52px 0 0!important;background:#f7f8fa!important;padding:52px 24px 24px!important;height:100%;box-sizing:border-box}
+.xs-float{border-radius:20px!important;box-shadow:0 12px 32px rgba(0,0,0,.12)!important}
+@media(max-width:760px){.xs-feat-art{padding:48px 20px 0!important}.xs-phone{min-height:70%;width:62%!important;padding:9px 9px 0!important;border-radius:46px 46px 0 0!important}.xs-screen{border-radius:38px 38px 0 0!important;padding:36px 16px 16px!important}}

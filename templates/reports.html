@@ -6,24 +6,18 @@
   <section class="section reports-page" aria-labelledby="reports-heading">
     {# 운영자 2026-11-03: 검은고양이 목록처럼. 제보하기 하나, 단계 탭, 유형·업종 고르기, 사진 카드 #}
     {# 운영자 2026-11-03: 누적 제보 같은 숫자는 지금은 빼고, 제목 옆에 제보하기 하나만 #}
-    <div class="reports-head"><h1 id="reports-heading">{{ txt('home.list_title') }}</h1><a class="primary rf-go2" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a></div>
+    <div class="reports-head"><h1 id="reports-heading">{{ txt('home.list_title') }}</h1><a class="primary rf-go2" href="{{ url_for('report') }}">{{ txt('home.hero_button')|replace('→', '')|trim }}</a></div>
     <form class="report-tools rf-tools" method="get" action="{{ url_for('reports') }}" role="search">
       <input name="q" type="search" aria-label="{{ txt('home.search_placeholder') }}" placeholder="{{ txt('home.search_placeholder') }}" value="{{ search_query }}">
       {% for k in ('category', 'st', 'ind', 'sort') %}{% if request.args.get(k) %}<input type="hidden" name="{{ k }}" value="{{ request.args.get(k) }}">{% endif %}{% endfor %}
       <button class="search-button" type="submit">{{ ui('reports.search', '검색') }}</button>
     </form>
     {% if open_groups %}<div class="group-banner">{% for gr in open_groups %}<a href="{{ url_for('group_page', group_id=gr['id']) }}"><span class="group-status s-open">{{ ui('groups.open_badge', '공동 대응 참여 모집') }}</span> {{ gr['title'] }} <small>{{ gr['company'] }}</small></a>{% endfor %}<a class="group-banner-all" href="{{ url_for('groups') }}">{{ ui('groups.all', '전체 보기 →') }}</a></div>{% endif %}
-    <div class="rf-tabs-row">
-      <nav class="rf-tabs" aria-label="{{ ui('reports.stages', '진행 단계') }}"><a href="{{ reports_url(st=None, page=None) }}"{% if not stage %} class="on" aria-current="true"{% endif %}>{{ ui('reports.stage_all', '전체') }}</a>{% for k, v in stages.items() %}<a href="{{ reports_url(st=k, page=None) }}"{% if stage == k %} class="on" aria-current="true"{% endif %}>{{ v[0] }}</a>{% endfor %}</nav>
-      <nav class="sort-tabs" aria-label="{{ ui('reports.sort', '정렬') }}"><a href="{{ reports_url(sort=None, page=None) }}"{% if not sort %} class="on" aria-current="true"{% endif %}>{{ ui('reports.sort_new', '최신순') }}</a><a href="{{ reports_url(sort='hot', page=None) }}"{% if sort %} class="on" aria-current="true"{% endif %}>{{ ui('reports.sort_hot', '공감 많은 순') }}</a></nav>
-    </div>
-    <div class="rf-filters">
-      <div class="rf-frow"><span class="rf-flabel">{{ ui('reports.f_type', '유형') }}</span><nav class="rf-cats" aria-label="{{ ui('reports.all_types', '전체 유형') }}"><a href="{{ reports_url(category=None, page=None) }}"{% if not selected_category %} class="on" aria-current="true"{% endif %}>{{ ui('reports.cat_all', '전체') }}</a>{% for category in categories %}<a href="{{ reports_url(category=category, page=None) }}"{% if category == selected_category %} class="on" aria-current="true"{% endif %} title="{{ category }}">{% set m = category|cat_split %}{{ m[0] if m else category }}</a>{% endfor %}</nav></div>
-      {% if industries %}<div class="rf-frow"><span class="rf-flabel">{{ ui('reports.f_ind', '업종') }}</span><nav class="rf-cats" aria-label="{{ ui('reports.all_inds', '전체 업종') }}"><a href="{{ reports_url(ind=None, page=None) }}"{% if not industry %} class="on" aria-current="true"{% endif %}>{{ ui('reports.cat_all', '전체') }}</a>{% for i in industries %}<a href="{{ reports_url(ind=i, page=None) }}"{% if i == industry %} class="on" aria-current="true"{% endif %}>{{ i }}</a>{% endfor %}</nav></div>{% endif %}
-    </div>
+    {# 운영자 2026-11-03 (밤): 헤이마오처럼 탭 한 줄로만 나눔 (최신·접수·처리 중·기업 답변·종결·공감 많은). 유형·업종 줄은 뺌 #}
+    <nav class="rf-tabs rf-one" aria-label="{{ ui('reports.stages', '진행 단계') }}"><a href="{{ reports_url(st=None, sort=None, page=None) }}"{% if not stage and not sort %} class="on" aria-current="true"{% endif %}>{{ ui('reports.tab_new', '최신') }}</a>{% for k, v in stages.items() %}<a href="{{ reports_url(st=k, sort=None, page=None) }}"{% if stage == k %} class="on" aria-current="true"{% endif %}>{{ v[0] }}</a>{% endfor %}<a href="{{ reports_url(sort='hot', st=None, page=None) }}"{% if sort == 'hot' and not stage %} class="on" aria-current="true"{% endif %}>{{ ui('reports.sort_hot', '공감 많은 순') }}</a><a href="{{ reports_url(sort='talk', st=None, page=None) }}"{% if sort == 'talk' and not stage %} class="on" aria-current="true"{% endif %}>{{ ui('reports.sort_talk', '댓글 많은 순') }}</a></nav>
     {% set empty_text = txt('home.empty_search') if search_query or selected_category or stage or industry else txt('home.empty') %}
     <div class="rf-wrap">
-      <div class="rf-list rf-photo">
+      <div class="rf-list rf-photo rf-rows">
         {# 운영자 2026-11-03: 목록 카드엔 사진 안 보이게 (카드가 길어짐) #}{% set pub_badge = True %}{% set with_photo = False %}{% for c in report_cards(cases, 220) %}{% include 'report_card.html' %}{% else %}<p class="nn-empty">{{ empty_text }}</p>{% endfor %}
       </div>
       <aside class="rf-side">

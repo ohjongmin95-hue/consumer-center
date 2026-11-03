@@ -4,7 +4,7 @@
 {% block content %}
 {# 대화로 제보하기 (report_talk.py). 접수는 기존 양식과 같은 POST /report. 운영자 2026-11-03 #}
 <main class="tk-page">
-  <div class="tk-head"><h1>{{ ui('talk.title', '대화로 제보하기') }}</h1></div>
+  <h1 class="sr-only">{{ ui('talk.title', '대화로 제보하기') }}</h1>
   {% include 'report_mode.html' %}
   <div class="tk-log" id="tk-log" aria-live="polite"></div>
 

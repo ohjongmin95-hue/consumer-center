@@ -35,19 +35,20 @@
   'out': '<path d="M14 4h5v16h-5"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/>',
 }[name]|safe }}</svg>{% endmacro %}
 {% if admin_active() and request.endpoint != 'admin_login' %}
+{# 운영자 2026-11-03 (밤): '사이트 화면 편집' 하나로. 첫 화면 사진도 여기. 사업자 정보·검색 노출은 문구 고치기 화면의 칸이라 메뉴에서 뺌 #}
 {% set groups = [
   ('', [('admin', 'home', '홈'), ('admin_visits', 'chart', '방문 통계')]),
-  ('제보', [('admin_reports', 'inbox', '제보 처리'), ('admin_requests', 'mail', '정정·이의 신청'), ('admin_stats', 'chart', '운영 통계'), ('admin_hero_photos', 'image', '첫 화면 사진'), ('admin_partners', 'image', '협력 기관'), ('admin_check', 'book', '사기 전에 확인')]),
+  ('제보', [('admin_reports', 'inbox', '제보 처리'), ('admin_requests', 'mail', '정정·이의 신청'), ('admin_stats', 'chart', '운영 통계'), ('admin_partners', 'image', '협력 기관'), ('admin_check', 'book', '사기 전에 확인')]),
   ('기업', [('admin_companies', 'building', '기업'), ('admin_contacts', 'mail', '기업 연락처')]),
   ('회원', [('admin_members', 'users', '회원'), ('admin_experts', 'id', '소보루 자문단'), ('admin_takedowns', 'flag', '게시중단 요청')]),
   ('콘텐츠', [('admin_letter', 'mail', '소보루 레터'), ('admin_ask', 'chat', 'AI 상담'), ('admin_ai_usage', 'chart', 'AI 사용량'), ('admin_laws', 'book', '법령 학습')]),
-  ('사이트 꾸미기', [('admin_site', 'edit', '화면 편집'), ('admin_lists', 'layers', '메뉴·구성'), ('admin_content', 'text', '문구 고치기'), ('admin_content#operator', 'id', '사업자 정보'), ('admin_content#seo', 'search', '검색 노출')]),
+  ('사이트 화면 편집', [('admin_site', 'edit', '화면에서 바로 고치기'), ('admin_hero_photos', 'image', '첫 화면 사진'), ('admin_lists', 'layers', '메뉴·구성'), ('admin_content', 'text', '문구·사업자 정보·검색')]),
   ('계정', [('admin_staff', 'id', '기자 계정'), ('admin_password', 'key', '비밀번호 변경')]),
 ] %}
 {% set nc = new_case_info() %}
 {% set active = {'admin_report': 'admin_reports', 'admin_life_edit': 'admin_life', 'admin_invite': 'admin_reports', 'admin_group': 'admin_groups', 'admin_ask_log': 'admin_ask', 'admin_ask_lab': 'admin_ask'}.get(request.endpoint, request.endpoint) %}
 <header class="ad-top">
-  <a class="ad-brand" href="{{ url_for('admin') }}"><span class="ad-brand-wm"><b>소비자</b>제보센터</span><em>관리자</em></a>
+  <a class="ad-brand" href="{{ url_for('admin') }}"><img src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="136" height="32"><em>관리자</em></a>
   <div class="ad-top-right">
     <a class="ad-site" href="{{ jebo_site_url() }}" target="_blank" rel="noopener">사이트 보기 ↗</a>
     <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">{{ icon('out') }}<span>로그아웃</span></button></form>
@@ -60,7 +61,7 @@
       {# 사이트 꾸미기: 지금 고치는 사이트(소보루/소비자제보센터)를 그대로 따라감. '사업자 정보'·'검색 노출'은 문구 고치기 화면의 한 칸으로 바로 감 #}
 
       {% for e, ico, label in links %}{% set ep, _, sec = e.partition('#') %}
-      {%- if group == '사이트 꾸미기' %}{% set href = face_url(ep) ~ ('#section-' ~ sec if sec else '') %}{% set on = active == ep and not sec %}
+      {%- if group == '사이트 화면 편집' %}{% set href = face_url(ep) ~ ('#section-' ~ sec if sec else '') %}{% set on = active == ep and not sec %}
       {%- else %}{% set href = url_for(ep) %}{% set on = active == ep %}{% endif -%}
       <a href="{{ href }}"{% if ep == 'admin_content' %} data-sec="{{ sec }}"{% endif %}{% if on %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span>{% if e == 'admin_reports' %}<em class="ad-badge" id="ad-new-badge"{% if not nc.count %} hidden{% endif %}>{{ nc.count }}</em>{% endif %}</a>{% endfor %}
     </div>

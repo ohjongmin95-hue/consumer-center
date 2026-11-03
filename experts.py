@@ -476,7 +476,16 @@ def install(S):
             except Exception: news = []
         # 운영자 2026-11-03: 자문단은 순서대로 말고 랜덤으로 (네 명씩 보이고, 더 있으면 화면에서 돌아가며 바뀜)
         people = list(helpers(40)); random.shuffle(people)
-        return render_template('explore.html', helpers=people, hot=hot, news=news, ask_link='law_ask' in app.view_functions)
+        sample = False
+        if len(people) < 4:  # 운영자 2026-11-03 (밤): 자문단이 적으면 횡해 보임 → '예시' 표시를 단 예시 카드로 채움 (실제 사람 아님)
+            sample = True
+            people += [{'id': None, 'name': n, 'field': fd, 'org': o, 'kind': 'person', 'intro': i, 'sample': True,
+                        'photo_url': url_for('static', filename=f'img/advisors/{a}.jpg')}
+                       for a, n, fd, o, i in (('a1', '김서연', '변호사', '소보루 법률사무소', '전자상거래 환불 분쟁을 주로 다뤄요'),
+                                              ('a2', '박성훈', '변호사', '법무법인 소보루', '중고차·렌터카 계약 문제를 도와요'),
+                                              ('a3', '이정민', '교수', '소보루대학교 법학전문대학원', '소비자법을 연구하고 가르쳐요'),
+                                              ('a4', '정민재', '변호사', '법률사무소 소보루', '여행·항공 피해 상담을 해요'))][:4 - len(people)]
+        return render_template('explore.html', helpers=people, helpers_sample=sample, hot=hot, news=news, ask_link='law_ask' in app.view_functions)
 
     @app.route('/explore/contact-tips')
     def contact_tips():

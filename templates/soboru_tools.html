@@ -4,7 +4,7 @@
 {% block description %}{{ ui('tools.meta', '헬스장·학원 환불, 청약철회 기한, 카드 할부, 대출·예적금 이자를 바로 계산해요.') }}{% endblock %}
 {% block content %}
 <main class="sb-wrap tl">
-  <header class="tl-head">
+  <header class="tl-head{{ '' if is_soboru() else ' sr-only' }}">
     <h1>{{ ui('tools.h1', '계산기') }}</h1>
     <p>{{ ui('tools.intro', '환불·위약금, 할부·이자처럼 헷갈리는 돈 계산을 바로 해 봐요.') }}</p>
   </header>

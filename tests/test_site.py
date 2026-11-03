@@ -580,6 +580,23 @@ class SiteTest(unittest.TestCase):
             other.post('/start/phone', data={'_csrf': token, 'step': 'code', 'code': code})
             self.assertIn(u['nickname'], other.get('/me').get_data(as_text=True))
 
+    def test_reports_tabs_and_tools_page(self):
+        # 운영자 2026-11-03: 목록 탭에 공감·댓글 많은 순, 계산기는 제보센터에서도 토스 스타일 CSS
+        html = self.client.get('/reports?sort=talk', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertIn('댓글 많은 순', html); self.assertIn('공감 많은 순', html)
+        tools = self.client.get('/tools', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertIn('class="tl-card"', tools)
+        self.assertNotIn('제보하기 →', self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
+
+    def test_explore_sample_advisors(self):
+        # 운영자 2026-11-03 (밤): 자문단이 적으면 '예시' 표시를 단 예시 카드로 채움
+        self.site.JEBO_HOSTS.add('localhost')
+        try:
+            with self.site.conn() as db: db.execute("DELETE FROM experts")
+            page = self.client.get('/explore').get_data(as_text=True)
+        finally: self.site.JEBO_HOSTS.discard('localhost')
+        self.assertEqual(page.count('class="xs-sample"'), 4); self.assertIn('김서연', page)
+
     def test_report_talk_speech_to_text(self):
         # 말로 입력 (운영자 2026-11-03): 네이버 앱 등은 브라우저 받아쓰기가 안 돼서 녹음 파일을 서버에서 글로 바꿈
         page = self.client.get('/report/talk').get_data(as_text=True)
@@ -2832,7 +2849,7 @@ class SiteTest(unittest.TestCase):
         home = admin.get('/admin').get_data(as_text=True)
         self.assertIn('관리자 홈', home)
         self.assertIn('기자 계정', home)
-        for label in ('사이트 꾸미기', '화면 편집', '메뉴·구성', '문구 고치기', '사업자 정보', '검색 노출', '제보 처리'):
+        for label in ('사이트 화면 편집', '화면에서 바로 고치기', '첫 화면 사진', '메뉴·구성', '문구·사업자 정보·검색', '제보 처리'):
             self.assertIn(label, home)
         site = admin.get('/admin/site').get_data(as_text=True)
         self.assertIn('화면에서 바로 고치기', site)

@@ -75,9 +75,9 @@
   <section class="xs-sec" aria-labelledby="xs-help">
     <div class="xs-hrow"><h2 class="xs-h" id="xs-help">{{ ui('explore.helpers', '소보루 자문단') }}</h2><a class="xs-more" href="{{ url_for('experts_page') }}">{{ ui('common.more', '더 보기') }}{{ go }}</a></div>
     {% if helpers %}
-    <ul class="xs-grid is-4 xs-people" data-rotate>{% for e in helpers %}
+    <ul class="xs-grid is-4 xs-people"{% if not helpers_sample %} data-rotate{% endif %}>{% for e in helpers %}
       {# 운영자 2026-11-03: 위에 큰 사진(아래로 흰색에 스며듦) → 동그란 분야 표시(변호사=저울, 교수=학사모) → 소속 한 줄 → 굵은 이름 #}
-      <li{% if loop.index > 4 %} hidden{% endif %}><a class="xs-person" href="{{ url_for('expert_profile', eid=e.id) }}">
+      <li{% if loop.index > 4 %} hidden{% endif %}><a class="xs-person{{ ' is-sample' if e.sample }}" href="{{ url_for('expert_apply') if e.sample else url_for('expert_profile', eid=e.id) }}">{% if e.sample %}<span class="xs-sample">{{ ui('explore.sample', '예시') }}</span>{% endif %}
         <span class="xs-pphoto is-t{{ loop.index0 % 4 }}">{% if e.photo_url %}<img src="{{ e.photo_url }}" alt="" width="360" height="300" loading="lazy">{% else %}<span class="xs-pinit" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}</span>
         <span class="xs-pmark" aria-hidden="true">{% if e.field == '교수' %}<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/></svg>{% else %}<svg viewBox="0 0 24 24"><path d="M12 3v18M7 21h10M4 7h16"/><path d="M6 7l-3 7a3 3 0 006 0zM18 7l-3 7a3 3 0 006 0z"/></svg>{% endif %}</span>
         <span class="xs-pbody">

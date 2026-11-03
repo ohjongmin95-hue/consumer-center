@@ -1,33 +1,36 @@
 {% extends 'console.html' %}
-{% block title %}AI 사용량 | {{ site_name() }}{% endblock %}
+{% block title %}AI 사용량 | {{ site_name() }}<script>setTimeout(function () { if (!document.hidden) location.reload(); else document.addEventListener('visibilitychange', function () { location.reload(); }, { once: true }); }, 30000);</script>
+{% endblock %}
 {% block content %}
 {# 운영자 2026-11-03: 기능별 OpenAI 호출 횟수·토큰 (aiusage.py). 금액은 OpenAI 화면에서 프로젝트별로 봄 #}
 <main class="cs-page au">
   <h1 class="cs-title">AI 사용량</h1>
   <nav class="cs-tabs">{% for d, label in ((1, '오늘'), (7, '7일'), (30, '30일'), (90, '90일')) %}<a href="{{ url_for('admin_ai_usage', days=d) }}"{% if days == d %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
 
-  <div class="ads-kpis">
-    <div><small>호출</small><b>{{ '{:,}'.format(total.calls) }}번</b><em>실패 {{ '{:,}'.format(total.fails) }}번</em></div>
-    <div><small>입력 토큰</small><b>{{ '{:,}'.format(total.prompt) }}</b><em>캐시 {{ '{:,}'.format(total.cached) }}</em></div>
-    <div><small>출력 토큰</small><b>{{ '{:,}'.format(total.completion) }}</b><em>AI가 쓴 글</em></div>
+  {% macro won(usd) %}{{ '{:,}'.format((usd * rate)|round|int) }}원{% endmacro %}
+  <div class="ads-kpis au-kpis">
+    <div><small>오늘 쓴 돈</small><b>{{ won(today.usd) }}</b><em>${{ '%.3f'|format(today.usd) }} · {{ today.calls }}번 · {{ now }} 기준</em></div>
+    <div><small>{{ '오늘' if days == 1 else '최근 %d일'|format(days) }} 쓴 돈</small><b>{{ won(total.usd) }}</b><em>${{ '%.2f'|format(total.usd) }} · 호출 {{ '{:,}'.format(total.calls) }}번</em></div>
+    <div><small>토큰</small><b>{{ '{:,}'.format(total.prompt + total.completion) }}</b><em>입력 {{ '{:,}'.format(total.prompt) }} (캐시 {{ '{:,}'.format(total.cached) }}) · 출력 {{ '{:,}'.format(total.completion) }}</em></div>
   </div>
+  <p class="au-help">OpenAI 가격표로 바로 계산해요. 환율 1달러 = {{ '{:,}'.format(rate|int) }}원. 30초마다 새로 고쳐요.{% if total.unknown %} 가격을 모르는 모델: {{ total.unknown|join(', ') }}{% endif %}</p>
 
   <div class="cs-panel">
     <h2>기능별</h2>
     <table class="cs-table au-table">
-      <thead><tr><th>기능</th><th>모델</th><th class="num">호출</th><th class="num">입력</th><th class="num">출력</th><th class="num">한 번에</th></tr></thead>
+      <thead><tr><th>기능</th><th>모델</th><th class="num">호출</th><th class="num">입력</th><th class="num">출력</th><th class="num">한 번에</th><th class="num">금액</th></tr></thead>
       <tbody>
       {% for r in rows %}<tr><td><b>{{ r.name }}</b>{% if r.own_key %} <em class="au-key">전용 키</em>{% endif %}</td><td><code>{{ r.model or '-' }}</code></td>
         <td class="num">{{ '{:,}'.format(r.calls) }}{% if r.fails %} <small class="au-fail">실패 {{ r.fails }}</small>{% endif %}</td>
-        <td class="num">{{ '{:,}'.format(r.prompt) }}</td><td class="num">{{ '{:,}'.format(r.completion) }}</td><td class="num">{{ '{:,}'.format(r.per_call) }}</td></tr>
-      {% else %}<tr><td class="cs-empty" colspan="6">아직 기록이 없어요. AI를 부르면 여기에 쌓여요.</td></tr>{% endfor %}
+        <td class="num">{{ '{:,}'.format(r.prompt) }}</td><td class="num">{{ '{:,}'.format(r.completion) }}</td><td class="num">{{ '{:,}'.format(r.per_call) if r.prompt else '%d초'|format((r.audio_sec / r.calls)|round|int if r.calls else 0) }}</td><td class="num"><b>{{ won(r.usd) if r.usd is not none else '-' }}</b></td></tr>
+      {% else %}<tr><td class="cs-empty" colspan="7">아직 기록이 없어요. AI를 부르면 여기에 쌓여요.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
 
   {% if daily %}<div class="cs-panel">
-    <h2>날짜별 토큰</h2>
-    <ol class="vs-days">{% for d in daily|reverse %}<li><span>{{ d.day[5:].replace('-', '.') }}</span><span class="vs-bar"><i class="j" style="width:{{ (100 * d.tok / peak)|round(1) }}%"></i></span><b>{{ '{:,}'.format(d.tok) }}</b><small>{{ d.calls }}번</small></li>{% endfor %}</ol>
+    <h2>날짜별 금액</h2>
+    <ol class="vs-days">{% for d in daily|reverse %}<li><span>{{ d.day[5:].replace('-', '.') }}</span><span class="vs-bar"><i class="j" style="width:{{ (100 * d.usd / peak)|round(1) }}%"></i></span><b>{{ won(d.usd) }}</b><small>{{ d.calls }}번</small></li>{% endfor %}</ol>
   </div>{% endif %}
 
   <div class="cs-panel">
@@ -38,4 +41,5 @@
     </tbody></table>
   </div>
 </main>
+<script>setTimeout(function () { if (!document.hidden) location.reload(); else document.addEventListener('visibilitychange', function () { location.reload(); }, { once: true }); }, 30000);</script>
 {% endblock %}
