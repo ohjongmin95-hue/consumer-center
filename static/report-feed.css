@@ -1533,3 +1533,12 @@ body:has(main.ct) .site-footer{margin-top:0}
 .org-band{margin:40px auto 24px}.org-band li:nth-child(4) img{height:36px}
 @media(max-width:760px){.org-band{margin:28px auto 16px}.org-band li:nth-child(4) img{height:27px}}
 .org-band a{display:block;transition:opacity .2s}.org-band a:hover{opacity:.7}
+/* 운영자 2026-11-03: 로고 줄이 위아래와 구분 없이 떠 보임 → 토스처럼 작은 제목 + 연회색 칸 */
+.org-band{display:grid;justify-items:stretch;gap:12px;max-width:1360px;margin:48px auto 24px;padding-inline:24px}
+.org-k{margin:0;font-size:20px;line-height:28px;font-weight:700;color:#191f28}
+.org-band ul{padding:32px 24px;border-radius:24px;background:#f9fafb;gap:20px 64px}
+@media(max-width:760px){.org-band{margin:32px auto 16px;padding-inline:20px}.org-k{font-size:18px;line-height:26px}.org-band ul{padding:24px 16px;gap:16px 28px}}
+.org-band li:first-child a{display:grid;justify-items:center;gap:4px}.org-band li:first-child small{font-size:12px;line-height:16px;font-weight:600;color:#6b7684;letter-spacing:-.01em}
+.org-band{max-width:none;margin-inline:24px;padding-inline:0}
+@media(max-width:760px){.org-band{margin-inline:16px}}
+.org-band{margin-inline:0!important}
