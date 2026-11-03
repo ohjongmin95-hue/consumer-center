@@ -2349,7 +2349,7 @@ def admin_home_overview(db):
         except sqlite3.Error:return 0
     week=[d(i) for i in range(6,-1,-1)]
     cases_by={r[0]:r[1] for r in db.execute('SELECT substr(created,1,10),COUNT(*) FROM cases WHERE created>=? GROUP BY 1',(week[0],))}
-    try:visits_by={r[0]:r[1] for r in db.execute('SELECT day,COUNT(DISTINCT visitor_hash) FROM site_visits WHERE day>=? GROUP BY day',(week[0],))}
+    try:visits_by={r[0]:r[1] for r in db.execute("SELECT day,COUNT(DISTINCT visitor_hash) FROM site_visits WHERE day>=? AND site='jebo' GROUP BY day",(week[0],))}
     except sqlite3.Error:visits_by={}
     days=[{'day':x,'label':'오늘' if x==week[-1] else f'{int(x[5:7])}.{int(x[8:])}','cases':cases_by.get(x,0),'visits':visits_by.get(x,0)} for x in week]
     peak=max([x['visits'] for x in days]+[1])

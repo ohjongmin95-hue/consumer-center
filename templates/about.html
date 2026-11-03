@@ -13,17 +13,21 @@
   {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": faq_ld}
 ]|tojson }}</script>{% endblock %}
 {% block content %}
+{# 운영자 2026-11-03 (밤): 토스 TDS 느낌, '그래서 뭘 하냐'가 한눈에. 세 가지 → 처리 흐름(검은고양이 흐름도를 우리 단계로) → 더 있어요 → 자주 묻는 질문 #}
 <main class="ab-page"><div class="ab-in">
   <p class="ab-kick">서비스 소개</p>
-  <h1 class="ab-title">소비자제보센터는<br>이런 곳이에요</h1>
-  <p class="ab-lead">{{ a.lead }}</p>
-  <p class="ab-more">{{ a.more }}</p>
+  <h1 class="ab-title">소비자 피해를 제보하면<br>기사로 알리고, 기업 답변도 받아요</h1>
 
-  <h2 class="ab-h">주요 특징</h2>
-  <ul class="ab-list">{% for t, d in a.features %}<li><span class="ab-n">{{ loop.index }}</span><div><b>{{ t }}</b><p>{{ d }}</p></div></li>{% endfor %}</ul>
+  <ul class="ab-three">{% for e, t, d in a.three %}<li><span class="ab-emo tf">{{ e }}</span><div><b>{{ t }}</b><p>{{ d }}</p></div></li>{% endfor %}</ul>
+
+  <h2 class="ab-h">제보는 이렇게 흘러가요</h2>
+  <ol class="ab-flow">{% for e, t, d, side in a.flow %}<li><span class="ab-dot tf">{{ e }}</span><div class="ab-fb"><b><em>{{ loop.index }}</em>{{ t }}</b><p>{{ d }}</p>{% if side %}<div class="ab-side">{% for x in side %}<span>{{ x }}</span>{% endfor %}</div>{% endif %}</div></li>{% endfor %}</ol>
+
+  <h2 class="ab-h">이런 것도 있어요</h2>
+  <ul class="ab-tools">{% for e, t, d in a.more_tools %}<li><span class="tf">{{ e }}</span><b>{{ t }}</b><small>{{ d }}</small></li>{% endfor %}</ul>
 
   <h2 class="ab-h">자주 묻는 질문</h2>
-  <div class="ab-faq">{% for q, ans in a.faq %}<details><summary>{{ q }}</summary><p>{{ ans }}</p></details>{% endfor %}</div>
+  <div class="ab-faq">{% for q, ans in a.faq %}<details{% if loop.first %} open{% endif %}><summary>{{ q }}</summary><p>{{ ans }}</p></details>{% endfor %}</div>
 
   <a class="ab-cta" href="{{ url_for('report') }}">제보하기</a>
   <p class="ab-note">{{ ui('companies.notice', '소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요. 제보는 제보자의 주장이며, 기업 답변을 보장하지 않아요.')|branded }}</p>

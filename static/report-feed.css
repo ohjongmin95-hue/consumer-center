@@ -1981,21 +1981,35 @@ body:not(.sb):has(.auth-top) .auth-page{height:auto!important;min-height:calc(10
 @media(max-height:760px){body:not(.sb):has(.auth-top) .auth-lead-out{display:none}body:not(.sb):has(.auth-top) .auth-page{justify-content:flex-start;padding-top:12px!important}}
 /* 운영자 2026-11-03 (밤): 서비스 소개 (/about) — 토스식 한 단 */
 .ab-page{background:#fff}
-.ab-in{max-width:680px;margin:0 auto;padding:56px 20px 80px;box-sizing:border-box}
-.ab-kick{margin:0 0 10px;font-size:15px;font-weight:700;color:#CE6719}
-.ab-title{margin:0 0 20px;font-size:34px;line-height:1.35;font-weight:700;letter-spacing:-.03em;color:#191f28;word-break:keep-all}
-.ab-lead{margin:0 0 12px;font-size:19px;line-height:1.65;font-weight:600;color:#191f28;word-break:keep-all}
-.ab-more{margin:0;font-size:17px;line-height:1.75;color:#4e5968;word-break:keep-all}
-.ab-h{margin:48px 0 16px;font-size:22px;font-weight:700;color:#191f28}
-.ab-list{list-style:none;margin:0;padding:0;display:grid;gap:4px}
-.ab-list li{display:flex;gap:16px;padding:14px 0}
-.ab-n{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#fff4e6;color:#CE6719;font-weight:700;font-size:15px}
-.ab-list b{display:block;margin:4px 0 4px;font-size:17px;color:#191f28}
-.ab-list p{margin:0;font-size:16px;line-height:1.7;color:#4e5968;word-break:keep-all}
+.ab-in{max-width:640px;margin:0 auto;padding:56px 24px 80px;box-sizing:border-box}
+.ab-page .tf{font-family:Tossface,sans-serif;font-style:normal}
+.ab-kick{margin:0 0 8px;font-size:15px;font-weight:700;color:#CE6719}
+.ab-title{margin:0 0 32px;font-size:30px;line-height:40px;font-weight:700;color:#191f28;word-break:keep-all;text-wrap:balance}
+.ab-three{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.ab-three li{display:flex;align-items:center;gap:16px;padding:20px;border-radius:20px;background:#f9fafb}
+.ab-emo{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:#fff;font-size:28px}
+.ab-three b{display:block;font-size:19px;line-height:28px;color:#191f28}
+.ab-three p{margin:2px 0 0;font-size:15px;line-height:22.5px;color:#4e5968;word-break:keep-all}
+.ab-h{margin:56px 0 20px;font-size:22px;line-height:31px;font-weight:700;color:#191f28}
+.ab-flow{list-style:none;margin:0;padding:0}
+.ab-flow li{position:relative;display:flex;gap:16px;padding-bottom:28px}
+.ab-flow li:not(:last-child)::before{content:"";position:absolute;left:23px;top:52px;bottom:4px;width:2px;background:#f2d4a8}
+.ab-dot{flex:none;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#fff4e3;font-size:24px}
+.ab-fb{padding-top:3px;min-width:0}
+.ab-fb b{display:flex;align-items:center;gap:8px;font-size:17px;line-height:25.5px;color:#191f28}
+.ab-fb em{font-style:normal;font-size:13px;font-weight:700;color:#CE6719}
+.ab-fb p{margin:4px 0 0;font-size:15px;line-height:22.5px;color:#4e5968;word-break:keep-all}
+.ab-side{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.ab-side span{font-size:13px;font-weight:600;color:#CE6719;background:#fff4e3;border-radius:8px;padding:5px 10px}
+.ab-tools{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ab-tools li{display:flex;flex-direction:column;gap:2px;padding:18px;border-radius:20px;background:#f9fafb}
+.ab-tools .tf{font-size:28px;margin-bottom:8px}
+.ab-tools b{font-size:16px;color:#191f28}
+.ab-tools small{font-size:13px;color:#6b7684}
 .ab-faq details{border-bottom:1px solid #f2f4f6}
 .ab-faq summary{list-style:none;cursor:pointer;padding:18px 0;font-size:17px;font-weight:600;color:#191f28}
 .ab-faq summary::-webkit-details-marker{display:none}
-.ab-faq p{margin:0 0 18px;font-size:16px;line-height:1.7;color:#4e5968}
-.ab-cta{display:block;margin:40px 0 16px;padding:16px;border-radius:16px;background:#EF920E;color:#fff;text-align:center;font-size:17px;font-weight:700;text-decoration:none}
-.ab-note{margin:0;font-size:13px;line-height:1.6;color:#8b95a1}
-@media(max-width:560px){.ab-in{padding:32px 20px 56px}.ab-title{font-size:27px}.ab-lead{font-size:17px}.ab-more,.ab-list p{font-size:15.5px}}
+.ab-faq p{margin:0 0 18px;font-size:15px;line-height:22.5px;color:#4e5968;word-break:keep-all}
+.ab-cta{display:block;margin:40px 0 16px;height:56px;line-height:56px;border-radius:16px;background:#EF920E;color:#fff;text-align:center;font-size:17px;font-weight:700;text-decoration:none}
+.ab-note{margin:0;font-size:13px;line-height:19.5px;color:#8b95a1}
+@media(max-width:560px){.ab-in{padding:32px 20px 56px}.ab-title{font-size:22px;line-height:31px}.ab-three li{padding:16px}.ab-emo{width:44px;height:44px;font-size:24px}.ab-three b{font-size:17px}}
