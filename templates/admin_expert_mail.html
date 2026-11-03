@@ -1,0 +1,54 @@
+{% extends 'console.html' %}
+{# 운영자 2026-11-03 (밤): 자문단 섭외 메일. 로펌 이름 넣기 → 제목·HTML 코드 복사 → 하이웍스 </> 에 붙이기. 아래에서 문구를 고쳐 저장 #}
+{% block title %}자문단 섭외 메일 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="cs-page xm">
+  <div class="xm-grid">
+    <div class="xm-side">
+      <section class="cs-panel xm-send">
+        <h2>보내기</h2>
+        <label class="field">받는 법인 이름<input id="xm-firm" value="{{ firm }}" maxlength="40" placeholder="예: 법무법인 소보루" autocomplete="off"></label>
+        <label class="field">메일 제목<input id="xm-subj" readonly value="{{ subject }}"></label>
+        <button type="button" class="cs-btn xm-copy" data-copy="xm-subj" data-done="제목을 복사했어요">제목 복사</button>
+        <textarea id="xm-code" readonly hidden>{{ mail_html }}</textarea>
+        <button type="button" class="cs-btn cs-btn-main xm-copy" data-copy="xm-code" data-done="코드를 복사했어요">HTML 코드 복사</button>
+        <ol class="xm-how">
+          <li>하이웍스 메일 쓰기에서 <b>&lt;/&gt;</b> 를 눌러요.</li>
+          <li>복사한 코드를 붙여 넣고 <b>&lt;/&gt;</b> 를 다시 눌러요.</li>
+          <li>받는 주소는 법인 대표 메일이 좋아요.</li>
+        </ol>
+      </section>
+
+      <form class="cs-panel xm-edit" method="post">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="firm" value="{{ firm }}">
+        <h2>문구 고치기</h2>
+        <p class="xm-tip">‘{{ placeholder }}’ 자리에 받는 법인 이름이 들어가요. 굵게 하려면 글자 앞뒤에 ** 를 붙여요.</p>
+        {% for k, label, rows in labels %}
+        <label class="field">{{ label }}{% if rows == 1 %}<input name="{{ k }}" value="{{ c[k] }}" maxlength="200">{% else %}<textarea name="{{ k }}" rows="{{ rows }}">{{ c[k] }}</textarea>{% endif %}</label>
+        {% if k == 'get' %}<label class="check"><input type="checkbox" name="sample" value="1"{% if c.sample == '1' %} checked{% endif %}> 자문단 소개 예시 카드 넣기</label>{% endif %}
+        {% endfor %}
+        <button class="cs-btn cs-btn-main" type="submit" name="act" value="save">저장하기</button>
+        <button class="xm-reset" type="submit" name="act" value="reset" formnovalidate onclick="return confirm('처음 문구로 되돌릴까요?')">처음 문구로 되돌리기</button>
+      </form>
+    </div>
+    <section class="xm-view" aria-label="메일 미리보기">
+      <iframe id="xm-frame" title="메일 미리보기" srcdoc="{{ ('<!doctype html><meta charset=utf-8><body style=margin:0>' ~ mail_html)|e }}"></iframe>
+    </section>
+  </div>
+  <textarea id="xm-tpl" hidden>{{ mail_template }}</textarea>
+  <input id="xm-subj-tpl" type="hidden" value="{{ c.subject }}">
+</main>
+<script>
+(function(){
+  var P={{ placeholder|tojson }},f=document.getElementById('xm-firm'),code=document.getElementById('xm-code'),fr=document.getElementById('xm-frame'),
+      subj=document.getElementById('xm-subj'),T=document.getElementById('xm-tpl').value,S=document.getElementById('xm-subj-tpl').value;
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  f.addEventListener('input',function(){var v=f.value.trim()||P,h=T.split(P).join(esc(v));code.value=h;subj.value=S.split(P).join(v);
+    fr.srcdoc='<!doctype html><meta charset=utf-8><body style=margin:0>'+h;document.querySelectorAll('input[name=firm]').forEach(function(i){i.value=f.value})});
+  document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById(b.dataset.copy),o=b.textContent;
+    function ok(){b.textContent=b.dataset.done;setTimeout(function(){b.textContent=o},1800)}
+    function old(){t.hidden=false;t.select();document.execCommand('copy');t.hidden=t.id==='xm-code';ok()}
+    if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t.value).then(ok,old)}else{old()}})});
+})();
+</script>
+{% endblock %}

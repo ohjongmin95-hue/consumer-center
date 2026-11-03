@@ -681,3 +681,19 @@ body.console .ad-row-main small{font-size:13px;color:#8b95a1;white-space:nowrap;
 body.console .ad-row-side{flex:none;display:grid;justify-items:end;gap:2px}
 body.console .ad-row-side em{font-style:normal;font-size:13px;font-weight:600;color:#CE6719;background:#fff4e6;border-radius:6px;padding:2px 8px}
 body.console .ad-row-side small{font-size:12px;color:#b0b8c1;font-variant-numeric:tabular-nums}
+/* 운영자 2026-11-03 (밤): 자문단 섭외 메일 */
+body.console .xm-grid{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:24px;align-items:start}
+body.console .xm-side{display:grid;gap:16px}
+body.console .xm h2{margin:0 0 16px;font-size:18px;font-weight:700;color:#191f28}
+body.console .xm .field{display:grid;gap:6px;margin:0 0 14px;font-size:14px;font-weight:600;color:#333d4b}
+body.console .xm .field input,body.console .xm .field textarea{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #e5e8eb;border-radius:12px;background:#fff;font:inherit;font-weight:400;font-size:15px;line-height:1.6;color:#191f28}
+body.console .xm .field input:focus,body.console .xm .field textarea:focus{outline:none;border-color:#EF920E}
+body.console .xm-copy{display:block;width:100%;margin:0 0 8px;padding:14px;font-size:16px}
+body.console .xm-how{margin:12px 0 0;padding-left:20px;font-size:14px;line-height:1.8;color:#4e5968}
+body.console .xm-tip{margin:-6px 0 16px;font-size:14px;line-height:1.6;color:#4e5968}
+body.console .xm .check{display:flex;gap:8px;align-items:center;margin:0 0 14px;font-size:14px;color:#333d4b}
+body.console .xm-edit .cs-btn-main{display:block;width:100%;padding:14px;font-size:16px}
+body.console .xm-reset{display:block;margin:12px auto 0;border:0;background:none;color:#4e5968;font-size:14px;text-decoration:underline;cursor:pointer}
+body.console .xm-view{position:sticky;top:80px}
+body.console .xm-view iframe{display:block;width:100%;height:calc(100vh - 120px);min-height:640px;border:1px solid #e5e8eb;border-radius:20px;background:#f2f4f6}
+@media(max-width:1000px){body.console .xm-grid{grid-template-columns:minmax(0,1fr)}body.console .xm-view{position:static}body.console .xm-view iframe{height:900px}}

@@ -396,6 +396,20 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('href="/explore"', home); self.assertNotIn('>전문가<', home)
 
+    def test_expert_mail_builder(self):
+        # 운영자 2026-11-03 (밤): 관리자에서 자문단 섭외 메일 코드 만들기 (법인 이름 넣기, 문구 고쳐 저장)
+        adm = self.login_admin()
+        page = adm.get('/admin/experts/mail?firm=법무법인 한결').get_data(as_text=True)
+        self.assertIn('법무법인 한결 귀중', page)
+        self.assertIn('https://consumerjebo.co.kr/expert/apply', page)
+        self.assertEqual(self.post_form(adm, '/admin/experts/mail', {'act': 'save', 'kick': '새 작은 글씨', 'cta': '참여하기', 'title': '○○ 법무법인 귀중', 'sign': '<script>x</script>'}).status_code, 302)
+        page = adm.get('/admin/experts/mail').get_data(as_text=True)
+        self.assertIn('새 작은 글씨', page)
+        self.assertNotIn('<script>x</script>', page)
+        self.post_form(adm, '/admin/experts/mail', {'act': 'reset'})
+        self.assertIn('소보루 자문단 모집', adm.get('/admin/experts/mail').get_data(as_text=True))
+        self.assertEqual(self.client.get('/admin/experts/mail').status_code in (302, 401, 403, 404), True)
+
     def test_expert_invite(self):
         # 운영자 2026-11-03: 흑묘 도우미단처럼 제보자가 자문단을 불러요 (기업 답변이 있거나 기한이 지난 제보, 3명까지)
         from PIL import Image
