@@ -2796,6 +2796,7 @@ _writer=types.SimpleNamespace(**globals());soboru_writer.install(_writer)
 # AI 소비자 상담 새 버전: 유형 분류·키워드+임베딩 검색·근거 확인·상담 기록·관리자 대시보드 (lawrag.py, 관리자 설정으로 켤 때만 손님에게 보임)
 _rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
 import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  # 소보루 레터: 주간 뉴스레터·구독·발송 (soboru_letter.py)
+import report_talk;report_talk.install(types.SimpleNamespace(**globals()))  # 대화로 제보하기: AI가 묻고 초안을 채움 (report_talk.py)
 import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)

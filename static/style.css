@@ -2209,3 +2209,8 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 .co-logo-lg{width:40px;height:40px;border-radius:12px;vertical-align:-8px;margin-right:12px}
 /* 기업 답변 링크 화면 */
 .co-reply .co-reply-note{margin:18px 0 16px;padding:12px 14px;border-radius:12px;background:#fff8f0;color:#8a4b00;font-size:14px;line-height:1.7}
+/* 2026-11-03 소비자제보센터 → 소보루제보: 갈색 SOBORU + 귤색 상자 속 흰 '제보' 로고 그림 (운영자 고름, img/soboru-jebo-logo.png) */
+.brand-lock{display:inline-flex;align-items:center}
+.brand-lock .brand-wm{height:28px;width:auto;display:block}
+.ft-logo.brand-lock .brand-wm{height:22px}
+@media(max-width:680px){.brand-lock .brand-wm{height:23px}}

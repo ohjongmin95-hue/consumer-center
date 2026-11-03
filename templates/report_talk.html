@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('talk.title', 'AI와 대화로 제보하기') }} | {{ txt('site.name') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset('report-talk.css') }}">{% endblock %}
+{% block content %}
+{# 대화로 제보하기 (report_talk.py). 접수는 기존 양식과 같은 POST /report. 운영자 2026-11-03 #}
+<main class="tk-page">
+  <div class="tk-head"><h1>{{ ui('talk.title', 'AI와 대화로 제보하기') }}</h1><a href="{{ url_for('report') }}">{{ ui('talk.to_form', '양식으로 쓰기') }}</a></div>
+  <div class="tk-log" id="tk-log" aria-live="polite"></div>
+
+  <form id="tk-form" class="tk-form" method="post" action="{{ url_for('report') }}" enctype="multipart/form-data" hidden>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    {% for k in ('industry', 'category', 'company', 'subject', 'description', 'request_text', 'region_sido', 'gender', 'age_group', 'occurred_on', 'visibility', 'reporter_name', 'phone', 'lookup_pw', 'lookup_pw2', 'contact') %}<input type="hidden" name="{{ k }}" value="">{% endfor %}
+    <input id="tk-files" type="file" name="evidence" multiple accept="image/*,.pdf,.mp4,.mov" hidden>
+    <div class="tk-consents">{% include 'report_consents.html' %}</div>
+    <button class="tk-submit" type="submit"{% if not intake_enabled %} disabled title="현재 접수 준비 중"{% endif %}>{{ ui('talk.submit', '이대로 제보 접수하기') }}</button>
+    {% if not intake_enabled %}<p class="tk-off">{{ ui('report.disabled', '현재 제보 접수 기능은 비활성화되어 있습니다. 운영 정책과 보안 검증 후 개시됩니다.') }}</p>{% endif %}
+  </form>
+
+  <div class="tk-bar" id="tk-bar">
+    <div class="tk-thumbs" id="tk-thumbs"></div>
+    <div class="tk-compose">
+      <button type="button" class="tk-ic" id="tk-photo" aria-label="{{ ui('talk.photo', '사진 올리기') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-2.5h6L17 7h3v12H4z"/><circle cx="12" cy="13" r="3.6"/></svg></button>
+      <textarea id="tk-input" rows="1" maxlength="2000" placeholder="{{ ui('talk.ph', '무슨 일이 있었는지 편하게 적어 주세요') }}" aria-label="{{ ui('talk.ph', '무슨 일이 있었는지 편하게 적어 주세요') }}"></textarea>
+      <button type="button" class="tk-ic tk-mic" id="tk-mic" aria-label="{{ ui('talk.mic', '말로 입력하기') }}" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></svg></button>
+      <button type="button" class="tk-send" id="tk-send" aria-label="{{ ui('talk.send', '보내기') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </div>
+  </div>
+</main>
+<script>
+(function () {
+  var T = {{ {
+    'hello': ui('talk.hello', '안녕하세요. 어떤 일을 겪으셨나요?'),
+    'hello2': ui('talk.hello2', '말하듯 편하게 적어 주시면 제보서는 제가 정리해 드릴게요. 마이크로 말하거나 사진만 올려도 돼요.'),
+    'think': ui('talk.think', '내용을 정리하고 있어요'),
+    'check': ui('talk.check', '이렇게 정리했어요. 맞나요?'),
+    'yes': ui('talk.yes', '네, 맞아요'), 'fix': ui('talk.fix', '고칠게요'), 'fix_done': ui('talk.fix_done', '고쳤어요'),
+    'want': ui('talk.want', '업체에 어떤 해결을 원하세요?'), 'want_own': ui('talk.want_own', '직접 쓸게요'),
+    'region': ui('talk.region', '어느 지역에 사세요?'), 'gender': ui('talk.gender', '성별을 골라 주세요'), 'age': ui('talk.age', '연령대를 골라 주세요'),
+    'skip': ui('talk.skip', '건너뛰기'), 'vis': ui('talk.vis', '제보를 다른 소비자도 볼 수 있게 공개할까요?'),
+    'vis_pub': ui('talk.vis_pub', '공개할게요'), 'vis_sec': ui('talk.vis_sec', '비밀글로 할게요'),
+    'vis_note': ui('talk.vis_note', '공개해도 이름과 연락처는 보이지 않아요. 같은 일을 겪은 사람들이 공감과 댓글을 남길 수 있어요.'),
+    'pw': ui('talk.pw', '나중에 진행 상황을 볼 때 쓸 비밀번호를 정해 주세요 (4자 이상)'), 'pw_bad': ui('talk.pw_bad', '두 칸에 같은 비밀번호를 4자 이상 넣어 주세요'),
+    'me': ui('talk.me', '연락받으실 이름과 전화번호예요. 맞나요?'), 'me_new': ui('talk.me_new', '확인 연락을 드릴 이름과 전화번호를 알려 주세요'),
+    'me_bad': ui('talk.me_bad', '이름과 전화번호를 확인해 주세요'), 'change': ui('talk.change', '바꿀게요'), 'next': ui('talk.next', '다음'),
+    'last': ui('talk.last', '마지막으로 아래 동의만 확인하면 접수돼요'),
+    'industry': ui('talk.industry', '어떤 업종이에요?'), 'category': ui('talk.category', '어떤 문제에 가까워요?'), 'company': ui('talk.company', '업체나 서비스 이름이 뭐예요?'),
+    'ai_off': ui('talk.ai_off', '지금은 AI 정리가 잠시 안 돼요. 몇 가지만 버튼으로 여쭤볼게요.'), 'limit': ui('talk.limit', '요청이 많아 잠시 쉬어 가요. 조금 뒤에 다시 해 주세요.'),
+    'need': ui('talk.need', '어떤 일인지 조금만 더 적어 주세요'), 'listening': ui('talk.listening', '듣고 있어요. 말씀이 끝나면 마이크를 한 번 더 눌러 주세요'),
+    'l_company': ui('report.f_company', '업체·서비스명'), 'l_target': ui('home.card_target', '제보 대상'), 'l_industry': ui('report.f_industry', '업종'), 'l_category': ui('report.f_category', '제보 유형'),
+    'l_subject': ui('report.f_subject', '제보 제목'), 'l_desc': ui('report.f_description', '피해 내용'), 'l_day': ui('report.f_occurred', '피해가 일어난 날'),
+    'l_name': ui('report.f_name', '이름'), 'l_phone': ui('report.f_phone', '전화번호'), 'l_pw': ui('report.f_pw', '조회 비밀번호'), 'l_pw2': ui('talk.pw2', '한 번 더')
+  }|tojson }};
+  var L = {{ {'industries': industries, 'categories': categories, 'sido': sido, 'genders': genders, 'ages': ages}|tojson }};
+  var ME = {{ ({'name': me['real_name'] or '', 'phone': me['phone'] or ''} if me else {'name': '', 'phone': ''})|tojson }};
+  var AI_URL = {{ url_for('report_talk_ai')|tojson }}, AI_ON = {{ ai_on|tojson }};
+  var log = document.getElementById('tk-log'), form = document.getElementById('tk-form'), input = document.getElementById('tk-input');
+  var files = document.getElementById('tk-files'), thumbs = document.getElementById('tk-thumbs'), bar = document.getElementById('tk-bar');
+  var csrf = form.elements._csrf.value, story = '', qa = [], draft = null, round = 0, waiting = null, small = [];
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function down() { window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); }
+  function bot(text, sub) { var b = el('div', 'tk-msg tk-bot'); b.appendChild(el('p', null, text)); if (sub) b.appendChild(el('small', null, sub)); log.appendChild(b); down(); return b; }
+  function me(text) { var b = el('div', 'tk-msg tk-me'); b.appendChild(el('p', null, text)); log.appendChild(b); down(); }
+  function set(k, v) { form.elements[k].value = v || ''; }
+  function val(k) { return form.elements[k].value; }
+  // 버튼 고르기: 고르면 버튼 줄은 사라지고 내 말풍선으로 남음
+  function chips(options, cb, opt) {
+    opt = opt || {};
+    var row = el('div', 'tk-chips' + (opt.wrap ? ' wrap' : ''));
+    options.forEach(function (o) {
+      var b = el('button', 'tk-chip' + (o === T.skip || o === T.want_own || o === T.change || o === T.fix ? ' ghost' : ''), o); b.type = 'button';
+      b.onclick = function () { row.remove(); waiting = null; me(o); cb(o); };
+      row.appendChild(b);
+    });
+    log.appendChild(row); down();
+    waiting = opt.free ? function (text) { row.remove(); cb(text); } : null;  // 버튼 말고 직접 적어도 됨
+    return row;
+  }
+  function card(cls) { var c = el('div', 'tk-card ' + (cls || '')); log.appendChild(c); down(); return c; }
+  function field(c, label, name, type, value, max) {
+    var w = el('label', 'tk-field'); w.appendChild(el('span', null, label));
+    var i = type === 'textarea' ? el('textarea') : el('input'); if (type !== 'textarea') i.type = type || 'text';
+    i.value = value || ''; if (max) i.maxLength = max; i.name = 'tk_' + name; w.appendChild(i); c.appendChild(w); return i;
+  }
+  function select(c, label, options, value) {
+    var w = el('label', 'tk-field'); w.appendChild(el('span', null, label)); var s = el('select');
+    s.appendChild(new Option('선택', '')); options.forEach(function (o) { s.appendChild(new Option(o, o, false, o === value)); });
+    w.appendChild(s); c.appendChild(w); return s;
+  }
+  function typing() { var b = el('div', 'tk-msg tk-bot tk-typing'); b.appendChild(el('p', null, T.think)); b.appendChild(el('i')); log.appendChild(b); down(); return b; }
+
+  // ---- 1. 무슨 일이 있었는지 -------------------------------------------------
+  function send() {
+    var text = input.value.trim(); input.value = ''; fit();
+    if (waiting) { if (!text) return; me(text); var w = waiting; waiting = null; w(text); return; }
+    if (draft) return;
+    if (!text && !small.length) return bot(T.need);
+    if (text) { me(text); story += (story ? ' ' : '') + text; }
+    else me('📷 ' + small.length);
+    if (story.length < 8 && !small.length) return bot(T.need);
+    askAI();
+  }
+  function askAI() {
+    var wait = typing(), fd = new FormData();
+    fd.append('_csrf', csrf); fd.append('story', story); fd.append('qa', JSON.stringify(qa));
+    small.forEach(function (b, i) { fd.append('photo', b, 'p' + i + '.jpg'); });
+    if (!AI_ON) { wait.remove(); return noAI(); }
+    fetch(AI_URL, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return [r.status, j]; }); })
+      .then(function (x) { wait.remove(); if (x[1].ok) return got(x[1].draft); if (x[0] === 429) bot(T.limit); noAI(); })
+      .catch(function () { wait.remove(); noAI(); });
+  }
+  function got(d) {
+    // 모자란 것만 짧게 다시 묻기 (두 번까지)
+    if (d.questions.length && round < 2) {
+      round++; var qs = d.questions.slice();
+      (function next() {
+        var q = qs.shift(); if (!q) return askAI();
+        bot(q.q); var done = function (a) { qa.push({ q: q.q, a: a }); next(); };
+        if (q.options.length) chips(q.options, done, { free: true }); else waiting = done;
+        input.focus();
+      })();
+      return;
+    }
+    draft = d; confirm();
+  }
+  function noAI() {
+    draft = { summary: '', industry: '', category: '', company: '', occurred_on: '', subject: story.slice(0, 40), description: story, request_text: '', request_options: [], questions: [] };
+    bot(T.ai_off); fill();
+  }
+  // 업종·유형·업체가 비면 버튼으로 채움
+  function fill() {
+    if (!draft.industry) { bot(T.industry); return chips(L.industries, function (o) { draft.industry = o; fill(); }, { wrap: true }); }
+    if (!draft.category) { bot(T.category); return chips(L.categories, function (o) { draft.category = o; fill(); }, { wrap: true }); }
+    if (!draft.company) { bot(T.company); waiting = function (t) { draft.company = t.slice(0, 60); fill(); }; return input.focus(); }
+    confirm();
+  }
+
+  // ---- 2. 이런 제보시군요, 맞나요? -------------------------------------------
+  function confirm() {
+    if (!draft.industry || !draft.category || !draft.company) return fill();
+    bot(draft.summary || T.check);
+    var c = card('tk-sum');
+    var rows = [[T.l_target, draft.company + ' · ' + draft.industry], [T.l_category, draft.category]];
+    if (draft.occurred_on) rows.push([T.l_day, draft.occurred_on]);
+    var dl = el('dl'); rows.forEach(function (r) { var d = el('div'); d.appendChild(el('dt', null, r[0])); d.appendChild(el('dd', null, r[1])); dl.appendChild(d); }); c.appendChild(dl);
+    c.appendChild(el('h3', null, draft.subject)); c.appendChild(el('p', 'tk-desc', draft.description));
+    chips([T.yes, T.fix], function (o) { if (o === T.yes) { c.classList.add('done'); save(); want(); } else edit(c); });
+  }
+  function edit(c) {
+    c.innerHTML = ''; c.classList.add('editing');
+    var f = { company: field(c, T.l_company, 'company', 'text', draft.company, 60), industry: select(c, T.l_industry, L.industries, draft.industry),
+              category: select(c, T.l_category, L.categories, draft.category), subject: field(c, T.l_subject, 'subject', 'text', draft.subject, 80),
+              description: field(c, T.l_desc, 'description', 'textarea', draft.description, 6000) };
+    var ok = el('button', 'tk-chip', T.fix_done); ok.type = 'button'; c.appendChild(ok);
+    ok.onclick = function () {
+      for (var k in f) draft[k] = f[k].value.trim();
+      if (!draft.company || !draft.industry || !draft.category || !draft.subject || !draft.description) return;
+      c.remove(); me(T.fix_done); save(); want();
+    };
+  }
+  function save() { ['industry', 'category', 'company', 'subject', 'description', 'occurred_on'].forEach(function (k) { set(k, draft[k]); }); }
+
+  // ---- 3. 원하는 해결 · 지역 · 성별 · 연령대 · 공개 여부 · 연락처 ------------------
+  function want() {
+    bot(T.want);
+    var opts = (draft.request_options.length ? draft.request_options : ['전액 환불', '교환', '수리', '사과']).concat([T.want_own]);
+    chips(opts, function (o) {
+      if (o === T.want_own) { waiting = function (t) { set('request_text', t); region(); }; return input.focus(); }
+      set('request_text', draft.request_text && draft.request_text.indexOf(o) > -1 ? draft.request_text : o); region();
+    }, { free: true });
+  }
+  function region() { bot(T.region); chips(L.sido.concat([T.skip]), function (o) { if (o !== T.skip) set('region_sido', o); gender(); }, { wrap: true }); }
+  function gender() { bot(T.gender); chips(L.genders.concat([T.skip]), function (o) { if (o !== T.skip) set('gender', o); age(); }); }
+  function age() { bot(T.age); chips(L.ages.concat([T.skip]), function (o) { if (o !== T.skip) set('age_group', o); vis(); }, { wrap: true }); }
+  function vis() {
+    bot(T.vis, T.vis_note);
+    chips([T.vis_pub, T.vis_sec], function (o) { set('visibility', o === T.vis_pub ? 'public' : 'secret'); if (o === T.vis_pub) return contact(); pw(); });
+  }
+  function pw() {
+    bot(T.pw); var c = card(); var a = field(c, T.l_pw, 'pw', 'password', '', 30), b = field(c, T.l_pw2, 'pw2', 'password', '', 30);
+    var ok = el('button', 'tk-chip', T.next); ok.type = 'button'; c.appendChild(ok); a.focus();
+    ok.onclick = function () { if (a.value.length < 4 || a.value !== b.value) return bot(T.pw_bad); set('lookup_pw', a.value); set('lookup_pw2', b.value); c.remove(); me('••••'); contact(); };
+  }
+  function contact() {
+    if (ME.name && ME.phone) {
+      bot(T.me, ME.name + ' · ' + ME.phone);
+      return chips([T.yes, T.change], function (o) { if (o === T.yes) { set('reporter_name', ME.name); set('phone', ME.phone); return finish(); } contactForm(); });
+    }
+    contactForm();
+  }
+  function contactForm() {
+    bot(T.me_new); var c = card(); var n = field(c, T.l_name, 'name', 'text', ME.name, 40), p = field(c, T.l_phone, 'phone', 'tel', ME.phone, 20);
+    n.autocomplete = 'name'; p.autocomplete = 'tel'; p.placeholder = '010-0000-0000';
+    var ok = el('button', 'tk-chip', T.next); ok.type = 'button'; c.appendChild(ok);
+    ok.onclick = function () {
+      if (!n.value.trim() || !/^[0-9\-\s+]{9,20}$/.test(p.value.trim())) return bot(T.me_bad);
+      set('reporter_name', n.value.trim()); set('phone', p.value.trim()); c.remove(); me(n.value.trim() + ' · ' + p.value.trim()); finish();
+    };
+  }
+  // ---- 4. 동의하고 접수 (기존 양식과 같은 동의 항목) ------------------------------
+  function finish() { bot(T.last); bar.hidden = true; form.hidden = false; log.appendChild(form); down(); }
+
+  // ---- 사진: 첨부로 그대로 올리고, AI에는 1024px로 줄여 보냄 ------------------------
+  document.getElementById('tk-photo').onclick = function () { files.click(); };
+  files.onchange = function () {
+    thumbs.innerHTML = ''; small = [];
+    Array.prototype.slice.call(files.files, 0, {{ max_files }}).forEach(function (f, i) {
+      if (!/^image\//.test(f.type)) return;
+      var url = URL.createObjectURL(f), im = new Image(); im.onload = function () {
+        var t = el('img'); t.src = url; t.alt = ''; thumbs.appendChild(t);
+        if (i >= 3) return;
+        var r = Math.min(1, 1024 / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+        cv.width = Math.round(im.width * r); cv.height = Math.round(im.height * r); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+        cv.toBlob(function (b) { if (b) small.push(b); }, 'image/jpeg', 0.8);
+      }; im.src = url;
+    });
+  };
+  // ---- 마이크: 휴대폰 브라우저 받아쓰기 (지원할 때만 버튼이 보임) ---------------------
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, mic = document.getElementById('tk-mic'), rec = null;
+  if (SR) {
+    mic.hidden = false;
+    mic.onclick = function () {
+      if (rec) { rec.stop(); return; }
+      rec = new SR(); rec.lang = 'ko-KR'; rec.interimResults = true; rec.continuous = true;
+      var base = input.value ? input.value + ' ' : '';
+      rec.onresult = function (e) { var s = ''; for (var i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; input.value = base + s; fit(); };
+      rec.onend = function () { rec = null; mic.classList.remove('on'); };
+      mic.classList.add('on'); input.placeholder = T.listening; rec.start();
+    };
+  }
+  function fit() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 140) + 'px'; }
+  input.addEventListener('input', fit);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
+  document.getElementById('tk-send').onclick = send;
+  var all = form.querySelector('[data-check-all]'), boxes = form.querySelectorAll('.consent-card input[type=checkbox]');
+  if (all) {
+    all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); });
+    boxes.forEach(function (b) { b.addEventListener('change', function () { all.checked = Array.prototype.every.call(boxes, function (x) { return x.checked; }); }); });
+  }
+  bot(T.hello, T.hello2);
+})();
+</script>
+{% endblock %}

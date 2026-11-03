@@ -244,7 +244,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('비공개 접수', home)
         live = home.split('class="nn-sec nn-live')[1].split('</section>')[0]  # 방금 들어온 제보: 공개 제보만 본문 앞부분, 비밀글·공개 전은 제목·업체만
         self.assertNotIn('비공개 상세 내용', live); self.assertEqual(live.count('공개 본문'), 2)
-        self.assertEqual(live.count('<b>테스트 업체</b>'), 4)
+        self.assertEqual(live.count('<span class="nn-vc-co">테스트 업체</span>'), 4)
         self.assertNotIn('nn-stats', home)  # 메인에는 건수 현황 없음
         self.assertNotIn('비공개 처리된 제보예요', home)
         self.assertNotIn('비밀글로 접수된 제보예요', home)
@@ -270,6 +270,29 @@ class SiteTest(unittest.TestCase):
         empty = self.client.get('/reports?q=missing').get_data(as_text=True)
         self.assertIn('검색 조건에 맞는 제보 내역이 없습니다.', empty)
 
+    def test_report_talk_ai_draft(self):
+        # 대화로 제보하기 (운영자 2026-11-03): AI가 되물을 것과 초안을 주고, 업종·유형은 목록 안에서만, 개인정보는 지움. 접수는 기존 /report로
+        page = self.client.get('/report/talk').get_data(as_text=True)
+        self.assertIn('id="tk-log"', page); self.assertIn('action="/report"', page); self.assertIn('name="truth"', page)
+        token = self.csrf(self.client, '/report/talk')
+        seen = []
+        def fake(url, headers, body, timeout):
+            seen.append(body)
+            out = {'summary': '환불 거절 건이시죠?', 'industry': '쇼핑', 'category': '배송·교환·환불', 'company': '하루몰', 'occurred_on': '2999-01-01',
+                   'subject': '환불이 안 돼요', 'description': '연락처 010-1234-5678로 문자했어요.', 'request_text': '환불', 'request_options': ['전액 환불'],
+                   'questions': [{'q': '업체에 연락해 보셨나요?', 'options': ['네', '아니요']}, {'q': 'a'}, {'q': 'b'}]}
+            return 200, {'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+        photo = io.BytesIO(b'\xff\xd8\xff' + b'0' * 100)
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+            r = self.client.post('/report/talk/ai', data={'_csrf': token, 'story': '운동화 반품했는데 환불이 안 돼요', 'qa': '[]', 'photo': (photo, 'a.jpg')}, content_type='multipart/form-data')
+        d = r.get_json()['draft']
+        self.assertEqual((d['industry'], d['category'], d['occurred_on']), ('쇼핑·유통', '배송·교환·환불', ''))
+        self.assertNotIn('010-1234-5678', d['description']); self.assertEqual(len(d['questions']), 2)
+        self.assertEqual(seen[0]['model'], 'gpt-6-luna'); self.assertEqual(seen[0]['messages'][1]['content'][1]['type'], 'image_url')
+        with patch.dict(os.environ, {'OPENAI_API_KEY': ''}):
+            self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': '환불이 안 돼요'}).get_json(), {'ok': False, 'error': 'ai'})
+        self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': ''}).status_code, 400)
+
     def test_submission_lookup_admin_and_company_response(self):
         token = self.csrf(self.client, '/report')
         self.assertEqual(self.client.post('/report', data={'_csrf': token}).status_code, 400)
@@ -294,7 +317,7 @@ class SiteTest(unittest.TestCase):
         response = self.client.post('/lookup', data={'_csrf': token, 'mode': 'phone', 'phone': '01012345678', 'password': '1234'}, follow_redirects=True)
         self.assertIn('테스트 환불 요청', response.get_data(as_text=True))
         self.assertIn('aria-current="step"', response.get_data(as_text=True))
-        self.assertIn('테스트 업체<span class="nn-vc-ind">쇼핑·유통</span>', self.client.get('/reports').get_data(as_text=True))  # 업체 옆에 소비자가 고른 업종
+        self.assertIn('테스트 업체</span><span class="nn-vc-ind">쇼핑·유통</span>', self.client.get('/reports').get_data(as_text=True))  # 업체 옆에 소비자가 고른 업종
         self.assertIn('현재 단계: 접수', response.get_data(as_text=True))
         admin = self.site.app.test_client()
         token = self.csrf(admin, '/admin/login')
@@ -1688,11 +1711,11 @@ class SiteTest(unittest.TestCase):
             with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):  # 관리자는 소보루 주소 하나
                 r = self.client.get('/admin/content?face=jebo', base_url='https://consumerjebo.co.kr')
                 self.assertEqual((r.status_code, r.headers['Location']), (302, 'https://soboru.co.kr/admin/content?face=jebo'))
-            self.assertIn('jebo-favicon.png', jebo); self.assertIn('<meta property="og:site_name" content="소비자제보센터">', jebo)  # 검색·광고에 뜨는 이름·아이콘
+            self.assertIn('jebo-favicon.png', jebo); self.assertIn('<meta property="og:site_name" content="소보루제보">', jebo)  # 검색·광고에 뜨는 이름·아이콘
             self.assertNotEqual(self.client.get('/favicon.ico', base_url='https://consumerjebo.co.kr').data, self.client.get('/favicon.ico').data)
             self.assertIn('class="site-header"', jebo)
             self.assertNotIn('class="sb"', jebo)
-            self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', jebo)
+            self.assertIn('<title>소보루제보 | 소비자 불만·피해 신고 플랫폼</title>', jebo); self.assertIn('soboru-jebo-logo.png', jebo)  # 이름 소보루제보 (2026-11-03)
             self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', jebo)
             self.assertIn('여러분의 제보가', jebo)
             sob = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)

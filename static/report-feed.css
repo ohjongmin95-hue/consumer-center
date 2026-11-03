@@ -45,3 +45,20 @@ body:not(.sb){--sb-orange:#e8890c;--sb-mute:#8b95a1;--sb-sub:#4e5968;--sb-line:#
 .nn-vc-card h3,.nn-vc-ex{word-break:keep-all}
 @media(min-width:900px){.rf-home{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .nn-vc-ind{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;background:#f2f4f6;color:#4e5968;font-size:12px;font-weight:600;vertical-align:1px}
+/* 2026-11-03 카드 머리: 작성자 프로필·닉네임·날짜 + 오른쪽 진행 상태 (검은고양이처럼) */
+.nn-vc-av{flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;background:#fff1e3;color:#c45f00;font-weight:800;font-size:16px;display:inline-flex;align-items:center;justify-content:center}
+.nn-vc-top .nn-vc-av.nn-emo{width:40px;height:40px;border-radius:50%;font-size:20px}
+.nn-vc-top{gap:10px}
+.nn-vc-who time{font-size:12px;color:var(--sb-mute)}
+.nn-vc-top .step-bar,.nn-vc-top .sb-badge{margin-left:auto;flex:none}
+.nn-vc-meta{display:grid;gap:6px;margin:0;font-size:14px}
+.nn-vc-meta div{display:flex;align-items:center;gap:10px;min-width:0}
+.nn-vc-meta dt{flex:none;width:58px;color:var(--sb-mute);font-size:13px}
+.nn-vc-meta dd{margin:0;display:flex;align-items:center;gap:6px;min-width:0;color:var(--sb-ink,#191f28);font-weight:700}
+.nn-vc-co{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.nn-vc-meta .nn-vc-ind{margin:0;flex:none}
+.nn-vc-tag{display:inline-block;padding:2px 10px;border-radius:999px;background:#f2f4f6;color:#4e5968;font-size:13px;font-weight:600}
+.nn-vc-who time{margin:0}.nn-vc-meta .nn-vc-ind{background:#fff1e3;color:#c45f00}
+.nn-vc-av.is-anon{background:#f2f4f6;color:#b0b8c1}.nn-vc-av.is-anon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.talk-banner{display:flex;align-items:center;gap:4px 12px;flex-wrap:wrap;margin:0 0 16px;padding:16px 18px;border-radius:18px;background:#fff6ea;border:1px solid #f9d9a8;color:#191f28;text-decoration:none}
+.talk-banner b{font-size:16px}.talk-banner span{font-size:14px;color:#4e5968;flex:1}.talk-banner i{font-style:normal;font-weight:800;color:#CE6719}
