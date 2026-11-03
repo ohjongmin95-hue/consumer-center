@@ -43,13 +43,14 @@
   <meta name="apple-mobile-web-app-title" content="소보루"><meta name="mobile-web-app-capable" content="yes">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
   <link rel="stylesheet" href="{{ asset('report-feed.css') }}">
+  {% if not is_soboru() and request.path.startswith('/tools') %}<link rel="stylesheet" href="{{ asset('tools-jebo.css') }}">{% endif %}{# 계산기·사전·법령 찾기 토스 TDS (운영자 2026-11-03) #}
   {% if not is_soboru() and request.path.startswith('/ask') %}<link rel="stylesheet" href="{{ asset('ask-jebo.css') }}">{% endif %}{# AI 소비자 상담을 제보센터에서도 (운영자 2026-11-03) #}
   {% if is_soboru() %}<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">{# 소보루 글꼴 Pretendard (SIL OFL), 화면에 쓰는 글자만 나눠 받음 #}
   <link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}
 </head>
 <body{% if is_soboru() or app_client() %} class="{{ 'sb' if is_soboru() }}{{ ' in-app' if app_client() }}"{% endif %}>
-{# 운영자 2026-11-03: 제보센터 로그인·회원가입은 토스처럼 메뉴 없는 별도 화면 (로고 + 닫기만, 바닥글 없음) #}{% set auth_screen = not is_soboru() and request.endpoint in ('login', 'signup', 'account_help', 'social_join') %}
+{# 운영자 2026-11-03: 제보센터 로그인·회원가입은 토스처럼 메뉴 없는 별도 화면 (로고 + 닫기만, 바닥글 없음) #}{% set auth_screen = not is_soboru() and request.endpoint in ('login', 'signup', 'account_help', 'social_join', 'phone_start') %}
 {# 운영자 2026-11-03: 휴대폰에서 제보 쓸 때는 메뉴·바닥글 없이 꽉 찬 화면 (로고 + 닫기만) #}{% set write_screen = not is_soboru() and request.endpoint in ('report', 'report_talk') %}{# 운영자 2026-11-03: 자문단 초대·모집은 메뉴 없는 별도 페이지 (로고 + 닫기, 바닥글은 둠) #}{% set expert_screen = not is_soboru() and request.endpoint in ('expert_join', 'expert_apply', 'expert_done', 'expert_claim') %}{% set auth_bar %}<header class="auth-top{{ ' write-top' if write_screen }}{{ ' xf-top' if expert_screen }}"><a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a><a class="auth-x" href="{{ url_for('home') }}" aria-label="{{ ui('common.close', '닫기') }}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a></header>{% endset %}
 {% if is_soboru() %}{% include 'soboru_header.html' %}{% elif auth_screen or expert_screen %}{{ auth_bar }}{% else %}{% include 'jebo_header.html' %}{% if write_screen %}{{ auth_bar }}{% endif %}{% endif %}
 {% with msgs = get_flashed_messages() %}

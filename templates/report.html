@@ -4,7 +4,7 @@
 {% macro lines(key) %}<span class="cell-lines"{{ ed_attr(key) }}>{% for line in g.content[key].split('\n') if line.strip() %}<span class="cell-line">{{ line }}</span>{% endfor %}</span>{% endmacro %}
 {% block content %}
 <main class="page"><div class="wrap">
-  <div class="page-intro"><h1 class="page-title">{{ txt('report.title') }}</h1>{% if txt('report.intro') %}<p>{{ txt('report.intro') }}</p>{% endif %}</div>
+  {# 운영자 2026-11-03: 제보 화면에 큰 제목 두지 않음 (읽는 프로그램용으로만 남김) #}<h1 class="sr-only">{{ txt('report.title') }}</h1>
   {% include 'report_mode.html' %}
 
   {% if txt('report.notes') %}

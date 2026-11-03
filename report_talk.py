@@ -28,6 +28,7 @@ MAX_QA = 8
 STT_MODEL = 'gpt-4o-mini-transcribe'  # 말로 입력: 휴대폰 브라우저 받아쓰기는 네이버 앱 등에서 안 돼서 녹음 파일을 서버에서 글로 바꿈. REPORT_STT_MODEL로 바꿀 수 있음
 MAX_AUDIO = 8_000_000
 AUDIO_EXT = ('webm', 'mp4', 'm4a', 'ogg', 'wav', 'mp3', 'aac')
+KNOWN = {'company': '업체', 'occurred_on': '발생일', 'industry': '업종', 'category': '유형', 'request_text': '원하는 해결', 'description': '앞서 쓴 본문'}
 IMAGE_TYPES = {b'\xff\xd8\xff': 'image/jpeg', b'\x89PNG': 'image/png', b'RIFF': 'image/webp'}
 
 SYSTEM = """너는 소비자 피해 제보 사이트 {site}의 접수 도우미다. 소비자가 말하듯 적은 글(받아쓰기라 맞춤법이 틀릴 수 있음)과 사진, 앞서 주고받은 질문·답을 보고 제보서 초안을 만든다.
@@ -57,7 +58,7 @@ def install(S):
     with conn() as db:
         db.execute('CREATE TABLE IF NOT EXISTS report_talk_hits(id INTEGER PRIMARY KEY,ip_hash TEXT NOT NULL,created TEXT NOT NULL)')
 
-    def ai_key(): return os.getenv('OPENAI_API_KEY', '').strip()
+    def ai_key(): return desk.ai_key_for('report_talk')
 
     @app.route('/report/talk')
     def report_talk():
@@ -104,12 +105,15 @@ def install(S):
         a, b = text.find('{'), text.rfind('}')
         return json.loads(text[a:b + 1] if a > -1 and b > a else text)
 
-    def ask(story, qa, images):
+    def ask(story, qa, images, known=None):
         key = ai_key()
         if not key: raise RuntimeError('no key')
         model = os.getenv('REPORT_TALK_MODEL', '').strip() or MODEL
         system = SYSTEM.format(site=S.notify.site_name(), industries=', '.join(S.report_industries()), categories=', '.join(S.report_categories()))
-        text = '[제보자가 적은 글]\n' + desk.scrub(story) + ''.join('\n\n[질문] %s\n[답] %s' % (desk.scrub(x['q']), desk.scrub(x['a'])) for x in qa)
+        text = '[제보자가 적은 글]\n' + desk.scrub(story)
+        if known:  # 운영자 2026-11-03: 지난 답에서 정리된 정보 (사진에서 읽은 사실 포함) + 최근 대화만 → 입력 토큰 절약
+            text += '\n\n[지금까지 정리된 정보]\n' + '\n'.join('%s: %s' % (KNOWN[k], desk.scrub(str(v))) for k, v in known.items() if v)
+        text += ''.join('\n\n[질문] %s\n[답] %s' % (desk.scrub(x['q']), desk.scrub(x['a'])) for x in qa)
         text += '\n\n[오늘] ' + datetime.date.today().isoformat()
         def call(with_images, model, as_json):
             content = [{'type': 'text', 'text': text}] + ([{'type': 'image_url', 'image_url': {'url': u, 'detail': 'low'}} for u in images] if with_images else [])
@@ -158,7 +162,9 @@ def install(S):
                                      headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'multipart/form-data; boundary=' + b})
         try:
             with urllib.request.urlopen(req, timeout=60) as r: res = json.loads(r.read().decode('utf-8'))
+            desk.record_ai('report_talk_stt', req.full_url, model, 200, {'audio_bytes': len(data)})
         except urllib.error.HTTPError as e:
+            desk.record_ai('report_talk_stt', req.full_url, model, e.code, {})
             app.logger.warning('report talk STT failed: %s %s', e.code, e.read()[:200]); return jsonify(ok=False, error='ai')
         except Exception as e:
             app.logger.warning('report talk STT failed: %s', str(e)[:120]); return jsonify(ok=False, error='ai')
@@ -172,13 +178,18 @@ def install(S):
         story = ' '.join((request.form.get('story') or '').split())[:MAX_STORY]
         try: qa = [{'q': str(x.get('q', ''))[:120], 'a': str(x.get('a', ''))[:400]} for x in json.loads(request.form.get('qa') or '[]')[:MAX_QA] if isinstance(x, dict)]
         except ValueError: qa = []
-        images = read_images()
+        try: kn = json.loads(request.form.get('known') or '{}')
+        except ValueError: kn = {}
+        known = {k: str(kn.get(k) or '')[:700 if k == 'description' else 120] for k in KNOWN} if isinstance(kn, dict) else {}
+        known = {k: v for k, v in known.items() if v.strip()}
+        if known: qa = qa[-4:]
+        images = [] if known else read_images()
         if len(story) < 2 and not images: return jsonify(ok=False, error='empty'), 400
         with conn() as db:
             if S.recent_count(db, 'report_talk_hits', 60) >= PER_HOUR: return jsonify(ok=False, error='limit'), 429
             db.execute('DELETE FROM report_talk_hits WHERE created<?', ((datetime.datetime.now() - datetime.timedelta(days=1)).isoformat(timespec='seconds'),))
             db.execute('INSERT INTO report_talk_hits(ip_hash,created) VALUES(?,?)', (S.ip_hash(), datetime.datetime.now().isoformat(timespec='seconds')))
-        try: draft = ask(story, qa, images)
+        try: draft = ask(story, qa, images, known)
         except Exception as e:  # 키 없음·오류·형식 이상: 화면이 버튼으로 이어 감
             app.logger.warning('report talk AI failed: %s', str(e)[:120])
             return jsonify(ok=False, error='ai')

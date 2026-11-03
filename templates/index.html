@@ -9,7 +9,7 @@
   {% if vid_on and vid %}<section class="hero hero-banner">
     <div class="hb-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
-      <a class="primary is-glow" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+      <a class="primary is-glow" href="{{ block.button_link or url_for('report') }}">{{ (block.button_label or txt('home.hero_button'))|replace('→', '')|trim }}</a>
     </div>
     <div class="hb-media" aria-hidden="true"><video src="{{ url_for('hero_video_file', name=vid.stored ~ '.mp4') }}" poster="{{ url_for('hero_video_file', name=vid.stored ~ '.jpg') }}" autoplay muted loop playsinline preload="metadata"></video></div>
   </section>
@@ -17,13 +17,13 @@
     <img class="hp-bg" src="{{ asset('img/hero-city.jpg') }}" alt="" width="1920" height="1277" aria-hidden="true">
     <div class="hp-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
-      <a class="primary is-glow" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+      <a class="primary is-glow" href="{{ block.button_link or url_for('report') }}">{{ (block.button_label or txt('home.hero_button'))|replace('→', '')|trim }}</a>
     </div>
   </section>
   {% elif vid_on %}{# 운영자 2026-11-03: AI 사진 대신 토스처럼 휴대폰 틀 속 실제 '대화로 제보하기' 화면 녹화 #}<section class="hero hero-device">
     <div class="hd-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
-      <a class="primary is-glow" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+      <a class="primary is-glow" href="{{ block.button_link or url_for('report') }}">{{ (block.button_label or txt('home.hero_button'))|replace('→', '')|trim }}</a>
     </div>
     <div class="hd-phone" aria-hidden="true"><div class="hd-screen"><video src="{{ asset('video/talk-screen.mp4') }}" poster="{{ asset('video/talk-screen.jpg') }}" autoplay muted loop playsinline preload="metadata"></video></div></div>
   </section>
@@ -31,7 +31,7 @@
   <section class="hero hero-split">
     <div class="hs-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
-      <a class="primary is-glow" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+      <a class="primary is-glow" href="{{ block.button_link or url_for('report') }}">{{ (block.button_label or txt('home.hero_button'))|replace('→', '')|trim }}</a>
     </div>
     <div class="hs-media is-mine" aria-hidden="true">
       {% for p in shots %}<figure class="hw-slide{% if loop.first %} on{% endif %}"><picture>{% if p.wide %}<source srcset="{{ url_for('hero_photo', name=p.wide) }}">{% endif %}<img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" width="1200" height="800"{% if not loop.first %} loading="lazy"{% endif %}></picture></figure>{% endfor %}
@@ -49,7 +49,7 @@
   <section class="hero hero-clean">
     <div class="hero-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
-      <a class="primary is-glow" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+      <a class="primary is-glow" href="{{ block.button_link or url_for('report') }}">{{ (block.button_label or txt('home.hero_button'))|replace('→', '')|trim }}</a>
     </div>
   </section>
   {% include 'partner_band.html' %}

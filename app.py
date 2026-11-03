@@ -488,6 +488,7 @@ def is_pending(r):
     return bool(r['public_consent'] and not r['published'])
 PUBLIC_VALID="review NOT IN ('rejected','duplicate')"  # 중복·제외 처리한 제보는 공개 목록에서 뺌
 HOT_ORDER="(SELECT COUNT(*) FROM board_votes v WHERE v.kind='metoo' AND v.target='case:'||cases.id) DESC,id DESC"  # 공감순: '나도 겪었어요'가 많은 제보 먼저
+TALK_ORDER="(SELECT COUNT(*) FROM case_comments k WHERE k.case_id=cases.id AND k.hidden=0) DESC,id DESC"  # 댓글 많은 순 (운영자 2026-11-03)
 def report_rows(where='1=1',args=(),limit=20,offset=0,order='id DESC'):
     # 모든 제보를 번호·분류·단계·접수일로 보여 줌. 제목·업체명은 공개 제보(운영자가 내리지 않음)와
     # 비밀글(운영자가 숨기지 않음)에 보이고, 비밀글은 눌러도 본문 대신 비밀번호 창이 열림.
@@ -560,7 +561,7 @@ def reports():
     selected_category=request.args.get('category','')
     if selected_category not in report_categories():selected_category=''
     page=max(1,request.args.get('page',1,type=int))
-    sort='hot' if request.args.get('sort')=='hot' else ''
+    sort=request.args.get('sort') if request.args.get('sort') in ('hot','talk') else ''
     stage=request.args.get('st','') if request.args.get('st','') in REPORT_STAGES else ''
     industry=request.args.get('ind','') if request.args.get('ind','') in report_industries() else ''
     where=[PUBLIC_VALID];args=[]
@@ -574,7 +575,7 @@ def reports():
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
     with conn() as db:open_groups=db.execute("SELECT id,title,company FROM damage_groups WHERE status='open' ORDER BY id DESC LIMIT 3").fetchall() if GROUPS_ON else []
     if page>1 and page>-(-total//REPORTS_PAGE_SIZE):abort(404)  # 없는 쪽 번호는 빈 화면(200) 대신 404
-    return render_template('reports.html',open_groups=open_groups,categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE,HOT_ORDER if sort else 'id DESC'),sort=sort,total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category,stage=stage,stages=REPORT_STAGES,industry=industry,industries=report_industries())
+    return render_template('reports.html',open_groups=open_groups,categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE,{'hot':HOT_ORDER,'talk':TALK_ORDER}.get(sort,'id DESC')),sort=sort,total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category,stage=stage,stages=REPORT_STAGES,industry=industry,industries=report_industries())
 
 PHONE_RE=re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}')
 EMAIL_RE=re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
@@ -743,8 +744,7 @@ def report():
         if request.method=='POST':abort(403)
         return redirect(url_for('login',next=request.full_path.rstrip('?')))
     if request.method=='GET':
-        # 운영자 2026-11-03: 제보센터는 처음부터 대화형. 양식은 '양식으로 쓰기'(?form=1)나 미리 채울 값이 있을 때만
-        if not request.args and not soboru_on():return redirect(url_for('report_talk'))
+        # 운영자 2026-11-03 (밤): 기본은 원래 글쓰기 화면. AI 대화는 '편하게 대화로 제보하기' 칸으로 따로 (AI 비용 절감)
         return report_form()
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수를 준비하고 있어요.')
     if request.form.get('website'):abort(400)  # 사람에게는 안 보이는 칸: 자동 등록 프로그램 차단
@@ -2907,6 +2907,8 @@ import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소�
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
 import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
+import aiusage;aiusage.install(types.SimpleNamespace(**globals()))  # 기능별 AI 호출 횟수·토큰 기록 (aiusage.py)
+import phoneauth;phoneauth.install(types.SimpleNamespace(**globals()))  # 휴대폰 번호로 시작하기 (phoneauth.py)
 import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·사장님 소식 (soboru_cm.py)
 import soboru_people;soboru_people.install(types.SimpleNamespace(**globals()))  # 소보루 이웃: 프로필·이웃 페이지·구독 (soboru_people.py)
 import soboru_tools;soboru_tools.install(types.SimpleNamespace(**globals()))  # 소비자 상담소: 계산기·사전·법령 찾기 (soboru_tools.py)

@@ -52,12 +52,35 @@ def migrate(db):
 def ai_ready():return bool(os.getenv('OPENAI_API_KEY','').strip())
 def ai_model():return os.getenv('OPENAI_MODEL','').strip() or 'gpt-4.1-mini'
 AI_WATCH=[]  # (주소, 상태 코드, JSON)을 받아 보는 함수들 — 충전금 알림(aialert.py)
+AI_USAGE=[]  # (기능, 주소, 모델, 상태 코드, JSON)을 받아 사용량을 쌓는 함수들 — aiusage.py
+# 운영자 2026-11-03: 기능별 OpenAI 키·사용량. 부른 파일 이름으로 기능을 알아내고, 서버 설정에 OPENAI_API_KEY_<기능>이 있으면 그 키를 씀
+AI_FEATURES={'report_talk':'AI 대화 제보','lawask':'AI 상담','lawrag':'AI 상담 (법령 검색)','lawsync':'법령 학습','buycheck':'사기 전에 확인',
+    'triage':'제보 분류','companydesk':'기업 요청서','soboru_letter':'소보루 레터','soboru_writer':'매거진 글','soboru_art':'AI 일러스트','report_talk_stt':'음성 받아쓰기'}
+def ai_feature():
+    import sys
+    f=sys._getframe(1)
+    while f:
+        mod=Path(f.f_code.co_filename).stem
+        if mod in AI_FEATURES and not (mod=='companydesk' and f.f_code.co_name in ('post_json','ai_feature','ai_key_for')):return mod
+        f=f.f_back
+    return 'other'
+def ai_key_for(feature):
+    return os.getenv('OPENAI_API_KEY_'+feature.upper(),'').strip() or os.getenv('OPENAI_API_KEY','').strip()
+def record_ai(feature,url,model,st,res):
+    for f in AI_USAGE:
+        try:f(feature,url,model,st,res)
+        except Exception:logging.getLogger(__name__).warning('AI 사용량 기록 실패',exc_info=True)
 def post_json(url,headers,body,timeout):
     """(상태 코드, JSON). 테스트에서 바꿔 끼운다."""
+    feature=None
+    if 'api.openai.com' in url:
+        feature=ai_feature();k=os.getenv('OPENAI_API_KEY_'+feature.upper(),'').strip()
+        if k:headers=dict(headers,Authorization='Bearer '+k)
     st,res=_post_json(url,headers,body,timeout)
     for f in AI_WATCH:
         try:f(url,st,res)
         except Exception:logging.getLogger(__name__).warning('AI 알림 기록 실패',exc_info=True)
+    if feature:record_ai(feature,url,(body or {}).get('model','') if isinstance(body,dict) else '',st,res)
     return st,res
 def _post_json(url,headers,body,timeout):
     req=urllib.request.Request(url,data=json.dumps(body,ensure_ascii=False).encode(),method='POST',headers=headers)

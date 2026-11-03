@@ -45,7 +45,7 @@ SECTIONS = [
         ('jebo.naver_verification', '네이버 확인 코드 (consumerjebo.co.kr)', '', ADV),
         ('jebo.google_verification', '구글 확인 코드 (consumerjebo.co.kr)', '', ADV),
         ('jebo.facebook_verification', '페이스북 확인 코드 (consumerjebo.co.kr)', '', ADV),
-        ('home.hero_title', '메인 문구', '여러분의 제보가\n기업을 바꾸는 목소리가 돼요', ML),
+        ('home.hero_title', '메인 문구', '여러분의 제보가\n불공정을 알리는 목소리가 됩니다', ML),
         ('home.hero_media', '첫 화면 뒤 동영상 끄기 (off 라고 쓰면 꺼짐, 사진은 항상 나옴)', '', OPT),
         ('home.latest_title', '메인 최근 제보 제목 (비우면 제목 없이 카드만)', '', OPT),
         ('home.latest_count', '메인에 보여줄 최근 제보 수 (3~20, 4의 배수가 깔끔해요)', '20', {}),
@@ -77,7 +77,7 @@ SECTIONS = [
         ('footer.nocopy', '무단 이용 금지 문구 (저작권 문구 위)', '소보루의 제보 글, 기사, 그림은 저작권법으로 보호받아요. 무단 전재·재배포, 자동 수집(크롤링), AI 학습 이용을 금지해요.', ML),
     ]),
     ('home', '메인 화면·제보 목록', [
-        ('home.hero_button', '제보 버튼 (기업 페이지)', '제보하기 →', {}),
+        ('home.hero_button', '제보 버튼 (기업 페이지)', '제보하기', {}),
         ('home.list_title', '제보 목록 페이지 제목', '소비자 제보 목록', {}),
         ('home.search_placeholder', '검색창 안내 문구', '제보 제목 검색', {}),
         ('home.empty', '목록이 비었을 때', '아직 올라온 제보가 없어요. 첫 제보를 남겨 주세요.', {}),

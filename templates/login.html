@@ -6,6 +6,12 @@
   {# 토스식: 큰 제목과 한 줄 설명은 카드 위, 회원가입 안내는 카드 아래 #}
   <h1 class="auth-title auth-title-out auth-title-logo"><img src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="소보루" width="644" height="120"><span>{{ ui('common.login', '로그인') }}</span></h1>
   {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
+  {# 운영자 2026-11-03 (밤): 카카오 아니면 휴대폰 번호. 아이디 로그인은 예전 회원용 작은 링크로 #}
+  {% if enabled and phone_login_ready() and not request.args.get('id') and request.method == 'GET' %}
+  <div class="auth-card auth-start"><div class="auth-body">{{ social_buttons('시작하기', request.args.get('next','')) }}
+    <a class="ph-btn" href="{{ url_for('phone_start', next=request.args.get('next') or None) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10.5 18h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>{{ ui('phone.btn', '휴대폰 번호로 시작하기') }}</span></a></div></div>
+  <p class="auth-other"><a href="{{ url_for('login', id=1, next=request.args.get('next') or None) }}">{{ ui('member.id_login', '아이디로 로그인') }}</a></p>
+  {% else %}
   <div class="auth-card">
     <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       {% if request.args.get('next') %}<input type="hidden" name="next" value="{{ request.args.get('next') }}">{% endif %}
@@ -17,5 +23,6 @@
     </form>
   </div>
   <p class="auth-join">{{ ui('member.not_yet', '아직 {site} 회원이 아닌가요?', site='소보루') }} <a href="{{ url_for('signup') }}">{{ ui('member.join_go', '가입하기') }}</a></p>
+  {% endif %}
 </main>
 {% endblock %}
