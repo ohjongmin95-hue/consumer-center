@@ -13,6 +13,13 @@
     </div>
     <div class="hb-media" aria-hidden="true"><video src="{{ url_for('hero_video_file', name=vid.stored ~ '.mp4') }}" poster="{{ url_for('hero_video_file', name=vid.stored ~ '.jpg') }}" autoplay muted loop playsinline preload="metadata"></video></div>
   </section>
+  {% elif txt('home.hero_media') == 'photo' %}{# 운영자 2026-11-03: 토스처럼 사람 없는 실사 사진(밝은 사무실) 둥근 카드 위에 흰 제목·버튼. 관리자 문구 home.hero_media 를 photo 로 하면 이 사진 카드 #}<section class="hero hero-photo">
+    <img class="hp-bg" src="{{ asset('img/hero-office.jpg') }}" alt="" width="1920" height="1078" aria-hidden="true">
+    <div class="hp-copy">
+      <h1>{{ block.title or txt('home.hero_title') }}</h1>
+      <a class="primary" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+    </div>
+  </section>
   {% elif vid_on %}{# 운영자 2026-11-03: AI 사진 대신 토스처럼 휴대폰 틀 속 실제 '대화로 제보하기' 화면 녹화 #}<section class="hero hero-device">
     <div class="hd-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>

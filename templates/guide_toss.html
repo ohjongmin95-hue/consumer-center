@@ -11,7 +11,7 @@
         <p class="ps-body">{{ ui('guide.v_body', '대화로 제보하기에서 겪은 일을 편하게 적으면 AI가 제목과 내용으로 정리해요. 더 필요한 건 AI가 먼저 물어보고, 사진만 더하면 끝이에요.') }}</p>
         <a class="primary tg-cta" href="{{ url_for('report_talk') }}">{{ ui('guide.v_button', '대화로 제보하기') }}</a>
       </div>
-      <div class="ps-art tg-art-video"><div class="hd-phone"><div class="hd-screen"><video src="{{ asset('video/talk-screen.mp4') }}" poster="{{ asset('video/talk-screen.jpg') }}" autoplay muted loop playsinline controls preload="metadata" aria-label="{{ ui('guide.v_alt', '대화로 제보하기 화면 녹화') }}"></video></div></div></div>
+      <div class="ps-art tg-art-video"><video class="tg-howto" src="{{ asset('video/guide-howto.mp4') }}" poster="{{ asset('video/guide-howto.jpg') }}" autoplay muted loop playsinline controls preload="metadata" width="1080" height="1350" aria-label="{{ ui('guide.v_alt', '대화로 제보하기 이용 안내 영상') }}"></video></div>
     </section>
 
     <section class="ps-row is-flip">

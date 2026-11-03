@@ -280,7 +280,7 @@ class SiteTest(unittest.TestCase):
         # 운영자 2026-11-03: 제보센터 이용 안내 = 토스식 + '대화로 제보하기' 화면 영상 + 업종 칩
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
         page = self.client.get('/guide', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
-        for text in ('tg-page', 'video/talk-screen.mp4', 'data-tg-i="0"', '이 세 가지만'):
+        for text in ('tg-page', 'video/guide-howto.mp4', 'data-tg-i="0"', '이 세 가지만'):
             self.assertIn(text, page)
         self.assertNotIn('tg-page', self.client.get('/guide').get_data(as_text=True))  # 소보루 화면은 그대로
 
