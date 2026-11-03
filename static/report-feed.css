@@ -1029,9 +1029,6 @@ body:not(.sb):has(.xh) .site-header{background:#fff}
   .xh-list b{font-size:16px}
 }
 /* 운영자 2026-11-03: 제보 카드도 토스처럼 — 흰 바탕+회색 테두리 대신 회색 바탕(#F2F4F6) 위 테두리 없는 흰 카드 */
-/* 운영자 2026-11-03: 제보 카드 = 흰 바탕 + TDS Grey200(#E5E8EB) 1px 선, 그림자 없음, 누르면 Grey50 */
-body:not(.sb) .nn-vc-card,body:not(.sb) .rf-list .nn-vc-card{border:1px solid #e5e8eb;box-shadow:none;background:#fff}
-body:not(.sb) .nn-vc-card:hover{background:#f9fafb}
 /* 소비자 자문단 초대·정보 입력 (운영자 2026-11-03: 토스 + TDS. 글자 = TDS 타이포 단계(자간 0), 여백 = 24 기준 8의 배수,
    버튼 = TDS Bottom CTA(높이 56, 둥글기 16) 하나. 컴퓨터는 머리글 로고 선에 맞춘 2단) */
 :is(.xi,.xa){background:#fff;padding:32px 0 0;letter-spacing:0;word-break:keep-all}

@@ -6,17 +6,23 @@
 {% set chev %}<svg class="sba-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>{% endset %}
 {% macro lines(text) %}{% for l in text.split('\n') if l.strip() %}{% if l.lstrip().startswith(('- ', '• ', '· ')) %}<p class="sbv-li">{{ l.lstrip()[2:]|askrefs }}</p>{% else %}<p>{{ l|askrefs }}</p>{% endif %}{% endfor %}{% endmacro %}
 {% set notice = ui_text('ask2.notice', '상담사가 아닌 AI가 제공하는 일반 정보예요') %}
-<main class="sb-wrap sbv">
+{# 운영자 2026-11-03: 제보센터 첫 화면은 토스플레이스 고객 지원처럼. 가운데 큰 질문 하나 → 둥근 입력창 → 예시 칩, 색은 우리 귤색 #}
+{% set hero = not is_soboru() and not result and not turns %}
+<main class="sb-wrap sbv{{ ' is-hero' if hero }}">
 <div class="sbv-in">
   {% if preview %}<p class="sbv-preview">관리자 미리 보기예요. 손님에게는 아직 예전 화면이 보여요. 관리자 &gt; AI 상담에서 켤 수 있어요.</p>{% endif %}
   <p class="sbv-notice" role="note"><span class="sbv-notice-i" aria-hidden="true">💬</span><span><b>{{ notice }}</b> {{ ui('ask2.notice_sub', '법률 자문이 아니고, 실제 결과는 상황에 따라 달라질 수 있어요.') }}</span></p>
 
   {% if not result and not turns %}
+  {% if hero %}
+  <h1 class="sbv-hero-t">{{ ui('ask2.h1_jebo', '어떤 도움이 필요하세요?') }}</h1>
+  {% else %}
   <header class="sba-head sbv-head">
     <p class="sba-kicker"><span aria-hidden="true">⚖️</span> {{ ui('ask2.kicker', '법령 원문으로 답해요') }}</p>
     <h1>{{ ui('ask2.h1', '소비자 피해, AI에게 편하게 물어보세요') }}</h1>
     <p>{{ ui('ask2.intro', '상황을 적어 주시면 관련 법령과 분쟁해결기준을 찾아 환불·보상 가능성과 대응 방법을 정리해 드려요.') }}</p>
   </header>
+  {% endif %}
   {% endif %}
 
   {% if turns or result %}
@@ -110,20 +116,21 @@
     {% if error %}<p class="sba-error" role="alert">{{ error }}</p>{% endif %}
     <div class="sba-box sbv-box">
       <label class="sba-sr" for="sbv-q">질문</label>
-      <textarea id="sbv-q" name="q" rows="2" maxlength="{{ max_q }}" placeholder="{{ ui_text('ask2.placeholder_more', '이어서 물어보거나, 빠진 사실을 알려 주세요') if result or turns else ui_text('ask2.placeholder', '예: 헬스장 6개월권을 두 달 쓰고 해지하려는데 얼마나 돌려받나요?') }}" required>{{ question if error else '' }}</textarea>
-      <div class="sba-box-foot"><span class="sba-count"><b data-count>{{ (question if error else '')|length }}</b>/{{ max_q }}</span><button class="sba-send" type="submit"><span>{{ ui('ask2.send', '물어보기') }}</span></button></div>
+      {% if hero %}<svg class="sbv-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.5 4.6 2.4 7 7 9.5-4.6 2.5-6.5 4.9-7 9.5-.5-4.6-2.4-7-7-9.5 4.6-2.5 6.5-4.9 7-9.5z"/></svg>{% endif %}
+      <textarea id="sbv-q" name="q" rows="{{ 1 if hero else 2 }}" maxlength="{{ max_q }}" placeholder="{{ ui_text('ask2.ph_jebo', '무엇이든 물어보세요') if hero else ui_text('ask2.placeholder_more', '이어서 물어보거나, 빠진 사실을 알려 주세요') if result or turns else ui_text('ask2.placeholder', '예: 헬스장 6개월권을 두 달 쓰고 해지하려는데 얼마나 돌려받나요?') }}" required>{{ question if error else '' }}</textarea>
+      <div class="sba-box-foot"><span class="sba-count"><b data-count>{{ (question if error else '')|length }}</b>/{{ max_q }}</span><button class="sba-send" type="submit">{% if hero %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>{% endif %}<span>{{ ui('ask2.send', '물어보기') }}</span></button></div>
     </div>
     <p class="sba-privacy">{{ ui('ask2.privacy', '이름·전화번호 같은 개인정보는 적지 마세요. 적더라도 AI에 보내기 전에 지워요. 개인정보를 지운 상담 기록은 품질 확인을 위해 30일 보관한 뒤 지워요.') }}{% if result or turns %} <a class="sbv-new" href="{{ url_for('law_ask', v=2) if preview else url_for('law_ask') }}">{{ ui('ask2.new', '새 상담 시작') }}</a>{% endif %}</p>
     {% if not result and not turns %}
     <div class="sba-ex">
       <p>{{ ui('ask2.examples', '이런 걸 물어볼 수 있어요') }}</p>
-      <div class="sba-chips">{% for e in examples %}<button type="submit" name="example" value="{{ e }}" formnovalidate>{{ e }}</button>{% endfor %}</div>
+      <div class="sba-chips">{% for e in examples %}<button type="submit" name="example" value="{{ e }}" formnovalidate>{{ e }}</button>{% endfor %}{% if hero %}<a class="sbv-faq" href="{{ url_for('info_page', page='faq') }}">{{ ui('ask2.faq', '자주 묻는 질문') }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>{% endif %}</div>
     </div>
     {% endif %}
     <div class="sba-wait" aria-hidden="true"><span class="sba-dots"><i></i><i></i><i></i></span>{{ ui('ask2.wait', '관련 법령과 분쟁해결기준을 찾고 있어요') }}</div>
   </form>
 
-  {% if not result and not turns %}
+  {% if not result and not turns and not hero %}
   <ol class="sba-how">
     <li><span class="nn-emo sba-emo t2" aria-hidden="true">🔍</span><div><h3>{{ ui('ask2.how1', '피해 유형부터 알아봐요') }}</h3><p>{{ ui('ask2.how1_d', '온라인 쇼핑, 식품·외식, 구독·서비스 계약, 생활서비스, 금융·보험, 플랫폼 거래 중 어디에 가까운지 보고 맞는 법령을 먼저 찾아요.') }}</p></div></li>
     <li><span class="nn-emo sba-emo t1" aria-hidden="true">⚖️</span><div><h3>{{ ui('ask2.how2', '찾은 원문만 근거로 답해요') }}</h3><p>{{ ui('ask2.how2_d', '인터넷 검색 없이 법률 조문, 소비자분쟁해결기준, 생활법령 해설에 적힌 내용으로만 답해요.') }}</p></div></li>
