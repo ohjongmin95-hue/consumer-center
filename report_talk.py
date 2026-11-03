@@ -62,7 +62,7 @@ def install(S):
     @app.route('/report/talk')
     def report_talk():
         if S.report_login_needed():
-            flash('로그인하면 바로 제보할 수 있어요.'); return redirect(url_for('login', next=request.full_path.rstrip('?')))
+            return redirect(url_for('login', next=request.full_path.rstrip('?')))
         me = g.get('user')
         return render_template('report_talk.html', categories=S.report_categories(), industries=S.report_industries(), sido=S.SIDO, genders=S.GENDERS,
                                ages=S.AGE_GROUPS, intake_enabled=os.getenv('ENABLE_INTAKE') == '1', max_files=S.MAX_FILES, today=datetime.date.today().isoformat(),

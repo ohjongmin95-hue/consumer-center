@@ -39,6 +39,9 @@ def migrate(db):
         body TEXT NOT NULL,contact TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,seen INTEGER NOT NULL DEFAULT 0)''')
     # 운영자 2026-11-03: 새 제보가 올라오면 자문단이 알아야 의견을 남김. 하루 한 번 저녁에 메일로 묶어서 (끄고 켤 수 있음)
     if 'digest' not in cols: db.execute('ALTER TABLE experts ADD COLUMN digest INTEGER NOT NULL DEFAULT 1')
+    # 운영자 2026-11-03: 흑묘 '도우미단 초대'처럼 — 제보자가 자기 제보에 자문단을 불러 의견을 청함. 의견이 달리면 answered에 시각
+    db.execute('''CREATE TABLE IF NOT EXISTS expert_invites(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,user_id INTEGER NOT NULL,expert_id INTEGER NOT NULL,
+        reason TEXT NOT NULL,created TEXT NOT NULL,answered TEXT NOT NULL DEFAULT '',UNIQUE(case_id,expert_id))''')
 
 
 def labels(db, user_ids):
@@ -112,6 +115,9 @@ def install(S):
         up = request.files.get('proof')
         if not (up and up.filename) and not (row and row['proof']):
             raise ValueError('사업자등록증 파일을 올려 주세요.' if kind == 'firm' else '재직증명서 파일을 올려 주세요.' if f['field'] == '교수' else '변호사 등록증 파일을 올려 주세요.')
+        # 운영자 2026-11-03: 자문단은 신뢰를 위해 프로필 사진이 꼭 필요 (사무소·법인은 로고라 선택)
+        ph = request.files.get('photo')
+        if kind == 'person' and not (ph and ph.filename) and not (row and row['photo']): raise ValueError('프로필 사진을 올려 주세요. 소비자가 믿고 볼 수 있게 얼굴이 보이는 사진이 필요해요.')
         if not request.form.get('agree'): raise ValueError('자문단 표시와 확인 정보 보관에 동의해 주세요.')
         proof = save_proof(row['proof'] if row else '')
         proof2 = save_proof(row['proof2'] if row else '', 'proof2')
@@ -130,7 +136,8 @@ def install(S):
         return eid, status, claim
 
     def form_page(invite=None, f=None):
-        return render_template('expert_form.html', fields=FIELDS, firm_fields=FIRM_FIELDS, f=f or form_values(invite), invite=invite)
+        people = [r for r in helpers(12) if r['kind'] == 'person' and r['photo_url']]; random.shuffle(people)
+        return render_template('expert_form.html', fields=FIELDS, firm_fields=FIRM_FIELDS, f=f or form_values(invite), invite=invite, people=people)
 
     def done(status, claim):
         session['expert_done'] = {'status': status, 'claim': claim or ''}
@@ -245,6 +252,87 @@ def install(S):
 
     app.extensions['experts_digest'] = digest
 
+    # ---- 자문단 초대 (운영자 2026-11-03, 흑묘 '도우미단 초대'처럼) ----
+    INVITE_MAX = 3  # 제보 하나에 부를 수 있는 자문단 수
+
+    def site_base():
+        real = sorted(h for h in getattr(S, 'JEBO_HOSTS', set()) if not h.startswith('www.'))
+        return 'https://' + real[0] if real else 'https://consumerjebo.co.kr'
+
+    def invite_box(case, has_answer):
+        """제보 화면 아래 '자문단 초대' 상자에 쓸 값. 제보한 본인에게만, 기업이 답했거나 답 기한이 지난 제보에만 열림."""
+        me = g.get('user')
+        if not me or not case['user_id'] or case['user_id'] != me['id']: return None
+        try:
+            overdue = S.jebo.no_answer(case, has_answer)
+        except Exception:
+            overdue = False
+        with conn() as db:
+            sent = [dict(r) for r in db.execute("""SELECT i.expert_id,i.answered,i.created,e.name,e.field,e.photo FROM expert_invites i JOIN experts e ON e.id=i.expert_id
+                WHERE i.case_id=? ORDER BY i.id""", (case['id'],))]
+            people = [dict(r) for r in db.execute("SELECT id,name,field,org,photo FROM experts WHERE status='approved' AND kind='person' ORDER BY approved DESC,id DESC")]
+        done = {x['expert_id'] for x in sent}
+        for x in sent: x['photo_url'] = photo_url(x['expert_id'], x['photo'])
+        for x in people: x['photo_url'] = photo_url(x['id'], x['photo'])
+        return {'open': bool(has_answer or overdue), 'sent': sent, 'people': [x for x in people if x['id'] not in done],
+                'left': max(0, INVITE_MAX - len(sent)), 'max': INVITE_MAX}
+    app.jinja_env.globals['expert_invite_box'] = invite_box
+
+    @app.route('/reports/<int:case_id>/invite-expert', methods=['POST'])
+    @S.member_only
+    def expert_invite(case_id):
+        with conn() as db:
+            case = db.execute('SELECT * FROM cases WHERE id=? AND public_consent=1 AND published=1', (case_id,)).fetchone()
+            if not case or case['user_id'] != g.user['id']: abort(404)
+            has_answer = db.execute("SELECT 1 FROM messages WHERE case_id=? AND author='기업 답변' AND public=1", (case_id,)).fetchone() is not None
+        box = invite_box(case, has_answer)
+        back = url_for('public_case', case_id=case_id) + '#invite'
+        eid = request.form.get('expert', type=int)
+        reason = (request.form.get('reason') or '').strip()[:500]
+        if not box or not box['open']:
+            flash('기업이 답하거나 답 기한이 지나면 자문단을 부를 수 있어요.'); return redirect(back)
+        if box['left'] <= 0:
+            flash(f"제보 하나에 자문단은 {box['max']}명까지 부를 수 있어요."); return redirect(back)
+        e = next((x for x in box['people'] if x['id'] == eid), None)
+        if not e:
+            flash('부를 자문단을 골라 주세요.'); return redirect(back)
+        if len(reason) < 10:
+            flash('왜 의견이 필요한지 10자 넘게 적어 주세요.'); return redirect(back)
+        with conn() as db:
+            db.execute('INSERT OR IGNORE INTO expert_invites(case_id,user_id,expert_id,reason,created) VALUES(?,?,?,?,?)', (case_id, g.user['id'], eid, reason, now()))
+            row = db.execute('SELECT email FROM experts WHERE id=?', (eid,)).fetchone()
+        if row and row['email']:
+            title = case['public_subject'] or case['subject']
+            text = (f"{e['name']} 님, 제보자가 자문단 의견을 청했어요.\n\n제보: {title}" + (f" ({case['company']})" if case['company'] else '') +
+                    f"\n부른 이유: {reason}\n\n제보 보기: {site_base()}/reports/{case_id}\n\n제보에 댓글로 의견을 남기면 제보자에게 바로 알려 드려요. 남긴 의견은 제보가 기사로 나갈 때 함께 실릴 수 있어요.")
+            try: S.notify.send_email(row['email'], f'[{S.notify.site_name()}] 자문단 의견 요청이 왔어요', text)
+            except Exception: pass
+        flash(f"{e['name']} 님께 의견을 청했어요. 의견이 달리면 알려 드릴게요.")
+        return redirect(back)
+
+    def commented(db, case_id, user_id):
+        """자문단이 댓글을 남기면 (casetalk.py에서 부름): 그 제보의 초대에 답 표시 + 제보자에게 메일."""
+        ex = db.execute("SELECT id,name,field FROM experts WHERE user_id=? AND status='approved'", (user_id,)).fetchone()
+        if not ex: return
+        inv = db.execute("SELECT id,user_id FROM expert_invites WHERE case_id=? AND expert_id=? AND answered=''", (case_id, ex['id'])).fetchone()
+        if not inv: return
+        db.execute('UPDATE expert_invites SET answered=? WHERE id=?', (now(), inv['id']))
+        u = db.execute("SELECT email FROM users WHERE id=? AND status='active'", (inv['user_id'],)).fetchone()
+        c = db.execute('SELECT subject,public_subject FROM cases WHERE id=?', (case_id,)).fetchone()
+        if u and u['email']:
+            text = f"부르신 {ex['name']} 님({ex['field']})이 제보에 의견을 남겼어요.\n\n제보: {c['public_subject'] or c['subject']}\n의견 보기: {site_base()}/reports/{case_id}"
+            try: S.notify.send_email(u['email'], f'[{S.notify.site_name()}] 자문단 의견이 달렸어요', text)
+            except Exception: pass
+    app.extensions['experts_commented'] = commented
+
+    def invites_for_admin(db):
+        """관리자: 자문단 의견이 달린 초대 = 기사화 후보 (의견 달린 것 먼저)."""
+        try:
+            return [dict(r) for r in db.execute("""SELECT i.*,e.name,e.field,c.subject,c.public_subject,c.company FROM expert_invites i JOIN experts e ON e.id=i.expert_id
+                JOIN cases c ON c.id=i.case_id ORDER BY (i.answered=''),i.id DESC LIMIT 50""")]
+        except Exception:
+            return []
+
     @app.route('/experts/<int:eid>')
     def expert_profile(eid):
         """운영자 2026-11-03: 자문단을 누르면 나오는 깔끔한 소개 페이지. 사진·이름·소속·한 줄 소개 → 이력 → 남긴 의견 → 상담 신청하기."""
@@ -342,7 +430,8 @@ def install(S):
         with conn() as db:
             rows = db.execute('''SELECT e.*,u.nickname FROM experts e LEFT JOIN users u ON u.id=e.user_id
                 ORDER BY CASE e.status WHEN 'pending' THEN 0 WHEN 'invited' THEN 1 WHEN 'approved' THEN 2 ELSE 3 END,e.id DESC''').fetchall()
-        return render_template('admin_experts.html', rows=rows, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, status=STATUS, photo_url=photo_url, lookup=LOOKUP,
+            invites = invites_for_admin(db)
+        return render_template('admin_experts.html', rows=rows, invites=invites, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, status=STATUS, photo_url=photo_url, lookup=LOOKUP,
                                join_url=lambda t: S.canonical_url(url_for('expert_join', token=t)))
 
     @app.route('/experts')

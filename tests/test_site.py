@@ -395,6 +395,42 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('href="/explore"', home); self.assertNotIn('>전문가<', home)
 
+    def test_expert_invite(self):
+        # 운영자 2026-11-03: 흑묘 도우미단처럼 제보자가 자문단을 불러요 (기업 답변이 있거나 기한이 지난 제보, 3명까지)
+        from PIL import Image
+        adm = self.login_admin()
+        self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '박변호', 'field': '변호사'})
+        with self.site.conn() as db: token = db.execute("SELECT token FROM experts WHERE name='박변호'").fetchone()[0]
+        pro, pid = self.member_client('pro_park', '박변')
+        pic = io.BytesIO(); Image.new('RGB', (300, 300), 'blue').save(pic, 'JPEG'); pic.seek(0)
+        self.assertEqual(self.post_form(pro, '/expert/join/' + token, {'name': '박변호', 'field': '변호사', 'email': 'park@x.kr', 'agree': '1',
+                                                                       'proof': (io.BytesIO(b'%PDF-1.4 t'), 'l.pdf'), 'photo': (pic, 'me.jpg')}).status_code, 302)
+        owner, oid = self.member_client('inv_owner', '제보자')
+        with self.site.conn() as db:
+            eid = db.execute("SELECT id FROM experts WHERE name='박변호'").fetchone()[0]
+            db.execute('UPDATE experts SET user_id=? WHERE id=?', (pid, eid))
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published,user_id) VALUES('CJ-INV','x','배송·환불','가게','제목','내용','환불',?,1,1,?)", (datetime.datetime.now().isoformat(timespec='seconds'), oid)).lastrowid
+        self.site.JEBO_HOSTS.add('localhost'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'localhost')
+        page = owner.get('/reports/%d' % cid).get_data(as_text=True)
+        self.assertIn('id="invite"', page); self.assertNotIn('pc-inv-form', page)  # 기업 답 전에는 안내만
+        self.assertNotIn('id="invite"', self.client.get('/reports/%d' % cid).get_data(as_text=True))  # 남에게는 안 보임
+        with self.site.conn() as db: db.execute("INSERT INTO messages(case_id,author,body,created,public) VALUES(?,'기업 답변','확인해 볼게요.',?,1)", (cid, datetime.datetime.now().isoformat(timespec='seconds')))
+        page = owner.get('/reports/%d' % cid).get_data(as_text=True)
+        self.assertIn('pc-inv-form', page); self.assertIn('박변호', page)
+        sent = []
+        with patch.object(self.site.notify, 'send_email', lambda to, subj, body, **k: sent.append((to, subj, body))):
+            t = self.csrf(owner, '/reports/%d' % cid)
+            self.assertEqual(owner.post('/reports/%d/invite-expert' % cid, data={'_csrf': t, 'expert': eid, 'reason': '짧음'}).status_code, 302)
+            with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM expert_invites').fetchone()[0], 0)
+            owner.post('/reports/%d/invite-expert' % cid, data={'_csrf': t, 'expert': eid, 'reason': '기업 답변이 맞는지 궁금해요.'})
+            with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM expert_invites WHERE case_id=?', (cid,)).fetchone()[0], 1)
+            self.assertTrue(any(x[0] == 'park@x.kr' for x in sent))
+            self.assertIn('요청함', owner.get('/reports/%d' % cid).get_data(as_text=True))
+            t2 = self.csrf(pro, '/reports/%d' % cid)
+            pro.post('/reports/%d/comment' % cid, data={'_csrf': t2, 'body': '청약철회 기간을 먼저 확인해 보세요.'})
+        with self.site.conn() as db: self.assertTrue(db.execute('SELECT answered FROM expert_invites WHERE case_id=?', (cid,)).fetchone()[0])
+        self.assertIn('의견 도착', owner.get('/reports/%d' % cid).get_data(as_text=True))
+
     def test_experts(self):
         # 운영자 2026-11-03: 전문가를 한 명씩 가입시키기. 초대 링크로 들어오면 바로 전문가, 직접 신청은 관리자 승인 뒤. 댓글에 전문가 표시
         adm = self.login_admin()
@@ -421,7 +457,10 @@ class SiteTest(unittest.TestCase):
         # 직접 신청은 승인 전까지 표시 없음
         other, oid = self.member_client('pro_lee', '이사정')
         self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '교수', 'agree': '1', 'phone': '010-1234-5678',
-                                                                 'proof': (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf')}).status_code, 302)
+                                                                 'proof': (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf')}).status_code, 200)  # 운영자 2026-11-03: 신뢰를 위해 프로필 사진 필수
+        pic2 = io.BytesIO(); Image.new('RGB', (300, 300), 'red').save(pic2, 'JPEG'); pic2.seek(0)
+        self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '교수', 'agree': '1', 'phone': '010-1234-5678',
+                                                                 'proof': (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf'), 'photo': (pic2, 'me.jpg')}).status_code, 302)
         with self.site.conn() as db:
             row = db.execute('SELECT id,status,proof FROM experts WHERE user_id=?', (oid,)).fetchone()
             cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES('CJ-PRO','x','배송·환불','가게','제목','내용','환불','2026-10-09T10:00:00',1,1)").lastrowid

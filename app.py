@@ -126,7 +126,7 @@ def help_menu(rows):
     out=[];seen=False
     for r in rows:
         if r.get('page') in ('ask','faq'):
-            if not seen:out.append({**r,'label':'고객센터','page':'faq','url':''});seen=True
+            if not seen:out.append({**r,'label':'자주 묻는 질문','page':'faq','url':''});seen=True
         else:out.append(r)
     return out
 def load_lists():
@@ -291,6 +291,9 @@ app.jinja_env.globals['canonical_url']=canonical_url
 @app.before_request
 def biz_closed():
     if not BIZ_ON and (request.path=='/biz' or request.path.startswith('/biz/')) and not session.get('admin'):abort(404)
+# 운영자 2026-11-03: 로고 없는 기업은 첫 글자 대신 업종 그림 (static/img/ind/<키>.svg)
+_IND_KEY={n:k for n,k,*_ in site_content.INDUSTRIES}
+app.jinja_env.globals['industry_icon']=lambda name:_IND_KEY.get((name or '').strip(),'other')
 app.jinja_env.globals['industry_art']={k for k,_ in site_content.INDUSTRY_ART if k}  # static/img/guide-ind-<이름>.svg 가 있는 그림
 app.jinja_env.globals['guide_icon']=lambda name:Markup('<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">%s</svg>'%GUIDE_ICONS.get(name,GUIDE_ICONS['write']))
 STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']
@@ -733,7 +736,7 @@ app.jinja_env.globals['report_login_needed']=report_login_needed
 def report():
     if report_login_needed():
         if request.method=='POST':abort(403)
-        flash(ui_text('msg.report_login','로그인하면 바로 제보할 수 있어요.'));return redirect(url_for('login',next=request.full_path.rstrip('?')))
+        return redirect(url_for('login',next=request.full_path.rstrip('?')))
     if request.method=='GET':
         # 운영자 2026-11-03: 제보센터는 처음부터 대화형. 양식은 '양식으로 쓰기'(?form=1)나 미리 채울 값이 있을 때만
         if not request.args and not soboru_on():return redirect(url_for('report_talk'))

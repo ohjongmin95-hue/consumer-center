@@ -45,7 +45,7 @@ SECTIONS = [
         ('jebo.naver_verification', '네이버 확인 코드 (consumerjebo.co.kr)', '', ADV),
         ('jebo.google_verification', '구글 확인 코드 (consumerjebo.co.kr)', '', ADV),
         ('jebo.facebook_verification', '페이스북 확인 코드 (consumerjebo.co.kr)', '', ADV),
-        ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),
+        ('home.hero_title', '메인 문구', '여러분의 제보가\n기업을 바꾸는 목소리가 돼요', ML),
         ('home.hero_media', '첫 화면 뒤 동영상 끄기 (off 라고 쓰면 꺼짐, 사진은 항상 나옴)', '', OPT),
         ('home.latest_title', '메인 최근 제보 제목 (비우면 제목 없이 카드만)', '', OPT),
         ('home.latest_count', '메인에 보여줄 최근 제보 수 (3~20, 4의 배수가 깔끔해요)', '20', {}),
@@ -261,7 +261,7 @@ HOME_BLOCKS = [
     ('groups', '진행 중인 공동 대응 (+ 제안하기)'),
 ]
 LEGACY_NAV = [('nav.home', 'reports', '소비자 제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
-              ('nav.explore', 'explore', '둘러보기'), ('nav.faq', 'faq', '고객센터')]
+              ('nav.explore', 'explore', '둘러보기'), ('nav.faq', 'faq', '자주 묻는 질문')]
 LISTS = [
     ('menu', '소비자제보센터 상단 메뉴', 'consumerjebo.co.kr 맨 위 메뉴예요. 이름, 순서, 연결할 페이지를 정할 수 있고 외부 주소(블로그 등)도 넣을 수 있어요.',
      [('label', '메뉴 이름', {}), ('page', '연결할 페이지', {'choices': MENU_PAGES}), ('url', '직접 입력한 주소 ("직접 입력한 주소"를 골랐을 때만, 예: https://blog.naver.com/...)', {})], 1),

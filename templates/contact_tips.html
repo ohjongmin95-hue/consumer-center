@@ -12,21 +12,8 @@
   ('도움 요청하기', '둘이서 풀리지 않으면 도움을 받아요', ['소비자상담센터에 전화(국번 없이 1372)나 인터넷(ccn.go.kr)으로 상담을 맡겨요.', '상담원이 대처 방법을 알려 주고, 피해구제나 분쟁조정으로 이어지게 도와줘요.', '소비자제보센터에 제보하면 기업 답변을 받고, 기사로 알릴 수도 있어요.'], none),
 ] %}
 {% block content %}
-<main class="ct"><div class="ct-in">
-  <p class="ct-k">{{ ui('tips.kicker', '행동 요령') }}</p>
-  <h1 class="ct-title">{{ ui('tips.title', '업체에 연락하기 전에\n알아 둘 7가지') }}</h1>
-  <ol class="ct-list">{% for h, t, items, ex in steps %}
-    <li class="ct-step" id="t{{ loop.index }}">
-      <span class="ct-num is-t{{ loop.index0 % 4 }}" aria-hidden="true">{{ loop.index }}</span>
-      <div class="ct-body">
-        <small>{{ h }}</small>
-        <h2>{{ t }}</h2>
-        <ul>{% for x in items %}<li>{{ x }}</li>{% endfor %}</ul>
-        {% if ex %}<p class="ct-ex">{{ ex }}</p>{% endif %}
-      </div>
-    </li>{% endfor %}
-  </ol>
-  <a class="primary ct-go" href="{{ url_for('report_talk') }}">{{ ui('tips.go', '제보하기') }}</a>
-  <p class="ct-src">{{ ui('tips.src', '출처: 한국소비자원 소비자상담센터 ‘사업자와 접촉 시 소비자 행동요령’을 바탕으로 쉽게 풀어 썼어요.') }} <a href="https://www.ccn.go.kr/contents/view.ccn?gSiteCode=2&amp;gMenuCode=5&amp;nMenuCode=85" target="_blank" rel="noopener">{{ ui('tips.src_link', '원문 보기') }} ↗</a></p>
-</div></main>
+{% set g_kicker = ui('tips.kicker', "행동 요령") %}{% set g_title = ui('tips.title2', "업체에 연락하기 전에 알아 둘 7가지") %}{% set g_intro = ui('tips.intro', "물건이나 서비스에 문제가 생기면 먼저 업체에 연락하게 돼요. 무엇을 준비하고 어떻게 말하느냐에 따라 결과가 달라져요. 한국소비자원이 알려 주는 7가지 요령을 정리했어요.") %}
+{% set g_rows = ["먼저 알아보기", "자료 챙기기", "담당자 찾기", "또렷하게 말하기"] %}{% set g_tone = 0 %}{% set g_box = "이렇게 말해 보세요" %}{% set g_steps = steps %}
+{% set g_src = ui('tips.src2', "출처: 한국소비자원 소비자상담센터 ‘사업자와 접촉 시 소비자 행동요령’") %}{% set g_src_url = "https://www.ccn.go.kr/contents/view.ccn?gSiteCode=2&gMenuCode=5&nMenuCode=85" %}{% set g_next = ["guide_tricks", "악덕상술 12가지", "이런 상술은 조심해요"] %}
+{% set g_img = 'contact' %}{% include '_guide_article.html' %}
 {% endblock %}

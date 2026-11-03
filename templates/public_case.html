@@ -26,7 +26,7 @@
       <p class="pc-now">{{ pub_names()[now_step - 1] }}</p>
       <ol class="pc-steps">{% for s in pub_names() %}<li class="{{ 'on' if loop.index <= now_step else '' }}"{% if loop.index == now_step %} aria-current="step"{% endif %}><i></i><span>{{ s }}</span></li>{% endfor %}</ol>
       <a class="pc-co-row" {% if co %}href="{{ url_for('company_page', company_id=co['id']) }}"{% endif %}>
-        {% set lg = co_logo(co) if co and co_logo is defined else '' %}{% if lg %}<img class="pc-co-av" src="{{ lg }}" alt="">{% else %}<span class="pc-co-av" aria-hidden="true">{{ company[:1] }}</span>{% endif %}
+        {% set lg = co_logo(co) if co and co_logo is defined else '' %}{% if lg %}<img class="pc-co-av" src="{{ lg }}" alt="">{% else %}<span class="pc-co-av is-ind" aria-hidden="true"><img src="{{ asset('img/ind/' ~ industry_icon(case['industry']) ~ '.svg') }}" alt="" width="26" height="26"></span>{% endif %}
         <span class="pc-co-t"><small>{{ ui('reports.target', '제보 대상') }}</small><b>{{ company }}</b></span>
         {% if co %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>{% endif %}
       </a>
@@ -49,6 +49,20 @@
       {% else %}<div class="pc-wait"><span class="pc-wait-dot" aria-hidden="true"></span>{{ ui('case.answer_checking_short', '기업 답변을 확인하고 있어요') if has_answer else ui('case.answer_waiting', '기업 답변을 기다리고 있어요') }}</div>{% endfor %}
     </section>
 
+    {% set inv = expert_invite_box(case, has_answer) if expert_invite_box is defined else none %}{% if inv %}
+    <section class="pc-sec pc-inv" id="invite">
+      <h2>{{ ui('case.invite_title', '소보루 자문단에게 의견 묻기') }}</h2>
+      {% for x in inv.sent %}<div class="pc-inv-sent">{% if x.photo_url %}<img src="{{ x.photo_url }}" alt="">{% endif %}<div><b>{{ x.name }}</b><small>자문단 · {{ x.field }}</small></div><span class="pc-inv-st{{ ' is-done' if x.answered }}">{{ '의견 도착' if x.answered else '요청함' }}</span></div>{% endfor %}
+      {% if not inv.open %}<p class="pc-inv-note">{{ ui('case.invite_wait', '기업이 답하거나 답 기한이 지나면 자문단에게 의견을 물을 수 있어요.') }}</p>
+      {% elif inv.left and inv.people %}
+      <form method="post" action="{{ url_for('expert_invite', case_id=case['id']) }}" class="pc-inv-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <p class="pc-inv-note">{{ ui('case.invite_note', '자문단에게 의견을 물으면 이 제보에 댓글로 답해요. 제보 하나에 ' ~ inv.max ~ '명까지 부를 수 있어요.') }}</p>
+        <div class="pc-inv-list">{% for x in inv.people[:12] %}<label class="pc-inv-p"><input type="radio" name="expert" value="{{ x.id }}" required>{% if x.photo_url %}<img src="{{ x.photo_url }}" alt="">{% endif %}<span><b>{{ x.name }}</b><small>자문단 · {{ x.field }}{% if x.org %} · {{ x.org }}{% endif %}</small></span></label>{% endfor %}</div>
+        <textarea name="reason" rows="3" minlength="10" maxlength="500" required placeholder="{{ ui('case.invite_ph', '어떤 점이 궁금한지 적어 주세요') }}"></textarea>
+        <button type="submit" class="primary">{{ ui('case.invite_btn', '자문단 초대하기') }}</button>
+      </form>{% endif %}
+    </section>{% endif %}
     {% set talk = case_talk(case['id']) %}{% if talk %}{% with case_id = case['id'], talk_events = events %}{% include 'case_talk.html' %}{% endwith %}{% endif %}
     {% if groups_on() %}{% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}{% endif %}
   </div>
