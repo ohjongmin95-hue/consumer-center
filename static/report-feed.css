@@ -736,3 +736,60 @@ body:not(.sb) .process-page .process-note{margin-top:96px}
  body:not(.sb) .process-page .process-card .pc-body{font-size:17px}
  body:not(.sb) .process-page .process-note{margin-top:64px}
 }
+/* 운영자 2026-11-03 "토스 소개 페이지 느낌": 처리 절차 = 글(칩·큰 제목·설명) + 우리 화면 그림, PC는 좌우 번갈아 */
+.ps-list{display:grid;gap:120px;max-width:1120px;margin:80px auto 0}
+.ps-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:64px}
+.ps-row.is-flip .ps-copy{order:2}
+.ps-copy{display:grid;justify-items:start;gap:0;min-width:0}
+.ps-chip{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;margin:0 0 24px;border:1px solid #e5e8eb;border-radius:12px;background:#fff;color:#6b7684;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.ps-chip b{font-weight:600;color:#4e5968}
+.ps-head{margin:0 0 24px;font-size:44px;line-height:1.36;font-weight:700;letter-spacing:-.02em;color:#333d4b;word-break:keep-all}
+.ps-body{margin:0;font-size:19px;line-height:1.75;color:#4e5968;word-break:keep-all;text-wrap:pretty}
+.ps-body .em{color:inherit;font-weight:inherit}
+.ps-art{display:grid;place-items:center;aspect-ratio:5/4;max-width:100%;padding:40px;border-radius:32px;background:#f2f4f6}
+.ps-ui{display:grid;gap:12px;width:100%;max-width:340px;padding:24px;border-radius:24px;background:#fff;box-shadow:0 8px 24px rgba(0,27,55,.06);font-size:15px;color:#191f28}
+.ui-cap{margin:0 0 4px;font-size:13px;font-weight:600;color:#8b95a1}
+.ui-bub{max-width:85%;padding:10px 14px;border-radius:16px;line-height:1.5;word-break:keep-all}
+.ui-bub.ai{justify-self:start;background:#f2f4f6;border-top-left-radius:6px}
+.ui-bub.me{justify-self:end;background:#ef7300;color:#fff;border-top-right-radius:6px}
+.ui-bub.co{justify-self:start;max-width:100%;background:#f9fafb;border:1px solid #e5e8eb;color:#333d4b}
+.ui-btn{display:grid;place-items:center;height:48px;margin-top:4px;border-radius:14px;background:#ef7300;color:#fff;font-weight:700}
+.ui-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ui-top b{font-size:17px}
+.ui-tag{padding:3px 8px;border-radius:8px;background:#fff3e0;color:#d25f00;font-size:12px;font-weight:700}
+.ui-tag.blue{background:#e8f3ff;color:#1b64da}
+.ui-check{display:grid;gap:12px;margin:4px 0 0;padding:0;list-style:none}
+.ui-check li{display:flex;align-items:center;gap:10px;color:#8b95a1}
+.ui-check li::before{content:'';width:22px;height:22px;border-radius:50%;background:#e5e8eb}
+.ui-check li.on{color:#191f28}
+.ui-check li.on::before{background:#ef7300 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 12.5l3.2 3.2L17 9' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat}
+.ui-mail,.ui-noti{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:#f9fafb}
+.ui-mail div,.ui-noti div{display:grid;gap:2px;min-width:0}
+.ui-mail small,.ui-noti small{font-size:13px;color:#6b7684;word-break:keep-all}
+.ui-co{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:#fff3e0;color:#d25f00;font-weight:700}
+.ui-dot{flex:none;width:10px;height:10px;border-radius:50%;background:#ef7300}
+.ui-meta{margin:0;font-size:13px;color:#8b95a1}
+.ui-steps{display:grid;grid-template-columns:repeat(4,1fr);margin:4px 0 0;padding:0;list-style:none;font-size:12px;color:#8b95a1;text-align:center}
+.ui-steps li{display:grid;justify-items:center;gap:6px;position:relative}
+.ui-steps li::before{content:'';width:14px;height:14px;border-radius:50%;background:#e5e8eb;position:relative;z-index:1}
+.ui-steps li:not(:last-child)::after{content:'';position:absolute;top:6px;left:50%;width:100%;height:2px;background:#ffd9b0}
+.ui-steps li.done,.ui-steps li.now{color:#333d4b;font-weight:600}
+.ui-steps li.done::before{background:#ffb066}.ui-steps li.now::before{background:#ef7300;box-shadow:0 0 0 4px #fff3e0}
+.ui-result{padding:12px 14px;border-radius:14px;background:#f9fafb;font-weight:600;color:#333d4b}
+.ui-news{display:grid;gap:6px}
+.ui-news b{font-size:17px;line-height:1.45;word-break:keep-all}
+.ui-news small{font-size:13px;color:#8b95a1}
+.ui-lines{display:grid;gap:8px}.ui-lines i{height:8px;border-radius:4px;background:#f2f4f6}.ui-lines i.s{width:60%}
+body:not(.sb) .process-page .process-note{margin-top:120px}
+@media(max-width:900px){
+ .ps-list{gap:72px;margin-top:48px}
+ .ps-row{grid-template-columns:1fr;gap:28px}
+ .ps-row.is-flip .ps-copy{order:0}
+ .ps-chip{height:34px;padding:0 12px;margin-bottom:16px;font-size:14px;border-radius:10px}
+ .ps-head{margin-bottom:16px;font-size:28px}
+ .ps-body{font-size:17px}
+ .ps-art{padding:24px;border-radius:24px;aspect-ratio:auto}
+ body:not(.sb) .process-page .process-note{margin-top:72px}
+}
+.ps-ui{max-width:380px;font-size:16px}
+.ps-body strong{color:inherit;font-weight:inherit}

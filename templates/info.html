@@ -12,7 +12,7 @@
   {% for block in page_layout(page) %}
   {{ ed_remove('layout_' ~ page, loop.index0) }}
   {% if block.kind == 'process_cards' %}
-  {% include 'process_cards.html' %}
+  {% if page == 'process' and not is_soboru() %}{% include 'process_story.html' %}{% else %}{% include 'process_cards.html' %}{% endif %}
   {% elif block.kind == 'process_note' %}
   {% if txt('process.note') %}<p class="process-note">{{ txt('process.note') }} <a href="{{ url_for('lookup') }}">{{ ui('process.lookup_link', '내 제보 조회 →') }}</a></p>{% endif %}
   {% elif block.kind == 'faq_list' %}
