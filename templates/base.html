@@ -43,6 +43,7 @@
   <meta name="apple-mobile-web-app-title" content="소보루"><meta name="mobile-web-app-capable" content="yes">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
   <link rel="stylesheet" href="{{ asset('report-feed.css') }}">
+  {% if not is_soboru() and request.path.startswith('/ask') %}<link rel="stylesheet" href="{{ asset('ask-jebo.css') }}">{% endif %}{# AI 소비자 상담을 제보센터에서도 (운영자 2026-11-03) #}
   {% if is_soboru() %}<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">{# 소보루 글꼴 Pretendard (SIL OFL), 화면에 쓰는 글자만 나눠 받음 #}
   <link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}

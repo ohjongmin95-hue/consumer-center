@@ -1,6 +1,6 @@
 {# 운영자 2026-11-03: 처리 절차 페이지(제보센터) = 토스 소개 페이지식. 번호·단계 이름 칩 → 큰 두 줄 제목 → 회색 설명, 옆에 우리 서비스 화면 그림(번갈아 좌우).
    제목은 관리자 문구(process.head<아이콘>)로 고칠 수 있고, 단계 이름·설명은 기존 처리 절차 목록 그대로. #}
-{% set descs = {'write': '어디에, 어떻게 써야 할지부터 막막하죠. 대화로 제보하기에선 겪은 일을 말하듯 적으면 AI가 제목과 내용으로 정리해요. 사진만 더하면 제보가 끝나요.', 'search': '제보가 들어오면 담당자가 내용과 사진, 주문 내역을 하나씩 확인해요. 자료가 더 필요하면 내 제보로 알려 드려요.', 'chat': '고객센터에 몇 번을 말해도 답이 없었다면, 이제 소보루가 대신 전해요. 확인한 제보를 기업에 보내고 공식 답변을 요청해요.', 'bell': '기업이 답하면 바로 알려 드려요. 답변이 부족하면 해결될 때까지 다시 묻고 조율해요.', 'check': '지금 어디까지 왔는지 내 제보에서 언제든 볼 수 있어요. 해결되지 않으면 한국소비자원(1372) 피해구제도 안내해요.', 'news': '같은 일을 겪는 사람이 많다면 기사로 알려요. 이름과 연락처는 가리고, 기업 입장도 함께 실어요.'} %}
+{% set descs = {'write': '어디에, 어떻게 써야 할지부터 막막하죠. 대화로 제보하기에선 겪은 일을 말하듯 적으면 AI가 제목과 내용으로 정리해요. 사진만 더하면 제보가 끝나요.', 'search': '제보가 들어오면 담당자가 내용과 사진, 주문 내역을 하나씩 확인해요. 자료가 더 필요하면 카카오톡으로 알려 드려요.', 'chat': '고객센터에 몇 번을 말해도 답이 없었다면, 이제 소보루가 대신 전해요. 확인한 제보를 기업에 보내고 공식 답변을 요청해요. 보낸 순간 카카오톡으로 알려 드려요.', 'bell': '기업이 답하면 카카오톡 알림톡으로 바로 알려 드려요. 답변이 부족하면 해결될 때까지 다시 묻고 조율해요.', 'check': '진행 단계가 바뀔 때마다 카카오톡으로 알려 드려요. 지금 어디까지 왔는지는 내 제보에서도 언제든 볼 수 있어요. 해결되지 않으면 한국소비자원(1372) 피해구제도 안내해요.', 'news': '같은 일을 겪는 사람이 많다면 소비자를 위한 신문 SOBORU에 기사로 알려요. 이름과 연락처는 가리고, 기업 입장도 함께 실어요.'} %}
 {% set heads = {'write': '말하듯 쓰면\n제보가 정리돼요', 'search': '담당자가\n사실부터 확인해요', 'chat': '기업에\n직접 전달해요', 'bell': '기업 답변을\n바로 알려 드려요', 'check': '결과는\n내 제보에서 확인해요', 'news': '여러 사람이 겪는 문제는\n기사로 알려요'} %}
 <div class="ps-list">
   {% for step in items('process_steps') %}{% set ic = step_icon(step, loop.index0) %}
@@ -10,7 +10,7 @@
       <h2 class="ps-head">{{ ui('process.head_' ~ ic, heads.get(ic, step.title)) }}</h2>
       {% if ic in descs %}<p class="ps-body">{{ ui('process.desc_' ~ ic, descs[ic]) }}</p>{% elif step.body %}<p class="ps-body">{{ step.body|emph }}</p>{% endif %}
     </div>
-    <div class="ps-art" aria-hidden="true"><div class="ps-ui">
+    <div class="ps-art" aria-hidden="true"><div class="ps-ui{% if ic == 'bell' %} is-kt{% endif %}">
       {% if ic == 'write' %}
         <p class="ui-cap">대화로 제보하기</p>
         <div class="ui-bub ai">어떤 일을 겪으셨나요?</div>
@@ -20,19 +20,20 @@
       {% elif ic == 'search' %}
         <div class="ui-top"><b>내 제보</b><span class="ui-tag blue">검토 중</span></div>
         <ul class="ui-check"><li class="on">제보 내용 확인</li><li class="on">첨부 사진 3장 확인</li><li>주문 내역 추가 요청</li></ul>
+        <div class="ui-kt is-mini"><img class="ui-kt-av" src="{{ asset('img/jebo-app-icon-96.png') }}" alt="" width="36" height="36"><div class="ui-kt-msg"><p class="ui-kt-name">소보루(SOBORU)</p><div class="ui-kt-card"><p class="ui-kt-bar">알림톡 도착</p><div class="ui-kt-in"><b>자료를 하나 더 보내 주세요</b><p>주문 내역 사진을 한 장 더 올려 주세요.</p></div></div></div></div>
       {% elif ic == 'chat' %}
         <div class="ui-top"><b>기업 전달</b><span class="ui-tag">전달했어요</span></div>
         <div class="ui-mail"><span class="ui-co">○</span><div><b>○○쇼핑 고객센터</b><small>제보 내용과 공식 답변 요청을 보냈어요</small></div></div>
         <p class="ui-meta">11월 3일 오후 2:10</p>
       {% elif ic == 'bell' %}
-        <div class="ui-noti"><span class="ui-dot"></span><div><b>기업 답변이 도착했어요</b><small>○○쇼핑 · 방금</small></div></div>
-        <div class="ui-bub co">불편을 드려 죄송합니다. 오늘 안에 환불을 진행하겠습니다.</div>
+        <div class="ui-kt"><img class="ui-kt-av" src="{{ asset('img/jebo-app-icon-96.png') }}" alt="" width="36" height="36"><div class="ui-kt-msg"><p class="ui-kt-name">소보루(SOBORU)</p><div class="ui-kt-card"><p class="ui-kt-bar">알림톡 도착</p><div class="ui-kt-in"><small>소보루 제보 알림</small><b>기업 답변이 도착했어요</b><p>○○쇼핑이 제보에 답했어요.</p><span class="ui-kt-btn">답변 보기</span></div></div></div></div>
       {% elif ic == 'check' %}
         <div class="ui-top"><b>진행 상황</b></div>
         <ol class="ui-steps"><li class="done">접수</li><li class="done">검토</li><li class="done">기업 답변</li><li class="now">종결</li></ol>
         <div class="ui-result">환불 완료로 마무리했어요</div>
       {% else %}
-        <p class="ui-cap">소비자의 소리</p>
+        <div class="ui-paper"><b>SOBORU</b><small>소비자를 위한 신문</small></div>
+        <p class="ui-cap ui-sec">소비자의 소리</p>
         <div class="ui-news"><b>“반품했는데 2주째 환불 안 돼요”… 같은 피해 잇따라</b><small>제보자 ○○○ · 기업 입장 함께 전해요</small></div>
         <div class="ui-lines"><i></i><i></i><i class="s"></i></div>
       {% endif %}
