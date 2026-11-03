@@ -1869,3 +1869,9 @@ body:has(main.xf.is-split) .auth-top .brand{color:#191f28}
 .xs-screen{border:0!important;border-radius:52px 52px 0 0!important;background:#f7f8fa!important;padding:52px 24px 24px!important;height:100%;box-sizing:border-box}
 .xs-float{border-radius:20px!important;box-shadow:0 12px 32px rgba(0,0,0,.12)!important}
 @media(max-width:760px){.xs-feat-art{padding:48px 20px 0!important}.xs-phone{min-height:70%;width:62%!important;padding:9px 9px 0!important;border-radius:46px 46px 0 0!important}.xs-screen{border-radius:38px 38px 0 0!important;padding:36px 16px 16px!important}}
+/* 운영자 2026-11-03: 휴대폰은 전면 카메라 없는 아이폰 모양 — 둥근 알약 말고 아이폰 비율 모서리, 얇은 테두리 */
+.xs-feat-art{padding:48px 32px 0!important}
+.xs-phone{width:40%!important;min-height:86%!important;padding:7px 7px 0!important;background:#1f2329!important;border-radius:46px 46px 0 0!important;box-shadow:0 0 0 2px #d1d6db,0 24px 50px rgba(101,45,28,.22)!important}
+.xs-screen{border-radius:39px 39px 0 0!important;background:#fff!important;padding:40px 22px 22px!important}
+@media(max-width:760px){.xs-feat-art{padding:36px 20px 0!important}.xs-phone{width:58%!important;min-height:84%!important;padding:6px 6px 0!important;border-radius:38px 38px 0 0!important}.xs-screen{border-radius:32px 32px 0 0!important;padding:30px 16px 16px!important}}
+.xs-phone{display:flex!important;flex-direction:column}.xs-screen{flex:1 1 auto;height:auto!important}
