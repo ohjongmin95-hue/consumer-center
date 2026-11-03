@@ -4,18 +4,20 @@
 <main class="home-blocks">
   {% for block in items('home_blocks') %}
   {{ ed_remove('home_blocks', loop.index0) }}
-  {% if block.kind == 'hero' and hero_wall() %}{% set wall = hero_wall() %}{# 실제 제보 사진 벽 (가린 사본, 관리자 > 첫 화면 사진) #}
+  {% if block.kind == 'hero' and (hero_video() or hero_wall()) %}{% set vid = hero_video() %}{% set wall = [] if vid else hero_wall()[:8] %}{# 운영자 2026-11-03: 토스플레이스처럼 화면 끝까지 꽉 찬 실제 제보 사진(또는 동영상) 위에 흰 큰 제목 #}
   <section class="hero hero-wall">
-    {# 같은 사진이 두 번 나오지 않게 한 장씩만: 6·12·18장은 6칸 1~3줄, 그보다 적으면 그 수만큼 칸을 나눔 (휴대폰은 3칸) #}
-    {% set n = wall|length %}{% set k = 18 if n >= 18 else 12 if n >= 12 else 6 if n >= 6 else n %}{% set cols = 6 if k >= 6 else k %}
-    <div class="hw-grid{% if k < 6 %} hw-few{% endif %}" style="--cols:{{ cols }};--rows:{{ (k // cols) }}" aria-hidden="true">
-      {% for p in wall[:k] %}<figure><img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" width="300" height="400">{% if p.caption %}<figcaption>{{ p.caption }}</figcaption>{% endif %}</figure>{% endfor %}
+    <div class="hw-media" aria-hidden="true">
+      {% if vid %}<video src="{{ url_for('hero_video_file', name=vid.stored ~ '.mp4') }}" poster="{{ url_for('hero_video_file', name=vid.stored ~ '.jpg') }}" autoplay muted loop playsinline preload="metadata"></video>
+      {% else %}{% for p in wall %}<figure class="hw-slide{% if loop.first %} on{% endif %}"><picture>{% if p.wide %}<source media="(min-width: 681px)" srcset="{{ url_for('hero_photo', name=p.wide) }}">{% endif %}<img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" width="600" height="800"{% if not loop.first %} loading="lazy"{% endif %}></picture></figure>{% endfor %}{% endif %}
     </div>
     <div class="hero-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
       <a class="primary" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
     </div>
+    {% set cap = vid.caption if vid else (wall[0].caption if wall else '') %}<p class="hw-cap"><span class="hw-dot"></span>실제 제보 {{ '영상' if vid else '사진' }}<span class="hw-cap-t">{% if cap %}· {{ cap.split(' · ')[0] }}{% endif %}</span></p>
+    {% if wall|length > 1 %}<script>(function(){var s=document.querySelectorAll('.hw-slide'),c=document.querySelector('.hw-cap-t'),caps={{ wall|map(attribute='caption')|map('string')|list|tojson }},i=0;if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;setInterval(function(){s[i].classList.remove('on');i=(i+1)%s.length;s[i].classList.add('on');var t=(caps[i]||'').split(' · ')[0];c.textContent=t?'· '+t:''},5000)})();</script>{% endif %}
   </section>
+  {% include 'partner_band.html' %}
 
   {% elif block.kind in ('hero', 'hero_plain') %}
   <section class="hero{% if block.kind == 'hero' %} hero-art{% endif %}">

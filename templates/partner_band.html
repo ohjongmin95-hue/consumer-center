@@ -1,0 +1,8 @@
+{# 운영자 2026-11-03: 제보팀장처럼 협력 기관 로고 띠. 로고가 없으면 안 보임. 관리자 > 협력 기관·배너 #}
+{% set pts = partners() %}{% if pts %}
+<section class="pt-band" aria-label="{{ ui('partners.band', '함께하는 기관') }}">
+  <div class="pt-track{% if pts|length > 3 %} is-moving{% endif %}">
+    {% for round in range(2 if pts|length > 3 else 1) %}<ul{% if round %} aria-hidden="true"{% endif %}>{% for p in pts %}<li>{% if p.link and not round %}<a href="{{ p.link }}" target="_blank" rel="noopener">{% endif %}<img src="{{ url_for('partner_image', name=p.stored) }}" alt="{{ '' if round else p.name }}" width="{{ p.width }}" height="{{ p.height }}" loading="lazy">{% if p.link and not round %}</a>{% endif %}</li>{% endfor %}</ul>{% endfor %}
+  </div>
+</section>
+{% endif %}

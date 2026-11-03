@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{# 전문가 (운영자 2026-11-03: 상단 메뉴 '소비자게시판' 자리). 수수료·수임료 없이 제보에 의견을 남기는 전문가를 소개만 함. #}
+{% block title %}{{ ui('experts.title', '전문가') }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="page xp-page"><div class="wrap">
+  <h1 class="page-title">{{ ui('experts.title', '전문가') }}</h1>
+
+  {% macro card(e) %}
+  <li class="xp-card">
+    {% if e.photo_url %}<img class="xp-av" src="{{ e.photo_url }}" alt="" width="64" height="64" loading="lazy">{% else %}<span class="xp-av" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}
+    <div class="xp-who">
+      <b>{{ e.name }}</b>
+      <span class="xp-field">{{ e.field }}{% if e.org and e.kind != 'firm' %} · {{ e.org }}{% endif %}</span>
+    </div>
+    {% if e.intro %}<p class="xp-intro">{{ e.intro }}</p>{% endif %}
+    <span class="xp-n">{{ ui('experts.answers', '제보 의견') }} <b>{{ e.answers }}</b></span>
+  </li>
+  {% endmacro %}
+
+  {% if people or firms %}
+  {% if people %}<section class="xp-sec" aria-labelledby="xp-p"><h2 id="xp-p">{{ ui('experts.people', '함께하는 전문가') }}</h2><ul class="xp-grid">{% for e in people %}{{ card(e) }}{% endfor %}</ul></section>{% endif %}
+  {% if firms %}<section class="xp-sec" aria-labelledby="xp-f"><h2 id="xp-f">{{ ui('experts.firms', '함께하는 전문 기관') }}</h2><ul class="xp-grid">{% for e in firms %}{{ card(e) }}{% endfor %}</ul></section>{% endif %}
+  {% else %}
+  <div class="xp-empty"><b>{{ ui('experts.empty', '전문가를 모시고 있어요') }}</b><p>{{ ui('experts.empty_sub', '변호사·손해사정사 같은 전문가가 제보에 의견을 남겨 드릴 예정이에요.') }}</p></div>
+  {% endif %}
+
+  {% if recent %}
+  <section class="xp-sec" aria-labelledby="xp-r"><h2 id="xp-r">{{ ui('experts.recent', '최근 전문가 의견') }}</h2>
+    <ul class="xp-recent">{% for m in recent %}<li><a href="{{ url_for('public_case', case_id=m.case_id) }}">
+      <span class="xp-r-top">{% if m.expert %}<b>{{ m.expert.name }}</b> <span class="xp-field">{{ m.expert.field }}</span>{% endif %}<span class="xp-r-co">{{ m.company }}</span></span>
+      <span class="xp-r-sub">{{ m.subject }}</span>
+      <span class="xp-r-body">{{ m.body|truncate(120, True, '…') }}</span>
+    </a></li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  <section class="xp-join">
+    <div><b>{{ ui('experts.join_title', '전문가이신가요?') }}</b><p>{{ ui('experts.join_text', '수수료나 광고비 없이, 제보에 의견을 남겨 소비자를 도와주세요.') }}</p></div>
+    <a class="primary" href="{{ url_for('expert_apply') }}">{{ ui('experts.join_btn', '전문가 등록') }}</a>
+  </section>
+</div></main>
+<style>
+.xp-page .wrap{max-width:1112px}
+.xp-sec{margin-top:36px}.xp-sec h2{margin:0 0 14px;font-size:20px;font-weight:800;letter-spacing:-.02em}
+.xp-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.xp-card{display:grid;grid-template-columns:56px minmax(0,1fr);gap:4px 14px;align-content:start;padding:20px;border:1px solid #e5e8eb;border-radius:20px;background:#fff}
+.xp-av{grid-row:span 2;width:56px;height:56px;border-radius:50%;object-fit:cover;background:#fff4e6;color:#e67700;font-weight:800;font-size:20px;display:inline-flex;align-items:center;justify-content:center}
+.xp-who{display:grid;align-content:center;min-width:0}.xp-who b{font-size:17px}
+.xp-field{color:#6b7684;font-size:13.5px;font-weight:600}
+.xp-intro{grid-column:1/-1;margin:10px 0 0;color:#4e5968;font-size:14px;line-height:1.6;word-break:keep-all}
+.xp-n{grid-column:1/-1;margin-top:10px;padding-top:12px;border-top:1px solid #f2f4f6;color:#8b95a1;font-size:13px}.xp-n b{color:#191f28}
+.xp-empty{margin-top:28px;padding:40px 24px;border-radius:20px;background:#f9fafb;text-align:center}.xp-empty b{font-size:18px}.xp-empty p{margin:8px 0 0;color:#6b7684}
+.xp-recent{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.xp-recent a{display:grid;gap:4px;padding:16px 18px;border:1px solid #e5e8eb;border-radius:16px;background:#fff;color:inherit;text-decoration:none}
+.xp-recent a:hover{border-color:#ffd8a8}
+.xp-r-top{display:flex;align-items:center;gap:6px;font-size:14px}.xp-r-co{margin-left:auto;color:#8b95a1;font-size:13px}
+.xp-r-sub{font-weight:800}.xp-r-body{color:#4e5968;font-size:14px;line-height:1.6}
+.xp-join{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:40px;padding:24px;border-radius:20px;background:#fff4e6}
+.xp-join b{font-size:17px}.xp-join p{margin:4px 0 0;color:#4e5968;font-size:14px}
+.xp-join .primary{flex:none;border-radius:999px;padding:13px 26px;font-size:16px}
+@media(max-width:680px){.xp-join{flex-direction:column;align-items:stretch;text-align:left}}
+</style>
+{% endblock %}

@@ -248,7 +248,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('nn-stats', home)  # 메인에는 건수 현황 없음
         self.assertNotIn('비공개 처리된 제보예요', home)
         self.assertNotIn('비밀글로 접수된 제보예요', home)
-        self.assertIn('<dt>전체</dt><dd>4</dd>', self.client.get('/reports').get_data(as_text=True))
+        self.assertIn('<dt>누적 제보</dt><dd>4</dd>', self.client.get('/reports').get_data(as_text=True))
         self.assertIn('>접수</span>', live)
         filtered_cat = self.client.get('/reports', query_string={'category': '배송·교환·환불'}).get_data(as_text=True)
         self.assertIn('미동의 접수</h3>', filtered_cat)  # 소보루 제보 목록은 카드 (2026-11-03)
@@ -285,7 +285,7 @@ class SiteTest(unittest.TestCase):
             r = admin.post('/admin/hero-photos/add', data={'_csrf': token, 'mode': 'boxes' if i else 'all', 'boxes': '[[0.1,0.1,0.5,0.5]]', 'caption': '택배 · 파손', 'photo': (pic(color), 'a.jpg')}, content_type='multipart/form-data')
             self.assertEqual(r.status_code, 302)
         home = self.client.get('/', base_url=jebo).get_data(as_text=True)
-        self.assertIn('hero-wall', home); self.assertIn('택배 · 파손', home)
+        self.assertIn('hero-wall', home); self.assertIn('<span class="hw-cap-t">· 택배</span>', home)
         name = re.search(r'/hero/([0-9a-f]{24}\.jpg)', home).group(1)
         img = self.client.get('/hero/' + name)
         self.assertEqual((img.status_code, Image.open(io.BytesIO(img.data)).size), (200, (600, 800)))
@@ -294,6 +294,15 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/hero-photos/%d' % pid, data={'_csrf': token, 'act': 'delete'})
         self.assertEqual(self.client.get('/hero/' + name).status_code, 404)
         self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))  # 2장이면 예전 그림
+
+    def test_report_needs_login(self):
+        # 운영자 2026-11-03: 로그인해야 제보 (대화 제보·양식 모두). 이름·전화번호 칸은 그대로
+        import os
+        os.environ['REPORT_LOGIN'] = '1'; self.addCleanup(os.environ.pop, 'REPORT_LOGIN', None)
+        for path in ('/report', '/report/talk'):
+            r = self.client.get(path); self.assertEqual(r.status_code, 302); self.assertIn('/login', r.headers['Location'])
+        os.environ['REPORT_LOGIN'] = '0'
+        self.assertIn('제보 전 꼭 읽어 주세요', self.client.get('/report/talk').get_data(as_text=True))
 
     def test_hero_photos_auto(self):
         # 운영자 2026-11-03: 공개 게시된 제보의 사진은 관리자가 안 골라도 모자이크해서 첫 화면에. 비공개로 바뀌면 바로 빠짐
@@ -314,7 +323,8 @@ class SiteTest(unittest.TestCase):
             db.execute("INSERT INTO attachments(case_id,stored,original) VALUES(?,'hero-src-0.jpg','a.jpg')", (secret,))
         self.login_admin().get('/admin/hero-photos')  # 관리자 화면을 열면 바로 채움
         home = self.client.get('/', base_url=jebo).get_data(as_text=True)
-        self.assertIn('hero-wall', home); self.assertIn('쇼핑·유통 · 배송·환불', home)
+        self.assertIn('hero-wall', home); self.assertIn('<span class="hw-cap-t">· 쇼핑·유통</span>', home)
+        self.assertEqual(len(re.findall(r'/hero/[0-9a-f]{24}w\.jpg', home)), 3)  # PC는 화면을 꽉 채우는 가로 사본 (운영자 2026-11-03)
         names = set(re.findall(r'/hero/([0-9a-f]{24}\.jpg)', home)); self.assertEqual(len(names), 3)  # 비공개 제보 사진·같은 사진은 안 들어감
         with self.site.conn() as db: db.execute('UPDATE cases SET published=0 WHERE id=?', (cids[1],))
         self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))
@@ -1973,10 +1983,10 @@ class SiteTest(unittest.TestCase):
 
     def test_process_page_cards(self):
         page = self.client.get('/process').get_data(as_text=True)
-        self.assertEqual(page.count('class="process-card"'), 5)
+        self.assertEqual(page.count('class="process-card"'), 6)  # 운영자 2026-11-03: 기사화 단계 따로
         self.assertIn('<span class="pc-step">1단계</span>제보 접수', page)
         self.assertIn('<strong class="em">온라인으로 제보</strong>', page)
-        self.assertEqual(page.count('class="step-icon"'), 5)
+        self.assertEqual(page.count('class="step-icon"'), 6)
         admin = self.login_admin()
         token = self.csrf(admin, '/admin/lists')
         admin.post('/admin/lists', data={'_csrf': token, 'list': 'process_steps', 'title': ['상담', '끝'], 'icon': ['call', ''], 'body': ['**<i>빠르게</i>** 연락드려요', '']})
@@ -5889,6 +5899,25 @@ class SiteTest(unittest.TestCase):
             db.execute("INSERT INTO letter_subscribers(email,token,status,created,asked) VALUES('old@test.kr','tok-old','pending','2000-01-01T00:00:00','2000-01-01T00:00:00')")
         L['weekly'](monday + datetime.timedelta(days=6))
         with self.site.conn() as db: self.assertIsNone(db.execute("SELECT 1 FROM letter_subscribers WHERE email='old@test.kr'").fetchone())
+
+    def test_partners_and_report_stages(self):
+        """운영자 2026-11-03: 협력 기관 로고·배너(관리자에서 넣기), 제보 목록 단계 탭, 제보하기 버튼 하나."""
+        import io
+        from PIL import Image
+        html = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('rf-tabs', html); self.assertNotIn('reports-head-btns', html); self.assertNotIn('rf-partners', html)
+        self.assertEqual(html.count('class="rf-go"'), 1)
+        for st in ('new', 'active', 'answer', 'done'): self.assertEqual(self.client.get('/reports?st=' + st).status_code, 200)
+        admin = self.site.app.test_client()
+        admin.post('/admin/login', data={'_csrf': self.csrf(admin, '/admin/login'), 'password': self.password})
+        token = self.csrf(admin, '/admin/partners')
+        buf = io.BytesIO(); Image.new('RGBA', (300, 100), (255, 0, 0, 255)).save(buf, 'PNG'); buf.seek(0)
+        r = admin.post('/admin/partners', data={'_csrf': token, 'kind': 'partner', 'name': '시험 기관', 'link': 'javascript:alert(1)', 'image': (buf, 'a.png')}, content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 302)
+        html = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('rf-partners', html); self.assertIn('alt="시험 기관"', html); self.assertNotIn('javascript:', html)
+        self.assertIn('pt-band', self.client.get('/').get_data(as_text=True)) if 'hero-wall' in self.client.get('/').get_data(as_text=True) else None
+        with self.site.conn() as db: db.execute('DELETE FROM partners')
 
 if __name__ == '__main__':
     unittest.main()

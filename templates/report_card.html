@@ -1,7 +1,9 @@
 {# 제보 카드 한 장 (홈과 /reports 목록이 같이 씀). c = report_cards()가 만든 줄. pub_badge면 공개 3단계(접수·처리 중·종결)로.
    2026-11-03 운영자: 검은고양이처럼 맨 위에 작성자(닉네임)·날짜·진행 상태, 아래에 제보 대상(업체·업종)·유형·공감·댓글 #}
 {% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
-<a class="nn-vc-card{% if not c.open %} is-locked{% endif %}" href="{{ url_for('public_case', case_id=c.no) if c.open else url_for('case_open', case_id=c.no) }}">
+{% set ph = case_photo(c.no) if with_photo and c.open and case_photo is defined else '' %}
+<a class="nn-vc-card{% if not c.open %} is-locked{% endif %}{% if ph %} has-photo{% endif %}" href="{{ url_for('public_case', case_id=c.no) if c.open else url_for('case_open', case_id=c.no) }}">
+  {% if ph %}<span class="nn-vc-photo"><img src="{{ url_for('hero_photo', name=ph) }}" alt="" loading="lazy"><small>{{ ui('reports.photo_note', '실제 제보 사진 · 가림 처리') }}</small></span>{% endif %}
   <div class="nn-vc-top">
     {% if c.author %}{% set src = avatar_url(c.author_id) if avatar_url is defined else '' %}{% if src %}<img class="nn-vc-av" src="{{ src }}" alt="" loading="lazy">{% else %}<span class="nn-vc-av" aria-hidden="true">{{ c.author[:1] }}</span>{% endif %}
     {% else %}<span class="nn-vc-av is-anon" aria-hidden="true">익명</span>{% endif %}
@@ -16,7 +18,7 @@
   </div>
   <dl class="nn-vc-meta">
     <div><dt>{{ ui('home.card_target', '제보 대상') }}</dt><dd><span class="nn-vc-co">{{ c.company or ui('home.card_hidden_company', '업체 비공개') }}</span>{% if c.industry %}<span class="nn-vc-ind">{{ c.industry }}</span>{% endif %}</dd></div>
-    <div><dt>{{ ui('home.card_kind', '제보 유형') }}</dt><dd><span class="nn-vc-tag">{{ c.cat }}</span></dd></div>
+    <div><dt>{{ ui('home.card_kind', '제보 유형') }}</dt><dd>{% set m = c.cat|cat_split %}{% if m %}<span class="nn-vc-tag" title="{{ c.cat }}"><b>{{ m[0] }}</b><span>{{ m[1] }}</span></span>{% else %}<span class="nn-vc-tag">{{ c.cat }}</span>{% endif %}</dd></div>
   </dl>
   {% if c.open or c.answered %}<div class="nn-vc-foot">
     {% if c.open %}<span class="nn-vc-n{% if c.metoo %} on{% endif %}" title="{{ ui('case.metoo', '나도 겪었어요') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11v9H4v-9zM7 11l4-7c1.5 0 2.5 1 2 3l-1 3h6c1.2 0 2 1 1.8 2.2l-1.3 6.3c-.2 1-1 1.5-2 1.5H7"/></svg>{% if c.metoo %}{{ ui('home.live_metoo', '나도 겪었어요') }} {% endif %}{{ c.metoo }}</span>

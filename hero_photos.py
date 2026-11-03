@@ -5,6 +5,9 @@
   가리는 방법: 사진 전체를 잘게 모자이크(기본) 하거나, 관리자가 네모로 칠한 곳만 굵게 모자이크.
   이름·전화번호·주소·주문번호·얼굴처럼 알아볼 수 있는 것은 관리자가 미리 보기로 확인하고 넣는다.
 - 사진이 3장 이상이면 제보센터 첫 화면의 큰 제목 칸(hero) 뒤에 사진 벽이 깔린다. 적으면 예전 그림 그대로.
+- 운영자 2026-11-03 (토스플레이스처럼): 첫 화면은 화면 끝까지 꽉 찬 사진 한 장씩 천천히 바뀌고, 그 위에 흰 큰 제목.
+  관리자가 '첫 화면 동영상'을 넣으면 사진 대신 그 동영상이 소리 없이 반복된다 (제보 동영상 또는 직접 올린 것).
+  동영상은 ffmpeg로 소리를 빼고 20초·720p로 줄인 사본만 공개 (흐리게 하기 선택).
 - 운영자 2026-11-03: 관리자가 고르지 않아도 공개 게시된 제보의 사진을 자동으로 넣는다 (사진 전체 모자이크).
   제보가 비공개로 바뀌거나 내려가면 첫 화면에서도 빠진다. 관리자가 '빼기'를 누른 자동 사진은 다시 들어오지 않는다.
 """
@@ -25,6 +28,32 @@ MAX_PHOTOS = 18
 MIN_PHOTOS = 3
 IMAGE_EXT = ('.jpg', '.jpeg', '.png', '.webp')
 NAME_RE = re.compile(r'[0-9a-f]{24}\.jpg')
+WNAME_RE = re.compile(r'[0-9a-f]{24}w\.jpg')
+VNAME_RE = re.compile(r'[0-9a-f]{24}\.(mp4|jpg)')
+VIDEO_EXT = ('.mp4', '.mov')
+VIDEO_MAX = 200 * 1024 * 1024
+VIDEO_SECONDS = 20
+BLUR = {'none': '', 'light': ',boxblur=3:1', 'strong': ',boxblur=10:2'}
+
+
+def make_video(src, out, blur='light'):
+    """소리 빼고, 앞 20초만, 세로 720 이하로 줄인 mp4 + 첫 장면 사진. 실패하면 False."""
+    import shutil, subprocess
+    ff = shutil.which('ffmpeg')
+    if not ff: return False
+    vf = "scale=-2:'min(720,ih)'" + BLUR.get(blur, BLUR['light']) + ',format=yuv420p'
+    try:
+        subprocess.run([ff, '-y', '-loglevel', 'error', '-i', str(src), '-t', str(VIDEO_SECONDS), '-an', '-vf', vf,
+                        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-movflags', '+faststart', str(out) + '.mp4'],
+                       check=True, timeout=300, capture_output=True)
+        subprocess.run([ff, '-y', '-loglevel', 'error', '-ss', '0.3', '-i', str(out) + '.mp4', '-frames:v', '1', '-q:v', '4', str(out) + '.jpg'],
+                       check=True, timeout=60, capture_output=True)
+        return True
+    except Exception:
+        for x in ('.mp4', '.jpg'):
+            try: __import__('os').remove(str(out) + x)
+            except OSError: pass
+        return False
 AUTO_MAX = 12      # 자동으로 넣는 사진 수
 AUTO_EVERY = 600   # 자동 사진을 찾는 간격(초)
 AUTO_PER_RUN = 4   # 한 번에 새로 만드는 사본 수 (첫 화면이 느려지지 않게)
@@ -80,6 +109,27 @@ def make_copy(data, mode, boxes):
     return out.getvalue()
 
 
+WIDE_W, WIDE_H, WIDE_FINE = 1600, 900, 280  # 첫 화면을 화면 끝까지 채우는 가로 사본 (운영자 2026-11-03, 토스플레이스처럼)
+
+
+def make_wide(data):
+    """원본 바이트 → 가로 16:9 사본 (사진 전체 약한 모자이크, 칸 크기는 세로 사본과 비슷). 못 열면 b''."""
+    from PIL import Image, ImageOps
+    try:
+        im = Image.open(io.BytesIO(data))
+        if im.width * im.height > 40_000_000: return b''
+        im = ImageOps.fit(ImageOps.exif_transpose(im).convert('RGB'), (WIDE_W, WIDE_H), Image.LANCZOS)
+    except Exception:
+        return b''
+    im = mosaic(im, WIDE_FINE)
+    out = io.BytesIO(); im.save(out, 'JPEG', quality=80, optimize=True, progressive=True)
+    return out.getvalue()
+
+
+def wide_name(stored):
+    return stored[:-4] + 'w.jpg' if NAME_RE.fullmatch(stored or '') else ''
+
+
 def norm_co(name):
     return re.sub(r'[\s()㈜주식회사]', '', name or '').lower()
 
@@ -115,9 +165,16 @@ def install(S):
             if c not in cols: db.execute(f'ALTER TABLE hero_photos ADD COLUMN {c} INTEGER NOT NULL DEFAULT 0')
         if 'phash' not in cols: db.execute("ALTER TABLE hero_photos ADD COLUMN phash TEXT NOT NULL DEFAULT ''")
         for r in db.execute('SELECT stored FROM hero_photos WHERE auto=1 AND hidden=0 AND ver<?', (AUTO_VER,)).fetchall():  # 예전 방식 자동 사본은 새로 만듦
-            if NAME_RE.fullmatch(r['stored']): (folder / r['stored']).unlink(missing_ok=True)
+            if NAME_RE.fullmatch(r['stored']): (folder / r['stored']).unlink(missing_ok=True); (folder / wide_name(r['stored'])).unlink(missing_ok=True)
         db.execute('DELETE FROM hero_photos WHERE auto=1 AND hidden=0 AND ver<?', (AUTO_VER,))
+        db.execute("CREATE TABLE IF NOT EXISTS hero_videos(id INTEGER PRIMARY KEY,stored TEXT NOT NULL,attachment_id INTEGER,case_id INTEGER,caption TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
     last = {'at': 0.0}
+
+    def video():
+        """첫 화면 동영상 (가장 최근 것 하나). 제보 동영상이면 그 제보가 지금도 공개일 때만."""
+        with conn() as db:
+            r = db.execute('SELECT v.* FROM hero_videos v LEFT JOIN cases c ON c.id=v.case_id WHERE v.case_id IS NULL OR (' + PUBLIC + ') ORDER BY v.id DESC LIMIT 1').fetchone()
+        return dict(r) if r else None
 
     def photos():
         """보이는 사진: 관리자가 고른 것 먼저, 그다음 자동 사진(최근 것부터). 자동 사진은 제보가 지금도 공개일 때만."""
@@ -162,6 +219,8 @@ def install(S):
                 name = secrets.token_hex(12) + '.jpg'; (folder / name).write_bytes(jpg)
                 cap = ' · '.join(x for x in (r['industry'], r['category']) if x)[:40]
                 db.execute('INSERT INTO hero_photos(stored,attachment_id,case_id,caption,auto,ver,phash,created) VALUES(?,?,?,?,1,?,?,?)', (name, r['id'], r['case_id'], cap, AUTO_VER, ph, S.now()))
+            wide = make_wide(data)
+            if wide: (folder / wide_name(name)).write_bytes(wide)
             made += 1; seen.add(r['case_id']); hashes.append(ph); cos.add(norm_co(r['company'])); inds[r['industry']] = inds.get(r['industry'], 0) + 1
 
     def wall():
@@ -169,14 +228,76 @@ def install(S):
         try: auto_fill()
         except Exception as e: app.logger.warning('hero auto fill failed: %s', str(e)[:120])
         rows = photos()
+        for r in rows: r['wide'] = wide_name(r['stored']) if (folder / wide_name(r['stored'])).is_file() else ''
         return rows if len(rows) >= MIN_PHOTOS else []
 
+    def case_photo(case_id):
+        """제보 목록 카드 위 사진: 그 제보의 가린 사본(첫 화면과 같은 것)이 있을 때만. 한 요청에 한 번만 읽음."""
+        from flask import g
+        if '_case_photos' not in g:
+            with conn() as db:
+                rows = db.execute('SELECT h.case_id,h.stored FROM hero_photos h JOIN cases c ON c.id=h.case_id WHERE h.hidden=0 AND (' + PUBLIC + ') ORDER BY h.auto,h.sort,h.id DESC').fetchall()
+            g._case_photos = {}
+            for r in rows:
+                if r['case_id'] not in g._case_photos:
+                    w = wide_name(r['stored'])
+                    g._case_photos[r['case_id']] = w if (folder / w).is_file() else r['stored']
+        return g._case_photos.get(case_id, '')
+
+    app.jinja_env.globals['case_photo'] = case_photo
     app.jinja_env.globals['hero_wall'] = wall
+    app.jinja_env.globals['hero_video'] = video
+
+    @app.route('/hero/v/<name>')
+    def hero_video_file(name):
+        v = video()
+        if not VNAME_RE.fullmatch(name) or not v or name.rsplit('.', 1)[0] != v['stored']: abort(404)
+        return send_file(folder / name, mimetype='video/mp4' if name.endswith('.mp4') else 'image/jpeg', max_age=86400 * 30, conditional=True)
+
+    @app.route('/admin/hero-photos/video', methods=['POST'])
+    @S.admin_only
+    def admin_hero_video():
+        import os, tempfile
+        if request.form.get('act') == 'delete':
+            with conn() as db:
+                for r in db.execute('SELECT stored FROM hero_videos').fetchall():
+                    for x in ('.mp4', '.jpg'): (folder / (r['stored'] + x)).unlink(missing_ok=True)
+                db.execute('DELETE FROM hero_videos')
+            flash('첫 화면 동영상을 뺐어요. 다시 사진이 보여요.'); return redirect(url_for('admin_hero_photos'))
+        caption = ' '.join((request.form.get('caption') or '').split())[:40]
+        att_id = case_id = None; tmp = None
+        up = request.files.get('video')
+        if up and up.filename:
+            if not up.filename.lower().endswith(VIDEO_EXT): flash('mp4·mov 동영상만 올릴 수 있어요.'); return redirect(url_for('admin_hero_photos'))
+            fd, tmp = tempfile.mkstemp(suffix='.' + up.filename.rsplit('.', 1)[-1].lower()); os.close(fd); up.save(tmp)
+            if os.path.getsize(tmp) > VIDEO_MAX: os.remove(tmp); flash('동영상이 너무 커요 (200MB까지).'); return redirect(url_for('admin_hero_photos'))
+            src = tmp
+        else:
+            try: att_id = int(request.form.get('attachment_id') or 0)
+            except ValueError: att_id = 0
+            with conn() as db:
+                f = db.execute('SELECT a.stored,c.id AS case_id,c.industry,c.category FROM attachments a JOIN cases c ON c.id=a.case_id WHERE a.id=?', (att_id,)).fetchone()
+            if not f or not f['stored'].lower().endswith(VIDEO_EXT): abort(404)
+            src = S.UPLOAD / f['stored']; case_id = f['case_id']
+            if not caption: caption = ' · '.join(x for x in (f['industry'], f['category']) if x)[:40]
+        name = secrets.token_hex(12)
+        ok = make_video(src, folder / name, request.form.get('blur') or 'light')
+        if tmp: os.remove(tmp)
+        if not ok: flash('동영상을 바꾸지 못했어요. 서버에 ffmpeg가 있는지, mp4·mov 파일인지 확인해 주세요.'); return redirect(url_for('admin_hero_photos'))
+        with conn() as db:
+            for r in db.execute('SELECT stored FROM hero_videos').fetchall():
+                for x in ('.mp4', '.jpg'): (folder / (r['stored'] + x)).unlink(missing_ok=True)
+            db.execute('DELETE FROM hero_videos')
+            db.execute('INSERT INTO hero_videos(stored,attachment_id,case_id,caption,created) VALUES(?,?,?,?,?)', (name, att_id, case_id, caption, S.now()))
+        flash('첫 화면 동영상을 넣었어요. 소리는 빼고 앞 20초만 써요.'); return redirect(url_for('admin_hero_photos'))
 
     @app.route('/hero/<name>')
     def hero_photo(name):
-        if not NAME_RE.fullmatch(name): abort(404)
-        if name not in {p['stored'] for p in photos()}: abort(404)  # 지금 보이는 사진만 (제보가 비공개로 바뀌면 바로 막힘)
+        base = name[:-5] + '.jpg' if WNAME_RE.fullmatch(name) else name
+        if not NAME_RE.fullmatch(base): abort(404)
+        with conn() as db:  # 지금 보이는 사진만 (제보가 비공개로 바뀌면 바로 막힘). 제보 목록 카드 사진도 같은 규칙
+            ok = db.execute('SELECT 1 FROM hero_photos h LEFT JOIN cases c ON c.id=h.case_id WHERE h.stored=? AND h.hidden=0 AND (h.auto=0 OR (' + PUBLIC + '))', (base,)).fetchone()
+        if not ok: abort(404)
         r = send_file(folder / name, mimetype='image/jpeg', max_age=86400 * 30)
         return r
 
@@ -192,7 +313,9 @@ def install(S):
         except Exception as e: app.logger.warning('hero auto fill failed: %s', str(e)[:120])
         with conn() as db:
             used = {r[0] for r in db.execute('SELECT attachment_id FROM hero_photos WHERE attachment_id IS NOT NULL')}
-        return render_template('admin_hero_photos.html', photos=photos(), cands=candidates(used), min_photos=MIN_PHOTOS, max_photos=MAX_PHOTOS)
+        with conn() as db:
+            vids = [dict(r) for r in db.execute('SELECT a.id,a.original,c.id AS case_id,c.subject FROM attachments a JOIN cases c ON c.id=a.case_id WHERE lower(a.stored) LIKE "%.mp4" OR lower(a.stored) LIKE "%.mov" ORDER BY a.id DESC LIMIT 30')]
+        return render_template('admin_hero_photos.html', photos=photos(), cands=candidates(used), min_photos=MIN_PHOTOS, max_photos=MAX_PHOTOS, video=video(), vids=vids)
 
     @app.route('/admin/hero-photos/src/<int:att_id>')
     @S.admin_only
@@ -231,6 +354,9 @@ def install(S):
         if not jpg:
             flash('사진을 열지 못했어요. JPG·PNG·WEBP 사진인지 확인해 주세요.'); return redirect(url_for('admin_hero_photos'))
         name = secrets.token_hex(12) + '.jpg'; (folder / name).write_bytes(jpg)
+        if mode == 'all':  # 칠한 곳만 가린 사진은 가로 사본 없이 세로 사본으로 (가린 자리가 달라지지 않게)
+            wide = make_wide(data)
+            if wide: (folder / wide_name(name)).write_bytes(wide)
         with conn() as db:
             top = db.execute('SELECT COALESCE(MAX(sort),0)+1 FROM hero_photos').fetchone()[0]
             db.execute('INSERT INTO hero_photos(stored,attachment_id,case_id,caption,sort,created) VALUES(?,?,?,?,?,?)', (name, att_id, case_id, caption, top, S.now()))
@@ -247,7 +373,7 @@ def install(S):
             if act == 'delete':  # 자동 사진은 숨김 표시로 남겨 다시 들어오지 않게
                 if row['auto']: db.execute("UPDATE hero_photos SET hidden=1,stored='' WHERE id=?", (pid,))
                 else: db.execute('DELETE FROM hero_photos WHERE id=?', (pid,))
-                if NAME_RE.fullmatch(row['stored']): (folder / row['stored']).unlink(missing_ok=True)
+                if NAME_RE.fullmatch(row['stored']): (folder / row['stored']).unlink(missing_ok=True); (folder / wide_name(row['stored'])).unlink(missing_ok=True)
             elif act in ('up', 'down'):
                 ids = [r[0] for r in db.execute('SELECT id FROM hero_photos WHERE auto=0 AND hidden=0 ORDER BY sort,id')]
                 if pid not in ids: return redirect(url_for('admin_hero_photos'))

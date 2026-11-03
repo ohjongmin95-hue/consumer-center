@@ -198,6 +198,26 @@ def install(S):
         return render_template('admin_experts.html', rows=rows, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, status=STATUS, photo_url=photo_url,
                                join_url=lambda t: S.canonical_url(url_for('expert_join', token=t)))
 
+    @app.route('/experts')
+    def experts_page():
+        """전문가 (운영자 2026-11-03: 상단 메뉴 '소비자게시판' 자리에, 검은고양이처럼). 승인된 전문가·전문 기관과 최근 전문가 답변."""
+        PUBLIC = "c.public_consent=1 AND c.published=1 AND c.review NOT IN ('rejected','duplicate')"
+        with conn() as db:
+            rows = [dict(r) for r in db.execute("SELECT id,user_id,name,field,org,intro,photo,kind FROM experts WHERE status='approved' ORDER BY approved DESC,id DESC")]
+            ids = [r['user_id'] for r in rows if r['user_id']]
+            counts, recent = {}, []
+            if ids:
+                q = ','.join('?' * len(ids))
+                counts = {r[0]: r[1] for r in db.execute(f'SELECT user_id,COUNT(*) FROM case_comments WHERE hidden=0 AND user_id IN ({q}) GROUP BY user_id', ids)}
+                try:
+                    recent = [dict(r) for r in db.execute(f'SELECT m.case_id,m.body,m.created,m.user_id,c.subject,c.company FROM case_comments m JOIN cases c ON c.id=m.case_id WHERE m.hidden=0 AND m.user_id IN ({q}) AND {PUBLIC} ORDER BY m.id DESC LIMIT 6', ids)]
+                except Exception:
+                    recent = []
+        by_user = {r['user_id']: r for r in rows}
+        for r in rows: r['photo_url'] = photo_url(r['id'], r['photo']); r['answers'] = counts.get(r['user_id'], 0)
+        for m in recent: m['expert'] = by_user.get(m['user_id'])
+        return render_template('experts_page.html', people=[r for r in rows if r['kind'] != 'firm'], firms=[r for r in rows if r['kind'] == 'firm'], recent=recent)
+
     @app.route('/admin/experts/<int:eid>/proof')
     @S.admin_only
     def admin_expert_proof(eid):
