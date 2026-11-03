@@ -17,7 +17,7 @@
       <span class="pc-who-t"><b>{{ author['nickname'] if author else ui('home.card_anon', '익명 소비자') }}</b><time datetime="{{ case['created'] }}">{{ case['created'][:10]|replace('-', '.') }}</time></span>
     </div>
     <h1 class="pc-title">{{ subject }}</h1>
-    <p class="pc-tags">{% set m = category|cat_split %}<span class="nn-vc-tag tone-{{ (m[0] if m else category)|cat_tone }}" title="{{ category }}">{{ m[0] if m else category }}</span>{% if case['industry'] %}<span class="nn-vc-ind">{{ case['industry'] }}</span>{% endif %}{% if case['occurred_on'] %}<span class="pc-date">{{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on']|replace('-', '.') }}</span>{% endif %}</p>
+    <p class="pc-tags">{% set m = category|cat_split %}<span class="nn-vc-tag tone-{{ (m[0] if m else category)|cat_tone }}" title="{{ category }}">{{ m[0] if m else category }}</span>{% if case['industry'] and case['industry'] != '기타' %}<span class="nn-vc-ind">{{ case['industry'] }}</span>{% endif %}{% if case['occurred_on'] %}<span class="pc-date">{{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on']|replace('-', '.') }}</span>{% endif %}</p>
   </header>
 
   <aside class="pc-side">

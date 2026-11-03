@@ -3435,7 +3435,7 @@ class SiteTest(unittest.TestCase):
         self.post_form(self.client, '/lookup', {'mode': 'phone', 'phone': '010-8181-3030', 'password': '4321'})
         case = self.client.get('/case').get_data(as_text=True)
         self.assertIn('aria-current="step"><span class="stepper-dot">3</span><span class="stepper-label">기업 전달', case)
-        self.assertIn('현재 단계: 기업 전달</b> 해당 기업에 민원 전달', case)
+        self.assertIn('현재 단계: 기업 전달</b> 기업에 제보를 전했어요', case)
         # 관리자·기자실은 6단계: '3. 추가자료 요청'을 따로 고를 수 있고, 제보자 화면에서는 검토로 보임
         admin = self.login_admin()
         with self.site.conn() as db:cid = db.execute("SELECT id FROM cases WHERE subject='단계 확인 제보'").fetchone()['id']
