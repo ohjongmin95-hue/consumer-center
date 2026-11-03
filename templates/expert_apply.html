@@ -1,27 +1,27 @@
 {% extends 'base.html' %}
-{# 운영자 2026-11-03: 자문위원 정보 입력 = 토스식 한 단 폼 (큰 제목 → 종류 고르기 → 사진 → 칸 → 동의 → 아래 꽉 찬 버튼 하나) #}
-{% block title %}{{ ui('expert.tab2', '자문위원 등록') }} | {{ txt('site.name') }}{% endblock %}
+{# 운영자 2026-11-03: 자문단 정보 입력 = 토스식 한 단 폼 (큰 제목 → 종류 고르기 → 사진 → 칸 → 동의 → 아래 꽉 찬 버튼 하나) #}
+{% block title %}{{ ui('expert.tab2', '자문단 등록') }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="xa member-page ex-page"><div class="xa-in">
   {% if mine %}
-  <h1 class="xa-title">{{ ui('expert.mine_title', '내 자문위원 정보') }}</h1>
+  <h1 class="xa-title">{{ ui('expert.mine_title', '내 자문단 정보') }}</h1>
   <section class="xa-card">
     <div class="xa-me">{% if photo %}<img class="ex-photo xa-av" src="{{ photo }}" alt="" width="64" height="64">{% else %}<span class="xa-av" aria-hidden="true">{{ mine['name'][:1] }}</span>{% endif %}
-      <div><b>{{ mine['name'] }}</b><span class="ex-badge">{{ kinds.get(mine['kind'], '자문위원') }} · {{ mine['field'] }}</span></div>
+      <div><b>{{ mine['name'] }}</b><span class="ex-badge">{{ kinds.get(mine['kind'], '자문단') }} · {{ mine['field'] }}</span></div>
       <span class="xa-st is-{{ mine['status'] }}">{{ status[mine['status']] }}</span></div>
     <dl class="xa-dl">
       {% if mine['org'] %}<div><dt>{{ '대표자' if mine['kind'] == 'firm' else '소속' }}</dt><dd>{{ mine['org'] }}</dd></div>{% endif %}
       {% if mine['intro'] %}<div><dt>한 줄 소개</dt><dd>{{ mine['intro'] }}</dd></div>{% endif %}
       <div><dt>댓글 이름</dt><dd>{{ g.user['nickname'] }}</dd></div>
     </dl>
-    <p class="xa-note">{% if mine['status'] == 'approved' %}{{ ui('expert.ok2', '제보에 댓글을 달면 이름 옆에 자문위원 표시가 붙어요.') }}{% elif mine['status'] == 'pending' %}{{ ui('expert.wait2', '자격을 확인하고 있어요. 확인이 끝나면 알려 드릴게요.') }}{% else %}{{ ui('expert.stopped2', '지금은 자문위원 표시를 멈췄어요. 궁금한 점은 고객센터로 알려 주세요.') }}{% endif %}</p>
+    <p class="xa-note">{% if mine['status'] == 'approved' %}{{ ui('expert.ok2', '제보에 댓글을 달면 이름 옆에 자문단 표시가 붙어요.') }}{% elif mine['status'] == 'pending' %}{{ ui('expert.wait2', '자격을 확인하고 있어요. 확인이 끝나면 알려 드릴게요.') }}{% else %}{{ ui('expert.stopped2', '지금은 자문단 표시를 멈췄어요. 궁금한 점은 고객센터로 알려 주세요.') }}{% endif %}</p>
   </section>
   <form class="xa-card xa-photo-form ex-photo-form" method="post" action="{{ url_for('expert_photo_change') }}" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <label class="xa-f"><span>{{ '프로필 사진 바꾸기' if photo else '프로필 사진 넣기' }}</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required></label>
     <button class="secondary xa-btn" type="submit">사진 올리기</button>
   </form>
   {% else %}
-  <h1 class="xa-title">{% if invite %}{{ invite['name'] }} 님,<br>{{ ui('expert.join_title', '정보를 확인해 주세요') }}{% else %}{{ ui('expert.apply_title', '자문위원 신청') }}{% endif %}</h1>
+  <h1 class="xa-title">{% if invite %}{{ invite['name'] }} 님,<br>{{ ui('expert.join_title', '정보를 확인해 주세요') }}{% else %}{{ ui('expert.apply_title', '자문단 신청') }}{% endif %}</h1>
   <form class="xa-form" method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <div class="xa-seg" role="radiogroup" aria-label="등록 종류"><label><input type="radio" name="kind" value="person"{% if f.kind != 'firm' %} checked{% endif %}><span>개인</span></label><label><input type="radio" name="kind" value="firm"{% if f.kind == 'firm' %} checked{% endif %}><span>사무소·법인</span></label></div>
 
@@ -38,7 +38,7 @@
     <div class="xa-f"><label for="x-phone">연락처</label><input id="x-phone" name="phone" maxlength="20" inputmode="tel" value="{{ f.phone }}" placeholder="010-0000-0000"></div>
     <div class="xa-f"><label for="x-email">이메일</label><input id="x-email" name="email" type="email" maxlength="120" value="{{ f.email }}" placeholder="name@example.com"></div>
 
-    <label class="xa-agree"><input type="checkbox" name="agree" value="1" required><span>내 댓글에 자문위원 표시가 붙고, 자격 확인 정보(번호·파일·연락처)를 운영자가 보관하는 데 동의해요.</span></label>
+    <label class="xa-agree"><input type="checkbox" name="agree" value="1" required><span>내 댓글에 자문단 표시가 붙고, 자격 확인 정보(번호·파일·연락처)를 운영자가 보관하는 데 동의해요.</span></label>
     <div class="xi-cta"><button class="primary xi-go" type="submit">{{ '등록하기' if invite else '신청하기' }}</button></div>
   </form>
   {% endif %}

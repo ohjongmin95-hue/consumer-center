@@ -14,7 +14,7 @@ from flask import abort, flash, g, redirect, render_template, request, send_file
 FIELDS = ('변호사', '손해사정사', '공인회계사', '세무사', '공인노무사', '법무사', '변리사', '감정평가사',
           '소비자전문상담사', '의사', '약사', '자동차 정비', '건축·인테리어', '기타 전문가')
 FIRM_FIELDS = ('법무법인', '법률사무소', '손해사정법인', '세무법인', '회계법인', '노무법인', '특허법인', '법무사사무소', '기타 전문 기관')  # 운영자 2026-11-03: 사무소·법인도 등록
-KINDS = {'person': '자문위원', 'firm': '자문 기관'}  # 운영자 2026-11-03: 이름 = 소비자 자문단 / 자문위원
+KINDS = {'person': '자문단', 'firm': '자문단'}  # 운영자 2026-11-03: 표시 이름 = 소비자 자문단 ('자문위원'·'전문가' 아님)
 STATUS = {'invited': '초대함', 'pending': '확인 기다림', 'approved': '활동 중', 'rejected': '반려', 'stopped': '멈춤'}
 PROOF_EXT = ('.jpg', '.jpeg', '.png', '.webp', '.pdf')
 
@@ -37,7 +37,7 @@ def labels(db, user_ids):
         rows = db.execute(f"SELECT id,user_id,field,photo,kind FROM experts WHERE status='approved' AND user_id IN ({','.join('?' * len(ids))})", ids).fetchall()
     except Exception:
         return {}
-    return {r[1]: {'field': r[2], 'photo': photo_url(r[0], r[3]), 'label': KINDS.get(r[4], '자문위원')} for r in rows}
+    return {r[1]: {'field': r[2], 'photo': photo_url(r[0], r[3]), 'label': KINDS.get(r[4], '자문단')} for r in rows}
 
 
 def photo_url(eid, photo):
@@ -93,7 +93,7 @@ def install(S):
         if not f['name'] or f['field'] not in (FIRM_FIELDS if kind == 'firm' else FIELDS): raise ValueError('이름과 분야를 넣어 주세요.')
         if not f['license_no'] and not request.files.get('proof', None) and not (row and row['proof']):
             raise ValueError('사업자등록번호를 쓰거나 사업자등록증을 올려 주세요.' if kind == 'firm' else '자격·등록번호를 쓰거나 자격증 사진을 올려 주세요.')
-        if not request.form.get('agree'): raise ValueError('자문위원 표시와 확인 정보 보관에 동의해 주세요.')
+        if not request.form.get('agree'): raise ValueError('자문단 표시와 확인 정보 보관에 동의해 주세요.')
         proof = save_proof(row['proof'] if row else '')
         photo = save_photo(row['photo'] if row else '')
         status = 'approved' if invited else 'pending'
@@ -118,7 +118,7 @@ def install(S):
                 submit(mine, False)
             except ValueError as e:
                 flash(str(e)); return render_template('expert_apply.html', mine=None, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, f=form_values(request.form), invite=None, status=STATUS)
-            flash('자문위원 신청을 받았어요. 자격을 확인한 뒤 알려 드릴게요.')
+            flash('자문단 신청을 받았어요. 자격을 확인한 뒤 알려 드릴게요.')
             return redirect(url_for('expert_apply'))
         return render_template('expert_apply.html', mine=None, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, f=form_values(mine), invite=None, status=STATUS)
 
@@ -151,7 +151,7 @@ def install(S):
         if not g.user: return redirect(url_for('login', next=form_url))
         with conn() as db: mine = db.execute('SELECT * FROM experts WHERE user_id=?', (g.user['id'],)).fetchone()
         if mine and mine['id'] != inv['id'] and mine['status'] == 'approved':
-            flash('이미 자문위원으로 등록된 계정이에요.'); return redirect(url_for('expert_apply'))
+            flash('이미 자문단으로 등록된 계정이에요.'); return redirect(url_for('expert_apply'))
         if request.method == 'POST':
             try:
                 if mine and mine['id'] != inv['id']:
@@ -159,7 +159,7 @@ def install(S):
                 submit(inv, True)
             except ValueError as e:
                 flash(str(e)); return render_template('expert_apply.html', mine=None, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, f=form_values(request.form), invite=inv, status=STATUS)
-            flash('자문위원으로 등록됐어요. 이제 제보에 댓글을 달면 자문위원 표시가 붙어요.')
+            flash('자문단으로 등록됐어요. 이제 제보에 댓글을 달면 자문단 표시가 붙어요.')
             return redirect(url_for('expert_apply'))
         return render_template('expert_apply.html', mine=None, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, f=form_values(inv), invite=inv, status=STATUS)
 
@@ -222,7 +222,7 @@ def install(S):
         return render_template('experts_page.html', people=[r for r in rows if r['kind'] != 'firm'], firms=[r for r in rows if r['kind'] == 'firm'], recent=recent)
 
     def helpers(limit=None):
-        """승인된 자문위원(개인 먼저)과 남긴 의견 수."""
+        """승인된 자문단(개인 먼저)과 남긴 의견 수."""
         with conn() as db:
             rows = [dict(r) for r in db.execute("SELECT id,user_id,name,field,org,intro,photo,kind FROM experts WHERE status='approved' ORDER BY kind='firm',approved DESC,id DESC" + (' LIMIT %d' % limit if limit else ''))]
             ids = [r['user_id'] for r in rows if r['user_id']]

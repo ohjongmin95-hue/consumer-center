@@ -408,7 +408,7 @@ class SiteTest(unittest.TestCase):
         pic = io.BytesIO(); Image.new('RGB', (600, 300), 'blue').save(pic, 'JPEG'); pic.seek(0)
         self.assertEqual(self.post_form(pro, '/expert/join/' + token + '?step=form', {'name': '김변호', 'field': '변호사', 'license_no': '12345', 'agree': '1', 'photo': (pic, 'me.jpg')}).status_code, 302)
         self.assertEqual(pro.get('/expert/join/' + token).status_code, 404)  # 링크는 한 번만
-        self.assertIn('자문위원 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
+        self.assertIn('자문단 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
         # 직접 신청은 승인 전까지 표시 없음
         other, oid = self.member_client('pro_lee', '이사정')
         self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '손해사정사', 'agree': '1',
@@ -423,11 +423,11 @@ class SiteTest(unittest.TestCase):
             token2 = self.csrf(c, '/reports/%d' % cid)
             self.assertEqual(c.post('/reports/%d/comment' % cid, data={'_csrf': token2, 'body': body}).status_code, 302)
         page = self.client.get('/reports/%d' % cid).get_data(as_text=True)
-        self.assertIn('자문위원 · 변호사', page); self.assertNotIn('자문위원 · 손해사정사', page)
+        self.assertIn('자문단 · 변호사', page); self.assertNotIn('자문단 · 손해사정사', page)
         photo = re.search(r'src="(/expert/\d+/photo\.jpg[^"]*)"', page)[1]
         self.assertEqual(Image.open(io.BytesIO(self.client.get(photo).data)).size, (400, 400))  # 정사각형으로 잘라서
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'approve', 'id': row['id']}).status_code, 302)
-        self.assertIn('자문위원 · 손해사정사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertIn('자문단 · 손해사정사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         # 법무법인 같은 사무소·법인도 등록 (전문 기관 표시)
         firm, fid = self.member_client('firm_sb', '법무법인소보루')
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '법무법인 소보루', 'field': '법무법인'}).status_code, 302)
@@ -436,10 +436,10 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.post_form(firm, '/expert/join/' + ft['token'] + '?step=form', {'kind': 'firm', 'name': '법무법인 소보루', 'field': '법무법인', 'license_no': '129-14-81596', 'agree': '1'}).status_code, 302)
         token3 = self.csrf(firm, '/reports/%d' % cid)
         firm.post('/reports/%d/comment' % cid, data={'_csrf': token3, 'body': '소비자 분쟁 상담을 돕고 있어요.'})
-        self.assertIn('자문 기관 · 법무법인', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertIn('자문단 · 법무법인', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         with self.site.conn() as db: kim = db.execute('SELECT id FROM experts WHERE user_id=?', (pid,)).fetchone()[0]
         self.post_form(adm, '/admin/experts', {'act': 'stop', 'id': kim})
-        self.assertNotIn('자문위원 · 변호사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertNotIn('자문단 · 변호사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         self.assertEqual(self.client.get(photo).status_code, 404)  # 멈추면 사진도 안 보임
 
     def test_report_talk_ai_draft(self):
