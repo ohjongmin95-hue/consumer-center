@@ -611,3 +611,16 @@ body.console .cs-tabs a:hover,body.console .ad-main .content-tabs a:hover{box-sh
 body.console .jl-search input[type=search]{box-shadow:none;background:#f2f4f6}
 body.console .jl-search input[type=search]:focus{background:#fff;border-color:var(--ad-orange)}
 @media(max-width:900px){body.console .ad-main{background:var(--ad-bg)}}
+/* AI 사용량 (aiusage.py) */
+body.console .au .ads-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}
+body.console .au .ads-kpis>div{border:0;background:#f9fafb;border-radius:16px;padding:18px 20px}
+body.console .au .ads-kpis b{font-size:24px;font-weight:700}
+body.console .au .cs-panel{margin-bottom:16px}
+body.console .au-table td,body.console .au-table th{padding:12px 14px}
+body.console .au-table code{font-size:13px;color:var(--ad-sub);background:none}
+body.console .au-key{padding:2px 8px;border-radius:8px;background:#e8f3ff;color:#1b64da;font-size:12px;font-style:normal;font-weight:600}
+body.console .au-fail{color:#d63b2b}
+body.console .au-help{margin:0 0 12px;color:var(--ad-sub);font-size:14px;line-height:1.6}
+@media(max-width:700px){body.console .au .ads-kpis{grid-template-columns:1fr}}
+body.console .au .vs-days li{display:grid;grid-template-columns:48px minmax(0,1fr) 96px 56px;align-items:center;gap:12px}
+body.console .au .vs-days li b{text-align:right}body.console .au .vs-days li small{text-align:right;color:var(--ad-mute)}

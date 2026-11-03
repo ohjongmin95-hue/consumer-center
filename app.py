@@ -743,8 +743,7 @@ def report():
         if request.method=='POST':abort(403)
         return redirect(url_for('login',next=request.full_path.rstrip('?')))
     if request.method=='GET':
-        # 운영자 2026-11-03: 제보센터는 처음부터 대화형. 양식은 '양식으로 쓰기'(?form=1)나 미리 채울 값이 있을 때만
-        if not request.args and not soboru_on():return redirect(url_for('report_talk'))
+        # 운영자 2026-11-03 (밤): 기본은 원래 글쓰기 화면. AI 대화는 '편하게 대화로 제보하기' 칸으로 따로 (AI 비용 절감)
         return report_form()
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수를 준비하고 있어요.')
     if request.form.get('website'):abort(400)  # 사람에게는 안 보이는 칸: 자동 등록 프로그램 차단
@@ -2907,6 +2906,8 @@ import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소�
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
 import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
+import aiusage;aiusage.install(types.SimpleNamespace(**globals()))  # 기능별 AI 호출 횟수·토큰 기록 (aiusage.py)
+import phoneauth;phoneauth.install(types.SimpleNamespace(**globals()))  # 휴대폰 번호로 시작하기 (phoneauth.py)
 import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·사장님 소식 (soboru_cm.py)
 import soboru_people;soboru_people.install(types.SimpleNamespace(**globals()))  # 소보루 이웃: 프로필·이웃 페이지·구독 (soboru_people.py)
 import soboru_tools;soboru_tools.install(types.SimpleNamespace(**globals()))  # 소비자 상담소: 계산기·사전·법령 찾기 (soboru_tools.py)

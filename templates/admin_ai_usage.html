@@ -1,0 +1,41 @@
+{% extends 'console.html' %}
+{% block title %}AI 사용량 | {{ site_name() }}{% endblock %}
+{% block content %}
+{# 운영자 2026-11-03: 기능별 OpenAI 호출 횟수·토큰 (aiusage.py). 금액은 OpenAI 화면에서 프로젝트별로 봄 #}
+<main class="cs-page au">
+  <h1 class="cs-title">AI 사용량</h1>
+  <nav class="cs-tabs">{% for d, label in ((1, '오늘'), (7, '7일'), (30, '30일'), (90, '90일')) %}<a href="{{ url_for('admin_ai_usage', days=d) }}"{% if days == d %} class="on" aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+
+  <div class="ads-kpis">
+    <div><small>호출</small><b>{{ '{:,}'.format(total.calls) }}번</b><em>실패 {{ '{:,}'.format(total.fails) }}번</em></div>
+    <div><small>입력 토큰</small><b>{{ '{:,}'.format(total.prompt) }}</b><em>캐시 {{ '{:,}'.format(total.cached) }}</em></div>
+    <div><small>출력 토큰</small><b>{{ '{:,}'.format(total.completion) }}</b><em>AI가 쓴 글</em></div>
+  </div>
+
+  <div class="cs-panel">
+    <h2>기능별</h2>
+    <table class="cs-table au-table">
+      <thead><tr><th>기능</th><th>모델</th><th class="num">호출</th><th class="num">입력</th><th class="num">출력</th><th class="num">한 번에</th></tr></thead>
+      <tbody>
+      {% for r in rows %}<tr><td><b>{{ r.name }}</b>{% if r.own_key %} <em class="au-key">전용 키</em>{% endif %}</td><td><code>{{ r.model or '-' }}</code></td>
+        <td class="num">{{ '{:,}'.format(r.calls) }}{% if r.fails %} <small class="au-fail">실패 {{ r.fails }}</small>{% endif %}</td>
+        <td class="num">{{ '{:,}'.format(r.prompt) }}</td><td class="num">{{ '{:,}'.format(r.completion) }}</td><td class="num">{{ '{:,}'.format(r.per_call) }}</td></tr>
+      {% else %}<tr><td class="cs-empty" colspan="6">아직 기록이 없어요. AI를 부르면 여기에 쌓여요.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if daily %}<div class="cs-panel">
+    <h2>날짜별 토큰</h2>
+    <ol class="vs-days">{% for d in daily|reverse %}<li><span>{{ d.day[5:].replace('-', '.') }}</span><span class="vs-bar"><i class="j" style="width:{{ (100 * d.tok / peak)|round(1) }}%"></i></span><b>{{ '{:,}'.format(d.tok) }}</b><small>{{ d.calls }}번</small></li>{% endfor %}</ol>
+  </div>{% endif %}
+
+  <div class="cs-panel">
+    <h2>기능별 키</h2>
+    <p class="au-help">OpenAI에서 기능마다 프로젝트를 만들고, 그 프로젝트의 키를 서버 설정(/etc/soboru.env)에 넣으면 금액도 OpenAI 화면에서 기능별로 보여요. 키가 없는 기능은 기본 키(OPENAI_API_KEY)를 써요.</p>
+    <table class="cs-table au-table"><tbody>
+    {% for f, name, own in keys %}<tr><td><b>{{ name }}</b></td><td><code>OPENAI_API_KEY_{{ f|upper }}</code></td><td class="num">{% if own %}<em class="au-key">넣음</em>{% else %}<small>기본 키</small>{% endif %}</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+</main>
+{% endblock %}

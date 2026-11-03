@@ -63,7 +63,7 @@
   var AI_URL = {{ url_for('report_talk_ai')|tojson }}, STT_URL = {{ url_for('report_talk_stt')|tojson }}, AI_ON = {{ ai_on|tojson }};
   var log = document.getElementById('tk-log'), form = document.getElementById('tk-form'), input = document.getElementById('tk-input');
   var files = document.getElementById('tk-files'), thumbs = document.getElementById('tk-thumbs'), bar = document.getElementById('tk-bar');
-  var csrf = form.elements._csrf.value, story = '', qa = [], draft = null, round = 0, waiting = null, small = [];
+  var csrf = form.elements._csrf.value, story = '', qa = [], draft = null, known = null, round = 0, waiting = null, small = [];
 
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function down() { window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); }
@@ -153,14 +153,17 @@
   }
   function askAI() {
     var wait = typing(), fd = new FormData();
-    fd.append('_csrf', csrf); fd.append('story', story); fd.append('qa', JSON.stringify(qa));
-    small.forEach(function (b, i) { fd.append('photo', b, 'p' + i + '.jpg'); });
+    fd.append('_csrf', csrf); fd.append('story', story);
+    // 운영자 2026-11-03: AI 비용 줄이기 — 두 번째부터는 사진·지난 대화 전체 대신 정리된 정보 + 최근 대화만 보냄
+    if (known) { fd.append('known', JSON.stringify(known)); fd.append('qa', JSON.stringify(qa.slice(-4))); }
+    else { fd.append('qa', JSON.stringify(qa)); small.forEach(function (b, i) { fd.append('photo', b, 'p' + i + '.jpg'); }); }
     if (!AI_ON) { wait.remove(); return noAI(); }
     fetch(AI_URL, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return [r.status, j]; }); })
       .then(function (x) { wait.remove(); if (x[1].ok) return got(x[1].draft); if (x[0] === 429) bot(T.limit); noAI(); })
       .catch(function () { wait.remove(); noAI(); });
   }
   function got(d) {
+    known = { company: d.company, occurred_on: d.occurred_on, industry: d.industry, category: d.category, request_text: d.request_text, description: (d.description || '').slice(0, 700) };
     // 모자란 것만 짧게 다시 묻기 (두 번까지)
     if (d.questions.length && round < 2) {
       round++; var qs = d.questions.slice();

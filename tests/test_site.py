@@ -533,6 +533,52 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, {'OPENAI_API_KEY': ''}):
             self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': '환불이 안 돼요'}).get_json(), {'ok': False, 'error': 'ai'})
         self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': ''}).status_code, 400)
+        # 운영자 2026-11-03 (밤): 두 번째부터는 사진 없이 정리된 정보 + 최근 대화 4개만
+        qa = json.dumps([{'q': 'q%d' % i, 'a': 'a%d' % i} for i in range(8)])
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+            self.client.post('/report/talk/ai', data={'_csrf': token, 'story': '환불이 안 돼요', 'qa': qa, 'known': json.dumps({'company': '하루몰', 'description': '사진 속 운동화가 찢어져 있었어요.'}, ensure_ascii=False),
+                                                      'photo': (io.BytesIO(b'\xff\xd8\xff' + b'0' * 100), 'a.jpg')}, content_type='multipart/form-data')
+        content = seen[-1]['messages'][1]['content']
+        self.assertEqual(len(content), 1); text = content[0]['text']
+        self.assertIn('[지금까지 정리된 정보]', text); self.assertIn('업체: 하루몰', text); self.assertIn('q7', text); self.assertNotIn('q3', text)
+
+    def test_ai_usage_by_feature(self):
+        # 운영자 2026-11-03: 기능별 호출 횟수·토큰 기록, 기능 전용 키
+        desk = self.site.companydesk; heads = []
+        with self.site.conn() as db: db.execute('DELETE FROM ai_usage')
+        def raw(url, headers, body, timeout):
+            heads.append(headers['Authorization'])
+            return 200, {'choices': [{'message': {'content': '{"summary": "x", "questions": []}'}}], 'usage': {'prompt_tokens': 120, 'completion_tokens': 30, 'prompt_tokens_details': {'cached_tokens': 100}}}
+        token = self.csrf(self.client, '/report/talk')
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-main', 'OPENAI_API_KEY_REPORT_TALK': 'sk-talk'}), patch.object(desk, '_post_json', raw):
+            self.client.post('/report/talk/ai', data={'_csrf': token, 'story': '환불이 안 돼요'})
+        self.assertEqual(heads, ['Bearer sk-talk'])
+        with self.site.conn() as db: row = db.execute("SELECT * FROM ai_usage WHERE feature='report_talk'").fetchone()
+        self.assertEqual((row['calls'], row['prompt'], row['cached'], row['completion']), (1, 120, 100, 30))
+        page = self.login_admin().get('/admin/ai-usage').get_data(as_text=True)
+        self.assertIn('AI 대화 제보', page); self.assertIn('OPENAI_API_KEY_REPORT_TALK', page)
+
+    def test_phone_start_signup_and_login(self):
+        # 운영자 2026-11-03 (밤): 카카오 아니면 휴대폰 번호(문자 인증). 닉네임 비우면 자동, 같은 번호로 다시 오면 로그인
+        sent = []
+        with patch.dict(os.environ, {'PHONE_AUTH_TEST': '1'}), patch.object(self.site.phoneauth.bizmsg, 'keys_ready', lambda: True), \
+             patch.object(self.site.phoneauth.bizmsg, 'sms', lambda ph, text: sent.append((ph, text))):
+            self.assertIn('휴대폰 번호로 시작하기', self.client.get('/login').get_data(as_text=True))
+            token = self.csrf(self.client, '/start/phone')
+            self.client.post('/start/phone', data={'_csrf': token, 'step': 'phone', 'phone': '010-2222-3333'})
+            code = re.search(r'인증번호 (\d{6})', sent[-1][1]).group(1)
+            bad = self.client.post('/start/phone', data={'_csrf': token, 'step': 'code', 'code': '000000' if code != '000000' else '111111'})
+            self.assertEqual(bad.status_code, 400)
+            self.client.post('/start/phone', data={'_csrf': token, 'step': 'code', 'code': code})
+            r = self.client.post('/start/phone', data={'_csrf': token, 'step': 'join', 'nickname': '', 'agree_terms': '1', 'agree_privacy': '1', 'agree_age': '1'})
+            self.assertEqual(r.status_code, 302)
+            with self.site.conn() as db: u = db.execute("SELECT * FROM users WHERE phone_verified='010-2222-3333'").fetchone()
+            self.assertIn('소보루', u['nickname']); self.assertEqual(u['pw_hash'], '')
+            other = self.site.app.test_client(); token = self.csrf(other, '/start/phone')
+            other.post('/start/phone', data={'_csrf': token, 'step': 'phone', 'phone': '01022223333'})
+            code = re.search(r'인증번호 (\d{6})', sent[-1][1]).group(1)
+            other.post('/start/phone', data={'_csrf': token, 'step': 'code', 'code': code})
+            self.assertIn(u['nickname'], other.get('/me').get_data(as_text=True))
 
     def test_report_talk_speech_to_text(self):
         # 말로 입력 (운영자 2026-11-03): 네이버 앱 등은 브라우저 받아쓰기가 안 돼서 녹음 파일을 서버에서 글로 바꿈

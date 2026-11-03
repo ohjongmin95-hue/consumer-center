@@ -6,6 +6,11 @@
   {# 토스식: 제목은 카드 위, 한 화면에 가입 버튼까지 (스크롤 없이) #}
   <h1 class="auth-title auth-title-out">{{ ui('common.signup', '회원가입') }}</h1>
   {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
+  {% if enabled and phone_login_ready() and not request.args.get('id') and request.method == 'GET' %}
+  <div class="auth-card auth-start"><div class="auth-body">{{ social_buttons('시작하기') }}
+    <a class="ph-btn" href="{{ url_for('phone_start', next=request.args.get('next') or None) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10.5 18h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>{{ ui('phone.btn', '휴대폰 번호로 시작하기') }}</span></a></div></div>
+  <p class="auth-join">{{ ui('member.already', '이미 회원이신가요?') }} <a href="{{ url_for('login') }}">{{ ui('common.login', '로그인') }}</a></p>
+  {% else %}
   <div class="auth-card auth-card-wide">
     <form class="auth-body" method="post" autocomplete="off"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
@@ -26,52 +31,13 @@
           <input type="email" name="email" maxlength="120" autocomplete="email" placeholder="{{ ui('member.email_ph4', '이메일 (선택)') }}" value="{{ request.form.get('email','') }}"></label>
       </div>
 
-      <div class="agree-box">
-        <div class="agree-all-row"><label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all2', '약관 모두 동의') }} <em>{{ ui('member.agree_all_sub2', '이용약관·개인정보·만 14세 이상·레터(선택)') }}</em></span></label>
-          <button type="button" class="agree-more" aria-expanded="false" aria-controls="agree-list">{{ ui('member.view', '보기') }}</button></div>
-        <div class="agree-list" id="agree-list" hidden>
-        <details class="agree-row">
-          <summary><label><input type="checkbox" name="agree_terms" required{% if request.form.get('agree_terms') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_terms', '이용약관 동의') }}</span></label><span class="agree-view">{{ ui('member.view', '보기') }}</span></summary>
-          <div class="agree-detail consent-scroll">{{ doc('policy.terms') }}</div>
-        </details>
-        <details class="agree-row">
-          <summary><label><input type="checkbox" name="agree_privacy" required{% if request.form.get('agree_privacy') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_privacy', '개인정보 수집·이용 동의') }}</span></label><span class="agree-view">{{ ui('member.view', '보기') }}</span></summary>
-          <div class="agree-detail">
-            <div class="consent-table" role="table" aria-label="{{ ui('member.agree_privacy', '개인정보 수집·이용 동의') }}">
-              <div role="row" class="ct-head"><span role="columnheader">{{ ui('report.c1_col1', '수집 개인정보 항목') }}</span><span role="columnheader">{{ ui('report.c1_col2', '수집·이용 목적') }}</span><span role="columnheader">{{ ui('report.c1_col3', '보유 기간') }}</span></div>
-              <div role="row"><span role="cell" data-label="{{ ui('report.c1_col1', '수집 개인정보 항목') }}"><span class="cell-lines"{{ ed_attr('member.privacy_items') }}>{% for l in g.content['member.privacy_items'].split('\n') if l.strip() %}<span class="cell-line">{{ l }}</span>{% endfor %}</span></span><span role="cell" data-label="{{ ui('report.c1_col2', '수집·이용 목적') }}"><span class="cell-lines"{{ ed_attr('member.privacy_purpose') }}>{% for l in g.content['member.privacy_purpose'].split('\n') if l.strip() %}<span class="cell-line">{{ l }}</span>{% endfor %}</span></span><span role="cell" data-label="{{ ui('report.c1_col3', '보유 기간') }}"><span class="cell-lines"{{ ed_attr('member.privacy_period') }}>{% for l in g.content['member.privacy_period'].split('\n') if l.strip() %}<span class="cell-line">{{ l }}</span>{% endfor %}</span></span></div>
-            </div>
-            <p class="consent-note">{{ txt('member.privacy_refusal') }} <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></p>
-          </div>
-        </details>
-        <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_age" required{% if request.form.get('agree_age') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_age', '만 14세 이상이에요') }}</span></label></div>
-        <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_letter"{% if request.form.get('agree_letter') %} checked{% endif %}><span><b>{{ ui('member.optional_tag', '[선택]') }}</b> {{ ui('member.agree_letter', '소보루 레터·소식 메일 받기') }} <em class="agree-opt-note">{{ ui('member.agree_letter_note', '이메일로 소비자·경제 소식을 보내요. 언제든 해지할 수 있어요.') }}</em></span></label></div>
-        </div>
-      </div>
-
+      {% include '_agree_box.html' %}
       <button class="auth-submit" type="submit"{% if not enabled %} disabled{% endif %}>{{ ui('member.signup_btn', '가입하기') }}</button>
     </form>
   </div>
   <p class="auth-join">{{ ui('member.already', '이미 회원이신가요?') }} <a href="{{ url_for('login') }}">{{ ui('common.login', '로그인') }}</a></p>
+  {% endif %}
 </main>
-<script>
-  (function () {
-    var all = document.querySelector('[data-check-all]');
-    if (!all) return;
-    var boxes = document.querySelectorAll('.agree-row input[type=checkbox]');
-    all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); });
-    boxes.forEach(function (b) { b.addEventListener('change', function () { all.checked = Array.prototype.every.call(boxes, function (x) { return x.checked; }); }); });
-    // 체크박스를 누를 때 "{{ ui('member.view', '보기') }}"가 같이 열리지 않도록 함
-    document.querySelectorAll('.agree-row summary label').forEach(function (l) { l.addEventListener('click', function (e) { e.stopPropagation(); }); });
-    // 비밀번호 확인 칸 대신 '보기' (토스처럼)
-    var eye = document.querySelector('.su-eye');
-    if (eye) eye.addEventListener('click', function () { var i = eye.previousElementSibling, on = i.type === 'password'; i.type = on ? 'text' : 'password'; eye.setAttribute('aria-pressed', on); eye.classList.toggle('on', on); });
-    // 약관 목록은 접어 두고 '보기'로 펼침. 하나라도 안 했으면 가입할 때 저절로 펼쳐서 알려 줌
-    var more = document.querySelector('.agree-more'), list = document.getElementById('agree-list');
-    function open(v) { list.hidden = !v; more.setAttribute('aria-expanded', v); more.textContent = v ? '{{ ui('member.fold', '접기') }}' : '{{ ui('member.view', '보기') }}'; }
-    more.addEventListener('click', function () { open(list.hidden); });
-    boxes.forEach(function (b) { b.addEventListener('invalid', function () { open(true); }); });
-    {% if request.method == 'POST' %}open(true);{% endif %}
-  })();
-</script>
+<script>(function () { var eye = document.querySelector('.su-eye');
+    if (eye) eye.addEventListener('click', function () { var i = eye.previousElementSibling, on = i.type === 'password'; i.type = on ? 'text' : 'password'; eye.setAttribute('aria-pressed', on); eye.classList.toggle('on', on); }); })();</script>
 {% endblock %}

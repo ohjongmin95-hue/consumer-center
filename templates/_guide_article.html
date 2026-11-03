@@ -19,5 +19,5 @@
     <h2 class="ga-next-h" id="ga-next-h">{{ ui('guide.next', '이런 글은 어때요?') }}</h2>
     <a class="ga-card" href="{{ url_for(g_next[0]) }}"><img class="ga-card-pic" src="{{ asset('img/guide/' ~ ('tricks' if g_img == 'contact' else 'contact') ~ '.jpg') }}" alt="" width="72" height="72" loading="lazy"><span class="ga-card-t"><small>{{ g_next[1] }}</small><b>{{ g_next[2] }}</b></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
   </section>
-  <a class="primary ga-go" href="{{ url_for('report_talk') }}">{{ ui('guide.go', '제보하기') }}</a>
+  <a class="primary ga-go" href="{{ url_for('report') }}">{{ ui('guide.go', '제보하기') }}</a>
 </article></main>

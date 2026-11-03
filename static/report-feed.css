@@ -1763,3 +1763,23 @@ body:has(main.xf.is-split) .auth-top .brand{color:#191f28}
 @media(max-width:560px){.auth-top{height:64px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}}
 .auth-top .brand{letter-spacing:-2px}
 @media(max-width:560px){.auth-top,.auth-top.xf-top{height:60px;padding-left:max(16px,env(safe-area-inset-left,0px))!important;padding-right:max(16px,env(safe-area-inset-right,0px))!important}.auth-top .brand{font-size:24px}}
+/* 운영자 2026-11-03 (밤): 제보 방법 = 한 줄 칸 (기본 글쓰기, AI 대화는 따로) */
+.rp-alt{display:flex;align-items:center;gap:14px;margin:0 0 24px;padding:16px 18px;border-radius:16px;background:#f9fafb;color:#191f28;text-decoration:none;transition:background .15s}
+.rp-alt:hover{background:#f2f4f6}
+.rp-alt-ico{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#ede9fe;font-family:Tossface,sans-serif;font-size:20px;flex:none}
+.rp-alt-t{display:grid;gap:2px;min-width:0;flex:1}.rp-alt-t b{font-size:16px;font-weight:700}.rp-alt-t small{font-size:14px;color:#6b7684}
+.rp-alt>svg{color:#b0b8c1;flex:none}
+/* 운영자 2026-11-03 (밤): 휴대폰 번호로 시작하기 */
+.ph-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:56px;border-radius:16px;background:#f2f4f6;color:#191f28;font-size:17px;font-weight:700;text-decoration:none;box-sizing:border-box;transition:background .15s}
+.ph-btn:hover{background:#e5e8eb}.ph-btn svg{width:20px;height:20px}
+.auth-start .social-login{margin-bottom:8px}.auth-start .social-or{display:none}
+.auth-start .social-btn{height:56px;border-radius:16px;font-size:17px;font-weight:700}
+.auth-other{margin:24px 0 0;text-align:center;font-size:14px;color:#8b95a1}.auth-other a{color:#6b7684;text-decoration:underline;text-underline-offset:3px}
+.ph-note{margin:4px 0 0;font-size:14px;color:#6b7684;line-height:1.5}
+.ph-to{margin:0 0 4px;font-size:15px;color:#4e5968}.ph-to b{color:#191f28}.ph-to a{margin-left:6px;color:#6b7684;font-size:14px}
+.ph-code{letter-spacing:.3em;font-size:20px!important;font-weight:600}
+.ph-label{font-size:14px;font-weight:600;color:#4e5968}
+.ph-again{margin:16px 0 0;text-align:center}.ph-again button{border:0;background:none;color:#6b7684;font-size:14px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.ph-code::placeholder{letter-spacing:0;font-size:17px;font-weight:400}
+.ph-page .auth-card{overflow:visible}
+.rp-alt-ico{background:#fff1e0;color:#EF920E;font-family:inherit}.rp-alt-ico.is-ai{background:#efedfd;color:#8b7cf6}

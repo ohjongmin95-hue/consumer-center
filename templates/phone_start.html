@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}휴대폰 번호로 시작하기 | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+{# 운영자 2026-11-03: 아이디·비밀번호 없이 휴대폰 문자 인증으로 가입·로그인 (phoneauth.py) #}
+<main class="auth-page auth-page-login ph-page">
+  {% if step == 'phone' %}
+  <h1 class="auth-title auth-title-out">{{ ui('phone.t1', '휴대폰 번호를 알려 주세요') }}</h1>
+  <div class="auth-card">
+    <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="step" value="phone">
+      <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <input type="tel" name="phone" maxlength="20" required inputmode="numeric" autocomplete="tel" autofocus placeholder="{{ ui('phone.ph', '010-0000-0000') }}" aria-label="{{ ui('member.phone', '휴대폰 번호') }}" value="{{ request.form.get('phone', phone) }}">
+      <p class="ph-note">{{ ui('phone.note', '인증번호를 문자로 보내요. 번호는 다른 사람에게 보이지 않아요.') }}</p>
+      <button class="auth-submit" type="submit">{{ ui('phone.send', '인증번호 받기') }}</button>
+    </form>
+  </div>
+  {% elif step == 'code' %}
+  <h1 class="auth-title auth-title-out">{{ ui('phone.t2', '인증번호를 입력해 주세요') }}</h1>
+  <div class="auth-card">
+    <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="step" value="code">
+      <p class="ph-to"><b>{{ phone }}</b> {{ ui('phone.sent', '번호로 보냈어요') }} <a href="{{ url_for('phone_start', again=1) }}">{{ ui('phone.change', '번호 바꾸기') }}</a></p>
+      <input name="code" maxlength="6" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" autofocus placeholder="{{ ui('phone.code_ph', '6자리 숫자') }}" aria-label="{{ ui('phone.code', '인증번호') }}" class="ph-code">
+      <p class="ph-note">{{ ui('phone.code_note', '{n}분 안에 입력해 주세요.', n=min) }}</p>
+      <button class="auth-submit" type="submit">{{ ui('phone.ok', '확인') }}</button>
+    </form>
+  </div>
+  <form class="ph-again" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="step" value="phone"><input type="hidden" name="phone" value="{{ phone }}"><button type="submit">{{ ui('phone.resend', '문자가 안 왔어요') }}</button></form>
+  {% else %}
+  <h1 class="auth-title auth-title-out">{{ ui('phone.t3', '거의 다 됐어요') }}</h1>
+  <div class="auth-card">
+    <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="step" value="join">
+      <label class="ph-label" for="ph-nick">{{ ui('board.nickname', '닉네임') }}</label>
+      <input id="ph-nick" name="nickname" maxlength="12" placeholder="{{ ui('phone.nick_ph', '비워 두면 자동으로 정해 드려요') }}" value="{{ nick }}">
+      {% include '_agree_box.html' %}
+      <button class="auth-submit" type="submit">{{ ui('member.start', '시작하기') }}</button>
+    </form>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}
