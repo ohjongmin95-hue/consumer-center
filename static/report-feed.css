@@ -300,3 +300,30 @@ body:has(.hero-wall){overflow-x:clip}
 /* 운영자 2026-11-03: 휴대폰에서 첫 화면 사진·영상이 세로로 너무 큼 → 줄임 */
 @media(max-width:680px){.hero-wall{min-height:0;height:min(400px,56vh)}.hero-wall .hero-copy h1{font-size:28px}}
 @media(max-width:560px){.nn-vc-photo.is-empty{display:none}.rf-photo .nn-vc-card.has-photo:not(:has(.nn-vc-photo img)){padding-top:16px}}
+/* 운영자 2026-11-03: 휴대폰도 토스처럼. 상자 카드 대신 구분선 목록, 여백·글자 크기 정리 */
+@media(max-width:560px){
+  body:not(.sb) .site-header .section-nav{gap:22px;-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent);padding-right:24px}
+  body:not(.sb) .site-header .section-nav a{font-size:16px;font-weight:700;letter-spacing:-.4px;padding:14px 0 12px}
+  .rf-list{gap:0}
+  .rf-list .nn-vc-card,.rf-list .nn-vc-card.has-photo{padding:20px 0;border:0;border-bottom:1px solid #f2f4f6;border-radius:0;background:transparent;box-shadow:none;gap:8px}
+  .rf-list .nn-vc-card:hover{transform:none;box-shadow:none}
+  .rf-list .nn-vc-card:last-child{border-bottom:0}
+  .rf-list .nn-vc-photo,.rf-photo .nn-vc-photo{margin:0 0 6px;border-radius:14px;aspect-ratio:16/9}
+  .rf-list .nn-vc-av{width:34px;height:34px;font-size:12px}
+  .rf-list .nn-vc-card h3{font-size:17px}
+  .rf-list .nn-vc-ex{font-size:14.5px;-webkit-line-clamp:2}
+  .rf-list .nn-vc-meta{gap:4px}.rf-list .nn-vc-meta dt{width:56px;white-space:nowrap;font-size:12.5px}
+  .rf-list .nn-vc-foot{border-top:0;padding-top:2px}
+  .reports-page .reports-head h1{font-size:26px}
+  .rf-count{padding:18px 4px;border-radius:16px}.rf-count dt{font-size:13px}.rf-count dd{font-size:22px}
+  .rf-go{padding:0;height:56px;font-size:18px;border-radius:14px}
+  .rf-top{gap:10px}
+  .report-tools.rf-tools input{height:46px;font-size:15px}
+  .rf-frow .rf-cats a{padding:6px 12px;font-size:13px}
+  .home-reports .section-head h2{font-size:20px}
+}
+/* 운영자 2026-11-03: 'by 소보루제보'가 가운데 떠 보임 → 큰 글씨 바닥선에 맞춤 */
+.site-header .brand .brand-by,.ft-logo .brand-by{align-self:baseline;align-items:baseline}
+.brand-by img{align-self:baseline;transform:translateY(.08em)}
+/* 운영자 2026-11-03: '소보루제보' 말고 처음의 갈색 영문 SOBORU 로고만 */
+.brand-by img{height:.92em;transform:none}
