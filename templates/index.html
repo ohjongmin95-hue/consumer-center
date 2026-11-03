@@ -6,14 +6,16 @@
   {{ ed_remove('home_blocks', loop.index0) }}
   {% if block.kind == 'hero' and hero_wall() %}{% set wall = hero_wall() %}{# 실제 제보 사진 벽 (가린 사본, 관리자 > 첫 화면 사진) #}
   <section class="hero hero-wall">
-    <div class="hw-cols" aria-hidden="true">{% for col in range(6) %}{% set k = (col * 5) % wall|length %}{% set mine = wall[k:] + wall[:k] %}
-      <div class="hw-col hw-c{{ col }}"><div class="hw-track">{% for _ in range(2) %}{% for p in mine %}<figure><img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" width="300" height="400"{% if loop.index > 3 %} loading="lazy"{% endif %}>{% if p.caption %}<figcaption>{{ p.caption }}</figcaption>{% endif %}</figure>{% endfor %}{% endfor %}</div></div>{% endfor %}
+    {# 같은 사진이 두 번 나오지 않게 한 장씩만: 6·12·18장은 6칸 1~3줄, 그보다 적으면 그 수만큼 칸을 나눔 (휴대폰은 3칸) #}
+    {% set n = wall|length %}{% set k = 18 if n >= 18 else 12 if n >= 12 else 6 if n >= 6 else n %}{% set cols = 6 if k >= 6 else k %}
+    <div class="hw-grid{% if k < 6 %} hw-few{% endif %}" style="--cols:{{ cols }};--rows:{{ (k // cols) }}" aria-hidden="true">
+      {% for p in wall[:k] %}<figure><img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" width="300" height="400">{% if p.caption %}<figcaption>{{ p.caption }}</figcaption>{% endif %}</figure>{% endfor %}
     </div>
     <div class="hero-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
       <a class="primary" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
     </div>
-    <p class="hw-note">{{ ui('home.wall_note', '실제 제보 사진이에요. 개인정보는 가렸어요.') }}</p>
+    <p class="hw-note">{{ ui('home.wall_note', '소비자들이 올린 실제 제보 사진이에요.') }}</p>
   </section>
 
   {% elif block.kind in ('hero', 'hero_plain') %}
