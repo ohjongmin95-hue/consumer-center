@@ -443,7 +443,7 @@ def install(S):
         with conn() as db:
             stats = compute_stats(db, since)
             first = db.execute('SELECT MIN(created) FROM cases').fetchone()[0] or ''
-        return render_template('admin_stats.html', s=stats, period=period, periods=STAT_PERIODS, since=since or first, until=now(), statuses=STATUSES)
+        return render_template('admin_stats.html', s=stats, period=period, periods=STAT_PERIODS, since=max(since, first) if since and first else (since or first), until=now(), statuses=STATUSES)  # 운영자 2026-11-03: 첫 제보보다 앞선 날짜는 보여 주지 않음
 
     def compute_stats(db, since):
         rows = db.execute("SELECT * FROM cases WHERE created>=? AND review NOT IN ('rejected','duplicate')", (since,)).fetchall()
