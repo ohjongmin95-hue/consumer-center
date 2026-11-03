@@ -9,10 +9,12 @@
 
   <a class="xs-feat" href="{{ url_for('companies_rank') }}">
     <div class="xs-feat-art" aria-hidden="true">
-      <div class="xs-rank">
-        <p class="xs-rank-cap">{{ ui('explore.rank', '기업 응대 순위') }}</p>
-        {% for n, w, d in [('1', 92, '0.8일'), ('2', 74, '1.4일'), ('3', 58, '2.1일')] %}<div class="xs-rank-row"><b>{{ n }}</b><span class="xs-rank-co">○○{{ ['쇼핑', '항공', '통신'][loop.index0] }}</span><span class="xs-rank-bar"><i style="width:{{ w }}%"></i></span><small>{{ d }}</small></div>{% endfor %}
-      </div>
+      {# 운영자 2026-11-03: 진한 귤색 바탕 + 휴대폰 화면(아래가 잘림) + 그 위에 떠 있는 카드 하나 #}
+      <div class="xs-phone"><div class="xs-screen">
+        <p class="xs-scr-t">{{ ui('explore.rank', '기업 응대 순위') }}</p>
+        {% for n, w, d in [('1', 92, '0.8일'), ('2', 74, '1.4일'), ('3', 58, '2.1일'), ('4', 40, '3.5일')] %}<div class="xs-rank-row"><b>{{ n }}</b><span class="xs-rank-co">○○{{ ['쇼핑', '항공', '통신', '가전'][loop.index0] }}</span><span class="xs-rank-bar"><i style="width:{{ w }}%"></i></span><small>{{ d }}</small></div>{% endfor %}
+      </div></div>
+      <div class="xs-float"><span class="xs-float-ic">1</span><div><small>{{ ui('explore.feat_float_s', '답변이 가장 빠른 기업') }}</small><b>{{ ui('explore.feat_float', '○○쇼핑 평균 0.8일') }}</b></div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11"/><path d="M7.5 12.5l3 3 6-6.5"/></svg></div>
     </div>
     <div class="xs-feat-copy">
       <span class="xs-kicker">{{ ui('explore.rank', '기업 응대 순위') }}</span>
