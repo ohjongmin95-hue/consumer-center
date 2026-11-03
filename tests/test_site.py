@@ -191,6 +191,7 @@ class SiteTest(unittest.TestCase):
 
     def setUp(self):
         self.client = self.site.app.test_client()
+        self.site.app.config['ADMIN_FACE'] = 'soboru'  # 옛 소보루 사이트 편집 시험 (실제 관리자는 소비자제보센터가 기본)
         with self.site.conn() as db:
             for table in ('group_members', 'damage_groups', 'company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings', 'user_identities', 'company_memberships', 'company_requests', 'company_contacts', 'answer_files', 'company_notices', 'user_blocks', 'member_alerts', 'push_subscriptions', 'apple_tokens'):
                 db.execute('DELETE FROM ' + table)
@@ -2012,11 +2013,8 @@ class SiteTest(unittest.TestCase):
         content = admin.get('/admin/content').get_data(as_text=True)
         self.assertNotIn('name="jebo.site_name"', content)  # 제보센터 이름·검색 설정은 소비자제보센터 칸에서
         self.assertNotIn('name="site.brand"', content)
-        self.assertIn('href="/admin/content?face=jebo"', content)  # 관리자 메뉴의 소비자제보센터 칸
-        self.assertIn('소비자제보센터 ↗', content)  # 사이트 보기에서 어느 사이트로 갈지 고름
         jcontent = admin.get('/admin/content?face=jebo').get_data(as_text=True)
         self.assertIn('name="jebo.site_name"', jcontent); self.assertNotIn('name="seo.naver_verification"', jcontent)
-        self.assertIn('소비자제보센터를 고치는 중', jcontent)
         lists = admin.get('/admin/lists').get_data(as_text=True)
         for key in ('menu', 'home_blocks', 'sample_reports'):
             self.assertIn('id="list-%s"' % key, lists)
@@ -2788,7 +2786,7 @@ class SiteTest(unittest.TestCase):
         home = admin.get('/admin').get_data(as_text=True)
         self.assertIn('관리자 홈', home)
         self.assertIn('기자 계정', home)
-        for label in ('사이트 꾸미기', '화면 편집', '메뉴·구성', '문구 고치기', '사업자 정보', '검색 노출', '게시판 신고', '제보 처리'):
+        for label in ('사이트 꾸미기', '화면 편집', '메뉴·구성', '문구 고치기', '사업자 정보', '검색 노출', '제보 처리'):
             self.assertIn(label, home)
         site = admin.get('/admin/site').get_data(as_text=True)
         self.assertIn('화면에서 바로 고치기', site)

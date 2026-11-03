@@ -1643,7 +1643,6 @@ body:not(.sb) .primary.is-glow::before,body:not(.sb) .primary.is-glow::after{con
   @keyframes ctaBuzz{0%,72%,100%{transform:translateX(0) rotate(0)}75%{transform:translateX(-2px) rotate(-1.5deg)}78%{transform:translateX(2px) rotate(1.5deg)}81%{transform:translateX(-2px) rotate(-1deg)}84%{transform:translateX(1px) rotate(.5deg)}87%{transform:translateX(0) rotate(0)}}
 }
 body:not(.sb) .primary.is-glow:hover{animation-play-state:paused}
-.auth-top .brand .brand-by{align-self:center;align-items:center}
 .xf.is-split .xf-main:has(.xf-deck) .xf-team{display:none}
 .xf.is-split .xf-deck{margin-top:56px}
 /* 업종 그림: 토스증권처럼 색을 꽉 채운 동그라미 */
@@ -1718,3 +1717,49 @@ body:not(.sb) .nn-vc-card .nn-vc-txt h3{display:-webkit-box;-webkit-box-orient:v
 body:not(.sb) .nn-vc-card .nn-vc-ex{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 body:not(.sb) .nn-vc-card .rf-st.st-1 .step-badge,body:not(.sb) .nn-vc-card .sb-badge.b-new{background:#f3f0ff;color:#6741d9}
 body:not(.sb) .nn-vc-card .step-badge,body:not(.sb) .nn-vc-card .sb-badge{font-size:13px;line-height:20px;font-weight:700;padding:2px 8px;border-radius:8px}
+/* 운영자 2026-11-03: 제보 보기 = 토스 피드처럼 한 단. 작성자 → 제목 → 태그 → 본문 → 원하는 해결 → 진행 상태 카드 → 기업 답변 → 댓글 */
+.pc-wrap{max-width:720px!important;grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"back" "head" "main" "side"!important}
+.pc-head{padding-bottom:8px}
+.pc-title{font-size:28px!important;line-height:1.4!important;letter-spacing:-.8px!important;margin:20px 0 12px!important;font-weight:700!important}
+.pc-who .nn-vc-av{width:40px;height:40px}
+.pc-who-t b{font-size:15px}.pc-who-t time{font-size:13px}
+.pc-views{color:#8b95a1}
+.pc-main .pc-sec:first-child{border-top:0;padding-top:20px}
+.pc-body{font-size:17px;line-height:1.75;color:#333d4b}
+.pc-want{background:#f9fafb!important;border-radius:16px!important;padding:18px 20px!important}
+.pc-want b{color:#4e5968!important;font-size:14px!important}
+.pc-sec{border-top:1px solid #f2f4f6!important}
+.pc-sec h2,.pc-page .case-talk h2{font-size:19px!important;font-weight:700!important;letter-spacing:-.4px!important}
+.pc-page .case-talk{border-top:1px solid #f2f4f6!important}
+/* 진행 상태는 본문 위, 한 줄 카드로 */
+.pc-wrap{grid-template-areas:"back" "head" "side" "main"!important}
+.pc-side{position:static!important;margin:4px 0 8px}
+.pc-box{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:12px 20px!important;padding:18px 20px!important;border-radius:20px!important;border:0!important;background:#f9fafb!important}
+.pc-box-k,.pc-now,.pc-steps{grid-column:1}
+.pc-box-k{font-size:13px!important}.pc-now{font-size:20px!important;margin:-8px 0 0!important}
+.pc-co-row{grid-column:2;grid-row:1 / span 3;background:#fff!important}
+.pc-acts{grid-column:1 / -1;grid-template-columns:minmax(0,1fr);}
+.pc-cta{height:48px!important;border-radius:14px!important}
+@media(max-width:760px){.pc-box{grid-template-columns:minmax(0,1fr)}.pc-co-row{grid-column:1;grid-row:auto}.pc-title{font-size:23px!important}}
+.pc-box .pc-cta{background:#fff1e0!important;color:#CE6719!important;box-shadow:none!important}
+.pc-box .pc-cta:hover{background:#ffe6c7!important}
+.pc-box .pc-share{height:32px!important}
+/* 운영자 2026-11-03: 휴대폰은 토스 그림처럼 — 얇은 은색 테두리 + 검은 베젤 + 하얀 화면, 아래는 흐려지게 */
+.xs-phone{background:linear-gradient(90deg,#9ea2a8,#eceef0 8%,#cfd2d6 50%,#eceef0 92%,#9ea2a8)!important;padding:3px 3px 0!important;border-radius:56px 56px 0 0!important;box-shadow:0 30px 60px rgba(0,0,0,.18)!important;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.xs-screen{border:9px solid #111!important;border-bottom:0!important;border-radius:53px 53px 0 0!important;background:#fff!important;padding-top:44px!important}
+@media(max-width:760px){.xs-phone{border-radius:46px 46px 0 0!important}.xs-screen{border-width:7px!important;border-radius:43px 43px 0 0!important;padding-top:32px!important}}
+/* 기관 로고: 회색을 조금 진하게(#8A8A8A 정도), 마우스 올리면 0.25초 동안 원래 색 */
+.org-band .org-track li img{filter:grayscale(1) brightness(.78) contrast(1.15)!important;opacity:1!important;transition:filter .25s,transform .25s!important}
+.org-band .org-track li:hover img,.org-band .org-track li a:focus-visible img{filter:none!important}
+.xf.is-split .xf-deck{height:170px}
+.xf.is-split .xf-deck+.xf-demo{margin-top:8px;background:#f9fafb}
+/* 운영자 2026-11-03: 로그인·자문단 모집 등 모든 페이지의 로고 = 메인 화면 로고와 똑같이 */
+.auth-top .brand{display:inline-flex!important;align-items:baseline!important;font-size:32px;letter-spacing:-.0625em;font-weight:700;line-height:1.15}
+.auth-top .brand .brand-by,body:has(main.xf.is-split) .auth-top .brand-by{align-self:baseline;align-items:baseline;gap:.28em;margin-left:.75em;font-size:.34em;font-weight:600;color:#4e5968}
+body:has(main.xf.is-split) .auth-top .brand{color:#191f28}
+@media(max-width:560px){.auth-top .brand{font-size:26px}}
+.auth-top{height:85px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+.auth-top .brand>span,body:has(main.xf.is-split) .auth-top .brand>span{color:var(--orange)}
+@media(max-width:560px){.auth-top{height:64px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}}
+.auth-top .brand{letter-spacing:-2px}
+@media(max-width:560px){.auth-top,.auth-top.xf-top{height:60px;padding-left:max(16px,env(safe-area-inset-left,0px))!important;padding-right:max(16px,env(safe-area-inset-right,0px))!important}.auth-top .brand{font-size:24px}}
