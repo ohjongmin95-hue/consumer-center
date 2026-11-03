@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('rank.title', '기업 응대 순위') }}{% if ind %} · {{ ind }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('rank.meta', '업종별로 소비자 제보에 잘 답하는 기업과 답이 아쉬운 기업을 실제 제보 기록으로 보여 줘요.') }}{% endblock %}
+{% block content %}
+{# 운영자 2026-11-03: 헤이마오 '홍흑 순위'처럼 업종별 기업 응대 순위. 점수는 소보루 등급(답변 50·해결 30·속도 20) #}
+<main class="page"><div class="wrap rk-wrap">
+  <h1 class="page-title">{{ ui('rank.title', '기업 응대 순위') }}</h1>
+  <nav class="rf-cats rk-inds" aria-label="{{ ui('reports.f_ind', '업종') }}"><a href="{{ url_for('companies_rank') }}"{% if not ind %} class="on" aria-current="true"{% endif %}>{{ ui('reports.cat_all', '전체') }}</a>{% for i in inds %}<a href="{{ url_for('companies_rank', ind=i) }}"{% if i == ind %} class="on" aria-current="true"{% endif %}>{{ i }}</a>{% endfor %}</nav>
+  {% if good or bad %}
+  <div class="rk-cols">
+    {% for title, tone, items in ((ui('rank.good', '응대 잘하는 기업'), 'good', good), (ui('rank.bad', '응대가 아쉬운 기업'), 'bad', bad)) %}{% if items %}
+    <section class="rk-box rk-{{ tone }}"><h2>{{ title }}</h2><ol>
+      {% for co, gr in items %}<li><a href="{{ url_for('company_page', company_id=co['id']) }}"><span class="rk-no">{{ loop.index }}</span><span class="rk-name">{% if co_logo(co) %}<img class="co-logo" src="{{ co_logo(co) }}" alt="" loading="lazy">{% endif %}<b>{{ co['name'] }}</b>{% if co['top_ind'] and not ind %}<small>{{ co['top_ind'] }}</small>{% endif %}</span><span class="rk-rate">{{ ui('rank.answered', '답변') }} {{ gr['answered'] }}/{{ gr['scored'] }}</span><span class="co-gchip g-{{ gr['grade'][0]|lower }}">{{ gr['grade'] }}</span></a></li>{% endfor %}
+    </ol></section>{% endif %}{% endfor %}
+  </div>
+  {% else %}<p class="rk-empty">{{ ui('rank.empty', '아직 순위를 매길 만큼 제보가 쌓인 기업이 없어요.') }}</p>{% endif %}
+  <p class="rk-how">{{ ui('rank.how', '기업에 전달된 제보가 %d건 이상인 기업만 올라요. 점수는 답변 비율, 해결 비율, 답변 속도로 매기고, 전달하고 %d일이 안 된 제보는 빼고 셈해요.')|format(min_n, days) }} <a href="{{ url_for('company_grade_guide') }}">{{ ui('rank.grade_link', '등급 기준 보기') }}</a></p>
+  <p class="public-case-notice">{{ ui('companies.notice', '소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요. 제보는 제보자의 주장이며, 기업 답변을 보장하지 않아요.')|branded }}</p>
+</div></main>
+{% endblock %}

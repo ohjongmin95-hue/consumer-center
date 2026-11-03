@@ -5908,6 +5908,21 @@ class SiteTest(unittest.TestCase):
         L['weekly'](monday + datetime.timedelta(days=6))
         with self.site.conn() as db: self.assertIsNone(db.execute("SELECT 1 FROM letter_subscribers WHERE email='old@test.kr'").fetchone())
 
+    def test_companies_rank(self):
+        """운영자 2026-11-03: 업종별 기업 응대 순위. 전달된 제보가 MIN_N건보다 적은 기업은 안 나옴."""
+        html = self.client.get('/companies/rank').get_data(as_text=True)
+        self.assertIn('기업 응대 순위', html); self.assertIn('rk-empty', html)
+        self.assertEqual(self.client.get('/companies/rank?ind=없는업종').status_code, 200)
+        with self.site.conn() as db:
+            cid = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES('순위테스트몰','','listed','','','','2026-01-01')").lastrowid
+            old = (datetime.datetime.now() - datetime.timedelta(days=40)).isoformat(timespec='seconds')
+            for i in range(6):
+                case = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,status,created,company_id,reviewed_at,forwarded_at,industry) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                                  ('RK%d' % i, 'x', '기타', '순위테스트몰', '제목', '내용', '요청', '기업 전달', old, cid, old, old, '쇼핑·유통')).lastrowid
+                if i < 3: db.execute("INSERT INTO messages(case_id,author,body,created,public) VALUES(?,?,?,?,1)", (case, '기업 답변', '답변', old))
+        html = self.client.get('/companies/rank').get_data(as_text=True)
+        self.assertIn('순위테스트몰', html); self.assertIn('답변 3/6', html)
+
     def test_partners_and_report_stages(self):
         """운영자 2026-11-03: 협력 기관 로고·배너(관리자에서 넣기), 제보 목록 단계 탭, 제보하기 버튼 하나."""
         import io

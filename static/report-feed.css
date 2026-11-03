@@ -405,3 +405,28 @@ body:not(.sb) .nn-vc-meta .nn-vc-ind{flex:none}
 body:not(.sb) .nn-vc-meta div+div,body:not(.sb) .nn-vc-meta div+div dd{flex:none;overflow:visible}
 body:not(.sb) .nn-vc-meta .nn-vc-co{flex:0 1 auto;min-width:3em}body:not(.sb) .nn-vc-meta .nn-vc-ind{flex:0 100 auto;min-width:0;overflow:hidden;text-overflow:clip;white-space:nowrap}
 body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{flex-wrap:wrap;row-gap:6px}body:not(.sb) .nn-vc-meta .nn-vc-ind{flex:none}body:not(.sb) .nn-vc-meta div:first-child{max-width:100%;margin-right:8px}body:not(.sb) .nn-vc-meta div+div{margin-left:0}
+/* 운영자 2026-11-03: 기업 응대 순위 (헤이마오 홍흑 순위처럼, 업종별) */
+.rk-wrap{display:grid;gap:18px}
+.rk-wrap .page-title{margin:28px 0 0}
+.rk-inds{flex-wrap:wrap}
+.rk-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.rk-box{background:#fff;border:1px solid #e5e8eb;border-radius:20px;padding:22px 22px 10px}
+.rk-box h2{margin:0 0 8px;font-size:19px;font-weight:700;letter-spacing:-.02em;color:#191f28}
+.rk-good h2::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#2b8a3e;margin-right:8px;vertical-align:3px}
+.rk-bad h2::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#e03131;margin-right:8px;vertical-align:3px}
+.rk-box ol{list-style:none;margin:0;padding:0}
+.rk-box li+li{border-top:1px solid #f2f4f6}
+.rk-box a{display:flex;align-items:center;gap:12px;padding:14px 0;color:#191f28;text-decoration:none}
+.rk-no{flex:none;width:22px;font-weight:700;color:#8b95a1;font-variant-numeric:tabular-nums}
+.rk-box li:nth-child(-n+3) .rk-no{color:#191f28}
+.rk-name{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.rk-name b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk-name small{flex:none;color:#8b95a1;font-size:13px}
+.rk-rate{flex:none;color:#6b7684;font-size:13px}
+.rk-empty{padding:48px 0;text-align:center;color:#6b7684}
+.rk-how{color:#6b7684;font-size:14px;line-height:1.6;margin:0}
+@media(max-width:760px){.rk-cols{grid-template-columns:1fr}.rk-box{padding:18px 18px 6px}}
+.wrap.rk-wrap{max-width:1100px}
+.page .rk-wrap .page-title{margin-top:0}
+@media(max-width:560px){.rk-inds{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px;scrollbar-width:none}.rk-inds::-webkit-scrollbar{display:none}.rk-inds a{flex:none}}
+.rk-how a{color:#4e5968;text-decoration:underline}

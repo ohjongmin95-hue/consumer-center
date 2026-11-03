@@ -227,6 +227,26 @@ def install(S):
             grades={c['id']:company_grade(db,c['id'])['grade'] for c in list(found)+list(busy)}
         return render_template('companies.html',q=q,found=found,busy=busy,grades=grades)
 
+    @app.route('/companies/rank')
+    def companies_rank():
+        """운영자 2026-11-03: 헤이마오 '홍흑 순위'처럼 업종별 기업 응대 순위. 소보루 등급 점수(답변·해결·속도)로,
+        채점된 제보가 MIN_N건 이상인 기업만. 업종은 그 기업 제보에 가장 많이 적힌 업종."""
+        ind=request.args.get('ind','')
+        inds=S.report_industries()
+        if ind not in inds:ind=''
+        with conn() as db:
+            rows=db.execute("""SELECT co.*,(SELECT c.industry FROM cases c WHERE c.company_id=co.id AND c.industry!='' GROUP BY c.industry ORDER BY COUNT(*) DESC LIMIT 1) AS top_ind
+                FROM companies co WHERE co.status IN ('active','listed') AND EXISTS(SELECT 1 FROM cases c WHERE c.company_id=co.id AND c.forwarded_at!='')""").fetchall()
+            ranked=[]
+            for co in rows:
+                if ind and co['top_ind']!=ind:continue
+                gr=company_grade(db,co['id'])
+                if gr['grade']:ranked.append((co,gr))
+        order=sorted(ranked,key=lambda x:(-x[1]['score'],-x[1]['scored'],x[0]['name']))
+        half=min(10,-(-len(order)//2))  # 기업이 적으면 위 절반은 '잘하는', 나머지는 '아쉬운' (한 기업이 양쪽에 같이 안 나오게)
+        good=order[:half];bad=order[half:][::-1][:10]
+        return render_template('companies_rank.html',good=good,bad=bad,ind=ind,inds=inds,min_n=MIN_N,days=ANSWER_DAYS,n=len(ranked))
+
     @app.route('/companies/grade')
     def company_grade_guide():
         # 소보루 등급 기준 공개 페이지 (BBB처럼 무엇으로 매기는지 그대로 보여 줌)

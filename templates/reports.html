@@ -28,6 +28,7 @@
       </div>
       <aside class="rf-side">
         <a class="rf-box rf-link" href="{{ url_for('companies') }}">{{ ui('companies.title', '기업별 제보') }} <span aria-hidden="true">›</span></a>
+        <a class="rf-box rf-link" href="{{ url_for('companies_rank') }}">{{ ui('rank.title', '기업 응대 순위') }} <span aria-hidden="true">›</span></a>
         {% set pts = partners() %}{% if pts %}<div class="rf-box rf-partners"><b>{{ ui('partners.title', '협력 기관') }}</b><ul>{% for p in pts %}<li>{% if p.link %}<a href="{{ p.link }}" target="_blank" rel="noopener">{% endif %}<img src="{{ url_for('partner_image', name=p.stored) }}" alt="{{ p.name }}" width="{{ p.width }}" height="{{ p.height }}" loading="lazy">{% if p.link %}</a>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
         {% for bn in partner_banners() %}{% if bn.link %}<a class="rf-banner" href="{{ bn.link }}" target="_blank" rel="noopener">{% else %}<span class="rf-banner">{% endif %}<img src="{{ url_for('partner_image', name=bn.stored) }}" alt="{{ bn.name }}" width="{{ bn.width }}" height="{{ bn.height }}" loading="lazy">{{ '</a>'|safe if bn.link else '</span>'|safe }}{% endfor %}
       </aside>
