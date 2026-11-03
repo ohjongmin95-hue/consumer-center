@@ -48,12 +48,13 @@
   <link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}
 </head>
 <body{% if is_soboru() or app_client() %} class="{{ 'sb' if is_soboru() }}{{ ' in-app' if app_client() }}"{% endif %}>
-{% if is_soboru() %}{% include 'soboru_header.html' %}{% else %}{% include 'jebo_header.html' %}{% endif %}
+{# 운영자 2026-11-03: 제보센터 로그인·회원가입은 토스처럼 메뉴 없는 별도 화면 (로고 + 닫기만, 바닥글 없음) #}{% set auth_screen = not is_soboru() and request.endpoint in ('login', 'signup', 'account_help', 'social_join') %}
+{% if is_soboru() %}{% include 'soboru_header.html' %}{% elif auth_screen %}<header class="auth-top"><a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a><a class="auth-x" href="{{ url_for('home') }}" aria-label="{{ ui('common.close', '닫기') }}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a></header>{% else %}{% include 'jebo_header.html' %}{% endif %}
 {% with msgs = get_flashed_messages() %}
-{% if msgs %}<div class="flash-wrap" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
+{% if msgs %}<div class="flash-wrap{% if auth_screen %} is-auth{% endif %}" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
 {% endwith %}
 {% block content %}{% endblock %}
-<footer class="site-footer">
+{% if not auth_screen %}<footer class="site-footer">
   <div class="ft-inner">
     <div class="ft-top">
       {% if is_soboru() %}<a class="ft-logo sb-ft-logo" href="{{ url_for('home') }}"><img src="{{ asset('img/soboru-logo.png') }}" alt="{{ txt('site.name') }}" width="127" height="30"></a><span class="sb-ft-why">{{ ui_rich('common.ft_why', '**소**비자 권익 **보**호를 위한 **루**트') }}</span>{% else %}<a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% set by = txt('site.logo_by') %}{% if by %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a>{% endif %}
@@ -85,7 +86,7 @@
       btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
     })();
   </script>
-</footer>
+</footer>{% endif %}
 {% if app_client() %}{% include 'app_bridge.html' %}{% endif %}
 {% if is_soboru() %}{% if not app_client() %}{% include 'soboru_tabbar.html' %}{% endif %}{# 앱에서는 앱의 아래 탭을 씀 #}
 <script>if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); });</script>{# 오프라인 안내·정적 파일 캐시·푸시 (static/sw.js) #}{% endif %}

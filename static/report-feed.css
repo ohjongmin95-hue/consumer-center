@@ -605,3 +605,18 @@ body:not(.sb) .tk-notice{max-width:100%}
 .rp-mode a:hover{color:#333d4b}
 .rp-mode a.on{background:#fff;color:#191f28;font-weight:700;box-shadow:0 1px 3px rgba(0,27,55,.1)}
 .page-intro + .rp-mode{margin-top:-6px}
+/* 운영자 2026-11-03: 로그인·회원가입 = 토스 로그인처럼 메뉴 없는 별도 화면 */
+body:not(.sb):has(.auth-top){background:#fff}
+.auth-top{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 max(20px,env(safe-area-inset-left,0px)) 0 max(20px,env(safe-area-inset-left,0px));background:#fff}
+.auth-top .brand{font-size:24px;letter-spacing:-.04em;font-weight:700;line-height:1;white-space:nowrap}
+.auth-top .brand span{color:var(--orange)}
+.auth-top .brand{display:inline-flex;align-items:center;align-self:center}
+.auth-top .brand .brand-by{display:inline-flex;align-items:center;gap:.3em;margin-left:.5em;font-size:.4em;font-weight:700;letter-spacing:0;line-height:1;color:#191f28}
+.auth-top .brand-by img{height:1.25em;width:auto;transform:none}
+.auth-x{display:grid;place-items:center;width:44px;height:44px;margin-right:-10px;border-radius:12px;color:#4e5968}
+.auth-x:hover{background:#f2f4f6;color:#191f28}
+body:not(.sb):has(.auth-top) .auth-page{background:none;min-height:calc(100vh - 64px);min-height:calc(100dvh - 64px);padding-top:40px}
+body:not(.sb) .auth-page-login .auth-card{box-shadow:none;border:0;background:none}
+body:not(.sb) .auth-page-login .auth-body{padding-left:0;padding-right:0}
+body:not(.sb):has(.auth-top) .flash-wrap.is-auth{position:static;transform:none;width:auto;max-width:440px;margin:8px auto 0;padding:0 20px}
+body:not(.sb):has(.auth-top) .flash-wrap.is-auth .alert{background:#f2f4f6;color:#333d4b;box-shadow:none;border-radius:12px;font-weight:600}

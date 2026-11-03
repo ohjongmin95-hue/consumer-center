@@ -1962,7 +1962,7 @@ class SiteTest(unittest.TestCase):
             with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):
                 c = self.site.app.test_client()
                 page = c.get('/signup', base_url=J).get_data(as_text=True)
-                self.assertIn('class="site-header"', page)  # 가입 화면은 소비자제보센터 화면 그대로
+                self.assertIn('class="auth-top"', page)  # 가입 화면은 소비자제보센터 얼굴, 메뉴 없는 별도 화면 (운영자 2026-11-03)
                 token = re.search(r'name="_csrf" value="([^"]+)"', page)[1]
                 r = c.post('/signup', base_url=J, data={'_csrf': token, 'login_id': 'jebo_user', 'password': 'butter123', 'password2': 'butter123', 'nickname': '제보회원', 'phone': '010-5555-6666',
                                                         'agree_terms': 'on', 'agree_privacy': 'on', 'agree_age': 'on'})
