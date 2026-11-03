@@ -35,7 +35,9 @@
     'hello': ui('talk.hello', '안녕하세요. 어떤 일을 겪으셨나요?'),
     'hello2': ui('talk.hello2', '말하듯 편하게 적어 주시면 제보서는 제가 정리해 드릴게요. 마이크로 말하거나 사진만 올려도 돼요.'),
     'guide_t': ui('talk.guide_title', '이렇게 말하면 정확해요'), 'guide': ui('talk.guide', '어디서: 업체나 서비스 이름\n언제: 산 날, 일이 생긴 날\n무엇을 얼마에: 상품과 금액\n무슨 일이: 겪은 일을 순서대로\n업체는: 연락했을 때 업체가 한 말'),
-    'guide_ex': ui('talk.guide_ex', '예) 소보루몰에서 10월 20일에 운동화를 89,000원에 샀어요. 반품했는데 2주째 환불이 안 돼요. 고객센터는 확인 중이라는 말만 해요.'),
+    'guide_ex_t': ui('talk.guide_ex_title', '이렇게 보내면 돼요'), 'guide_ex': ui('talk.guide_ex2', '소보루몰에서 10월 20일에 운동화를 89,000원에 샀어요. 반품했는데 2주째 환불이 안 돼요. 고객센터는 확인 중이라는 말만 해요.'),
+    'guide_ai_t': ui('talk.guide_ai_title', 'AI가 이렇게 정리해요'), 'guide_ai_subject': ui('talk.guide_ai_subject', '반품 확인 후 2주째 환불이 안 돼요'),
+    'guide_ai_rows': ui('talk.guide_ai_rows', '제보 대상: 소보루몰 · 쇼핑·유통\n제보 유형: 배송·교환·환불\n원하는 해결: 전액 환불'),
     'think': ui('talk.think', '내용을 정리하고 있어요'),
     'check': ui('talk.check', '이렇게 정리했어요. 맞나요?'),
     'yes': ui('talk.yes', '네, 맞아요'), 'fix': ui('talk.fix', '고칠게요'), 'fix_done': ui('talk.fix_done', '고쳤어요'),
@@ -303,7 +305,11 @@
       var b = el('div', 'tk-msg tk-bot tk-guide'); b.appendChild(el('p', 'tk-guide-t', T.guide_t));
       var ul = el('ul'); String(T.guide).split(/<br\s*\/?>|\n/).forEach(function (x) { x = x.trim(); if (!x) return; var li = el('li'), k = x.split(':');
         if (k.length > 1) { li.appendChild(el('b', null, k[0].trim())); li.appendChild(document.createTextNode(' ' + k.slice(1).join(':').trim())); } else li.textContent = x; ul.appendChild(li); });
-      b.appendChild(ul); if (T.guide_ex) b.appendChild(el('p', 'tk-guide-ex', T.guide_ex)); log.appendChild(b); down();
+      b.appendChild(ul); if (T.guide_ex) { var ex = el('div', 'tk-guide-ex'); ex.appendChild(el('span', 'tk-guide-ex-t', T.guide_ex_t)); ex.appendChild(el('p', null, T.guide_ex));
+        if (T.guide_ai_t) { ex.appendChild(el('span', 'tk-guide-ex-t', T.guide_ai_t)); var c = el('div', 'tk-guide-ai'), dl = el('dl');
+          String(T.guide_ai_rows).split(/<br\s*\/?>|\n/).forEach(function (x) { var k = x.split(':'); if (k.length < 2) return; var d = el('div'); d.appendChild(el('dt', null, k[0].trim())); d.appendChild(el('dd', null, k.slice(1).join(':').trim())); dl.appendChild(d); });
+          c.appendChild(el('h4', null, T.guide_ai_subject)); c.appendChild(dl); ex.appendChild(c); }
+        b.appendChild(ex); } log.appendChild(b); down();
     }
   })();
 })();
