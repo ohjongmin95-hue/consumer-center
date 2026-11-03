@@ -255,3 +255,5 @@ body:not(.sb) .sba-privacy{color:#8b95a1}
   .sbv-tools-nav small{display:none}
   .sbv.is-hero .sba-how{margin-top:40px}
 }
+/* 운영자 2026-11-03: 보내기 버튼은 늘 우리 색 */
+.sbv.is-hero .sba-send{background:#EF920E;color:#fff}.sbv.is-hero .sba-send:hover{background:#CE6719}

@@ -261,7 +261,7 @@ HOME_BLOCKS = [
     ('groups', '진행 중인 공동 대응 (+ 제안하기)'),
 ]
 LEGACY_NAV = [('nav.home', 'reports', '소비자 제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
-              ('nav.explore', 'explore', '둘러보기'), ('nav.faq', 'faq', '고객센터')]
+              ('nav.explore', 'explore', '둘러보기'), ('nav.faq', 'faq', '자주 묻는 질문')]
 LISTS = [
     ('menu', '소비자제보센터 상단 메뉴', 'consumerjebo.co.kr 맨 위 메뉴예요. 이름, 순서, 연결할 페이지를 정할 수 있고 외부 주소(블로그 등)도 넣을 수 있어요.',
      [('label', '메뉴 이름', {}), ('page', '연결할 페이지', {'choices': MENU_PAGES}), ('url', '직접 입력한 주소 ("직접 입력한 주소"를 골랐을 때만, 예: https://blog.naver.com/...)', {})], 1),

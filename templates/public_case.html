@@ -26,7 +26,7 @@
       <p class="pc-now">{{ pub_names()[now_step - 1] }}</p>
       <ol class="pc-steps">{% for s in pub_names() %}<li class="{{ 'on' if loop.index <= now_step else '' }}"{% if loop.index == now_step %} aria-current="step"{% endif %}><i></i><span>{{ s }}</span></li>{% endfor %}</ol>
       <a class="pc-co-row" {% if co %}href="{{ url_for('company_page', company_id=co['id']) }}"{% endif %}>
-        {% set lg = co_logo(co) if co and co_logo is defined else '' %}{% if lg %}<img class="pc-co-av" src="{{ lg }}" alt="">{% else %}<span class="pc-co-av" aria-hidden="true">{{ company[:1] }}</span>{% endif %}
+        {% set lg = co_logo(co) if co and co_logo is defined else '' %}{% if lg %}<img class="pc-co-av" src="{{ lg }}" alt="">{% else %}<span class="pc-co-av is-ind" aria-hidden="true"><img src="{{ asset('img/ind/' ~ industry_icon(case['industry']) ~ '.svg') }}" alt="" width="26" height="26"></span>{% endif %}
         <span class="pc-co-t"><small>{{ ui('reports.target', '제보 대상') }}</small><b>{{ company }}</b></span>
         {% if co %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>{% endif %}
       </a>
