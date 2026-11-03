@@ -82,14 +82,11 @@ body:not(.sb){--sb-orange:#e8890c;--sb-mute:#8b95a1;--sb-sub:#4e5968;--sb-line:#
   .hw-grid figure:nth-child(n+7),.hw-few figure:nth-child(n+4){display:none}
   .hw-few{grid-template-rows:1fr}
   .hw-grid figure{border-radius:12px}.hw-grid figcaption{display:none}}
-/* 2026-11-03 운영자: 'by SOBORU' = 검은 'by' + 갈색 SOBORU 로고, 큰 글씨와 같은 밑줄에 맞춤 (머리글·바닥글) */
-.brand-by{display:inline-flex;align-items:baseline;gap:5px;margin-left:8px;vertical-align:baseline;font-size:13px;font-weight:700;letter-spacing:0;color:#191f28;line-height:1}
-.brand-by img{display:block;height:11px;width:auto;align-self:baseline;transform:translateY(1px)}
-.site-header .brand .brand-by{color:#191f28}
-.ft-logo{display:inline-flex;align-items:baseline;white-space:nowrap}
-.ft-logo .brand-by{font-size:11px;gap:4px;margin-left:6px;color:#191f28}
-.ft-logo .brand-by img{height:10px}
-@media(max-width:420px){.site-header .brand .brand-by{font-size:12px}.site-header .brand .brand-by img{height:10px}}
+/* 2026-11-03 운영자: 'by SOBORU' = 검은 'by' + 갈색 SOBORU 로고. 큰 글씨와 같은 밑줄(글자 바닥)에 맞춤 (머리글·바닥글) */
+.site-header .brand,.ft-logo{display:inline-flex;align-items:baseline;white-space:nowrap}
+.site-header .brand .brand-by,.ft-logo .brand-by{display:inline-flex;align-items:baseline;gap:.32em;margin-left:.42em;font-size:.36em;font-weight:600;letter-spacing:0;line-height:1;color:#191f28}
+.brand-by img{display:block;width:auto;height:.9em;transform:translateY(.02em)}
+.ft-logo .brand-by{font-size:.5em}
 /* 바닥글 폭을 머리글·본문과 같게 (왼쪽 끝 맞춤) */
 body:not(.sb) .site-footer{padding-left:0;padding-right:0}
 body:not(.sb) .ft-inner{width:100%;max-width:1160px;padding-left:24px;padding-right:24px;box-sizing:border-box}
