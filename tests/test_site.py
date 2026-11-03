@@ -302,18 +302,21 @@ class SiteTest(unittest.TestCase):
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
         with self.site.conn() as db:
             cids = []
-            for i in range(3):
+            from PIL import ImageDraw
+            boxes = [(0, 0, 400, 800), (0, 0, 800, 400), (200, 200, 600, 600), (0, 0, 400, 800)]  # 마지막은 첫 사진과 같은 사진 → 한 번만
+            for i in range(4):
                 cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,industry,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                                 ('CJ-HERO%d' % i, 'x', '배송·환불', '쇼핑·유통', '가게', '환불이 안 돼요', '내용', '환불', '2026-10-09T10:00:00', 1, 1)).lastrowid
-                name = 'hero-src-%d.jpg' % i; b = io.BytesIO(); Image.new('RGB', (800, 800), 'red').save(b, 'JPEG'); (self.site.UPLOAD / name).write_bytes(b.getvalue())
+                                 ('CJ-HERO%d' % i, 'x', '배송·환불', '쇼핑·유통', '가게%d' % i, '환불이 안 돼요', '내용', '환불', '2026-10-09T10:00:00', 1, 1)).lastrowid
+                im = Image.new('RGB', (800, 800), 'white'); ImageDraw.Draw(im).rectangle(boxes[i], fill='red')
+                name = 'hero-src-%d.jpg' % i; b = io.BytesIO(); im.save(b, 'JPEG'); (self.site.UPLOAD / name).write_bytes(b.getvalue())
                 db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)', (cid, name, 'a.jpg')); cids.append(cid)
             secret = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES('CJ-HEROX','x','배송·환불','가게','비밀','내용','환불','2026-10-09T10:00:00',0,0)").lastrowid
             db.execute("INSERT INTO attachments(case_id,stored,original) VALUES(?,'hero-src-0.jpg','a.jpg')", (secret,))
         self.login_admin().get('/admin/hero-photos')  # 관리자 화면을 열면 바로 채움
         home = self.client.get('/', base_url=jebo).get_data(as_text=True)
         self.assertIn('hero-wall', home); self.assertIn('쇼핑·유통 · 배송·환불', home)
-        names = set(re.findall(r'/hero/([0-9a-f]{24}\.jpg)', home)); self.assertEqual(len(names), 3)  # 비공개 제보 사진은 안 들어감
-        with self.site.conn() as db: db.execute('UPDATE cases SET published=0 WHERE id=?', (cids[0],))
+        names = set(re.findall(r'/hero/([0-9a-f]{24}\.jpg)', home)); self.assertEqual(len(names), 3)  # 비공개 제보 사진·같은 사진은 안 들어감
+        with self.site.conn() as db: db.execute('UPDATE cases SET published=0 WHERE id=?', (cids[1],))
         self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))
         self.assertEqual(sum(self.client.get('/hero/' + n).status_code == 404 for n in names), 1)
 
