@@ -5921,7 +5921,7 @@ class SiteTest(unittest.TestCase):
                                   ('RK%d' % i, 'x', '기타', '순위테스트몰', '제목', '내용', '요청', '기업 전달', old, cid, old, old, '쇼핑·유통')).lastrowid
                 if i < 3: db.execute("INSERT INTO messages(case_id,author,body,created,public) VALUES(?,?,?,?,1)", (case, '기업 답변', '답변', old))
         html = self.client.get('/companies/rank').get_data(as_text=True)
-        self.assertIn('순위테스트몰', html); self.assertIn('답변 3/6', html)
+        self.assertIn('순위테스트몰', html); self.assertIn('답변 50%', html)
 
     def test_buy_check_guides(self):
         """운영자 2026-11-03: 사기 전에 확인. AI 초안은 공개 전엔 안 보이고, 공개하면 목록·글·업종 통계가 보임."""
@@ -5945,7 +5945,7 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/check/%d' % gid, data={'_csrf': token, 'act': 'save', 'title': '환불, 이것만 확인해요', 'industry': ind, 'status': 'published',
                                                  'body': '도입 문장이에요.\n\n## 사기 전에 확인할 것\n- 반품 조건 <b>캡처</b>'})
         page = self.client.get('/check/%d' % gid).get_data(as_text=True)
-        self.assertIn('<h2>사기 전에 확인할 것</h2>', page); self.assertIn('&lt;b&gt;캡처', page); self.assertIn('1건', page)
+        self.assertIn('사기 전에 확인할 것</h2>', page); self.assertIn('&lt;b&gt;캡처', page); self.assertIn('1건', page)
         self.assertIn('환불, 이것만 확인해요', self.client.get('/check').get_data(as_text=True))
 
     def test_partners_and_report_stages(self):

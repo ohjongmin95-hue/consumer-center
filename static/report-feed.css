@@ -460,3 +460,82 @@ body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{flex-wrap:wrap;row-
 .ck-other h2{font-size:18px;margin:12px 0 10px}
 @media(max-width:560px){.ck-art h1{font-size:25px}.ck-body{font-size:16px}.ck-stats li{grid-template-columns:96px 1fr 40px}.ck-cta{justify-self:stretch;text-align:center}}
 .co-kakao{display:inline-block;margin-top:6px;color:#4e5968;font-weight:600;font-size:14.5px;text-decoration:none}.co-kakao:hover{text-decoration:underline}
+/* 운영자 2026-11-03: 주의 글을 토스 콘텐츠처럼 — 큰 제목, 넉넉한 줄, 소제목마다 회색 상자, 점·체크·번호 줄 */
+.wrap.ck-read{max-width:720px;gap:24px}
+.ck-art h1{font-size:34px;font-weight:700;line-height:1.38;letter-spacing:-.035em;color:#191f28;margin:10px 0 20px}
+.ck-ind{display:inline-block;padding:4px 10px;border-radius:8px;background:#f2f4f6;color:#4e5968;font-size:13px;font-weight:600}
+.ck-body{font-size:18px;line-height:1.8;color:#4e5968;letter-spacing:-.01em}
+.ck-body>p{margin:0 0 28px}
+.ck-sec{margin:0 0 16px;padding:28px 28px 24px;border-radius:24px;background:#f9fafb}
+.ck-sec h2{margin:0 0 16px;font-size:22px;font-weight:700;line-height:1.4;letter-spacing:-.03em;color:#191f28}
+.ck-sec p{margin:0 0 12px}
+.ck-body ul,.ck-body ol{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.ck-body li{display:flex;gap:12px;align-items:flex-start;margin:0;color:#333d4b;font-size:17px;line-height:1.65}
+.ck-body li>span{flex:1;min-width:0}
+.ck-dots li::before{content:"";flex:none;width:6px;height:6px;margin:11px 7px 0;border-radius:50%;background:#b0b8c1}
+.ck-check li::before{content:"";flex:none;width:22px;height:22px;margin-top:2px;border-radius:50%;background:#3182f6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center/14px no-repeat}
+.ck-steps{counter-reset:ck}
+.ck-steps li{counter-increment:ck}
+.ck-steps li::before{content:counter(ck);flex:none;width:24px;height:24px;margin-top:1px;border-radius:50%;background:#191f28;color:#fff;font-size:13px;font-weight:700;line-height:24px;text-align:center}
+.ck-stats{background:#fff;border:1px solid #f2f4f6;border-radius:24px;padding:26px 28px;gap:16px}
+.ck-stats h2{font-size:20px;letter-spacing:-.03em}
+.ck-stats i::after{background:#3182f6}
+.ck-stats b{color:#191f28}
+.ck-more{color:#3182f6}
+.ck-cta{padding:16px 32px;border-radius:16px;font-size:17px;font-weight:700}
+.ck-back{font-size:15px}
+.ck-other h2{font-size:20px;letter-spacing:-.03em}
+/* 목록도 토스 피드처럼: 테두리 없는 큰 카드 */
+.ck-list a{border:0;background:#f9fafb;border-radius:24px;padding:26px;gap:8px}
+.ck-list a:hover{background:#f2f4f6}
+.ck-list b{font-size:19px}
+.ck-list small{color:#3182f6}
+@media(max-width:560px){
+  .ck-art h1{font-size:26px}
+  .ck-body{font-size:16.5px}
+  .ck-sec{margin:0 -16px 12px;padding:24px 20px;border-radius:0}
+  .ck-sec h2{font-size:20px}
+  .ck-body li{font-size:16px}
+  .ck-stats{padding:22px 20px}
+  .ck-list a{padding:22px 20px;border-radius:20px}
+}
+/* 순위도 토스처럼: 테두리 대신 연회색 바탕, 큰 숫자 */
+.rk-box{border:0;background:#f9fafb;border-radius:24px;padding:26px 26px 12px}
+.rk-box h2{font-size:21px;letter-spacing:-.03em}
+.rk-box li+li{border-top:0}
+.rk-box a{padding:12px 0}
+.rk-no{font-size:17px}
+.rk-name b{font-size:17px}
+@media(max-width:560px){.rk-box{margin:0 -16px;border-radius:0;padding:22px 20px 8px}}
+/* 토스페이스 이모지 (© Viva Republica, https://toss.im/tossface/copyright) — 제보센터에도. 운영자 2026-11-03: 글씨만 있으면 아쉬움 → 토스처럼 그림 */
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2?v=6) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270D,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F333,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F369,U+1F36A,U+1F36F,U+1F370,U+1F371,U+1F373,U+1F381,U+1F382,U+1F389,U+1F393,U+1F3AE,U+1F3AF,U+1F3C6,U+1F3D8,U+1F3DB,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F3EA,U+1F3F7,U+1F431,U+1F436,U+1F437,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F457,U+1F45F,U+1F484,U+1F48A,U+1F490,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4BC,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CA,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DC,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4EE,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CD,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F914,U+1F916,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F95E,U+1F96F,U+1F9C1,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EE,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
+.tf{font-family:Tossface,sans-serif;font-style:normal;line-height:1}
+.ck-tile{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:20px;background:#f2f4f6;font-size:36px;flex:none}
+.ck-tile.sm{width:44px;height:44px;border-radius:14px;font-size:24px}
+.rf-cats a .tf,.rk-inds a .tf{margin-right:5px;font-size:15px}
+.ck-art .ck-tile{margin-bottom:14px}
+.ck-art .ck-ind{margin-left:10px;vertical-align:22px}
+.ck-sec h2,.ck-stats h2{display:flex;align-items:center;gap:10px}
+.ck-sec h2 .tf,.ck-stats h2 .tf{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:#fff;font-size:20px;flex:none}
+.ck-stats h2 .tf{background:#f2f4f6}
+.ck-list a{grid-template-columns:auto 1fr;column-gap:16px;align-items:start}
+.ck-list a .ck-tile{grid-row:span 3;background:#fff}
+.ck-list a>*:not(.ck-tile){grid-column:2}
+.rk-box h2{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.rk-box .ck-tile{background:#fff}
+.rk-box a{gap:14px;padding:12px 0}
+.rk-no{width:20px;text-align:center;font-size:17px;font-weight:700;color:#8b95a1}
+.rk-no.is-top{color:#3182f6}
+.rk-bad .rk-no.is-top{color:#f04452}
+.rk-logo{flex:none;width:44px;height:44px;border-radius:50%;object-fit:contain;background:#fff;border:1px solid #f2f4f6;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;box-sizing:border-box}
+.rk-logo.av-0{background:#fff1e0;color:#d9480f;border:0}.rk-logo.av-1{background:#e8f3ff;color:#1b64da;border:0}.rk-logo.av-2{background:#e6f6ec;color:#2b8a3e;border:0}.rk-logo.av-3{background:#f1ebff;color:#6741d9;border:0}.rk-logo.av-4{background:#f3ede6;color:#652d1c;border:0}
+.rk-name{display:grid;gap:3px;flex:1;min-width:0}
+.rk-name small{color:#8b95a1;font-size:13.5px}
+.rk-bar{display:block;height:6px;border-radius:3px;background:#e5e8eb;overflow:hidden;margin-top:3px}
+.rk-bar em{display:block;height:100%;border-radius:3px;background:#3182f6}
+.rk-bad .rk-bar em{background:#f04452}
+.rk-grade{flex:none;min-width:44px;text-align:right;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.rk-grade.g-a{color:#3182f6}.rk-grade.g-b{color:#2b8a3e}.rk-grade.g-c{color:#f59f00}.rk-grade.g-d{color:#f76707}.rk-grade.g-f{color:#f04452}
+.rk-empty{display:grid;justify-items:center;gap:12px}
+.rk-inds a{display:inline-flex;align-items:center}
+.rk-good h2::before,.rk-bad h2::before{content:none}

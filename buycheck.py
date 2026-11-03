@@ -24,18 +24,42 @@ PROMPT = """너는 소비자 피해 제보 사이트 {site}의 편집자다. '{i
 
 def render_body(text):
     """'## 소제목', '- 항목', 빈 줄 문단만 쓰는 간단한 글을 HTML로. 나머지는 모두 글자 그대로(escape)."""
-    out, items = [], []
+    # 운영자 2026-11-03: 토스 콘텐츠처럼. 소제목마다 묶고, 항목은 소제목 뜻에 따라 점·체크·번호 줄로
+    out, items, head = [], [], ['']
     def flush():
-        if items: out.append('<ul>' + ''.join('<li>%s</li>' % escape(i) for i in items) + '</ul>'); items.clear()
+        if not items: return
+        h = head[0]
+        kind = 'steps' if re.search(r'봤다면|했다면|당했다면|대처|이렇게', h) else 'check' if '확인' in h or '체크' in h else 'dots'
+        tag = 'ol' if kind == 'steps' else 'ul'
+        out.append('<%s class="ck-%s">%s</%s>' % (tag, kind, ''.join('<li><span>%s</span></li>' % escape(i) for i in items), tag)); items.clear()
+    sec = False
     for line in (text or '').splitlines():
         t = line.strip()
         if t.startswith('- '): items.append(t[2:].strip()); continue
         flush()
         if not t: continue
-        if t.startswith('## '): out.append('<h2>%s</h2>' % escape(t[3:].strip()))
+        if t.startswith('## '):
+            if sec: out.append('</section>')
+            head[0] = t[3:].strip(); sec = True
+            out.append('<section class="ck-sec"><h2><i class="tf" aria-hidden="true">%s</i>%s</h2>' % (sec_emoji(head[0]), escape(head[0])))
         else: out.append('<p>%s</p>' % escape(t))
     flush()
+    if sec: out.append('</section>')
     return Markup(''.join(out))
+
+
+IND_EMOJI = (('식품', '🍔'), ('외식', '🍔'), ('의약', '💊'), ('의료', '💊'), ('쇼핑', '🛍️'), ('유통', '🛍️'), ('가전', '💻'), ('전자', '💻'),
+             ('자동차', '🚗'), ('통신', '📱'), ('인터넷', '📱'), ('금융', '💳'), ('보험', '💳'), ('게임', '🎮'), ('앱', '🎮'),
+             ('건설', '🏠'), ('인테리어', '🏠'), ('여행', '✈️'), ('항공', '✈️'))
+
+
+def ind_emoji(name):
+    """운영자 2026-11-03: 글씨만 있으면 아쉬움 → 업종마다 토스페이스 그림 하나 (모르는 업종은 상자)."""
+    return next((e for k, e in IND_EMOJI if k in (name or '')), '📦')
+
+
+def sec_emoji(head):
+    return '🛡️' if re.search(r'봤다면|했다면|당했다면|대처', head) else '🔍' if '확인' in head or '체크' in head else '🚨'
 
 
 def excerpt(text, n=90):
@@ -62,6 +86,7 @@ def install(S):
         return sorted(by.items(), key=lambda x: -x[1])
 
     app.jinja_env.filters['guide_body'] = render_body
+    app.jinja_env.filters['ind_emoji'] = ind_emoji
 
     @app.route('/check')
     def check_list():

@@ -6,14 +6,15 @@
   <a class="ck-back" href="{{ url_for('check_list') }}">‹ {{ ui('check.title', '사기 전에 확인') }}</a>
   {% if g_['status'] != 'published' %}<p class="ck-draft">{{ ui('check.draft', '공개 전 초안이에요. 관리자에게만 보여요.') }}</p>{% endif %}
   <article class="ck-art">
+    <span class="ck-tile tf" aria-hidden="true">{{ g_['industry']|ind_emoji }}</span>
     {% if g_['industry'] %}<small class="ck-ind">{{ g_['industry'] }}</small>{% endif %}
     <h1>{{ g_['title'] }}</h1>
     <div class="ck-body">{{ g_['body']|guide_body }}</div>
   </article>
-  {% if stats %}<section class="ck-stats"><h2>{{ ui('check.stats', '최근 1년 이 업종 제보 유형') }}</h2>
+  {% if stats %}<section class="ck-stats"><h2><i class="tf" aria-hidden="true">📊</i>{{ ui('check.stats', '최근 1년 이 업종 제보 유형') }}</h2>
     <ul>{% for k, n in stats[:6] %}<li><span class="nn-vc-tag tone-{{ k|cat_tone }}">{{ k }}</span><i style="--w:{{ (100 * n / top)|round|int }}%"></i><b>{{ n }}건</b></li>{% endfor %}</ul>
     <a class="ck-more" href="{{ url_for('reports', ind=g_['industry']) }}">{{ ui('check.see_reports', '이 업종 제보 보기') }} ›</a></section>{% endif %}
   <a class="primary ck-cta" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a>
-  {% if more %}<section class="ck-other"><h2>{{ ui('check.other', '다른 주의 글') }}</h2><ul class="ck-list">{% for m in more %}<li><a href="{{ url_for('check_page', gid=m['id']) }}">{% if m['industry'] %}<small>{{ m['industry'] }}</small>{% endif %}<b>{{ m['title'] }}</b></a></li>{% endfor %}</ul></section>{% endif %}
+  {% if more %}<section class="ck-other"><h2>{{ ui('check.other', '다른 주의 글') }}</h2><ul class="ck-list">{% for m in more %}<li><a href="{{ url_for('check_page', gid=m['id']) }}"><span class="ck-tile sm tf" aria-hidden="true">{{ m['industry']|ind_emoji }}</span>{% if m['industry'] %}<small>{{ m['industry'] }}</small>{% endif %}<b>{{ m['title'] }}</b></a></li>{% endfor %}</ul></section>{% endif %}
 </div></main>
 {% endblock %}
