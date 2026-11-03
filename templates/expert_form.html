@@ -6,15 +6,13 @@
 <main class="xf is-split" id="top"><div class="xf-in">
   <section class="xf-main">
     <h1 class="xf-title">{% if invite %}{{ invite['name'] }} 님을<br>{{ ui('xf.title_inv', '소보루 자문단으로 모셔요') }}{% else %}{{ ui('xf.title', '소비자 곁에서\n함께할 자문단을 모셔요') }}{% endif %}</h1>
-    <p class="xf-key">{{ ui('xf.key2', '변호사와 교수만 함께할 수 있어요.') }}</p>
     {# 동그란 자리에 얼굴 (실제 인물이 아닌 예시 사진) #}
     <div class="xf-team" aria-hidden="true"><span class="xf-faces">{% for n in ('a1', 'a2', 'a3', 'a4') %}<img src="{{ asset('img/advisors/' ~ n ~ '.jpg') }}" alt="" width="56" height="56">{% endfor %}</span><b>{{ ui('xf.team2', '제보에 의견을 남겨요') }}</b></div>
-    {# 운영자 2026-11-03: 왼쪽 아래가 너무 하얗다 → 제보 카드에 자문단 의견이 달리고 기사로 이어지는 짧은 장면이 되풀이 (예시) #}
-    <div class="xf-demo" aria-hidden="true">
-      <div class="xf-demo-case"><small>소보루가전 · 배송·교환·환불</small><b>반품 후 2주째 환불이 안 돼요</b></div>
-      <div class="xf-demo-note"><img src="{{ asset('img/advisors/a1.jpg') }}" alt="" width="36" height="36"><span><small>김서연 <i>자문단 · 변호사</i></small>반품한 물건을 받은 날부터 3영업일 안에 환불해야 해요. 늦어진 만큼 지연 이자도 청구할 수 있어요.</span></div>
-      <div class="xf-demo-news"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>자문단 의견과 함께 기사로 나갔어요</div>
-    </div>
+    {# 운영자 2026-11-03: 왼쪽 아래가 너무 하얗다 → 지금 함께하는 자문단 프로필 카드가 차례로 넘어감 (사진·이름·분야·소속) #}
+    {% if people %}<div class="xf-deck" aria-hidden="true">{% for e in people[:6] %}
+      <div class="xf-pc" style="--i:{{ loop.index0 }};--n:{{ [people|length, 6]|min }}"><img src="{{ e['photo_url'] }}" alt="" width="72" height="72"><span><b>{{ e['name'] }}<em><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z"/><path fill="#fff" d="M7.1 10.6 4.8 8.3l.9-.9 1.4 1.4 3.2-3.2.9.9z"/></svg>자격 확인</em></b><small>{{ e['org'] }}</small><i>자문단 · {{ e['field'] }}</i></span></div>{% endfor %}
+      <p class="xf-deck-n">지금 <b>{{ people|length }}명</b>이 함께하고 있어요</p>
+    </div>{% endif %}
   </section>
 
   <form class="xf-form" method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -30,10 +28,10 @@
       <label class="xf-f"><span class="xf-l{{ ' is-req' if not firm }}">{{ '소속' if not firm else '대표자 이름' }}</span><input class="xf-in-t" name="org" maxlength="60"{% if not firm %} required{% endif %} value="{{ f.org }}" placeholder="{{ '법률사무소, 대학교' if not firm else '이름' }}"></label>
     </div>
     <label class="xf-f"><span class="xf-l">한 줄 소개</span><input class="xf-in-t" name="intro" maxlength="120" value="{{ f.intro }}" placeholder="예: 전자상거래 환불 분쟁을 주로 다뤄요"></label>
-    <label class="xf-f"><span class="xf-l">이력</span><textarea class="xf-in-t xf-ta" name="career" rows="3" maxlength="1000" placeholder="한 줄에 하나씩 적어 주세요">{{ f.career }}</textarea></label>
+    <label class="xf-f"><span class="xf-l">이력</span><textarea class="xf-in-t xf-ta" name="career" rows="3" maxlength="1000" placeholder="예: 소보루대학교 법학전문대학원 교수&#10;한국소비자원 분쟁조정위원 (2020~2024)">{{ f.career }}</textarea></label>
     <div class="xf-f"><span class="xf-l is-req">자격 확인</span>
       <label class="xf-file is-need"><input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"{% if not (invite and invite['proof']) %} required{% endif %}><b>{{ '사업자등록증' if firm else '변호사 등록증 또는 재직증명서' }}</b><span data-empty="사진이나 PDF를 올려 주세요">사진이나 PDF를 올려 주세요</span><i>필수</i></label>
-      <label class="xf-file"><input name="photo" type="file" accept="image/jpeg,image/png,image/webp"><b>{{ '로고' if firm else '프로필 사진' }}</b><span data-empty="소개 페이지와 댓글에 보여요">소개 페이지와 댓글에 보여요</span><i>선택</i></label>
+      <label class="xf-file{{ ' is-need' if not firm }}"><input name="photo" type="file" accept="image/jpeg,image/png,image/webp"{% if not firm and not (invite and invite['photo']) %} required{% endif %}><b>{{ '로고' if firm else '프로필 사진' }}</b><span data-empty="{{ '소개 페이지와 댓글에 보여요' if firm else '얼굴이 보이는 사진 · 소개 페이지와 댓글에 보여요' }}">{{ '소개 페이지와 댓글에 보여요' if firm else '얼굴이 보이는 사진 · 소개 페이지와 댓글에 보여요' }}</span><i>{{ '선택' if firm else '필수' }}</i></label>
     </div>
     <input type="hidden" name="agree" value="1">
     <details class="xf-agree">
@@ -65,6 +63,8 @@
   <a class="xf-more-go" href="#top">{{ ui('xf.more_go', '지금 신청하기') }}</a>
 </div></section>
 <script>(function(){
+  var cs=[].slice.call(document.querySelectorAll('.xf-pc')),k=0;function lay(){cs.forEach(function(c,i){var d=(i-k+cs.length)%cs.length;c.className='xf-pc'+(d<3?' is-'+d:'')})}
+  if(cs.length){lay();if(cs.length>1&&!matchMedia('(prefers-reduced-motion: reduce)').matches)setInterval(function(){k=(k+1)%cs.length;lay()},3000)}
   document.querySelectorAll('.xf-file input').forEach(function(i){i.addEventListener('change',function(){var s=i.parentNode.querySelector('span'),f=i.files[0];s.textContent=f?f.name:s.dataset.empty;i.parentNode.classList.toggle('is-on',!!f)})});
 })()</script>
 {% endblock %}

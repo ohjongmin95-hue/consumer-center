@@ -80,6 +80,10 @@ def install(S):
             db.execute('INSERT INTO case_comments(case_id,nickname,pw_hash,body,ip_hash,created,user_id,by_reporter) VALUES(?,?,?,?,?,?,?,?)',
                        (case_id, nickname, '' if g.get('user') else generate_password_hash(password), body, S.ip_hash(), stamp(),
                         g.user['id'] if g.get('user') else None, int(session.get('case_id') == case_id)))
+            hook = app.extensions.get('experts_commented')  # 자문단 초대에 답한 것이면 제보자에게 알림 (experts.py)
+            if hook and g.get('user'):
+                try: hook(db, case_id, g.user['id'])
+                except Exception: pass
         return back(case_id)
 
     @app.route('/reports/comment/<int:comment_id>/flag', methods=['POST'])

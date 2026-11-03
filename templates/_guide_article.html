@@ -4,7 +4,7 @@
   <a class="ga-k" href="{{ url_for('explore') }}#xs-tips">{{ g_kicker }}</a>
   <h1 class="ga-title">{{ g_title }}</h1>
   <p class="ga-meta">{{ ui('guide.meta', '한국소비자원 자료를 쉽게 풀었어요') }}</p>
-  <figure class="ga-hero is-t{{ g_tone }}" aria-hidden="true"><span class="xs-gcard">{% if g_tone == 1 %}<em>주의</em>{% endif %}{% for r in g_rows %}<span><i>{{ loop.index }}</i>{{ r }}</span>{% endfor %}</span></figure>
+  <figure class="ga-hero is-img" aria-hidden="true"><img src="{{ asset('img/guide/' ~ g_img ~ '.jpg') }}" alt="" width="1344" height="752"></figure>
   <p class="ga-p">{{ g_intro }}</p>
   {% for h, t, items, ex in g_steps %}
   <section class="ga-sec" id="t{{ loop.index }}">
@@ -17,7 +17,7 @@
   <p class="ga-src">{{ g_src }} <a href="{{ g_src_url }}" target="_blank" rel="noopener">{{ ui('guide.src_link', '원문 보기') }}</a><br>{{ ui('guide.note', '이 글은 참고용 안내예요. 실제 사정에 따라 결과가 다를 수 있어요.') }}</p>
   <section class="ga-next" aria-labelledby="ga-next-h">
     <h2 class="ga-next-h" id="ga-next-h">{{ ui('guide.next', '이런 글은 어때요?') }}</h2>
-    <a class="ga-card" href="{{ url_for(g_next[0]) }}"><span class="ga-card-pic is-t{{ 1 - g_tone }}" aria-hidden="true"></span><span class="ga-card-t"><small>{{ g_next[1] }}</small><b>{{ g_next[2] }}</b></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+    <a class="ga-card" href="{{ url_for(g_next[0]) }}"><img class="ga-card-pic" src="{{ asset('img/guide/' ~ ('tricks' if g_img == 'contact' else 'contact') ~ '.jpg') }}" alt="" width="72" height="72" loading="lazy"><span class="ga-card-t"><small>{{ g_next[1] }}</small><b>{{ g_next[2] }}</b></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
   </section>
   <a class="primary ga-go" href="{{ url_for('report_talk') }}">{{ ui('guide.go', '제보하기') }}</a>
 </article></main>

@@ -101,7 +101,7 @@
     <div class="xs-hrow"><h2 class="xs-h" id="xs-tips">{{ ui('explore.guides', '소비자 안내서') }}</h2></div>
     <div class="xs-grid is-4 xs-tips">{% for ep, k, t, rows in guides %}
       <a class="xs-tip" href="{{ url_for(ep) }}">
-        <span class="xs-tip-pic is-g is-t{{ loop.index0 }}" aria-hidden="true"><span class="xs-gcard">{% if loop.index0 == 1 %}<em>주의</em>{% endif %}{% for r in rows %}<span><i>{{ loop.index }}</i>{{ r }}</span>{% endfor %}</span></span>
+        <span class="xs-tip-pic is-img" aria-hidden="true"><img src="{{ asset('img/guide/' ~ ('contact' if loop.index0 == 0 else 'tricks') ~ '.jpg') }}" alt="" width="1344" height="752" loading="lazy"></span>
         <small>{{ ui('explore.guide' ~ loop.index ~ '_k', k) }}</small><b>{{ ui('explore.guide' ~ loop.index, t) }}</b>
       </a>{% endfor %}
     </div>

@@ -30,7 +30,7 @@
   {% endif %}
   <form class="xa-card xa-career-form" method="post" action="{{ url_for('expert_career_change') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <label class="xa-f"><span>{{ ui('expert.intro_edit', '한 줄 소개') }}</span><input name="intro" maxlength="120" value="{{ mine['intro'] }}"></label>
-    <label class="xa-f"><span>{{ ui('expert.career_edit', '이력 (한 줄에 하나씩)') }}</span><textarea name="career" rows="5" maxlength="1000">{{ mine['career'] }}</textarea></label>
+    <label class="xa-f"><span>{{ ui('expert.career_edit2', '이력') }}</span><textarea name="career" rows="5" maxlength="1000">{{ mine['career'] }}</textarea></label>
     <button class="secondary xa-btn" type="submit">{{ ui('expert.career_save', '소개 고치기') }}</button>
   </form>
   {% if reqs %}
