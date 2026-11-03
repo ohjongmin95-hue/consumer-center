@@ -4,7 +4,7 @@
 - 초대 없이 /expert/apply 에서 신청할 수도 있다. 이건 관리자가 자격을 확인하고 승인해야 전문가가 된다.
 - 승인된 전문가가 제보에 댓글을 달면 이름 옆에 '전문가 · 변호사' 같은 표시가 붙는다.
 - 법무법인·사무소 같은 곳도 '전문 기관'으로 등록할 수 있다(사업자등록번호·로고).
-- 수수료·수임료·광고비는 받지 않는다. 로톡처럼 사건을 연결해 돈을 받는 구조가 아니라 표시만 해 주는 플랫폼 (운영자 2026-11-03).
+- 수수료·수임료·광고비는 받지 않는다. 운영자 2026-11-03 나중: 변호사 소개(소개 페이지의 '상담 신청하기')는 하되 돈은 받지 않는다.
 - 자격증 사진(증빙)은 관리자만 볼 수 있다. 관리자는 언제든 표시를 멈추거나 다시 켤 수 있다.
 """
 import datetime, os, secrets, uuid
@@ -32,6 +32,10 @@ def migrate(db):
     if 'kind' not in cols: db.execute("ALTER TABLE experts ADD COLUMN kind TEXT NOT NULL DEFAULT 'person'")
     if 'proof2' not in cols: db.execute("ALTER TABLE experts ADD COLUMN proof2 TEXT NOT NULL DEFAULT ''")  # 재직증명서·사업자등록증 (선택)
     if 'claim' not in cols: db.execute('ALTER TABLE experts ADD COLUMN claim TEXT')  # 로그인 없이 등록한 분이 나중에 계정을 잇는 열쇠
+    if 'career' not in cols: db.execute("ALTER TABLE experts ADD COLUMN career TEXT NOT NULL DEFAULT ''")  # 이력 (한 줄에 하나, 소개 페이지에 보임)
+    # 운영자 2026-11-03: 자문단 소개 페이지의 '상담 신청하기'. 돈은 받지 않고, 남긴 글을 그 자문단에게 전해 줌
+    db.execute('''CREATE TABLE IF NOT EXISTS expert_requests(id INTEGER PRIMARY KEY,expert_id INTEGER NOT NULL,user_id INTEGER NOT NULL,
+        body TEXT NOT NULL,contact TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,seen INTEGER NOT NULL DEFAULT 0)''')
 
 
 def labels(db, user_ids):
@@ -56,6 +60,10 @@ def install(S):
 
     def now(): return datetime.datetime.now().isoformat(timespec='seconds')
     def clean(name, n): return ' '.join((request.form.get(name) or '').split())[:n]
+
+    def career_text():
+        lines = [' '.join(l.split())[:80] for l in (request.form.get('career') or '').splitlines()]
+        return '\n'.join([l for l in lines if l][:12])
 
     def save_proof(old='', key='proof'):
         up = request.files.get(key)
@@ -87,14 +95,14 @@ def install(S):
 
     def form_values(row=None):
         r = dict(row) if row else {}
-        out = {k: r.get(k, '') for k in ('name', 'field', 'org', 'intro', 'phone', 'email')}
+        out = {k: r.get(k, '') or '' for k in ('name', 'field', 'org', 'intro', 'phone', 'email', 'career')}
         out['kind'] = r.get('kind') or 'person'
         return out
 
     def submit(row, invited):
         """운영자 2026-11-03: 로그인 없이 입력하고 등록. 자격은 번호 말고 파일로만. 로그인 안 했으면 나중에 계정을 잇는 열쇠(claim)를 줌."""
         f = {'name': clean('name', 30), 'field': clean('field', 20), 'org': clean('org', 60),
-             'intro': clean('intro', 120), 'phone': clean('phone', 20), 'email': clean('email', 120)}
+             'intro': clean('intro', 120), 'phone': clean('phone', 20), 'email': clean('email', 120), 'career': career_text()}
         kind = 'firm' if request.form.get('kind') == 'firm' else 'person'
         if not f['name'] or f['field'] not in (FIRM_FIELDS if kind == 'firm' else FIELDS): raise ValueError('이름과 분야를 넣어 주세요.')
         if not f['phone'] and not f['email']: raise ValueError('연락처나 이메일 중 하나는 적어 주세요.')
@@ -110,11 +118,11 @@ def install(S):
         claim = None if uid else secrets.token_urlsafe(16)
         with conn() as db:
             if row:
-                db.execute('UPDATE experts SET user_id=?,name=?,field=?,org=?,intro=?,phone=?,email=?,proof=?,proof2=?,photo=?,kind=?,status=?,token=NULL,claim=?,approved=? WHERE id=?',
+                db.execute('UPDATE experts SET user_id=?,name=?,field=?,org=?,intro=?,phone=?,email=?,career=?,proof=?,proof2=?,photo=?,kind=?,status=?,token=NULL,claim=?,approved=? WHERE id=?',
                            (uid, *f.values(), proof, proof2, photo, kind, status, claim, now() if invited else '', row['id']))
                 eid = row['id']
             else:
-                eid = db.execute('INSERT INTO experts(user_id,name,field,org,intro,phone,email,proof,proof2,photo,kind,status,claim,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                eid = db.execute('INSERT INTO experts(user_id,name,field,org,intro,phone,email,career,proof,proof2,photo,kind,status,claim,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                                  (uid, *f.values(), proof, proof2, photo, kind, status, claim, now())).lastrowid
         return eid, status, claim
 
@@ -131,7 +139,10 @@ def install(S):
         if g.user:
             with conn() as db: mine = db.execute('SELECT * FROM experts WHERE user_id=?', (g.user['id'],)).fetchone()
         if mine and mine['status'] in ('approved', 'pending', 'stopped') and request.method == 'GET':
-            return render_template('expert_apply.html', mine=mine, kinds=KINDS, status=STATUS, photo=photo_url(mine['id'], mine['photo']))
+            with conn() as db:
+                reqs = db.execute('SELECT r.*,u.nickname FROM expert_requests r LEFT JOIN users u ON u.id=r.user_id WHERE r.expert_id=? ORDER BY r.id DESC LIMIT 30', (mine['id'],)).fetchall()
+                db.execute('UPDATE expert_requests SET seen=1 WHERE expert_id=?', (mine['id'],))
+            return render_template('expert_apply.html', mine=mine, kinds=KINDS, status=STATUS, photo=photo_url(mine['id'], mine['photo']), reqs=reqs)
         if request.method == 'POST':
             if request.form.get('website'): abort(400)  # 자동 등록 막기용 숨은 칸
             if mine and mine['status'] in ('approved', 'stopped'): abort(400)
@@ -172,6 +183,56 @@ def install(S):
             try: db.execute('UPDATE experts SET photo=? WHERE id=?', (save_photo(mine['photo']), mine['id'])); flash('사진을 바꿨어요.')
             except ValueError as e: flash(str(e))
         return redirect(url_for('expert_apply'))
+
+    @app.route('/expert/career', methods=['POST'])
+    @S.member_only
+    def expert_career_change():
+        with conn() as db:
+            mine = db.execute('SELECT id FROM experts WHERE user_id=?', (g.user['id'],)).fetchone()
+            if not mine: abort(404)
+            db.execute('UPDATE experts SET career=?,intro=? WHERE id=?', (career_text(), clean('intro', 120), mine['id']))
+        flash('소개를 고쳤어요.')
+        return redirect(url_for('expert_apply'))
+
+    def public_expert(eid):
+        with conn() as db: row = db.execute("SELECT * FROM experts WHERE id=? AND status='approved'", (eid,)).fetchone()
+        if not row: abort(404)
+        return row
+
+    @app.route('/experts/<int:eid>')
+    def expert_profile(eid):
+        """운영자 2026-11-03: 자문단을 누르면 나오는 깔끔한 소개 페이지. 사진·이름·소속·한 줄 소개 → 이력 → 남긴 의견 → 상담 신청하기."""
+        e = dict(public_expert(eid)); e['photo_url'] = photo_url(e['id'], e['photo'])
+        notes, count = [], 0
+        if e['user_id']:
+            with conn() as db:
+                count = db.execute('SELECT COUNT(*) FROM case_comments WHERE hidden=0 AND user_id=?', (e['user_id'],)).fetchone()[0]
+                try:
+                    notes = [dict(r) for r in db.execute('''SELECT m.case_id,m.body,m.created,c.subject,c.company FROM case_comments m JOIN cases c ON c.id=m.case_id
+                        WHERE m.hidden=0 AND m.user_id=? AND c.public_consent=1 AND c.published=1 AND c.review NOT IN ('rejected','duplicate') ORDER BY m.id DESC LIMIT 5''', (e['user_id'],))]
+                except Exception:
+                    notes = []
+        career = [l for l in (e.get('career') or '').splitlines() if l.strip()]
+        return render_template('expert_profile.html', e=e, career=career, notes=notes, count=count, sent=request.args.get('sent') == '1')
+
+    @app.route('/experts/<int:eid>/ask', methods=['POST'])
+    @S.member_only
+    def expert_ask(eid):
+        """상담 신청: 남긴 글을 저장하고 그 자문단에게 메일로도 알림. 돈은 받지 않음."""
+        e = public_expert(eid)
+        body = (request.form.get('body') or '').strip()[:1000]
+        contact = clean('contact', 60)
+        if len(body) < 10:
+            flash('무슨 일인지 10자 넘게 적어 주세요.'); return redirect(url_for('expert_profile', eid=eid) + '#ask')
+        with conn() as db:
+            recent = db.execute("SELECT COUNT(*) FROM expert_requests WHERE user_id=? AND created>?", (g.user['id'], (datetime.datetime.now() - datetime.timedelta(days=1)).isoformat(timespec='seconds'))).fetchone()[0]
+            if recent >= 5: flash('상담 신청은 하루에 5번까지 할 수 있어요.'); return redirect(url_for('expert_profile', eid=eid))
+            db.execute('INSERT INTO expert_requests(expert_id,user_id,body,contact,created) VALUES(?,?,?,?,?)', (eid, g.user['id'], body, contact, now()))
+        if e['email']:
+            text = f"{e['name']} 님, 소비자제보센터에서 상담 신청이 왔어요.\n\n신청한 분: {g.user['nickname']}\n연락처: {contact or '(적지 않음)'}\n\n{body}\n\n자문단 정보에서도 볼 수 있어요: {S.canonical_url(url_for('expert_apply'))}"
+            try: S.notify.send_email(e['email'], f'[{S.notify.site_name()}] 상담 신청이 왔어요', text)
+            except Exception: pass
+        return redirect(url_for('expert_profile', eid=eid, sent=1))
 
     @app.route('/expert/<int:eid>/photo.jpg')
     def expert_photo(eid):

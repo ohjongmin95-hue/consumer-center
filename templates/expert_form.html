@@ -1,60 +1,43 @@
 {% extends 'base.html' %}
-{# 운영자 2026-11-03: 자문단 초대·모집 = 토스플레이스 상담 신청 풍. 왼쪽 큰 제목 → 강조 한 줄 → 입력칸 → '동의하고 등록하기' 버튼 하나 → 동의 줄,
-   오른쪽 그림(자문단 댓글이 어떻게 보이는지). 로그인 없이 입력하고 등록. 자격은 번호 말고 파일로만. #}
+{# 운영자 2026-11-03: 자문단 초대·모집 = 검은 화면, 왼쪽 큰 제목 + 한 줄 + 자문단 얼굴, 오른쪽 이름 붙은 입력칸 → 버튼 하나.
+   모집은 변호사·교수만 (사무소·법인 등록은 관리자 초대로만 남김). 로그인 없이 등록. 자격은 번호 말고 파일로만. #}
 {% block title %}{{ ui('xf.tab', '소비자 자문단 모집') }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
-<main class="xf"><div class="xf-in">
+<main class="xf is-dark"><div class="xf-in">
   <section class="xf-main">
     <h1 class="xf-title">{% if invite %}{{ invite['name'] }} 님을<br>{{ ui('xf.title_inv', '소비자 자문단으로 모셔요') }}{% else %}{{ ui('xf.title', '소비자 곁에서\n함께할 자문단을 모셔요') }}{% endif %}</h1>
-    <p class="xf-key">{{ ui_rich('xf.key', '**변호사·교수**가 제보에 의견을 남겨요') }}</p>
-
-    <form class="xf-form" method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
-      <div class="xa-seg" role="radiogroup" aria-label="등록 종류"><label><input type="radio" name="kind" value="person"{% if f.kind != 'firm' %} checked{% endif %}><span>개인</span></label><label><input type="radio" name="kind" value="firm"{% if f.kind == 'firm' %} checked{% endif %}><span>사무소·법인</span></label></div>
-      <input class="xf-in-t" id="x-name" name="name" maxlength="30" required value="{{ f.name }}" placeholder="이름 (실명)" aria-label="이름" data-pp="이름 (실명)" data-pf="사무소·법인 이름">
-      <label class="xf-sel"><span class="sba-sr">분야</span><select id="x-field" name="field" required><option value="">분야</option><optgroup label="개인" data-k="person">{% for x in fields %}<option{% if x == f.field %} selected{% endif %}>{{ x }}</option>{% endfor %}</optgroup><optgroup label="사무소·법인" data-k="firm">{% for x in firm_fields %}<option{% if x == f.field %} selected{% endif %}>{{ x }}</option>{% endfor %}</optgroup></select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></label>
-      <input class="xf-in-t" id="x-org" name="org" maxlength="60" value="{{ f.org }}" placeholder="소속 (예: 소보루 법률사무소, 소보루대학교)" aria-label="소속" data-pp="소속 (예: 소보루 법률사무소, 소보루대학교)" data-pf="대표자 이름">
-      <input class="xf-in-t" id="x-phone" name="phone" maxlength="20" inputmode="tel" value="{{ f.phone }}" placeholder="휴대폰 번호" aria-label="휴대폰 번호">
-      <input class="xf-in-t" id="x-email" name="email" type="email" maxlength="120" value="{{ f.email }}" placeholder="이메일" aria-label="이메일">
-      <input class="xf-in-t" id="x-intro" name="intro" maxlength="120" value="{{ f.intro }}" placeholder="한 줄 소개" aria-label="한 줄 소개">
-      <label class="xf-file is-need"><input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"{% if not (invite and invite['proof']) %} required{% endif %}><b data-p="변호사 등록증 또는 재직증명서" data-f="사업자등록증 파일">{{ '사업자등록증 파일' if f.kind == 'firm' else '변호사 등록증 또는 재직증명서' }}</b><span data-empty="사진이나 PDF를 올려 주세요">사진이나 PDF를 올려 주세요</span><i>필수</i></label>
-      <label class="xf-file"><input name="proof2" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><b data-p="소속 확인 서류" data-f="소속 변호사 명단">{{ '소속 변호사 명단' if f.kind == 'firm' else '소속 확인 서류' }}</b><span data-empty="소속을 확인할 수 있으면 더 빨라요">소속을 확인할 수 있으면 더 빨라요</span><i>선택</i></label>
-      <label class="xf-file"><input name="photo" type="file" accept="image/jpeg,image/png,image/webp"><b data-p="프로필 사진" data-f="로고">{{ '로고' if f.kind == 'firm' else '프로필 사진' }}</b><span data-empty="댓글 이름 옆에 보여요">댓글 이름 옆에 보여요</span><i>선택</i></label>
-      <input type="hidden" name="agree" value="1">
-      <button class="primary xi-go xf-go" type="submit">{{ ui('xf.cta_inv', '동의하고 등록하기') if invite else ui('xf.cta', '동의하고 신청하기') }}</button>
-      <details class="xf-agree">
-        <summary><svg class="xf-ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>필수</b>{{ ui('xf.agree', '자문단 표시와 확인 정보 보관에 동의') }}<svg class="xf-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <p>{{ ui('xf.agree_text', '제보에 남긴 댓글 이름 옆에 ‘자문단 · 분야’와 사진이 보여요. 이름·소속·연락처·이메일과 자격 확인 파일은 자격 확인과 연락에만 쓰고, 운영자만 봐요. 자문단을 그만두면 바로 지워요.') }}</p>
-      </details>
-    </form>
+    <p class="xf-key">{{ ui('xf.key2', '변호사와 교수만 함께할 수 있어요.') }}</p>
+    {# 동그란 자리에 얼굴 (실제 인물이 아닌 예시 사진) #}
+    <div class="xf-team" aria-hidden="true"><span class="xf-faces">{% for n in ('a1', 'a2', 'a3', 'a4') %}<img src="{{ asset('img/advisors/' ~ n ~ '.jpg') }}" alt="" width="56" height="56">{% endfor %}</span><b>{{ ui('xf.team2', '제보에 의견을 남겨요') }}</b></div>
   </section>
 
-  {# 운영자 2026-11-03: 오른쪽 = 제보 카드에 자문단 댓글이 하나씩 달리는 모습. 예시는 변호사만, 동그란 자리에 얼굴 (실제 인물이 아닌 예시 사진). #}
-  {% set replies = [
-    ('a1', '김지현', ui('xf.demo_a', '반품을 받은 날부터 3영업일 안에 환불해야 해요. 늦어진 만큼 지연 이자도 요구할 수 있어요.')),
-    ('a2', '박성훈', ui('xf.demo_a2', '판매자와 주고받은 문자와 반품 송장 번호를 남겨 두세요. 분쟁조정 때 근거가 돼요.')),
-    ('a4', '정민재', ui('xf.demo_a3', '카드로 냈다면 카드사에 결제 취소를 요청하는 방법도 있어요.')),
-  ] %}
-  <div class="xf-show" aria-hidden="true">
-    <div class="xf-team"><span class="xf-faces">{% for n in ('a1', 'a2', 'a3', 'a4') %}<img src="{{ asset('img/advisors/' ~ n ~ '.jpg') }}" alt="" width="40" height="40">{% endfor %}</span><b>{{ ui('xf.team', '자문단이 함께 봐요') }}</b></div>
-    <article class="xf-post">
-      <span class="xf-cat">{{ ui('xf.demo_cat', '온라인 쇼핑') }}</span>
-      <h3>{{ ui('xf.demo_q', '환불을 약속하고 3주째 연락이 없어요') }}</h3>
-      <p>{{ ui('xf.demo_body', '지난달 반품을 보냈는데 판매자가 환불해 준다고 하고는 답이 없어요.') }}</p>
-      <p class="xf-meta">{{ ui('xf.demo_meta', '공감 128 · 댓글 3') }}</p>
-    </article>
-    <ol class="xf-thread">{% for r in replies %}
-      <li><img class="xf-av" src="{{ asset('img/advisors/' ~ r[0] ~ '.jpg') }}" alt="" width="40" height="40"><div><p class="xf-cn"><b>{{ r[1] }}</b><span class="xi-badge">자문단 · 변호사</span></p><p class="xf-ct">{{ r[2] }}</p></div></li>{% endfor %}
-    </ol>
-  </div>
+  <form class="xf-form" method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>
+    {% set firm = invite and f.kind == 'firm' %}<input type="hidden" name="kind" value="{{ 'firm' if firm else 'person' }}">
+    <div class="xf-two">
+      <label class="xf-f"><span class="xf-l is-req">{{ '이름' if not firm else '사무소·법인 이름' }}</span><input class="xf-in-t" name="name" maxlength="30" required value="{{ f.name }}" placeholder="{{ '실명' if not firm else '이름' }}"></label>
+      <label class="xf-f"><span class="xf-l is-req">휴대폰 번호</span><input class="xf-in-t" name="phone" maxlength="20" inputmode="tel" required value="{{ f.phone }}" placeholder="010-0000-0000"></label>
+    </div>
+    <label class="xf-f"><span class="xf-l is-req">이메일</span><input class="xf-in-t" name="email" type="email" maxlength="120" required value="{{ f.email }}" placeholder="상담 신청이 오면 여기로 알려 드려요"></label>
+    <div class="xf-two">
+      <label class="xf-f"><span class="xf-l is-req">분야</span><span class="xf-sel"><select name="field" required><option value="">고르기</option>{% for x in (firm_fields if firm else fields) %}<option{% if x == f.field %} selected{% endif %}>{{ x }}</option>{% endfor %}</select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></label>
+      <label class="xf-f"><span class="xf-l{{ ' is-req' if not firm }}">{{ '소속' if not firm else '대표자 이름' }}</span><input class="xf-in-t" name="org" maxlength="60"{% if not firm %} required{% endif %} value="{{ f.org }}" placeholder="{{ '법률사무소, 대학교' if not firm else '이름' }}"></label>
+    </div>
+    <label class="xf-f"><span class="xf-l">한 줄 소개</span><input class="xf-in-t" name="intro" maxlength="120" value="{{ f.intro }}" placeholder="예: 전자상거래 환불 분쟁을 주로 다뤄요"></label>
+    <label class="xf-f"><span class="xf-l">이력</span><textarea class="xf-in-t xf-ta" name="career" rows="3" maxlength="1000" placeholder="한 줄에 하나씩 적어 주세요">{{ f.career }}</textarea></label>
+    <div class="xf-f"><span class="xf-l is-req">자격 확인</span>
+      <label class="xf-file is-need"><input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"{% if not (invite and invite['proof']) %} required{% endif %}><b>{{ '사업자등록증' if firm else '변호사 등록증 또는 재직증명서' }}</b><span data-empty="사진이나 PDF를 올려 주세요">사진이나 PDF를 올려 주세요</span><i>필수</i></label>
+      <label class="xf-file"><input name="photo" type="file" accept="image/jpeg,image/png,image/webp"><b>{{ '로고' if firm else '프로필 사진' }}</b><span data-empty="소개 페이지와 댓글에 보여요">소개 페이지와 댓글에 보여요</span><i>선택</i></label>
+    </div>
+    <input type="hidden" name="agree" value="1">
+    <details class="xf-agree">
+      <summary>{{ ui('xf.agree2', '개인정보 수집 동의 (자격 확인과 연락에만 써요)') }}<svg class="xf-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></summary>
+      <p>{{ ui('xf.agree_text', '제보에 남긴 댓글 이름 옆에 ‘자문단 · 분야’와 사진이 보여요. 이름·소속·연락처·이메일과 자격 확인 파일은 자격 확인과 연락에만 쓰고, 운영자만 봐요. 자문단을 그만두면 바로 지워요.') }}</p>
+    </details>
+    <button class="primary xi-go xf-go" type="submit">{{ ui('xf.cta_inv', '동의하고 등록하기') if invite else ui('xf.cta', '동의하고 신청하기') }}</button>
+  </form>
 </div></main>
 <script>(function(){
-  var rs=document.querySelectorAll('[name=kind]'),sel=document.getElementById('x-field');
-  function k(){var c=document.querySelector('[name=kind]:checked'),v=c?c.value:'person';
-    document.querySelectorAll('[data-p]').forEach(function(l){l.textContent=v==='firm'?l.dataset.f:l.dataset.p});
-    document.querySelectorAll('[data-pp]').forEach(function(x){x.placeholder=v==='firm'?x.dataset.pf:x.dataset.pp});
-    if(sel){sel.querySelectorAll('optgroup').forEach(function(g){var on=g.dataset.k===v;g.hidden=!on;g.disabled=!on});var o=sel.selectedOptions[0];if(o&&o.parentNode.disabled)sel.value=''}}
-  rs.forEach(function(r){r.addEventListener('change',k)});k();
   document.querySelectorAll('.xf-file input').forEach(function(i){i.addEventListener('change',function(){var s=i.parentNode.querySelector('span'),f=i.files[0];s.textContent=f?f.name:s.dataset.empty;i.parentNode.classList.toggle('is-on',!!f)})});
 })()</script>
 {% endblock %}

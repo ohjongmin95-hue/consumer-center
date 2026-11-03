@@ -15,6 +15,18 @@
     </dl>
     <p class="xa-note">{% if mine['status'] == 'approved' %}{{ ui('expert.ok2', '제보에 댓글을 달면 이름 옆에 자문단 표시가 붙어요.') }}{% elif mine['status'] == 'pending' %}{{ ui('expert.wait2', '자격을 확인하고 있어요. 확인이 끝나면 알려 드릴게요.') }}{% else %}{{ ui('expert.stopped2', '지금은 자문단 표시를 멈췄어요. 궁금한 점은 고객센터로 알려 주세요.') }}{% endif %}</p>
   </section>
+  {% if mine['status'] == 'approved' %}<p class="xa-note"><a href="{{ url_for('expert_profile', eid=mine['id']) }}">{{ ui('expert.my_profile', '내 소개 페이지 보기') }} →</a></p>{% endif %}
+  <form class="xa-card xa-career-form" method="post" action="{{ url_for('expert_career_change') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label class="xa-f"><span>{{ ui('expert.intro_edit', '한 줄 소개') }}</span><input name="intro" maxlength="120" value="{{ mine['intro'] }}"></label>
+    <label class="xa-f"><span>{{ ui('expert.career_edit', '이력 (한 줄에 하나씩)') }}</span><textarea name="career" rows="5" maxlength="1000">{{ mine['career'] }}</textarea></label>
+    <button class="secondary xa-btn" type="submit">{{ ui('expert.career_save', '소개 고치기') }}</button>
+  </form>
+  {% if reqs %}
+  <section class="xa-card">
+    <h2 class="xa-h">{{ ui('expert.reqs', '받은 상담 신청') }}</h2>
+    <ul class="xa-reqs">{% for r in reqs %}<li><p class="pre-line">{{ r['body'] }}</p><small>{{ r['nickname'] or '회원' }}{% if r['contact'] %} · {{ r['contact'] }}{% endif %} · {{ r['created'][:16].replace('T', ' ') }}</small></li>{% endfor %}</ul>
+  </section>
+  {% endif %}
   <form class="xa-card xa-photo-form ex-photo-form" method="post" action="{{ url_for('expert_photo_change') }}" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <label class="xa-f"><span>{{ '프로필 사진 바꾸기' if photo else '프로필 사진 넣기' }}</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required></label>
     <button class="secondary xa-btn" type="submit">사진 올리기</button>

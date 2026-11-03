@@ -60,14 +60,17 @@
   <section class="xs-sec" aria-labelledby="xs-help">
     <div class="xs-hrow"><h2 class="xs-h" id="xs-help">{{ ui('explore.helpers', '소비자 자문단') }}</h2><a class="xs-more" href="{{ url_for('experts_page') }}">{{ ui('common.more', '더 보기') }}{{ go }}</a></div>
     {% if helpers %}
-    <ul class="xs-grid is-3 xs-people">{% for e in helpers[:6] %}
-      <li class="xs-person">
-        {% if e.photo_url %}<img class="xs-av" src="{{ e.photo_url }}" alt="" width="56" height="56" loading="lazy">{% else %}<span class="xs-av" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}
-        <div class="xs-who"><b>{{ e.name }}</b><span class="xi-badge">자문단 · {{ e.field }}</span></div>
-        {% if e.org and e.kind != 'firm' %}<p class="xs-org">{{ e.org }}</p>{% endif %}
-        {% if e.intro %}<p>{{ e.intro }}</p>{% endif %}
-        <span class="xs-n">{{ ui('explore.answers', '남긴 의견') }} <b>{{ e.answers }}</b></span>
-      </li>{% endfor %}
+    <ul class="xs-grid is-4 xs-people">{% for e in helpers[:8] %}
+      {# 운영자 2026-11-03: 위에 큰 사진(아래로 흰색에 스며듦) → 동그란 분야 표시(변호사=저울, 교수=학사모) → 소속 한 줄 → 굵은 이름 #}
+      <li><a class="xs-person" href="{{ url_for('expert_profile', eid=e.id) }}">
+        <span class="xs-pphoto is-t{{ loop.index0 % 4 }}">{% if e.photo_url %}<img src="{{ e.photo_url }}" alt="" width="360" height="300" loading="lazy">{% else %}<span class="xs-pinit" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}</span>
+        <span class="xs-pmark" aria-hidden="true">{% if e.field == '교수' %}<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/></svg>{% else %}<svg viewBox="0 0 24 24"><path d="M12 3v18M7 21h10M4 7h16"/><path d="M6 7l-3 7a3 3 0 006 0zM18 7l-3 7a3 3 0 006 0z"/></svg>{% endif %}</span>
+        <span class="xs-pbody">
+          <span class="xs-org">{{ e.org if e.org and e.kind != 'firm' else '자문단 · ' ~ e.field }}</span>
+          <span class="xs-who"><b>{{ e.name }}</b>{% if e.org and e.kind != 'firm' %}<span class="xi-badge">자문단 · {{ e.field }}</span>{% endif %}</span>
+          {% if e.intro %}<span class="xs-intro">{{ e.intro }}</span>{% endif %}
+        </span>
+      </a></li>{% endfor %}
     </ul>
     {% else %}
     <a class="xs-empty" href="{{ url_for('expert_apply') }}"><b>{{ ui('explore.helpers_empty', '자문단을 모시고 있어요') }}</b><span class="xs-more">{{ ui('explore.helpers_join', '자문단으로 함께하기') }}{{ go }}</span></a>

@@ -434,6 +434,15 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(Image.open(io.BytesIO(self.client.get(photo).data)).size, (400, 400))  # 정사각형으로 잘라서
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'approve', 'id': row['id']}).status_code, 302)
         self.assertIn('자문단 · 교수', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        # 운영자 2026-11-03: 자문단을 누르면 소개 페이지(이력·상담 신청). 승인 전·멈춘 자문단은 안 보임. 상담 신청은 회원만, 돈은 안 받음
+        self.assertEqual(self.client.get('/experts/%d' % row['id']).status_code, 200)
+        self.assertIn('/experts/%d' % row['id'], self.client.get('/explore').get_data(as_text=True))
+        self.assertEqual(self.client.post('/experts/%d/ask' % row['id'], data={'_csrf': 'x', 'body': '환불 문제로 상담하고 싶어요.'}).status_code in (302, 400), True)
+        asker = pro
+        t = self.csrf(asker, '/experts/%d' % row['id'])
+        self.assertEqual(asker.post('/experts/%d/ask' % row['id'], data={'_csrf': t, 'body': '환불을 3주째 못 받고 있어요. 상담하고 싶어요.', 'contact': '010-0000-1111'}).status_code, 302)
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM expert_requests WHERE expert_id=?', (row['id'],)).fetchone()[0], 1)
+        self.assertIn('환불을 3주째', other.get('/expert/apply').get_data(as_text=True))
         # 법무법인 같은 사무소·법인도 등록 (전문 기관 표시)
         firm, fid = self.member_client('firm_sb', '법무법인소보루')
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '법무법인 소보루', 'field': '법무법인'}).status_code, 302)

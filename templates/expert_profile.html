@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{# 운영자 2026-11-03: 자문단 소개 페이지. 사진·이름·소속·한 줄 소개 → 이력 → 남긴 의견 → 상담 신청하기 (돈은 받지 않음, 남긴 글을 그분에게 전함) #}
+{% block title %}{{ e.name }} | {{ ui('experts.title4', '소비자 자문단') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ e.name }} {{ e.field }}{% if e.org %} · {{ e.org }}{% endif %}{% if e.intro %} — {{ e.intro }}{% endif %}{% endblock %}
+{% block content %}
+<main class="xpp"><div class="xpp-in">
+  <section class="xpp-hero">
+    <span class="xpp-ph">{% if e.photo_url %}<img src="{{ e.photo_url }}" alt="{{ e.name }} 사진" width="120" height="120">{% else %}<span aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}</span>
+    <h1 class="xpp-name">{{ e.name }}</h1>
+    <span class="xi-badge">자문단 · {{ e.field }}</span>
+    {% if e.org %}<p class="xpp-org">{{ e.org }}</p>{% endif %}
+    {% if e.intro %}<p class="xpp-intro">{{ e.intro }}</p>{% endif %}
+    <a class="primary xpp-cta" href="#ask">{{ ui('expert.ask_cta', '상담 신청하기') }}</a>
+  </section>
+
+  {% if career %}
+  <section class="xpp-sec" aria-labelledby="xpp-c">
+    <h2 id="xpp-c">{{ ui('expert.career', '이력') }}</h2>
+    <ul class="xpp-career">{% for l in career %}<li>{{ l }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  <section class="xpp-sec" aria-labelledby="xpp-n">
+    <h2 id="xpp-n">{{ ui('expert.notes', '제보에 남긴 의견') }} <b>{{ count }}</b></h2>
+    {% if notes %}<ul class="xpp-notes">{% for m in notes %}
+      <li><a href="{{ url_for('public_case', case_id=m.case_id) }}"><span class="xpp-q">{{ m.subject }}</span><span class="xpp-a">{{ m.body|truncate(140, True, '…') }}</span><small>{{ m.company }}{% if m.company %} · {% endif %}{{ m.created[5:10].replace('-', '.') }}</small></a></li>{% endfor %}
+    </ul>{% else %}<p class="xpp-none">{{ ui('expert.notes_empty', '아직 공개된 의견이 없어요.') }}</p>{% endif %}
+  </section>
+
+  <section class="xpp-sec xpp-ask" id="ask" aria-labelledby="xpp-a">
+    <h2 id="xpp-a">{{ ui('expert.ask_title', '상담 신청') }}</h2>
+    {% if sent %}
+    <div class="xpp-sent"><b>{{ e.name }} 님에게 전했어요</b><p>{{ ui('expert.ask_sent', '답이 오면 적어 주신 연락처나 카카오톡으로 연락이 가요.') }}</p></div>
+    {% elif g.user %}
+    <form class="xpp-form" method="post" action="{{ url_for('expert_ask', eid=e.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <textarea name="body" rows="6" maxlength="1000" required placeholder="{{ ui('expert.ask_ph', '어떤 일인지 적어 주세요. 언제, 어느 업체에서, 무슨 일이 있었는지 적으면 더 정확해요.') }}" aria-label="상담 내용"></textarea>
+      <input name="contact" maxlength="60" placeholder="{{ ui('expert.ask_contact', '연락받을 번호나 이메일 (선택)') }}" aria-label="연락처">
+      <button class="primary" type="submit">{{ ui('expert.ask_send', '보내기') }}</button>
+      <p class="xpp-note">{{ ui('expert.ask_note', '남긴 글은 ' ~ e.name ~ ' 님에게만 전해져요. 이름·주민번호 같은 개인정보는 적지 마세요.') }}</p>
+    </form>
+    {% else %}
+    <a class="primary xpp-login" href="{{ url_for('login', next=url_for('expert_profile', eid=e.id) ~ '#ask') }}">{{ ui('expert.ask_login', '로그인하고 상담 신청하기') }}</a>
+    {% endif %}
+  </section>
+</div></main>
+{% endblock %}
