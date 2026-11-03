@@ -6047,7 +6047,7 @@ class SiteTest(unittest.TestCase):
         html = self.client.get('/reports').get_data(as_text=True)
         self.assertIn('rf-partners', html); self.assertIn('alt="시험 기관"', html); self.assertNotIn('javascript:', html)
         home = self.client.get('/').get_data(as_text=True)
-        if 'hero-wall' in home: self.assertIn('img/orgs/c24.png', home); self.assertNotIn('pt-band', home)  # 운영자 2026-11-03: 홈 사진 아래 띠 대신 로고 4개
+        if 'hero-wall' in home: self.assertIn('img/orgs/c24.png', home); self.assertIn('foodsafetykorea', home); self.assertNotIn('pt-band', home)  # 운영자 2026-11-03: 홈 사진 아래 띠 대신 로고 4개
         with self.site.conn() as db: db.execute('DELETE FROM partners')
 
 if __name__ == '__main__':
