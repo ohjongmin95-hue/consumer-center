@@ -265,3 +265,38 @@ body:has(.hero-wall){overflow-x:clip}
 .rf-photo{align-items:start}
 .pt-track img{height:28px}
 @media(max-width:900px){.rf-wrap{grid-template-columns:1fr}.rf-side{display:none}}
+/* 운영자 2026-11-03: 제보 목록 색이 너무 귤색 → 우리 색은 지키되 토스처럼 차분하게. 귤색은 제보하기·고른 칩·단계 표시에만 */
+.rf-count{background:#f9fafb;border:0;padding:24px 8px}
+.rf-count div+div{border-left:1px solid #eef0f3}
+.rf-count dt{color:#6b7684;font-size:14px;font-weight:600}
+.rf-count dd{font-size:28px;font-weight:700;margin-top:4px}
+.rf-go{border-radius:16px;font-size:22px;font-weight:700;letter-spacing:-.02em}
+.report-tools.rf-tools{position:relative;margin-bottom:6px}
+.report-tools.rf-tools input{flex:1;height:50px;padding:0 16px 0 46px;border:0;border-radius:14px;background:#f2f4f6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b95a1' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5L20 20'/%3E%3C/svg%3E") 16px 50%/20px no-repeat;font-size:16px;color:#191f28}
+.report-tools.rf-tools input:focus{outline:2px solid #ffd8a8;background-color:#fff}
+.report-tools.rf-tools .search-button{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);border:0}
+.rf-tabs a{font-weight:700;color:#b0b8c1;padding:14px 12px}
+.rf-tabs a.on{color:#191f28;border-color:#191f28;border-bottom-width:2px}
+.rf-tabs-row{border-color:#f2f4f6}
+.rf-flabel{color:#8b95a1;font-weight:600}
+.rf-cats a,.rf-frow .rf-cats a{background:#fff;color:#4e5968;border:1px solid #e5e8eb;font-weight:600}
+.rf-cats a:hover{background:#f9fafb;color:#191f28}
+.rf-cats a.on{background:#fff4e6;border-color:#ffc078;color:#e8590c;font-weight:700}
+.rf-list .nn-vc-card{box-shadow:none;border-color:#eef0f3}
+.rf-list .nn-vc-card:hover{box-shadow:0 6px 20px rgba(25,31,40,.07);border-color:#e5e8eb}
+.rf-box{box-shadow:none;border-color:#eef0f3}
+.nn-vc-card .rf-st .step-badge{font-weight:700}
+.nn-vc-card .rf-st.st-5 .step-badge{background:#fff4e6;color:#e8590c}
+.nn-vc-card .rf-st.st-1 .step-badge{background:#f2f4f6;color:#6b7684}
+.nn-vc-card .rf-st.st-6 .step-badge{background:#e7f6ec;color:#2e9d5b}
+/* 사진 없는 제보도 같은 자리를 차분한 회색 칸으로 (카드 높이를 맞춤) */
+.rf-photo{align-items:stretch}
+.rf-photo .nn-vc-card{height:100%}
+.rf-photo .nn-vc-meta{margin-top:auto}
+.nn-vc-photo.is-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:#f9fafb}
+.nn-vc-photo.is-empty svg{width:40px;height:40px;fill:none;stroke:#d1d6db;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.nn-vc-photo.is-empty em{font-style:normal;font-size:13px;font-weight:600;color:#b0b8c1}
+.rf-photo .nn-vc-card .nn-vc-main{flex:0 0 auto}
+/* 운영자 2026-11-03: 휴대폰에서 첫 화면 사진·영상이 세로로 너무 큼 → 줄임 */
+@media(max-width:680px){.hero-wall{min-height:0;height:min(400px,56vh)}.hero-wall .hero-copy h1{font-size:28px}}
+@media(max-width:560px){.nn-vc-photo.is-empty{display:none}.rf-photo .nn-vc-card.has-photo:not(:has(.nn-vc-photo img)){padding-top:16px}}
