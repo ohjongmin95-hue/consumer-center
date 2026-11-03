@@ -67,10 +67,15 @@ if [ -f /etc/systemd/system/soboru-platform.service ]; then
   if [ -f $U ] && ! grep -q -- '--timeout' $U; then sed -i 's#gunicorn --workers 2 #gunicorn --workers 2 --threads 4 --timeout 90 #' $U; systemctl daemon-reload; fi
   systemctl restart soboru-platform
   # 새 버전이 안 뜨면 바로 전 버전으로 자동 복구
-  sleep 3
+  # 운영자 2026-11-03: 3초 만에 한 번만 물어보면 늦게 뜨는 때 멀쩡한 새 버전도 되돌려 버림 → 최대 40초 동안 2초마다 다시 확인
   H="$(grep -E '^BUSINESS_HOST=' /etc/soboru-platform.env 2>/dev/null | cut -d= -f2- || true)"
-  if [ -n "$H" ]; then CODE="$(curl -s -o /dev/null -m 10 -w '%{http_code}' -H "Host: $H" http://127.0.0.1:8100/login || true)"
-  else CODE="$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:8100/biz/login || true)"; fi
+  CODE=000
+  for _ in $(seq 1 20); do
+    sleep 2
+    if [ -n "$H" ]; then CODE="$(curl -s -o /dev/null -m 10 -w '%{http_code}' -H "Host: $H" http://127.0.0.1:8100/login || true)"
+    else CODE="$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:8100/biz/login || true)"; fi
+    [ "$CODE" = "200" ] && break
+  done
   if ! systemctl is-active --quiet soboru-platform || [ "$CODE" != "200" ]; then
     echo "새 버전이 정상으로 뜨지 않아(응답 $CODE) 전 버전으로 되돌려요"; journalctl -u soboru-platform -n 30 --no-pager | grep -v -i -E 'key|token|password' || true
     git -C $APP checkout -q -B "$BRANCH" "$PREV"; systemctl restart soboru soboru-platform; sleep 3
