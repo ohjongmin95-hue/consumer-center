@@ -718,7 +718,10 @@ def report():
     if report_login_needed():
         if request.method=='POST':abort(403)
         flash(ui_text('msg.report_login','로그인하면 바로 제보할 수 있어요.'));return redirect(url_for('login',next=request.full_path.rstrip('?')))
-    if request.method=='GET':return report_form()
+    if request.method=='GET':
+        # 운영자 2026-11-03: 제보센터는 처음부터 대화형. 양식은 '양식으로 쓰기'(?form=1)나 미리 채울 값이 있을 때만
+        if not request.args and not soboru_on():return redirect(url_for('report_talk'))
+        return report_form()
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수를 준비하고 있어요.')
     if request.form.get('website'):abort(400)  # 사람에게는 안 보이는 칸: 자동 등록 프로그램 차단
     keys=('industry','category','company','subject','description','request_text','contact','reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','occurred_on')
