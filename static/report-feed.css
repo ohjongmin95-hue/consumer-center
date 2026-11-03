@@ -1560,3 +1560,4 @@ body:has(main.ct) .site-footer{margin-top:0}
 .org-band li:nth-child(1) img{height:21px}@media(max-width:760px){.org-band li:nth-child(1) img{height:17px}}
 /* 운영자 2026-11-03: AI 상담 칸은 아래 도구 네 칸(갈색·하늘·노랑·민트)·위 순위(귤색)와 겹치지 않는 연보라 */
 .xs-feat-art.is-ai{background:#c4bdf7}
+.org-band li:first-child .org-self{display:grid;justify-items:center;gap:4px}
