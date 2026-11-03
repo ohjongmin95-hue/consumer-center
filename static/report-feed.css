@@ -1177,10 +1177,13 @@ body:not(.sb):has(.xh) .site-header{background:#fff}
 .xs-title{margin:0 0 -32px;font-size:30px;line-height:40px;font-weight:700;color:#191f28}
 .xs-feat{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:56px;color:#191f28;text-decoration:none}
 .xs-feat-art{position:relative;display:flex;justify-content:center;align-items:flex-end;aspect-ratio:16/10;max-width:100%;overflow:hidden;border-radius:24px;background:#EF920E;padding:40px 32px 0;box-sizing:border-box}
-.xs-phone{width:52%;height:88%;padding:10px 10px 0;border-radius:32px 32px 0 0;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.04),0 12px 40px rgba(101,45,28,.25);box-sizing:border-box}
-.xs-screen{height:100%;display:grid;align-content:start;gap:12px;padding:56px 16px 0;border:1px solid #e5e8eb;border-bottom:0;border-radius:24px 24px 0 0;box-sizing:border-box}
+.xs-phone{position:relative;width:50%;height:90%;padding:7px 7px 0;border-radius:44px 44px 0 0;background:linear-gradient(135deg,#9a9ca1,#d9dadc 40%,#8e9095);box-shadow:0 18px 48px rgba(101,45,28,.35);box-sizing:border-box}
+.xs-phone::before{content:"";position:absolute;right:-3px;top:22%;width:3px;height:56px;border-radius:0 2px 2px 0;background:#8e9095}
+.xs-phone::after{content:"";position:absolute;left:-3px;top:16%;width:3px;height:30px;border-radius:2px 0 0 2px;background:#8e9095;box-shadow:0 44px 0 #8e9095}
+.xs-screen{position:relative;height:100%;display:grid;align-content:start;gap:12px;padding:58px 16px 0;border:5px solid #111;border-bottom:0;border-radius:38px 38px 0 0;background:#fff;box-sizing:border-box}
+.xs-screen::before{content:"";position:absolute;left:50%;top:10px;width:30%;height:22px;transform:translateX(-50%);border-radius:12px;background:#111}
 .xs-scr-t{margin:0 0 4px;font-size:15px;line-height:22.5px;font-weight:700;color:#191f28}
-.xs-float{position:absolute;left:12%;top:44%;display:flex;align-items:center;gap:12px;min-width:56%;padding:14px 16px;border-radius:16px;background:#fff;box-shadow:0 8px 28px rgba(0,0,0,.14);box-sizing:border-box}
+.xs-float{position:absolute;left:12%;top:58%;display:flex;align-items:center;gap:12px;min-width:56%;padding:14px 16px;border-radius:16px;background:#fff;box-shadow:0 8px 28px rgba(0,0,0,.14);box-sizing:border-box}
 .xs-float-ic{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#EF920E;color:#fff;font-size:17px;font-weight:700}
 .xs-float div{display:grid;flex:1;min-width:0}.xs-float small{font-size:13px;line-height:19.5px;color:#6b7684}.xs-float b{font-size:17px;line-height:25.5px;font-weight:700;color:#191f28;white-space:nowrap}
 .xs-float svg{flex:none;width:28px;height:28px}.xs-float svg circle{fill:#EF920E}.xs-float svg path{fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
@@ -1221,8 +1224,36 @@ body:not(.sb):has(.xh) .site-header{background:#fff}
 @media(max-width:1023px){.xs-grid.is-4{grid-template-columns:repeat(2,minmax(0,1fr))}.xs-grid.is-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){
   .xs{padding:24px 0 72px}.xs-in{gap:48px;padding-inline:20px}.xs-title{font-size:26px;line-height:35px;margin-bottom:-24px}
-  .xs-feat{grid-template-columns:minmax(0,1fr);gap:20px}.xs-feat-art{padding:24px 20px 0}.xs-phone{width:64%}.xs-screen{padding-top:40px}.xs-float{left:6%;min-width:70%;padding:10px 12px}.xs-float-ic{width:32px;height:32px;font-size:15px}.xs-float b{font-size:15px;line-height:22.5px}
+  .xs-feat{grid-template-columns:minmax(0,1fr);gap:20px}.xs-feat-art{padding:24px 20px 0}.xs-phone{width:62%;border-radius:36px 36px 0 0}.xs-screen{border-radius:30px 30px 0 0}.xs-screen::before{height:18px;top:8px}.xs-screen{padding-top:40px}.xs-float{left:6%;min-width:70%;padding:10px 12px}.xs-float-ic{width:32px;height:32px;font-size:15px}.xs-float b{font-size:15px;line-height:22.5px}
   .xs-feat-copy h2{font-size:22px;line-height:31px}.xs-feat-copy .xs-more{margin-top:0}
   .xs-grid.is-3{grid-template-columns:minmax(0,1fr)}.xs-grid{gap:12px}
   .xs-h{font-size:20px;line-height:29px}
 }
+/* 운영자 2026-11-03: 둘러보기 도구 카드 그림 = 토스처럼 진한 색 바탕 + 기능 화면 (CSS) */
+.xs-pic{position:relative;overflow:hidden}
+.xs-pic.is-brown{background:#652D1C}.xs-pic.is-orange{background:#EF920E}.xs-pic.is-rust{background:#CE6719}.xs-pic.is-cream{background:#F8D59F}
+.xs-ill{position:absolute;inset:0;display:block}
+.xs-ill :is(b,small,i){letter-spacing:0;font-style:normal}
+.xi-sheet,.xi-calc,.xi-word,.xi-doc{position:absolute;display:grid;align-content:start;gap:8px;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);box-sizing:border-box}
+.xi-l{display:block;height:6px;border-radius:3px;background:#e5e8eb}.xi-l.s{width:60%}.xi-l.hl{background:#EF920E}
+/* 사기 전에 확인 */
+.xi-sheet{left:18%;top:22%;width:58%;padding:14px}
+.xi-sheet b{font-size:15px;line-height:22px;color:#191f28}
+.xi-warn{justify-self:start;padding:2px 8px;border-radius:10px;background:#f04452;color:#fff;font-size:11px;line-height:16px;font-weight:700}
+.xi-shield{position:absolute;right:14%;bottom:16%;display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:#EF920E;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+.xi-shield svg,.xi-lens svg{width:34px;height:34px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* 계산기 */
+.xi-calc{left:50%;top:14%;width:56%;transform:translateX(-50%);padding:12px;border-radius:18px 18px 0 0;bottom:-10px}
+.xi-disp{display:grid;justify-items:end;padding:8px 10px;border-radius:10px;background:#f9fafb}
+.xi-disp small{font-size:10px;line-height:14px;color:#6b7684}.xi-disp b{font-size:16px;line-height:22px;color:#191f28}
+.xi-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.xi-keys i{display:block;aspect-ratio:1;border-radius:50%;background:#f2f4f6}.xi-keys i.o{background:#EF920E}
+/* 사전 */
+.xi-book{position:absolute;left:16%;top:20%;width:42%;height:66%;border-radius:6px 14px 14px 6px;background:#652D1C;box-shadow:inset 8px 0 0 rgba(0,0,0,.18),0 10px 24px rgba(0,0,0,.25)}
+.xi-word{right:10%;bottom:16%;width:62%;padding:12px 14px;gap:4px}
+.xi-word b{font-size:15px;line-height:22px;color:#CE6719}.xi-word small{font-size:11px;line-height:16px;color:#4e5968}
+/* 법령 찾기 */
+.xi-doc{left:16%;top:16%;width:54%;height:76%;padding:14px;gap:9px}
+.xi-doc b{font-size:13px;line-height:19px;color:#191f28;margin-bottom:2px}
+.xi-lens{position:absolute;right:14%;bottom:18%;display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:#652D1C;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+.xs-card:hover .xs-ill>*{transition:transform .25s}.xs-card:hover .xi-shield,.xs-card:hover .xi-lens{transform:scale(1.06)}

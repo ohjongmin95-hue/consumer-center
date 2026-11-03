@@ -26,15 +26,34 @@
   <section class="xs-sec" aria-labelledby="xs-tools">
     <h2 class="xs-h" id="xs-tools">{{ ui('explore.tools', '알아 두면 좋아요') }}</h2>
     <div class="xs-grid is-4">
-      {% for href, key, name, sub, cls, icon in [
-        (url_for('check_list'), 'check', '사기 전에 확인', '조심해야 할 업체와 수법', 'is-cream', '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'),
-        (url_for('tools'), 'calc', '계산기', '환불·위약금 얼마인지', 'is-grey', '<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/>'),
-        (url_for('dictionary'), 'dict', '소비자·경제 사전', '어려운 말을 쉽게', 'is-grey', '<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19"/>'),
-        (url_for('law_find'), 'law', '법령 찾기', '조문 원문 그대로', 'is-grey', '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>')] %}
-      <a class="xs-card" href="{{ href }}">
-        <span class="xs-pic {{ cls }}" aria-hidden="true"><svg viewBox="0 0 24 24">{{ icon|safe }}</svg></span>
-        <b>{{ ui('explore.' ~ key, name) }}</b><small>{{ ui('explore.' ~ key ~ '_sub', sub) }}</small>
-      </a>{% endfor %}
+      {# 운영자 2026-11-03: 토스처럼 진한 색 바탕 위에 기능 화면을 그림처럼 (사진·외부 그림 없이 CSS로) #}
+      <a class="xs-card" href="{{ url_for('check_list') }}">
+        <span class="xs-pic is-brown" aria-hidden="true"><span class="xs-ill xs-ill-check">
+          <span class="xi-sheet"><i class="xi-warn">주의</i><b>○○마켓</b><i class="xi-l"></i><i class="xi-l s"></i></span>
+          <span class="xi-shield"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        </span></span>
+        <b>{{ ui('explore.check', '사기 전에 확인') }}</b><small>{{ ui('explore.check_sub', '조심해야 할 업체와 수법') }}</small>
+      </a>
+      <a class="xs-card" href="{{ url_for('tools') }}">
+        <span class="xs-pic is-orange" aria-hidden="true"><span class="xs-ill xs-ill-calc">
+          <span class="xi-calc"><span class="xi-disp"><small>돌려받을 돈</small><b>132,000원</b></span><span class="xi-keys">{% for _ in range(12) %}<i{% if loop.index in (4, 8, 12) %} class="o"{% endif %}></i>{% endfor %}</span></span>
+        </span></span>
+        <b>{{ ui('explore.calc', '계산기') }}</b><small>{{ ui('explore.calc_sub', '환불·위약금 얼마인지') }}</small>
+      </a>
+      <a class="xs-card" href="{{ url_for('dictionary') }}">
+        <span class="xs-pic is-rust" aria-hidden="true"><span class="xs-ill xs-ill-dict">
+          <span class="xi-book"></span>
+          <span class="xi-word"><b>청약철회</b><small>물건을 받고 7일 안에 계약을 없던 일로 하는 것</small></span>
+        </span></span>
+        <b>{{ ui('explore.dict', '소비자·경제 사전') }}</b><small>{{ ui('explore.dict_sub', '어려운 말을 쉽게') }}</small>
+      </a>
+      <a class="xs-card" href="{{ url_for('law_find') }}">
+        <span class="xs-pic is-cream" aria-hidden="true"><span class="xs-ill xs-ill-law">
+          <span class="xi-doc"><b>전자상거래법</b><i class="xi-l"></i><i class="xi-l hl"></i><i class="xi-l s"></i></span>
+          <span class="xi-lens"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span>
+        </span></span>
+        <b>{{ ui('explore.law', '법령 찾기') }}</b><small>{{ ui('explore.law_sub', '조문 원문 그대로') }}</small>
+      </a>
     </div>
   </section>
 
