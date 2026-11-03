@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{# 둘러보기 (운영자 2026-11-03: 헤이마오 '发现'처럼). 토스 TDS: 회색 바탕 위 테두리 없는 흰 덩어리, 버튼 대신 눌러 들어가는 줄·카드 #}
+{% block title %}{{ ui('explore.title', '둘러보기') }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="xh"><div class="wrap">
+  <h1 class="xh-title">{{ ui('explore.title', '둘러보기') }}</h1>
+
+  <nav class="xh-tiles" aria-label="{{ ui('explore.short', '바로가기') }}">
+    <a class="xh-tile" href="{{ url_for('companies_rank') }}">
+      <span class="xh-ic is-rank" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></span>
+      <span class="xh-tile-t"><b>{{ ui('explore.rank', '기업 응대 순위') }}</b><small>{{ ui('explore.rank_sub', '답변이 빠른 기업과 느린 기업') }}</small></span>
+      <svg class="xh-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </a>
+    <a class="xh-tile" href="{{ url_for('check_list') }}">
+      <span class="xh-ic is-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      <span class="xh-tile-t"><b>{{ ui('explore.check', '사기 전에 확인') }}</b><small>{{ ui('explore.check_sub', '조심해야 할 업체와 수법') }}</small></span>
+      <svg class="xh-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </a>
+  </nav>
+
+  <section class="xh-sec" aria-labelledby="xh-help">
+    <div class="xh-head"><h2 id="xh-help">{{ ui('explore.helpers', '소비자 자문단') }}</h2><a href="{{ url_for('experts_page') }}">{{ ui('common.more', '더 보기') }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></div>
+    {% if helpers %}
+    <ul class="xh-people">{% for e in helpers %}
+      <li class="xh-person">
+        {% if e.photo_url %}<img class="xh-av" src="{{ e.photo_url }}" alt="" width="56" height="56" loading="lazy">{% else %}<span class="xh-av" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}
+        <div class="xh-who"><b>{{ e.name }}</b><span>{{ e.field }}{% if e.org and e.kind != 'firm' %} · {{ e.org }}{% endif %}</span></div>
+        {% if e.intro %}<p>{{ e.intro }}</p>{% endif %}
+        <span class="xh-n">{{ ui('explore.answers', '남긴 의견') }} <b>{{ e.answers }}</b></span>
+      </li>{% endfor %}
+    </ul>
+    {% else %}
+    <a class="xh-empty" href="{{ url_for('expert_apply') }}"><b>{{ ui('explore.helpers_empty', '자문위원을 모시고 있어요') }}</b><span>{{ ui('explore.helpers_join', '자문위원으로 함께하기') }}</span></a>
+    {% endif %}
+  </section>
+
+  <section class="xh-sec" data-xh>
+    <div class="xh-tabs" role="tablist">
+      <button type="button" role="tab" class="on" aria-selected="true" data-xh-t="0">{{ ui('explore.tab_hot', '공감 많은 제보') }}</button>
+      {% if news %}<button type="button" role="tab" aria-selected="false" data-xh-t="1">{{ ui('explore.tab_news', '최신 소식') }}</button>{% endif %}
+    </div>
+    <ul class="xh-list" data-xh-p="0">{% for r in hot %}
+      <li><a href="{{ url_for('public_case', case_id=r.no) }}"><b>{{ r.title }}</b><span>{{ r.company or '' }}{% if r.cat %} · {{ r.cat }}{% endif %} · {{ r.created[5:].replace('-', '.') }}</span></a></li>
+    {% else %}<li class="xh-none">{{ ui('explore.hot_empty', '아직 공개된 제보가 없어요.') }}</li>{% endfor %}</ul>
+    {% if news %}<ul class="xh-list" data-xh-p="1" hidden>{% for a in news %}
+      <li><a href="https://soboru.co.kr/life/{{ a.id }}"><b>{{ a.title }}</b><span>{{ a.category }} · {{ a.at[5:10].replace('-', '.') }}</span></a></li>
+    {% endfor %}</ul>{% endif %}
+  </section>
+</div></main>
+<script>
+(function(){var w=document.querySelector('[data-xh]');if(!w)return;var ts=w.querySelectorAll('[data-xh-t]'),ps=w.querySelectorAll('[data-xh-p]');
+ts.forEach(function(t){t.addEventListener('click',function(){ts.forEach(function(x){var on=x===t;x.classList.toggle('on',on);x.setAttribute('aria-selected',on?'true':'false');});ps.forEach(function(p){p.hidden=p.dataset.xhP!==t.dataset.xhT;});});});})();
+</script>
+{% endblock %}

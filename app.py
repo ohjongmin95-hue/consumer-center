@@ -113,12 +113,14 @@ def press_step(rows):
     rows=[{**r,'body':note.sub('',r.get('body') or '').strip()} for r in rows]
     return rows+[dict(zip(('title','icon','body'),site_content.PRESS_STEP))]
 def experts_menu(rows):
-    """운영자 2026-11-03: 상단 메뉴 '소비자게시판' 자리에 '전문가' (저장된 메뉴에도 적용, 게시판 주소는 그대로 열림)."""
-    # 운영자 2026-11-03 나중: '전문가'라는 이름이 어색해서 '도와주는 분들' (헤이마오 '帮帮官'처럼)
+    """운영자 2026-11-03 나중: '전문가'·'소비자게시판' 자리를 '둘러보기'(헤이마오 发现처럼: 기업 순위·자문단·소식)로 바꿈. 저장된 메뉴에도 적용."""
     if not isinstance(rows,list):return rows
-    if any(r.get('page')=='experts' for r in rows):return [{**r,'label':EXPERTS_MENU} if r.get('page')=='experts' and r.get('label')=='전문가' else r for r in rows]
-    return [{**r,'label':EXPERTS_MENU,'page':'experts','url':''} if r.get('page')=='board' else r for r in rows]
-EXPERTS_MENU='도와주는 분들'
+    out=[];seen=False
+    for r in rows:
+        if r.get('page') in ('experts','board','explore'):
+            if not seen:out.append({**r,'label':'둘러보기' if r.get('page')!='explore' else r.get('label') or '둘러보기','page':'explore','url':''});seen=True
+        else:out.append(r)
+    return out
 def load_lists():
     out=_load_lists();out['process_steps']=press_step(out.get('process_steps'))
     if current_face()=='jebo':out['menu']=experts_menu(out.get('menu'))
@@ -165,6 +167,7 @@ def menu_href(item):
     if page in ('terms','privacy'):return url_for('policy_page',page=page)
     if page=='groups' and not GROUPS_ON:return ''  # 공동 대응이 꺼져 있으면 메뉴에서 숨김
     if page=='experts':return url_for('experts_page')
+    if page=='explore':return url_for('explore')
     if page=='ask':return url_for('law_ask') if 'law_ask' in app.view_functions else ''  # AI 소비자 상담 (운영자 2026-11-03 제보센터로 옮김)
     if page=='rank':return url_for('companies_rank')
     if page=='check':return url_for('check_list')

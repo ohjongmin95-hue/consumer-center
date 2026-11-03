@@ -235,7 +235,7 @@ PROCESS_STEPS = [
     ('답변·중재', 'bell', '기업 답변을 **제보자에게 전달**하고, 해결되도록 **중재**해요.'),
     ('결과 안내', 'check', '처리 결과를 **내 제보 조회**에서 안내해요. 해결되지 않으면 **한국소비자원(1372)** 피해구제를 안내해요.'),
 ]
-PRESS_STEP = ('기사화', 'news', '여러 사람이 겪는 문제는 **기사로 다뤄질 수 있어요**. 이름·연락처는 가리고 **기업 입장도 함께** 전해요.')
+PRESS_STEP = ('기사화', 'news', '제보는 **기사로도 알려요**. 이름·연락처는 가리고 **기업 입장도 함께** 전해요.')
 PROCESS_STEPS.append(PRESS_STEP)
 STATUSES = ['접수', '검토 중', '추가 확인', '기업 답변 대기', '기업 답변 도착', '종결']
 # ---- 소비자제보센터 화면(consumerjebo.co.kr) 전용 목록: 상단 메뉴·메인 구성·예시 카드 ----
@@ -250,7 +250,7 @@ SAMPLE_REPORTS = [
     ('무료체험 후 자동결제 안내가 없었어요', '구독·결제', '○○TV', '검토 중'),
 ]
 MENU_PAGES = [
-    ('reports', '제보 목록'), ('companies', '기업별 제보'), ('rank', '기업 응대 순위'), ('check', '사기 전에 확인'), ('guide', '이용 안내'), ('process', '처리 절차'), ('experts', '도와주는 분들'), ('ask', 'AI 소비자 상담'), ('board', '소비자게시판'),
+    ('reports', '제보 목록'), ('companies', '기업별 제보'), ('rank', '기업 응대 순위'), ('check', '사기 전에 확인'), ('guide', '이용 안내'), ('process', '처리 절차'), ('explore', '둘러보기'), ('experts', '소비자 자문단'), ('ask', 'AI 소비자 상담'), ('board', '소비자게시판'),
     ('faq', '자주 묻는 질문'), ('report', '제보하기'), ('lookup', '내 제보 조회'), ('types', '제보 유형'),
     ('home', '홈 (메인 화면)'), ('terms', '이용약관'), ('privacy', '개인정보 처리방침'), ('takedown', '게시중단 요청'),
     ('groups', '공동 대응 (집단 피해)'), ('custom', '직접 입력한 주소'),
@@ -261,7 +261,7 @@ HOME_BLOCKS = [
     ('groups', '진행 중인 공동 대응 (+ 제안하기)'),
 ]
 LEGACY_NAV = [('nav.home', 'reports', '소비자 제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
-              ('nav.experts', 'experts', '도와주는 분들'), ('nav.ask', 'ask', 'AI 상담'), ('nav.faq', 'faq', '자주 묻는 질문')]
+              ('nav.explore', 'explore', '둘러보기'), ('nav.ask', 'ask', 'AI 상담'), ('nav.faq', 'faq', '자주 묻는 질문')]
 LISTS = [
     ('menu', '소비자제보센터 상단 메뉴', 'consumerjebo.co.kr 맨 위 메뉴예요. 이름, 순서, 연결할 페이지를 정할 수 있고 외부 주소(블로그 등)도 넣을 수 있어요.',
      [('label', '메뉴 이름', {}), ('page', '연결할 페이지', {'choices': MENU_PAGES}), ('url', '직접 입력한 주소 ("직접 입력한 주소"를 골랐을 때만, 예: https://blog.naver.com/...)', {})], 1),

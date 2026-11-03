@@ -382,22 +382,33 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(rb['official_email'], 'boss@webb.com')  # 관리자가 넣은 메일은 그대로
         self.assertIn('pr@webb.com(홍보팀)', self.login_admin().get('/admin/companies').get_data(as_text=True))
 
+    def test_explore_hub(self):
+        # 운영자 2026-11-03: 메뉴 '전문가' 대신 '둘러보기' 허브 (기업 순위·사기 전에 확인·소비자 자문단·공감 많은 제보)
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        page = self.client.get('/explore', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        for text in ('xh-title', '기업 응대 순위', '사기 전에 확인', '소비자 자문단'):
+            self.assertIn(text, page)
+        home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertIn('href="/explore"', home); self.assertNotIn('>전문가<', home)
+
     def test_experts(self):
         # 운영자 2026-11-03: 전문가를 한 명씩 가입시키기. 초대 링크로 들어오면 바로 전문가, 직접 신청은 관리자 승인 뒤. 댓글에 전문가 표시
         adm = self.login_admin()
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '김변호', 'field': '변호사', 'org': '소보루 법률사무소'}).status_code, 302)
         with self.site.conn() as db: token = db.execute("SELECT token FROM experts WHERE name='김변호'").fetchone()[0]
         self.assertIn('/expert/join/' + token, adm.get('/admin/experts').get_data(as_text=True))
-        self.assertIn('/login', self.client.get('/expert/join/' + token).headers['Location'])  # 로그인부터
+        intro = self.client.get('/expert/join/' + token)  # 운영자 2026-11-03: 로그인 없이 토스식 초대 소개부터, 버튼은 로그인 뒤 입력 단계로
+        self.assertEqual(intro.status_code, 200); self.assertIn('xi-title', intro.get_data(as_text=True)); self.assertIn('/login?next=', intro.get_data(as_text=True))
+        self.assertIn('/login', self.client.get('/expert/join/' + token + '?step=form').headers['Location'])
         pro, pid = self.member_client('pro_kim', '김변')
-        page = pro.get('/expert/join/' + token).get_data(as_text=True)
+        page = pro.get('/expert/join/' + token + '?step=form').get_data(as_text=True)
         self.assertIn('김변호 님', page); self.assertIn('value="소보루 법률사무소"', page)
-        self.assertEqual(self.post_form(pro, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'license_no': '12345'}).status_code, 200)  # 동의 없으면 다시
+        self.assertEqual(self.post_form(pro, '/expert/join/' + token + '?step=form', {'name': '김변호', 'field': '변호사', 'license_no': '12345'}).status_code, 200)  # 동의 없으면 다시
         from PIL import Image
         pic = io.BytesIO(); Image.new('RGB', (600, 300), 'blue').save(pic, 'JPEG'); pic.seek(0)
-        self.assertEqual(self.post_form(pro, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'license_no': '12345', 'agree': '1', 'photo': (pic, 'me.jpg')}).status_code, 302)
+        self.assertEqual(self.post_form(pro, '/expert/join/' + token + '?step=form', {'name': '김변호', 'field': '변호사', 'license_no': '12345', 'agree': '1', 'photo': (pic, 'me.jpg')}).status_code, 302)
         self.assertEqual(pro.get('/expert/join/' + token).status_code, 404)  # 링크는 한 번만
-        self.assertIn('전문가 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
+        self.assertIn('자문위원 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
         # 직접 신청은 승인 전까지 표시 없음
         other, oid = self.member_client('pro_lee', '이사정')
         self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '손해사정사', 'agree': '1',
@@ -412,23 +423,23 @@ class SiteTest(unittest.TestCase):
             token2 = self.csrf(c, '/reports/%d' % cid)
             self.assertEqual(c.post('/reports/%d/comment' % cid, data={'_csrf': token2, 'body': body}).status_code, 302)
         page = self.client.get('/reports/%d' % cid).get_data(as_text=True)
-        self.assertIn('전문가 · 변호사', page); self.assertNotIn('전문가 · 손해사정사', page)
+        self.assertIn('자문위원 · 변호사', page); self.assertNotIn('자문위원 · 손해사정사', page)
         photo = re.search(r'src="(/expert/\d+/photo\.jpg[^"]*)"', page)[1]
         self.assertEqual(Image.open(io.BytesIO(self.client.get(photo).data)).size, (400, 400))  # 정사각형으로 잘라서
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'approve', 'id': row['id']}).status_code, 302)
-        self.assertIn('전문가 · 손해사정사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertIn('자문위원 · 손해사정사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         # 법무법인 같은 사무소·법인도 등록 (전문 기관 표시)
         firm, fid = self.member_client('firm_sb', '법무법인소보루')
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '법무법인 소보루', 'field': '법무법인'}).status_code, 302)
         with self.site.conn() as db: ft = db.execute("SELECT token,kind FROM experts WHERE name='법무법인 소보루'").fetchone()
         self.assertEqual(ft['kind'], 'firm')
-        self.assertEqual(self.post_form(firm, '/expert/join/' + ft['token'], {'kind': 'firm', 'name': '법무법인 소보루', 'field': '법무법인', 'license_no': '129-14-81596', 'agree': '1'}).status_code, 302)
+        self.assertEqual(self.post_form(firm, '/expert/join/' + ft['token'] + '?step=form', {'kind': 'firm', 'name': '법무법인 소보루', 'field': '법무법인', 'license_no': '129-14-81596', 'agree': '1'}).status_code, 302)
         token3 = self.csrf(firm, '/reports/%d' % cid)
         firm.post('/reports/%d/comment' % cid, data={'_csrf': token3, 'body': '소비자 분쟁 상담을 돕고 있어요.'})
-        self.assertIn('전문 기관 · 법무법인', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertIn('자문 기관 · 법무법인', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         with self.site.conn() as db: kim = db.execute('SELECT id FROM experts WHERE user_id=?', (pid,)).fetchone()[0]
         self.post_form(adm, '/admin/experts', {'act': 'stop', 'id': kim})
-        self.assertNotIn('전문가 · 변호사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertNotIn('자문위원 · 변호사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         self.assertEqual(self.client.get(photo).status_code, 404)  # 멈추면 사진도 안 보임
 
     def test_report_talk_ai_draft(self):
