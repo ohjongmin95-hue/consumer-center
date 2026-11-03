@@ -274,7 +274,7 @@ class SiteTest(unittest.TestCase):
         # 운영자 2026-11-03: 첫 화면 기본 = 둥근 배너 + '대화로 제보하기' 영상, '실제 제보 영상' 글씨 없음
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
         home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
-        self.assertIn('hero-banner', home); self.assertIn('video/hero-talk.mp4', home); self.assertNotIn('실제 제보 영상', home)
+        self.assertIn('hero-device', home); self.assertIn('video/talk-screen.mp4', home); self.assertNotIn('실제 제보 영상', home)
 
     def test_hero_photos_wall(self):
         # 첫 화면 사진 (운영자 2026-11-03): 관리자가 고른 제보 사진의 가린 사본만 공개, 3장부터 제보센터 첫 화면 뒤에 깔림
