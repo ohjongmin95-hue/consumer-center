@@ -12,6 +12,9 @@ import datetime
 import json
 import os
 import re
+import secrets
+import urllib.error
+import urllib.request
 
 import company_fix
 from flask import abort, flash, g, jsonify, redirect, render_template, request, url_for
@@ -22,6 +25,9 @@ MAX_IMAGES = 3
 MAX_IMAGE_BYTES = 1_500_000  # 화면에서 1024px JPEG로 줄여 보내므로 넉넉함
 MAX_STORY = 2000
 MAX_QA = 8
+STT_MODEL = 'gpt-4o-mini-transcribe'  # 말로 입력: 휴대폰 브라우저 받아쓰기는 네이버 앱 등에서 안 돼서 녹음 파일을 서버에서 글로 바꿈. REPORT_STT_MODEL로 바꿀 수 있음
+MAX_AUDIO = 8_000_000
+AUDIO_EXT = ('webm', 'mp4', 'm4a', 'ogg', 'wav', 'mp3', 'aac')
 IMAGE_TYPES = {b'\xff\xd8\xff': 'image/jpeg', b'\x89PNG': 'image/png', b'RIFF': 'image/webp'}
 
 SYSTEM = """너는 소비자 피해 제보 사이트 {site}의 접수 도우미다. 소비자가 말하듯 적은 글(받아쓰기라 맞춤법이 틀릴 수 있음)과 사진, 앞서 주고받은 질문·답을 보고 제보서 초안을 만든다.
@@ -29,12 +35,13 @@ SYSTEM = """너는 소비자 피해 제보 사이트 {site}의 접수 도우미�
 {{"summary": "확인 질문 한 문장. 예: 'OO에서 산 운동화 환불을 거절당한 일로 제보하시는 거죠?'",
  "industry": "업종 목록 중 하나(모르면 빈 문자열)", "category": "유형 목록 중 하나(모르면 빈 문자열)",
  "company": "업체·서비스 이름(모르면 빈 문자열)", "occurred_on": "YYYY-MM-DD(글에 날짜가 있을 때만, 아니면 빈 문자열)",
- "subject": "제목 한 줄, 40자 안. 제보자 글을 그대로 붙이지 말고 '업체 + 무슨 문제'로 깔끔하게. 예: '쿠팡 주문 상품 2주째 배송 안 됨'", "description": "피해 내용. 제보자 1인칭 존댓말(~했어요), 육하원칙(언제·어디서(업체)·무엇을·어떻게·왜 문제인지·업체가 어떻게 대응했는지)이 드러나게 시간 순서로 4~8문장, 금액·날짜·주고받은 말 등 사실 위주. 사진에서 읽은 사실(상품명·금액·날짜·파손 모습)도 넣을 것. 지어내지 말 것",
+ "subject": "제목 한 줄, 40자 안. 소비자가 게시판에 직접 쓴 글 제목처럼 자연스러운 해요체. 업체와 무슨 일인지가 드러나게. 예: '쿠팡에서 주문한 운동화가 2주째 안 와요'", "description": "게시글 본문. 제보자가 자기 일을 직접 이야기하듯 1인칭 해요체로, 겪은 순서대로 4~8문장. 언제·어느 업체에서·무엇을·어떻게 됐는지·업체가 뭐라고 했는지와 금액·날짜·주고받은 말이 자연스럽게 들어가게. 사진에서 읽은 사실(상품명·금액·날짜·파손 모습)도 넣을 것. 지어내지 말 것",
  "request_text": "원하는 해결 한두 문장(글에 없으면 상황에 맞게 짐작)", "request_options": ["원하는 해결 후보 2~4개, 각 8자 안. 예: 전액 환불, 교환, 수리, 사과"],
  "questions": [{{"q": "짧은 질문", "options": ["버튼 2~4개, 각 12자 안"]}}]}}
 규칙:
 - questions는 제보에 꼭 필요한데 모르는 것만, 최대 2개. 1순위 업체 이름, 2순위 무슨 일이 있었는지 핵심(무엇을·언제·얼마), 3순위 업체에 이미 연락해 봤는지. 이미 답한 것은 다시 묻지 않는다. 충분하면 빈 배열.
 - 받아쓰기처럼 제보자 글을 그대로 옮기지 않는다 (운영자 2026-11-03). 말투·맞춤법·띄어쓰기를 고치고, 반말·구어('안와', '모래')는 정돈된 존댓말 문장으로 바꾸고, 같은 말 반복은 한 번으로 줄인다. 글이 짧아도 질문·답에서 알게 된 사실을 모두 넣어 읽기 좋은 문단으로 쓴다. 다만 없는 사실은 지어내지 않는다.
+- 제목과 본문은 소비자가 게시판에 직접 올린 글처럼 쓴다. AI가 정리한 티가 나면 안 된다 (운영자 2026-11-03). 머리말·소제목·번호·글머리표·'요약하면', '정리하면', '다음과 같아요', '해당 업체', '상기', '본인은' 같은 보고서 말투를 쓰지 않는다. 항목을 나열하지 말고 이어지는 이야기 한 문단(길면 두 문단)으로 쓴다. 제보자가 쓴 표현과 느낌('너무 답답해요', '황당했어요')은 차분하게 살린다. 모든 문장을 같은 길이·같은 모양으로 맞추지 않는다.
 - 글이 짧으면(예: '배송이 안 와', '환불 안 해줌') 초안을 억지로 채우지 말고 꼭 되묻는다. 예: 배송 문제면 '어디서 무엇을 주문하셨어요?'(업체), '주문한 지 얼마나 됐어요?'(options: 3일 안, 1주일쯤, 2주 넘게, 한 달 넘게), '업체에 연락해 보셨어요?'(options: 연락 안 됨, 기다리래요, 아직 안 해봤어요).
 - 업체 이름을 묻는 질문의 options는 빈 배열로 둔다(직접 입력). 다른 질문은 고르기 쉬운 버튼을 준다.
 - 사진 속 이름·전화번호·주소·주문번호·카드번호 같은 개인정보는 옮겨 적지 않는다.
@@ -123,6 +130,40 @@ def install(S):
             last = '%s %s %s' % (m, st, str((res or {}).get('error', {}).get('message', '') if isinstance(res, dict) else '')[:120])
             app.logger.warning('report talk AI try failed: %s', last)
         raise RuntimeError('AI ' + last)
+
+    @app.route('/report/talk/stt', methods=['POST'])
+    def report_talk_stt():
+        """마이크로 녹음한 말을 글로 바꿈 (운영자 2026-11-03: 네이버 앱에서 음성 입력이 안 됨)."""
+        if S.report_login_needed(): return jsonify(ok=False, error='login'), 403
+        f = request.files.get('audio')
+        if not f: return jsonify(ok=False, error='empty'), 400
+        data = f.read(MAX_AUDIO + 1)
+        if len(data) > MAX_AUDIO: return jsonify(ok=False, error='big'), 413
+        if len(data) < 800: return jsonify(ok=False, error='short'), 400
+        key = ai_key()
+        if not key: return jsonify(ok=False, error='ai')
+        with conn() as db:
+            if S.recent_count(db, 'report_talk_hits', 60) >= PER_HOUR: return jsonify(ok=False, error='limit'), 429
+            db.execute('INSERT INTO report_talk_hits(ip_hash,created) VALUES(?,?)', (S.ip_hash(), datetime.datetime.now().isoformat(timespec='seconds')))
+        ext = (f.filename or '').rsplit('.', 1)[-1].lower()
+        if ext not in AUDIO_EXT: ext = 'webm'
+        model = os.getenv('REPORT_STT_MODEL', '').strip() or STT_MODEL
+        b = '----sb' + secrets.token_hex(12)
+        parts = []
+        for k, v in (('model', model), ('language', 'ko'), ('response_format', 'json'), ('prompt', '소비자 피해 제보. 업체 이름, 날짜, 금액, 환불, 배송, 교환, 고객센터.')):
+            parts.append(('--%s\r\nContent-Disposition: form-data; name="%s"\r\n\r\n%s\r\n' % (b, k, v)).encode())
+        parts.append(('--%s\r\nContent-Disposition: form-data; name="file"; filename="voice.%s"\r\nContent-Type: application/octet-stream\r\n\r\n' % (b, ext)).encode() + data + b'\r\n')
+        body = b''.join(parts) + ('--%s--\r\n' % b).encode()
+        req = urllib.request.Request('https://api.openai.com/v1/audio/transcriptions', data=body, method='POST',
+                                     headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'multipart/form-data; boundary=' + b})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r: res = json.loads(r.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            app.logger.warning('report talk STT failed: %s %s', e.code, e.read()[:200]); return jsonify(ok=False, error='ai')
+        except Exception as e:
+            app.logger.warning('report talk STT failed: %s', str(e)[:120]); return jsonify(ok=False, error='ai')
+        text = ' '.join(str(res.get('text', '')).split())[:MAX_STORY]
+        return jsonify(ok=bool(text), text=text)
 
     @app.route('/report/talk/ai', methods=['POST'])
     def report_talk_ai():

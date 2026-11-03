@@ -14,7 +14,7 @@
   {% if block.kind == 'process_cards' %}
   {% if page == 'process' and not is_soboru() %}{% include 'process_story.html' %}{% else %}{% include 'process_cards.html' %}{% endif %}
   {% elif block.kind == 'process_note' %}
-  {% if txt('process.note') %}<p class="process-note">{{ txt('process.note') }} <a href="{{ url_for('lookup') }}">{{ ui('process.lookup_link', '내 제보 조회 →') }}</a></p>{% endif %}
+  {% if txt('process.note') and is_soboru() %}{# 운영자 2026-11-03: 제보센터에선 '로그인하면 내 제보에서…' 줄 뺌 #}<p class="process-note">{{ txt('process.note') }} <a href="{{ url_for('lookup') }}">{{ ui('process.lookup_link', '내 제보 조회 →') }}</a></p>{% endif %}
   {% elif block.kind == 'faq_list' and not is_soboru() %}
   {% include 'faq_board.html' %}
   {% elif block.kind == 'faq_list' %}

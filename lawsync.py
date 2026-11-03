@@ -54,6 +54,7 @@ OPTIONAL_LAWS = []
 # 조문이 아주 많은 법은 소비자 피해와 닿는 부분만 (key: (첫 조, 끝 조))
 ARTICLE_RANGE = {'commerce': (125, 150)}   # 상법 제2편 제9장 운송업 (택배 분실·파손)
 APPENDIX_KEY = 'kca_appx'
+BUNDLED = [ROOT / 'platform_app' / 'kca_guides.json', ROOT / 'platform_app' / 'kca_appendix.json']  # 저장소에 같이 넣어 둔 별표·한국소비자원 안내
 APPENDIX_SOURCE = 'https://www.law.go.kr/행정규칙/소비자분쟁해결기준'
 TAG = re.compile(r'\s*<(?:개정|신설|전문개정|본조신설|제목개정|타법개정)[^>]*>')
 
@@ -97,7 +98,8 @@ def corpus_v2(store):
     순서: 기본 모음 < 올린 PDF < Open API 현행 원문 < 분쟁해결기준 별표."""
     spec = importlib.util.spec_from_file_location('jebo_law_corpus_v2_' + hashlib.sha1(str(store.dir).encode()).hexdigest()[:6], ROOT / 'platform_app' / 'law_corpus.py')
     mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
-    for p in (store.extra, store.synced, store.appendix): mod.add_extra(p)
+    # 운영자 2026-11-03: 소비자분쟁해결기준 별표(고시 제2025-14호)와 한국소비자원 안내(악덕상술·행동요령)는 저장소에 같이 넣어 둠. 관리자가 별표를 새로 올리면 그게 우선
+    for p in (store.extra, store.synced, *BUNDLED, store.appendix): mod.add_extra(p)
     return mod
 
 

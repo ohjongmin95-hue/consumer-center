@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 {# 전문가 (운영자 2026-11-03: 상단 메뉴 '소비자게시판' 자리). 수수료·수임료 없이 제보에 의견을 남기는 전문가를 소개만 함. #}
-{% block title %}{{ ui('experts.title', '전문가') }} | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ ui('experts.title4', '소보루 자문단') }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="page xp-page"><div class="wrap">
-  <h1 class="page-title">{{ ui('experts.title', '전문가') }}</h1>
+  <h1 class="page-title">{{ ui('experts.title4', '소보루 자문단') }}</h1>
 
   {% macro card(e) %}
-  <li class="xp-card">
+  <li><a class="xp-card" href="{{ url_for('expert_profile', eid=e.id) }}">
     {% if e.photo_url %}<img class="xp-av" src="{{ e.photo_url }}" alt="" width="64" height="64" loading="lazy">{% else %}<span class="xp-av" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}
     <div class="xp-who">
       <b>{{ e.name }}</b>
@@ -14,18 +14,18 @@
     </div>
     {% if e.intro %}<p class="xp-intro">{{ e.intro }}</p>{% endif %}
     <span class="xp-n">{{ ui('experts.answers', '제보 의견') }} <b>{{ e.answers }}</b></span>
-  </li>
+  </a></li>
   {% endmacro %}
 
   {% if people or firms %}
-  {% if people %}<section class="xp-sec" aria-labelledby="xp-p"><h2 id="xp-p">{{ ui('experts.people', '함께하는 전문가') }}</h2><ul class="xp-grid">{% for e in people %}{{ card(e) }}{% endfor %}</ul></section>{% endif %}
+  {% if people %}<section class="xp-sec" aria-labelledby="xp-p"><h2 id="xp-p">{{ ui('experts.people4', '활동 중인 자문단') }}</h2><ul class="xp-grid">{% for e in people %}{{ card(e) }}{% endfor %}</ul></section>{% endif %}
   {% if firms %}<section class="xp-sec" aria-labelledby="xp-f"><h2 id="xp-f">{{ ui('experts.firms', '함께하는 전문 기관') }}</h2><ul class="xp-grid">{% for e in firms %}{{ card(e) }}{% endfor %}</ul></section>{% endif %}
   {% else %}
-  <div class="xp-empty"><b>{{ ui('experts.empty', '전문가를 모시고 있어요') }}</b><p>{{ ui('experts.empty_sub', '변호사·손해사정사 같은 전문가가 제보에 의견을 남겨 드릴 예정이에요.') }}</p></div>
+  <div class="xp-empty"><b>{{ ui('experts.empty4', '자문단을 모시고 있어요') }}</b><p>{{ ui('experts.empty_sub2', '기자·변호사·손해사정사가 제보에 의견을 남겨 드릴 예정이에요.') }}</p></div>
   {% endif %}
 
   {% if recent %}
-  <section class="xp-sec" aria-labelledby="xp-r"><h2 id="xp-r">{{ ui('experts.recent', '최근 전문가 의견') }}</h2>
+  <section class="xp-sec" aria-labelledby="xp-r"><h2 id="xp-r">{{ ui('experts.recent4', '자문단이 남긴 의견') }}</h2>
     <ul class="xp-recent">{% for m in recent %}<li><a href="{{ url_for('public_case', case_id=m.case_id) }}">
       <span class="xp-r-top">{% if m.expert %}<b>{{ m.expert.name }}</b> <span class="xp-field">{{ m.expert.field }}</span>{% endif %}<span class="xp-r-co">{{ m.company }}</span></span>
       <span class="xp-r-sub">{{ m.subject }}</span>
@@ -35,8 +35,8 @@
   {% endif %}
 
   <section class="xp-join">
-    <div><b>{{ ui('experts.join_title', '전문가이신가요?') }}</b><p>{{ ui('experts.join_text', '수수료나 광고비 없이, 제보에 의견을 남겨 소비자를 도와주세요.') }}</p></div>
-    <a class="primary" href="{{ url_for('expert_apply') }}">{{ ui('experts.join_btn', '전문가 등록') }}</a>
+    <div><b>{{ ui('experts.join_title4', '자문단으로 함께해요') }}</b><p>{{ ui('experts.join_text', '제보에 의견을 남겨 소비자를 도와주세요.') }}</p></div>
+    <a class="primary" href="{{ url_for('expert_apply') }}">{{ ui('experts.join_btn4', '자문단 등록') }}</a>
   </section>
 </div></main>
 <style>
@@ -44,6 +44,7 @@
 .xp-sec{margin-top:36px}.xp-sec h2{margin:0 0 14px;font-size:20px;font-weight:800;letter-spacing:-.02em}
 .xp-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
 .xp-card{display:grid;grid-template-columns:56px minmax(0,1fr);gap:4px 14px;align-content:start;padding:20px;border:1px solid #e5e8eb;border-radius:20px;background:#fff}
+a.xp-card{color:inherit;text-decoration:none;height:100%;box-sizing:border-box}a.xp-card:hover{background:#f9fafb}
 .xp-av{grid-row:span 2;width:56px;height:56px;border-radius:50%;object-fit:cover;background:#fff4e6;color:#e67700;font-weight:800;font-size:20px;display:inline-flex;align-items:center;justify-content:center}
 .xp-who{display:grid;align-content:center;min-width:0}.xp-who b{font-size:17px}
 .xp-field{color:#6b7684;font-size:13.5px;font-weight:600}

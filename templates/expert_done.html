@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{# 자문단 등록을 마친 화면 (운영자 2026-11-03: 로그인 없이 등록 → 댓글용 계정은 여기서 한 번만 이음) #}
+{% block title %}{{ ui('xf.done_tab', '자문단 등록') }} | {{ txt('site.name') }}{% endblock %}
+{% block content %}
+<main class="xf xf-done"><div class="xf-done-in">
+  <span class="xf-done-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+  <h1 class="xf-title">{% if status == 'approved' %}{{ ui('xf.done_ok', '소보루 자문단이 됐어요') }}{% else %}{{ ui('xf.done_wait', '신청을 받았어요') }}{% endif %}</h1>
+  <ul class="xi-list xf-next">
+    {% if status != 'approved' %}<li><span class="xh-ic is-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><div><b>{{ ui('xf.next1', '자격증 파일을 확인할게요') }}</b><span>{{ ui('xf.next1_sub', '확인이 끝나면 연락처로 알려 드려요') }}</span></div></li>{% endif %}
+    {% if login_url %}<li><span class="xh-ic is-talk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><div><b>{{ ui('xf.next2', '댓글을 달 계정을 이어 주세요') }}</b><span>{{ ui('xf.next2_sub', '카카오로 로그인하면 한 번에 이어져요') }}</span></div></li>{% endif %}
+  </ul>
+  <div class="xi-cta">{% if login_url %}<a class="primary xi-go" href="{{ login_url }}">{{ ui('xf.claim', '로그인하고 계정 잇기') }}</a>{% else %}<a class="primary xi-go" href="{{ url_for('reports') }}">{{ ui('xf.to_reports', '제보 보러 가기') }}</a>{% endif %}</div>
+</div></main>
+{% endblock %}

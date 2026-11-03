@@ -1,0 +1,5 @@
+{# 운영자 2026-11-03: 상단 메뉴 '고객센터' = AI 상담 + 자주 묻는 질문 두 탭 #}
+<nav class="help-tabs" aria-label="{{ ui('help.nav', '고객센터') }}"><div class="help-tabs-in">
+  {% set ask_href = menu_href({'page': 'ask'}) %}{% if ask_href %}<a href="{{ ask_href }}"{% if help_on == 'ask' %} class="on" aria-current="page"{% endif %}>{{ ui('help.ask', 'AI 상담') }}</a>{% endif %}
+  <a href="{{ url_for('info_page', page='faq') }}"{% if help_on == 'faq' %} class="on" aria-current="page"{% endif %}>{{ ui('help.faq', '자주 묻는 질문') }}</a>
+</div></nav>

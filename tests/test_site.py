@@ -50,9 +50,10 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.get('/', base_url='https://consumerjebo.co.kr').status_code, 200)
 
     def test_process_disclaimer(self):
-        # 법률 자문 안 함 안내는 하단이 아니라 처리 절차 페이지 맨 아래에만
-        self.assertIn('법률 상담·자문', self.client.get('/process').get_data(as_text=True))
-        self.assertNotIn('법률 상담·자문', self.client.get('/').get_data(as_text=True))
+        # 운영 안내는 하단이 아니라 처리 절차 페이지 맨 아래에만. 운영자 2026-11-03: 변호사 소개는 하되 돈은 안 받음
+        page = self.client.get('/process').get_data(as_text=True)
+        self.assertIn('돈은 받지 않아요', page); self.assertNotIn('변호사 소개는 하지 않아요', page)
+        self.assertNotIn('돈은 받지 않아요', self.client.get('/').get_data(as_text=True))
 
     def test_search_meta_tags(self):
         import json, re
@@ -382,25 +383,44 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(rb['official_email'], 'boss@webb.com')  # 관리자가 넣은 메일은 그대로
         self.assertIn('pr@webb.com(홍보팀)', self.login_admin().get('/admin/companies').get_data(as_text=True))
 
+    def test_explore_hub(self):
+        # 운영자 2026-11-03: 메뉴 '전문가' 대신 '둘러보기' 허브 (기업 순위·사기 전에 확인·소보루 자문단·공감 많은 제보)
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        page = self.client.get('/explore', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        for text in ('xh-title', '기업 응대 순위', '사기 전에 확인', '소보루 자문단'):
+            self.assertIn(text, page)
+        self.assertIn('/explore/tricks', page); self.assertIn('/explore/contact-tips', page)  # 소비자 안내서 주제 카드
+        for path, text in (('/explore/tricks', '네거티브 옵션'), ('/explore/contact-tips', '담당자 찾기')):
+            body = self.client.get(path).get_data(as_text=True); self.assertIn(text, body); self.assertIn('한국소비자원', body)
+        home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertIn('href="/explore"', home); self.assertNotIn('>전문가<', home)
+
     def test_experts(self):
         # 운영자 2026-11-03: 전문가를 한 명씩 가입시키기. 초대 링크로 들어오면 바로 전문가, 직접 신청은 관리자 승인 뒤. 댓글에 전문가 표시
         adm = self.login_admin()
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '김변호', 'field': '변호사', 'org': '소보루 법률사무소'}).status_code, 302)
         with self.site.conn() as db: token = db.execute("SELECT token FROM experts WHERE name='김변호'").fetchone()[0]
         self.assertIn('/expert/join/' + token, adm.get('/admin/experts').get_data(as_text=True))
-        self.assertIn('/login', self.client.get('/expert/join/' + token).headers['Location'])  # 로그인부터
-        pro, pid = self.member_client('pro_kim', '김변')
-        page = pro.get('/expert/join/' + token).get_data(as_text=True)
-        self.assertIn('김변호 님', page); self.assertIn('value="소보루 법률사무소"', page)
-        self.assertEqual(self.post_form(pro, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'license_no': '12345'}).status_code, 200)  # 동의 없으면 다시
+        # 운영자 2026-11-03: 초대 링크 = 토스플레이스 풍 한 화면, 로그인 없이 입력하고 바로 등록. 자격은 파일로만
+        page = self.client.get('/expert/join/' + token).get_data(as_text=True)
+        self.assertIn('xf-form', page); self.assertIn('김변호 님', page); self.assertIn('value="소보루 법률사무소"', page); self.assertNotIn('license_no', page)
+        pdf = lambda: (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf')
+        self.assertEqual(self.post_form(self.client, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'email': 'kim@x.kr', 'agree': '1'}).status_code, 200)  # 자격증 파일 없으면 다시
         from PIL import Image
         pic = io.BytesIO(); Image.new('RGB', (600, 300), 'blue').save(pic, 'JPEG'); pic.seek(0)
-        self.assertEqual(self.post_form(pro, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'license_no': '12345', 'agree': '1', 'photo': (pic, 'me.jpg')}).status_code, 302)
-        self.assertEqual(pro.get('/expert/join/' + token).status_code, 404)  # 링크는 한 번만
-        self.assertIn('전문가 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
+        guest = self.site.app.test_client()
+        r = self.post_form(guest, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'email': 'kim@x.kr', 'agree': '1', 'proof': pdf(), 'photo': (pic, 'me.jpg')})
+        self.assertEqual(r.status_code, 302)
+        done = guest.get(r.headers['Location']).get_data(as_text=True)
+        self.assertIn('/expert/claim/', done)  # 로그인 없이 등록 → 댓글용 계정은 나중에 한 번 잇기
+        self.assertEqual(guest.get('/expert/join/' + token).status_code, 404)  # 링크는 한 번만
+        with self.site.conn() as db: key = db.execute("SELECT claim FROM experts WHERE name='김변호'").fetchone()[0]
+        pro, pid = self.member_client('pro_kim', '김변')
+        self.assertEqual(pro.get('/expert/claim/' + key).status_code, 302)
+        self.assertIn('자문단 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
         # 직접 신청은 승인 전까지 표시 없음
         other, oid = self.member_client('pro_lee', '이사정')
-        self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '손해사정사', 'agree': '1',
+        self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '교수', 'agree': '1', 'phone': '010-1234-5678',
                                                                  'proof': (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf')}).status_code, 302)
         with self.site.conn() as db:
             row = db.execute('SELECT id,status,proof FROM experts WHERE user_id=?', (oid,)).fetchone()
@@ -412,23 +432,43 @@ class SiteTest(unittest.TestCase):
             token2 = self.csrf(c, '/reports/%d' % cid)
             self.assertEqual(c.post('/reports/%d/comment' % cid, data={'_csrf': token2, 'body': body}).status_code, 302)
         page = self.client.get('/reports/%d' % cid).get_data(as_text=True)
-        self.assertIn('전문가 · 변호사', page); self.assertNotIn('전문가 · 손해사정사', page)
+        self.assertIn('자문단 · 변호사', page); self.assertNotIn('자문단 · 교수', page)
         photo = re.search(r'src="(/expert/\d+/photo\.jpg[^"]*)"', page)[1]
         self.assertEqual(Image.open(io.BytesIO(self.client.get(photo).data)).size, (400, 400))  # 정사각형으로 잘라서
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'approve', 'id': row['id']}).status_code, 302)
-        self.assertIn('전문가 · 손해사정사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertIn('자문단 · 교수', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        # 운영자 2026-11-03: 자문단을 누르면 소개 페이지(이력·상담 신청). 승인 전·멈춘 자문단은 안 보임. 상담 신청은 회원만, 돈은 안 받음
+        self.assertEqual(self.client.get('/experts/%d' % row['id']).status_code, 200)
+        self.assertIn('/experts/%d' % row['id'], self.client.get('/explore').get_data(as_text=True))
+        self.assertEqual(self.client.post('/experts/%d/ask' % row['id'], data={'_csrf': 'x', 'body': '환불 문제로 상담하고 싶어요.'}).status_code in (302, 400), True)
+        asker = pro
+        t = self.csrf(asker, '/experts/%d' % row['id'])
+        self.assertEqual(asker.post('/experts/%d/ask' % row['id'], data={'_csrf': t, 'body': '환불을 3주째 못 받고 있어요. 상담하고 싶어요.', 'contact': '010-0000-1111'}).status_code, 302)
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM expert_requests WHERE expert_id=?', (row['id'],)).fetchone()[0], 1)
+        self.assertIn('환불을 3주째', other.get('/expert/apply').get_data(as_text=True))
+        # 운영자 2026-11-03: 새 제보를 자문단에게 하루 한 번 메일로 (공개 제보만, 알림 끄면 안 감)
+        page = other.get('/expert/apply').get_data(as_text=True)
+        self.assertIn('의견을 기다리는 제보', page)
+        sent = []
+        with patch.object(self.site.notify, 'send_email', lambda to, subj, body, **k: sent.append((to, subj, body))):
+            with self.site.app.app_context():
+                with self.site.conn() as db: db.execute("UPDATE experts SET email='lee@x.kr' WHERE id=?", (row['id'],)); db.execute("DELETE FROM admin_settings WHERE key='expert_digest_last'")
+                self.site.app.extensions['experts_digest'](now_iso='2026-10-09T20:00:00')
+        self.assertTrue(any(t == 'lee@x.kr' and '/reports/%d' % cid in b for t, _, b in sent))
+        t = self.csrf(other, '/expert/apply'); other.post('/expert/digest', data={'_csrf': t, 'on': '0'})
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT digest FROM experts WHERE id=?', (row['id'],)).fetchone()[0], 0)
         # 법무법인 같은 사무소·법인도 등록 (전문 기관 표시)
         firm, fid = self.member_client('firm_sb', '법무법인소보루')
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '법무법인 소보루', 'field': '법무법인'}).status_code, 302)
         with self.site.conn() as db: ft = db.execute("SELECT token,kind FROM experts WHERE name='법무법인 소보루'").fetchone()
         self.assertEqual(ft['kind'], 'firm')
-        self.assertEqual(self.post_form(firm, '/expert/join/' + ft['token'], {'kind': 'firm', 'name': '법무법인 소보루', 'field': '법무법인', 'license_no': '129-14-81596', 'agree': '1'}).status_code, 302)
+        self.assertEqual(self.post_form(firm, '/expert/join/' + ft['token'], {'kind': 'firm', 'name': '법무법인 소보루', 'field': '법무법인', 'email': 'law@x.kr', 'agree': '1', 'proof': pdf()}).status_code, 302)
         token3 = self.csrf(firm, '/reports/%d' % cid)
         firm.post('/reports/%d/comment' % cid, data={'_csrf': token3, 'body': '소비자 분쟁 상담을 돕고 있어요.'})
-        self.assertIn('전문 기관 · 법무법인', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertIn('자문단 · 법무법인', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         with self.site.conn() as db: kim = db.execute('SELECT id FROM experts WHERE user_id=?', (pid,)).fetchone()[0]
         self.post_form(adm, '/admin/experts', {'act': 'stop', 'id': kim})
-        self.assertNotIn('전문가 · 변호사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertNotIn('자문단 · 변호사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         self.assertEqual(self.client.get(photo).status_code, 404)  # 멈추면 사진도 안 보임
 
     def test_report_talk_ai_draft(self):
@@ -453,6 +493,27 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, {'OPENAI_API_KEY': ''}):
             self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': '환불이 안 돼요'}).get_json(), {'ok': False, 'error': 'ai'})
         self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': ''}).status_code, 400)
+
+    def test_report_talk_speech_to_text(self):
+        # 말로 입력 (운영자 2026-11-03): 네이버 앱 등은 브라우저 받아쓰기가 안 돼서 녹음 파일을 서버에서 글로 바꿈
+        page = self.client.get('/report/talk').get_data(as_text=True)
+        self.assertIn('/report/talk/stt', page); self.assertIn('tk-guide', page)
+        token = self.csrf(self.client, '/report/talk')
+        sent = []
+        class Res:
+            def __enter__(s): return s
+            def __exit__(s, *a): return False
+            def read(s): return json.dumps({'text': ' 소보루몰에서  운동화를 샀어요 '}).encode()
+        def fake(req, timeout):
+            sent.append(req); return Res()
+        audio = lambda: (io.BytesIO(b'0' * 2000), 'voice.webm')
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch('urllib.request.urlopen', fake):
+            r = self.client.post('/report/talk/stt', data={'_csrf': token, 'audio': audio()}, content_type='multipart/form-data')
+        self.assertEqual(r.get_json(), {'ok': True, 'text': '소보루몰에서 운동화를 샀어요'})
+        self.assertIn(b'name="language"', sent[0].data); self.assertIn(b'filename="voice.webm"', sent[0].data)
+        with patch.dict(os.environ, {'OPENAI_API_KEY': ''}):
+            self.assertEqual(self.client.post('/report/talk/stt', data={'_csrf': token, 'audio': audio()}, content_type='multipart/form-data').get_json(), {'ok': False, 'error': 'ai'})
+        self.assertEqual(self.client.post('/report/talk/stt', data={'_csrf': token, 'audio': (io.BytesIO(b'0'), 'v.webm')}, content_type='multipart/form-data').status_code, 400)
 
     def test_submission_lookup_admin_and_company_response(self):
         token = self.csrf(self.client, '/report')
@@ -4460,7 +4521,11 @@ class SiteTest(unittest.TestCase):
         self.assertTrue(ask['need_more']); self.assertEqual(ask['questions'], ['언제 받으셨나요?'])
 
     def test_ask_v2_no_law_and_follow_up_question(self):
-        self.rag_setup()
+        import lawsync
+        rag = self.rag_setup()
+        # 저장소 별표에는 '치수(사이즈)' 줄이 있어서, 법령이 없는 길만 보려고 잠깐 뺌
+        rc = rag['corpus']; keep = list(rc.EXTRA); rc.EXTRA[:] = [p for p in keep if p not in lawsync.BUNDLED]; rc.reset()
+        self.addCleanup(lambda: (rc.EXTRA.__setitem__(slice(None), keep), rc.reset()))
         sent = []
         with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent)):
             html = self.ask2(self.client, '사이즈 추천해 주세요 감사합니다').get_data(as_text=True)
@@ -4606,6 +4671,9 @@ class SiteTest(unittest.TestCase):
     def test_ask_v2_finds_other_laws_from_law_api(self):
         import lawsync
         rag = self.rag_setup(); st = rag['store']
+        # 저장소 별표에는 반려동물 기준이 있어서, API로 다른 법을 찾는 길만 따로 보려고 잠깐 뺌
+        rc = rag['corpus']; keep = list(rc.EXTRA); rc.EXTRA[:] = [p for p in keep if p not in lawsync.BUNDLED]; rc.reset()
+        self.addCleanup(lambda: (rc.EXTRA.__setitem__(slice(None), keep), rc.reset()))
         q = '분양받은 반려견이 일주일 만에 파보장염으로 죽었어요. 분양업자에게 뭘 요구할 수 있나요?'
         self.assertTrue(rag['retrieve'](q, api=False)[2]['weak'])  # 모아 둔 법으로는 약하게만 맞음
         found = ('<LawSearch><totalCnt>2</totalCnt>'
@@ -5978,7 +6046,8 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(r.status_code, 302)
         html = self.client.get('/reports').get_data(as_text=True)
         self.assertIn('rf-partners', html); self.assertIn('alt="시험 기관"', html); self.assertNotIn('javascript:', html)
-        self.assertIn('pt-band', self.client.get('/').get_data(as_text=True)) if 'hero-wall' in self.client.get('/').get_data(as_text=True) else None
+        home = self.client.get('/').get_data(as_text=True)
+        if 'hero-wall' in home: self.assertIn('img/orgs/c24.png', home); self.assertNotIn('pt-band', home)  # 운영자 2026-11-03: 홈 사진 아래 띠 대신 로고 4개
         with self.site.conn() as db: db.execute('DELETE FROM partners')
 
 if __name__ == '__main__':

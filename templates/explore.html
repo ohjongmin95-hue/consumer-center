@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{# 둘러보기 (운영자 2026-11-03): 토스플레이스 스토리 페이지 '풍'으로 (똑같이 배끼지 않음). 맨 위 큰 추천 카드(왼쪽 그림, 오른쪽 큰 제목) →
+   섹션 제목 + 카드 3~4열 (도구, 소보루 자문단, 공감 많은 제보, 최신 소식). TDS 값, 우리 색. 바닥글은 우리 것 그대로 #}
+{% block title %}{{ ui('explore.title', '둘러보기') }} | {{ txt('site.name') }}{% endblock %}
+{% set go %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>{% endset %}
+{% block content %}
+<main class="xs"><div class="xs-in">
+  <h1 class="xh-title xs-title">{{ ui('explore.title', '둘러보기') }}</h1>
+
+  <a class="xs-feat" href="{{ url_for('companies_rank') }}">
+    <div class="xs-feat-art" aria-hidden="true">
+      {# 운영자 2026-11-03: 진한 귤색 바탕 + 휴대폰 화면(아래가 잘림) + 그 위에 떠 있는 카드 하나 #}
+      <div class="xs-phone"><div class="xs-screen">
+        <p class="xs-scr-t">{{ ui('explore.rank', '기업 응대 순위') }}</p>
+        {% for n, w, d in [('1', 92, '0.8일'), ('2', 74, '1.4일'), ('3', 58, '2.1일'), ('4', 40, '3.5일')] %}<div class="xs-rank-row"><b>{{ n }}</b><span class="xs-rank-co">소보루{{ ['쇼핑', '항공', '통신', '가전'][loop.index0] }}</span><span class="xs-rank-bar"><i style="width:{{ w }}%"></i></span><small>{{ d }}</small></div>{% endfor %}
+      </div></div>
+      <div class="xs-float"><span class="xs-float-ic">1</span><div><small>{{ ui('explore.feat_float_s', '답변이 가장 빠른 기업') }}</small><b>{{ ui('explore.feat_float', '소보루쇼핑 평균 0.8일') }}</b></div></div>
+    </div>
+    <div class="xs-feat-copy">
+      <span class="xs-kicker">{{ ui('explore.rank', '기업 응대 순위') }}</span>
+      <h2>{{ ui('explore.feat_title', '제보에 빨리 답하는 기업,\n늦게 답하는 기업') }}</h2>
+      <span class="xs-more">{{ ui('explore.feat_go', '순위 보기') }}{{ go }}</span>
+    </div>
+  </a>
+
+  {# 운영자 2026-11-03: AI 상담은 고객센터가 아니라 둘러보기 안. 법령·분쟁해결기준만 근거로 답하고 원문을 보여 줌 #}
+  {% if ask_link %}<a class="xs-feat is-rev" href="{{ url_for('law_ask') }}">
+    <div class="xs-feat-art is-ai" aria-hidden="true">
+      <div class="xs-chat">
+        <p class="xs-bub is-me">{{ ui('explore.ai_q', '헬스장 6개월권을 두 달 쓰고 해지하면 얼마나 돌려받나요?') }}</p>
+        <div class="xs-bub is-ai"><b>{{ ui('explore.ai_a', '남은 기간 이용료에서 위약금 10%를 뺀 만큼 돌려받을 수 있어요.') }}</b><span class="xs-src">{{ ui('explore.ai_src', '출처 · 소비자분쟁해결기준') }}</span></div>
+      </div>
+    </div>
+    <div class="xs-feat-copy">
+      <span class="xs-kicker">{{ ui('explore.ai_k', 'AI 상담') }}</span>
+      <h2>{{ ui('explore.ai_title', '법령과 분쟁해결기준으로\n바로 답해요') }}</h2>
+      <span class="xs-more">{{ ui('explore.ai_go', 'AI에게 물어보기') }}{{ go }}</span>
+    </div>
+  </a>{% endif %}
+
+  <section class="xs-sec" aria-labelledby="xs-tools">
+    <h2 class="xs-h" id="xs-tools">{{ ui('explore.tools', '알아 두면 좋아요') }}</h2>
+    <div class="xs-grid is-4">
+      {# 운영자 2026-11-03: 토스처럼 진한 색 바탕 위에 기능 화면을 그림처럼 (사진·외부 그림 없이 CSS로) #}
+      <a class="xs-card" href="{{ url_for('check_list') }}">
+        <span class="xs-pic is-brown" aria-hidden="true"><span class="xs-ill xs-ill-check">
+          <span class="xi-sheet"><i class="xi-warn">주의</i><b>소보루마켓</b><i class="xi-l"></i><i class="xi-l s"></i></span>
+          <span class="xi-shield"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        </span></span>
+        <b>{{ ui('explore.check', '사기 전에 확인') }}</b><small>{{ ui('explore.check_sub', '조심해야 할 업체와 수법') }}</small>
+      </a>
+      <a class="xs-card" href="{{ url_for('tools') }}">
+        <span class="xs-pic is-orange" aria-hidden="true"><span class="xs-ill xs-ill-calc">
+          <span class="xi-calc"><span class="xi-disp"><small>돌려받을 돈</small><b>132,000원</b></span><span class="xi-keys">{% for _ in range(12) %}<i{% if loop.index in (4, 8, 12) %} class="o"{% endif %}></i>{% endfor %}</span></span>
+        </span></span>
+        <b>{{ ui('explore.calc', '계산기') }}</b><small>{{ ui('explore.calc_sub', '환불·위약금 얼마인지') }}</small>
+      </a>
+      <a class="xs-card" href="{{ url_for('dictionary') }}">
+        <span class="xs-pic is-rust" aria-hidden="true"><span class="xs-ill xs-ill-dict">
+          <span class="xi-book"></span>
+          <span class="xi-word"><b>청약철회</b><small>물건을 받고 7일 안에 계약을 없던 일로 하는 것</small></span>
+        </span></span>
+        <b>{{ ui('explore.dict', '소비자·경제 사전') }}</b><small>{{ ui('explore.dict_sub', '어려운 말을 쉽게') }}</small>
+      </a>
+      <a class="xs-card" href="{{ url_for('law_find') }}">
+        <span class="xs-pic is-cream" aria-hidden="true"><span class="xs-ill xs-ill-law">
+          <span class="xi-doc"><b>전자상거래법</b><i class="xi-l"></i><i class="xi-l hl"></i><i class="xi-l s"></i></span>
+          <span class="xi-lens"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span>
+        </span></span>
+        <b>{{ ui('explore.law', '법령 찾기') }}</b><small>{{ ui('explore.law_sub', '조문 원문 그대로') }}</small>
+      </a>
+    </div>
+  </section>
+
+  <section class="xs-sec" aria-labelledby="xs-help">
+    <div class="xs-hrow"><h2 class="xs-h" id="xs-help">{{ ui('explore.helpers', '소보루 자문단') }}</h2><a class="xs-more" href="{{ url_for('experts_page') }}">{{ ui('common.more', '더 보기') }}{{ go }}</a></div>
+    {% if helpers %}
+    <ul class="xs-grid is-4 xs-people" data-rotate>{% for e in helpers %}
+      {# 운영자 2026-11-03: 위에 큰 사진(아래로 흰색에 스며듦) → 동그란 분야 표시(변호사=저울, 교수=학사모) → 소속 한 줄 → 굵은 이름 #}
+      <li{% if loop.index > 4 %} hidden{% endif %}><a class="xs-person" href="{{ url_for('expert_profile', eid=e.id) }}">
+        <span class="xs-pphoto is-t{{ loop.index0 % 4 }}">{% if e.photo_url %}<img src="{{ e.photo_url }}" alt="" width="360" height="300" loading="lazy">{% else %}<span class="xs-pinit" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}</span>
+        <span class="xs-pmark" aria-hidden="true">{% if e.field == '교수' %}<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/></svg>{% else %}<svg viewBox="0 0 24 24"><path d="M12 3v18M7 21h10M4 7h16"/><path d="M6 7l-3 7a3 3 0 006 0zM18 7l-3 7a3 3 0 006 0z"/></svg>{% endif %}</span>
+        <span class="xs-pbody">
+          <span class="xs-org">{{ e.org if e.org and e.kind != 'firm' else '자문단 · ' ~ e.field }}</span>
+          <span class="xs-who"><b>{{ e.name }}</b>{% if e.org and e.kind != 'firm' %}<span class="xi-badge">자문단 · {{ e.field }}</span>{% endif %}</span>
+          {% if e.intro %}<span class="xs-intro">{{ e.intro }}</span>{% endif %}
+        </span>
+      </a></li>{% endfor %}
+    </ul>
+    {% else %}
+    <a class="xs-empty" href="{{ url_for('expert_apply') }}"><b>{{ ui('explore.helpers_empty', '자문단을 모시고 있어요') }}</b><span class="xs-more">{{ ui('explore.helpers_join', '자문단으로 함께하기') }}{{ go }}</span></a>
+    {% endif %}
+  </section>
+
+  {# 운영자 2026-11-03: 자문단 아래 = 소비자 안내서. 주제(테마)별 카드 — 행동 요령, 악덕상술 (+ 운영자가 줄 2개). 출처 한국소비자원 #}
+  {% set guides = [
+    ('contact_tips', '행동 요령 7가지', '업체에 연락하기 전에', ['먼저 알아보기', '자료 챙기기', '담당자 찾기']),
+    ('guide_tricks', '악덕상술 12가지', '이런 상술은 조심해요', ['설문조사 상술', '전화 당첨 상술', '캐치 세일']),
+  ] %}
+  <section class="xs-sec" aria-labelledby="xs-tips">
+    <div class="xs-hrow"><h2 class="xs-h" id="xs-tips">{{ ui('explore.guides', '소비자 안내서') }}</h2></div>
+    <div class="xs-grid is-4 xs-tips">{% for ep, k, t, rows in guides %}
+      <a class="xs-tip" href="{{ url_for(ep) }}">
+        <span class="xs-tip-pic is-g is-t{{ loop.index0 }}" aria-hidden="true"><span class="xs-gcard">{% if loop.index0 == 1 %}<em>주의</em>{% endif %}{% for r in rows %}<span><i>{{ loop.index }}</i>{{ r }}</span>{% endfor %}</span></span>
+        <small>{{ ui('explore.guide' ~ loop.index ~ '_k', k) }}</small><b>{{ ui('explore.guide' ~ loop.index, t) }}</b>
+      </a>{% endfor %}
+    </div>
+    <p class="xs-cite">{{ ui('explore.guides_src', '출처: 한국소비자원 소비자상담센터') }}</p>
+  </section>
+
+  <section class="xs-sec" aria-labelledby="xs-hot">
+    <div class="xs-hrow"><h2 class="xs-h" id="xs-hot">{{ ui('explore.tab_hot', '공감 많은 제보') }}</h2><a class="xs-more" href="{{ url_for('reports') }}">{{ ui('common.more', '더 보기') }}{{ go }}</a></div>
+    {% if hot %}<ul class="xs-grid is-3">{% for r in hot %}
+      <li><a class="xs-post" href="{{ url_for('public_case', case_id=r.no) }}">{% if r.cat %}<span class="xs-cat">{{ r.cat }}</span>{% endif %}<b>{{ r.title }}</b><small>{{ r.company or '' }}{% if r.company %} · {% endif %}{{ r.created[5:].replace('-', '.') }}</small></a></li>{% endfor %}
+    </ul>{% else %}<p class="xs-none">{{ ui('explore.hot_empty', '아직 공개된 제보가 없어요.') }}</p>{% endif %}
+  </section>
+
+  {% if news %}
+  <section class="xs-sec" aria-labelledby="xs-news">
+    <h2 class="xs-h" id="xs-news">{{ ui('explore.tab_news', '최신 소식') }}</h2>
+    <ul class="xs-grid is-3">{% for a in news %}
+      <li><a class="xs-post" href="https://soboru.co.kr/life/{{ a.id }}">{% if a.category %}<span class="xs-cat">{{ a.category }}</span>{% endif %}<b>{{ a.title }}</b><small>{{ a.at[5:10].replace('-', '.') }}</small></a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div></main>
+<script>(function(){
+  // 운영자 2026-11-03: 자문단 카드는 랜덤으로 돌아가며 (네 명씩). 마우스를 올리면 멈춤
+  var ul=document.querySelector('[data-rotate]'); if(!ul||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var all=[].slice.call(ul.children), n=4, hold=false; if(all.length<2)return;
+  ul.addEventListener('mouseenter',function(){hold=true}); ul.addEventListener('mouseleave',function(){hold=false});
+  function pick(){var a=all.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
+  setInterval(function(){ if(hold||document.hidden)return;
+    ul.classList.add('is-swap');
+    setTimeout(function(){var a=pick();a.forEach(function(li,i){li.hidden=i>=n;ul.appendChild(li)});ul.classList.remove('is-swap')},350);
+  },6000);
+})()</script>
+{% endblock %}
