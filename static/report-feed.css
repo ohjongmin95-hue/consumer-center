@@ -685,3 +685,29 @@ body:not(.sb):has(.auth-top) .auth-title-out,body:not(.sb):has(.auth-top) .auth-
 @media(max-width:560px){.auth-title-logo img{height:26px}}
 /* 운영자 2026-11-03 "갑자기 블랙": 제보 상세의 .pc-body(진한 글자)가 처리 절차 카드 설명까지 덮어서 진해짐 → 절차 카드는 원래 회색 설명 글자 */
 .process-card .pc-body{color:#4e5968;white-space:normal}
+/* 운영자 2026-11-03 "이런 페이지도 TDS": 처리 절차 = 토스식 카드. 주황 알약 제목·큰 동그라미·화살표·주황 강조 글자 없앰.
+   연회색 카드 안에 작은 아이콘, 작은 주황 '1단계', 굵은 검정 제목, 회색 설명. 강조는 색 대신 굵기만 */
+body:not(.sb) .process-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:32px}
+body:not(.sb) .process-card{display:grid;grid-template-columns:1fr;align-content:start;justify-items:start;gap:0;padding:28px 24px;text-align:left;background:#f9fafb;border:0;border-radius:20px;box-shadow:none}
+body:not(.sb) .process-card::after{display:none}
+body:not(.sb) .pc-icon{width:48px;height:48px;margin:0 0 20px;border-radius:0;background:none}
+body:not(.sb) .pc-icon::before,body:not(.sb) .pc-icon::after{display:none}
+body:not(.sb) .pc-icon .step-icon{width:48px;height:48px}
+body:not(.sb) .pc-label{display:grid;justify-items:start;gap:4px;width:auto;margin:0 0 8px;padding:0;background:none;border-radius:0;color:#191f28;font-size:20px;line-height:1.4;font-weight:700;letter-spacing:-.01em}
+body:not(.sb) .pc-step{padding:0;background:none;border-radius:0;color:#d25f00;font-size:14px;font-weight:600}
+body:not(.sb) .process-card .pc-body{text-align:left;font-size:16px;line-height:1.65;color:#4e5968;text-wrap:pretty}
+body:not(.sb) .process-card .pc-body .em{color:#333d4b;font-weight:600}
+@media(max-width:900px){body:not(.sb) .process-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){
+ body:not(.sb) .process-cards{grid-template-columns:1fr;gap:8px}
+ body:not(.sb) .process-card{grid-template-columns:40px minmax(0,1fr);column-gap:16px;padding:20px}
+ body:not(.sb) .pc-icon{grid-row:span 2;width:40px;height:40px;margin:2px 0 0}
+ body:not(.sb) .pc-icon .step-icon{width:40px;height:40px}
+ body:not(.sb) .pc-label{font-size:17px;margin-bottom:4px;gap:2px}
+ body:not(.sb) .pc-step{font-size:13px}
+ body:not(.sb) .process-card .pc-body{font-size:15px}
+}
+@media(max-width:560px){body:not(.sb) .pc-icon{align-self:start}}
+body:not(.sb) .process-page .process-note{margin:24px 0 0;font-size:15px;color:#4e5968;text-align:center;word-break:keep-all}
+body:not(.sb) .process-page .process-note a{color:#d25f00;font-weight:600;white-space:nowrap}
+body:not(.sb) .process-page .process-disclaimer{max-width:none;margin:32px 0 0;padding:20px 24px;border:0;border-radius:16px;background:#f9fafb;color:#6b7684;font-size:14px;line-height:1.65;text-align:left;word-break:keep-all}
