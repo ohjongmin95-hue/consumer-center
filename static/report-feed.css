@@ -605,3 +605,227 @@ body:not(.sb) .tk-notice{max-width:100%}
 .rp-mode a:hover{color:#333d4b}
 .rp-mode a.on{background:#fff;color:#191f28;font-weight:700;box-shadow:0 1px 3px rgba(0,27,55,.1)}
 .page-intro + .rp-mode{margin-top:-6px}
+/* 운영자 2026-11-03: 로그인·회원가입 = 토스 로그인처럼 메뉴 없는 별도 화면 */
+body:not(.sb):has(.auth-top){background:#fff}
+.auth-top{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 max(20px,env(safe-area-inset-left,0px)) 0 max(20px,env(safe-area-inset-left,0px));background:#fff}
+.auth-top .brand{font-size:24px;letter-spacing:-.04em;font-weight:700;line-height:1;white-space:nowrap}
+.auth-top .brand span{color:var(--orange)}
+.auth-top .brand{display:inline-flex;align-items:center;align-self:center}
+.auth-top .brand .brand-by{display:inline-flex;align-items:center;gap:.3em;margin-left:.5em;font-size:.4em;font-weight:700;letter-spacing:0;line-height:1;color:#191f28}
+.auth-top .brand-by img{height:1.25em;width:auto;transform:none}
+.auth-x{display:grid;place-items:center;width:44px;height:44px;margin-right:-10px;border-radius:12px;color:#4e5968}
+.auth-x:hover{background:#f2f4f6;color:#191f28}
+body:not(.sb):has(.auth-top) .auth-page{background:none;min-height:calc(100vh - 64px);min-height:calc(100dvh - 64px);padding-top:40px}
+body:not(.sb) .auth-page-login .auth-card{box-shadow:none;border:0;background:none}
+body:not(.sb) .auth-page-login .auth-body{padding-left:0;padding-right:0}
+body:not(.sb):has(.auth-top) .flash-wrap.is-auth{position:static;transform:none;width:auto;max-width:440px;margin:8px auto 0;padding:0 20px}
+body:not(.sb):has(.auth-top) .flash-wrap.is-auth .alert{background:#f2f4f6;color:#333d4b;box-shadow:none;border-radius:12px;font-weight:600}
+/* 운영자 2026-11-03: 첫 화면 = 토스처럼 흰 바탕, 왼쪽 큰 제목·버튼, 오른쪽 둥근 사진 카드 (필터·사진 위 글씨 없음) */
+.hero-split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:center;gap:56px;padding:56px 0 64px;background:#fff;border:0;text-align:left}
+.hero-split .hs-copy{display:grid;justify-items:start;gap:32px}
+.hero-split h1{margin:0;font-size:clamp(32px,3.1vw,46px);line-height:1.3;font-weight:700;letter-spacing:-.03em;color:#191f28;word-break:keep-all;text-wrap:balance}
+.hero-split .primary{border-radius:16px}
+.hs-media{position:relative;aspect-ratio:16/10;border-radius:28px;overflow:hidden;background:#f2f4f6;isolation:isolate}
+.hs-media .hw-slide{position:absolute;inset:0;margin:0;opacity:0;transition:opacity 1.2s ease}
+.hs-media .hw-slide.on{opacity:1}
+.hs-media img{display:block;width:100%;height:100%;object-fit:cover}
+.hs-media.is-mine img{object-position:22% 50%}
+.hs-cap{position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:6px;margin:0;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.92);color:#333d4b;font-size:13px;font-weight:600}
+@media(max-width:900px){.hero-split{grid-template-columns:1fr;gap:28px;padding:36px 0 40px;text-align:center}.hero-split .hs-copy{justify-items:center;gap:24px}.hero-split h1{font-size:30px;line-height:40px}.hs-media{aspect-ratio:4/3;border-radius:22px}.hs-media.is-mine img{object-position:24% 50%}}
+/* 운영자 2026-11-03: 제보 카드 맨 위 = 기업 로고·이름 (토스처럼), 제보자·시간은 아래 */
+body:not(.sb) .vc-co-top{gap:10px}
+.vc-co-logo{flex:none;width:36px;height:36px;border-radius:50%;object-fit:contain;background:#fff;box-shadow:inset 0 0 0 1px #e5e8eb;display:grid;place-items:center;font-size:15px;font-weight:700;color:#4e5968}
+span.vc-co-logo{box-shadow:none}
+.vc-co-name{display:grid;min-width:0;line-height:1.3}
+.vc-co-name b{font-size:15px;font-weight:700;color:#191f28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vc-co-name small{font-size:12px;color:#8b95a1}
+.vc-who{display:inline-flex;align-items:center;gap:5px;min-width:0;font-size:13px;color:#8b95a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vc-who-av{width:18px;height:18px;border-radius:50%;object-fit:cover}
+body:not(.sb) .vc-co-top .step-bar,body:not(.sb) .vc-co-top .sb-badge{margin-left:auto}
+span.vc-co-logo.av-0{background:#fff1e0;color:#d9480f}span.vc-co-logo.av-1{background:#e8f3ff;color:#1b64da}span.vc-co-logo.av-2{background:#e6f6ec;color:#2b8a3e}span.vc-co-logo.av-3{background:#f3f0ff;color:#6741d9}span.vc-co-logo.av-4{background:#f2f4f6;color:#4e5968}
+body:not(.sb) .nn-vc-ans{flex:none;white-space:nowrap}
+/* 첫 화면 왼쪽 채우기: 더 큰 제목, 넓은 사진, 방금 올라온 제보 한 줄 */
+.hero-split{grid-template-columns:minmax(0,9fr) minmax(0,11fr);gap:48px}
+.hero-split h1{font-size:clamp(36px,3.9vw,58px);line-height:1.28}
+.hs-live{display:flex;align-items:center;gap:10px;width:100%;max-width:520px;padding:14px 18px;border-radius:16px;background:#f9fafb;color:#333d4b;font-size:15px;text-decoration:none;overflow:hidden}
+.hs-live:hover{background:#f2f4f6;color:#191f28}
+.hs-live-dot{flex:none;width:8px;height:8px;border-radius:50%;background:#f04452;box-shadow:0 0 0 4px rgba(240,68,82,.15);animation:hs-pulse 1.6s ease-in-out infinite}
+.hs-live-k{flex:none;font-weight:700;color:#191f28}
+.hs-live-t{position:relative;flex:1;min-width:0;height:22px}
+.hs-live-i{position:absolute;inset:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#4e5968;opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s}
+.hs-live-i.on{opacity:1;transform:none}
+.hs-live-i b{font-weight:600;color:#333d4b}
+@keyframes hs-pulse{50%{box-shadow:0 0 0 7px rgba(240,68,82,.05)}}
+@media(prefers-reduced-motion:reduce){.hs-live-dot{animation:none}}
+@media(max-width:900px){.hero-split h1{font-size:30px;line-height:40px}.hs-live{max-width:none;text-align:left}}
+/* 운영자 2026-11-03 "이게 토스야?": TDS 로그인 = 왼쪽 정렬 큰 제목, 56px 상자 입력칸, 56px 꽉 찬 버튼, 유지·찾기는 한 줄 */
+body:not(.sb):has(.auth-top) .auth-page-login{align-items:center;padding-top:48px}
+body:not(.sb):has(.auth-top) .auth-page-login > *{width:100%;max-width:440px}
+body:not(.sb):has(.auth-top) .auth-title-out{margin:0 0 8px;font-size:28px;line-height:38px;text-align:left}
+body:not(.sb):has(.auth-top) .auth-title-out:not(:has(+ .auth-lead-out)){margin-bottom:36px}
+body:not(.sb):has(.auth-top) .auth-lead-out{margin:0 0 32px;font-size:17px;line-height:26px;color:#4e5968;text-align:left}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body{gap:12px}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body input:not([type=checkbox]){height:56px;padding:0 16px;border:0;border-radius:14px;background:#f2f4f6;font-size:17px;color:#191f28;box-shadow:none}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body input:not([type=checkbox])::placeholder{color:#8b95a1}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body input:not([type=checkbox]):focus{background:#fff;box-shadow:inset 0 0 0 2px var(--orange)}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-submit{height:56px;margin-top:8px;border-radius:16px;font-size:17px;font-weight:700}
+.auth-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px}
+.auth-row .auth-keep{margin:0;font-size:15px;color:#4e5968}
+.auth-find{font-size:15px;color:#4e5968;text-decoration:none}
+.auth-find:hover{color:#191f28}
+body:not(.sb):has(.auth-top) .auth-join{margin-top:40px;padding-top:24px;border-top:1px solid #f2f4f6;text-align:left;color:#4e5968}
+@media(max-width:560px){body:not(.sb):has(.auth-top) .auth-page-login{padding-top:24px}body:not(.sb):has(.auth-top) .auth-title-out{font-size:24px;line-height:33px}}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body{padding-top:0}
+@media(max-width:560px){.auth-top .brand{font-size:20px}}
+/* 운영자 2026-11-03 "가운데로 하지": 제목·설명·가입 안내는 가운데 */
+body:not(.sb):has(.auth-top) .auth-title-out,body:not(.sb):has(.auth-top) .auth-lead-out,body:not(.sb):has(.auth-top) .auth-join{text-align:center}
+/* 운영자 2026-11-03: 로그인 제목 = 귤색 SOBORU 로고 + 로그인 (브랜드 알리기) */
+.auth-title-logo{display:flex;align-items:center;justify-content:center;gap:10px}
+.auth-title-logo img{height:30px;width:auto;transform:translateY(1px)}
+@media(max-width:560px){.auth-title-logo img{height:26px}}
+/* 운영자 2026-11-03 "갑자기 블랙": 제보 상세의 .pc-body(진한 글자)가 처리 절차 카드 설명까지 덮어서 진해짐 → 절차 카드는 원래 회색 설명 글자 */
+.process-card .pc-body{color:#4e5968;white-space:normal}
+/* 운영자 2026-11-03 "이런 페이지도 TDS": 처리 절차 = 토스식 카드. 주황 알약 제목·큰 동그라미·화살표·주황 강조 글자 없앰.
+   연회색 카드 안에 작은 아이콘, 작은 주황 '1단계', 굵은 검정 제목, 회색 설명. 강조는 색 대신 굵기만 */
+body:not(.sb) .process-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:32px}
+body:not(.sb) .process-card{display:grid;grid-template-columns:1fr;align-content:start;justify-items:start;gap:0;padding:28px 24px;text-align:left;background:#f9fafb;border:0;border-radius:20px;box-shadow:none}
+body:not(.sb) .process-card::after{display:none}
+body:not(.sb) .pc-icon{width:48px;height:48px;margin:0 0 20px;border-radius:0;background:none}
+body:not(.sb) .pc-icon::before,body:not(.sb) .pc-icon::after{display:none}
+body:not(.sb) .pc-icon .step-icon{width:48px;height:48px}
+body:not(.sb) .pc-label{display:grid;justify-items:start;gap:4px;width:auto;margin:0 0 8px;padding:0;background:none;border-radius:0;color:#191f28;font-size:20px;line-height:1.4;font-weight:700;letter-spacing:-.01em}
+body:not(.sb) .pc-step{padding:0;background:none;border-radius:0;color:#d25f00;font-size:14px;font-weight:600}
+body:not(.sb) .process-card .pc-body{text-align:left;font-size:16px;line-height:1.65;color:#4e5968;text-wrap:pretty}
+body:not(.sb) .process-card .pc-body .em{color:#333d4b;font-weight:600}
+@media(max-width:900px){body:not(.sb) .process-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){
+ body:not(.sb) .process-cards{grid-template-columns:1fr;gap:8px}
+ body:not(.sb) .process-card{grid-template-columns:40px minmax(0,1fr);column-gap:16px;padding:20px}
+ body:not(.sb) .pc-icon{grid-row:span 2;width:40px;height:40px;margin:2px 0 0}
+ body:not(.sb) .pc-icon .step-icon{width:40px;height:40px}
+ body:not(.sb) .pc-label{font-size:17px;margin-bottom:4px;gap:2px}
+ body:not(.sb) .pc-step{font-size:13px}
+ body:not(.sb) .process-card .pc-body{font-size:15px}
+}
+@media(max-width:560px){body:not(.sb) .pc-icon{align-self:start}}
+body:not(.sb) .process-page .process-note{margin:24px 0 0;font-size:15px;color:#4e5968;text-align:center;word-break:keep-all}
+body:not(.sb) .process-page .process-note a{color:#d25f00;font-weight:600;white-space:nowrap}
+body:not(.sb) .process-page .process-disclaimer{max-width:none;margin:32px 0 0;padding:20px 24px;border:0;border-radius:16px;background:#f9fafb;color:#6b7684;font-size:14px;line-height:1.65;text-align:left;word-break:keep-all}
+body:not(.sb) .process-page .process-disclaimer{text-align:center;text-wrap:balance}
+/* 운영자 2026-11-03 TDS: 절차 아이콘은 귤색 한 톤 (남색·초록 → 귤색, 옅은 회색 → 옅은 귤색) */
+body:not(.sb) .process-card .step-icon [fill="#2b3a55"],body:not(.sb) .process-card .step-icon [fill="#2e9d5b"]{fill:#ef7300}
+body:not(.sb) .process-card .step-icon [stroke="#2b3a55"]{stroke:#ef7300}
+body:not(.sb) .process-card .step-icon [fill="#e9e3dd"]{fill:#ffd9b0}
+/* 운영자 2026-11-03 "절차도 토스처럼": 처리 절차 페이지 = 토스 소개 페이지식 세로 단락
+   (번호 칩 → 큰 굵은 제목 → 회색 설명, 그림 없이 넉넉한 간격). 첫 화면 요약 카드는 그대로 */
+.pc-num{display:none}
+body:not(.sb) .process-page .process-cards{display:grid;grid-template-columns:1fr;gap:96px;max-width:760px;margin:72px auto 0}
+body:not(.sb) .process-page .process-card{display:grid;grid-template-columns:1fr;justify-items:start;padding:0;background:none;border-radius:0}
+body:not(.sb) .process-page .pc-icon{display:none}
+body:not(.sb) .process-page .pc-num{display:inline-flex;align-items:center;height:40px;padding:0 14px;margin:0 0 24px;border:1px solid #e5e8eb;border-radius:12px;background:#fff;color:#6b7684;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+body:not(.sb) .process-page .pc-step{display:none}
+body:not(.sb) .process-page .pc-label{display:block;margin:0 0 24px;font-size:44px;line-height:1.35;font-weight:700;letter-spacing:-.02em;color:#333d4b;word-break:keep-all;text-wrap:balance}
+body:not(.sb) .process-page .process-card .pc-body{font-size:20px;line-height:1.7;color:#4e5968;text-wrap:pretty}
+body:not(.sb) .process-page .process-card .pc-body .em{color:inherit;font-weight:inherit}
+body:not(.sb) .process-page .process-note{margin-top:96px}
+@media(max-width:560px){
+ body:not(.sb) .process-page .process-cards{gap:64px;margin-top:48px}
+ body:not(.sb) .process-page .process-card{grid-template-columns:1fr;padding:0}
+ body:not(.sb) .process-page .pc-num{height:34px;padding:0 12px;margin-bottom:16px;font-size:14px;border-radius:10px}
+ body:not(.sb) .process-page .pc-label{font-size:28px;margin-bottom:16px}
+ body:not(.sb) .process-page .process-card .pc-body{font-size:17px}
+ body:not(.sb) .process-page .process-note{margin-top:64px}
+}
+/* 운영자 2026-11-03 "토스 소개 페이지 느낌": 처리 절차 = 글(칩·큰 제목·설명) + 우리 화면 그림, PC는 좌우 번갈아 */
+.ps-list{display:grid;gap:120px;max-width:1120px;margin:80px auto 0}
+.ps-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:64px}
+.ps-row.is-flip .ps-copy{order:2}
+.ps-copy{display:grid;justify-items:start;gap:0;min-width:0}
+.ps-chip{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;margin:0 0 24px;border:1px solid #e5e8eb;border-radius:12px;background:#fff;color:#6b7684;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.ps-chip b{font-weight:600;color:#4e5968}
+.ps-head{margin:0 0 24px;font-size:44px;line-height:1.36;font-weight:700;letter-spacing:-.02em;color:#333d4b;word-break:keep-all}
+.ps-body{margin:0;font-size:19px;line-height:1.75;color:#4e5968;word-break:keep-all;text-wrap:pretty}
+.ps-body .em{color:inherit;font-weight:inherit}
+.ps-art{display:grid;place-items:center;aspect-ratio:5/4;max-width:100%;padding:40px;border-radius:32px;background:#f2f4f6}
+.ps-ui{display:grid;gap:12px;width:100%;max-width:340px;padding:24px;border-radius:24px;background:#fff;box-shadow:0 8px 24px rgba(0,27,55,.06);font-size:15px;color:#191f28}
+.ui-cap{margin:0 0 4px;font-size:13px;font-weight:600;color:#8b95a1}
+.ui-bub{max-width:85%;padding:10px 14px;border-radius:16px;line-height:1.5;word-break:keep-all}
+.ui-bub.ai{justify-self:start;background:#f2f4f6;border-top-left-radius:6px}
+.ui-bub.me{justify-self:end;background:#ef7300;color:#fff;border-top-right-radius:6px}
+.ui-bub.co{justify-self:start;max-width:100%;background:#f9fafb;border:1px solid #e5e8eb;color:#333d4b}
+.ui-btn{display:grid;place-items:center;height:48px;margin-top:4px;border-radius:14px;background:#ef7300;color:#fff;font-weight:700}
+.ui-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ui-top b{font-size:17px}
+.ui-tag{padding:3px 8px;border-radius:8px;background:#fff3e0;color:#d25f00;font-size:12px;font-weight:700}
+.ui-tag.blue{background:#e8f3ff;color:#1b64da}
+.ui-check{display:grid;gap:12px;margin:4px 0 0;padding:0;list-style:none}
+.ui-check li{display:flex;align-items:center;gap:10px;color:#8b95a1}
+.ui-check li::before{content:'';width:22px;height:22px;border-radius:50%;background:#e5e8eb}
+.ui-check li.on{color:#191f28}
+.ui-check li.on::before{background:#ef7300 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 12.5l3.2 3.2L17 9' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat}
+.ui-mail,.ui-noti{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:#f9fafb}
+.ui-mail div,.ui-noti div{display:grid;gap:2px;min-width:0}
+.ui-mail small,.ui-noti small{font-size:13px;color:#6b7684;word-break:keep-all}
+.ui-co{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:#fff3e0;color:#d25f00;font-weight:700}
+.ui-dot{flex:none;width:10px;height:10px;border-radius:50%;background:#ef7300}
+.ui-meta{margin:0;font-size:13px;color:#8b95a1}
+.ui-steps{display:grid;grid-template-columns:repeat(4,1fr);margin:4px 0 0;padding:0;list-style:none;font-size:12px;color:#8b95a1;text-align:center}
+.ui-steps li{display:grid;justify-items:center;gap:6px;position:relative}
+.ui-steps li::before{content:'';width:14px;height:14px;border-radius:50%;background:#e5e8eb;position:relative;z-index:1}
+.ui-steps li:not(:last-child)::after{content:'';position:absolute;top:6px;left:50%;width:100%;height:2px;background:#ffd9b0}
+.ui-steps li.done,.ui-steps li.now{color:#333d4b;font-weight:600}
+.ui-steps li.done::before{background:#ffb066}.ui-steps li.now::before{background:#ef7300;box-shadow:0 0 0 4px #fff3e0}
+.ui-result{padding:12px 14px;border-radius:14px;background:#f9fafb;font-weight:600;color:#333d4b}
+.ui-news{display:grid;gap:6px}
+.ui-news b{font-size:17px;line-height:1.45;word-break:keep-all}
+.ui-news small{font-size:13px;color:#8b95a1}
+.ui-lines{display:grid;gap:8px}.ui-lines i{height:8px;border-radius:4px;background:#f2f4f6}.ui-lines i.s{width:60%}
+body:not(.sb) .process-page .process-note{margin-top:120px}
+@media(max-width:900px){
+ .ps-list{gap:72px;margin-top:48px}
+ .ps-row{grid-template-columns:1fr;gap:28px}
+ .ps-row.is-flip .ps-copy{order:0}
+ .ps-chip{height:34px;padding:0 12px;margin-bottom:16px;font-size:14px;border-radius:10px}
+ .ps-head{margin-bottom:16px;font-size:28px}
+ .ps-body{font-size:17px}
+ .ps-art{padding:24px;border-radius:24px;aspect-ratio:auto}
+ body:not(.sb) .process-page .process-note{margin-top:72px}
+}
+.ps-ui{max-width:380px;font-size:16px}
+.ps-body strong{color:inherit;font-weight:inherit}
+/* 운영자 2026-11-03: 자주 묻는 질문 = 토스 고객센터식 */
+body:not(.sb) .faq-page{max-width:1120px;margin:0 auto;text-align:left}
+body:not(.sb) .faq-page > h1{text-align:left;font-size:40px;line-height:1.35;font-weight:700;letter-spacing:-.02em;color:#333d4b}
+.fq-search{display:flex;align-items:center;gap:16px;margin:40px 0 0;padding:0 0 18px;border-bottom:1px solid #d1d6db;color:#8b95a1;transition:border-color .2s}
+.fq-search:focus-within{border-bottom-color:#ef7300;color:#4e5968}
+.fq-search input{flex:1;min-width:0;border:0;outline:0;background:none;padding:0;font-size:32px;font-weight:500;color:#191f28;-webkit-appearance:none;appearance:none}
+.fq-search input::placeholder{color:#b0b8c1}
+.fq-search input::-webkit-search-cancel-button{-webkit-appearance:none}
+.fq-body{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;margin-top:64px}
+.fq-cats{display:grid;align-content:start;gap:8px}
+.fq-cats button{justify-self:start;padding:10px 20px;border:0;border-radius:10px;background:none;font:inherit;font-size:20px;font-weight:500;color:#8b95a1;cursor:pointer;text-align:left}
+.fq-cats button:hover{color:#4e5968;background:#f9fafb}
+.fq-cats button.on{color:#d25f00;font-weight:600}
+.fq-list{display:grid;align-content:start}
+.fq-item summary{display:flex;align-items:baseline;gap:16px;padding:22px 0;cursor:pointer;list-style:none;font-size:20px;line-height:1.5;color:#333d4b}
+.fq-item summary::-webkit-details-marker{display:none}
+.fq-item summary:hover .fq-t{color:#191f28}
+.fq-q{flex:none;font-weight:700;color:#b0b8c1}
+.fq-item[open] .fq-q{color:#ef7300}
+.fq-item[open] .fq-t{font-weight:600;color:#191f28}
+.fq-a{margin:0 0 20px 34px;padding:20px 24px;border-radius:16px;background:#f9fafb;font-size:17px;line-height:1.75;color:#4e5968}
+.fq-empty{margin:24px 0;font-size:17px;color:#8b95a1}
+@media(max-width:900px){
+ body:not(.sb) .faq-page > h1{font-size:28px}
+ .fq-search{margin-top:24px;padding-bottom:12px;gap:10px}
+ .fq-search svg{width:22px;height:22px}
+ .fq-search input{font-size:20px}
+ .fq-body{grid-template-columns:1fr;gap:16px;margin-top:24px}
+ .fq-cats{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 -4px}
+ .fq-cats button{flex:none;padding:8px 12px;font-size:16px;white-space:nowrap}
+ .fq-item summary{gap:12px;padding:16px 0;font-size:17px}
+ .fq-a{margin-left:0;padding:16px 18px;font-size:16px}
+}
+body:not(.sb) .faq-page{padding-top:56px}
+@media(max-width:900px){body:not(.sb) .faq-page{padding-top:28px}}
+@media(max-width:900px){.fq-cats{margin:0 -12px}}

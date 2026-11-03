@@ -1,0 +1,18 @@
+{# 운영자 2026-11-03: 자주 묻는 질문 = 토스 고객센터식. 밑줄 검색칸, 왼쪽 분류(휴대폰은 위 가로 탭), 오른쪽 Q 목록(누르면 답변 펼침). 분류는 관리자 › 항목 관리 › 자주 묻는 질문의 '분류' 칸 #}
+{% set faqs = items('faq') %}{% set cats = [] %}{% for f in faqs %}{% if f.cat and f.cat not in cats %}{% set _ = cats.append(f.cat) %}{% endif %}{% endfor %}
+<div class="fq" data-fq>
+  <label class="fq-search"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input type="search" placeholder="{{ ui_text('faq.search', '무엇이든 찾아보세요') }}" aria-label="{{ ui_text('faq.search', '무엇이든 찾아보세요') }}" data-fq-q></label>
+  <div class="fq-body">
+    <nav class="fq-cats" aria-label="분류"><button type="button" class="on" data-fq-cat="">{{ ui('faq.top', '질문 TOP') }}</button>{% for c in cats %}<button type="button" data-fq-cat="{{ c }}">{{ c }}</button>{% endfor %}</nav>
+    <div class="fq-list">
+      {% for item in faqs %}<details class="fq-item" data-cat="{{ item.cat or '' }}"><summary><span class="fq-q" aria-hidden="true">Q</span><span class="fq-t">{{ item.q }}</span></summary>{% if item.a %}<div class="fq-a pre-line">{{ item.a }}</div>{% endif %}</details>{% endfor %}
+      <p class="fq-empty" hidden>{{ ui('faq.empty', '찾는 질문이 없어요. 다른 말로 찾아보세요.') }}</p>
+    </div>
+  </div>
+</div>{{ ed_list('faq') }}
+<script>
+(function(){var w=document.querySelector('[data-fq]');if(!w)return;var q=w.querySelector('[data-fq-q]'),items=[].slice.call(w.querySelectorAll('.fq-item')),empty=w.querySelector('.fq-empty'),cat='';
+function run(){var t=(q.value||'').trim().toLowerCase(),n=0;items.forEach(function(el){var ok=(!cat||el.dataset.cat===cat)&&(!t||el.textContent.toLowerCase().indexOf(t)>-1);el.hidden=!ok;if(ok)n++;});empty.hidden=n>0;}
+q.addEventListener('input',run);
+w.querySelectorAll('[data-fq-cat]').forEach(function(b){b.addEventListener('click',function(){w.querySelectorAll('[data-fq-cat]').forEach(function(x){x.classList.toggle('on',x===b);});cat=b.dataset.fqCat;run();});});})();
+</script>
