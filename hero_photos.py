@@ -179,7 +179,7 @@ def install(S):
     def photos():
         """보이는 사진: 관리자가 고른 것 먼저, 그다음 자동 사진(최근 것부터). 자동 사진은 제보가 지금도 공개일 때만."""
         with conn() as db:
-            return [dict(r) for r in db.execute('SELECT h.id,h.stored,h.caption,h.auto FROM hero_photos h LEFT JOIN cases c ON c.id=h.case_id WHERE h.hidden=0 AND (h.auto=0 OR (' + PUBLIC + ')) ORDER BY h.auto,h.sort,h.id DESC LIMIT ?', (MAX_PHOTOS,))]
+            return [dict(r) for r in db.execute('SELECT h.id,h.stored,h.caption,h.auto,h.case_id FROM hero_photos h LEFT JOIN cases c ON c.id=h.case_id WHERE h.hidden=0 AND (h.auto=0 OR (' + PUBLIC + ')) ORDER BY h.auto,h.sort,h.id DESC LIMIT ?', (MAX_PHOTOS,))]
 
     def auto_fill(force=False):
         """공개 게시된 제보의 사진 중 아직 안 쓴 것을 약한 모자이크 사본으로 만들어 넣음.

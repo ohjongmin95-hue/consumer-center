@@ -5,18 +5,28 @@
   {% for block in items('home_blocks') %}
   {{ ed_remove('home_blocks', loop.index0) }}
   {# 운영자 2026-11-03: 첫 화면 뒤에 실제 제보 영상(올려 둔 게 있으면)·사진. 관리자 문구 home.hero_media 를 off 로 하면 영상만 끔 #}{% set vid_on = txt('home.hero_media') != 'off' %}{% if block.kind == 'hero' and ((vid_on and hero_video()) or hero_wall()) %}{% set vid = hero_video() if vid_on else None %}{% set wall = [] if vid else hero_wall()[:8] %}{# 운영자 2026-11-03: 토스플레이스처럼 화면 끝까지 꽉 찬 실제 제보 사진(또는 동영상) 위에 흰 큰 제목 #}
-  <section class="hero hero-wall">
-    <div class="hw-media" aria-hidden="true">
-      {% if vid %}<video src="{{ url_for('hero_video_file', name=vid.stored ~ '.mp4') }}" poster="{{ url_for('hero_video_file', name=vid.stored ~ '.jpg') }}" autoplay muted loop playsinline preload="metadata"></video>
-      {% else %}{% for p in wall %}<figure class="hw-slide{% if loop.first %} on{% endif %}"><picture>{% if p.wide %}<source media="(min-width: 681px)" srcset="{{ url_for('hero_photo', name=p.wide) }}">{% endif %}<img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" width="600" height="800"{% if not loop.first %} loading="lazy"{% endif %}></picture></figure>{% endfor %}{% endif %}
-    </div>
+  {% if vid %}<section class="hero hero-wall">
+    <div class="hw-media" aria-hidden="true"><video src="{{ url_for('hero_video_file', name=vid.stored ~ '.mp4') }}" poster="{{ url_for('hero_video_file', name=vid.stored ~ '.jpg') }}" autoplay muted loop playsinline preload="metadata"></video></div>
     <div class="hero-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
       <a class="primary" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
     </div>
-    {% set cap = vid.caption if vid else (wall[0].caption if wall else '') %}<p class="hw-cap"><span class="hw-dot"></span>실제 제보 {{ '영상' if vid else '사진' }}<span class="hw-cap-t">{% if cap %}· {{ cap.split(' · ')[0] }}{% endif %}</span></p>
-    {% if wall|length > 1 %}<script>(function(){var s=document.querySelectorAll('.hw-slide'),c=document.querySelector('.hw-cap-t'),caps={{ wall|map(attribute='caption')|map('string')|list|tojson }},i=0;if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;setInterval(function(){s[i].classList.remove('on');i=(i+1)%s.length;s[i].classList.add('on');var t=(caps[i]||'').split(' · ')[0];c.textContent=t?'· '+t:''},5000)})();</script>{% endif %}
+    <p class="hw-cap"><span class="hw-dot"></span>실제 제보 영상<span class="hw-cap-t">{% if vid.caption %}· {{ vid.caption.split(' · ')[0] }}{% endif %}</span></p>
   </section>
+  {% else %}{# 운영자 2026-11-03: 토스처럼 흰 바탕 왼쪽에 제목·버튼, 오른쪽에 둥근 사진 카드 (검은 필터 없음). 관리자가 직접 올린 사진이 있으면 그것만, '실제 제보 사진' 표시는 제보에 딸린 사진에만 (직접 올린 연출 사진엔 X) #}
+  {% set mine = wall|selectattr('auto', 'equalto', 0)|list %}{% set shots = mine or wall %}
+  <section class="hero hero-split">
+    <div class="hs-copy">
+      <h1>{{ block.title or txt('home.hero_title') }}</h1>
+      <a class="primary" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+    </div>
+    <div class="hs-media{% if mine %} is-mine{% endif %}" aria-hidden="true">
+      {% for p in shots %}<figure class="hw-slide{% if loop.first %} on{% endif %}"><picture>{% if p.wide %}<source srcset="{{ url_for('hero_photo', name=p.wide) }}">{% endif %}<img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" width="1200" height="800"{% if not loop.first %} loading="lazy"{% endif %}></picture></figure>{% endfor %}
+      {% if shots[0].case_id %}<p class="hs-cap"><span class="hw-dot"></span>실제 제보 사진<span class="hw-cap-t">{% if shots[0].caption %}· {{ shots[0].caption.split(' · ')[0] }}{% endif %}</span></p>{% endif %}
+    </div>
+    {% if shots|length > 1 %}<script>(function(){var s=document.querySelectorAll('.hero-split .hw-slide'),c=document.querySelector('.hero-split .hw-cap-t'),caps={{ shots|map(attribute='caption')|map('string')|list|tojson }},i=0;if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;setInterval(function(){s[i].classList.remove('on');i=(i+1)%s.length;s[i].classList.add('on');if(c){var t=(caps[i]||'').split(' · ')[0];c.textContent=t&&t!=='None'?'· '+t:''}},5000)})();</script>{% endif %}
+  </section>
+  {% endif %}
   {% include 'partner_band.html' %}
 
   {% elif block.kind in ('hero', 'hero_plain') %}

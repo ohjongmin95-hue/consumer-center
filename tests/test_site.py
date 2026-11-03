@@ -279,7 +279,7 @@ class SiteTest(unittest.TestCase):
         from PIL import Image
         jebo = 'https://consumerjebo.co.kr'
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
-        self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))
+        self.assertNotIn('hero-split', self.client.get('/', base_url=jebo).get_data(as_text=True))
         self.assertEqual(self.client.get('/admin/hero-photos').status_code, 302)
         admin = self.login_admin()
         token = self.csrf(admin, '/admin/hero-photos')
@@ -289,7 +289,7 @@ class SiteTest(unittest.TestCase):
             r = admin.post('/admin/hero-photos/add', data={'_csrf': token, 'mode': 'boxes' if i else 'all', 'boxes': '[[0.1,0.1,0.5,0.5]]', 'caption': '택배 · 파손', 'photo': (pic(color), 'a.jpg')}, content_type='multipart/form-data')
             self.assertEqual(r.status_code, 302)
         home = self.client.get('/', base_url=jebo).get_data(as_text=True)
-        self.assertIn('hero-wall', home); self.assertIn('<span class="hw-cap-t">· 택배</span>', home)
+        self.assertIn('hero-split', home); self.assertNotIn('실제 제보 사진', home)  # 직접 올린 사진엔 '실제 제보 사진' 표시 X (운영자 2026-11-03)
         name = re.search(r'/hero/([0-9a-f]{24}\.jpg)', home).group(1)
         img = self.client.get('/hero/' + name)
         self.assertEqual((img.status_code, Image.open(io.BytesIO(img.data)).size), (200, (600, 800)))
@@ -297,7 +297,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db: pid = db.execute('SELECT id FROM hero_photos WHERE stored=?', (name,)).fetchone()[0]
         admin.post('/admin/hero-photos/%d' % pid, data={'_csrf': token, 'act': 'delete'})
         self.assertEqual(self.client.get('/hero/' + name).status_code, 404)
-        self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))  # 2장이면 예전 그림
+        self.assertNotIn('hero-split', self.client.get('/', base_url=jebo).get_data(as_text=True))  # 2장이면 예전 그림
 
     def test_report_needs_login(self):
         # 운영자 2026-11-03: 로그인해야 제보 (대화 제보·양식 모두). 이름·전화번호 칸은 그대로
@@ -331,11 +331,11 @@ class SiteTest(unittest.TestCase):
             db.execute("INSERT INTO attachments(case_id,stored,original) VALUES(?,'hero-src-0.jpg','a.jpg')", (secret,))
         self.login_admin().get('/admin/hero-photos')  # 관리자 화면을 열면 바로 채움
         home = self.client.get('/', base_url=jebo).get_data(as_text=True)
-        self.assertIn('hero-wall', home); self.assertIn('<span class="hw-cap-t">· 쇼핑·유통</span>', home)
+        self.assertIn('hero-split', home); self.assertIn('<span class="hw-cap-t">· 쇼핑·유통</span>', home)
         self.assertEqual(len(re.findall(r'/hero/[0-9a-f]{24}w\.jpg', home)), 3)  # PC는 화면을 꽉 채우는 가로 사본 (운영자 2026-11-03)
         names = set(re.findall(r'/hero/([0-9a-f]{24}\.jpg)', home)); self.assertEqual(len(names), 3)  # 비공개 제보 사진·같은 사진은 안 들어감
         with self.site.conn() as db: db.execute('UPDATE cases SET published=0 WHERE id=?', (cids[1],))
-        self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))
+        self.assertNotIn('hero-split', self.client.get('/', base_url=jebo).get_data(as_text=True))
         self.assertEqual(sum(self.client.get('/hero/' + n).status_code == 404 for n in names), 1)
 
     def test_company_typo_fix(self):
