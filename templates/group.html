@@ -39,8 +39,8 @@
       <div class="pw-pair"><div class="field"><label for="g-email">{{ ui('groups.f_email', '이메일 (선택)') }}</label><input id="g-email" type="email" name="email" maxlength="120" value="{{ request.form.get('email','') }}"></div>
       <div class="field"><label for="g-amount">{{ ui('groups.f_amount', '피해 금액 (선택)') }}</label><input id="g-amount" name="amount" maxlength="60" placeholder="{{ ui('groups.f_amount_ph', '예: 약 12만 원') }}" value="{{ request.form.get('amount','') }}"></div></div>
       <div class="field"><label for="g-detail">{{ ui('groups.f_detail', '겪은 피해') }} <small>*</small></label><textarea id="g-detail" name="detail" maxlength="2000" required placeholder="{{ ui('groups.f_detail_ph', '언제, 무엇을 구매·계약했고 어떤 피해를 겪었는지 짧게 적어 주세요') }}">{{ request.form.get('detail','') }}</textarea></div>
-      <label class="check"><input type="checkbox" name="consent" required><span><b>[{{ ui('report.badge_required', '필수') }}]</b> {{ ui('groups.c_privacy', '공동 대응 안내를 위해 이름·연락처·이메일·피해 내용을 수집·이용하는 데 동의합니다. 공동 대응이 끝나면 1년 뒤 지웁니다.') }}</span></label>
-      <label class="check"><input type="checkbox" name="share_consent"><span><b>[{{ ui('groups.optional', '선택') }}]</b> {{ ui('groups.c_share', '공동 대응을 맡게 되는 변호사·기관에 이름·연락처·피해 내용을 전달하는 데 동의합니다. 동의하지 않아도 참여할 수 있어요.') }}</span></label>
+      <label class="check"><input type="checkbox" name="consent" required><span><b>[{{ ui('report.badge_required', '필수') }}]</b> {{ ui('groups.c_privacy', '공동 대응 안내를 위해 이름·연락처·이메일·피해 내용을 수집·이용하는 데 동의해요. 공동 대응이 끝나면 1년 뒤 지워요.') }}</span></label>
+      <label class="check"><input type="checkbox" name="share_consent"><span><b>[{{ ui('groups.optional', '선택') }}]</b> {{ ui('groups.c_share', '공동 대응을 맡게 되는 변호사·기관에 이름·연락처·피해 내용을 전달하는 데 동의해요. 동의하지 않아도 참여할 수 있어요.') }}</span></label>
       <button class="primary" type="submit">{{ ui('groups.submit', '참여 신청하기 →') }}</button>
     </form>
     {% else %}<p>{{ ui('groups.closed', '지금은 참여 신청을 받지 않아요.') }}</p>{% endif %}

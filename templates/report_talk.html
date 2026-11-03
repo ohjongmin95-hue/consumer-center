@@ -14,7 +14,7 @@
     <input id="tk-files" type="file" name="evidence" multiple accept="image/*,.pdf,.mp4,.mov" hidden>
     <div class="tk-consents">{% include 'report_consents.html' %}</div>
     <button class="tk-submit" type="submit"{% if not intake_enabled %} disabled title="현재 접수 준비 중"{% endif %}>{{ ui('talk.submit', '이대로 제보 접수하기') }}</button>
-    {% if not intake_enabled %}<p class="tk-off">{{ ui('report.disabled', '현재 제보 접수 기능은 비활성화되어 있습니다. 운영 정책과 보안 검증 후 개시됩니다.') }}</p>{% endif %}
+    {% if not intake_enabled %}<p class="tk-off">{{ ui('report.disabled', '지금은 제보를 받을 준비 중이에요. 보안 점검을 마치면 바로 열게요.') }}</p>{% endif %}
   </form>
 
   <div class="tk-bar" id="tk-bar">
@@ -46,7 +46,7 @@
     'me_bad': ui('talk.me_bad', '이름과 전화번호를 확인해 주세요'), 'change': ui('talk.change', '바꿀게요'), 'next': ui('talk.next', '다음'),
     'last': ui('talk.last', '마지막으로 아래 동의만 확인하면 접수돼요'),
     'industry': ui('talk.industry', '어떤 업종이에요?'), 'category': ui('talk.category', '어떤 문제에 가까워요?'), 'company': ui('talk.company', '업체나 서비스 이름이 뭐예요?'),
-    'ai_off': ui('talk.ai_off', '지금은 AI 정리가 잠시 안 돼요. 몇 가지만 버튼으로 여쭤볼게요.'), 'limit': ui('talk.limit', '요청이 많아 잠시 쉬어 가요. 조금 뒤에 다시 해 주세요.'),
+    'ai_off': ui('talk.ai_off', '지금은 AI 정리가 잠시 안 돼요. 몇 가지만 버튼으로 확인할게요.'), 'limit': ui('talk.limit', '요청이 많아 잠시 쉬어 가요. 조금 뒤에 다시 해 주세요.'),
     'need': ui('talk.need', '어떤 일인지 조금만 더 적어 주세요'), 'listening': ui('talk.listening', '듣고 있어요. 말씀이 끝나면 마이크를 한 번 더 눌러 주세요'),
     'l_company': ui('report.f_company', '업체·서비스명'), 'l_target': ui('home.card_target', '제보 대상'), 'l_industry': ui('report.f_industry', '업종'), 'l_category': ui('report.f_category', '제보 유형'),
     'l_subject': ui('report.f_subject', '제보 제목'), 'l_desc': ui('report.f_description', '피해 내용'), 'l_day': ui('report.f_occurred', '피해가 일어난 날'),

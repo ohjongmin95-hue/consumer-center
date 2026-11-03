@@ -15,7 +15,7 @@
     <form method="post" action="{{ url_for('unblock_user', uid=post['user_id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}"><button class="secondary" type="submit">{{ ui('board.unblock_view', '차단 풀고 보기') }}</button></form></div>
   {% else %}
   <article class="post-full">
-    {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨김 처리된 글입니다. 운영자에게만 보입니다.') }}</div>{% endif %}
+    {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨긴 글이에요. 운영자에게만 보여요.') }}</div>{% endif %}
     <div class="post-top">{{ chip(post['category'], categories) }}<span class="post-meta">{% if post['user_id'] %}<span class="member-badge">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ post['nickname'] }} · {{ post['created']|ago }}</span></div>
     <h1>{% if post['kind'] == 'question' and post['solved'] %}<span class="cm-solved">해결됨</span> {% endif %}{{ post['title'] }}</h1>
     {% if post['kind'] == 'review' %}<div class="post-review-box"><p><b>{% if company %}<a href="{{ url_for('company_page', company_id=company['id']) }}">{{ company['name'] }}</a>{% else %}{{ mask_personal(post['target']) }}{% endif %}</b> {{ stars(post['rating']) }} {{ post['rating'] }}점{% if post['recommend'] == 1 %} · {{ ui('cm.rec_yes', '추천해요') }}{% elif post['recommend'] == 0 %} · {{ ui('cm.rec_no', '추천하지 않아요') }}{% endif %}</p>

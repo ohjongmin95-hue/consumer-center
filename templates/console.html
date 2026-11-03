@@ -75,7 +75,7 @@
     {% block content %}{% endblock %}
   </div>
 </div>
-<a class="ad-toast" id="ad-toast" href="{{ url_for('admin_reports') }}" role="status" hidden><b>새 제보가 들어왔습니다</b><span></span></a>
+<a class="ad-toast" id="ad-toast" href="{{ url_for('admin_reports') }}" role="status" hidden><b>새 제보가 들어왔어요</b><span></span></a>
 <script>
   // 새 제보 알림: 관리자 화면을 켜 두면 30초마다 확인해서 메뉴 숫자, 탭 제목, 화면 알림, (허용했으면) 브라우저 알림으로 알려 줌
   (function () {
@@ -89,7 +89,7 @@
           document.title = '(새 제보) ' + title;
           toast.href = d.url; toast.querySelector('span').textContent = d.subject; toast.hidden = false;
           if (window.Notification && Notification.permission === 'granted') {
-            var n = new Notification('새 제보가 들어왔습니다', {body: d.subject, icon: '{{ url_for('static', filename='apple-touch-icon.png') }}', tag: 'new-case'});
+            var n = new Notification('새 제보가 들어왔어요', {body: d.subject, icon: '{{ url_for('static', filename='apple-touch-icon.png') }}', tag: 'new-case'});
             n.onclick = function () { window.focus(); location.href = d.url; };
           }
         }

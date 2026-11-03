@@ -28,7 +28,7 @@
   </section>
   {% else %}
   <article class="cm-article">
-    {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨김 처리된 글입니다. 운영자에게만 보입니다.') }}</div>{% endif %}
+    {% if post['hidden'] %}<div class="alert">{{ ui('board.hidden_note', '숨긴 글이에요. 운영자에게만 보여요.') }}</div>{% endif %}
     <div class="cm-kicker">{{ kind_chip(k) }}{% if k == 'post' %}<span>{{ post['category'] }}</span>{% elif k == 'tip' %}<span>{{ ui('cm.read_min', '{n}분이면 읽어요', n=read_minutes(post['body'])) }}</span>{% elif k == 'question' %}{% if post['solved'] %}<span class="cm-solved">{{ ui('cm.solved', '해결됨') }}</span>{% else %}<span>{{ ui('cm.waiting', '답변을 기다려요') }}</span>{% endif %}{% endif %}</div>
     <h1>{% if k == 'question' %}<span class="cm-q">Q.</span>{% endif %}{{ post['title'] }}</h1>
     <div class="cm-author">{% if post['user_id'] %}<a href="{{ url_for('person', user_id=post['user_id']) }}">{{ av(post['user_id'], post['nickname']) }}</a>{% else %}<span class="cm-av">{{ post['nickname'][:1] }}</span>{% endif %}<div><b>{% if post['user_id'] %}<a class="pp-name" href="{{ url_for('person', user_id=post['user_id']) }}">{{ post['nickname'] }}</a>{% else %}{{ post['nickname'] }}{% endif %}{% if post['user_id'] %}<span class="cm-member">{{ ui('board.member_badge', '회원') }}</span>{% endif %}{{ editor_badge(post) }}</b><small>{{ post['created']|ago }} · {{ ui('cm.likes', '공감') }} {{ post['likes'] }} · {{ ui('cm.answers', '답변') if k == 'question' else ui('cm.comments', '댓글') }} {{ comments|length }}</small></div></div>

@@ -539,3 +539,7 @@ body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{flex-wrap:wrap;row-
 .rk-empty{display:grid;justify-items:center;gap:12px}
 .rk-inds a{display:inline-flex;align-items:center}
 .rk-good h2::before,.rk-bad h2::before{content:none}
+/* 운영자 2026-11-03: 제보 상세 유형도 목록처럼 종류별 색, [분류]만 */
+body:not(.sb) .pc-tags .nn-vc-tag{display:inline-block;padding:4px 10px;border-radius:8px;font-size:13.5px;font-weight:600;background:var(--tg-bg,#f2f4f6);color:var(--tg,#4e5968)}
+body:not(.sb) .pc-tags .nn-vc-ind{background:#f2f4f6;color:#4e5968;border-radius:8px;padding:4px 10px;font-weight:600}
+body:not(.sb) .pc-who .nn-vc-av.is-anon{background:#f3ede6;color:#652d1c}

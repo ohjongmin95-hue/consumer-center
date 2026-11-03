@@ -69,7 +69,7 @@
 
       <button class="primary" type="submit" {% if not intake_enabled %}disabled title="현재 접수 준비 중"{% endif %} style="width:100%;margin-top:18px">{{ ui('report.submit', '제보 접수하기 ↗') }}</button>
     </form>
-    {% if not intake_enabled %}<div class="alert">{{ ui('report.disabled', '현재 제보 접수 기능은 비활성화되어 있습니다. 운영 정책과 보안 검증 후 개시됩니다.') }}</div>{% endif %}
+    {% if not intake_enabled %}<div class="alert">{{ ui('report.disabled', '지금은 제보를 받을 준비 중이에요. 보안 점검을 마치면 바로 열게요.') }}</div>{% endif %}
   </div>
 </div></main>
 <script>

@@ -268,7 +268,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('공개 환불 요청', filtered)
         self.assertNotIn('공개 계약 문의', filtered)
         empty = self.client.get('/reports?q=missing').get_data(as_text=True)
-        self.assertIn('검색 조건에 맞는 제보 내역이 없습니다.', empty)
+        self.assertIn('찾는 제보가 없어요.', empty)
 
     def test_hero_photos_wall(self):
         # 첫 화면 사진 (운영자 2026-11-03): 관리자가 고른 제보 사진의 가린 사본만 공개, 3장부터 제보센터 첫 화면 뒤에 깔림
@@ -454,7 +454,7 @@ class SiteTest(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        self.assertIn('제보가 접수됐습니다.', html)
+        self.assertIn('제보를 접수했어요.', html)
         receipt = re.search(r'CJ-\d{6}-[A-F0-9]+', html)[0]
         self.assertNotIn('조회 코드는 다시 표시되지 않습니다', html)
         token = self.csrf(self.client, '/lookup')
@@ -842,7 +842,7 @@ class SiteTest(unittest.TestCase):
             'home.intro_sub': '첫 줄\r\n<b>둘째 줄</b>', 'home.intro_title': '<script>x</script>소보루!', 'home.intro_btn': '',
             'home.live_title': '지금 막 온 제보', 'home.intro_kicker': '**굵게** <i>기울임</i>',
         }, follow_redirects=True)
-        self.assertIn('문구를 저장했습니다.', response.get_data(as_text=True))
+        self.assertIn('문구를 저장했어요.', response.get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('첫 줄<br>&lt;b&gt;둘째 줄&lt;/b&gt;', home)
         self.assertIn('&lt;script&gt;x&lt;/script&gt;소보루!', home)
@@ -880,7 +880,7 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(self.client, '/takedown')
         self.assertEqual(self.client.post('/takedown', data={'_csrf': token, 'requester': '업체'}).status_code, 400)
         done = self.client.post('/takedown', data={'_csrf': token, 'requester': '테스트 업체', 'contact': 'a@example.com', 'target': '제목', 'reason': '<b>사실과 다름</b>', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234'})
-        self.assertIn('요청이 접수됐습니다.', done.get_data(as_text=True))
+        self.assertIn('요청을 접수했어요.', done.get_data(as_text=True))
         admin = self.login_admin()
         listing = admin.get('/admin/takedowns').get_data(as_text=True)
         self.assertIn('&lt;b&gt;사실과 다름&lt;/b&gt;', listing)
@@ -2922,7 +2922,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('구매일 대신 계약일', self.client.get('/guide').get_data(as_text=True))
         # 화면 문구(ui)도 지울 수 있음
         admin.post('/admin/inline', data={'_csrf': token, 'key': 'report.consent_all', 'delete': '1'})
-        self.assertNotIn('아래 내용에 모두 동의합니다', self.client.get('/report').get_data(as_text=True))
+        self.assertNotIn('아래 내용에 모두 동의해요', self.client.get('/report').get_data(as_text=True))
         # 지우면 안 되는 문구는 거절
         self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'site.name', 'delete': '1'}).status_code, 400)
         # 목록의 둘째 칸은 지우기, 첫째 칸은 항목째 빼기로 안내

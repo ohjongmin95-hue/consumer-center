@@ -75,7 +75,7 @@
     <dl class="guide-basics">
       {% for item in items('guide_basics') %}<div><dt>{{ item.title }}</dt><dd class="pre-line">{{ item.body }}</dd></div>{% endfor %}
     </dl>{{ ed_list('guide_basics') }}
-    <p class="guide-tip">{{ ui_rich('guide.s1_tip', '날짜와 금액은 거래 내용을 확인하는 데 도움이 됩니다. 정확히 기억나지 않으면 ‘○월 초쯤’, ‘약 ○만 원’처럼 표시해 주세요.') }}</p>
+    <p class="guide-tip">{{ ui_rich('guide.s1_tip', '날짜와 금액이 있으면 거래 내용을 확인하기 쉬워요. 정확히 기억나지 않으면 ‘○월 초쯤’, ‘약 ○만 원’처럼 표시해 주세요.') }}</p>
   </section>
 
 {% elif block.kind == 'guide_writing' %}
@@ -87,15 +87,15 @@
     </ol>{{ ed_list('guide_writing') }}
     <aside class="guide-example" aria-labelledby="example-heading">
       <h3 id="example-heading">{{ ui('guide.ex_title', '이렇게 작성해 보세요') }} <span>{{ ui('guide.ex_tag', '가상의 예시') }}</span></h3>
-      <p>{{ ui_rich('guide.ex_body', '3월 2일 ○○쇼핑몰에서 무선 이어폰을 89,000원에 구매했습니다. 3월 4일 배송받았는데 오른쪽에서 소리가 나지 않았습니다. 다음 날 고객센터에 교환을 요청했지만 아직 답변을 받지 못했습니다.') }}</p>
-      <p class="guide-example-request"><strong>{{ ui('report.f_request', '원하는 해결 방법') }}</strong> {{ ui('guide.ex_request', '정상 제품으로 교환받고 싶습니다.') }}</p>
+      <p>{{ ui_rich('guide.ex_body', '3월 2일 ○○쇼핑몰에서 무선 이어폰을 89,000원에 샀어요. 3월 4일 받았는데 오른쪽에서 소리가 나지 않았어요. 다음 날 고객센터에 교환을 요청했지만 아직 답이 없어요.') }}</p>
+      <p class="guide-example-request"><strong>{{ ui('report.f_request', '원하는 해결 방법') }}</strong> {{ ui('guide.ex_request', '정상 제품으로 교환받고 싶어요.') }}</p>
     </aside>
   </section>
 
 {% elif block.kind == 'guide_evidence' %}
   <section class="guide-section evidence-visual-guide" id="photo-guide" aria-labelledby="photo-heading">
     <div class="guide-section-heading"><span class="guide-number" aria-hidden="true">{{ "%02d" % num }}</span><h2 id="photo-heading">{{ txt('guide.s3_title') }}</h2></div>
-    <p class="guide-description">{{ ui_rich('guide.s3_desc1', '세 가지만 기억해 주세요. **전체 모습, 문제 부위, 거래 기록.**') }}<br>{{ ui_rich('guide.s3_desc2', '각 자료가 서로 연결되면 어떤 일이 있었는지 이해하기 쉬워집니다.') }}</p>
+    <p class="guide-description">{{ ui_rich('guide.s3_desc1', '세 가지만 기억해 주세요. **전체 모습, 문제 부위, 거래 기록.**') }}<br>{{ ui_rich('guide.s3_desc2', '자료가 서로 이어지면 어떤 일이 있었는지 알기 쉬워요.') }}</p>
     <div class="evidence-step-grid">
       <article class="evidence-step">
         <div class="evidence-illustration evidence-illustration--whole" aria-hidden="true"></div>
