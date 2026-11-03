@@ -162,6 +162,8 @@ def menu_href(item):
     if page in ('terms','privacy'):return url_for('policy_page',page=page)
     if page=='groups' and not GROUPS_ON:return ''  # 공동 대응이 꺼져 있으면 메뉴에서 숨김
     if page=='experts':return url_for('experts_page')
+    if page=='rank':return url_for('companies_rank')
+    if page=='check':return url_for('check_list')
     if page in ('reports','board','report','lookup','home','takedown','groups','companies'):return url_for(page)
     return '#'
 def menu_active(href):
@@ -2870,6 +2872,7 @@ import report_talk;report_talk.install(types.SimpleNamespace(**globals()))  # �
 import hero_photos;hero_photos.install(types.SimpleNamespace(**globals()))  # 첫 화면 배경 사진: 실제 제보 사진을 가린 사본으로 (hero_photos.py)
 import experts;experts.install(types.SimpleNamespace(**globals()))  # 전문가 등록: 관리자 초대 링크·직접 신청, 승인되면 댓글에 전문가 표시 (experts.py)
 import partners;partners.install(types.SimpleNamespace(**globals()))  # 협력 기관 로고 띠·배너 (partners.py)
+import buycheck;buycheck.install(types.SimpleNamespace(**globals()))  # 사기 전에 확인: 업종별 피해 주의 글 (buycheck.py)
 import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)

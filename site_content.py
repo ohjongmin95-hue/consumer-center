@@ -250,7 +250,7 @@ SAMPLE_REPORTS = [
     ('무료체험 후 자동결제 안내가 없었어요', '구독·결제', '○○TV', '검토 중'),
 ]
 MENU_PAGES = [
-    ('reports', '제보 목록'), ('companies', '기업별 제보'), ('guide', '이용 안내'), ('process', '처리 절차'), ('experts', '전문가'), ('board', '소비자게시판'),
+    ('reports', '제보 목록'), ('companies', '기업별 제보'), ('rank', '기업 응대 순위'), ('check', '사기 전에 확인'), ('guide', '이용 안내'), ('process', '처리 절차'), ('experts', '전문가'), ('board', '소비자게시판'),
     ('faq', '자주 묻는 질문'), ('report', '제보하기'), ('lookup', '내 제보 조회'), ('types', '제보 유형'),
     ('home', '홈 (메인 화면)'), ('terms', '이용약관'), ('privacy', '개인정보 처리방침'), ('takedown', '게시중단 요청'),
     ('groups', '공동 대응 (집단 피해)'), ('custom', '직접 입력한 주소'),

@@ -5923,6 +5923,31 @@ class SiteTest(unittest.TestCase):
         html = self.client.get('/companies/rank').get_data(as_text=True)
         self.assertIn('순위테스트몰', html); self.assertIn('답변 3/6', html)
 
+    def test_buy_check_guides(self):
+        """운영자 2026-11-03: 사기 전에 확인. AI 초안은 공개 전엔 안 보이고, 공개하면 목록·글·업종 통계가 보임."""
+        self.assertIn('곧 업종별 주의 글', self.client.get('/check').get_data(as_text=True))
+        admin = self.login_admin()
+        token = self.csrf(admin, '/admin/check')
+        ind = '쇼핑·유통'
+        with self.site.conn() as db:
+            db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,industry,public_consent,published) VALUES('CK-1','x','[환불] 환불 거절','몰','환불 안 됨','반품했는데 환불이 안 돼요 010-1234-5678','환불',?,?,1,1)",
+                       (datetime.datetime.now().isoformat(timespec='seconds'), ind))
+        sent = {}
+        def fake(url, headers, body, timeout):
+            sent['text'] = body['messages'][1]['content']
+            return 200, {'choices': [{'message': {'content': '환불, 이것만 확인해요\n\n도입 문장이에요.\n\n## 사기 전에 확인할 것\n- 반품 조건 <b>캡처</b>'}}]}
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'k'}), patch.object(self.site.companydesk, '_post_json', side_effect=fake):
+            r = admin.post('/admin/check', data={'_csrf': token, 'industry': ind, 'ai': '1'})
+        self.assertEqual(r.status_code, 302)
+        self.assertNotIn('010-1234-5678', sent['text']); self.assertIn('환불: 1', sent['text'])
+        with self.site.conn() as db: gid = db.execute('SELECT id FROM buy_guides ORDER BY id DESC').fetchone()[0]
+        self.assertEqual(self.client.get('/check/%d' % gid).status_code, 404)
+        admin.post('/admin/check/%d' % gid, data={'_csrf': token, 'act': 'save', 'title': '환불, 이것만 확인해요', 'industry': ind, 'status': 'published',
+                                                 'body': '도입 문장이에요.\n\n## 사기 전에 확인할 것\n- 반품 조건 <b>캡처</b>'})
+        page = self.client.get('/check/%d' % gid).get_data(as_text=True)
+        self.assertIn('<h2>사기 전에 확인할 것</h2>', page); self.assertIn('&lt;b&gt;캡처', page); self.assertIn('1건', page)
+        self.assertIn('환불, 이것만 확인해요', self.client.get('/check').get_data(as_text=True))
+
     def test_partners_and_report_stages(self):
         """운영자 2026-11-03: 협력 기관 로고·배너(관리자에서 넣기), 제보 목록 단계 탭, 제보하기 버튼 하나."""
         import io

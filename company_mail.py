@@ -307,12 +307,13 @@ def seed(path=SEED, lookup=True):
 
 
 def auto(site):
-    """처음 배포할 때 한 번만 큰 기업을 미리 등록 (메일 찾기는 오래 걸릴 수 있어 set-ftc.sh에서)."""
+    """처음 배포할 때 한 번만 큰 기업을 미리 등록 (메일 찾기는 오래 걸릴 수 있어 set-ftc.sh에서).
+    운영자 2026-11-03: 목록을 112곳으로 늘림 → v2로 한 번 더 (이미 있는 기업은 다른 이름만 보탬)."""
     if os.getenv('SOBORU_COMPANY_SEED', '1') == '0': return 0
     import datetime
     with site.conn() as db:
         db.execute('CREATE TABLE IF NOT EXISTS soboru_flags(key TEXT PRIMARY KEY,created TEXT NOT NULL)')
-        first = db.execute("INSERT OR IGNORE INTO soboru_flags(key,created) VALUES('company_seed_v1',?)", (datetime.datetime.now().isoformat(timespec='seconds'),)).rowcount
+        first = db.execute("INSERT OR IGNORE INTO soboru_flags(key,created) VALUES('company_seed_v2',?)", (datetime.datetime.now().isoformat(timespec='seconds'),)).rowcount
     if not first: return 0
     try: return seed(lookup=False)[0]
     except Exception as e:  # 기업 목록 때문에 사이트가 안 뜨면 안 됨

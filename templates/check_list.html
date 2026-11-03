@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('check.title', '사기 전에 확인') }}{% if ind %} · {{ ind }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('check.meta', '실제 소비자 제보에서 자주 나온 피해와, 사기 전에 확인할 것을 업종별로 정리했어요.') }}{% endblock %}
+{% block content %}
+{# 운영자 2026-11-03: 헤이마오 '먀오이옌'처럼 사기 전에 한 번 확인하는 업종별 주의 글 #}
+<main class="page"><div class="wrap ck-wrap">
+  <h1 class="page-title">{{ ui('check.title', '사기 전에 확인') }}</h1>
+  {% if inds %}<nav class="rf-cats rk-inds" aria-label="{{ ui('reports.f_ind', '업종') }}"><a href="{{ url_for('check_list') }}"{% if not ind %} class="on" aria-current="true"{% endif %}>{{ ui('reports.cat_all', '전체') }}</a>{% for i in inds %}<a href="{{ url_for('check_list', ind=i) }}"{% if i == ind %} class="on" aria-current="true"{% endif %}>{{ i }}</a>{% endfor %}</nav>{% endif %}
+  {% if guides %}<ul class="ck-list">{% for gd in guides %}<li><a href="{{ url_for('check_page', gid=gd.id) }}">{% if gd.industry %}<small>{{ gd.industry }}</small>{% endif %}<b>{{ gd.title }}</b><span>{{ gd.excerpt }}</span></a></li>{% endfor %}</ul>
+  {% else %}<p class="rk-empty">{{ ui('check.empty', '곧 업종별 주의 글이 올라와요.') }}</p>{% endif %}
+</div></main>
+{% endblock %}

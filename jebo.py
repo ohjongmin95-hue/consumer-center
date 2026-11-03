@@ -277,6 +277,7 @@ def install(S):
             rows=db.execute('SELECT * FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[size,(page-1)*size]).fetchall()
             first=first_answers(db,[r['id'] for r in rows])
             cats=db.execute("SELECT category,COUNT(*) AS n FROM cases WHERE company_id=? AND review NOT IN ('rejected','duplicate') GROUP BY category",(company_id,)).fetchall()
+            kakao=(db.execute("SELECT kakao_url FROM company_contacts WHERE company_id=? AND kakao_url!='' ORDER BY updated DESC LIMIT 1",(company_id,)).fetchone() or [''])[0]  # 운영자 2026-11-03: 기업 카카오톡 채널로 바로 문의
             n_open=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND public_consent=1 AND published=1 AND review NOT IN ('rejected','duplicate')",(company_id,)).fetchone()[0]
         by_cat={}
         for r in cats:by_cat[cat_label(r['category'])]=by_cat.get(cat_label(r['category']),0)+r['n']
@@ -285,7 +286,7 @@ def install(S):
                     **(pub(r,mask) if r['public_consent'] and r['published'] else {'subject':r['public_subject'] or mask(r['subject']),'body':'','request':''})) for r in rows]
         indexable=bool(n_open or co['statement'])
         return render_template('company_page.html',co=co,st=st,gr=gr,cases=cases,total=total,page=page,pages=max(1,-(-total//size)),cat=cat,by_cat=by_cat,
-                               categories=S.report_categories(),indexable=indexable,today=datetime.date.today().isoformat(),aka=[n for n in names(co)[1:] if n and n!=co['name']])
+                               categories=S.report_categories(),indexable=indexable,kakao=kakao,today=datetime.date.today().isoformat(),aka=[n for n in names(co)[1:] if n and n!=co['name']])
 
     # ---- 2차: 기업 공식 이메일 인증, 공식 입장, 답변 수정 이력, 소비자 해결 확인 ----
     import hashlib,secrets
