@@ -246,6 +246,12 @@ def install(S):
 
     app.jinja_env.globals['case_photo'] = case_photo
     app.jinja_env.globals['hero_wall'] = wall
+    def staged():
+        """운영자 2026-11-03: 첫 화면 큰 사진 카드엔 관리자가 직접 올린 연출 사진만 (작고 흐린 제보 사진은 안 씀). 한 장만 있어도 나옴."""
+        rows = [r for r in photos() if not r['auto'] and not r['case_id']]
+        for r in rows: r['wide'] = wide_name(r['stored']) if (folder / wide_name(r['stored'])).is_file() else ''
+        return rows
+    app.jinja_env.globals['hero_staged'] = staged
     app.jinja_env.globals['hero_video'] = video
 
     @app.route('/hero/v/<name>')

@@ -445,7 +445,7 @@ def install(S):
         if not ids: return cases
         q = ','.join('?' * len(ids))
         with conn() as db:
-            rows = {r['id']: r for r in db.execute(f'SELECT id,public_consent,published,public_body,description,user_id FROM cases WHERE id IN ({q})', ids)}
+            rows = {r['id']: r for r in db.execute(f'SELECT c.id,c.public_consent,c.published,c.public_body,c.description,c.user_id,c.company_id,co.logo,co.logo_at FROM cases c LEFT JOIN companies co ON co.id=c.company_id WHERE c.id IN ({q})', ids)}
             first = jebo.first_answers(db, ids)
             uids = sorted({r['user_id'] for r in rows.values() if r['user_id']})
             nicks = {u['id']: u['nickname'] for u in db.execute(f"SELECT id,nickname FROM users WHERE status='active' AND id IN ({','.join('?' * len(uids))})", uids)} if uids else {}
@@ -456,7 +456,8 @@ def install(S):
             open_ = bool(r and r['public_consent'] and r['published'] and c['title'])
             body = ' '.join((r['public_body'] or S.mask_personal(r['description'] or '')).split()) if open_ else ''
             uid = r['user_id'] if r and open_ and r['user_id'] in nicks else None  # 작성자 닉네임은 공개 제보만 (운영자 2026-11-03: 검은고양이처럼)
-            c.update(open=open_, excerpt=body[:excerpt], author_id=uid, author=nicks.get(uid, ''), answered=c['no'] in first, metoo=talk.get(c['no'], (0, 0))[0], comments=talk.get(c['no'], (0, 0))[1])
+            co = S.co_logo({'id': r['company_id'], 'logo': r['logo'], 'logo_at': r['logo_at']}) if r and r['company_id'] and getattr(S, 'co_logo', None) else ''  # 운영자 2026-11-03: 카드 맨 위에 기업 로고·이름
+            c.update(co_logo=co, open=open_, excerpt=body[:excerpt], author_id=uid, author=nicks.get(uid, ''), answered=c['no'] in first, metoo=talk.get(c['no'], (0, 0))[0], comments=talk.get(c['no'], (0, 0))[1])
         return cases
     app.jinja_env.globals['report_cards'] = card_info  # 소보루 제보 목록(/reports)도 홈처럼 카드로 (운영자 2026-11-03: 검은고양이처럼)
 
