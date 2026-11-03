@@ -716,3 +716,23 @@ body:not(.sb) .process-page .process-disclaimer{text-align:center;text-wrap:bala
 body:not(.sb) .process-card .step-icon [fill="#2b3a55"],body:not(.sb) .process-card .step-icon [fill="#2e9d5b"]{fill:#ef7300}
 body:not(.sb) .process-card .step-icon [stroke="#2b3a55"]{stroke:#ef7300}
 body:not(.sb) .process-card .step-icon [fill="#e9e3dd"]{fill:#ffd9b0}
+/* 운영자 2026-11-03 "절차도 토스처럼": 처리 절차 페이지 = 토스 소개 페이지식 세로 단락
+   (번호 칩 → 큰 굵은 제목 → 회색 설명, 그림 없이 넉넉한 간격). 첫 화면 요약 카드는 그대로 */
+.pc-num{display:none}
+body:not(.sb) .process-page .process-cards{display:grid;grid-template-columns:1fr;gap:96px;max-width:760px;margin:72px auto 0}
+body:not(.sb) .process-page .process-card{display:grid;grid-template-columns:1fr;justify-items:start;padding:0;background:none;border-radius:0}
+body:not(.sb) .process-page .pc-icon{display:none}
+body:not(.sb) .process-page .pc-num{display:inline-flex;align-items:center;height:40px;padding:0 14px;margin:0 0 24px;border:1px solid #e5e8eb;border-radius:12px;background:#fff;color:#6b7684;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+body:not(.sb) .process-page .pc-step{display:none}
+body:not(.sb) .process-page .pc-label{display:block;margin:0 0 24px;font-size:44px;line-height:1.35;font-weight:700;letter-spacing:-.02em;color:#333d4b;word-break:keep-all;text-wrap:balance}
+body:not(.sb) .process-page .process-card .pc-body{font-size:20px;line-height:1.7;color:#4e5968;text-wrap:pretty}
+body:not(.sb) .process-page .process-card .pc-body .em{color:inherit;font-weight:inherit}
+body:not(.sb) .process-page .process-note{margin-top:96px}
+@media(max-width:560px){
+ body:not(.sb) .process-page .process-cards{gap:64px;margin-top:48px}
+ body:not(.sb) .process-page .process-card{grid-template-columns:1fr;padding:0}
+ body:not(.sb) .process-page .pc-num{height:34px;padding:0 12px;margin-bottom:16px;font-size:14px;border-radius:10px}
+ body:not(.sb) .process-page .pc-label{font-size:28px;margin-bottom:16px}
+ body:not(.sb) .process-page .process-card .pc-body{font-size:17px}
+ body:not(.sb) .process-page .process-note{margin-top:64px}
+}

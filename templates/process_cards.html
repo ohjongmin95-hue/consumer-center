@@ -3,6 +3,7 @@
 <ol class="process-cards">
   {% for step in items('process_steps') %}
   <li class="process-card">
+    <span class="pc-num" aria-hidden="true">{{ '%02d' % loop.index }}</span>
     <div class="pc-icon">{{ step_icon_svg(step_icon(step, loop.index0)) }}</div>
     <h3 class="pc-label"><span class="pc-step">{{ loop.index }}{{ ui('process.card_step', '단계') }}</span>{{ step.title }}</h3>
     {% if step.body %}<p class="pc-body">{{ step.body|emph }}</p>{% endif %}
