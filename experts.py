@@ -15,7 +15,7 @@ from flask import abort, flash, g, redirect, render_template, request, send_file
 # 운영자 2026-11-03: 자문단은 일단 변호사와 교수만 받음 (사무소·법인은 법무법인·법률사무소). 예전에 등록된 다른 분야는 그대로 보임
 FIELDS = ('변호사', '교수')
 FIRM_FIELDS = ('법무법인', '법률사무소')
-KINDS = {'person': '자문단', 'firm': '자문단'}  # 운영자 2026-11-03: 표시 이름 = 소비자 자문단 ('자문위원'·'전문가' 아님)
+KINDS = {'person': '자문단', 'firm': '자문단'}  # 운영자 2026-11-03: 표시 이름 = 소보루 자문단 ('자문위원'·'전문가' 아님)
 STATUS = {'invited': '초대함', 'pending': '확인 기다림', 'approved': '활동 중', 'rejected': '반려', 'stopped': '멈춤'}
 PROOF_EXT = ('.jpg', '.jpeg', '.png', '.webp', '.pdf')
 # 관리자가 자격을 공식 조회로 맞춰 볼 곳 (운영자 2026-11-03: 다른 서비스처럼 '파일 받기 → 공식 조회 → 표시')
@@ -37,6 +37,8 @@ def migrate(db):
     # 운영자 2026-11-03: 자문단 소개 페이지의 '상담 신청하기'. 돈은 받지 않고, 남긴 글을 그 자문단에게 전해 줌
     db.execute('''CREATE TABLE IF NOT EXISTS expert_requests(id INTEGER PRIMARY KEY,expert_id INTEGER NOT NULL,user_id INTEGER NOT NULL,
         body TEXT NOT NULL,contact TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,seen INTEGER NOT NULL DEFAULT 0)''')
+    # 운영자 2026-11-03: 새 제보가 올라오면 자문단이 알아야 의견을 남김. 하루 한 번 저녁에 메일로 묶어서 (끄고 켤 수 있음)
+    if 'digest' not in cols: db.execute('ALTER TABLE experts ADD COLUMN digest INTEGER NOT NULL DEFAULT 1')
 
 
 def labels(db, user_ids):
@@ -143,7 +145,8 @@ def install(S):
             with conn() as db:
                 reqs = db.execute('SELECT r.*,u.nickname FROM expert_requests r LEFT JOIN users u ON u.id=r.user_id WHERE r.expert_id=? ORDER BY r.id DESC LIMIT 30', (mine['id'],)).fetchall()
                 db.execute('UPDATE expert_requests SET seen=1 WHERE expert_id=?', (mine['id'],))
-            return render_template('expert_apply.html', mine=mine, kinds=KINDS, status=STATUS, photo=photo_url(mine['id'], mine['photo']), reqs=reqs)
+                waiting = new_cases(db, 6)
+            return render_template('expert_apply.html', mine=mine, kinds=KINDS, status=STATUS, photo=photo_url(mine['id'], mine['photo']), reqs=reqs, waiting=waiting)
         if request.method == 'POST':
             if request.form.get('website'): abort(400)  # 자동 등록 막기용 숨은 칸
             if mine and mine['status'] in ('approved', 'stopped'): abort(400)
@@ -199,6 +202,48 @@ def install(S):
         with conn() as db: row = db.execute("SELECT * FROM experts WHERE id=? AND status='approved'", (eid,)).fetchone()
         if not row: abort(404)
         return row
+
+    def new_cases(db, limit, since=''):
+        """공개된 최근 제보 (자문단이 의견을 남길 수 있는 것). since가 있으면 그 뒤에 올라온 것만."""
+        try:
+            return [dict(r) for r in db.execute(f"""SELECT id,subject,public_subject,company,category,created FROM cases
+                WHERE public_consent=1 AND published=1 AND review NOT IN ('rejected','duplicate') AND created>? ORDER BY id DESC LIMIT ?""", (since, limit))]
+        except Exception:
+            return []
+
+    def digest(now_iso=None, dry=False):
+        """운영자 2026-11-03: 지난번 뒤에 올라온 공개 제보를 자문단에게 하루 한 번 메일로 (cron이 저녁에 부름). 보낸 사람 수를 돌려줌."""
+        now_iso = now_iso or now()
+        with conn() as db:
+            row = db.execute("SELECT value FROM admin_settings WHERE key='expert_digest_last'").fetchone()
+            since = row[0] if row else (datetime.datetime.fromisoformat(now_iso) - datetime.timedelta(days=1)).isoformat(timespec='seconds')
+            cases = new_cases(db, 15, since)
+            people = db.execute("SELECT id,name,email FROM experts WHERE status='approved' AND digest=1 AND email!=''").fetchall()
+            if not dry:
+                db.execute("INSERT INTO admin_settings(key,value,updated) VALUES('expert_digest_last',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated", (now_iso, now_iso))
+        if not cases or not people: return 0
+        real = sorted(h for h in getattr(S, 'JEBO_HOSTS', set()) if not h.startswith('www.'))
+        base = 'https://' + real[0] if real else 'https://consumerjebo.co.kr'
+        lines = [f"· {c['public_subject'] or c['subject']}" + (f" ({c['company']})" if c['company'] else '') + f"\n  {base}/reports/{c['id']}" for c in cases]
+        sent = 0
+        for p in people:
+            text = (f"{p['name']} 님, 소비자제보센터에 새 제보 {len(cases)}건이 올라왔어요.\n\n" + '\n'.join(lines) +
+                    "\n\n제보에 의견을 남기면 이름 옆에 '자문단' 표시가 붙고, 제보가 기사로 나갈 때 함께 실릴 수 있어요."
+                    f"\n\n이 메일을 그만 받으려면: {base}/expert/apply 에서 '새 제보 알림'을 꺼 주세요.")
+            if dry: print(p['email'], text[:200]); sent += 1; continue
+            try: S.notify.send_email(p['email'], f'[{S.notify.site_name()}] 새 제보 {len(cases)}건이 올라왔어요', text); sent += 1
+            except Exception: pass
+        return sent
+
+    @app.route('/expert/digest', methods=['POST'])
+    @S.member_only
+    def expert_digest_toggle():
+        with conn() as db:
+            db.execute('UPDATE experts SET digest=? WHERE user_id=?', (1 if request.form.get('on') == '1' else 0, g.user['id']))
+        flash('새 제보 알림을 켰어요.' if request.form.get('on') == '1' else '새 제보 알림을 껐어요.')
+        return redirect(url_for('expert_apply'))
+
+    app.extensions['experts_digest'] = digest
 
     @app.route('/experts/<int:eid>')
     def expert_profile(eid):
@@ -331,14 +376,24 @@ def install(S):
 
     @app.route('/explore')
     def explore():
-        """둘러보기 (운영자 2026-11-03: 헤이마오 '发现'처럼). 기업 응대 순위·사기 전에 확인 바로가기, 소비자 자문단 카드 줄, 최신 소식·공감 많은 제보."""
+        """둘러보기 (운영자 2026-11-03: 헤이마오 '发现'처럼). 기업 응대 순위·사기 전에 확인 바로가기, 소보루 자문단 카드 줄, 최신 소식·공감 많은 제보."""
         hot = S.report_rows("public_consent=1 AND published=1 AND title_hidden=0 AND " + S.PUBLIC_VALID, (), 6, 0, S.HOT_ORDER)
         with conn() as db:
             try: news = db.execute("SELECT id,title,summary,category,COALESCE(published_at,created) AS at FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 3").fetchall()
             except Exception: news = []
         # 운영자 2026-11-03: 자문단은 순서대로 말고 랜덤으로 (네 명씩 보이고, 더 있으면 화면에서 돌아가며 바뀜)
         people = list(helpers(40)); random.shuffle(people)
-        return render_template('explore.html', helpers=people, hot=hot, news=news)
+        return render_template('explore.html', helpers=people, hot=hot, news=news, ask_link='law_ask' in app.view_functions)
+
+    @app.route('/explore/contact-tips')
+    def contact_tips():
+        """운영자 2026-11-03: 한국소비자원 '사업자와 접촉 시 소비자 행동요령' 7가지를 해요체로 풀어 둔 페이지 (출처 밝힘)."""
+        return render_template('contact_tips.html')
+
+    @app.route('/explore/tricks')
+    def guide_tricks():
+        """운영자 2026-11-03: 한국소비자원 '악덕상술 유형' 12가지 (출처 밝힘)."""
+        return render_template('guide_tricks.html')
 
     @app.route('/admin/experts/<int:eid>/proof')
     @S.admin_only

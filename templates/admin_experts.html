@@ -1,8 +1,8 @@
 {% extends 'console.html' %}
-{% block title %}소비자 자문단 | {{ txt('site.name') }}{% endblock %}
+{% block title %}소보루 자문단 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="cs-page">
-  <h1 class="cs-title">소비자 자문단</h1>
+  <h1 class="cs-title">소보루 자문단</h1>
   <p class="cs-lead">모시고 싶은 분을 한 명씩 등록해 <b>초대 링크</b>를 보내 주세요. 링크를 연 분이 정보와 자격증 파일을 넣으면 로그인 없이 바로 자문단이 돼요. 모집 페이지(<b>{{ url_for('expert_apply', _external=True) }}</b>)로 직접 신청한 분은 자격증 파일을 보고 공식 조회로 맞춰 본 뒤 승인해 주세요. 댓글에 ‘자문단 · 분야’ 표시가 붙으려면 그분이 카카오 로그인으로 계정을 한 번 이어야 해요.</p>
 
   <form class="cs-panel cs-add" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="invite">

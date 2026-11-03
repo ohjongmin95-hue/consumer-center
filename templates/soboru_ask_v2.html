@@ -8,7 +8,7 @@
 {% set notice = ui_text('ask2.notice', '상담사가 아닌 AI가 제공하는 일반 정보예요') %}
 {# 운영자 2026-11-03: 제보센터 첫 화면은 토스플레이스 고객 지원처럼. 가운데 큰 질문 하나 → 둥근 입력창 → 예시 칩, 색은 우리 귤색 #}
 {% set hero = not is_soboru() and not result and not turns %}
-{% if not is_soboru() %}{% set help_on = 'ask' %}{% include 'help_tabs.html' %}{% endif %}
+{# 운영자 2026-11-03: AI 상담은 둘러보기 안으로 (고객센터 탭 없음) #}
 <main class="sb-wrap sbv{{ ' is-hero' if hero }}">
 <div class="sbv-in">
   {% if preview %}<p class="sbv-preview">관리자 미리 보기예요. 손님에게는 아직 예전 화면이 보여요. 관리자 &gt; AI 상담에서 켤 수 있어요.</p>{% endif %}
@@ -86,7 +86,7 @@
             </summary>
             <div class="sba-ref-body">
               <p class="sba-text">{{ c.text }}</p>
-              <p class="sba-src"><span>{{ c.law }}{% if c.checked %} · {{ ui('ask2.checked', '{date} 확인', date=c.checked|replace('-', '.')) }}{% endif %}</span><a href="{{ c.source }}" target="_blank" rel="noopener">{{ ui('ask.src_guide', '원문 보기') if c.key == 'easylaw' else ui('ask.src_law', '국가법령정보센터에서 보기') }} ↗</a></p>
+              <p class="sba-src"><span>{{ c.law }}{% if c.checked %} · {{ ui('ask2.checked', '{date} 확인', date=c.checked|replace('-', '.')) }}{% endif %}</span><a href="{{ c.source }}" target="_blank" rel="noopener">{{ ui('ask.src_guide', '원문 보기') if c.key in ('easylaw', 'kca_guide') else ui('ask.src_law', '국가법령정보센터에서 보기') }} ↗</a></p>
             </div>
           </details>
           {% endfor %}

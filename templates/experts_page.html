@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {# 전문가 (운영자 2026-11-03: 상단 메뉴 '소비자게시판' 자리). 수수료·수임료 없이 제보에 의견을 남기는 전문가를 소개만 함. #}
-{% block title %}{{ ui('experts.title4', '소비자 자문단') }} | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ ui('experts.title4', '소보루 자문단') }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="page xp-page"><div class="wrap">
-  <h1 class="page-title">{{ ui('experts.title4', '소비자 자문단') }}</h1>
+  <h1 class="page-title">{{ ui('experts.title4', '소보루 자문단') }}</h1>
 
   {% macro card(e) %}
   <li><a class="xp-card" href="{{ url_for('expert_profile', eid=e.id) }}">

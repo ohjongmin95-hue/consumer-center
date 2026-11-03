@@ -384,11 +384,14 @@ class SiteTest(unittest.TestCase):
         self.assertIn('pr@webb.com(홍보팀)', self.login_admin().get('/admin/companies').get_data(as_text=True))
 
     def test_explore_hub(self):
-        # 운영자 2026-11-03: 메뉴 '전문가' 대신 '둘러보기' 허브 (기업 순위·사기 전에 확인·소비자 자문단·공감 많은 제보)
+        # 운영자 2026-11-03: 메뉴 '전문가' 대신 '둘러보기' 허브 (기업 순위·사기 전에 확인·소보루 자문단·공감 많은 제보)
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
         page = self.client.get('/explore', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
-        for text in ('xh-title', '기업 응대 순위', '사기 전에 확인', '소비자 자문단'):
+        for text in ('xh-title', '기업 응대 순위', '사기 전에 확인', '소보루 자문단'):
             self.assertIn(text, page)
+        self.assertIn('/explore/tricks', page); self.assertIn('/explore/contact-tips', page)  # 소비자 안내서 주제 카드
+        for path, text in (('/explore/tricks', '네거티브 옵션'), ('/explore/contact-tips', '담당자 찾기')):
+            body = self.client.get(path).get_data(as_text=True); self.assertIn(text, body); self.assertIn('한국소비자원', body)
         home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('href="/explore"', home); self.assertNotIn('>전문가<', home)
 
@@ -443,6 +446,17 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(asker.post('/experts/%d/ask' % row['id'], data={'_csrf': t, 'body': '환불을 3주째 못 받고 있어요. 상담하고 싶어요.', 'contact': '010-0000-1111'}).status_code, 302)
         with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM expert_requests WHERE expert_id=?', (row['id'],)).fetchone()[0], 1)
         self.assertIn('환불을 3주째', other.get('/expert/apply').get_data(as_text=True))
+        # 운영자 2026-11-03: 새 제보를 자문단에게 하루 한 번 메일로 (공개 제보만, 알림 끄면 안 감)
+        page = other.get('/expert/apply').get_data(as_text=True)
+        self.assertIn('의견을 기다리는 제보', page)
+        sent = []
+        with patch.object(self.site.notify, 'send_email', lambda to, subj, body, **k: sent.append((to, subj, body))):
+            with self.site.app.app_context():
+                with self.site.conn() as db: db.execute("UPDATE experts SET email='lee@x.kr' WHERE id=?", (row['id'],)); db.execute("DELETE FROM admin_settings WHERE key='expert_digest_last'")
+                self.site.app.extensions['experts_digest'](now_iso='2026-10-09T20:00:00')
+        self.assertTrue(any(t == 'lee@x.kr' and '/reports/%d' % cid in b for t, _, b in sent))
+        t = self.csrf(other, '/expert/apply'); other.post('/expert/digest', data={'_csrf': t, 'on': '0'})
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT digest FROM experts WHERE id=?', (row['id'],)).fetchone()[0], 0)
         # 법무법인 같은 사무소·법인도 등록 (전문 기관 표시)
         firm, fid = self.member_client('firm_sb', '법무법인소보루')
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '법무법인 소보루', 'field': '법무법인'}).status_code, 302)
@@ -4507,7 +4521,11 @@ class SiteTest(unittest.TestCase):
         self.assertTrue(ask['need_more']); self.assertEqual(ask['questions'], ['언제 받으셨나요?'])
 
     def test_ask_v2_no_law_and_follow_up_question(self):
-        self.rag_setup()
+        import lawsync
+        rag = self.rag_setup()
+        # 저장소 별표에는 '치수(사이즈)' 줄이 있어서, 법령이 없는 길만 보려고 잠깐 뺌
+        rc = rag['corpus']; keep = list(rc.EXTRA); rc.EXTRA[:] = [p for p in keep if p not in lawsync.BUNDLED]; rc.reset()
+        self.addCleanup(lambda: (rc.EXTRA.__setitem__(slice(None), keep), rc.reset()))
         sent = []
         with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', self.rag_fake(sent)):
             html = self.ask2(self.client, '사이즈 추천해 주세요 감사합니다').get_data(as_text=True)
@@ -4653,6 +4671,9 @@ class SiteTest(unittest.TestCase):
     def test_ask_v2_finds_other_laws_from_law_api(self):
         import lawsync
         rag = self.rag_setup(); st = rag['store']
+        # 저장소 별표에는 반려동물 기준이 있어서, API로 다른 법을 찾는 길만 따로 보려고 잠깐 뺌
+        rc = rag['corpus']; keep = list(rc.EXTRA); rc.EXTRA[:] = [p for p in keep if p not in lawsync.BUNDLED]; rc.reset()
+        self.addCleanup(lambda: (rc.EXTRA.__setitem__(slice(None), keep), rc.reset()))
         q = '분양받은 반려견이 일주일 만에 파보장염으로 죽었어요. 분양업자에게 뭘 요구할 수 있나요?'
         self.assertTrue(rag['retrieve'](q, api=False)[2]['weak'])  # 모아 둔 법으로는 약하게만 맞음
         found = ('<LawSearch><totalCnt>2</totalCnt>'
@@ -6025,7 +6046,8 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(r.status_code, 302)
         html = self.client.get('/reports').get_data(as_text=True)
         self.assertIn('rf-partners', html); self.assertIn('alt="시험 기관"', html); self.assertNotIn('javascript:', html)
-        self.assertIn('pt-band', self.client.get('/').get_data(as_text=True)) if 'hero-wall' in self.client.get('/').get_data(as_text=True) else None
+        home = self.client.get('/').get_data(as_text=True)
+        if 'hero-wall' in home: self.assertIn('img/orgs/c24.png', home); self.assertNotIn('pt-band', home)  # 운영자 2026-11-03: 홈 사진 아래 띠 대신 로고 4개
         with self.site.conn() as db: db.execute('DELETE FROM partners')
 
 if __name__ == '__main__':

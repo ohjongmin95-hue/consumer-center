@@ -43,6 +43,11 @@ systemctl restart soboru
 if [ -f /etc/systemd/system/soboru-writer.timer ]; then install -m 644 $APP/deploy/soboru-writer.service $APP/deploy/soboru-writer.timer /etc/systemd/system/ && systemctl daemon-reload
   systemctl is-enabled --quiet soboru-writer.timer && systemctl restart soboru-writer.timer || true; fi  # 쓰는 시각이 바뀌면 새 시각으로
 if [ -f /etc/systemd/system/soboru-letter.timer ]; then install -m 644 $APP/deploy/soboru-letter.service $APP/deploy/soboru-letter.timer /etc/systemd/system/ && systemctl daemon-reload; fi  # 소보루 레터(set-letter.sh)
+# 운영자 2026-11-03: 새 제보를 자문단에게 하루 한 번(저녁 6시) 메일로 알림
+cat > /etc/cron.d/soboru-expert-digest <<'CRON'
+0 18 * * * root set -a; . /etc/soboru.env; set +a; cd /opt/soboru/app && runuser -u soboru -- /opt/soboru/venv/bin/python expert_digest.py >/dev/null 2>&1
+CRON
+chmod 644 /etc/cron.d/soboru-expert-digest
 # SOBORU 플랫폼(한큐 + 소보루 비즈)이 설치돼 있으면 같이 다시 시작
 if [ -f /etc/systemd/system/soboru-platform.service ]; then
   # 소비자제보센터에 넣어 둔 메일 설정을 소보루 CS에도 똑같이 넣음 (비밀번호 찾기·알림 메일)
