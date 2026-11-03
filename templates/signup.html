@@ -5,7 +5,7 @@
 <main class="auth-page auth-page-login su-page">
   {# 토스식: 제목은 카드 위, 한 화면에 가입 버튼까지 (스크롤 없이) #}
   <h1 class="auth-title auth-title-out">{{ ui('common.signup', '회원가입') }}</h1>
-  {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
+  {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead2', '카카오·네이버로 3초 만에 시작해요') if 'naver' in social_providers() else ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
   {% if enabled and phone_login_ready() and not request.args.get('id') and request.method == 'GET' %}
   <div class="auth-card auth-start"><div class="auth-body">{{ social_buttons('시작하기') }}
     <a class="ph-btn" href="{{ url_for('phone_start', next=request.args.get('next') or None) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10.5 18h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>{{ ui('phone.btn', '휴대폰 번호로 시작하기') }}</span></a></div></div>
