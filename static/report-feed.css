@@ -561,3 +561,46 @@ body:not(.sb) .pc-who .nn-vc-av.is-anon{background:#f3ede6;color:#652d1c}
 @keyframes hb-move{to{transform:translateX(-50%)}}
 @media(prefers-reduced-motion:reduce){.hb-track{animation:none}}
 @media(max-width:680px){.hero-board{padding:44px 0 28px}.hero-board .hero-copy h1{font-size:28px}.hero-board .primary{padding:15px 30px;font-size:17px}.hb-rows{margin-top:36px;gap:10px}.hb-track{gap:10px}.hb-card{width:150px;height:112px;border-radius:14px}.hb-row.rev .hb-card{width:124px}}
+/* ===== TDS(토스 디자인 시스템) 기준 다듬기, 운영자 2026-11-03. 글자·색·버튼만 (페이지 여백은 그대로). 제보센터 얼굴만 ===== */
+body:not(.sb){--g50:#f9fafb;--g100:#f2f4f6;--g200:#e5e8eb;--g300:#d1d6db;--g400:#b0b8c1;--g500:#8b95a1;--g600:#6b7684;--g700:#4e5968;--g800:#333d4b;--g900:#191f28;--tblue:#3182f6;--tred:#f04452;--tgreen:#03b26c;--line:var(--g200);--muted:var(--g500);color:var(--g900);-webkit-font-smoothing:antialiased;letter-spacing:0}
+/* 글자: TDS 굵기는 400·500·600·700 네 가지만 (850·900 같은 아주 굵은 글씨 X), 큰 글자 자간 과하게 좁히지 않음 */
+body:not(.sb) :is(h1,h2,h3,h4,b,strong,th,.brand,.section-nav a,.page-title,.eyebrow,.step-num,.type-link,.field label,.faq-item summary){font-weight:700}
+body:not(.sb) :is(h1,.page-title,.info-wrap h1){letter-spacing:-.02em;line-height:1.35}
+body:not(.sb) .hero h1{letter-spacing:-.025em}
+body:not(.sb) :is(h2,h3){letter-spacing:-.01em;color:var(--g900)}
+body:not(.sb) :is(p,li,dd,td){color:inherit}
+body:not(.sb) :is(.info-intro,.page-intro p,.info-card p,.hint,.meta,.note){color:var(--g600)}
+body:not(.sb) .info-card p{color:var(--g700)}
+body:not(.sb) .section-nav a{color:var(--g800);letter-spacing:-.01em}
+body:not(.sb) .section-nav a.active{color:var(--g900)}
+body:not(.sb) a:hover{color:inherit}
+body:not(.sb) .site-footer{color:var(--g500);font-weight:500}
+/* 버튼: TDS 크기(XL 56·L 48·M 40)와 둥글기(16·14·10), 굵기 600, 그림자 X */
+body:not(.sb) .primary{min-height:56px;padding:0 28px;border-radius:16px;font-size:17px;font-weight:600;letter-spacing:0;box-shadow:none}
+body:not(.sb) .primary:hover{background:#e56c00;color:#fff}
+body:not(.sb) :is(.form-panel .primary,.info-cta .primary,.rf-cta .primary){min-height:48px;padding:0 22px;border-radius:14px;font-size:16px;font-weight:600}
+body:not(.sb) .secondary{min-height:48px;padding:0 20px;border:0;border-radius:14px;background:var(--g100);color:var(--g700);font-weight:600}
+body:not(.sb) .secondary:hover{background:var(--g200);color:var(--g800)}
+body:not(.sb) .type-link{border:0;border-radius:10px;background:#fff3e0;color:#d65f00;font-weight:600}
+body:not(.sb) :is(.primary,.secondary,.type-link){transition:transform .15s ease,background-color .2s}
+body:not(.sb) :is(.primary,.secondary,.type-link):active{transform:scale(.97)}
+body:not(.sb) .hero-wall .primary,body:not(.sb) .hero-board .primary,body:not(.sb) .hero.hero-clean .primary{border-radius:16px;font-size:17px}
+/* 입력칸: TDS 상자형 (회색 바탕, 둥글기 12, 안쪽 14·16) */
+body:not(.sb) :is(.field input:not([type=checkbox]):not([type=radio]),.field select,.field textarea){border:1px solid transparent;border-radius:12px;background:var(--g50);box-shadow:inset 0 0 0 1px var(--g200);padding:14px 16px;color:var(--g900)}
+body:not(.sb) :is(.field input,.field select,.field textarea)::placeholder{color:var(--g400)}
+body:not(.sb) :is(.field input,.field textarea,.field select):focus{background:#fff;border-color:transparent;box-shadow:inset 0 0 0 2px var(--orange)}
+body:not(.sb) .field label{color:var(--g800);font-size:15px}
+body:not(.sb) .field label small{color:#d65f00;font-weight:500}
+/* 카드·상자: 선 대신 TDS 회색 */
+body:not(.sb) :is(.info-card,.form-panel,.tablewrap){border-color:var(--g200);border-radius:16px}
+body:not(.sb) th{background:var(--g50);color:var(--g600);font-size:13px;font-weight:600}
+body:not(.sb) :is(th,td){border-bottom-color:var(--g100)}
+body:not(.sb) td a{color:var(--tblue)}
+body:not(.sb) .alert{background:#fff3e0;border:0;border-radius:12px;color:var(--g800)}
+body:not(.sb) .info{background:var(--g50);border:0;border-radius:16px}
+body:not(.sb) .message{background:var(--g50);border:0;border-radius:14px}
+body:not(.sb) .message strong{color:var(--g900)}
+body:not(.sb) .faq-item{border-bottom-color:var(--g100)}
+/* 배지(이름표): TDS 작은 배지 12px 굵게 */
+body:not(.sb) .nn-vc-tag{font-size:12px;font-weight:700;padding:3px 7px}
+body:not(.sb) .primary.rf-go2{min-height:40px;padding:0 16px;border-radius:10px;font-size:15px}
