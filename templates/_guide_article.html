@@ -1,0 +1,23 @@
+{# 운영자 2026-11-03: 소비자 안내서 글 = 토스플레이스 '사장님 스토리'처럼 한 단 글 (TDS 본문 비율). 큰 제목 → 그림 → 도입 → 1. 2. 3. 소제목 + 체크 목록 + 회색 상자 → 출처 → 이런 글은 어때요? → 버튼 하나
+   필요한 값: g_kicker, g_title, g_intro, g_rows(그림 속 목록), g_tone(0 갈색, 1 하늘), g_steps[(짧은 이름, 소제목, [목록], 상자 글)], g_box(상자 이름), g_src, g_src_url, g_next(엔드포인트, 작은 글, 제목) #}
+<main class="ga"><article class="ga-in">
+  <a class="ga-k" href="{{ url_for('explore') }}#xs-tips">{{ g_kicker }}</a>
+  <h1 class="ga-title">{{ g_title }}</h1>
+  <p class="ga-meta">{{ ui('guide.meta', '한국소비자원 자료를 쉽게 풀었어요') }}</p>
+  <figure class="ga-hero is-t{{ g_tone }}" aria-hidden="true"><span class="xs-gcard">{% if g_tone == 1 %}<em>주의</em>{% endif %}{% for r in g_rows %}<span><i>{{ loop.index }}</i>{{ r }}</span>{% endfor %}</span></figure>
+  <p class="ga-p">{{ g_intro }}</p>
+  {% for h, t, items, ex in g_steps %}
+  <section class="ga-sec" id="t{{ loop.index }}">
+    <h2 class="ga-h">{{ loop.index }}. {{ h }}</h2>
+    <p class="ga-lead">{{ t }}</p>
+    <ul class="ga-check">{% for x in items %}<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>{{ x }}</span></li>{% endfor %}</ul>
+    {% if ex %}<div class="ga-box"><b>{{ g_box }}</b><p>{{ ex }}</p></div>{% endif %}
+  </section>
+  {% endfor %}
+  <p class="ga-src">{{ g_src }} <a href="{{ g_src_url }}" target="_blank" rel="noopener">{{ ui('guide.src_link', '원문 보기') }}</a><br>{{ ui('guide.note', '이 글은 참고용 안내예요. 실제 사정에 따라 결과가 다를 수 있어요.') }}</p>
+  <section class="ga-next" aria-labelledby="ga-next-h">
+    <h2 class="ga-next-h" id="ga-next-h">{{ ui('guide.next', '이런 글은 어때요?') }}</h2>
+    <a class="ga-card" href="{{ url_for(g_next[0]) }}"><span class="ga-card-pic is-t{{ 1 - g_tone }}" aria-hidden="true"></span><span class="ga-card-t"><small>{{ g_next[1] }}</small><b>{{ g_next[2] }}</b></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+  </section>
+  <a class="primary ga-go" href="{{ url_for('report_talk') }}">{{ ui('guide.go', '제보하기') }}</a>
+</article></main>

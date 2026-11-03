@@ -1561,3 +1561,55 @@ body:has(main.ct) .site-footer{margin-top:0}
 /* 운영자 2026-11-03: AI 상담 칸은 아래 도구 네 칸(갈색·하늘·노랑·민트)·위 순위(귤색)와 겹치지 않는 연보라 */
 .xs-feat-art.is-ai{background:#c4bdf7}
 .org-band li:first-child .org-self{display:grid;justify-items:center;gap:4px}
+/* 운영자 2026-11-03: 소비자 안내서 글 = 토스플레이스 스토리처럼 한 단 글 (본문 폭 680, 제목 32/본문 17) */
+body:not(.sb) main.ga{padding:0;max-width:none;margin:0}
+.ga{background:#fff;word-break:keep-all}
+.ga-in{display:block;max-width:680px;margin:0 auto;padding:56px 24px 120px;box-sizing:border-box}
+.ga-k{display:inline-block;font-size:15px;line-height:22px;font-weight:600;color:#CE6719;text-decoration:none}
+.ga-title{margin:10px 0 0;font-size:32px;line-height:44px;font-weight:700;color:#191f28;text-wrap:balance}
+.ga-meta{margin:12px 0 0;font-size:15px;line-height:22px;color:#8b95a1}
+.ga-hero{display:grid;place-items:end center;aspect-ratio:16/9;max-width:100%;margin:32px 0 0;padding:40px 40px 0;border-radius:24px;overflow:hidden;box-sizing:border-box}
+.ga-hero.is-t0{background:#652D1C}.ga-hero.is-t1{background:#8ec5ff}
+.ga-hero .xs-gcard{width:min(60%,340px);gap:14px;padding:24px 24px 32px}
+.ga-hero .xs-gcard>span{font-size:17px;line-height:24px}
+.ga-hero .xs-gcard i{width:26px;height:26px;font-size:13px}
+.ga-hero.is-t1 .xs-gcard i{background:#3182f6}
+.ga-p{margin:32px 0 0;font-size:17px;line-height:30px;color:#333d48}
+.ga-sec{margin-top:48px;scroll-margin-top:96px}
+.ga-h{margin:0;font-size:24px;line-height:34px;font-weight:700;color:#191f28;text-wrap:balance}
+.ga-check{display:grid;gap:12px;margin:16px 0 0;padding:0;list-style:none}
+.ga-check li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;font-size:17px;line-height:28px;color:#333d48}
+.ga-check svg{width:22px;height:22px;margin-top:3px;fill:none;stroke:#EF920E;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.ga-box{margin:20px 0 0;padding:20px 22px;border-radius:16px;background:#f2f4f6}
+.ga-box b{display:block;font-size:15px;line-height:22px;font-weight:700;color:#4e5968}
+.ga-box p{margin:6px 0 0;font-size:16px;line-height:27px;color:#333d48}
+.ga-src{margin:56px 0 0;padding-top:24px;border-top:1px solid #f2f4f6;font-size:13px;line-height:20px;color:#8b95a1}.ga-src a{color:#6b7684}
+.ga-next{margin-top:48px}
+.ga-next-h{margin:0;font-size:20px;line-height:28px;font-weight:700;color:#191f28}
+.ga-card{display:grid;grid-template-columns:72px minmax(0,1fr) 20px;align-items:center;gap:16px;margin-top:16px;padding:16px;border-radius:20px;background:#f9fafb;color:#191f28;text-decoration:none}
+.ga-card:hover{background:#f2f4f6}
+.ga-card-pic{width:72px;height:72px;border-radius:16px}.ga-card-pic.is-t0{background:#652D1C}.ga-card-pic.is-t1{background:#8ec5ff}
+.ga-card-t{display:grid;gap:2px}.ga-card-t small{font-size:14px;line-height:20px;color:#6b7684}.ga-card-t b{font-size:17px;line-height:25px;font-weight:700}
+.ga-card svg{width:20px;height:20px;fill:none;stroke:#b0b8c1;stroke-width:2}
+.ga-go{display:flex;align-items:center;justify-content:center;height:56px;margin-top:40px;border-radius:16px;font-size:17px;font-weight:700;text-decoration:none}
+body:has(main.ga) .site-footer{margin-top:0}
+@media(max-width:760px){.ga-in{padding:32px 20px 96px}.ga-title{font-size:26px;line-height:36px}.ga-hero{padding:24px 24px 0;border-radius:20px}.ga-hero .xs-gcard{width:78%;padding:18px 18px 24px;gap:10px}.ga-hero .xs-gcard>span{font-size:15px}.ga-h{font-size:21px;line-height:30px}.ga-p,.ga-check li{font-size:16px;line-height:27px}}
+.ga-hero{aspect-ratio:2/1;padding-top:48px}.ga-hero .xs-gcard{width:min(56%,320px)}
+@media(max-width:760px){.ga-hero{aspect-ratio:4/3}}
+.ga-lead{margin:8px 0 0;font-size:17px;line-height:28px;font-weight:600;color:#4e5968}
+.ga-card-pic{position:relative;overflow:hidden}.ga-card-pic::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:40px;border-radius:8px 8px 0 0;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+/* 운영자 2026-11-03: 자문단 모집 왼쪽 아래 움직이는 예시 (제보 → 자문단 의견 → 기사) 9초 반복 */
+.xf-demo{position:relative;display:grid;gap:10px;max-width:400px;margin-top:40px;padding:20px;border-radius:24px;background:#f2f4f6}
+.xf-demo-case,.xf-demo-note,.xf-demo-news{border-radius:16px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.xf-demo-case{display:grid;gap:2px;padding:16px 18px}.xf-demo-case small{font-size:13px;line-height:19px;color:#8b95a1}.xf-demo-case b{font-size:16px;line-height:24px;color:#191f28}
+.xf-demo-note{display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;padding:14px 16px;font-size:14px;line-height:21px;color:#333d48}
+.xf-demo-note img{width:36px;height:36px;border-radius:50%;object-fit:cover}
+.xf-demo-note small{display:block;margin-bottom:2px;font-size:13px;font-weight:700;color:#191f28}.xf-demo-note i{font-style:normal;font-weight:600;color:#3182f6;margin-left:4px}
+.xf-demo-news{display:flex;align-items:center;gap:8px;justify-self:start;padding:10px 14px;font-size:14px;line-height:20px;font-weight:700;color:#652D1C}
+.xf-demo-news svg{width:18px;height:18px;fill:none;stroke:#EF920E;stroke-width:2}
+@media(prefers-reduced-motion:no-preference){
+  .xf-demo-note{animation:xfNote 9s ease infinite}.xf-demo-news{animation:xfNews 9s ease infinite}
+  @keyframes xfNote{0%,12%{opacity:0;transform:translateY(12px)}20%,90%{opacity:1;transform:none}100%{opacity:0}}
+  @keyframes xfNews{0%,42%{opacity:0;transform:scale(.92)}50%,90%{opacity:1;transform:none}100%{opacity:0}}
+}
+@media(max-width:760px){.xf-demo{display:none}}
