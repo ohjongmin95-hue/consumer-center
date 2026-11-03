@@ -1546,3 +1546,7 @@ body:has(main.ct) .site-footer{margin-top:0}
 .org-band li:nth-child(6) img{height:28px}
 @media(max-width:760px){.org-band ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));justify-items:center;gap:20px 12px}.org-band li:nth-child(6) img{height:21px}}
 .org-band li:nth-child(6) img{height:22px}@media(max-width:760px){.org-band li:nth-child(6) img{height:16px}}
+/* 운영자 2026-11-03: 회색 칸·큰 제목 빼고 흰 바탕 + 위아래 얇은 선 (토스식) */
+.org-band{margin:40px auto 32px;padding-block:28px;border-top:1px solid #f2f4f6;border-bottom:1px solid #f2f4f6}
+.org-band ul{padding:0 8px;border-radius:0;background:none;justify-content:space-between;gap:20px 40px}
+@media(max-width:760px){.org-band{margin:24px auto 16px;padding-block:20px}.org-band ul{padding:0;gap:20px 12px}}
