@@ -297,7 +297,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db: pid = db.execute('SELECT id FROM hero_photos WHERE stored=?', (name,)).fetchone()[0]
         admin.post('/admin/hero-photos/%d' % pid, data={'_csrf': token, 'act': 'delete'})
         self.assertEqual(self.client.get('/hero/' + name).status_code, 404)
-        self.assertNotIn('hero-split', self.client.get('/', base_url=jebo).get_data(as_text=True))  # 2장이면 예전 그림
+        self.assertIn('hero-split', self.client.get('/', base_url=jebo).get_data(as_text=True))  # 직접 올린 사진은 한두 장이어도 나옴 (운영자 2026-11-03)
 
     def test_report_needs_login(self):
         # 운영자 2026-11-03: 로그인해야 제보 (대화 제보·양식 모두). 이름·전화번호 칸은 그대로
@@ -331,11 +331,11 @@ class SiteTest(unittest.TestCase):
             db.execute("INSERT INTO attachments(case_id,stored,original) VALUES(?,'hero-src-0.jpg','a.jpg')", (secret,))
         self.login_admin().get('/admin/hero-photos')  # 관리자 화면을 열면 바로 채움
         home = self.client.get('/', base_url=jebo).get_data(as_text=True)
-        self.assertIn('hero-split', home); self.assertIn('<span class="hw-cap-t">· 쇼핑·유통</span>', home)
-        self.assertEqual(len(re.findall(r'/hero/[0-9a-f]{24}w\.jpg', home)), 3)  # PC는 화면을 꽉 채우는 가로 사본 (운영자 2026-11-03)
-        names = set(re.findall(r'/hero/([0-9a-f]{24}\.jpg)', home)); self.assertEqual(len(names), 3)  # 비공개 제보 사진·같은 사진은 안 들어감
+        self.assertNotIn('hero-split', home)  # 운영자 2026-11-03: 제보 사진은 작고 흐려서 첫 화면 큰 카드엔 안 씀 (직접 올린 연출 사진만)
+        with self.site.conn() as db: names = [r[0] for r in db.execute("SELECT stored FROM hero_photos WHERE auto=1 AND hidden=0")]
+        self.assertEqual(len(names), 3)  # 비공개 제보 사진·같은 사진은 안 들어감
+        self.assertEqual(self.client.get('/hero/' + names[0]).status_code, 200)
         with self.site.conn() as db: db.execute('UPDATE cases SET published=0 WHERE id=?', (cids[1],))
-        self.assertNotIn('hero-split', self.client.get('/', base_url=jebo).get_data(as_text=True))
         self.assertEqual(sum(self.client.get('/hero/' + n).status_code == 404 for n in names), 1)
 
     def test_company_typo_fix(self):
