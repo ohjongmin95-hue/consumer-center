@@ -1550,3 +1550,11 @@ body:has(main.ct) .site-footer{margin-top:0}
 .org-band{margin:40px auto 32px;padding-block:28px;border-top:1px solid #f2f4f6;border-bottom:1px solid #f2f4f6}
 .org-band ul{padding:0 8px;border-radius:0;background:none;justify-content:space-between;gap:20px 40px}
 @media(max-width:760px){.org-band{margin:24px auto 16px;padding-block:20px}.org-band ul{padding:0;gap:20px 12px}}
+/* 운영자 2026-11-03: 로고 높낮이 맞춤 — 칸 높이를 같게(가운데 정렬)하고, 로고마다 보이는 면적이 비슷하도록 높이 조절 */
+.org-band li{display:flex;align-items:center;justify-content:center;height:52px}
+.org-band li:nth-child(1) img{height:24px}.org-band li:nth-child(2) img{height:31px}.org-band li:nth-child(3) img{height:29px}
+.org-band li:nth-child(4) img{height:34px}.org-band li:nth-child(5) img{height:33px}.org-band li:nth-child(6) img{height:22px}
+@media(max-width:760px){.org-band li{height:44px}
+  .org-band li:nth-child(1) img{height:19px}.org-band li:nth-child(2) img{height:25px}.org-band li:nth-child(3) img{height:23px}
+  .org-band li:nth-child(4) img{height:27px}.org-band li:nth-child(5) img{height:27px}.org-band li:nth-child(6) img{height:17px}}
+.org-band li:nth-child(1) img{height:21px}@media(max-width:760px){.org-band li:nth-child(1) img{height:17px}}
