@@ -5,6 +5,7 @@
 {% block content %}
 <main class="page"><div class="wrap">
   <div class="page-intro"><h1 class="page-title">{{ txt('report.title') }}</h1>{% if txt('report.intro') %}<p>{{ txt('report.intro') }}</p>{% endif %}</div>
+  {% include 'report_mode.html' %}
 
   {% if txt('report.notes') %}
   <details class="must-read" open>
@@ -13,7 +14,6 @@
   </details>
   {% endif %}
 
-  <a class="talk-banner" href="{{ url_for('report_talk') }}"><b>{{ ui('talk.banner', 'AI와 대화하며 쉽게 쓰기') }}</b><span>{{ ui('talk.banner_sub', '말하듯 적으면 제보서는 AI가 정리해 드려요') }}</span><i aria-hidden="true">→</i></a>
   <div class="form-panel">
     <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <div class="hp" aria-hidden="true"><label>웹사이트<input name="website" tabindex="-1" autocomplete="off"></label></div>

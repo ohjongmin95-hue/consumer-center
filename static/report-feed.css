@@ -604,3 +604,22 @@ body:not(.sb) .faq-item{border-bottom-color:var(--g100)}
 /* 배지(이름표): TDS 작은 배지 12px 굵게 */
 body:not(.sb) .nn-vc-tag{font-size:12px;font-weight:700;padding:3px 7px}
 body:not(.sb) .primary.rf-go2{min-height:40px;padding:0 16px;border-radius:10px;font-size:15px}
+/* 운영자 2026-11-03: 제보센터 로그인 화면이 가로로 흩어짐 → 소보루처럼 따로 넘어가는 한 화면, 제목·설명·카드·가입 안내가 위에서 아래로 가운데 정렬 */
+body:not(.sb) .auth-page-login{flex-direction:column;align-items:center;justify-content:flex-start}
+body:not(.sb) .auth-page-login .auth-card{width:100%;max-width:440px}
+body:not(.sb) .auth-title-out{margin:0 0 8px;font-size:30px;line-height:40px;font-weight:700;letter-spacing:-.02em;color:#191f28;text-align:center;word-break:keep-all}
+body:not(.sb) .auth-lead-out{margin:0 0 28px;font-size:16px;color:#6b7684;text-align:center}
+body:not(.sb) .auth-title-out:not(:has(+ .auth-lead-out)){margin-bottom:28px}
+body:not(.sb) .auth-join{margin:24px 0 0;font-size:15px;color:#4e5968;text-align:center}
+body:not(.sb) .auth-join a{margin-left:6px;color:#d25f00;font-weight:700;text-decoration:underline;text-underline-offset:4px}
+@media(max-width:560px){body:not(.sb) .auth-title-out{font-size:26px;line-height:35px}body:not(.sb) .auth-lead-out{margin-bottom:20px;font-size:15px}}
+/* 운영자 2026-11-03: PC 넓은 화면 규칙(main 1360px)이 좁게 가운데 와야 하는 화면까지 넓혀서 왼쪽으로 쏠림 → 대화 제보는 가운데 한 줄 */
+@media(min-width:1280px){body:not(.sb) main.tk-page{max-width:672px}}
+body:not(.sb) main.tk-page{margin-left:auto;margin-right:auto}
+body:not(.sb) .tk-notice{max-width:100%}
+/* 대화로/양식으로 고르기: TDS 세그먼트 컨트롤 (회색 바탕 안에 고른 쪽만 흰 칸) */
+.rp-mode{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 0 20px;padding:4px;border-radius:14px;background:#f2f4f6}
+.rp-mode a{display:flex;align-items:center;justify-content:center;height:44px;border-radius:10px;font-size:16px;font-weight:600;color:#6b7684;text-decoration:none;transition:background-color .2s,color .2s}
+.rp-mode a:hover{color:#333d4b}
+.rp-mode a.on{background:#fff;color:#191f28;font-weight:700;box-shadow:0 1px 3px rgba(0,27,55,.1)}
+.page-intro + .rp-mode{margin-top:-6px}
