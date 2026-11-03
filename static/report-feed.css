@@ -1915,3 +1915,14 @@ body:has(main.xf.is-split) .auth-top .brand{color:#191f28}
 .xs-phone.xs-iphone{height:100%!important}
 .xs-feat-art:has(.xs-iphone) .xs-float{left:auto!important;right:5%!important;bottom:7%!important;min-width:0!important}
 @media(max-width:760px){.xs-feat-art:has(.xs-iphone){aspect-ratio:1/1!important;padding-top:24px!important}.xs-feat-art:has(.xs-iphone) .xs-float{right:4%!important;bottom:6%!important}}
+/* 운영자 2026-11-03: 자문단 모집 왼쪽 = 토스식 목록 (아이콘 48 + T5 굵게 + T6 설명), 카드 겹침 없음 */
+.xf-roles{list-style:none;margin:48px 0 0;padding:0;display:grid;gap:8px;max-width:440px}
+.xf-roles li{display:flex;align-items:center;gap:16px;padding:14px 0}
+.xf-ri{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center}
+.xf-ri svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.xf-ri.is-a{background:#3182f6}.xf-ri.is-b{background:#00b493}.xf-ri.is-c{background:#EF920E}.xf-ri.is-d{background:#8b5cf6}
+.xf-roles b{display:block;font-size:17px;line-height:25.5px;font-weight:700;color:#191f28}
+.xf-roles p{margin:2px 0 0;font-size:15px;line-height:22.5px;color:#6b7684}
+.xf-free{display:flex;align-items:center;gap:8px;margin:24px 0 0;font-size:15px;line-height:22.5px;font-weight:600;color:#CE6719}
+.xf-free svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:860px){.xf-roles,.xf-free{display:none}}
