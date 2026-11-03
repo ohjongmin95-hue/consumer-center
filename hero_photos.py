@@ -17,7 +17,8 @@ import time
 from flask import abort, flash, redirect, render_template, request, send_file, url_for
 
 W, H = 600, 800  # 공개 사본 크기 (3:4)
-FINE = 64        # 전체 모자이크: 가로 칸 수 (사물은 보이고 글씨는 못 읽음)
+FINE = 120       # 전체 모자이크: 가로 칸 수. 운영자 2026-11-03: 물건이 뭔지는 보이게 약하게 (작은 글씨만 안 읽힘)
+AUTO_VER = 2     # 자동 사본 만드는 방식이 바뀌면 올림 → 예전 자동 사본을 지우고 새로 만듦
 COARSE = 14      # 네모 칠한 곳: 가로 칸 수 (사진 전체 기준, 굵게)
 MAX_PHOTOS = 18
 MIN_PHOTOS = 3
@@ -84,8 +85,11 @@ def install(S):
     with conn() as db:
         db.execute("CREATE TABLE IF NOT EXISTS hero_photos(id INTEGER PRIMARY KEY,stored TEXT NOT NULL,attachment_id INTEGER,case_id INTEGER,caption TEXT NOT NULL DEFAULT '',sort INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL)")
         cols = {r['name'] for r in db.execute('PRAGMA table_info(hero_photos)')}
-        for c in ('auto', 'hidden'):
+        for c in ('auto', 'hidden', 'ver'):
             if c not in cols: db.execute(f'ALTER TABLE hero_photos ADD COLUMN {c} INTEGER NOT NULL DEFAULT 0')
+        for r in db.execute('SELECT stored FROM hero_photos WHERE auto=1 AND hidden=0 AND ver<?', (AUTO_VER,)).fetchall():  # 예전 방식 자동 사본은 새로 만듦
+            if NAME_RE.fullmatch(r['stored']): (folder / r['stored']).unlink(missing_ok=True)
+        db.execute('DELETE FROM hero_photos WHERE auto=1 AND hidden=0 AND ver<?', (AUTO_VER,))
     last = {'at': 0.0}
 
     def photos():
@@ -101,10 +105,11 @@ def install(S):
             have = db.execute('SELECT COUNT(*) FROM hero_photos h JOIN cases c ON c.id=h.case_id WHERE h.auto=1 AND h.hidden=0 AND ' + PUBLIC).fetchone()[0]
             if have >= AUTO_MAX: return
             rows = db.execute('SELECT a.id,a.stored,c.id AS case_id,c.industry,c.category FROM attachments a JOIN cases c ON c.id=a.case_id WHERE ' + PUBLIC +
-                              ' AND a.id NOT IN (SELECT attachment_id FROM hero_photos WHERE attachment_id IS NOT NULL) ORDER BY a.id DESC LIMIT 60').fetchall()
-        made = 0
+                              ' AND a.id NOT IN (SELECT attachment_id FROM hero_photos WHERE attachment_id IS NOT NULL) AND c.id NOT IN (SELECT case_id FROM hero_photos WHERE auto=1 AND case_id IS NOT NULL) ORDER BY a.id DESC LIMIT 60').fetchall()
+        made, seen = 0, set()
         for r in rows:
-            if made >= min(AUTO_PER_RUN, AUTO_MAX - have): break
+            if r['case_id'] in seen: continue  # 한 제보에서는 한 장만 (같은 물건 사진이 겹치지 않게)
+            if made >= min(AUTO_MAX if force else AUTO_PER_RUN, AUTO_MAX - have): break
             if not r['stored'].lower().endswith(IMAGE_EXT): continue
             try: data = (S.UPLOAD / r['stored']).read_bytes()
             except OSError: continue
@@ -114,8 +119,8 @@ def install(S):
                     db.execute("INSERT INTO hero_photos(stored,attachment_id,case_id,auto,hidden,created) VALUES('',?,?,1,1,?)", (r['id'], r['case_id'], S.now())); continue
                 name = secrets.token_hex(12) + '.jpg'; (folder / name).write_bytes(jpg)
                 cap = ' · '.join(x for x in (r['industry'], r['category']) if x)[:40]
-                db.execute('INSERT INTO hero_photos(stored,attachment_id,case_id,caption,auto,created) VALUES(?,?,?,?,1,?)', (name, r['id'], r['case_id'], cap, S.now()))
-            made += 1
+                db.execute('INSERT INTO hero_photos(stored,attachment_id,case_id,caption,auto,ver,created) VALUES(?,?,?,?,1,?,?)', (name, r['id'], r['case_id'], cap, AUTO_VER, S.now()))
+            made += 1; seen.add(r['case_id'])
 
     def wall():
         """첫 화면에 깔 사진 (모자라면 빈 목록 → 예전 그림)."""

@@ -7,6 +7,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
 - 알리기 5번이면 자동 숨김, 운영자는 관리자 > 게시판 신고에서 숨기기·보이기·삭제.
 - 공개 동의하고 게시된 제보에만 열린다. 관리자 > 문구 고치기 '제보 공감·댓글 끄기'에 '끔'이라고 적으면 모두 닫힌다.
 """
+import experts
 import datetime
 from flask import abort, flash, g, redirect, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -39,8 +40,9 @@ def install(S):
             counts = {k: db.execute('SELECT COUNT(*) FROM board_votes WHERE kind=? AND target=?', (k, 'case:%d' % case_id)).fetchone()[0] for k in KINDS}
             mine = {r['kind'] for r in db.execute('SELECT kind FROM board_votes WHERE target=? AND voter=?', ('case:%d' % case_id, voter))}
             rows = db.execute('SELECT * FROM case_comments WHERE case_id=? AND hidden=0 ORDER BY id', (case_id,)).fetchall()
+            pros = experts.labels(db, [r['user_id'] for r in rows])  # 승인된 전문가 (experts.py)
         comments = [dict(id=r['id'], nickname=r['nickname'], body=S.mask_personal(r['body']), created=r['created'], by_reporter=bool(r['by_reporter']),
-                         own=bool(g.get('user') and r['user_id'] == g.user['id']), member=bool(r['user_id'])) for r in rows]
+                         own=bool(g.get('user') and r['user_id'] == g.user['id']), member=bool(r['user_id']), expert=(pros.get(r['user_id']) or {}).get('field', ''), expert_photo=(pros.get(r['user_id']) or {}).get('photo', ''), expert_label=(pros.get(r['user_id']) or {}).get('label', '전문가')) for r in rows]
         return {'counts': counts, 'mine': mine, 'comments': comments, 'kinds': KINDS, 'reporter': session.get('case_id') == case_id}
 
     def talk_counts(ids):

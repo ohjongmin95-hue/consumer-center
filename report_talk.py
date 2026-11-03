@@ -13,6 +13,7 @@ import json
 import os
 import re
 
+import company_fix
 from flask import abort, g, jsonify, render_template, request
 
 MODEL = 'gpt-6-luna'  # 매거진·소보루CS와 같은 루나 (싸고 빠름). REPORT_TALK_MODEL로 바꿀 수 있음
@@ -81,7 +82,7 @@ def install(S):
                 qs.append({'q': s(q['q'], 80), 'options': [s(o, 20) for o in (q.get('options') or []) if str(o).strip()][:4]})
         desc = desk.scrub(str(out.get('description') or '').strip())[:3000]
         return {'summary': s(out.get('summary'), 160), 'industry': pick(out.get('industry'), industries), 'category': pick(out.get('category'), categories),
-                'company': s(out.get('company'), 60), 'occurred_on': day, 'subject': s(out.get('subject'), 80), 'description': desc,
+                'company': company_fix.fix(s(out.get('company'), 60)), 'occurred_on': day, 'subject': s(out.get('subject'), 80), 'description': desc,
                 'request_text': s(out.get('request_text'), 300), 'request_options': [s(o, 16) for o in (out.get('request_options') or []) if str(o).strip()][:4],
                 'questions': qs[:2]}
 

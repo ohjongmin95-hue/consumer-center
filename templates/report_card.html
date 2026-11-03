@@ -4,7 +4,7 @@
 <a class="nn-vc-card{% if not c.open %} is-locked{% endif %}" href="{{ url_for('public_case', case_id=c.no) if c.open else url_for('case_open', case_id=c.no) }}">
   <div class="nn-vc-top">
     {% if c.author %}{% set src = avatar_url(c.author_id) if avatar_url is defined else '' %}{% if src %}<img class="nn-vc-av" src="{{ src }}" alt="" loading="lazy">{% else %}<span class="nn-vc-av" aria-hidden="true">{{ c.author[:1] }}</span>{% endif %}
-    {% else %}<span class="nn-vc-av is-anon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg></span>{% endif %}
+    {% else %}<span class="nn-vc-av is-anon" aria-hidden="true">익명</span>{% endif %}
     <span class="nn-vc-who"><b>{% if c.author %}{{ c.author }}{% elif c.open %}{{ ui('home.card_anon', '익명 소비자') }}{% else %}{{ ui('home.card_private', '비공개 제보') }}{% endif %}</b><time datetime="{{ c.created }}">{{ c.when }}</time></span>
     {% if pub_badge %}<span class="step-bar rf-st st-{{ PUB_COLOR[c.step - 1] }}"><span class="step-badge">{{ pub_names()[c.step - 1] }}</span></span>{% else %}<span class="sb-badge {{ badge.get(c.status, 'b-new') }}">{{ status_name(c.status) }}</span>{% endif %}
   </div>

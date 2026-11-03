@@ -317,6 +317,85 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))
         self.assertEqual(sum(self.client.get('/hero/' + n).status_code == 404 for n in names), 1)
 
+    def test_company_typo_fix(self):
+        # 운영자 2026-11-03: 큰 기업 이름 오타는 자동으로 (큐팡 → 쿠팡). 헷갈리거나 모르는 이름은 그대로
+        import company_fix
+        self.assertEqual([company_fix.fix(t) for t in ('큐팡', '쿠팽', '배달의민죡', '쿠팡', '쿠팡이츠', '지마켓', 'MISUKO연발새총 해궁', '카카오페', 'KT')],
+                         ['쿠팡', '쿠팡', '배달의민족', '쿠팡', '쿠팡이츠', '지마켓', 'MISUKO연발새총 해궁', '카카오페', 'KT'])
+        with self.site.conn() as db:
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES('CJ-TYPO','x','배송·환불','큐팡','제목','내용','환불','2026-10-09T10:00:00',1,1)").lastrowid
+        company_fix.fix_old_cases(self.site.conn, self.site.link_company)
+        with self.site.conn() as db:
+            row = db.execute('SELECT c.company,co.name FROM cases c LEFT JOIN companies co ON co.id=c.company_id WHERE c.id=?', (cid,)).fetchone()
+        self.assertEqual(tuple(row), ('쿠팡', '쿠팡'))
+
+    def test_company_web_email(self):
+        # 운영자 2026-11-03: 기업 공식 홈페이지에서 고객센터·홍보팀 메일을 찾아 연결. 채용·광고·개인정보·noreply·다른 회사 메일은 안 씀
+        import company_web_email as w
+        page = ('<footer>고객센터 1577-0000 | 이메일 : help@coupang.com <a href="mailto:press@coupangcorp.com">보도자료 문의</a> '
+                'recruit@coupang.com privacy@coupang.com noreply@coupang.com ads@coupang.com contact@agency.co.kr logo@2x.png abc@naver.com</footer>')
+        self.assertEqual(w.emails_on(page, 'coupang.com'), [('help@coupang.com', 'cs'), ('press@coupangcorp.com', 'pr')])
+        with self.site.conn() as db:
+            a = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created,domain,official_email,email_source) VALUES('웹몰A','','listed','','','','2026-11-03','weba.com','ftc@weba.com','공정위 통신판매 신고 정보')").lastrowid
+            b = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created,domain,official_email,email_source) VALUES('웹몰B','','listed','','','','2026-11-03','webb.com','boss@webb.com','')").lastrowid
+        fake = lambda d: ('cs@' + d, 'cs', 'https://' + d + '/help', [('cs@' + d, 'cs', 'https://' + d + '/help'), ('pr@' + d, 'pr', 'https://' + d + '/')])
+        w.run(finder=fake, say=lambda *_: None, force=True)
+        with self.site.conn() as db:
+            ra = db.execute('SELECT official_email,email_source FROM companies WHERE id=?', (a,)).fetchone()
+            rb = db.execute('SELECT official_email FROM companies WHERE id=?', (b,)).fetchone()
+        self.assertEqual(tuple(ra), ('cs@weba.com', '공식 홈페이지(고객센터)'))
+        self.assertEqual(rb['official_email'], 'boss@webb.com')  # 관리자가 넣은 메일은 그대로
+        self.assertIn('pr@webb.com(홍보팀)', self.login_admin().get('/admin/companies').get_data(as_text=True))
+
+    def test_experts(self):
+        # 운영자 2026-11-03: 전문가를 한 명씩 가입시키기. 초대 링크로 들어오면 바로 전문가, 직접 신청은 관리자 승인 뒤. 댓글에 전문가 표시
+        adm = self.login_admin()
+        self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '김변호', 'field': '변호사', 'org': '소보루 법률사무소'}).status_code, 302)
+        with self.site.conn() as db: token = db.execute("SELECT token FROM experts WHERE name='김변호'").fetchone()[0]
+        self.assertIn('/expert/join/' + token, adm.get('/admin/experts').get_data(as_text=True))
+        self.assertIn('/login', self.client.get('/expert/join/' + token).headers['Location'])  # 로그인부터
+        pro, pid = self.member_client('pro_kim', '김변')
+        page = pro.get('/expert/join/' + token).get_data(as_text=True)
+        self.assertIn('김변호 님', page); self.assertIn('value="소보루 법률사무소"', page)
+        self.assertEqual(self.post_form(pro, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'license_no': '12345'}).status_code, 200)  # 동의 없으면 다시
+        from PIL import Image
+        pic = io.BytesIO(); Image.new('RGB', (600, 300), 'blue').save(pic, 'JPEG'); pic.seek(0)
+        self.assertEqual(self.post_form(pro, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'license_no': '12345', 'agree': '1', 'photo': (pic, 'me.jpg')}).status_code, 302)
+        self.assertEqual(pro.get('/expert/join/' + token).status_code, 404)  # 링크는 한 번만
+        self.assertIn('전문가 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
+        # 직접 신청은 승인 전까지 표시 없음
+        other, oid = self.member_client('pro_lee', '이사정')
+        self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '손해사정사', 'agree': '1',
+                                                                 'proof': (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf')}).status_code, 302)
+        with self.site.conn() as db:
+            row = db.execute('SELECT id,status,proof FROM experts WHERE user_id=?', (oid,)).fetchone()
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES('CJ-PRO','x','배송·환불','가게','제목','내용','환불','2026-10-09T10:00:00',1,1)").lastrowid
+        self.assertEqual(row['status'], 'pending'); self.assertTrue(row['proof'].endswith('.pdf'))
+        self.assertEqual(self.client.get('/admin/experts/%d/proof' % row['id']).status_code, 302)  # 자격증은 관리자만
+        self.assertEqual(adm.get('/admin/experts/%d/proof' % row['id']).status_code, 200)
+        for c, body in ((pro, '청약철회 기간을 확인해 보세요.'), (other, '보험 처리가 될 수 있어요.')):
+            token2 = self.csrf(c, '/reports/%d' % cid)
+            self.assertEqual(c.post('/reports/%d/comment' % cid, data={'_csrf': token2, 'body': body}).status_code, 302)
+        page = self.client.get('/reports/%d' % cid).get_data(as_text=True)
+        self.assertIn('전문가 · 변호사', page); self.assertNotIn('전문가 · 손해사정사', page)
+        photo = re.search(r'src="(/expert/\d+/photo\.jpg[^"]*)"', page)[1]
+        self.assertEqual(Image.open(io.BytesIO(self.client.get(photo).data)).size, (400, 400))  # 정사각형으로 잘라서
+        self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'approve', 'id': row['id']}).status_code, 302)
+        self.assertIn('전문가 · 손해사정사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        # 법무법인 같은 사무소·법인도 등록 (전문 기관 표시)
+        firm, fid = self.member_client('firm_sb', '법무법인소보루')
+        self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '법무법인 소보루', 'field': '법무법인'}).status_code, 302)
+        with self.site.conn() as db: ft = db.execute("SELECT token,kind FROM experts WHERE name='법무법인 소보루'").fetchone()
+        self.assertEqual(ft['kind'], 'firm')
+        self.assertEqual(self.post_form(firm, '/expert/join/' + ft['token'], {'kind': 'firm', 'name': '법무법인 소보루', 'field': '법무법인', 'license_no': '129-14-81596', 'agree': '1'}).status_code, 302)
+        token3 = self.csrf(firm, '/reports/%d' % cid)
+        firm.post('/reports/%d/comment' % cid, data={'_csrf': token3, 'body': '소비자 분쟁 상담을 돕고 있어요.'})
+        self.assertIn('전문 기관 · 법무법인', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        with self.site.conn() as db: kim = db.execute('SELECT id FROM experts WHERE user_id=?', (pid,)).fetchone()[0]
+        self.post_form(adm, '/admin/experts', {'act': 'stop', 'id': kim})
+        self.assertNotIn('전문가 · 변호사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertEqual(self.client.get(photo).status_code, 404)  # 멈추면 사진도 안 보임
+
     def test_report_talk_ai_draft(self):
         # 대화로 제보하기 (운영자 2026-11-03): AI가 되물을 것과 초안을 주고, 업종·유형은 목록 안에서만, 개인정보는 지움. 접수는 기존 /report로
         page = self.client.get('/report/talk').get_data(as_text=True)

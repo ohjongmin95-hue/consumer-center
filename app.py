@@ -3,6 +3,7 @@ from pathlib import Path
 from flask import Flask, g, has_request_context, render_template, request, redirect, url_for, session, flash, abort, send_file, after_this_request
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
+import company_fix  # 큰 기업 이름 오타 바로잡기 (company_fix.py)
 from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
 import site_content
@@ -526,9 +527,10 @@ def public_case(case_id):
         answers=db.execute("SELECT m.body,m.created,m.edited,m.source,co.name AS company_name FROM messages m JOIN cases c ON c.id=m.case_id LEFT JOIN companies co ON co.id=c.company_id WHERE m.case_id=? AND m.author='기업 답변' AND m.public=1 ORDER BY m.id",(case_id,)).fetchall()
         events,step,has_answer=jebo.timeline(db,case,mask_personal)
         co=jebo.visible_company(db,case['company_id']) if case['company_id'] else None
+        author=db.execute("SELECT id,nickname FROM users WHERE id=? AND status='active'",(case['user_id'],)).fetchone() if case['user_id'] else None  # 작성자 닉네임 (목록 카드와 같게)
     text=jebo.pub(case,mask_personal)
     return render_template('public_case.html',case=case,answers=answers,grp=grp,group_statuses=GROUP_STATUSES,company=co['name'] if co else mask_personal(case['company']),co=co,
-                           subject=text['subject'],description=text['body'],request_text=text['request'],events=events,step=step,has_answer=has_answer,category=jebo.cat_label(case['category']))
+                           subject=text['subject'],description=text['body'],request_text=text['request'],events=events,step=step,has_answer=has_answer,category=jebo.cat_label(case['category']),author=author)
 
 CUSTOM_SLUG=re.compile(r'^[a-z0-9][a-z0-9-]{0,39}$')
 def page_layout(page):
@@ -679,6 +681,7 @@ def report():
     if not pw_optional and not LOOKUP_PW_MIN<=len(lookup_pw)<=30:flash(ui_text('msg.report_pw','조회 비밀번호를 4~30자로 정해 주세요.'));return report_form(400)
     if lookup_pw!=request.form.get('lookup_pw2',''):flash(ui_text('msg.report_pw2','조회 비밀번호 확인이 맞지 않아요.'));return report_form(400)
     if data['contact'] and not MEMBER_EMAIL_RE.match(data['contact']):flash(ui_text('msg.report_email','이메일 주소를 확인해 주세요.'));return report_form(400)
+    data['company']=company_fix.fix(data['company'])  # 큰 기업 이름 오타(큐팡→쿠팡) 바로잡기 (company_fix.py)
     if data['region_sido'] not in SIDO:data['region_sido']=''
     if data['gender'] not in GENDERS:data['gender']=''
     if data['age_group'] not in AGE_GROUPS:data['age_group']=''
@@ -2798,6 +2801,7 @@ _rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
 import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  # 소보루 레터: 주간 뉴스레터·구독·발송 (soboru_letter.py)
 import report_talk;report_talk.install(types.SimpleNamespace(**globals()))  # 대화로 제보하기: AI가 묻고 초안을 채움 (report_talk.py)
 import hero_photos;hero_photos.install(types.SimpleNamespace(**globals()))  # 첫 화면 배경 사진: 실제 제보 사진을 가린 사본으로 (hero_photos.py)
+import experts;experts.install(types.SimpleNamespace(**globals()))  # 전문가 등록: 관리자 초대 링크·직접 신청, 승인되면 댓글에 전문가 표시 (experts.py)
 import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
@@ -2812,6 +2816,8 @@ import site_visits;site_visits.install(types.SimpleNamespace(**globals()))  # �
 import soboru_examples;soboru_examples.auto(types.SimpleNamespace(**globals()))
 import company_logo;_cl=types.SimpleNamespace(**globals());company_logo.install(_cl);company_set_domain=_cl.company_set_domain  # 기업 로고: 도메인에서 자동으로 (company_logo.py)
 import company_mail;company_mail.auto(types.SimpleNamespace(**globals()))
+import company_web_email;company_web_email.install(types.SimpleNamespace(**globals()))  # 기업 홈페이지에서 고객센터·홍보 메일 찾기 (company_web_email.py)
+company_fix.fix_old_cases(conn,link_company)  # 예전 제보의 큰 기업 이름 오타도 고침 (company_fix.py)
 link_all_cases()  # 큰 기업 미리 등록: 처음 배포할 때 한 번만 (company_mail.py, data/companies_seed.csv)  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
 
 if __name__=='__main__':app.run(debug=False)
