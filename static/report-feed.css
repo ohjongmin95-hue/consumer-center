@@ -1532,3 +1532,4 @@ body:has(main.ct) .site-footer{margin-top:0}
 .xs-feat-art.is-ai{background:#8ec5ff}
 .org-band{margin:40px auto 24px}.org-band li:nth-child(4) img{height:36px}
 @media(max-width:760px){.org-band{margin:28px auto 16px}.org-band li:nth-child(4) img{height:27px}}
+.org-band a{display:block;transition:opacity .2s}.org-band a:hover{opacity:.7}
