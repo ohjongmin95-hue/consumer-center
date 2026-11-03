@@ -295,6 +295,28 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.get('/hero/' + name).status_code, 404)
         self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))  # 2장이면 예전 그림
 
+    def test_hero_photos_auto(self):
+        # 운영자 2026-11-03: 공개 게시된 제보의 사진은 관리자가 안 골라도 모자이크해서 첫 화면에. 비공개로 바뀌면 바로 빠짐
+        from PIL import Image
+        jebo = 'https://consumerjebo.co.kr'
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        with self.site.conn() as db:
+            cids = []
+            for i in range(3):
+                cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,industry,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                                 ('CJ-HERO%d' % i, 'x', '배송·환불', '쇼핑·유통', '가게', '환불이 안 돼요', '내용', '환불', '2026-10-09T10:00:00', 1, 1)).lastrowid
+                name = 'hero-src-%d.jpg' % i; b = io.BytesIO(); Image.new('RGB', (800, 800), 'red').save(b, 'JPEG'); (self.site.UPLOAD / name).write_bytes(b.getvalue())
+                db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)', (cid, name, 'a.jpg')); cids.append(cid)
+            secret = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES('CJ-HEROX','x','배송·환불','가게','비밀','내용','환불','2026-10-09T10:00:00',0,0)").lastrowid
+            db.execute("INSERT INTO attachments(case_id,stored,original) VALUES(?,'hero-src-0.jpg','a.jpg')", (secret,))
+        self.login_admin().get('/admin/hero-photos')  # 관리자 화면을 열면 바로 채움
+        home = self.client.get('/', base_url=jebo).get_data(as_text=True)
+        self.assertIn('hero-wall', home); self.assertIn('쇼핑·유통 · 배송·환불', home)
+        names = set(re.findall(r'/hero/([0-9a-f]{24}\.jpg)', home)); self.assertEqual(len(names), 3)  # 비공개 제보 사진은 안 들어감
+        with self.site.conn() as db: db.execute('UPDATE cases SET published=0 WHERE id=?', (cids[0],))
+        self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))
+        self.assertEqual(sum(self.client.get('/hero/' + n).status_code == 404 for n in names), 1)
+
     def test_report_talk_ai_draft(self):
         # 대화로 제보하기 (운영자 2026-11-03): AI가 되물을 것과 초안을 주고, 업종·유형은 목록 안에서만, 개인정보는 지움. 접수는 기존 /report로
         page = self.client.get('/report/talk').get_data(as_text=True)
