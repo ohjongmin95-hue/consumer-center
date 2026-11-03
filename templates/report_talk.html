@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}{{ ui('talk.title', 'AI와 대화로 제보하기') }} | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ ui('talk.title', '대화로 제보하기') }} | {{ txt('site.name') }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ asset('report-talk.css') }}">{% endblock %}
 {% block content %}
 {# 대화로 제보하기 (report_talk.py). 접수는 기존 양식과 같은 POST /report. 운영자 2026-11-03 #}
 <main class="tk-page">
-  <div class="tk-head"><h1>{{ ui('talk.title', 'AI와 대화로 제보하기') }}</h1><a href="{{ url_for('report') }}">{{ ui('talk.to_form', '양식으로 쓰기') }}</a></div>
+  <div class="tk-head"><h1>{{ ui('talk.title', '대화로 제보하기') }}</h1></div>
+  {% include 'report_mode.html' %}
   <div class="tk-log" id="tk-log" aria-live="polite"></div>
 
   <form id="tk-form" class="tk-form" method="post" action="{{ url_for('report') }}" enctype="multipart/form-data" hidden>
@@ -128,7 +129,7 @@
   function noAI() {
     // AI가 안 될 때도 받아쓰기 그대로 두지 않음 (운영자 2026-11-03): 버튼으로 몇 가지 묻고 정돈된 문장으로 엮음
     draft = { summary: '', industry: '', category: '', company: '', occurred_on: '', subject: '', description: '', request_text: '', request_options: [], questions: [], when: '', tried: '', manual: true };
-    bot(T.ai_off); fill();
+    fill();  // 운영자 2026-11-03: '지금은 AI가 안 돼요' 같은 안내 없이 바로 질문
   }
   function tidy(t) {  // 말 끝 정리: 마침표 붙이고 반복 줄이기
     t = (t || '').replace(/\s+/g, ' ').trim(); if (!t) return '';
