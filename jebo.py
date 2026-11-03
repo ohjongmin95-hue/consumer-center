@@ -227,6 +227,26 @@ def install(S):
             grades={c['id']:company_grade(db,c['id'])['grade'] for c in list(found)+list(busy)}
         return render_template('companies.html',q=q,found=found,busy=busy,grades=grades)
 
+    @app.route('/companies/rank')
+    def companies_rank():
+        """운영자 2026-11-03: 헤이마오 '홍흑 순위'처럼 업종별 기업 응대 순위. 소보루 등급 점수(답변·해결·속도)로,
+        채점된 제보가 MIN_N건 이상인 기업만. 업종은 그 기업 제보에 가장 많이 적힌 업종."""
+        ind=request.args.get('ind','')
+        inds=S.report_industries()
+        if ind not in inds:ind=''
+        with conn() as db:
+            rows=db.execute("""SELECT co.*,(SELECT c.industry FROM cases c WHERE c.company_id=co.id AND c.industry!='' GROUP BY c.industry ORDER BY COUNT(*) DESC LIMIT 1) AS top_ind
+                FROM companies co WHERE co.status IN ('active','listed') AND EXISTS(SELECT 1 FROM cases c WHERE c.company_id=co.id AND c.forwarded_at!='')""").fetchall()
+            ranked=[]
+            for co in rows:
+                if ind and co['top_ind']!=ind:continue
+                gr=company_grade(db,co['id'])
+                if gr['grade']:ranked.append((co,gr))
+        order=sorted(ranked,key=lambda x:(-x[1]['score'],-x[1]['scored'],x[0]['name']))
+        half=min(10,-(-len(order)//2))  # 기업이 적으면 위 절반은 '잘하는', 나머지는 '아쉬운' (한 기업이 양쪽에 같이 안 나오게)
+        good=order[:half];bad=order[half:][::-1][:10]
+        return render_template('companies_rank.html',good=good,bad=bad,ind=ind,inds=inds,min_n=MIN_N,days=ANSWER_DAYS,n=len(ranked))
+
     @app.route('/companies/grade')
     def company_grade_guide():
         # 소보루 등급 기준 공개 페이지 (BBB처럼 무엇으로 매기는지 그대로 보여 줌)
@@ -257,6 +277,7 @@ def install(S):
             rows=db.execute('SELECT * FROM cases WHERE '+where+' ORDER BY id DESC LIMIT ? OFFSET ?',args+[size,(page-1)*size]).fetchall()
             first=first_answers(db,[r['id'] for r in rows])
             cats=db.execute("SELECT category,COUNT(*) AS n FROM cases WHERE company_id=? AND review NOT IN ('rejected','duplicate') GROUP BY category",(company_id,)).fetchall()
+            kakao=(db.execute("SELECT kakao_url FROM company_contacts WHERE company_id=? AND kakao_url!='' ORDER BY updated DESC LIMIT 1",(company_id,)).fetchone() or [''])[0]  # 운영자 2026-11-03: 기업 카카오톡 채널로 바로 문의
             n_open=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND public_consent=1 AND published=1 AND review NOT IN ('rejected','duplicate')",(company_id,)).fetchone()[0]
         by_cat={}
         for r in cats:by_cat[cat_label(r['category'])]=by_cat.get(cat_label(r['category']),0)+r['n']
@@ -265,7 +286,7 @@ def install(S):
                     **(pub(r,mask) if r['public_consent'] and r['published'] else {'subject':r['public_subject'] or mask(r['subject']),'body':'','request':''})) for r in rows]
         indexable=bool(n_open or co['statement'])
         return render_template('company_page.html',co=co,st=st,gr=gr,cases=cases,total=total,page=page,pages=max(1,-(-total//size)),cat=cat,by_cat=by_cat,
-                               categories=S.report_categories(),indexable=indexable,today=datetime.date.today().isoformat(),aka=[n for n in names(co)[1:] if n and n!=co['name']])
+                               categories=S.report_categories(),indexable=indexable,kakao=kakao,today=datetime.date.today().isoformat(),aka=[n for n in names(co)[1:] if n and n!=co['name']])
 
     # ---- 2차: 기업 공식 이메일 인증, 공식 입장, 답변 수정 이력, 소비자 해결 확인 ----
     import hashlib,secrets

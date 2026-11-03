@@ -17,8 +17,8 @@
     <div class="field"><label for="g-phone">{{ ui('groups.f_phone', '휴대폰 번호') }} <small>*</small></label><input id="g-phone" name="phone" inputmode="tel" maxlength="20" required value="{{ request.form.get('phone','') }}"></div></div>
     <div class="pw-pair"><div class="field"><label for="g-email">{{ ui('groups.f_email', '이메일 (선택)') }}</label><input id="g-email" type="email" name="email" maxlength="120" value="{{ request.form.get('email','') }}"></div>
     <div class="field"><label for="g-amount">{{ ui('groups.f_amount', '피해 금액 (선택)') }}</label><input id="g-amount" name="amount" maxlength="60" placeholder="{{ ui('groups.f_amount_ph', '예: 약 12만 원') }}" value="{{ request.form.get('amount','') }}"></div></div>
-    <label class="check"><input type="checkbox" name="consent" required><span><b>[{{ ui('report.badge_required', '필수') }}]</b> {{ ui('groups.c_privacy', '공동 대응 안내를 위해 이름·연락처·이메일·피해 내용을 수집·이용하는 데 동의합니다. 공동 대응이 끝나면 1년 뒤 지웁니다.') }}</span></label>
-    <label class="check"><input type="checkbox" name="share_consent"><span><b>[{{ ui('groups.optional', '선택') }}]</b> {{ ui('groups.c_share', '공동 대응을 맡게 되는 변호사·기관에 이름·연락처·피해 내용을 전달하는 데 동의합니다. 동의하지 않아도 참여할 수 있어요.') }}</span></label>
+    <label class="check"><input type="checkbox" name="consent" required><span><b>[{{ ui('report.badge_required', '필수') }}]</b> {{ ui('groups.c_privacy', '공동 대응 안내를 위해 이름·연락처·이메일·피해 내용을 수집·이용하는 데 동의해요. 공동 대응이 끝나면 1년 뒤 지워요.') }}</span></label>
+    <label class="check"><input type="checkbox" name="share_consent"><span><b>[{{ ui('groups.optional', '선택') }}]</b> {{ ui('groups.c_share', '공동 대응을 맡게 되는 변호사·기관에 이름·연락처·피해 내용을 전달하는 데 동의해요. 동의하지 않아도 참여할 수 있어요.') }}</span></label>
     <button class="primary" type="submit">{{ ui('groups.new_submit', '공동 대응 제안하기 →') }}</button>
   </form>
   <p class="group-note">{{ ui('groups.note', '소비자제보센터는 피해자를 모으고 공식 절차를 안내해요. 변호사를 소개하거나 수수료를 받지 않아요.')|branded }}</p>

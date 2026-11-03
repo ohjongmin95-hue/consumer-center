@@ -61,7 +61,7 @@ def fix(typed):
     if len(t) < 2 or not HANGUL.match(t): return typed
     if any(t in alts for _, alts in names()): return typed  # 이미 맞는 이름
     jt = jamo(t)
-    hits = {name for name, alts in names() for a in alts if len(a) == len(t) and len(jamo(a)) >= 4 and one_edit(jt, jamo(a))}
+    hits = {name for name, alts in names() for a in alts if len(a) == len(t) and len(jamo(a)) >= 5 and one_edit(jt, jamo(a))}
     return hits.pop() if len(hits) == 1 else typed
 
 

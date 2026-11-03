@@ -162,6 +162,8 @@ def menu_href(item):
     if page in ('terms','privacy'):return url_for('policy_page',page=page)
     if page=='groups' and not GROUPS_ON:return ''  # 공동 대응이 꺼져 있으면 메뉴에서 숨김
     if page=='experts':return url_for('experts_page')
+    if page=='rank':return url_for('companies_rank')
+    if page=='check':return url_for('check_list')
     if page in ('reports','board','report','lookup','home','takedown','groups','companies'):return url_for(page)
     return '#'
 def menu_active(href):
@@ -717,7 +719,7 @@ def report():
         if request.method=='POST':abort(403)
         flash(ui_text('msg.report_login','로그인하면 바로 제보할 수 있어요.'));return redirect(url_for('login',next=request.full_path.rstrip('?')))
     if request.method=='GET':return report_form()
-    if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수 준비 중입니다.')
+    if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수를 준비하고 있어요.')
     if request.form.get('website'):abort(400)  # 사람에게는 안 보이는 칸: 자동 등록 프로그램 차단
     keys=('industry','category','company','subject','description','request_text','contact','reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','occurred_on')
     data={k:request.form.get(k,'').strip() for k in keys}
@@ -743,7 +745,7 @@ def report():
     for f in files:
         suffix=Path(f.filename).suffix.lower()
         head=f.stream.read(12);f.stream.seek(0,2);size=f.stream.tell();f.stream.seek(0);total+=size
-        if suffix not in UPLOAD_TYPES:flash(ui_text('msg.m02','첨부는 사진, PDF, 동영상(mp4·mov) 파일만 가능합니다.'));return report_form(400)
+        if suffix not in UPLOAD_TYPES:flash(ui_text('msg.m02','사진, PDF, 동영상(mp4·mov) 파일을 올릴 수 있어요.'));return report_form(400)
         if not file_ok(suffix,head):flash(ui_text('msg.m03','첨부파일 형식을 확인해 주세요.'));return report_form(400)
         # 원래 파일 이름은 한글을 살리되 경로·제어 문자는 지움
         original=re.sub(r'[\x00-\x1f/\\]','',Path(f.filename.replace('\\','/')).name)[:180] or 'file'+suffix
@@ -882,11 +884,11 @@ def admin_login():
     if request.method=='POST':
         stored=admin_password_hash()
         if too_many_attempts('admin'):
-            flash('로그인 시도가 너무 많습니다. 10분 뒤 다시 시도해 주세요.');return render_template('admin_login.html'),429
+            flash('로그인을 너무 많이 시도했어요. 10분 뒤 다시 해 주세요.');return render_template('admin_login.html'),429
         if stored and check_password_hash(stored,request.form.get('password','')):
             session.clear();session['admin']=True;session['admin_v']=admin_session_ver();session['admin_at']=time.time();session.permanent=False;return redirect(url_for('admin'))
         note_attempt('admin')
-        flash('로그인에 실패했습니다.')
+        flash('로그인하지 못했어요. 비밀번호를 다시 확인해 주세요.')
     return render_template('admin_login.html')
 ADMIN_IDLE_SECONDS=2*60*60  # 관리자 화면을 2시간 쓰지 않으면 자동 로그아웃
 def end_admin():
@@ -1007,7 +1009,7 @@ def admin_content():
                 if not field.get('multiline'):value=' '.join(value.split())
                 if value==field['default'] or (not value and not field.get('optional')):db.execute('DELETE FROM site_content WHERE key=?',(db_key(key),))
                 else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(db_key(key),value,now))
-        flash('기본값으로 되돌렸습니다.' if reset else '문구를 저장했습니다.')
+        flash('기본값으로 되돌렸어요.' if reset else '문구를 저장했어요.')
         return redirect(face_url('admin_content',_anchor='section-'+(reset or request.form.get('section',''))))
     # 소비자제보센터 칸에서는 소보루 검색 설정을, 소보루 칸에서는 소비자제보센터 이름·검색 설정을 빼고 보여 줌
     hide='seo' if current_face()=='jebo' else 'jebo'
@@ -1030,7 +1032,7 @@ def admin_lists():
         now=datetime.datetime.now().isoformat(timespec='seconds')
         if request.form.get('reset'):
             with conn() as db:db.execute('DELETE FROM site_lists WHERE key=?',(db_key(key,True),))
-            flash(title+' 항목을 기본값으로 되돌렸습니다.');return redirect(face_url('admin_lists',_anchor='list-'+key))
+            flash(title+' 항목을 기본값으로 되돌렸어요.');return redirect(face_url('admin_lists',_anchor='list-'+key))
         # 같은 이름의 칸이 항목 순서대로 반복되므로 필드별 getlist를 묶으면 화면 순서 그대로 항목이 됨.
         columns=[request.form.getlist(name) for name,_,_ in fields]
         if len({len(c) for c in columns})!=1:abort(400)
@@ -1061,7 +1063,7 @@ def admin_lists():
             flash(title+': '+error);data=load_lists();data[key]=rows
             return render_admin_lists(data,focus=key),400
         with conn() as db:db.execute('INSERT INTO site_lists(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(db_key(key,True),json.dumps(rows,ensure_ascii=False),now))
-        flash(title+' 항목을 저장했습니다.')
+        flash(title+' 항목을 저장했어요.')
         return redirect(face_url('admin_lists',_anchor='list-'+key))
     return render_admin_lists(load_lists())
 def render_admin_lists(data,focus=None):
@@ -1075,7 +1077,7 @@ def admin_takedowns():
             status=request.form.get('status','')
             if status not in TAKEDOWN_STATUSES:abort(400)
             db.execute('UPDATE takedown_requests SET status=?,admin_note=? WHERE id=?',(status,request.form.get('admin_note','').strip()[:3000],request.form.get('id',type=int)))
-            flash('처리 상태를 저장했습니다.');return redirect(url_for('admin_takedowns'))
+            flash('처리 상태를 저장했어요.');return redirect(url_for('admin_takedowns'))
         rows=db.execute('SELECT * FROM takedown_requests ORDER BY id DESC LIMIT 200').fetchall()
     return render_template('admin_takedowns.html',rows=rows,statuses=TAKEDOWN_STATUSES)
 @app.route('/admin/logout',methods=['POST'])
@@ -1304,6 +1306,16 @@ def cat_split(v):
     m=re.match(r'\s*\[([^\]]{1,20})\]\s*(.*)',v or '')
     return (m.group(1),m.group(2)) if m else None
 
+CAT_TONES=(('요금','환불','결제','돈'),('배송','교환'),('계약','해지'),('품질','하자','AS','수리'),('광고','표시','과장','허위'),('상담','처리','응대','고객'),('개인정보',),('안전','위해'))
+@app.template_filter('cat_tone')
+def cat_tone(v):
+    """운영자 2026-11-03: 제보 유형마다 다른 색. 낱말로 묶고, 모르는 유형은 이름으로 고정 색, 기타는 회색."""
+    v=v or ''
+    if not v or v.startswith('기타'):return 0
+    for i,words in enumerate(CAT_TONES,1):
+        if any(w in v for w in words):return i
+    return 1+sum(map(ord,v))%len(CAT_TONES)
+
 @app.template_filter('ago')
 def ago(created):
     try:delta=datetime.datetime.now()-datetime.datetime.fromisoformat(created)
@@ -1344,7 +1356,7 @@ def board():
 @app.route('/board/write',methods=['GET','POST'])
 def board_write():
     if request.method=='POST':
-        if not board_enabled():abort(503,description='게시판 글쓰기 준비 중입니다.')
+        if not board_enabled():abort(503,description='게시판 글쓰기를 준비하고 있어요.')
         f={k:request.form.get(k,'').strip() for k in ('category','nickname','password','title','body','kind','target','pros','cons','summary','menu','review_cat')}
         board_hook('prepare',None,form=f)
         if f['kind'] in ('','post') or f['kind'] not in POST_KIND_NAMES:f['kind']=category_kind(f['category'])  # 종류 없이 오면(예전 화면) 분류로 정함
@@ -1722,7 +1734,7 @@ def phone_error(phone):
 def signup():
     if g.user:return redirect(url_for('mypage'))
     if request.method=='GET':return render_template('signup.html',enabled=members_enabled())
-    if not members_enabled():abort(503,description='회원가입 준비 중입니다.')
+    if not members_enabled():abort(503,description='회원가입을 준비하고 있어요.')
     if request.form.get('website'):abort(400)
     f={k:request.form.get(k,'').strip() for k in ('login_id','nickname','email')}
     f['login_id']=f['login_id'].lower();pw=request.form.get('password','');pw2=request.form.get('password2','')
@@ -2161,7 +2173,7 @@ def make_invite(case_id):
         case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if not case:abort(404)
         if not case['share_company']:
-            flash('기업 전달 동의가 없는 제보입니다.');return redirect(url_for(ep['case'],case_id=case_id))
+            flash('기업 전달에 동의하지 않은 제보예요.');return redirect(url_for(ep['case'],case_id=case_id))
         token=secrets.token_urlsafe(32)
         db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created) VALUES(?,?,?,?)',(case_id,hashlib.sha256(token.encode()).hexdigest(),case['company'],now()))
         log_case(db,case_id,'기업 답변 링크 발급');jebo.mark(db,case_id,'forwarded_at')
@@ -2860,6 +2872,7 @@ import report_talk;report_talk.install(types.SimpleNamespace(**globals()))  # �
 import hero_photos;hero_photos.install(types.SimpleNamespace(**globals()))  # 첫 화면 배경 사진: 실제 제보 사진을 가린 사본으로 (hero_photos.py)
 import experts;experts.install(types.SimpleNamespace(**globals()))  # 전문가 등록: 관리자 초대 링크·직접 신청, 승인되면 댓글에 전문가 표시 (experts.py)
 import partners;partners.install(types.SimpleNamespace(**globals()))  # 협력 기관 로고 띠·배너 (partners.py)
+import buycheck;buycheck.install(types.SimpleNamespace(**globals()))  # 사기 전에 확인: 업종별 피해 주의 글 (buycheck.py)
 import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)

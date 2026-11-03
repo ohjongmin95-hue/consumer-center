@@ -120,7 +120,7 @@
         </ul>
         <label class="check"><input type="checkbox" name="delete_posts" checked><span>{{ ui('member.w_delete_posts', '내가 쓴 게시판 글과 댓글도 함께 지울게요.') }}</span></label>
         {% if g.user['pw_hash'] %}<div class="field"><label for="m-out">{{ ui('member.pw2', '비밀번호 확인') }}</label><input id="m-out" type="password" name="password" required autocomplete="current-password"></div>{% endif %}
-        <label class="check"><input type="checkbox" name="confirm" required><span>{{ ui('member.w_confirm', '위 내용을 확인했고 탈퇴합니다.') }}</span></label>
+        <label class="check"><input type="checkbox" name="confirm" required><span>{{ ui('member.w_confirm', '위 내용을 확인했고 탈퇴할게요.') }}</span></label>
         <button class="secondary danger" type="submit">{{ ui('member.w_btn', '탈퇴하기') }}</button>
       </form>
     </details>

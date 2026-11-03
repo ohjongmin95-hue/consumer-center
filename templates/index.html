@@ -4,7 +4,7 @@
 <main class="home-blocks">
   {% for block in items('home_blocks') %}
   {{ ed_remove('home_blocks', loop.index0) }}
-  {# 운영자 2026-11-03: 첫 화면 사진·영상은 일단 뺌 ('저거 아니야'). 관리자 문구 home.hero_media 를 on 으로 하면 다시 켜짐 #}{% if block.kind == 'hero' and txt('home.hero_media') == 'on' and (hero_video() or hero_wall()) %}{% set vid = hero_video() %}{% set wall = [] if vid else hero_wall()[:8] %}{# 운영자 2026-11-03: 토스플레이스처럼 화면 끝까지 꽉 찬 실제 제보 사진(또는 동영상) 위에 흰 큰 제목 #}
+  {# 운영자 2026-11-03: 첫 화면 뒤에 실제 제보 영상(올려 둔 게 있으면)·사진. 관리자 문구 home.hero_media 를 off 로 하면 영상만 끔 #}{% set vid_on = txt('home.hero_media') != 'off' %}{% if block.kind == 'hero' and ((vid_on and hero_video()) or hero_wall()) %}{% set vid = hero_video() if vid_on else None %}{% set wall = [] if vid else hero_wall()[:8] %}{# 운영자 2026-11-03: 토스플레이스처럼 화면 끝까지 꽉 찬 실제 제보 사진(또는 동영상) 위에 흰 큰 제목 #}
   <section class="hero hero-wall">
     <div class="hw-media" aria-hidden="true">
       {% if vid %}<video src="{{ url_for('hero_video_file', name=vid.stored ~ '.mp4') }}" poster="{{ url_for('hero_video_file', name=vid.stored ~ '.jpg') }}" autoplay muted loop playsinline preload="metadata"></video>

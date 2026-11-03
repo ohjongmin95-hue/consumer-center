@@ -248,7 +248,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('nn-stats', home)  # 메인에는 건수 현황 없음
         self.assertNotIn('비공개 처리된 제보예요', home)
         self.assertNotIn('비밀글로 접수된 제보예요', home)
-        self.assertIn('<dt>누적 제보</dt><dd>4</dd>', self.client.get('/reports').get_data(as_text=True))
+        self.assertNotIn('누적 제보', self.client.get('/reports').get_data(as_text=True))
         self.assertIn('>접수</span>', live)
         filtered_cat = self.client.get('/reports', query_string={'category': '배송·교환·환불'}).get_data(as_text=True)
         self.assertIn('미동의 접수</h3>', filtered_cat)  # 소보루 제보 목록은 카드 (2026-11-03)
@@ -268,7 +268,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('공개 환불 요청', filtered)
         self.assertNotIn('공개 계약 문의', filtered)
         empty = self.client.get('/reports?q=missing').get_data(as_text=True)
-        self.assertIn('검색 조건에 맞는 제보 내역이 없습니다.', empty)
+        self.assertIn('찾는 제보가 없어요.', empty)
 
     def test_hero_photos_wall(self):
         # 첫 화면 사진 (운영자 2026-11-03): 관리자가 고른 제보 사진의 가린 사본만 공개, 3장부터 제보센터 첫 화면 뒤에 깔림
@@ -454,7 +454,7 @@ class SiteTest(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        self.assertIn('제보가 접수됐습니다.', html)
+        self.assertIn('제보를 접수했어요.', html)
         receipt = re.search(r'CJ-\d{6}-[A-F0-9]+', html)[0]
         self.assertNotIn('조회 코드는 다시 표시되지 않습니다', html)
         token = self.csrf(self.client, '/lookup')
@@ -842,7 +842,7 @@ class SiteTest(unittest.TestCase):
             'home.intro_sub': '첫 줄\r\n<b>둘째 줄</b>', 'home.intro_title': '<script>x</script>소보루!', 'home.intro_btn': '',
             'home.live_title': '지금 막 온 제보', 'home.intro_kicker': '**굵게** <i>기울임</i>',
         }, follow_redirects=True)
-        self.assertIn('문구를 저장했습니다.', response.get_data(as_text=True))
+        self.assertIn('문구를 저장했어요.', response.get_data(as_text=True))
         home = self.client.get('/').get_data(as_text=True)
         self.assertIn('첫 줄<br>&lt;b&gt;둘째 줄&lt;/b&gt;', home)
         self.assertIn('&lt;script&gt;x&lt;/script&gt;소보루!', home)
@@ -880,7 +880,7 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(self.client, '/takedown')
         self.assertEqual(self.client.post('/takedown', data={'_csrf': token, 'requester': '업체'}).status_code, 400)
         done = self.client.post('/takedown', data={'_csrf': token, 'requester': '테스트 업체', 'contact': 'a@example.com', 'target': '제목', 'reason': '<b>사실과 다름</b>', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234'})
-        self.assertIn('요청이 접수됐습니다.', done.get_data(as_text=True))
+        self.assertIn('요청을 접수했어요.', done.get_data(as_text=True))
         admin = self.login_admin()
         listing = admin.get('/admin/takedowns').get_data(as_text=True)
         self.assertIn('&lt;b&gt;사실과 다름&lt;/b&gt;', listing)
@@ -2922,7 +2922,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('구매일 대신 계약일', self.client.get('/guide').get_data(as_text=True))
         # 화면 문구(ui)도 지울 수 있음
         admin.post('/admin/inline', data={'_csrf': token, 'key': 'report.consent_all', 'delete': '1'})
-        self.assertNotIn('아래 내용에 모두 동의합니다', self.client.get('/report').get_data(as_text=True))
+        self.assertNotIn('아래 내용에 모두 동의해요', self.client.get('/report').get_data(as_text=True))
         # 지우면 안 되는 문구는 거절
         self.assertEqual(admin.post('/admin/inline', data={'_csrf': token, 'key': 'site.name', 'delete': '1'}).status_code, 400)
         # 목록의 둘째 칸은 지우기, 첫째 칸은 항목째 빼기로 안내
@@ -5908,13 +5908,53 @@ class SiteTest(unittest.TestCase):
         L['weekly'](monday + datetime.timedelta(days=6))
         with self.site.conn() as db: self.assertIsNone(db.execute("SELECT 1 FROM letter_subscribers WHERE email='old@test.kr'").fetchone())
 
+    def test_companies_rank(self):
+        """운영자 2026-11-03: 업종별 기업 응대 순위. 전달된 제보가 MIN_N건보다 적은 기업은 안 나옴."""
+        html = self.client.get('/companies/rank').get_data(as_text=True)
+        self.assertIn('기업 응대 순위', html); self.assertIn('rk-empty', html)
+        self.assertEqual(self.client.get('/companies/rank?ind=없는업종').status_code, 200)
+        with self.site.conn() as db:
+            cid = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES('순위테스트몰','','listed','','','','2026-01-01')").lastrowid
+            old = (datetime.datetime.now() - datetime.timedelta(days=40)).isoformat(timespec='seconds')
+            for i in range(6):
+                case = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,status,created,company_id,reviewed_at,forwarded_at,industry) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                                  ('RK%d' % i, 'x', '기타', '순위테스트몰', '제목', '내용', '요청', '기업 전달', old, cid, old, old, '쇼핑·유통')).lastrowid
+                if i < 3: db.execute("INSERT INTO messages(case_id,author,body,created,public) VALUES(?,?,?,?,1)", (case, '기업 답변', '답변', old))
+        html = self.client.get('/companies/rank').get_data(as_text=True)
+        self.assertIn('순위테스트몰', html); self.assertIn('답변 50%', html)
+
+    def test_buy_check_guides(self):
+        """운영자 2026-11-03: 사기 전에 확인. AI 초안은 공개 전엔 안 보이고, 공개하면 목록·글·업종 통계가 보임."""
+        self.assertIn('곧 업종별 주의 글', self.client.get('/check').get_data(as_text=True))
+        admin = self.login_admin()
+        token = self.csrf(admin, '/admin/check')
+        ind = '쇼핑·유통'
+        with self.site.conn() as db:
+            db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,industry,public_consent,published) VALUES('CK-1','x','[환불] 환불 거절','몰','환불 안 됨','반품했는데 환불이 안 돼요 010-1234-5678','환불',?,?,1,1)",
+                       (datetime.datetime.now().isoformat(timespec='seconds'), ind))
+        sent = {}
+        def fake(url, headers, body, timeout):
+            sent['text'] = body['messages'][1]['content']
+            return 200, {'choices': [{'message': {'content': '환불, 이것만 확인해요\n\n도입 문장이에요.\n\n## 사기 전에 확인할 것\n- 반품 조건 <b>캡처</b>'}}]}
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'k'}), patch.object(self.site.companydesk, '_post_json', side_effect=fake):
+            r = admin.post('/admin/check', data={'_csrf': token, 'industry': ind, 'ai': '1'})
+        self.assertEqual(r.status_code, 302)
+        self.assertNotIn('010-1234-5678', sent['text']); self.assertIn('환불: 1', sent['text'])
+        with self.site.conn() as db: gid = db.execute('SELECT id FROM buy_guides ORDER BY id DESC').fetchone()[0]
+        self.assertEqual(self.client.get('/check/%d' % gid).status_code, 404)
+        admin.post('/admin/check/%d' % gid, data={'_csrf': token, 'act': 'save', 'title': '환불, 이것만 확인해요', 'industry': ind, 'status': 'published',
+                                                 'body': '도입 문장이에요.\n\n## 사기 전에 확인할 것\n- 반품 조건 <b>캡처</b>'})
+        page = self.client.get('/check/%d' % gid).get_data(as_text=True)
+        self.assertIn('사기 전에 확인할 것</h2>', page); self.assertIn('&lt;b&gt;캡처', page); self.assertIn('1건', page)
+        self.assertIn('환불, 이것만 확인해요', self.client.get('/check').get_data(as_text=True))
+
     def test_partners_and_report_stages(self):
         """운영자 2026-11-03: 협력 기관 로고·배너(관리자에서 넣기), 제보 목록 단계 탭, 제보하기 버튼 하나."""
         import io
         from PIL import Image
         html = self.client.get('/reports').get_data(as_text=True)
         self.assertIn('rf-tabs', html); self.assertNotIn('reports-head-btns', html); self.assertNotIn('rf-partners', html)
-        self.assertEqual(html.count('class="rf-go"'), 1)
+        self.assertEqual(html.count('rf-go2'), 1); self.assertNotIn('누적 제보', html)
         for st in ('new', 'active', 'answer', 'done'): self.assertEqual(self.client.get('/reports?st=' + st).status_code, 200)
         admin = self.site.app.test_client()
         admin.post('/admin/login', data={'_csrf': self.csrf(admin, '/admin/login'), 'password': self.password})

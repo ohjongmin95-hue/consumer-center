@@ -343,3 +343,203 @@ body:has(.hero-wall){overflow-x:clip}
 .hero.hero-clean .primary{border-radius:16px;padding:16px 40px;font-size:18px;box-shadow:none}
 @media(max-width:680px){.hero.hero-clean{padding:56px 0 44px}.hero.hero-clean h1{font-size:28px;margin-bottom:26px}.hero.hero-clean .primary{padding:14px 30px;font-size:17px}}
 .hero-clean+.pt-band{border-top:1px solid #f2f4f6}
+/* 운영자 2026-11-03: 제보 목록 위 숫자 뺌 → 제목 옆 제보하기 하나 */
+.reports-page .reports-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.rf-go2{flex:none;border-radius:14px;padding:12px 22px;font-size:16px;font-weight:700;box-shadow:none}
+@media(max-width:560px){.rf-go2{padding:10px 16px;font-size:15px;border-radius:12px}}
+/* 운영자 2026-11-03: 제보 카드도 토스처럼. 칩·이름표 줄이고 글자 위계로만 구분 (제보센터만) */
+body:not(.sb) .nn-vc-top{gap:10px}
+body:not(.sb) .nn-vc-av,body:not(.sb) .rf-list .nn-vc-av{width:32px;height:32px;font-size:11px}
+body:not(.sb) .nn-vc-who{display:flex;align-items:baseline;gap:6px;min-width:0}
+body:not(.sb) .nn-vc-who b{font-size:14px;font-weight:600;color:#333d4b}
+body:not(.sb) .nn-vc-who time{font-size:13px;color:#8b95a1;flex:none}
+body:not(.sb) .nn-vc-card .rf-st .step-badge,body:not(.sb) .nn-vc-top .sb-badge{border-radius:6px;padding:3px 7px;font-size:12px;font-weight:600}
+body:not(.sb) .nn-vc-card h3,body:not(.sb) .rf-list .nn-vc-card h3{font-size:17px;font-weight:700;letter-spacing:-.02em;color:#191f28;margin-top:2px}
+body:not(.sb) .nn-vc-lock{color:#b0b8c1}
+body:not(.sb) .nn-vc-ex,body:not(.sb) .rf-list .nn-vc-ex{font-size:15px;line-height:1.55;color:#6b7684;margin-top:4px}
+body:not(.sb) .is-locked .nn-vc-ex{color:#8b95a1}
+body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:0;margin-top:2px;font-size:14px}
+body:not(.sb) .nn-vc-meta dt{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+body:not(.sb) .nn-vc-meta div{display:contents}
+body:not(.sb) .nn-vc-meta dd{display:inline-flex;gap:0;font-weight:500;color:#6b7684;min-width:0}
+body:not(.sb) .nn-vc-meta .nn-vc-co{font-weight:600;color:#4e5968}
+body:not(.sb) .nn-vc-meta .nn-vc-ind{font-size:14px;font-weight:500;color:#8b95a1}
+body:not(.sb) .nn-vc-meta .nn-vc-ind::before,body:not(.sb) .nn-vc-meta div+div dd::before{content:"·";margin:0 6px;color:#d1d6db}
+body:not(.sb) .nn-vc-tag{padding:0;background:none;border-radius:0;font-size:14px;font-weight:500;color:#8b95a1}
+body:not(.sb) .nn-vc-tag b{display:none}
+body:not(.sb) .nn-vc-foot{font-size:13px;color:#8b95a1}
+body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
+body:not(.sb) .nn-vc-meta dd{flex:none}
+body:not(.sb) .nn-vc-meta div+div dd{flex:1 1 auto;overflow:hidden}
+body:not(.sb) .nn-vc-meta div+div .nn-vc-tag{display:block;overflow:hidden;text-overflow:ellipsis}
+body:not(.sb) .nn-vc-meta .nn-vc-co{overflow:hidden;text-overflow:ellipsis}
+/* 운영자 2026-11-03: 전부 귤색이라 → 제보 유형마다 다른 색(연한 바탕 + 진한 글씨), 처리 중은 파랑. 귤색은 제보하기·고른 칩에만 */
+body:not(.sb) .nn-vc-meta div+div dd::before{content:none}
+body:not(.sb) .nn-vc-meta div+div{display:block;margin-left:8px;flex:none}
+body:not(.sb) .nn-vc-meta div+div dd{display:block}
+body:not(.sb) .nn-vc-tag{display:inline-block;padding:3px 8px;border-radius:6px;font-size:12.5px;font-weight:600;line-height:1.4;background:var(--tg-bg,#f2f4f6);color:var(--tg,#4e5968)}
+body:not(.sb) .nn-vc-tag b{display:inline;padding:0;background:none;color:inherit;font-size:inherit;font-weight:inherit}
+body:not(.sb) .nn-vc-tag b+span{display:none}
+body:not(.sb) .nn-vc-meta div+div .nn-vc-tag{display:inline-block}
+.nn-vc-tag.tone-1{--tg-bg:#e8f3ff;--tg:#1b64da}
+.nn-vc-tag.tone-2{--tg-bg:#e3f7f5;--tg:#0b8a80}
+.nn-vc-tag.tone-3{--tg-bg:#f1ebff;--tg:#6741d9}
+.nn-vc-tag.tone-4{--tg-bg:#fff0e0;--tg:#a3561a}
+.nn-vc-tag.tone-5{--tg-bg:#fdeef6;--tg:#c2255c}
+.nn-vc-tag.tone-6{--tg-bg:#e6f6ec;--tg:#2b8a3e}
+.nn-vc-tag.tone-7{--tg-bg:#edf0ff;--tg:#3b5bdb}
+.nn-vc-tag.tone-8{--tg-bg:#ffebee;--tg:#e03131}
+body:not(.sb) .nn-vc-card .rf-st.st-5 .step-badge{background:#e8f3ff;color:#1b64da}
+body:not(.sb) .nn-vc-av.is-char{background:#fff7ec;object-fit:contain;padding:3px;border-radius:50%}
+body:not(.sb) .nn-vc-av.is-anon{background:#f3ede6;color:#652d1c}
+/* 운영자 2026-11-03: 익명 동그라미도 몇 가지 색을 돌려 가며 */
+body:not(.sb) .nn-vc-av.is-anon.av-0{background:#fff1e0;color:#d9480f}
+body:not(.sb) .nn-vc-av.is-anon.av-1{background:#e8f3ff;color:#1b64da}
+body:not(.sb) .nn-vc-av.is-anon.av-2{background:#e6f6ec;color:#2b8a3e}
+body:not(.sb) .nn-vc-av.is-anon.av-3{background:#f1ebff;color:#6741d9}
+body:not(.sb) .nn-vc-av.is-anon.av-4{background:#f3ede6;color:#652d1c}
+body:not(.sb) .nn-vc-meta div:first-child{display:flex;min-width:0;flex:0 1 auto}
+body:not(.sb) .nn-vc-meta div:first-child dd{max-width:none;flex:0 1 auto;min-width:0}
+body:not(.sb) .nn-vc-meta .nn-vc-co{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+body:not(.sb) .nn-vc-meta .nn-vc-ind{flex:none}
+body:not(.sb) .nn-vc-meta div+div,body:not(.sb) .nn-vc-meta div+div dd{flex:none;overflow:visible}
+body:not(.sb) .nn-vc-meta .nn-vc-co{flex:0 1 auto;min-width:3em}body:not(.sb) .nn-vc-meta .nn-vc-ind{flex:0 100 auto;min-width:0;overflow:hidden;text-overflow:clip;white-space:nowrap}
+body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{flex-wrap:wrap;row-gap:6px}body:not(.sb) .nn-vc-meta .nn-vc-ind{flex:none}body:not(.sb) .nn-vc-meta div:first-child{max-width:100%;margin-right:8px}body:not(.sb) .nn-vc-meta div+div{margin-left:0}
+/* 운영자 2026-11-03: 기업 응대 순위 (헤이마오 홍흑 순위처럼, 업종별) */
+.rk-wrap{display:grid;gap:18px}
+.rk-wrap .page-title{margin:28px 0 0}
+.rk-inds{flex-wrap:wrap}
+.rk-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.rk-box{background:#fff;border:1px solid #e5e8eb;border-radius:20px;padding:22px 22px 10px}
+.rk-box h2{margin:0 0 8px;font-size:19px;font-weight:700;letter-spacing:-.02em;color:#191f28}
+.rk-good h2::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#2b8a3e;margin-right:8px;vertical-align:3px}
+.rk-bad h2::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#e03131;margin-right:8px;vertical-align:3px}
+.rk-box ol{list-style:none;margin:0;padding:0}
+.rk-box li+li{border-top:1px solid #f2f4f6}
+.rk-box a{display:flex;align-items:center;gap:12px;padding:14px 0;color:#191f28;text-decoration:none}
+.rk-no{flex:none;width:22px;font-weight:700;color:#8b95a1;font-variant-numeric:tabular-nums}
+.rk-box li:nth-child(-n+3) .rk-no{color:#191f28}
+.rk-name{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.rk-name b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk-name small{flex:none;color:#8b95a1;font-size:13px}
+.rk-rate{flex:none;color:#6b7684;font-size:13px}
+.rk-empty{padding:48px 0;text-align:center;color:#6b7684}
+.rk-how{color:#6b7684;font-size:14px;line-height:1.6;margin:0}
+@media(max-width:760px){.rk-cols{grid-template-columns:1fr}.rk-box{padding:18px 18px 6px}}
+.wrap.rk-wrap{max-width:1100px}
+.page .rk-wrap .page-title{margin-top:0}
+@media(max-width:560px){.rk-inds{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px;scrollbar-width:none}.rk-inds::-webkit-scrollbar{display:none}.rk-inds a{flex:none}}
+.rk-how a{color:#4e5968;text-decoration:underline}
+/* 운영자 2026-11-03: 사기 전에 확인 (업종별 주의 글) */
+.wrap.ck-wrap{max-width:1100px;display:grid;gap:18px}
+.ck-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.ck-list a{display:grid;gap:6px;height:100%;box-sizing:border-box;padding:20px;background:#fff;border:1px solid #e5e8eb;border-radius:18px;color:#191f28;text-decoration:none;transition:border-color .15s}
+.ck-list a:hover{border-color:#d1d6db}
+.ck-list small{color:#8b95a1;font-size:13px;font-weight:600}
+.ck-list b{font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1.4;word-break:keep-all}
+.ck-list span{color:#6b7684;font-size:14.5px;line-height:1.6}
+.wrap.ck-read{max-width:760px}
+.ck-back{color:#6b7684;text-decoration:none;font-size:14px;font-weight:600}
+.ck-draft{margin:0;padding:10px 14px;border-radius:10px;background:#fff8ef;color:#a3561a;font-size:14px}
+.ck-art h1{font-size:30px;line-height:1.35;letter-spacing:-.03em;margin:6px 0 18px;word-break:keep-all;text-wrap:balance}
+.ck-ind{color:#6b7684;font-weight:600;font-size:14px}
+.ck-body{font-size:17px;line-height:1.8;color:#333d4b;word-break:keep-all}
+.ck-body h2{font-size:20px;margin:32px 0 10px;color:#191f28;letter-spacing:-.02em}
+.ck-body p{margin:0 0 14px}
+.ck-body ul{margin:0 0 10px;padding-left:20px}.ck-body li{margin:6px 0}
+.ck-stats{background:#f9fafb;border-radius:18px;padding:20px 22px;display:grid;gap:12px}
+.ck-stats h2{margin:0;font-size:17px;font-weight:700}
+.ck-stats ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.ck-stats li{display:grid;grid-template-columns:120px 1fr 48px;align-items:center;gap:10px}
+.ck-stats li .nn-vc-tag{justify-self:start;display:inline-block;padding:3px 8px;border-radius:6px;font-size:12.5px;font-weight:600;background:var(--tg-bg,#f2f4f6);color:var(--tg,#4e5968)}
+.ck-stats i{display:block;height:8px;border-radius:4px;background:#e5e8eb;position:relative;overflow:hidden}
+.ck-stats i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--w);background:#8b95a1;border-radius:4px}
+.ck-stats b{text-align:right;font-size:14px;color:#4e5968;font-weight:600}
+.ck-more{color:#4e5968;font-weight:600;font-size:14px;text-decoration:none}
+.ck-cta{justify-self:start;border-radius:14px;padding:14px 28px;font-size:17px;box-shadow:none}
+.ck-other h2{font-size:18px;margin:12px 0 10px}
+@media(max-width:560px){.ck-art h1{font-size:25px}.ck-body{font-size:16px}.ck-stats li{grid-template-columns:96px 1fr 40px}.ck-cta{justify-self:stretch;text-align:center}}
+.co-kakao{display:inline-block;margin-top:6px;color:#4e5968;font-weight:600;font-size:14.5px;text-decoration:none}.co-kakao:hover{text-decoration:underline}
+/* 운영자 2026-11-03: 주의 글을 토스 콘텐츠처럼 — 큰 제목, 넉넉한 줄, 소제목마다 회색 상자, 점·체크·번호 줄 */
+.wrap.ck-read{max-width:720px;gap:24px}
+.ck-art h1{font-size:34px;font-weight:700;line-height:1.38;letter-spacing:-.035em;color:#191f28;margin:10px 0 20px}
+.ck-ind{display:inline-block;padding:4px 10px;border-radius:8px;background:#f2f4f6;color:#4e5968;font-size:13px;font-weight:600}
+.ck-body{font-size:18px;line-height:1.8;color:#4e5968;letter-spacing:-.01em}
+.ck-body>p{margin:0 0 28px}
+.ck-sec{margin:0 0 16px;padding:28px 28px 24px;border-radius:24px;background:#f9fafb}
+.ck-sec h2{margin:0 0 16px;font-size:22px;font-weight:700;line-height:1.4;letter-spacing:-.03em;color:#191f28}
+.ck-sec p{margin:0 0 12px}
+.ck-body ul,.ck-body ol{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.ck-body li{display:flex;gap:12px;align-items:flex-start;margin:0;color:#333d4b;font-size:17px;line-height:1.65}
+.ck-body li>span{flex:1;min-width:0}
+.ck-dots li::before{content:"";flex:none;width:6px;height:6px;margin:11px 7px 0;border-radius:50%;background:#b0b8c1}
+.ck-check li::before{content:"";flex:none;width:22px;height:22px;margin-top:2px;border-radius:50%;background:#3182f6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center/14px no-repeat}
+.ck-steps{counter-reset:ck}
+.ck-steps li{counter-increment:ck}
+.ck-steps li::before{content:counter(ck);flex:none;width:24px;height:24px;margin-top:1px;border-radius:50%;background:#191f28;color:#fff;font-size:13px;font-weight:700;line-height:24px;text-align:center}
+.ck-stats{background:#fff;border:1px solid #f2f4f6;border-radius:24px;padding:26px 28px;gap:16px}
+.ck-stats h2{font-size:20px;letter-spacing:-.03em}
+.ck-stats i::after{background:#3182f6}
+.ck-stats b{color:#191f28}
+.ck-more{color:#3182f6}
+.ck-cta{padding:16px 32px;border-radius:16px;font-size:17px;font-weight:700}
+.ck-back{font-size:15px}
+.ck-other h2{font-size:20px;letter-spacing:-.03em}
+/* 목록도 토스 피드처럼: 테두리 없는 큰 카드 */
+.ck-list a{border:0;background:#f9fafb;border-radius:24px;padding:26px;gap:8px}
+.ck-list a:hover{background:#f2f4f6}
+.ck-list b{font-size:19px}
+.ck-list small{color:#3182f6}
+@media(max-width:560px){
+  .ck-art h1{font-size:26px}
+  .ck-body{font-size:16.5px}
+  .ck-sec{margin:0 -16px 12px;padding:24px 20px;border-radius:0}
+  .ck-sec h2{font-size:20px}
+  .ck-body li{font-size:16px}
+  .ck-stats{padding:22px 20px}
+  .ck-list a{padding:22px 20px;border-radius:20px}
+}
+/* 순위도 토스처럼: 테두리 대신 연회색 바탕, 큰 숫자 */
+.rk-box{border:0;background:#f9fafb;border-radius:24px;padding:26px 26px 12px}
+.rk-box h2{font-size:21px;letter-spacing:-.03em}
+.rk-box li+li{border-top:0}
+.rk-box a{padding:12px 0}
+.rk-no{font-size:17px}
+.rk-name b{font-size:17px}
+@media(max-width:560px){.rk-box{margin:0 -16px;border-radius:0;padding:22px 20px 8px}}
+/* 토스페이스 이모지 (© Viva Republica, https://toss.im/tossface/copyright) — 제보센터에도. 운영자 2026-11-03: 글씨만 있으면 아쉬움 → 토스처럼 그림 */
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2?v=6) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270D,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F333,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F369,U+1F36A,U+1F36F,U+1F370,U+1F371,U+1F373,U+1F381,U+1F382,U+1F389,U+1F393,U+1F3AE,U+1F3AF,U+1F3C6,U+1F3D8,U+1F3DB,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F3EA,U+1F3F7,U+1F431,U+1F436,U+1F437,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F457,U+1F45F,U+1F484,U+1F48A,U+1F490,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4BC,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CA,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DC,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4EE,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CD,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F914,U+1F916,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F95E,U+1F96F,U+1F9C1,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EE,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
+.tf{font-family:Tossface,sans-serif;font-style:normal;line-height:1}
+.ck-tile{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:20px;background:#f2f4f6;font-size:36px;flex:none}
+.ck-tile.sm{width:44px;height:44px;border-radius:14px;font-size:24px}
+.rf-cats a .tf,.rk-inds a .tf{margin-right:5px;font-size:15px}
+.ck-art .ck-tile{margin-bottom:14px}
+.ck-art .ck-ind{margin-left:10px;vertical-align:22px}
+.ck-sec h2,.ck-stats h2{display:flex;align-items:center;gap:10px}
+.ck-sec h2 .tf,.ck-stats h2 .tf{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:#fff;font-size:20px;flex:none}
+.ck-stats h2 .tf{background:#f2f4f6}
+.ck-list a{grid-template-columns:auto 1fr;column-gap:16px;align-items:start}
+.ck-list a .ck-tile{grid-row:span 3;background:#fff}
+.ck-list a>*:not(.ck-tile){grid-column:2}
+.rk-box h2{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.rk-box .ck-tile{background:#fff}
+.rk-box a{gap:14px;padding:12px 0}
+.rk-no{width:20px;text-align:center;font-size:17px;font-weight:700;color:#8b95a1}
+.rk-no.is-top{color:#3182f6}
+.rk-bad .rk-no.is-top{color:#f04452}
+.rk-logo{flex:none;width:44px;height:44px;border-radius:50%;object-fit:contain;background:#fff;border:1px solid #f2f4f6;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;box-sizing:border-box}
+.rk-logo.av-0{background:#fff1e0;color:#d9480f;border:0}.rk-logo.av-1{background:#e8f3ff;color:#1b64da;border:0}.rk-logo.av-2{background:#e6f6ec;color:#2b8a3e;border:0}.rk-logo.av-3{background:#f1ebff;color:#6741d9;border:0}.rk-logo.av-4{background:#f3ede6;color:#652d1c;border:0}
+.rk-name{display:grid;gap:3px;flex:1;min-width:0}
+.rk-name small{color:#8b95a1;font-size:13.5px}
+.rk-bar{display:block;height:6px;border-radius:3px;background:#e5e8eb;overflow:hidden;margin-top:3px}
+.rk-bar em{display:block;height:100%;border-radius:3px;background:#3182f6}
+.rk-bad .rk-bar em{background:#f04452}
+.rk-grade{flex:none;min-width:44px;text-align:right;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.rk-grade.g-a{color:#3182f6}.rk-grade.g-b{color:#2b8a3e}.rk-grade.g-c{color:#f59f00}.rk-grade.g-d{color:#f76707}.rk-grade.g-f{color:#f04452}
+.rk-empty{display:grid;justify-items:center;gap:12px}
+.rk-inds a{display:inline-flex;align-items:center}
+.rk-good h2::before,.rk-bad h2::before{content:none}
+/* 운영자 2026-11-03: 제보 상세 유형도 목록처럼 종류별 색, [분류]만 */
+body:not(.sb) .pc-tags .nn-vc-tag{display:inline-block;padding:4px 10px;border-radius:8px;font-size:13.5px;font-weight:600;background:var(--tg-bg,#f2f4f6);color:var(--tg,#4e5968)}
+body:not(.sb) .pc-tags .nn-vc-ind{background:#f2f4f6;color:#4e5968;border-radius:8px;padding:4px 10px;font-weight:600}
+body:not(.sb) .pc-who .nn-vc-av.is-anon{background:#f3ede6;color:#652d1c}

@@ -33,7 +33,7 @@
     {% if txt('board.rules') %}
     <div class="board-rules"><h2>{{ ui('board.rules_title', '글쓰기 약속') }}</h2><ul{{ ed_attr('board.rules') }}>{% for line in g.content['board.rules'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul></div>
     {% endif %}
-    <label class="check"><input type="checkbox" name="agree" required><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {% if g.user %}{{ ui('board.agree_member', '글쓰기 약속과 이용약관을 지키고, 글 내용 게시에 동의합니다.') }}{% else %}{{ ui('board.agree_guest', '글쓰기 약속과 이용약관을 지키고, 닉네임·비밀번호(암호화 저장)·글 내용 수집에 동의합니다.') }}{% endif %} <a class="consent-link" href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">{{ ui('report.terms_link', '이용약관 ↗') }}</a> <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></span></label>
+    <label class="check"><input type="checkbox" name="agree" required><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {% if g.user %}{{ ui('board.agree_member', '글쓰기 약속과 이용약관을 지키고, 글 내용 게시에 동의해요.') }}{% else %}{{ ui('board.agree_guest', '글쓰기 약속과 이용약관을 지키고, 닉네임·비밀번호(암호화 저장)·글 내용 수집에 동의해요.') }}{% endif %} <a class="consent-link" href="{{ url_for('policy_page', page='terms') }}" target="_blank" rel="noopener">{{ ui('report.terms_link', '이용약관 ↗') }}</a> <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></span></label>
     <button class="primary" type="submit"{% if not enabled %} disabled{% endif %} style="width:100%;margin-top:14px">{{ ui('board.submit', '올리기') }}</button>
   </form>
 </main>

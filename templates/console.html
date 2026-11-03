@@ -37,7 +37,7 @@
 {% if admin_active() and request.endpoint != 'admin_login' %}
 {% set groups = [
   ('', [('admin', 'home', '홈'), ('admin_visits', 'chart', '방문 통계')]),
-  ('제보', [('admin_reports', 'inbox', '제보 처리'), ('admin_requests', 'mail', '정정·이의 신청'), ('admin_stats', 'chart', '운영 통계'), ('admin_hero_photos', 'image', '첫 화면 사진'), ('admin_partners', 'image', '협력 기관·배너')]),
+  ('제보', [('admin_reports', 'inbox', '제보 처리'), ('admin_requests', 'mail', '정정·이의 신청'), ('admin_stats', 'chart', '운영 통계'), ('admin_hero_photos', 'image', '첫 화면 사진'), ('admin_partners', 'image', '협력 기관·배너'), ('admin_check', 'book', '사기 전에 확인')]),
   ('기업', [('admin_companies', 'building', '기업'), ('admin_contacts', 'mail', '기업 연락처')]),
   ('커뮤니티', [('admin_members', 'users', '회원'), ('admin_experts', 'id', '전문가'), ('admin_board', 'chat', '게시판 신고'), ('admin_takedowns', 'flag', '게시중단 요청'), ('admin_scam', 'flag', '사기 주의 신고'), ('admin_jobs', 'id', '동네일자리'), ('admin_town', 'flag', '우리 동네 정보'), ('admin_campaigns', 'layers', '리뷰 주제'), ('admin_receipts', 'flag', '영수증 확인'), ('admin_ads', 'chart', '광고 효과')]),
   ('콘텐츠', [('admin_life', 'text', '생활정보 글'), ('admin_letter', 'mail', '소보루 레터'), ('admin_art', 'image', 'AI 일러스트'), ('admin_laws', 'book', '법령 학습'), ('admin_ask', 'chat', 'AI 상담')]),
@@ -75,7 +75,7 @@
     {% block content %}{% endblock %}
   </div>
 </div>
-<a class="ad-toast" id="ad-toast" href="{{ url_for('admin_reports') }}" role="status" hidden><b>새 제보가 들어왔습니다</b><span></span></a>
+<a class="ad-toast" id="ad-toast" href="{{ url_for('admin_reports') }}" role="status" hidden><b>새 제보가 들어왔어요</b><span></span></a>
 <script>
   // 새 제보 알림: 관리자 화면을 켜 두면 30초마다 확인해서 메뉴 숫자, 탭 제목, 화면 알림, (허용했으면) 브라우저 알림으로 알려 줌
   (function () {
@@ -89,7 +89,7 @@
           document.title = '(새 제보) ' + title;
           toast.href = d.url; toast.querySelector('span').textContent = d.subject; toast.hidden = false;
           if (window.Notification && Notification.permission === 'granted') {
-            var n = new Notification('새 제보가 들어왔습니다', {body: d.subject, icon: '{{ url_for('static', filename='apple-touch-icon.png') }}', tag: 'new-case'});
+            var n = new Notification('새 제보가 들어왔어요', {body: d.subject, icon: '{{ url_for('static', filename='apple-touch-icon.png') }}', tag: 'new-case'});
             n.onclick = function () { window.focus(); location.href = d.url; };
           }
         }

@@ -18,7 +18,7 @@
       <p class="join-profile-note">{{ provider }}에서 받은 정보는 공개되지 않아요. 제보 확인과 연락에만 쓰여요.</p>
       {% endif %}
       <div class="agree-box">
-        <label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all', '모두 동의합니다') }}</span></label>
+        <label class="agree-all"><input type="checkbox" data-check-all><span>{{ ui('member.agree_all', '모두 동의해요') }}</span></label>
         <details class="agree-row">
           <summary><label><input type="checkbox" name="agree_terms" required{% if request.form.get('agree_terms') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_terms', '이용약관 동의') }}</span></label><span class="agree-view">{{ ui('member.view', '보기') }}</span></summary>
           <div class="agree-detail consent-scroll">{{ doc('policy.terms') }}</div>
@@ -33,7 +33,7 @@
             <p class="consent-note">{{ txt('member.privacy_refusal') }} <a class="consent-link" href="{{ url_for('policy_page', page='privacy') }}" target="_blank" rel="noopener">{{ ui('report.privacy_link', '개인정보 처리방침 ↗') }}</a></p>
           </div>
         </details>
-        <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_age" required{% if request.form.get('agree_age') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_age', '만 14세 이상입니다') }}</span></label></div>
+        <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_age" required{% if request.form.get('agree_age') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_age', '만 14세 이상이에요') }}</span></label></div>
         <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_letter"{% if request.form.get('agree_letter') %} checked{% endif %}><span><b>{{ ui('member.optional_tag', '[선택]') }}</b> {{ ui('member.agree_letter', '소보루 레터·소식 메일 받기') }} <em class="agree-opt-note">{{ ui('member.agree_letter_note', '이메일로 소비자·경제 소식을 보내요. 언제든 해지할 수 있어요.') }}</em></span></label></div>
       </div>
 
