@@ -137,6 +137,10 @@ def install(S):
 
     def form_page(invite=None, f=None):
         people = [r for r in helpers(12) if r['kind'] == 'person' and r['photo_url']]; random.shuffle(people)
+        if not people:  # 운영자 2026-11-03: 사진 올린 자문단이 아직 없으면 왼쪽이 비어 보임 → 예시 카드 (예시 사진)
+            people = [{'name': n, 'field': fd, 'org': o, 'photo_url': url_for('static', filename=f'img/advisors/{a}.jpg')}
+                      for a, n, fd, o in (('a1', '김서연', '변호사', '소보루 법률사무소'), ('a2', '박성훈', '변호사', '법무법인 소보루'),
+                                          ('a3', '이정민', '교수', '소보루대학교 법학전문대학원'), ('a4', '정민재', '변호사', '법률사무소 소보루'))]
         return render_template('expert_form.html', fields=FIELDS, firm_fields=FIRM_FIELDS, f=f or form_values(invite), invite=invite, people=people)
 
     def done(status, claim):

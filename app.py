@@ -372,7 +372,7 @@ app.jinja_env.globals['status_name']=status_name
 # 공개 화면 3단계, 제보자 본인 화면 5단계 이름 (jebo.PUB_STAGES·MY_STEPS와 같은 순서, 화면에서 고칠 수 있음)
 def pub_names():return [ui('status.p1','접수'),ui('status.p2','처리 중'),ui('status.p3','종결')]
 def my_names():return [ui('status.m1','접수'),ui('status.m2','검토'),ui('status.m3','기업 전달'),ui('status.m4','기업 답변·처리'),ui('status.m5','완료·평가')]
-def my_descs():return [ui('status.m1_desc','소비자가 민원 제출'),ui('status.m2_desc','플랫폼에서 내용 심사'),ui('status.m3_desc','해당 기업에 민원 전달'),ui('status.m4_desc','기업과 소비자가 해결 진행'),ui('status.m5_desc','소비자가 결과를 확인하고 평가')]
+def my_descs():return [ui('status.m1_desc2','제보가 들어왔어요'),ui('status.m2_desc2','소보루가 내용을 살펴보고 있어요'),ui('status.m3_desc2','기업에 제보를 전했어요'),ui('status.m4_desc2','기업이 답하고 해결하고 있어요'),ui('status.m5_desc2','결과를 확인하고 평가해 주세요')]
 app.jinja_env.globals.update(pub_names=pub_names,my_names=my_names,my_descs=my_descs)
 # 관리자·기자실은 6단계로 보고 고름 (제보자 화면 5단계 + '추가자료 요청'). 제보자 화면에서는 '추가 확인'을 검토 단계로 보여 줌
 STAGE_STATUS=list(STATUSES)
@@ -1828,7 +1828,7 @@ def account_help():return render_template('account_help.html')
 @app.route('/logout',methods=['POST'])
 def member_logout():
     session.pop('uid',None);session.pop('uv',None);session.pop('case_id',None);g.signed_out=True
-    flash(ui_text('msg.m31','로그아웃했어요.'))
+    pass  # 운영자 2026-11-03: 로그아웃 안내는 띄우지 않음
     return redirect(url_for('home'))
 
 @app.route('/me')

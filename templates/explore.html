@@ -115,14 +115,7 @@
     </ul>{% else %}<p class="xs-none">{{ ui('explore.hot_empty', '아직 공개된 제보가 없어요.') }}</p>{% endif %}
   </section>
 
-  {% if news %}
-  <section class="xs-sec" aria-labelledby="xs-news">
-    <h2 class="xs-h" id="xs-news">{{ ui('explore.tab_news', '최신 소식') }}</h2>
-    <ul class="xs-grid is-3">{% for a in news %}
-      <li><a class="xs-post" href="https://soboru.co.kr/life/{{ a.id }}">{% if a.category %}<span class="xs-cat">{{ a.category }}</span>{% endif %}<b>{{ a.title }}</b><small>{{ a.at[5:10].replace('-', '.') }}</small></a></li>{% endfor %}
-    </ul>
-  </section>
-  {% endif %}
+  {# 운영자 2026-11-03: 최신 소식은 빼요 #}
 </div></main>
 <script>(function(){
   // 운영자 2026-11-03: 자문단 카드는 랜덤으로 돌아가며 (네 명씩). 마우스를 올리면 멈춤

@@ -9,7 +9,7 @@
     <h2>자문단 초대</h2>
     <div class="cs-add-row">
       <input name="name" maxlength="30" required placeholder="이름" aria-label="이름">
-      {# 운영자 2026-11-03: 지금은 변호사·교수만 (로펌은 나중에 따로) #}<select name="field" required aria-label="분야"><option value="">분야</option>{% for f in fields %}<option>{{ f }}</option>{% endfor %}</select>
+      {# 운영자 2026-11-03: 지금은 변호사·교수만 (로펌은 나중에 따로) #}<select name="field" required aria-label="직업"><option value="">직업</option>{% for f in fields %}<option>{{ f }}</option>{% endfor %}</select>
       <input name="org" maxlength="60" placeholder="소속 (예: 소보루 법률사무소)" aria-label="소속">
       <input name="note" maxlength="200" placeholder="메모 (관리자만 봐요)" aria-label="메모">
       <button class="cs-btn cs-btn-main" type="submit">초대 링크 만들기</button>
