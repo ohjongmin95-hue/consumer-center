@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {# 전문가 (운영자 2026-11-03: 상단 메뉴 '소비자게시판' 자리). 수수료·수임료 없이 제보에 의견을 남기는 전문가를 소개만 함. #}
-{% block title %}{{ ui('experts.title2', '소보루 자문단') }} | {{ txt('site.name') }}{% endblock %}
+{% block title %}{{ ui('experts.title3', '도와주는 분들') }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="page xp-page"><div class="wrap">
-  <h1 class="page-title">{{ ui('experts.title2', '소보루 자문단') }}</h1>
+  <h1 class="page-title">{{ ui('experts.title3', '도와주는 분들') }}</h1>
 
   {% macro card(e) %}
   <li class="xp-card">
@@ -18,14 +18,14 @@
   {% endmacro %}
 
   {% if people or firms %}
-  {% if people %}<section class="xp-sec" aria-labelledby="xp-p"><h2 id="xp-p">{{ ui('experts.people2', '활동 중인 자문위원') }}</h2><ul class="xp-grid">{% for e in people %}{{ card(e) }}{% endfor %}</ul></section>{% endif %}
+  {% if people %}<section class="xp-sec" aria-labelledby="xp-p"><h2 id="xp-p">{{ ui('experts.people3', '지금 돕고 있는 분들') }}</h2><ul class="xp-grid">{% for e in people %}{{ card(e) }}{% endfor %}</ul></section>{% endif %}
   {% if firms %}<section class="xp-sec" aria-labelledby="xp-f"><h2 id="xp-f">{{ ui('experts.firms', '함께하는 전문 기관') }}</h2><ul class="xp-grid">{% for e in firms %}{{ card(e) }}{% endfor %}</ul></section>{% endif %}
   {% else %}
-  <div class="xp-empty"><b>{{ ui('experts.empty2', '자문위원을 모시고 있어요') }}</b><p>{{ ui('experts.empty_sub2', '기자·변호사·손해사정사가 제보에 의견을 남겨 드릴 예정이에요.') }}</p></div>
+  <div class="xp-empty"><b>{{ ui('experts.empty3', '도와주실 분들을 모시고 있어요') }}</b><p>{{ ui('experts.empty_sub2', '기자·변호사·손해사정사가 제보에 의견을 남겨 드릴 예정이에요.') }}</p></div>
   {% endif %}
 
   {% if recent %}
-  <section class="xp-sec" aria-labelledby="xp-r"><h2 id="xp-r">{{ ui('experts.recent2', '최근 자문위원 의견') }}</h2>
+  <section class="xp-sec" aria-labelledby="xp-r"><h2 id="xp-r">{{ ui('experts.recent3', '최근에 남긴 의견') }}</h2>
     <ul class="xp-recent">{% for m in recent %}<li><a href="{{ url_for('public_case', case_id=m.case_id) }}">
       <span class="xp-r-top">{% if m.expert %}<b>{{ m.expert.name }}</b> <span class="xp-field">{{ m.expert.field }}</span>{% endif %}<span class="xp-r-co">{{ m.company }}</span></span>
       <span class="xp-r-sub">{{ m.subject }}</span>
@@ -35,8 +35,8 @@
   {% endif %}
 
   <section class="xp-join">
-    <div><b>{{ ui('experts.join_title2', '자문위원으로 함께해요') }}</b><p>{{ ui('experts.join_text', '수수료나 광고비 없이, 제보에 의견을 남겨 소비자를 도와주세요.') }}</p></div>
-    <a class="primary" href="{{ url_for('expert_apply') }}">{{ ui('experts.join_btn2', '자문위원 등록') }}</a>
+    <div><b>{{ ui('experts.join_title3', '소비자를 함께 도와주세요') }}</b><p>{{ ui('experts.join_text', '수수료나 광고비 없이, 제보에 의견을 남겨 소비자를 도와주세요.') }}</p></div>
+    <a class="primary" href="{{ url_for('expert_apply') }}">{{ ui('experts.join_btn3', '도와주는 분으로 등록') }}</a>
   </section>
 </div></main>
 <style>
