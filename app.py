@@ -162,6 +162,7 @@ def menu_href(item):
     if page in ('terms','privacy'):return url_for('policy_page',page=page)
     if page=='groups' and not GROUPS_ON:return ''  # 공동 대응이 꺼져 있으면 메뉴에서 숨김
     if page=='experts':return url_for('experts_page')
+    if page=='ask':return url_for('law_ask') if 'law_ask' in app.view_functions else ''  # AI 소비자 상담 (운영자 2026-11-03 제보센터로 옮김)
     if page=='rank':return url_for('companies_rank')
     if page=='check':return url_for('check_list')
     if page in ('reports','board','report','lookup','home','takedown','groups','companies'):return url_for(page)
