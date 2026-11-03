@@ -270,9 +270,15 @@ class SiteTest(unittest.TestCase):
         empty = self.client.get('/reports?q=missing').get_data(as_text=True)
         self.assertIn('찾는 제보가 없어요.', empty)
 
+    def test_hero_banner_default_video(self):
+        # 운영자 2026-11-03: 첫 화면 기본 = 둥근 배너 + '대화로 제보하기' 영상, '실제 제보 영상' 글씨 없음
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertIn('hero-banner', home); self.assertIn('video/hero-talk.mp4', home); self.assertNotIn('실제 제보 영상', home)
+
     def test_hero_photos_wall(self):
         # 첫 화면 사진 (운영자 2026-11-03): 관리자가 고른 제보 사진의 가린 사본만 공개, 3장부터 제보센터 첫 화면 뒤에 깔림
-        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('home.hero_media','on','x')")  # 첫 화면 사진은 켰을 때만 (운영자 2026-11-03 일단 끔)
+        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('home.hero_media','off','x')")  # 첫 화면 사진은 영상을 껐을 때만 (운영자 2026-11-03: 기본은 '대화로 제보하기' 영상 배너)
         def _off():
             with self.site.conn() as db: db.execute("DELETE FROM site_content WHERE key='home.hero_media'")
         self.addCleanup(_off)
@@ -310,7 +316,7 @@ class SiteTest(unittest.TestCase):
 
     def test_hero_photos_auto(self):
         # 운영자 2026-11-03: 공개 게시된 제보의 사진은 관리자가 안 골라도 모자이크해서 첫 화면에. 비공개로 바뀌면 바로 빠짐
-        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('home.hero_media','on','x')")  # 첫 화면 사진은 켰을 때만 (운영자 2026-11-03 일단 끔)
+        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('home.hero_media','off','x')")  # 첫 화면 사진은 영상을 껐을 때만 (운영자 2026-11-03: 기본은 '대화로 제보하기' 영상 배너)
         def _off():
             with self.site.conn() as db: db.execute("DELETE FROM site_content WHERE key='home.hero_media'")
         self.addCleanup(_off)
@@ -2128,7 +2134,7 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 user = db.execute("SELECT * FROM users WHERE real_name='김실명'").fetchone()
                 ident = db.execute('SELECT * FROM user_identities WHERE user_id=?', (user['id'],)).fetchone()
-            self.assertRegex(user['nickname'], r'^소비자\d{4}$')  # 카카오 닉네임(실명일 수 있음)은 게시판에 쓰지 않음
+            self.assertRegex(user['nickname'], r'^[가-힣]+소보루\d+$')  # 카카오 닉네임(실명일 수 있음)은 게시판에 쓰지 않음
             self.assertEqual((user['pw_hash'], user['email'], ident['provider'], ident['provider_uid']), ('', 'kim@kakao.test', 'kakao', '4242'))
             self.assertEqual((user['real_name'], user['phone']), ('김실명', '010-1234-5678'))
             # 제보 양식에 실명·연락처가 자동으로 채워짐
@@ -2207,7 +2213,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(self.post_form(self.client, '/auth/join', self.join_form(self.client)).status_code, 302)
             with self.site.conn() as db:
                 u = db.execute("SELECT * FROM users WHERE real_name='박실명'").fetchone()
-            self.assertRegex(u['nickname'], r'^소비자\d{4}$')
+            self.assertRegex(u['nickname'], r'^[가-힣]+소보루\d+$')
             self.assertEqual(u['phone'], '010-9876-5432')
 
     def test_report_quick_fill_and_profile(self):

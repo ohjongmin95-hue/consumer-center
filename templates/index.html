@@ -4,14 +4,14 @@
 <main class="home-blocks">
   {% for block in items('home_blocks') %}
   {{ ed_remove('home_blocks', loop.index0) }}
-  {# 운영자 2026-11-03: 첫 화면 뒤에 실제 제보 영상(올려 둔 게 있으면)·사진. 관리자 문구 home.hero_media 를 off 로 하면 영상만 끔 #}{% set vid_on = txt('home.hero_media') != 'off' %}{% if block.kind == 'hero' and ((vid_on and hero_video()) or hero_staged()) %}{% set vid = hero_video() if vid_on else None %}{% set shots = [] if vid else hero_staged()[:8] %}{# 운영자 2026-11-03: 토스플레이스처럼 화면 끝까지 꽉 찬 실제 제보 사진(또는 동영상) 위에 흰 큰 제목 #}
-  {% if vid %}<section class="hero hero-wall">
-    <div class="hw-media" aria-hidden="true"><video src="{{ url_for('hero_video_file', name=vid.stored ~ '.mp4') }}" poster="{{ url_for('hero_video_file', name=vid.stored ~ '.jpg') }}" autoplay muted loop playsinline preload="metadata"></video></div>
-    <div class="hero-copy">
+  {# 운영자 2026-11-03: 첫 화면 = 토스 배너처럼 둥근 카드 안에 '대화로 제보하기' 영상(손에 든 휴대폰), 왼쪽에 흰 제목·버튼.
+     관리자가 올린 영상 > 기본 영상(static/video/hero-talk.mp4). 관리자 문구 home.hero_media 를 off 로 하면 영상 대신 관리자가 올린 연출 사진 #}{% set vid_on = txt('home.hero_media') != 'off' %}{% if block.kind == 'hero' and (vid_on or hero_staged()) %}{% set vid = hero_video() if vid_on else None %}{% set shots = [] if vid_on else hero_staged()[:8] %}
+  {% if vid_on %}{% if vid %}{% set v_src, v_poster = url_for('hero_video_file', name=vid.stored ~ '.mp4'), url_for('hero_video_file', name=vid.stored ~ '.jpg') %}{% else %}{% set v_src, v_poster = asset('video/hero-talk.mp4'), asset('video/hero-talk.jpg') %}{% endif %}<section class="hero hero-banner">
+    <div class="hb-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
       <a class="primary" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
     </div>
-    <p class="hw-cap"><span class="hw-dot"></span>실제 제보 영상<span class="hw-cap-t">{% if vid.caption %}· {{ vid.caption.split(' · ')[0] }}{% endif %}</span></p>
+    <div class="hb-media" aria-hidden="true"><video src="{{ v_src }}" poster="{{ v_poster }}" autoplay muted loop playsinline preload="metadata"></video></div>
   </section>
   {% else %}{# 운영자 2026-11-03: 토스처럼 흰 바탕 왼쪽에 제목·버튼, 오른쪽에 둥근 사진 카드 (검은 필터 없음). 관리자가 직접 올린 연출 사진만 (제보 사진은 작고 흐려서 큰 카드엔 안 씀), 없으면 아래 글만 있는 첫 화면 #}
   <section class="hero hero-split">

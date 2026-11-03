@@ -170,16 +170,31 @@ def fill_identity(db,uid,prof):
     if prof.get('name'):db.execute("UPDATE users SET real_name=? WHERE id=? AND real_name=''",(prof['name'],uid))
     if prof.get('phone'):db.execute("UPDATE users SET phone=? WHERE id=? AND phone=''",(prof['phone'],uid))
 
+NICK_WORDS=('바삭한','달콤한','고소한','따끈한','폭신한','든든한','말랑한','촉촉한','향긋한','노릇한','쫄깃한','반짝이는','씩씩한','다정한','부지런한','용감한')
+OLD_NICK=re.compile(r'^소비자(\d{4}|[0-9a-f]{8})$')  # 예전 자동 닉네임 '소비자1234'
+
 def auto_nickname(db):
-    """게시판 닉네임 자동 지정 '소비자1234'. 카카오·네이버 닉네임은 실명인 경우가 많아 그대로 쓰지 않음. 내 정보에서 바꿀 수 있음."""
-    for _ in range(50):
-        nick='소비자'+str(secrets.randbelow(9000)+1000)
-        if not db.execute('SELECT 1 FROM users WHERE nickname=?',(nick,)).fetchone():return nick
-    return '소비자'+secrets.token_hex(4)
+    """게시판 닉네임 자동 지정 '고소한소보루27' (닉네임 규칙상 띄어쓰기 없음) (운영자 2026-11-03: 소보루 회원인 게 보이게). 카카오·네이버 닉네임은 실명인 경우가 많아 그대로 쓰지 않음. 내 정보에서 바꿀 수 있음."""
+    for n in (100,1000,10000):
+        for _ in range(30):
+            nick='%s소보루%d'%(secrets.choice(NICK_WORDS),secrets.randbelow(n-10)+10)
+            if not db.execute('SELECT 1 FROM users WHERE nickname=?',(nick,)).fetchone():return nick
+    return '소보루'+secrets.token_hex(4)
+
+def rename_old_nicknames(db):
+    """예전 자동 닉네임 '소비자1234'를 그대로 쓰는 회원을 새 자동 닉네임으로 바꿈. 본인이 직접 고친 닉네임은 그대로. 이미 쓴 글·댓글의 이름도 같이 바꿈."""
+    rows=[r for r in db.execute("SELECT id,nickname FROM users WHERE nickname LIKE '소비자%'") if OLD_NICK.match(r[1] or '')]
+    if not rows:return 0
+    tables=[t for (t,) in db.execute("SELECT name FROM sqlite_master WHERE type='table'") if t!='users' and {'nickname','user_id'}<={r[1] for r in db.execute('PRAGMA table_info("%s")'%t)}]
+    for uid,old in rows:
+        nick=auto_nickname(db)
+        db.execute('UPDATE users SET nickname=? WHERE id=?',(nick,uid))
+        for t in tables:db.execute('UPDATE "%s" SET nickname=? WHERE user_id=? AND nickname=?'%t,(nick,uid,old))
+    return len(rows)
 
 def install(S):
     app=S.app;conn=S.conn;now=S.now;ui_text=S.ui_text
-    with conn() as db:migrate(db)
+    with conn() as db:migrate(db);rename_old_nicknames(db)
     def login_methods(user):
         """회원이 쓸 수 있는 로그인 방법 (해제할 때 하나는 꼭 남김)."""
         with conn() as db:linked=[r['provider'] for r in db.execute('SELECT provider FROM user_identities WHERE user_id=? ORDER BY id',(user['id'],))]

@@ -801,7 +801,7 @@ body:not(.sb) .faq-page > h1{text-align:left;font-size:40px;line-height:1.35;fon
 .fq-search input{flex:1;min-width:0;border:0;outline:0;background:none;padding:0;font-size:32px;font-weight:500;color:#191f28;-webkit-appearance:none;appearance:none}
 .fq-search input::placeholder{color:#b0b8c1}
 .fq-search input::-webkit-search-cancel-button{-webkit-appearance:none}
-.fq-body{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;margin-top:64px}
+.fq-body{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;margin-top:32px}
 .fq-cats{display:grid;align-content:start;gap:8px}
 .fq-cats button{justify-self:start;padding:10px 20px;border:0;border-radius:10px;background:none;font:inherit;font-size:20px;font-weight:500;color:#8b95a1;cursor:pointer;text-align:left}
 .fq-cats button:hover{color:#4e5968;background:#f9fafb}
@@ -820,7 +820,7 @@ body:not(.sb) .faq-page > h1{text-align:left;font-size:40px;line-height:1.35;fon
  .fq-search{margin-top:24px;padding-bottom:12px;gap:10px}
  .fq-search svg{width:22px;height:22px}
  .fq-search input{font-size:20px}
- .fq-body{grid-template-columns:1fr;gap:16px;margin-top:24px}
+ .fq-body{grid-template-columns:1fr;gap:16px;margin-top:0}
  .fq-cats{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 -4px}
  .fq-cats button{flex:none;padding:8px 12px;font-size:16px;white-space:nowrap}
  .fq-item summary{gap:12px;padding:16px 0;font-size:17px}
@@ -833,3 +833,55 @@ body:not(.sb) .faq-page{padding-top:56px}
 .nn-vc-tag.tone-0{--tg-bg:#f4fce3;--tg:#5c940d}
 .nn-vc-tag.tone-1{--tg-bg:#fff6d6;--tg:#946200}
 .nn-vc-tag.tone-7{--tg-bg:#f8f0fc;--tg:#9c36b5}
+/* 운영자 2026-11-03: 첫 화면 = 화면 끝까지 꽉 찬 밝은 실사 영상(어깨 너머 휴대폰, 화면엔 '대화로 제보하기'), 가운데 흰 제목 + 둥근 버튼 */
+.hero-banner{position:relative;display:grid;align-items:center;justify-items:center;height:min(600px,64vh);min-height:440px;margin:0 calc(50% - 50vw);padding:0 20px;border:0;border-radius:0;overflow:hidden;background:#e9e4dc;text-align:center;isolation:isolate}
+.hb-media{position:absolute;inset:0;z-index:-2}
+.hb-media video{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 45%}
+.hero-banner::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(25,20,15,0) 30%,rgba(25,20,15,.3) 52%,rgba(25,20,15,.3) 85%,rgba(25,20,15,.18))}
+.hb-copy{display:grid;justify-items:center;gap:28px;margin-left:min(44vw,640px)}
+.hero-banner h1{margin:0;color:#fff;font-size:clamp(30px,3.4vw,48px);line-height:1.3;font-weight:700;letter-spacing:-.03em;word-break:keep-all;text-wrap:balance;text-shadow:0 2px 18px rgba(0,0,0,.28)}
+.hero-banner .primary{border-radius:999px;padding:15px 30px;font-size:18px;box-shadow:none}
+body:has(.hero-banner){overflow-x:clip}
+@media(max-width:760px){
+  .hero-banner{height:auto;min-height:0;aspect-ratio:2/3;max-height:640px;align-items:end;padding:0 20px 36px}
+  .hb-media video{object-position:34% 0%}
+  .hero-banner::before{background:linear-gradient(rgba(25,20,15,0) 52%,rgba(25,20,15,.55) 82%,rgba(25,20,15,.6))}
+  .hb-copy{margin-left:0;gap:20px}
+  .hero-banner h1{font-size:26px;line-height:36px}
+  .hero-banner .primary{padding:13px 26px;font-size:17px}
+}
+/* 운영자 2026-11-03: 02단계부터 알림은 카카오톡 알림톡 → 처리 절차 그림에도 알림톡 말풍선 */
+.ui-kakao{display:grid;gap:6px;padding:14px 16px;border-radius:16px;background:#fffbe0;border:1px solid #f6e58d;color:#191f28;font-size:14px;line-height:1.55;word-break:keep-all}
+.ui-kakao p{margin:0}.ui-kakao b{font-size:15px}
+.ui-k-from{font-size:12px;font-weight:700;color:#7a6200}
+.ui-k-btn{display:block;margin-top:4px;padding:9px;border-radius:10px;background:#fff;border:1px solid #eadf9c;text-align:center;font-weight:600;font-size:14px;color:#333d4b}
+.ui-kakao.is-mini{margin-top:10px;padding:10px 14px;font-size:13.5px}
+/* 운영자 2026-11-03: 익명 제보는 이름 앞에 소비자제보센터 파비콘(귤색 확성기) */
+.vc-who-av.is-anon{flex:none;object-fit:contain;border-radius:0}
+/* 운영자 2026-11-03: 06 기사화 그림 = 소비자를 위한 신문 SOBORU 제호 */
+.ui-paper{display:grid;justify-items:center;gap:2px;padding-bottom:12px;margin-bottom:4px;border-bottom:1px solid #e5e8eb}
+.ui-paper b{font-size:26px;line-height:1;font-weight:800;letter-spacing:.01em;color:#EF920E}
+.ui-paper small{font-size:10.5px;font-weight:700;letter-spacing:.42em;margin-right:-.42em;color:#333d4b}
+.ui-sec{color:#CE6719!important}
+/* 운영자 2026-11-03: 새 닉네임('고소한 소보루27')이 '기업 답변 있음'에 밀려 잘리지 않게 → 자리가 없으면 다음 줄로 */
+body:not(.sb) .nn-vc-foot{flex-wrap:wrap;row-gap:8px}
+body:not(.sb) .nn-vc-foot .vc-who{flex:none;overflow:visible}
+.vc-stats{display:inline-flex;align-items:center;gap:inherit;flex:none}
+body:not(.sb) .vc-stats{gap:10px}
+/* 운영자 2026-11-03: 알림톡 그림은 실제 카카오톡 알림톡 화면처럼 (하늘빛 대화방, 노란 '알림톡 도착' 띠, 흰 본문, 회색 버튼) */
+.ps-ui.is-kt{background:#b9cddc}
+.ui-kt{display:flex;align-items:flex-start;gap:8px;text-align:left}
+.ui-kt.is-mini{margin-top:6px;padding:12px;border-radius:16px;background:#b9cddc}
+.ui-kt-av{flex:none;width:36px;height:36px;border-radius:13px;background:#fff}
+.ui-kt-msg{display:grid;gap:4px;min-width:0;flex:1}
+.ui-kt-name{margin:0;font-size:12.5px;color:#3d4b57}
+.ui-kt-card{overflow:hidden;border-radius:14px;background:#fff}
+.ui-kt-bar{margin:0;padding:9px 14px;background:#fee500;font-size:13px;font-weight:700;color:#191919}
+.ui-kt-in{display:grid;gap:6px;padding:12px 14px 14px;font-size:14px;line-height:1.5;color:#191919;word-break:keep-all}
+.ui-kt-in small{font-size:12px;color:#6b7684}
+.ui-kt-in b{font-size:16px;line-height:1.35}
+.ui-kt-in p{margin:0}
+.ui-kt-btn{display:block;margin-top:4px;padding:10px;border-radius:8px;background:#f2f2f2;text-align:center;font-size:14px;color:#191919}
+.ui-kt.is-mini .ui-kt-av{width:30px;height:30px;border-radius:11px}
+.ui-kt.is-mini .ui-kt-in b{font-size:14.5px}
+.ui-kt.is-mini .ui-kt-in{font-size:13px;padding:10px 12px 12px}
