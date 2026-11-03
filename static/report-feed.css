@@ -712,3 +712,7 @@ body:not(.sb) .process-page .process-note{margin:24px 0 0;font-size:15px;color:#
 body:not(.sb) .process-page .process-note a{color:#d25f00;font-weight:600;white-space:nowrap}
 body:not(.sb) .process-page .process-disclaimer{max-width:none;margin:32px 0 0;padding:20px 24px;border:0;border-radius:16px;background:#f9fafb;color:#6b7684;font-size:14px;line-height:1.65;text-align:left;word-break:keep-all}
 body:not(.sb) .process-page .process-disclaimer{text-align:center;text-wrap:balance}
+/* 운영자 2026-11-03 TDS: 절차 아이콘은 귤색 한 톤 (남색·초록 → 귤색, 옅은 회색 → 옅은 귤색) */
+body:not(.sb) .process-card .step-icon [fill="#2b3a55"],body:not(.sb) .process-card .step-icon [fill="#2e9d5b"]{fill:#ef7300}
+body:not(.sb) .process-card .step-icon [stroke="#2b3a55"]{stroke:#ef7300}
+body:not(.sb) .process-card .step-icon [fill="#e9e3dd"]{fill:#ffd9b0}
