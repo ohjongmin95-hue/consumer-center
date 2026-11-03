@@ -829,3 +829,7 @@ body:not(.sb) .faq-page > h1{text-align:left;font-size:40px;line-height:1.35;fon
 body:not(.sb) .faq-page{padding-top:56px}
 @media(max-width:900px){body:not(.sb) .faq-page{padding-top:28px}}
 @media(max-width:900px){.fq-cats{margin:0 -12px}}
+/* 운영자 2026-11-03 "회색만 지양": 유형 이름표는 색을 쓰되 진행 단계(처리 중=파랑)와 겹치는 파랑·남색, 회색은 안 씀 */
+.nn-vc-tag.tone-0{--tg-bg:#f4fce3;--tg:#5c940d}
+.nn-vc-tag.tone-1{--tg-bg:#fff6d6;--tg:#946200}
+.nn-vc-tag.tone-7{--tg-bg:#f8f0fc;--tg:#9c36b5}
