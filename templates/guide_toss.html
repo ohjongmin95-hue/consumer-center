@@ -4,17 +4,28 @@
 <div class="info-wrap tg-page">
   <h1>{{ txt('guide.title') }}</h1>
   <div class="ps-list">
+    {# 운영자 2026-11-03: 제보는 두 가지 — 기본 '글로 직접 쓰기'와 '편하게 대화로 제보하기'. 둘 다 안내 #}
     <section class="ps-row">
       <div class="ps-copy">
-        <span class="ps-chip">{{ ui('guide.v_chip', '영상으로 보기') }}</span>
-        <h2 class="ps-head">{{ ui('guide.v_head', '말하듯 쓰면\n제보가 끝나요') }}</h2>
+        <span class="ps-chip">{{ ui('guide.w_chip', '방법 1 · 글로 직접 쓰기') }}</span>
+        <h2 class="ps-head">{{ ui('guide.w_head', '제목과 내용만\n적으면 돼요') }}</h2>
+        <p class="ps-body">{{ ui('guide.w_body', '제보하기를 누르면 바로 글쓰기 화면이 열려요. 업체 이름, 겪은 일, 원하는 해결을 적고 사진을 더하면 돼요.') }}</p>
+        <a class="primary tg-cta" href="{{ url_for('report') }}">{{ ui('guide.w_button', '글로 제보하기') }}</a>
+      </div>
+      <div class="ps-art tg-art-video"><img class="tg-howto" src="{{ asset('img/guide-write.jpg') }}" alt="{{ ui('guide.w_alt', '글로 직접 쓰는 제보 화면') }}" width="1080" height="1350" loading="lazy"></div>
+    </section>
+
+    <section class="ps-row is-flip">
+      <div class="ps-copy">
+        <span class="ps-chip">{{ ui('guide.v_chip2', '방법 2 · 대화로 제보하기') }}</span>
+        <h2 class="ps-head">{{ ui('guide.v_head2', '말하듯 쓰면\nAI가 정리해요') }}</h2>
         <p class="ps-body">{{ ui('guide.v_body', '대화로 제보하기에서 겪은 일을 편하게 적으면 AI가 제목과 내용으로 정리해요. 더 필요한 건 AI가 먼저 물어보고, 사진만 더하면 끝이에요.') }}</p>
-        <a class="primary tg-cta" href="{{ url_for('report') }}">{{ ui('guide.v_button', '제보하기') }}</a>
+        <a class="primary tg-cta" href="{{ url_for('report_talk') }}">{{ ui('guide.v_button2', '대화로 제보하기') }}</a>
       </div>
       <div class="ps-art tg-art-video"><video class="tg-howto" src="{{ asset('video/guide-howto.mp4') }}" poster="{{ asset('video/guide-howto.jpg') }}" autoplay muted loop playsinline controls preload="metadata" width="1080" height="1350" aria-label="{{ ui('guide.v_alt', '대화로 제보하기 이용 안내 영상') }}"></video></div>
     </section>
 
-    <section class="ps-row is-flip">
+    <section class="ps-row">
       <div class="ps-copy">
         <span class="ps-chip">{{ ui('guide.c_chip', '준비할 것') }}</span>
         <h2 class="ps-head">{{ ui('guide.h_three2', '이 세 가지만\n담아 주세요') }}</h2>
@@ -27,7 +38,7 @@
       </div></div>
     </section>
 
-    <section class="ps-row">
+    <section class="ps-row is-flip">
       <div class="ps-copy">
         <span class="ps-chip">{{ ui('guide.e_chip', '증거 남기기') }}</span>
         <h2 class="ps-head">{{ ui('guide.e_head', '버리기 전에\n먼저 찍어 두세요') }}</h2>
