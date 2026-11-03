@@ -12,6 +12,9 @@ import datetime
 import json
 import os
 import re
+import secrets
+import urllib.error
+import urllib.request
 
 import company_fix
 from flask import abort, flash, g, jsonify, redirect, render_template, request, url_for
@@ -22,6 +25,9 @@ MAX_IMAGES = 3
 MAX_IMAGE_BYTES = 1_500_000  # 화면에서 1024px JPEG로 줄여 보내므로 넉넉함
 MAX_STORY = 2000
 MAX_QA = 8
+STT_MODEL = 'gpt-4o-mini-transcribe'  # 말로 입력: 휴대폰 브라우저 받아쓰기는 네이버 앱 등에서 안 돼서 녹음 파일을 서버에서 글로 바꿈. REPORT_STT_MODEL로 바꿀 수 있음
+MAX_AUDIO = 8_000_000
+AUDIO_EXT = ('webm', 'mp4', 'm4a', 'ogg', 'wav', 'mp3', 'aac')
 IMAGE_TYPES = {b'\xff\xd8\xff': 'image/jpeg', b'\x89PNG': 'image/png', b'RIFF': 'image/webp'}
 
 SYSTEM = """너는 소비자 피해 제보 사이트 {site}의 접수 도우미다. 소비자가 말하듯 적은 글(받아쓰기라 맞춤법이 틀릴 수 있음)과 사진, 앞서 주고받은 질문·답을 보고 제보서 초안을 만든다.
@@ -123,6 +129,40 @@ def install(S):
             last = '%s %s %s' % (m, st, str((res or {}).get('error', {}).get('message', '') if isinstance(res, dict) else '')[:120])
             app.logger.warning('report talk AI try failed: %s', last)
         raise RuntimeError('AI ' + last)
+
+    @app.route('/report/talk/stt', methods=['POST'])
+    def report_talk_stt():
+        """마이크로 녹음한 말을 글로 바꿈 (운영자 2026-11-03: 네이버 앱에서 음성 입력이 안 됨)."""
+        if S.report_login_needed(): return jsonify(ok=False, error='login'), 403
+        f = request.files.get('audio')
+        if not f: return jsonify(ok=False, error='empty'), 400
+        data = f.read(MAX_AUDIO + 1)
+        if len(data) > MAX_AUDIO: return jsonify(ok=False, error='big'), 413
+        if len(data) < 800: return jsonify(ok=False, error='short'), 400
+        key = ai_key()
+        if not key: return jsonify(ok=False, error='ai')
+        with conn() as db:
+            if S.recent_count(db, 'report_talk_hits', 60) >= PER_HOUR: return jsonify(ok=False, error='limit'), 429
+            db.execute('INSERT INTO report_talk_hits(ip_hash,created) VALUES(?,?)', (S.ip_hash(), datetime.datetime.now().isoformat(timespec='seconds')))
+        ext = (f.filename or '').rsplit('.', 1)[-1].lower()
+        if ext not in AUDIO_EXT: ext = 'webm'
+        model = os.getenv('REPORT_STT_MODEL', '').strip() or STT_MODEL
+        b = '----sb' + secrets.token_hex(12)
+        parts = []
+        for k, v in (('model', model), ('language', 'ko'), ('response_format', 'json'), ('prompt', '소비자 피해 제보. 업체 이름, 날짜, 금액, 환불, 배송, 교환, 고객센터.')):
+            parts.append(('--%s\r\nContent-Disposition: form-data; name="%s"\r\n\r\n%s\r\n' % (b, k, v)).encode())
+        parts.append(('--%s\r\nContent-Disposition: form-data; name="file"; filename="voice.%s"\r\nContent-Type: application/octet-stream\r\n\r\n' % (b, ext)).encode() + data + b'\r\n')
+        body = b''.join(parts) + ('--%s--\r\n' % b).encode()
+        req = urllib.request.Request('https://api.openai.com/v1/audio/transcriptions', data=body, method='POST',
+                                     headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'multipart/form-data; boundary=' + b})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r: res = json.loads(r.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            app.logger.warning('report talk STT failed: %s %s', e.code, e.read()[:200]); return jsonify(ok=False, error='ai')
+        except Exception as e:
+            app.logger.warning('report talk STT failed: %s', str(e)[:120]); return jsonify(ok=False, error='ai')
+        text = ' '.join(str(res.get('text', '')).split())[:MAX_STORY]
+        return jsonify(ok=bool(text), text=text)
 
     @app.route('/report/talk/ai', methods=['POST'])
     def report_talk_ai():

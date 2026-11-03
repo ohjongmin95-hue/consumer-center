@@ -968,3 +968,10 @@ body:not(.sb) .vc-stats{gap:10px}
 @media(max-width:760px){.tg-art-video .tg-howto{width:100%;border-radius:22px}}
 .tg-art-video:has(.tg-howto){padding:0;background:none}
 .tg-art-video .tg-howto{width:100%;max-width:460px}
+/* 운영자 2026-11-03: 휴대폰에서 제보 쓸 때는 꽉 찬 화면 (위 메뉴·바닥글 숨김, 로고 + 닫기만) */
+.write-top{display:none}
+@media(max-width:760px){
+  body:has(.write-top) .site-header,body:has(.write-top) .site-footer,body:has(.write-top) .to-top{display:none}
+  .write-top{display:flex;position:sticky;top:0;z-index:40;height:56px}
+  .write-top .brand{font-size:20px}
+}

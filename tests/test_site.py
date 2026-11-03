@@ -454,6 +454,27 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': '환불이 안 돼요'}).get_json(), {'ok': False, 'error': 'ai'})
         self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': ''}).status_code, 400)
 
+    def test_report_talk_speech_to_text(self):
+        # 말로 입력 (운영자 2026-11-03): 네이버 앱 등은 브라우저 받아쓰기가 안 돼서 녹음 파일을 서버에서 글로 바꿈
+        page = self.client.get('/report/talk').get_data(as_text=True)
+        self.assertIn('/report/talk/stt', page); self.assertIn('tk-guide', page)
+        token = self.csrf(self.client, '/report/talk')
+        sent = []
+        class Res:
+            def __enter__(s): return s
+            def __exit__(s, *a): return False
+            def read(s): return json.dumps({'text': ' 소보루몰에서  운동화를 샀어요 '}).encode()
+        def fake(req, timeout):
+            sent.append(req); return Res()
+        audio = lambda: (io.BytesIO(b'0' * 2000), 'voice.webm')
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch('urllib.request.urlopen', fake):
+            r = self.client.post('/report/talk/stt', data={'_csrf': token, 'audio': audio()}, content_type='multipart/form-data')
+        self.assertEqual(r.get_json(), {'ok': True, 'text': '소보루몰에서 운동화를 샀어요'})
+        self.assertIn(b'name="language"', sent[0].data); self.assertIn(b'filename="voice.webm"', sent[0].data)
+        with patch.dict(os.environ, {'OPENAI_API_KEY': ''}):
+            self.assertEqual(self.client.post('/report/talk/stt', data={'_csrf': token, 'audio': audio()}, content_type='multipart/form-data').get_json(), {'ok': False, 'error': 'ai'})
+        self.assertEqual(self.client.post('/report/talk/stt', data={'_csrf': token, 'audio': (io.BytesIO(b'0'), 'v.webm')}, content_type='multipart/form-data').status_code, 400)
+
     def test_submission_lookup_admin_and_company_response(self):
         token = self.csrf(self.client, '/report')
         self.assertEqual(self.client.post('/report', data={'_csrf': token}).status_code, 400)
