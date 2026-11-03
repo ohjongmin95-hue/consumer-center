@@ -30,6 +30,7 @@
 <script>
 (function () {
   var T = {{ {
+    'notice_t': ui('talk.notice_title', '제보 전 꼭 읽어 주세요'), 'notice': notice_lines(g.content.get('report.notes', '')), 'notice_ok': ui('talk.notice_ok', '확인했어요'),
     'hello': ui('talk.hello', '안녕하세요. 어떤 일을 겪으셨나요?'),
     'hello2': ui('talk.hello2', '말하듯 편하게 적어 주시면 제보서는 제가 정리해 드릴게요. 마이크로 말하거나 사진만 올려도 돼요.'),
     'think': ui('talk.think', '내용을 정리하고 있어요'),
@@ -52,7 +53,7 @@
     'l_name': ui('report.f_name', '이름'), 'l_phone': ui('report.f_phone', '전화번호'), 'l_pw': ui('report.f_pw', '조회 비밀번호'), 'l_pw2': ui('talk.pw2', '한 번 더')
   }|tojson }};
   var L = {{ {'industries': industries, 'categories': categories, 'sido': sido, 'genders': genders, 'ages': ages}|tojson }};
-  var ME = {{ ({'name': me['real_name'] or '', 'phone': me['phone'] or ''} if me else {'name': '', 'phone': ''})|tojson }};
+  var ME = {{ ({'name': me['real_name'] or '', 'phone': me['phone'] or '', 'member': True} if me else {'name': '', 'phone': '', 'member': False})|tojson }};
   var AI_URL = {{ url_for('report_talk_ai')|tojson }}, AI_ON = {{ ai_on|tojson }};
   var log = document.getElementById('tk-log'), form = document.getElementById('tk-form'), input = document.getElementById('tk-input');
   var files = document.getElementById('tk-files'), thumbs = document.getElementById('tk-thumbs'), bar = document.getElementById('tk-bar');
@@ -98,7 +99,7 @@
     if (!text && !small.length) return bot(T.need);
     if (text) { me(text); story += (story ? ' ' : '') + text; }
     else me('📷 ' + small.length);
-    if (story.length < 8 && !small.length) return bot(T.need);
+    // 운영자 2026-11-03: '배송이 안와'처럼 짧아도 막지 않고 AI가 되물어 봄
     askAI();
   }
   function askAI() {
@@ -125,14 +126,35 @@
     draft = d; confirm();
   }
   function noAI() {
-    draft = { summary: '', industry: '', category: '', company: '', occurred_on: '', subject: story.slice(0, 40), description: story, request_text: '', request_options: [], questions: [] };
+    // AI가 안 될 때도 받아쓰기 그대로 두지 않음 (운영자 2026-11-03): 버튼으로 몇 가지 묻고 정돈된 문장으로 엮음
+    draft = { summary: '', industry: '', category: '', company: '', occurred_on: '', subject: '', description: '', request_text: '', request_options: [], questions: [], when: '', tried: '', manual: true };
     bot(T.ai_off); fill();
+  }
+  function tidy(t) {  // 말 끝 정리: 마침표 붙이고 반복 줄이기
+    t = (t || '').replace(/\s+/g, ' ').trim(); if (!t) return '';
+    var seen = {}, out = [];
+    t.split(/(?<=[.!?。])\s+|\s{2,}/).forEach(function (x) { x = x.trim(); if (x && !seen[x]) { seen[x] = 1; out.push(/[.!?요다]$/.test(x) ? x : x + '.'); } });
+    return out.join(' ');
+  }
+  function compose() {
+    var cat = draft.category.replace(/^\[[^\]]*\]\s*/, ''), key = (draft.category.match(/^\[([^\]]+)\]/) || [])[1] || cat;
+    draft.subject = (draft.company + ' ' + key.replace(/·/g, '·') + ' 문제').slice(0, 40);
+    var lines = [];
+    lines.push((draft.when ? draft.when + ' ' : '') + draft.company + '(' + draft.industry + ')을(를) 이용하면서 이런 일을 겪었어요. ' + cat);
+    if (story) lines.push('제가 겪은 일은 이래요. ' + tidy(story));
+    qa.forEach(function (x) { if (x.a) lines.push(x.q.replace(/[?？]$/, '') + ': ' + tidy(x.a)); });
+    if (draft.tried) lines.push(draft.tried);
+    draft.description = lines.join('\n');
   }
   // 업종·유형·업체가 비면 버튼으로 채움
   function fill() {
     if (!draft.industry) { bot(T.industry); return chips(L.industries, function (o) { draft.industry = o; fill(); }, { wrap: true }); }
     if (!draft.category) { bot(T.category); return chips(L.categories, function (o) { draft.category = o; fill(); }, { wrap: true }); }
     if (!draft.company) { bot(T.company); waiting = function (t) { draft.company = t.slice(0, 60); fill(); }; return input.focus(); }
+    if (draft.manual && !draft.when) { bot('언제 있었던 일이에요?'); return chips(['오늘', '이번 주', '이번 달', '한 달 넘게 전'], function (o) { draft.when = o === '한 달 넘게 전' ? '한 달 넘게 전에' : o; fill(); }, { wrap: true }); }
+    if (draft.manual && !draft.tried) { bot('업체에 연락해 보셨어요?'); return chips(['연락했는데 해결이 안 됐어요', '연락이 안 돼요', '아직 안 해봤어요'], function (o) {
+      draft.tried = { '연락했는데 해결이 안 됐어요': '업체에 연락해 봤지만 아직 해결되지 않았어요.', '연락이 안 돼요': '업체에 연락해 봤지만 연락이 닿지 않아요.', '아직 안 해봤어요': '아직 업체에 따로 연락하지는 않았어요.' }[o]; fill(); }, { wrap: true }); }
+    if (draft.manual && !draft.description) compose();
     confirm();
   }
 
@@ -175,7 +197,7 @@
   function age() { bot(T.age); chips(L.ages.concat([T.skip]), function (o) { if (o !== T.skip) set('age_group', o); vis(); }, { wrap: true }); }
   function vis() {
     bot(T.vis, T.vis_note);
-    chips([T.vis_pub, T.vis_sec], function (o) { set('visibility', o === T.vis_pub ? 'public' : 'secret'); if (o === T.vis_pub) return contact(); pw(); });
+    chips([T.vis_pub, T.vis_sec], function (o) { set('visibility', o === T.vis_pub ? 'public' : 'secret'); if (o === T.vis_pub || ME.member) return contact(); pw(); });  /* 회원은 내 제보에서 보므로 조회 비밀번호를 묻지 않음 */
   }
   function pw() {
     bot(T.pw); var c = card(); var a = field(c, T.l_pw, 'pw', 'password', '', 30), b = field(c, T.l_pw2, 'pw2', 'password', '', 30);
@@ -238,7 +260,13 @@
     all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); });
     boxes.forEach(function (b) { b.addEventListener('change', function () { all.checked = Array.prototype.every.call(boxes, function (x) { return x.checked; }); }); });
   }
-  bot(T.hello, T.hello2);
+  // 운영자 2026-11-03: 먼저 '제보 전 꼭 읽어 주세요'를 안내하고 시작
+  (function () {
+    var b = el('div', 'tk-msg tk-bot tk-notice'); b.appendChild(el('p', 'tk-notice-t', T.notice_t));
+    var ul = el('ul'); String(T.notice).split('\n').forEach(function (x) { x = x.replace(/^[*·•\-\s]+/, '').trim(); if (x) ul.appendChild(el('li', null, x)); });
+    b.appendChild(ul); log.appendChild(b);
+    chips([T.notice_ok], function () { bot(T.hello, T.hello2); input.focus(); });
+  })();
 })();
 </script>
 {% endblock %}

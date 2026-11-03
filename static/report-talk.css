@@ -42,3 +42,15 @@ body:has(.tk-page) .sb-tabbar{display:none}
 body:has(.tk-page) .site-footer,body:has(.tk-page) .sb-chips,body:has(.tk-page) .sb-sub,body:has(.tk-page) .to-top{display:none}
 .tk-compose textarea,.tk-compose textarea:focus{border:0!important;background:transparent!important;box-shadow:none!important;outline:0!important;margin:0}
 .tk-page{min-height:calc(100vh - 80px)}
+
+/* 제보 전 꼭 읽어 주세요 (운영자 2026-11-03) */
+.tk-notice{max-width:min(560px,100%)}
+.tk-notice .tk-notice-t{font-weight:800;margin-bottom:8px}
+.tk-notice ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px;line-height:1.6;color:#4e5968}
+/* 운영자 2026-11-03: 제보 전 안내가 회색이라 안 보임 → 토스처럼 또렷하게 */
+.tk-msg.tk-notice{background:#fff8ef;border:1px solid #ffe0b8;color:#191f28;padding:18px 20px}
+.tk-notice .tk-notice-t{display:flex;align-items:center;gap:6px;font-size:17px;font-weight:800;color:#191f28;margin-bottom:12px}
+.tk-notice .tk-notice-t::before{content:"!";display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#ef920e;color:#fff;font-size:13px;font-weight:800}
+.tk-notice ul{list-style:none;padding:0;gap:10px;font-size:15px;line-height:1.6;color:#333d4b}
+.tk-notice li{position:relative;padding-left:16px;word-break:keep-all}
+.tk-notice li::before{content:"";position:absolute;left:2px;top:.68em;width:6px;height:6px;border-radius:50%;background:#ef920e}

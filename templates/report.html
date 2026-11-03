@@ -9,7 +9,7 @@
   {% if txt('report.notes') %}
   <details class="must-read" open>
     <summary><span class="must-read-title">{{ ui('report.notes_title', '제보 전 꼭 읽어 주세요') }}</span><span class="must-read-toggle" aria-hidden="true"></span></summary>
-    <ul{{ ed_attr('report.notes') }}>{% for line in g.content['report.notes'].split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>
+    <ul{{ ed_attr('report.notes') }}>{% for line in notice_lines(g.content['report.notes']).split('\n') if line.strip() %}<li>{{ line }}</li>{% endfor %}</ul>
   </details>
   {% endif %}
 
@@ -59,11 +59,11 @@
         <label class="vis-option"><input type="radio" name="visibility" value="secret" required{% if request.form.get('visibility') == 'secret' %} checked{% endif %}><span><b>{{ ui('report.vis_secret', '🔒 비밀글') }}</b>{{ txt('report.visibility_secret') }}</span></label>
       </fieldset>
 
-      {% set pw_opt = request.form.get('visibility') == 'public' %}
+      {% set pw_opt = request.form.get('visibility') == 'public' %}{% if not g.user %}
       <div class="field lookup-pw{% if pw_opt %} is-optional{% endif %}"><label for="r-pw">{{ ui('report.f_pw', '조회 비밀번호') }} <small class="pw-req">*</small><small class="pw-opt">{{ ui('report.f_pw_optional', '(공개 제보는 선택)') }}</small></label>
         <div class="pw-pair"><input id="r-pw" type="password" name="lookup_pw" minlength="4" maxlength="30"{% if not pw_opt %} required{% endif %} autocomplete="new-password" placeholder="{{ ui('report.f_pw_ph', '4자 이상 (숫자 4자리도 돼요)') }}"><input type="password" name="lookup_pw2" minlength="4" maxlength="30"{% if not pw_opt %} required{% endif %} autocomplete="new-password" aria-label="{{ ui('report.f_pw2', '조회 비밀번호 확인') }}" placeholder="{{ ui('report.f_pw2', '조회 비밀번호 확인') }}"></div>
         <p class="hint">{{ ui('report.f_pw_hint', '나중에 제보 목록에서 내 글을 누르거나, 내 제보 조회에서 휴대폰 번호와 함께 넣으면 진행 상황과 답변을 볼 수 있어요. 꼭 기억해 주세요.') }}</p>
-        <p class="hint pw-opt-hint">{{ ui('report.f_pw_optional_hint', '공개 제보는 비밀번호 없이 접수할 수 있어요. 비워 두면 내 제보 조회로는 진행 상황을 볼 수 없고, 공개된 뒤 제보 목록에서 확인할 수 있어요. 회원은 마이페이지에서 볼 수 있어요.') }}</p></div>
+        <p class="hint pw-opt-hint">{{ ui('report.f_pw_optional_hint', '공개 제보는 비밀번호 없이 접수할 수 있어요. 비워 두면 내 제보 조회로는 진행 상황을 볼 수 없고, 공개된 뒤 제보 목록에서 확인할 수 있어요. 회원은 마이페이지에서 볼 수 있어요.') }}</p></div>{% endif %}
 
       {% include 'report_consents.html' %}
 

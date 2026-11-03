@@ -1,7 +1,7 @@
 {# 소비자제보센터 머리글 (consumerjebo.co.kr로 들어왔을 때) #}
 <header class="site-header">
   <div class="top">
-    <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">{{ txt('site.logo_by')|replace('SOBORU', '')|trim }}<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="72" height="14"></small>{% endif %}</a>
+    <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% set by = txt('site.logo_by') %}{% if by %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a>
     <nav class="section-nav" aria-label="주요 메뉴">
       {% for item in items('menu') %}{% set href = menu_href(item) %}{% if href %}
       <a href="{{ href }}"{% if menu_active(href) %} class="active" aria-current="page"{% endif %}{% if item.page == 'custom' and href.startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>{% endif %}

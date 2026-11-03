@@ -1,0 +1,50 @@
+{% extends 'console.html' %}
+{% block title %}협력 기관·배너 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap pt-admin">
+  <div class="page-intro"><h1 class="page-title">협력 기관·배너</h1>
+    <p>로고는 첫 화면 ‘함께하는 기관’ 띠와 제보 목록 오른쪽 ‘협력 기관’ 칸에 나와요. 배너는 제보 목록 오른쪽 칸 아래에 넓게 나와요. 아무것도 없으면 보이지 않아요.</p>
+    <p class="meta">로고는 배경이 투명한 PNG가 가장 깔끔해요. 배너는 가로 600px 이상 그림을 권해요. 기관의 허락을 받은 로고만 넣어 주세요.</p>
+  </div>
+
+  <section class="form-panel">
+    <h2>새로 넣기</h2>
+    <form method="post" enctype="multipart/form-data" class="pt-add">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>종류 <select name="kind">{% for k, v in kinds.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+      <label>이름 <input name="name" maxlength="60" required placeholder="예: 한국소비자단체협의회"></label>
+      <label>링크 (없어도 돼요) <input name="link" type="url" maxlength="300" placeholder="https://"></label>
+      <label>그림 <input name="image" type="file" accept="image/png,image/jpeg,image/webp" required></label>
+      <button class="primary" type="submit">넣기</button>
+    </form>
+  </section>
+
+  {% for k, label in kinds.items() %}{% set list = items|selectattr('kind', 'equalto', k)|list %}
+  <section class="form-panel">
+    <h2>{{ label }} <small>{{ list|length }}개</small></h2>
+    {% if list %}<ul class="pt-list">{% for p in list %}
+      <li class="{{ 'is-hidden' if p.hidden }}">
+        <span class="pt-img pt-{{ k }}"><img src="{{ url_for('partner_image', name=p.stored) }}" alt="" loading="lazy"></span>
+        <form method="post" action="{{ url_for('admin_partner_edit', pid=p.id) }}" class="pt-row">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <input name="name" value="{{ p.name }}" maxlength="60" aria-label="이름">
+          <input name="link" value="{{ p.link }}" maxlength="300" placeholder="링크 https://" aria-label="링크">
+          <span class="pt-btns"><button name="act" value="save">저장</button><button name="act" value="up" aria-label="앞으로">↑</button><button name="act" value="down" aria-label="뒤로">↓</button><button name="act" value="hide">{{ '보이기' if p.hidden else '숨기기' }}</button><button name="act" value="delete" class="danger" onclick="return confirm('뺄까요?')">빼기</button></span>
+        </form>
+      </li>{% endfor %}</ul>{% else %}<p class="meta">아직 없어요.</p>{% endif %}
+  </section>
+  {% endfor %}
+</div></main>
+<style>
+.pt-add{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;align-items:end}
+.pt-add label{display:grid;gap:6px;font-weight:700;font-size:14px}
+.pt-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.pt-list li{display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;align-items:center;padding:12px;border:1px solid #e5e8eb;border-radius:14px}
+.pt-list li.is-hidden{opacity:.5}
+.pt-img{display:flex;align-items:center;justify-content:center;height:72px;background:#f9fafb;border-radius:10px;padding:8px}
+.pt-img img{max-height:100%;max-width:100%;object-fit:contain}
+.pt-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.pt-row input{flex:1 1 180px;min-width:0}
+.pt-btns{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:680px){.pt-list li{grid-template-columns:1fr}}
+</style>
+{% endblock %}

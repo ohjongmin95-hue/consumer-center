@@ -14,7 +14,7 @@ import os
 import re
 
 import company_fix
-from flask import abort, g, jsonify, render_template, request
+from flask import abort, flash, g, jsonify, redirect, render_template, request, url_for
 
 MODEL = 'gpt-6-luna'  # 매거진·소보루CS와 같은 루나 (싸고 빠름). REPORT_TALK_MODEL로 바꿀 수 있음
 PER_HOUR = 40  # 한 사람(IP)이 1시간에 부르는 AI 횟수 (한 제보에 보통 2~4번)
@@ -29,11 +29,13 @@ SYSTEM = """너는 소비자 피해 제보 사이트 {site}의 접수 도우미�
 {{"summary": "확인 질문 한 문장. 예: 'OO에서 산 운동화 환불을 거절당한 일로 제보하시는 거죠?'",
  "industry": "업종 목록 중 하나(모르면 빈 문자열)", "category": "유형 목록 중 하나(모르면 빈 문자열)",
  "company": "업체·서비스 이름(모르면 빈 문자열)", "occurred_on": "YYYY-MM-DD(글에 날짜가 있을 때만, 아니면 빈 문자열)",
- "subject": "제목 한 줄, 40자 안", "description": "피해 내용. 제보자 1인칭 존댓말(~했어요), 있었던 일을 시간 순서로 4~8문장, 금액·날짜·주고받은 말 등 사실 위주. 지어내지 말 것",
+ "subject": "제목 한 줄, 40자 안. 제보자 글을 그대로 붙이지 말고 '업체 + 무슨 문제'로 깔끔하게. 예: '쿠팡 주문 상품 2주째 배송 안 됨'", "description": "피해 내용. 제보자 1인칭 존댓말(~했어요), 육하원칙(언제·어디서(업체)·무엇을·어떻게·왜 문제인지·업체가 어떻게 대응했는지)이 드러나게 시간 순서로 4~8문장, 금액·날짜·주고받은 말 등 사실 위주. 사진에서 읽은 사실(상품명·금액·날짜·파손 모습)도 넣을 것. 지어내지 말 것",
  "request_text": "원하는 해결 한두 문장(글에 없으면 상황에 맞게 짐작)", "request_options": ["원하는 해결 후보 2~4개, 각 8자 안. 예: 전액 환불, 교환, 수리, 사과"],
  "questions": [{{"q": "짧은 질문", "options": ["버튼 2~4개, 각 12자 안"]}}]}}
 규칙:
 - questions는 제보에 꼭 필요한데 모르는 것만, 최대 2개. 1순위 업체 이름, 2순위 무슨 일이 있었는지 핵심(무엇을·언제·얼마), 3순위 업체에 이미 연락해 봤는지. 이미 답한 것은 다시 묻지 않는다. 충분하면 빈 배열.
+- 받아쓰기처럼 제보자 글을 그대로 옮기지 않는다 (운영자 2026-11-03). 말투·맞춤법·띄어쓰기를 고치고, 반말·구어('안와', '모래')는 정돈된 존댓말 문장으로 바꾸고, 같은 말 반복은 한 번으로 줄인다. 글이 짧아도 질문·답에서 알게 된 사실을 모두 넣어 읽기 좋은 문단으로 쓴다. 다만 없는 사실은 지어내지 않는다.
+- 글이 짧으면(예: '배송이 안 와', '환불 안 해줌') 초안을 억지로 채우지 말고 꼭 되묻는다. 예: 배송 문제면 '어디서 무엇을 주문하셨어요?'(업체), '주문한 지 얼마나 됐어요?'(options: 3일 안, 1주일쯤, 2주 넘게, 한 달 넘게), '업체에 연락해 보셨어요?'(options: 연락 안 됨, 기다리래요, 아직 안 해봤어요).
 - 업체 이름을 묻는 질문의 options는 빈 배열로 둔다(직접 입력). 다른 질문은 고르기 쉬운 버튼을 준다.
 - 사진 속 이름·전화번호·주소·주문번호·카드번호 같은 개인정보는 옮겨 적지 않는다.
 - 욕설·비방은 사실만 남기고 차분한 말로 바꾼다. 업체를 '사기꾼'처럼 단정하지 않는다.
@@ -51,6 +53,8 @@ def install(S):
 
     @app.route('/report/talk')
     def report_talk():
+        if S.report_login_needed():
+            flash('로그인하면 바로 제보할 수 있어요.'); return redirect(url_for('login', next=request.full_path.rstrip('?')))
         me = g.get('user')
         return render_template('report_talk.html', categories=S.report_categories(), industries=S.report_industries(), sido=S.SIDO, genders=S.GENDERS,
                                ages=S.AGE_GROUPS, intake_enabled=os.getenv('ENABLE_INTAKE') == '1', max_files=S.MAX_FILES, today=datetime.date.today().isoformat(),
@@ -86,6 +90,12 @@ def install(S):
                 'request_text': s(out.get('request_text'), 300), 'request_options': [s(o, 16) for o in (out.get('request_options') or []) if str(o).strip()][:4],
                 'questions': qs[:2]}
 
+    def parse(text):
+        """JSON만 꺼냄 (```json 감싸기·앞뒤 말이 붙어도)."""
+        text = (text or '').strip()
+        a, b = text.find('{'), text.rfind('}')
+        return json.loads(text[a:b + 1] if a > -1 and b > a else text)
+
     def ask(story, qa, images):
         key = ai_key()
         if not key: raise RuntimeError('no key')
@@ -93,20 +103,30 @@ def install(S):
         system = SYSTEM.format(site=S.notify.site_name(), industries=', '.join(S.report_industries()), categories=', '.join(S.report_categories()))
         text = '[제보자가 적은 글]\n' + desk.scrub(story) + ''.join('\n\n[질문] %s\n[답] %s' % (desk.scrub(x['q']), desk.scrub(x['a'])) for x in qa)
         text += '\n\n[오늘] ' + datetime.date.today().isoformat()
-        def call(with_images):
+        def call(with_images, model, as_json):
             content = [{'type': 'text', 'text': text}] + ([{'type': 'image_url', 'image_url': {'url': u, 'detail': 'low'}} for u in images] if with_images else [])
             opts = {'max_completion_tokens': 2500, 'reasoning_effort': 'low'} if re.match(r'(gpt-([5-9]|\d\d)|o\d)', model) else {'max_tokens': 1200, 'temperature': 0.3}
-            body = {'model': model, 'response_format': {'type': 'json_object'}, **opts,
+            body = {'model': model, **({'response_format': {'type': 'json_object'}} if as_json else {}), **opts,
                     'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': content}]}
             return desk.post_json('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, 45)
-        st, res = call(bool(images))
-        if st != 200 and images: st, res = call(False)  # 사진을 못 받는 모델이면 글만으로 다시
-        if st != 200: raise RuntimeError('AI %s' % st)
-        return clean(json.loads(res['choices'][0]['message']['content']))
+        # 운영자 2026-11-03: 실제 사이트에서 AI가 실패해 받아쓰기 그대로 나옴 → 한 번 실패해도 다른 방법으로 다시
+        tries = [(model, bool(images), True)]
+        if images: tries.append((model, False, True))
+        tries += [(model, False, False), (desk.ai_model(), False, True)]
+        last = ''
+        for m, with_images, as_json in tries:
+            st, res = call(with_images, m, as_json)
+            if st == 200:
+                try: return clean(parse(res['choices'][0]['message']['content']))
+                except Exception as e: last = 'parse %s' % str(e)[:60]; continue
+            last = '%s %s %s' % (m, st, str((res or {}).get('error', {}).get('message', '') if isinstance(res, dict) else '')[:120])
+            app.logger.warning('report talk AI try failed: %s', last)
+        raise RuntimeError('AI ' + last)
 
     @app.route('/report/talk/ai', methods=['POST'])
     def report_talk_ai():
         if request.form.get('website'): abort(400)
+        if S.report_login_needed(): return jsonify(ok=False, error='login'), 403
         story = ' '.join((request.form.get('story') or '').split())[:MAX_STORY]
         try: qa = [{'q': str(x.get('q', ''))[:120], 'a': str(x.get('a', ''))[:400]} for x in json.loads(request.form.get('qa') or '[]')[:MAX_QA] if isinstance(x, dict)]
         except ValueError: qa = []

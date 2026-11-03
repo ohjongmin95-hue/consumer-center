@@ -105,7 +105,22 @@ def legacy_list(db,key):
     old={}
     for i,(t,b) in enumerate(site_content.PROCESS_DEFAULTS,1):old['process.step%d_title'%i]=t;old['process.step%d_body'%i]=b
     return [{'title':saved.get('process.step%d_title'%i,old.get('process.step%d_title'%i,'')),'body':saved.get('process.step%d_body'%i,old.get('process.step%d_body'%i,''))} for i in range(1,5) if saved.get('process.step%d_title'%i,old.get('process.step%d_title'%i,''))]
+def press_step(rows):
+    """운영자 2026-11-03: '기사로 다뤄질 수 있어요'는 답변·중재 칸에서 빼서 따로 '기사화' 단계로 (저장된 목록에도 적용)."""
+    if not isinstance(rows,list) or any('기사' in (r.get('title') or '') for r in rows):return rows
+    note=re.compile(r'\s*제보와 답변 기록은 \*\*기사로 다뤄질 수 있어요\*\*\.?')
+    if not any(note.search(r.get('body') or '') for r in rows):return rows
+    rows=[{**r,'body':note.sub('',r.get('body') or '').strip()} for r in rows]
+    return rows+[dict(zip(('title','icon','body'),site_content.PRESS_STEP))]
+def experts_menu(rows):
+    """운영자 2026-11-03: 상단 메뉴 '소비자게시판' 자리에 '전문가' (저장된 메뉴에도 적용, 게시판 주소는 그대로 열림)."""
+    if not isinstance(rows,list) or any(r.get('page')=='experts' for r in rows):return rows
+    return [{**r,'label':'전문가','page':'experts','url':''} if r.get('page')=='board' else r for r in rows]
 def load_lists():
+    out=_load_lists();out['process_steps']=press_step(out.get('process_steps'))
+    if current_face()=='jebo':out['menu']=experts_menu(out.get('menu'))
+    return out
+def _load_lists():
     with conn() as db:
         saved={r['key']:json.loads(r['value']) for r in db.execute('SELECT key,value FROM site_lists')}
         if current_face()=='jebo':return {key:saved.get(db_key(key,True)) or (legacy_list(db,key) if shared_key(key,True) else None) or site_content.LIST_DEFAULTS[key] for key,*_ in site_content.LISTS}
@@ -146,6 +161,7 @@ def menu_href(item):
     if page in ('guide','process','faq','types'):return url_for('info_page',page=page)
     if page in ('terms','privacy'):return url_for('policy_page',page=page)
     if page=='groups' and not GROUPS_ON:return ''  # 공동 대응이 꺼져 있으면 메뉴에서 숨김
+    if page=='experts':return url_for('experts_page')
     if page in ('reports','board','report','lookup','home','takedown','groups','companies'):return url_for(page)
     return '#'
 def menu_active(href):
@@ -464,10 +480,33 @@ def report_rows(where='1=1',args=(),limit=20,offset=0,order='id DESC'):
     return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),held=bool(is_pending(r) and (r['reviewed_at'] or r['review'])),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
                  company=mask_personal(r['company']) if shown(r) else None,
                  status=r['status'],step=jebo.pub_step(jebo.my_step(r)),created=r['created'][:10],when=when(r['created']),industry=r['industry'] or '') for r in rows]
+# 운영자 2026-11-03: 검은고양이처럼 제보 목록을 단계별로 (공개 3단계 + 기업 답변). 값: (탭 이름, SQL 조건)
+_DONE="(status='종결' OR COALESCE(confirmed_at,'')<>'')"
+_NEW="(status='접수' AND COALESCE(reviewed_at,'')='' AND COALESCE(forwarded_at,'')='' AND COALESCE(seen_at,'')='' AND NOT "+_DONE+")"
+REPORT_STAGES={'new':('접수',_NEW),'active':('처리 중','(NOT '+_NEW+' AND NOT '+_DONE+')'),
+               'answer':('기업 답변',"(status='기업 답변 도착' OR EXISTS(SELECT 1 FROM messages m WHERE m.case_id=cases.id AND m.author='기업 답변' AND m.public=1))"),'done':('종결',_DONE)}
+def notice_lines(text):
+    """'제보 전 꼭 읽어 주세요' 줄들. 운영자 2026-11-03: 로그인 제보라 조회 비밀번호·삭제 요청 줄은 뺌 (예전에 저장한 문구에 남아 있어도)."""
+    drop=('조회 비밀번호는 꼭 기억','직접 고치거나 지울 수 없어요')
+    return '\n'.join(l for l in (text or '').split('\n') if l.strip() and not any(d in l for d in drop))
+app.jinja_env.globals['notice_lines']=notice_lines
+def reports_url(**kw):
+    """지금 고른 조건(검색·유형·업종·단계·정렬)은 두고 일부만 바꾼 제보 목록 주소. 값이 비면 그 조건을 뺌."""
+    a={k:v for k,v in request.args.items() if k in ('q','category','sort','st','ind') and v}
+    for k,v in kw.items():
+        if v:a[k]=v
+        else:a.pop(k,None)
+    return url_for('reports',**a)
+app.jinja_env.globals['reports_url']=reports_url
+
 def report_summary():
     with conn() as db:stats={r['status']:r['n'] for r in db.execute('SELECT status,COUNT(*) AS n FROM cases WHERE '+PUBLIC_VALID+' GROUP BY status')}
     total=sum(stats.values());done=stats.get('종결',0)
-    return dict(total=total,done=done,active=total-done)
+    since=(datetime.datetime.now()-datetime.timedelta(days=1)).isoformat(timespec='seconds')
+    with conn() as db:
+        day=db.execute('SELECT COUNT(*) FROM cases WHERE '+PUBLIC_VALID+' AND created>=?',(since,)).fetchone()[0]
+        answered=db.execute('SELECT COUNT(*) FROM cases WHERE '+PUBLIC_VALID+' AND '+REPORT_STAGES['answer'][1]).fetchone()[0]
+    return dict(total=total,done=done,active=total-done,day=day,answered=answered)
 
 def home_latest():
     try:return min(20,max(3,int(g.content.get('home.latest_count',''))))
@@ -501,8 +540,12 @@ def reports():
     if selected_category not in report_categories():selected_category=''
     page=max(1,request.args.get('page',1,type=int))
     sort='hot' if request.args.get('sort')=='hot' else ''
+    stage=request.args.get('st','') if request.args.get('st','') in REPORT_STAGES else ''
+    industry=request.args.get('ind','') if request.args.get('ind','') in report_industries() else ''
     where=[PUBLIC_VALID];args=[]
     if selected_category:names=jebo.cat_names(selected_category);where.append('category IN (%s)'%','.join('?'*len(names)));args+=names
+    if stage:where.append(REPORT_STAGES[stage][1])
+    if industry:where.append('industry=?');args.append(industry)
     if search_query:
         where.append("((public_consent=1 AND published=1 AND (public_subject LIKE ? ESCAPE '\\' OR (public_subject='' AND subject LIKE ? ESCAPE '\\'))) OR ((public_consent=0 OR published=0) AND review NOT IN ('rejected','duplicate') AND (public_subject LIKE ? ESCAPE '\\' OR subject LIKE ? ESCAPE '\\')))")
         like='%'+search_query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%';args+=[like,like,like,like]
@@ -510,7 +553,7 @@ def reports():
     with conn() as db:total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
     with conn() as db:open_groups=db.execute("SELECT id,title,company FROM damage_groups WHERE status='open' ORDER BY id DESC LIMIT 3").fetchall() if GROUPS_ON else []
     if page>1 and page>-(-total//REPORTS_PAGE_SIZE):abort(404)  # 없는 쪽 번호는 빈 화면(200) 대신 404
-    return render_template('reports.html',open_groups=open_groups,categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE,HOT_ORDER if sort else 'id DESC'),sort=sort,total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category)
+    return render_template('reports.html',open_groups=open_groups,categories=report_categories(),cases=report_rows(cond,args,REPORTS_PAGE_SIZE,(page-1)*REPORTS_PAGE_SIZE,HOT_ORDER if sort else 'id DESC'),sort=sort,total=total,page=page,pages=max(1,-(-total//REPORTS_PAGE_SIZE)),summary=report_summary(),search_query=search_query,selected_category=selected_category,stage=stage,stages=REPORT_STAGES,industry=industry,industries=report_industries())
 
 PHONE_RE=re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}')
 EMAIL_RE=re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
@@ -664,8 +707,15 @@ def file_ok(suffix,head):
             or (kind=='webp' and head[8:12]==b'WEBP') or (kind in ('mp4','mov') and head[4:8]==b'ftyp'))
 def report_form(status=200):
     return render_template('report.html',categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,today=datetime.date.today().isoformat()),status
+def report_login_needed():
+    """운영자 2026-11-03: 로그인해야 제보 (이름·전화번호는 제보할 때 그대로 입력). REPORT_LOGIN=0이면 끔."""
+    return os.getenv('REPORT_LOGIN','0' if app.config.get('TESTING') else '1')=='1' and not g.get('user')
+app.jinja_env.globals['report_login_needed']=report_login_needed
 @app.route('/report',methods=['GET','POST'])
 def report():
+    if report_login_needed():
+        if request.method=='POST':abort(403)
+        flash(ui_text('msg.report_login','로그인하면 바로 제보할 수 있어요.'));return redirect(url_for('login',next=request.full_path.rstrip('?')))
     if request.method=='GET':return report_form()
     if os.getenv('ENABLE_INTAKE')!='1': abort(503, description='제보 접수 준비 중입니다.')
     if request.form.get('website'):abort(400)  # 사람에게는 안 보이는 칸: 자동 등록 프로그램 차단
@@ -677,7 +727,8 @@ def report():
     if not PHONE_INPUT.match(data['phone']):flash(ui_text('msg.report_phone','전화번호를 확인해 주세요.'));return report_form(400)
     lookup_pw=request.form.get('lookup_pw','')
     # 공개 제보는 조회 비밀번호가 선택: 비워 두면 비밀번호 없이 접수 (비밀글은 꼭 필요)
-    pw_optional=request.form.get('visibility')=='public' and not lookup_pw and not request.form.get('lookup_pw2','')
+    pw_optional=(request.form.get('visibility')=='public' or bool(g.get('user'))) and not lookup_pw  # 회원은 내 제보에서 보므로 조회 비밀번호 없어도 됨 (운영자 2026-11-03)
+    pw_optional=pw_optional and not request.form.get('lookup_pw2','')
     if not pw_optional and not LOOKUP_PW_MIN<=len(lookup_pw)<=30:flash(ui_text('msg.report_pw','조회 비밀번호를 4~30자로 정해 주세요.'));return report_form(400)
     if lookup_pw!=request.form.get('lookup_pw2',''):flash(ui_text('msg.report_pw2','조회 비밀번호 확인이 맞지 않아요.'));return report_form(400)
     if data['contact'] and not MEMBER_EMAIL_RE.match(data['contact']):flash(ui_text('msg.report_email','이메일 주소를 확인해 주세요.'));return report_form(400)
@@ -1246,6 +1297,12 @@ def reward_lines(text):
         out.append((k.strip(),v.strip()) if sep and 0<len(k.strip())<=10 else ('',line))
     return out
 app.jinja_env.globals.update(REVIEW_CATS=REVIEW_CATS,REVIEW_CAT_EMOJI=REVIEW_CAT_EMOJI,current_campaign=current_campaign,campaign_review_count=campaign_review_count,reward_lines=reward_lines)
+
+@app.template_filter('cat_split')
+def cat_split(v):
+    """'[광고·표시] 안내받은 것과…' → ('광고·표시', '안내받은 것과…'). 대괄호가 없으면 None."""
+    m=re.match(r'\s*\[([^\]]{1,20})\]\s*(.*)',v or '')
+    return (m.group(1),m.group(2)) if m else None
 
 @app.template_filter('ago')
 def ago(created):
@@ -2802,6 +2859,7 @@ import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  
 import report_talk;report_talk.install(types.SimpleNamespace(**globals()))  # 대화로 제보하기: AI가 묻고 초안을 채움 (report_talk.py)
 import hero_photos;hero_photos.install(types.SimpleNamespace(**globals()))  # 첫 화면 배경 사진: 실제 제보 사진을 가린 사본으로 (hero_photos.py)
 import experts;experts.install(types.SimpleNamespace(**globals()))  # 전문가 등록: 관리자 초대 링크·직접 신청, 승인되면 댓글에 전문가 표시 (experts.py)
+import partners;partners.install(types.SimpleNamespace(**globals()))  # 협력 기관 로고 띠·배너 (partners.py)
 import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)

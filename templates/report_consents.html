@@ -29,7 +29,6 @@
         <section class="consent-card">{{ ed_remove('report_consents', loop.index0) }}
           <h3><span class="badge-req">{{ ui('report.badge_required', '필수') }}</span>{{ ui('report.c3_title', '저작권 동의') }}</h3>
           <p class="consent-note">{{ txt('report.use_text') }}</p>
-          <p class="consent-note">{{ txt('report.use_withdraw') }}{% if txt('operator.email') %} (<a class="consent-link" href="mailto:{{ txt('operator.email') }}">{{ txt('operator.email') }}</a>){% endif %}</p>
           <label class="check"><input type="checkbox" name="use_consent" required{% if request.form.get('use_consent') %} checked{% endif %}><span>{{ ui('report.c3_agree', '위와 같은 저작권 이용에 동의합니다.') }}</span></label>
         </section>
         {% elif c.kind == 'truth' %}
