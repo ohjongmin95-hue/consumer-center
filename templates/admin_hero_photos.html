@@ -3,7 +3,7 @@
 {% block content %}
 <main class="page"><div class="wrap hp-admin">
   <div class="page-intro"><h1 class="page-title">첫 화면 사진</h1>
-    <p>소비자제보센터 첫 화면 큰 제목 뒤에 깔리는 실제 제보 사진이에요. {{ min_photos }}장 이상 넣으면 보이고, {{ max_photos }}장까지 넣을 수 있어요.</p>
+    <p>소비자제보센터 첫 화면 큰 제목 뒤에 깔리는 실제 제보 사진이에요. 공개 게시된 제보의 사진은 전체 모자이크를 해서 자동으로 들어가요(‘자동’). 여기서 직접 고른 사진은 자동 사진보다 앞에 보여요. 모두 {{ min_photos }}장 이상이면 첫 화면에 보여요.</p>
     <p class="meta">원본은 공개되지 않아요. 넣을 때 가린 사본을 새로 만들어 그 사본만 첫 화면에 써요. 이름·전화번호·주소·주문번호·얼굴이 보이지 않는지 미리 보기에서 꼭 확인해 주세요.</p>
   </div>
 
@@ -11,11 +11,11 @@
     <h2>지금 첫 화면에 있는 사진 <small>{{ photos|length }}장{% if photos|length < min_photos %} · {{ min_photos }}장부터 보여요{% endif %}</small></h2>
     {% if photos %}<div class="hp-grid">
       {% for p in photos %}<div class="hp-item">
-        <img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" loading="lazy" width="150" height="200">
+        <img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" loading="lazy" width="150" height="200">{% if p.auto %}<span class="hp-auto">자동</span>{% endif %}
         <form method="post" action="{{ url_for('admin_hero_edit', pid=p.id) }}" class="hp-row">
           <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
           <input name="caption" value="{{ p.caption }}" maxlength="40" placeholder="사진 설명 (예: 배달 음식 · 포장 불량)" aria-label="사진 설명">
-          <div class="hp-btns"><button name="act" value="caption">저장</button><button name="act" value="up" aria-label="앞으로">←</button><button name="act" value="down" aria-label="뒤로">→</button><button name="act" value="delete" class="danger">빼기</button></div>
+          <div class="hp-btns"><button name="act" value="caption">저장</button>{% if not p.auto %}<button name="act" value="up" aria-label="앞으로">←</button><button name="act" value="down" aria-label="뒤로">→</button>{% endif %}<button name="act" value="delete" class="danger">빼기</button></div>
         </form>
       </div>{% endfor %}
     </div>{% else %}<p class="meta">아직 넣은 사진이 없어요. 아래에서 제보 사진을 골라 주세요.</p>{% endif %}
@@ -57,6 +57,7 @@
 <style>
 .hp-admin h2 small{font-weight:600;color:#888;font-size:14px;margin-left:6px}
 .hp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.hp-item{position:relative}.hp-auto{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:8px}
 .hp-item,.hp-cand{display:grid;gap:6px;align-content:start;text-align:left;background:none;border:0;padding:0;font:inherit;color:inherit}
 .hp-item img,.hp-cand img{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;border-radius:10px;background:#f2f0ec}
 .hp-cand{cursor:pointer}.hp-cand span{font-size:13px;color:#666}.hp-cand:hover img{outline:3px solid var(--orange,#EF920E)}
