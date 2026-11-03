@@ -683,3 +683,5 @@ body:not(.sb):has(.auth-top) .auth-title-out,body:not(.sb):has(.auth-top) .auth-
 .auth-title-logo{display:flex;align-items:center;justify-content:center;gap:10px}
 .auth-title-logo img{height:30px;width:auto;transform:translateY(1px)}
 @media(max-width:560px){.auth-title-logo img{height:26px}}
+/* 운영자 2026-11-03 "갑자기 블랙": 제보 상세의 .pc-body(진한 글자)가 처리 절차 카드 설명까지 덮어서 진해짐 → 절차 카드는 원래 회색 설명 글자 */
+.process-card .pc-body{color:#4e5968;white-space:normal}
