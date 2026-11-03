@@ -274,7 +274,7 @@ class SiteTest(unittest.TestCase):
         # 운영자 2026-11-03: 첫 화면 기본 = 둥근 배너 + '대화로 제보하기' 영상, '실제 제보 영상' 글씨 없음
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
         home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
-        self.assertIn('hero-device', home); self.assertIn('video/talk-screen.mp4', home); self.assertNotIn('실제 제보 영상', home)
+        self.assertIn('hero-photo', home); self.assertIn('img/hero-city.jpg', home); self.assertNotIn('실제 제보 영상', home)
 
     def test_guide_toss_jebo(self):
         # 운영자 2026-11-03: 제보센터 이용 안내 = 토스식 + '대화로 제보하기' 화면 영상 + 업종 칩

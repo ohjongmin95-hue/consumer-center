@@ -950,14 +950,14 @@ body:not(.sb) .vc-stats{gap:10px}
 }
 /* 운영자 2026-11-03: 첫 화면 실사 사진 카드 (토스식, 사람 없는 밝은 사무실) */
 .hero-photo{position:relative;display:grid;place-items:center;min-height:440px;margin-top:20px;aspect-ratio:21/9;padding:32px 20px;border:0;border-radius:32px;overflow:hidden;text-align:center;isolation:isolate;background:#d9cfc2}
-.hp-bg{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:50% 55%}
+.hp-bg{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:50% 45%}
 .hero-photo::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(rgba(20,16,12,.32),rgba(20,16,12,.5))}
 .hp-copy{display:grid;justify-items:center;gap:28px}
 .hero-photo h1{margin:0;color:#fff;font-size:clamp(30px,3.4vw,48px);line-height:1.3;font-weight:700;letter-spacing:-.03em;word-break:keep-all;text-wrap:balance;text-shadow:0 2px 18px rgba(0,0,0,.25)}
 .hero-photo .primary{border-radius:999px;padding:15px 30px;font-size:18px;box-shadow:none}
 @media(max-width:760px){
   .hero-photo{aspect-ratio:4/5;min-height:0;max-height:560px;border-radius:24px;align-items:end;padding:0 20px 36px}
-  .hp-bg{object-position:30% 50%}
+  .hp-bg{object-position:50% 60%}
   .hero-photo::before{background:linear-gradient(rgba(20,16,12,.12) 30%,rgba(20,16,12,.6) 80%)}
   .hp-copy{gap:20px}
   .hero-photo h1{font-size:26px;line-height:36px}
