@@ -327,3 +327,14 @@ body:has(.hero-wall){overflow-x:clip}
 .brand-by img{align-self:baseline;transform:translateY(.08em)}
 /* 운영자 2026-11-03: '소보루제보' 말고 처음의 갈색 영문 SOBORU 로고만 */
 .brand-by img{height:.92em;transform:none}
+/* 운영자 2026-11-03: 휴대폰에서 글끼리 구분이 잘 안 됨 → 검은고양이처럼 흰 글 사이에 회색 띠 */
+@media(max-width:560px){
+  .rf-list{margin:0 -16px;gap:8px;background:#f2f4f6;padding:8px 0}
+  .rf-list .nn-vc-card,.rf-list .nn-vc-card.has-photo{padding:22px 20px;background:#fff;border:0;border-radius:0}
+  .rf-list .nn-vc-card:last-child{border-bottom:0}
+  .rf-list .nn-vc-top{margin-bottom:2px}
+  .rf-list .nn-vc-card h3{font-size:17.5px;font-weight:800;margin-top:4px}
+  .rf-list .nn-vc-meta{margin-top:4px}
+  .rf-list .nn-vc-foot{margin-top:4px;padding-top:12px;border-top:1px solid #f2f4f6}
+  .rf-list .nn-empty{background:#fff;margin:0;padding:40px 20px}
+}
