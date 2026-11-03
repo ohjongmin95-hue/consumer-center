@@ -317,6 +317,18 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))
         self.assertEqual(sum(self.client.get('/hero/' + n).status_code == 404 for n in names), 1)
 
+    def test_company_typo_fix(self):
+        # 운영자 2026-11-03: 큰 기업 이름 오타는 자동으로 (큐팡 → 쿠팡). 헷갈리거나 모르는 이름은 그대로
+        import company_fix
+        self.assertEqual([company_fix.fix(t) for t in ('큐팡', '쿠팽', '배달의민죡', '쿠팡', '쿠팡이츠', '지마켓', 'MISUKO연발새총 해궁', '카카오페', 'KT')],
+                         ['쿠팡', '쿠팡', '배달의민족', '쿠팡', '쿠팡이츠', '지마켓', 'MISUKO연발새총 해궁', '카카오페', 'KT'])
+        with self.site.conn() as db:
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES('CJ-TYPO','x','배송·환불','큐팡','제목','내용','환불','2026-10-09T10:00:00',1,1)").lastrowid
+        company_fix.fix_old_cases(self.site.conn, self.site.link_company)
+        with self.site.conn() as db:
+            row = db.execute('SELECT c.company,co.name FROM cases c LEFT JOIN companies co ON co.id=c.company_id WHERE c.id=?', (cid,)).fetchone()
+        self.assertEqual(tuple(row), ('쿠팡', '쿠팡'))
+
     def test_report_talk_ai_draft(self):
         # 대화로 제보하기 (운영자 2026-11-03): AI가 되물을 것과 초안을 주고, 업종·유형은 목록 안에서만, 개인정보는 지움. 접수는 기존 /report로
         page = self.client.get('/report/talk').get_data(as_text=True)

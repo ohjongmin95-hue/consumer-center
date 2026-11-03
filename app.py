@@ -3,6 +3,7 @@ from pathlib import Path
 from flask import Flask, g, has_request_context, render_template, request, redirect, url_for, session, flash, abort, send_file, after_this_request
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
+import company_fix  # 큰 기업 이름 오타 바로잡기 (company_fix.py)
 from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
 import site_content
@@ -679,6 +680,7 @@ def report():
     if not pw_optional and not LOOKUP_PW_MIN<=len(lookup_pw)<=30:flash(ui_text('msg.report_pw','조회 비밀번호를 4~30자로 정해 주세요.'));return report_form(400)
     if lookup_pw!=request.form.get('lookup_pw2',''):flash(ui_text('msg.report_pw2','조회 비밀번호 확인이 맞지 않아요.'));return report_form(400)
     if data['contact'] and not MEMBER_EMAIL_RE.match(data['contact']):flash(ui_text('msg.report_email','이메일 주소를 확인해 주세요.'));return report_form(400)
+    data['company']=company_fix.fix(data['company'])  # 큰 기업 이름 오타(큐팡→쿠팡) 바로잡기 (company_fix.py)
     if data['region_sido'] not in SIDO:data['region_sido']=''
     if data['gender'] not in GENDERS:data['gender']=''
     if data['age_group'] not in AGE_GROUPS:data['age_group']=''
@@ -2812,6 +2814,7 @@ import site_visits;site_visits.install(types.SimpleNamespace(**globals()))  # �
 import soboru_examples;soboru_examples.auto(types.SimpleNamespace(**globals()))
 import company_logo;_cl=types.SimpleNamespace(**globals());company_logo.install(_cl);company_set_domain=_cl.company_set_domain  # 기업 로고: 도메인에서 자동으로 (company_logo.py)
 import company_mail;company_mail.auto(types.SimpleNamespace(**globals()))
+company_fix.fix_old_cases(conn,link_company)  # 예전 제보의 큰 기업 이름 오타도 고침 (company_fix.py)
 link_all_cases()  # 큰 기업 미리 등록: 처음 배포할 때 한 번만 (company_mail.py, data/companies_seed.csv)  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
 
 if __name__=='__main__':app.run(debug=False)
