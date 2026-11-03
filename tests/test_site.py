@@ -417,7 +417,7 @@ class SiteTest(unittest.TestCase):
         c = self.site.app.test_client()
         hosts = patch.object(self.site, 'JEBO_HOSTS', {'consumerjebo.co.kr'}); hosts.start(); self.addCleanup(hosts.stop)
         page = c.get('/about', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
-        self.assertIn('소비자 제보 플랫폼', page); self.assertIn('FAQPage', page); self.assertIn('AboutPage', page)
+        self.assertIn('소비자 제보 플랫폼', page); self.assertIn('제보는 이렇게 흘러가요', page); self.assertNotIn('권익', page); self.assertIn('FAQPage', page); self.assertIn('AboutPage', page)
         txt = c.get('/llms.txt', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('# 소비자제보센터', txt)
         self.assertIn('/about', c.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
@@ -1404,6 +1404,12 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.site.clean_photo(b'GIF89a' + b'\0' * 20), (None, None))
         self.assertEqual(self.site.clean_photo(b'\xff\xd8\xff' + b'\0' * (8 * 1024 * 1024)), (None, None))
 
+    def test_jebo_signup_has_no_id_form(self):
+        # 운영자 2026-11-03: 제보센터는 아이디 가입 없음. 문자 키가 없어도 아이디 칸으로 돌아가지 않음
+        hosts = patch.object(self.site, 'JEBO_HOSTS', {'consumerjebo.co.kr'}); hosts.start(); self.addCleanup(hosts.stop)
+        page = self.site.app.test_client().get('/signup', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertNotIn('name="login_id"', page)
+
     def test_site_visits_by_site_and_source(self):
         # 방문 통계: 소보루·소비자제보센터를 나눠 방문자(하루 한 번)·들어온 곳·많이 본 화면. 관리자·봇·토큰은 남지 않음
         with self.site.conn() as db: db.execute('DELETE FROM site_visits'); db.execute('DELETE FROM page_views')
@@ -1424,10 +1430,8 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(views[('soboru', '/')], 1); self.assertEqual(views[('soboru', '/feed')], 1); self.assertEqual(views[('jebo', '/reports')], 1)
             self.assertFalse(any('abcdefghijklmnop' in k[1] for k in views))
             page = admin.get('/admin/visits').get_data(as_text=True)
-            self.assertIn('방문 통계', page); self.assertIn('네이버 검색', page); self.assertIn('구글', page); self.assertIn('내돈내산 후기', page)
-            self.assertIn('소비자제보센터 <small>1명</small>', page); self.assertIn('소보루 <small>1명</small>', page)
-            self.assertIn('구글', admin.get('/admin/visits?site=jebo').get_data(as_text=True))
-            self.assertNotIn('네이버 검색', admin.get('/admin/visits?site=jebo').get_data(as_text=True))
+            # 운영자 2026-11-03: 소보루는 이제 없음 → 통계는 소비자제보센터만
+            self.assertIn('방문 통계', page); self.assertIn('구글', page); self.assertNotIn('네이버 검색', page); self.assertNotIn('두 사이트 합계', page)
             self.assertEqual(self.client.get('/admin/visits').status_code, 302)
         finally:
             self.site.JEBO_HOSTS.difference_update(hosts)
@@ -2184,7 +2188,7 @@ class SiteTest(unittest.TestCase):
         try:
             with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):
                 c = self.site.app.test_client()
-                page = c.get('/signup', base_url=J).get_data(as_text=True)
+                page = c.get('/signup?id=1', base_url=J).get_data(as_text=True)  # 제보센터 기본 가입엔 아이디 칸이 없음 → 예전 아이디 가입 주소로
                 self.assertIn('class="auth-top"', page)  # 가입 화면은 소비자제보센터 얼굴, 메뉴 없는 별도 화면 (운영자 2026-11-03)
                 token = re.search(r'name="_csrf" value="([^"]+)"', page)[1]
                 r = c.post('/signup', base_url=J, data={'_csrf': token, 'login_id': 'jebo_user', 'password': 'butter123', 'password2': 'butter123', 'nickname': '제보회원', 'phone': '010-5555-6666',

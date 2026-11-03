@@ -97,8 +97,7 @@ def install(S):
     @app.route('/admin/visits')
     @S.admin_only
     def admin_visits():
-        site = request.args.get('site', '')
-        if site not in SITES: site = ''
+        site = 'jebo'  # 운영자 2026-11-03: '소보루는 이제 없다' → 소비자제보센터만 셈
         today = datetime.date.today()
         d = lambda n: (today - datetime.timedelta(days=n)).isoformat()
         where, args = ('AND site=?', (site,)) if site else ('', ())
@@ -114,6 +113,8 @@ def install(S):
                 by_day.setdefault(r['day'], dict.fromkeys(SITES, 0))[r['site']] = r['n']
             daily = [{'day': d(i), **by_day.get(d(i), dict.fromkeys(SITES, 0))} for i in range(29, -1, -1)]
             for row in daily: row['all'] = sum(row[k] for k in SITES)
+            first = next((i for i, row in enumerate(daily) if row['jebo']), len(daily) - 7)
+            daily = daily[min(first, len(daily) - 7):]  # 기록이 생기기 전 날짜는 보여 주지 않음 (최소 7일)
             sources = db.execute(f'SELECT source,COUNT(*) AS n FROM site_visits WHERE day>=? {where} GROUP BY source ORDER BY n DESC LIMIT 20', (d(29), *args)).fetchall()
             pages = db.execute(f'SELECT page,SUM(n) AS n FROM page_views WHERE day>=? {where} GROUP BY page ORDER BY n DESC LIMIT 20', (d(29), *args)).fetchall()
             split = {k: db.execute('SELECT COUNT(DISTINCT visitor_hash) FROM site_visits WHERE day>=? AND site=?', (d(29), k)).fetchone()[0] for k in SITES}
