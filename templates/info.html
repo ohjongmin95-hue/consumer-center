@@ -7,7 +7,7 @@
 {% if page == 'guide' %}
 {% include 'guide.html' %}
 {% else %}
-<div class="info-wrap{% if page == 'process' %} process-page{% endif %}">
+<div class="info-wrap{% if page == 'process' %} process-page{% elif page == 'faq' %} faq-page{% endif %}">
   <h1>{{ txt(page ~ '.title') }}</h1>{% if txt(page ~ '.intro') %}<p class="info-intro">{{ txt(page ~ '.intro') }}</p>{% endif %}
   {% for block in page_layout(page) %}
   {{ ed_remove('layout_' ~ page, loop.index0) }}
@@ -15,6 +15,8 @@
   {% if page == 'process' and not is_soboru() %}{% include 'process_story.html' %}{% else %}{% include 'process_cards.html' %}{% endif %}
   {% elif block.kind == 'process_note' %}
   {% if txt('process.note') %}<p class="process-note">{{ txt('process.note') }} <a href="{{ url_for('lookup') }}">{{ ui('process.lookup_link', '내 제보 조회 →') }}</a></p>{% endif %}
+  {% elif block.kind == 'faq_list' and not is_soboru() %}
+  {% include 'faq_board.html' %}
   {% elif block.kind == 'faq_list' %}
   <div class="info-card">{% for item in items('faq') %}<details class="faq-item"><summary>{{ item.q }}</summary>{% if item.a %}<p class="pre-line">{{ item.a }}</p>{% endif %}</details>{% endfor %}</div>{{ ed_list('faq') }}
   {% elif block.kind == 'types_list' %}

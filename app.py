@@ -1038,6 +1038,8 @@ def admin_lists():
             flash(title+' 항목을 기본값으로 되돌렸어요.');return redirect(face_url('admin_lists',_anchor='list-'+key))
         # 같은 이름의 칸이 항목 순서대로 반복되므로 필드별 getlist를 묶으면 화면 순서 그대로 항목이 됨.
         columns=[request.form.getlist(name) for name,_,_ in fields]
+        # 나중에 추가된 칸(예: 자주 묻는 질문의 '분류')이 폼에 없으면 빈 값으로 채움
+        size=max((len(c) for c in columns),default=0);columns=[c+['']*(size-len(c)) for c in columns]
         if len({len(c) for c in columns})!=1:abort(400)
         rows=[]
         for values in zip(*columns):

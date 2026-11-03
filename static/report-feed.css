@@ -793,3 +793,39 @@ body:not(.sb) .process-page .process-note{margin-top:120px}
 }
 .ps-ui{max-width:380px;font-size:16px}
 .ps-body strong{color:inherit;font-weight:inherit}
+/* 운영자 2026-11-03: 자주 묻는 질문 = 토스 고객센터식 */
+body:not(.sb) .faq-page{max-width:1120px;margin:0 auto;text-align:left}
+body:not(.sb) .faq-page > h1{text-align:left;font-size:40px;line-height:1.35;font-weight:700;letter-spacing:-.02em;color:#333d4b}
+.fq-search{display:flex;align-items:center;gap:16px;margin:40px 0 0;padding:0 0 18px;border-bottom:1px solid #d1d6db;color:#8b95a1;transition:border-color .2s}
+.fq-search:focus-within{border-bottom-color:#ef7300;color:#4e5968}
+.fq-search input{flex:1;min-width:0;border:0;outline:0;background:none;padding:0;font-size:32px;font-weight:500;color:#191f28;-webkit-appearance:none;appearance:none}
+.fq-search input::placeholder{color:#b0b8c1}
+.fq-search input::-webkit-search-cancel-button{-webkit-appearance:none}
+.fq-body{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;margin-top:64px}
+.fq-cats{display:grid;align-content:start;gap:8px}
+.fq-cats button{justify-self:start;padding:10px 20px;border:0;border-radius:10px;background:none;font:inherit;font-size:20px;font-weight:500;color:#8b95a1;cursor:pointer;text-align:left}
+.fq-cats button:hover{color:#4e5968;background:#f9fafb}
+.fq-cats button.on{color:#d25f00;font-weight:600}
+.fq-list{display:grid;align-content:start}
+.fq-item summary{display:flex;align-items:baseline;gap:16px;padding:22px 0;cursor:pointer;list-style:none;font-size:20px;line-height:1.5;color:#333d4b}
+.fq-item summary::-webkit-details-marker{display:none}
+.fq-item summary:hover .fq-t{color:#191f28}
+.fq-q{flex:none;font-weight:700;color:#b0b8c1}
+.fq-item[open] .fq-q{color:#ef7300}
+.fq-item[open] .fq-t{font-weight:600;color:#191f28}
+.fq-a{margin:0 0 20px 34px;padding:20px 24px;border-radius:16px;background:#f9fafb;font-size:17px;line-height:1.75;color:#4e5968}
+.fq-empty{margin:24px 0;font-size:17px;color:#8b95a1}
+@media(max-width:900px){
+ body:not(.sb) .faq-page > h1{font-size:28px}
+ .fq-search{margin-top:24px;padding-bottom:12px;gap:10px}
+ .fq-search svg{width:22px;height:22px}
+ .fq-search input{font-size:20px}
+ .fq-body{grid-template-columns:1fr;gap:16px;margin-top:24px}
+ .fq-cats{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 -4px}
+ .fq-cats button{flex:none;padding:8px 12px;font-size:16px;white-space:nowrap}
+ .fq-item summary{gap:12px;padding:16px 0;font-size:17px}
+ .fq-a{margin-left:0;padding:16px 18px;font-size:16px}
+}
+body:not(.sb) .faq-page{padding-top:56px}
+@media(max-width:900px){body:not(.sb) .faq-page{padding-top:28px}}
+@media(max-width:900px){.fq-cats{margin:0 -12px}}
