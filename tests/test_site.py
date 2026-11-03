@@ -412,6 +412,18 @@ class SiteTest(unittest.TestCase):
         self.assertIn('소보루 자문단 모집', adm.get('/admin/experts/mail').get_data(as_text=True))
         self.assertIn(self.client.get('/admin/experts/mail').status_code, (302, 401, 403, 404))
 
+    def test_about_and_llms_for_jebo(self):
+        # 운영자 2026-11-03 (밤): 네이버 AI 브리핑·AI 검색용 서비스 소개와 llms.txt (제보센터 주소)
+        c = self.site.app.test_client()
+        hosts = patch.object(self.site, 'JEBO_HOSTS', {'consumerjebo.co.kr'}); hosts.start(); self.addCleanup(hosts.stop)
+        page = c.get('/about', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertIn('소비자 제보 플랫폼', page); self.assertIn('FAQPage', page); self.assertIn('AboutPage', page)
+        txt = c.get('/llms.txt', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertIn('# 소비자제보센터', txt)
+        self.assertIn('/about', c.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
+        adm = self.login_admin()
+        self.assertIn('오늘 방문', adm.get('/admin').get_data(as_text=True))
+
     def test_expert_signup_alert_mail(self):
         # 운영자 2026-11-03 (밤): 자문단이 가입하면 하이웍스 메일(contact@)로 바로 알림
         import experts as X

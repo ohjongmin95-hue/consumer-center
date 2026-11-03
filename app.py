@@ -649,7 +649,8 @@ def robots_txt():
 def sitemap_xml():
     today=datetime.date.today().isoformat()
     pages=[(url_for('home',_external=True),today)]+[(url_for(e,_external=True),None) for e in ('reports','board','companies','report','takedown')]  # 내 제보 조회는 개인 화면이라 검색 제외(noindex)
-    pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq')]  # 피해 유형별 안내는 메뉴에서 빠짐
+    pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq')]
+    if current_face()=='jebo':pages.append((url_for('about_page',_external=True),None))  # 서비스 소개 (AI 브리핑용 정의 문장)  # 피해 유형별 안내는 메뉴에서 빠짐
     # 나중에 붙는 기능(법률 질문·생활정보 검색어 트렌드·쇼핑 인사이트)은 켜져 있을 때만
     if 'law_ask' in app.view_functions and g.content.get('ask.off','').strip() not in ('끔','끄기','off'):pages.append((url_for('law_ask',_external=True),None))
     if os.getenv('NAVER_HUB_CLIENT_ID','').strip():pages+=[(url_for(ep,_external=True),None) for ep in ('life_trend','life_shopping') if ep in app.view_functions]
@@ -2337,7 +2338,48 @@ def admin():
             'staff':db.execute('SELECT COUNT(*) FROM staff WHERE active=1').fetchone()[0],
         }
         extra=ops_home_extras(db)
-    return render_template('admin_home.html',counts=counts,stats=stats,ops=extra)
+        home=admin_home_overview(db)
+    return render_template('admin_home.html',counts=counts,stats=stats,ops=extra,home=home)
+
+def admin_home_overview(db):
+    """운영자 2026-11-03 (밤): 관리자 홈 = 토스플레이스처럼 사이트 전체 현황. 오늘 숫자, 7일 막대, 영역별 숫자, 최근 소식. 표가 없으면 0."""
+    today=datetime.date.today();d=lambda i:(today-datetime.timedelta(days=i)).isoformat()
+    def one(sql,args=()):
+        try:return db.execute(sql,args).fetchone()[0] or 0
+        except sqlite3.Error:return 0
+    week=[d(i) for i in range(6,-1,-1)]
+    cases_by={r[0]:r[1] for r in db.execute('SELECT substr(created,1,10),COUNT(*) FROM cases WHERE created>=? GROUP BY 1',(week[0],))}
+    try:visits_by={r[0]:r[1] for r in db.execute('SELECT day,COUNT(DISTINCT visitor_hash) FROM site_visits WHERE day>=? GROUP BY day',(week[0],))}
+    except sqlite3.Error:visits_by={}
+    days=[{'day':x,'label':'오늘' if x==week[-1] else f'{int(x[5:7])}.{int(x[8:])}','cases':cases_by.get(x,0),'visits':visits_by.get(x,0)} for x in week]
+    peak=max([x['visits'] for x in days]+[1])
+    month=today.replace(day=1).isoformat();ai_usd=0.0
+    try:
+        import aiusage
+        for r in db.execute('SELECT model,SUM(prompt),SUM(cached),SUM(completion),SUM(audio_sec) FROM ai_usage WHERE day>=? GROUP BY model',(month,)):
+            ai_usd+=aiusage.cost_usd(r[0],r[1],r[2],r[3],r[4]) or 0
+        rate=aiusage.usd_krw()
+    except Exception:rate=1400
+    answered=one("SELECT COUNT(*) FROM cases WHERE status IN (?,?)",(STATUSES[-2],STATUSES[-1])) if len(STATUSES)>=2 else 0
+    feed=[]
+    try:
+        for r in db.execute('SELECT id,subject,company,created FROM cases ORDER BY id DESC LIMIT 4'):feed.append({'at':r['created'],'kind':'제보','text':r['subject'],'sub':r['company'],'href':url_for('admin_report',case_id=r['id'])})
+    except sqlite3.Error:pass
+    try:
+        for r in db.execute('SELECT nickname,created FROM users ORDER BY id DESC LIMIT 3'):feed.append({'at':r['created'],'kind':'회원','text':f"{r['nickname'] or '새 회원'} 님이 가입했어요",'sub':'','href':url_for('admin_members')})
+    except sqlite3.Error:pass
+    try:
+        for r in db.execute("SELECT name,field,status,created FROM experts WHERE status IN ('pending','approved') ORDER BY id DESC LIMIT 3"):feed.append({'at':r['created'],'kind':'자문단','text':f"{r['name']} {r['field']}"+(' 신청 (승인 대기)' if r['status']=='pending' else ' 합류'),'sub':'','href':url_for('admin_experts')})
+    except sqlite3.Error:pass
+    for x in feed:x['at']=str(x['at'] or '').replace(' ','T')
+    feed.sort(key=lambda x:x['at'],reverse=True)
+    return {'today':today,'days':days,'peak':peak,
+        'visits_today':visits_by.get(week[-1],0),'cases_today':cases_by.get(week[-1],0),
+        'cases_total':one('SELECT COUNT(*) FROM cases'),'answered':answered,
+        'experts':one("SELECT COUNT(*) FROM experts WHERE status='approved'"),'experts_wait':one("SELECT COUNT(*) FROM experts WHERE status='pending'"),
+        'letter':one("SELECT COUNT(*) FROM letter_subscribers WHERE status='active'"),
+        'companies':one('SELECT COUNT(*) FROM companies'),
+        'ai_krw':round(ai_usd*rate),'feed':feed[:6]}
 
 @app.route('/admin/site')
 @admin_only
@@ -2916,6 +2958,7 @@ import soboru_tools;soboru_tools.install(types.SimpleNamespace(**globals()))  # 
 import soboru_jobs;soboru_jobs.install(types.SimpleNamespace(**globals()))  # 동네일자리: 무료 구인·구직 + 공공 채용정보 (soboru_jobs.py)
 import soboru_town;soboru_town.install(types.SimpleNamespace(**globals()))  # 우리 동네 정보: 이웃이 추천하는 동네 장소 (soboru_town.py)
 import soboru_search;soboru_search.install(types.SimpleNamespace(**globals()))  # 통합 검색: 머리글 검색창 + /search (soboru_search.py)
+import seo_ai;seo_ai.install(types.SimpleNamespace(**globals()))  # AI·검색 최적화: 서비스 소개(/about)·제보센터용 llms.txt (seo_ai.py)
 import site_visits;site_visits.install(types.SimpleNamespace(**globals()))  # 방문 통계: 사이트별 방문자·들어온 곳·많이 본 화면 (site_visits.py)
 import soboru_examples;soboru_examples.auto(types.SimpleNamespace(**globals()))
 import company_logo;_cl=types.SimpleNamespace(**globals());company_logo.install(_cl);company_set_domain=_cl.company_set_domain  # 기업 로고: 도메인에서 자동으로 (company_logo.py)
