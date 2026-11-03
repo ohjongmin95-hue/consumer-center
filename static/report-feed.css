@@ -1926,3 +1926,12 @@ body:has(main.xf.is-split) .auth-top .brand{color:#191f28}
 .xf-free{display:flex;align-items:center;gap:8px;margin:24px 0 0;font-size:15px;line-height:22.5px;font-weight:600;color:#CE6719}
 .xf-free svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 @media(max-width:860px){.xf-roles,.xf-free{display:none}}
+/* 운영자 2026-11-03 (밤): 둘러보기 휴대폰 화면 = 소비자제보센터 앱 화면, AI 상담 카드는 말풍선을 가운데로 */
+.ip-logo-bar{display:flex;align-items:baseline;gap:0;margin:14px 0 0;font-size:15px;font-weight:800;letter-spacing:-.3px;color:#191f28}
+.ip-logo-bar span{color:#EF920E}.ip-logo-bar small{margin-left:4px;font-size:9px;font-weight:700;color:#4e5968;letter-spacing:0}.ip-logo-bar em{font-style:normal;color:#652D1C}
+.ip-app{margin-top:12px!important}
+.ip-co{display:grid!important;gap:2px!important;font-size:13px;font-weight:700;color:#191f28}
+.ip-co small{font-size:11px;font-weight:500;color:#6b7684}
+.ip-d{display:grid;justify-items:end;font-style:normal;font-size:10px;color:#8b95a1}.ip-d b{font-size:13px;font-weight:700;color:#191f28;font-variant-numeric:tabular-nums}
+.xs-feat-art.is-ai{padding:32px!important;align-items:center!important}
+@media(max-width:760px){.xs-feat-art.is-ai{padding:20px!important}.ip-logo-bar{margin-top:8px;font-size:13px}}
