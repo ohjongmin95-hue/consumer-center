@@ -8,8 +8,8 @@
   <form class="cs-panel cs-add" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="invite">
     <h2>자문단 초대</h2>
     <div class="cs-add-row">
-      <input name="name" maxlength="30" required placeholder="이름 또는 법인 이름" aria-label="이름">
-      <select name="field" required aria-label="분야"><option value="">분야</option><optgroup label="개인">{% for f in fields %}<option>{{ f }}</option>{% endfor %}</optgroup><optgroup label="사무소·법인">{% for f in firm_fields %}<option>{{ f }}</option>{% endfor %}</optgroup></select>
+      <input name="name" maxlength="30" required placeholder="이름" aria-label="이름">
+      {# 운영자 2026-11-03: 지금은 변호사·교수만 (로펌은 나중에 따로) #}<select name="field" required aria-label="분야"><option value="">분야</option>{% for f in fields %}<option>{{ f }}</option>{% endfor %}</select>
       <input name="org" maxlength="60" placeholder="소속 (예: 소보루 법률사무소)" aria-label="소속">
       <input name="note" maxlength="200" placeholder="메모 (관리자만 봐요)" aria-label="메모">
       <button class="cs-btn cs-btn-main" type="submit">초대 링크 만들기</button>

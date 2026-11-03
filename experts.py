@@ -7,7 +7,8 @@
 - 수수료·수임료·광고비는 받지 않는다. 운영자 2026-11-03 나중: 변호사 소개(소개 페이지의 '상담 신청하기')는 하되 돈은 받지 않는다.
 - 자격증 사진(증빙)은 관리자만 볼 수 있다. 관리자는 언제든 표시를 멈추거나 다시 켤 수 있다.
 """
-import datetime, os, secrets, uuid
+import datetime
+import random, os, secrets, uuid
 
 from flask import abort, flash, g, redirect, render_template, request, send_file, session, url_for
 
@@ -335,7 +336,9 @@ def install(S):
         with conn() as db:
             try: news = db.execute("SELECT id,title,summary,category,COALESCE(published_at,created) AS at FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 3").fetchall()
             except Exception: news = []
-        return render_template('explore.html', helpers=helpers(10), hot=hot, news=news)
+        # 운영자 2026-11-03: 자문단은 순서대로 말고 랜덤으로 (네 명씩 보이고, 더 있으면 화면에서 돌아가며 바뀜)
+        people = list(helpers(40)); random.shuffle(people)
+        return render_template('explore.html', helpers=people, hot=hot, news=news)
 
     @app.route('/admin/experts/<int:eid>/proof')
     @S.admin_only

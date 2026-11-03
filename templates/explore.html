@@ -14,7 +14,7 @@
         <p class="xs-scr-t">{{ ui('explore.rank', '기업 응대 순위') }}</p>
         {% for n, w, d in [('1', 92, '0.8일'), ('2', 74, '1.4일'), ('3', 58, '2.1일'), ('4', 40, '3.5일')] %}<div class="xs-rank-row"><b>{{ n }}</b><span class="xs-rank-co">○○{{ ['쇼핑', '항공', '통신', '가전'][loop.index0] }}</span><span class="xs-rank-bar"><i style="width:{{ w }}%"></i></span><small>{{ d }}</small></div>{% endfor %}
       </div></div>
-      <div class="xs-float"><span class="xs-float-ic">1</span><div><small>{{ ui('explore.feat_float_s', '답변이 가장 빠른 기업') }}</small><b>{{ ui('explore.feat_float', '○○쇼핑 평균 0.8일') }}</b></div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11"/><path d="M7.5 12.5l3 3 6-6.5"/></svg></div>
+      <div class="xs-float"><span class="xs-float-ic">1</span><div><small>{{ ui('explore.feat_float_s', '답변이 가장 빠른 기업') }}</small><b>{{ ui('explore.feat_float', '○○쇼핑 평균 0.8일') }}</b></div></div>
     </div>
     <div class="xs-feat-copy">
       <span class="xs-kicker">{{ ui('explore.rank', '기업 응대 순위') }}</span>
@@ -60,9 +60,9 @@
   <section class="xs-sec" aria-labelledby="xs-help">
     <div class="xs-hrow"><h2 class="xs-h" id="xs-help">{{ ui('explore.helpers', '소비자 자문단') }}</h2><a class="xs-more" href="{{ url_for('experts_page') }}">{{ ui('common.more', '더 보기') }}{{ go }}</a></div>
     {% if helpers %}
-    <ul class="xs-grid is-4 xs-people">{% for e in helpers[:8] %}
+    <ul class="xs-grid is-4 xs-people" data-rotate>{% for e in helpers %}
       {# 운영자 2026-11-03: 위에 큰 사진(아래로 흰색에 스며듦) → 동그란 분야 표시(변호사=저울, 교수=학사모) → 소속 한 줄 → 굵은 이름 #}
-      <li><a class="xs-person" href="{{ url_for('expert_profile', eid=e.id) }}">
+      <li{% if loop.index > 4 %} hidden{% endif %}><a class="xs-person" href="{{ url_for('expert_profile', eid=e.id) }}">
         <span class="xs-pphoto is-t{{ loop.index0 % 4 }}">{% if e.photo_url %}<img src="{{ e.photo_url }}" alt="" width="360" height="300" loading="lazy">{% else %}<span class="xs-pinit" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}</span>
         <span class="xs-pmark" aria-hidden="true">{% if e.field == '교수' %}<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/></svg>{% else %}<svg viewBox="0 0 24 24"><path d="M12 3v18M7 21h10M4 7h16"/><path d="M6 7l-3 7a3 3 0 006 0zM18 7l-3 7a3 3 0 006 0z"/></svg>{% endif %}</span>
         <span class="xs-pbody">
@@ -93,4 +93,15 @@
   </section>
   {% endif %}
 </div></main>
+<script>(function(){
+  // 운영자 2026-11-03: 자문단 카드는 랜덤으로 돌아가며 (네 명씩). 마우스를 올리면 멈춤
+  var ul=document.querySelector('[data-rotate]'); if(!ul||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var all=[].slice.call(ul.children), n=4, hold=false; if(all.length<2)return;
+  ul.addEventListener('mouseenter',function(){hold=true}); ul.addEventListener('mouseleave',function(){hold=false});
+  function pick(){var a=all.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
+  setInterval(function(){ if(hold||document.hidden)return;
+    ul.classList.add('is-swap');
+    setTimeout(function(){var a=pick();a.forEach(function(li,i){li.hidden=i>=n;ul.appendChild(li)});ul.classList.remove('is-swap')},350);
+  },6000);
+})()</script>
 {% endblock %}
