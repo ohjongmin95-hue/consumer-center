@@ -347,6 +347,41 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(rb['official_email'], 'boss@webb.com')  # 관리자가 넣은 메일은 그대로
         self.assertIn('pr@webb.com(홍보팀)', self.login_admin().get('/admin/companies').get_data(as_text=True))
 
+    def test_experts(self):
+        # 운영자 2026-11-03: 전문가를 한 명씩 가입시키기. 초대 링크로 들어오면 바로 전문가, 직접 신청은 관리자 승인 뒤. 댓글에 전문가 표시
+        adm = self.login_admin()
+        self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '김변호', 'field': '변호사', 'org': '소보루 법률사무소'}).status_code, 302)
+        with self.site.conn() as db: token = db.execute("SELECT token FROM experts WHERE name='김변호'").fetchone()[0]
+        self.assertIn('/expert/join/' + token, adm.get('/admin/experts').get_data(as_text=True))
+        self.assertIn('/login', self.client.get('/expert/join/' + token).headers['Location'])  # 로그인부터
+        pro, pid = self.member_client('pro_kim', '김변')
+        page = pro.get('/expert/join/' + token).get_data(as_text=True)
+        self.assertIn('김변호 님', page); self.assertIn('value="소보루 법률사무소"', page)
+        self.assertEqual(self.post_form(pro, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'license_no': '12345'}).status_code, 200)  # 동의 없으면 다시
+        self.assertEqual(self.post_form(pro, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'license_no': '12345', 'agree': '1'}).status_code, 302)
+        self.assertEqual(pro.get('/expert/join/' + token).status_code, 404)  # 링크는 한 번만
+        self.assertIn('전문가 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
+        # 직접 신청은 승인 전까지 표시 없음
+        other, oid = self.member_client('pro_lee', '이사정')
+        self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '손해사정사', 'agree': '1',
+                                                                 'proof': (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf')}).status_code, 302)
+        with self.site.conn() as db:
+            row = db.execute('SELECT id,status,proof FROM experts WHERE user_id=?', (oid,)).fetchone()
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES('CJ-PRO','x','배송·환불','가게','제목','내용','환불','2026-10-09T10:00:00',1,1)").lastrowid
+        self.assertEqual(row['status'], 'pending'); self.assertTrue(row['proof'].endswith('.pdf'))
+        self.assertEqual(self.client.get('/admin/experts/%d/proof' % row['id']).status_code, 302)  # 자격증은 관리자만
+        self.assertEqual(adm.get('/admin/experts/%d/proof' % row['id']).status_code, 200)
+        for c, body in ((pro, '청약철회 기간을 확인해 보세요.'), (other, '보험 처리가 될 수 있어요.')):
+            token2 = self.csrf(c, '/reports/%d' % cid)
+            self.assertEqual(c.post('/reports/%d/comment' % cid, data={'_csrf': token2, 'body': body}).status_code, 302)
+        page = self.client.get('/reports/%d' % cid).get_data(as_text=True)
+        self.assertIn('전문가 · 변호사', page); self.assertNotIn('전문가 · 손해사정사', page)
+        self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'approve', 'id': row['id']}).status_code, 302)
+        self.assertIn('전문가 · 손해사정사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        with self.site.conn() as db: kim = db.execute('SELECT id FROM experts WHERE user_id=?', (pid,)).fetchone()[0]
+        self.post_form(adm, '/admin/experts', {'act': 'stop', 'id': kim})
+        self.assertNotIn('전문가 · 변호사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+
     def test_report_talk_ai_draft(self):
         # 대화로 제보하기 (운영자 2026-11-03): AI가 되물을 것과 초안을 주고, 업종·유형은 목록 안에서만, 개인정보는 지움. 접수는 기존 /report로
         page = self.client.get('/report/talk').get_data(as_text=True)

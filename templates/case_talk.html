@@ -12,10 +12,10 @@
   <h3 class="talk-count">{{ ui('case.comments', '댓글') }} <b>{{ talk.comments|length }}</b></h3>
   <div class="talk-list">
   {% for c in talk.comments %}
-    <div class="talk-c" id="k{{ c.id }}">
+    <div class="talk-c{% if c.expert %} is-expert{% endif %}" id="k{{ c.id }}">
       <div class="talk-av" aria-hidden="true">{{ c.nickname[:1] }}</div>
       <div class="talk-main">
-        <p class="talk-head"><b>{{ c.nickname }}</b>{% if c.by_reporter %}<span class="talk-tag t-rep">{{ ui('case.by_reporter', '제보자') }}</span>{% elif c.member %}<span class="talk-tag">{{ ui('board.member_badge', '회원') }}</span>{% endif %}<time datetime="{{ c.created }}">{{ c.created|ago }}</time></p>
+        <p class="talk-head"><b>{{ c.nickname }}</b>{% if c.expert %}<span class="talk-tag t-expert">{{ ui('expert.badge', '전문가') }} · {{ c.expert }}</span>{% elif c.by_reporter %}<span class="talk-tag t-rep">{{ ui('case.by_reporter', '제보자') }}</span>{% elif c.member %}<span class="talk-tag">{{ ui('board.member_badge', '회원') }}</span>{% endif %}<time datetime="{{ c.created }}">{{ c.created|ago }}</time></p>
         <p class="talk-body">{{ c.body }}</p>
         <div class="talk-tools">
           <form method="post" action="{{ url_for('case_comment_flag', comment_id=c.id) }}" onsubmit="return confirm({{ ui_text('board.flag_c_confirm', '이 댓글이 부적절하다고 알릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.flag_comment', '알리기') }}</button></form>

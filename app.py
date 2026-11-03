@@ -2801,6 +2801,7 @@ _rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
 import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  # 소보루 레터: 주간 뉴스레터·구독·발송 (soboru_letter.py)
 import report_talk;report_talk.install(types.SimpleNamespace(**globals()))  # 대화로 제보하기: AI가 묻고 초안을 채움 (report_talk.py)
 import hero_photos;hero_photos.install(types.SimpleNamespace(**globals()))  # 첫 화면 배경 사진: 실제 제보 사진을 가린 사본으로 (hero_photos.py)
+import experts;experts.install(types.SimpleNamespace(**globals()))  # 전문가 등록: 관리자 초대 링크·직접 신청, 승인되면 댓글에 전문가 표시 (experts.py)
 import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)

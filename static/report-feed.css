@@ -146,3 +146,10 @@ a.pc-co:hover{color:#CE6719}
 /* 2026-11-03 운영자: 큰 제목 밑 회색 부연 설명은 빼기 (소비자제보센터 전체). 문구 자체는 관리자에 남아 있음 */
 body:not(.sb) .page-intro>.page-title+p:not(.co-tags):not(.public-case-meta),
 body:not(.sb) .info-intro,body:not(.sb) .guide-intro>p,body:not(.sb) .gd-lead,body:not(.sb) .co-verified-note{display:none}
+/* 전문가 표시 (experts.py) */
+.ex-badge,.talk-tag.t-expert{display:inline-flex;align-items:center;gap:3px;background:#fff1de;color:#a4501a;font-weight:800;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px}
+.ex-badge::before,.talk-tag.t-expert::before{content:"";width:12px;height:12px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z'/%3E%3C/svg%3E") center/contain no-repeat}
+.talk-c.is-expert .talk-av{background:#EF920E;color:#fff}
+.ex-intro{display:block;font-size:13px;color:#8a6a55;margin:-2px 0 4px}
+.ex-invite{background:#fff6ea;border-radius:14px;padding:14px 16px;color:#652D1C;font-weight:600;margin:0 0 14px}
+.ex-page .me-form .field{margin-bottom:12px}
