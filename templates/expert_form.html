@@ -11,7 +11,13 @@
     {# 운영자 2026-11-03: 왼쪽 아래가 너무 하얗다 → 지금 함께하는 자문단 프로필 카드가 차례로 넘어감 (사진·이름·분야·소속) #}
     {% if people %}<div class="xf-deck" aria-hidden="true">{% for e in people[:6] %}
       <div class="xf-pc" style="--i:{{ loop.index0 }};--n:{{ [people|length, 6]|min }}"><img src="{{ e['photo_url'] }}" alt="" width="72" height="72"><span><b>{{ e['name'] }}<em><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z"/><path fill="#fff" d="M7.1 10.6 4.8 8.3l.9-.9 1.4 1.4 3.2-3.2.9.9z"/></svg>자격 확인</em></b><small>{{ e['org'] }}</small><i>자문단 · {{ e['field'] }}</i></span></div>{% endfor %}
-      <p class="xf-deck-n">지금 <b>{{ people|length }}명</b>이 함께하고 있어요</p>
+    </div>
+    {# 운영자 2026-11-03: 카드 아래도 비지 않게 — 자문단이 하는 일을 장면으로 (제보에 의견 → 기사로) #}
+    {% set p0 = people[0] %}
+    <div class="xf-demo" aria-hidden="true">
+      <div class="xf-demo-case"><small>소보루가전 · 배송·교환·환불</small><b>반품 후 2주째 환불이 안 돼요</b></div>
+      <div class="xf-demo-note"><img src="{{ p0['photo_url'] }}" alt=""><div><small>{{ p0['name'] }}<i>자문단 · {{ p0['field'] }}</i></small>반품한 물건을 받은 날부터 3영업일 안에 환불해야 해요. 늦어진 만큼 지연 이자도 청구할 수 있어요.</div></div>
+      <div class="xf-demo-news"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 14h8M8 18h5"/></svg>자문단 의견과 함께 기사로 나갔어요</div>
     </div>{% endif %}
   </section>
 

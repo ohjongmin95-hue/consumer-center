@@ -572,3 +572,42 @@ body.console .vs-table td{padding:9px 12px}
 body.console .vs-table .num{text-align:right;white-space:nowrap}
 body.console .vs-table code{font-size:12px;color:var(--ad-mute)}
 @media(max-width:900px){body.console .vs-grid{grid-template-columns:1fr}body.console .ads-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* 운영자 2026-11-03: 소비자제보센터 관리자 = 토스페이먼츠 콘솔처럼 정리
+   회색 바탕 위에 머리글·왼쪽 메뉴를 두고, 본문은 큰 흰 판 하나. 판 안의 카드는 그림자 대신 옅은 선, 숫자 칸은 회색 바탕 */
+body.console{--ad-bg:#f2f4f6}
+body.console .ad-top{height:64px;padding:0 20px 0 24px;background:var(--ad-bg);border-bottom:0}
+body.console .ad-brand{align-items:center;gap:10px;font-size:20px;font-weight:700;letter-spacing:-1.2px}
+body.console .ad-brand-wm{color:var(--ad-ink)}
+body.console .ad-brand-wm b{color:var(--orange,#ef7300);font-weight:700}
+body.console .ad-brand em{margin:0;padding:4px 8px;border-radius:8px;background:#fff;color:var(--ad-sub);font-size:12px;font-weight:600;letter-spacing:0;transform:none;box-shadow:0 0 0 1px rgba(0,27,55,.06)}
+body.console .ad-site{font-size:14px;font-weight:600;color:var(--ad-sub)}
+body.console .ad-site:hover,body.console .ad-top-right button:hover{background:#e5e8eb;color:var(--ad-ink)}
+body.console .ad-top-right button{background:transparent;font-size:14px;font-weight:600}
+@media(min-width:901px){
+  body.console .ad-shell{grid-template-columns:240px minmax(0,1fr);min-height:calc(100vh - 64px);padding:0 16px 16px 0}
+  body.console .ad-side{top:64px;height:calc(100vh - 64px);padding:4px 12px 24px;background:var(--ad-bg);border-right:0}
+  body.console .ad-main{background:#fff;border-radius:24px;min-height:calc(100vh - 80px);box-shadow:0 0 0 1px rgba(0,27,55,.04)}
+}
+body.console .ad-group+.ad-group{margin-top:20px}
+body.console .ad-group-title{padding:0 12px;margin:0 0 6px;font-size:13px;font-weight:600;color:var(--ad-mute)}
+body.console .ad-side a{padding:9px 12px;border-radius:12px;font-size:15px;font-weight:500;color:var(--ad-sub);transition:background .15s,color .15s}
+body.console .ad-side a .ad-ico{color:#8b95a1}
+body.console .ad-side a:hover{background:#e8ebee;color:var(--ad-ink)}
+body.console .ad-side a.on{background:#fff;color:var(--ad-ink);font-weight:700;box-shadow:0 1px 3px rgba(0,27,55,.08)}
+body.console .ad-side a.on .ad-ico{color:var(--ad-orange)}
+body.console .ad-main{padding:36px 40px 72px}
+/* 흰 판 안의 카드: 그림자 대신 선 */
+body.console .ad-panel,body.console .cs-panel,body.console .ad-main .form-panel,body.console .ad-card,body.console .cs-table-wrap,body.console .ad-main .tablewrap{box-shadow:none;border:1px solid #e5e8eb}
+body.console .ad-card:hover{box-shadow:0 8px 20px rgba(0,27,55,.06);border:1px solid #e5e8eb}
+body.console .ad-todo-item{box-shadow:none;border:0;background:#f9fafb}
+body.console .ad-todo-item:hover{box-shadow:none;border:0;background:#f2f4f6;transform:none}
+body.console .ad-todo-item.is-on{background:#fff4e8;box-shadow:none}
+body.console .ad-todo-item.is-on:hover{background:#ffeedb}
+body.console .ad-main .alert{box-shadow:none;background:#f9fafb}
+body.console .lw-stats div,body.console .lt-ad-counts div{box-shadow:none;background:#f9fafb}
+body.console .cs-tabs a,body.console .ad-main .content-tabs a,body.console .jl-pick summary{box-shadow:none;background:#f2f4f6}
+body.console .cs-tabs a:hover,body.console .ad-main .content-tabs a:hover{box-shadow:none;background:#e8ebee}
+body.console .jl-search input[type=search]{box-shadow:none;background:#f2f4f6}
+body.console .jl-search input[type=search]:focus{background:#fff;border-color:var(--ad-orange)}
+@media(max-width:900px){body.console .ad-main{background:var(--ad-bg)}}

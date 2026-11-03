@@ -234,7 +234,7 @@ def current_face():
     elif not admin_active():face='soboru'
     else:
         pick=request.values.get('face')
-        if request.path.startswith('/admin'):face='jebo' if pick=='jebo' else 'soboru'
+        if request.path.startswith('/admin'):face=pick if pick in ('jebo','soboru') else app.config.get('ADMIN_FACE','jebo')  # 운영자 2026-11-03: 관리자는 소비자제보센터 하나만
         else:
             if pick=='jebo':session['face_preview']='jebo'
             elif pick=='off':session.pop('face_preview',None)
@@ -586,6 +586,11 @@ def mask_personal(text):
 def public_case(case_id):
     with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=? AND public_consent=1 AND published=1',(case_id,)).fetchone()
     if not case:abort(404)
+    seen=session.get('seen_cases') or []
+    if case_id not in seen and not AD_BOT.search(request.headers.get('User-Agent','')):  # 같은 사람이 새로고침해도 한 번만, 검색 로봇은 빼고
+        with conn() as db:db.execute('UPDATE cases SET views=views+1 WHERE id=?',(case_id,))
+        session['seen_cases']=(seen+[case_id])[-60:]
+        case=dict(case);case['views']=(case.get('views') or 0)+1
     with conn() as db:
         grp=group_for_case(db,case_id,case['company'])
         answers=db.execute("SELECT m.body,m.created,m.edited,m.source,co.name AS company_name FROM messages m JOIN cases c ON c.id=m.case_id LEFT JOIN companies co ON co.id=c.company_id WHERE m.case_id=? AND m.author='기업 답변' AND m.public=1 ORDER BY m.id",(case_id,)).fetchall()
@@ -2709,6 +2714,7 @@ with conn() as db:
     db.execute('''CREATE TABLE IF NOT EXISTS damage_groups(id INTEGER PRIMARY KEY,title TEXT NOT NULL,company TEXT NOT NULL,summary TEXT NOT NULL DEFAULT '',guide TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'open',created TEXT NOT NULL,updated TEXT NOT NULL)''')
     db.execute('''CREATE TABLE IF NOT EXISTS group_members(id INTEGER PRIMARY KEY,group_id INTEGER NOT NULL,name TEXT NOT NULL,phone TEXT NOT NULL,email TEXT NOT NULL DEFAULT '',detail TEXT NOT NULL,amount TEXT NOT NULL DEFAULT '',share_consent INTEGER NOT NULL DEFAULT 0,ip_hash TEXT NOT NULL DEFAULT '',created TEXT NOT NULL,FOREIGN KEY(group_id) REFERENCES damage_groups(id))''')
     if 'group_id' not in {r['name'] for r in db.execute('PRAGMA table_info(cases)')}:db.execute('ALTER TABLE cases ADD COLUMN group_id INTEGER')
+    if 'views' not in {r['name'] for r in db.execute('PRAGMA table_info(cases)')}:db.execute('ALTER TABLE cases ADD COLUMN views INTEGER NOT NULL DEFAULT 0')  # 운영자 2026-11-03: 제보 조회수
     gcols={r['name'] for r in db.execute('PRAGMA table_info(damage_groups)')}
     if 'target' not in gcols:db.execute(f'ALTER TABLE damage_groups ADD COLUMN target INTEGER NOT NULL DEFAULT {GROUP_TARGET}')
     if 'proposed' not in gcols:db.execute('ALTER TABLE damage_groups ADD COLUMN proposed INTEGER NOT NULL DEFAULT 0')  # 소비자가 제안한 것
