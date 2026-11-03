@@ -46,7 +46,7 @@ SECTIONS = [
         ('jebo.google_verification', '구글 확인 코드 (consumerjebo.co.kr)', '', ADV),
         ('jebo.facebook_verification', '페이스북 확인 코드 (consumerjebo.co.kr)', '', ADV),
         ('home.hero_title', '메인 문구', '여러분의 제보가\n권익 보호의 시작입니다.', ML),
-        ('home.hero_media', '첫 화면 뒤에 실제 제보 사진·영상 깔기 (on 이라고 쓰면 켜짐)', '', OPT),
+        ('home.hero_media', '첫 화면 뒤 동영상 끄기 (off 라고 쓰면 꺼짐, 사진은 항상 나옴)', '', OPT),
         ('home.latest_title', '메인 최근 제보 제목 (비우면 제목 없이 카드만)', '', OPT),
         ('home.latest_count', '메인에 보여줄 최근 제보 수 (3~20, 4의 배수가 깔끔해요)', '20', {}),
     ]),

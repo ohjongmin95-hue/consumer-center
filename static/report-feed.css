@@ -343,3 +343,65 @@ body:has(.hero-wall){overflow-x:clip}
 .hero.hero-clean .primary{border-radius:16px;padding:16px 40px;font-size:18px;box-shadow:none}
 @media(max-width:680px){.hero.hero-clean{padding:56px 0 44px}.hero.hero-clean h1{font-size:28px;margin-bottom:26px}.hero.hero-clean .primary{padding:14px 30px;font-size:17px}}
 .hero-clean+.pt-band{border-top:1px solid #f2f4f6}
+/* 운영자 2026-11-03: 제보 목록 위 숫자 뺌 → 제목 옆 제보하기 하나 */
+.reports-page .reports-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.rf-go2{flex:none;border-radius:14px;padding:12px 22px;font-size:16px;font-weight:700;box-shadow:none}
+@media(max-width:560px){.rf-go2{padding:10px 16px;font-size:15px;border-radius:12px}}
+/* 운영자 2026-11-03: 제보 카드도 토스처럼. 칩·이름표 줄이고 글자 위계로만 구분 (제보센터만) */
+body:not(.sb) .nn-vc-top{gap:10px}
+body:not(.sb) .nn-vc-av,body:not(.sb) .rf-list .nn-vc-av{width:32px;height:32px;font-size:11px}
+body:not(.sb) .nn-vc-who{display:flex;align-items:baseline;gap:6px;min-width:0}
+body:not(.sb) .nn-vc-who b{font-size:14px;font-weight:600;color:#333d4b}
+body:not(.sb) .nn-vc-who time{font-size:13px;color:#8b95a1;flex:none}
+body:not(.sb) .nn-vc-card .rf-st .step-badge,body:not(.sb) .nn-vc-top .sb-badge{border-radius:6px;padding:3px 7px;font-size:12px;font-weight:600}
+body:not(.sb) .nn-vc-card h3,body:not(.sb) .rf-list .nn-vc-card h3{font-size:17px;font-weight:700;letter-spacing:-.02em;color:#191f28;margin-top:2px}
+body:not(.sb) .nn-vc-lock{color:#b0b8c1}
+body:not(.sb) .nn-vc-ex,body:not(.sb) .rf-list .nn-vc-ex{font-size:15px;line-height:1.55;color:#6b7684;margin-top:4px}
+body:not(.sb) .is-locked .nn-vc-ex{color:#8b95a1}
+body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:0;margin-top:2px;font-size:14px}
+body:not(.sb) .nn-vc-meta dt{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+body:not(.sb) .nn-vc-meta div{display:contents}
+body:not(.sb) .nn-vc-meta dd{display:inline-flex;gap:0;font-weight:500;color:#6b7684;min-width:0}
+body:not(.sb) .nn-vc-meta .nn-vc-co{font-weight:600;color:#4e5968}
+body:not(.sb) .nn-vc-meta .nn-vc-ind{font-size:14px;font-weight:500;color:#8b95a1}
+body:not(.sb) .nn-vc-meta .nn-vc-ind::before,body:not(.sb) .nn-vc-meta div+div dd::before{content:"·";margin:0 6px;color:#d1d6db}
+body:not(.sb) .nn-vc-tag{padding:0;background:none;border-radius:0;font-size:14px;font-weight:500;color:#8b95a1}
+body:not(.sb) .nn-vc-tag b{display:none}
+body:not(.sb) .nn-vc-foot{font-size:13px;color:#8b95a1}
+body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
+body:not(.sb) .nn-vc-meta dd{flex:none}
+body:not(.sb) .nn-vc-meta div+div dd{flex:1 1 auto;overflow:hidden}
+body:not(.sb) .nn-vc-meta div+div .nn-vc-tag{display:block;overflow:hidden;text-overflow:ellipsis}
+body:not(.sb) .nn-vc-meta .nn-vc-co{overflow:hidden;text-overflow:ellipsis}
+/* 운영자 2026-11-03: 전부 귤색이라 → 제보 유형마다 다른 색(연한 바탕 + 진한 글씨), 처리 중은 파랑. 귤색은 제보하기·고른 칩에만 */
+body:not(.sb) .nn-vc-meta div+div dd::before{content:none}
+body:not(.sb) .nn-vc-meta div+div{display:block;margin-left:8px;flex:none}
+body:not(.sb) .nn-vc-meta div+div dd{display:block}
+body:not(.sb) .nn-vc-tag{display:inline-block;padding:3px 8px;border-radius:6px;font-size:12.5px;font-weight:600;line-height:1.4;background:var(--tg-bg,#f2f4f6);color:var(--tg,#4e5968)}
+body:not(.sb) .nn-vc-tag b{display:inline;padding:0;background:none;color:inherit;font-size:inherit;font-weight:inherit}
+body:not(.sb) .nn-vc-tag b+span{display:none}
+body:not(.sb) .nn-vc-meta div+div .nn-vc-tag{display:inline-block}
+.nn-vc-tag.tone-1{--tg-bg:#e8f3ff;--tg:#1b64da}
+.nn-vc-tag.tone-2{--tg-bg:#e3f7f5;--tg:#0b8a80}
+.nn-vc-tag.tone-3{--tg-bg:#f1ebff;--tg:#6741d9}
+.nn-vc-tag.tone-4{--tg-bg:#fff0e0;--tg:#a3561a}
+.nn-vc-tag.tone-5{--tg-bg:#fdeef6;--tg:#c2255c}
+.nn-vc-tag.tone-6{--tg-bg:#e6f6ec;--tg:#2b8a3e}
+.nn-vc-tag.tone-7{--tg-bg:#edf0ff;--tg:#3b5bdb}
+.nn-vc-tag.tone-8{--tg-bg:#ffebee;--tg:#e03131}
+body:not(.sb) .nn-vc-card .rf-st.st-5 .step-badge{background:#e8f3ff;color:#1b64da}
+body:not(.sb) .nn-vc-av.is-char{background:#fff7ec;object-fit:contain;padding:3px;border-radius:50%}
+body:not(.sb) .nn-vc-av.is-anon{background:#f3ede6;color:#652d1c}
+/* 운영자 2026-11-03: 익명 동그라미도 몇 가지 색을 돌려 가며 */
+body:not(.sb) .nn-vc-av.is-anon.av-0{background:#fff1e0;color:#d9480f}
+body:not(.sb) .nn-vc-av.is-anon.av-1{background:#e8f3ff;color:#1b64da}
+body:not(.sb) .nn-vc-av.is-anon.av-2{background:#e6f6ec;color:#2b8a3e}
+body:not(.sb) .nn-vc-av.is-anon.av-3{background:#f1ebff;color:#6741d9}
+body:not(.sb) .nn-vc-av.is-anon.av-4{background:#f3ede6;color:#652d1c}
+body:not(.sb) .nn-vc-meta div:first-child{display:flex;min-width:0;flex:0 1 auto}
+body:not(.sb) .nn-vc-meta div:first-child dd{max-width:none;flex:0 1 auto;min-width:0}
+body:not(.sb) .nn-vc-meta .nn-vc-co{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+body:not(.sb) .nn-vc-meta .nn-vc-ind{flex:none}
+body:not(.sb) .nn-vc-meta div+div,body:not(.sb) .nn-vc-meta div+div dd{flex:none;overflow:visible}
+body:not(.sb) .nn-vc-meta .nn-vc-co{flex:0 1 auto;min-width:3em}body:not(.sb) .nn-vc-meta .nn-vc-ind{flex:0 100 auto;min-width:0;overflow:hidden;text-overflow:clip;white-space:nowrap}
+body:not(.sb) .nn-vc-meta,body:not(.sb) .rf-list .nn-vc-meta{flex-wrap:wrap;row-gap:6px}body:not(.sb) .nn-vc-meta .nn-vc-ind{flex:none}body:not(.sb) .nn-vc-meta div:first-child{max-width:100%;margin-right:8px}body:not(.sb) .nn-vc-meta div+div{margin-left:0}

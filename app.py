@@ -1304,6 +1304,16 @@ def cat_split(v):
     m=re.match(r'\s*\[([^\]]{1,20})\]\s*(.*)',v or '')
     return (m.group(1),m.group(2)) if m else None
 
+CAT_TONES=(('요금','환불','결제','돈'),('배송','교환'),('계약','해지'),('품질','하자','AS','수리'),('광고','표시','과장','허위'),('상담','처리','응대','고객'),('개인정보',),('안전','위해'))
+@app.template_filter('cat_tone')
+def cat_tone(v):
+    """운영자 2026-11-03: 제보 유형마다 다른 색. 낱말로 묶고, 모르는 유형은 이름으로 고정 색, 기타는 회색."""
+    v=v or ''
+    if not v or v.startswith('기타'):return 0
+    for i,words in enumerate(CAT_TONES,1):
+        if any(w in v for w in words):return i
+    return 1+sum(map(ord,v))%len(CAT_TONES)
+
 @app.template_filter('ago')
 def ago(created):
     try:delta=datetime.datetime.now()-datetime.datetime.fromisoformat(created)

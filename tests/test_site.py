@@ -248,7 +248,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('nn-stats', home)  # 메인에는 건수 현황 없음
         self.assertNotIn('비공개 처리된 제보예요', home)
         self.assertNotIn('비밀글로 접수된 제보예요', home)
-        self.assertIn('<dt>누적 제보</dt><dd>4</dd>', self.client.get('/reports').get_data(as_text=True))
+        self.assertNotIn('누적 제보', self.client.get('/reports').get_data(as_text=True))
         self.assertIn('>접수</span>', live)
         filtered_cat = self.client.get('/reports', query_string={'category': '배송·교환·환불'}).get_data(as_text=True)
         self.assertIn('미동의 접수</h3>', filtered_cat)  # 소보루 제보 목록은 카드 (2026-11-03)
@@ -5914,7 +5914,7 @@ class SiteTest(unittest.TestCase):
         from PIL import Image
         html = self.client.get('/reports').get_data(as_text=True)
         self.assertIn('rf-tabs', html); self.assertNotIn('reports-head-btns', html); self.assertNotIn('rf-partners', html)
-        self.assertEqual(html.count('class="rf-go"'), 1)
+        self.assertEqual(html.count('rf-go2'), 1); self.assertNotIn('누적 제보', html)
         for st in ('new', 'active', 'answer', 'done'): self.assertEqual(self.client.get('/reports?st=' + st).status_code, 200)
         admin = self.site.app.test_client()
         admin.post('/admin/login', data={'_csrf': self.csrf(admin, '/admin/login'), 'password': self.password})

@@ -4,16 +4,9 @@
 {% block content %}
 <main>
   <section class="section reports-page" aria-labelledby="reports-heading">
-    {# 운영자 2026-11-03: 검은고양이 목록처럼. 위에 숫자 + 한쪽에 큰 제보하기 하나, 단계 탭, 유형·업종 고르기, 사진 카드 #}
-    <div class="reports-head"><h1 id="reports-heading">{{ txt('home.list_title') }}</h1></div>
-    <div class="rf-top">
-      <dl class="rf-count">
-        <div><dt>{{ ui('reports.count_total', '누적 제보') }}</dt><dd>{{ '{:,}'.format(summary.total) }}</dd></div>
-        <div><dt>{{ ui('reports.count_day', '최근 24시간') }}</dt><dd>{{ '{:,}'.format(summary.day) }}</dd></div>
-        <div><dt>{{ ui('reports.count_answer', '기업 답변') }}</dt><dd>{{ '{:,}'.format(summary.answered) }}</dd></div>
-      </dl>
-      <a class="rf-go" href="{{ url_for('report') }}"><b>{{ txt('home.hero_button') }}</b></a>
-    </div>
+    {# 운영자 2026-11-03: 검은고양이 목록처럼. 제보하기 하나, 단계 탭, 유형·업종 고르기, 사진 카드 #}
+    {# 운영자 2026-11-03: 누적 제보 같은 숫자는 지금은 빼고, 제목 옆에 제보하기 하나만 #}
+    <div class="reports-head"><h1 id="reports-heading">{{ txt('home.list_title') }}</h1><a class="primary rf-go2" href="{{ url_for('report') }}">{{ txt('home.hero_button') }}</a></div>
     <form class="report-tools rf-tools" method="get" action="{{ url_for('reports') }}" role="search">
       <input name="q" type="search" aria-label="{{ txt('home.search_placeholder') }}" placeholder="{{ txt('home.search_placeholder') }}" value="{{ search_query }}">
       {% for k in ('category', 'st', 'ind', 'sort') %}{% if request.args.get(k) %}<input type="hidden" name="{{ k }}" value="{{ request.args.get(k) }}">{% endif %}{% endfor %}
@@ -31,7 +24,7 @@
     {% set empty_text = txt('home.empty_search') if search_query or selected_category or stage or industry else txt('home.empty') %}
     <div class="rf-wrap">
       <div class="rf-list rf-photo">
-        {% set pub_badge = True %}{% set with_photo = True %}{% for c in report_cards(cases, 220) %}{% include 'report_card.html' %}{% else %}<p class="nn-empty">{{ empty_text }}</p>{% endfor %}
+        {# 운영자 2026-11-03: 목록 카드엔 사진 안 보이게 (카드가 길어짐) #}{% set pub_badge = True %}{% set with_photo = False %}{% for c in report_cards(cases, 220) %}{% include 'report_card.html' %}{% else %}<p class="nn-empty">{{ empty_text }}</p>{% endfor %}
       </div>
       <aside class="rf-side">
         <a class="rf-box rf-link" href="{{ url_for('companies') }}">{{ ui('companies.title', '기업별 제보') }} <span aria-hidden="true">›</span></a>
