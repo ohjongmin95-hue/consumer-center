@@ -485,6 +485,11 @@ _DONE="(status='종결' OR COALESCE(confirmed_at,'')<>'')"
 _NEW="(status='접수' AND COALESCE(reviewed_at,'')='' AND COALESCE(forwarded_at,'')='' AND COALESCE(seen_at,'')='' AND NOT "+_DONE+")"
 REPORT_STAGES={'new':('접수',_NEW),'active':('처리 중','(NOT '+_NEW+' AND NOT '+_DONE+')'),
                'answer':('기업 답변',"(status='기업 답변 도착' OR EXISTS(SELECT 1 FROM messages m WHERE m.case_id=cases.id AND m.author='기업 답변' AND m.public=1))"),'done':('종결',_DONE)}
+def notice_lines(text):
+    """'제보 전 꼭 읽어 주세요' 줄들. 운영자 2026-11-03: 로그인 제보라 조회 비밀번호·삭제 요청 줄은 뺌 (예전에 저장한 문구에 남아 있어도)."""
+    drop=('조회 비밀번호는 꼭 기억','직접 고치거나 지울 수 없어요')
+    return '\n'.join(l for l in (text or '').split('\n') if l.strip() and not any(d in l for d in drop))
+app.jinja_env.globals['notice_lines']=notice_lines
 def reports_url(**kw):
     """지금 고른 조건(검색·유형·업종·단계·정렬)은 두고 일부만 바꾼 제보 목록 주소. 값이 비면 그 조건을 뺌."""
     a={k:v for k,v in request.args.items() if k in ('q','category','sort','st','ind') and v}
@@ -722,7 +727,8 @@ def report():
     if not PHONE_INPUT.match(data['phone']):flash(ui_text('msg.report_phone','전화번호를 확인해 주세요.'));return report_form(400)
     lookup_pw=request.form.get('lookup_pw','')
     # 공개 제보는 조회 비밀번호가 선택: 비워 두면 비밀번호 없이 접수 (비밀글은 꼭 필요)
-    pw_optional=request.form.get('visibility')=='public' and not lookup_pw and not request.form.get('lookup_pw2','')
+    pw_optional=(request.form.get('visibility')=='public' or bool(g.get('user'))) and not lookup_pw  # 회원은 내 제보에서 보므로 조회 비밀번호 없어도 됨 (운영자 2026-11-03)
+    pw_optional=pw_optional and not request.form.get('lookup_pw2','')
     if not pw_optional and not LOOKUP_PW_MIN<=len(lookup_pw)<=30:flash(ui_text('msg.report_pw','조회 비밀번호를 4~30자로 정해 주세요.'));return report_form(400)
     if lookup_pw!=request.form.get('lookup_pw2',''):flash(ui_text('msg.report_pw2','조회 비밀번호 확인이 맞지 않아요.'));return report_form(400)
     if data['contact'] and not MEMBER_EMAIL_RE.match(data['contact']):flash(ui_text('msg.report_email','이메일 주소를 확인해 주세요.'));return report_form(400)

@@ -272,6 +272,10 @@ class SiteTest(unittest.TestCase):
 
     def test_hero_photos_wall(self):
         # 첫 화면 사진 (운영자 2026-11-03): 관리자가 고른 제보 사진의 가린 사본만 공개, 3장부터 제보센터 첫 화면 뒤에 깔림
+        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('home.hero_media','on','x')")  # 첫 화면 사진은 켰을 때만 (운영자 2026-11-03 일단 끔)
+        def _off():
+            with self.site.conn() as db: db.execute("DELETE FROM site_content WHERE key='home.hero_media'")
+        self.addCleanup(_off)
         from PIL import Image
         jebo = 'https://consumerjebo.co.kr'
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
@@ -306,6 +310,10 @@ class SiteTest(unittest.TestCase):
 
     def test_hero_photos_auto(self):
         # 운영자 2026-11-03: 공개 게시된 제보의 사진은 관리자가 안 골라도 모자이크해서 첫 화면에. 비공개로 바뀌면 바로 빠짐
+        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('home.hero_media','on','x')")  # 첫 화면 사진은 켰을 때만 (운영자 2026-11-03 일단 끔)
+        def _off():
+            with self.site.conn() as db: db.execute("DELETE FROM site_content WHERE key='home.hero_media'")
+        self.addCleanup(_off)
         from PIL import Image
         jebo = 'https://consumerjebo.co.kr'
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')

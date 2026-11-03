@@ -338,3 +338,8 @@ body:has(.hero-wall){overflow-x:clip}
   .rf-list .nn-vc-foot{margin-top:4px;padding-top:12px;border-top:1px solid #f2f4f6}
   .rf-list .nn-empty{background:#fff;margin:0;padding:40px 20px}
 }
+/* 운영자 2026-11-03: 첫 화면 사진·영상 뺌 → 흰 바탕에 큰 문구 + 제보하기 하나 */
+.hero.hero-clean{border:0;padding:104px 0 80px;background:none}
+.hero.hero-clean .primary{border-radius:16px;padding:16px 40px;font-size:18px;box-shadow:none}
+@media(max-width:680px){.hero.hero-clean{padding:56px 0 44px}.hero.hero-clean h1{font-size:28px;margin-bottom:26px}.hero.hero-clean .primary{padding:14px 30px;font-size:17px}}
+.hero-clean+.pt-band{border-top:1px solid #f2f4f6}

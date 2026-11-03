@@ -30,7 +30,7 @@
 <script>
 (function () {
   var T = {{ {
-    'notice_t': ui('talk.notice_title', '제보 전 꼭 읽어 주세요'), 'notice': ui_text('talk.notice', '업체명과 제보 유형을 정확히 골라 주시면 더 빨리 확인할 수 있어요.\n공개로 올린 제보는 누구나 볼 수 있어요. 본문에는 이름, 전화번호, 주소 같은 개인정보를 적지 마세요. 연락이 필요하면 이메일 칸만 써 주세요.\n영수증, 계약서, 사진, 업체와 나눈 대화처럼 사실을 확인할 수 있는 자료를 첨부하면 큰 도움이 돼요.\n제보할 때 정한 조회 비밀번호는 꼭 기억해 주세요. 휴대폰 번호와 이 비밀번호로 진행 상황을 볼 수 있어요.\n접수된 제보는 직접 고치거나 지울 수 없어요. 삭제를 원하면 운영자 이메일로 요청해 주세요.\n비방, 욕설, 명예를 훼손하는 표현, 광고성 내용은 공개되지 않거나 삭제될 수 있어요.\n상대방의 개인정보를 그대로 드러낸 글은 예고 없이 비공개 처리될 수 있어요.'), 'notice_ok': ui('talk.notice_ok', '확인했어요'),
+    'notice_t': ui('talk.notice_title', '제보 전 꼭 읽어 주세요'), 'notice': notice_lines(g.content.get('report.notes', '')), 'notice_ok': ui('talk.notice_ok', '확인했어요'),
     'hello': ui('talk.hello', '안녕하세요. 어떤 일을 겪으셨나요?'),
     'hello2': ui('talk.hello2', '말하듯 편하게 적어 주시면 제보서는 제가 정리해 드릴게요. 마이크로 말하거나 사진만 올려도 돼요.'),
     'think': ui('talk.think', '내용을 정리하고 있어요'),
@@ -53,7 +53,7 @@
     'l_name': ui('report.f_name', '이름'), 'l_phone': ui('report.f_phone', '전화번호'), 'l_pw': ui('report.f_pw', '조회 비밀번호'), 'l_pw2': ui('talk.pw2', '한 번 더')
   }|tojson }};
   var L = {{ {'industries': industries, 'categories': categories, 'sido': sido, 'genders': genders, 'ages': ages}|tojson }};
-  var ME = {{ ({'name': me['real_name'] or '', 'phone': me['phone'] or ''} if me else {'name': '', 'phone': ''})|tojson }};
+  var ME = {{ ({'name': me['real_name'] or '', 'phone': me['phone'] or '', 'member': True} if me else {'name': '', 'phone': '', 'member': False})|tojson }};
   var AI_URL = {{ url_for('report_talk_ai')|tojson }}, AI_ON = {{ ai_on|tojson }};
   var log = document.getElementById('tk-log'), form = document.getElementById('tk-form'), input = document.getElementById('tk-input');
   var files = document.getElementById('tk-files'), thumbs = document.getElementById('tk-thumbs'), bar = document.getElementById('tk-bar');
@@ -197,7 +197,7 @@
   function age() { bot(T.age); chips(L.ages.concat([T.skip]), function (o) { if (o !== T.skip) set('age_group', o); vis(); }, { wrap: true }); }
   function vis() {
     bot(T.vis, T.vis_note);
-    chips([T.vis_pub, T.vis_sec], function (o) { set('visibility', o === T.vis_pub ? 'public' : 'secret'); if (o === T.vis_pub) return contact(); pw(); });
+    chips([T.vis_pub, T.vis_sec], function (o) { set('visibility', o === T.vis_pub ? 'public' : 'secret'); if (o === T.vis_pub || ME.member) return contact(); pw(); });  /* 회원은 내 제보에서 보므로 조회 비밀번호를 묻지 않음 */
   }
   function pw() {
     bot(T.pw); var c = card(); var a = field(c, T.l_pw, 'pw', 'password', '', 30), b = field(c, T.l_pw2, 'pw2', 'password', '', 30);
