@@ -4,7 +4,7 @@
 {% block content %}
 <main class="auth-page auth-page-login">
   {# 토스식: 큰 제목과 한 줄 설명은 카드 위, 회원가입 안내는 카드 아래 #}
-  <h1 class="auth-title auth-title-out">{{ ui('member.login_title', '{site} 로그인', site=site_name()) }}</h1>
+  <h1 class="auth-title auth-title-out auth-title-logo"><img src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="소보루" width="644" height="120"><span>{{ ui('common.login', '로그인') }}</span></h1>
   {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
   <div class="auth-card">
     <form class="auth-body" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -13,10 +13,9 @@
       <input name="login_id" maxlength="40" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="{{ ui('member.id_or_email', '아이디 또는 이메일') }}" aria-label="{{ ui('member.id_or_email', '아이디 또는 이메일') }}" value="{{ request.form.get('login_id','') }}">
       <input type="password" name="password" maxlength="64" required autocomplete="current-password" placeholder="{{ ui('member.pw', '비밀번호') }}" aria-label="{{ ui('member.pw', '비밀번호') }}">
       <button class="auth-submit" type="submit"{% if not enabled %} disabled{% endif %}>{{ ui('common.login', '로그인') }}</button>
-      <label class="auth-keep"><input type="checkbox" name="remember"><span>{{ ui('member.keep', '로그인 상태 유지') }}</span></label>
+      <div class="auth-row"><label class="auth-keep"><input type="checkbox" name="remember"><span>{{ ui('member.keep', '로그인 상태 유지') }}</span></label><a class="auth-find" href="{{ url_for('account_help') }}">{{ ui('member.find', '아이디·비밀번호 찾기') }}</a></div>
     </form>
-    <div class="auth-foot"><a href="{{ url_for('account_help') }}">{{ ui('member.find', '아이디·비밀번호 찾기') }}</a></div>
   </div>
-  <p class="auth-join">{{ ui('member.not_yet', '아직 {site} 회원이 아닌가요?', site=site_name()) }} <a href="{{ url_for('signup') }}">{{ ui('member.join_go', '가입하기') }}</a></p>
+  <p class="auth-join">{{ ui('member.not_yet', '아직 {site} 회원이 아닌가요?', site='소보루') }} <a href="{{ url_for('signup') }}">{{ ui('member.join_go', '가입하기') }}</a></p>
 </main>
 {% endblock %}

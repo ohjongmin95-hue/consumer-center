@@ -632,3 +632,54 @@ body:not(.sb):has(.auth-top) .flash-wrap.is-auth .alert{background:#f2f4f6;color
 .hs-media.is-mine img{object-position:22% 50%}
 .hs-cap{position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:6px;margin:0;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.92);color:#333d4b;font-size:13px;font-weight:600}
 @media(max-width:900px){.hero-split{grid-template-columns:1fr;gap:28px;padding:36px 0 40px;text-align:center}.hero-split .hs-copy{justify-items:center;gap:24px}.hero-split h1{font-size:30px;line-height:40px}.hs-media{aspect-ratio:4/3;border-radius:22px}.hs-media.is-mine img{object-position:24% 50%}}
+/* 운영자 2026-11-03: 제보 카드 맨 위 = 기업 로고·이름 (토스처럼), 제보자·시간은 아래 */
+body:not(.sb) .vc-co-top{gap:10px}
+.vc-co-logo{flex:none;width:36px;height:36px;border-radius:50%;object-fit:contain;background:#fff;box-shadow:inset 0 0 0 1px #e5e8eb;display:grid;place-items:center;font-size:15px;font-weight:700;color:#4e5968}
+span.vc-co-logo{box-shadow:none}
+.vc-co-name{display:grid;min-width:0;line-height:1.3}
+.vc-co-name b{font-size:15px;font-weight:700;color:#191f28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vc-co-name small{font-size:12px;color:#8b95a1}
+.vc-who{display:inline-flex;align-items:center;gap:5px;min-width:0;font-size:13px;color:#8b95a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vc-who-av{width:18px;height:18px;border-radius:50%;object-fit:cover}
+body:not(.sb) .vc-co-top .step-bar,body:not(.sb) .vc-co-top .sb-badge{margin-left:auto}
+span.vc-co-logo.av-0{background:#fff1e0;color:#d9480f}span.vc-co-logo.av-1{background:#e8f3ff;color:#1b64da}span.vc-co-logo.av-2{background:#e6f6ec;color:#2b8a3e}span.vc-co-logo.av-3{background:#f3f0ff;color:#6741d9}span.vc-co-logo.av-4{background:#f2f4f6;color:#4e5968}
+body:not(.sb) .nn-vc-ans{flex:none;white-space:nowrap}
+/* 첫 화면 왼쪽 채우기: 더 큰 제목, 넓은 사진, 방금 올라온 제보 한 줄 */
+.hero-split{grid-template-columns:minmax(0,9fr) minmax(0,11fr);gap:48px}
+.hero-split h1{font-size:clamp(36px,3.9vw,58px);line-height:1.28}
+.hs-live{display:flex;align-items:center;gap:10px;width:100%;max-width:520px;padding:14px 18px;border-radius:16px;background:#f9fafb;color:#333d4b;font-size:15px;text-decoration:none;overflow:hidden}
+.hs-live:hover{background:#f2f4f6;color:#191f28}
+.hs-live-dot{flex:none;width:8px;height:8px;border-radius:50%;background:#f04452;box-shadow:0 0 0 4px rgba(240,68,82,.15);animation:hs-pulse 1.6s ease-in-out infinite}
+.hs-live-k{flex:none;font-weight:700;color:#191f28}
+.hs-live-t{position:relative;flex:1;min-width:0;height:22px}
+.hs-live-i{position:absolute;inset:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#4e5968;opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s}
+.hs-live-i.on{opacity:1;transform:none}
+.hs-live-i b{font-weight:600;color:#333d4b}
+@keyframes hs-pulse{50%{box-shadow:0 0 0 7px rgba(240,68,82,.05)}}
+@media(prefers-reduced-motion:reduce){.hs-live-dot{animation:none}}
+@media(max-width:900px){.hero-split h1{font-size:30px;line-height:40px}.hs-live{max-width:none;text-align:left}}
+/* 운영자 2026-11-03 "이게 토스야?": TDS 로그인 = 왼쪽 정렬 큰 제목, 56px 상자 입력칸, 56px 꽉 찬 버튼, 유지·찾기는 한 줄 */
+body:not(.sb):has(.auth-top) .auth-page-login{align-items:center;padding-top:48px}
+body:not(.sb):has(.auth-top) .auth-page-login > *{width:100%;max-width:440px}
+body:not(.sb):has(.auth-top) .auth-title-out{margin:0 0 8px;font-size:28px;line-height:38px;text-align:left}
+body:not(.sb):has(.auth-top) .auth-title-out:not(:has(+ .auth-lead-out)){margin-bottom:36px}
+body:not(.sb):has(.auth-top) .auth-lead-out{margin:0 0 32px;font-size:17px;line-height:26px;color:#4e5968;text-align:left}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body{gap:12px}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body input:not([type=checkbox]){height:56px;padding:0 16px;border:0;border-radius:14px;background:#f2f4f6;font-size:17px;color:#191f28;box-shadow:none}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body input:not([type=checkbox])::placeholder{color:#8b95a1}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body input:not([type=checkbox]):focus{background:#fff;box-shadow:inset 0 0 0 2px var(--orange)}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-submit{height:56px;margin-top:8px;border-radius:16px;font-size:17px;font-weight:700}
+.auth-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px}
+.auth-row .auth-keep{margin:0;font-size:15px;color:#4e5968}
+.auth-find{font-size:15px;color:#4e5968;text-decoration:none}
+.auth-find:hover{color:#191f28}
+body:not(.sb):has(.auth-top) .auth-join{margin-top:40px;padding-top:24px;border-top:1px solid #f2f4f6;text-align:left;color:#4e5968}
+@media(max-width:560px){body:not(.sb):has(.auth-top) .auth-page-login{padding-top:24px}body:not(.sb):has(.auth-top) .auth-title-out{font-size:24px;line-height:33px}}
+body:not(.sb):has(.auth-top) .auth-page-login .auth-body{padding-top:0}
+@media(max-width:560px){.auth-top .brand{font-size:20px}}
+/* 운영자 2026-11-03 "가운데로 하지": 제목·설명·가입 안내는 가운데 */
+body:not(.sb):has(.auth-top) .auth-title-out,body:not(.sb):has(.auth-top) .auth-lead-out,body:not(.sb):has(.auth-top) .auth-join{text-align:center}
+/* 운영자 2026-11-03: 로그인 제목 = 귤색 SOBORU 로고 + 로그인 (브랜드 알리기) */
+.auth-title-logo{display:flex;align-items:center;justify-content:center;gap:10px}
+.auth-title-logo img{height:30px;width:auto;transform:translateY(1px)}
+@media(max-width:560px){.auth-title-logo img{height:26px}}
