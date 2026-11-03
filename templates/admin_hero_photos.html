@@ -1,0 +1,99 @@
+{% extends 'console.html' %}
+{% block title %}첫 화면 사진 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap hp-admin">
+  <div class="page-intro"><h1 class="page-title">첫 화면 사진</h1>
+    <p>소비자제보센터 첫 화면 큰 제목 뒤에 깔리는 실제 제보 사진이에요. {{ min_photos }}장 이상 넣으면 보이고, {{ max_photos }}장까지 넣을 수 있어요.</p>
+    <p class="meta">원본은 공개되지 않아요. 넣을 때 가린 사본을 새로 만들어 그 사본만 첫 화면에 써요. 이름·전화번호·주소·주문번호·얼굴이 보이지 않는지 미리 보기에서 꼭 확인해 주세요.</p>
+  </div>
+
+  <section class="form-panel">
+    <h2>지금 첫 화면에 있는 사진 <small>{{ photos|length }}장{% if photos|length < min_photos %} · {{ min_photos }}장부터 보여요{% endif %}</small></h2>
+    {% if photos %}<div class="hp-grid">
+      {% for p in photos %}<div class="hp-item">
+        <img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" loading="lazy" width="150" height="200">
+        <form method="post" action="{{ url_for('admin_hero_edit', pid=p.id) }}" class="hp-row">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <input name="caption" value="{{ p.caption }}" maxlength="40" placeholder="사진 설명 (예: 배달 음식 · 포장 불량)" aria-label="사진 설명">
+          <div class="hp-btns"><button name="act" value="caption">저장</button><button name="act" value="up" aria-label="앞으로">←</button><button name="act" value="down" aria-label="뒤로">→</button><button name="act" value="delete" class="danger">빼기</button></div>
+        </form>
+      </div>{% endfor %}
+    </div>{% else %}<p class="meta">아직 넣은 사진이 없어요. 아래에서 제보 사진을 골라 주세요.</p>{% endif %}
+  </section>
+
+  <section class="form-panel" id="hp-editor" hidden>
+    <h2>가릴 곳 정하기</h2>
+    <p class="meta">‘전체 모자이크’는 사진 전체를 잘게 가려요(물건은 보이고 글씨는 안 읽혀요). ‘칠한 곳만 가리기’는 사진 위를 끌어서 네모를 그리면 그 부분만 굵게 가리고 나머지는 선명하게 둬요.</p>
+    <div class="hp-edit">
+      <div class="hp-canvas"><canvas id="hp-cv" width="600" height="800"></canvas></div>
+      <form method="post" action="{{ url_for('admin_hero_add') }}" enctype="multipart/form-data" id="hp-form" class="hp-side">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="attachment_id" id="hp-att">
+        <input type="hidden" name="boxes" id="hp-boxes" value="[]">
+        <input type="file" name="photo" id="hp-file" accept="image/jpeg,image/png,image/webp" hidden>
+        <fieldset class="hp-modes"><legend>가리는 방법</legend>
+          <label><input type="radio" name="mode" value="all" checked> 전체 모자이크</label>
+          <label><input type="radio" name="mode" value="boxes"> 칠한 곳만 가리기</label>
+        </fieldset>
+        <button type="button" id="hp-undo">네모 하나 지우기</button>
+        <label class="hp-cap">사진 설명 <input name="caption" id="hp-caption" maxlength="40" placeholder="비우면 업종 · 유형"></label>
+        <button class="primary" type="submit">이대로 첫 화면에 넣기</button>
+        <button type="button" id="hp-cancel">닫기</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="form-panel">
+    <h2>제보에 붙은 사진</h2>
+    <p class="meta">최근 제보의 사진이에요. 누르면 위에서 가릴 곳을 정할 수 있어요. <label class="hp-up">직접 올리기<input type="file" id="hp-upload" accept="image/jpeg,image/png,image/webp" hidden></label></p>
+    <div class="hp-grid">
+      {% for c in cands %}<button type="button" class="hp-cand" data-att="{{ c.id }}" data-src="{{ url_for('admin_hero_src', att_id=c.id) }}" data-cap="{{ [c.industry, c.category]|select|join(' · ') }}">
+        <img src="{{ url_for('admin_hero_src', att_id=c.id) }}" alt="" loading="lazy" width="150" height="200">
+        <span>#{{ c.case_id }} {{ c.subject|truncate(18, True, '…') }}</span>
+      </button>{% else %}<p class="meta">사진이 붙은 제보가 아직 없어요.</p>{% endfor %}
+    </div>
+  </section>
+</div></main>
+<style>
+.hp-admin h2 small{font-weight:600;color:#888;font-size:14px;margin-left:6px}
+.hp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.hp-item,.hp-cand{display:grid;gap:6px;align-content:start;text-align:left;background:none;border:0;padding:0;font:inherit;color:inherit}
+.hp-item img,.hp-cand img{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;border-radius:10px;background:#f2f0ec}
+.hp-cand{cursor:pointer}.hp-cand span{font-size:13px;color:#666}.hp-cand:hover img{outline:3px solid var(--orange,#EF920E)}
+.hp-row{display:grid;gap:6px}.hp-row input{width:100%;min-width:0;font-size:13px;padding:6px 8px}
+.hp-btns{display:flex;gap:4px;flex-wrap:wrap}.hp-btns button{padding:5px 8px;font-size:13px}
+.hp-edit{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:20px;align-items:start}
+.hp-canvas canvas{width:100%;height:auto;border-radius:12px;touch-action:none;cursor:crosshair;background:#f2f0ec;display:block}
+.hp-side{display:grid;gap:10px;align-content:start}.hp-modes{border:0;padding:0;margin:0;display:grid;gap:6px}.hp-modes legend{font-weight:700;margin-bottom:4px}
+.hp-cap{display:grid;gap:4px;font-weight:700}.hp-cap input{font-weight:400}
+.hp-up{color:var(--orange,#EF920E);font-weight:700;cursor:pointer;margin-left:6px}
+@media(max-width:680px){.hp-edit{grid-template-columns:1fr}}
+</style>
+<script>
+(function(){
+  var FINE={{ 64 }},COARSE={{ 14 }};
+  var ed=document.getElementById('hp-editor'),cv=document.getElementById('hp-cv'),cx=cv.getContext('2d');
+  var att=document.getElementById('hp-att'),boxesIn=document.getElementById('hp-boxes'),file=document.getElementById('hp-file'),cap=document.getElementById('hp-caption');
+  var img=null,boxes=[],drag=null;
+  function mode(){return document.querySelector('[name=mode]:checked').value}
+  function pix(cells,clip){var w=cells,h=Math.round(cells*800/600),t=document.createElement('canvas');t.width=w;t.height=h;t.getContext('2d').drawImage(img,0,0,600,800,0,0,w,h);
+    cx.save();cx.imageSmoothingEnabled=false;if(clip){cx.beginPath();cx.rect(clip[0],clip[1],clip[2],clip[3]);cx.clip()}cx.drawImage(t,0,0,w,h,0,0,600,800);cx.restore()}
+  function draw(){if(!img)return;cx.drawImage(img,0,0,600,800);
+    if(mode()==='all'){pix(FINE)}else{boxes.forEach(function(b){pix(COARSE,[b[0]*600,b[1]*800,b[2]*600,b[3]*800])});
+      if(drag){cx.strokeStyle='#EF920E';cx.lineWidth=3;cx.strokeRect(drag[0]*600,drag[1]*800,drag[2]*600,drag[3]*800)}}
+    boxesIn.value=JSON.stringify(boxes.map(function(b){return b.map(function(v){return +v.toFixed(4)})}))}
+  function cover(src){var c=document.createElement('canvas');c.width=600;c.height=800;var x=c.getContext('2d'),w=src.width,h=src.height,s=Math.max(600/w,800/h);x.drawImage(src,(600-w*s)/2,(800-h*s)/2,w*s,h*s);return c}
+  function open(src,id,caption){var i=new Image();i.onload=function(){img=cover(i);boxes=[];att.value=id||'';cap.value=caption||'';ed.hidden=false;draw();ed.scrollIntoView({behavior:'smooth'})};i.src=src}
+  document.querySelectorAll('.hp-cand').forEach(function(b){b.addEventListener('click',function(){file.value='';open(b.dataset.src,b.dataset.att,b.dataset.cap)})});
+  document.getElementById('hp-upload').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var dt=new DataTransfer();dt.items.add(f);file.files=dt.files;open(URL.createObjectURL(f),'','')});
+  document.querySelectorAll('[name=mode]').forEach(function(r){r.addEventListener('change',draw)});
+  document.getElementById('hp-undo').addEventListener('click',function(){boxes.pop();draw()});
+  document.getElementById('hp-cancel').addEventListener('click',function(){ed.hidden=true});
+  function pt(e){var r=cv.getBoundingClientRect();return [Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))]}
+  var start=null;
+  cv.addEventListener('pointerdown',function(e){if(mode()!=='boxes'){document.querySelector('[name=mode][value=boxes]').checked=true}start=pt(e);cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',function(e){if(!start)return;var p=pt(e);drag=[Math.min(start[0],p[0]),Math.min(start[1],p[1]),Math.abs(p[0]-start[0]),Math.abs(p[1]-start[1])];draw()});
+  cv.addEventListener('pointerup',function(){if(drag&&drag[2]>0.01&&drag[3]>0.01)boxes.push(drag);start=null;drag=null;draw()});
+})();
+</script>
+{% endblock %}

@@ -244,15 +244,15 @@ class SiteTest(unittest.TestCase):
         self.assertIn('비공개 접수', home)
         live = home.split('class="nn-sec nn-live')[1].split('</section>')[0]  # 방금 들어온 제보: 공개 제보만 본문 앞부분, 비밀글·공개 전은 제목·업체만
         self.assertNotIn('비공개 상세 내용', live); self.assertEqual(live.count('공개 본문'), 2)
-        self.assertEqual(live.count('<b>테스트 업체</b>'), 4)
+        self.assertEqual(live.count('<span class="nn-vc-co">테스트 업체</span>'), 4)
         self.assertNotIn('nn-stats', home)  # 메인에는 건수 현황 없음
         self.assertNotIn('비공개 처리된 제보예요', home)
         self.assertNotIn('비밀글로 접수된 제보예요', home)
         self.assertIn('<dt>전체</dt><dd>4</dd>', self.client.get('/reports').get_data(as_text=True))
         self.assertIn('>접수</span>', live)
         filtered_cat = self.client.get('/reports', query_string={'category': '배송·교환·환불'}).get_data(as_text=True)
-        self.assertIn('미동의 접수</a>', filtered_cat)
-        self.assertIn('비공개 접수</a>', filtered_cat)
+        self.assertIn('미동의 접수</h3>', filtered_cat)  # 소보루 제보 목록은 카드 (2026-11-03)
+        self.assertIn('비공개 접수</h3>', filtered_cat)
         self.assertNotIn('공개 계약 문의', filtered_cat)
         self.assertIn('비공개 접수', self.client.get('/reports?q=비공개').get_data(as_text=True))
         self.assertIn('미동의 접수', self.client.get('/reports?q=미동의').get_data(as_text=True))
@@ -269,6 +269,54 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('공개 계약 문의', filtered)
         empty = self.client.get('/reports?q=missing').get_data(as_text=True)
         self.assertIn('검색 조건에 맞는 제보 내역이 없습니다.', empty)
+
+    def test_hero_photos_wall(self):
+        # 첫 화면 사진 (운영자 2026-11-03): 관리자가 고른 제보 사진의 가린 사본만 공개, 3장부터 제보센터 첫 화면 뒤에 깔림
+        from PIL import Image
+        jebo = 'https://consumerjebo.co.kr'
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))
+        self.assertEqual(self.client.get('/admin/hero-photos').status_code, 302)
+        admin = self.login_admin()
+        token = self.csrf(admin, '/admin/hero-photos')
+        def pic(color):
+            b = io.BytesIO(); Image.new('RGB', (900, 1200), color).save(b, 'JPEG'); b.seek(0); return b
+        for i, color in enumerate(('red', 'green', 'blue')):
+            r = admin.post('/admin/hero-photos/add', data={'_csrf': token, 'mode': 'boxes' if i else 'all', 'boxes': '[[0.1,0.1,0.5,0.5]]', 'caption': '택배 · 파손', 'photo': (pic(color), 'a.jpg')}, content_type='multipart/form-data')
+            self.assertEqual(r.status_code, 302)
+        home = self.client.get('/', base_url=jebo).get_data(as_text=True)
+        self.assertIn('hero-wall', home); self.assertIn('택배 · 파손', home)
+        name = re.search(r'/hero/([0-9a-f]{24}\.jpg)', home).group(1)
+        img = self.client.get('/hero/' + name)
+        self.assertEqual((img.status_code, Image.open(io.BytesIO(img.data)).size), (200, (600, 800)))
+        self.assertEqual(self.client.get('/hero/' + 'a' * 24 + '.jpg').status_code, 404)
+        with self.site.conn() as db: pid = db.execute('SELECT id FROM hero_photos WHERE stored=?', (name,)).fetchone()[0]
+        admin.post('/admin/hero-photos/%d' % pid, data={'_csrf': token, 'act': 'delete'})
+        self.assertEqual(self.client.get('/hero/' + name).status_code, 404)
+        self.assertNotIn('hero-wall', self.client.get('/', base_url=jebo).get_data(as_text=True))  # 2장이면 예전 그림
+
+    def test_report_talk_ai_draft(self):
+        # 대화로 제보하기 (운영자 2026-11-03): AI가 되물을 것과 초안을 주고, 업종·유형은 목록 안에서만, 개인정보는 지움. 접수는 기존 /report로
+        page = self.client.get('/report/talk').get_data(as_text=True)
+        self.assertIn('id="tk-log"', page); self.assertIn('action="/report"', page); self.assertIn('name="truth"', page)
+        token = self.csrf(self.client, '/report/talk')
+        seen = []
+        def fake(url, headers, body, timeout):
+            seen.append(body)
+            out = {'summary': '환불 거절 건이시죠?', 'industry': '쇼핑', 'category': '배송·교환·환불', 'company': '하루몰', 'occurred_on': '2999-01-01',
+                   'subject': '환불이 안 돼요', 'description': '연락처 010-1234-5678로 문자했어요.', 'request_text': '환불', 'request_options': ['전액 환불'],
+                   'questions': [{'q': '업체에 연락해 보셨나요?', 'options': ['네', '아니요']}, {'q': 'a'}, {'q': 'b'}]}
+            return 200, {'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+        photo = io.BytesIO(b'\xff\xd8\xff' + b'0' * 100)
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+            r = self.client.post('/report/talk/ai', data={'_csrf': token, 'story': '운동화 반품했는데 환불이 안 돼요', 'qa': '[]', 'photo': (photo, 'a.jpg')}, content_type='multipart/form-data')
+        d = r.get_json()['draft']
+        self.assertEqual((d['industry'], d['category'], d['occurred_on']), ('쇼핑·유통', '배송·교환·환불', ''))
+        self.assertNotIn('010-1234-5678', d['description']); self.assertEqual(len(d['questions']), 2)
+        self.assertEqual(seen[0]['model'], 'gpt-6-luna'); self.assertEqual(seen[0]['messages'][1]['content'][1]['type'], 'image_url')
+        with patch.dict(os.environ, {'OPENAI_API_KEY': ''}):
+            self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': '환불이 안 돼요'}).get_json(), {'ok': False, 'error': 'ai'})
+        self.assertEqual(self.client.post('/report/talk/ai', data={'_csrf': token, 'story': ''}).status_code, 400)
 
     def test_submission_lookup_admin_and_company_response(self):
         token = self.csrf(self.client, '/report')
@@ -294,6 +342,7 @@ class SiteTest(unittest.TestCase):
         response = self.client.post('/lookup', data={'_csrf': token, 'mode': 'phone', 'phone': '01012345678', 'password': '1234'}, follow_redirects=True)
         self.assertIn('테스트 환불 요청', response.get_data(as_text=True))
         self.assertIn('aria-current="step"', response.get_data(as_text=True))
+        self.assertIn('테스트 업체</span><span class="nn-vc-ind">쇼핑·유통</span>', self.client.get('/reports').get_data(as_text=True))  # 업체 옆에 소비자가 고른 업종
         self.assertIn('현재 단계: 접수', response.get_data(as_text=True))
         admin = self.site.app.test_client()
         token = self.csrf(admin, '/admin/login')
@@ -1090,8 +1139,8 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'hold'})
         self.assertEqual(self.client.get('/reports/%d' % ids['public']).status_code, 404)
         listing = self.client.get('/reports').get_data(as_text=True)
-        self.assertIn('href="/reports/%d/mine" title="센터가 개인정보를 확인한 뒤 내용이 공개돼요">public 제목</a>' % ids['public'], listing)
-        self.assertIn('pending-tag">비공개', listing)
+        card = listing.split('href="/reports/%d/mine"' % ids['public'])[1].split('</a>')[0]  # 카드: 제목만, 누르면 조회 비밀번호 창
+        self.assertIn('public 제목</h3>', card); self.assertIn('제보자 본인과 담당자만', card)
         self.assertNotIn('연락은 010', listing)
         self.assertEqual(self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'publish_review', 'decision': 'approve'}).status_code, 400)
         self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'approve'})
@@ -1101,7 +1150,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('href="/reports/%d/mine"' % ids['secret'], home)  # 비밀글은 제목이 보여도 비밀번호 창으로
         self.assertIn('secret 제목', home)
         listing = self.client.get('/reports').get_data(as_text=True)
-        self.assertIn('secret 제목</a>', listing)
+        self.assertIn('secret 제목</h3>', listing)
         self.assertNotIn('연락은 010', listing)  # 비밀글 본문은 목록에 없음
         # 비밀글 제목·업체명은 늘 목록에 보임 (운영자 설정을 저장해도 그대로)
         self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'settings', 'status': '접수', 'assignee': ''})
@@ -1529,10 +1578,10 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(live.headers['Cache-Control'], 'no-store')
         self.assertEqual(live.get_data(as_text=True).count('class="case-link"'), self.site.HOME_LATEST)
         page1 = self.client.get('/reports').get_data(as_text=True)
-        self.assertEqual(page1.count('class="case-link"'), 20)
+        self.assertEqual(page1.count('class="nn-vc-card'), 20)
         self.assertIn('aria-current="page">제보 목록</a>', page1)
         page2 = self.client.get('/reports?page=2').get_data(as_text=True)
-        self.assertEqual(page2.count('class="case-link"'), 5)
+        self.assertEqual(page2.count('class="nn-vc-card'), 5)
         self.assertIn('공개 제보 00', page2)
 
     def test_search_engine_support(self):
@@ -1700,7 +1749,7 @@ class SiteTest(unittest.TestCase):
             for base in ('https://consumerjebo.co.kr', 'https://soboru.co.kr'):
                 rows = self.client.get('/reports', base_url=base).get_data(as_text=True)
                 self.assertIn('두 사이트에 같이 뜨는 제보', rows)
-                self.assertNotIn('원문 비공개 내용', rows)
+                self.assertIn('원문 비공개 내용', rows)  # 카드는 공개 제보 글 앞부분(개인정보 가림)을 보여 줌 (2026-11-03, 공개 제보 화면과 같은 글)
             self.assertIn('소비자게시판', self.client.get('/board', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
             self.assertEqual(self.client.get('/reports', base_url='http://www.consumerjebo.co.kr').headers['Location'], 'https://consumerjebo.co.kr/reports')
             with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):
@@ -2645,7 +2694,10 @@ class SiteTest(unittest.TestCase):
         self.assertIn('첨부 전 체크', public)
         self.assertIn('구매한 날', public)
         self.assertNotIn('data-k=', public)
-        self.assertIn('접수 완료', self.client.get('/reports').get_data(as_text=True))
+        with self.site.conn() as db:
+            db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                       ('edit-mode', hashlib.sha256(b'edit').hexdigest(), '배송·환불', '단계 업체', '단계 이름 제보', '내용', '요청', '2026-10-17', 1, 1))
+        self.assertIn('class="step-badge">접수 완료<', self.client.get('/reports').get_data(as_text=True))  # 제보 카드의 공개 단계 이름
         admin.post('/admin/inline', data={'_csrf': token, 'key': 'guide.u_title', 'value': '', 'reset': '1'})
         self.assertIn('첨부하기 전에 확인해 주세요', self.client.get('/guide').get_data(as_text=True))
         self.assertEqual(self.client.post('/admin/inline', data={'_csrf': self.csrf(self.client, '/report'), 'key': 'guide.u_title', 'value': 'x'}).status_code, 302)
@@ -3105,7 +3157,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('비번 없는 공개 제보', home)
         self.assertNotIn('공개 검토 중', home)  # 공개 제보는 접수 즉시 게시
         self.assertIn('href="/reports/1"', home)
-        self.assertIn('class="st-legend"', self.client.get('/reports').get_data(as_text=True))
+        self.assertIn('class="step-badge">접수</span>', self.client.get('/reports').get_data(as_text=True))
 
     def test_publish_legacy_pending_reports(self):
         # 자동 게시 전에 들어와 승인을 기다리던 공개 제보는 관리자가 한 번에 게시. 게시를 내린 기록이 있으면 그대로
@@ -3142,7 +3194,6 @@ class SiteTest(unittest.TestCase):
         self.assertIn('기업 답변·처리', done)
         with self.site.conn() as db:db.execute("UPDATE cases SET status='기업 답변 대기' WHERE subject='단계 확인 제보'")
         reports = self.client.get('/reports').get_data(as_text=True)
-        self.assertIn('<li class="st-5"><i aria-hidden="true"></i>처리 중</li>', reports)
         self.assertIn('<span class="step-badge">처리 중</span>', reports)
         self.assertNotIn('기업 답변 대기', reports)
         self.post_form(self.client, '/lookup', {'mode': 'phone', 'phone': '010-8181-3030', 'password': '4321'})
@@ -5273,7 +5324,7 @@ class SiteTest(unittest.TestCase):
         for part in (html, text):
             self.assertIn('첫째 소식, 이것만 알면 돼요', part); self.assertIn(it1['src']['url'], part)
             self.assertIn('/letter/unsubscribe/tok-x', part); self.assertIn('https://www.law.go.kr/', part)
-        self.assertIn('max-width:600px', html); self.assertIn('원문 보기 ›', html); self.assertNotIn('써 본 사람들이 추천한 리뷰', html)
+        self.assertIn('max-width:680px', html); self.assertIn('원문 보기 ›', html); self.assertNotIn('써 본 사람들이 추천한 리뷰', html)
         for part in (html, text):
             for word in ('이것만 쓱', '⚡', '👀', 'EDITOR\'S COMMENT'):  # 뉴닉 문구·이모지 X (운영자 2026-11-01)
                 self.assertNotIn(word, html)
@@ -5314,7 +5365,7 @@ class SiteTest(unittest.TestCase):
         with patch.dict(os.environ, {'STIBEE_API_KEY': 'stb-test'}), patch.object(self.site.soboru_letter, 'stibee_call', fake):
             self.assertEqual(send(r['id'])['status'], 'sent')
         self.assertEqual([c[:2] for c in calls], [('POST', '/emails'), ('POST', '/emails/777/content'), ('POST', '/emails/777/send')])
-        self.assertEqual(calls[0][2]['listId'], 4321); self.assertTrue(calls[0][2]['subject'].startswith('[소보루 레터]'))
+        self.assertEqual(calls[0][2]['listId'], 4321); self.assertTrue(calls[0][2]['subject'].startswith('🍞[소보루 레터]'))
         self.assertEqual(calls[1][3], 'text/html'); self.assertIn('$%unsubscribe%$', calls[1][2]); self.assertIn('<body>', calls[1][2])
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
         self.assertEqual((L['status'], L['trigger'], L['stibee_id']), ('sent', 'stibee', 777))
@@ -5637,7 +5688,7 @@ class SiteTest(unittest.TestCase):
             html, text = m.get_body(('html',)).get_content(), m.get_body(('plain',)).get_content()
             self.assertIn(f'/letter/unsubscribe/{token}', html); self.assertIn(f'/letter/unsubscribe/{token}', text)
             self.assertNotIn('__LETTER_UNSUB__', html + text)
-            self.assertTrue(m['Subject'].startswith('[소보루 레터]'))
+            self.assertTrue(m['Subject'].startswith('🍞[소보루 레터]'))
         sent = L['get'](r['id'])
         self.assertEqual((sent['status'], sent['sent_count'], sent['failed']), ('sent', 2, 0)); self.assertTrue(sent['sent_at'])
         # 공개 보관함·웹 버전·사이트맵
@@ -5685,7 +5736,12 @@ class SiteTest(unittest.TestCase):
                          ('배경은 한은 기준금리 동결 결정', 'biz.chosun.com')],
                 '증시': [('마감 코스피 외국인 매도 하락', 'a.kr'), ('지속 코스피 외국인 매도 하락', 'b.kr'), ('전망 코스피 외국인 매도 하락', 'c.kr'), ('이유 코스피 외국인 매도 하락', 'd.kr')],
                 '물가': [('배추값 한 달 새 두 배', 'e.kr'), ('라면 가격 올라', 'f.kr'), ('우유 납품가 협상', 'g.kr')],
-                '고용': [('청년 취업자 줄어', 'h.kr'), ('제조업 일자리 감소', 'i.kr'), ('공공기관 채용 확대', 'j.kr')]}
+                '고용': [('청년 취업자 줄어', 'h.kr'), ('제조업 일자리 감소', 'i.kr'), ('공공기관 채용 확대', 'j.kr')],
+                '소비 트렌드': [('편의점 두바이 쫀득쿠키 품절 행렬', 'k.kr'), ('요즘 편의점 두바이 쫀득쿠키 품절', 'www.mk.co.kr'), ('또 편의점 두바이 쫀득쿠키 품절', 'l.kr')]}
+        with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('letter','{\"freq\": \"weekly\"}')")
+        def unset():
+            with self.site.conn() as db: db.execute("DELETE FROM soboru_settings WHERE key='letter'")
+        self.addCleanup(unset)
         def fake(method, url, headers, body, timeout):
             q = dict(urllib.parse.parse_qsl(url.split('?', 1)[1]))['query']
             return 200, {'total': 9, 'items': [{'title': t, 'description': t + ' 요약', 'link': f'https://n.news.naver.com/{abs(hash(t))}', 'originallink': f'https://{h}/{abs(hash(t))}',
@@ -5697,6 +5753,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('동결', first['title']); self.assertIn(first['source'], ('한국경제', '조선일보'))   # 주요 신문이 다룬 이슈가 앞, 대표는 주요 신문
         self.assertIn('2.50%', first['text'])
         self.assertTrue(any(o['source'] in ('한국경제', '조선일보') and o.get('text') for o in first['more']))   # 다른 주요 신문 본문도 같이
+        self.assertEqual(mat['buzz'][0]['source'], '매일경제')   # 소비 트렌드도 주요 신문 기사를 대표로 (운영자 2026-11-01)
 
     def test_letter_weekly_schedule_and_auto_send(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)

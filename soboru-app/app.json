@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "소보루",
+    "name": "소보루제보",
     "slug": "soboru-app",
-    "version": "1.0.4",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -60,7 +60,7 @@
       ]
     ],
     "extra": {
-      "site": "https://soboru.co.kr",
+      "site": "https://consumerjebo.co.kr",
       "eas": {
         "projectId": "e3bf6ae9-e0d5-4794-b564-03e496b5d815"
       }

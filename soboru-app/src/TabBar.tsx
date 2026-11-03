@@ -1,4 +1,4 @@
-// 아래 탭 (사이트의 휴대폰 탭바 templates/soboru_tabbar.html과 같은 다섯 칸·순서). 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
+// 아래 탭: 홈·제보 목록·제보하기·알림·내 제보 (소보루제보 앱). 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,20 +12,21 @@ const MUTE = '#9A918A';
 
 export function tabsFor(member: boolean): Tab[] {
   return [
+    // 소보루제보 앱 (운영자 2026-11-03): 소비자제보센터(consumerjebo.co.kr)를 띄우고, 제보하기는 AI와 대화로
     { key: 'home', label: '홈', path: '/' },
-    { key: 'board', label: '커뮤니티', path: '/feed' },
-    { key: 'report', label: '제보', path: '/report' },
-    { key: 'life', label: '매거진', path: '/life' },
-    member ? { key: 'my', label: 'MY', path: '/me' } : { key: 'my', label: '내 제보', path: '/lookup' },
+    { key: 'board', label: '제보 목록', path: '/reports' },
+    { key: 'report', label: '제보하기', path: '/report/talk' },
+    { key: 'life', label: '알림', path: member ? '/me/alerts' : '/login?next=/me/alerts' },
+    member ? { key: 'my', label: '내 제보', path: '/me' } : { key: 'my', label: '내 제보', path: '/lookup' },
   ];
 }
 
 /** 지금 화면 주소(/life/12 등)에 맞는 탭 */
 export function activeTab(path: string): string {
   if (path === '/' || path === '') return 'home';
-  if (path.startsWith('/life')) return 'life';
+  if (path.startsWith('/me/alerts')) return 'life';
   if (path.startsWith('/report') && !path.startsWith('/reports')) return 'report';
-  if (['/board', '/feed', '/vs', '/suda', '/owners', '/u/', '/me/following', '/me/people'].some((x) => path.startsWith(x))) return 'board';
+  if (['/reports', '/companies', '/board'].some((x) => path.startsWith(x))) return 'board';
   if (path.startsWith('/me') || path.startsWith('/lookup')) return 'my';
   return '';
 }
@@ -35,8 +36,8 @@ function Icon({ name, color }: { name: string; color: string }) {
   return (
     <Svg width={23} height={23} viewBox="0 0 24 24">
       {name === 'home' && <Path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" {...p} />}
-      {name === 'life' && (<><Path d="M5 4h11l3 3v13H5z" {...p} /><Path d="M8 10h8M8 14h8M8 18h5" {...p} /></>)}
-      {name === 'board' && <Path d="M4 5h16v11H9l-5 4z" {...p} />}
+      {name === 'life' && (<><Path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z" {...p} /><Path d="M10 20.5a2 2 0 004 0" {...p} /></>)}
+      {name === 'board' && (<><Path d="M5 4h14v16H5z" {...p} /><Path d="M8.5 9h7M8.5 13h7M8.5 17h4" {...p} /></>)}
       {name === 'my' && (<><Circle cx={12} cy={8.5} r={4} {...p} /><Path d="M4 21c.9-4 4-6 8-6s7.1 2 8 6" {...p} /></>)}
       {name === 'report' && <Path d="M12 5v14M5 12h14" {...p} strokeWidth={2.6} />}
     </Svg>

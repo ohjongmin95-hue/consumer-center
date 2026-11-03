@@ -16,7 +16,7 @@ NEW_NAME = '소보루'
 # 예전 브랜드 시절 소보루로 덮어쓰던 문구. 소보루 하나만 쓰면서 기본값이 소보루 문구가 됐으니, 그때 저장해 둔 값(화면에 안 보이던 값)은 한 번 지움
 RETIRED_KEYS = ('site.brand', 'site.name', 'seo.home_title', 'seo.description', 'board.title')
 # 소비자제보센터 화면(consumerjebo.co.kr): 소보루와 같은 제보·게시판·관리자를 쓰고, 이름·제목만 이 칸의 값으로 바꿔 보여 줌
-LOGIN_TO_WRITE = ('report', 'board_write', 'board_comment', 'case_comment')  # 소보루 화면에서 로그인해야 쓰는 곳
+LOGIN_TO_WRITE = ('report', 'report_talk', 'report_talk_ai', 'board_write', 'board_comment', 'case_comment')  # 소보루 화면에서 로그인해야 쓰는 곳
 SOBORU_ONLY = ('/life', '/letter', '/pick/', '/ask', '/feed', '/vs', '/suda', '/editor', '/me/saved', '/owners', '/u/', '/people/', '/me/following', '/me/people')
 JEBO_KEYS = {'site.name': 'jebo.site_name', 'seo.home_title': 'jebo.home_title', 'seo.description': 'jebo.description', 'board.title': 'jebo.board_title'}
 
@@ -436,21 +436,29 @@ def install(S):
     def live_cards(n):
         """홈 '소비자의 소리' 카드 (운영자 요청 2026-10-30: 검은고양이처럼 콘텐츠 보듯이): 공개 제보는 본문 앞부분(개인정보 가림)과
         '나도 겪었어요'·댓글 수, 기업 답변 여부까지. 비밀글·공개 전 제보는 제목·업체·단계만 (본문 없음)"""
-        cases = [dict(c, look=report_look(c['cat'])) for c in S.report_rows(limit=n)]
+        return card_info(S.report_rows(limit=n))
+
+    def card_info(rows, excerpt=140):
+        """제보 목록 줄(report_rows)에 카드용 정보를 붙임: 본문 앞부분(공개 제보만, 개인정보 가림)·기업 답변 여부·'나도 겪었어요'·댓글 수"""
+        cases = [dict(c, look=report_look(c['cat'])) for c in rows]
         ids = [c['no'] for c in cases]
         if not ids: return cases
         q = ','.join('?' * len(ids))
         with conn() as db:
-            rows = {r['id']: r for r in db.execute(f'SELECT id,public_consent,published,public_body,description FROM cases WHERE id IN ({q})', ids)}
+            rows = {r['id']: r for r in db.execute(f'SELECT id,public_consent,published,public_body,description,user_id FROM cases WHERE id IN ({q})', ids)}
             first = jebo.first_answers(db, ids)
+            uids = sorted({r['user_id'] for r in rows.values() if r['user_id']})
+            nicks = {u['id']: u['nickname'] for u in db.execute(f"SELECT id,nickname FROM users WHERE status='active' AND id IN ({','.join('?' * len(uids))})", uids)} if uids else {}
         tc = app.jinja_env.globals.get('talk_counts')  # casetalk.py가 붙임 (소보루 모듈보다 나중에 설치돼서 S에는 없음)
         talk = tc(ids) if tc else {}
         for c in cases:
             r = rows.get(c['no'])
             open_ = bool(r and r['public_consent'] and r['published'] and c['title'])
             body = ' '.join((r['public_body'] or S.mask_personal(r['description'] or '')).split()) if open_ else ''
-            c.update(open=open_, excerpt=body[:140], answered=c['no'] in first, metoo=talk.get(c['no'], (0, 0))[0], comments=talk.get(c['no'], (0, 0))[1])
+            uid = r['user_id'] if r and open_ and r['user_id'] in nicks else None  # 작성자 닉네임은 공개 제보만 (운영자 2026-11-03: 검은고양이처럼)
+            c.update(open=open_, excerpt=body[:excerpt], author_id=uid, author=nicks.get(uid, ''), answered=c['no'] in first, metoo=talk.get(c['no'], (0, 0))[0], comments=talk.get(c['no'], (0, 0))[1])
         return cases
+    app.jinja_env.globals['report_cards'] = card_info  # 소보루 제보 목록(/reports)도 홈처럼 카드로 (운영자 2026-11-03: 검은고양이처럼)
 
     def home_nn():
         # 뉴닉식 홈(운영자 요청, 2026-10-17): 맨 위는 소보루 소개만(건수 없음), 바로 아래 실시간 제보.

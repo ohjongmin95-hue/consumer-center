@@ -4,12 +4,24 @@
 <main class="home-blocks">
   {% for block in items('home_blocks') %}
   {{ ed_remove('home_blocks', loop.index0) }}
-  {% if block.kind in ('hero', 'hero_plain') %}
+  {% if block.kind == 'hero' and hero_wall() %}{% set wall = hero_wall() %}{# 실제 제보 사진 벽 (가린 사본, 관리자 > 첫 화면 사진) #}
+  <section class="hero hero-wall">
+    <div class="hw-cols" aria-hidden="true">{% for col in range(6) %}{% set k = (col * 5) % wall|length %}{% set mine = wall[k:] + wall[:k] %}
+      <div class="hw-col hw-c{{ col }}"><div class="hw-track">{% for _ in range(2) %}{% for p in mine %}<figure><img src="{{ url_for('hero_photo', name=p.stored) }}" alt="" width="300" height="400"{% if loop.index > 3 %} loading="lazy"{% endif %}>{% if p.caption %}<figcaption>{{ p.caption }}</figcaption>{% endif %}</figure>{% endfor %}{% endfor %}</div></div>{% endfor %}
+    </div>
+    <div class="hero-copy">
+      <h1>{{ block.title or txt('home.hero_title') }}</h1>
+      <a class="primary" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+    </div>
+    <p class="hw-note">{{ ui('home.wall_note', '실제 제보 사진이에요. 개인정보는 가렸어요.') }}</p>
+  </section>
+
+  {% elif block.kind in ('hero', 'hero_plain') %}
   <section class="hero{% if block.kind == 'hero' %} hero-art{% endif %}">
     {% if block.kind == 'hero' %}<img class="hero-side hero-side-left" src="{{ asset('img/hero-left.svg') }}" alt="" width="360" height="380">{% endif %}
     <div class="hero-copy">
       <h1>{{ block.title or txt('home.hero_title') }}</h1>
-      <a class="primary" href="{{ block.button_link or url_for('report') }}">{{ block.button_label or txt('home.hero_button') }}</a>
+      <a class="primary" href="{{ block.button_link or url_for('report_talk') }}">{{ block.button_label or txt('home.hero_button') }}</a>
     </div>
     {% if block.kind == 'hero' %}<img class="hero-side hero-side-right" src="{{ asset('img/hero-right.svg') }}" alt="" width="360" height="380">{% endif %}
   </section>

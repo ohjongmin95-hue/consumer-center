@@ -519,4 +519,19 @@ with m.conn() as db:
         _t = (_dt2.datetime.now() - _dt2.timedelta(days=d)).isoformat(timespec='seconds')
         db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,company_id,subject,description,request_text,created,forwarded_at,reviewed_at,status,review) VALUES(?,?,?,?,?,?,?,?,?,?,?,'기업 답변 대기','ok')",
                    ('VS-' + nm, 'x', '배송·교환·환불', nm, co_id, '환불이 안 돼요', '환불이 안 돼요', '환불', _t, _t, _t))
+import json as _json
+os.environ.setdefault('OPENAI_API_KEY', 'vrt-fake')
+_talk_prev = m.companydesk.post_json
+def _talk_ai(url, headers, body, timeout):  # 대화로 제보하기(report_talk.py): 처음엔 한 가지 되묻고, 답하면 초안
+    if '접수 도우미' not in body['messages'][0]['content']: return _talk_prev(url, headers, body, timeout)
+    text = body['messages'][1]['content'][0]['text']
+    if '[답]' not in text:
+        out = {'questions': [{'q': '업체에 환불을 요청해 보셨나요?', 'options': ['네, 거절당했어요', '연락이 안 돼요', '아직 안 했어요']}]}
+    else:
+        out = {'summary': '하루배송몰에서 산 운동화가 2주째 환불되지 않는 일로 제보하시는 거죠?', 'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '하루배송몰',
+               'occurred_on': '', 'subject': '반품한 운동화, 2주째 환불이 안 돼요',
+               'description': '하루배송몰에서 운동화를 89,000원에 샀어요. 사이즈가 맞지 않아 받은 지 사흘 만에 반품을 신청했고, 업체가 안내한 택배로 보냈어요. 업체가 물건을 받았다고 확인했는데 2주가 지나도록 환불이 되지 않았어요. 고객센터는 연결이 안 되고 게시판 문의에도 답이 없어요.',
+               'request_text': '결제한 89,000원 전액 환불을 원해요.', 'request_options': ['전액 환불', '빠른 처리', '사과'], 'questions': []}
+    return 200, {'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
+m.companydesk.post_json = _talk_ai
 app.run(host='127.0.0.1', port=PORT)

@@ -1,0 +1,84 @@
+/* 제보 카드·목록 피드: 소보루와 소비자제보센터(consumerjebo.co.kr)가 같이 씀 (운영자 2026-11-03: 검은고양이처럼 공개 제보 + 공감·댓글, 토스처럼 깔끔하게) */
+body:not(.sb){--sb-orange:#e8890c;--sb-mute:#8b95a1;--sb-sub:#4e5968;--sb-line:#f2f4f6;--sb-ink:#191f28}
+.nn-emo{display:flex;align-items:center;justify-content:center;font-family:Tossface,sans-serif}
+.nn-emo.t1{background:#fff1e3}.nn-emo.t2{background:#e8f1fb}.nn-emo.t3{background:#e7f5ea}.nn-emo.t4{background:#fdeef2}.nn-emo.t5{background:#f1ecfb}.nn-emo.t6{background:#fbf5dc}
+.nn-vc-card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:20px;border:1px solid #e5e8eb;border-radius:20px;background:#fff;box-shadow:0 2px 10px rgba(25,31,40,.06);color:inherit;text-decoration:none;transition:border-color .15s,box-shadow .15s}
+.nn-vc-card:hover{border-color:#f5d4b7;box-shadow:0 8px 24px rgba(25,31,40,.09);transform:translateY(-2px)}
+.nn-vc-card:focus-visible{outline:2px solid var(--sb-orange);outline-offset:2px}
+.nn-vc-top{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sb-mute)}
+.nn-vc-top .nn-emo{flex:none;width:36px;height:36px;border-radius:12px;font-size:19px}
+.nn-vc-who{display:grid;min-width:0;line-height:1.3}.nn-vc-who b{font-size:14px;font-weight:800;color:var(--sb-ink,#191f28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nn-vc-who small{font-size:12px;color:var(--sb-mute)}
+.nn-vc-top time{margin-left:auto;flex:none}
+.nn-vc-main{display:flex;gap:12px;align-items:flex-start;flex:1}
+.nn-vc-txt{flex:1;min-width:0}
+.nn-vc-card h3{white-space:normal;font-size:17px;font-weight:800;line-height:1.4;margin:0;letter-spacing:-.02em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.nn-vc-card:hover h3{color:var(--sb-orange)}
+.nn-vc-lock{width:15px;height:15px;margin-right:4px;vertical-align:-2px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;color:var(--sb-mute)}
+.nn-vc-ex{font-size:14px;line-height:1.6;color:var(--sb-sub);margin:6px 0 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.is-locked .nn-vc-ex{color:var(--sb-mute)}
+.nn-vc-foot{display:flex;align-items:center;gap:6px;padding-top:12px;border-top:1px solid var(--sb-line);font-size:13px;color:var(--sb-mute)}
+.nn-vc-foot .sb-badge{font-size:12px;padding:2px 8px;margin:0}
+.nn-vc-ans{font-size:12px;font-weight:700;color:#0ca678;background:#e6f7f1;border-radius:6px;padding:2px 8px}
+.nn-vc-sp{flex:1}
+.nn-vc-n{display:inline-flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums}
+.nn-vc-n+.nn-vc-n{margin-left:6px}
+.nn-vc-n.on{color:var(--sb-orange);font-weight:700}.nn-vc-n svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round}
+/* 소비자 제보 목록(/reports): 표·영수증 대신 카드 피드 + 오른쪽 안내 (운영자 2026-11-03: 검은고양이처럼 직관적이게) */
+.rf-wrap{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:24px;align-items:start;margin-top:16px}
+.rf-list{display:grid;gap:14px}
+.rf-list .nn-vc-ex{-webkit-line-clamp:4}
+.rf-side{position:sticky;top:88px;display:grid;gap:12px}
+.rf-box{display:block;border:1px solid #e5e8eb;border-radius:18px;background:#fff;padding:18px;box-shadow:0 2px 10px rgba(25,31,40,.05)}
+.rf-cta b{display:block;font-size:17px;font-weight:800;letter-spacing:-.02em}
+.rf-cta p{font-size:14px;line-height:1.6;color:var(--sb-sub);margin:6px 0 14px}
+.rf-cta .primary{display:block;text-align:center;padding:12px;border-radius:12px;background:var(--sb-orange);color:#fff;font-weight:800;text-decoration:none}
+.rf-stats{display:grid;grid-template-columns:repeat(3,1fr);margin:0;text-align:center}
+.rf-stats dt{font-size:12px;color:var(--sb-mute)}.rf-stats dd{margin:2px 0 0;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+.rf-link{display:flex;justify-content:space-between;font-weight:700;color:inherit;text-decoration:none}
+.rf-link:hover{color:var(--sb-orange)}
+@media(max-width:900px){.rf-wrap{grid-template-columns:1fr}.rf-side{position:static;order:-1;grid-template-columns:1fr}.rf-cta,.rf-link{display:none}.rf-list .nn-vc-card{padding:16px;border-radius:18px}}
+.rf-cats{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:4px 0 12px;padding-bottom:2px}.rf-cats::-webkit-scrollbar{display:none}
+.rf-cats a{flex:none;padding:7px 14px;border-radius:999px;background:#f2f4f6;color:#4e5968;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap}
+.rf-cats a.on{background:#191f28;color:#fff}
+.report-tools.rf-tools{flex-wrap:nowrap}.report-tools.rf-tools input{min-width:0;flex-basis:auto;width:auto}
+.rf-st .step-badge{font-size:12px;padding:2px 9px}
+.nn-vc-card h3,.nn-vc-ex{word-break:keep-all}
+@media(min-width:900px){.rf-home{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.nn-vc-ind{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;background:#f2f4f6;color:#4e5968;font-size:12px;font-weight:600;vertical-align:1px}
+/* 2026-11-03 카드 머리: 작성자 프로필·닉네임·날짜 + 오른쪽 진행 상태 (검은고양이처럼) */
+.nn-vc-av{flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;background:#fff1e3;color:#c45f00;font-weight:800;font-size:16px;display:inline-flex;align-items:center;justify-content:center}
+.nn-vc-top .nn-vc-av.nn-emo{width:40px;height:40px;border-radius:50%;font-size:20px}
+.nn-vc-top{gap:10px}
+.nn-vc-who time{font-size:12px;color:var(--sb-mute)}
+.nn-vc-top .step-bar,.nn-vc-top .sb-badge{margin-left:auto;flex:none}
+.nn-vc-meta{display:grid;gap:6px;margin:0;font-size:14px}
+.nn-vc-meta div{display:flex;align-items:center;gap:10px;min-width:0}
+.nn-vc-meta dt{flex:none;width:58px;color:var(--sb-mute);font-size:13px}
+.nn-vc-meta dd{margin:0;display:flex;align-items:center;gap:6px;min-width:0;color:var(--sb-ink,#191f28);font-weight:700}
+.nn-vc-co{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.nn-vc-meta .nn-vc-ind{margin:0;flex:none}
+.nn-vc-tag{display:inline-block;padding:2px 10px;border-radius:999px;background:#f2f4f6;color:#4e5968;font-size:13px;font-weight:600}
+.nn-vc-who time{margin:0}.nn-vc-meta .nn-vc-ind{background:#fff1e3;color:#c45f00}
+.nn-vc-av.is-anon{background:#f2f4f6;color:#b0b8c1}.nn-vc-av.is-anon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.talk-banner{display:flex;align-items:center;gap:4px 12px;flex-wrap:wrap;margin:0 0 16px;padding:16px 18px;border-radius:18px;background:#fff6ea;border:1px solid #f9d9a8;color:#191f28;text-decoration:none}
+.talk-banner b{font-size:16px}.talk-banner span{font-size:14px;color:#4e5968;flex:1}.talk-banner i{font-style:normal;font-weight:800;color:#CE6719}
+
+/* 2026-11-03 첫 화면 사진 벽: 실제 제보 사진(가린 사본)이 천천히 흐르는 큰 제목 칸 (hero_photos.py, index.html) */
+.hero-wall{position:relative;overflow:hidden;display:grid;place-items:center;min-height:540px;margin-top:20px;padding:0 20px;border:0;border-radius:28px;background:#21180f;isolation:isolate}
+.hw-cols{position:absolute;inset:0 -6px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;z-index:-2}
+.hw-col{overflow:hidden;min-width:0}
+.hw-track{display:grid;gap:12px;animation:hw-up 80s linear infinite}
+.hw-c1 .hw-track,.hw-c4 .hw-track{animation-duration:64s;animation-direction:reverse}
+.hw-c2 .hw-track,.hw-c5 .hw-track{animation-duration:96s;margin-top:-90px}
+.hw-col figure{position:relative;margin:0;border-radius:16px;overflow:hidden;background:#3a2c20}
+.hw-col img{display:block;width:100%;height:auto;aspect-ratio:3/4;object-fit:cover}
+.hw-col figcaption{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);padding:4px 8px;border-radius:8px;background:rgba(20,14,9,.62);color:#fff;font-size:12px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero-wall::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(rgba(26,18,11,.5),rgba(26,18,11,.62) 45%,rgba(26,18,11,.62) 70%,rgba(26,18,11,.85))}
+.hero-wall .hero-copy{position:relative;padding:40px 8px;text-align:center}
+.hero-wall h1{color:#fff;word-break:keep-all;text-shadow:0 2px 18px rgba(0,0,0,.35)}
+.hero-wall .primary{box-shadow:0 8px 22px rgba(0,0,0,.28)}
+.hw-note{position:absolute;left:0;right:0;bottom:16px;margin:0;text-align:center;color:rgba(255,255,255,.78);font-size:13px}
+@keyframes hw-up{from{transform:translateY(0)}to{transform:translateY(calc(-50% - 6px))}}
+@media(prefers-reduced-motion:reduce){.hw-track{animation:none}}
+@media(max-width:900px){.hw-cols{grid-template-columns:repeat(4,minmax(0,1fr))}.hw-c4,.hw-c5{display:none}}
+@media(max-width:680px){.hero-wall{min-height:460px;margin-top:12px;border-radius:22px;padding:0 12px}.hw-cols{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.hw-track{gap:8px}.hw-c3{display:none}.hw-col figure{border-radius:12px}.hw-col figcaption{display:none}}

@@ -1,4 +1,4 @@
-// 소보루 앱: 사이트(soboru.co.kr)를 웹뷰로 띄우고, 아래 탭·푸시 알림·Apple 로그인·공유·오프라인 화면은 앱이 직접 맡는다.
+// 소보루제보 앱: 사이트(consumerjebo.co.kr, app.json extra.site)를 웹뷰로 띄우고, 아래 탭·푸시 알림·Apple 로그인·공유·오프라인 화면은 앱이 직접 맡는다.
 // 사이트와는 templates/app_bridge.html의 window.SoboruApp으로 주고받는다.
 import * as AppleAuthentication from 'expo-apple-authentication';
 import Constants from 'expo-constants';
