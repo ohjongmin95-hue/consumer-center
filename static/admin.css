@@ -702,3 +702,35 @@ body.console .xm-send{position:sticky;top:80px}
 body.console .xm-save{display:block;width:100%;margin:20px 0 0;padding:14px;border:0;border-radius:12px;background:#fff4e6;color:#CE6719;font:inherit;font-size:16px;font-weight:700;cursor:pointer}
 body.console .xm-hint{margin:0 0 10px;font-size:14px;font-weight:600;color:#CE6719}
 @media(max-width:1000px){body.console .xm-send{position:static}}
+/* 운영자 2026-11-03 (밤): 관리자 홈 = 토스플레이스처럼 전체 현황 */
+body.console .hm-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:32px;align-items:end;padding:28px 30px}
+body.console .hm-date{margin:0 0 18px;font-size:15px;font-weight:600;color:#4e5968}
+body.console .hm-big{display:flex;gap:40px;flex-wrap:wrap}
+body.console .hm-big a{display:grid;gap:6px;color:#191f28;text-decoration:none}
+body.console .hm-big span{font-size:15px;color:#4e5968;font-weight:600}
+body.console .hm-big b{font-size:40px;line-height:1.1;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+body.console .hm-big b small,body.console .hm-kpis b small{margin-left:3px;font-size:18px;font-weight:600;color:#333d4b}
+body.console .hm-chart{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;height:150px;align-items:end}
+body.console .hm-bar{display:grid;grid-template-rows:auto 1fr auto;height:100%;justify-items:center;gap:6px}
+body.console .hm-bar i{align-self:end;width:100%;max-width:34px;min-height:3px;border-radius:8px 8px 4px 4px;background:#ffd8a8}
+body.console .hm-bar.is-today i{background:#EF920E}
+body.console .hm-bar em{font-style:normal;font-size:12px;font-weight:600;color:#6b7684;font-variant-numeric:tabular-nums}
+body.console .hm-bar span{font-size:12px;color:#6b7684}
+body.console .hm-bar.is-today span,body.console .hm-bar.is-today em{color:#CE6719;font-weight:700}
+body.console .hm-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0}
+body.console .hm-kpis a{display:grid;gap:6px;padding:20px 22px;border-radius:20px;background:#fff;border:1px solid #eef0f3;color:#191f28;text-decoration:none;transition:border-color .15s}
+body.console .hm-kpis a:hover{border-color:#f6c38a}
+body.console .hm-kpis span{font-size:14px;font-weight:600;color:#4e5968}
+body.console .hm-kpis b{font-size:28px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+body.console .hm-kpis a>small{display:flex;align-items:center;gap:6px;font-size:13px;color:#6b7684}
+body.console .hm-feed h2{margin:0 0 8px}
+body.console .hm-feed ul{list-style:none;margin:0;padding:0}
+body.console .hm-feed a{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;color:#191f28;text-decoration:none}
+body.console .hm-feed li+li a{border-top:1px solid #f2f4f6}
+body.console .hm-k{padding:3px 8px;border-radius:8px;font-size:12px;font-weight:700}
+body.console .hm-k.is-c{background:#fff4e6;color:#CE6719}body.console .hm-k.is-m{background:#e8f3ff;color:#1b64da}body.console .hm-k.is-e{background:#f1ebff;color:#6741d9}
+body.console .hm-t{display:grid;gap:2px;min-width:0}body.console .hm-t b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body.console .hm-t small{font-size:13px;color:#6b7684;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.console .hm-feed time{font-size:13px;color:#8b95a1;font-variant-numeric:tabular-nums}
+body.console .hm-two{margin-bottom:12px}
+@media(max-width:900px){body.console .hm-hero{grid-template-columns:1fr;padding:22px}body.console .hm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}body.console .hm-big b{font-size:32px}}
+body.console .hm-feed h2,body.console .ad-todo-card h2{font-size:18px;font-weight:700;margin:0 0 8px}

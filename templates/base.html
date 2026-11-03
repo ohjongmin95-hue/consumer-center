@@ -33,7 +33,7 @@
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}
   {% if verification_code('seo.facebook_verification') %}<meta name="facebook-domain-verification" content="{{ verification_code('seo.facebook_verification') }}">{% endif %}{% endif %}
   <link rel="alternate" type="application/rss+xml" title="{{ txt('site.name') }}" href="{{ url_for('rss_xml', _external=True) }}">
-  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "@id": canonical_url('/') ~ "#organization", "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else []), "url": canonical_url('/'), "logo": canonical_url(url_for('static', filename='img/soboru-logo.png' if is_soboru() else 'jebo-touch-icon.png')), "sameAs": channel_links()}|tojson }}</script>
+  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "@id": canonical_url('/') ~ "#organization", "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else ["소비자제보센터 by SOBORU", "소보루", "SOBORU"]), "description": txt('seo.description'), "url": canonical_url('/'), "logo": canonical_url(url_for('static', filename='img/soboru-logo.png' if is_soboru() else 'jebo-touch-icon.png')), "sameAs": channel_links()}|tojson }}</script>
   <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebSite", "@id": canonical_url('/') ~ "#website", "publisher": {"@id": canonical_url('/') ~ "#organization"}, "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else []), "url": canonical_url('/'), "inLanguage": "ko", "potentialAction": {"@type": "SearchAction", "target": canonical_url(url_for('site_search') if is_soboru() else url_for('reports')) ~ "?q={search_term_string}", "query-input": "required name=search_term_string"}}|tojson }}</script>{% endif %}
   {% block head %}{% endblock %}
   <link rel="icon" href="{{ url_for('favicon_ico', v=css_v) }}" sizes="48x48">
@@ -62,6 +62,7 @@
     <div class="ft-top">
       {% if is_soboru() %}<a class="ft-logo sb-ft-logo" href="{{ url_for('home') }}"><img src="{{ asset('img/soboru-logo.png') }}" alt="{{ txt('site.name') }}" width="127" height="30"></a><span class="sb-ft-why">{{ ui_rich('common.ft_why', '**소**비자 권익 **보**호를 위한 **루**트') }}</span>{% else %}<a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% set by = txt('site.logo_by') %}{% if by %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a>{% endif %}
       <nav class="ft-links" aria-label="정책 및 안내">
+        {% if not is_soboru() %}<a href="{{ url_for('about_page') }}">{{ ui('common.ft_about', '서비스 소개') }}</a>{% endif %}
         <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('common.ft_terms', '이용약관') }}</a>
         <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">{{ ui('common.ft_privacy', '개인정보 처리방침') }}</a>
         <a href="{{ url_for('policy_page', page='youth') }}">{{ ui('common.ft_youth', '청소년보호정책') }}</a>

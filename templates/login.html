@@ -5,7 +5,7 @@
 <main class="auth-page auth-page-login">
   {# 토스식: 큰 제목과 한 줄 설명은 카드 위, 회원가입 안내는 카드 아래 #}
   <h1 class="auth-title auth-title-out auth-title-logo"><img src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="소보루" width="644" height="120"><span>{{ ui('common.login', '로그인') }}</span></h1>
-  {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
+  {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead2', '카카오·네이버로 3초 만에 시작해요') if 'naver' in social_providers() else ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
   {# 운영자 2026-11-03 (밤): 카카오 아니면 휴대폰 번호. 아이디 로그인은 예전 회원용 작은 링크로 #}
   {% if enabled and phone_login_ready() and not request.args.get('id') and request.method == 'GET' %}
   <div class="auth-card auth-start"><div class="auth-body">{{ social_buttons('시작하기', request.args.get('next','')) }}
