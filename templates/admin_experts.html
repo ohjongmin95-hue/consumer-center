@@ -3,13 +3,13 @@
 {% block content %}
 <main class="cs-page">
   <h1 class="cs-title">전문가</h1>
-  <p class="cs-lead">모시고 싶은 전문가를 한 명씩 등록해 <b>초대 링크</b>를 보내 주세요. 전문가가 링크를 열어 로그인하고 자격 정보를 확인해 보내면 바로 전문가가 돼요. 링크 없이 직접 신청한 분(<b>{{ url_for('expert_apply', _external=True) }}</b>)은 자격을 확인하고 승인해 주세요. 전문가가 제보에 댓글을 달면 이름 옆에 ‘전문가 · 분야’ 표시가 붙어요.</p>
+  <p class="cs-lead">모시고 싶은 전문가를 한 명씩 등록해 <b>초대 링크</b>를 보내 주세요. 전문가가 링크를 열어 로그인하고 자격 정보를 확인해 보내면 바로 전문가가 돼요. 링크 없이 직접 신청한 분(<b>{{ url_for('expert_apply', _external=True) }}</b>)은 자격을 확인하고 승인해 주세요. 전문가가 제보에 댓글을 달면 이름 옆에 ‘전문가 · 분야’ 표시가 붙어요. 법무법인 같은 사무소·법인도 분야에서 골라 등록할 수 있어요. 수수료·수임료는 받지 않아요.</p>
 
   <form class="cs-panel cs-add" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="invite">
     <h2>전문가 초대</h2>
     <div class="cs-add-row">
-      <input name="name" maxlength="30" required placeholder="이름 (예: 김소보)" aria-label="이름">
-      <select name="field" required aria-label="분야"><option value="">분야</option>{% for f in fields %}<option>{{ f }}</option>{% endfor %}</select>
+      <input name="name" maxlength="30" required placeholder="이름 또는 법인 이름" aria-label="이름">
+      <select name="field" required aria-label="분야"><option value="">분야</option><optgroup label="개인 전문가">{% for f in fields %}<option>{{ f }}</option>{% endfor %}</optgroup><optgroup label="사무소·법인">{% for f in firm_fields %}<option>{{ f }}</option>{% endfor %}</optgroup></select>
       <input name="org" maxlength="60" placeholder="소속 (예: 소보루 법률사무소)" aria-label="소속">
       <input name="note" maxlength="200" placeholder="메모 (관리자만 봐요)" aria-label="메모">
       <button class="cs-btn cs-btn-main" type="submit">초대 링크 만들기</button>
@@ -22,7 +22,8 @@
       <tbody>
       {% for e in rows %}
       <tr{% if e['status'] in ('rejected', 'stopped') %} class="is-off"{% endif %}>
-        <td><b>{{ e['name'] }}</b> · {{ e['field'] }}{% if e['org'] %}<br><small>{{ e['org'] }}</small>{% endif %}{% if e['nickname'] %}<br><small class="cs-muted">회원 닉네임 {{ e['nickname'] }}</small>{% endif %}{% if e['intro'] %}<br><small>{{ e['intro'] }}</small>{% endif %}{% if e['note'] %}<br><small class="cs-muted">메모: {{ e['note'] }}</small>{% endif %}</td>
+        <td>{% if e['photo'] %}<img class="ex-photo sm" src="{{ photo_url(e['id'], e['photo']) }}" alt="" width="40" height="40">{% endif %}<b>{{ e['name'] }}</b> · {{ e['field'] }}{% if e['kind'] == 'firm' %} <span class="cs-pill">전문 기관</span>{% endif %}{% if e['org'] %}<br><small>{{ e['org'] }}</small>{% endif %}{% if e['nickname'] %}<br><small class="cs-muted">회원 닉네임 {{ e['nickname'] }}</small>{% endif %}{% if e['intro'] %}<br><small>{{ e['intro'] }}</small>{% endif %}{% if e['note'] %}<br><small class="cs-muted">메모: {{ e['note'] }}</small>{% endif %}
+          <form class="ex-up" method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ e['id'] }}"><input type="hidden" name="act" value="photo"><label class="cs-btn">{{ '사진 바꾸기' if e['photo'] else '사진 넣기' }}<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden onchange="this.form.submit()"></label></form></td>
         <td>{% if e['status'] == 'invited' %}<span class="cs-muted">아직 링크를 안 열었어요</span><br><input class="ex-link" readonly value="{{ join_url(e['token']) }}" aria-label="초대 링크" onclick="this.select()"> <button class="cs-btn" type="button" data-copy="{{ join_url(e['token']) }}">복사</button>
             {% else %}{% if e['license_no'] %}자격·등록번호 <b class="mono">{{ e['license_no'] }}</b><br>{% endif %}{% if e['proof'] %}<a href="{{ url_for('admin_expert_proof', eid=e['id']) }}" target="_blank" rel="noopener">자격증 보기 ↗</a><br>{% endif %}<small>{{ e['phone'] }}{% if e['email'] %} · {{ e['email'] }}{% endif %}</small>{% endif %}</td>
         <td><span class="cs-status{% if e['status'] == 'approved' %} s3{% elif e['status'] == 'pending' %} s1{% elif e['status'] == 'invited' %} s2{% endif %}">{{ status[e['status']] }}</span>{% if e['approved'] %}<br><small class="cs-muted">{{ e['approved'][:10] }}</small>{% endif %}</td>
@@ -37,6 +38,6 @@
     </table>
   </div>
 </main>
-<style>.ex-link{width:100%;max-width:340px;font-size:12px;padding:5px 8px;margin-top:4px}</style>
+<style>.ex-up{margin-top:6px}.ex-up label{cursor:pointer;display:inline-block}.ex-photo.sm{width:40px;height:40px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px}.ex-link{width:100%;max-width:340px;font-size:12px;padding:5px 8px;margin-top:4px}</style>
 <script>document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=b.dataset.copy;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='복사됨';setTimeout(function(){b.textContent='복사'},1500)},function(){b.previousElementSibling.select()})})})</script>
 {% endblock %}

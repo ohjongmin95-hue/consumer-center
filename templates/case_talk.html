@@ -11,11 +11,15 @@
 
   <h3 class="talk-count">{{ ui('case.comments', '댓글') }} <b>{{ talk.comments|length }}</b></h3>
   <div class="talk-list">
-  {% for c in talk.comments %}
+  {% set rows = [] %}{% for c in talk.comments %}{% set _ = rows.append({'t': c.created, 'c': c}) %}{% endfor %}
+  {% if talk_events is defined and talk_events %}{% for who, label, at, text in talk_events if at %}{% set _ = rows.append({'t': at, 'e': (label, at, text)}) %}{% endfor %}{% endif %}{# 소비자제보센터: 진행 단계를 댓글 사이에 #}
+  {% for r in rows|sort(attribute='t') %}{% if r.e %}
+    <div class="talk-ev"><span><b>{{ r.e[0] }}</b>{% if r.e[1] %}<time datetime="{{ r.e[1] }}">{{ r.e[1][5:16]|replace('T', ' ')|replace('-', '.') }}</time>{% endif %}</span>{% if r.e[2] %}<small>{{ r.e[2] }}</small>{% endif %}</div>
+  {% else %}{% set c = r.c %}
     <div class="talk-c{% if c.expert %} is-expert{% endif %}" id="k{{ c.id }}">
-      <div class="talk-av" aria-hidden="true">{{ c.nickname[:1] }}</div>
+      {% if c.expert_photo %}<img class="talk-av talk-av-img" src="{{ c.expert_photo }}" alt="" width="36" height="36">{% else %}<div class="talk-av" aria-hidden="true">{{ c.nickname[:1] }}</div>{% endif %}
       <div class="talk-main">
-        <p class="talk-head"><b>{{ c.nickname }}</b>{% if c.expert %}<span class="talk-tag t-expert">{{ ui('expert.badge', '전문가') }} · {{ c.expert }}</span>{% elif c.by_reporter %}<span class="talk-tag t-rep">{{ ui('case.by_reporter', '제보자') }}</span>{% elif c.member %}<span class="talk-tag">{{ ui('board.member_badge', '회원') }}</span>{% endif %}<time datetime="{{ c.created }}">{{ c.created|ago }}</time></p>
+        <p class="talk-head"><b>{{ c.nickname }}</b>{% if c.expert %}<span class="talk-tag t-expert">{{ c.expert_label }} · {{ c.expert }}</span>{% elif c.by_reporter %}<span class="talk-tag t-rep">{{ ui('case.by_reporter', '제보자') }}</span>{% elif c.member %}<span class="talk-tag">{{ ui('board.member_badge', '회원') }}</span>{% endif %}<time datetime="{{ c.created }}">{{ c.created|ago }}</time></p>
         <p class="talk-body">{{ c.body }}</p>
         <div class="talk-tools">
           <form method="post" action="{{ url_for('case_comment_flag', comment_id=c.id) }}" onsubmit="return confirm({{ ui_text('board.flag_c_confirm', '이 댓글이 부적절하다고 알릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.flag_comment', '알리기') }}</button></form>
@@ -25,7 +29,7 @@
         </div>
       </div>
     </div>
-  {% endfor %}
+  {% endif %}{% endfor %}
   </div>
 
   <form class="talk-form" id="talk-form" method="post" action="{{ url_for('case_comment', case_id=case_id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">

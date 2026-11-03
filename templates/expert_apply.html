@@ -6,30 +6,36 @@
 
   {% if mine %}
   <section class="form-panel me-section">
-    <div class="me-section-head"><h2>{{ mine['name'] }} · {{ mine['field'] }}</h2><span class="pill">{{ status[mine['status']] }}</span></div>
+    <div class="me-section-head">{% if photo %}<img class="ex-photo" src="{{ photo }}" alt="" width="56" height="56">{% endif %}<h2>{{ mine['name'] }} · {{ mine['field'] }}</h2><span class="pill">{{ status[mine['status']] }}</span></div>
     <dl class="me-dl">
       {% if mine['org'] %}<dt>소속</dt><dd>{{ mine['org'] }}</dd>{% endif %}
       {% if mine['intro'] %}<dt>한 줄 소개</dt><dd>{{ mine['intro'] }}</dd>{% endif %}
-      <dt>표시 이름</dt><dd>{{ g.user['nickname'] }} <span class="ex-badge">전문가 · {{ mine['field'] }}</span></dd>
+      <dt>표시 이름</dt><dd>{{ g.user['nickname'] }} <span class="ex-badge">{{ kinds.get(mine['kind'], '전문가') }} · {{ mine['field'] }}</span></dd>
     </dl>
+    <form class="ex-photo-form" method="post" action="{{ url_for('expert_photo_change') }}" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="field"><span>{{ '프로필 사진 바꾸기' if photo else '프로필 사진 넣기' }}</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required></label><button class="secondary" type="submit">올리기</button></form>
     <p class="meta">{% if mine['status'] == 'approved' %}{{ ui('expert.ok', '제보에 댓글을 달면 이름 옆에 전문가 표시가 붙어요.') }}{% elif mine['status'] == 'pending' %}{{ ui('expert.wait', '자격을 확인하고 있어요. 확인이 끝나면 전문가 표시가 붙어요.') }}{% else %}{{ ui('expert.stopped', '지금은 전문가 표시를 멈췄어요. 궁금한 점은 고객센터로 알려 주세요.') }}{% endif %}</p>
   </section>
   {% else %}
   <form class="form-panel me-section me-form" method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     {% if invite %}<p class="ex-invite">{{ invite['name'] }} 님, 소비자 곁에서 함께해 주셔서 고마워요. 아래 정보를 확인해 주시면 바로 전문가로 등록돼요.</p>{% endif %}
-    <div class="field"><label for="x-name">이름 (실명)</label><input id="x-name" name="name" maxlength="30" required value="{{ f.name }}"></div>
-    <div class="field"><label for="x-field">분야</label><select id="x-field" name="field" required><option value="">고르기</option>{% for x in fields %}<option{% if x == f.field %} selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
-    <div class="field"><label for="x-org">소속</label><input id="x-org" name="org" maxlength="60" value="{{ f.org }}" placeholder="예: 소보루 법률사무소"></div>
-    <div class="field"><label for="x-lic">자격·등록번호</label><input id="x-lic" name="license_no" maxlength="40" value="{{ f.license_no }}" placeholder="예: 변호사 등록번호"></div>
-    <div class="field"><label for="x-proof">자격증 사진 또는 PDF</label><input id="x-proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small class="meta">관리자만 봐요. 번호나 파일 중 하나는 꼭 필요해요.</small></div>
-    <div class="field"><label for="x-intro">한 줄 소개</label><input id="x-intro" name="intro" maxlength="120" value="{{ f.intro }}" placeholder="예: 소비자 분쟁 10년, 전자상거래 환불 사건 전문"></div>
+    <div class="ex-kind" role="radiogroup" aria-label="등록 종류"><label><input type="radio" name="kind" value="person"{% if f.kind != 'firm' %} checked{% endif %}><span>개인 전문가</span></label><label><input type="radio" name="kind" value="firm"{% if f.kind == 'firm' %} checked{% endif %}><span>사무소·법인</span></label></div>
+    <div class="field ex-photo-field"><label for="x-photo" data-p="프로필 사진" data-f="로고">{{ '로고' if f.kind == 'firm' else '프로필 사진' }}</label><div class="ex-photo-pick"><img id="x-photo-pv" class="ex-photo" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="" width="72" height="72" hidden><input id="x-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp"></div><small class="meta">댓글 옆에 이 사진이 보여요.</small></div>
+    <div class="field"><label for="x-name" data-p="이름 (실명)" data-f="사무소·법인 이름">{{ '사무소·법인 이름' if f.kind == 'firm' else '이름 (실명)' }}</label><input id="x-name" name="name" maxlength="30" required value="{{ f.name }}"></div>
+    <div class="field"><label for="x-field">분야</label><select id="x-field" name="field" required><option value="">고르기</option><optgroup label="개인 전문가" data-k="person">{% for x in fields %}<option{% if x == f.field %} selected{% endif %}>{{ x }}</option>{% endfor %}</optgroup><optgroup label="사무소·법인" data-k="firm">{% for x in firm_fields %}<option{% if x == f.field %} selected{% endif %}>{{ x }}</option>{% endfor %}</optgroup></select></div>
+    <div class="field"><label for="x-org" data-p="소속" data-f="대표자">{{ '대표자' if f.kind == 'firm' else '소속' }}</label><input id="x-org" name="org" maxlength="60" value="{{ f.org }}" placeholder="{{ '예: 홍길동' if f.kind == 'firm' else '예: 소보루 법률사무소' }}" data-pp="예: 소보루 법률사무소" data-pf="예: 홍길동"></div>
+    <div class="field"><label for="x-lic" data-p="자격·등록번호" data-f="사업자등록번호">{{ '사업자등록번호' if f.kind == 'firm' else '자격·등록번호' }}</label><input id="x-lic" name="license_no" maxlength="40" value="{{ f.license_no }}" placeholder="{{ '000-00-00000' if f.kind == 'firm' else '예: 변호사 등록번호' }}" data-pp="예: 변호사 등록번호" data-pf="000-00-00000"></div>
+    <div class="field"><label for="x-proof" data-p="자격증 사진 또는 PDF" data-f="사업자등록증 사진 또는 PDF">{{ '사업자등록증 사진 또는 PDF' if f.kind == 'firm' else '자격증 사진 또는 PDF' }}</label><input id="x-proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small class="meta">관리자만 봐요. 번호나 파일 중 하나는 꼭 필요해요.</small></div>
+    <div class="field"><label for="x-intro">한 줄 소개</label><input id="x-intro" name="intro" maxlength="120" value="{{ f.intro }}" placeholder="예: 소비자 분쟁 10년, 전자상거래 환불 사건 전문" data-pp="예: 소비자 분쟁 10년, 전자상거래 환불 사건 전문" data-pf="예: 소비자·전자상거래 분쟁 전담팀이 있어요"></div>
     <div class="member-pw">
       <div class="field"><label for="x-phone">연락처</label><input id="x-phone" name="phone" maxlength="20" inputmode="tel" value="{{ f.phone }}"></div>
       <div class="field"><label for="x-email">이메일</label><input id="x-email" name="email" type="email" maxlength="120" value="{{ f.email }}"></div>
     </div>
-    <label class="check-line"><input type="checkbox" name="agree" value="1" required> 내 댓글에 ‘전문가 · 분야’ 표시가 붙고, 자격 확인 정보(번호·파일·연락처)를 운영자가 보관하는 데 동의해요.</label>
+    <label class="check-line"><input type="checkbox" name="agree" value="1" required> 내 댓글에 전문가 표시가 붙고, 자격 확인 정보(번호·파일·연락처)를 운영자가 보관하는 데 동의해요.</label>
     <button class="primary auth-submit" type="submit">{{ '전문가로 등록하기' if invite else '신청하기' }}</button>
   </form>
   {% endif %}
 </div></main>
+<script>(function(){var rs=document.querySelectorAll('[name=kind]'),sel=document.getElementById('x-field');function k(){var c=document.querySelector('[name=kind]:checked'),v=c?c.value:'person';document.querySelectorAll('[data-p]').forEach(function(l){l.textContent=v==='firm'?l.dataset.f:l.dataset.p});document.querySelectorAll('[data-pp]').forEach(function(x){x.placeholder=v==='firm'?x.dataset.pf:x.dataset.pp});if(sel){sel.querySelectorAll('optgroup').forEach(function(g){var on=g.dataset.k===v;g.hidden=!on;g.disabled=!on});var o=sel.selectedOptions[0];if(o&&o.parentNode.disabled)sel.value=''}}rs.forEach(function(r){r.addEventListener('change',k)});k()})()</script>
+<script>(function(){var i=document.getElementById('x-photo'),p=document.getElementById('x-photo-pv');if(!i)return;i.addEventListener('change',function(){var f=i.files[0];if(!f){p.hidden=true;return}p.src=URL.createObjectURL(f);p.hidden=false})})()</script>
 {% endblock %}

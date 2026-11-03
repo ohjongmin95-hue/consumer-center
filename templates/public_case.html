@@ -8,45 +8,51 @@
   {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": txt('site.name'), "item": url_for('home', _external=True)}, {"@type": "ListItem", "position": 2, "name": txt('home.list_title'), "item": url_for('reports', _external=True)}, {"@type": "ListItem", "position": 3, "name": subject|truncate(60, True, '…')}]}]|tojson }}</script>{% endblock %}
 {% block content %}
 {% if is_soboru() %}{% include 'soboru_case.html' %}{% else %}
-<main class="page pc-page"><div class="wrap pc-wrap">{# 2026-11-03 운영자: 토스처럼 깔끔하게, 귤색은 살림. 큰 글씨 밑 회색 설명은 뺌 #}
+<main class="page pc-page"><div class="wrap pc-wrap">{# 2026-11-03 운영자: 토스처럼, PC는 넓게 2단. 진행 단계는 댓글 사이에 #}
   <a class="pc-back" href="{{ url_for('reports') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>{{ txt('home.list_title') }}</a>
-  <article class="pc-head">
+  {% set now_step = pub_step(step) %}
+  <header class="pc-head">
     <div class="pc-who">
       {% if author %}{% set src = avatar_url(author['id']) if avatar_url is defined else '' %}{% if src %}<img class="nn-vc-av" src="{{ src }}" alt="">{% else %}<span class="nn-vc-av" aria-hidden="true">{{ author['nickname'][:1] }}</span>{% endif %}{% else %}<span class="nn-vc-av is-anon" aria-hidden="true">익명</span>{% endif %}
       <span class="pc-who-t"><b>{{ author['nickname'] if author else ui('home.card_anon', '익명 소비자') }}</b><time datetime="{{ case['created'] }}">{{ case['created'][:10]|replace('-', '.') }}</time></span>
-      <span class="step-bar rf-st st-{{ PUB_COLOR[pub_step(step) - 1] }}"><span class="step-badge">{{ pub_names()[pub_step(step) - 1] }}</span></span>
     </div>
     <h1 class="pc-title">{{ subject }}</h1>
-    <dl class="pc-meta">
-      <div><dt>{{ ui('reports.target', '제보 대상') }}</dt><dd>{% if co %}<a class="pc-co" href="{{ url_for('company_page', company_id=co['id']) }}">{{ company }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>{% else %}<span class="pc-co">{{ company }}</span>{% endif %}{% if case['industry'] %}<span class="nn-vc-ind">{{ case['industry'] }}</span>{% endif %}</dd></div>
-      <div><dt>{{ ui('home.card_kind', '제보 유형') }}</dt><dd><span class="nn-vc-tag">{{ category }}</span></dd></div>
-      {% if case['occurred_on'] %}<div><dt>{{ ui('case.occurred_on', '발생일') }}</dt><dd>{{ case['occurred_on']|replace('-', '.') }}</dd></div>{% endif %}
-    </dl>
-    <ol class="pc-steps" aria-label="{{ ui('reports.col_status', '진행 단계') }}">{% for s in pub_names() %}<li class="{{ 'done' if loop.index < pub_step(step) else ('now' if loop.index == pub_step(step) else '') }}"{% if loop.index == pub_step(step) %} aria-current="step"{% endif %}><i></i><span>{{ s }}</span></li>{% endfor %}</ol>
-  </article>
+    <p class="pc-tags"><span class="nn-vc-tag">{{ category }}</span>{% if case['industry'] %}<span class="nn-vc-ind">{{ case['industry'] }}</span>{% endif %}{% if case['occurred_on'] %}<span class="pc-date">{{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on']|replace('-', '.') }}</span>{% endif %}</p>
+  </header>
 
-  <section class="pc-card">
-    <h2>{{ ui('report.f_description', '피해 내용') }}</h2>
-    <p class="pc-body">{{ description }}</p>
-    <div class="pc-want"><b>{{ ui('report.f_request', '원하는 해결 방법') }}</b><p class="pc-body">{{ request_text }}</p></div>
-  </section>
-
-  <section class="pc-card pc-answers">
-    <h2>{{ ui('reports.company_answer', '기업 공식 답변') }}</h2>
-    {% for a in answers %}<div class="pc-ans">
-      <p class="pc-ans-head"><b>{{ a['company_name'] or company }}</b>{% if a['source'] == 'biz' %}<span class="ca-verified"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z"/><path fill="#fff" d="M7.1 10.6 4.8 8.3l.9-.9 1.4 1.4 3.2-3.2.9.9z"/></svg>{{ ui('case.answer_verified_short', '인증 기업') }}</span>{% endif %}<time>{{ a['created'][:10]|replace('-', '.') }}{% if a['edited'] %} · {{ a['edited'][:10]|replace('-', '.') }} 수정됨{% endif %}</time></p>
-      <p class="pc-body">{{ a['body'] }}</p>
+  <aside class="pc-side">
+    <div class="pc-box">
+      <p class="pc-box-k">{{ ui('reports.col_status', '진행 단계') }}</p>
+      <p class="pc-now">{{ pub_names()[now_step - 1] }}</p>
+      <ol class="pc-steps">{% for s in pub_names() %}<li class="{{ 'on' if loop.index <= now_step else '' }}"{% if loop.index == now_step %} aria-current="step"{% endif %}><i></i><span>{{ s }}</span></li>{% endfor %}</ol>
+      <a class="pc-co-row" {% if co %}href="{{ url_for('company_page', company_id=co['id']) }}"{% endif %}>
+        {% set lg = co_logo(co) if co and co_logo is defined else '' %}{% if lg %}<img class="pc-co-av" src="{{ lg }}" alt="">{% else %}<span class="pc-co-av" aria-hidden="true">{{ company[:1] }}</span>{% endif %}
+        <span class="pc-co-t"><small>{{ ui('reports.target', '제보 대상') }}</small><b>{{ company }}</b></span>
+        {% if co %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>{% endif %}
+      </a>
+      <div class="pc-acts"><button type="button" class="pc-share" data-share data-title="{{ subject }}" data-done="링크를 복사했어요">{{ ui('case.share', '공유하기') }}</button><a class="pc-cta" href="{{ url_for('report') }}">{{ ui('case.me_too_report', '나도 제보하기') }}</a></div>
     </div>
-    {% else %}<div class="pc-wait"><span class="pc-wait-dot" aria-hidden="true"></span>{{ ui('case.answer_checking_short', '기업 답변을 확인하고 있어요') if has_answer else ui('case.answer_waiting', '기업 답변을 기다리고 있어요') }}</div>{% endfor %}
-  </section>
+  </aside>
 
-  {% set talk = case_talk(case['id']) %}{% if talk %}{% with case_id = case['id'] %}{% include 'case_talk.html' %}{% endwith %}{% endif %}
+  <div class="pc-main">
+    <section class="pc-sec">
+      <p class="pc-body">{{ description }}</p>
+      <div class="pc-want"><b>{{ ui('report.f_request', '원하는 해결 방법') }}</b><p class="pc-body">{{ request_text }}</p></div>
+    </section>
 
-  <section class="pc-card pc-hist">
-    <h2>{{ ui('case.history', '진행 이력') }}</h2>
-    <ol>{% for who, label, at, text in events %}<li><b>{{ label }}</b>{% if at %}<time datetime="{{ at }}">{{ at[:16]|replace('T', ' ')|replace('-', '.') }}</time>{% endif %}{% if text %}<p>{{ text }}</p>{% endif %}</li>{% endfor %}</ol>
-  </section>
-  {% if groups_on() %}{% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}{% endif %}
+    <section class="pc-sec pc-answers">
+      <h2>{{ ui('reports.company_answer', '기업 공식 답변') }}</h2>
+      {% for a in answers %}<div class="pc-ans">
+        <p class="pc-ans-head">{% set lg = co_logo(co) if co and co_logo is defined else '' %}{% if lg %}<img class="pc-co-av sm" src="{{ lg }}" alt="">{% else %}<span class="pc-co-av sm" aria-hidden="true">{{ (a['company_name'] or company)[:1] }}</span>{% endif %}<b>{{ a['company_name'] or company }}</b>{% if a['source'] == 'biz' %}<span class="ca-verified"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l1.6 1.2 2-.1.6 1.9 1.6 1.2-.6 1.9.6 1.9-1.6 1.2-.6 1.9-2-.1L8 14.8l-1.6-1.2-2 .1-.6-1.9-1.6-1.2.6-1.9-.6-1.9 1.6-1.2.6-1.9 2 .1z"/><path fill="#fff" d="M7.1 10.6 4.8 8.3l.9-.9 1.4 1.4 3.2-3.2.9.9z"/></svg>{{ ui('case.answer_verified_short', '인증 기업') }}</span>{% endif %}<time>{{ a['created'][:10]|replace('-', '.') }}{% if a['edited'] %} · 수정됨{% endif %}</time></p>
+        <p class="pc-body pc-bubble">{{ a['body'] }}</p>
+      </div>
+      {% else %}<div class="pc-wait"><span class="pc-wait-dot" aria-hidden="true"></span>{{ ui('case.answer_checking_short', '기업 답변을 확인하고 있어요') if has_answer else ui('case.answer_waiting', '기업 답변을 기다리고 있어요') }}</div>{% endfor %}
+    </section>
+
+    {% set talk = case_talk(case['id']) %}{% if talk %}{% with case_id = case['id'], talk_events = events %}{% include 'case_talk.html' %}{% endwith %}{% endif %}
+    {% if groups_on() %}{% with company = case['company'] %}{% include 'group_cta.html' %}{% endwith %}{% endif %}
+  </div>
 </div></main>
+<script>document.querySelectorAll('[data-share]').forEach(function(b){b.addEventListener('click',function(){var u=location.href.split('#')[0],t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u}).catch(function(){});return}(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){var o=b.textContent;b.textContent=b.dataset.done;setTimeout(function(){b.textContent=o},1800)},function(){})})})</script>
 {% endif %}
 {% endblock %}

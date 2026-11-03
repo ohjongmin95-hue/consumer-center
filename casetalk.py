@@ -42,7 +42,7 @@ def install(S):
             rows = db.execute('SELECT * FROM case_comments WHERE case_id=? AND hidden=0 ORDER BY id', (case_id,)).fetchall()
             pros = experts.labels(db, [r['user_id'] for r in rows])  # 승인된 전문가 (experts.py)
         comments = [dict(id=r['id'], nickname=r['nickname'], body=S.mask_personal(r['body']), created=r['created'], by_reporter=bool(r['by_reporter']),
-                         own=bool(g.get('user') and r['user_id'] == g.user['id']), member=bool(r['user_id']), expert=pros.get(r['user_id'], '')) for r in rows]
+                         own=bool(g.get('user') and r['user_id'] == g.user['id']), member=bool(r['user_id']), expert=(pros.get(r['user_id']) or {}).get('field', ''), expert_photo=(pros.get(r['user_id']) or {}).get('photo', ''), expert_label=(pros.get(r['user_id']) or {}).get('label', '전문가')) for r in rows]
         return {'counts': counts, 'mine': mine, 'comments': comments, 'kinds': KINDS, 'reporter': session.get('case_id') == case_id}
 
     def talk_counts(ids):
