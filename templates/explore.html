@@ -1,54 +1,72 @@
 {% extends 'base.html' %}
-{# 둘러보기 (운영자 2026-11-03: 헤이마오 '发现'처럼). 토스 TDS: 회색 바탕 위 테두리 없는 흰 덩어리, 버튼 대신 눌러 들어가는 줄·카드 #}
+{# 둘러보기 (운영자 2026-11-03): 토스플레이스 스토리 페이지 '풍'으로 (똑같이 배끼지 않음). 맨 위 큰 추천 카드(왼쪽 그림, 오른쪽 큰 제목) →
+   섹션 제목 + 카드 3~4열 (도구, 소비자 자문단, 공감 많은 제보, 최신 소식). TDS 값, 우리 색. 바닥글은 우리 것 그대로 #}
 {% block title %}{{ ui('explore.title', '둘러보기') }} | {{ txt('site.name') }}{% endblock %}
+{% set go %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>{% endset %}
 {% block content %}
-<main class="xh"><div class="wrap">
-  <h1 class="xh-title">{{ ui('explore.title', '둘러보기') }}</h1>
+<main class="xs"><div class="xs-in">
+  <h1 class="xh-title xs-title">{{ ui('explore.title', '둘러보기') }}</h1>
 
-  <nav class="xh-tiles" aria-label="{{ ui('explore.short', '바로가기') }}">
-    <a class="xh-tile" href="{{ url_for('companies_rank') }}">
-      <span class="xh-ic is-rank" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></span>
-      <span class="xh-tile-t"><b>{{ ui('explore.rank', '기업 응대 순위') }}</b><small>{{ ui('explore.rank_sub', '답변이 빠른 기업과 느린 기업') }}</small></span>
-      <svg class="xh-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-    </a>
-    <a class="xh-tile" href="{{ url_for('check_list') }}">
-      <span class="xh-ic is-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
-      <span class="xh-tile-t"><b>{{ ui('explore.check', '사기 전에 확인') }}</b><small>{{ ui('explore.check_sub', '조심해야 할 업체와 수법') }}</small></span>
-      <svg class="xh-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-    </a>
-  </nav>
+  <a class="xs-feat" href="{{ url_for('companies_rank') }}">
+    <div class="xs-feat-art" aria-hidden="true">
+      <div class="xs-rank">
+        <p class="xs-rank-cap">{{ ui('explore.rank', '기업 응대 순위') }}</p>
+        {% for n, w, d in [('1', 92, '0.8일'), ('2', 74, '1.4일'), ('3', 58, '2.1일')] %}<div class="xs-rank-row"><b>{{ n }}</b><span class="xs-rank-co">○○{{ ['쇼핑', '항공', '통신'][loop.index0] }}</span><span class="xs-rank-bar"><i style="width:{{ w }}%"></i></span><small>{{ d }}</small></div>{% endfor %}
+      </div>
+    </div>
+    <div class="xs-feat-copy">
+      <span class="xs-kicker">{{ ui('explore.rank', '기업 응대 순위') }}</span>
+      <h2>{{ ui('explore.feat_title', '제보에 빨리 답하는 기업,\n늦게 답하는 기업') }}</h2>
+      <span class="xs-more">{{ ui('explore.feat_go', '순위 보기') }}{{ go }}</span>
+    </div>
+  </a>
 
-  <section class="xh-sec" aria-labelledby="xh-help">
-    <div class="xh-head"><h2 id="xh-help">{{ ui('explore.helpers', '소비자 자문단') }}</h2><a href="{{ url_for('experts_page') }}">{{ ui('common.more', '더 보기') }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></div>
+  <section class="xs-sec" aria-labelledby="xs-tools">
+    <h2 class="xs-h" id="xs-tools">{{ ui('explore.tools', '알아 두면 좋아요') }}</h2>
+    <div class="xs-grid is-4">
+      {% for href, key, name, sub, cls, icon in [
+        (url_for('check_list'), 'check', '사기 전에 확인', '조심해야 할 업체와 수법', 'is-cream', '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'),
+        (url_for('tools'), 'calc', '계산기', '환불·위약금 얼마인지', 'is-grey', '<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/>'),
+        (url_for('dictionary'), 'dict', '소비자·경제 사전', '어려운 말을 쉽게', 'is-grey', '<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19"/>'),
+        (url_for('law_find'), 'law', '법령 찾기', '조문 원문 그대로', 'is-grey', '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>')] %}
+      <a class="xs-card" href="{{ href }}">
+        <span class="xs-pic {{ cls }}" aria-hidden="true"><svg viewBox="0 0 24 24">{{ icon|safe }}</svg></span>
+        <b>{{ ui('explore.' ~ key, name) }}</b><small>{{ ui('explore.' ~ key ~ '_sub', sub) }}</small>
+      </a>{% endfor %}
+    </div>
+  </section>
+
+  <section class="xs-sec" aria-labelledby="xs-help">
+    <div class="xs-hrow"><h2 class="xs-h" id="xs-help">{{ ui('explore.helpers', '소비자 자문단') }}</h2><a class="xs-more" href="{{ url_for('experts_page') }}">{{ ui('common.more', '더 보기') }}{{ go }}</a></div>
     {% if helpers %}
-    <ul class="xh-people">{% for e in helpers %}
-      <li class="xh-person">
-        {% if e.photo_url %}<img class="xh-av" src="{{ e.photo_url }}" alt="" width="56" height="56" loading="lazy">{% else %}<span class="xh-av" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}
-        <div class="xh-who"><b>{{ e.name }}</b><span>{{ e.field }}{% if e.org and e.kind != 'firm' %} · {{ e.org }}{% endif %}</span></div>
+    <ul class="xs-grid is-3 xs-people">{% for e in helpers[:6] %}
+      <li class="xs-person">
+        {% if e.photo_url %}<img class="xs-av" src="{{ e.photo_url }}" alt="" width="56" height="56" loading="lazy">{% else %}<span class="xs-av" aria-hidden="true">{{ e.name[:1] }}</span>{% endif %}
+        <div class="xs-who"><b>{{ e.name }}</b><span class="xi-badge">자문단 · {{ e.field }}</span></div>
+        {% if e.org and e.kind != 'firm' %}<p class="xs-org">{{ e.org }}</p>{% endif %}
         {% if e.intro %}<p>{{ e.intro }}</p>{% endif %}
-        <span class="xh-n">{{ ui('explore.answers', '남긴 의견') }} <b>{{ e.answers }}</b></span>
+        <span class="xs-n">{{ ui('explore.answers', '남긴 의견') }} <b>{{ e.answers }}</b></span>
       </li>{% endfor %}
     </ul>
     {% else %}
-    <a class="xh-empty" href="{{ url_for('expert_apply') }}"><b>{{ ui('explore.helpers_empty', '자문단을 모시고 있어요') }}</b><span>{{ ui('explore.helpers_join', '자문단으로 함께하기') }}</span></a>
+    <a class="xs-empty" href="{{ url_for('expert_apply') }}"><b>{{ ui('explore.helpers_empty', '자문단을 모시고 있어요') }}</b><span class="xs-more">{{ ui('explore.helpers_join', '자문단으로 함께하기') }}{{ go }}</span></a>
     {% endif %}
   </section>
 
-  <section class="xh-sec" data-xh>
-    <div class="xh-tabs" role="tablist">
-      <button type="button" role="tab" class="on" aria-selected="true" data-xh-t="0">{{ ui('explore.tab_hot', '공감 많은 제보') }}</button>
-      {% if news %}<button type="button" role="tab" aria-selected="false" data-xh-t="1">{{ ui('explore.tab_news', '최신 소식') }}</button>{% endif %}
-    </div>
-    <ul class="xh-list" data-xh-p="0">{% for r in hot %}
-      <li><a href="{{ url_for('public_case', case_id=r.no) }}"><b>{{ r.title }}</b><span>{{ r.company or '' }}{% if r.cat %} · {{ r.cat }}{% endif %} · {{ r.created[5:].replace('-', '.') }}</span></a></li>
-    {% else %}<li class="xh-none">{{ ui('explore.hot_empty', '아직 공개된 제보가 없어요.') }}</li>{% endfor %}</ul>
-    {% if news %}<ul class="xh-list" data-xh-p="1" hidden>{% for a in news %}
-      <li><a href="https://soboru.co.kr/life/{{ a.id }}"><b>{{ a.title }}</b><span>{{ a.category }} · {{ a.at[5:10].replace('-', '.') }}</span></a></li>
-    {% endfor %}</ul>{% endif %}
+  <section class="xs-sec" aria-labelledby="xs-hot">
+    <div class="xs-hrow"><h2 class="xs-h" id="xs-hot">{{ ui('explore.tab_hot', '공감 많은 제보') }}</h2><a class="xs-more" href="{{ url_for('reports') }}">{{ ui('common.more', '더 보기') }}{{ go }}</a></div>
+    {% if hot %}<ul class="xs-grid is-3">{% for r in hot %}
+      <li><a class="xs-post" href="{{ url_for('public_case', case_id=r.no) }}">{% if r.cat %}<span class="xs-cat">{{ r.cat }}</span>{% endif %}<b>{{ r.title }}</b><small>{{ r.company or '' }}{% if r.company %} · {% endif %}{{ r.created[5:].replace('-', '.') }}</small></a></li>{% endfor %}
+    </ul>{% else %}<p class="xs-none">{{ ui('explore.hot_empty', '아직 공개된 제보가 없어요.') }}</p>{% endif %}
   </section>
+
+  {% if news %}
+  <section class="xs-sec" aria-labelledby="xs-news">
+    <h2 class="xs-h" id="xs-news">{{ ui('explore.tab_news', '최신 소식') }}</h2>
+    <ul class="xs-grid is-3">{% for a in news %}
+      <li><a class="xs-post" href="https://soboru.co.kr/life/{{ a.id }}">{% if a.category %}<span class="xs-cat">{{ a.category }}</span>{% endif %}<b>{{ a.title }}</b><small>{{ a.at[5:10].replace('-', '.') }}</small></a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
 </div></main>
-<script>
-(function(){var w=document.querySelector('[data-xh]');if(!w)return;var ts=w.querySelectorAll('[data-xh-t]'),ps=w.querySelectorAll('[data-xh-p]');
-ts.forEach(function(t){t.addEventListener('click',function(){ts.forEach(function(x){var on=x===t;x.classList.toggle('on',on);x.setAttribute('aria-selected',on?'true':'false');});ps.forEach(function(p){p.hidden=p.dataset.xhP!==t.dataset.xhT;});});});})();
-</script>
 {% endblock %}

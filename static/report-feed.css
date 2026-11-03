@@ -1095,3 +1095,129 @@ body:not(.sb):has(.xh) .site-header{background:#fff}
   .xa-form,.xa-card{grid-column:2}
   .xa-form .xi-go{width:100%}
 }
+.xh-tiles.is-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:760px){.xh-tiles.is-3{grid-template-columns:1fr}}
+/* 자문단 초대·모집 (운영자 2026-11-03: 토스플레이스 상담 신청 풍. 왼쪽 제목·입력·버튼 하나, 오른쪽 그림. TDS 글자 단계·자간 0) */
+.xf{background:#fff;padding:64px 0 96px;letter-spacing:0;word-break:keep-all}
+.xf :is(h1,p,b,span,small,input,select,button,summary){letter-spacing:0}
+.xf-in{display:grid;grid-template-columns:minmax(0,480px) minmax(0,1fr);column-gap:96px;align-items:start;max-width:1360px;margin:0 auto;padding-inline:24px;box-sizing:border-box}
+.xf-main{display:grid;gap:0}
+.xf-title{margin:0;font-size:30px;line-height:40px;font-weight:700;color:#191f28;text-wrap:balance}
+.xf-key{margin:12px 0 0;font-size:20px;line-height:29px;font-weight:600;color:#333d48}
+.xf-key strong{font-weight:700;color:#CE6719}
+.xf-form{display:grid;gap:8px;margin-top:40px}
+.xf .xa-seg{margin-bottom:8px}
+.xf-in-t,.xf-sel select{width:100%;box-sizing:border-box;height:56px;padding:0 16px;border:1px solid #e5e8eb;border-radius:12px;background:#fff;font:inherit;font-size:17px;line-height:25.5px;color:#191f28;outline:none;appearance:none;-webkit-appearance:none}
+.xf-in-t::placeholder{color:#8b95a1}
+.xf-in-t:focus,.xf-sel select:focus{border-color:#EF920E;box-shadow:0 0 0 1px #EF920E}
+.xf-sel{position:relative;display:block}
+.xf-sel select:invalid{color:#8b95a1}
+.xf-sel svg{position:absolute;right:16px;top:50%;width:20px;height:20px;margin-top:-10px;fill:none;stroke:#8b95a1;stroke-width:2;stroke-linecap:round;pointer-events:none}
+.xf-file{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;min-height:56px;padding:9px 16px;border:1px dashed #d1d6db;border-radius:12px;background:#f9fafb;box-sizing:border-box;cursor:pointer}
+.xf-file input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.xf-file b{grid-column:1;font-size:15px;line-height:22.5px;font-weight:600;color:#333d48}
+.xf-file span{grid-column:1;font-size:13px;line-height:19.5px;color:#8b95a1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xf-file i{grid-column:2;grid-row:1/3;font-style:normal;font-size:13px;line-height:19.5px;font-weight:600;color:#8b95a1}
+.xf-file.is-need i{color:#CE6719}
+.xf-file.is-on{border-style:solid;border-color:#EF920E;background:#fff4e6}.xf-file.is-on span{color:#CE6719}
+.xf-go{margin-top:16px}
+.xf-agree{margin-top:12px}
+.xf-agree summary{display:flex;align-items:center;gap:8px;padding:8px 0;list-style:none;cursor:pointer;font-size:15px;line-height:22.5px;color:#4e5968}
+.xf-agree summary::-webkit-details-marker{display:none}
+.xf-agree summary b{font-weight:700;color:#191f28}
+.xf-ck{width:20px;height:20px;fill:none;stroke:#EF920E;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.xf-chev{width:18px;height:18px;margin-left:auto;fill:none;stroke:#8b95a1;stroke-width:2;stroke-linecap:round;transition:transform .2s}
+.xf-agree[open] .xf-chev{transform:rotate(180deg)}
+.xf-agree p{margin:4px 0 0 28px;font-size:13px;line-height:19.5px;color:#6b7684}
+.xf-av{flex:none;display:block;width:40px;height:40px;border-radius:50%;object-fit:cover;background:#f2f4f6}
+.xf-cn{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px}.xf-cn b{font-size:15px;line-height:22.5px;color:#191f28}
+.xf-ct{margin:0;font-size:14px;line-height:21px;color:#4e5968}
+.xf-done-in{display:grid;gap:32px;max-width:560px;margin:0 auto;padding-inline:24px;box-sizing:border-box}
+.xf-done-ic{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:#fff4e6}
+.xf-done-ic svg{width:32px;height:32px;fill:none;stroke:#EF920E;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.xf-done .xi-cta{position:static;margin:0;padding:0;background:none}
+@media(max-width:1023px){.xf-in{grid-template-columns:minmax(0,1fr);max-width:560px}.xf-show{display:none}}
+@media(max-width:760px){.xf{padding:24px 0 48px}.xf-in,.xf-done-in{padding-inline:20px}.xf-title{font-size:26px;line-height:35px}.xf-key{font-size:17px;line-height:25.5px}.xf-form{margin-top:32px}}
+.xf-sel>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.xf-form .xf-go{width:100%}
+@media(min-width:1024px){.xh-title{font-size:30px;line-height:40px}}
+/* 자문단 그림 흐르기 (운영자 2026-11-03: 토스플레이스처럼 움직이게) */
+/* 운영자 2026-11-03: 자문단 초대·모집 = 메뉴 없는 별도 페이지. 로고를 입력칸 왼쪽 선에 맞춤 */
+.auth-top.xf-top{padding-inline:max(24px,calc((100% - 1312px)/2))}
+@media(max-width:1023px){.auth-top.xf-top{padding-inline:max(24px,calc((100% - 512px)/2))}}
+
+/* 운영자 2026-11-03: 오른쪽 = 우리 제보 카드에 자문단 댓글이 하나씩 달리는 모습 (토스플레이스 사진 콜라주와 다르게) */
+.xf-show{display:grid;gap:20px;padding:40px;border-radius:32px;background:#fff7ec;align-content:start}
+.xf-team{display:flex;align-items:center;gap:12px}
+.xf-faces{display:flex}.xf-faces img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:3px solid #fff7ec;margin-left:-10px}.xf-faces img:first-child{margin-left:0}
+.xf-team b{font-size:15px;line-height:22.5px;font-weight:700;color:#652D1C}
+.xf-post{display:grid;gap:8px;padding:24px;border-radius:20px;background:#fff;border:1px solid #f3e3c9}
+.xf-cat{justify-self:start;padding:3px 8px;border-radius:11px;background:#fff0db;color:#CE6719;font-size:12px;line-height:18px;font-weight:700}
+.xf-post h3{margin:0;font-size:20px;line-height:29px;font-weight:700;color:#191f28}
+.xf-post p{margin:0;font-size:15px;line-height:22.5px;color:#4e5968}
+.xf-post .xf-meta{font-size:13px;line-height:19.5px;color:#8b95a1}
+.xf-thread{display:grid;gap:12px;margin:0;padding:0 0 0 24px;list-style:none;border-left:2px solid #f3e3c9}
+.xf-thread li{display:flex;gap:12px;align-items:flex-start;padding:16px 20px;border-radius:20px;background:#fff;animation:xf-pop 12s ease-out infinite both}
+.xf-thread li:nth-child(2){animation-delay:1.2s}.xf-thread li:nth-child(3){animation-delay:2.4s}
+.xf-thread li>div{display:grid;gap:4px;min-width:0}
+.xf-cn{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px}.xf-cn b{font-size:15px;line-height:22.5px;color:#191f28}
+.xf-ct{margin:0;font-size:14px;line-height:21px;color:#4e5968}
+@keyframes xf-pop{0%{opacity:0;transform:translateY(12px)}6%,88%{opacity:1;transform:none}96%,100%{opacity:0;transform:none}}
+@media(prefers-reduced-motion:reduce){.xf-thread li{animation:none}}/* 운영자 2026-11-03: 고객센터 탭 (AI 상담 · 자주 묻는 질문). 글자 탭 + 선택된 탭 아래 귤색 줄 */
+.help-tabs{background:#fff;border-bottom:1px solid #e5e8eb}
+.help-tabs-in{display:flex;gap:28px;max-width:1168px;margin:0 auto;padding:0 24px;box-sizing:border-box}
+.help-tabs a{display:block;padding:16px 0 13px;border-bottom:3px solid transparent;font-size:17px;line-height:25.5px;font-weight:600;color:#6b7684;letter-spacing:0;text-decoration:none;white-space:nowrap}
+.help-tabs a:hover{color:#191f28}
+.help-tabs a.on{color:#191f28;font-weight:700;border-bottom-color:#EF920E}
+@media(max-width:760px){.help-tabs-in{padding:0 20px;gap:24px}.help-tabs a{padding:12px 0 10px;font-size:16px;line-height:24px}}
+/* 운영자 2026-11-03: 둘러보기 = 토스플레이스 스토리 '풍'. 흰 바탕, 맨 위 큰 추천 카드, 섹션 제목 + 카드 열. TDS 크기, 우리 색 */
+.xs{background:#fff;padding:40px 0 96px;letter-spacing:0;word-break:keep-all}
+.xs :is(h1,h2,b,p,span,small,a){letter-spacing:0}
+.xs-in{display:grid;gap:64px;max-width:1168px;margin:0 auto;padding-inline:24px;box-sizing:border-box}
+.xs-title{margin:0 0 -32px;font-size:30px;line-height:40px;font-weight:700;color:#191f28}
+.xs-feat{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:56px;color:#191f28;text-decoration:none}
+.xs-feat-art{display:grid;place-items:center;aspect-ratio:16/10;max-width:100%;border-radius:24px;background:#fff7ec;padding:32px;box-sizing:border-box}
+.xs-rank{width:100%;max-width:400px;display:grid;gap:12px;padding:24px;border-radius:20px;background:#fff;box-shadow:0 4px 24px rgba(101,45,28,.08)}
+.xs-rank-cap{margin:0 0 4px;font-size:15px;line-height:22.5px;font-weight:700;color:#191f28}
+.xs-rank-row{display:grid;grid-template-columns:20px 64px minmax(0,1fr) 44px;align-items:center;gap:10px;font-size:14px;line-height:21px}
+.xs-rank-row b{color:#CE6719;font-weight:700}.xs-rank-co{color:#333d48;font-weight:600}.xs-rank-row small{color:#6b7684;text-align:right}
+.xs-rank-bar{height:8px;border-radius:4px;background:#f2f4f6;overflow:hidden}.xs-rank-bar i{display:block;height:100%;border-radius:4px;background:#EF920E}
+.xs-feat-copy{display:grid;gap:12px;justify-items:start}
+.xs-kicker{font-size:15px;line-height:22.5px;font-weight:700;color:#CE6719}
+.xs-feat-copy h2{margin:0;font-size:30px;line-height:40px;font-weight:700;color:#191f28;text-wrap:balance}
+.xs-more{display:inline-flex;align-items:center;gap:2px;font-size:15px;line-height:22.5px;font-weight:600;color:#6b7684;text-decoration:none}
+.xs-more svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.xs-feat:hover .xs-more,a.xs-more:hover{color:#191f28}
+.xs-feat-copy .xs-more{margin-top:12px}
+.xs-sec{display:grid;gap:20px}
+.xs-hrow{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+.xs-h{margin:0;font-size:22px;line-height:31px;font-weight:700;color:#191f28}
+.xs-grid{display:grid;gap:24px 16px;margin:0;padding:0;list-style:none}
+.xs-grid.is-3{grid-template-columns:repeat(3,minmax(0,1fr))}.xs-grid.is-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.xs-card{display:grid;gap:4px;color:#191f28;text-decoration:none}
+.xs-pic{display:grid;place-items:center;aspect-ratio:4/3;margin-bottom:12px;border-radius:20px;transition:transform .2s}
+.xs-pic.is-cream{background:#fff7ec;color:#CE6719}.xs-pic.is-grey{background:#f2f4f6;color:#652D1C}
+.xs-pic svg{width:56px;height:56px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.xs-card:hover .xs-pic{transform:translateY(-2px)}
+.xs-card b{font-size:17px;line-height:25.5px;font-weight:700}.xs-card small{font-size:15px;line-height:22.5px;color:#6b7684}
+.xs-person{display:grid;grid-template-columns:56px minmax(0,1fr);column-gap:16px;row-gap:4px;align-content:start;padding:24px;border:1px solid #e5e8eb;border-radius:20px}
+.xs-av{grid-row:1/5;display:grid;place-items:center;width:56px;height:56px;border-radius:50%;object-fit:cover;background:#fff7ec;color:#CE6719;font-size:20px;font-weight:700}
+.xs-who{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.xs-who b{font-size:17px;line-height:25.5px;color:#191f28}
+.xs-person p{margin:0;font-size:15px;line-height:22.5px;color:#4e5968}.xs-person .xs-org{color:#6b7684}
+.xs-n{font-size:13px;line-height:19.5px;color:#6b7684}.xs-n b{color:#CE6719}
+.xs-empty{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px;border-radius:20px;background:#fff7ec;color:#191f28;text-decoration:none}
+.xs-empty b{font-size:17px;line-height:25.5px}
+.xs-post{display:grid;gap:8px;align-content:start;height:100%;padding:24px;border:1px solid #e5e8eb;border-radius:20px;color:#191f28;text-decoration:none;box-sizing:border-box}
+.xs-post:hover{background:#f9fafb}
+.xs-cat{justify-self:start;padding:3px 8px;border-radius:11px;background:#fff0db;color:#CE6719;font-size:12px;line-height:18px;font-weight:700}
+.xs-post b{font-size:17px;line-height:25.5px;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.xs-post small{font-size:13px;line-height:19.5px;color:#6b7684}
+.xs-none{margin:0;color:#6b7684;font-size:15px}
+@media(max-width:1023px){.xs-grid.is-4{grid-template-columns:repeat(2,minmax(0,1fr))}.xs-grid.is-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){
+  .xs{padding:24px 0 72px}.xs-in{gap:48px;padding-inline:20px}.xs-title{font-size:26px;line-height:35px;margin-bottom:-24px}
+  .xs-feat{grid-template-columns:minmax(0,1fr);gap:20px}.xs-feat-art{padding:20px}
+  .xs-feat-copy h2{font-size:22px;line-height:31px}.xs-feat-copy .xs-more{margin-top:0}
+  .xs-grid.is-3{grid-template-columns:minmax(0,1fr)}.xs-grid{gap:12px}
+  .xs-h{font-size:20px;line-height:29px}
+}

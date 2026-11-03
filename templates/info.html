@@ -3,7 +3,7 @@
 {% block title %}{{ txt(page ~ '.title') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ txt(page ~ '.intro') or txt('seo.description') }}{% endblock %}
 {% block head %}{% if page == 'faq' %}{% set qs = [] %}{% for item in items('faq') if item.a %}{% set _ = qs.append({"@type": "Question", "name": item.q|string, "acceptedAnswer": {"@type": "Answer", "text": item.a|string}}) %}{% endfor %}{% if qs %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": qs}|tojson }}</script>{% endif %}{% endif %}{% if page == 'guide' %}{% set steps = [] %}{% for st in g.lists.get('guide_steps', []) if st.title %}{% set _ = steps.append({"@type": "HowToStep", "position": loop.index, "name": st.title|string, "text": st.title|string}) %}{% endfor %}{% if steps %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "HowTo", "@id": canonical_url() ~ "#howto", "name": ui_text('guide.howto_name', '소비자 피해 제보하는 방법'), "inLanguage": "ko", "step": steps, "publisher": {"@id": canonical_url('/') ~ "#organization"}}|tojson }}</script>{% endif %}{% endif %}{% endblock %}
-{% block content %}<main>
+{% block content %}{% if page == 'faq' and not is_soboru() %}{% set help_on = 'faq' %}{% include 'help_tabs.html' %}{% endif %}<main>
 {% if page == 'guide' %}
 {% if is_soboru() %}{% include 'guide.html' %}{% else %}{% include 'guide_toss.html' %}{% endif %}{# 제보센터는 토스식 이용 안내 (운영자 2026-11-03) #}
 {% else %}
@@ -14,7 +14,7 @@
   {% if block.kind == 'process_cards' %}
   {% if page == 'process' and not is_soboru() %}{% include 'process_story.html' %}{% else %}{% include 'process_cards.html' %}{% endif %}
   {% elif block.kind == 'process_note' %}
-  {% if txt('process.note') %}<p class="process-note">{{ txt('process.note') }} <a href="{{ url_for('lookup') }}">{{ ui('process.lookup_link', '내 제보 조회 →') }}</a></p>{% endif %}
+  {% if txt('process.note') and is_soboru() %}{# 운영자 2026-11-03: 제보센터에선 '로그인하면 내 제보에서…' 줄 뺌 #}<p class="process-note">{{ txt('process.note') }} <a href="{{ url_for('lookup') }}">{{ ui('process.lookup_link', '내 제보 조회 →') }}</a></p>{% endif %}
   {% elif block.kind == 'faq_list' and not is_soboru() %}
   {% include 'faq_board.html' %}
   {% elif block.kind == 'faq_list' %}

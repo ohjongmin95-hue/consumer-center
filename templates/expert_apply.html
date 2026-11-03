@@ -3,7 +3,6 @@
 {% block title %}{{ ui('expert.tab2', '자문단 등록') }} | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="xa member-page ex-page"><div class="xa-in">
-  {% if mine %}
   <h1 class="xa-title">{{ ui('expert.mine_title', '내 자문단 정보') }}</h1>
   <section class="xa-card">
     <div class="xa-me">{% if photo %}<img class="ex-photo xa-av" src="{{ photo }}" alt="" width="64" height="64">{% else %}<span class="xa-av" aria-hidden="true">{{ mine['name'][:1] }}</span>{% endif %}
@@ -20,29 +19,5 @@
     <label class="xa-f"><span>{{ '프로필 사진 바꾸기' if photo else '프로필 사진 넣기' }}</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required></label>
     <button class="secondary xa-btn" type="submit">사진 올리기</button>
   </form>
-  {% else %}
-  <h1 class="xa-title">{% if invite %}{{ invite['name'] }} 님,<br>{{ ui('expert.join_title', '정보를 확인해 주세요') }}{% else %}{{ ui('expert.apply_title', '자문단 신청') }}{% endif %}</h1>
-  <form class="xa-form" method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    <div class="xa-seg" role="radiogroup" aria-label="등록 종류"><label><input type="radio" name="kind" value="person"{% if f.kind != 'firm' %} checked{% endif %}><span>개인</span></label><label><input type="radio" name="kind" value="firm"{% if f.kind == 'firm' %} checked{% endif %}><span>사무소·법인</span></label></div>
-
-    <label class="xa-pick" for="x-photo"><span class="xa-pick-av"><img id="x-photo-pv" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="" width="88" height="88" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="xa-pick-t" data-p="프로필 사진 넣기" data-f="로고 넣기">{{ '로고 넣기' if f.kind == 'firm' else '프로필 사진 넣기' }}</span><input id="x-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
-
-    <div class="xa-f"><label for="x-name" data-p="이름" data-f="사무소·법인 이름">{{ '사무소·법인 이름' if f.kind == 'firm' else '이름' }}</label><input id="x-name" name="name" maxlength="30" required value="{{ f.name }}" placeholder="실명으로 적어 주세요" data-pp="실명으로 적어 주세요" data-pf="예: 소보루 법률사무소"></div>
-    <div class="xa-f"><label for="x-field">분야</label><select id="x-field" name="field" required><option value="">골라 주세요</option><optgroup label="개인" data-k="person">{% for x in fields %}<option{% if x == f.field %} selected{% endif %}>{{ x }}</option>{% endfor %}</optgroup><optgroup label="사무소·법인" data-k="firm">{% for x in firm_fields %}<option{% if x == f.field %} selected{% endif %}>{{ x }}</option>{% endfor %}</optgroup></select></div>
-    <div class="xa-f"><label for="x-org" data-p="소속" data-f="대표자">{{ '대표자' if f.kind == 'firm' else '소속' }}</label><input id="x-org" name="org" maxlength="60" value="{{ f.org }}" placeholder="{{ '예: 홍길동' if f.kind == 'firm' else '예: 소보루 법률사무소' }}" data-pp="예: 소보루 법률사무소" data-pf="예: 홍길동"></div>
-    <div class="xa-f"><label for="x-intro">한 줄 소개</label><input id="x-intro" name="intro" maxlength="120" value="{{ f.intro }}" placeholder="예: 전자상거래 환불 분쟁을 10년째 다뤄요" data-pp="예: 전자상거래 환불 분쟁을 10년째 다뤄요" data-pf="예: 소비자 분쟁 전담팀이 있어요"></div>
-
-    <h2 class="xa-sub">{{ ui('expert.proof_title', '자격 확인') }}</h2>
-    <div class="xa-f"><label for="x-lic" data-p="자격·등록번호" data-f="사업자등록번호">{{ '사업자등록번호' if f.kind == 'firm' else '자격·등록번호' }}</label><input id="x-lic" name="license_no" maxlength="40" value="{{ f.license_no }}" placeholder="{{ '000-00-00000' if f.kind == 'firm' else '예: 변호사 등록번호' }}" data-pp="예: 변호사 등록번호" data-pf="000-00-00000"></div>
-    <div class="xa-f"><label for="x-proof" data-p="자격증 사진이나 PDF" data-f="사업자등록증 사진이나 PDF">{{ '사업자등록증 사진이나 PDF' if f.kind == 'firm' else '자격증 사진이나 PDF' }}</label><input id="x-proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small>번호나 파일 중 하나만 있으면 돼요. 운영자만 봐요.</small></div>
-    <div class="xa-f"><label for="x-phone">연락처</label><input id="x-phone" name="phone" maxlength="20" inputmode="tel" value="{{ f.phone }}" placeholder="010-0000-0000"></div>
-    <div class="xa-f"><label for="x-email">이메일</label><input id="x-email" name="email" type="email" maxlength="120" value="{{ f.email }}" placeholder="name@example.com"></div>
-
-    <label class="xa-agree"><input type="checkbox" name="agree" value="1" required><span>내 댓글에 자문단 표시가 붙고, 자격 확인 정보(번호·파일·연락처)를 운영자가 보관하는 데 동의해요.</span></label>
-    <div class="xi-cta"><button class="primary xi-go" type="submit">{{ '등록하기' if invite else '신청하기' }}</button></div>
-  </form>
-  {% endif %}
 </div></main>
-<script>(function(){var rs=document.querySelectorAll('[name=kind]'),sel=document.getElementById('x-field');function k(){var c=document.querySelector('[name=kind]:checked'),v=c?c.value:'person';document.querySelectorAll('[data-p]').forEach(function(l){l.textContent=v==='firm'?l.dataset.f:l.dataset.p});document.querySelectorAll('[data-pp]').forEach(function(x){x.placeholder=v==='firm'?x.dataset.pf:x.dataset.pp});if(sel){sel.querySelectorAll('optgroup').forEach(function(g){var on=g.dataset.k===v;g.hidden=!on;g.disabled=!on});var o=sel.selectedOptions[0];if(o&&o.parentNode.disabled)sel.value=''}}rs.forEach(function(r){r.addEventListener('change',k)});k()})()</script>
-<script>(function(){var i=document.getElementById('x-photo'),p=document.getElementById('x-photo-pv');if(!i)return;i.addEventListener('change',function(){var f=i.files[0];if(!f){p.hidden=true;return}p.src=URL.createObjectURL(f);p.hidden=false})})()</script>
 {% endblock %}

@@ -1,15 +1,15 @@
 {% extends 'console.html' %}
-{% block title %}전문가 | {{ txt('site.name') }}{% endblock %}
+{% block title %}소비자 자문단 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
 <main class="cs-page">
-  <h1 class="cs-title">전문가</h1>
-  <p class="cs-lead">모시고 싶은 전문가를 한 명씩 등록해 <b>초대 링크</b>를 보내 주세요. 전문가가 링크를 열어 로그인하고 자격 정보를 확인해 보내면 바로 전문가가 돼요. 링크 없이 직접 신청한 분(<b>{{ url_for('expert_apply', _external=True) }}</b>)은 자격을 확인하고 승인해 주세요. 전문가가 제보에 댓글을 달면 이름 옆에 ‘전문가 · 분야’ 표시가 붙어요. 법무법인 같은 사무소·법인도 분야에서 골라 등록할 수 있어요. 수수료·수임료는 받지 않아요.</p>
+  <h1 class="cs-title">소비자 자문단</h1>
+  <p class="cs-lead">모시고 싶은 분을 한 명씩 등록해 <b>초대 링크</b>를 보내 주세요. 링크를 연 분이 정보와 자격증 파일을 넣으면 로그인 없이 바로 자문단이 돼요. 모집 페이지(<b>{{ url_for('expert_apply', _external=True) }}</b>)로 직접 신청한 분은 자격증 파일을 보고 공식 조회로 맞춰 본 뒤 승인해 주세요. 댓글에 ‘자문단 · 분야’ 표시가 붙으려면 그분이 카카오 로그인으로 계정을 한 번 이어야 해요.</p>
 
   <form class="cs-panel cs-add" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="invite">
-    <h2>전문가 초대</h2>
+    <h2>자문단 초대</h2>
     <div class="cs-add-row">
       <input name="name" maxlength="30" required placeholder="이름 또는 법인 이름" aria-label="이름">
-      <select name="field" required aria-label="분야"><option value="">분야</option><optgroup label="개인 전문가">{% for f in fields %}<option>{{ f }}</option>{% endfor %}</optgroup><optgroup label="사무소·법인">{% for f in firm_fields %}<option>{{ f }}</option>{% endfor %}</optgroup></select>
+      <select name="field" required aria-label="분야"><option value="">분야</option><optgroup label="개인">{% for f in fields %}<option>{{ f }}</option>{% endfor %}</optgroup><optgroup label="사무소·법인">{% for f in firm_fields %}<option>{{ f }}</option>{% endfor %}</optgroup></select>
       <input name="org" maxlength="60" placeholder="소속 (예: 소보루 법률사무소)" aria-label="소속">
       <input name="note" maxlength="200" placeholder="메모 (관리자만 봐요)" aria-label="메모">
       <button class="cs-btn cs-btn-main" type="submit">초대 링크 만들기</button>
@@ -18,22 +18,22 @@
 
   <div class="cs-table-wrap">
     <table class="cs-table cs-stack">
-      <thead><tr><th>전문가</th><th>자격 확인</th><th>상태</th><th></th></tr></thead>
+      <thead><tr><th>자문단</th><th>자격 확인</th><th>상태</th><th></th></tr></thead>
       <tbody>
       {% for e in rows %}
       <tr{% if e['status'] in ('rejected', 'stopped') %} class="is-off"{% endif %}>
-        <td>{% if e['photo'] %}<img class="ex-photo sm" src="{{ photo_url(e['id'], e['photo']) }}" alt="" width="40" height="40">{% endif %}<b>{{ e['name'] }}</b> · {{ e['field'] }}{% if e['kind'] == 'firm' %} <span class="cs-pill">전문 기관</span>{% endif %}{% if e['org'] %}<br><small>{{ e['org'] }}</small>{% endif %}{% if e['nickname'] %}<br><small class="cs-muted">회원 닉네임 {{ e['nickname'] }}</small>{% endif %}{% if e['intro'] %}<br><small>{{ e['intro'] }}</small>{% endif %}{% if e['note'] %}<br><small class="cs-muted">메모: {{ e['note'] }}</small>{% endif %}
+        <td>{% if e['photo'] %}<img class="ex-photo sm" src="{{ photo_url(e['id'], e['photo']) }}" alt="" width="40" height="40">{% endif %}<b>{{ e['name'] }}</b> · {{ e['field'] }}{% if e['kind'] == 'firm' %} <span class="cs-pill">사무소·법인</span>{% endif %}{% if e['org'] %}<br><small>{{ e['org'] }}</small>{% endif %}{% if e['nickname'] %}<br><small class="cs-muted">회원 닉네임 {{ e['nickname'] }}</small>{% endif %}{% if e['intro'] %}<br><small>{{ e['intro'] }}</small>{% endif %}{% if e['note'] %}<br><small class="cs-muted">메모: {{ e['note'] }}</small>{% endif %}
           <form class="ex-up" method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ e['id'] }}"><input type="hidden" name="act" value="photo"><label class="cs-btn">{{ '사진 바꾸기' if e['photo'] else '사진 넣기' }}<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden onchange="this.form.submit()"></label></form></td>
         <td>{% if e['status'] == 'invited' %}<span class="cs-muted">아직 링크를 안 열었어요</span><br><input class="ex-link" readonly value="{{ join_url(e['token']) }}" aria-label="초대 링크" onclick="this.select()"> <button class="cs-btn" type="button" data-copy="{{ join_url(e['token']) }}">복사</button>
-            {% else %}{% if e['license_no'] %}자격·등록번호 <b class="mono">{{ e['license_no'] }}</b><br>{% endif %}{% if e['proof'] %}<a href="{{ url_for('admin_expert_proof', eid=e['id']) }}" target="_blank" rel="noopener">자격증 보기 ↗</a><br>{% endif %}<small>{{ e['phone'] }}{% if e['email'] %} · {{ e['email'] }}{% endif %}</small>{% endif %}</td>
+            {% else %}{% if e['license_no'] %}자격·등록번호 <b class="mono">{{ e['license_no'] }}</b><br>{% endif %}{% if e['proof'] %}<a href="{{ url_for('admin_expert_proof', eid=e['id']) }}" target="_blank" rel="noopener">자격증 보기 ↗</a><br>{% endif %}{% if e['proof2'] %}<a href="{{ url_for('admin_expert_proof', eid=e['id'], n=2) }}" target="_blank" rel="noopener">재직·사업자 서류 보기 ↗</a><br>{% endif %}{% if lookup.get(e['field']) %}<a href="{{ lookup[e['field']][1] }}" target="_blank" rel="noopener">{{ lookup[e['field']][0] }}에서 확인 ↗</a><br>{% endif %}{% if not e['user_id'] and e['status'] != 'invited' %}<small class="cs-muted">아직 계정을 잇지 않았어요</small><br>{% endif %}<small>{{ e['phone'] }}{% if e['email'] %} · {{ e['email'] }}{% endif %}</small>{% endif %}</td>
         <td><span class="cs-status{% if e['status'] == 'approved' %} s3{% elif e['status'] == 'pending' %} s1{% elif e['status'] == 'invited' %} s2{% endif %}">{{ status[e['status']] }}</span>{% if e['approved'] %}<br><small class="cs-muted">{{ e['approved'][:10] }}</small>{% endif %}</td>
         <td><form class="biz-actions" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ e['id'] }}">
           {% if e['status'] == 'pending' %}<button class="cs-btn cs-btn-main" name="act" value="approve">승인</button><button class="cs-btn" name="act" value="reject">반려</button>
-          {% elif e['status'] == 'approved' %}<button class="cs-btn" name="act" value="stop" onclick="return confirm('{{ e['name'] }} 님의 전문가 표시를 멈출까요?')">표시 멈추기</button>
+          {% elif e['status'] == 'approved' %}<button class="cs-btn" name="act" value="stop" onclick="return confirm('{{ e['name'] }} 님의 자문단 표시를 멈출까요?')">표시 멈추기</button>
           {% elif e['status'] in ('stopped', 'rejected') and e['user_id'] %}<button class="cs-btn" name="act" value="approve">다시 켜기</button>{% endif %}
           <button class="cs-btn" name="act" value="delete" onclick="return confirm('{{ e['name'] }} 님 정보를 지울까요? 자격증 파일도 지워져요.')">지우기</button></form></td>
       </tr>
-      {% else %}<tr><td colspan="4" class="cs-empty">아직 등록한 전문가가 없어요.</td></tr>{% endfor %}
+      {% else %}<tr><td colspan="4" class="cs-empty">아직 등록한 자문단이 없어요.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

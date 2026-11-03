@@ -120,6 +120,14 @@ def experts_menu(rows):
         if r.get('page') in ('experts','board','explore'):
             if not seen:out.append({**r,'label':'둘러보기' if r.get('page')!='explore' else r.get('label') or '둘러보기','page':'explore','url':''});seen=True
         else:out.append(r)
+    return help_menu(out)
+def help_menu(rows):
+    """운영자 2026-11-03: 'AI 상담'·'자주 묻는 질문'은 상단 메뉴 '고객센터' 하나로 묶음. 고객센터 안에서 두 탭으로 오감."""
+    out=[];seen=False
+    for r in rows:
+        if r.get('page') in ('ask','faq'):
+            if not seen:out.append({**r,'label':'고객센터','page':'ask','url':''});seen=True
+        else:out.append(r)
     return out
 def load_lists():
     out=_load_lists();out['process_steps']=press_step(out.get('process_steps'))
@@ -176,6 +184,7 @@ def menu_href(item):
 def menu_active(href):
     # 현재 페이지가 이 메뉴 주소이거나 그 하위 주소(예: /reports/12, /board/3)면 강조.
     if not href.startswith('/') or href=='#':return False
+    if current_face()=='jebo' and 'law_ask' in app.view_functions and href==url_for('law_ask') and request.path==url_for('info_page',page='faq'):return True  # 고객센터 = AI 상담 + 자주 묻는 질문
     return request.path==href or (href!='/' and request.path.startswith(href.rstrip('/')+'/'))
 def block_count(item,default,top=30):
     try:return min(top,max(1,int(item.get('count',''))))

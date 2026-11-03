@@ -9,14 +9,17 @@
 """
 import datetime, os, secrets, uuid
 
-from flask import abort, flash, g, redirect, render_template, request, send_file, url_for
+from flask import abort, flash, g, redirect, render_template, request, send_file, session, url_for
 
-FIELDS = ('변호사', '손해사정사', '공인회계사', '세무사', '공인노무사', '법무사', '변리사', '감정평가사',
-          '소비자전문상담사', '의사', '약사', '자동차 정비', '건축·인테리어', '기타 전문가')
-FIRM_FIELDS = ('법무법인', '법률사무소', '손해사정법인', '세무법인', '회계법인', '노무법인', '특허법인', '법무사사무소', '기타 전문 기관')  # 운영자 2026-11-03: 사무소·법인도 등록
+# 운영자 2026-11-03: 자문단은 일단 변호사와 교수만 받음 (사무소·법인은 법무법인·법률사무소). 예전에 등록된 다른 분야는 그대로 보임
+FIELDS = ('변호사', '교수')
+FIRM_FIELDS = ('법무법인', '법률사무소')
 KINDS = {'person': '자문단', 'firm': '자문단'}  # 운영자 2026-11-03: 표시 이름 = 소비자 자문단 ('자문위원'·'전문가' 아님)
 STATUS = {'invited': '초대함', 'pending': '확인 기다림', 'approved': '활동 중', 'rejected': '반려', 'stopped': '멈춤'}
 PROOF_EXT = ('.jpg', '.jpeg', '.png', '.webp', '.pdf')
+# 관리자가 자격을 공식 조회로 맞춰 볼 곳 (운영자 2026-11-03: 다른 서비스처럼 '파일 받기 → 공식 조회 → 표시')
+LOOKUP = {'변호사': ('대한변호사협회 변호사 검색', 'https://www.koreanbar.or.kr'), '법무법인': ('대한변호사협회 변호사 검색', 'https://www.koreanbar.or.kr'),
+          '법률사무소': ('대한변호사협회 변호사 검색', 'https://www.koreanbar.or.kr')}
 
 
 def migrate(db):
@@ -27,6 +30,8 @@ def migrate(db):
     cols = {r[1] for r in db.execute('PRAGMA table_info(experts)')}
     if 'photo' not in cols: db.execute("ALTER TABLE experts ADD COLUMN photo TEXT NOT NULL DEFAULT ''")
     if 'kind' not in cols: db.execute("ALTER TABLE experts ADD COLUMN kind TEXT NOT NULL DEFAULT 'person'")
+    if 'proof2' not in cols: db.execute("ALTER TABLE experts ADD COLUMN proof2 TEXT NOT NULL DEFAULT ''")  # 재직증명서·사업자등록증 (선택)
+    if 'claim' not in cols: db.execute('ALTER TABLE experts ADD COLUMN claim TEXT')  # 로그인 없이 등록한 분이 나중에 계정을 잇는 열쇠
 
 
 def labels(db, user_ids):
@@ -52,8 +57,8 @@ def install(S):
     def now(): return datetime.datetime.now().isoformat(timespec='seconds')
     def clean(name, n): return ' '.join((request.form.get(name) or '').split())[:n]
 
-    def save_proof(old=''):
-        up = request.files.get('proof')
+    def save_proof(old='', key='proof'):
+        up = request.files.get(key)
         if not up or not up.filename: return old
         ext = os.path.splitext(up.filename.lower())[1]
         if ext not in PROOF_EXT: raise ValueError('자격증은 사진(JPG·PNG·WEBP)이나 PDF로 올려 주세요.')
@@ -82,45 +87,81 @@ def install(S):
 
     def form_values(row=None):
         r = dict(row) if row else {}
-        out = {k: r.get(k, '') for k in ('name', 'field', 'org', 'license_no', 'intro', 'phone', 'email')}
+        out = {k: r.get(k, '') for k in ('name', 'field', 'org', 'intro', 'phone', 'email')}
         out['kind'] = r.get('kind') or 'person'
         return out
 
     def submit(row, invited):
-        f = {'name': clean('name', 30), 'field': clean('field', 20), 'org': clean('org', 60), 'license_no': clean('license_no', 40),
+        """운영자 2026-11-03: 로그인 없이 입력하고 등록. 자격은 번호 말고 파일로만. 로그인 안 했으면 나중에 계정을 잇는 열쇠(claim)를 줌."""
+        f = {'name': clean('name', 30), 'field': clean('field', 20), 'org': clean('org', 60),
              'intro': clean('intro', 120), 'phone': clean('phone', 20), 'email': clean('email', 120)}
         kind = 'firm' if request.form.get('kind') == 'firm' else 'person'
         if not f['name'] or f['field'] not in (FIRM_FIELDS if kind == 'firm' else FIELDS): raise ValueError('이름과 분야를 넣어 주세요.')
-        if not f['license_no'] and not request.files.get('proof', None) and not (row and row['proof']):
-            raise ValueError('사업자등록번호를 쓰거나 사업자등록증을 올려 주세요.' if kind == 'firm' else '자격·등록번호를 쓰거나 자격증 사진을 올려 주세요.')
+        if not f['phone'] and not f['email']: raise ValueError('연락처나 이메일 중 하나는 적어 주세요.')
+        up = request.files.get('proof')
+        if not (up and up.filename) and not (row and row['proof']):
+            raise ValueError('사업자등록증 파일을 올려 주세요.' if kind == 'firm' else '재직증명서 파일을 올려 주세요.' if f['field'] == '교수' else '변호사 등록증 파일을 올려 주세요.')
         if not request.form.get('agree'): raise ValueError('자문단 표시와 확인 정보 보관에 동의해 주세요.')
         proof = save_proof(row['proof'] if row else '')
+        proof2 = save_proof(row['proof2'] if row else '', 'proof2')
         photo = save_photo(row['photo'] if row else '')
         status = 'approved' if invited else 'pending'
+        uid = g.user['id'] if g.user else None
+        claim = None if uid else secrets.token_urlsafe(16)
         with conn() as db:
             if row:
-                db.execute('UPDATE experts SET user_id=?,name=?,field=?,org=?,license_no=?,intro=?,phone=?,email=?,proof=?,photo=?,kind=?,status=?,token=NULL,approved=? WHERE id=?',
-                           (g.user['id'], *f.values(), proof, photo, kind, status, now() if invited else '', row['id']))
+                db.execute('UPDATE experts SET user_id=?,name=?,field=?,org=?,intro=?,phone=?,email=?,proof=?,proof2=?,photo=?,kind=?,status=?,token=NULL,claim=?,approved=? WHERE id=?',
+                           (uid, *f.values(), proof, proof2, photo, kind, status, claim, now() if invited else '', row['id']))
+                eid = row['id']
             else:
-                db.execute('INSERT INTO experts(user_id,name,field,org,license_no,intro,phone,email,proof,photo,kind,status,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                           (g.user['id'], *f.values(), proof, photo, kind, status, now()))
-        return status
+                eid = db.execute('INSERT INTO experts(user_id,name,field,org,intro,phone,email,proof,proof2,photo,kind,status,claim,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                                 (uid, *f.values(), proof, proof2, photo, kind, status, claim, now())).lastrowid
+        return eid, status, claim
+
+    def form_page(invite=None, f=None):
+        return render_template('expert_form.html', fields=FIELDS, firm_fields=FIRM_FIELDS, f=f or form_values(invite), invite=invite)
+
+    def done(status, claim):
+        session['expert_done'] = {'status': status, 'claim': claim or ''}
+        return redirect(url_for('expert_done'))
 
     @app.route('/expert/apply', methods=['GET', 'POST'])
-    @S.member_only
     def expert_apply():
-        with conn() as db: mine = db.execute('SELECT * FROM experts WHERE user_id=?', (g.user['id'],)).fetchone()
+        mine = None
+        if g.user:
+            with conn() as db: mine = db.execute('SELECT * FROM experts WHERE user_id=?', (g.user['id'],)).fetchone()
         if mine and mine['status'] in ('approved', 'pending', 'stopped') and request.method == 'GET':
-            return render_template('expert_apply.html', mine=mine, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, f=form_values(mine), invite=None, status=STATUS, photo=photo_url(mine['id'], mine['photo']))
+            return render_template('expert_apply.html', mine=mine, kinds=KINDS, status=STATUS, photo=photo_url(mine['id'], mine['photo']))
         if request.method == 'POST':
+            if request.form.get('website'): abort(400)  # 자동 등록 막기용 숨은 칸
             if mine and mine['status'] in ('approved', 'stopped'): abort(400)
             try:
-                submit(mine, False)
+                _, status, claim = submit(mine, False)
             except ValueError as e:
-                flash(str(e)); return render_template('expert_apply.html', mine=None, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, f=form_values(request.form), invite=None, status=STATUS)
-            flash('자문단 신청을 받았어요. 자격을 확인한 뒤 알려 드릴게요.')
-            return redirect(url_for('expert_apply'))
-        return render_template('expert_apply.html', mine=None, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, f=form_values(mine), invite=None, status=STATUS)
+                flash(str(e)); return form_page(f=form_values(request.form))
+            return done(status, claim)
+        return form_page(f=form_values(mine))
+
+    @app.route('/expert/done')
+    def expert_done():
+        d = session.get('expert_done')
+        if not d: return redirect(url_for('experts_page'))
+        nxt = url_for('expert_claim', key=d['claim']) if d.get('claim') else ''
+        return render_template('expert_done.html', status=d['status'], login_url=url_for('login', next=nxt) if nxt else '')
+
+    @app.route('/expert/claim/<key>')
+    @S.member_only
+    def expert_claim(key):
+        """로그인 없이 등록한 분이 로그인하면 그 계정에 자문단 정보를 이어 줌."""
+        with conn() as db:
+            row = db.execute('SELECT id FROM experts WHERE claim=?', (key,)).fetchone()
+            if not row: abort(404)
+            other = db.execute('SELECT id FROM experts WHERE user_id=? AND id!=?', (g.user['id'], row['id'])).fetchone()
+            if other: flash('이 계정에는 이미 자문단 정보가 있어요. 고객센터로 알려 주세요.'); return redirect(url_for('expert_apply'))
+            db.execute('UPDATE experts SET user_id=?,claim=NULL WHERE id=?', (g.user['id'], row['id']))
+        session.pop('expert_done', None)
+        flash('계정을 이었어요. 제보에 댓글을 달면 이름 옆에 자문단 표시가 붙어요.')
+        return redirect(url_for('expert_apply'))
 
     @app.route('/expert/photo', methods=['POST'])
     @S.member_only
@@ -142,26 +183,22 @@ def install(S):
 
     @app.route('/expert/join/<token>', methods=['GET', 'POST'])
     def expert_join(token):
-        # 운영자 2026-11-03: 초대 링크는 로그인 없이 토스식 소개부터 보여 주고, 버튼을 누르면 (로그인 뒤) 정보 입력
+        # 운영자 2026-11-03: 초대 링크 = 토스플레이스 상담 신청처럼 한 화면에서 바로 입력하고 등록 (로그인 없이도)
         with conn() as db: inv = db.execute("SELECT * FROM experts WHERE token=? AND status='invited'", (token,)).fetchone()
         if not inv: abort(404)
-        form_url = url_for('expert_join', token=token, step='form')
-        if request.method == 'GET' and request.args.get('step') != 'form':
-            return render_template('expert_invite.html', invite=inv, next_url=form_url if g.user else url_for('login', next=form_url))
-        if not g.user: return redirect(url_for('login', next=form_url))
-        with conn() as db: mine = db.execute('SELECT * FROM experts WHERE user_id=?', (g.user['id'],)).fetchone()
-        if mine and mine['id'] != inv['id'] and mine['status'] == 'approved':
-            flash('이미 자문단으로 등록된 계정이에요.'); return redirect(url_for('expert_apply'))
         if request.method == 'POST':
+            if request.form.get('website'): abort(400)
             try:
-                if mine and mine['id'] != inv['id']:
-                    with conn() as db: db.execute('DELETE FROM experts WHERE id=?', (mine['id'],))  # 초대가 먼저
-                submit(inv, True)
+                if g.user:
+                    with conn() as db:
+                        mine = db.execute('SELECT * FROM experts WHERE user_id=? AND id!=?', (g.user['id'], inv['id'])).fetchone()
+                        if mine and mine['status'] == 'approved': flash('이미 자문단으로 등록된 계정이에요.'); return redirect(url_for('expert_apply'))
+                        if mine: db.execute('DELETE FROM experts WHERE id=?', (mine['id'],))  # 초대가 먼저
+                _, status, claim = submit(inv, True)
             except ValueError as e:
-                flash(str(e)); return render_template('expert_apply.html', mine=None, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, f=form_values(request.form), invite=inv, status=STATUS)
-            flash('자문단으로 등록됐어요. 이제 제보에 댓글을 달면 자문단 표시가 붙어요.')
-            return redirect(url_for('expert_apply'))
-        return render_template('expert_apply.html', mine=None, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, f=form_values(inv), invite=inv, status=STATUS)
+                flash(str(e)); return form_page(inv, form_values(request.form))
+            return done(status, claim)
+        return form_page(inv)
 
     @app.route('/admin/experts', methods=['GET', 'POST'])
     @S.admin_only
@@ -191,14 +228,14 @@ def install(S):
                     elif act == 'stop': db.execute("UPDATE experts SET status='stopped' WHERE id=?", (eid,))
                     elif act == 'note': db.execute('UPDATE experts SET note=? WHERE id=?', (clean('note', 200), eid))
                     elif act == 'delete':
-                        for f in (row['proof'], row['photo']):
+                        for f in (row['proof'], row['proof2'], row['photo']):
                             if f: (folder / f).unlink(missing_ok=True)
                         db.execute('DELETE FROM experts WHERE id=?', (eid,))
             return redirect(url_for('admin_experts'))
         with conn() as db:
             rows = db.execute('''SELECT e.*,u.nickname FROM experts e LEFT JOIN users u ON u.id=e.user_id
                 ORDER BY CASE e.status WHEN 'pending' THEN 0 WHEN 'invited' THEN 1 WHEN 'approved' THEN 2 ELSE 3 END,e.id DESC''').fetchall()
-        return render_template('admin_experts.html', rows=rows, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, status=STATUS, photo_url=photo_url,
+        return render_template('admin_experts.html', rows=rows, fields=FIELDS, firm_fields=FIRM_FIELDS, kinds=KINDS, status=STATUS, photo_url=photo_url, lookup=LOOKUP,
                                join_url=lambda t: S.canonical_url(url_for('expert_join', token=t)))
 
     @app.route('/experts')
@@ -233,15 +270,16 @@ def install(S):
     @app.route('/explore')
     def explore():
         """둘러보기 (운영자 2026-11-03: 헤이마오 '发现'처럼). 기업 응대 순위·사기 전에 확인 바로가기, 소비자 자문단 카드 줄, 최신 소식·공감 많은 제보."""
-        hot = S.report_rows("public_consent=1 AND published=1 AND title_hidden=0 AND " + S.PUBLIC_VALID, (), 5, 0, S.HOT_ORDER)
+        hot = S.report_rows("public_consent=1 AND published=1 AND title_hidden=0 AND " + S.PUBLIC_VALID, (), 6, 0, S.HOT_ORDER)
         with conn() as db:
-            try: news = db.execute("SELECT id,title,summary,category,COALESCE(published_at,created) AS at FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 5").fetchall()
+            try: news = db.execute("SELECT id,title,summary,category,COALESCE(published_at,created) AS at FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 3").fetchall()
             except Exception: news = []
         return render_template('explore.html', helpers=helpers(10), hot=hot, news=news)
 
     @app.route('/admin/experts/<int:eid>/proof')
     @S.admin_only
     def admin_expert_proof(eid):
-        with conn() as db: row = db.execute('SELECT proof FROM experts WHERE id=?', (eid,)).fetchone()
-        if not row or not row['proof'] or not (folder / row['proof']).is_file(): abort(404)
-        r = send_file(folder / row['proof']); r.headers['Cache-Control'] = 'private, no-store'; return r
+        col = 'proof2' if request.args.get('n') == '2' else 'proof'
+        with conn() as db: row = db.execute(f'SELECT {col} AS f FROM experts WHERE id=?', (eid,)).fetchone()
+        if not row or not row['f'] or not (folder / row['f']).is_file(): abort(404)
+        r = send_file(folder / row['f']); r.headers['Cache-Control'] = 'private, no-store'; return r

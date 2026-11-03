@@ -145,7 +145,7 @@ SECTIONS = [
     ('process', '처리 절차', [
         ('process.title', '페이지 제목', '처리 절차', {}),
         ('process.intro', '소개 문구', '', OPT_ML),
-        ('process.disclaimer', '운영 안내 (페이지 맨 아래, 비우면 숨김)', '소비자제보센터는 언론사 SOBORU가 운영하는 소비자 제보 창구예요. 받은 제보는 업체에 전달하고 취재·보도에 참고해요. 법률 상담·자문, 소송 대리, 변호사 소개는 하지 않아요. 제보만으로 피해 회복이 보장되지는 않아요.', OPT_ML),
+        ('process.disclaimer', '운영 안내 (페이지 맨 아래, 비우면 숨김)', '소비자제보센터는 언론사 SOBORU가 운영하는 소비자 제보 창구예요. 받은 제보는 업체에 전달하고 취재·보도에 참고해요. 자문단 변호사를 소개해도 소개비·수수료 같은 돈은 받지 않아요. 제보만으로 피해 회복이 보장되지는 않아요.', OPT_ML),
         ('process.note', '하단 안내', '로그인하면 내 제보에서 진행 상황을 볼 수 있어요.', OPT_ML),
     ]),
     ('types', '제보 유형', [
@@ -261,7 +261,7 @@ HOME_BLOCKS = [
     ('groups', '진행 중인 공동 대응 (+ 제안하기)'),
 ]
 LEGACY_NAV = [('nav.home', 'reports', '소비자 제보 목록'), ('nav.guide', 'guide', '이용 안내'), ('nav.process', 'process', '처리 절차'),
-              ('nav.explore', 'explore', '둘러보기'), ('nav.ask', 'ask', 'AI 상담'), ('nav.faq', 'faq', '자주 묻는 질문')]
+              ('nav.explore', 'explore', '둘러보기'), ('nav.ask', 'ask', '고객센터')]
 LISTS = [
     ('menu', '소비자제보센터 상단 메뉴', 'consumerjebo.co.kr 맨 위 메뉴예요. 이름, 순서, 연결할 페이지를 정할 수 있고 외부 주소(블로그 등)도 넣을 수 있어요.',
      [('label', '메뉴 이름', {}), ('page', '연결할 페이지', {'choices': MENU_PAGES}), ('url', '직접 입력한 주소 ("직접 입력한 주소"를 골랐을 때만, 예: https://blog.naver.com/...)', {})], 1),

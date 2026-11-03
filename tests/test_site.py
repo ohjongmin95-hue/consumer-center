@@ -50,9 +50,10 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.get('/', base_url='https://consumerjebo.co.kr').status_code, 200)
 
     def test_process_disclaimer(self):
-        # 법률 자문 안 함 안내는 하단이 아니라 처리 절차 페이지 맨 아래에만
-        self.assertIn('법률 상담·자문', self.client.get('/process').get_data(as_text=True))
-        self.assertNotIn('법률 상담·자문', self.client.get('/').get_data(as_text=True))
+        # 운영 안내는 하단이 아니라 처리 절차 페이지 맨 아래에만. 운영자 2026-11-03: 변호사 소개는 하되 돈은 안 받음
+        page = self.client.get('/process').get_data(as_text=True)
+        self.assertIn('돈은 받지 않아요', page); self.assertNotIn('변호사 소개는 하지 않아요', page)
+        self.assertNotIn('돈은 받지 않아요', self.client.get('/').get_data(as_text=True))
 
     def test_search_meta_tags(self):
         import json, re
@@ -397,21 +398,26 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '김변호', 'field': '변호사', 'org': '소보루 법률사무소'}).status_code, 302)
         with self.site.conn() as db: token = db.execute("SELECT token FROM experts WHERE name='김변호'").fetchone()[0]
         self.assertIn('/expert/join/' + token, adm.get('/admin/experts').get_data(as_text=True))
-        intro = self.client.get('/expert/join/' + token)  # 운영자 2026-11-03: 로그인 없이 토스식 초대 소개부터, 버튼은 로그인 뒤 입력 단계로
-        self.assertEqual(intro.status_code, 200); self.assertIn('xi-title', intro.get_data(as_text=True)); self.assertIn('/login?next=', intro.get_data(as_text=True))
-        self.assertIn('/login', self.client.get('/expert/join/' + token + '?step=form').headers['Location'])
-        pro, pid = self.member_client('pro_kim', '김변')
-        page = pro.get('/expert/join/' + token + '?step=form').get_data(as_text=True)
-        self.assertIn('김변호 님', page); self.assertIn('value="소보루 법률사무소"', page)
-        self.assertEqual(self.post_form(pro, '/expert/join/' + token + '?step=form', {'name': '김변호', 'field': '변호사', 'license_no': '12345'}).status_code, 200)  # 동의 없으면 다시
+        # 운영자 2026-11-03: 초대 링크 = 토스플레이스 풍 한 화면, 로그인 없이 입력하고 바로 등록. 자격은 파일로만
+        page = self.client.get('/expert/join/' + token).get_data(as_text=True)
+        self.assertIn('xf-form', page); self.assertIn('김변호 님', page); self.assertIn('value="소보루 법률사무소"', page); self.assertNotIn('license_no', page)
+        pdf = lambda: (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf')
+        self.assertEqual(self.post_form(self.client, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'email': 'kim@x.kr', 'agree': '1'}).status_code, 200)  # 자격증 파일 없으면 다시
         from PIL import Image
         pic = io.BytesIO(); Image.new('RGB', (600, 300), 'blue').save(pic, 'JPEG'); pic.seek(0)
-        self.assertEqual(self.post_form(pro, '/expert/join/' + token + '?step=form', {'name': '김변호', 'field': '변호사', 'license_no': '12345', 'agree': '1', 'photo': (pic, 'me.jpg')}).status_code, 302)
-        self.assertEqual(pro.get('/expert/join/' + token).status_code, 404)  # 링크는 한 번만
+        guest = self.site.app.test_client()
+        r = self.post_form(guest, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'email': 'kim@x.kr', 'agree': '1', 'proof': pdf(), 'photo': (pic, 'me.jpg')})
+        self.assertEqual(r.status_code, 302)
+        done = guest.get(r.headers['Location']).get_data(as_text=True)
+        self.assertIn('/expert/claim/', done)  # 로그인 없이 등록 → 댓글용 계정은 나중에 한 번 잇기
+        self.assertEqual(guest.get('/expert/join/' + token).status_code, 404)  # 링크는 한 번만
+        with self.site.conn() as db: key = db.execute("SELECT claim FROM experts WHERE name='김변호'").fetchone()[0]
+        pro, pid = self.member_client('pro_kim', '김변')
+        self.assertEqual(pro.get('/expert/claim/' + key).status_code, 302)
         self.assertIn('자문단 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
         # 직접 신청은 승인 전까지 표시 없음
         other, oid = self.member_client('pro_lee', '이사정')
-        self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '손해사정사', 'agree': '1',
+        self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '교수', 'agree': '1', 'phone': '010-1234-5678',
                                                                  'proof': (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf')}).status_code, 302)
         with self.site.conn() as db:
             row = db.execute('SELECT id,status,proof FROM experts WHERE user_id=?', (oid,)).fetchone()
@@ -423,17 +429,17 @@ class SiteTest(unittest.TestCase):
             token2 = self.csrf(c, '/reports/%d' % cid)
             self.assertEqual(c.post('/reports/%d/comment' % cid, data={'_csrf': token2, 'body': body}).status_code, 302)
         page = self.client.get('/reports/%d' % cid).get_data(as_text=True)
-        self.assertIn('자문단 · 변호사', page); self.assertNotIn('자문단 · 손해사정사', page)
+        self.assertIn('자문단 · 변호사', page); self.assertNotIn('자문단 · 교수', page)
         photo = re.search(r'src="(/expert/\d+/photo\.jpg[^"]*)"', page)[1]
         self.assertEqual(Image.open(io.BytesIO(self.client.get(photo).data)).size, (400, 400))  # 정사각형으로 잘라서
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'approve', 'id': row['id']}).status_code, 302)
-        self.assertIn('자문단 · 손해사정사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertIn('자문단 · 교수', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         # 법무법인 같은 사무소·법인도 등록 (전문 기관 표시)
         firm, fid = self.member_client('firm_sb', '법무법인소보루')
         self.assertEqual(self.post_form(adm, '/admin/experts', {'act': 'invite', 'name': '법무법인 소보루', 'field': '법무법인'}).status_code, 302)
         with self.site.conn() as db: ft = db.execute("SELECT token,kind FROM experts WHERE name='법무법인 소보루'").fetchone()
         self.assertEqual(ft['kind'], 'firm')
-        self.assertEqual(self.post_form(firm, '/expert/join/' + ft['token'] + '?step=form', {'kind': 'firm', 'name': '법무법인 소보루', 'field': '법무법인', 'license_no': '129-14-81596', 'agree': '1'}).status_code, 302)
+        self.assertEqual(self.post_form(firm, '/expert/join/' + ft['token'], {'kind': 'firm', 'name': '법무법인 소보루', 'field': '법무법인', 'email': 'law@x.kr', 'agree': '1', 'proof': pdf()}).status_code, 302)
         token3 = self.csrf(firm, '/reports/%d' % cid)
         firm.post('/reports/%d/comment' % cid, data={'_csrf': token3, 'body': '소비자 분쟁 상담을 돕고 있어요.'})
         self.assertIn('자문단 · 법무법인', self.client.get('/reports/%d' % cid).get_data(as_text=True))
