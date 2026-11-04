@@ -139,6 +139,10 @@ def _load_lists():
         if current_face()=='jebo':return {key:saved.get(db_key(key,True)) or (legacy_list(db,key) if shared_key(key,True) else None) or site_content.LIST_DEFAULTS[key] for key,*_ in site_content.LISTS}
         return {key:saved[key] if key in saved else (legacy_list(db,key) or site_content.LIST_DEFAULTS[key]) for key,*_ in site_content.LISTS}
 @app.before_request
+def retired_host():
+    if request.host.split(':')[0].lower() in RETIRED_HOSTS:
+        return redirect('https://consumerjebo.co.kr'+request.full_path.rstrip('?'),301)
+@app.before_request
 def no_www():
     # www가 붙은 주소는 www 없는 주소로 옮긴다: 검색엔진이 같은 글을 두 주소로 따로 모으지 않게
     if request.host.lower().startswith('www.'):
@@ -216,6 +220,11 @@ BIZ_ON=os.getenv('ENABLE_BIZ_MEMBERS')=='1'
 app.jinja_env.globals['biz_on']=lambda:BIZ_ON
 # 대표 주소. soboru.co.kr로 옮길 때 서버 설정에 CANONICAL_HOST=soboru.co.kr (deploy/soboru-main.sh --make-main)
 CANONICAL_HOST=(os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().lower()
+# 운영자 2026-11-04: soboru.co.kr은 운영하지 않음 ('소보루는 이제 없다', '없애버려. 블록걸어').
+# 서버 설정에 CANONICAL_HOST=soboru.co.kr이 남아 있어도 대표 주소는 consumerjebo.co.kr. soboru.co.kr로 들어오면 전부 consumerjebo.co.kr로 보냄
+# (cs.soboru.co.kr·biz.soboru.co.kr 소보루CS는 다른 서비스라 그대로)
+RETIRED_HOSTS={'soboru.co.kr','www.soboru.co.kr'}
+if CANONICAL_HOST in RETIRED_HOSTS:CANONICAL_HOST='consumerjebo.co.kr'
 LIVE_HOSTS={h for d in (CANONICAL_HOST,'consumerjebo.co.kr','soboru.co.kr') for h in (d,'www.'+d)}
 # 소비자제보센터 화면으로 보여 줄 주소 (soboru.py가 화면을 바꿈). 대표 주소도 그 주소 그대로
 def main_host():return CANONICAL_HOST  # 로그인·가입을 받는 대표 주소 (crosslogin.py)

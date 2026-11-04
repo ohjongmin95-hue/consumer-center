@@ -34,8 +34,8 @@
     </div>
     <label class="xf-f"><span class="xf-l">한 줄 소개</span><input class="xf-in-t" name="intro" maxlength="120" value="{{ f.intro }}" placeholder="예: 전자상거래 환불 분쟁을 주로 다뤄요"></label>
     <label class="xf-f"><span class="xf-l">이력</span><textarea class="xf-in-t xf-ta" name="career" rows="3" maxlength="1000" placeholder="예: 소보루대학교 법학전문대학원 교수&#10;한국소비자원 분쟁조정위원 (2020~2024)">{{ f.career }}</textarea></label>
-    <div class="xf-f"><span class="xf-l is-req">자격 확인</span>
-      <label class="xf-file is-need"><input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"{% if not (invite and invite['proof']) %} required{% endif %}><b>{{ '사업자등록증' if firm else '변호사 등록증 또는 재직증명서' }}</b><span data-empty="사진이나 PDF를 올려 주세요">사진이나 PDF를 올려 주세요</span><i>필수</i></label>
+    <div class="xf-f"><span class="xf-l is-req">{{ ('로고' if firm else '프로필 사진') if invite else '자격 확인' }}</span>
+      {% if not invite %}<label class="xf-file is-need"><input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"{% if not (invite and invite['proof']) %} required{% endif %}><b>{{ '사업자등록증' if firm else '변호사 등록증 또는 재직증명서' }}</b><span data-empty="사진이나 PDF를 올려 주세요">사진이나 PDF를 올려 주세요</span><i>필수</i></label>{% endif %}
       <label class="xf-file{{ ' is-need' if not firm }}"><input name="photo" type="file" accept="image/jpeg,image/png,image/webp"{% if not firm and not (invite and invite['photo']) %} required{% endif %}><b>{{ '로고' if firm else '프로필 사진' }}</b><span data-empty="{{ '소개 페이지와 댓글에 보여요' if firm else '얼굴이 보이는 사진 · 소개 페이지와 댓글에 보여요' }}">{{ '소개 페이지와 댓글에 보여요' if firm else '얼굴이 보이는 사진 · 소개 페이지와 댓글에 보여요' }}</span><i>{{ '선택' if firm else '필수' }}</i></label>
     </div>
     <input type="hidden" name="agree" value="1">
@@ -60,8 +60,8 @@
 <section class="xf-more" aria-labelledby="xf-step"><div class="xf-more-in">
   <h2 class="xf-more-h is-center" id="xf-step">{{ ui('xf.step_h', '신청부터 활동까지\n이렇게 이어져요') }}</h2>
   <ol class="xf-step">
-    <li><i>01</i><b>{{ ui('xf.s1', '신청') }}</b><p>{{ ui('xf.s1_t', '위 칸을 채우고 자격 서류를 올려요.') }}</p></li>
-    <li><i>02</i><b>{{ ui('xf.s2', '확인') }}</b><p>{{ ui('xf.s2_t', '운영자가 서류를 보고 승인해요. 초대 링크로 오셨다면 바로 끝나요.') }}</p></li>
+    <li><i>01</i><b>{{ ui('xf.s1', '신청') }}</b><p>{% if invite %}{{ ui('xf.s1_inv', '위 칸을 채우고 프로필 사진을 올려요.') }}{% else %}{{ ui('xf.s1_t', '위 칸을 채우고 자격 서류를 올려요.') }}{% endif %}</p></li>
+    <li><i>02</i><b>{{ ui('xf.s2', '확인') }}</b><p>{% if invite %}{{ ui('xf.s2_inv', '초대받으셨으니 서류 확인 없이 바로 끝나요.') }}{% else %}{{ ui('xf.s2_t', '운영자가 서류를 보고 승인해요.') }}{% endif %}</p></li>
     <li><i>03</i><b>{{ ui('xf.s3b', '자문단 계정이 바로 생겨요') }}</b><p>{{ ui('xf.s3b_t', '따로 가입하지 않아도 돼요. 다음부터는 적어 주신 휴대폰 번호로 로그인해요.') }}</p></li>
     <li><i>04</i><b>{{ ui('xf.s4', '활동 시작') }}</b><p>{{ ui('xf.s4_t', '관심 있는 제보에 의견을 남기고, 받은 상담 신청을 확인해요.') }}</p></li>
   </ol>

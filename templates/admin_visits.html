@@ -34,6 +34,13 @@
       </div>
     </div>
   </div>
-  <p class="cs-lead ads-note">소비자제보센터 방문만 세요. 한 사람은 하루에 한 번만 세요. ‘들어온 곳’은 그날 처음 들어올 때 기준이에요: 광고 링크의 utm_source가 있으면 그 이름, 없으면 앞 화면(네이버·구글·카카오 등), 주소를 직접 쳤거나 즐겨찾기면 ‘직접·즐겨찾기’. 관리자와 검색 봇은 세지 않고, IP·개인정보는 저장하지 않아요. 기록은 2026년 11월 1일부터 쌓여요.</p>
+  <form class="cs-panel" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h2>세지 않는 곳</h2>
+    <p class="cs-lead">관리자로 로그인한 기기는 로그아웃해도 1년 동안 세지 않아요. 사무실이나 집처럼 늘 쓰는 인터넷은 IP를 적어 두면, 그곳에서 들어오는 방문은 로그인하지 않아도 세지 않아요. 지금 이 기기의 IP는 <b class="mono">{{ my_ip }}</b>이에요.</p>
+    <textarea name="ips" rows="3" placeholder="한 줄에 하나씩">{{ skip }}</textarea>
+    <button class="primary" type="submit">저장</button>
+  </form>
+  <p class="cs-lead ads-note">소비자제보센터 방문만 세요. 한 사람은 하루에 한 번만 세요. ‘들어온 곳’은 그날 처음 들어올 때 기준이에요: 광고 링크의 utm_source가 있으면 그 이름, 없으면 앞 화면(네이버·구글·카카오 등), 주소를 직접 쳤거나 즐겨찾기면 ‘직접·즐겨찾기’. 관리자 기기, 위에 적은 IP, 검색 봇은 세지 않고, IP·개인정보는 저장하지 않아요. 기록은 2026년 11월 1일부터 쌓여요.</p>
 </main>
 {% endblock %}
