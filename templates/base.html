@@ -49,10 +49,10 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">{# 소보루 글꼴 Pretendard (SIL OFL), 화면에 쓰는 글자만 나눠 받음 #}
   <link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}
 </head>
-<body{% if is_soboru() or app_client() %} class="{{ 'sb' if is_soboru() }}{{ ' in-app' if app_client() }}"{% endif %}>
+<body{% if is_soboru() or app_client() %} class="{{ 'sb' if is_soboru() }}{{ ' lt-alone' if letter_alone() }}{{ ' in-app' if app_client() }}"{% endif %}>
 {# 운영자 2026-11-03: 제보센터 로그인·회원가입은 토스처럼 메뉴 없는 별도 화면 (로고 + 닫기만, 바닥글 없음) #}{% set auth_screen = not is_soboru() and request.endpoint in ('login', 'signup', 'account_help', 'social_join', 'phone_start') %}
 {# 운영자 2026-11-03: 휴대폰에서 제보 쓸 때는 메뉴·바닥글 없이 꽉 찬 화면 (로고 + 닫기만) #}{% set write_screen = not is_soboru() and request.endpoint in ('report', 'report_talk') %}{# 운영자 2026-11-03: 자문단 초대·모집은 메뉴 없는 별도 페이지 (로고 + 닫기, 바닥글은 둠) #}{% set expert_screen = not is_soboru() and request.endpoint in ('expert_join', 'expert_apply', 'expert_done', 'expert_claim') %}{% set auth_bar %}<header class="auth-top{{ ' write-top' if write_screen }}{{ ' xf-top' if expert_screen }}"><a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a><a class="auth-x" href="{{ url_for('home') }}" aria-label="{{ ui('common.close', '닫기') }}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a></header>{% endset %}
-{% if is_soboru() %}{% include 'soboru_header.html' %}{% elif auth_screen or expert_screen %}{{ auth_bar }}{% else %}{% include 'jebo_header.html' %}{% if write_screen %}{{ auth_bar }}{% endif %}{% endif %}
+{% if letter_alone() %}{% include 'letter_header.html' %}{% elif is_soboru() %}{% include 'soboru_header.html' %}{% elif auth_screen or expert_screen %}{{ auth_bar }}{% else %}{% include 'jebo_header.html' %}{% if write_screen %}{{ auth_bar }}{% endif %}{% endif %}
 {% with msgs = get_flashed_messages() %}
 {% if msgs %}<div class="flash-wrap{% if auth_screen %} is-auth{% endif %}" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
 {% endwith %}
@@ -65,10 +65,10 @@
         {% if not is_soboru() %}<a href="{{ url_for('about_page') }}">{{ ui('common.ft_about', '서비스 소개') }}</a>{% endif %}
         <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('common.ft_terms', '이용약관') }}</a>
         <a class="ft-strong" href="{{ url_for('policy_page', page='privacy') }}">{{ ui('common.ft_privacy', '개인정보 처리방침') }}</a>
-        <a href="{{ url_for('policy_page', page='youth') }}">{{ ui('common.ft_youth', '청소년보호정책') }}</a>
+        {% if not letter_alone() %}<a href="{{ url_for('policy_page', page='youth') }}">{{ ui('common.ft_youth', '청소년보호정책') }}</a>
         <a class="ft-point" href="{{ url_for('takedown') }}">{{ ui('common.ft_takedown', '권리침해 신고 및 임시조치 안내') }}</a>
         <a href="{{ url_for('lookup') }}">{{ ui('common.ft_lookup', '내 제보 조회') }}</a>
-        {% if biz_on() %}<a href="{{ url_for('biz_login') }}">{{ ui('common.ft_biz', '기업 회원') }}</a>{% endif %}
+        {% if biz_on() %}<a href="{{ url_for('biz_login') }}">{{ ui('common.ft_biz', '기업 회원') }}</a>{% endif %}{% endif %}{# 레터 따로 페이지는 약관·개인정보만 #}
       </nav>
     </div>
     {% set rows = footer_rows() %}
@@ -92,7 +92,7 @@
   </script>
 </footer>{% endif %}
 {% if app_client() %}{% include 'app_bridge.html' %}{% endif %}
-{% if is_soboru() %}{% if not app_client() %}{% include 'soboru_tabbar.html' %}{% endif %}{# 앱에서는 앱의 아래 탭을 씀 #}
+{% if is_soboru() %}{% if not app_client() and not letter_alone() %}{% include 'soboru_tabbar.html' %}{% endif %}{# 앱에서는 앱의 아래 탭을 씀 #}
 <script>if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); });</script>{# 오프라인 안내·정적 파일 캐시·푸시 (static/sw.js) #}{% endif %}
 {% if editing() %}
 {# 관리자 편집 모드: 점선으로 표시된 문장을 누르면 바로 고칠 수 있음 #}

@@ -562,7 +562,14 @@ class SiteTest(unittest.TestCase):
         # 운영자 2026-11-04: soboru.co.kr은 막고 전부 consumerjebo.co.kr로
         r = self.client.get('/reports?tab=new', base_url='https://www.soboru.co.kr')
         self.assertEqual(r.status_code, 301); self.assertEqual(r.headers['Location'], 'https://consumerjebo.co.kr/reports?tab=new')
-        self.assertEqual(self.client.get('/', base_url='https://soboru.co.kr').headers['Location'], 'https://consumerjebo.co.kr/')
+        self.assertEqual(self.client.get('/', base_url='https://soboru.co.kr').headers['Location'], '/letter')  # 운영자 2026-11-04: soboru.co.kr은 레터 구독 페이지만
+        for base in ('https://soboru.co.kr', 'https://letter.soboru.co.kr', 'https://consumerjebo.co.kr'):
+            page = self.client.get('/letter', base_url=base).get_data(as_text=True)
+            self.assertIn('class="lt-top"', page, base)  # 메뉴 없이 SOBORU 레터 머리만
+            self.assertNotIn('sb-tabbar', page, base); self.assertNotIn('jebo_header', page, base); self.assertNotIn('class="sb-nav"', page, base)
+        self.assertEqual(self.client.get('/letter', base_url='https://letter.soboru.co.kr').status_code, 200)
+        self.assertEqual(self.client.get('/', base_url='https://letter.soboru.co.kr').headers['Location'], '/letter')
+        self.assertEqual(self.client.get('/reports', base_url='https://letter.soboru.co.kr').headers['Location'], 'https://consumerjebo.co.kr/reports')
         self.assertNotEqual(self.site.CANONICAL_HOST, 'soboru.co.kr')
 
     def test_experts(self):
@@ -795,7 +802,7 @@ class SiteTest(unittest.TestCase):
         response = self.client.post('/lookup', data={'_csrf': token, 'mode': 'phone', 'phone': '01012345678', 'password': '1234'}, follow_redirects=True)
         self.assertIn('테스트 환불 요청', response.get_data(as_text=True))
         self.assertIn('aria-current="step"', response.get_data(as_text=True))
-        self.assertIn('<span class="vcs-co">테스트 업체</span>', self.client.get('/reports').get_data(as_text=True))  # 운영자 2026-11-04: 목록 카드는 업체 이름만 (업종·유형 뺌)
+        self.assertIn('<p class="vcs-co-top">테스트 업체</p>', self.client.get('/reports').get_data(as_text=True))  # 운영자 2026-11-04: 목록 카드는 업체 이름만 (업종·유형 뺌)
         self.assertIn('현재 단계: 접수', response.get_data(as_text=True))
         admin = self.site.app.test_client()
         token = self.csrf(admin, '/admin/login')
@@ -1608,7 +1615,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.get('/reports/%d' % ids['public']).status_code, 404)
         listing = self.client.get('/reports').get_data(as_text=True)
         card = listing.split('href="/reports/%d/mine"' % ids['public'])[1].split('</a>')[0]  # 카드: 제목만, 누르면 조회 비밀번호 창
-        self.assertIn('public 제목</h3>', card); self.assertIn('vcs-lock', card)  # 자물쇠는 아래 줄 업체 이름 앞
+        self.assertIn('public 제목</h3>', card); self.assertNotIn('vcs-lock', card)  # 운영자 2026-11-04: 자물쇠 표시는 뺌
         self.assertNotIn('연락은 010', listing)
         self.assertEqual(self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'publish_review', 'decision': 'approve'}).status_code, 400)
         self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'approve'})

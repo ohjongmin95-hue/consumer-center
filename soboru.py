@@ -185,6 +185,7 @@ def install(S):
     def apply_brand():
         if request.endpoint == 'static' or 'content' not in g: return
         jebo_face = S.current_face() == 'jebo'  # 주소·관리자 미리보기로 정함 (app.py current_face)
+        if S.letter_alone() and not request.path.startswith('/admin'): jebo_face = False  # 레터 구독 페이지는 어느 주소로 와도 소보루 레터 화면 (운영자 2026-11-04)
         g.brand = 'jebo' if jebo_face else 'soboru'
         # 소보루에만 있는 화면(생활정보·레터·리뷰 주제·AI 상담)은 소비자제보센터 주소로 들어와도 soboru.co.kr로
         if request.host.split(':')[0].lower() in S.JEBO_HOSTS and S.main_host() not in S.JEBO_HOSTS and request.path.startswith(SOBORU_ONLY):

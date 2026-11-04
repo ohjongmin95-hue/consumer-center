@@ -2923,3 +2923,10 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-feats .lt2-crs{background:#FFF4E2}
 @media (max-width:640px){.lt-hero.lt2{padding:28px 0 0}.lt-hero.lt2 h1{font-size:24px}.lt2-cover .tf{font-size:22px}.lt2-b2{font-size:28px!important}.lt2-b3{font-size:26px!important}.lt2-b2,.lt2-b4{margin-top:24px}.lt2-desk{padding:28px 16px 18px}.lt-feats.lt2-feats{grid-template-columns:repeat(2,1fr)}.lt-feats.lt2-feats li{min-height:100px;padding:16px 10px}}
 .lt2-when{margin:0 0 14px;font-size:14px;font-weight:800;color:#CE6719}
+/* 소보루 레터 따로 페이지 머리 (운영자 2026-11-04) */
+.lt-alone .lt-top{position:sticky;top:0;z-index:20;margin:0;padding:0;background:#fff;border:0;border-bottom:1px solid #f2f4f6;border-radius:0;box-shadow:none}
+.lt-top-in{display:flex;align-items:center;height:60px}
+.lt-top-logo{display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.lt-top-logo img{display:block;width:104px;height:auto}
+.lt-top-logo span{font-size:17px;font-weight:800;color:#EF920E;letter-spacing:-.02em;line-height:1}
+.lt-alone .sb-ft-why{display:none}
