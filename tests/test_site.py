@@ -420,6 +420,18 @@ class SiteTest(unittest.TestCase):
         self.assertIn('환불을 안 해 줄 때', self.client.get('/howto', base_url=jebo).get_data(as_text=True))
         with self.site.conn() as db: db.execute('DELETE FROM howto_guides')
 
+    def test_admin_company_logo_upload(self):
+        # 운영자 2026-11-04: 자동으로 못 받은 로고는 관리자 기업 화면에서 직접 올림
+        from PIL import Image
+        with self.site.conn() as db: cid = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES('로고시험','','listed','','','','x')").lastrowid
+        admin = self.login_admin(); token = self.csrf(admin, '/admin/companies')
+        buf = io.BytesIO(); Image.new('RGBA', (120, 120), (255, 0, 0, 255)).save(buf, 'PNG'); buf.seek(0)
+        admin.post('/admin/companies/%d/logo' % cid, data={'_csrf': token, 'logo': (buf, 'l.png')}, content_type='multipart/form-data')
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT logo FROM companies WHERE id=?', (cid,)).fetchone()[0], '%d.png' % cid)
+        self.assertEqual(self.client.get('/co/%d/logo.png' % cid).status_code, 200)
+        self.assertIn('로고 올리기', admin.get('/admin/companies').get_data(as_text=True))
+        with self.site.conn() as db: db.execute('DELETE FROM companies WHERE id=?', (cid,))
+
     def test_company_typo_fix(self):
         # 운영자 2026-11-03: 큰 기업 이름 오타는 자동으로 (큐팡 → 쿠팡). 헷갈리거나 모르는 이름은 그대로
         import company_fix

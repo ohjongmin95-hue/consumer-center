@@ -177,12 +177,15 @@ def run(S, limit=40, log=print, again=False):
         if generic(name):
             with conn() as db: db.execute("UPDATE companies SET logo_at=? WHERE id=?", (S.now(), r['id']))
             log(f"{r['name']}: 업종 이름뿐이라 건너뜀"); continue
-        domain = naver_find(name) or (naver_find(r['name']) if r['brand'] else '')
-        if domain: ok = True  # 네이버 검색 결과 제목에 이름이 있는 사이트 = 확인됨
-        else:
-            domain, names = ask(name)
-            ok = bool(domain) and confirmed(domain, names + [r['name'], r['brand'] or ''])
-        png = get_logo(name, domain if ok else '') if (ok or naver_keys()[0]) else b''
+        # 운영자 2026-11-04: 공식 홈페이지 말고 네이버 이미지 검색에서 로고부터 받음. 못 받으면 그때 홈페이지 아이콘
+        png, domain, ok = naver_logo(name) or (naver_logo(r['name']) if r['brand'] else b''), '', False
+        if not png:
+            domain = naver_find(name)
+            if domain: ok = True
+            else:
+                domain, names = ask(name)
+                ok = bool(domain) and confirmed(domain, names + [r['name'], r['brand'] or ''])
+            png = company_logo.fetch(domain) if ok else b''
         with conn() as db:
             if png:
                 (folder / f"{r['id']}.png").write_bytes(png)
@@ -190,7 +193,7 @@ def run(S, limit=40, log=print, again=False):
                 got += 1
             else:
                 db.execute("UPDATE companies SET logo_at=? WHERE id=? AND domain=''", (S.now(), r['id']))  # 30일 동안 다시 묻지 않음
-        log(f"{r['name']}: {'로고 받음' + (' (' + domain + ')' if domain else '') if png else ('로고를 못 찾음 (' + domain + ')' if domain else '공식 홈페이지·로고 없음')}")
+        log(f"{r['name']}: {('로고 받음 (' + domain + ')' if domain else '로고 받음 (네이버 이미지)') if png else '로고를 못 찾음'}")
     return got
 
 
