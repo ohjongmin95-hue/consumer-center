@@ -522,6 +522,14 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(db.execute("SELECT status FROM experts WHERE name='홍메일'").fetchone()[0], 'approved')
             db.execute("UPDATE users SET ip_hash='' WHERE id=(SELECT user_id FROM experts WHERE name='홍메일')")  # 테스트 안 가입 횟수 제한(시간당 3명)에 걸리지 않게
         self.assertIn('/expert/apply?k=' + key, adm.get('/admin/experts/mail').get_data(as_text=True))
+        # 운영자 2026-11-04: 자동으로 만든 자문단 계정은 같은 이메일의 카카오로 처음 들어오면 그 계정으로 이어짐 (휴대폰 로그인 대신)
+        with patch.dict(os.environ, {'KAKAO_REST_API_KEY': 'rest-key', 'KAKAO_CLIENT_SECRET': 'shh'}):
+            again = self.site.app.test_client()
+            _, fake = self.kakao_fake(uid='7777', email='hong@x.kr', nickname='홍카카오')
+            self.assertEqual(self.social_round(again, fake).status_code, 302)
+            with self.site.conn() as db:
+                uid = db.execute("SELECT user_id FROM experts WHERE name='홍메일'").fetchone()[0]
+                self.assertEqual(db.execute("SELECT user_id FROM user_identities WHERE provider_uid='7777'").fetchone()[0], uid)
         # 직접 신청은 승인 전까지 표시 없음
         other, oid = self.member_client('pro_lee', '이사정')
         self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '교수', 'agree': '1', 'phone': '010-1234-5678',

@@ -7,7 +7,7 @@
   <h1 class="xf-title">{% if status == 'approved' %}{{ ui('xf.done_ok', '소보루 자문단이 됐어요') }}{% else %}{{ ui('xf.done_wait', '신청을 받았어요') }}{% endif %}</h1>
   <ul class="xi-list xf-next">
     {% if status != 'approved' %}<li><span class="xh-ic is-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><div><b>{{ ui('xf.next1b', '운영자가 확인하고 승인할게요') }}</b><span>{{ ui('xf.next1_sub', '확인이 끝나면 연락처로 알려 드려요') }}</span></div></li>{% endif %}
-    <li><span class="xh-ic is-talk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><div><b>{{ ui('xf.next3', '자문단 계정이 만들어졌어요') }}</b><span>{{ ui('xf.next3_sub', '지금 로그인된 상태예요. 다음부터는 적어 주신 휴대폰 번호로 로그인해요') }}</span></div></li>
+    <li><span class="xh-ic is-talk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><div><b>{{ ui('xf.next3', '자문단 계정이 만들어졌어요') }}</b><span>{{ ui('xf.next3_sub2', '지금 로그인된 상태예요. 다음부터는 적어 주신 이메일의 카카오나 네이버 계정으로 로그인하면 이 계정으로 들어와요') }}</span></div></li>
   </ul>
   <div class="xi-cta">{% if login_url %}<a class="primary xi-go" href="{{ login_url }}">{{ ui('xf.claim', '로그인하고 계정 잇기') }}</a>{% else %}<a class="primary xi-go" href="{{ url_for('reports') }}">{{ ui('xf.to_reports', '제보 보러 가기') }}</a>{% endif %}</div>
 </div></main>
