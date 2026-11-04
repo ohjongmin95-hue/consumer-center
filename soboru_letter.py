@@ -1205,7 +1205,7 @@ def install(S):
         with conn() as db:
             rows = [row_info(r) for r in db.execute("SELECT * FROM letters WHERE status='sent' ORDER BY no DESC LIMIT 60")]
             # 운영자 2026-11-04: 뉴스레터 말고 매거진 첫 화면처럼. 매거진(생활정보) 글을 커버스토리·새 글로
-            try: mag = db.execute("SELECT * FROM articles WHERE status='published' ORDER BY featured DESC, published_at DESC, id DESC LIMIT 6").fetchall()
+            try: mag = db.execute("SELECT * FROM articles WHERE status='published' ORDER BY featured DESC, published_at DESC, id DESC LIMIT 12").fetchall()
             except sqlite3.OperationalError: mag = []
         return render_template('letter.html', rows=rows, mag=mag, state=request.args.get('s', ''))
 

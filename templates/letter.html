@@ -5,83 +5,97 @@
 {% block content %}
 {% set cfg = letter_cfg() %}
 {# 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['letter']) #}
-<main class="lt-page mz-page">
+<main class="lt-page sm-page">
   {% for blk in blocks('letter') %}{{ ed_block('letter', blk) }}
   {% set cover = mag[0] if mag else None %}{% set latest = rows[0] if rows else None %}
+  {% macro thumb(a, n, big=False) %}{% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="sm-tc t{{ n % 3 }}{{ ' big' if big }}"><i class="sm-dots" aria-hidden="true"></i><em>{{ a['category'] }}</em><b>{{ a['title'] }}</b><img src="{{ asset('img/soboru-wordmark.png') }}" alt=""></span>{% endif %}{% endmacro %}
   {% if blk == 'hero' %}
-  {# 운영자 2026-11-04: 뉴스레터 말고 감각적인 매거진 첫 화면. 귤색으로 커버스토리, 큰 제호, 잡지 머리줄 #}
-  <section class="mz-mast lt-hero">
-    <div class="mz-in">
-      <div class="mz-meta"><span>{{ ui('letter.mz_vol', 'VOL. {ym}', ym=(cover['published_at'] or cover['created'])[:7].replace('-', '.') if cover else (latest.sent_at or latest.created)[:7].replace('-', '.') if latest else '2026.11') }}</span><span>{{ ui('letter.mz_tag', '소비자를 위한 생활 매거진') }}</span><span>{{ ui('letter.mz_by', '소비자를위한신문') }}</span></div>
-      <h1 class="mz-title"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="1200" height="231"><span class="mz-sr">{{ ui('letter.mz_name', '소보루 매거진') }}</span></h1>
-      <p class="mz-deck">{{ ui('letter.mz_deck', '알아 두면 돈이 되는\n소비 이야기') }}</p>
-    </div>
-  </section>
-  <section class="mz-cover">
-    <div class="mz-in mz-cover-in">
-      {% if cover %}
-      <a class="mz-cover-pic" href="{{ url_for('life_article', article_id=cover['id']) }}">{% set src = art_url('life', cover['id']) %}{% if src %}<img src="{{ src }}" alt="">{% else %}<span class="mz-ph p0"><b>{{ cover['category'] }}</b></span>{% endif %}</a>
-      <div class="mz-cover-txt">
-        <p class="mz-label">COVER STORY<span>{{ cover['category'] }}</span></p>
-        <h2><a href="{{ url_for('life_article', article_id=cover['id']) }}">{{ cover['title'] }}</a></h2>
-        {% if cover['summary'] %}<p class="mz-sum">{{ cover['summary'] }}</p>{% endif %}
-        <a class="mz-more" href="{{ url_for('life_article', article_id=cover['id']) }}">{{ ui('letter.mz_read', '읽어 보기') }} <span aria-hidden="true">→</span></a>
+  {# 운영자 2026-11-04: 생활경제·라이프스타일 매거진 첫 화면. 귤색 띠 + 가운데 표지(흰 바탕까지 걸침) + 왼쪽 큰 문구 + 오른쪽 테두리 문구. 캐릿을 참고하되 따라 하지 않고 로고 두 색(귤색·갈색) #}
+  <section class="sm-hero lt-hero">
+    <div class="sm-band">
+      <div class="sm-in sm-nav">
+        <nav><a href="#latest">{{ ui('letter.mz_nav1', '최신 이야기') }}</a><a href="#deep">{{ ui('letter.mz_nav2', '깊이 읽기') }}</a></nav>
+        <a class="sm-logo" href="{{ url_for('letter_home') }}"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="300" height="58"></a>
+        <a class="sm-pill" href="#sub">{{ ui('letter.mz_nav3', '소보루 레터 구독') }}</a>
       </div>
-      {% elif latest %}
-      <a class="mz-cover-pic" href="{{ url_for('letter_issue', no=latest.no) }}"><span class="mz-ph p1"><b>No.{{ '%02d' % latest.no }}</b></span></a>
-      <div class="mz-cover-txt">
-        <p class="mz-label">COVER STORY<span>MORNING LETTER</span></p>
-        <h2><a href="{{ url_for('letter_issue', no=latest.no) }}">{{ latest.title }}</a></h2>
-        <p class="mz-sum">{% for it in latest['items'][:3] %}{{ it.title }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
-        <a class="mz-more" href="{{ url_for('letter_issue', no=latest.no) }}">{{ ui('letter.mz_read', '읽어 보기') }} <span aria-hidden="true">→</span></a>
+      <div class="sm-in sm-grid">
+        <div class="sm-say">
+          <span class="sm-q" aria-hidden="true"><svg viewBox="0 0 44 32" width="40" height="29"><path d="M0 32V19C0 8 6 1.5 17 0l1.6 5.2C12.4 7 9.6 10.6 9.4 16H18v16zm26 0V19C26 8 32 1.5 43 0l1 5.2C38.4 7 35.6 10.6 35.4 16H44v16z" fill="currentColor"/></svg></span>
+          <h1>{{ ui('letter.mz_deck', '알아 두면\n돈이 되는\n생활경제 이야기') }}</h1>
+        </div>
+        <a class="sm-cover" href="{{ url_for('life_article', article_id=cover['id']) if cover else '#sub' }}">
+          {% set src = art_url('life', cover['id']) if cover else '' %}{% if src %}<img src="{{ src }}" alt="">{% else %}
+          <span class="sm-cv"><i class="sm-dots" aria-hidden="true"></i><em>{{ cover['category'] if cover else 'LIFE ECONOMY' }}</em><b>{{ cover['title'] if cover else ui('letter.mz_empty', '첫 이야기를 준비하고 있어요') }}</b>
+          <span class="sm-tag" aria-hidden="true"><strong>TODAY'S</strong><strong>PICK</strong></span></span>{% endif %}
+        </a>
+        <div class="sm-side">
+          <span class="sm-stk" aria-hidden="true"><svg viewBox="0 0 100 100"><polygon points="100.0,50.0 93.3,57.6 97.0,67.1 88.1,72.0 88.3,82.1 78.3,83.7 75.0,93.3 65.0,91.3 58.7,99.2 50.0,94.0 41.3,99.2 35.0,91.3 25.0,93.3 21.7,83.7 11.7,82.1 11.9,72.0 3.0,67.1 6.7,57.6 0.0,50.0 6.7,42.4 3.0,32.9 11.9,28.0 11.7,17.9 21.7,16.3 25.0,6.7 35.0,8.7 41.3,0.8 50.0,6.0 58.7,0.8 65.0,8.7 75.0,6.7 78.3,16.3 88.3,17.9 88.1,28.0 97.0,32.9 93.3,42.4"/></svg><b>{{ ui('letter.mz_stk', 'NEW\n오늘의 글') }}</b></span>
+          <p class="sm-br">{{ ui('letter.mz_tag', '생활경제·라이프스타일\n매거진 소보루') }}</p>
+        </div>
       </div>
-      {% else %}
-      <div class="mz-cover-txt mz-cover-empty"><p class="mz-label">COVER STORY</p><h2>{{ ui('letter.mz_empty', '첫 이야기를 준비하고 있어요.') }}</h2></div>
-      {% endif %}
     </div>
   </section>
   {% elif blk == 'feats' %}
+  <div class="lt-feats">
   {% if mag|length > 1 %}
-  <section class="mz-new lt-feats">
-    <div class="mz-in">
-      <div class="mz-head"><p class="mz-eye">NEW STORIES</p><h2>{{ ui('letter.mz_new', '새로 나온 이야기') }}</h2></div>
-      <ol class="mz-grid">
-        {% for a in mag[1:6] %}
-        <li class="{{ 'big' if loop.first else '' }}"><a href="{{ url_for('life_article', article_id=a['id']) }}">
-          <span class="mz-pic">{% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="mz-ph p{{ loop.index % 3 }}"><b>{{ a['category'] }}</b></span>{% endif %}</span>
-          <span class="mz-cat">{{ a['category'] }}</span>
-          <h3>{{ a['title'] }}</h3>
-          {% if loop.first and a['summary'] %}<p>{{ a['summary'] }}</p>{% endif %}
-        </a></li>
-        {% endfor %}
-      </ol>
+  <section class="sm-sec sm-in" id="latest">
+    <div class="sm-row">
+      <div class="sm-tile"><p>{{ ui('letter.mz_tile_h', '오늘의\n생활경제') }}</p><span>{{ ui('letter.mz_tile', '물가·돈·소비, 매일 아침 새로 골라 둬요') }}</span></div>
+      {% for a in mag[1:3] %}
+      <a class="sm-card" href="{{ url_for('life_article', article_id=a['id']) }}"><span class="sm-ph">{{ thumb(a, loop.index) }}</span><h3>{{ a['title'] }}</h3><time>{{ letter_kdate(a['published_at'] or a['created']) }}</time></a>
+      {% endfor %}
     </div>
   </section>
-  {% else %}<div class="lt-feats" hidden></div>{% endif %}
+  {% endif %}
+  {% set prices = ui_text('letter.mz_prices', '') %}
+  {% if prices.strip() %}
+  <section class="sm-board">
+    <div class="sm-in">
+      <div class="sm-board-h"><h2>{{ ui('letter.mz_board', '숫자로 보는 생활 물가') }}</h2></div>
+      <table><thead><tr><th>{{ ui('letter.mz_th1', '품목') }}</th><th>{{ ui('letter.mz_th2', '가격') }}</th><th>{{ ui('letter.mz_th3', '지난주보다') }}</th></tr></thead><tbody>
+      {% for line in prices.split('\n') if line.strip() %}{% set c = line.split('|') %}<tr><td>{{ c[0] }}</td><td>{{ c[1] if c|length > 1 }}</td><td class="{{ 'up' if (c[2] if c|length > 2 else '').startswith('+') else 'dn' }}">{{ c[2] if c|length > 2 }}</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </section>
+  {% endif %}
+  {% if mag|length > 3 %}
+  <section class="sm-sec sm-in">
+    <div class="sm-h"><h2>{{ ui('letter.mz_new', '최신 이야기') }}</h2></div>
+    <ol class="sm-list">
+      {% for a in mag[3:9] %}
+      <li><a class="sm-card" href="{{ url_for('life_article', article_id=a['id']) }}"><span class="sm-ph">{{ thumb(a, loop.index + 1) }}</span><h3>{{ a['title'] }}</h3><time>{{ letter_kdate(a['published_at'] or a['created']) }}</time></a></li>
+      {% endfor %}
+    </ol>
+  </section>
+  {% endif %}
+  {% if mag|length > 9 %}
+  <section class="sm-sec sm-in" id="deep">
+    <div class="sm-h sm-h2"><h2>{{ ui('letter.mz_deep', '생활의 흐름을\n깊이 있게 읽어 보세요') }}</h2></div>
+    <div class="sm-deep">
+      {% for a in mag[9:12] %}
+      <a class="d{{ loop.index0 }}" href="{{ url_for('life_article', article_id=a['id']) }}"><em>{{ a['category'] }}</em><b>{{ a['title'] }}</b><span class="sm-arrow" aria-hidden="true">→</span></a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  </div>
   {% elif blk == 'archive' %}
-  <section class="mz-letter lt-archive" id="sub">
-    <div class="mz-in mz-letter-in">
-      <div class="mz-letter-sub">
-        <p class="mz-eye">MORNING LETTER</p>
+  <section class="sm-letter lt-archive" id="sub">
+    <div class="sm-in sm-letter-in">
+      <div>
         <h2>{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }}</h2>
-        <p class="mz-letter-when">{{ ui('letter.mz_when', '{when} 메일함으로 배달해요', when=cfg.when) }}</p>
-        <ul class="mz-secs"><li>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</li><li>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</li><li>{{ ui('letter.t3', '숫자로 보는 오늘') }}</li><li>{{ ui('letter.t4', '크로와상의 한마디') }}</li></ul>
+        <p>{{ ui('letter.mz_when', '{when} 메일함으로 배달해요', when=cfg.when) }}</p>
+        <ul class="sm-secs"><li>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</li><li>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</li><li>{{ ui('letter.t3', '숫자로 보는 오늘') }}</li><li>{{ ui('letter.t4', '크로와상의 한마디') }}</li></ul>
+        {% if rows %}<p class="sm-back">{{ ui('letter.archive_title', '지난 레터') }} · {% for L in rows[:3] %}<a href="{{ url_for('letter_issue', no=L.no) }}">No.{{ '%02d' % L.no }} {{ L.title }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+      </div>
+      <span class="sm-stk2" aria-hidden="true"><svg viewBox="0 0 100 100"><polygon points="100.0,50.0 93.3,57.6 97.0,67.1 88.1,72.0 88.3,82.1 78.3,83.7 75.0,93.3 65.0,91.3 58.7,99.2 50.0,94.0 41.3,99.2 35.0,91.3 25.0,93.3 21.7,83.7 11.7,82.1 11.9,72.0 3.0,67.1 6.7,57.6 0.0,50.0 6.7,42.4 3.0,32.9 11.9,28.0 11.7,17.9 21.7,16.3 25.0,6.7 35.0,8.7 41.3,0.8 50.0,6.0 58.7,0.8 65.0,8.7 75.0,6.7 78.3,16.3 88.3,17.9 88.1,28.0 97.0,32.9 93.3,42.4"/></svg><b>FREE</b></span>
+      <div class="sm-form">
         {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
                         'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent', '이메일 수집·이용에 동의해야 구독할 수 있어요.')),
                         'limit': ('bad', ui('letter.n_limit', '신청이 너무 잦아요. 10분쯤 뒤에 다시 해 주세요.')), 'nomail': ('bad', ui('letter.n_nomail', '지금은 메일 발송을 준비하고 있어 구독 신청을 받을 수 없어요. 조금만 기다려 주세요.')),
                         'fail': ('bad', ui('letter.n_fail', '확인 메일을 보내지 못했어요. 잠시 뒤 다시 해 주세요.'))} %}
         {% if state in notes %}<p class="lt-note {{ notes[state][0] }}" role="status">{{ notes[state][1] }}</p>{% endif %}
         {{ subscribe_form('letter', True) }}
-      </div>
-      <div class="mz-issues">
-        <p class="mz-eye">{{ ui('letter.archive_title', '지난 레터') }}</p>
-        {% if rows %}
-        <ol>
-          {% for L in rows[:6] %}
-          <li><a href="{{ url_for('letter_issue', no=L.no) }}"><em>No.{{ '%02d' % L.no }}</em><b>{{ L.title }}</b><time datetime="{{ (L.sent_at or L.created)[:10] }}">{{ letter_kdate(L.sent_at or L.created) }}</time></a></li>
-          {% endfor %}
-        </ol>
-        {% else %}<p class="mz-issues-empty">{{ ui('letter.empty_issue', '첫 레터를 굽고 있어요. 지금 구독하면 첫 호부터 받아 볼 수 있어요.') }}</p>{% endif %}
       </div>
     </div>
   </section>
