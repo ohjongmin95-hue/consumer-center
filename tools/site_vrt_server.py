@@ -534,4 +534,37 @@ def _talk_ai(url, headers, body, timeout):  # 대화로 제보하기(report_talk
                'request_text': '결제한 89,000원 전액 환불을 원해요.', 'request_options': ['전액 환불', '빠른 처리', '사과'], 'questions': []}
     return 200, {'choices': [{'message': {'content': _json.dumps(out, ensure_ascii=False)}}]}
 m.companydesk.post_json = _talk_ai
+# 첫 화면 아래 '사진으로 보는 제보' 미리보기 (VRT_SHOTS=1): 그린 예시 사진 6장, 이름·번호 자리(줄무늬)만 가린 사본
+if os.environ.get('VRT_SHOTS') and hasattr(m, 'case_shots'):
+    import secrets as _sec
+    from PIL import Image as _I, ImageDraw as _D
+    def _text(d, x, y, w, c=(60, 60, 60)):
+        for i in range(0, w, 14): d.rectangle((x + i, y, x + i + 9, y + 12), fill=c)
+    def _pic(kind):
+        im = _I.new('RGB', (1200, 900), (236, 232, 226)); d = _D.Draw(im); boxes = []
+        if kind == 'box':  # 찌그러진 택배 상자 + 송장 (받는 사람·전화번호)
+            d.rectangle((0, 620, 1200, 900), fill=(205, 196, 184)); d.polygon([(220, 260), (900, 210), (980, 700), (260, 760)], fill=(196, 150, 98)); d.polygon([(220, 260), (900, 210), (840, 150), (300, 190)], fill=(214, 172, 120))
+            d.line([(560, 230), (600, 740)], fill=(160, 118, 72), width=8); d.rectangle((330, 380, 560, 560), fill=(250, 250, 248)); _text(d, 350, 400, 180); _text(d, 350, 440, 150); _text(d, 350, 480, 190); boxes.append((340 / 1200, 390 / 900, 200 / 1200, 110 / 900))
+        elif kind == 'receipt':  # 영수증 (가게 이름·금액은 보이고, 카드번호만 가림)
+            d.rectangle((0, 0, 1200, 900), fill=(70, 74, 80)); d.rectangle((380, 60, 820, 860), fill=(252, 252, 250))
+            for y in range(120, 800, 46): _text(d, 420, y, 300 if y % 3 else 220)
+            boxes.append((410 / 1200, 610 / 900, 340 / 1200, 40 / 900))
+        elif kind == 'chat':  # 판매자와 나눈 대화 (프로필 이름만 가림)
+            d.rectangle((0, 0, 1200, 900), fill=(186, 206, 224)); d.ellipse((60, 60, 150, 150), fill=(240, 200, 120)); _text(d, 170, 80, 120, (40, 40, 40)); boxes.append((50 / 1200, 50 / 900, 260 / 1200, 110 / 900))
+            for i, (x, w, c) in enumerate([(170, 520, (255, 255, 255)), (560, 480, (255, 235, 51)), (170, 600, (255, 255, 255)), (620, 420, (255, 235, 51))]):
+                y = 190 + i * 170; d.rounded_rectangle((x, y, x + w, y + 120), 26, fill=c); _text(d, x + 30, y + 40, w - 80); _text(d, x + 30, y + 70, w - 160)
+        elif kind == 'shoe':  # 밑창이 떨어진 운동화
+            d.rectangle((0, 560, 1200, 900), fill=(210, 205, 198)); d.ellipse((200, 300, 1000, 640), fill=(245, 245, 245)); d.rectangle((260, 560, 980, 620), fill=(60, 60, 64)); d.polygon([(700, 600), (980, 600), (1000, 700), (720, 680)], fill=(70, 70, 74))
+        elif kind == 'food':  # 배달 음식 (이물질)
+            d.rectangle((0, 0, 1200, 900), fill=(120, 88, 66)); d.ellipse((250, 150, 950, 800), fill=(250, 250, 250)); d.ellipse((330, 230, 870, 720), fill=(214, 92, 40)); d.line([(560, 420), (680, 520)], fill=(30, 30, 30), width=5)
+        else:  # 고장 난 가전 + 모델 라벨 (시리얼만)
+            d.rectangle((0, 0, 1200, 900), fill=(228, 232, 236)); d.rounded_rectangle((330, 120, 870, 820), 40, fill=(250, 250, 250), outline=(200, 204, 210), width=6); d.line([(420, 260), (760, 640)], fill=(150, 150, 150), width=4); d.rectangle((440, 680, 760, 780), fill=(230, 234, 238)); _text(d, 460, 700, 260); _text(d, 460, 740, 200)
+        return im, boxes
+    with m.conn() as db:
+        _cs = [r[0] for r in db.execute("SELECT id FROM cases WHERE public_consent=1 AND published=1 AND review NOT IN ('rejected','duplicate') ORDER BY id DESC LIMIT 6")]
+        for _cid, _k in zip(_cs, ['box', 'receipt', 'chat', 'shoe', 'food', 'tv']):
+            _im, _bx = _pic(_k); _n = _sec.token_hex(12) + '.jpg'
+            (m.UPLOAD / 'shots' / _n).write_bytes(m.case_shots.make_shot(_im, _bx))
+            db.execute('INSERT INTO case_shots(attachment_id,case_id,stored,boxes,ver,created) VALUES(?,?,?,?,1,?)', (-_cid, _cid, _n, len(_bx), m.now()))
+    print('case shots seed:', len(_cs), flush=True)
 app.run(host='127.0.0.1', port=PORT)

@@ -32,6 +32,28 @@ def safe_link(v):
     return v if re.match(r'https?://[^\s"<>]+$', v) else ''
 
 
+# 운영자 2026-11-04: 첫 화면 맨 아래 흐르는 협력기관 띠를 관리자에서 관리. 처음 한 번 지금 띠의 로고를 그대로 넣어 둠 (이름·링크·높이)
+SEED = [('soboru.png', 'SOBORU', '', '소비자를 위한 신문', 18), ('ftc.png', '공정거래위원회', 'https://www.ftc.go.kr', '', 31),
+        ('kca.png', '한국소비자원', 'https://www.kca.go.kr', '', 29), ('c24.png', '소비자24', 'https://www.consumer.go.kr', '', 34),
+        ('safety.png', '제품안전정보센터', 'https://www.safetykorea.kr', '', 33), ('food.png', '식품안전나라', 'https://www.foodsafetykorea.go.kr', '', 22),
+        ('gg.png', '경기도소비자정보센터', 'https://ccic.gg.go.kr', '', 46), ('kncco.png', '한국소비자단체협의회', 'https://www.consumer.or.kr', '', 40)]
+
+
+def seed(db, folder, S):
+    db.execute('CREATE TABLE IF NOT EXISTS soboru_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
+    if db.execute("SELECT 1 FROM soboru_settings WHERE key='partners_seeded'").fetchone(): return
+    from PIL import Image
+    src = S.BASE / 'static' / 'img' / 'orgs'
+    now = datetime.datetime.now().isoformat(timespec='seconds')
+    for i, (f, name, link, sub, h) in enumerate(SEED):
+        try: png = shrink((src / f).read_bytes(), 'partner')
+        except Exception: continue
+        w, hh = Image.open(io.BytesIO(png)).size
+        stored = uuid.uuid4().hex + '.png'; (folder / stored).write_bytes(png)
+        db.execute('INSERT INTO partners(kind,name,link,stored,width,height,sort,created,sub,h_px) VALUES(?,?,?,?,?,?,?,?,?,?)', ('partner', name, link, stored, w, hh, i, now, sub, h))
+    db.execute("INSERT INTO soboru_settings(key,value) VALUES('partners_seeded','1')")
+
+
 def install(S):
     app, conn = S.app, S.conn
     folder = S.UPLOAD / 'partners'; folder.mkdir(parents=True, exist_ok=True)
@@ -39,6 +61,10 @@ def install(S):
         db.execute("""CREATE TABLE IF NOT EXISTS partners(id INTEGER PRIMARY KEY,kind TEXT NOT NULL DEFAULT 'partner',name TEXT NOT NULL,
             link TEXT NOT NULL DEFAULT '',stored TEXT NOT NULL,width INTEGER NOT NULL DEFAULT 0,height INTEGER NOT NULL DEFAULT 0,
             sort INTEGER NOT NULL DEFAULT 0,hidden INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL)""")
+        cols = {r['name'] for r in db.execute('PRAGMA table_info(partners)')}
+        if 'sub' not in cols: db.execute("ALTER TABLE partners ADD COLUMN sub TEXT NOT NULL DEFAULT ''")      # 로고 밑 작은 글씨 (예: 소비자를 위한 신문)
+        if 'h_px' not in cols: db.execute('ALTER TABLE partners ADD COLUMN h_px INTEGER NOT NULL DEFAULT 0')  # 띠에서 보이는 높이 (로고마다 글자 크기를 맞추려고)
+        seed(db, folder, S)
 
     def rows(kind=None, all_=False):
         with conn() as db:
@@ -70,8 +96,8 @@ def install(S):
             stored = uuid.uuid4().hex + '.png'; (folder / stored).write_bytes(png)
             with conn() as db:
                 top = db.execute('SELECT COALESCE(MAX(sort),0) FROM partners').fetchone()[0]
-                db.execute('INSERT INTO partners(kind,name,link,stored,width,height,sort,created) VALUES(?,?,?,?,?,?,?,?)',
-                           (kind, name, safe_link(request.form.get('link')), stored, w, h, top + 1, datetime.datetime.now().isoformat(timespec='seconds')))
+                db.execute('INSERT INTO partners(kind,name,link,stored,width,height,sort,created,h_px) VALUES(?,?,?,?,?,?,?,?,?)',
+                           (kind, name, safe_link(request.form.get('link')), stored, w, h, top + 1, datetime.datetime.now().isoformat(timespec='seconds'), 32 if kind == 'partner' else 0))
             flash('넣었어요.'); return redirect(url_for('admin_partners'))
         return render_template('admin_partners.html', items=rows(all_=True), kinds=KINDS)
 
@@ -86,7 +112,8 @@ def install(S):
                 db.execute('DELETE FROM partners WHERE id=?', (pid,))
                 if NAME_RE.fullmatch(r['stored']): (folder / r['stored']).unlink(missing_ok=True)
             elif act == 'save':
-                db.execute('UPDATE partners SET name=?,link=? WHERE id=?', (' '.join((request.form.get('name') or r['name']).split())[:60], safe_link(request.form.get('link')), pid))
+                db.execute('UPDATE partners SET name=?,link=?,sub=?,h_px=? WHERE id=?', (' '.join((request.form.get('name') or r['name']).split())[:60], safe_link(request.form.get('link')),
+                           ' '.join((request.form.get('sub') or '').split())[:30], max(0, min(80, request.form.get('h_px', type=int) or 0)), pid))
             elif act == 'hide': db.execute('UPDATE partners SET hidden=1-hidden WHERE id=?', (pid,))
             elif act in ('up', 'down'):
                 same = [x['id'] for x in db.execute('SELECT id FROM partners WHERE kind=? ORDER BY sort,id', (r['kind'],))]
