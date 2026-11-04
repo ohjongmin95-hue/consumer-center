@@ -1700,7 +1700,7 @@ span.vc-co-logo.is-ind img,span.pc-co-av.is-ind img{width:100%!important;height:
 .xs-screen{border:0!important;border-radius:42px 42px 0 0!important;background:#f9fafb!important;padding-top:40px!important}
 @media(max-width:760px){.xs-phone{padding:8px 8px 0!important;border-radius:42px 42px 0 0!important}.xs-screen{border-radius:34px 34px 0 0!important;padding-top:30px!important}}
 /* 운영자 2026-11-03: 글 줄바꿈 항상 다듬기 — 단어 중간에서 끊지 않고 줄 길이 고르게 */
-body:not(.sb) :is(p,li,h1,h2,h3,b,small,span,dd,dt,label){word-break:keep-all;overflow-wrap:break-word}
+body:not(.sb) :is(p,li,h1,h2,h3,b,small,span,dd,dt,label){word-break:keep-all;overflow-wrap:anywhere}
 body:not(.sb) :is(p,li,dd){text-wrap:pretty}
 body:not(.sb) :is(h1,h2,h3){text-wrap:balance}
 .xs-rank-row{display:grid!important;grid-template-columns:14px auto minmax(0,1fr) auto!important;align-items:center;gap:10px!important}
@@ -2079,7 +2079,7 @@ body .rf-list .vc-simple h3{margin:0;font-size:17px;font-weight:700;line-height:
 .rf-list .vc-simple time{flex:none;font-variant-numeric:tabular-nums}
 .rf-list .vc-simple .vcs-st{flex:none;display:inline-flex;align-items:center;gap:6px;font-weight:700;--c:#3182F6;color:var(--c)}
 .rf-list .vc-simple .vcs-st::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
-.rf-list .vc-simple .vcs-st.vcs-1{--c:#3182F6}.rf-list .vc-simple .vcs-st.vcs-2{--c:#EF920E}.rf-list .vc-simple .vcs-st.vcs-3{--c:#03A35F}
+.rf-list .vc-simple .vcs-st.vcs-1{--c:#EF920E}.rf-list .vc-simple .vcs-st.vcs-2{--c:#03A35F}.rf-list .vc-simple .vcs-st.vcs-3{--c:#652D1C}
 .rf-list .vc-simple .vcs-n{display:inline-flex;align-items:center;gap:3px;flex:none;font-variant-numeric:tabular-nums}
 .rf-list .vc-simple .vcs-n svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
 @media(max-width:700px){.rf-list .vc-simple,.rf-list .vc-simple.is-sample{padding:18px 20px;min-height:0;gap:10px;border:0;border-radius:0;background:#fff}.rf-list .vc-simple:hover{box-shadow:none}body .rf-list .vc-simple h3{min-height:0}}
@@ -2094,3 +2094,6 @@ body .rf-rows .vc-simple h3{min-height:0;-webkit-line-clamp:1}
 .rf-list .vc-simple .vcs-co-top{display:flex;align-items:center;gap:4px;margin:0 0 -6px;font-size:14px;font-weight:700;color:#4e5968;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rf-list .vc-simple .vcs-co-top .vcs-lock{flex:none;width:13px;height:13px;margin:0;fill:none;stroke:#8b95a1;stroke-width:2;stroke-linejoin:round}
 .rf-rows .vc-simple .vcs-co-top{margin-bottom:-4px}
+/* 운영자 2026-11-04: 띄어쓰기 없는 긴 제목·본문도 휴대폰 화면 안에서 줄을 바꿔 넘치지 않게 (화면이 옆으로 밀리지 않게) */
+.pf-title,.pf-body,.pf-body *,.vc-simple h3{overflow-wrap:anywhere;word-break:keep-all;min-width:0}
+@media(max-width:700px){html,body{overflow-x:clip}}
