@@ -2892,15 +2892,15 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-top-logo img{display:block;width:104px;height:auto}
 .lt-top-logo span{font-size:17px;font-weight:800;color:#EF920E;letter-spacing:-.02em;line-height:1}
 .lt-alone .sb-ft-why{display:none}
-/* ===== 소보루 매거진 첫 화면 (운영자 2026-11-04: 캐릿 홈 구성·흐름 기준, 따라 그리진 않음. 로고 두 색 그대로 귤색 #EF920E·갈색 #652D1C, 가운데는 흰 바탕, 검정 없음) ===== */
+/* ===== 소보루 매거진 첫 화면 (운영자 2026-11-04: 캐릿 홈 구성·흐름 기준. 메인은 로고 귤색 #EF920E, 갈색은 로고에만, 글자·면은 검정, 가운데는 흰 바탕) ===== */
 body.lt-alone{background:#fff}
-.lt-alone .lt-top{background:#652D1C!important;border-bottom:0!important}
+.lt-alone .lt-top{background:#111!important;border-bottom:0!important}
 .lt-alone .lt-top-logo img{filter:none}
 .lt-alone .lt-top-in{max-width:1200px;margin:0 auto;padding:0 max(20px,env(safe-area-inset-left))}
 .lt-top-links{display:flex;gap:26px;font-size:14px;font-weight:700}
 .lt-top-links a{color:#fff;text-decoration:none}.lt-top-links a:hover{color:#EF920E}
 .lt-page.sm-page{max-width:none!important;width:100%;margin:0!important;padding:0!important}
-.sm-page{--or:#EF920E;--br:#652D1C;--ink:#111;--cr:#F8D59F;--bg:#fff;--sub:#666;--line:#efe4dc;--cut:min(200px,16vw);background:var(--bg);color:var(--ink)}
+.sm-page{--or:#EF920E;--br:#111;--ink:#111;--cr:#F8D59F;--bg:#fff;--sub:#666;--line:#efe4dc;--cut:min(200px,16vw);background:var(--bg);color:var(--ink)}
 .sm-page,.sm-page *{font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 .sm-in{max-width:1200px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
 /* 귤색 띠: 왼쪽 메뉴 · 가운데 로고 · 오른쪽 구독 */
@@ -2992,8 +2992,8 @@ body.lt-alone{background:#fff}
 .sm-box2.lt{border-color:#fff;box-shadow:0 4px 0 #fff;background:var(--br);color:#fff}
 .sm-box2:hover{background:var(--or);color:#fff}
 .sm-board table{width:100%;border-collapse:separate;border-spacing:0 4px;font-size:17px}
-.sm-board th{padding:16px;font-size:15px;font-weight:500;color:var(--cr);background:#57261a}
-.sm-board td{padding:18px 16px;background:#5d2a1b;border-top:1px solid #7a3f2c;border-bottom:1px solid #7a3f2c;text-align:center;font-weight:600}
+.sm-board th{padding:16px;font-size:15px;font-weight:500;color:var(--cr);background:#1c1c1c}
+.sm-board td{padding:18px 16px;background:#222;border-top:1px solid #333;border-bottom:1px solid #333;text-align:center;font-weight:600}
 .sm-board td:nth-child(2){text-align:left}
 .sm-board td a{color:#fff;text-decoration:none}.sm-board td a:hover{color:var(--or)}
 .sm-hot{display:inline-block;margin-right:12px;padding:4px 10px;border-radius:50%;background:var(--or);color:#fff;font-size:12px;font-style:italic;font-weight:900}
@@ -3042,13 +3042,13 @@ body.lt-alone{background:#fff}
   .sm-card h3{font-size:19px;min-height:0}.sm-board{margin-top:64px;padding:56px 0}.sm-board-in{padding-left:16px;padding-right:16px}.sm-board table{font-size:14px}.sm-board th:first-child,.sm-board td:first-child{display:none}.sm-board th:last-child,.sm-board td:last-child{white-space:nowrap}
   .sm-deep{gap:16px}.sm-deep a{padding:30px 24px 24px;min-height:220px}.sm-deep b{font-size:24px}.sm-letter{margin-top:72px;padding:56px 0}.sm-lt{flex-direction:column;align-items:flex-start}.sm-stk2{width:90px;height:90px}}
 .sm-board table{background:none!important;border:0!important}
-.sm-board table th{background:#57261a!important;color:var(--cr)!important;border:0!important}
-.sm-board table td{background:#5d2a1b!important;color:#fff;border-left:0!important;border-right:0!important}
+.sm-board table th{background:#1c1c1c!important;color:var(--cr)!important;border:0!important}
+.sm-board table td{background:#222!important;color:#fff;border-left:0!important;border-right:0!important}
 .sm-tile h2{font-size:28px}.sm-tile h2 em{display:block}.sm-tile p{font-size:15px}
 .sm-card h3{min-height:0}.sm-meta{margin-top:auto;padding-top:14px}
 .sm-letter .lt-row input{background:transparent!important;box-shadow:none!important;border-left:0!important;border-right:0!important;border-top:0!important}
 /* 표지 위 큰 오브제 (캐릿 표지의 물건 사진 자리, 토스페이스) */
-.sm-emo{position:absolute;font-style:normal;line-height:1;font-family:Tossface,sans-serif;filter:drop-shadow(0 14px 18px rgba(101,45,28,.22))}
+.sm-emo{position:absolute;font-style:normal;line-height:1;font-family:Tossface,sans-serif;filter:drop-shadow(0 14px 18px rgba(0,0,0,.22))}
 .sm-emo.e1{right:9%;top:22%;font-size:clamp(90px,13vw,190px);transform:rotate(12deg)}
 .sm-emo.e2{right:46%;top:16%;font-size:clamp(38px,4.6vw,66px);transform:rotate(-14deg)}
 .sm-emo.e3{right:6%;bottom:22%;font-size:clamp(44px,5.4vw,78px);transform:rotate(-8deg)}
