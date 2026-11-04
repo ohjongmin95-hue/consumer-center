@@ -139,4 +139,12 @@ def install(S):
     app.jinja_env.globals.update(co_logo=co_logo)
     S.company_logo_refresh, S.company_set_domain, S.co_logo = refresh, set_domain, co_logo
     if not app.config.get('TESTING') and __import__('os').getenv('SOBORU_LOGO_FETCH', '1') != '0':  # 배포 뒤 남은 로고를 천천히 받아 둠 (사이트 뜨는 것과 따로)
-        threading.Thread(target=lambda: time.sleep(20) or refresh(), daemon=True).start()
+        threading.Thread(target=lambda: time.sleep(20) or refresh() or _fill(S), daemon=True).start()
+
+
+def _fill(S):
+    """운영자 2026-11-04: 제보 들어온 기업 중 홈페이지 주소가 없는 곳은 공식 홈페이지를 찾아 로고까지 (logo_fill.py)."""
+    try:
+        import logo_fill; logo_fill.run(S, limit=40, log=lambda m: None)
+    except Exception:
+        import logging; logging.getLogger(__name__).warning('기업 로고 자동 찾기 실패', exc_info=True)

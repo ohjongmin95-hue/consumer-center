@@ -3,7 +3,7 @@
 {% block content %}
 <main class="page"><div class="wrap pt-admin">
   <div class="page-intro"><h1 class="page-title">협력 기관·배너</h1>
-    <p>로고는 첫 화면 ‘함께하는 기관’ 띠와 제보 목록 오른쪽 ‘협력 기관’ 칸에 나와요. 배너는 제보 목록 오른쪽 칸 아래에 넓게 나와요. 아무것도 없으면 보이지 않아요.</p>
+    <p>로고는 첫 화면 맨 아래 흐르는 협력기관 띠에 나와요. ‘높이’로 로고마다 글자 크기를 맞출 수 있어요(기본 32). 배너는 제보 목록 오른쪽 칸 아래에 넓게 나와요. 아무것도 없으면 보이지 않아요.</p>
     <p class="meta">로고는 배경이 투명한 PNG가 가장 깔끔해요. 배너는 가로 600px 이상 그림을 권해요. 기관의 허락을 받은 로고만 넣어 주세요.</p>
   </div>
 
@@ -29,6 +29,7 @@
           <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
           <input name="name" value="{{ p.name }}" maxlength="60" aria-label="이름">
           <input name="link" value="{{ p.link }}" maxlength="300" placeholder="링크 https://" aria-label="링크">
+          {% if k == 'partner' %}<input name="sub" value="{{ p.sub }}" maxlength="30" placeholder="로고 밑 작은 글씨 (없어도 돼요)" aria-label="작은 글씨"><label class="pt-h">높이 <input name="h_px" type="number" min="10" max="80" value="{{ p.h_px or 32 }}" aria-label="띠에서 보이는 높이(px)">px</label>{% endif %}
           <span class="pt-btns"><button name="act" value="save">저장</button><button name="act" value="up" aria-label="앞으로">↑</button><button name="act" value="down" aria-label="뒤로">↓</button><button name="act" value="hide">{{ '보이기' if p.hidden else '숨기기' }}</button><button name="act" value="delete" class="danger" onclick="return confirm('뺄까요?')">빼기</button></span>
         </form>
       </li>{% endfor %}</ul>{% else %}<p class="meta">아직 없어요.</p>{% endif %}
@@ -45,6 +46,7 @@
 .pt-img img{max-height:100%;max-width:100%;object-fit:contain}
 .pt-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.pt-row input{flex:1 1 180px;min-width:0}
 .pt-btns{display:flex;gap:6px;flex-wrap:wrap}
+.pt-h{display:flex;align-items:center;gap:6px;font-size:14px;color:#4e5968}.pt-h input{width:72px;flex:none}
 @media(max-width:680px){.pt-list li{grid-template-columns:1fr}}
 </style>
 {% endblock %}

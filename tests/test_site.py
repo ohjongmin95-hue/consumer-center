@@ -354,6 +354,52 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db: db.execute('UPDATE cases SET published=0 WHERE id=?', (cids[1],))
         self.assertEqual(sum(self.client.get('/hero/' + n).status_code == 404 for n in names), 1)
 
+    def test_case_shots(self):
+        # 운영자 2026-11-04: 첫 화면 아래 제보 사진 — 전체 모자이크 없이, AI가 찾은 이름·번호 자리만 가림. AI 못 쓰면 안 냄, 신분증 같은 건 빼기
+        import json, case_shots
+        from unittest import mock
+        from PIL import Image, ImageDraw
+        jebo = 'https://consumerjebo.co.kr'
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        with self.site.conn() as db:
+            cids = []
+            for i in range(5):
+                cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,industry,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                                 ('CJ-SHOT%d' % i, 'x', '배송·환불', '쇼핑·유통', '사진가게%d' % i, '사진 제보 %d' % i, '내용', '환불', '2026-10-09T10:00:00', 1, 1)).lastrowid
+                im = Image.new('RGB', (800, 600), 'white'); d = ImageDraw.Draw(im)
+                for x in range(0, 400, 4): d.line([(x, 0), (x, 300)], fill='black' if x % 8 else 'red')  # 왼쪽 위 = '전화번호' 자리 (줄무늬)
+                name = 'shot-src-%d.jpg' % i; b = io.BytesIO(); im.save(b, 'JPEG', quality=95); (self.site.UPLOAD / name).write_bytes(b.getvalue())
+                db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)', (cid, name, 'a.jpg')); cids.append(cid)
+        def answer(i):
+            body = {'private': True} if i == 4 else {'boxes': [{'x': 0, 'y': 0, 'w': 0.5, 'h': 0.5, 'what': '전화번호'}], 'private': False}
+            return 200, {'choices': [{'message': {'content': json.dumps(body)}}]}
+        with mock.patch.object(case_shots.companydesk, 'ai_key_for', return_value=''):
+            self.assertEqual(self.site.case_shots_fill(10), 0)  # AI 키가 없으면 아무것도 안 냄
+        calls = iter(range(4, -1, -1))  # 최근 제보부터 봄 → 마지막(4번)이 '개인정보 대부분'
+        with mock.patch.object(case_shots.companydesk, 'ai_key_for', return_value='k'), mock.patch.object(case_shots.companydesk, 'post_json', side_effect=lambda *a: answer(next(calls))):
+            self.assertEqual(self.site.case_shots_fill(5), 4)
+        with self.site.conn() as db:
+            rows = db.execute("SELECT id,stored,case_id FROM case_shots WHERE stored!='' ORDER BY case_id").fetchall()
+            self.assertEqual(db.execute("SELECT note FROM case_shots WHERE case_id=?", (cids[4],)).fetchone()[0], 'private')
+        self.assertEqual(len(rows), 4)
+        shot = Image.open(self.site.UPLOAD / 'shots' / rows[0]['stored']).convert('RGB')
+        left = [shot.getpixel((x, 60)) for x in range(20, 200, 2)]; right = shot.getpixel((560, 400))
+        self.assertLess(max(map(sum, left)) - min(map(sum, left)), 90)  # 가린 곳은 줄무늬가 뭉개짐 (검정·빨강이 섞여 한 색)
+        self.assertGreater(sum(right), 700)  # 나머지는 그대로 (흰 바탕)
+        home = self.client.get('/', base_url=jebo).get_data(as_text=True)
+        self.assertIn('home-shots', home); self.assertIn('/shot/' + rows[0]['stored'], home); self.assertNotIn('<strong>사진 제보 4</strong>', home)
+        self.assertEqual(self.client.get('/shot/' + rows[0]['stored']).status_code, 200)
+        with self.site.conn() as db: db.execute('UPDATE cases SET published=0 WHERE id=?', (rows[1]['case_id'],))
+        self.assertEqual(self.client.get('/shot/' + rows[1]['stored']).status_code, 404)  # 비공개로 바뀌면 바로 막힘
+        admin = self.login_admin()
+        self.assertIn('사진으로 보는 제보', admin.get('/admin/hero-photos').get_data(as_text=True))
+        admin.post('/admin/case-shots/%d' % rows[2]['id'], data={'_csrf': self.csrf(admin, '/admin/hero-photos')})
+        self.assertEqual(self.client.get('/shot/' + rows[2]['stored']).status_code, 404)
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT hidden FROM case_shots WHERE id=?', (rows[2]['id'],)).fetchone()[0], 1)
+            db.execute('DELETE FROM case_shots')
+            for c in cids: db.execute('DELETE FROM attachments WHERE case_id=?', (c,)); db.execute('DELETE FROM hero_photos WHERE case_id=?', (c,)); db.execute('DELETE FROM cases WHERE id=?', (c,))
+
     def test_company_typo_fix(self):
         # 운영자 2026-11-03: 큰 기업 이름 오타는 자동으로 (큐팡 → 쿠팡). 헷갈리거나 모르는 이름은 그대로
         import company_fix
@@ -6226,6 +6272,9 @@ class SiteTest(unittest.TestCase):
         """운영자 2026-11-03: 협력 기관 로고·배너(관리자에서 넣기), 제보 목록 단계 탭, 제보하기 버튼 하나."""
         import io
         from PIL import Image
+        html = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('rf-partners', html); self.assertIn('alt="공정거래위원회"', html)  # 운영자 2026-11-04: 첫 화면 띠의 기관 8곳이 처음부터 관리자 목록에 들어 있음
+        with self.site.conn() as db: db.execute('DELETE FROM partners')
         html = self.client.get('/reports').get_data(as_text=True)
         self.assertIn('rf-tabs', html); self.assertNotIn('reports-head-btns', html); self.assertNotIn('rf-partners', html)
         self.assertEqual(html.count('rf-go2'), 1); self.assertNotIn('누적 제보', html)

@@ -41,7 +41,7 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png' if is_soboru() else 'jebo-touch-icon.png', v=css_v) }}">
   {% if is_soboru() %}<link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest', v=css_v) }}">{# 홈 화면에 추가·앱 포장용 #}
   <meta name="apple-mobile-web-app-title" content="소보루"><meta name="mobile-web-app-capable" content="yes">{% endif %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=css_v) }}">
+  <link rel="stylesheet" href="{{ asset('style.css') }}">
   <link rel="stylesheet" href="{{ asset('report-feed.css') }}">
   {% if not is_soboru() and request.path.startswith('/tools') %}<link rel="stylesheet" href="{{ asset('tools-jebo.css') }}">{% endif %}{# 계산기·사전·법령 찾기 토스 TDS (운영자 2026-11-03) #}
   {% if not is_soboru() and request.path.startswith('/ask') %}<link rel="stylesheet" href="{{ asset('ask-jebo.css') }}">{% endif %}{# AI 소비자 상담을 제보센터에서도 (운영자 2026-11-03) #}

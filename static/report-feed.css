@@ -2033,3 +2033,28 @@ body:not(.sb):has(.auth-top) .auth-page{height:auto!important;min-height:calc(10
 .org-band.is-bottom{margin-top:64px!important}
 .org-band.is-bottom .org-track li img{filter:none!important;opacity:1!important}
 @media(max-width:760px){.org-band.is-bottom{margin-top:40px!important}}
+.pf-cover-logo{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:#fff;box-shadow:0 6px 14px rgba(0,0,0,.12);overflow:hidden}
+.pf-cover-logo img{width:100%;height:100%;object-fit:cover}
+@media(max-width:640px){.pf-cover-logo{width:56px;height:56px}}
+/* 운영자 2026-11-04: 맨 아래 띠 위·아래 여백 줄임 */
+.org-band.is-bottom{margin:24px auto 0!important}
+main:has(>.org-band.is-bottom){padding-bottom:32px!important}
+@media(max-width:760px){.org-band.is-bottom{margin-top:16px!important}main:has(>.org-band.is-bottom){padding-bottom:24px!important}}
+/* 운영자 2026-11-04: 띠 로고 높이는 관리자에서 (협력 기관·배너 > 높이) */
+.org-band .org-track li img{height:var(--h,32px)!important;width:auto}
+.org-band .org-track li .org-self{display:grid;justify-items:center;gap:4px;text-decoration:none}
+.org-band .org-track li .org-self small{font-size:11px;line-height:14px;font-weight:600;color:#6b7684}
+@media(max-width:760px){.org-band .org-track li img{height:calc(var(--h,32px)*.8)!important}}
+/* 운영자 2026-11-04: 첫 화면 아래 '사진으로 보는 제보' — 토스 카드처럼 사진 + 제목 두 줄 + 업체·시간 */
+.home-shots .shot-row{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 48px)/4);gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:4px}
+.home-shots .shot-row::-webkit-scrollbar{display:none}
+.shot-card{display:flex;flex-direction:column;gap:6px;min-width:0;scroll-snap-align:start;color:#191f28}
+.shot-card:hover{color:#191f28}
+.shot-img{display:block;aspect-ratio:4/3;max-width:100%;border-radius:16px;overflow:hidden;background:#f2f4f6;margin-bottom:6px}
+.shot-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+.shot-card:hover .shot-img img{transform:scale(1.03)}
+.shot-card strong{font-size:16px;font-weight:700;line-height:1.4;letter-spacing:-.3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.shot-meta{font-size:13px;color:#8b95a1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:900px){.home-shots .shot-row{grid-auto-columns:calc((100% - 16px)/2.3)}}
+@media(max-width:560px){.home-shots .shot-row{grid-auto-columns:72%;gap:12px}.home-shots .section-head h2{font-size:20px}.shot-card strong{font-size:15px}}
+.hp-grid.shots .hp-item img{aspect-ratio:4/3;height:auto}
