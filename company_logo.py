@@ -80,7 +80,8 @@ def fetch(domain):
         except Exception:
             continue
     tries += [base + '/apple-touch-icon.png', 'https://www.' + domain + '/apple-touch-icon.png',
-              'https://www.google.com/s2/favicons?' + urllib.parse.urlencode({'domain': domain, 'sz': SIZE})]
+              'https://www.google.com/s2/favicons?' + urllib.parse.urlencode({'domain': domain, 'sz': 256}),
+              'https://icons.duckduckgo.com/ip3/' + domain + '.ico']  # 운영자 2026-11-04: 쿠팡처럼 프로그램 접속을 막는 사이트도 로고가 나오게
     for url in dict.fromkeys(tries):
         if url.startswith('data:'): continue
         try:

@@ -28,6 +28,32 @@ class LogoFillTest(unittest.TestCase):
         with mock.patch.dict('os.environ', {'NAVER_SEARCH_ID': '', 'NAVER_SEARCH_SECRET': '', 'NAVER_HUB_CLIENT_ID': '', 'NAVER_HUB_CLIENT_SECRET': ''}):
             self.assertEqual(logo_fill.naver_find('Db손해보험'), '')
 
+    def test_generic_names_skipped(self):
+        for n in ('치과', '동네 치과', '헬스장', '쇼핑몰', '개인 판매자', '모름'): self.assertTrue(logo_fill.generic(n), n)
+        for n in ('100세치과', '쿠팡', 'DB손해보험', '다이소몰'): self.assertFalse(logo_fill.generic(n), n)
+        res = {'items': [{'title': '<b>100세치과</b> - 서울', 'link': 'https://100sedental.co.kr'}]}
+        with mock.patch.dict('os.environ', {'NAVER_SEARCH_ID': 'a', 'NAVER_SEARCH_SECRET': 'b'}), mock.patch.object(logo_fill, 'naver_get', return_value=(200, res)):
+            self.assertEqual(logo_fill.naver_find('치과'), '')
+            self.assertEqual(logo_fill.naver_find('100세치과'), '100sedental.co.kr')
+
+    def test_same_name_shares_logo(self):
+        import sqlite3, tempfile, pathlib
+        d = pathlib.Path(tempfile.mkdtemp()); (d / 'logos').mkdir()
+        db = sqlite3.connect(d / 'c.db'); db.row_factory = sqlite3.Row
+        db.execute("CREATE TABLE companies(id INTEGER PRIMARY KEY,name TEXT,brand TEXT DEFAULT '',domain TEXT DEFAULT '',logo TEXT DEFAULT '',logo_at TEXT DEFAULT '',status TEXT DEFAULT 'listed')")
+        db.execute("CREATE TABLE cases(id INTEGER PRIMARY KEY,company_id INT,public_consent INT,published INT)")
+        db.execute("INSERT INTO companies(id,name,domain,logo,logo_at) VALUES(1,'쿠팡','coupang.com','1.png','x'),(2,'쿠 팡','','',''),(3,'치과','','','')")
+        (d / 'logos' / '1.png').write_bytes(b'png'); db.commit()
+        from contextlib import contextmanager
+        @contextmanager
+        def conn():
+            yield db; db.commit()
+        S = SimpleNamespace(conn=conn, UPLOAD=d, now=lambda: '2026-11-04')
+        with mock.patch.object(logo_fill, 'naver_find', return_value=''), mock.patch.object(logo_fill, 'ask', return_value=('', [])):
+            logo_fill.run(S, log=lambda *_: None, again=True)
+        self.assertEqual(db.execute('SELECT logo FROM companies WHERE id=2').fetchone()[0], '2.png')
+        self.assertEqual(db.execute('SELECT logo FROM companies WHERE id=3').fetchone()[0], '')
+
 
 if __name__ == '__main__':
     unittest.main()
