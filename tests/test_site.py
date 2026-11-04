@@ -368,6 +368,7 @@ class SiteTest(unittest.TestCase):
                                  ('CJ-SHOT%d' % i, 'x', '배송·환불', '쇼핑·유통', '사진가게%d' % i, '사진 제보 %d' % i, '내용', '환불', '2026-10-09T10:00:00', 1, 1)).lastrowid
                 im = Image.new('RGB', (800, 600), 'white'); d = ImageDraw.Draw(im)
                 for x in range(0, 400, 4): d.line([(x, 0), (x, 300)], fill='black' if x % 8 else 'red')  # 왼쪽 위 = '전화번호' 자리 (줄무늬)
+                k = 2 if i == 3 else i; d.rectangle(([(420, 320, 800, 600), (400, 0, 800, 300), (0, 320, 380, 600), (0, 0, 0, 0), (600, 100, 700, 500)][k]), fill='blue')  # 3번은 2번과 같은 사진
                 name = 'shot-src-%d.jpg' % i; b = io.BytesIO(); im.save(b, 'JPEG', quality=95); (self.site.UPLOAD / name).write_bytes(b.getvalue())
                 db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)', (cid, name, 'a.jpg')); cids.append(cid)
         def answer(i):
@@ -377,13 +378,14 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(self.site.case_shots_fill(10), 0)  # AI 키가 없으면 아무것도 안 냄
         calls = iter(range(4, -1, -1))  # 최근 제보부터 봄 → 마지막(4번)이 '개인정보 대부분'
         with mock.patch.object(case_shots.companydesk, 'ai_key_for', return_value='k'), mock.patch.object(case_shots.companydesk, 'post_json', side_effect=lambda *a: answer(next(calls))):
-            self.assertEqual(self.site.case_shots_fill(5), 4)
+            self.assertEqual(self.site.case_shots_fill(5), 3)  # 같은 사진(3·2번)은 한 번만
         with self.site.conn() as db:
             rows = db.execute("SELECT id,stored,case_id FROM case_shots WHERE stored!='' ORDER BY case_id").fetchall()
             self.assertEqual(db.execute("SELECT note FROM case_shots WHERE case_id=?", (cids[4],)).fetchone()[0], 'private')
-        self.assertEqual(len(rows), 4)
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM case_shots WHERE note='dup'").fetchone()[0], 1)
+        self.assertEqual(len(rows), 3)
         shot = Image.open(self.site.UPLOAD / 'shots' / rows[0]['stored']).convert('RGB')
-        left = [shot.getpixel((x, 60)) for x in range(20, 200, 2)]; right = shot.getpixel((560, 400))
+        left = [shot.getpixel((x, 60)) for x in range(20, 200, 2)]; right = shot.getpixel((330, 262))
         self.assertLess(max(map(sum, left)) - min(map(sum, left)), 90)  # 가린 곳은 줄무늬가 뭉개짐 (검정·빨강이 섞여 한 색)
         self.assertGreater(sum(right), 700)  # 나머지는 그대로 (흰 바탕)
         home = self.client.get('/', base_url=jebo).get_data(as_text=True)
@@ -399,6 +401,24 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(db.execute('SELECT hidden FROM case_shots WHERE id=?', (rows[2]['id'],)).fetchone()[0], 1)
             db.execute('DELETE FROM case_shots')
             for c in cids: db.execute('DELETE FROM attachments WHERE case_id=?', (c,)); db.execute('DELETE FROM hero_photos WHERE case_id=?', (c,)); db.execute('DELETE FROM cases WHERE id=?', (c,))
+
+    def test_howto(self):
+        # 운영자 2026-11-04: 분쟁·대응 메뉴 — 글은 미리 만들지 않음. 관리자가 공개한 글이 생기면 메뉴에 보임
+        jebo = 'https://consumerjebo.co.kr'
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        self.assertNotIn('href="/howto"', self.client.get('/', base_url=jebo).get_data(as_text=True))
+        self.assertIn('준비하고 있어요', self.client.get('/howto', base_url=jebo).get_data(as_text=True))
+        admin = self.login_admin(); token = self.csrf(admin, '/admin/howto')
+        r = admin.post('/admin/howto', data={'_csrf': token}); gid = int(r.headers['Location'].rstrip('/').rsplit('/', 1)[1])
+        self.assertEqual(self.client.get('/howto/%d' % gid).status_code, 404)  # 초안은 안 보임
+        admin.post('/admin/howto/%d' % gid, data={'_csrf': token, 'act': 'save', 'title': '환불을 안 해 줄 때', 'topic': '환불·반품', 'emoji': '💸', 'status': 'published', 'sort': '1',
+                                               'body': '도입이에요.\n\n## 먼저 확인할 것\n- 받은 날짜\n\n## 이렇게 대처해요\n- 캡처 <b>해요</b>'})
+        page = self.client.get('/howto/%d' % gid, base_url=jebo).get_data(as_text=True)
+        self.assertIn('ck-check', page); self.assertIn('ck-steps', page); self.assertIn('&lt;b&gt;', page)
+        home = self.client.get('/', base_url=jebo).get_data(as_text=True)
+        self.assertIn('href="/howto"', home); self.assertIn('분쟁·대응', home)
+        self.assertIn('환불을 안 해 줄 때', self.client.get('/howto', base_url=jebo).get_data(as_text=True))
+        with self.site.conn() as db: db.execute('DELETE FROM howto_guides')
 
     def test_company_typo_fix(self):
         # 운영자 2026-11-03: 큰 기업 이름 오타는 자동으로 (큐팡 → 쿠팡). 헷갈리거나 모르는 이름은 그대로

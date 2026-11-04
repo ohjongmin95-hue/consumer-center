@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}{{ g_['title'] }} | {{ ui('howto.title', '분쟁·대응') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ g_['body']|replace('## ', '')|replace('- ', '')|truncate(150) }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap ck-wrap ck-read">
+  <a class="ck-back" href="{{ url_for('howto_list') }}">‹ {{ ui('howto.title', '분쟁·대응') }}</a>
+  {% if g_['status'] != 'published' %}<p class="ck-draft">{{ ui('check.draft', '공개 전 초안이에요. 관리자에게만 보여요.') }}</p>{% endif %}
+  <article class="ck-art">
+    <span class="ck-tile tf" aria-hidden="true">{{ g_['emoji'] or '📌' }}</span>
+    {% if g_['topic'] %}<small class="ck-ind">{{ g_['topic'] }}</small>{% endif %}
+    <h1>{{ g_['title'] }}</h1>
+    <div class="ck-body">{{ g_['body']|guide_body }}</div>
+  </article>
+  <a class="primary ck-cta" href="{{ url_for('report') }}">{{ txt('home.hero_button')|replace('→', '')|trim }}</a>
+  {% if more %}<section class="ck-other"><h2>{{ ui('howto.other', '다른 상황') }}</h2><ul class="ck-list">{% for m in more %}<li><a href="{{ url_for('howto_page', gid=m['id']) }}"><span class="ck-tile sm tf" aria-hidden="true">{{ m['emoji'] or '📌' }}</span>{% if m['topic'] %}<small>{{ m['topic'] }}</small>{% endif %}<b>{{ m['title'] }}</b></a></li>{% endfor %}</ul></section>{% endif %}
+</div></main>
+{% endblock %}

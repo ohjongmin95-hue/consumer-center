@@ -1,11 +1,12 @@
 """운영자 2026-11-04: 제보가 들어온 기업 중 공식 로고가 있는 곳은 로고를 자동으로.
-홈페이지 주소(도메인)가 없는 기업을 AI에게 물어 공식 홈페이지를 찾고, 그 홈페이지 첫 화면에 기업 이름이 실제로 있을 때만 도메인으로 저장한 뒤
+홈페이지 주소(도메인)가 없는 기업을 네이버 웹문서 검색으로 먼저 찾고(운영자 2026-11-04), 없으면 AI에게 물어 공식 홈페이지를 찾고, 그 홈페이지 첫 화면에 기업 이름이 실제로 있을 때만 도메인으로 저장한 뒤
 company_logo.fetch로 로고를 받아 둔다. 작은 가게처럼 공식 홈페이지가 없으면 건너뛰고(업종 그림이 대신 보임), 30일 동안 다시 묻지 않는다.
 
 서버에서 한 번에 돌리기:
   sudo systemd-run --wait --pipe -p User=soboru -p EnvironmentFile=/etc/soboru.env -p WorkingDirectory=/opt/soboru/app /opt/soboru/venv/bin/python -m logo_fill
+  (30일 안에 못 찾은 곳도 다시 찾으려면 맨 뒤에 again)
 """
-import json, logging, re, time
+import json, logging, os, re, time, urllib.parse, urllib.request
 
 import company_logo
 import companydesk
@@ -15,7 +16,9 @@ RETRY_DAYS = 30
 PROMPT = ('한국 소비자가 제보한 업체 이름을 받아, 그 업체의 공식 홈페이지 도메인을 알려 주세요. '
           'JSON만: {"domain": "coupang.com", "names": ["쿠팡", "coupang"], "sure": true}. '
           '널리 알려진 기업·브랜드의 공식 사이트일 때만 sure=true. 개인 가게, 이름이 흔해 어느 곳인지 모를 때, 확실하지 않을 때는 {"domain": "", "names": [], "sure": false}. '
-          '쇼핑몰 입점 판매자는 판매자 자체 사이트가 없으면 빈 값. 도메인만 (https://, www., 경로 없이).')
+          '쇼핑몰 입점 판매자는 판매자 자체 사이트가 없으면 빈 값. 도메인만 (https://, www., 경로 없이). '
+          '소비자가 적은 이름이라 대소문자·띄어쓰기·주식회사 표기가 틀리거나 줄여 쓴 경우가 많아요. 어느 회사인지 분명하면 바르게 알아듣고 답하세요 '
+          '(예: "Db손해보험" → {"domain": "idbins.com", "names": ["DB손해보험", "DB"], "sure": true}). names에는 한글 이름과 영문 이름을 함께.')
 
 
 def ask(name):
@@ -32,6 +35,41 @@ def ask(name):
     return company_logo.clean_domain(out.get('domain') or ''), [str(x) for x in (out.get('names') or []) if str(x).strip()][:5]
 
 
+SKIP = ('naver.', 'daum.', 'kakao.', 'google.', 'tistory.', 'wikipedia.', 'namu.wiki', 'youtube.', 'instagram.', 'facebook.', 'blog.', 'news', 'jobkorea.', 'saramin.',
+        'coupang.com', '11st.', 'gmarket.', 'auction.', 'smartstore', 'wanted.', 'catch.', 'thevc.', 'nicebizinfo', 'dart.fss')
+
+
+def naver_keys():
+    """네이버 검색 키: 개발자센터(NAVER_SEARCH_ID·SECRET) 먼저, 없으면 API HUB(NAVER_HUB_CLIENT_ID·SECRET)."""
+    a, b = os.getenv('NAVER_SEARCH_ID', '').strip(), os.getenv('NAVER_SEARCH_SECRET', '').strip()
+    if a and b: return 'https://openapi.naver.com/v1/search/webkr.json', {'X-Naver-Client-Id': a, 'X-Naver-Client-Secret': b}
+    a, b = os.getenv('NAVER_HUB_CLIENT_ID', '').strip(), os.getenv('NAVER_HUB_CLIENT_SECRET', '').strip()
+    if a and b: return 'https://naverapihub.apigw.ntruss.com/search/v1/webkr', {'X-NCP-APIGW-API-KEY-ID': a, 'X-NCP-APIGW-API-KEY': b}
+    return '', {}
+
+
+def naver_get(url, headers):
+    """(상태 코드, JSON). 테스트에서 바꿔 끼운다."""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=8) as r: return r.status, json.loads(r.read().decode() or '{}')
+    except Exception:
+        return 0, {}
+
+
+def naver_find(name):
+    """운영자 2026-11-04: 네이버에서 검색하면 공식 홈페이지가 나옴 → 웹문서 검색 결과 중 제목에 업체 이름이 있는 사이트의 도메인. 못 찾으면 ''."""
+    base, headers = naver_keys()
+    if not base: return ''
+    st, res = naver_get(base + '?' + urllib.parse.urlencode({'query': name[:60] + ' 공식 홈페이지', 'display': 10}), headers)
+    if st != 200: return ''
+    key = squash(name)
+    for it in res.get('items') or []:
+        title = squash(re.sub(r'<[^>]+>', '', it.get('title') or ''))
+        dom = company_logo.clean_domain(it.get('link') or '')
+        if len(key) >= 2 and dom and key in title and not any(x in dom for x in SKIP): return dom
+    return ''
+
+
 def squash(t): return re.sub(r'[\s()\[\]㈜·.,\-_/]|주식회사|\(주\)', '', (t or '').lower())
 
 
@@ -43,13 +81,15 @@ def confirmed(domain, names):
         except Exception:
             continue
         if any(len(squash(n)) >= 2 and squash(n) in html for n in names): return True
-    return False
+    # 운영자 2026-11-04: 다이소몰처럼 홈페이지가 프로그램(봇)을 막는 곳 → 도메인 자체에 영문 이름이 들어 있으면 인정 (daiso → daisomall.co.kr)
+    base = domain.split('.')[0]
+    return any(re.fullmatch(r'[a-z0-9]{4,}', squash(n)) and squash(n) in base for n in names)
 
 
-def run(S, limit=40, log=print):
+def run(S, limit=40, log=print, again=False):
     """도메인 없는 기업(공개 제보가 있는 곳 먼저) → 공식 홈페이지 찾기 → 로고 받기. 받은 수를 돌려줌."""
     conn = S.conn; folder = S.UPLOAD / 'logos'; folder.mkdir(parents=True, exist_ok=True)
-    since = time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(time.time() - RETRY_DAYS * 86400))
+    since = '9999' if again else time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(time.time() - RETRY_DAYS * 86400))  # again: 30일 기다리지 않고 다시
     with conn() as db:
         rows = db.execute("""SELECT co.id, co.name, co.brand, COUNT(c.id) AS n FROM companies co JOIN cases c ON c.company_id=co.id
                              WHERE co.domain='' AND co.status IN ('active','listed') AND (co.logo_at='' OR co.logo_at<?)
@@ -57,8 +97,11 @@ def run(S, limit=40, log=print):
     got = 0
     for r in rows:
         name = r['brand'] or r['name']
-        domain, names = ask(name)
-        ok = bool(domain) and confirmed(domain, names + [r['name'], r['brand'] or ''])
+        domain = naver_find(name) or (naver_find(r['name']) if r['brand'] else '')
+        if domain: ok = True  # 네이버 검색 결과 제목에 이름이 있는 사이트 = 확인됨
+        else:
+            domain, names = ask(name)
+            ok = bool(domain) and confirmed(domain, names + [r['name'], r['brand'] or ''])
         png = company_logo.fetch(domain) if ok else b''
         with conn() as db:
             if png:
@@ -72,6 +115,7 @@ def run(S, limit=40, log=print):
 
 
 if __name__ == '__main__':
+    import sys
     import app as site
-    n = run(site, limit=500)
+    n = run(site, limit=500, again='again' in sys.argv[1:])
     print(f'로고를 새로 받은 기업: {n}곳')

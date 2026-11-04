@@ -10,6 +10,7 @@ AI(사진 보기)가 찾아 그 자리만 굵게 모자이크한 사본을 새�
 import base64
 import io
 import json
+import random
 import re
 import secrets
 import threading
@@ -18,7 +19,7 @@ import time
 from flask import abort, redirect, request, send_file, url_for
 
 import companydesk
-from hero_photos import PUBLIC, IMAGE_EXT
+from hero_photos import PUBLIC, IMAGE_EXT, near, norm_co, phash_bytes, phash_file
 
 VER = 1
 SHOW = 12          # 첫 화면에 보이는 카드 수
@@ -93,6 +94,7 @@ def install(S):
     with conn() as db:
         db.execute("CREATE TABLE IF NOT EXISTS case_shots(id INTEGER PRIMARY KEY,attachment_id INTEGER UNIQUE,case_id INTEGER,stored TEXT NOT NULL DEFAULT '',"
                    "boxes INTEGER NOT NULL DEFAULT 0,hidden INTEGER NOT NULL DEFAULT 0,note TEXT NOT NULL DEFAULT '',ver INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL)")
+        if 'phash' not in {r['name'] for r in db.execute('PRAGMA table_info(case_shots)')}: db.execute("ALTER TABLE case_shots ADD COLUMN phash TEXT NOT NULL DEFAULT ''")
     state = {'at': 0.0, 'busy': False}
     lock = threading.Lock()
 
@@ -102,6 +104,8 @@ def install(S):
             rows = db.execute('SELECT a.id,a.stored,c.id AS case_id FROM attachments a JOIN cases c ON c.id=a.case_id WHERE ' + PUBLIC +
                               ' AND a.id NOT IN (SELECT attachment_id FROM case_shots) AND c.id NOT IN (SELECT case_id FROM case_shots WHERE stored!=\'\')'
                               ' ORDER BY a.id DESC LIMIT 60').fetchall()
+            have = [r['phash'] or phash_file(folder / r['stored']) for r in db.execute("SELECT phash,stored FROM case_shots WHERE hidden=0 AND stored!=''")]
+        have = [h for h in have if h]
         made, tried, seen = 0, 0, set()
         for r in rows:
             if tried >= limit: break
@@ -115,9 +119,12 @@ def install(S):
             with conn() as db:
                 if isinstance(boxes, str):
                     db.execute('INSERT OR IGNORE INTO case_shots(attachment_id,case_id,hidden,note,ver,created) VALUES(?,?,1,?,?,?)', (r['id'], r['case_id'], boxes, VER, S.now())); continue
-                name = secrets.token_hex(12) + '.jpg'; (folder / name).write_bytes(make_shot(im, boxes))
-                db.execute('INSERT OR IGNORE INTO case_shots(attachment_id,case_id,stored,boxes,ver,created) VALUES(?,?,?,?,?,?)', (r['id'], r['case_id'], name, len(boxes), VER, S.now()))
-            made += 1; seen.add(r['case_id'])
+                shot = make_shot(im, boxes); ph = phash_bytes(shot)
+                if ph and any(near(ph, h) for h in have):  # 운영자 2026-11-04: 같은 사진은 한 번만 (같은 영수증을 두 제보에 올린 경우 등)
+                    db.execute("INSERT OR IGNORE INTO case_shots(attachment_id,case_id,hidden,note,ver,phash,created) VALUES(?,?,1,'dup',?,?,?)", (r['id'], r['case_id'], VER, ph, S.now())); continue
+                name = secrets.token_hex(12) + '.jpg'; (folder / name).write_bytes(shot)
+                db.execute('INSERT OR IGNORE INTO case_shots(attachment_id,case_id,stored,boxes,ver,phash,created) VALUES(?,?,?,?,?,?,?)', (r['id'], r['case_id'], name, len(boxes), VER, ph, S.now()))
+            made += 1; seen.add(r['case_id']); have.append(ph)
         return made
 
     def kick():
@@ -132,12 +139,22 @@ def install(S):
                 finally: state['busy'] = False
         threading.Thread(target=go, daemon=True).start()
 
-    def shots(n=SHOW):
-        """첫 화면 카드: 지금도 공개인 제보만, 최근 것부터."""
+    def shots(n=SHOW, shuffle=False):
+        """첫 화면 카드: 지금도 공개인 제보만, 제보 하나에 한 장, 최근 것부터 (shuffle이면 최근 것 중에서 섞어서)."""
         kick()
         with conn() as db:
-            return [dict(r) for r in db.execute('SELECT s.id,s.stored,s.case_id,c.subject,c.company,c.industry,c.created FROM case_shots s JOIN cases c ON c.id=s.case_id '
-                                                "WHERE s.hidden=0 AND s.stored!='' AND " + PUBLIC + ' ORDER BY c.id DESC LIMIT ?', (n,))]
+            rows = [dict(r) for r in db.execute('SELECT MIN(s.id) AS id,s.stored,s.phash,s.case_id,c.subject,c.company,c.industry,c.created FROM case_shots s JOIN cases c ON c.id=s.case_id '
+                                                "WHERE s.hidden=0 AND s.stored!='' AND " + PUBLIC + ' GROUP BY s.case_id ORDER BY c.id DESC LIMIT ?', (n * 2 if shuffle else n,))]
+        out, keys, hashes = [], set(), []
+        for r in rows:  # 운영자 2026-11-04: 같은 것 두 번 노출 금지 — 같은 업체·같은 제목, 같은(비슷한) 사진은 하나만
+            key = (norm_co(r['company']), ' '.join((r['subject'] or '').split()))
+            ph = r['phash'] or phash_file(folder / r['stored'])
+            if key in keys or (ph and any(near(ph, h) for h in hashes)): continue
+            keys.add(key); hashes.append(ph) if ph else None; out.append(r)
+        rows = out
+        if shuffle:  # 운영자 2026-11-04: 매번 같은 사진만 보이면 지루함 → 최근 것 중에서 섞어서
+            random.shuffle(rows); rows = rows[:n]
+        return rows
 
     app.jinja_env.globals['case_shots'] = shots
     S.case_shots_fill = fill
