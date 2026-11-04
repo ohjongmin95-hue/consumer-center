@@ -57,7 +57,7 @@
 {% if msgs %}<div class="flash-wrap{% if auth_screen %} is-auth{% endif %}" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
 {% endwith %}
 {% block content %}{% endblock %}
-{% if not auth_screen %}<footer class="site-footer">
+{% if not auth_screen and not letter_alone() %}{# 운영자 2026-11-04: 레터 구독 페이지는 바닥글 없음 #}<footer class="site-footer">
   <div class="ft-inner">
     <div class="ft-top">
       {% if is_soboru() %}<a class="ft-logo sb-ft-logo" href="{{ url_for('home') }}"><img src="{{ asset('img/soboru-logo.png') }}" alt="{{ txt('site.name') }}" width="127" height="30"></a><span class="sb-ft-why">{{ ui_rich('common.ft_why', '**소**비자 권익 **보**호를 위한 **루**트') }}</span>{% else %}<a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% set by = txt('site.logo_by') %}{% if by %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a>{% endif %}
