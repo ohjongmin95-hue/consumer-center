@@ -214,7 +214,7 @@ def install(S):
                 from PIL import Image, ImageOps
                 im = ImageOps.exif_transpose(Image.open(f.stream)).convert('RGB'); im.thumbnail((2400, 2400))
             except Exception: flash('사진을 읽지 못했어요. JPG·PNG·WEBP 파일을 올려 주세요.'); return back
-            name = f'{kind}-{target_id}-{datetime.datetime.now():%Y%m%d%H%M%S}.webp'
+            name = f'{kind}-{target_id}-photo-{datetime.datetime.now():%Y%m%d%H%M%S}.webp'  # '-photo-' = 운영자가 올린 사진 (매거진은 이것만 씀)
             im.save(folder / name, 'WEBP', quality=84)
             with conn() as db:
                 old = db.execute('SELECT file FROM soboru_art WHERE kind=? AND target_id=?', (kind, target_id)).fetchone()
@@ -243,6 +243,11 @@ def install(S):
         if not f or os.path.splitext(f['stored'])[1].lower() not in ('.jpg', '.jpeg', '.png'): return ''
         return S.canonical_url(url_for('report_cover', case_id=case_id, v=fid))
 
-    app.jinja_env.globals.update(og_photo=og_photo, art_url=art_url, art_photo=lambda stored: os.path.splitext(stored)[1].lower() in PHOTO)
+    def mag_photo(target_id):
+        # 운영자 2026-11-04: 매거진에는 AI 그림 말고 운영자가 직접 올린 사진만
+        f = live().get(('life', target_id))
+        return url_for('art_image', kind='life', target_id=target_id, v=f[-12:-5]) if f and '-photo-' in f else ''
+
+    app.jinja_env.globals.update(og_photo=og_photo, art_url=art_url, mag_photo=mag_photo, art_photo=lambda stored: os.path.splitext(stored)[1].lower() in PHOTO)
     S.art_draw = draw; S.art_auto = auto
     app.extensions['soboru_art'] = {'auto': auto, 'draw': draw}
