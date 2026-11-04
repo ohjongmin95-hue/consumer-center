@@ -8,7 +8,7 @@
 - 자격증 사진(증빙)은 관리자만 볼 수 있다. 관리자는 언제든 표시를 멈추거나 다시 켤 수 있다.
 """
 import datetime
-import random, os, secrets, threading, uuid
+import hashlib, hmac, random, os, secrets, threading, uuid
 
 from flask import abort, flash, g, redirect, render_template, request, send_file, session, url_for
 
@@ -57,6 +57,11 @@ def labels(db, user_ids):
 
 def photo_url(eid, photo):
     return f'/expert/{eid}/photo.jpg?v={photo[:8]}' if photo else ''
+
+
+def mail_key(secret):
+    """운영자 2026-11-04: 섭외 메일 링크(/expert/apply?k=…)로 온 사람은 우리가 초대한 사람이라 등록증 없이 바로 자문단."""
+    return hmac.new(str(secret).encode(), b'expert-mail', hashlib.sha256).hexdigest()[:12]
 
 
 def install(S):
@@ -113,9 +118,7 @@ def install(S):
         if not f['name'] or f['field'] not in (FIRM_FIELDS if kind == 'firm' else FIELDS): raise ValueError('이름과 분야를 넣어 주세요.')
         if not f['phone'] and not f['email']: raise ValueError('연락처나 이메일 중 하나는 적어 주세요.')
         up = request.files.get('proof')
-        # 운영자 2026-11-04: 우리가 메일로 초대한 사람은 이미 아는 사람이라 자격 파일 없이 프로필 사진만 받음. 직접 신청은 그대로 파일 필요
-        if not invited and not (up and up.filename) and not (row and row['proof']):
-            raise ValueError('사업자등록증 파일을 올려 주세요.' if kind == 'firm' else '재직증명서 파일을 올려 주세요.' if f['field'] == '교수' else '변호사 등록증 파일을 올려 주세요.')
+        # 운영자 2026-11-04: 등록증·재직증명서 파일은 받지 않음 ('일단은 다 없애'). 직접 신청은 운영자가 대한변협 검색 등으로 확인 후 승인
         # 운영자 2026-11-03: 자문단은 신뢰를 위해 프로필 사진이 꼭 필요 (사무소·법인은 로고라 선택)
         ph = request.files.get('photo')
         if kind == 'person' and not (ph and ph.filename) and not (row and row['photo']): raise ValueError('프로필 사진을 올려 주세요. 소비자가 믿고 볼 수 있게 얼굴이 보이는 사진이 필요해요.')
@@ -172,13 +175,16 @@ def install(S):
                 except Exception as ex: app.logger.warning('expert alert mail failed: %s', ex)
         threading.Thread(target=run, daemon=True).start()
 
+    def from_mail():
+        return hmac.compare_digest(str(request.args.get('k', '')), mail_key(app.secret_key))
+
     def form_page(invite=None, f=None):
         people = [r for r in helpers(12) if r['kind'] == 'person' and r['photo_url']]; random.shuffle(people)
         if not people:  # 운영자 2026-11-03: 사진 올린 자문단이 아직 없으면 왼쪽이 비어 보임 → 예시 카드 (예시 사진)
             people = [{'name': n, 'field': fd, 'org': o, 'photo_url': url_for('static', filename=f'img/advisors/{a}.jpg')}
                       for a, n, fd, o in (('a1', '김서연', '변호사', '소보루 법률사무소'), ('a2', '박성훈', '변호사', '법무법인 소보루'),
                                           ('a3', '이정민', '교수', '소보루대학교 법학전문대학원'), ('a4', '정민재', '변호사', '법률사무소 소보루'))]
-        return render_template('expert_form.html', fields=FIELDS, firm_fields=FIRM_FIELDS, f=f or form_values(invite), invite=invite, people=people)
+        return render_template('expert_form.html', fields=FIELDS, firm_fields=FIRM_FIELDS, f=f or form_values(invite), invite=invite, people=people, no_proof=bool(invite) or from_mail())
 
     def done(status, claim):
         session['expert_done'] = {'status': status, 'claim': claim or ''}
@@ -199,7 +205,7 @@ def install(S):
             if request.form.get('website'): abort(400)  # 자동 등록 막기용 숨은 칸
             if mine and mine['status'] in ('approved', 'stopped'): abort(400)
             try:
-                _, status, claim = submit(mine, False)
+                _, status, claim = submit(mine, from_mail())
             except ValueError as e:
                 flash(str(e)); return form_page(f=form_values(request.form))
             return done(status, claim)

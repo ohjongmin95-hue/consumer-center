@@ -34,14 +34,13 @@
     </div>
     <label class="xf-f"><span class="xf-l">한 줄 소개</span><input class="xf-in-t" name="intro" maxlength="120" value="{{ f.intro }}" placeholder="예: 전자상거래 환불 분쟁을 주로 다뤄요"></label>
     <label class="xf-f"><span class="xf-l">이력</span><textarea class="xf-in-t xf-ta" name="career" rows="3" maxlength="1000" placeholder="예: 소보루대학교 법학전문대학원 교수&#10;한국소비자원 분쟁조정위원 (2020~2024)">{{ f.career }}</textarea></label>
-    <div class="xf-f"><span class="xf-l is-req">{{ ('로고' if firm else '프로필 사진') if invite else '자격 확인' }}</span>
-      {% if not invite %}<label class="xf-file is-need"><input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"{% if not (invite and invite['proof']) %} required{% endif %}><b>{{ '사업자등록증' if firm else '변호사 등록증 또는 재직증명서' }}</b><span data-empty="사진이나 PDF를 올려 주세요">사진이나 PDF를 올려 주세요</span><i>필수</i></label>{% endif %}
+    <div class="xf-f"><span class="xf-l is-req">{{ '로고' if firm else '프로필 사진' }}</span>
       <label class="xf-file{{ ' is-need' if not firm }}"><input name="photo" type="file" accept="image/jpeg,image/png,image/webp"{% if not firm and not (invite and invite['photo']) %} required{% endif %}><b>{{ '로고' if firm else '프로필 사진' }}</b><span data-empty="{{ '소개 페이지와 댓글에 보여요' if firm else '얼굴이 보이는 사진 · 소개 페이지와 댓글에 보여요' }}">{{ '소개 페이지와 댓글에 보여요' if firm else '얼굴이 보이는 사진 · 소개 페이지와 댓글에 보여요' }}</span><i>{{ '선택' if firm else '필수' }}</i></label>
     </div>
     <input type="hidden" name="agree" value="1">
     <details class="xf-agree">
-      <summary>{{ ui('xf.agree2', '개인정보 수집 동의 (자격 확인과 연락에만 써요)') }}<svg class="xf-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></summary>
-      <p>{{ ui('xf.agree_text', '제보에 남긴 댓글 이름 옆에 ‘자문단 · 분야’와 사진이 보여요. 이름·소속·연락처·이메일과 자격 확인 파일은 자격 확인과 연락에만 쓰고, 운영자만 봐요. 자문단을 그만두면 바로 지워요.') }}</p>
+      <summary>{{ ui('xf.agree3', '개인정보 수집 동의 (확인과 연락에만 써요)') }}<svg class="xf-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></summary>
+      <p>{{ ui('xf.agree_text2', '제보에 남긴 댓글 이름 옆에 ‘자문단 · 분야’와 사진이 보여요. 이름·소속·연락처·이메일은 확인과 연락에만 쓰고, 운영자만 봐요. 자문단을 그만두면 바로 지워요.') }}</p>
     </details>
     <button class="primary xi-go xf-go" type="submit">{{ ui('xf.cta_inv', '동의하고 등록하기') if invite else ui('xf.cta', '동의하고 신청하기') }}</button>
   </form>
@@ -60,8 +59,8 @@
 <section class="xf-more" aria-labelledby="xf-step"><div class="xf-more-in">
   <h2 class="xf-more-h is-center" id="xf-step">{{ ui('xf.step_h', '신청부터 활동까지\n이렇게 이어져요') }}</h2>
   <ol class="xf-step">
-    <li><i>01</i><b>{{ ui('xf.s1', '신청') }}</b><p>{% if invite %}{{ ui('xf.s1_inv', '위 칸을 채우고 프로필 사진을 올려요.') }}{% else %}{{ ui('xf.s1_t', '위 칸을 채우고 자격 서류를 올려요.') }}{% endif %}</p></li>
-    <li><i>02</i><b>{{ ui('xf.s2', '확인') }}</b><p>{% if invite %}{{ ui('xf.s2_inv', '초대받으셨으니 서류 확인 없이 바로 끝나요.') }}{% else %}{{ ui('xf.s2_t', '운영자가 서류를 보고 승인해요.') }}{% endif %}</p></li>
+    <li><i>01</i><b>{{ ui('xf.s1', '신청') }}</b><p>{% if no_proof %}{{ ui('xf.s1_inv', '위 칸을 채우고 프로필 사진을 올려요.') }}{% else %}{{ ui('xf.s1_t2', '위 칸을 채우고 프로필 사진을 올려요.') }}{% endif %}</p></li>
+    <li><i>02</i><b>{{ ui('xf.s2', '확인') }}</b><p>{% if no_proof %}{{ ui('xf.s2_inv', '초대받으셨으니 서류 확인 없이 바로 끝나요.') }}{% else %}{{ ui('xf.s2_t2', '운영자가 확인하고 승인해요.') }}{% endif %}</p></li>
     <li><i>03</i><b>{{ ui('xf.s3b', '자문단 계정이 바로 생겨요') }}</b><p>{{ ui('xf.s3b_t', '따로 가입하지 않아도 돼요. 다음부터는 적어 주신 휴대폰 번호로 로그인해요.') }}</p></li>
     <li><i>04</i><b>{{ ui('xf.s4', '활동 시작') }}</b><p>{{ ui('xf.s4_t', '관심 있는 제보에 의견을 남기고, 받은 상담 신청을 확인해요.') }}</p></li>
   </ol>

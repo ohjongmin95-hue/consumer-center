@@ -33,7 +33,7 @@ DEFAULTS = {
     'sample': '1',
     'note': '참여는 변호사님 개인별로 받아요. 여러 분이 함께하시면 모두 같은 법인 소속으로 소개돼요.',
     'cta': '자문단 참여하기',
-    'cta_sub': '변호사님별로 소속·분야·사진·변호사 등록증만 올리면 돼요 (3분)',
+    'cta_sub': '변호사님별로 소속·분야·프로필 사진만 넣으면 돼요. 등록증은 필요 없어요 (3분)',
     'sign': '전달해 주시는 것만으로도 큰 힘이 됩니다. 궁금한 점은 이 메일로 답장 주세요.\n감사합니다.\n\n**오종민 드림**\n소비자제보센터 by SOBORU 대표',
 }
 _LABELS = [('subject', '메일 제목', 1), ('kick', '맨 위 작은 글씨', 1), ('title', '큰 제목 (○○ 법무법인 자리에 이름이 들어가요)', 2),
@@ -61,11 +61,11 @@ def _pairs(s):
     return out
 
 
-def build(c, firm=''):
+def build(c, firm='', key=''):
     """하이웍스에 붙일 메일 HTML (표 + 인라인 스타일, 버튼은 bgcolor 칸 안의 평범한 링크)."""
     firm = (firm or '').strip() or FIRM
     sub = lambda s: (s or '').replace(FIRM, firm)
-    url = BASE + '/expert/apply'
+    url = BASE + '/expert/apply' + ('?k=' + key if key else '')
     pp = lambda x: f'<p style="margin:0 0 16px;font-size:16px;line-height:27px;color:#4e5968;{F}">{_t(x)}</p>'
     h3 = lambda x, m='28px': f'<p style="margin:{m} 0 12px;font-size:17px;font-weight:700;color:#191f28;{F}">{_t(x)}</p>'
     li = lambda x: (f'<tr><td width="18" valign="top" style="padding:3px 8px 10px 0;color:#EF920E;font-size:15px;font-weight:700;{F}">✓</td>'
@@ -140,5 +140,8 @@ def install(S):
                     flash('저장했어요.')
             return redirect(url_for('admin_expert_mail'))
         saved = load()
-        tpl = saved.get('html') or build(DEFAULTS, FIRM)
+        import experts; key = experts.mail_key(app.secret_key)
+        # 운영자 2026-11-04: 메일 링크로 온 사람은 등록증 없이 바로 자문단. 예전에 저장한 메일도 링크·안내 글을 맞춰 줌
+        tpl = (saved.get('html') or build(DEFAULTS, FIRM, key)).replace(BASE + '/expert/apply"', BASE + '/expert/apply?k=' + key + '"')
+        tpl = tpl.replace('소속·분야·사진·변호사 등록증만 올리면 돼요 (3분)', '소속·분야·프로필 사진만 넣으면 돼요. 등록증은 필요 없어요 (3분)')
         return render_template('admin_expert_mail.html', placeholder=FIRM, mail_template=tpl, subject=saved.get('subject') or DEFAULTS['subject'])
