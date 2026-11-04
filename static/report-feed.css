@@ -2097,3 +2097,6 @@ body .rf-rows .vc-simple h3{min-height:0;-webkit-line-clamp:1}
 /* 운영자 2026-11-04: 띄어쓰기 없는 긴 제목·본문도 휴대폰 화면 안에서 줄을 바꿔 넘치지 않게 (화면이 옆으로 밀리지 않게) */
 .pf-title,.pf-body,.pf-body *,.vc-simple h3{overflow-wrap:anywhere;word-break:keep-all;min-width:0}
 @media(max-width:700px){html,body{overflow-x:clip}}
+/* 운영자 2026-11-04: 휴대폰에서 글·진행 단계·뒤로 가기·카드 글자의 왼쪽 줄을 맨 위 로고와 같은 선에 맞춤 (비뚤배뚤 X) */
+@media(max-width:560px){.pf .pf-wrap{padding-left:0;padding-right:0}.pf .pc-back{margin-left:0}}
+@media(max-width:700px){.rf-home .vc-simple,.rf-home .vc-simple.is-sample{padding-left:16px!important;padding-right:16px!important}}
