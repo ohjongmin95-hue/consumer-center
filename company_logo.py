@@ -132,6 +132,20 @@ def install(S):
         if not r or not r['logo'] or not (folder / r['logo']).is_file(): abort(404)
         return send_file(folder / r['logo'], mimetype='image/png', max_age=86400)
 
+    @app.route('/admin/companies/<int:cid>/logo', methods=['POST'])
+    @S.admin_only
+    def admin_company_logo(cid):
+        """운영자 2026-11-04: 자동으로 못 받은 로고는 관리자가 파일로 직접 올림."""
+        from flask import flash, redirect, request, url_for
+        f = request.files.get('logo')
+        png = to_png(f.read(MAX_BYTES + 1)) if f and f.filename else b''
+        if not png: flash('로고를 열지 못했어요. PNG·JPG·WEBP 그림(32px 이상)인지 확인해 주세요.')
+        else:
+            (folder / f'{cid}.png').write_bytes(png)
+            with conn() as db: db.execute('UPDATE companies SET logo=?,logo_at=? WHERE id=?', (f'{cid}.png', S.now(), cid))
+            flash('로고를 바꿨어요.')
+        return redirect(request.referrer or url_for('admin_companies'))
+
     def co_logo(co):
         """기업 행(또는 dict) → 로고 주소. 없으면 ''."""
         try: return f"/co/{co['id']}/logo.png?v={(co['logo_at'] or '')[:10]}" if co['logo'] else ''
