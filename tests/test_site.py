@@ -510,6 +510,18 @@ class SiteTest(unittest.TestCase):
         pro = guest
         self.assertIn('자문단 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
         with self.site.conn() as db: self.assertEqual(db.execute("SELECT u.nickname FROM experts e JOIN users u ON u.id=e.user_id WHERE e.name='김변호'").fetchone()[0], '김변호')
+        # 운영자 2026-11-04: 등록증은 받지 않음. 섭외 메일 링크(?k=)로 온 사람은 사진만 넣으면 바로 자문단
+        import experts as ex
+        key = ex.mail_key(self.site.app.secret_key)
+        mailer = self.site.app.test_client()
+        mp = mailer.get('/expert/apply?k=' + key).get_data(as_text=True)
+        self.assertNotIn('name="proof"', mp); self.assertNotIn('name="proof"', mailer.get('/expert/apply').get_data(as_text=True))
+        pic3 = io.BytesIO(); Image.new('RGB', (300, 300), 'green').save(pic3, 'JPEG'); pic3.seek(0)
+        self.assertEqual(self.post_form(mailer, '/expert/apply?k=' + key, {'name': '홍메일', 'field': '변호사', 'agree': '1', 'phone': '010-2222-3333', 'email': 'hong@x.kr', 'photo': (pic3, 'me.jpg')}).status_code, 302)
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT status FROM experts WHERE name='홍메일'").fetchone()[0], 'approved')
+            db.execute("UPDATE users SET ip_hash='' WHERE id=(SELECT user_id FROM experts WHERE name='홍메일')")  # 테스트 안 가입 횟수 제한(시간당 3명)에 걸리지 않게
+        self.assertIn('/expert/apply?k=' + key, adm.get('/admin/experts/mail').get_data(as_text=True))
         # 직접 신청은 승인 전까지 표시 없음
         other, oid = self.member_client('pro_lee', '이사정')
         self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '교수', 'agree': '1', 'phone': '010-1234-5678',
