@@ -2067,19 +2067,26 @@ main:has(>.org-band.is-bottom){padding-bottom:32px!important}
 .ht-flow small{font-size:13.5px;color:#6b7684}
 @media(max-width:700px){.ht-flow{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ht-flow li{padding:16px}}
 /* 운영자 2026-11-04: 첫 화면 제보 카드 = 제목이 먼저, 아래 한 줄에 점+상태 글자·업체·시간, 오른쪽에 좋아요·댓글 (알약 배지·아이콘·유형·본문 없음) */
-.rf-home .vc-simple,.rf-home .vc-simple.is-sample{gap:14px;padding:20px;min-height:132px;border:1px solid #eef0f3;border-radius:20px;background:#fff;box-shadow:none}
-.rf-home .vc-simple:hover{transform:none;box-shadow:0 6px 18px rgba(25,31,40,.08)}
-body .rf-home .vc-simple h3{margin:0;font-size:17px;font-weight:700;line-height:1.45;min-height:2.9em;color:#191f28;-webkit-line-clamp:2}
-.rf-home .vc-simple:hover h3{color:#191f28;text-decoration:underline;text-underline-offset:3px}
-.rf-home .vc-simple .vcs-foot{display:flex;align-items:center;gap:10px;margin-top:auto;font-size:13.5px;color:#8b95a1}
-.rf-home .vc-simple .vcs-line{display:flex;align-items:center;flex:1;min-width:0;white-space:nowrap}
-.rf-home .vc-simple .vcs-line>*+*::before{content:"·";margin:0 6px;color:#d1d6db}
-.rf-home .vc-simple .vcs-co{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.rf-home .vc-simple .vcs-lock{display:inline-block;width:13px;height:13px;margin:0 3px -1px 0;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;vertical-align:baseline}
-.rf-home .vc-simple time{flex:none;font-variant-numeric:tabular-nums}
-.rf-home .vc-simple .vcs-st{flex:none;display:inline-flex;align-items:center;gap:6px;font-weight:700;--c:#3182F6;color:var(--c)}
-.rf-home .vc-simple .vcs-st::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
-.rf-home .vc-simple .vcs-st.vcs-1{--c:#3182F6}.rf-home .vc-simple .vcs-st.vcs-2{--c:#EF920E}.rf-home .vc-simple .vcs-st.vcs-3{--c:#03A35F}
-.rf-home .vc-simple .vcs-n{display:inline-flex;align-items:center;gap:3px;flex:none;font-variant-numeric:tabular-nums}
-.rf-home .vc-simple .vcs-n svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
-@media(max-width:700px){.rf-home .vc-simple,.rf-home .vc-simple.is-sample{padding:18px 20px;min-height:0;gap:10px;border:0;border-radius:0;background:#fff}.rf-home .vc-simple:hover{box-shadow:none}body .rf-home .vc-simple h3{min-height:0}}
+.rf-list .vc-simple,.rf-list .vc-simple.is-sample{gap:14px;padding:20px;min-height:132px;border:1px solid #eef0f3;border-radius:20px;background:#fff;box-shadow:none}
+.rf-list .vc-simple:hover{transform:none;box-shadow:0 6px 18px rgba(25,31,40,.08)}
+body .rf-list .vc-simple h3{margin:0;font-size:17px;font-weight:700;line-height:1.45;min-height:2.9em;color:#191f28;-webkit-line-clamp:2}
+.rf-list .vc-simple:hover h3{color:#191f28;text-decoration:underline;text-underline-offset:3px}
+.rf-list .vc-simple .vcs-foot{display:flex;align-items:center;gap:10px;margin-top:auto;font-size:13.5px;color:#8b95a1}
+.rf-list .vc-simple .vcs-line{display:flex;align-items:center;flex:1;min-width:0;white-space:nowrap}
+.rf-list .vc-simple .vcs-line>*+*::before{content:"·";margin:0 6px;color:#d1d6db}
+.rf-list .vc-simple .vcs-co{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rf-list .vc-simple .vcs-lock{display:inline-block;width:13px;height:13px;margin:0 3px -1px 0;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;vertical-align:baseline}
+.rf-list .vc-simple time{flex:none;font-variant-numeric:tabular-nums}
+.rf-list .vc-simple .vcs-st{flex:none;display:inline-flex;align-items:center;gap:6px;font-weight:700;--c:#3182F6;color:var(--c)}
+.rf-list .vc-simple .vcs-st::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.rf-list .vc-simple .vcs-st.vcs-1{--c:#3182F6}.rf-list .vc-simple .vcs-st.vcs-2{--c:#EF920E}.rf-list .vc-simple .vcs-st.vcs-3{--c:#03A35F}
+.rf-list .vc-simple .vcs-n{display:inline-flex;align-items:center;gap:3px;flex:none;font-variant-numeric:tabular-nums}
+.rf-list .vc-simple .vcs-n svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
+@media(max-width:700px){.rf-list .vc-simple,.rf-list .vc-simple.is-sample{padding:18px 20px;min-height:0;gap:10px;border:0;border-radius:0;background:#fff}.rf-list .vc-simple:hover{box-shadow:none}body .rf-list .vc-simple h3{min-height:0}}
+/* 제보 목록(/reports)은 한 줄씩 쌓는 목록: 제목 한 줄 + 아래 상태 줄 (운영자 2026-11-04) */
+.rf-rows .nn-vc-card.vc-simple{display:flex!important;flex-direction:column;align-items:stretch!important;text-align:left!important;gap:8px;min-height:0;padding:20px 8px!important;border:0!important;border-bottom:1px solid #f2f4f6!important;border-radius:0!important;background:#fff;box-shadow:none!important}
+.rf-rows .nn-vc-card.vc-simple:hover{background:#f9fafb}
+body .rf-rows .vc-simple h3{min-height:0;-webkit-line-clamp:1}
+.rf-rows .vc-simple .vcs-foot{margin-top:0}
+@media(max-width:560px){.rf-rows .nn-vc-card.vc-simple{padding:18px 0!important}.rf-rows .nn-vc-card.vc-simple:hover{background:#fff}}
+.rf-rows .vc-simple .vcs-foot{justify-content:flex-start}.rf-rows .vc-simple .vcs-line{flex:1}
