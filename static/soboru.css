@@ -2900,7 +2900,7 @@ body.lt-alone{background:#fff}
 .lt-top-links{display:flex;gap:26px;font-size:14px;font-weight:700}
 .lt-top-links a{color:#fff;text-decoration:none}.lt-top-links a:hover{color:#EF920E}
 .lt-page.sm-page{max-width:none!important;width:100%;margin:0!important;padding:0!important}
-.sm-page{--or:#EF920E;--br:#652D1C;--cr:#F8D59F;--bg:#fff;--sub:#8f7469;--line:#efe4dc;--cut:200px;background:var(--bg);color:var(--br)}
+.sm-page{--or:#EF920E;--br:#652D1C;--cr:#F8D59F;--bg:#fff;--sub:#8f7469;--line:#efe4dc;--cut:min(200px,16vw);background:var(--bg);color:var(--br)}
 .sm-page,.sm-page *{font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 .sm-in{max-width:1200px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
 /* 귤색 띠: 왼쪽 메뉴 · 가운데 로고 · 오른쪽 구독 */
@@ -2913,7 +2913,7 @@ body.lt-alone{background:#fff}
 .sm-box:hover{background:var(--br);color:#fff}
 /* 표지 넘기기 */
 .sm-slides{position:relative}
-.sm-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,540px) minmax(0,1fr);gap:40px;align-items:end;padding-top:16px}
+.sm-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,min(540px,42vw)) minmax(0,1fr);gap:clamp(16px,3vw,40px);align-items:end;padding-top:16px}
 .sm-grid[hidden]{display:none}
 .sm-say{padding-bottom:calc(var(--cut) + 56px)}
 .sm-q{display:block;margin-bottom:12px;color:var(--br)}
@@ -2936,7 +2936,7 @@ body.lt-alone{background:#fff}
 .sm-ctl button{width:48px;height:48px;border:1.5px solid var(--br);border-radius:50%;background:#fff;color:var(--br);font-size:20px;cursor:pointer}
 .sm-ctl button:hover{background:var(--br);color:#fff}
 .sm-stk,.sm-stk2{display:grid;place-items:center;width:110px;height:110px;transform:rotate(-12deg)}
-.sm-stk{position:absolute;left:calc(50% - 330px);bottom:-46px;z-index:2}
+.sm-stk{position:absolute;left:calc(50% - min(270px,21vw) - 70px);bottom:-46px;z-index:2}
 .sm-stk svg,.sm-stk2 svg{grid-area:1/1;width:100%;height:100%;fill:var(--or)}
 .sm-stk b,.sm-stk2 b{grid-area:1/1;font-size:15px;line-height:1.15;font-weight:900;color:#fff;text-align:center;white-space:pre-line}
 .sm-stk2 svg{fill:var(--br)}.sm-stk2 b{font-size:20px}
@@ -3029,11 +3029,10 @@ body.lt-alone{background:#fff}
 .sm-letter .lt-note li{margin:0;padding:0}.sm-letter .lt-note li::before{content:none}
 .sm-letter .lt-note a{color:inherit;text-decoration:underline}
 .sm-letter p.lt-note{margin:0 0 10px;padding:10px 14px;border-radius:12px;background:#fff;font-weight:600;color:var(--br)}
-@media(max-width:1000px){.sm-page{--cut:0px}.sm-grid{grid-template-columns:minmax(0,1fr) minmax(0,420px)}.sm-say{padding-bottom:40px}.sm-side{grid-column:1/-1;align-items:flex-start;padding-bottom:96px}.sm-br{text-align:left;border-right:0;padding:0 0 16px}
-  .sm-stk{left:auto;right:max(20px,env(safe-area-inset-right));bottom:auto;top:0}.sm-ctl{bottom:28px}
+@media(max-width:1000px){
   .sm-deliv{grid-template-columns:repeat(2,minmax(0,1fr))}.sm-tile{grid-column:1/-1;aspect-ratio:auto;gap:24px;padding:32px}
   .sm-three{grid-template-columns:repeat(2,minmax(0,1fr))}.sm-track{grid-template-columns:none;grid-auto-columns:calc((100% - 32px)/2)}.sm-deep{grid-template-columns:minmax(0,1fr)}.sm-deep a{min-height:240px}.sm-letter-in{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:700px){.sm-in,.lt-alone .lt-top-in{padding-left:16px;padding-right:16px}.lt-top-links{gap:16px;font-size:13px;overflow-x:auto;white-space:nowrap}
+@media(max-width:700px){.sm-page{--cut:0px}.sm-side{grid-column:1/-1;align-items:flex-start}.sm-br{text-align:left;border-right:0;padding:0 0 16px}.sm-in,.lt-alone .lt-top-in{padding-left:16px;padding-right:16px}.lt-top-links{gap:16px;font-size:13px;overflow-x:auto;white-space:nowrap}
   .sm-nav{grid-template-columns:1fr;justify-items:center;gap:14px;padding-top:24px}.sm-nav nav,.sm-box{display:none}.sm-logo img{width:210px}
   .sm-grid{grid-template-columns:minmax(0,1fr);gap:22px}.sm-say{padding-bottom:0}.sm-say p{font-size:23px}.sm-q svg{width:28px;height:20px}
   .sm-cv{padding:24px 24px 0}.sm-cv-logo{width:90px}.sm-tag{margin-left:-24px}.sm-tag strong{padding:8px 16px 6px 24px}.sm-dots{top:26px;right:22px;width:44px;height:30px;background-size:15px 15px}
