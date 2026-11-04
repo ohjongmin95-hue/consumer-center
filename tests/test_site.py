@@ -480,6 +480,13 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db: self.assertTrue(db.execute('SELECT answered FROM expert_invites WHERE case_id=?', (cid,)).fetchone()[0])
         self.assertIn('의견 도착', owner.get('/reports/%d' % cid).get_data(as_text=True))
 
+    def test_soboru_host_retired(self):
+        # 운영자 2026-11-04: soboru.co.kr은 막고 전부 consumerjebo.co.kr로
+        r = self.client.get('/reports?tab=new', base_url='https://www.soboru.co.kr')
+        self.assertEqual(r.status_code, 301); self.assertEqual(r.headers['Location'], 'https://consumerjebo.co.kr/reports?tab=new')
+        self.assertEqual(self.client.get('/', base_url='https://soboru.co.kr').headers['Location'], 'https://consumerjebo.co.kr/')
+        self.assertNotEqual(self.site.CANONICAL_HOST, 'soboru.co.kr')
+
     def test_experts(self):
         # 운영자 2026-11-03: 전문가를 한 명씩 가입시키기. 초대 링크로 들어오면 바로 전문가, 직접 신청은 관리자 승인 뒤. 댓글에 전문가 표시
         adm = self.login_admin()
@@ -718,6 +725,7 @@ class SiteTest(unittest.TestCase):
         return admin
 
     def test_soboru_brand_switch_and_life(self):
+        self.enterContext(patch.object(self.site, 'RETIRED_HOSTS', set()))  # 예전 두 사이트 운영 때의 동작 확인 (지금 soboru.co.kr은 막혀 있음)
         # 소보루 하나만: 설정 없이도 방문자·관리자 모두 소보루 화면 (예전 ?brand= 미리보기는 뺌)
         self.assertIn('sb-header', self.client.get('/').get_data(as_text=True))
         admin = self.login_admin()
@@ -1433,6 +1441,16 @@ class SiteTest(unittest.TestCase):
             # 운영자 2026-11-03: 소보루는 이제 없음 → 통계는 소비자제보센터만
             self.assertIn('방문 통계', page); self.assertIn('구글', page); self.assertNotIn('네이버 검색', page); self.assertNotIn('두 사이트 합계', page)
             self.assertEqual(self.client.get('/admin/visits').status_code, 302)
+            # 운영자 2026-11-04: 관리자 기기는 로그아웃해도 안 셈, 등록한 IP도 안 셈
+            def count():
+                with self.site.conn() as db: return db.execute("SELECT COALESCE(SUM(n),0) FROM page_views WHERE page='/faq'").fetchone()[0]
+            with admin.session_transaction() as s: s.pop('admin', None)
+            admin.get('/faq'); self.assertEqual(count(), 0)
+            self.assertIn('세지 않는 곳', page); self.assertIn('127.0.0.1', page)
+            c = self.login_admin(); self.post_form(c, '/admin/visits', {'ips': '127.0.0.1\nnot-an-ip'})
+            self.site.app.test_client().get('/faq'); self.assertEqual(count(), 0)
+            self.post_form(c, '/admin/visits', {'ips': ''})
+            self.site.app.test_client().get('/faq'); self.assertEqual(count(), 1)
         finally:
             self.site.JEBO_HOSTS.difference_update(hosts)
 
@@ -2077,6 +2095,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db: db.execute("DELETE FROM soboru_settings WHERE key LIKE 'blocks:%'")
 
     def test_jebo_face_shares_reports(self):
+        self.enterContext(patch.object(self.site, 'RETIRED_HOSTS', set()))  # 예전 두 사이트 운영 때의 동작 확인 (지금 soboru.co.kr은 막혀 있음)
         # JEBO_HOST(consumerjebo.co.kr)로 들어오면 소비자제보센터 화면, 그 밖은 소보루. 제보는 한 곳에 저장돼 양쪽에 같이 보임
         hosts = {'consumerjebo.co.kr', 'www.consumerjebo.co.kr'}
         self.site.JEBO_HOSTS.update(hosts)
@@ -2178,6 +2197,7 @@ class SiteTest(unittest.TestCase):
             self.assertIsNone(db.execute('SELECT 1 FROM posts WHERE id=?', (pid,)).fetchone())
 
     def test_cross_site_login(self):
+        self.enterContext(patch.object(self.site, 'RETIRED_HOSTS', set()))  # 예전 두 사이트 운영 때의 동작 확인 (지금 soboru.co.kr은 막혀 있음)
         # 소비자제보센터에서 가입·로그인하면 소보루에도 로그인, 로그아웃도 같이. 표는 한 번만 쓰고 다른 브라우저 상태값으론 안 됨
         J, M = 'https://consumerjebo.co.kr', 'https://soboru.co.kr'
         hosts = {'consumerjebo.co.kr', 'www.consumerjebo.co.kr'}

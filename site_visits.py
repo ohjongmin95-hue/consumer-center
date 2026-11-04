@@ -7,7 +7,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
 - 기록은 400일이 지나면 지움.
 """
 import datetime, re, secrets, urllib.parse
-from flask import g, render_template, request, session
+from flask import flash, g, redirect, render_template, request, session, url_for
 
 KEEP_DAYS = 400
 SITES = {'soboru': '소보루', 'jebo': '소비자제보센터'}
@@ -70,12 +70,24 @@ def install(S):
     with conn() as db: migrate(db)
     own = set(S.LIVE_HOSTS) | set(S.JEBO_HOSTS)
 
+    with conn() as db: db.execute('CREATE TABLE IF NOT EXISTS soboru_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
+
+    def skip_ips():
+        # 운영자 2026-11-04: 관리자가 들어가도 세지 않게. 관리자에서 등록한 IP(사무실·집)는 로그인 안 해도 세지 않음
+        with conn() as db: row = db.execute("SELECT value FROM soboru_settings WHERE key='visit_skip_ips'").fetchone()
+        return {x.strip() for x in (row[0] if row else '').split() if x.strip()}
+
     def site_now():
         return 'jebo' if S.current_face() == 'jebo' else 'soboru'
 
     @app.after_request
     def count_visit(resp):
         try:
+            if session.get('admin'):
+                # 관리자로 한 번 로그인한 기기는 로그아웃해도 1년 동안 세지 않음
+                if request.cookies.get('sv_off') != '1': resp.set_cookie('sv_off', '1', max_age=365 * 86400, httponly=True, samesite='Lax', secure=request.is_secure)
+                return resp
+            if request.cookies.get('sv_off') == '1' or (request.remote_addr or '') in skip_ips(): return resp
             if (request.method != 'GET' or resp.status_code != 200 or resp.mimetype != 'text/html' or request.endpoint in (None, 'static')
                     or request.path.startswith(('/admin', '/staff', '/reporter', '/biz', '/hook', '/api')) or session.get('admin')
                     or BOT.search(request.headers.get('User-Agent', ''))):
@@ -94,9 +106,13 @@ def install(S):
             app.logger.exception('visit count failed')  # 통계 때문에 화면이 깨지면 안 됨
         return resp
 
-    @app.route('/admin/visits')
+    @app.route('/admin/visits', methods=['GET', 'POST'])
     @S.admin_only
     def admin_visits():
+        if request.method == 'POST':
+            ips = ' '.join(x for x in (request.form.get('ips') or '').replace(',', ' ').split() if re.fullmatch(r'[0-9a-fA-F:.]{3,45}', x))
+            with conn() as db: db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('visit_skip_ips',?)", (ips,))
+            flash('저장했어요.'); return redirect(url_for('admin_visits'))
         site = 'jebo'  # 운영자 2026-11-03: '소보루는 이제 없다' → 소비자제보센터만 셈
         today = datetime.date.today()
         d = lambda n: (today - datetime.timedelta(days=n)).isoformat()
@@ -121,4 +137,5 @@ def install(S):
         top = max([r[site] if site else r['all'] for r in daily] + [1])
         src_total = sum(r['n'] for r in sources) or 1
         return render_template('admin_visits.html', site=site, sites=SITES, kpi=kpi, daily=daily, top=top, sources=sources, src_total=src_total,
-                               pages=[{'page': r['page'], 'name': page_name(r['page']), 'n': r['n']} for r in pages], split=split)
+                               pages=[{'page': r['page'], 'name': page_name(r['page']), 'n': r['n']} for r in pages], split=split,
+                               skip='\n'.join(sorted(skip_ips())), my_ip=request.remote_addr or '')

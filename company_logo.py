@@ -7,7 +7,7 @@ import io, ipaddress, re, socket, threading, time, urllib.parse, urllib.request
 from html.parser import HTMLParser
 
 DOMAIN_RE = re.compile(r'^(?=.{4,100}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$')
-UA = 'Mozilla/5.0 (compatible; SoboruBot/1.0; +https://soboru.co.kr)'
+UA = 'Mozilla/5.0 (compatible; SoboruBot/1.0; +https://consumerjebo.co.kr)'
 MAX_BYTES = 1_000_000
 SIZE = 128
 RETRY_DAYS = 7

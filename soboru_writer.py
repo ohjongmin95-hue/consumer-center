@@ -20,7 +20,7 @@ import concurrent.futures, datetime, html, ipaddress, json, os, re, socket, stat
 import xml.etree.ElementTree as ET
 from flask import abort, flash, g, redirect, render_template, request, url_for
 
-SITE = 'https://' + (os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().lower()
+SITE = 'https://consumerjebo.co.kr'  # 운영자 2026-11-04: soboru.co.kr은 운영 안 함
 TREND_WORDS = ['환불', '위약금', '리콜', '택배 분실', '구독 해지']  # 네이버 검색어트렌드는 한 번에 5묶음까지
 NEWS_QUERIES = ['소비자 피해', '환불 분쟁', '리콜']
 NEWS_DAYS = 7
