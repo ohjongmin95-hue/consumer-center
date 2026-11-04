@@ -2,125 +2,77 @@
 {% from 'letter_macros.html' import subscribe_form with context %}
 {% block title %}{{ ui_text('letter.title', '소보루 레터') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui_text('letter.description', '평일 아침마다 그날 꼭 알아야 할 주요 이슈를 쉽게 풀어 메일로 보내 드려요. 내 생활에 어떤 의미인지, 관련 법, 소보루 픽 인기 리뷰까지.') }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Archivo+Black&display=swap">{# 운영자 2026-11-04: 매거진 제목은 캐릿처럼 포스터 느낌 글꼴 (Black Han Sans·Archivo Black, SIL OFL) #}{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Archivo+Black&family=Black+Han+Sans&display=swap">{# 운영자 2026-11-04: 매거진은 뉴소스(newsourcemag.com)형 — 영문은 Inter·Archivo Black, 큰 한글 제목은 Black Han Sans (모두 SIL OFL) #}{% endblock %}
 {% block content %}
 {% set cfg = letter_cfg() %}
-{# 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['letter']) #}
-<main class="lt-page sm-page">
+{# 첫 화면 기본 표지 사진 static/img/mag-hero.jpg = 운영자가 고른 Unsplash 사진(Denny Müller, Unsplash License)
+   운영자 2026-11-04: soboru.co.kr = 소보루 매거진. 뉴소스형(귤색 바탕·큰 표지 사진·HOT ARTICLE·카테고리), 하단은 귤색 'READ BEFORE YOU BUY' 구독 띠 (뉴소스 문구는 그대로 쓰지 않음).
+   SOBORU = 소비를 보는 새로운 루트. 갈색은 로고에만, 글자는 흰색·검정. 귀여운 그림 대신 사진이 없으면 큰 영문 활자 표지.
+   묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['letter']) #}
+{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '리콜': 'RECALL'} %}
+{% macro cover(a, n) %}{% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="nm-type t{{ n % 3 }}"><img src="{{ asset('img/soboru-wordmark.png') }}" alt=""><b>{{ EN.get(a['category'], 'LIFE') }}</b><em>{{ a['category'] }}</em></span>{% endif %}{% endmacro %}
+<main class="lt-page nm-page">
   {% for blk in blocks('letter') %}{{ ed_block('letter', blk) }}
-  {% set cover = mag[0] if mag else None %}{% set latest = rows[0] if rows else None %}
-  {% macro thumb(a, n, big=False) %}{% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="sm-tc t{{ n % 3 }}{{ ' big' if big }}"><i class="sm-dots" aria-hidden="true"></i><i class="sm-emo e4 tf" aria-hidden="true">{{ {'통신': '📱', '생활': '💡', '음식': '🍜', '자동차': '🚗', '쇼핑': '🛍️', '금융': '💳', '여행': '✈️'}.get(a['category'], '💰') }}</i><em>{{ a['category'] }}</em><b>{{ a['title'] }}</b><img src="{{ asset('img/soboru-wordmark.png') }}" alt=""></span>{% endif %}{% endmacro %}
   {% if blk == 'hero' %}
-  {# 운영자 2026-11-04: 캐릿 첫 화면 구성을 기준으로(따라 그리진 않고 로고 두 색). 귤색 띠 안에 왼쪽 메뉴·가운데 로고·오른쪽 구독,
-     그 아래 왼쪽 한 줄 · 가운데 표지(흰 바탕까지 걸침) · 오른쪽 제목, 화살표로 넘기는 표지 3장 #}
-  {% set slides = mag[:3] %}
-  <section class="sm-hero lt-hero">
-    <div class="sm-band">
-      <div class="sm-in sm-nav">
-        <nav><a href="#latest">{{ ui('letter.mz_nav1', '최신 이야기') }}</a><a href="#deep">{{ ui('letter.mz_nav2', '깊이 읽기') }}</a></nav>
-        <a class="sm-logo" href="{{ url_for('letter_home') }}"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="300" height="58"></a>
-        <a class="sm-box" href="#sub">{{ ui('letter.mz_nav3', '소보루 레터 구독') }}</a>
-      </div>
-      {% if slides %}
-      <div class="sm-in sm-slides" data-sm-slides>
+  <section class="lt-hero">
+    {% set slides = mag[:4] %}
+    <div class="nm-g">
+      <div class="nm-hero" data-nm-hero>
         {% for a in slides %}
-        <div class="sm-grid" data-slide{% if not loop.first %} hidden{% endif %}>
-          <div class="sm-say">
-            <span class="sm-q" aria-hidden="true"><svg viewBox="0 0 44 32" width="36" height="26"><path d="M0 32V19C0 8 6 1.5 17 0l1.6 5.2C12.4 7 9.6 10.6 9.4 16H18v16zm26 0V19C26 8 32 1.5 43 0l1 5.2C38.4 7 35.6 10.6 35.4 16H44v16z" fill="currentColor"/></svg></span>
-            <p>{{ (a['summary'].split('. ')[0] ~ ('.' if '. ' in a['summary'] else '')) if a['summary'] else ui('letter.mz_deck', '알아 두면\n돈이 되는\n생활경제 이야기') }}</p>
-          </div>
-          <a class="sm-cover c{{ loop.index0 % 2 }}" href="{{ url_for('life_article', article_id=a['id']) }}">
-            {% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="">{% else %}
-            <span class="sm-cv"><i class="sm-dots" aria-hidden="true"></i><img class="sm-cv-logo" src="{{ asset('img/soboru-wordmark.png') }}" alt="">
-            {% set emo = {'통신': ['📱','💬','📞'], '생활': ['💡','🧾','🔌'], '음식': ['🍜','🍳','🛒'], '자동차': ['🚗','🛠️','🔑'], '쇼핑': ['🛍️','📦','💳'], '금융': ['💳','💰','📈'], '여행': ['✈️','📅','💳']}.get(a['category'], ['💰','🛒','📦']) %}
-            <i class="sm-emo e1 tf" aria-hidden="true">{{ emo[0] }}</i><i class="sm-emo e2 tf" aria-hidden="true">{{ emo[1] }}</i><i class="sm-emo e3 tf" aria-hidden="true">{{ emo[2] }}</i>
-            <b>{{ a['category'] }}</b>
-            <span class="sm-tag" aria-hidden="true"><strong>LIFE</strong><strong>ECONOMY</strong></span></span>{% endif %}
-          </a>
-          <div class="sm-side">
-            <a class="sm-br" href="{{ url_for('life_article', article_id=a['id']) }}">{{ a['title'] }}</a>
-          </div>
-        </div>
+        <a class="nm-slide" href="{{ url_for('life_article', article_id=a['id']) }}"{% if not loop.first %} hidden{% endif %}>{% if loop.first and not art_url('life', a['id']) %}<img src="{{ asset('img/mag-hero.jpg') }}" alt="">{% else %}{{ cover(a, loop.index0) }}{% endif %}<span class="nm-tag"><strong>{{ ui_text('letter.mz_issue', 'THIS ISSUE') }}</strong>{{ a['title'] }}</span></a>
+        {% else %}
+        <span class="nm-slide"><img src="{{ asset('img/mag-hero.jpg') }}" alt=""></span>
         {% endfor %}
-        {% if slides|length > 1 %}
-        <div class="sm-ctl"><button type="button" data-prev aria-label="이전 표지">←</button><span><b data-now>01</b> / {{ '%02d' % slides|length }}</span><button type="button" data-next aria-label="다음 표지">→</button></div>
-        {% endif %}
-        <span class="sm-stk" aria-hidden="true"><svg viewBox="0 0 100 100"><polygon points="100.0,50.0 93.3,57.6 97.0,67.1 88.1,72.0 88.3,82.1 78.3,83.7 75.0,93.3 65.0,91.3 58.7,99.2 50.0,94.0 41.3,99.2 35.0,91.3 25.0,93.3 21.7,83.7 11.7,82.1 11.9,72.0 3.0,67.1 6.7,57.6 0.0,50.0 6.7,42.4 3.0,32.9 11.9,28.0 11.7,17.9 21.7,16.3 25.0,6.7 35.0,8.7 41.3,0.8 50.0,6.0 58.7,0.8 65.0,8.7 75.0,6.7 78.3,16.3 88.3,17.9 88.1,28.0 97.0,32.9 93.3,42.4"/></svg><b>{{ ui('letter.mz_stk', 'NEW\n오늘의 글') }}</b></span>
+        <img class="nm-big" src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="" aria-hidden="true">
+        {% if slides|length > 1 %}<span class="nm-dots">{% for a in slides %}<button type="button" aria-label="{{ loop.index }}번째 표지"{% if loop.first %} class="on"{% endif %}></button>{% endfor %}</span>{% endif %}
       </div>
-      <script>(function(){var r=document.querySelector('[data-sm-slides]');if(!r)return;var s=r.querySelectorAll('[data-slide]'),n=r.querySelector('[data-now]'),i=0;function go(k){s[i].hidden=true;i=(k+s.length)%s.length;s[i].hidden=false;if(n)n.textContent=(i<9?'0':'')+(i+1)}var p=r.querySelector('[data-prev]'),x=r.querySelector('[data-next]');if(p)p.onclick=function(){go(i-1)};if(x)x.onclick=function(){go(i+1)}})();</script>
-      {% else %}
-      <div class="sm-in sm-grid sm-empty"><div class="sm-say"><p>{{ ui('letter.mz_deck', '알아 두면\n돈이 되는\n생활경제 이야기') }}</p></div><span class="sm-cover c0"><span class="sm-cv"><img class="sm-cv-logo" src="{{ asset('img/soboru-wordmark-orange.png') }}" alt=""><b>{{ ui('letter.mz_empty', '첫 이야기를 준비하고 있어요') }}</b></span></span><div class="sm-side"></div></div>
-      {% endif %}
     </div>
+    <div class="nm-g nm-intro">
+      <h1>{{ ui('letter.mz_intro2', 'Consumer Lifestyle,\nSOBORU Magazine') }}</h1>
+      <div class="nm-about"><span class="nm-pill">About</span><p><b>{{ ui('letter.mz_motto', 'SOBORU, 소비를 보는 새로운 루트.') }}</b><br>{{ ui('letter.mz_about2', '사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}</p></div>
+    </div>
+    <div class="nm-g">
+      <a class="nm-banner" href="#sub"><span class="nm-bt"><small>SOBORU LETTER</small><strong>{{ ui('letter.mz_bn', '아침 5분,\n돈이 되는 생활경제') }}</strong><span class="nm-go">{{ ui('letter.mz_bn_go', '무료로 구독하기') }} →</span></span><span class="nm-bi"><span class="nm-clock"><b>{{ ui_text('letter.mz_clock', '07:30') }}</b><small>{{ ui_text('letter.mz_clock_sub', 'WEEKDAY MORNING · YOUR INBOX') }}</small></span><span class="nm-stamp" aria-hidden="true">EVERY<br>MORNING</span></span></a>
+    </div>
+    <script>(function(){var r=document.querySelector('[data-nm-hero]');if(!r)return;var s=r.querySelectorAll('.nm-slide'),d=r.querySelectorAll('.nm-dots button'),i=0;if(s.length<2)return;function go(k){s[i].hidden=true;d[i].classList.remove('on');i=(k+s.length)%s.length;s[i].hidden=false;d[i].classList.add('on')}d.forEach(function(b,k){b.onclick=function(){go(k)}});setInterval(function(){go(i+1)},6000)})();</script>
   </section>
   {% elif blk == 'feats' %}
-  {# 운영자 2026-11-04: 가운데는 캐릿 홈 순서·모양 그대로 (배달 조회 → 체크리스트 모음 → 전광판 → 최신 이야기 → 깊이 읽기) #}
-  {% macro card(a, n, badge='') %}<a class="sm-card" href="{{ url_for('life_article', article_id=a['id']) }}"><span class="sm-ph">{{ thumb(a, n) }}</span><h3>{{ a['title'] }}</h3><span class="sm-meta">{% if badge %}<em class="sm-badge">{{ badge }}</em>{% endif %}<time>{{ (a['published_at'] or a['created'])[:10]|replace('-', '.') }}</time><svg class="sm-bm" viewBox="0 0 20 24" width="18" height="22" aria-hidden="true"><path d="M2 1h16v22l-8-6-8 6z" fill="currentColor"/><path d="M10 6v8M6 10h8" stroke="#fff" stroke-width="2"/></svg></span></a>{% endmacro %}
   <div class="lt-feats">
-  {% if mag|length > 3 %}
-  <section class="sm-sec sm-in">
-    <div class="sm-deliv">
-      <div class="sm-tile"><h2><em>{{ ui('letter.mz_tile_a', '생활경제') }}</em> {{ ui('letter.mz_tile_b', '배달 조회') }}</h2><p>{{ ui('letter.mz_tile2', '매일 아침 새로운 생활경제를\n배달해 드려요.') }}</p></div>
-      {% for a in mag[3:5] %}
-      <div class="sm-dc">{% if loop.first %}<span class="sm-stk3" aria-hidden="true"><svg viewBox="0 0 100 100"><polygon points="100.0,50.0 93.3,57.6 97.0,67.1 88.1,72.0 88.3,82.1 78.3,83.7 75.0,93.3 65.0,91.3 58.7,99.2 50.0,94.0 41.3,99.2 35.0,91.3 25.0,93.3 21.7,83.7 11.7,82.1 11.9,72.0 3.0,67.1 6.7,57.6 0.0,50.0 6.7,42.4 3.0,32.9 11.9,28.0 11.7,17.9 21.7,16.3 25.0,6.7 35.0,8.7 41.3,0.8 50.0,6.0 58.7,0.8 65.0,8.7 75.0,6.7 78.3,16.3 88.3,17.9 88.1,28.0 97.0,32.9 93.3,42.4"/></svg><b>{{ ((a['published_at'] or a['created'])[5:10])|replace('-', '/') }}<br>{{ ui_text('letter.mz_done', '배달 완료') }}</b></span>{% endif %}{{ card(a, loop.index0, '' if loop.first else ui_text('letter.mz_badge', '오늘 읽기')) }}</div>
-      {% endfor %}
-    </div>
+  {% if mag|length > 1 %}
+  <section class="nm-g nm-hot" id="hot">
+    <h2 class="nm-sh">{{ ui('letter.mz_hot', 'Most Read') }}</h2>
+    <div class="nm-hots">{% for a in mag[1:5] %}<a href="{{ url_for('life_article', article_id=a['id']) }}"><span class="nm-ph">{{ cover(a, loop.index) }}</span><em>{{ EN.get(a['category'], 'LIFE') }}</em><b>{{ a['title'] }}</b></a>{% endfor %}</div>
+    <a class="nm-more" href="https://consumerjebo.co.kr/life">{{ ui('letter.mz_hot_more', '더 많은 이야기') }} →</a>
   </section>
   {% endif %}
-  {% if mag|length > 5 %}
-  <section class="sm-sec sm-line" id="coll">
-    <div class="sm-in">
-      <div class="sm-h"><h2>{{ ui('letter.mz_coll2', '새는 돈 막아 줄 체크리스트 모음') }}</h2>{% if mag|length > 8 %}<div class="sm-pg" data-sm-pg><button type="button" data-p aria-label="이전">←</button><span><b data-pn>01</b> / 02</span><button type="button" data-n aria-label="다음">→</button></div>{% endif %}</div>
-      <div class="sm-three sm-track" data-sm-track>
-        {% for a in mag[5:11] %}{{ card(a, loop.index0) }}{% endfor %}
-      </div>
-    </div>
-  </section>
-  {% endif %}
-  {% set board = mag_board(4) %}
-  {% if board %}
-  <section class="sm-board" id="board">
-    <div class="sm-board-in">
-      <div class="sm-h"><h2>{{ ui('letter.mz_board_a', '소비자 제보') }} <em>{{ ui('letter.mz_board_b', '전광판') }}</em></h2><a class="sm-box2 lt" href="https://consumerjebo.co.kr/reports">{{ ui('letter.mz_board_all', '전체 제보 보기') }}</a></div>
-      <table><thead><tr><th>{{ ui('letter.mz_bh1', '날짜') }}</th><th>{{ ui('letter.mz_bh2', '소비자 제보') }}</th><th>{{ ui('letter.mz_bh3', '기업') }}</th></tr></thead><tbody>
-      {% for r in board %}<tr><td>{% if loop.first %}<span class="sm-hot">NEW</span>{% endif %}{{ r.created|replace('-', '.') }}</td><td><a href="https://consumerjebo.co.kr/reports/{{ r.no }}">{{ r.title }}</a></td><td>{{ r.company }}</td></tr>{% endfor %}
-      </tbody></table>
-    </div>
-  </section>
+  {% if mag|length > 5 %}{% set f = mag[5] %}
+  <a class="nm-feat" href="{{ url_for('life_article', article_id=f['id']) }}">{{ cover(f, 0) }}<span class="nm-ft"><small>{{ ui_text('letter.mz_feat', 'IN FOCUS') }} · {{ EN.get(f['category'], 'LIFE') }}</small><strong>{{ f['title'] }}</strong></span></a>
   {% endif %}
   {% if mag %}
-  <section class="sm-sec sm-in" id="latest">
-    <div class="sm-h"><h2>{{ ui('letter.mz_new', '최신 이야기') }}</h2><div class="sm-chk"><label><input type="checkbox"> {{ ui('letter.mz_f1', '생활경제') }}</label><label><input type="checkbox"> {{ ui('letter.mz_f2', '라이프스타일') }}</label></div></div>
-    <div class="sm-three sm-grid3">
-      {% for a in mag[:6] %}{{ card(a, loop.index0 + 1) }}{% endfor %}
-    </div>
-  </section>
-  {% endif %}
-  {% if mag|length > 2 %}
-  <section class="sm-sec sm-line" id="deep">
-    <div class="sm-in">
-      <div class="sm-h"><h2><em>{{ ui('letter.mz_deep_a', '생활의 흐름을') }}</em><br>{{ ui('letter.mz_deep_b', '깊이 있게 읽어 보세요') }}</h2><a class="sm-box2" href="#latest">{{ ui('letter.mz_deep_more', '더 많은 이야기 보기') }}</a></div>
-      <div class="sm-deep">
-        {% set qs = [ui_text('letter.mz_q1', '월급은 그대론데 지출만 늘어난다면?'), ui_text('letter.mz_q2', '똑똑하게 사고 싶으신가요?'), ui_text('letter.mz_q3', '억울한 일 당하기 전에 알아 두세요')] %}
-        {% set ws = [ui_text('letter.mz_w1', ''), ui_text('letter.mz_w2', '알뜰 소비가 궁금하다면?'), ui_text('letter.mz_w3', '소비자 권리가 궁금하다면?')] %}
-        {% for a in (mag[9:12] if mag|length > 11 else mag[:3]) %}
-        <a class="d{{ loop.index0 }}" href="{{ url_for('life_article', article_id=a['id']) }}"><small>{{ qs[loop.index0] }}</small><b>{{ a['title'] }}</b><span class="sm-dfoot"><span>{{ ws[loop.index0] }}</span><span class="sm-arrow" aria-hidden="true">↗</span></span></a>
-        {% endfor %}
-      </div>
-    </div>
-  </section>
+  <div class="nm-pe">
+    {% set cats = [] %}{% for a in mag %}{% if a['category'] not in cats|map(attribute=0)|list %}{% set _ = cats.append((a['category'], a)) %}{% endif %}{% endfor %}
+    <section class="nm-g nm-cat" id="cat">
+      <h2>{{ ui('letter.mz_cat', 'Aisles') }}<small>{{ ui('letter.mz_cat_sub', '오늘은 어느 코너부터 볼까요') }}</small></h2>
+      <ul>{% for c, a in cats[:6] %}<li><a href="https://consumerjebo.co.kr/life?category={{ c|urlencode }}">{{ EN.get(c, 'LIFE') }}<small>{{ c }}</small></a><span class="nm-ci">{{ cover(a, loop.index0) }}</span></li>{% endfor %}</ul>
+    </section>
+    {% set more = mag[6:11] if mag|length > 10 else mag[:5] %}
+    <section class="nm-g nm-watch">
+      <h2 class="nm-sh">{{ ui('letter.mz_more', 'Fresh Picks') }}</h2>
+      <div class="nm-wv">{% for a in more %}<a class="{{ 'big' if loop.first }}" href="{{ url_for('life_article', article_id=a['id']) }}">{{ cover(a, loop.index0 + 1) }}<span><em>{{ EN.get(a['category'], 'LIFE') }}</em><b>{{ a['title'] }}</b></span></a>{% endfor %}</div>
+    </section>
+  </div>
   {% endif %}
   </div>
   {% elif blk == 'archive' %}
-  {# 캐릿 맨 아래 레터 구독 자리: 연한 바탕, 큰 두 줄 + 스티커, 오른쪽 밑줄 입력칸 #}
-  <section class="sm-letter lt-archive" id="sub">
-    <div class="sm-in sm-letter-in">
-      <div class="sm-lh">
-        <div class="sm-lt"><h2>{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }}<br><em>{{ cfg.when }}</em> {{ ui('letter.mz_when2', '메일로 받아 보세요.') }}</h2><span class="sm-stk2" aria-hidden="true"><svg viewBox="0 0 100 100"><polygon points="100.0,50.0 93.3,57.6 97.0,67.1 88.1,72.0 88.3,82.1 78.3,83.7 75.0,93.3 65.0,91.3 58.7,99.2 50.0,94.0 41.3,99.2 35.0,91.3 25.0,93.3 21.7,83.7 11.7,82.1 11.9,72.0 3.0,67.1 6.7,57.6 0.0,50.0 6.7,42.4 3.0,32.9 11.9,28.0 11.7,17.9 21.7,16.3 25.0,6.7 35.0,8.7 41.3,0.8 50.0,6.0 58.7,0.8 65.0,8.7 75.0,6.7 78.3,16.3 88.3,17.9 88.1,28.0 97.0,32.9 93.3,42.4"/></svg><b>LET'S<br>READ</b></span></div>
-        <ul class="sm-secs"><li>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</li><li>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</li><li>{{ ui('letter.t3', '숫자로 보는 오늘') }}</li><li>{{ ui('letter.t4', '크로와상의 한마디') }}</li></ul>
-        <p class="sm-back">{{ ui('letter.archive_title', '지난 레터') }}{% for L in rows[:3] %} · <a href="{{ url_for('letter_issue', no=L.no) }}">No.{{ '%02d' % L.no }} {{ L.title }}</a>{% else %} · {{ ui('letter.mz_noback', '첫 레터를 준비하고 있어요') }}{% endfor %}</p>
+  {# 운영자 2026-11-04: 하단은 귤색 띠에 큰 영문 한 줄 + 구독 (뼈대만 참고, 문구·디테일은 우리 것) #}
+  <section class="nm-letter lt-archive" id="sub">
+    <div class="nm-g nm-lt">
+      <div>
+        <h2>{{ ui('letter.mz_end', 'READ BEFORE\nYOU BUY') }}</h2>
+        <p class="nm-lead">{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }} <span>{{ cfg.when }} {{ ui('letter.mz_when2', '메일로 받아 보세요.') }}</span></p>
+        <ul class="nm-secs"><li>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</li><li>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</li><li>{{ ui('letter.t3', '숫자로 보는 오늘') }}</li><li>{{ ui('letter.t4', '크로와상의 한마디') }}</li></ul>
       </div>
-      <div class="sm-form">
+      <div class="nm-form">
         {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
                         'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent', '이메일 수집·이용에 동의해야 구독할 수 있어요.')),
                         'limit': ('bad', ui('letter.n_limit', '신청이 너무 잦아요. 10분쯤 뒤에 다시 해 주세요.')), 'nomail': ('bad', ui('letter.n_nomail', '지금은 메일 발송을 준비하고 있어 구독 신청을 받을 수 없어요. 조금만 기다려 주세요.')),
@@ -129,10 +81,11 @@
         {{ subscribe_form('letter', True) }}
       </div>
     </div>
+    <div class="nm-g nm-back">{{ ui('letter.archive_title', '지난 레터') }}{% for L in rows[:3] %} · <a href="{{ url_for('letter_issue', no=L.no) }}">No.{{ '%02d' % L.no }} {{ L.title }}</a>{% else %} · {{ ui('letter.mz_noback', '첫 레터를 준비하고 있어요') }}{% endfor %}</div>
+    <div class="nm-g nm-fb"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="104" height="20"><span>{{ ui('letter.mz_fb', '소비를 보는 새로운 루트 · 소비자를위한신문') }} · <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('letter.mz_terms', '이용약관') }}</a> · <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.mz_privacy', '개인정보처리방침') }}</a></span></div>
   </section>
   {% endif %}
   {% endfor %}
-  <script>(function(){var g=document.querySelector('[data-sm-pg]'),t=document.querySelector('[data-sm-track]');if(!g||!t)return;var n=g.querySelector('[data-pn]');function go(d){t.scrollBy({left:d*t.clientWidth,behavior:'smooth'})}t.addEventListener('scroll',function(){n.textContent='0'+(Math.round(t.scrollLeft/t.clientWidth)+1)});g.querySelector('[data-p]').onclick=function(){go(-1)};g.querySelector('[data-n]').onclick=function(){go(1)}})();</script>
   {{ ed_hidden_blocks('letter') }}
 </main>
 {% endblock %}

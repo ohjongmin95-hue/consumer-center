@@ -532,11 +532,6 @@ def report_rows(where='1=1',args=(),limit=20,offset=0,order='id DESC'):
     return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),held=bool(is_pending(r) and (r['reviewed_at'] or r['review'])),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
                  company=mask_personal(r['company']) if shown(r) else None,
                  status=r['status'],step=jebo.pub_step(jebo.my_step(r)),created=r['created'][:10],when=when(r['created']),industry=r['industry'] or '') for r in rows]
-def mag_board(limit=5):
-    # 운영자 2026-11-04: 소보루 매거진 '소비자 제보 전광판'. 제목이 공개된 최근 제보만
-    try:return [r for r in report_rows('1=1',(),limit*3) if r['title']][:limit]
-    except sqlite3.Error:return []
-app.jinja_env.globals['mag_board']=mag_board
 # 운영자 2026-11-03: 검은고양이처럼 제보 목록을 단계별로 (공개 3단계 + 기업 답변). 값: (탭 이름, SQL 조건)
 _DONE="(status='종결' OR COALESCE(confirmed_at,'')<>'')"
 _NEW="(status='접수' AND COALESCE(reviewed_at,'')='' AND COALESCE(forwarded_at,'')='' AND COALESCE(seen_at,'')='' AND NOT "+_DONE+")"

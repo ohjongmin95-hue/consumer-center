@@ -206,6 +206,21 @@ def install(S):
         if kind not in KINDS: abort(404)
         act = request.form.get('act')
         back = redirect(url_for('admin_art', kind=kind) + '#art-%d' % target_id)
+        if act == 'upload':
+            # 운영자 2026-11-04: 매거진은 운영자가 고른 사진을 직접 올려 표지로 씀 (올리면 바로 게시)
+            f = request.files.get('photo')
+            if not f or not f.filename: flash('사진 파일을 골라 주세요.'); return back
+            try:
+                from PIL import Image, ImageOps
+                im = ImageOps.exif_transpose(Image.open(f.stream)).convert('RGB'); im.thumbnail((2400, 2400))
+            except Exception: flash('사진을 읽지 못했어요. JPG·PNG·WEBP 파일을 올려 주세요.'); return back
+            name = f'{kind}-{target_id}-{datetime.datetime.now():%Y%m%d%H%M%S}.webp'
+            im.save(folder / name, 'WEBP', quality=84)
+            with conn() as db:
+                old = db.execute('SELECT file FROM soboru_art WHERE kind=? AND target_id=?', (kind, target_id)).fetchone()
+                db.execute("INSERT OR REPLACE INTO soboru_art(kind,target_id,file,status,created,style) VALUES(?,?,?,'live',?,?)", (kind, target_id, name, now(), STYLE_V))
+            if old and old['file'] != name: (folder / old['file']).unlink(missing_ok=True)
+            flash('사진을 올려 게시했어요.'); return back
         if act == 'draw':
             try: draw(kind, target_id); flash('그림을 그렸어요. 보고 괜찮으면 게시를 눌러 주세요.')
             except RuntimeError as e: flash(str(e))

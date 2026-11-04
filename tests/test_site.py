@@ -565,7 +565,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.get('/', base_url='https://soboru.co.kr').headers['Location'], '/letter')  # 운영자 2026-11-04: soboru.co.kr은 레터 구독 페이지만
         for base in ('https://soboru.co.kr', 'https://letter.soboru.co.kr', 'https://consumerjebo.co.kr'):
             page = self.client.get('/letter', base_url=base).get_data(as_text=True)
-            self.assertIn('class="lt-top"', page, base)  # 메뉴 없이 SOBORU 레터 머리만
+            self.assertIn('class="lt-top nm-top"', page, base)  # 매거진 머리 (귤색 띠 + 영문 메뉴, 운영자 2026-11-04)
             self.assertNotIn('site-footer', page, base)  # 바닥글 없음
             self.assertNotIn('sb-tabbar', page, base); self.assertNotIn('jebo_header', page, base); self.assertNotIn('class="sb-nav"', page, base)
         self.assertEqual(self.client.get('/letter', base_url='https://letter.soboru.co.kr').status_code, 200)

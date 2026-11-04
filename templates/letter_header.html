@@ -1,10 +1,8 @@
-{# 운영자 2026-11-04: soboru.co.kr = 소보루 매거진. 첫 화면은 큰 로고가 띠 안에 있어 위 막대엔 작은 바로가기만, 다른 화면은 로고 #}
-<header class="lt-top">
-  <div class="sb-wrap lt-top-in">
-    {% if request.endpoint == 'letter_home' %}
-    <nav class="lt-top-links"><a href="#coll">{{ ui('letter.mz_top1', '체크리스트') }}</a><a href="#board">{{ ui('letter.mz_top2b', '제보 전광판') }}</a><a href="#sub">{{ ui('letter.mz_top3', '소보루 레터') }}</a><a href="https://consumerjebo.co.kr/">{{ ui('letter.mz_top4', '제보하기 ↗') }}</a></nav>
-    {% else %}
-    <a class="lt-top-logo" href="{{ url_for('letter_home') }}" aria-label="SOBORU"><img src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="SOBORU" width="104" height="20"></a>
-    {% endif %}
+{# 운영자 2026-11-04: soboru.co.kr = 소보루 매거진(뉴소스형). 귤색 띠에 흰 로고 + 영문 메뉴 #}
+<header class="lt-top nm-top">
+  <div class="nm-g lt-top-in">
+    <a class="lt-top-logo" href="{{ url_for('letter_home') }}" aria-label="SOBORU"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="124" height="24"></a>
+    {% set home = url_for('letter_home') if request.endpoint != 'letter_home' else '' %}
+    <nav class="lt-top-links"><a href="{{ home }}#hot">{{ ui('letter.mz_top1', 'HOT') }}</a><a href="{{ home }}#cat">{{ ui('letter.mz_top2', 'CATEGORY') }}</a><a href="{{ home }}#sub">{{ ui('letter.mz_top3', 'LETTER') }}</a><a href="https://consumerjebo.co.kr/">{{ ui('letter.mz_top4', 'REPORT ↗') }}</a></nav>
   </div>
 </header>
