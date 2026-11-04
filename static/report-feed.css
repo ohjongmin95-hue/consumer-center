@@ -2033,3 +2033,6 @@ body:not(.sb):has(.auth-top) .auth-page{height:auto!important;min-height:calc(10
 .org-band.is-bottom{margin-top:64px!important}
 .org-band.is-bottom .org-track li img{filter:none!important;opacity:1!important}
 @media(max-width:760px){.org-band.is-bottom{margin-top:40px!important}}
+.pf-cover-logo{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:#fff;box-shadow:0 6px 14px rgba(0,0,0,.12);overflow:hidden}
+.pf-cover-logo img{width:100%;height:100%;object-fit:cover}
+@media(max-width:640px){.pf-cover-logo{width:56px;height:56px}}

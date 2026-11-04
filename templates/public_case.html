@@ -23,7 +23,8 @@
   {# 운영자 2026-11-04: 토스피드 글 표지처럼 — 업종 색 바탕, 가운데 업종 그림과 핵심 해시태그 (목록에는 안 보이고 상세에서만) #}
   {% set tags = [company|replace(' ', ''), (m[0] if m else category)|replace(' ', '')] %}
   <figure class="pf-cover" style="--cv:{{ industry_color(case['industry']) }}" aria-hidden="true">
-    <img class="pf-cover-ic" src="{{ asset('img/ind/' ~ industry_icon(case['industry']) ~ '.svg') }}" alt="" width="64" height="64">
+    {# 운영자 2026-11-04: 기업 로고가 있으면 로고, 없을 때만 업종 그림 #}
+    {% set cv_logo = co_logo(co) if co and co_logo is defined else '' %}{% if cv_logo %}<span class="pf-cover-logo"><img src="{{ cv_logo }}" alt="" width="64" height="64"></span>{% else %}<img class="pf-cover-ic" src="{{ asset('img/ind/' ~ industry_icon(case['industry']) ~ '.svg') }}" alt="" width="64" height="64">{% endif %}
     <span class="pf-cover-tags">{% for t in tags if t %}<span>#{{ t|truncate(16, True, '…') }}</span>{% endfor %}</span>
   </figure>
 
