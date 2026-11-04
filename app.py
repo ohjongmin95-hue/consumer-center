@@ -745,8 +745,8 @@ def file_ok(suffix,head):
 def report_form(status=200):
     return render_template('report.html',categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,today=datetime.date.today().isoformat()),status
 def report_login_needed():
-    """운영자 2026-11-03: 로그인해야 제보 (이름·전화번호는 제보할 때 그대로 입력). REPORT_LOGIN=0이면 끔."""
-    return os.getenv('REPORT_LOGIN','0' if app.config.get('TESTING') else '1')=='1' and not g.get('user')
+    """운영자 2026-11-04: 로그인 없이도 제보 (11-03 로그인 의무화 뒤 제보가 끊겨 되돌림). REPORT_LOGIN=1이면 다시 로그인해야 제보."""
+    return os.getenv('REPORT_LOGIN','0')=='1' and not g.get('user')
 app.jinja_env.globals['report_login_needed']=report_login_needed
 @app.route('/report',methods=['GET','POST'])
 def report():
