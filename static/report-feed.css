@@ -2066,18 +2066,19 @@ main:has(>.org-band.is-bottom){padding-bottom:32px!important}
 .ht-flow b{font-size:16px;font-weight:700;color:#191f28;letter-spacing:-.02em}
 .ht-flow small{font-size:13.5px;color:#6b7684}
 @media(max-width:700px){.ht-flow{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ht-flow li{padding:16px}}
-/* 운영자 2026-11-04: 첫 화면 제보 카드 = 진행 상태 + 제목만 (아이콘·유형·본문·공감 없음), 색은 귤색 한 가지 계열 */
-.rf-home .vc-simple,.rf-home .vc-simple.is-sample{gap:10px;padding:20px;min-height:148px;border:1px solid #eef0f3;border-radius:20px;background:#fff;box-shadow:none}
+/* 운영자 2026-11-04: 첫 화면 제보 카드 = 제목이 먼저, 아래 한 줄에 점+상태 글자·업체·시간, 오른쪽에 좋아요·댓글 (알약 배지·아이콘·유형·본문 없음) */
+.rf-home .vc-simple,.rf-home .vc-simple.is-sample{gap:14px;padding:20px;min-height:132px;border:1px solid #eef0f3;border-radius:20px;background:#fff;box-shadow:none}
 .rf-home .vc-simple:hover{transform:none;box-shadow:0 6px 18px rgba(25,31,40,.08)}
-.vcs-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.vcs-top time{font-size:13px;color:#8b95a1;font-variant-numeric:tabular-nums}
-.vcs-st{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:999px;font-size:12.5px;font-weight:700;background:#fff1e0;color:#CE6719}
-.vcs-st.vcs-2{background:#EF920E;color:#fff}
-.vcs-st.vcs-3{background:#f6ede9;color:#652D1C}
-body .rf-home .vc-simple h3{margin:2px 0 0;font-size:17px;font-weight:700;line-height:1.45;color:#191f28;-webkit-line-clamp:2}
+body .rf-home .vc-simple h3{margin:0;font-size:17px;font-weight:700;line-height:1.45;color:#191f28;-webkit-line-clamp:2}
 .rf-home .vc-simple:hover h3{color:#191f28;text-decoration:underline;text-underline-offset:3px}
 .rf-home .vc-simple .vcs-foot{display:flex;align-items:center;gap:10px;margin-top:auto;font-size:13.5px;color:#8b95a1}
-.rf-home .vc-simple .vcs-co{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rf-home .vc-simple .vcs-line{display:flex;align-items:center;flex:1;min-width:0;white-space:nowrap}
+.rf-home .vc-simple .vcs-line>*+*::before{content:"·";margin:0 6px;color:#d1d6db}
+.rf-home .vc-simple .vcs-co{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rf-home .vc-simple time{flex:none;font-variant-numeric:tabular-nums}
+.rf-home .vc-simple .vcs-st{flex:none;display:inline-flex;align-items:center;gap:6px;font-weight:700;--c:#3182F6;color:var(--c)}
+.rf-home .vc-simple .vcs-st::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.rf-home .vc-simple .vcs-st.vcs-1{--c:#3182F6}.rf-home .vc-simple .vcs-st.vcs-2{--c:#EF920E}.rf-home .vc-simple .vcs-st.vcs-3{--c:#03A35F}
 .rf-home .vc-simple .vcs-n{display:inline-flex;align-items:center;gap:3px;flex:none;font-variant-numeric:tabular-nums}
 .rf-home .vc-simple .vcs-n svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
-@media(max-width:700px){.rf-home .vc-simple,.rf-home .vc-simple.is-sample{padding:18px 20px;min-height:0;gap:8px;border:0;border-radius:0;background:#fff}.rf-home .vc-simple:hover{box-shadow:none}}
+@media(max-width:700px){.rf-home .vc-simple,.rf-home .vc-simple.is-sample{padding:18px 20px;min-height:0;gap:10px;border:0;border-radius:0;background:#fff}.rf-home .vc-simple:hover{box-shadow:none}}
