@@ -488,13 +488,13 @@ class SiteTest(unittest.TestCase):
         self.assertIn('/expert/join/' + token, adm.get('/admin/experts').get_data(as_text=True))
         # 운영자 2026-11-03: 초대 링크 = 토스플레이스 풍 한 화면, 로그인 없이 입력하고 바로 등록. 자격은 파일로만
         page = self.client.get('/expert/join/' + token).get_data(as_text=True)
-        self.assertIn('xf-form', page); self.assertIn('김변호 님', page); self.assertIn('value="소보루 법률사무소"', page); self.assertNotIn('license_no', page)
+        self.assertIn('xf-form', page); self.assertIn('김변호 님', page); self.assertIn('value="소보루 법률사무소"', page); self.assertNotIn('license_no', page); self.assertNotIn('name="proof"', page)
         pdf = lambda: (io.BytesIO(b'%PDF-1.4 test'), 'license.pdf')
-        self.assertEqual(self.post_form(self.client, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'email': 'kim@x.kr', 'agree': '1'}).status_code, 200)  # 자격증 파일 없으면 다시
+        self.assertEqual(self.post_form(self.client, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'email': 'kim@x.kr', 'agree': '1'}).status_code, 200)  # 프로필 사진 없으면 다시 (초대는 자격 파일 없이 됨)
         from PIL import Image
         pic = io.BytesIO(); Image.new('RGB', (600, 300), 'blue').save(pic, 'JPEG'); pic.seek(0)
         guest = self.site.app.test_client()
-        r = self.post_form(guest, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'email': 'kim@x.kr', 'agree': '1', 'proof': pdf(), 'photo': (pic, 'me.jpg')})
+        r = self.post_form(guest, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'email': 'kim@x.kr', 'agree': '1', 'photo': (pic, 'me.jpg')})
         self.assertEqual(r.status_code, 302)
         done = guest.get(r.headers['Location']).get_data(as_text=True)
         # 운영자 2026-11-04: 등록하면 자문단 회원 계정이 바로 생기고 로그인됨 (따로 로그인·잇기 없음)

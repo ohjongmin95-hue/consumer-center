@@ -113,7 +113,8 @@ def install(S):
         if not f['name'] or f['field'] not in (FIRM_FIELDS if kind == 'firm' else FIELDS): raise ValueError('이름과 분야를 넣어 주세요.')
         if not f['phone'] and not f['email']: raise ValueError('연락처나 이메일 중 하나는 적어 주세요.')
         up = request.files.get('proof')
-        if not (up and up.filename) and not (row and row['proof']):
+        # 운영자 2026-11-04: 우리가 메일로 초대한 사람은 이미 아는 사람이라 자격 파일 없이 프로필 사진만 받음. 직접 신청은 그대로 파일 필요
+        if not invited and not (up and up.filename) and not (row and row['proof']):
             raise ValueError('사업자등록증 파일을 올려 주세요.' if kind == 'firm' else '재직증명서 파일을 올려 주세요.' if f['field'] == '교수' else '변호사 등록증 파일을 올려 주세요.')
         # 운영자 2026-11-03: 자문단은 신뢰를 위해 프로필 사진이 꼭 필요 (사무소·법인은 로고라 선택)
         ph = request.files.get('photo')
