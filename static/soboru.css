@@ -2893,11 +2893,12 @@ main img,main video,main iframe,main table{max-width:100%}
 .lt-top-logo span{font-size:17px;font-weight:800;color:#EF920E;letter-spacing:-.02em;line-height:1}
 .lt-alone .sb-ft-why{display:none}
 /* ===== 소보루 매거진 첫 화면 (운영자 2026-11-04: 뉴스레터 말고 감각적인 매거진 홈. 귤색 커버스토리) ===== */
-.lt-alone .lt-top{background:#16110f!important;border-bottom:0!important}
-.lt-alone .lt-top-logo img{filter:brightness(0) invert(1)}
+.lt-alone .lt-top{background:#652D1C!important;border-bottom:0!important}
+body.lt-alone{background:#FFF6EA}
+.lt-alone .lt-top-logo img{filter:none}
 .lt-alone .lt-top-in{max-width:1200px;margin:0 auto;padding:0 max(20px,env(safe-area-inset-left))}
 .lt-page.mz-page{max-width:none!important;width:100%;margin:0!important;padding:0!important}
-.mz-page{--or:#EF920E;--br:#652D1C;--cr:#F8D59F;--ink:#16110f;background:#fff;color:var(--ink)}
+.mz-page{--or:#EF920E;--br:#652D1C;--cr:#F8D59F;--ink:#652D1C;--bg:#FFF6EA;--sub:#8b6556;background:var(--bg);color:var(--ink)}
 .mz-page,.mz-page *{font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 .mz-in{max-width:1200px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
 .mz-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -2917,7 +2918,7 @@ main img,main video,main iframe,main table{max-width:100%}
 .mz-cover-pic:hover img{transform:scale(1.03)}
 .mz-ph{display:flex;align-items:flex-end;width:100%;height:100%;padding:28px;box-sizing:border-box}
 .mz-ph b{font-size:clamp(44px,7vw,104px);line-height:.95;font-weight:900;letter-spacing:-.05em;word-break:keep-all}
-.mz-ph.p0{background:var(--ink);color:var(--or)}.mz-ph.p1{background:var(--cr);color:var(--br)}.mz-ph.p2{background:var(--br);color:var(--cr)}
+.mz-ph.p0{background:var(--br);color:var(--or)}.mz-ph.p1{background:var(--cr);color:var(--br)}.mz-ph.p2{background:var(--or);color:var(--br)}
 .mz-label{display:flex;align-items:center;gap:10px;margin:0 0 18px;font-size:13px;font-weight:900;letter-spacing:.2em}
 .mz-label span{padding:4px 10px;border:1.5px solid var(--ink);border-radius:999px;font-size:12px;letter-spacing:0}
 .mz-cover-txt h2{margin:0;font-size:clamp(32px,3.8vw,54px);line-height:1.2;font-weight:900;letter-spacing:-.05em;word-break:keep-all;overflow-wrap:anywhere}
@@ -2940,7 +2941,7 @@ main img,main video,main iframe,main table{max-width:100%}
 .mz-cat{margin-top:6px;font-size:13px;font-weight:900;color:var(--or)}
 .mz-grid h3{margin:0;font-size:18px;line-height:1.42;font-weight:850;letter-spacing:-.035em;word-break:keep-all;overflow-wrap:anywhere}
 .mz-grid li.big h3{font-size:clamp(24px,2.4vw,32px);line-height:1.3;font-weight:900}
-.mz-grid p{margin:0;font-size:16px;line-height:1.65;color:#4e5968;word-break:keep-all;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.mz-grid p{margin:0;font-size:16px;line-height:1.65;color:var(--sub);word-break:keep-all;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .mz-grid a:hover h3{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
 /* 모닝 레터 */
 .mz-letter{background:var(--ink);color:#fff;padding:88px 0}
