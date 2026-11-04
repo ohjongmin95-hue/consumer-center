@@ -12,10 +12,10 @@ const MUTE = '#9A918A';
 
 export function tabsFor(member: boolean): Tab[] {
   return [
-    // 소보루제보 앱 (운영자 2026-11-03): 소비자제보센터(consumerjebo.co.kr)를 띄우고, 제보하기는 AI와 대화로
+    // 소보루제보 앱 (운영자 2026-11-03): 소비자제보센터(consumerjebo.co.kr)를 띄우고, 제보하기는 글쓰기 제보(/report, 위에 대화로 제보하기 칸)
     { key: 'home', label: '홈', path: '/' },
     { key: 'board', label: '제보 목록', path: '/reports' },
-    { key: 'report', label: '제보하기', path: '/report/talk' },
+    { key: 'report', label: '제보하기', path: '/report' },
     { key: 'life', label: '알림', path: member ? '/me/alerts' : '/login?next=/me/alerts' },
     member ? { key: 'my', label: '내 제보', path: '/me' } : { key: 'my', label: '내 제보', path: '/lookup' },
   ];

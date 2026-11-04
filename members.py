@@ -290,6 +290,13 @@ def install(S):
                     db.execute("UPDATE users SET last_login=? WHERE id=?",(now(),user['id']))
                     fill_identity(db,user['id'],prof)
                     S.sign_in(user,True);return redirect(info.get('next') or url_for('home'))
+            # 운영자 2026-11-04: 자문단 등록으로 자동으로 만든 계정(x_…, 비밀번호·소셜 연결 없음)은 확인된 같은 이메일의 카카오·네이버로 처음 들어오면 그 계정에 이어 줌
+            if prof['email'] and prof.get('email_verified') and not prof.get('relay'):
+                auto=db.execute("SELECT u.* FROM users u WHERE u.email=? COLLATE NOCASE AND u.login_id LIKE 'x\\_%' ESCAPE '\\' AND u.pw_hash='' AND u.status='active' AND NOT EXISTS(SELECT 1 FROM user_identities i WHERE i.user_id=u.id) ORDER BY u.id LIMIT 1",(prof['email'],)).fetchone()
+                if auto:
+                    db.execute('INSERT INTO user_identities(user_id,provider,provider_uid,email,linked_at) VALUES(?,?,?,?,?)',(auto['id'],provider,prof['uid'],prof['email'],now()))
+                    db.execute("UPDATE users SET last_login=? WHERE id=?",(now(),auto['id'])); fill_identity(db,auto['id'],prof)
+                    S.sign_in(auto,True);return redirect(info.get('next') or url_for('home'))
             # 처음 보는 소셜 계정. 같은 이메일 회원이 있으면 합치지 않고 기존 계정 로그인을 안내 (남의 계정에 붙는 일 방지)
             if prof['email'] and not prof.get('relay') and db.execute("SELECT 1 FROM users WHERE email=? COLLATE NOCASE AND email!=''",(prof['email'],)).fetchone():
                 flash(f'이미 이 이메일로 가입한 회원이 있어요. 기존 아이디로 로그인한 뒤 내 정보에서 {name} 계정을 연결해 주세요.')

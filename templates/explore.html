@@ -20,6 +20,8 @@
         {% for co, kind, rate, gr in [('소보루항공', '여행·숙박', 100, 'B+'), ('소보루쇼핑', '쇼핑·유통', 92, 'B'), ('소보루게임즈', '게임·앱', 80, 'C+'), ('소보루통신', '통신·인터넷', 74, 'C')] %}<div class="ipr-row"><b class="ipr-no">{{ loop.index }}</b><span class="ipr-av av-{{ loop.index0 % 5 }}">{{ co[3] }}</span><span class="ipr-nm"><b>{{ co }}</b><small>{{ kind }} · 답변 {{ rate }}%</small><i class="rk-bar"><em style="width:{{ rate }}%;background:#3182f6"></em></i></span><span class="ipr-gr g-{{ gr[0]|lower }}">{{ gr }}</span></div>{% endfor %}
         </div>
       </div></div>
+      {# 운영자 2026-11-04: 얇은 검정 테두리(B안) + 휴대폰 앞에 떠 있는 메시지 카드 다시 #}
+      <div class="xs-float"><span class="xs-float-ic">1</span><div><small>{{ ui('explore.feat_float_s2', '응대 잘하는 기업 1위') }}</small><b>{{ ui('explore.feat_float2', '소보루항공 답변 100%') }}</b></div></div>
     </div>
     <div class="xs-feat-copy">
       <span class="xs-kicker">{{ ui('explore.rank', '기업 응대 순위') }}</span>

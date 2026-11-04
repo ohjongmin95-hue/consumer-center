@@ -2209,3 +2209,41 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 .co-logo-lg{width:40px;height:40px;border-radius:12px;vertical-align:-8px;margin-right:12px}
 /* 기업 답변 링크 화면 */
 .co-reply .co-reply-note{margin:18px 0 16px;padding:12px 14px;border-radius:12px;background:#fff8f0;color:#8a4b00;font-size:14px;line-height:1.7}
+
+/* 운영자 2026-11-04: 제보 도우미 — 캡처로 채우기 + 5가지 완성도 막대 (막지 않고 알려만 줌) */
+.scan-box { margin: 0 0 22px; }
+.scan-pick { display: flex; align-items: center; gap: 14px; padding: 18px 20px; border: 1.5px dashed #f5c98a; border-radius: 16px; background: #fff8ee; cursor: pointer; transition: background .2s, transform .1s; }
+.scan-pick:hover { background: #fff1dc; }
+.scan-pick:active { transform: scale(.99); }
+.scan-ic { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 12px; background: #EF920E; display: grid; place-items: center; }
+.scan-ic svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.scan-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.scan-t b { font-size: 16px; color: #191f28; font-weight: 700; }
+.scan-t small { font-size: 13.5px; color: #4e5968; line-height: 1.5; }
+.scan-box.is-busy .scan-pick { pointer-events: none; opacity: .7; }
+.scan-box.is-busy .scan-ic { animation: scan-pulse 1s ease-in-out infinite; }
+@keyframes scan-pulse { 50% { transform: scale(.88); } }
+.scan-out { margin-top: 10px; padding: 14px 18px; border-radius: 14px; background: #fff; border: 1px solid #f3e3cc; }
+.scan-msg { margin: 0; font-size: 14px; font-weight: 600; color: #CE6719; }
+.scan-issues { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.scan-issues:empty { display: none; }
+.scan-issues li { position: relative; padding-left: 16px; font-size: 14px; color: #333d4b; line-height: 1.55; }
+.scan-issues li::before { content: ''; position: absolute; left: 2px; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: #EF920E; }
+.field .scan-filled { border-color: #f5c98a; background: #fffbf5; }
+.jebo-help { margin: -8px 0 24px; padding: 16px 18px; border-radius: 16px; background: #fff8ee; }
+.jh-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.jh-top b { font-size: 15px; color: #191f28; }
+.jh-pct { font-size: 15px; font-weight: 700; color: #CE6719; font-variant-numeric: tabular-nums; }
+.jh-bar { height: 8px; margin: 10px 0; border-radius: 99px; background: #fbe3c2; overflow: hidden; }
+.jh-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: #EF920E; transition: width .35s ease; }
+.jh-note { margin: 0 0 12px; font-size: 13.5px; color: #4e5968; line-height: 1.55; }
+.jebo-help.is-full .jh-note { color: #CE6719; font-weight: 600; }
+.jh-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.jh-chip { border: 1px solid #f3d3a4; background: #fff; color: #CE6719; border-radius: 99px; padding: 7px 13px; font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.jh-chip:hover { background: #fff1dc; }
+.jh-chip.is-ok { background: #EF920E; border-color: #EF920E; color: #fff; cursor: default; }
+@media (max-width: 640px) {
+  .scan-pick { padding: 16px; gap: 12px; }
+  .scan-t b { font-size: 15px; }
+  .jebo-help { padding: 14px 16px; }
+}

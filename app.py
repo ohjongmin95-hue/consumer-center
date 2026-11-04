@@ -303,6 +303,9 @@ def biz_closed():
 # 운영자 2026-11-03: 로고 없는 기업은 첫 글자 대신 업종 그림 (static/img/ind/<키>.svg)
 _IND_KEY={n:k for n,k,*_ in site_content.INDUSTRIES}
 app.jinja_env.globals['industry_icon']=lambda name:_IND_KEY.get((name or '').strip(),'other')
+# 운영자 2026-11-04: 제보 상세 표지 — 업종 색 바탕 + 업종 그림 + 해시태그 (그림 파일 없이 CSS로, 비용 0)
+IND_COLOR={'appliance':'#00a6c9','building':'#b5652b','car':'#4e5bf2','commerce':'#3182f6','finance':'#f5a200','food':'#ff8a3d','game':'#8b5cf6','medical':'#f04452','other':'#f06595','telecom':'#15c47e'}
+app.jinja_env.globals['industry_color']=lambda name:IND_COLOR.get(_IND_KEY.get((name or '').strip(),'other'),'#f06595')
 app.jinja_env.globals['industry_art']={k for k,_ in site_content.INDUSTRY_ART if k}  # static/img/guide-ind-<이름>.svg 가 있는 그림
 app.jinja_env.globals['guide_icon']=lambda name:Markup('<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">%s</svg>'%GUIDE_ICONS.get(name,GUIDE_ICONS['write']))
 STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']
@@ -743,10 +746,10 @@ def file_ok(suffix,head):
     return ((kind=='pdf' and head.startswith(b'%PDF-')) or (kind=='png' and head.startswith(b'\x89PNG')) or (kind=='jpg' and head.startswith(b'\xff\xd8'))
             or (kind=='webp' and head[8:12]==b'WEBP') or (kind in ('mp4','mov') and head[4:8]==b'ftyp'))
 def report_form(status=200):
-    return render_template('report.html',categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,today=datetime.date.today().isoformat()),status
+    return render_template('report.html',scan_on=bool(companydesk.ai_key_for('report_talk')),categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,today=datetime.date.today().isoformat()),status
 def report_login_needed():
-    """운영자 2026-11-03: 로그인해야 제보 (이름·전화번호는 제보할 때 그대로 입력). REPORT_LOGIN=0이면 끔."""
-    return os.getenv('REPORT_LOGIN','0' if app.config.get('TESTING') else '1')=='1' and not g.get('user')
+    """운영자 2026-11-04: 로그인 없이도 제보 (11-03 로그인 의무화 뒤 제보가 끊겨 되돌림). REPORT_LOGIN=1이면 다시 로그인해야 제보."""
+    return os.getenv('REPORT_LOGIN','0')=='1' and not g.get('user')
 app.jinja_env.globals['report_login_needed']=report_login_needed
 @app.route('/report',methods=['GET','POST'])
 def report():
