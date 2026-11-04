@@ -202,6 +202,19 @@ def install(S):
         flash(f'{what} {len(ids)}개를 그리기 시작했어요. 하나에 30초쯤 걸려요. 잠시 뒤 새로 고침해 보세요.' if ids else f'{what}이 없어요.')
         return redirect(url_for('admin_art', kind=kind))
 
+    @app.route('/admin/art/unsplash', methods=['POST'])
+    @S.admin_only
+    def admin_art_unsplash():
+        # 운영자 2026-11-04: 사진 없는 매거진 글에 언스플래시 사진을 지금 바로 채움 (뒤에서 자동으로도 채움)
+        if not os.getenv('UNSPLASH_ACCESS_KEY', '').strip(): flash('서버에 언스플래시 키가 없어요. deploy/set-unsplash.sh로 넣어 주세요.'); return redirect(url_for('admin_art'))
+        if request.form.get('redo'):
+            with conn() as db: db.execute('DELETE FROM mag_unsplash')
+        unsplash_state['busy'] = True
+        added, last = unsplash_fill(limit=40, wait=0)
+        msg = {401: '키가 맞지 않는대요(401). 키를 다시 넣어 주세요.', 403: '한 시간 요청 한도를 넘었대요(403). 한 시간 뒤 다시 눌러 주세요.'}
+        flash(f'매거진 글 {added}개에 사진을 붙였어요.' if last == 200 else f'사진 {added}개를 붙이다 멈췄어요. ' + msg.get(last, f'언스플래시가 {last}로 답했어요.'))
+        return redirect(url_for('admin_art'))
+
     @app.route('/admin/art/purge', methods=['POST'])
     @S.admin_only
     def admin_art_purge():
@@ -264,43 +277,50 @@ def install(S):
     with conn() as db:
         db.execute('CREATE TABLE IF NOT EXISTS mag_unsplash(article_id INTEGER PRIMARY KEY,photo_id TEXT NOT NULL,url TEXT NOT NULL,'
                    'credit TEXT NOT NULL,credit_url TEXT NOT NULL,created TEXT NOT NULL)')
-    UNSPLASH_Q = {'쇼핑': 'minimal shopping bag', '통신': 'smartphone minimal desk', '여행': 'airport travel minimal', '음식': 'grocery food still life',
-                  '금융': 'coins wallet minimal', '자동차': 'car detail minimal', '생활': 'home interior minimal', '리콜': 'product box minimal'}
+    UNSPLASH_Q = {'쇼핑': 'shopping bags aesthetic', '통신': 'smartphone flat lay', '여행': 'travel suitcase aesthetic', '음식': 'grocery flat lay',
+                  '금융': 'coins money flat lay', '자동차': 'car interior aesthetic', '생활': 'cozy home interior', '리콜': 'product packaging boxes'}
     unsplash_state = {'busy': False, 'tried': {}}
     unsplash_lock = threading.Lock()
 
-    def unsplash_fill():
+    def unsplash_fill(limit=24, wait=3600):
+        """사진 없는 매거진 글에 언스플래시 사진을 붙임. (붙인 수, 마지막 언스플래시 응답 코드)"""
         import soboru_letter as L
+        added, last = 0, 200
         try:
             with conn() as db:
                 rows = db.execute("SELECT a.id,a.category FROM articles a LEFT JOIN mag_unsplash u ON u.article_id=a.id "
-                                  "WHERE a.status='published' AND u.article_id IS NULL ORDER BY a.id DESC LIMIT 24").fetchall()
+                                  "WHERE a.status='published' AND u.article_id IS NULL ORDER BY a.id DESC LIMIT ?", (limit,)).fetchall()
                 used = {r[0] for r in db.execute('SELECT photo_id FROM mag_unsplash')}
                 own = {r[0] for r in db.execute("SELECT target_id FROM soboru_art WHERE kind='life' AND status='live' AND file LIKE '%-photo-%'")}
-            now = datetime.datetime.now().timestamp()
             found = {}
             for r in rows:
                 if r['id'] in own: continue
-                if now - unsplash_state['tried'].get(r['id'], 0) < 3600: continue
-                unsplash_state['tried'][r['id']] = now
+                if datetime.datetime.now().timestamp() - unsplash_state['tried'].get(r['id'], 0) < wait: continue
                 q = UNSPLASH_Q.get(r['category'], 'minimal still life')
                 if q not in found:
                     st, res = L.unsplash_call('/search/photos', {'query': q, 'orientation': 'landscape', 'per_page': 30, 'content_filter': 'high'})
-                    found[q] = (res or {}).get('results') or [] if st == 200 and isinstance(res, dict) else []
+                    last = st
+                    if st != 200 or not isinstance(res, dict): break  # 키 문제·한도 초과면 멈추고 나중에 다시
+                    found[q] = res.get('results') or []
+                unsplash_state['tried'][r['id']] = datetime.datetime.now().timestamp()
                 for ph in found[q]:
                     try:
                         pid, raw, user = ph['id'], ph['urls']['raw'], ph['user']
                         if pid in used: continue
                         used.add(pid)
-                        dl = (ph.get('links') or {}).get('download_location')
-                        if dl: L.unsplash_call(dl)  # 언스플래시 규칙: 쓰기로 고른 사진은 download 주소를 한 번 부름
                         with conn() as db:
                             db.execute('INSERT OR IGNORE INTO mag_unsplash VALUES(?,?,?,?,?,?)',
-                                       (r['id'], pid, raw, (user.get('name') or user.get('username') or '')[:60], user['links']['html'] + L.UTM, S.now()))
+                                       (r['id'], pid, raw, (user.get('name') or user.get('username') or '')[:60], user['links']['html'] + L.UTM, now()))
+                        added += 1
+                        dl = (ph.get('links') or {}).get('download_location')
+                        if dl: L.unsplash_call(dl)  # 언스플래시 규칙: 쓰기로 고른 사진은 download 주소를 한 번 부름
                         break
-                    except (KeyError, TypeError): continue
+                    except Exception: continue
+        except Exception as e:
+            app.logger.warning('mag unsplash fill failed: %s', e)
         finally:
-            unsplash_state['busy'] = False
+            unsplash_state['busy'] = False; unsplash_state['last'] = last
+        return added, last
 
     def unsplash_kick():
         if not os.getenv('UNSPLASH_ACCESS_KEY', '').strip(): return

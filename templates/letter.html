@@ -24,7 +24,7 @@
     </div>
     <div class="nm-g nm-intro">
       <h1>{{ ui('letter.mz_intro2', 'Consumer Lifestyle,\nSOBORU Magazine') }}</h1>
-      <p><b>{{ ui('letter.mz_motto', 'SOBORU, 소비를 보는 새로운 루트.') }}</b> {{ ui('letter.mz_about2', '사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}</p>
+      <p><b>{{ ui('letter.mz_motto', 'SOBORU, 소비를 보는 새로운 루트') }}</b> {{ ui('letter.mz_about2', '사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}</p>
     </div>
     <div class="nm-g">
       <a class="nm-banner" href="#sub"><span class="nm-bt"><small>SOBORU LETTER</small><strong>{{ ui('letter.mz_bn', '아침 5분,\n돈이 되는 생활경제') }}</strong><span class="nm-go">{{ ui('letter.mz_bn_go', '무료로 구독하기') }} →</span></span><span class="nm-bi"><span class="nm-clock"><b>{{ ui_text('letter.mz_clock', '07:30') }}</b><small>{{ ui_text('letter.mz_clock_sub', 'WEEKDAY MORNING · YOUR INBOX') }}</small></span><span class="nm-stamp" aria-hidden="true">EVERY<br>MORNING</span></span></a>
@@ -35,7 +35,7 @@
   {% if mag|length > 1 %}
   <section class="nm-g nm-hot" id="hot">
     <div class="nm-hh"><h2 class="nm-sh"><i aria-hidden="true"></i>{{ ui('letter.mz_hot2', 'HOT ISSUE') }}</h2><a class="nm-up" href="#top" aria-label="맨 위로">↑</a></div>
-    <div class="nm-hots">{% for a in mag[1:5] %}<a class="h{{ loop.index0 }}" href="{{ url_for('life_article', article_id=a['id']) }}"><span class="nm-ph">{{ cover(a, loop.index) }}<span class="nm-pt" aria-hidden="true"><span>{{ EN.get(a['category'], 'LIFE') }}</span></span><img class="nm-pl" src="{{ asset('img/soboru-wordmark.png') }}" alt=""><strong>{{ a['title'] }}</strong></span><b>{{ a['title'] }}</b></a>{% endfor %}</div>
+    <div class="nm-hots nm-hots2">{% for a in mag[1:5] %}<a href="{{ url_for('life_article', article_id=a['id']) }}"><span class="nm-ph">{{ cover(a, loop.index) }}<em>{{ EN.get(a['category'], 'LIFE') }}</em></span><b>{{ a['title'] }}</b>{% set sm = (a['summary'] or '').split('\n')[0] %}{% if sm %}<p>{{ sm|truncate(60, True, '…') }}</p>{% endif %}<small>{{ (a['published_at'] or a['created'])[:10].replace('-', '. ') }}</small></a>{% endfor %}</div>
     <a class="nm-more" href="https://consumerjebo.co.kr/life">{{ ui('letter.mz_hot_more', '더 많은 이야기') }} →</a>
   </section>
   {% endif %}
