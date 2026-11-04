@@ -112,6 +112,28 @@ def run(S, limit=40, log=print, again=False):
             if generic(g['brand'] or g['name']):
                 (folder / g['logo']).unlink(missing_ok=True) if re.fullmatch(r'\d+\.png', g['logo']) else None
                 db.execute("UPDATE companies SET domain='',logo='',logo_at=? WHERE id=?", (S.now(), g['id'])); log(f"{g['name']}: 업종 이름뿐이라 로고 지움")
+    # 운영자 2026-11-04: 도메인은 있는데 로고가 없는 곳(쿠팡처럼 처음에 못 받은 곳)도 다시 받기 + 이름이 같은 기업끼리 로고 나눠 쓰기
+    with conn() as db:
+        known = db.execute("SELECT id,name,brand,domain,logo FROM companies WHERE domain!='' AND logo='' AND (logo_at='' OR logo_at<?) LIMIT ?", (since, limit)).fetchall()
+    for k in known:
+        if generic(k['brand'] or k['name']): continue
+        png = company_logo.fetch(k['domain'])
+        with conn() as db:
+            if png:
+                (folder / f"{k['id']}.png").write_bytes(png); db.execute("UPDATE companies SET logo=?,logo_at=? WHERE id=?", (f"{k['id']}.png", S.now(), k['id'])); got += 1
+            else: db.execute("UPDATE companies SET logo_at=? WHERE id=?", (S.now(), k['id']))
+        log(f"{k['name']}: {'로고 받음' if png else '로고를 못 받음'} ({k['domain']})")
+    with conn() as db:
+        have = {}
+        for c in db.execute("SELECT id,name,brand,domain,logo,logo_at FROM companies WHERE logo!=''"):
+            for n in (c['name'], c['brand']):
+                if n and not generic(n): have.setdefault(squash(n), c)
+        for c in db.execute("SELECT id,name,brand FROM companies WHERE logo=''").fetchall():
+            src = next((have[squash(n)] for n in (c['brand'], c['name']) if n and squash(n) in have), None)
+            if src and (folder / src['logo']).is_file():
+                (folder / f"{c['id']}.png").write_bytes((folder / src['logo']).read_bytes())
+                db.execute("UPDATE companies SET domain=CASE WHEN domain='' THEN ? ELSE domain END,logo=?,logo_at=? WHERE id=?", (src['domain'], f"{c['id']}.png", S.now(), c['id']))
+                got += 1; log(f"{c['name']}: 같은 이름 기업 로고 씀")
     for r in rows:
         name = r['brand'] or r['name']
         if generic(name):
