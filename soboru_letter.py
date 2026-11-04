@@ -16,7 +16,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
   확인하지 않은 신청은 7일 뒤 지운다.
 - 예약: deploy/soboru-letter.timer가 매일 아침 7시 30분 `python soboru_letter.py weekly`를 부르면, 관리자가 고른 주기(기본 매일·평일 매일·매주 한 요일)에 맞을 때만 한 호를 만든다.
 """
-import html as html_lib
+import sqlite3, html as html_lib
 import datetime, hashlib, hmac, json, os, re, secrets, sys, threading, time, urllib.error, urllib.parse, urllib.request
 from flask import Response, abort, flash, g, redirect, render_template, request, url_for
 from markupsafe import Markup
@@ -1204,7 +1204,10 @@ def install(S):
     def letter_home():
         with conn() as db:
             rows = [row_info(r) for r in db.execute("SELECT * FROM letters WHERE status='sent' ORDER BY no DESC LIMIT 60")]
-        return render_template('letter.html', rows=rows, state=request.args.get('s', ''))
+            # 운영자 2026-11-04: 뉴스레터 말고 매거진 첫 화면처럼. 매거진(생활정보) 글을 커버스토리·새 글로
+            try: mag = db.execute("SELECT * FROM articles WHERE status='published' ORDER BY featured DESC, published_at DESC, id DESC LIMIT 6").fetchall()
+            except sqlite3.OperationalError: mag = []
+        return render_template('letter.html', rows=rows, mag=mag, state=request.args.get('s', ''))
 
     @app.route('/letter/<int:no>')
     def letter_issue(no):
