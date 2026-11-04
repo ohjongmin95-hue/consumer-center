@@ -795,7 +795,7 @@ class SiteTest(unittest.TestCase):
         response = self.client.post('/lookup', data={'_csrf': token, 'mode': 'phone', 'phone': '01012345678', 'password': '1234'}, follow_redirects=True)
         self.assertIn('테스트 환불 요청', response.get_data(as_text=True))
         self.assertIn('aria-current="step"', response.get_data(as_text=True))
-        self.assertIn('테스트 업체</span><span class="nn-vc-ind">쇼핑·유통</span>', self.client.get('/reports').get_data(as_text=True))  # 업체 옆에 소비자가 고른 업종
+        self.assertIn('<span class="vcs-co">테스트 업체</span>', self.client.get('/reports').get_data(as_text=True))  # 운영자 2026-11-04: 목록 카드는 업체 이름만 (업종·유형 뺌)
         self.assertIn('현재 단계: 접수', response.get_data(as_text=True))
         admin = self.site.app.test_client()
         token = self.csrf(admin, '/admin/login')
@@ -1608,7 +1608,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.get('/reports/%d' % ids['public']).status_code, 404)
         listing = self.client.get('/reports').get_data(as_text=True)
         card = listing.split('href="/reports/%d/mine"' % ids['public'])[1].split('</a>')[0]  # 카드: 제목만, 누르면 조회 비밀번호 창
-        self.assertIn('public 제목</h3>', card); self.assertIn('제보자 본인과 담당자만', card)
+        self.assertIn('public 제목</h3>', card); self.assertIn('vcs-lock', card)  # 자물쇠는 아래 줄 업체 이름 앞
         self.assertNotIn('연락은 010', listing)
         self.assertEqual(self.post_form(admin, '/admin/reports/%d' % ids['secret'], {'form': 'publish_review', 'decision': 'approve'}).status_code, 400)
         self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'approve'})
@@ -2218,7 +2218,7 @@ class SiteTest(unittest.TestCase):
             for base in ('https://consumerjebo.co.kr', 'https://soboru.co.kr'):
                 rows = self.client.get('/reports', base_url=base).get_data(as_text=True)
                 self.assertIn('두 사이트에 같이 뜨는 제보', rows)
-                self.assertIn('원문 비공개 내용', rows)  # 카드는 공개 제보 글 앞부분(개인정보 가림)을 보여 줌 (2026-11-03, 공개 제보 화면과 같은 글)
+                self.assertNotIn('원문 비공개 내용', rows)  # 운영자 2026-11-04: 목록 카드는 제목·상태만 (본문 앞부분 안 보임)
             self.assertIn('소비자게시판', self.client.get('/board', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
             self.assertEqual(self.client.get('/reports', base_url='http://www.consumerjebo.co.kr').headers['Location'], 'https://consumerjebo.co.kr/reports')
             with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):
@@ -3164,7 +3164,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
                        ('edit-mode', hashlib.sha256(b'edit').hexdigest(), '배송·환불', '단계 업체', '단계 이름 제보', '내용', '요청', '2026-10-17', 1, 1))
-        self.assertIn('class="step-badge">접수 완료<', self.client.get('/reports').get_data(as_text=True))  # 제보 카드의 공개 단계 이름
+        self.assertIn('class="vcs-st vcs-1">접수 완료<', self.client.get('/reports').get_data(as_text=True))  # 제보 카드의 공개 단계 이름
         admin.post('/admin/inline', data={'_csrf': token, 'key': 'guide.u_title', 'value': '', 'reset': '1'})
         self.assertIn('첨부하기 전에 확인해 주세요', self.client.get('/guide').get_data(as_text=True))
         self.assertEqual(self.client.post('/admin/inline', data={'_csrf': self.csrf(self.client, '/report'), 'key': 'guide.u_title', 'value': 'x'}).status_code, 302)
@@ -3624,7 +3624,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('비번 없는 공개 제보', home)
         self.assertNotIn('공개 검토 중', home)  # 공개 제보는 접수 즉시 게시
         self.assertIn('href="/reports/1"', home)
-        self.assertIn('class="step-badge">접수</span>', self.client.get('/reports').get_data(as_text=True))
+        self.assertIn('class="vcs-st vcs-1">접수</span>', self.client.get('/reports').get_data(as_text=True))
 
     def test_publish_legacy_pending_reports(self):
         # 자동 게시 전에 들어와 승인을 기다리던 공개 제보는 관리자가 한 번에 게시. 게시를 내린 기록이 있으면 그대로
@@ -3661,7 +3661,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('기업 답변·처리', done)
         with self.site.conn() as db:db.execute("UPDATE cases SET status='기업 답변 대기' WHERE subject='단계 확인 제보'")
         reports = self.client.get('/reports').get_data(as_text=True)
-        self.assertIn('<span class="step-badge">처리 중</span>', reports)
+        self.assertIn('<span class="vcs-st vcs-2">처리 중</span>', reports)
         self.assertNotIn('기업 답변 대기', reports)
         self.post_form(self.client, '/lookup', {'mode': 'phone', 'phone': '010-8181-3030', 'password': '4321'})
         case = self.client.get('/case').get_data(as_text=True)

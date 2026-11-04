@@ -18,7 +18,7 @@
     {% set empty_text = txt('home.empty_search') if search_query or selected_category or stage or industry else txt('home.empty') %}
     <div class="rf-wrap">
       <div class="rf-list rf-photo rf-rows">
-        {# 운영자 2026-11-03: 목록 카드엔 사진 안 보이게 (카드가 길어짐) #}{% set pub_badge = True %}{% set with_photo = False %}{% for c in report_cards(cases, 220) %}{% include 'report_card.html' %}{% else %}<p class="nn-empty">{{ empty_text }}</p>{% endfor %}
+        {# 운영자 2026-11-03: 목록 카드엔 사진 안 보이게 (카드가 길어짐) #}{% set pub_badge = True %}{% set with_photo = False %}{% set simple_card = True %}{# 운영자 2026-11-04: 목록도 첫 화면처럼 제목·상태만 #}{% for c in report_cards(cases, 220) %}{% include 'report_card.html' %}{% else %}<p class="nn-empty">{{ empty_text }}</p>{% endfor %}
       </div>
       <aside class="rf-side">
         <a class="rf-box rf-link" href="{{ url_for('companies') }}">{{ ui('companies.title', '기업별 제보') }} <span aria-hidden="true">›</span></a>
