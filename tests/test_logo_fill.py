@@ -28,6 +28,14 @@ class LogoFillTest(unittest.TestCase):
         with mock.patch.dict('os.environ', {'NAVER_SEARCH_ID': '', 'NAVER_SEARCH_SECRET': '', 'NAVER_HUB_CLIENT_ID': '', 'NAVER_HUB_CLIENT_SECRET': ''}):
             self.assertEqual(logo_fill.naver_find('Db손해보험'), '')
 
+    def test_generic_names_skipped(self):
+        for n in ('치과', '동네 치과', '헬스장', '쇼핑몰', '개인 판매자', '모름'): self.assertTrue(logo_fill.generic(n), n)
+        for n in ('100세치과', '쿠팡', 'DB손해보험', '다이소몰'): self.assertFalse(logo_fill.generic(n), n)
+        res = {'items': [{'title': '<b>100세치과</b> - 서울', 'link': 'https://100sedental.co.kr'}]}
+        with mock.patch.dict('os.environ', {'NAVER_SEARCH_ID': 'a', 'NAVER_SEARCH_SECRET': 'b'}), mock.patch.object(logo_fill, 'naver_get', return_value=(200, res)):
+            self.assertEqual(logo_fill.naver_find('치과'), '')
+            self.assertEqual(logo_fill.naver_find('100세치과'), '100sedental.co.kr')
+
 
 if __name__ == '__main__':
     unittest.main()

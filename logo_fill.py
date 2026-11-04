@@ -39,6 +39,18 @@ SKIP = ('naver.', 'daum.', 'kakao.', 'google.', 'tistory.', 'wikipedia.', 'namu.
         'coupang.com', '11st.', 'gmarket.', 'auction.', 'smartstore', 'wanted.', 'catch.', 'thevc.', 'nicebizinfo', 'dart.fss')
 
 
+GENERIC = set("""치과 병원 의원 한의원 피부과 성형외과 안과 정형외과 약국 학원 어학원 헬스장 피트니스 필라테스 요가 pt 미용실 네일 네일샵 피부관리실 카페 식당 음식점 술집 치킨 피자
+    쇼핑몰 온라인쇼핑몰 인터넷쇼핑몰 오픈마켓 마트 편의점 슈퍼 백화점 부동산 중개사무소 공인중개사 이사 이삿짐센터 이사업체 택배 택배사 배달 배달앱 은행 카드사 보험 보험사 통신사
+    렌탈 렌터카 중고차 중고나라 중고거래 당근 숙소 호텔 모텔 펜션 리조트 여행사 항공사 인테리어 인테리어업체 세탁소 정비소 카센터 공방 스튜디오 사진관 웨딩홀 예식장 상조
+    업체 회사 가게 판매자 개인 개인판매자 모름 기타 없음 불명 사업자 쇼핑 앱 어플 사이트 홈페이지 고객센터 대리점 매장 지점 본사""".split())
+
+
+def generic(name):
+    """운영자 2026-11-04: '치과'처럼 업종 이름만 있으면 어느 업체인지 모름 → 로고를 받지 않음."""
+    k = squash(name)
+    return len(k) < 2 or k in GENERIC or re.fullmatch(r'(동네|우리|어느|모르는|그)?(' + '|'.join(sorted(GENERIC, key=len, reverse=True)) + r')\d*', k) is not None
+
+
 def naver_keys():
     """네이버 검색 키: 개발자센터(NAVER_SEARCH_ID·SECRET) 먼저, 없으면 API HUB(NAVER_HUB_CLIENT_ID·SECRET)."""
     a, b = os.getenv('NAVER_SEARCH_ID', '').strip(), os.getenv('NAVER_SEARCH_SECRET', '').strip()
@@ -64,9 +76,9 @@ def naver_find(name):
     if st != 200: return ''
     key = squash(name)
     for it in res.get('items') or []:
-        title = squash(re.sub(r'<[^>]+>', '', it.get('title') or ''))
+        head = re.split(r'\s[-|:·]\s|\||:', re.sub(r'<[^>]+>', '', it.get('title') or ''))[0]  # 사이트 제목의 앞부분이 업체 이름일 때만 ('100세치과'는 '치과'가 아님)
         dom = company_logo.clean_domain(it.get('link') or '')
-        if len(key) >= 2 and dom and key in title and not any(x in dom for x in SKIP): return dom
+        if len(key) >= 2 and dom and squash(head) in (key, key + '공식홈페이지', key + '공식몰') and not any(x in dom for x in SKIP): return dom
     return ''
 
 
@@ -95,8 +107,16 @@ def run(S, limit=40, log=print, again=False):
                              WHERE co.domain='' AND co.status IN ('active','listed') AND (co.logo_at='' OR co.logo_at<?)
                              GROUP BY co.id ORDER BY MAX(c.public_consent*c.published) DESC, n DESC LIMIT ?""", (since, limit)).fetchall()
     got = 0
+    with conn() as db:  # 예전에 업종 이름만으로 잘못 받은 로고 지우기
+        for g in db.execute("SELECT id,name,brand,logo FROM companies WHERE logo!=''").fetchall():
+            if generic(g['brand'] or g['name']):
+                (folder / g['logo']).unlink(missing_ok=True) if re.fullmatch(r'\d+\.png', g['logo']) else None
+                db.execute("UPDATE companies SET domain='',logo='',logo_at=? WHERE id=?", (S.now(), g['id'])); log(f"{g['name']}: 업종 이름뿐이라 로고 지움")
     for r in rows:
         name = r['brand'] or r['name']
+        if generic(name):
+            with conn() as db: db.execute("UPDATE companies SET logo_at=? WHERE id=?", (S.now(), r['id']))
+            log(f"{r['name']}: 업종 이름뿐이라 건너뜀"); continue
         domain = naver_find(name) or (naver_find(r['name']) if r['brand'] else '')
         if domain: ok = True  # 네이버 검색 결과 제목에 이름이 있는 사이트 = 확인됨
         else:
