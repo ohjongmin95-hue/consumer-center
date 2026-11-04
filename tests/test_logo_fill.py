@@ -30,7 +30,7 @@ class LogoFillTest(unittest.TestCase):
 
     def test_generic_names_skipped(self):
         for n in ('치과', '동네 치과', '헬스장', '쇼핑몰', '개인 판매자', '모름'): self.assertTrue(logo_fill.generic(n), n)
-        for n in ('100세치과', '쿠팡', 'DB손해보험', '다이소몰'): self.assertFalse(logo_fill.generic(n), n)
+        for n in ('100세치과', '쿠팡', 'DB손해보험', '다이소몰', '당근', '중고나라'): self.assertFalse(logo_fill.generic(n), n)
         res = {'items': [{'title': '<b>100세치과</b> - 서울', 'link': 'https://100sedental.co.kr'}]}
         with mock.patch.dict('os.environ', {'NAVER_SEARCH_ID': 'a', 'NAVER_SEARCH_SECRET': 'b'}), mock.patch.object(logo_fill, 'naver_get', return_value=(200, res)):
             self.assertEqual(logo_fill.naver_find('치과'), '')
@@ -42,17 +42,29 @@ class LogoFillTest(unittest.TestCase):
         db = sqlite3.connect(d / 'c.db'); db.row_factory = sqlite3.Row
         db.execute("CREATE TABLE companies(id INTEGER PRIMARY KEY,name TEXT,brand TEXT DEFAULT '',domain TEXT DEFAULT '',logo TEXT DEFAULT '',logo_at TEXT DEFAULT '',status TEXT DEFAULT 'listed')")
         db.execute("CREATE TABLE cases(id INTEGER PRIMARY KEY,company_id INT,public_consent INT,published INT)")
-        db.execute("INSERT INTO companies(id,name,domain,logo,logo_at) VALUES(1,'쿠팡','coupang.com','1.png','x'),(2,'쿠 팡','','',''),(3,'치과','','','')")
+        db.execute("INSERT INTO companies(id,name,domain,logo,logo_at) VALUES(1,'쿠팡','coupang.com','1.png','x'),(2,'쿠 팡','','',''),(3,'치과','','',''),(4,'당근','','','')")
         (d / 'logos' / '1.png').write_bytes(b'png'); db.commit()
         from contextlib import contextmanager
         @contextmanager
         def conn():
             yield db; db.commit()
         S = SimpleNamespace(conn=conn, UPLOAD=d, now=lambda: '2026-11-04')
-        with mock.patch.object(logo_fill, 'naver_find', return_value=''), mock.patch.object(logo_fill, 'ask', return_value=('', [])):
+        with mock.patch.object(logo_fill, 'naver_find', return_value=''), mock.patch.object(logo_fill, 'ask', return_value=('', [])), mock.patch.object(logo_fill.company_logo, 'fetch', return_value=b''):
             logo_fill.run(S, log=lambda *_: None, again=True)
         self.assertEqual(db.execute('SELECT logo FROM companies WHERE id=2').fetchone()[0], '2.png')
         self.assertEqual(db.execute('SELECT logo FROM companies WHERE id=3').fetchone()[0], '')
+        self.assertEqual(db.execute('SELECT domain FROM companies WHERE id=4').fetchone()[0], 'daangn.com')  # 큰 기업 목록의 주소
+
+    def test_naver_image_logo(self):
+        res = {'items': [{'title': '쿠팡 매장 사진', 'link': 'https://a.example/1.jpg'}, {'title': '<b>쿠팡</b> 로고 png', 'link': 'https://a.example/2.png', 'thumbnail': 'https://a.example/t.png'}]}
+        got = []
+        with mock.patch.dict('os.environ', {'NAVER_SEARCH_ID': 'a', 'NAVER_SEARCH_SECRET': 'b'}), mock.patch.object(logo_fill, 'naver_get', return_value=(200, res)) as ng, \
+             mock.patch.object(logo_fill.company_logo, 'get', side_effect=lambda u, *a: got.append(u) or b'img'), mock.patch.object(logo_fill.company_logo, 'to_png', return_value=b'PNG'):
+            self.assertEqual(logo_fill.naver_logo('쿠팡'), b'PNG')
+            self.assertIn('/v1/search/image.json', ng.call_args[0][0])
+        self.assertEqual(got, ['https://a.example/2.png'])  # 제목에 이름과 '로고'가 있는 그림만
+        with mock.patch.dict('os.environ', {'NAVER_SEARCH_ID': 'a', 'NAVER_SEARCH_SECRET': 'b'}):
+            self.assertEqual(logo_fill.naver_logo('치과'), b'')
 
 
 if __name__ == '__main__':
