@@ -1,0 +1,42 @@
+{# 운영자 2026-11-04: 소보루 매거진(soboru.co.kr) 안의 기사 보는 화면. 뉴소스 기사 양식을 뼈대로 — 맨 위 넓은 사진, 밝은 바탕,
+   왼쪽 분야·오른쪽 날짜, 큰 제목·부제, 에디터 줄, 네모 공유 단추, 가운데 본문, 오른쪽 아래 ↑ 단추. 안쪽은 귤색으로 채우지 않고 귤색은 포인트로만.
+   그림은 운영자가 올린 사진(mag_photo)만, 없으면 큰 영문 활자 표지 #}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">
+{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '리콜': 'RECALL'} %}
+{% set en = EN.get(a['category'], 'LIFE') %}
+{% set photo = mag_photo(a['id']) %}
+{% set sum_lines = (a['summary'] or '').split('\n')|map('trim')|select|list %}
+<main class="ma-page" id="top">
+  <figure class="ma-cover">{% if photo %}<img src="{{ photo }}" alt="">{% set cr = mag_credit(a['id']) %}{% if cr %}<figcaption>Photo by <a href="{{ cr.url }}" target="_blank" rel="noopener">{{ cr.name }}</a> on <a href="{{ cr.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption>{% endif %}{% else %}<span class="ma-type t{{ a['id'] % 3 }}"><b>{{ en|capitalize }}</b></span>{% endif %}</figure>
+  <article class="ma-art">
+    {% if a['status'] != 'published' %}<p class="ma-draft">{{ ui('life.draft_note', '아직 게시하지 않은 초안이에요. 관리자에게만 보여요.') }}</p>{% endif %}
+    <header class="ma-head">
+      <div class="ma-row"><span class="ma-cat">{{ en|capitalize }}</span><time datetime="{{ (a['published_at'] or a['created'])[:10] }}">{{ (a['published_at'] or a['created'])[:10].replace('-', '.') }}</time></div>
+      <h1>{{ a['title'] }}</h1>
+      {% if sum_lines|length == 1 %}<p class="ma-sub">{{ sum_lines[0] }}</p>{% endif %}
+      <div class="ma-by">
+        <span><b>EDITOR</b> {{ ui('mag.editor', '소보루 매거진 에디터') }}<i aria-hidden="true">·</i>{{ ui('life.read_min', '{n}분이면 읽어요', n=read_minutes(a['body'])) }}</span>
+        <span class="ma-share">
+          <a href="https://twitter.com/intent/tweet?url={{ canonical_url()|urlencode }}&text={{ a['title']|urlencode }}" target="_blank" rel="noopener" aria-label="X에 공유">X</a>
+          <a href="https://www.facebook.com/sharer/sharer.php?u={{ canonical_url()|urlencode }}" target="_blank" rel="noopener" aria-label="페이스북에 공유">f</a>
+          <button type="button" data-ma-copy="{{ canonical_url() }}" aria-label="링크 복사"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" aria-hidden="true"><path d="M10 14l4-4M8.5 11.5l-2 2a3.5 3.5 0 0 0 5 5l2-2M15.5 12.5l2-2a3.5 3.5 0 0 0-5-5l-2 2"/></svg></button>
+        </span>
+      </div>
+    </header>
+    {% if sum_lines|length > 1 %}<div class="ma-sum"><p>{{ ui('mag.sum', 'IN SHORT') }}</p><ul>{% for line in sum_lines %}<li>{{ line }}</li>{% endfor %}</ul></div>{% endif %}
+    <div class="ma-body sb-article-body">{{ life_body(a['body']) }}</div>
+    {% set ai = ai_article(a['id']) if a['origin'] == 'ai' and ai_article is defined else None %}
+    {% if ai and ai.sources %}<div class="ma-src"><b>{{ ui('life.sources', '출처') }}</b><ul>{% for s in ai.sources %}<li>{% if s.url %}<a href="{{ s.url }}" target="_blank" rel="noopener nofollow">{{ s.name }} ↗</a>{% else %}{{ s.name }}{% endif %} <span>{{ s.fetched_at[:10].replace('-', '.') }} 기준</span></li>{% endfor %}</ul></div>
+    {% elif a['source_name'] or a['source_url'] %}<p class="ma-src"><b>{{ ui('life.source', '출처') }}</b> {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
+    {{ admin_delete('life', a['id'], '관리자: 이 글 지우기') }}
+  </article>
+  {% if related %}
+  <section class="ma-more">
+    <h2><i aria-hidden="true"></i>{{ ui('mag.more', 'More in') }} {{ en|capitalize }}</h2>
+    <div class="ma-grid">{% for r in related %}{% set rp = mag_photo(r['id']) %}<a href="{{ url_for('life_article', article_id=r['id']) }}"><span class="ma-th">{% if rp %}<img src="{{ rp }}" alt="" loading="lazy">{% else %}<span class="ma-type t{{ r['id'] % 3 }}"><b>{{ EN.get(r['category'], 'LIFE') }}</b></span>{% endif %}</span><b>{{ r['title'] }}</b><small>{{ (r['published_at'] or r['created'])[:10].replace('-', '.') }}</small></a>{% endfor %}</div>
+  </section>
+  {% endif %}
+  <a class="ma-letter" href="{{ url_for('letter_home') }}#sub"><span><small>SOBORU LETTER</small><strong>{{ ui('mag.letter', '이런 이야기, 아침마다 메일로 받아 볼래요?') }}</strong></span><em>{{ ui('letter.mz_bn_go', '무료로 구독하기') }} →</em></a>
+  <a class="ma-up" href="#top" aria-label="맨 위로">↑</a>
+</main>
+<script>(function(){var b=document.querySelector('[data-ma-copy]');if(!b)return;b.onclick=function(){var u=b.getAttribute('data-ma-copy');(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){b.classList.add('on');setTimeout(function(){b.classList.remove('on')},1400)}).catch(function(){prompt('링크를 복사해 주세요',u)})}})();</script>
