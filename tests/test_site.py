@@ -497,12 +497,12 @@ class SiteTest(unittest.TestCase):
         r = self.post_form(guest, '/expert/join/' + token, {'name': '김변호', 'field': '변호사', 'email': 'kim@x.kr', 'agree': '1', 'proof': pdf(), 'photo': (pic, 'me.jpg')})
         self.assertEqual(r.status_code, 302)
         done = guest.get(r.headers['Location']).get_data(as_text=True)
-        self.assertIn('/expert/claim/', done)  # 로그인 없이 등록 → 댓글용 계정은 나중에 한 번 잇기
+        # 운영자 2026-11-04: 등록하면 자문단 회원 계정이 바로 생기고 로그인됨 (따로 로그인·잇기 없음)
+        self.assertIn('자문단 계정이 만들어졌어요', done); self.assertNotIn('/expert/claim/', done)
         self.assertEqual(guest.get('/expert/join/' + token).status_code, 404)  # 링크는 한 번만
-        with self.site.conn() as db: key = db.execute("SELECT claim FROM experts WHERE name='김변호'").fetchone()[0]
-        pro, pid = self.member_client('pro_kim', '김변')
-        self.assertEqual(pro.get('/expert/claim/' + key).status_code, 302)
+        pro = guest
         self.assertIn('자문단 · 변호사', pro.get('/expert/apply').get_data(as_text=True))
+        with self.site.conn() as db: self.assertEqual(db.execute("SELECT u.nickname FROM experts e JOIN users u ON u.id=e.user_id WHERE e.name='김변호'").fetchone()[0], '김변호')
         # 직접 신청은 승인 전까지 표시 없음
         other, oid = self.member_client('pro_lee', '이사정')
         self.assertEqual(self.post_form(other, '/expert/apply', {'name': '이사정', 'field': '교수', 'agree': '1', 'phone': '010-1234-5678',
@@ -554,7 +554,7 @@ class SiteTest(unittest.TestCase):
         token3 = self.csrf(firm, '/reports/%d' % cid)
         firm.post('/reports/%d/comment' % cid, data={'_csrf': token3, 'body': '소비자 분쟁 상담을 돕고 있어요.'})
         self.assertIn('자문단 · 법무법인', self.client.get('/reports/%d' % cid).get_data(as_text=True))
-        with self.site.conn() as db: kim = db.execute('SELECT id FROM experts WHERE user_id=?', (pid,)).fetchone()[0]
+        with self.site.conn() as db: kim = db.execute("SELECT id FROM experts WHERE name='김변호'").fetchone()[0]
         self.post_form(adm, '/admin/experts', {'act': 'stop', 'id': kim})
         self.assertNotIn('자문단 · 변호사', self.client.get('/reports/%d' % cid).get_data(as_text=True))
         self.assertEqual(self.client.get(photo).status_code, 404)  # 멈추면 사진도 안 보임
