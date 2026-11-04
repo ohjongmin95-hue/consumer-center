@@ -41,7 +41,7 @@ SKIP = ('naver.', 'daum.', 'kakao.', 'google.', 'tistory.', 'wikipedia.', 'namu.
 
 GENERIC = set("""치과 병원 의원 한의원 피부과 성형외과 안과 정형외과 약국 학원 어학원 헬스장 피트니스 필라테스 요가 pt 미용실 네일 네일샵 피부관리실 카페 식당 음식점 술집 치킨 피자
     쇼핑몰 온라인쇼핑몰 인터넷쇼핑몰 오픈마켓 마트 편의점 슈퍼 백화점 부동산 중개사무소 공인중개사 이사 이삿짐센터 이사업체 택배 택배사 배달 배달앱 은행 카드사 보험 보험사 통신사
-    렌탈 렌터카 중고차 중고나라 중고거래 당근 숙소 호텔 모텔 펜션 리조트 여행사 항공사 인테리어 인테리어업체 세탁소 정비소 카센터 공방 스튜디오 사진관 웨딩홀 예식장 상조
+    렌탈 렌터카 중고차 중고거래 숙소 호텔 모텔 펜션 리조트 여행사 항공사 인테리어 인테리어업체 세탁소 정비소 카센터 공방 스튜디오 사진관 웨딩홀 예식장 상조
     업체 회사 가게 판매자 개인 개인판매자 모름 기타 없음 불명 사업자 쇼핑 앱 어플 사이트 홈페이지 고객센터 대리점 매장 지점 본사""".split())
 
 
@@ -66,6 +66,30 @@ def naver_get(url, headers):
         with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=8) as r: return r.status, json.loads(r.read().decode() or '{}')
     except Exception:
         return 0, {}
+
+
+def naver_logo(name):
+    """운영자 2026-11-04: 기업 홈페이지에 들어가지 말고 네이버 이미지 검색에서 '이름 로고'로 받기. 제목에 이름이 있고 '로고·CI·logo'인 그림만. 못 받으면 b''."""
+    base, headers = naver_keys()
+    if not base or generic(name): return b''
+    base = base.replace('webkr', 'image')
+    st, res = naver_get(base + '?' + urllib.parse.urlencode({'query': name[:60] + ' 로고', 'display': 10, 'filter': 'medium'}), headers)
+    if st != 200: return b''
+    key = squash(name)
+    for it in res.get('items') or []:
+        title = squash(re.sub(r'<[^>]+>', '', it.get('title') or ''))
+        if key not in title or not re.search(r'로고|logo|ci|bi|심볼|symbol', title): continue
+        for url in (it.get('link'), it.get('thumbnail')):
+            if not url or not url.startswith('https://'): continue
+            try: png = company_logo.to_png(company_logo.get(url))
+            except Exception: png = b''
+            if png: return png
+    return b''
+
+
+def get_logo(name, domain):
+    """네이버 이미지 검색 먼저, 안 되면 도메인의 아이콘."""
+    return naver_logo(name) or (company_logo.fetch(domain) if domain else b'')
 
 
 def naver_find(name):
@@ -104,7 +128,7 @@ def run(S, limit=40, log=print, again=False):
     since = '9999' if again else time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(time.time() - RETRY_DAYS * 86400))  # again: 30일 기다리지 않고 다시
     with conn() as db:
         rows = db.execute("""SELECT co.id, co.name, co.brand, COUNT(c.id) AS n FROM companies co JOIN cases c ON c.company_id=co.id
-                             WHERE co.domain='' AND co.status IN ('active','listed') AND (co.logo_at='' OR co.logo_at<?)
+                             WHERE co.domain='' AND co.logo='' AND co.status IN ('active','listed') AND (co.logo_at='' OR co.logo_at<?)
                              GROUP BY co.id ORDER BY MAX(c.public_consent*c.published) DESC, n DESC LIMIT ?""", (since, limit)).fetchall()
     got = 0
     with conn() as db:  # 예전에 업종 이름만으로 잘못 받은 로고 지우기
@@ -112,12 +136,26 @@ def run(S, limit=40, log=print, again=False):
             if generic(g['brand'] or g['name']):
                 (folder / g['logo']).unlink(missing_ok=True) if re.fullmatch(r'\d+\.png', g['logo']) else None
                 db.execute("UPDATE companies SET domain='',logo='',logo_at=? WHERE id=?", (S.now(), g['id'])); log(f"{g['name']}: 업종 이름뿐이라 로고 지움")
+    # 큰 기업 목록(data/companies_seed.csv)에 주소가 있는 이름이면 그 주소를 먼저 씀 (운영자 2026-11-04: 당근 = 당근마켓 daangn.com)
+    import csv
+    from pathlib import Path
+    seed = {}
+    try:
+        for row in csv.DictReader(open(Path(__file__).resolve().parent / 'data' / 'companies_seed.csv', encoding='utf-8')):
+            for n in [row.get('이름'), row.get('법인명')] + (row.get('다른 이름') or '').split('|'):
+                if n and (row.get('도메인') or '').strip(): seed.setdefault(squash(n), row['도메인'].strip())
+    except OSError:
+        pass
+    with conn() as db:
+        for c in db.execute("SELECT id,name,brand FROM companies WHERE domain='' AND logo=''").fetchall():
+            d = next((seed[squash(n)] for n in (c['brand'], c['name']) if n and squash(n) in seed), '')
+            if d: db.execute("UPDATE companies SET domain=?,logo_at='' WHERE id=?", (company_logo.clean_domain(d), c['id']))
     # 운영자 2026-11-04: 도메인은 있는데 로고가 없는 곳(쿠팡처럼 처음에 못 받은 곳)도 다시 받기 + 이름이 같은 기업끼리 로고 나눠 쓰기
     with conn() as db:
         known = db.execute("SELECT id,name,brand,domain,logo FROM companies WHERE domain!='' AND logo='' AND (logo_at='' OR logo_at<?) LIMIT ?", (since, limit)).fetchall()
     for k in known:
         if generic(k['brand'] or k['name']): continue
-        png = company_logo.fetch(k['domain'])
+        png = get_logo(k['brand'] or k['name'], k['domain'])
         with conn() as db:
             if png:
                 (folder / f"{k['id']}.png").write_bytes(png); db.execute("UPDATE companies SET logo=?,logo_at=? WHERE id=?", (f"{k['id']}.png", S.now(), k['id'])); got += 1
@@ -144,15 +182,15 @@ def run(S, limit=40, log=print, again=False):
         else:
             domain, names = ask(name)
             ok = bool(domain) and confirmed(domain, names + [r['name'], r['brand'] or ''])
-        png = company_logo.fetch(domain) if ok else b''
+        png = get_logo(name, domain if ok else '') if (ok or naver_keys()[0]) else b''
         with conn() as db:
             if png:
                 (folder / f"{r['id']}.png").write_bytes(png)
-                db.execute("UPDATE companies SET domain=?,logo=?,logo_at=? WHERE id=? AND domain=''", (domain, f"{r['id']}.png", S.now(), r['id']))
+                db.execute("UPDATE companies SET domain=?,logo=?,logo_at=? WHERE id=? AND domain=''", (domain if ok else '', f"{r['id']}.png", S.now(), r['id']))
                 got += 1
             else:
                 db.execute("UPDATE companies SET logo_at=? WHERE id=? AND domain=''", (S.now(), r['id']))  # 30일 동안 다시 묻지 않음
-        log(f"{r['name']}: {'로고 받음 (' + domain + ')' if png else ('홈페이지 확인 안 됨 (' + domain + ')' if domain else '공식 홈페이지 없음')}")
+        log(f"{r['name']}: {'로고 받음' + (' (' + domain + ')' if domain else '') if png else ('로고를 못 찾음 (' + domain + ')' if domain else '공식 홈페이지·로고 없음')}")
     return got
 
 
