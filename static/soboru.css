@@ -3059,3 +3059,13 @@ body.lt-alone{background:#fff}
 .sm-tc .sm-dots{display:none}
 @media(max-width:700px){.sm-emo.e4{font-size:72px}}
 .sm-tc b{max-width:64%}.sm-tc em{position:relative;z-index:1}
+/* 운영자 2026-11-04: Pretendard만 쓰지 말고 캐릿처럼 — 제목은 포스터 글꼴 */
+.sm-page .sm-say p,.sm-page .sm-br,.sm-page .sm-h h2,.sm-page .sm-tile h2,.sm-page .sm-cv b,.sm-page .sm-tc b,.sm-page .sm-letter h2,.sm-page .sm-deep b,.sm-page .sm-four b{font-family:"Black Han Sans","Pretendard Variable",Pretendard,"Noto Sans KR",sans-serif;font-weight:400;letter-spacing:-.01em}
+.sm-page .sm-tag strong,.sm-page .sm-stk b,.sm-page .sm-stk2 b,.sm-page .sm-stk3 b,.sm-page .sm-hot,.sm-page .sm-ctl,.sm-page .sm-pg,.sm-page .sm-meta time{font-family:"Archivo Black","Black Han Sans",sans-serif;font-weight:400}
+.sm-page .sm-say p{font-size:clamp(26px,2.6vw,38px);line-height:1.32}
+.sm-page .sm-br{font-size:clamp(21px,2vw,28px);line-height:1.38}
+.sm-page .sm-h h2{font-size:36px}.sm-page .sm-card h3{font-weight:700}
+.sm-page .sm-meta time{font-size:13px;letter-spacing:.02em}
+@media(max-width:700px){.sm-page .sm-h h2{font-size:27px}.sm-page .sm-say p{font-size:25px}}
+.sm-page .sm-tile h2{color:#fff}.sm-page .sm-tile h2 em{color:var(--or)}
+.sm-page .sm-say p{-webkit-line-clamp:5;font-size:clamp(24px,2.4vw,34px)}

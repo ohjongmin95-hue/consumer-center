@@ -2,6 +2,7 @@
 {% from 'letter_macros.html' import subscribe_form with context %}
 {% block title %}{{ ui_text('letter.title', '소보루 레터') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui_text('letter.description', '평일 아침마다 그날 꼭 알아야 할 주요 이슈를 쉽게 풀어 메일로 보내 드려요. 내 생활에 어떤 의미인지, 관련 법, 소보루 픽 인기 리뷰까지.') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Archivo+Black&display=swap">{# 운영자 2026-11-04: 매거진 제목은 캐릿처럼 포스터 느낌 글꼴 (Black Han Sans·Archivo Black, SIL OFL) #}{% endblock %}
 {% block content %}
 {% set cfg = letter_cfg() %}
 {# 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['letter']) #}
