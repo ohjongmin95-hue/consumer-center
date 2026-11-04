@@ -400,6 +400,24 @@ class SiteTest(unittest.TestCase):
             db.execute('DELETE FROM case_shots')
             for c in cids: db.execute('DELETE FROM attachments WHERE case_id=?', (c,)); db.execute('DELETE FROM hero_photos WHERE case_id=?', (c,)); db.execute('DELETE FROM cases WHERE id=?', (c,))
 
+    def test_howto(self):
+        # 운영자 2026-11-04: 분쟁·대응 메뉴 — 글은 미리 만들지 않음. 관리자가 공개한 글이 생기면 메뉴에 보임
+        jebo = 'https://consumerjebo.co.kr'
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        self.assertNotIn('href="/howto"', self.client.get('/', base_url=jebo).get_data(as_text=True))
+        self.assertIn('준비하고 있어요', self.client.get('/howto', base_url=jebo).get_data(as_text=True))
+        admin = self.login_admin(); token = self.csrf(admin, '/admin/howto')
+        r = admin.post('/admin/howto', data={'_csrf': token}); gid = int(r.headers['Location'].rstrip('/').rsplit('/', 1)[1])
+        self.assertEqual(self.client.get('/howto/%d' % gid).status_code, 404)  # 초안은 안 보임
+        admin.post('/admin/howto/%d' % gid, data={'_csrf': token, 'act': 'save', 'title': '환불을 안 해 줄 때', 'topic': '환불·반품', 'emoji': '💸', 'status': 'published', 'sort': '1',
+                                               'body': '도입이에요.\n\n## 먼저 확인할 것\n- 받은 날짜\n\n## 이렇게 대처해요\n- 캡처 <b>해요</b>'})
+        page = self.client.get('/howto/%d' % gid, base_url=jebo).get_data(as_text=True)
+        self.assertIn('ck-check', page); self.assertIn('ck-steps', page); self.assertIn('&lt;b&gt;', page)
+        home = self.client.get('/', base_url=jebo).get_data(as_text=True)
+        self.assertIn('href="/howto"', home); self.assertIn('분쟁·대응', home)
+        self.assertIn('환불을 안 해 줄 때', self.client.get('/howto', base_url=jebo).get_data(as_text=True))
+        with self.site.conn() as db: db.execute('DELETE FROM howto_guides')
+
     def test_company_typo_fix(self):
         # 운영자 2026-11-03: 큰 기업 이름 오타는 자동으로 (큐팡 → 쿠팡). 헷갈리거나 모르는 이름은 그대로
         import company_fix

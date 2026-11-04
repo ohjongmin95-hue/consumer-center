@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{# 운영자 2026-11-04: 분쟁·대응 — 피해를 입었을 때 상황별로 어떻게 하면 되는지 (둘러보기와 따로, 'TIP'이라는 말 없이) #}
+{% block title %}{{ ui('howto.title', '분쟁·대응') }}{% if topic %} · {{ topic }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('howto.meta', '환불 거부, 배송 지연, 위약금 같은 소비자 피해를 입었을 때 무엇을 확인하고 어떻게 대응하면 되는지 상황별로 정리했어요.') }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap ck-wrap ht-wrap">
+  <h1 class="xh-title">{{ ui('howto.title', '분쟁·대응') }}</h1>
+  <ol class="ht-flow" aria-label="{{ ui('howto.flow', '피해를 입었다면 이 순서로') }}">{% for e, t, s in flow %}<li><i class="tf" aria-hidden="true">{{ e }}</i><b>{{ t }}</b><small>{{ s }}</small></li>{% endfor %}</ol>
+  {% if topics|length > 1 %}<nav class="rf-cats" aria-label="{{ ui('howto.topics', '상황') }}"><a href="{{ url_for('howto_list') }}"{% if not topic %} class="on" aria-current="true"{% endif %}>{{ ui('reports.cat_all', '전체') }}</a>{% for t in topics %}<a href="{{ url_for('howto_list', t=t) }}"{% if t == topic %} class="on" aria-current="true"{% endif %}>{{ t }}</a>{% endfor %}</nav>{% endif %}
+  {% if guides %}<ul class="ck-list">{% for gd in guides %}<li><a href="{{ url_for('howto_page', gid=gd.id) }}"><span class="ck-tile sm tf" aria-hidden="true">{{ gd.emoji or '📌' }}</span>{% if gd.topic %}<small>{{ gd.topic }}</small>{% endif %}<b>{{ gd.title }}</b>{% if gd.excerpt %}<span>{{ gd.excerpt }}</span>{% endif %}</a></li>{% endfor %}</ul>
+  {% else %}<p class="rk-empty">{{ ui('howto.empty', '상황별 대응 글을 준비하고 있어요.') }}</p>{% endif %}
+</div></main>
+{% endblock %}

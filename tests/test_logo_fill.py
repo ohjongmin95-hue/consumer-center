@@ -16,6 +16,10 @@ class LogoFillTest(unittest.TestCase):
             self.assertTrue(logo_fill.confirmed('coupang.com', ['쿠팡']))
         with mock.patch.object(logo_fill.company_logo, 'get', return_value=b'<title>other</title>'):
             self.assertFalse(logo_fill.confirmed('coupang.com', ['쿠팡']))
+        with mock.patch.object(logo_fill.company_logo, 'get', side_effect=OSError('403')):  # 봇을 막는 홈페이지: 도메인에 영문 이름이 있으면 인정
+            self.assertTrue(logo_fill.confirmed('daisomall.co.kr', ['다이소몰', 'Daiso']))
+            self.assertFalse(logo_fill.confirmed('daisomall.co.kr', ['다이소몰']))
+            self.assertFalse(logo_fill.confirmed('mall.co.kr', ['DB', 'ab']))
 
 
 if __name__ == '__main__':

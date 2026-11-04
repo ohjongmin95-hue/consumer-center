@@ -2058,3 +2058,11 @@ main:has(>.org-band.is-bottom){padding-bottom:32px!important}
 @media(max-width:900px){.home-shots .shot-row{grid-auto-columns:calc((100% - 16px)/2.3)}}
 @media(max-width:560px){.home-shots .shot-row{grid-auto-columns:72%;gap:12px}.home-shots .section-head h2{font-size:20px}.shot-card strong{font-size:15px}}
 .hp-grid.shots .hp-item img{aspect-ratio:4/3;height:auto}
+/* 운영자 2026-11-04: 분쟁·대응 — 맨 위 '이 순서로' 네 단계 (토스 카드, 우리 귤색 번호) */
+.ht-flow{list-style:none;margin:0 0 6px;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;counter-reset:ht}
+.ht-flow li{counter-increment:ht;display:grid;gap:4px;padding:18px 18px 16px;border-radius:18px;background:#fff8ef;position:relative}
+.ht-flow li::before{content:counter(ht);position:absolute;top:16px;right:16px;width:22px;height:22px;border-radius:50%;background:#EF920E;color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}
+.ht-flow i{font-style:normal;font-size:26px;line-height:1;margin-bottom:6px}
+.ht-flow b{font-size:16px;font-weight:700;color:#191f28;letter-spacing:-.02em}
+.ht-flow small{font-size:13.5px;color:#6b7684}
+@media(max-width:700px){.ht-flow{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ht-flow li{padding:16px}}

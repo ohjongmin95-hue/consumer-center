@@ -120,7 +120,12 @@ def experts_menu(rows):
         if r.get('page') in ('experts','board','explore'):
             if not seen:out.append({**r,'label':'둘러보기' if r.get('page')!='explore' else r.get('label') or '둘러보기','page':'explore','url':''});seen=True
         else:out.append(r)
-    return help_menu(out)
+    return howto_menu(help_menu(out))
+def howto_menu(rows):
+    """운영자 2026-11-04: 둘러보기 옆에 '분쟁·대응' 메뉴 (저장된 메뉴에도 넣음)."""
+    if any(r.get('page')=='howto' for r in rows):return rows
+    i=next((n+1 for n,r in enumerate(rows) if r.get('page')=='explore'),len(rows))
+    return rows[:i]+[{'label':'분쟁·대응','page':'howto','url':''}]+rows[i:]
 def help_menu(rows):
     """운영자 2026-11-03: 고객센터 = 서비스 이용 안내(자주 묻는 질문). AI 상담은 고객센터가 아니라 둘러보기 안으로 옮김."""
     out=[];seen=False
@@ -183,6 +188,8 @@ def menu_href(item):
     if page=='ask':return url_for('law_ask') if 'law_ask' in app.view_functions else ''  # AI 소비자 상담 (운영자 2026-11-03 제보센터로 옮김)
     if page=='rank':return url_for('companies_rank')
     if page=='check':return url_for('check_list')
+    if page=='howto':  # 운영자 2026-11-04: 공개한 글이 생기면 메뉴에 보임
+        with conn() as db:return url_for('howto_list') if db.execute("SELECT 1 FROM howto_guides WHERE status='published' LIMIT 1").fetchone() else ''
     if page in ('reports','board','report','lookup','home','takedown','groups','companies'):return url_for(page)
     return '#'
 def menu_active(href):
@@ -2954,6 +2961,7 @@ _rag=types.SimpleNamespace(**globals());lawrag.install(_rag)
 import soboru_letter;soboru_letter.install(types.SimpleNamespace(**globals()))  # 소보루 레터: 주간 뉴스레터·구독·발송 (soboru_letter.py)
 import report_talk;report_talk.install(types.SimpleNamespace(**globals()))  # 대화로 제보하기: AI가 묻고 초안을 채움 (report_talk.py)
 import hero_photos;hero_photos.install(types.SimpleNamespace(**globals()))  # 첫 화면 배경 사진: 실제 제보 사진을 가린 사본으로 (hero_photos.py)
+import howto;howto.install(types.SimpleNamespace(**globals()))  # 분쟁·대응: 상황별 대응 글 (howto.py)
 import case_shots;_cs=types.SimpleNamespace(**globals());case_shots.install(_cs);case_shots_fill=_cs.case_shots_fill  # 첫 화면 아래 '사진으로 보는 제보': 이름·번호만 가린 사본 (case_shots.py)
 import experts;experts.install(types.SimpleNamespace(**globals()))  # 전문가 등록: 관리자 초대 링크·직접 신청, 승인되면 댓글에 전문가 표시 (experts.py)
 import expert_mail;expert_mail.install(types.SimpleNamespace(**globals()))  # 자문단 섭외 메일: 로펌 이름 넣고 하이웍스용 HTML 복사 (expert_mail.py)

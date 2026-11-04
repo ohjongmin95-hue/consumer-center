@@ -1,0 +1,24 @@
+{% extends 'console.html' %}
+{% block title %}{{ r['title'] }} | 분쟁·대응 | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><a href="{{ url_for('admin_howto') }}">‹ 분쟁·대응</a><h1 class="page-title">글 고치기</h1>
+    <p class="meta">‘## 소제목’, ‘- 항목’, 빈 줄로 나눈 문단만 써요. 소제목에 ‘확인’이 있으면 체크 줄, ‘대처’나 ‘이렇게’가 있으면 번호 줄로 보여요. 공개로 저장하면 사이트에 바로 보여요. <a href="{{ url_for('howto_page', gid=r['id']) }}" target="_blank" rel="noopener">미리 보기 ›</a></p></div>
+  <form method="post" class="form-panel ck-edit">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>제목 <input name="title" value="{{ r['title'] }}" maxlength="80" required></label>
+    <div class="ck-row"><label>상황 <input name="topic" value="{{ r['topic'] }}" maxlength="20" list="ht-topics" placeholder="예: 환불·반품"></label><datalist id="ht-topics">{% for t in topics %}<option value="{{ t }}">{% endfor %}</datalist>
+    <label>그림 <input name="emoji" value="{{ r['emoji'] }}" maxlength="4" size="4" placeholder="📌"></label>
+    <label>순서 <input name="sort" type="number" value="{{ r['sort'] }}" style="width:80px"></label>
+    <label>상태 <select name="status">{% for k, v in statuses.items() %}<option value="{{ k }}"{% if k == r['status'] %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></label></div>
+    <label>본문 <textarea name="body" rows="22" maxlength="8000">{{ r['body'] }}</textarea></label>
+    <button class="primary" name="act" value="save" type="submit">저장</button>
+  </form>
+  <form method="post" class="ck-del"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="delete" class="danger" onclick="return confirm('지울까요?')">이 글 지우기</button></form>
+</div></main>
+<style>
+.ck-edit{display:grid;gap:14px}.ck-edit label{display:grid;gap:6px;font-weight:700;font-size:14px}.ck-row{display:flex;gap:12px;flex-wrap:wrap}
+.ck-edit textarea{font:inherit;line-height:1.7;padding:12px;border:1px solid #e5e8eb;border-radius:12px}
+.ck-del{margin-top:12px;text-align:right}.ck-del button{background:none;border:0;color:#e03131;cursor:pointer;font-weight:600}
+</style>
+{% endblock %}

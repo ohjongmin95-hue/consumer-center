@@ -4,6 +4,7 @@ company_logo.fetch로 로고를 받아 둔다. 작은 가게처럼 공식 홈페
 
 서버에서 한 번에 돌리기:
   sudo systemd-run --wait --pipe -p User=soboru -p EnvironmentFile=/etc/soboru.env -p WorkingDirectory=/opt/soboru/app /opt/soboru/venv/bin/python -m logo_fill
+  (30일 안에 못 찾은 곳도 다시 찾으려면 맨 뒤에 again)
 """
 import json, logging, re, time
 
@@ -15,7 +16,9 @@ RETRY_DAYS = 30
 PROMPT = ('한국 소비자가 제보한 업체 이름을 받아, 그 업체의 공식 홈페이지 도메인을 알려 주세요. '
           'JSON만: {"domain": "coupang.com", "names": ["쿠팡", "coupang"], "sure": true}. '
           '널리 알려진 기업·브랜드의 공식 사이트일 때만 sure=true. 개인 가게, 이름이 흔해 어느 곳인지 모를 때, 확실하지 않을 때는 {"domain": "", "names": [], "sure": false}. '
-          '쇼핑몰 입점 판매자는 판매자 자체 사이트가 없으면 빈 값. 도메인만 (https://, www., 경로 없이).')
+          '쇼핑몰 입점 판매자는 판매자 자체 사이트가 없으면 빈 값. 도메인만 (https://, www., 경로 없이). '
+          '소비자가 적은 이름이라 대소문자·띄어쓰기·주식회사 표기가 틀리거나 줄여 쓴 경우가 많아요. 어느 회사인지 분명하면 바르게 알아듣고 답하세요 '
+          '(예: "Db손해보험" → {"domain": "idbins.com", "names": ["DB손해보험", "DB"], "sure": true}). names에는 한글 이름과 영문 이름을 함께.')
 
 
 def ask(name):
@@ -43,13 +46,15 @@ def confirmed(domain, names):
         except Exception:
             continue
         if any(len(squash(n)) >= 2 and squash(n) in html for n in names): return True
-    return False
+    # 운영자 2026-11-04: 다이소몰처럼 홈페이지가 프로그램(봇)을 막는 곳 → 도메인 자체에 영문 이름이 들어 있으면 인정 (daiso → daisomall.co.kr)
+    base = domain.split('.')[0]
+    return any(re.fullmatch(r'[a-z0-9]{4,}', squash(n)) and squash(n) in base for n in names)
 
 
-def run(S, limit=40, log=print):
+def run(S, limit=40, log=print, again=False):
     """도메인 없는 기업(공개 제보가 있는 곳 먼저) → 공식 홈페이지 찾기 → 로고 받기. 받은 수를 돌려줌."""
     conn = S.conn; folder = S.UPLOAD / 'logos'; folder.mkdir(parents=True, exist_ok=True)
-    since = time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(time.time() - RETRY_DAYS * 86400))
+    since = '9999' if again else time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(time.time() - RETRY_DAYS * 86400))  # again: 30일 기다리지 않고 다시
     with conn() as db:
         rows = db.execute("""SELECT co.id, co.name, co.brand, COUNT(c.id) AS n FROM companies co JOIN cases c ON c.company_id=co.id
                              WHERE co.domain='' AND co.status IN ('active','listed') AND (co.logo_at='' OR co.logo_at<?)
@@ -72,6 +77,7 @@ def run(S, limit=40, log=print):
 
 
 if __name__ == '__main__':
+    import sys
     import app as site
-    n = run(site, limit=500)
+    n = run(site, limit=500, again='again' in sys.argv[1:])
     print(f'로고를 새로 받은 기업: {n}곳')
