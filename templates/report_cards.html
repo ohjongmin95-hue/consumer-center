@@ -5,8 +5,9 @@
   {% for c in report_cards(cases, 160) %}{% include 'report_card.html' %}{% endfor %}
   {% for sample in sample_fill(cases, n or home_latest()) %}{% set step = pub_step(my_step({'status': sample.status})) %}
   <div class="nn-vc-card vc-simple is-sample" aria-label="{{ ui('home.card_sample', '예시') }}">
+    <p class="vcs-co-top">{{ sample.company }}</p>
     <h3>{{ sample.title }}</h3>
-    <div class="vcs-foot"><span class="vcs-line"><span class="vcs-st vcs-{{ step }}">{{ pub_names()[step - 1] }}</span><span class="vcs-co">{{ sample.company }}</span><time>{{ ui('home.card_sample', '예시') }}</time></span></div>
+    <div class="vcs-foot"><span class="vcs-line"><span class="vcs-st vcs-{{ step }}">{{ pub_names()[step - 1] }}</span><time>{{ ui('home.card_sample', '예시') }}</time></span></div>
   </div>
   {% endfor %}
   {% if not cases and not sample_fill(cases, n or home_latest()) %}<div class="empty report-cards-empty">{{ txt('home.empty') }}</div>{% endif %}

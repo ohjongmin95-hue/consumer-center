@@ -145,7 +145,13 @@ def _load_lists():
         return {key:saved[key] if key in saved else (legacy_list(db,key) or site_content.LIST_DEFAULTS[key]) for key,*_ in site_content.LISTS}
 @app.before_request
 def retired_host():
-    if request.host.split(':')[0].lower() in RETIRED_HOSTS:
+    host=request.host.split(':')[0].lower()
+    if letter_host(host):
+        # 운영자 2026-11-04: soboru.co.kr(+letter.soboru.co.kr)은 소보루 레터 구독 페이지만. 나머지 주소는 소비자제보센터로
+        if request.path=='/':return redirect('/letter',302)
+        if request.path.startswith(LETTER_PATHS) or request.path in ('/terms','/privacy','/favicon.ico','/robots.txt'):return None
+        return redirect('https://consumerjebo.co.kr'+request.full_path.rstrip('?'),301)
+    if host in RETIRED_HOSTS:
         return redirect('https://consumerjebo.co.kr'+request.full_path.rstrip('?'),301)
 @app.before_request
 def no_www():
@@ -231,6 +237,11 @@ CANONICAL_HOST=(os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().low
 # 서버 설정에 CANONICAL_HOST=soboru.co.kr이 남아 있어도 대표 주소는 consumerjebo.co.kr. soboru.co.kr로 들어오면 전부 consumerjebo.co.kr로 보냄
 # (cs.soboru.co.kr·biz.soboru.co.kr 소보루CS는 다른 서비스라 그대로)
 RETIRED_HOSTS={'soboru.co.kr','www.soboru.co.kr'}
+LETTER_HOSTS={'soboru.co.kr','www.soboru.co.kr','letter.soboru.co.kr'}  # 레터 구독 페이지만 여는 주소 (운영자 2026-11-04)
+LETTER_PATHS=('/letter','/static/','/hero/','/partner/')
+def letter_host(host):return host in LETTER_HOSTS and (host in RETIRED_HOSTS or host.startswith('letter.'))
+def letter_alone():return has_request_context() and (request.path.startswith('/letter') or letter_host(request.host.split(':')[0].lower()))
+app.jinja_env.globals['letter_alone']=letter_alone
 if CANONICAL_HOST in RETIRED_HOSTS:CANONICAL_HOST='consumerjebo.co.kr'
 LIVE_HOSTS={h for d in (CANONICAL_HOST,'consumerjebo.co.kr','soboru.co.kr') for h in (d,'www.'+d)}
 # 소비자제보센터 화면으로 보여 줄 주소 (soboru.py가 화면을 바꿈). 대표 주소도 그 주소 그대로

@@ -2090,3 +2090,7 @@ body .rf-rows .vc-simple h3{min-height:0;-webkit-line-clamp:1}
 .rf-rows .vc-simple .vcs-foot{margin-top:0}
 @media(max-width:560px){.rf-rows .nn-vc-card.vc-simple{padding:18px 0!important}.rf-rows .nn-vc-card.vc-simple:hover{background:#fff}}
 .rf-rows .vc-simple .vcs-foot{justify-content:flex-start}.rf-rows .vc-simple .vcs-line{flex:1}
+/* 운영자 2026-11-04: 기업 이름은 맨 위에 잘 보이게, 그 아래 제목. 아래 줄은 상태·시간 + 좋아요·댓글 */
+.rf-list .vc-simple .vcs-co-top{display:flex;align-items:center;gap:4px;margin:0 0 -6px;font-size:14px;font-weight:700;color:#4e5968;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rf-list .vc-simple .vcs-co-top .vcs-lock{flex:none;width:13px;height:13px;margin:0;fill:none;stroke:#8b95a1;stroke-width:2;stroke-linejoin:round}
+.rf-rows .vc-simple .vcs-co-top{margin-bottom:-4px}
