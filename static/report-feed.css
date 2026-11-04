@@ -2036,3 +2036,7 @@ body:not(.sb):has(.auth-top) .auth-page{height:auto!important;min-height:calc(10
 .pf-cover-logo{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:#fff;box-shadow:0 6px 14px rgba(0,0,0,.12);overflow:hidden}
 .pf-cover-logo img{width:100%;height:100%;object-fit:cover}
 @media(max-width:640px){.pf-cover-logo{width:56px;height:56px}}
+/* 운영자 2026-11-04: 맨 아래 띠 위·아래 여백 줄임 */
+.org-band.is-bottom{margin:24px auto 0!important}
+main:has(>.org-band.is-bottom){padding-bottom:32px!important}
+@media(max-width:760px){.org-band.is-bottom{margin-top:16px!important}main:has(>.org-band.is-bottom){padding-bottom:24px!important}}
