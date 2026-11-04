@@ -265,6 +265,15 @@
     {% endfor %}
   </td></tr>
   {% endif %}
+  {#- 소비자제보센터 바로 가기 (운영자 2026-11-04): 레터를 다시 시작하며 맺음 앞에 큰 카드 하나. 링크엔 utm_source=letter (방문 통계 '들어온 곳') -#}
+  <tr><td style="padding:40px 22px 0;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff4e2;border-radius:22px;"><tr><td style="padding:28px 24px 26px;{{ F }}">
+      <a href="{{ jebo }}/?utm_source=letter" style="text-decoration:none;"><img src="{{ jebo }}/static/img/jebo-logo-mail-t.png" width="200" alt="소비자제보센터 by SOBORU" style="display:block;width:200px;max-width:100%;height:auto;border:0;margin:0 0 20px;"></a>
+      <p style="margin:0 0 10px;font-size:22px;line-height:1.45;font-weight:800;letter-spacing:-0.4px;color:#191f28;">{{ ic('mega', 24) }}&nbsp; 억울한 소비자 피해,<br>혼자 삭이지 마세요</p>
+      <p style="margin:0 0 20px;font-size:17px;line-height:1.8;color:#4e5968;">환불을 안 해 주거나, 광고와 다른 물건이 왔거나, 고객센터가 답이 없다면 소비자제보센터에 겪은 일을 올려 주세요. 기업에 답변을 요청하고, 검토해서 기사로 다룰 사안이면 기사로 알려요.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#EF920E" style="background:#EF920E;border-radius:16px;padding:16px 12px;{{ F }}"><a href="{{ jebo }}/?utm_source=letter" style="display:block;color:#ffffff;font-size:18px;font-weight:800;text-decoration:none;">소비자제보센터 바로 가기 ›</a></td></tr></table>
+    </td></tr></table>
+  </td></tr>
   {#- 맺음: 스티비 템플릿처럼 회색 상자 → 구독 버튼 → 작은 바닥글, 색·로고는 소보루 (운영자 2026-11-01) -#}
   <tr><td style="padding:34px 22px 0;{{ F }}">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fdf7ed;"><tr><td align="center" style="padding:28px 22px 26px;text-align:center;{{ F }}">
@@ -278,7 +287,6 @@
   </td></tr>
   <tr><td align="center" style="padding:30px 22px 0;{{ F }}">
     <a href="{{ site }}/letter" style="display:inline-block;padding:13px 30px;border:2px solid #ef920e;border-radius:999px;color:#ef7300;font-size:18px;font-weight:800;text-decoration:none;">소보루 레터 구독하기</a>
-    <p style="margin:16px 0 0;font-size:16px;line-height:1.6;color:#a39d97;text-align:justify;word-break:normal;">억울한 소비자 피해를 겪었다면 <a href="{{ site }}/report" style="color:#ef7300;font-weight:700;text-decoration:none;">소보루에 제보</a>해 주세요.</p>
   </td></tr>
   <tr><td align="center" style="padding:30px 22px 40px;text-align:center;{{ F }}">
     <a href="{{ site }}/" style="text-decoration:none;">{% if mark_brown %}<img src="{{ mark_brown }}" width="150" alt="SOBORU 소보루" style="display:block;width:150px;height:auto;border:0;margin:0 auto 14px;">{% else %}<b style="font-size:22px;color:#652D1C;">SOBORU</b>{% endif %}</a>
