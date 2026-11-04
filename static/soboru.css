@@ -3047,3 +3047,15 @@ body.lt-alone{background:#fff}
 .sm-tile h2{font-size:28px}.sm-tile h2 em{display:block}.sm-tile p{font-size:15px}
 .sm-card h3{min-height:0}.sm-meta{margin-top:auto;padding-top:14px}
 .sm-letter .lt-row input{background:transparent!important;box-shadow:none!important;border-left:0!important;border-right:0!important;border-top:0!important}
+/* 표지 위 큰 오브제 (캐릿 표지의 물건 사진 자리, 토스페이스) */
+.sm-emo{position:absolute;font-style:normal;line-height:1;font-family:Tossface,sans-serif;filter:drop-shadow(0 14px 18px rgba(101,45,28,.22))}
+.sm-emo.e1{right:9%;top:22%;font-size:clamp(90px,13vw,190px);transform:rotate(12deg)}
+.sm-emo.e2{right:46%;top:16%;font-size:clamp(38px,4.6vw,66px);transform:rotate(-14deg)}
+.sm-emo.e3{right:6%;bottom:22%;font-size:clamp(44px,5.4vw,78px);transform:rotate(-8deg)}
+.sm-page,.sm-page *:not(.tf):not(.sm-emo){font-family:"Pretendard Variable",Pretendard,"Noto Sans KR",-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+.sm-say p,.sm-br,.sm-h h2,.sm-tile h2,.sm-letter h2{font-weight:800}
+@media(max-width:700px){.sm-emo.e1{font-size:96px}.sm-emo.e2{font-size:40px}.sm-emo.e3{font-size:46px}}
+.sm-emo.e4{right:7%;top:50%;font-size:clamp(64px,7vw,104px);transform:translateY(-38%) rotate(10deg)}
+.sm-tc .sm-dots{display:none}
+@media(max-width:700px){.sm-emo.e4{font-size:72px}}
+.sm-tc b{max-width:64%}.sm-tc em{position:relative;z-index:1}

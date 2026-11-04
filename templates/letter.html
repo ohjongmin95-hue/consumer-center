@@ -8,7 +8,7 @@
 <main class="lt-page sm-page">
   {% for blk in blocks('letter') %}{{ ed_block('letter', blk) }}
   {% set cover = mag[0] if mag else None %}{% set latest = rows[0] if rows else None %}
-  {% macro thumb(a, n, big=False) %}{% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="sm-tc t{{ n % 3 }}{{ ' big' if big }}"><i class="sm-dots" aria-hidden="true"></i><em>{{ a['category'] }}</em><b>{{ a['title'] }}</b><img src="{{ asset('img/soboru-wordmark.png') }}" alt=""></span>{% endif %}{% endmacro %}
+  {% macro thumb(a, n, big=False) %}{% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="sm-tc t{{ n % 3 }}{{ ' big' if big }}"><i class="sm-dots" aria-hidden="true"></i><i class="sm-emo e4 tf" aria-hidden="true">{{ {'통신': '📱', '생활': '💡', '음식': '🍜', '자동차': '🚗', '쇼핑': '🛍️', '금융': '💳', '여행': '✈️'}.get(a['category'], '💰') }}</i><em>{{ a['category'] }}</em><b>{{ a['title'] }}</b><img src="{{ asset('img/soboru-wordmark.png') }}" alt=""></span>{% endif %}{% endmacro %}
   {% if blk == 'hero' %}
   {# 운영자 2026-11-04: 캐릿 첫 화면 구성을 기준으로(따라 그리진 않고 로고 두 색). 귤색 띠 안에 왼쪽 메뉴·가운데 로고·오른쪽 구독,
      그 아래 왼쪽 한 줄 · 가운데 표지(흰 바탕까지 걸침) · 오른쪽 제목, 화살표로 넘기는 표지 3장 #}
@@ -31,6 +31,8 @@
           <a class="sm-cover c{{ loop.index0 % 2 }}" href="{{ url_for('life_article', article_id=a['id']) }}">
             {% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="">{% else %}
             <span class="sm-cv"><i class="sm-dots" aria-hidden="true"></i><img class="sm-cv-logo" src="{{ asset('img/soboru-wordmark.png') }}" alt="">
+            {% set emo = {'통신': ['📱','💬','📞'], '생활': ['💡','🧾','🔌'], '음식': ['🍜','🍳','🛒'], '자동차': ['🚗','🛠️','🔑'], '쇼핑': ['🛍️','📦','💳'], '금융': ['💳','💰','📈'], '여행': ['✈️','📅','💳']}.get(a['category'], ['💰','🛒','📦']) %}
+            <i class="sm-emo e1 tf" aria-hidden="true">{{ emo[0] }}</i><i class="sm-emo e2 tf" aria-hidden="true">{{ emo[1] }}</i><i class="sm-emo e3 tf" aria-hidden="true">{{ emo[2] }}</i>
             <b>{{ a['category'] }}</b>
             <span class="sm-tag" aria-hidden="true"><strong>LIFE</strong><strong>ECONOMY</strong></span></span>{% endif %}
           </a>
