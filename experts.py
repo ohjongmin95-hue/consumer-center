@@ -123,9 +123,13 @@ def install(S):
         proof2 = save_proof(row['proof2'] if row else '', 'proof2')
         photo = save_photo(row['photo'] if row else '')
         status = 'approved' if invited else 'pending'
-        uid = g.user['id'] if g.user else None
-        claim = None if uid else secrets.token_urlsafe(16)
+        claim = None
         with conn() as db:
+            # 운영자 2026-11-04: 변호사가 따로 로그인하지 않게, 등록하는 순간 자문단 회원 계정을 만들고 바로 로그인시킴.
+            # 다음부터는 등록한 휴대폰 번호로 로그인하면 같은 계정. 이미 같은 번호의 회원이 있으면 그 계정에 이음
+            mine = g.user and db.execute('SELECT 1 FROM experts WHERE user_id=? AND id!=?', (g.user['id'], row['id'] if row else 0)).fetchone()
+            user = g.user if g.user and not mine else make_account(db, f)  # 이미 다른 자문단 계정으로 로그인돼 있으면(같은 브라우저로 여러 분 등록) 새 계정
+            uid = user['id']
             if row:
                 db.execute('UPDATE experts SET user_id=?,name=?,field=?,org=?,intro=?,phone=?,email=?,career=?,proof=?,proof2=?,photo=?,kind=?,status=?,token=NULL,claim=?,approved=? WHERE id=?',
                            (uid, *f.values(), proof, proof2, photo, kind, status, claim, now() if invited else '', row['id']))
@@ -133,8 +137,24 @@ def install(S):
             else:
                 eid = db.execute('INSERT INTO experts(user_id,name,field,org,intro,phone,email,career,proof,proof2,photo,kind,status,claim,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                                  (uid, *f.values(), proof, proof2, photo, kind, status, claim, now())).lastrowid
+        if not g.user or g.user['id'] != user['id']: S.sign_in(user, True)
         alert_new_expert(eid, f, kind, status)
         return eid, status, claim
+
+    def make_account(db, f):
+        phone = S.members.kr_phone(f['phone'])
+        if phone:
+            row = db.execute('SELECT * FROM users WHERE phone_verified=? ORDER BY id LIMIT 1', (phone,)).fetchone()
+            if row and not db.execute('SELECT 1 FROM experts WHERE user_id=?', (row['id'],)).fetchone(): return row
+        base = ''.join(ch for ch in f['name'] if ch.isalnum())[:10]
+        nick = next((n for n in [base] + [base + str(random.randint(2, 99)) for _ in range(5)] if n and not S.nickname_error(db, n)), '') or S.members.auto_nickname(db)
+        for _ in range(5):
+            login_id = 'x_' + secrets.token_hex(5)
+            if not db.execute('SELECT 1 FROM users WHERE login_id=?', (login_id,)).fetchone(): break
+        cur = db.execute("INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created,phone,phone_verified) VALUES(?,'',?,?,?,?,?,?,?,?)",
+                         (login_id, nick, f['email'], S.TERMS_VERSION, now(), S.ip_hash(), now(), phone, phone))
+        db.execute('UPDATE experts SET user_id=NULL WHERE user_id=?', (cur.lastrowid,))  # 지워진 옛 회원 번호가 다시 쓰인 경우 남은 연결 정리
+        return db.execute('SELECT * FROM users WHERE id=?', (cur.lastrowid,)).fetchone()
 
     def alert_new_expert(eid, f, kind, status):
         """운영자 2026-11-03 (밤): 자문단 가입이 들어오면 바로 하이웍스 메일(contact@)로 알림. EXPERT_ALERT_EMAIL로 바꿀 수 있음."""
