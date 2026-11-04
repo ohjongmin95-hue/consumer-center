@@ -2029,3 +2029,7 @@ body:not(.sb):has(.auth-top) .auth-page{height:auto!important;min-height:calc(10
 .xs-iphone .ipr-login{white-space:nowrap}
 .xs-feat-art:has(.xs-iphone) .xs-float{left:auto!important;right:4%!important;top:auto!important;bottom:10%!important;min-width:0!important;z-index:2}
 @media(max-width:760px){.xs-phone.xs-iphone{width:76%!important;padding:6px 6px 0!important;border-radius:40px 40px 0 0!important}.xs-iphone .xs-screen{border-radius:34px 34px 0 0!important;padding-top:18px!important}.xs-feat-art:has(.xs-iphone) .xs-float{right:3%!important;bottom:8%!important}}
+/* 운영자 2026-11-04: 맨 아래 협력기관 띠는 회색 없이 원래 색 */
+.org-band.is-bottom{margin-top:64px!important}
+.org-band.is-bottom .org-track li img{filter:none!important;opacity:1!important}
+@media(max-width:760px){.org-band.is-bottom{margin-top:40px!important}}
