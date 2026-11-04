@@ -2,7 +2,7 @@
 <header class="lt-top">
   <div class="sb-wrap lt-top-in">
     {% if request.endpoint == 'letter_home' %}
-    <nav class="lt-top-links"><a href="#latest">{{ ui('letter.mz_nav1', '최신 이야기') }}</a><a href="#deep">{{ ui('letter.mz_nav2', '깊이 읽기') }}</a><a href="#sub">{{ ui('letter.mz_top3', '소보루 레터') }}</a><a href="https://consumerjebo.co.kr/">{{ ui('letter.mz_top4', '제보하기 ↗') }}</a></nav>
+    <nav class="lt-top-links"><a href="#coll">{{ ui('letter.mz_top1', '체크리스트') }}</a><a href="#board">{{ ui('letter.mz_top2', '생활 물가') }}</a><a href="#sub">{{ ui('letter.mz_top3', '소보루 레터') }}</a><a href="https://consumerjebo.co.kr/">{{ ui('letter.mz_top4', '제보하기 ↗') }}</a></nav>
     {% else %}
     <a class="lt-top-logo" href="{{ url_for('letter_home') }}" aria-label="SOBORU"><img src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="SOBORU" width="104" height="20"></a>
     {% endif %}
