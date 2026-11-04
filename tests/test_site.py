@@ -368,6 +368,7 @@ class SiteTest(unittest.TestCase):
                                  ('CJ-SHOT%d' % i, 'x', '배송·환불', '쇼핑·유통', '사진가게%d' % i, '사진 제보 %d' % i, '내용', '환불', '2026-10-09T10:00:00', 1, 1)).lastrowid
                 im = Image.new('RGB', (800, 600), 'white'); d = ImageDraw.Draw(im)
                 for x in range(0, 400, 4): d.line([(x, 0), (x, 300)], fill='black' if x % 8 else 'red')  # 왼쪽 위 = '전화번호' 자리 (줄무늬)
+                k = 2 if i == 3 else i; d.rectangle(([(420, 320, 800, 600), (400, 0, 800, 300), (0, 320, 380, 600), (0, 0, 0, 0), (600, 100, 700, 500)][k]), fill='blue')  # 3번은 2번과 같은 사진
                 name = 'shot-src-%d.jpg' % i; b = io.BytesIO(); im.save(b, 'JPEG', quality=95); (self.site.UPLOAD / name).write_bytes(b.getvalue())
                 db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)', (cid, name, 'a.jpg')); cids.append(cid)
         def answer(i):
@@ -377,13 +378,14 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(self.site.case_shots_fill(10), 0)  # AI 키가 없으면 아무것도 안 냄
         calls = iter(range(4, -1, -1))  # 최근 제보부터 봄 → 마지막(4번)이 '개인정보 대부분'
         with mock.patch.object(case_shots.companydesk, 'ai_key_for', return_value='k'), mock.patch.object(case_shots.companydesk, 'post_json', side_effect=lambda *a: answer(next(calls))):
-            self.assertEqual(self.site.case_shots_fill(5), 4)
+            self.assertEqual(self.site.case_shots_fill(5), 3)  # 같은 사진(3·2번)은 한 번만
         with self.site.conn() as db:
             rows = db.execute("SELECT id,stored,case_id FROM case_shots WHERE stored!='' ORDER BY case_id").fetchall()
             self.assertEqual(db.execute("SELECT note FROM case_shots WHERE case_id=?", (cids[4],)).fetchone()[0], 'private')
-        self.assertEqual(len(rows), 4)
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM case_shots WHERE note='dup'").fetchone()[0], 1)
+        self.assertEqual(len(rows), 3)
         shot = Image.open(self.site.UPLOAD / 'shots' / rows[0]['stored']).convert('RGB')
-        left = [shot.getpixel((x, 60)) for x in range(20, 200, 2)]; right = shot.getpixel((560, 400))
+        left = [shot.getpixel((x, 60)) for x in range(20, 200, 2)]; right = shot.getpixel((330, 262))
         self.assertLess(max(map(sum, left)) - min(map(sum, left)), 90)  # 가린 곳은 줄무늬가 뭉개짐 (검정·빨강이 섞여 한 색)
         self.assertGreater(sum(right), 700)  # 나머지는 그대로 (흰 바탕)
         home = self.client.get('/', base_url=jebo).get_data(as_text=True)

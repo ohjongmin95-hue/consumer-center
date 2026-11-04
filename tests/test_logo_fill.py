@@ -21,6 +21,13 @@ class LogoFillTest(unittest.TestCase):
             self.assertFalse(logo_fill.confirmed('daisomall.co.kr', ['다이소몰']))
             self.assertFalse(logo_fill.confirmed('mall.co.kr', ['DB', 'ab']))
 
+    def test_naver_first(self):
+        res = {'items': [{'title': '<b>DB손해보험</b> 블로그', 'link': 'https://blog.naver.com/x'}, {'title': '<b>DB손해보험</b> - 다이렉트', 'link': 'https://www.idbins.com/main'}]}
+        with mock.patch.dict('os.environ', {'NAVER_SEARCH_ID': 'a', 'NAVER_SEARCH_SECRET': 'b'}), mock.patch.object(logo_fill, 'naver_get', return_value=(200, res)):
+            self.assertEqual(logo_fill.naver_find('Db손해보험'), 'idbins.com')
+        with mock.patch.dict('os.environ', {'NAVER_SEARCH_ID': '', 'NAVER_SEARCH_SECRET': '', 'NAVER_HUB_CLIENT_ID': '', 'NAVER_HUB_CLIENT_SECRET': ''}):
+            self.assertEqual(logo_fill.naver_find('Db손해보험'), '')
+
 
 if __name__ == '__main__':
     unittest.main()
