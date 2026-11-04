@@ -5,53 +5,57 @@
 {% block content %}
 {% set cfg = letter_cfg() %}
 {# 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['letter']) #}
-<main class="sb-wrap lt-page">
+<main class="lt-page lt3-page">
   {% for blk in blocks('letter') %}{{ ed_block('letter', blk) }}
   {% if blk == 'hero' %}
-  {# 레터 양식(귤색 선·SOBORU 로고·빵·계산대 소보루)을 그대로 옮김. 설명 글은 넣지 않음 (운영자 2026-11-01) #}
-  <section class="lt-hero lt2" id="sub">
-    <div class="lt2-cover" aria-hidden="true">
-      <span class="tf lt2-b1">🥯</span><span class="tf lt2-b2">🥐</span>
-      <img class="lt2-mark" src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="" width="300">
-      <span class="tf lt2-b3">🍞</span><span class="tf lt2-b4">🍩</span>
-    </div>
-    <h1>{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }}</h1>
-    <div class="lt2-counter">
-      <img class="lt2-bounce" src="{{ asset('img/soboru-character-bounce.gif') }}" alt="" width="150" height="130">
-      <div class="lt2-desk">
-        <p class="lt2-when">{{ ui('letter.when', '{when} 구워 보내요', when=cfg.when) }}</p>
-        {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
-                        'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent', '이메일 수집·이용에 동의해야 구독할 수 있어요.')),
-                        'limit': ('bad', ui('letter.n_limit', '신청이 너무 잦아요. 10분쯤 뒤에 다시 해 주세요.')), 'nomail': ('bad', ui('letter.n_nomail', '지금은 메일 발송을 준비하고 있어 구독 신청을 받을 수 없어요. 조금만 기다려 주세요.')),
-                        'fail': ('bad', ui('letter.n_fail', '확인 메일을 보내지 못했어요. 잠시 뒤 다시 해 주세요.'))} %}
-        {% if state in notes %}<p class="lt-note {{ notes[state][0] }}" role="status">{{ notes[state][1] }}</p>{% endif %}
-        {{ subscribe_form('letter', True) }}
+  {# 운영자 2026-11-04: 감각적이고 힙한 레터 첫 화면 (참고 화면을 따라 하지 않고 우리 색 귤색·갈색·크림으로). 가운데 오늘의 레터 종이, 왼쪽 큰 말, 오른쪽 구독 #}
+  {% set latest = rows[0] if rows else None %}
+  <section class="lt3 lt-hero" id="sub">
+    <div class="lt3-in">
+      <img class="lt3-mark" src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="520" height="100">
+      <div class="lt3-grid">
+        <div class="lt3-say">
+          <p class="lt3-kick">{{ ui('letter.kicker', 'SOBORU MORNING LETTER') }}</p>
+          <h1>{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }}</h1>
+          <p class="lt3-when">{{ ui('letter.when', '{when} 구워 보내요', when=cfg.when) }}</p>
+        </div>
+        <div class="lt3-paper" aria-hidden="true">
+          <img class="lt3-peek" src="{{ asset('img/soboru-character-peek.png') }}" alt="" width="120">
+          <div class="lt3-sheet">
+            <p class="lt3-date">{{ letter_kdate(latest.sent_at or latest.created) if latest else ui('letter.first_issue', '첫 레터 굽는 중') }}</p>
+            <p class="lt3-title">{{ latest.title if latest else ui('letter.sample_title', '오늘 아침, 꼭 알아야 할 소식만 골라 왔어요') }}</p>
+            <ol>{% if latest %}{% for it in latest['items'][:4] %}<li>{{ it.title }}</li>{% endfor %}{% else %}<li>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</li><li>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</li><li>{{ ui('letter.t3', '숫자로 보는 오늘') }}</li><li>{{ ui('letter.t4', '크로와상의 한마디') }}</li>{% endif %}</ol>
+          </div>
+          <span class="lt3-stamp"><b>5</b>{{ ui('letter.stamp', '분이면 끝') }}</span>
+        </div>
+        <div class="lt3-sub">
+          <p class="lt3-sub-h">{{ ui('letter.sub_h', '메일함으로 받아 보세요') }}</p>
+          {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
+                          'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent', '이메일 수집·이용에 동의해야 구독할 수 있어요.')),
+                          'limit': ('bad', ui('letter.n_limit', '신청이 너무 잦아요. 10분쯤 뒤에 다시 해 주세요.')), 'nomail': ('bad', ui('letter.n_nomail', '지금은 메일 발송을 준비하고 있어 구독 신청을 받을 수 없어요. 조금만 기다려 주세요.')),
+                          'fail': ('bad', ui('letter.n_fail', '확인 메일을 보내지 못했어요. 잠시 뒤 다시 해 주세요.'))} %}
+          {% if state in notes %}<p class="lt-note {{ notes[state][0] }}" role="status">{{ notes[state][1] }}</p>{% endif %}
+          {{ subscribe_form('letter', True) }}
+        </div>
       </div>
     </div>
   </section>
-  {% elif blk == 'feats' %}
-  {# 레터에 담기는 칸: 이름만, 칸 모양 그대로 #}
-  <ul class="lt-feats lt2-feats">
-    <li class="lt2-bag"><span class="tf" aria-hidden="true">🥯</span><b>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</b></li>
-    <li class="lt2-main"><span class="tf" aria-hidden="true">🥖</span><b>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</b></li>
-    <li class="lt2-rcpt"><span class="tf" aria-hidden="true">🧾</span><b>{{ ui('letter.t3', '숫자로 보는 오늘') }}</b></li>
-    <li class="lt2-crs"><img src="{{ asset('img/editor-croissant.png') }}" alt="" width="64"><b>{{ ui('letter.t4', '크로와상의 한마디') }}</b></li>
-  </ul>
+  {% elif blk == 'feats' %}{# 운영자 2026-11-04: 칸 이름은 흐르는 띠로 #}
+  <div class="lt3-tape lt-feats" aria-hidden="true"><div>{% for _ in range(4) %}<span>GOOD MORNING</span><span>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</span><span>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</span><span>{{ ui('letter.t3', '숫자로 보는 오늘') }}</span><span>{{ ui('letter.t4', '크로와상의 한마디') }}</span>{% endfor %}</div></div>
   {% elif blk == 'archive' %}
-  <section class="lt-archive">
-    <div class="sb-sec-head"><div><h2>{{ ui('letter.archive_title', '지난 레터') }}</h2></div></div>
+  <section class="lt3-arch lt-archive">
+    <h2>{{ ui('letter.archive_title', '지난 레터') }}</h2>
     {% if rows %}
-    <ol class="lt-list">
+    <ol class="lt3-list">
       {% for L in rows %}
       <li><a href="{{ url_for('letter_issue', no=L.no) }}">
-        <span class="lt-no"><b>{{ L.no }}</b>{{ ui('letter.no_unit', '호') }}</span>
-        <div><h3>{{ L.title }}</h3>
-          <p>{% for it in L['items'][:3] %}{{ it.title }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
-          <time datetime="{{ (L.sent_at or L.created)[:10] }}">{{ letter_kdate(L.sent_at or L.created) }}</time></div>
+        <time datetime="{{ (L.sent_at or L.created)[:10] }}">{{ letter_kdate(L.sent_at or L.created) }}</time>
+        <h3>{{ L.title }}</h3>
+        <p>{% for it in L['items'][:3] %}{{ it.title }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
       </a></li>
       {% endfor %}
     </ol>
-    {% else %}<p class="sb-empty">{{ ui('letter.empty', '첫 레터를 준비하고 있어요. 지금 구독하면 첫 호부터 받아 볼 수 있어요.') }}</p>{% endif %}
+    {% else %}<p class="lt3-empty">{{ ui('letter.empty', '첫 레터를 준비하고 있어요. 지금 구독하면 첫 호부터 받아 볼 수 있어요.') }}</p>{% endif %}
   </section>
   {% endif %}
   {% endfor %}
