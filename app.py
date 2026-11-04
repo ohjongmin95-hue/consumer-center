@@ -303,6 +303,9 @@ def biz_closed():
 # 운영자 2026-11-03: 로고 없는 기업은 첫 글자 대신 업종 그림 (static/img/ind/<키>.svg)
 _IND_KEY={n:k for n,k,*_ in site_content.INDUSTRIES}
 app.jinja_env.globals['industry_icon']=lambda name:_IND_KEY.get((name or '').strip(),'other')
+# 운영자 2026-11-04: 제보 상세 표지 — 업종 색 바탕 + 업종 그림 + 해시태그 (그림 파일 없이 CSS로, 비용 0)
+IND_COLOR={'appliance':'#00a6c9','building':'#b5652b','car':'#4e5bf2','commerce':'#3182f6','finance':'#f5a200','food':'#ff8a3d','game':'#8b5cf6','medical':'#f04452','other':'#f06595','telecom':'#15c47e'}
+app.jinja_env.globals['industry_color']=lambda name:IND_COLOR.get(_IND_KEY.get((name or '').strip(),'other'),'#f06595')
 app.jinja_env.globals['industry_art']={k for k,_ in site_content.INDUSTRY_ART if k}  # static/img/guide-ind-<이름>.svg 가 있는 그림
 app.jinja_env.globals['guide_icon']=lambda name:Markup('<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">%s</svg>'%GUIDE_ICONS.get(name,GUIDE_ICONS['write']))
 STEP_ICON_ORDER=['write','search','chat','scale','check','bell','shield','call']

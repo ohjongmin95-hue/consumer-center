@@ -409,7 +409,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('bad()', page)
         self.assertNotIn('&lt;p onclick', page)
         self.post_form(adm, '/admin/experts/mail', {'act': 'reset'})
-        self.assertIn('소보루 자문단 모집', adm.get('/admin/experts/mail').get_data(as_text=True))
+        self.assertIn('창립 자문위원 모집', adm.get('/admin/experts/mail').get_data(as_text=True))
         self.assertIn(self.client.get('/admin/experts/mail').status_code, (302, 401, 403, 404))
 
     def test_about_and_llms_for_jebo(self):

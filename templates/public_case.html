@@ -20,6 +20,13 @@
     </div>
   </header>
 
+  {# 운영자 2026-11-04: 토스피드 글 표지처럼 — 업종 색 바탕, 가운데 업종 그림과 핵심 해시태그 (목록에는 안 보이고 상세에서만) #}
+  {% set tags = [company|replace(' ', ''), (m[0] if m else category)|replace(' ', '')] %}
+  <figure class="pf-cover" style="--cv:{{ industry_color(case['industry']) }}" aria-hidden="true">
+    <img class="pf-cover-ic" src="{{ asset('img/ind/' ~ industry_icon(case['industry']) ~ '.svg') }}" alt="" width="64" height="64">
+    <span class="pf-cover-tags">{% for t in tags if t %}<span>#{{ t|truncate(16, True, '…') }}</span>{% endfor %}</span>
+  </figure>
+
   <section class="pf-steps-box" aria-label="{{ ui('reports.col_status', '진행 단계') }}">
     <ol class="pc-steps pf-steps">{% for s in pub_names() %}<li class="{{ 'on' if loop.index <= now_step else '' }}{{ ' now' if loop.index == now_step else '' }}"{% if loop.index == now_step %} aria-current="step"{% endif %}><i>{% if loop.index < now_step %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4 8-9"/></svg>{% else %}{{ loop.index }}{% endif %}</i><span>{{ s }}</span></li>{% endfor %}</ol>
     <a class="pc-co-row pf-co" {% if co %}href="{{ url_for('company_page', company_id=co['id']) }}"{% endif %}>
