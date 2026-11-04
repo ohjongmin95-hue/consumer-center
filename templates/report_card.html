@@ -1,6 +1,11 @@
 {# 제보 카드 한 장 (홈과 /reports 목록이 같이 씀). c = report_cards()가 만든 줄. pub_badge면 공개 3단계(접수·처리 중·종결)로.
    2026-11-03 운영자: 검은고양이처럼 맨 위에 작성자(닉네임)·날짜·진행 상태, 아래에 제보 대상(업체·업종)·유형·공감·댓글 #}
-{% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
+{% if simple_card %}{# 운영자 2026-11-04 (이용자 피드백 '너무 알록달록'): 첫 화면 카드는 아이콘·유형·본문 없이 진행 상태와 제목만. 업체 이름·시간은 작은 회색 글씨 한 줄 #}
+<a class="nn-vc-card vc-simple{% if not c.open %} is-locked{% endif %}" href="{{ url_for('public_case', case_id=c.no) if c.open else url_for('case_open', case_id=c.no) }}">
+  <h3>{% if c.title %}{% if not c.open %}<svg class="nn-vc-lock" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7.5a5 5 0 0110 0V10M5.5 10h13v10h-13z"/></svg>{% endif %}{{ c.title }}{% elif c.secret %}{{ ui('home.live_secret', '비공개 제보예요') }}{% else %}{{ ui('home.live_hidden', '제목을 가린 제보예요') }}{% endif %}</h3>
+  <div class="vcs-foot"><span class="vcs-line"><span class="vcs-st vcs-{{ c.step }}">{{ pub_names()[c.step - 1] }}</span><span class="vcs-co">{{ c.company or ui('home.card_hidden_company', '업체 비공개') }}</span><time datetime="{{ c.created }}">{{ c.when }}</time></span>{% if c.open %}<span class="vcs-n" title="{{ ui('case.metoo', '나도 겪었어요') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11v9H4v-9zM7 11l4-7c1.5 0 2.5 1 2 3l-1 3h6c1.2 0 2 1 1.8 2.2l-1.3 6.3c-.2 1-1 1.5-2 1.5H7"/></svg>{{ c.metoo }}</span><span class="vcs-n" title="{{ ui('case.comments', '댓글') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>{{ c.comments }}</span>{% endif %}</div>
+</a>
+{% else %}{% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
 {% set ph = case_photo(c.no) if with_photo and c.open and case_photo is defined else '' %}
 <a class="nn-vc-card{% if not c.open %} is-locked{% endif %}{% if ph or with_photo %} has-photo{% endif %}" href="{{ url_for('public_case', case_id=c.no) if c.open else url_for('case_open', case_id=c.no) }}">
   {% if ph %}<span class="nn-vc-photo"><img src="{{ url_for('hero_photo', name=ph) }}" alt="" loading="lazy"><small>{{ ui('reports.photo_note', '실제 제보 사진 · 가림 처리') }}</small></span>{% elif with_photo %}<span class="nn-vc-photo is-empty" aria-hidden="true">{% if c.open %}<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/></svg>{% else %}<svg viewBox="0 0 24 24"><path d="M7 10V7.5a5 5 0 0110 0V10M5.5 10h13v10h-13z"/></svg>{% endif %}<em>{{ c.industry or c.cat_short or '' }}</em></span>{% endif %}
@@ -36,3 +41,4 @@
     {% if c.answered and c.status != '기업 답변 도착' %}<span class="nn-vc-ans">{{ ui('home.live_answered', '기업 답변 있음') }}</span>{% endif %}
   </div>{% endif %}
 </a>
+{% endif %}
