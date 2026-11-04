@@ -22,6 +22,10 @@
           {% if r.art == 'draft' %}<button name="act" value="publish" class="primary">게시</button>{% elif r.art == 'live' %}<button name="act" value="hide">내리기</button>{% endif %}
           {% if r.art %}<button name="act" value="delete" class="danger">지우기</button>{% endif %}
         </form>
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('admin_art_action', kind=kind, target_id=r.id) }}" class="admin-actions art-up">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="upload">
+          <label>{{ '사진 바꾸기' if r.art else '사진 올리기' }} <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required onchange="this.form.submit()"></label>
+        </form>
       </div>
     </div>
   {% else %}<p class="meta">아직 그릴 글이 없어요.</p>{% endfor %}

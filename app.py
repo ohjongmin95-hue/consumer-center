@@ -238,7 +238,7 @@ CANONICAL_HOST=(os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().low
 # (cs.soboru.co.kr·biz.soboru.co.kr 소보루CS는 다른 서비스라 그대로)
 RETIRED_HOSTS={'soboru.co.kr','www.soboru.co.kr'}
 LETTER_HOSTS={'soboru.co.kr','www.soboru.co.kr','letter.soboru.co.kr'}  # 레터 구독 페이지만 여는 주소 (운영자 2026-11-04)
-LETTER_PATHS=('/letter','/static/','/hero/','/partner/')
+LETTER_PATHS=('/letter','/static/','/hero/','/partner/','/life/','/art/')
 def letter_host(host):return host in LETTER_HOSTS and (host in RETIRED_HOSTS or host.startswith('letter.'))
 def letter_alone():return has_request_context() and (request.path.startswith('/letter') or letter_host(request.host.split(':')[0].lower()))
 app.jinja_env.globals['letter_alone']=letter_alone

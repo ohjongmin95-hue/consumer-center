@@ -2,24 +2,77 @@
 {% from 'letter_macros.html' import subscribe_form with context %}
 {% block title %}{{ ui_text('letter.title', '소보루 레터') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui_text('letter.description', '평일 아침마다 그날 꼭 알아야 할 주요 이슈를 쉽게 풀어 메일로 보내 드려요. 내 생활에 어떤 의미인지, 관련 법, 소보루 픽 인기 리뷰까지.') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Archivo+Black&family=Black+Han+Sans&display=swap">{# 운영자 2026-11-04: 매거진은 뉴소스(newsourcemag.com)형 — 영문은 Inter·Archivo Black, 큰 한글 제목은 Black Han Sans (모두 SIL OFL) #}{% endblock %}
 {% block content %}
 {% set cfg = letter_cfg() %}
-{# 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['letter']) #}
-<main class="sb-wrap lt-page">
+{# 첫 화면 기본 표지 사진 static/img/mag-hero.jpg = 운영자가 고른 Unsplash 사진(Denny Müller, Unsplash License)
+   운영자 2026-11-04: soboru.co.kr = 소보루 매거진. 뉴소스형(귤색 바탕·큰 표지 사진·HOT ARTICLE·카테고리), 하단은 귤색 'READ BEFORE YOU BUY' 구독 띠 (뉴소스 문구는 그대로 쓰지 않음).
+   SOBORU = 소비를 보는 새로운 루트. 갈색은 로고에만, 글자는 흰색·검정. 귀여운 그림 대신 사진이 없으면 큰 영문 활자 표지.
+   묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['letter']) #}
+{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '리콜': 'RECALL'} %}
+{% macro cover(a, n) %}{% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="nm-type t{{ n % 3 }}"><img src="{{ asset('img/soboru-wordmark.png') }}" alt=""><b>{{ EN.get(a['category'], 'LIFE') }}</b><em>{{ a['category'] }}</em></span>{% endif %}{% endmacro %}
+<main class="lt-page nm-page">
   {% for blk in blocks('letter') %}{{ ed_block('letter', blk) }}
   {% if blk == 'hero' %}
-  {# 레터 양식(귤색 선·SOBORU 로고·빵·계산대 소보루)을 그대로 옮김. 설명 글은 넣지 않음 (운영자 2026-11-01) #}
-  <section class="lt-hero lt2" id="sub">
-    <div class="lt2-cover" aria-hidden="true">
-      <span class="tf lt2-b1">🥯</span><span class="tf lt2-b2">🥐</span>
-      <img class="lt2-mark" src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="" width="300">
-      <span class="tf lt2-b3">🍞</span><span class="tf lt2-b4">🍩</span>
+  <section class="lt-hero">
+    {% set slides = mag[:4] %}
+    <div class="nm-g">
+      <div class="nm-hero" data-nm-hero>
+        {% for a in slides %}
+        <a class="nm-slide" href="{{ url_for('life_article', article_id=a['id']) }}"{% if not loop.first %} hidden{% endif %}>{% if loop.first and not art_url('life', a['id']) %}<img src="{{ asset('img/mag-hero.jpg') }}" alt="">{% else %}{{ cover(a, loop.index0) }}{% endif %}<span class="nm-tag"><strong>{{ ui_text('letter.mz_issue', 'THIS ISSUE') }}</strong>{{ a['title'] }}</span></a>
+        {% else %}
+        <span class="nm-slide"><img src="{{ asset('img/mag-hero.jpg') }}" alt=""></span>
+        {% endfor %}
+        <img class="nm-big" src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="" aria-hidden="true">
+        {% if slides|length > 1 %}<span class="nm-dots">{% for a in slides %}<button type="button" aria-label="{{ loop.index }}번째 표지"{% if loop.first %} class="on"{% endif %}></button>{% endfor %}</span>{% endif %}
+      </div>
     </div>
-    <h1>{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }}</h1>
-    <div class="lt2-counter">
-      <img class="lt2-bounce" src="{{ asset('img/soboru-character-bounce.gif') }}" alt="" width="150" height="130">
-      <div class="lt2-desk">
-        <p class="lt2-when">{{ ui('letter.when', '{when} 구워 보내요', when=cfg.when) }}</p>
+    <div class="nm-g nm-intro">
+      <h1>{{ ui('letter.mz_intro2', 'Consumer Lifestyle,\nSOBORU Magazine') }}</h1>
+      <div class="nm-about"><span class="nm-pill">About</span><p><b>{{ ui('letter.mz_motto', 'SOBORU, 소비를 보는 새로운 루트.') }}</b><br>{{ ui('letter.mz_about2', '사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}</p></div>
+    </div>
+    <div class="nm-g">
+      <a class="nm-banner" href="#sub"><span class="nm-bt"><small>SOBORU LETTER</small><strong>{{ ui('letter.mz_bn', '아침 5분,\n돈이 되는 생활경제') }}</strong><span class="nm-go">{{ ui('letter.mz_bn_go', '무료로 구독하기') }} →</span></span><span class="nm-bi"><span class="nm-clock"><b>{{ ui_text('letter.mz_clock', '07:30') }}</b><small>{{ ui_text('letter.mz_clock_sub', 'WEEKDAY MORNING · YOUR INBOX') }}</small></span><span class="nm-stamp" aria-hidden="true">EVERY<br>MORNING</span></span></a>
+    </div>
+    <script>(function(){var r=document.querySelector('[data-nm-hero]');if(!r)return;var s=r.querySelectorAll('.nm-slide'),d=r.querySelectorAll('.nm-dots button'),i=0;if(s.length<2)return;function go(k){s[i].hidden=true;d[i].classList.remove('on');i=(k+s.length)%s.length;s[i].hidden=false;d[i].classList.add('on')}d.forEach(function(b,k){b.onclick=function(){go(k)}});setInterval(function(){go(i+1)},6000)})();</script>
+  </section>
+  {% elif blk == 'feats' %}
+  <div class="lt-feats">
+  {% if mag|length > 1 %}
+  <section class="nm-g nm-hot" id="hot">
+    <h2 class="nm-sh">{{ ui('letter.mz_hot', 'Most Read') }}</h2>
+    <div class="nm-hots">{% for a in mag[1:5] %}<a href="{{ url_for('life_article', article_id=a['id']) }}"><span class="nm-ph">{{ cover(a, loop.index) }}</span><em>{{ EN.get(a['category'], 'LIFE') }}</em><b>{{ a['title'] }}</b></a>{% endfor %}</div>
+    <a class="nm-more" href="https://consumerjebo.co.kr/life">{{ ui('letter.mz_hot_more', '더 많은 이야기') }} →</a>
+  </section>
+  {% endif %}
+  {% if mag|length > 5 %}{% set f = mag[5] %}
+  <a class="nm-feat" href="{{ url_for('life_article', article_id=f['id']) }}">{{ cover(f, 0) }}<span class="nm-ft"><small>{{ ui_text('letter.mz_feat', 'IN FOCUS') }} · {{ EN.get(f['category'], 'LIFE') }}</small><strong>{{ f['title'] }}</strong></span></a>
+  {% endif %}
+  {% if mag %}
+  <div class="nm-pe">
+    {% set cats = [] %}{% for a in mag %}{% if a['category'] not in cats|map(attribute=0)|list %}{% set _ = cats.append((a['category'], a)) %}{% endif %}{% endfor %}
+    <section class="nm-g nm-cat" id="cat">
+      <h2>{{ ui('letter.mz_cat', 'Aisles') }}<small>{{ ui('letter.mz_cat_sub', '오늘은 어느 코너부터 볼까요') }}</small></h2>
+      <ul>{% for c, a in cats[:6] %}<li><a href="https://consumerjebo.co.kr/life?category={{ c|urlencode }}">{{ EN.get(c, 'LIFE') }}<small>{{ c }}</small></a><span class="nm-ci">{{ cover(a, loop.index0) }}</span></li>{% endfor %}</ul>
+    </section>
+    {% set more = mag[6:11] if mag|length > 10 else mag[:5] %}
+    <section class="nm-g nm-watch">
+      <h2 class="nm-sh">{{ ui('letter.mz_more', 'Fresh Picks') }}</h2>
+      <div class="nm-wv">{% for a in more %}<a class="{{ 'big' if loop.first }}" href="{{ url_for('life_article', article_id=a['id']) }}">{{ cover(a, loop.index0 + 1) }}<span><em>{{ EN.get(a['category'], 'LIFE') }}</em><b>{{ a['title'] }}</b></span></a>{% endfor %}</div>
+    </section>
+  </div>
+  {% endif %}
+  </div>
+  {% elif blk == 'archive' %}
+  {# 운영자 2026-11-04: 하단은 귤색 띠에 큰 영문 한 줄 + 구독 (뼈대만 참고, 문구·디테일은 우리 것) #}
+  <section class="nm-letter lt-archive" id="sub">
+    <div class="nm-g nm-lt">
+      <div>
+        <h2>{{ ui('letter.mz_end', 'READ BEFORE\nYOU BUY') }}</h2>
+        <p class="nm-lead">{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }} <span>{{ cfg.when }} {{ ui('letter.mz_when2', '메일로 받아 보세요.') }}</span></p>
+        <ul class="nm-secs"><li>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</li><li>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</li><li>{{ ui('letter.t3', '숫자로 보는 오늘') }}</li><li>{{ ui('letter.t4', '크로와상의 한마디') }}</li></ul>
+      </div>
+      <div class="nm-form">
         {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
                         'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent', '이메일 수집·이용에 동의해야 구독할 수 있어요.')),
                         'limit': ('bad', ui('letter.n_limit', '신청이 너무 잦아요. 10분쯤 뒤에 다시 해 주세요.')), 'nomail': ('bad', ui('letter.n_nomail', '지금은 메일 발송을 준비하고 있어 구독 신청을 받을 수 없어요. 조금만 기다려 주세요.')),
@@ -28,30 +81,8 @@
         {{ subscribe_form('letter', True) }}
       </div>
     </div>
-  </section>
-  {% elif blk == 'feats' %}
-  {# 레터에 담기는 칸: 이름만, 칸 모양 그대로 #}
-  <ul class="lt-feats lt2-feats">
-    <li class="lt2-bag"><span class="tf" aria-hidden="true">🥯</span><b>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</b></li>
-    <li class="lt2-main"><span class="tf" aria-hidden="true">🥖</span><b>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</b></li>
-    <li class="lt2-rcpt"><span class="tf" aria-hidden="true">🧾</span><b>{{ ui('letter.t3', '숫자로 보는 오늘') }}</b></li>
-    <li class="lt2-crs"><img src="{{ asset('img/editor-croissant.png') }}" alt="" width="64"><b>{{ ui('letter.t4', '크로와상의 한마디') }}</b></li>
-  </ul>
-  {% elif blk == 'archive' %}
-  <section class="lt-archive">
-    <div class="sb-sec-head"><div><h2>{{ ui('letter.archive_title', '지난 레터') }}</h2></div></div>
-    {% if rows %}
-    <ol class="lt-list">
-      {% for L in rows %}
-      <li><a href="{{ url_for('letter_issue', no=L.no) }}">
-        <span class="lt-no"><b>{{ L.no }}</b>{{ ui('letter.no_unit', '호') }}</span>
-        <div><h3>{{ L.title }}</h3>
-          <p>{% for it in L['items'][:3] %}{{ it.title }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
-          <time datetime="{{ (L.sent_at or L.created)[:10] }}">{{ letter_kdate(L.sent_at or L.created) }}</time></div>
-      </a></li>
-      {% endfor %}
-    </ol>
-    {% else %}<p class="sb-empty">{{ ui('letter.empty', '첫 레터를 준비하고 있어요. 지금 구독하면 첫 호부터 받아 볼 수 있어요.') }}</p>{% endif %}
+    <div class="nm-g nm-back">{{ ui('letter.archive_title', '지난 레터') }}{% for L in rows[:3] %} · <a href="{{ url_for('letter_issue', no=L.no) }}">No.{{ '%02d' % L.no }} {{ L.title }}</a>{% else %} · {{ ui('letter.mz_noback', '첫 레터를 준비하고 있어요') }}{% endfor %}</div>
+    <div class="nm-g nm-fb"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="104" height="20"><span>{{ ui('letter.mz_fb', '소비를 보는 새로운 루트 · 소비자를위한신문') }} · <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('letter.mz_terms', '이용약관') }}</a> · <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.mz_privacy', '개인정보처리방침') }}</a></span></div>
   </section>
   {% endif %}
   {% endfor %}
