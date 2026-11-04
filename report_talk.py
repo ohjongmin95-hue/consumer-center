@@ -37,6 +37,7 @@ SYSTEM = """너는 소비자 피해 제보 사이트 {site}의 접수 도우미�
  "industry": "업종 목록 중 하나(모르면 빈 문자열)", "category": "유형 목록 중 하나(모르면 빈 문자열)",
  "company": "업체·서비스 이름(모르면 빈 문자열)", "occurred_on": "YYYY-MM-DD(글에 날짜가 있을 때만, 아니면 빈 문자열)",
  "subject": "제목 한 줄, 40자 안. 소비자가 게시판에 직접 쓴 글 제목처럼 자연스러운 해요체. 업체와 무슨 일인지가 드러나게. 예: '쿠팡에서 주문한 운동화가 2주째 안 와요'", "description": "게시글 본문. 제보자가 커뮤니티에 자기 일을 털어놓듯 1인칭 해요체로, 겪은 순서대로 4~8문장. 어디서·언제·무엇을 얼마에·무슨 일이·업체는 뭐라고 했는지가 모두 자연스럽게 들어가게. 사진에서 읽은 사실(상품명·금액·날짜·파손 모습)도 넣을 것. 지어내지 말 것",
+ "issues": ["사진·글에서 드러난 문제를 짧게 1~4개, 각 30자 안. 예: '주문 2주째 배송 안 됨', '환불 요청 3번 거절'"],
  "request_text": "원하는 해결 한두 문장(글에 없으면 상황에 맞게 짐작)", "request_options": ["원하는 해결 후보 2~4개, 각 8자 안. 예: 전액 환불, 교환, 수리, 사과"],
  "questions": [{{"q": "짧은 질문", "options": ["버튼 2~4개, 각 12자 안"]}}]}}
 규칙:
@@ -99,6 +100,7 @@ def install(S):
         return {'summary': s(out.get('summary'), 160), 'industry': pick(out.get('industry'), industries), 'category': pick(out.get('category'), categories),
                 'company': company_fix.fix(s(out.get('company'), 60)), 'occurred_on': day, 'subject': s(out.get('subject'), 80), 'description': desc,
                 'request_text': s(out.get('request_text'), 300), 'request_options': [s(o, 16) for o in (out.get('request_options') or []) if str(o).strip()][:4],
+                'issues': [s(x, 40) for x in (out.get('issues') or []) if str(x).strip()][:4],
                 'questions': qs[:2]}
 
     def parse(text):
