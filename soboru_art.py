@@ -13,7 +13,7 @@ import datetime
 import os
 import re
 import threading
-from flask import abort, flash, g, redirect, render_template, request, send_file, url_for
+from flask import abort, flash, g, has_request_context, redirect, render_template, request, send_file, url_for
 
 KINDS = ('report', 'life')
 PHOTO = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
@@ -115,6 +115,8 @@ def install(S):
 
     def auto(kind, target_id, wait=False):
         # 그림이 없을 때만, 키가 있을 때만. 실패하면 조용히 넘어가고 글자 카드가 그대로 나옴
+        # 운영자 2026-11-04: 'AI 그림 넣지 마' — 자동으로 그리지 않음 (다시 켜려면 ART_AUTO=1)
+        if os.getenv('ART_AUTO') != '1': return
         if not desk.ai_ready(): return
         with conn() as db:
             if db.execute('SELECT 1 FROM soboru_art WHERE kind=? AND target_id=?', (kind, target_id)).fetchone(): return
@@ -200,6 +202,19 @@ def install(S):
         flash(f'{what} {len(ids)}개를 그리기 시작했어요. 하나에 30초쯤 걸려요. 잠시 뒤 새로 고침해 보세요.' if ids else f'{what}이 없어요.')
         return redirect(url_for('admin_art', kind=kind))
 
+    @app.route('/admin/art/purge', methods=['POST'])
+    @S.admin_only
+    def admin_art_purge():
+        # 운영자 2026-11-04: '지금까지 그린 AI 그림 다 지워' — 운영자가 올린 사진('-photo-')만 남기고 전부 지움
+        if request.form.get('confirm') != '지워': flash("확인 칸에 '지워'라고 적어야 지울 수 있어요."); return redirect(url_for('admin_art'))
+        with conn() as db:
+            rows = [r for r in db.execute('SELECT kind,target_id,file FROM soboru_art') if '-photo-' not in r['file']]
+            for r in rows:
+                db.execute('DELETE FROM soboru_art WHERE kind=? AND target_id=?', (r['kind'], r['target_id']))
+                (folder / r['file']).unlink(missing_ok=True)
+        flash(f'AI 그림 {len(rows)}개를 지웠어요. 직접 올린 사진은 그대로 있어요.')
+        return redirect(url_for('admin_art'))
+
     @app.route('/admin/art/<kind>/<int:target_id>', methods=['POST'])
     @S.admin_only
     def admin_art_action(kind, target_id):
@@ -214,7 +229,7 @@ def install(S):
                 from PIL import Image, ImageOps
                 im = ImageOps.exif_transpose(Image.open(f.stream)).convert('RGB'); im.thumbnail((2400, 2400))
             except Exception: flash('사진을 읽지 못했어요. JPG·PNG·WEBP 파일을 올려 주세요.'); return back
-            name = f'{kind}-{target_id}-{datetime.datetime.now():%Y%m%d%H%M%S}.webp'
+            name = f'{kind}-{target_id}-photo-{datetime.datetime.now():%Y%m%d%H%M%S}.webp'  # '-photo-' = 운영자가 올린 사진 (매거진은 이것만 씀)
             im.save(folder / name, 'WEBP', quality=84)
             with conn() as db:
                 old = db.execute('SELECT file FROM soboru_art WHERE kind=? AND target_id=?', (kind, target_id)).fetchone()
@@ -243,6 +258,79 @@ def install(S):
         if not f or os.path.splitext(f['stored'])[1].lower() not in ('.jpg', '.jpeg', '.png'): return ''
         return S.canonical_url(url_for('report_cover', case_id=case_id, v=fid))
 
-    app.jinja_env.globals.update(og_photo=og_photo, art_url=art_url, art_photo=lambda stored: os.path.splitext(stored)[1].lower() in PHOTO)
+    # 운영자 2026-11-04: '우리 unsplash key 있잖아. 감각적인 무료이미지 적당히 넣어줘봐'
+    # 운영자가 사진을 안 올린 매거진 글은 언스플래시(서버 설정 UNSPLASH_ACCESS_KEY, 레터와 같은 키)에서 분야에 맞는 사진을 한 번 골라 저장해 두고 씀.
+    # 사진 파일은 받지 않고 images.unsplash.com 주소를 그대로 씀(언스플래시 규칙). 기사 화면 표지 아래에 작가 이름을 밝힘.
+    with conn() as db:
+        db.execute('CREATE TABLE IF NOT EXISTS mag_unsplash(article_id INTEGER PRIMARY KEY,photo_id TEXT NOT NULL,url TEXT NOT NULL,'
+                   'credit TEXT NOT NULL,credit_url TEXT NOT NULL,created TEXT NOT NULL)')
+    UNSPLASH_Q = {'쇼핑': 'minimal shopping bag', '통신': 'smartphone minimal desk', '여행': 'airport travel minimal', '음식': 'grocery food still life',
+                  '금융': 'coins wallet minimal', '자동차': 'car detail minimal', '생활': 'home interior minimal', '리콜': 'product box minimal'}
+    unsplash_state = {'busy': False, 'tried': {}}
+    unsplash_lock = threading.Lock()
+
+    def unsplash_fill():
+        import soboru_letter as L
+        try:
+            with conn() as db:
+                rows = db.execute("SELECT a.id,a.category FROM articles a LEFT JOIN mag_unsplash u ON u.article_id=a.id "
+                                  "WHERE a.status='published' AND u.article_id IS NULL ORDER BY a.id DESC LIMIT 24").fetchall()
+                used = {r[0] for r in db.execute('SELECT photo_id FROM mag_unsplash')}
+                own = {r[0] for r in db.execute("SELECT target_id FROM soboru_art WHERE kind='life' AND status='live' AND file LIKE '%-photo-%'")}
+            now = datetime.datetime.now().timestamp()
+            found = {}
+            for r in rows:
+                if r['id'] in own: continue
+                if now - unsplash_state['tried'].get(r['id'], 0) < 3600: continue
+                unsplash_state['tried'][r['id']] = now
+                q = UNSPLASH_Q.get(r['category'], 'minimal still life')
+                if q not in found:
+                    st, res = L.unsplash_call('/search/photos', {'query': q, 'orientation': 'landscape', 'per_page': 30, 'content_filter': 'high'})
+                    found[q] = (res or {}).get('results') or [] if st == 200 and isinstance(res, dict) else []
+                for ph in found[q]:
+                    try:
+                        pid, raw, user = ph['id'], ph['urls']['raw'], ph['user']
+                        if pid in used: continue
+                        used.add(pid)
+                        dl = (ph.get('links') or {}).get('download_location')
+                        if dl: L.unsplash_call(dl)  # 언스플래시 규칙: 쓰기로 고른 사진은 download 주소를 한 번 부름
+                        with conn() as db:
+                            db.execute('INSERT OR IGNORE INTO mag_unsplash VALUES(?,?,?,?,?,?)',
+                                       (r['id'], pid, raw, (user.get('name') or user.get('username') or '')[:60], user['links']['html'] + L.UTM, S.now()))
+                        break
+                    except (KeyError, TypeError): continue
+        finally:
+            unsplash_state['busy'] = False
+
+    def unsplash_kick():
+        if not os.getenv('UNSPLASH_ACCESS_KEY', '').strip(): return
+        with unsplash_lock:
+            if unsplash_state['busy']: return
+            unsplash_state['busy'] = True
+        threading.Thread(target=unsplash_fill, daemon=True).start()
+
+    def unsplash_row(target_id):
+        cache = g.setdefault('mag_unsplash', None) if has_request_context() else None
+        if cache is None:
+            with conn() as db: cache = {r['article_id']: r for r in db.execute('SELECT * FROM mag_unsplash')}
+            if has_request_context(): g.mag_unsplash = cache
+        return cache.get(target_id)
+
+    def mag_photo(target_id, w=1600):
+        # 운영자 2026-11-04: 매거진에는 AI 그림 말고 운영자가 직접 올린 사진. 없으면 언스플래시 사진
+        f = live().get(('life', target_id))
+        if f and '-photo-' in f: return url_for('art_image', kind='life', target_id=target_id, v=f[-12:-5])
+        u = unsplash_row(target_id)
+        if u: return u['url'] + ('&' if '?' in u['url'] else '?') + f'w={w}&q=78&auto=format&fit=crop'
+        unsplash_kick()
+        return ''
+
+    def mag_credit(target_id):
+        f = live().get(('life', target_id))
+        if f and '-photo-' in f: return None
+        u = unsplash_row(target_id)
+        return {'name': u['credit'], 'url': u['credit_url'], 'home': 'https://unsplash.com/?utm_source=soboru_letter&utm_medium=referral'} if u else None
+
+    app.jinja_env.globals.update(og_photo=og_photo, art_url=art_url, mag_photo=mag_photo, mag_credit=mag_credit, art_photo=lambda stored: os.path.splitext(stored)[1].lower() in PHOTO)
     S.art_draw = draw; S.art_auto = auto
     app.extensions['soboru_art'] = {'auto': auto, 'draw': draw}

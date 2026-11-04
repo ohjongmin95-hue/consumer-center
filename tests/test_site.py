@@ -976,7 +976,7 @@ class SiteTest(unittest.TestCase):
             return 200, {'data': [{'b64_json': base64.b64encode(b'RIFFxxxxWEBPfake').decode()}]}
         admin = self.login_admin()
         try:
-            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test', 'ART_AUTO': '1'}), patch.object(self.site.companydesk, 'post_json', fake):  # 자동 그리기는 운영자 2026-11-04부터 기본 꺼짐
                 page = admin.get('/admin/art').get_data(as_text=True)
                 self.assertIn('AI 일러스트', page)
                 admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'draw'})
@@ -997,7 +997,7 @@ class SiteTest(unittest.TestCase):
             admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'hide'})
             self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)
             # 생활정보 글은 만들면 자동으로 그려서 바로 붙음
-            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test', 'ART_AUTO': '1'}), patch.object(self.site.companydesk, 'post_json', fake):
                 r = admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '헬스장 환불 받는 법', 'summary': '요약', 'body': '본문', 'category': '쇼핑', 'publish': '1'})
             aid = int(r.headers['Location'].rstrip('/').split('/')[-1])
             self.assertIn('헬스장 환불 받는 법', sent[-1]['prompt'])
@@ -1007,7 +1007,7 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 cid2 = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
                                   ('art2', 'x', '배송·교환·환불', '가게', '택배가 안 와요', '본문', '배송', '2026-10-09T10:00:00', 1, 0)).lastrowid
-            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test', 'ART_AUTO': '1'}), patch.object(self.site.companydesk, 'post_json', fake):
                 admin.post('/admin/art/fill', data={'_csrf': self.csrf(admin, '/admin/art'), 'kind': 'report'})
                 self.assertEqual(visitor.get(f'/art/report/{cid2}.webp').status_code, 404)  # 게시 전이라 안 그림
                 self.assertEqual(visitor.get(f'/art/report/{cid}.webp').status_code, 404)  # 내린 그림은 그대로
@@ -1020,14 +1020,14 @@ class SiteTest(unittest.TestCase):
             # 옛 그림체 그림은 한 번에 새 그림체로 (게시 중이면 게시 상태 그대로)
             with self.site.conn() as db: db.execute("UPDATE soboru_art SET style=1 WHERE kind='report' AND target_id=?", (cid2,))
             n = len(sent)
-            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}), patch.object(self.site.companydesk, 'post_json', fake):
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test', 'ART_AUTO': '1'}), patch.object(self.site.companydesk, 'post_json', fake):
                 self.assertIn('옛 그림체 1개', admin.get('/admin/art').get_data(as_text=True))
                 admin.post('/admin/art/fill', data={'_csrf': self.csrf(admin, '/admin/art'), 'kind': 'report', 'mode': 'old'})
             self.assertEqual(len(sent), n + 1)
             with self.site.conn() as db:
                 r = db.execute("SELECT * FROM soboru_art WHERE kind='report' AND target_id=?", (cid2,)).fetchone()
             self.assertEqual((r['style'], r['status']), (self.site.soboru_art.STYLE_V, 'live'))
-            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test'}):
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test', 'ART_AUTO': '1'}):
                 self.assertNotIn('새 그림체로 다시 그리기', admin.get('/admin/art').get_data(as_text=True))
             # 대표 사진: 관리자가 고른 첨부 사진만 공개, 고르면 AI 그림 대신 사진
             (Path(self.site.UPLOAD) / 'cover-test.png').write_bytes(b'\x89PNG fake')
@@ -5976,6 +5976,26 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.get(f"/letter/{r['no']}/fb/bad").status_code, 404)
         st = L['stats'](r['id'])
         self.assertEqual((st['good'], st['meh']), (0, 1))
+
+    def test_magazine_unsplash_cover(self):
+        # 운영자 2026-11-04: 사진을 안 올린 매거진 글은 언스플래시 사진 (키 없으면 글자 표지), 기사 화면에 작가 이름
+        with self.site.conn() as db:
+            aid = db.execute("INSERT INTO articles(title,summary,body,category,status,created,updated,published_at) VALUES('알뜰폰 고르는 법','요약','본문','통신','published','2026-11-04','2026-11-04','2026-11-04T09:00:00')").lastrowid
+        def fake(path, params=None):
+            if path.startswith('http'): return 200, {}
+            return 200, {'results': [{'id': 'm-%d' % i, 'urls': {'raw': 'https://images.unsplash.com/photo-m%d?ixid=x' % i}, 'user': {'name': '박작가', 'links': {'html': 'https://unsplash.com/@park'}},
+                                      'links': {'download_location': 'https://api.unsplash.com/photos/m/download'}} for i in range(40)]}
+        c = self.site.app.test_client()
+        with patch.object(self.site.soboru_letter, 'unsplash_call', fake), patch.dict(os.environ, {'UNSPLASH_ACCESS_KEY': 'us-test'}):
+            c.get('/letter')
+            for _ in range(50):
+                with self.site.conn() as db:
+                    if db.execute('SELECT 1 FROM mag_unsplash WHERE article_id=?', (aid,)).fetchone(): break
+                threading.Event().wait(0.1)
+        page = c.get(f'/life/{aid}', headers={'Host': 'soboru.co.kr'}).get_data(as_text=True)
+        self.assertIn('class="ma-page"', page)
+        self.assertIn('images.unsplash.com/photo-m', page); self.assertIn('박작가', page)
+        with self.site.conn() as db: db.execute('DELETE FROM mag_unsplash'); db.execute('DELETE FROM articles WHERE id=?', (aid,))
 
     def test_letter_unsplash_photos(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)

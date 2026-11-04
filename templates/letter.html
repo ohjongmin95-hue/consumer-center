@@ -2,7 +2,7 @@
 {% from 'letter_macros.html' import subscribe_form with context %}
 {% block title %}{{ ui_text('letter.title', '소보루 레터') }} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{{ ui_text('letter.description', '평일 아침마다 그날 꼭 알아야 할 주요 이슈를 쉽게 풀어 메일로 보내 드려요. 내 생활에 어떤 의미인지, 관련 법, 소보루 픽 인기 리뷰까지.') }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Archivo+Black&family=Black+Han+Sans&display=swap">{# 운영자 2026-11-04: 매거진은 뉴소스(newsourcemag.com)형 — 영문은 Inter·Archivo Black, 큰 한글 제목은 Black Han Sans (모두 SIL OFL) #}{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">{# 운영자 2026-11-04: 매거진은 뉴소스(newsourcemag.com)형 — 영문은 Inter·Archivo Black, 큰 한글 제목은 Black Han Sans (모두 SIL OFL) #}{% endblock %}
 {% block content %}
 {% set cfg = letter_cfg() %}
 {# 첫 화면 기본 표지 사진 static/img/mag-hero.jpg = 운영자가 고른 Unsplash 사진(Denny Müller, Unsplash License)
@@ -10,38 +10,32 @@
    SOBORU = 소비를 보는 새로운 루트. 갈색은 로고에만, 글자는 흰색·검정. 귀여운 그림 대신 사진이 없으면 큰 영문 활자 표지.
    묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['letter']) #}
 {% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '리콜': 'RECALL'} %}
-{% macro cover(a, n) %}{% set src = art_url('life', a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="nm-type t{{ n % 3 }}"><img src="{{ asset('img/soboru-wordmark.png') }}" alt=""><b>{{ EN.get(a['category'], 'LIFE') }}</b><em>{{ a['category'] }}</em></span>{% endif %}{% endmacro %}
-<main class="lt-page nm-page">
+{% macro cover(a, n) %}{% set src = mag_photo(a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="nm-type t{{ n % 3 }}"><img src="{{ asset('img/soboru-wordmark.png') }}" alt=""><b>{{ EN.get(a['category'], 'LIFE') }}</b><em>{{ a['category'] }}</em></span>{% endif %}{% endmacro %}
+<main class="lt-page nm-page" id="top">
   {% for blk in blocks('letter') %}{{ ed_block('letter', blk) }}
   {% if blk == 'hero' %}
   <section class="lt-hero">
-    {% set slides = mag[:4] %}
+    {# 운영자 2026-11-04: 메인 표지는 초콜릿 사진 한 장만. 다른 사진으로 넘어가지 않음 #}
     <div class="nm-g">
-      <div class="nm-hero" data-nm-hero>
-        {% for a in slides %}
-        <a class="nm-slide" href="{{ url_for('life_article', article_id=a['id']) }}"{% if not loop.first %} hidden{% endif %}>{% if loop.first and not art_url('life', a['id']) %}<img src="{{ asset('img/mag-hero.jpg') }}" alt="">{% else %}{{ cover(a, loop.index0) }}{% endif %}<span class="nm-tag"><strong>{{ ui_text('letter.mz_issue', 'THIS ISSUE') }}</strong>{{ a['title'] }}</span></a>
-        {% else %}
-        <span class="nm-slide"><img src="{{ asset('img/mag-hero.jpg') }}" alt=""></span>
-        {% endfor %}
-        <img class="nm-big" src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="" aria-hidden="true">
-        {% if slides|length > 1 %}<span class="nm-dots">{% for a in slides %}<button type="button" aria-label="{{ loop.index }}번째 표지"{% if loop.first %} class="on"{% endif %}></button>{% endfor %}</span>{% endif %}
+      <div class="nm-hero">
+        <span class="nm-slide"><img src="{{ asset('img/mag-hero.jpg') }}" alt=""></span>{# 운영자 2026-11-04: 표지 위 'THIS ISSUE' 글 띠는 뺌 #}
+        <img class="nm-big" src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="" aria-hidden="true">
       </div>
     </div>
     <div class="nm-g nm-intro">
       <h1>{{ ui('letter.mz_intro2', 'Consumer Lifestyle,\nSOBORU Magazine') }}</h1>
-      <div class="nm-about"><span class="nm-pill">About</span><p><b>{{ ui('letter.mz_motto', 'SOBORU, 소비를 보는 새로운 루트.') }}</b><br>{{ ui('letter.mz_about2', '사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}</p></div>
+      <p><b>{{ ui('letter.mz_motto', 'SOBORU, 소비를 보는 새로운 루트.') }}</b> {{ ui('letter.mz_about2', '사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}</p>
     </div>
     <div class="nm-g">
       <a class="nm-banner" href="#sub"><span class="nm-bt"><small>SOBORU LETTER</small><strong>{{ ui('letter.mz_bn', '아침 5분,\n돈이 되는 생활경제') }}</strong><span class="nm-go">{{ ui('letter.mz_bn_go', '무료로 구독하기') }} →</span></span><span class="nm-bi"><span class="nm-clock"><b>{{ ui_text('letter.mz_clock', '07:30') }}</b><small>{{ ui_text('letter.mz_clock_sub', 'WEEKDAY MORNING · YOUR INBOX') }}</small></span><span class="nm-stamp" aria-hidden="true">EVERY<br>MORNING</span></span></a>
     </div>
-    <script>(function(){var r=document.querySelector('[data-nm-hero]');if(!r)return;var s=r.querySelectorAll('.nm-slide'),d=r.querySelectorAll('.nm-dots button'),i=0;if(s.length<2)return;function go(k){s[i].hidden=true;d[i].classList.remove('on');i=(k+s.length)%s.length;s[i].hidden=false;d[i].classList.add('on')}d.forEach(function(b,k){b.onclick=function(){go(k)}});setInterval(function(){go(i+1)},6000)})();</script>
   </section>
   {% elif blk == 'feats' %}
   <div class="lt-feats">
   {% if mag|length > 1 %}
   <section class="nm-g nm-hot" id="hot">
-    <h2 class="nm-sh">{{ ui('letter.mz_hot', 'Most Read') }}</h2>
-    <div class="nm-hots">{% for a in mag[1:5] %}<a href="{{ url_for('life_article', article_id=a['id']) }}"><span class="nm-ph">{{ cover(a, loop.index) }}</span><em>{{ EN.get(a['category'], 'LIFE') }}</em><b>{{ a['title'] }}</b></a>{% endfor %}</div>
+    <div class="nm-hh"><h2 class="nm-sh"><i aria-hidden="true"></i>{{ ui('letter.mz_hot2', 'HOT ISSUE') }}</h2><a class="nm-up" href="#top" aria-label="맨 위로">↑</a></div>
+    <div class="nm-hots">{% for a in mag[1:5] %}<a class="h{{ loop.index0 }}" href="{{ url_for('life_article', article_id=a['id']) }}"><span class="nm-ph">{{ cover(a, loop.index) }}<span class="nm-pt" aria-hidden="true"><span>{{ EN.get(a['category'], 'LIFE') }}</span></span><img class="nm-pl" src="{{ asset('img/soboru-wordmark.png') }}" alt=""><strong>{{ a['title'] }}</strong></span><b>{{ a['title'] }}</b></a>{% endfor %}</div>
     <a class="nm-more" href="https://consumerjebo.co.kr/life">{{ ui('letter.mz_hot_more', '더 많은 이야기') }} →</a>
   </section>
   {% endif %}

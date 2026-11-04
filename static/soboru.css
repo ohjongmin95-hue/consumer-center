@@ -3016,3 +3016,121 @@ main img,main video,main iframe,main table{max-width:100%}
 .nm-form .lt-form,.nm-form .lt-row input{width:100%}
 .nm-page .nm-type b{font-size:1em!important;margin:0!important;display:block!important}
 .nm-hots .nm-type{font-size:clamp(34px,4.4vw,68px)}
+/* HOT ISSUE (운영자 2026-11-04: 감각적인 핫 기사 칸 — 둥근 큰 사진 카드, 사진 위 제목. 뉴소스와 다르게 가격표 딱지·영수증 절취선) */
+.nm-hh{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.nm-hh .nm-sh{display:flex;align-items:center;gap:12px;margin:0;font-size:clamp(28px,2.6vw,38px);font-weight:800;letter-spacing:-.02em}
+.nm-hh .nm-sh i{width:26px;height:26px;border-radius:50%;background:#fff}
+.nm-up{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#FAF5EB;color:#111!important;font-size:20px;font-weight:700}
+.nm-hots{gap:22px}
+.nm-hots a{position:relative}
+.nm-hots .nm-ph{position:relative;aspect-ratio:3/4.1;border-radius:22px;background:#111}
+.nm-hots .nm-ph::after{content:"";position:absolute;inset:45% 0 0;background:linear-gradient(transparent,rgba(0,0,0,.62));pointer-events:none}
+.nm-hots .nm-ph strong{position:absolute;left:20px;right:20px;bottom:54px;z-index:2;color:#fff;font-size:clamp(19px,1.7vw,26px);line-height:1.32;font-weight:800;letter-spacing:-.02em;text-wrap:balance;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.nm-hots .nm-pl{position:absolute;left:50%;bottom:20px;z-index:2;width:72px!important;height:auto;transform:translateX(-50%);filter:brightness(0) invert(1);opacity:.95}
+/* 가격표 모양 분야 딱지 */
+.nm-pt{position:absolute;left:18px;top:18px;z-index:2;display:inline-flex;align-items:center;height:28px;padding:0 12px 0 22px;background:#EF920E;color:#fff;font:400 12px/1 "Archivo Black",sans-serif;letter-spacing:.04em;clip-path:polygon(10px 0,100% 0,100% 100%,10px 100%,0 50%)}
+.nm-pt::before{content:"";position:absolute;left:9px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:#fff}
+.nm-hots .h1 .nm-pt{background:#111}.nm-hots .h3 .nm-pt{background:#fff;color:#111}.nm-hots .h3 .nm-pt::before{background:#EF920E}
+/* 첫 카드는 영수증처럼 아래가 톱니로 잘림 */
+.nm-hots .h0 .nm-ph{border-radius:22px 22px 0 0;-webkit-mask:linear-gradient(#000,#000) top/100% calc(100% - 12px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/24px 12px repeat-x;mask:linear-gradient(#000,#000) top/100% calc(100% - 12px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/24px 12px repeat-x}
+.nm-hots>a>b{margin-top:14px;font-size:15px;font-weight:600;opacity:.95}
+.nm-hots .nm-type{justify-content:flex-start;padding-top:64px}
+.nm-hots .nm-type b{opacity:.9}
+@media(max-width:900px){.nm-hots{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:72%;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;scrollbar-width:none}.nm-hots>a{scroll-snap-align:start}.nm-hots::-webkit-scrollbar{display:none}}
+@media(max-width:600px){.nm-up{width:40px;height:40px}.nm-hh .nm-sh i{width:20px;height:20px}.nm-hots>a>b{display:none}.nm-hots .nm-ph strong{font-size:20px}}
+/* 운영자 2026-11-04: 매거진 사진·카드는 직각 네모 */
+.nm-page .nm-hero,.nm-page .nm-hots .nm-ph,.nm-page .nm-hots .h0 .nm-ph{border-radius:0!important}
+/* 운영자 2026-11-04: '동그랗지 말자' — 매거진은 단추·딱지·도장·점까지 모두 직각 */
+.nm-page *,.nm-page *::before,.nm-page *::after,.nm-top *{border-radius:0!important}
+.nm-dots button{width:10px;height:10px}.nm-dots button.on{width:30px}
+/* 운영자 2026-11-04: 소개는 About 없이 가운데 정렬 */
+.nm-page .nm-intro{display:flex;flex-direction:column;align-items:center;text-align:center;gap:22px;padding-block:110px 120px}
+.nm-page .nm-intro h1{font-size:clamp(40px,5.6vw,88px);line-height:1.02;letter-spacing:-.035em;text-wrap:balance}
+.nm-page .nm-intro p{margin:0;max-width:34em;font-size:17px;line-height:1.7;opacity:.95}
+.nm-page .nm-intro p b{display:block;margin-bottom:4px}
+/* 운영자 2026-11-04: 아래 구독 띠 큰 글씨가 너무 커서 줄임 */
+.nm-page .nm-lt{padding-block:72px 40px;align-items:center}
+.nm-page .nm-lt h2{font-size:clamp(40px,4.6vw,68px);line-height:1}
+@media(max-width:600px){.nm-page .nm-intro{padding-block:56px 64px}.nm-page .nm-intro h1{font-size:38px}.nm-page .nm-intro p{font-size:15px}.nm-page .nm-lt{padding-block:56px 28px}.nm-page .nm-lt h2{font-size:40px}}
+.nm-page .nm-hots .nm-type{font-size:clamp(26px,3.1vw,46px)}.nm-page .nm-type b{white-space:nowrap}
+/* 사진 없는 표지 카드는 회색 그늘 없이 글자만 (지저분해 보여서) */
+.nm-page .nm-hots .nm-ph:has(>.nm-type)::after{display:none}
+.nm-page .nm-hots .nm-ph:has(>.nm-type.t1) strong,.nm-page .nm-hots .nm-ph:has(>.nm-type.t2) strong{color:#111}
+.nm-page .nm-hots .nm-ph:has(>.nm-type.t1) .nm-pl,.nm-page .nm-hots .nm-ph:has(>.nm-type.t2) .nm-pl{filter:none}
+.nm-page .nm-wv a:has(>.nm-type)>span:last-child{background:none}
+.nm-page .nm-wv a:has(>.nm-type.t1)>span:last-child,.nm-page .nm-wv a:has(>.nm-type.t2)>span:last-child{color:#111}
+.nm-page .nm-lt h2{color:#fff!important}
+.nm-page .nm-bt strong{font-family:Inter,"Pretendard Variable",Pretendard,sans-serif!important;font-weight:800;letter-spacing:-.03em}
+.nm-page .nm-hots .nm-ph:has(>.nm-type.t1) .nm-pl,.nm-page .nm-hots .nm-ph:has(>.nm-type.t2) .nm-pl{display:none}
+.nm-page .nm-feat .nm-type em,.nm-page .nm-feat .nm-type img{display:none}
+/* 운영자 2026-11-04: 첫 화면 초콜릿 사진은 제보센터 첫 화면처럼 둥근 카드 안에, 살짝 어둡게 깔고 가운데 귤색 로고 */
+.nm-page .lt-hero>.nm-g:first-child{padding-top:24px}
+.nm-page .nm-hero{border-radius:28px!important;height:min(700px,52vw);isolation:isolate}
+.nm-page .nm-hero .nm-slide::after{content:"";position:absolute;inset:0;background:rgba(20,12,6,.42);pointer-events:none}
+.nm-page .nm-hero .nm-big{width:min(54%,700px)!important;filter:drop-shadow(0 4px 24px rgba(0,0,0,.35))}
+@media (max-width:900px){.nm-page .lt-hero>.nm-g:first-child{padding-top:16px}.nm-page .nm-hero{border-radius:20px!important;height:auto;aspect-ratio:4/5}.nm-page .nm-hero .nm-big{width:78%!important}}
+/* ===== 소보루 매거진 기사 화면 (운영자 2026-11-04: 뉴소스 기사처럼 깔끔·절제. 얇은 선, 밝은 바탕, 귤색은 분야 글자 하나만, 모두 직각) ===== */
+.lt-alone:has(.ma-page){background:#FAFAFA}
+.lt-alone main.ma-page{max-width:none!important;width:auto;margin:0!important;padding:0!important}
+.ma-page{--ma-or:#EF920E;--ma-ink:#111;--ma-mute:#7a7a7a;--ma-line:#e4e4e4;background:#FAFAFA;color:var(--ma-ink);font-family:Inter,"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+.ma-page *{border-radius:0!important}
+.ma-cover{position:relative;margin:0;height:min(640px,48vw);min-height:240px;overflow:hidden;background:#111}
+.ma-cover>img,.ma-cover>.ma-type{display:flex!important;width:100%;height:100%;object-fit:cover}
+.ma-cover figcaption{position:absolute;right:16px;bottom:12px;font-size:11px;color:rgba(255,255,255,.75)}
+.ma-cover figcaption a{color:inherit;text-decoration:none}
+.ma-type{align-items:flex-end;padding:clamp(16px,3vw,48px);overflow:hidden}
+.ma-type b{font-family:"Archivo Black",Inter,sans-serif;font-weight:400;font-size:clamp(64px,13vw,220px);line-height:.85;letter-spacing:-.04em;white-space:nowrap}
+.ma-type.t0{background:#111;color:#fff}.ma-type.t1{background:#EDEBE6;color:#111}.ma-type.t2{background:#E9E9E9;color:#111}
+.ma-art{max-width:760px;margin:0 auto;padding:64px max(20px,env(safe-area-inset-right)) 24px max(20px,env(safe-area-inset-left))}
+.ma-draft{margin:0 0 20px;padding:10px 14px;border:1px solid var(--ma-line);font-size:14px}
+.ma-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px}
+.ma-cat{color:var(--ma-or);font-weight:600;letter-spacing:.01em}
+.ma-row time{color:var(--ma-mute)}
+.ma-head h1{margin:18px 0 0;font-size:clamp(28px,4vw,42px);font-weight:700;line-height:1.3;letter-spacing:-.035em;text-wrap:balance;word-break:keep-all}
+.ma-sub{margin:14px 0 0;font-size:clamp(16px,1.8vw,19px);line-height:1.65;color:#666;word-break:keep-all}
+.ma-by{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:36px;padding:16px 0;border-top:1px solid var(--ma-line);border-bottom:1px solid var(--ma-line);font-size:13px;color:var(--ma-mute)}
+.ma-by b{margin-right:8px;color:var(--ma-ink);font-weight:700;letter-spacing:.12em;font-size:12px}.ma-by i{margin:0 8px;font-style:normal;color:#c4c4c4}
+.ma-share{display:flex;gap:6px;flex:none}
+.ma-share a,.ma-share button{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid #d6d6d6;background:transparent;color:#333;font:600 14px/1 Inter,sans-serif;text-decoration:none;cursor:pointer;transition:border-color .2s,color .2s}
+.ma-share a:hover,.ma-share button:hover,.ma-share button.on{border-color:var(--ma-ink);color:var(--ma-ink)}
+.ma-share svg{width:15px;height:15px}
+.ma-sum{margin:36px 0 0;padding:0 0 0 18px;border-left:1px solid var(--ma-ink)}
+.ma-sum p{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--ma-mute)}
+.ma-sum ul{margin:0;padding-left:16px;font-size:15px;line-height:1.75;color:#333}
+.ma-page .ma-body{margin-top:44px;font-size:17px;line-height:1.9;color:#222;letter-spacing:-.005em}
+.ma-page .ma-body .sb-h-emo,.ma-page .ma-body [class*="-emo"]{display:none}
+.ma-page .ma-body h2{margin:56px 0 16px;padding:0;border:0;font-size:22px;font-weight:700;letter-spacing:-.025em}
+.ma-page .ma-body h2::before,.ma-page .ma-body h2::after{display:none}
+.ma-page .ma-body .sb-h-t small{display:block;margin-bottom:6px;color:var(--ma-mute);font-size:12px;font-weight:600;letter-spacing:.12em}
+.ma-page .ma-body h3{font-size:18px;font-weight:700}
+.ma-page .ma-body .sb-callout{margin:28px 0;padding:22px 24px!important;background:#F1F1EF!important;border:0!important}
+.ma-page .ma-body .sb-callout b{display:block;margin-bottom:4px;color:var(--ma-mute);font-size:11px;font-weight:700;letter-spacing:.16em}
+.ma-page .ma-body .sb-callout p{font-weight:600;color:#222}
+.ma-page .ma-body .sb-terms{padding:18px 0;background:none;border:0;border-top:1px solid var(--ma-line);border-bottom:1px solid var(--ma-line)}
+.ma-page .ma-body .sb-terms-h{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--ma-mute)}
+.ma-page .ma-body a{color:var(--ma-ink);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.ma-src{margin:44px 0 0;padding-top:16px;border-top:1px solid var(--ma-line);font-size:13px;color:var(--ma-mute)}.ma-src b{margin-right:8px;color:var(--ma-ink);font-weight:600}.ma-src ul{margin:6px 0 0;padding-left:18px}.ma-src a{color:inherit}
+.ma-more{max-width:1200px;margin:72px auto 0;padding:40px max(20px,env(safe-area-inset-right)) 0 max(20px,env(safe-area-inset-left));border-top:1px solid var(--ma-line)}
+.ma-more h2{margin:0 0 24px;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.ma-more h2 i{display:none}
+.ma-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+.ma-grid a{display:flex;flex-direction:column;gap:10px;color:var(--ma-ink);text-decoration:none}
+.ma-th{display:block;aspect-ratio:4/3;overflow:hidden;background:#e9e9e9}
+.ma-th>img,.ma-th>.ma-type{display:flex;width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.ma-th .ma-type b{font-size:clamp(28px,3.4vw,48px)}
+.ma-grid a:hover .ma-th>*{transform:scale(1.03)}
+.ma-grid b{font-size:16px;font-weight:600;line-height:1.45;word-break:keep-all}.ma-grid small{font-size:13px;color:var(--ma-mute)}
+.ma-letter{display:flex;justify-content:space-between;align-items:center;gap:20px;max-width:1200px;margin:80px auto 0;padding:36px max(20px,env(safe-area-inset-right)) 48px max(20px,env(safe-area-inset-left));border-top:1px solid var(--ma-line);color:var(--ma-ink);text-decoration:none}
+.ma-letter small{display:block;font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--ma-or)}
+.ma-letter strong{display:block;margin-top:8px;font-size:clamp(18px,2.2vw,22px);font-weight:700;letter-spacing:-.02em;word-break:keep-all}
+.ma-letter em{flex:none;padding:12px 18px;background:var(--ma-ink);color:#fff;font-style:normal;font-size:14px;font-weight:600}
+.ma-up{position:fixed;right:max(20px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));z-index:15;display:flex;align-items:center;justify-content:center;width:44px;height:44px;background:#111;color:#fff;font-size:18px;text-decoration:none}
+@media (max-width:700px){.ma-cover{height:auto;aspect-ratio:4/3}.ma-art{padding-top:36px}.ma-grid{grid-template-columns:1fr}.ma-letter{flex-direction:column;align-items:flex-start}.ma-up{width:40px;height:40px}}
+/* 운영자 2026-11-04: 표지 바로 아래 소개 글이 너무 큼 → 줄임 */
+.nm-page .nm-intro{gap:16px;padding-block:72px 80px}
+.nm-page .nm-intro h1{font-size:clamp(28px,3.4vw,48px);line-height:1.12}
+.nm-page .nm-intro p{font-size:15px}
+@media(max-width:600px){.nm-page .nm-intro{padding-block:44px 52px}.nm-page .nm-intro h1{font-size:28px}.nm-page .nm-intro p{font-size:14px}}
+/* 운영자 2026-11-04: 상단 메뉴와 표지 사진 사이 간격 좁힘 */
+.nm-page .lt-hero>.nm-g:first-child{padding-top:6px}
+@media (max-width:900px){.nm-page .lt-hero>.nm-g:first-child{padding-top:4px}}
