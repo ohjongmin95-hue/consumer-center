@@ -2,7 +2,7 @@
    왼쪽 분야·오른쪽 날짜, 큰 제목·부제, 에디터 줄, 네모 공유 단추, 가운데 본문, 오른쪽 아래 ↑ 단추. 안쪽은 귤색으로 채우지 않고 귤색은 포인트로만.
    그림은 운영자가 올린 사진(mag_photo)만, 없으면 큰 영문 활자 표지 #}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">
-{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '리콜': 'RECALL'} %}
+{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '뷰티': 'BEAUTY', '리콜': 'RECALL'} %}
 {% set en = EN.get(a['category'], 'LIFE') %}
 {% set photo = mag_photo(a['id']) %}
 {% set sum_lines = (a['summary'] or '').split('\n')|map('trim')|select|list %}
