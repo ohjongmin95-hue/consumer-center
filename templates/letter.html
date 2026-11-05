@@ -67,26 +67,40 @@
   </section>
   <script>(function(){var v=document.querySelectorAll('.nm-rl video');v.forEach(function(x){x.addEventListener('play',function(){v.forEach(function(o){if(o!==x)o.pause()})})})})();</script>
   {% endif %}
-  {% elif blk == 'archive' %}
-  {# 운영자 2026-11-04: 하단은 귤색 띠에 큰 영문 한 줄 + 구독 (뼈대만 참고, 문구·디테일은 우리 것) #}
-  <section class="nm-letter lt-archive" id="sub">
-    <div class="nm-g nm-lt">
-      <div>
-        <p class="nm-kick">{{ ui('letter.mz_kick', '소보루 레터') }}</p>{# 운영자 2026-11-05: 뉴스레터 이름 #}
-        <h2>{{ ui('letter.mz_end', 'READ BEFORE\nYOU BUY') }}</h2>
-        <p class="nm-lead">{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }} <span>{{ cfg.when }} {{ ui('letter.mz_when2', '메일로 받아 보세요.') }}</span></p>
-        <ul class="nm-secs"><li>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</li><li>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</li><li>{{ ui('letter.t3', '숫자로 보는 오늘') }}</li><li>{{ ui('letter.t4', '크로와상의 한마디') }}</li></ul>
+  {% elif blk == 'subscribe' %}
+  {# 운영자 2026-11-05: 레터 구독은 하단 귤색 띠에서 빼서 따로 한 칸 — 크라프트 빵 봉투 바탕, 큰 두 줄 + 갓 구운 스티커, 이메일·동의 두 개·구독 버튼 (뼈대만 참고, 문구·디테일은 소보루 레터 것) #}
+  {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
+                  'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent2', '두 가지 동의에 모두 체크해야 구독할 수 있어요.')),
+                  'limit': ('bad', ui('letter.n_limit', '신청이 너무 잦아요. 10분쯤 뒤에 다시 해 주세요.')), 'nomail': ('bad', ui('letter.n_nomail', '지금은 메일 발송을 준비하고 있어 구독 신청을 받을 수 없어요. 조금만 기다려 주세요.')),
+                  'fail': ('bad', ui('letter.n_fail', '확인 메일을 보내지 못했어요. 잠시 뒤 다시 해 주세요.'))} %}
+  <section class="nm-sub" id="sub" aria-labelledby="nm-sub-h">
+    <div class="nm-g nm-sub-in">
+      <div class="nm-sub-copy">
+        <div class="nm-sub-head"><h2 id="nm-sub-h">{{ ui('letter.sub_h1', '오늘의 소비, 아침 5분이면 다 읽어요.') }}<br><em>{{ cfg.when }}</em> {{ ui('letter.sub_h2', '소보루 레터를 메일로 받아 보세요.') }}</h2>
+        <svg class="nm-sub-stamp" viewBox="0 0 120 120" role="img" aria-label="FRESHLY BAKED DAILY"><path fill="#EF920E" d="M68.7 10.8 Q81.5 1.1 85.0 16.7 Q100.3 12.0 98.3 27.9 Q114.3 28.6 107.0 42.9 Q121.8 49.1 110.0 60.0 Q121.8 70.9 107.0 77.1 Q114.3 91.4 98.3 92.1 Q100.3 108.0 85.0 103.3 Q81.5 118.9 68.7 109.2 Q60.0 122.7 51.3 109.2 Q38.5 118.9 35.0 103.3 Q19.7 108.0 21.7 92.1 Q5.7 91.4 13.0 77.1 Q-1.8 70.9 10.0 60.0 Q-1.8 49.1 13.0 42.9 Q5.7 28.6 21.7 27.9 Q19.7 12.0 35.0 16.7 Q38.5 1.1 51.3 10.8 Q60.0 -2.7 68.7 10.8Z"/><circle cx="60" cy="60" r="44" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 3"/><text x="60" y="47" text-anchor="middle">FRESHLY</text><text x="60" y="66" text-anchor="middle">BAKED</text><text x="60" y="85" text-anchor="middle">DAILY</text></svg></div>
+        <p class="nm-sub-back">{{ ui('letter.archive_title', '지난 레터') }}{% for L in rows[:3] %} · <a href="{{ url_for('letter_issue', no=L.no) }}">No.{{ '%02d' % L.no }} {{ L.title }}</a>{% else %} · {{ ui('letter.mz_noback', '첫 레터를 준비하고 있어요') }}{% endfor %}</p>
       </div>
-      <div class="nm-form">
-        {% set notes = {'check': ('ok', ui('letter.n_check', "확인 메일을 보냈어요! 메일함에서 '구독 확인하기'를 눌러야 구독이 시작돼요. 메일이 안 보이면 스팸함도 살펴봐 주세요.")),
-                        'email': ('bad', ui('letter.n_email', '이메일 주소를 다시 확인해 주세요.')), 'consent': ('bad', ui('letter.n_consent', '이메일 수집·이용에 동의해야 구독할 수 있어요.')),
-                        'limit': ('bad', ui('letter.n_limit', '신청이 너무 잦아요. 10분쯤 뒤에 다시 해 주세요.')), 'nomail': ('bad', ui('letter.n_nomail', '지금은 메일 발송을 준비하고 있어 구독 신청을 받을 수 없어요. 조금만 기다려 주세요.')),
-                        'fail': ('bad', ui('letter.n_fail', '확인 메일을 보내지 못했어요. 잠시 뒤 다시 해 주세요.'))} %}
-        {% if state in notes %}<p class="lt-note {{ notes[state][0] }}" role="status">{{ notes[state][1] }}</p>{% endif %}
-        {{ subscribe_form('letter', True) }}
-      </div>
+      <form class="nm-sub-form" method="post" action="{{ url_for('letter_subscribe') }}">
+        {% if state in notes %}<p class="nm-sub-note {{ notes[state][0] }}" role="status">{{ notes[state][1] }}</p>{% endif %}
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="place" value="mag"><input type="hidden" name="checks" value="1">
+        <div class="lt-hp" aria-hidden="true"><label>웹사이트 <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+        <label class="nm-sub-mail"><span class="sr-only">{{ ui_text('letter.email_ph', '이메일 주소') }}</span><input type="email" name="email" required maxlength="254" placeholder="{{ ui_text('letter.sub_ph', '이메일을 입력해 주세요') }}" autocomplete="email" value="{{ g.user['email'] if g.user and g.user['email'] else '' }}"></label>
+        <div class="nm-sub-agree">
+          <label><input type="checkbox" name="agree_privacy" value="1" required><span>{{ ui('letter.sub_a1', '개인정보 수집·이용 동의 (필수)') }}</span></label>
+          <label><input type="checkbox" name="agree_ad" value="1" required><span>{{ ui('letter.sub_a2', '광고성 정보 수신 동의 (필수)') }}</span></label>
+          <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.agree_more', '자세히') }}</a>
+        </div>
+        <button type="submit">{{ ui('letter.sub_btn', '소보루 레터 구독하기') }}</button>
+      </form>
     </div>
-    <div class="nm-g nm-back">{{ ui('letter.archive_title', '지난 레터') }}{% for L in rows[:3] %} · <a href="{{ url_for('letter_issue', no=L.no) }}">No.{{ '%02d' % L.no }} {{ L.title }}</a>{% else %} · {{ ui('letter.mz_noback', '첫 레터를 준비하고 있어요') }}{% endfor %}</div>
+  </section>
+  {% elif blk == 'archive' %}
+  {# 운영자 2026-11-04: 하단은 귤색 띠에 큰 영문 한 줄. 11/05: 레터 구독·지난 레터는 위 '소보루 레터 구독' 칸으로 옮김 #}
+  <section class="nm-letter lt-archive">
+    <div class="nm-g nm-lt nm-end">
+      <h2>{{ ui('letter.mz_end', 'READ BEFORE\nYOU BUY') }}</h2>
+      <p class="nm-end-sub">{{ ui('letter.mz_end_sub', '소비를 보는 새로운 루트, 소보루 매거진') }}</p>
+    </div>
     <div class="nm-g nm-fb"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="104" height="20"><span>{{ ui('letter.mz_fb', '소비를 보는 새로운 루트 · 소비자를위한신문') }} · <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('letter.mz_terms', '이용약관') }}</a> · <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.mz_privacy', '개인정보처리방침') }}</a>{% set mc = mag_conf() if mag_conf is defined else None %}{% if mc %}{% if mc.inbox %} · <a href="{{ url_for('mag_contact') }}">{{ ui('letter.mz_contact', '제보·문의') }}</a>{% endif %}{% if mc.email %} · {{ mc.email }}{% endif %}{% for k, n in [('instagram', 'Instagram'), ('youtube', 'YouTube'), ('threads', 'Threads'), ('x', 'X'), ('blog', 'Blog')] if mc.sns[k] %} · <a href="{{ mc.sns[k] }}" target="_blank" rel="noopener me">{{ n }}</a>{% endfor %}{% endif %} · <a href="https://consumerjebo.co.kr/admin/magazine" rel="nofollow">{{ ui('letter.mz_admin', '관리자') }}</a></span></div>
   </section>
   {% endif %}

@@ -1236,6 +1236,7 @@ def install(S):
         if f.get('website'): return back('check')  # 사람 눈에 안 보이는 칸을 채우면 자동 등록 프로그램
         email = (f.get('email') or '').strip().lower()
         if len(email) > 254 or not EMAIL_RE.match(email): return back('email')
+        if f.get('checks') and not (f.get('agree_privacy') and f.get('agree_ad')): return back('consent')  # 매거진 구독 칸: 동의 두 개 체크 (운영자 2026-11-05)
         since = (datetime.datetime.now() - datetime.timedelta(minutes=10)).isoformat(timespec='seconds')
         with conn() as db:
             n = db.execute("SELECT COUNT(*) FROM login_attempts WHERE kind='letter' AND ip_hash=? AND created>=?", (S.ip_hash(), since)).fetchone()[0]
