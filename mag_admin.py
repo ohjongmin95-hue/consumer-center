@@ -22,7 +22,7 @@ from flask import abort, flash, jsonify, redirect, render_template, request, sen
 # 매거진 쪽 메뉴에 속하는 화면 (나머지는 모두 소비자제보센터 쪽)
 MAG_ENDPOINTS = {'admin_art'}  # 이름이 mag_·admin_life·admin_letter로 시작하는 화면도 매거진 쪽
 MAG_GROUPS = [
-    ('', [('mag_home', 'home', '매거진 홈')]),
+    ('', [('mag_home', 'home', '대시보드')]),
     ('기사', [('admin_life', 'edit', '기사'), ('admin_life_ai', 'text', 'AI 기사')]),
     ('화면', [('mag_front', 'layers', '첫 화면 편집'), ('admin_art', 'image', '기사 사진'), ('mag_seo_admin', 'search', '검색 노출')]),
     ('구독', [('admin_letter', 'mail', '소보루 레터')]),
@@ -185,7 +185,15 @@ def install(S):
             recent = db.execute('SELECT id,title,status,category,published_at,created,views FROM articles ORDER BY id DESC LIMIT 8').fetchall()
             top = db.execute("SELECT id,title,views FROM articles WHERE status='published' ORDER BY views DESC LIMIT 5").fetchall()
             scheduled = db.execute("SELECT id,title,published_at FROM articles WHERE status='scheduled' ORDER BY published_at LIMIT 5").fetchall()
-        return render_template('mag_admin_home.html', n=n, recent=recent, top=top, scheduled=scheduled)
+        now = datetime.datetime.now()
+        return render_template('mag_admin_home.html', n=n, recent=recent, top=top, scheduled=scheduled,
+                               today_en=now.strftime('%A, %B ') + str(now.day))
+
+    # ---- 어디를 관리할까요 (운영자 2026-11-05: 로그인하면 먼저 소비자제보센터·소보루 매거진 고르기) ----
+    @app.route('/admin/choose')
+    @S.admin_only
+    def admin_choose():
+        return render_template('admin_choose.html')
 
     # ---- 첫 화면 편집 ----------------------------------------------------------
     @app.route('/admin/magazine/front', methods=['GET', 'POST'])

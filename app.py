@@ -949,13 +949,13 @@ def admin_session_ver():return admin_setting('session_ver') or '1'
 
 @app.route('/admin/login',methods=['GET','POST'])
 def admin_login():
-    if request.method=='GET' and admin_active():return redirect(url_for('admin'))  # 이미 로그인돼 있으면 바로 관리자 홈으로
+    if request.method=='GET' and admin_active():return redirect(url_for('admin_choose'))  # 이미 로그인돼 있으면 어디를 관리할지 고르는 화면으로
     if request.method=='POST':
         stored=admin_password_hash()
         if too_many_attempts('admin'):
             flash('로그인을 너무 많이 시도했어요. 10분 뒤 다시 해 주세요.');return render_template('admin_login.html'),429
         if stored and check_password_hash(stored,request.form.get('password','')):
-            session.clear();session['admin']=True;session['admin_v']=admin_session_ver();session['admin_at']=time.time();session.permanent=False;return redirect(url_for('admin'))
+            session.clear();session['admin']=True;session['admin_v']=admin_session_ver();session['admin_at']=time.time();session.permanent=False;return redirect(url_for('admin_choose'))  # 운영자 2026-11-05: 들어오면 먼저 제보센터·매거진 고르기
         note_attempt('admin')
         flash('로그인하지 못했어요. 비밀번호를 다시 확인해 주세요.')
     return render_template('admin_login.html')

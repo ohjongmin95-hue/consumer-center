@@ -810,7 +810,8 @@ class SiteTest(unittest.TestCase):
         admin = self.site.app.test_client()
         token = self.csrf(admin, '/admin/login')
         response = admin.post('/admin/login', data={'_csrf': token, 'password': self.password}, follow_redirects=True)
-        self.assertIn('관리자 홈', response.get_data(as_text=True))
+        self.assertIn('ch-mag', response.get_data(as_text=True))  # 먼저 어디를 관리할지 고름
+        self.assertIn('관리자 홈', admin.get('/admin').get_data(as_text=True))
         with self.site.conn() as db:
             case_id = db.execute('SELECT id FROM cases WHERE receipt=?', (receipt,)).fetchone()['id']
         path = '/admin/reports/' + str(case_id)
@@ -3118,9 +3119,9 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(other.get('/admin').status_code, 302)  # 다른 기기는 로그아웃
         fresh = self.site.app.test_client()
         old = self.post_form(fresh, '/admin/login', {'password': self.password})
-        self.assertNotEqual(old.headers.get('Location'), '/admin')
+        self.assertNotEqual(old.headers.get('Location'), '/admin/choose')
         new = self.post_form(fresh, '/admin/login', {'password': 'NewAdminPass99'})
-        self.assertEqual(new.headers['Location'], '/admin')
+        self.assertEqual(new.headers['Location'], '/admin/choose')  # 운영자 2026-11-05: 들어오면 먼저 제보센터·매거진 고르기
 
     def test_every_screen_text_is_editable(self):
         self.old_guide()
@@ -6029,6 +6030,13 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(a['title'], '택시 호출료는 누구에게 가나'); self.assertIn('## 호출 전에 확인할 것', a['body'])
             self.assertIn('5%', b['body'])  # 숫자가 달라진 글은 그대로
             page = admin.get('/admin/life/ai').get_data(as_text=True); self.assertIn('숫자가 달라짐', page)
+            # 운영자 2026-11-05 (2차): 1차(기사체)로 바꾼 글도 피처 문체로 한 번 더, 되돌리기용 원문은 맨 처음 글 그대로
+            with self.site.conn() as db: db.execute('UPDATE life_restyle_ver SET ver=1 WHERE article_id=?', (ok,))
+            n = len(sent); admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai')})
+            self.assertTrue(any('택시' in json.loads(x['messages'][1]['content']).get('title', '') for x in sent[n:] if x['messages'][1]['content'].startswith('{')))
+            with self.site.conn() as db:
+                self.assertEqual(db.execute('SELECT ver FROM life_restyle_ver WHERE article_id=?', (ok,)).fetchone()[0], 2)
+                self.assertEqual(db.execute('SELECT title FROM life_restyle WHERE article_id=?', (ok,)).fetchone()[0], '택시 호출료, 누구에게 가나요?')
             admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'undo'})
             with self.site.conn() as db: self.assertEqual(db.execute('SELECT title FROM articles WHERE id=?', (ok,)).fetchone()[0], '택시 호출료, 누구에게 가나요?')
             qs = []
@@ -6040,7 +6048,7 @@ class SiteTest(unittest.TestCase):
                 admin.post('/admin/art/unsplash', data={'_csrf': self.csrf(admin, '/admin/art'), 'redo': '1'})
             self.assertIn('taxi city night', qs)
         with self.site.conn() as db:
-            db.execute('DELETE FROM mag_unsplash2'); db.execute('DELETE FROM life_restyle'); db.execute('DELETE FROM articles WHERE id IN (?,?)', (ok, bad))
+            db.execute('DELETE FROM mag_unsplash2'); db.execute('DELETE FROM life_restyle'); db.execute('DELETE FROM life_restyle_ver'); db.execute('DELETE FROM articles WHERE id IN (?,?)', (ok, bad))
 
     def test_magazine_admin_space_cms_and_front(self):
         # 운영자 2026-11-05: 관리자 위쪽 전환 버튼(소비자제보센터 ↔ 소보루 매거진), 메뉴 안 겹침, 기사 CMS(대표 사진·본문 사진·예약), 첫 화면 편집
@@ -6050,10 +6058,11 @@ class SiteTest(unittest.TestCase):
             b = io.BytesIO(); Image.new('RGB', (40, 30), (200, 120, 20)).save(b, 'PNG'); b.seek(0); return b
         admin = self.login_admin()
         jebo = admin.get('/admin').get_data(as_text=True)
-        self.assertIn('class="ad-space"', jebo); self.assertIn('/admin/magazine', jebo)
+        self.assertIn('/admin/choose', jebo)  # 운영자 2026-11-05: 위쪽 전환 버튼 대신 '관리할 곳 바꾸기'
+        self.assertIn('ch-mag', admin.get('/admin/choose').get_data(as_text=True))
         self.assertNotIn('>소보루 레터<', jebo)  # 레터는 매거진 쪽으로
         home = admin.get('/admin/magazine').get_data(as_text=True)
-        self.assertIn('매거진 관리자', home); self.assertIn('첫 화면 편집', home); self.assertNotIn('제보 처리', home)
+        self.assertIn('Magazine Studio', home); self.assertIn('mag-studio', home); self.assertIn('첫 화면 편집', home); self.assertNotIn('제보 처리', home)
         tok = self.csrf(admin, '/admin/life')
         r = admin.post('/admin/life', data={'_csrf': tok, 'title': '예약 기사', 'summary': '요약', 'body': '본문', 'category': '생활', 'act': 'schedule',
                                             'publish_at': '2099-01-01T09:00', 'cover': (png(), 'c.png', 'image/png')}, content_type='multipart/form-data')

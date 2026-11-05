@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>어디를 관리할까요 | 관리자</title>
+  <link rel="icon" href="{{ url_for('static', filename='soboru-favicon.png', v=css_v) }}" type="image/png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Archivo+Black&display=swap">
+  <link rel="stylesheet" href="{{ asset('mag-admin.css') }}">
+</head>
+<body class="ch-page">
+{# 운영자 2026-11-05: 관리자에 들어오면 먼저 소비자제보센터·소보루 매거진 가운데 고름 #}
+<main class="ch">
+  <a class="ch-card ch-jebo" href="{{ url_for('admin') }}">
+    <span class="ch-kicker">Report Center</span>
+    <span class="ch-mark"><b>소비자제보센터</b><small>by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small></span>
+    <span class="ch-desc">제보 처리, 기업 연락, 회원과 자문단을 관리해요</span>
+    <span class="ch-go">들어가기 <i aria-hidden="true">→</i></span>
+  </a>
+  <a class="ch-card ch-mag" href="{{ url_for('mag_home') }}">
+    <span class="ch-kicker">Magazine Studio</span>
+    <span class="ch-mark"><img src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="SOBORU" width="260" height="50"></span>
+    <span class="ch-desc">기사를 쓰고, 첫 화면과 레터를 꾸며요</span>
+    <span class="ch-go">들어가기 <i aria-hidden="true">→</i></span>
+  </a>
+</main>
+<form class="ch-out" method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">로그아웃</button></form>
+</body>
+</html>
