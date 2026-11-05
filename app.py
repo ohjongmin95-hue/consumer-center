@@ -149,10 +149,16 @@ def retired_host():
     if letter_host(host):
         # 운영자 2026-11-04: soboru.co.kr(+letter.soboru.co.kr)은 소보루 레터 구독 페이지만. 나머지 주소는 소비자제보센터로
         if request.path=='/':return redirect('/letter',302)
-        if request.path.startswith(LETTER_PATHS) or request.path in ('/terms','/privacy','/favicon.ico','/robots.txt'):return None
+        if request.path.startswith(LETTER_PATHS) or request.path in ('/life','/terms','/privacy','/favicon.ico','/robots.txt'):return None
         return redirect('https://consumerjebo.co.kr'+request.full_path.rstrip('?'),301)
     if host in RETIRED_HOSTS:
         return redirect('https://consumerjebo.co.kr'+request.full_path.rstrip('?'),301)
+@app.before_request
+def magazine_off_jebo():
+    # 운영자 2026-11-05: '소비자제보센터엔 매거진 칸 없어야 해' — 제보센터 주소의 매거진 글·목록은 소보루 매거진(soboru.co.kr)으로
+    host=request.host.split(':')[0].lower()
+    if host.endswith('consumerjebo.co.kr') and (request.path=='/life' or request.path.startswith('/life/')):
+        return redirect('https://soboru.co.kr'+request.full_path.rstrip('?'),301)
 @app.before_request
 def no_www():
     # www가 붙은 주소는 www 없는 주소로 옮긴다: 검색엔진이 같은 글을 두 주소로 따로 모으지 않게
@@ -662,6 +668,7 @@ app.jinja_env.globals['verification_code']=verification_code
 def favicon_ico():
     # 브라우저·검색엔진이 주소 맨 앞에서 바로 찾는 탭 아이콘
     # 소비자제보센터 주소에서는 제보센터 아이콘(확성기): 네이버 검색·광고가 이 파일을 아이콘으로 씀
+    if letter_host(request.host.split(':')[0].lower()):return app.send_static_file('mag-favicon.ico')  # 소보루 매거진
     return app.send_static_file('jebo-favicon.ico' if request.host.split(':')[0].lower() in JEBO_HOSTS else 'favicon.ico')
 
 @app.route('/robots.txt')

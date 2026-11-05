@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{# 운영자 2026-11-05: 매거진(soboru.co.kr)에서 '더 많은 이야기'·분야를 누르면 제보센터로 넘어가지 않고 매거진 안 목록 #}
+{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '리콜': 'RECALL'} %}
+{% block title %}{{ (EN.get(cat)|capitalize ~ ' · ') if cat }}{{ ui_text('mag.list_title', 'Stories') }} | {{ ui_text('letter.mz_title', '소보루 매거진') }}{% endblock %}
+{% block description %}{{ ui_text('letter.mz_description', '소비를 보는 새로운 루트, 소보루 매거진. 사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">{% endblock %}
+{% block content %}
+<main class="ml-page" id="top">
+  <header class="ml-head">
+    <h1>{{ EN.get(cat, '')|capitalize if cat else ui('mag.list_title', 'Stories') }}</h1>
+    <p>{{ ui('mag.list_sub', '사고, 쓰고, 고르는 매일의 소비 이야기') if not cat else cat }}</p>
+    <nav class="ml-tabs" aria-label="분야">
+      <a href="{{ url_for('life') }}"{% if not cat %} class="on" aria-current="page"{% endif %}>ALL</a>
+      {% for c in categories %}<a href="{{ url_for('life', category=c) }}"{% if c == cat %} class="on" aria-current="page"{% endif %}>{{ EN.get(c, c) }}</a>{% endfor %}
+    </nav>
+  </header>
+  {% if rows %}
+  <div class="ml-grid">
+    {% for a in rows %}{% set src = mag_photo(a['id']) %}
+    <a href="{{ url_for('life_article', article_id=a['id']) }}">
+      <span class="ml-ph">{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="ma-type t{{ a['id'] % 3 }}"><b>{{ EN.get(a['category'], 'LIFE')|capitalize }}</b></span>{% endif %}<em>{{ EN.get(a['category'], 'LIFE') }}</em></span>
+      <b>{{ a['title'] }}</b>
+      {% set sm = (a['summary'] or '').split('\n')[0] %}{% if sm %}<p>{{ sm|truncate(70, True, '…') }}</p>{% endif %}
+      <small>{{ (a['published_at'] or a['created'])[:10].replace('-', '. ') }}</small>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="ml-empty">{{ ui('mag.list_empty', '아직 이 분야 이야기가 없어요') }}</p>
+  {% endif %}
+  {% if pages > 1 %}
+  <nav class="ml-pages" aria-label="쪽">
+    {% if page > 1 %}<a href="{{ url_for('life', category=cat or None, page=page - 1) }}">← PREV</a>{% endif %}
+    <span>{{ page }} / {{ pages }}</span>
+    {% if page < pages %}<a href="{{ url_for('life', category=cat or None, page=page + 1) }}">NEXT →</a>{% endif %}
+  </nav>
+  {% endif %}
+  <a class="ma-letter" href="{{ url_for('letter_home') }}#sub"><span><small>SOBORU LETTER</small><strong>{{ ui('mag.letter', '이런 이야기, 아침마다 메일로 받아 볼래요?') }}</strong></span><em>{{ ui('letter.mz_bn_go', '무료로 구독하기') }} →</em></a>
+  <a class="ma-up" href="#top" aria-label="맨 위로">↑</a>
+</main>
+{% endblock %}

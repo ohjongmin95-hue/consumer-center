@@ -202,6 +202,19 @@ def install(S):
         flash(f'{what} {len(ids)}개를 그리기 시작했어요. 하나에 30초쯤 걸려요. 잠시 뒤 새로 고침해 보세요.' if ids else f'{what}이 없어요.')
         return redirect(url_for('admin_art', kind=kind))
 
+    @app.route('/admin/art/unsplash', methods=['POST'])
+    @S.admin_only
+    def admin_art_unsplash():
+        # 운영자 2026-11-04: 사진 없는 매거진 글에 언스플래시 사진을 지금 바로 채움 (뒤에서 자동으로도 채움)
+        if not os.getenv('UNSPLASH_ACCESS_KEY', '').strip(): flash('서버에 언스플래시 키가 없어요. deploy/set-unsplash.sh로 넣어 주세요.'); return redirect(url_for('admin_art'))
+        if request.form.get('redo'):
+            with conn() as db: db.execute('DELETE FROM mag_unsplash2')
+        unsplash_state['busy'] = True
+        added, last = unsplash_fill(limit=40, wait=0)
+        msg = {401: '키가 맞지 않는대요(401). 키를 다시 넣어 주세요.', 403: '한 시간 요청 한도를 넘었대요(403). 한 시간 뒤 다시 눌러 주세요.'}
+        flash(f'매거진 글 {added}개에 사진을 붙였어요.' if last == 200 else f'사진 {added}개를 붙이다 멈췄어요. ' + msg.get(last, f'언스플래시가 {last}로 답했어요.'))
+        return redirect(url_for('admin_art'))
+
     @app.route('/admin/art/purge', methods=['POST'])
     @S.admin_only
     def admin_art_purge():
@@ -262,45 +275,64 @@ def install(S):
     # 운영자가 사진을 안 올린 매거진 글은 언스플래시(서버 설정 UNSPLASH_ACCESS_KEY, 레터와 같은 키)에서 분야에 맞는 사진을 한 번 골라 저장해 두고 씀.
     # 사진 파일은 받지 않고 images.unsplash.com 주소를 그대로 씀(언스플래시 규칙). 기사 화면 표지 아래에 작가 이름을 밝힘.
     with conn() as db:
-        db.execute('CREATE TABLE IF NOT EXISTS mag_unsplash(article_id INTEGER PRIMARY KEY,photo_id TEXT NOT NULL,url TEXT NOT NULL,'
+        db.execute('CREATE TABLE IF NOT EXISTS mag_unsplash2(article_id INTEGER PRIMARY KEY,photo_id TEXT NOT NULL,url TEXT NOT NULL,'
                    'credit TEXT NOT NULL,credit_url TEXT NOT NULL,created TEXT NOT NULL)')
-    UNSPLASH_Q = {'쇼핑': 'minimal shopping bag', '통신': 'smartphone minimal desk', '여행': 'airport travel minimal', '음식': 'grocery food still life',
-                  '금융': 'coins wallet minimal', '자동차': 'car detail minimal', '생활': 'home interior minimal', '리콜': 'product box minimal'}
+    # 운영자 2026-11-05: 같은 분야 사진이 비슷하게 겹치지 않게 분야마다 검색어 여러 개를 돌려 씀 (지갑·지갑 X)
+    UNSPLASH_Q = {'쇼핑': ['shopping bags aesthetic', 'clothing rack minimal', 'shopping cart supermarket', 'parcel boxes delivery', 'shopping mall escalator'],
+                  '통신': ['smartphone flat lay', 'phone on desk minimal', 'wifi router', 'person using smartphone city', 'earphones minimal'],
+                  '여행': ['travel suitcase aesthetic', 'airport window airplane', 'hotel room minimal', 'passport map', 'train station travel'],
+                  '음식': ['grocery flat lay', 'fresh vegetables market', 'cafe coffee table', 'kitchen cooking minimal', 'bakery bread'],
+                  '금융': ['coins jar savings', 'stock market chart screen', 'calculator receipts', 'piggy bank minimal', 'bank building architecture', 'credit card payment', 'korean won banknotes'],
+                  '자동차': ['car interior aesthetic', 'gas station night', 'car on road minimal', 'electric car charging', 'parking garage'],
+                  '생활': ['cozy home interior', 'living room plants', 'laundry minimal', 'apartment window light', 'home appliances kitchen'],
+                  '리콜': ['product packaging boxes', 'factory inspection', 'warning label', 'cardboard boxes warehouse', 'quality control']}
     unsplash_state = {'busy': False, 'tried': {}}
     unsplash_lock = threading.Lock()
 
-    def unsplash_fill():
+    def unsplash_fill(limit=24, wait=3600):
+        """사진 없는 매거진 글에 언스플래시 사진을 붙임. (붙인 수, 마지막 언스플래시 응답 코드)"""
         import soboru_letter as L
+        added, last = 0, 200
         try:
             with conn() as db:
-                rows = db.execute("SELECT a.id,a.category FROM articles a LEFT JOIN mag_unsplash u ON u.article_id=a.id "
-                                  "WHERE a.status='published' AND u.article_id IS NULL ORDER BY a.id DESC LIMIT 24").fetchall()
-                used = {r[0] for r in db.execute('SELECT photo_id FROM mag_unsplash')}
+                rows = db.execute("SELECT a.id,a.category FROM articles a LEFT JOIN mag_unsplash2 u ON u.article_id=a.id "
+                                  "WHERE a.status='published' AND u.article_id IS NULL ORDER BY a.id DESC LIMIT ?", (limit,)).fetchall()
+                used = {r[0] for r in db.execute('SELECT photo_id FROM mag_unsplash2')}
                 own = {r[0] for r in db.execute("SELECT target_id FROM soboru_art WHERE kind='life' AND status='live' AND file LIKE '%-photo-%'")}
-            now = datetime.datetime.now().timestamp()
             found = {}
+            with conn() as db:
+                cat_count = {c: n for c, n in db.execute('SELECT a.category, COUNT(*) FROM mag_unsplash2 u JOIN articles a ON a.id=u.article_id GROUP BY a.category')}
+            n_cat = {}
             for r in rows:
                 if r['id'] in own: continue
-                if now - unsplash_state['tried'].get(r['id'], 0) < 3600: continue
-                unsplash_state['tried'][r['id']] = now
-                q = UNSPLASH_Q.get(r['category'], 'minimal still life')
+                if datetime.datetime.now().timestamp() - unsplash_state['tried'].get(r['id'], 0) < wait: continue
+                qs = UNSPLASH_Q.get(r['category']) or ['minimal still life']
+                n_cat[r['category']] = n_cat.get(r['category'], cat_count.get(r['category'], 0)) + 1
+                q = qs[(n_cat[r['category']] - 1) % len(qs)]  # 같은 분야 글마다 다른 검색어
                 if q not in found:
                     st, res = L.unsplash_call('/search/photos', {'query': q, 'orientation': 'landscape', 'per_page': 30, 'content_filter': 'high'})
-                    found[q] = (res or {}).get('results') or [] if st == 200 and isinstance(res, dict) else []
+                    last = st
+                    if st != 200 or not isinstance(res, dict): break  # 키 문제·한도 초과면 멈추고 나중에 다시
+                    found[q] = res.get('results') or []
+                unsplash_state['tried'][r['id']] = datetime.datetime.now().timestamp()
                 for ph in found[q]:
                     try:
                         pid, raw, user = ph['id'], ph['urls']['raw'], ph['user']
                         if pid in used: continue
                         used.add(pid)
+                        with conn() as db:
+                            db.execute('INSERT OR IGNORE INTO mag_unsplash2 VALUES(?,?,?,?,?,?)',
+                                       (r['id'], pid, raw, (user.get('name') or user.get('username') or '')[:60], user['links']['html'] + L.UTM, now()))
+                        added += 1
                         dl = (ph.get('links') or {}).get('download_location')
                         if dl: L.unsplash_call(dl)  # 언스플래시 규칙: 쓰기로 고른 사진은 download 주소를 한 번 부름
-                        with conn() as db:
-                            db.execute('INSERT OR IGNORE INTO mag_unsplash VALUES(?,?,?,?,?,?)',
-                                       (r['id'], pid, raw, (user.get('name') or user.get('username') or '')[:60], user['links']['html'] + L.UTM, S.now()))
                         break
-                    except (KeyError, TypeError): continue
+                    except Exception: continue
+        except Exception as e:
+            app.logger.warning('mag unsplash fill failed: %s', e)
         finally:
-            unsplash_state['busy'] = False
+            unsplash_state['busy'] = False; unsplash_state['last'] = last
+        return added, last
 
     def unsplash_kick():
         if not os.getenv('UNSPLASH_ACCESS_KEY', '').strip(): return
@@ -310,10 +342,10 @@ def install(S):
         threading.Thread(target=unsplash_fill, daemon=True).start()
 
     def unsplash_row(target_id):
-        cache = g.setdefault('mag_unsplash', None) if has_request_context() else None
+        cache = g.setdefault('mag_unsplash2', None) if has_request_context() else None
         if cache is None:
-            with conn() as db: cache = {r['article_id']: r for r in db.execute('SELECT * FROM mag_unsplash')}
-            if has_request_context(): g.mag_unsplash = cache
+            with conn() as db: cache = {r['article_id']: r for r in db.execute('SELECT * FROM mag_unsplash2')}
+            if has_request_context(): g.mag_unsplash2 = cache
         return cache.get(target_id)
 
     def mag_photo(target_id, w=1600):

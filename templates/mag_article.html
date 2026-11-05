@@ -1,4 +1,4 @@
-{# 운영자 2026-11-04: 소보루 매거진(soboru.co.kr) 안의 기사 보는 화면. 뉴소스 기사 양식을 뼈대로 — 맨 위 넓은 사진, 밝은 바탕,
+{# 운영자 2026-11-04: 소보루 매거진(soboru.co.kr) 안의 기사 보는 화면. 흰 바탕에 정돈된 기사 — 제목 먼저, 사진은 본문 폭 안에(아래 출처), 밝은 바탕,
    왼쪽 분야·오른쪽 날짜, 큰 제목·부제, 에디터 줄, 네모 공유 단추, 가운데 본문, 오른쪽 아래 ↑ 단추. 안쪽은 귤색으로 채우지 않고 귤색은 포인트로만.
    그림은 운영자가 올린 사진(mag_photo)만, 없으면 큰 영문 활자 표지 #}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">
@@ -7,13 +7,15 @@
 {% set photo = mag_photo(a['id']) %}
 {% set sum_lines = (a['summary'] or '').split('\n')|map('trim')|select|list %}
 <main class="ma-page" id="top">
-  <figure class="ma-cover">{% if photo %}<img src="{{ photo }}" alt="">{% set cr = mag_credit(a['id']) %}{% if cr %}<figcaption>Photo by <a href="{{ cr.url }}" target="_blank" rel="noopener">{{ cr.name }}</a> on <a href="{{ cr.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption>{% endif %}{% else %}<span class="ma-type t{{ a['id'] % 3 }}"><b>{{ en|capitalize }}</b></span>{% endif %}</figure>
   <article class="ma-art">
     {% if a['status'] != 'published' %}<p class="ma-draft">{{ ui('life.draft_note', '아직 게시하지 않은 초안이에요. 관리자에게만 보여요.') }}</p>{% endif %}
     <header class="ma-head">
       <div class="ma-row"><span class="ma-cat">{{ en|capitalize }}</span><time datetime="{{ (a['published_at'] or a['created'])[:10] }}">{{ (a['published_at'] or a['created'])[:10].replace('-', '.') }}</time></div>
       <h1>{{ a['title'] }}</h1>
       {% if sum_lines|length == 1 %}<p class="ma-sub">{{ sum_lines[0] }}</p>{% endif %}
+    </header>
+    <figure class="ma-cover">{% if photo %}<img src="{{ photo }}" alt="">{% set cr = mag_credit(a['id']) %}{% if cr %}<figcaption>Photo by <a href="{{ cr.url }}" target="_blank" rel="noopener">{{ cr.name }}</a> on <a href="{{ cr.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption>{% endif %}{% else %}<span class="ma-type t{{ a['id'] % 3 }}"><b>{{ en|capitalize }}</b></span>{% endif %}</figure>
+    <div class="ma-meta">
       <div class="ma-by">
         <span><b>EDITOR</b> {{ ui('mag.editor', '소보루 매거진 에디터') }}<i aria-hidden="true">·</i>{{ ui('life.read_min', '{n}분이면 읽어요', n=read_minutes(a['body'])) }}</span>
         <span class="ma-share">
@@ -22,7 +24,7 @@
           <button type="button" data-ma-copy="{{ canonical_url() }}" aria-label="링크 복사"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" aria-hidden="true"><path d="M10 14l4-4M8.5 11.5l-2 2a3.5 3.5 0 0 0 5 5l2-2M15.5 12.5l2-2a3.5 3.5 0 0 0-5-5l-2 2"/></svg></button>
         </span>
       </div>
-    </header>
+    </div>
     {% if sum_lines|length > 1 %}<div class="ma-sum"><p>{{ ui('mag.sum', 'IN SHORT') }}</p><ul>{% for line in sum_lines %}<li>{{ line }}</li>{% endfor %}</ul></div>{% endif %}
     <div class="ma-body sb-article-body">{{ life_body(a['body']) }}</div>
     {% set ai = ai_article(a['id']) if a['origin'] == 'ai' and ai_article is defined else None %}

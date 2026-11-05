@@ -5990,12 +5990,17 @@ class SiteTest(unittest.TestCase):
             c.get('/letter')
             for _ in range(50):
                 with self.site.conn() as db:
-                    if db.execute('SELECT 1 FROM mag_unsplash WHERE article_id=?', (aid,)).fetchone(): break
+                    if db.execute('SELECT 1 FROM mag_unsplash2 WHERE article_id=?', (aid,)).fetchone(): break
                 threading.Event().wait(0.1)
         page = c.get(f'/life/{aid}', headers={'Host': 'soboru.co.kr'}).get_data(as_text=True)
         self.assertIn('class="ma-page"', page)
         self.assertIn('images.unsplash.com/photo-m', page); self.assertIn('박작가', page)
-        with self.site.conn() as db: db.execute('DELETE FROM mag_unsplash'); db.execute('DELETE FROM articles WHERE id=?', (aid,))
+        lst = c.get('/life?category=통신', headers={'Host': 'soboru.co.kr'})
+        self.assertEqual(lst.status_code, 200); self.assertIn('class="ml-page"', lst.get_data(as_text=True))
+        r = c.get(f'/life/{aid}', headers={'Host': 'consumerjebo.co.kr'})
+        self.assertEqual(r.status_code, 301); self.assertTrue(r.headers['Location'].startswith('https://soboru.co.kr/life/'))
+        self.assertIn('mag-favicon.png', page)
+        with self.site.conn() as db: db.execute('DELETE FROM mag_unsplash2'); db.execute('DELETE FROM articles WHERE id=?', (aid,))
 
     def test_letter_unsplash_photos(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
