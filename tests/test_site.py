@@ -6067,7 +6067,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('ch-mag', admin.get('/admin/choose').get_data(as_text=True))
         self.assertNotIn('>소보루 레터<', jebo)  # 레터는 매거진 쪽으로
         home = admin.get('/admin/magazine').get_data(as_text=True)
-        self.assertIn('Magazine Studio', home); self.assertIn('mag-studio', home); self.assertIn('첫 화면 편집', home); self.assertNotIn('제보 처리', home)
+        self.assertIn('Magazine Studio', home); self.assertIn('mag-studio', home); self.assertIn('화면 편집', home); self.assertNotIn('제보 처리', home)
         tok = self.csrf(admin, '/admin/life')
         r = admin.post('/admin/life', data={'_csrf': tok, 'title': '예약 기사', 'summary': '요약', 'body': '본문', 'category': '생활', 'act': 'schedule',
                                             'publish_at': '2099-01-01T09:00', 'cover': (png(), 'c.png', 'image/png')}, content_type='multipart/form-data')
@@ -6127,6 +6127,64 @@ class SiteTest(unittest.TestCase):
         self.addCleanup(lambda: admin.post(f'/admin/life/{aid}', data={'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'title': 'x', 'act': 'delete'}))
         art = self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True)
         self.assertIn(f'<video src="{url}" controls playsinline', art); self.assertIn('<figcaption>매장 앞 모습</figcaption>', art); self.assertNotIn('<video src="/etc/passwd"', art)
+
+    def test_magazine_write_assist(self):
+        # 운영자 2026-11-05: 기사 쓰기 AI 도움 — 초안·다듬기·맞춤법·제목·요약. 원문에 없는 숫자가 나온 답은 버림
+        import mag_assist, companydesk
+        admin = self.login_admin(); tok = self.csrf(admin, '/admin/life?new=1')
+        page = admin.get('/admin/life?new=1').get_data(as_text=True)
+        self.assertIn('id="mz-ai-open"', page); self.assertIn('data-act="draft"', page)
+        reply = {}
+        def fake(url, headers, body, timeout):
+            reply['sys'] = body['messages'][0]['content']
+            return 200, {'choices': [{'message': {'content': json.dumps(reply['out'], ensure_ascii=False)}}]}
+        self.enterContext(patch.object(companydesk, 'post_json', fake)); self.enterContext(patch.dict(os.environ, {'OPENAI_API_KEY': 'k'}))
+        body = '치킨 한 마리 값이 3만 원에 가까워졌다. 배달비도 함께 올랐다. 가맹점도 사정이 있다.'
+        call = lambda d: admin.post('/admin/magazine/assist', json=d, headers={'X-CSRFToken': tok})
+        self.assertEqual(self.client.post('/admin/magazine/assist', json={'act': 'titles'}).status_code, 400)  # 로그인·CSRF 없으면 막음
+        reply['out'] = {'titles': ['치킨 3만 원 시대', '치킨 5만 원 시대', '배달비의 셈법']}
+        j = call({'act': 'titles', 'title': '', 'summary': '', 'body': body}).get_json()
+        self.assertEqual(j['titles'], ['치킨 3만 원 시대', '배달비의 셈법'])  # 지어낸 5만은 빠짐
+        self.assertIn('셈이다', reply['sys'])  # 매거진 문체 규칙을 함께 보냄
+        reply['out'] = {'text': '치킨값이 7만 원이 된 셈이다.'}
+        self.assertEqual(call({'act': 'polish', 'body': body}).status_code, 502)
+        reply['out'] = {'text': '치킨 한 마리 값이 3만 원에 다가선 셈이다.'}
+        self.assertIn('셈이다', call({'act': 'polish', 'body': body}).get_json()['text'])
+        reply['out'] = {'title': '치킨', 'summary': '요약', 'body': '## 치킨에 진심인 나라\n\n2만 원이던 치킨이 3만 원이 됐다.'}
+        j = call({'act': 'draft', 'note': '치킨값 3만 원, 배달비 인상, 가맹점 사정 취재 메모입니다.'}).get_json()
+        self.assertTrue(j['ok']); self.assertIn('2', j['warn'])
+        self.assertEqual(call({'act': 'draft', 'note': '짧음'}).status_code, 400)
+
+    def test_magazine_screen_editor(self):
+        # 운영자 2026-11-05: ND 화면편집처럼 — 매거진 화면(메인·기사·목록)을 PC·모바일로 띄워 놓고 그 자리에서 문구·묶음 순서를 고침
+        admin = self.login_admin()
+        self.assertEqual(self.client.get('/admin/magazine/screen').status_code, 302)
+        with self.site.conn() as db:
+            aid = db.execute("INSERT INTO articles(title,summary,body,category,status,created,updated,published_at) VALUES('화면 시험 글','요약','본문','쇼핑','published','2020-01-01','2020-01-01','2020-01-01T09:00:00')").lastrowid
+        def clean():
+            with self.site.conn() as db: db.execute('DELETE FROM articles WHERE id=?', (aid,)); db.execute("DELETE FROM soboru_settings WHERE key='blocks:mag_article'")
+        self.addCleanup(clean)
+        page = admin.get('/admin/magazine/screen?page=main&device=mobile').get_data(as_text=True)
+        self.assertIn('id="sc-if"', page); self.assertIn('src="/letter"', page); self.assertIn('sc-mobile', page); self.assertIn('HOT ISSUE', page)
+        self.assertEqual(admin.get('/admin/magazine/screen').headers['X-Frame-Options'], 'SAMEORIGIN')
+        self.assertIn('/admin/magazine/screen', admin.get('/admin/magazine/front').headers['Location'])
+        # 띄운 화면: 이 주소에서도 매거진 화면이 편집 모드로 (제보센터 머리글·편집 띠 없이), 같은 주소 안에서만 띄움
+        r = admin.get('/letter')
+        html = r.get_data(as_text=True)
+        self.assertEqual(r.status_code, 200); self.assertEqual(r.headers['X-Frame-Options'], 'SAMEORIGIN')
+        self.assertIn('class="ed"', html); self.assertIn('ed-blockbar', html); self.assertNotIn('class="ed-bar"', html)
+        art = admin.get(f'/life/{aid}').get_data(as_text=True)
+        self.assertIn('ma-art', art); self.assertIn('data-block="letter"', art)
+        # 방문자는 그대로 매거진 주소로
+        self.assertEqual(self.client.get('/letter', base_url='https://consumerjebo.co.kr').status_code, 301)
+        # 고친 문구는 매거진(soboru.co.kr)에 저장되고 그쪽에 보임
+        tok = self.csrf(admin, '/admin/magazine/screen')
+        self.assertTrue(admin.post('/admin/inline', data={'_csrf': tok, 'face': 'soboru', 'key': 'letter.mz_hot2', 'value': 'HOT 시험'}).get_json()['ok'])
+        self.addCleanup(lambda: admin.post('/admin/inline', data={'_csrf': tok, 'face': 'soboru', 'key': 'letter.mz_hot2', 'value': '', 'reset': '1'}))
+        with self.site.conn() as db: self.assertEqual(db.execute("SELECT value FROM site_content WHERE key='letter.mz_hot2'").fetchone()[0], 'HOT 시험')
+        # 묶음 순서: 기사 화면의 '레터 구독 띠' 숨기기
+        admin.post('/admin/screens', data={'_csrf': tok, 'page': 'mag_article', 'block': 'letter', 'act': 'hide', 'ajax': '1'})
+        self.assertNotIn('class="ma-letter"', self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True))
 
     def test_magazine_editors(self):
         # 운영자 2026-11-05: 에디터 계정 — 지금 기사는 에디터 이지우·오후가 번갈아, 에디터는 쓰고 승인 요청만 (게시는 관리자)

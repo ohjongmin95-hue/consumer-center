@@ -32,13 +32,16 @@
     {% elif a['source_name'] or a['source_url'] %}<p class="ma-src"><b>{{ ui('life.source', '출처') }}</b> {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
     {{ admin_delete('life', a['id'], '관리자: 이 글 지우기') }}
   </article>
-  {% if related %}
+  {% for blk in blocks('mag_article') %}{{ ed_block('mag_article', blk) }}
+  {% if blk == 'more' and related %}
   <section class="ma-more">
     <h2><i aria-hidden="true"></i>{{ ui('mag.more', 'More in') }} {{ en|capitalize }}</h2>
     <div class="ma-grid">{% for r in related %}{% set rp = mag_photo(r['id']) %}<a href="{{ url_for('life_article', article_id=r['id']) }}"><span class="ma-th">{% if rp %}<img src="{{ rp }}" alt="" loading="lazy">{% else %}<span class="ma-type t{{ r['id'] % 3 }}"><b>{{ EN.get(r['category'], 'LIFE') }}</b></span>{% endif %}</span><b>{{ r['title'] }}</b><small>{{ (r['published_at'] or r['created'])[:10].replace('-', '.') }}</small></a>{% endfor %}</div>
   </section>
-  {% endif %}
+  {% elif blk == 'letter' %}
   <a class="ma-letter" href="{{ url_for('letter_home') }}#sub"><span><small>SOBORU LETTER</small><strong>{{ ui('mag.letter', '이런 이야기, 아침마다 메일로 받아 볼래요?') }}</strong></span><em>{{ ui('letter.mz_bn_go', '무료로 구독하기') }} →</em></a>
+  {% endif %}{% endfor %}
+  {{ ed_hidden_blocks('mag_article') }}
   <a class="ma-up" href="#top" aria-label="맨 위로">↑</a>
 </main>
 <script>(function(){var b=document.querySelector('[data-ma-copy]');if(!b)return;b.onclick=function(){var u=b.getAttribute('data-ma-copy');(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){b.classList.add('on');setTimeout(function(){b.classList.remove('on')},1400)}).catch(function(){prompt('링크를 복사해 주세요',u)})}})();</script>

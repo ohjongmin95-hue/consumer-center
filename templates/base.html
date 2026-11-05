@@ -97,7 +97,7 @@
 <script>if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); });</script>{# 오프라인 안내·정적 파일 캐시·푸시 (static/sw.js) #}{% endif %}
 {% if editing() %}
 {# 관리자 편집 모드: 점선으로 표시된 문장을 누르면 바로 고칠 수 있음 #}
-<div class="ed-bar" role="region" aria-label="편집 모드">
+{% if not g.get('mag_studio') %}<div class="ed-bar" role="region" aria-label="편집 모드">
   <span class="ed-bar-title">✏️ 편집 모드</span>
   <label class="ed-go"><span>페이지 이동</span><select onchange="if (this.value) location.href = this.value" aria-label="고칠 페이지로 이동">
     <option value="">고칠 페이지 고르기 ▾</option>
@@ -108,7 +108,7 @@
   {% else %}<span class="ed-bar-title">소비자제보센터 고치는 중</span><a href="{{ face_url('admin_content') }}">제보센터 문구 고치기</a><a href="{{ request.path }}?face=off">소보루 화면으로</a>{% endif %}
   <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="0"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button type="submit">편집 끝내기</button></form>
   <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit" class="ed-bar-out">관리자 로그아웃</button></form>
-</div>
+</div>{% endif %}
 <div class="ed-modal" hidden><form class="ed-box"><p class="ed-label"></p><textarea rows="3"></textarea><p class="ed-msg" role="status"></p>
   <div class="ed-actions"><button type="button" class="ed-delete">🗑 지우기</button><button type="button" class="ed-reset">기본 문구로</button><a class="ed-follow" hidden>이 링크로 이동 →</a><span></span><button type="button" class="ed-cancel">취소</button><button type="submit" class="ed-save">저장</button></div></form></div>
 <script>

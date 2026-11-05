@@ -158,7 +158,7 @@ def install(S):
             return up(*a, **kw)
         view.__name__ = ep
         app.view_functions[ep] = view
-    for ep in ('mag_body_upload', 'mag_video_upload', 'mag_video_save', 'mag_mosaic_upload', 'mag_mosaic_convert', 'mag_mosaic_converted'):
+    for ep in ('mag_body_upload', 'mag_video_upload', 'mag_video_save', 'mag_mosaic_upload', 'mag_mosaic_convert', 'mag_mosaic_converted', 'mag_assist'):
         if ep in app.view_functions: let_editor(ep)
 
     # ---- 내 기사 (에디터) ----------------------------------------------------------
