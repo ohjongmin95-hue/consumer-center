@@ -6029,6 +6029,13 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(a['title'], '택시 호출료는 누구에게 가나'); self.assertIn('## 호출 전에 확인할 것', a['body'])
             self.assertIn('5%', b['body'])  # 숫자가 달라진 글은 그대로
             page = admin.get('/admin/life/ai').get_data(as_text=True); self.assertIn('숫자가 달라짐', page)
+            # 운영자 2026-11-05 (2차): 1차(기사체)로 바꾼 글도 피처 문체로 한 번 더, 되돌리기용 원문은 맨 처음 글 그대로
+            with self.site.conn() as db: db.execute('UPDATE life_restyle_ver SET ver=1 WHERE article_id=?', (ok,))
+            n = len(sent); admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai')})
+            self.assertTrue(any('택시' in json.loads(x['messages'][1]['content']).get('title', '') for x in sent[n:] if x['messages'][1]['content'].startswith('{')))
+            with self.site.conn() as db:
+                self.assertEqual(db.execute('SELECT ver FROM life_restyle_ver WHERE article_id=?', (ok,)).fetchone()[0], 2)
+                self.assertEqual(db.execute('SELECT title FROM life_restyle WHERE article_id=?', (ok,)).fetchone()[0], '택시 호출료, 누구에게 가나요?')
             admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'undo'})
             with self.site.conn() as db: self.assertEqual(db.execute('SELECT title FROM articles WHERE id=?', (ok,)).fetchone()[0], '택시 호출료, 누구에게 가나요?')
             qs = []
@@ -6040,7 +6047,7 @@ class SiteTest(unittest.TestCase):
                 admin.post('/admin/art/unsplash', data={'_csrf': self.csrf(admin, '/admin/art'), 'redo': '1'})
             self.assertIn('taxi city night', qs)
         with self.site.conn() as db:
-            db.execute('DELETE FROM mag_unsplash2'); db.execute('DELETE FROM life_restyle'); db.execute('DELETE FROM articles WHERE id IN (?,?)', (ok, bad))
+            db.execute('DELETE FROM mag_unsplash2'); db.execute('DELETE FROM life_restyle'); db.execute('DELETE FROM life_restyle_ver'); db.execute('DELETE FROM articles WHERE id IN (?,?)', (ok, bad))
 
     def test_magazine_admin_space_cms_and_front(self):
         # 운영자 2026-11-05: 관리자 위쪽 전환 버튼(소비자제보센터 ↔ 소보루 매거진), 메뉴 안 겹침, 기사 CMS(대표 사진·본문 사진·예약), 첫 화면 편집

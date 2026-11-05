@@ -27,9 +27,9 @@
   {% set rj = restyle_job() %}
   <form class="form-panel" method="post" action="{{ url_for('admin_life_restyle') }}">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    <div><b>올라간 글을 기사체로 바꾸기</b><p class="meta">게시 중인 글의 해요체를 잡지 기사체(~다)로 바꾸고 이모지·'핵심만 쏙' 상자를 걷어 내요. 숫자가 하나라도 달라지면 그 글은 바꾸지 않아요. 바꾸기 전 글은 남겨 둬서 되돌릴 수 있어요.</p>
+    <div><b>올라간 글을 매거진 문체로 다듬기</b><p class="meta">게시 중인 글을 피처 기사 문체로 다듬어요. 해요체·이모지·'핵심만 쏙' 상자·별표 강조를 걷어 내고, 끝맺음과 소제목을 매거진 결로 고쳐요. 숫자가 하나라도 달라지면 그 글은 바꾸지 않아요. 바꾸기 전 글은 남겨 둬서 되돌릴 수 있어요.</p>
     {% if rj.state %}<p class="meta">{{ '바꾸는 중' if rj.state == 'running' else '다 바꿨어요' }}: {{ rj.total }}개 가운데 {{ rj.done }}개 바꿈{% if rj.skip %}, {{ rj.skip|length }}개 건너뜀 ({% for x in rj.skip[:5] %}#{{ x.id }} {{ x.why }}{{ ', ' if not loop.last }}{% endfor %}){% endif %}</p>{% endif %}</div>
-    <div class="admin-actions"><button class="primary"{% if not ai_ready %} disabled{% endif %}>기사체로 바꾸기</button></div>
+    <div class="admin-actions"><button class="primary"{% if not ai_ready %} disabled{% endif %}>매거진 문체로 다듬기</button></div>
     <div class="admin-actions"><button name="act" value="undo">바꾸기 전으로 되돌리기</button></div>
   </form>
 

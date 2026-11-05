@@ -1227,10 +1227,16 @@ def install(S):
     # ---- 올라간 글을 잡지 기사체로 다시 쓰기 (운영자 2026-11-05: '지금 올라가 있는 아티클들은 전부 매거진 기사체로 바꿔') ----
     with conn() as db:
         db.execute('CREATE TABLE IF NOT EXISTS life_restyle(article_id INTEGER PRIMARY KEY,title TEXT,summary TEXT,body TEXT,created TEXT)')
+        # 운영자 2026-11-05 (2차): 피처 기사 문체로 한 번 더 — 글마다 몇 번째 문체로 바꿨는지 (1 = 기사체, 2 = 피처 문체)
+        db.execute('CREATE TABLE IF NOT EXISTS life_restyle_ver(article_id INTEGER PRIMARY KEY,ver INTEGER)')
+        db.execute('INSERT OR IGNORE INTO life_restyle_ver SELECT article_id,1 FROM life_restyle')
+    RESTYLE_VER = 2
     RESTYLE_SYSTEM = ('너는 소비자 라이프스타일 매거진 소보루의 교열 기자다. [글]을 잡지 기사체(평서문 ~다)로 다시 쓴다.\n'
                       '- 해요체·친구 말투·앱 안내문 말투(토스식)를 모두 평서문으로 바꾼다. 예: "확인해요" → "확인해야 한다", "있어요" → "있다", "~해 보세요" → "~해 볼 만하다".\n'
                       '- 내용·사실·숫자·순서는 바꾸지 않는다. 숫자는 한 글자도 바꾸지 말고, 새 숫자를 보태지 않는다. 문장을 지어 보태지 않는다.\n'
-                      '- 줄 맨 앞의 표시(## 소제목, ### 요점, - 목록, ※ 용어 풀이)는 그대로 둔다. **강조** 표시도 그대로 둔다.\n'
+                      '- 줄 맨 앞의 표시(## 소제목, ### 요점, - 목록, ※ 용어 풀이)는 그대로 둔다. 소제목 글은 안내문 꼴("~하는 법", "이렇게 대비하자")이면 짧고 맛이 있는 표제로 다듬어도 된다(예: "치킨에 진심인 나라").\n'
+                      '- **강조** 별표는 지우고 글자만 남긴다(매거진엔 형광펜이 없다).\n'
+                      '- 통계 숫자 문장에 [글]에 이미 적힌 기관·통계·매체 이름이 있으면 그대로 살린다. 없는 이름을 보태지 않는다.\n'
                       '- 이모지·느낌표는 지운다. 제목·소제목 끝에 마침표를 찍지 않는다. 독자에게 말을 거는 질문은 서술문으로 바꾼다.\n'
                       '- 끝맺음이 ~다만 되풀이되면 "~인 셈이다", "~한 격이다", "~할 터"처럼 섞어 라이프스타일 매거진 피처 기사 결로 다듬는다(내용·숫자는 그대로).\n'
                       'JSON만: {"title": 제목, "summary": [요약 줄들, 받은 줄 수 그대로], "body": 본문 전체}')
@@ -1255,7 +1261,8 @@ def install(S):
         with conn() as db:
             a = db.execute('SELECT id,title,summary,body FROM articles WHERE id=?', (article_id,)).fetchone()
             if not a: return 'skip:글 없음'
-            if db.execute('SELECT 1 FROM life_restyle WHERE article_id=?', (article_id,)).fetchone(): return 'skip:이미 바꿈'
+            v = db.execute('SELECT ver FROM life_restyle_ver WHERE article_id=?', (article_id,)).fetchone()
+            if v and v[0] >= RESTYLE_VER: return 'skip:이미 바꿈'
         body = restyle_prep(a['body'])
         summ = [x for x in (a['summary'] or '').split('\n') if x.strip()]
         out = chat(RESTYLE_SYSTEM, json.dumps({'title': a['title'], 'summary': summ, 'body': body}, ensure_ascii=False), 9000, AI_TIMEOUT * 3)
@@ -1269,13 +1276,14 @@ def install(S):
         after = {norm(n) for n in NUM.findall(title + ' ' + ' '.join(new_sum) + ' ' + new_body)}
         if after - before: return 'skip:숫자가 달라짐 (' + ', '.join(sorted(after - before))[:40] + ')'
         with conn() as db:
-            db.execute('INSERT OR REPLACE INTO life_restyle VALUES(?,?,?,?,?)', (a['id'], a['title'], a['summary'], a['body'], stamp()))
+            db.execute('INSERT OR IGNORE INTO life_restyle VALUES(?,?,?,?,?)', (a['id'], a['title'], a['summary'], a['body'], stamp()))  # 맨 처음 글을 남김 (되돌리기용)
+            db.execute('INSERT OR REPLACE INTO life_restyle_ver VALUES(?,?)', (a['id'], RESTYLE_VER))
             db.execute('UPDATE articles SET title=?,summary=?,body=?,updated=? WHERE id=?', (title, '\n'.join(new_sum) if summ else (a['summary'] or ''), new_body, stamp(), a['id']))
         return 'done'
 
     def restyle_all():
         with conn() as db:
-            ids = [r[0] for r in db.execute("SELECT a.id FROM articles a LEFT JOIN life_restyle r ON r.article_id=a.id WHERE a.status='published' AND r.article_id IS NULL ORDER BY a.id DESC")]
+            ids = [r[0] for r in db.execute("SELECT a.id FROM articles a LEFT JOIN life_restyle_ver r ON r.article_id=a.id WHERE a.status='published' AND (r.ver IS NULL OR r.ver<?) ORDER BY a.id DESC", (RESTYLE_VER,))]
         st = {'state': 'running', 'total': len(ids), 'done': 0, 'skip': [], 'at': stamp()}
         put('restyle_job', st)
         for i in ids:
@@ -1295,14 +1303,14 @@ def install(S):
             with conn() as db:
                 rows = db.execute('SELECT * FROM life_restyle').fetchall()
                 for r in rows: db.execute('UPDATE articles SET title=?,summary=?,body=?,updated=? WHERE id=?', (r['title'], r['summary'], r['body'], stamp(), r['article_id']))
-                db.execute('DELETE FROM life_restyle')
+                db.execute('DELETE FROM life_restyle'); db.execute('DELETE FROM life_restyle_ver')
             put('restyle_job', {}); flash(f'글 {len(rows)}개를 바꾸기 전으로 되돌렸어요.'); return redirect(url_for('admin_life_ai'))
         j = setting('restyle_job', {})
         if j.get('state') == 'running' and j.get('at', '') > (datetime.datetime.now() - datetime.timedelta(minutes=5)).isoformat():
             flash('이미 바꾸고 있어요. 잠시 뒤 새로 고쳐 보세요.'); return redirect(url_for('admin_life_ai'))
         if app.config.get('TESTING'): restyle_all()
         else: threading.Thread(target=restyle_all, daemon=True).start()
-        flash('올라간 글을 기사체로 바꾸기 시작했어요. 글 하나에 30초쯤 걸려요. 이 화면을 새로 고치면 얼마나 바꿨는지 보여요.')
+        flash('올라간 글을 매거진 문체로 다듬기 시작했어요. 글 하나에 30초쯤 걸려요. 이 화면을 새로 고치면 얼마나 바꿨는지 보여요.')
         return redirect(url_for('admin_life_ai'))
 
     app.jinja_env.globals['restyle_job'] = lambda: setting('restyle_job', {})
