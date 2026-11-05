@@ -6283,6 +6283,13 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(ed.get('/admin/magazine/mine').status_code, 200)
         self.assertNotEqual(ed.get('/admin/magazine/editors').status_code, 200)  # 에디터는 관리 메뉴에 못 들어감
         self.assertNotEqual(ed.get('/admin').status_code, 200)
+        # 관리자로 들어와 있던 브라우저에서 에디터로 들어와도 에디터 메뉴만 (운영자 2026-11-05)
+        both = self.login_admin()
+        both.post('/editor/login', data={'_csrf': self.csrf(both, '/editor/login'), 'login': 'kimtest', 'password': 'pw-123456'})
+        nav = both.get('/admin/magazine/mine').get_data(as_text=True)
+        self.assertIn('내 기사', nav)
+        for w in ('승인', '화면 편집', '환경설정', '접수글', '광고', '에디터</span>'): self.assertNotIn(w, nav)
+        self.assertNotEqual(both.get('/admin/magazine/settings').status_code, 200)
         # 에디터가 '게시'를 눌러도 승인 대기로
         r = ed.post('/admin/life', data={'_csrf': self.csrf(ed, '/admin/life?new=1'), 'title': '에디터 기사', 'summary': 's', 'body': 'b', 'category': '쇼핑', 'publish': '1'})
         with self.site.conn() as db: row = db.execute("SELECT id,status FROM articles WHERE title='에디터 기사'").fetchone()
