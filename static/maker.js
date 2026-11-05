@@ -187,11 +187,11 @@
       shadowed(ctx, function () { drawText(ctx, T, 60, y, '#fff'); });
       if (s.tag) { ctx.font = F(800, 28); ctx.letterSpacing = '4px'; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillText(s.tag, 64, y - 30); ctx.letterSpacing = '0px'; }
     },
-    outro: function (ctx) {
+    outro: function (ctx, letter) {  // 레터 꼭지로 만든 릴스는 끝 화면도 레터 구독 안내 (운영자 2026-11-05)
       drawLogo(ctx, 'white', 540, 620, 108, 'center');
-      ctx.font = F(800, 46); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('소보루 매거진', 540, 830); ctx.textAlign = 'left';
-      var a = {k: 'bubble', t: '억울한 소비자 피해, 제보해 주세요'}, b1 = itemBox(ctx, a, 900, 44); drawItem(ctx, a, b1, 540 - b1.w / 2, 1150);
-      var c = {k: 'box', t: '**consumerjebo.co.kr**'}, b2 = itemBox(ctx, c, 900, 44); drawItem(ctx, c, b2, 540 - b2.w / 2, 1150 + b1.h + 22);
+      ctx.font = F(800, 46); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(letter ? '소보루 레터' : '소보루 매거진', 540, 830); ctx.textAlign = 'left';
+      var a = {k: 'bubble', t: letter ? '매일 아침 소비·경제 뉴스를 메일로' : '억울한 소비자 피해, 제보해 주세요'}, b1 = itemBox(ctx, a, 900, 44); drawItem(ctx, a, b1, 540 - b1.w / 2, 1150);
+      var c = {k: 'box', t: letter ? '**프로필 링크에서 무료 구독**' : '**consumerjebo.co.kr**'}, b2 = itemBox(ctx, c, 900, 44); drawItem(ctx, c, b2, 540 - b2.w / 2, 1150 + b1.h + 22);
     }
   };
 
@@ -381,7 +381,10 @@
       .concat(ph.slice(0, 8).map(function (u) { return loadImg(u).then(function (el) { return {kind: 'image', url: u, el: el}; }, function () { return null; }); })))
       .then(function (ms) { return ms.filter(Boolean); });
   }
+  var fromLetter = false, capBox = $('#mk-cap'), capT = $('#mk-cap-t');
   function applyPlan(j) {
+    fromLetter = !!j.letter;
+    if (capBox) { capBox.hidden = !j.caption; capT.value = j.caption || ''; }
     var list = (mode === 'card' ? j.slides : j.scenes) || [], keep = slides[0] && slides[0].media;
     slides = list.map(function (p) {
       var o = blank(); o.design = p.design; o.tag = j.tag || o.tag; o.title = p.title || ''; o.sub = p.sub || ''; o.items = p.items || ''; o.media = null;
@@ -407,6 +410,19 @@
       .catch(function (e) { if (fallback) { fallback(); say(e.message + ' 기사 글을 그대로 넣었으니 다듬어 주세요.'); } else say(e.message); });
   }
   if (artSel) artSel.addEventListener('change', function () { var a = artOf(artSel.value); if (a) aiBuild({art: a.id}, function () { localFill(a); }); });
+  var letSel = $('#mk-letter');
+  if (letSel) letSel.addEventListener('change', function () {
+    if (!letSel.value) return;
+    if (artSel) artSel.value = '';
+    letSel.disabled = true; aiBuild({letter: letSel.value}).then(function () { letSel.disabled = false; });
+  });
+  if (artSel && letSel) artSel.addEventListener('change', function () { if (artSel.value) letSel.value = ''; });
+  var copyBtn = $('#mk-cap-copy');
+  if (copyBtn) copyBtn.onclick = function () {
+    var done = function () { copyBtn.textContent = '복사했어요'; setTimeout(function () { copyBtn.textContent = '캡션 복사'; }, 1600); };
+    try { navigator.clipboard.writeText(capT.value).then(done, function () { capT.select(); document.execCommand('copy'); done(); }); }
+    catch (e) { capT.select(); document.execCommand('copy'); done(); }
+  };
   var srcBox = $('#mk-src'), aiBtn = $('#mk-ai');
   if (aiBtn) aiBtn.onclick = function () {
     var v = (srcBox.value || '').trim();
@@ -432,7 +448,7 @@
       if (miss >= 0) { say((miss + 1) + '번 장면에 사진이나 영상을 넣어 주세요.'); return; }
       var c = document.createElement('canvas'); c.width = 1080; c.height = 1920; var x = c.getContext('2d');
       var scenes = slides.map(function (s, i) { x.clearRect(0, 0, 1080, 1920); REEL[s.design](x, s); return {media: s.media.url, layout: s.design, start: s.start || 0, dur: s.dur || 4, slow: !!s.slow, png: c.toDataURL('image/png')}; });
-      x.clearRect(0, 0, 1080, 1920); REEL.outro(x);
+      x.clearRect(0, 0, 1080, 1920); REEL.outro(x, fromLetter);
       btn.disabled = true; say('릴스를 만들고 있어요. 1~3분쯤 걸려요. 이 화면을 닫지 말아 주세요.');
       return post(C.render, JSON.stringify({scenes: scenes, outro: c.toDataURL('image/png')}), 'application/json').then(function (j) {
         if (!j.ok) throw new Error(j.error || '만들지 못했어요.');

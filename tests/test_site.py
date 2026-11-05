@@ -6200,6 +6200,31 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(call({'act': 'cards', 'note': '짧은 글'}).status_code, 400)
         page = admin.get('/admin/magazine/maker?mode=reel').get_data(as_text=True)
         self.assertIn('id="mk-ai"', page); self.assertIn('AI로 장면 짜기', page)
+        # 운영자 2026-11-05: 레터 하나를 여러 SNS 게시물로 쪼개 반복 홍보 — 레터 꼭지마다 카드·릴스, 끝에 구독 안내 장과 캡션
+        items = [{'title': '배달비 또 오른다', 'body': '배달 앱 두 곳이 다음 달부터 배달비를 500원씩 올린다. 소비자 부담은 한 번 주문에 최대 3,000원까지 늘어난다.', 'tip': '포장 주문 할인을 챙기세요', 'src': {'name': '연합뉴스'}}]
+        sec = {'number': {'value': '3,000원', 'label': '한 번 주문 배달비', 'body': '배달 앱 두 곳이 배달비를 올리면서 한 번 주문에 최대 3,000원까지 낼 수 있게 됐다.'}}
+        with self.site.conn() as db:
+            lid = db.execute("INSERT INTO letters(no,title,intro,items,sections,status,created) VALUES(99901,'배달비 또 오른다','안녕하세요, 빵순이·빵돌이님. 오늘은 배달비 소식부터 전해 드려요.',?,?,'sent','2026-11-05')",
+                             (json.dumps(items, ensure_ascii=False), json.dumps(sec, ensure_ascii=False))).lastrowid
+        def clean_letter():
+            with self.site.conn() as db: db.execute('DELETE FROM letters WHERE id=?', (lid,))
+        self.addCleanup(clean_letter)
+        page = admin.get('/admin/magazine/maker?mode=card').get_data(as_text=True)
+        self.assertIn('id="mk-letter"', page); self.assertIn(f'value="L{lid}:news:0"', page); self.assertIn(f'value="L{lid}:number"', page); self.assertIn('id="mk-cap"', page)
+        reply['out'] = {'tag': 'MONEY', 'caption': '🛵 배달비가 또 올라요\n💸 한 번 주문에 최대 3,000원', 'slides': [{'design': 'clean', 'title': '배달비\n또 오른다'}, {'design': 'text', 'title': '얼마나?', 'items': '최대 **3,000원**'}]}
+        j = call({'act': 'cards', 'letter': f'L{lid}:news:0'}).get_json()
+        self.assertTrue(j['ok']); self.assertTrue(j['letter']); self.assertEqual(j['warn'], '')
+        self.assertIn('소보루 레터', j['slides'][-1]['title']); self.assertEqual(len(j['slides']), 3)
+        self.assertTrue(j['caption'].startswith('🛵')); self.assertIn('#소보루레터', j['caption']); self.assertIn('프로필 링크', j['caption'])
+        self.assertIn('구독자를 늘리는', reply['sys']); self.assertIn('배달 앱 두 곳이', body_sent[-1])
+        reply['out'] = {'tag': '배달비 · 오늘의 숫자', 'scenes': [{'design': 'full', 'title': '3,000원', 'dur': 4}, {'design': 'wide', 'title': '배달비', 'items': '#최대 3,000원', 'dur': 5}]}
+        j = call({'act': 'reel', 'letter': f'L{lid}:number'}).get_json()
+        self.assertTrue(j['ok']); self.assertTrue(j['letter']); self.assertEqual(len(j['scenes']), 2)  # 릴스는 끝 귤색 화면이 구독 안내
+        self.assertEqual(call({'act': 'reel', 'letter': f'L{lid}:harm'}).status_code, 400)  # 없는 꼭지
+        self.assertEqual(call({'act': 'reel', 'letter': 'L4242424:all'}).status_code, 400)
+        reply['out'] = {'tag': 'CAR', 'caption': '무시됨', 'slides': [{'design': 'clean', 'title': '차 앞으로\n다가온 남성'}, {'design': 'text', 'title': '교차로의 오후'}]}
+        j = call({'act': 'cards', 'art': 99901}).get_json()
+        self.assertEqual(j['caption'], ''); self.assertFalse(j['letter']); self.assertEqual(len(j['slides']), 2)  # 기사로 만들 땐 그대로
 
     def test_magazine_screen_editor(self):
         # 운영자 2026-11-05: ND 화면편집처럼 — 매거진 화면(메인·기사·목록)을 PC·모바일로 띄워 놓고 그 자리에서 문구·묶음 순서를 고침
