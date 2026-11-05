@@ -11,7 +11,7 @@
     <p>{{ ui('mag.list_sub', '사고, 쓰고, 고르는 매일의 소비 이야기') if not cat else cat }}</p>
     <nav class="ml-tabs" aria-label="분야">
       <a href="{{ url_for('life') }}"{% if not cat %} class="on" aria-current="page"{% endif %}>ALL</a>
-      {% for c in categories %}<a href="{{ url_for('life', category=c) }}"{% if c == cat %} class="on" aria-current="page"{% endif %}>{{ EN.get(c, c) }}</a>{% endfor %}
+      {% for c in mag_aisles %}<a href="{{ url_for('life', category=c) }}"{% if c == cat %} class="on" aria-current="page"{% endif %}>{{ EN.get(c, c) }}</a>{% endfor %}
     </nav>
   </header>
   {% if rows %}

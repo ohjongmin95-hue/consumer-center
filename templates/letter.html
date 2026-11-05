@@ -44,10 +44,9 @@
   {% endif %}
   {% if mag %}
   <div class="nm-pe">
-    {% set cats = [] %}{% for a in mag %}{% if a['category'] not in cats|map(attribute=0)|list %}{% set _ = cats.append((a['category'], a)) %}{% endif %}{% endfor %}
     <section class="nm-g nm-cat" id="cat">
       <h2>{{ ui('letter.mz_cat', 'Aisles') }}<small>{{ ui('letter.mz_cat_sub', '오늘은 어느 코너부터 볼까요') }}</small></h2>
-      <ul>{% for c, a in cats[:6] %}<li><a href="{{ url_for('life', category=c) }}">{{ EN.get(c, 'LIFE') }}<small>{{ c }}</small></a></li>{% endfor %}</ul>
+      <ul>{% for c in mag_aisles %}<li><a href="{{ url_for('life', category=c) }}">{{ EN.get(c, 'LIFE') }}<small>{{ c }}</small></a></li>{% endfor %}</ul>
     </section>
     {% set more = mag[6:11] if mag|length > 10 else mag[:5] %}
     <section class="nm-g nm-watch">
@@ -85,5 +84,5 @@
 <script>(function(){var h=document.querySelector('.nm-hero[data-slides]');if(!h)return;var s=h.querySelectorAll('.nm-slide'),d=h.querySelectorAll('.nm-hdots i'),i=0;if(s.length<2)return;
 s.forEach(function(x){var im=x.querySelector('img');if(im)im.loading='eager'});
 function go(n){s[i].classList.remove('on');d[i]&&d[i].classList.remove('on');i=n%s.length;s[i].classList.add('on');d[i]&&d[i].classList.add('on')}
-setInterval(function(){if(!document.hidden)go(i+1)},5000)})();</script>
+setInterval(function(){if(!document.hidden)go(i+1)},8000)})();</script>
 {% endblock %}
