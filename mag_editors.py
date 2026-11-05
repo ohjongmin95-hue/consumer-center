@@ -86,6 +86,7 @@ def install(S):
             login = request.form.get('login', '').strip().lower()
             with conn() as db: row = db.execute('SELECT * FROM mag_editors WHERE login=? AND active=1', (login,)).fetchone()
             if row and row['pw_hash'] and check_password_hash(row['pw_hash'], request.form.get('password', '')):
+                S.end_admin()  # 운영자 2026-11-05: 같은 브라우저에 관리자로 들어와 있어도 에디터로 들어오면 에디터 화면만 (관리 메뉴·승인·화면 편집 없음)
                 session['mag_editor'] = row['id']; session['mag_editor_v'] = row['ver']
                 return redirect(url_for('mag_mine'))
             S.note_attempt('editor'); flash('아이디나 비밀번호가 맞지 않아요.')
