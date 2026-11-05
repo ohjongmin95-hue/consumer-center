@@ -49,8 +49,8 @@ RANK_DAYS = 30
 PAGE_BLOCKS = {
     'home': ('홈', [('intro', '맨 위 소개 (소보루 큰 문구 · 제보하기 버튼)'), ('live', '소비자의 소리 (실시간 제보)'),
                    ('pick', '커뮤니티 (추천 TOP 5 · 최신 글 · 글쓰기)'), ('talk', '골라주세요 · 수다방'), ('quick', '소보루는 이런 곳 (제보 · 후기 · 골라주세요 · 수다방)'),
-                   ('letter', '크로와상 레터 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('answer', '기업 답변'), ('faq', '자주 묻는 질문 (AI 검색용 FAQ 포함)')]),
-    'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '크로와상 레터 구독')]),
+                   ('letter', '소보루 레터 구독'), ('life', '알아 두면 돈 버는 소비 이야기'), ('answer', '기업 답변'), ('faq', '자주 묻는 질문 (AI 검색용 FAQ 포함)')]),
+    'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '소보루 레터 구독')]),
     'board': ('커뮤니티', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
                          ('feed', '글 목록 · 이번 주 인기 · 리뷰 모아 보기'), ('foot', '맨 아래 안내')]),
     'letter': ('매거진 메인', [('hero', '표지 사진 · 매거진 소개'), ('feats', 'HOT ISSUE · IN FOCUS · 분야 · Fresh Picks'), ('reels', 'REELS 릴스 영상'), ('archive', '구독 띠 · 지난 레터 · 바닥글')]),
@@ -186,7 +186,7 @@ def install(S):
     def apply_brand():
         if request.endpoint == 'static' or 'content' not in g: return
         jebo_face = S.current_face() == 'jebo'  # 주소·관리자 미리보기로 정함 (app.py current_face)
-        if S.letter_alone() and not request.path.startswith('/admin'): jebo_face = False  # 레터 구독 페이지는 어느 주소로 와도 크로와상 레터 화면 (운영자 2026-11-04)
+        if S.letter_alone() and not request.path.startswith('/admin'): jebo_face = False  # 레터 구독 페이지는 어느 주소로 와도 소보루 레터 화면 (운영자 2026-11-04)
         g.brand = 'jebo' if jebo_face else 'soboru'
         # 소보루에만 있는 화면(생활정보·레터·리뷰 주제·AI 상담)은 소비자제보센터 주소로 들어와도 soboru.co.kr로
         if request.host.split(':')[0].lower() in S.JEBO_HOSTS and S.main_host() not in S.JEBO_HOSTS and request.path.startswith(SOBORU_ONLY):
@@ -506,7 +506,7 @@ def install(S):
         ('company', '기업', lambda: url_for('companies'), ['companies.html', 'company_page.html', 'company_grade.html']),
         ('scam', '사기 주의', lambda: url_for('scam_home'), ['scam.html', 'scam_new.html']),
         ('ask', '법률 질문', lambda: url_for('law_ask'), ['soboru_ask.html', 'soboru_ask_v2.html']),
-        ('letter', '크로와상 레터', lambda: url_for('letter_home'), ['letter.html', 'letter_issue.html', 'letter_msg.html', 'letter_macros.html']),
+        ('letter', '소보루 레터', lambda: url_for('letter_home'), ['letter.html', 'letter_issue.html', 'letter_msg.html', 'letter_macros.html']),
         ('common', '공통 머리글·바닥글', lambda: url_for('home'), ['base.html', 'soboru_header.html', 'soboru_tabbar.html']),
     ]
     SCREEN_SKIP = {'site.name'}  # 사이트 이름은 문구 고치기에서

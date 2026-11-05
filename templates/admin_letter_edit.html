@@ -1,11 +1,11 @@
 {% extends 'console.html' %}
-{% block title %}크로와상 레터 {{ L.no }}호 | {{ site_name() }}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById(b.dataset.copy),o=b.textContent;function ok(){b.textContent=b.dataset.done;setTimeout(function(){b.textContent=o},1800)}if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t.value).then(ok,function(){t.select();document.execCommand('copy');ok()})}else{t.select();document.execCommand('copy');ok()}})})</script>
+{% block title %}소보루 레터 {{ L.no }}호 | {{ site_name() }}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById(b.dataset.copy),o=b.textContent;function ok(){b.textContent=b.dataset.done;setTimeout(function(){b.textContent=o},1800)}if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t.value).then(ok,function(){t.select();document.execCommand('copy');ok()})}else{t.select();document.execCommand('copy');ok()}})})</script>
 {% endblock %}
 {% block content %}
 {% set draft = L.status == 'draft' %}
 <main class="page"><div class="wrap lt-ad-edit">
   <div class="page-intro">
-    <p><a href="{{ url_for('admin_letter') }}">← 크로와상 레터</a></p>
+    <p><a href="{{ url_for('admin_letter') }}">← 소보루 레터</a></p>
     <h1 class="page-title">{{ L.no }}호 {{ {'draft': '초안', 'scheduled': '보내는 중', 'sent': '보낸 레터'}.get(L.status, L.status) }}</h1>
     <p class="meta">{{ L.created[:16].replace('T', ' ') }} 만듦{% if L.sent_at %} · {{ L.sent_at[:16].replace('T', ' ') }} 보냄 ({{ sends.get('sent', 0) }}명{% if sends.get('failed') %}, 실패 {{ sends.failed }}명{% endif %}){% elif L.status == 'scheduled' %} · 지금까지 {{ sends.get('sent', 0) }}명에게 보냄{% endif %} · <a href="{{ url_for('letter_issue', no=L.no) }}" target="_blank" rel="noopener">웹 버전 ↗</a></p>
     {% if not mail_ready %}<p class="hp-warn">메일 발송 설정(SMTP)이 없어 테스트 메일도, 구독자 발송도 할 수 없어요 (deploy/set-mail.sh).</p>{% endif %}
@@ -108,7 +108,7 @@
         {% if L.status != 'sent' %}
         {% if via == 'stibee' %}
         <h2>스티비로 보내기</h2>
-        <p>스티비 주소록의 구독자에게 바로 보내요. 관리자 > 크로와상 레터의 '보내는 곳' 설정을 따라요.</p>
+        <p>스티비 주소록의 구독자에게 바로 보내요. 관리자 > 소보루 레터의 '보내는 곳' 설정을 따라요.</p>
         <div class="admin-actions">{% if not L.check_ok %}<label class="check aw-ack"><input type="checkbox" name="ack" value="1"> 검토 필요한 곳을 직접 확인했어요</label>{% endif %}
           <button type="submit" name="act" value="send" class="primary" onclick="return confirm('{{ L.no }}호를 스티비 구독자에게 보낼까요? 보낸 메일은 되돌릴 수 없어요.')">스티비로 보내기</button></div>
         {% else %}

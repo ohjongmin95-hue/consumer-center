@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from 'letter_macros.html' import subscribe_form with context %}
-{% block title %}{{ mag_seo_text('title') }}{% endblock %}{# 운영자 2026-11-05: 탭 제목은 '크로와상 레터'가 아니라 '소보루 매거진' #}
+{% block title %}{{ mag_seo_text('title') }}{% endblock %}{# 운영자 2026-11-05: 탭 제목은 '소보루 레터'가 아니라 '소보루 매거진' #}
 {% block description %}{{ mag_seo_text('description') }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">{# 운영자 2026-11-04: 매거진은 뉴소스(newsourcemag.com)형 — 영문은 Inter·Archivo Black, 큰 한글 제목은 Black Han Sans (모두 SIL OFL) #}{% endblock %}
 {% block content %}
@@ -72,7 +72,7 @@
   <section class="nm-letter lt-archive" id="sub">
     <div class="nm-g nm-lt">
       <div>
-        <p class="nm-kick">{{ ui('letter.mz_kick', '크로와상 레터') }}</p>{# 운영자 2026-11-05: 뉴스레터 이름 #}
+        <p class="nm-kick">{{ ui('letter.mz_kick', '소보루 레터') }}</p>{# 운영자 2026-11-05: 뉴스레터 이름 #}
         <h2>{{ ui('letter.mz_end', 'READ BEFORE\nYOU BUY') }}</h2>
         <p class="nm-lead">{{ ui('letter.h1', '{span}의 주요 이슈,\n아침 5분이면 끝', span=cfg.span) }} <span>{{ cfg.when }} {{ ui('letter.mz_when2', '메일로 받아 보세요.') }}</span></p>
         <ul class="nm-secs"><li>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</li><li>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</li><li>{{ ui('letter.t3', '숫자로 보는 오늘') }}</li><li>{{ ui('letter.t4', '크로와상의 한마디') }}</li></ul>
