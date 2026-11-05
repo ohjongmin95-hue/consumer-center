@@ -6128,6 +6128,33 @@ class SiteTest(unittest.TestCase):
         art = self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True)
         self.assertIn(f'<video src="{url}" controls playsinline', art); self.assertIn('<figcaption>매장 앞 모습</figcaption>', art); self.assertNotIn('<video src="/etc/passwd"', art)
 
+    def test_magazine_write_assist(self):
+        # 운영자 2026-11-05: 기사 쓰기 AI 도움 — 초안·다듬기·맞춤법·제목·요약. 원문에 없는 숫자가 나온 답은 버림
+        import mag_assist, companydesk
+        admin = self.login_admin(); tok = self.csrf(admin, '/admin/life?new=1')
+        page = admin.get('/admin/life?new=1').get_data(as_text=True)
+        self.assertIn('id="mz-ai-open"', page); self.assertIn('data-act="draft"', page)
+        reply = {}
+        def fake(url, headers, body, timeout):
+            reply['sys'] = body['messages'][0]['content']
+            return 200, {'choices': [{'message': {'content': json.dumps(reply['out'], ensure_ascii=False)}}]}
+        self.enterContext(patch.object(companydesk, 'post_json', fake)); self.enterContext(patch.dict(os.environ, {'OPENAI_API_KEY': 'k'}))
+        body = '치킨 한 마리 값이 3만 원에 가까워졌다. 배달비도 함께 올랐다. 가맹점도 사정이 있다.'
+        call = lambda d: admin.post('/admin/magazine/assist', json=d, headers={'X-CSRFToken': tok})
+        self.assertEqual(self.client.post('/admin/magazine/assist', json={'act': 'titles'}).status_code, 400)  # 로그인·CSRF 없으면 막음
+        reply['out'] = {'titles': ['치킨 3만 원 시대', '치킨 5만 원 시대', '배달비의 셈법']}
+        j = call({'act': 'titles', 'title': '', 'summary': '', 'body': body}).get_json()
+        self.assertEqual(j['titles'], ['치킨 3만 원 시대', '배달비의 셈법'])  # 지어낸 5만은 빠짐
+        self.assertIn('셈이다', reply['sys'])  # 매거진 문체 규칙을 함께 보냄
+        reply['out'] = {'text': '치킨값이 7만 원이 된 셈이다.'}
+        self.assertEqual(call({'act': 'polish', 'body': body}).status_code, 502)
+        reply['out'] = {'text': '치킨 한 마리 값이 3만 원에 다가선 셈이다.'}
+        self.assertIn('셈이다', call({'act': 'polish', 'body': body}).get_json()['text'])
+        reply['out'] = {'title': '치킨', 'summary': '요약', 'body': '## 치킨에 진심인 나라\n\n2만 원이던 치킨이 3만 원이 됐다.'}
+        j = call({'act': 'draft', 'note': '치킨값 3만 원, 배달비 인상, 가맹점 사정 취재 메모입니다.'}).get_json()
+        self.assertTrue(j['ok']); self.assertIn('2', j['warn'])
+        self.assertEqual(call({'act': 'draft', 'note': '짧음'}).status_code, 400)
+
     def test_magazine_editors(self):
         # 운영자 2026-11-05: 에디터 계정 — 지금 기사는 에디터 이지우·오후가 번갈아, 에디터는 쓰고 승인 요청만 (게시는 관리자)
         admin = self.login_admin()
