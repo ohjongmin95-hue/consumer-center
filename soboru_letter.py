@@ -1000,14 +1000,17 @@ def install(S):
             if r.get('id'): it['article'] = r['id']; made += 1
         log({'status': 'info', 'no': no, 'trigger': 'articles', 'reason': f"매거진 기사 {made}편 ({sum(1 for r in res if r.get('published'))}편 바로 게시)"})
 
+    def mag_digest_of(aid):
+        with conn() as db: row = db.execute('SELECT body FROM articles WHERE id=?', (aid,)).fetchone()
+        return mag_digest(row['body']) if row else []
+
     def one_magazine(L):
         """매거진 칸은 글 하나 축약본만 (운영자 2026-11-05). 예전 호(여러 편·앞부분만)는 첫 글 하나로 줄이고 축약본을 새로 만듦."""
         sec = L.get('sections') if isinstance(L.get('sections'), dict) else None
         life = (sec or {}).get('life') or []
-        if not life or (len(life) == 1 and 'digest' in life[0]): return
+        if not life or (len(life) == 1 and life[0].get('edited')): return  # 관리자가 고친 축약본은 그대로, 아니면 늘 지금 규칙으로 다시 만듦
         a = dict(life[0]); a.pop('read', None)
-        with conn() as db: row = db.execute('SELECT body FROM articles WHERE id=?', (a.get('id'),)).fetchone()
-        a['digest'] = mag_digest(row['body']) if row else []
+        a['digest'] = mag_digest_of(a.get('id'))
         L['sections'] = dict(sec, life=[a])
 
     def article_links(L):
@@ -1129,7 +1132,8 @@ def install(S):
             elif 'life_digest' in form:
                 rows = [' '.join(x.split()) for x in form.get('life_digest', '').replace('\r', '').split('\n')]
                 dg = [{'h': W._plain(r.lstrip('#').strip(), 80)} if r.startswith('#') else {'p': r[:900]} for r in rows if r and r.lstrip('#').strip()]
-                sec['life'] = [dict(sec['life'][0], digest=dg)]
+                old = mag_digest_of(sec['life'][0].get('id'))
+                sec['life'] = [dict(sec['life'][0], digest=dg, edited=1 if dg != old else 0)]
         if sec.get('briefs'):
             briefs = []
             for i, b in enumerate(sec['briefs']):
