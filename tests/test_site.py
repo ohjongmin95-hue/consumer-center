@@ -946,7 +946,7 @@ class SiteTest(unittest.TestCase):
                 self.assertEqual(self.site.app.extensions['soboru']['page_blocks']('home')[:3], [['intro', 0], ['letter', 1], ['quick', 1]])
             # 이상한 값은 무시하고, 모르는 묶음은 빠지고 빠진 묶음은 뒤에 붙음
             self.assertEqual(admin.post('/admin/screens', data={'_csrf': token, 'page': 'nope', 'block': 'x', 'act': 'up'}).status_code, 400)
-            self.assertEqual(self.site.soboru.clean_blocks('letter', [['archive', 1], ['zzz', 1]]), [['archive', 1], ['hero', 1], ['feats', 1], ['reels', 1]])
+            self.assertEqual(self.site.soboru.clean_blocks('letter', [['archive', 1], ['zzz', 1]]), [['archive', 1], ['hero', 1], ['feats', 1], ['reels', 1], ['subscribe', 1]])
             # 편집 모드: 묶음마다 옮기기 막대, 숨긴 묶음은 맨 아래에서 다시 보이기
             admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '1', 'next': '/'})
             edit = admin.get('/').get_data(as_text=True)
@@ -2169,7 +2169,7 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(admin, '/admin/screens')
         admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '1', 'next': '/'})
         pages = {'/': ('home.intro_title', 'home.live_title', 'home.pick_title', 'home.answer_eyebrow', 'sb.nav_home', 'sb.tab_home', 'common.ft_why', 'letter.card_title'),
-                 '/life': ('life.title', 'life.cat_all', 'letter.subscribe'), '/board': ('cm.title', 'cm.pick_title'), '/letter': ('letter.h1', 'letter.t2', 'letter.archive_title'),
+                 '/life': ('life.title', 'life.cat_all', 'letter.subscribe'), '/board': ('cm.title', 'cm.pick_title'), '/letter': ('letter.sub_t', 'letter.sub_btn', 'letter.archive_title'),
                  '/companies': ('sb.nav_companies',), '/ask': ('ask.h1',)}
         for path, keys in pages.items():
             page = admin.get(path).get_data(as_text=True)
@@ -2190,7 +2190,7 @@ class SiteTest(unittest.TestCase):
         # 화면 편집 > 페이지별 문구 목록: 그 페이지 문구만 한 번에 저장, 비우면 기본 문구로
         page = admin.get('/admin/screens').get_data(as_text=True)
         self.assertIn('name="home.intro_sub"', page)
-        self.assertIn('name="letter.h1"', page)
+        self.assertIn('name="letter.sub_t"', page)
         self.assertIn('name="sb.nav_life"', page)
         r = admin.post('/admin/screens', data={'_csrf': token, 'page': 'home', 'act': 'texts', 'home.intro_title': '', 'home.pick_title': '오늘의 픽', 'report.submit': '무시돼요'})
         self.assertEqual(r.status_code, 302)
@@ -5810,8 +5810,8 @@ class SiteTest(unittest.TestCase):
         subject, html, text = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')
         icon = self.site.soboru_letter.TOPIC_ICON[it1['topic']][0]  # 분야를 남겨 분야 그림(토스페이스)을 붙임
         self.assertIn('editor-croissant.png', html)  # 에디터 크로와상 그림
-        self.assertLess(html.index('SOBORU MAGAZINE'), html.index('editor-croissant.png'))  # 머리는 이름 글씨(운영자 2026-11-05: 소보루 레터), 캐릭터는 아래에서만
-        self.assertIn('>소보루 레터</span>', html); self.assertTrue(subject.startswith('🍞[소보루 레터]'))
+        self.assertLess(html.index('alt="SOBORU 소보루 레터"'), html.index('editor-croissant.png'))  # 머리는 귤색 SOBORU 로고(운영자 2026-11-05), 캐릭터는 아래에서만
+        self.assertNotIn('>소보루 레터</span>', html); self.assertTrue(subject.startswith('🍞[소보루 레터]'))
         self.assertIn('이번 주 소비자 뉴스, 이것만 보면 끝', subject)
         for part in (html, text):
             self.assertIn('첫째 소식, 이것만 알면 돼요', part); self.assertIn(it1['src']['url'], part)
@@ -6587,10 +6587,15 @@ class SiteTest(unittest.TestCase):
         box = []
         for path in ('/letter', '/life', '/'):
             page = self.client.get(path).get_data(as_text=True)
-            self.assertIn('action="/letter/subscribe"', page, path); self.assertIn('name="website"', page, path); self.assertNotIn('name="agree"', page, path); self.assertIn('동의한 것으로 봐요', page, path)
+            self.assertIn('action="/letter/subscribe"', page, path); self.assertIn('name="website"', page, path); self.assertNotIn('name="agree"', page, path)
+            if path == '/letter': self.assertIn('name="agree_privacy"', page); self.assertIn('name="agree_ad"', page); self.assertIn('id="sub"', page)  # 운영자 2026-11-05: 매거진은 동의 두 개 체크
+            else: self.assertIn('동의한 것으로 봐요', page, path)
         with patch.dict(os.environ, self.LETTER_MAIL), patch.object(self.site.notify.smtplib, 'SMTP_SSL', self.letter_smtp(box)):
             r = self.letter_post(self.client, {'email': 'not-an-email', 'agree': '1'})
             self.assertIn('s=email', r.headers['Location'])
+            r = self.client.post('/letter/subscribe', data={'_csrf': self.csrf(self.client, '/letter'), 'email': 'reader2@test.kr', 'checks': '1', 'agree_privacy': '1'})
+            self.assertIn('s=consent', r.headers['Location'])  # 동의 하나만 체크하면 막음
+            self.assertIn('두 가지 동의', self.client.get(r.headers['Location']).get_data(as_text=True))
             r = self.client.post('/letter/subscribe', data={'_csrf': self.csrf(self.client, '/letter'), 'email': 'bot@test.kr', 'agree': '1', 'website': 'http://spam'})
             self.assertIn('s=check', r.headers['Location'])  # 자동 등록 프로그램에도 같은 말, 저장은 안 함
             with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM letter_subscribers').fetchone()[0], 0)
