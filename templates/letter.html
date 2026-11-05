@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'letter_macros.html' import subscribe_form with context %}
-{% block title %}{{ ui_text('letter.title', '소보루 레터') }} | {{ txt('site.name') }}{% endblock %}
-{% block description %}{{ ui_text('letter.description', '평일 아침마다 그날 꼭 알아야 할 주요 이슈를 쉽게 풀어 메일로 보내 드려요. 내 생활에 어떤 의미인지, 관련 법, 소보루 픽 인기 리뷰까지.') }}{% endblock %}
+{% block title %}{{ ui_text('letter.mz_title', '소보루 매거진') }}{% endblock %}{# 운영자 2026-11-05: 탭 제목은 '소보루 레터'가 아니라 '소보루 매거진' #}
+{% block description %}{{ ui_text('letter.mz_description', '소비를 보는 새로운 루트, 소보루 매거진. 사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">{# 운영자 2026-11-04: 매거진은 뉴소스(newsourcemag.com)형 — 영문은 Inter·Archivo Black, 큰 한글 제목은 Black Han Sans (모두 SIL OFL) #}{% endblock %}
 {% block content %}
 {% set cfg = letter_cfg() %}
@@ -26,9 +26,7 @@
       <h1>{{ ui('letter.mz_intro2', 'Consumer Lifestyle,\nSOBORU Magazine') }}</h1>
       <p><b>{{ ui('letter.mz_motto', 'SOBORU, 소비를 보는 새로운 루트') }}</b> {{ ui('letter.mz_about2', '사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}</p>
     </div>
-    <div class="nm-g">
-      <a class="nm-banner" href="#sub"><span class="nm-bt"><small>SOBORU LETTER</small><strong>{{ ui('letter.mz_bn', '아침 5분,\n돈이 되는 생활경제') }}</strong><span class="nm-go">{{ ui('letter.mz_bn_go', '무료로 구독하기') }} →</span></span><span class="nm-bi"><span class="nm-clock"><b>{{ ui_text('letter.mz_clock', '07:30') }}</b><small>{{ ui_text('letter.mz_clock_sub', 'WEEKDAY MORNING · YOUR INBOX') }}</small></span><span class="nm-stamp" aria-hidden="true">EVERY<br>MORNING</span></span></a>
-    </div>
+    {# 운영자 2026-11-05: 레터 띠(아침 5분·07:30)는 뺌 — 구독은 맨 아래 칸에서 #}
   </section>
   {% elif blk == 'feats' %}
   <div class="lt-feats">
@@ -36,7 +34,7 @@
   <section class="nm-g nm-hot" id="hot">
     <div class="nm-hh"><h2 class="nm-sh"><i aria-hidden="true"></i>{{ ui('letter.mz_hot2', 'HOT ISSUE') }}</h2><a class="nm-up" href="#top" aria-label="맨 위로">↑</a></div>
     <div class="nm-hots nm-hots2">{% for a in mag[1:5] %}<a href="{{ url_for('life_article', article_id=a['id']) }}"><span class="nm-ph">{{ cover(a, loop.index) }}<em>{{ EN.get(a['category'], 'LIFE') }}</em></span><b>{{ a['title'] }}</b>{% set sm = (a['summary'] or '').split('\n')[0] %}{% if sm %}<p>{{ sm|truncate(60, True, '…') }}</p>{% endif %}<small>{{ (a['published_at'] or a['created'])[:10].replace('-', '. ') }}</small></a>{% endfor %}</div>
-    <a class="nm-more" href="https://consumerjebo.co.kr/life">{{ ui('letter.mz_hot_more', '더 많은 이야기') }} →</a>
+    <a class="nm-more" href="{{ url_for('life') }}">{{ ui('letter.mz_hot_more', '더 많은 이야기') }} →</a>
   </section>
   {% endif %}
   {% if mag|length > 5 %}{% set f = mag[5] %}
@@ -47,7 +45,7 @@
     {% set cats = [] %}{% for a in mag %}{% if a['category'] not in cats|map(attribute=0)|list %}{% set _ = cats.append((a['category'], a)) %}{% endif %}{% endfor %}
     <section class="nm-g nm-cat" id="cat">
       <h2>{{ ui('letter.mz_cat', 'Aisles') }}<small>{{ ui('letter.mz_cat_sub', '오늘은 어느 코너부터 볼까요') }}</small></h2>
-      <ul>{% for c, a in cats[:6] %}<li><a href="https://consumerjebo.co.kr/life?category={{ c|urlencode }}">{{ EN.get(c, 'LIFE') }}<small>{{ c }}</small></a><span class="nm-ci">{{ cover(a, loop.index0) }}</span></li>{% endfor %}</ul>
+      <ul>{% for c, a in cats[:6] %}<li><a href="{{ url_for('life', category=c) }}">{{ EN.get(c, 'LIFE') }}<small>{{ c }}</small></a></li>{% endfor %}</ul>
     </section>
     {% set more = mag[6:11] if mag|length > 10 else mag[:5] %}
     <section class="nm-g nm-watch">

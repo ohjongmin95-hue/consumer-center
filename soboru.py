@@ -558,6 +558,8 @@ def install(S):
             total = db.execute("SELECT COUNT(*) FROM articles WHERE status='published'" + (' AND category=?' if cat else ''), (cat,) if cat else ()).fetchone()[0]
         rows = life_rows(LIFE_PAGE, (page - 1) * LIFE_PAGE, cat or None)
         if page > 1 and page > -(-total // LIFE_PAGE): abort(404)  # 없는 쪽 번호는 빈 화면(200) 대신 404
+        if S.letter_alone():  # 운영자 2026-11-05: 매거진(soboru.co.kr) 안에서는 제보센터 화면 말고 매거진 목록
+            return render_template('mag_list.html', rows=rows, cat=cat, page=page, pages=max(1, -(-total // LIFE_PAGE)), total=total, categories=LIFE_CATEGORIES)
         return render_template('life.html', rows=rows, cat=cat, page=page, pages=max(1, -(-total // LIFE_PAGE)), total=total)
 
     @app.route('/life/<int:article_id>')
