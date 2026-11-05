@@ -6343,7 +6343,7 @@ class SiteTest(unittest.TestCase):
         # 네이버 경제 뉴스 댓글 많은 순
         sec = ('<a href="https://n.news.naver.com/mnews/article/001/0000000001?sid=101" class="sa_text_title"><strong>배달비 또 오른다, 소비자 부담 커져</strong></a>'
                '<a href="https://n.news.naver.com/mnews/article/015/0000000002"><strong>카드 연회비 돌려받는 길 열린다</strong></a><a href="https://n.news.naver.com/mnews/article/015/0000000002">사진</a>'
-               '<a href="https://example.com/x">광고 기사 제목이 길어요</a><a href="https://n.news.naver.com/mnews/article/015/0000000003">" style="display: none;"></a>')
+               '<a href="https://example.com/x">광고 기사 제목이 길어요</a><a href="https://n.news.naver.com/mnews/article/015/0000000003">" style="display: none;"></a><a href="https://n.news.naver.com/mnews/article/015/0000000004">[인사] 중소벤처기업부</a>')
         def fake_get(url, referer=''):
             if url.endswith('section/101'): return sec
             if 'breakingnews' in url: return '<a href="https://n.news.naver.com/mnews/article/001/0000000001">배달비 또 오른다</a>' if url.endswith('259') else ''
