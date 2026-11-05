@@ -3239,3 +3239,6 @@ main img,main video,main iframe,main table{max-width:100%}
 .ma-page .ma-body .sb-terms-h{font-family:Inter,sans-serif;letter-spacing:.16em}
 .ma-sum{padding:20px 0;background:none;border-left:0;border-top:2px solid var(--ma-ink);border-bottom:1px solid var(--ma-line)}
 .ma-sum ul{padding-left:0;list-style:none}.ma-sum li{position:relative;padding-left:22px}.ma-sum li::before{content:"—";position:absolute;left:0;color:var(--ma-or)}
+/* 운영자 2026-11-05: 본문 사진 ([사진 주소 | 설명]) */
+.sb-article-body .sb-fig{margin:36px 0}.sb-article-body .sb-fig img{display:block;width:100%;height:auto}
+.sb-article-body .sb-fig figcaption{margin-top:10px;font-size:13px;line-height:1.6;color:#777}

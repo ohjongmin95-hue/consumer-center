@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="{{ asset('admin.css') }}">
 </head>
-<body class="console">
+<body class="console{{ ' ad-mag' if admin_active() and admin_space is defined and admin_space() == 'mag' }}">
 {# 대표(관리자) 전용 화면 틀. 기자실은 reporter_base.html을 따로 씀. #}
 {% macro icon(name) %}<svg class="ad-ico" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{{ {
   'home': '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
@@ -41,16 +41,23 @@
   ('제보', [('admin_reports', 'inbox', '제보 처리'), ('admin_requests', 'mail', '정정·이의 신청'), ('admin_stats', 'chart', '운영 통계'), ('admin_partners', 'image', '협력 기관'), ('admin_check', 'book', '사기 전에 확인'), ('admin_howto', 'book', '분쟁·대응')]),
   ('기업', [('admin_companies', 'building', '기업'), ('admin_contacts', 'mail', '기업 연락처')]),
   ('회원', [('admin_members', 'users', '회원'), ('admin_experts', 'id', '소보루 자문단'), ('admin_expert_mail', 'mail', '자문단 섭외 메일'), ('admin_takedowns', 'flag', '게시중단 요청')]),
-  ('콘텐츠', [('admin_letter', 'mail', '소보루 레터'), ('admin_ask', 'chat', 'AI 상담'), ('admin_ai_usage', 'chart', 'AI 사용량'), ('admin_laws', 'book', '법령 학습')]),
+  ('콘텐츠', [('admin_ask', 'chat', 'AI 상담'), ('admin_ai_usage', 'chart', 'AI 사용량'), ('admin_laws', 'book', '법령 학습')]),
   ('사이트 화면 편집', [('admin_site', 'edit', '화면에서 바로 고치기'), ('admin_hero_photos', 'image', '첫 화면 사진'), ('admin_lists', 'layers', '메뉴·구성'), ('admin_content', 'text', '문구·사업자 정보·검색')]),
   ('계정', [('admin_staff', 'id', '기자 계정'), ('admin_password', 'key', '비밀번호 변경')]),
 ] %}
+{# 운영자 2026-11-05: 관리자 하나에서 위쪽 전환 버튼으로 '소비자제보센터'·'소보루 매거진'을 오감. 메뉴는 서로 겹치지 않음 (mag_admin.py) #}
+{% set space = admin_space() if admin_space is defined else 'jebo' %}
+{% if space == 'mag' %}{% set groups = mag_groups %}{% endif %}
 {% set nc = new_case_info() %}
 {% set active = {'admin_report': 'admin_reports', 'admin_life_edit': 'admin_life', 'admin_invite': 'admin_reports', 'admin_group': 'admin_groups', 'admin_ask_log': 'admin_ask', 'admin_ask_lab': 'admin_ask'}.get(request.endpoint, request.endpoint) %}
 <header class="ad-top">
-  <a class="ad-brand" href="{{ url_for('admin') }}"><img src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="136" height="32"><em>관리자</em></a>
+  <a class="ad-brand" href="{{ url_for('mag_home') if space == 'mag' else url_for('admin') }}"><img src="{{ asset('img/soboru-logo-orange.png') }}" alt="{{ site_name() }}" width="136" height="32"><em>{{ '매거진 관리자' if space == 'mag' else '관리자' }}</em></a>
+  {% if mag_groups is defined %}<nav class="ad-space" aria-label="관리할 곳 바꾸기">
+    <a href="{{ url_for('admin') }}"{% if space == 'jebo' %} class="on" aria-current="page"{% endif %}>소비자제보센터</a>
+    <a href="{{ url_for('mag_home') }}"{% if space == 'mag' %} class="on" aria-current="page"{% endif %}>소보루 매거진</a>
+  </nav>{% endif %}
   <div class="ad-top-right">
-    <a class="ad-site" href="{{ jebo_site_url() }}" target="_blank" rel="noopener">사이트 보기 ↗</a>
+    <a class="ad-site" href="{{ 'https://soboru.co.kr/letter' if space == 'mag' else jebo_site_url() }}" target="_blank" rel="noopener">{{ '매거진 보기' if space == 'mag' else '사이트 보기' }} ↗</a>
     <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">{{ icon('out') }}<span>로그아웃</span></button></form>
   </div>
 </header>

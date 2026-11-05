@@ -274,6 +274,11 @@ def install(S):
                     emo, head = life_head(line, n_head)
                     n_head += 1; check = emo == '✅'
                     out.append(Markup('<h2 class="sb-h" id="s%d"><span class="sb-h-emo" aria-hidden="true">%s</span><span class="sb-h-t"><small>%02d</small>%s</span></h2>') % (n_head, emo, n_head, head))
+                elif re.fullmatch(r'\[사진 (/art/body/body-\d{14}-\d{3}\.webp|https://images\.unsplash\.com/[^\s|\]]+)(?:\s*\|\s*([^\]]*))?\]', line):
+                    # 운영자 2026-11-05: 매거진 CMS의 '본문에 사진 넣기' — [사진 주소 | 설명]
+                    m = re.fullmatch(r'\[사진 (\S+)(?:\s*\|\s*([^\]]*))?\]', line); cap = (m[2] or '').strip()
+                    if cap == '사진 설명': cap = ''
+                    out.append(Markup('<figure class="sb-fig"><img src="%s" alt="%s" loading="lazy">%s</figure>') % (m[1], cap, Markup('<figcaption>%s</figcaption>') % cap if cap else ''))
                 elif line.startswith('> '):
                     note = line[2:].strip(); emo = note[:1] if note[:1] in BODY_EMOJI else '💡'
                     if note[:1] in BODY_EMOJI: note = note[1:].strip()
@@ -596,7 +601,7 @@ def install(S):
             return redirect(url_for('admin_life_edit', article_id=cur.lastrowid))
         view = request.args.get('view', '')
         with conn() as db:
-            rows = db.execute('SELECT * FROM articles' + (" WHERE status='draft'" if view == 'draft' else '') + ' ORDER BY id DESC LIMIT 200').fetchall()
+            rows = db.execute('SELECT * FROM articles' + (" WHERE status='draft'" if view == 'draft' else " WHERE status='scheduled'" if view == 'scheduled' else '') + ' ORDER BY id DESC LIMIT 200').fetchall()
             n_draft = db.execute("SELECT COUNT(*) FROM articles WHERE status='draft'").fetchone()[0]
         return render_template('admin_life.html', rows=rows, a=None, view=view, n_draft=n_draft, categories=LIFE_CATEGORIES, tones=LIFE_TONES)
 

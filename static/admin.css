@@ -734,3 +734,31 @@ body.console .hm-feed time{font-size:13px;color:#8b95a1;font-variant-numeric:tab
 body.console .hm-two{margin-bottom:12px}
 @media(max-width:900px){body.console .hm-hero{grid-template-columns:1fr;padding:22px}body.console .hm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}body.console .hm-big b{font-size:32px}}
 body.console .hm-feed h2,body.console .ad-todo-card h2{font-size:18px;font-weight:700;margin:0 0 8px}
+/* ===== 운영자 2026-11-05: 소비자제보센터 ↔ 소보루 매거진 전환 버튼 (mag_admin.py) ===== */
+body.console .ad-top{display:flex;align-items:center;gap:16px}
+body.console .ad-space{display:inline-flex;margin:0 auto;padding:4px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1px #e5e8eb}
+body.console .ad-space a{padding:8px 16px;border-radius:10px;color:var(--ad-sub);font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap;transition:background .2s var(--ad-ease),color .2s var(--ad-ease)}
+body.console .ad-space a:hover{color:var(--ad-ink)}
+body.console .ad-space a.on{background:var(--ad-ink);color:#fff}
+body.console.ad-mag .ad-space a.on{background:#EF920E}
+body.console.ad-mag .ad-side a.on{color:#CE6719}
+@media (max-width:760px){body.console .ad-top{gap:8px}body.console .ad-brand em{display:none}body.console .ad-space a{padding:7px 10px;font-size:13px}body.console .ad-site{display:none}}
+/* 매거진 홈 */
+.mz-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 24px}
+.mz-stats a{display:block;padding:20px;border-radius:16px;background:#fff;box-shadow:inset 0 0 0 1px #e5e8eb;color:var(--ad-ink);text-decoration:none}
+.mz-stats b{display:block;font-size:28px;font-weight:800;letter-spacing:-.02em}.mz-stats span{color:var(--ad-sub);font-size:14px}
+.mz-cols{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px}
+.mz-list{list-style:none;margin:0;padding:0}.mz-list li{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--ad-line)}
+.mz-list li:first-child{border-top:0}.mz-list a{flex:1;min-width:0;color:var(--ad-ink);font-weight:600;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mz-list small{color:var(--ad-mute);font-size:13px;white-space:nowrap}
+.mz-tag{flex:none;padding:3px 8px;border-radius:8px;font-size:12px;font-weight:700;background:#fff1e3;color:#CE6719}.mz-tag.draft{background:#eef6ff;color:#1b64da}.mz-tag.scheduled{background:#f0ebff;color:#6b4fd8}
+.mz-go{display:flex;flex-direction:column;gap:10px;margin-top:4px}.mz-go a{display:block;padding:14px 16px;border-radius:14px;background:#fff7ef;color:#CE6719;font-weight:700;text-decoration:none}
+@media (max-width:760px){.mz-stats{grid-template-columns:1fr}.mz-cols{grid-template-columns:1fr}}
+/* 첫 화면 편집 */
+.mz-hero{display:block;width:100%;max-width:640px;aspect-ratio:16/9;object-fit:cover;border-radius:20px;margin:0 0 14px}
+.mz-picks{display:grid;gap:10px;max-width:640px}.mz-picks label{display:grid;gap:6px;font-weight:700}.mz-picks select{width:100%}
+/* 본문 사진·예약 */
+.mz-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:6px 0 4px}.mz-tools .meta{margin:0}
+.mz-sched{display:grid;gap:8px;max-width:420px}
+@media (max-width:760px){body.console .ad-top{flex-wrap:wrap;height:auto;padding-block:10px;row-gap:10px}body.console .ad-space{order:3;display:flex;width:100%;margin:0}body.console .ad-space a{flex:1;text-align:center}body.console .ad-top-right{margin-left:auto}}
+body.console .form-panel input[type=file]{max-width:100%;min-width:0}body.console .form-panel label{min-width:0}

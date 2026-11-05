@@ -6039,6 +6039,50 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             db.execute('DELETE FROM mag_unsplash2'); db.execute('DELETE FROM life_restyle'); db.execute('DELETE FROM articles WHERE id IN (?,?)', (ok, bad))
 
+    def test_magazine_admin_space_cms_and_front(self):
+        # 운영자 2026-11-05: 관리자 위쪽 전환 버튼(소비자제보센터 ↔ 소보루 매거진), 메뉴 안 겹침, 기사 CMS(대표 사진·본문 사진·예약), 첫 화면 편집
+        import io
+        from PIL import Image
+        def png():
+            b = io.BytesIO(); Image.new('RGB', (40, 30), (200, 120, 20)).save(b, 'PNG'); b.seek(0); return b
+        admin = self.login_admin()
+        jebo = admin.get('/admin').get_data(as_text=True)
+        self.assertIn('class="ad-space"', jebo); self.assertIn('/admin/magazine', jebo)
+        self.assertNotIn('>소보루 레터<', jebo)  # 레터는 매거진 쪽으로
+        home = admin.get('/admin/magazine').get_data(as_text=True)
+        self.assertIn('매거진 관리자', home); self.assertIn('첫 화면 편집', home); self.assertNotIn('제보 처리', home)
+        tok = self.csrf(admin, '/admin/life')
+        r = admin.post('/admin/life', data={'_csrf': tok, 'title': '예약 기사', 'summary': '요약', 'body': '본문', 'category': '생활', 'act': 'schedule',
+                                            'publish_at': '2099-01-01T09:00', 'cover': (png(), 'c.png', 'image/png')}, content_type='multipart/form-data')
+        aid = int(re.search(r'/admin/life/(\d+)', r.headers['Location'])[1])
+        with self.site.conn() as db:
+            a = db.execute('SELECT status,published_at FROM articles WHERE id=?', (aid,)).fetchone()
+            self.assertEqual((a['status'], a['published_at']), ('scheduled', '2099-01-01T09:00:00'))
+            self.assertTrue(db.execute("SELECT 1 FROM soboru_art WHERE kind='life' AND target_id=? AND file LIKE '%-photo-%'", (aid,)).fetchone())
+        self.assertEqual(self.client.get(f'/life/{aid}', headers={'Host': 'soboru.co.kr'}).status_code, 404)  # 예약 글은 아직 안 보임
+        j = admin.post('/admin/magazine/photo', data={'_csrf': tok, 'photo': (png(), 'b.png', 'image/png')}, content_type='multipart/form-data').get_json()
+        self.assertTrue(j['ok']); self.assertTrue(j['url'].startswith('/art/body/body-'))
+        self.assertEqual(admin.get(j['url']).status_code, 200)
+        with self.site.app.test_request_context('/'):
+            html = str(self.site.app.jinja_env.globals['life_body'](f"앞 문단\n\n[사진 {j['url']} | 시장 풍경]\n\n[사진 javascript:alert(1)]"))
+        self.assertIn('<figure class="sb-fig"><img src="' + j['url'], html); self.assertIn('<figcaption>시장 풍경</figcaption>', html); self.assertNotIn('javascript', html.split('</figure>')[0])
+        r = admin.post('/admin/magazine/front', data={'_csrf': tok, 'act': 'hero', 'hero': (png(), 'h.png', 'image/png')}, content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 302)
+        with self.site.conn() as db:
+            pid = db.execute("INSERT INTO articles(title,summary,body,category,status,created,updated,published_at) VALUES('고른 글','요약','본문','쇼핑','published','2020-01-01','2020-01-01','2020-01-01T09:00:00')").lastrowid
+        admin.post('/admin/magazine/front', data={'_csrf': tok, 'act': 'hot', 'hot1': str(pid)})
+        page = self.client.get('/letter').get_data(as_text=True)
+        self.assertIn('/art/front/hero.webp', page); self.assertIn('고른 글', page)
+        self.assertEqual(self.client.get('/art/front/hero.webp').status_code, 200)
+        with self.site.conn() as db:
+            db.execute("UPDATE articles SET published_at='2000-01-01T00:00:00' WHERE id=?", (aid,))
+        import time as _t  # 예약 시각이 지나면 다음 요청 때 게시 (1분에 한 번 확인)
+        with patch('mag_admin.time.time', return_value=_t.time() + 120): self.client.get('/letter')
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (aid,)).fetchone()[0], 'published')
+            db.execute('DELETE FROM articles WHERE id IN (?,?)', (aid, pid)); db.execute("DELETE FROM soboru_settings WHERE key IN ('mag_hot','mag_hero')")
+            db.execute("DELETE FROM soboru_art WHERE kind='life' AND target_id IN (?,?)", (aid, pid))
+
     def test_letter_unsplash_photos(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         calls = []

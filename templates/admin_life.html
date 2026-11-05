@@ -1,11 +1,11 @@
 {% extends 'console.html' %}
-{% block title %}생활정보 글 | {{ site_name() }}{% endblock %}
+{% block title %}기사 쓰기·고치기 | 소보루 매거진 관리자{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap">
-  <div class="page-intro"><h1 class="page-title">생활정보 글</h1>
-    <p>게시한 글은 생활정보(<a href="{{ url_for('life') }}" target="_blank" rel="noopener">/life ↗</a>)와 소보루 메인 화면에 보여요. 초안은 관리자만 볼 수 있어요. 나중에 공공데이터 자동 수집이 들어오면 초안이 여기에 쌓여요.</p>
+  <div class="page-intro"><h1 class="page-title">기사 쓰기·고치기</h1>
+    <p>게시한 기사는 소보루 매거진(<a href="https://soboru.co.kr/life" target="_blank" rel="noopener">soboru.co.kr ↗</a>)에 보여요. 초안과 예약한 기사는 관리자만 볼 수 있어요.</p>
     {% if naver_ready is defined %}<p class="meta">네이버 검색 연결: {% if naver_ready() %}{% set nu = naver_usage() %}켜짐 · 오늘 검색 {{ '{:,}'.format(nu['search'][0]) }}/{{ '{:,}'.format(nu['search'][1]) }}번 · 추이·쇼핑 {{ '{:,}'.format(nu['datalab'][0]) }}/{{ '{:,}'.format(nu['datalab'][1]) }}번{% else %}꺼짐 (서버 환경변수 NAVER_HUB_CLIENT_ID·NAVER_HUB_CLIENT_SECRET을 넣으면 통합 검색·검색 추이·쇼핑 관심도가 열려요){% endif %}</p>{% endif %}
-    <p><a href="{{ url_for('admin_life') }}"{% if view != 'draft' %} class="strong-link"{% endif %}>전체</a> · <a href="{{ url_for('admin_life', view='draft') }}"{% if view == 'draft' %} class="strong-link"{% endif %}>초안 {{ n_draft }}</a>{% if ai_article is defined %} · <a href="{{ url_for('admin_life_ai') }}" class="aw-link">✨ AI 기사 만들기</a>{% endif %}{% if a %} · <a href="{{ url_for('admin_life') }}">＋ 새 글</a>{% endif %}</p>
+    <p><a href="{{ url_for('admin_life') }}"{% if view != 'draft' %} class="strong-link"{% endif %}>전체</a> · <a href="{{ url_for('admin_life', view='draft') }}"{% if view == 'draft' %} class="strong-link"{% endif %}>초안 {{ n_draft }}</a> · <a href="{{ url_for('admin_life', view='scheduled') }}"{% if view == 'scheduled' %} class="strong-link"{% endif %}>예약</a>{% if ai_article is defined %} · <a href="{{ url_for('admin_life_ai') }}" class="aw-link">✨ AI 기사 만들기</a>{% endif %}{% if a %} · <a href="{{ url_for('admin_life') }}">＋ 새 글</a>{% endif %}</p>
   </div>
   {% set ai = ai_article(a['id']) if a and ai_article is defined else None %}
   {% if ai %}
@@ -26,22 +26,30 @@
     <p class="meta">{{ '자동으로' if ai.trigger == 'daily' else '관리자가 직접' }} 만듦 · {{ ai.created[:16].replace('T', ' ') }} · 마지막 확인 {{ ai.checked[:16].replace('T', ' ') }}</p>
   </div>
   {% endif %}
-  <form class="form-panel" method="post" action="{{ url_for('admin_life_edit', article_id=a['id']) if a else url_for('admin_life') }}">
+  <form class="form-panel" id="write" method="post" enctype="multipart/form-data" action="{{ url_for('admin_life_edit', article_id=a['id']) if a else url_for('admin_life') }}">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    <h2>{% if a %}#{{ a['id'] }} 고치기 · {{ '게시 중' if a['status'] == 'published' else '초안' }}{% if a['origin'] == 'auto' %} · 자동 수집{% elif a['origin'] == 'ai' %} · AI 초안{% endif %}{% else %}새 글{% endif %}</h2>
+    <h2>{% if a %}#{{ a['id'] }} 고치기 · {{ {'published': '게시 중', 'scheduled': '예약 ' ~ (a['published_at'] or '')[5:16].replace('T', ' ')}.get(a['status'], '초안') }}{% if a['origin'] == 'auto' %} · 자동 수집{% elif a['origin'] == 'ai' %} · AI 초안{% endif %}{% else %}새 기사{% endif %}</h2>
     <label>제목<input name="title" maxlength="120" required value="{{ a['title'] if a else '' }}" placeholder="택배가 사라졌다면? 보상은 얼마까지 받을 수 있을까"></label>
     <label>요약 (목록과 메인에 보이는 2~3줄)<textarea name="summary" rows="3" maxlength="400">{{ a['summary'] if a else '' }}</textarea></label>
-    <label>본문 (빈 줄로 문단을 나눠요. "## "로 시작하면 소제목, "- "로 시작하면 목록)<textarea name="body" rows="14">{{ a['body'] if a else '' }}</textarea></label>
+    {% set cov = mag_photo(a['id'], 800) if a and mag_photo is defined else '' %}
+    <label>대표 사진{% if cov %}<img class="mz-hero" src="{{ cov }}" alt="지금 대표 사진">{% endif %}<input type="file" name="cover" accept="image/jpeg,image/png,image/webp"></label>
+    <p class="meta">대표 사진을 올리지 않으면 기사 제목에 맞는 언스플래시 사진을 붙여요.</p>
+    <label for="mz-body">본문 (빈 줄로 문단을 나눠요. "## "로 시작하면 소제목, "- "로 시작하면 목록)</label>
+    <div class="mz-tools"><label class="secondary">본문에 사진 넣기 <input type="file" id="mz-photo" accept="image/jpeg,image/png,image/webp" hidden></label><span class="meta" id="mz-photo-msg">커서가 있는 자리에 사진이 들어가요. [사진 주소 | 사진 설명]에서 설명을 고칠 수 있어요.</span></div>
+    <textarea id="mz-body" name="body" rows="16">{{ a['body'] if a else '' }}</textarea></label>
     <div class="admin-row">
       <label>분야<select name="category">{% for c in categories %}<option{% if a and a['category'] == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
       <input type="hidden" name="emoji" value="{{ a['emoji'] if a else '' }}"><input type="hidden" name="tone" value="{{ a['tone'] if a else 't1' }}">
-      <p class="meta">저장하면 AI 일러스트를 자동으로 그려서 붙여요(30초쯤 걸려요). 그림은 관리자 > AI 일러스트에서 다시 그리거나 내릴 수 있어요.</p>
     </div>
     <div class="admin-row">
       <label>출처 이름<input name="source_name" maxlength="120" value="{{ a['source_name'] if a else '' }}" placeholder="공정거래위원회 소비자24"></label>
       <label>출처 주소<input name="source_url" maxlength="500" value="{{ a['source_url'] if a else '' }}" placeholder="https://"></label>
     </div>
-    <label class="check"><input type="checkbox" name="featured" value="1"{% if a and a['featured'] %} checked{% endif %}> 메인 맨 위에 고정</label>
+    <label class="check"><input type="checkbox" name="featured" value="1"{% if a and a['featured'] %} checked{% endif %}> 매거진 첫 화면 맨 위에 고정</label>
+    <details class="mz-sched"{% if a and a['status'] == 'scheduled' %} open{% endif %}><summary>예약 게시</summary>
+      <label>게시할 날짜와 시각<input type="datetime-local" name="publish_at" value="{{ (a['published_at'] or '')[:16] if a and a['status'] == 'scheduled' else '' }}"></label>
+      <button type="submit" name="act" value="schedule">이 시각에 게시하기</button>
+    </details>
     <div class="admin-actions">
       {% if a %}
       <button type="submit" name="act" value="save">저장</button>
@@ -56,10 +64,14 @@
   <h2>글 ({{ rows|length }})</h2>
   {% for r in rows %}
   <div class="form-panel admin-item">
-    <p class="meta">#{{ r['id'] }} · {{ r['category'] }} · {{ '게시 중' if r['status'] == 'published' else '초안' }}{% if r['origin'] == 'auto' %} · 자동 수집{% endif %}{% if r['origin'] == 'ai' and ai_marks is defined %}{% set m = ai_marks().get(r['id']) %} · AI 초안{% if m %} · {% if m.ok %}<span class="aw-badge ok">숫자 확인됨</span>{% else %}<span class="aw-badge bad">검토 필요 {{ m.problems|length }}곳</span>{% endif %}{% endif %}{% endif %}{% if r['featured'] %} · 고정{% endif %} · 조회 {{ r['views'] }} · {{ (r['published_at'] or r['created'])[:16] }}</p>
+    <p class="meta">#{{ r['id'] }} · {{ r['category'] }} · {{ {'published': '게시 중', 'scheduled': '예약'}.get(r['status'], '초안') }}{% if r['origin'] == 'auto' %} · 자동 수집{% endif %}{% if r['origin'] == 'ai' and ai_marks is defined %}{% set m = ai_marks().get(r['id']) %} · AI 초안{% if m %} · {% if m.ok %}<span class="aw-badge ok">숫자 확인됨</span>{% else %}<span class="aw-badge bad">검토 필요 {{ m.problems|length }}곳</span>{% endif %}{% endif %}{% endif %}{% if r['featured'] %} · 고정{% endif %} · 조회 {{ r['views'] }} · {{ (r['published_at'] or r['created'])[:16] }}</p>
     <h3><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['title'] }}</a></h3>
     <form method="post" action="{{ url_for('admin_life_delete', article_id=r['id']) }}" onsubmit="return confirm('이 글을 지울까요? 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button class="secondary danger" type="submit">지우기</button></form>
   </div>
   {% else %}<p class="meta">아직 글이 없어요.</p>{% endfor %}
 </div></main>
+<script>(function(){var f=document.getElementById('mz-photo'),t=document.getElementById('mz-body'),m=document.getElementById('mz-photo-msg');if(!f||!t)return;
+f.onchange=function(){if(!f.files[0])return;var d=new FormData();d.append('photo',f.files[0]);d.append('_csrf',document.querySelector('#write [name=_csrf]').value);m.textContent='사진을 올리는 중이에요';
+fetch('{{ url_for('mag_body_upload') }}',{method:'POST',body:d,credentials:'same-origin'}).then(function(r){return r.json()}).then(function(j){if(!j.ok){m.textContent=j.error||'사진을 올리지 못했어요';return}
+var p=t.selectionStart||t.value.length,line='\n\n[사진 '+j.url+' | 사진 설명]\n\n';t.value=t.value.slice(0,p)+line+t.value.slice(p);t.focus();m.textContent='사진을 넣었어요. 저장해야 기사에 반영돼요.';f.value=''}).catch(function(){m.textContent='사진을 올리지 못했어요'})}})();</script>
 {% endblock %}

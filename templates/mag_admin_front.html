@@ -1,0 +1,24 @@
+{% extends 'console.html' %}
+{% block title %}첫 화면 편집 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">첫 화면 편집</h1></div>
+  <section class="form-panel">
+    <h2>표지 사진</h2>
+    <img class="mz-hero" src="{{ hero }}" alt="지금 표지 사진">
+    <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hero">
+      <label>새 표지 사진 (가로 사진, JPG·PNG·WEBP) <input type="file" name="hero" accept="image/jpeg,image/png,image/webp" required></label>
+      <div class="admin-actions"><button class="primary">표지 사진 바꾸기</button></div>
+    </form>
+    {% if custom %}<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hero_reset"><div class="admin-actions"><button>처음 사진으로 되돌리기</button></div></form>{% endif %}
+  </section>
+  <section class="form-panel">
+    <h2>HOT ISSUE</h2>
+    <p class="meta">고르지 않은 칸은 최신 기사로 채워요.</p>
+    <form method="post" class="mz-picks"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hot">
+      {% for p in picks %}<label>{{ loop.index }}번째<select name="hot{{ loop.index }}"><option value="">최신 기사로 채우기</option>{% for r in rows %}<option value="{{ r['id'] }}"{% if p == r['id'] %} selected{% endif %}>[{{ r['category'] }}] {{ r['title'] }}</option>{% endfor %}</select></label>{% endfor %}
+      <div class="admin-actions"><button class="primary">HOT ISSUE 저장</button></div>
+    </form>
+  </section>
+</div></main>
+{% endblock %}
