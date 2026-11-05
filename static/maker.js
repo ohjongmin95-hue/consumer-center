@@ -1,7 +1,7 @@
 /* 카드뉴스·릴스 만들기 (운영자 2026-11-05) — mag_maker.py, templates/mag_admin_maker.html
    글씨·디자인은 이 파일이 canvas로 그림. 카드뉴스는 PNG로 바로 받고, 릴스는 장면별 글씨 판(투명 PNG)을 서버로 보내 ffmpeg가 영상과 겹침.
    디자인: 릴스 wide(이슈 와이드)·full(풀스크린 뉴스)·chat(채팅 스레드)·quote(인용 클로즈업)·clean(클린 포토)
-           카드 clean(클린 포토 표지)·text(속 장)·quote(인용)
+           카드: 디자인(모든 장) soboru·ref·newneek·magazine·poster·clean·dark × 장 역할 cover·body·quote·last (소보루 카드뉴스 원칙, 운영자 2026-11-05)
    줄 쓰는 법: '#글' 흰 상자, '!글' 귤색 상자, '이름 : 말' 이름 굵게 말풍선, 나머지는 말풍선. **굵게** */
 (function () {
   'use strict';
@@ -10,7 +10,8 @@
   var CAT = {'쇼핑': 'SHOPPING', '뷰티': 'BEAUTY', '음식': 'FOOD', '생활': 'LIFE', '금융': 'MONEY', '통신': 'TELECOM', '여행': 'TRAVEL', '자동차': 'CAR', '리콜': 'RECALL'};
   var LAY = {wide: ['blur', [0, 620, 1080, 608]], full: ['cover', null], chat: ['#15120f', [60, 460, 960, 540]], quote: ['blur', null], clean: ['cover', null]};
   var REEL_D = [['wide', '이슈 와이드'], ['full', '풀스크린 뉴스'], ['chat', '채팅 스레드'], ['quote', '인용 클로즈업'], ['clean', '클린 포토']];
-  var CARD_D = [['clean', '클린 포토 표지'], ['text', '속 장 (글)'], ['quote', '인용']];
+  var CARD_D = [['cover', '표지'], ['body', '본문'], ['quote', '인용'], ['last', '마무리 (저장)']];
+  var OLD_ROLE = {clean: 'cover', text: 'body'};
   var $ = function (s, r) { return (r || document).querySelector(s); };
 
   // ---- 글꼴·로고 ----------------------------------------------------------------------------
@@ -196,35 +197,232 @@
   };
 
   // ---- 카드 (1080x1350) -------------------------------------------------------------------------
-  var CARD = {
-    clean: function (ctx, s, img, n, N) {
-      cover(ctx, img, 0, 0, 1080, 1350); grad(ctx, 0, 260, .3, 0); grad(ctx, 520, 1350, 0, .8);
-      drawLogo(ctx, 'white', 540, 46, 38, 'center');
-      if (N > 1) { ctx.font = F(700, 26); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.textAlign = 'right'; ctx.fillText(n + '/' + N, 1024, 74); ctx.textAlign = 'left'; }
-      var T = layout(ctx, s.title, 72, 800, 800, 960, {lh: 1.24, ls: -3}), y = 1254 - textH(T);
-      shadowed(ctx, function () { drawText(ctx, T, 60, y, '#fff'); });
-      if (s.tag) { ctx.font = F(800, 26); ctx.letterSpacing = '4px'; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillText(s.tag, 64, y - 26); ctx.letterSpacing = '0px'; }
+  // 운영자 2026-11-05: 소보루 카드뉴스 원칙(캐러셀 레퍼런스북) + 디자인 여러 개 — 예전 '민주의 카드뉴스' 프로그램의 디자인(레퍼런스북식·뉴닉식·매거진·포스터·깔끔·다크)도 고름.
+  // 장 역할: cover 표지(고른 문구 + 큰 숫자) / body 본문(꼬리표·제목·글·큰 숫자) / quote 인용 / last 마무리(챙길 것 3개 + 저장 유도 + 출처)
+  // 글자는 가운데 70% 안(x 90~990, y 110~1240). 로고·쪽 번호만 그 밖.
+  var X = 90, TW = 900, Y1 = 1240;
+  var THEME_D = [['soboru', '소보루 매거진', '꽉 찬 사진 · 흰 속 장'], ['ref', '레퍼런스북식', '큰 숫자 · 형광펜 제목'], ['newneek', '뉴닉식', '사진 위 제목 상자'],
+                 ['magazine', '매거진', '위 사진 · 아래 흰 판'], ['poster', '포스터', '꽉 찬 귤색 · 큰 글씨'], ['clean', '깔끔', '흰 바탕 · 둥근 사진'], ['dark', '다크', '어두운 사진 · 흰 글씨']];
+  function bg(ctx, c) { ctx.fillStyle = c; ctx.fillRect(0, 0, 1080, 1350); }
+  function full(ctx, img, empty) { bg(ctx, empty); if (img) cover(ctx, img, 0, 0, 1080, 1350); }
+  function photo(ctx, img, x, y, w, h, r, empty) {
+    if (h < 160) return;
+    ctx.save(); rrect(ctx, x, y, w, h, r || 0); ctx.clip();
+    if (img) cover(ctx, img, x, y, w, h); else { ctx.fillStyle = empty; ctx.fillRect(x, y, w, h); }
+    ctx.restore();
+  }
+  function paras(t) { return String(t || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
+  function TT(ctx, t, size, w) { return layout(ctx, t, size, 800, 800, w || TW, {lh: 1.24, ls: -3}); }
+  function BT(ctx, t, size, w) { return layout(ctx, paras(t).join('\n'), size || 38, 500, 800, w || TW, {lh: 1.6, ls: -1}); }
+  function lineOf(T, i) { return {lines: [T.lines[i]], width: [T.width[i]], lh: T.lh, size: T.size, w0: T.w0, w1: T.w1, ls: T.ls}; }
+  // 제목: 마지막 줄만 다른 색 또는 형광펜
+  function title2(ctx, T, x, y, c1, c2, mark) {
+    T.lines.forEach(function (ln, i) {
+      var last = i === T.lines.length - 1 && T.lines.length > 1;
+      if (last && mark) { ctx.fillStyle = mark; ctx.fillRect(x - 6, y + i * T.lh + T.size * 0.55, T.width[i] + 12, T.size * 0.45); }
+      drawText(ctx, lineOf(T, i), x, y + i * T.lh, last && c2 ? c2 : c1);
+    });
+    return textH(T);
+  }
+  function fitSize(ctx, text, max, w) { ctx.font = F(900, 100); var k = ctx.measureText(text).width / 100; return Math.max(40, Math.min(max, Math.floor(w / Math.max(k, 0.1)))); }
+  function bigNum(ctx, text, x, y, max, color, boxBg) {  // 크게 박은 숫자 하나. 높이를 돌려줌
+    if (!text) return 0;
+    var sz = fitSize(ctx, text, max, TW - (boxBg ? 60 : 0));
+    ctx.font = F(900, sz); ctx.letterSpacing = '-3px'; var w = ctx.measureText(text).width;
+    if (boxBg) { ctx.fillStyle = boxBg; rrect(ctx, x, y, w + 60, sz + 44, 22); ctx.fill(); ctx.fillStyle = color; ctx.fillText(text, x + 30, y + sz * 0.92 + 22); ctx.letterSpacing = '0px'; return sz + 44; }
+    ctx.fillStyle = color; ctx.fillText(text, x, y + sz * 0.92); ctx.letterSpacing = '0px'; return sz;
+  }
+  function pill(ctx, text, x, y, fg, bgc, size) {
+    if (!text) return 0;
+    size = size || 28; ctx.font = F(800, size); var w = ctx.measureText(text).width;
+    ctx.fillStyle = bgc; rrect(ctx, x, y, w + 36, size + 24, 14); ctx.fill();
+    ctx.fillStyle = fg; ctx.fillText(text, x + 18, y + size + 6); return size + 24;
+  }
+  function pageNo(ctx, n, N, color) { if (N < 2) return; ctx.font = F(700, 26); ctx.fillStyle = color; ctx.textAlign = 'right'; ctx.fillText(n + ' / ' + N, 990, 76); ctx.textAlign = 'left'; }
+  function brandFoot(ctx, color, n, N, ink) { drawLogo(ctx, color, X, 1272, 34); if (N > 1) { ctx.font = F(700, 26); ctx.fillStyle = ink; ctx.textAlign = 'right'; ctx.fillText(n + ' / ' + N, 990, 1300); ctx.textAlign = 'left'; } }
+  // 본문 글이 아래 선을 넘으면 글씨를 줄임
+  function fitBody(ctx, t, size, w, maxH) { var B; for (var z = size; z >= 28; z -= 2) { B = BT(ctx, t, z, w); if (textH(B) <= maxH) return B; } return B; }
+  // 마무리 장: 챙길 것 3개 + 저장 유도(형광펜) + 출처 — 색만 디자인마다
+  function lastPage(ctx, s, n, N, P) {
+    bg(ctx, P.bg); if (P.deco) P.deco(ctx);
+    if (P.top) { drawLogo(ctx, P.logo, 540, 46, 38, 'center'); pageNo(ctx, n, N, P.sub); } else brandFoot(ctx, P.logo, n, N, P.sub);
+    var y = 150; y += pill(ctx, s.tag || '이것만 챙겨요', X, y, P.kickInk, P.kick) + 40;
+    paras(s.items).slice(0, 4).forEach(function (tip, k) {
+      var T = layout(ctx, tip, 40, 700, 900, TW - 150, {lh: 1.4, ls: -1}), h = Math.max(116, textH(T) + 56);
+      ctx.fillStyle = P.card; rrect(ctx, X, y, TW, h, 28); ctx.fill();
+      if (P.cardLine) { ctx.lineWidth = 3; ctx.strokeStyle = P.cardLine; ctx.stroke(); }
+      ctx.fillStyle = P.num; ctx.beginPath(); ctx.arc(X + 62, y + h / 2, 30, 0, 7); ctx.fill();
+      ctx.font = F(900, 32); ctx.fillStyle = P.numInk; ctx.textAlign = 'center'; ctx.fillText(String(k + 1), X + 62, y + h / 2 + 11); ctx.textAlign = 'left';
+      drawText(ctx, T, X + 120, y + h / 2 - textH(T) / 2, P.tip); y += h + 20;
+    });
+    var E = TT(ctx, s.title || '헷갈리면 저장해 두세요', 80), ey = Math.max(y + 40, Y1 - 70 - textH(E));
+    E.lines.forEach(function (ln, i) { ctx.fillStyle = P.mark; ctx.fillRect(X - 8, ey + i * E.lh + E.size * 0.55, E.width[i] + 16, E.size * 0.48); });
+    title2(ctx, E, X, ey, P.end, P.end, null);
+    if (s.sub) { ctx.font = F(700, 26); ctx.fillStyle = P.sub; ctx.fillText(s.sub, X, Y1); }
+  }
+  // 인용 장 (밝은 바탕·어두운 바탕)
+  function quotePage(ctx, s, img, n, N, P) {
+    bg(ctx, P.bg);
+    if (img && P.blur) { ctx.save(); ctx.filter = 'blur(12px) brightness(.35)'; cover(ctx, img, -40, -40, 1160, 1430); ctx.restore(); }
+    drawLogo(ctx, P.logo, 540, 46, 38, 'center'); pageNo(ctx, n, N, P.sub);
+    ctx.font = F(900, 220); ctx.fillStyle = OR; ctx.fillText('“', X - 10, 470);
+    var T = layout(ctx, s.title, 74, 900, 900, TW, {lh: 1.28, ls: -4}), y = 520; y += drawText(ctx, T, X, y, P.ink, {mark: OR, markInk: '#111'});
+    if (s.sub) { ctx.font = F(700, 38); ctx.fillStyle = P.sub; ctx.fillText('— ' + s.sub, X, Math.min(y + 70, Y1)); }
+  }
+  // 아래에서부터 쌓는 글 묶음(꼬리표 → 큰 숫자 → 제목 → 본문)의 높이와 그리기
+  function stackUp(ctx, s, o) {
+    var T = TT(ctx, s.title, o.tsize, TW), B = paras(s.items).length ? fitBody(ctx, s.items, o.bsize || 38, TW, o.bmax || 330) : null;
+    var nh = s.sub && o.num ? fitSize(ctx, s.sub, o.nmax || 120, TW) + 24 : 0;
+    var h = (s.tag ? 76 : 0) + nh + textH(T) + (B ? 28 + textH(B) : 0);
+    return {h: h, draw: function (y) {
+      if (s.tag) { if (o.kickPill) pill(ctx, s.tag, X, y, o.kickInk, o.kickPill); else { ctx.font = F(800, 30); ctx.letterSpacing = '3px'; ctx.fillStyle = o.kick; ctx.fillText(s.tag, X, y + 30); ctx.letterSpacing = '0px'; } y += 76; }
+      if (nh) { bigNum(ctx, s.sub, X, y, o.nmax || 120, o.num); y += nh; }
+      y += title2(ctx, T, X, y, o.ink, o.ink2, o.mark);
+      if (B) { y += 28; drawText(ctx, B, X, y, o.body, {boldColor: o.bold || ORD}); }
+    }};
+  }
+
+  var CARD = {};
+  // 0) 소보루 매거진 (기본): 표지 = 꽉 찬 사진 + 아래 흰 큰 제목 / 본문 = 따뜻한 흰 바탕 / 인용 = 검은 바탕
+  CARD.soboru = {
+    cover: function (ctx, s, img, n, N) {
+      full(ctx, img, '#3a2a20'); grad(ctx, 0, 260, .3, 0); grad(ctx, 480, 1350, 0, .82);
+      drawLogo(ctx, 'white', 540, 46, 38, 'center'); pageNo(ctx, n, N, 'rgba(255,255,255,.85)');
+      var T = TT(ctx, s.title, 84), y = Y1 - textH(T);
+      shadowed(ctx, function () { drawText(ctx, T, X, y, '#fff'); });
+      if (s.sub) { var sz = fitSize(ctx, s.sub, 64, TW - 60) + 44; bigNum(ctx, s.sub, X, y - sz - 28, 64, '#fff', OR); y -= sz + 28; }
+      if (s.tag) { ctx.font = F(800, 26); ctx.letterSpacing = '4px'; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillText(s.tag, X + 4, y - 24); ctx.letterSpacing = '0px'; }
     },
-    text: function (ctx, s, img, n, N) {
-      ctx.fillStyle = '#FAFAF7'; ctx.fillRect(0, 0, 1080, 1350);
-      drawLogo(ctx, 'brown', 540, 46, 38, 'center');
-      if (N > 1) { ctx.font = F(700, 26); ctx.fillStyle = '#999'; ctx.textAlign = 'right'; ctx.fillText(n + '/' + N, 1024, 74); ctx.textAlign = 'left'; }
-      var y = 170;
-      if (img) { cover(ctx, img, 80, y, 920, 440); y += 480; }
-      var T = layout(ctx, s.title, 60, 900, 900, 920, {lh: 1.25, ls: -3}); y += drawText(ctx, T, 80, y, '#111') + 34;
-      var body = String(s.items || '').split(/\n\s*\n|\n/).filter(function (x) { return x.trim(); });
-      body.forEach(function (p) { if (y > 1180) return; var P = layout(ctx, p, 40, 500, 800, 920, {lh: 1.62, ls: -1}); y += drawText(ctx, P, 80, y, '#2a2a2a', {boldColor: ORD}) + 28; });
-      ctx.fillStyle = '#111'; ctx.fillRect(80, 1264, 920, 2);
-      ctx.font = F(700, 26); ctx.fillStyle = '#999'; ctx.fillText('소보루 매거진', 80, 1306); ctx.textAlign = 'right'; ctx.fillText('soboru.co.kr', 1000, 1306); ctx.textAlign = 'left';
+    body: function (ctx, s, img, n, N) {
+      bg(ctx, '#FAFAF7'); drawLogo(ctx, 'brown', 540, 46, 38, 'center'); pageNo(ctx, n, N, ORD);
+      var st = stackUp(ctx, s, {tsize: 60, kick: ORD, num: OR, ink: '#111', body: '#2a2a2a'}), y = 160;
+      if (img && Y1 - 60 - st.h - y >= 300) { photo(ctx, img, X, y, TW, Math.min(500, Y1 - 60 - st.h - y), 0); y += Math.min(500, Y1 - 60 - st.h - y) + 50; }
+      st.draw(y);
+      ctx.fillStyle = '#111'; ctx.fillRect(X, 1264, TW, 2);
+      ctx.font = F(700, 26); ctx.fillStyle = ORD; ctx.fillText('소보루 매거진', X, 1306); ctx.textAlign = 'right'; ctx.fillText('soboru.co.kr', 990, 1306); ctx.textAlign = 'left';
     },
-    quote: function (ctx, s, img) {
-      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1080, 1350);
-      if (img) { ctx.save(); ctx.filter = 'blur(12px) brightness(.35)'; cover(ctx, img, -40, -40, 1160, 1430); ctx.restore(); }
-      drawLogo(ctx, 'white', 540, 46, 38, 'center');
-      ctx.font = F(900, 220); ctx.fillStyle = OR; ctx.fillText('“', 56, 470);
-      var T = layout(ctx, s.title, 76, 900, 900, 952, {lh: 1.26, ls: -4}), y = 520; y += drawText(ctx, T, 64, y, '#fff', {mark: OR, markInk: '#111'});
-      if (s.sub) { ctx.font = F(700, 38); ctx.fillStyle = '#ddd'; ctx.fillText('— ' + s.sub, 64, y + 70); }
-    }
+    quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#000', blur: true, logo: 'white', ink: '#fff', sub: '#eee'}); },
+    last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#FAFAF7', top: true, logo: 'brown', sub: ORD, kick: OR, kickInk: '#fff', card: '#fff', cardLine: '#EADFCF', num: OR, numInk: '#fff', tip: '#111', end: '#111', mark: '#FFD99E'}); }
+  };
+  // 1) 레퍼런스북식: 표지 = 사진 + 흰 상자 속 큰 숫자 + 형광펜 제목 / 본문 = 꼬리표 '02 · 언제부터' · 큰 숫자 · 둥근 사진 · 제목 / 마무리 = 노란 바탕
+  CARD.ref = {
+    cover: function (ctx, s, img, n, N) {
+      full(ctx, img, OR); grad(ctx, 400, 1350, 0, .82);
+      pill(ctx, 'SOBORU · ' + (s.tag || '소비자 뉴스'), X, 96, '#fff', 'rgba(0,0,0,.32)'); pageNo(ctx, n, N, '#fff');
+      var T = TT(ctx, s.title, 90), y = Y1 - textH(T);
+      title2(ctx, T, X, y, '#fff', '#fff', OR);
+      if (s.sub) { var h = fitSize(ctx, s.sub, 72, TW - 60) + 44; bigNum(ctx, s.sub, X, y - h - 30, 72, OR, '#fff'); }
+      drawLogo(ctx, 'white', 990, 1272, 34, 'right');
+    },
+    body: function (ctx, s, img, n, N) {
+      bg(ctx, '#F6F1EA'); var lab = String(n).padStart(2, '0') + (s.tag ? ' · ' + s.tag : '');
+      pill(ctx, lab, X, 96, '#fff', '#3A2E25'); pageNo(ctx, n, N, '#8A6F5A');
+      var st = stackUp(ctx, Object.assign({}, s, {tag: ''}), {tsize: 70, num: OR, nmax: 150, ink: '#191512', mark: '#FFD99E', body: '#4E4237'}), top = 200, ph = Y1 - st.h - 50 - top;
+      if (ph >= 220) photo(ctx, img, X, top, TW, ph, 36, '#EFE4D4');
+      st.draw(Y1 - st.h); drawLogo(ctx, 'brown', X, 1272, 34);
+    },
+    quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#F6F1EA', logo: 'brown', ink: '#191512', sub: '#8A6F5A'}); },
+    last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#FFDF6B', logo: 'black', sub: '#5C4A00', kick: '#191512', kickInk: '#fff', card: '#fff', num: OR, numInk: '#fff', tip: '#191512', end: '#191512', mark: '#fff'}); }
+  };
+  // 2) 뉴닉식: 사진을 꽉 채우고 위쪽을 크림으로 흐리게, 제목은 줄마다 귤색 상자(갈색 테두리)
+  function boxes(ctx, t, size, y) {
+    var T = TT(ctx, t, size, TW - 40), h = Math.round(size * 1.42);
+    T.lines.forEach(function (ln, i) {
+      var w = T.width[i] + size * 0.72; ctx.fillStyle = OR; rrect(ctx, X, y, w, h, 10); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = BR; ctx.stroke();
+      drawText(ctx, lineOf(T, i), X + size * 0.36, y + (h - size * 1.24) / 2, BR); y += h + 12;
+    });
+    return y - 12;
+  }
+  function boxesH(ctx, t, size) { var n = TT(ctx, t, size, TW - 40).lines.length; return n * (Math.round(size * 1.42) + 12) - 12; }
+  function creamFade(ctx, to, c) { var g = ctx.createLinearGradient(0, 0, 0, Math.min(to + 260, 1350)); g.addColorStop(0, c); g.addColorStop(Math.min(.95, to / (to + 260)), c); g.addColorStop(1, 'rgba(255,246,230,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 1080, Math.min(to + 260, 1350)); }
+  CARD.newneek = {
+    head: function (ctx, t) { ctx.fillStyle = OR; ctx.beginPath(); ctx.arc(X + 10, 112, 10, 0, 7); ctx.fill(); ctx.font = F(800, 30); ctx.fillStyle = '#4A3A30'; ctx.fillText(t || '', X + 34, 123); },
+    cover: function (ctx, s, img, n, N) {
+      full(ctx, img, '#F6EBDA');
+      var y0 = 170, y = y0 + boxesH(ctx, s.title, 70), nh = s.sub ? fitSize(ctx, s.sub, 56, TW - 60) + 44 : 0;
+      creamFade(ctx, y + 40 + nh, '#FFF6E6'); this.head(ctx, s.tag); pageNo(ctx, n, N, '#8A6F5A');
+      y = boxes(ctx, s.title, 70, y0); if (s.sub) bigNum(ctx, s.sub, X, y + 30, 56, BR, '#fff');
+      shadowed(ctx, function () { brandFoot(ctx, img ? 'white' : 'brown', n, 0, BR); });
+    },
+    body: function (ctx, s, img, n, N) {
+      full(ctx, img, '#F6EBDA');
+      var B = paras(s.items).length ? fitBody(ctx, s.items, 38, TW, 420) : null, T = TT(ctx, s.title, 58, TW - 40);
+      var est = 170 + boxesH(ctx, s.title, 58) + (B ? 40 + textH(B) : 0) + (s.sub ? 140 : 0);
+      creamFade(ctx, est, '#FFF6E6'); this.head(ctx, s.tag); pageNo(ctx, n, N, '#8A6F5A');
+      var y = boxes(ctx, s.title, 58, 170) + 40;
+      if (B) y += drawText(ctx, B, X, y, '#4A3A30', {boldColor: ORD}) + 24;
+      if (s.sub) bigNum(ctx, s.sub, X, y, 80, OR);
+      shadowed(ctx, function () { brandFoot(ctx, img ? 'white' : 'brown', n, 0, BR); });
+    },
+    quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#FFF6E6', logo: 'brown', ink: BR, sub: '#8A6F5A'}); },
+    last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#FFF6E6', logo: 'brown', sub: '#8A6F5A', kick: OR, kickInk: '#fff', card: '#fff', cardLine: '#F1D3A6', num: OR, numInk: '#fff', tip: '#4A3A30', end: BR, mark: '#F8D59F'}); }
+  };
+  // 3) 매거진: 위쪽 큰 사진, 아래 흰 판(둥근 위 모서리)에 큰 제목 — 마지막 줄 귤색
+  CARD.magazine = {
+    panel: function (ctx, img, top, c) { photo(ctx, img, 0, 0, 1080, top + 60, 0, '#EFE4D4'); ctx.fillStyle = c || '#fff'; rrect(ctx, 0, top, 1080, 1350 - top, [48, 48, 0, 0]); ctx.fill(); },
+    cover: function (ctx, s, img, n, N) {
+      var st = stackUp(ctx, s, {tsize: 84, kick: OR, num: OR, nmax: 90, ink: '#191512', ink2: OR, body: '#4E4237'}), top = Math.min(Y1 - st.h - 70, 760);
+      this.panel(ctx, img, top); st.draw(top + 70); pageNo(ctx, n, N, '#fff'); brandFoot(ctx, 'brown', n, 0, BR);
+    },
+    body: function (ctx, s, img, n, N) {
+      var st = stackUp(ctx, s, {tsize: 64, kick: OR, num: OR, nmax: 110, ink: '#191512', body: '#4E4237'}), top = Math.max(Math.min(Y1 - st.h - 70, 640), 260);
+      this.panel(ctx, img, top);
+      ctx.font = F(900, 130); ctx.fillStyle = 'rgba(239,146,14,.16)'; ctx.textAlign = 'right'; ctx.fillText(String(n).padStart(2, '0'), 990, top + 140); ctx.textAlign = 'left';
+      st.draw(top + 70); pageNo(ctx, n, N, '#fff'); brandFoot(ctx, 'brown', n, 0, BR);
+    },
+    quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#fff', logo: 'brown', ink: '#191512', sub: '#8A6F5A'}); },
+    last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#fff', logo: 'brown', sub: '#8A6F5A', kick: '#191512', kickInk: '#fff', card: '#F7F3EC', num: OR, numInk: '#fff', tip: '#333', end: '#191512', mark: '#FFD99E'}); }
+  };
+  // 4) 포스터: 표지는 귤색으로 꽉, 아주 큰 흰 글씨 + 동그란 사진 / 본문은 크림 바탕에 큰 번호
+  CARD.poster = {
+    cover: function (ctx, s, img, n, N) {
+      bg(ctx, OR); pageNo(ctx, n, N, '#fff');
+      ctx.font = F(800, 32); ctx.fillStyle = '#fff'; ctx.fillText(s.tag || '', X, 150);
+      var T = TT(ctx, s.title, 104), y = 220; y += title2(ctx, T, X, y, '#fff', BR);
+      if (s.sub) y += bigNum(ctx, s.sub, X, y + 30, 64, BR, '#fff') + 30;
+      var r = Math.max(150, Math.min(300, (Y1 - y - 40) / 2)), cx = 990 - r, cy = Math.max(y + 40 + r, Y1 - r);
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.clip(); if (img) cover(ctx, img, cx - r, cy - r, 2 * r, 2 * r); else { ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fill(); } ctx.restore();
+      ctx.lineWidth = 12; ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+      drawLogo(ctx, 'white', X, 1272, 34);
+    },
+    body: function (ctx, s, img, n, N) {
+      bg(ctx, '#FFF1DE'); pageNo(ctx, n, N, BR);
+      ctx.font = F(900, 260); ctx.fillStyle = 'rgba(239,146,14,.18)'; ctx.textAlign = 'right'; ctx.fillText(String(n).padStart(2, '0'), 1010, 300); ctx.textAlign = 'left';
+      var st = stackUp(ctx, s, {tsize: 76, kick: OR, num: OR, nmax: 130, ink: BR, body: '#4A3A30'}); st.draw(170);
+      var top = 170 + st.h + 50; if (Y1 - top >= 240) photo(ctx, img, X, top, TW, Y1 - top, 40, '#F8D59F');
+      drawLogo(ctx, 'brown', X, 1272, 34);
+    },
+    quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#FFF1DE', logo: 'brown', ink: BR, sub: '#8A6F5A'}); },
+    last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: OR, logo: 'white', sub: '#fff', kick: BR, kickInk: '#fff', card: '#fff', num: BR, numInk: '#fff', tip: '#333', end: '#fff', mark: BR}); }
+  };
+  // 5) 깔끔: 흰 바탕, 작은 꼬리표, 큰 검은 제목(마지막 줄 귤색), 아래 둥근 사진 카드
+  CARD.clean = {
+    cover: function (ctx, s, img, n, N) {
+      bg(ctx, '#fff'); pageNo(ctx, n, N, ORD);
+      var st = stackUp(ctx, s, {tsize: 88, kickPill: '#FFF1DE', kickInk: ORD, num: OR, nmax: 90, ink: '#191512', ink2: OR, body: '#4E4237'}); st.draw(140);
+      var top = Math.max(140 + st.h + 56, 560); photo(ctx, img, X, top, TW, Y1 - top, 44, '#FFF1DE'); brandFoot(ctx, 'brown', n, 0, BR);
+    },
+    body: function (ctx, s, img, n, N) {
+      bg(ctx, '#fff'); pageNo(ctx, n, N, ORD);
+      var st = stackUp(ctx, s, {tsize: 70, kickPill: '#FFF1DE', kickInk: ORD, num: OR, nmax: 120, ink: '#191512', body: '#4E4237'}); st.draw(140);
+      var top = 140 + st.h + 50; if (Y1 - top >= 240) photo(ctx, img, X, top, TW, Y1 - top, 44, '#FFF1DE'); brandFoot(ctx, 'brown', n, 0, BR);
+    },
+    quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#fff', logo: 'brown', ink: '#191512', sub: ORD}); },
+    last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#fff', logo: 'brown', sub: ORD, kick: '#FFF1DE', kickInk: ORD, card: '#FFF6EA', num: OR, numInk: '#fff', tip: '#333', end: '#191512', mark: '#FFD99E'}); }
+  };
+  // 6) 다크: 사진을 꽉 채우고 아래를 어둡게, 흰 글씨를 아래에
+  CARD.dark = {
+    shade: function (ctx, img) { full(ctx, img, '#201a16'); grad(ctx, 0, 600, .25, .35); grad(ctx, 600, 1350, .35, .92); },
+    cover: function (ctx, s, img, n, N) {
+      this.shade(ctx, img); pageNo(ctx, n, N, '#fff');
+      var st = stackUp(ctx, s, {tsize: 88, kick: OR, num: OR, nmax: 100, ink: '#fff', ink2: OR, body: '#EDE6DD'}); st.draw(Y1 - st.h); drawLogo(ctx, 'white', 990, 1272, 34, 'right');
+    },
+    body: function (ctx, s, img, n, N) {
+      this.shade(ctx, img); pageNo(ctx, n, N, '#fff');
+      var st = stackUp(ctx, s, {tsize: 66, kick: OR, num: OR, nmax: 120, ink: '#fff', body: '#EDE6DD', bold: '#FFB347'}); st.draw(Y1 - st.h); drawLogo(ctx, 'white', 990, 1272, 34, 'right');
+    },
+    quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#000', blur: true, logo: 'white', ink: '#fff', sub: '#eee'}); },
+    last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#191512', logo: 'white', sub: '#CDBFB0', kick: OR, kickInk: '#fff', card: '#2A2420', num: OR, numInk: '#fff', tip: '#F2ECE4', end: '#fff', mark: ORD}); }
   };
 
   // ---- 사진·영상 그리기 ---------------------------------------------------------------------------
@@ -253,10 +451,12 @@
     prev = prev || {};
     return mode === 'reel'
       ? {design: prev.design || 'wide', tag: prev.tag || '', title: prev.title || '', sub: prev.sub || '', items: '', media: prev.media || null, start: prev.end || 0, dur: 4, slow: false}
-      : {design: slides.length ? 'text' : 'clean', tag: prev.tag || '', title: '', sub: '', items: '', media: null};
+      : {design: slides.length ? 'body' : 'cover', tag: '', title: '', sub: '', items: '', media: null, scene: ''};
   }
   function size() { return mode === 'reel' ? [1080, 1920] : [1080, 1350]; }
-  function texts() { var a = []; slides.forEach(function (s) { a.push(s.tag, s.title, s.sub, s.items); }); a.push('소보루 매거진 억울한 소비자 피해, 제보해 주세요 consumerjebo.co.kr — “ 0123456789/'); return a; }
+  var deck = {theme: 'soboru', covers: []};
+  try { var th0 = localStorage.getItem('mk-theme'); if (th0 && CARD[th0]) deck.theme = th0; } catch (e) {}
+  function texts() { var a = []; slides.forEach(function (s) { a.push(s.tag, s.title, s.sub, s.items); }); deck.covers.forEach(function (c) { a.push(c.text); }); a.push('헷갈리면 저장해 두세요 이것만 챙겨요 SOBORU · 소비자 뉴스 출처: 소보루 매거진 억울한 소비자 피해, 제보해 주세요 consumerjebo.co.kr — “ 0123456789/'); return a; }
 
   function paint(ctx, s, i, overlayOnly) {
     var wh = size(); ctx.clearRect(0, 0, wh[0], wh[1]);
@@ -265,7 +465,8 @@
       if (!overlayOnly) reelBase(ctx, s.design, el);
       REEL[s.design](ctx, s);
     } else {
-      CARD[s.design](ctx, s, el, i + 1, slides.length);
+      var role = OLD_ROLE[s.design] || s.design, th = CARD[deck.theme] || CARD.soboru;
+      (th[role] || th.body).call(th, ctx, s, el, i + 1, slides.length);
     }
   }
   function draw() {
@@ -288,16 +489,57 @@
   function fill() {
     var s = slides[cur]; if (!s) return;
     var ds = mode === 'reel' ? REEL_D : CARD_D;
+    var thBox = $('#mk-theme');
+    if (thBox) thBox.innerHTML = THEME_D.map(function (d) { return '<label class="mk-chip mk-th-chip"><input type="radio" name="mk-t" value="' + d[0] + '"' + (deck.theme === d[0] ? ' checked' : '') + '><span><b>' + d[1] + '</b><small>' + d[2] + '</small></span></label>'; }).join('');
+    var role = OLD_ROLE[s.design] || s.design, cv = $('#mk-covers');
+    if (cv) {
+      cv.hidden = !(mode === 'card' && role === 'cover' && deck.covers.length);
+      $('#mk-cv').innerHTML = deck.covers.map(function (c, k) { return '<label class="mk-cv"><input type="radio" name="mk-cv" value="' + k + '"' + (c.text === s.title ? ' checked' : '') + '><span><small>' + esc(c.type || ('문구 ' + (k + 1))) + '</small>' + esc(c.text).replace(/\n/g, '<br>') + '</span></label>'; }).join('');
+    }
+    var sr = $('#mk-scene-row'); if (sr) sr.hidden = mode !== 'card' || role === 'last' || role === 'quote';
     $('#mk-design').innerHTML = ds.map(function (d) { return '<label class="mk-chip"><input type="radio" name="mk-d" value="' + d[0] + '"' + (s.design === d[0] ? ' checked' : '') + '><span>' + d[1] + '</span></label>'; }).join('');
     form.querySelectorAll('[data-f]').forEach(function (el) { var k = el.dataset.f; if (el.type === 'checkbox') el.checked = !!s[k]; else el.value = s[k] == null ? '' : s[k]; });
     $('#mk-media-st').textContent = s.media ? (s.media.kind === 'video' ? '영상' : '사진') + ' 넣었어요' + (s.media.len ? ' (' + s.media.len.toFixed(1) + '초)' : '') : (mode === 'reel' ? '사진이나 영상을 골라 주세요' : '사진 고르기 (속 장은 비워도 돼요)');
     $('#mk-timing').hidden = mode !== 'reel';
     $('#mk-start-row').hidden = !(s.media && s.media.kind === 'video');
     $('#mk-n').textContent = (cur + 1) + ' / ' + slides.length;
-    var lab = {title: s.design === 'quote' ? '인용할 말' : '제목', sub: s.design === 'quote' ? '말한 사람' : '부제', items: mode === 'card' && s.design === 'text' ? '본문 (빈 줄로 문단, **굵게**는 귤색)' : '줄 (#흰 상자, !귤색 상자, 이름 : 말)'};
+    var lab = mode === 'reel' ? {tag: '태그', title: s.design === 'quote' ? '인용할 말' : '제목', sub: s.design === 'quote' ? '말한 사람' : '부제', items: '줄 (#흰 상자, !귤색 상자, 이름 : 말)'}
+      : {cover: {tag: '분야', title: '표지 문구 (두 줄)', sub: '크게 박을 숫자 (예: 배달비 3,000원)', items: '(표지는 비워 두세요)'},
+         body: {tag: '꼬리표 (예: 언제부터 · 누가 해당 · 내가 챙길 것)', title: '제목 (한 장에 메시지 하나)', sub: '크게 보여 줄 숫자 (비워도 돼요)', items: '글 2~3문장 (**굵게**는 귤색)'},
+         quote: {tag: '꼬리표', title: '인용할 말', sub: '말한 사람', items: '(비워 두세요)'},
+         last: {tag: '꼬리표 (예: 이것만 챙겨요)', title: '맺음말 (기본: 헷갈리면 저장해 두세요)', sub: '출처 (예: 출처: 연합뉴스 2026.11.05)', items: '챙길 것 3개 (한 줄에 하나)'}}[role] || {};
+    var ip = $('#mk-items-row'); if (ip) ip.hidden = mode === 'card' && (role === 'cover' || role === 'quote');
     Object.keys(lab).forEach(function (k) { var l = $('#mk-l-' + k); if (l) l.textContent = lab[k]; });
+    var db = $('#mk-draw'); if (db) db.disabled = drawing;
   }
-  $('#mk-design').addEventListener('change', function (e) { if (e.target.name === 'mk-d') { slides[cur].design = e.target.value; fill(); draw(); } });
+  $('#mk-design').addEventListener('change', function (e) {
+    if (e.target.name !== 'mk-d') return;
+    var s = slides[cur], v = e.target.value; s.design = v;
+    if (v === 'last' && !s.title) { s.title = '헷갈리면 저장해 두세요'; s.tag = s.tag || '이것만 챙겨요'; }
+    fill(); draw();
+  });
+  var thBox0 = $('#mk-theme');
+  if (thBox0) thBox0.addEventListener('change', function (e) { if (e.target.name === 'mk-t') { deck.theme = e.target.value; try { localStorage.setItem('mk-theme', deck.theme); } catch (x) {} draw(); } });
+  var cvBox = $('#mk-cv');
+  if (cvBox) cvBox.addEventListener('change', function (e) { if (e.target.name === 'mk-cv') { var c = deck.covers[+e.target.value]; if (c) { slides[cur].title = c.text; fill(); draw(); } } });
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  // AI 그림 (카드뉴스 원칙: 기사 사진·캡처 대신 장면 설명으로 새로 그림)
+  var drawing = false;
+  function aiDraw(list) {
+    list = list.filter(function (s) { return (s.scene || '').trim(); });
+    if (!list.length || drawing) return Promise.resolve();
+    drawing = true; var done = 0; fill();
+    say('AI가 그림 ' + list.length + '장을 새로 그리고 있어요. 장마다 30초~1분쯤 걸려요.');
+    return Promise.all(list.map(function (s) {
+      return post(C.draw, JSON.stringify({scene: s.scene}), 'application/json').then(function (j) {
+        if (!j.ok) throw new Error(j.error || '그림을 그리지 못했어요.');
+        return loadImg(j.url).then(function (el) { s.media = {kind: 'image', url: j.url, el: el}; done++; say('AI 그림 ' + done + ' / ' + list.length + '장 그렸어요.'); draw(); });
+      });
+    })).then(function () { say('그림을 다 그렸어요. AI 그림이라 인스타에 올릴 때 \'AI 정보\' 표시를 켜 주세요.'); }, function (e) { say(e.message); })
+      .then(function () { drawing = false; fill(); });
+  }
+  var drawBtn = $('#mk-draw');
+  if (drawBtn) drawBtn.onclick = function () { var s = slides[cur]; if (!(s.scene || '').trim()) { s.scene = (s.title || '').replace(/\n/g, ' '); } aiDraw([s]); };
   form.addEventListener('input', function (e) {
     var k = e.target.dataset.f; if (!k) return;
     var s = slides[cur]; s[k] = e.target.type === 'checkbox' ? e.target.checked : (e.target.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value);
@@ -367,8 +609,9 @@
     var tg = CAT[a.category] || (a.category || '').toUpperCase();
     if (mode === 'card') {
       var img = slides[0] && slides[0].media;
-      slides = [{design: 'clean', tag: tg, title: a.title, sub: '', items: '', media: img}];
-      secs.filter(function (x) { return x.paras.length; }).slice(0, 6).forEach(function (x) { slides.push({design: 'text', tag: tg, title: x.title || a.title, sub: '', items: x.paras.join('\n\n'), media: null}); });
+      slides = [{design: 'cover', tag: tg, title: a.title, sub: '', items: '', media: img, scene: ''}];
+      secs.filter(function (x) { return x.paras.length; }).slice(0, 4).forEach(function (x) { slides.push({design: 'body', tag: '', title: x.title || a.title, sub: '', items: x.paras.join('\n\n'), media: null, scene: ''}); });
+      slides.push({design: 'last', tag: '이것만 챙겨요', title: '헷갈리면 저장해 두세요', sub: '출처: 소보루 매거진', items: '', media: null, scene: ''}); deck.covers = [];
     } else {
       slides[0].title = a.title; slides[0].tag = a.category ? a.category + ' 이슈' : slides[0].tag;
     }
@@ -387,20 +630,22 @@
     if (capBox) { capBox.hidden = !j.caption; capT.value = j.caption || ''; }
     var list = (mode === 'card' ? j.slides : j.scenes) || [], keep = slides[0] && slides[0].media;
     slides = list.map(function (p) {
-      var o = blank(); o.design = p.design; o.tag = j.tag || o.tag; o.title = p.title || ''; o.sub = p.sub || ''; o.items = p.items || ''; o.media = null;
+      var o = blank(); o.design = p.design; o.tag = mode === 'card' ? (p.tag || '') : (j.tag || o.tag); o.title = p.title || ''; o.sub = p.sub || ''; o.items = p.items || ''; o.media = null; o.scene = p.scene || '';
       if (mode === 'reel') { o.start = 0; o.dur = p.dur || 4; o.end = o.dur; }
       return o;
     });
+    if (mode === 'card') deck.covers = j.covers || [];
     return loadMedia(j).then(function (ms) {
       if (keep) ms.unshift(keep);
       slides.forEach(function (s, i) {
-        if (!ms.length) return;
+        if (!ms.length || (mode === 'card' && (s.design === 'last' || s.design === 'quote'))) return;
         var m = ms[i % ms.length]; s.media = m;
         if (m.kind === 'video') { s.start = Math.min(i * 3, Math.max(0, m.len - s.dur)); s.dur = Math.min(s.dur, Math.floor(m.len * 10) / 10); s.end = s.start + s.dur; seek(s); }
       });
       cur = 0; fill(); draw();
       var n = slides.length, miss = slides.filter(function (s) { return !s.media; }).length;
-      say((mode === 'card' ? '카드 ' + n + '장을' : '장면 ' + n + '개를') + ' 짰어요. ' + (miss ? (mode === 'card' ? '사진 없는 장은 사진을 골라 넣어 주세요. ' : '사진·영상 없는 장면에 넣어 주세요. ') : '') + '글과 디자인은 자유롭게 고쳐도 돼요.' + (j.warn ? ' ' + j.warn : ''));
+      say((mode === 'card' ? '카드 ' + n + '장을' : '장면 ' + n + '개를') + ' 짰어요. ' + (mode === 'card' && deck.covers.length ? '표지 문구 ' + deck.covers.length + '개 중 하나를 골라 주세요. ' : '') + (miss && mode === 'reel' ? '사진·영상 없는 장면에 넣어 주세요. ' : '') + '글과 디자인은 자유롭게 고쳐도 돼요.' + (j.warn ? ' ' + j.warn : ''));
+      if (mode === 'card' && j.draw) return aiDraw(slides.filter(function (s) { return !s.media && (s.design === 'cover' || s.design === 'body'); }));
     });
   }
   function aiBuild(payload, fallback) {
@@ -469,7 +714,7 @@
 
   slides = [blank()];
   if (mode === 'reel') { slides[0].tag = '블랙박스 이슈'; slides[0].title = '제목을\n두 줄로'; slides[0].sub = ': 한 줄 부제'; slides[0].items = '#11월 3일 오후 2시께\n운전자 A씨 : “피할 수 없었다”'; }
-  else { slides[0].tag = 'FOOD'; slides[0].title = '제목은 짧게,\n두 줄이 좋아요'; }
+  else { slides[0].tag = 'FOOD'; slides[0].title = '표지 문구는 짧게,\n두 줄이 좋아요'; slides[0].sub = '숫자 하나'; }
   logo.onload = function () { logoW = logoK = null; draw(); };
   fill(); draw();
 })();

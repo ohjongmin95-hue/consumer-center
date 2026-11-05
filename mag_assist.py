@@ -8,6 +8,9 @@
 - titles   제목 후보 다섯 개
 - summary  요약 2~3줄
 - cards    기사 하나로 카드뉴스 장 구성 (운영자 2026-11-05: '기사 넣으면 만들어지게' — 카드뉴스·릴스 만들기에서 씀)
+           소보루 카드뉴스 원칙(운영자 2026-11-05, 캐러셀 레퍼런스북): 표지 문구 5개(후킹 틀이 서로 다르게, 1개는 공유형) 중 고르기 ·
+           본문 2~4장 한 장 한 메시지(정책·법은 언제부터/누가 해당/내가 챙길 것) · 마지막 장 '헷갈리면 저장해 두세요' ·
+           캡션은 공감 말투 3줄 + '출처: 매체명 날짜' · 기사 사진 대신 장면 설명(scene)으로 AI가 새로 그림(mag_maker.py) · 낚시말·'댓글에' 금지.
 - reel     기사 하나로 릴스 장면 구성 (디자인·제목·자막·길이)
   cards·reel은 소보루 레터 한 꼭지로도 짬 (운영자 2026-11-05: '뉴스레터 하나를 만들고 그 내용을 여러 SNS 콘텐츠로 쪼개서 반복 홍보'):
   레터 한 호를 꼭지(오늘의 뉴스 하나하나·메인 뉴스·숫자·소비 트렌드·피해 예방·법률)로 나눠 꼭지마다 게시물 하나.
@@ -56,14 +59,6 @@ ASKS = {
                'JSON으로만 답한다: {"titles": [제목 다섯 개]}'),
     'summary': ('아래 [글]의 요약을 2~3문장으로 쓴다. 기사 목록과 첫 화면에 보이는 글이다. 숫자는 글에 있는 것만.\n'
                 'JSON으로만 답한다: {"summary": 요약}'),
-    'cards': ('아래 [기사]로 인스타그램 카드뉴스 5~7장을 짠다. 넘기며 읽는 글이라 한 장에 한 가지만 담고, 문장은 짧게 끊는다.\n'
-              '- 1장 = 표지(design "clean"): title은 기사 핵심을 2줄(줄 바꿈은 \\n)로, 한 줄 12자 안. sub는 비운다.\n'
-              '- 2장부터 = 속 장(design "text"): title은 소제목 한 줄(14자 안), items는 짧은 문단 1~2개(문단은 빈 줄로 나누고 각 110자 안). 핵심 숫자·말은 **굵게** 감싼다.\n'
-              '- 기사에 사람이 한 말(따옴표)이 있으면 한 장은 인용(design "quote"): title = 말 자체(40자 안, 줄 바꿈 \\n으로 2~3줄), sub = 말한 사람.\n'
-              '- 마지막 장(design "text")은 독자가 알아 둘 것 한 가지로 맺는다.\n'
-              '- 기사에 있는 사실·숫자만 쓴다. 의혹은 의혹으로 쓴다. 해요체·이모지 금지, 매거진 평서문.\n'
-              'JSON으로만 답한다: {"tag": 분야를 영문 대문자 한 단어로(FOOD, SHOPPING, BEAUTY, LIFE, MONEY, TELECOM, TRAVEL, CAR, RECALL 중), '
-              '"slides": [{"design": "clean"|"text"|"quote", "title": 제목, "sub": 부제, "items": 글}]}'),
     'reel': ('아래 [기사]로 인스타그램 릴스(세로 영상) 장면 4~6개를 짠다. 전체 25~45초. 보는 사람은 소리 없이 자막만 읽으니 장면마다 글은 짧게.\n'
              '장면 design: "wide"(흐린 배경 위 사진·영상 + 위 큰 제목 + 아래 사실 상자·말풍선, 기본), "full"(사진·영상 꽉 채우고 큰 제목, 훅용), '
              '"chat"(말풍선 대화, 당사자·목격자 말이 여럿일 때), "quote"(한 사람 말 클로즈업), "clean"(사진 꽉 + 제목 한 줄, 마무리용).\n'
@@ -76,12 +71,41 @@ ASKS = {
              'JSON으로만 답한다: {"tag": "○○ 이슈 · 지역"꼴 짧은 태그(18자 안), '
              '"scenes": [{"design": "wide"|"full"|"chat"|"quote"|"clean", "title": 제목, "sub": 부제, "items": 자막 줄들, "dur": 초}]}'),
 }
+CARD_ASK = ('너는 소비자 라이프스타일 매거진 \'소보루 매거진\'의 인스타그램 카드뉴스 에디터다. 아래 [기사]로 카드뉴스(4:5, 1080×1350)를 짠다.\n'
+    '[사실·저작권] 기사에 있는 사실(날짜·숫자·기관·누가 무엇을)만 가져오고 문장은 모두 새로 쓴다. 기사 문장·표현을 옮기지 않는다. '
+    '숫자는 기사에 있는 그대로만 쓰고 새로 계산하지 않는다. 확인되지 않은 일은 쓰지 않는다. 정치 뉴스는 양쪽 입장을 사실로만, 생활 영향 위주로. '
+    '낚시말(충격·결국·경악·소름·실화냐·역대급·난리·발칵) 금지. "댓글에 ○○ 남기면" 같은 참여 유도 금지. 실존 인물을 조롱하거나 기업을 비난하는 말 금지.\n'
+    '[표지 문구] covers에 정확히 5개. 기사 제목을 그대로 쓰지 말고 "내 월급·내 통장·내 장바구니" 이야기로 바꾼다. '
+    '궁금한 한 줄 + 핵심 숫자나 사실 한 줄, 2줄(줄 바꿈 \\n, 한 줄 13자 안). 결론은 숨겨 다음 장이 궁금하게 하고, 답은 반드시 본문에 있어야 한다. '
+    '5개는 후킹 틀이 서로 달라야 한다: 후회·경험 / 변화·비포애프터 / 경고·금지 / 쉬운 방법·지름길 / 비밀·희소 / 원칙·권위. '
+    '그리고 5개 중 1개는 공유형(이 정보가 꼭 필요한 사람에게 보내라는 말, 예: "자취하는 친구한테\\n꼭 보내 줘"). type에 틀 이름(공유형 포함)을 적는다. '
+    '저장되는 제목 꼴("저장해 두면 도움 되는 ○○", "○○ 총정리", "N가지")도 하나쯤 써 본다.\n'
+    '- big: 표지에 크게 박을 숫자 하나(12자 안, 예: "배달비 3,000원"). 기사에 있는 숫자로. 없으면 빈칸.\n'
+    '[본문] slides에 2~4장, 한 장에 메시지 하나, 문장은 짧게. 정책·법·제도 뉴스는 꼭 "언제부터" / "누가 해당" / "내가 챙길 것" 세 장을 이 순서로(kicker에 그대로). '
+    '다른 뉴스는 "무슨 일이 있었나" / "왜 커졌나" / "내 생활엔 뭐가 달라지나" 같은 흐름, 꿀팁은 한 장에 팁 하나.\n'
+    '  각 장: kicker(그 장 이름, 12자 안), title(한 줄 16자 안, 두 줄이면 \\n), items(2~3문장, 110자 안, 핵심 숫자·말은 **굵게**), '
+    'num(그 장에서 크게 보여 줄 숫자, 없으면 빈칸), scene(그림 장면).\n'
+    '- 사람이 한 말이 꼭 필요하면 본문 한 장을 인용으로: design "quote", title = 말(40자 안), sub = 말한 사람.\n'
+    '[마지막 장] tips: 독자가 실제로 챙길 것 정확히 3개(각 26자 안). 맺음말 "헷갈리면 저장해 두세요"는 화면이 붙인다.\n'
+    '[그림] cover_scene과 scene은 영어 한 문장: 기사 사진·캡처를 쓰지 않고 AI가 새로 그릴 장면. 사람은 뒷모습·손·흐릿하게만, '
+    '실존 인물 얼굴·기업 로고·브랜드·글자·숫자 없이. 표지 장면은 강렬한 장면 하나.\n'
+    '[캡션] caption: 공감되는 말투로 딱 3줄("나도 그래" 싶게), 줄마다 맨 앞 이모지 하나. 출처·해시태그는 쓰지 않는다(따로 붙인다). hashtags: 4~5개("#" 빼고).\n'
+    '[출처] source_media: 기사 매체명, source_date: 보도 날짜 YYYY.MM.DD(모르면 빈칸).\n'
+    '말투: 카드 글은 해요체로 쉽고 짧게(친구에게 알려 주듯). 이모지는 캡션에만.\n'
+    'JSON으로만 답한다: {"tag": 분야 영문 대문자 한 단어(FOOD, SHOPPING, BEAUTY, LIFE, MONEY, TELECOM, TRAVEL, CAR, RECALL 중), '
+    '"covers": [{"text": 문구, "type": 틀}], "big": 숫자, "cover_scene": 영어, '
+    '"slides": [{"design": "body"|"quote", "kicker": 이름, "title": 제목, "items": 글, "num": 숫자, "sub": 말한 사람, "scene": 영어}], '
+    '"tips": [3개], "caption": 3줄, "hashtags": [4~5개], "source_media": 매체, "source_date": 날짜}')
+ASKS['cards'] = CARD_ASK
+NUMS = BASE[BASE.index('숫자를 지키는 법'):BASE.index('본문 형식')]
+BAIT = ('충격', '결국', '경악', '소름', '실화냐', '역대급', '난리', '발칵', '댓글')
+SAVE_LINE = '헷갈리면 저장해 두세요'
 LETTER_ASK = ('\n[기사] 자리에는 매일 아침 메일로 나가는 뉴스레터 \'소보루 레터\'의 한 꼭지가 들어온다. 이 게시물의 목적은 레터를 알리고 구독자를 늘리는 것이다.\n'
               '- 꼭지의 핵심만 빠르게 보여 주고, 자세한 이야기는 레터에 있다는 느낌으로 맺는다. 구독 안내 장·장면은 따로 붙이니 만들지 않는다.\n'
               '- JSON에 "caption"도 넣는다: 인스타그램 캡션. 해요체, 4~6줄, 줄마다 맨 앞에 이모지 하나, 꼭지의 사실만. 영상·카드 설명 같은 메타 문장은 쓰지 않는다. '
               '구독 안내 줄과 해시태그는 붙이지 않는다(따로 붙임).')
-LETTER_CTA = {'cards': {'design': 'text', 'title': '매일 아침 받아 보는\n소보루 레터', 'sub': '',
-                        'items': '오늘의 소비·경제 뉴스를 한 통에 담아 메일로 보내 드려요.\n\n**프로필 링크에서 무료로 구독**할 수 있어요.'}}
+LETTER_CTA = {'cards': {'design': 'last', 'tag': '소보루 레터', 'title': '매일 아침 받아 보는\n소보루 레터', 'sub': '',
+                        'items': '오늘의 소비·경제 뉴스를 한 통에\n매일 아침 메일로 보내 드려요\n프로필 링크에서 무료로 구독해요'}}
 # 릴스는 끝의 귤색 마무리 화면이 레터 구독 안내로 바뀜 (maker.js REEL.outro)
 LETTER_TAIL = '📮 매일 아침 받아 보는 소보루 레터 · 구독은 프로필 링크에서\n\n#소보루레터 #소보루매거진 #뉴스레터 #경제뉴스 #소비트렌드'
 
@@ -124,7 +148,7 @@ def letter_photos(L, key):
     return [u] if isinstance(u, str) and u.startswith('https://') else []
 
 
-MAKER = {'cards': ('slides', ('clean', 'text', 'quote'), 'text'), 'reel': ('scenes', ('wide', 'full', 'chat', 'quote', 'clean'), 'wide')}
+MAKER = {'cards': ('slides', ('cover', 'body', 'quote', 'last'), 'body'), 'reel': ('scenes', ('wide', 'full', 'chat', 'quote', 'clean'), 'wide')}
 MEDIA = re.compile(r'^\[(사진|영상) ([^\s|\]]+)', re.M)
 
 
@@ -180,6 +204,36 @@ def maker_plan(act, out):
     return plan
 
 
+def _clip(v, n): return str(v or '').strip()[:n]
+
+
+def card_plan(out, source, letter=False):
+    """AI 답 → (장들, 표지 문구 5개, 캡션 머리·꼬리). 표지 = 고른 문구 + 큰 숫자, 본문 2~4장, 마지막 = 챙길 것 3개 + 저장 유도 + 출처."""
+    covers = []
+    for c in out.get('covers') or []:
+        c = c if isinstance(c, dict) else {'text': c}
+        t = _clip(c.get('text'), 60)
+        if t and not any(b in t for b in BAIT) and t not in [x['text'] for x in covers]: covers.append({'text': t, 'type': _clip(c.get('type'), 12)})
+    tag = _clip(out.get('tag'), 40)
+    plan = [{'design': 'cover', 'tag': tag, 'title': covers[0]['text'] if covers else '', 'sub': _clip(out.get('big'), 20), 'items': '', 'scene': _clip(out.get('cover_scene'), 300)}]
+    for s in (out.get('slides') or [])[:4]:
+        if not isinstance(s, dict): continue
+        q = s.get('design') == 'quote'
+        p = {'design': 'quote' if q else 'body', 'tag': _clip(s.get('kicker'), 16), 'title': _clip(s.get('title'), 120), 'items': _clip(s.get('items'), 400),
+             'sub': _clip(s.get('sub') if q else s.get('num'), 30), 'scene': _clip(s.get('scene'), 300)}
+        if p['title'] or p['items']: plan.append(p)
+    tips = [_clip(t, 40) for t in (out.get('tips') or []) if _clip(t, 40)][:3]
+    plan.append(dict(LETTER_CTA['cards']) if letter else {'design': 'last', 'tag': '이것만 챙겨요', 'title': SAVE_LINE, 'items': '\n'.join(tips), 'sub': '출처: ' + source if source else '', 'scene': ''})
+    return plan, covers
+
+
+def card_caption(out, source):
+    lines = [l.strip() for l in str(out.get('caption') or '').splitlines() if l.strip()][:3]
+    tags = ['#' + re.sub(r'[#\s]', '', str(t)) for t in (out.get('hashtags') or []) if re.sub(r'[#\s]', '', str(t))][:5]
+    if '#소보루매거진' not in tags: tags = ['#소보루매거진'] + tags[:4]
+    return '\n'.join(lines) + ('\n\n출처: ' + source if source else ''), ' '.join(tags)
+
+
 def install(S):
     app = S.app
 
@@ -214,6 +268,13 @@ def install(S):
         if re.fullmatch(r'https?://\S+', note): note = read_article(note)
         return note, [], []
 
+    def art_date(aid):
+        try:
+            with S.conn() as db: r = db.execute('SELECT published_at,created FROM articles WHERE id=?', (int(aid),)).fetchone()
+        except (TypeError, ValueError): r = None
+        v = (r and (r['published_at'] or r['created']) or '')[:10]
+        return v.replace('-', '.') if v else ''
+
     def letter_of(d):
         """만들기 화면이 고른 레터 꼭지 'L<호 id>:<꼭지>' → (레터, 꼭지) 또는 (None, None)"""
         m = re.fullmatch(r'L(\d+):([a-z]+(?::\d+)?)', str(d.get('letter') or ''))
@@ -235,8 +296,20 @@ def install(S):
             if d.get('letter') and not piece: return jsonify(ok=False, error='이 레터 꼭지를 찾지 못했어요. 다시 골라 주세요.'), 400
             src, photos, videos = (piece['text'], letter_photos(L, piece['key']), []) if piece else article_text(d)
             if len(re.sub(r'\s', '', src)) < (40 if piece else 100): return jsonify(ok=False, error='기사를 고르거나, 기사 주소나 기사 글 전체를 붙여 넣어 주세요.'), 400
-            try: out = chat(BASE + '\n' + ASKS[act] + (LETTER_ASK if piece else ''), '[기사]\n' + src, 2500)
+            system = (ASKS[act] + ('\n' + NUMS) if act == 'cards' else BASE + '\n' + ASKS[act]) + (LETTER_ASK if piece else '')
+            try: out = chat(system, '[기사]\n' + src, 3000)
             except RuntimeError as e: return jsonify(ok=False, error=str(e)), 502
+            if act == 'cards':
+                source = ' '.join(x for x in (_clip(out.get('source_media'), 30), _clip(out.get('source_date'), 12)) if x)
+                if d.get('art') and not piece: source = '소보루 매거진 ' + art_date(d['art'])
+                plan, covers = card_plan(out, source, bool(piece))
+                if len(plan) < 3 or not plan[0]['title']: return jsonify(ok=False, error='구성을 짜지 못했어요. 다시 해 주세요.'), 502
+                head, tags = card_caption(out, '' if piece else source)
+                caption = (head + '\n\n' + LETTER_TAIL) if piece else (head + '\n\n' + tags)
+                said = ' '.join(p['title'] + ' ' + p['sub'] + ' ' + p['items'] for p in plan) + ' ' + ' '.join(c['text'] for c in covers) + ' ' + head
+                extra = sorted(numbers(said) - numbers(src) - numbers(LETTER_TAIL + str(LETTER_CTA) + source))
+                return jsonify(ok=True, tag=plan[0]['tag'], photos=photos[:10], videos=[], caption=caption, letter=bool(piece), slides=plan, covers=covers,
+                               draw=not photos, warn=(('레터' if piece else '기사') + '에 없는 숫자가 들어갔어요: ' + ', '.join(extra[:5]) + '. 꼭 확인해 주세요.') if extra else '')
             plan = maker_plan(act, out)
             if len(plan) < 2: return jsonify(ok=False, error='구성을 짜지 못했어요. 다시 해 주세요.'), 502
             caption = ''

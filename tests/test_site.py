@@ -6226,11 +6226,24 @@ class SiteTest(unittest.TestCase):
         def clean_art():
             with self.site.conn() as db: db.execute('DELETE FROM articles WHERE id=99901')
         self.addCleanup(clean_art)
-        reply['out'] = {'tag': 'CAR', 'slides': [{'design': 'clean', 'title': '차 앞으로\n다가온 남성'}, {'design': 'text', 'title': '교차로의 오후', 'items': '**11월 3일 오후 2시께** 수원 오목천동'}, {'design': 'bogus', 'title': '', 'items': ''}, {'design': 'quote', 'title': '시속 5km도 안 되게\n서행 중이었다', 'sub': '운전자 A씨'}]}
+        # 운영자 2026-11-05 카드뉴스 원칙: 표지 문구 5개(낚시말 거름) · 본문 2~4장 · 마지막 장 저장 유도 + 출처 · 캡션 3줄 + 출처 + 해시태그
+        reply['out'] = {'tag': 'CAR', 'big': '시속 5km', 'cover_scene': 'a crossroad at dusk',
+                        'covers': [{'text': '이 남성,\n일부러였을까?', 'type': '비밀·희소'}, {'text': '충격적인\n교차로 사고', 'type': '경고·금지'}, {'text': '운전하는 친구한테\n꼭 보내 줘', 'type': '공유형'}],
+                        'slides': [{'design': 'body', 'kicker': '무슨 일이 있었나', 'title': '교차로의 오후', 'items': '**11월 3일 오후 2시께** 수원 오목천동', 'num': '', 'scene': 'a car'},
+                                   {'design': 'bogus', 'title': '', 'items': ''}, {'design': 'quote', 'title': '시속 5km도 안 되게\n서행 중이었다', 'sub': '운전자 A씨'}],
+                        'tips': ['블랙박스 영상 지키기', '보험사에 조사 요청하기', '목격자 연락처 받기', '넷째'], 'caption': '🚗 서행하던 차 앞으로\n💬 운전자는 억울하대요\n🔎 조사 중이에요\n넷째 줄', 'hashtags': ['보험사기', '#블랙박스'],
+                        'source_media': '무시', 'source_date': ''}
         j = call({'act': 'cards', 'art': 99901}).get_json()
-        self.assertTrue(j['ok']); self.assertEqual(j['tag'], 'CAR'); self.assertEqual([x['design'] for x in j['slides']], ['clean', 'text', 'quote'])
-        self.assertEqual(j['photos'], ['/art/body/body-20261105120000-001.webp']); self.assertEqual(j['videos'], ['/art/video/video-20261105120000-001.mp4']); self.assertEqual(j['warn'], '')
-        self.assertIn('카드뉴스 5~7장', reply['sys']); self.assertIn('[기사]\n차 앞으로 다가온 남성', body_sent[-1])
+        self.assertTrue(j['ok']); self.assertEqual(j['tag'], 'CAR'); self.assertEqual([x['design'] for x in j['slides']], ['cover', 'body', 'quote', 'last'])
+        self.assertEqual([c['text'] for c in j['covers']], ['이 남성,\n일부러였을까?', '운전하는 친구한테\n꼭 보내 줘'])  # 낚시말 '충격' 거름
+        self.assertEqual(j['slides'][0]['title'], '이 남성,\n일부러였을까?'); self.assertEqual(j['slides'][0]['sub'], '시속 5km'); self.assertEqual(j['slides'][1]['tag'], '무슨 일이 있었나')
+        last = j['slides'][-1]; self.assertEqual(last['title'], '헷갈리면 저장해 두세요'); self.assertEqual(last['items'].count('\n'), 2); self.assertEqual(last['sub'], '출처: 소보루 매거진 2026.11.05')
+        self.assertEqual(j['caption'], '🚗 서행하던 차 앞으로\n💬 운전자는 억울하대요\n🔎 조사 중이에요\n\n출처: 소보루 매거진 2026.11.05\n\n#소보루매거진 #보험사기 #블랙박스')
+        self.assertEqual(j['photos'], ['/art/body/body-20261105120000-001.webp']); self.assertFalse(j['draw']); self.assertEqual(j['warn'], '')
+        self.assertIn('covers에 정확히 5개', reply['sys']); self.assertIn('공유형', reply['sys']); self.assertNotIn('아이즈', reply['sys']); self.assertIn('[기사]\n차 앞으로 다가온 남성', body_sent[-1])
+        reply['out'] = dict(reply['out'], source_media='연합뉴스', source_date='2026.11.04')
+        j = call({'act': 'cards', 'note': '차 앞으로 다가온 남성 ' * 12}).get_json()  # 다른 기사: 기사 사진 안 쓰고 AI가 새로 그림, 출처는 그 매체
+        self.assertTrue(j['draw']); self.assertEqual(j['photos'], []); self.assertIn('출처: 연합뉴스 2026.11.04', j['caption']); self.assertTrue(j['warn'])
         reply['out'] = {'tag': '블랙박스 이슈 · 수원', 'scenes': [{'design': 'full', 'title': '일부러\n였을까?', 'sub': ': 블랙박스에 찍힌 사고', 'dur': 30}, {'design': 'chat', 'items': '운전자 A씨 : 시속 5km도 안 됐다\n목격자 : 이전에도 7번 있었다', 'dur': 'x'}]}
         j = call({'act': 'reel', 'note': 'https://news.example.com/a/1'}).get_json()
         self.assertTrue(j['ok']); self.assertEqual([x['dur'] for x in j['scenes']], [8, 4]); self.assertIn('7', j['warn'])
@@ -6249,10 +6262,10 @@ class SiteTest(unittest.TestCase):
         self.addCleanup(clean_letter)
         page = admin.get('/admin/magazine/maker?mode=card').get_data(as_text=True)
         self.assertIn('id="mk-letter"', page); self.assertIn(f'value="L{lid}:news:0"', page); self.assertIn(f'value="L{lid}:number"', page); self.assertIn('id="mk-cap"', page)
-        reply['out'] = {'tag': 'MONEY', 'caption': '🛵 배달비가 또 올라요\n💸 한 번 주문에 최대 3,000원', 'slides': [{'design': 'clean', 'title': '배달비\n또 오른다'}, {'design': 'text', 'title': '얼마나?', 'items': '최대 **3,000원**'}]}
+        reply['out'] = {'tag': 'MONEY', 'caption': '🛵 배달비가 또 올라요\n💸 한 번 주문에 최대 3,000원', 'covers': [{'text': '배달비\n또 오른다', 'type': '경고·금지'}], 'slides': [{'design': 'body', 'title': '얼마나?', 'items': '최대 **3,000원**'}], 'tips': ['포장 주문']}
         j = call({'act': 'cards', 'letter': f'L{lid}:news:0'}).get_json()
         self.assertTrue(j['ok']); self.assertTrue(j['letter']); self.assertEqual(j['warn'], '')
-        self.assertIn('소보루 레터', j['slides'][-1]['title']); self.assertEqual(len(j['slides']), 3)
+        self.assertIn('소보루 레터', j['slides'][-1]['title']); self.assertEqual(j['slides'][-1]['design'], 'last'); self.assertEqual(len(j['slides']), 3)
         self.assertTrue(j['caption'].startswith('🛵')); self.assertIn('#소보루레터', j['caption']); self.assertIn('프로필 링크', j['caption'])
         self.assertIn('구독자를 늘리는', reply['sys']); self.assertIn('배달 앱 두 곳이', body_sent[-1])
         reply['out'] = {'tag': '배달비 · 오늘의 숫자', 'scenes': [{'design': 'full', 'title': '3,000원', 'dur': 4}, {'design': 'wide', 'title': '배달비', 'items': '#최대 3,000원', 'dur': 5}]}
@@ -6260,9 +6273,11 @@ class SiteTest(unittest.TestCase):
         self.assertTrue(j['ok']); self.assertTrue(j['letter']); self.assertEqual(len(j['scenes']), 2)  # 릴스는 끝 귤색 화면이 구독 안내
         self.assertEqual(call({'act': 'reel', 'letter': f'L{lid}:harm'}).status_code, 400)  # 없는 꼭지
         self.assertEqual(call({'act': 'reel', 'letter': 'L4242424:all'}).status_code, 400)
-        reply['out'] = {'tag': 'CAR', 'caption': '무시됨', 'slides': [{'design': 'clean', 'title': '차 앞으로\n다가온 남성'}, {'design': 'text', 'title': '교차로의 오후'}]}
+        reply['out'] = {'tag': 'CAR', 'covers': [{'text': '차 앞으로\n다가온 남성'}], 'slides': [{'design': 'body', 'title': '교차로의 오후'}]}
         j = call({'act': 'cards', 'art': 99901}).get_json()
-        self.assertEqual(j['caption'], ''); self.assertFalse(j['letter']); self.assertEqual(len(j['slides']), 2)  # 기사로 만들 땐 그대로
+        self.assertFalse(j['letter']); self.assertEqual(len(j['slides']), 3); self.assertNotIn('소보루 레터', j['caption'])
+        page = admin.get('/admin/magazine/maker?mode=card').get_data(as_text=True)
+        self.assertIn('id="mk-theme"', page); self.assertIn('id="mk-covers"', page); self.assertIn('id="mk-draw"', page); self.assertIn('/admin/magazine/maker/draw', page)
 
     def test_magazine_screen_editor(self):
         # 운영자 2026-11-05: ND 화면편집처럼 — 매거진 화면(메인·기사·목록)을 PC·모바일로 띄워 놓고 그 자리에서 문구·묶음 순서를 고침
@@ -6313,6 +6328,18 @@ class SiteTest(unittest.TestCase):
         self.addCleanup(lambda: (art / photo).unlink(missing_ok=True))
         b = io.BytesIO(); Image.new('RGBA', (1080, 1920), (0, 0, 0, 0)).save(b, 'PNG'); png = 'data:image/png;base64,' + base64.b64encode(b.getvalue()).decode()
         tok = self.csrf(admin, '/admin/magazine/maker')
+        # 카드뉴스 그림: 기사 사진 대신 장면 설명으로 AI가 새로 그림 (얼굴·로고·글자 없이)
+        import companydesk
+        sent = {}
+        def fake_img(url, headers, body, timeout):
+            sent.update(body); b = io.BytesIO(); Image.new('RGB', (64, 96), 'orange').save(b, 'WEBP'); return 200, {'data': [{'b64_json': base64.b64encode(b.getvalue()).decode()}]}
+        with patch.object(companydesk, 'post_json', fake_img), patch.dict(os.environ, {'OPENAI_API_KEY': 'k'}):
+            draw = lambda d: admin.post('/admin/magazine/maker/draw', json=d, headers={'X-CSRFToken': tok})
+            self.assertEqual(draw({'scene': ''}).status_code, 400)
+            j = draw({'scene': 'a delivery rider at night'}).get_json()
+        self.assertTrue(j['ok']); self.assertIn('a delivery rider at night', sent['prompt']); self.assertIn('never a recognizable face', sent['prompt']); self.assertEqual(sent['size'], '1024x1536')
+        self.addCleanup(lambda: (art / j['url'].rsplit('/', 1)[1]).unlink(missing_ok=True))
+        self.assertEqual(admin.get(j['url']).status_code, 200)
         call = lambda d: admin.post('/admin/magazine/maker/render', json=d, headers={'X-CSRFToken': tok})
         if not shutil.which('ffmpeg'):
             self.assertEqual(call({'scenes': []}).status_code, 503); return
