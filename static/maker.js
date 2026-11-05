@@ -216,7 +216,7 @@
   // 글자는 가운데 70% 안(x 90~990, y 110~1240). 로고·쪽 번호만 그 밖.
   var X = 90, TW = 900, Y1 = 1240;
   var THEME_D = [['soboru', '소보루 매거진', '꽉 찬 사진 · 흰 속 장'], ['ref', '레퍼런스북식', '큰 숫자 · 형광펜 제목'], ['newneek', '뉴닉식', '사진 위 제목 상자'],
-                 ['magazine', '매거진', '위 사진 · 아래 흰 판'], ['poster', '포스터', '꽉 찬 귤색 · 큰 글씨'], ['clean', '깔끔', '흰 바탕 · 둥근 사진'], ['dark', '다크', '어두운 사진 · 흰 글씨']];
+                 ['magazine', '매거진', '위 사진 · 아래 흰 판'], ['poster', '포스터', '꽉 찬 귤색 · 큰 글씨'], ['clean', '깔끔', '흰 바탕 · 둥근 사진'], ['dark', '다크', '어두운 사진 · 흰 글씨'], ['center', '센터 포토', '사진 꽉 · 가운데 큰 제목']];
   function bg(ctx, c) { ctx.fillStyle = c; ctx.fillRect(0, 0, 1080, 1350); }
   function full(ctx, img, empty) { bg(ctx, empty); if (img) cover(ctx, img, 0, 0, 1080, 1350); }
   function photo(ctx, img, x, y, w, h, r, empty) {
@@ -434,6 +434,38 @@
     },
     quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#fff', logo: 'brown', ink: '#191512', sub: ORD}); },
     last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#fff', logo: 'brown', sub: ORD, kick: '#FFF1DE', kickInk: ORD, card: '#FFF6EA', num: OR, numInk: '#fff', tip: '#333', end: '#191512', mark: '#FFD99E'}); }
+  };
+  // 7) 센터 포토 (운영자 2026-11-05, 영상 매거진 표지처럼): 사진 꽉 + 위 가운데 SOBORU 로고·쪽 점 + 가운데 작은 꼬리표·큰 흰 제목·부제
+  function dots(ctx, n, N, on, off) {
+    if (N < 2) return; var w = 10, gap = 10, cur = 34, tw = (N - 1) * (w + gap) + cur, x = 540 - tw / 2;
+    for (var i = 1; i <= N; i++) { var ww = i === n ? cur : w; ctx.fillStyle = i === n ? on : off; rrect(ctx, x, 104, ww, 10, 5); ctx.fill(); x += ww + gap; }
+  }
+  function centerStack(ctx, s, o) {
+    var T = TT(ctx, s.title, o.tsize, TW), S = s.sub ? layout(ctx, s.sub, o.ssize || 40, 600, 800, TW, {lh: 1.4, ls: -1}) : null;
+    var B = o.avail && paras(s.items).length ? (function () { var b; for (var z = 50; z >= 34; z -= 2) { b = layout(ctx, paras(s.items).join('\n\n'), z, 500, 800, TW, {lh: 1.6, ls: -1}); if (90 + textH(T) + (S ? 30 + textH(S) : 0) + 50 + textH(b) <= o.avail) break; } return b; })() : null;
+    var h = (s.tag ? 90 : 0) + textH(T) + (S ? 30 + textH(S) : 0) + (B ? 50 + textH(B) : 0);
+    return {h: h, draw: function (y) {
+      if (s.tag) { ctx.font = F(800, 28); var w = ctx.measureText(s.tag).width + 40; ctx.fillStyle = o.pill; rrect(ctx, 540 - w / 2, y, w, 52, 26); ctx.fill(); ctx.fillStyle = o.pillInk; ctx.textAlign = 'center'; ctx.fillText(s.tag, 540, y + 36); ctx.textAlign = 'left'; y += 90; }
+      var draw1 = function () { y += drawText(ctx, T, 540, y, o.ink, {align: 'center', boldColor: OR}); };
+      if (o.shadow) shadowed(ctx, draw1); else draw1();
+      if (S) { y += 30; var Sy = y; var d2 = function () { drawText(ctx, S, 540, Sy, o.sub, {align: 'center'}); }; if (o.shadow) shadowed(ctx, d2); else d2(); y += textH(S); }
+      if (B) { y += 50; drawText(ctx, B, 540, y, o.body, {align: 'center', boldColor: o.bold || ORD}); }
+    }};
+  }
+  CARD.center = {
+    cover: function (ctx, s, img, n, N) {
+      full(ctx, img, '#3a2a20'); grad(ctx, 0, 300, .35, 0); grad(ctx, 380, 1350, .05, .55);
+      shadowed(ctx, function () { drawLogo(ctx, 'white', 540, 44, 40, 'center'); }); dots(ctx, n, N, OR, 'rgba(255,255,255,.55)');
+      var st = centerStack(ctx, s, {tsize: 92, ssize: 42, ink: '#fff', sub: 'rgba(255,255,255,.92)', pill: 'rgba(255,255,255,.22)', pillInk: '#fff', shadow: true});
+      st.draw(Math.min(Y1 - st.h, Math.max(560, 760 - st.h / 2)));
+    },
+    body: function (ctx, s, img, n, N) {
+      bg(ctx, '#FAF6EF'); drawLogo(ctx, 'brown', 540, 44, 40, 'center'); dots(ctx, n, N, OR, '#E6DACB');
+      var st = centerStack(ctx, s, {tsize: 72, ssize: 44, ink: '#191512', sub: OR, pill: '#FFE9C7', pillInk: ORD, body: '#3A2E25', avail: Y1 - 180});
+      st.draw(180 + Math.max(0, (Y1 - 180 - st.h) / 2));
+    },
+    quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#FAF6EF', logo: 'brown', ink: '#191512', sub: '#8A6F5A'}); },
+    last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#FAF6EF', top: true, logo: 'brown', sub: ORD, kick: OR, kickInk: '#fff', card: '#fff', cardLine: '#EADFCF', num: OR, numInk: '#fff', tip: '#191512', end: '#191512', mark: '#FFD99E'}); }
   };
   // 6) 다크: 사진을 꽉 채우고 아래를 어둡게, 흰 글씨를 아래에
   CARD.dark = {
