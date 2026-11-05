@@ -4306,7 +4306,7 @@ class SiteTest(unittest.TestCase):
             # 다음 날은 다음 종류부터, 자동 쓰기를 끄면 아무것도 안 함
             tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'per_run': '1'})
-            self.assertEqual(w['settings'](), {'auto': 0, 'per_run': 1, 'per_day': 3, 'publish': 0})
+            self.assertEqual(w['settings'](), {'auto': 0, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0})
             self.assertEqual(w['daily'](tomorrow)[0]['status'], 'off')
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'per_run': '1'})
             with self.site.conn() as db: db.execute("UPDATE ai_articles SET created='2000-01-01T07:00:00'")  # 오늘 만든 개수에서 빼서 다음 날처럼
@@ -4317,10 +4317,10 @@ class SiteTest(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT status FROM articles WHERE origin='ai' ORDER BY id DESC LIMIT 1").fetchone()[0], 'draft')  # 바로 게시를 끄면 초안
             # 맨 위 '자동 게시 멈추기'는 게시만 끄고 글은 계속 씀, '다시 켜기'는 게시를 켬
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'start'})
-            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 1})
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 1, 'cats': 0})
             self.assertIn('자동 게시 중이에요', admin.get('/admin/life/ai').get_data(as_text=True))
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'stop'})
-            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 0})
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0})
             self.assertIn('자동 게시를 멈췄어요', admin.get('/admin/life/ai').get_data(as_text=True))
             # 쇼핑 관심도: 가장 많이 오른 분야와 그 분야 클릭 비중
             with self.site.app.app_context(): shop = w['collect']('shopping')
@@ -4428,6 +4428,7 @@ class SiteTest(unittest.TestCase):
             return [{'line': '첫 줄 요약이에요.', 'why': '다른 대상'}] if n[0] <= 2 else []
         with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent, pair=pair)), \
                 patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            w['save_settings'](1, 5, 1, 0)  # 연재는 끄고 '한 번에 몇 개' 몫으로
             out = w['daily'](now=datetime.datetime(2026, 10, 20, 7, 30))
             made = [r for r in out if r['status'] == 'made']
             self.assertEqual(sum(1 for r in made if r['published']), 5)  # 걸린 2개 대신 더 써서 게시 5개
@@ -4578,6 +4579,34 @@ class SiteTest(unittest.TestCase):
         self.assertEqual([c['slug'] for c in tools.calcs_for('헬스장 환불 거부당했다면', '청약철회와 할부')], ['fitness', 'cooling'])
         self.assertEqual(tools.calcs_for('날씨 이야기', ''), [])
 
+    def test_writer_one_per_category(self):
+        """분야마다 하루 한 편 기획 기사: 아침 3분야, 저녁까지 9분야 모두 (운영자 요청 2026-11-05)"""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub; mod = self.site.soboru_writer
+        sent, calls = [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            self.assertEqual(w['settings']()['cats'], 1)  # 기본으로 켜 둠
+            w['save_settings'](1, 1, 1)
+            self.assertEqual(w['settings']()['cats'], 1)  # 다른 설정을 바꿔도 그대로
+            out = w['daily'](now=datetime.datetime(2026, 10, 20, 7, 30))
+            self.assertEqual([r['category'] for r in out if r.get('kind') == 'feature' and r.get('published')], list(mod.CATS[:3]))
+            self.assertEqual(len([r for r in out if r['status'] == 'made' and r.get('published')]), 6)  # 아침: 3분야 + 종류 3개
+            ev = w['daily'](now=datetime.datetime(2026, 10, 20, 19, 30))
+            with self.site.conn() as db:
+                kinds = [r[0] for r in db.execute("SELECT x.kind FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.kind!='feature' AND a.status='published'")]
+            # 종류마다 한 편씩 연재 (법·통계는 시험에 키가 없어 건너뜀, 검색어 글은 가짜 AI 제목이 겹쳐 건너뜀)
+            self.assertEqual(sorted(kinds), sorted(set(mod.SERIES) - {'law', 'stat', 'word'}))
+            self.assertIn(('law', 'skip'), [(r.get('kind'), r['status']) for r in ev])
+            self.assertEqual(len(kinds), len(set(kinds)))
+            with self.site.conn() as db:
+                cats = [r[0] for r in db.execute("SELECT a.category FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE x.kind='feature' AND a.status='published'")]
+            self.assertEqual(sorted(set(cats)), sorted(mod.CATS))
+            self.assertEqual(len(cats), len(mod.CATS))  # 분야마다 한 편씩만
+            again = [r['kind'] for r in w['daily'](now=datetime.datetime(2026, 10, 20, 19, 40)) if r['status'] == 'made']
+            self.assertFalse(set(again) & (set(kinds) | {'feature'}))  # 다시 돌려도 이미 쓴 분야·종류는 안 씀 (못 쓴 종류만 다시 해 봄)
+
     def test_writer_many_deep_articles_by_topic(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
         w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub
@@ -4585,6 +4614,7 @@ class SiteTest(unittest.TestCase):
         env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
         with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)), \
                 patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            w['save_settings'](1, 5, 1, 0)  # 분야마다 한 편은 끄고 돌림표만 (분야별은 test_writer_one_per_category)
             out = w['daily'](now=datetime.datetime(2026, 10, 20, 7, 30))  # 아침 5개: 순서표(검색 추이·뉴스·쇼핑) 다음 기획 기사·주제별 글로 채움
             made = [r for r in out if r['status'] == 'made']
             self.assertEqual([r['kind'] for r in made][3:], ['feature', 'fix'])
@@ -6605,6 +6635,9 @@ class SiteTest(unittest.TestCase):
         body = '첫 문단 **굵게**.\n\n[사진 /art/body/a.webp | 장면]\n\n## 소제목\n\n' + '가' * 950 + '\n\n## 다음\n\n안 나옴'
         self.assertEqual(L.mag_excerpt(body), [{'p': '첫 문단 굵게.'}, {'h': '소제목'}, {'p': '가' * 950}])
         self.assertEqual(L.mag_excerpt('## 맨 앞 소제목\n\n문단\n\n## 끝'), [{'p': '문단'}])
+        # 운영자 2026-11-05: 여러 편 말고 글 하나를 축약본으로 — 글 전체에서 소제목마다 첫 문단 두 문장
+        body = '하나. 둘. 셋. 넷.\n\n[사진 /a.webp]\n\n## 첫 소제목\n\n가. 나. 다.\n\n안 나옴.\n\n- 목록 안 나옴\n\n## 둘째 소제목\n\n**라**. 마.\n\n## 빈 소제목'
+        self.assertEqual(L.mag_digest(body), [{'p': '하나. 둘. 셋.'}, {'h': '첫 소제목'}, {'p': '가. 나.'}, {'h': '둘째 소제목'}, {'p': '라. 마.'}])
 
     def test_letter_subscribe_confirm_unsubscribe(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)

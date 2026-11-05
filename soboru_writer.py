@@ -119,6 +119,8 @@ KINDS = {
 ORDER = ['trend', 'reports', 'news', 'shopping', 'law']  # 하루 한 번씩 쓰는 종류 (돌아가며 시작하는 순서)
 PAUSED = {'reports'}  # 운영자 요청 2026-10-18: 제보로 쓰는 글은 아직 쓰지 않음 (매일·관리자 버튼 모두). 다시 쓰려면 여기서 뺌
 EXTRA = ['feature', 'fix', 'stat', 'rights', 'word', 'feature', 'fix', 'stat', 'shopcat']  # ORDER를 한 바퀴 돈 뒤 몫이 남으면 돌아가며 채우는 주제별 글 (기획 기사·피해 해결 글을 더 자주)
+# 연재(운영자 요청 2026-11-05): 글 종류마다 하루 한 편. 기획 기사는 분야(CATS)마다 한 편이라 따로
+SERIES = [k for k in dict.fromkeys(ORDER + EXTRA) if k not in PAUSED and k != 'feature']
 
 # 운영자 2026-11-05: 매거진 문체 = 라이프스타일 매거진 피처 기사(운영자가 보낸 '치킨 값' 기사 견본). 견본 문장을 베끼지 말고 결만 따른다
 STYLE = ('[문체] 라이프스타일 매거진의 피처 기자가 쓰는 칼럼형 기사체다.\n'
@@ -909,7 +911,7 @@ def install(S):
             except RuntimeError: return []
         return {'fix': list(FIX_TOPICS), 'rights': RIGHTS_TOPICS, 'word': list(WORD_TOPICS), 'shopcat': [n for _, n in naverhub.SHOP_CATS]}[kind]
 
-    def pick_topic(kind, day, avoid=()):
+    def pick_topic(kind, day, avoid=(), cat=None):
         """FRESH_DAYS 안에 쓰지 않은 주제 가운데 가장 오래전에 쓴(또는 한 번도 안 쓴) 것. 없으면 None.
         기획 기사는 30일 안에 어느 종류로든 쓴 주제를 빼고, 최근 글이 적은 분야의 주제부터 (뉴스로 고른 주제가 먼저)."""
         feature = kind == 'feature'
@@ -919,7 +921,7 @@ def install(S):
                 parts = r['ext_key'].split(':')
                 if len(parts) >= 4: last[parts[2]] = max(last.get(parts[2], ''), r['created'][:10])
         if feature:
-            n = cat_counts(day); pool = feature_pool(day)
+            n = cat_counts(day); pool = [i for i in feature_pool(day) if not cat or i['category'] == cat]  # cat: 그 분야 주제만
             free = [(n.get(i['category'], 0), k, i['topic']) for k, i in enumerate(pool) if last.get(i['topic'], '') < since and i['topic'] not in avoid]
             return min(free)[2] if free else None
         free = [t for t in topic_list(kind) if last.get(t, '') < since and t not in avoid]
@@ -958,10 +960,13 @@ def install(S):
         # publish: 자동으로 쓴 글 중 숫자 검사를 통과한 글은 관리자 승인 없이 바로 게시 (운영자 요청 2026-10-17, 관리자에서 멈출 수 있음)
         # per_run: 아침·오후·저녁 한 번에 쓰는 글 수. 하루 한 번 쓰던 때(v 3 전) 저장한 값은 새 기본(5개씩)으로
         per = s.get('per_run') if s.get('v') == 3 and s.get('per_run') in PER_RUN else DEFAULT_PER_RUN
-        return {'auto': 0 if s.get('auto') == 0 else 1, 'per_run': per, 'per_day': per * len(SLOTS), 'publish': 0 if s.get('publish') == 0 else 1}
+        # cats: 분야(CATS)마다 하루 한 편씩 기획 기사 (운영자 요청 2026-11-05: '각 카테고리당 하루 1편씩'), 아침·오후·저녁에 나눠 씀
+        return {'auto': 0 if s.get('auto') == 0 else 1, 'per_run': per, 'per_day': per * len(SLOTS), 'publish': 0 if s.get('publish') == 0 else 1,
+                'cats': 0 if s.get('cats') == 0 else 1}
 
-    def save_settings(auto, per_run, publish):
-        put('writer', {'auto': auto, 'per_run': per_run if per_run in PER_RUN else DEFAULT_PER_RUN, 'publish': publish, 'v': 3})
+    def save_settings(auto, per_run, publish, cats=None):
+        cats = settings()['cats'] if cats is None else cats
+        put('writer', {'auto': auto, 'per_run': per_run if per_run in PER_RUN else DEFAULT_PER_RUN, 'publish': publish, 'cats': cats, 'v': 3})
 
     def log(entry):
         rows = setting('writer_log', [])
@@ -1028,13 +1033,13 @@ def install(S):
                 out.append({'line': _plain(p['line'], 300), 'pair': _plain(p.get('why', ''), 200) or '숫자가 다른 대상에 붙었어요'})
         return out
 
-    def generate(kind, trigger='admin', force=False, day=None, topic=None, avoid=(), material=None, key=None):
+    def generate(kind, trigger='admin', force=False, day=None, topic=None, avoid=(), material=None, key=None, cat=None):
         """{status: made|exists|skip|error, id, reason, published}. 관리자가 만든 글은 초안(draft). 매일 자동으로 쓴 글은
         '바로 게시'가 켜져 있고 숫자 검사를 통과하면 게시하고, 아니면 초안으로 남긴다."""
         if kind not in KINDS: return {'status': 'error', 'reason': '모르는 글 종류예요'}
         today = day or datetime.date.today().isoformat()
         if KINDS[kind].get('topics'):  # 주제별 글은 주제마다 하루 한 번 (같은 주제는 FRESH_DAYS 동안 다시 안 씀)
-            topic = topic or pick_topic(kind, today, avoid)
+            topic = topic or pick_topic(kind, today, avoid, cat)
             if not topic:
                 res = {'status': 'skip', 'reason': f'최근 {FRESH_DAYS}일 안에 주제를 다 썼어요'}; log(dict(res, kind=kind, trigger=trigger)); return res
             key = f'ai:{kind}:{topic}:{today}'
@@ -1102,6 +1107,48 @@ def install(S):
         except Exception: now = now or datetime.datetime.now()
         return max(1, sum(1 for h in SLOTS if now.hour >= h))
 
+    def cats_done(day, pub_only):
+        """오늘 기획 기사가 있는 분야 (바로 게시가 켜져 있으면 게시된 글만)"""
+        with conn() as db:
+            return {r[0] for r in db.execute("SELECT DISTINCT a.category FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE a.origin='ai' AND x.kind='feature' AND substr(x.created,1,10)=?"
+                                               + (" AND a.status='published'" if pub_only else ''), (day,))}
+
+    def daily_cats(day, now, pub_only, counts):
+        """분야(CATS)마다 하루 한 편 기획 기사. 때마다 몫(len(CATS) * 지난 때 / 때 수)만큼, 아직 글이 없는 분야를 CATS 순서로 채움.
+        한 분야에서 주제 두 개까지 해 보고 안 되면 그 분야는 다음 때로 넘김."""
+        goal = -(-len(CATS) * slots_passed(now) // len(SLOTS)); out = []
+        have = cats_done(day, pub_only)
+        for cat in CATS:
+            if len(have) >= goal: break
+            if cat in have: continue
+            tried = set()
+            for _ in range(2):
+                r = dict(generate('feature', 'daily', day=day, avoid=tried, cat=cat), kind='feature', category=cat); out.append(r)
+                if counts(r): have.add(cat); break
+                if r['status'] == 'skip' and '주제를 다 썼어요' in r.get('reason', ''): break
+                if r.get('topic'): tried.add(r['topic'])
+        return out
+
+    def daily_series(day, now, pub_only, counts):
+        """글 종류(검색 추이·뉴스 해설·쇼핑 관심도·법 해설·피해 해결·생활비·권리·검색어·쇼핑 분야)마다 하루 한 편 (운영자 요청 2026-11-05: '이것들도 같이 1편씩 연재').
+        때마다 몫(종류 수 * 지난 때 / 때 수)만큼 아직 오늘 글이 없는 종류를 SERIES 순서로. 주제별 글은 주제 두 개까지 해 봄."""
+        goal = -(-len(SERIES) * slots_passed(now) // len(SLOTS)); out = []
+        with conn() as db:
+            have = {r[0] for r in db.execute("SELECT DISTINCT x.kind FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.trigger='daily' AND x.kind!='feature' AND substr(x.created,1,10)=?"
+                                               + (" AND a.status='published'" if pub_only else ''), (day,))}
+        for kind in SERIES:
+            if len(have & set(SERIES)) >= goal: break
+            if kind in have: continue
+            ok, why = kind_ready(kind)
+            if not ok: out.append({'status': 'skip', 'kind': kind, 'reason': why}); continue
+            tried = set()
+            for _ in range(2 if KINDS[kind].get('topics') else 1):
+                r = dict(generate(kind, 'daily', day=day, avoid=tried), kind=kind); out.append(r)
+                if counts(r): have.add(kind); break
+                if r['status'] != 'made' and not r.get('topic'): break
+                if r.get('topic'): tried.add(r['topic'])
+        return out
+
     def daily(today=None, now=None):
         """아침·오후·저녁마다 per_run개씩 (ORDER 한 바퀴 → 남으면 EXTRA 주제별 글). 지난 때 몫까지 채움(서버가 꺼져 있었을 때).
         꺼 뒀거나 AI 키가 없으면 아무것도 안 함. 게시 여부는 generate가 정함."""
@@ -1113,12 +1160,14 @@ def install(S):
         with conn() as db:
             done = db.execute("SELECT COUNT(*) FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.trigger='daily' AND substr(x.created,1,10)=?"
                               + (" AND a.status='published'" if pub_only else ''), (day,)).fetchone()[0]
-        want = cfg['per_run'] * slots_passed(now) - done; turn = setting('writer_turn', 0)
-        turn = turn if isinstance(turn, int) else 0
-        if want <= 0: return []  # 오늘 몫은 이미 다 씀 (순서도 그대로)
-        budget = want * 2 + 2  # 걸린 글 대신 더 쓰더라도 AI를 끝없이 부르지 않게: 한 번에 만드는 글은 몫의 두 배까지
         counts = lambda r: r['status'] == 'made' and (r.get('published') or not pub_only)
         out = []
+        if cfg['cats']:  # 연재: 분야마다 한 편 + 글 종류마다 한 편, 아침·오후·저녁에 나눠 씀 (지난 때 몫까지). 한 번에 몇 개 몫은 쓰지 않음
+            return daily_cats(day, now, pub_only, counts) + daily_series(day, now, pub_only, counts)
+        want = cfg['per_run'] * slots_passed(now) - done; turn = setting('writer_turn', 0)
+        turn = turn if isinstance(turn, int) else 0
+        if want <= 0: return out  # 오늘 몫은 이미 다 씀 (순서도 그대로)
+        budget = want * 2 + 2  # 걸린 글 대신 더 쓰더라도 AI를 끝없이 부르지 않게: 한 번에 만드는 글은 몫의 두 배까지
         for i in range(len(ORDER)):
             if want <= 0 or budget <= 0: break
             kind = ORDER[(turn + i) % len(ORDER)]
@@ -1227,7 +1276,7 @@ def install(S):
             on = request.form.get('act') == 'start'; save_settings(1, settings()['per_run'], int(on))
             flash('자동 게시를 다시 켰어요. 검사를 통과한 글은 바로 올라가요.' if on else '자동 게시를 멈췄어요. 글은 계속 써서 올릴 글(초안)에 쌓아 둬요.')
             return redirect(url_for('admin_life_ai'))
-        save_settings(1 if request.form.get('auto') else 0, per, 1 if request.form.get('publish') else 0)
+        save_settings(1 if request.form.get('auto') else 0, per, 1 if request.form.get('publish') else 0, 1 if request.form.get('cats') else 0)
         flash('자동 쓰기 설정을 저장했어요.')
         return redirect(url_for('admin_life_ai'))
 
@@ -1427,7 +1476,7 @@ def install(S):
         log({'status': 'recheck', 'kind': '', 'trigger': 'recheck', 'reason': f'최근 {days}일 게시 글 {len(rows)}개 중 {len(out)}개를 초안으로 돌렸어요'})
         return out
 
-    app.extensions['soboru_writer'] = {'kosis_facts': kosis_facts, 'recheck': recheck, 'proofread': proofread, 'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'check_text': check_text, 'chat': chat}
+    app.extensions['soboru_writer'] = {'kosis_facts': kosis_facts, 'recheck': recheck, 'proofread': proofread, 'generate': generate, 'daily': daily, 'collect': collect, 'kind_ready': kind_ready, 'settings': settings, 'save_settings': save_settings, 'check_text': check_text, 'chat': chat}
     S.writer_daily = daily
 
 
