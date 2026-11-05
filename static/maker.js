@@ -206,14 +206,14 @@
   function bg(ctx, c) { ctx.fillStyle = c; ctx.fillRect(0, 0, 1080, 1350); }
   function full(ctx, img, empty) { bg(ctx, empty); if (img) cover(ctx, img, 0, 0, 1080, 1350); }
   function photo(ctx, img, x, y, w, h, r, empty) {
-    if (h < 160) return;
+    if (h < 160 || (!img && !empty)) return;
     ctx.save(); rrect(ctx, x, y, w, h, r || 0); ctx.clip();
     if (img) cover(ctx, img, x, y, w, h); else { ctx.fillStyle = empty; ctx.fillRect(x, y, w, h); }
     ctx.restore();
   }
   function paras(t) { return String(t || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
   function TT(ctx, t, size, w) { return layout(ctx, t, size, 800, 800, w || TW, {lh: 1.24, ls: -3}); }
-  function BT(ctx, t, size, w) { return layout(ctx, paras(t).join('\n'), size || 38, 500, 800, w || TW, {lh: 1.6, ls: -1}); }
+  function BT(ctx, t, size, w) { return layout(ctx, paras(t).join('\n\n'), size || 38, 500, 800, w || TW, {lh: 1.6, ls: -1}); }
   function lineOf(T, i) { return {lines: [T.lines[i]], width: [T.width[i]], lh: T.lh, size: T.size, w0: T.w0, w1: T.w1, ls: T.ls}; }
   // 제목: 마지막 줄만 다른 색 또는 형광펜
   function title2(ctx, T, x, y, c1, c2, mark) {
@@ -246,18 +246,22 @@
   function lastPage(ctx, s, n, N, P) {
     bg(ctx, P.bg); if (P.deco) P.deco(ctx);
     if (P.top) { drawLogo(ctx, P.logo, 540, 46, 38, 'center'); pageNo(ctx, n, N, P.sub); } else brandFoot(ctx, P.logo, n, N, P.sub);
-    var y = 150; y += pill(ctx, s.tag || '이것만 챙겨요', X, y, P.kickInk, P.kick) + 40;
-    paras(s.items).slice(0, 4).forEach(function (tip, k) {
-      var T = layout(ctx, tip, 40, 700, 900, TW - 150, {lh: 1.4, ls: -1}), h = Math.max(116, textH(T) + 56);
+    // 맺음말(형광펜)을 위에 크게, 그 아래 챙길 것 카드 — 묶음 전체를 세로 가운데에 (빈자리 없게)
+    var E = TT(ctx, s.title || '헷갈리면 저장해 두세요', 88);
+    var tips = paras(s.items).slice(0, 4).map(function (tip) { var T = layout(ctx, tip, 46, 700, 900, TW - 150, {lh: 1.4, ls: -1}); return {T: T, h: Math.max(150, textH(T) + 70)}; });
+    var total = 56 + 40 + textH(E) + 64 + tips.reduce(function (a, t) { return a + t.h + 26; }, 0) - 26;
+    var y = Math.max(150, (Y1 - 50 - total) / 2 + 40);
+    y += pill(ctx, s.tag || '이것만 챙겨요', X, y, P.kickInk, P.kick, 32) + 40;
+    E.lines.forEach(function (ln, i) { ctx.fillStyle = P.mark; ctx.fillRect(X - 8, y + i * E.lh + E.size * 0.55, E.width[i] + 16, E.size * 0.48); });
+    y += title2(ctx, E, X, y, P.end, P.end, null) + 64;
+    tips.forEach(function (t, k) {
+      var h = t.h;
       ctx.fillStyle = P.card; rrect(ctx, X, y, TW, h, 28); ctx.fill();
       if (P.cardLine) { ctx.lineWidth = 3; ctx.strokeStyle = P.cardLine; ctx.stroke(); }
-      ctx.fillStyle = P.num; ctx.beginPath(); ctx.arc(X + 62, y + h / 2, 30, 0, 7); ctx.fill();
-      ctx.font = F(900, 32); ctx.fillStyle = P.numInk; ctx.textAlign = 'center'; ctx.fillText(String(k + 1), X + 62, y + h / 2 + 11); ctx.textAlign = 'left';
-      drawText(ctx, T, X + 120, y + h / 2 - textH(T) / 2, P.tip); y += h + 20;
+      ctx.fillStyle = P.num; ctx.beginPath(); ctx.arc(X + 62, y + h / 2, 34, 0, 7); ctx.fill();
+      ctx.font = F(900, 36); ctx.fillStyle = P.numInk; ctx.textAlign = 'center'; ctx.fillText(String(k + 1), X + 62, y + h / 2 + 13); ctx.textAlign = 'left';
+      drawText(ctx, t.T, X + 120, y + h / 2 - textH(t.T) / 2, P.tip); y += h + 26;
     });
-    var E = TT(ctx, s.title || '헷갈리면 저장해 두세요', 80), ey = Math.max(y + 40, Y1 - 70 - textH(E));
-    E.lines.forEach(function (ln, i) { ctx.fillStyle = P.mark; ctx.fillRect(X - 8, ey + i * E.lh + E.size * 0.55, E.width[i] + 16, E.size * 0.48); });
-    title2(ctx, E, X, ey, P.end, P.end, null);
     if (s.sub) { ctx.font = F(700, 26); ctx.fillStyle = P.sub; ctx.fillText(s.sub, X, Y1); }
   }
   // 인용 장 (밝은 바탕·어두운 바탕)
@@ -265,20 +269,27 @@
     bg(ctx, P.bg);
     if (img && P.blur) { ctx.save(); ctx.filter = 'blur(12px) brightness(.35)'; cover(ctx, img, -40, -40, 1160, 1430); ctx.restore(); }
     drawLogo(ctx, P.logo, 540, 46, 38, 'center'); pageNo(ctx, n, N, P.sub);
-    ctx.font = F(900, 220); ctx.fillStyle = OR; ctx.fillText('“', X - 10, 470);
-    var T = layout(ctx, s.title, 74, 900, 900, TW, {lh: 1.28, ls: -4}), y = 520; y += drawText(ctx, T, X, y, P.ink, {mark: OR, markInk: '#111'});
-    if (s.sub) { ctx.font = F(700, 38); ctx.fillStyle = P.sub; ctx.fillText('— ' + s.sub, X, Math.min(y + 70, Y1)); }
+    var T = layout(ctx, s.title, 88, 900, 900, TW, {lh: 1.28, ls: -4}), y = Math.max(420, (1350 - textH(T) - 100) / 2 + 40);
+    ctx.font = F(900, 240); ctx.fillStyle = OR; ctx.fillText('“', X - 10, y - 50);
+    y += drawText(ctx, T, X, y, P.ink, {mark: OR, markInk: '#111'});
+    if (s.sub) { ctx.font = F(700, 42); ctx.fillStyle = P.sub; ctx.fillText('— ' + s.sub, X, Math.min(y + 80, Y1)); }
   }
   // 아래에서부터 쌓는 글 묶음(꼬리표 → 큰 숫자 → 제목 → 본문)의 높이와 그리기
   function stackUp(ctx, s, o) {
-    var T = TT(ctx, s.title, o.tsize, TW), B = paras(s.items).length ? fitBody(ctx, s.items, o.bsize || 38, TW, o.bmax || 330) : null;
+    var T = TT(ctx, s.title, o.tsize, TW);
     var nh = s.sub && o.num ? fitSize(ctx, s.sub, o.nmax || 120, TW) + 24 : 0;
-    var h = (s.tag ? 76 : 0) + nh + textH(T) + (B ? 28 + textH(B) : 0);
-    return {h: h, draw: function (y) {
+    var head = (s.tag ? 76 : 0) + nh + textH(T), B = null;
+    if (paras(s.items).length) {
+      // 글만 있는 본문(사진 없음)은 빈자리가 남지 않게 글씨를 남은 높이에 맞춰 키움 (운영자 2026-11-05: 본문이 휑하면 안 됨)
+      if (o.avail) { for (var z = 52; z >= 34; z -= 2) { B = BT(ctx, s.items, z, TW); if (head + 44 + textH(B) <= o.avail) break; } }
+      else B = fitBody(ctx, s.items, o.bsize || 38, TW, o.bmax || 330);
+    }
+    var gap = o.avail ? 44 : 28, h = head + (B ? gap + textH(B) : 0);
+    return {h: h, at: function (top) { return top + Math.max(0, (o.avail - h) * 0.3); }, draw: function (y) {
       if (s.tag) { if (o.kickPill) pill(ctx, s.tag, X, y, o.kickInk, o.kickPill); else { ctx.font = F(800, 30); ctx.letterSpacing = '3px'; ctx.fillStyle = o.kick; ctx.fillText(s.tag, X, y + 30); ctx.letterSpacing = '0px'; } y += 76; }
       if (nh) { bigNum(ctx, s.sub, X, y, o.nmax || 120, o.num); y += nh; }
       y += title2(ctx, T, X, y, o.ink, o.ink2, o.mark);
-      if (B) { y += 28; drawText(ctx, B, X, y, o.body, {boldColor: o.bold || ORD}); }
+      if (B) { y += gap; drawText(ctx, B, X, y, o.body, {boldColor: o.bold || ORD}); }
     }};
   }
 
@@ -295,7 +306,7 @@
     },
     body: function (ctx, s, img, n, N) {
       bg(ctx, '#FAFAF7'); drawLogo(ctx, 'brown', 540, 46, 38, 'center'); pageNo(ctx, n, N, ORD);
-      var st = stackUp(ctx, s, {tsize: 60, kick: ORD, num: OR, ink: '#111', body: '#2a2a2a'}), y = 160;
+      var st = stackUp(ctx, s, {tsize: img ? 60 : 72, kick: ORD, num: OR, ink: '#111', body: '#2a2a2a', avail: img ? 0 : Y1 - 160}), y = img ? 160 : st.at(160);
       if (img && Y1 - 60 - st.h - y >= 300) { photo(ctx, img, X, y, TW, Math.min(500, Y1 - 60 - st.h - y), 0); y += Math.min(500, Y1 - 60 - st.h - y) + 50; }
       st.draw(y);
       ctx.fillStyle = '#111'; ctx.fillRect(X, 1264, TW, 2);
@@ -317,9 +328,9 @@
     body: function (ctx, s, img, n, N) {
       bg(ctx, '#F6F1EA'); var lab = String(n).padStart(2, '0') + (s.tag ? ' · ' + s.tag : '');
       pill(ctx, lab, X, 96, '#fff', '#3A2E25'); pageNo(ctx, n, N, '#8A6F5A');
-      var st = stackUp(ctx, Object.assign({}, s, {tag: ''}), {tsize: 70, num: OR, nmax: 150, ink: '#191512', mark: '#FFD99E', body: '#4E4237'}), top = 200, ph = Y1 - st.h - 50 - top;
-      if (ph >= 220) photo(ctx, img, X, top, TW, ph, 36, '#EFE4D4');
-      st.draw(Y1 - st.h); drawLogo(ctx, 'brown', X, 1272, 34);
+      var st = stackUp(ctx, Object.assign({}, s, {tag: ''}), {tsize: img ? 70 : 78, num: OR, nmax: 150, ink: '#191512', mark: '#FFD99E', body: '#4E4237', avail: img ? 0 : Y1 - 200}), top = 200, ph = Y1 - st.h - 50 - top;
+      if (img && ph >= 220) photo(ctx, img, X, top, TW, ph, 36);
+      st.draw(img ? Y1 - st.h : st.at(200)); drawLogo(ctx, 'brown', X, 1272, 34);
     },
     quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#F6F1EA', logo: 'brown', ink: '#191512', sub: '#8A6F5A'}); },
     last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#FFDF6B', logo: 'black', sub: '#5C4A00', kick: '#191512', kickInk: '#fff', card: '#fff', num: OR, numInk: '#fff', tip: '#191512', end: '#191512', mark: '#fff'}); }
@@ -346,10 +357,11 @@
     },
     body: function (ctx, s, img, n, N) {
       full(ctx, img, '#F6EBDA');
-      var B = paras(s.items).length ? fitBody(ctx, s.items, 38, TW, 420) : null, T = TT(ctx, s.title, 58, TW - 40);
-      var est = 170 + boxesH(ctx, s.title, 58) + (B ? 40 + textH(B) : 0) + (s.sub ? 140 : 0);
+      var th = boxesH(ctx, s.title, img ? 58 : 66), room = Y1 - 210 - th - (s.sub ? 140 : 0), B = null;
+      if (paras(s.items).length) { if (img) B = fitBody(ctx, s.items, 38, TW, 420); else for (var z = 52; z >= 34; z -= 2) { B = BT(ctx, s.items, z, TW); if (textH(B) <= room) break; } }
+      var est = 170 + th + (B ? 40 + textH(B) : 0) + (s.sub ? 140 : 0);
       creamFade(ctx, est, '#FFF6E6'); this.head(ctx, s.tag); pageNo(ctx, n, N, '#8A6F5A');
-      var y = boxes(ctx, s.title, 58, 170) + 40;
+      var y = boxes(ctx, s.title, img ? 58 : 66, 170) + 44;
       if (B) y += drawText(ctx, B, X, y, '#4A3A30', {boldColor: ORD}) + 24;
       if (s.sub) bigNum(ctx, s.sub, X, y, 80, OR);
       shadowed(ctx, function () { brandFoot(ctx, img ? 'white' : 'brown', n, 0, BR); });
@@ -365,8 +377,8 @@
       this.panel(ctx, img, top); st.draw(top + 70); pageNo(ctx, n, N, '#fff'); brandFoot(ctx, 'brown', n, 0, BR);
     },
     body: function (ctx, s, img, n, N) {
-      var st = stackUp(ctx, s, {tsize: 64, kick: OR, num: OR, nmax: 110, ink: '#191512', body: '#4E4237'}), top = Math.max(Math.min(Y1 - st.h - 70, 640), 260);
-      this.panel(ctx, img, top);
+      var st = stackUp(ctx, s, {tsize: img ? 64 : 76, kick: OR, num: OR, nmax: 110, ink: '#191512', body: '#4E4237', avail: img ? 0 : Y1 - 150}), top = img ? Math.max(Math.min(Y1 - st.h - 70, 640), 260) : st.at(150) - 70;
+      if (img) this.panel(ctx, img, top); else bg(ctx, '#fff');
       ctx.font = F(900, 130); ctx.fillStyle = 'rgba(239,146,14,.16)'; ctx.textAlign = 'right'; ctx.fillText(String(n).padStart(2, '0'), 990, top + 140); ctx.textAlign = 'left';
       st.draw(top + 70); pageNo(ctx, n, N, '#fff'); brandFoot(ctx, 'brown', n, 0, BR);
     },
@@ -388,8 +400,8 @@
     body: function (ctx, s, img, n, N) {
       bg(ctx, '#FFF1DE'); pageNo(ctx, n, N, BR);
       ctx.font = F(900, 260); ctx.fillStyle = 'rgba(239,146,14,.18)'; ctx.textAlign = 'right'; ctx.fillText(String(n).padStart(2, '0'), 1010, 300); ctx.textAlign = 'left';
-      var st = stackUp(ctx, s, {tsize: 76, kick: OR, num: OR, nmax: 130, ink: BR, body: '#4A3A30'}); st.draw(170);
-      var top = 170 + st.h + 50; if (Y1 - top >= 240) photo(ctx, img, X, top, TW, Y1 - top, 40, '#F8D59F');
+      var st = stackUp(ctx, s, {tsize: img ? 76 : 84, kick: OR, num: OR, nmax: 130, ink: BR, body: '#4A3A30', avail: img ? 0 : Y1 - 170}); st.draw(img ? 170 : st.at(170));
+      var top = 170 + st.h + 50; if (img && Y1 - top >= 240) photo(ctx, img, X, top, TW, Y1 - top, 40);
       drawLogo(ctx, 'brown', X, 1272, 34);
     },
     quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#FFF1DE', logo: 'brown', ink: BR, sub: '#8A6F5A'}); },
@@ -404,8 +416,8 @@
     },
     body: function (ctx, s, img, n, N) {
       bg(ctx, '#fff'); pageNo(ctx, n, N, ORD);
-      var st = stackUp(ctx, s, {tsize: 70, kickPill: '#FFF1DE', kickInk: ORD, num: OR, nmax: 120, ink: '#191512', body: '#4E4237'}); st.draw(140);
-      var top = 140 + st.h + 50; if (Y1 - top >= 240) photo(ctx, img, X, top, TW, Y1 - top, 44, '#FFF1DE'); brandFoot(ctx, 'brown', n, 0, BR);
+      var st = stackUp(ctx, s, {tsize: img ? 70 : 80, kickPill: '#FFF1DE', kickInk: ORD, num: OR, nmax: 120, ink: '#191512', body: '#4E4237', avail: img ? 0 : Y1 - 140}); st.draw(img ? 140 : st.at(140));
+      var top = 140 + st.h + 50; if (img && Y1 - top >= 240) photo(ctx, img, X, top, TW, Y1 - top, 44); brandFoot(ctx, 'brown', n, 0, BR);
     },
     quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#fff', logo: 'brown', ink: '#191512', sub: ORD}); },
     last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#fff', logo: 'brown', sub: ORD, kick: '#FFF1DE', kickInk: ORD, card: '#FFF6EA', num: OR, numInk: '#fff', tip: '#333', end: '#191512', mark: '#FFD99E'}); }
@@ -419,7 +431,7 @@
     },
     body: function (ctx, s, img, n, N) {
       this.shade(ctx, img); pageNo(ctx, n, N, '#fff');
-      var st = stackUp(ctx, s, {tsize: 66, kick: OR, num: OR, nmax: 120, ink: '#fff', body: '#EDE6DD', bold: '#FFB347'}); st.draw(Y1 - st.h); drawLogo(ctx, 'white', 990, 1272, 34, 'right');
+      var st = stackUp(ctx, s, {tsize: img ? 66 : 78, kick: OR, num: OR, nmax: 120, ink: '#fff', body: '#EDE6DD', bold: '#FFB347', avail: img ? 0 : Y1 - 170}); st.draw(img ? Y1 - st.h : st.at(170)); drawLogo(ctx, 'white', 990, 1272, 34, 'right');
     },
     quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#000', blur: true, logo: 'white', ink: '#fff', sub: '#eee'}); },
     last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#191512', logo: 'white', sub: '#CDBFB0', kick: OR, kickInk: '#fff', card: '#2A2420', num: OR, numInk: '#fff', tip: '#F2ECE4', end: '#fff', mark: ORD}); }
@@ -466,7 +478,8 @@
       REEL[s.design](ctx, s);
     } else {
       var role = OLD_ROLE[s.design] || s.design, th = CARD[deck.theme] || CARD.soboru;
-      (th[role] || th.body).call(th, ctx, s, el, i + 1, slides.length);
+      // 운영자 2026-11-05: 뉴닉처럼 이미지는 표지에만, 본문 장은 글만
+      (th[role] || th.body).call(th, ctx, s, role === 'cover' ? el : null, i + 1, slides.length);
     }
   }
   function draw() {
@@ -496,7 +509,8 @@
       cv.hidden = !(mode === 'card' && role === 'cover' && deck.covers.length);
       $('#mk-cv').innerHTML = deck.covers.map(function (c, k) { return '<label class="mk-cv"><input type="radio" name="mk-cv" value="' + k + '"' + (c.text === s.title ? ' checked' : '') + '><span><small>' + esc(c.type || ('문구 ' + (k + 1))) + '</small>' + esc(c.text).replace(/\n/g, '<br>') + '</span></label>'; }).join('');
     }
-    var sr = $('#mk-scene-row'); if (sr) sr.hidden = mode !== 'card' || role === 'last' || role === 'quote';
+    var sr = $('#mk-scene-row'); if (sr) sr.hidden = mode !== 'card' || role !== 'cover';
+    var mf = $('#mk-file') && $('#mk-file').closest('label'); if (mf) mf.hidden = mode === 'card' && role !== 'cover';
     $('#mk-design').innerHTML = ds.map(function (d) { return '<label class="mk-chip"><input type="radio" name="mk-d" value="' + d[0] + '"' + (s.design === d[0] ? ' checked' : '') + '><span>' + d[1] + '</span></label>'; }).join('');
     form.querySelectorAll('[data-f]').forEach(function (el) { var k = el.dataset.f; if (el.type === 'checkbox') el.checked = !!s[k]; else el.value = s[k] == null ? '' : s[k]; });
     $('#mk-media-st').textContent = s.media ? (s.media.kind === 'video' ? '영상' : '사진') + ' 넣었어요' + (s.media.len ? ' (' + s.media.len.toFixed(1) + '초)' : '') : (mode === 'reel' ? '사진이나 영상을 골라 주세요' : '사진 고르기 (속 장은 비워도 돼요)');
@@ -529,7 +543,7 @@
     list = list.filter(function (s) { return (s.scene || '').trim(); });
     if (!list.length || drawing) return Promise.resolve();
     drawing = true; var done = 0; fill();
-    say('AI가 그림 ' + list.length + '장을 새로 그리고 있어요. 장마다 30초~1분쯤 걸려요.');
+    say('AI가 표지 그림을 새로 그리고 있어요. 30초~1분쯤 걸려요.');
     return Promise.all(list.map(function (s) {
       return post(C.draw, JSON.stringify({scene: s.scene}), 'application/json').then(function (j) {
         if (!j.ok) throw new Error(j.error || '그림을 그리지 못했어요.');
@@ -638,14 +652,14 @@
     return loadMedia(j).then(function (ms) {
       if (keep) ms.unshift(keep);
       slides.forEach(function (s, i) {
-        if (!ms.length || (mode === 'card' && (s.design === 'last' || s.design === 'quote'))) return;
+        if (!ms.length || (mode === 'card' && s.design !== 'cover')) return;
         var m = ms[i % ms.length]; s.media = m;
         if (m.kind === 'video') { s.start = Math.min(i * 3, Math.max(0, m.len - s.dur)); s.dur = Math.min(s.dur, Math.floor(m.len * 10) / 10); s.end = s.start + s.dur; seek(s); }
       });
       cur = 0; fill(); draw();
       var n = slides.length, miss = slides.filter(function (s) { return !s.media; }).length;
       say((mode === 'card' ? '카드 ' + n + '장을' : '장면 ' + n + '개를') + ' 짰어요. ' + (mode === 'card' && deck.covers.length ? '표지 문구 ' + deck.covers.length + '개 중 하나를 골라 주세요. ' : '') + (miss && mode === 'reel' ? '사진·영상 없는 장면에 넣어 주세요. ' : '') + '글과 디자인은 자유롭게 고쳐도 돼요.' + (j.warn ? ' ' + j.warn : ''));
-      if (mode === 'card' && j.draw) return aiDraw(slides.filter(function (s) { return !s.media && (s.design === 'cover' || s.design === 'body'); }));
+      if (mode === 'card' && j.draw) return aiDraw(slides.filter(function (s) { return !s.media && s.design === 'cover'; }));
     });
   }
   function aiBuild(payload, fallback) {
@@ -662,6 +676,20 @@
     letSel.disabled = true; aiBuild({letter: letSel.value}).then(function () { letSel.disabled = false; });
   });
   if (artSel && letSel) artSel.addEventListener('change', function () { if (artSel.value) letSel.value = ''; });
+  // 네이버 경제 뉴스 댓글 많은 순 (운영자 2026-11-05) — 고르면 그 기사 링크로 AI가 짬
+  var nvSel = $('#mk-naver');
+  if (nvSel) {
+    fetch(C.naver, {credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j.ok || !(j.items || []).length) throw new Error(j.error || '');
+      nvSel.innerHTML = '<option value="">뉴스 고르기</option>' + j.items.map(function (x) { return '<option value="' + esc(x.url) + '">' + esc(x.title.slice(0, 44)) + (x.comments >= 0 ? ' · 댓글 ' + x.comments.toLocaleString('ko-KR') : '') + '</option>'; }).join('');
+    }).catch(function () { nvSel.innerHTML = '<option value="">불러오지 못했어요. 링크를 아래에 붙여 넣어 주세요</option>'; });
+    nvSel.addEventListener('change', function () {
+      if (!nvSel.value) return;
+      if (artSel) artSel.value = ''; if (letSel) letSel.value = '';
+      nvSel.disabled = true; aiBuild({note: nvSel.value}).then(function () { nvSel.disabled = false; });
+    });
+    [artSel, letSel].forEach(function (el) { if (el) el.addEventListener('change', function () { if (el.value) nvSel.value = ''; }); });
+  }
   var copyBtn = $('#mk-cap-copy');
   if (copyBtn) copyBtn.onclick = function () {
     var done = function () { copyBtn.textContent = '복사했어요'; setTimeout(function () { copyBtn.textContent = '캡션 복사'; }, 1600); };

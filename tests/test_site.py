@@ -6340,6 +6340,18 @@ class SiteTest(unittest.TestCase):
         self.assertTrue(j['ok']); self.assertIn('a delivery rider at night', sent['prompt']); self.assertIn('never a recognizable face', sent['prompt']); self.assertEqual(sent['size'], '1024x1536')
         self.addCleanup(lambda: (art / j['url'].rsplit('/', 1)[1]).unlink(missing_ok=True))
         self.assertEqual(admin.get(j['url']).status_code, 200)
+        # 네이버 경제 뉴스 댓글 많은 순
+        sec = ('<a href="https://n.news.naver.com/mnews/article/001/0000000001?sid=101" class="sa_text_title"><strong>배달비 또 오른다, 소비자 부담 커져</strong></a>'
+               '<a href="https://n.news.naver.com/mnews/article/015/0000000002"><strong>카드 연회비 돌려받는 길 열린다</strong></a><a href="https://n.news.naver.com/mnews/article/015/0000000002">사진</a>'
+               '<a href="https://example.com/x">광고 기사 제목이 길어요</a>')
+        def fake_get(url, referer=''):
+            if 'section/101' in url: return sec
+            return 'cb({"result":{"count":{"comment":%d,"total":9}}})' % (12 if '0000000001' in url else 345)
+        with patch.object(mag_maker, '_get', fake_get):
+            jn = admin.get('/admin/magazine/maker/naver').get_json()
+        self.assertTrue(jn['ok']); self.assertEqual([x['comments'] for x in jn['items']], [345, 12])
+        self.assertEqual(jn['items'][0], {'url': 'https://n.news.naver.com/mnews/article/015/0000000002', 'title': '카드 연회비 돌려받는 길 열린다', 'comments': 345})
+        self.assertIn('id="mk-naver"', admin.get('/admin/magazine/maker').get_data(as_text=True))
         call = lambda d: admin.post('/admin/magazine/maker/render', json=d, headers={'X-CSRFToken': tok})
         if not shutil.which('ffmpeg'):
             self.assertEqual(call({'scenes': []}).status_code, 503); return
