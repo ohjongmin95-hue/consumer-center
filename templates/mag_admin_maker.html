@@ -55,6 +55,6 @@
   </div>
   </div>
 </div></main>
-<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'draw': url_for('mag_maker_draw'), 'naver': url_for('mag_maker_naver'), 'status': url_for('mag_maker_status'), 'mag_made_new': url_for('mag_made_new'), 'made_base': url_for('mag_made_done', i=0)[:-4], 'assist': url_for('mag_assist'), 'arts': arts}|tojson }};</script>
+<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'made_new': url_for('mag_made_new'), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'draw': url_for('mag_maker_draw'), 'naver': url_for('mag_maker_naver'), 'status': url_for('mag_maker_status'), 'mag_made_new': url_for('mag_made_new'), 'made_base': url_for('mag_made_done', i=0)[:-4], 'assist': url_for('mag_assist'), 'arts': arts}|tojson }};</script>
 <script src="{{ asset('maker.js') }}"></script>
 {% endblock %}

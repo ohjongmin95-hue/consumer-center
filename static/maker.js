@@ -324,7 +324,7 @@
       if (img && Y1 - 60 - st.h - y >= 300) { photo(ctx, img, X, y, TW, Math.min(500, Y1 - 60 - st.h - y), 0); y += Math.min(500, Y1 - 60 - st.h - y) + 50; }
       st.draw(y);
       ctx.fillStyle = '#111'; ctx.fillRect(X, 1264, TW, 2);
-      ctx.font = F(700, 26); ctx.fillStyle = ORD; ctx.fillText('소보루 매거진', X, 1306); ctx.textAlign = 'right'; ctx.fillText('soboru.co.kr', 990, 1306); ctx.textAlign = 'left';
+      ctx.font = F(700, 26); ctx.fillStyle = ORD; ctx.fillText('소보루 매거진', X, 1306); ctx.textAlign = 'right'; ctx.fillText('consumerjebo.co.kr', 990, 1306); ctx.textAlign = 'left';
     },
     quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#000', blur: true, logo: 'white', ink: '#fff', sub: '#eee'}); },
     last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#FAFAF7', top: true, logo: 'brown', sub: ORD, kick: OR, kickInk: '#fff', card: '#fff', cardLine: '#EADFCF', num: OR, numInk: '#fff', tip: '#111', end: '#111', mark: '#FFD99E'}); }
