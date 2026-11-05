@@ -3288,17 +3288,19 @@ main img,main video,main iframe,main table{max-width:100%}
 .nm-rh h2{margin:0;font-family:"Archivo Black",Inter,sans-serif;font-weight:400;font-size:clamp(34px,4vw,56px);line-height:1;letter-spacing:-.03em}
 .nm-rh h2 small{display:block;margin-top:10px;font-family:"Pretendard Variable",Pretendard,sans-serif;font-size:14px;font-weight:600;letter-spacing:0;color:#666}
 .nm-rh a{flex:none;font-family:Inter,sans-serif;font-size:13px;font-weight:800;letter-spacing:.1em;color:#111;text-decoration:none;border-bottom:2px solid #EF920E;padding-bottom:2px}
-.nm-rl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.nm-rl{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}  /* 운영자 2026-11-05: 너무 크다 → 한 줄에 6개 (너무 작지 않게 화면 따라 5·4·3) */
+@media (max-width:1400px){.nm-rl{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (max-width:1100px){.nm-rl{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .nm-rl figure{margin:0;min-width:0}
 .nm-rl video{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;background:#111;border-radius:0}
-.nm-rl figcaption{display:grid;gap:6px;margin-top:12px}
-.nm-rl figcaption b{font-size:16px;font-weight:700;line-height:1.4;letter-spacing:-.02em;word-break:keep-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nm-rl figcaption{display:grid;gap:4px;margin-top:10px}
+.nm-rl figcaption b{font-size:15px;font-weight:700;line-height:1.4;letter-spacing:-.02em;word-break:keep-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .nm-rl figcaption a{font-size:13px;font-weight:600;color:#CE6719;text-decoration:none}
 @media (max-width:760px){
   .nm-reels{padding-block:16px 48px}
   .nm-rl{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin-right:calc(-1 * max(24px,env(safe-area-inset-right)));padding-right:max(24px,env(safe-area-inset-right))}
   .nm-rl::-webkit-scrollbar{display:none}
-  .nm-rl figure{flex:0 0 62%;scroll-snap-align:start}
+  .nm-rl figure{flex:0 0 42%;scroll-snap-align:start}
 }
 .nm-lt .nm-kick{margin:0 0 14px;font-size:17px;font-weight:800;color:#fff;letter-spacing:-.01em}.nm-lt .nm-kick::before{content:"🍞 ";font-family:Tossface,sans-serif}
 /* 운영자 2026-11-05: 소보루 레터 구독 칸 (하단 귤색 띠에서 따로 뺌). 캐릿과 다르게 (OH): 스티커·좌우 큰 두 줄 대신

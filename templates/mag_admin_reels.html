@@ -4,7 +4,7 @@
 {# 운영자 2026-11-05: 매거진 첫 화면 'REELS' 칸에 릴스 영상 올리기 #}
 <main class="page mz-cms"><div class="wrap">
   <div class="page-intro"><h1 class="page-title">릴스</h1></div>
-  <p class="ms-lead">올린 영상이 매거진 첫 화면 <b>REELS</b> 칸에 나와요(켠 것 8개까지). 칸의 자리는 <a href="{{ url_for('mag_screen') }}">화면 편집</a>에서 묶음 막대로 옮겨요. 세로(9:16) MP4가 잘 맞아요.</p>
+  <p class="ms-lead">올린 영상이 매거진 첫 화면 <b>REELS</b> 칸에 나와요(켠 것 12개까지, PC에서 한 줄에 6개). 칸의 자리는 <a href="{{ url_for('mag_screen') }}">화면 편집</a>에서 묶음 막대로 옮겨요. 세로(9:16) MP4가 잘 맞아요.</p>
   <section class="mg-sec">
     <h2>New<span>새 릴스</span></h2>
     <form method="post" class="mg-reel-new" id="rl-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="add"><input type="hidden" name="video" id="rl-video">

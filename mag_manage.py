@@ -184,7 +184,7 @@ def install(S):
 
     def reels(all_=False):
         with conn() as db:
-            return db.execute('SELECT * FROM mag_reels' + ('' if all_ else ' WHERE active=1') + ' ORDER BY sort, id DESC' + ('' if all_ else ' LIMIT 8')).fetchall()
+            return db.execute('SELECT * FROM mag_reels' + ('' if all_ else ' WHERE active=1') + ' ORDER BY sort, id DESC' + ('' if all_ else ' LIMIT 12')).fetchall()
     app.jinja_env.globals['mag_reels'] = reels
 
     @app.route('/admin/magazine/reels', methods=['GET', 'POST'])
