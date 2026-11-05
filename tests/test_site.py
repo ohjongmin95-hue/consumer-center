@@ -4197,7 +4197,7 @@ class SiteTest(unittest.TestCase):
                 x = db.execute('SELECT * FROM ai_articles WHERE article_id=?', (aid,)).fetchone()
             self.assertEqual((a['status'], a['origin'], a['ext_key']), ('draft', 'ai', 'ai:reports:' + datetime.date.today().isoformat()))
             self.assertIsNone(a['published_at']); self.assertEqual(a['source_name'], '소보루 공개 제보 통계')
-            self.assertEqual(len(a['summary'].split('\n')), 3); self.assertIn('## ✅ 이렇게 하세요', a['body'])
+            self.assertEqual(len(a['summary'].split('\n')), 3); self.assertIn('## 이렇게 대비하자', a['body'])
             self.assertEqual(x['check_ok'], 1)
             edit = admin.get(f'/admin/life/{aid}').get_data(as_text=True)
             self.assertIn('숫자 확인됨', edit); self.assertIn('AI에 넘긴 자료 보기', edit)
@@ -4455,10 +4455,10 @@ class SiteTest(unittest.TestCase):
                'tips': ['결제일 알림을 켜세요'], 'closing': {'heading': '소보루와 함께 시작해요', 'paragraphs': ['수상한 결제 문자를 받았다면 사기 주의에서 번호를 찾아보세요.']}}
         title, summary, body, cat = sw.assemble(out, 'feature')
         self.assertTrue(body.startswith('처음이라는 말은 늘 설레요.'))
-        self.assertLess(body.index('> 💡'), body.index('## 💳'))
+        self.assertNotIn('> 💡', body); self.assertIn('## 쓰면서 꼭 기억해야 할 것들', body); self.assertNotIn('💳', body)  # 운영자 2026-11-05: 매거진 기사체 — 핵심 상자·이모지 없음
         self.assertIn('### 일시불을 써 보세요', body)  # 번호는 본문에 넣지 않음 (숫자 검사)
         self.assertIn('※ 리볼빙: 카드값 일부만', body)
-        self.assertLess(body.index('## ✅ 이렇게 하세요'), body.index('## 🤝 소보루와 함께 시작해요'))
+        self.assertLess(body.index('## 이렇게 대비하자'), body.index('## 소보루와 함께 시작해요'))
         with self.site.app.test_request_context('/'): html = str(self.site.app.jinja_env.globals['life_body'](body))
         self.assertIn('<span class="sb-point-n" aria-hidden="true">2</span>결제일을 기억하세요', html)
         self.assertIn("<dl class=\"sb-terms\">", html); self.assertIn("<dt>리볼빙</dt>", html)  # 용어 풀이는 상자 하나로
