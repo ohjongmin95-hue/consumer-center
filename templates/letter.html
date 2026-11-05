@@ -9,7 +9,7 @@
    운영자 2026-11-04: soboru.co.kr = 소보루 매거진. 뉴소스형(귤색 바탕·큰 표지 사진·HOT ARTICLE·카테고리), 하단은 귤색 'READ BEFORE YOU BUY' 구독 띠 (뉴소스 문구는 그대로 쓰지 않음).
    SOBORU = 소비를 보는 새로운 루트. 갈색은 로고에만, 글자는 흰색·검정. 귀여운 그림 대신 사진이 없으면 큰 영문 활자 표지.
    묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['letter']) #}
-{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '리콜': 'RECALL'} %}
+{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '뷰티': 'BEAUTY', '리콜': 'RECALL'} %}
 {% macro cover(a, n) %}{% set src = mag_photo(a['id']) %}{% if src %}<img src="{{ src }}" alt="" loading="lazy">{% else %}<span class="nm-type t{{ n % 3 }}"><img src="{{ asset('img/soboru-wordmark.png') }}" alt=""><b>{{ EN.get(a['category'], 'LIFE') }}</b><em>{{ a['category'] }}</em></span>{% endif %}{% endmacro %}
 <main class="lt-page nm-page" id="top">
   {% for blk in blocks('letter') %}{{ ed_block('letter', blk) }}

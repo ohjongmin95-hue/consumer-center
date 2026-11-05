@@ -51,7 +51,7 @@ def install(S):
             have = {r[0] for r in db.execute("SELECT DISTINCT category FROM articles WHERE status='published'")}
         return [c for c in LIFE_CATEGORIES if c in have]
 
-    EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '리콜': 'RECALL'}
+    EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '뷰티': 'BEAUTY', '리콜': 'RECALL'}
 
     def mag_nav_ld():
         # 검색 결과 아래 바로가기 링크(사이트링크) 후보: 전체 기사 + 분야별 목록
@@ -60,7 +60,7 @@ def install(S):
                 'itemListElement': [{'@type': 'SiteNavigationElement', 'position': i + 1, 'name': n.strip(), 'url': u} for i, (n, u) in enumerate(nav)]}
 
     # 운영자 2026-11-05: 첫 화면 'Aisles'에 생활(LIVING)·금융(MONEY)까지 모든 분야를 보여 줌 (글이 아직 없는 분야도)
-    MAG_ORDER = ['쇼핑', '음식', '생활', '금융', '통신', '여행', '자동차', '리콜']
+    MAG_ORDER = ['쇼핑', '뷰티', '음식', '생활', '금융', '통신', '여행', '자동차', '리콜']
     mag_aisles = [c for c in MAG_ORDER if c in LIFE_CATEGORIES] + [c for c in LIFE_CATEGORIES if c not in MAG_ORDER]
     app.jinja_env.globals.update(mag_aisles=mag_aisles, mag_seo_text=mag_seo_text, mag_verification=mag_verification, mag_categories=mag_categories, mag_nav_ld=mag_nav_ld)
 

@@ -285,6 +285,7 @@ def install(S):
                   '금융': ['coins jar savings', 'stock market chart screen', 'calculator receipts', 'piggy bank minimal', 'bank building architecture', 'credit card payment', 'korean won banknotes'],
                   '자동차': ['car interior aesthetic', 'gas station night', 'car on road minimal', 'electric car charging', 'parking garage'],
                   '생활': ['cozy home interior', 'living room plants', 'laundry minimal', 'apartment window light', 'home appliances kitchen'],
+                  '뷰티': ['cosmetics flat lay', 'skincare bottles minimal', 'makeup brushes', 'perfume bottle aesthetic', 'beauty store shelf'],
                   '리콜': ['product packaging boxes', 'factory inspection', 'warning label', 'cardboard boxes warehouse', 'quality control']}
     unsplash_state = {'busy': False, 'tried': {}}
     unsplash_lock = threading.Lock()
