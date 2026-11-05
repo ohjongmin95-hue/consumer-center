@@ -6150,9 +6150,9 @@ class SiteTest(unittest.TestCase):
         admin = self.login_admin(); tok = self.csrf(admin, '/admin/life?new=1')
         page = admin.get('/admin/life?new=1').get_data(as_text=True)
         self.assertIn('id="mz-ai-open"', page); self.assertIn('data-act="draft"', page)
-        reply = {}
+        reply, body_sent = {}, []
         def fake(url, headers, body, timeout):
-            reply['sys'] = body['messages'][0]['content']
+            reply['sys'] = body['messages'][0]['content']; body_sent.append(body['messages'][1]['content'])
             return 200, {'choices': [{'message': {'content': json.dumps(reply['out'], ensure_ascii=False)}}]}
         self.enterContext(patch.object(companydesk, 'post_json', fake)); self.enterContext(patch.dict(os.environ, {'OPENAI_API_KEY': 'k'}))
         body = '치킨 한 마리 값이 3만 원에 가까워졌다. 배달비도 함께 올랐다. 가맹점도 사정이 있다.'
@@ -6182,6 +6182,24 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(call({'act': 'rewrite', 'note': '짧은 글'}).status_code, 400)
         txt = mag_assist.read_article('https://news.example.com/a/1')
         self.assertTrue(txt.startswith('수원 블랙박스 사고')); self.assertNotIn('저작권자', txt); self.assertNotIn('메뉴', txt)
+        # 운영자 2026-11-05: 기사 넣으면 카드뉴스·릴스가 짜이게 — 기사 번호나 주소로, 기사 사진·영상 주소도 함께
+        with self.site.conn() as db:
+            db.execute("INSERT INTO articles(id,title,summary,body,category,status,created,updated) VALUES(99901,'차 앞으로 다가온 남성','요약','11월 3일 오후 2시께 수원 오목천동 교차로에서 서행하던 차 앞으로 한 남성이 다가왔다. 운전자 A씨는 시속 5km도 안 되게 서행 중이었다고 말했다.\n\n[사진 /art/body/body-20261105120000-001.webp | 사고 장면]\n\n[영상 /art/video/video-20261105120000-001.mp4]\n\n## 보험사에 조사 요청\n\nA씨는 보험사에 고의 사고인지 조사를 요청했다. 목격자들은 이전에도 비슷한 사고가 있었다고 했다.','자동차','published','2026-11-05','2026-11-05')")
+        def clean_art():
+            with self.site.conn() as db: db.execute('DELETE FROM articles WHERE id=99901')
+        self.addCleanup(clean_art)
+        reply['out'] = {'tag': 'CAR', 'slides': [{'design': 'clean', 'title': '차 앞으로\n다가온 남성'}, {'design': 'text', 'title': '교차로의 오후', 'items': '**11월 3일 오후 2시께** 수원 오목천동'}, {'design': 'bogus', 'title': '', 'items': ''}, {'design': 'quote', 'title': '시속 5km도 안 되게\n서행 중이었다', 'sub': '운전자 A씨'}]}
+        j = call({'act': 'cards', 'art': 99901}).get_json()
+        self.assertTrue(j['ok']); self.assertEqual(j['tag'], 'CAR'); self.assertEqual([x['design'] for x in j['slides']], ['clean', 'text', 'quote'])
+        self.assertEqual(j['photos'], ['/art/body/body-20261105120000-001.webp']); self.assertEqual(j['videos'], ['/art/video/video-20261105120000-001.mp4']); self.assertEqual(j['warn'], '')
+        self.assertIn('카드뉴스 5~7장', reply['sys']); self.assertIn('[기사]\n차 앞으로 다가온 남성', body_sent[-1])
+        reply['out'] = {'tag': '블랙박스 이슈 · 수원', 'scenes': [{'design': 'full', 'title': '일부러\n였을까?', 'sub': ': 블랙박스에 찍힌 사고', 'dur': 30}, {'design': 'chat', 'items': '운전자 A씨 : 시속 5km도 안 됐다\n목격자 : 이전에도 7번 있었다', 'dur': 'x'}]}
+        j = call({'act': 'reel', 'note': 'https://news.example.com/a/1'}).get_json()
+        self.assertTrue(j['ok']); self.assertEqual([x['dur'] for x in j['scenes']], [8, 4]); self.assertIn('7', j['warn'])
+        self.assertEqual(call({'act': 'reel', 'art': 4242424}).status_code, 400)
+        self.assertEqual(call({'act': 'cards', 'note': '짧은 글'}).status_code, 400)
+        page = admin.get('/admin/magazine/maker?mode=reel').get_data(as_text=True)
+        self.assertIn('id="mk-ai"', page); self.assertIn('AI로 장면 짜기', page)
 
     def test_magazine_screen_editor(self):
         # 운영자 2026-11-05: ND 화면편집처럼 — 매거진 화면(메인·기사·목록)을 PC·모바일로 띄워 놓고 그 자리에서 문구·묶음 순서를 고침

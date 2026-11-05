@@ -408,6 +408,8 @@ body.console.mag-studio .ms-main .mg-msg-act form:first-child button{height:40px
 .mk-right{display:flex;flex-direction:column;gap:20px;min-width:0}
 .mk-form{display:flex;flex-direction:column;gap:16px}
 .mk-form textarea,.mk-form input:not([type=checkbox]):not([type=radio]),.mk-form select{width:100%}
+.mk-src{display:flex;flex-direction:column;gap:12px;margin:0;padding:16px;border:1px solid var(--ms-ink);background:#fff}.mk-src legend{font-size:13px;font-weight:800;padding:0 6px}
+.mk-ai{padding:13px;border:0;background:var(--ms-or);color:#111;font-weight:800;font-size:15px;cursor:pointer}.mk-ai:disabled{opacity:.6}
 .mk-ds{border:0;margin:0;padding:0}.mk-ds legend{font-size:13px;font-weight:800;margin-bottom:8px}
 .mk-ds div{display:flex;flex-wrap:wrap;gap:8px}
 .mk-chip input{position:absolute;opacity:0}

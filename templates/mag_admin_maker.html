@@ -15,8 +15,12 @@
       <button type="button" class="mk-add" id="mk-add">+ {{ '장면' if mode == 'reel' else '장' }} 더하기</button>
     </div>
     <div class="mk-right"><form class="mk-form" id="mk-form" onsubmit="return false">
-      {% if arts %}<label class="mg-f">기사에서 가져오기 <small>(고르면 제목·분야{{ '와 속 장' if mode == 'card' }}을 채워요)</small>
-        <select id="mk-art"><option value="">기사 고르기</option>{% for a in arts %}<option value="{{ a.id }}">{{ a.title[:46] }}</option>{% endfor %}</select></label>{% endif %}
+      <fieldset class="mk-src"><legend>기사로 만들기</legend>
+        <p class="mk-help">기사를 고르거나 붙여 넣으면 AI가 {{ '장면·자막·길이' if mode == 'reel' else '장·제목·글' }}을 짜고 기사 사진{{ '·영상' if mode == 'reel' }}을 넣어요. 그다음 고치면 돼요.</p>
+        {% if arts %}<label class="mg-f">우리 매거진 기사<select id="mk-art"><option value="">기사 고르기</option>{% for a in arts %}<option value="{{ a.id }}">{{ a.title[:46] }}</option>{% endfor %}</select></label>{% endif %}
+        <label class="mg-f">다른 기사 <small>(주소나 기사 글 전체)</small><textarea id="mk-src" rows="3" placeholder="https://… 또는 기사 글 붙여 넣기"></textarea></label>
+        <button type="button" class="mk-ai" id="mk-ai">AI로 {{ '장면' if mode == 'reel' else '카드' }} 짜기</button>
+      </fieldset>
       <fieldset class="mk-ds"><legend>디자인</legend><div id="mk-design"></div></fieldset>
       <label class="mk-file"><input type="file" id="mk-file" accept="{{ 'image/*,video/mp4,video/quicktime,video/webm' if mode == 'reel' else 'image/*' }}" hidden><b>{{ '사진·영상 고르기' if mode == 'reel' else '사진 고르기' }}</b><span id="mk-media-st"></span></label>
       <label class="mg-f">{{ '태그' if mode == 'reel' else '분야' }} <small>(예: {{ '블랙박스 이슈 · 수원 오목천동' if mode == 'reel' else 'FOOD' }})</small><input data-f="tag" maxlength="40"></label>
@@ -43,6 +47,6 @@
   </div>
   </div>
 </div></main>
-<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'status': url_for('mag_maker_status'), 'arts': arts}|tojson }};</script>
+<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'status': url_for('mag_maker_status'), 'assist': url_for('mag_assist'), 'arts': arts}|tojson }};</script>
 <script src="{{ asset('maker.js') }}"></script>
 {% endblock %}
