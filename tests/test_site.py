@@ -6169,6 +6169,18 @@ class SiteTest(unittest.TestCase):
         j = call({'act': 'draft', 'note': '치킨값 3만 원, 배달비 인상, 가맹점 사정 취재 메모입니다.'}).get_json()
         self.assertTrue(j['ok']); self.assertIn('2', j['warn'])
         self.assertEqual(call({'act': 'draft', 'note': '짧음'}).status_code, 400)
+        # 운영자 2026-11-05: 기사 하나 주면 우리 매거진 기사로 — 주소면 서버가 기사 글을 읽어 옴, 원 매체 이름·보도 인용은 쓰지 않게
+        self.assertIn('data-act="rewrite"', page)
+        story = '<html><head><meta property="og:title" content="수원 블랙박스 사고"></head><body><nav>메뉴</nav><div id="article-view-content-div"><p>11월 3일 오후 2시께 수원 오목천동의 한 교차로에서 사고가 났다.</p><p>운전자 A씨는 시속 5km도 안 되게 서행 중이었다고 말했다. 목격자들은 이전에도 비슷한 사고가 있었다고 했다. A씨는 보험사에 고의 사고인지 조사를 요청했다.</p><p>저작권자 © 신문 무단전재</p></div></body></html>'
+        self.enterContext(patch('company_web_email.get', lambda u: story if u == 'https://news.example.com/a/1' else ''))
+        reply['out'] = {'title': '차 앞으로 다가온 남성', 'summary': '요약', 'body': '## 교차로의 3분\n\n11월 3일 오후 2시께 일이다.'}
+        j = call({'act': 'rewrite', 'note': 'https://news.example.com/a/1'}).get_json()
+        self.assertTrue(j['ok']); self.assertEqual(j['warn'], ''); self.assertIn('보도에 따르면', reply['sys'])
+        self.assertIn('원문 문장을 그대로 옮기지 않는다', reply['sys'])
+        self.assertEqual(call({'act': 'rewrite', 'note': 'https://news.example.com/none'}).status_code, 400)
+        self.assertEqual(call({'act': 'rewrite', 'note': '짧은 글'}).status_code, 400)
+        txt = mag_assist.read_article('https://news.example.com/a/1')
+        self.assertTrue(txt.startswith('수원 블랙박스 사고')); self.assertNotIn('저작권자', txt); self.assertNotIn('메뉴', txt)
 
     def test_magazine_screen_editor(self):
         # 운영자 2026-11-05: ND 화면편집처럼 — 매거진 화면(메인·기사·목록)을 PC·모바일로 띄워 놓고 그 자리에서 문구·묶음 순서를 고침

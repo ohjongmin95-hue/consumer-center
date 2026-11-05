@@ -146,13 +146,14 @@ dirty=false;document.getElementById('write').addEventListener('input',function()
   <p class="ai-note">에디터가 쓴 글과 메모에 있는 사실·숫자만 써요. 넣기 전에 한 번 읽어 주세요.</p>
   <div class="ai-acts" role="list">
     <button type="button" data-act="draft"><b>메모로 초안 쓰기</b><span>자료나 메모를 붙이면 제목·요약·본문을 써요</span></button>
+    <button type="button" data-act="rewrite"><b>기사로 매거진 기사 쓰기</b><span>다른 기사의 주소나 글을 주면 우리 매거진 기사로 새로 써요</span></button>
     <button type="button" data-act="polish"><b>문장 다듬기</b><span>고른 부분, 고르지 않으면 본문 전체를 매거진 문체로</span></button>
     <button type="button" data-act="proof"><b>맞춤법 고치기</b><span>낱말은 두고 맞춤법·띄어쓰기만</span></button>
     <button type="button" data-act="titles"><b>제목 추천</b><span>본문을 읽고 제목 후보 다섯 개</span></button>
     <button type="button" data-act="summary"><b>요약 쓰기</b><span>목록과 첫 화면에 보일 2~3줄</span></button>
   </div>
   <div class="ai-draft" id="mz-ai-draft" hidden>
-    <label class="mz-field">메모·자료<textarea id="mz-ai-note" rows="9" placeholder="취재 메모, 보도자료, 통계 숫자를 그대로 붙여 넣어요"></textarea></label>
+    <label class="mz-field"><span id="mz-ai-nl">메모·자료</span><textarea id="mz-ai-note" rows="9" placeholder="취재 메모, 보도자료, 통계 숫자를 그대로 붙여 넣어요"></textarea></label>
     <button type="button" class="ai-go" id="mz-ai-draft-go">초안 쓰기</button>
   </div>
   <p class="ai-status" id="mz-ai-st" role="status" hidden></p>
@@ -161,26 +162,28 @@ dirty=false;document.getElementById('write').addEventListener('input',function()
 <script>window.MOSAIC_CFG={base:{{ url_for('static', filename='vendor/mediapipe/')|tojson }},logo:{{ asset('img/soboru-wordmark-orange-hi.png')|tojson }},csrf:{{ csrf_token()|tojson }},canConvert:{{ 'true' if mosaic_can_convert else 'false' }},convUpload:{{ url_for('mag_mosaic_upload')|tojson }},convStart:{{ url_for('mag_mosaic_convert')|tojson }},convDone:{{ url_for('mag_mosaic_converted')|tojson }}}</script>
 <script type="module" src="{{ asset('mosaic.js') }}"></script>
 <script>(function(){var P=document.getElementById('mz-ai'),st=document.getElementById('mz-ai-st'),out=document.getElementById('mz-ai-out'),dr=document.getElementById('mz-ai-draft'),
-t=document.getElementById('mz-body'),ti=document.getElementById('mz-title'),su=document.getElementById('mz-sum'),CSRF=document.querySelector('#write [name=_csrf]').value,sel=null,busy=false;
+t=document.getElementById('mz-body'),ti=document.getElementById('mz-title'),su=document.getElementById('mz-sum'),CSRF=document.querySelector('#write [name=_csrf]').value,sel=null,busy=false,mode='draft';
 function open(){P.hidden=false;document.documentElement.classList.add('ai-on')}function close(){P.hidden=true;document.documentElement.classList.remove('ai-on')}
 document.getElementById('mz-ai-open').onclick=function(){P.hidden?open():close()};document.getElementById('mz-ai-x').onclick=close;
 function say(x){st.hidden=!x;st.textContent=x||''}
 function esc(x){var d=document.createElement('div');d.textContent=x;return d.innerHTML}
 function fire(el){el.dispatchEvent(new Event('input',{bubbles:true}))}
 function show(html,apply,label){out.innerHTML=html+(apply?'<button type="button" class="ai-go" id="mz-ai-apply">'+label+'</button>':'');out.hidden=false;if(apply)document.getElementById('mz-ai-apply').onclick=function(){apply();out.hidden=true;say('넣었어요. 저장해야 기사에 반영돼요.')}}
-function ask(act,extra){if(busy)return;busy=true;out.hidden=true;say('AI가 쓰고 있어요. 10~30초쯤 걸려요.');P.querySelectorAll('button[data-act],#mz-ai-draft-go').forEach(function(b){b.disabled=true});
+function ask(act,extra){if(busy)return;busy=true;out.hidden=true;say(act==='rewrite'?'기사를 읽고 매거진 기사로 쓰고 있어요. 30초~1분쯤 걸려요.':'AI가 쓰고 있어요. 10~30초쯤 걸려요.');P.querySelectorAll('button[data-act],#mz-ai-draft-go').forEach(function(b){b.disabled=true});
 var d=Object.assign({act:act,title:ti.value,summary:su.value,body:t.value},extra||{});
 return fetch('{{ url_for('mag_assist') }}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(d),credentials:'same-origin'}).then(function(r){return r.json()}).then(function(j){busy=false;P.querySelectorAll('button[data-act],#mz-ai-draft-go').forEach(function(b){b.disabled=false});if(!j.ok){say(j.error||'AI가 답하지 못했어요.');return null}say('');return j})
 .catch(function(){busy=false;P.querySelectorAll('button[data-act],#mz-ai-draft-go').forEach(function(b){b.disabled=false});say('AI가 답하지 못했어요. 잠시 뒤 다시 해 주세요.');return null})}
-P.querySelectorAll('button[data-act]').forEach(function(b){b.onclick=function(){var act=b.dataset.act;P.querySelectorAll('button[data-act]').forEach(function(x){x.classList.toggle('on',x===b)});dr.hidden=act!=='draft';out.hidden=true;say('');
-if(act==='draft'){document.getElementById('mz-ai-note').focus();return}
+P.querySelectorAll('button[data-act]').forEach(function(b){b.onclick=function(){var act=b.dataset.act;P.querySelectorAll('button[data-act]').forEach(function(x){x.classList.toggle('on',x===b)});var wr=act==='draft'||act==='rewrite';dr.hidden=!wr;out.hidden=true;say('');
+if(wr){mode=act;var nt=document.getElementById('mz-ai-note');document.getElementById('mz-ai-nl').textContent=act==='rewrite'?'기사 주소나 기사 글':'메모·자료';
+nt.placeholder=act==='rewrite'?'https://로 시작하는 기사 주소, 또는 기사 글 전체를 붙여 넣어요':'취재 메모, 보도자료, 통계 숫자를 그대로 붙여 넣어요';
+document.getElementById('mz-ai-draft-go').textContent=act==='rewrite'?'매거진 기사로 쓰기':'초안 쓰기';nt.focus();return}
 if(act==='polish'||act==='proof'){var a=t.selectionStart,z=t.selectionEnd;sel=z-a>10?[a,z]:null;var txt=sel?t.value.slice(a,z):'';
 ask(act,{text:txt}).then(function(j){if(!j)return;var fx=(j.fixes||[]).length?'<ul class="ai-fix">'+j.fixes.map(function(f){return '<li>'+esc(f)+'</li>'}).join('')+'</ul>':'';
 show('<p class="ai-k">'+(sel?'고른 부분':'본문 전체')+(act==='proof'?' · 맞춤법':' · 다듬은 글')+'</p>'+fx+'<div class="ai-text">'+esc(j.text)+'</div>',function(){if(sel)t.value=t.value.slice(0,sel[0])+j.text+t.value.slice(sel[1]);else t.value=j.text;fire(t)},sel?'고른 부분 바꾸기':'본문 바꾸기')});return}
 if(act==='titles'){ask(act).then(function(j){if(!j)return;show('<p class="ai-k">눌러서 제목으로 넣어요</p><ul class="ai-titles">'+j.titles.map(function(x,i){return '<li><button type="button" data-i="'+i+'">'+esc(x)+'</button></li>'}).join('')+'</ul>');
 out.querySelectorAll('[data-i]').forEach(function(x){x.onclick=function(){ti.value=j.titles[+x.dataset.i];fire(ti);say('제목을 넣었어요. 저장해야 기사에 반영돼요.')}})});return}
 if(act==='summary'){ask(act).then(function(j){if(!j)return;show('<p class="ai-k">요약</p><div class="ai-text">'+esc(j.summary)+'</div>',function(){su.value=j.summary;fire(su)},'요약 넣기')})}}});
-document.getElementById('mz-ai-draft-go').onclick=function(){ask('draft',{note:document.getElementById('mz-ai-note').value}).then(function(j){if(!j)return;
+document.getElementById('mz-ai-draft-go').onclick=function(){ask(mode,{note:document.getElementById('mz-ai-note').value}).then(function(j){if(!j)return;
 show('<p class="ai-k">초안</p>'+(j.warn?'<p class="ai-warn">'+esc(j.warn)+'</p>':'')+'<div class="ai-text"><b>'+esc(j.title)+'</b>\n\n'+esc(j.summary)+'\n\n'+esc(j.body)+'</div>',function(){if(!ti.value.trim())ti.value=j.title;if(!su.value.trim())su.value=j.summary;t.value=(t.value.trim()?t.value.replace(/\s+$/,'')+'\n\n':'')+j.body;[ti,su,t].forEach(fire)},t.value.trim()?'본문 끝에 이어 넣기':'초안 넣기')})};
 })();</script>
 
