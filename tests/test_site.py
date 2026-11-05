@@ -6599,6 +6599,13 @@ class SiteTest(unittest.TestCase):
             L.add_photos([], ex, {'old'})
         self.assertEqual(asked, ['scooter one', 'rider helmet']); self.assertEqual(ex['comment']['photo']['id'], 'new')
 
+    def test_letter_magazine_excerpt(self):
+        # 운영자 2026-11-05: 매거진 기사 하나는 레터 안에서 읽게 — 본문 앞부분(사진 줄·마크다운 빼고), 끝에 소제목만 남지 않게
+        L = self.site.soboru_letter
+        body = '첫 문단 **굵게**.\n\n[사진 /art/body/a.webp | 장면]\n\n## 소제목\n\n' + '가' * 950 + '\n\n## 다음\n\n안 나옴'
+        self.assertEqual(L.mag_excerpt(body), [{'p': '첫 문단 굵게.'}, {'h': '소제목'}, {'p': '가' * 950}])
+        self.assertEqual(L.mag_excerpt('## 맨 앞 소제목\n\n문단\n\n## 끝'), [{'p': '문단'}])
+
     def test_letter_subscribe_confirm_unsubscribe(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         box = []

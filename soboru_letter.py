@@ -163,6 +163,23 @@ def unsplash_call(path, params=None):
     except (urllib.error.URLError, OSError, ValueError): return 0, None
 
 
+def mag_excerpt(body, limit=900):
+    """매거진 기사 본문 앞부분 → [{'h': 소제목} | {'p': 문단}] (사진·영상 줄·마크다운 기호는 뺌, 문단 단위로 limit 글자 안팎)"""
+    out, n = [], 0
+    for blk in re.split(r'\n\s*\n', body or ''):
+        t = blk.strip()
+        if not t or re.match(r'^\[(사진|영상)\b', t): continue
+        if t.startswith('#'):
+            h = W._plain(t.lstrip('#').strip(), 60)
+            if h and n: out.append({'h': h})
+            continue
+        t = re.sub(r'\*\*|__|^[-—]\s*', '', ' '.join(t.split()))
+        out.append({'p': t}); n += len(t)
+        if n >= limit: break
+    while out and 'h' in out[-1]: out.pop()
+    return out
+
+
 def photo_query(q):
     q = re.sub(r'[^A-Za-z ]', ' ', str(q or ''))
     return ' '.join(q.split()[:4]).lower()
@@ -781,7 +798,7 @@ def install(S):
         # 정보성 콘텐츠만 (운영자 2026-11-01): 커뮤니티 리뷰·리뷰 주제는 빼고, 새 매거진 글과 오늘의 경제 용어
         # 운영자 2026-11-05: 콘텐츠가 적다 — 매거진 기사를 완전히 다른(매거진식) 디자인으로 사진·분야·요약까지. 최근 호에 넣은 기사는 건너뜀
         with conn() as db:
-            arts = db.execute("SELECT id,title,summary,emoji,category FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 40").fetchall()
+            arts = db.execute("SELECT id,title,summary,body,emoji,category FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 40").fetchall()
             seen = set()
             for r in db.execute('SELECT sections FROM letters ORDER BY no DESC LIMIT 6'):
                 try: seen |= {x.get('id') for x in json.loads(r[0] or '{}').get('life') or [] if isinstance(x, dict)}
@@ -800,6 +817,7 @@ def install(S):
             u, c = pic(a['id'])
             life.append({'id': a['id'], 'title': a['title'], 'summary': ' '.join((a['summary'] or '').split())[:140], 'emoji': a['emoji'] or '📰', 'category': a['category'],
                          'en': MAG_EN.get(a['category'] or '', 'LIFE'), 'photo': u, 'credit': c, 'url': f"/life/{a['id']}"})
+        if life: life[0]['read'] = mag_excerpt(pick[0]['body'])  # 운영자 2026-11-05: 매거진 기사 하나는 레터 안에서 읽게 — 본문 앞부분을 싣고 '이어서 읽기'
         return {'life': life, 'word': word_of(no)}
 
     # ---- 만들기 -----------------------------------------------------------------
