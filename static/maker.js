@@ -793,7 +793,7 @@
       var miss = slides.findIndex(function (s) { return !s.media || !s.media.url; });
       if (miss >= 0) { say((miss + 1) + '번 장면에 사진이나 영상을 넣어 주세요.'); return; }
       var c = document.createElement('canvas'); c.width = 1080; c.height = 1920; var x = c.getContext('2d');
-      var scenes = slides.map(function (s, i) { x.clearRect(0, 0, 1080, 1920); REEL[s.design](x, s); return {media: s.media.url, layout: s.design, start: s.start || 0, dur: s.dur || 4, slow: !!s.slow, png: c.toDataURL('image/png')}; });
+      var scenes = slides.map(function (s, i) { x.clearRect(0, 0, 1080, 1920); REEL[s.design](x, s); return {media: s.media.url, layout: s.design, start: s.start || 0, dur: s.dur || 4, slow: !!s.slow, narration: s.narration || '', png: c.toDataURL('image/png')}; });
       x.clearRect(0, 0, 1080, 1920); REEL.outro(x, fromLetter);
       btn.disabled = true; say('릴스를 만들고 있어요. 1~3분쯤 걸려요. 이 화면을 닫지 말아 주세요.');
       return post(C.render, JSON.stringify({scenes: scenes, outro: c.toDataURL('image/png')}), 'application/json').then(function (j) {

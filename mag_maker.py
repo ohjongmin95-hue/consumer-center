@@ -21,6 +21,8 @@ import subprocess
 import tempfile
 import threading
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 from flask import abort, jsonify, render_template, request, url_for
@@ -82,8 +84,8 @@ def naver_comment_count(oid, aid):
     return int(m[1]) if m else -1
 
 
-def scene_filter(i, m, p, kind, lay, dur, speed, audio):
-    """장면 하나의 필터: [m] 사진·영상, [p] 글씨 판 → [v{i}][a{i}]."""
+def scene_filter(i, m, p, kind, lay, dur, speed, audio, voice=None, tempo=1.0):
+    """장면 하나의 필터: [m] 사진·영상, [p] 글씨 판 → [v{i}][a{i}]. voice: 나레이션 입력 번호(있으면 영상 소리 대신 씀)."""
     bg, fg = LAYOUTS[lay]
     src = f'[{m}:v]' + (f'setpts={speed}*(PTS-STARTPTS),' if kind == 'video' else '') + f'fps={FPS},setsar=1'
     cover = f'scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}'
@@ -108,7 +110,10 @@ def scene_filter(i, m, p, kind, lay, dur, speed, audio):
         parts.append(f'[bg{i}][f{i}]overlay={x}:{y}:shortest=1[c{i}]')
         base = f'[c{i}]'
     parts.append(f'{base}[{p}:v]overlay=0:0:shortest=1,trim=duration={dur},setpts=PTS-STARTPTS,format=yuv420p,setsar=1[v{i}]')
-    if audio and speed == 1:
+    if voice is not None:
+        speedup = f'atempo={tempo:.3f},' if tempo > 1 else ''
+        parts.append(f'[{voice}:a]asetpts=PTS-STARTPTS,{speedup}aresample=44100,aformat=sample_rates=44100:channel_layouts=stereo,apad,atrim=duration={dur}[a{i}]')
+    elif audio and speed == 1:
         parts.append(f'[{m}:a]asetpts=PTS-STARTPTS,aformat=sample_rates=44100:channel_layouts=stereo,apad,atrim=duration={dur}[a{i}]')
     else:
         parts.append(f'anullsrc=r=44100:cl=stereo,atrim=duration={dur}[a{i}]')
@@ -124,8 +129,12 @@ def build(scenes, outro_png, out):
         else:
             cmd += ['-loop', '1', '-t', f"{s['dur']:.3f}", '-i', str(s['file'])]
         cmd += ['-loop', '1', '-t', f"{s['dur'] + 0.5:.3f}", '-i', str(s['png'])]
-        filt += scene_filter(i, n, n + 1, s['kind'], s['layout'], s['dur'], s['speed'], s['audio'])
-        n += 2
+        voice = None
+        if s.get('voice'):
+            cmd += ['-i', str(s['voice'])]
+            voice = n + 2
+        filt += scene_filter(i, n, n + 1, s['kind'], s['layout'], s['dur'], s['speed'], s['audio'], voice, s.get('tempo', 1.0))
+        n += 3 if voice is not None else 2
     k = len(scenes)
     cmd += ['-loop', '1', '-t', f'{OUTRO_SEC + 0.5}', '-i', str(outro_png)]
     filt.append(f'color=c=0xEF920E:s={W}x{H}:r={FPS}:d={OUTRO_SEC}[ob]')
@@ -143,6 +152,48 @@ def has_audio(path):
         return bool(r.stdout.strip())
     except Exception:
         return False
+
+
+# 나레이션 (운영자 2026-11-06: 싸게 앵커처럼) — OpenAI 음성. 장면 글을 mp3로 받아 영상 소리 대신 넣음. 장면보다 길면 조금 빠르게 읽힘
+TTS_URL = 'https://api.openai.com/v1/audio/speech'
+TTS_MODELS = ('gpt-4o-mini-tts', 'tts-1')
+TTS_VOICE = 'coral'
+TTS_STYLE = '한국어 뉴스 앵커처럼 또렷하고 차분하게 읽는다. 문장 끝은 자연스럽게 내리고, 숫자는 정확하게 읽는다.'
+NARRATION_MAX = 300
+TEMPO_MAX = 1.35
+
+
+def speak(text, path, key, voice=None):
+    """글을 mp3로 저장. 앞 모델을 못 쓰는 키면 다음 모델로."""
+    last = None
+    for model in TTS_MODELS:
+        body = {'model': model, 'voice': voice or TTS_VOICE, 'input': text, 'response_format': 'mp3'}
+        if model != 'tts-1': body['instructions'] = TTS_STYLE
+        req = urllib.request.Request(TTS_URL, data=json.dumps(body).encode(), headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r: data = r.read()
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code in (400, 403, 404): continue
+            raise
+        if not data: raise RuntimeError('음성이 비어 있어요')
+        Path(path).write_bytes(data)
+        return
+    raise last or RuntimeError('음성을 만들지 못했어요')
+
+
+def audio_len(path):
+    try:
+        r = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', str(path)], capture_output=True, text=True, timeout=30)
+        return float(r.stdout.strip())
+    except Exception:
+        return 0.0
+
+
+def fit_tempo(length, dur):
+    """장면 길이에 맞추는 빠르기 (1 이상, 너무 빨라지지 않게 TEMPO_MAX까지. 그래도 길면 잘림)."""
+    if length <= 0 or dur <= 0: return 1.0
+    return round(min(TEMPO_MAX, max(1.0, length / dur)), 3)
 
 
 def png_bytes(data):
@@ -265,18 +316,27 @@ def install(S):
             if not 0.5 <= dur <= 60: shutil.rmtree(jd, ignore_errors=True); return jsonify(ok=False, error=f'{i + 1}번 장면 길이는 0.5초에서 60초 사이로 정해 주세요.'), 400
             (jd / f'p{i}.png').write_bytes(png)
             scenes.append({'kind': kind, 'file': f, 'start': start, 'dur': round(dur, 3), 'speed': speed, 'layout': lay, 'png': jd / f'p{i}.png',
-                           'audio': kind == 'video' and has_audio(f)})
+                           'audio': kind == 'video' and has_audio(f), 'narration': ' '.join(str(s.get('narration') or '').split())[:NARRATION_MAX]})
             total += dur
         if total > 90: shutil.rmtree(jd, ignore_errors=True); return jsonify(ok=False, error='릴스는 90초까지 만들 수 있어요. 장면을 줄여 주세요.'), 400
         (jd / 'outro.png').write_bytes(outro)
         name = f'video-{datetime.datetime.now():%Y%m%d%H%M%S}-{int(time.time() * 1000) % 1000:03d}.mp4'
         part = jd / 'out.part'
-        cmd = build(scenes, jd / 'outro.png', part)
+        tts_key = ''
+        if any(s['narration'] for s in scenes):
+            import companydesk as desk
+            tts_key = desk.ai_key_for('mag_maker')
+            if not tts_key: shutil.rmtree(jd, ignore_errors=True); return jsonify(ok=False, error='OpenAI 키가 없어 나레이션을 만들 수 없어요.'), 503
         (jd / 'state').write_text('running')
 
         def run():
             try:
-                r = subprocess.run(cmd, capture_output=True, timeout=1800)
+                for i, s in enumerate(scenes):
+                    if not s['narration']: continue
+                    s['voice'] = jd / f'n{i}.mp3'
+                    speak(s['narration'], s['voice'], tts_key)
+                    s['tempo'] = fit_tempo(audio_len(s['voice']), s['dur'])
+                r = subprocess.run(build(scenes, jd / 'outro.png', part), capture_output=True, timeout=1800)
                 ok = r.returncode == 0 and part.exists() and part.stat().st_size > 0
                 if ok:
                     shutil.move(str(part), str(folder / name)); (jd / 'state').write_text('done:' + name)

@@ -6323,6 +6323,20 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/screens', data={'_csrf': tok, 'page': 'mag_article', 'block': 'letter', 'act': 'hide', 'ajax': '1'})
         self.assertNotIn('class="ma-letter"', self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True))
 
+    def test_magazine_maker_narration(self):
+        # 운영자 2026-11-06: 앵커 말투 나레이션 — 영상 소리 대신 음성을 넣고, 길면 조금 빠르게
+        import mag_maker
+        self.assertEqual(mag_maker.fit_tempo(5, 10), 1.0)
+        self.assertEqual(mag_maker.fit_tempo(11, 10), 1.1)
+        self.assertEqual(mag_maker.fit_tempo(30, 10), mag_maker.TEMPO_MAX)
+        scene = {'kind': 'video', 'file': 'a.mp4', 'start': 0, 'dur': 4, 'speed': 1, 'layout': 'full', 'png': 'p.png', 'audio': True}
+        cmd = mag_maker.build([dict(scene, voice='n.mp3', tempo=1.2), scene], 'o.png', 'out.mp4')
+        filt = cmd[cmd.index('-filter_complex') + 1]
+        self.assertIn('n.mp3', cmd)
+        self.assertIn('[2:a]asetpts=PTS-STARTPTS,atempo=1.200,', filt)
+        self.assertIn('[3:a]asetpts', filt)  # 나레이션 없는 장면은 전처럼 자기 영상 소리
+        self.assertNotIn('[0:a]', filt)
+
     def test_magazine_maker(self):
         # 운영자 2026-11-05: 카드뉴스·릴스 만들기 — 브라우저가 그린 글씨 판 + 서버 ffmpeg로 릴스 MP4
         import base64, io, shutil, time, mag_maker
