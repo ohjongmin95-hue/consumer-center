@@ -7,7 +7,7 @@
 
   <section class="form-panel mo-drop" id="mo-drop">
     <img class="mo-logo" src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="SOBORU" width="140" height="26">
-    <label class="mo-pick"><input type="file" id="mo-file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" hidden><b>사진이나 영상 고르기</b><span>여기로 끌어 놓아도 돼요 · 파일은 서버로 올라가지 않아요</span></label>
+    <label class="mo-pick"><input type="file" id="mo-file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" hidden><b>사진이나 영상 고르기</b><span>여기로 끌어 놓아도 돼요 · 사진·영상은 이 컴퓨터 안에서 처리해요</span></label>
   </section>
 
   <section class="form-panel mo-opts" id="mo-opts" hidden>
@@ -183,6 +183,7 @@ function openVideo() {
   say('영상을 여는 중이에요');
   video = document.createElement('video'); video.playsInline = true; video.preload = 'auto'; video.src = URL.createObjectURL(file);
   video.onloadeddata = () => {
+    if (!video.videoWidth) { convert(); return; }  // 소리만 열리고 화면은 못 읽음 (HEVC)
     cv.width = video.videoWidth; cv.height = video.videoHeight;
     video.currentTime = Math.min(0.5, video.duration / 2);
   };
@@ -192,7 +193,31 @@ function openVideo() {
     cx.drawImage(video, 0, 0); r.forEach(b => pixelate(cx, grow(b, cv.width, cv.height))); stamp(cx, cv.width, cv.height);
     say(`영상 ${Math.round(video.duration)}초 · ${video.videoWidth}×${video.videoHeight}. '영상 만들기'를 누르면 처음부터 끝까지 얼굴을 가려요. 영상 길이만큼 걸리고, 그동안 이 화면을 켜 두세요.`);
   };
-  video.onerror = () => say('이 영상은 브라우저에서 열 수 없어요. MP4 영상으로 바꿔서 올려 주세요.');
+  video.onerror = () => convert();
+}
+// 아이폰·카톡 영상(HEVC)처럼 브라우저가 못 여는 영상은 서버에서 MP4(H.264)로 바꿔서 다시 엶. 바꾼 파일은 1시간 안에 서버에서 지워짐
+let converting = false;
+async function convert() {
+  if (converting || file.name === 'soboru-converted.mp4') { say('이 영상은 열 수 없어요. 다른 영상으로 해 주세요.'); return; }
+  {% if not can_convert %}say('이 영상은 브라우저가 못 읽는 형식(아이폰 고효율 HEVC)이에요. 서버 업데이트 후 다시 해 주세요.'); return;{% endif %}
+  converting = true;
+  const CSRF = {{ csrf_token()|tojson }}, CH = 8 * 1024 * 1024; let job = '';
+  try {
+    for (let i = 0, k = 0; i < file.size; i += CH, k++) {
+      say(`이 영상은 브라우저가 바로 못 읽는 형식(아이폰 고효율 HEVC)이라 읽을 수 있게 바꾸고 있어요 · 올리는 중 ${Math.min(100, Math.round((i + CH) / file.size * 100))}%`);
+      const r = await fetch(`{{ url_for('mag_mosaic_upload') }}?i=${k}${job ? '&job=' + job : ''}`, {method: 'POST', body: file.slice(i, i + CH), headers: {'X-CSRFToken': CSRF}, credentials: 'same-origin'});
+      const j = await r.json(); if (!j.ok) throw new Error(j.error); job = j.job;
+    }
+    await fetch(`{{ url_for('mag_mosaic_convert') }}?job=${job}`, {method: 'POST', headers: {'X-CSRFToken': CSRF}, credentials: 'same-origin'});
+    for (let t = 0; ; t++) {
+      say(`읽을 수 있는 영상으로 바꾸는 중이에요${'.'.repeat(t % 4)} 영상 길이에 따라 몇십 초 걸려요`);
+      await new Promise(r => setTimeout(r, 1500));
+      const st = (await (await fetch(`{{ url_for('mag_mosaic_converted') }}?check=1&job=${job}`, {credentials: 'same-origin'})).json()).state;
+      if (st === 'done') break; if (st === 'error') throw new Error('영상을 바꾸지 못했어요.');
+    }
+    const blob = await (await fetch(`{{ url_for('mag_mosaic_converted') }}?job=${job}`, {credentials: 'same-origin'})).blob();
+    converting = false; file = new File([blob], 'soboru-converted.mp4', {type: 'video/mp4'}); openVideo();
+  } catch (e) { converting = false; say((e && e.message) || '영상을 바꾸지 못했어요. 잠시 뒤 다시 해 주세요.'); }
 }
 const PITCH = `class P extends AudioWorkletProcessor{constructor(o){super();this.r=o.processorOptions.ratio;this.n=Math.floor(sampleRate*0.05);this.L=this.n*2+4;this.b=[new Float32Array(this.L),new Float32Array(this.L)];this.w=0;this.p=0}
 process(i,o){const x=i[0],y=o[0];if(!x||!x.length)return true;const n=this.n,L=this.L,step=(1-this.r)/n;for(let k=0;k<x[0].length;k++){let ph=this.p;for(let c=0;c<y.length;c++){const s=(x[c]||x[0])[k],b=this.b[c];b[this.w]=s;let v=0;for(let t=0;t<2;t++){const q=(ph+t*0.5)%1,d=q*n+1,r=(this.w-d+L)%L,f=Math.floor(r),a=r-f,s0=b[f],s1=b[(f+1)%L];v+=(s0+(s1-s0)*a)*Math.sin(Math.PI*q)}y[c][k]=v*0.9}

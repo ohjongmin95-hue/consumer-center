@@ -48,6 +48,8 @@ cat > /etc/cron.d/soboru-expert-digest <<'CRON'
 0 18 * * * root set -a; . /etc/soboru.env; set +a; cd /opt/soboru/app && runuser -u soboru -- /opt/soboru/venv/bin/python expert_digest.py >/dev/null 2>&1
 CRON
 chmod 644 /etc/cron.d/soboru-expert-digest
+# 매거진 관리자 '얼굴 모자이크'에서 브라우저가 못 여는 영상(아이폰·카톡 HEVC)을 MP4로 바꿀 때 씀
+command -v ffmpeg >/dev/null || apt-get install -y -q ffmpeg >/dev/null 2>&1 || echo "ffmpeg 설치 실패: sudo apt-get install -y ffmpeg"
 # SOBORU 플랫폼(한큐 + 소보루 비즈)이 설치돼 있으면 같이 다시 시작
 if [ -f /etc/systemd/system/soboru-platform.service ]; then
   # 소비자제보센터에 넣어 둔 메일 설정을 소보루 CS에도 똑같이 넣음 (비밀번호 찾기·알림 메일)

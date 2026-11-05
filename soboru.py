@@ -600,10 +600,13 @@ def install(S):
             flash('글을 게시했어요.' if status == 'published' else '초안으로 저장했어요.')
             return redirect(url_for('admin_life_edit', article_id=cur.lastrowid))
         view = request.args.get('view', '')
+        if view not in ('draft', 'scheduled', 'published'): view = ''
+        editor = bool(request.args.get('new'))
         with conn() as db:
-            rows = db.execute('SELECT * FROM articles' + (" WHERE status='draft'" if view == 'draft' else " WHERE status='scheduled'" if view == 'scheduled' else '') + ' ORDER BY id DESC LIMIT 200').fetchall()
-            n_draft = db.execute("SELECT COUNT(*) FROM articles WHERE status='draft'").fetchone()[0]
-        return render_template('admin_life.html', rows=rows, a=None, view=view, n_draft=n_draft, categories=LIFE_CATEGORIES, tones=LIFE_TONES)
+            rows = [] if editor else db.execute('SELECT * FROM articles' + (' WHERE status=?' if view else '') + ' ORDER BY id DESC LIMIT 300', (view,) if view else ()).fetchall()
+            counts = dict(db.execute('SELECT status, COUNT(*) FROM articles GROUP BY status').fetchall())
+        counts['all'] = sum(counts.values())
+        return render_template('admin_life.html', rows=rows, a=None, view=view, editor=editor, counts=counts, n_draft=counts.get('draft', 0), categories=LIFE_CATEGORIES, tones=LIFE_TONES)
 
     def auto_art(article_id):
         # AI 일러스트 자동 그리기 (soboru_art.py가 붙어 있고 키가 있을 때만)
@@ -647,9 +650,7 @@ def install(S):
                 db.commit(); auto_art(article_id)
                 flash({'publish': '게시했어요.', 'unpublish': '게시를 내렸어요. 초안으로 남아 있어요.'}.get(act, '저장했어요.'))
                 return redirect(url_for('admin_life_edit', article_id=article_id))
-            rows = db.execute('SELECT * FROM articles ORDER BY id DESC LIMIT 200').fetchall()
-            n_draft = db.execute("SELECT COUNT(*) FROM articles WHERE status='draft'").fetchone()[0]
-        return render_template('admin_life.html', rows=rows, a=a, view='', n_draft=n_draft, categories=LIFE_CATEGORIES, tones=LIFE_TONES)
+        return render_template('admin_life.html', rows=[], a=a, view='', editor=True, counts={}, n_draft=0, categories=LIFE_CATEGORIES, tones=LIFE_TONES)
 
     S.life_rows = life_rows; S.company_rank = company_rank; S.is_soboru = is_soboru
     app.extensions['soboru'] = {'page_blocks': page_blocks, 'blocks': blocks, 'report_items': report_items}

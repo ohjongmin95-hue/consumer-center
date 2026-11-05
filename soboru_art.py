@@ -162,7 +162,7 @@ def install(S):
     @app.route('/admin/art')
     @S.admin_only
     def admin_art():
-        kind = request.args.get('kind') if request.args.get('kind') in KINDS else 'report'
+        kind = request.args.get('kind') if request.args.get('kind') in KINDS else 'life'  # 운영자 2026-11-05: 매거진 관리자 '기사 사진'엔 제보 안 나옴
         with conn() as db:
             arts = {r['target_id']: r for r in db.execute('SELECT * FROM soboru_art WHERE kind=?', (kind,))}
             if kind == 'life':

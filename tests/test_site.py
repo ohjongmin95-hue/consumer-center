@@ -562,14 +562,16 @@ class SiteTest(unittest.TestCase):
         # 운영자 2026-11-04: soboru.co.kr은 막고 전부 consumerjebo.co.kr로
         r = self.client.get('/reports?tab=new', base_url='https://www.soboru.co.kr')
         self.assertEqual(r.status_code, 301); self.assertEqual(r.headers['Location'], 'https://consumerjebo.co.kr/reports?tab=new')
-        self.assertEqual(self.client.get('/', base_url='https://soboru.co.kr').headers['Location'], '/letter')  # 운영자 2026-11-04: soboru.co.kr은 레터 구독 페이지만
+        # 운영자 2026-11-05: 매거진 검색 노출 — soboru.co.kr/ 이 매거진 첫 화면 그대로, /letter는 / 로
+        self.assertIn('class="lt-top nm-top"', self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True))
+        self.assertEqual(self.client.get('/letter', base_url='https://soboru.co.kr').headers['Location'], '/')
         for base in ('https://soboru.co.kr', 'https://letter.soboru.co.kr', 'https://consumerjebo.co.kr'):
-            page = self.client.get('/letter', base_url=base).get_data(as_text=True)
+            page = self.client.get('/letter?v=1', base_url=base).get_data(as_text=True)
             self.assertIn('class="lt-top nm-top"', page, base)  # 매거진 머리 (귤색 띠 + 영문 메뉴, 운영자 2026-11-04)
             self.assertNotIn('site-footer', page, base)  # 바닥글 없음
             self.assertNotIn('sb-tabbar', page, base); self.assertNotIn('jebo_header', page, base); self.assertNotIn('class="sb-nav"', page, base)
-        self.assertEqual(self.client.get('/letter', base_url='https://letter.soboru.co.kr').status_code, 200)
-        self.assertEqual(self.client.get('/', base_url='https://letter.soboru.co.kr').headers['Location'], '/letter')
+        self.assertEqual(self.client.get('/', base_url='https://letter.soboru.co.kr').status_code, 200)
+        self.assertEqual(self.client.get('/letter', base_url='https://letter.soboru.co.kr').headers['Location'], '/')
         self.assertEqual(self.client.get('/reports', base_url='https://letter.soboru.co.kr').headers['Location'], 'https://consumerjebo.co.kr/reports')
         self.assertNotEqual(self.site.CANONICAL_HOST, 'soboru.co.kr')
 
@@ -977,8 +979,9 @@ class SiteTest(unittest.TestCase):
         admin = self.login_admin()
         try:
             with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test', 'ART_AUTO': '1'}), patch.object(self.site.companydesk, 'post_json', fake):  # 자동 그리기는 운영자 2026-11-04부터 기본 꺼짐
-                page = admin.get('/admin/art').get_data(as_text=True)
+                page = admin.get('/admin/art?kind=report').get_data(as_text=True)
                 self.assertIn('AI 일러스트', page)
+                self.assertNotIn('소비자 제보', admin.get('/admin/art').get_data(as_text=True))  # 매거진 '기사 사진'엔 제보 없음
                 admin.post(f'/admin/art/report/{cid}', data={'_csrf': self.csrf(admin, '/admin/art'), 'act': 'draw'})
             prompt = sent[0]['prompt']
             self.assertIn('환불 거부', prompt)
@@ -1021,14 +1024,14 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db: db.execute("UPDATE soboru_art SET style=1 WHERE kind='report' AND target_id=?", (cid2,))
             n = len(sent)
             with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test', 'ART_AUTO': '1'}), patch.object(self.site.companydesk, 'post_json', fake):
-                self.assertIn('옛 그림체 1개', admin.get('/admin/art').get_data(as_text=True))
+                self.assertIn('옛 그림체 1개', admin.get('/admin/art?kind=report').get_data(as_text=True))
                 admin.post('/admin/art/fill', data={'_csrf': self.csrf(admin, '/admin/art'), 'kind': 'report', 'mode': 'old'})
             self.assertEqual(len(sent), n + 1)
             with self.site.conn() as db:
                 r = db.execute("SELECT * FROM soboru_art WHERE kind='report' AND target_id=?", (cid2,)).fetchone()
             self.assertEqual((r['style'], r['status']), (self.site.soboru_art.STYLE_V, 'live'))
             with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test', 'ART_AUTO': '1'}):
-                self.assertNotIn('새 그림체로 다시 그리기', admin.get('/admin/art').get_data(as_text=True))
+                self.assertNotIn('새 그림체로 다시 그리기', admin.get('/admin/art?kind=report').get_data(as_text=True))
             # 대표 사진: 관리자가 고른 첨부 사진만 공개, 고르면 AI 그림 대신 사진
             (Path(self.site.UPLOAD) / 'cover-test.png').write_bytes(b'\x89PNG fake')
             with self.site.conn() as db:
@@ -6072,7 +6075,7 @@ class SiteTest(unittest.TestCase):
             pid = db.execute("INSERT INTO articles(title,summary,body,category,status,created,updated,published_at) VALUES('고른 글','요약','본문','쇼핑','published','2020-01-01','2020-01-01','2020-01-01T09:00:00')").lastrowid
         admin.post('/admin/magazine/front', data={'_csrf': tok, 'act': 'hot', 'hot1': str(pid)})
         page = self.client.get('/letter').get_data(as_text=True)
-        self.assertIn('/art/front/hero.webp', page); self.assertIn('고른 글', page)
+        self.assertIn('/art/front/hero-1.webp', page); self.assertIn('고른 글', page)
         self.assertEqual(self.client.get('/art/front/hero.webp').status_code, 200)
         with self.site.conn() as db:
             db.execute("UPDATE articles SET published_at='2000-01-01T00:00:00' WHERE id=?", (aid,))
@@ -6080,7 +6083,7 @@ class SiteTest(unittest.TestCase):
         with patch('mag_admin.time.time', return_value=_t.time() + 120): self.client.get('/letter')
         with self.site.conn() as db:
             self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (aid,)).fetchone()[0], 'published')
-            db.execute('DELETE FROM articles WHERE id IN (?,?)', (aid, pid)); db.execute("DELETE FROM soboru_settings WHERE key IN ('mag_hot','mag_hero')")
+            db.execute('DELETE FROM articles WHERE id IN (?,?)', (aid, pid)); db.execute("DELETE FROM soboru_settings WHERE key IN ('mag_hot','mag_hero','mag_heroes')")
             db.execute("DELETE FROM soboru_art WHERE kind='life' AND target_id IN (?,?)", (aid, pid))
 
     def test_magazine_mosaic_tool(self):
@@ -6091,6 +6094,59 @@ class SiteTest(unittest.TestCase):
         self.assertIn('value="mute"', page); self.assertIn('value="low"', page)
         for f in ('vision_bundle.mjs', 'vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'blaze_face_short_range.tflite'):
             self.assertTrue((Path(self.site.__file__).parent / 'static/vendor/mediapipe' / f).is_file(), f)
+
+    def test_magazine_seo_and_cms(self):
+        # 운영자 2026-11-05: 매거진 검색 최적화 + 토스풍 CMS + 바닥글 '관리자'
+        admin = self.login_admin()
+        r = admin.post('/admin/life', data={'_csrf': self.csrf(admin, '/admin/life'), 'title': '검색 시험 기사', 'summary': '검색 요약', 'body': '본문', 'category': '쇼핑', 'publish': '1'})
+        aid = int(r.headers['Location'].rstrip('/').split('/')[-1])
+        self.addCleanup(lambda: admin.post(f'/admin/life/{aid}', data={'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'title': 'x', 'act': 'delete'}))
+        lst = admin.get('/admin/life').get_data(as_text=True)
+        self.assertIn('새 기사 쓰기', lst); self.assertIn('검색 시험 기사', lst); self.assertNotIn('id="write"', lst)
+        self.assertIn('id="mz-body"', admin.get('/admin/life?new=1').get_data(as_text=True))
+        self.assertIn('class="mz-ed"', admin.get(f'/admin/life/{aid}').get_data(as_text=True))
+        home = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('<title>SOBORU 소보루 매거진</title>', home)
+        self.assertIn('<link rel="canonical" href="https://soboru.co.kr/">', home)
+        self.assertIn('<meta property="og:site_name" content="소보루 매거진">', home)
+        self.assertIn('SiteNavigationElement', home); self.assertIn('https://soboru.co.kr/rss.xml', home)
+        self.assertIn('href="https://consumerjebo.co.kr/admin/magazine"', home)
+        self.assertEqual(self.client.get('/admin', base_url='https://soboru.co.kr').headers['Location'], 'https://consumerjebo.co.kr/admin/magazine')
+        cat = self.client.get('/life?category=쇼핑', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('href="https://soboru.co.kr/life?category=%EC%87%BC%ED%95%91"', cat); self.assertNotIn('noindex', cat)
+        art = self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn(f'<link rel="canonical" href="https://soboru.co.kr/life/{aid}">', art); self.assertIn('BreadcrumbList', art)
+        sm = self.client.get('/sitemap.xml', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('<loc>https://soboru.co.kr/</loc>', sm); self.assertIn(f'<loc>https://soboru.co.kr/life/{aid}</loc>', sm); self.assertNotIn('consumerjebo', sm)
+        self.assertIn('검색 시험 기사', self.client.get('/rss.xml', base_url='https://soboru.co.kr').get_data(as_text=True))
+        self.assertIn('Sitemap: https://soboru.co.kr/sitemap.xml', self.client.get('/robots.txt', base_url='https://soboru.co.kr').get_data(as_text=True))
+        # 관리자 > 검색 노출: 제목·소유확인 코드 저장
+        self.assertEqual(self.client.get('/admin/magazine/seo').status_code, 302)
+        admin.post('/admin/magazine/seo', data={'_csrf': self.csrf(admin, '/admin/magazine/seo'), 'title': '소보루 매거진 시험', 'description': '설명', 'naver': '<meta name="naver-site-verification" content="abc123" />', 'google': ''})
+        self.addCleanup(lambda: admin.post('/admin/magazine/seo', data={'_csrf': self.csrf(admin, '/admin/magazine/seo'), 'title': '', 'description': '', 'naver': '', 'google': ''}))
+        home = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('<title>소보루 매거진 시험</title>', home); self.assertIn('content="abc123"', home)
+        self.assertNotIn('abc123', self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
+
+    def test_magazine_mosaic_convert(self):
+        # 운영자 2026-11-05: 도구가 아이폰·카톡 영상(HEVC)을 못 읽음 → 나눠 올려 서버에서 MP4로 바꿔 돌려줌
+        import shutil, subprocess, tempfile, time as _t
+        if not shutil.which('ffmpeg'): self.skipTest('ffmpeg 없음')
+        admin = self.login_admin(); tok = self.csrf(admin, '/admin/magazine/mosaic')
+        src = Path(tempfile.mkdtemp()) / 'a.mp4'
+        subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=160x120:rate=10', '-t', '1', str(src)], check=True)
+        data = src.read_bytes(); half = len(data) // 2
+        self.assertEqual(admin.post('/admin/magazine/mosaic/upload?i=0', data=data[:half], content_type='application/octet-stream').status_code, 400)  # CSRF 없으면 막음
+        j = admin.post('/admin/magazine/mosaic/upload?i=0', data=data[:half], headers={'X-CSRFToken': tok}, content_type='application/octet-stream').get_json()
+        admin.post(f"/admin/magazine/mosaic/upload?i=1&job={j['job']}", data=data[half:], headers={'X-CSRFToken': tok}, content_type='application/octet-stream')
+        admin.post(f"/admin/magazine/mosaic/convert?job={j['job']}", headers={'X-CSRFToken': tok})
+        for _ in range(60):
+            st = admin.get(f"/admin/magazine/mosaic/converted?check=1&job={j['job']}").get_json()['state']
+            if st != 'running': break
+            _t.sleep(0.2)
+        self.assertEqual(st, 'done')
+        r = admin.get(f"/admin/magazine/mosaic/converted?job={j['job']}"); self.assertEqual(r.mimetype, 'video/mp4'); self.assertGreater(len(r.data), 500)
+        self.assertEqual(self.client.get(f"/admin/magazine/mosaic/converted?job={j['job']}").status_code, 302)
 
     def test_letter_unsplash_photos(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)

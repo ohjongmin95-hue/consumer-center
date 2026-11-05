@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'letter_macros.html' import subscribe_form with context %}
-{% block title %}{{ ui_text('letter.mz_title', '소보루 매거진') }}{% endblock %}{# 운영자 2026-11-05: 탭 제목은 '소보루 레터'가 아니라 '소보루 매거진' #}
-{% block description %}{{ ui_text('letter.mz_description', '소비를 보는 새로운 루트, 소보루 매거진. 사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}{% endblock %}
+{% block title %}{{ mag_seo_text('title') }}{% endblock %}{# 운영자 2026-11-05: 탭 제목은 '소보루 레터'가 아니라 '소보루 매거진' #}
+{% block description %}{{ mag_seo_text('description') }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">{# 운영자 2026-11-04: 매거진은 뉴소스(newsourcemag.com)형 — 영문은 Inter·Archivo Black, 큰 한글 제목은 Black Han Sans (모두 SIL OFL) #}{% endblock %}
 {% block content %}
 {% set cfg = letter_cfg() %}
@@ -15,10 +15,12 @@
   {% for blk in blocks('letter') %}{{ ed_block('letter', blk) }}
   {% if blk == 'hero' %}
   <section class="lt-hero">
-    {# 운영자 2026-11-04: 메인 표지는 초콜릿 사진 한 장만. 다른 사진으로 넘어가지 않음 #}
+    {# 운영자 2026-11-05: 표지 사진 다섯 장이 번갈아 바뀜 (관리자 > 소보루 매거진 > 첫 화면 편집). 표지 위 'THIS ISSUE' 글 띠는 뺌 #}
+    {% set hero_urls = mag_hero_urls() if mag_hero_urls is defined else [asset('img/mag-hero.jpg')] %}
     <div class="nm-g">
-      <div class="nm-hero">
-        <span class="nm-slide"><img src="{{ mag_hero_url() if mag_hero_url is defined else asset('img/mag-hero.jpg') }}" alt=""></span>{# 운영자 2026-11-04: 표지 위 'THIS ISSUE' 글 띠는 뺌 #}
+      <div class="nm-hero" data-slides="{{ hero_urls|length }}">
+        {% for u in hero_urls %}<span class="nm-slide{{ ' on' if loop.first }}"><img src="{{ u }}" alt=""{% if not loop.first %} loading="lazy"{% endif %}></span>{% endfor %}
+        {% if hero_urls|length > 1 %}<span class="nm-hdots" aria-hidden="true">{% for u in hero_urls %}<i{% if loop.first %} class="on"{% endif %}></i>{% endfor %}</span>{% endif %}
         <img class="nm-big" src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="" aria-hidden="true">
       </div>
     </div>
@@ -74,10 +76,14 @@
       </div>
     </div>
     <div class="nm-g nm-back">{{ ui('letter.archive_title', '지난 레터') }}{% for L in rows[:3] %} · <a href="{{ url_for('letter_issue', no=L.no) }}">No.{{ '%02d' % L.no }} {{ L.title }}</a>{% else %} · {{ ui('letter.mz_noback', '첫 레터를 준비하고 있어요') }}{% endfor %}</div>
-    <div class="nm-g nm-fb"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="104" height="20"><span>{{ ui('letter.mz_fb', '소비를 보는 새로운 루트 · 소비자를위한신문') }} · <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('letter.mz_terms', '이용약관') }}</a> · <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.mz_privacy', '개인정보처리방침') }}</a></span></div>
+    <div class="nm-g nm-fb"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="104" height="20"><span>{{ ui('letter.mz_fb', '소비를 보는 새로운 루트 · 소비자를위한신문') }} · <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('letter.mz_terms', '이용약관') }}</a> · <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.mz_privacy', '개인정보처리방침') }}</a> · <a href="https://consumerjebo.co.kr/admin/magazine" rel="nofollow">{{ ui('letter.mz_admin', '관리자') }}</a></span></div>
   </section>
   {% endif %}
   {% endfor %}
   {{ ed_hidden_blocks('letter') }}
 </main>
+<script>(function(){var h=document.querySelector('.nm-hero[data-slides]');if(!h)return;var s=h.querySelectorAll('.nm-slide'),d=h.querySelectorAll('.nm-hdots i'),i=0;if(s.length<2)return;
+s.forEach(function(x){var im=x.querySelector('img');if(im)im.loading='eager'});
+function go(n){s[i].classList.remove('on');d[i]&&d[i].classList.remove('on');i=n%s.length;s[i].classList.add('on');d[i]&&d[i].classList.add('on')}
+setInterval(function(){if(!document.hidden)go(i+1)},5000)})();</script>
 {% endblock %}

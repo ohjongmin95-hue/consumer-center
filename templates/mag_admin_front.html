@@ -5,12 +5,17 @@
   <div class="page-intro"><h1 class="page-title">첫 화면 편집</h1></div>
   <section class="form-panel">
     <h2>표지 사진</h2>
-    <img class="mz-hero" src="{{ hero }}" alt="지금 표지 사진">
-    <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hero">
-      <label>새 표지 사진 (가로 사진, JPG·PNG·WEBP) <input type="file" name="hero" accept="image/jpeg,image/png,image/webp" required></label>
-      <div class="admin-actions"><button class="primary">표지 사진 바꾸기</button></div>
-    </form>
-    {% if custom %}<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hero_reset"><div class="admin-actions"><button>처음 사진으로 되돌리기</button></div></form>{% endif %}
+    <p class="meta">첫 화면 표지에 사진 다섯 장이 5초마다 번갈아 나와요. 사진을 안 올린 칸은 기본 사진이 나와요. 가로 사진이 잘 어울려요.</p>
+    <div class="mz-slots">
+    {% for src in slots %}
+      <div class="mz-slot">
+        <form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hero"><input type="hidden" name="slot" value="{{ loop.index }}">
+          <label class="mz-cover{{ ' has' if src }}"><img src="{{ src or shown[loop.index0] }}" alt=""><em>{{ loop.index }}</em><span>{{ '사진 바꾸기' if src else '사진 올리기' }}</span><input type="file" name="hero" accept="image/jpeg,image/png,image/webp" hidden onchange="this.form.submit()"></label>
+        </form>
+        {% if src %}<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hero_del"><input type="hidden" name="slot" value="{{ loop.index }}"><button class="mz-del" type="submit">빼기</button></form>{% else %}<p class="mz-note">기본 사진</p>{% endif %}
+      </div>
+    {% endfor %}
+    </div>
   </section>
   <section class="form-panel">
     <h2>HOT ISSUE</h2>

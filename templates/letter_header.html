@@ -2,7 +2,7 @@
 <header class="lt-top nm-top">
   <div class="nm-g lt-top-in">
     <a class="lt-top-logo" href="{{ url_for('letter_home') }}" aria-label="SOBORU"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="124" height="24"></a>
-    {% set home = url_for('letter_home') if request.endpoint != 'letter_home' else '' %}
+    {% set home = url_for('letter_home') if request.endpoint != 'letter_home' and not (letter_alone() and request.path == '/') else '' %}
     <nav class="lt-top-links"><a href="{{ home }}#hot">{{ ui('letter.mz_top1', 'HOT') }}</a><a href="{{ home }}#cat">{{ ui('letter.mz_top2', 'CATEGORY') }}</a><a href="{{ home }}#sub">{{ ui('letter.mz_top3', 'LETTER') }}</a><a href="https://consumerjebo.co.kr/">{{ ui('letter.mz_top4', 'REPORT ↗') }}</a></nav>
   </div>
 </header>
