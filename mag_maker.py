@@ -48,6 +48,8 @@ DRAW = ('Photorealistic editorial photo for a Korean consumer news Instagram car
 
 
 NAVER_SECTION = 'https://news.naver.com/section/101'
+# 경제 아래 분야 최신 기사 목록 (금융·증권·산업/재계·중기/벤처·부동산·글로벌 경제·생활경제·경제 일반) — 첫 화면만으로는 댓글 많은 기사가 빠져서 넓게 셈
+NAVER_SUBS = ['https://news.naver.com/breakingnews/section/101/' + c for c in ('259', '258', '261', '771', '260', '262', '310', '263')]
 NAVER_ART = re.compile(r'https://n\.news\.naver\.com/(?:mnews/)?article/(?:comment/)?(\d{3})/(\d{10})')
 NAVER_COUNT = ('https://apis.naver.com/commentBox/cbox/web_naver_list_jsonp.json?ticket=news&templateId=default_economy&pool=cbox5&lang=ko&country=KR'
                '&objectId=news{oid}%2C{aid}&pageSize=1&page=1&sort=FAVORITE&_callback=cb')
@@ -70,7 +72,7 @@ def naver_section_articles(page):
         t = ' '.join(H.unescape(re.sub(r'<[^>]+>', ' ', m[2])).split())
         k = (a[1], a[2])
         if len(t) > len(found.get(k, '')): found[k] = t
-    return [(o, a, t) for (o, a), t in found.items() if len(t) >= 8]
+    return [(o, a, t) for (o, a), t in found.items() if len(t) >= 8 and not re.search(r'\w+\s*=\s*["\']|^["\'\s>]+$|[<>]', t)]
 
 
 def naver_comment_count(oid, aid):
@@ -201,11 +203,18 @@ def install(S):
     @S.admin_only
     def mag_maker_naver():
         if time.time() - naver_cache['at'] < 1800 and naver_cache['items']: return jsonify(ok=True, items=naver_cache['items'])
-        try: arts = naver_section_articles(_get(NAVER_SECTION))[:60]
-        except Exception: arts = []
-        if not arts: return jsonify(ok=False, error='네이버 경제 뉴스를 불러오지 못했어요. 잠시 뒤 다시 해 주세요.'), 502
         from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(8) as ex: counts = list(ex.map(lambda x: naver_comment_count(x[0], x[1]), arts))
+        def page(u):
+            try: return naver_section_articles(_get(u))
+            except Exception: return []
+        with ThreadPoolExecutor(9) as ex: pages = list(ex.map(page, [NAVER_SECTION] + NAVER_SUBS))
+        arts, seen = [], set()
+        for pg in pages:
+            for x in pg:
+                if (x[0], x[1]) not in seen: seen.add((x[0], x[1])); arts.append(x)
+        arts = arts[:160]
+        if not arts: return jsonify(ok=False, error='네이버 경제 뉴스를 불러오지 못했어요. 잠시 뒤 다시 해 주세요.'), 502
+        with ThreadPoolExecutor(12) as ex: counts = list(ex.map(lambda x: naver_comment_count(x[0], x[1]), arts))
         items = sorted(({'url': f'https://n.news.naver.com/mnews/article/{o}/{a}', 'title': t[:80], 'comments': c} for (o, a, t), c in zip(arts, counts)),
                        key=lambda x: -x['comments'])[:20]
         naver_cache.update(at=time.time(), items=items)
