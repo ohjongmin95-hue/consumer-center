@@ -4124,7 +4124,7 @@ class SiteTest(unittest.TestCase):
             facts = json.loads(body['messages'][1]['content'].split('[자료]\n', 1)[1])
             nums = [v for v in facts.values() if isinstance(v, int)][:1] or [1372]
             out = {'title': f'요즘 소비자 이야기, 숫자로 보면 {nums[0]} {facts.get("주제", "")} {"가나다라마바사아자차"[len(sent) % 10]}편', 'summary': ['첫 줄 요약이에요.', '둘째 줄이에요.', f'셋째 줄, {facts["소비자상담센터 전화번호"]}도 기억해요.'],
-                   'sections': [{'heading': '무슨 일이에요?', 'paragraphs': [f'자료를 보면 {nums[0]}이라는 숫자가 나와요.' + extra, '자료만으로는 원인을 알 수 없어요.']}],
+                   'sections': [{'heading': '무슨 일이에요?', 'paragraphs': [f'자료를 보면 {nums[0]}이라는 숫자가 나와요.' + extra, '원인은 더 지켜볼 일이에요.']}],
                    'tips': ['영수증을 챙겨 두세요.', '1372 소비자상담센터에 물어보세요.'], 'category': '생활'}
             return 200, {'model': 'test-model', 'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
         return fake
@@ -5956,6 +5956,11 @@ class SiteTest(unittest.TestCase):
         W = self.site.soboru_writer
         self.assertEqual(W.check_text('인텔은 52년 만의 최악 주가 폭락을 겪었다', {'기사': '52년'}), [])
         self.assertTrue(W.check_text('최악의 기업이다', {}))
+        # 운영자 2026-11-05: 매거진도 언론 — 다른 언론을 출처로 들거나 '자료에 없어 알 수 없다'고 쓰면 검토 필요로
+        self.assertTrue(W.check_text('최근 보도에 따르면 여기어때는 상품을 늘렸다.', {}))
+        self.assertTrue(W.check_text('자료에는 검색어 트렌드의 실제 수치가 없어 관심이 얼마나 커졌는지는 알 수 없다.', {}))
+        self.assertEqual(W.check_text('여행업계에 따르면 상품이 늘었다. 한국소비자원 자료에는 피해 사례가 담겼다.', {}), [])
+        self.assertIn('보도에 따르면', W.SYSTEM); self.assertNotIn('자료만으로는 알 수 없다"라고 쓴다', W.SYSTEM)
 
     def test_letter_autofix_links_number_source(self):
         # 검토 필요를 사람이 안 봐도 되게 (운영자 2026-11-01): 자료에 없는 숫자는 네이버에서 그 숫자가 나온 기사를 찾아 링크(뉴닉처럼), 숫자는 그대로
@@ -6040,8 +6045,18 @@ class SiteTest(unittest.TestCase):
             n = len(sent); admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai')})
             self.assertTrue(any('택시' in json.loads(x['messages'][1]['content']).get('title', '') for x in sent[n:] if x['messages'][1]['content'].startswith('{')))
             with self.site.conn() as db:
-                self.assertEqual(db.execute('SELECT ver FROM life_restyle_ver WHERE article_id=?', (ok,)).fetchone()[0], 2)
+                self.assertEqual(db.execute('SELECT ver FROM life_restyle_ver WHERE article_id=?', (ok,)).fetchone()[0], 3)
                 self.assertEqual(db.execute('SELECT title FROM life_restyle WHERE article_id=?', (ok,)).fetchone()[0], '택시 호출료, 누구에게 가나요?')
+            # 운영자 2026-11-05 (3차): '최근 보도에 따르면'·'자료에 없어 알 수 없다' 문장이 있는 글만 다시 AI로, 없는 글은 번호만 올림
+            with self.site.conn() as db: db.execute('UPDATE life_restyle_ver SET ver=2 WHERE article_id=?', (ok,))
+            n = len(sent); admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai')})
+            self.assertFalse([x for x in sent[n:] if '택시' in x['messages'][1]['content']])
+            with self.site.conn() as db:
+                self.assertEqual(db.execute('SELECT ver FROM life_restyle_ver WHERE article_id=?', (ok,)).fetchone()[0], 3)
+                db.execute('UPDATE life_restyle_ver SET ver=2 WHERE article_id=?', (ok,)); db.execute("UPDATE articles SET body=body||'\n\n최근 보도에 따르면 요금이 바뀌었다.' WHERE id=?", (ok,))
+            n = len(sent); admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai')})
+            self.assertTrue([x for x in sent[n:] if '택시' in x['messages'][1]['content']])
+            self.assertIn('다른 언론을 출처로', sent[-1]['messages'][0]['content'])
             admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'undo'})
             with self.site.conn() as db: self.assertEqual(db.execute('SELECT title FROM articles WHERE id=?', (ok,)).fetchone()[0], '택시 호출료, 누구에게 가나요?')
             qs = []
@@ -6185,6 +6200,67 @@ class SiteTest(unittest.TestCase):
         # 묶음 순서: 기사 화면의 '레터 구독 띠' 숨기기
         admin.post('/admin/screens', data={'_csrf': tok, 'page': 'mag_article', 'block': 'letter', 'act': 'hide', 'ajax': '1'})
         self.assertNotIn('class="ma-letter"', self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True))
+
+    def test_magazine_manage(self):
+        # 운영자 2026-11-05: ND CMS 관리 메뉴처럼 — 광고·환경설정·접수글
+        import io
+        from PIL import Image
+        admin = self.login_admin()
+        for u in ('/admin/magazine/ads', '/admin/magazine/settings', '/admin/magazine/inbox'):
+            self.assertEqual(self.client.get(u).status_code, 302)
+        with self.site.conn() as db:
+            aid = db.execute("INSERT INTO articles(title,summary,body,category,status,created,updated,published_at) VALUES('광고 시험 글','요약','본문','쇼핑','published','2020-01-01','2020-01-01','2020-01-01T09:00:00')").lastrowid
+        def clean():
+            with self.site.conn() as db:
+                db.execute('DELETE FROM articles WHERE id=?', (aid,)); db.execute("DELETE FROM soboru_settings WHERE key IN ('mag_conf','mag_ads')"); db.execute('DELETE FROM mag_inbox'); db.execute('DELETE FROM login_attempts')
+        self.addCleanup(clean)
+        nav = admin.get('/admin/magazine/settings').get_data(as_text=True)
+        for w in ('접수글', '광고', '환경설정'): self.assertIn(w, nav)
+        # 환경설정: 분야 순서·끄기, SNS
+        tok = self.csrf(admin, '/admin/magazine/settings')
+        bad = admin.post('/admin/magazine/settings', data={'_csrf': tok, 'aisle': ['쇼핑'], 'sns_instagram': 'javascript:alert(1)'})
+        self.assertEqual(bad.status_code, 302)
+        admin.post('/admin/magazine/settings', data={'_csrf': tok, 'aisle': ['여행', '쇼핑', '음식'], 'on_여행': '1', 'on_음식': '1', 'inbox': '1', 'email': 'hi@soboru.co.kr', 'sns_instagram': 'https://instagram.com/soboru'})
+        home = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+        tabs = re.search(r'class="ml-tabs".*?</nav>', self.client.get('/life', base_url='https://soboru.co.kr').get_data(as_text=True), re.S)[0]
+        aisles = re.findall(r'>([A-Z]+)</a>', tabs)
+        self.assertEqual(aisles[:3], ['ALL', 'TRAVEL', 'FOOD']); self.assertNotIn('SHOPPING', aisles)
+        self.assertIn('https://instagram.com/soboru', home); self.assertIn('/letter/contact', home); self.assertIn('hi@soboru.co.kr', home)
+        # 광고: 사진·주소를 넣고 켜면 첫 화면에, 누르면 세고 광고 주소로
+        buf = io.BytesIO(); Image.new('RGB', (800, 200), 'orange').save(buf, 'PNG'); buf.seek(0)
+        tok = self.csrf(admin, '/admin/magazine/ads')
+        admin.post('/admin/magazine/ads', data={'_csrf': tok, 'slot': 'main', 'url': 'https://example.com/sale', 'alt': '가을 할인', 'on': '1', 'img': (buf, 'ad.png', 'image/png')}, content_type='multipart/form-data')
+        home = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('class="mad mad-main"', home); self.assertIn('alt="가을 할인"', home)
+        img = re.search(r'src="(/art/ad/[^"]+)"', home)[1]
+        self.assertEqual(self.client.get(img, base_url='https://soboru.co.kr').status_code, 200)
+        go = self.client.get('/letter/ad/main', base_url='https://soboru.co.kr')
+        self.assertEqual(go.headers['Location'], 'https://example.com/sale')
+        self.assertIn('누른 횟수 <b>1</b>', admin.get('/admin/magazine/ads').get_data(as_text=True))
+        admin.post('/admin/magazine/ads', data={'_csrf': tok, 'slot': 'main', 'url': 'https://example.com/sale', 'end': '2020-01-01', 'on': '1'})
+        self.assertNotIn('mad-main', self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True))  # 기간 지나면 안 보임
+        self.assertEqual(self.client.get('/letter/ad/main', base_url='https://soboru.co.kr').status_code, 404)
+        admin.post('/admin/magazine/ads', data={'_csrf': tok, 'slot': 'main', 'act': 'del'})
+        self.assertEqual(self.client.get(img, base_url='https://soboru.co.kr').status_code, 404)
+        # 접수글: 독자가 보내면 관리자에 쌓임
+        reader = self.site.app.test_client()
+        page = reader.get('/letter/contact', base_url='https://soboru.co.kr')
+        self.assertEqual(page.status_code, 200)
+        ctok = re.search(r'name="_csrf" value="([^"]+)"', page.get_data(as_text=True))[1]
+        send = lambda **d: reader.post('/letter/contact', base_url='https://soboru.co.kr', data={'_csrf': ctok, 'kind': '기사 제보', 'email': 'r@example.com', 'body': '동네 마트 영수증 가격이 진열대와 달라요.', 'agree': '1', **d}).get_data(as_text=True)
+        self.assertIn('동의해야', send(agree=''))
+        self.assertIn('잘 받았어요', send(name='독자'))
+        self.assertEqual(reader.post('/letter/contact', base_url='https://soboru.co.kr', data={'_csrf': ctok, 'website': 'x'}).status_code, 400)
+        box = admin.get('/admin/magazine/inbox').get_data(as_text=True)
+        self.assertIn('진열대와 달라요', box); self.assertIn('class="ms-badge">1<', box)
+        with self.site.conn() as db: mid = db.execute('SELECT id FROM mag_inbox').fetchone()[0]
+        tok = self.csrf(admin, '/admin/magazine/inbox')
+        admin.post('/admin/magazine/inbox', data={'_csrf': tok, 'id': mid, 'act': 'done'})
+        self.assertNotIn('class="ms-badge">1<', admin.get('/admin/magazine/inbox').get_data(as_text=True))
+        # 접수를 끄면 바닥글 링크도, 쓰는 화면도 없음
+        tok = self.csrf(admin, '/admin/magazine/settings')
+        admin.post('/admin/magazine/settings', data={'_csrf': tok, 'aisle': ['쇼핑'], 'on_쇼핑': '1'})
+        self.assertEqual(reader.get('/letter/contact', base_url='https://soboru.co.kr').status_code, 404)
 
     def test_magazine_editors(self):
         # 운영자 2026-11-05: 에디터 계정 — 지금 기사는 에디터 이지우·오후가 번갈아, 에디터는 쓰고 승인 요청만 (게시는 관리자)

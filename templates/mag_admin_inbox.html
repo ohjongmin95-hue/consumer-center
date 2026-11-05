@@ -1,0 +1,31 @@
+{% extends 'console.html' %}
+{% block title %}접수글 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+{# 운영자 2026-11-05: 매거진 바닥글 '제보·문의'로 들어온 글 #}
+<main class="page mz-cms"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">접수글</h1></div>
+  <p class="ms-lead">매거진 바닥글 '제보·문의'로 독자가 보낸 글이에요. 받은 지 {{ keep }}일이 지나면 저절로 지워져요.</p>
+  <nav class="mz-tabs" aria-label="접수글 나누기">
+    <a href="{{ url_for('mag_inbox_admin') }}"{% if not view %} class="on" aria-current="page"{% endif %}>전체 <em>{{ n.new + n.done }}</em></a>
+    <a href="{{ url_for('mag_inbox_admin', view='new') }}"{% if view == 'new' %} class="on" aria-current="page"{% endif %}>새 글 <em>{{ n.new }}</em></a>
+    <a href="{{ url_for('mag_inbox_admin', view='done') }}"{% if view == 'done' %} class="on" aria-current="page"{% endif %}>확인함 <em>{{ n.done }}</em></a>
+  </nav>
+  {% if rows %}
+  <ul class="ms-list mg-inbox">
+  {% for r in rows %}
+    <li class="mg-msg{{ ' new' if r['status'] == 'new' }}">
+      <div class="mg-msg-h"><span class="mg-kind">{{ r['kind'] }}</span><b>{{ r['name'] or '이름 없음' }}</b><a href="mailto:{{ r['email'] }}">{{ r['email'] }}</a><time>{{ r['created'][:16].replace('T', ' ') }}</time></div>
+      <p class="mg-body">{{ r['body'] }}</p>
+      <div class="mg-msg-act">
+        <form method="post" action="{{ url_for('mag_inbox_admin', view=view or None) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}">
+          {% if r['status'] == 'new' %}<button class="primary" name="act" value="done">확인했어요</button>{% else %}<button class="ms-ghost" name="act" value="new">새 글로 되돌리기</button>{% endif %}</form>
+        <form method="post" action="{{ url_for('mag_inbox_admin', view=view or None) }}" class="mg-del" onsubmit="return confirm('이 글을 지울까요?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}"><button name="act" value="del">지우기</button></form>
+      </div>
+    </li>
+  {% endfor %}
+  </ul>
+  {% else %}
+  <p class="mg-none">{{ '새 글이 없어요' if view == 'new' else '아직 받은 글이 없어요' }}</p>
+  {% endif %}
+</div></main>
+{% endblock %}

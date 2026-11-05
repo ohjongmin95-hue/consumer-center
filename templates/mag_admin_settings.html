@@ -1,0 +1,44 @@
+{% extends 'console.html' %}
+{% block title %}환경설정 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+{# 운영자 2026-11-05: ND CMS 관리 메뉴처럼 — 분야 순서·보이기, SNS 주소, 문의 메일, 독자 접수 #}
+<main class="page mz-cms"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">환경설정</h1></div>
+  <form method="post" class="mg-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <section class="mg-sec">
+      <h2>Aisles<span>분야</span></h2>
+      <p class="mg-help">첫 화면 Aisles와 기사 목록 위 분야 이름이 이 순서로 나와요. 끈 분야는 메뉴에서만 빠지고 기사는 그대로 있어요.</p>
+      <ol class="mg-aisles" id="mg-aisles">
+      {% for a in rows %}
+        <li><input type="hidden" name="aisle" value="{{ a }}">
+          <label class="mg-sw"><input type="checkbox" name="on_{{ a }}" value="1"{% if a not in c.off %} checked{% endif %}><i aria-hidden="true"></i><b>{{ a }}</b></label>
+          <span class="mg-mv"><button type="button" data-mv="-1" aria-label="{{ a }} 위로">↑</button><button type="button" data-mv="1" aria-label="{{ a }} 아래로">↓</button></span>
+        </li>
+      {% endfor %}
+      </ol>
+    </section>
+    <section class="mg-sec">
+      <h2>Social<span>SNS 주소</span></h2>
+      <p class="mg-help">적은 곳만 매거진 바닥글에 나와요.</p>
+      <div class="mg-grid">
+      {% for k, name in sns %}<label class="mg-f">{{ name }}<input name="sns_{{ k }}" value="{{ c.sns[k] }}" placeholder="https://" inputmode="url"></label>{% endfor %}
+      </div>
+    </section>
+    <section class="mg-sec">
+      <h2>Letters<span>독자 접수</span></h2>
+      <label class="mg-sw mg-sw-row"><input type="checkbox" name="inbox" value="1"{% if c.inbox %} checked{% endif %}><i aria-hidden="true"></i><b>바닥글에 '제보·문의' 열기</b></label>
+      <p class="mg-help">독자가 기사 제보·문의·광고 제휴 글을 보내면 <a href="{{ url_for('mag_inbox_admin') }}">접수글</a>에 쌓여요.</p>
+      <label class="mg-f">문의 메일 (바닥글에 보여요, 비워도 돼요)<input name="email" type="email" value="{{ c.email }}" placeholder="예: contact@soboru.co.kr"></label>
+    </section>
+    <button type="submit" class="primary mg-save">저장</button>
+  </form>
+</div></main>
+<script>
+document.getElementById('mg-aisles').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-mv]'); if (!b) return;
+  var li = b.closest('li'), up = b.dataset.mv === '-1', to = up ? li.previousElementSibling : li.nextElementSibling;
+  if (!to) return; up ? li.parentNode.insertBefore(li, to) : li.parentNode.insertBefore(to, li); b.focus();
+});
+</script>
+{% endblock %}

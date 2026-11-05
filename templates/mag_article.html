@@ -32,6 +32,7 @@
     {% elif a['source_name'] or a['source_url'] %}<p class="ma-src"><b>{{ ui('life.source', '출처') }}</b> {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
     {{ admin_delete('life', a['id'], '관리자: 이 글 지우기') }}
   </article>
+  {{ mag_ad('article') if mag_ad is defined }}
   {% for blk in blocks('mag_article') %}{{ ed_block('mag_article', blk) }}
   {% if blk == 'more' and related %}
   <section class="ma-more">
