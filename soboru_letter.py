@@ -105,6 +105,7 @@ UNSUB_MARK = '__LETTER_UNSUB__'
 STIBEE_UNSUB = '$%unsubscribe%$'      # 스티비에 붙여 넣는 HTML의 수신 거부 치환자 (스티비가 구독자별 링크로 바꿈)
 STIBEE_SUB_FIELD = 'soboru_sub'     # 스티비 주소록 사용자 정의 필드: 사이트 구독자는 'none' → 메일 맨 위 구독하기 버튼이 숨음 (운영자 2026-11-01)
 GIF = bytes.fromhex('47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b')  # 1x1 투명 그림
+MAG_EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '뷰티': 'BEAUTY', '리콜': 'RECALL'}  # 매거진 첫 화면과 같은 영문 분야
 PURPOSE = '경제·소비자 관련 정보 제공'   # ⑥ 발행 정보의 발행 목적
 
 SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제·소비자 뉴스레터 "소보루 레터"를 쓰는 "에디터 크로와상"이다. 바쁜 사람도 5분이면 오늘의 경제 이슈와 내 지갑을 지키는 정보를 따라잡게 정리한다. '
@@ -124,7 +125,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다. "소보루 브리핑" 같은 고정된 이름을 제목에 붙이지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 여는 글 2~3문장 — "빵순이·빵돌이님,"으로 시작해(독자를 부를 땐 늘 빵순이·빵돌이님, "이웃님"은 쓰지 않는다) 에디터 코멘트 이슈를 우리 생활 장면으로 꺼내고 마지막 문장은 질문으로 끝낸다(예: "…우리는 어떻게 대처해야 할까요?"). 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
           '"items": [{"no": 뉴스 번호, "title": 뉴스 제목처럼 핵심 숫자·주체를 담은 30~45자 제목(질문형·감탄·따옴표 인용 가능, 어울리면 끝에 이모지 하나, 예 "미국 기준금리 3.75~4.00% 동결, 12월 추가 인상 가능성은? 🏦"), "body": 딱 3문장(150~230자) — 첫 문장은 언제·누가·무엇을 했는지 핵심 숫자와 함께(예 "28일 미국 연방준비제도(연준)가 기준금리를 연 3.75~4.00%로 동결했어요."), 둘째 문장은 배경이나 덧붙일 사실, 셋째 문장은 왜 그런지·무슨 뜻인지 해석("~라는 해석이 나와요", "~라는 계획이에요"). 기관 이름은 처음에 풀어 쓰고 괄호에 줄임말, 해요체로 짧고 또렷하게(그 뉴스와 "같은 소식 다른 기사" 자료만 쓴다), "tip": "", "law": 고른 조문 id 또는 ""}], '
-          '"comment": {"photo": [이 메인 뉴스에만 어울리는 사진을 Unsplash에서 찾을 영어 검색어 3개, 각 2~4낱말. 첫째가 가장 구체적이다. 이슈의 대상(물건·장소·장면)을 그대로 담는다(예: 배달비 → "food delivery scooter", 환율 → "currency exchange board", 아파트 관리비 → "apartment building", 항공권 → "airplane window seat"). 쇼핑 카트·지폐·동전·계산기·그래프처럼 어느 경제 뉴스에나 붙는 흔한 사진은 그 뉴스가 바로 그것을 다룰 때만. 사람 이름·회사 이름·로고 X], "title": 30~45자 제목(핵심 주체·숫자를 담고 끝에 어울리는 이모지 1~2개 가능), "tags": [이슈를 나타내는 짧은 낱말 2~3개, # 없이], "lead": 3~4문장 — 독자가 겪을 법한 생활 장면으로 시작해 이슈를 꺼내고 마지막은 질문으로 끝낸다, "what": {"body": 언제 누가 무엇을 발표·확인했는지 1~2문장(끝을 "…살펴보면:"처럼 이어 써도 됨), "points": [{"name": 주체·항목 이름 15자 이내, "text": 1~2문장 — 자료에 있는 숫자를 꼭 넣는다}] 3개}, '
+          '"comment": {"photo": [이 메인 뉴스에만 어울리는 사진을 Unsplash에서 찾을 영어 검색어 3개, 각 2~4낱말. 첫째가 가장 구체적이다. 이슈의 대상(물건·장소·장면)을 그대로 담는다. 다른 나라·도시 이야기면 그 나라 풍경을 넣는다(예: 영국 기준금리 → "london city street", 일본 엔화 → "tokyo street shops"). (예: 배달비 → "food delivery scooter", 환율 → "currency exchange board", 아파트 관리비 → "apartment building", 항공권 → "airplane window seat"). 쇼핑 카트·지폐·동전·계산기·그래프처럼 어느 경제 뉴스에나 붙는 흔한 사진은 그 뉴스가 바로 그것을 다룰 때만. 사람 이름·회사 이름·로고 X], "title": 30~45자 제목(핵심 주체·숫자를 담고 끝에 어울리는 이모지 1~2개 가능), "tags": [이슈를 나타내는 짧은 낱말 2~3개, # 없이], "lead": 3~4문장 — 독자가 겪을 법한 생활 장면으로 시작해 이슈를 꺼내고 마지막은 질문으로 끝낸다, "what": {"body": 언제 누가 무엇을 발표·확인했는지 1~2문장(끝을 "…살펴보면:"처럼 이어 써도 됨), "points": [{"name": 주체·항목 이름 15자 이내, "text": 1~2문장 — 자료에 있는 숫자를 꼭 넣는다}] 3개}, '
           '"why": {"body": 배경·원인 5~7문장(350~550자), 자료의 숫자와 기관 발표를 들어 구체적으로}, "wallet": {"head": 이 칸 소제목 15자 안팎(예 "내 지갑엔 무슨 일이?", "무엇이 문제일까요?"), "body": 1~2문장(끝을 "…이래요:"처럼 이어 써도 됨), "points": [{"name": 15자 이내 + 끝에 어울리는 이모지 하나, "text": 2문장}] 2~3개}, "note": 에디터 크로와상의 한마디 2~3문장(120~220자) — 이 이슈를 두고 독자가 오늘 챙겨 보면 좋을 점을 친구에게 말하듯 따뜻하게(기업 평가·단정 X, 자료에 없는 숫자 X)} (자료가 모자라면 null), '
           '"buzz": {"title": 요즘 소비 트렌드를 담은 25~40자 제목, "body": 트렌드 도입 4~5문장(250~400자) — 요즘 무엇이 왜 뜨는지 생활 장면과 숫자로, '
           '"shop": 이번 트렌드 주제에 가장 어울리는 가게 하나(dessert 디저트·toy 완구·flower 꽃·food 식당·bakery 빵·store 편의점·cafe 카페·beauty 뷰티·fashion 옷·tech 전자·grocery 장보기·travel 여행·health 건강·shop 그 밖), "points": [{"name": 트렌드·상품 이름 15자 이내, "text": 4~5문장(250~380자) — 무엇이 얼마나 팔리는지(판매량·증가율·가격·순위 같은 자료의 숫자를 여럿), 누가 왜 사는지, 업계가 어떻게 움직이는지를 구체적으로}] 3개, '
@@ -778,10 +779,27 @@ def install(S):
 
     def sections(no=1):
         # 정보성 콘텐츠만 (운영자 2026-11-01): 커뮤니티 리뷰·리뷰 주제는 빼고, 새 매거진 글과 오늘의 경제 용어
+        # 운영자 2026-11-05: 콘텐츠가 적다 — 매거진 기사를 완전히 다른(매거진식) 디자인으로 사진·분야·요약까지. 최근 호에 넣은 기사는 건너뜀
         with conn() as db:
-            arts = db.execute("SELECT id,title,summary,emoji,category FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 3").fetchall()
-        life = [{'id': a['id'], 'title': a['title'], 'summary': ' '.join((a['summary'] or '').split())[:90], 'emoji': a['emoji'] or '📰', 'category': a['category'],
-                 'url': f"/life/{a['id']}"} for a in arts]
+            arts = db.execute("SELECT id,title,summary,emoji,category FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 40").fetchall()
+            seen = set()
+            for r in db.execute('SELECT sections FROM letters ORDER BY no DESC LIMIT 6'):
+                try: seen |= {x.get('id') for x in json.loads(r[0] or '{}').get('life') or [] if isinstance(x, dict)}
+                except (ValueError, AttributeError): pass
+        pick = [a for a in arts if a['id'] not in seen][:3]
+        pick += [a for a in arts if a not in pick][:3 - len(pick)]
+        photo = app.jinja_env.globals.get('mag_photo'); credit = app.jinja_env.globals.get('mag_credit')
+        def pic(aid):
+            if not photo: return '', None
+            try:
+                with app.test_request_context(): u, c = photo(aid, 1100), (credit(aid) if credit else None)
+            except Exception: return '', None
+            return (site_url(u) if u.startswith('/') else u), c
+        life = []
+        for a in pick:
+            u, c = pic(a['id'])
+            life.append({'id': a['id'], 'title': a['title'], 'summary': ' '.join((a['summary'] or '').split())[:140], 'emoji': a['emoji'] or '📰', 'category': a['category'],
+                         'en': MAG_EN.get(a['category'] or '', 'LIFE'), 'photo': u, 'credit': c, 'url': f"/life/{a['id']}"})
         return {'life': life, 'word': word_of(no)}
 
     # ---- 만들기 -----------------------------------------------------------------
