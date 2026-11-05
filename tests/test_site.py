@@ -5810,8 +5810,8 @@ class SiteTest(unittest.TestCase):
         subject, html, text = self.site.app.extensions['soboru_letter']['email_parts'](L, 'tok-x')
         icon = self.site.soboru_letter.TOPIC_ICON[it1['topic']][0]  # 분야를 남겨 분야 그림(토스페이스)을 붙임
         self.assertIn('editor-croissant.png', html)  # 에디터 크로와상 그림
-        self.assertLess(html.index('SOBORU MAGAZINE'), html.index('editor-croissant.png'))  # 머리는 이름 글씨(운영자 2026-11-05: 소보루 레터), 캐릭터는 아래에서만
-        self.assertIn('>소보루 레터</span>', html); self.assertTrue(subject.startswith('🍞[소보루 레터]'))
+        self.assertLess(html.index('alt="SOBORU 소보루 레터"'), html.index('editor-croissant.png'))  # 머리는 귤색 SOBORU 로고(운영자 2026-11-05), 캐릭터는 아래에서만
+        self.assertNotIn('>소보루 레터</span>', html); self.assertTrue(subject.startswith('🍞[소보루 레터]'))
         self.assertIn('이번 주 소비자 뉴스, 이것만 보면 끝', subject)
         for part in (html, text):
             self.assertIn('첫째 소식, 이것만 알면 돼요', part); self.assertIn(it1['src']['url'], part)
