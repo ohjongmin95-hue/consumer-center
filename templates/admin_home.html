@@ -28,7 +28,7 @@
     <a href="{{ url_for('admin_stats') }}"><span>기업 답변 받은 제보</span><b>{{ '{:,}'.format(h.answered) }}</b><small>답변 도착·종결</small></a>
     <a href="{{ url_for('admin_members') }}"><span>회원</span><b>{{ '{:,}'.format(stats.members) }}</b><small>최근 7일 +{{ stats.new_members }}</small></a>
     <a href="{{ url_for('admin_experts') }}"><span>소보루 자문단</span><b>{{ h.experts }}</b><small>{% if h.experts_wait %}<i class="ad-dot" aria-hidden="true"></i>승인 대기 {{ h.experts_wait }}명{% else %}승인 대기 없음{% endif %}</small></a>
-    <a href="{{ url_for('admin_letter') }}"><span>크로와상 레터 구독</span><b>{{ '{:,}'.format(h.letter) }}</b><small>확인 마친 구독자</small></a>
+    <a href="{{ url_for('admin_letter') }}"><span>소보루 레터 구독</span><b>{{ '{:,}'.format(h.letter) }}</b><small>확인 마친 구독자</small></a>
     <a href="{{ url_for('admin_ai_usage') }}"><span>이번 달 AI 비용</span><b>{{ '{:,}'.format(h.ai_krw) }}<small>원</small></b><small>사용량 보기</small></a>
   </div>
 

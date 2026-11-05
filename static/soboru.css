@@ -3300,4 +3300,4 @@ main img,main video,main iframe,main table{max-width:100%}
   .nm-rl::-webkit-scrollbar{display:none}
   .nm-rl figure{flex:0 0 62%;scroll-snap-align:start}
 }
-.nm-lt .nm-kick{margin:0 0 14px;font-size:17px;font-weight:800;color:#fff;letter-spacing:-.01em}.nm-lt .nm-kick::before{content:"🥐 ";font-family:Tossface,sans-serif}
+.nm-lt .nm-kick{margin:0 0 14px;font-size:17px;font-weight:800;color:#fff;letter-spacing:-.01em}.nm-lt .nm-kick::before{content:"🍞 ";font-family:Tossface,sans-serif}
