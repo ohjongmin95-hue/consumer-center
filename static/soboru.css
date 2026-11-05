@@ -3141,7 +3141,22 @@ main img,main video,main iframe,main table{max-width:100%}
 /* 운영자 2026-11-04: 상단 메뉴와 표지 사진 사이 간격 좁힘 */
 .nm-page .lt-hero>.nm-g:first-child{padding-top:6px}
 @media (max-width:900px){.nm-page .lt-hero>.nm-g:first-child{padding-top:4px}}
-/* 운영자 2026-11-05: 뉴소스처럼 바탕 전체 귤색으로 되돌림 (흰 바탕 덮어쓰기 뺌) */
+/* 운영자 2026-11-04: 전부 귤색이라 답답함 → 바탕은 따뜻한 흰색, 귤색은 상단 메뉴·구독 띠·포인트에만 (디에디트처럼 여백) */
+.lt-alone:has(.nm-page){background:#FAFAF7}
+.nm-page{background:#FAFAF7!important;color:#111!important}
+.nm-page .nm-intro h1{color:#111!important}
+.nm-page .nm-intro p{color:#555;opacity:1}
+.nm-page .nm-intro p b{color:#111}
+.nm-page .nm-banner{outline:1px solid #ece7df}
+.nm-page .nm-sh,.nm-page .nm-hh h2{color:#111}
+.nm-page .nm-sh i,.nm-page .nm-hh i{background:#EF920E!important}
+.nm-page .nm-up{background:#111;color:#fff}
+.nm-page .nm-more{color:#111;border-color:#111}
+.nm-page .nm-pe{background:#FAFAF7!important}
+.nm-page .nm-cat h2{color:#111}.nm-page .nm-cat h2 small{color:#666}
+.nm-page .nm-cat li>a{color:#111}.nm-page .nm-cat li>a small{color:#999}
+.nm-page .nm-cat li>a:hover{color:#EF920E}
+.nm-page .nm-watch .nm-sh{color:#111}
 /* HOT ISSUE: 사진 + 왼쪽 아래 분야, 아래에 제목·한 줄·날짜 */
 .nm-page .nm-hots2{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px}
 .nm-page .nm-hots2>a{display:flex;flex-direction:column;gap:0;color:#111;text-decoration:none;transform:none!important}
@@ -3153,15 +3168,15 @@ main img,main video,main iframe,main table{max-width:100%}
 .nm-page .nm-hots2 .nm-type{padding:18px;justify-content:flex-start}
 .nm-page .nm-hots2 .nm-type b{font-size:clamp(24px,2.6vw,38px)!important}
 .nm-page .nm-hots2>a>b{margin-top:18px;font-size:clamp(18px,1.6vw,22px);font-weight:800;line-height:1.38;letter-spacing:-.03em;color:#111;text-wrap:balance}
-.nm-page .nm-hots2>a>p{margin:10px 0 0;font-size:14px;line-height:1.55;color:#111;opacity:.78}
-.nm-page .nm-hots2>a>small{margin-top:14px;font-size:13px;color:#111;opacity:.6;font-family:Inter,sans-serif}
-.nm-page .nm-hots2>a:hover>b{text-decoration:underline;text-underline-offset:4px}
+.nm-page .nm-hots2>a>p{margin:10px 0 0;font-size:14px;line-height:1.55;color:#555}
+.nm-page .nm-hots2>a>small{margin-top:14px;font-size:13px;color:#888;font-family:Inter,sans-serif}
+.nm-page .nm-hots2>a:hover>b{color:#EF920E}
 .nm-page .nm-hots2>a:hover .nm-ph>img{transform:scale(1.03)}
 @media (max-width:900px){.nm-page .nm-hots2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 14px;overflow:visible}.nm-page .nm-hots2>a{width:auto!important}}
 @media (max-width:600px){.nm-page .nm-hots2>a>b{font-size:16px}.nm-page .nm-hots2>a>p{display:none}}
 @media (max-width:900px){.nm-page .nm-hots.nm-hots2{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;scroll-snap-type:none}}
 @media (max-width:600px){.nm-page .nm-hots.nm-hots2>a>b{display:block;margin-top:12px}}
-.nm-page .nm-up{background:#111!important;color:#fff!important;font-size:20px}
+.nm-page .nm-up{color:#fff!important;font-size:20px}
 .ma-page .ma-body .sb-callout b{display:none}
 /* 운영자 2026-11-05: 맨 아래 구독 칸이 위로 너무 큼 → 줄임 */
 .nm-page .nm-lt{padding-block:48px 28px}
@@ -3199,3 +3214,8 @@ main img,main video,main iframe,main table{max-width:100%}
 @media (max-width:900px){.ml-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:36px 14px}}
 @media (max-width:600px){.ml-head{padding-top:40px}.ml-tabs{gap:8px 16px;font-size:12px}.ml-grid>a>b{font-size:16px}.ml-grid>a>p{display:none}}
 .ml-ph:has(>.ma-type)>em,.nm-page .nm-hots2 .nm-ph:has(>.nm-type)>em{display:none}
+/* 운영자 2026-11-05: 표지 사진·소개 글까지만 귤색, HOT ISSUE부터 아래는 따뜻한 흰 바탕 */
+.nm-page .lt-hero{background:#EF920E!important}
+.nm-page .lt-hero .nm-intro h1{color:#fff!important}
+.nm-page .lt-hero .nm-intro p{color:#fff;opacity:.92}
+.nm-page .lt-hero .nm-intro p b{color:#fff}
