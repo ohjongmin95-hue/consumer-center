@@ -16,9 +16,10 @@
     </div>
     <div class="mk-right"><form class="mk-form" id="mk-form" onsubmit="return false">
       <fieldset class="mk-src"><legend>기사·레터로 만들기</legend>
-        <p class="mk-help">{% if mode == 'reel' %}기사나 소보루 레터 꼭지를 고르면 AI가 장면·자막·길이를 짜고 기사 사진·영상을 넣어요. 그다음 고치면 돼요.{% else %}기사·레터 꼭지를 고르거나 다른 기사 링크를 넣으면 AI가 소보루 카드뉴스 원칙대로 짜요. 표지 문구 5개, 본문 2~4장, 저장 유도 마무리, 출처 붙은 캡션까지. 다른 기사 링크는 기사 사진 대신 AI가 그림을 새로 그려요.{% endif %}</p>
+        <p class="mk-help">{% if mode == 'reel' %}기사나 소보루 레터 꼭지를 고르면 AI가 장면·자막·길이를 짜고 기사 사진·영상을 넣어요. 그다음 고치면 돼요.{% else %}우리 기사·레터 꼭지·네이버 경제 뉴스를 고르거나 다른 기사 링크를 넣으면 AI가 소보루 카드뉴스 원칙대로 짜요. 표지 문구 5개, 본문 2~4장, 저장 유도 마무리, 출처 붙은 캡션까지. 다른 기사 링크는 기사 사진 대신 AI가 그림을 새로 그려요.{% endif %}</p>
         {% if arts %}<label class="mg-f">우리 매거진 기사<select id="mk-art"><option value="">기사 고르기</option>{% for a in arts %}<option value="{{ a.id }}">{{ a.title[:46] }}</option>{% endfor %}</select></label>{% endif %}
         {% if letters %}<label class="mg-f">소보루 레터 <small>(한 꼭지가 게시물 하나)</small><select id="mk-letter"><option value="">레터 꼭지 고르기</option>{% for L in letters %}<optgroup label="{{ L.no }}호 · {{ L.title }}{{ '' if L.sent else ' (안 보냄)' }}">{% for p in L.pieces %}<option value="L{{ L.id }}:{{ p.key }}">{{ p.label[:40] }}</option>{% endfor %}</optgroup>{% endfor %}</select></label>{% endif %}
+        <label class="mg-f">네이버 경제 뉴스 <small>(댓글 많은 순)</small><select id="mk-naver"><option value="">불러오는 중이에요</option></select></label>
         <label class="mg-f">다른 기사 <small>(주소나 기사 글 전체)</small><textarea id="mk-src" rows="3" placeholder="https://… 또는 기사 글 붙여 넣기"></textarea></label>
         <button type="button" class="mk-ai" id="mk-ai">AI로 {{ '장면' if mode == 'reel' else '카드' }} 짜기</button>
       </fieldset>
@@ -53,6 +54,6 @@
   </div>
   </div>
 </div></main>
-<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'draw': url_for('mag_maker_draw'), 'status': url_for('mag_maker_status'), 'assist': url_for('mag_assist'), 'arts': arts}|tojson }};</script>
+<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'draw': url_for('mag_maker_draw'), 'naver': url_for('mag_maker_naver'), 'status': url_for('mag_maker_status'), 'assist': url_for('mag_assist'), 'arts': arts}|tojson }};</script>
 <script src="{{ asset('maker.js') }}"></script>
 {% endblock %}

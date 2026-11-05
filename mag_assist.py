@@ -83,18 +83,18 @@ CARD_ASK = ('너는 소비자 라이프스타일 매거진 \'소보루 매거진
     '- big: 표지에 크게 박을 숫자 하나(12자 안, 예: "배달비 3,000원"). 기사에 있는 숫자로. 없으면 빈칸.\n'
     '[본문] slides에 2~4장, 한 장에 메시지 하나, 문장은 짧게. 정책·법·제도 뉴스는 꼭 "언제부터" / "누가 해당" / "내가 챙길 것" 세 장을 이 순서로(kicker에 그대로). '
     '다른 뉴스는 "무슨 일이 있었나" / "왜 커졌나" / "내 생활엔 뭐가 달라지나" 같은 흐름, 꿀팁은 한 장에 팁 하나.\n'
-    '  각 장: kicker(그 장 이름, 12자 안), title(한 줄 16자 안, 두 줄이면 \\n), items(2~3문장, 110자 안, 핵심 숫자·말은 **굵게**), '
-    'num(그 장에서 크게 보여 줄 숫자, 없으면 빈칸), scene(그림 장면).\n'
+    '  각 장: kicker(그 장 이름, 12자 안), title(한 줄 16자 안, 두 줄이면 \\n), items(뉴닉처럼 말 걸듯 두 문단, 문단은 줄 바꿈으로 나누고 문단마다 2문장, 모두 160~240자, 핵심 숫자·말은 **굵게**), '
+    'num(그 장에서 크게 보여 줄 숫자, 없으면 빈칸). 본문 장에는 그림이 없다(글만).\n'
     '- 사람이 한 말이 꼭 필요하면 본문 한 장을 인용으로: design "quote", title = 말(40자 안), sub = 말한 사람.\n'
     '[마지막 장] tips: 독자가 실제로 챙길 것 정확히 3개(각 26자 안). 맺음말 "헷갈리면 저장해 두세요"는 화면이 붙인다.\n'
-    '[그림] cover_scene과 scene은 영어 한 문장: 기사 사진·캡처를 쓰지 않고 AI가 새로 그릴 장면. 사람은 뒷모습·손·흐릿하게만, '
-    '실존 인물 얼굴·기업 로고·브랜드·글자·숫자 없이. 표지 장면은 강렬한 장면 하나.\n'
+    '[그림] 그림은 표지에만 들어간다. cover_scene은 영어 한 문장: 기사 사진·캡처를 쓰지 않고 AI가 새로 그릴 강렬한 장면 하나. '
+    '사람은 뒷모습·손·흐릿하게만, 실존 인물 얼굴·기업 로고·브랜드·글자·숫자 없이.\n'
     '[캡션] caption: 공감되는 말투로 딱 3줄("나도 그래" 싶게), 줄마다 맨 앞 이모지 하나. 출처·해시태그는 쓰지 않는다(따로 붙인다). hashtags: 4~5개("#" 빼고).\n'
     '[출처] source_media: 기사 매체명, source_date: 보도 날짜 YYYY.MM.DD(모르면 빈칸).\n'
     '말투: 카드 글은 해요체로 쉽고 짧게(친구에게 알려 주듯). 이모지는 캡션에만.\n'
     'JSON으로만 답한다: {"tag": 분야 영문 대문자 한 단어(FOOD, SHOPPING, BEAUTY, LIFE, MONEY, TELECOM, TRAVEL, CAR, RECALL 중), '
     '"covers": [{"text": 문구, "type": 틀}], "big": 숫자, "cover_scene": 영어, '
-    '"slides": [{"design": "body"|"quote", "kicker": 이름, "title": 제목, "items": 글, "num": 숫자, "sub": 말한 사람, "scene": 영어}], '
+    '"slides": [{"design": "body"|"quote", "kicker": 이름, "title": 제목, "items": 글, "num": 숫자, "sub": 말한 사람}], '
     '"tips": [3개], "caption": 3줄, "hashtags": [4~5개], "source_media": 매체, "source_date": 날짜}')
 ASKS['cards'] = CARD_ASK
 NUMS = BASE[BASE.index('숫자를 지키는 법'):BASE.index('본문 형식')]
@@ -181,7 +181,12 @@ def read_article(url):
     if len(body) <= 100: body = '\n'.join(page_text(p) for p in re.findall(r'(?is)<p\b[^>]*>.*?</p>', page))
     body = re.split(r'(?:^|\n)(?:저작권자|Copyright|ⓒ|©|<저작권|무단\s*전재)', body, maxsplit=1)[0].strip()
     if len(re.sub(r'\s', '', body)) < 100: return ''
-    return ((title + '\n\n') if title else '') + body[:LIMIT]
+    meta = []  # 출처 줄에 쓸 매체·날짜 (네이버 뉴스 등)
+    m = re.search(r'(?is)<meta[^>]+(?:property|name)=["\'](?:og:article:author|article:publisher|og:site_name)["\'][^>]+content=["\']([^"\']+)', page)
+    if m: meta.append('매체: ' + html.unescape(m[1]).split('|')[0].strip())
+    m = re.search(r'data-date-time=["\'](\d{4}-\d{2}-\d{2})', page) or re.search(r'(?is)<meta[^>]+property=["\']article:published_time["\'][^>]+content=["\'](\d{4}-\d{2}-\d{2})', page)
+    if m: meta.append('보도 날짜: ' + m[1].replace('-', '.'))
+    return ((title + '\n') if title else '') + (' / '.join(meta) + '\n\n' if meta else ('\n' if title else '')) + body[:LIMIT]
 
 
 def numbers(s):

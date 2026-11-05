@@ -8,6 +8,8 @@ Magazine Studio > 카드뉴스·릴스 만들기 (/admin/magazine/maker)
 사진·영상은 기사 본문용 올리기(/admin/magazine/photo, /admin/magazine/video/*)를 그대로 씀.
 카드뉴스 그림 (운영자 2026-11-05, 카드뉴스 원칙): 기사 사진·캡처는 쓰지 않고, AI가 짠 장면 설명(scene)으로 OpenAI가 새로 그림
 (/admin/magazine/maker/draw, 세로 1024x1536 → 본문 사진과 같은 곳). 실제 사람 얼굴·로고·글자는 그리지 않음.
+네이버 경제 뉴스 (운영자 2026-11-05: '네이버에 댓글 많은 경제 뉴스 위주로 기사 링크 고를 수 있게'):
+네이버 뉴스 경제 섹션(news.naver.com/section/101) 기사들의 댓글 수를 네이버 댓글 API로 세어 많은 순 20개 (/admin/magazine/maker/naver, 30분 저장).
 """
 import base64
 import datetime
@@ -43,6 +45,39 @@ DRAW = ('Photorealistic editorial photo for a Korean consumer news Instagram car
         'main subject in the lower half, calm uncluttered upper part (headline text goes there). Scene: {scene}. '
         'People only from behind, as hands, or softly blurred, never a recognizable face or a real person. '
         'No company logos, no brand names, no text, no letters, no numbers, no watermarks.')
+
+
+NAVER_SECTION = 'https://news.naver.com/section/101'
+NAVER_ART = re.compile(r'https://n\.news\.naver\.com/(?:mnews/)?article/(?:comment/)?(\d{3})/(\d{10})')
+NAVER_COUNT = ('https://apis.naver.com/commentBox/cbox/web_naver_list_jsonp.json?ticket=news&templateId=default_economy&pool=cbox5&lang=ko&country=KR'
+               '&objectId=news{oid}%2C{aid}&pageSize=1&page=1&sort=FAVORITE&_callback=cb')
+UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
+
+
+def _get(url, referer=''):
+    import urllib.request
+    req = urllib.request.Request(url, headers={'User-Agent': UA, 'Referer': referer or 'https://news.naver.com/', 'Accept-Language': 'ko-KR,ko;q=0.9'})
+    with urllib.request.urlopen(req, timeout=8) as r: return r.read(3_000_000).decode('utf-8', 'replace')
+
+
+def naver_section_articles(page):
+    """경제 섹션 화면에서 기사 (oid, aid, 제목) — 같은 기사 링크가 여럿이면 가장 긴 글을 제목으로."""
+    import html as H
+    found = {}
+    for m in re.finditer(r'(?is)<a\b[^>]*href="([^"]+)"[^>]*>(.*?)</a>', page):
+        a = NAVER_ART.match(H.unescape(m[1]))
+        if not a: continue
+        t = ' '.join(H.unescape(re.sub(r'<[^>]+>', ' ', m[2])).split())
+        k = (a[1], a[2])
+        if len(t) > len(found.get(k, '')): found[k] = t
+    return [(o, a, t) for (o, a), t in found.items() if len(t) >= 8]
+
+
+def naver_comment_count(oid, aid):
+    try: txt = _get(NAVER_COUNT.format(oid=oid, aid=aid), f'https://n.news.naver.com/mnews/article/{oid}/{aid}')
+    except Exception: return -1
+    m = re.search(r'"comment"\s*:\s*(\d+)', txt) or re.search(r'"count"\s*:\s*\{[^}]*"total"\s*:\s*(\d+)', txt)
+    return int(m[1]) if m else -1
 
 
 def scene_filter(i, m, p, kind, lay, dur, speed, audio):
@@ -159,6 +194,22 @@ def install(S):
             if pieces: out.append({'id': lid, 'no': L['no'], 'title': (L['title'] or '')[:30], 'sent': L['status'] == 'sent',
                                    'pieces': [{'key': p['key'], 'label': p['label']} for p in pieces]})
         return out
+
+    naver_cache = {'at': 0, 'items': []}
+
+    @app.route('/admin/magazine/maker/naver')
+    @S.admin_only
+    def mag_maker_naver():
+        if time.time() - naver_cache['at'] < 1800 and naver_cache['items']: return jsonify(ok=True, items=naver_cache['items'])
+        try: arts = naver_section_articles(_get(NAVER_SECTION))[:60]
+        except Exception: arts = []
+        if not arts: return jsonify(ok=False, error='네이버 경제 뉴스를 불러오지 못했어요. 잠시 뒤 다시 해 주세요.'), 502
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(8) as ex: counts = list(ex.map(lambda x: naver_comment_count(x[0], x[1]), arts))
+        items = sorted(({'url': f'https://n.news.naver.com/mnews/article/{o}/{a}', 'title': t[:80], 'comments': c} for (o, a, t), c in zip(arts, counts)),
+                       key=lambda x: -x['comments'])[:20]
+        naver_cache.update(at=time.time(), items=items)
+        return jsonify(ok=True, items=items)
 
     @app.route('/admin/magazine/maker/draw', methods=['POST'])
     @S.admin_only
