@@ -872,3 +872,6 @@ body.console .mz-card textarea:focus{outline:0;background:#fff;box-shadow:inset 
 .mz-slot .mz-cover:not(.has) img{opacity:.85}
 .mz-slot .mz-del{padding:2px 0}
 @media (max-width:900px){.mz-slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* 운영자 2026-11-05: 레터 고치기 화면 메인 뉴스 사진이 원래 크기로 커져 화면을 덮음 — 칸 안에 작게 */
+body.console .lt-ad-photo{display:block;width:100%;max-width:360px;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:10px;margin-bottom:8px}
+body.console .lt-ad-item{min-width:0;overflow:hidden}

@@ -63,7 +63,7 @@ SECTIONS = [
         ('operator.name', '상호 (운영자)', '소보루', {}),
         ('operator.ceo', '대표자', '오규섭', OPT),
         ('operator.biz_no', '사업자등록번호', '129-14-81596', OPT),
-        ('operator.address', '소재지(주소)', '서울시 강남구 논현로 310-1 4층(역삼동, 정송빌딩)', OPT),
+        ('operator.address', '소재지(주소)', '서울시 강남구 논현로 310-1 4층 401호', OPT),
         ('operator.email', '대표 이메일', '', OPT),
         ('operator.phone', '대표 전화', '', OPT),
         ('operator.fax', '팩스', '', OPT),

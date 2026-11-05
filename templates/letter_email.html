@@ -254,15 +254,33 @@
   </td></tr>
   {% endif %}
   {% if sec.life %}
-  {{ pill('더 읽어 볼 매거진', False) }}
-  <tr><td style="padding:22px 22px 4px;{{ F }}">
-    {% for a in sec.life %}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;"><tr>
-      <td width="50" valign="top" style="width:50px;"><div style="width:40px;height:40px;line-height:40px;text-align:center;border-radius:13px;background:#fff1e3;font-size:22px;">{{ a.emoji }}</div></td>
-      <td valign="top" style="{{ F }}"><a href="{{ site }}{{ a.url }}" style="font-size:18px;line-height:1.45;font-weight:700;color:#1d1d1f;text-decoration:none;">{{ a.title }}</a>
-        </td>
+  {#- 운영자 2026-11-05: 콘텐츠를 더 — 매거진 기사를 레터 다른 칸과 완전히 다른 매거진식 디자인으로 (네모, 검은 가는 선, 영문 분야, 큰 사진 + 번호 줄) -#}
+  {% set m = 'https://soboru.co.kr' %}
+  <tr><td style="padding:44px 22px 4px;{{ F }}" id="magazine">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:3px solid #111111;"><tr>
+      <td style="padding:12px 0 0;{{ F }}font-size:15px;font-weight:900;letter-spacing:3px;color:#111111;white-space:nowrap;">SOBORU MAGAZINE</td>
+      <td align="right" style="padding:12px 0 0;{{ F }}font-size:14px;font-weight:700;color:#8a827a;">매거진에서 골랐어요</td></tr></table>
+    {% for a in sec.life %}{% if loop.first %}
+    <a href="{{ m }}{{ a.url }}" style="display:block;margin:18px 0 0;text-decoration:none;">{% if a.photo %}<img src="{{ a.photo }}" width="556" alt="" style="display:block;width:100%;max-width:556px;height:auto;border:0;">{% endif %}</a>
+    {% if a.photo and a.credit %}<p style="margin:6px 0 0;font-size:12px;color:#a39d97;">사진 <a href="{{ a.credit.url }}" style="color:#a39d97;">{{ a.credit.name }}</a> / <a href="{{ a.credit.home }}" style="color:#a39d97;">Unsplash</a></p>{% endif %}
+    <p style="margin:16px 0 8px;font-size:13px;font-weight:900;letter-spacing:3px;color:#EF920E;">01 · {{ a.en }}</p>
+    <a href="{{ m }}{{ a.url }}" style="display:block;font-size:24px;line-height:1.4;font-weight:900;letter-spacing:-0.8px;color:#111111;text-decoration:none;">{{ a.title }}</a>
+    {% if a.read %}
+    {% for b in a.read %}{% if b.h %}<p style="margin:24px 0 8px;padding-top:14px;border-top:1px solid #111111;font-size:18px;line-height:1.5;font-weight:900;letter-spacing:-0.4px;color:#111111;">{{ b.h }}</p>{% else %}<p style="margin:14px 0 0;font-size:17px;line-height:1.9;color:#2b2723;text-align:left;word-break:keep-all;">{{ b.p }}</p>{% endif %}{% endfor %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 6px;"><tr><td align="center" style="border:2px solid #111111;padding:14px 12px;{{ F }}"><a href="{{ m }}{{ a.url }}" style="display:block;font-size:16px;font-weight:900;letter-spacing:-0.2px;color:#111111;text-decoration:none;">이어서 읽기 →</a></td></tr></table>
+    {% else %}
+    {% if a.summary %}<p style="margin:10px 0 0;font-size:17px;line-height:1.8;color:#4a4540;">{{ a.summary }}</p>{% endif %}
+    <p style="margin:14px 0 6px;"><a href="{{ m }}{{ a.url }}" style="font-size:15px;font-weight:800;color:#111111;text-decoration:underline;">매거진에서 읽기 →</a></p>
+    {% endif %}
+    {% else %}
+    {% if loop.index == 2 %}<p style="margin:34px 0 0;font-size:13px;font-weight:900;letter-spacing:3px;color:#111111;">MORE TO READ</p>{% endif %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:{{ '10px' if loop.index == 2 else '18px' }} 0 0;border-top:1px solid #111111;"><tr>
+      <td valign="top" style="padding:16px 14px 4px 0;{{ F }}">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:900;letter-spacing:3px;color:#EF920E;">{{ '%02d' % loop.index }} · {{ a.en }}</p>
+        <a href="{{ m }}{{ a.url }}" style="font-size:18px;line-height:1.45;font-weight:800;letter-spacing:-0.4px;color:#111111;text-decoration:none;">{{ a.title }}</a></td>
+      {% if a.photo %}<td width="112" valign="top" style="width:112px;padding:18px 0 4px;"><a href="{{ m }}{{ a.url }}"><img src="{{ a.photo }}" width="112" alt="" style="display:block;width:112px;height:auto;border:0;"></a></td>{% endif %}
     </tr></table>
-    {% endfor %}
+    {% endif %}{% endfor %}
   </td></tr>
   {% endif %}
   {#- 소비자제보센터 바로 가기 (운영자 2026-11-04): 레터를 다시 시작하며 맺음 앞에 큰 카드 하나. 링크엔 utm_source=letter (방문 통계 '들어온 곳') -#}
