@@ -4579,6 +4579,14 @@ class SiteTest(unittest.TestCase):
         self.assertEqual([c['slug'] for c in tools.calcs_for('헬스장 환불 거부당했다면', '청약철회와 할부')], ['fitness', 'cooling'])
         self.assertEqual(tools.calcs_for('날씨 이야기', ''), [])
 
+    def test_writer_drops_source_talk(self):
+        """운영자 2026-11-05: '제공된 뉴스 요약만으로 ~는 확인할 수 없다' 같은 자료 이야기 문장은 매거진 기사에서 지움"""
+        W = self.site.soboru_writer
+        body = ('## 설명서에서 확인한다\n\n기능이 있다고 조건까지 알 수 있는 건 아니다. 제한 상황이 58개라고 전했지만, 제공된 뉴스 요약만으로 세부 내용은 확인할 수 없다. 설명서를 읽자.\n\n'
+                '자료에는 금액이 나와 있지 않다.\n\n- 원인은 알 수 없다는 말이 많다.')
+        self.assertEqual(W.drop_meta(body), '## 설명서에서 확인한다\n\n기능이 있다고 조건까지 알 수 있는 건 아니다. 설명서를 읽자.\n\n- 원인은 알 수 없다는 말이 많다.')
+        self.assertIn('[출처·숫자는 구체적으로]', W.SYSTEM)
+
     def test_writer_one_per_category(self):
         """분야마다 하루 한 편 기획 기사: 아침 3분야, 저녁까지 9분야 모두 (운영자 요청 2026-11-05)"""
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
