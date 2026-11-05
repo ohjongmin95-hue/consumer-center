@@ -6582,6 +6582,23 @@ class SiteTest(unittest.TestCase):
         admin.post(f'/admin/letter/{lid}', data={'_csrf': self.csrf(admin, f'/admin/letter/{lid}'), 'act': 'delete'})
         self.assertIsNone(self.site.app.extensions['soboru_letter']['get'](lid))
 
+    def test_letter_main_photo_fits_issue(self):
+        # 운영자 2026-11-05: 메인 뉴스 사진이 매번 카트 — 그 뉴스에 맞는 구체적인 검색어부터, 최근 호에 쓴 사진은 건너뜀
+        L = self.site.soboru_letter
+        self.assertEqual(L.photo_queries(['Food delivery scooter!', 'food delivery scooter', 'rider helmet', 'x y']), ['food delivery scooter', 'rider helmet'])  # 3개까지, 겹치면 하나
+        self.assertEqual(L.photo_queries('grocery cart'), ['grocery cart'])
+        self.assertNotIn('grocery shopping cart', L.SYSTEM + str(getattr(L, 'USER', '')))
+        asked = []
+        def fake(path, params=None):
+            if path != '/search/photos': return 200, {}
+            asked.append(params['query'])
+            res = {'scooter one': [], 'rider helmet': [{'id': 'old'}, {'id': 'new'}]}.get(params['query'], [])
+            return 200, {'results': [{'id': r['id'], 'urls': {'raw': 'https://images.unsplash.com/' + r['id']}, 'user': {'name': 'A', 'links': {'html': 'https://unsplash.com/@a'}}} for r in res]}
+        with patch.object(L, 'unsplash_call', fake), patch.dict(os.environ, {'UNSPLASH_ACCESS_KEY': 'k'}):
+            ex = {'comment': {'_photo_q': ['scooter one', 'rider helmet']}}
+            L.add_photos([], ex, {'old'})
+        self.assertEqual(asked, ['scooter one', 'rider helmet']); self.assertEqual(ex['comment']['photo']['id'], 'new')
+
     def test_letter_subscribe_confirm_unsubscribe(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         box = []

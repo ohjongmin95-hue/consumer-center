@@ -37,6 +37,7 @@
       {% set sec = L.sections %}
       {% if sec.comment %}{% set c = sec.comment %}<div class="form-panel lt-ad-item">
         {% if c.photo %}<img class="lt-ad-photo" src="{{ c.photo.url }}" alt="" loading="lazy">{% if draft %}<label class="check"><input type="checkbox" name="comment_nophoto" value="1"> 사진 빼기</label>{% endif %}{% endif %}
+        {% if draft %}<label class="field">{{ '다른 사진 찾기' if c.photo else '사진 찾기' }} <small>(영어 검색어, 예: food delivery scooter — 저장하면 바뀌어요)</small><input name="comment_photo_q" maxlength="60" placeholder="food delivery scooter"></label>{% endif %}
         <p class="lt-ad-num">오늘의 메인 뉴스{% if c.tags %} · {% for t in c.tags %}#{{ t }} {% endfor %}{% endif %}</p>
         <label class="field">제목<input name="comment_title" value="{{ c.title }}" maxlength="60"{% if not draft %} readonly{% endif %}></label>
         <label class="field">여는 글<textarea name="comment_lead" rows="3"{% if not draft %} readonly{% endif %}>{{ c.lead }}</textarea></label>
