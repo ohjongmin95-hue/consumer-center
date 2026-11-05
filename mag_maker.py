@@ -72,7 +72,7 @@ def naver_section_articles(page):
         t = ' '.join(H.unescape(re.sub(r'<[^>]+>', ' ', m[2])).split())
         k = (a[1], a[2])
         if len(t) > len(found.get(k, '')): found[k] = t
-    return [(o, a, t) for (o, a), t in found.items() if len(t) >= 8 and not re.search(r'\w+\s*=\s*["\']|^["\'\s>]+$|[<>]', t)]
+    return [(o, a, t) for (o, a), t in found.items() if len(t) >= 8 and not re.match(r'\[\s*(?:인사|부고|게시판|알림|포토|화보)', t) and not re.search(r'\w+\s*=\s*["\']|^["\'\s>]+$|[<>]', t)]
 
 
 def naver_comment_count(oid, aid):
