@@ -33,6 +33,7 @@
   'text': '<path d="M5 6h14"/><path d="M12 6v13"/><path d="M8 19h8"/>',
   'search': '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
   'cards': '<rect x="7" y="3" width="13" height="16" rx="2"/><path d="M4 7v12a2 2 0 002 2h10"/><path d="M10 14l2.5-3 2 2 2.5-3"/>',
+  'archive': '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 001 1h12a1 1 0 001-1V9"/><path d="M10 13h4"/>',
   'play': '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M10.5 9.5v5l4-2.5z"/>',
   'gear': '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   'id': '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 16.5c.6-1.6 1.9-2.5 3.5-2.5s2.9.9 3.5 2.5"/><path d="M15 10h3M15 13h3"/>',
@@ -68,7 +69,7 @@
 {% set nav = [
   ('', [('mag_home', {}, 'home', '대시보드')]),
   ('Articles', [('admin_life', {'new': 1}, 'edit', '작성'), ('mag_approve', {}, 'check', '승인'), ('admin_life', {}, 'book', '기사 목록'), ('admin_life_ai', {}, 'text', 'AI 기사')]),
-  ('Pages', [('mag_screen', {}, 'layers', '화면 편집'), ('mag_maker', {}, 'cards', '카드뉴스·릴스 만들기'), ('mag_reels_admin', {}, 'play', '릴스'), ('admin_art', {}, 'image', '기사 사진')]),
+  ('Pages', [('mag_screen', {}, 'layers', '화면 편집'), ('mag_maker', {}, 'cards', '카드뉴스·릴스 만들기'), ('mag_made_list', {}, 'archive', '만든 것 보관함'), ('mag_reels_admin', {}, 'play', '릴스'), ('admin_art', {}, 'image', '기사 사진')]),
   ('Letter', [('admin_letter', {}, 'mail', '소보루 레터')]),
   ('Manage', [('mag_editors_admin', {}, 'users', '에디터'), ('mag_inbox_admin', {}, 'inbox', '접수글'), ('mag_ads_admin', {}, 'flag', '광고'), ('mag_stats', {}, 'chart', '통계'), ('mag_seo_admin', {}, 'search', '검색 노출'), ('mag_settings', {}, 'gear', '환경설정')]),
 ] %}
@@ -83,7 +84,7 @@
       {% for group, links in nav %}
       <div class="ms-group">{% if group %}<p class="ms-gt"><b>{{ group }}</b><span>{{ ko[group] }}</span></p>{% endif %}
         {% for ep, args, ico, label in links %}
-        {% if ep == 'admin_life' %}{% set on = (ed if args else (active == 'admin_life' and not ed)) %}{% else %}{% set on = active == ep or (ep == 'admin_letter' and (request.endpoint or '').startswith('admin_letter')) %}{% endif %}
+        {% if ep == 'admin_life' %}{% set on = (ed if args else (active == 'admin_life' and not ed)) %}{% else %}{% set on = active == ep or (ep == 'admin_letter' and (request.endpoint or '').startswith('admin_letter')) or (ep == 'mag_made_list' and active == 'mag_made_view') %}{% endif %}
         {% if on %}{% set ns.title = ('기사 고치기' if request.endpoint == 'admin_life_edit' else label) %}{% endif %}
         <a href="{{ url_for(ep, **args) }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span>{% if ep == 'mag_approve' %}{% set pc = mag_pending() %}{% if pc %}<em class="ms-badge">{{ pc }}</em>{% endif %}{% endif %}{% if ep == 'mag_inbox_admin' %}{% set ic = mag_inbox_new() %}{% if ic %}<em class="ms-badge">{{ ic }}</em>{% endif %}{% endif %}</a>
         {% endfor %}

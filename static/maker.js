@@ -735,8 +735,10 @@
       if (mode === 'card' && j.draw) return aiDraw(slides.filter(function (s) { return !s.media && s.design === 'cover'; }));
     });
   }
+  var lastSrc = '';
   function aiBuild(payload, fallback) {
     say('AI가 기사를 읽고 ' + (mode === 'card' ? '카드' : '장면') + '을 짜고 있어요. 10~20초쯤 걸려요.');
+    lastSrc = payload.note ? (/^https?:\/\//.test(payload.note) ? payload.note.slice(0, 300) : '붙여 넣은 기사 글') : payload.art ? '소보루 매거진 기사 #' + payload.art : payload.letter ? '소보루 레터 ' + payload.letter : '';
     return post(C.assist, JSON.stringify(Object.assign({act: mode === 'card' ? 'cards' : 'reel'}, payload)), 'application/json')
       .then(function (j) { if (!j.ok) throw new Error(j.error || '짜지 못했어요.'); return applyPlan(j); })
       .catch(function (e) { if (fallback) { fallback(); say(e.message + ' 기사 글을 그대로 넣었으니 다듬어 주세요.'); } else say(e.message); });
@@ -777,18 +779,34 @@
   };
 
   // 받기·만들기
+  function oneTitle() { return ((slides[0] && slides[0].title) || '').replace(/\s+/g, ' ').trim().slice(0, 120); }
+  function saveCards(blobs) {
+    return post(C.made_new, JSON.stringify({kind: 'card', title: oneTitle(), caption: capT ? capT.value : '', source: lastSrc}), 'application/json').then(function (j) {
+      if (!j.ok) throw new Error('');
+      var base = C.made_base.replace('/0/', '/' + j.id + '/');
+      return blobs.reduce(function (p, b, i) {
+        return p.then(function () { return post(base + 'file?name=' + ('0' + (i + 1)).slice(-2) + '.png', b, 'application/octet-stream').then(function (r) { if (!r.ok) throw new Error(''); }); });
+      }, Promise.resolve()).then(function () { return post(base + 'done'); }).then(function (r) { if (!r.ok) throw new Error(''); return r.url; });
+    });
+  }
   function blobOf(c) { return new Promise(function (ok) { c.toBlob(ok, 'image/png'); }); }
   $('#mk-go').onclick = function () {
     var btn = this;
     fontsFor(texts()).then(function () {
       if (mode === 'card') {
-        var stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        var stamp = new Date().toISOString().slice(0, 10).replace(/-/g, ''), blobs = [];
+        btn.disabled = true;
         return slides.reduce(function (p, s, i) {
           return p.then(function () {
             var c = document.createElement('canvas'); c.width = 1080; c.height = 1350; paint(c.getContext('2d'), s, i);
-            return blobOf(c).then(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'soboru-card-' + stamp + '-' + (i + 1) + '.png'; document.body.appendChild(a); a.click(); a.remove(); return new Promise(function (r) { setTimeout(r, 350); }); });
+            return blobOf(c).then(function (b) { blobs.push(b); var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'soboru-card-' + stamp + '-' + (i + 1) + '.png'; document.body.appendChild(a); a.click(); a.remove(); return new Promise(function (r) { setTimeout(r, 350); }); });
           });
-        }, Promise.resolve()).then(function () { say('카드 ' + slides.length + '장을 내려받았어요.'); });
+        }, Promise.resolve()).then(function () {
+          // 운영자 2026-11-05: 내려받은 카드는 만든 것 보관함(서버)에도 저장
+          say('카드 ' + slides.length + '장을 내려받았어요. 보관함에 저장하는 중이에요.');
+          return saveCards(blobs).then(function (url) { say('카드 ' + slides.length + '장을 내려받고 만든 것 보관함에 저장했어요.'); },
+                                       function () { say('카드 ' + slides.length + '장을 내려받았어요. 보관함 저장은 못 했어요.'); });
+        });
       }
       var miss = slides.findIndex(function (s) { return !s.media || !s.media.url; });
       if (miss >= 0) { say((miss + 1) + '번 장면에 사진이나 영상을 넣어 주세요.'); return; }
@@ -796,7 +814,7 @@
       var scenes = slides.map(function (s, i) { x.clearRect(0, 0, 1080, 1920); REEL[s.design](x, s); return {media: s.media.url, layout: s.design, start: s.start || 0, dur: s.dur || 4, slow: !!s.slow, png: c.toDataURL('image/png')}; });
       x.clearRect(0, 0, 1080, 1920); REEL.outro(x, fromLetter);
       btn.disabled = true; say('릴스를 만들고 있어요. 1~3분쯤 걸려요. 이 화면을 닫지 말아 주세요.');
-      return post(C.render, JSON.stringify({scenes: scenes, outro: c.toDataURL('image/png')}), 'application/json').then(function (j) {
+      return post(C.render, JSON.stringify({scenes: scenes, outro: c.toDataURL('image/png'), title: oneTitle(), caption: capT ? capT.value : '', source: lastSrc}), 'application/json').then(function (j) {
         if (!j.ok) throw new Error(j.error || '만들지 못했어요.');
         return new Promise(function (ok, no) {
           (function poll() {
@@ -808,7 +826,7 @@
       }).then(function (url) {
         var out = $('#mk-out'); out.hidden = false;
         $('#mk-out-v').src = url; $('#mk-out-dl').href = url; $('#mk-out-url').value = url;
-        say('릴스를 만들었어요. 내려받아 인스타그램에 올리거나 매거진 릴스 칸에 올려 보세요.');
+        say('릴스를 만들었어요. 만든 것 보관함에도 저장했어요. 내려받아 인스타그램에 올리거나 매거진 릴스 칸에 올려 보세요.');
       });
     }).catch(function (e) { say(e.message); }).then(function () { btn.disabled = false; });
   };
