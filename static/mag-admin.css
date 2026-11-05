@@ -376,3 +376,15 @@ body.console.mag-studio .ms-main .mg-del button:hover{color:#c62828}
 body.console.mag-studio .ms-main .mg-msg-act form:first-child button{height:40px;padding:0 18px;font-size:14px;font-weight:700;border:0;cursor:pointer}
 .mg-none{padding:56px 0;text-align:center;color:var(--ms-mute)}
 @media (max-width:900px){.mg-ad-f{grid-template-columns:1fr}.mg-grid2{grid-template-columns:1fr 1fr}body.console.mag-studio .ms-main .mg-save{width:100%}.mg-msg-h time{margin-left:0;width:100%}}
+/* 릴스 (2026-11-05) */
+.mg-reel-new{display:grid;grid-template-columns:200px minmax(0,1fr);gap:24px;align-items:start}
+.mg-reel-ph{position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:9/16;background:var(--ms-side);border:1px dashed #c9c3b8;cursor:pointer;overflow:hidden;text-align:center;padding:12px;font-size:13px;font-weight:700}
+.mg-reel-ph.has{border:0;background:#111;color:#fff}
+.mg-reel-ph video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+.mg-reel-ph span{position:relative}
+.mg-reel{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:20px;align-items:start;padding:20px 0}
+.mg-reel.off{opacity:.55}
+.mg-reel video{width:120px;aspect-ratio:9/16;object-fit:cover;background:#111}
+.mg-reel-f{display:grid;gap:12px}
+.mg-reel-side{display:flex;flex-direction:column;align-items:flex-end;gap:14px}
+@media (max-width:900px){.mg-reel-new{grid-template-columns:140px minmax(0,1fr)}.mg-reel{grid-template-columns:90px minmax(0,1fr)}.mg-reel video{width:90px}.mg-reel-side{grid-column:2;flex-direction:row;align-items:center;justify-content:space-between}}

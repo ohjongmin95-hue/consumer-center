@@ -53,7 +53,7 @@ PAGE_BLOCKS = {
     'life': ('생활정보', [('head', '제목 · 소개 · 분야'), ('list', '생활정보 글 목록'), ('news', '요즘 소비자 뉴스'), ('letter', '소보루 레터 구독')]),
     'board': ('커뮤니티', [('head', '제목 · 소개 · 검색'), ('campaign', '이번 주 리뷰 주제'), ('pick', '무엇을 올릴까요? (글쓰기 고르기)'),
                          ('feed', '글 목록 · 이번 주 인기 · 리뷰 모아 보기'), ('foot', '맨 아래 안내')]),
-    'letter': ('매거진 메인', [('hero', '표지 사진 · 매거진 소개'), ('feats', 'HOT ISSUE · IN FOCUS · 분야 · Fresh Picks'), ('archive', '구독 띠 · 지난 레터 · 바닥글')]),
+    'letter': ('매거진 메인', [('hero', '표지 사진 · 매거진 소개'), ('feats', 'HOT ISSUE · IN FOCUS · 분야 · Fresh Picks'), ('reels', 'REELS 릴스 영상'), ('archive', '구독 띠 · 지난 레터 · 바닥글')]),
     'mag_article': ('매거진 기사 화면', [('more', '같은 분야 기사 (More in)'), ('letter', '레터 구독 띠')]),  # 운영자 2026-11-05: 매거진 관리자 > 화면 편집
 }
 # 예전 '메인 화면 순서' 저장값(top·life·rank 켜고 끄기)을 새 묶음으로 옮길 때

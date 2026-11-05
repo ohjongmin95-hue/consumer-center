@@ -58,6 +58,15 @@
   </div>
   {% endif %}
   </div>
+  {% elif blk == 'reels' %}{# 운영자 2026-11-05: 첫 화면에 릴스 영상 칸 (관리자 > 릴스에서 올림, 자리는 화면 편집) #}
+  {% set rs = mag_reels() if mag_reels is defined else [] %}
+  {% if rs %}{% set ig = (mag_conf().sns.instagram if mag_conf is defined else '') %}
+  <section class="nm-g nm-reels" id="reels">
+    <div class="nm-rh"><h2>{{ ui('letter.mz_reels', 'REELS') }}<small>{{ ui('letter.mz_reels_sub', '짧게 보는 소비 이슈') }}</small></h2>{% if ig %}<a href="{{ ig }}" target="_blank" rel="noopener">Instagram ↗</a>{% endif %}</div>
+    <div class="nm-rl">{% for r in rs %}<figure><video src="{{ r['video'] }}#t=0.1" preload="metadata" controls playsinline></video>{% if r['title'] or r['ig'] %}<figcaption>{% if r['title'] %}<b>{{ r['title'] }}</b>{% endif %}{% if r['ig'] %}<a href="{{ r['ig'] }}" target="_blank" rel="noopener">인스타그램에서 보기 ↗</a>{% endif %}</figcaption>{% endif %}</figure>{% endfor %}</div>
+  </section>
+  <script>(function(){var v=document.querySelectorAll('.nm-rl video');v.forEach(function(x){x.addEventListener('play',function(){v.forEach(function(o){if(o!==x)o.pause()})})})})();</script>
+  {% endif %}
   {% elif blk == 'archive' %}
   {# 운영자 2026-11-04: 하단은 귤색 띠에 큰 영문 한 줄 + 구독 (뼈대만 참고, 문구·디테일은 우리 것) #}
   <section class="nm-letter lt-archive" id="sub">
