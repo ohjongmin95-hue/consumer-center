@@ -20,7 +20,6 @@
     <div class="nm-g">
       <div class="nm-hero" data-slides="{{ hero_urls|length }}">
         {% for u in hero_urls %}<span class="nm-slide{{ ' on' if loop.first }}"><img src="{{ u }}" alt=""{% if not loop.first %} loading="lazy"{% endif %}></span>{% endfor %}
-        {% if hero_urls|length > 1 %}<span class="nm-hdots" aria-hidden="true">{% for u in hero_urls %}<i{% if loop.first %} class="on"{% endif %}></i>{% endfor %}</span>{% endif %}
         <img class="nm-big" src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="" aria-hidden="true">
       </div>
     </div>

@@ -1,24 +1,43 @@
 {% extends 'console.html' %}
-{% block title %}매거진 홈 | 소보루 매거진 관리자{% endblock %}
+{% block title %}대시보드 | 소보루 매거진 관리자{% endblock %}
 {% block content %}
-<main class="page"><div class="wrap">
-  <div class="page-intro"><h1 class="page-title">소보루 매거진</h1></div>
-  <div class="mz-stats">
-    <a href="{{ url_for('admin_life', view='published') }}"><b>{{ n.published }}</b><span>게시 중인 기사</span></a>
-    <a href="{{ url_for('admin_life', view='draft') }}"><b>{{ n.draft }}</b><span>초안</span></a>
-    <a href="{{ url_for('admin_life', view='scheduled') }}"><b>{{ n.scheduled }}</b><span>예약한 기사</span></a>
+{# 운영자 2026-11-05: 매거진 관리자는 매거진답게 — 목차처럼 읽히는 대시보드 #}
+{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '뷰티': 'BEAUTY', '리콜': 'RECALL'} %}
+<div class="md">
+  <div class="md-head">
+    <div><p class="md-date">{{ today_en }}</p><h2>오늘의 소보루 매거진</h2></div>
+    <a class="md-new" href="{{ url_for('admin_life', new=1) }}">새 기사 쓰기 <span aria-hidden="true">→</span></a>
   </div>
-  <div class="mz-cols">
-    <section class="form-panel"><h2>최근 기사</h2>
-      <ul class="mz-list">{% for r in recent %}<li><span class="mz-tag {{ r['status'] }}">{{ {'published': '게시', 'draft': '초안', 'scheduled': '예약'}.get(r['status'], r['status']) }}</span><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['title'] }}</a><small>{{ (r['published_at'] or r['created'])[:10] }}</small></li>{% else %}<li>아직 기사가 없어요</li>{% endfor %}</ul>
-    </section>
+  <div class="md-kpi">
+    <a href="{{ url_for('admin_life', view='published') }}"><b>{{ n.published }}</b><span><em>Published</em>게시 중</span></a>
+    <a href="{{ url_for('admin_life', view='draft') }}"><b>{{ n.draft }}</b><span><em>Drafts</em>초안</span></a>
+    <a href="{{ url_for('admin_life', view='scheduled') }}"><b>{{ n.scheduled }}</b><span><em>Scheduled</em>예약</span></a>
+  </div>
+  <div class="md-grid">
     <div>
-      <section class="form-panel"><h2>바로 가기</h2>
-        <div class="mz-go"><a href="{{ url_for('admin_life', new=1) }}">새 기사 쓰기</a><a href="{{ url_for('mag_front') }}">첫 화면 편집</a><a href="{{ url_for('mag_mosaic') }}">얼굴 모자이크</a></div>
+      <section class="md-sec">
+        <div class="md-sh"><h3>Latest<span>최근 기사</span></h3><a href="{{ url_for('admin_life') }}">전체 보기</a></div>
+        <ol class="md-toc">{% for r in recent %}<li><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}"><em>{{ EN.get(r['category'], 'LIFE') }}</em><b>{{ r['title'] }}</b><small><span class="mz-tag {{ r['status'] }}">{{ {'published': '게시', 'draft': '초안', 'scheduled': '예약'}.get(r['status'], r['status']) }}</span>{{ (r['published_at'] or r['created'])[:10].replace('-', '. ') }}</small></a></li>{% else %}<li class="md-none">아직 기사가 없어요</li>{% endfor %}</ol>
       </section>
-      {% if scheduled %}<section class="form-panel"><h2>게시 예약</h2><ul class="mz-list">{% for r in scheduled %}<li><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['title'] }}</a><small>{{ r['published_at'][5:16].replace('T', ' ') }}</small></li>{% endfor %}</ul></section>{% endif %}
-      {% if top %}<section class="form-panel"><h2>많이 읽은 기사</h2><ul class="mz-list">{% for r in top %}<li><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['title'] }}</a><small>{{ '{:,}'.format(r['views'] or 0) }}회</small></li>{% endfor %}</ul></section>{% endif %}
+    </div>
+    <div>
+      <section class="md-sec">
+        <div class="md-sh"><h3>Most Read<span>많이 읽은 기사</span></h3></div>
+        {% if top %}<ol class="md-rank">{% for r in top %}<li><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}"><span><b>{{ r['title'] }}</b><small>{{ '{:,}'.format(r['views'] or 0) }} views</small></span></a></li>{% endfor %}</ol>{% else %}<p class="md-none">아직 읽은 기록이 없어요</p>{% endif %}
+      </section>
+      {% if scheduled %}<section class="md-sec">
+        <div class="md-sh"><h3>Scheduled<span>게시 예약</span></h3></div>
+        <ul class="md-go">{% for r in scheduled %}<li><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}"><span>{{ r['title'] }}</span><small>{{ r['published_at'][5:16].replace('T', ' ') }}</small></a></li>{% endfor %}</ul>
+      </section>{% endif %}
+      <section class="md-sec">
+        <div class="md-sh"><h3>Shortcuts<span>바로 가기</span></h3></div>
+        <ul class="md-go">
+          <li><a href="{{ url_for('mag_front') }}">첫 화면 편집<i aria-hidden="true">→</i></a></li>
+          <li><a href="{{ url_for('admin_life_ai') }}">AI 기사 만들기<i aria-hidden="true">→</i></a></li>
+          <li><a href="{{ url_for('mag_mosaic') }}">얼굴 모자이크<i aria-hidden="true">→</i></a></li>
+        </ul>
+      </section>
     </div>
   </div>
-</div></main>
+</div>
 {% endblock %}

@@ -1,0 +1,182 @@
+/* 소보루 매거진 관리자 (Magazine Studio) — 운영자 2026-11-05: '매거진이니까 관리자도 세련되고 감각적이게'
+   제보센터 관리자(토스식)는 그대로 두고, 매거진 쪽만 잡지 결: 흰 종이, 검은 글자, 가는 선, 직각, 귤색은 포인트만 */
+:root{--ms-ink:#111;--ms-sub:#5c574f;--ms-mute:#8d877d;--ms-line:#e7e3da;--ms-rule:#111;--ms-paper:#fff;--ms-side:#fafaf7;--ms-or:#EF920E;--ms-or-d:#CE6719;--ms-en:Inter,"Pretendard Variable",Pretendard,-apple-system,sans-serif;--ms-ease:cubic-bezier(.2,.8,.2,1)}
+
+/* ---- 어디를 관리할까요 ---- */
+.ch-page{margin:0;min-height:100vh;background:#fff;color:var(--ms-ink);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
+.ch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:100vh}
+.ch-card{position:relative;display:flex;flex-direction:column;justify-content:center;gap:22px;padding:72px max(32px,6vw);color:inherit;text-decoration:none;overflow:hidden;transition:background .35s var(--ms-ease)}
+.ch-jebo{background:#fff;border-right:1px solid var(--ms-line)}
+.ch-mag{background:var(--ms-or);color:#fff}
+.ch-kicker{font-family:var(--ms-en);font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
+.ch-mark{display:flex;align-items:flex-end;gap:10px;min-height:56px}
+.ch-mark b{font-size:clamp(30px,3.4vw,46px);font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.ch-mark small{display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;font-size:13px;font-weight:600;color:#111}
+.ch-mark img{display:block;height:auto}
+.ch-mag .ch-mark img{width:clamp(180px,20vw,280px);filter:brightness(0) invert(1)}
+.ch-desc{max-width:30em;font-size:16px;line-height:1.6;opacity:.75}
+.ch-go{display:inline-flex;align-items:center;gap:10px;margin-top:18px;font-family:var(--ms-en);font-size:14px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.ch-go i{font-style:normal;display:inline-block;transition:transform .35s var(--ms-ease)}
+.ch-card:hover .ch-go i{transform:translateX(8px)}
+.ch-jebo:hover{background:#fffaf3}
+.ch-mag:hover{background:#e8890a}
+.ch-out{position:fixed;right:24px;top:20px}
+.ch-out button{border:0;background:transparent;color:var(--ms-sub);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0}
+.ch-out button:hover{color:var(--ms-ink);text-decoration:underline}
+@media (max-width:760px){
+  .ch{grid-template-columns:1fr;min-height:100svh}
+  .ch-card{padding:72px 24px 48px;gap:16px}
+  .ch-jebo{border-right:0;border-bottom:1px solid var(--ms-line)}
+  .ch-out{right:16px;top:12px}
+}
+
+/* ---- 틀: 왼쪽 메뉴 + 위 띠 ---- */
+body.console.mag-studio{background:var(--ms-paper);color:var(--ms-ink)}
+.ms{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.ms-side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;background:var(--ms-side);border-right:1px solid var(--ms-line);overflow-y:auto}
+.ms-logo{display:grid;gap:8px;padding:26px 24px 22px;border-bottom:1px solid var(--ms-line);text-decoration:none}
+.ms-logo img{width:118px;height:auto;display:block}
+.ms-logo span{font-family:var(--ms-en);font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--ms-ink)}
+.ms-nav{flex:1;padding:14px 0 24px}
+.ms-group{padding:10px 0}
+.ms-group+.ms-group{border-top:1px solid var(--ms-line)}
+.ms-gt{display:flex;align-items:baseline;gap:8px;margin:4px 24px 8px}
+.ms-gt b{font-family:var(--ms-en);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--ms-ink)}
+.ms-gt span{font-size:11px;font-weight:600;color:var(--ms-mute)}
+body.console.mag-studio .ms-nav a{position:relative;display:flex;align-items:center;gap:12px;padding:9px 24px;font-size:15px;font-weight:500;color:var(--ms-sub);text-decoration:none;transition:color .15s}
+body.console.mag-studio .ms-nav a .ad-ico{width:17px;height:17px;flex:none;color:var(--ms-mute);transition:color .15s}
+body.console.mag-studio .ms-nav a:hover{color:var(--ms-ink)}
+body.console.mag-studio .ms-nav a:hover .ad-ico{color:var(--ms-ink)}
+body.console.mag-studio .ms-nav a.on{color:var(--ms-ink);font-weight:800}
+body.console.mag-studio .ms-nav a.on .ad-ico{color:var(--ms-or)}
+body.console.mag-studio .ms-nav a.on::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--ms-or)}
+.ms-side-foot{display:grid;gap:2px;padding:16px 24px 24px;border-top:1px solid var(--ms-line)}
+body.console.mag-studio .ms-side-foot a,body.console.mag-studio .ms-side-foot button{display:block;padding:6px 0;border:0;background:none;box-shadow:none;font:inherit;font-size:13px;font-weight:600;color:var(--ms-sub);text-align:left;text-decoration:none;cursor:pointer;border-radius:0}
+body.console.mag-studio .ms-side-foot a:hover,body.console.mag-studio .ms-side-foot button:hover{color:var(--ms-ink);text-decoration:underline;background:none}
+.ms-body{min-width:0;display:flex;flex-direction:column}
+.ms-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:20px;height:72px;padding:0 40px;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--ms-rule)}
+.ms-title{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-clock{margin-left:auto;font-family:var(--ms-en);font-size:14px;font-weight:500;color:var(--ms-sub);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ms-clock b{font-weight:800;color:var(--ms-ink)}
+.ms-site{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;border:1px solid var(--ms-ink);color:var(--ms-ink)!important;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;transition:background .2s,color .2s}
+.ms-site i{font-style:normal}
+.ms-site:hover{background:var(--ms-ink);color:#fff!important}
+.ms-burger{display:none}
+.ms-scrim{display:none}
+body.console.mag-studio .ms-main{flex:1;max-width:1240px;width:100%;padding:40px 48px 96px;box-sizing:border-box;background:transparent;border-radius:0;box-shadow:none;min-height:0}
+@media (max-width:900px){
+  .ms{display:block}
+  .ms-side{position:fixed;left:0;top:0;bottom:0;z-index:40;width:272px;height:auto;transform:translateX(-100%);transition:transform .3s var(--ms-ease)}
+  .ms-nav-t:checked~.ms-side{transform:none}
+  .ms-nav-t:checked~.ms-scrim{display:block;position:fixed;inset:0;z-index:30;background:rgba(17,17,17,.35)}
+  .ms-top{height:60px;padding:0 16px;gap:12px}
+  .ms-burger{display:grid;gap:4px;padding:10px 6px;margin-left:-6px;cursor:pointer}
+  .ms-burger i{display:block;width:20px;height:2px;background:var(--ms-ink)}
+  .ms-title{font-size:18px}
+  .ms-clock{display:none}
+  .ms-site{margin-left:auto;height:34px;padding:0 12px}
+  body.console.mag-studio .ms-main{padding:24px 16px 72px}
+}
+
+/* ---- 안쪽 화면: 직각, 가는 선, 검은 버튼 ---- */
+body.console.mag-studio .ms-main *{border-radius:0!important}
+body.console.mag-studio .ms-main .mz-switch i{border-radius:13px!important}
+body.console.mag-studio .ms-main .mz-switch i::after{border-radius:50%!important}
+body.console.mag-studio .ms-main .page-title{display:none}
+body.console.mag-studio .ms-main .page{padding:0}
+body.console.mag-studio .ms-main .wrap{max-width:none;padding:0}
+body.console.mag-studio .ms-main h2{letter-spacing:-.01em}
+body.console.mag-studio .ms-main .form-panel,body.console.mag-studio .ms-main .mz-card{background:#fff;box-shadow:inset 0 0 0 1px var(--ms-line)}
+body.console.mag-studio .ms-main .mz-card h2,body.console.mag-studio .ms-main .form-panel h2{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-family:var(--ms-en),"Pretendard Variable",sans-serif;color:var(--ms-ink)}
+body.console.mag-studio .ms-main button.primary,body.console.mag-studio .ms-main .mz-btn.primary,body.console.mag-studio .ms-main .mz-cta{background:var(--ms-ink)!important;color:#fff!important;border:0}
+body.console.mag-studio .ms-main button.primary:hover,body.console.mag-studio .ms-main .mz-btn.primary:hover,body.console.mag-studio .ms-main .mz-cta:hover{background:var(--ms-or)!important}
+body.console.mag-studio .ms-main .mz-btn{background:#fff;box-shadow:inset 0 0 0 1px var(--ms-ink);color:var(--ms-ink)}
+body.console.mag-studio .ms-main .mz-btn:hover{background:var(--ms-side)}
+body.console.mag-studio .ms-main input:not([type=checkbox]):not([type=radio]):not([type=file]),body.console.mag-studio .ms-main select,body.console.mag-studio .ms-main .mz-card textarea{background:#fff;box-shadow:inset 0 0 0 1px var(--ms-line)}
+body.console.mag-studio .ms-main input:focus,body.console.mag-studio .ms-main select:focus,body.console.mag-studio .ms-main .mz-card textarea:focus{box-shadow:inset 0 0 0 1.5px var(--ms-ink)!important;background:#fff}
+body.console.mag-studio .ms-main .mz-search input[type=search]{border:0!important;border-bottom:1px solid var(--ms-line)!important;box-shadow:none!important;background:transparent!important;padding:0 2px!important;height:52px}
+body.console.mag-studio .ms-main .mz-search input[type=search]:focus{border-bottom-color:var(--ms-ink)!important}
+body.console.mag-studio .ms-main .mz-switch input:checked+i{background:var(--ms-or)}
+/* 기사 목록 */
+body.console.mag-studio .ms-main .mz-lhead{justify-content:flex-end}
+body.console.mag-studio .ms-main .mz-tabs{border-bottom:1px solid var(--ms-ink)}
+body.console.mag-studio .ms-main .mz-tabs a{font-weight:600}
+body.console.mag-studio .ms-main .mz-tabs a.on{border-color:var(--ms-or);border-bottom-width:3px}
+body.console.mag-studio .ms-main .mz-rows li+li{border-top:1px solid var(--ms-line)}
+body.console.mag-studio .ms-main .mz-rows a{margin:0;padding:16px 0}
+body.console.mag-studio .ms-main .mz-rows a:hover{background:transparent}
+body.console.mag-studio .ms-main .mz-rows a:hover .mz-rt b{text-decoration:underline;text-underline-offset:3px}
+body.console.mag-studio .ms-main .mz-thumb{width:96px;height:64px}
+body.console.mag-studio .ms-main .mz-rt b{font-size:17px;font-weight:700}
+body.console.mag-studio .ms-main .mz-tag,body.console.mag-studio .ms-main .mz-state{font-family:var(--ms-en),"Pretendard Variable",sans-serif;font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 8px;background:transparent;box-shadow:inset 0 0 0 1px currentColor}
+body.console.mag-studio .ms-main .mz-tag.published,body.console.mag-studio .ms-main .mz-state.published{color:var(--ms-ink)}
+body.console.mag-studio .ms-main .mz-tag.draft,body.console.mag-studio .ms-main .mz-state.draft{color:var(--ms-mute)}
+body.console.mag-studio .ms-main .mz-tag.scheduled,body.console.mag-studio .ms-main .mz-state.scheduled,body.console.mag-studio .ms-main .mz-state.new{color:var(--ms-or-d)}
+/* 글쓰기 */
+body.console.mag-studio .ms-main .mz-ed-bar{top:72px;margin:-40px -48px 32px;padding:14px 48px;background:rgba(255,255,255,.94);border-bottom:1px solid var(--ms-line)}
+body.console.mag-studio .ms-main .mz-toolbar{top:133px;border-top:1px solid var(--ms-ink);border-bottom:1px solid var(--ms-line)}
+body.console.mag-studio .ms-main .mz-ed-side{top:133px}
+body.console.mag-studio .ms-main .mz-ed textarea.mz-title{font-size:34px;font-weight:800;letter-spacing:-.03em}
+body.console.mag-studio .ms-main .mz-ed textarea.mz-body{font-size:17px;line-height:1.9}
+body.console.mag-studio .ms-main .mz-msg{background:var(--ms-side);color:var(--ms-or-d);box-shadow:inset 3px 0 0 var(--ms-or)}
+@media (max-width:900px){
+  body.console.mag-studio .ms-main .mz-ed-bar{top:60px;margin:-24px -16px 20px;padding:12px 16px}
+  body.console.mag-studio .ms-main .mz-toolbar{top:113px}
+  body.console.mag-studio .ms-main .mz-ed textarea.mz-title{font-size:26px}
+  body.console.mag-studio .ms-main .mz-thumb{width:64px;height:44px}
+}
+
+/* ---- 대시보드 ---- */
+.md-date{margin:0 0 6px;font-family:var(--ms-en);font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--ms-or-d)}
+.md-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding-bottom:28px;border-bottom:1px solid var(--ms-ink)}
+.md-head h2{margin:0;font-size:clamp(30px,3.4vw,44px);font-weight:800;letter-spacing:-.035em;line-height:1.15}
+.md-new{flex:none;display:inline-flex;align-items:center;gap:10px;height:48px;padding:0 22px;background:var(--ms-ink);color:#fff!important;font-size:15px;font-weight:700;text-decoration:none;transition:background .2s}
+.md-new:hover{background:var(--ms-or)}
+.md-kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--ms-line)}
+.md-kpi a{display:grid;gap:6px;padding:28px 24px 26px 0;color:var(--ms-ink);text-decoration:none}
+.md-kpi a+a{padding-left:28px;border-left:1px solid var(--ms-line)}
+.md-kpi b{font-family:"Archivo Black",var(--ms-en);font-size:clamp(40px,4.6vw,60px);font-weight:400;line-height:1;letter-spacing:-.03em}
+.md-kpi span{display:flex;align-items:baseline;gap:8px;font-size:14px;font-weight:600;color:var(--ms-sub)}
+.md-kpi span em{font-family:var(--ms-en);font-style:normal;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ms-ink)}
+.md-kpi a:hover b{color:var(--ms-or)}
+.md-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:56px;margin-top:40px}
+.md-sec+.md-sec{margin-top:40px}
+.md-sh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--ms-ink)}
+.md-sh h3{margin:0;font-family:var(--ms-en);font-size:13px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+.md-sh h3 span{margin-left:8px;font-family:"Pretendard Variable",sans-serif;font-size:12px;font-weight:600;letter-spacing:0;color:var(--ms-mute)}
+.md-sh a{font-size:13px;font-weight:600;color:var(--ms-sub)!important;text-decoration:none}
+.md-sh a:hover{color:var(--ms-ink)!important;text-decoration:underline}
+.md-toc{list-style:none;margin:0;padding:0}
+.md-toc li{border-bottom:1px solid var(--ms-line)}
+.md-toc a{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:baseline;gap:16px;padding:16px 0;color:var(--ms-ink);text-decoration:none}
+.md-toc em{font-family:var(--ms-en);font-style:normal;font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--ms-or-d)}
+.md-toc b{font-size:16px;font-weight:700;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.md-toc a:hover b{text-decoration:underline;text-underline-offset:3px}
+.md-toc small{display:flex;align-items:center;gap:10px;font-family:var(--ms-en);font-size:12px;color:var(--ms-mute);white-space:nowrap;font-variant-numeric:tabular-nums}
+.md-toc .mz-tag{font-size:10px!important;padding:3px 6px!important}
+.md-rank{list-style:none;margin:0;padding:0;counter-reset:r}
+.md-rank li{border-bottom:1px solid var(--ms-line)}
+.md-rank a{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:start;padding:14px 0;color:var(--ms-ink);text-decoration:none}
+.md-rank a::before{counter-increment:r;content:counter(r,decimal-leading-zero);font-family:"Archivo Black",var(--ms-en);font-size:22px;line-height:1.1;color:var(--ms-or)}
+.md-rank b{display:block;font-size:15px;font-weight:700;line-height:1.45}
+.md-rank small{display:block;margin-top:4px;font-family:var(--ms-en);font-size:12px;color:var(--ms-mute)}
+.md-rank a:hover b{text-decoration:underline;text-underline-offset:3px}
+.md-go{list-style:none;margin:0;padding:0}
+.md-go li{border-bottom:1px solid var(--ms-line)}
+.md-go a{display:flex;align-items:center;justify-content:space-between;padding:15px 0;font-size:15px;font-weight:700;color:var(--ms-ink);text-decoration:none}
+.md-go a{gap:12px}.md-go a span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.md-go small{flex:none;font-family:var(--ms-en);font-size:12px;font-weight:500;color:var(--ms-mute)}
+.md-go a i{font-style:normal;transition:transform .3s var(--ms-ease)}
+.md-go a:hover i{transform:translateX(6px)}
+.md-none{padding:28px 0;color:var(--ms-mute);font-size:14px}
+@media (max-width:900px){
+  .md-head{flex-direction:column;align-items:flex-start}
+  .md-new{width:100%;justify-content:center}
+  .md-kpi{grid-template-columns:1fr}
+  .md-kpi a,.md-kpi a+a{padding:20px 0;border-left:0}
+  .md-kpi a+a{border-top:1px solid var(--ms-line)}
+  .md-grid{grid-template-columns:1fr;gap:40px}
+  .md-toc a{grid-template-columns:minmax(0,1fr);gap:4px}
+  .md-toc b{white-space:normal}
+}
+body.console.mag-studio .ms-main select,body.console.mag-studio .ms-main input[type=text],body.console.mag-studio .ms-main input[type=url],body.console.mag-studio .ms-main input[type=email],body.console.mag-studio .ms-main input[type=datetime-local]{min-height:44px;padding:0 12px;border:0;font-size:15px;color:var(--ms-ink)}
+body.console.mag-studio .ms-main .form-panel label{font-size:14px;font-weight:700;color:var(--ms-ink)}
