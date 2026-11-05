@@ -21,11 +21,25 @@
     var c = document.createElement('canvas'); c.width = logo.naturalWidth; c.height = logo.naturalHeight;
     var x = c.getContext('2d'); x.drawImage(logo, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = color; x.fillRect(0, 0, c.width, c.height); return c;
   }
+  // 로고는 늘 진짜 SOBORU 로고체 그림(static/img/soboru-wordmark.png)만 씀 — 글꼴로 SOBORU를 치지 않음 (운영자 2026-11-05 '로고 똑바로')
+  // 큰 그림을 한 번에 작게 줄이면 획이 가늘고 거칠어져서, 반씩 여러 번 줄여 둔 판을 씀
+  var logoCache = {};
+  function logoAt(color, h) {
+    var key = color + h; if (logoCache[key]) return logoCache[key];
+    var src = color === 'brown' ? logo : (color === 'white' ? (logoW = logoW || tint('#fff')) : (logoK = logoK || tint('#111')));
+    var w = src.naturalWidth || src.width, ht = src.naturalHeight || src.height, cur = src;
+    while (ht / 2 >= h * 2) {
+      var c = document.createElement('canvas'); c.width = Math.round(w / 2); c.height = Math.round(ht / 2);
+      var x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(cur, 0, 0, c.width, c.height); cur = c; w = c.width; ht = c.height;
+    }
+    return (logoCache[key] = cur);
+  }
   function drawLogo(ctx, color, x, y, h, align) {
     if (!logo.complete || !logo.naturalWidth) return;
-    var src = color === 'white' ? (logoW = logoW || tint('#fff')) : color === 'brown' ? logo : (logoK = logoK || tint('#111'));
-    var w = h * logo.naturalWidth / logo.naturalHeight;
+    var src = logoAt(color, h), w = h * logo.naturalWidth / logo.naturalHeight;
+    ctx.save(); ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(src, align === 'right' ? x - w : align === 'center' ? x - w / 2 : x, y, w, h);
+    ctx.restore();
   }
   function fontsFor(texts) {
     var s = texts.join(' ');
@@ -319,11 +333,10 @@
   CARD.ref = {
     cover: function (ctx, s, img, n, N) {
       full(ctx, img, OR); grad(ctx, 400, 1350, 0, .82);
-      pill(ctx, 'SOBORU · ' + (s.tag || '소비자 뉴스'), X, 96, '#fff', 'rgba(0,0,0,.32)'); pageNo(ctx, n, N, '#fff');
+      shadowed(ctx, function () { drawLogo(ctx, 'white', X, 96, 40); }); if (s.tag) pill(ctx, s.tag, X + 40 * logo.naturalWidth / Math.max(1, logo.naturalHeight) + 20, 92, '#fff', 'rgba(0,0,0,.32)'); pageNo(ctx, n, N, '#fff');
       var T = TT(ctx, s.title, 90), y = Y1 - textH(T);
       title2(ctx, T, X, y, '#fff', '#fff', OR);
       if (s.sub) { var h = fitSize(ctx, s.sub, 72, TW - 60) + 44; bigNum(ctx, s.sub, X, y - h - 30, 72, OR, '#fff'); }
-      drawLogo(ctx, 'white', 990, 1272, 34, 'right');
     },
     body: function (ctx, s, img, n, N) {
       bg(ctx, '#F6F1EA'); var lab = String(n).padStart(2, '0') + (s.tag ? ' · ' + s.tag : '');
@@ -468,7 +481,7 @@
   function size() { return mode === 'reel' ? [1080, 1920] : [1080, 1350]; }
   var deck = {theme: 'soboru', covers: []};
   try { var th0 = localStorage.getItem('mk-theme'); if (th0 && CARD[th0]) deck.theme = th0; } catch (e) {}
-  function texts() { var a = []; slides.forEach(function (s) { a.push(s.tag, s.title, s.sub, s.items); }); deck.covers.forEach(function (c) { a.push(c.text); }); a.push('헷갈리면 저장해 두세요 이것만 챙겨요 SOBORU · 소비자 뉴스 출처: 소보루 매거진 억울한 소비자 피해, 제보해 주세요 consumerjebo.co.kr — “ 0123456789/'); return a; }
+  function texts() { var a = []; slides.forEach(function (s) { a.push(s.tag, s.title, s.sub, s.items); }); deck.covers.forEach(function (c) { a.push(c.text); }); a.push('헷갈리면 저장해 두세요 이것만 챙겨요 소비자 뉴스 출처: 소보루 매거진 억울한 소비자 피해, 제보해 주세요 consumerjebo.co.kr — “ 0123456789/'); return a; }
 
   function paint(ctx, s, i, overlayOnly) {
     var wh = size(); ctx.clearRect(0, 0, wh[0], wh[1]);
@@ -743,6 +756,6 @@
   slides = [blank()];
   if (mode === 'reel') { slides[0].tag = '블랙박스 이슈'; slides[0].title = '제목을\n두 줄로'; slides[0].sub = ': 한 줄 부제'; slides[0].items = '#11월 3일 오후 2시께\n운전자 A씨 : “피할 수 없었다”'; }
   else { slides[0].tag = 'FOOD'; slides[0].title = '표지 문구는 짧게,\n두 줄이 좋아요'; slides[0].sub = '숫자 하나'; }
-  logo.onload = function () { logoW = logoK = null; draw(); };
+  logo.onload = function () { logoW = logoK = null; logoCache = {}; draw(); };
   fill(); draw();
 })();
