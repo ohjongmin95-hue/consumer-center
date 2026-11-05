@@ -6214,6 +6214,43 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/screens', data={'_csrf': tok, 'page': 'mag_article', 'block': 'letter', 'act': 'hide', 'ajax': '1'})
         self.assertNotIn('class="ma-letter"', self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True))
 
+    def test_magazine_maker(self):
+        # 운영자 2026-11-05: 카드뉴스·릴스 만들기 — 브라우저가 그린 글씨 판 + 서버 ffmpeg로 릴스 MP4
+        import base64, io, shutil, time, mag_maker
+        from PIL import Image
+        admin = self.login_admin()
+        self.assertEqual(self.client.get('/admin/magazine/maker').status_code, 302)
+        page = admin.get('/admin/magazine/maker?mode=reel').get_data(as_text=True)
+        self.assertIn('id="mk"', page); self.assertIn('data-mode="reel"', page); self.assertIn('maker.js', page)
+        self.assertIn('카드뉴스·릴스 만들기', admin.get('/admin/magazine').get_data(as_text=True))
+        # 배치 필터: 흐린 배경 + 가운데 영상, 느리게는 소리 없음
+        f = ';'.join(mag_maker.scene_filter(0, 0, 1, 'video', 'wide', 3, 2, True))
+        self.assertIn('boxblur', f); self.assertIn('overlay=0:620', f); self.assertIn('setpts=2*', f); self.assertIn('anullsrc', f)
+        self.assertIn('color=c=0x15120f', ';'.join(mag_maker.scene_filter(1, 2, 3, 'image', 'chat', 2, 1, False)))
+        art = self.site.UPLOAD / 'art'; art.mkdir(parents=True, exist_ok=True)
+        photo = 'body-20261105120000-001.webp'; Image.new('RGB', (640, 360), 'orange').save(art / photo, 'WEBP')
+        self.addCleanup(lambda: (art / photo).unlink(missing_ok=True))
+        b = io.BytesIO(); Image.new('RGBA', (1080, 1920), (0, 0, 0, 0)).save(b, 'PNG'); png = 'data:image/png;base64,' + base64.b64encode(b.getvalue()).decode()
+        tok = self.csrf(admin, '/admin/magazine/maker')
+        call = lambda d: admin.post('/admin/magazine/maker/render', json=d, headers={'X-CSRFToken': tok})
+        if not shutil.which('ffmpeg'):
+            self.assertEqual(call({'scenes': []}).status_code, 503); return
+        self.assertEqual(call({'scenes': [], 'outro': png}).status_code, 400)
+        self.assertEqual(call({'scenes': [{'media': '/etc/passwd', 'png': png, 'dur': 2}], 'outro': png}).status_code, 400)
+        self.assertEqual(call({'scenes': [{'media': '/art/body/' + photo, 'png': 'data:image/png;base64,AAAA', 'dur': 2}], 'outro': png}).status_code, 400)
+        self.assertEqual(call({'scenes': [{'media': '/art/body/' + photo, 'png': png, 'dur': 99}], 'outro': png}).status_code, 400)
+        r = call({'scenes': [{'media': '/art/body/' + photo, 'png': png, 'dur': 1, 'layout': 'wide'}, {'media': '/art/body/' + photo, 'png': png, 'dur': 1, 'layout': 'clean'}], 'outro': png}).get_json()
+        self.assertTrue(r['ok']); self.assertEqual(r['seconds'], 4.6)
+        for _ in range(240):
+            st = admin.get('/admin/magazine/maker/status?job=' + r['job']).get_json()
+            if st['state'] != 'running': break
+            time.sleep(0.5)
+        self.assertEqual(st['state'], 'done', st)
+        name = st['url'].rsplit('/', 1)[1]; self.addCleanup(lambda: (art / name).unlink(missing_ok=True))
+        self.assertTrue(re.fullmatch(r'video-\d{14}-\d{3}\.mp4', name))
+        self.assertEqual(self.client.get(st['url']).status_code, 200)
+        self.assertEqual(admin.get('/admin/magazine/maker/status?job=../x').status_code, 404)
+
     def test_magazine_reels(self):
         # 운영자 2026-11-05: 매거진 첫 화면에 릴스 칸, 관리자에서 영상 올리기
         admin = self.login_admin()

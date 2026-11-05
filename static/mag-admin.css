@@ -388,3 +388,43 @@ body.console.mag-studio .ms-main .mg-msg-act form:first-child button{height:40px
 .mg-reel-f{display:grid;gap:12px}
 .mg-reel-side{display:flex;flex-direction:column;align-items:flex-end;gap:14px}
 @media (max-width:900px){.mg-reel-new{grid-template-columns:140px minmax(0,1fr)}.mg-reel{grid-template-columns:90px minmax(0,1fr)}.mg-reel video{width:90px}.mg-reel-side{grid-column:2;flex-direction:row;align-items:center;justify-content:space-between}}
+/* 카드뉴스·릴스 만들기 (운영자 2026-11-05) */
+.mk-tabs{display:flex;gap:0;margin:0 0 24px;border-bottom:1px solid var(--ms-line)}
+.mk-tabs a{padding:12px 18px;font-weight:800;color:var(--ms-mute);text-decoration:none;border-bottom:3px solid transparent;margin-bottom:-1px}
+.mk-tabs a small{font-weight:600;font-size:12px;margin-left:4px}
+.mk-tabs a[aria-current]{color:var(--ms-ink);border-color:var(--ms-or)}
+.mk-warn{padding:12px 16px;border-left:3px solid var(--ms-or);background:#fff8ec;font-size:14px}
+.mk{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:40px;align-items:start}
+.mk-left{position:sticky;top:20px;display:flex;flex-direction:column;gap:14px}
+.mk-stage canvas{display:block;width:100%;height:auto;border:1px solid var(--ms-line);background:#eee}
+.mk-list{list-style:none;margin:0;padding:0;display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.mk-th button{display:flex;flex-direction:column;gap:4px;padding:0;border:2px solid transparent;background:none;cursor:pointer;font-size:12px;color:var(--ms-mute)}
+.mk-th canvas{display:block;width:64px;height:auto}
+.mk-th.on button{border-color:var(--ms-or);color:var(--ms-ink);font-weight:700}
+.mk-ord{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--ms-mute)}
+.mk-ord button{background:none;border:0;padding:0;font:inherit;color:var(--ms-sub);text-decoration:underline;cursor:pointer}
+.mk-ord span{margin-right:auto;font-weight:700;color:var(--ms-ink)}
+.mk-add{padding:12px;border:1px dashed var(--ms-ink);background:#fff;font-weight:800;cursor:pointer}
+.mk-right{display:flex;flex-direction:column;gap:20px;min-width:0}
+.mk-form{display:flex;flex-direction:column;gap:16px}
+.mk-form textarea,.mk-form input:not([type=checkbox]):not([type=radio]),.mk-form select{width:100%}
+.mk-ds{border:0;margin:0;padding:0}.mk-ds legend{font-size:13px;font-weight:800;margin-bottom:8px}
+.mk-ds div{display:flex;flex-wrap:wrap;gap:8px}
+.mk-chip input{position:absolute;opacity:0}
+.mk-chip span{display:inline-block;padding:9px 14px;border:1px solid var(--ms-line);font-size:14px;font-weight:700;cursor:pointer;background:#fff}
+.mk-chip input:checked+span{border-color:var(--ms-ink);background:var(--ms-ink);color:#fff}
+.mk-chip input:focus-visible+span{outline:2px solid var(--ms-or)}
+.mk-file{display:flex;flex-direction:column;gap:4px;padding:18px;border:1px dashed var(--ms-ink);background:var(--ms-side);cursor:pointer}
+.mk-file b{font-size:15px}.mk-file span{font-size:13px;color:var(--ms-mute)}
+.mk-timing{display:flex;flex-direction:column;gap:12px}
+.mk-timing #mk-start-row{display:flex;flex-direction:column;gap:10px}
+.mk-chk{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.mk-st{margin:0;padding:12px 14px;background:#fff8ec;border-left:3px solid var(--ms-or);font-size:14px}
+.mk-go{width:100%;padding:16px}
+.mk-out{display:flex;flex-direction:column;gap:14px;padding:20px;border:1px solid var(--ms-line)}
+.mk-out video{width:220px;max-width:100%;background:#000}
+.mk-dl{font-weight:800;color:var(--ms-ink)}
+.mk-reel{display:flex;flex-direction:column;gap:10px}
+.mk-help{font-size:13px;color:var(--ms-mute);margin:0}
+@media(max-width:900px){.mk{grid-template-columns:minmax(0,1fr)}.mk-left{position:static}.mk-stage{max-width:360px}}
+.mk-form input[type=number],.mk-form textarea{padding:12px 14px;border:1px solid var(--ms-line);font:inherit;font-size:15px;line-height:1.5;background:#fff;box-sizing:border-box}
