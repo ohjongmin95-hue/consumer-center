@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>에디터 로그인 | 소보루 매거진</title>
+  <link rel="icon" href="{{ url_for('static', filename='soboru-favicon.png', v=css_v) }}" type="image/png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{{ asset('mag-admin.css') }}">
+</head>
+<body class="ch-page">
+{# 운영자 2026-11-05: 소보루 매거진 에디터 계정 로그인 #}
+<main class="el">
+  <form class="el-box" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <img class="el-logo" src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="SOBORU" width="150" height="29">
+    <p class="ch-kicker">Editor Login</p>
+    {% with msgs = get_flashed_messages() %}{% if msgs %}<p class="el-msg" role="alert">{{ msgs[-1] }}</p>{% endif %}{% endwith %}
+    <label>아이디<input name="login" autocomplete="username" required autofocus></label>
+    <label>비밀번호<input type="password" name="password" autocomplete="current-password" required></label>
+    <button type="submit">로그인</button>
+    <p class="el-note">계정은 편집장이 만들어 드려요.</p>
+  </form>
+</main>
+</body>
+</html>

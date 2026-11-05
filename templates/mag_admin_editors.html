@@ -1,0 +1,31 @@
+{% extends 'console.html' %}
+{% block title %}에디터 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+<main class="page mz-cms"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">에디터</h1></div>
+  <p class="ms-lead">기사마다 쓴 에디터 이름이 붙어요. 아이디와 비밀번호를 정하면 에디터가 <b>{{ login_url }}</b> 에서 들어와 기사를 쓰고 승인을 요청할 수 있어요.</p>
+  <ul class="ms-list">
+  {% for e in rows %}
+    <li class="ms-ed{{ ' off' if not e['active'] }}">
+      <form method="post" class="ms-ed-f"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ e['id'] }}">
+        <div class="ms-ed-h"><b>{{ e['name'] }}</b><em>게시한 기사 {{ count.get(e['id'], 0) }}개{% if not e['active'] %} · 멈춤{% elif not e['pw_hash'] %} · 로그인 계정 없음{% endif %}</em></div>
+        <label>이름<input name="name" value="{{ e['name'] }}" maxlength="20"></label>
+        <label>아이디<input name="login" value="{{ e['login'] or '' }}" maxlength="40" placeholder="영어 소문자·숫자" autocomplete="off"></label>
+        <label>{{ '새 비밀번호' if e['pw_hash'] else '비밀번호' }}<input type="password" name="password" minlength="6" placeholder="{{ '바꿀 때만 적어요' if e['pw_hash'] else '6자 이상' }}" autocomplete="new-password"></label>
+        <div class="ms-ed-act"><button class="primary" name="act" value="save">저장</button>
+          {% if e['active'] %}<button class="ms-ghost" name="act" value="off">계정 멈추기</button>{% else %}<button class="ms-ghost" name="act" value="on">다시 켜기</button>{% endif %}</div>
+      </form>
+    </li>
+  {% endfor %}
+  </ul>
+  <section class="ms-add">
+    <h2>새 에디터</h2>
+    <form method="post" class="ms-ed-f"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>이름<input name="name" maxlength="20" required placeholder="예: 김소보"></label>
+      <label>아이디<input name="login" maxlength="40" placeholder="영어 소문자·숫자" autocomplete="off"></label>
+      <label>비밀번호<input type="password" name="password" minlength="6" placeholder="6자 이상" autocomplete="new-password"></label>
+      <div class="ms-ed-act"><button class="primary" name="act" value="add">에디터 만들기</button></div>
+    </form>
+  </section>
+</div></main>
+{% endblock %}

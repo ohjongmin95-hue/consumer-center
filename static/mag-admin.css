@@ -37,13 +37,13 @@ body.console.mag-studio{background:var(--ms-paper);color:var(--ms-ink)}
 .ms-logo{display:grid;gap:8px;padding:26px 24px 22px;border-bottom:1px solid var(--ms-line);text-decoration:none}
 .ms-logo img{width:118px;height:auto;display:block}
 .ms-logo span{font-family:var(--ms-en);font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--ms-ink)}
-.ms-nav{flex:1;padding:14px 0 24px}
-.ms-group{padding:10px 0}
+.ms-nav{flex:1;padding:8px 0 12px}
+.ms-group{padding:6px 0}
 .ms-group+.ms-group{border-top:1px solid var(--ms-line)}
 .ms-gt{display:flex;align-items:baseline;gap:8px;margin:4px 24px 8px}
 .ms-gt b{font-family:var(--ms-en);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--ms-ink)}
 .ms-gt span{font-size:11px;font-weight:600;color:var(--ms-mute)}
-body.console.mag-studio .ms-nav a{position:relative;display:flex;align-items:center;gap:12px;padding:9px 24px;font-size:15px;font-weight:500;color:var(--ms-sub);text-decoration:none;transition:color .15s}
+body.console.mag-studio .ms-nav a{position:relative;display:flex;align-items:center;gap:12px;padding:7px 24px;font-size:15px;font-weight:500;color:var(--ms-sub);text-decoration:none;transition:color .15s}
 body.console.mag-studio .ms-nav a .ad-ico{width:17px;height:17px;flex:none;color:var(--ms-mute);transition:color .15s}
 body.console.mag-studio .ms-nav a:hover{color:var(--ms-ink)}
 body.console.mag-studio .ms-nav a:hover .ad-ico{color:var(--ms-ink)}
@@ -54,13 +54,13 @@ body.console.mag-studio .ms-nav a.on::before{content:"";position:absolute;left:0
 body.console.mag-studio .ms-side-foot a,body.console.mag-studio .ms-side-foot button{display:block;padding:6px 0;border:0;background:none;box-shadow:none;font:inherit;font-size:13px;font-weight:600;color:var(--ms-sub);text-align:left;text-decoration:none;cursor:pointer;border-radius:0}
 body.console.mag-studio .ms-side-foot a:hover,body.console.mag-studio .ms-side-foot button:hover{color:var(--ms-ink);text-decoration:underline;background:none}
 .ms-body{min-width:0;display:flex;flex-direction:column}
-.ms-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:20px;height:72px;padding:0 40px;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--ms-rule)}
-.ms-title{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ms-clock{margin-left:auto;font-family:var(--ms-en);font-size:14px;font-weight:500;color:var(--ms-sub);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ms-top{display:none}
+.ms-now{display:grid;gap:10px;padding:0 0 14px;margin-bottom:8px;border-bottom:1px solid var(--ms-line)}
+.ms-clock{font-family:var(--ms-en);font-size:13px;font-weight:500;color:var(--ms-sub);font-variant-numeric:tabular-nums;white-space:nowrap}
 .ms-clock b{font-weight:800;color:var(--ms-ink)}
-.ms-site{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;border:1px solid var(--ms-ink);color:var(--ms-ink)!important;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;transition:background .2s,color .2s}
+body.console.mag-studio .ms-side-foot .ms-site{display:flex;align-items:center;justify-content:space-between;height:40px;padding:0 14px;border:1px solid var(--ms-ink);color:var(--ms-ink);font-size:13px;font-weight:700;text-decoration:none;transition:background .2s,color .2s}
 .ms-site i{font-style:normal}
-.ms-site:hover{background:var(--ms-ink);color:#fff!important}
+body.console.mag-studio .ms-side-foot .ms-site:hover{background:var(--ms-ink);color:#fff;text-decoration:none}
 .ms-burger{display:none}
 .ms-scrim{display:none}
 body.console.mag-studio .ms-main{flex:1;max-width:1240px;width:100%;padding:40px 48px 96px;box-sizing:border-box;background:transparent;border-radius:0;box-shadow:none;min-height:0}
@@ -69,12 +69,10 @@ body.console.mag-studio .ms-main{flex:1;max-width:1240px;width:100%;padding:40px
   .ms-side{position:fixed;left:0;top:0;bottom:0;z-index:40;width:272px;height:auto;transform:translateX(-100%);transition:transform .3s var(--ms-ease)}
   .ms-nav-t:checked~.ms-side{transform:none}
   .ms-nav-t:checked~.ms-scrim{display:block;position:fixed;inset:0;z-index:30;background:rgba(17,17,17,.35)}
-  .ms-top{height:60px;padding:0 16px;gap:12px}
+  .ms-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;height:56px;padding:0 16px;background:#fff;border-bottom:1px solid var(--ms-rule)}
+  .ms-top-logo{display:flex}
   .ms-burger{display:grid;gap:4px;padding:10px 6px;margin-left:-6px;cursor:pointer}
   .ms-burger i{display:block;width:20px;height:2px;background:var(--ms-ink)}
-  .ms-title{font-size:18px}
-  .ms-clock{display:none}
-  .ms-site{margin-left:auto;height:34px;padding:0 12px}
   body.console.mag-studio .ms-main{padding:24px 16px 72px}
 }
 
@@ -82,7 +80,9 @@ body.console.mag-studio .ms-main{flex:1;max-width:1240px;width:100%;padding:40px
 body.console.mag-studio .ms-main *{border-radius:0!important}
 body.console.mag-studio .ms-main .mz-switch i{border-radius:13px!important}
 body.console.mag-studio .ms-main .mz-switch i::after{border-radius:50%!important}
-body.console.mag-studio .ms-main .page-title{display:none}
+body.console.mag-studio .ms-main .page-title{display:block;margin:0 0 20px;font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1.25}
+body.console.mag-studio .ms-main .mz-lhead .page-title{margin:0}
+@media (max-width:900px){body.console.mag-studio .ms-main .page-title{font-size:24px}}
 body.console.mag-studio .ms-main .page{padding:0}
 body.console.mag-studio .ms-main .wrap{max-width:none;padding:0}
 body.console.mag-studio .ms-main h2{letter-spacing:-.01em}
@@ -98,7 +98,7 @@ body.console.mag-studio .ms-main .mz-search input[type=search]{border:0!importan
 body.console.mag-studio .ms-main .mz-search input[type=search]:focus{border-bottom-color:var(--ms-ink)!important}
 body.console.mag-studio .ms-main .mz-switch input:checked+i{background:var(--ms-or)}
 /* 기사 목록 */
-body.console.mag-studio .ms-main .mz-lhead{justify-content:flex-end}
+body.console.mag-studio .ms-main .mz-lhead{justify-content:space-between}
 body.console.mag-studio .ms-main .mz-tabs{border-bottom:1px solid var(--ms-ink)}
 body.console.mag-studio .ms-main .mz-tabs a{font-weight:600}
 body.console.mag-studio .ms-main .mz-tabs a.on{border-color:var(--ms-or);border-bottom-width:3px}
@@ -113,14 +113,14 @@ body.console.mag-studio .ms-main .mz-tag.published,body.console.mag-studio .ms-m
 body.console.mag-studio .ms-main .mz-tag.draft,body.console.mag-studio .ms-main .mz-state.draft{color:var(--ms-mute)}
 body.console.mag-studio .ms-main .mz-tag.scheduled,body.console.mag-studio .ms-main .mz-state.scheduled,body.console.mag-studio .ms-main .mz-state.new{color:var(--ms-or-d)}
 /* 글쓰기 */
-body.console.mag-studio .ms-main .mz-ed-bar{top:72px;margin:-40px -48px 32px;padding:14px 48px;background:rgba(255,255,255,.94);border-bottom:1px solid var(--ms-line)}
+body.console.mag-studio .ms-main .mz-ed-bar{top:0;margin:-40px -48px 32px;padding:14px 48px;background:rgba(255,255,255,.94);border-bottom:1px solid var(--ms-line)}
 body.console.mag-studio .ms-main .mz-toolbar{top:133px;border-top:1px solid var(--ms-ink);border-bottom:1px solid var(--ms-line)}
 body.console.mag-studio .ms-main .mz-ed-side{top:133px}
 body.console.mag-studio .ms-main .mz-ed textarea.mz-title{font-size:34px;font-weight:800;letter-spacing:-.03em}
 body.console.mag-studio .ms-main .mz-ed textarea.mz-body{font-size:17px;line-height:1.9}
 body.console.mag-studio .ms-main .mz-msg{background:var(--ms-side);color:var(--ms-or-d);box-shadow:inset 3px 0 0 var(--ms-or)}
 @media (max-width:900px){
-  body.console.mag-studio .ms-main .mz-ed-bar{top:60px;margin:-24px -16px 20px;padding:12px 16px}
+  body.console.mag-studio .ms-main .mz-ed-bar{top:56px;margin:-24px -16px 20px;padding:12px 16px}
   body.console.mag-studio .ms-main .mz-toolbar{top:113px}
   body.console.mag-studio .ms-main .mz-ed textarea.mz-title{font-size:26px}
   body.console.mag-studio .ms-main .mz-thumb{width:64px;height:44px}
@@ -178,5 +178,52 @@ body.console.mag-studio .ms-main .mz-msg{background:var(--ms-side);color:var(--m
   .md-toc a{grid-template-columns:minmax(0,1fr);gap:4px}
   .md-toc b{white-space:normal}
 }
-body.console.mag-studio .ms-main select,body.console.mag-studio .ms-main input[type=text],body.console.mag-studio .ms-main input[type=url],body.console.mag-studio .ms-main input[type=email],body.console.mag-studio .ms-main input[type=datetime-local]{min-height:44px;padding:0 12px;border:0;font-size:15px;color:var(--ms-ink)}
+body.console.mag-studio .ms-main select,body.console.mag-studio .ms-main input:not([type]),body.console.mag-studio .ms-main input[type=password],body.console.mag-studio .ms-main input[type=text],body.console.mag-studio .ms-main input[type=url],body.console.mag-studio .ms-main input[type=email],body.console.mag-studio .ms-main input[type=datetime-local]{min-height:44px;padding:0 12px;border:0;font-size:15px;color:var(--ms-ink)}
 body.console.mag-studio .ms-main .form-panel label{font-size:14px;font-weight:700;color:var(--ms-ink)}
+/* 에디터·승인·통계 (2026-11-05) */
+.ms-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;background:var(--ms-or);color:#fff;font-family:var(--ms-en);font-size:11px;font-style:normal;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.ms-who{margin:0 0 6px;font-size:13px;color:var(--ms-sub)}.ms-who b{color:var(--ms-ink)}
+.ms-lead{margin:0 0 24px;padding-bottom:20px;border-bottom:1px solid var(--ms-ink);font-size:15px;line-height:1.6;color:var(--ms-sub);word-break:keep-all;overflow-wrap:anywhere}
+.ms-list{list-style:none;margin:0;padding:0}
+.ms-list>li{border-bottom:1px solid var(--ms-line)}
+.ms-ap{display:flex;align-items:center;gap:24px;padding:20px 0}
+.ms-ap-t{flex:1;min-width:0;display:grid;gap:6px}
+.ms-ap-t em{font-style:normal;font-size:12px;font-weight:600;color:var(--ms-or-d)}
+.ms-ap-t a{color:var(--ms-ink);text-decoration:none}.ms-ap-t a b{font-size:18px;font-weight:800;letter-spacing:-.01em}.ms-ap-t a:hover b{text-decoration:underline}
+.ms-ap-t p{margin:0;font-size:14px;color:var(--ms-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-ap-act,.ms-ed-act{display:flex;flex-direction:column;gap:8px;flex:none}
+body.console.mag-studio .ms-main .ms-ap-act button,body.console.mag-studio .ms-main .ms-ed-act button{height:42px;padding:0 18px;font-size:14px;font-weight:700;cursor:pointer;border:0}
+body.console.mag-studio .ms-main .ms-ghost{background:#fff;color:var(--ms-ink);box-shadow:inset 0 0 0 1px var(--ms-ink)}
+body.console.mag-studio .ms-main .ms-ghost:hover{background:var(--ms-side)}
+.ms-ed{padding:22px 0}.ms-ed.off{opacity:.55}
+.ms-ed-f{display:grid;grid-template-columns:minmax(0,1.1fr) repeat(3,minmax(0,1fr)) auto;gap:16px;align-items:end}
+.ms-ed-h{display:grid;gap:4px;align-self:center}.ms-ed-h b{font-size:20px;font-weight:800}.ms-ed-h em{font-style:normal;font-size:12px;color:var(--ms-mute)}
+body.console.mag-studio .ms-main .ms-ed-f label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--ms-sub)}
+body.console.mag-studio .ms-main .ms-ed-f input{width:100%;box-sizing:border-box}
+.ms-add{margin-top:40px}.ms-add h2{margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid var(--ms-ink);font-family:var(--ms-en);font-size:13px!important;font-weight:800;letter-spacing:.16em}
+.ms-add .ms-ed-f{grid-template-columns:repeat(3,minmax(0,1fr)) auto}
+.md-kpi2{grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--ms-ink)}
+.md-kpi2>div{display:grid;gap:6px;padding:28px 24px 26px 0}.md-kpi2>div+div{padding-left:28px;border-left:1px solid var(--ms-line)}
+.md-bars{list-style:none;margin:0;padding:0}
+.md-bars li{position:relative;display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 0 18px;border-bottom:1px solid var(--ms-line)}
+.md-bars span{font-family:var(--ms-en);font-size:13px;font-weight:800;letter-spacing:.06em}.md-bars small{margin-left:8px;font-family:"Pretendard Variable",sans-serif;font-size:12px;font-weight:500;letter-spacing:0;color:var(--ms-mute)}
+.md-bars b{font-family:var(--ms-en);font-size:15px;font-variant-numeric:tabular-nums}
+.md-bars i{position:absolute;left:0;bottom:6px;height:3px;background:var(--ms-or);min-width:2px}
+/* 에디터 로그인 */
+.el{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:#fff}
+.el-box{width:100%;max-width:380px;display:grid;gap:14px}
+.el-logo{width:150px;height:auto}
+.el-box .ch-kicker{margin:0 0 8px;color:var(--ms-ink)}
+.el-box label{display:grid;gap:6px;font-size:13px;font-weight:700;color:var(--ms-sub)}
+.el-box input{height:48px;padding:0 14px;border:0;box-shadow:inset 0 0 0 1px var(--ms-line);font:inherit;font-size:16px;color:var(--ms-ink);outline:0}
+.el-box input:focus{box-shadow:inset 0 0 0 1.5px var(--ms-ink)}
+.el-box button{height:52px;margin-top:6px;border:0;background:var(--ms-ink);color:#fff;font:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:background .2s}
+.el-box button:hover{background:var(--ms-or)}
+.el-msg{margin:0;padding:12px 14px;background:var(--ms-side);box-shadow:inset 3px 0 0 var(--ms-or);font-size:14px;color:var(--ms-or-d)}
+.el-note{margin:4px 0 0;font-size:13px;color:var(--ms-mute)}
+@media (max-width:900px){
+  .ms-ap{flex-direction:column;align-items:stretch;gap:14px}.ms-ap-act{flex-direction:row}.ms-ap-act button{flex:1}
+  .ms-ed-f,.ms-add .ms-ed-f{grid-template-columns:1fr}
+  .ms-ed-act{flex-direction:row}.ms-ed-act button{flex:1}
+  .md-kpi2{grid-template-columns:1fr}.md-kpi2>div+div{padding-left:0;border-left:0;border-top:1px solid var(--ms-line)}
+}

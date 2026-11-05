@@ -2,7 +2,8 @@
 {% block title %}{% if editor %}{{ a['title'] if a else '새 기사' }}{% else %}기사{% endif %} | 소보루 매거진 관리자{% endblock %}
 {% block content %}
 <main class="page mz-cms"><div class="wrap">
-{% set st_name = {'published': '게시 중', 'scheduled': '예약', 'draft': '초안'} %}
+{% set st_name = {'published': '게시 중', 'scheduled': '예약', 'draft': '초안', 'pending': '승인 대기'} %}
+{% set me_ed = mag_me_editor() if mag_me_editor is defined else None %}
 {% if not editor %}
   <div class="mz-lhead"><h1 class="page-title">기사</h1><a class="mz-cta" href="{{ url_for('admin_life', new=1) }}">새 기사 쓰기</a></div>
   <nav class="mz-tabs" aria-label="기사 상태">
@@ -24,7 +25,7 @@
 <script>(function(){var q=document.getElementById('mz-q'),rows=document.querySelectorAll('#mz-rows li[data-t]'),none=document.getElementById('mz-none');if(!q)return;
 q.oninput=function(){var v=q.value.trim().toLowerCase(),n=0;rows.forEach(function(li){var ok=!v||li.dataset.t.indexOf(v)>-1;li.hidden=!ok;if(ok)n++});none.hidden=n>0||!rows.length}})();</script>
 {% else %}
-  <div class="mz-ed-bar"><a class="mz-back" href="{{ url_for('admin_life') }}">기사 목록</a>
+  <div class="mz-ed-bar"><a class="mz-back" href="{{ url_for('mag_mine') if me_ed else url_for('admin_life') }}">{{ '내 기사' if me_ed else '기사 목록' }}</a>
     <span class="mz-state {{ a['status'] if a else 'new' }}">{% if a %}{{ st_name.get(a['status'], '초안') }}{% if a['status'] == 'scheduled' %} · {{ (a['published_at'] or '')[5:16].replace('T', ' ').replace('-', '.') }}{% endif %}{% if a['origin'] == 'ai' %} · AI 초안{% elif a['origin'] == 'auto' %} · 자동 수집{% endif %}{% else %}새 기사{% endif %}</span></div>
   {% set ai = ai_article(a['id']) if a and ai_article is defined else None %}
   {% if ai %}
@@ -66,7 +67,11 @@ q.oninput=function(){var v=q.value.trim().toLowerCase(),n=0;rows.forEach(functio
     <aside class="mz-ed-side">
       <section class="mz-card mz-pub">
         <h2>게시</h2>
-        {% if a %}
+        {% if me_ed %}{# 에디터: 게시 대신 승인 요청 #}
+          <button type="submit" class="mz-btn primary" name="act" value="publish">{{ '승인 다시 요청하기' if a and a['status'] == 'pending' else '승인 요청하기' }}</button>
+          <button type="submit" class="mz-btn" name="act" value="save">저장</button>
+          <p class="mz-note">편집장이 확인하고 게시해요.</p>
+        {% elif a %}
           {% if a['status'] == 'published' %}
           <button type="submit" class="mz-btn primary" name="act" value="save">고친 내용 저장</button>
           <button type="submit" class="mz-btn" name="act" value="unpublish">게시 내리기</button>
@@ -80,11 +85,16 @@ q.oninput=function(){var v=q.value.trim().toLowerCase(),n=0;rows.forEach(functio
           <button type="submit" class="mz-btn primary" name="publish" value="1">바로 게시하기</button>
           <button type="submit" class="mz-btn">초안으로 저장</button>
         {% endif %}
-        <details class="mz-sched"{% if a and a['status'] == 'scheduled' %} open{% endif %}><summary>예약 게시</summary>
+        {% if not me_ed %}<details class="mz-sched"{% if a and a['status'] == 'scheduled' %} open{% endif %}><summary>예약 게시</summary>
           <input type="datetime-local" name="publish_at" aria-label="게시할 날짜와 시각" value="{{ (a['published_at'] or '')[:16] if a and a['status'] == 'scheduled' else '' }}">
           <button type="submit" class="mz-btn" name="act" value="schedule">이 시각에 게시하기</button>
-        </details>
+        </details>{% endif %}
       </section>
+      {% if not me_ed and mag_editors is defined %}{% set cur = mag_editor_of(a['id']) if a else None %}
+      <section class="mz-card">
+        <h2>에디터</h2>
+        <label class="mz-field">기사 쓴 사람<select name="editor_id">{% if not a %}<option value="">번갈아 맡기기</option>{% endif %}{% for e in mag_editors() %}<option value="{{ e['id'] }}"{% if cur and cur['id'] == e['id'] %} selected{% endif %}>{{ e['name'] }}</option>{% endfor %}</select></label>
+      </section>{% endif %}
       <section class="mz-card">
         <h2>대표 사진</h2>
         {% set cov = mag_photo(a['id'], 800) if a and mag_photo is defined else '' %}
@@ -94,14 +104,11 @@ q.oninput=function(){var v=q.value.trim().toLowerCase(),n=0;rows.forEach(functio
       <section class="mz-card">
         <h2>분류</h2>
         <label class="mz-field">분야<select name="category">{% for c in categories %}<option{% if a and a['category'] == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
-        <label class="mz-switch"><span>매거진 첫 화면 맨 위에 고정</span><input type="checkbox" name="featured" value="1"{% if a and a['featured'] %} checked{% endif %}><i aria-hidden="true"></i></label>
+        {% if not me_ed %}<label class="mz-switch"><span>매거진 첫 화면 맨 위에 고정</span><input type="checkbox" name="featured" value="1"{% if a and a['featured'] %} checked{% endif %}><i aria-hidden="true"></i></label>{% endif %}
       </section>
-      <section class="mz-card">
-        <h2>출처</h2>
-        <label class="mz-field">이름<input name="source_name" maxlength="120" value="{{ a['source_name'] if a else '' }}" placeholder="공정거래위원회 소비자24"></label>
-        <label class="mz-field">주소<input name="source_url" maxlength="500" value="{{ a['source_url'] if a else '' }}" placeholder="https://"></label>
-      </section>
-      {% if a %}<button type="submit" class="mz-del" name="act" value="delete" onclick="return confirm('이 기사를 지울까요? 되돌릴 수 없어요.')">이 기사 지우기</button>{% endif %}
+      {# 운영자 2026-11-05: 출처 칸 없앰. 있던 값은 그대로 지킴 #}
+      <input type="hidden" name="source_name" value="{{ a['source_name'] if a else '' }}"><input type="hidden" name="source_url" value="{{ a['source_url'] if a else '' }}">
+      {% if a and not me_ed %}<button type="submit" class="mz-del" name="act" value="delete" onclick="return confirm('이 기사를 지울까요? 되돌릴 수 없어요.')">이 기사 지우기</button>{% endif %}
     </aside>
   </form>
 <script>(function(){var t=document.getElementById('mz-body'),ti=document.getElementById('mz-title'),su=document.getElementById('mz-sum'),cnt=document.getElementById('mz-count'),m=document.getElementById('mz-photo-msg'),f=document.getElementById('mz-photo');

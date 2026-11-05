@@ -967,6 +967,7 @@ ADMIN_IDLE_SECONDS=2*60*60  # 관리자 화면을 2시간 쓰지 않으면 자�
 def end_admin():
     for k in ('admin','admin_v','admin_at','edit_mode'):session.pop(k,None)
 def admin_active():
+    if g.get('mag_editor_pass'):return True  # 매거진 에디터가 자기 기사 화면을 쓰는 동안만 (mag_editors.py)
     # 관리자 로그인이 살아 있는지: 비밀번호를 바꿨거나 오래 쓰지 않았으면 끊음
     if not session.get('admin'):return False
     if session.get('admin_v')!=admin_session_ver() or time.time()-session.get('admin_at',0)>ADMIN_IDLE_SECONDS:
@@ -3013,6 +3014,7 @@ import company_mail;company_mail.auto(types.SimpleNamespace(**globals()))
 import company_web_email;company_web_email.install(types.SimpleNamespace(**globals()))  # 기업 홈페이지에서 고객센터·홍보 메일 찾기 (company_web_email.py)
 import mag_admin;mag_admin.install(types.SimpleNamespace(**globals()))  # 소보루 매거진 관리자: 전환 버튼·기사 CMS·첫 화면 편집·얼굴 모자이크 (mag_admin.py)
 import mag_seo;mag_seo.install(types.SimpleNamespace(**globals()))  # 소보루 매거진 검색 노출: soboru.co.kr 첫 화면·사이트맵·RSS·소유확인 (mag_seo.py)
+import mag_editors;mag_editors.install(types.SimpleNamespace(**globals()))  # 소보루 매거진 에디터 계정·승인·통계 (mag_editors.py)
 company_fix.fix_old_cases(conn,link_company)  # 예전 제보의 큰 기업 이름 오타도 고침 (company_fix.py)
 link_all_cases()  # 큰 기업 미리 등록: 처음 배포할 때 한 번만 (company_mail.py, data/companies_seed.csv)  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
 

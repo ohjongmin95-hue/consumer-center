@@ -17,7 +17,7 @@
     <figure class="ma-cover">{% if photo %}<img src="{{ photo }}" alt="">{% set cr = mag_credit(a['id']) %}{% if cr %}<figcaption>Photo by <a href="{{ cr.url }}" target="_blank" rel="noopener">{{ cr.name }}</a> on <a href="{{ cr.home }}" target="_blank" rel="noopener">Unsplash</a></figcaption>{% endif %}{% else %}<span class="ma-type t{{ a['id'] % 3 }}"><b>{{ en|capitalize }}</b></span>{% endif %}</figure>
     <div class="ma-meta">
       <div class="ma-by">
-        <span><b>EDITOR</b> {{ ui('mag.editor', '소보루 매거진 에디터') }}<i aria-hidden="true">·</i>{{ ui('life.read_min', '{n}분이면 읽어요', n=read_minutes(a['body'])) }}</span>
+        <span><b>EDITOR</b> {{ mag_editor_name(a['id']) if mag_editor_name is defined else ui('mag.editor', '소보루 매거진 에디터') }}<i aria-hidden="true">·</i>{{ ui('life.read_min', '{n}분이면 읽어요', n=read_minutes(a['body'])) }}</span>
         <span class="ma-share">
           <a href="https://twitter.com/intent/tweet?url={{ canonical_url()|urlencode }}&text={{ a['title']|urlencode }}" target="_blank" rel="noopener" aria-label="X에 공유">X</a>
           <a href="https://www.facebook.com/sharer/sharer.php?u={{ canonical_url()|urlencode }}" target="_blank" rel="noopener" aria-label="페이스북에 공유">f</a>

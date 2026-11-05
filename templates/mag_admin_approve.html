@@ -1,0 +1,21 @@
+{% extends 'console.html' %}
+{% block title %}승인 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+<main class="page mz-cms"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">승인</h1></div>
+  <p class="ms-lead">에디터가 승인을 요청한 기사예요. 읽어 보고 게시하거나 돌려보내요.</p>
+  <ul class="ms-list">
+  {% for r in rows %}
+    <li class="ms-ap">
+      <div class="ms-ap-t"><em>{{ r['category'] }} · 에디터 {{ mag_editor_name(r['id']) }} · {{ r['updated'][:16].replace('T', ' ') }}</em>
+        <a href="{{ url_for('admin_life_edit', article_id=r['id']) }}"><b>{{ r['title'] }}</b></a>
+        {% if r['summary'] %}<p>{{ r['summary'].split('\n')[0] }}</p>{% endif %}</div>
+      <form method="post" class="ms-ap-act"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}">
+        <button class="primary" name="act" value="ok">승인하고 게시</button>
+        <button class="ms-ghost" name="act" value="back">돌려보내기</button>
+      </form>
+    </li>
+  {% else %}<li class="mz-empty">승인을 기다리는 기사가 없어요.</li>{% endfor %}
+  </ul>
+</div></main>
+{% endblock %}

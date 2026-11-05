@@ -37,6 +37,7 @@
   'building': '<path d="M4 20V6l8-3v17"/><path d="M12 9h8v11"/><path d="M3 20h18"/><path d="M7 9h2M7 13h2M15 13h2M15 16h2"/>',
   'key': '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 6l2 2"/>',
   'out': '<path d="M14 4h5v16h-5"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/>',
+  'check': '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
 }[name]|safe }}</svg>{% endmacro %}
 {% if admin_active() and request.endpoint != 'admin_login' %}
 {# 운영자 2026-11-03 (밤): '사이트 화면 편집' 하나로. 첫 화면 사진도 여기. 사업자 정보·검색 노출은 문구 고치기 화면의 칸이라 메뉴에서 뺌 #}
@@ -57,42 +58,51 @@
 {% if space == 'mag' %}
 {# ---- 소보루 매거진 관리자 (Magazine Studio) ---- #}
 {% set ed = request.endpoint == 'admin_life_edit' or (request.endpoint == 'admin_life' and request.args.get('new')) %}
+{% set me_ed = mag_me_editor() if mag_me_editor is defined else None %}
+{% if me_ed %}{# 에디터 계정: 기사 쓰기와 내 기사만 #}
+{% set nav = [('Articles', [('admin_life', {'new': 1}, 'edit', '작성'), ('mag_mine', {}, 'book', '내 기사')])] %}
+{% else %}
 {% set nav = [
   ('', [('mag_home', {}, 'home', '대시보드')]),
-  ('Articles', [('admin_life', {'new': 1}, 'edit', '작성'), ('admin_life', {}, 'book', '기사 목록'), ('admin_life_ai', {}, 'text', 'AI 기사')]),
-  ('Pages', [('mag_front', {}, 'layers', '첫 화면 편집'), ('admin_art', {}, 'image', '기사 사진'), ('mag_seo_admin', {}, 'search', '검색 노출')]),
+  ('Articles', [('admin_life', {'new': 1}, 'edit', '작성'), ('mag_approve', {}, 'check', '승인'), ('admin_life', {}, 'book', '기사 목록'), ('admin_life_ai', {}, 'text', 'AI 기사')]),
+  ('Pages', [('mag_front', {}, 'layers', '첫 화면 편집'), ('admin_art', {}, 'image', '기사 사진')]),
   ('Letter', [('admin_letter', {}, 'mail', '소보루 레터')]),
-  ('Tools', [('mag_mosaic', {}, 'image', '얼굴 모자이크')]),
+  ('Manage', [('mag_editors_admin', {}, 'users', '에디터'), ('mag_stats', {}, 'chart', '통계'), ('mag_seo_admin', {}, 'search', '검색 노출'), ('mag_mosaic', {}, 'image', '얼굴 모자이크')]),
 ] %}
-{% set ko = {'Articles': '기사', 'Pages': '화면', 'Letter': '구독', 'Tools': '도구'} %}
+{% endif %}
+{% set ko = {'Articles': '기사', 'Pages': '화면', 'Letter': '구독', 'Manage': '관리'} %}
 {% set ns = namespace(title='') %}
 <div class="ms">
   <input type="checkbox" id="ms-nav" class="ms-nav-t" hidden>
   <aside class="ms-side" aria-label="매거진 관리 메뉴">
-    <a class="ms-logo" href="{{ url_for('mag_home') }}"><img src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="SOBORU" width="120" height="23"><span>Magazine Studio</span></a>
+    <a class="ms-logo" href="{{ url_for('mag_mine') if me_ed else url_for('mag_home') }}"><img src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="SOBORU" width="120" height="23"><span>Magazine Studio</span></a>
     <nav class="ms-nav">
       {% for group, links in nav %}
       <div class="ms-group">{% if group %}<p class="ms-gt"><b>{{ group }}</b><span>{{ ko[group] }}</span></p>{% endif %}
         {% for ep, args, ico, label in links %}
         {% if ep == 'admin_life' %}{% set on = (ed if args else (active == 'admin_life' and not ed)) %}{% else %}{% set on = active == ep or (ep == 'admin_letter' and (request.endpoint or '').startswith('admin_letter')) %}{% endif %}
         {% if on %}{% set ns.title = ('기사 고치기' if request.endpoint == 'admin_life_edit' else label) %}{% endif %}
-        <a href="{{ url_for(ep, **args) }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span></a>
+        <a href="{{ url_for(ep, **args) }}"{% if on %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span>{% if ep == 'mag_approve' %}{% set pc = mag_pending() %}{% if pc %}<em class="ms-badge">{{ pc }}</em>{% endif %}{% endif %}</a>
         {% endfor %}
       </div>
       {% endfor %}
     </nav>
     <div class="ms-side-foot">
+      <div class="ms-now"><time class="ms-clock" id="ms-clock"></time><a class="ms-site" href="https://soboru.co.kr/" target="_blank" rel="noopener">매거진 보기 <i aria-hidden="true">↗</i></a></div>
+      {% if me_ed %}<p class="ms-who">에디터 <b>{{ me_ed['name'] }}</b></p>
+      <form method="post" action="{{ url_for('editor_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">로그아웃</button></form>
+      {% else %}
       <a href="{{ url_for('admin_choose') }}">관리할 곳 바꾸기</a>
       <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">로그아웃</button></form>
+      {% endif %}
     </div>
   </aside>
   <label for="ms-nav" class="ms-scrim" aria-hidden="true"></label>
   <div class="ms-body">
+    {# 운영자 2026-11-05: 위쪽 띠 없앰. 날짜·매거진 보기는 왼쪽 메뉴 아래로. 휴대폰에서만 메뉴 버튼 줄이 남음 #}
     <header class="ms-top">
       <label for="ms-nav" class="ms-burger" aria-label="메뉴 열기"><i></i><i></i><i></i></label>
-      <h1 class="ms-title">{{ ns.title or '매거진' }}</h1>
-      <time class="ms-clock" id="ms-clock"></time>
-      <a class="ms-site" href="https://soboru.co.kr/" target="_blank" rel="noopener">매거진 보기 <i aria-hidden="true">↗</i></a>
+      <a class="ms-top-logo" href="{{ url_for('mag_mine') if me_ed else url_for('mag_home') }}"><img src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="SOBORU" width="94" height="18"></a>
     </header>
     <div class="ad-main ms-main">
 {% else %}
