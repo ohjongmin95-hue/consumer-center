@@ -180,6 +180,31 @@ def mag_excerpt(body, limit=900):
     return out
 
 
+def _sentences(t, n):
+    parts = re.split(r'(?<=[.!?])\s+', t)
+    return ' '.join(parts[:n])
+
+
+def mag_digest(body, limit=1600):
+    """매거진 기사 한 편의 축약본 → [{'h'} | {'p'}] (운영자 2026-11-05: 레터에서는 매거진 글 하나를 축약본으로).
+    앞부분이 아니라 글 전체를 줄임: 첫 문단은 세 문장까지, 소제목마다 첫 문단 두 문장. 사진·영상 줄, 목록·요점·용어 풀이 줄, 마크다운 기호는 뺌."""
+    out, n, took = [], 0, False
+    for blk in re.split(r'\n\s*\n', body or ''):
+        t = blk.strip()
+        if not t or re.match(r'^\[(사진|영상)\b', t): continue
+        if re.match(r'^#{1,2}\s', t):
+            h = W._plain(t.lstrip('#').strip(), 60)
+            if h and out: out.append({'h': h}); took = False
+            continue
+        t = re.sub(r'\*\*|__', '', ' '.join(t.split()))
+        if took or re.match(r'^(###|[-*•※>]|\d+[.)]\s)', t): continue
+        t = _sentences(t, 2 if out else 3)
+        if n and n + len(t) > limit: break
+        out.append({'p': t}); n += len(t); took = True
+    while out and 'h' in out[-1]: out.pop()
+    return out
+
+
 def photo_query(q):
     q = re.sub(r'[^A-Za-z ]', ' ', str(q or ''))
     return ' '.join(q.split()[:4]).lower()
@@ -803,8 +828,8 @@ def install(S):
             for r in db.execute('SELECT sections FROM letters ORDER BY no DESC LIMIT 6'):
                 try: seen |= {x.get('id') for x in json.loads(r[0] or '{}').get('life') or [] if isinstance(x, dict)}
                 except (ValueError, AttributeError): pass
-        pick = [a for a in arts if a['id'] not in seen][:3]
-        pick += [a for a in arts if a not in pick][:3 - len(pick)]
+        # 운영자 2026-11-05: 여러 편 말고 매거진 글 하나를 축약본으로
+        pick = [a for a in arts if a['id'] not in seen][:1] or arts[:1]
         photo = app.jinja_env.globals.get('mag_photo'); credit = app.jinja_env.globals.get('mag_credit')
         def pic(aid):
             if not photo: return '', None
@@ -817,7 +842,7 @@ def install(S):
             u, c = pic(a['id'])
             life.append({'id': a['id'], 'title': a['title'], 'summary': ' '.join((a['summary'] or '').split())[:140], 'emoji': a['emoji'] or '📰', 'category': a['category'],
                          'en': MAG_EN.get(a['category'] or '', 'LIFE'), 'photo': u, 'credit': c, 'url': f"/life/{a['id']}"})
-        if life: life[0]['read'] = mag_excerpt(pick[0]['body'])  # 운영자 2026-11-05: 매거진 기사 하나는 레터 안에서 읽게 — 본문 앞부분을 싣고 '이어서 읽기'
+        if life: life[0]['digest'] = mag_digest(pick[0]['body'])  # 운영자 2026-11-05: 매거진 기사 하나를 레터 안에서 축약본으로 읽고 '전체 기사 읽기'
         return {'life': life, 'word': word_of(no)}
 
     # ---- 만들기 -----------------------------------------------------------------
@@ -956,8 +981,19 @@ def install(S):
             if r.get('id'): it['article'] = r['id']; made += 1
         log({'status': 'info', 'no': no, 'trigger': 'articles', 'reason': f"매거진 기사 {made}편 ({sum(1 for r in res if r.get('published'))}편 바로 게시)"})
 
+    def one_magazine(L):
+        """매거진 칸은 글 하나 축약본만 (운영자 2026-11-05). 예전 호(여러 편·앞부분만)는 첫 글 하나로 줄이고 축약본을 새로 만듦."""
+        sec = L.get('sections') if isinstance(L.get('sections'), dict) else None
+        life = (sec or {}).get('life') or []
+        if not life or (len(life) == 1 and 'digest' in life[0]): return
+        a = dict(life[0]); a.pop('read', None)
+        with conn() as db: row = db.execute('SELECT body FROM articles WHERE id=?', (a.get('id'),)).fetchone()
+        a['digest'] = mag_digest(row['body']) if row else []
+        L['sections'] = dict(sec, life=[a])
+
     def article_links(L):
         """레터 꼭지마다 게시된 매거진 기사가 있으면 '소보루에서 자세히 읽기' 주소를 붙임 (초안이면 원문만)."""
+        one_magazine(L)
         ids = [it['article'] for it in L['items'] if it.get('article')]
         if not ids: return L
         with conn() as db:

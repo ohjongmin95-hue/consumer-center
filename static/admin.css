@@ -875,3 +875,10 @@ body.console .mz-card textarea:focus{outline:0;background:#fff;box-shadow:inset 
 /* 운영자 2026-11-05: 레터 고치기 화면 메인 뉴스 사진이 원래 크기로 커져 화면을 덮음 — 칸 안에 작게 */
 body.console .lt-ad-photo{display:block;width:100%;max-width:360px;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:10px;margin-bottom:8px}
 body.console .lt-ad-item{min-width:0;overflow:hidden}
+
+/* 레터 목록: 오른쪽 위 '지우기' (운영자 2026-11-05) */
+body.console .lt-ad-row{position:relative}
+body.console .lt-ad-row h3{padding-right:72px}
+body.console .lt-ad-del{position:absolute;top:18px;right:18px;margin:0}
+body.console .lt-ad-del button{background:none;border:0;padding:6px 8px;font-size:14px;font-weight:600;color:#e42939;cursor:pointer;border-radius:8px;min-height:0;width:auto}
+body.console .lt-ad-del button:hover{background:#fdecee}

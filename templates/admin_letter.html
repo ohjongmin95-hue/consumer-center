@@ -50,6 +50,9 @@
     {% if L.status == 'sent' %}<span class="aw-badge">{% if L.trigger == 'stibee' %}스티비로 보냄{% else %}{{ L.sent_count }}명에게 보냄{% if L.failed %} · 실패 {{ L.failed }}{% endif %}{% endif %}</span>{% endif %}
     {% if L.stats and L.stats.sent %}<span class="aw-badge">열어 봄 {{ L.stats.open_pct }}% · 링크 누름 {{ L.stats.click_pct }}%</span>{% endif %}
     {% if L.stats and (L.stats.good or L.stats.meh) %}<span class="aw-badge">좋았어요 {{ L.stats.good }} · 글쎄요 {{ L.stats.meh }}</span>{% endif %}
+    {#- 운영자 2026-11-05: 목록에서 바로 지우기 -#}
+    <form method="post" action="{{ url_for('admin_letter_edit', lid=L.id) }}" class="lt-ad-del" onsubmit="return confirm('{{ L.no }}호를 지울까요? 사이트의 지난 레터에서 사라지고 되돌릴 수 없어요.{% if L.status == 'sent' %} 이미 받은 메일은 그대로예요.{% endif %}')">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit" name="act" value="delete" aria-label="{{ L.no }}호 지우기">지우기</button></form>
   </div>
   {% else %}<p class="meta">아직 만든 레터가 없어요. '이번 호 만들기'를 눌러 첫 호를 만들어 보세요.</p>{% endfor %}
 
