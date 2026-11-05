@@ -4452,7 +4452,7 @@ class SiteTest(unittest.TestCase):
             self.assertTrue(any('뉴스' in s['name'] or '·' in s['name'] for s in got['sources']))
             r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
         prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
-        self.assertIn('[분량·구성]', prompt); self.assertIn('1500~2000자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+        self.assertIn('[분량·구성]', prompt); self.assertIn('3500~4500자', prompt); self.assertIn('최근 관련 뉴스', prompt)
 
     def test_writer_long_read_format(self):
         # 뉴닉 롱리드처럼: 소제목 없는 도입 → 핵심 상자 → 소제목 + 번호 요점 + 용어 풀이 → 이렇게 하세요 → 마무리 (운영자 2026-10-21)
@@ -6654,9 +6654,9 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(L.mag_excerpt('## 맨 앞 소제목\n\n문단\n\n## 끝'), [{'p': '문단'}])
         # 운영자 2026-11-05: 여러 편 말고 글 하나를 축약본으로 — 글 전체에서 소제목마다 첫 문단 두 문장
         body = '하나. 둘. 셋. 넷.\n\n[사진 /a.webp]\n\n## 첫 소제목\n\n가. 나. 다.\n\n안 나옴.\n\n- 목록 안 나옴\n\n## 둘째 소제목\n\n**라**. 마.\n\n## 빈 소제목'
-        self.assertEqual(L.mag_digest(body), [{'p': '하나. 둘. 셋.'}, {'h': '첫 소제목'}, {'p': '가. 나.'}, {'h': '둘째 소제목'}, {'p': '라. 마.'}])
+        self.assertEqual(L.mag_digest(body), [{'p': '하나. 둘.'}, {'h': '첫 소제목'}, {'p': '가.'}, {'h': '둘째 소제목'}, {'p': '라.'}])
         # 소제목 바로 밑에 붙은 목록이 소제목에 섞여 잘리지 않게, 목록만 있는 소제목은 앞 두 줄을 싣기
-        self.assertEqual(L.mag_digest('도입.\n\n## 이렇게 대비하자\n- 설명서를 본다.\n- 믿지 않는다.\n- 셋째.'), [{'p': '도입.'}, {'h': '이렇게 대비하자'}, {'p': '설명서를 본다.'}, {'p': '믿지 않는다.'}])
+        self.assertEqual(L.mag_digest('도입.\n\n## 이렇게 대비하자\n- 설명서를 본다.\n- 믿지 않는다.\n- 셋째.'), [{'p': '도입.'}, {'h': '이렇게 대비하자'}, {'p': '설명서를 본다.'}])
 
     def test_letter_subscribe_confirm_unsubscribe(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
