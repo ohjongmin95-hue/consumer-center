@@ -319,7 +319,7 @@
       v.src = url;
     });
   }
-  function loadImg(url) { return new Promise(function (ok, no) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { no(new Error('사진을 읽지 못했어요.')); }; i.src = url; }); }
+  function loadImg(url) { return new Promise(function (ok, no) { var i = new Image(); if (/^https?:/.test(url) && url.indexOf(location.origin) !== 0) i.crossOrigin = 'anonymous'; i.onload = function () { ok(i); }; i.onerror = function () { no(new Error('사진을 읽지 못했어요.')); }; i.src = url; }); }
   function post(url, body, type) {
     return fetch(url, {method: 'POST', body: body, headers: Object.assign({'X-CSRFToken': C.csrf}, type ? {'Content-Type': type} : {}), credentials: 'same-origin'}).then(function (r) { return r.json(); });
   }
@@ -353,10 +353,10 @@
     }).catch(function (e) { say(e.message); });
   });
 
-  // 기사에서 가져오기
+  // 기사로 만들기 (운영자 2026-11-05: '기사 넣으면 만들어지게') — AI(mag_assist cards·reel)가 장·장면을 짜고, 기사 사진·영상을 자동으로 넣음
   var artSel = $('#mk-art');
-  if (artSel) artSel.addEventListener('change', function () {
-    var a = (C.arts || []).filter(function (x) { return String(x.id) === artSel.value; })[0]; if (!a) return;
+  function artOf(id) { return (C.arts || []).filter(function (x) { return String(x.id) === String(id); })[0]; }
+  function localFill(a) {  // AI를 못 쓸 때: 기사 소제목·문단을 그대로 잘라 넣음
     var secs = [], curS = null;
     String(a.body || '').split('\n').forEach(function (line) {
       var t = line.trim(); if (!t || /^\[(사진|영상)/.test(t)) return;
@@ -370,11 +370,49 @@
       slides = [{design: 'clean', tag: tg, title: a.title, sub: '', items: '', media: img}];
       secs.filter(function (x) { return x.paras.length; }).slice(0, 6).forEach(function (x) { slides.push({design: 'text', tag: tg, title: x.title || a.title, sub: '', items: x.paras.join('\n\n'), media: null}); });
     } else {
-      var s0 = slides[0];
-      s0.title = a.title; s0.tag = a.category ? a.category + ' 이슈' : s0.tag;
+      slides[0].title = a.title; slides[0].tag = a.category ? a.category + ' 이슈' : slides[0].tag;
     }
-    cur = 0; fill(); draw(); say('기사 내용을 넣었어요. 줄 바꿈과 문장을 다듬어 주세요.');
-  });
+    cur = 0; fill(); draw();
+  }
+  function loadMedia(j) {  // 기사 사진·영상을 미리 읽어 둠. 릴스는 서버가 겹칠 수 있는 우리 서버 파일만
+    var ph = (j.photos || []), vd = mode === 'reel' ? (j.videos || []) : [];
+    if (mode === 'reel') ph = ph.filter(function (u) { return /^\/art\//.test(u); });
+    return Promise.all(vd.slice(0, 3).map(function (u) { return loadVideo(u).then(function (el) { return {kind: 'video', url: u, el: el, len: el.duration}; }, function () { return null; }); })
+      .concat(ph.slice(0, 8).map(function (u) { return loadImg(u).then(function (el) { return {kind: 'image', url: u, el: el}; }, function () { return null; }); })))
+      .then(function (ms) { return ms.filter(Boolean); });
+  }
+  function applyPlan(j) {
+    var list = (mode === 'card' ? j.slides : j.scenes) || [], keep = slides[0] && slides[0].media;
+    slides = list.map(function (p) {
+      var o = blank(); o.design = p.design; o.tag = j.tag || o.tag; o.title = p.title || ''; o.sub = p.sub || ''; o.items = p.items || ''; o.media = null;
+      if (mode === 'reel') { o.start = 0; o.dur = p.dur || 4; o.end = o.dur; }
+      return o;
+    });
+    return loadMedia(j).then(function (ms) {
+      if (keep) ms.unshift(keep);
+      slides.forEach(function (s, i) {
+        if (!ms.length) return;
+        var m = ms[i % ms.length]; s.media = m;
+        if (m.kind === 'video') { s.start = Math.min(i * 3, Math.max(0, m.len - s.dur)); s.dur = Math.min(s.dur, Math.floor(m.len * 10) / 10); s.end = s.start + s.dur; seek(s); }
+      });
+      cur = 0; fill(); draw();
+      var n = slides.length, miss = slides.filter(function (s) { return !s.media; }).length;
+      say((mode === 'card' ? '카드 ' + n + '장을' : '장면 ' + n + '개를') + ' 짰어요. ' + (miss ? (mode === 'card' ? '사진 없는 장은 사진을 골라 넣어 주세요. ' : '사진·영상 없는 장면에 넣어 주세요. ') : '') + '글과 디자인은 자유롭게 고쳐도 돼요.' + (j.warn ? ' ' + j.warn : ''));
+    });
+  }
+  function aiBuild(payload, fallback) {
+    say('AI가 기사를 읽고 ' + (mode === 'card' ? '카드' : '장면') + '을 짜고 있어요. 10~20초쯤 걸려요.');
+    return post(C.assist, JSON.stringify(Object.assign({act: mode === 'card' ? 'cards' : 'reel'}, payload)), 'application/json')
+      .then(function (j) { if (!j.ok) throw new Error(j.error || '짜지 못했어요.'); return applyPlan(j); })
+      .catch(function (e) { if (fallback) { fallback(); say(e.message + ' 기사 글을 그대로 넣었으니 다듬어 주세요.'); } else say(e.message); });
+  }
+  if (artSel) artSel.addEventListener('change', function () { var a = artOf(artSel.value); if (a) aiBuild({art: a.id}, function () { localFill(a); }); });
+  var srcBox = $('#mk-src'), aiBtn = $('#mk-ai');
+  if (aiBtn) aiBtn.onclick = function () {
+    var v = (srcBox.value || '').trim();
+    if (v.replace(/\s/g, '').length < 100 && !/^https?:\/\//.test(v)) { say('기사 주소나 기사 글 전체를 붙여 넣어 주세요.'); return; }
+    aiBtn.disabled = true; aiBuild({note: v}).then(function () { aiBtn.disabled = false; });
+  };
 
   // 받기·만들기
   function blobOf(c) { return new Promise(function (ok) { c.toBlob(ok, 'image/png'); }); }
