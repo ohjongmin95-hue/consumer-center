@@ -1051,6 +1051,29 @@ def install(S):
         log(dict(res, trigger=trigger))
         return res
 
+    photo_dir = S.UPLOAD / 'letter'
+
+    def own_photo(f):
+        """관리자가 올린 메인 뉴스 사진 → JPG(메일 앱이 WEBP를 못 읽기도 해서)로 저장, 사진 정보. 사진이 아니면 None"""
+        if not f or not f.filename: return None
+        data, kind = S.clean_photo(f.read())
+        if not data: flash('사진은 JPG·PNG·WEBP 파일로 올려 주세요.'); return None
+        try:
+            from PIL import Image
+            im = Image.open(__import__('io').BytesIO(data)).convert('RGB'); im.thumbnail((1400, 1400))
+            buf = __import__('io').BytesIO(); im.save(buf, 'JPEG', quality=86, optimize=True); data = buf.getvalue()
+        except Exception:
+            if kind != 'jpg': flash('사진을 읽지 못했어요.'); return None
+        photo_dir.mkdir(parents=True, exist_ok=True)
+        name = secrets.token_hex(12) + '.jpg'; (photo_dir / name).write_bytes(data)
+        return {'id': 'own:' + name, 'url': site_url('/letter/photo/' + name), 'own': 1}
+
+    @app.route('/letter/photo/<name>')
+    def letter_photo(name):
+        if not re.fullmatch(r'[0-9a-f]{24}\.jpg', name) or not (photo_dir / name).is_file(): abort(404)
+        from flask import send_file
+        return send_file(photo_dir / name, mimetype='image/jpeg', max_age=86400 * 365)
+
     def save_edit(lid, form):
         L = get(lid)
         if not L: return None
@@ -1069,7 +1092,9 @@ def install(S):
             if form.get('drop_comment'): sec.pop('comment')
             else:
                 c = dict(sec['comment'])
-                if form.get('comment_nophoto'): c.pop('photo', None)
+                own = own_photo(request.files.get('comment_photo_file')) if request.files else None
+                if own: c['photo'] = dict(own, alt=c.get('title', ''))  # 운영자 2026-11-05: 사진을 직접 넣고 지울 수 있게
+                elif form.get('comment_nophoto'): c.pop('photo', None)
                 elif photo_query(form.get('comment_photo_q')):  # 운영자 2026-11-05: 메인 뉴스에 안 맞으면 검색어로 다른 사진 (지금·최근 사진은 건너뜀)
                     ph = find_photo(form.get('comment_photo_q'), recent_photos() | {(c.get('photo') or {}).get('id')})
                     if ph: c['photo'] = ph

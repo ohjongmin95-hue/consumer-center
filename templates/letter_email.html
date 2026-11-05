@@ -94,7 +94,7 @@
       <tr><td align="center" style="padding:2px 0 0;{{ F }}font-size:25px;line-height:1.4;font-weight:800;letter-spacing:-0.5px;color:#1d1d1f;white-space:nowrap;">{{ ic('baguette', 26) }}&nbsp; {{ H.comment_eyebrow }} &nbsp;{{ ic('butter', 24) }}</td></tr>
     </table>
     <div style="height:26px;font-size:0;line-height:0;">&nbsp;</div>
-    {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:656px;height:auto;border:0;border-radius:16px;"><p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p></div>{% endif %}
+    {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:656px;height:auto;border:0;border-radius:16px;">{% if not PH.own %}<p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p>{% endif %}</div>{% endif %}
     <h2 style="margin:0 0 {{ '8px' if c.tags else '14px' }};font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
     {% if c.tags %}<p style="margin:0 0 16px;font-size:16px;font-weight:700;color:#CE6719;">{% for t in c.tags %}#{{ t }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>{% endif %}
     <p style="margin:0 0 26px;font-size:18px;line-height:1.9;color:#3a3633;text-align:justify;word-break:normal;">{{ c.lead|srclinks }}</p>

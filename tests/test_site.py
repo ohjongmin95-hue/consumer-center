@@ -1,7 +1,7 @@
 """Exercise the live templates and existing report flow using an isolated database."""
 import datetime, json, hashlib, io
 import importlib.util
-import os
+import io, os
 from pathlib import Path
 import re
 import secrets
@@ -6535,6 +6535,15 @@ class SiteTest(unittest.TestCase):
         admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), 'act': 'save', 'comment_nophoto': '1'})
         L = self.site.app.extensions['soboru_letter']['get'](r['id'])
         self.assertNotIn('photo', L['sections']['comment'])
+        # 운영자 2026-11-05: 사진을 직접 넣을 수 있게 (JPG로 저장, Unsplash 출처 줄 없음)
+        from PIL import Image
+        buf = io.BytesIO(); Image.new('RGB', (40, 30), (200, 100, 50)).save(buf, 'PNG'); buf.seek(0)
+        admin.post(f"/admin/letter/{r['id']}", data={'_csrf': self.csrf(admin, f"/admin/letter/{r['id']}"), 'act': 'save', 'comment_photo_file': (buf, 'mine.png')}, content_type='multipart/form-data')
+        ph = self.site.app.extensions['soboru_letter']['get'](r['id'])['sections']['comment']['photo']
+        self.assertTrue(ph['own']); name = ph['url'].rsplit('/', 1)[1]
+        got = self.client.get('/letter/photo/' + name); self.assertEqual((got.status_code, got.mimetype), (200, 'image/jpeg'))
+        html = self.site.app.extensions['soboru_letter']['email_parts'](self.site.app.extensions['soboru_letter']['get'](r['id']), 'tok-x')[1]
+        self.assertIn('/letter/photo/' + name, html); self.assertNotIn('>Unsplash</a>', html.split('/letter/photo/')[1][:600])
 
     def test_letter_open_click_tracking_and_stibee_html(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
