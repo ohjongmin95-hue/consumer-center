@@ -259,28 +259,16 @@
   <tr><td style="padding:44px 22px 4px;{{ F }}" id="magazine">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:3px solid #111111;"><tr>
       <td style="padding:12px 0 0;{{ F }}font-size:15px;font-weight:900;letter-spacing:3px;color:#111111;white-space:nowrap;">SOBORU MAGAZINE</td>
-      <td align="right" style="padding:12px 0 0;{{ F }}font-size:14px;font-weight:700;color:#8a827a;">매거진에서 골랐어요</td></tr></table>
-    {% for a in sec.life %}{% if loop.first %}
+      <td align="right" style="padding:12px 0 0;{{ F }}font-size:14px;font-weight:700;color:#8a827a;">오늘의 기사 축약본</td></tr></table>
+    {% set a = sec.life[0] %}
     <a href="{{ m }}{{ a.url }}" style="display:block;margin:18px 0 0;text-decoration:none;">{% if a.photo %}<img src="{{ a.photo }}" width="556" alt="" style="display:block;width:100%;max-width:556px;height:auto;border:0;">{% endif %}</a>
     {% if a.photo and a.credit %}<p style="margin:6px 0 0;font-size:12px;color:#a39d97;">사진 <a href="{{ a.credit.url }}" style="color:#a39d97;">{{ a.credit.name }}</a> / <a href="{{ a.credit.home }}" style="color:#a39d97;">Unsplash</a></p>{% endif %}
-    <p style="margin:16px 0 8px;font-size:13px;font-weight:900;letter-spacing:3px;color:#EF920E;">01 · {{ a.en }}</p>
-    <a href="{{ m }}{{ a.url }}" style="display:block;font-size:24px;line-height:1.4;font-weight:900;letter-spacing:-0.8px;color:#111111;text-decoration:none;">{{ a.title }}</a>
-    {% if a.read %}
-    {% for b in a.read %}{% if b.h %}<p style="margin:24px 0 8px;padding-top:14px;border-top:1px solid #111111;font-size:18px;line-height:1.5;font-weight:900;letter-spacing:-0.4px;color:#111111;">{{ b.h }}</p>{% else %}<p style="margin:14px 0 0;font-size:17px;line-height:1.9;color:#2b2723;text-align:left;word-break:keep-all;">{{ b.p }}</p>{% endif %}{% endfor %}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 6px;"><tr><td align="center" style="border:2px solid #111111;padding:14px 12px;{{ F }}"><a href="{{ m }}{{ a.url }}" style="display:block;font-size:16px;font-weight:900;letter-spacing:-0.2px;color:#111111;text-decoration:none;">이어서 읽기 →</a></td></tr></table>
-    {% else %}
-    {% if a.summary %}<p style="margin:10px 0 0;font-size:17px;line-height:1.8;color:#4a4540;">{{ a.summary }}</p>{% endif %}
-    <p style="margin:14px 0 6px;"><a href="{{ m }}{{ a.url }}" style="font-size:15px;font-weight:800;color:#111111;text-decoration:underline;">매거진에서 읽기 →</a></p>
-    {% endif %}
-    {% else %}
-    {% if loop.index == 2 %}<p style="margin:34px 0 0;font-size:13px;font-weight:900;letter-spacing:3px;color:#111111;">MORE TO READ</p>{% endif %}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:{{ '10px' if loop.index == 2 else '18px' }} 0 0;border-top:1px solid #111111;"><tr>
-      <td valign="top" style="padding:16px 14px 4px 0;{{ F }}">
-        <p style="margin:0 0 6px;font-size:13px;font-weight:900;letter-spacing:3px;color:#EF920E;">{{ '%02d' % loop.index }} · {{ a.en }}</p>
-        <a href="{{ m }}{{ a.url }}" style="font-size:18px;line-height:1.45;font-weight:800;letter-spacing:-0.4px;color:#111111;text-decoration:none;">{{ a.title }}</a></td>
-      {% if a.photo %}<td width="112" valign="top" style="width:112px;padding:18px 0 4px;"><a href="{{ m }}{{ a.url }}"><img src="{{ a.photo }}" width="112" alt="" style="display:block;width:112px;height:auto;border:0;"></a></td>{% endif %}
-    </tr></table>
-    {% endif %}{% endfor %}
+    {% if a.en %}<p style="margin:16px 0 8px;font-size:13px;font-weight:900;letter-spacing:3px;color:#EF920E;">{{ a.en }}</p>{% endif %}
+    <a href="{{ m }}{{ a.url }}" style="display:block;margin-top:{{ '0' if a.en else '16px' }};font-size:24px;line-height:1.4;font-weight:900;letter-spacing:-0.8px;color:#111111;text-decoration:none;">{{ a.title }}</a>
+    {% if a.digest %}
+    {% for b in a.digest %}{% if b.h %}<p style="margin:24px 0 8px;padding-top:14px;border-top:1px solid #111111;font-size:18px;line-height:1.5;font-weight:900;letter-spacing:-0.4px;color:#111111;">{{ b.h }}</p>{% else %}<p style="margin:14px 0 0;font-size:17px;line-height:1.9;color:#2b2723;text-align:left;word-break:keep-all;">{{ b.p }}</p>{% endif %}{% endfor %}
+    {% elif a.summary %}<p style="margin:12px 0 0;font-size:17px;line-height:1.9;color:#2b2723;text-align:left;word-break:keep-all;">{{ a.summary }}</p>{% endif %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 6px;"><tr><td align="center" style="border:2px solid #111111;padding:14px 12px;{{ F }}"><a href="{{ m }}{{ a.url }}" style="display:block;font-size:16px;font-weight:900;letter-spacing:-0.2px;color:#111111;text-decoration:none;">매거진에서 전체 기사 읽기 →</a></td></tr></table>
   </td></tr>
   {% endif %}
   {#- 소비자제보센터 바로 가기 (운영자 2026-11-04): 레터를 다시 시작하며 맺음 앞에 큰 카드 하나. 링크엔 utm_source=letter (방문 통계 '들어온 곳') -#}
@@ -297,10 +285,10 @@
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fdf7ed;"><tr><td align="center" style="padding:28px 22px 26px;text-align:center;{{ F }}">
       <img src="{{ editor_img }}" width="220" alt="에디터 크로와상" style="display:block;width:220px;height:auto;border:0;margin:0 auto 10px;">
       <p style="margin:0 0 6px;font-size:18px;font-weight:800;color:#652D1C;">오늘의 소보루 레터는 여기까지</p>
-      {% if L.outro %}<p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;text-align:justify;word-break:normal;">{{ L.outro }}</p>{% endif %}
+      {% if L.outro %}<p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;text-align:center;word-break:keep-all;">{{ L.outro }}</p>{% endif %}
       <p style="margin:6px 0 0;font-size:16px;font-weight:700;color:#8a6a55;">에디터 크로와상 드림</p>
       <p style="margin:22px 0 6px;font-size:18px;font-weight:800;color:#652D1C;">오늘의 레터는 어땠나요?</p>
-      <p style="margin:0;font-size:17px;line-height:1.8;color:#c9b9aa;text-align:justify;word-break:normal;"><a href="{{ site }}/letter/{{ L.no }}/fb/good" style="color:#ef7300;font-weight:700;text-decoration:underline;">맛있었어요! 😋</a>&nbsp; | &nbsp;<a href="{{ site }}/letter/{{ L.no }}/fb/meh" style="color:#ef7300;font-weight:700;text-decoration:underline;">음, 잘 모르겠어요 🤔</a></p>
+      <p style="margin:0;font-size:17px;line-height:1.8;color:#c9b9aa;text-align:center;word-break:keep-all;"><a href="{{ site }}/letter/{{ L.no }}/fb/good" style="color:#ef7300;font-weight:700;text-decoration:underline;">맛있었어요! 😋</a>&nbsp; | &nbsp;<a href="{{ site }}/letter/{{ L.no }}/fb/meh" style="color:#ef7300;font-weight:700;text-decoration:underline;">음, 잘 모르겠어요 🤔</a></p>
     </td></tr></table>
   </td></tr>
   <tr><td align="center" style="padding:30px 22px 0;{{ F }}">
