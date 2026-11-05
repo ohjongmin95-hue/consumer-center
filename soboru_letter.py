@@ -197,7 +197,7 @@ def _sentences(t, n):
     return ' '.join(parts[:n])
 
 
-def mag_digest(body, limit=1600):
+def mag_digest(body, limit=650):  # 운영자 2026-11-05: 레터엔 길게 넣을 필요 없음 (매거진 기사는 그대로 길게)
     """매거진 기사 한 편의 축약본 → [{'h'} | {'p'}] (운영자 2026-11-05: 레터에서는 매거진 글 하나를 축약본으로).
     앞부분이 아니라 글 전체를 줄임: 첫 문단은 세 문장까지, 소제목마다 첫 문단 두 문장. 사진·영상 줄, 목록·요점·용어 풀이 줄, 마크다운 기호는 뺌."""
     out, n, took, items = [], 0, False, 0
@@ -215,9 +215,9 @@ def mag_digest(body, limit=1600):
         if re.match(r'^([-*•]|\d+[.)])\s', t):  # 목록만 있는 소제목은 앞 두 줄을 문장으로
             if not out or 'h' not in out[-1] and items == 0: continue
             t = re.sub(r'^([-*•]|\d+[.)])\s*', '', t); items += 1
-            if items >= 2: took = True
+            if items >= 1: took = True
             out.append({'p': t}); n += len(t); continue
-        t = _sentences(t, 2 if out else 3)
+        t = _sentences(t, 1 if out else 2)
         if n and n + len(t) > limit: break
         out.append({'p': t}); n += len(t); took = True
     while out and 'h' in out[-1]: out.pop()
