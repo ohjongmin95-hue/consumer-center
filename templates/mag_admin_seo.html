@@ -1,0 +1,42 @@
+{% extends 'console.html' %}
+{% block title %}검색 노출 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+<main class="page mz-cms"><div class="wrap">
+  <div class="mz-lhead"><h1 class="page-title">검색 노출</h1></div>
+  <section class="mz-card mz-serp" aria-label="검색 결과 미리보기">
+    <h2>검색 결과에 이렇게 보여요</h2>
+    <div class="mz-serp-box">
+      <p class="mz-serp-url">soboru.co.kr</p>
+      <p class="mz-serp-title" id="sv-title">{{ cfg.title }}</p>
+      <p class="mz-serp-links">전체 기사{% for c in cats %} · {{ c }}{% endfor %}</p>
+      <p class="mz-serp-desc" id="sv-desc">{{ cfg.description }}</p>
+    </div>
+    <p class="mz-note">아래 분야 링크는 검색엔진이 고르는 거라 바로 붙지 않을 수 있어요. 기사가 쌓이고 사이트맵을 제출하면 보통 몇 주 안에 생겨요.</p>
+  </section>
+  <form method="post" class="mz-seo-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <section class="mz-card">
+      <h2>첫 화면 제목과 설명</h2>
+      <label class="mz-field">제목<input name="title" id="f-title" maxlength="60" value="{{ cfg.title }}" placeholder="{{ defaults.title }}"></label>
+      <label class="mz-field">설명 (80~150자가 알맞아요)<textarea name="description" id="f-desc" rows="3" maxlength="300" placeholder="{{ defaults.description }}">{{ cfg.description }}</textarea></label>
+    </section>
+    <section class="mz-card">
+      <h2>검색엔진 소유 확인</h2>
+      <p class="mz-note">소비자제보센터와 주소가 달라서 soboru.co.kr은 따로 등록해야 해요. 받은 &lt;meta ...&gt; 줄을 통째로 붙여 넣어도 돼요.</p>
+      <label class="mz-field">네이버 서치어드바이저 확인 코드<input name="naver" value="{{ cfg.naver }}" placeholder="naver-site-verification 값"></label>
+      <label class="mz-field">구글 서치 콘솔 확인 코드<input name="google" value="{{ cfg.google }}" placeholder="google-site-verification 값"></label>
+    </section>
+    <button type="submit" class="mz-btn primary">저장</button>
+  </form>
+  <section class="mz-card">
+    <h2>등록 순서</h2>
+    <ol class="mz-steps">
+      <li><b>네이버</b> <a href="https://searchadvisor.naver.com/" target="_blank" rel="noopener">서치어드바이저 ↗</a>에서 사이트 등록에 <code>https://soboru.co.kr</code>를 넣고, HTML 태그 방식의 코드를 위 칸에 저장한 뒤 소유 확인을 눌러요.</li>
+      <li>요청 &gt; 사이트맵 제출에 <code>{{ site }}/sitemap.xml</code>, RSS 제출에 <code>{{ site }}/rss.xml</code>을 넣어요.</li>
+      <li><b>구글</b> <a href="https://search.google.com/search-console" target="_blank" rel="noopener">서치 콘솔 ↗</a>에서 URL 접두어로 <code>https://soboru.co.kr</code>를 추가하고, HTML 태그 코드를 위 칸에 저장한 뒤 확인해요. Sitemaps에 <code>sitemap.xml</code>을 제출해요.</li>
+    </ol>
+    <p class="mz-note">게시한 기사 {{ n }}개가 사이트맵과 RSS에 자동으로 들어가요. 새 기사를 올리면 따로 할 일은 없어요.</p>
+  </section>
+</div></main>
+<script>(function(){var t=document.getElementById('f-title'),d=document.getElementById('f-desc');t.oninput=function(){document.getElementById('sv-title').textContent=t.value||t.placeholder};d.oninput=function(){document.getElementById('sv-desc').textContent=d.value||d.placeholder}})();</script>
+{% endblock %}

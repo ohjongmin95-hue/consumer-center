@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {# 운영자 2026-11-05: 매거진(soboru.co.kr)에서 '더 많은 이야기'·분야를 누르면 제보센터로 넘어가지 않고 매거진 안 목록 #}
 {% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '리콜': 'RECALL'} %}
-{% block title %}{{ (EN.get(cat)|capitalize ~ ' · ') if cat }}{{ ui_text('mag.list_title', 'Stories') }} | {{ ui_text('letter.mz_title', '소보루 매거진') }}{% endblock %}
-{% block description %}{{ ui_text('letter.mz_description', '소비를 보는 새로운 루트, 소보루 매거진. 사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.') }}{% endblock %}
+{% block title %}{% if cat %}{{ cat }} {{ EN.get(cat, '')|capitalize }} | {% else %}{{ ui_text('mag.list_seo', '전체 기사') }} | {% endif %}{{ ui_text('letter.mz_title', '소보루 매거진') }}{% endblock %}
+{% block description %}{% if cat %}소보루 매거진 {{ cat }} 기사 모음. {{ cat }} 소비에서 알아 두면 좋은 이야기를 소비자의 눈으로 정리했어요.{% else %}{{ mag_seo_text('description') }}{% endif %}{% endblock %}
 {% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">{% endblock %}
 {% block content %}
 <main class="ml-page" id="top">

@@ -1,0 +1,9 @@
+{# 소보루 매거진(soboru.co.kr) 검색 노출: 소유확인 코드, RSS, 첫 화면 구조화 데이터 (mag_seo.py) #}
+{% set mag_name = ui_text('letter.mz_title', '소보루 매거진') %}
+{% set mag_home = request.path in ('/', '/letter') %}
+  {% if mag_home %}{% if mag_verification('naver') %}<meta name="naver-site-verification" content="{{ mag_verification('naver') }}">{% endif %}
+  {% if mag_verification('google') %}<meta name="google-site-verification" content="{{ mag_verification('google') }}">{% endif %}{% endif %}
+  <link rel="alternate" type="application/rss+xml" title="{{ mag_name }}" href="{{ canonical_url('/rss.xml') }}">
+  {% if mag_home %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "@id": canonical_url('/') ~ "#organization", "name": mag_name, "alternateName": ["SOBORU", "소보루", "SOBORU MAGAZINE"], "description": mag_seo_text('description'), "url": canonical_url('/'), "logo": canonical_url(url_for('static', filename='img/soboru-wordmark.png')), "parentOrganization": {"@type": "NewsMediaOrganization", "name": "소비자를위한신문"}}|tojson }}</script>
+  <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebSite", "@id": canonical_url('/') ~ "#website", "publisher": {"@id": canonical_url('/') ~ "#organization"}, "name": mag_name, "alternateName": ["SOBORU", "소보루"], "url": canonical_url('/'), "inLanguage": "ko"}|tojson }}</script>
+  <script type="application/ld+json">{{ mag_nav_ld()|tojson }}</script>{% endif %}

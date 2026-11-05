@@ -148,8 +148,11 @@ def retired_host():
     host=request.host.split(':')[0].lower()
     if letter_host(host):
         # 운영자 2026-11-04: soboru.co.kr(+letter.soboru.co.kr)은 소보루 레터 구독 페이지만. 나머지 주소는 소비자제보센터로
-        if request.path=='/':return redirect('/letter',302)
-        if request.path.startswith(LETTER_PATHS) or request.path in ('/life','/terms','/privacy','/favicon.ico','/robots.txt'):return None
+        # 운영자 2026-11-05: 매거진 검색 노출 — 첫 화면은 soboru.co.kr/ 주소 그대로(검색 결과 대표 주소), 매거진 사이트맵·RSS도 이 주소에서
+        if request.path=='/':return None  # mag_seo.py가 매거진 첫 화면을 그려 줌 (화면 글귀를 읽은 뒤)
+        if request.path=='/letter' and not request.query_string:return redirect('/',301)
+        if request.path in ('/admin','/admin/'):return redirect('https://consumerjebo.co.kr/admin/magazine',302)  # 매거진 바닥글 '관리자'
+        if request.path.startswith(LETTER_PATHS) or request.path in ('/life','/terms','/privacy','/favicon.ico','/robots.txt','/sitemap.xml','/rss.xml'):return None
         return redirect('https://consumerjebo.co.kr'+request.full_path.rstrip('?'),301)
     if host in RETIRED_HOSTS:
         return redirect('https://consumerjebo.co.kr'+request.full_path.rstrip('?'),301)
@@ -298,6 +301,7 @@ app.jinja_env.globals.update(main_site_url=main_site_url,jebo_site_url=jebo_site
 def canonical_url(path=None):
     # 운영 도메인(www 포함)으로 들어오면 주소를 https://대표주소 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
     host=request.host.split(':')[0].lower();path=request.path if path is None else path
+    if letter_host(host):return 'https://soboru.co.kr'+('/' if path=='/letter' else path)  # 소보루 매거진: 첫 화면 대표 주소는 soboru.co.kr/
     if host in JEBO_HOSTS or host in LIVE_HOSTS:
         site=owner_site(path)
         if site:return 'https://'+site+path
@@ -471,7 +475,7 @@ def csrf():
 app.jinja_env.globals['csrf_token']=csrf
 @app.before_request
 def protect():
-    if request.method=='POST' and request.path!='/auth/apple/callback' and not hmac.compare_digest(str(request.form.get('_csrf','')),str(csrf())): abort(400)  # 애플 로그인 응답(form_post)은 state 값으로 위조를 막음 (members.py)
+    if request.method=='POST' and request.path!='/auth/apple/callback' and not hmac.compare_digest(str(request.headers.get('X-CSRFToken') or request.form.get('_csrf','')),str(csrf())): abort(400)  # 애플 로그인 응답(form_post)은 state 값으로 위조를 막음 (members.py)
 @app.after_request
 def headers(resp):
     resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
@@ -3004,6 +3008,7 @@ import company_logo;_cl=types.SimpleNamespace(**globals());company_logo.install(
 import company_mail;company_mail.auto(types.SimpleNamespace(**globals()))
 import company_web_email;company_web_email.install(types.SimpleNamespace(**globals()))  # 기업 홈페이지에서 고객센터·홍보 메일 찾기 (company_web_email.py)
 import mag_admin;mag_admin.install(types.SimpleNamespace(**globals()))  # 소보루 매거진 관리자: 전환 버튼·기사 CMS·첫 화면 편집·얼굴 모자이크 (mag_admin.py)
+import mag_seo;mag_seo.install(types.SimpleNamespace(**globals()))  # 소보루 매거진 검색 노출: soboru.co.kr 첫 화면·사이트맵·RSS·소유확인 (mag_seo.py)
 company_fix.fix_old_cases(conn,link_company)  # 예전 제보의 큰 기업 이름 오타도 고침 (company_fix.py)
 link_all_cases()  # 큰 기업 미리 등록: 처음 배포할 때 한 번만 (company_mail.py, data/companies_seed.csv)  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
 
