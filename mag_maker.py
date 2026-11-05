@@ -136,7 +136,21 @@ def install(S):
         with conn() as db:
             rows = db.execute("SELECT id,title,summary,body,category FROM articles WHERE status IN ('published','scheduled','draft') ORDER BY id DESC LIMIT 40").fetchall()
         arts = [{'id': r['id'], 'title': r['title'] or '', 'summary': r['summary'] or '', 'body': (r['body'] or '')[:4000], 'category': r['category'] or ''} for r in rows]
-        return render_template('mag_admin_maker.html', arts=arts, can_video=bool(shutil.which('ffmpeg')))
+        return render_template('mag_admin_maker.html', arts=arts, letters=letter_list(), can_video=bool(shutil.which('ffmpeg')))
+
+    def letter_list():
+        """소보루 레터 최근 호와 꼭지들 — 한 호를 꼭지마다 게시물로 쪼개 올림 (운영자 2026-11-05)"""
+        import mag_assist
+        get = (app.extensions.get('soboru_letter') or {}).get('get')
+        if not get: return []
+        with conn() as db: ids = [r[0] for r in db.execute('SELECT id FROM letters ORDER BY no DESC LIMIT 7').fetchall()]
+        out = []
+        for lid in ids:
+            L = get(lid=lid)
+            pieces = mag_assist.letter_pieces(L) if L else []
+            if pieces: out.append({'id': lid, 'no': L['no'], 'title': (L['title'] or '')[:30], 'sent': L['status'] == 'sent',
+                                   'pieces': [{'key': p['key'], 'label': p['label']} for p in pieces]})
+        return out
 
     @app.route('/admin/magazine/maker/render', methods=['POST'])
     @S.admin_only

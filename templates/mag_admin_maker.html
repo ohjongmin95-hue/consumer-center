@@ -16,8 +16,9 @@
     </div>
     <div class="mk-right"><form class="mk-form" id="mk-form" onsubmit="return false">
       <fieldset class="mk-src"><legend>기사로 만들기</legend>
-        <p class="mk-help">기사를 고르거나 붙여 넣으면 AI가 {{ '장면·자막·길이' if mode == 'reel' else '장·제목·글' }}을 짜고 기사 사진{{ '·영상' if mode == 'reel' }}을 넣어요. 그다음 고치면 돼요.</p>
+        <p class="mk-help">기사나 소보루 레터 꼭지를 고르면 AI가 {{ '장면·자막·길이' if mode == 'reel' else '장·제목·글' }}을 짜고 기사 사진{{ '·영상' if mode == 'reel' }}을 넣어요. 그다음 고치면 돼요.</p>
         {% if arts %}<label class="mg-f">우리 매거진 기사<select id="mk-art"><option value="">기사 고르기</option>{% for a in arts %}<option value="{{ a.id }}">{{ a.title[:46] }}</option>{% endfor %}</select></label>{% endif %}
+        {% if letters %}<label class="mg-f">소보루 레터 <small>(한 꼭지가 게시물 하나)</small><select id="mk-letter"><option value="">레터 꼭지 고르기</option>{% for L in letters %}<optgroup label="{{ L.no }}호 · {{ L.title }}{{ '' if L.sent else ' (안 보냄)' }}">{% for p in L.pieces %}<option value="L{{ L.id }}:{{ p.key }}">{{ p.label[:40] }}</option>{% endfor %}</optgroup>{% endfor %}</select></label>{% endif %}
         <label class="mg-f">다른 기사 <small>(주소나 기사 글 전체)</small><textarea id="mk-src" rows="3" placeholder="https://… 또는 기사 글 붙여 넣기"></textarea></label>
         <button type="button" class="mk-ai" id="mk-ai">AI로 {{ '장면' if mode == 'reel' else '카드' }} 짜기</button>
       </fieldset>
@@ -31,6 +32,7 @@
         <div id="mk-start-row"><label class="mg-f">영상 시작 (초)<input data-f="start" type="number" min="0" step="0.1"></label><label class="mk-chk"><input data-f="slow" type="checkbox"><span>느리게 (0.5배, 소리 없음)</span></label></div>
         <label class="mg-f">이 장면 길이 (초)<input data-f="dur" type="number" min="0.5" max="60" step="0.1"></label>
       </div>
+      <div class="mk-cap" id="mk-cap" hidden><label class="mg-f">인스타 캡션<textarea id="mk-cap-t" rows="8"></textarea></label><button type="button" id="mk-cap-copy">캡션 복사</button></div>
       <p class="mk-st" id="mk-st" role="status" hidden></p>
       <button type="button" class="primary mk-go" id="mk-go">{{ '릴스 만들기' if mode == 'reel' else '카드 모두 내려받기 (PNG)' }}</button>
     </form>

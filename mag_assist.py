@@ -9,6 +9,9 @@
 - summary  요약 2~3줄
 - cards    기사 하나로 카드뉴스 장 구성 (운영자 2026-11-05: '기사 넣으면 만들어지게' — 카드뉴스·릴스 만들기에서 씀)
 - reel     기사 하나로 릴스 장면 구성 (디자인·제목·자막·길이)
+  cards·reel은 소보루 레터 한 꼭지로도 짬 (운영자 2026-11-05: '뉴스레터 하나를 만들고 그 내용을 여러 SNS 콘텐츠로 쪼개서 반복 홍보'):
+  레터 한 호를 꼭지(오늘의 뉴스 하나하나·메인 뉴스·숫자·소비 트렌드·피해 예방·법률)로 나눠 꼭지마다 게시물 하나.
+  끝에 레터 구독 안내 장을 붙이고, 인스타 캡션도 같이 써 줌 (구독은 프로필 링크로).
 
 숫자는 지어내지 않게: 다듬기·맞춤법·요약·제목에서 원문에 없는 숫자가 나오면 그 답은 버림.
 사용량은 'mag_assist'(기사 쓰기 AI 도움)로 따로 쌓이고, OPENAI_API_KEY_MAG_ASSIST가 있으면 그 키를 씀.
@@ -73,6 +76,54 @@ ASKS = {
              'JSON으로만 답한다: {"tag": "○○ 이슈 · 지역"꼴 짧은 태그(18자 안), '
              '"scenes": [{"design": "wide"|"full"|"chat"|"quote"|"clean", "title": 제목, "sub": 부제, "items": 자막 줄들, "dur": 초}]}'),
 }
+LETTER_ASK = ('\n[기사] 자리에는 매일 아침 메일로 나가는 뉴스레터 \'소보루 레터\'의 한 꼭지가 들어온다. 이 게시물의 목적은 레터를 알리고 구독자를 늘리는 것이다.\n'
+              '- 꼭지의 핵심만 빠르게 보여 주고, 자세한 이야기는 레터에 있다는 느낌으로 맺는다. 구독 안내 장·장면은 따로 붙이니 만들지 않는다.\n'
+              '- JSON에 "caption"도 넣는다: 인스타그램 캡션. 해요체, 4~6줄, 줄마다 맨 앞에 이모지 하나, 꼭지의 사실만. 영상·카드 설명 같은 메타 문장은 쓰지 않는다. '
+              '구독 안내 줄과 해시태그는 붙이지 않는다(따로 붙임).')
+LETTER_CTA = {'cards': {'design': 'text', 'title': '매일 아침 받아 보는\n소보루 레터', 'sub': '',
+                        'items': '오늘의 소비·경제 뉴스를 한 통에 담아 메일로 보내 드려요.\n\n**프로필 링크에서 무료로 구독**할 수 있어요.'}}
+# 릴스는 끝의 귤색 마무리 화면이 레터 구독 안내로 바뀜 (maker.js REEL.outro)
+LETTER_TAIL = '📮 매일 아침 받아 보는 소보루 레터 · 구독은 프로필 링크에서\n\n#소보루레터 #소보루매거진 #뉴스레터 #경제뉴스 #소비트렌드'
+
+
+def _t(v, n=1500): return ' '.join(str(v or '').split())[:n]
+
+
+def letter_pieces(L):
+    """레터 한 호를 SNS 게시물로 쪼갤 꼭지들: [{key, label, text}]. 글이 너무 짧은 꼭지는 뺌."""
+    sec, out = L.get('sections') or {}, []
+    def add(key, label, *parts):
+        text = '\n'.join(p for p in parts if p)
+        if len(re.sub(r'\s', '', text)) >= 40: out.append({'key': key, 'label': label, 'text': text[:LIMIT]})
+    items = L.get('items') or []
+    add('all', '이번 호 한눈에 (뉴스 모아 보기)', '소보루 레터 오늘의 뉴스 모음', _t(L.get('intro'), 600),
+        *['%d. %s — %s' % (i + 1, _t(it.get('title'), 80), _t(it.get('body'), 400)) for i, it in enumerate(items)])
+    for i, it in enumerate(items):
+        add('news:%d' % i, '뉴스 · ' + _t(it.get('title'), 40), _t(it.get('title'), 80), _t(it.get('body')), ('이럴 땐 이렇게: ' + _t(it.get('tip'), 200)) if it.get('tip') else '',
+            '출처: ' + _t((it.get('src') or {}).get('name'), 40) if (it.get('src') or {}).get('name') else '')
+    c = sec.get('comment') if isinstance(sec.get('comment'), dict) else None
+    if c:
+        pts = lambda k: ['%s: %s' % (_t(p.get('name'), 30), _t(p.get('text'), 300)) for p in ((c.get(k) or {}).get('points') or []) if isinstance(p, dict)]
+        add('comment', '메인 뉴스 · ' + _t(c.get('title'), 40), _t(c.get('title'), 80), _t(c.get('lead'), 600), _t((c.get('what') or {}).get('body'), 400), *pts('what'),
+            _t((c.get('why') or {}).get('body')), _t((c.get('wallet') or {}).get('body'), 300), *pts('wallet'))
+    n = sec.get('number') if isinstance(sec.get('number'), dict) else None
+    if n: add('number', '숫자로 보는 오늘 · ' + _t(n.get('value'), 20), '숫자로 보는 오늘: %s %s' % (_t(n.get('value'), 20), _t(n.get('label'), 40)), _t(n.get('body'), 300))
+    z = sec.get('buzz') if isinstance(sec.get('buzz'), dict) else None
+    if z: add('buzz', '소비 트렌드 · ' + _t(z.get('title'), 40), _t(z.get('title'), 80), _t(z.get('body'), 900),
+              *['%s: %s' % (_t(p.get('name'), 30), _t(p.get('text'), 700)) for p in (z.get('points') or []) if isinstance(p, dict)], _t(z.get('insight'), 900), _t(z.get('tip'), 300))
+    h = sec.get('harm') if isinstance(sec.get('harm'), dict) else None
+    if h: add('harm', '피해 예방 · ' + _t(h.get('title'), 40), _t(h.get('title'), 60), _t(h.get('body'), 700), *[_t(x, 90) for x in (h.get('steps') or [])])
+    b = sec.get('lawbox') if isinstance(sec.get('lawbox'), dict) else None
+    if b: add('lawbox', '알아 두면 좋은 법 · ' + _t(b.get('title'), 40), _t(b.get('title'), 60), _t(b.get('body'), 800), _t(b.get('point'), 120))
+    return out
+
+
+def letter_photos(L, key):
+    c = (L.get('sections') or {}).get('comment')
+    u = (c.get('photo') or {}).get('url') if key == 'comment' and isinstance(c, dict) and isinstance(c.get('photo'), dict) else ''
+    return [u] if isinstance(u, str) and u.startswith('https://') else []
+
+
 MAKER = {'cards': ('slides', ('clean', 'text', 'quote'), 'text'), 'reel': ('scenes', ('wide', 'full', 'chat', 'quote', 'clean'), 'wide')}
 MEDIA = re.compile(r'^\[(사진|영상) ([^\s|\]]+)', re.M)
 
@@ -163,6 +214,14 @@ def install(S):
         if re.fullmatch(r'https?://\S+', note): note = read_article(note)
         return note, [], []
 
+    def letter_of(d):
+        """만들기 화면이 고른 레터 꼭지 'L<호 id>:<꼭지>' → (레터, 꼭지) 또는 (None, None)"""
+        m = re.fullmatch(r'L(\d+):([a-z]+(?::\d+)?)', str(d.get('letter') or ''))
+        get = (app.extensions.get('soboru_letter') or {}).get('get')
+        L = get(lid=int(m.group(1))) if m and get else None
+        piece = next((p for p in letter_pieces(L) if p['key'] == m.group(2)), None) if L else None
+        return (L, piece) if piece else (None, None)
+
     @app.route('/admin/magazine/assist', methods=['POST'])
     @S.admin_only
     def mag_assist():
@@ -172,15 +231,22 @@ def install(S):
         title, summary, body = (str(d.get(k) or '')[:LIMIT] for k in ('title', 'summary', 'body'))
         text, note = str(d.get('text') or '')[:LIMIT], str(d.get('note') or '')[:LIMIT]
         if act in MAKER:
-            src, photos, videos = article_text(d)
-            if len(re.sub(r'\s', '', src)) < 100: return jsonify(ok=False, error='기사를 고르거나, 기사 주소나 기사 글 전체를 붙여 넣어 주세요.'), 400
-            try: out = chat(BASE + '\n' + ASKS[act], '[기사]\n' + src, 2500)
+            L, piece = letter_of(d) if d.get('letter') else (None, None)
+            if d.get('letter') and not piece: return jsonify(ok=False, error='이 레터 꼭지를 찾지 못했어요. 다시 골라 주세요.'), 400
+            src, photos, videos = (piece['text'], letter_photos(L, piece['key']), []) if piece else article_text(d)
+            if len(re.sub(r'\s', '', src)) < (40 if piece else 100): return jsonify(ok=False, error='기사를 고르거나, 기사 주소나 기사 글 전체를 붙여 넣어 주세요.'), 400
+            try: out = chat(BASE + '\n' + ASKS[act] + (LETTER_ASK if piece else ''), '[기사]\n' + src, 2500)
             except RuntimeError as e: return jsonify(ok=False, error=str(e)), 502
             plan = maker_plan(act, out)
             if len(plan) < 2: return jsonify(ok=False, error='구성을 짜지 못했어요. 다시 해 주세요.'), 502
-            extra = sorted(numbers(' '.join(p['title'] + ' ' + p['sub'] + ' ' + p['items'] for p in plan)) - numbers(src))
-            return jsonify(ok=True, tag=str(out.get('tag') or '').strip()[:40], photos=photos[:10], videos=videos[:4],
-                           **{MAKER[act][0]: plan}, warn=('기사에 없는 숫자가 들어갔어요: ' + ', '.join(extra[:5]) + '. 꼭 확인해 주세요.') if extra else '')
+            caption = ''
+            if piece:
+                if act in LETTER_CTA: plan = plan[:7] + [dict(LETTER_CTA[act])]
+                caption = '\n'.join(l.strip() for l in str(out.get('caption') or '').strip().splitlines() if l.strip())[:900]
+                caption = (caption + '\n\n' if caption else '') + LETTER_TAIL
+            extra = sorted(numbers(' '.join(p['title'] + ' ' + p['sub'] + ' ' + p['items'] for p in plan) + ' ' + caption) - numbers(src) - numbers(LETTER_TAIL + str(LETTER_CTA)))
+            return jsonify(ok=True, tag=str(out.get('tag') or '').strip()[:40], photos=photos[:10], videos=videos[:4], caption=caption, letter=bool(piece),
+                           **{MAKER[act][0]: plan}, warn=(('레터' if piece else '기사') + '에 없는 숫자가 들어갔어요: ' + ', '.join(extra[:5]) + '. 꼭 확인해 주세요.') if extra else '')
         if act == 'draft':
             if len(note.strip()) < 20: return jsonify(ok=False, error='메모나 자료를 조금 더 붙여 주세요.'), 400
             src, user = note, '[메모]\n' + note

@@ -430,3 +430,5 @@ body.console.mag-studio .ms-main .mg-msg-act form:first-child button{height:40px
 .mk-help{font-size:13px;color:var(--ms-mute);margin:0}
 @media(max-width:900px){.mk{grid-template-columns:minmax(0,1fr)}.mk-left{position:static}.mk-stage{max-width:360px}}
 .mk-form input[type=number],.mk-form textarea{padding:12px 14px;border:1px solid var(--ms-line);font:inherit;font-size:15px;line-height:1.5;background:#fff;box-sizing:border-box}
+.mk-cap{display:flex;flex-direction:column;gap:8px}.mk-cap textarea{font-size:14px;line-height:1.6}
+.mk-cap button{padding:12px;border:1px solid var(--ms-ink);background:#fff;font-weight:800;font-size:14px;cursor:pointer}
