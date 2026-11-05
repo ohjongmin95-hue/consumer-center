@@ -55,7 +55,7 @@ AI_WATCH=[]  # (주소, 상태 코드, JSON)을 받아 보는 함수들 — 충�
 AI_USAGE=[]  # (기능, 주소, 모델, 상태 코드, JSON)을 받아 사용량을 쌓는 함수들 — aiusage.py
 # 운영자 2026-11-03: 기능별 OpenAI 키·사용량. 부른 파일 이름으로 기능을 알아내고, 서버 설정에 OPENAI_API_KEY_<기능>이 있으면 그 키를 씀
 AI_FEATURES={'report_talk':'AI 대화 제보','lawask':'AI 상담','lawrag':'AI 상담 (법령 검색)','lawsync':'법령 학습','buycheck':'사기 전에 확인',
-    'triage':'제보 분류','companydesk':'기업 요청서','soboru_letter':'소보루 레터','soboru_writer':'매거진 글','soboru_art':'AI 일러스트','report_talk_stt':'음성 받아쓰기','logo_fill':'기업 로고 찾기','case_shots':'제보 사진 가리기'}
+    'triage':'제보 분류','companydesk':'기업 요청서','soboru_letter':'크로와상 레터','soboru_writer':'매거진 글','soboru_art':'AI 일러스트','report_talk_stt':'음성 받아쓰기','logo_fill':'기업 로고 찾기','case_shots':'제보 사진 가리기'}
 def ai_feature():
     import sys
     f=sys._getframe(1)

@@ -25,7 +25,7 @@ MAG_GROUPS = [
     ('', [('mag_home', 'home', '대시보드')]),
     ('기사', [('admin_life', 'edit', '기사'), ('admin_life_ai', 'text', 'AI 기사')]),
     ('화면', [('mag_screen', 'layers', '화면 편집'), ('admin_art', 'image', '기사 사진'), ('mag_seo_admin', 'search', '검색 노출')]),
-    ('구독', [('admin_letter', 'mail', '소보루 레터')]),
+    ('구독', [('admin_letter', 'mail', '크로와상 레터')]),
 ]
 PHOTO_TYPES = ('image/jpeg', 'image/png', 'image/webp')
 

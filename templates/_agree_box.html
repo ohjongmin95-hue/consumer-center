@@ -18,7 +18,7 @@
           </div>
         </details>
         <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_age" required{% if request.form.get('agree_age') %} checked{% endif %}><span><b>{{ ui('takedown.consent_tag', '[필수]') }}</b> {{ ui('member.agree_age', '만 14세 이상이에요') }}</span></label></div>
-        <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_letter"{% if request.form.get('agree_letter') %} checked{% endif %}><span><b>{{ ui('member.optional_tag', '[선택]') }}</b> {{ ui('member.agree_letter', '소보루 레터·소식 메일 받기') }} <em class="agree-opt-note">{{ ui('member.agree_letter_note', '이메일로 소비자·경제 소식을 보내요. 언제든 해지할 수 있어요.') }}</em></span></label></div>
+        <div class="agree-row agree-plain"><label><input type="checkbox" name="agree_letter"{% if request.form.get('agree_letter') %} checked{% endif %}><span><b>{{ ui('member.optional_tag', '[선택]') }}</b> {{ ui('member.agree_letter', '크로와상 레터·소식 메일 받기') }} <em class="agree-opt-note">{{ ui('member.agree_letter_note', '이메일로 소비자·경제 소식을 보내요. 언제든 해지할 수 있어요.') }}</em></span></label></div>
         </div>
       </div>
 

@@ -1,0 +1,48 @@
+{% extends 'console.html' %}
+{% block title %}카드뉴스·릴스 만들기 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+{# 운영자 2026-11-05: 매번 시키지 말고 카드뉴스 프로그램처럼 — 디자인 고르고 글 쓰면 카드뉴스 PNG·릴스 MP4 (mag_maker.py, static/maker.js) #}
+{% set mode = 'reel' if request.args.get('mode') == 'reel' else 'card' %}
+<main class="page mz-cms"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">카드뉴스·릴스 만들기</h1></div>
+  <nav class="mk-tabs" aria-label="만들 것"><a href="{{ url_for('mag_maker') }}"{% if mode == 'card' %} aria-current="page"{% endif %}>카드뉴스 <small>4:5 이미지</small></a><a href="{{ url_for('mag_maker', mode='reel') }}"{% if mode == 'reel' %} aria-current="page"{% endif %}>릴스 <small>9:16 영상</small></a></nav>
+  {% if mode == 'reel' and not can_video %}<p class="mk-warn">서버에 영상 만드는 프로그램(ffmpeg)이 아직 없어요. 미리보기는 되지만 영상은 만들 수 없어요.</p>{% endif %}
+  <div class="mk" id="mk" data-mode="{{ mode }}">
+    <div class="mk-left">
+      <div class="mk-stage"><canvas id="mk-stage" width="1080" height="{{ 1920 if mode == 'reel' else 1350 }}"></canvas></div>
+      <ol class="mk-list" id="mk-list"></ol>
+      <div class="mk-ord"><span id="mk-n">1 / 1</span><button type="button" id="mk-up">앞으로</button><button type="button" id="mk-del">이 {{ '장면' if mode == 'reel' else '장' }} 지우기</button></div>
+      <button type="button" class="mk-add" id="mk-add">+ {{ '장면' if mode == 'reel' else '장' }} 더하기</button>
+    </div>
+    <div class="mk-right"><form class="mk-form" id="mk-form" onsubmit="return false">
+      {% if arts %}<label class="mg-f">기사에서 가져오기 <small>(고르면 제목·분야{{ '와 속 장' if mode == 'card' }}을 채워요)</small>
+        <select id="mk-art"><option value="">기사 고르기</option>{% for a in arts %}<option value="{{ a.id }}">{{ a.title[:46] }}</option>{% endfor %}</select></label>{% endif %}
+      <fieldset class="mk-ds"><legend>디자인</legend><div id="mk-design"></div></fieldset>
+      <label class="mk-file"><input type="file" id="mk-file" accept="{{ 'image/*,video/mp4,video/quicktime,video/webm' if mode == 'reel' else 'image/*' }}" hidden><b>{{ '사진·영상 고르기' if mode == 'reel' else '사진 고르기' }}</b><span id="mk-media-st"></span></label>
+      <label class="mg-f">{{ '태그' if mode == 'reel' else '분야' }} <small>(예: {{ '블랙박스 이슈 · 수원 오목천동' if mode == 'reel' else 'FOOD' }})</small><input data-f="tag" maxlength="40"></label>
+      <label class="mg-f"><span id="mk-l-title">제목</span> <small>(줄 바꿈 그대로 들어가요)</small><textarea data-f="title" rows="3" maxlength="120"></textarea></label>
+      <label class="mg-f"><span id="mk-l-sub">부제</span><input data-f="sub" maxlength="60"></label>
+      <label class="mg-f"><span id="mk-l-items">줄</span><textarea data-f="items" rows="6" maxlength="1200"></textarea></label>
+      <div class="mk-timing" id="mk-timing" hidden>
+        <div id="mk-start-row"><label class="mg-f">영상 시작 (초)<input data-f="start" type="number" min="0" step="0.1"></label><label class="mk-chk"><input data-f="slow" type="checkbox"><span>느리게 (0.5배, 소리 없음)</span></label></div>
+        <label class="mg-f">이 장면 길이 (초)<input data-f="dur" type="number" min="0.5" max="60" step="0.1"></label>
+      </div>
+      <p class="mk-st" id="mk-st" role="status" hidden></p>
+      <button type="button" class="primary mk-go" id="mk-go">{{ '릴스 만들기' if mode == 'reel' else '카드 모두 내려받기 (PNG)' }}</button>
+    </form>
+      {% if mode == 'reel' %}
+      <div class="mk-out" id="mk-out" hidden>
+        <video id="mk-out-v" controls playsinline></video>
+        <a class="mk-dl" id="mk-out-dl" href="#" download>MP4 내려받기</a>
+        <form method="post" action="{{ url_for('mag_reels_admin') }}" class="mk-reel"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="add"><input type="hidden" name="video" id="mk-out-url">
+          <label class="mg-f">매거진 릴스 칸 제목 <small>(비워도 돼요)</small><input name="title" maxlength="60"></label>
+          <button class="primary mg-save">매거진 릴스 칸에 올리기</button></form>
+      </div>
+      <p class="mk-help">끝에는 귤색 '소보루 매거진' 마무리 화면이 자동으로 붙어요. 영상 소리는 보통 속도 장면에서만 나와요.</p>
+      {% endif %}
+  </div>
+  </div>
+</div></main>
+<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'status': url_for('mag_maker_status'), 'arts': arts}|tojson }};</script>
+<script src="{{ asset('maker.js') }}"></script>
+{% endblock %}

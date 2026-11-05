@@ -33,7 +33,7 @@
     {% elif a['source_name'] or a['source_url'] %}<p class="sb-source">{{ ui('life.source', '출처') }}: {% if a['source_url'] %}<a href="{{ a['source_url'] }}" target="_blank" rel="noopener nofollow">{{ a['source_name'] or a['source_url'] }} ↗</a>{% else %}{{ a['source_name'] }}{% endif %}</p>{% endif %}
     {% for c in (calcs_for(a['title'], a['body']) if calcs_for is defined else []) %}<a class="sb-letter-cta sb-calc-cta" href="{{ url_for('calc', slug=c.slug) }}"><span class="sb-h-emo" aria-hidden="true">{{ c.emoji }}</span><span><b>{{ c.name }}</b><small>{{ c.desc }}</small></span><em>{{ ui('life.calc_btn', '계산해 보기') }} ›</em></a>
     {% endfor %}
-    <a class="sb-letter-cta" href="{{ url_for('letter_home') }}"><span class="sb-h-emo" aria-hidden="true">📨</span><span><b>{{ ui('life.letter_title', '이런 글, 아침마다 메일로 받아 볼래요?') }}</b><small>{{ ui('life.letter_body', '소보루 레터를 구독하면 꼭 알아야 할 소비자 소식을 쉽게 풀어 보내 드려요.') }}</small></span><em>{{ ui('life.letter_btn', '구독하기') }} ›</em></a>
+    <a class="sb-letter-cta" href="{{ url_for('letter_home') }}"><span class="sb-h-emo" aria-hidden="true">📨</span><span><b>{{ ui('life.letter_title', '이런 글, 아침마다 메일로 받아 볼래요?') }}</b><small>{{ ui('life.letter_body', '크로와상 레터를 구독하면 꼭 알아야 할 소비자 소식을 쉽게 풀어 보내 드려요.') }}</small></span><em>{{ ui('life.letter_btn', '구독하기') }} ›</em></a>
   {{ admin_delete('life', a['id'], '관리자: 이 글 지우기') }}
   </article>
   <div class="sb-report-box sb-report-mini">

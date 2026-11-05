@@ -1,7 +1,7 @@
 """OpenAI 충전금·키 알림: 충전금이 바닥나거나(429 insufficient_quota) 키가 막히면(401) 관리자 화면 맨 위에 알림을 띄운다.
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인다.
-- companydesk.post_json으로 가는 OpenAI 호출(생활정보 글·소보루 레터·법률 질문·AI 일러스트·제보 분류)을 모두 지켜본다.
+- companydesk.post_json으로 가는 OpenAI 호출(생활정보 글·크로와상 레터·법률 질문·AI 일러스트·제보 분류)을 모두 지켜본다.
 - 글쓰기는 따로 도는 프로세스(soboru-writer 타이머)라서 상태는 DB(soboru_settings 'ai_alert')에 둔다.
 - 충전한 뒤 OpenAI 호출이 한 번 성공하면 알림은 저절로 사라진다.
 """

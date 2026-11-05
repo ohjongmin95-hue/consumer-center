@@ -1,4 +1,4 @@
-{#- 소보루 레터 메일 본문. 메일 앱(Gmail·네이버 메일)은 style 태그와 바깥 CSS를 지우거나 무시하므로 표(table)와 인라인 스타일만 씀. 폭 최대 680px, 폰에서는 화면 폭에 맞춰 줄어듦(고정 폭 속성 X: 메일 앱이 통째로 축소함) -#}
+{#- 크로와상 레터 메일 본문. 메일 앱(Gmail·네이버 메일)은 style 태그와 바깥 CSS를 지우거나 무시하므로 표(table)와 인라인 스타일만 씀. 폭 최대 680px, 폰에서는 화면 폭에 맞춰 줄어듦(고정 폭 속성 X: 메일 앱이 통째로 축소함) -#}
 {%- set F = "font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;" -%}
 <!doctype html>
 <html lang="ko">
@@ -32,7 +32,7 @@
   {#- 표지: 얇고 깔끔한 테두리 안에 로고를 크게, 둘레에 빵 이모지·호수 (운영자 2026-11-01) -#}
   <tr><td style="padding:16px 22px 0;">
     {#- 맨 위 인사 + 바로 수신 거부 (운영자 2026-11-01) -#}
-    <p style="margin:0 0 14px;text-align:center;{{ F }}font-size:15px;line-height:1.75;color:#4a433d;">안녕하세요, 소보루예요. 소보루 레터는 매일 아침 꼭 알아야 할 경제 뉴스를 골라, 내 지갑과 생활에 어떤 의미인지 쉽게 풀어 드리는 경제 뉴스레터예요. 경제 뉴스는 많고 어려워서 정작 나와 닿은 소식은 놓치기 쉽잖아요. 그 소식을 바쁜 아침 5분 만에 챙기실 수 있도록 먼저 찾아왔어요. 받고 싶지 않으시면 아래 수신 거부하기를 눌러 주세요. 따로 거부하지 않으시면 계속 보내 드릴게요.<br>{#- 구독하기 버튼·동의 안내는 아직 구독하지 않은 분께만 (운영자 2026-11-01): 사이트 발송은 받는 사람이 모두 구독자라 빼고, 스티비는 구독자 필드(sub_style)로 숨김 -#}{% if not sub_hide %}<span style="{{ sub_style }}"><a href="{{ site }}/letter" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #EF920E;border-radius:999px;background:#EF920E;color:#ffffff;font-weight:700;text-decoration:none;">구독하기</a>&nbsp;&nbsp;</span>{% endif %}<a href="{{ unsub }}" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #d9d2c9;border-radius:999px;color:#6b625a;font-weight:700;text-decoration:none;">수신 거부하기</a>{% if not sub_hide %}<span style="{{ sub_style }}"><br><span style="display:inline-block;margin-top:6px;font-size:12px;color:#6b625a;">구독하기를 누르시면 소보루 레터(정보성 광고 포함) 받기에 동의하신 것으로 봐요.</span></span>{% endif %}</p>
+    <p style="margin:0 0 14px;text-align:center;{{ F }}font-size:15px;line-height:1.75;color:#4a433d;">안녕하세요, 소보루예요. 크로와상 레터는 매일 아침 꼭 알아야 할 경제 뉴스를 골라, 내 지갑과 생활에 어떤 의미인지 쉽게 풀어 드리는 경제 뉴스레터예요. 경제 뉴스는 많고 어려워서 정작 나와 닿은 소식은 놓치기 쉽잖아요. 그 소식을 바쁜 아침 5분 만에 챙기실 수 있도록 먼저 찾아왔어요. 받고 싶지 않으시면 아래 수신 거부하기를 눌러 주세요. 따로 거부하지 않으시면 계속 보내 드릴게요.<br>{#- 구독하기 버튼·동의 안내는 아직 구독하지 않은 분께만 (운영자 2026-11-01): 사이트 발송은 받는 사람이 모두 구독자라 빼고, 스티비는 구독자 필드(sub_style)로 숨김 -#}{% if not sub_hide %}<span style="{{ sub_style }}"><a href="{{ site }}/letter" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #EF920E;border-radius:999px;background:#EF920E;color:#ffffff;font-weight:700;text-decoration:none;">구독하기</a>&nbsp;&nbsp;</span>{% endif %}<a href="{{ unsub }}" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #d9d2c9;border-radius:999px;color:#6b625a;font-weight:700;text-decoration:none;">수신 거부하기</a>{% if not sub_hide %}<span style="{{ sub_style }}"><br><span style="display:inline-block;margin-top:6px;font-size:12px;color:#6b625a;">구독하기를 누르시면 크로와상 레터(정보성 광고 포함) 받기에 동의하신 것으로 봐요.</span></span>{% endif %}</p>
     <div style="height:3px;background:#EF920E;font-size:0;line-height:0;">&nbsp;</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
     <tr><td align="center" style="padding:34px 6px 40px;{{ F }}">
@@ -40,7 +40,7 @@
     <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
       {#- 빵은 양옆 칸에 둘씩 위아래로 엇갈려 쌓음: 폰에서도 로고가 작아지지 않게 (운영자 2026-11-01) -#}
       <td valign="top" width="44" style="width:44px;padding:0 4px 0 0;"><img src="{{ tf('bagel') }}" width="28" height="28" alt="" style="display:block;width:28px;height:28px;border:0;"><img src="{{ tf('croissant') }}" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border:0;margin:4px 0 0;"></td>
-      <td valign="middle" style="padding:14px 4px 0;"><a href="{{ site }}/" style="text-decoration:none;">{% if mark %}<img src="{{ mark }}" width="320" alt="SOBORU 소보루" style="display:block;width:100%;max-width:320px;height:auto;border:0;">{% else %}<b style="{{ F }}font-size:34px;color:#652D1C;">SOBORU</b>{% endif %}</a></td>
+      <td valign="middle" style="padding:14px 4px 0;">{#- 운영자 2026-11-05: 이름은 '크로와상 레터' — 로고 그림 대신 SOBORU MAGAZINE 위 글씨 + 큰 갈색 이름 -#}<a href="{{ site }}/" style="text-decoration:none;display:block;text-align:center;"><span style="display:block;{{ F }}font-size:15px;font-weight:800;letter-spacing:4px;color:#EF920E;">SOBORU MAGAZINE</span><span style="display:block;margin-top:6px;{{ F }}font-size:44px;line-height:1.15;font-weight:900;letter-spacing:-2px;color:#652D1C;white-space:nowrap;">{{ name }}</span><span style="display:block;margin-top:8px;{{ F }}font-size:14px;font-weight:600;color:#8a6a55;">갓 구운 아침 경제 뉴스</span></a></td>
       <td valign="top" width="40" style="width:40px;padding:0 0 0 4px;"><img src="{{ tf('bread') }}" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border:0;"><img src="{{ tf('pretzel') }}" width="30" height="30" alt="" style="display:block;width:30px;height:30px;border:0;margin:8px 0 0 6px;"></td>
     </tr></table>
     <p style="margin:14px 0 0;font-size:0;line-height:0;">{{ ic('sparkle', 16) }}&nbsp;&nbsp;&nbsp;{{ ic('baguette', 26) }}&nbsp;&nbsp;&nbsp;{{ ic('donut', 22) }}&nbsp;&nbsp;&nbsp;{{ ic('sparkle', 16) }}</p>
@@ -278,7 +278,7 @@
   <tr><td style="padding:34px 22px 0;{{ F }}">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fdf7ed;"><tr><td align="center" style="padding:28px 22px 26px;text-align:center;{{ F }}">
       <img src="{{ editor_img }}" width="220" alt="에디터 크로와상" style="display:block;width:220px;height:auto;border:0;margin:0 auto 10px;">
-      <p style="margin:0 0 6px;font-size:18px;font-weight:800;color:#652D1C;">오늘의 소보루 레터는 여기까지</p>
+      <p style="margin:0 0 6px;font-size:18px;font-weight:800;color:#652D1C;">오늘의 크로와상 레터는 여기까지</p>
       {% if L.outro %}<p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;text-align:justify;word-break:normal;">{{ L.outro }}</p>{% endif %}
       <p style="margin:6px 0 0;font-size:16px;font-weight:700;color:#8a6a55;">에디터 크로와상 드림</p>
       <p style="margin:22px 0 6px;font-size:18px;font-weight:800;color:#652D1C;">오늘의 레터는 어땠나요?</p>
@@ -286,7 +286,7 @@
     </td></tr></table>
   </td></tr>
   <tr><td align="center" style="padding:30px 22px 0;{{ F }}">
-    <a href="{{ site }}/letter" style="display:inline-block;padding:13px 30px;border:2px solid #ef920e;border-radius:999px;color:#ef7300;font-size:18px;font-weight:800;text-decoration:none;">소보루 레터 구독하기</a>
+    <a href="{{ site }}/letter" style="display:inline-block;padding:13px 30px;border:2px solid #ef920e;border-radius:999px;color:#ef7300;font-size:18px;font-weight:800;text-decoration:none;">크로와상 레터 구독하기</a>
   </td></tr>
   <tr><td align="center" style="padding:30px 22px 40px;text-align:center;{{ F }}">
     <a href="{{ site }}/" style="text-decoration:none;">{% if mark_brown %}<img src="{{ mark_brown }}" width="150" alt="SOBORU 소보루" style="display:block;width:150px;height:auto;border:0;margin:0 auto 14px;">{% else %}<b style="font-size:22px;color:#652D1C;">SOBORU</b>{% endif %}</a>
