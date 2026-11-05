@@ -160,6 +160,9 @@ def retired_host():
 def magazine_off_jebo():
     # 운영자 2026-11-05: '소비자제보센터엔 매거진 칸 없어야 해' — 제보센터 주소의 매거진 글·목록은 소보루 매거진(soboru.co.kr)으로
     host=request.host.split(':')[0].lower()
+    # 운영자 2026-11-05: 매거진 관리자 > 화면 편집 — 관리자 로그인이 있는 이 주소에서 매거진 화면을 편집 모드로 띄움 (mag_admin.py mag_screen)
+    if session.get('mag_studio') and request.method=='GET' and (request.path=='/letter' or request.path.startswith(('/letter/','/life'))) and admin_active():
+        g.mag_studio=True;g.face='soboru';return None
     if host.endswith('consumerjebo.co.kr') and (request.path=='/life' or request.path.startswith('/life/')):
         return redirect('https://soboru.co.kr'+request.full_path.rstrip('?'),301)
     # 레터 글도 매거진 쪽 (같은 글이 두 주소에 뜨지 않게). 구독 버튼 같은 POST는 그대로 받음
@@ -252,7 +255,7 @@ RETIRED_HOSTS={'soboru.co.kr','www.soboru.co.kr'}
 LETTER_HOSTS={'soboru.co.kr','www.soboru.co.kr','letter.soboru.co.kr'}  # 레터 구독 페이지만 여는 주소 (운영자 2026-11-04)
 LETTER_PATHS=('/letter','/static/','/hero/','/partner/','/life/','/art/')
 def letter_host(host):return host in LETTER_HOSTS and (host in RETIRED_HOSTS or host.startswith('letter.'))
-def letter_alone():return has_request_context() and (request.path.startswith('/letter') or letter_host(request.host.split(':')[0].lower()))
+def letter_alone():return has_request_context() and (request.path.startswith('/letter') or bool(g.get('mag_studio')) or letter_host(request.host.split(':')[0].lower()))
 app.jinja_env.globals['letter_alone']=letter_alone
 if CANONICAL_HOST in RETIRED_HOSTS:CANONICAL_HOST='consumerjebo.co.kr'
 LIVE_HOSTS={h for d in (CANONICAL_HOST,'consumerjebo.co.kr','soboru.co.kr') for h in (d,'www.'+d)}
@@ -269,7 +272,8 @@ def current_face():
     if not has_request_context():return 'soboru'
     if 'face' in g:return g.face
     host=request.host.split(':')[0].lower()
-    if host in JEBO_HOSTS:face='jebo'
+    if session.get('mag_studio') and request.path.startswith('/admin/') and request.values.get('face')=='soboru':face='soboru'  # 매거진 화면 편집에서 고친 문구는 매거진(soboru) 쪽에 저장
+    elif host in JEBO_HOSTS:face='jebo'
     elif not admin_active():face='soboru'
     else:
         pick=request.values.get('face')
@@ -348,7 +352,7 @@ app.jinja_env.globals['step_icon']=lambda item,i:item.get('icon') or STEP_ICON_O
 ED_OPEN,ED_SEP,ED_CLOSE='\ue000','\ue001','\ue002'
 def editing():
     if 'editing' not in g:
-        g.editing=bool(session.get('edit_mode') and request.endpoint not in (None,'static')
+        g.editing=bool((session.get('edit_mode') or g.get('mag_studio')) and request.endpoint not in (None,'static')
                        and not request.path.startswith(('/admin','/reporter','/staff')) and admin_active())
     return g.editing
 def ed_register(key,raw):
@@ -482,7 +486,7 @@ def protect():
     if request.method=='POST' and request.path!='/auth/apple/callback' and not hmac.compare_digest(str(request.headers.get('X-CSRFToken') or request.form.get('_csrf','')),str(csrf())): abort(400)  # 애플 로그인 응답(form_post)은 state 값으로 위조를 막음 (members.py)
 @app.after_request
 def headers(resp):
-    resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
+    resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='SAMEORIGIN' if g.get('mag_studio') or request.endpoint=='mag_screen' else 'DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
     if request.path.startswith(('/report','/lookup','/admin','/case','/takedown','/company','/login','/signup','/me','/staff','/reporter','/biz')):resp.headers['Cache-Control']='no-store'
     elif session.get('uid') and 'Cache-Control' not in resp.headers:resp.headers['Cache-Control']='private, no-cache'
     return resp
@@ -965,7 +969,7 @@ def admin_login():
     return render_template('admin_login.html')
 ADMIN_IDLE_SECONDS=2*60*60  # 관리자 화면을 2시간 쓰지 않으면 자동 로그아웃
 def end_admin():
-    for k in ('admin','admin_v','admin_at','edit_mode'):session.pop(k,None)
+    for k in ('admin','admin_v','admin_at','edit_mode','mag_studio'):session.pop(k,None)
 def admin_active():
     if g.get('mag_editor_pass'):return True  # 매거진 에디터가 자기 기사 화면을 쓰는 동안만 (mag_editors.py)
     # 관리자 로그인이 살아 있는지: 비밀번호를 바꿨거나 오래 쓰지 않았으면 끊음

@@ -17,14 +17,14 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from flask import abort, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 
 # 매거진 쪽 메뉴에 속하는 화면 (나머지는 모두 소비자제보센터 쪽)
 MAG_ENDPOINTS = {'admin_art'}  # 이름이 mag_·admin_life·admin_letter로 시작하는 화면도 매거진 쪽
 MAG_GROUPS = [
     ('', [('mag_home', 'home', '대시보드')]),
     ('기사', [('admin_life', 'edit', '기사'), ('admin_life_ai', 'text', 'AI 기사')]),
-    ('화면', [('mag_front', 'layers', '첫 화면 편집'), ('admin_art', 'image', '기사 사진'), ('mag_seo_admin', 'search', '검색 노출')]),
+    ('화면', [('mag_screen', 'layers', '화면 편집'), ('admin_art', 'image', '기사 사진'), ('mag_seo_admin', 'search', '검색 노출')]),
     ('구독', [('admin_letter', 'mail', '소보루 레터')]),
 ]
 PHOTO_TYPES = ('image/jpeg', 'image/png', 'image/webp')
@@ -245,13 +245,13 @@ def install(S):
             act = request.form.get('act')
             if act in ('hero', 'hero_del'):
                 slot = request.form.get('slot', 1, type=int)
-                if not 1 <= slot <= HERO_N: return redirect(url_for('mag_front'))
+                if not 1 <= slot <= HERO_N: return redirect(url_for('mag_screen', page='main', open=1))
                 cur = heroes(); old = cur[slot - 1]
                 if act == 'hero':
                     f = request.files.get('hero')
-                    if not f or not f.filename or f.mimetype not in PHOTO_TYPES: flash('표지 사진은 JPG·PNG·WEBP 파일로 골라 주세요.'); return redirect(url_for('mag_front'))
+                    if not f or not f.filename or f.mimetype not in PHOTO_TYPES: flash('표지 사진은 JPG·PNG·WEBP 파일로 골라 주세요.'); return redirect(url_for('mag_screen', page='main', open=1))
                     try: im = read_photo(f, 2400)
-                    except Exception: flash('사진을 읽지 못했어요.'); return redirect(url_for('mag_front'))
+                    except Exception: flash('사진을 읽지 못했어요.'); return redirect(url_for('mag_screen', page='main', open=1))
                     name = f'mag-hero-{datetime.datetime.now():%Y%m%d%H%M%S}.webp'
                     im.save(folder / name, 'WEBP', quality=86)
                     cur[slot - 1] = name; flash(f'{slot}번째 표지 사진을 바꿨어요.')
@@ -265,11 +265,29 @@ def install(S):
                     v = request.form.get(k, type=int)
                     if v and v not in ids: ids.append(v)
                 put('mag_hot', ids); flash('HOT ISSUE를 저장했어요.' if ids else 'HOT ISSUE를 최신 글 순서로 되돌렸어요.')
-            return redirect(url_for('mag_front'))
+            return redirect(url_for('mag_screen', page='main', open=1))
+        return redirect(url_for('mag_screen', page='main'))
+
+    # ---- 화면 편집 (운영자 2026-11-05: ND 화면편집처럼 — 실제 매거진 화면을 띄워 놓고 그 자리에서 고침) ----
+    # 화면은 이 주소(관리자 로그인이 있는 곳)의 /letter·/life를 편집 모드로 띄움 (app.py magazine_off_jebo). 고치면 바로 soboru.co.kr에 반영
+    SCREEN_PAGES = [('main', '메인'), ('article', '기사 화면'), ('list', '기사 목록')]
+
+    @app.route('/admin/magazine/screen')
+    @S.admin_only
+    def mag_screen():
+        page = request.args.get('page', 'main'); page = page if page in dict(SCREEN_PAGES) else 'main'
+        device = 'mobile' if request.args.get('device') == 'mobile' else 'pc'
+        session['mag_studio'] = True
         with conn() as db:
             rows = db.execute("SELECT id,title,category,published_at FROM articles WHERE status='published' ORDER BY published_at DESC, id DESC LIMIT 200").fetchall()
+        aid = request.args.get('article', type=int)
+        aid = aid if aid in {r['id'] for r in rows} else (rows[0]['id'] if rows else None)
+        src = {'main': url_for('letter_home'), 'list': url_for('life'),
+               'article': url_for('life_article', article_id=aid) if aid else url_for('life')}[page]
+        live = 'https://soboru.co.kr' + {'main': '/', 'list': '/life', 'article': f'/life/{aid}' if aid else '/life'}[page]
         picks = setting('mag_hot', [])
-        return render_template('mag_admin_front.html', rows=rows, picks=picks + [None] * (4 - len(picks)), slots=[hero_src(i, x) if x else '' for i, x in enumerate(heroes())], shown=mag_hero_urls())
+        return render_template('mag_admin_screen.html', page=page, pages=SCREEN_PAGES, device=device, src=src, live=live, rows=rows, aid=aid,
+                               picks=picks + [None] * (4 - len(picks)), slots=[hero_src(i, x) if x else '' for i, x in enumerate(heroes())], shown=mag_hero_urls())
 
     # ---- 얼굴 모자이크 (운영자 2026-11-05: 따로 쓰는 도구가 아니라 기사에 사진·영상을 올릴 때 바로 거침 → static/mosaic.js) ----
     # 사진·영상 속 얼굴은 브라우저 안에서 찾아 가림. 얼굴 찾기는 MediaPipe Face Detector(Apache 2.0, static/vendor/mediapipe)

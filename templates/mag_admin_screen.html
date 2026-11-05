@@ -1,0 +1,75 @@
+{% extends 'console.html' %}
+{% block title %}화면 편집 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+{# 운영자 2026-11-05: ND 화면편집처럼 — 실제 매거진 화면을 띄워 놓고 그 자리에서 고침. 메인·기사 화면·기사 목록, PC·모바일 #}
+<main class="page mscr"><div class="wrap">
+  <div class="sc-top">
+    <h1 class="page-title">화면 편집</h1>
+    <a class="sc-live" href="{{ live }}" target="_blank" rel="noopener">실제 화면 보기 <i aria-hidden="true">↗</i></a>
+  </div>
+  <div class="sc-bar">
+    <nav class="sc-tabs" aria-label="고칠 화면">
+      {% for k, name in pages %}<a href="{{ url_for('mag_screen', page=k, device=device) }}"{% if k == page %} class="on" aria-current="page"{% endif %}>{{ name }}</a>{% endfor %}
+    </nav>
+    <div class="sc-dev" role="group" aria-label="화면 크기">
+      <a href="{{ url_for('mag_screen', page=page, device='pc', article=aid if page == 'article' else None) }}"{% if device == 'pc' %} class="on" aria-current="true"{% endif %} title="PC"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="4" width="18" height="12"/><path d="M9 20h6M12 16v4"/></svg><span>PC</span></a>
+      <a href="{{ url_for('mag_screen', page=page, device='mobile', article=aid if page == 'article' else None) }}"{% if device == 'mobile' %} class="on" aria-current="true"{% endif %} title="모바일"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="7" y="3" width="10" height="18"/><path d="M11 18h2"/></svg><span>모바일</span></a>
+    </div>
+  </div>
+  {% if page == 'article' and rows %}
+  <form class="sc-pick" method="get"><input type="hidden" name="page" value="article"><input type="hidden" name="device" value="{{ device }}">
+    <label>보고 고칠 기사<select name="article" onchange="this.form.submit()">{% for r in rows %}<option value="{{ r['id'] }}"{% if r['id'] == aid %} selected{% endif %}>[{{ r['category'] }}] {{ r['title'] }}</option>{% endfor %}</select></label>
+  </form>
+  {% endif %}
+  <p class="sc-help"><b>점선 글자</b>를 누르면 그 자리에서 고쳐요. 묶음 위 막대로 <b>순서를 바꾸거나 숨겨요</b>. 고친 내용은 바로 매거진에 반영돼요.{% if page == 'article' %} 기사 본문은 기사 목록에서 고쳐요.{% endif %}</p>
+    {% if page == 'main' %}
+    <details class="sc-panel"{% if request.args.get('open') %} open{% endif %}><summary>표지 사진 · HOT ISSUE 고르기</summary><div class="sc-pbody">
+      <section>
+        <h2>표지 사진</h2>
+        <p>다섯 장이 8초마다 바뀌어요. 비운 칸은 기본 사진이 나와요.</p>
+        <div class="sc-slots">
+        {% for s in slots %}
+          <div class="sc-slot">
+            <form method="post" action="{{ url_for('mag_front') }}" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hero"><input type="hidden" name="slot" value="{{ loop.index }}">
+              <label class="sc-ph{{ ' has' if s }}"><img src="{{ s or shown[loop.index0] }}" alt=""><em>{{ loop.index }}</em><span>{{ '바꾸기' if s else '올리기' }}</span><input type="file" name="hero" accept="image/jpeg,image/png,image/webp" hidden onchange="this.form.submit()"></label>
+            </form>
+            {% if s %}<form method="post" action="{{ url_for('mag_front') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hero_del"><input type="hidden" name="slot" value="{{ loop.index }}"><button class="sc-del" type="submit">빼기</button></form>{% endif %}
+          </div>
+        {% endfor %}
+        </div>
+      </section>
+      <section>
+        <h2>HOT ISSUE</h2>
+        <p>고르지 않은 칸은 최신 기사로 채워요.</p>
+        <form method="post" action="{{ url_for('mag_front') }}" class="sc-hot"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="hot">
+          {% for p in picks %}<label>{{ loop.index }}<select name="hot{{ loop.index }}"><option value="">최신 기사로 채우기</option>{% for r in rows %}<option value="{{ r['id'] }}"{% if p == r['id'] %} selected{% endif %}>[{{ r['category'] }}] {{ r['title'] }}</option>{% endfor %}</select></label>{% endfor %}
+          <button class="primary">HOT ISSUE 저장</button>
+        </form>
+      </section>
+    </div></details>
+    {% endif %}
+  <div class="sc-work">
+    <div class="sc-stage sc-{{ device }}" id="sc-stage">
+      <div class="sc-frame" id="sc-frame"><iframe id="sc-if" src="{{ src }}" title="매거진 {{ dict(pages)[page] }} 편집 화면"></iframe></div>
+    </div>
+  </div>
+</div></main>
+<script>
+  // PC는 1280px 화면을 칸 너비에 맞게 줄여서, 모바일은 390px 그대로 보여 줌. 화면은 창 높이에 맞추고 안에서 스크롤 (고치는 창이 화면 가운데 뜨게)
+  (function () {
+    var st = document.getElementById('sc-stage'), fr = document.getElementById('sc-frame'), f = document.getElementById('sc-if'), pc = st.classList.contains('sc-pc'), W = pc ? 1280 : 390;
+    function fit() {
+      var cs = getComputedStyle(st), inner = st.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), s = pc ? Math.min(1, inner / W) : 1, top = st.getBoundingClientRect().top + scrollY;
+      var h = Math.max(480, Math.min(innerHeight - 24, pc ? 900 : 844));
+      f.style.width = W + 'px'; f.style.height = (h / s) + 'px'; f.style.transform = s < 1 ? 'scale(' + s + ')' : '';
+      fr.style.width = (W * s) + 'px'; fr.style.height = h + 'px';
+    }
+    fit(); addEventListener('resize', fit);
+    f.addEventListener('load', function () {
+      var d = f.contentDocument; if (!d) return;
+      // 화면 안의 다른 사이트 링크는 새 창으로
+      d.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a[href]'); if (a && a.host !== location.host && !e.defaultPrevented) { e.preventDefault(); window.open(a.href, '_blank', 'noopener'); } });
+    });
+  })();
+</script>
+{% endblock %}

@@ -285,3 +285,47 @@ body.console.mag-studio .ai-go:disabled{opacity:.4}
 body.console.mag-studio .ai-titles button{width:100%;padding:12px 0;border:0;border-bottom:1px solid var(--ms-line,#e5e0d8);background:none;text-align:left;font-size:15px;font-weight:600;line-height:1.5;color:var(--ms-ink,#111);cursor:pointer;border-radius:0}
 body.console.mag-studio .ai-titles button:hover{color:var(--ms-or,#EF920E)}
 @media (max-width:640px){.ai-panel{width:100%;border-left:0}}
+
+/* ---- 화면 편집 (실제 매거진 화면을 띄워 놓고 고침) ---- */
+body.console.mag-studio .ms-main:has(.mscr){max-width:none}
+.sc-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+body.console.mag-studio .ms-main .sc-top .page-title{margin:0}
+body.console.mag-studio .sc-live{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border:1px solid var(--ms-ink);color:var(--ms-ink);font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
+.sc-live i{font-style:normal}
+body.console.mag-studio .sc-live:hover{background:var(--ms-ink);color:#fff}
+.sc-bar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:20px 0 0;border-bottom:1px solid var(--ms-ink)}
+.sc-tabs{display:flex;gap:4px;overflow-x:auto}
+body.console.mag-studio .sc-tabs a{padding:12px 14px;font-size:15px;font-weight:600;color:var(--ms-sub);text-decoration:none;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-1px}
+body.console.mag-studio .sc-tabs a.on{color:var(--ms-ink);font-weight:800;border-bottom-color:var(--ms-or)}
+.sc-dev{display:flex;flex:none}
+body.console.mag-studio .sc-dev a{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 14px;color:var(--ms-mute);font-size:13px;font-weight:700;text-decoration:none;border-bottom:3px solid transparent;margin-bottom:-1px}
+body.console.mag-studio .sc-dev a.on{color:var(--ms-or);border-bottom-color:var(--ms-or)}
+.sc-pick{margin:16px 0 0}
+body.console.mag-studio .sc-pick label{display:grid;gap:6px;max-width:560px;font-size:12px;font-weight:700;color:var(--ms-sub)}
+.sc-help{margin:14px 0 18px;font-size:14px;line-height:1.6;color:var(--ms-sub);word-break:keep-all}.sc-help b{color:var(--ms-ink)}
+.sc-work{display:block}
+.sc-stage{min-width:0;display:flex;justify-content:center;padding:20px;background:var(--ms-side,#faf8f3);border:1px solid var(--ms-line)}
+.sc-frame{position:relative;overflow:hidden;background:#fff;box-shadow:0 1px 0 var(--ms-line)}
+.sc-mobile .sc-frame{border:8px solid var(--ms-ink);box-sizing:content-box}
+.sc-frame iframe{display:block;border:0;transform-origin:0 0;background:#fff}
+.sc-panel{margin:0 0 16px;border:1px solid var(--ms-ink)}
+.sc-panel summary{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;font-size:15px;font-weight:800;cursor:pointer;list-style:none}
+.sc-panel summary::-webkit-details-marker{display:none}
+.sc-panel summary::after{content:"+";font-size:22px;font-weight:500;color:var(--ms-or)}
+.sc-panel[open] summary::after{content:"−"}
+.sc-pbody{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:32px;padding:4px 18px 20px}
+.sc-panel h2{margin:0 0 4px;font-family:var(--ms-en);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.sc-panel section>p{margin:0 0 12px;font-size:13px;line-height:1.5;color:var(--ms-sub);word-break:keep-all}
+.sc-slots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.sc-slot{display:grid;gap:4px}
+.sc-ph{position:relative;display:block;aspect-ratio:4/3;overflow:hidden;cursor:pointer;background:#eee}
+.sc-ph img{width:100%;height:100%;object-fit:cover;display:block;opacity:.55}.sc-ph.has img{opacity:1}
+.sc-ph em{position:absolute;left:0;top:0;padding:2px 6px;background:var(--ms-ink);color:#fff;font-style:normal;font-size:11px;font-weight:800}
+.sc-ph span{position:absolute;inset:auto 0 0 0;padding:4px;background:rgba(17,17,17,.7);color:#fff;font-size:11px;font-weight:700;text-align:center}
+body.console.mag-studio .sc-del{width:100%;height:26px;padding:0;border:0;background:none;color:var(--ms-sub);font-size:12px;text-decoration:underline;cursor:pointer}
+.sc-hot{display:grid;gap:8px}
+body.console.mag-studio .sc-hot label{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:8px;font-family:var(--ms-en);font-weight:800;font-size:13px}
+body.console.mag-studio .sc-hot select{min-height:40px;font-size:13px}
+body.console.mag-studio .sc-hot .primary{height:44px;margin-top:4px}
+@media (max-width:1000px){.sc-pbody{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:900px){.sc-stage{padding:10px}.sc-bar{flex-wrap:wrap}.sc-slots{grid-template-columns:repeat(3,minmax(0,1fr))}}
