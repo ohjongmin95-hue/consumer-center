@@ -279,6 +279,11 @@ def install(S):
                     m = re.fullmatch(r'\[사진 (\S+)(?:\s*\|\s*([^\]]*))?\]', line); cap = (m[2] or '').strip()
                     if cap == '사진 설명': cap = ''
                     out.append(Markup('<figure class="sb-fig"><img src="%s" alt="%s" loading="lazy">%s</figure>') % (m[1], cap, Markup('<figcaption>%s</figcaption>') % cap if cap else ''))
+                elif re.fullmatch(r'\[영상 /art/video/video-\d{14}-\d{3}\.(?:mp4|webm)(?:\s*\|\s*[^\]]*)?\]', line):
+                    # 운영자 2026-11-05: 매거진 CMS의 '영상 넣기' (얼굴 가린 영상) — [영상 주소 | 설명]
+                    m = re.fullmatch(r'\[영상 (\S+)(?:\s*\|\s*([^\]]*))?\]', line); cap = (m[2] or '').strip()
+                    if cap == '영상 설명': cap = ''
+                    out.append(Markup('<figure class="sb-fig sb-vid"><video src="%s" controls playsinline preload="metadata"%s></video>%s</figure>') % (m[1], Markup(' aria-label="%s"') % cap if cap else '', Markup('<figcaption>%s</figcaption>') % cap if cap else ''))
                 elif line.startswith('> '):
                     note = line[2:].strip(); emo = note[:1] if note[:1] in BODY_EMOJI else '💡'
                     if note[:1] in BODY_EMOJI: note = note[1:].strip()

@@ -26,7 +26,6 @@ MAG_GROUPS = [
     ('기사', [('admin_life', 'edit', '기사'), ('admin_life_ai', 'text', 'AI 기사')]),
     ('화면', [('mag_front', 'layers', '첫 화면 편집'), ('admin_art', 'image', '기사 사진'), ('mag_seo_admin', 'search', '검색 노출')]),
     ('구독', [('admin_letter', 'mail', '소보루 레터')]),
-    ('도구', [('mag_mosaic', 'image', '얼굴 모자이크')]),
 ]
 PHOTO_TYPES = ('image/jpeg', 'image/png', 'image/webp')
 
@@ -176,6 +175,49 @@ def install(S):
         im.save(folder / name, 'WEBP', quality=84)
         return jsonify(ok=True, url=url_for('mag_body_image', name=name))
 
+    # ---- 본문 영상 (운영자 2026-11-05) — 8MB씩 나눠 올리고 마지막에 저장. [영상 주소 | 설명] 줄로 본문에 들어감 ----
+    VIDEO_MAX = 600 * 1024 * 1024
+    vid_tmp = Path(tempfile.gettempdir()) / 'soboru-video'
+
+    def vid_part(job):
+        if not re.fullmatch(r'[A-Za-z0-9_-]{16,40}', job or ''): abort(404)
+        return vid_tmp / f'{job}.part'
+
+    @app.route('/admin/magazine/video/upload', methods=['POST'])
+    @S.admin_only
+    def mag_video_upload():
+        vid_tmp.mkdir(exist_ok=True)
+        for f in vid_tmp.iterdir():
+            try:
+                if time.time() - f.stat().st_mtime > 3600: f.unlink()
+            except OSError: pass
+        job = request.args.get('job') or secrets.token_urlsafe(18)
+        part = vid_part(job)
+        if request.args.get('i', '0') == '0' and part.exists(): part.unlink()
+        data = request.get_data()
+        if (part.stat().st_size if part.exists() else 0) + len(data) > VIDEO_MAX: return jsonify(ok=False, error='영상이 너무 커요. 600MB까지 올릴 수 있어요.'), 413
+        with open(part, 'ab') as f: f.write(data)
+        return jsonify(ok=True, job=job)
+
+    @app.route('/admin/magazine/video/save', methods=['POST'])
+    @S.admin_only
+    def mag_video_save():
+        part = vid_part(request.args.get('job', ''))
+        if not part.exists(): abort(404)
+        with open(part, 'rb') as f: head = f.read(12)
+        ext = 'mp4' if head[4:8] == b'ftyp' else 'webm' if head[:4] == b'\x1a\x45\xdf\xa3' else ''
+        if not ext:
+            part.unlink(missing_ok=True); return jsonify(ok=False, error='MP4·WEBM 영상만 넣을 수 있어요.'), 400
+        name = f'video-{datetime.datetime.now():%Y%m%d%H%M%S}-{int(time.time() * 1000) % 1000:03d}.{ext}'
+        shutil.move(str(part), str(folder / name))
+        return jsonify(ok=True, url=url_for('mag_body_video', name=name))
+
+    @app.route('/art/video/<name>')
+    def mag_body_video(name):
+        m = re.fullmatch(r'video-\d{14}-\d{3}\.(mp4|webm)', name)
+        if not m or not (folder / name).is_file(): abort(404)
+        return send_file(folder / name, mimetype='video/' + m[1], max_age=86400 * 30, conditional=True)
+
     # ---- 매거진 홈 -------------------------------------------------------------
     @app.route('/admin/magazine')
     @S.admin_only
@@ -229,13 +271,16 @@ def install(S):
         picks = setting('mag_hot', [])
         return render_template('mag_admin_front.html', rows=rows, picks=picks + [None] * (4 - len(picks)), slots=[hero_src(i, x) if x else '' for i, x in enumerate(heroes())], shown=mag_hero_urls())
 
-    # ---- 얼굴 모자이크 (운영자 2026-11-05) ----------------------------------------
-    # 사진·영상 속 얼굴을 브라우저 안에서 찾아 모자이크하고, 영상 소리는 그대로·변조·음소거 중 고름. 파일은 서버로 올라가지 않음.
-    # 얼굴 찾기는 MediaPipe Face Detector(Apache 2.0)를 static/vendor/mediapipe에 두고 씀 (외부 CDN 없이)
+    # ---- 얼굴 모자이크 (운영자 2026-11-05: 따로 쓰는 도구가 아니라 기사에 사진·영상을 올릴 때 바로 거침 → static/mosaic.js) ----
+    # 사진·영상 속 얼굴은 브라우저 안에서 찾아 가림. 얼굴 찾기는 MediaPipe Face Detector(Apache 2.0, static/vendor/mediapipe)
     @app.route('/admin/magazine/mosaic')
     @S.admin_only
     def mag_mosaic():
-        return render_template('mag_admin_mosaic.html', can_convert=bool(shutil.which('ffmpeg')))
+        return redirect(url_for('admin_life', new=1))
+
+    @app.context_processor
+    def mosaic_cfg():
+        return {'mosaic_can_convert': bool(shutil.which('ffmpeg'))}
 
     # 브라우저가 못 여는 영상(아이폰·카톡 HEVC 등)만: 8MB씩 나눠 올리면 서버 ffmpeg가 H.264 MP4로 바꿔 돌려주고 1시간 안에 지움
     conv_dir = Path(tempfile.gettempdir()) / 'soboru-mosaic'

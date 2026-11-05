@@ -6100,14 +6100,68 @@ class SiteTest(unittest.TestCase):
             db.execute('DELETE FROM articles WHERE id IN (?,?)', (aid, pid)); db.execute("DELETE FROM soboru_settings WHERE key IN ('mag_hot','mag_hero','mag_heroes')")
             db.execute("DELETE FROM soboru_art WHERE kind='life' AND target_id IN (?,?)", (aid, pid))
 
-    def test_magazine_mosaic_tool(self):
-        # 운영자 2026-11-05: 매거진 관리자 > 얼굴 모자이크 (사진·영상, 소보루 로고, 영상 소리 변조·음소거). 관리자만, 얼굴 찾기 파일은 사이트 안에 둠
-        self.assertEqual(self.client.get('/admin/magazine/mosaic').status_code, 302)
-        page = self.login_admin().get('/admin/magazine/mosaic').get_data(as_text=True)
-        self.assertIn('얼굴 모자이크', page); self.assertIn('vendor/mediapipe/vision_bundle.mjs', page); self.assertIn('soboru-wordmark-orange-hi.png', page)
-        self.assertIn('value="mute"', page); self.assertIn('value="low"', page)
+    def test_magazine_mosaic_on_upload(self):
+        # 운영자 2026-11-05: 얼굴 모자이크는 따로 쓰는 도구가 아니라, 기사에 사진·영상·대표 사진을 올릴 때 바로 거침
+        admin = self.login_admin()
+        self.assertEqual(admin.get('/admin/magazine/mosaic').headers['Location'], '/admin/life?new=1')
+        self.assertNotIn('얼굴 모자이크', admin.get('/admin/magazine').get_data(as_text=True))
+        page = admin.get('/admin/life?new=1').get_data(as_text=True)
+        self.assertIn('mosaic.js', page); self.assertIn('MOSAIC_CFG', page); self.assertIn('vendor/mediapipe/', page); self.assertIn('id="mz-video"', page)
+        js = (Path(self.site.__file__).parent / 'static/mosaic.js').read_text()
+        for word in ('value="mute"', 'value="low"', '가리지 않고 그대로 넣기', 'vision_bundle.mjs'): self.assertIn(word, js)
         for f in ('vision_bundle.mjs', 'vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'blaze_face_short_range.tflite'):
             self.assertTrue((Path(self.site.__file__).parent / 'static/vendor/mediapipe' / f).is_file(), f)
+        # 영상: 나눠 올리고 저장 → [영상 주소 | 설명] 줄이 기사에서 영상으로 보임
+        tok = self.csrf(admin, '/admin/life?new=1')
+        mp4 = b'\x00\x00\x00\x18ftypmp42' + b'\x00' * 2000
+        self.assertEqual(self.client.post('/admin/magazine/video/upload?i=0', data=mp4, content_type='application/octet-stream').status_code, 400)  # CSRF·로그인 없으면 막음
+        j = admin.post('/admin/magazine/video/upload?i=0', data=mp4[:1000], headers={'X-CSRFToken': tok}, content_type='application/octet-stream').get_json()
+        admin.post(f"/admin/magazine/video/upload?i=1&job={j['job']}", data=mp4[1000:], headers={'X-CSRFToken': tok}, content_type='application/octet-stream')
+        url = admin.post(f"/admin/magazine/video/save?job={j['job']}", headers={'X-CSRFToken': tok}).get_json()['url']
+        self.assertRegex(url, r'^/art/video/video-\d{14}-\d{3}\.mp4$')
+        r = self.client.get(url, headers={'Range': 'bytes=0-9'}); self.assertEqual(r.status_code, 206); self.assertEqual(r.mimetype, 'video/mp4')
+        j = admin.post('/admin/magazine/video/upload?i=0', data=b'not a video at all', headers={'X-CSRFToken': tok}, content_type='application/octet-stream').get_json()
+        self.assertEqual(admin.post(f"/admin/magazine/video/save?job={j['job']}", headers={'X-CSRFToken': tok}).status_code, 400)
+        r = admin.post('/admin/life', data={'_csrf': tok, 'title': '영상 기사', 'summary': 's', 'body': f'첫 문단\n\n[영상 {url} | 매장 앞 모습]\n\n[영상 /etc/passwd | x]', 'category': '쇼핑', 'publish': '1'})
+        aid = int(r.headers['Location'].rstrip('/').split('/')[-1])
+        self.addCleanup(lambda: admin.post(f'/admin/life/{aid}', data={'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'title': 'x', 'act': 'delete'}))
+        art = self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn(f'<video src="{url}" controls playsinline', art); self.assertIn('<figcaption>매장 앞 모습</figcaption>', art); self.assertNotIn('<video src="/etc/passwd"', art)
+
+    def test_magazine_editors(self):
+        # 운영자 2026-11-05: 에디터 계정 — 지금 기사는 에디터 이지우·오후가 번갈아, 에디터는 쓰고 승인 요청만 (게시는 관리자)
+        admin = self.login_admin()
+        tok = self.csrf(admin, '/admin/life?new=1')
+        ids = []
+        for t in ('첫째 기사', '둘째 기사'):
+            r = admin.post('/admin/life', data={'_csrf': tok, 'title': t, 'summary': 's', 'body': 'b', 'category': '쇼핑', 'publish': '1'})
+            ids.append(int(r.headers['Location'].rstrip('/').split('/')[-1]))
+        for aid in ids: self.addCleanup(lambda aid=aid: admin.post(f'/admin/life/{aid}', data={'_csrf': self.csrf(admin, f'/admin/life/{aid}'), 'title': 'x', 'act': 'delete'}))
+        names = [re.search(r'EDITOR</b> (이지우|오후)', self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True))[1] for aid in ids]
+        self.assertEqual(sorted(names), ['오후', '이지우'])
+        self.assertNotIn('소보루 에디터', self.client.get(f'/life/{ids[0]}', base_url='https://soboru.co.kr').get_data(as_text=True))
+        # 관리자: 에디터 계정 만들기
+        page = admin.get('/admin/magazine/editors').get_data(as_text=True); self.assertIn('이지우', page); self.assertIn('오후', page)
+        admin.post('/admin/magazine/editors', data={'_csrf': self.csrf(admin, '/admin/magazine/editors'), 'act': 'add', 'name': '김시험', 'login': 'kimtest', 'password': 'pw-123456'})
+        ed = self.site.app.test_client()
+        self.assertEqual(ed.get('/admin/magazine/mine').status_code, 302)
+        ed.post('/editor/login', data={'_csrf': self.csrf(ed, '/editor/login'), 'login': 'kimtest', 'password': 'pw-123456'})
+        self.assertEqual(ed.get('/admin/magazine/mine').status_code, 200)
+        self.assertNotEqual(ed.get('/admin/magazine/editors').status_code, 200)  # 에디터는 관리 메뉴에 못 들어감
+        self.assertNotEqual(ed.get('/admin').status_code, 200)
+        # 에디터가 '게시'를 눌러도 승인 대기로
+        r = ed.post('/admin/life', data={'_csrf': self.csrf(ed, '/admin/life?new=1'), 'title': '에디터 기사', 'summary': 's', 'body': 'b', 'category': '쇼핑', 'publish': '1'})
+        with self.site.conn() as db: row = db.execute("SELECT id,status FROM articles WHERE title='에디터 기사'").fetchone()
+        self.addCleanup(lambda: admin.post(f"/admin/life/{row['id']}", data={'_csrf': self.csrf(admin, f"/admin/life/{row['id']}"), 'title': 'x', 'act': 'delete'}))
+        self.assertEqual(row['status'], 'pending')
+        self.assertEqual(self.client.get(f"/life/{row['id']}", base_url='https://soboru.co.kr').status_code, 404)
+        self.assertNotEqual(ed.get(f'/admin/life/{ids[0]}').status_code, 200)  # 남의 기사는 못 고침
+        # 관리자가 승인하면 게시, 이름은 김시험
+        self.assertIn('에디터 기사', admin.get('/admin/magazine/approve').get_data(as_text=True))
+        admin.post('/admin/magazine/approve', data={'_csrf': self.csrf(admin, '/admin/magazine/approve'), 'id': row['id'], 'act': 'ok'})
+        art = self.client.get(f"/life/{row['id']}", base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('김시험', art)
+        self.assertEqual(admin.get('/admin/magazine/stats').status_code, 200)
 
     def test_magazine_seo_and_cms(self):
         # 운영자 2026-11-05: 매거진 검색 최적화 + 토스풍 CMS + 바닥글 '관리자'
@@ -6146,7 +6200,7 @@ class SiteTest(unittest.TestCase):
         # 운영자 2026-11-05: 도구가 아이폰·카톡 영상(HEVC)을 못 읽음 → 나눠 올려 서버에서 MP4로 바꿔 돌려줌
         import shutil, subprocess, tempfile, time as _t
         if not shutil.which('ffmpeg'): self.skipTest('ffmpeg 없음')
-        admin = self.login_admin(); tok = self.csrf(admin, '/admin/magazine/mosaic')
+        admin = self.login_admin(); tok = self.csrf(admin, '/admin/life?new=1')
         src = Path(tempfile.mkdtemp()) / 'a.mp4'
         subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=160x120:rate=10', '-t', '1', str(src)], check=True)
         data = src.read_bytes(); half = len(data) // 2

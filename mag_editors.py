@@ -149,14 +149,17 @@ def install(S):
         return resp
 
     wrap('admin_life'); wrap('admin_life_edit')
-    if 'mag_body_upload' in app.view_functions:  # 본문 사진 올리기
-        up = app.view_functions['mag_body_upload']
-        def body_upload():
-            if S.admin_active(): return up()
-            if not me(): abort(403)
+    # 본문 사진·영상 올리기, 얼굴 가리기용 영상 바꾸기는 에디터도 씀
+    def let_editor(ep):
+        up = app.view_functions[ep]
+        def view(*a, **kw):
+            if S.admin_active() or not me(): return up(*a, **kw)  # 관리자, 또는 로그인 안 함(로그인 화면으로)
             g.mag_editor_pass = True
-            return up()
-        app.view_functions['mag_body_upload'] = body_upload
+            return up(*a, **kw)
+        view.__name__ = ep
+        app.view_functions[ep] = view
+    for ep in ('mag_body_upload', 'mag_video_upload', 'mag_video_save', 'mag_mosaic_upload', 'mag_mosaic_convert', 'mag_mosaic_converted'):
+        if ep in app.view_functions: let_editor(ep)
 
     # ---- 내 기사 (에디터) ----------------------------------------------------------
     @app.route('/admin/magazine/mine')
