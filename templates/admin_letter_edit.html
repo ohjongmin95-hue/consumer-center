@@ -134,4 +134,10 @@
   </div>
 </div></main>
 <script>document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById(b.dataset.copy),o=b.textContent;function ok(){b.textContent=b.dataset.done;setTimeout(function(){b.textContent=o},1800)}if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t.value).then(ok,function(){t.select();document.execCommand('copy');ok()})}else{t.select();document.execCommand('copy');ok()}})})</script>
+{#- 운영자 2026-11-05: '빼기'에 체크하거나 사진을 고르면 저장 버튼 없이 바로 반영 (오른쪽 미리보기까지). 다시 그린 뒤 보던 자리로 -#}
+{% if draft %}<script>(function(){var f=document.getElementById('lt-form');if(!f)return;
+try{var y=sessionStorage.getItem('lt-y');if(y!==null){sessionStorage.removeItem('lt-y');window.scrollTo(0,+y)}}catch(e){}
+function go(){try{sessionStorage.setItem('lt-y',String(window.scrollY))}catch(e){}var h=document.createElement('input');h.type='hidden';h.name='act';h.value='save';f.appendChild(h);f.submit()}
+f.querySelectorAll('input[type=checkbox][name^="drop_"],input[type=checkbox][name="comment_nophoto"],input[type=checkbox][name^="nolaw"],input[type=file]').forEach(function(x){x.addEventListener('change',go)});
+})()</script>{% endif %}
 {% endblock %}
