@@ -6,6 +6,8 @@ Magazine Studio > 카드뉴스·릴스 만들기 (/admin/magazine/maker)
   서버 ffmpeg가 사진·영상 배치(흐린 배경·꽉 채움·단색 + 가운데 영상)와 글씨 판을 겹쳐 MP4(1080x1920, 30fps, H.264)로 만듦.
   끝에는 귤색 마무리 화면. 만든 영상은 본문 영상과 같은 곳(/art/video/)에 저장돼 '릴스' 메뉴에 바로 올릴 수 있음.
 사진·영상은 기사 본문용 올리기(/admin/magazine/photo, /admin/magazine/video/*)를 그대로 씀.
+카드뉴스 그림 (운영자 2026-11-05, 카드뉴스 원칙): 기사 사진·캡처는 쓰지 않고, AI가 짠 장면 설명(scene)으로 OpenAI가 새로 그림
+(/admin/magazine/maker/draw, 세로 1024x1536 → 본문 사진과 같은 곳). 실제 사람 얼굴·로고·글자는 그리지 않음.
 """
 import base64
 import datetime
@@ -35,6 +37,12 @@ LAYOUTS = {
     'quote': ('blur', None),
     'clean': ('cover', None),
 }
+
+
+DRAW = ('Photorealistic editorial photo for a Korean consumer news Instagram card, natural light, clean composition, portrait, '
+        'main subject in the lower half, calm uncluttered upper part (headline text goes there). Scene: {scene}. '
+        'People only from behind, as hands, or softly blurred, never a recognizable face or a real person. '
+        'No company logos, no brand names, no text, no letters, no numbers, no watermarks.')
 
 
 def scene_filter(i, m, p, kind, lay, dur, speed, audio):
@@ -151,6 +159,23 @@ def install(S):
             if pieces: out.append({'id': lid, 'no': L['no'], 'title': (L['title'] or '')[:30], 'sent': L['status'] == 'sent',
                                    'pieces': [{'key': p['key'], 'label': p['label']} for p in pieces]})
         return out
+
+    @app.route('/admin/magazine/maker/draw', methods=['POST'])
+    @S.admin_only
+    def mag_maker_draw():
+        import companydesk as desk, soboru_art
+        scene = ' '.join(str((request.get_json(silent=True) or {}).get('scene') or '').split())[:400]
+        if len(scene) < 3: return jsonify(ok=False, error='그림 장면을 적어 주세요.'), 400
+        key = desk.ai_key_for('mag_maker')
+        if not key: return jsonify(ok=False, error='OpenAI 키가 없어 그림을 그릴 수 없어요.'), 503
+        body = {'model': soboru_art.image_model(), 'prompt': DRAW.format(scene=scene), 'size': '1024x1536', 'quality': soboru_art.image_quality(), 'output_format': 'webp', 'n': 1}
+        st, res = desk.post_json('https://api.openai.com/v1/images/generations', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, 150)
+        try: data = base64.b64decode(res['data'][0]['b64_json']) if st == 200 else b''
+        except (KeyError, IndexError, TypeError, ValueError): data = b''
+        if not data: return jsonify(ok=False, error='그림을 그리지 못했어요. 잠시 뒤 다시 해 주세요.'), 502
+        name = f'body-{datetime.datetime.now():%Y%m%d%H%M%S}-{secrets.randbelow(1000):03d}.webp'
+        (folder / name).write_bytes(data)
+        return jsonify(ok=True, url=url_for('mag_body_image', name=name))
 
     @app.route('/admin/magazine/maker/render', methods=['POST'])
     @S.admin_only

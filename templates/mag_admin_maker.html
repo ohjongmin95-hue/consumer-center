@@ -16,18 +16,22 @@
     </div>
     <div class="mk-right"><form class="mk-form" id="mk-form" onsubmit="return false">
       <fieldset class="mk-src"><legend>기사·레터로 만들기</legend>
-        <p class="mk-help">기사나 소보루 레터 꼭지를 고르면 AI가 {{ '장면·자막·길이' if mode == 'reel' else '장·제목·글' }}을 짜고 기사 사진{{ '·영상' if mode == 'reel' }}을 넣어요. 그다음 고치면 돼요.</p>
+        <p class="mk-help">{% if mode == 'reel' %}기사나 소보루 레터 꼭지를 고르면 AI가 장면·자막·길이를 짜고 기사 사진·영상을 넣어요. 그다음 고치면 돼요.{% else %}기사·레터 꼭지를 고르거나 다른 기사 링크를 넣으면 AI가 소보루 카드뉴스 원칙대로 짜요. 표지 문구 5개, 본문 2~4장, 저장 유도 마무리, 출처 붙은 캡션까지. 다른 기사 링크는 기사 사진 대신 AI가 그림을 새로 그려요.{% endif %}</p>
         {% if arts %}<label class="mg-f">우리 매거진 기사<select id="mk-art"><option value="">기사 고르기</option>{% for a in arts %}<option value="{{ a.id }}">{{ a.title[:46] }}</option>{% endfor %}</select></label>{% endif %}
         {% if letters %}<label class="mg-f">소보루 레터 <small>(한 꼭지가 게시물 하나)</small><select id="mk-letter"><option value="">레터 꼭지 고르기</option>{% for L in letters %}<optgroup label="{{ L.no }}호 · {{ L.title }}{{ '' if L.sent else ' (안 보냄)' }}">{% for p in L.pieces %}<option value="L{{ L.id }}:{{ p.key }}">{{ p.label[:40] }}</option>{% endfor %}</optgroup>{% endfor %}</select></label>{% endif %}
         <label class="mg-f">다른 기사 <small>(주소나 기사 글 전체)</small><textarea id="mk-src" rows="3" placeholder="https://… 또는 기사 글 붙여 넣기"></textarea></label>
         <button type="button" class="mk-ai" id="mk-ai">AI로 {{ '장면' if mode == 'reel' else '카드' }} 짜기</button>
       </fieldset>
-      <fieldset class="mk-ds"><legend>디자인</legend><div id="mk-design"></div></fieldset>
+      {% if mode == 'card' %}<fieldset class="mk-ds"><legend>디자인 <small>(모든 장에 같이)</small></legend><div class="mk-themes" id="mk-theme"></div></fieldset>
+      <fieldset class="mk-covers" id="mk-covers" hidden><legend>표지 문구 5개 중 고르기</legend><div id="mk-cv"></div></fieldset>{% endif %}
+      <fieldset class="mk-ds"><legend>{{ '디자인' if mode == 'reel' else '이 장의 역할' }}</legend><div id="mk-design"></div></fieldset>
       <label class="mk-file"><input type="file" id="mk-file" accept="{{ 'image/*,video/mp4,video/quicktime,video/webm' if mode == 'reel' else 'image/*' }}" hidden><b>{{ '사진·영상 고르기' if mode == 'reel' else '사진 고르기' }}</b><span id="mk-media-st"></span></label>
-      <label class="mg-f">{{ '태그' if mode == 'reel' else '분야' }} <small>(예: {{ '블랙박스 이슈 · 수원 오목천동' if mode == 'reel' else 'FOOD' }})</small><input data-f="tag" maxlength="40"></label>
+      <label class="mg-f"><span id="mk-l-tag">{{ '태그' if mode == 'reel' else '분야' }}</span>{% if mode == 'reel' %} <small>(예: 블랙박스 이슈 · 수원 오목천동)</small>{% endif %}<input data-f="tag" maxlength="40"></label>
       <label class="mg-f"><span id="mk-l-title">제목</span> <small>(줄 바꿈 그대로 들어가요)</small><textarea data-f="title" rows="3" maxlength="120"></textarea></label>
       <label class="mg-f"><span id="mk-l-sub">부제</span><input data-f="sub" maxlength="60"></label>
-      <label class="mg-f"><span id="mk-l-items">줄</span><textarea data-f="items" rows="6" maxlength="1200"></textarea></label>
+      <label class="mg-f" id="mk-items-row"><span id="mk-l-items">줄</span><textarea data-f="items" rows="6" maxlength="1200"></textarea></label>
+      {% if mode == 'card' %}<div class="mk-scene" id="mk-scene-row"><label class="mg-f">그림 장면 <small>(기사 사진 대신 AI가 새로 그릴 장면. 사람 얼굴·로고·글자는 안 그려요)</small><input data-f="scene" maxlength="300"></label>
+        <button type="button" class="mk-draw" id="mk-draw">AI로 이 장 그림 새로 그리기</button></div>{% endif %}
       <div class="mk-timing" id="mk-timing" hidden>
         <div id="mk-start-row"><label class="mg-f">영상 시작 (초)<input data-f="start" type="number" min="0" step="0.1"></label><label class="mk-chk"><input data-f="slow" type="checkbox"><span>느리게 (0.5배, 소리 없음)</span></label></div>
         <label class="mg-f">이 장면 길이 (초)<input data-f="dur" type="number" min="0.5" max="60" step="0.1"></label>
@@ -49,6 +53,6 @@
   </div>
   </div>
 </div></main>
-<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'status': url_for('mag_maker_status'), 'assist': url_for('mag_assist'), 'arts': arts}|tojson }};</script>
+<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'draw': url_for('mag_maker_draw'), 'status': url_for('mag_maker_status'), 'assist': url_for('mag_assist'), 'arts': arts}|tojson }};</script>
 <script src="{{ asset('maker.js') }}"></script>
 {% endblock %}
