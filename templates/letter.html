@@ -76,21 +76,29 @@
   <section class="nm-sub" id="sub" aria-labelledby="nm-sub-h">
     <div class="nm-g nm-sub-in">
       <div class="nm-sub-copy">
-        <div class="nm-sub-head"><h2 id="nm-sub-h">{{ ui('letter.sub_h1', '오늘의 소비, 아침 5분이면 다 읽어요.') }}<br><em>{{ cfg.when }}</em> {{ ui('letter.sub_h2', '소보루 레터를 메일로 받아 보세요.') }}</h2>
-        <svg class="nm-sub-stamp" viewBox="0 0 120 120" role="img" aria-label="FRESHLY BAKED DAILY"><path fill="#EF920E" d="M68.7 10.8 Q81.5 1.1 85.0 16.7 Q100.3 12.0 98.3 27.9 Q114.3 28.6 107.0 42.9 Q121.8 49.1 110.0 60.0 Q121.8 70.9 107.0 77.1 Q114.3 91.4 98.3 92.1 Q100.3 108.0 85.0 103.3 Q81.5 118.9 68.7 109.2 Q60.0 122.7 51.3 109.2 Q38.5 118.9 35.0 103.3 Q19.7 108.0 21.7 92.1 Q5.7 91.4 13.0 77.1 Q-1.8 70.9 10.0 60.0 Q-1.8 49.1 13.0 42.9 Q5.7 28.6 21.7 27.9 Q19.7 12.0 35.0 16.7 Q38.5 1.1 51.3 10.8 Q60.0 -2.7 68.7 10.8Z"/><circle cx="60" cy="60" r="44" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 3"/><text x="60" y="47" text-anchor="middle">FRESHLY</text><text x="60" y="66" text-anchor="middle">BAKED</text><text x="60" y="85" text-anchor="middle">DAILY</text></svg></div>
+        <p class="nm-sub-kick">SOBORU LETTER</p>
+        <h2 id="nm-sub-h">{{ ui('letter.sub_t', '갓 구운 소비 뉴스,\n아침마다 메일함으로') }}</h2>
+        <p class="nm-sub-lead">{{ ui('letter.sub_lead', '오늘 꼭 알아야 할 소비·경제 소식을 5분 분량으로 구워 보내 드려요.') }}</p>
+        <ol class="nm-sub-menu">
+          <li><b>01</b>{{ ui('letter.t1', '갓 구운 오늘의 뉴스') }}</li>
+          <li><b>02</b>{{ ui('letter.t2', '오늘의 메인 뉴스') }}</li>
+          <li><b>03</b>{{ ui('letter.t3', '숫자로 보는 오늘') }}</li>
+        </ol>
         <p class="nm-sub-back">{{ ui('letter.archive_title', '지난 레터') }}{% for L in rows[:3] %} · <a href="{{ url_for('letter_issue', no=L.no) }}">No.{{ '%02d' % L.no }} {{ L.title }}</a>{% else %} · {{ ui('letter.mz_noback', '첫 레터를 준비하고 있어요') }}{% endfor %}</p>
       </div>
       <form class="nm-sub-form" method="post" action="{{ url_for('letter_subscribe') }}">
+        <div class="nm-rc-head"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="96" height="18"><span>{{ ui('letter.sub_rc', '구독 주문서') }}</span></div>
+        <dl class="nm-rc-rows"><div><dt>{{ ui('letter.sub_r1', '상품') }}</dt><dd>{{ ui('letter.sub_r1v', '소보루 레터') }}</dd></div><div><dt>{{ ui('letter.sub_r2', '배달') }}</dt><dd>{{ cfg.when }}, {{ ui('letter.sub_r2v', '메일로') }}</dd></div><div class="nm-rc-total"><dt>TOTAL</dt><dd>{{ ui('letter.sub_r3v', '0원') }}</dd></div></dl>
         {% if state in notes %}<p class="nm-sub-note {{ notes[state][0] }}" role="status">{{ notes[state][1] }}</p>{% endif %}
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="place" value="mag"><input type="hidden" name="checks" value="1">
         <div class="lt-hp" aria-hidden="true"><label>웹사이트 <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-        <label class="nm-sub-mail"><span class="sr-only">{{ ui_text('letter.email_ph', '이메일 주소') }}</span><input type="email" name="email" required maxlength="254" placeholder="{{ ui_text('letter.sub_ph', '이메일을 입력해 주세요') }}" autocomplete="email" value="{{ g.user['email'] if g.user and g.user['email'] else '' }}"></label>
+        <label class="nm-sub-mail"><span class="sr-only">{{ ui_text('letter.email_ph', '이메일 주소') }}</span><input type="email" name="email" required maxlength="254" placeholder="{{ ui_text('letter.sub_ph', '받으실 이메일 주소') }}" autocomplete="email" value="{{ g.user['email'] if g.user and g.user['email'] else '' }}"></label>
         <div class="nm-sub-agree">
           <label><input type="checkbox" name="agree_privacy" value="1" required><span>{{ ui('letter.sub_a1', '개인정보 수집·이용 동의 (필수)') }}</span></label>
           <label><input type="checkbox" name="agree_ad" value="1" required><span>{{ ui('letter.sub_a2', '광고성 정보 수신 동의 (필수)') }}</span></label>
           <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.agree_more', '자세히') }}</a>
         </div>
-        <button type="submit">{{ ui('letter.sub_btn', '소보루 레터 구독하기') }}</button>
+        <button type="submit">{{ ui('letter.sub_btn', '무료로 구독하기') }}</button>
       </form>
     </div>
   </section>

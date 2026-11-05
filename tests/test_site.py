@@ -2169,7 +2169,7 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(admin, '/admin/screens')
         admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '1', 'next': '/'})
         pages = {'/': ('home.intro_title', 'home.live_title', 'home.pick_title', 'home.answer_eyebrow', 'sb.nav_home', 'sb.tab_home', 'common.ft_why', 'letter.card_title'),
-                 '/life': ('life.title', 'life.cat_all', 'letter.subscribe'), '/board': ('cm.title', 'cm.pick_title'), '/letter': ('letter.sub_h1', 'letter.sub_btn', 'letter.archive_title'),
+                 '/life': ('life.title', 'life.cat_all', 'letter.subscribe'), '/board': ('cm.title', 'cm.pick_title'), '/letter': ('letter.sub_t', 'letter.sub_btn', 'letter.archive_title'),
                  '/companies': ('sb.nav_companies',), '/ask': ('ask.h1',)}
         for path, keys in pages.items():
             page = admin.get(path).get_data(as_text=True)
@@ -2190,7 +2190,7 @@ class SiteTest(unittest.TestCase):
         # 화면 편집 > 페이지별 문구 목록: 그 페이지 문구만 한 번에 저장, 비우면 기본 문구로
         page = admin.get('/admin/screens').get_data(as_text=True)
         self.assertIn('name="home.intro_sub"', page)
-        self.assertIn('name="letter.sub_h1"', page)
+        self.assertIn('name="letter.sub_t"', page)
         self.assertIn('name="sb.nav_life"', page)
         r = admin.post('/admin/screens', data={'_csrf': token, 'page': 'home', 'act': 'texts', 'home.intro_title': '', 'home.pick_title': '오늘의 픽', 'report.submit': '무시돼요'})
         self.assertEqual(r.status_code, 302)
