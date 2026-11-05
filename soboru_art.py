@@ -289,13 +289,35 @@ def install(S):
     unsplash_state = {'busy': False, 'tried': {}}
     unsplash_lock = threading.Lock()
 
+    def photo_queries(rows):
+        """운영자 2026-11-05: '기사 제목이랑 연관되는 사진' — 글 제목·요약을 보고 언스플래시 영어 검색어를 AI가 한 번에 만듦. {글 id: 검색어}. 키가 없거나 실패하면 {} (분야 검색어로)."""
+        key = os.getenv('OPENAI_API_KEY', '').strip()
+        if not key or not rows: return {}
+        import json
+        items = [{'id': r['id'], 'title': r['title'], 'summary': (r['summary'] or '').split('\n')[0][:120], 'category': r['category']} for r in rows]
+        system = ('You pick stock photos for a stylish Korean consumer lifestyle magazine. For each article, write one short English Unsplash search query '
+                  '(2 to 4 words) for a real photo that clearly matches the article title: the concrete object, place or scene it is about '
+                  '(e.g. taxi app call fee -> "taxi city night", winter heating bill -> "radiator cozy room", overseas direct purchase returns -> "parcel boxes doorstep"). '
+                  'No people\'s faces, no text, no logos, no abstract words. Answer JSON only: {"q": {"<id>": "<query>"}}')
+        model = os.getenv('WRITER_MODEL', '').strip() or 'gpt-6-luna'
+        opts = {'max_completion_tokens': 3000, 'reasoning_effort': 'low'} if re.match(r'(gpt-([5-9]|\d\d)|o\d)', model) else {'max_tokens': 1500, 'temperature': 0.3}
+        body = {'model': model, 'response_format': {'type': 'json_object'}, **opts,
+                'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': json.dumps(items, ensure_ascii=False)}]}
+        try:
+            st, res = desk.post_json('https://api.openai.com/v1/chat/completions', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, 60)
+            if st != 200: return {}
+            got = json.loads(res['choices'][0]['message']['content']).get('q') or {}
+            return {int(k): ' '.join(str(v).split())[:60] for k, v in got.items() if str(k).isdigit() and str(v).strip()}
+        except Exception as e:
+            app.logger.warning('mag photo query failed: %s', str(e)[:160]); return {}
+
     def unsplash_fill(limit=24, wait=3600):
         """사진 없는 매거진 글에 언스플래시 사진을 붙임. (붙인 수, 마지막 언스플래시 응답 코드)"""
         import soboru_letter as L
         added, last = 0, 200
         try:
             with conn() as db:
-                rows = db.execute("SELECT a.id,a.category FROM articles a LEFT JOIN mag_unsplash2 u ON u.article_id=a.id "
+                rows = db.execute("SELECT a.id,a.category,a.title,a.summary FROM articles a LEFT JOIN mag_unsplash2 u ON u.article_id=a.id "
                                   "WHERE a.status='published' AND u.article_id IS NULL ORDER BY a.id DESC LIMIT ?", (limit,)).fetchall()
                 used = {r[0] for r in db.execute('SELECT photo_id FROM mag_unsplash2')}
                 own = {r[0] for r in db.execute("SELECT target_id FROM soboru_art WHERE kind='life' AND status='live' AND file LIKE '%-photo-%'")}
@@ -303,17 +325,26 @@ def install(S):
             with conn() as db:
                 cat_count = {c: n for c, n in db.execute('SELECT a.category, COUNT(*) FROM mag_unsplash2 u JOIN articles a ON a.id=u.article_id GROUP BY a.category')}
             n_cat = {}
+            todo = [r for r in rows if r['id'] not in own and datetime.datetime.now().timestamp() - unsplash_state['tried'].get(r['id'], 0) >= wait]
+            qmap = photo_queries(todo)  # 제목에 맞는 검색어 (없으면 분야 검색어)
             for r in rows:
                 if r['id'] in own: continue
                 if datetime.datetime.now().timestamp() - unsplash_state['tried'].get(r['id'], 0) < wait: continue
                 qs = UNSPLASH_Q.get(r['category']) or ['minimal still life']
                 n_cat[r['category']] = n_cat.get(r['category'], cat_count.get(r['category'], 0)) + 1
-                q = qs[(n_cat[r['category']] - 1) % len(qs)]  # 같은 분야 글마다 다른 검색어
+                q = qmap.get(r['id']) or qs[(n_cat[r['category']] - 1) % len(qs)]  # 제목 검색어, 없으면 같은 분야 글마다 다른 검색어
                 if q not in found:
                     st, res = L.unsplash_call('/search/photos', {'query': q, 'orientation': 'landscape', 'per_page': 30, 'content_filter': 'high'})
                     last = st
                     if st != 200 or not isinstance(res, dict): break  # 키 문제·한도 초과면 멈추고 나중에 다시
                     found[q] = res.get('results') or []
+                    if not found[q] and qmap.get(r['id']):  # 제목 검색어로 사진이 없으면 분야 검색어로
+                        q = qs[(n_cat[r['category']] - 1) % len(qs)]
+                        if q not in found:
+                            st, res = L.unsplash_call('/search/photos', {'query': q, 'orientation': 'landscape', 'per_page': 30, 'content_filter': 'high'})
+                            last = st
+                            if st != 200 or not isinstance(res, dict): break
+                            found[q] = res.get('results') or []
                 unsplash_state['tried'][r['id']] = datetime.datetime.now().timestamp()
                 for ph in found[q]:
                     try:
@@ -323,7 +354,7 @@ def install(S):
                         with conn() as db:
                             db.execute('INSERT OR IGNORE INTO mag_unsplash2 VALUES(?,?,?,?,?,?)',
                                        (r['id'], pid, raw, (user.get('name') or user.get('username') or '')[:60], user['links']['html'] + L.UTM, now()))
-                        added += 1
+                        added += 1; unsplash_state['tried'].pop(r['id'], None)  # 붙였으면 '시도함' 기록은 지움 (같은 번호의 새 글이 기다리지 않게)
                         dl = (ph.get('links') or {}).get('download_location')
                         if dl: L.unsplash_call(dl)  # 언스플래시 규칙: 쓰기로 고른 사진은 download 주소를 한 번 부름
                         break

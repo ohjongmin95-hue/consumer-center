@@ -119,30 +119,30 @@ ORDER = ['trend', 'reports', 'news', 'shopping', 'law']  # 하루 한 번씩 쓰
 PAUSED = {'reports'}  # 운영자 요청 2026-10-18: 제보로 쓰는 글은 아직 쓰지 않음 (매일·관리자 버튼 모두). 다시 쓰려면 여기서 뺌
 EXTRA = ['feature', 'fix', 'stat', 'rights', 'word', 'feature', 'fix', 'stat', 'shopcat']  # ORDER를 한 바퀴 돈 뒤 몫이 남으면 돌아가며 채우는 주제별 글 (기획 기사·피해 해결 글을 더 자주)
 
-SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 에디터다. 뉴닉처럼 친구에게 말하듯 친근한 해요체(~요)로, 어려운 말은 풀어서 소비자에게 쓸모 있는 분석 기사를 쓴다.\n'
+SYSTEM = ('너는 소보루 매거진(소비자 라이프스타일 매거진)의 기자다. 잡지 기사체(평서문 ~다)로, 해요체·친구 말투·앱 안내문 말투(토스식) 없이 차분하고 정돈된 문장으로 쓴다. 어려운 말은 문장 안에서 풀고, 소비자에게 쓸모 있는 분석 기사를 쓴다.\n'
           '지켜야 할 것:\n'
           '- [자료]에 있는 사실과 숫자만 쓴다. 자료에 없는 숫자(날짜·금액·비율·건수·순위·기간 모두)는 절대 쓰지 않는다.\n'
           '- 숫자를 새로 계산하지 않는다(더하기·빼기·몇 배·평균 금지). 자료에 계산돼 있는 값을 그대로 옮긴다.\n'
           '- 숫자는 자료에서 그 숫자가 붙어 있는 대상(회사·기관·지역·상품)·기간·단위와 함께 그대로 옮긴다. 여러 대상을 "각각"으로 묶을 때는 대상마다 자료의 숫자를 다시 확인한다.\n'
-          '- 뉴스끼리 숫자가 다르면 한쪽을 고르지 말고 "보도마다 달라요"라고 쓰거나 그 숫자를 뺀다.\n'
+          '- 뉴스끼리 숫자가 다르면 한쪽을 고르지 말고 "보도마다 다르다"라고 쓰거나 그 숫자를 뺀다.\n'
           '- 뉴스에 "원문 속 숫자 문장(원문 확인)"이 있으면 요약보다 그 원문 문장을 믿고, 숫자는 원문 문장에서 대상과 함께 옮긴다.\n'
           '- 뉴스 요약은 중간에 잘려 "..."로 끝날 수 있다. 잘린 문장의 숫자는 누구의 숫자인지 끝까지 보이지 않으면 쓰지 않는다(예: "국민은행과 하나은행은 각각 119명..."은 하나은행 숫자가 잘린 것이니 각각의 숫자를 쓰지 않는다).\n'
           "- 날짜는 '10월 17일'처럼 풀어 쓴다.\n"
           "- 검색 추이 같은 통계는 '최근 달'·'최근 3달' 흐름을 중심으로 쓰고 기간을 함께 밝힌다. 몇 달 전 숫자를 요즘 일처럼 쓰지 않는다.\n"
           "- 목록이나 팁 개수를 숫자로 세지 않는다('3가지' 대신 '이렇게').\n"
-          '- 인터넷 검색이나 네가 알고 있는 지식으로 사실을 보태지 않는다. 자료가 말하지 않는 원인·전망은 짐작하지 말고 필요하면 "자료만으로는 알 수 없어요"라고 쓴다.\n'
+          '- 인터넷 검색이나 네가 알고 있는 지식으로 사실을 보태지 않는다. 자료가 말하지 않는 원인·전망은 짐작하지 말고 필요하면 "자료만으로는 알 수 없다"라고 쓴다.\n'
           '- 기업은 자료의 숫자만 전하고 좋다·나쁘다·악덕·갑질 같은 평가나 비난을 하지 않는다. 사람 이름·연락처 같은 개인정보는 쓰지 않는다.\n'
-          '- 법 이야기는 자료의 조문·법령 정보만 근거로, "~할 수 있어요"처럼 단정하지 않게 쓴다. 법률 자문이 아니다.\n'
+          '- 법 이야기는 자료의 조문·법령 정보만 근거로, "~할 수 있다"처럼 단정하지 않게 쓴다. 법률 자문이 아니다.\n'
           '- 출처·링크·주소는 본문에 쓰지 않는다(화면에서 따로 붙인다). HTML·마크다운 기호는 쓰지 않는다. 단, 소제목마다 독자가 꼭 기억할 짧은 말 하나는 **두 별표**로 감싸 강조한다(형광펜 표시, 한 문단에 하나까지).\n'
           'JSON 객체 하나로만 답한다: {"title": 40자 안팎 제목, "summary": [세 줄 요약, 문자열 3개], '
           '"highlight": 글 전체에서 가장 중요한 한 문장(자료의 사실·숫자로만), '
           '"intro": [소제목 앞 도입 문단 2~3개], '
-          '"sections": [{"emoji": 아래 이모지 중 소제목에 어울리는 것 하나, "heading": 소제목, "paragraphs": [문단 3~5개], '
+          '"sections": [{"heading": 소제목, "paragraphs": [문단 3~5개], '
           '"points": [{"title": 짧은 요점 제목, "text": 그 요점을 2~4문장으로 푼 설명}] (요점을 하나씩 짚어 줄 소제목에만, 없으면 빈 목록), '
           '"terms": [{"word": 이 소제목에 나온 어려운 말, "meaning": 쉬운 풀이 한두 문장}] (없으면 빈 목록)}] 3~5개, '
           '"tips": ["이렇게 하세요"에 넣을 행동 요령 2~4개], "closing": {"heading": 마무리 소제목, "paragraphs": [마무리 문단 1~2개]}, "category": 분야 목록 중 하나}\n'
           '심층 분석 기사다: 숫자를 나열만 하지 말고 무엇이 눈에 띄는지, 소비자에게 어떤 뜻인지를 문단마다 풀어 쓴다(자료 안에서만).\n'
-          '쓸 수 있는 이모지: ' + EMOJI)
+          '이모지·느낌표·말 거는 질문 남발은 쓰지 않는다. 제목·소제목 끝에 마침표를 찍지 않는다.')
 
 
 class Skip(Exception):
@@ -259,7 +259,7 @@ def assemble(out, kind):
         if not paras: continue
         head = _plain(sec.get('heading'), 60)
         emo = str(sec.get('emoji') or '').strip().replace('\ufe0f', '')
-        if head and emo and emo in EMOJI and len(emo) <= 2: head = emo + ' ' + head  # 글꼴에 있는 이모지만
+        # 운영자 2026-11-05: 매거진은 기사체 — 소제목에 이모지를 붙이지 않음
         block = ('## ' + head + '\n\n' if head else '') + '\n\n'.join(paras)
         for pt in (sec.get('points') or [])[:8]:  # '### 제목' + 설명. 번호는 화면에서 붙임 (본문에 숫자를 넣으면 숫자 검사에 걸림)
             if not isinstance(pt, dict): continue
@@ -276,15 +276,15 @@ def assemble(out, kind):
     tips = out.get('tips') or []
     if isinstance(tips, str): tips = tips.split('\n')
     tips = [re.sub(r'^\s*(\d+[.)]|[-•·])\s*', '', _plain(t, 300)) for t in tips if _plain(t)][:5]
-    if tips: parts.append('## ✅ 이렇게 하세요\n' + '\n'.join('- ' + t for t in tips))
+    if tips: parts.append('## 이렇게 대비하자\n' + '\n'.join('- ' + t for t in tips))
     end = out.get('closing')
     if isinstance(end, dict):
         paras = end.get('paragraphs') or []
         if isinstance(paras, str): paras = [paras]
         paras = [_plain(p) for p in paras if _plain(p)][:3]
-        if paras: parts.append('## 🤝 ' + (_plain(end.get('heading'), 60) or '소보루가 도와드릴게요') + '\n\n' + '\n\n'.join(paras))
+        if paras: parts.append('## ' + (_plain(end.get('heading'), 60) or '맺으며') + '\n\n' + '\n\n'.join(paras))
     hl = _plain(out.get('highlight'), 200)
-    if hl and parts: parts.insert(0, '> 💡 ' + hl)  # 도입 문단 바로 뒤 '핵심만 쏙' 상자
+    # 운영자 2026-11-05: '핵심만 쏙' 상자(토스식)는 매거진에서 뺌 — highlight는 받지만 본문에 넣지 않음
     if intro and parts: parts.insert(0, '\n\n'.join(intro))  # 소제목 없는 도입 (뉴닉처럼 말 걸며 시작)
     if not title or not parts: raise RuntimeError('AI가 기사를 채우지 못했어요')
     cat = out.get('category') if out.get('category') in CATS else KINDS[kind]['category']
@@ -955,11 +955,11 @@ def install(S):
         long = ("[분량·구성] 생활 매거진의 피처 기사다. 블로그 안내문이나 사용 설명서처럼 쓰지 않는다. 본문은 3500~4500자. "
                 "도입(intro)은 소제목 없이 2~3문단: 첫 문장은 독자가 겪을 법한 한 장면으로 시작하고(예: 카드 명세서를 보다 멈칫한 순간), "
                 "이어서 자료의 숫자나 사실로 '왜 지금 이 이야기인지'를 보여 준 뒤, 이 기사가 무엇을 따라가 볼지 한 문장으로 예고한다. "
-                "'이 글은 ~하는 분께', '오늘은 ~을 알아볼게요', '정리해 볼게요' 같은 블로그식 말은 쓰지 않는다. 도입에도 자료에 없는 사실·숫자는 쓰지 않는다. "
+                "'이 글은 ~하는 분께', '오늘은 ~을 알아볼게요', '정리해 볼게요' 같은 블로그식·해요체 말은 쓰지 않는다. 도입에도 자료에 없는 사실·숫자는 쓰지 않는다. "
                 "소제목은 3~5개이고 기사의 흐름을 만든다: 무슨 일이 벌어지고 있나(자료의 숫자·사실) → 왜 그런가(구조·배경을 자료 안에서) → 내 지갑·생활엔 무슨 뜻인가 → 그래서 어떻게 할까. "
                 "소제목은 '~하는 법', '~하기 위한 조건' 같은 안내문 꼴보다 내용을 담은 짧은 문장이나 질문으로 쓴다(예: '무료 체험은 왜 끝나는 날 조용할까'). "
                 "소제목마다 문단 3~5개, 문단은 3~5문장으로 앞 문단을 받아 이어지게 쓰고, 문장마다 새 줄을 띄우지 않는다. 목록·번호는 꼭 필요할 때 한 소제목에서만 points로 쓴다(요점마다 짧은 제목 + 2~4문장). "
-                "숫자는 문장 속 근거로 녹이고, 바로 뒤에 '이게 무슨 뜻이냐면'처럼 내 생활에 어떤 뜻인지 풀어 준다. 어려운 말은 문장 안에서 풀거나 terms로 따로 풀이한다. "
+                "숫자는 문장 속 근거로 녹이고, 바로 뒤에 그것이 독자의 생활에 어떤 뜻인지 기사 문장으로 풀어 준다. 어려운 말은 문장 안에서 풀거나 terms로 따로 풀이한다. "
                 "지어낸 인용·전문가 말·사례 인물은 쓰지 않는다. 같은 말을 되풀이하거나 분량을 채우려고 늘이지 않는다. "
                 "소제목마다 독자가 바로 써먹을 것(확인할 곳, 준비할 것, 물어볼 말)을 자료가 말하는 범위에서 하나 이상 담고, '주의하세요' 같은 뻔한 말로만 끝내지 않는다. "
                 "제목은 기사 제목처럼 핵심 사실이나 물음을 담아 쓰고(무엇이, 왜, 얼마나) 낚시성 표현은 쓰지 않는다. "
@@ -1212,6 +1212,88 @@ def install(S):
         flash('자동 쓰기 설정을 저장했어요.')
         return redirect(url_for('admin_life_ai'))
 
+    # ---- 올라간 글을 잡지 기사체로 다시 쓰기 (운영자 2026-11-05: '지금 올라가 있는 아티클들은 전부 매거진 기사체로 바꿔') ----
+    with conn() as db:
+        db.execute('CREATE TABLE IF NOT EXISTS life_restyle(article_id INTEGER PRIMARY KEY,title TEXT,summary TEXT,body TEXT,created TEXT)')
+    RESTYLE_SYSTEM = ('너는 소비자 라이프스타일 매거진 소보루의 교열 기자다. [글]을 잡지 기사체(평서문 ~다)로 다시 쓴다.\n'
+                      '- 해요체·친구 말투·앱 안내문 말투(토스식)를 모두 평서문으로 바꾼다. 예: "확인해요" → "확인해야 한다", "있어요" → "있다", "~해 보세요" → "~해 볼 만하다".\n'
+                      '- 내용·사실·숫자·순서는 바꾸지 않는다. 숫자는 한 글자도 바꾸지 말고, 새 숫자를 보태지 않는다. 문장을 지어 보태지 않는다.\n'
+                      '- 줄 맨 앞의 표시(## 소제목, ### 요점, - 목록, ※ 용어 풀이)는 그대로 둔다. **강조** 표시도 그대로 둔다.\n'
+                      '- 이모지·느낌표는 지운다. 제목·소제목 끝에 마침표를 찍지 않는다. 독자에게 말을 거는 질문은 서술문으로 바꾼다.\n'
+                      'JSON만: {"title": 제목, "summary": [요약 줄들, 받은 줄 수 그대로], "body": 본문 전체}')
+    EMO_RE = re.compile('[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F]')
+
+    def restyle_prep(body):
+        """AI에 보내기 전 코드로 걷어 냄: '핵심만 쏙' 상자 줄, 소제목 이모지, ✅·🤝 머리말."""
+        out = []
+        for line in (body or '').split('\n'):
+            st = line.strip()
+            if st.startswith('> '): continue
+            if st.startswith('#'):
+                line = EMO_RE.sub('', line).replace('  ', ' ').rstrip()
+                line = re.sub(r'^(#+)\s+', r'\1 ', line)
+                if line.strip() == '## 이렇게 하세요': line = '## 이렇게 대비하자'
+                if line.strip() == '## 소보루가 도와드릴게요': line = '## 맺으며'
+            out.append(line)
+        return re.sub(r'\n{3,}', '\n\n', '\n'.join(out)).strip()
+
+    def restyle(article_id):
+        """글 하나를 기사체로. 'done'·'skip:이유'. 바꾸기 전 글은 life_restyle에 남김(되돌리기용)."""
+        with conn() as db:
+            a = db.execute('SELECT id,title,summary,body FROM articles WHERE id=?', (article_id,)).fetchone()
+            if not a: return 'skip:글 없음'
+            if db.execute('SELECT 1 FROM life_restyle WHERE article_id=?', (article_id,)).fetchone(): return 'skip:이미 바꿈'
+        body = restyle_prep(a['body'])
+        summ = [x for x in (a['summary'] or '').split('\n') if x.strip()]
+        out = chat(RESTYLE_SYSTEM, json.dumps({'title': a['title'], 'summary': summ, 'body': body}, ensure_ascii=False), 9000, AI_TIMEOUT * 3)
+        title = _plain(out.get('title'), 120)
+        new_sum = out.get('summary') or []
+        if isinstance(new_sum, str): new_sum = new_sum.split('\n')
+        new_sum = [_plain(x, 200) for x in new_sum if _plain(x)][:max(len(summ), 1)]
+        new_body = str(out.get('body') or '').strip()
+        if not title or len(new_body) < len(body) * 0.6: return 'skip:AI가 글을 줄여 버림'
+        before = {norm(n) for n in NUM.findall(a['title'] + ' ' + (a['summary'] or '') + ' ' + body)}
+        after = {norm(n) for n in NUM.findall(title + ' ' + ' '.join(new_sum) + ' ' + new_body)}
+        if after - before: return 'skip:숫자가 달라짐 (' + ', '.join(sorted(after - before))[:40] + ')'
+        with conn() as db:
+            db.execute('INSERT OR REPLACE INTO life_restyle VALUES(?,?,?,?,?)', (a['id'], a['title'], a['summary'], a['body'], stamp()))
+            db.execute('UPDATE articles SET title=?,summary=?,body=?,updated=? WHERE id=?', (title, '\n'.join(new_sum) if summ else (a['summary'] or ''), new_body, stamp(), a['id']))
+        return 'done'
+
+    def restyle_all():
+        with conn() as db:
+            ids = [r[0] for r in db.execute("SELECT a.id FROM articles a LEFT JOIN life_restyle r ON r.article_id=a.id WHERE a.status='published' AND r.article_id IS NULL ORDER BY a.id DESC")]
+        st = {'state': 'running', 'total': len(ids), 'done': 0, 'skip': [], 'at': stamp()}
+        put('restyle_job', st)
+        for i in ids:
+            try: r = restyle(i)
+            except Exception as e: r = 'skip:' + str(e)[:60]
+            if r == 'done': st['done'] += 1
+            else: st['skip'].append({'id': i, 'why': r[5:]})
+            st['at'] = stamp(); put('restyle_job', st)
+        st['state'] = 'done'; put('restyle_job', st)
+        return st
+
+    @app.route('/admin/life/ai/restyle', methods=['POST'])
+    @S.admin_only
+    def admin_life_restyle():
+        if not desk.ai_ready(): flash('OpenAI API 키가 없어서 바꿀 수 없어요.'); return redirect(url_for('admin_life_ai'))
+        if request.form.get('act') == 'undo':
+            with conn() as db:
+                rows = db.execute('SELECT * FROM life_restyle').fetchall()
+                for r in rows: db.execute('UPDATE articles SET title=?,summary=?,body=?,updated=? WHERE id=?', (r['title'], r['summary'], r['body'], stamp(), r['article_id']))
+                db.execute('DELETE FROM life_restyle')
+            put('restyle_job', {}); flash(f'글 {len(rows)}개를 바꾸기 전으로 되돌렸어요.'); return redirect(url_for('admin_life_ai'))
+        j = setting('restyle_job', {})
+        if j.get('state') == 'running' and j.get('at', '') > (datetime.datetime.now() - datetime.timedelta(minutes=5)).isoformat():
+            flash('이미 바꾸고 있어요. 잠시 뒤 새로 고쳐 보세요.'); return redirect(url_for('admin_life_ai'))
+        if app.config.get('TESTING'): restyle_all()
+        else: threading.Thread(target=restyle_all, daemon=True).start()
+        flash('올라간 글을 기사체로 바꾸기 시작했어요. 글 하나에 30초쯤 걸려요. 이 화면을 새로 고치면 얼마나 바꿨는지 보여요.')
+        return redirect(url_for('admin_life_ai'))
+
+    app.jinja_env.globals['restyle_job'] = lambda: setting('restyle_job', {})
+
     # 생활정보 글 고치기: AI 글은 저장할 때 같은 자료로 숫자를 다시 검사하고, 검토 필요 글은 확인 체크 없이는 게시하지 않음
     old_edit = app.view_functions['admin_life_edit']
     def admin_life_edit(article_id):
@@ -1231,7 +1313,7 @@ def install(S):
     app.view_functions['admin_life_edit'] = admin_life_edit  # 원래 함수가 이미 admin_only라 로그인 확인은 그쪽에서
 
     FIX_SYSTEM = ('너는 잡지 교열 기자야. [문제]에 적힌 문장을 [자료]대로 고쳐. 자료에 없는 숫자는 새로 넣지 말고, 맞는 숫자를 자료에서 찾을 수 없으면 그 숫자 부분을 빼고 문장을 자연스럽게 다듬어. '
-                  '말투(해요체)와 나머지 내용은 그대로 둬. JSON만: {"fixes": [{"before": "글에 있는 문장 그대로(한 글자도 바꾸지 말고)", "after": "고친 문장"}]}')
+                  '말투(기사체 ~다)와 나머지 내용은 그대로 둬. JSON만: {"fixes": [{"before": "글에 있는 문장 그대로(한 글자도 바꾸지 말고)", "after": "고친 문장"}]}')
 
     def proofread(article_id):
         """재교열: 숫자 검사 + 숫자 짝 검사 → 걸린 문장을 AI가 자료대로 고쳐 저장 → 다시 검사.

@@ -12,7 +12,7 @@
   <form method="post" action="{{ url_for('admin_art_purge') }}" class="admin-actions art-purge"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <label>지금까지 그린 AI 그림을 모두 지워요 (직접 올린 사진은 남아요). 확인 칸에 '지워'라고 적어 주세요 <input name="confirm" placeholder="지워" autocomplete="off" required></label><button class="danger">AI 그림 모두 지우기</button></form>
   <form method="post" action="{{ url_for('admin_art_unsplash') }}" class="admin-actions"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    <label>매거진에서 사진을 안 올린 글에 언스플래시 사진을 지금 붙여요 <input type="checkbox" name="redo" value="1"> 지금 붙은 사진도 새로 고르기</label><button>언스플래시 사진 채우기</button></form>
+    <label>매거진에서 사진을 안 올린 글에 기사 제목에 맞는 언스플래시 사진을 지금 붙여요 <input type="checkbox" name="redo" value="1"> 지금 붙은 사진도 새로 고르기</label><button>언스플래시 사진 채우기</button></form>
   <div class="art-list">
   {% for r in rows %}
     <div class="form-panel art-row" id="art-{{ r.id }}">
