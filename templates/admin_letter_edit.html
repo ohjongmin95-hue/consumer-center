@@ -84,6 +84,11 @@
         <label class="field">이것만 기억해요<input name="lawbox_point" value="{{ sec.lawbox.point }}" maxlength="120"{% if not draft %} readonly{% endif %}></label>
         {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_lawbox" value="1"> 이 칸 빼기</label></div>{% endif %}
       </div>{% endif %}
+      {% if sec.life %}{% set ml = sec.life[0] %}<div class="form-panel lt-ad-item">
+        <p class="lt-ad-num">매거진 기사 축약본 · <a href="https://soboru.co.kr{{ ml.url }}" target="_blank" rel="noopener">{{ ml.title }} ↗</a></p>
+        <label class="field">축약본 <small>(한 줄에 한 문단, 소제목은 줄 앞에 ## — 저장하면 레터에 그대로 실려요)</small><textarea name="life_digest" rows="10"{% if not draft %} readonly{% endif %}>{% for b in ml.digest or [] %}{{ ('## ' ~ b.h) if b.h else b.p }}{{ '\n' if not loop.last }}{% endfor %}</textarea></label>
+        {% if draft %}<div class="lt-ad-checks"><label class="check"><input type="checkbox" name="drop_life" value="1"> 이 칸 빼기</label></div>{% endif %}
+      </div>{% endif %}
       <div class="form-panel">
         <label class="field">맺음말<textarea name="outro" rows="2"{% if not draft %} readonly{% endif %}>{{ L.outro }}</textarea></label>
         <p class="meta">오늘의 경제 용어 {{ ('‘' ~ L.sections.word.word ~ '’') if L.sections.word else '없음' }} · 매거진 {{ (L.sections.life or [])|length }}개는 만들 때의 사전·DB에서 가져왔어요.</p>

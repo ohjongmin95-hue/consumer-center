@@ -166,7 +166,7 @@ def unsplash_call(path, params=None):
 def mag_excerpt(body, limit=900):
     """매거진 기사 본문 앞부분 → [{'h': 소제목} | {'p': 문단}] (사진·영상 줄·마크다운 기호는 뺌, 문단 단위로 limit 글자 안팎)"""
     out, n = [], 0
-    for blk in re.split(r'\n\s*\n', body or ''):
+    for blk in _blocks(body):
         t = blk.strip()
         if not t or re.match(r'^\[(사진|영상)\b', t): continue
         if t.startswith('#'):
@@ -180,6 +180,18 @@ def mag_excerpt(body, limit=900):
     return out
 
 
+def _blocks(body):
+    """문단 나누기. 소제목 줄 바로 밑에 붙은 줄(목록 등)은 따로 떼어 냄 (운영자 2026-11-05: 소제목에 목록이 붙어 잘려 보임)"""
+    out = []
+    for blk in re.split(r'\n\s*\n', body or ''):
+        lines = blk.strip().split('\n')
+        if lines and lines[0].lstrip().startswith('#') and len(lines) > 1:
+            out.append(lines[0]); rest = lines[1:]
+            out += [l for l in rest if l.strip()] if all(re.match(r'^\s*([-*•]|\d+[.)])\s', l) for l in rest if l.strip()) else ['\n'.join(rest)]
+        else: out.append(blk)
+    return out
+
+
 def _sentences(t, n):
     parts = re.split(r'(?<=[.!?])\s+', t)
     return ' '.join(parts[:n])
@@ -188,16 +200,23 @@ def _sentences(t, n):
 def mag_digest(body, limit=1600):
     """매거진 기사 한 편의 축약본 → [{'h'} | {'p'}] (운영자 2026-11-05: 레터에서는 매거진 글 하나를 축약본으로).
     앞부분이 아니라 글 전체를 줄임: 첫 문단은 세 문장까지, 소제목마다 첫 문단 두 문장. 사진·영상 줄, 목록·요점·용어 풀이 줄, 마크다운 기호는 뺌."""
-    out, n, took = [], 0, False
-    for blk in re.split(r'\n\s*\n', body or ''):
+    out, n, took, items = [], 0, False, 0
+    for blk in _blocks(body):
         t = blk.strip()
         if not t or re.match(r'^\[(사진|영상)\b', t): continue
         if re.match(r'^#{1,2}\s', t):
             h = W._plain(t.lstrip('#').strip(), 60)
-            if h and out: out.append({'h': h}); took = False
+            if h and out:
+                if 'h' in out[-1]: out.pop()  # 글 없이 이어진 소제목은 뒤엣것만
+                out.append({'h': h}); took = False; items = 0
             continue
         t = re.sub(r'\*\*|__', '', ' '.join(t.split()))
-        if took or re.match(r'^(###|[-*•※>]|\d+[.)]\s)', t): continue
+        if took or re.match(r'^(###|[※>])', t): continue
+        if re.match(r'^([-*•]|\d+[.)])\s', t):  # 목록만 있는 소제목은 앞 두 줄을 문장으로
+            if not out or 'h' not in out[-1] and items == 0: continue
+            t = re.sub(r'^([-*•]|\d+[.)])\s*', '', t); items += 1
+            if items >= 2: took = True
+            out.append({'p': t}); n += len(t); continue
         t = _sentences(t, 2 if out else 3)
         if n and n + len(t) > limit: break
         out.append({'p': t}); n += len(t); took = True
@@ -1105,6 +1124,12 @@ def install(S):
                     if f'comment_{k}' in form: c[k] = dict(c[k], body=' '.join(form.get(f'comment_{k}', '').split())[:900])
                 sec['comment'] = c
         if sec.get('market') and form.get('drop_market'): sec.pop('market')
+        if sec.get('life'):  # 운영자 2026-11-05: 매거진 축약본을 직접 고치기 (잘려 보이면)
+            if form.get('drop_life'): sec.pop('life')
+            elif 'life_digest' in form:
+                rows = [' '.join(x.split()) for x in form.get('life_digest', '').replace('\r', '').split('\n')]
+                dg = [{'h': W._plain(r.lstrip('#').strip(), 80)} if r.startswith('#') else {'p': r[:900]} for r in rows if r and r.lstrip('#').strip()]
+                sec['life'] = [dict(sec['life'][0], digest=dg)]
         if sec.get('briefs'):
             briefs = []
             for i, b in enumerate(sec['briefs']):
@@ -1572,6 +1597,7 @@ def install(S):
                     r = send_issue(lid, 'admin')
                     flash({'sent': '구독자에게 보냈어요.', 'sending': '보내기 시작했어요. 구독자가 많으면 몇 분 걸려요.'}.get(r['status'], '보내지 못했어요: ' + r['reason']))
             return redirect(url_for('admin_letter_edit', lid=lid))
+        one_magazine(L)
         subject, html, _ = email_parts(L, 'preview')
         html = html.replace(site_url('/static/'), request.host_url.rstrip('/') + '/static/')  # 미리보기 그림은 지금 서버에서 (운영 메일은 운영 주소)
         with conn() as db:
