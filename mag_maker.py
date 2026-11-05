@@ -154,13 +154,13 @@ def has_audio(path):
         return False
 
 
-# 나레이션 (운영자 2026-11-06: 싸게 앵커처럼) — OpenAI 음성. 장면 글을 mp3로 받아 영상 소리 대신 넣음. 장면보다 길면 조금 빠르게 읽힘
+# 나레이션 (운영자 2026-11-06: 앵커 말고 20대 여성이 소개하듯, 너무 빠르지 않게) — OpenAI 음성. 장면 글을 mp3로 받아 영상 소리 대신 넣음. 장면보다 길면 살짝만 빠르게 읽힘
 TTS_URL = 'https://api.openai.com/v1/audio/speech'
 TTS_MODELS = ('gpt-4o-mini-tts', 'tts-1')
-TTS_VOICE = 'coral'
-TTS_STYLE = '한국어 뉴스 앵커처럼 또렷하고 차분하게 읽는다. 문장 끝은 자연스럽게 내리고, 숫자는 정확하게 읽는다.'
+TTS_VOICE = 'nova'
+TTS_STYLE = '20대 한국 여성이 친구에게 요즘 소식을 소개하듯 밝고 자연스럽게 말한다. 뉴스 앵커처럼 딱딱하게 읽지 않는다. 서두르지 말고 여유 있는 속도로, 문장 사이를 살짝 쉬어 가며 말하고, 숫자는 또박또박 읽는다.'
 NARRATION_MAX = 300
-TEMPO_MAX = 1.35
+TEMPO_MAX = 1.1
 
 
 def speak(text, path, key, voice=None):
