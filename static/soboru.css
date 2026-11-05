@@ -3214,3 +3214,8 @@ main img,main video,main iframe,main table{max-width:100%}
 @media (max-width:900px){.ml-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:36px 14px}}
 @media (max-width:600px){.ml-head{padding-top:40px}.ml-tabs{gap:8px 16px;font-size:12px}.ml-grid>a>b{font-size:16px}.ml-grid>a>p{display:none}}
 .ml-ph:has(>.ma-type)>em,.nm-page .nm-hots2 .nm-ph:has(>.nm-type)>em{display:none}
+/* 운영자 2026-11-05: 표지 사진·소개 글까지만 귤색, HOT ISSUE부터 아래는 따뜻한 흰 바탕 */
+.nm-page .lt-hero{background:#EF920E!important}
+.nm-page .lt-hero .nm-intro h1{color:#fff!important}
+.nm-page .lt-hero .nm-intro p{color:#fff;opacity:.92}
+.nm-page .lt-hero .nm-intro p b{color:#fff}
