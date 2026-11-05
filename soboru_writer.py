@@ -135,7 +135,9 @@ STYLE = ('[문체] 라이프스타일 매거진의 피처 기자가 쓰는 칼�
 # 말한 주체(회사·기관·업계)를 출처로. 그리고 독자는 자료를 모르니 '자료에 ~가 없어 알 수 없다' 같은 문장도 쓰지 않음
 SOURCE = ('[출처 쓰는 법] 소보루 매거진도 언론이다. 다른 언론을 출처로 들지 않는다. "보도에 따르면", "최근 보도에 따르면", "언론 보도에 따르면", "외신에 따르면", "○○일보·○○뉴스에 따르면", "~라고 보도했다"는 쓰지 않는다.\n'
           '- 뉴스에 나온 사실은 그 말을 한 주체를 출처로 쓴다: 회사가 밝힌 것이면 "여기어때에 따르면", 기관·통계면 "한국소비자원에 따르면"·"통계청 가계동향조사에 따르면", 업계 전반의 이야기면 "여행업계에 따르면". 주체를 알 수 없으면 출처 말 없이 사실만 쓰거나 그 내용을 뺀다.\n'
-          '[자료 이야기 금지] 독자는 기자가 받은 자료를 모른다. "자료에는", "자료만으로는", "~의 실제 수치가 없어", "~는 알 수 없다", "확인되지 않는다", "정확한 수치는 나와 있지 않다"처럼 무엇이 없는지·모르는지를 쓰지 않는다. 없는 내용은 말없이 빼고, 있는 사실로만 쓴다.\n')
+          '[자료 이야기 금지] 독자는 기자가 받은 자료를 모른다. "자료에는", "자료만으로는", "~의 실제 수치가 없어", "~는 알 수 없다", "확인되지 않는다", "정확한 수치는 나와 있지 않다"처럼 무엇이 없는지·모르는지를 쓰지 않는다. 없는 내용은 말없이 빼고, 있는 사실로만 쓴다.\n'
+          '[출처·숫자는 구체적으로] 매거진 기사도 기사다. 숫자를 쓰는 문장에는 그 숫자를 낸 기관·회사·조사 이름(예: "한국교통안전공단 분석에 따르면", "한국소비자원이 접수한 피해구제 신청은")과 정확한 숫자·단위를 함께 쓴다. '
+          '"자료가 ~라고 전했다", "관련 자료는", "한 조사에서는"처럼 누가 낸 숫자인지 흐리게 쓰지 않는다. 출처 이름을 [자료]에서 찾을 수 없는 숫자는 쓰지 않는다.\n')
 VAGUE = re.compile(r'보도에 따르면|보도했다|보도됐다|일보에 따르면|뉴스에 따르면|외신에 따르면|언론에 따르면|매체에 따르면|(?<![가-힣] )(?<![가-힣])자료(?:에는|만으로는)|수치가 없어|알 수 없다|나와 있지 않')
 SYSTEM = ('너는 소보루 매거진(소비자 라이프스타일 매거진)의 기자다. 잡지 기사체(평서문 ~다)로, 해요체·친구 말투·앱 안내문 말투(토스식) 없이 쓴다. 어려운 말은 문장 안에서 풀고, 소비자에게 쓸모 있는 분석 기사를 쓴다.\n'
           + STYLE + SOURCE +
@@ -257,6 +259,26 @@ def check_text(text, facts):
 
 
 # ---- AI 글 → 화면 글 -----------------------------------------------------------
+# 기자가 받은 자료를 독자에게 말하는 문장 (운영자 2026-11-05: '제공된 뉴스 요약만으로 ~는 확인할 수 없다'는 매거진 기사에 있으면 안 됨)
+META_STRONG = re.compile(r'제공된|뉴스 요약|요약만으로|기사만으로|자료(?:에는|에서는|만으로|에 따르면|상으로|에 없|에도 없|가 없)|주어진 (?:자료|정보|뉴스)')
+META_WEAK = re.compile(r'확인할 수 없|확인되지 않|알 수 없|나와 있지 않|밝혀지지 않|드러나지 않|언급되지 않|구체적인 (?:수치|내용)은')
+META_CTX = re.compile(r'자료|요약|뉴스|기사|보도|정보|수치|통계|내용')
+
+
+def drop_meta(text):
+    """자료 이야기 문장을 통째로 지움 (소제목 줄은 그대로, 문장이 다 빠진 줄은 지움)"""
+    out = []
+    for line in (text or '').split('\n'):
+        st = line.strip()
+        if not st or st.startswith('#') or st.startswith('['): out.append(line); continue
+        lead = re.match(r'^(\s*(?:[-*•※>]|\d+[.)])\s*)', line); head = lead.group(1) if lead else ''
+        parts = re.split(r'(?<=[.!?])\s+', line[len(head):].strip())
+        keep = [x for x in parts if not (META_STRONG.search(x) or (META_WEAK.search(x) and META_CTX.search(x)))]
+        if len(keep) == len(parts): out.append(line)
+        elif keep: out.append(head + ' '.join(keep))
+    return re.sub(r'\n{3,}', '\n\n', '\n'.join(out)).strip()
+
+
 def _plain(s, n=2000, hl=False):
     s = re.sub(r'https?://\S+', '', str(s or ''))           # 링크는 화면에서 따로
     if hl: s = re.sub(r'\*\*([^*\n]{1,60}?)\*\*', '\x00\\1\x01', s)   # 본문 문단은 **형광펜 강조**만 남김
@@ -1061,6 +1083,7 @@ def install(S):
                 got['facts'] = dict(got['facts'], **CONST)
             else: got = collect(kind, topic)
             title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic), kind)
+            summary, body = drop_meta(summary), drop_meta(body)  # 자료 이야기 문장은 쓰지 않음 (운영자 2026-11-05)
         except Skip as e: res = {'status': 'skip', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         except RuntimeError as e: res = {'status': 'error', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         title, summary, body = (clean_personal(desk.scrub, t) for t in (title, summary, body))  # 연락처처럼 보이는 것은 지움
@@ -1286,6 +1309,14 @@ def install(S):
         # 운영자 2026-11-05 (2차): 피처 기사 문체로 한 번 더 — 글마다 몇 번째 문체로 바꿨는지 (1 = 기사체, 2 = 피처 문체)
         db.execute('CREATE TABLE IF NOT EXISTS life_restyle_ver(article_id INTEGER PRIMARY KEY,ver INTEGER)')
         db.execute('INSERT OR IGNORE INTO life_restyle_ver SELECT article_id,1 FROM life_restyle')
+        # 운영자 2026-11-05: 이미 올라간 글의 '제공된 뉴스 요약만으로 ~확인할 수 없다' 같은 문장을 지움 (AI 없이, 한 번). 바꾸기 전 글은 life_restyle에
+        if not db.execute("SELECT 1 FROM soboru_settings WHERE key='writer_meta_scrub' AND value='2'").fetchone():
+            for a in db.execute('SELECT id,title,summary,body FROM articles').fetchall():
+                summ, body = drop_meta(a['summary'] or ''), drop_meta(a['body'] or '')
+                if (summ, body) != (re.sub(r'\n{3,}', '\n\n', (a['summary'] or '')).strip(), re.sub(r'\n{3,}', '\n\n', (a['body'] or '')).strip()):
+                    db.execute('INSERT OR IGNORE INTO life_restyle VALUES(?,?,?,?,?)', (a['id'], a['title'], a['summary'], a['body'], stamp()))
+                    db.execute('UPDATE articles SET summary=?,body=?,updated=? WHERE id=?', (summ, body, stamp(), a['id']))
+            db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('writer_meta_scrub','2')")
     RESTYLE_VER = 3  # 3 = '보도에 따르면'·'자료에 없어 알 수 없다' 문장 고치기 (그런 문장이 있는 글만 AI로, 나머지는 번호만 올림)
     RESTYLE_SYSTEM = ('너는 소비자 라이프스타일 매거진 소보루의 교열 기자다. [글]을 잡지 기사체(평서문 ~다)로 다시 쓴다.\n'
                       '- 해요체·친구 말투·앱 안내문 말투(토스식)를 모두 평서문으로 바꾼다. 예: "확인해요" → "확인해야 한다", "있어요" → "있다", "~해 보세요" → "~해 볼 만하다".\n'
