@@ -1,0 +1,33 @@
+{% extends 'console.html' %}
+{% block title %}광고 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+{# 운영자 2026-11-05: ND CMS 관리 메뉴처럼 — 매거진 광고 자리 세 곳에 배너 사진·주소·기간 #}
+<main class="page mz-cms"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">광고</h1></div>
+  <p class="ms-lead">매거진에 광고 자리가 세 곳 있어요. 사진과 주소를 넣고 켜면 기간 동안만 보여요. 가로로 긴 사진(약 4:1, 1200×300)이 잘 맞아요.</p>
+  {% for k, name, ad, on in slots %}
+  <section class="mg-sec mg-ad" id="ad-{{ k }}">
+    <h2>{{ name }}<span class="mg-st{{ ' on' if on }}">{{ '보이는 중' if on else ('꺼 둠' if not ad.get('on') else '기간 밖') }}</span></h2>
+    <form method="post" enctype="multipart/form-data" class="mg-ad-f">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="slot" value="{{ k }}">
+      <label class="mg-ad-ph{{ ' has' if ad.get('img') }}">{% if ad.get('img') %}<img src="{{ url_for('mag_ad_img', name=ad['img']) }}" alt="">{% endif %}<span>{{ '사진 바꾸기' if ad.get('img') else '광고 사진 올리기' }}</span><input type="file" name="img" accept="image/jpeg,image/png,image/webp" hidden data-mg-pic></label>
+      <div class="mg-ad-in">
+        <label class="mg-f">누르면 갈 주소<input name="url" value="{{ ad.get('url', '') }}" placeholder="https://" inputmode="url"></label>
+        <label class="mg-f">사진 설명 (화면 읽기용)<input name="alt" value="{{ ad.get('alt', '') }}" maxlength="80" placeholder="예: ○○ 가을 할인"></label>
+        <div class="mg-grid2"><label class="mg-f">시작일<input type="date" name="start" value="{{ ad.get('start', '') }}"></label><label class="mg-f">종료일<input type="date" name="end" value="{{ ad.get('end', '') }}"></label></div>
+        <label class="mg-sw mg-sw-row"><input type="checkbox" name="on" value="1"{% if ad.get('on') %} checked{% endif %}><i aria-hidden="true"></i><b>광고 켜기</b></label>
+        {% if ad.get('img') %}<p class="mg-help">누른 횟수 <b>{{ '{:,}'.format(ad.get('clicks') or 0) }}</b>번</p>{% endif %}
+        <button type="submit" class="primary mg-save">저장</button>
+      </div>
+    </form>
+    {% if ad %}<form method="post" class="mg-del"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="slot" value="{{ k }}"><input type="hidden" name="act" value="del"><button type="submit">이 광고 빼기</button></form>{% endif %}
+  </section>
+  {% endfor %}
+</div></main>
+<script>
+document.querySelectorAll('[data-mg-pic]').forEach(function (i) { i.onchange = function () {
+  var f = i.files[0], l = i.closest('label'); if (!f) return; var im = l.querySelector('img') || l.insertBefore(document.createElement('img'), l.firstChild);
+  im.src = URL.createObjectURL(f); l.classList.add('has'); l.querySelector('span').textContent = '저장하면 바뀌어요';
+}; });
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{# 운영자 2026-11-05: 매거진 바닥글 '제보·문의' — 독자가 기사 제보·문의·광고 제휴 글을 보냄. 관리자 > 접수글에 쌓임 #}
+{% block title %}제보·문의 | {{ ui_text('letter.mz_title', '소보루 매거진') }}{% endblock %}
+{% block description %}소보루 매거진에 기사 제보, 문의, 광고·제휴 제안을 보내요.{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Archivo+Black&display=swap">{% endblock %}
+{% block content %}
+<main class="ml-page mc-page" id="top">
+  <header class="ml-head">
+    <h1>Contact</h1>
+    <p>기사 제보, 문의, 광고·제휴 제안을 보내 주세요</p>
+  </header>
+  <div class="mc-wrap">
+  {% if done %}
+    <section class="mc-done" role="status">
+      <h2>잘 받았어요</h2>
+      <p>적어 주신 이메일로 답장을 드릴게요. 보내 주신 글은 {{ keep }}일 동안만 보관해요.</p>
+      <a href="{{ url_for('letter_home') }}">매거진으로 돌아가기 →</a>
+    </section>
+  {% else %}
+    <form method="post" class="mc-form" novalidate>
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      {% if err %}<p class="mc-err" role="alert">{{ err }}</p>{% endif %}
+      <fieldset class="mc-kinds"><legend>무엇을 보내나요</legend>
+        {% for k in kinds %}<label><input type="radio" name="kind" value="{{ k }}"{% if form.get('kind', kinds[0]) == k %} checked{% endif %}><span>{{ k }}</span></label>{% endfor %}
+      </fieldset>
+      <label class="mc-f"><span>이름 <small>(비워도 돼요)</small></span><input name="name" maxlength="40" value="{{ form.get('name', '') }}" autocomplete="name"></label>
+      <label class="mc-f">답장 받을 이메일<input name="email" type="email" maxlength="120" required value="{{ form.get('email', '') }}" autocomplete="email" inputmode="email"></label>
+      <label class="mc-f">내용<textarea name="body" rows="8" maxlength="5000" required placeholder="언제, 어디서, 무슨 일이 있었는지 적어 주시면 좋아요">{{ form.get('body', '') }}</textarea></label>
+      <label class="mc-hp" aria-hidden="true">웹사이트<input name="website" tabindex="-1" autocomplete="off"></label>
+      <label class="mc-agree"><input type="checkbox" name="agree" value="1"{% if form.get('agree') %} checked{% endif %}><span>답장을 위해 이름·이메일을 받고 {{ keep }}일 뒤 지우는 데 동의해요. <a href="{{ url_for('policy_page', page='privacy') }}">개인정보처리방침</a></span></label>
+      <button type="submit" class="mc-send">보내기</button>
+    </form>
+  {% endif %}
+  </div>
+  <a class="ma-up" href="#top" aria-label="맨 위로">↑</a>
+</main>
+{% endblock %}

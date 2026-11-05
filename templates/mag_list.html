@@ -35,6 +35,7 @@
     {% if page < pages %}<a href="{{ url_for('life', category=cat or None, page=page + 1) }}">NEXT →</a>{% endif %}
   </nav>
   {% endif %}
+  {{ mag_ad('list') if mag_ad is defined }}
   <a class="ma-letter" href="{{ url_for('letter_home') }}#sub"><span><small>SOBORU LETTER</small><strong>{{ ui('mag.letter', '이런 이야기, 아침마다 메일로 받아 볼래요?') }}</strong></span><em>{{ ui('letter.mz_bn_go', '무료로 구독하기') }} →</em></a>
   <a class="ma-up" href="#top" aria-label="맨 위로">↑</a>
 </main>

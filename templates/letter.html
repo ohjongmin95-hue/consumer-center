@@ -17,6 +17,8 @@
   <section class="lt-hero">
     {# 운영자 2026-11-05: 표지 사진 다섯 장이 번갈아 바뀜 (관리자 > 소보루 매거진 > 첫 화면 편집). 표지 위 'THIS ISSUE' 글 띠는 뺌 #}
     {% set hero_urls = mag_hero_urls() if mag_hero_urls is defined else [asset('img/mag-hero.jpg')] %}
+    {# 운영자 2026-11-05: 들어올 때마다 첫 사진을 아무거나로 (늘 같은 사진부터 X) — 순서는 그대로, 시작만 돌림 #}
+    {% set st = range(hero_urls|length)|random if hero_urls|length > 1 else 0 %}{% set hero_urls = hero_urls[st:] + hero_urls[:st] %}
     <div class="nm-g">
       <div class="nm-hero" data-slides="{{ hero_urls|length }}">
         {% for u in hero_urls %}<span class="nm-slide{{ ' on' if loop.first }}"><img src="{{ u }}" alt=""{% if not loop.first %} loading="lazy"{% endif %}></span>{% endfor %}
@@ -38,6 +40,7 @@
     <a class="nm-more" href="{{ url_for('life') }}">{{ ui('letter.mz_hot_more', '더 많은 이야기') }} →</a>
   </section>
   {% endif %}
+  {{ mag_ad('main') if mag_ad is defined }}
   {% if mag|length > 5 %}{% set f = mag[5] %}
   <a class="nm-feat" href="{{ url_for('life_article', article_id=f['id']) }}">{{ cover(f, 0) }}<span class="nm-ft"><small>{{ ui_text('letter.mz_feat', 'IN FOCUS') }} · {{ EN.get(f['category'], 'LIFE') }}</small><strong>{{ f['title'] }}</strong></span></a>
   {% endif %}
@@ -74,7 +77,7 @@
       </div>
     </div>
     <div class="nm-g nm-back">{{ ui('letter.archive_title', '지난 레터') }}{% for L in rows[:3] %} · <a href="{{ url_for('letter_issue', no=L.no) }}">No.{{ '%02d' % L.no }} {{ L.title }}</a>{% else %} · {{ ui('letter.mz_noback', '첫 레터를 준비하고 있어요') }}{% endfor %}</div>
-    <div class="nm-g nm-fb"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="104" height="20"><span>{{ ui('letter.mz_fb', '소비를 보는 새로운 루트 · 소비자를위한신문') }} · <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('letter.mz_terms', '이용약관') }}</a> · <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.mz_privacy', '개인정보처리방침') }}</a> · <a href="https://consumerjebo.co.kr/admin/magazine" rel="nofollow">{{ ui('letter.mz_admin', '관리자') }}</a></span></div>
+    <div class="nm-g nm-fb"><img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="104" height="20"><span>{{ ui('letter.mz_fb', '소비를 보는 새로운 루트 · 소비자를위한신문') }} · <a href="{{ url_for('policy_page', page='terms') }}">{{ ui('letter.mz_terms', '이용약관') }}</a> · <a href="{{ url_for('policy_page', page='privacy') }}">{{ ui('letter.mz_privacy', '개인정보처리방침') }}</a>{% set mc = mag_conf() if mag_conf is defined else None %}{% if mc %}{% if mc.inbox %} · <a href="{{ url_for('mag_contact') }}">{{ ui('letter.mz_contact', '제보·문의') }}</a>{% endif %}{% if mc.email %} · {{ mc.email }}{% endif %}{% for k, n in [('instagram', 'Instagram'), ('youtube', 'YouTube'), ('threads', 'Threads'), ('x', 'X'), ('blog', 'Blog')] if mc.sns[k] %} · <a href="{{ mc.sns[k] }}" target="_blank" rel="noopener me">{{ n }}</a>{% endfor %}{% endif %} · <a href="https://consumerjebo.co.kr/admin/magazine" rel="nofollow">{{ ui('letter.mz_admin', '관리자') }}</a></span></div>
   </section>
   {% endif %}
   {% endfor %}
