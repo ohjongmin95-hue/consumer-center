@@ -397,6 +397,19 @@ class SiteTest(unittest.TestCase):
         self.assertIn('사진으로 보는 제보', admin.get('/admin/hero-photos').get_data(as_text=True))
         admin.post('/admin/case-shots/%d' % rows[2]['id'], data={'_csrf': self.csrf(admin, '/admin/hero-photos')})
         self.assertEqual(self.client.get('/shot/' + rows[2]['stored']).status_code, 404)
+        # 운영자 2026-11-05: 얼굴은 무조건 모자이크 — 얼굴 자리는 굵게, 얼굴이 있다는데 자리를 못 대면 안 씀
+        def ai(body):
+            with mock.patch.object(case_shots.companydesk, 'ai_key_for', return_value='k'), mock.patch.object(case_shots.companydesk, 'post_json', return_value=(200, {'choices': [{'message': {'content': json.dumps(body)}}]})):
+                return case_shots.find_boxes(b'x')
+        self.assertEqual(ai({'boxes': [], 'faces': [], 'face_count': 1}), 'face')
+        found = ai({'boxes': [], 'faces': [{'x': 0.1, 'y': 0.1, 'w': 0.3, 'h': 0.4}], 'face_count': 1})
+        self.assertEqual(len(found['faces']), 1)
+        face = Image.new('RGB', (800, 600), 'white'); d = ImageDraw.Draw(face)
+        for x in range(0, 800, 4): d.line([(x, 0), (x, 600)], fill='black' if x % 8 else 'red')
+        face = Image.open(io.BytesIO(case_shots.make_shot(face, found))).convert('RGB')
+        row = [face.getpixel((x, 150)) for x in range(80, 240, 2)]; far = [face.getpixel((x, 420)) for x in range(400, 560, 2)]
+        self.assertLess(max(map(sum, row)) - min(map(sum, row)), 90)  # 얼굴 자리는 뭉개짐
+        self.assertGreater(max(map(sum, far)) - min(map(sum, far)), 200)  # 나머지 줄무늬는 그대로
         with self.site.conn() as db:
             self.assertEqual(db.execute('SELECT hidden FROM case_shots WHERE id=?', (rows[2]['id'],)).fetchone()[0], 1)
             db.execute('DELETE FROM case_shots')
