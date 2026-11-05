@@ -1,0 +1,28 @@
+{% extends 'console.html' %}
+{% block title %}통계 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+{% set EN = {'쇼핑': 'SHOPPING', '통신': 'MOBILE', '여행': 'TRAVEL', '음식': 'FOOD', '금융': 'MONEY', '자동차': 'CAR', '생활': 'LIVING', '뷰티': 'BEAUTY', '리콜': 'RECALL'} %}
+<div class="md">
+  <div class="md-head"><div><p class="md-date">Statistics</p><h2>통계</h2></div></div>
+  <div class="md-kpi md-kpi2">
+    <div><b>{{ '{:,}'.format(total) }}</b><span><em>Views</em>전체 조회</span></div>
+    <div><b>{{ n }}</b><span><em>Published</em>게시한 기사</span></div>
+  </div>
+  <div class="md-grid">
+    <section class="md-sec">
+      <div class="md-sh"><h3>Top 10<span>많이 읽은 기사</span></h3></div>
+      {% if top %}<ol class="md-rank">{% for r in top %}<li><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}"><span><b>{{ r['title'] }}</b><small>{{ EN.get(r['category'], 'LIFE') }} · {{ mag_editor_name(r['id']) }} · {{ '{:,}'.format(r['views'] or 0) }} views</small></span></a></li>{% endfor %}</ol>{% else %}<p class="md-none">아직 게시한 기사가 없어요</p>{% endif %}
+    </section>
+    <div>
+      <section class="md-sec">
+        <div class="md-sh"><h3>Categories<span>분야별</span></h3></div>
+        <ul class="md-bars">{% set mx = (by_cat[0][1][1] if by_cat else 0) or 1 %}{% for c, v in by_cat %}<li><span>{{ EN.get(c, c) }}<small>{{ c }} · {{ v[0] }}개</small></span><b>{{ '{:,}'.format(v[1]) }}</b><i style="width:{{ (v[1] / mx * 100)|round(1) }}%"></i></li>{% endfor %}</ul>
+      </section>
+      <section class="md-sec">
+        <div class="md-sh"><h3>Editors<span>에디터별</span></h3></div>
+        <ul class="md-bars">{% set mx = (by_ed[0][1][1] if by_ed else 0) or 1 %}{% for name, v in by_ed %}<li><span>{{ name }}<small>{{ v[0] }}개</small></span><b>{{ '{:,}'.format(v[1]) }}</b><i style="width:{{ (v[1] / mx * 100)|round(1) }}%"></i></li>{% endfor %}</ul>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

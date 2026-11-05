@@ -3241,6 +3241,7 @@ main img,main video,main iframe,main table{max-width:100%}
 .ma-sum ul{padding-left:0;list-style:none}.ma-sum li{position:relative;padding-left:22px}.ma-sum li::before{content:"—";position:absolute;left:0;color:var(--ma-or)}
 /* 운영자 2026-11-05: 본문 사진 ([사진 주소 | 설명]) */
 .sb-article-body .sb-fig{margin:36px 0}.sb-article-body .sb-fig img{display:block;width:100%;height:auto}
+.sb-article-body .sb-vid video{display:block;width:100%;height:auto;max-height:80vh;background:#000}
 .sb-article-body .sb-fig figcaption{margin-top:10px;font-size:13px;line-height:1.6;color:#777}
 /* 운영자 2026-11-05: 매거진 표지 사진 다섯 장이 천천히 번갈아 (겹쳐 사라지며, 살짝 다가오는 움직임) */
 .nm-page .nm-hero[data-slides] .nm-slide{opacity:0;transition:opacity 2s ease}

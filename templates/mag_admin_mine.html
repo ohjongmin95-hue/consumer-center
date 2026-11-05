@@ -1,0 +1,16 @@
+{% extends 'console.html' %}
+{% block title %}내 기사 | 소보루 매거진{% endblock %}
+{% block content %}
+{% set st_name = {'published': '게시 중', 'scheduled': '예약', 'draft': '초안', 'pending': '승인 대기'} %}
+<main class="page mz-cms"><div class="wrap">
+  <div class="mz-lhead"><h1 class="page-title">내 기사</h1><a class="mz-cta" href="{{ url_for('admin_life', new=1) }}">새 기사 쓰기</a></div>
+  <ul class="mz-rows">
+  {% for r in rows %}
+    <li><a href="{{ url_for('admin_life_edit', article_id=r['id']) if (not who or r['status'] in ('draft', 'pending')) else url_for('life_article', article_id=r['id']) }}"{% if who and r['status'] not in ('draft', 'pending') %} target="_blank" rel="noopener"{% endif %}>
+      <span class="mz-rt"><b>{{ r['title'] }}</b><small>{{ r['category'] }} · {{ (r['published_at'] or r['created'])[:10].replace('-', '.') }}{% if r['status'] == 'published' %} · 조회 {{ '{:,}'.format(r['views'] or 0) }}{% endif %}</small></span>
+      <span class="mz-tag {{ r['status'] }}">{{ st_name.get(r['status'], '초안') }}</span>
+    </a></li>
+  {% else %}<li class="mz-empty">아직 쓴 기사가 없어요. 첫 기사를 써 보세요.</li>{% endfor %}
+  </ul>
+</div></main>
+{% endblock %}

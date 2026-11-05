@@ -1335,7 +1335,7 @@ def install(S):
             with conn() as db: rows = db.execute("SELECT no,sent_at FROM letters WHERE status='sent' ORDER BY no DESC LIMIT 500").fetchall()
             base = S.canonical_url('')
             extra = ''.join('<url><loc>%s</loc>%s</url>' % (base + u, '<lastmod>%s</lastmod>' % d if d else '')
-                            for u, d in [('/letter', None)] + [(f"/letter/{r['no']}", (r['sent_at'] or '')[:10]) for r in rows])
+                            for u, d in [('/letter', None)] + [(f"/letter/{r['no']}", (r['sent_at'] or '')[:10]) for r in rows] if S.own_page(base + u))  # 제보센터 사이트맵엔 레터 빼기 (매거진이 대표)
             resp.set_data(resp.get_data(as_text=True).replace('</urlset>', extra + '</urlset>'))
             return resp
         app.view_functions['sitemap_xml'] = sitemap_xml
