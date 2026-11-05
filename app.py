@@ -162,6 +162,9 @@ def magazine_off_jebo():
     host=request.host.split(':')[0].lower()
     if host.endswith('consumerjebo.co.kr') and (request.path=='/life' or request.path.startswith('/life/')):
         return redirect('https://soboru.co.kr'+request.full_path.rstrip('?'),301)
+    # 레터 글도 매거진 쪽 (같은 글이 두 주소에 뜨지 않게). 구독 버튼 같은 POST는 그대로 받음
+    if host.endswith('consumerjebo.co.kr') and request.method=='GET' and (request.path=='/letter' or request.path.startswith('/letter/')):
+        return redirect('https://soboru.co.kr'+request.full_path.rstrip('?'),301)
 @app.before_request
 def no_www():
     # www가 붙은 주소는 www 없는 주소로 옮긴다: 검색엔진이 같은 글을 두 주소로 따로 모으지 않게
@@ -302,6 +305,7 @@ def canonical_url(path=None):
     # 운영 도메인(www 포함)으로 들어오면 주소를 https://대표주소 로 통일. 다른 곳(미리보기·테스트)은 들어온 주소 그대로
     host=request.host.split(':')[0].lower();path=request.path if path is None else path
     if letter_host(host):return 'https://soboru.co.kr'+('/' if path=='/letter' else path)  # 소보루 매거진: 첫 화면 대표 주소는 soboru.co.kr/
+    if (host in JEBO_HOSTS or host.endswith('consumerjebo.co.kr')) and (path in ('/life','/letter') or path.startswith(('/life/','/letter/'))):return 'https://soboru.co.kr'+('/' if path=='/letter' else path)  # 운영자 2026-11-05: 매거진·레터는 소보루 매거진이 대표 (제보센터 사이트맵·RSS에서 빠짐)
     if host in JEBO_HOSTS or host in LIVE_HOSTS:
         site=owner_site(path)
         if site:return 'https://'+site+path

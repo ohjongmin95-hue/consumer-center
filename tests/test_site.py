@@ -565,7 +565,12 @@ class SiteTest(unittest.TestCase):
         # 운영자 2026-11-05: 매거진 검색 노출 — soboru.co.kr/ 이 매거진 첫 화면 그대로, /letter는 / 로
         self.assertIn('class="lt-top nm-top"', self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True))
         self.assertEqual(self.client.get('/letter', base_url='https://soboru.co.kr').headers['Location'], '/')
-        for base in ('https://soboru.co.kr', 'https://letter.soboru.co.kr', 'https://consumerjebo.co.kr'):
+        # 운영자 2026-11-05: 제보센터 주소의 레터는 매거진으로 (같은 글이 두 주소에 뜨지 않게), 제보센터 사이트맵·RSS에도 매거진 글 없음
+        self.assertEqual(self.client.get('/letter?v=1', base_url='https://consumerjebo.co.kr').headers['Location'], 'https://soboru.co.kr/letter?v=1')
+        jmap = self.client.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        self.assertNotIn('/life', jmap); self.assertNotIn('/letter', jmap); self.assertIn('https://consumerjebo.co.kr/reports', jmap)
+        self.assertNotIn('/life/', self.client.get('/rss.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
+        for base in ('https://soboru.co.kr', 'https://letter.soboru.co.kr'):
             page = self.client.get('/letter?v=1', base_url=base).get_data(as_text=True)
             self.assertIn('class="lt-top nm-top"', page, base)  # 매거진 머리 (귤색 띠 + 영문 메뉴, 운영자 2026-11-04)
             self.assertNotIn('site-footer', page, base)  # 바닥글 없음
