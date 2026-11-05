@@ -1273,7 +1273,7 @@ def install(S):
             rows = db.execute("SELECT a.id,a.title,a.status,a.category,a.created,x.* FROM ai_articles x JOIN articles a ON a.id=x.article_id AND a.origin='ai' ORDER BY a.id DESC LIMIT 60").fetchall()
         kinds = [dict(KINDS[k], key=k, ready=kind_ready(k)[0], why=kind_ready(k)[1]) for k in dict.fromkeys(ORDER + EXTRA) if k not in PAUSED]
         items = [dict(ai_info(r), id=r['id'], title=r['title'], status=r['status'], category=r['category']) for r in rows]
-        return render_template('admin_life_ai.html', kinds=kinds, items=items, cfg=settings(), ai_ready=desk.ai_ready(), logs=setting('writer_log', [])[:10],
+        return render_template('admin_life_ai.html', kinds=kinds, items=items, cfg=settings(), cats_n=len(CATS), series_n=len(SERIES), ai_ready=desk.ai_ready(), logs=setting('writer_log', [])[:10],
                                per_run=PER_RUN, sources={k: f()[0] for k, f in SOURCES.items()})
 
     def done(r):
@@ -1291,7 +1291,7 @@ def install(S):
         if j.get('state') == 'done':
             put('writer_job', {}); return done(j)
         if j.get('state') != 'running': return redirect(url_for('admin_life_ai'))
-        return render_template('admin_life_ai.html', waiting=KINDS.get(j.get('kind'), {}).get('name', ''), kinds=[], items=[], cfg=settings(), ai_ready=True, logs=[], per_run=PER_RUN, sources={})
+        return render_template('admin_life_ai.html', waiting=KINDS.get(j.get('kind'), {}).get('name', ''), kinds=[], items=[], cfg=settings(), cats_n=len(CATS), series_n=len(SERIES), ai_ready=True, logs=[], per_run=PER_RUN, sources={})
 
     @app.route('/admin/life/ai/settings', methods=['POST'])
     @S.admin_only

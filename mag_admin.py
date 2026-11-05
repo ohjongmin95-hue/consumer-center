@@ -106,8 +106,11 @@ def install(S):
         return mag_hero_urls()[0]
 
     def mag_hot(mag):
-        """첫 화면 HOT ISSUE 네 개: 운영자가 고른 글(게시 중인 것만) 먼저, 모자라면 최신 글로 채움."""
-        picks = [i for i in setting('mag_hot', []) if isinstance(i, int)][:4]
+        """첫 화면 HOT ISSUE 네 개: 운영자가 고른 글(게시 중인 것만, 이틀 동안) 먼저, 모자라면 메인 기사다운 순서(mag_lineup)로 채움."""
+        # 운영자가 고른 글은 고른 날부터 이틀만 (운영자 2026-11-05: 새 글이 나오면 메인 기사다운 글로 바뀌게)
+        at = setting('mag_hot_at', '')
+        fresh = bool(at) and at[:10] >= (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        picks = [i for i in setting('mag_hot', []) if isinstance(i, int)][:4] if fresh else []
         rows = []
         if picks:
             with conn() as db:
@@ -264,7 +267,7 @@ def install(S):
                 for k in ('hot1', 'hot2', 'hot3', 'hot4'):
                     v = request.form.get(k, type=int)
                     if v and v not in ids: ids.append(v)
-                put('mag_hot', ids); flash('HOT ISSUE를 저장했어요.' if ids else 'HOT ISSUE를 최신 글 순서로 되돌렸어요.')
+                put('mag_hot', ids); put('mag_hot_at', stamp()); flash('HOT ISSUE를 저장했어요. 이틀 동안 이대로 두고, 그 뒤엔 새 글 중 메인 기사다운 글로 바뀌어요.' if ids else 'HOT ISSUE를 자동으로 고르게 되돌렸어요.')
             return redirect(url_for('mag_screen', page='main', open=1))
         return redirect(url_for('mag_screen', page='main'))
 
