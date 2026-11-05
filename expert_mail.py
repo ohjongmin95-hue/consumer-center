@@ -106,7 +106,7 @@ def build(c, firm='', key=''):
 <p style="margin:0;text-align:center;font-size:13px;color:#8b95a1;{F}">{_t(c.get('cta_sub'))}</p>
 <p style="margin:32px 0 0;font-size:15px;line-height:24px;color:#4e5968;{F}">{_t(sub(c.get('sign')))}</p>
 </td></tr>
-<tr><td style="padding:24px 32px 28px;background:#f9fafb;border-radius:0 0 24px 24px;font-size:12px;line-height:19px;color:#8b95a1;{F}">소비자제보센터 by SOBORU · <a href="{BASE}" target="_blank" style="color:#4e5968">consumerjebo.co.kr</a><br>contact@consumerjebo.co.kr · 서울시 강남구 논현로 310-1 4층<br>이 메일은 자문단 참여를 제안드리기 위해 한 번 보내 드렸습니다.</td></tr>
+<tr><td style="padding:24px 32px 28px;background:#f9fafb;border-radius:0 0 24px 24px;font-size:12px;line-height:19px;color:#8b95a1;{F}">소비자제보센터 by SOBORU · <a href="{BASE}" target="_blank" style="color:#4e5968">consumerjebo.co.kr</a><br>contact@consumerjebo.co.kr · 서울시 강남구 논현로 310-1 4층 401호<br>이 메일은 자문단 참여를 제안드리기 위해 한 번 보내 드렸습니다.</td></tr>
 </table></td></tr></table>'''
 
 

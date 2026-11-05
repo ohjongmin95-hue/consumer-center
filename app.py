@@ -74,6 +74,8 @@ with conn() as db:
         db.execute("DELETE FROM site_lists WHERE key='layout_guide'")
     # 검색 노출 문구 개편: 예전 기본 제목·설명이 그대로 저장돼 있으면 지워서 새 기본 문구를 쓰게 함 (직접 고친 문구는 그대로 둠)
     # 진행 단계 이름 '조정 진행' → '기업 답변 도착' (센터는 분쟁을 조정하지 않음)
+    # 주소에서 '(역삼동, 정송빌딩)'을 빼고 호수까지 (운영자 2026-11-05)
+    db.execute("UPDATE site_content SET value=REPLACE(value,'4층(역삼동, 정송빌딩)','4층 401호') WHERE key='operator.address'")
     db.execute("UPDATE cases SET status='기업 답변 도착' WHERE status='조정 진행'")
     db.execute("DELETE FROM site_content WHERE key='status.n5' AND value='조정 진행'")
     db.execute("DELETE FROM site_content WHERE key='seo.home_title' AND value='소보루(SOBORU)'")  # 2026-10-28 SEO: 검색 결과 제목에 무엇을 하는 곳인지 함께
