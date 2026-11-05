@@ -459,13 +459,41 @@
       var st = centerStack(ctx, s, {tsize: 92, ssize: 42, ink: '#fff', sub: 'rgba(255,255,255,.92)', pill: 'rgba(255,255,255,.22)', pillInk: '#fff', shadow: true});
       st.draw(Math.min(Y1 - st.h, Math.max(560, 760 - st.h / 2)));
     },
+    // 속 장 (운영자 2026-11-05 '앞이 깔끔하니까 여기도 깔끔하게'): 모든 장이 같은 머리(로고·점), 흰 바탕, 왼쪽 정렬 한 줄기 — 꼬리표 → 제목 → 짧은 귤색 선 → 글
+    head: function (ctx, n, N) { bg(ctx, '#fff'); drawLogo(ctx, 'brown', 540, 44, 40, 'center'); dots(ctx, n, N, OR, '#EDE6DC'); },
     body: function (ctx, s, img, n, N) {
-      bg(ctx, '#FAF6EF'); drawLogo(ctx, 'brown', 540, 44, 40, 'center'); dots(ctx, n, N, OR, '#E6DACB');
-      var st = centerStack(ctx, s, {tsize: 72, ssize: 44, ink: '#191512', sub: OR, pill: '#FFE9C7', pillInk: ORD, body: '#3A2E25', avail: Y1 - 180});
-      st.draw(180 + Math.max(0, (Y1 - 180 - st.h) / 2));
+      this.head(ctx, n, N);
+      var T = TT(ctx, s.title, 76, TW), top = 220, room = Y1 - top, B = null;
+      var nh = s.sub ? fitSize(ctx, s.sub, 110, TW) + 30 : 0, head = (s.tag ? 70 : 0) + nh + textH(T) + 70;
+      if (paras(s.items).length) for (var z = 46; z >= 34; z -= 2) { B = layout(ctx, paras(s.items).join('\n\n'), z, 500, 800, TW, {lh: 1.62, ls: -1}); if (head + textH(B) <= room) break; }
+      var h = head + (B ? textH(B) : 0), y = top + Math.max(0, (room - h) * 0.42);
+      if (s.tag) { ctx.font = F(800, 30); ctx.fillStyle = OR; ctx.fillText((n < 10 ? '0' : '') + n + '  ' + s.tag, X, y + 30); y += 70; }
+      if (nh) { bigNum(ctx, s.sub, X, y, 110, OR); y += nh; }
+      y += drawText(ctx, T, X, y, '#191512');
+      ctx.fillStyle = OR; ctx.fillRect(X, y + 26, 56, 5); y += 70;
+      if (B) drawText(ctx, B, X, y, '#3A2E25', {boldColor: ORD});
     },
-    quote: function (ctx, s, img, n, N) { quotePage(ctx, s, img, n, N, {bg: '#FAF6EF', logo: 'brown', ink: '#191512', sub: '#8A6F5A'}); },
-    last: function (ctx, s, img, n, N) { lastPage(ctx, s, n, N, {bg: '#FAF6EF', top: true, logo: 'brown', sub: ORD, kick: OR, kickInk: '#fff', card: '#fff', cardLine: '#EADFCF', num: OR, numInk: '#fff', tip: '#191512', end: '#191512', mark: '#FFD99E'}); }
+    quote: function (ctx, s, img, n, N) {
+      this.head(ctx, n, N);
+      var T = layout(ctx, s.title, 80, 900, 900, TW, {lh: 1.32, ls: -4}), h = 150 + textH(T) + (s.sub ? 90 : 0), y = 220 + Math.max(0, (Y1 - 220 - h) / 2);
+      ctx.font = F(900, 200); ctx.fillStyle = OR; ctx.fillText('“', X - 8, y + 150); y += 170;
+      y += drawText(ctx, T, X, y, '#191512');
+      if (s.sub) { ctx.font = F(700, 38); ctx.fillStyle = '#8A6F5A'; ctx.fillText('— ' + s.sub, X, y + 70); }
+    },
+    last: function (ctx, s, img, n, N) {
+      this.head(ctx, n, N);
+      var E = TT(ctx, s.title || '헷갈리면 저장해 두세요', 80), tips = paras(s.items).slice(0, 4).map(function (t) { return layout(ctx, t, 42, 600, 800, TW - 90, {lh: 1.42, ls: -1}); });
+      var rows = tips.reduce(function (a, T) { return a + textH(T) + 64; }, 0), h = 70 + textH(E) + 60 + rows, y = 220 + Math.max(0, (Y1 - 60 - 220 - h) * 0.42);
+      ctx.font = F(800, 30); ctx.fillStyle = OR; ctx.fillText(s.tag || '이것만 챙겨요', X, y + 30); y += 70;
+      y += drawText(ctx, E, X, y, '#191512') + 60;
+      tips.forEach(function (T, k) {
+        ctx.fillStyle = '#EDE6DC'; ctx.fillRect(X, y, TW, 2);
+        ctx.font = F(800, 40); ctx.fillStyle = OR; ctx.fillText(String(k + 1), X, y + 32 + 40);
+        drawText(ctx, T, X + 70, y + 32, '#191512'); y += textH(T) + 64;
+      });
+      if (tips.length) { ctx.fillStyle = '#EDE6DC'; ctx.fillRect(X, y, TW, 2); }
+      if (s.sub) { ctx.font = F(700, 26); ctx.fillStyle = '#8A6F5A'; ctx.fillText(s.sub, X, Y1); }
+    }
   };
   // 6) 다크: 사진을 꽉 채우고 아래를 어둡게, 흰 글씨를 아래에
   CARD.dark = {
