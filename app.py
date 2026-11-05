@@ -485,7 +485,7 @@ def csrf():
 app.jinja_env.globals['csrf_token']=csrf
 @app.before_request
 def protect():
-    if request.method=='POST' and request.path!='/auth/apple/callback' and not hmac.compare_digest(str(request.headers.get('X-CSRFToken') or request.form.get('_csrf','')),str(csrf())): abort(400)  # 애플 로그인 응답(form_post)은 state 값으로 위조를 막음 (members.py)
+    if request.method=='POST' and request.path!='/auth/apple/callback' and not (request.path.startswith('/api/maker/') and request.headers.get('Authorization','').startswith('Bearer ')) and not hmac.compare_digest(str(request.headers.get('X-CSRFToken') or request.form.get('_csrf','')),str(csrf())): abort(400)  # 애플 로그인 응답(form_post)은 state 값으로 위조를 막음 (members.py). 자동 카드뉴스·릴스 보내기(/api/maker/)는 토큰으로 막음 (mag_made.py)
 @app.after_request
 def headers(resp):
     resp.headers['X-Content-Type-Options']='nosniff';resp.headers['X-Frame-Options']='SAMEORIGIN' if g.get('mag_studio') or request.endpoint=='mag_screen' else 'DENY';resp.headers['Referrer-Policy']='strict-origin-when-cross-origin'
@@ -3022,6 +3022,7 @@ import mag_admin;mag_admin.install(types.SimpleNamespace(**globals()))  # 소보
 import mag_seo;mag_seo.install(types.SimpleNamespace(**globals()))  # 소보루 매거진 검색 노출: soboru.co.kr 첫 화면·사이트맵·RSS·소유확인 (mag_seo.py)
 import mag_assist;mag_assist.install(types.SimpleNamespace(**globals()))  # 매거진 기사 쓰기 AI 도움: 초안·다듬기·맞춤법·제목·요약 (mag_assist.py)
 import mag_manage;mag_manage.install(types.SimpleNamespace(**globals()))  # 매거진 관리: 광고·환경설정·접수글 (mag_manage.py)
+import mag_made;mag_made.install(types.SimpleNamespace(**globals()))  # 만든 카드뉴스·릴스 보관함 (mag_made.py)
 import mag_maker;mag_maker.install(types.SimpleNamespace(**globals()))  # 카드뉴스·릴스 만들기 (mag_maker.py)
 import mag_editors;mag_editors.install(types.SimpleNamespace(**globals()))  # 소보루 매거진 에디터 계정·승인·통계 (mag_editors.py)
 company_fix.fix_old_cases(conn,link_company)  # 예전 제보의 큰 기업 이름 오타도 고침 (company_fix.py)

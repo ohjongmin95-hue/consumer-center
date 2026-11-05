@@ -442,3 +442,27 @@ body.console.mag-studio .ms-main .mg-msg-act form:first-child button{height:40px
 .mk-cap{display:flex;flex-direction:column;gap:8px}.mk-cap textarea{font-size:14px;line-height:1.6}
 .mk-cap button{padding:12px;border:1px solid var(--ms-ink);background:#fff;font-weight:800;font-size:14px;cursor:pointer}
 .mk-scene{display:flex;flex-direction:column;gap:8px}
+/* 만든 것 보관함 (운영자 2026-11-05) */
+.md-who{display:flex;flex-wrap:wrap;gap:16px;margin:-8px 0 24px;font-size:14px}
+.md-who a{color:var(--ms-sub);text-decoration:none}
+.md-who a[aria-current]{color:var(--ms-ink);font-weight:700;text-decoration:underline;text-underline-offset:4px}
+.md-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:28px 20px}
+.md-tile{display:grid;gap:8px;color:inherit;text-decoration:none;min-width:0}
+.md-th{position:relative;display:block;aspect-ratio:4/5;background:var(--ms-side);overflow:hidden}
+.md-th img,.md-th video{width:100%;height:100%;object-fit:cover;display:block}
+.md-th em{position:absolute;left:0;top:0;padding:4px 8px;background:#EF920E;color:#fff;font-style:normal;font-size:12px;font-weight:700}
+.md-tile b{font-size:15px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere}
+.md-tile small{font-size:12px;color:var(--ms-mute)}
+.md-tile:hover b{text-decoration:underline;text-underline-offset:3px}
+.md-api{margin-top:40px}
+.md-back{margin:0 0 12px;font-size:14px}.md-back a{color:var(--ms-sub);text-decoration:none}
+.md-meta{margin:-8px 0 24px;font-size:14px;color:var(--ms-sub);overflow-wrap:anywhere}
+.md-cards{list-style:none;margin:0 0 24px;padding:0 0 8px;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory}
+.md-cards li{flex:0 0 min(300px,72vw);scroll-snap-align:start}
+.md-cards img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border:1px solid var(--ms-line)}
+.md-reel{margin:0 0 24px}.md-reel video{width:min(360px,100%);aspect-ratio:9/16;background:#111;display:block}
+.md-act{display:grid;gap:12px;justify-items:start;margin:0 0 32px}
+.md-dl{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;text-decoration:none}
+.md-form{display:grid;gap:12px;max-width:640px;padding-top:24px;border-top:1px solid var(--ms-line)}
+.md-form .text-btn{justify-self:start}
+.md-del{margin-top:32px}
