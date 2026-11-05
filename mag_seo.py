@@ -59,7 +59,10 @@ def install(S):
         return {'@context': 'https://schema.org', '@type': 'ItemList', 'name': '소보루 매거진 메뉴',
                 'itemListElement': [{'@type': 'SiteNavigationElement', 'position': i + 1, 'name': n.strip(), 'url': u} for i, (n, u) in enumerate(nav)]}
 
-    app.jinja_env.globals.update(mag_seo_text=mag_seo_text, mag_verification=mag_verification, mag_categories=mag_categories, mag_nav_ld=mag_nav_ld)
+    # 운영자 2026-11-05: 첫 화면 'Aisles'에 생활(LIVING)·금융(MONEY)까지 모든 분야를 보여 줌 (글이 아직 없는 분야도)
+    MAG_ORDER = ['쇼핑', '음식', '생활', '금융', '통신', '여행', '자동차', '리콜']
+    mag_aisles = [c for c in MAG_ORDER if c in LIFE_CATEGORIES] + [c for c in LIFE_CATEGORIES if c not in MAG_ORDER]
+    app.jinja_env.globals.update(mag_aisles=mag_aisles, mag_seo_text=mag_seo_text, mag_verification=mag_verification, mag_categories=mag_categories, mag_nav_ld=mag_nav_ld)
 
     def day(ts):
         return (ts or '')[:10] or datetime.date.today().isoformat()

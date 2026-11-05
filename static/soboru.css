@@ -2963,7 +2963,7 @@ main img,main video,main iframe,main table{max-width:100%}
 .nm-cat{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;padding-block:96px 120px}
 .nm-cat h2 small{display:block;margin-top:14px;font-size:16px;font-weight:600;letter-spacing:0;color:var(--ink);opacity:.6}
 .nm-cat h2{margin:0;font-size:clamp(60px,6.4vw,92px);line-height:1.1;font-weight:700;letter-spacing:-.03em;color:var(--or)}
-.nm-cat ul{list-style:none;margin:24px 0 0;padding:0;display:flex;flex-direction:column;gap:30px}
+.nm-cat ul{list-style:none;margin:24px 0 0;padding:0;display:flex;flex-direction:column;gap:24px}
 .nm-cat li{position:relative}
 .nm-cat li>a{font-size:26px;font-weight:700;letter-spacing:.01em;transition:color .2s}
 .nm-cat li>a small{margin-left:12px;font-size:14px;font-weight:600;color:var(--ink);opacity:.5}
@@ -3243,9 +3243,9 @@ main img,main video,main iframe,main table{max-width:100%}
 .sb-article-body .sb-fig{margin:36px 0}.sb-article-body .sb-fig img{display:block;width:100%;height:auto}
 .sb-article-body .sb-fig figcaption{margin-top:10px;font-size:13px;line-height:1.6;color:#777}
 /* 운영자 2026-11-05: 매거진 표지 사진 다섯 장이 천천히 번갈아 (겹쳐 사라지며, 살짝 다가오는 움직임) */
-.nm-page .nm-hero[data-slides] .nm-slide{opacity:0;transition:opacity 1.4s ease}
+.nm-page .nm-hero[data-slides] .nm-slide{opacity:0;transition:opacity 2s ease}
 .nm-page .nm-hero[data-slides] .nm-slide.on{opacity:1}
-.nm-page .nm-hero[data-slides] .nm-slide>img{transform:scale(1.06);transition:transform 6.5s linear}
+.nm-page .nm-hero[data-slides] .nm-slide>img{transform:scale(1.06);transition:transform 10s linear}
 .nm-page .nm-hero[data-slides] .nm-slide.on>img{transform:scale(1)}
 .nm-page .nm-hero .nm-big{z-index:2}
 .nm-hdots{position:absolute;left:50%;bottom:22px;z-index:3;display:flex;gap:8px;transform:translateX(-50%)}
