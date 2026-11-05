@@ -6337,6 +6337,60 @@ class SiteTest(unittest.TestCase):
         self.assertIn('[3:a]asetpts', filt)  # 나레이션 없는 장면은 전처럼 자기 영상 소리
         self.assertNotIn('[0:a]', filt)
 
+    def test_made_archive(self):
+        # 운영자 2026-11-05: 만든 카드뉴스·릴스 보관함 — 관리자 화면 저장 + 자동(토큰)으로 보내기, 목록·보기·내려받기·지우기
+        import io, os, zipfile
+        from unittest import mock
+        from PIL import Image
+        admin = self.login_admin()
+        self.assertEqual(self.client.get('/admin/magazine/made').status_code, 302)
+        tok = self.csrf(admin, '/admin/magazine/made')
+        H = {'X-CSRFToken': tok}
+        b = io.BytesIO(); Image.new('RGB', (108, 135), 'orange').save(b, 'PNG'); png = b.getvalue()
+        j = admin.post('/admin/magazine/made/new', json={'kind': 'card', 'title': '렌즈 직구\n괜찮을까', 'caption': '캡션 줄', 'source': 'https://n.news.naver.com/x'}, headers=H).get_json()
+        i = j['id']
+        self.assertFalse(admin.post('/admin/magazine/made/%d/file?name=01.png' % i, data=b'not png', headers=H).get_json()['ok'])
+        self.assertFalse(admin.post('/admin/magazine/made/%d/file?name=../x.png' % i, data=png, headers=H).get_json()['ok'])
+        for n in ('01.png', '02.png'): self.assertTrue(admin.post('/admin/magazine/made/%d/file?name=%s' % (i, n), data=png, headers=H).get_json()['ok'])
+        self.assertNotIn('렌즈 직구 괜찮을까', admin.get('/admin/magazine/made').get_data(as_text=True))  # 다 올리기 전엔 안 보임
+        self.assertTrue(admin.post('/admin/magazine/made/%d/done' % i, headers=H).get_json()['ok'])
+        page = admin.get('/admin/magazine/made').get_data(as_text=True)
+        self.assertIn('렌즈 직구 괜찮을까', page); self.assertIn('2장', page); self.assertIn('set-maker-token.sh', page)
+        self.assertIn('만든 것 보관함', page)
+        view = admin.get('/admin/magazine/made/%d' % i).get_data(as_text=True)
+        self.assertIn('캡션 줄', view); self.assertIn('ZIP', view)
+        self.assertEqual(admin.get('/admin/magazine/made/%d/01.png' % i).data, png)
+        self.assertEqual(self.client.get('/admin/magazine/made/%d/01.png' % i).status_code, 302)  # 관리자만
+        z = zipfile.ZipFile(io.BytesIO(admin.get('/admin/magazine/made/%d.zip' % i).data))
+        self.assertEqual(sorted(z.namelist()), ['caption.txt', 'soboru-card-%d-01.png' % i, 'soboru-card-%d-02.png' % i])
+        # 자동으로 만드는 쪽: 토큰 없으면 막힘, 있으면 CSRF 없이 보냄
+        self.assertEqual(self.client.post('/api/maker/items', json={'kind': 'reel'}).status_code, 400)  # 토큰 머리글이 없으면 CSRF로 막힘
+        with mock.patch.dict(os.environ, {'MAKER_API_TOKEN': 't' * 32}):
+            self.assertEqual(self.client.post('/api/maker/items', json={'kind': 'reel'}, headers={'Authorization': 'Bearer wrong'}).status_code, 401)
+            A = {'Authorization': 'Bearer ' + 't' * 32}
+            r = self.client.post('/api/maker/items', json={'kind': 'reel', 'title': '블랙박스 이슈', 'caption': 'c'}, headers=A).get_json(); k = r['id']
+            mp4 = b'\x00\x00\x00\x18ftypmp42' + b'\x00' * 100
+            self.assertTrue(self.client.post('/api/maker/items/%d/file?name=reel.mp4' % k, data=mp4[:50], headers=A).get_json()['ok'])
+            self.assertTrue(self.client.post('/api/maker/items/%d/file?name=reel.mp4&part=1' % k, data=mp4[50:], headers=A).get_json()['ok'])
+            self.assertFalse(self.client.post('/api/maker/items/%d/file?name=01.png' % k, data=png, headers=A).get_json()['ok'])  # 릴스엔 그림 X
+            self.assertTrue(self.client.post('/api/maker/items/%d/done' % k, headers=A).get_json()['ok'])
+            items = self.client.get('/api/maker/items', headers=A).get_json()['items']
+            self.assertEqual(items[0]['title'], '블랙박스 이슈'); self.assertEqual(items[0]['maker'], 'auto')
+        self.assertEqual(admin.get('/admin/magazine/made/%d/reel.mp4' % k).data, mp4)
+        page = admin.get('/admin/magazine/made?by=auto').get_data(as_text=True)
+        self.assertIn('블랙박스 이슈', page); self.assertNotIn('렌즈 직구', page)
+        admin.post('/admin/magazine/made/%d/act' % k, data={'_csrf': tok, 'act': 'reel'})
+        with self.site.conn() as db:
+            v = db.execute('SELECT video FROM mag_reels WHERE title=?', ('블랙박스 이슈',)).fetchone()[0]
+            db.execute('DELETE FROM mag_reels WHERE title=?', ('블랙박스 이슈',))
+        self.assertEqual(admin.get(v).status_code, 200)
+        (self.site.UPLOAD / 'art' / v.rsplit('/', 1)[1]).unlink(missing_ok=True)
+        admin.post('/admin/magazine/made/%d/act' % i, data={'_csrf': tok, 'act': 'save', 'title': '새 제목', 'caption': '새 캡션'})
+        self.assertIn('새 캡션', admin.get('/admin/magazine/made/%d' % i).get_data(as_text=True))
+        for x in (i, k): admin.post('/admin/magazine/made/%d/act' % x, data={'_csrf': tok, 'act': 'del'})
+        self.assertEqual(admin.get('/admin/magazine/made/%d' % i).status_code, 404)
+        self.assertFalse((self.site.UPLOAD / 'made' / str(k)).exists())
+
     def test_magazine_maker(self):
         # 운영자 2026-11-05: 카드뉴스·릴스 만들기 — 브라우저가 그린 글씨 판 + 서버 ffmpeg로 릴스 MP4
         import base64, io, shutil, time, mag_maker

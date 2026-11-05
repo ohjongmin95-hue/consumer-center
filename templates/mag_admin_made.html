@@ -1,0 +1,27 @@
+{% extends 'console.html' %}
+{% block title %}만든 것 보관함 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+{# 운영자 2026-11-05: 만든 카드뉴스·릴스가 사라지지 않게 서버에 저장해 두고 목록으로 봄. 클로드가 시간마다 자동으로 만든 것도 여기로 (mag_made.py) #}
+<main class="page mz-cms"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">만든 것 보관함</h1></div>
+  <p class="ms-lead">카드뉴스·릴스 만들기에서 내려받거나 만든 것, 자동으로 만든 것이 모두 여기에 저장돼요. 눌러서 다시 보고, 캡션을 복사하고, 내려받을 수 있어요.</p>
+  <nav class="mk-tabs" aria-label="종류">
+    <a href="{{ url_for('mag_made_list', by=who or None) }}"{% if not kind %} aria-current="page"{% endif %}>전체 <small>{{ counts.values()|sum }}</small></a>
+    {% for k, label in kinds.items() %}<a href="{{ url_for('mag_made_list', kind=k, by=who or None) }}"{% if kind == k %} aria-current="page"{% endif %}>{{ label }} <small>{{ counts.get(k, 0) }}</small></a>{% endfor %}
+  </nav>
+  <p class="md-who">{% for v, label in (('', '모두'), ('auto', '자동으로 만든 것'), ('admin', '직접 만든 것')) %}<a href="{{ url_for('mag_made_list', kind=kind or None, by=v or None) }}"{% if who == v %} aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</p>
+  {% if rows %}
+  <ul class="md-grid">
+  {% for r in rows %}
+    <li><a class="md-tile" href="{{ url_for('mag_made_view', i=r.id) }}">
+      <span class="md-th md-{{ r.kind }}">{% if r.kind == 'reel' %}<video src="{{ url_for('mag_made_file', i=r.id, name='reel.mp4') }}#t=0.5" preload="metadata" muted playsinline></video>{% elif r.files %}<img src="{{ url_for('mag_made_file', i=r.id, name=r.files[0]) }}" alt="" loading="lazy">{% endif %}
+        <em>{{ kinds[r.kind] }}{% if r.kind == 'card' %} · {{ r.files|length }}장{% endif %}</em></span>
+      <b>{{ r.title or '제목 없음' }}</b>
+      <small>{{ r.created[:16]|replace('T', ' ') }} · {{ '자동' if r.maker == 'auto' else '직접' }}</small>
+    </a></li>
+  {% endfor %}
+  </ul>
+  {% else %}<p class="mg-none">아직 저장된 게 없어요</p>{% endif %}
+  {% if not has_token %}<p class="mk-help md-api">자동으로 만든 것을 받으려면 서버에서 <code>sudo bash /opt/soboru/app/deploy/set-maker-token.sh</code> 를 한 번 실행해 주세요. 보낼 때 쓸 열쇠(토큰)가 만들어져요.</p>{% endif %}
+</div></main>
+{% endblock %}

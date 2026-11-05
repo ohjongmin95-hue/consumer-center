@@ -328,6 +328,7 @@ def install(S):
             tts_key = desk.ai_key_for('mag_maker')
             if not tts_key: shutil.rmtree(jd, ignore_errors=True); return jsonify(ok=False, error='OpenAI 키가 없어 나레이션을 만들 수 없어요.'), 503
         (jd / 'state').write_text('running')
+        meta = {k: str(d.get(k) or '') for k in ('title', 'caption', 'source')}
 
         def run():
             try:
@@ -340,6 +341,10 @@ def install(S):
                 ok = r.returncode == 0 and part.exists() and part.stat().st_size > 0
                 if ok:
                     shutil.move(str(part), str(folder / name)); (jd / 'state').write_text('done:' + name)
+                    save = app.extensions.get('made_save_reel')  # 운영자 2026-11-05: 만든 릴스는 보관함에도 (mag_made.py)
+                    if save:
+                        try: save(folder / name, meta['title'], meta['caption'], meta['source'])
+                        except Exception: app.logger.exception('릴스 보관함 저장 실패')
                 else:
                     app.logger.warning('릴스 만들기 실패: %s', r.stderr.decode('utf-8', 'replace')[-2000:]); (jd / 'state').write_text('error')
             except Exception:

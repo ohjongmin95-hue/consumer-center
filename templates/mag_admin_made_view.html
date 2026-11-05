@@ -1,0 +1,34 @@
+{% extends 'console.html' %}
+{% block title %}{{ r.title or kinds[r.kind] }} | 만든 것 보관함{% endblock %}
+{% block content %}
+<main class="page mz-cms"><div class="wrap">
+  <p class="md-back"><a href="{{ url_for('mag_made_list', kind=r.kind) }}">← 만든 것 보관함</a></p>
+  <div class="page-intro"><h1 class="page-title">{{ r.title or '제목 없음' }}</h1></div>
+  <p class="md-meta">{{ kinds[r.kind] }}{% if r.kind == 'card' %} {{ r.files|length }}장{% endif %} · {{ r.created[:16]|replace('T', ' ') }} · {{ '자동으로 만든 것' if r.maker == 'auto' else '직접 만든 것' }}{% if r.source %} · 출처 {% if r.source.startswith('http') %}<a href="{{ r.source }}" target="_blank" rel="noopener">{{ r.source[:60] }}</a>{% else %}{{ r.source[:80] }}{% endif %}{% endif %}</p>
+  {% if r.kind == 'reel' %}
+  <div class="md-reel"><video src="{{ url_for('mag_made_file', i=r.id, name='reel.mp4') }}" controls playsinline preload="metadata"></video></div>
+  {% else %}
+  <ol class="md-cards">{% for n in r.files %}<li><a href="{{ url_for('mag_made_file', i=r.id, name=n, dl=1) }}" title="이 장만 내려받기"><img src="{{ url_for('mag_made_file', i=r.id, name=n) }}" alt="{{ loop.index }}번째 장" loading="lazy"></a></li>{% endfor %}</ol>
+  {% endif %}
+  <div class="md-act">
+    <a class="primary md-dl" href="{{ url_for('mag_made_file', i=r.id, name='reel.mp4', dl=1) if r.kind == 'reel' else url_for('mag_made_zip', i=r.id) }}">{{ 'MP4 내려받기' if r.kind == 'reel' else '카드 모두 내려받기 (ZIP)' }}</a>
+    {% if r.kind == 'reel' %}<form method="post" action="{{ url_for('mag_made_act', i=r.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" name="act" value="reel">매거진 첫 화면 릴스 칸에 올리기</button></form>{% endif %}
+  </div>
+  <form method="post" action="{{ url_for('mag_made_act', i=r.id) }}" class="md-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label class="mg-f">제목<input name="title" maxlength="120" value="{{ r.title }}"></label>
+    <label class="mg-f">인스타 캡션<textarea name="caption" id="md-cap" rows="10">{{ r.caption }}</textarea></label>
+    <button type="button" class="text-btn" id="md-copy">캡션 복사</button>
+    <button class="primary mg-save" name="act" value="save">저장</button>
+  </form>
+  <form method="post" action="{{ url_for('mag_made_act', i=r.id) }}" class="mg-del md-del" onsubmit="return confirm('보관함에서 지울까요? 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button name="act" value="del">보관함에서 지우기</button></form>
+</div></main>
+<script>
+(function () {
+  var b = document.getElementById('md-copy'), t = document.getElementById('md-cap');
+  b.onclick = function () {
+    var done = function () { b.textContent = '복사했어요'; setTimeout(function () { b.textContent = '캡션 복사'; }, 1600); };
+    try { navigator.clipboard.writeText(t.value).then(done, function () { t.select(); document.execCommand('copy'); done(); }); } catch (e) { t.select(); document.execCommand('copy'); done(); }
+  };
+})();
+</script>
+{% endblock %}
