@@ -124,7 +124,7 @@ SYSTEM = ('너는 소보루(소비자 정보 플랫폼)의 매일 아침 경제�
           '- 링크·출처·주소·HTML·마크다운 기호는 쓰지 않는다(화면에서 따로 붙인다). 목록이나 팁 개수를 숫자로 세지 않는다. "소보루 브리핑" 같은 고정된 이름을 제목에 붙이지 않는다.\n'
           'JSON 객체 하나로만 답한다: {"subject": 메일 제목 30자 안팎(오늘 가장 눈길 끄는 소식), "intro": 여는 글 2~3문장 — "빵순이·빵돌이님,"으로 시작해(독자를 부를 땐 늘 빵순이·빵돌이님, "이웃님"은 쓰지 않는다) 에디터 코멘트 이슈를 우리 생활 장면으로 꺼내고 마지막 문장은 질문으로 끝낸다(예: "…우리는 어떻게 대처해야 할까요?"). 언론·기사·보도·매체 이야기는 하지 않는다, "outro": 맺음말 1~2문장, '
           '"items": [{"no": 뉴스 번호, "title": 뉴스 제목처럼 핵심 숫자·주체를 담은 30~45자 제목(질문형·감탄·따옴표 인용 가능, 어울리면 끝에 이모지 하나, 예 "미국 기준금리 3.75~4.00% 동결, 12월 추가 인상 가능성은? 🏦"), "body": 딱 3문장(150~230자) — 첫 문장은 언제·누가·무엇을 했는지 핵심 숫자와 함께(예 "28일 미국 연방준비제도(연준)가 기준금리를 연 3.75~4.00%로 동결했어요."), 둘째 문장은 배경이나 덧붙일 사실, 셋째 문장은 왜 그런지·무슨 뜻인지 해석("~라는 해석이 나와요", "~라는 계획이에요"). 기관 이름은 처음에 풀어 쓰고 괄호에 줄임말, 해요체로 짧고 또렷하게(그 뉴스와 "같은 소식 다른 기사" 자료만 쓴다), "tip": "", "law": 고른 조문 id 또는 ""}], '
-          '"comment": {"photo": 이슈에 어울리는 사진을 Unsplash에서 찾을 영어 검색어 2~3낱말(장면·물건 위주, 사람 이름·회사 이름·로고 X, 예 "grocery shopping cart"), "title": 30~45자 제목(핵심 주체·숫자를 담고 끝에 어울리는 이모지 1~2개 가능), "tags": [이슈를 나타내는 짧은 낱말 2~3개, # 없이], "lead": 3~4문장 — 독자가 겪을 법한 생활 장면으로 시작해 이슈를 꺼내고 마지막은 질문으로 끝낸다, "what": {"body": 언제 누가 무엇을 발표·확인했는지 1~2문장(끝을 "…살펴보면:"처럼 이어 써도 됨), "points": [{"name": 주체·항목 이름 15자 이내, "text": 1~2문장 — 자료에 있는 숫자를 꼭 넣는다}] 3개}, '
+          '"comment": {"photo": [이 메인 뉴스에만 어울리는 사진을 Unsplash에서 찾을 영어 검색어 3개, 각 2~4낱말. 첫째가 가장 구체적이다. 이슈의 대상(물건·장소·장면)을 그대로 담는다(예: 배달비 → "food delivery scooter", 환율 → "currency exchange board", 아파트 관리비 → "apartment building", 항공권 → "airplane window seat"). 쇼핑 카트·지폐·동전·계산기·그래프처럼 어느 경제 뉴스에나 붙는 흔한 사진은 그 뉴스가 바로 그것을 다룰 때만. 사람 이름·회사 이름·로고 X], "title": 30~45자 제목(핵심 주체·숫자를 담고 끝에 어울리는 이모지 1~2개 가능), "tags": [이슈를 나타내는 짧은 낱말 2~3개, # 없이], "lead": 3~4문장 — 독자가 겪을 법한 생활 장면으로 시작해 이슈를 꺼내고 마지막은 질문으로 끝낸다, "what": {"body": 언제 누가 무엇을 발표·확인했는지 1~2문장(끝을 "…살펴보면:"처럼 이어 써도 됨), "points": [{"name": 주체·항목 이름 15자 이내, "text": 1~2문장 — 자료에 있는 숫자를 꼭 넣는다}] 3개}, '
           '"why": {"body": 배경·원인 5~7문장(350~550자), 자료의 숫자와 기관 발표를 들어 구체적으로}, "wallet": {"head": 이 칸 소제목 15자 안팎(예 "내 지갑엔 무슨 일이?", "무엇이 문제일까요?"), "body": 1~2문장(끝을 "…이래요:"처럼 이어 써도 됨), "points": [{"name": 15자 이내 + 끝에 어울리는 이모지 하나, "text": 2문장}] 2~3개}, "note": 에디터 크로와상의 한마디 2~3문장(120~220자) — 이 이슈를 두고 독자가 오늘 챙겨 보면 좋을 점을 친구에게 말하듯 따뜻하게(기업 평가·단정 X, 자료에 없는 숫자 X)} (자료가 모자라면 null), '
           '"buzz": {"title": 요즘 소비 트렌드를 담은 25~40자 제목, "body": 트렌드 도입 4~5문장(250~400자) — 요즘 무엇이 왜 뜨는지 생활 장면과 숫자로, '
           '"shop": 이번 트렌드 주제에 가장 어울리는 가게 하나(dessert 디저트·toy 완구·flower 꽃·food 식당·bakery 빵·store 편의점·cafe 카페·beauty 뷰티·fashion 옷·tech 전자·grocery 장보기·travel 여행·health 건강·shop 그 밖), "points": [{"name": 트렌드·상품 이름 15자 이내, "text": 4~5문장(250~380자) — 무엇이 얼마나 팔리는지(판매량·증가율·가격·순위 같은 자료의 숫자를 여럿), 누가 왜 사는지, 업계가 어떻게 움직이는지를 구체적으로}] 3개, '
@@ -167,6 +167,15 @@ def photo_query(q):
     return ' '.join(q.split()[:4]).lower()
 
 
+def photo_queries(v):
+    """AI가 준 사진 검색어(목록이나 한 줄) → 겹치지 않는 검색어 최대 3개 (운영자 2026-11-05: 매번 카트 말고 그 메인 뉴스에 어울리는 사진)"""
+    out = []
+    for q in (v if isinstance(v, list) else [v])[:3]:
+        q = photo_query(q)
+        if q and q not in out: out.append(q)
+    return out
+
+
 def find_photo(q, used):
     """검색어로 가로 사진 하나 (이미 쓴 사진은 건너뜀). 고르면 언스플래시 규칙대로 download 주소를 한 번 불러 준다."""
     q = photo_query(q)
@@ -188,13 +197,15 @@ def find_photo(q, used):
     return None
 
 
-def add_photos(items, ex):
-    """에디터 코멘트 맨 위 큰 사진 (오늘의 뉴스에는 사진 없음, 운영자 2026-11-01). 키가 없거나 못 찾으면 사진 없이 그대로."""
-    used = set()
+def add_photos(items, ex, used=None):
+    """에디터 코멘트 맨 위 큰 사진 (오늘의 뉴스에는 사진 없음, 운영자 2026-11-01). 키가 없거나 못 찾으면 사진 없이 그대로.
+    운영자 2026-11-05: 늘 같은 카트 사진 말고 그 메인 뉴스에 어울리는 사진 — 구체적인 검색어부터 차례로, 최근 호에 쓴 사진은 건너뜀."""
+    used = set(used or ())
     c = ex.get('comment')
-    if c and c.get('_photo_q'):
-        ph = find_photo(c['_photo_q'], used)
-        if ph: c['photo'] = ph
+    if not c: return
+    for q in c.get('_photo_q') or []:
+        ph = find_photo(q, used)
+        if ph: c['photo'] = ph; return
 
 
 MARKET_SRC = [('코스피', 'https://m.stock.naver.com/api/index/KOSPI/basic'), ('코스닥', 'https://m.stock.naver.com/api/index/KOSDAQ/basic'),
@@ -694,7 +705,7 @@ def install(S):
                              if isinstance(p, dict) and W._plain(p.get('name'), 30) and W._plain(p.get('text'), 300)]
             part = lambda k: c.get(k) if isinstance(c.get(k), dict) else {}
             tags = [W._plain(t, 16).lstrip('#') for t in (c.get('tags') if isinstance(c.get('tags'), list) else [])][:3]
-            com = {'_photo_q': photo_query(c.get('photo')), 'tags': [t for t in tags if t], 'title': W._plain(c.get('title'), 80), 'lead': W._plain(c.get('lead'), 600),
+            com = {'_photo_q': photo_queries(c.get('photo')), 'tags': [t for t in tags if t], 'title': W._plain(c.get('title'), 80), 'lead': W._plain(c.get('lead'), 600),
                    'what': {'body': W._plain(part('what').get('body'), 400), 'points': pts(part('what').get('points'))},
                    'why': {'body': W._plain(part('why').get('body'), 1400)},
                    'wallet': {'head': W._plain(part('wallet').get('head'), 30), 'body': W._plain(part('wallet').get('body'), 300), 'points': pts(part('wallet').get('points'))},
@@ -919,6 +930,16 @@ def install(S):
             it['read'] = site_url(f"/life/{it['article']}") if it.get('article') in pub else ''
         return L
 
+    def recent_photos(n=60):
+        """최근 호들의 메인 뉴스 사진 id — 같은 사진이 또 나오지 않게"""
+        out = set()
+        with conn() as db:
+            for r in db.execute('SELECT sections FROM letters ORDER BY no DESC LIMIT ?', (n,)):
+                try: ph = (json.loads(r[0] or '{}').get('comment') or {}).get('photo') or {}
+                except (ValueError, AttributeError): continue
+                if isinstance(ph, dict) and ph.get('id'): out.add(ph['id'])
+        return out
+
     def generate(trigger='admin'):
         """{status: made|skip|error, id, no, reason}. 만든 호는 초안(draft)."""
         if not desk.ai_ready(): res = {'status': 'skip', 'reason': 'OpenAI API 키가 없어요'}; log(dict(res, trigger=trigger)); return res
@@ -942,7 +963,7 @@ def install(S):
                 if k in b: b[k] = scrub(b[k])
             if 'steps' in b: b['steps'] = [scrub(x) for x in b['steps']]
             for pt in b.get('points') or []: pt['name'], pt['text'] = scrub(pt['name']), scrub(pt['text'])
-        add_photos(items, ex)
+        add_photos(items, ex, recent_photos())
         mk = fetch_market()
         if mk: ex['market'] = mk
         sec = dict(sections(no), **ex)
@@ -977,6 +998,9 @@ def install(S):
             else:
                 c = dict(sec['comment'])
                 if form.get('comment_nophoto'): c.pop('photo', None)
+                elif photo_query(form.get('comment_photo_q')):  # 운영자 2026-11-05: 메인 뉴스에 안 맞으면 검색어로 다른 사진 (지금·최근 사진은 건너뜀)
+                    ph = find_photo(form.get('comment_photo_q'), recent_photos() | {(c.get('photo') or {}).get('id')})
+                    if ph: c['photo'] = ph
                 if 'comment_title' in form: c['title'] = W._plain(form.get('comment_title'), 60) or c['title']
                 if 'comment_lead' in form: c['lead'] = ' '.join(form.get('comment_lead', '').split())[:600]
                 if 'comment_note' in form: c['note'] = ' '.join(form.get('comment_note', '').split())[:400]
