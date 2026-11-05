@@ -1350,12 +1350,41 @@ def install(S):
         return Markup(out)
     app.jinja_env.filters['srclinks'] = srclinks
 
+    # 운영자 2026-11-05: 새 글이 나오면 그중 메인 기사다운 글을 칸마다 (HOT ISSUE 4칸은 분야가 겹치지 않게, IN FOCUS는 가장 긴 기획 기사)
+    MAIN_KIND = {'feature': 5, 'issue': 5, 'stat': 4, 'fix': 3, 'rights': 3, 'news': 3, 'law': 2, 'trend': 2, 'shopping': 2, 'word': 1, 'shopcat': 1}
+
+    def main_score(r, kind, today):
+        when = (r['published_at'] or r['created'] or '')[:10]
+        try: age = (today - datetime.date.fromisoformat(when)).days
+        except ValueError: age = 99
+        n = len(r['body'] or '')
+        return ((10 if r['featured'] else 0) + (MAIN_KIND.get(kind, 2) if kind else 5)  # 사람이 쓴 글은 기획 기사만큼
+                + (3 if age <= 1 else 2 if age <= 3 else 1 if age <= 7 else 0) + (2 if n >= 3000 else 1 if n >= 1500 else 0))
+
+    def mag_lineup(db):
+        """매거진 첫 화면 순서: [0] 남는 글, [1:5] HOT ISSUE, [5] IN FOCUS, [6:] 최신 글"""
+        rows = db.execute("SELECT * FROM articles WHERE status='published' ORDER BY featured DESC, COALESCE(published_at,created) DESC, id DESC LIMIT 40").fetchall()
+        try: kinds = dict(db.execute('SELECT article_id,kind FROM ai_articles').fetchall())
+        except sqlite3.OperationalError: kinds = {}
+        today = datetime.date.today()
+        ranked = sorted(rows, key=lambda r: -main_score(r, kinds.get(r['id']), today))
+        hot, cats = [], set()
+        for r in ranked:
+            if len(hot) < 4 and (r['category'] or '') not in cats: hot.append(r); cats.add(r['category'] or '')
+        for r in ranked:
+            if len(hot) < 4 and r not in hot: hot.append(r)
+        rest = [r for r in ranked if r not in hot]
+        focus = max(rest, key=lambda r: (kinds.get(r['id']) in ('feature', 'issue', None), main_score(r, kinds.get(r['id']), today), len(r['body'] or '')), default=None)
+        others = [r for r in rows if r not in hot and r is not focus]
+        lead = others[:1] if focus else []
+        return (lead or hot[:1]) + hot + ([focus] if focus else []) + [r for r in others if r not in lead][:6]
+
     @app.route('/letter')
     def letter_home():
         with conn() as db:
             rows = [row_info(r) for r in db.execute("SELECT * FROM letters WHERE status='sent' ORDER BY no DESC LIMIT 60")]
             # 운영자 2026-11-04: 뉴스레터 말고 매거진 첫 화면처럼. 매거진(생활정보) 글을 커버스토리·새 글로
-            try: mag = db.execute("SELECT * FROM articles WHERE status='published' ORDER BY featured DESC, published_at DESC, id DESC LIMIT 12").fetchall()
+            try: mag = mag_lineup(db)
             except sqlite3.OperationalError: mag = []
         return render_template('letter.html', rows=rows, mag=mag, state=request.args.get('s', ''))
 

@@ -17,7 +17,7 @@
   {# 맨 위 멈춤 스위치: 글은 매일 계속 쓰고, 승인 없는 게시만 멈추거나 다시 켬 #}
   <form class="form-panel aw-auto{% if cfg.publish %} on{% endif %}" method="post" action="{{ url_for('admin_life_ai_settings') }}">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    {% if cfg.publish %}<div><b>자동 게시 중이에요</b><p class="meta">아침·오후·저녁 {{ cfg.per_run }}개씩 하루 {{ cfg.per_day }}개를 쓰고, 숫자 검사를 통과한 글은 승인 없이 바로 올려요.</p></div>
+    {% if cfg.publish %}<div><b>자동 게시 중이에요</b><p class="meta">{% if cfg.cats %}매일 분야마다 기획 기사 1편, 글 종류마다 1편씩 연재해요. 하루 {{ cats_n + series_n }}편 안팎을 아침·오후·저녁에 나눠 쓰고{% else %}아침·오후·저녁 {{ cfg.per_run }}개씩 하루 {{ cfg.per_day }}개를 쓰고{% endif %}, 숫자 검사를 통과한 글은 승인 없이 바로 올려요.</p></div>
     <button type="submit" name="act" value="stop" class="danger">자동 게시 멈추기</button>
     {% else %}<div><b>자동 게시를 멈췄어요</b><p class="meta">글은 매일 계속 써서 <a href="{{ url_for('admin_life', view='draft') }}">올릴 글</a>에 초안으로 쌓아 둬요. 직접 보고 게시해 주세요.</p></div>
     <button type="submit" name="act" value="start">자동 게시 다시 켜기</button>{% endif %}
