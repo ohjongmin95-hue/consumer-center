@@ -1,0 +1,252 @@
+{% extends 'console.html' %}
+{% block title %}얼굴 모자이크 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+{# 운영자 2026-11-05: 사진·영상 속 사람 얼굴을 자동으로 모자이크. 소보루 로고, 영상 소리 변조·음소거. 파일은 이 브라우저 안에서만 다루고 서버로 보내지 않음 #}
+<main class="page"><div class="wrap mo-wrap">
+  <div class="page-intro"><h1 class="page-title">얼굴 모자이크</h1></div>
+
+  <section class="form-panel mo-drop" id="mo-drop">
+    <img class="mo-logo" src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="SOBORU" width="140" height="26">
+    <label class="mo-pick"><input type="file" id="mo-file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" hidden><b>사진이나 영상 고르기</b><span>여기로 끌어 놓아도 돼요 · 파일은 서버로 올라가지 않아요</span></label>
+  </section>
+
+  <section class="form-panel mo-opts" id="mo-opts" hidden>
+    <label>모자이크 세기<input type="range" id="mo-strength" min="5" max="18" value="9"><span class="meta" id="mo-strength-t">보통</span></label>
+    <label class="check"><input type="checkbox" id="mo-logo" checked> 오른쪽 아래에 소보루 로고 넣기</label>
+    <label id="mo-audio-row" hidden>영상 소리<select id="mo-audio">
+      <option value="keep">원래 소리 그대로</option>
+      <option value="low">목소리 변조 (낮게)</option>
+      <option value="high">목소리 변조 (높게)</option>
+      <option value="mute">소리 없애기 (음소거)</option>
+    </select></label>
+  </section>
+
+  <p class="mo-status" id="mo-status" role="status">얼굴 찾는 도구를 준비하고 있어요</p>
+  <div class="mo-stage" id="mo-stage" hidden><canvas id="mo-canvas"></canvas></div>
+  <div class="mo-bar" id="mo-bar" hidden><i id="mo-bar-i"></i></div>
+  <div class="admin-actions mo-act" id="mo-act" hidden>
+    <button class="primary" id="mo-run" type="button">저장하기</button>
+  </div>
+  <a class="mo-save" id="mo-save" hidden>파일 받기</a>
+  <p class="meta mo-note" id="mo-note" hidden></p>
+</div></main>
+<style>
+.mo-wrap{max-width:980px}
+.mo-drop{display:flex;flex-direction:column;align-items:center;gap:18px;padding:36px 20px;border:2px dashed #f3c48a;background:#fffaf3;text-align:center}
+.mo-drop.on{background:#fff1e3}
+.mo-logo{height:26px;width:auto}
+.mo-pick{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.mo-pick b{padding:14px 22px;border-radius:14px;background:#EF920E;color:#fff;font-size:16px}
+.mo-pick span{color:#6b7684;font-size:13px}
+.mo-opts{display:grid;gap:14px}.mo-opts input[type=range]{width:100%;max-width:360px;accent-color:#EF920E}
+.mo-status{margin:18px 0 10px;font-weight:700}
+.mo-stage{position:relative;max-width:100%;overflow:hidden;border-radius:14px;background:#111}
+.mo-stage canvas{display:block;max-width:100%;height:auto;margin:0 auto;touch-action:none;cursor:crosshair}
+.mo-bar{height:8px;margin:12px 0;border-radius:8px;background:#fff1e3;overflow:hidden}.mo-bar i{display:block;height:100%;width:0;background:#EF920E;transition:width .2s}
+.mo-act{margin-top:14px}
+.mo-save{display:inline-block;margin-top:12px;padding:14px 22px;border-radius:14px;background:#191f28;color:#fff;font-weight:700;text-decoration:none}
+</style>
+<script type="module">
+import {FaceDetector} from "{{ url_for('static', filename='vendor/mediapipe/vision_bundle.mjs') }}";
+const BASE = "{{ url_for('static', filename='vendor/mediapipe/') }}";
+const LOGO = "{{ asset('img/soboru-wordmark-orange-hi.png') }}";
+const $ = id => document.getElementById(id);
+const st = $('mo-status'), cv = $('mo-canvas'), cx = cv.getContext('2d');
+const fileset = {wasmLoaderPath: BASE + 'vision_wasm_internal.js', wasmBinaryPath: BASE + 'vision_wasm_internal.wasm'};
+let detImg, detVid, file, kind, img, boxes = [], logo = new Image();
+logo.src = LOGO;
+const say = t => { st.textContent = t; };
+
+try {
+  const opt = m => ({baseOptions: {modelAssetPath: BASE + 'blaze_face_short_range.tflite', delegate: 'CPU'}, runningMode: m, minDetectionConfidence: 0.4});
+  detImg = await FaceDetector.createFromOptions(fileset, opt('IMAGE'));
+  detVid = await FaceDetector.createFromOptions(fileset, opt('VIDEO'));
+  say('사진이나 영상을 골라 주세요');
+} catch (e) { say('얼굴 찾는 도구를 불러오지 못했어요. 크롬이나 엣지 최신판에서 다시 열어 주세요.'); console.error(e); }
+
+// ---- 공통: 모자이크·로고 -------------------------------------------------------
+const tmp = document.createElement('canvas'), tx = tmp.getContext('2d');
+function strength() { return +$('mo-strength').value; }
+$('mo-strength').oninput = () => { const v = strength(); $('mo-strength-t').textContent = v <= 7 ? '세게' : v >= 14 ? '약하게' : '보통'; if (kind === 'image') drawImage(true); };
+$('mo-logo').onchange = () => { if (kind === 'image') drawImage(true); };
+function grow(b, W, H) {  // 머리카락·턱까지 가리게 칸을 넓힘 (손으로 그린 칸은 그대로)
+  if (b.hand) return b;
+  const w = b.w * 1.4, h = b.h * 1.55, x = b.x + b.w / 2 - w / 2, y = b.y + b.h * 0.36 - h / 2;
+  const x0 = Math.max(0, x), y0 = Math.max(0, y);
+  return {x: x0, y: y0, w: Math.min(W, x + w) - x0, h: Math.min(H, y + h) - y0};
+}
+function pixelate(ctx, b) {
+  const n = strength(), bs = Math.max(4, b.w / n);
+  const sw = Math.max(1, Math.round(b.w / bs)), sh = Math.max(1, Math.round(b.h / bs));
+  tmp.width = sw; tmp.height = sh; tx.imageSmoothingEnabled = true;
+  tx.drawImage(ctx.canvas, b.x, b.y, b.w, b.h, 0, 0, sw, sh);
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(tmp, 0, 0, sw, sh, b.x, b.y, b.w, b.h); ctx.imageSmoothingEnabled = true;
+}
+function stamp(ctx, W, H) {
+  if (!$('mo-logo').checked || !logo.complete || !logo.naturalWidth) return;
+  const w = Math.round(Math.max(90, Math.min(W * 0.14, 420))), h = Math.round(w * logo.naturalHeight / logo.naturalWidth), m = Math.round(Math.max(12, W * 0.025));
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = Math.max(4, w * 0.04);
+  ctx.drawImage(logo, W - w - m, H - h - m, w, h); ctx.restore();
+}
+function iou(a, b) {
+  const x = Math.max(a.x, b.x), y = Math.max(a.y, b.y), r = Math.min(a.x + a.w, b.x + b.w), d = Math.min(a.y + a.h, b.y + b.h);
+  const i = Math.max(0, r - x) * Math.max(0, d - y); return i / Math.min(a.w * a.h, b.w * b.h);
+}
+const toBox = d => ({x: d.boundingBox.originX, y: d.boundingBox.originY, w: d.boundingBox.width, h: d.boundingBox.height});
+
+// ---- 파일 고르기 ---------------------------------------------------------------
+const drop = $('mo-drop');
+$('mo-file').onchange = e => open(e.target.files[0]);
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('on'); };
+drop.ondragleave = () => drop.classList.remove('on');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('on'); open(e.dataTransfer.files[0]); };
+function reset() { $('mo-save').hidden = true; $('mo-bar').hidden = true; $('mo-note').hidden = true; boxes = []; }
+function open(f) {
+  if (!f || !detImg) return;
+  reset(); file = f; kind = f.type.startsWith('video/') ? 'video' : 'image';
+  $('mo-opts').hidden = false; $('mo-audio-row').hidden = kind !== 'video'; $('mo-stage').hidden = false; $('mo-act').hidden = false;
+  $('mo-run').textContent = kind === 'video' ? '영상 만들기' : '사진 저장하기';
+  kind === 'video' ? openVideo() : openImage();
+}
+
+// ---- 사진 ---------------------------------------------------------------------
+function openImage() {
+  say('얼굴을 찾고 있어요');
+  img = new Image();
+  img.onload = () => {
+    const W = img.naturalWidth, H = img.naturalHeight; cv.width = W; cv.height = H;
+    boxes = findFaces(img, W, H).map(b => ({...b, on: true}));
+    drawImage(true);
+    say(boxes.length ? `얼굴 ${boxes.length}개를 찾았어요. 빠진 얼굴은 끌어서 칸을 그리고, 잘못 잡힌 칸은 눌러서 빼 주세요.` : '얼굴을 찾지 못했어요. 가릴 곳을 끌어서 칸을 그려 주세요.');
+  };
+  img.onerror = () => say('사진을 열지 못했어요. JPG·PNG·WEBP 사진을 골라 주세요.');
+  img.src = URL.createObjectURL(file);
+}
+function findFaces(src, W, H) {
+  // 사진 전체 + 겹치게 나눈 칸(작은 얼굴도 찾게)에서 찾고 겹친 것은 하나로
+  const found = [];
+  const add = (list, ox, oy, s, min) => list.forEach(d => { if (d.categories[0].score < min) return; const b = toBox(d); found.push({x: ox + b.x * s, y: oy + b.y * s, w: b.w * s, h: b.h * s}); });
+  add(detImg.detect(src).detections, 0, 0, 1, 0.4);
+  const c = document.createElement('canvas'), g = c.getContext('2d');
+  // 정사각형 칸을 크기 세 가지로 겹치게 훑음: 얼굴 찾는 모델은 칸에서 얼굴이 어느 정도 커야 잘 찾음
+  const m = Math.min(W, H);
+  for (const T of [m, m / 2, m / 3.5]) {
+    if (T < 140) continue;
+    const xs = [], ys = [], st = T * 0.6;
+    for (let x = 0; x + T < W; x += st) xs.push(x); xs.push(Math.max(0, W - T));
+    for (let y = 0; y + T < H; y += st) ys.push(y); ys.push(Math.max(0, H - T));
+    const s = Math.min(1, 640 / T); c.width = c.height = Math.round(T * s);
+    for (const x of xs) for (const y of ys) {
+      g.drawImage(src, x, y, T, T, 0, 0, c.width, c.height);
+      add(detImg.detect(c).detections, x, y, 1 / s, 0.62);  // 잘게 나눈 칸은 헛잡기 쉬워서 더 확실한 것만
+    }
+  }
+  const out = [];
+  found.sort((a, b) => b.w * b.h - a.w * a.h).forEach(b => { if (!out.some(o => iou(o, b) > 0.35)) out.push(b); });
+  return out;
+}
+function drawImage(guides) {
+  const W = cv.width, H = cv.height;
+  cx.drawImage(img, 0, 0, W, H);
+  boxes.filter(b => b.on).forEach(b => pixelate(cx, grow(b, W, H)));
+  stamp(cx, W, H);
+  if (!guides) return;
+  cx.save(); cx.lineWidth = Math.max(2, W / 400);
+  boxes.forEach(b => { const g = grow(b, W, H); cx.setLineDash(b.on ? [] : [10, 8]); cx.strokeStyle = b.on ? '#EF920E' : 'rgba(255,255,255,.8)'; cx.strokeRect(g.x, g.y, g.w, g.h); });
+  if (drag) { cx.setLineDash([6, 6]); cx.strokeStyle = '#fff'; cx.strokeRect(drag.x, drag.y, drag.w, drag.h); }
+  cx.restore();
+}
+let drag = null, start = null;
+const at = e => { const r = cv.getBoundingClientRect(); return {x: (e.clientX - r.left) * cv.width / r.width, y: (e.clientY - r.top) * cv.height / r.height}; };
+cv.onpointerdown = e => { if (kind !== 'image') return; start = at(e); cv.setPointerCapture(e.pointerId); };
+cv.onpointermove = e => { if (!start) return; const p = at(e); drag = {x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y)}; drawImage(true); };
+cv.onpointerup = e => {
+  if (!start) return; const p = at(e), W = cv.width, H = cv.height;
+  if (drag && drag.w > 12 && drag.h > 12) {
+    boxes.push({...drag, on: true, hand: true});  // 손으로 그린 칸은 그린 그대로 가림
+  } else {
+    const hit = boxes.slice().reverse().find(b => { const g = grow(b, W, H); return p.x >= g.x && p.x <= g.x + g.w && p.y >= g.y && p.y <= g.y + g.h; });
+    if (hit) hit.on = !hit.on;
+  }
+  start = null; drag = null; drawImage(true);
+  const n = boxes.filter(b => b.on).length; say(`가릴 곳 ${n}군데. 칸을 누르면 빼고, 끌면 더해요.`);
+};
+function saveImage() {
+  drawImage(false);
+  const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+  cv.toBlob(b => { offer(b, (file.name.replace(/\.[^.]+$/, '') || 'photo') + '_mosaic.' + (type === 'image/png' ? 'png' : 'jpg')); drawImage(true); }, type, 0.95);
+}
+
+// ---- 영상 ---------------------------------------------------------------------
+let video;
+function openVideo() {
+  say('영상을 여는 중이에요');
+  video = document.createElement('video'); video.playsInline = true; video.preload = 'auto'; video.src = URL.createObjectURL(file);
+  video.onloadeddata = () => {
+    cv.width = video.videoWidth; cv.height = video.videoHeight;
+    video.currentTime = Math.min(0.5, video.duration / 2);
+  };
+  video.onseeked = () => {
+    if (video.dataset.ready) return; video.dataset.ready = '1';
+    const r = detImg.detect(video).detections.map(toBox);
+    cx.drawImage(video, 0, 0); r.forEach(b => pixelate(cx, grow(b, cv.width, cv.height))); stamp(cx, cv.width, cv.height);
+    say(`영상 ${Math.round(video.duration)}초 · ${video.videoWidth}×${video.videoHeight}. '영상 만들기'를 누르면 처음부터 끝까지 얼굴을 가려요. 영상 길이만큼 걸리고, 그동안 이 화면을 켜 두세요.`);
+  };
+  video.onerror = () => say('이 영상은 브라우저에서 열 수 없어요. MP4 영상으로 바꿔서 올려 주세요.');
+}
+const PITCH = `class P extends AudioWorkletProcessor{constructor(o){super();this.r=o.processorOptions.ratio;this.n=Math.floor(sampleRate*0.05);this.L=this.n*2+4;this.b=[new Float32Array(this.L),new Float32Array(this.L)];this.w=0;this.p=0}
+process(i,o){const x=i[0],y=o[0];if(!x||!x.length)return true;const n=this.n,L=this.L,step=(1-this.r)/n;for(let k=0;k<x[0].length;k++){let ph=this.p;for(let c=0;c<y.length;c++){const s=(x[c]||x[0])[k],b=this.b[c];b[this.w]=s;let v=0;for(let t=0;t<2;t++){const q=(ph+t*0.5)%1,d=q*n+1,r=(this.w-d+L)%L,f=Math.floor(r),a=r-f,s0=b[f],s1=b[(f+1)%L];v+=(s0+(s1-s0)*a)*Math.sin(Math.PI*q)}y[c][k]=v*0.9}
+this.p=(this.p+step+1)%1;this.w=(this.w+1)%L}return true}}registerProcessor('soboru-pitch',P)`;
+async function runVideo() {
+  $('mo-run').disabled = true; $('mo-bar').hidden = false; $('mo-save').hidden = true;
+  // 같은 영상 요소에는 소리 연결을 한 번만 할 수 있어서 새로 만듦
+  const v = document.createElement('video'); v.playsInline = true; v.src = video.src; await new Promise(r => { v.onloadeddata = r; v.load(); });
+  const W = v.videoWidth, H = v.videoHeight; cv.width = W; cv.height = H;
+  const mode = $('mo-audio').value, tracks = [];
+  const vs = cv.captureStream(0), vt = vs.getVideoTracks()[0]; tracks.push(vt);
+  let ac = null;
+  if (mode !== 'mute') {
+    ac = new AudioContext(); const src = ac.createMediaElementSource(v), dest = ac.createMediaStreamDestination();
+    if (mode === 'keep') src.connect(dest);
+    else {
+      await ac.audioWorklet.addModule(URL.createObjectURL(new Blob([PITCH], {type: 'text/javascript'})));
+      const node = new AudioWorkletNode(ac, 'soboru-pitch', {processorOptions: {ratio: mode === 'low' ? 0.78 : 1.32}, outputChannelCount: [2]});
+      src.connect(node).connect(dest);
+    }
+    dest.stream.getAudioTracks().forEach(t => tracks.push(t));
+  } else v.muted = true;
+  const types = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  const mime = types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+  if (!mime) { say('이 브라우저는 영상 저장을 지원하지 않아요. 크롬이나 엣지 최신판에서 해 주세요.'); $('mo-run').disabled = false; return; }
+  const bps = Math.max(8e6, Math.min(40e6, file.size * 8 / Math.max(1, v.duration) * 1.4));  // 원본보다 넉넉하게: 화질이 떨어지지 않게
+  const rec = new MediaRecorder(new MediaStream(tracks), {mimeType: mime, videoBitsPerSecond: Math.round(bps), audioBitsPerSecond: 192000});
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const done = new Promise(r => rec.onstop = r);
+  let tracked = [], last = -1;
+  const frame = (now, meta) => {
+    let ts = Math.round(((meta && meta.mediaTime) || v.currentTime) * 1000); if (ts <= last) ts = last + 1; last = ts;
+    const found = detVid.detectForVideo(v, ts).detections.map(toBox);
+    // 잠깐 놓친 얼굴도 몇 장 동안 계속 가림 (깜빡임 방지)
+    tracked.forEach(t => t.age++);
+    found.forEach(b => { const m = tracked.find(t => iou(t, b) > 0.2); if (m) Object.assign(m, b, {age: 0}); else tracked.push({...b, age: 0}); });
+    tracked = tracked.filter(t => t.age < 12);
+    cx.drawImage(v, 0, 0, W, H); tracked.forEach(b => pixelate(cx, grow(b, W, H))); stamp(cx, W, H);
+    vt.requestFrame && vt.requestFrame();
+    $('mo-bar-i').style.width = (v.currentTime / v.duration * 100).toFixed(1) + '%';
+    if (!v.ended) next();
+  };
+  const next = () => v.requestVideoFrameCallback ? v.requestVideoFrameCallback(frame) : requestAnimationFrame(() => frame());
+  v.onended = () => setTimeout(() => rec.state !== 'inactive' && rec.stop(), 300);
+  say('영상을 만드는 중이에요. 영상 길이만큼 걸려요. 이 화면을 켜 둔 채로 기다려 주세요.');
+  rec.start(1000); next(); if (ac) await ac.resume(); await v.play();
+  await done; if (ac) ac.close();
+  const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+  offer(new Blob(chunks, {type: mime.split(';')[0]}), (file.name.replace(/\.[^.]+$/, '') || 'video') + '_mosaic.' + ext);
+  $('mo-bar-i').style.width = '100%'; $('mo-run').disabled = false;
+  say('다 만들었어요. 아래에서 파일을 받으세요.');
+  if (ext === 'webm') { $('mo-note').hidden = false; $('mo-note').textContent = '이 브라우저는 MP4로 저장할 수 없어 WEBM으로 저장했어요. 크롬 최신판에서는 MP4로 저장돼요.'; }
+}
+function offer(blob, name) { const a = $('mo-save'); a.href = URL.createObjectURL(blob); a.download = name; a.textContent = '파일 받기 (' + (blob.size / 1048576).toFixed(1) + 'MB)'; a.hidden = false; }
+$('mo-run').onclick = () => kind === 'video' ? runVideo() : saveImage();
+</script>
+{% endblock %}

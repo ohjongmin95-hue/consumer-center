@@ -5,6 +5,7 @@
 - 매거진 홈: 게시·초안·예약 글 수, 최근 글
 - 기사(CMS): 예전 생활정보 글 화면(admin_life)을 그대로 쓰되 대표 사진 올리기, 본문 사진 끼워 넣기, 예약 게시를 더함
 - 첫 화면 편집: 표지 사진 바꾸기, HOT ISSUE 네 개 직접 고르기
+- 얼굴 모자이크: 사진·영상 속 얼굴을 브라우저 안에서 찾아 모자이크, 영상 소리 변조·음소거 (파일은 서버로 올라가지 않음)
 """
 import datetime
 import json
@@ -19,6 +20,7 @@ MAG_GROUPS = [
     ('기사', [('admin_life', 'edit', '기사 쓰기·고치기'), ('admin_life_ai', 'text', 'AI 기사')]),
     ('화면', [('mag_front', 'layers', '첫 화면 편집'), ('admin_art', 'image', '기사 사진')]),
     ('구독', [('admin_letter', 'mail', '소보루 레터')]),
+    ('도구', [('mag_mosaic', 'image', '얼굴 모자이크')]),
 ]
 PHOTO_TYPES = ('image/jpeg', 'image/png', 'image/webp')
 
@@ -190,3 +192,11 @@ def install(S):
             rows = db.execute("SELECT id,title,category,published_at FROM articles WHERE status='published' ORDER BY published_at DESC, id DESC LIMIT 200").fetchall()
         picks = setting('mag_hot', [])
         return render_template('mag_admin_front.html', rows=rows, picks=picks + [None] * (4 - len(picks)), hero=mag_hero_url(), custom=bool(setting('mag_hero', {}).get('file')))
+
+    # ---- 얼굴 모자이크 (운영자 2026-11-05) ----------------------------------------
+    # 사진·영상 속 얼굴을 브라우저 안에서 찾아 모자이크하고, 영상 소리는 그대로·변조·음소거 중 고름. 파일은 서버로 올라가지 않음.
+    # 얼굴 찾기는 MediaPipe Face Detector(Apache 2.0)를 static/vendor/mediapipe에 두고 씀 (외부 CDN 없이)
+    @app.route('/admin/magazine/mosaic')
+    @S.admin_only
+    def mag_mosaic():
+        return render_template('mag_admin_mosaic.html')
