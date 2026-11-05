@@ -946,7 +946,7 @@ class SiteTest(unittest.TestCase):
                 self.assertEqual(self.site.app.extensions['soboru']['page_blocks']('home')[:3], [['intro', 0], ['letter', 1], ['quick', 1]])
             # 이상한 값은 무시하고, 모르는 묶음은 빠지고 빠진 묶음은 뒤에 붙음
             self.assertEqual(admin.post('/admin/screens', data={'_csrf': token, 'page': 'nope', 'block': 'x', 'act': 'up'}).status_code, 400)
-            self.assertEqual(self.site.soboru.clean_blocks('letter', [['archive', 1], ['zzz', 1]]), [['archive', 1], ['hero', 1], ['feats', 1]])
+            self.assertEqual(self.site.soboru.clean_blocks('letter', [['archive', 1], ['zzz', 1]]), [['archive', 1], ['hero', 1], ['feats', 1], ['reels', 1]])
             # 편집 모드: 묶음마다 옮기기 막대, 숨긴 묶음은 맨 아래에서 다시 보이기
             admin.post('/admin/edit-mode', data={'_csrf': token, 'on': '1', 'next': '/'})
             edit = admin.get('/').get_data(as_text=True)
@@ -6200,6 +6200,33 @@ class SiteTest(unittest.TestCase):
         # 묶음 순서: 기사 화면의 '레터 구독 띠' 숨기기
         admin.post('/admin/screens', data={'_csrf': tok, 'page': 'mag_article', 'block': 'letter', 'act': 'hide', 'ajax': '1'})
         self.assertNotIn('class="ma-letter"', self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True))
+
+    def test_magazine_reels(self):
+        # 운영자 2026-11-05: 매거진 첫 화면에 릴스 칸, 관리자에서 영상 올리기
+        admin = self.login_admin()
+        self.assertEqual(self.client.get('/admin/magazine/reels').status_code, 302)
+        def clean():
+            with self.site.conn() as db: db.execute('DELETE FROM mag_reels')
+        self.addCleanup(clean)
+        home = lambda: self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertNotIn('id="reels"', home())  # 없으면 칸도 없음
+        tok = self.csrf(admin, '/admin/magazine/reels')
+        post = lambda **d: admin.post('/admin/magazine/reels', data={'_csrf': tok, **d})
+        post(act='add', video='/etc/passwd', title='x')
+        post(act='add', video='/art/video/video-20261105101500-001.mp4', title='나쁜 주소', ig='javascript:alert(1)')
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM mag_reels').fetchone()[0], 0)
+        post(act='add', video='/art/video/video-20261105101500-001.mp4', title='먼저 올린 릴스')
+        post(act='add', video='/art/video/video-20261105101600-002.mp4', title='나중 릴스', ig='https://www.instagram.com/reel/abc/')
+        page = home()
+        self.assertIn('id="reels"', page); self.assertIn('https://www.instagram.com/reel/abc/', page)
+        self.assertLess(page.index('나중 릴스'), page.index('먼저 올린 릴스'))  # 새 릴스가 앞
+        with self.site.conn() as db: rid = db.execute("SELECT id FROM mag_reels WHERE title='나중 릴스'").fetchone()[0]
+        post(act='down', id=rid)
+        page = home(); self.assertLess(page.index('먼저 올린 릴스'), page.index('나중 릴스'))
+        post(act='save', id=rid, title='나중 릴스', ig='')  # 끄기
+        self.assertNotIn('나중 릴스', home())
+        post(act='del', id=rid)
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM mag_reels').fetchone()[0], 1)
 
     def test_magazine_manage(self):
         # 운영자 2026-11-05: ND CMS 관리 메뉴처럼 — 광고·환경설정·접수글

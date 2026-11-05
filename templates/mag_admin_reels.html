@@ -1,0 +1,63 @@
+{% extends 'console.html' %}
+{% block title %}릴스 | 소보루 매거진 관리자{% endblock %}
+{% block content %}
+{# 운영자 2026-11-05: 매거진 첫 화면 'REELS' 칸에 릴스 영상 올리기 #}
+<main class="page mz-cms"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">릴스</h1></div>
+  <p class="ms-lead">올린 영상이 매거진 첫 화면 <b>REELS</b> 칸에 나와요(켠 것 8개까지). 칸의 자리는 <a href="{{ url_for('mag_screen') }}">화면 편집</a>에서 묶음 막대로 옮겨요. 세로(9:16) MP4가 잘 맞아요.</p>
+  <section class="mg-sec">
+    <h2>New<span>새 릴스</span></h2>
+    <form method="post" class="mg-reel-new" id="rl-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="add"><input type="hidden" name="video" id="rl-video">
+      <label class="mg-reel-ph" id="rl-ph"><span id="rl-st">영상 고르기 (MP4)</span><input type="file" accept="video/mp4,video/quicktime,video/webm" id="rl-file" hidden></label>
+      <div class="mg-ad-in">
+        <label class="mg-f">제목 (영상 아래 보여요, 비워도 돼요)<input name="title" maxlength="60" placeholder="예: 이 남성, 일부러였을까?"></label>
+        <label class="mg-f">인스타그램 릴스 주소 (비워도 돼요)<input name="ig" placeholder="https://www.instagram.com/reel/..." inputmode="url"></label>
+        <button type="submit" class="primary mg-save" id="rl-go" disabled>릴스 올리기</button>
+      </div>
+    </form>
+  </section>
+  {% if rows %}
+  <ul class="ms-list mg-reels">
+  {% for r in rows %}
+    <li class="mg-reel{{ ' off' if not r['active'] }}">
+      <video src="{{ r['video'] }}#t=0.1" preload="metadata" muted playsinline></video>
+      <form method="post" class="mg-reel-f"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}">
+        <label class="mg-f">제목<input name="title" maxlength="60" value="{{ r['title'] }}"></label>
+        <label class="mg-f">인스타그램 주소<input name="ig" value="{{ r['ig'] }}" placeholder="https://" inputmode="url"></label>
+        <label class="mg-sw mg-sw-row"><input type="checkbox" name="active" value="1"{% if r['active'] %} checked{% endif %}><i aria-hidden="true"></i><b>첫 화면에 보이기</b></label>
+        <button class="primary mg-save" name="act" value="save">저장</button>
+      </form>
+      <div class="mg-reel-side">
+        <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}"><span class="mg-mv"><button name="act" value="up" aria-label="앞으로">↑</button><button name="act" value="down" aria-label="뒤로">↓</button></span></form>
+        <form method="post" class="mg-del" onsubmit="return confirm('이 릴스를 지울까요?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ r['id'] }}"><button name="act" value="del">지우기</button></form>
+      </div>
+    </li>
+  {% endfor %}
+  </ul>
+  {% else %}<p class="mg-none">아직 올린 릴스가 없어요</p>{% endif %}
+</div></main>
+<script>
+(function () {
+  var fi = document.getElementById('rl-file'), st = document.getElementById('rl-st'), ph = document.getElementById('rl-ph'), go = document.getElementById('rl-go'), vid = document.getElementById('rl-video');
+  var tok = document.querySelector('#rl-form [name=_csrf]').value;
+  fi.onchange = function () {
+    var x = fi.files[0]; if (!x) return; var CH = 8 * 1024 * 1024, job = '', k = 0, n = Math.ceil(x.size / CH) || 1; go.disabled = true;
+    function next() {
+      if (k >= n) {
+        fetch('/admin/magazine/video/save?job=' + job, {method: 'POST', headers: {'X-CSRFToken': tok}}).then(function (r) { return r.json(); }).then(function (j) {
+          if (!j.ok) { st.textContent = j.error || '올리지 못했어요'; return; }
+          vid.value = j.url; st.textContent = '다 올렸어요 · 바꾸려면 다시 고르기'; go.disabled = false;
+          var v = ph.querySelector('video') || ph.insertBefore(document.createElement('video'), ph.firstChild); v.src = j.url + '#t=0.1'; v.muted = true; v.playsInline = true; ph.classList.add('has');
+        });
+        return;
+      }
+      st.textContent = '올리는 중 ' + Math.round(k / n * 100) + '%';
+      fetch('/admin/magazine/video/upload?i=' + k + (job ? '&job=' + job : ''), {method: 'POST', headers: {'X-CSRFToken': tok, 'Content-Type': 'application/octet-stream'}, body: x.slice(k * CH, (k + 1) * CH)})
+        .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) { st.textContent = j.error || '올리지 못했어요'; return; } job = j.job; k++; next(); })
+        .catch(function () { st.textContent = '올리다 끊겼어요. 다시 골라 주세요.'; });
+    }
+    next();
+  };
+})();
+</script>
+{% endblock %}
