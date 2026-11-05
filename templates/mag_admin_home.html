@@ -14,7 +14,7 @@
     </section>
     <div>
       <section class="form-panel"><h2>바로 가기</h2>
-        <div class="mz-go"><a href="{{ url_for('admin_life') }}#write">새 기사 쓰기</a><a href="{{ url_for('mag_front') }}">첫 화면 편집</a></div>
+        <div class="mz-go"><a href="{{ url_for('admin_life') }}#write">새 기사 쓰기</a><a href="{{ url_for('mag_front') }}">첫 화면 편집</a><a href="{{ url_for('mag_mosaic') }}">얼굴 모자이크</a></div>
       </section>
       {% if scheduled %}<section class="form-panel"><h2>게시 예약</h2><ul class="mz-list">{% for r in scheduled %}<li><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['title'] }}</a><small>{{ r['published_at'][5:16].replace('T', ' ') }}</small></li>{% endfor %}</ul></section>{% endif %}
       {% if top %}<section class="form-panel"><h2>많이 읽은 기사</h2><ul class="mz-list">{% for r in top %}<li><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">{{ r['title'] }}</a><small>{{ '{:,}'.format(r['views'] or 0) }}회</small></li>{% endfor %}</ul></section>{% endif %}

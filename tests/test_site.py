@@ -6083,6 +6083,15 @@ class SiteTest(unittest.TestCase):
             db.execute('DELETE FROM articles WHERE id IN (?,?)', (aid, pid)); db.execute("DELETE FROM soboru_settings WHERE key IN ('mag_hot','mag_hero')")
             db.execute("DELETE FROM soboru_art WHERE kind='life' AND target_id IN (?,?)", (aid, pid))
 
+    def test_magazine_mosaic_tool(self):
+        # 운영자 2026-11-05: 매거진 관리자 > 얼굴 모자이크 (사진·영상, 소보루 로고, 영상 소리 변조·음소거). 관리자만, 얼굴 찾기 파일은 사이트 안에 둠
+        self.assertEqual(self.client.get('/admin/magazine/mosaic').status_code, 302)
+        page = self.login_admin().get('/admin/magazine/mosaic').get_data(as_text=True)
+        self.assertIn('얼굴 모자이크', page); self.assertIn('vendor/mediapipe/vision_bundle.mjs', page); self.assertIn('soboru-wordmark-orange-hi.png', page)
+        self.assertIn('value="mute"', page); self.assertIn('value="low"', page)
+        for f in ('vision_bundle.mjs', 'vision_wasm_internal.js', 'vision_wasm_internal.wasm', 'blaze_face_short_range.tflite'):
+            self.assertTrue((Path(self.site.__file__).parent / 'static/vendor/mediapipe' / f).is_file(), f)
+
     def test_letter_unsplash_photos(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         calls = []
