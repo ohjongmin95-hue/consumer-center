@@ -1212,6 +1212,88 @@ def install(S):
         flash('자동 쓰기 설정을 저장했어요.')
         return redirect(url_for('admin_life_ai'))
 
+    # ---- 올라간 글을 잡지 기사체로 다시 쓰기 (운영자 2026-11-05: '지금 올라가 있는 아티클들은 전부 매거진 기사체로 바꿔') ----
+    with conn() as db:
+        db.execute('CREATE TABLE IF NOT EXISTS life_restyle(article_id INTEGER PRIMARY KEY,title TEXT,summary TEXT,body TEXT,created TEXT)')
+    RESTYLE_SYSTEM = ('너는 소비자 라이프스타일 매거진 소보루의 교열 기자다. [글]을 잡지 기사체(평서문 ~다)로 다시 쓴다.\n'
+                      '- 해요체·친구 말투·앱 안내문 말투(토스식)를 모두 평서문으로 바꾼다. 예: "확인해요" → "확인해야 한다", "있어요" → "있다", "~해 보세요" → "~해 볼 만하다".\n'
+                      '- 내용·사실·숫자·순서는 바꾸지 않는다. 숫자는 한 글자도 바꾸지 말고, 새 숫자를 보태지 않는다. 문장을 지어 보태지 않는다.\n'
+                      '- 줄 맨 앞의 표시(## 소제목, ### 요점, - 목록, ※ 용어 풀이)는 그대로 둔다. **강조** 표시도 그대로 둔다.\n'
+                      '- 이모지·느낌표는 지운다. 제목·소제목 끝에 마침표를 찍지 않는다. 독자에게 말을 거는 질문은 서술문으로 바꾼다.\n'
+                      'JSON만: {"title": 제목, "summary": [요약 줄들, 받은 줄 수 그대로], "body": 본문 전체}')
+    EMO_RE = re.compile('[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F]')
+
+    def restyle_prep(body):
+        """AI에 보내기 전 코드로 걷어 냄: '핵심만 쏙' 상자 줄, 소제목 이모지, ✅·🤝 머리말."""
+        out = []
+        for line in (body or '').split('\n'):
+            st = line.strip()
+            if st.startswith('> '): continue
+            if st.startswith('#'):
+                line = EMO_RE.sub('', line).replace('  ', ' ').rstrip()
+                line = re.sub(r'^(#+)\s+', r'\1 ', line)
+                if line.strip() == '## 이렇게 하세요': line = '## 이렇게 대비하자'
+                if line.strip() == '## 소보루가 도와드릴게요': line = '## 맺으며'
+            out.append(line)
+        return re.sub(r'\n{3,}', '\n\n', '\n'.join(out)).strip()
+
+    def restyle(article_id):
+        """글 하나를 기사체로. 'done'·'skip:이유'. 바꾸기 전 글은 life_restyle에 남김(되돌리기용)."""
+        with conn() as db:
+            a = db.execute('SELECT id,title,summary,body FROM articles WHERE id=?', (article_id,)).fetchone()
+            if not a: return 'skip:글 없음'
+            if db.execute('SELECT 1 FROM life_restyle WHERE article_id=?', (article_id,)).fetchone(): return 'skip:이미 바꿈'
+        body = restyle_prep(a['body'])
+        summ = [x for x in (a['summary'] or '').split('\n') if x.strip()]
+        out = chat(RESTYLE_SYSTEM, json.dumps({'title': a['title'], 'summary': summ, 'body': body}, ensure_ascii=False), 9000, AI_TIMEOUT * 3)
+        title = _plain(out.get('title'), 120)
+        new_sum = out.get('summary') or []
+        if isinstance(new_sum, str): new_sum = new_sum.split('\n')
+        new_sum = [_plain(x, 200) for x in new_sum if _plain(x)][:max(len(summ), 1)]
+        new_body = str(out.get('body') or '').strip()
+        if not title or len(new_body) < len(body) * 0.6: return 'skip:AI가 글을 줄여 버림'
+        before = {norm(n) for n in NUM.findall(a['title'] + ' ' + (a['summary'] or '') + ' ' + body)}
+        after = {norm(n) for n in NUM.findall(title + ' ' + ' '.join(new_sum) + ' ' + new_body)}
+        if after - before: return 'skip:숫자가 달라짐 (' + ', '.join(sorted(after - before))[:40] + ')'
+        with conn() as db:
+            db.execute('INSERT OR REPLACE INTO life_restyle VALUES(?,?,?,?,?)', (a['id'], a['title'], a['summary'], a['body'], stamp()))
+            db.execute('UPDATE articles SET title=?,summary=?,body=?,updated=? WHERE id=?', (title, '\n'.join(new_sum) if summ else (a['summary'] or ''), new_body, stamp(), a['id']))
+        return 'done'
+
+    def restyle_all():
+        with conn() as db:
+            ids = [r[0] for r in db.execute("SELECT a.id FROM articles a LEFT JOIN life_restyle r ON r.article_id=a.id WHERE a.status='published' AND r.article_id IS NULL ORDER BY a.id DESC")]
+        st = {'state': 'running', 'total': len(ids), 'done': 0, 'skip': [], 'at': stamp()}
+        put('restyle_job', st)
+        for i in ids:
+            try: r = restyle(i)
+            except Exception as e: r = 'skip:' + str(e)[:60]
+            if r == 'done': st['done'] += 1
+            else: st['skip'].append({'id': i, 'why': r[5:]})
+            st['at'] = stamp(); put('restyle_job', st)
+        st['state'] = 'done'; put('restyle_job', st)
+        return st
+
+    @app.route('/admin/life/ai/restyle', methods=['POST'])
+    @S.admin_only
+    def admin_life_restyle():
+        if not desk.ai_ready(): flash('OpenAI API 키가 없어서 바꿀 수 없어요.'); return redirect(url_for('admin_life_ai'))
+        if request.form.get('act') == 'undo':
+            with conn() as db:
+                rows = db.execute('SELECT * FROM life_restyle').fetchall()
+                for r in rows: db.execute('UPDATE articles SET title=?,summary=?,body=?,updated=? WHERE id=?', (r['title'], r['summary'], r['body'], stamp(), r['article_id']))
+                db.execute('DELETE FROM life_restyle')
+            put('restyle_job', {}); flash(f'글 {len(rows)}개를 바꾸기 전으로 되돌렸어요.'); return redirect(url_for('admin_life_ai'))
+        j = setting('restyle_job', {})
+        if j.get('state') == 'running' and j.get('at', '') > (datetime.datetime.now() - datetime.timedelta(minutes=5)).isoformat():
+            flash('이미 바꾸고 있어요. 잠시 뒤 새로 고쳐 보세요.'); return redirect(url_for('admin_life_ai'))
+        if app.config.get('TESTING'): restyle_all()
+        else: threading.Thread(target=restyle_all, daemon=True).start()
+        flash('올라간 글을 기사체로 바꾸기 시작했어요. 글 하나에 30초쯤 걸려요. 이 화면을 새로 고치면 얼마나 바꿨는지 보여요.')
+        return redirect(url_for('admin_life_ai'))
+
+    app.jinja_env.globals['restyle_job'] = lambda: setting('restyle_job', {})
+
     # 생활정보 글 고치기: AI 글은 저장할 때 같은 자료로 숫자를 다시 검사하고, 검토 필요 글은 확인 체크 없이는 게시하지 않음
     old_edit = app.view_functions['admin_life_edit']
     def admin_life_edit(article_id):

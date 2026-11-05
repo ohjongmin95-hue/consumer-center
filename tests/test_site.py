@@ -6002,6 +6002,43 @@ class SiteTest(unittest.TestCase):
         self.assertIn('mag-favicon.png', page)
         with self.site.conn() as db: db.execute('DELETE FROM mag_unsplash2'); db.execute('DELETE FROM articles WHERE id=?', (aid,))
 
+    def test_magazine_restyle_and_title_photo(self):
+        # 운영자 2026-11-05: 올라간 글을 잡지 기사체로 (숫자가 바뀌면 안 바꿈, 되돌리기 가능), 사진은 기사 제목에 맞는 검색어로
+        with self.site.conn() as db:
+            ok = db.execute("INSERT INTO articles(title,summary,body,category,status,created,updated,published_at) VALUES('택시 호출료, 누구에게 가나요?','호출료가 올랐어요','첫 문단이에요. 3,000원이 들어요.\n\n> 💡 핵심이에요\n\n## 💳 호출 전에 확인해요\n\n- 영수증을 챙겨요','생활','published','2026-11-04','2026-11-04','2026-11-04T09:00:00')").lastrowid
+            bad = db.execute("INSERT INTO articles(title,summary,body,category,status,created,updated,published_at) VALUES('전기요금 이야기','요약이에요','요금이 5% 올랐어요. 길게 쓴 본문이에요.','생활','published','2026-11-04','2026-11-04','2026-11-04T09:00:00')").lastrowid
+        sent = []
+        def ai(url, headers, body, timeout):
+            sent.append(body); user = json.loads(body['messages'][1]['content'])
+            if isinstance(user, list):  # 사진 검색어
+                return 200, {'choices': [{'message': {'content': json.dumps({'q': {str(x['id']): 'taxi city night' for x in user}})}}]}
+            if '택시' in user['title']:
+                out = {'title': '택시 호출료는 누구에게 가나', 'summary': ['호출료가 올랐다'], 'body': '첫 문단이다. 3,000원이 든다.\n\n## 호출 전에 확인할 것\n\n- 영수증을 챙겨 둔다'}
+            else: out = {'title': '전기요금 이야기', 'summary': ['요약'], 'body': '요금이 7% 올랐다. 길게 쓴 본문이다.'}
+            return 200, {'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'sk-test-key'}), patch.object(self.site.companydesk, 'post_json', ai):
+            admin = self.login_admin()
+            admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai')})
+            first = sent[0]['messages'][1]['content']
+            self.assertNotIn('💡', first); self.assertNotIn('💳', first)  # 핵심 상자·이모지는 AI에 보내기 전에 걷어 냄
+            with self.site.conn() as db:
+                a = db.execute('SELECT * FROM articles WHERE id=?', (ok,)).fetchone(); b = db.execute('SELECT * FROM articles WHERE id=?', (bad,)).fetchone()
+            self.assertEqual(a['title'], '택시 호출료는 누구에게 가나'); self.assertIn('## 호출 전에 확인할 것', a['body'])
+            self.assertIn('5%', b['body'])  # 숫자가 달라진 글은 그대로
+            page = admin.get('/admin/life/ai').get_data(as_text=True); self.assertIn('숫자가 달라짐', page)
+            admin.post('/admin/life/ai/restyle', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'undo'})
+            with self.site.conn() as db: self.assertEqual(db.execute('SELECT title FROM articles WHERE id=?', (ok,)).fetchone()[0], '택시 호출료, 누구에게 가나요?')
+            qs = []
+            def fake(path, params=None):
+                if path.startswith('http'): return 200, {}
+                qs.append(params['query'])
+                return 200, {'results': [{'id': 't-%d-%d' % (len(qs), i), 'urls': {'raw': 'https://images.unsplash.com/photo-t?x'}, 'user': {'name': '작가', 'links': {'html': 'https://unsplash.com/@a'}}, 'links': {}} for i in range(3)]}
+            with patch.object(self.site.soboru_letter, 'unsplash_call', fake), patch.dict(os.environ, {'UNSPLASH_ACCESS_KEY': 'us-test'}):
+                admin.post('/admin/art/unsplash', data={'_csrf': self.csrf(admin, '/admin/art'), 'redo': '1'})
+            self.assertIn('taxi city night', qs)
+        with self.site.conn() as db:
+            db.execute('DELETE FROM mag_unsplash2'); db.execute('DELETE FROM life_restyle'); db.execute('DELETE FROM articles WHERE id IN (?,?)', (ok, bad))
+
     def test_letter_unsplash_photos(self):
         self.letter_cleanup(); self.addCleanup(self.letter_cleanup)
         calls = []

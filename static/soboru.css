@@ -3222,3 +3222,20 @@ main img,main video,main iframe,main table{max-width:100%}
 /* 운영자 2026-11-05: 소개 한 줄은 PC에서 줄 바꿈 없이, 모바일은 낱말 단위로 고르게 줄 바꿈 */
 .nm-page .nm-intro p{max-width:none;word-break:keep-all;text-wrap:balance}
 @media(min-width:701px){.nm-page .nm-intro p{white-space:nowrap}}
+/* 운영자 2026-11-05: 기사 화면에서 토스식 장치(번호 상자, 초록 체크 상자, 색 막대 소제목, 형광펜) 금지 — 잡지 지면처럼 */
+.ma-page .ma-body h2{display:block;margin:64px 0 20px;padding-top:22px;border-top:1px solid var(--ma-ink);font-size:clamp(21px,2.2vw,25px);font-weight:800;line-height:1.4;letter-spacing:-.03em}
+.ma-page .ma-body h2::before{display:none}
+.ma-page .ma-body h3,.ma-page .ma-body h3.sb-point{display:block;margin:36px 0 10px;font-size:18px;font-weight:800;line-height:1.5}
+.ma-page .ma-body .sb-point-n{display:none}
+.ma-page .ma-body strong,.ma-page .ma-body .sb-hl{background:none;font-weight:800}
+.ma-page .ma-body ul.sb-check{display:block;margin:0 0 24px;padding:0;background:none;border-radius:0;list-style:none;border-bottom:1px solid var(--ma-line)}
+.ma-page .ma-body ul.sb-check li{padding:14px 0 14px 28px;border-top:1px solid var(--ma-line)}
+.ma-page .ma-body ul.sb-check li:before{content:"—";font-family:inherit;color:var(--ma-or);top:14px}
+.ma-page .ma-body ul:not(.sb-check){padding-left:0;list-style:none}.ma-page .ma-body ul:not(.sb-check) li{position:relative;padding-left:22px}
+.ma-page .ma-body ul:not(.sb-check) li::before{content:"—";position:absolute;left:0;color:var(--ma-or)}
+.ma-page .ma-body .sb-callout{margin:44px 0!important;padding:24px 0!important;background:none!important;border:0!important;border-top:2px solid var(--ma-ink)!important;border-bottom:1px solid var(--ma-line)!important;border-radius:0!important}
+.ma-page .ma-body .sb-callout p{font-size:clamp(19px,2vw,23px);line-height:1.6;font-weight:700;letter-spacing:-.03em}
+.ma-page .ma-body .sb-terms{border-radius:0}
+.ma-page .ma-body .sb-terms-h{font-family:Inter,sans-serif;letter-spacing:.16em}
+.ma-sum{padding:20px 0;background:none;border-left:0;border-top:2px solid var(--ma-ink);border-bottom:1px solid var(--ma-line)}
+.ma-sum ul{padding-left:0;list-style:none}.ma-sum li{position:relative;padding-left:22px}.ma-sum li::before{content:"—";position:absolute;left:0;color:var(--ma-or)}
