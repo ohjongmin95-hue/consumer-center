@@ -18,7 +18,7 @@
     {# 운영자 2026-11-04: 메인 표지는 초콜릿 사진 한 장만. 다른 사진으로 넘어가지 않음 #}
     <div class="nm-g">
       <div class="nm-hero">
-        <span class="nm-slide"><img src="{{ asset('img/mag-hero.jpg') }}" alt=""></span>{# 운영자 2026-11-04: 표지 위 'THIS ISSUE' 글 띠는 뺌 #}
+        <span class="nm-slide"><img src="{{ mag_hero_url() if mag_hero_url is defined else asset('img/mag-hero.jpg') }}" alt=""></span>{# 운영자 2026-11-04: 표지 위 'THIS ISSUE' 글 띠는 뺌 #}
         <img class="nm-big" src="{{ asset('img/soboru-wordmark-orange-hi.png') }}" alt="" aria-hidden="true">
       </div>
     </div>
@@ -33,7 +33,7 @@
   {% if mag|length > 1 %}
   <section class="nm-g nm-hot" id="hot">
     <div class="nm-hh"><h2 class="nm-sh"><i aria-hidden="true"></i>{{ ui('letter.mz_hot2', 'HOT ISSUE') }}</h2><a class="nm-up" href="#top" aria-label="맨 위로">↑</a></div>
-    <div class="nm-hots nm-hots2">{% for a in mag[1:5] %}<a href="{{ url_for('life_article', article_id=a['id']) }}"><span class="nm-ph">{{ cover(a, loop.index) }}<em>{{ EN.get(a['category'], 'LIFE') }}</em></span><b>{{ a['title'] }}</b>{% set sm = (a['summary'] or '').split('\n')[0] %}{% if sm %}<p>{{ sm|truncate(60, True, '…') }}</p>{% endif %}<small>{{ (a['published_at'] or a['created'])[:10].replace('-', '. ') }}</small></a>{% endfor %}</div>
+    <div class="nm-hots nm-hots2">{% for a in (mag_hot(mag) if mag_hot is defined else mag[1:5]) %}<a href="{{ url_for('life_article', article_id=a['id']) }}"><span class="nm-ph">{{ cover(a, loop.index) }}<em>{{ EN.get(a['category'], 'LIFE') }}</em></span><b>{{ a['title'] }}</b>{% set sm = (a['summary'] or '').split('\n')[0] %}{% if sm %}<p>{{ sm|truncate(60, True, '…') }}</p>{% endif %}<small>{{ (a['published_at'] or a['created'])[:10].replace('-', '. ') }}</small></a>{% endfor %}</div>
     <a class="nm-more" href="{{ url_for('life') }}">{{ ui('letter.mz_hot_more', '더 많은 이야기') }} →</a>
   </section>
   {% endif %}
