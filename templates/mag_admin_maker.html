@@ -15,7 +15,7 @@
       <button type="button" class="mk-add" id="mk-add">+ {{ '장면' if mode == 'reel' else '장' }} 더하기</button>
     </div>
     <div class="mk-right"><form class="mk-form" id="mk-form" onsubmit="return false">
-      <fieldset class="mk-src"><legend>기사로 만들기</legend>
+      <fieldset class="mk-src"><legend>기사·레터로 만들기</legend>
         <p class="mk-help">기사나 소보루 레터 꼭지를 고르면 AI가 {{ '장면·자막·길이' if mode == 'reel' else '장·제목·글' }}을 짜고 기사 사진{{ '·영상' if mode == 'reel' }}을 넣어요. 그다음 고치면 돼요.</p>
         {% if arts %}<label class="mg-f">우리 매거진 기사<select id="mk-art"><option value="">기사 고르기</option>{% for a in arts %}<option value="{{ a.id }}">{{ a.title[:46] }}</option>{% endfor %}</select></label>{% endif %}
         {% if letters %}<label class="mg-f">소보루 레터 <small>(한 꼭지가 게시물 하나)</small><select id="mk-letter"><option value="">레터 꼭지 고르기</option>{% for L in letters %}<optgroup label="{{ L.no }}호 · {{ L.title }}{{ '' if L.sent else ' (안 보냄)' }}">{% for p in L.pieces %}<option value="L{{ L.id }}:{{ p.key }}">{{ p.label[:40] }}</option>{% endfor %}</optgroup>{% endfor %}</select></label>{% endif %}
