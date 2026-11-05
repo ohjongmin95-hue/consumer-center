@@ -17,6 +17,8 @@
   <section class="lt-hero">
     {# 운영자 2026-11-05: 표지 사진 다섯 장이 번갈아 바뀜 (관리자 > 소보루 매거진 > 첫 화면 편집). 표지 위 'THIS ISSUE' 글 띠는 뺌 #}
     {% set hero_urls = mag_hero_urls() if mag_hero_urls is defined else [asset('img/mag-hero.jpg')] %}
+    {# 운영자 2026-11-05: 들어올 때마다 첫 사진을 아무거나로 (늘 같은 사진부터 X) — 순서는 그대로, 시작만 돌림 #}
+    {% set st = range(hero_urls|length)|random if hero_urls|length > 1 else 0 %}{% set hero_urls = hero_urls[st:] + hero_urls[:st] %}
     <div class="nm-g">
       <div class="nm-hero" data-slides="{{ hero_urls|length }}">
         {% for u in hero_urls %}<span class="nm-slide{{ ' on' if loop.first }}"><img src="{{ u }}" alt=""{% if not loop.first %} loading="lazy"{% endif %}></span>{% endfor %}
