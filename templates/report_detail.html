@@ -258,7 +258,7 @@
         {% if case['share_company'] %}
         <div class="cs-divide">
           <span class="cs-label">가입 안 한 기업</span>
-          <form method="post" action="{{ url_for(ep.invite, case_id=case['id']) }}" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><span class="cs-hint">이 제보만 볼 수 있는 1회용 답변 링크{% if invite %} · {{ invite['created'][5:10]|replace('-', '.') }} 발급{% endif %}{% if case['seen_at'] %} · 기업이 열어 봄{% endif %}</span><button class="cs-btn" type="submit">{{ '다시 만들기' if invite else '링크 만들기' }}</button></form>
+          <form method="post" action="{{ url_for(ep.invite, case_id=case['id']) }}" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><span class="cs-hint">이 제보만 볼 수 있는 1회용 답변 링크{% if invite %} · {{ invite['created'][5:10]|replace('-', '.') }} 발급{% endif %}{% if case['seen_at'] %} · 기업이 열어 봄{% endif %}{% if invite and invite['used_at'] %} · 답변 받음, 링크 닫힘{% endif %}</span><button class="cs-btn" type="submit">{{ '다시 만들기' if invite else '링크 만들기' }}</button></form>
         </div>
         {% else %}<p class="cs-muted">제보자가 기업 전달에 동의하지 않아 기업에 내용을 보낼 수 없어요. 기업 페이지 연결은 할 수 있어요.</p>{% endif %}
       </section>

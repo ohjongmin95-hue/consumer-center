@@ -54,6 +54,7 @@ def init():
 init()
 with conn() as db:
     db.execute('''CREATE TABLE IF NOT EXISTS company_invites(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL UNIQUE,token_hash TEXT NOT NULL,company_name TEXT NOT NULL,created TEXT NOT NULL,FOREIGN KEY(case_id) REFERENCES cases(id))''')
+    if 'used_at' not in {r['name'] for r in db.execute('PRAGMA table_info(company_invites)')}:db.execute("ALTER TABLE company_invites ADD COLUMN used_at TEXT NOT NULL DEFAULT ''")  # 1회용: 답변을 한 번 남기면 그 링크는 닫힘 (운영자 2026-11-06)
     db.execute('''CREATE TABLE IF NOT EXISTS internal_notes(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,note TEXT NOT NULL,created TEXT NOT NULL,FOREIGN KEY(case_id) REFERENCES cases(id))''')
     cols={row['name'] for row in db.execute('PRAGMA table_info(cases)')}
     if 'assignee' not in cols: db.execute("ALTER TABLE cases ADD COLUMN assignee TEXT DEFAULT ''")
@@ -1177,9 +1178,11 @@ def company_access(case_id,token):
             ops_company_objection(db,case,(invite['company_name'] or '기업')+' (답변 링크)')
             return redirect(url_for('company_access',case_id=case_id,token=token)+'#objection')
         if request.method=='POST':
+            if invite['used_at']:return redirect(url_for('company_access',case_id=case_id,token=token))  # 이미 답변한 링크: 다시 받지 않음
             body=request.form.get('response','').strip()
             if not body or len(body)>5000:abort(400)
             db.execute("INSERT INTO messages(case_id,author,body,created,source) VALUES(?,?,?,?,'link')",(case_id,'기업 답변',body,now()))
+            db.execute('UPDATE company_invites SET used_at=? WHERE id=?',(now(),invite['id']))
             db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,(invite['company_name'] or '기업')+' (답변 링크)','기업 답변 등록',now()))
             answer_arrived(db,case)
             notify_later(case_id,'company');ops_answer_alert(case)
@@ -1188,7 +1191,7 @@ def company_access(case_id,token):
         if not case['seen_at'] and not admin_active() and not g.get('staff'):jebo.mark(db,case_id,'seen_at');log_case(db,case_id,'기업이 답변 링크를 열어 봄');notify_later(case_id,'seen')
         objections=ops_company_requests(db,case_id)
     # 업체에는 제보자의 연락처, 첨부파일, 내부 메모를 공개하지 않음.
-    return render_template('company.html',case=case,responses=responses,objections=objections,token=token)
+    return render_template('company.html',case=case,responses=responses,objections=objections,token=token,used=invite['used_at'],company_name=invite['company_name'] or case['company'])
 
 @app.route('/case/logout',methods=['POST'])
 def case_logout():

@@ -844,6 +844,16 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(company, path)
         response = company.post(path, data={'_csrf': token, 'response': '테스트 기업 답변'}, follow_redirects=True)
         self.assertIn('테스트 기업 답변', response.get_data(as_text=True))
+        self.assertIn('답변을 보냈어요', response.get_data(as_text=True))  # 1회용: 한 번 보내면 링크가 닫힘 (OH 2026-11-06)
+        self.assertNotIn('name="response"', response.get_data(as_text=True))
+        company.post(path, data={'_csrf': token, 'response': '두 번째 답변'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM messages WHERE case_id=? AND author='기업 답변'", (case_id,)).fetchone()[0], 1)
+        self.assertIn('답변 받음, 링크 닫힘', admin.get('/admin/reports/' + str(case_id)).get_data(as_text=True))
+        again = admin.post('/admin/invite/' + str(case_id), data={'_csrf': self.csrf(admin, '/admin/reports/' + str(case_id))})
+        fresh = re.search(r'<strong>http://localhost(/company/[^<]+)</strong>', again.get_data(as_text=True))[1]
+        self.assertIn('name="response"', company.get(fresh).get_data(as_text=True))  # 다시 만들면 새 링크로 또 답변 가능
+        self.assertEqual(company.get(path).status_code, 404)  # 예전 링크는 안 열림
 
     def login_admin(self):
         admin = self.site.app.test_client()
