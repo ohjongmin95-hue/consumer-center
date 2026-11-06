@@ -33,7 +33,7 @@ export default function Macros() {
 
   return (
     <Screen onRefresh={reload}>
-      <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12 }}>
+      <View style={{ flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 12 }}>
         {edit ? null : <SmallBtn title="+ 새 템플릿" onPress={() => (setMsg(''), setEdit({ name: '', body: '', tags: '' }))} />}
       </View>
       <Notice text={msg} tone="ok" />
@@ -88,7 +88,7 @@ const st = StyleSheet.create({
   vars: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   var: { height: 32, paddingHorizontal: 10, borderRadius: 10, backgroundColor: C.accentSoft, justifyContent: 'center' },
   varT: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.accentInk },
-  name: { flex: 1, fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: -0.4 },
+  name: { flex: 1, fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   used: { fontFamily: FONT, fontSize: 13, color: C.fg3, marginTop: 4 },
   body: { fontFamily: FONT, fontSize: 15, lineHeight: 22, color: C.fg2, marginTop: 8 },
 });

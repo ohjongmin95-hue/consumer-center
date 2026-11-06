@@ -36,9 +36,9 @@ export default function Signup() {
     return (
       <View style={{ flex: 1, backgroundColor: C.card, padding: 24, paddingTop: 48, gap: 14 }}>
         <Text style={st.big}>🎉</Text>
-        <Text style={st.h1}>가입 신청을 받았습니다</Text>
+        <Text style={st.h1}>가입 신청을 받았어요</Text>
         <Text style={st.p}>
-          {done}의 신청을 운영팀이 확인하고 있습니다. 승인되면 {f.login_id}로 메일을 보내 드리고, 그때부터 이 앱에 로그인할 수 있습니다.
+          {done}의 신청을 운영팀이 확인하고 있어요. 승인하면 {f.login_id}로 메일을 보내 드리고, 그때부터 이 앱에 로그인할 수 있어요.
         </Text>
         <Btn title="로그인 화면으로" onPress={() => router.back()} style={{ marginTop: 12 }} />
       </View>
@@ -49,7 +49,7 @@ export default function Signup() {
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 18, gap: 8 }}>
           <Text style={st.h1}>소보루 CS 가입 신청</Text>
-          <Text style={st.p}>신청하면 운영팀이 사업자 정보를 확인하고 승인합니다. 요금과 무료 체험은 웹 관리 화면에서 확인할 수 있어요.</Text>
+          <Text style={st.p}>신청하면 운영팀이 사업자 정보를 확인하고 승인해요. 요금과 무료 체험은 웹 관리 화면에서 확인할 수 있어요.</Text>
         </View>
         <Card style={{ gap: 14 }}>
           <Field label="회사 이름" value={f.name} onChangeText={set('name')} placeholder="예: 달빛화장품" />
@@ -73,11 +73,11 @@ export default function Signup() {
               이용약관 동의 (필수){'  '}
               <Text onPress={() => WebBrowser.openBrowserAsync(SITE_BASE + '/terms')} style={{ fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg3, textDecorationLine: 'underline' }} accessibilityRole="link">보기</Text>
             </Text>
-            <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3 }}>가입 여부는 소비자 요청 처리 결과에 영향을 주지 않습니다</Text>
+            <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3 }}>가입 여부는 소비자 요청 처리 결과와 상관없어요</Text>
           </View>
         </Pressable>
         <Notice text={err} />
-        <View style={{ marginHorizontal: 16 }}>
+        <View style={{ marginHorizontal: 20 }}>
           <Btn title="가입 신청하기" onPress={submit} busy={busy} disabled={!terms} />
         </View>
       </ScrollView>
@@ -86,10 +86,10 @@ export default function Signup() {
 }
 
 const st = StyleSheet.create({
-  h1: { fontFamily: FONT, fontSize: 24, lineHeight: 33, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
+  h1: { fontFamily: FONT, fontSize: 24, lineHeight: 33, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg3 },
   big: { fontFamily: FONT, fontSize: 44 },
   label: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
-  agree: { flexDirection: 'row', gap: 12, alignItems: 'center', marginHorizontal: 16, marginBottom: 12, backgroundColor: C.card, borderRadius: 20, padding: 18 },
+  agree: { flexDirection: 'row', gap: 12, alignItems: 'center', marginHorizontal: 20, marginBottom: 12, backgroundColor: C.card, borderRadius: 20, padding: 18 },
   box: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
 });

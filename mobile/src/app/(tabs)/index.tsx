@@ -45,7 +45,7 @@ export default function HomeTab() {
     setOk('');
     try {
       const r = await api.act(session.token, id, { act: 'approve' });
-      setOk(r.message || '승인했습니다');
+      setOk(r.message || '승인했어요');
       await load();
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) return logout();
@@ -104,7 +104,7 @@ export default function HomeTab() {
           <Text style={st.groupTitle}>
             {pend.length ? (
               <>
-                승인할 요청이 <Text style={{ color: C.accent }}>{pend.length}건</Text> 있습니다
+                승인할 요청이 <Text style={{ color: C.accent }}>{pend.length}건</Text> 있어요
               </>
             ) : (
               '승인할 요청을 모두 처리했어요'
@@ -159,7 +159,7 @@ export default function HomeTab() {
             <TfTile name="gift" />
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ fontFamily: FONT, fontSize: 15, fontWeight: '700', color: C.fg }}>보상 승인을 기다리는 요청 {home.counts.comp}건</Text>
-              <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3 }}>정해 둔 보상을 확인하고 승인하면 고객에게 알림이 갑니다</Text>
+              <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3 }}>정해 둔 보상을 확인하고 승인하면 고객에게 알림이 가요</Text>
             </View>
           </Pressable>
         ) : null}
@@ -178,7 +178,7 @@ export default function HomeTab() {
 
         <Card>
           <H2>최근 요청</H2>
-          {home.recent.length ? home.recent.map((c) => <CaseRow key={c.id} c={c} />) : <Text style={st.empty}>아직 들어온 요청이 없습니다.</Text>}
+          {home.recent.length ? home.recent.map((c) => <CaseRow key={c.id} c={c} />) : <Text style={st.empty}>아직 들어온 요청이 없어요.</Text>}
         </Card>
         {home.news?.length ? (
           <Card style={{ paddingVertical: 14 }}>
@@ -202,14 +202,14 @@ export default function HomeTab() {
 }
 
 const st = StyleSheet.create({
-  warn: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: C.card, borderRadius: R.lg, padding: 18, marginHorizontal: 14, marginBottom: 12 },
+  warn: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: C.card, borderRadius: R.lg, padding: 18, marginHorizontal: 20, marginBottom: 12 },
   brief: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2, marginTop: 4 },
-  hello: { fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: -0.7 },
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginHorizontal: 14, marginBottom: 12 },
+  hello: { fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginHorizontal: 20, marginBottom: 12 },
   pRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
-  pTitle: { fontFamily: FONT, fontSize: 16, fontWeight: '600', color: C.fg, letterSpacing: -0.3 },
+  pTitle: { fontFamily: FONT, fontSize: 16, fontWeight: '600', color: C.fg, letterSpacing: 0 },
   pMeta: { fontFamily: FONT, fontSize: 13, lineHeight: 18, color: C.fg3 },
   groupHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  groupTitle: { fontFamily: FONT, fontSize: 20, fontWeight: '700', color: C.fg, letterSpacing: -0.5 },
+  groupTitle: { fontFamily: FONT, fontSize: 20, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   empty: { fontFamily: FONT, fontSize: 15, color: C.fg3, paddingVertical: 8 },
 });

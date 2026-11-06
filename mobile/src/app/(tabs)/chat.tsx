@@ -143,8 +143,8 @@ function Badge({ label, tone }: { label: string; tone?: 'need' | 'ai' }) {
 
 const st = StyleSheet.create({
   add: { height: 36, paddingHorizontal: 14, borderRadius: 12, backgroundColor: C.card, justifyContent: 'center' },
-  head: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 },
-  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8, paddingHorizontal: 8 },
+  head: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 12 },
+  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: 0, paddingHorizontal: 8 },
   search: { height: 48, borderRadius: R.md, backgroundColor: C.card, paddingHorizontal: 16, fontFamily: FONT, fontSize: 15, color: C.fg },
   chip: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: C.card, justifyContent: 'center' },
   chipText: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2 },
@@ -153,7 +153,7 @@ const st = StyleSheet.create({
   av: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },
   avText: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.accentInk },
   mk: { position: 'absolute', right: -4, bottom: -4, borderRadius: 13, borderWidth: 2, borderColor: C.card, backgroundColor: C.card },
-  name: { flexShrink: 1, fontFamily: FONT, fontSize: 16, fontWeight: '700', color: C.fg, letterSpacing: -0.3 },
+  name: { flexShrink: 1, fontFamily: FONT, fontSize: 16, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   when: { marginLeft: 'auto', fontFamily: FONT, fontSize: 12, color: C.fg4 },
   text: { fontFamily: FONT, fontSize: 14, color: C.fg3 },
   bdg: { height: 22, paddingHorizontal: 8, borderRadius: 11, justifyContent: 'center' },

@@ -88,8 +88,8 @@ export default function OrdersTab() {
 }
 
 const st = StyleSheet.create({
-  head: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 },
-  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8, paddingHorizontal: 8 },
+  head: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 12 },
+  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: 0, paddingHorizontal: 8 },
   search: { height: 48, borderRadius: R.md, backgroundColor: C.card, paddingHorizontal: 16, fontFamily: FONT, fontSize: 15, color: C.fg },
   chip: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: C.card, justifyContent: 'center' },
   chipText: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2 },

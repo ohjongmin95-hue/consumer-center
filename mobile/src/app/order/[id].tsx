@@ -107,7 +107,7 @@ export default function OrderScreen() {
         {o.cases.length ? o.cases.map((c) => <CaseRow key={c.id} c={c} />) : <Text style={st.p}>아직 이 주문으로 들어온 요청이 없어요.</Text>}
       </Card>
 
-      <View style={{ marginHorizontal: 16, marginTop: 12 }}>
+      <View style={{ marginHorizontal: 20, marginTop: 12 }}>
         {sure ? (
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Btn title="취소" kind="gray" onPress={() => setSure(false)} style={{ flex: 1 }} />
@@ -132,7 +132,7 @@ export default function OrderScreen() {
 
 const st = StyleSheet.create({
   head: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16, gap: 6 },
-  h1: { fontFamily: FONT, fontSize: 22, fontWeight: '700', color: C.fg, letterSpacing: -0.6 },
+  h1: { fontFamily: FONT, fontSize: 22, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   sub: { fontFamily: FONT, fontSize: 14, color: C.fg3 },
   p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 },
 });
