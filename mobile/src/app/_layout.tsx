@@ -90,7 +90,8 @@ export default function RootLayout() {
           <Stack.Screen name="orders" options={{ title: '주문·배송' }} />
           <Stack.Screen name="returns" options={{ title: '교환·반품' }} />
           <Stack.Screen name="macros" options={{ title: '답변 템플릿' }} />
-          <Stack.Screen name="soda" options={{ title: 'SODA 가르치기' }} />
+          <Stack.Screen name="soda" options={{ title: '', headerStyle: { backgroundColor: C.card }, headerShadowVisible: false, contentStyle: { backgroundColor: C.card } }} />
+          <Stack.Screen name="soda-edit" options={{ title: '', headerStyle: { backgroundColor: C.card }, headerShadowVisible: false, contentStyle: { backgroundColor: C.card } }} />
         </Stack>
         <Intro />
       </AuthProvider>

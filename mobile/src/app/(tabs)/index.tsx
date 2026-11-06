@@ -203,13 +203,13 @@ export default function HomeTab() {
 
 const st = StyleSheet.create({
   warn: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: C.card, borderRadius: R.lg, padding: 18, marginHorizontal: 20, marginBottom: 12 },
-  brief: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2, marginTop: 4 },
-  hello: { fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  brief: { fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.fg2, marginTop: 4 },
+  hello: { fontFamily: FONT, fontSize: 20, lineHeight: 29, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginHorizontal: 20, marginBottom: 12 },
   pRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
-  pTitle: { fontFamily: FONT, fontSize: 16, fontWeight: '600', color: C.fg, letterSpacing: 0 },
+  pTitle: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg, letterSpacing: 0 },
   pMeta: { fontFamily: FONT, fontSize: 13, lineHeight: 18, color: C.fg3 },
   groupHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  groupTitle: { fontFamily: FONT, fontSize: 20, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  groupTitle: { fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   empty: { fontFamily: FONT, fontSize: 15, color: C.fg3, paddingVertical: 8 },
 });
