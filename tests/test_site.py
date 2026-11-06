@@ -1054,7 +1054,7 @@ class SiteTest(unittest.TestCase):
                 with self.site.conn() as db: db.execute('UPDATE cases SET published=1 WHERE id=?', (cid2,))
                 admin.post('/admin/art/fill', data={'_csrf': self.csrf(admin, '/admin/art'), 'kind': 'report'})
             self.assertEqual(visitor.get(f'/art/report/{cid2}.webp').status_code, 200)
-            self.assertEqual(sent[-1]['quality'], 'medium')
+            self.assertEqual(sent[-1]['quality'], 'low')
             # 옛 그림체 그림은 한 번에 새 그림체로 (게시 중이면 게시 상태 그대로)
             with self.site.conn() as db: db.execute("UPDATE soboru_art SET style=1 WHERE kind='report' AND target_id=?", (cid2,))
             n = len(sent)
