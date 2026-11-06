@@ -844,6 +844,22 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(company, path)
         response = company.post(path, data={'_csrf': token, 'response': '테스트 기업 답변'}, follow_redirects=True)
         self.assertIn('테스트 기업 답변', response.get_data(as_text=True))
+        self.assertIn('답변을 보냈어요', response.get_data(as_text=True))  # 1회용: 한 번 보내면 링크가 닫힘 (OH 2026-11-06)
+        self.assertNotIn('name="response"', response.get_data(as_text=True))
+        company.post(path, data={'_csrf': token, 'response': '두 번째 답변'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM messages WHERE case_id=? AND author='기업 답변'", (case_id,)).fetchone()[0], 1)
+        self.assertIn('답변 받음, 링크 닫힘', admin.get('/admin/reports/' + str(case_id)).get_data(as_text=True))
+        again = admin.post('/admin/invite/' + str(case_id), data={'_csrf': self.csrf(admin, '/admin/reports/' + str(case_id))})
+        fresh = re.search(r'<strong>http://localhost(/company/[^<]+)</strong>', again.get_data(as_text=True))[1]
+        self.assertIn('name="response"', company.get(fresh).get_data(as_text=True))  # 다시 만들면 새 링크로 또 답변 가능
+        with self.site.conn() as db:  # AI 입장 요청서 정리가 있으면 기업 답변 페이지 위에 보여 주고 원문은 접어 둠
+            db.execute("INSERT INTO company_requests(case_id,version,facts,origin,created) VALUES(?,99,?,'ai','x')", (case_id, json.dumps({'paragraphs': ['제보자에 따르면 환불이 늦어지고 있다고 합니다.'], 'demands': '환불', 'questions': ['환불 처리 일정을 알려 주시기 바랍니다.'], 'product': '확인 필요'}, ensure_ascii=False)))
+        page = company.get(fresh).get_data(as_text=True)
+        for text in ('AI가 제보 내용을 정리했어요', '제보자에 따르면 환불이 늦어지고', '환불 처리 일정을', '제보자가 쓴 원문 보기'):
+            self.assertIn(text, page)
+        self.assertNotIn('확인 필요', page)
+        self.assertEqual(company.get(path).status_code, 404)  # 예전 링크는 안 열림
 
     def login_admin(self):
         admin = self.site.app.test_client()
@@ -6328,7 +6344,7 @@ class SiteTest(unittest.TestCase):
         import auto_content
         from unittest.mock import patch
         ext = self.site.app.extensions
-        env_hot = patch.dict(os.environ, {'AUTO_CONTENT_HOT': '0'}); env_hot.start(); self.addCleanup(env_hot.stop)  # 뒤에서 따로 시험
+        env_hot = patch.dict(os.environ, {'AUTO_CONTENT_HOT': '0', 'AUTO_CONTENT_PER_RUN': '1'}); env_hot.start(); self.addCleanup(env_hot.stop)  # 뒤에서 따로 시험
         reply = {'tag': 'MONEY', 'covers': [{'text': '환불 3일 안에\n받을 수 있을까', 'type': '경고'}], 'big': '3일', 'cover_scene': 'desk',
                  'slides': [{'design': 'body', 'kicker': '언제부터', 'title': '3일 안에 돌려받아요', 'items': '판매자는 **3일** 안에 돌려줘요.\n\n늦으면 물어볼 수 있어요.', 'num': '3일'},
                             {'design': 'body', 'kicker': '내가 챙길 것', 'title': '주문 내역을 남겨요', 'items': '내역을 캡처해 두세요.', 'num': ''}],
@@ -6393,12 +6409,16 @@ class SiteTest(unittest.TestCase):
             done, failed = ext['auto_content']['run']()
             self.assertEqual((done[0][3], failed), ('네이버 뉴스 댓글 321개', []))
             self.assertIn('왜 터졌나', sent[0]['text']); self.assertIn('후킹: 아직도?', sent[0]['text'])
-            done, failed = ext['auto_content']['run']()  # 다음 번은 커뮤니티 먼저
+            done, failed = ext['auto_content']['run']()  # 다음 번은 조사한 소재(분야별 최신 소비자 뉴스) 먼저 — 운영자 2026-11-06
+            self.assertEqual(done[0][3], '소재 소비자·환불')
+            done, failed = ext['auto_content']['run']()  # 그다음은 커뮤니티 먼저
             self.assertEqual(done[0][3], '더쿠 인기글 조회 50,000회')
             reply['skip'] = '연예 폭로'
             done, failed = ext['auto_content']['run']()
             self.assertEqual(done, []); self.assertIn('다루지 않을 소재', failed[0][1])
             del reply['skip']
+        self.assertEqual(auto_content.rss_items('<rss><item><title><![CDATA[공정위, &quot;다크패턴&quot; 제재]]></title><link>https://a.kr/1</link></item><item><title>링크 없음</title></item></rss>'),
+                         [{'title': '공정위, "다크패턴" 제재', 'url': 'https://a.kr/1'}])
         rows = auto_content.parse_community('<tr class="table_body x<strong class="text_over">글 &amp; 제목</strong><td class="hit"> 18,536 </td>', '루리웹', '<tr class="table_body', auto_content.COMMUNITIES[3][3], auto_content.COMMUNITIES[3][4])
         self.assertEqual(rows, [{'site': '루리웹', 'title': '글 & 제목', 'views': 18536}])
         self.assertTrue(auto_content.same_topic('[이슈] 다이소 환불 기준 바뀐다.jpg', '다이소 환불 기준 바뀐다 논란')); self.assertFalse(auto_content.same_topic('오늘 날씨 좋다', '다이소 환불'))

@@ -19,7 +19,7 @@ install -m 644 $APP/deploy/soboru-content.service /etc/systemd/system/soboru-con
 install -m 644 $APP/deploy/soboru-content.timer /etc/systemd/system/soboru-content.timer
 systemctl daemon-reload
 systemctl enable --now soboru-content.timer
-echo "설치했어요. 아침 9시·오후 1시·저녁 9시쯤 한 편씩 만들어 만든 것 보관함에 넣어요."
+echo "설치했어요. 아침 9시·오후 1시·저녁 9시쯤 세 편씩 만들어 만든 것 보관함에 넣어요 (AUTO_CONTENT_PER_RUN으로 바꿈)."
 echo "지금 한 번 돌려 볼게요 (몇 분 걸려요)..."
 systemctl start soboru-content.service || true
 journalctl -u soboru-content -n 15 --no-pager -o cat | grep -v -i -E 'key|token|password|secret' || true

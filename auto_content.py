@@ -1,7 +1,7 @@
 """소보루 자동 콘텐츠 (운영자 2026-11-06: 정해진 시간마다 서버에서 카드뉴스·릴스를 만들어 보관함에 넣고 텔레그램으로 알림).
 
-deploy/soboru-content.timer가 아침 9시·오후 1시·저녁 9시쯤 `python -m auto_content`를 부른다. 한 번에 AUTO_CONTENT_PER_RUN편(기본 1).
-- 소재 (운영자 2026-11-06: 터진 것 위주로, 커뮤니티 것도): 네이버 뉴스 댓글 많은 기사와 커뮤니티 인기글을 번갈아 먼저 봄. 커뮤니티 글은 사실 확인 전이라
+deploy/soboru-content.timer가 아침 9시·오후 1시·저녁 9시쯤 `python -m auto_content`를 부른다. 한 번에 AUTO_CONTENT_PER_RUN편(기본 3).
+- 소재 (운영자 2026-11-06: 터진 것 위주로, 커뮤니티 것도, 조사한 분야별 소재도 — TOPIC_QUERIES·AUTO_CONTENT_RSS): 네이버 뉴스 댓글 많은 기사와 커뮤니티 인기글을 번갈아 먼저 봄. 커뮤니티 글은 사실 확인 전이라
   같은 주제의 뉴스 기사를 찾았을 때만 그 기사로 만듦. 없으면 최근 게시된 매거진 기사 중 조회수가 큰 순서. 이미 만든 것은 건너뜀.
 - 글: 매거진 AI 도움의 카드뉴스 지시문(mag_assist)을 그대로 씀. 기사에 없는 숫자가 들어간 답, 다루지 않을 소재는 버리고 다음으로 넘어감.
 - 분석: 왜 터졌는지 주제·가치·포맷·후킹·원고 5가지로 나눠 텔레그램 알림에 적음.
@@ -53,6 +53,10 @@ COMMUNITIES = [('뽐뿌', 'https://www.ppomppu.co.kr/zboard/zboard.php?id=freebo
                ('더쿠', 'https://theqoo.net/hot', '<tr', r'<td class="title">\s*<a href="[^"]+"[^>]*>(.*?)</a>', r'<td class="m_no">\s*([\d,]+)\s*</td>\s*</tr>|<td class="m_no">\s*([\d,]+)'),
                ('루리웹', 'https://bbs.ruliweb.com/best/humor_only', '<tr class="table_body', r'<strong class="text_over">(.*?)</strong>', r'class="hit">\s*([\d,]+)'),
                ('디시', 'https://gall.dcinside.com/board/lists/?id=dcbest', '<tr class="ub-content', r'gall_tit[^>]*>\s*<a\s+href="[^"]+"[^>]*>(.*?)</a>', r'gall_count">([\d,]+)')]
+# 소재 (운영자 2026-11-06: 조사한 소재로 왜 안 만드냐) — 소비자에게 바로 닿는 분야별 최신 뉴스. 네이버 뉴스 검색(최신순).
+# AUTO_CONTENT_RSS 에 RSS 주소(쉼표로 여러 개)를 넣으면 그 글도 소재로 씀.
+TOPIC_QUERIES = [('소비자·환불', '소비자 환불'), ('소비자·환불', '소비자 피해'), ('공정위·제재', '공정위 제재'), ('공정위·제재', '과징금 부과'),
+                 ('리콜·안전', '리콜'), ('가격·요금', '가격 인상'), ('다크패턴·약관', '다크패턴')]
 SCENE_SEC = {'cover': 3.0, 'body': 4.5, 'quote': 4.0, 'last': 4.5}
 
 
@@ -359,6 +363,19 @@ def hot_community():
     return sorted(rows, key=lambda r: -r['views'])
 
 
+def rss_items(text):
+    """RSS 글 목록 [{title, url}] (제목·링크만)."""
+    import html as H
+    rows = []
+    for it in re.findall(r'(?is)<item\b.*?</item>', text or '')[:60]:
+        t = re.search(r'(?is)<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</title>', it)
+        u = re.search(r'(?is)<link>(?:<!\[CDATA\[)?\s*(https?://[^<\s\]]+)', it)
+        if t and u:
+            title = ' '.join(H.unescape(H.unescape(re.sub(r'<[^>]+>', ' ', t[1]))).split())
+            if title: rows.append({'title': title[:100], 'url': u[1].strip()})
+    return rows
+
+
 def words(text):
     return {w for w in HOT_NOISE.sub(' ', text or '').split() if len(w) >= 2}
 
@@ -537,6 +554,32 @@ def install(S):
             src = mag_assist.read_article(hit['naver'])
             if src: yield {'key': key, 'title': hit['title'], 'src': src, 'hot': f"{p['site']} 인기글 조회 {p['views']:,}회"}
 
+    def topic_items():
+        """조사한 소재: 분야별 최신 소비자 뉴스(네이버 뉴스 검색)와 AUTO_CONTENT_RSS 글. 하루 안 된 것, 다루지 않을 제목은 뺌."""
+        import mag_assist
+        seen = seen_topics()
+        hub = app.extensions.get('naverhub') or {}
+        found = []
+        if hub.get('search'):
+            for label, q in TOPIC_QUERIES:
+                try: rows = hub['search']('news', q, display=10, sort='date')['items']
+                except Exception: rows = []
+                found += [{'title': r['title'], 'url': r.get('naver') or r['url'], 'label': label, 'media': r.get('source') or ''} for r in rows]
+        for url in [u.strip() for u in os.getenv('AUTO_CONTENT_RSS', '').split(',') if u.strip()]:
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': COMMUNITY_UA})
+                with urllib.request.urlopen(req, timeout=15) as r: text = r.read(2_000_000).decode('utf-8', 'replace')
+                found += [dict(x, label='RSS', media='') for x in rss_items(text)]
+            except Exception:
+                continue
+        titles = []
+        for f in found:
+            key = 'topic:' + re.sub(r'\W', '', f['title'])[:30]
+            if key in seen or HOT_SKIP.search(f['title']) or any(same_topic(f['title'], t) for t in titles): continue
+            titles.append(f['title']); seen.add(key)
+            src = mag_assist.read_article(f['url'])
+            if src: yield {'key': key, 'title': f['title'], 'src': src, 'hot': f"소재 {f['label']}" + (f" · {f['media']}" if f['media'] else '')}
+
     def article_items(limit, article_id=None):
         for a in pick(limit, article_id):
             date = (a['published_at'] or a['created'] or '')[:10].replace('-', '.')
@@ -551,14 +594,15 @@ def install(S):
         if os.getenv('AUTO_CONTENT_HOT', '1') != '0':
             with conn() as db:
                 n = db.execute("SELECT COUNT(*) FROM auto_content_topics WHERE status='made'").fetchone()[0]
-            for gen in ((news_items, community_items) if n % 2 == 0 else (community_items, news_items)):
+            order = (news_items, topic_items, community_items)
+            for gen in order[n % 3:] + order[:n % 3]:
                 try: yield from gen()
                 except Exception as e: app.logger.warning('자동 콘텐츠 수집 실패: %s', str(e)[:160])
         yield from article_items(limit)
 
     def run(article_id=None, per_run=None):
         """한 번 돌리기. 한 소재가 안 되면 다음으로 넘어가고, 몫을 채우거나 시도 수를 넘으면 멈춤."""
-        want = per_run or int(os.getenv('AUTO_CONTENT_PER_RUN', '1') or 1)
+        want = per_run or int(os.getenv('AUTO_CONTENT_PER_RUN', '3') or 3)  # 운영자 2026-11-06: 조사만 하고 안 만들지 않게 한 번에 3편
         done, failed, tries = [], [], 0
         for item in candidates(want + 5, article_id):
             if len(done) >= want or tries >= want + 3: break  # AI 비용이 끝없이 들지 않게
@@ -602,6 +646,11 @@ def main(argv):
         if '--dry' in argv:
             for n in hot_news(10): print('뉴스', n['comments'], n['title'])
             for c in hot_community()[:10]: print('커뮤니티', c['site'], c['views'], c['title'])
+            hub = site.app.extensions.get('naverhub') or {}
+            for label, q in TOPIC_QUERIES:
+                try: rows = hub['search']('news', q, display=3, sort='date')['items'] if hub.get('search') else []
+                except Exception: rows = []
+                for r in rows: print('소재', label, r['title'])
             for a in tools['pick'](5, aid): print('매거진', a['id'], a['views'], a['title'])
             return 0
         done, failed = tools['run'](aid)

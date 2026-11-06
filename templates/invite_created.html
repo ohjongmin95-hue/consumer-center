@@ -3,10 +3,14 @@
 {% block content %}
 <main class="cs-page cs-narrow">
   <h1 class="cs-title">기업 답변 링크를 만들었어요</h1>
-  <div class="cs-panel">
-    <p>이 링크는 지금 이 화면에서만 보여요. 기업 담당자인지 확인한 뒤 이메일 등 안전한 방법으로 전달해 주세요.</p>
-    <p class="cs-link" style="overflow-wrap:anywhere"><strong>{{ invite_url }}</strong></p>
-    <a class="cs-btn" href="{{ url_for(ep.case, case_id=case['id']) }}">제보로 돌아가기</a>
+  <div class="cs-panel iv-panel">
+    <p>{{ case['company'] }} 담당자에게 이 링크를 보내 주세요. 링크로 들어오면 이 제보만 보고 답변을 한 번 남길 수 있어요. 답변을 남기면 링크는 닫혀요.</p>
+    <p class="cs-link iv-link" id="iv-url"><strong>{{ invite_url }}</strong></p>
+    <button class="cs-btn cs-btn-main iv-copy" type="button" id="iv-copy" data-url="{{ invite_url }}">링크 복사하기</button>
+    <p class="cs-hint">이 링크는 지금 이 화면에서만 보여요. 다시 만들면 예전 링크는 더 이상 열리지 않아요.</p>
+    <a class="iv-back" href="{{ url_for(ep.case, case_id=case['id']) }}">제보로 돌아가기</a>
   </div>
 </main>
+<style>.iv-panel{display:flex;flex-direction:column;gap:12px}.iv-panel p{margin:0}.iv-link{padding:14px 16px;border:1px solid #e5e8eb;border-radius:12px;background:#f9fafb;overflow-wrap:anywhere;font-size:14px;line-height:21px}.iv-copy{width:100%;height:48px}.iv-back{align-self:center;font-size:14px;color:#6b7684;text-decoration:underline}</style>
+<script>(function(){var b=document.getElementById('iv-copy');b.addEventListener('click',function(){var u=b.dataset.url;function done(){b.textContent='복사했어요';setTimeout(function(){b.textContent='링크 복사하기'},1800)}function pick(){var r=document.createRange();r.selectNodeContents(document.getElementById('iv-url'));var s=getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');done()}catch(e){}}if(navigator.clipboard)navigator.clipboard.writeText(u).then(done,pick);else pick()})})();</script>
 {% endblock %}

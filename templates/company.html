@@ -1,19 +1,69 @@
 {% extends 'base.html' %}{% block content %}
-{# 기업 답변 링크 화면: 메일 링크로 로그인 없이 들어옴. 제보 내용과 답변 칸만 (OH 2026-10-29: 메뉴·바닥글·이의 신청 뺌) #}
-<main class="page co-reply"><div class="wrap">
-  <div class="page-intro"><h1 class="page-title">{{ ui('company.title', '기업 답변 제출') }}</h1><p>{{ ui('company.intro', '이 링크는 해당 제보를 맡은 담당자에게만 전달해 주세요.') }}</p></div>
-  <div class="form-panel">
-    <p class="pill">{{ case['receipt'] }}</p>
-    <h2>{{ case['subject'] }}</h2>
-    <p><b>{{ ui('reports.target', '제보 대상') }}:</b> {{ case['company'] }}</p>
-    <h3>{{ ui('lookup.case_body', '제보 내용') }}</h3><p style="white-space:pre-wrap">{{ case['description'] }}</p>
-    <h3>{{ ui('lookup.case_request', '요청 사항') }}</h3><p style="white-space:pre-wrap">{{ case['request_text'] }}</p>
-    {% if responses %}<h3>{{ ui('company.previous', '보낸 답변') }}</h3>{% for r in responses %}<div class="message"><p style="white-space:pre-wrap">{{ r['body'] }}</p><small>{{ r['created'][:16]|replace('T', ' ') }}</small></div>{% endfor %}{% endif %}
-    <p class="co-reply-note">{{ ui('company.press_note', '제보와 답변 기록은 기사로 다뤄질 수 있어요. 답변을 남기면 기업의 입장도 함께 전달돼요.') }}</p>
-    <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <div class="field"><label for="co-resp">{{ ui('company.f_response', '기업의 공식 답변') }}</label><textarea id="co-resp" name="response" maxlength="5000" required rows="7" placeholder="{{ ui('company.placeholder', '확인한 내용과 해결 방안을 적어 주세요.') }}"></textarea></div>
-      <button class="primary" type="submit">{{ ui('company.submit2', '추가 답변 보내기') if responses else ui('company.submit', '답변 보내기') }}</button>
-    </form>
-    <p class="meta">{{ ui('company.note', '보낸 답변은 제보자에게 바로 전달돼요.') }}</p>
+{# 기업 1회용 답변 링크 (운영자 2026-11-06): 메일 링크로 로그인 없이 들어와 답변 한 번 남기는 별도 페이지. 로고만, 메뉴·바닥글 없음.
+   답변을 보내면 링크가 닫히고 보낸 답변만 보임. 업체에는 제보자 연락처·첨부·내부 메모를 보여 주지 않음. #}
+<main class="cr-page"><div class="cr-wrap">
+  {% if used %}
+  <section class="cr-done">
+    <span class="cr-done-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <h1 class="cr-title">{{ ui('company.done_title', '답변을 보냈어요') }}</h1>
+    <p class="cr-sub">{{ ui('company.done_sub', '제보자에게 바로 전했어요. 이 링크는 한 번만 쓸 수 있어서 이제 닫혔어요.') }}</p>
+  </section>
+  {% else %}
+  <div class="cr-head">
+    <h1 class="cr-title">{{ ui('company.title2', '{name}에 접수된 제보예요', name=company_name) }}</h1>
+    <p class="cr-sub">{{ ui('company.intro2', '내용을 확인하고 공식 답변을 남겨 주세요. 답변은 제보자에게 바로 전해져요.') }}</p>
   </div>
+  {% endif %}
+
+  {% if used and responses %}
+  <section class="cr-card cr-sent">
+    <h2 class="cr-label">{{ ui('company.previous', '보낸 답변') }}</h2>
+    {% for r in responses %}<div class="cr-answer"><p>{{ r['body'] }}</p><small>{{ r['created'][:16]|replace('T', ' ')|replace('-', '.') }}</small></div>{% endfor %}
+    <p class="cr-hint">{{ ui('company.more', '더 전할 내용이 있으면 안내 메일에 답장해 주세요.') }}</p>
+  </section>
+  {% endif %}
+
+  {% if ai %}
+  <section class="cr-card cr-ai">
+    <p class="cr-ai-tag">{{ ui('company.ai_tag', 'AI가 제보 내용을 정리했어요') }}</p>
+    <h2 class="cr-subject">{{ case['subject'] }}</h2>
+    {% if ai.product or ai.damage_date %}<dl class="cr-meta">
+      {% if ai.product %}<div><dt>{{ ui('company.ai_product', '제품·서비스') }}</dt><dd>{{ ai.product }}</dd></div>{% endif %}
+      {% if ai.damage_date %}<div><dt>{{ ui('company.ai_date', '발생일') }}</dt><dd>{{ ai.damage_date }}</dd></div>{% endif %}
+    </dl>{% endif %}
+    <h3 class="cr-label">{{ ui('company.ai_what', '무슨 일이 있었나요') }}</h3>
+    {% for p in ai.paragraphs %}<p class="cr-text">{{ p }}</p>{% endfor %}
+    {% if ai.demands %}<h3 class="cr-label">{{ ui('company.ai_want', '제보자가 원하는 것') }}</h3><p class="cr-text">{{ ai.demands }}</p>{% endif %}
+    {% if ai.questions and not used %}<h3 class="cr-label">{{ ui('company.ai_q', '답변에 이 내용을 담아 주세요') }}</h3>
+    <ol class="cr-qs">{% for q in ai.questions %}<li>{{ q }}</li>{% endfor %}</ol>{% endif %}
+    <p class="cr-hint">{{ ui('company.ai_note', '제보자의 주장을 AI가 정리한 거예요. 정확한 표현은 아래 원문을 확인해 주세요.') }}</p>
+  </section>
+  {% endif %}
+
+  <section class="cr-card cr-case">
+    <div class="cr-badges"><span class="cr-badge">{{ case['category'] }}</span><span class="cr-receipt">{{ case['receipt'] }}</span></div>
+    {% if not ai %}<h2 class="cr-subject">{{ case['subject'] }}</h2>{% endif %}
+    <dl class="cr-meta">
+      <div><dt>{{ ui('reports.target', '제보 대상') }}</dt><dd>{{ case['company'] }}</dd></div>
+      <div><dt>{{ ui('company.received', '접수일') }}</dt><dd>{{ case['created'][:10]|replace('-', '.') }}</dd></div>
+    </dl>
+    {% if ai %}<details class="cr-orig"><summary>{{ ui('company.orig', '제보자가 쓴 원문 보기') }}</summary>{% endif %}
+    <h3 class="cr-label">{{ ui('lookup.case_body', '제보 내용') }}</h3>
+    <p class="cr-text">{{ case['description'] }}</p>
+    {% if case['request_text'] %}<h3 class="cr-label">{{ ui('lookup.case_request', '요청 사항') }}</h3>
+    <p class="cr-text">{{ case['request_text'] }}</p>{% endif %}
+    {% if ai %}</details>{% endif %}
+  </section>
+
+  {% if not used %}
+  <form method="post" class="cr-card cr-form" id="cr-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label class="cr-label" for="cr-resp">{{ ui('company.f_response', '기업의 공식 답변') }}</label>
+    <textarea id="cr-resp" name="response" maxlength="5000" required rows="8" placeholder="{{ ui('company.placeholder', '확인한 내용과 해결 방안을 적어 주세요.') }}"></textarea>
+    <p class="cr-count"><span id="cr-n">0</span> / 5,000</p>
+    <p class="cr-note">{{ ui('company.press_note', '제보와 답변 기록은 기사로 다뤄질 수 있어요. 답변을 남기면 기업의 입장도 함께 전달돼요.') }}</p>
+    <button class="cr-cta" type="submit">{{ ui('company.submit', '답변 보내기') }}</button>
+    <p class="cr-hint">{{ ui('company.once', '이 링크로는 답변을 한 번 보낼 수 있어요. 보내기 전에 내용을 확인해 주세요.') }}</p>
+  </form>
+  <script>(function(){var t=document.getElementById('cr-resp'),n=document.getElementById('cr-n'),f=document.getElementById('cr-form');t.addEventListener('input',function(){n.textContent=t.value.length.toLocaleString()});f.addEventListener('submit',function(){f.querySelector('.cr-cta').disabled=true})})();</script>
+  {% endif %}
 </div></main>{% endblock %}
