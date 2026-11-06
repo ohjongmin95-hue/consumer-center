@@ -1,5 +1,6 @@
 {# 상담창(자동응답). co가 있으면 그 기업의 안내 문구, 없으면 기본 문구로 답한다 #}
 <div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) if co else url_for('chat') }}" data-new="{{ url_for('new',company_id=co.id) if co else url_for('new') }}" data-track="{{ url_for('track',company_id=co.id) if co else url_for('track') }}" data-greet="{{ co.name+' 고객센터예요' if co else CNAME+'예요' }}" data-csrf="{{ csrf_token() }}" data-orders="{{ 1 if member else '' }}" data-btns="{{ (btns or [])|tojson|forceescape }}">
+<div class="cb-head"><img src="{{ url_for('static',filename='soda-mark.svg') }}" alt="" width="24" height="24"><b>SODA</b></div>
 <div class="cb-log" id="cbLog" aria-live="polite"></div>
 <form class="cb-in" id="cbForm" autocomplete="off"><input id="cbText" maxlength="500" placeholder="예: 주문한 게 아직 안 왔어요" aria-label="문의 내용"><button>보내기</button></form>
 </div>

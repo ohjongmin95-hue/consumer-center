@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Loading, Notice } from '../components/ui';
-import { Icon } from '../components/Icon';
+import { Glyph } from '../components/Glyph';
+import { SodaMark } from '../components/SodaMark';
 import { api, Soda, SodaItem } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { C, FONT } from '../lib/theme';
@@ -43,7 +44,10 @@ export default function SodaScreen() {
   return (
     <SafeAreaView style={st.page} edges={[]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <Text style={st.title}>SODA 가르치기</Text>
+        <View style={st.titleRow}>
+          <SodaMark size={26} />
+          <Text style={st.title}>SODA 가르치기</Text>
+        </View>
         {msg ? <Text style={st.msg}>{msg}</Text> : null}
         {bad ? <Text style={[st.msg, { color: C.red }]}>{bad}</Text> : null}
 
@@ -70,7 +74,7 @@ export default function SodaScreen() {
 
         <View style={st.card}>
           <Head title="한 번에 알려 주기" />
-          <Row icon="note" title="말로 알려 주기" sub="적은 말은 바로 배워요" onPress={() => open({ mode: 'text' })} chevron />
+          <Row icon="template" title="말로 알려 주기" sub="적은 말은 바로 배워요" onPress={() => open({ mode: 'text' })} chevron />
           <Row icon="link" title="쇼핑몰 주소로 알려 주기" sub="읽은 답은 확인한 뒤에 써요" onPress={() => open({ mode: 'url', url: data.url })} chevron />
           <Text style={st.foot}>사진 · PDF · 엑셀은 PC에서 올릴 수 있어요</Text>
         </View>
@@ -114,7 +118,7 @@ function Row({ icon, title, sub, subTone, onPress, chevron, pill }: { icon?: str
     <Pressable onPress={onPress} style={({ pressed }) => [st.row, pressed && st.pressed]}>
       {icon ? (
         <View style={st.ic}>
-          <Icon name={icon} size={20} />
+          <Glyph name={icon} size={22} />
         </View>
       ) : null}
       <View style={{ flex: 1, gap: 1 }}>
@@ -140,7 +144,8 @@ function Row({ icon, title, sub, subTone, onPress, chevron, pill }: { icon?: str
 // 토스 홈처럼: 연회색 바탕 위 흰 카드(둥글기 20, 옆 12), 카드 안 줄은 15/13, 오른쪽 작은 회색 버튼
 const st = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.band },
-  title: { fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: 0, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14 },
+  title: { fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   msg: { fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.green, paddingHorizontal: 24, paddingBottom: 10 },
   card: { backgroundColor: C.card, borderRadius: 20, marginHorizontal: 12, marginBottom: 10, paddingVertical: 8 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
@@ -151,7 +156,7 @@ const st = StyleSheet.create({
   rowTitle: { fontFamily: FONT, fontSize: 15, lineHeight: 22.5, fontWeight: '600', color: C.fg, letterSpacing: 0 },
   rowSub: { fontFamily: FONT, fontSize: 13, lineHeight: 19.5, color: C.fg3, letterSpacing: 0 },
   off: { color: C.fg4 },
-  ic: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.band, alignItems: 'center', justifyContent: 'center' },
+  ic: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F2F4F6', alignItems: 'center', justifyContent: 'center' },
   pill: { height: 30, paddingHorizontal: 11, borderRadius: 8, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
   pillT: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.fg2 },
   chev: { fontFamily: FONT, fontSize: 18, color: C.fg4 },

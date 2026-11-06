@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Icon } from '../../components/Icon';
+import { Glyph } from '../../components/Glyph';
 import { SITE_BASE } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { C, FONT } from '../../lib/theme';
@@ -13,18 +13,18 @@ const web = (path: string) => () => WebBrowser.openBrowserAsync(SITE_BASE + path
 const MENU: { icon: string; title: string; sub: string; go: () => void }[] = [
   { icon: 'truck', title: '주문·배송', sub: '주문 조회 · 배송', go: () => router.push('/orders') },
   { icon: 'exchange', title: '교환·반품', sub: '접수 · 회수 · 환불', go: () => router.push('/returns') },
-  { icon: 'note', title: '상품정보', sub: '상품 · 안내문', go: () => router.push('/products') },
+  { icon: 'doc', title: '상품정보', sub: '상품 · 안내문', go: () => router.push('/products') },
   { icon: 'bolt', title: '자동 처리', sub: '처리 방법 · 승인', go: () => router.navigate('/auto') },
-  { icon: 'chat', title: 'SODA 가르치기', sub: '모르는 질문 · 배운 답', go: () => router.push('/soda') },
-  { icon: 'macro', title: '답변 템플릿', sub: '자주 쓰는 답', go: () => router.push('/macros') },
+  { icon: 'soda', title: 'SODA 가르치기', sub: '모르는 질문 · 배운 답', go: () => router.push('/soda') },
+  { icon: 'template', title: '답변 템플릿', sub: '자주 쓰는 답', go: () => router.push('/macros') },
   { icon: 'flow', title: '자동화 규칙', sub: '웹에서 열기', go: web('/automations') },
   { icon: 'chart', title: '통계', sub: '처리율 · 응답 시간', go: () => router.push('/stats') },
-  { icon: 'list', title: '월간 리포트', sub: '이번 달 요약', go: () => router.push('/report') },
-  { icon: 'guide', title: '응대 가이드', sub: '상황별 답변', go: () => router.push('/guide') },
+  { icon: 'report', title: '월간 리포트', sub: '이번 달 요약', go: () => router.push('/report') },
+  { icon: 'book', title: '응대 가이드', sub: '상황별 답변', go: () => router.push('/guide') },
   { icon: 'search', title: '법·제도 소식', sub: '전자상거래 · 분쟁', go: () => router.push('/news') },
   { icon: 'shield', title: '이용 안내', sub: '처음 쓰는 법', go: () => router.push('/howto') },
   { icon: 'link', title: '서비스 연동', sub: '웹에서 열기', go: web('/connect') },
-  { icon: 'building', title: '팀', sub: '웹에서 열기', go: web('/team') },
+  { icon: 'team', title: '팀', sub: '웹에서 열기', go: web('/team') },
 ];
 
 // 전체 (토스 '전체' 탭처럼): 위에 가게 이름과 오른쪽 회색 '설정', 연회색 바탕 위 흰 판 하나에 메뉴 줄
@@ -49,7 +49,7 @@ export default function MoreTab() {
           {MENU.map((m) => (
             <Pressable key={m.title} onPress={m.go} style={({ pressed }) => [st.row, pressed && { backgroundColor: C.band }]}>
               <View style={st.ic}>
-                <Icon name={m.icon} size={22} />
+                <Glyph name={m.icon} size={22} />
               </View>
               <Text style={st.rowT} numberOfLines={1}>
                 {m.title}
@@ -85,7 +85,7 @@ const st = StyleSheet.create({
   headLink: { fontFamily: FONT, fontSize: 15, fontWeight: '500', color: C.fg3 },
   panel: { backgroundColor: C.card, borderRadius: 20, marginHorizontal: 12, marginBottom: 10, paddingVertical: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 10 },
-  ic: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.band, alignItems: 'center', justifyContent: 'center' },
+  ic: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F2F4F6', alignItems: 'center', justifyContent: 'center' },
   rowT: { fontFamily: FONT, fontSize: 16, lineHeight: 24, fontWeight: '500', color: C.fg, letterSpacing: 0, flexShrink: 0 },
   rowS: { flex: 1, textAlign: 'right', fontFamily: FONT, fontSize: 13, color: C.fg3, letterSpacing: 0 },
   linkLabel: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.fg3 },

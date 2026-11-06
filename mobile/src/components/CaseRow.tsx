@@ -1,14 +1,16 @@
-// 요청 한 줄 (토스 목록처럼: 그림 없이 제목 15 · 설명 13, 오른쪽에 상태 글자만)
+// 요청 한 줄 (토스 목록처럼: 앞에 색 아이콘, 제목 15 · 설명 13, 오른쪽에 상태 글자만)
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BizCase, fmtDate } from '../lib/api';
 import { C, FONT, STATUS_TONE } from '../lib/theme';
+import { catGlyph, GlyphBox } from './Glyph';
 
 export function CaseRow({ c }: { c: BizCase }) {
   const tone = c.overdue ? C.red : c.pending ? C.accentInk : (STATUS_TONE[c.status]?.fg ?? C.fg3);
   const label = c.overdue ? '기한 지남' : c.pending ? '승인 대기' : c.status_label;
   return (
     <Pressable onPress={() => router.push(`/case/${c.id}`)} style={({ pressed }) => [st.row, pressed && { backgroundColor: C.band }]}>
+      <GlyphBox name={catGlyph(c.category)} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={st.title} numberOfLines={1}>
           {c.title}

@@ -2345,3 +2345,5 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .cb .cb-chips .pri,.cs2 .cs-chat .cb-chips .pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .cb .cb-in input,.cs2 .cs-chat .cb-in input{background:#f2f4f6;border:0;border-radius:22px;height:46px;font-size:15px}
 .cb .cb-in button,.cs2 .cs-chat .cb-in button{background:var(--accent);color:#fff;border-radius:22px;height:46px;padding:0 18px;font-size:14.5px}
+.cb-head{display:flex;align-items:center;gap:8px;padding-bottom:12px;border-bottom:1px solid #f2f4f6}
+.cb-head b{font-size:16px;font-weight:700;letter-spacing:.2px;color:var(--fg)}
