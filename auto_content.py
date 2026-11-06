@@ -3,8 +3,8 @@
 deploy/soboru-content.timer가 아침 9시·오후 1시·저녁 9시쯤 `python -m auto_content`를 부른다. 한 번에 AUTO_CONTENT_PER_RUN편(기본 1).
 - 소재: 최근 게시된 매거진 기사 중 조회수가 큰 순서. 이미 만든 기사는 건너뜀(auto_content 표).
 - 글: 매거진 AI 도움의 카드뉴스 지시문(mag_assist)을 그대로 씀. 기사에 없는 숫자가 들어간 답은 버리고 다음 기사로 넘어감.
-- 표지 (운영자 2026-11-06: AI로 만들 때는 한국인이 나와도 되고, 언스플래시는 풍경이어도 됨): 세 번 중 두 번은 OpenAI로 상황에 맞는 한국인을 그림
-  (놀라는 표정 등, 가상 인물). 나머지와 그리지 못했을 때는 기사 사진(직접 올린 그림 또는 언스플래시). 그것도 없으면 글자 표지.
+- 표지 (운영자 2026-11-06: AI로 만들 때는 한국인이 나와도 되고, 언스플래시는 풍경이어도 됨): 웬만하면 OpenAI로 상황에 맞는 한국인을 그림
+  (놀라는 표정 등, 가상 인물). 그리지 못했을 때만 기사 사진(직접 올린 그림 또는 언스플래시). 그것도 없으면 글자 표지.
   언스플래시 사진은 캡션에 사진가를, AI 그림은 AI 이미지임을 밝힘.
 - 카드: 1080x1350 PNG. 릴스: 1080x1920 전체 화면(위아래 띠 없음), 무음, 장면을 PNG로 그려 mag_maker.build로 합침.
 - 저장: 만든 것 보관함(maker='auto'). 게시는 하지 않음. 끝나면 텔레그램으로 알림.
@@ -321,11 +321,6 @@ def install(S):
         with urllib.request.urlopen(req, timeout=30) as r: data = r.read()
         with Image.open(io.BytesIO(data)) as im: return im.convert('RGB')
 
-    def want_people():
-        """세 번 중 두 번은 사람 표지, 한 번은 기사 사진 (늘 같은 느낌이 되지 않게)."""
-        with conn() as db: n = db.execute("SELECT COUNT(*) FROM auto_content WHERE status='made'").fetchone()[0]
-        return n % 3 != 2
-
     def person_cover(scene):
         """OpenAI로 상황에 맞는 한국인을 그림. 그림 또는 None. 못 그려도 멈추지 않음."""
         scene = ' '.join(str(scene or '').split())[:400]
@@ -359,7 +354,7 @@ def install(S):
 
     def cover_image(article_id, scene):
         """(그림, 캡션에 덧붙일 말)"""
-        img = person_cover(scene) if want_people() else None
+        img = person_cover(scene)
         if img is not None: return img, 'AI로 만든 이미지예요.'
         img, who = article_image(article_id)
         return img, f'사진: {who} / Unsplash' if who else ''
