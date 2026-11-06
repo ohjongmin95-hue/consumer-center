@@ -4481,7 +4481,7 @@ class SiteTest(unittest.TestCase):
             self.assertTrue(any('뉴스' in s['name'] or '·' in s['name'] for s in got['sources']))
             r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
         prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
-        self.assertIn('[분량·구성]', prompt); self.assertIn('3500~4500자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+        self.assertIn('[분량·구성]', prompt); self.assertIn('1800~2200자', prompt); self.assertNotIn('3500~4500자', prompt); self.assertIn('최근 관련 뉴스', prompt)
 
     def test_writer_long_read_format(self):
         # 뉴닉 롱리드처럼: 소제목 없는 도입 → 핵심 상자 → 소제목 + 번호 요점 + 용어 풀이 → 이렇게 하세요 → 마무리 (운영자 2026-10-21)

@@ -93,7 +93,7 @@ KINDS = {
                 about='최근 시행됐거나 곧 시행되는 소비자 관련 법령을 쉽게 풀어 준다. 시행일·개정 이유는 자료 그대로 전한다.'),
     # 소보루 레터의 '갓 구운 오늘의 뉴스' 한 꼭지를 매거진 기사로 (운영자 2026-11-01: 뉴스 하나로 레터와 아티클 두 번 씀).
     # 자료는 레터가 고른 그 이슈의 기사들이라 generate(..., material=)로만 씀 (매일 돌림 ORDER·EXTRA에는 넣지 않음)
-    'issue': dict(name='오늘의 경제 뉴스 풀어 읽기', needs=(), category='금융', emoji='📰', tone='t1', length='2500~3500',
+    'issue': dict(name='오늘의 경제 뉴스 풀어 읽기', needs=(), category='금융', emoji='📰', tone='t1',
                   about='오늘 기사량이 가장 많은 경제·소비 뉴스 하나를, 함께 준 기사들의 사실과 숫자만으로 뉴스레터 독자가 이해하기 쉽게 풀어 쓴다. 무슨 일이 있었나 → 왜 그런가 → 내 지갑엔 무슨 뜻인가 순서. 뉴스에 없는 내용은 보태지 않는다.'),
     # 주제별 깊이 보기 (topics=True): 하루 몫이 남으면 주제를 바꿔 가며 여러 편
     'rights': dict(name='소비자 권리 깊이 보기', needs=(), category='생활', emoji='💡', tone='t5', topics=True,
@@ -1015,16 +1015,16 @@ def install(S):
         put('writer_log', ([dict(entry, at=stamp())] + rows)[:30])
 
     # ---- AI로 쓰기 · 저장 -------------------------------------------------------
-    def ask_ai(kind, facts, topic=None):
+    def ask_ai(kind, facts, topic=None, long_form=False):
         k = KINDS[kind]
         # 매거진 기사처럼 (운영자 2026-10-21 뉴닉 롱리드 분량 → 2026-10-24 '글이 아티클 같지 않아': 안내문·블로그가 아니라 잡지 기사로)
-        long = ("[분량·구성] 생활 매거진의 피처 기사다. 블로그 안내문이나 사용 설명서처럼 쓰지 않는다. 본문은 3500~4500자. "
+        long = ("[분량·구성] 생활 매거진의 피처 기사다. 블로그 안내문이나 사용 설명서처럼 쓰지 않는다. 본문은 {len}자. "
                 "도입(intro)은 소제목 없이 2~3문단: 독자가 겪을 법한 한 장면이나, 규모가 확 와닿는 자료 속 숫자와 비교로 시작하고, "
                 "이어서 자료의 숫자나 사실로 '왜 지금 이 이야기인지'를 보여 준 뒤, 이 기사가 무엇을 따라가 볼지 한 문장으로 예고한다. "
                 "'이 글은 ~하는 분께', '오늘은 ~을 알아볼게요', '정리해 볼게요' 같은 블로그식·해요체 말은 쓰지 않는다. 도입에도 자료에 없는 사실·숫자는 쓰지 않는다. "
-                "소제목은 3~5개이고 기사의 흐름을 만든다: 무슨 일이 벌어지고 있나(자료의 숫자·사실) → 왜 그런가(구조·배경을 자료 안에서) → 내 지갑·생활엔 무슨 뜻인가 → 그래서 어떻게 할까. "
+                "소제목은 {heads}개이고 기사의 흐름을 만든다: 무슨 일이 벌어지고 있나(자료의 숫자·사실) → 왜 그런가(구조·배경을 자료 안에서) → 내 지갑·생활엔 무슨 뜻인가 → 그래서 어떻게 할까. "
                 "소제목은 '~하는 법', '~하기 위한 조건' 같은 안내문 꼴이 아니라 짧고 맛이 있는 표제로 쓴다(예: '치킨에 진심인 나라', '5년 전보다 저렴해진 닭'). "
-                "소제목마다 문단 3~5개, 문단은 3~5문장으로 앞 문단을 받아 이어지게 쓰고, 문장마다 새 줄을 띄우지 않는다. 목록·번호는 꼭 필요할 때 한 소제목에서만 points로 쓴다(요점마다 짧은 제목 + 2~4문장). "
+                "소제목마다 문단 {paras}개, 문단은 3~5문장으로 앞 문단을 받아 이어지게 쓰고, 문장마다 새 줄을 띄우지 않는다. 목록·번호는 꼭 필요할 때 한 소제목에서만 points로 쓴다(요점마다 짧은 제목 + 2~4문장). "
                 "숫자는 문장 속 근거로 녹이고, 바로 뒤에 그것이 독자의 생활에 어떤 뜻인지 기사 문장으로 풀어 준다. 어려운 말은 문장 안에서 풀거나 terms로 따로 풀이한다. "
                 "지어낸 인용·전문가 말·사례 인물은 쓰지 않는다. 같은 말을 되풀이하거나 분량을 채우려고 늘이지 않는다. "
                 "소제목마다 독자가 바로 써먹을 것(확인할 곳, 준비할 것, 물어볼 말)을 자료가 말하는 범위에서 하나 이상 담고, '주의하세요' 같은 뻔한 말로만 끝내지 않는다. "
@@ -1032,10 +1032,17 @@ def install(S):
                 "closing은 기사의 한 줄 결론과 앞으로 지켜볼 점으로 맺고, 글과 맞는 소보루 기능 하나를 자연스럽게 권한다: "
                 "소비자 제보(피해를 남기면 기업에 전달해 답을 받아 줘요), 커뮤니티(직접 사서 써 본 후기, 골라주세요 투표, 수다방), 사기 주의(돈 보내기 전에 사이트 주소·전화번호·계좌번호 검색), "
                 "법률 질문(소비자 법 궁금증), 기업 답변(기업별 제보와 소보루 등급).\n")
-        if k.get('length'): long = long.replace('본문은 3500~4500자', f"본문은 {k['length']}자")
+        # 운영자 2026-11-06: 매거진 기사는 2000자 정도로 (AI 값). 가끔 기획만 길게 — 기획 기사 가운데 하루 한 분야(LONG_CAT)만 3500~4500자
+        if long_form: size = ('3500~4500', '3~5', '3~5', 12000)
+        else: size = (k.get('length') or '1800~2200', '2~3', '2~3', 7000)
+        long = long.replace('{len}', size[0]).replace('{heads}', size[1]).replace('{paras}', size[2])
         user = (f"[글 종류] {k['name']}: {k['about']}\n" + (f"[주제] {topic}\n" if topic else '') + long + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
-        return chat(SYSTEM, user, 12000, AI_TIMEOUT * 3)
+        return chat(SYSTEM, user, size[3], AI_TIMEOUT * 3)
+
+    def long_cat(day):
+        """그날 길게 쓰는 기획 기사 분야 하나 (날마다 분야를 돌아가며)"""
+        return CATS[datetime.date.fromisoformat(day).toordinal() % len(CATS)]
 
     def save_check(db, article_id, title, summary, body, facts):
         problems = check_text('\n'.join([title, summary, body]), facts)
@@ -1105,7 +1112,7 @@ def install(S):
                 except Exception: pass
                 got['facts'] = dict(got['facts'], **CONST)
             else: got = collect(kind, topic)
-            title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic), kind)
+            title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic, long_form=kind == 'feature' and (got.get('category') or cat) == long_cat(today)), kind)
             summary, body = drop_meta(summary), drop_meta(body)  # 자료 이야기 문장은 쓰지 않음 (운영자 2026-11-05)
         except Skip as e: res = {'status': 'skip', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         except RuntimeError as e: res = {'status': 'error', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
