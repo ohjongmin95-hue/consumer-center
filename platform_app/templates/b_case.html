@@ -107,6 +107,6 @@ document.querySelectorAll('[data-copy-text]').forEach(function(b){b.onclick=func
 document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했습니다';},function(){b.textContent='선택했습니다';});};});
 (function(){var b=document.getElementById('mkDraft');if(!b)return;var note=document.getElementById('draftNote');
 b.onclick=function(){b.disabled=true;var old=b.textContent;b.textContent='만드는 중…';var fd=new FormData();fd.append('csrf','{{ csrf_token() }}');
-fetch(b.dataset.url,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json();}).then(function(d){if(d.text){document.getElementById('msg').value=d.text;note.hidden=false;note.textContent=d.by==='ai'?'AI가 우리 회사 말투로 쓴 초안입니다. {중괄호}는 확인해서 채워 주세요.':'기본 문구로 만든 초안입니다. 상황에 맞게 고쳐 주세요.';}else{note.hidden=false;note.textContent=d.error||'초안을 만들지 못했습니다';}})
+fetch(b.dataset.url,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json();}).then(function(d){if(d.text){document.getElementById('msg').value=d.text;note.hidden=false;note.textContent=d.by==='ai'?'SODA가 우리 회사 말투로 쓴 초안입니다. {중괄호}는 확인해서 채워 주세요.':'기본 문구로 만든 초안입니다. 상황에 맞게 고쳐 주세요.';}else{note.hidden=false;note.textContent=d.error||'초안을 만들지 못했습니다';}})
 .catch(function(){note.hidden=false;note.textContent='초안을 만들지 못했습니다';}).finally(function(){b.disabled=false;b.textContent=old;});};})();
 </script>{% endblock %}

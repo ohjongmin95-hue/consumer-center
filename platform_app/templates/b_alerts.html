@@ -2,11 +2,11 @@
 {% block title %}알림 · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('alerts') }}{% endblock %}
 {% block body %}
-<div class="phead"><div><h1>알림</h1><p>새 문의, AI가 답한 문의, 고객 메시지, 답변 기한, 연결 끊김을 한곳에서 봐요</p></div></div>
+<div class="phead"><div><h1>알림</h1><p>새 문의, SODA가 답한 문의, 고객 메시지, 답변 기한, 연결 끊김을 한곳에서 봐요</p></div></div>
 <div class="cols"><div class="stack">
 <section class="panel">{% if rows %}<div class="alist">{% for r in rows %}
 <a class="arow{{ ' new' if not r.read_at }}" href="{{ url_for('case',case_id=r.case_id) if r.case_id else (site_url('biz',r.path) if r.path else '#') }}"><span class="adot"></span><span class="atx"><b>{{ r.title }}</b>{% if r.body %}<span>{{ r.body }}</span>{% endif %}</span><time>{{ fmt(r.created) }}</time></a>
-{% endfor %}</div>{% else %}<div class="empty-card" style="padding:40px 16px">{{ i.icon('approve',56) }}<b>아직 알림이 없어요</b><span>새 문의가 오거나 AI가 답하면 여기에 쌓여요</span></div>{% endif %}</section>
+{% endfor %}</div>{% else %}<div class="empty-card" style="padding:40px 16px">{{ i.icon('approve',56) }}<b>아직 알림이 없어요</b><span>새 문의가 오거나 SODA가 답하면 여기에 쌓여요</span></div>{% endif %}</section>
 </div>
 <aside class="stack"><form class="panel stack" method="post" id="prefs"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><div class="ph">알림 받을 곳</div>
 <p class="sub" style="margin:0">알림은 모두 이 목록에 남아요. 고른 것만 앱 알림과 이메일({{ co.notify_email or '설정에서 이메일을 넣어 주세요' }})로도 보내요.</p>

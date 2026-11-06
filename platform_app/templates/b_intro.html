@@ -1,6 +1,6 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}{% import '_i.html' as i %}{% import '_tiers.html' as tr with context %}
-{% block title %}{{ BNAME }} · 쇼핑몰 문의, AI가 먼저 답해요{% endblock %}
-{% block description %}카페24 게시판·자사몰 상담창·인스타그램 DM·메일 문의를 한 화면에 모으고, 배송·교환·사용법 안내는 AI가 바로 답해요. 환불 같은 결정만 사장님이 승인해요.{% endblock %}
+{% block title %}{{ BNAME }} · 쇼핑몰 문의, AI 상담원 SODA가 먼저 답해요{% endblock %}
+{% block description %}카페24 게시판·자사몰 상담창·인스타그램 DM·메일 문의를 한 화면에 모으고, 배송·교환·사용법 안내는 SODA가 바로 답해요. 환불 같은 결정만 사장님이 승인해요.{% endblock %}
 {% block head %}<script type="application/ld+json">{{ [{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": BNAME, "applicationCategory": "BusinessApplication", "operatingSystem": "Web, Android", "url": request.url_root, "description": DESCRIPTION[site], "inLanguage": "ko", "publisher": {"@type": "Organization", "name": OPERATOR.name}}]|tojson }}</script>{% endblock %}
 {% block bar %}{{ b.bar('intro') }}{% endblock %}
 {% macro video(name,cls='',controls=false) -%}
@@ -13,8 +13,8 @@
 
 <section class="tp-hero">{% if vid.hero %}<video class="tp-bgv" autoplay muted loop playsinline preload="auto" poster="{{ url_for('static',filename='tour/hero-poster.jpg') }}" aria-hidden="true">{% if vid.hero.webm %}<source src="{{ url_for('static',filename='tour/hero.webm') }}" type="video/webm">{% endif %}<source src="{{ url_for('static',filename='tour/hero.mp4') }}" type="video/mp4"></video>{% endif %}<div class="tp-shade"></div><div class="wrap tp-load">
 <span class="tp-eyebrow">카페24·자사몰 쇼핑몰 CS</span>
-<h1>쇼핑몰 문의,<br>AI가 먼저 답해요</h1>
-<p>게시판, 인스타그램 DM, 메일 문의를 한 화면에 모으고<br class="pc"> 배송·교환·사용법 안내는 AI가 바로 답해요.<br class="pc"> 사장님은 환불 같은 결정만 승인하면 돼요.</p>
+<h1>쇼핑몰 문의,<br>SODA가 먼저 답해요</h1>
+<p>게시판, 인스타그램 DM, 메일 문의를 한 화면에 모으고<br class="pc"> 배송·교환·사용법 안내는 AI 상담원 SODA가 바로 답해요.<br class="pc"> 사장님은 환불 같은 결정만 승인하면 돼요.</p>
 <div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial_n if trial_n else '무료로 시작하기' }}</a><a class="btn tp-btn glass" href="#tour">▶ 영상으로 보기</a></div>
 <small class="tp-note">{% if trial_n %}카드를 등록해도 {{ trial_n }}일 동안은 결제되지 않아요{% else %}가입하면 바로 쓸 수 있어요{% endif %}</small>
 </div></section>
@@ -36,31 +36,31 @@
 </div></section>
 
 <section class="tp-sec" id="ai"><div class="wrap tp-split">
-<div class="tp-copy rv-up"><span class="tp-num">AI 자동 답변</span><h2>반복 문의는<br>AI가 끝까지 안내해요</h2>
+<div class="tp-copy rv-up"><span class="tp-num">SODA 자동 답변</span><h2>반복 문의는<br>SODA가 끝까지 안내해요</h2>
 <p>주문번호로 송장을 찾아 배송 상황을 알려 주고, 상품 정보와 배송·반품 정책을 읽고 답해요. 교환·반품도 방법과 절차까지 먼저 안내해요.</p>
 <ul class="tp-list"><li>{{ i.tf('truck',22) }}배송 조회는 주문을 찾아 바로 답해요</li><li>{{ i.tf('memo',22) }}상품·사이즈·사용법은 넣어 둔 정보로만 답해요</li><li>{{ i.tf('clock',22) }}밤이나 주말에 온 문의도 기다리지 않게</li></ul></div>
 <div class="tp-chat" id="tpChat" aria-hidden="true">
 <div class="tp-chathead"><img class="tp-ico" src="{{ url_for('static',filename='ch/c24.svg') }}" alt="" width="28" height="28"><b>상품 Q&amp;A</b><small>카페24</small></div>
 <div class="bub me">어제 주문했는데 언제 받을 수 있나요? 주문번호 20261020-0000123이에요</div>
 <div class="bub typing"><i></i><i></i><i></i></div>
-<div class="bub ai"><span class="who">AI 답변</span>주문하신 린넨 셔츠는 오늘 오전 CJ대한통운으로 출고됐어요. 내일 도착 예정이고, 송장번호는 마이페이지 &gt; 주문 내역에서 확인하실 수 있어요.</div>
+<div class="bub ai"><span class="who">SODA 답변</span>주문하신 린넨 셔츠는 오늘 오전 CJ대한통운으로 출고됐어요. 내일 도착 예정이고, 송장번호는 마이페이지 &gt; 주문 내역에서 확인하실 수 있어요.</div>
 <div class="tp-sent">{{ i.tf('check',18) }}카페24 게시판에 답글을 달았어요</div>
 </div>
 </div></section>
 
 <section class="tp-sec tp-gray" id="approve"><div class="wrap tp-split rev">
 <div class="tp-copy rv-up"><span class="tp-num">사장님 승인</span><h2>결정은 사장님이,<br>승인 한 번으로</h2>
-<p>환불·교환·취소·보상처럼 돈이 오가는 일은 AI가 약속하지 않아요. 고객에게 안내는 먼저 하고, 결정할 일만 요약과 처리 방법을 붙여 사장님께 넘겨요.</p></div>
+<p>환불·교환·취소·보상처럼 돈이 오가는 일은 SODA가 약속하지 않아요. 고객에게 안내는 먼저 하고, 결정할 일만 요약과 처리 방법을 붙여 사장님께 넘겨요.</p></div>
 <div class="tp-approve rv-up" aria-hidden="true">
 <div class="m-top"><span>{{ i.tf('money',20) }} 반품·환불</span><span class="pill acc">승인 필요</span></div>
 <b>사이즈가 안 맞아 반품하고 싶어요</b>
 <small>받은 지 3일째 · 전자상거래법 7일 이내</small>
-<div class="tp-reco"><small>AI가 고객에게 보낸 안내</small>반품 접수 방법과 회수 일정을 안내했어요. 환불은 사장님 승인 뒤 진행돼요.</div>
+<div class="tp-reco"><small>SODA가 고객에게 보낸 안내</small>반품 접수 방법과 회수 일정을 안내했어요. 환불은 사장님 승인 뒤 진행돼요.</div>
 <div class="ph-acts big"><span class="on">승인</span><span>보류</span><span>자료 요청</span></div>
 </div>
 </div></section>
 
-<section class="tp-sec tp-say" aria-label="소보루 CX가 하는 일"><div class="wrap"><p class="tp-words" id="tpWords">{% for w in '반복되는 문의는 AI가 먼저 답하고, 사장님은 정말 중요한 결정만 내리면 돼요.'.split(' ') %}<span>{{ w }}</span> {% endfor %}</p></div></section>
+<section class="tp-sec tp-say" aria-label="소보루 CX가 하는 일"><div class="wrap"><p class="tp-words" id="tpWords">{% for w in '반복되는 문의는 SODA가 먼저 답하고, 사장님은 정말 중요한 결정만 내리면 돼요.'.split(' ') %}<span>{{ w }}</span> {% endfor %}</p></div></section>
 
 <section class="tp-sec" id="tour"><div class="wrap">
 <h2 class="rv-up">1분 영상으로<br>둘러보세요</h2>
@@ -72,7 +72,7 @@
 <section class="tp-sec tp-gray" id="more"><div class="wrap">
 <h2 class="rv-up">사장님 혼자서도<br>CS가 가벼워져요</h2>
 <div class="tp-grid">
-{% for ic,t,d in [('repeat','자동 처리 규칙','자주 오는 유형은 한 번 정해 두면 들어오는 즉시 정해 둔 답으로 처리해요'),('tools','교환·반품 단계','반품 안내, 회수 확인, 새 상품 발송, 환불 완료까지 단계별로 보여요'),('bulb','법 기준 함께 보기','청약철회 7일, 소비자분쟁해결기준을 요청마다 같이 보여 드려요'),('inbox','직원과 나눠 맡기기','담당자를 정하고 내부 메모로 이야기해요. 직원 수로 요금을 받지 않아요'),('speech','사장님 앱','새 문의가 오면 알림이 오고 휴대폰에서 바로 승인해요'),('memo','통계','유형별 문의와 AI가 답한 비율을 주 단위로 봐요')] %}
+{% for ic,t,d in [('repeat','자동 처리 규칙','자주 오는 유형은 한 번 정해 두면 들어오는 즉시 정해 둔 답으로 처리해요'),('tools','교환·반품 단계','반품 안내, 회수 확인, 새 상품 발송, 환불 완료까지 단계별로 보여요'),('bulb','법 기준 함께 보기','청약철회 7일, 소비자분쟁해결기준을 요청마다 같이 보여 드려요'),('inbox','직원과 나눠 맡기기','담당자를 정하고 내부 메모로 이야기해요. 직원 수로 요금을 받지 않아요'),('speech','사장님 앱','새 문의가 오면 알림이 오고 휴대폰에서 바로 승인해요'),('memo','통계','유형별 문의와 SODA가 답한 비율을 주 단위로 봐요')] %}
 <div class="tp-card rv-up">{{ i.tf_tile(ic,28) }}<b>{{ t }}</b><p>{{ d }}</p>{% if ic=='speech' %}<p class="tp-app">{% if app_links.android %}<a class="link" href="{{ app_links.android }}" rel="noopener">Android 앱 받기 ›</a>{% else %}Android 앱 · 곧 출시{% endif %}{% if app_links.ios %} · <a class="link" href="{{ app_links.ios }}" rel="noopener">iPhone 앱 받기 ›</a>{% endif %}</p>{% endif %}</div>
 {% endfor %}</div>
 </div></section>
@@ -94,7 +94,7 @@
 <section class="tp-sec" id="faq"><div class="wrap tp-narrow">
 <h2 class="rv-up">자주 묻는 질문</h2>
 <div class="tp-faq">
-{% for q,a in [('카페24 말고 자사몰도 되나요?','네. 쇼핑몰 HTML에 스크립트 한 줄을 넣으면 문의 버튼이 생기고, 메일과 인스타그램 DM도 같은 화면에서 받아요.'),('카페24 비밀번호를 알려 줘야 하나요?','아니요. 카페24 관리자로 로그인해 권한에 동의하는 방식(OAuth)이라 비밀번호는 받지 않아요.'),('AI가 마음대로 환불해 주면 어떡하죠?','AI는 환불·보상·취소를 약속하거나 실행하지 않아요. 방법은 안내하고, 결정은 사장님 승인 뒤에만 나가요.'),('AI가 모르는 걸 지어내지 않나요?','가격·재고·배송·반품 정책은 넣어 둔 정보로만 답해요. 없으면 지어내지 않고 담당자 확인을 안내해요.'),('무료 체험이 끝나면 어떻게 되나요?','체험이 끝나는 날 첫 달 요금이 결제돼요. 그 전에 해지하면 결제되지 않고, 받은 문의와 설정은 지우지 않아요.')] %}
+{% for q,a in [('카페24 말고 자사몰도 되나요?','네. 쇼핑몰 HTML에 스크립트 한 줄을 넣으면 문의 버튼이 생기고, 메일과 인스타그램 DM도 같은 화면에서 받아요.'),('카페24 비밀번호를 알려 줘야 하나요?','아니요. 카페24 관리자로 로그인해 권한에 동의하는 방식(OAuth)이라 비밀번호는 받지 않아요.'),('SODA가 마음대로 환불해 주면 어떡하죠?','SODA는 환불·보상·취소를 약속하거나 실행하지 않아요. 방법은 안내하고, 결정은 사장님 승인 뒤에만 나가요.'),('SODA가 모르는 걸 지어내지 않나요?','가격·재고·배송·반품 정책은 넣어 둔 정보로만 답해요. 없으면 지어내지 않고 담당자 확인을 안내해요.'),('무료 체험이 끝나면 어떻게 되나요?','체험이 끝나는 날 첫 달 요금이 결제돼요. 그 전에 해지하면 결제되지 않고, 받은 문의와 설정은 지우지 않아요.')] %}
 <details class="rv-up"><summary>{{ q }}<span class="chev"></span></summary><p>{{ a }}</p></details>
 {% endfor %}</div>
 </div></section>
@@ -102,7 +102,7 @@
 <section class="tp-sec tp-gray" id="help"><div class="wrap tp-narrow">
 <h2 class="rv-up">어떤 도움이 필요하세요?</h2>
 <form class="tp-search rv-up" action="{{ url_for('cms.help_home') }}" method="get" role="search"><input name="q" maxlength="40" placeholder="예: 카페24 연결" aria-label="도움말 검색"><button class="btn tp-btn">검색</button></form>
-<div class="tp-pick tp-chips rv-up">{% for q in ['카페24 연결','자사몰 상담창 달기','인스타그램 DM','AI 답변 고치기','결제·해지'] %}<a href="{{ url_for('cms.help_home',q=q.split(' ')[0]) }}">{{ q }}<span>›</span></a>{% endfor %}</div>
+<div class="tp-pick tp-chips rv-up">{% for q in ['카페24 연결','자사몰 상담창 달기','인스타그램 DM','SODA 답변 고치기','결제·해지'] %}<a href="{{ url_for('cms.help_home',q=q.split(' ')[0]) }}">{{ q }}<span>›</span></a>{% endfor %}</div>
 <div class="tp-contact rv-up">
 <a href="tel:{{ OPERATOR.phone|replace('-','') }}">{{ i.tf_tile('phone',28) }}<b>{{ OPERATOR.phone }}</b><span>전화 문의</span></a>
 {% if has_ep('sl.consult') %}<a href="{{ url_for('sl.consult') }}">{{ i.tf_tile('speech',28) }}<b>1:1 상담 신청</b><span>남겨 주시면 연락드려요</span></a>{% endif %}

@@ -471,7 +471,7 @@ def connect():
     track_on=bool(core.secret('SWEETTRACKER_T_KEY'))
     rows=[]
     if c24:rows.append(dict(group='판매처',name='카페24',desc=(f"문의 {c24['n_inq']}건 · 주문 {c24['n_ord']}건 · 상품 {c24['n_prod']}개 가져옴"+(f" · {core.fmt(c24['synced'])}" if c24['synced'] else '')) if c24['status']=='ok' else c24['note'],state='on' if c24['status']=='ok' else 'err',href=url_for('c24.page')))
-    else:rows.append(dict(group='판매처',name='카페24',desc='카페24 관리자로 로그인하면 주문·상품·게시판 문의를 가져오고, AI가 단순 문의에 답해요' if cafe24.ready() else '카페24 연결 준비 중이에요. 그동안은 주문 엑셀로 써 주세요',state='link' if cafe24.ready() else 'wait',href=url_for('c24.page')))
+    else:rows.append(dict(group='판매처',name='카페24',desc='카페24 관리자로 로그인하면 주문·상품·게시판 문의를 가져오고, SODA가 단순 문의에 답해요' if cafe24.ready() else '카페24 연결 준비 중이에요. 그동안은 주문 엑셀로 써 주세요',state='link' if cafe24.ready() else 'wait',href=url_for('c24.page')))
     for key,spec in shops.SHOPS.items():  # 카페24를 맨 위에 (지금은 카페24 사장님 대상)
         l=lk.get(key)
         if l:desc,state=(f"문의 {l['n_inq']}건 · 주문 {l['n_ord']}건 가져옴"+(f" · {core.fmt(l['synced'])}" if l['synced'] else ' · 곧 가져와요'),'on') if l['status']=='ok' else (l['note'],'err')
@@ -490,7 +490,7 @@ def connect():
            dict(group='상담',name='카카오톡 채널',desc=((f"문의 {kk['n_inq']}건 받음"+(f" · {core.fmt(kk['last_at'])}" if kk['last_at'] else ' · 챗봇 설정을 마치면 들어와요')) if kk['status']=='ok' else kk['note']) if kk else '카카오톡 채널 챗봇에 소보루 주소를 넣으면 카톡 문의가 상담으로 들어와요',
                 state=('on' if kk['status']=='ok' else 'err') if kk else 'link',href=url_for('kk.page')),
            dict(group='상담',name='쇼핑몰 문의 버튼',desc=(f"{real()['widget_host']}에 붙어 있어요 · {core.fmt(real()['widget_seen'])} 확인" if real()['widget_seen'] else '쇼핑몰에 한 줄만 붙이면 문의하기 버튼이 생겨요'),state='on' if real()['widget_seen'] else 'link',href=url_for('connect_widget')),
-           dict(group='상담',name='AI 상담',desc='고객 채팅에 AI가 먼저 답해요' if chatbot.ready() else '소보루가 연결을 준비하고 있어요',state='on' if chatbot.ready() else 'soon',href=url_for('rules')+'#ai' if chatbot.ready() else '')]
+           dict(group='상담',name='SODA 상담',desc='고객 채팅에 SODA가 먼저 답해요' if chatbot.ready() else '소보루가 연결을 준비하고 있어요',state='on' if chatbot.ready() else 'soon',href=url_for('rules')+'#ai' if chatbot.ready() else '')]
     return render_template('b_connect.html',rows=rows,tab='connect')
 
 @app.route('/connect/widget')
@@ -1113,21 +1113,21 @@ def rules():
 @app.route('/ai-profile',methods=['POST'])
 @login_required
 def ai_profile():
-    """사업자별 AI 상담 설정 (회사 소개, 배송·반품 규정, 상담 범위, 담당자 연결 조건, 응대 지침)."""
+    """사업자별 SODA 설정 (회사 소개, 배송·반품 규정, 상담 범위, 담당자 연결 조건, 응대 지침)."""
     co=me()
     with conn() as db:chatbot.save_profile(db,co['id'],request.form)
-    flash('AI 상담 설정을 저장했습니다','ok');return redirect(url_for('rules')+'#ai')
+    flash('SODA 설정을 저장했습니다','ok');return redirect(url_for('rules')+'#ai')
 
 @app.route('/ai-reply',methods=['POST'])
 @login_required
 def ai_reply():
-    """AI 자동 답변 켜기·끄기: 연결된 곳(판매처·메일·인스타그램)에서 온 새 문의에 AI가 답해 그곳으로 보낸다. 켠 뒤에 들어온 문의에만."""
-    if not team.can(who(),'decide'):flash('AI 자동 답변은 대표나 관리자만 바꿀 수 있어요','error');return redirect(url_for('rules')+'#ai')
+    """SODA 자동 답변 켜기·끄기: 연결된 곳(판매처·메일·인스타그램)에서 온 새 문의에 SODA가 답해 그곳으로 보낸다. 켠 뒤에 들어온 문의에만."""
+    if not team.can(who(),'decide'):flash('SODA 자동 답변은 대표나 관리자만 바꿀 수 있어요','error');return redirect(url_for('rules')+'#ai')
     co=me();on=request.form.get('on')=='1'
     with conn() as db:db.execute('UPDATE companies SET ai_reply=? WHERE id=?',(core.iso() if on else '',co['id']))
-    flash('AI 자동 답변을 켰어요. 지금부터 들어오는 문의에 답해요' if on else 'AI 자동 답변을 껐어요','ok');return redirect(url_for('rules')+'#ai')
+    flash('SODA 자동 답변을 켰어요. 지금부터 들어오는 문의에 답해요' if on else 'SODA 자동 답변을 껐어요','ok');return redirect(url_for('rules')+'#ai')
 
-# ---------- 상품정보 (상담창 AI가 가격·재고·사용법 문의에 답할 때 본다) ----------
+# ---------- 상품정보 (상담창 SODA가 가격·재고·사용법 문의에 답할 때 본다) ----------
 def save_product(db,co,f):
     """상품 하나 추가·수정·삭제(웹·앱 공용). (안내 문구, 'ok'|'error')."""
     pid=f.get('id');pid=int(pid) if str(pid or '').isdigit() else None
@@ -1258,7 +1258,7 @@ def products():
 @app.route('/products/pdf',methods=['POST'])
 @login_required
 def products_pdf():
-    """상품소개서 PDF를 올리면 AI가 상품을 뽑는다. 결과는 검토 화면에서 사장님이 고르고 고친 뒤 등록한다."""
+    """상품소개서 PDF를 올리면 SODA가 상품을 뽑는다. 결과는 검토 화면에서 사장님이 고르고 고친 뒤 등록한다."""
     co=me();up=request.files.get('file')
     if not up or not up.filename:flash('PDF 파일을 골라 주세요','error');return redirect(url_for('products'))
     try:

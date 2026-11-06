@@ -482,7 +482,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(ps['프로바이오틱스 19']['price'],'31,000원');self.assertIn('원재료·성분: 홍삼농축액',ps['6년근 홍삼정 스틱 30포']['info'])
         self.assertIn('공급가: 21,000원',priv[ps['6년근 홍삼정 스틱 30포']['id']]);self.assertEqual(left,'[]')  # 다 쓴 추출 결과는 지운다
         # 사장님 화면에는 내부 정보가 보이고, 상담 AI·앱 API에는 안 간다
-        self.assertIn('공급가: 21,000원',b.get('/biz/products').get_data(as_text=True));self.assertIn('AI 상담 설정',b.get('/biz/rules').get_data(as_text=True))
+        self.assertIn('공급가: 21,000원',b.get('/biz/products').get_data(as_text=True));self.assertIn('SODA 설정',b.get('/biz/rules').get_data(as_text=True))
         with self.core.conn() as db:facts=sys.modules['chatbot'].company_facts(db,self.core.company(db,cid))
         self.assertIn('6년근 홍삼정 스틱 30포',facts);self.assertIn('39,000원',facts)
         for secret in ('21,000','17,500','9,800','공급가','정산','최소 주문'):self.assertNotIn(secret,facts)
@@ -886,7 +886,7 @@ class PlatformTest(unittest.TestCase):
         self.assertNotIn('cp-moves',me.get('/guide').get_data(as_text=True))
         self.assertEqual(self.client().get('/biz/ops/visual').status_code,302)  # 운영자만
         # 색이 섞인 제목도 조각마다 고친다 (화면에서 고친 경우 shown=1)
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'AI가 먼저 답해요','dst':'한 곳에서','shown':'1'})
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'SODA가 먼저 답해요','dst':'한 곳에서','shown':'1'})
         self.post(o,'/biz/ops/copy',{'site':'biz','src':'한 곳에서','dst':'바로','shown':'1'})  # 이미 바꾼 글자를 다시 고치면 같은 기록을 고친다
         self.assertIn('<h1>쇼핑몰 문의,<br>바로</h1>',self.client().get('/biz/').get_data(as_text=True))
         # 줄을 비우면 그 줄바꿈도 같이 사라져 아래 글이 당겨진다, 칸 안의 줄바꿈은 그대로 줄바꿈

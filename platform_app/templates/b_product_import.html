@@ -7,7 +7,7 @@
 <div class="chead"><div class="l"><div class="tagrow">{% if j.status=='running' %}<span class="pill acc">읽는 중</span>{% elif j.status=='ready' %}<span class="pill ok">확인해 주세요</span>{% elif j.status=='done' %}<span class="pill gray">등록 끝</span>{% else %}<span class="pill bad">실패</span>{% endif %}</div>
 <h1>{{ j.filename or '상품소개서' }}</h1></div></div>
 {% if j.status=='running' %}
-<section class="panel"><div class="ph">AI가 상품을 찾고 있어요</div>
+<section class="panel"><div class="ph">SODA가 상품을 찾고 있어요</div>
 <p class="sub" style="font-size:15px;margin:0">상품이 많으면 1~2분 걸려요. 이 화면은 저절로 새로고침돼요.</p></section>
 {% elif j.status=='error' %}
 <section class="panel"><div class="ph">상품을 읽지 못했어요</div>

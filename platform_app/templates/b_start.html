@@ -50,17 +50,17 @@
 
 {% elif step=='connect' %}
 {% if not trust.ok %}<div class="flash error" style="margin:0">판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 열려요. 지금은 나중에 하기를 누르고 다음 단계로 가도 돼요.</div>{% endif %}
-<div class="rows" style="padding:0"><a class="rowi" href="{{ url_for('c24.page') }}"><div class="tx"><div class="t">카페24</div><div class="s">카페24 관리자로 로그인하면 주문·상품·게시판 문의를 가져오고, AI가 단순 문의에 답해요</div></div><span class="chev"></span></a>{% for key,spec in SHOPS.items() %}<a class="rowi" href="{{ url_for('connect_shop',shop=key) }}"><div class="tx"><div class="t">{{ spec.full }}</div><div class="s">{% if links.get(key) %}연결됨{% else %}판매처에서 발급한 키를 넣으면 문의와 주문을 가져와요{% endif %}</div></div><span class="chev"></span></a>{% endfor %}
+<div class="rows" style="padding:0"><a class="rowi" href="{{ url_for('c24.page') }}"><div class="tx"><div class="t">카페24</div><div class="s">카페24 관리자로 로그인하면 주문·상품·게시판 문의를 가져오고, SODA가 단순 문의에 답해요</div></div><span class="chev"></span></a>{% for key,spec in SHOPS.items() %}<a class="rowi" href="{{ url_for('connect_shop',shop=key) }}"><div class="tx"><div class="t">{{ spec.full }}</div><div class="s">{% if links.get(key) %}연결됨{% else %}판매처에서 발급한 키를 넣으면 문의와 주문을 가져와요{% endif %}</div></div><span class="chev"></span></a>{% endfor %}
 <a class="rowi" href="{{ url_for('orders_page') }}"><div class="tx"><div class="t">자사몰·오픈마켓</div><div class="s">주문 엑셀(CSV)로 올려요</div></div><span class="chev"></span></a></div>
 
 {% elif step=='ai' %}
 <label class="fld"><span>회사·브랜드 소개</span><textarea class="inp" name="brand" maxlength="3000" placeholder="국내산 원료로 만드는 건강식품 브랜드예요">{{ prof.brand }}</textarea></label>
-<label class="fld"><span>AI가 답할 범위</span><textarea class="inp" name="scope" maxlength="3000" placeholder="상품 문의, 배송 안내, 교환·반품 방법 안내까지 AI가 답해요">{{ prof.scope }}</textarea></label>
+<label class="fld"><span>SODA가 답할 범위</span><textarea class="inp" name="scope" maxlength="3000" placeholder="상품 문의, 배송 안내, 교환·반품 방법 안내까지 SODA가 답해요">{{ prof.scope }}</textarea></label>
 <label class="fld"><span>담당자에게 넘길 때</span><textarea class="inp" name="handoff" maxlength="3000" placeholder="불량·파손, 환불 요청, 대량 주문 문의는 담당자에게 넘겨 주세요">{{ prof.handoff }}</textarea></label>
-<p class="cap" style="margin:0">자주 묻는 질문, 응대 지침, 상품 정보는 <a class="link" href="{{ url_for('rules') }}#ai">자동 처리 &gt; AI 상담</a>에서 더 넣을 수 있어요.</p>
+<p class="cap" style="margin:0">자주 묻는 질문, 응대 지침, 상품 정보는 <a class="link" href="{{ url_for('rules') }}#ai">자동 처리 &gt; SODA 상담</a>에서 더 넣을 수 있어요.</p>
 
 {% elif step=='widget' %}
-<p class="sub" style="margin:0">쇼핑몰 화면 오른쪽 아래에 '문의하기' 버튼이 생기고, 누르면 우리 고객센터 화면(AI 상담·접수)이 열려요.</p>
+<p class="sub" style="margin:0">쇼핑몰 화면 오른쪽 아래에 '문의하기' 버튼이 생기고, 누르면 우리 고객센터 화면(SODA 상담·접수)이 열려요.</p>
 <label class="fld"><span>쇼핑몰 HTML의 &lt;/body&gt; 바로 위에 붙여 넣기</span><div class="addline"><input class="inp" id="wsnip" value='&lt;script src="{{ widget }}" async&gt;&lt;/script&gt;' readonly><button class="btn md gray" type="button" data-copy="wsnip">복사</button></div></label>
 <label class="fld"><span>버튼 대신 링크만 걸 때</span><div class="addline"><input class="inp" id="wlink" value="{{ link }}" readonly><button class="btn md gray" type="button" data-copy="wlink">복사</button></div></label>
 <p class="cap" style="margin:0">스마트스토어·쿠팡은 외부 스크립트를 넣을 수 없어서, 판매처 연결로 문의를 가져와요. 붙인 뒤 <a class="link" href="{{ link }}" target="_blank" rel="noopener">고객센터 화면</a>이 열리는지 확인해 주세요.</p>
