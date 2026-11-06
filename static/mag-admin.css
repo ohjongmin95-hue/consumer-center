@@ -447,6 +447,11 @@ body.console.mag-studio .ms-main .mg-msg-act form:first-child button{height:40px
 .md-who a{color:var(--ms-sub);text-decoration:none}
 .md-who a[aria-current]{color:var(--ms-ink);font-weight:700;text-decoration:underline;text-underline-offset:4px}
 .md-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:28px 20px}
+.md-li{position:relative;min-width:0}
+.md-pick{position:absolute;z-index:2;right:8px;top:8px;width:36px;height:36px;display:grid;place-items:center;background:rgba(255,255,255,.92);border-radius:6px;cursor:pointer}
+.md-pick input{width:20px;height:20px;margin:0;cursor:pointer}
+.md-bulkbar{display:flex;align-items:center;gap:16px;margin:0 0 16px;font-size:14px}
+.md-bulkbar button:disabled{opacity:.45;cursor:default}
 .md-tile{display:grid;gap:8px;color:inherit;text-decoration:none;min-width:0}
 .md-th{position:relative;display:block;aspect-ratio:4/5;background:var(--ms-side);overflow:hidden}
 .md-th img,.md-th video{width:100%;height:100%;object-fit:cover;display:block}

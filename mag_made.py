@@ -28,6 +28,7 @@ KINDS = {'card': '카드뉴스', 'reel': '릴스'}
 NAME = re.compile(r'(?:\d{2}\.(?:png|jpg|webp)|reel\.mp4)')
 CHUNK = 8 * 1024 * 1024
 MAX_CARD = 20
+DRAFT = 'scenes.json'  # 릴스 장면 글·사진 (고쳐 다시 만들 때 불러옴). 파일 주소로는 내려받지 못함(NAME)
 MAX_REEL = 300 * 1024 * 1024
 MIME = {'png': 'image/png', 'jpg': 'image/jpeg', 'webp': 'image/webp', 'mp4': 'video/mp4'}
 MAGIC = {'png': (b'\x89PNG',), 'jpg': (b'\xff\xd8\xff',), 'webp': (b'RIFF',)}
@@ -89,18 +90,45 @@ def install(S):
         with conn() as db: db.execute('UPDATE made_items SET done=1 WHERE id=?', (i,))
         return ''
 
-    def save_reel(video, title, caption, source, maker='admin'):
+    def put_video(video, dst):
+        tmp = dst.with_name(dst.name + '.new')
+        tmp.unlink(missing_ok=True)
+        try: os.link(video, tmp)
+        except OSError: shutil.copyfile(video, tmp)
+        os.replace(tmp, dst)  # 다 준비된 뒤에 한 번에 바꿈 (도중에 실패해도 옛 영상이 남음)
+
+    def put_draft(i, draft):
+        if draft: (root / str(i) / DRAFT).write_text(json.dumps(draft, ensure_ascii=False), encoding='utf-8')
+
+    def save_reel(video, title, caption, source, maker='admin', draft=None):
         """만들기에서 다 만든 릴스 영상을 보관함에도 넣음 (원본 영상은 그대로 두고 복사)."""
         i = create('reel', title, caption, source, maker)
         if not i: return None
-        dst = root / str(i) / 'reel.mp4'
-        try: os.link(video, dst)
-        except OSError: shutil.copyfile(video, dst)
+        put_video(video, root / str(i) / 'reel.mp4')
+        put_draft(i, draft)
         with conn() as db: db.execute("UPDATE made_items SET files='[\"reel.mp4\"]',done=1 WHERE id=?", (i,))
         return i
+
+    def replace_reel(i, video, title, caption, source, draft=None):
+        """운영자 2026-11-07: 고쳐 다시 만들 때 보관함에 하나 더 늘리지 않고 이 항목의 영상을 바꿈."""
+        r = item(i, done=True)
+        if not r or r['kind'] != 'reel': return None
+        put_video(video, root / str(i) / 'reel.mp4')
+        if draft: put_draft(i, draft)
+        else: (root / str(i) / DRAFT).unlink(missing_ok=True)  # 옛 장면 글이 새 영상과 어긋나지 않게
+        with conn() as db:
+            db.execute('UPDATE made_items SET title=?,caption=?,source=? WHERE id=?', (clean(title, 120) or r['title'], clean(caption, 4000) or r['caption'], clean(source, 300) or r['source'], i))
+        return i
+
+    def remove(i):
+        shutil.rmtree(root / str(i), ignore_errors=True)
+        with conn() as db: db.execute('DELETE FROM made_items WHERE id=?', (i,))
+
     S.made_save_reel = save_reel
     app.extensions['made_api'] = {'create': create, 'add_file': add_file, 'finish': finish}  # 자동 콘텐츠(auto_content.py)가 씀
     app.extensions['made_save_reel'] = save_reel
+    app.extensions['made_replace_reel'] = replace_reel
+    app.extensions['made_item'] = item
 
     # ---- 자동으로 만드는 쪽 (토큰) ----------------------------------------------------
     def token_ok():
@@ -183,6 +211,27 @@ def install(S):
         if not r: abort(404)
         return render_template('mag_admin_made_view.html', r=r, kinds=KINDS)
 
+    @app.route('/admin/magazine/made/<int:i>/draft')
+    @S.admin_only
+    def mag_made_draft(i):
+        r = item(i, done=True)
+        if not r or r['kind'] != 'reel': return jsonify(ok=False, error='고칠 릴스를 찾지 못했어요.'), 404
+        f = root / str(i) / DRAFT
+        try: scenes = json.loads(f.read_text(encoding='utf-8')) if f.is_file() else []
+        except ValueError: scenes = []
+        return jsonify(ok=True, id=i, title=r['title'], caption=r['caption'], source=r['source'], scenes=scenes)
+
+    @app.route('/admin/magazine/made/bulk', methods=['POST'])
+    @S.admin_only
+    def mag_made_bulk():
+        # 운영자 2026-11-07: 옛 영상을 하나씩 들어가지 않고 목록에서 골라 한 번에 지움
+        ids = sorted({int(x) for x in request.form.getlist('ids') if x.isdigit()})
+        gone = 0
+        for i in ids:
+            if item(i, done=True): remove(i); gone += 1
+        flash(f'{gone}개를 지웠어요.' if gone else '고른 항목이 없어요.')
+        return redirect(url_for('mag_made_list', kind=request.form.get('kind') or None, by=request.form.get('by') or None))
+
     @app.route('/admin/magazine/made/<int:i>/<name>')
     @S.admin_only
     def mag_made_file(i, name):
@@ -214,8 +263,7 @@ def install(S):
         if not r: abort(404)
         act = request.form.get('act')
         if act == 'del':
-            shutil.rmtree(root / str(i), ignore_errors=True)
-            with conn() as db: db.execute('DELETE FROM made_items WHERE id=?', (i,))
+            remove(i)
             flash('지웠어요.'); return redirect(url_for('mag_made_list'))
         if act == 'save':
             with conn() as db: db.execute('UPDATE made_items SET title=?,caption=? WHERE id=?', (clean(request.form.get('title'), 120), clean(request.form.get('caption'), 4000), i))

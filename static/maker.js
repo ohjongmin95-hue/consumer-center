@@ -814,7 +814,8 @@
       var scenes = slides.map(function (s, i) { x.clearRect(0, 0, 1080, 1920); REEL[s.design](x, s); return {media: s.media.url, layout: s.design, start: s.start || 0, dur: s.dur || 4, slow: !!s.slow, narration: s.narration || '', png: c.toDataURL('image/png')}; });
       x.clearRect(0, 0, 1080, 1920); REEL.outro(x, fromLetter);
       btn.disabled = true; say('릴스를 만들고 있어요. 1~3분쯤 걸려요. 이 화면을 닫지 말아 주세요.');
-      return post(C.render, JSON.stringify({scenes: scenes, outro: c.toDataURL('image/png'), title: oneTitle(), caption: capT ? capT.value : '', source: lastSrc}), 'application/json').then(function (j) {
+      var draft = slides.map(function (s) { return {design: s.design, tag: s.tag, title: s.title, sub: s.sub, items: s.items, media: s.media.url, start: s.start || 0, dur: s.dur || 4, slow: !!s.slow}; });
+      return post(C.render, JSON.stringify({scenes: scenes, outro: c.toDataURL('image/png'), title: oneTitle(), caption: capT ? capT.value : '', source: lastSrc, draft: draft, replace: C.replace || undefined}), 'application/json').then(function (j) {
         if (!j.ok) throw new Error(j.error || '만들지 못했어요.');
         return new Promise(function (ok, no) {
           (function poll() {
@@ -826,7 +827,7 @@
       }).then(function (url) {
         var out = $('#mk-out'); out.hidden = false;
         $('#mk-out-v').src = url; $('#mk-out-dl').href = url; $('#mk-out-url').value = url;
-        say('릴스를 만들었어요. 만든 것 보관함에도 저장했어요. 내려받아 인스타그램에 올리거나 매거진 릴스 칸에 올려 보세요.');
+        say(C.replace ? '보관함의 영상을 바꿨어요. 새 항목은 늘지 않았어요.' : '릴스를 만들었어요. 만든 것 보관함에도 저장했어요. 내려받아 인스타그램에 올리거나 매거진 릴스 칸에 올려 보세요.');
       });
     }).catch(function (e) { say(e.message); }).then(function () { btn.disabled = false; });
   };
@@ -836,4 +837,26 @@
   else { slides[0].tag = 'FOOD'; slides[0].title = '표지 문구는 짧게,\n두 줄이 좋아요'; slides[0].sub = '숫자 하나'; }
   logo.onload = function () { logoW = logoK = null; logoCache = {}; draw(); };
   fill(); draw();
+  // 운영자 2026-11-07: 보관함의 릴스를 고칠 때 저장해 둔 장면을 불러옴 (글을 고치면 왼쪽 화면이 바로 바뀜)
+  if (mode === 'reel' && C.draft) {
+    say('고칠 릴스를 불러오고 있어요.');
+    fetch(C.draft, {credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j.ok) throw new Error(j.error || '불러오지 못했어요.');
+      if (capBox) { capBox.hidden = false; capT.value = j.caption || ''; }
+      lastSrc = j.source || '';
+      if (!(j.scenes || []).length) {
+        slides = [blank()]; slides[0].title = j.title || '';
+        fill(); draw();
+        say('이 릴스는 장면 글이 저장되기 전에 만들어졌어요. 장면을 새로 넣으면 이 영상을 바꿔요.');
+        return;
+      }
+      return Promise.all(j.scenes.map(function (s) {
+        var isV = /^\/art\/video\//.test(s.media);
+        return s.media ? (isV ? loadVideo(s.media) : loadImg(s.media)).then(function (el) { return {kind: isV ? 'video' : 'image', url: s.media, el: el, len: isV ? el.duration : 0}; }, function () { return null; }) : null;
+      })).then(function (ms) {
+        slides = j.scenes.map(function (s, i) { var o = blank(); o.design = s.design || 'wide'; o.tag = s.tag; o.title = s.title; o.sub = s.sub; o.items = s.items; o.media = ms[i]; o.start = s.start || 0; o.dur = s.dur || 4; o.end = o.start + o.dur; o.slow = !!s.slow; return o; });
+        cur = 0; fill(); draw(); say('');
+      });
+    }).catch(function (e) { say(e.message); });
+  }
 })();

@@ -5,6 +5,7 @@
 {% set mode = 'reel' if request.args.get('mode') == 'reel' else 'card' %}
 <main class="page mz-cms"><div class="wrap">
   <div class="page-intro"><h1 class="page-title">카드뉴스·릴스 만들기</h1></div>
+  {% if fix %}<p class="mk-warn">보관함 {{ fix.id }}번 「{{ fix.title or '제목 없음' }}」을 고치고 있어요. 글을 고치면 왼쪽 화면이 바로 바뀌고, 아래 버튼을 누르면 새로 늘지 않고 이 영상을 바꿔요.</p>{% endif %}
   <nav class="mk-tabs" aria-label="만들 것"><a href="{{ url_for('mag_maker') }}"{% if mode == 'card' %} aria-current="page"{% endif %}>카드뉴스 <small>4:5 이미지</small></a><a href="{{ url_for('mag_maker', mode='reel') }}"{% if mode == 'reel' %} aria-current="page"{% endif %}>릴스 <small>9:16 영상</small></a></nav>
   {% if mode == 'reel' and not can_video %}<p class="mk-warn">서버에 영상 만드는 프로그램(ffmpeg)이 아직 없어요. 미리보기는 되지만 영상은 만들 수 없어요.</p>{% endif %}
   <div class="mk" id="mk" data-mode="{{ mode }}">
@@ -40,7 +41,7 @@
       </div>
       <div class="mk-cap" id="mk-cap" hidden><label class="mg-f">인스타 캡션<textarea id="mk-cap-t" rows="8"></textarea></label><button type="button" id="mk-cap-copy">캡션 복사</button></div>
       <p class="mk-st" id="mk-st" role="status" hidden></p>
-      <button type="button" class="primary mk-go" id="mk-go">{{ '릴스 만들기' if mode == 'reel' else '카드 모두 내려받기 (PNG)' }}</button>
+      <button type="button" class="primary mk-go" id="mk-go">{{ ('이 영상 고쳐서 바꾸기' if fix else '릴스 만들기') if mode == 'reel' else '카드 모두 내려받기 (PNG)' }}</button>
     </form>
       {% if mode == 'reel' %}
       <div class="mk-out" id="mk-out" hidden>
@@ -55,6 +56,6 @@
   </div>
   </div>
 </div></main>
-<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'made_new': url_for('mag_made_new'), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'draw': url_for('mag_maker_draw'), 'naver': url_for('mag_maker_naver'), 'status': url_for('mag_maker_status'), 'mag_made_new': url_for('mag_made_new'), 'made_base': url_for('mag_made_done', i=0)[:-4], 'assist': url_for('mag_assist'), 'arts': arts}|tojson }};</script>
+<script>window.MAKER_CFG={{ {'csrf': csrf_token(), 'made_new': url_for('mag_made_new'), 'logo': asset('img/soboru-wordmark.png'), 'pup': url_for('mag_body_upload'), 'vup': url_for('mag_video_upload'), 'vsave': url_for('mag_video_save'), 'render': url_for('mag_maker_render'), 'draw': url_for('mag_maker_draw'), 'naver': url_for('mag_maker_naver'), 'status': url_for('mag_maker_status'), 'mag_made_new': url_for('mag_made_new'), 'made_base': url_for('mag_made_done', i=0)[:-4], 'assist': url_for('mag_assist'), 'arts': arts, 'replace': fix.id if fix else none, 'draft': url_for('mag_made_draft', i=fix.id) if fix else none}|tojson }};</script>
 <script src="{{ asset('maker.js') }}"></script>
 {% endblock %}

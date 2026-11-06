@@ -12,6 +12,7 @@
   {% endif %}
   <div class="md-act">
     <a class="primary md-dl" href="{{ url_for('mag_made_file', i=r.id, name='reel.mp4', dl=1) if r.kind == 'reel' else url_for('mag_made_zip', i=r.id) }}">{{ 'MP4 내려받기' if r.kind == 'reel' else '카드 모두 내려받기 (ZIP)' }}</a>
+    {% if r.kind == 'reel' %}<a class="text-btn md-fix" href="{{ url_for('mag_maker', mode='reel', replace=r.id) }}">이 영상 고치기</a>{% endif %}
     {% if r.kind == 'reel' %}<form method="post" action="{{ url_for('mag_made_act', i=r.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" name="act" value="reel">매거진 첫 화면 릴스 칸에 올리기</button></form>{% endif %}
   </div>
   <form method="post" action="{{ url_for('mag_made_act', i=r.id) }}" class="md-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">

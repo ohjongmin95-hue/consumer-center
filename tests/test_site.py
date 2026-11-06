@@ -6444,6 +6444,51 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('[0:a]', filt)
         self.assertEqual(cmd[cmd.index('-crf') + 1], '16')  # 운영자 2026-11-06: 화질 좋게
 
+    def test_made_replace_and_bulk(self):
+        # 운영자 2026-11-07: 고쳐 다시 만들면 보관함이 늘지 않고 그 영상을 바꿈 + 목록에서 골라 한 번에 지우기
+        import re, tempfile
+        from pathlib import Path
+        from unittest import mock
+        import app as site, mag_maker
+        admin = self.login_admin()
+        tok = self.csrf(admin, '/admin/magazine/made')
+        tools = site.app.extensions
+        with tempfile.TemporaryDirectory() as tmp:
+            a, b = Path(tmp) / 'a.mp4', Path(tmp) / 'b.mp4'
+            a.write_bytes(b'....ftypOLD'); b.write_bytes(b'....ftypNEW')
+            draft = mag_maker.clean_draft([{'design': 'full', 'title': '옛 제목', 'media': '/art/body/x.webp', 'dur': '4', 'narration': '넣지 않음'}, 'x'])
+            self.assertEqual(len(draft), 1); self.assertNotIn('narration', draft[0]); self.assertEqual(draft[0]['dur'], 4.0)
+            i = tools['made_save_reel'](a, '옛 제목', '옛 캡션', '옛 출처', draft=draft)
+            j = admin.get('/admin/magazine/made/%d/draft' % i).get_json()
+            self.assertEqual(j['scenes'][0]['title'], '옛 제목'); self.assertEqual(j['caption'], '옛 캡션')
+            self.assertEqual(self.client.get('/admin/magazine/made/%d/draft' % i).status_code, 302)  # 관리자만
+            self.assertEqual(admin.get('/admin/magazine/made/%d/scenes.json' % i).status_code, 404)
+            before = admin.get('/admin/magazine/made').get_data(as_text=True).count('class="md-li"')
+            self.assertEqual(tools['made_replace_reel'](i, b, '새 제목', '', '', None), i)
+            self.assertEqual(admin.get('/admin/magazine/made').get_data(as_text=True).count('class="md-li"'), before)  # 늘지 않음
+            self.assertEqual(admin.get('/admin/magazine/made/%d/reel.mp4' % i).data, b'....ftypNEW')
+            self.assertEqual(a.read_bytes(), b'....ftypOLD')  # 원본 영상은 그대로
+            j = admin.get('/admin/magazine/made/%d/draft' % i).get_json()
+            self.assertEqual((j['title'], j['caption'], j['scenes']), ('새 제목', '옛 캡션', []))  # 빈 값은 유지, 옛 장면은 버림
+            self.assertIsNone(tools['made_replace_reel'](999999, b, 't', '', '', None))
+            self.assertIn('replace=%d' % i, admin.get('/admin/magazine/made/%d' % i).get_data(as_text=True))
+            page = admin.get('/admin/magazine/maker?mode=reel&replace=%d' % i).get_data(as_text=True)
+            self.assertIn('이 영상 고쳐서 바꾸기', page); self.assertTrue(re.search(r'"replace":\s*%d' % i, page))
+            self.assertNotIn('이 영상 고쳐서 바꾸기', admin.get('/admin/magazine/maker?mode=reel&replace=999999').get_data(as_text=True))
+            with mock.patch('mag_maker.shutil.which', return_value='/usr/bin/ffmpeg'):
+                for bad in (999999, 'x', True):
+                    r = admin.post('/admin/magazine/maker/render', json={'replace': bad, 'scenes': []}, headers={'X-CSRFToken': tok})
+                    self.assertEqual(r.status_code, 400); self.assertIn('덮어쓸', r.get_json()['error'])
+            k = tools['made_save_reel'](a, '지울 것', '', '')
+            keep = tools['made_save_reel'](a, '남길 것', '', '')
+            self.client.post('/admin/magazine/made/bulk', data={'ids': [k]})
+            self.assertEqual(admin.get('/admin/magazine/made/%d' % k).status_code, 200)  # 관리자가 아니면 안 지워짐
+            r = admin.post('/admin/magazine/made/bulk', data={'ids': [i, k, 'x', 999999], '_csrf': tok}, follow_redirects=True)
+            self.assertEqual(r.status_code, 200); self.assertIn('2개를 지웠어요', r.get_data(as_text=True))
+            self.assertEqual(admin.get('/admin/magazine/made/%d' % i).status_code, 404)
+            self.assertEqual(admin.get('/admin/magazine/made/%d' % k).status_code, 404)
+            self.assertEqual(admin.get('/admin/magazine/made/%d' % keep).status_code, 200)
+
     def test_made_archive(self):
         # 운영자 2026-11-05: 만든 카드뉴스·릴스 보관함 — 관리자 화면 저장 + 자동(토큰)으로 보내기, 목록·보기·내려받기·지우기
         import io, os, zipfile

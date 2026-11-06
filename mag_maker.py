@@ -120,6 +120,20 @@ def scene_filter(i, m, p, kind, lay, dur, speed, audio, voice=None, tempo=1.0):
     return parts
 
 
+def clean_draft(raw):
+    """다시 고칠 때 불러올 장면 글·사진 주소. 나레이션 글은 넣지 않음(운영자 2026-11-06: 릴스는 무음)."""
+    out = []
+    for s in (raw if isinstance(raw, list) else [])[:40]:
+        if not isinstance(s, dict): continue
+        row = {k: str(s.get(k) or '')[:2000] for k in ('design', 'tag', 'title', 'sub', 'items', 'media')}
+        for k in ('start', 'dur'):
+            try: row[k] = max(0.0, float(s.get(k) or 0))
+            except (TypeError, ValueError): row[k] = 0.0
+        row['slow'] = bool(s.get('slow'))
+        out.append(row)
+    return out
+
+
 def build(scenes, outro_png, out):
     """scenes: [{kind, file, start, dur, speed, layout, png, audio}] → ffmpeg 명령."""
     cmd, filt, n = ['ffmpeg', '-v', 'error', '-y'], [], 0
@@ -232,7 +246,11 @@ def install(S):
         with conn() as db:
             rows = db.execute("SELECT id,title,summary,body,category FROM articles WHERE status IN ('published','scheduled','draft') ORDER BY id DESC LIMIT 40").fetchall()
         arts = [{'id': r['id'], 'title': r['title'] or '', 'summary': r['summary'] or '', 'body': (r['body'] or '')[:4000], 'category': r['category'] or ''} for r in rows]
-        return render_template('mag_admin_maker.html', arts=arts, letters=letter_list(), can_video=bool(shutil.which('ffmpeg')))
+        fix = None  # 운영자 2026-11-07: 보관함의 릴스를 고칠 때는 새로 늘리지 않고 그 영상을 덮어씀
+        if request.args.get('replace', '').isdigit():
+            fix = app.extensions['made_item'](int(request.args['replace']), done=True)
+            if not fix or fix['kind'] != 'reel': fix = None
+        return render_template('mag_admin_maker.html', arts=arts, letters=letter_list(), can_video=bool(shutil.which('ffmpeg')), fix=fix)
 
     def letter_list():
         """소보루 레터 최근 호와 꼭지들 — 한 호를 꼭지마다 게시물로 쪼개 올림 (운영자 2026-11-05)"""
@@ -293,6 +311,11 @@ def install(S):
     def mag_maker_render():
         if not shutil.which('ffmpeg'): return jsonify(ok=False, error='서버에 영상 만드는 프로그램(ffmpeg)이 아직 없어요.'), 503
         d = request.get_json(silent=True) or {}
+        fix_id = d.get('replace')
+        if fix_id is not None:  # 보관함의 이 릴스를 덮어씀. 없는 번호면 몰래 새로 만들지 않고 알림
+            fix = app.extensions['made_item'](fix_id, done=True) if isinstance(fix_id, int) and not isinstance(fix_id, bool) else None
+            if not fix or fix['kind'] != 'reel': return jsonify(ok=False, error='덮어쓸 릴스를 찾지 못했어요. 보관함에서 다시 열어 주세요.'), 400
+        draft = clean_draft(d.get('draft'))
         raw = d.get('scenes') or []
         if not isinstance(raw, list) or not raw: return jsonify(ok=False, error='장면을 하나 이상 만들어 주세요.'), 400
         if len(raw) > MAX_SCENES: return jsonify(ok=False, error=f'장면은 {MAX_SCENES}개까지 만들 수 있어요.'), 400
@@ -341,10 +364,12 @@ def install(S):
                 ok = r.returncode == 0 and part.exists() and part.stat().st_size > 0
                 if ok:
                     shutil.move(str(part), str(folder / name)); (jd / 'state').write_text('done:' + name)
-                    save = app.extensions.get('made_save_reel')  # 운영자 2026-11-05: 만든 릴스는 보관함에도 (mag_made.py)
-                    if save:
-                        try: save(folder / name, meta['title'], meta['caption'], meta['source'])
-                        except Exception: app.logger.exception('릴스 보관함 저장 실패')
+                    try:  # 운영자 2026-11-05: 만든 릴스는 보관함에도 (mag_made.py). 고치는 중이면 그 항목을 덮어씀
+                        if fix_id is not None:
+                            app.extensions['made_replace_reel'](fix_id, folder / name, meta['title'], meta['caption'], meta['source'], draft)
+                        else:
+                            app.extensions['made_save_reel'](folder / name, meta['title'], meta['caption'], meta['source'], draft=draft)
+                    except Exception: app.logger.exception('릴스 보관함 저장 실패')
                 else:
                     app.logger.warning('릴스 만들기 실패: %s', r.stderr.decode('utf-8', 'replace')[-2000:]); (jd / 'state').write_text('error')
             except Exception:

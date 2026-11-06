@@ -11,9 +11,11 @@
   </nav>
   <p class="md-who">{% for v, label in (('', '모두'), ('auto', '자동으로 만든 것'), ('admin', '직접 만든 것')) %}<a href="{{ url_for('mag_made_list', kind=kind or None, by=v or None) }}"{% if who == v %} aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</p>
   {% if rows %}
+  <form method="post" action="{{ url_for('mag_made_bulk') }}" id="md-bulk" onsubmit="return confirm('고른 항목을 지울까요? 되돌릴 수 없어요.')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="by" value="{{ who }}">
+  <p class="md-bulkbar"><label><input type="checkbox" id="md-all"> 모두 고르기</label> <button class="text-btn" id="md-del" disabled>고른 <span id="md-n">0</span>개 지우기</button></p>
   <ul class="md-grid">
   {% for r in rows %}
-    <li><a class="md-tile" href="{{ url_for('mag_made_view', i=r.id) }}">
+    <li class="md-li"><label class="md-pick" title="고르기"><input type="checkbox" name="ids" value="{{ r.id }}" aria-label="{{ r.title or '제목 없음' }} 고르기"></label><a class="md-tile" href="{{ url_for('mag_made_view', i=r.id) }}">
       <span class="md-th md-{{ r.kind }}">{% if r.kind == 'reel' %}<video src="{{ url_for('mag_made_file', i=r.id, name='reel.mp4') }}#t=0.5" preload="metadata" muted playsinline></video>{% elif r.files %}<img src="{{ url_for('mag_made_file', i=r.id, name=r.files[0]) }}" alt="" loading="lazy">{% endif %}
         <em>{{ kinds[r.kind] }}{% if r.kind == 'card' %} · {{ r.files|length }}장{% endif %}</em></span>
       <b>{{ r.title or '제목 없음' }}</b>
@@ -21,6 +23,15 @@
     </a></li>
   {% endfor %}
   </ul>
+  </form>
+  <script>
+  (function () {
+    var all = document.getElementById('md-all'), del = document.getElementById('md-del'), n = document.getElementById('md-n'), boxes = [].slice.call(document.querySelectorAll('#md-bulk input[name=ids]'));
+    function sync() { var c = boxes.filter(function (b) { return b.checked; }).length; n.textContent = c; del.disabled = !c; all.checked = c === boxes.length; }
+    boxes.forEach(function (b) { b.onchange = sync; });
+    all.onchange = function () { boxes.forEach(function (b) { b.checked = all.checked; }); sync(); };
+  })();
+  </script>
   {% else %}<p class="mg-none">아직 저장된 게 없어요</p>{% endif %}
   {% if not has_token %}<p class="mk-help md-api">자동으로 만든 것을 받으려면 서버에서 <code>sudo bash /opt/soboru/app/deploy/set-maker-token.sh</code> 를 한 번 실행해 주세요. 보낼 때 쓸 열쇠(토큰)가 만들어져요.</p>{% endif %}
 </div></main>
