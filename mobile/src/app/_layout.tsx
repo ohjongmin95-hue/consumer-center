@@ -2,7 +2,7 @@ import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { Notifications } from '../lib/push';
@@ -40,9 +40,7 @@ function Intro() {
     <Animated.View style={[StyleSheet.absoluteFill, st.intro, { opacity: fade }]} onLayout={() => SplashScreen.hideAsync().catch(() => {})}>
       <Image source={require('../../assets/logo-mark.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />
       <Image source={require('../../assets/logo-wordmark.png')} style={st.wm} resizeMode="contain" accessibilityLabel="SOBORU CX" />
-      <Text style={st.sub}>사장님 전용</Text>
       <ActivityIndicator color={C.accent} style={{ marginTop: 36 }} />
-      <Text style={st.foot}>고객 응대는 소보루가, 사장님은 확인만</Text>
     </Animated.View>
   );
 }
@@ -102,6 +100,4 @@ export default function RootLayout() {
 const st = StyleSheet.create({
   intro: { backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
   wm: { width: 156, height: 30, marginTop: 18 },
-  sub: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg3, marginTop: 6 },
-  foot: { position: 'absolute', bottom: 48, fontFamily: FONT, fontSize: 13, color: C.fg4 },
 });
