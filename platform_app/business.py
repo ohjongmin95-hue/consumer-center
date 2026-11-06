@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import csv, io, urllib.parse
-import core, law, insights, drafting, chatbot, ai, aibench
+import core, law, insights, drafting, chatbot, ai, aibench, cx
 import tracking as tracking_mod
 import orders as orders_mod
 import shops, mailin
@@ -686,7 +686,7 @@ def stats_data(db,co):
     for w in range(7,-1,-1):
         end=today-datetime.timedelta(days=7*w);start=end-datetime.timedelta(days=6)
         weeks.append((f'{start.month}.{start.day}',sum(start.isoformat()<=r['created'][:10]<=end.isoformat() for r in rows)))
-    return dict(k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,cmp=cmp,reply_h=reply_h,sla=workflow.report(db,co,rows),conv=insights.conversion(db,co))
+    return dict(k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,cmp=cmp,reply_h=reply_h,sla=workflow.report(db,co,rows),conv=insights.conversion(db,co),csat=cx.stats(db,co['id']),CSAT_LABELS=cx.CSAT_LABELS,CSAT_EMOJI=cx.CSAT_EMOJI)
 
 notify_consumer=core.notify_consumer
 SEND_VIA={mailin.CHANNEL:'메일로',instagram.CHANNEL:'인스타그램 DM으로',kakao.CHANNEL:'카카오톡으로'}  # 사람이 눌러야 그 채널로 답이 나가는 곳
@@ -923,7 +923,7 @@ def chat(case_id=None):
             core.read_alerts(db,me()['id'],c['id'])
             ctx=dict(c=c,msgs=chat_msgs(db,c),last=livechat.last_id(db,c['id']),order=orders_mod.for_case(db,c),profile=inbox.customer(db,me(),c),
                      assignee=team.assignee_name(db,me(),c['assignee']),ctags=inbox.tags_by_case(db,me()['id'],{c['id']}).get(c['id'],[]),send_via=send_via(db,c),
-                     can_decide=team.can(who(),'decide'),STATUS=core.STATUS,OSTATUS=orders_mod.STATUS)
+                     can_decide=team.can(who(),'decide'),STATUS=core.STATUS,OSTATUS=orders_mod.STATUS,lang=cx.customer_lang(db,c),LANGS=cx.LANGS,CSAT_LABELS=cx.CSAT_LABELS,CSAT_EMOJI=cx.CSAT_EMOJI)
     return render_template('b_chat.html',tab_c=tab,TABS=CHAT_TABS,rows=rows,cnt=cnt,q=q,cur=case_id,tab='chat',**ctx)
 
 @app.route('/chat/list.json')
@@ -952,6 +952,18 @@ def chat_send(case_id):
         if send_via(db,c):post_later(c['id'],text)
         if not in_demo() and not c['title'].startswith('[시험 문의]'):funnel.track('first_reply',me()['id'])
         return jsonify(ok=True)
+
+@app.route('/chat/<int:case_id>/translate',methods=['POST'])
+@login_required
+def chat_translate(case_id):
+    """번역: to=ko면 고객 말을 한국어로, to=customer면 사장님 답을 고객 언어로. AI 키가 없으면 안내만."""
+    with conn() as db:
+        c=my_case(db,case_id);to=request.form.get('to','ko')
+        if to=='customer':to=cx.customer_lang(db,c)
+    if core.throttled('translate',limit=60,minutes=10):return jsonify(error='잠시 후 다시 해 주세요'),429
+    out=cx.translate(request.form.get('text',''),to,meta={'company_id':me()['id'],'case_id':c['id']})
+    if not out:return jsonify(error='지금은 번역할 수 없어요'),400
+    return jsonify(text=out,lang=to,label=cx.LANGS[to])
 
 @app.route('/case/<int:case_id>/live',methods=['GET','POST'])
 @login_required
@@ -1290,13 +1302,18 @@ def team_page():
     co=me();link=''
     with conn() as db:
         if request.method=='POST':
+            if request.form.get('act')=='away':  # 자기 상태만 바꾼다 (대표·관리자는 누구든)
+                key=request.form.get('key','');mine=who()['key']
+                if key!=mine and not team.can(who(),'manage'):abort(403)
+                flash(cx.set_away(db,co,key,request.form.get('on')=='1'),'ok');return redirect(url_for('team_page'))
             if request.form.get('act')=='invite':msg,level,link=team.invite(db,co,request.form)
             else:msg,level,link=team.update(db,co,who(),request.form)
             if msg:flash(msg,level)
             if not link:return redirect(url_for('team_page'))
         rows=team.staff(db,co['id'])
         load={k:db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND assignee=? AND status NOT IN ('resolved','unresolved','closed','withdrawn')",(co['id'],k)).fetchone()[0] for k in ['owner']+[str(r['id']) for r in rows]}
-    return render_template('b_team.html',rows=rows,link=link,load=load,owner=team.owner_actor(co),INVITE_ROLES=team.INVITE_ROLES,tab='team')
+        away=cx.away_keys(db,me())
+    return render_template('b_team.html',rows=rows,link=link,load=load,owner=team.owner_actor(co),INVITE_ROLES=team.INVITE_ROLES,tab='team',away=away,me_key=who()['key'],can_manage=team.can(who(),'manage'))
 
 @app.route('/join/<tok>',methods=['GET','POST'])
 def join(tok):
@@ -1322,7 +1339,7 @@ def settings():
         with conn() as db:flash(*save_settings(db,co,request.form))
         return redirect(url_for('settings'))
     with conn() as db:use=onboard.usage(db,co['id']);refs=growth.company_page_data(db,real())
-    return render_template('b_settings.html',tab='settings',DAYS=workflow.DAYS,SLA_CHOICES=workflow.SLA_CHOICES,AWAY_DEFAULT=workflow.AWAY_DEFAULT,hours_text=workflow.hours_text(co),link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use,refs=refs)
+    return render_template('b_settings.html',tab='settings',DAYS=workflow.DAYS,SLA_CHOICES=workflow.SLA_CHOICES,AWAY_DEFAULT=workflow.AWAY_DEFAULT,hours_text=workflow.hours_text(co),link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use,refs=refs,btns=cx.buttons(co),qs=cx.questions(co),MAX_BTNS=cx.MAX_BTNS,MAX_QS=cx.MAX_QS)
 
 def save_settings(db,co,f):
     """설정 저장(웹·앱 공용). act: password·return·notify, 없으면 회사 정보. (문구, 'ok'|'error')를 돌려준다."""
@@ -1335,6 +1352,9 @@ def save_settings(db,co,f):
         courier=f.get('return_courier','') if f.get('return_courier','') in core.COURIERS else ''
         db.execute('UPDATE companies SET return_address=?,return_courier=?,return_memo=? WHERE id=?',(clean(f.get('return_address'),200),courier,clean(f.get('return_memo'),300),co['id']));return '반품 안내를 저장했습니다','ok'
     if f.get('act')=='ops':return workflow.save(db,co,f)
+    if f.get('act')=='away':return cx.set_away(db,co,'owner',on('on')),'ok'  # 앱: 대표 자리 비움
+    if f.get('act')=='cxbot':return cx.save_buttons(db,co,f)
+    if f.get('act')=='cxform':return cx.save_questions(db,co,f)
     if f.get('act')=='notify':
         phone=digits(f.get('phone',''))
         if on('kakao') and not (phone.startswith('01') and 10<=len(phone)<=11):return '알림톡을 받을 휴대폰 번호를 확인해 주세요','error'
@@ -1914,12 +1934,12 @@ def api_biz_stats():
     cmp=s['cmp']
     if cmp and cmp.get('ready'):cmp=dict(ready=True,peers=cmp['peers'],mine={k:cmp['mine'][k] for k in ('n','auto','res','reply_h')},avg=cmp['avg'])
     return jsonify(kpi=s['k'],reply_h=s['reply_h'],cats=[dict(label=c,n=n,pct=p) for c,n,p in s['cats']],how=[dict(label=c,n=n,pct=p) for c,n,p in s['how']],
-        weeks=[dict(label=w,n=n) for w,n in s['weeks']],compare=cmp)
+        weeks=[dict(label=w,n=n) for w,n in s['weeks']],compare=cmp,csat=dict(s['csat'],dist=[dict(score=k,label=cx.CSAT_LABELS[k],emoji=cx.CSAT_EMOJI[k],n=s['csat']['dist'][k]) for k in (5,4,3,2,1)]))
 def settings_json(co):
     return dict(name=co['name'],login_id=co['login_id'],contact=co['contact'] or '',notify_email=co['notify_email'] or '',industry=co['industry'] or '',tone=co['tone'] or 'polite',
         return_address=co['return_address'] or '',return_courier=co['return_courier'] or '',return_memo=co['return_memo'] or '',
         phone=co['phone'] or '',kakao=bool(co['kakao']),report_mail=bool(co['report_mail']),kakao_ready=core.kakao_ready(),return_guide=core.return_guide(co),
-        industries=core.INDUSTRIES,tones=[dict(value=k,label=v) for k,v in core.TONES.items()],couriers=list(core.COURIERS))
+        industries=core.INDUSTRIES,tones=[dict(value=k,label=v) for k,v in core.TONES.items()],couriers=list(core.COURIERS),away=bool(co['owner_away']))
 @app.route('/api/v1/settings',methods=['GET','POST'])
 def api_biz_settings():
     co=api_co();out={}

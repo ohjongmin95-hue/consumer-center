@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench','cx'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench','cx'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -63,6 +63,7 @@ class PlatformTest(unittest.TestCase):
         if extra.get('received_on'):data['received_on']=extra['received_on']
         elif cat in ('교환','반품·환불'):data['received_on']=__import__('datetime').date.today().isoformat()
         if cat in ('주문 취소','주문 변경'):data['order_no']='20261013-0001'
+        data.update({k:v for k,v in extra.items() if k.startswith('fa')})
         r=self.post(c,'/submit',data,'/new')
         self.assertEqual(r.status_code,302,r.get_data(as_text=True)[:300])
         return int(r.headers['Location'].rstrip('/').split('/')[-1])
@@ -231,6 +232,32 @@ class PlatformTest(unittest.TestCase):
         self.post(me,f'/case/{case_id}',{'act':'rate','v':'unresolved'})
         page=me.get(f'/case/{case_id}').get_data(as_text=True)
         self.assertIn('1372 소비자상담센터',page)
+
+    def test_cx_basics(self):
+        """소보루 CX 1차: 질문 버튼, 접수 추가 질문, 자리 비움, 만족도 조사."""
+        b,o,cid=self.signup_and_approve('보름상점','boreum@example.com')
+        self.post(b,'/biz/settings',{'act':'cxbot','bq0':'배송은 언제 와요?','ba0':'주문 다음 날 보내요.'},'/biz/settings')
+        self.post(b,'/biz/settings',{'act':'cxform','fq0':'주문하신 상품 이름'},'/biz/settings')
+        page=b.get('/biz/settings').get_data(as_text=True)
+        self.assertIn('배송은 언제 와요?',page);self.assertIn('주문하신 상품 이름',page)
+        me=self.client()
+        m=re.search(r'data-btns="([^"]+)"',me.get(f'/to/{cid}').get_data(as_text=True))
+        self.assertEqual(json.loads(__import__('html').unescape(m.group(1)))[0]['q'],'배송은 언제 와요?')
+        self.assertIn('주문하신 상품 이름',me.get(f'/new?company_id={cid}').get_data(as_text=True))
+        # 대표가 자리 비움이면 자동 배정되지 않는다
+        self.post(b,'/biz/team',{'act':'away','key':'owner','on':'1'},'/biz/team')
+        self.assertIn('자리 비움',b.get('/biz/team').get_data(as_text=True))
+        case_id=self.file_case(me,'보름상점','제품 불량',str(cid),fa0='보름 크림')
+        with self.core.conn() as db:c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+        self.assertIn('주문하신 상품 이름: 보름 크림',c['body'])
+        self.post(b,f'/biz/case/{case_id}',{'act':'approve'})
+        self.post(me,f'/case/{case_id}',{'act':'rate','v':'resolved'})
+        self.assertIn('상담은 어떠셨나요?',me.get(f'/case/{case_id}').get_data(as_text=True))
+        self.post(me,f'/case/{case_id}',{'act':'csat','score':'5','note':'빨랐어요'})
+        page=me.get(f'/case/{case_id}').get_data(as_text=True)
+        self.assertIn('평가해 주셔서 고마워요',page);self.assertNotIn('상담은 어떠셨나요?',page)
+        self.assertIn('상담 만족도',b.get('/biz/stats').get_data(as_text=True))
+        with self.core.conn() as db:self.assertEqual(db.execute('SELECT csat FROM cases WHERE id=?',(case_id,)).fetchone()[0],5)
 
     def test_auto_rule_and_info_request(self):
         b,o,cid=self.signup_and_approve('오늘배송마켓','today@example.com')

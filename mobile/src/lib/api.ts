@@ -85,12 +85,13 @@ export type Stats = {
   cats: Bar[];
   how: Bar[];
   weeks: Bar[];
+  csat?: { n: number; avg: number | null; good: number | null; days: number; dist: { score: number; label: string; emoji: string; n: number }[] };
   compare: null | { ready: false; have: number; need: number } | { ready: true; peers: number; mine: Record<string, number | null>; avg: Record<string, number | null> };
 };
 export type Report = { ym: string; months: string[]; n: number; prev_n: number; auto: number; res: number | null; reply_h: number | null; late: number; cats: Bar[]; top_products: Bar[]; by_channel: Bar[]; text: string };
 export type Settings = {
   name: string; login_id: string; contact: string; notify_email: string; industry: string; tone: string;
-  return_address: string; return_courier: string; return_memo: string; phone: string; kakao: boolean; report_mail: boolean; kakao_ready: boolean; return_guide: string;
+  return_address: string; return_courier: string; return_memo: string; phone: string; kakao: boolean; report_mail: boolean; kakao_ready: boolean; return_guide: string; away?: boolean;
   industries: string[]; tones: { value: string; label: string }[]; couriers: string[]; message?: string; token?: string;
 };
 export type LawItem = { label: string; title: string; source: string; text: string };

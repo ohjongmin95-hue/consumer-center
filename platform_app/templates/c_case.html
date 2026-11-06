@@ -45,6 +45,11 @@
 {% if c.status=='answered' %}
 <form class="panel rate" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="rate">
 <div><div class="ph" style="margin:0">해결됐나요?</div><p class="sub">알려 주시면 기업과 센터가 다음 조치를 정해요</p></div><div class="acts"><button class="btn md gray" name="v" value="unresolved">아직이에요</button><button class="btn md" name="v" value="resolved">해결됐어요</button></div></form>{% endif %}
+{% if csat %}<form class="panel csat" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="csat">
+<div class="ph">상담은 어떠셨나요?</div>
+<div class="csat-row" role="radiogroup" aria-label="상담 만족도">{% for k,v in CSAT_LABELS.items() %}<label class="csat-opt"><input type="radio" name="score" value="{{ k }}" required><span class="e" aria-hidden="true">{{ CSAT_EMOJI[k] }}</span><span>{{ v }}</span></label>{% endfor %}</div>
+<input class="inp" name="note" maxlength="300" placeholder="더 하고 싶은 말 (선택)" style="margin-top:12px">
+<button class="btn md full" style="margin-top:12px">평가 보내기</button></form>{% elif c.csat %}<div class="panel"><div class="ph" style="margin:0">평가해 주셔서 고마워요 {{ CSAT_EMOJI[c.csat] }}</div></div>{% endif %}
 {% if not c.member and c.status in ('received','forwarded','seen') %}
 <div class="panel"><div class="ph">비입점 기업이에요</div><p class="sub">{{ '센터가 공식 연락처로 전달하고 회신을 기록해요' if c.consent else '전달 동의가 없어 접수만 해 두었어요' }}</p>
 {% if co and co.contact %}<div class="hint blue" style="margin-top:14px">{{ i.icon('phone',22) }}<span>고객센터 <b style="user-select:all">{{ co.contact }}</b></span></div>{% endif %}</div>{% endif %}

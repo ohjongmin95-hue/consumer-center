@@ -2309,3 +2309,13 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .bl-tier input{grid-row:1/3}.bl-tier.on,.bl-tier:has(input:checked){box-shadow:inset 0 0 0 2px var(--accent);background:var(--accent-soft)}
 .bl-tn{font-weight:700}.bl-tn em{font-style:normal;font-size:12px;font-weight:700;color:var(--accent-ink);margin-left:6px}
 .bl-tp{grid-column:3;grid-row:1;font-size:15px}.bl-tc{grid-column:2/4;color:var(--fg3);font-size:13.5px}
+/* 상담 만족도 (소보루 CX) */
+.csat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:4px}
+.csat-opt{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 2px;border-radius:14px;background:var(--fill);font-size:13px;font-weight:500;color:var(--fg2);cursor:pointer;text-align:center}
+.csat-opt input{position:absolute;opacity:0;pointer-events:none}
+.csat-opt .e{font-size:28px;line-height:1}
+.csat-opt:has(input:checked){background:var(--accent-soft);color:var(--accent-ink);box-shadow:inset 0 0 0 2px var(--accent)}
+.csat-opt:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.away-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;vertical-align:1px}
+.away-dot.off{background:var(--fg4)}
+.tr-out{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--blue-soft);font-size:14px;white-space:pre-wrap}

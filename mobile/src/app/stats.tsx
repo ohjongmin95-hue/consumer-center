@@ -28,6 +28,23 @@ export default function Stats() {
       <Card style={{ paddingVertical: 4 }}>
         <MenuRow title="월간 리포트" sub="지난달 요청을 한 장으로 정리했어요" onPress={() => router.push('/report')} last />
       </Card>
+      {data.csat ? (
+        <Card>
+          <H2>상담 만족도 (최근 {data.csat.days}일)</H2>
+          {data.csat.n ? (
+            <View style={{ gap: 10 }}>
+              <Text style={st.p}>
+                {data.csat.n}명이 평가했고 평균 {data.csat.avg}점, {data.csat.good}%가 '좋아요' 이상이에요.
+              </Text>
+              {data.csat.dist.map((d) => (
+                <BarLine key={d.score} label={`${d.emoji} ${d.label}`} n={d.n} pct={Math.round((d.n / data.csat!.n) * 100)} max={Math.max(1, ...data.csat!.dist.map((x) => x.n))} />
+              ))}
+            </View>
+          ) : (
+            <Text style={st.p}>아직 평가가 없어요. 요청이 끝나면 고객 화면에서 만족도를 물어봐요.</Text>
+          )}
+        </Card>
+      ) : null}
       <Card>
         <H2>주별 요청</H2>
         <View style={st.weeks}>

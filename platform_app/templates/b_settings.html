@@ -44,8 +44,19 @@
 <label class="fld"><span>첫 답변 목표 (영업시간만 셉니다)</span><select class="inp" name="sla_hours">{% for h in SLA_CHOICES %}<option value="{{ h }}" {{ 'selected' if co.sla_hours==h }}>{{ '정하지 않음' if not h else h|string+'시간 안에' }}</option>{% endfor %}</select></label>
 <label class="check"><input type="checkbox" name="away_on" value="1" {{ 'checked' if co.away_on }}><span class="bx"></span><span><b>영업시간 밖에는 바로 안내 남기기</b><div class="cap">고객센터 링크로 들어온 요청에만 남겨요. 판매처 게시판에는 올리지 않아요</div></span></label>
 <label class="fld"><span>안내 문구 ({다음영업}은 다음 영업 시작 때로 바뀌어요)</span><textarea class="inp" name="away_msg" maxlength="300" rows="3" placeholder="{{ AWAY_DEFAULT }}">{{ co.away_msg }}</textarea></label>
-<label class="check"><input type="checkbox" name="auto_assign" value="1" {{ 'checked' if co.auto_assign }}><span class="bx"></span><span><b>새 요청 자동 배정</b><div class="cap">진행 중인 요청이 가장 적은 사람에게 줘요. 직원이 있으면 직원끼리 나눠요</div></span></label>
+<label class="check"><input type="checkbox" name="auto_assign" value="1" {{ 'checked' if co.auto_assign }}><span class="bx"></span><span><b>새 요청 자동 배정</b><div class="cap">진행 중인 요청이 가장 적은 사람에게 줘요. 직원이 있으면 직원끼리 나누고, 자리 비움인 사람은 빼요</div></span></label>
 <label class="check"><input type="checkbox" name="live_chat" value="1" {{ 'checked' if co.live_chat }}><span class="bx"></span><span><b>💬 실시간 채팅</b><div class="cap">영업시간 안에 고객센터 화면에 '상담원과 채팅' 버튼이 생겨요</div></span></label>
+<button class="btn md">저장</button></form>
+<form class="panel stack" method="post" id="cxbot"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="cxbot"><div class="ph">상담창 질문 버튼</div>
+<p class="sub" style="margin:0">고객이 상담창을 열면 맨 위에 버튼으로 보여요. 답을 적어 두면 AI를 쓰지 않고 바로 그 답을 보여 줘요. 답을 비우면 AI가 답해요.</p>
+{% for k in range(MAX_BTNS) %}{% set bt=btns[k] if k<btns|length else {} %}<div class="stack" style="gap:8px"{% if k>=btns|length+2 %} hidden data-more{% endif %}>
+<input class="inp" name="bq{{ k }}" maxlength="40" value="{{ bt.q or '' }}" placeholder="질문 {{ k+1 }} (예: 배송은 언제 와요?)" aria-label="질문 {{ k+1 }}">
+<textarea class="inp" name="ba{{ k }}" maxlength="1000" rows="2" placeholder="답 (선택)" aria-label="답 {{ k+1 }}">{{ bt.a or '' }}</textarea></div>{% endfor %}
+{% if btns|length+2<MAX_BTNS %}<button type="button" class="tbtn" style="align-self:flex-start" onclick="this.form.querySelectorAll('[data-more]').forEach(function(e){e.hidden=false});this.remove()">질문 더 넣기</button>{% endif %}
+<button class="btn md">저장</button></form>
+<form class="panel stack" method="post" id="cxform"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="cxform"><div class="ph">접수할 때 더 물어볼 것</div>
+<p class="sub" style="margin:0">접수 화면에 칸으로 보여요. 고객은 적지 않아도 접수할 수 있어요.</p>
+{% for k in range(MAX_QS) %}<input class="inp" name="fq{{ k }}" maxlength="60" value="{{ qs[k] if k<qs|length else '' }}" placeholder="{{ ['예: 주문하신 옵션(색상·사이즈)','예: 받으실 분 연락처','예: 원하시는 연락 시간'][k] }}" aria-label="추가 질문 {{ k+1 }}">{% endfor %}
 <button class="btn md">저장</button></form>
 <form class="panel stack" method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="return"><div class="ph">반품 안내</div>
 <p class="sub" style="margin:0">교환·반품·불량 요청을 승인하면 답변 끝에 이 안내가 붙고, 고객은 접수 화면에서 송장번호를 입력합니다.</p>
