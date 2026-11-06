@@ -1032,9 +1032,9 @@ def install(S):
                 "closing은 기사의 한 줄 결론과 앞으로 지켜볼 점으로 맺고, 글과 맞는 소보루 기능 하나를 자연스럽게 권한다: "
                 "소비자 제보(피해를 남기면 기업에 전달해 답을 받아 줘요), 커뮤니티(직접 사서 써 본 후기, 골라주세요 투표, 수다방), 사기 주의(돈 보내기 전에 사이트 주소·전화번호·계좌번호 검색), "
                 "법률 질문(소비자 법 궁금증), 기업 답변(기업별 제보와 소보루 등급).\n")
-        # 운영자 2026-11-06: 매거진 기사는 2000자 정도로 (AI 값). 가끔 기획만 길게 — 기획 기사 가운데 하루 한 분야(LONG_CAT)만 3500~4500자
+        # 운영자 2026-11-06: 매거진 기사는 어떤 글도 길게 쓰지 않고 1500자 정도로 (AI 값). long_form은 나중에 다시 켤 때를 위해 남겨 둠(지금은 안 씀)
         if long_form: size = ('3500~4500', '3~5', '3~5', 12000)
-        else: size = (k.get('length') or '1800~2200', '2~3', '2~3', 7000)
+        else: size = (k.get('length') or '1300~1700', '2~3', '2', 5000)
         long = long.replace('{len}', size[0]).replace('{heads}', size[1]).replace('{paras}', size[2])
         user = (f"[글 종류] {k['name']}: {k['about']}\n" + (f"[주제] {topic}\n" if topic else '') + long + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
@@ -1112,7 +1112,7 @@ def install(S):
                 except Exception: pass
                 got['facts'] = dict(got['facts'], **CONST)
             else: got = collect(kind, topic)
-            title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic, long_form=kind == 'feature' and (got.get('category') or cat) == long_cat(today)), kind)
+            title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic, long_form=False), kind)
             summary, body = drop_meta(summary), drop_meta(body)  # 자료 이야기 문장은 쓰지 않음 (운영자 2026-11-05)
         except Skip as e: res = {'status': 'skip', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         except RuntimeError as e: res = {'status': 'error', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
