@@ -19,6 +19,7 @@ const GROUPS: { icon: string; title: string; go: () => void; web?: boolean }[][]
   ],
   [
     { icon: 'bolt', title: '자동 처리', go: () => router.navigate('/auto') },
+    { icon: 'chat', title: 'SODA 가르치기', go: () => router.push('/soda') },
     { icon: 'macro', title: '답변 템플릿', go: () => router.push('/macros') },
     { icon: 'flow', title: '자동화 규칙', go: web('/automations'), web: true },
   ],

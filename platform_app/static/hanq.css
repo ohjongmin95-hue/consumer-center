@@ -2319,3 +2319,15 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .away-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;vertical-align:1px}
 .away-dot.off{background:var(--fg4)}
 .tr-out{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--blue-soft);font-size:14px;white-space:pre-wrap}
+/* SODA 가르치기 */
+.soda-gap{padding-bottom:18px;border-bottom:1px solid var(--line)}
+.soda-gap:last-child{padding-bottom:0;border-bottom:0}
+.soda-kb{display:flex;flex-direction:column}
+.soda-row{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px solid var(--line)}
+.soda-row:last-child{border-bottom:0}
+.soda-row .tx{flex:1;min-width:0}
+.soda-row .tx p{margin:4px 0 6px;color:var(--fg2);white-space:pre-wrap;overflow-wrap:anywhere}
+.soda-row.off .tx b,.soda-row.off .tx p{opacity:.5}
+.learn-card{display:flex;flex-direction:column;gap:10px}
+.learn-card .qa{background:var(--fill);border-radius:12px;padding:12px 14px;font-size:14.5px}
+.learn-card .qa b{display:block;margin-bottom:4px}

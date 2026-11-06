@@ -2,7 +2,7 @@
 import os, re, datetime, json, urllib.parse
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-import billing, core, law, chatbot, workflow, livechat, cx
+import billing, core, law, chatbot, workflow, livechat, cx, soda
 import tracking as tracking_mod
 import orders as orders_mod
 import ai as ai_mod
@@ -382,6 +382,7 @@ def chat_answer(company_id,f):
             with conn() as db:
                 rule=core.rule_for(db,co['id'],cat or '기타')
                 db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],cat or '기타','asked',core.iso()))
+                if ai.get('missing'):soda.add_gap(db,co['id'],ai['missing'])  # 모르는 것만 사장님께 묻는다
             return dict(category=cat,answer=ai['answer'],handoff=ai['handoff'] or ai.get('action',False),lookup=ai['lookup'] and not mine,summary=ai['summary'],faq=rule['faq'],auto=rule['auto'],cond=rule['cond'],member=True,ask_days=False),200
     cat=f.get('category') if f.get('category') in core.CATS else core.classify(text)
     if not cat:return dict(category=None),200
