@@ -669,7 +669,7 @@
       loadImg(URL.createObjectURL(f)).then(function (img) { s.media = {kind: 'image', el: img}; say(''); fill(); draw(); }, function (e) { say(e.message); });
       return;
     }
-    var up = isV ? uploadVideo(f) : (function () { var fd = new FormData(); fd.append('photo', f); say('사진을 올리고 있어요'); return post(C.pup, fd); })();
+    var up = isV ? uploadVideo(f) : (function () { var fd = new FormData(); fd.append('photo', f); say('사진을 올리고 있어요'); return post(C.pup + '?hq=1', fd); })();
     up.then(function (j) {
       if (!j || !j.ok) throw new Error((j && j.error) || '올리지 못했어요.');
       return (isV ? loadVideo(j.url) : loadImg(j.url)).then(function (el) {

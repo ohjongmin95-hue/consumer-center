@@ -6336,6 +6336,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('[2:a]asetpts=PTS-STARTPTS,atempo=1.200,', filt)
         self.assertIn('[3:a]asetpts', filt)  # 나레이션 없는 장면은 전처럼 자기 영상 소리
         self.assertNotIn('[0:a]', filt)
+        self.assertEqual(cmd[cmd.index('-crf') + 1], '16')  # 운영자 2026-11-06: 화질 좋게
 
     def test_made_archive(self):
         # 운영자 2026-11-05: 만든 카드뉴스·릴스 보관함 — 관리자 화면 저장 + 자동(토큰)으로 보내기, 목록·보기·내려받기·지우기

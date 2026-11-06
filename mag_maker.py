@@ -88,7 +88,7 @@ def scene_filter(i, m, p, kind, lay, dur, speed, audio, voice=None, tempo=1.0):
     """장면 하나의 필터: [m] 사진·영상, [p] 글씨 판 → [v{i}][a{i}]. voice: 나레이션 입력 번호(있으면 영상 소리 대신 씀)."""
     bg, fg = LAYOUTS[lay]
     src = f'[{m}:v]' + (f'setpts={speed}*(PTS-STARTPTS),' if kind == 'video' else '') + f'fps={FPS},setsar=1'
-    cover = f'scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}'
+    cover = f'scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H}'
     parts = []
     if bg.startswith('#'):
         parts.append(f'color=c=0x{bg[1:]}:s={W}x{H}:r={FPS}:d={dur}[bg{i}]')
@@ -106,7 +106,7 @@ def scene_filter(i, m, p, kind, lay, dur, speed, audio, voice=None, tempo=1.0):
     base = f'[bg{i}]'
     if fg:
         x, y, w, h = fg
-        parts.append(f'{fg_in}scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}[f{i}]')
+        parts.append(f'{fg_in}scale={w}:{h}:force_original_aspect_ratio=increase:flags=lanczos,crop={w}:{h}[f{i}]')
         parts.append(f'[bg{i}][f{i}]overlay={x}:{y}:shortest=1[c{i}]')
         base = f'[c{i}]'
     parts.append(f'{base}[{p}:v]overlay=0:0:shortest=1,trim=duration={dur},setpts=PTS-STARTPTS,format=yuv420p,setsar=1[v{i}]')
@@ -141,7 +141,7 @@ def build(scenes, outro_png, out):
     filt.append(f'[ob][{n}:v]overlay=0:0:shortest=1,trim=duration={OUTRO_SEC},format=yuv420p,setsar=1[v{k}]')
     filt.append(f'anullsrc=r=44100:cl=stereo,atrim=duration={OUTRO_SEC}[a{k}]')
     filt.append(''.join(f'[v{j}][a{j}]' for j in range(k + 1)) + f'concat=n={k + 1}:v=1:a=1[v][a]')
-    cmd += ['-filter_complex', ';'.join(filt), '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',
+    cmd += ['-filter_complex', ';'.join(filt), '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-preset', 'medium', '-crf', '16', '-profile:v', 'high',
             '-pix_fmt', 'yuv420p', '-r', str(FPS), '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', '-f', 'mp4', str(out)]
     return cmd
 

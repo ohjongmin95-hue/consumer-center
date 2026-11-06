@@ -175,7 +175,8 @@ def install(S):
         try: im = read_photo(f, 2000)
         except Exception: return jsonify(ok=False, error='사진을 읽지 못했어요.'), 400
         name = f'body-{datetime.datetime.now():%Y%m%d%H%M%S}-{int(time.time() * 1000) % 1000:03d}.webp'
-        im.save(folder / name, 'WEBP', quality=84)
+        # 릴스 만들기는 글자가 든 그림도 올려서 화질을 높게 저장 (운영자 2026-11-06: 화질 좋게)
+        im.save(folder / name, 'WEBP', quality=97 if request.args.get('hq') == '1' else 84)
         return jsonify(ok=True, url=url_for('mag_body_image', name=name))
 
     # ---- 본문 영상 (운영자 2026-11-05) — 8MB씩 나눠 올리고 마지막에 저장. [영상 주소 | 설명] 줄로 본문에 들어감 ----
