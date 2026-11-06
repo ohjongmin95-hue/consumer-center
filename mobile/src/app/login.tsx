@@ -51,8 +51,8 @@ export default function Login() {
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <View style={st.top}>
             <View style={st.logo}>
-              <Image source={require('../../assets/soboru-char.png')} style={{ width: 44, height: 34 }} resizeMode="contain" />
-              <Text style={st.wm}>소보루 CS</Text>
+              <Image source={require('../../assets/logo-mark.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
+              <Image source={require('../../assets/logo-wordmark.png')} style={{ width: 115, height: 22 }} resizeMode="contain" accessibilityLabel="SOBORU CX" />
             </View>
             <Text style={st.h1}>
               고객 응대는 <Text style={{ color: C.accent }}>소보루</Text>가,{'\n'}사장님은 확인만
@@ -85,8 +85,7 @@ export default function Login() {
 
 const st = StyleSheet.create({
   top: { paddingHorizontal: 24, paddingTop: 28, gap: 14 },
-  logo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 18 },
-  wm: { fontFamily: FONT, fontSize: 22, fontWeight: '800', color: C.brand, letterSpacing: 0 },
+  logo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 },
   h1: { fontFamily: FONT, fontSize: 28, lineHeight: 38, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   sub: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg3 },
   form: { paddingHorizontal: 24, paddingTop: 32, gap: 12 },
