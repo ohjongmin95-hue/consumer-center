@@ -6328,6 +6328,7 @@ class SiteTest(unittest.TestCase):
         import auto_content
         from unittest.mock import patch
         ext = self.site.app.extensions
+        env_hot = patch.dict(os.environ, {'AUTO_CONTENT_HOT': '0'}); env_hot.start(); self.addCleanup(env_hot.stop)  # 뒤에서 따로 시험
         reply = {'tag': 'MONEY', 'covers': [{'text': '환불 3일 안에\n받을 수 있을까', 'type': '경고'}], 'big': '3일', 'cover_scene': 'desk',
                  'slides': [{'design': 'body', 'kicker': '언제부터', 'title': '3일 안에 돌려받아요', 'items': '판매자는 **3일** 안에 돌려줘요.\n\n늦으면 물어볼 수 있어요.', 'num': '3일'},
                             {'design': 'body', 'kicker': '내가 챙길 것', 'title': '주문 내역을 남겨요', 'items': '내역을 캡처해 두세요.', 'num': ''}],
@@ -6373,6 +6374,27 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(failed, [])
             with self.site.conn() as db: card = db.execute("SELECT * FROM made_items ORDER BY id DESC LIMIT 1").fetchone()
             self.assertIn('AI로 만든 이미지', card['caption']); self.assertIn('Korean', prompts[0]); self.assertIn('shocked', prompts[0])
+        # 터진 소재: 뉴스 먼저, 분석을 알림에. 커뮤니티 글은 같은 주제의 기사가 있을 때만
+        import mag_assist
+        sent.clear()
+        reply['why_hot'] = {'topic': '환불', 'value': '손해 피하기', 'format': '리스트', 'hook': '아직도?', 'script': '경고→방법'}
+        hub = {'search': lambda *a, **k: {'items': [{'title': '다이소 환불 기준 바뀐다 논란', 'naver': 'https://n.news.naver.com/x/1'}, {'title': '전혀 다른 소식', 'naver': 'https://n.news.naver.com/x/2'}]}}
+        with self.site.app.app_context(), patch.dict(os.environ, {'AUTO_CONTENT_HOT': '1', 'CONTENT_TELEGRAM_BOT_TOKEN': 't', 'CONTENT_TELEGRAM_CHAT_ID': '7'}), patch.dict(ext, {'mag_assist_chat': lambda *a: reply, 'naverhub': hub}), \
+                patch.object(auto_content, 'hot_news', lambda: [{'url': 'https://n.news.naver.com/n/9', 'title': '환불 뉴스', 'comments': 321}]), \
+                patch.object(auto_content, 'hot_community', lambda: [{'site': '더쿠', 'title': '[이슈] 다이소 환불 기준 바뀐다.jpg', 'views': 50000}, {'site': '디시', 'title': '오늘 날씨 좋다', 'views': 40000}]), \
+                patch.object(mag_assist, 'read_article', lambda u: '판매자는 3일 안에 환불해야 하고 1372에 상담할 수 있다.'), patch('notify.http_post', lambda u, p, h: sent.append(p) or {'ok': True}), patch('shutil.which', lambda x: None):
+            done, failed = ext['auto_content']['run']()
+            self.assertEqual((done[0][3], failed), ('네이버 뉴스 댓글 321개', []))
+            self.assertIn('왜 터졌나', sent[0]['text']); self.assertIn('후킹: 아직도?', sent[0]['text'])
+            done, failed = ext['auto_content']['run']()  # 다음 번은 커뮤니티 먼저
+            self.assertEqual(done[0][3], '더쿠 인기글 조회 50,000회')
+            reply['skip'] = '연예 폭로'
+            done, failed = ext['auto_content']['run']()
+            self.assertEqual(done, []); self.assertIn('다루지 않을 소재', failed[0][1])
+            del reply['skip']
+        rows = auto_content.parse_community('<tr class="table_body x<strong class="text_over">글 &amp; 제목</strong><td class="hit"> 18,536 </td>', '루리웹', '<tr class="table_body', auto_content.COMMUNITIES[3][3], auto_content.COMMUNITIES[3][4])
+        self.assertEqual(rows, [{'site': '루리웹', 'title': '글 & 제목', 'views': 18536}])
+        self.assertTrue(auto_content.same_topic('[이슈] 다이소 환불 기준 바뀐다.jpg', '다이소 환불 기준 바뀐다 논란')); self.assertFalse(auto_content.same_topic('오늘 날씨 좋다', '다이소 환불'))
         for design in ('cover', 'body', 'quote', 'last'):  # 그림 없어도, 긴 글이어도 크기대로 그림
             s = {'design': design, 'tag': '꼬리표', 'title': '아주 긴 제목 ' * 8, 'sub': '12,345원', 'items': '줄 하나\n**굵게** 쓴 글 ' * 12}
             self.assertEqual(auto_content.render(s, None, 1, 4, auto_content.REEL_H).size, (1080, 1920))
