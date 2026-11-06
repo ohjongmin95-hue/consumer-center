@@ -257,6 +257,8 @@ def install(S):
         if not isinstance(out, dict): raise RuntimeError('AI 답을 읽지 못했어요. 다시 해 주세요.')
         return out
 
+    app.extensions['mag_assist_chat'] = chat  # 자동 콘텐츠(auto_content.py)가 씀
+
     def article_text(d):
         """만들기 화면이 준 기사: 기사 번호(art)면 DB에서, 아니면 note(기사 주소나 글). (글, 사진들, 영상들)"""
         note = str(d.get('note') or '')[:LIMIT].strip()

@@ -1,0 +1,17 @@
+# 소보루 자동 카드뉴스·릴스 (soboru-content.timer가 부름). 게시는 하지 않고 만든 것 보관함에만 저장.
+[Unit]
+Description=소보루 자동 카드뉴스·릴스
+After=network-online.target soboru.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=soboru
+Group=soboru
+WorkingDirectory=/opt/soboru/app
+EnvironmentFile=/etc/soboru.env
+ExecStart=/opt/soboru/venv/bin/python -m auto_content
+TimeoutStartSec=3600
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/soboru

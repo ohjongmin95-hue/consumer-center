@@ -99,6 +99,7 @@ def install(S):
         with conn() as db: db.execute("UPDATE made_items SET files='[\"reel.mp4\"]',done=1 WHERE id=?", (i,))
         return i
     S.made_save_reel = save_reel
+    app.extensions['made_api'] = {'create': create, 'add_file': add_file, 'finish': finish}  # 자동 콘텐츠(auto_content.py)가 씀
     app.extensions['made_save_reel'] = save_reel
 
     # ---- 자동으로 만드는 쪽 (토큰) ----------------------------------------------------

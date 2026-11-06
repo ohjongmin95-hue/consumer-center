@@ -6323,6 +6323,70 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/screens', data={'_csrf': tok, 'page': 'mag_article', 'block': 'letter', 'act': 'hide', 'ajax': '1'})
         self.assertNotIn('class="ma-letter"', self.client.get(f'/life/{aid}', base_url='https://soboru.co.kr').get_data(as_text=True))
 
+    def test_auto_content(self):
+        # 운영자 2026-11-06: 정해진 시간마다 서버에서 카드뉴스·릴스를 만들어 보관함에 넣고 알림 (auto_content.py)
+        import auto_content
+        from unittest.mock import patch
+        ext = self.site.app.extensions
+        reply = {'tag': 'MONEY', 'covers': [{'text': '환불 3일 안에\n받을 수 있을까', 'type': '경고'}], 'big': '3일', 'cover_scene': 'desk',
+                 'slides': [{'design': 'body', 'kicker': '언제부터', 'title': '3일 안에 돌려받아요', 'items': '판매자는 **3일** 안에 돌려줘요.\n\n늦으면 물어볼 수 있어요.', 'num': '3일'},
+                            {'design': 'body', 'kicker': '내가 챙길 것', 'title': '주문 내역을 남겨요', 'items': '내역을 캡처해 두세요.', 'num': ''}],
+                 'tips': ['내역 캡처하기', '문자 남기기', '1372 상담하기'], 'caption': '환불이 궁금할 때', 'hashtags': ['환불'], 'source_media': '', 'source_date': ''}
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            db.execute("DELETE FROM articles")
+            for i, (title, views) in enumerate((('많이 본 글', 50), ('덜 본 글', 1))):
+                db.execute("INSERT INTO articles(id,title,summary,body,status,views,created,updated,published_at) VALUES(?,?,?,?,'published',?,?,?,?)",
+                           (99800 + i, title, '요약', '판매자는 3일 안에 환불해야 하고 1372에 상담할 수 있다. ' * 8, views, now, now, now))
+            db.execute("INSERT INTO articles(id,title,body,status,views,created,updated) VALUES(99810,'초안','본문','draft',999,?,?)", (now, now))
+        sent = []
+        env = {'CONTENT_TELEGRAM_BOT_TOKEN': 't', 'CONTENT_TELEGRAM_CHAT_ID': '7'}
+        with self.site.app.app_context(), patch.dict(ext, {'mag_assist_chat': lambda *a: reply}), patch.dict(os.environ, env), \
+                patch('notify.http_post', lambda u, p, h: sent.append(p) or {'ok': True}), patch('shutil.which', lambda x: None):
+            self.assertEqual([a['id'] for a in ext['auto_content']['pick'](5)], [99800, 99801])  # 게시 글만, 조회수 순
+            done, failed = ext['auto_content']['run']()
+            self.assertEqual((len(done), failed), (1, []))
+            self.assertEqual(ext['auto_content']['pick'](5)[0]['id'], 99801)  # 만든 글은 다시 고르지 않음
+            with self.site.conn() as db:
+                card = db.execute("SELECT * FROM made_items ORDER BY id DESC LIMIT 1").fetchone()
+            self.assertEqual((card['kind'], card['maker'], card['done']), ('card', 'auto', 1))
+            self.assertEqual(json.loads(card['files']), ['01.png', '02.png', '03.png', '04.png'])
+            self.assertIn('환불', card['caption'])
+            self.assertIn('만들어졌어요', sent[0]['text']); self.assertEqual(sent[0]['chat_id'], '7')
+            reply['slides'][0]['items'] = '판매자는 999일 안에 돌려줘요.'  # 기사에 없는 숫자는 버림
+            done, failed = ext['auto_content']['run']()
+            self.assertEqual(done, []); self.assertIn('없는 숫자', failed[0][1])
+        # 사람 표지: 설명에 사람이 있는 사진만 쓰고, 사진가를 캡션에 밝힘
+        import soboru_letter
+        calls = []
+        def fake_unsplash(path, params=None):
+            calls.append(path)
+            if path != '/search/photos': return 200, {}
+            return 200, {'results': [{'id': 'land', 'alt_description': 'empty beach', 'urls': {'raw': 'https://x/land'}, 'user': {'name': 'N'}},
+                                     {'id': 'p1', 'alt_description': 'a woman looking surprised', 'urls': {'raw': 'https://x/p1'}, 'links': {'download_location': '/dl/p1'}, 'user': {'name': '김작가'}}]}
+        reply['slides'][0]['items'] = '판매자는 **3일** 안에 돌려줘요.'
+        reply['people_query'] = 'korean woman surprised phone'
+        with self.site.conn() as db: db.execute("DELETE FROM auto_content")
+        from PIL import Image
+        fetched = io.BytesIO(); Image.new('RGB', (800, 1200), 'gray').save(fetched, 'JPEG')
+        class Resp(io.BytesIO):
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+        with self.site.app.app_context(), patch.dict(ext, {'mag_assist_chat': lambda *a: reply}), patch.dict(os.environ, {'UNSPLASH_ACCESS_KEY': 'k'}), \
+                patch.object(soboru_letter, 'unsplash_call', fake_unsplash), patch('urllib.request.urlopen', lambda req, timeout=0: Resp(fetched.getvalue())), patch('shutil.which', lambda x: None):
+            done, failed = ext['auto_content']['run'](99800)
+            self.assertEqual(failed, [])
+            with self.site.conn() as db:
+                card = db.execute("SELECT * FROM made_items ORDER BY id DESC LIMIT 1").fetchone()
+                self.assertEqual([r[0] for r in db.execute('SELECT photo_id FROM auto_content_photos')], ['p1'])
+            self.assertIn('사진: 김작가 / Unsplash', card['caption']); self.assertIn('/dl/p1', calls)
+        for design in ('cover', 'body', 'quote', 'last'):  # 그림 없어도, 긴 글이어도 크기대로 그림
+            s = {'design': design, 'tag': '꼬리표', 'title': '아주 긴 제목 ' * 8, 'sub': '12,345원', 'items': '줄 하나\n**굵게** 쓴 글 ' * 12}
+            self.assertEqual(auto_content.render(s, None, 1, 4, auto_content.REEL_H).size, (1080, 1920))
+            self.assertEqual(auto_content.render(s, None, 1, 4, auto_content.CARD_H).size, (1080, 1350))
+        scene = auto_content.scenes_for([{'design': 'cover'}, {'design': 'body'}], 'd')
+        self.assertEqual([x['audio'] for x in scene], [False, False])  # 무음
+
     def test_magazine_maker_narration(self):
         # 운영자 2026-11-06: 앵커 말투 나레이션 — 영상 소리 대신 음성을 넣고, 길면 조금 빠르게
         import mag_maker

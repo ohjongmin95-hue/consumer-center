@@ -1,0 +1,11 @@
+# 아침 9시·오후 1시·저녁 9시쯤 자동 카드뉴스·릴스 (auto_content.py). 설치: deploy/set-content.sh
+[Unit]
+Description=소보루 자동 카드뉴스·릴스
+
+[Timer]
+OnCalendar=*-*-* 09,13,21:00:00 Asia/Seoul
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target
