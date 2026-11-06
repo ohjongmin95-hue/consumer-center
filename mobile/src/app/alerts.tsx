@@ -38,7 +38,7 @@ export default function AlertsScreen() {
             </Pressable>
           ))
         ) : (
-          <Text style={[st.body, { paddingVertical: 24, textAlign: 'center' }]}>아직 알림이 없어요. 새 문의가 오거나 AI가 답하면 여기에 쌓여요.</Text>
+          <Text style={[st.body, { paddingVertical: 24, textAlign: 'center' }]}>아직 알림이 없어요. 새 문의가 오거나 SODA가 답하면 여기에 쌓여요.</Text>
         )}
       </Card>
       <Prefs a={data} onSaved={setData} />

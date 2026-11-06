@@ -482,7 +482,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(ps['프로바이오틱스 19']['price'],'31,000원');self.assertIn('원재료·성분: 홍삼농축액',ps['6년근 홍삼정 스틱 30포']['info'])
         self.assertIn('공급가: 21,000원',priv[ps['6년근 홍삼정 스틱 30포']['id']]);self.assertEqual(left,'[]')  # 다 쓴 추출 결과는 지운다
         # 사장님 화면에는 내부 정보가 보이고, 상담 AI·앱 API에는 안 간다
-        self.assertIn('공급가: 21,000원',b.get('/biz/products').get_data(as_text=True));self.assertIn('AI 상담 설정',b.get('/biz/rules').get_data(as_text=True))
+        self.assertIn('공급가: 21,000원',b.get('/biz/products').get_data(as_text=True));self.assertIn('SODA 설정',b.get('/biz/rules').get_data(as_text=True))
         with self.core.conn() as db:facts=sys.modules['chatbot'].company_facts(db,self.core.company(db,cid))
         self.assertIn('6년근 홍삼정 스틱 30포',facts);self.assertIn('39,000원',facts)
         for secret in ('21,000','17,500','9,800','공급가','정산','최소 주문'):self.assertNotIn(secret,facts)
@@ -886,7 +886,7 @@ class PlatformTest(unittest.TestCase):
         self.assertNotIn('cp-moves',me.get('/guide').get_data(as_text=True))
         self.assertEqual(self.client().get('/biz/ops/visual').status_code,302)  # 운영자만
         # 색이 섞인 제목도 조각마다 고친다 (화면에서 고친 경우 shown=1)
-        self.post(o,'/biz/ops/copy',{'site':'biz','src':'AI가 먼저 답해요','dst':'한 곳에서','shown':'1'})
+        self.post(o,'/biz/ops/copy',{'site':'biz','src':'SODA가 먼저 답해요','dst':'한 곳에서','shown':'1'})
         self.post(o,'/biz/ops/copy',{'site':'biz','src':'한 곳에서','dst':'바로','shown':'1'})  # 이미 바꾼 글자를 다시 고치면 같은 기록을 고친다
         self.assertIn('<h1>쇼핑몰 문의,<br>바로</h1>',self.client().get('/biz/').get_data(as_text=True))
         # 줄을 비우면 그 줄바꿈도 같이 사라져 아래 글이 당겨진다, 칸 안의 줄바꿈은 그대로 줄바꿈
@@ -2114,7 +2114,7 @@ class PlatformTest(unittest.TestCase):
             # 끄면 새 문의에 답하지 않는다
             self.post(b,'/biz/ai-reply',{'on':'0'},form_path='/biz/rules')
             with self.core.conn() as db:self.assertEqual(self.core.company(db,cid)['ai_reply'],'')
-            self.assertIn('AI 자동 답변',b.get('/biz/rules').get_data(as_text=True))
+            self.assertIn('SODA 자동 답변',b.get('/biz/rules').get_data(as_text=True))
 
     def test_chat_order_lookup(self):
         """상담창 주문 조회: 휴대폰 + 주문번호(또는 이름)가 둘 다 맞아야 보임. 개인정보는 고객 화면·AI 어디에도 안 나감. AI는 확인된 주문으로 답함."""
@@ -2942,7 +2942,7 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:
             a=db.execute('SELECT * FROM cases WHERE id=?',(angry,)).fetchone();s_=db.execute('SELECT * FROM cases WHERE id=?',(swap,)).fetchone()
         self.assertEqual(posted,['불편을 드려 정말 죄송해요. 담당자가 바로 이어서 답드릴게요.'])
-        self.assertEqual((a['status'],a['decision']),('seen','pending'));self.assertIn('AI가 먼저 응대했어요',a['ai_why'])
+        self.assertEqual((a['status'],a['decision']),('seen','pending'));self.assertIn('SODA가 먼저 응대했어요',a['ai_why'])
         self.assertEqual((s_['status'],s_['decision']),('forwarded','pending'));self.assertIn('답도 승인 후',s_['ai_why'])
         # 검색은 확신이 없을 때만
         aim=sys.modules['ai'];webs=[]

@@ -325,17 +325,17 @@ def _auto_reply(case_id,c,co,o,ask_ok,other,ai,token):
         if ask:ai['answer']=ASK_ORDER
         # 불만이 크거나 사람을 원해도 고객을 기다리게 두지 않는다: AI의 짧은 응대(공감·담당자가 이어 답함)는 보내고 사장님께 (운영자 요청 2026-10-18)
         soft=ai['handoff'] and not why and not ask and bool(ai['answer'])
-        if ai['handoff'] and not why and not ask and not soft:why.append('AI가 사람 확인이 필요하다고 봤어요 (정보가 없거나, 처리가 필요하거나, 불만이 커요)')
+        if ai['handoff'] and not why and not ask and not soft:why.append('SODA가 사람 확인이 필요하다고 봤어요 (정보가 없거나, 처리가 필요하거나, 불만이 커요)')
         if why:
             db.execute('UPDATE cases SET ai_draft=?,ai_why=? WHERE id=?',(ai['answer'] if ai['answer'] and not ai['handoff'] and not ask else '',' · '.join(why)[:300],c['id']))
-            _to_owner(db,c,'AI가 답하지 않고 넘겼어요: '+' · '.join(why)+('\n'+ai['summary'] if ai['summary'] else '')+('\n\nAI 답변 초안:\n'+ai['answer'] if ai['answer'] and not ai['handoff'] else ''))
+            _to_owner(db,c,'SODA가 답하지 않고 넘겼어요: '+' · '.join(why)+('\n'+ai['summary'] if ai['summary'] else '')+('\n\nAI 답변 초안:\n'+ai['answer'] if ai['answer'] and not ai['handoff'] else ''))
             return 'handoff'
         act=(ai.get('action') and not ask) or soft  # 안내는 지금 보내고, 교환·환불 같은 처리 결정이나 사람 응대는 사장님께
         # 보내기 직전에 다시 맡는다: 그사이 사장님이 답했거나 승인했으면 보내지 않는다
         if not db.execute("UPDATE cases SET status='answered',decision='auto' WHERE id=? AND decision='ai' AND ai_tried=? AND status IN ('forwarded','seen')",(case_id,token)).rowcount:return None
         core.add_event(db,case_id,'co','AI가 자동으로 답했어요',ai['answer'])
         if act:
-            need=('AI가 먼저 응대했어요. 불만이 크거나 사람 상담을 원해 사장님 확인이 필요해요' if soft and not ai.get('action') else
+            need=('SODA가 먼저 응대했어요. 불만이 크거나 사람 상담을 원해 사장님 확인이 필요해요' if soft and not ai.get('action') else
                   f"고객이 {cat or c['category'] or '처리'}을(를) 원해요. AI가 조건과 방법은 안내했어요. 처리할지 정해 주세요")
             db.execute("UPDATE cases SET status='seen',decision='pending',ai_draft='',ai_why=? WHERE id=?",(need[:300],case_id))
             _note(db,c,need+('\n'+ai['summary'] if ai['summary'] else ''))
@@ -344,13 +344,13 @@ def _auto_reply(case_id,c,co,o,ask_ok,other,ai,token):
         msg,level=core.deliver_reply(db,c,ai['answer'])
         if level!='ok':  # 못 보냈으면 사장님 손으로
             db.execute("UPDATE cases SET status='forwarded',decision='ai' WHERE id=?",(case_id,))
-            _to_owner(db,c,'AI가 쓴 답변 (카페24 등에 보내지 못했어요. 확인하고 보내 주세요):\n'+ai['answer'])
+            _to_owner(db,c,'SODA가 쓴 답변 (카페24 등에 보내지 못했어요. 확인하고 보내 주세요):\n'+ai['answer'])
             return 'failed'
         if act:
             core.notify_company_new(core.company(db,c['company_id']),db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone(),db)
             return 'action'
-        core.alert(core.company(db,c['company_id']),'ai','AI가 답했어요: '+c['category'],core.short(c['title'],60),case_id=case_id,db=db,
-            mail=(f"[{core.BNAME}] AI가 답했어요: {c['title']}",f"AI가 답한 내용:\n{ai['answer']}\n\n{core.site_url('biz','/case/%d'%case_id)}"))
+        core.alert(core.company(db,c['company_id']),'ai','SODA가 답했어요: '+c['category'],core.short(c['title'],60),case_id=case_id,db=db,
+            mail=(f"[{core.BNAME}] SODA가 답했어요: {c['title']}",f"SODA가 답한 내용:\n{ai['answer']}\n\n{core.site_url('biz','/case/%d'%case_id)}"))
     return 'sent'
 def auto_reply_all():
     """AI 확인 중('ai')인 문의에 답한다. 껐거나 AI를 못 쓰면, 그리고 너무 오래 걸린 건 승인 목록으로 돌린다. -> 보낸 수"""
@@ -362,7 +362,7 @@ def auto_reply_all():
         for c in stuck:
             if c['status'] in core.FINAL:  # 그사이 끝난 요청(대화 끝내기·고객이 글을 지움)은 승인 목록으로 알리지 않는다
                 db.execute("UPDATE cases SET decision='pending' WHERE id=? AND decision='ai'",(c['id'],));continue
-            _to_owner(db,c,'AI가 제때 답하지 못해 넘겼어요.' if ready() and c['ai_tried'] else '')
+            _to_owner(db,c,'SODA가 제때 답하지 못해 넘겼어요.' if ready() and c['ai_tried'] else '')
         rows=db.execute("""SELECT id,company_id FROM cases WHERE decision='ai' AND ai_tried=''
               AND EXISTS (SELECT 1 FROM shop_seen s WHERE s.company_id=cases.company_id AND s.case_id=cases.id) ORDER BY id""").fetchall()
     per={}

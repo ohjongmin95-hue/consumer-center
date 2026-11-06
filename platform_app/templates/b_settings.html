@@ -7,7 +7,7 @@
 <div class="panel" style="margin-bottom:20px"><div class="ph">이용 현황 <span class="pill ok">{{ PLANS.get(co.plan,{}).get('name','무료 시범') }} 이용 중</span></div>
 {% set pp=price_plan(co) %}<p style="margin:0 0 8px;font-size:17px"><b>{{ pp.tier.name }}</b> · 월 {{ '{:,}'.format(pp.tier.price) }}원 · 이번 기간 상담 {{ '{:,}'.format(pp.used) }}/{{ '{:,}'.format(pp.tier.tickets) }}건 <span class="cap">(부가세 포함, 모든 구간에서 모든 기능)</span></p>
 <p class="sub" style="margin:0 0 14px">{{ fmt_day(co.plan_since or co.created) }}부터 이용 중이에요. {% if co.plan=='paid' %}매달 자동으로 결제돼요.{% elif co.plan=='trial' %}무료 체험 중이에요. 체험이 끝나는 날 첫 달 요금이 결제돼요.{% elif trial and trial.locked %}결제가 확인되지 않아 기능이 멈췄어요.{% elif trial_days() %}카드를 등록하면 {{ trial_days() }}일 무료 체험이 시작돼요.{% endif %}{% if co.plan=='pilot' and not trial_days() %}지금은 기간·건수 제한 없이 무료예요. 요금제가 생기면 미리 알려 드리고, 동의 없이 바뀌지 않아요.{% endif %}</p>
-<div class="sumrow" style="margin:0"><div class="sum" style="background:var(--fill)"><span>이번 달 받은 요청</span><b>{{ use.cases }}</b></div><div class="sum" style="background:var(--fill)"><span>답장한 요청</span><b>{{ use.replied }}</b></div><div class="sum" style="background:var(--fill)"><span>자동 처리</span><b>{{ use.auto }}</b></div><div class="sum" style="background:var(--fill)"><span>AI 상담 질문</span><b>{{ use.ai_chats }}</b></div></div>
+<div class="sumrow" style="margin:0"><div class="sum" style="background:var(--fill)"><span>이번 달 받은 요청</span><b>{{ use.cases }}</b></div><div class="sum" style="background:var(--fill)"><span>답장한 요청</span><b>{{ use.replied }}</b></div><div class="sum" style="background:var(--fill)"><span>자동 처리</span><b>{{ use.auto }}</b></div><div class="sum" style="background:var(--fill)"><span>SODA 상담 질문</span><b>{{ use.ai_chats }}</b></div></div>
 <p class="cap" style="margin:12px 0 0">답장한 요청은 직원이나 자동 처리가 한 번 이상 답한 요청이에요. 요금은 결제 기간마다 답장한 상담 건수로 정해지고, 직원 수로는 받지 않아요.</p>
 <p style="margin:12px 0 0"><a class="link" href="{{ url_for('pay.page') }}">요금·결제 보기 ›</a></p></div>
 <div class="panel" style="margin-bottom:20px"><div class="ph">고객센터 링크</div>
@@ -48,7 +48,7 @@
 <label class="check"><input type="checkbox" name="live_chat" value="1" {{ 'checked' if co.live_chat }}><span class="bx"></span><span><b>💬 실시간 채팅</b><div class="cap">영업시간 안에 고객센터 화면에 '상담원과 채팅' 버튼이 생겨요</div></span></label>
 <button class="btn md">저장</button></form>
 <form class="panel stack" method="post" id="cxbot"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="cxbot"><div class="ph">상담창 질문 버튼</div>
-<p class="sub" style="margin:0">고객이 상담창을 열면 맨 위에 버튼으로 보여요. 답을 적어 두면 AI를 쓰지 않고 바로 그 답을 보여 줘요. 답을 비우면 AI가 답해요.</p>
+<p class="sub" style="margin:0">고객이 상담창을 열면 맨 위에 버튼으로 보여요. 답을 적어 두면 SODA를 쓰지 않고 바로 그 답을 보여 줘요. 답을 비우면 SODA가 답해요.</p>
 {% for k in range(MAX_BTNS) %}{% set bt=btns[k] if k<btns|length else {} %}<div class="stack" style="gap:8px"{% if k>=btns|length+2 %} hidden data-more{% endif %}>
 <input class="inp" name="bq{{ k }}" maxlength="40" value="{{ bt.q or '' }}" placeholder="질문 {{ k+1 }} (예: 배송은 언제 와요?)" aria-label="질문 {{ k+1 }}">
 <textarea class="inp" name="ba{{ k }}" maxlength="1000" rows="2" placeholder="답 (선택)" aria-label="답 {{ k+1 }}">{{ bt.a or '' }}</textarea></div>{% endfor %}
