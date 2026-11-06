@@ -2224,7 +2224,7 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 .cr-subject{margin:4px 0 0;font-size:20px;line-height:29px;font-weight:700;color:#191f28;word-break:keep-all;overflow-wrap:anywhere}
 .cr-meta{margin:4px 0 8px;display:flex;flex-direction:column;gap:4px}
 .cr-meta div{display:flex;gap:12px;font-size:15px;line-height:22.5px}
-.cr-meta dt{flex:0 0 72px;white-space:nowrap;color:#8b95a1}.cr-meta dd{margin:0;color:#333d48;min-width:0;overflow-wrap:anywhere}
+.cr-meta dt{flex:0 0 84px;white-space:nowrap;color:#8b95a1}.cr-meta dd{margin:0;color:#333d48;min-width:0;overflow-wrap:anywhere}
 .cr-label{margin:12px 0 0;font-size:15px;line-height:22.5px;font-weight:700;color:#191f28}
 .cr-form .cr-label,.cr-sent .cr-label{margin-top:0}
 .cr-text{margin:0;font-size:17px;line-height:27px;color:#333d48;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -2238,6 +2238,11 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 .cr-answer{display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:12px;background:#f9fafb}
 .cr-answer p{margin:0;font-size:17px;line-height:27px;color:#191f28;white-space:pre-wrap;overflow-wrap:anywhere}
 .cr-answer small{font-size:13px;color:#8b95a1}
+.cr-ai{border-color:#f7d9b0;background:#fffcf7}
+.cr-ai-tag{margin:0;display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:19.5px;font-weight:700;color:#CE6719}
+.cr-qs{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:22.5px;color:#333d48}
+.cr-orig summary{cursor:pointer;font-size:15px;line-height:22.5px;font-weight:600;color:#4e5968;padding:4px 0}
+.cr-orig[open] summary{margin-bottom:4px}
 @media (max-width:600px){.cr-page{padding-top:24px}.cr-card{padding:20px}.cr-title{font-size:22px;line-height:31px}.cr-sub{font-size:15px;line-height:22.5px}}
 
 /* 운영자 2026-11-04: 제보 도우미 — 캡처로 채우기 + 5가지 완성도 막대 (막지 않고 알려만 줌) */

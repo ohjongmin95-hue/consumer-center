@@ -23,17 +23,36 @@
   </section>
   {% endif %}
 
+  {% if ai %}
+  <section class="cr-card cr-ai">
+    <p class="cr-ai-tag">{{ ui('company.ai_tag', 'AI가 제보 내용을 정리했어요') }}</p>
+    <h2 class="cr-subject">{{ case['subject'] }}</h2>
+    {% if ai.product or ai.damage_date %}<dl class="cr-meta">
+      {% if ai.product %}<div><dt>{{ ui('company.ai_product', '제품·서비스') }}</dt><dd>{{ ai.product }}</dd></div>{% endif %}
+      {% if ai.damage_date %}<div><dt>{{ ui('company.ai_date', '발생일') }}</dt><dd>{{ ai.damage_date }}</dd></div>{% endif %}
+    </dl>{% endif %}
+    <h3 class="cr-label">{{ ui('company.ai_what', '무슨 일이 있었나요') }}</h3>
+    {% for p in ai.paragraphs %}<p class="cr-text">{{ p }}</p>{% endfor %}
+    {% if ai.demands %}<h3 class="cr-label">{{ ui('company.ai_want', '제보자가 원하는 것') }}</h3><p class="cr-text">{{ ai.demands }}</p>{% endif %}
+    {% if ai.questions and not used %}<h3 class="cr-label">{{ ui('company.ai_q', '답변에 이 내용을 담아 주세요') }}</h3>
+    <ol class="cr-qs">{% for q in ai.questions %}<li>{{ q }}</li>{% endfor %}</ol>{% endif %}
+    <p class="cr-hint">{{ ui('company.ai_note', '제보자의 주장을 AI가 정리한 거예요. 정확한 표현은 아래 원문을 확인해 주세요.') }}</p>
+  </section>
+  {% endif %}
+
   <section class="cr-card cr-case">
     <div class="cr-badges"><span class="cr-badge">{{ case['category'] }}</span><span class="cr-receipt">{{ case['receipt'] }}</span></div>
-    <h2 class="cr-subject">{{ case['subject'] }}</h2>
+    {% if not ai %}<h2 class="cr-subject">{{ case['subject'] }}</h2>{% endif %}
     <dl class="cr-meta">
       <div><dt>{{ ui('reports.target', '제보 대상') }}</dt><dd>{{ case['company'] }}</dd></div>
       <div><dt>{{ ui('company.received', '접수일') }}</dt><dd>{{ case['created'][:10]|replace('-', '.') }}</dd></div>
     </dl>
+    {% if ai %}<details class="cr-orig"><summary>{{ ui('company.orig', '제보자가 쓴 원문 보기') }}</summary>{% endif %}
     <h3 class="cr-label">{{ ui('lookup.case_body', '제보 내용') }}</h3>
     <p class="cr-text">{{ case['description'] }}</p>
     {% if case['request_text'] %}<h3 class="cr-label">{{ ui('lookup.case_request', '요청 사항') }}</h3>
     <p class="cr-text">{{ case['request_text'] }}</p>{% endif %}
+    {% if ai %}</details>{% endif %}
   </section>
 
   {% if not used %}

@@ -853,6 +853,12 @@ class SiteTest(unittest.TestCase):
         again = admin.post('/admin/invite/' + str(case_id), data={'_csrf': self.csrf(admin, '/admin/reports/' + str(case_id))})
         fresh = re.search(r'<strong>http://localhost(/company/[^<]+)</strong>', again.get_data(as_text=True))[1]
         self.assertIn('name="response"', company.get(fresh).get_data(as_text=True))  # 다시 만들면 새 링크로 또 답변 가능
+        with self.site.conn() as db:  # AI 입장 요청서 정리가 있으면 기업 답변 페이지 위에 보여 주고 원문은 접어 둠
+            db.execute("INSERT INTO company_requests(case_id,version,facts,origin,created) VALUES(?,99,?,'ai','x')", (case_id, json.dumps({'paragraphs': ['제보자에 따르면 환불이 늦어지고 있다고 합니다.'], 'demands': '환불', 'questions': ['환불 처리 일정을 알려 주시기 바랍니다.'], 'product': '확인 필요'}, ensure_ascii=False)))
+        page = company.get(fresh).get_data(as_text=True)
+        for text in ('AI가 제보 내용을 정리했어요', '제보자에 따르면 환불이 늦어지고', '환불 처리 일정을', '제보자가 쓴 원문 보기'):
+            self.assertIn(text, page)
+        self.assertNotIn('확인 필요', page)
         self.assertEqual(company.get(path).status_code, 404)  # 예전 링크는 안 열림
 
     def login_admin(self):

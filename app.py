@@ -1167,6 +1167,26 @@ def admin_takedowns():
 @admin_only
 def logout():end_admin();return redirect(url_for('admin_login'))
 
+def company_ai_summary(db,case):
+    # 운영자 2026-11-06: 기업이 제보자가 대충 쓴 글만 보고 답하지 않게, AI 입장 요청서(companydesk)의 정리 내용을 답변 페이지에 보여 줌.
+    # 아직 없으면 뒤에서 만들어 두고(다음에 열 때 보임) 이번에는 원문만 보여 줌.
+    row=db.execute("SELECT facts FROM company_requests WHERE case_id=? AND facts!='' ORDER BY version DESC LIMIT 1",(case['id'],)).fetchone()
+    if row:
+        try:f=json.loads(row['facts'])
+        except ValueError:f=None
+        if isinstance(f,dict) and f.get('paragraphs'):
+            need=lambda v:v if v and v!='확인 필요' else ''
+            return {'paragraphs':f['paragraphs'],'product':need(f.get('product')),'damage_date':need(f.get('damage_date')),'demands':need(f.get('demands')),'questions':f.get('questions') or []}
+    if case['share_company'] and companydesk.ai_ready() and (case['id'] not in _CO_AI_RUNNING):
+        import threading
+        _CO_AI_RUNNING.add(case['id'])
+        def run(cid=case['id']):
+            try:desk_generate(cid,'기업 답변 링크')
+            finally:_CO_AI_RUNNING.discard(cid)
+        threading.Thread(target=run,daemon=True).start()
+    return None
+_CO_AI_RUNNING=set()
+
 @app.route('/company/<int:case_id>/<token>',methods=['GET','POST'])
 def company_access(case_id,token):
     if len(token)>150:abort(404)
@@ -1190,8 +1210,9 @@ def company_access(case_id,token):
         responses=db.execute("SELECT author,body,created FROM messages WHERE case_id=? AND author='기업 답변' ORDER BY id",(case_id,)).fetchall()
         if not case['seen_at'] and not admin_active() and not g.get('staff'):jebo.mark(db,case_id,'seen_at');log_case(db,case_id,'기업이 답변 링크를 열어 봄');notify_later(case_id,'seen')
         objections=ops_company_requests(db,case_id)
+        ai=company_ai_summary(db,case)
     # 업체에는 제보자의 연락처, 첨부파일, 내부 메모를 공개하지 않음.
-    return render_template('company.html',case=case,responses=responses,objections=objections,token=token,used=invite['used_at'],company_name=invite['company_name'] or case['company'])
+    return render_template('company.html',ai=ai,case=case,responses=responses,objections=objections,token=token,used=invite['used_at'],company_name=invite['company_name'] or case['company'])
 
 @app.route('/case/logout',methods=['POST'])
 def case_logout():
@@ -2262,6 +2283,7 @@ def make_invite(case_id):
         token=secrets.token_urlsafe(32)
         db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created) VALUES(?,?,?,?)',(case_id,hashlib.sha256(token.encode()).hexdigest(),case['company'],now()))
         log_case(db,case_id,'기업 답변 링크 발급');jebo.mark(db,case_id,'forwarded_at')
+        company_ai_summary(db,case)  # AI 정리가 아직 없으면 지금 뒤에서 만들어 둠 (기업이 열 때 보이게)
     return render_template('invite_created.html',layout=ep['layout'],ep=ep,case=case,invite_url=url_for('company_access',case_id=case_id,token=token,_external=True))
 
 # ---- 소보루 기자실 (/reporter) ----
