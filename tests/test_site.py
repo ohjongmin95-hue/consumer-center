@@ -6328,7 +6328,7 @@ class SiteTest(unittest.TestCase):
         import auto_content
         from unittest.mock import patch
         ext = self.site.app.extensions
-        env_hot = patch.dict(os.environ, {'AUTO_CONTENT_HOT': '0'}); env_hot.start(); self.addCleanup(env_hot.stop)  # 뒤에서 따로 시험
+        env_hot = patch.dict(os.environ, {'AUTO_CONTENT_HOT': '0', 'AUTO_CONTENT_PER_RUN': '1'}); env_hot.start(); self.addCleanup(env_hot.stop)  # 뒤에서 따로 시험
         reply = {'tag': 'MONEY', 'covers': [{'text': '환불 3일 안에\n받을 수 있을까', 'type': '경고'}], 'big': '3일', 'cover_scene': 'desk',
                  'slides': [{'design': 'body', 'kicker': '언제부터', 'title': '3일 안에 돌려받아요', 'items': '판매자는 **3일** 안에 돌려줘요.\n\n늦으면 물어볼 수 있어요.', 'num': '3일'},
                             {'design': 'body', 'kicker': '내가 챙길 것', 'title': '주문 내역을 남겨요', 'items': '내역을 캡처해 두세요.', 'num': ''}],
@@ -6393,12 +6393,16 @@ class SiteTest(unittest.TestCase):
             done, failed = ext['auto_content']['run']()
             self.assertEqual((done[0][3], failed), ('네이버 뉴스 댓글 321개', []))
             self.assertIn('왜 터졌나', sent[0]['text']); self.assertIn('후킹: 아직도?', sent[0]['text'])
-            done, failed = ext['auto_content']['run']()  # 다음 번은 커뮤니티 먼저
+            done, failed = ext['auto_content']['run']()  # 다음 번은 조사한 소재(분야별 최신 소비자 뉴스) 먼저 — 운영자 2026-11-06
+            self.assertEqual(done[0][3], '소재 소비자·환불')
+            done, failed = ext['auto_content']['run']()  # 그다음은 커뮤니티 먼저
             self.assertEqual(done[0][3], '더쿠 인기글 조회 50,000회')
             reply['skip'] = '연예 폭로'
             done, failed = ext['auto_content']['run']()
             self.assertEqual(done, []); self.assertIn('다루지 않을 소재', failed[0][1])
             del reply['skip']
+        self.assertEqual(auto_content.rss_items('<rss><item><title><![CDATA[공정위, &quot;다크패턴&quot; 제재]]></title><link>https://a.kr/1</link></item><item><title>링크 없음</title></item></rss>'),
+                         [{'title': '공정위, "다크패턴" 제재', 'url': 'https://a.kr/1'}])
         rows = auto_content.parse_community('<tr class="table_body x<strong class="text_over">글 &amp; 제목</strong><td class="hit"> 18,536 </td>', '루리웹', '<tr class="table_body', auto_content.COMMUNITIES[3][3], auto_content.COMMUNITIES[3][4])
         self.assertEqual(rows, [{'site': '루리웹', 'title': '글 & 제목', 'views': 18536}])
         self.assertTrue(auto_content.same_topic('[이슈] 다이소 환불 기준 바뀐다.jpg', '다이소 환불 기준 바뀐다 논란')); self.assertFalse(auto_content.same_topic('오늘 날씨 좋다', '다이소 환불'))
