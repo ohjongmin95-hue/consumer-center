@@ -13,6 +13,7 @@ export default function SettingsScreen() {
   if (!data) return err ? <Notice text={err} /> : <Loading />;
   return (
     <Screen>
+      <Away s={data} onSaved={setData} />
       <Info s={data} onSaved={setData} />
       <Return s={data} onSaved={setData} />
       <Notify s={data} onSaved={setData} />
@@ -112,6 +113,17 @@ function Notify({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void })
       {msg.t ? <Notice text={msg.t} tone={msg.ok ? 'ok' : 'error'} flat /> : null}
       <Btn title="저장" onPress={() => save({ act: 'notify', ...f })} busy={busy} />
       <Btn title="알림 종류별로 받을 곳 정하기" kind="soft" onPress={() => router.push('/alerts')} />
+    </Section>
+  );
+}
+
+// 자리 비움: 켜면 새 요청이 자동으로 배정되지 않아요 (누르는 즉시 저장)
+function Away({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void }) {
+  const { busy, msg, save } = useSave(onSaved);
+  return (
+    <Section title="상담 상태">
+      <Toggle title="자리 비움" sub={s.away ? '새 요청이 자동으로 배정되지 않아요' : '지금 상담 중이에요'} value={!!s.away} onChange={(v) => { if (!busy) save({ act: 'away', on: v ? '1' : '0' }); }} />
+      {msg.t && !msg.ok ? <Notice text={msg.t} tone="error" flat /> : null}
     </Section>
   );
 }

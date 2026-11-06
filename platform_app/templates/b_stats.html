@@ -14,6 +14,12 @@
 <div class="panel"><div class="ph">상담 후 구매</div>{% if conv.pct is not none %}<div class="slab"><b>{{ conv.pct }}<small>%</small></b><span>{{ conv.n }}명 중 {{ conv.won }}명{% if conv.amount %} · {{ '{:,}'.format(conv.amount) }}원{% endif %}</span></div>{% else %}<p class="sub" style="margin:0">아직 셀 요청이 없어요.</p>{% endif %}
 <p class="cap" style="margin:12px 0 0">산식: 최근 {{ conv.days }}일 요청 고객(휴대폰 번호 기준) 중 요청한 날부터 {{ conv.window }}일 안에 주문 장부에 새 주문이 생긴 비율. 요청에 적힌 주문은 빼요.</p></div>
 </div>
+<div class="panel" style="margin-bottom:20px"><div class="ph">상담 만족도 <span class="cap">최근 {{ csat.days }}일</span></div>
+{% if csat.n %}<div class="slab"><b>{{ csat.avg }}<small>점</small></b><span>{{ csat.n }}명이 평가했고, {{ csat.good }}%가 '좋아요' 이상이에요</span></div>
+<div class="bars" style="margin-top:12px">{% for k in [5,4,3,2,1] %}<div class="barrow"><span>{{ CSAT_EMOJI[k] }} {{ CSAT_LABELS[k] }}</span><span class="tr"><i style="width:{{ ((csat.dist[k]/csat.n*100)|round|int) }}%"></i></span><b>{{ csat.dist[k] }}</b></div>{% endfor %}</div>
+{% if csat.notes %}<ul class="cx-prev" style="margin-top:12px">{% for x in csat.notes %}<li><a href="{{ url_for('case',case_id=x.id) }}">{{ CSAT_EMOJI[x.score] }} {{ x.note }}</a><span>{{ x.title }}</span></li>{% endfor %}</ul>{% endif %}
+{% else %}<p class="sub" style="margin:0">아직 평가가 없어요. 요청이 끝나면 고객 화면에서 만족도를 물어봐요.</p>{% endif %}
+<p class="cap" style="margin:12px 0 0">산식: 최근 {{ csat.days }}일 동안 고객이 매긴 1~5점의 평균. '좋아요' 이상은 4~5점 비율</p></div>
 <div class="panel" style="margin-bottom:20px"><div class="ph">주별 요청</div>
 <div class="vbars">{% for lab,cnt in weeks %}<div><b>{{ cnt }}</b><span class="tr">{% if cnt %}<i style="height:{{ (cnt/top*100)|round|int }}%"></i>{% endif %}</span><small>{{ lab }}</small></div>{% endfor %}</div></div>
 <div class="grid2">

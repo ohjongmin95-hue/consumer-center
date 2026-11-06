@@ -31,6 +31,7 @@
     <input class="inp" data-f="order_no" name="order_no" id="askO" maxlength="40" placeholder="{{ '주문번호 (꼭 적어 주세요)' if d.category in ORDER_CATS else '주문번호 (선택)' }}" value="{{ d.order_no or '' }}" {{ 'required' if d.category in ORDER_CATS }}>
     <input class="inp" data-f="product" name="product" maxlength="60" placeholder="상품 이름 (선택)" value="{{ d.product or '' }}">
     <label class="fld" data-f="received_on"><span id="rcvLabel">상품 받은 날 (선택 · 반품 기간 확인에 써요)</span><input class="inp" id="rcvOn" name="received_on" type="date" max="{{ today }}" value="{{ d.received_on or '' }}"></label>
+    {% for q in d.qs or [] %}<label class="fld"><span>{{ q }} (선택)</span><input class="inp" name="fa{{ loop.index0 }}" maxlength="300"></label>{% endfor %}
     <label class="filebox" data-f="files"><span class="cap" style="display:block;margin-bottom:8px">사진 (3개까지)</span><input class="file-in" type="file" name="files" multiple accept="image/*,.pdf"></label>
   </div>
 </section>

@@ -105,8 +105,10 @@ def report(db,co,rows,days=30):
 
 # ---------- 새 요청이 들어왔을 때 ----------
 def pick(db,co):
-    """지금 맡은 진행 중 요청이 가장 적은 사람 (같으면 직원 먼저, 그다음 목록 순)."""
-    ppl=team.people(db,co)
+    """지금 맡은 진행 중 요청이 가장 적은 사람 (같으면 직원 먼저, 그다음 목록 순). 모두 자리 비움이면 아무에게도 주지 않는다."""
+    import cx
+    away=cx.away_keys(db,co)
+    ppl=[p for p in team.people(db,co) if p[0] not in away]  # 자리 비움인 사람은 빼고
     if len(ppl)>1:ppl=[p for p in ppl if p[0]!='owner']  # 직원이 있으면 직원에게 나눈다
     load=dict(db.execute("SELECT assignee,COUNT(*) FROM cases WHERE company_id=? AND assignee!='' AND status IN ('forwarded','seen','info') GROUP BY assignee",(co['id'],)).fetchall())
     return min(ppl,key=lambda p:load.get(p[0],0))[0] if ppl else ''

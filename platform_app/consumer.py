@@ -2,7 +2,7 @@
 import os, re, datetime, json, urllib.parse
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-import billing, core, law, chatbot, workflow, livechat
+import billing, core, law, chatbot, workflow, livechat, cx
 import tracking as tracking_mod
 import orders as orders_mod
 import ai as ai_mod
@@ -58,7 +58,7 @@ def new():
     if request.args.get('category') in core.CATS:d.setdefault('category',request.args['category'])
     if request.args.get('company_id','').isdigit():
         with conn() as db:co=core.company(db,int(request.args['company_id']))
-        if co and co['status'] in ('active','listed'):d.setdefault('company',co['name']);d.setdefault('company_id',co['id']);d['member']=core.active_member(co)
+        if co and co['status'] in ('active','listed'):d.setdefault('company',co['name']);d.setdefault('company_id',co['id']);d['member']=core.active_member(co);d['qs']=cx.questions(co) if d['member'] else []
     elif request.args.get('company'):d.setdefault('company',clean(request.args['company'],60))
     if request.args.get('order_no'):d.setdefault('order_no',clean(request.args['order_no'],40))
     if request.args.get('body'):  # 상담창에서 쓴 문장을 그대로 이어 쓴다
@@ -144,6 +144,9 @@ def submit():
     err=submit_check(d,f.get('password',''),f.get('privacy')=='1',ups)
     if err:
         flash(err,'error');session['draft']={k:v for k,v in d.items()};return redirect(url_for('new'))
+    if f.get('company_id','').isdigit():  # 사장님이 정한 추가 질문의 답은 본문 끝에 붙인다
+        with conn() as db:qco=core.company(db,int(f['company_id']))
+        if qco and core.active_member(qco):d['body']=(d['body']+cx.answers_text(qco,f))[:BIG]
     case_id,no,co=create_case(d,f.get('password',''),ups,f.get('company_id',''))
     remember(case_id)
     if f.get('live')=='1' and d['consent'] and livechat.available(co):
@@ -247,6 +250,8 @@ def case_act(c,form,ups):
                 co=core.company(db,c['company_id'])
                 if co:core.send_mail(co['notify_email'],f"[{core.BNAME}] 고객이 환불 계좌를 등록했어요: {c['title']}",f"{core.site_url('biz','/case/%d'%c['id'])}")
                 return '환불 계좌를 등록했어요','ok'
+        elif act=='csat':
+            return cx.rate(db,c,form.get('score'),form.get('note',''))
         elif act in ('info','add') and msg and c['status'] not in core.FINAL:
             err=core.files_ok(ups)
             if err:return err,'error'
@@ -268,7 +273,7 @@ def case(case_id):
     with conn() as db:
         ev=core.events(db,c['id']);fl=core.case_files(db,c['id']);co=core.company(db,c['company_id'])
         again=core.can_follow_up(db,c);tracks=[tracking_mod.as_dict(t) for t in tracking_mod.tracks(db,c['id'])]
-    return render_template('c_case.html',c=c,ev=ev,files=fl,co=co,again=again,tracks=tracks,live=livechat.is_open(c))
+    return render_template('c_case.html',c=c,ev=ev,files=fl,co=co,again=again,tracks=tracks,live=livechat.is_open(c),csat=cx.can_rate(c),CSAT_LABELS=cx.CSAT_LABELS,CSAT_EMOJI=cx.CSAT_EMOJI)
 
 @app.route('/case/<int:case_id>/live',methods=['GET','POST'])
 def case_live(case_id):
@@ -307,7 +312,7 @@ def company_page(company_id):
     with conn() as db:co=core.company(db,company_id)
     if not co or co['status'] not in ('active','listed'):abort(404)
     session['cs']=co['id']
-    return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS,live=livechat.available(co))
+    return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS,live=livechat.available(co),btns=cx.buttons(co) if core.active_member(co) else [])
 
 def seen_widget(co):
     """버튼이 실제로 붙었는지 사장님 화면에 보여 주려고, 버튼을 불러간 쇼핑몰 주소(도메인만)와 때를 남긴다. 한 시간에 한 번만 쓴다."""
@@ -357,7 +362,7 @@ def chat_answer(company_id,f):
         if not co or co['status'] not in ('active','listed'):abort(404)
     if core.throttled('chat',limit=60,minutes=10):return dict(error='잠시 후 다시 시도해 주세요'),429
     if f.get('act')=='order':return chat_order(co,f),200
-    if f.get('outcome') in ('solved','filed') and f.get('category') in core.CATS:
+    if f.get('outcome') in ('solved','filed','faq') and f.get('category') in core.CATS:
         if co:
             with conn() as db:db.execute('INSERT INTO chat_log(company_id,category,outcome,created) VALUES(?,?,?,?)',(co['id'],f['category'],f['outcome'],core.iso()))
         return dict(ok=True),200

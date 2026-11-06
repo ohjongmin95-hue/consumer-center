@@ -1,5 +1,5 @@
 {# 상담창(자동응답). co가 있으면 그 기업의 안내 문구, 없으면 기본 문구로 답한다 #}
-<div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) if co else url_for('chat') }}" data-new="{{ url_for('new',company_id=co.id) if co else url_for('new') }}" data-track="{{ url_for('track',company_id=co.id) if co else url_for('track') }}" data-greet="{{ co.name+' 고객센터예요' if co else CNAME+'예요' }}" data-csrf="{{ csrf_token() }}" data-orders="{{ 1 if member else '' }}">
+<div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) if co else url_for('chat') }}" data-new="{{ url_for('new',company_id=co.id) if co else url_for('new') }}" data-track="{{ url_for('track',company_id=co.id) if co else url_for('track') }}" data-greet="{{ co.name+' 고객센터예요' if co else CNAME+'예요' }}" data-csrf="{{ csrf_token() }}" data-orders="{{ 1 if member else '' }}" data-btns="{{ (btns or [])|tojson|forceescape }}">
 <div class="cb-log" id="cbLog" aria-live="polite"></div>
 <form class="cb-in" id="cbForm" autocomplete="off"><input id="cbText" maxlength="500" placeholder="예: 주문한 게 아직 안 왔어요" aria-label="문의 내용"><button>보내기</button></form>
 </div>
@@ -18,7 +18,9 @@ function later(fn,ms){const d=bubble('•••','bot dots');setTimeout(()=>{d.r
 function post(data){const fd=new FormData();fd.append('csrf',box.dataset.csrf);for(const k in data)fd.append(k,data[k]);
   return fetch(box.dataset.url,{method:'POST',body:fd,credentials:'same-origin'}).then(r=>r.json())}
 const ORD=!!box.dataset.orders;
-function catChips(){chips([...(ORD?[{label:'내 주문 조회',pri:true,fn:()=>{bubble('내 주문 조회','me');later(orderForm)}}]:[]),...CATS.map(c=>({label:c,fn:()=>{bubble(c,'me');ask({category:c})}}))])}
+const BTNS=JSON.parse(box.dataset.btns||'[]');  // 사장님이 정한 질문 버튼: 답이 있으면 AI 없이 바로 보여 준다
+function quick(b){const h=JSON.stringify(hist);bubble(b.q,'me');said.push(b.q);if(b.a){post({outcome:'faq',category:'기타'}).catch(()=>{});later(()=>{bubble(b.a);aiChips(false)})}else ask({text:b.q,history:h})}
+function catChips(){chips([...BTNS.map(b=>({label:b.q,fn:()=>quick(b)})),...(ORD?[{label:'내 주문 조회',pri:true,fn:()=>{bubble('내 주문 조회','me');later(orderForm)}}]:[]),...CATS.map(c=>({label:c,fn:()=>{bubble(c,'me');ask({category:c})}}))])}
 function orderForm(){  // 휴대폰 번호 + 주문번호(또는 주문자 이름)가 둘 다 맞아야 보여 준다
   bubble('주문할 때 쓴 휴대폰 번호와 주문번호를 적어 주세요. 주문번호를 모르면 주문자 이름도 돼요.');
   const f=document.createElement('form');f.className='cb-ord';f.autocomplete='off';

@@ -19,7 +19,7 @@
 <header class="cx-mh"><a class="cx-back" href="{{ url_for('chat',t=tab_c,q=q or None) }}" aria-label="목록으로">‹</a>
 <div><b>{{ c.name or '고객' }}</b><span>{{ c.channel or '상담창' }} · {{ c.category }} · {{ STATUS[c.status][0] }}</span></div>
 <span class="sp"></span><a class="btn sm gray" href="{{ url_for('case',case_id=c.id) }}">자세히 처리</a></header>
-<div class="cx-msgs" id="cxMsgs" data-last="{{ last }}" data-url="{{ url_for('chat_more',case_id=c.id) }}">
+<div class="cx-msgs" id="cxMsgs" data-last="{{ last }}" data-url="{{ url_for('chat_more',case_id=c.id) }}" data-tr="{{ url_for('chat_translate',case_id=c.id) if lang!='ko' else '' }}" data-csrf="{{ csrf_token() }}">
 {% for m in msgs %}<div class="mg {{ m.who }}" data-id="{{ m.id }}">{% if m.who=='sys' %}<p>{{ m.text }} · {{ m.at }}</p>{% else %}<div class="mb"><span class="mby">{{ m.by }}{% if m.who=='note' %} · 메모 (고객에게 안 보임){% endif %}</span><div class="mt">{{ m.text }}</div><time>{{ m.at }}</time></div>{% endif %}</div>{% endfor %}
 {% if c.decision=='pending' and c.status not in ('resolved','unresolved','closed','withdrawn') %}
 <div class="cx-dec" id="cxDec"><div class="cx-dh">{{ i.icon('approve',22) }}<b>사장님 결정이 필요해요</b><span>{{ c.category }}</span></div>
@@ -33,7 +33,7 @@
 {% if c.status not in ('resolved','unresolved','withdrawn') %}
 <form class="cx-comp" id="cxComp" method="post" action="{{ url_for('chat_send',case_id=c.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <textarea name="text" rows="2" maxlength="3000" placeholder="{{ c.name or '고객' }}님에게 답하기{% if send_via %} · {{ send_via }}{% endif %}" aria-label="답변"></textarea>
-<div class="cx-ca"><span class="cx-err" id="cxErr" role="alert"></span><span class="sp"></span><button class="btn md" id="cxSend">보내기</button></div></form>
+<div class="cx-ca"><span class="cx-err" id="cxErr" role="alert"></span><span class="sp"></span>{% if lang!='ko' %}<button type="button" class="tbtn" id="cxTr">{{ LANGS[lang] }}로 번역</button>{% endif %}<button class="btn md" id="cxSend">보내기</button></div></form>
 <form class="cx-note" method="post" action="{{ url_for('case',case_id=c.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="note"><input type="hidden" name="back" value="chat">
 <details><summary>메모 남기기 (고객에게 안 보여요)</summary><div class="cx-nf"><input class="inp" name="note" maxlength="2000" placeholder="팀에게 남길 메모" aria-label="메모"><button class="btn sm gray">남기기</button></div></details></form>
 {% endif %}
@@ -44,6 +44,8 @@
 <dt>상태</dt><dd>{{ STATUS[c.status][0] }}{% if c.decision=='pending' %} · 결정 필요{% elif c.decision=='auto' %} · AI 답함{% elif c.decision=='ai' %} · AI 확인 중{% endif %}</dd>
 <dt>채널</dt><dd>{{ c.channel or '상담창' }}</dd><dt>유형</dt><dd>{{ c.category }}</dd>
 <dt>담당자</dt><dd>{{ assignee or '없음' }}</dd>
+{% if lang!='ko' %}<dt>고객 언어</dt><dd>{{ LANGS[lang] }}</dd>{% endif %}
+{% if c.csat %}<dt>만족도</dt><dd>{{ CSAT_EMOJI[c.csat] }} {{ CSAT_LABELS[c.csat] }}{% if c.csat_note %}<br><span class="t-sub">{{ c.csat_note }}</span>{% endif %}</dd>{% endif %}
 {% if ctags %}<dt>태그</dt><dd>{% for t in ctags %}{{ b.tag_chip(t) }}{% endfor %}</dd>{% endif %}
 <dt>접수</dt><dd>{{ c.no }} · {{ fmt(c.created) }}</dd></dl></section>
 <section class="cx-card"><h2>고객 정보</h2><div class="cx-cu"><span class="cx-av lg">{{ (c.name or '고')[:1] }}</span><b>{{ c.name or '고객' }}</b></div><dl>
@@ -87,6 +89,16 @@
       f.addEventListener('submit',function(e){e.preventDefault();if(!ta.value.trim())return;btn.disabled=true;err.textContent='';
         fetch(f.action,{method:'POST',body:new FormData(f),credentials:'same-origin'}).then(function(r){return r.json().then(function(d){return [r.ok,d]})}).then(function(x){
           btn.disabled=false;if(!x[0]){err.textContent=x[1].error||'보내지 못했어요';return}ta.value='';pull()}).catch(function(){btn.disabled=false;err.textContent='보내지 못했어요. 다시 눌러 주세요'})})}
+    var msgsEl=document.getElementById('cxMsgs');
+    function tr(text,to){var fd=new FormData();fd.append('csrf',msgsEl.dataset.csrf);fd.append('text',text);fd.append('to',to);
+      return fetch(msgsEl.dataset.tr,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()})}
+    if(msgsEl&&msgsEl.dataset.tr){  // 외국어 고객: 고객 말 아래 '번역 보기', 답은 고객 언어로 번역
+      function addTr(){msgsEl.querySelectorAll('.mg.me .mb').forEach(function(mb){if(mb.querySelector('.tr-btn'))return;var b=document.createElement('button');b.type='button';b.className='tbtn tr-btn';b.textContent='번역 보기';
+        b.onclick=function(){b.disabled=true;tr(mb.querySelector('.mt').textContent,'ko').then(function(d){var o=document.createElement('div');o.className='tr-out';o.textContent=d.text||d.error;mb.appendChild(o);b.remove()}).catch(function(){b.disabled=false})};mb.appendChild(b)})}
+      addTr();new MutationObserver(addTr).observe(msgsEl,{childList:true});
+      var tb=document.getElementById('cxTr');if(tb)tb.onclick=function(){var ta=document.querySelector('#cxComp textarea'),err=document.getElementById('cxErr');if(!ta.value.trim()){ta.focus();return}tb.disabled=true;err.textContent='';
+        tr(ta.value,'customer').then(function(d){tb.disabled=false;if(d.text)ta.value=d.text;else err.textContent=d.error||'번역하지 못했어요'}).catch(function(){tb.disabled=false;err.textContent='번역하지 못했어요'})};
+    }
     document.querySelectorAll('[data-fill]').forEach(function(b){b.addEventListener('click',function(){var t=document.querySelector('#cxComp textarea');if(t){t.value=b.dataset.fill;t.focus()}})});
   }
   if(rowsEl){

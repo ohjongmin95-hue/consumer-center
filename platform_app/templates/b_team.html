@@ -1,18 +1,21 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
 {% block title %}팀 · {{ BNAME }}{% endblock %}
 {% block bar %}{{ b.bar('team') }}{% endblock %}
+{% macro status_cell(k) -%}<span class="away-dot{{ ' off' if k in away }}"></span>{{ '자리 비움' if k in away else '상담 중' }}
+{%- if k==me_key or can_manage %}<form method="post" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="away"><input type="hidden" name="key" value="{{ k }}"><input type="hidden" name="on" value="{{ '0' if k in away else '1' }}"><button class="tbtn">{{ '상담 중으로' if k in away else '자리 비움으로' }}</button></form>{% endif %}
+{%- endmacro %}
 {% block body %}
-<div class="phead"><div><h1>팀</h1><p>직원을 초대하고 역할을 정해요. 직원 수로 요금을 받지 않아요.</p></div></div>
+<div class="phead"><div><h1>팀</h1><p>직원을 초대하고 역할을 정해요. 직원 수로 요금을 받지 않아요. 자리 비움이면 새 요청이 자동으로 배정되지 않아요.</p></div></div>
 {% if link %}<div class="panel" style="margin-bottom:20px"><div class="ph">초대 링크</div><p class="sub" style="margin:0 0 12px">이 링크를 직원에게 전해 주세요. 비밀번호를 정하면 바로 로그인돼요.</p>
 <div class="addline"><input class="inp" id="invLink" value="{{ link }}" readonly><button class="btn md gray" type="button" data-copy="invLink">복사</button></div></div>{% endif %}
 <div class="grid2">
 <section class="panel"><div class="ph">구성원</div>
-<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>이름</th><th class="hm">이메일</th><th>역할</th><th class="r">맡은 요청</th></tr></thead><tbody>
-<tr><td><b>{{ owner.name }}</b></td><td class="hm t-sub">{{ owner.email }}</td><td>{{ ROLES.owner }}</td><td class="r">{{ load.owner }}</td></tr>
+<div class="tbl-wrap"><table class="tbl2"><thead><tr><th>이름</th><th class="hm">이메일</th><th>역할</th><th>상태</th><th class="r">맡은 요청</th></tr></thead><tbody>
+<tr><td><b>{{ owner.name }}</b></td><td class="hm t-sub">{{ owner.email }}</td><td>{{ ROLES.owner }}</td><td>{{ status_cell('owner') }}</td><td class="r">{{ load.owner }}</td></tr>
 {% for s in rows %}<tr><td><b>{{ s.name }}</b>{% if s.status=='invited' %} <span class="pill gray">초대 중</span>{% endif %}<div class="t-mute" style="font-size:13px">{{ s.email }}</div></td><td class="hm t-sub">{{ s.email }}</td>
 <td><form method="post" class="addline" style="gap:6px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="role"><input type="hidden" name="id" value="{{ s.id }}">
 <select class="inp" name="role" aria-label="{{ s.name }} 역할" onchange="this.form.submit()">{% for r in INVITE_ROLES %}<option value="{{ r }}" {{ 'selected' if s.role==r }}>{{ ROLES[r] }}</option>{% endfor %}</select></form></td>
-<td class="r">{{ load[s.id|string] }}
+<td>{{ status_cell(s.id|string) if s.status=='active' else '' }}</td><td class="r">{{ load[s.id|string] }}
 <form method="post" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ s.id }}"><button class="tbtn" name="act" value="relink">{{ '초대 링크' if s.status=='invited' else '비밀번호 링크' }}</button>
 {% if actor.key!=s.id|string %}<button class="tbtn" name="act" value="remove" onclick="return confirm('{{ s.name }}님을 내보낼까요? 맡던 요청은 담당자 없음이 돼요.')">내보내기</button>{% endif %}</form></td></tr>{% endfor %}
 </tbody></table></div></section>
