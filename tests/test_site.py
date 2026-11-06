@@ -6357,23 +6357,30 @@ class SiteTest(unittest.TestCase):
             reply['slides'][0]['items'] = '판매자는 999일 안에 돌려줘요.'  # 기사에 없는 숫자는 버림
             done, failed = ext['auto_content']['run']()
             self.assertEqual(done, []); self.assertIn('없는 숫자', failed[0][1])
-        # 사람 표지: 한국인을 AI로 그리고 캡션에 밝힘. 못 그리면 기사의 언스플래시 사진(풍경이어도 됨)과 사진가
-        import base64, companydesk
+        # 표지는 실사: 설명에 사람이 있는 언스플래시 사진만 쓰고 사진가를 캡션에 밝힘
+        import soboru_letter
         from PIL import Image
-        jpg = io.BytesIO(); Image.new('RGB', (1024, 1536), 'gray').save(jpg, 'JPEG')
-        prompts = []
-        def fake_draw(url, headers, body, timeout):
-            prompts.append(body['prompt'])
-            return 200, {'data': [{'b64_json': base64.b64encode(jpg.getvalue()).decode()}]}
+        calls = []
+        def fake_unsplash(path, params=None):
+            calls.append(path)
+            if path != '/search/photos': return 200, {}
+            return 200, {'results': [{'id': 'land', 'alt_description': 'empty beach', 'urls': {'raw': 'https://x/land'}, 'user': {'name': 'N'}},
+                                     {'id': 'p1', 'alt_description': 'a woman looking surprised', 'urls': {'raw': 'https://x/p1'}, 'links': {'download_location': '/dl/p1'}, 'user': {'name': '김작가'}}]}
         reply['slides'][0]['items'] = '판매자는 **3일** 안에 돌려줘요.'
-        reply['people_scene'] = 'a young woman looking shocked at her phone'
+        reply['people_query'] = 'korean woman surprised phone'
         with self.site.conn() as db: db.execute("DELETE FROM auto_content")
-        with self.site.app.app_context(), patch.dict(ext, {'mag_assist_chat': lambda *a: reply}), patch.dict(os.environ, {'OPENAI_API_KEY': 'k'}), \
-                patch.object(companydesk, 'post_json', fake_draw), patch('shutil.which', lambda x: None):
+        fetched = io.BytesIO(); Image.new('RGB', (800, 1200), 'gray').save(fetched, 'JPEG')
+        class Resp(io.BytesIO):
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+        with self.site.app.app_context(), patch.dict(ext, {'mag_assist_chat': lambda *a: reply}), patch.dict(os.environ, {'UNSPLASH_ACCESS_KEY': 'k'}), \
+                patch.object(soboru_letter, 'unsplash_call', fake_unsplash), patch('urllib.request.urlopen', lambda req, timeout=0: Resp(fetched.getvalue())), patch('shutil.which', lambda x: None):
             done, failed = ext['auto_content']['run'](99800)
             self.assertEqual(failed, [])
-            with self.site.conn() as db: card = db.execute("SELECT * FROM made_items ORDER BY id DESC LIMIT 1").fetchone()
-            self.assertIn('AI로 만든 이미지', card['caption']); self.assertIn('Korean', prompts[0]); self.assertIn('shocked', prompts[0])
+            with self.site.conn() as db:
+                card = db.execute("SELECT * FROM made_items ORDER BY id DESC LIMIT 1").fetchone()
+                self.assertEqual([r[0] for r in db.execute('SELECT photo_id FROM auto_content_photos')], ['p1'])
+            self.assertIn('사진: 김작가 / Unsplash', card['caption']); self.assertIn('/dl/p1', calls)
         # 터진 소재: 뉴스 먼저, 분석을 알림에. 커뮤니티 글은 같은 주제의 기사가 있을 때만
         import mag_assist
         sent.clear()
