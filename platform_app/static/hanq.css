@@ -2331,3 +2331,17 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .learn-card{display:flex;flex-direction:column;gap:10px}
 .learn-card .qa{background:var(--fill);border-radius:12px;padding:12px 14px;font-size:14.5px}
 .learn-card .qa b{display:block;margin-bottom:4px}
+/* 상담창 (OH 11/06: 군더더기 없이). 상담원 말은 말풍선 없이 글만, 고객 말만 회색 말풍선, 버튼은 얇은 회색 테두리 */
+.cb,.cs2 .cs-chat .cb{background:none;padding:0;border-radius:0;gap:14px}
+.cb .cb-log{gap:14px}
+.cb .cb-m{font-size:15px;line-height:1.65;animation:cbIn .18s ease-out}
+.cb .cb-m.bot,.cs2 .cs-chat .cb-m.bot{background:none;box-shadow:none;padding:0 2px;border-radius:0;max-width:92%;color:var(--fg)}
+.cb .cb-m.me,.cs2 .cs-chat .cb-m.me{background:#f2f4f6;color:var(--fg);border-radius:18px;padding:9px 15px}
+.cb .cb-m.dots{color:var(--fg4,#b0b8c1)}
+.cb .cb-oc,.cs2 .cs-chat .cb-oc{background:none;border:1px solid #e5e8eb;border-radius:14px;padding:14px 16px}
+.cb .cb-chips{gap:6px}
+.cb .cb-chips button,.cb .cb-chips a,.cs2 .cs-chat .cb-chips button,.cs2 .cs-chat .cb-chips a{background:var(--card);border:1px solid #e5e8eb;color:var(--fg2);height:34px;padding:0 13px;border-radius:17px;font-size:14px;font-weight:500}
+.cb .cb-chips button:hover,.cs2 .cs-chat .cb-chips button:hover{background:#f9fafb;color:var(--fg);border-color:#d1d6db}
+.cb .cb-chips .pri,.cs2 .cs-chat .cb-chips .pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.cb .cb-in input,.cs2 .cs-chat .cb-in input{background:#f2f4f6;border:0;border-radius:22px;height:46px;font-size:15px}
+.cb .cb-in button,.cs2 .cs-chat .cb-in button{background:var(--accent);color:#fff;border-radius:22px;height:46px;padding:0 18px;font-size:14.5px}

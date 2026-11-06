@@ -42,7 +42,7 @@ export function TopBar() {
           <Image source={require('../../assets/logo-wordmark.png')} style={{ width: 89, height: 17 }} resizeMode="contain" accessibilityLabel="SOBORU CX" />
         </Pressable>
         <Pressable onPress={() => router.push('/alerts')} style={({ pressed }) => [s.bell, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]} hitSlop={6} accessibilityLabel={`알림 ${unread}건 안 읽음`}>
-          <Icon name="bell" size={26} />
+          <Icon name="bell" size={24} />
           {unread ? (
             <View style={s.bellCnt}>
               <Text style={s.bellCntText}>{unread > 99 ? '99+' : unread}</Text>
@@ -309,14 +309,14 @@ export const s = StyleSheet.create({
   guestText: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.accentInk },
   guestDot: { fontFamily: FONT, fontSize: 13, color: C.accentInk },
   guestJoin: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.accentInk, textDecorationLine: 'underline' },
-  top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingTop: 10, paddingBottom: 10 },
   logo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   bell: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   bellCnt: { position: 'absolute', top: 0, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center' },
   bellCntText: { fontFamily: FONT, fontSize: 11, fontWeight: '700', color: '#fff' },
-  coChip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: 18, backgroundColor: C.card, maxWidth: 150 },
-  coDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
-  coDotText: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: '#fff' },
+  coChip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: 18, maxWidth: 140 },
+  coDot: { width: 26, height: 26, borderRadius: 13, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
+  coDotText: { fontFamily: FONT, fontSize: 12, fontWeight: '700', color: C.fg2 },
   coName: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2, flexShrink: 1 },
   phead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 24, paddingTop: 10, paddingBottom: 14 },
   pheadText: { flex: 1, fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: 0 },

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Loading, Notice } from '../components/ui';
-import { Tf, TfName } from '../components/Tf';
+import { Icon } from '../components/Icon';
 import { api, Soda, SodaItem } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { C, FONT } from '../lib/theme';
@@ -62,7 +62,7 @@ export default function SodaScreen() {
         <View style={st.card}>
           <Head title="SODA가 물어봐요" n={data.gaps.length} />
           {data.gaps.length ? (
-            data.gaps.map((g) => <Row key={g.id} icon="speech" title={g.q} sub={g.n > 1 ? `${g.n}번 물어봤어요` : '고객이 물었어요'} subTone={g.n > 1} onPress={() => open({ mode: 'gap', id: String(g.id), q: g.q })} pill="답하기" />)
+            data.gaps.map((g) => <Row key={g.id} icon="chat" title={g.q} sub={g.n > 1 ? `${g.n}번 물어봤어요` : '고객이 물었어요'} subTone={g.n > 1} onPress={() => open({ mode: 'gap', id: String(g.id), q: g.q })} pill="답하기" />)
           ) : (
             <Text style={st.empty}>{data.ai ? '지금은 물어볼 게 없어요' : 'SODA가 켜지면 모르는 질문을 여기에 모아요'}</Text>
           )}
@@ -70,7 +70,7 @@ export default function SodaScreen() {
 
         <View style={st.card}>
           <Head title="한 번에 알려 주기" />
-          <Row icon="memo" title="말로 알려 주기" sub="적은 말은 바로 배워요" onPress={() => open({ mode: 'text' })} chevron />
+          <Row icon="note" title="말로 알려 주기" sub="적은 말은 바로 배워요" onPress={() => open({ mode: 'text' })} chevron />
           <Row icon="link" title="쇼핑몰 주소로 알려 주기" sub="읽은 답은 확인한 뒤에 써요" onPress={() => open({ mode: 'url', url: data.url })} chevron />
           <Text style={st.foot}>사진 · PDF · 엑셀은 PC에서 올릴 수 있어요</Text>
         </View>
@@ -109,10 +109,14 @@ function Head({ title, n }: { title: string; n?: number }) {
   );
 }
 
-function Row({ icon, title, sub, subTone, onPress, chevron, pill }: { icon?: TfName; title: string; sub?: string; subTone?: boolean; onPress: () => void; chevron?: boolean; pill?: string }) {
+function Row({ icon, title, sub, subTone, onPress, chevron, pill }: { icon?: string; title: string; sub?: string; subTone?: boolean; onPress: () => void; chevron?: boolean; pill?: string }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [st.row, pressed && st.pressed]}>
-      {icon ? <Tf name={icon} size={28} /> : null}
+      {icon ? (
+        <View style={st.ic}>
+          <Icon name={icon} size={20} />
+        </View>
+      ) : null}
       <View style={{ flex: 1, gap: 1 }}>
         <Text style={st.rowTitle} numberOfLines={1}>
           {title}
@@ -147,6 +151,7 @@ const st = StyleSheet.create({
   rowTitle: { fontFamily: FONT, fontSize: 15, lineHeight: 22.5, fontWeight: '600', color: C.fg, letterSpacing: 0 },
   rowSub: { fontFamily: FONT, fontSize: 13, lineHeight: 19.5, color: C.fg3, letterSpacing: 0 },
   off: { color: C.fg4 },
+  ic: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.band, alignItems: 'center', justifyContent: 'center' },
   pill: { height: 30, paddingHorizontal: 11, borderRadius: 8, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
   pillT: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.fg2 },
   chev: { fontFamily: FONT, fontSize: 18, color: C.fg4 },
