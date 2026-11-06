@@ -1046,11 +1046,14 @@ def install(S):
                    '핵심 소재가 같은 것(예: "외식비 부담 늘었다"와 "외식 물가 얼마나 올랐나"). 같은 분야라도 소재가 다르면 다른 주제야. '
                    'JSON만: {"same": true 또는 false, "title": "같은 주제인 최근 기사 제목(없으면 빈 문자열)"}')
 
-    def same_topic(title, summary, exclude=None):
+    def same_topic(title, summary, exclude=None, cat=None):
         """최근 30일 AI 글과 같은 주제면 그 글 제목 (운영자 지적 2026-10-21: 외식비 글이 또 올라옴). 판단을 못 하면 None(쓰기는 막지 않음)."""
         since = (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
         with conn() as db:
-            titles = [r['title'] for r in db.execute("SELECT id,title FROM articles WHERE origin='ai' AND substr(created,1,10)>=? ORDER BY id DESC LIMIT 500", (since,)) if r['id'] != exclude]
+            # 운영자 2026-11-06 'AI 값 비싸면 안 돼': 최근 제목 500개를 통째로 보내던 것을 같은 분야 위주 최근 80개로 (글이 쌓일수록 입력이 커지던 곳)
+            rows = [r for r in db.execute("SELECT id,title,category FROM articles WHERE origin='ai' AND substr(created,1,10)>=? ORDER BY id DESC LIMIT 500", (since,)) if r['id'] != exclude]
+        titles = [r['title'] for r in rows if cat and r['category'] == cat][:60]
+        titles += [r['title'] for r in rows if r['title'] not in titles][:80 - len(titles)]
         if not titles: return None
         user = '[새 기사]\n' + title + '\n' + (summary or '')[:300] + '\n\n[최근 30일 기사]\n' + '\n'.join('- ' + t for t in titles)
         try: got = chat(SAME_SYSTEM, user, 300)
@@ -1113,7 +1116,7 @@ def install(S):
                 same = [r['id'] for r in db.execute('SELECT id,title FROM articles WHERE substr(created,1,10)>=?', (since,)) if ''.join(r['title'].split()) == ''.join(title.split()) and (not old or r['id'] != old['id'])]
             if same:
                 res = {'status': 'skip', 'reason': '같은 제목의 글이 이미 있어요', 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
-            dup = same_topic(title, summary, old['id'] if old else None) if trigger == 'daily' else None  # 레터 뉴스는 그날 큰 이슈라 비슷한 주제여도 씀
+            dup = same_topic(title, summary, old['id'] if old else None, got.get('category') or cat) if trigger == 'daily' else None  # 레터 뉴스는 그날 큰 이슈라 비슷한 주제여도 씀
             if dup:
                 res = {'status': 'skip', 'reason': f'최근 30일 안에 비슷한 주제의 글이 있어요 ({dup[:40]})', 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         k = KINDS[kind]; cat = got.get('category') or cat; first = got['sources'][0] if got['sources'] else {'name': '', 'url': ''}

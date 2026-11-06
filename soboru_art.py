@@ -6,7 +6,7 @@ app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인�
 - 관리자 > AI 일러스트에서 다시 그리기·내리기·지우기. 손으로 '그리기'한 그림은 '게시'를 눌러야 보인다.
 - AI에는 분야와 공개용 제목만 보낸다(개인정보·업체명은 지움). 본문·제보자 정보는 보내지 않는다.
 - 그림이 없거나 내리면 지금처럼 글자 카드가 나온다. AI 그림 오른쪽 아래에는 아주 작은 'AI' 글자만 옅게 붙인다(운영자 요청, 2026-10-17).
-- 키는 사이트가 이미 쓰는 OPENAI_API_KEY, 모델은 OPENAI_IMAGE_MODEL(기본 gpt-image-1-mini), 품질은 OPENAI_IMAGE_QUALITY(기본 medium).
+- 키는 사이트가 이미 쓰는 OPENAI_API_KEY, 모델은 OPENAI_IMAGE_MODEL(기본 gpt-image-1-mini), 품질은 OPENAI_IMAGE_QUALITY(기본 low, 운영자 2026-11-06 '비싸면 안 돼': medium의 약 1/4 값).
 """
 import base64
 import datetime
@@ -36,7 +36,7 @@ BGS = ('keep it light and airy', 'use one bold accent color', 'use soft muted to
 
 
 def image_model(): return os.getenv('OPENAI_IMAGE_MODEL', '').strip() or 'gpt-image-1-mini'
-def image_quality(): return os.getenv('OPENAI_IMAGE_QUALITY', '').strip() or 'medium'
+def image_quality(): return os.getenv('OPENAI_IMAGE_QUALITY', '').strip() or 'low'
 
 
 def make_prompt(category, title, extra=(), seed=0):
