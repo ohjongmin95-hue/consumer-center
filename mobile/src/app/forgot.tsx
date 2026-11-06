@@ -29,7 +29,7 @@ export default function Forgot() {
     <View style={{ flex: 1, backgroundColor: C.card, paddingTop: 8 }}>
       <View style={{ paddingHorizontal: 24, gap: 8, marginBottom: 24 }}>
         <Text style={st.h1}>비밀번호 찾기</Text>
-        <Text style={st.p}>가입한 이메일로 비밀번호를 새로 정하는 링크를 보내 드립니다. 링크는 1시간 동안 열립니다.</Text>
+        <Text style={st.p}>가입한 이메일로 비밀번호를 새로 정하는 링크를 보내 드려요. 링크는 1시간 동안 열려요.</Text>
       </View>
       <View style={{ paddingHorizontal: 24, gap: 12 }}>
         <Field placeholder="로그인 이메일" value={id} onChangeText={setId} autoCapitalize="none" keyboardType="email-address" autoComplete="email" onSubmitEditing={submit} />
@@ -44,6 +44,6 @@ export default function Forgot() {
 }
 
 const st = StyleSheet.create({
-  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
+  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg3 },
 });

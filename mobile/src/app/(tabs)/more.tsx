@@ -73,7 +73,7 @@ export default function MoreTab() {
           <Btn title="링크 공유하기" onPress={() => Share.share({ message: co.link })} />
         </Card>
 
-        <View style={{ marginHorizontal: 16, marginTop: 4 }}>
+        <View style={{ marginHorizontal: 20, marginTop: 4 }}>
           {sure ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Btn title="취소" kind="gray" onPress={() => setSure(false)} style={{ flex: 1 }} />
@@ -90,10 +90,10 @@ export default function MoreTab() {
 
 const st = StyleSheet.create({
   head: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, gap: 4 },
-  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: -0.8 },
+  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   sub: { fontFamily: FONT, fontSize: 14, color: C.fg3 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
-  rowT: { flex: 1, fontFamily: FONT, fontSize: 17, fontWeight: '600', color: C.fg, letterSpacing: -0.3 },
+  rowT: { flex: 1, fontFamily: FONT, fontSize: 17, fontWeight: '600', color: C.fg, letterSpacing: 0 },
   webTag: { fontFamily: FONT, fontSize: 12, fontWeight: '600', color: C.fg3 },
   chev: { fontFamily: FONT, fontSize: 24, color: C.fg4 },
   link: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.accentInk, backgroundColor: C.accentSoft, borderRadius: 12, padding: 14, marginBottom: 12 },

@@ -28,7 +28,7 @@ export default function ReportScreen() {
   const diff = data.n - data.prev_n;
   return (
     <Screen>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingVertical: 8 }}>
         {data.months.map((m) => (
           <Pressable key={m} onPress={() => pick(m)} style={[st.chip, m === data.ym && { backgroundColor: C.fg }]}>
             <Text style={[st.chipT, m === data.ym && { color: '#fff' }]}>{busy === m ? '…' : ymLabel(m)}</Text>
@@ -70,7 +70,7 @@ export default function ReportScreen() {
           ))}
         </Card>
       ) : null}
-      <View style={{ marginHorizontal: 16 }}>
+      <View style={{ marginHorizontal: 20 }}>
         <Btn title="리포트 공유하기" kind="soft" onPress={() => Share.share({ message: data.text })} />
       </View>
     </Screen>
@@ -87,7 +87,7 @@ function Line({ label, v, last }: { label: string; v: string; last?: boolean }) 
 }
 
 const st = StyleSheet.create({
-  h1: { fontFamily: FONT, fontSize: 23, fontWeight: '700', color: C.fg, letterSpacing: -0.7 },
+  h1: { fontFamily: FONT, fontSize: 23, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   p: { fontFamily: FONT, fontSize: 15, color: C.fg3 },
   chip: { height: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: C.card, justifyContent: 'center' },
   chipT: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2 },

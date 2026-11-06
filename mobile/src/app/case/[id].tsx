@@ -185,7 +185,7 @@ export default function CaseScreen() {
           </View>
           {mode === 'ask' ? (
             <View style={{ gap: 10, marginTop: 14 }}>
-              <Field multiline placeholder="비워 두면 주문번호와 사진을 요청합니다" value={ask} onChangeText={setAsk} style={{ height: 100 }} />
+              <Field multiline placeholder="비워 두면 주문번호와 사진을 요청해요" value={ask} onChangeText={setAsk} style={{ height: 100 }} />
               <Btn title="고객에게 요청하기" onPress={() => act({ act: 'ask', ask })} busy={busy === 'ask'} />
             </View>
           ) : null}
@@ -211,7 +211,7 @@ export default function CaseScreen() {
       {can.comp ? (
         <Card>
           <H2>보상</H2>
-          <Text style={st.p}>{c.comp?.reco ? '정해 둔 보상을 추천합니다. 승인하면 고객에게 사과와 함께 알림이 갑니다.' : '보상을 하려면 내용을 적고 승인해 주세요. 자동 처리 규칙에서 유형별 보상을 정해 둘 수 있습니다.'}</Text>
+          <Text style={st.p}>{c.comp?.reco ? '정해 둔 보상을 추천해요. 승인하면 고객에게 사과와 함께 알림이 가요.' : '보상을 하려면 내용을 적고 승인해 주세요. 자동 처리 규칙에서 유형별 보상을 정해 둘 수 있어요.'}</Text>
           <View style={{ gap: 10, marginTop: 8 }}>
             <Field placeholder={`예: ${c.comp?.examples?.[0] ?? '적립금 3,000원'}`} value={comp} onChangeText={setComp} maxLength={100} />
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -223,7 +223,7 @@ export default function CaseScreen() {
       ) : c.comp?.status === 'given' ? (
         <Card>
           <H2>보상</H2>
-          <Text style={st.p}>{c.comp.given} · 고객에게 알렸습니다</Text>
+          <Text style={st.p}>{c.comp.given} · 고객에게 알렸어요</Text>
         </Card>
       ) : null}
 
@@ -238,7 +238,7 @@ export default function CaseScreen() {
           ))}
           {can.ship_track ? (
             <View style={{ gap: 10, marginTop: 8 }}>
-              <Text style={st.p}>보낸 택배사와 송장번호를 넣으면 고객에게 바로 알리고, 배송 상태가 바뀔 때마다 자동으로 알려 줍니다.</Text>
+              <Text style={st.p}>보낸 택배사와 송장번호를 넣으면 고객에게 바로 알리고, 배송 상태가 바뀔 때마다 자동으로 알려 줘요.</Text>
               <Chips items={[...(meta?.couriers ?? []), '기타']} value={courier} onChange={setCourier} />
               <Field placeholder="송장번호" keyboardType="number-pad" value={tracking} onChangeText={setTracking} />
               <Btn title="고객에게 송장 알리기" onPress={() => act({ act: 'ship_track', courier, tracking })} busy={busy === 'ship_track'} disabled={!courier || !tracking} />
@@ -324,7 +324,7 @@ export default function CaseScreen() {
           ))}
         </View>
       </Card>
-      <View style={{ marginHorizontal: 16 }}>
+      <View style={{ marginHorizontal: 20 }}>
         <RecordBtn id={c.id} />
       </View>
     </ScrollView>
@@ -383,12 +383,12 @@ function ModeBtn({ title, on, onPress }: { title: string; on: boolean; onPress: 
 const st = StyleSheet.create({
   ic: { width: 52, height: 52, borderRadius: 16, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
   cat: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg3, marginBottom: 2 },
-  title: { fontFamily: FONT, fontSize: 19, fontWeight: '700', color: C.fg, letterSpacing: -0.5, lineHeight: 26 },
+  title: { fontFamily: FONT, fontSize: 19, fontWeight: '700', color: C.fg, letterSpacing: 0, lineHeight: 26 },
   kv: { gap: 8, marginTop: 16, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
   k: { width: 76, fontFamily: FONT, fontSize: 14, color: C.fg3 },
   v: { flex: 1, fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg },
   eyebrow: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.accentInk, marginBottom: 6 },
-  planTitle: { fontFamily: FONT, fontSize: 19, fontWeight: '700', color: C.fg, letterSpacing: -0.5 },
+  planTitle: { fontFamily: FONT, fontSize: 19, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   step: { fontFamily: FONT, fontSize: 15, color: C.fg2 },
   quote: { backgroundColor: C.band, borderRadius: R.md, padding: 14, gap: 6 },
   quoteLabel: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.fg3 },

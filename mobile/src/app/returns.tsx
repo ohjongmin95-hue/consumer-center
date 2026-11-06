@@ -22,7 +22,7 @@ export default function Returns() {
           </Pressable>
         ))}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 14, paddingBottom: 12 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingBottom: 12 }}>
         {[{ key: '', label: '전체', n: data.cases.length }, ...data.stages].map((s) => {
           const on = s.key === stage;
           return (

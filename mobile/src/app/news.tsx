@@ -14,7 +14,7 @@ export default function News() {
   if (!data.news.length)
     return (
       <Screen>
-        <Text style={{ fontFamily: FONT, fontSize: 15, color: C.fg3, padding: 24 }}>아직 올라온 소식이 없습니다.</Text>
+        <Text style={{ fontFamily: FONT, fontSize: 15, color: C.fg3, padding: 24 }}>아직 올라온 소식이 없어요.</Text>
       </Screen>
     );
   return (
@@ -24,7 +24,7 @@ export default function News() {
         <Card key={n.id}>
           <Pressable onPress={() => setOpen(open === n.id ? 0 : n.id)} style={{ gap: 6 }}>
             <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3 }}>{fmtDate(n.created).replace(/ \d\d:\d\d$/, '')}</Text>
-            <Text style={{ fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: -0.4 }}>{n.title}</Text>
+            <Text style={{ fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: 0 }}>{n.title}</Text>
           </Pressable>
           {open === n.id ? (
             <View style={{ gap: 12, marginTop: 10 }}>

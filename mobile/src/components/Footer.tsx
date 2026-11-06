@@ -26,7 +26,7 @@ export function Footer() {
           <Text style={st.t}>사업자등록번호. {o.biz_no}</Text>
           <Text style={st.t}>소재지. {o.address}</Text>
           <Text style={st.t}>관리자. {o.manager}</Text>
-          <Text style={[st.t, { marginTop: 6, color: C.fg4 }]}>이 서비스에는 토스(비바리퍼블리카)가 제공한 Tossface가 적용되어 있습니다</Text>
+          <Text style={[st.t, { marginTop: 6, color: C.fg4 }]}>이 서비스에는 토스(비바리퍼블리카)가 제공한 Tossface를 썼어요</Text>
         </View>
       ) : null}
       <Text style={st.copy}>© 2026 SOBORU. All rights reserved.</Text>
@@ -37,7 +37,7 @@ export function Footer() {
 const st = StyleSheet.create({
   wrap: { marginHorizontal: 20, marginTop: 24, paddingTop: 22, paddingBottom: 16, borderTopWidth: 1, borderTopColor: C.line },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wm: { fontFamily: FONT, fontSize: 17, fontWeight: '800', color: C.brand, letterSpacing: -0.6 },
+  wm: { fontFamily: FONT, fontSize: 17, fontWeight: '800', color: C.brand, letterSpacing: 0 },
   chev: { width: 10, height: 10, borderRightWidth: 2, borderBottomWidth: 2, borderColor: C.fg, transform: [{ rotate: '45deg' }], marginTop: -5, marginRight: 4 },
   t: { fontFamily: FONT, fontSize: 12, lineHeight: 19, color: C.fg3 },
   copy: { fontFamily: FONT, fontSize: 12, fontWeight: '600', color: C.fg3, marginTop: 12 },

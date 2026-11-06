@@ -45,7 +45,7 @@ export default function ApprovalsTab() {
     setOk('');
     try {
       const r = await f();
-      setOk(r.message || '처리했습니다');
+      setOk(r.message || '처리했어요');
       await load();
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) return logout();
@@ -105,15 +105,17 @@ export default function ApprovalsTab() {
                     <Text style={st.recoR}>{c.plan_title}</Text>
                   </View>
                 ) : null}
-                <View style={st.acts}>
-                  <Pressable onPress={() => run('a' + c.id, () => api.act(token, c.id, { act: 'approve' }))} style={({ pressed }) => [st.btn, { backgroundColor: C.accent, flex: 1.4 }, pressed && { opacity: 0.85 }]}>
-                    <Text style={[st.btnT, { color: '#fff' }]}>{busy === 'a' + c.id ? '승인 중' : '승인'}</Text>
+                {/* 운영자 원칙: 버튼은 나란히 두지 않음 — 승인 하나를 크게, 보류·자료 요청은 아래 글자 링크로 (토스 TDS 버튼 h56 r16) */}
+                <Pressable onPress={() => run('a' + c.id, () => api.act(token, c.id, { act: 'approve' }))} style={({ pressed }) => [st.btn, pressed && { opacity: 0.85 }]} accessibilityRole="button">
+                  <Text style={st.btnT}>{busy === 'a' + c.id ? '승인하는 중' : '승인하기'}</Text>
+                </Pressable>
+                <View style={st.links}>
+                  <Pressable onPress={() => run('h' + c.id, () => api.act(token, c.id, { act: 'hold' }))} hitSlop={10} accessibilityRole="button">
+                    <Text style={st.link}>{busy === 'h' + c.id ? '보류하는 중' : '보류하기'}</Text>
                   </Pressable>
-                  <Pressable onPress={() => run('h' + c.id, () => api.act(token, c.id, { act: 'hold' }))} style={({ pressed }) => [st.btn, pressed && { opacity: 0.7 }]}>
-                    <Text style={st.btnT}>보류</Text>
-                  </Pressable>
-                  <Pressable onPress={() => run('k' + c.id, () => api.act(token, c.id, { act: 'ask' }))} style={({ pressed }) => [st.btn, pressed && { opacity: 0.7 }]}>
-                    <Text style={st.btnT}>자료 요청</Text>
+                  <Text style={st.linkDot}>·</Text>
+                  <Pressable onPress={() => run('k' + c.id, () => api.act(token, c.id, { act: 'ask' }))} hitSlop={10} accessibilityRole="button">
+                    <Text style={st.link}>{busy === 'k' + c.id ? '요청하는 중' : '자료 요청하기'}</Text>
                   </Pressable>
                 </View>
               </Card>
@@ -138,18 +140,20 @@ function dueText(due: string) {
 }
 
 const st = StyleSheet.create({
-  warn: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: C.card, borderRadius: R.lg, padding: 18, marginHorizontal: 14, marginBottom: 12 },
+  warn: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: C.card, borderRadius: R.lg, padding: 18, marginHorizontal: 20, marginBottom: 12 },
   warnT: { fontFamily: FONT, fontSize: 15, fontWeight: '700', color: C.fg },
   warnS: { fontFamily: FONT, fontSize: 13, color: C.fg3 },
-  bulk: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 14, marginBottom: 12 },
+  bulk: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 20, marginBottom: 12 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   metaT: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.fg3 },
-  title: { fontFamily: FONT, fontSize: 18, lineHeight: 26, fontWeight: '700', color: C.fg, letterSpacing: -0.5 },
+  title: { fontFamily: FONT, fontSize: 18, lineHeight: 26, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   want: { fontFamily: FONT, fontSize: 14, color: C.fg3, marginTop: 4 },
   reco: { backgroundColor: C.fill, borderRadius: 14, padding: 14, marginTop: 14, gap: 4 },
   recoL: { fontFamily: FONT, fontSize: 12, fontWeight: '700', color: C.accentInk },
   recoR: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg },
-  acts: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  btn: { flex: 1, height: 48, borderRadius: 14, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
-  btnT: { fontFamily: FONT, fontSize: 16, fontWeight: '700', color: C.fg2 },
+  btn: { height: 56, borderRadius: 16, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  btnT: { fontFamily: FONT, fontSize: 17, fontWeight: '700', color: '#fff' },
+  links: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 14 },
+  link: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
+  linkDot: { fontFamily: FONT, fontSize: 15, color: C.fg4 },
 });

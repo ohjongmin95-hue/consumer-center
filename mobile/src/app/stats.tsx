@@ -26,7 +26,7 @@ export default function Stats() {
         <Big label="첫 답변까지" v={hrs(data.reply_h)} />
       </View>
       <Card style={{ paddingVertical: 4 }}>
-        <MenuRow title="월간 리포트" sub="지난달 요청을 한 장으로 정리했습니다" onPress={() => router.push('/report')} last />
+        <MenuRow title="월간 리포트" sub="지난달 요청을 한 장으로 정리했어요" onPress={() => router.push('/report')} last />
       </Card>
       <Card>
         <H2>주별 요청</H2>
@@ -59,14 +59,14 @@ export default function Stats() {
           <H2>같은 업종과 비교 (최근 90일)</H2>
           {cmp.ready ? (
             <View style={{ gap: 10 }}>
-              <Text style={st.p}>같은 업종 {cmp.peers}곳의 평균과 비교했습니다.</Text>
+              <Text style={st.p}>같은 업종 {cmp.peers}곳의 평균과 비교했어요.</Text>
               <Cmp label="자동 처리율" mine={pct(cmp.mine.auto)} avg={pct(cmp.avg.auto)} />
               <Cmp label="해결률" mine={pct(cmp.mine.res)} avg={pct(cmp.avg.res)} />
               <Cmp label="첫 답변까지" mine={hrs(cmp.mine.reply_h)} avg={hrs(cmp.avg.reply_h)} />
             </View>
           ) : (
             <Text style={st.p}>
-              같은 업종 기업이 {cmp.need}곳 이상 모이면 비교해 드립니다. (지금 {cmp.have}곳)
+              같은 업종 기업이 {cmp.need}곳 이상 모이면 비교해 드려요. (지금 {cmp.have}곳)
             </Text>
           )}
         </Card>
@@ -79,7 +79,7 @@ function Big({ label, v }: { label: string; v: string }) {
   return (
     <View style={st.big}>
       <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3, fontWeight: '600' }}>{label}</Text>
-      <Text style={{ fontFamily: FONT, fontSize: 22, fontWeight: '700', color: C.fg, letterSpacing: -0.6 }}>{v}</Text>
+      <Text style={{ fontFamily: FONT, fontSize: 22, fontWeight: '700', color: C.fg, letterSpacing: 0 }}>{v}</Text>
     </View>
   );
 }
@@ -94,7 +94,7 @@ function Cmp({ label, mine, avg }: { label: string; mine: string; avg: string })
 }
 
 const st = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 16, marginTop: 8, marginBottom: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 20, marginTop: 8, marginBottom: 12 },
   big: { flexGrow: 1, flexBasis: '45%', backgroundColor: C.card, borderRadius: 16, padding: 16, gap: 6 },
   weeks: { flexDirection: 'row', alignItems: 'flex-end' },
   wn: { fontFamily: FONT, fontSize: 12, fontWeight: '700', color: C.fg2 },

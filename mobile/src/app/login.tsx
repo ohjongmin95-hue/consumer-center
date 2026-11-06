@@ -57,7 +57,6 @@ export default function Login() {
             <Text style={st.h1}>
               고객 응대는 <Text style={{ color: C.accent }}>소보루</Text>가,{'\n'}사장님은 확인만
             </Text>
-            <Text style={st.sub}>반복되는 문의는 소보루가 대신 처리합니다.{'\n'}판단이 필요한 요청만 승인해 주세요.</Text>
           </View>
           <View style={st.form}>
             <Field placeholder="로그인 이메일" value={id} onChangeText={setId} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="username" />
@@ -87,8 +86,8 @@ export default function Login() {
 const st = StyleSheet.create({
   top: { paddingHorizontal: 24, paddingTop: 28, gap: 14 },
   logo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 18 },
-  wm: { fontFamily: FONT, fontSize: 22, fontWeight: '800', color: C.brand, letterSpacing: -0.8 },
-  h1: { fontFamily: FONT, fontSize: 28, lineHeight: 38, fontWeight: '700', color: C.fg, letterSpacing: -0.9 },
+  wm: { fontFamily: FONT, fontSize: 22, fontWeight: '800', color: C.brand, letterSpacing: 0 },
+  h1: { fontFamily: FONT, fontSize: 28, lineHeight: 38, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   sub: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg3 },
   form: { paddingHorizontal: 24, paddingTop: 32, gap: 12 },
   links: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 8 },

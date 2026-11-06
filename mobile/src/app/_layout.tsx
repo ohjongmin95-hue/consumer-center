@@ -101,7 +101,7 @@ export default function RootLayout() {
 
 const st = StyleSheet.create({
   intro: { backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
-  wm: { fontFamily: FONT, fontSize: 30, fontWeight: '800', color: C.brand, letterSpacing: -1, marginTop: 14 },
+  wm: { fontFamily: FONT, fontSize: 30, fontWeight: '800', color: C.brand, letterSpacing: 0, marginTop: 14 },
   sub: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg3, marginTop: 6 },
   foot: { position: 'absolute', bottom: 48, fontFamily: FONT, fontSize: 13, color: C.fg4 },
 });

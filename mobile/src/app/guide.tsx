@@ -15,14 +15,14 @@ export default function Guide() {
   return (
     <Screen>
       <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14 }}>
-        <Text style={st.p}>고객이 자주 하는 요청별로 지켜야 할 법과 답변 예시를 모았어요. 법 조항은 원문 그대로이고, 쉬운 설명과 예시 문구는 참고용이며 법률 자문이 아닙니다.</Text>
+        <Text style={st.p}>고객이 자주 하는 요청별로 지켜야 할 법과 답변 예시를 모았어요. 법 조항은 원문 그대로이고, 쉬운 설명과 예시 문구는 참고용이에요. 법률 자문은 아니에요.</Text>
       </View>
       {data.guide.map((g) => (
         <Item key={g.id} g={g} open={open === g.id} onToggle={() => setOpen(open === g.id ? '' : g.id)} />
       ))}
       <Card style={{ gap: 10 }}>
         <Text style={st.h2}>품목별 소비자분쟁해결기준</Text>
-        <Text style={st.p}>수리·교환·환불을 어떻게 해 줄지는 공정거래위원회가 품목별로 정한 기준을 따릅니다. 내용이 길고 자주 바뀌어 공식 원문에서 확인해 주세요.</Text>
+        <Text style={st.p}>수리·교환·환불을 어떻게 해 줄지는 공정거래위원회가 품목별로 정한 기준을 따라요. 내용이 길고 자주 바뀌어 공식 원문에서 확인해 주세요.</Text>
         <Btn title="원문 보기" kind="gray" onPress={() => WebBrowser.openBrowserAsync(data.kca)} />
       </Card>
     </Screen>
@@ -55,7 +55,7 @@ function Item({ g, open, onToggle }: { g: GuideItem; open: boolean; onToggle: ()
             {g.sample}
           </Text>
           <Btn
-            title={copied ? '복사했습니다' : '예시 문구 복사'}
+            title={copied ? '복사했어요' : '예시 문구 복사'}
             kind="soft"
             onPress={async () => {
               await Clipboard.setStringAsync(g.sample);
@@ -79,7 +79,7 @@ function Item({ g, open, onToggle }: { g: GuideItem; open: boolean; onToggle: ()
 
 const st = StyleSheet.create({
   p: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 },
-  h2: { fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: -0.4 },
+  h2: { fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: 0 },
   ph: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.fg3, marginTop: 4 },
   body: { fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg },
   ref: { fontFamily: FONT, fontSize: 12, color: C.fg3 },

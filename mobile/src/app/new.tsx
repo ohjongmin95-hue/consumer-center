@@ -33,7 +33,7 @@ export default function NewCase() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen>
         <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14 }}>
-          <Text style={{ fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 }}>다른 곳으로 받은 요청도 여기 올리면 추천 처리, 답변 초안, 기록 관리를 똑같이 쓸 수 있습니다.</Text>
+          <Text style={{ fontFamily: FONT, fontSize: 15, lineHeight: 23, color: C.fg2 }}>다른 곳으로 받은 요청도 여기 올리면 추천 처리, 답변 초안, 기록 관리를 똑같이 쓸 수 있어요.</Text>
         </View>
         <Card style={{ gap: 12 }}>
           <L t="어디로 받았나요" />
@@ -57,7 +57,7 @@ export default function NewCase() {
           <Field label="고객 이메일 (선택)" value={f.email} onChangeText={set('email')} autoCapitalize="none" keyboardType="email-address" />
         </Card>
         <Notice text={e2} />
-        <View style={{ marginHorizontal: 16 }}>
+        <View style={{ marginHorizontal: 20 }}>
           <Btn title="등록하기" onPress={submit} busy={busy} />
         </View>
       </Screen>

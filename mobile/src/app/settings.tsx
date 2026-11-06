@@ -17,7 +17,7 @@ export default function SettingsScreen() {
       <Return s={data} onSaved={setData} />
       <Notify s={data} onSaved={setData} />
       <Password />
-      <View style={{ marginHorizontal: 16, marginTop: 4 }}>
+      <View style={{ marginHorizontal: 20, marginTop: 4 }}>
         <Btn title="회원 탈퇴" kind="gray" onPress={() => router.push('/leave')} />
       </View>
     </Screen>
@@ -37,7 +37,7 @@ function useSave(onSaved?: (s: Settings) => void) {
       const s = await api.saveSettings(session.token, f);
       if (s.token) await setToken(s.token);
       onSaved?.(s);
-      setMsg({ t: s.message ?? '저장했습니다', ok: true });
+      setMsg({ t: s.message ?? '저장했어요', ok: true });
       return true;
     } catch (e) {
       setMsg({ t: errText(e, logout), ok: false });
@@ -67,7 +67,7 @@ function Info({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void }) {
   const { busy, msg, save } = useSave(onSaved);
   const toneLabel = s.tones.find((t) => t.value === f.tone)?.label ?? '';
   return (
-    <Section title="회사 정보" sub={`${s.name} · ${s.login_id}`}>
+    <Section title="회사 정보" sub={s.login_id ? `${s.name} · ${s.login_id}` : s.name}>
       <Field label="고객에게 안내할 연락처" value={f.contact} onChangeText={(v) => setF({ ...f, contact: v })} placeholder="예: 02-123-4567" />
       <Field label="알림 받을 이메일" value={f.notify_email} onChangeText={(v) => setF({ ...f, notify_email: v })} autoCapitalize="none" keyboardType="email-address" />
       <Label>업종</Label>
@@ -84,14 +84,14 @@ function Return({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void })
   const [f, setF] = useState({ return_address: s.return_address, return_courier: s.return_courier, return_memo: s.return_memo });
   const { busy, msg, save } = useSave(onSaved);
   return (
-    <Section title="반품 안내" sub="반품·교환 요청에 이 주소와 택배사를 고객에게 안내합니다">
+    <Section title="반품 안내" sub="반품·교환 요청에 이 주소와 택배사를 고객에게 안내해요">
       <Field label="반품 받을 주소" value={f.return_address} onChangeText={(v) => setF({ ...f, return_address: v })} placeholder="예: 서울시 강남구 … 3층 물류팀" />
       <Label>이용 택배사</Label>
       <Chips items={s.couriers} value={f.return_courier} onChange={(v) => setF({ ...f, return_courier: v === f.return_courier ? '' : v })} />
       <Field label="함께 안내할 말 (선택)" value={f.return_memo} onChangeText={(v) => setF({ ...f, return_memo: v })} placeholder="예: 상품 택을 떼지 말고 보내 주세요" />
       {s.return_guide ? (
         <View style={{ backgroundColor: C.fill, borderRadius: 12, padding: 12 }}>
-          <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3, marginBottom: 6, fontWeight: '600' }}>고객에게 이렇게 보입니다</Text>
+          <Text style={{ fontFamily: FONT, fontSize: 13, color: C.fg3, marginBottom: 6, fontWeight: '600' }}>고객에게 이렇게 보여요</Text>
           <Text style={{ fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.fg2 }}>{s.return_guide}</Text>
         </View>
       ) : null}
@@ -105,10 +105,10 @@ function Notify({ s, onSaved }: { s: Settings; onSaved: (s: Settings) => void })
   const [f, setF] = useState({ phone: s.phone, kakao: s.kakao, report_mail: s.report_mail });
   const { busy, msg, save } = useSave(onSaved);
   return (
-    <Section title="알림" sub="새 요청은 이 앱 알림으로 바로 알려 드립니다">
-      <Toggle title="카카오 알림톡" sub={s.kakao_ready ? '새 요청이 오면 알림톡으로도 알려 드립니다' : '알림톡은 준비 중입니다'} value={f.kakao} onChange={(v) => setF({ ...f, kakao: v })} disabled={!s.kakao_ready && !f.kakao} />
+    <Section title="알림" sub="새 요청은 이 앱 알림으로 바로 알려 드려요">
+      <Toggle title="카카오 알림톡" sub={s.kakao_ready ? '새 요청이 오면 알림톡으로도 알려 드려요' : '알림톡은 준비 중이에요'} value={f.kakao} onChange={(v) => setF({ ...f, kakao: v })} disabled={!s.kakao_ready && !f.kakao} />
       {f.kakao ? <Field label="알림톡 받을 휴대폰" value={f.phone} onChangeText={(v) => setF({ ...f, phone: v })} keyboardType="phone-pad" /> : null}
-      <Toggle title="월간 리포트 메일" sub="매달 1일 지난달 리포트를 이메일로 보내 드립니다" value={f.report_mail} onChange={(v) => setF({ ...f, report_mail: v })} />
+      <Toggle title="월간 리포트 메일" sub="매달 1일 지난달 리포트를 이메일로 보내 드려요" value={f.report_mail} onChange={(v) => setF({ ...f, report_mail: v })} />
       {msg.t ? <Notice text={msg.t} tone={msg.ok ? 'ok' : 'error'} flat /> : null}
       <Btn title="저장" onPress={() => save({ act: 'notify', ...f })} busy={busy} />
       <Btn title="알림 종류별로 받을 곳 정하기" kind="soft" onPress={() => router.push('/alerts')} />
