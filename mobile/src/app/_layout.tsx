@@ -20,7 +20,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.head.appendChild(font);
 }
 
-// 앱을 켜면 하얀 바탕에 소보루 캐릭터(기본 시작 화면) → 같은 자리에 '소보루 CS' 로고 화면 → 로그인 확인이 끝나면 부드럽게 사라진다
+// 앱을 켜면 하얀 바탕에 소보루 캐릭터(기본 시작 화면) → 같은 자리에 '소보루 CX' 로고 화면 → 로그인 확인이 끝나면 부드럽게 사라진다
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function Intro() {

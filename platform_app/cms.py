@@ -187,7 +187,7 @@ def help_post(slug):return show('help',slug,'p_post.html')
 @bp.route('/customers')
 def stories():
     with conn() as db:rows=published(db,'story')
-    return render_template('p_list.html',kind='story',rows=rows,cat=None,cats=[],title='고객 사례',lead='소보루 CS를 쓰는 회사의 실제 이야기예요. 회사가 공개에 동의한 사례만 올려요.',tab='cms.stories')
+    return render_template('p_list.html',kind='story',rows=rows,cat=None,cats=[],title='고객 사례',lead='소보루 CX를 쓰는 회사의 실제 이야기예요. 회사가 공개에 동의한 사례만 올려요.',tab='cms.stories')
 @bp.route('/customers/<slug>')
 def story(slug):return show('story',slug,'p_post.html')
 
