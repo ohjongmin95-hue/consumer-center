@@ -3,14 +3,16 @@
 deploy/soboru-content.timer가 아침 9시·오후 1시·저녁 9시쯤 `python -m auto_content`를 부른다. 한 번에 AUTO_CONTENT_PER_RUN편(기본 1).
 - 소재: 최근 게시된 매거진 기사 중 조회수가 큰 순서. 이미 만든 기사는 건너뜀(auto_content 표).
 - 글: 매거진 AI 도움의 카드뉴스 지시문(mag_assist)을 그대로 씀. 기사에 없는 숫자가 들어간 답은 버리고 다음 기사로 넘어감.
-- 표지 (운영자 2026-11-06: 풍경만 나오지 말고 상황에 맞는 사람이 나오게, 가끔은 다르게): 세 번 중 두 번은 언스플래시에서 상황에 맞는 인물 사진
-  (놀라는 표정 등, AI가 검색어를 짬). 나머지와 못 찾았을 때는 기사 사진. 그것도 없으면 글자 표지. 언스플래시 사진은 캡션에 사진가를 밝힘.
+- 표지 (운영자 2026-11-06: AI로 만들 때는 한국인이 나와도 되고, 언스플래시는 풍경이어도 됨): 세 번 중 두 번은 OpenAI로 상황에 맞는 한국인을 그림
+  (놀라는 표정 등, 가상 인물). 나머지와 그리지 못했을 때는 기사 사진(직접 올린 그림 또는 언스플래시). 그것도 없으면 글자 표지.
+  언스플래시 사진은 캡션에 사진가를, AI 그림은 AI 이미지임을 밝힘.
 - 카드: 1080x1350 PNG. 릴스: 1080x1920 전체 화면(위아래 띠 없음), 무음, 장면을 PNG로 그려 mag_maker.build로 합침.
 - 저장: 만든 것 보관함(maker='auto'). 게시는 하지 않음. 끝나면 텔레그램으로 알림.
 브라우저 없이 그려서 관리자 화면(static/maker.js)의 소보루 디자인과 조금 다를 수 있음.
 
 쓰는 법: python -m auto_content [--dry] [--article 번호]   (--dry: AI·저장 없이 고를 기사만 보여 줌)
 """
+import base64
 import datetime
 import io
 import os
@@ -33,10 +35,11 @@ LOGO = Path(__file__).resolve().parent / 'static' / 'img' / 'soboru-wordmark.png
 WEIGHTS = {500: 'Medium', 700: 'Bold', 800: 'ExtraBold', 900: 'Black'}
 SITE = 'consumerjebo.co.kr'
 LOOKBACK_DAYS = 3
-PEOPLE_ASK = ('\n[사람 표지] JSON에 "people_query"도 넣는다: 표지에 쓸 언스플래시 검색어, 영어 3~5단어. 기사 상황에 맞는 평범한 사람의 표정이나 행동을 '
-              '구체적으로 쓰고 "korean"을 넣는다(예: "korean woman surprised phone", "korean man shocked receipt", "korean couple worried bills"). '
-              '기사의 당사자로 오해할 만한 장면, 범죄·사고 장면, 실존 인물, 회사·브랜드 이름은 쓰지 않는다.')
-PERSON = re.compile(r'\b(person|people|woman|women|man|men|girl|boy|guy|lady|couple|face|portrait|student|worker)\b', re.I)
+PEOPLE_ASK = ('\n[사람 표지] JSON에 "people_scene"도 넣는다: 표지 그림 장면을 영어 한 문장으로. 기사 상황에 맞는 평범한 한국인 한두 명의 표정과 행동을 '
+              '구체적으로 쓴다(예: "a young Korean woman on a sofa looking shocked at her phone"). 범죄·사고 장면, 기사 당사자로 오해할 만한 장면, 실존 인물, 회사·브랜드, 글자는 넣지 않는다.')
+PERSON_DRAW = ('Photorealistic candid editorial photo for a Korean consumer magazine cover, natural light, portrait, lifestyle look. Scene: {scene}. '
+               'The people are fictional ordinary Korean people with natural, clearly visible expressions, not any real or famous person. '
+               'Keep the lower third calm for a headline. No text, no letters, no numbers, no logos, no brand names, no watermarks.')
 SCENE_SEC = {'cover': 3.0, 'body': 4.5, 'quote': 4.0, 'last': 4.5}
 
 
@@ -298,7 +301,6 @@ def install(S):
     app, conn = S.app, S.conn
     art_dir = S.UPLOAD / 'art'
     with conn() as db:
-        db.execute('CREATE TABLE IF NOT EXISTS auto_content_photos(photo_id TEXT PRIMARY KEY,created TEXT NOT NULL)')
         db.execute("CREATE TABLE IF NOT EXISTS auto_content(article_id INTEGER PRIMARY KEY,status TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',"
                    "card_id INTEGER,reel_id INTEGER,created TEXT NOT NULL)")
 
@@ -324,32 +326,21 @@ def install(S):
         with conn() as db: n = db.execute("SELECT COUNT(*) FROM auto_content WHERE status='made'").fetchone()[0]
         return n % 3 != 2
 
-    def people_cover(query):
-        """언스플래시 인물 사진. (그림, 사진가) 또는 (None, ''). 못 찾아도 멈추지 않음."""
-        if not query or not os.getenv('UNSPLASH_ACCESS_KEY', '').strip(): return None, ''
-        import soboru_letter as L
+    def person_cover(scene):
+        """OpenAI로 상황에 맞는 한국인을 그림. 그림 또는 None. 못 그려도 멈추지 않음."""
+        scene = ' '.join(str(scene or '').split())[:400]
+        if len(scene) < 3: return None
+        import companydesk as desk, soboru_art
+        key = desk.ai_key_for('mag_maker')
+        if not key: return None
+        body = {'model': soboru_art.image_model(), 'prompt': PERSON_DRAW.format(scene=scene), 'size': '1024x1536', 'quality': soboru_art.image_quality(), 'output_format': 'jpeg', 'n': 1}
         try:
-            with conn() as db: used = {r[0] for r in db.execute('SELECT photo_id FROM auto_content_photos')}
-            for q in (query, re.sub(r'\bkorean\b', 'asian', query, flags=re.I)):
-                st, res = L.unsplash_call('/search/photos', {'query': q, 'orientation': 'portrait', 'per_page': 30, 'content_filter': 'high'})
-                if st != 200 or not isinstance(res, dict): return None, ''
-                photos = [p for p in res.get('results') or [] if p.get('id') not in used]
-                # 설명에 사람이 나온다고 적힌 사진만 (풍경이 잘못 걸리지 않게)
-                photos = [p for p in photos if PERSON.search(' '.join(str(p.get(k) or '') for k in ('alt_description', 'description')))]
-                for ph in photos[:5]:
-                    try:
-                        img = fetch_image(ph['urls']['raw'] + ('&' if '?' in ph['urls']['raw'] else '?') + 'w=1600&q=85&fm=jpg&fit=max')
-                    except Exception:
-                        continue
-                    with conn() as db:
-                        db.execute('INSERT OR IGNORE INTO auto_content_photos VALUES(?,?)', (ph['id'], datetime.datetime.now().isoformat(timespec='seconds')))
-                    dl = (ph.get('links') or {}).get('download_location')
-                    if dl: L.unsplash_call(dl)  # 언스플래시 규칙: 쓰기로 고른 사진은 download 주소를 한 번 부름
-                    user = ph.get('user') or {}
-                    return img, str(user.get('name') or user.get('username') or '')[:60]
+            st, res = desk.post_json('https://api.openai.com/v1/images/generations', {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, 150)
+            if st != 200: return None
+            with Image.open(io.BytesIO(base64.b64decode(res['data'][0]['b64_json']))) as im: return im.convert('RGB')
         except Exception as e:
             app.logger.warning('자동 콘텐츠 사람 표지 실패: %s', str(e)[:160])
-        return None, ''
+            return None
 
     def article_image(article_id):
         """기사에 쓰는 사진: 직접 올린 그림, 없으면 기사의 언스플래시 사진. (그림, 사진가)"""
@@ -366,9 +357,12 @@ def install(S):
             app.logger.warning('자동 콘텐츠 기사 사진 실패: %s', str(e)[:160])
         return None, ''
 
-    def cover_image(article_id, query):
-        img, who = people_cover(query) if want_people() else (None, '')
-        return (img, who) if img is not None else article_image(article_id)
+    def cover_image(article_id, scene):
+        """(그림, 캡션에 덧붙일 말)"""
+        img = person_cover(scene) if want_people() else None
+        if img is not None: return img, 'AI로 만든 이미지예요.'
+        img, who = article_image(article_id)
+        return img, f'사진: {who} / Unsplash' if who else ''
 
     def plan_for(article):
         import mag_assist
@@ -382,16 +376,16 @@ def install(S):
         said = ' '.join(p['title'] + ' ' + p['sub'] + ' ' + p['items'] for p in plan) + ' ' + head
         extra = sorted(mag_assist.numbers(said) - mag_assist.numbers(src) - mag_assist.numbers(source))
         if extra: raise ValueError('기사에 없는 숫자: ' + ', '.join(extra[:5]))
-        return plan, head + '\n\n' + tags, source, ' '.join(str(out.get('people_query') or '').split())[:60]
+        return plan, head + '\n\n' + tags, source, str(out.get('people_scene') or '')
 
     def make(article):
         """기사 한 편으로 카드뉴스와 릴스를 만들어 보관함에 저장. (카드 번호, 릴스 번호, 제목)"""
         import mag_maker
         made = app.extensions['made_api']
-        plan, caption, source, query = plan_for(article)
+        plan, caption, source, scene = plan_for(article)
         title = plain(plan[0]['title']).replace('\n', ' ')
-        img, who = cover_image(article['id'], query)
-        if who: caption += f'\n\n사진: {who} / Unsplash'
+        img, credit = cover_image(article['id'], scene)
+        if credit: caption += '\n\n' + credit
         total = len(plan)
         with tempfile.TemporaryDirectory(prefix='soboru-auto-') as tmp:
             card_id = made['create']('card', title, caption, source, 'auto')
