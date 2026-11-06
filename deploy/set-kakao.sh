@@ -4,7 +4,7 @@
 #   하나씩 물어봐요. 비워 두고 엔터를 누르면 지금 값을 그대로 둬요(템플릿 심사가 나중에 끝나면 다시 실행해서 그 코드만 넣으면 돼요).
 #   업체별 값은 따로 저장돼요. 두 업체를 다 넣어 두면 다시 실행해서 업체만 바꿔도 돼요.
 #   키와 시크릿은 화면에 보이지 않고 /etc/soboru.env에만 저장돼요(채팅·코드에는 넣지 마세요).
-#   소보루 CS(/etc/soboru-platform.env)는 건드리지 않아요. 템플릿 문구는 docs/notifications.md
+#   소보루 CX(/etc/soboru-platform.env)는 건드리지 않아요. 템플릿 문구는 docs/notifications.md
 set -euo pipefail
 ENV_FILE=/etc/soboru.env
 [[ $EUID -eq 0 ]] || { echo "sudo로 실행해 주세요."; exit 1; }

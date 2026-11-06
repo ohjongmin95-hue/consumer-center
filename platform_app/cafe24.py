@@ -490,7 +490,7 @@ def sync_all():
     return n
 
 # ---------- 앱 삭제 웹훅 ----------
-# 사장님이 카페24 관리자 > 앱에서 소보루 CS를 지우면 카페24가 이벤트 90077을 보낸다. 연결을 '앱 삭제됨'으로 바꾸고 토큰을 지운다
+# 사장님이 카페24 관리자 > 앱에서 소보루 CX를 지우면 카페24가 이벤트 90077을 보낸다. 연결을 '앱 삭제됨'으로 바꾸고 토큰을 지운다
 # (가져온 주문·요청은 그대로 둔다). 인증정보(CAFE24_WEBHOOK_KEY)가 맞으면 그대로 믿고, 없거나 다르면 카페24에 직접 물어
 # 토큰이 정말 막혔을 때만 끊는다: 남이 이 주소로 가짜 이벤트를 보내도 살아 있는 연결은 끊기지 않는다.
 APP_DELETED=90077
@@ -508,8 +508,8 @@ def app_deleted(db,mall,trusted):
     for lk in db.execute("SELECT * FROM cafe24_links WHERE mall_id=? AND status!='removed'",(mall,)).fetchall():
         if not trusted and _still_works(db,lk['company_id']) is not False:
             log.warning('카페24 앱 삭제 이벤트를 확인하지 못해 연결을 그대로 둠: %s',mall);continue
-        db.execute("UPDATE cafe24_links SET status='removed',creds='',note=? WHERE company_id=?",('카페24에서 소보루 CS 앱을 지웠어요. 다시 쓰려면 다시 연결해 주세요.',lk['company_id']))
-        core.notify_company_link_broken(core.company(db,lk['company_id']),'카페24','카페24 관리자에서 소보루 CS 앱을 지웠어요','/connect/cafe24',db);n+=1
+        db.execute("UPDATE cafe24_links SET status='removed',creds='',note=? WHERE company_id=?",('카페24에서 소보루 CX 앱을 지웠어요. 다시 쓰려면 다시 연결해 주세요.',lk['company_id']))
+        core.notify_company_link_broken(core.company(db,lk['company_id']),'카페24','카페24 관리자에서 소보루 CX 앱을 지웠어요','/connect/cafe24',db);n+=1
     return n
 # 게시물 등록·댓글 이벤트는 '지금 그 쇼핑몰 게시판을 가져오라'는 신호로만 쓴다 (내용은 믿지 않고 카페24 API로 다시 읽는다).
 # 그래서 가짜 이벤트가 와도 할 수 있는 건 가져오기를 한 번 더 하는 것뿐이다. 같은 회사는 몇 초에 한 번만.
@@ -632,7 +632,7 @@ def launch_ok(raw_query):
 
 @bp.route('/cafe24/launch')
 def launch():
-    """카페24에서 '소보루 CS' 앱을 누르면 오는 곳. 로그인돼 있으면 바로 연결(권한 동의)로, 아니면 가입·로그인 뒤 이어서."""
+    """카페24에서 '소보루 CX' 앱을 누르면 오는 곳. 로그인돼 있으면 바로 연결(권한 동의)로, 아니면 가입·로그인 뒤 이어서."""
     if not ready():abort(404)
     mall=launch_ok(request.query_string.decode())
     if not mall:
@@ -641,7 +641,7 @@ def launch():
         return redirect(url_for('login'))
     session['c24_launch']=mall
     if not session.get('co_id'):
-        flash(f'카페24 쇼핑몰({mall})을 소보루 CS에 연결할게요. 먼저 가입하거나 로그인해 주세요.','ok')
+        flash(f'카페24 쇼핑몰({mall})을 소보루 CX에 연결할게요. 먼저 가입하거나 로그인해 주세요.','ok')
         return redirect(url_for('signup'))
     co=company()
     with conn() as db:lk=link(db,co['id'])
@@ -689,7 +689,7 @@ def page():
                 else:
                     mall=clean(request.form.get('mall_id'),40).lower().removesuffix('.cafe24.com')
                     launched=bool(mall) and session.get('c24_launch')==mall  # 카페24 관리자에서 앱을 열고 온 쇼핑몰
-                    if not co['member'] and not launched:flash('판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 할 수 있어요. 카페24 관리자에서 소보루 CS 앱을 열면 바로 연결할 수 있어요.','error')
+                    if not co['member'] and not launched:flash('판매처 연결은 실제 고객 정보를 가져오는 일이라 회사 인증이 끝난 뒤에 할 수 있어요. 카페24 관리자에서 소보루 CX 앱을 열면 바로 연결할 수 있어요.','error')
                     elif not MALL_RE.match(mall):flash('카페24 쇼핑몰 아이디를 확인해 주세요 (관리자 로그인 아이디, 예: myshop)','error')
                     else:
                         nonce=secrets.token_urlsafe(12);session['c24_nonce']=nonce

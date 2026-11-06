@@ -68,7 +68,7 @@ class PlatformTest(unittest.TestCase):
         return int(r.headers['Location'].rstrip('/').split('/')[-1])
 
     def test_app_api(self):
-        """소보루 CS 앱 API: 쿠키 없이 요청별 토큰으로 접수·조회·답변 확인·알림 등록."""
+        """소보루 CX 앱 API: 쿠키 없이 요청별 토큰으로 접수·조회·답변 확인·알림 등록."""
         b,o,cid=self.signup_and_approve('앱테스트상점','apptest@example.com')
         a=self.client()
         meta=a.get('/api/v1/meta').get_json();self.assertEqual(meta['cats'][0],{'name':'배송 조회','hint':'배송이 안 오거나 늦어요'})
@@ -978,7 +978,7 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(me.get('/to/99999').status_code,404)
         self.assertIn('value="바른가전"',me.get(f'/new?company_id={cid}').get_data(as_text=True))
         page=b.get('/biz/settings').get_data(as_text=True)
-        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 CS',page);self.assertIn('soboru-char.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
+        self.assertIn(f'/to/{cid}',page);self.assertIn('설정 · 소보루 CX',page);self.assertIn('soboru-char.png',page);self.assertIn('soboru-favicon.png',page);self.assertNotIn('SOBORU Business',page)
         case_id=self.file_case(me,'바른가전','교환',str(cid),title='세탁기 소음')
         self.assertNotIn('기업에 다시 요청할까요',me.get(f'/case/{case_id}').get_data(as_text=True))
         # 답변 목표일이 지나면 한 번만 지연 알림
@@ -1701,7 +1701,7 @@ class PlatformTest(unittest.TestCase):
             with patch.object(self.core,'send_mail',lambda to,sub,body:mails.append(sub)):
                 r=self.post(b,'/biz/connect/cafe24',{'act':'sync'},follow_redirects=True);self.assertIn('만료됐어요',r.get_data(as_text=True))
                 self.post(b,'/biz/connect/cafe24',{'act':'sync'})
-            self.assertEqual(mails,['[소보루 CS] 카페24 연결을 확인해 주세요'])  # 처음 끊겼을 때 한 번만
+            self.assertEqual(mails,['[소보루 CX] 카페24 연결을 확인해 주세요'])  # 처음 끊겼을 때 한 번만
             with self.core.conn() as db:self.assertEqual(c24.link(db,cid)['status'],'reconnect')
             self.assertIn('다시 연결 필요',b.get('/biz/connect/cafe24').get_data(as_text=True))
             self.post(b,'/biz/connect/cafe24',{'act':'delete'})
@@ -1857,7 +1857,7 @@ class PlatformTest(unittest.TestCase):
         def fake(method,url,headers=None,body=None):
             if '/oauth/token' in url:return 400,{'error':'invalid_grant'}
             return (200,{'store':{}}) if alive[0] else (401,{})
-        ev={'event_no':90077,'resource':{'mall_id':'delshop','client_id':'cid','app_name':'소보루 CS'}}
+        ev={'event_no':90077,'resource':{'mall_id':'delshop','client_id':'cid','app_name':'소보루 CX'}}
         with patch.dict(os.environ,{'CAFE24_CLIENT_ID':'cid','CAFE24_CLIENT_SECRET':'csec','CAFE24_WEBHOOK_KEY':'hookkey'}),patch.object(shops,'http',fake):
             with self.core.conn() as db:c24.store(db,cid,'delshop',{'access_token':'A1','refresh_token':'R1','expires_at':'2099-01-01T00:00:00','scopes':['mall.read_order']})
             def st():

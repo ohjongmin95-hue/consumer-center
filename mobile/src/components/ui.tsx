@@ -10,7 +10,7 @@ import { Icon } from './Icon';
 import { C, R, STATUS_TONE, FONT } from '../lib/theme';
 import { Tf, TfName } from './Tf';
 
-// 웹 머리글과 같은 줄: 왼쪽 소보루 CS 로고, 오른쪽 알림 종(안 읽은 수)과 회사 이름
+// 웹 머리글과 같은 줄: 왼쪽 소보루 CX 로고, 오른쪽 알림 종(안 읽은 수)과 회사 이름
 export function TopBar() {
   const { session, logout } = useAuth();
   const name = session?.company.name ?? '';

@@ -17,4 +17,4 @@ sleep 3
 H="$(grep -E '^BUSINESS_HOST=' /etc/soboru-platform.env 2>/dev/null | cut -d= -f2- || true)"
 if [ -n "$H" ]; then CODE="$(curl -s -o /dev/null -m 10 -w '%{http_code}' -H "Host: $H" http://127.0.0.1:8100/login || true)"
 else CODE="$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:8100/biz/login || true)"; fi
-echo "되돌림: $(git -C $APP log -1 --format='%h %s') · 소보루 CS 응답 $CODE"
+echo "되돌림: $(git -C $APP log -1 --format='%h %s') · 소보루 CX 응답 $CODE"

@@ -1,4 +1,4 @@
-// 소보루 CS 이용 안내: 홈페이지(cs.soboru.co.kr/guide)의 이용 안내를 앱 안에서. 사장님이 쓰는 순서를 먼저 보여 준다.
+// 소보루 CX 이용 안내: 홈페이지(cs.soboru.co.kr/guide)의 이용 안내를 앱 안에서. 사장님이 쓰는 순서를 먼저 보여 준다.
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -62,7 +62,7 @@ export default function HowTo() {
         <View style={{ gap: 14 }}>
           <View style={st.box}>
             <Text style={st.t}>입점 기업</Text>
-            <Text style={st.s}>소보루 CS를 쓰는 기업이에요. 담당자 화면으로 바로 전달되고, 배송 조회처럼 정해진 유형은 접수 즉시 처리되기도 해요.</Text>
+            <Text style={st.s}>소보루 CX를 쓰는 기업이에요. 담당자 화면으로 바로 전달되고, 배송 조회처럼 정해진 유형은 접수 즉시 처리되기도 해요.</Text>
           </View>
           <View style={st.box}>
             <Text style={st.t}>비입점 기업</Text>

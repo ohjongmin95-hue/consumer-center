@@ -7,7 +7,7 @@ import { useAuth } from '../../lib/auth';
 import { usePending } from '../../lib/badge';
 import { C, FONT } from '../../lib/theme';
 
-// 아래 탭은 휴대폰 웹(소보루 CS 홈페이지)과 같은 다섯 칸: 홈 · 상담 · 승인 · 자동 응대 · 전체
+// 아래 탭은 휴대폰 웹(소보루 CX 홈페이지)과 같은 다섯 칸: 홈 · 상담 · 승인 · 자동 응대 · 전체
 // 요청 목록은 상담으로 바뀌었고, 홈의 숫자·찾기 링크로만 연다 (탭에는 안 보임)
 export default function TabsLayout() {
   const { ready, session } = useAuth();

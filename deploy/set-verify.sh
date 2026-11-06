@@ -1,5 +1,5 @@
 #!/bin/bash
-# 검색 사이트 소유확인 코드를 소보루 CS 서버 설정에 넣고 다시 시작합니다.
+# 검색 사이트 소유확인 코드를 소보루 CX 서버 설정에 넣고 다시 시작합니다.
 # 사용법: sudo bash /opt/soboru/app/deploy/set-verify.sh 이름 '코드'
 #   이름: naver-biz, google-biz, daum-biz (사장님 사이트) / naver-cs, google-cs, daum-cs (고객 사이트)
 #   코드: 사이트가 준 코드만 넣어도 되고, <meta ...> 태그를 통째로 붙여 넣어도 됩니다.
