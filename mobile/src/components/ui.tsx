@@ -38,8 +38,8 @@ export function TopBar() {
       ) : null}
       <View style={s.top}>
         <Pressable onPress={() => router.navigate('/')} style={s.logo} hitSlop={6}>
-          <Image source={require('../../assets/soboru-char.png')} style={{ width: 34, height: 26 }} resizeMode="contain" />
-          <Text style={s.logoText}>소보루 CS</Text>
+          <Image source={require('../../assets/logo-mark.png')} style={{ width: 28, height: 28 }} resizeMode="contain" />
+          <Image source={require('../../assets/logo-wordmark.png')} style={{ width: 89, height: 17 }} resizeMode="contain" accessibilityLabel="SOBORU CX" />
         </Pressable>
         <Pressable onPress={() => router.push('/alerts')} style={({ pressed }) => [s.bell, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]} hitSlop={6} accessibilityLabel={`알림 ${unread}건 안 읽음`}>
           <Icon name="bell" size={26} />
@@ -310,8 +310,7 @@ export const s = StyleSheet.create({
   guestDot: { fontFamily: FONT, fontSize: 13, color: C.accentInk },
   guestJoin: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.accentInk, textDecorationLine: 'underline' },
   top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
-  logo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  logoText: { fontFamily: FONT, fontSize: 19, fontWeight: '800', color: C.brand, letterSpacing: 0 },
+  logo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   bell: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   bellCnt: { position: 'absolute', top: 0, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center' },
   bellCntText: { fontFamily: FONT, fontSize: 11, fontWeight: '700', color: '#fff' },

@@ -1,7 +1,7 @@
 // 하단 사업자 정보 (웹 하단과 같은 내용). 평소엔 로고·∨·저작권 한 줄만, 누르면 방침 링크와 사업자 정보를 펼친다
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
 import { C, FONT } from '../lib/theme';
 
@@ -14,7 +14,7 @@ export function Footer() {
   return (
     <View style={st.wrap}>
       <Pressable style={st.head} onPress={() => setOpen((v) => !v)} hitSlop={8} accessibilityRole="button" accessibilityLabel={open ? '회사 정보 접기' : '회사 정보 펼치기'} accessibilityState={{ expanded: open }}>
-        <Text style={st.wm}>소보루 CS</Text>
+        <Image source={require('../../assets/logo-wordmark.png')} style={st.wm} resizeMode="contain" accessibilityLabel="SOBORU CX" />
         <View style={[st.chev, open && { transform: [{ rotate: '-135deg' }], marginTop: 6 }]} />
       </Pressable>
       {open ? (
@@ -37,7 +37,7 @@ export function Footer() {
 const st = StyleSheet.create({
   wrap: { marginHorizontal: 20, marginTop: 24, paddingTop: 22, paddingBottom: 16, borderTopWidth: 1, borderTopColor: C.line },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wm: { fontFamily: FONT, fontSize: 17, fontWeight: '800', color: C.brand, letterSpacing: 0 },
+  wm: { width: 83, height: 16 },
   chev: { width: 10, height: 10, borderRightWidth: 2, borderBottomWidth: 2, borderColor: C.fg, transform: [{ rotate: '45deg' }], marginTop: -5, marginRight: 4 },
   t: { fontFamily: FONT, fontSize: 12, lineHeight: 19, color: C.fg3 },
   copy: { fontFamily: FONT, fontSize: 12, fontWeight: '600', color: C.fg3, marginTop: 12 },
