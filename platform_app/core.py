@@ -578,9 +578,9 @@ def notify_company_link_broken(co,what,why,path,db=None):
 
 # ---------- 사장님 알림 (알림 목록 + 종류별 받을 곳) ----------
 # 알림은 모두 알림 목록(웹 /alerts, 앱 알림 화면)에 남고, 앱 알림·이메일은 회사가 고른 종류만 보낸다. 알림톡은 '새 요청'에만 (설정 화면의 알림톡 스위치).
-ALERTS=(('new','승인할 문의','AI가 넘기거나 사장님 승인이 필요한 새 문의',dict(push=1,email=1)),
+ALERTS=(('new','승인할 문의','SODA가 넘기거나 사장님 승인이 필요한 새 문의',dict(push=1,email=1)),
         ('msg','고객의 새 메시지','진행 중인 문의에 고객이 말을 더 했을 때',dict(push=1,email=0)),
-        ('ai','AI가 답한 문의','AI가 단순 문의에 답했을 때 (목록에서 확인)',dict(push=0,email=0)),
+        ('ai','SODA가 답한 문의','SODA가 단순 문의에 답했을 때 (목록에서 확인)',dict(push=0,email=0)),
         ('late','답변 기한','답변 기한이 지났을 때',dict(push=1,email=1)),
         ('link','연결 끊김','카페24·인스타그램·이메일 연결이 멈췄을 때',dict(push=1,email=1)),
         ('plan','상담 건수','이번 달 상담이 요금 구간의 80%·100%에 닿았을 때',dict(push=1,email=1)))

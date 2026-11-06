@@ -2114,7 +2114,7 @@ class PlatformTest(unittest.TestCase):
             # 끄면 새 문의에 답하지 않는다
             self.post(b,'/biz/ai-reply',{'on':'0'},form_path='/biz/rules')
             with self.core.conn() as db:self.assertEqual(self.core.company(db,cid)['ai_reply'],'')
-            self.assertIn('AI 자동 답변',b.get('/biz/rules').get_data(as_text=True))
+            self.assertIn('SODA 자동 답변',b.get('/biz/rules').get_data(as_text=True))
 
     def test_chat_order_lookup(self):
         """상담창 주문 조회: 휴대폰 + 주문번호(또는 이름)가 둘 다 맞아야 보임. 개인정보는 고객 화면·AI 어디에도 안 나감. AI는 확인된 주문으로 답함."""
@@ -2942,7 +2942,7 @@ class PlatformTest(unittest.TestCase):
         with self.core.conn() as db:
             a=db.execute('SELECT * FROM cases WHERE id=?',(angry,)).fetchone();s_=db.execute('SELECT * FROM cases WHERE id=?',(swap,)).fetchone()
         self.assertEqual(posted,['불편을 드려 정말 죄송해요. 담당자가 바로 이어서 답드릴게요.'])
-        self.assertEqual((a['status'],a['decision']),('seen','pending'));self.assertIn('AI가 먼저 응대했어요',a['ai_why'])
+        self.assertEqual((a['status'],a['decision']),('seen','pending'));self.assertIn('SODA가 먼저 응대했어요',a['ai_why'])
         self.assertEqual((s_['status'],s_['decision']),('forwarded','pending'));self.assertIn('답도 승인 후',s_['ai_why'])
         # 검색은 확신이 없을 때만
         aim=sys.modules['ai'];webs=[]
