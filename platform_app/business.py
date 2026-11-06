@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import csv, io, urllib.parse
-import core, law, insights, drafting, chatbot, ai, aibench, cx
+import core, law, insights, drafting, chatbot, ai, aibench, cx, soda
 import tracking as tracking_mod
 import orders as orders_mod
 import shops, mailin
@@ -54,7 +54,7 @@ def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
 # 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
-MANAGE_EPS={'ai_reply','macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','connect_email','ig.page','ig.callback','kk.page','team_page'}
+MANAGE_EPS={'ai_reply','macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','connect_email','ig.page','ig.callback','kk.page','team_page','soda_page','soda_learn'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
 # 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
@@ -857,9 +857,10 @@ def case(case_id):
         profile=inbox.customer(db,me(),c);merged=db.execute('SELECT id,no FROM cases WHERE id=?',(c['merged_into'],)).fetchone() if c['merged_into'] else None
     comp_show=core.comp_open(c) and (rule['comp'] or c['category'] in core.COMP_CATS)
     with conn() as db:order=orders_mod.for_case(db,c);blocked=orders_mod.cancel_blocked(db,c);core.read_alerts(db,me()['id'],c['id'])  # 문의를 열면 그 문의 알림은 읽음
+    with conn() as db:learn=soda.suggest(db,c) if team.can(who(),'manage') else None  # '다음에도 이렇게 답하기'
     ms=[dict(id=x['id'],name=x['name'],body=inbox.fill(x['body'],c,me(),order)) for x in ms]
     guides=[law.GUIDE_BY_ID[g] for g in law.CAT_GUIDE.get(c['category'],[])]
-    return render_template('b_case.html',c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
+    return render_template('b_case.html',learn=learn,c=c,ev=ev,files=fl,rule=rule,laws=law.for_case(c),chk=law.check(c),guides=guides,tracks=tracks,ship_track=ship_track,comp_show=comp_show,order=order,notes=notes,people=people,assignee=assignee,blocked=blocked,OSTATUS=orders_mod.STATUS,COMP_EXAMPLES=core.COMP_EXAMPLES,
         last_reply=next((e for e in reversed(ev) if e['kind']=='co' and e['reply']),None),from_shop=from_shop,posted=posted,tab='chat',
         ctags=ctags,all_tags=all_tags,sla=sla,closable=closable(c),reopenable=reopenable(c),send_via=sv,macros=ms,profile=profile,merged=merged,PRIO=inbox.PRIO,snoozed=inbox.snoozed(c),fmt_when=inbox.fmt_when,today=core.now().date().isoformat())
 # ---------- 상담 (채널톡처럼: 왼쪽 대화방 목록, 가운데 대화, 오른쪽 고객·주문) ----------
@@ -1109,6 +1110,42 @@ def rules():
         chat={o:db.execute('SELECT COUNT(*) FROM chat_log WHERE company_id=? AND outcome=? AND created>=?',(co['id'],o,since)).fetchone()[0] for o in ('asked','solved','filed')}
         ps=core.products(db,co['id']);priv=product_pdf.private_for(db,co['id']);prof=chatbot.profile(db,co['id'])
     return render_template('b_rules.html',rs=rs,chat=chat,link=core.site_url('me','/to/%d'%co['id']),products=ps,priv=priv,prof=prof,PROFILE=chatbot.PROFILE,PROFILE_HINT=chatbot.HINT,STOCKS=core.STOCKS,ai=chatbot.ready(),tab='rules')
+
+@app.route('/soda',methods=['GET','POST'])
+@login_required
+def soda_page():
+    """SODA 가르치기: 모르는 질문에 한 줄 답, 자료 한 번에 알려 주기, 배운 답 확인·끄기·고치기 (soda.py)."""
+    co=me();f=request.form
+    with conn() as db:
+        if request.method=='POST':
+            act=f.get('act');kid=f.get('id',type=int)
+            if act=='gap':flash(*soda.answer_gap(db,co['id'],kid,f.get('a')))
+            elif act=='skip':soda.skip_gap(db,co['id'],kid)
+            elif act=='check':flash(f"{soda.check_all(db,co['id'])}개를 켰어요. 이제 SODA가 이대로 답해요",'ok')
+            elif act=='toggle':soda.toggle(db,co['id'],kid,f.get('on')=='1')
+            elif act=='edit':soda.edit(db,co['id'],kid,f.get('q'),f.get('a'));flash('고쳤어요','ok')
+            elif act=='del':soda.remove(db,co['id'],kid);flash('지웠어요','ok')
+            elif act=='teach':
+                if core.throttled('soda_teach',limit=20,minutes=60):flash('잠시 후 다시 해 주세요','error')
+                else:
+                    files=[(x.filename,x.read(soda.FILE_BYTES+1)) for x in request.files.getlist('files') if x and x.filename][:5]
+                    flash(*soda.teach(db,co,f.get('text',''),f.get('url',''),files))
+            else:abort(400)
+            return redirect(url_for('soda_page')+{'gap':'#gaps','skip':'#gaps','teach':'#check','check':'#kb'}.get(act,'#kb'))
+        co=core.company(db,co['id'])
+        return render_template('b_soda.html',co=co,kb=soda.kb(db,co['id']),gaps=soda.gaps(db,co['id']),SRC=soda.SRC,ai=chatbot.ready(),tab='soda')
+
+@app.route('/soda/learn/<int:case_id>',methods=['POST'])
+@login_required
+def soda_learn(case_id):
+    """사장님이 직접 보낸 답을 '다음에도 이렇게 답하기'로 기억한다."""
+    co=me()
+    with conn() as db:
+        c=db.execute('SELECT * FROM cases WHERE id=? AND company_id=?',(case_id,co['id'])).fetchone()
+        if not c:abort(404)
+        msg,level=soda.learn_case(db,co,c)
+    if request.form.get('json'):return jsonify(ok=level=='ok',msg=msg)
+    flash(msg,level);return redirect(request.form.get('next') if re.match(r'/[^/\\]',request.form.get('next') or '') else url_for('case',case_id=case_id))
 
 @app.route('/ai-profile',methods=['POST'])
 @login_required
@@ -1725,6 +1762,7 @@ def biz_detail(db,c,co):
         can=dict(comp=core.comp_open(c) and bool(rule['comp'] or c['category'] in core.COMP_CATS),ship_track=can_ship_track(db,c),approve=open_ and c['decision'] not in ('approved','auto'),hold=open_ and c['decision']!='hold',ask=open_,reply=open_,
             ret_received=c['ret_status'] in ('guided','sent'),out_ship=c['category'] in ('교환','제품 불량') and c['ret_status']=='received' and not c['out_tracking'],
             refund_done=core.refund_case(c) and c['refund_status']!='done',close_chat=closable(c),reopen=reopenable(c)))
+    d['learn']=soda.suggest(db,c)  # '다음에도 이렇게 답할까요?' (사장님이 직접 답을 보낸 뒤)
     return d
 def api_my_case(db,co,case_id):
     c=db.execute('SELECT * FROM cases WHERE id=? AND company_id=? AND member=1 AND consent=1',(case_id,co['id'])).fetchone()
@@ -2004,6 +2042,35 @@ def api_biz_returns():
     staged=[(r,ret_stage(r)) for r in rows];keys=dict(RET_STAGES)
     return jsonify(stages=[dict(key=k,label=l,n=sum(x==k for _,x in staged)) for k,l in RET_STAGES],
         cases=[dict(biz_summary(r),stage=x,stage_label=keys[x]) for r,x in staged if st not in keys or x==st])
+def soda_json(db,co):
+    rows=soda.kb(db,co['id'])
+    return dict(gaps=[dict(id=x['id'],q=x['q'],n=x['n']) for x in soda.gaps(db,co['id'])],
+        check=[dict(id=r['id'],q=r['q'],a=r['a'],src=soda.SRC.get(r['src'],'')) for r in rows if r['on_']==2],
+        kb=[dict(id=r['id'],q=r['q'],a=r['a'],on=r['on_']==1,src=soda.SRC.get(r['src'],'')) for r in rows if r['on_']!=2],
+        url=core.company(db,co['id'])['soda_url'] or '',ai=chatbot.ready())
+@app.route('/api/v1/soda',methods=['GET','POST'])
+def api_biz_soda():
+    """SODA 가르치기 (웹 /soda와 같다). 사진·파일은 multipart의 files로."""
+    co=api_co();msg=''
+    with conn() as db:
+        if request.method=='POST':
+            if g.guest:return jsonify(error=GUEST_NO),403
+            f=api_form();act=f.get('act');kid=int(f.get('id')) if str(f.get('id') or '').isdigit() else 0;level='ok'
+            if act=='gap':msg,level=soda.answer_gap(db,co['id'],kid,f.get('a'))
+            elif act=='skip':soda.skip_gap(db,co['id'],kid)
+            elif act=='check':msg=f"{soda.check_all(db,co['id'])}개를 켰어요"
+            elif act=='toggle':soda.toggle(db,co['id'],kid,str(f.get('on')) in ('1','true','True'))
+            elif act=='edit':soda.edit(db,co['id'],kid,f.get('q'),f.get('a'));msg='고쳤어요'
+            elif act=='del':soda.remove(db,co['id'],kid);msg='지웠어요'
+            elif act=='teach':
+                if core.throttled('soda_teach',limit=20,minutes=60):return jsonify(error='잠시 후 다시 해 주세요'),429
+                files=[(x.filename,x.read(soda.FILE_BYTES+1)) for x in request.files.getlist('files') if x and x.filename][:5]
+                msg,level=soda.teach(db,co,f.get('text',''),f.get('url',''),files)
+            elif act=='learn':msg,level=soda.learn_case(db,co,api_my_case(db,co,kid))
+            else:return jsonify(error='무엇을 할지 알 수 없어요'),400
+            if level!='ok':return jsonify(error=msg),400
+        d=soda_json(db,co)
+    return jsonify(dict(d,message=msg))
 @app.route('/api/v1/macros',methods=['GET','POST'])
 def api_biz_macros():
     """답변 템플릿: 웹과 같은 목록. 요청 화면의 답변 쓰기에서 골라 쓴다."""

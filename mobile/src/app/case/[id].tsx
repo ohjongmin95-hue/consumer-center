@@ -63,6 +63,21 @@ export default function CaseScreen() {
       setBusy('');
     }
   };
+  const learn = async () => {
+    if (!session) return;
+    setBusy('learn');
+    setErr('');
+    setOk('');
+    try {
+      const r = await api.sodaAct(session.token, { act: 'learn', id });
+      setOk(r.message || '');
+      setC({ ...c!, learn: null });
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy('');
+    }
+  };
   const draft = async () => {
     if (!session) return;
     setBusy('draft');
@@ -129,6 +144,17 @@ export default function CaseScreen() {
           {c.decision_label && !c.pending ? <KV k="처리 방식" v={c.decision_label} /> : null}
         </View>
       </Card>
+
+      {c.learn ? (
+        <Card>
+          <H2>다음에도 이렇게 답할까요?</H2>
+          <View style={st.quote}>
+            <Text style={st.quoteLabel}>{c.learn.q}</Text>
+            <Text style={st.quoteText}>{c.learn.a}</Text>
+          </View>
+          <Btn title="SODA에게 기억시키기" busy={busy === 'learn'} onPress={learn} style={{ marginTop: 14 }} />
+        </Card>
+      ) : null}
 
       {can.approve ? (
         <Card style={{ borderWidth: 2, borderColor: C.accent }}>

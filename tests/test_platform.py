@@ -17,7 +17,7 @@ class PlatformTest(unittest.TestCase):
             'SECRET_KEY':secrets.token_hex(16),'OPS_PASSWORD_HASH':generate_password_hash(cls.ops_pw),'CONSUMER_HOST':'','BUSINESS_HOST':'','PLATFORM_MODE':'pilot'})
         cls.env.start()
         sys.path.insert(0,str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench','cx'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench','cx','soda'):sys.modules.pop(m,None)
         cls.hanq=importlib.import_module('hanq');cls.core=sys.modules['core']
         cls.core.MAIL_ASYNC=False
         cls.real_throttled=staticmethod(cls.core.throttled);cls.core.throttled=lambda *a,**k:False  # 횟수 제한은 아래 테스트에서 따로 확인
@@ -26,7 +26,7 @@ class PlatformTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         sys.path.remove(str(ROOT/'platform_app'))
-        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench','cx'):sys.modules.pop(m,None)
+        for m in ('core','consumer','business','hanq','law','insights','drafting','chatbot','tracking','orders','shops','ai','product_pdf','team','onboard','demo','funnel','market','sales','cms','csimport','growth','security','cafe24','openapi','aistats','inbox','workflow','automations','livechat','mailin','instagram','kakao','billing','aibench','cx','soda'):sys.modules.pop(m,None)
         cls.env.stop();cls.temp.cleanup()
 
     def client(self):return Client(self.hanq.app)
@@ -258,6 +258,47 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('평가해 주셔서 고마워요',page);self.assertNotIn('상담은 어떠셨나요?',page)
         self.assertIn('상담 만족도',b.get('/biz/stats').get_data(as_text=True))
         with self.core.conn() as db:self.assertEqual(db.execute('SELECT csat FROM cases WHERE id=?',(case_id,)).fetchone()[0],5)
+
+    def test_soda_teach(self):
+        """SODA 가르치기: 사장님 답을 기억, 모르는 질문에 한 줄 답, 자료에서 읽은 건 확인 뒤에 쓴다."""
+        b,o,cid=self.signup_and_approve('소다상점','soda@example.com')
+        soda=sys.modules['soda'];chatbot=sys.modules['chatbot']
+        me=self.client();case_id=self.file_case(me,'소다상점','기타',str(cid),title='주말에도 보내 주세요?')
+        self.post(b,f'/biz/case/{case_id}',{'act':'reply','msg':'김소비님, 주말과 공휴일에는 보내지 않고 월요일에 보내요.'})
+        page=b.get(f'/biz/case/{case_id}').get_data(as_text=True);self.assertIn('다음에도 이렇게 답할까요?',page)
+        with patch.object(soda.ai,'ready',lambda:True),patch.object(soda.ai,'chat_json',lambda *a,**k:{'q':'주말에도 배송하나요?','a':'주말과 공휴일에는 보내지 않고 월요일에 보내요.','ok':True}):
+            self.post(b,f'/biz/soda/learn/{case_id}',{'next':f'/biz/case/{case_id}'},f'/biz/case/{case_id}')
+        self.assertNotIn('다음에도 이렇게 답할까요?',b.get(f'/biz/case/{case_id}').get_data(as_text=True))
+        with self.core.conn() as db:
+            facts=chatbot.company_facts(db,self.core.company(db,cid))
+            self.assertIn('주말에도 배송하나요?',facts);self.assertNotIn('김소비',facts)
+            soda.add_gap(db,cid,'포장 선물용으로 되나요?');soda.add_gap(db,cid,'포장 선물용으로 되나요')
+            g=soda.gaps(db,cid);self.assertEqual((len(g),g[0]['n']),(1,2))
+        page=b.get('/biz/soda').get_data(as_text=True);self.assertIn('포장 선물용으로 되나요?',page);self.assertIn('주말에도 배송하나요?',page)
+        self.post(b,'/biz/soda',{'act':'gap','id':g[0]['id'],'a':'네, 선물 포장은 2,000원이에요.'})
+        with self.core.conn() as db:
+            self.assertEqual(soda.gaps(db,cid),[]);self.assertIn('선물 포장은 2,000원',chatbot.company_facts(db,self.core.company(db,cid)))
+        # 자료에서 읽은 건 '확인해 주세요'로 두고, 켜기 전에는 쓰지 않는다
+        with patch.object(soda.ai,'ready',lambda:True),patch.object(soda.ai,'chat',lambda *a,**k:json.dumps({'shipping':'오후 2시 전 주문은 당일 출고','faq':[{'q':'교환 되나요?','a':'받고 열흘 안에 교환돼요.'}]})):
+            r=self.post(b,'/biz/soda',{'act':'teach','text':'','url':'','files':(__import__('io').BytesIO(b'img'),'notice.jpg')})
+        self.assertEqual(r.status_code,302)
+        with self.core.conn() as db:self.assertNotIn('열흘 안에',chatbot.company_facts(db,self.core.company(db,cid)))
+        self.assertIn('맞는지 확인해 주세요',b.get('/biz/soda').get_data(as_text=True))
+        self.post(b,'/biz/soda',{'act':'check'})
+        with self.core.conn() as db:
+            f=chatbot.company_facts(db,self.core.company(db,cid));self.assertIn('열흘 안에',f);self.assertIn('당일 출고',f)
+            kid=db.execute("SELECT id FROM soda_kb WHERE q='교환 되나요?'").fetchone()[0]
+        self.post(b,'/biz/soda',{'act':'toggle','id':kid,'on':'0'})
+        with self.core.conn() as db:self.assertNotIn('열흘 안에',chatbot.company_facts(db,self.core.company(db,cid)))
+        # 앱: 같은 목록, 말로 알려 주기는 바로 배운다
+        a=self.client();tok=a.post('/biz/api/v1/login',json={'login_id':'soda@example.com','password':'longpassword1'}).get_json()['token'];A={'Authorization':'Bearer '+tok}
+        j=a.get('/biz/api/v1/soda',headers=A).get_json();self.assertIn('주말에도 배송하나요?',[r['q'] for r in j['kb']])
+        with patch.object(soda.ai,'ready',lambda:True),patch.object(soda.ai,'chat',lambda *x,**k:json.dumps({'hours':'평일 10시~5시','faq':[]})):
+            j=a.post('/biz/api/v1/soda',headers=A,json={'act':'teach','text':'평일 10시부터 5시까지 상담해요'}).get_json()
+        self.assertIn('영업·상담 시간이 어떻게 돼요?',[r['q'] for r in j['kb'] if r['on']])
+        self.assertEqual(a.post('/biz/api/v1/soda',headers=A,json={'act':'nope'}).status_code,400)
+        # 내부망 주소는 읽지 않는다
+        self.assertEqual(soda.fetch_text('http://127.0.0.1/'),'');self.assertEqual(soda.fetch_text('file:///etc/passwd'),'')
 
     def test_auto_rule_and_info_request(self):
         b,o,cid=self.signup_and_approve('오늘배송마켓','today@example.com')

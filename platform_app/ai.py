@@ -186,7 +186,13 @@ def chat(system,messages,max_tokens=700,timeout=30,json_mode=False,temperature=0
         if p=='openai':
             msgs=[{'role':'system','content':system}]+[dict(x) for x in messages]
             if files:  # 마지막 사용자 말에 PDF를 붙인다
-                parts=[{'type':'file','file':{'filename':n,'file_data':'data:application/pdf;base64,'+base64.b64encode(b).decode()}} for n,b in files]
+                def part(n,b):  # PDF는 파일로, 사진은 그림으로 (SODA 가르치기의 안내문 사진)
+                    ext=(n or '').lower().rsplit('.',1)[-1]
+                    if ext in ('jpg','jpeg','png','webp','gif','heic'):
+                        mime={'jpg':'jpeg','jpeg':'jpeg'}.get(ext,ext)
+                        return {'type':'image_url','image_url':{'url':f'data:image/{mime};base64,'+base64.b64encode(b).decode(),'detail':'low'}}
+                    return {'type':'file','file':{'filename':n,'file_data':'data:application/pdf;base64,'+base64.b64encode(b).decode()}}
+                parts=[part(n,b) for n,b in files]
                 msgs[-1]={'role':'user','content':parts+[{'type':'text','text':msgs[-1]['content']}]}
             end=time.time()+timeout
             for model,effort in steps:

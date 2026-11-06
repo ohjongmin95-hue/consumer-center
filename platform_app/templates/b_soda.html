@@ -1,0 +1,51 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}SODA 가르치기 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('soda') }}{% endblock %}
+{% block body %}
+<div class="phead"><div><h1>SODA 가르치기</h1></div></div>
+<div class="sumrow"><div class="sum"><span>SODA가 배운 답</span><b>{{ kb|selectattr('on_','equalto',1)|list|length }}</b></div><div class="sum"><span>SODA가 물어보는 질문</span><b>{{ gaps|length }}</b></div></div>
+{% if not ai %}<div class="hint blue" style="margin-bottom:20px"><span>SODA가 아직 꺼져 있어요. 켜지면 여기서 가르친 대로 바로 답해요.</span></div>{% endif %}
+<div class="stack lg">
+<section class="panel" id="gaps"><div class="ph">SODA가 몰라서 물어봐요</div>
+{% if gaps %}<p class="sub" style="margin:0 0 14px">고객이 물었는데 가게 정보에 없어서 답하지 못한 질문이에요. 한 줄만 적어 주면 다음부터 SODA가 답해요.</p>
+<div class="stack" style="gap:18px">{% for g in gaps %}<div class="soda-gap">
+<b>{{ g.q }}</b>{% if g.n>1 %} <span class="pill blue">{{ g.n }}번 물어봤어요</span>{% endif %}
+<form method="post" class="addline" style="margin-top:8px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="gap"><input type="hidden" name="id" value="{{ g.id }}">
+<input class="inp" name="a" maxlength="1000" placeholder="한 줄로 답해 주세요" aria-label="{{ g.q }} 답" required><button class="btn md">알려 주기</button></form>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="skip"><input type="hidden" name="id" value="{{ g.id }}"><button class="tbtn" style="padding-left:0">이건 넘어갈게요</button></form>
+</div>{% endfor %}</div>
+{% else %}<p class="sub" style="margin:0">지금은 물어볼 게 없어요. SODA가 모르는 질문을 받으면 여기에 모아 둘게요.</p>{% endif %}</section>
+
+<form class="panel stack" method="post" enctype="multipart/form-data" id="teach"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="teach">
+<div class="ph" style="margin:0">한 번에 알려 주기</div>
+<p class="sub" style="margin:0">셋 중 하나만 넣어도 돼요. SODA가 읽고 배송·교환 안내와 자주 묻는 질문을 정리해요. 주소·사진·파일에서 읽은 건 확인한 뒤에 써요.</p>
+<label class="fld"><span>쇼핑몰 주소</span><input class="inp" name="url" type="url" inputmode="url" maxlength="500" placeholder="예: smartstore.naver.com/우리가게" value="{{ co.soda_url or '' }}"></label>
+<label class="fld"><span>안내문 사진이나 파일 (사진, PDF, 엑셀)</span><input class="file-in" type="file" name="files" multiple accept="image/*,.pdf,.xlsx,.csv"></label>
+<label class="fld"><span>말로 알려 주기</span><textarea class="inp" name="text" rows="3" maxlength="5000" placeholder="예: 평일 오후 2시 전 주문은 당일 보내요. 주말엔 쉬어요. 교환은 받은 날부터 7일 안에 돼요."></textarea></label>
+<p class="cap" style="margin:0">휴대폰 키보드의 마이크를 누르면 말로 적을 수 있어요. 직접 적은 말은 바로 배워요.</p>
+<button class="btn md full">SODA에게 알려 주기</button></form>
+
+{% set pend=kb|selectattr('on_','equalto',2)|list %}{% set kb=kb|rejectattr('on_','equalto',2)|list %}
+{% if pend %}<section class="panel" id="check"><div class="ph">맞는지 확인해 주세요 <span class="pill blue">{{ pend|length }}개</span></div>
+<p class="sub" style="margin:0 0 6px">자료에서 읽은 답이에요. 틀린 건 고치거나 지우고, 나머지는 한 번에 켜 주세요. 켜기 전에는 SODA가 쓰지 않아요.</p>
+<div class="soda-kb">{% for r in pend %}<div class="soda-row"><div class="tx"><b>{{ r.q }}</b><p>{{ r.a }}</p><span class="cap">{{ SRC.get(r.src,'') }}에서 읽었어요</span>
+<details><summary class="tbtn" style="padding-left:0">고치기</summary>
+<form method="post" class="stack" style="gap:8px;margin-top:8px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="edit"><input type="hidden" name="id" value="{{ r.id }}">
+<input class="inp" name="q" maxlength="200" value="{{ r.q }}" aria-label="질문" required><textarea class="inp" name="a" rows="3" maxlength="1000" aria-label="답" required>{{ r.a }}</textarea><button class="btn md">저장</button></form>
+<form method="post" style="margin-top:6px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="del"><input type="hidden" name="id" value="{{ r.id }}"><button class="tbtn" style="padding-left:0;color:var(--red)">지우기</button></form></details></div></div>{% endfor %}</div>
+<form method="post" style="margin-top:14px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="check"><button class="btn md full">모두 맞아요, 켜기</button></form></section>{% endif %}
+<section class="panel" id="kb"><div class="ph">SODA가 배운 답</div>
+{% if kb %}<p class="sub" style="margin:0 0 6px">고객에게 직접 답을 보낸 뒤 '다음에도 이렇게 답하기'를 누르면 여기에 쌓여요. 끄면 SODA가 쓰지 않아요.</p>
+<div class="soda-kb">{% for r in kb %}<div class="soda-row{{ '' if r.on_ else ' off' }}">
+<div class="tx"><b>{{ r.q }}</b><p>{{ r.a }}</p><span class="cap">{{ SRC.get(r.src,'') }} · {{ fmt_day(r.updated) }}</span>
+<details><summary class="tbtn" style="padding-left:0">고치기</summary>
+<form method="post" class="stack" style="gap:8px;margin-top:8px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="edit"><input type="hidden" name="id" value="{{ r.id }}">
+<input class="inp" name="q" maxlength="200" value="{{ r.q }}" aria-label="질문" required><textarea class="inp" name="a" rows="3" maxlength="1000" aria-label="답" required>{{ r.a }}</textarea><button class="btn md">저장</button></form>
+<form method="post" style="margin-top:6px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="del"><input type="hidden" name="id" value="{{ r.id }}"><button class="tbtn" style="padding-left:0;color:var(--red)">지우기</button></form></details></div>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="toggle"><input type="hidden" name="id" value="{{ r.id }}"><input type="hidden" name="on" value="{{ 0 if r.on_ else 1 }}">
+<button class="sw{{ ' on' if r.on_ }}" role="switch" aria-checked="{{ 'true' if r.on_ else 'false' }}" aria-label="{{ r.q }} 쓰기"></button></form>
+</div>{% endfor %}</div>
+{% else %}<p class="sub" style="margin:0">아직 배운 답이 없어요. 고객에게 직접 답을 보내면 '다음에도 이렇게 답하기'가 떠요.</p>{% endif %}</section>
+<p class="cap">배송·교환 규정 같은 긴 설정은 <a class="link" href="{{ url_for('rules') }}#ai">자동 처리 &gt; SODA 설정</a>에서 바꿀 수 있어요.</p>
+</div>
+{% endblock %}

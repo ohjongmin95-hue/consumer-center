@@ -33,6 +33,7 @@ export type FileRef = { id: number; name: string; url: string };
 export type Track = { kind: string; label: string; courier: string; invoice: string; level: number; status: string; place: string; time: string; done: boolean; note: string; live: boolean; link: string };
 export type CaseEvent = { id: number; kind: 'me' | 'co' | 'sys' | string; text: string; reply: string; created: string; files: FileRef[] };
 export type BizDetail = BizCase & {
+  learn?: { q: string; a: string } | null;
   body: string;
   want: string;
   order_no: string;
@@ -107,6 +108,9 @@ export type NewForm = { channels: string[]; cats: string[]; wants: string[]; hin
 
 export type RetCase = BizCase & { stage: string; stage_label: string };
 export type Returns = { stages: { key: string; label: string; n: number }[]; cases: RetCase[] };
+export type SodaGap = { id: number; q: string; n: number };
+export type SodaItem = { id: number; q: string; a: string; on?: boolean; src: string };
+export type Soda = { gaps: SodaGap[]; check: SodaItem[]; kb: SodaItem[]; url: string; ai: boolean; message?: string };
 export type Macro = { id: number; name: string; body: string; tags: string; used: number };
 export type Macros = { macros: Macro[]; vars: string[]; max: number; message?: string };
 
@@ -180,6 +184,9 @@ export const api = {
   order: (t: string, id: number) => call<OrderDetail>('/api/v1/orders/' + id, {}, t),
   saveOrder: (t: string, id: number, f: Record<string, string>) => call<OrderDetail>('/api/v1/orders/' + id, json(f), t),
   returns: (t: string, st = '') => call<Returns>('/api/v1/returns?s=' + st, {}, t),
+  soda: (t: string) => call<Soda>('/api/v1/soda', {}, t),
+  sodaAct: (t: string, f: { act: 'gap' | 'skip' | 'check' | 'toggle' | 'edit' | 'del' | 'teach' | 'learn'; id?: number; a?: string; q?: string; on?: boolean; text?: string; url?: string }) =>
+    call<Soda>('/api/v1/soda', json(f), t),
   macros: (t: string) => call<Macros>('/api/v1/macros', {}, t),
   saveMacro: (t: string, f: { id?: number; name?: string; body?: string; tags?: string; act?: 'delete' }) => call<Macros>('/api/v1/macros', json(f), t),
   alerts: (t: string) => call<Alerts>('/api/v1/alerts', {}, t),
