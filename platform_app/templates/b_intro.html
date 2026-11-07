@@ -112,7 +112,7 @@
 
 <section class="tp-sec tp-cream" id="price"><div class="wrap">
 <h2 class="rv-up">AI 상담원까지,<br>0원부터 시작해요</h2>
-<p class="tp-sub rv-up">카드 등록 없이 무료로 시작하고, 문의가 늘면 그때 올리면 돼요.</p>
+<p class="tp-sub rv-up">카드 등록 없이 무료로 시작하고, 문의가 늘면 한 달 9,900원부터 올리면 돼요.</p>
 <div class="tp-zero rv-up">{% for n,t in [('0원','설치비·가입비'),('3분','시작까지'),('0원','약정·위약금')] %}<div><b>{{ n }}</b><span>{{ t }}</span></div>{% endfor %}</div>
 <div class="tp-free rv-up"><div><b class="tp-tn">무료</b><span class="tp-tp">월 <strong>0</strong>원</span><small class="tp-tx">상담창·카톡·톡톡·인스타 연결 · 상담 무제한 · 사장님 1명 · SODA 답 한 달 50번</small></div><a class="btn tp-btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
 <div class="rv-up">{{ tr.cards(tiers,0) }}</div>
