@@ -72,4 +72,10 @@ def register(app):
     """두 앱 모두에 /logo/<id>.webp 와 템플릿 함수를 단다."""
     app.add_url_rule('/logo/<int:company_id>.webp','shop_logo',serve)
     if 'favicon' not in app.view_functions:app.add_url_rule('/favicon.ico','favicon',lambda:app.send_static_file('favicon.ico'))  # 브라우저가 따로 찾는 탭 아이콘 (소보루 CX 심벌)
-    app.jinja_env.globals.update(shop_title=title,shop_notice=notice,shop_greet=greet,shop_logo_ver=logo_ver)
+    app.jinja_env.globals.update(shop_title=title,shop_notice=notice,shop_greet=greet,shop_logo_ver=logo_ver,css_ver=lambda name='hanq.css':css_ver(app,name))
+
+def css_ver(app,name):
+    """정적 파일 캐시 번호 = 파일 바뀐 시각. 서버에 새 파일이 올라가면 브라우저가 알아서 새로 받는다."""
+    import os
+    try:return int(os.path.getmtime(os.path.join(app.static_folder,name)))
+    except OSError:return 0
