@@ -2711,3 +2711,25 @@ p,li,dd,figcaption{text-wrap:pretty}
 .tp-promo.op{background:#E6F7F2;color:#191F28}.tp-promo.op span{color:#1C9B78}
 .op-tag{background:#191F28;color:#fff}
 .cx-tryerr{text-align:center;text-wrap:balance}
+/* 첫 화면 색 입히기 (OH 11/07: 너무 하얗기만 함 → 채널톡처럼 섹션마다 옅은 색 판). SODA 민트·하늘 + 크림 */
+.intro.tp{--sky:#EEF4FF;--mint:#E9F7F2;--cream:#FFF5E8;--lav:#F2EFFF}
+.intro.tp .cx-hero{background:linear-gradient(180deg,#fff 0%,#fff 38%,#F3F8FF 100%)}
+.cx-stage{isolation:isolate}
+.cx-stage::before{content:"";position:absolute;z-index:-1;left:-48px;right:-8px;top:96px;bottom:-56px;border-radius:44px;background:linear-gradient(135deg,#DCEBFF 0%,#E2F6EF 100%)}
+.intro.tp .cx-hero{padding-bottom:120px}
+.intro.tp .cx-soda{background:var(--mint)}
+.intro.tp .cx-soda .cx-stats>div{background:#fff;box-shadow:none}
+.intro.tp .cx-try{background:#fff}
+.intro.tp .cx-pillars{background:var(--sky)}
+.intro.tp .cx-pillars .cx-card3{background:#fff;box-shadow:none}
+.intro.tp #ai .tp-split>:not(.tp-copy),.intro.tp #approve .tp-split>:not(.tp-copy),.intro.tp #shop .tp-split>:not(.tp-copy),.intro.tp #teach .tp-split>:not(.tp-copy){position:relative;isolation:isolate}
+.intro.tp #ai .tp-split>:not(.tp-copy)::before,.intro.tp #approve .tp-split>:not(.tp-copy)::before,.intro.tp #shop .tp-split>:not(.tp-copy)::before,.intro.tp #teach .tp-split>:not(.tp-copy)::before{content:"";position:absolute;z-index:-1;inset:-40px -40px;border-radius:40px;background:var(--sky)}
+.intro.tp #approve .tp-split>:not(.tp-copy)::before{background:var(--cream)}
+.intro.tp #shop .tp-split>:not(.tp-copy)::before{background:var(--lav)}
+.intro.tp #teach .tp-split>:not(.tp-copy)::before{background:var(--mint)}
+.intro.tp #channels{background:var(--sky)}
+.intro.tp #channels .tp-card{background:#fff;box-shadow:none}
+.intro.tp #price{background:var(--cream)}
+.intro.tp #price .tp-zero>div,.intro.tp #price .tp-free,.intro.tp #price .tcard{background:#fff}
+.intro.tp .cx-end{background:linear-gradient(135deg,#DCEBFF 0%,#E2F6EF 100%)}
+@media (max-width:720px){.cx-stage::before{left:-16px;right:-16px;top:60px;bottom:-32px;border-radius:28px}.intro.tp #ai .tp-split>:not(.tp-copy)::before,.intro.tp #approve .tp-split>:not(.tp-copy)::before,.intro.tp #shop .tp-split>:not(.tp-copy)::before,.intro.tp #teach .tp-split>:not(.tp-copy)::before{inset:-20px -16px;border-radius:28px}.intro.tp .cx-hero{padding-bottom:72px}}
