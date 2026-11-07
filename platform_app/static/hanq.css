@@ -2711,25 +2711,28 @@ p,li,dd,figcaption{text-wrap:pretty}
 .tp-promo.op{background:#E6F7F2;color:#191F28}.tp-promo.op span{color:#1C9B78}
 .op-tag{background:#191F28;color:#fff}
 .cx-tryerr{text-align:center;text-wrap:balance}
-/* 첫 화면 색 입히기 (OH 11/07: 너무 하얗기만 함 → 채널톡처럼 섹션마다 옅은 색 판). SODA 민트·하늘 + 크림 */
-.intro.tp{--sky:#EEF4FF;--mint:#E9F7F2;--cream:#FFF5E8;--lav:#F2EFFF}
-.intro.tp .cx-hero{background:linear-gradient(180deg,#fff 0%,#fff 38%,#F3F8FF 100%)}
+/* 첫 화면 꾸미기 (OH 11/07 두 번째: SODA 색만 쓰지 말고 채널톡처럼 여러 옅은 색으로, 바탕은 흰색 위주) */
+.intro.tp{--peach:#FFEFE2;--lav:#F1EEFF;--yel:#FFF6D9;--sky:#EAF2FF;--cream:#FFF8F0}
+.intro.tp .cx-hero{background:#fff;padding-bottom:128px}
 .cx-stage{isolation:isolate}
-.cx-stage::before{content:"";position:absolute;z-index:-1;left:-48px;right:-8px;top:96px;bottom:-56px;border-radius:44px;background:linear-gradient(135deg,#DCEBFF 0%,#E2F6EF 100%)}
-.intro.tp .cx-hero{padding-bottom:120px}
-.intro.tp .cx-soda{background:var(--mint)}
-.intro.tp .cx-soda .cx-stats>div{background:#fff;box-shadow:none}
-.intro.tp .cx-try{background:#fff}
-.intro.tp .cx-pillars{background:var(--sky)}
+.cx-stage::before{content:"";position:absolute;z-index:-1;left:-56px;right:-56px;top:38%;bottom:-96px;border-radius:44px;background:linear-gradient(120deg,#FFE7D1 0%,#FFF4E9 50%,#EFEBFF 100%)}
+.intro.tp .cx-soda,.intro.tp .cx-try,.intro.tp #ai,.intro.tp #approve,.intro.tp #shop,.intro.tp #teach,.intro.tp #channels,.intro.tp #price,.intro.tp #faq{background:#fff}
+.intro.tp .cx-soda .cx-stats>div{box-shadow:none;border:0}
+.intro.tp .cx-soda .cx-stats>div:nth-child(1){background:var(--peach)}
+.intro.tp .cx-soda .cx-stats>div:nth-child(2){background:var(--lav)}
+.intro.tp .cx-soda .cx-stats>div:nth-child(3){background:var(--yel)}
+.intro.tp .cx-soda .cx-stats>div:nth-child(4){background:var(--sky)}
+.intro.tp .cx-pillars{background:var(--cream)}
 .intro.tp .cx-pillars .cx-card3{background:#fff;box-shadow:none}
-.intro.tp #ai .tp-split>:not(.tp-copy),.intro.tp #approve .tp-split>:not(.tp-copy),.intro.tp #shop .tp-split>:not(.tp-copy),.intro.tp #teach .tp-split>:not(.tp-copy){position:relative;isolation:isolate}
-.intro.tp #ai .tp-split>:not(.tp-copy)::before,.intro.tp #approve .tp-split>:not(.tp-copy)::before,.intro.tp #shop .tp-split>:not(.tp-copy)::before,.intro.tp #teach .tp-split>:not(.tp-copy)::before{content:"";position:absolute;z-index:-1;inset:-40px -40px;border-radius:40px;background:var(--sky)}
-.intro.tp #approve .tp-split>:not(.tp-copy)::before{background:var(--cream)}
-.intro.tp #shop .tp-split>:not(.tp-copy)::before{background:var(--lav)}
-.intro.tp #teach .tp-split>:not(.tp-copy)::before{background:var(--mint)}
-.intro.tp #channels{background:var(--sky)}
-.intro.tp #channels .tp-card{background:#fff;box-shadow:none}
-.intro.tp #price{background:var(--cream)}
-.intro.tp #price .tp-zero>div,.intro.tp #price .tp-free,.intro.tp #price .tcard{background:#fff}
-.intro.tp .cx-end{background:linear-gradient(135deg,#DCEBFF 0%,#E2F6EF 100%)}
-@media (max-width:720px){.cx-stage::before{left:-16px;right:-16px;top:60px;bottom:-32px;border-radius:28px}.intro.tp #ai .tp-split>:not(.tp-copy)::before,.intro.tp #approve .tp-split>:not(.tp-copy)::before,.intro.tp #shop .tp-split>:not(.tp-copy)::before,.intro.tp #teach .tp-split>:not(.tp-copy)::before{inset:-20px -16px;border-radius:28px}.intro.tp .cx-hero{padding-bottom:72px}}
+.intro.tp .tp-split>:not(.tp-copy){position:relative;isolation:isolate}
+.intro.tp .tp-split>:not(.tp-copy)::before{content:"";position:absolute;z-index:-1;inset:-40px;border-radius:40px;background:var(--peach)}
+.intro.tp #approve .tp-split>:not(.tp-copy)::before{background:var(--lav)}
+.intro.tp #shop .tp-split>:not(.tp-copy)::before{background:var(--yel)}
+.intro.tp #teach .tp-split>:not(.tp-copy)::before{background:var(--sky)}
+.intro.tp #channels .tp-card{box-shadow:none;border:0}
+.intro.tp #channels .ch-kk{background:#FFF8D6}.intro.tp #channels .ch-nt{background:#E8F8EE}.intro.tp #channels .ch-own{background:#FFF0E2}
+.intro.tp #channels .ch-c24{background:#EAF1FF}.intro.tp #channels .ch-ig{background:#FFEEF4}.intro.tp #channels .ch-mail{background:#EEF1F8}
+.intro.tp #price .tp-zero>div,.intro.tp #price .tp-free{background:#fff}
+.intro.tp .cx-end{background:linear-gradient(120deg,#FFE7D1 0%,#FFF4E9 50%,#EFEBFF 100%)}
+@media (max-width:767.98px){.cx-stage::before{left:-16px;right:-16px;top:120px;bottom:-24px;border-radius:28px}.intro.tp .tp-split>:not(.tp-copy)::before{inset:-20px -16px;border-radius:28px}.intro.tp .cx-hero{padding-bottom:64px}}
+.intro.tp .cx-hero .cx-chs{margin-top:120px}.cx-stage::before{bottom:-80px}@media (max-width:767.98px){.intro.tp .cx-hero .cx-chs{margin-top:48px}.cx-stage::before{bottom:-24px}}

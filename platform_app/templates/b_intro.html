@@ -113,7 +113,7 @@
 <p class="tp-sub rv-up"><span class="snt">채널마다 따로 들어가 확인하지 않아도 돼요.</span> <span class="snt">들어온 곳은 아이콘으로 구분해 보여 드려요.</span></p>
 <div class="tp-ch">
 {% for mark,cls,name,desc in [('K','kk','카카오톡 채널','친구 추가 없이 카톡으로 온 문의가 그대로 상담으로 들어와요'),('N톡','nt','네이버 톡톡','스마트스토어 톡톡 문의를 받고, 답도 바로 톡톡으로 보내요'),('💬','own','쇼핑몰 상담창','스크립트 한 줄이면 쇼핑몰 화면 안에서 우리 가게 이름으로 상담창이 열려요'),('C','c24','카페24 게시판','상품 Q&A·1:1 맞춤상담 글을 자동으로 가져오고 답글도 소보루에서 달아요'),('IG','ig','인스타그램 DM','비즈니스 계정을 이으면 DM이 그대로 상담으로 들어와요'),('M','mail','메일','고객센터 메일함을 이으면 받은 메일에 바로 답장해요')] %}
-<div class="tp-card rv-up"><img class="tp-ico big" src="{{ url_for('static',filename='ch/tile/'+('web' if cls=='own' else cls)+'.svg') }}" alt="" width="48" height="48"><b>{{ name }}</b><p>{{ desc }}</p></div>
+<div class="tp-card rv-up ch-{{ cls }}"><img class="tp-ico big" src="{{ url_for('static',filename='ch/tile/'+('web' if cls=='own' else cls)+'.svg') }}" alt="" width="48" height="48"><b>{{ name }}</b><p>{{ desc }}</p></div>
 {% endfor %}</div>
 </div></section>
 
