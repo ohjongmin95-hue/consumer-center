@@ -143,6 +143,18 @@ def _public_host(host):
     return True
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,req,fp,code,msg,headers,newurl):return None
+REDIRECT_KEYS=('u','url','q','r','target','to','link','dest','redirect')
+def unwrap_url(url):
+    """검색·메신저의 이동용 주소(네이버 검색 결과, 구글 /url, 인스타·페이스북 l. 링크 등)에서 안에 든 진짜 주소를 꺼낸다.
+    쇼핑몰 주소를 검색 결과에서 복사해 오는 사장님이 많다. 여러 겹이면 끝까지. 꺼낼 게 없으면 그대로."""
+    url=(url or '').strip()
+    for _ in range(3):
+        u=urllib.parse.urlsplit(url if re.match(r'https?://',url) else 'https://'+url)
+        qs=urllib.parse.parse_qs(u.query)
+        inner=next((v[0] for k in REDIRECT_KEYS for v in [qs.get(k)] if v and re.match(r'https?(://|%3A)',v[0],re.I)),'')
+        if not inner:break
+        url=urllib.parse.unquote(inner) if inner.lower().startswith(('http%3a','https%3a')) else inner
+    return url
 def fetch_text(url,hops=3):
     """공개 웹페이지 글만 읽는다 (내부망 주소는 막는다). -> 글 또는 ''"""
     for _ in range(hops):
@@ -187,7 +199,7 @@ def teach(db,co,text='',url='',files=None):
     """자료를 읽고 정리해 넣는다. files: [(이름, bytes)]. -> (문구, 'ok'|'error')"""
     if not ai.ready():return 'SODA가 아직 꺼져 있어요. 자료 대신 아래 질문에 직접 답해 주세요','error'
     parts=[];att=[];src='text'
-    url=clean(url,500).strip()
+    url=unwrap_url(clean(url,2000))[:500]
     if url:
         if not re.match(r'https?://',url):url='https://'+url
         db.execute('UPDATE companies SET soda_url=? WHERE id=?',(url,co['id']))  # 다음에 다시 읽을 때 채워 둔다

@@ -58,7 +58,8 @@ def _over():
 
 @bp.post('/try/read')
 def read():
-    url=clean(request.form.get('url',''),300).strip()
+    url=clean(request.form.get('url',''),2000).strip()
+    if url!='demo':url=soda.unwrap_url(url)[:300]  # 네이버 검색 결과처럼 이동용 주소면 안에 든 쇼핑몰 주소로
     if not url:return jsonify(error='쇼핑몰 주소를 넣어 주세요'),400
     if url=='demo':  # 예시 쇼핑몰: 읽기 없이 바로
         with conn() as db:db.execute('INSERT OR REPLACE INTO try_shops(k,url,name,facts,created) VALUES(?,?,?,?,?)',('demo','demo',DEMO['name'],json.dumps(DEMO,ensure_ascii=False),core.iso()))
