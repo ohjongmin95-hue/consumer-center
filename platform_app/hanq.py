@@ -6,17 +6,22 @@
 주소 설정이 없으면(개발·테스트) /biz 아래를 기업용으로 쓴다.
 """
 import os, datetime
+from flask import g
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.middleware.proxy_fix import ProxyFix
 import core, consumer, business
 
 for a,cookie in ((consumer.app,'hanq_session'),(business.app,'biz_session')):
     a.secret_key=core.SECRET
-    a.config.update(SESSION_COOKIE_NAME=cookie,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE='Lax',
+    # 고객용은 쇼핑몰 화면 안(다른 사이트의 iframe)에서도 접수가 이어지게 SameSite=None (HTTPS에서만, CSRF 토큰은 그대로 검사)
+    a.config.update(SESSION_COOKIE_NAME=cookie,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE='None' if a is consumer.app and os.getenv('HTTPS_ONLY')=='1' else 'Lax',
         SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1',MAX_CONTENT_LENGTH=16*1024*1024,PERMANENT_SESSION_LIFETIME=datetime.timedelta(days=14))
     @a.after_request
     def headers(r):
-        r.headers.setdefault('X-Content-Type-Options','nosniff');r.headers.setdefault('X-Frame-Options','DENY')
+        r.headers.setdefault('X-Content-Type-Options','nosniff')
+        # 쇼핑몰 화면 안 상담창(위젯)으로 연 고객센터만 다른 사이트 안에 띄울 수 있다 (채널톡처럼). 나머지는 그대로 막는다.
+        if getattr(g,'embed',False):r.headers['Content-Security-Policy']='frame-ancestors *'
+        else:r.headers.setdefault('X-Frame-Options','DENY')
         r.headers.setdefault('Referrer-Policy','same-origin')
         if r.mimetype=='text/html':r.headers['Cache-Control']='no-store'
         return r

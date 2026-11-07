@@ -52,6 +52,7 @@
 <dt>휴대폰</dt><dd>{{ c.phone or '없음' }}</dd><dt>이메일</dt><dd>{{ c.email or '없음' }}</dd>
 <dt>이전 문의</dt><dd>{{ (profile.n-1) if profile.n else 0 }}건</dd></dl>
 {% if profile.cases %}<ul class="cx-prev">{% for x in profile.cases[:4] %}<li><a href="{{ url_for('chat',case_id=x.id) }}">{{ x.title }}</a><span>{{ fmt(x.created) }}</span></li>{% endfor %}</ul>{% endif %}</section>
+{% if c.page_url %}<section class="cx-card"><h2>고객이 보던 페이지</h2><a class="cx-page" href="{{ c.page_url }}" target="_blank" rel="noopener noreferrer">{% if c.page_image %}<img src="{{ c.page_image }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<span class="ph"></span>{% endif %}<span><b>{{ c.page_title or '쇼핑몰 페이지' }}</b><small>{{ c.page_url.split('//',1)[-1] }}</small></span></a></section>{% endif %}
 <section class="cx-card"><h2>주문</h2>{% if order %}<dl><dt>주문번호</dt><dd>{{ order.order_no }}</dd><dt>상품</dt><dd>{{ order.product or '–' }}</dd><dt>상태</dt><dd>{{ OSTATUS.get(order.status,order.status) }}</dd>{% if order.invoice %}<dt>송장</dt><dd>{{ order.courier }} {{ order.invoice }}</dd>{% endif %}</dl>
 {% else %}<p class="cx-none">이어진 주문이 없어요{% if c.order_no %} (주문번호 {{ c.order_no }}){% endif %}</p>{% endif %}</section>
 </aside>

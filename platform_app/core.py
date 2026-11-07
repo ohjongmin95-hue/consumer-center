@@ -192,7 +192,7 @@ def init():
         # 나중에 더한 칸: 이미 있는 DB에도 붙인다
         cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
-        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status','ai_tried','order_by','ai_draft','ai_why','ai_hold'):  # order_by 'shop': 판매처가 붙여 준 주문 (회원 본인 주문). '': 고객이 적은 번호. ai_draft·ai_why: AI가 넘길 때 남긴 답변 초안과 넘긴 이유 (승인 카드에 보인다). ai_hold '1': AI는 초안만 (연결 전에 받은 메일)
+        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status','ai_tried','order_by','ai_draft','ai_why','ai_hold','page_url','page_title','page_image'):  # order_by 'shop': 판매처가 붙여 준 주문 (회원 본인 주문). '': 고객이 적은 번호. ai_draft·ai_why: AI가 넘길 때 남긴 답변 초안과 넘긴 이유 (승인 카드에 보인다). ai_hold '1': AI는 초안만 (연결 전에 받은 메일)
             if col not in cols:db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         cols={r[1] for r in db.execute('PRAGMA table_info(companies)')}
         for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),

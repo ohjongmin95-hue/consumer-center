@@ -1,6 +1,6 @@
 """소비자용 '소보루 CX' 고객센터: 어느 기업이든 한곳에서 요청 접수·조회."""
 import os, re, datetime, json, urllib.parse
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify, send_file, g
 from werkzeug.security import generate_password_hash, check_password_hash
 import billing, core, law, chatbot, workflow, livechat, cx, soda
 import tracking as tracking_mod
@@ -14,7 +14,11 @@ app.jinja_env.globals.update(core.TEMPLATE_GLOBALS,site='me')
 
 @app.before_request
 def guard():
+    if request.args.get('embed')=='1':session['embed']=1
+    g.embed=bool(session.get('embed'))  # 쇼핑몰 화면 안 상담창으로 열었다: 다른 사이트 안에 띄울 수 있게 (hanq.headers)
     if not request.path.startswith('/api/'):core.check_csrf()  # 앱 API는 쿠키 없이 요청별 토큰으로만 연다
+@app.context_processor
+def embed_ctx():return {'EMBED':bool(getattr(g,'embed',False))}
 app.after_request(core.copy_after_request('me'))  # 운영 화면에서 고친 문구 적용
 core.track_template(app)
 
@@ -118,6 +122,8 @@ def create_case(d,pw,ups,company_id=''):
             VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'한큐')''',(core.new_case_no(db),co['id'],co['name'],int(member),d['category'],d['title'],d['body'],d['want'],d['order_no'],
             d['name'],digits(d['phone']),d['email'],generate_password_hash(pw),int(d['consent']),'received',t,t,d['product'],d['received_on']))
         case_id=cur.lastrowid
+        pg=page_for(co['id']) if request else None
+        if pg:db.execute("UPDATE cases SET page_url=?,page_title=?,page_image=?,channel='쇼핑몰 상담창' WHERE id=?",(pg['url'],pg['title'],pg['image'],case_id))
         core.save_files(db,case_id,ups)
         core.add_event(db,case_id,'me','요청을 접수했어요.')
         if member and d['consent']:
@@ -312,7 +318,22 @@ def company_page(company_id):
     with conn() as db:co=core.company(db,company_id)
     if not co or co['status'] not in ('active','listed'):abort(404)
     session['cs']=co['id']
+    if request.args.get('embed')!='1' and request.args.get('from')!='widget':session.pop('embed',None);g.embed=False
+    keep_page(co)
     return render_template('c_company.html',co=co,member=core.active_member(co),ret=core.return_guide(co),REPLY_DAYS=core.REPLY_DAYS,live=livechat.available(co),btns=cx.buttons(co) if core.active_member(co) else [])
+
+def keep_page(co):
+    """쇼핑몰 상담창이 알려 준 '고객이 보던 페이지'(주소·제목·대표 그림)를 이 고객 세션에 잠깐 둔다.
+    이어서 접수하면 요청에 붙어 사장님 상담 화면 옆에 보인다 (채널톡처럼)."""
+    u=(request.args.get('pu') or '').strip()
+    if not u:return
+    def ok(x):return x if urllib.parse.urlsplit(x).scheme in ('http','https') else ''
+    session['cs_page']={'co':co['id'],'url':ok(u)[:500],'title':clean(request.args.get('pt',''),120),'image':ok((request.args.get('pi') or '').strip())[:500],'at':core.iso()}
+def page_for(co_id):
+    p=session.get('cs_page')
+    if not p or p.get('co')!=co_id or not p.get('url'):return None
+    at=core.parse(p.get('at',''))
+    return p if at and at>core.now()-datetime.timedelta(hours=6) else None
 
 def seen_widget(co):
     """버튼이 실제로 붙었는지 사장님 화면에 보여 주려고, 버튼을 불러간 쇼핑몰 주소(도메인만)와 때를 남긴다. 한 시간에 한 번만 쓴다."""
@@ -323,18 +344,39 @@ def seen_widget(co):
 
 @app.route('/widget.js')
 def widget_js():
-    """쇼핑몰에 붙이는 '문의하기' 버튼. 누르면 그 회사 고객센터 화면을 새 창으로 연다 (쇼핑몰 화면에 다른 내용을 끼워 넣지 않는다)."""
+    """쇼핑몰에 붙이는 상담 버튼 (채널톡처럼). 누르면 쇼핑몰 화면 오른쪽 아래에 상담창이 그 자리에서 열린다.
+    고객이 보던 페이지(주소·제목·대표 그림)를 함께 넘겨, 접수되면 사장님 상담 화면 옆에 보인다.
+    다른 사이트 안 쿠키를 막는 브라우저(사파리·휴대폰)는 예전처럼 새 창으로 연다."""
     cid=request.args.get('c','')
     with conn() as db:co=core.company(db,int(cid)) if cid.isdigit() else None
     if not co or co['status']!='active':return app.response_class('/* 소보루 CX: 회사를 찾을 수 없어요 */',mimetype='application/javascript')
     url=core.site_url('me','/to/%d'%co['id'])
     seen_widget(co)
-    js=("(function(){if(window.__soboruCS)return;window.__soboruCS=1;var u=%s;var b=document.createElement('button');b.type='button';b.textContent='문의하기';"
-        "b.setAttribute('aria-label','고객센터 문의하기');b.style.cssText='position:fixed;right:20px;bottom:20px;z-index:2147483000;border:0;border-radius:28px;padding:14px 20px;"
-        "background:#f89b00;color:#fff;font:600 15px/1 -apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.18);cursor:pointer';"
-        "b.onclick=function(){var w=Math.min(420,screen.width),h=Math.min(720,screen.height);var p=window.open(u+'?from=widget','soborucs','width='+w+',height='+h+',left='+(screen.width-w-20)+',top=60');if(!p)location.href=u;};"
-        "(document.body?document.body.appendChild(b):document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(b);}));})();")%json.dumps(url)
+    js=WIDGET_JS.replace('__URL__',json.dumps(url)).replace('__NAME__',json.dumps(co['name']))
     r=app.response_class(js,mimetype='application/javascript');r.headers['Cache-Control']='public, max-age=600';return r
+
+WIDGET_JS=r"""(function(){if(window.__soboruCS)return;window.__soboruCS=1;
+var U=__URL__,N=__NAME__,d=document,ua=navigator.userAgent,open=false,fr=null,pn=null;
+var narrow=function(){return window.innerWidth<560};
+var noFrame=/^((?!chrome|android|crios|fxios|edg).)*safari/i.test(ua);  // 사파리는 다른 사이트 안 쿠키를 막아 접수가 끊긴다
+function meta(n){var m=d.querySelector('meta[property="'+n+'"],meta[name="'+n+'"]');return m?m.getAttribute('content')||'':''}
+function src(){var q='?from=widget&embed=1&pu='+encodeURIComponent(location.href.slice(0,500))+'&pt='+encodeURIComponent((meta('og:title')||d.title||'').slice(0,120))+'&pi='+encodeURIComponent((meta('og:image')||'').slice(0,500));return U+q}
+var css='#sbcx-b{position:fixed;right:24px;bottom:24px;z-index:2147483000;width:60px;height:60px;border:0;border-radius:24px;background:#EF920E;box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s}'+
+'#sbcx-b:hover{transform:scale(1.05)}#sbcx-b svg{width:30px;height:30px}'+
+'#sbcx-p{position:fixed;right:24px;bottom:96px;z-index:2147483000;width:390px;height:min(680px,calc(100vh - 120px));border-radius:24px;overflow:hidden;background:#fff;box-shadow:0 12px 48px rgba(0,0,0,.2);opacity:0;transform:translateY(12px);transition:opacity .2s,transform .2s;pointer-events:none}'+
+'#sbcx-p.on{opacity:1;transform:none;pointer-events:auto}#sbcx-p iframe{width:100%;height:100%;border:0;display:block}'+
+'@media (max-width:559px){#sbcx-b{right:16px;bottom:16px}}';
+var CH='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5C4 7.4 7.6 4.5 12 4.5s8 2.9 8 7-3.6 7-8 7c-.9 0-1.8-.1-2.6-.4L5.5 19.5l1-3.2C5 15 4 13.4 4 11.5z" fill="#fff"/><circle cx="8.6" cy="11.5" r="1.2" fill="#EF920E"/><circle cx="12" cy="11.5" r="1.2" fill="#EF920E"/><circle cx="15.4" cy="11.5" r="1.2" fill="#EF920E"/></svg>';
+var X='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>';
+function popup(){var u=src(),w=Math.min(420,screen.width),h=Math.min(720,screen.height);var p=narrow()?null:window.open(u,'soborucs','width='+w+',height='+h+',left='+(screen.width-w-20)+',top=60');if(!p)location.href=u}
+function toggle(v){open=v===undefined?!open:v;
+  if(open&&!fr){pn=d.createElement('div');pn.id='sbcx-p';pn.setAttribute('role','dialog');pn.setAttribute('aria-label',N+' 상담');fr=d.createElement('iframe');fr.title=N+' 상담';fr.src=src();pn.appendChild(fr);d.body.appendChild(pn);pn.offsetWidth}
+  if(pn)pn.classList.toggle('on',open);b.innerHTML=open?X:CH;b.setAttribute('aria-label',open?'상담창 닫기':N+' 상담하기')}
+var st=d.createElement('style');st.textContent=css;var b=d.createElement('button');b.id='sbcx-b';b.type='button';b.innerHTML=CH;b.setAttribute('aria-label',N+' 상담하기');
+b.onclick=function(){if(noFrame||narrow()){popup();return}toggle()};
+window.addEventListener('message',function(e){if(e.data==='soboru:close'&&e.source===(fr&&fr.contentWindow))toggle(false)});
+function mount(){d.head.appendChild(st);d.body.appendChild(b)}
+d.body?mount():d.addEventListener('DOMContentLoaded',mount);})();"""
 
 @app.route('/track')
 def track():
