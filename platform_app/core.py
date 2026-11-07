@@ -34,7 +34,7 @@ RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 요청은 pu
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 요청, 운영 등)는 noindex
 INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup','terms','refund_policy','pricing','mk.tour','mk.shop_page','mk.industries','mk.industry','sl.consult','cms.blog','cms.blog_post','cms.help_home','cms.help_post','cms.stories','cms.story','gr.apply','sec.page'}}
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
-             'biz':BNAME+'는 고객 요청을 한 화면에서 승인하고 반복 요청은 자동으로 처리하는 기업용 CS 운영 도구예요.'}
+             'biz':BNAME+'는 1인·소규모 쇼핑몰을 위한 AI 상담원 서비스예요. AI 상담원 SODA가 카카오톡·네이버 톡톡·쇼핑몰 상담창 문의에 먼저 답하고, 환불 같은 결정만 사장님이 승인해요.'}
 class _Verify(dict):
     """검색엔진 소유 확인 코드: 운영 화면 서비스 키(또는 서버 설정)에서 그때그때 읽는다. 직접 넣은 값이 있으면 그것을."""
     def __init__(self,me,biz):super().__init__();self.keys={'me':me,'biz':biz}

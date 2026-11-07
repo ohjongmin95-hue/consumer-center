@@ -25,6 +25,7 @@ EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp);app.register_blueprint(cafe24.bp);app.register_blueprint(openapi.bp);app.register_blueprint(aistats.bp);app.register_blueprint(instagram.bp);app.register_blueprint(kakao.bp);app.register_blueprint(naver_talk.bp);app.register_blueprint(try_soda.bp);app.register_blueprint(billing.bp)
 import shop_profile;shop_profile.register(app)
+import seo;seo.register(app)
 app.jinja_env.globals.update(cms_has=cms.has_posts,open_left=billing.open_left,OPEN_SEATS=billing.OPEN_SEATS,OPEN_DAYS=billing.OPEN_DAYS,OPEN_CAP=billing.OPEN_CAP)
 app.jinja_env.globals.update(has_ep=lambda name:name in app.view_functions)
 
