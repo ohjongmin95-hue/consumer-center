@@ -71,4 +71,5 @@ def serve(company_id):
 def register(app):
     """두 앱 모두에 /logo/<id>.webp 와 템플릿 함수를 단다."""
     app.add_url_rule('/logo/<int:company_id>.webp','shop_logo',serve)
+    if 'favicon' not in app.view_functions:app.add_url_rule('/favicon.ico','favicon',lambda:app.send_static_file('favicon.ico'))  # 브라우저가 따로 찾는 탭 아이콘 (소보루 CX 심벌)
     app.jinja_env.globals.update(shop_title=title,shop_notice=notice,shop_greet=greet,shop_logo_ver=logo_ver)
