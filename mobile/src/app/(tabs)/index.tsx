@@ -1,13 +1,14 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CaseRow } from '../../components/CaseRow';
 import { Footer } from '../../components/Footer';
 import { Loading, Notice, TopBar } from '../../components/ui';
 import { api, ApiError, ChatRow, Home } from '../../lib/api';
 import { ChannelIcon } from '../../components/ChannelIcon';
-import { catGlyph, GlyphBox } from '../../components/Glyph';
+import { catGlyph, Glyph, GlyphBox } from '../../components/Glyph';
+import { SodaMark } from '../../components/SodaMark';
 import { setAlerts, setPending } from '../../lib/badge';
 import { useAuth } from '../../lib/auth';
 import { C, FONT } from '../../lib/theme';
@@ -16,6 +17,8 @@ export default function HomeTab() {
   const { session, logout } = useAuth();
   const [home, setHome] = useState<Home | null>(null);
   const [chats, setChats] = useState<{ rows: ChatRow[]; open: number } | null>(null);
+  const [gaps, setGaps] = useState(0);
+  const { width } = useWindowDimensions();
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [busyId, setBusyId] = useState(0);
@@ -24,7 +27,8 @@ export default function HomeTab() {
   const load = useCallback(async () => {
     if (!session) return;
     try {
-      const [h, cl] = await Promise.all([api.home(session.token), api.chatList(session.token, 'open').catch(() => null)]);
+      const [h, cl, sd] = await Promise.all([api.home(session.token), api.chatList(session.token, 'open').catch(() => null), api.soda(session.token).catch(() => null)]);
+      if (sd) setGaps(sd.gaps.length);
       setHome(h);
       if (cl) setChats({ rows: cl.rows, open: cl.counts.open ?? cl.rows.length });
       setPending(h.counts.pending);
@@ -68,6 +72,40 @@ export default function HomeTab() {
   const k = home.kpi;
   const pend = home.pending;
   const n = home.counts;
+  const bw = width - 40;
+  const needN = chats?.rows.filter((r) => r.need).length ?? 0;
+  const banners = [
+    {
+      key: 'chat',
+      small: '진행 중인 상담',
+      big: `${chats?.open ?? 0}건`,
+      sub: needN ? `사장님 결정이 필요한 상담 ${needN}건` : `SODA가 ${k.auto}%를 자동으로 처리했어요`,
+      bg: '#E8F3FF',
+      ink: '#1B64DA',
+      art: <Glyph name="chat" size={56} />,
+      go: () => router.navigate('/chat'),
+    },
+    {
+      key: 'ok',
+      small: '승인 기다리는 요청',
+      big: `${n.pending}건`,
+      sub: n.pending ? '눌러서 한 번에 승인할 수 있어요' : '지금은 기다리는 요청이 없어요',
+      bg: '#FFF3E4',
+      ink: C.accentInk,
+      art: <Glyph name="check" size={56} />,
+      go: () => router.navigate('/approvals'),
+    },
+    {
+      key: 'soda',
+      small: 'SODA 가르치기',
+      big: gaps ? `질문 ${gaps}개` : '다 배웠어요',
+      sub: gaps ? 'SODA가 답을 몰랐던 질문이에요' : '새 질문이 생기면 알려 드릴게요',
+      bg: '#EAF8F3',
+      ink: '#2F7D66',
+      art: <SodaMark size={60} />,
+      go: () => router.push('/soda'),
+    },
+  ];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.card }} edges={['top']}>
@@ -86,63 +124,90 @@ export default function HomeTab() {
           />
         }
       >
-        {/* 요청 현황: 작은 회색 칸 둘 + 큰 숫자 하나 (토스증권 '내 계좌'·'내 투자'처럼) */}
-        <View style={st.sec}>
-          <Head title="오늘" />
-          <View style={st.boxes}>
-            <Box label="오늘 들어온 요청" value={`${n.today ?? 0}건`} onPress={() => router.navigate('/chat')} />
-            <Box label="답변할 요청" value={`${n.open}건`} onPress={() => router.navigate('/chat')} />
-          </View>
-          <Pressable onPress={() => router.navigate('/chat')} style={({ pressed }) => [{ marginTop: 26 }, pressed && { opacity: 0.6 }]}>
-            <Text style={st.bigLabel}>진행 중인 상담</Text>
-            <Text style={st.big}>
-              {chats?.open ?? 0}건 <Text style={st.bigChev}>›</Text>
-            </Text>
-            {chats?.rows.some((r) => r.need) ? (
-              <Text style={[st.bigSub, { color: C.accentInk }]}>사장님 결정이 필요한 상담 {chats.rows.filter((r) => r.need).length}건</Text>
-            ) : (
-              <Text style={st.bigSub}>SODA가 {k.auto}%를 자동으로 처리했어요</Text>
-            )}
-          </Pressable>
-          {chats?.rows.length ? (
-            <View style={{ marginTop: 14 }}>
-              {chats.rows.slice(0, 4).map((r) => (
-                <Room key={r.id} r={r} />
-              ))}
-            </View>
-          ) : null}
+        {/* 토스 쇼핑 홈처럼: 찾기 칸 → 큰 배너 한 장씩 넘기기 → 바로가기 아이콘 줄 → 구역들 */}
+        <Pressable onPress={() => router.navigate('/cases')} style={({ pressed }) => [st.search, pressed && { backgroundColor: C.line }]}>
+          <Glyph name="search" size={18} />
+          <Text style={st.searchT}>상담·요청 찾기</Text>
+        </Pressable>
+
+        <ScrollView
+          horizontal
+          snapToInterval={bw + 10}
+          decelerationRate="fast"
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
+        >
+          {banners.map((x, i) => (
+            <Pressable key={x.key} onPress={x.go} style={({ pressed }) => [st.banner, { width: bw, backgroundColor: x.bg }, pressed && { opacity: 0.85 }]}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={st.bnSmall}>{x.small}</Text>
+                <Text style={st.bnBig}>{x.big}</Text>
+                <Text style={[st.bnSub, { color: x.ink }]}>{x.sub}</Text>
+              </View>
+              <View style={st.bnArt}>{x.art}</View>
+              <View style={st.bnPage}>
+                <Text style={st.bnPageT}>
+                  {i + 1} / {banners.length}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        <View style={st.shorts}>
+          {SHORTS.map((x) => (
+            <Pressable key={x.label} onPress={() => router.push(x.href as never)} style={({ pressed }) => [st.short, pressed && { opacity: 0.6 }]}>
+              <View style={st.shortIc}>{x.icon === 'soda' ? <SodaMark size={30} /> : <Glyph name={x.icon} size={28} />}</View>
+              <Text style={st.shortT} numberOfLines={1}>
+                {x.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
-        <View style={st.band} />
-        <View style={st.sec}>
-          <Head title="확인할 요청" more="전체" onPress={() => router.navigate('/cases')} />
-          {n.late ? <Line icon="clock" title={`기한 지난 요청 ${n.late}건`} sub="먼저 봐 주세요" tone={C.red} onPress={() => router.push('/cases?f=bad')} /> : null}
-          {pend.length ? (
-            <View style={{ marginTop: 6 }}>
-              <Head title={`승인 기다리는 요청 ${n.pending}건`} small more="모두 보기" onPress={() => router.navigate('/approvals')} />
-              {pend.slice(0, 5).map((c) => (
-                <View key={c.id} style={st.row}>
-                  <Pressable onPress={() => router.push(`/chat/${c.id}`)} style={({ pressed }) => [{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }, pressed && { opacity: 0.6 }]}>
-                    <GlyphBox name={catGlyph(c.category)} />
-                    <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={st.rowTitle} numberOfLines={1}>
+        {chats?.rows.length ? (
+          <View style={st.sec}>
+            <Head title="진행 중인 상담" more="전체" onPress={() => router.navigate('/chat')} />
+            {chats.rows.slice(0, 4).map((r) => (
+              <Room key={r.id} r={r} />
+            ))}
+          </View>
+        ) : null}
+
+        {pend.length ? (
+          <View style={{ paddingTop: 20, paddingBottom: 14 }}>
+            <View style={{ paddingHorizontal: 24 }}>
+              <Head title={`승인 기다리는 요청 ${n.pending}건`} more="전체" onPress={() => router.navigate('/approvals')} />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
+              {pend.slice(0, 8).map((c) => (
+                <View key={c.id} style={st.pc}>
+                  <Pressable onPress={() => router.push(`/chat/${c.id}`)} style={({ pressed }) => [{ gap: 10 }, pressed && { opacity: 0.6 }]}>
+                    <View style={st.pcIc}>
+                      <Glyph name={catGlyph(c.category)} size={26} />
+                    </View>
+                    <Text style={st.pcT} numberOfLines={2}>
                       {c.title}
                     </Text>
                     <Text style={st.rowSub} numberOfLines={1}>
                       {c.plan_title ? c.plan_title : c.category}
                     </Text>
-                    </View>
                   </Pressable>
-                  <Pressable onPress={() => approveOne(c.id)} disabled={!!busyId} style={({ pressed }) => [st.pill, pressed && { backgroundColor: C.line }]}>
-                    <Text style={st.pillT}>{busyId === c.id ? '…' : '승인'}</Text>
+                  <Pressable onPress={() => approveOne(c.id)} disabled={!!busyId} style={({ pressed }) => [st.pcBtn, pressed && { backgroundColor: C.line }]}>
+                    <Text style={st.pcBtnT}>{busyId === c.id ? '…' : '승인'}</Text>
                   </Pressable>
                 </View>
               ))}
-            </View>
-          ) : null}
-          <Notice text={err} flat />
-          <Notice text={ok} tone="ok" flat />
-        </View>
+            </ScrollView>
+          </View>
+        ) : null}
+        {err || ok || n.late ? (
+          <View style={[st.sec, { paddingTop: 4 }]}>
+            {n.late ? <Line icon="clock" title={`기한 지난 요청 ${n.late}건`} sub="먼저 봐 주세요" tone={C.red} onPress={() => router.push('/cases?f=bad')} /> : null}
+            <Notice text={err} flat />
+            <Notice text={ok} tone="ok" flat />
+          </View>
+        ) : null}
 
         {n.comp || (home.alerts ?? []).length ? (
           <>
@@ -289,6 +354,14 @@ function Room({ r }: { r: ChatRow }) {
   );
 }
 
+const SHORTS = [
+  { label: '상담', icon: 'chat', href: '/chat' },
+  { label: '승인', icon: 'check', href: '/approvals' },
+  { label: '주문·배송', icon: 'truck', href: '/orders' },
+  { label: '교환·반품', icon: 'exchange', href: '/returns' },
+  { label: 'SODA', icon: 'soda', href: '/soda' },
+];
+
 // 토스증권 홈처럼: 흰 바탕, 옆 24, 구역 사이 12 회색 띠, 그림 없이 글자와 숫자만
 const st = StyleSheet.create({
   sec: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 14 },
@@ -320,5 +393,23 @@ const st = StyleSheet.create({
   need: { fontFamily: FONT, fontSize: 11, fontWeight: '700', color: C.accentInk, backgroundColor: C.accentSoft, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, overflow: 'hidden' },
   when: { marginLeft: 'auto', fontFamily: FONT, fontSize: 12, color: C.fg4 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.red },
+  search: { marginHorizontal: 20, marginTop: 4, marginBottom: 16, height: 44, borderRadius: 14, backgroundColor: C.fill, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14 },
+  searchT: { fontFamily: FONT, fontSize: 15, color: C.fg3, letterSpacing: 0 },
+  banner: { height: 148, borderRadius: 22, paddingHorizontal: 22, paddingVertical: 20, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  bnSmall: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2, letterSpacing: 0 },
+  bnBig: { fontFamily: FONT, fontSize: 26, lineHeight: 34, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  bnSub: { fontFamily: FONT, fontSize: 13, lineHeight: 19, fontWeight: '600', letterSpacing: 0 },
+  bnArt: { width: 72, height: 72, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center' },
+  bnPage: { position: 'absolute', right: 14, bottom: 12, backgroundColor: 'rgba(0,0,0,0.12)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  bnPageT: { fontFamily: FONT, fontSize: 11, fontWeight: '600', color: '#fff', letterSpacing: 0 },
+  shorts: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
+  short: { alignItems: 'center', gap: 6, width: 62 },
+  shortIc: { width: 52, height: 52, borderRadius: 18, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
+  shortT: { fontFamily: FONT, fontSize: 12, fontWeight: '500', color: C.fg2, letterSpacing: 0 },
+  pc: { width: 156, backgroundColor: C.fill, borderRadius: 18, padding: 14, gap: 12, justifyContent: 'space-between' },
+  pcIc: { width: 44, height: 44, borderRadius: 14, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
+  pcT: { fontFamily: FONT, fontSize: 15, lineHeight: 21, fontWeight: '600', color: C.fg, letterSpacing: 0, minHeight: 42 },
+  pcBtn: { height: 36, borderRadius: 10, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
+  pcBtnT: { fontFamily: FONT, fontSize: 14, fontWeight: '700', color: C.accentInk },
   empty: { fontFamily: FONT, fontSize: 14, color: C.fg3, paddingVertical: 8 },
 });

@@ -2347,3 +2347,27 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .cb .cb-in button,.cs2 .cs-chat .cb-in button{background:var(--accent);color:#fff;border-radius:22px;height:46px;padding:0 18px;font-size:14.5px}
 .cb-head{display:flex;align-items:center;gap:8px;padding-bottom:12px;border-bottom:1px solid #f2f4f6}
 .cb-head b{font-size:16px;font-weight:700;letter-spacing:.2px;color:var(--fg)}
+/* 상담창 (OH 11/07: 채널톡처럼 신뢰감 있게) — 머리에 가게 이름과 SODA, 상담원 말 묶음마다 이름, 입력은 한 줄 안에 보내기 */
+.cb-head{gap:12px;padding:2px 0 16px}
+.cb-av{flex:none;width:40px;height:40px;border-radius:12px;background:#EAF8F3;display:grid;place-items:center}
+.cb-hd{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cb-hd b{font-size:16px;font-weight:700;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb-hd small{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--fg3,#8b95a1)}
+.cb-hd small i{flex:none;width:6px;height:6px;border-radius:3px;background:#1fbf86}
+.cb .cb-log{gap:8px}
+.cb-who{display:flex;align-items:center;gap:6px;margin-top:10px}
+.cb-who img{width:20px;height:20px}
+.cb-who b{font-size:13.5px;font-weight:700;color:var(--fg)}
+.cb-who span{font-size:11.5px;font-weight:600;color:#3f7f6b;background:#EAF8F3;border-radius:5px;padding:1px 6px}
+.cb .cb-m.bot,.cs2 .cs-chat .cb-m.bot{padding:0 0 0 26px;max-width:100%}
+.cb .cb-m.me,.cs2 .cs-chat .cb-m.me{margin-top:10px;border-radius:18px 18px 6px 18px}
+.cb .cb-oc,.cs2 .cs-chat .cb-oc{margin-left:26px;padding:14px 16px;max-width:calc(100% - 26px)}
+.cb .cb-m.dots{display:flex;gap:4px;padding:8px 0 8px 26px}
+.cb .cb-m.dots i{width:6px;height:6px;border-radius:3px;background:#c4cad1;animation:cbDot 1s infinite ease-in-out}
+.cb .cb-m.dots i:nth-child(2){animation-delay:.15s}.cb .cb-m.dots i:nth-child(3){animation-delay:.3s}
+@keyframes cbDot{0%,60%,100%{opacity:.35;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+.cb .cb-chips,.cs2 .cs-chat .cb-chips{padding-left:26px;margin-top:4px}
+.cb .cb-chips button,.cb .cb-chips a,.cs2 .cs-chat .cb-chips button,.cs2 .cs-chat .cb-chips a{border-radius:12px;height:36px;color:var(--fg)}
+.cb .cb-in,.cs2 .cs-chat .cb-in{position:relative;margin-top:12px}
+.cb .cb-in input,.cs2 .cs-chat .cb-in input{height:50px;border-radius:25px;padding:0 56px 0 18px;background:#f2f4f6}
+.cb .cb-in button,.cs2 .cs-chat .cb-in button{position:absolute;right:6px;top:6px;width:38px;height:38px;padding:0;border-radius:19px;display:grid;place-items:center}
