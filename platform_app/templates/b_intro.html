@@ -4,8 +4,8 @@
 {% block head %}<meta name="keywords" content="{{ SEO_KEYWORDS }}"><script type="application/ld+json">{{ seo_ld(request.url_root)|tojson }}</script>{% endblock %}
 {% block bar %}{{ b.bar('intro') }}{% endblock %}
 {% macro video(name,cls='',controls=false) -%}
-{% if vid[name] %}<video class="{{ cls }}" {% if controls %}controls preload="metadata"{% else %}autoplay muted loop playsinline preload="auto"{% endif %} poster="{{ url_for('static',filename='tour/'+name+'-poster.jpg') }}" aria-label="{{ BNAME }} 실제 화면 영상">
-{% if vid[name].webm %}<source src="{{ url_for('static',filename='tour/'+name+'.webm') }}" type="video/webm">{% endif %}<source src="{{ url_for('static',filename='tour/'+name+'.mp4') }}" type="video/mp4"></video>
+{% if vid[name] %}<video class="{{ cls }}" {% if controls %}controls preload="metadata"{% else %}autoplay muted loop playsinline preload="auto"{% endif %} poster="{{ url_for('static',filename='tour/'+name+'-poster.jpg') }}?v={{ css_ver('tour/'+name+'-poster.jpg') }}" aria-label="{{ BNAME }} 실제 화면 영상">
+{% if vid[name].webm %}<source src="{{ url_for('static',filename='tour/'+name+'.webm') }}?v={{ css_ver('tour/'+name+'.webm') }}" type="video/webm">{% endif %}<source src="{{ url_for('static',filename='tour/'+name+'.mp4') }}?v={{ css_ver('tour/'+name+'.mp4') }}" type="video/mp4"></video>
 {% else %}<img class="{{ cls }}" src="{{ url_for('static',filename='tour/chat-d.jpg') }}" alt="{{ BNAME }} 상담 화면">{% endif %}
 {%- endmacro %}
 {% block main %}<main class="intro tp">
