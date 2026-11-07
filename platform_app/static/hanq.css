@@ -2493,3 +2493,25 @@ p.cx-err{margin:0;padding:0 16px;font-size:13px;color:var(--red)}p.cx-err:empty{
 .tp .tp-ch .tp-card .tp-ico.big{border-bottom:0;padding-bottom:0}
 .cx-end p{margin:18px auto 0;max-width:none}
 @media (max-width:767.98px){.tp .tp-ch{grid-template-columns:1fr}.cx-tile{padding:22px 20px}}
+/* 소개 다듬기 (OH 11/08): PC 화면 앞 폰, 크림 카드 3장, 크림 판 위 기능 화면 */
+.cx-stage{position:relative;max-width:1120px;margin:56px auto 0;padding-right:72px}
+.cx-stage .cx-shot{margin:0}
+.cx-phone{position:absolute;right:0;bottom:-40px;width:230px;border-radius:36px;border:7px solid #191F28;background:#191F28;overflow:hidden;box-shadow:0 30px 60px -18px rgba(101,45,28,.38)}
+.cx-phone img{display:block;width:100%;height:auto;border-radius:29px}
+.cx-hero .cx-chs{margin-top:88px}
+.cx-three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:48px}
+.cx-card3{position:relative;display:flex;flex-direction:column;gap:10px;min-height:340px;padding:32px 28px;border-radius:28px;background:linear-gradient(160deg,#F3DDC3,#FCF6EE);text-decoration:none;color:inherit;text-align:left;overflow:hidden;transition:transform .2s}
+.cx-card3:hover{transform:translateY(-4px)}
+.cx-card3 b{font-size:24px;line-height:1.35;letter-spacing:-.03em;color:#652D1C}
+.cx-card3 p{margin:0;font-size:15.5px;line-height:1.6;color:#6B4A3A;max-width:92%;word-break:keep-all;position:relative;z-index:1}
+.cx-card3 img{position:absolute;right:-6px;bottom:-6px;width:150px;height:auto;pointer-events:none}
+.cx-panel{background:linear-gradient(160deg,#F3DDC3,#FCF6EE);border-radius:32px;padding:44px;display:flex;justify-content:center;align-items:center;min-width:0}
+.cx-panel>*{width:100%;max-width:420px;margin:0}
+.cx-panel>.cx-pic{max-width:none}
+.cx-panel .tp-chat,.cx-panel .tp-approve,.cx-panel .cx-teach{box-shadow:0 20px 48px -20px rgba(101,45,28,.3)}
+@media (max-width:1023.98px){.cx-three{grid-template-columns:1fr}.cx-card3{min-height:0;padding-bottom:120px}.cx-card3 img{width:120px}}
+@media (max-width:767.98px){.cx-stage{margin-top:36px;padding-right:0;padding-bottom:0}.cx-phone{position:relative;right:auto;bottom:auto;width:58%;max-width:240px;margin:-120px 12px 0 auto;border-width:5px;border-radius:28px}.cx-phone img{border-radius:23px}.cx-hero .cx-chs{margin-top:40px}.cx-three{gap:12px;margin-top:32px}.cx-card3{padding:26px 22px 110px;border-radius:24px}.cx-card3 b{font-size:21px}.cx-panel{padding:24px 16px;border-radius:24px}}
+.cx-acts{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:16px}
+.cx-ok{display:block;width:100%;text-align:center;background:#EF920E;color:#fff;font-weight:700;font-size:16px;border-radius:14px;padding:14px 0}
+.cx-acts small{font-size:14px;color:#6B7684}
+@media (max-width:767.98px){.cx-phone{width:50%;margin-top:-90px}}

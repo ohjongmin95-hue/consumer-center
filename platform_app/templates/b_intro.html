@@ -12,61 +12,62 @@
 <a class="tp-promo" href="{{ url_for('signup') }}">AI 상담원까지 0원부터. 가입하면 14일 동안 모든 기능을 써 보세요 <span>›</span></a>
 
 <section class="cx-hero"><div class="wrap">
-<span class="cx-pill">카카오톡 · 네이버 톡톡 · 쇼핑몰 상담창</span>
-<h1>쇼핑몰 문의,<br>SODA가 먼저 답해요</h1>
-<p>흩어진 고객 문의를 한 화면에서 받고, 배송·교환 안내는 AI 상담원 SODA가 바로 답해요.<br class="pc"> 사장님은 환불 같은 결정만 승인하면 돼요.</p>
+<span class="cx-pill">1인 쇼핑몰 사장님을 위한 AI 상담원</span>
+<h1>문의 답하던 시간,<br>SODA가 돌려드려요</h1>
+<p>카톡·네이버 톡톡·쇼핑몰 상담창 문의를 한곳에서 받고, 배송·교환 안내는 SODA가 바로 답해요.<br class="pc"> 사장님은 환불 같은 결정만 폰으로 승인하면 돼요.</p>
 <div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
 <small class="cx-note">카드 등록 없이 바로 써요 · <a href="#tour">1분 영상 보기 ›</a></small>
-<div class="cx-shot"><img src="{{ url_for('static',filename='tour/cx-app.webp') }}?v=1" alt="{{ BNAME }} 상담 화면: 왼쪽 고객 목록, 가운데 대화, 오른쪽 고객·주문 정보" width="1800" height="1012"></div>
+<div class="cx-stage"><div class="cx-shot"><img src="{{ url_for('static',filename='tour/cx-app.webp') }}?v=1" alt="{{ BNAME }} PC 상담 화면: 왼쪽 고객 목록, 가운데 대화, 오른쪽 고객·주문 정보" width="1800" height="1012"></div>
+<div class="cx-phone"><img src="{{ url_for('static',filename='tour/cx-phone.webp') }}?v=1" alt="{{ BNAME }} 앱 홈 화면" width="600" height="1254"></div></div>
 <ul class="cx-chs" aria-label="문의 받는 곳">{% for f,n in [('kk','카카오톡'),('nt','네이버 톡톡'),('web','쇼핑몰 상담창'),('ig','인스타그램'),('c24','카페24'),('mail','메일')] %}<li><img src="{{ url_for('static',filename='ch/tile/'+f+'.svg') }}" alt="" width="28" height="28">{{ n }}</li>{% endfor %}</ul>
 </div></section>
 
 <section class="tp-sec cx-pillars"><div class="wrap">
-<h2 class="rv-up">AI 상담원에게 믿고 맡길 수 있는 이유</h2>
-<p class="tp-sub rv-up">SODA는 아는 것만 답하고, 돈이 오가는 일은 약속하지 않아요.</p>
-<div class="cx-four">{% for n,t,d,h in [('01','넣어 둔 정보로만','상품·배송·반품 정책을 읽고 그 안에서만 답해요','#ai'),('02','직접 찾아서 답해요','주문번호로 송장을 찾아 배송 상황을 바로 알려요','#ai'),('03','결정은 사장님이','환불·교환·보상은 요약을 붙여 사장님께 넘겨요','#approve'),('04','가르칠수록 똑똑하게','모르는 질문은 한 줄 답만 달면 다음부터 SODA가 답해요','#teach')] %}
-<a class="cx-tile rv-up" href="{{ h }}"><span>{{ n }}</span><b>{{ t }}</b><p>{{ d }}</p></a>{% endfor %}</div>
+<h2 class="rv-up">같은 질문은 SODA가,<br>결정은 사장님이</h2>
+<p class="tp-sub rv-up">포장하는 중에도, 밤에도 SODA가 먼저 답해요. 사람을 더 뽑지 않아도 돼요.</p>
+<div class="cx-three">{% for img,t,d,h in [('chat','SODA가 먼저 답해요','넣어 둔 상품·배송·반품 정보로만 답하고, 주문번호로 송장을 찾아 배송 상황까지 알려요','#ai'),('ok','결정은 사장님이','환불·교환·보상은 SODA가 약속하지 않아요. 요약을 붙여 사장님께 넘겨요','#approve'),('soda','폰 하나로 다 해요','답하고, 승인하고, SODA 가르치기까지 앱에서 끝나요. PC 앞에 앉지 않아도 돼요','#teach')] %}
+<a class="cx-card3 rv-up" href="{{ h }}"><b>{{ t }}</b><p>{{ d }}</p><img src="{{ url_for('static',filename='board/'+img+'.webp') }}" alt="" width="300" height="300" loading="lazy"></a>{% endfor %}</div>
 </div></section>
 
-<section class="tp-sec tp-cream" id="ai"><div class="wrap tp-split">
+<section class="tp-sec" id="ai"><div class="wrap tp-split">
 <div class="tp-copy rv-up"><span class="tp-num">SODA 자동 답변</span><h2>반복 문의는<br>SODA가 끝까지 안내해요</h2>
 <p>주문번호로 송장을 찾아 배송 상황을 알려 주고, 상품 정보와 배송·반품 정책을 읽고 답해요. 교환·반품도 방법과 절차까지 먼저 안내해요.</p>
 <ul class="tp-list"><li>{{ i.tf('truck',22) }}배송 조회는 주문을 찾아 바로 답해요</li><li>{{ i.tf('memo',22) }}상품·사이즈·사용법은 넣어 둔 정보로만 답해요</li><li>{{ i.tf('clock',22) }}밤이나 주말에 온 문의도 기다리지 않게</li></ul></div>
-<div class="tp-chat" id="tpChat" aria-hidden="true">
+<div class="cx-panel rv-up"><div class="tp-chat" id="tpChat" aria-hidden="true">
 <div class="tp-chathead"><img class="tp-ico" src="{{ url_for('static',filename='ch/c24.svg') }}" alt="" width="28" height="28"><b>상품 Q&amp;A</b><small>카페24</small></div>
 <div class="bub me">어제 주문했는데 언제 받을 수 있나요? 주문번호 20261020-0000123이에요</div>
 <div class="bub typing"><i></i><i></i><i></i></div>
 <div class="bub ai"><span class="who">SODA 답변</span>주문하신 린넨 셔츠는 오늘 오전 CJ대한통운으로 출고됐어요. 내일 도착 예정이고, 송장번호는 마이페이지 &gt; 주문 내역에서 확인하실 수 있어요.</div>
 <div class="tp-sent">{{ i.tf('check',18) }}카페24 게시판에 답글을 달았어요</div>
 </div>
-</div></section>
+</div></div></section>
 
 <section class="tp-sec" id="approve"><div class="wrap tp-split rev">
 <div class="tp-copy rv-up"><span class="tp-num">사장님 승인</span><h2>결정은 사장님이,<br>승인 한 번으로</h2>
 <p>환불·교환·취소·보상처럼 돈이 오가는 일은 SODA가 약속하지 않아요. 고객에게 안내는 먼저 하고, 결정할 일만 요약과 처리 방법을 붙여 사장님께 넘겨요.</p></div>
-<div class="tp-approve rv-up" aria-hidden="true">
+<div class="cx-panel rv-up"><div class="tp-approve" aria-hidden="true">
 <div class="m-top"><span>{{ i.tf('money',20) }} 반품·환불</span><span class="pill acc">승인 필요</span></div>
 <b>사이즈가 안 맞아 반품하고 싶어요</b>
 <small>받은 지 3일째 · 전자상거래법 7일 이내</small>
 <div class="tp-reco"><small>SODA가 고객에게 보낸 안내</small>반품 접수 방법과 회수 일정을 안내했어요. 환불은 사장님 승인 뒤 진행돼요.</div>
-<div class="ph-acts big"><span class="on">승인</span><span>보류</span><span>자료 요청</span></div>
+<div class="cx-acts"><span class="cx-ok">승인</span><small>보류 · 자료 요청</small></div>
 </div>
-</div></section>
+</div></div></section>
 
-<section class="tp-sec tp-cream" id="shop"><div class="wrap tp-split">
+<section class="tp-sec" id="shop"><div class="wrap tp-split">
 <div class="tp-copy rv-up"><span class="tp-num">쇼핑몰 상담창</span><h2>쇼핑몰 화면 안에서<br>바로 열려요</h2>
 <p>스크립트 한 줄이면 쇼핑몰 오른쪽 아래에 상담 버튼이 생겨요. 상담창은 우리 가게 이름으로 열리고, 고객이 보던 상품도 사장님 화면에 같이 떠요.</p></div>
-<div class="cx-pic rv-up"><img src="{{ url_for('static',filename='tour/cx-shop.webp') }}?v=1" alt="쇼핑몰 상품 화면 위에 열린 상담창" width="1280" height="800" loading="lazy"></div>
-</div></section>
+<div class="cx-panel rv-up"><div class="cx-pic"><img src="{{ url_for('static',filename='tour/cx-shop.webp') }}?v=1" alt="쇼핑몰 상품 화면 위에 열린 상담창" width="1280" height="800" loading="lazy"></div>
+</div></div></section>
 
 <section class="tp-sec" id="teach"><div class="wrap tp-split rev">
 <div class="tp-copy rv-up"><span class="tp-num">SODA 가르치기</span><h2>가르칠수록<br>똑똑해지는 SODA</h2>
 <p>쇼핑몰 주소만 넣으면 SODA가 상품과 정책을 읽어요. 모르는 질문이 오면 사장님이 한 줄만 답해 두세요. 다음부터는 SODA가 그 답으로 안내해요.</p></div>
-<div class="cx-teach rv-up" aria-hidden="true"><b>SODA가 모르는 질문 <em>3</em></b>
+<div class="cx-panel rv-up"><div class="cx-teach" aria-hidden="true"><b>SODA가 모르는 질문 <em>3</em></b>
 <div class="q"><span>린넨 셔츠 다림질해도 돼요?</span><i>답 달기</i></div>
 <div class="q"><span>주말에도 출고하나요?</span><i>답 달기</i></div>
 <div class="q on"><span>선물 포장 되나요?</span><small>네, 결제할 때 '선물 포장'을 고르면 3,000원에 해 드려요.</small></div></div>
-</div></section>
+</div></div></section>
 
 <section class="tp-sec" id="channels"><div class="wrap">
 <h2 class="rv-up">흩어진 문의를<br>한곳에 모아요</h2>
@@ -96,7 +97,7 @@
 
 <section class="cx-end" id="tour"><div class="wrap">
 <h2>3분이면,<br>SODA가 첫 인사를 해요</h2>
-<p>가입하고 쇼핑몰 주소만 넣으면 바로 시작해요.</p>
+<p>쇼핑몰 주소만 넣으면 바로 시작해요. 혼자서도, 0원부터요.</p>
 <div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
 <small class="cx-note"><a href="{{ url_for('mk.tour') }}">화면을 한 장씩 둘러보기 ›</a>{% if has_ep('sl.consult') %} · <a href="{{ url_for('sl.consult') }}">도입 상담 신청 ›</a>{% endif %}</small>
 </div></section>
