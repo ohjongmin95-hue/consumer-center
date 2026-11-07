@@ -11,7 +11,7 @@ import { ChannelIcon } from '../../components/ChannelIcon';
 import { Avatar } from '../../components/Avatar';
 import { catGlyph, Glyph, GlyphBox } from '../../components/Glyph';
 import { SodaMark } from '../../components/SodaMark';
-import { Tf, TfName } from '../../components/Tf';
+import { BriefMark } from '../../components/BriefMark';
 import { setAlerts, setPending } from '../../lib/badge';
 import { useAuth } from '../../lib/auth';
 import { C, FONT } from '../../lib/theme';
@@ -274,7 +274,7 @@ export default function HomeTab() {
         {home.brief?.length ? (
           <View style={[st.card, st.pad]}>
             {/* 토스 "○○님을 위한 추천 상품"처럼 (OH 11/07) */}
-            <Head tf="memo" title={shopName.length && shopName.length <= 8 ? `${shopName} 사장님을 위한 브리핑` : '사장님을 위한 오늘 브리핑'} />
+            <Head mark title={shopName.length && shopName.length <= 8 ? `${shopName} 사장님을 위한 브리핑` : '사장님을 위한 오늘 브리핑'} />
             {home.brief.map((line) => (
               <Text key={line} style={st.brief}>
                 {line}
@@ -319,10 +319,10 @@ function Act({ icon, soda, big, sub, btn, primary, onPress }: { icon?: string; s
   );
 }
 
-function Head({ title, more, onPress, small, tf }: { title: string; more?: string; onPress?: () => void; small?: boolean; tf?: TfName }) {
+function Head({ title, more, onPress, small, mark }: { title: string; more?: string; onPress?: () => void; small?: boolean; mark?: boolean }) {
   return (
     <View style={st.head}>
-      {tf ? <View style={{ marginRight: 8 }}><Tf name={tf} size={24} /></View> : null}
+      {mark ? <View style={{ marginRight: 8 }}><BriefMark size={26} /></View> : null}
       <Text style={[small ? st.headSmall : st.headT, { flex: 1 }]} numberOfLines={1}>
         {title}
       </Text>
