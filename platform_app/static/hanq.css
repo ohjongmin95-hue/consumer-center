@@ -2421,3 +2421,13 @@ p.cx-err{margin:0;padding:0 16px;font-size:13px;color:var(--red)}p.cx-err:empty{
 .cs-shop{gap:10px;min-width:0}
 .cs-shop .shopmk{width:34px;height:34px;border-radius:11px;background:#FFF1DE;color:#EF920E;display:grid;place-items:center;flex:none}
 .cs-shop b{font-size:18px;font-weight:700;letter-spacing:-.02em;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 대화창 바탕은 흰색 (OH 11/07: 채널톡처럼 안이 회색이 아니다) */
+.cx-main{background:var(--card)}
+.cx-msgs{background:var(--card)}
+.mg.me .mt{background:#F2F4F6}
+.mg.ai .mt{background:#FFF4E5;box-shadow:none}
+.mg.sys p{background:none;color:#8B95A1;padding:2px 0}
+.cx-dec{box-shadow:inset 0 0 0 1.5px #FBE3C2}
+.cx-comp{border-top:0}
+.cx-comp textarea{background:#fff;box-shadow:inset 0 0 0 1.5px #E5E8EB}
+.cx-comp textarea:focus{box-shadow:inset 0 0 0 2px #EF920E}
