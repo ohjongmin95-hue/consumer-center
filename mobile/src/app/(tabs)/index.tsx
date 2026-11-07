@@ -77,7 +77,6 @@ export default function HomeTab() {
   const n = home.counts;
   const needN = chats?.rows.filter((r) => r.need).length ?? 0;
   const rows = chats?.rows ?? [];
-  const bw = width - 40;
   const boards = [
     {
       key: 'chat',
@@ -130,39 +129,41 @@ export default function HomeTab() {
         {/* 메인 보드 (OH 11/07: 토스처럼 실물 같은 그림). 한 장씩 옆으로 넘겨요 */}
         <ScrollView
           horizontal
+          pagingEnabled
           showsHorizontalScrollIndicator={false}
-          snapToInterval={bw + 10}
-          decelerationRate="fast"
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 20 }}
-          onScroll={(e) => setPage(Math.min(boards.length - 1, Math.max(0, Math.round(e.nativeEvent.contentOffset.x / (bw + 10)))))}
+          style={{ marginBottom: 16 }}
+          onScroll={(e) => setPage(Math.min(boards.length - 1, Math.max(0, Math.round(e.nativeEvent.contentOffset.x / width))))}
           scrollEventThrottle={32}
         >
           {boards.map((x) => (
-            <Pressable key={x.key} onPress={x.go} style={({ pressed }) => [st.board, { width: bw }, pressed && { backgroundColor: C.line }]}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={st.boardK}>{x.small}</Text>
-                <Text style={st.boardT}>{x.big}</Text>
-              </View>
-              <Image source={x.img} style={st.boardImg} resizeMode="contain" />
-              <View style={st.boardPage}>
-                <Text style={st.boardPageT}>
-                  {page + 1} / {boards.length}
-                </Text>
-              </View>
-            </Pressable>
+            <View key={x.key} style={{ width, paddingHorizontal: 20 }}>
+              <Pressable onPress={x.go} style={({ pressed }) => [st.board, pressed && { backgroundColor: C.line }]}>
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Text style={st.boardK}>{x.small}</Text>
+                  <Text style={st.boardT}>{x.big}</Text>
+                </View>
+                <Image source={x.img} style={st.boardImg} resizeMode="contain" />
+                <View style={st.boardPage}>
+                  <Text style={st.boardPageT}>
+                    {page + 1} / {boards.length}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
           ))}
         </ScrollView>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
+        {/* 바로가기: 화면 폭 안에 다섯 칸을 똑같이 나눠요 (넘치지 않게) */}
+        <View style={st.shorts}>
           {SHORTS.map((x) => (
             <Pressable key={x.label} onPress={() => router.push(x.href as never)} style={({ pressed }) => [st.short, pressed && { backgroundColor: C.line }]}>
-              {x.icon === 'soda' ? <SodaMark size={28} /> : <Glyph name={x.icon} size={28} />}
+              {x.icon === 'soda' ? <SodaMark size={26} /> : <Glyph name={x.icon} size={26} />}
               <Text style={st.shortT} numberOfLines={1}>
                 {x.label}
               </Text>
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
 
         <View style={st.split}>
           <Pressable onPress={() => router.navigate('/cases')} style={({ pressed }) => [{ flex: 1.3, gap: 4 }, pressed && { opacity: 0.6 }]}>
@@ -396,7 +397,6 @@ const SHORTS = [
   { label: '주문·배송', icon: 'truck', href: '/orders' },
   { label: '교환·반품', icon: 'exchange', href: '/returns' },
   { label: 'SODA', icon: 'soda', href: '/soda' },
-  { label: '통계', icon: 'chart', href: '/stats' },
 ];
 
 // 토스증권 홈처럼: 흰 바탕, 옆 24, 구역 사이 12 회색 띠, 그림 없이 글자와 숫자만
@@ -440,8 +440,9 @@ const st = StyleSheet.create({
   title: { fontFamily: FONT, fontSize: 26, lineHeight: 34, fontWeight: '700', color: C.fg, letterSpacing: 0, marginRight: 4 },
   titleK: { fontFamily: FONT, fontSize: 16, fontWeight: '500', color: C.fg3, letterSpacing: 0 },
   titleV: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.accentInk, letterSpacing: 0 },
-  short: { width: 92, height: 84, borderRadius: 18, backgroundColor: '#F4F5F7', borderWidth: 1, borderColor: '#EEF0F2', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  shortT: { fontFamily: FONT, fontSize: 14, fontWeight: '500', color: C.fg2, letterSpacing: 0 },
+  shorts: { flexDirection: 'row', gap: 8, paddingHorizontal: 20 },
+  short: { flex: 1, height: 78, borderRadius: 16, backgroundColor: '#F4F5F7', borderWidth: 1, borderColor: '#EEF0F2', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  shortT: { fontFamily: FONT, fontSize: 12.5, fontWeight: '500', color: C.fg2, letterSpacing: 0 },
   split: { flexDirection: 'row', alignItems: 'center', gap: 18, marginHorizontal: 24, marginTop: 28 },
   splitBar: { width: 1, height: 36, backgroundColor: C.line },
   splitK: { fontFamily: FONT, fontSize: 13, color: C.fg3, letterSpacing: 0 },
