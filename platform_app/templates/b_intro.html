@@ -9,7 +9,7 @@
 {% else %}<img class="{{ cls }}" src="{{ url_for('static',filename='tour/chat-d.jpg') }}" alt="{{ BNAME }} 상담 화면">{% endif %}
 {%- endmacro %}
 {% block main %}<main class="intro tp">
-<a class="tp-promo" href="{{ url_for('signup') }}">AI 상담원까지 0원부터. 가입하면 14일 동안 모든 기능을 써 보세요 <span>›</span></a>
+<a class="tp-promo" href="{{ url_for('signup') }}">AI 상담원까지 0원부터. 카드 등록 없이 지금 시작하세요 <span>›</span></a>
 
 <section class="cx-hero"><div class="wrap">
 <span class="cx-pill">1인 쇼핑몰 사장님을 위한 AI 상담원</span>
@@ -113,16 +113,16 @@
 <section class="tp-sec tp-cream" id="price"><div class="wrap">
 <h2 class="rv-up">AI 상담원까지,<br>0원부터 시작해요</h2>
 <p class="tp-sub rv-up">카드 등록 없이 무료로 시작하고, 문의가 늘면 그때 올리면 돼요.</p>
-<div class="tp-zero rv-up">{% for n,t in [('0원','설치비·가입비'),('14일','모든 기능 체험'),('0원','약정·위약금')] %}<div><b>{{ n }}</b><span>{{ t }}</span></div>{% endfor %}</div>
+<div class="tp-zero rv-up">{% for n,t in [('0원','설치비·가입비'),('3분','시작까지'),('0원','약정·위약금')] %}<div><b>{{ n }}</b><span>{{ t }}</span></div>{% endfor %}</div>
 <div class="tp-free rv-up"><div><b class="tp-tn">무료</b><span class="tp-tp">월 <strong>0</strong>원</span><small class="tp-tx">상담창·카톡·톡톡·인스타 연결 · 상담 무제한 · 사장님 1명 · SODA 답 한 달 50번</small></div><a class="btn tp-btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
 <div class="rv-up">{{ tr.cards(tiers,0) }}</div>
-<p class="tp-tnote rv-up">14일 체험이 끝나면 무료로 이어지고, 요금제는 직접 올릴 때만 결제돼요. <a class="link" href="{{ url_for('pricing') }}">요금 자세히 보기</a> · <a class="link" href="{{ url_for('refund_policy') }}">환불 정책</a></p>
+<p class="tp-tnote rv-up">요금제는 직접 올릴 때만 결제돼요. <a class="link" href="{{ url_for('pricing') }}">요금 자세히 보기</a> · <a class="link" href="{{ url_for('refund_policy') }}">환불 정책</a></p>
 </div></section>
 
 <section class="tp-sec" id="faq"><div class="wrap tp-narrow">
 <h2 class="rv-up">자주 묻는 질문</h2>
 <div class="tp-faq">
-{% for q,a in [('무료는 정말 계속 무료예요?','네. 상담창·카톡·톡톡·인스타 연결과 상담은 계속 무료예요. SODA 답만 한 달 50번까지이고, 더 쓰고 싶을 때 요금제를 올리면 돼요. 가입하고 14일은 모든 기능을 다 써 볼 수 있어요.'),('카카오톡 채널과 네이버 톡톡도 받을 수 있나요?','네. 서비스 연동에서 주소를 만들어 카카오 챗봇 관리자센터와 톡톡 파트너센터에 넣으면 돼요. 들어온 문의는 다른 채널과 같은 화면에 떠요.'),('카페24 말고 자사몰도 되나요?','네. 쇼핑몰 HTML에 스크립트 한 줄을 넣으면 문의 버튼이 생기고, 메일과 인스타그램 DM도 같은 화면에서 받아요.'),('카페24 비밀번호를 알려 줘야 하나요?','아니요. 카페24 관리자로 로그인해 권한에 동의하는 방식(OAuth)이라 비밀번호는 받지 않아요.'),('SODA가 마음대로 환불해 주면 어떡하죠?','SODA는 환불·보상·취소를 약속하거나 실행하지 않아요. 방법은 안내하고, 결정은 사장님 승인 뒤에만 나가요.'),('SODA가 모르는 걸 지어내지 않나요?','가격·재고·배송·반품 정책은 넣어 둔 정보로만 답해요. 없으면 지어내지 않고 담당자 확인을 안내해요.'),('무료 체험이 끝나면 어떻게 되나요?','무료 요금제로 그대로 이어져요. 받은 문의와 설정도 그대로 남아요.')] %}
+{% for q,a in [('무료는 정말 계속 무료예요?','네. 상담창·카톡·톡톡·인스타 연결과 상담은 계속 무료예요. SODA 답만 한 달 50번까지이고, 더 쓰고 싶을 때 요금제를 올리면 돼요.'),('카카오톡 채널과 네이버 톡톡도 받을 수 있나요?','네. 서비스 연동에서 주소를 만들어 카카오 챗봇 관리자센터와 톡톡 파트너센터에 넣으면 돼요. 들어온 문의는 다른 채널과 같은 화면에 떠요.'),('카페24 말고 자사몰도 되나요?','네. 쇼핑몰 HTML에 스크립트 한 줄을 넣으면 문의 버튼이 생기고, 메일과 인스타그램 DM도 같은 화면에서 받아요.'),('카페24 비밀번호를 알려 줘야 하나요?','아니요. 카페24 관리자로 로그인해 권한에 동의하는 방식(OAuth)이라 비밀번호는 받지 않아요.'),('SODA가 마음대로 환불해 주면 어떡하죠?','SODA는 환불·보상·취소를 약속하거나 실행하지 않아요. 방법은 안내하고, 결정은 사장님 승인 뒤에만 나가요.'),('SODA가 모르는 걸 지어내지 않나요?','가격·재고·배송·반품 정책은 넣어 둔 정보로만 답해요. 없으면 지어내지 않고 담당자 확인을 안내해요.')] %}
 <details class="rv-up"><summary>{{ q }}<span class="chev"></span></summary><p>{{ a }}</p></details>
 {% endfor %}</div>
 </div></section>
