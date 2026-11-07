@@ -148,8 +148,20 @@ export default function HomeTab() {
           ))}
         </ScrollView>
 
+        {/* 바로가기 다섯 칸: 흰 카드 안에 화면 폭을 똑같이 나눠요 */}
+        <View style={[st.card, st.shorts]}>
+          {SHORTS.map((x) => (
+            <Pressable key={x.label} onPress={() => router.push(x.href as never)} style={({ pressed }) => [st.short, pressed && { opacity: 0.5 }]}>
+              {x.icon === 'soda' ? <SodaMark size={30} /> : <Glyph name={x.icon} size={30} />}
+              <Text style={st.shortT} numberOfLines={1}>
+                {x.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         {/* 오늘 할 일 카드 */}
-        <View style={st.card}>
+        <View style={[st.card, { paddingBottom: 10 }]}>
           <Pressable onPress={() => router.navigate('/cases')} style={({ pressed }) => [st.cardHead, pressed && { opacity: 0.6 }]}>
             <Text style={st.cardHeadB}>오늘 {n.today ?? 0}건</Text>
             <View style={st.vbar} />
@@ -161,23 +173,10 @@ export default function HomeTab() {
           <Act icon="chat" big={`${chats?.open ?? 0}건`} sub={needN ? `진행 중인 상담 · 결정 필요 ${needN}` : '진행 중인 상담'} btn="보기" onPress={() => router.navigate('/chat')} />
           <Act icon="check" big={`${n.pending}건`} sub="승인 기다리는 요청" btn="승인" primary={n.pending > 0} onPress={() => router.navigate('/approvals')} />
           <Act soda big={`${gaps}개`} sub="SODA가 모르는 질문" btn="답하기" onPress={() => router.push('/soda')} />
-          <View style={st.links}>
-            {LINKS.map((x, i) => (
-              <View key={x.label} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {i ? <View style={st.vbarS} /> : null}
-                <Pressable onPress={() => router.push(x.href as never)} hitSlop={6} style={({ pressed }) => [st.link, pressed && { opacity: 0.5 }]}>
-                  <Text style={st.linkT}>{x.label}</Text>
-                </Pressable>
-              </View>
-            ))}
-            <Pressable onPress={() => router.navigate('/more')} hitSlop={6} style={({ pressed }) => [{ marginLeft: 'auto' }, pressed && { opacity: 0.5 }]}>
-              <Text style={st.linkT}>모두 보기</Text>
-            </Pressable>
-          </View>
         </View>
 
         {/* 자동 처리 카드 */}
-        <View style={st.card}>
+        <View style={[st.card, { paddingVertical: 6 }]}>
           <Act icon="chart" big={`${k.auto}%`} sub="SODA가 자동으로 처리한 비율" btn="통계" onPress={() => router.push('/stats')} />
         </View>
 
@@ -382,11 +381,6 @@ function Room({ r }: { r: ChatRow }) {
 }
 
 const BG = '#F2F4F6'; // 토스 홈 바탕 (옅은 회색)
-const LINKS = [
-  { label: '상담', href: '/chat' },
-  { label: '주문·배송', href: '/orders' },
-  { label: '교환·반품', href: '/returns' },
-];
 
 const TABS = [
   { key: 'all', label: '전체' },
@@ -463,9 +457,9 @@ const st = StyleSheet.create({
   title: { fontFamily: FONT, fontSize: 26, lineHeight: 34, fontWeight: '700', color: C.fg, letterSpacing: 0, marginRight: 4 },
   titleK: { fontFamily: FONT, fontSize: 16, fontWeight: '500', color: C.fg3, letterSpacing: 0 },
   titleV: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.accentInk, letterSpacing: 0 },
-  shorts: { flexDirection: 'row', gap: 8, paddingHorizontal: 20 },
-  short: { flex: 1, height: 78, borderRadius: 16, backgroundColor: '#F4F5F7', borderWidth: 1, borderColor: '#EEF0F2', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  shortT: { fontFamily: FONT, fontSize: 12.5, fontWeight: '500', color: C.fg2, letterSpacing: 0 },
+  shorts: { flexDirection: 'row', paddingHorizontal: 8, paddingVertical: 18 },
+  short: { flex: 1, alignItems: 'center', gap: 8 },
+  shortT: { fontFamily: FONT, fontSize: 13, fontWeight: '500', color: C.fg2, letterSpacing: 0 },
   split: { flexDirection: 'row', alignItems: 'center', gap: 18, marginHorizontal: 24, marginTop: 28 },
   splitBar: { width: 1, height: 36, backgroundColor: C.line },
   splitK: { fontFamily: FONT, fontSize: 13, color: C.fg3, letterSpacing: 0 },
