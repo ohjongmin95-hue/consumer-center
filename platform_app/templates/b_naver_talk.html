@@ -1,0 +1,51 @@
+{% extends 'base.html' %}{% import '_b.html' as b with context %}
+{% block title %}네이버 톡톡 · {{ BNAME }}{% endblock %}
+{% block bar %}{{ b.bar('connect') }}{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('connect') }}">서비스 연동</a><span>›</span><span>네이버 톡톡</span></div>
+<div class="chead"><div class="l"><div class="tagrow">{% if lk and lk.status=='ok' and lk.last_at %}<span class="pill ok">연결됨</span>{% elif lk and lk.status=='ok' %}<span class="pill acc">설정 중</span>{% elif lk %}<span class="pill bad">확인 필요</span>{% else %}<span class="pill gray">연결 전</span>{% endif %}</div>
+<h1>네이버 톡톡</h1></div></div>
+<div class="cols">
+<div class="stack">
+<section class="panel stack"><div class="ph">Webhook 주소</div>
+{% if lk %}
+<p class="sub" style="margin:0;font-size:15px">{% if lk.status!='ok' %}{{ lk.note }}{% elif lk.last_at %}잘 이어져 있어요. 마지막으로 받은 말은 {{ fmt(lk.last_at) }}이에요. 지금까지 문의 {{ lk.n_inq }}건을 받았고, 답 {{ lk.n_sent }}번을 보냈어요.{% else %}아직 톡톡에서 받은 말이 없어요. 아래 순서대로 설정하고 내 톡톡에 말을 걸어 보세요.{% endif %}</p>
+{% if url %}<div class="addline"><input class="inp" id="nturl" value="{{ url }}" readonly aria-label="Webhook 주소"><button class="btn md" type="button" data-copy="nturl">복사</button></div>
+<p class="cap" style="margin:0">이 주소를 아는 사람은 내 상담에 글을 넣을 수 있어요. 다른 사람에게 보여 주지 마세요.</p>{% endif %}
+{% else %}
+<p class="sub" style="margin:0;font-size:15px">네이버 톡톡으로 들어온 말을 소보루 상담으로 받고, 상담 화면에서 쓴 답이 바로 톡톡으로 나가요. 먼저 Webhook 주소를 만들어 주세요.</p>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="new"><button class="btn md">Webhook 주소 만들기</button></form>
+{% endif %}
+</section>
+{% if lk %}<section class="panel stack"><div class="ph">보내기 API 인증키</div>
+<p class="sub" style="margin:0;font-size:15px">{% if has_auth %}인증키가 들어 있어요. 상담 화면에서 쓴 답이 톡톡으로 바로 나가요.{% else %}인증키를 넣어야 사장님 답이 톡톡으로 나가요.{% endif %}</p>
+<form method="post" class="addline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="auth"><input class="inp" name="auth" maxlength="200" placeholder="{{ '새 인증키로 바꾸기' if has_auth else '인증키 붙여 넣기' }}" aria-label="보내기 API 인증키" autocomplete="off"><button class="btn md">넣기</button></form>
+<form method="post" onsubmit="return confirm('네이버 톡톡 연결을 끊을까요? 이미 받은 문의는 그대로 둬요.')"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="delete"><button class="tbtn">연결 끊기</button></form>
+</section>{% endif %}
+<section class="panel"><div class="ph">이렇게 설정해요</div>
+<ol class="dots">
+<li><b>톡톡 파트너센터 열기</b> · partner.talk.naver.com에 들어가 우리 가게 계정을 골라요. 스마트스토어를 쓰면 이미 계정이 있어요.</li>
+<li><b>챗봇 API 켜기</b> · 왼쪽 <b>개발자도구 → 챗봇 API 설정</b>에서 API를 사용으로 바꿔요.</li>
+<li><b>Webhook 넣기</b> · Webhook 칸에 위의 주소를 붙여 넣고, 받을 이벤트는 <b>send</b>와 <b>open</b>을 골라 저장해요.</li>
+<li><b>인증키 받기</b> · 같은 화면의 <b>보내기 API → 인증키 생성</b>을 눌러 나온 키를 복사해서 위 칸에 넣어요.</li>
+<li><b>말 걸어 보기</b> · 내 휴대폰 네이버 앱에서 우리 톡톡에 "배송 언제 와요?"처럼 보내 보세요. 소보루 <b>상담</b>에 초록 N톡 표시로 뜨면 끝이에요.</li>
+</ol></section>
+</div>
+<aside class="stack">
+<section class="panel"><div class="ph">이렇게 돼요</div>
+<ul class="dots">
+<li>톡톡 문의가 바로 <b>상담</b>으로 들어와요. 초록 N톡 표시가 붙어요.</li>
+<li>같은 고객이 또 보내면 진행 중인 대화에 이어 붙어요.</li>
+<li>SODA 자동 답변을 켰으면 SODA가 먼저 답해요. 사람을 찾으면 사장님께 넘겨요.</li>
+<li>카카오톡과 달리 사장님 답도 <b>바로</b> 톡톡으로 나가요.</li>
+</ul></section>
+<section class="panel"><div class="ph">알아 두세요</div>
+<ul class="dots">
+<li>소보루에 따로 드는 비용은 없어요. 톡톡 챗봇 API도 무료예요.</li>
+<li>네이버가 고객 이름은 알려 주지 않아요. 상담에는 '고객'으로 보여요.</li>
+<li>사진은 아직 받지 못해요. 사진이 오면 톡톡 파트너센터에서 봐 달라고 알려 드려요.</li>
+</ul></section>
+</aside>
+</div>
+{% endblock %}
+{% block script %}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했어요';},function(){b.textContent='선택했어요';});};});</script>{% endblock %}

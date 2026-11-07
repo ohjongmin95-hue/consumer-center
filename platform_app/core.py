@@ -419,7 +419,7 @@ def run_playbook(db,c,how,send=None):
         else:orders.sync_case(db,c,'cancel')  # 이어진 주문도 '취소'로
     return bool(reply)
 
-VIA={'email':'메일로','instagram':'인스타그램 DM으로','kakao':'카카오톡으로'}
+VIA={'email':'메일로','instagram':'인스타그램 DM으로','kakao':'카카오톡으로','naver_talk':'네이버 톡톡으로'}
 HELD={'kakao':'카카오톡 답변 전송 대기 중이에요. 카톡 챗봇은 고객이 말을 걸어야 답할 수 있어서, 고객이 다음 말을 보내면 그때 함께 전해져요'}  # 챗봇은 고객이 말을 걸 때만 답할 수 있다 (kakao.py)
 def deliver_reply(db,c,text):
     """답변 하나를 요청이 들어온 곳(판매처·메일·인스타그램)으로 보낸다. 그런 곳이 없으면 ("",""). -> (안내, ok|error)"""

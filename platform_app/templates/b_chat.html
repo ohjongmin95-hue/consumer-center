@@ -31,9 +31,10 @@
 <button class="btn sm gray" name="act" value="hold">보류</button><a class="btn sm gray" href="{{ url_for('case',case_id=c.id) }}">환불·교환 처리</a></form></div>{% endif %}
 </div>
 {% if c.status not in ('resolved','unresolved','withdrawn') %}
+{% if send_via and '다시' in send_via %}<p class="cx-via">{{ send_via }}</p>{% endif %}
 <form class="cx-comp" id="cxComp" method="post" action="{{ url_for('chat_send',case_id=c.id) }}" data-note="{{ url_for('case',case_id=c.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
 <button type="button" class="cx-mode" id="cxMode" aria-pressed="false" title="메모는 고객에게 안 보여요">메모</button>
-<textarea name="text" rows="1" maxlength="3000" placeholder="메시지 보내기{% if send_via %} · {{ send_via }}{% endif %}" data-ph="메시지 보내기{% if send_via %} · {{ send_via }}{% endif %}" aria-label="답변"></textarea>
+<textarea name="text" rows="1" maxlength="3000" placeholder="메시지 보내기" data-ph="메시지 보내기" aria-label="답변"></textarea>
 {% if lang!='ko' %}<button type="button" class="cx-tr" id="cxTr" title="{{ LANGS[lang] }}로 번역">번역</button>{% endif %}
 <button class="cx-go" id="cxSend" aria-label="보내기"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </form><p class="cx-err" id="cxErr" role="alert"></p>
