@@ -103,10 +103,11 @@ export default function HomeTab() {
   const shown = tab === 'need' ? rows.filter((r) => r.need) : tab === 'new' ? rows.filter((r) => r.unread) : rows;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.card }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
       <TopBar />
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
+        style={{ backgroundColor: BG }}
+        contentContainerStyle={{ paddingBottom: 28, paddingTop: 4 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -119,28 +120,22 @@ export default function HomeTab() {
           />
         }
       >
-        {/* 토스 '발견'처럼: 큰 제목 옆 작은 실시간 수치 → 회색 둥근 바로가기 카드(옆으로) → 세로 줄로 나눈 두 칸 → 한 줄 띠 → 밑줄 탭 목록 */}
-        <View style={st.titleRow}>
-          <Text style={st.title}>홈</Text>
-          <Text style={st.titleK}>자동 처리</Text>
-          <Text style={st.titleV}>{k.auto}%</Text>
-        </View>
+        {/* 토스 홈처럼 (OH 11/07): 옅은 회색 바탕 위에 흰 둥근 카드. 카드 안 행 = 아이콘 + 굵은 숫자 + 회색 설명 + 오른쪽 회색 버튼 */}
 
-        {/* 메인 보드 (OH 11/07: 토스처럼 실물 같은 그림). 한 장씩 옆으로 넘겨요 */}
+        {/* 메인 보드: 실물 같은 3D 그림, 한 장씩 넘겨요. 카드는 좌우 여백 안에 딱 */}
         <ScrollView
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 16 }}
           onScroll={(e) => setPage(Math.min(boards.length - 1, Math.max(0, Math.round(e.nativeEvent.contentOffset.x / width))))}
           scrollEventThrottle={32}
         >
           {boards.map((x) => (
-            <View key={x.key} style={{ width, paddingHorizontal: 20 }}>
-              <Pressable onPress={x.go} style={({ pressed }) => [st.board, pressed && { backgroundColor: C.line }]}>
-                <View style={{ flex: 1, gap: 6 }}>
-                  <Text style={st.boardK}>{x.small}</Text>
+            <View key={x.key} style={{ width, paddingHorizontal: 12 }}>
+              <Pressable onPress={x.go} style={({ pressed }) => [st.card, st.board, pressed && st.cardOn]}>
+                <View style={{ flex: 1, gap: 4 }}>
                   <Text style={st.boardT}>{x.big}</Text>
+                  <Text style={st.boardK}>{x.small}</Text>
                 </View>
                 <Image source={x.img} style={st.boardImg} resizeMode="contain" />
                 <View style={st.boardPage}>
@@ -153,157 +148,159 @@ export default function HomeTab() {
           ))}
         </ScrollView>
 
-        {/* 바로가기: 화면 폭 안에 다섯 칸을 똑같이 나눠요 (넘치지 않게) */}
-        <View style={st.shorts}>
-          {SHORTS.map((x) => (
-            <Pressable key={x.label} onPress={() => router.push(x.href as never)} style={({ pressed }) => [st.short, pressed && { backgroundColor: C.line }]}>
-              {x.icon === 'soda' ? <SodaMark size={26} /> : <Glyph name={x.icon} size={26} />}
-              <Text style={st.shortT} numberOfLines={1}>
-                {x.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <View style={st.split}>
-          <Pressable onPress={() => router.navigate('/cases')} style={({ pressed }) => [{ flex: 1.3, gap: 4 }, pressed && { opacity: 0.6 }]}>
-            <Text style={st.splitK}>오늘 들어온 요청</Text>
-            <Text style={st.splitV}>
-              {n.today ?? 0}건{n.late ? <Text style={{ color: C.red }}>  기한 지남 {n.late}</Text> : null}
+        {/* 오늘 할 일 카드 */}
+        <View style={st.card}>
+          <Pressable onPress={() => router.navigate('/cases')} style={({ pressed }) => [st.cardHead, pressed && { opacity: 0.6 }]}>
+            <Text style={st.cardHeadB}>오늘 {n.today ?? 0}건</Text>
+            <View style={st.vbar} />
+            <Text style={[st.cardHeadT, n.late ? { color: C.red } : null]} numberOfLines={1}>
+              {n.late ? `기한 지난 요청 ${n.late}건` : '새로 들어온 요청'}
             </Text>
+            <Text style={st.chev}>›</Text>
           </Pressable>
-          <View style={st.splitBar} />
-          <Pressable onPress={() => router.navigate('/approvals')} style={({ pressed }) => [{ flex: 1, gap: 4 }, pressed && { opacity: 0.6 }]}>
-            <Text style={st.splitK}>승인 기다림</Text>
-            <Text style={st.splitV}>
-              {n.pending}건 {n.pending ? <Text style={{ color: C.accentInk }}>보기</Text> : null}
-            </Text>
-          </Pressable>
-        </View>
-
-        <Pressable onPress={() => router.push('/soda')} style={({ pressed }) => [st.strip, pressed && { opacity: 0.7 }]}>
-          <SodaMark size={18} />
-          <Text style={st.stripK}>SODA</Text>
-          <Text style={st.stripT} numberOfLines={1}>
-            {gaps ? `답을 모르는 질문 ${gaps}개가 있어요` : needN ? `사장님 결정이 필요한 상담 ${needN}건` : '오늘도 잘 답하고 있어요'}
-          </Text>
-          <Text style={st.chev}>›</Text>
-        </Pressable>
-
-        <View style={{ paddingHorizontal: 24, paddingTop: 36 }}>
-          <Text style={st.bigHead}>진행 중인 상담</Text>
-        </View>
-        <View style={st.tabs}>
-          {TABS.map((t) => (
-            <Pressable key={t.key} onPress={() => setTab(t.key)} style={st.tab} hitSlop={4}>
-              <Text style={[st.tabT, tab === t.key && st.tabOn]}>{t.label}</Text>
-              {tab === t.key ? <View style={st.tabBar} /> : null}
+          <Act icon="chat" big={`${chats?.open ?? 0}건`} sub={needN ? `진행 중인 상담 · 결정 필요 ${needN}` : '진행 중인 상담'} btn="보기" onPress={() => router.navigate('/chat')} />
+          <Act icon="check" big={`${n.pending}건`} sub="승인 기다리는 요청" btn="승인" primary={n.pending > 0} onPress={() => router.navigate('/approvals')} />
+          <Act soda big={`${gaps}개`} sub="SODA가 모르는 질문" btn="답하기" onPress={() => router.push('/soda')} />
+          <View style={st.links}>
+            {LINKS.map((x, i) => (
+              <View key={x.label} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {i ? <View style={st.vbarS} /> : null}
+                <Pressable onPress={() => router.push(x.href as never)} hitSlop={6} style={({ pressed }) => [st.link, pressed && { opacity: 0.5 }]}>
+                  <Text style={st.linkT}>{x.label}</Text>
+                </Pressable>
+              </View>
+            ))}
+            <Pressable onPress={() => router.navigate('/more')} hitSlop={6} style={({ pressed }) => [{ marginLeft: 'auto' }, pressed && { opacity: 0.5 }]}>
+              <Text style={st.linkT}>모두 보기</Text>
             </Pressable>
-          ))}
+          </View>
         </View>
-        <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
-          {tab === 'ok' ? (
-            pend.length ? (
-              pend.slice(0, 6).map((c) => (
-                <View key={c.id} style={st.row}>
-                  <Pressable onPress={() => router.push(`/chat/${c.id}`)} style={({ pressed }) => [{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }, pressed && { opacity: 0.6 }]}>
-                    <View style={st.sq}>
-                      <Glyph name={catGlyph(c.category)} size={24} />
-                    </View>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={st.rowTitle} numberOfLines={1}>
-                        {c.title}
-                      </Text>
-                      <Text style={st.rowSub} numberOfLines={1}>
-                        {c.plan_title ? c.plan_title : c.category}
-                      </Text>
-                    </View>
-                  </Pressable>
-                  <Pressable onPress={() => approveOne(c.id)} disabled={!!busyId} style={({ pressed }) => [st.pill, pressed && { backgroundColor: C.line }]}>
-                    <Text style={st.pillT}>{busyId === c.id ? '…' : '승인'}</Text>
-                  </Pressable>
-                </View>
-              ))
+
+        {/* 자동 처리 카드 */}
+        <View style={st.card}>
+          <Act icon="chart" big={`${k.auto}%`} sub="SODA가 자동으로 처리한 비율" btn="통계" onPress={() => router.push('/stats')} />
+        </View>
+
+        {/* 진행 중인 상담 */}
+        <View style={st.card}>
+          <Text style={st.cardTitle}>진행 중인 상담</Text>
+          <View style={st.tabs}>
+            {TABS.map((t) => (
+              <Pressable key={t.key} onPress={() => setTab(t.key)} style={st.tab} hitSlop={4}>
+                <Text style={[st.tabT, tab === t.key && st.tabOn]}>{t.label}</Text>
+                {tab === t.key ? <View style={st.tabBar} /> : null}
+              </Pressable>
+            ))}
+          </View>
+          <View style={{ paddingHorizontal: 20, paddingTop: 6 }}>
+            {tab === 'ok' ? (
+              pend.length ? (
+                pend.slice(0, 6).map((c) => (
+                  <View key={c.id} style={st.row}>
+                    <Pressable onPress={() => router.push(`/chat/${c.id}`)} style={({ pressed }) => [{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }, pressed && { opacity: 0.6 }]}>
+                      <View style={st.sq}>
+                        <Glyph name={catGlyph(c.category)} size={24} />
+                      </View>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={st.rowTitle} numberOfLines={1}>
+                          {c.title}
+                        </Text>
+                        <Text style={st.rowSub} numberOfLines={1}>
+                          {c.plan_title ? c.plan_title : c.category}
+                        </Text>
+                      </View>
+                    </Pressable>
+                    <Pressable onPress={() => approveOne(c.id)} disabled={!!busyId} style={({ pressed }) => [st.pill, pressed && { backgroundColor: C.line }]}>
+                      <Text style={st.pillT}>{busyId === c.id ? '…' : '승인'}</Text>
+                    </Pressable>
+                  </View>
+                ))
+              ) : (
+                <Text style={st.empty}>승인 기다리는 요청이 없어요</Text>
+              )
+            ) : shown.length ? (
+              shown.slice(0, 5).map((r) => <Room key={r.id} r={r} />)
             ) : (
-              <Text style={st.empty}>승인 기다리는 요청이 없어요</Text>
-            )
-          ) : shown.length ? (
-            shown.slice(0, 5).map((r) => <Room key={r.id} r={r} />)
-          ) : (
-            <Text style={st.empty}>{tab === 'need' ? '결정이 필요한 상담이 없어요' : tab === 'new' ? '안 읽은 상담이 없어요' : '진행 중인 상담이 없어요'}</Text>
-          )}
-          <Pressable onPress={() => router.navigate(tab === 'ok' ? '/approvals' : '/chat')} style={({ pressed }) => [st.moreBtn, pressed && { backgroundColor: C.line }]}>
-            <Text style={st.moreBtnT}>더 보기</Text>
+              <Text style={st.empty}>{tab === 'need' ? '결정이 필요한 상담이 없어요' : tab === 'new' ? '안 읽은 상담이 없어요' : '진행 중인 상담이 없어요'}</Text>
+            )}
+            <Notice text={err} flat />
+            <Notice text={ok} tone="ok" flat />
+          </View>
+          <Pressable onPress={() => router.navigate(tab === 'ok' ? '/approvals' : '/chat')} style={({ pressed }) => [st.cardFoot, pressed && { backgroundColor: '#F9FAFB' }]}>
+            <Text style={st.linkT}>더 보기</Text>
           </Pressable>
-          <Notice text={err} flat />
-          <Notice text={ok} tone="ok" flat />
         </View>
 
         {n.comp || (home.alerts ?? []).length ? (
-          <>
-            <View style={st.band} />
-            <View style={st.sec}>
-              <Head title="살펴볼 일" />
-              {n.comp ? <Line icon="gift" title={`보상 승인을 기다리는 요청 ${n.comp}건`} sub="확인하고 승인하면 고객에게 알림이 가요" onPress={() => router.push('/cases?f=comp')} /> : null}
-              {(home.alerts ?? []).map((w) => (
-                <Line
-                  icon="warn"
-                  key={w.kind + w.label}
-                  title={w.kind === 'product' ? `'${w.label}' 요청이 최근 7일 ${w.n}건` : `${w.label} 요청이 최근 7일 ${w.n}건`}
-                  sub={`같은 문제가 반복되는지 확인해 보세요 · ${w.cats.join(', ')}`}
-                  onPress={() => router.push(`/cases?q=${encodeURIComponent(w.kind === 'product' ? w.label : '')}`)}
-                />
-              ))}
-            </View>
-          </>
+          <View style={[st.card, st.pad]}>
+            <Head title="살펴볼 일" />
+            {n.comp ? <Line icon="gift" title={`보상 승인을 기다리는 요청 ${n.comp}건`} sub="확인하고 승인하면 고객에게 알림이 가요" onPress={() => router.push('/cases?f=comp')} /> : null}
+            {(home.alerts ?? []).map((w) => (
+              <Line
+                icon="warn"
+                key={w.kind + w.label}
+                title={w.kind === 'product' ? `'${w.label}' 요청이 최근 7일 ${w.n}건` : `${w.label} 요청이 최근 7일 ${w.n}건`}
+                sub={`같은 문제가 반복되는지 확인해 보세요 · ${w.cats.join(', ')}`}
+                onPress={() => router.push(`/cases?q=${encodeURIComponent(w.kind === 'product' ? w.label : '')}`)}
+              />
+            ))}
+          </View>
         ) : null}
 
-        <View style={st.band} />
-        <View style={st.sec}>
+        <View style={[st.card, st.pad]}>
           <Head title="최근 요청" more="전체" onPress={() => router.navigate('/cases')} />
           {home.recent.length ? home.recent.map((c) => <CaseRow key={c.id} c={c} />) : <Text style={st.empty}>아직 들어온 요청이 없어요</Text>}
         </View>
 
-        <View style={st.band} />
-        <View style={st.sec}>
-          <Head title="한눈에 보기" />
-          <Value icon="chart" label="자동으로 처리한 비율" value={`${k.auto}%`} onPress={() => router.push('/stats')} />
+        <View style={[st.card, st.pad]}>
           <Value icon="report" label="지금까지 받은 요청" value={`${n.all}건`} onPress={() => router.push('/report')} />
           <Value icon="plus" label="요청 직접 등록하기" onPress={() => router.push('/new')} />
         </View>
 
         {home.brief?.length ? (
-          <>
-            <View style={st.band} />
-            <View style={st.sec}>
-              <Head title="소보루 브리핑" />
-              {home.brief.map((line) => (
-                <Text key={line} style={st.brief}>
-                  {line}
-                </Text>
-              ))}
-            </View>
-          </>
+          <View style={[st.card, st.pad]}>
+            <Head title="소보루 브리핑" />
+            {home.brief.map((line) => (
+              <Text key={line} style={st.brief}>
+                {line}
+              </Text>
+            ))}
+          </View>
         ) : null}
 
         {home.news?.length ? (
-          <>
-            <View style={st.band} />
-            <View style={st.sec}>
-              <Head title="법·제도 소식" more="전체" onPress={() => router.push('/news')} />
-              {home.news.map((x) => (
-                <Pressable key={x.id} onPress={() => router.push('/news')} style={({ pressed }) => [{ paddingVertical: 9 }, pressed && { opacity: 0.6 }]}>
-                  <Text style={st.newsT} numberOfLines={1}>
-                    {x.title}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </>
+          <View style={[st.card, st.pad]}>
+            <Head title="법·제도 소식" more="전체" onPress={() => router.push('/news')} />
+            {home.news.map((x) => (
+              <Pressable key={x.id} onPress={() => router.push('/news')} style={({ pressed }) => [{ paddingVertical: 9 }, pressed && { opacity: 0.6 }]}>
+                <Text style={st.newsT} numberOfLines={1}>
+                  {x.title}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         ) : null}
         <Footer />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// 카드 안 한 줄 (토스 홈 계좌 줄처럼): 아이콘 + 굵은 숫자 + 회색 설명 + 오른쪽 회색 버튼
+function Act({ icon, soda, big, sub, btn, primary, onPress }: { icon?: string; soda?: boolean; big: string; sub: string; btn: string; primary?: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [st.act, pressed && { backgroundColor: '#F9FAFB' }]}>
+      <View style={st.actIc}>{soda ? <SodaMark size={26} /> : <Glyph name={icon || 'chat'} size={26} />}</View>
+      <View style={{ flex: 1, gap: 1 }}>
+        <Text style={st.actBig}>{big}</Text>
+        <Text style={st.actSub} numberOfLines={1}>
+          {sub}
+        </Text>
+      </View>
+      <View style={[st.actBtn, primary && { backgroundColor: C.accentSoft }]}>
+        <Text style={[st.actBtnT, primary && { color: C.accent }]}>{btn}</Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -384,6 +381,13 @@ function Room({ r }: { r: ChatRow }) {
   );
 }
 
+const BG = '#F2F4F6'; // 토스 홈 바탕 (옅은 회색)
+const LINKS = [
+  { label: '상담', href: '/chat' },
+  { label: '주문·배송', href: '/orders' },
+  { label: '교환·반품', href: '/returns' },
+];
+
 const TABS = [
   { key: 'all', label: '전체' },
   { key: 'need', label: '결정 필요' },
@@ -401,6 +405,25 @@ const SHORTS = [
 
 // 토스증권 홈처럼: 흰 바탕, 옆 24, 구역 사이 12 회색 띠, 그림 없이 글자와 숫자만
 const st = StyleSheet.create({
+  card: { backgroundColor: C.card, borderRadius: 24, marginHorizontal: 12, marginTop: 12, overflow: 'hidden' },
+  cardOn: { backgroundColor: '#F9FAFB' },
+  pad: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 6 },
+  cardHeadB: { fontFamily: FONT, fontSize: 17, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  cardHeadT: { flex: 1, fontFamily: FONT, fontSize: 17, fontWeight: '500', color: C.fg2, letterSpacing: 0 },
+  cardTitle: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.fg, letterSpacing: 0, paddingHorizontal: 24, paddingTop: 22 },
+  cardFoot: { height: 52, borderTopWidth: 1, borderTopColor: '#F2F4F6', alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  vbar: { width: 1.5, height: 16, backgroundColor: C.line },
+  vbarS: { width: 1, height: 14, backgroundColor: C.line, marginHorizontal: 14 },
+  act: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 12 },
+  actIc: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F2F4F6', alignItems: 'center', justifyContent: 'center' },
+  actBig: { fontFamily: FONT, fontSize: 19, lineHeight: 26, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  actSub: { fontFamily: FONT, fontSize: 14, lineHeight: 20, color: C.fg3, letterSpacing: 0 },
+  actBtn: { height: 36, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#F2F4F6', alignItems: 'center', justifyContent: 'center' },
+  actBtnT: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2, letterSpacing: 0 },
+  links: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F2F4F6', marginTop: 8, paddingHorizontal: 24, height: 54 },
+  link: { paddingVertical: 4 },
+  linkT: { fontFamily: FONT, fontSize: 15, fontWeight: '500', color: C.fg2, letterSpacing: 0 },
   sec: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 14 },
   band: { height: 20 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
@@ -430,10 +453,10 @@ const st = StyleSheet.create({
   need: { fontFamily: FONT, fontSize: 11, fontWeight: '700', color: C.accentInk, backgroundColor: C.accentSoft, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, overflow: 'hidden' },
   when: { marginLeft: 'auto', fontFamily: FONT, fontSize: 12, color: C.fg4 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.red },
-  board: { height: 128, borderRadius: 22, backgroundColor: '#F4F5F7', paddingLeft: 22, paddingRight: 12, flexDirection: 'row', alignItems: 'center' },
+  board: { marginHorizontal: 0, marginTop: 8, height: 120, paddingLeft: 24, paddingRight: 14, flexDirection: 'row', alignItems: 'center' },
   boardK: { fontFamily: FONT, fontSize: 13, fontWeight: '500', color: C.fg3, letterSpacing: 0 },
-  boardT: { fontFamily: FONT, fontSize: 18, lineHeight: 26, fontWeight: '700', color: C.fg, letterSpacing: 0 },
-  boardImg: { width: 96, height: 96 },
+  boardT: { fontFamily: FONT, fontSize: 17, lineHeight: 24, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  boardImg: { width: 84, height: 84 },
   boardPage: { position: 'absolute', right: 14, bottom: 10, backgroundColor: 'rgba(0,21,42,0.18)', borderRadius: 9, paddingHorizontal: 7, paddingVertical: 1 },
   boardPageT: { fontFamily: FONT, fontSize: 11, fontWeight: '600', color: '#fff', letterSpacing: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 18 },
@@ -451,7 +474,7 @@ const st = StyleSheet.create({
   stripK: { fontFamily: FONT, fontSize: 15, fontWeight: '700', color: C.accentInk, letterSpacing: 0 },
   stripT: { flex: 1, fontFamily: FONT, fontSize: 15, fontWeight: '500', color: C.fg, letterSpacing: 0, marginLeft: 4 },
   bigHead: { fontFamily: FONT, fontSize: 22, lineHeight: 30, fontWeight: '700', color: C.fg, letterSpacing: 0 },
-  tabs: { flexDirection: 'row', gap: 22, paddingHorizontal: 24, marginTop: 16, borderBottomWidth: 1, borderBottomColor: '#F2F4F6' },
+  tabs: { flexDirection: 'row', gap: 22, paddingHorizontal: 24, marginTop: 14, borderBottomWidth: 1, borderBottomColor: '#F2F4F6' },
   tab: { paddingBottom: 10 },
   tabT: { fontFamily: FONT, fontSize: 16, fontWeight: '600', color: C.fg4, letterSpacing: 0 },
   tabOn: { color: C.fg, fontWeight: '700' },
