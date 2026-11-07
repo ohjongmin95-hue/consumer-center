@@ -9,12 +9,12 @@
 {% else %}<img class="{{ cls }}" src="{{ url_for('static',filename='tour/chat-d.jpg') }}" alt="{{ BNAME }} 상담 화면">{% endif %}
 {%- endmacro %}
 {% block main %}<main class="intro tp">
-<a class="tp-promo" href="{{ url_for('signup') }}">AI 상담원까지 0원부터. 카드 등록 없이 지금 시작하세요 <span>›</span></a>
+{% set opl=open_left() %}{% if opl %}<a class="tp-promo op" href="{{ url_for('signup') }}"><b class="op-tag">OPEN</b><i class="op-pc">오픈 특가 진행 중 · </i>첫 달 SODA 답 {{ OPEN_CAP }}번 무료, 선착순 {{ OPEN_SEATS }}곳 <span>›</span></a>{% else %}<a class="tp-promo" href="{{ url_for('signup') }}">AI 상담원까지 0원부터. 카드 등록 없이 지금 시작하세요 <span>›</span></a>{% endif %}
 
 <section class="cx-hero"><div class="wrap">
 <span class="cx-pill">1인 쇼핑몰 사장님을 위한 AI 상담원</span>
 <h1>문의 답하던 시간,<br>SODA가 돌려드려요</h1>
-<p>카톡·네이버 톡톡·쇼핑몰 상담창 문의를 한곳에서 받고, 배송·교환 안내는 SODA가 바로 답해요.<br class="pc"> 사장님은 환불 같은 결정만 폰으로 승인하면 돼요.</p>
+<p class="cx-lead"><span>카톡·톡톡·쇼핑몰 문의는</span> <span>SODA가 바로 답하고,</span><br><span>사장님은 환불 같은 결정만</span> <span>폰으로 승인하면 돼요.</span></p>
 <div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
 <small class="cx-note">카드 등록 없이 바로 써요 · <a href="#tour">1분 영상 보기 ›</a></small>
 <div class="cx-stage">
@@ -27,12 +27,15 @@
 <ul class="cx-chs" aria-label="문의 받는 곳">{% for f,n in [('kk','카카오톡'),('nt','네이버 톡톡'),('web','쇼핑몰 상담창'),('ig','인스타그램'),('c24','카페24'),('mail','메일')] %}<li><img src="{{ url_for('static',filename='ch/tile/'+f+'.svg') }}" alt="" width="28" height="28">{{ n }}</li>{% endfor %}</ul>
 </div></section>
 
+{% if opl %}<section class="cx-openb" aria-label="오픈 특가"><div class="wrap"><a class="ob" href="{{ url_for('signup') }}">
+<div class="ob-tx"><span class="ob-tag">창립 사장님 100곳 모집 중</span><b>오픈 기념, 첫 달은<br>SODA 답 10배</b><div class="ob-cmp"><span class="ob-was">평소 <s>50번</s></span><span class="ob-arrow" aria-hidden="true">→</span><span class="ob-now"><strong>{{ OPEN_CAP }}</strong>번 무료</span></div><p>하루 15번꼴이라 1인 쇼핑몰 문의는 거의 다 SODA가 받아요.<br>써 보시고 솔직한 후기만 들려주세요.</p><p class="ob-left">창립 사장님 선착순 {{ OPEN_SEATS }}곳 · <em>지금 {{ opl }}곳 남았어요</em></p><span class="btn ob-btn">무료로 시작하기</span></div>
+<img class="ob-mk" src="{{ url_for('static',filename='soda-mark.svg') }}?v=3" alt="" width="180" height="180"></a></div></section>{% endif %}
 <section class="tp-sec cx-soda" id="soda"><div class="wrap">
 <img class="cx-soda-mark rv-up" src="{{ url_for('static',filename='soda-mark.svg') }}" alt="SODA 심벌" width="88" height="88">
 <span class="tp-num rv-up">AI 상담원 SODA</span>
 <h2 class="rv-up">사장님 대신 문의에 답하는<br>AI 상담원, SODA예요</h2>
-<p class="tp-sub rv-up">이름은 Shop Owner Decides에서 왔어요. 답은 SODA가 하고, 결정은 늘 사장님이 해요.</p>
-<div class="cx-stats">{% for n,t,d in [('24시간','쉬지 않고 답해요','밤·주말에 온 문의도 바로 답해요'),('0원','무료로 시작해요','SODA 답 한 달 50번까지 무료예요'),('3분','바로 일을 시작해요','쇼핑몰 주소만 넣으면 SODA가 읽어요'),('0번','멋대로 약속하지 않아요','환불·보상은 사장님 승인 뒤에만')] %}<div class="rv-up"><b>{{ n }}</b><strong>{{ t }}</strong><span>{{ d }}</span></div>{% endfor %}</div>
+<p class="tp-sub rv-up"><span class="snt">이름은 Shop Owner Decides에서 왔어요.</span> <span class="snt">답은 SODA가 하고, 결정은 늘 사장님이 해요.</span></p>
+<div class="cx-stats">{% for n,t,d in [('24시간','쉬지 않고 답해요','밤·주말 문의도|바로 답해요'),('0원','무료로 시작해요','SODA 답 한 달|50번까지 무료예요'),('3분','바로 일을 시작해요','쇼핑몰 주소만 넣으면|SODA가 읽어요'),('0번','멋대로 약속하지 않아요','환불·보상은|사장님 승인 뒤에만')] %}<div class="rv-up"><b>{{ n }}</b><strong>{{ t }}</strong><span>{% for x in d.split('|') %}<i class="snt">{{ x }}</i> {% endfor %}</span></div>{% endfor %}</div>
 </div></section>
 
 <section class="tp-sec cx-try" id="try"><div class="wrap">
@@ -46,13 +49,13 @@
 
 <section class="tp-sec cx-pillars"><div class="wrap">
 <h2 class="rv-up">사장님 혼자서도<br>충분한 이유</h2>
-<p class="tp-sub rv-up">포장하는 중에도, 밤에도 SODA가 먼저 답해요. 사람을 더 뽑지 않아도 돼요.</p>
+<p class="tp-sub rv-up"><span class="snt">포장하는 중에도, 밤에도 SODA가 먼저 답해요.</span> <span class="snt">사람을 더 뽑지 않아도 돼요.</span></p>
 <div class="cx-three">
-<a class="cx-card3 rv-up" href="#ai"><b>SODA가 먼저 답해요</b><p>넣어 둔 상품·배송·반품 정보로 답하고, 주문번호로 배송 상황까지 알려요</p>
+<a class="cx-card3 rv-up" href="#ai"><b>SODA가 먼저 답해요</b><p><span class="snt">넣어 둔 상품·배송·반품 정보로 답하고,</span> <span class="snt">주문번호로 배송 상황까지 알려요</span></p>
 <div class="mini" aria-hidden="true"><div class="b me">언제 와요?</div><div class="b soda"><span><img src="{{ url_for('static',filename='soda-mark.svg') }}" alt="" width="16" height="16">SODA</span>오늘 출고됐어요. 내일 도착해요</div></div></a>
-<a class="cx-card3 rv-up" href="#approve"><b>결정은 사장님이</b><p>환불·교환·보상은 SODA가 약속하지 않아요. 요약을 붙여 사장님께 넘겨요</p>
+<a class="cx-card3 rv-up" href="#approve"><b>결정은 사장님이</b><p><span class="snt">환불·교환·보상은 SODA가 약속하지 않아요.</span> <span class="snt">요약을 붙여 사장님께 넘겨요</span></p>
 <div class="mini" aria-hidden="true"><small>반품·환불</small><strong>사이즈가 안 맞아요</strong><i>승인</i></div></a>
-<a class="cx-card3 rv-up" href="#teach"><b>폰 하나로 다 해요</b><p>답하고, 승인하고, SODA 가르치기까지 앱에서 끝나요</p>
+<a class="cx-card3 rv-up" href="#teach"><b>폰 하나로 다 해요</b><p><span class="snt">답하고, 승인하고,</span> <span class="snt">SODA 가르치기까지 앱에서 끝나요</span></p>
 <div class="mini" aria-hidden="true"><small>SODA가 모르는 질문</small><strong>선물 포장 되나요?</strong><i class="soft">답 달기</i></div></a>
 </div>
 </div></section>
@@ -103,7 +106,7 @@
 
 <section class="tp-sec" id="channels"><div class="wrap">
 <h2 class="rv-up">흩어진 문의를<br>한곳에 모아요</h2>
-<p class="tp-sub rv-up">채널마다 따로 들어가 확인하지 않아도 돼요. 들어온 곳은 아이콘으로 구분해 보여 드려요.</p>
+<p class="tp-sub rv-up"><span class="snt">채널마다 따로 들어가 확인하지 않아도 돼요.</span> <span class="snt">들어온 곳은 아이콘으로 구분해 보여 드려요.</span></p>
 <div class="tp-ch">
 {% for mark,cls,name,desc in [('K','kk','카카오톡 채널','친구 추가 없이 카톡으로 온 문의가 그대로 상담으로 들어와요'),('N톡','nt','네이버 톡톡','스마트스토어 톡톡 문의를 받고, 답도 바로 톡톡으로 보내요'),('💬','own','쇼핑몰 상담창','스크립트 한 줄이면 쇼핑몰 화면 안에서 우리 가게 이름으로 상담창이 열려요'),('C','c24','카페24 게시판','상품 Q&A·1:1 맞춤상담 글을 자동으로 가져오고 답글도 소보루에서 달아요'),('IG','ig','인스타그램 DM','비즈니스 계정을 이으면 DM이 그대로 상담으로 들어와요'),('M','mail','메일','고객센터 메일함을 이으면 받은 메일에 바로 답장해요')] %}
 <div class="tp-card rv-up"><img class="tp-ico big" src="{{ url_for('static',filename='ch/tile/'+('web' if cls=='own' else cls)+'.svg') }}" alt="" width="48" height="48"><b>{{ name }}</b><p>{{ desc }}</p></div>
@@ -112,9 +115,9 @@
 
 <section class="tp-sec tp-cream" id="price"><div class="wrap">
 <h2 class="rv-up">AI 상담원까지,<br>0원부터 시작해요</h2>
-<p class="tp-sub rv-up">카드 등록 없이 무료로 시작하고, 문의가 늘면 한 달 9,900원부터 올리면 돼요.</p>
+<p class="tp-sub rv-up"><span class="snt">카드 등록 없이 무료로 시작하고,</span> <span class="snt">문의가 늘면 한 달 9,900원부터 올리면 돼요.</span></p>
 <div class="tp-zero rv-up">{% for n,t in [('0원','설치비·가입비'),('3분','시작까지'),('0원','약정·위약금')] %}<div><b>{{ n }}</b><span>{{ t }}</span></div>{% endfor %}</div>
-<div class="tp-free rv-up"><div><b class="tp-tn">무료</b><span class="tp-tp">월 <strong>0</strong>원</span><small class="tp-tx">상담창·카톡·톡톡·인스타 연결 · 상담 무제한 · 사장님 1명 · SODA 답 한 달 50번</small></div><a class="btn tp-btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
+<div class="tp-free rv-up"><div><b class="tp-tn">무료</b><span class="tp-tp">월 <strong>0</strong>원</span><small class="tp-tx">상담창·카톡·톡톡·인스타 연결 · 상담 무제한 · 사장님 1명 · SODA 답 한 달 50번{% if opl %}<br><b class="op-in">오픈 특가: 가입 첫 달은 {{ OPEN_CAP }}번</b>{% endif %}</small></div><a class="btn tp-btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
 <div class="rv-up">{{ tr.cards(tiers,0) }}</div>
 <p class="tp-tnote rv-up">요금제는 직접 올릴 때만 결제돼요. <a class="link" href="{{ url_for('pricing') }}">요금 자세히 보기</a> · <a class="link" href="{{ url_for('refund_policy') }}">환불 정책</a></p>
 </div></section>
@@ -129,7 +132,7 @@
 
 <section class="cx-end" id="tour"><div class="wrap">
 <h2>3분이면,<br>SODA가 첫 인사를 해요</h2>
-<p>쇼핑몰 주소만 넣으면 바로 시작해요. 혼자서도, 0원부터요.</p>
+<p><span class="snt">쇼핑몰 주소만 넣으면 바로 시작해요.</span> <span class="snt">혼자서도, 0원부터요.</span></p>
 <div class="tp-cta"><a class="btn tp-btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div>
 <small class="cx-note"><a href="{{ url_for('mk.tour') }}">화면을 한 장씩 둘러보기 ›</a>{% if has_ep('sl.consult') %} · <a href="{{ url_for('sl.consult') }}">도입 상담 신청 ›</a>{% endif %}</small>
 </div></section>

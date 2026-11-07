@@ -199,9 +199,12 @@ def media(name):
     r=send_file(p,mimetype=IMG_EXT[p.suffix],max_age=86400*30);return r
 
 def nav():return [('cms.help_home','도움말')]  # 자료실·고객 사례는 아래쪽 링크에 (위 메뉴가 넘치지 않게)
+def has_posts(kind):
+    """공개된 글이 하나라도 있는지. 비어 있는 자료실·고객 사례는 링크를 숨긴다."""
+    with conn() as db:return bool(db.execute('SELECT 1 FROM posts WHERE kind=? AND published=1 LIMIT 1',(kind,)).fetchone())
 def sitemap_entries():
     """(경로, 마지막 수정일)"""
-    out=[('/blog',''),('/help',''),('/customers','')]
+    out=[('/help','')]+[(u,'') for k,u in (('blog','/blog'),('story','/customers')) if has_posts(k)]
     with conn() as db:
         for p in db.execute('SELECT kind,slug,updated FROM posts WHERE published=1').fetchall():
             if (p['kind'],p['slug']) in PAUSED:continue

@@ -1,13 +1,36 @@
 {% extends 'base.html' %}{% import '_b.html' as b with context %}
 {% block title %}설정 · {{ BNAME }}{% endblock %}
-{% block script %}<script>document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했습니다';},function(){b.textContent='선택했습니다';});};});</script>{% endblock %}
+{% block script %}<script>(function(){var $=function(i){return document.getElementById(i)},def={{ co.name|tojson }},g0={{ shop_greet(dict(name=co.name,shop_title='')).replace(co.name,'@@')|tojson }};
+function nm(){return $('pfName').value.trim()||def}
+function sync(){var n=nm();$('pvName').textContent=n;$('pfNo').textContent=$('pvNo').textContent=n.slice(0,1);var t=$('pfNotice').value.trim();$('pvNt').textContent=t;$('pvNt').hidden=!t;$('pvGreet').textContent=$('pfGreet').value.trim()||g0.replace('@@',n);$('pfGreet').placeholder=g0.replace('@@',n)}
+function pic(src){[['pfImg','pfNo'],['pvImg','pvNo']].forEach(function(p){$(p[0]).src=src||'';$(p[0]).hidden=!src;$(p[1]).hidden=!!src});$('pfRm').hidden=!src}
+['pfName','pfNotice','pfGreet'].forEach(function(i){$(i).addEventListener('input',sync)});
+$('pfFile').onchange=function(){var f=this.files[0];if(!f)return;$('pfDel').value='';var r=new FileReader();r.onload=function(){pic(r.result)};r.readAsDataURL(f)};
+$('pfRm').onclick=function(){$('pfFile').value='';$('pfDel').value='1';pic('')};})();
+document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.copy);i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){b.textContent='복사했습니다';},function(){b.textContent='선택했습니다';});};});</script>{% endblock %}
 {% block bar %}{{ b.bar('settings') }}{% endblock %}
 {% block body %}
 <div class="phead"><div><h1>설정</h1><p>{{ co.name }} · {{ co.login_id }}</p></div></div>
+{% set lv=shop_logo_ver(co) %}<form class="panel prof" id="profile" method="post" enctype="multipart/form-data" style="margin-bottom:20px"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="profile"><input type="hidden" name="logo_del" id="pfDel" value="">
+<div class="prof-f"><div class="ph">가게 프로필</div><p class="sub" style="margin:-8px 0 22px">고객이 상담창에서 보는 모습이에요. 바꾸면 미리보기에서 바로 확인할 수 있어요.</p>
+<div class="pf-row"><span class="pf-k">로고</span><div class="pf-logo"><label class="pf-lg" for="pfFile" aria-label="로고 바꾸기"><img id="pfImg" src="{{ url_for('shop_logo',company_id=co.id)+'?v='+lv if lv else '' }}" alt=""{% if not lv %} hidden{% endif %}><span id="pfNo" class="pf-no"{% if lv %} hidden{% endif %}>{{ shop_title(co)[:1] }}</span><span class="pf-ed" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span></label><input type="file" id="pfFile" name="logo" accept="image/png,image/jpeg,image/webp" hidden>
+<div class="cap">정사각형 그림이 가장 잘 보여요. PNG·JPG, 5MB까지<br><button type="button" class="pf-rm" id="pfRm"{% if not lv %} hidden{% endif %}>로고 지우기</button></div></div></div>
+<label class="pf-row"><span class="pf-k">상담창 이름</span><input class="inp" name="shop_title" id="pfName" maxlength="30" value="{{ shop_title(co) }}" placeholder="{{ co.name }}"></label>
+<label class="pf-row"><span class="pf-k">안내사항</span><span class="pf-v"><textarea class="inp" name="shop_notice" id="pfNotice" maxlength="200" rows="3" placeholder="예: 11월 10일은 택배 휴무라 다음 날 보내 드려요">{{ shop_notice(co) }}</textarea><small class="cap">상담창 맨 위에 보여요. 비워 두면 안 보여요</small></span></label>
+<label class="pf-row"><span class="pf-k">SODA 첫인사</span><span class="pf-v"><textarea class="inp" name="shop_greet" id="pfGreet" maxlength="120" rows="3" placeholder="{{ shop_greet(dict(name=co.name,shop_title=co.shop_title)) }}">{{ co.shop_greet }}</textarea><small class="cap">고객이 상담창을 열면 SODA가 처음 하는 말이에요</small></span></label>
+<button class="btn md" style="align-self:flex-start">저장하기</button></div>
+<div class="prof-p" aria-label="상담창 미리보기"><div class="pv"><div class="pv-top"><span class="pv-lg"><img id="pvImg" src="{{ url_for('shop_logo',company_id=co.id)+'?v='+lv if lv else '' }}" alt=""{% if not lv %} hidden{% endif %}><span id="pvNo" class="pv-no"{% if lv %} hidden{% endif %}>{{ shop_title(co)[:1] }}</span></span><b id="pvName">{{ shop_title(co) }}</b></div>
+<p class="pv-nt" id="pvNt"{% if not shop_notice(co) %} hidden{% endif %}>{{ shop_notice(co) }}</p>
+<div class="pv-who"><img src="{{ url_for('static',filename='soda-mark.svg') }}?v=3" alt="" width="22" height="22"><b>SODA</b><span>AI 상담원</span></div>
+<div class="pv-b" id="pvGreet">{{ shop_greet(co) }}</div>
+<div class="pv-chips"><span>배송 문의</span><span>교환·반품</span><span>주문 취소</span></div>
+<div class="pv-btn">문의하기</div><p class="pv-cap">고객이 보는 상담창 미리보기</p></div></div>
+</form>
 <div class="panel" style="margin-bottom:20px"><div class="ph">이용 현황 <span class="pill ok">{{ PLANS.get(co.plan,{}).get('name','무료 시범') }} 이용 중</span></div>
 {% set pp=price_plan(co) %}<p style="margin:0 0 8px;font-size:17px"><b>{{ pp.tier.name }}</b> · 월 {{ '{:,}'.format(pp.tier.price) }}원 · 이번 기간 상담 {{ '{:,}'.format(pp.used) }}/{{ '{:,}'.format(pp.tier.tickets) }}건 <span class="cap">(부가세 포함, 모든 구간에서 모든 기능)</span></p>
 <p class="sub" style="margin:0 0 14px">{{ fmt_day(co.plan_since or co.created) }}부터 이용 중이에요. {% if co.plan=='paid' %}매달 자동으로 결제돼요.{% elif co.plan=='trial' %}무료 체험 중이에요. 체험이 끝나는 날 첫 달 요금이 결제돼요.{% elif trial and trial.locked %}결제가 확인되지 않아 기능이 멈췄어요.{% elif trial_days() %}카드를 등록하면 {{ trial_days() }}일 무료 체험이 시작돼요.{% endif %}{% if co.plan=='pilot' and not trial_days() %}지금은 기간·건수 제한 없이 무료예요. 요금제가 생기면 미리 알려 드리고, 동의 없이 바뀌지 않아요.{% endif %}</p>
 <div class="sumrow" style="margin:0"><div class="sum" style="background:var(--fill)"><span>이번 달 받은 요청</span><b>{{ use.cases }}</b></div><div class="sum" style="background:var(--fill)"><span>답장한 요청</span><b>{{ use.replied }}</b></div><div class="sum" style="background:var(--fill)"><span>자동 처리</span><b>{{ use.auto }}</b></div><div class="sum" style="background:var(--fill)"><span>SODA 상담 질문</span><b>{{ use.ai_chats }}</b></div></div>
+{% if sq.limit %}<p style="margin:14px 0 0;font-size:16px">이번 달 SODA 답 <b>{{ '{:,}'.format(sq.used) }}</b> / {{ '{:,}'.format(sq.limit) }}번{% if sq.open %} <span class="pill ok">오픈 특가 · {{ sq.open[5:7]|int }}월 {{ sq.open[8:10]|int }}일까지</span>{% endif %}</p>{% if sq.used>=sq.limit %}<p class="cap" style="margin:6px 0 0">이번 달 SODA 답을 다 썼어요. 새 문의는 사장님께 바로 넘어가요. 요금제를 올리면 SODA가 다시 답해요.</p>{% endif %}{% endif %}
 <p class="cap" style="margin:12px 0 0">답장한 요청은 직원이나 자동 처리가 한 번 이상 답한 요청이에요. 요금은 결제 기간마다 답장한 상담 건수로 정해지고, 직원 수로는 받지 않아요.</p>
 <p style="margin:12px 0 0"><a class="link" href="{{ url_for('pay.page') }}">요금·결제 보기 ›</a></p></div>
 <div class="panel" style="margin-bottom:20px"><div class="ph">고객센터 링크</div>

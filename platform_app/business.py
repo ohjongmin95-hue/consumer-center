@@ -24,6 +24,8 @@ APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_AP
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp);app.register_blueprint(cafe24.bp);app.register_blueprint(openapi.bp);app.register_blueprint(aistats.bp);app.register_blueprint(instagram.bp);app.register_blueprint(kakao.bp);app.register_blueprint(naver_talk.bp);app.register_blueprint(try_soda.bp);app.register_blueprint(billing.bp)
+import shop_profile;shop_profile.register(app)
+app.jinja_env.globals.update(cms_has=cms.has_posts,open_left=billing.open_left,OPEN_SEATS=billing.OPEN_SEATS,OPEN_DAYS=billing.OPEN_DAYS,OPEN_CAP=billing.OPEN_CAP)
 app.jinja_env.globals.update(has_ep=lambda name:name in app.view_functions)
 
 @app.before_request
@@ -165,7 +167,9 @@ def signup_apply(f,via='email',google_sub=''):
     elif core.throttled('signup',limit=5,minutes=60):err='잠시 후 다시 시도해 주세요.'
     cid=None
     if not err:
-        with conn() as db:cid,err=onboard.signup(db,d,generate_password_hash(pw if via!='google' else secrets.token_hex(24)),via,google_sub)
+        with conn() as db:
+            cid,err=onboard.signup(db,d,generate_password_hash(pw if via!='google' else secrets.token_hex(24)),via,google_sub)
+            if cid and not err and str(f.get('open_join')) in ('1','True','true'):billing.join_open(db,cid)
     return d,err,cid
 def start_session(co,staff_id=None):
     """로그인 상태로 만든다 (가입·로그인·구글·직원 초대 공용). 다른 탭의 화면과 운영 로그인은 그대로 둔다."""
@@ -1376,12 +1380,12 @@ def join(tok):
 def settings():
     co=me()
     if request.method=='POST':
-        with conn() as db:flash(*save_settings(db,co,request.form))
-        return redirect(url_for('settings'))
-    with conn() as db:use=onboard.usage(db,co['id']);refs=growth.company_page_data(db,real())
-    return render_template('b_settings.html',tab='settings',DAYS=workflow.DAYS,SLA_CHOICES=workflow.SLA_CHOICES,AWAY_DEFAULT=workflow.AWAY_DEFAULT,hours_text=workflow.hours_text(co),link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use,refs=refs,btns=cx.buttons(co),qs=cx.questions(co),MAX_BTNS=cx.MAX_BTNS,MAX_QS=cx.MAX_QS)
+        with conn() as db:flash(*save_settings(db,co,request.form,request.files))
+        return redirect(url_for('settings')+('#profile' if request.form.get('act')=='profile' else ''))
+    with conn() as db:use=onboard.usage(db,co['id']);refs=growth.company_page_data(db,real());sq=billing.soda_quota(db,co)
+    return render_template('b_settings.html',sq=sq,tab='settings',DAYS=workflow.DAYS,SLA_CHOICES=workflow.SLA_CHOICES,AWAY_DEFAULT=workflow.AWAY_DEFAULT,hours_text=workflow.hours_text(co),link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use,refs=refs,btns=cx.buttons(co),qs=cx.questions(co),MAX_BTNS=cx.MAX_BTNS,MAX_QS=cx.MAX_QS)
 
-def save_settings(db,co,f):
+def save_settings(db,co,f,files=None):
     """설정 저장(웹·앱 공용). act: password·return·notify, 없으면 회사 정보. (문구, 'ok'|'error')를 돌려준다."""
     on=lambda k:str(f.get(k)) in ('1','True','true')
     if f.get('act')=='password':
@@ -1393,6 +1397,7 @@ def save_settings(db,co,f):
         db.execute('UPDATE companies SET return_address=?,return_courier=?,return_memo=? WHERE id=?',(clean(f.get('return_address'),200),courier,clean(f.get('return_memo'),300),co['id']));return '반품 안내를 저장했습니다','ok'
     if f.get('act')=='ops':return workflow.save(db,co,f)
     if f.get('act')=='away':return cx.set_away(db,co,'owner',on('on')),'ok'  # 앱: 대표 자리 비움
+    if f.get('act')=='profile':return shop_profile.save(db,co,f,files)
     if f.get('act')=='cxbot':return cx.save_buttons(db,co,f)
     if f.get('act')=='cxform':return cx.save_questions(db,co,f)
     if f.get('act')=='notify':

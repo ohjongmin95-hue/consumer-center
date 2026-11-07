@@ -5,7 +5,7 @@
 {% block main %}<main class="intro">
 <section class="in-hero mk-hero"><div class="wrap mk-one"><div><span class="in-eyebrow">요금 안내</span>
 <h1>받은 상담만큼만,<br>한 달 {{ '{:,}'.format(tiers[0].price) }}원부터</h1>
-<p>한 달에 받는 상담 건수에 맞춰 고르면 돼요.</p></div></div></section>
+<p>한 달에 받는 상담 건수에 맞춰 고르면 돼요.</p>{% if open_left() %}<a class="op-pill" href="{{ url_for('signup') }}"><b class="op-tag">OPEN</b>오픈 특가: 가입 첫 달 SODA 답 {{ OPEN_CAP }}번 무료 · 선착순 {{ OPEN_SEATS }}곳 ›</a>{% endif %}</div></div></section>
 
 <section><div class="wrap mk-one">
 <div class="tp-zero">{% for n,t in [('0원','설치비·가입비'),('0원','직원 계정 추가'),(('%d일'%trial_days) if trial_days else '0원','무료 체험' if trial_days else '약정·위약금')] %}<div><b>{{ n }}</b><span>{{ t }}</span></div>{% endfor %}</div>

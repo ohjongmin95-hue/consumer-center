@@ -113,7 +113,7 @@ def count_visit():
     if ep.startswith(('mk.','cms.')) or ep in PUBLIC:funnel.visit()
 
 def nav():
-    return [('mk.tour','제품 둘러보기'),('mk.shop_page','판매처 연결'),('mk.industries','업종별')]
+    return [('mk.tour','제품 둘러보기'),('mk.shop_page','판매처 연결')]  # 업종별은 뺐다 (OH 11/07: 아직 사례가 없어 의미 없음). 화면은 주소로만 남긴다
 
 @bp.route('/tour')
 def tour():
@@ -143,4 +143,4 @@ def calculator():
     return redirect(url_for('mk.tour'),301)  # 절감 계산기는 뺐다 (운영자 요청 2026-10-24). 예전 링크는 제품 둘러보기로
 
 def sitemap_paths():
-    return ['/tour','/industries']+['/for/'+k for k in SHOP_PAGES]+['/industries/'+k for k in INDUSTRY_PAGES]
+    return ['/tour']+['/for/'+k for k in SHOP_PAGES]

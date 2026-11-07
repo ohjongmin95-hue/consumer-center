@@ -21,7 +21,7 @@
 </figure>{% endfor %}
 <div class="tour-nav"><button type="button" class="btn md gray" id="tPrev">이전</button><button type="button" class="btn md" id="tNext">다음</button></div>
 <div class="tour-end" id="tEnd" hidden><h2>직접 써 보세요</h2><p>가입하면 바로 내 데모 작업 공간이 생겨요. 같은 화면에서 승인·답변을 직접 해 볼 수 있어요.</p>
-<div class="in-cta" style="justify-content:center"><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a>{% if has_ep('sl.consult') %}<a class="btn gray" href="{{ url_for('sl.consult') }}">상담 신청</a>{% endif %}<button type="button" class="btn gray" id="tAgain">처음부터 다시</button></div></div>
+<div class="in-cta" style="justify-content:center"><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div><div class="in-links">{% if has_ep('sl.consult') %}<a href="{{ url_for('sl.consult') }}">상담 신청 ›</a>{% endif %}<button type="button" id="tAgain">처음부터 다시</button></div></div>
 </div>
 {% else %}<div class="empty-card"><b>둘러보기 화면을 준비하고 있어요</b></div>{% endif %}
 </div></section>

@@ -1,6 +1,6 @@
 {# 상담창(자동응답). co가 있으면 그 기업의 안내 문구, 없으면 기본 문구로 답한다 #}
-<div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) if co else url_for('chat') }}" data-new="{{ url_for('new',company_id=co.id) if co else url_for('new') }}" data-track="{{ url_for('track',company_id=co.id) if co else url_for('track') }}" data-greet="{{ co.name+' 고객센터예요' if co else CNAME+'예요' }}" data-csrf="{{ csrf_token() }}" data-orders="{{ 1 if member else '' }}" data-btns="{{ (btns or [])|tojson|forceescape }}" data-mark="{{ url_for('static',filename='soda-mark.svg') }}?v=3">
-<div class="cb-head"><span class="cb-av"><img src="{{ url_for('static',filename='soda-mark.svg') }}?v=3" alt="" width="26" height="26"></span><div class="cb-hd"><b>{{ co.name if co else CNAME }}</b><small><i></i>보통 바로 답해요</small></div></div>
+<div class="cb" id="cb" data-url="{{ url_for('chat',company_id=co.id) if co else url_for('chat') }}" data-new="{{ url_for('new',company_id=co.id) if co else url_for('new') }}" data-track="{{ url_for('track',company_id=co.id) if co else url_for('track') }}" data-greet="{{ shop_greet(co) if co else '안녕하세요, '+CNAME+'예요.\n어떤 일인지 편하게 적어 주시거나 아래에서 골라 주세요.' }}" data-csrf="{{ csrf_token() }}" data-orders="{{ 1 if member else '' }}" data-btns="{{ (btns or [])|tojson|forceescape }}" data-mark="{{ url_for('static',filename='soda-mark.svg') }}?v=3">
+<div class="cb-head"><span class="cb-av{{ ' lg' if co and shop_logo_ver(co) }}">{% if co and shop_logo_ver(co) %}<img src="{{ url_for('shop_logo',company_id=co.id) }}?v={{ shop_logo_ver(co) }}" alt="" width="36" height="36">{% else %}<img src="{{ url_for('static',filename='soda-mark.svg') }}?v=3" alt="" width="26" height="26">{% endif %}</span><div class="cb-hd"><b>{{ shop_title(co) if co else CNAME }}</b><small><i></i>보통 바로 답해요</small></div></div>
 <div class="cb-log" id="cbLog" aria-live="polite"></div>
 <form class="cb-in" id="cbForm" autocomplete="off"><input id="cbText" maxlength="500" placeholder="예: 주문한 게 아직 안 왔어요" aria-label="문의 내용"><button aria-label="보내기"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></form>
 </div>
@@ -72,6 +72,6 @@ function ask(data){clearChips();
         if(r.ask_days)later(()=>{bubble('상품을 받으신 지 7일이 지났나요?');days()});else endChips()},500)});
   }).catch(()=>later(()=>{bubble('연결이 잠시 불안정해요. 아래에서 직접 골라 접수해 주세요.')}))}
 form.addEventListener('submit',e=>{e.preventDefault();const t=inp.value.trim();if(!t)return;inp.value='';const h=JSON.stringify(hist);bubble(t,'me');said.push(t);ask({text:t,history:h})});
-bubble('안녕하세요, '+box.dataset.greet+'.\n어떤 일인지 편하게 적어 주시거나 아래에서 골라 주세요.');catChips();live=true;
+bubble(box.dataset.greet);catChips();live=true;
 })();
 </script>

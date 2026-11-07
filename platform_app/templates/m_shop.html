@@ -6,7 +6,7 @@
 <section class="in-hero mk-hero"><div class="wrap mk-one">
 <nav class="mk-tabs" aria-label="판매처">{% for k,x in pages.items() %}<a href="{{ url_for('mk.shop_page',slug=k) }}" class="{{ 'on' if k==slug }}">{{ x.short }}</a>{% endfor %}</nav>
 <div><span class="in-eyebrow">{{ p.name }} 연동</span><h1>{{ p.name }} 문의,<br>소보루 한 화면에서</h1><p>{{ p.lead }}</p>
-<div class="in-cta"><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a><a class="btn gray" href="{{ url_for('mk.tour') }}">제품 둘러보기</a></div></div>
+<div class="in-cta"><a class="btn" href="{{ url_for('signup') }}">무료로 시작하기</a></div><a class="in-sub" href="{{ url_for('mk.tour') }}">제품 둘러보기 ›</a></div>
 </div></section>
 <section><div class="wrap mk-one">
 <h2>지금 되는 것과 준비 중인 것</h2><p>실제로 동작하는 것만 '지금 됨'으로 적었어요.</p>

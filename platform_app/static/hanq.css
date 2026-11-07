@@ -2616,3 +2616,84 @@ p.cx-err{margin:0;padding:0 16px;font-size:13px;color:var(--red)}p.cx-err:empty{
 .b.soda span,.tp-chat .who{display:flex!important;align-items:center;gap:5px}
 .b.soda span img,.tp-chat .who img{width:16px;height:16px;flex:none}
 .mby .mbm,.cx-dh .mbm{width:16px;height:16px;vertical-align:-3px;margin-right:4px}
+
+/* 가게 프로필 (설정) — 왼쪽 입력, 오른쪽 상담창 미리보기 */
+.prof{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;align-items:start}
+.prof-f{display:flex;flex-direction:column;gap:20px;min-width:0}
+.pf-row{display:grid;grid-template-columns:112px minmax(0,1fr);gap:16px;align-items:start}
+.pf-k{font-size:15px;font-weight:600;color:var(--fg);padding-top:12px}
+.pf-v{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pf-logo{display:flex;gap:18px;align-items:center}
+.pf-lg{position:relative;width:88px;height:88px;border-radius:26px;background:#FFF1DE;display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+.pf-lg img{width:100%;height:100%;border-radius:26px;object-fit:cover}
+.pf-no,.pv-no{font-weight:700;color:#652D1C}
+.pf-no{font-size:34px}
+.pf-ed{position:absolute;right:-4px;bottom:-4px;width:28px;height:28px;border-radius:50%;background:#fff;color:var(--fg2);display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.pf-rm{border:0;background:none;padding:6px 0 0;color:var(--fg2);font:inherit;font-size:14px;text-decoration:underline;cursor:pointer}
+.prof-p{position:sticky;top:88px}
+.pv{border-radius:28px;background:#fff;box-shadow:0 0 0 1px var(--line),0 12px 32px rgba(0,0,0,.06);padding:22px 20px 18px;display:flex;flex-direction:column;gap:12px}
+.pv-top{display:flex;align-items:center;gap:12px;padding-bottom:6px}
+.pv-lg{width:44px;height:44px;border-radius:14px;background:#FFF1DE;display:grid;place-items:center;overflow:hidden;flex:none}
+.pv-lg img{width:100%;height:100%;object-fit:cover}
+.pv-no{font-size:19px}
+.pv-top b{font-size:19px;font-weight:700;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-nt{margin:0;padding:12px 14px;border-radius:14px;background:#FFF8EE;color:#652D1C;font-size:14px;line-height:1.5;white-space:pre-line;word-break:keep-all}
+.pv-who{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:4px}
+.pv-who b{font-weight:700}.pv-who span{color:var(--fg3)}
+.pv-b{align-self:flex-start;max-width:100%;padding:0 0 0 28px;font-size:15px;line-height:1.5;white-space:pre-line;word-break:keep-all}
+.pv-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pv-chips span{padding:7px 12px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--line);font-size:13px;color:var(--fg2)}
+.pv-btn{margin-top:6px;height:48px;border-radius:14px;background:#EF920E;color:#fff;font-weight:700;display:grid;place-items:center}
+.pv-cap{margin:0;text-align:center;font-size:12px;color:var(--fg3)}
+@media (max-width:900px){.prof{grid-template-columns:minmax(0,1fr)}.prof-p{position:static}}
+@media (max-width:560px){.pf-row{grid-template-columns:minmax(0,1fr);gap:8px}.pf-k{padding-top:0}}
+/* 상담창: 사장님이 정한 로고·안내사항 */
+.cs-shop .shoplg{width:34px;height:34px;border-radius:11px;object-fit:cover;flex:none}
+.cb-av.lg{background:none;overflow:hidden}.cb-av.lg img{width:100%;height:100%;object-fit:cover}
+.cs-notice{margin:14px 0 0;padding:12px 14px;border-radius:14px;background:#FFF8EE;color:#652D1C;font-size:15px;line-height:1.5;white-space:pre-line;word-break:keep-all}
+.cs-notice.emb{margin:10px 16px 0;font-size:14px}
+
+/* 소개 페이지 글: 말 덩어리 중간에서 끊기지 않게 */
+.cx-lead span{display:inline-block}
+h1,h2,h3,h4{text-wrap:balance}
+p,li,dd,figcaption{text-wrap:pretty}
+.intro section p:not(.tnote),.in-hero p,.tp-sub,.cx-hero p{text-wrap:balance}
+/* 하위 공개 페이지를 첫 화면처럼: 흰 바탕 + 옅은 테두리 카드, 회색 띠·검은 띠 없음 (OH 11/07) */
+.intro:not(.tp)>section,.intro:not(.tp)>section:nth-of-type(even){background:#fff}
+.intro:not(.tp) .mk-hero{padding-block:88px 24px!important;text-align:center}
+.intro:not(.tp) .mk-hero h1{font-size:52px;line-height:1.22;letter-spacing:-.045em}
+.intro:not(.tp) .mk-hero p{font-size:19px;line-height:1.65;color:#4E5968;max-width:640px;margin-inline:auto}
+.intro:not(.tp) .in-eyebrow{color:#4E5968;background:#fff;box-shadow:inset 0 0 0 1px #E5E8EB;font-size:15px;padding:8px 16px;margin-bottom:22px}
+.intro:not(.tp) .mk-item,.intro:not(.tp) .mk-card,.intro:not(.tp) .in-steps li,.intro:not(.tp) .tp-faq details,.intro:not(.tp) .tp-card,.intro:not(.tp) .panel{background:#fff;box-shadow:inset 0 0 0 1px #E5E8EB}
+.intro:not(.tp)>.in-end{background:#fff!important;padding-block:112px 128px;border-top:1px solid #F2F4F6}
+.intro:not(.tp)>.in-end h2{color:#191F28;font-size:44px}
+.intro:not(.tp)>.in-end p{color:#4E5968}
+.intro:not(.tp)>.in-end .btn{background:#EF920E;color:#fff}
+.intro:not(.tp)>.in-end .btn:hover{background:#E08500}
+@media (max-width:720px){.intro:not(.tp) .mk-hero{padding-block:56px 8px!important}.intro:not(.tp) .mk-hero h1{font-size:34px}.intro:not(.tp) .mk-hero p{font-size:16.5px}.intro:not(.tp)>.in-end h2{font-size:30px}.intro:not(.tp)>.in-end{padding-block:72px 88px}}
+.intro:not(.tp)>.in-end .btn.gray{background:#F2F4F6;color:#333D4B}
+.intro .in-sub{display:inline-block;margin-top:16px;font-size:15px;font-weight:600;color:#4E5968}.intro .mk-hero .in-cta{justify-content:center}
+.intro .in-links{display:flex;gap:20px;justify-content:center;margin-top:16px}.intro .in-links a,.intro .in-links button{border:0;background:none;padding:0;font:inherit;font-size:15px;font-weight:600;color:#4E5968;cursor:pointer}
+/* 오픈 특가 (OH 11/07): 위 띠 + 크림→라떼 배너 */
+.tp-promo.op{background:#652D1C;color:#fff;border-bottom:0}.tp-promo.op span{color:#F8D59F}
+.op-tag{display:inline-block;margin-right:8px;padding:2px 8px;border-radius:6px;background:#EF920E;color:#fff;font-size:12px;font-weight:800;letter-spacing:.04em;vertical-align:1px}
+.cx-openb{background:#fff;padding-block:8px 24px}
+.cx-openb .ob{display:flex;align-items:center;justify-content:space-between;gap:24px;max-width:1080px;margin:0 auto;padding:48px 56px;border-radius:32px;background:linear-gradient(120deg,#F3DDC3 0%,#FCF6EE 100%);color:#652D1C;text-decoration:none;overflow:hidden}
+.ob-tx{display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0}
+.ob-tag{font-size:15px;font-weight:700;color:#8A4B2E}
+.ob-tx b{font-size:40px;line-height:1.25;font-weight:800;letter-spacing:-.04em;color:#652D1C;text-wrap:balance}
+.ob-tx p{margin:0;font-size:17px;color:#8A4B2E}.ob-tx em{font-style:normal;font-weight:700;color:#652D1C}
+.ob-btn{margin-top:12px;height:54px;padding:0 26px;border-radius:16px;font-size:17px;display:inline-flex;align-items:center}
+.ob-mk{width:180px;height:180px;flex:none;filter:drop-shadow(0 18px 30px rgba(101,45,28,.15))}
+.op-in{display:inline-block;margin-top:4px;color:#652D1C;font-weight:700}
+@media (max-width:720px){.cx-openb .ob{padding:32px 24px;border-radius:24px;flex-direction:column-reverse;align-items:flex-start}.ob-tx b{font-size:28px}.ob-tx p{font-size:15px}.ob-mk{width:84px;height:84px}.ob-btn{width:100%;justify-content:center}.tp-promo.op{font-size:13.5px;padding:11px 12px}}
+.op-pc{font-style:normal}@media (max-width:720px){.op-pc{display:none}}
+.op-pill{display:inline-flex;align-items:center;margin-top:20px;padding:10px 16px;border-radius:999px;background:#FCF2E6;color:#652D1C;font-size:15px;font-weight:600;text-decoration:none}
+.snt{display:inline-block}.cx-card3 p,.cx-stats small,.tp-card p{text-wrap:balance}
+.cx-stats .snt{font-style:normal}
+.ob-cmp{display:flex;align-items:center;gap:14px;margin:4px 0 2px}
+.ob-was{font-size:18px;font-weight:600;color:#A87A5E}.ob-was s{text-decoration-thickness:2px}
+.ob-arrow{font-size:22px;color:#A87A5E}
+.ob-now{font-size:22px;font-weight:700;color:#652D1C}.ob-now strong{font-size:48px;font-weight:800;letter-spacing:-.03em;color:#EF920E;margin-right:2px}
+@media (max-width:720px){.ob-now strong{font-size:38px}.ob-was{font-size:16px}}
+.ob-left{font-weight:600}.op-join{margin-top:10px;padding:14px;border-radius:14px;background:#FCF6EE}
