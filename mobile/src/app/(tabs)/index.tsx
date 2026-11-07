@@ -15,6 +15,9 @@ import { setAlerts, setPending } from '../../lib/badge';
 import { useAuth } from '../../lib/auth';
 import { C, FONT } from '../../lib/theme';
 
+// 메인 보드 = 소보루 갈색의 토스 (OH 11/07): 크림·라떼 그라데이션 + 갈색 글씨
+const TONE = { from: '#F3DDC3', to: '#FCF6EE', title: '#652D1C', sub: '#9A6A55', pill: 'rgba(101,45,28,0.45)' };
+
 export default function HomeTab() {
   const { session, logout } = useAuth();
   const [home, setHome] = useState<Home | null>(null);
@@ -86,8 +89,6 @@ export default function HomeTab() {
       small: `진행 중인 상담 ${chats?.open ?? 0}건`,
       big: needN ? `사장님 결정이 필요한\n상담이 ${needN}건 있어요` : 'SODA가 상담을\n잘 이어가고 있어요',
       img: require('../../../assets/board/chat.webp'),
-      from: '#FFE6C0',
-      to: '#FFF9F1',
       go: () => router.navigate('/chat'),
     },
     {
@@ -95,8 +96,6 @@ export default function HomeTab() {
       small: `승인 기다리는 요청 ${n.pending}건`,
       big: n.pending ? '교환·반품 요청을\n한 번에 승인해 보세요' : '지금은 승인할\n요청이 없어요',
       img: require('../../../assets/board/ok.webp'),
-      from: '#FFDDB0',
-      to: '#FFF7EC',
       go: () => router.navigate('/approvals'),
     },
     {
@@ -104,8 +103,6 @@ export default function HomeTab() {
       small: 'SODA 가르치기',
       big: gaps ? `SODA가 모르는 질문\n${gaps}개에 답해 주세요` : '사장님 답을 배워서\n다음엔 SODA가 답해요',
       img: require('../../../assets/board/soda.webp'),
-      from: '#CFF2E6',
-      to: '#EEF8FF',
       go: () => router.push('/soda'),
     },
   ];
@@ -146,16 +143,16 @@ export default function HomeTab() {
                 <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
                   <Defs>
                     <LinearGradient id={`bg${x.key}`} x1="0" y1="0" x2="1" y2="1">
-                      <Stop offset="0" stopColor={x.from} />
-                      <Stop offset="1" stopColor={x.to} />
+                      <Stop offset="0" stopColor={TONE.from} />
+                      <Stop offset="1" stopColor={TONE.to} />
                     </LinearGradient>
                   </Defs>
                   <Rect width="100%" height="100%" fill={`url(#bg${x.key})`} />
                 </Svg>
-                <Text style={st.boardT}>{x.big}</Text>
-                <Text style={st.boardK}>{x.small}</Text>
+                <Text style={[st.boardT, { color: TONE.title }]}>{x.big}</Text>
+                <Text style={[st.boardK, { color: TONE.sub }]}>{x.small}</Text>
                 <Image source={x.img} style={[st.boardImg, { width: boardH * 0.68, height: boardH * 0.68 }]} resizeMode="contain" />
-                <View style={st.boardPage}>
+                <View style={[st.boardPage, { backgroundColor: TONE.pill }]}>
                   <Text style={st.boardPageT}>
                     {page + 1} | {boards.length}
                   </Text>
