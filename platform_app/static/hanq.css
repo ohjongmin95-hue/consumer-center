@@ -2736,3 +2736,13 @@ p,li,dd,figcaption{text-wrap:pretty}
 .intro.tp .cx-end{background:linear-gradient(120deg,#FFE7D1 0%,#FFF4E9 50%,#EFEBFF 100%)}
 @media (max-width:767.98px){.cx-stage::before{left:-16px;right:-16px;top:120px;bottom:-24px;border-radius:28px}.intro.tp .tp-split>:not(.tp-copy)::before{inset:-20px -16px;border-radius:28px}.intro.tp .cx-hero{padding-bottom:64px}}
 .intro.tp .cx-hero .cx-chs{margin-top:120px}.cx-stage::before{bottom:-80px}@media (max-width:767.98px){.intro.tp .cx-hero .cx-chs{margin-top:48px}.cx-stage::before{bottom:-24px}}
+/* 첫 화면 제품 그림: 채널톡처럼 큰 색 판이 그림 전체를 감싼다 (OH 11/07) */
+.cx-stage{padding-top:72px;padding-bottom:72px}
+.cx-stage::before{left:-64px;right:-64px;top:0;bottom:0;border-radius:48px;background:
+ radial-gradient(circle,rgba(255,255,255,.55) 1.6px,transparent 2px) 0 0/22px 22px,
+ radial-gradient(120% 90% at 0% 100%,#FFC7A8 0%,rgba(255,199,168,0) 55%),
+ radial-gradient(90% 80% at 100% 0%,#C9D8FF 0%,rgba(201,216,255,0) 60%),
+ linear-gradient(120deg,#FFD9C2 0%,#F6D3EE 45%,#DCD5FF 75%,#CFE1FF 100%);
+ -webkit-mask:none}
+.intro.tp .cx-hero .cx-chs{margin-top:72px}
+@media (max-width:767.98px){.cx-stage{padding-top:28px;padding-bottom:28px}.cx-stage::before{left:-16px;right:-16px;top:0;bottom:0;border-radius:28px}.intro.tp .cx-hero .cx-chs{margin-top:40px}}
