@@ -27,9 +27,13 @@
 <ul class="cx-chs" aria-label="문의 받는 곳">{% for f,n in [('kk','카카오톡'),('nt','네이버 톡톡'),('web','쇼핑몰 상담창'),('ig','인스타그램'),('c24','카페24'),('mail','메일')] %}<li><img src="{{ url_for('static',filename='ch/tile/'+f+'.svg') }}" alt="" width="28" height="28">{{ n }}</li>{% endfor %}</ul>
 </div></section>
 
-{% if opl %}<section class="cx-openb" aria-label="오픈 특가"><div class="wrap"><a class="ob" href="{{ url_for('signup') }}">
-<div class="ob-tx"><span class="ob-tag">창립 사장님 100곳 모집 중</span><b>오픈 기념, 첫 달은<br>SODA 답 10배</b><div class="ob-cmp"><span class="ob-was">평소 <s>50번</s></span><span class="ob-arrow" aria-hidden="true">→</span><span class="ob-now"><strong>{{ OPEN_CAP }}</strong>번 무료</span></div><p>하루 15번꼴이라 1인 쇼핑몰 문의는 거의 다 SODA가 받아요.<br>써 보시고 솔직한 후기만 들려주세요.</p><p class="ob-left">창립 사장님 선착순 {{ OPEN_SEATS }}곳 · <em>지금 {{ opl }}곳 남았어요</em></p><span class="btn ob-btn">무료로 시작하기</span></div>
-<img class="ob-mk" src="{{ url_for('static',filename='soda-mark.svg') }}?v=3" alt="" width="180" height="180"></a></div></section>{% endif %}
+{% if opl %}<section class="cx-openb" aria-label="오픈 특가"><div class="wrap"><div class="ob">
+<div class="ob-tx"><span class="ob-tag"><i></i>창립 사장님 {{ OPEN_SEATS }}곳 모집 중</span><b>오픈 기념,<br>첫 달은 SODA 답 10배</b><p><span class="snt">하루 15번꼴이라,</span> <span class="snt">1인 쇼핑몰 문의는 거의 다 SODA가 받아요.</span><br><span class="snt">써 보시고 솔직한 후기만 들려주세요.</span></p>
+<div class="ob-act"><a class="ob-btn" href="{{ url_for('signup') }}">무료로 시작하기</a><span class="ob-left">지금 <em>{{ opl }}곳</em> 남았어요</span></div></div>
+<div class="ob-ui" aria-hidden="true"><div class="ob-card"><div class="ob-h"><img src="{{ url_for('static',filename='soda-mark.svg') }}?v=3" alt="" width="22" height="22"><b>SODA</b><span>이번 달 답할 수 있는 횟수</span></div>
+<div class="ob-n"><s>50번</s><strong>{{ OPEN_CAP }}<small>번</small></strong></div><div class="ob-bar"><i></i></div>
+<div class="ob-row"><span>배송 언제 와요?</span><em>SODA가 답함</em></div><div class="ob-row"><span>사이즈 교환 되나요?</span><em>SODA가 답함</em></div><div class="ob-row"><span>환불해 주세요</span><em class="own">사장님 승인</em></div></div></div>
+</div></div></section>{% endif %}
 <section class="tp-sec cx-soda" id="soda"><div class="wrap">
 <img class="cx-soda-mark rv-up" src="{{ url_for('static',filename='soda-mark.svg') }}" alt="SODA 심벌" width="88" height="88">
 <span class="tp-num rv-up">AI 상담원 SODA</span>
