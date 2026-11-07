@@ -905,7 +905,7 @@ def chat_msgs(db,c,after=0):
         if e['kind']=='me':out.append(dict(id=e['id'],who='me',by=c['name'] or '고객',text=e['text'],at=core.fmt(e['created']),ts=e['created']))
         elif e['kind']=='co' and e['reply']:
             ai=e['text'].startswith('AI')
-            out.append(dict(id=e['id'],who='ai' if ai else 'co',by='AI' if ai else (e['actor'] or '사장님'),text=e['reply'],at=core.fmt(e['created']),ts=e['created']))
+            out.append(dict(id=e['id'],who='ai' if ai else 'co',by='SODA' if ai else ('사장님' if (e['actor'] or 'owner')=='owner' else e['actor']),text=e['reply'],at=core.fmt(e['created']),ts=e['created']))
         elif e['kind'] in ('co','sys'):out.append(dict(id=e['id'],who='sys',by='',text=e['text'],at=core.fmt(e['created']),ts=e['created']))
     if not after:
         for n in team.notes(db,c['id']):out.append(dict(id=-n['id'],who='note',by=n['author'],text=n['text'],at=core.fmt(n['created']),ts=n['created']))

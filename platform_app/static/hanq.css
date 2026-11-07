@@ -2605,3 +2605,14 @@ p.cx-err{margin:0;padding:0 16px;font-size:13px;color:var(--red)}p.cx-err:empty{
 .cx-dec .cx-da .btn.gray{background:none!important;box-shadow:none!important;border:0;height:auto;min-height:0;padding:6px 2px;color:#6B7684;font-weight:500;font-size:13.5px}
 .cx-dec .cx-da .btn.gray:hover{color:#191F28;background:none}
 .gnb nav.in-nav .nav-dd summary{font-size:17px;font-weight:600;color:#191F28}@media (max-width:760px){.gnb nav.in-nav .nav-dd summary{font-size:14.5px}}
+/* SODA 소개 (OH 11/08: 소다가 뭔지 심벌과 함께) */
+.cx-soda{text-align:center}
+.cx-soda-mark{display:block;width:88px;height:88px;margin:0 auto 20px}
+.cx-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:48px}
+.cx-stats div{display:flex;flex-direction:column;gap:6px;padding:28px 20px;border-radius:24px;background:#fff;box-shadow:inset 0 0 0 1px #E5E8EB}
+.cx-stats b{font-size:40px;line-height:1.2;font-weight:800;letter-spacing:-.03em;color:#191F28}
+.cx-stats strong{font-size:17px;color:#191F28}.cx-stats span{font-size:14.5px;color:#6B7684;word-break:keep-all}
+@media (max-width:767.98px){.cx-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:32px}.cx-stats div{padding:20px 14px}.cx-stats b{font-size:30px}.cx-stats strong{font-size:15.5px}.cx-stats span{font-size:13px}.cx-soda-mark{width:72px;height:72px}}
+.b.soda span,.tp-chat .who{display:flex!important;align-items:center;gap:5px}
+.b.soda span img,.tp-chat .who img{width:16px;height:16px;flex:none}
+.mby .mbm,.cx-dh .mbm{width:16px;height:16px;vertical-align:-3px;margin-right:4px}

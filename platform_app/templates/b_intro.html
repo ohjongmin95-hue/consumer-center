@@ -19,12 +19,20 @@
 <small class="cx-note">카드 등록 없이 바로 써요 · <a href="#tour">1분 영상 보기 ›</a></small>
 <div class="cx-stage">
 <div class="cx-cust" aria-hidden="true"><div class="cx-cust-h"><b>소보루상회</b><small>SODA가 바로 답해요</small></div>
-<div class="b me">어제 주문했는데 언제 와요?</div><div class="b soda"><span>SODA</span>오늘 오전 CJ대한통운으로 출고됐어요. 내일 도착할 거예요.</div>
-<div class="b me">사이즈가 안 맞으면 반품돼요?</div><div class="b soda"><span>SODA</span>받은 날부터 7일 안에 반품할 수 있어요. 신청은 사장님 확인 뒤 진행돼요.</div></div>
+<div class="b me">어제 주문했는데 언제 와요?</div><div class="b soda"><span><img src="{{ url_for('static',filename='soda-mark.svg') }}" alt="" width="16" height="16">SODA</span>오늘 오전 CJ대한통운으로 출고됐어요. 내일 도착할 거예요.</div>
+<div class="b me">사이즈가 안 맞으면 반품돼요?</div><div class="b soda"><span><img src="{{ url_for('static',filename='soda-mark.svg') }}" alt="" width="16" height="16">SODA</span>받은 날부터 7일 안에 반품할 수 있어요. 신청은 사장님 확인 뒤 진행돼요.</div></div>
 <div class="cx-shot"><img src="{{ url_for('static',filename='tour/cx-app.webp') }}?v=1" alt="{{ BNAME }} PC 상담 화면: 왼쪽 고객 목록, 가운데 대화, 오른쪽 고객·주문 정보" width="1800" height="1012"></div>
 <div class="cx-phone"><img src="{{ url_for('static',filename='tour/cx-phone.webp') }}?v=2" alt="{{ BNAME }} 사장님 앱 홈 화면" width="600" height="1298"></div>
 <span class="cx-tag t1">고객이 묻고</span><span class="cx-tag t2">SODA가 답하고</span><span class="cx-tag t3">사장님은 폰으로 결정만</span></div>
 <ul class="cx-chs" aria-label="문의 받는 곳">{% for f,n in [('kk','카카오톡'),('nt','네이버 톡톡'),('web','쇼핑몰 상담창'),('ig','인스타그램'),('c24','카페24'),('mail','메일')] %}<li><img src="{{ url_for('static',filename='ch/tile/'+f+'.svg') }}" alt="" width="28" height="28">{{ n }}</li>{% endfor %}</ul>
+</div></section>
+
+<section class="tp-sec cx-soda" id="soda"><div class="wrap">
+<img class="cx-soda-mark rv-up" src="{{ url_for('static',filename='soda-mark.svg') }}" alt="SODA 심벌" width="88" height="88">
+<span class="tp-num rv-up">AI 상담원 SODA</span>
+<h2 class="rv-up">사장님 대신 문의에 답하는<br>AI 상담원, SODA예요</h2>
+<p class="tp-sub rv-up">이름은 Shop Owner Decides에서 왔어요. 답은 SODA가 하고, 결정은 늘 사장님이 해요.</p>
+<div class="cx-stats">{% for n,t,d in [('24시간','쉬지 않고 답해요','밤·주말에 온 문의도 바로 답해요'),('0원','무료로 시작해요','SODA 답 한 달 50번까지 무료예요'),('3분','바로 일을 시작해요','쇼핑몰 주소만 넣으면 SODA가 읽어요'),('0번','멋대로 약속하지 않아요','환불·보상은 사장님 승인 뒤에만')] %}<div class="rv-up"><b>{{ n }}</b><strong>{{ t }}</strong><span>{{ d }}</span></div>{% endfor %}</div>
 </div></section>
 
 <section class="tp-sec cx-try" id="try"><div class="wrap">
@@ -41,7 +49,7 @@
 <p class="tp-sub rv-up">포장하는 중에도, 밤에도 SODA가 먼저 답해요. 사람을 더 뽑지 않아도 돼요.</p>
 <div class="cx-three">
 <a class="cx-card3 rv-up" href="#ai"><b>SODA가 먼저 답해요</b><p>넣어 둔 상품·배송·반품 정보로 답하고, 주문번호로 배송 상황까지 알려요</p>
-<div class="mini" aria-hidden="true"><div class="b me">언제 와요?</div><div class="b soda">오늘 출고됐어요. 내일 도착해요</div></div></a>
+<div class="mini" aria-hidden="true"><div class="b me">언제 와요?</div><div class="b soda"><span><img src="{{ url_for('static',filename='soda-mark.svg') }}" alt="" width="16" height="16">SODA</span>오늘 출고됐어요. 내일 도착해요</div></div></a>
 <a class="cx-card3 rv-up" href="#approve"><b>결정은 사장님이</b><p>환불·교환·보상은 SODA가 약속하지 않아요. 요약을 붙여 사장님께 넘겨요</p>
 <div class="mini" aria-hidden="true"><small>반품·환불</small><strong>사이즈가 안 맞아요</strong><i>승인</i></div></a>
 <a class="cx-card3 rv-up" href="#teach"><b>폰 하나로 다 해요</b><p>답하고, 승인하고, SODA 가르치기까지 앱에서 끝나요</p>
@@ -57,7 +65,7 @@
 <div class="tp-chathead"><img class="tp-ico" src="{{ url_for('static',filename='ch/c24.svg') }}" alt="" width="28" height="28"><b>상품 Q&amp;A</b><small>카페24</small></div>
 <div class="bub me">어제 주문했는데 언제 받을 수 있나요? 주문번호 20261020-0000123이에요</div>
 <div class="bub typing"><i></i><i></i><i></i></div>
-<div class="bub ai"><span class="who">SODA 답변</span>주문하신 린넨 셔츠는 오늘 오전 CJ대한통운으로 출고됐어요. 내일 도착 예정이고, 송장번호는 마이페이지 &gt; 주문 내역에서 확인하실 수 있어요.</div>
+<div class="bub ai"><span class="who"><img src="{{ url_for('static',filename='soda-mark.svg') }}" alt="" width="16" height="16">SODA 답변</span>주문하신 린넨 셔츠는 오늘 오전 CJ대한통운으로 출고됐어요. 내일 도착 예정이고, 송장번호는 마이페이지 &gt; 주문 내역에서 확인하실 수 있어요.</div>
 <div class="tp-sent">{{ i.tf('check',18) }}카페24 게시판에 답글을 달았어요</div>
 </div>
 </div></div></section>
@@ -153,7 +161,7 @@ function mount(box,url,err){box.hidden=false;box.innerHTML='';var h=el('div','tc
  i.placeholder='고객이 된 것처럼 물어보세요';i.maxLength=300;b.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';b.setAttribute('aria-label','보내기');
  f.append(i,b);box.append(h,log,qs,f);h.append(el('b','','SODA가 읽는 중이에요…'));
  var wait=el('div','b soda typing');wait.innerHTML='<i></i><i></i><i></i>';log.append(wait);
- function say(who,t){var m=el('div','b '+who);if(who=='soda')m.append(el('span','','SODA'));m.append(document.createTextNode(t));log.append(m);log.scrollTop=log.scrollHeight;return m}
+ function say(who,t){var m=el('div','b '+who);if(who=='soda'){var l=el('span','','SODA'),im=new Image(16,16);im.src='{{ url_for('static',filename='soda-mark.svg') }}';im.alt='';l.prepend(im);m.append(l)}m.append(document.createTextNode(t));log.append(m);log.scrollTop=log.scrollHeight;return m}
  function ask(q){if(!q)return;say('me',q);qs.innerHTML='';i.value='';var w=el('div','b soda typing');w.innerHTML='<i></i><i></i><i></i>';log.append(w);log.scrollTop=log.scrollHeight;
   post('/try/ask',{q:q}).then(function(j){w.remove();say('soda',j.answer);if(j.owner){var n=el('div','tc-own','이 요청은 사장님 앱의 승인 목록으로 넘어가요');log.append(n)}if(j.left<=0)end()}).catch(function(e){w.remove();var n=el('div','tc-own',(e&&e.error)||'잠시 후 다시 해 주세요');log.append(n);if(e&&e.done)end()})}
  function end(){f.remove();var a=el('a','btn tp-btn','내 쇼핑몰로 무료로 시작하기');a.href='{{ url_for('signup') }}';var w=el('div','tc-end');w.append(a);box.append(w)}
