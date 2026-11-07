@@ -180,7 +180,7 @@ function Bubble({ m }: { m: ChatMsg }) {
   const fg = m.who === 'co' ? '#fff' : C.fg;
   return (
     <View style={{ alignItems: mine ? 'flex-end' : 'flex-start', gap: 3, opacity: m.tmp ? 0.7 : 1 }}>
-      <Text style={st.by}>{m.who === 'note' ? `${m.by} · 메모 (고객에게 안 보임)` : m.by}</Text>
+      <Text style={st.by}>{m.who === 'note' ? `${m.by === 'owner' ? '사장님' : m.by} · 메모 (고객에게 안 보임)` : m.by === 'owner' ? '사장님' : m.by}</Text>
       <View style={[st.bub, { backgroundColor: bg }, mine ? { borderTopRightRadius: 6 } : { borderTopLeftRadius: 6 }]}>
         <Text style={[st.bubText, { color: fg }]}>{m.text}</Text>
       </View>

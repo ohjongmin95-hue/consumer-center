@@ -89,21 +89,24 @@ export default function HomeTab() {
       key: 'chat',
       small: `진행 중인 상담 ${chats?.open ?? 0}건`,
       big: needN ? `사장님 결정이 필요한\n상담이 ${needN}건 있어요` : 'SODA가 상담을\n잘 이어가고 있어요',
-      img: require('../../../assets/board/chat.webp'),
+      mini: (() => {
+        const r = rows.find((x) => x.need) ?? rows[0];
+        return { label: r ? r.name : '고객', text: r ? r.text : '어제 주문했는데 언제 와요?', chip: needN ? '결정 필요' : 'SODA 답함', tone: needN ? 'acc' : 'soda' };
+      })(),
       go: () => router.navigate('/chat'),
     },
     {
       key: 'ok',
       small: `승인 기다리는 요청 ${n.pending}건`,
       big: n.pending ? '교환·반품 요청을\n한 번에 승인해 보세요' : '지금은 승인할\n요청이 없어요',
-      img: require('../../../assets/board/ok.webp'),
+      mini: { label: pend[0]?.category || '반품·환불', text: pend[0]?.title || '사이즈가 안 맞아 반품하고 싶어요', chip: '승인', tone: 'acc' },
       go: () => router.navigate('/approvals'),
     },
     {
       key: 'soda',
       small: 'SODA 가르치기',
       big: gaps ? `SODA가 모르는 질문\n${gaps}개에 답해 주세요` : '사장님 답을 배워서\n다음엔 SODA가 답해요',
-      img: require('../../../assets/board/soda.webp'),
+      mini: { label: 'SODA가 모르는 질문', text: gaps ? `${gaps}개가 사장님 답을 기다려요` : '선물 포장 되나요?', chip: '답 달기', tone: 'soda' },
       go: () => router.push('/soda'),
     },
   ];
@@ -152,7 +155,20 @@ export default function HomeTab() {
                 </Svg>
                 <Text style={[st.boardT, { color: TONE.title }]}>{x.big}</Text>
                 <Text style={[st.boardK, { color: TONE.sub }]}>{x.small}</Text>
-                <Image source={x.img} style={[st.boardImg, { width: boardH * 0.68, height: boardH * 0.68 }]} resizeMode="contain" />
+                {/* 3D 그림 대신 실제 화면 조각 (OH 11/08 '촌스러워'): 흰 카드 하나가 오른쪽 아래에 걸쳐 떠 있어요 */}
+                <View style={st.mini}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={st.miniL} numberOfLines={1}>
+                      {x.mini.label}
+                    </Text>
+                    <Text style={st.miniT} numberOfLines={1}>
+                      {x.mini.text}
+                    </Text>
+                  </View>
+                  <View style={[st.miniChip, x.mini.tone === 'acc' ? st.miniAcc : st.miniSoda]}>
+                    <Text style={[st.miniChipT, x.mini.tone === 'acc' ? { color: '#fff' } : { color: '#167C74' }]}>{x.mini.chip}</Text>
+                  </View>
+                </View>
                 <View style={[st.boardPage, { backgroundColor: TONE.pill }]}>
                   <Text style={st.boardPageT}>
                     {page + 1} | {boards.length}
@@ -469,8 +485,14 @@ const st = StyleSheet.create({
   board: { marginHorizontal: 0, marginTop: 8, paddingHorizontal: 26, paddingTop: 28 },
   boardT: { fontFamily: FONT, fontSize: 24, lineHeight: 33, fontWeight: '700', color: C.fg, letterSpacing: -0.3 },
   boardK: { fontFamily: FONT, fontSize: 15, lineHeight: 22, fontWeight: '500', color: C.fg3, letterSpacing: 0, marginTop: 8 },
-  boardImg: { position: 'absolute', right: 6, bottom: -6 },
-  boardPage: { position: 'absolute', right: 14, bottom: 14, backgroundColor: 'rgba(0,21,42,0.32)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 3 },
+  mini: { position: 'absolute', left: 16, right: 16, bottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, shadowColor: '#652D1C', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  miniL: { fontFamily: FONT, fontSize: 12, lineHeight: 18, fontWeight: '600', color: '#8B95A1' },
+  miniT: { fontFamily: FONT, fontSize: 14, lineHeight: 20, fontWeight: '600', color: '#191F28', marginTop: 1 },
+  miniChip: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  miniAcc: { backgroundColor: '#EF920E' },
+  miniSoda: { backgroundColor: '#E3F6F3' },
+  miniChipT: { fontFamily: FONT, fontSize: 12, fontWeight: '700' },
+  boardPage: { position: 'absolute', right: 14, top: 14, backgroundColor: 'rgba(0,21,42,0.32)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 3 },
   boardPageT: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: '#fff', letterSpacing: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 18 },
   title: { fontFamily: FONT, fontSize: 26, lineHeight: 34, fontWeight: '700', color: C.fg, letterSpacing: 0, marginRight: 4 },

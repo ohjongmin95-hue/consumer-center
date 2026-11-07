@@ -2532,3 +2532,76 @@ p.cx-err{margin:0;padding:0 16px;font-size:13px;color:var(--red)}p.cx-err:empty{
 .cx-phone{box-shadow:0 30px 60px -20px rgba(25,31,40,.3)}
 .cx-panel .tp-chat,.cx-panel .tp-approve,.cx-panel .cx-teach{box-shadow:0 16px 40px -20px rgba(25,31,40,.22)}
 .tp .tp-tnote a{color:#4E5968;text-decoration:underline;text-underline-offset:3px}
+/* 위 메뉴 '기능' 펼침 (OH 11/08, 채널톡 메뉴처럼 제목 한 줄 + 설명 한 줄) */
+.gnb .nav-dd{height:100%;display:flex;align-items:center}
+.gnb .nav-dd summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;height:100%;font-weight:500;font-size:15.5px;color:var(--fg2);white-space:nowrap;padding-top:3px}
+.gnb .nav-dd summary::-webkit-details-marker{display:none}
+.gnb .nav-dd summary .chev{width:8px;height:8px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg) translateY(-3px);transition:transform .2s}
+.gnb .nav-dd[open] summary{color:var(--fg)}.gnb .nav-dd[open] summary .chev{transform:rotate(225deg) translate(-2px,-1px)}
+.gnb .nav-dd .dd{position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:1px solid #F2F4F6;box-shadow:0 24px 40px -24px rgba(25,31,40,.18)}
+.gnb .nav-dd .dd .wrap{display:grid;grid-template-columns:repeat(2,minmax(0,280px));gap:24px 64px;height:auto;padding-block:28px 36px;align-items:start}
+.gnb .nav-dd .dd-col{display:flex;flex-direction:column;gap:4px}
+.gnb .nav-dd .dd-col small{font-size:14px;color:#8B95A1;margin-bottom:8px}
+.gnb .nav-dd .dd a{display:flex;flex-direction:column;align-items:flex-start;gap:2px;height:auto;border:0;padding:10px 12px;margin-left:-12px;border-radius:12px;white-space:normal}
+.gnb .nav-dd .dd a:hover{background:#F9FAFB}
+.gnb .nav-dd .dd a b{font-size:17px;font-weight:700;color:#191F28}.gnb .nav-dd .dd a span{font-size:14px;font-weight:400;color:#6B7684}
+@media (max-width:760px){.gnb .nav-dd summary{font-size:14.5px}.gnb .nav-dd .dd .wrap{grid-template-columns:1fr;gap:16px;padding-block:16px 20px}.gnb .nav-dd .dd{max-height:70vh;overflow:auto}}
+/* 소개 3차 (OH 11/08): 고객 → SODA → 사장님 흐름, 써 보기, 화면 조각 카드, 진짜 되는 상품 페이지 */
+.cx-stage{padding:0 72px 0 120px}
+.cx-cust{position:absolute;left:0;bottom:-48px;width:250px;background:#fff;border-radius:28px;padding:14px 12px 16px;box-shadow:0 30px 60px -20px rgba(25,31,40,.3),0 0 0 1px rgba(25,31,40,.06);display:flex;flex-direction:column;gap:8px;text-align:left;z-index:2}
+.cx-cust-h{display:flex;flex-direction:column;padding:4px 6px 8px;border-bottom:1px solid #F2F4F6}.cx-cust-h b{font-size:15px;color:#191F28}.cx-cust-h small{font-size:12px;color:#8B95A1}
+.cx-cust .b,.cx-trychat .b,.cx-shop-chat .b,.cx-card3 .mini .b{max-width:86%;font-size:13.5px;line-height:1.5;padding:9px 12px;border-radius:16px;word-break:keep-all}
+.b.me{align-self:flex-end;background:#F2F4F6;color:#191F28;border-bottom-right-radius:6px}
+.b.soda{align-self:flex-start;background:#E8F7F4;color:#191F28;border-bottom-left-radius:6px}
+.b.soda span{display:block;font-size:11.5px;font-weight:700;color:#167C74;margin-bottom:2px}
+.b.typing{display:flex;gap:4px;padding:12px 14px}.b.typing i{width:6px;height:6px;border-radius:50%;background:#7CC9BE;animation:cxdot 1s infinite}.b.typing i:nth-child(2){animation-delay:.15s}.b.typing i:nth-child(3){animation-delay:.3s}
+@keyframes cxdot{0%,100%{opacity:.3}50%{opacity:1}}
+.cx-tag{position:absolute;z-index:3;background:#191F28;color:#fff;font-size:14px;font-weight:600;border-radius:999px;padding:8px 14px;white-space:nowrap}
+.cx-tag.t1{left:18px;bottom:340px}.cx-tag.t2{left:300px;bottom:-20px}.cx-tag.t3{right:0;bottom:430px}
+.cx-try{text-align:center}.cx-try h2{margin-top:6px}
+.cx-url{display:flex;align-items:center;gap:8px;max-width:640px;margin:36px auto 0;background:#fff;border-radius:999px;padding:8px 8px 8px 26px;box-shadow:inset 0 0 0 1.5px #E5E8EB}
+.cx-url:focus-within{box-shadow:inset 0 0 0 2px #191F28}
+.cx-url input{flex:1;min-width:0;border:0;outline:0;font-size:17px;background:transparent;color:#191F28;height:48px}
+.cx-url button{width:48px;height:48px;border-radius:50%;border:0;background:#EF920E;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.cx-ex{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:16px;font-size:14.5px;color:#8B95A1}
+.cx-ex button{border:0;background:#F2F4F6;color:#4E5968;font-weight:600;font-size:14.5px;border-radius:999px;padding:7px 14px;cursor:pointer}
+.cx-tryerr{min-height:20px;margin:12px 0 0;color:#E5503A;font-size:14.5px}
+.cx-trychat,.cx-shop-chat{display:flex;flex-direction:column;text-align:left;background:#fff;border-radius:24px;box-shadow:0 20px 50px -20px rgba(25,31,40,.25),0 0 0 1px rgba(25,31,40,.06);overflow:hidden}
+.cx-trychat{max-width:520px;margin:20px auto 0;height:520px}
+.cx-trychat[hidden],.cx-shop-chat[hidden]{display:none}
+.tc-h{display:flex;flex-direction:column;padding:16px 20px;border-bottom:1px solid #F2F4F6}.tc-h b{font-size:16px;color:#191F28}.tc-h small{font-size:12.5px;color:#8B95A1}
+.tc-log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:16px}
+.tc-own{align-self:center;font-size:12.5px;color:#6B7684;background:#F9FAFB;border-radius:999px;padding:5px 12px;text-align:center}
+.tc-qs{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px}.tc-qs:empty{display:none}
+.tc-qs button{border:1px solid #E5E8EB;background:#fff;color:#333D48;font-size:13.5px;border-radius:999px;padding:7px 12px;cursor:pointer}
+.tc-in{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #F2F4F6}
+.tc-in input{flex:1;min-width:0;border:0;outline:0;background:#F2F4F6;border-radius:999px;padding:0 16px;height:42px;font-size:15px}
+.tc-in button{width:42px;height:42px;border-radius:50%;border:0;background:#EF920E;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.tc-end{padding:12px 16px 16px;border-top:1px solid #F2F4F6}.tc-end .btn{width:100%}
+.cx-card3{min-height:330px}
+.cx-card3 .mini{position:absolute;left:24px;right:24px;bottom:24px;display:flex;flex-direction:column;gap:6px;background:#fff;border-radius:18px;padding:14px;box-shadow:0 12px 30px -14px rgba(25,31,40,.25),0 0 0 1px rgba(25,31,40,.05)}
+.cx-card3 .mini small{font-size:12px;color:#8B95A1}.cx-card3 .mini strong{font-size:15px;color:#191F28}
+.cx-card3 .mini i{font-style:normal;align-self:stretch;text-align:center;background:#EF920E;color:#fff;font-weight:700;font-size:14px;border-radius:10px;padding:8px 0;margin-top:4px}
+.cx-card3 .mini i.soft{background:#F2F4F6;color:#4E5968}
+.cx-shop{position:relative;background:#fff;border-radius:24px;box-shadow:0 24px 60px -28px rgba(25,31,40,.25),0 0 0 1px rgba(25,31,40,.06);min-height:440px;overflow:hidden}
+.cx-shop-bar{display:flex;align-items:baseline;gap:10px;padding:16px 22px;border-bottom:1px solid #F2F4F6}.cx-shop-bar b{font-size:16px}.cx-shop-bar span{font-size:13px;color:#8B95A1}
+.cx-shop-body{display:grid;grid-template-columns:1fr 1fr;gap:22px;padding:22px}
+.cx-shop-img{background:#F6F1EA;border-radius:16px;aspect-ratio:1;display:flex;align-items:center;justify-content:center}.cx-shop-img svg{width:62%}
+.cx-shop-info{display:flex;flex-direction:column;gap:6px;text-align:left}.cx-shop-info small{font-size:12.5px;color:#8B95A1}.cx-shop-info b{font-size:19px;color:#191F28}.cx-shop-info strong{font-size:20px;color:#191F28}.cx-shop-info span{font-size:13px;color:#6B7684}
+.cx-shop-info em{font-style:normal;margin-top:10px;text-align:center;background:#191F28;color:#fff;font-weight:600;font-size:14px;border-radius:10px;padding:11px 0}
+.cx-shop-btn{position:absolute;right:20px;bottom:20px;width:56px;height:56px;border-radius:50%;border:0;background:#EF920E;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px -8px rgba(239,146,14,.6);z-index:3;animation:cxpulse 2s infinite}
+.cx-shop.open .cx-shop-btn{animation:none}
+@keyframes cxpulse{0%{box-shadow:0 0 0 0 rgba(239,146,14,.45)}70%{box-shadow:0 0 0 14px rgba(239,146,14,0)}100%{box-shadow:0 0 0 0 rgba(239,146,14,0)}}
+.cx-shop-hint{position:absolute;right:86px;bottom:34px;font-size:13.5px;font-weight:600;color:#fff;background:#191F28;border-radius:999px;padding:6px 12px}
+.cx-shop.open .cx-shop-hint{display:none}
+.cx-shop-chat{position:absolute;right:16px;bottom:88px;top:16px;width:min(330px,calc(100% - 32px));z-index:2}
+@media (max-width:1023.98px){.cx-stage{padding:0 40px 0 90px}.cx-cust{width:210px}.cx-tag{display:none}}
+@media (max-width:767.98px){.cx-stage{padding:0}.cx-cust{position:relative;left:auto;bottom:auto;width:auto;margin:16px 0 0;order:3}.cx-stage{display:flex;flex-direction:column}.cx-phone{order:2}
+ .cx-url{padding-left:18px}.cx-url input{font-size:15.5px;height:44px}.cx-url button{width:44px;height:44px}.cx-trychat{height:480px}
+ .cx-shop-body{grid-template-columns:1fr;padding:16px}.cx-shop{min-height:560px}.cx-card3{min-height:0;padding-bottom:150px}}
+/* SODA 결정 카드: 버튼은 하나, 나머지는 글자 링크 (OH: 버튼 나란히 금지) */
+.cx-dec .cx-da{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 14px}
+.cx-dec .cx-da .btn:not(.gray){flex:1 0 100%;height:42px}
+.cx-dec .cx-da .btn.gray{background:none!important;box-shadow:none!important;border:0;height:auto;min-height:0;padding:6px 2px;color:#6B7684;font-weight:500;font-size:13.5px}
+.cx-dec .cx-da .btn.gray:hover{color:#191F28;background:none}
+.gnb nav.in-nav .nav-dd summary{font-size:17px;font-weight:600;color:#191F28}@media (max-width:760px){.gnb nav.in-nav .nav-dd summary{font-size:14.5px}}

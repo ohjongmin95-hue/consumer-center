@@ -7,4 +7,4 @@
 <small class="tp-tx">1건에 약 {{ '{:,}'.format((t.price/t.tickets)|round|int) }}원 · 넘으면 {{ ('%s건마다 '%'{:,}'.format(t.over_n)) if t.over_n>1 else '1건 ' }}{{ '{:,}'.format(t.over_price) }}원</small>
 <a class="btn tp-btn full{{ '' if t.key=='basic' else ' gray' }}" href="{{ url_for('signup') }}">{{ '%d일 무료로 시작하기'%trial if trial else '시작하기' }}</a>
 </div>{% endfor %}</div>
-<p class="tp-tnote">부가세 포함 · 모든 구간에서 모든 기능을 써요 · 상담 1건은 고객에게 답장이 한 번이라도 나간 문의예요 (AI 답장 포함)</p>{% endmacro %}
+<p class="tp-tnote">부가세 포함 · 상담 1건은 고객에게 답장이 한 번이라도 나간 문의예요 (AI 답장 포함)</p>{% endmacro %}
