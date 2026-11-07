@@ -1,4 +1,4 @@
-// 웹과 같은 선 아이콘(48칸): 검은 선 + 주황 포인트
+// 선 아이콘(48칸). TDS처럼 무채색: 포인트 선도 같은 색 (OH 11/07 귤색은 버튼·핵심 강조에만)
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { C } from '../lib/theme';
 
@@ -35,13 +35,13 @@ const ICONS: Record<string, Shape[]> = {
 };
 export const CAT_ICON: Record<string, string> = { '배송 조회': 'truck', '주문 취소': 'refund', '주문 변경': 'list', 교환: 'exchange', '반품·환불': 'refund', '제품 불량': 'defect', '고객 응대': 'chat', 기타: 'note' };
 
-export function Icon({ name, size = 28 }: { name: string; size?: number }) {
+export function Icon({ name, size = 28, color = C.fg, weight = 2.4 }: { name: string; size?: number; color?: string; weight?: number }) {
   const shapes = ICONS[name] ?? ICONS.note;
   return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none" strokeWidth={weight} strokeLinecap="round" strokeLinejoin="round">
       {shapes.map((s, i) => {
-        const stroke = s.a === 1 ? C.accent : C.fg;
-        const fill = s.a === 2 ? C.accent : 'none';
+        const stroke = color;
+        const fill = s.a === 2 ? color : 'none';
         if (s.t === 'p') return <Path key={i} d={s.d} stroke={stroke} fill={fill} />;
         if (s.t === 'c') return <Circle key={i} cx={s.cx} cy={s.cy} r={s.r} stroke={stroke} fill={fill} />;
         return <Rect key={i} x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx} stroke={stroke} fill={fill} />;

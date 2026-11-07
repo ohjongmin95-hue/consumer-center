@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChannelIcon } from '../../components/ChannelIcon';
+import { Avatar } from '../../components/Avatar';
 import { Card, Loading, Notice, TopBar } from '../../components/ui';
 import { api, ApiError, ChatRow } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -106,7 +107,7 @@ function Room({ r }: { r: ChatRow }) {
   return (
     <Pressable onPress={() => router.push(`/chat/${r.id}`)} style={({ pressed }) => [st.row, pressed && { backgroundColor: C.band }]}>
       <View style={st.av}>
-        <Text style={st.avText}>{r.name.slice(0, 1)}</Text>
+        <Avatar id={r.id} size={40} />
         <View style={st.mk} accessibilityLabel={r.channel}>
           <ChannelIcon mark={r.mark[1]} size={16} />
         </View>
@@ -150,7 +151,7 @@ const st = StyleSheet.create({
   chipText: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.fg2 },
   empty: { fontFamily: FONT, fontSize: 15, color: C.fg3, paddingVertical: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 12, marginHorizontal: -12, borderRadius: 12 },
-  av: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E8F3FF', alignItems: 'center', justifyContent: 'center' },
+  av: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   avText: { fontFamily: FONT, fontSize: 15, fontWeight: '700', color: '#1B64DA' },
   mk: { position: 'absolute', right: -4, bottom: -4, borderRadius: 13, borderWidth: 2, borderColor: C.card, backgroundColor: C.card },
   name: { flexShrink: 1, fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg, letterSpacing: 0 },

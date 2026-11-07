@@ -1,4 +1,5 @@
 // 토스처럼 납작하고 둥근 기본 부품. 색은 소보루 주황.
+import { Avatar } from './Avatar';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
@@ -50,9 +51,7 @@ export function TopBar() {
           ) : null}
         </Pressable>
         <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, pressed && { opacity: 0.7 }]}>
-          <View style={s.coDot}>
-            <Text style={s.coDotText}>{name.slice(0, 1)}</Text>
-          </View>
+          <Avatar kind="shop" size={26} />
           <Text style={s.coName} numberOfLines={1}>
             {name}
           </Text>

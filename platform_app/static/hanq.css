@@ -2371,3 +2371,8 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .cb .cb-in,.cs2 .cs-chat .cb-in{position:relative;margin-top:12px}
 .cb .cb-in input,.cs2 .cs-chat .cb-in input{height:50px;border-radius:25px;padding:0 56px 0 18px;background:#f2f4f6}
 .cb .cb-in button,.cs2 .cs-chat .cb-in button{position:absolute;right:6px;top:6px;width:38px;height:38px;padding:0;border-radius:19px;display:grid;place-items:center}
+/* 기본 프로필 (OH 11/07: 이름 첫 글자 대신 연한 색 동그라미 + 흰 사람 모양, 앱 Avatar 와 같은 색) */
+.cx-av.p,.av.p{background:linear-gradient(135deg,#9FD8FF,#7FB8F5);color:#fff}
+.cx-av.p svg,.av.p svg{width:100%;height:100%;display:block}
+.p.t1{background:linear-gradient(135deg,#8EE8C6,#62CFA8)}.p.t2{background:linear-gradient(135deg,#FFD08C,#FFAE5C)}
+.p.t3{background:linear-gradient(135deg,#C3B8FF,#9F90F5)}.p.t4{background:linear-gradient(135deg,#FFB7C4,#F58FA3)}

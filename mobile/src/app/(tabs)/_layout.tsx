@@ -20,10 +20,30 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: C.fg,
-        tabBarInactiveTintColor: C.fg3,
-        tabBarStyle: { borderTopColor: C.line, backgroundColor: C.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, ...(Platform.OS === 'web' ? { height: 76, paddingBottom: 12, paddingTop: 8 } : { height: 64 + bottom, paddingTop: 6, paddingBottom: bottom + 6 }) },
-        tabBarLabelStyle: { fontFamily: FONT, fontSize: 12, fontWeight: '600', marginTop: 2 },
+        tabBarActiveTintColor: '#333D4B',
+        tabBarInactiveTintColor: C.fg4,
+        // 토스처럼 떠 있는 둥근 탭바: 옆·아래로 살짝 띄우고 테두리와 옅은 그림자
+        tabBarStyle: {
+          position: 'relative',
+          marginHorizontal: 12,
+          marginBottom: Platform.OS === 'web' ? 10 : bottom + 4,
+          height: 74,
+          paddingTop: 8,
+          paddingBottom: 12,
+          borderRadius: 26,
+          borderTopWidth: 0,
+          borderWidth: 1,
+          borderColor: '#EEF0F2',
+          backgroundColor: C.card,
+          shadowColor: '#000',
+          shadowOpacity: 0.06,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 6,
+        },
+        sceneStyle: { backgroundColor: C.card },
+        tabBarLabelStyle: { fontFamily: FONT, fontSize: 12, lineHeight: 16, fontWeight: '600', marginTop: 4 },
+        tabBarItemStyle: { height: 56 },
       }}
     >
       <Tabs.Screen name="index" options={{ title: '홈', tabBarIcon: ({ focused }) => <Tab name="home" on={focused} /> }} />
@@ -40,11 +60,10 @@ export default function TabsLayout() {
 function Tab({ name, on, n }: { name: string; on: boolean; n?: number }) {
   return (
     <View>
-      <View style={{ opacity: on ? 1 : 0.4 }}>
-        <Icon name={name} size={26} />
-      </View>
+      {/* 토스 탭바처럼: 고른 탭은 진한 회색 굵은 선, 나머지는 옅은 회색 */}
+      <Icon name={name} size={26} color={on ? '#333D4B' : C.fg4} weight={on ? 3 : 2.4} />
       {n ? (
-        <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ fontFamily: FONT, fontSize: 11, fontWeight: '700', color: '#fff' }}>{n > 99 ? '99+' : n}</Text>
         </View>
       ) : null}
