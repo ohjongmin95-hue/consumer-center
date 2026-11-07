@@ -20,9 +20,9 @@
 <div><b>{{ c.name or '고객' }}</b><span>{{ c.channel or '상담창' }} · {{ c.category }} · {{ STATUS[c.status][0] }}</span></div>
 <span class="sp"></span><a class="btn sm gray" href="{{ url_for('case',case_id=c.id) }}">자세히 처리</a></header>
 <div class="cx-msgs" id="cxMsgs" data-last="{{ last }}" data-url="{{ url_for('chat_more',case_id=c.id) }}" data-tr="{{ url_for('chat_translate',case_id=c.id) if lang!='ko' else '' }}" data-csrf="{{ csrf_token() }}">
-{% for m in msgs %}<div class="mg {{ m.who }}" data-id="{{ m.id }}">{% if m.who=='sys' %}<p>{{ m.text }} · {{ m.at }}</p>{% else %}<div class="mb"><span class="mby">{{ m.by }}{% if m.who=='note' %} · 메모 (고객에게 안 보임){% endif %}</span><div class="mt">{{ m.text }}</div><time>{{ m.at }}</time></div>{% endif %}</div>{% endfor %}
+{% for m in msgs %}<div class="mg {{ m.who }}" data-id="{{ m.id }}" data-by="{{ m.by }}">{% if m.who=='sys' %}<p>{{ m.text }} · {{ m.at }}</p>{% else %}{% if m.who=='me' %}<span class="cx-av p sm"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="16" r="6" fill="#fff"/><path d="M9.5 33c1.4-5.4 5.6-8.5 10.5-8.5S29.1 27.6 30.5 33a20 20 0 0 1-21 0z" fill="#fff"/></svg></span>{% endif %}<div class="mb"><span class="mby">{{ m.by }}{% if m.who=='note' %} · 메모 (고객에게 안 보임){% endif %}</span><div class="mr"><div class="mt">{{ m.text }}</div><time>{{ m.at.split(' ')[-1] }}</time></div></div>{% endif %}</div>{% endfor %}
 {% if c.decision=='pending' and c.status not in ('resolved','unresolved','closed','withdrawn') %}
-<div class="cx-dec" id="cxDec"><div class="cx-dh">{{ i.icon('approve',22) }}<b>사장님 결정이 필요해요</b><span>{{ c.category }}</span></div>
+<div class="cx-dec" id="cxDec"><div class="cx-dh"><b>SODA</b><span>{{ c.category }}</span></div><p class="cx-dq">사장님, 이건 정해 주셔야 해요</p>
 {% if c.ai_why %}<p class="cx-why">{{ c.ai_why }}</p>{% endif %}
 {% if c.ai_draft %}<div class="cx-draft"><small>승인하면 보낼 답</small><div>{{ c.ai_draft }}</div></div>{% endif %}
 <form method="post" action="{{ url_for('case',case_id=c.id) }}" class="cx-da"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="back" value="chat">
@@ -31,11 +31,12 @@
 <button class="btn sm gray" name="act" value="hold">보류</button><a class="btn sm gray" href="{{ url_for('case',case_id=c.id) }}">환불·교환 처리</a></form></div>{% endif %}
 </div>
 {% if c.status not in ('resolved','unresolved','withdrawn') %}
-<form class="cx-comp" id="cxComp" method="post" action="{{ url_for('chat_send',case_id=c.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
-<textarea name="text" rows="2" maxlength="3000" placeholder="{{ c.name or '고객' }}님에게 답하기{% if send_via %} · {{ send_via }}{% endif %}" aria-label="답변"></textarea>
-<div class="cx-ca"><span class="cx-err" id="cxErr" role="alert"></span><span class="sp"></span>{% if lang!='ko' %}<button type="button" class="tbtn" id="cxTr">{{ LANGS[lang] }}로 번역</button>{% endif %}<button class="btn md" id="cxSend">보내기</button></div></form>
-<form class="cx-note" method="post" action="{{ url_for('case',case_id=c.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="note"><input type="hidden" name="back" value="chat">
-<details><summary>메모 남기기 (고객에게 안 보여요)</summary><div class="cx-nf"><input class="inp" name="note" maxlength="2000" placeholder="팀에게 남길 메모" aria-label="메모"><button class="btn sm gray">남기기</button></div></details></form>
+<form class="cx-comp" id="cxComp" method="post" action="{{ url_for('chat_send',case_id=c.id) }}" data-note="{{ url_for('case',case_id=c.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<button type="button" class="cx-mode" id="cxMode" aria-pressed="false" title="메모는 고객에게 안 보여요">메모</button>
+<textarea name="text" rows="1" maxlength="3000" placeholder="메시지 보내기{% if send_via %} · {{ send_via }}{% endif %}" data-ph="메시지 보내기{% if send_via %} · {{ send_via }}{% endif %}" aria-label="답변"></textarea>
+{% if lang!='ko' %}<button type="button" class="cx-tr" id="cxTr" title="{{ LANGS[lang] }}로 번역">번역</button>{% endif %}
+<button class="cx-go" id="cxSend" aria-label="보내기"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+</form><p class="cx-err" id="cxErr" role="alert"></p>
 {% endif %}
 </section>
 
@@ -68,8 +69,11 @@
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
   function msgHtml(m){
     if(m.who==='sys')return '<div class="mg sys" data-id="'+m.id+'"><p>'+esc(m.text)+' · '+esc(m.at)+'</p></div>';
-    return '<div class="mg '+m.who+'" data-id="'+m.id+'"><div class="mb"><span class="mby">'+esc(m.by)+'</span><div class="mt">'+esc(m.text)+'</div><time>'+esc(m.at)+'</time></div></div>';
+    return '<div class="mg '+m.who+'" data-id="'+m.id+'" data-by="'+esc(m.by)+'">'+(m.who==='me'?AV:'')+'<div class="mb"><span class="mby">'+esc(m.by)+(m.who==='note'?' · 메모 (고객에게 안 보임)':'')+'</span><div class="mr"><div class="mt">'+esc(m.text)+'</div><time>'+esc(String(m.at).split(' ').pop())+'</time></div></div></div>';
   }
+  var AV='<span class="cx-av p sm"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="16" r="6" fill="#fff"/><path d="M9.5 33c1.4-5.4 5.6-8.5 10.5-8.5S29.1 27.6 30.5 33a20 20 0 0 1-21 0z" fill="#fff"/></svg></span>';
+  function group(){var prev=null;document.querySelectorAll('#cxMsgs > .mg').forEach(function(g){var same=prev&&prev.className.replace(' cont','')===g.className.replace(' cont','')&&prev.dataset.by===g.dataset.by&&!g.classList.contains('sys');g.classList.toggle('cont',!!same);prev=g})}
+  group();
   if(box){
     box.scrollTop=box.scrollHeight;
     var last=+box.dataset.last||0,had=!!document.getElementById('cxDec');
@@ -78,18 +82,23 @@
         if(d.msgs&&d.msgs.length){var near=box.scrollHeight-box.scrollTop-box.clientHeight<120;
           var dec=document.getElementById('cxDec');
           d.msgs.forEach(function(m){if(!box.querySelector('[data-id="'+m.id+'"]')){if(dec)dec.insertAdjacentHTML('beforebegin',msgHtml(m));else box.insertAdjacentHTML('beforeend',msgHtml(m))}});
-          if(near)box.scrollTop=box.scrollHeight}
+          group();if(near)box.scrollTop=box.scrollHeight}
         last=d.last||last;
         if(d.need!==had)location.reload();  // 결정 카드가 생기거나 사라지면 새로 그린다
       }).catch(function(){});
     }
     setInterval(pull,5000);
     var f=document.getElementById('cxComp');
-    if(f){var ta=f.querySelector('textarea'),err=document.getElementById('cxErr'),btn=document.getElementById('cxSend');
+    if(f){var ta=f.querySelector('textarea'),err=document.getElementById('cxErr'),btn=document.getElementById('cxSend'),mode=document.getElementById('cxMode'),note=false;
+      function grow(){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,140)+'px'}
+      ta.addEventListener('input',grow);
+      mode.addEventListener('click',function(){note=!note;mode.setAttribute('aria-pressed',note);f.classList.toggle('note',note);ta.placeholder=note?'팀에게 남길 메모 (고객에게 안 보여요)':ta.dataset.ph;ta.focus()});
       ta.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();f.requestSubmit()}});
       f.addEventListener('submit',function(e){e.preventDefault();if(!ta.value.trim())return;btn.disabled=true;err.textContent='';
-        fetch(f.action,{method:'POST',body:new FormData(f),credentials:'same-origin'}).then(function(r){return r.json().then(function(d){return [r.ok,d]})}).then(function(x){
-          btn.disabled=false;if(!x[0]){err.textContent=x[1].error||'보내지 못했어요';return}ta.value='';pull()}).catch(function(){btn.disabled=false;err.textContent='보내지 못했어요. 다시 눌러 주세요'})})}
+        var fd=new FormData(f),url=f.action;
+        if(note){fd=new FormData();fd.append('csrf',f.csrf.value);fd.append('act','note');fd.append('back','chat');fd.append('note',ta.value);url=f.dataset.note}
+        fetch(url,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){if(note)return [r.ok,{}];return r.json().then(function(d){return [r.ok,d]})}).then(function(x){
+          btn.disabled=false;if(!x[0]){err.textContent=x[1].error||'보내지 못했어요';return}ta.value='';grow();pull()}).catch(function(){btn.disabled=false;err.textContent='보내지 못했어요. 다시 눌러 주세요'})})}
     var msgsEl=document.getElementById('cxMsgs');
     function tr(text,to){var fd=new FormData();fd.append('csrf',msgsEl.dataset.csrf);fd.append('text',text);fd.append('to',to);
       return fetch(msgsEl.dataset.tr,{method:'POST',body:fd,credentials:'same-origin'}).then(function(r){return r.json()})}

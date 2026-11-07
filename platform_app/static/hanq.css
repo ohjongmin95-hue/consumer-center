@@ -2385,3 +2385,39 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .cx-page b{display:block;font-size:14px;line-height:20px;font-weight:600;color:var(--fg);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .cx-page small{display:block;font-size:12px;color:var(--fg3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
 .cx-page:hover b{text-decoration:underline}
+/* 톡 대화창 (OH 11/07): 말풍선이 쭉 이어지고 아래 한 줄로 보낸다 */
+.cx-msgs{gap:4px;padding:20px 24px 12px;background:#F2F4F6}
+.mg{align-items:flex-start;gap:8px;margin-top:10px}.mg.cont{margin-top:0}.mg.sys{margin:12px 0 4px}
+.mg .cx-av.sm{width:36px;height:36px}
+.mg.cont .cx-av,.mg.cont .mby{visibility:hidden;height:0}.mg.cont .mby{display:none}
+.mg.cont.me .cx-av{height:0}
+.mr{display:flex;align-items:flex-end;gap:6px}
+.mg.ai .mr,.mg.co .mr,.mg.note .mr{flex-direction:row-reverse}
+.mg .mb{gap:4px;max-width:min(520px,78%)}
+.mg time{font-size:11px;white-space:nowrap;padding-bottom:2px}
+.mt{padding:10px 14px;border-radius:20px;font-size:15px}
+.mg.me .mt{background:#fff;box-shadow:none;border-top-left-radius:20px}
+.mg.co .mt,.mg.ai .mt,.mg.note .mt{border-top-right-radius:20px}
+.mg.ai .mt{background:#fff;box-shadow:inset 0 0 0 1.5px #FBE3C2}
+.mg.ai .mby{color:#CE6719}
+.mg.sys p{background:rgba(0,0,0,.05);color:#6B7684;border-radius:999px;padding:4px 12px;font-size:12px}
+.cx-dec{align-self:flex-end;max-width:min(420px,82%);margin:10px 0 4px;border-radius:20px;padding:14px 16px;box-shadow:none;background:#fff;gap:8px}
+.cx-dh b{font-size:12.5px;color:#CE6719;font-weight:600}.cx-dh span{font-size:12px}
+.cx-dq{margin:0;font-size:15.5px;font-weight:700;color:var(--fg)}
+.cx-dec .cx-why{font-size:14px}
+.cx-da{gap:6px}.cx-da .btn{border-radius:999px}
+.cx-comp{display:flex;align-items:flex-end;gap:8px;margin:0;padding:10px 16px 14px;background:var(--card);border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none}
+.cx-comp:focus-within{border-color:var(--line);box-shadow:none}
+.cx-comp textarea{flex:1;min-height:44px;max-height:140px;background:#F2F4F6;border-radius:22px;padding:11px 16px;font-size:15px;line-height:22px}
+.cx-comp textarea::placeholder{color:#8B95A1}
+.cx-comp.note textarea{background:#FFF6D6}
+.cx-mode,.cx-tr{flex:none;height:44px;padding:0 14px;border-radius:22px;border:0;background:#F2F4F6;color:#4E5968;font-size:13.5px;font-weight:600;cursor:pointer}
+.cx-mode[aria-pressed=true]{background:#FFE9A8;color:#6b5200}
+.cx-go{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:var(--accent);color:#fff;display:grid;place-items:center;cursor:pointer}
+.cx-go:disabled{opacity:.5}
+p.cx-err{margin:0;padding:0 16px;font-size:13px;color:var(--red)}p.cx-err:empty{display:none}
+@media (max-width:1023.98px){.cx-msgs{padding:12px 12px 8px}.cx-comp{padding:8px 10px 10px}}
+/* 쇼핑몰 상담창은 그 쇼핑몰 이름으로 연다 (OH 11/07) */
+.cs-shop{gap:10px;min-width:0}
+.cs-shop .shopmk{width:34px;height:34px;border-radius:11px;background:#FFF1DE;color:#EF920E;display:grid;place-items:center;flex:none}
+.cs-shop b{font-size:18px;font-weight:700;letter-spacing:-.02em;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
