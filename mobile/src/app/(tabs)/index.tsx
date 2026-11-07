@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { CaseRow } from '../../components/CaseRow';
 import { Footer } from '../../components/Footer';
 import { Loading, Notice, TopBar } from '../../components/ui';
@@ -22,6 +23,8 @@ export default function HomeTab() {
   const [tab, setTab] = useState('all');
   const [page, setPage] = useState(0);
   const { width } = useWindowDimensions();
+  const shopName = (session?.company?.name ?? '').replace(/\s*\(.*?\)\s*/g, '').trim();
+  const boardH = Math.round(Math.min(width - 24, 520) * 0.62);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [busyId, setBusyId] = useState(0);
@@ -82,21 +85,27 @@ export default function HomeTab() {
       key: 'chat',
       small: `진행 중인 상담 ${chats?.open ?? 0}건`,
       big: needN ? `사장님 결정이 필요한\n상담이 ${needN}건 있어요` : 'SODA가 상담을\n잘 이어가고 있어요',
-      img: require('../../../assets/board/chat.png'),
+      img: require('../../../assets/board/chat.webp'),
+      from: '#FFE6C0',
+      to: '#FFF9F1',
       go: () => router.navigate('/chat'),
     },
     {
       key: 'ok',
       small: `승인 기다리는 요청 ${n.pending}건`,
       big: n.pending ? '교환·반품 요청을\n한 번에 승인해 보세요' : '지금은 승인할\n요청이 없어요',
-      img: require('../../../assets/board/box.png'),
+      img: require('../../../assets/board/ok.webp'),
+      from: '#FFDDB0',
+      to: '#FFF7EC',
       go: () => router.navigate('/approvals'),
     },
     {
       key: 'soda',
       small: 'SODA 가르치기',
       big: gaps ? `SODA가 모르는 질문\n${gaps}개에 답해 주세요` : '사장님 답을 배워서\n다음엔 SODA가 답해요',
-      img: require('../../../assets/board/shield.png'),
+      img: require('../../../assets/board/soda.webp'),
+      from: '#CFF2E6',
+      to: '#EEF8FF',
       go: () => router.push('/soda'),
     },
   ];
@@ -132,15 +141,23 @@ export default function HomeTab() {
         >
           {boards.map((x) => (
             <View key={x.key} style={{ width, paddingHorizontal: 12 }}>
-              <Pressable onPress={x.go} style={({ pressed }) => [st.card, st.board, pressed && st.cardOn]}>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={st.boardT}>{x.big}</Text>
-                  <Text style={st.boardK}>{x.small}</Text>
-                </View>
-                <Image source={x.img} style={st.boardImg} resizeMode="contain" />
+              <Pressable onPress={x.go} style={({ pressed }) => [st.card, st.board, { height: boardH }, pressed && st.cardOn]}>
+                {/* 토스 쇼핑 홈 배너처럼 (OH 11/07): 은은한 그라데이션 + 큰 제목 + 오른쪽 아래 비스듬한 3D 오브젝트 하나 */}
+                <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+                  <Defs>
+                    <LinearGradient id={`bg${x.key}`} x1="0" y1="0" x2="1" y2="1">
+                      <Stop offset="0" stopColor={x.from} />
+                      <Stop offset="1" stopColor={x.to} />
+                    </LinearGradient>
+                  </Defs>
+                  <Rect width="100%" height="100%" fill={`url(#bg${x.key})`} />
+                </Svg>
+                <Text style={st.boardT}>{x.big}</Text>
+                <Text style={st.boardK}>{x.small}</Text>
+                <Image source={x.img} style={[st.boardImg, { width: boardH * 0.68, height: boardH * 0.68 }]} resizeMode="contain" />
                 <View style={st.boardPage}>
                   <Text style={st.boardPageT}>
-                    {page + 1} / {boards.length}
+                    {page + 1} | {boards.length}
                   </Text>
                 </View>
               </Pressable>
@@ -258,7 +275,8 @@ export default function HomeTab() {
 
         {home.brief?.length ? (
           <View style={[st.card, st.pad]}>
-            <Head title="소보루 브리핑" />
+            {/* 토스 "○○님을 위한 추천 상품"처럼 (OH 11/07) */}
+            <Head title={shopName.length && shopName.length <= 8 ? `${shopName} 사장님을 위한 브리핑` : '사장님을 위한 오늘 브리핑'} />
             {home.brief.map((line) => (
               <Text key={line} style={st.brief}>
                 {line}
@@ -306,7 +324,9 @@ function Act({ icon, soda, big, sub, btn, primary, onPress }: { icon?: string; s
 function Head({ title, more, onPress, small }: { title: string; more?: string; onPress?: () => void; small?: boolean }) {
   return (
     <View style={st.head}>
-      <Text style={small ? st.headSmall : st.headT}>{title}</Text>
+      <Text style={[small ? st.headSmall : st.headT, { flexShrink: 1 }]} numberOfLines={1}>
+        {title}
+      </Text>
       {more && onPress ? (
         <Pressable onPress={onPress} hitSlop={8}>
           <Text style={st.headMore}>{more} ›</Text>
@@ -447,12 +467,12 @@ const st = StyleSheet.create({
   need: { fontFamily: FONT, fontSize: 11, fontWeight: '700', color: C.accentInk, backgroundColor: C.accentSoft, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, overflow: 'hidden' },
   when: { marginLeft: 'auto', fontFamily: FONT, fontSize: 12, color: C.fg4 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.red },
-  board: { marginHorizontal: 0, marginTop: 8, height: 120, paddingLeft: 24, paddingRight: 14, flexDirection: 'row', alignItems: 'center' },
-  boardK: { fontFamily: FONT, fontSize: 13, fontWeight: '500', color: C.fg3, letterSpacing: 0 },
-  boardT: { fontFamily: FONT, fontSize: 17, lineHeight: 24, fontWeight: '700', color: C.fg, letterSpacing: 0 },
-  boardImg: { width: 84, height: 84 },
-  boardPage: { position: 'absolute', right: 14, bottom: 10, backgroundColor: 'rgba(0,21,42,0.18)', borderRadius: 9, paddingHorizontal: 7, paddingVertical: 1 },
-  boardPageT: { fontFamily: FONT, fontSize: 11, fontWeight: '600', color: '#fff', letterSpacing: 0 },
+  board: { marginHorizontal: 0, marginTop: 8, paddingHorizontal: 26, paddingTop: 28 },
+  boardT: { fontFamily: FONT, fontSize: 24, lineHeight: 33, fontWeight: '700', color: C.fg, letterSpacing: -0.3 },
+  boardK: { fontFamily: FONT, fontSize: 15, lineHeight: 22, fontWeight: '500', color: C.fg3, letterSpacing: 0, marginTop: 8 },
+  boardImg: { position: 'absolute', right: 6, bottom: -6 },
+  boardPage: { position: 'absolute', right: 14, bottom: 14, backgroundColor: 'rgba(0,21,42,0.32)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 3 },
+  boardPageT: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: '#fff', letterSpacing: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 18 },
   title: { fontFamily: FONT, fontSize: 26, lineHeight: 34, fontWeight: '700', color: C.fg, letterSpacing: 0, marginRight: 4 },
   titleK: { fontFamily: FONT, fontSize: 16, fontWeight: '500', color: C.fg3, letterSpacing: 0 },
