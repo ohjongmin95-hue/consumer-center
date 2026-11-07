@@ -3,10 +3,11 @@
 {% block description %}{{ co.name }}에 배송·교환·환불·불량 문의를 바로 접수하고 답변까지 확인해요.{% endblock %}
 {% block bar %}{% endblock %}
 {% block main %}
-<main class="cs cs3">
+<main class="cs cs3{{ ' emb' if EMBED }}">
 <header class="cs-top"><div class="cs-in">{% if EMBED or member %}<span class="cs-brand cs-shop"><span class="shopmk" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 9.5 5.6 4.8A1.2 1.2 0 0 1 6.7 4h10.6a1.2 1.2 0 0 1 1.1.8L20 9.5a2.7 2.7 0 0 1-5.3.6 2.7 2.7 0 0 1-5.4 0A2.7 2.7 0 0 1 4 9.5z" fill="currentColor"/><path d="M5.5 12.6V19a1 1 0 0 0 1 1h4v-4.5h3V20h4a1 1 0 0 0 1-1v-6.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><b>{{ co.name }}</b></span>{% else %}<span class="cs-brand"><img class="ch" src="{{ url_for('static',filename='soboru-char.png') }}?v=3" alt="" width="125" height="96"><b class="wm">소보루 CX</b></span>{% endif %}
 <a href="{{ url_for('mine') }}" class="cs-mine">내 접수{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a>{% if EMBED %}<button type="button" class="cs-x" aria-label="상담창 닫기" onclick="parent.postMessage('soboru:close','*')"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>{% endif %}</div></header>
-<div class="cs3-top"><div class="cs-in">
+{% if EMBED %}<div class="emb-chat"><section class="cs-chat" aria-label="상담창">{% include "_chat.html" %}</section></div>
+{% else %}<div class="cs3-top"><div class="cs-in">
 <section class="cs-hero">
 <h1>{{ co.name }}에<br>무엇을 도와드릴까요?</h1>
 {% if member %}<p class="cs-sub">담당자에게 바로 전달돼요</p>
@@ -28,6 +29,7 @@
 <footer class="cs-foot"><nav class="ft-links"><a class="strong" href="{{ url_for('privacy') }}">개인정보 처리방침</a><a href="{{ url_for('guide') }}">이용 안내</a></nav>{{ op.opinfo() }}<p class="copy">© 2026 SOBORU. All rights reserved.</p></footer>
 </div></div>
 <div class="cs-cta"><div{% if live %} class="cs-cta2"{% endif %}>{% if live %}<a class="btn full" href="{{ url_for('new',company_id=co.id,live=1) }}">💬 상담원과 채팅</a><a class="btn full gray" href="{{ url_for('new',company_id=co.id) }}">접수하기</a>{% else %}<a class="btn full" href="{{ url_for('new',company_id=co.id) }}">{{ co.name }}에 접수하기</a>{% endif %}</div></div>
+{% endif %}
 </main>
 
 {% endblock %}

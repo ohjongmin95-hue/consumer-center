@@ -2432,3 +2432,17 @@ p.cx-err{margin:0;padding:0 16px;font-size:13px;color:var(--red)}p.cx-err:empty{
 .cx-comp textarea{background:#fff;box-shadow:inset 0 0 0 1.5px #E5E8EB}
 .cx-comp textarea:focus{box-shadow:inset 0 0 0 2px #EF920E}
 .cx-via{margin:0;padding:6px 16px 0;font-size:12.5px;color:#8B95A1;background:var(--card)}
+/* 쇼핑몰 상담창 안: 흰 바탕에 대화만 (OH 11/07, ALF처럼) */
+.cs.emb{padding-bottom:0;background:#fff;height:100vh;height:100dvh;display:flex;flex-direction:column;min-height:0}
+.cs.emb .cs-top{position:static;background:#fff;backdrop-filter:none;flex:none}
+.cs.emb .cs-top .cs-in{height:60px;padding-inline:16px 10px}
+.cs.emb .cs-shop b{font-size:17px}
+.emb-chat{flex:1;min-height:0;overflow-y:auto;padding:12px 20px 0;display:flex;flex-direction:column}
+.emb-chat .cs-chat{flex:1;display:flex;flex-direction:column;background:none;padding:0;box-shadow:none}
+.emb-chat .cb{flex:1;display:flex;flex-direction:column}
+.emb-chat .cb-head{display:none}
+.emb-chat .cb-log{flex:1}
+.emb-chat .cb-in{position:sticky;bottom:0;background:#fff;margin:0 -20px;padding:10px 16px 16px}
+.emb-chat .cb-in input{background:#F7F8FA;border-color:transparent}
+.emb-chat .cb-in button{right:22px;top:16px}
+.emb-chat .cs-chat{margin:0}
