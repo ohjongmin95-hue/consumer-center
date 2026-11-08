@@ -58,6 +58,25 @@ textarea:focus,input[type=tel]:focus{outline:0;box-shadow:inset 0 0 0 2px #333D4
 .done h1{margin-top:24px}
 .done .more{margin-top:28px;font-size:15px;color:#6B7684}
 .done .more a{color:#4E5968;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+
+/* 11/08 쉽고 잘 보이게 */
+h1{font-size:28px;line-height:37px}
+.sub{font-size:16px;line-height:24px;color:#4E5968}
+.sec{margin-top:40px}
+.sec h2{font-size:19px;line-height:28px;margin-bottom:14px}
+.sec h2 small{display:block;margin:2px 0 0;font-size:14px;color:#6B7684;font-weight:500}
+.stars{justify-content:space-between;gap:4px;margin-top:4px}
+.stars label{max-width:60px}
+.rate-word{margin-top:12px;font-size:17px;font-weight:700;min-height:26px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips label{display:block}
+.chips span{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:54px;padding:12px 10px;border-radius:14px;font-size:16px;line-height:22px;text-align:center;color:#333D48;box-shadow:inset 0 0 0 1px #D1D6DB}
+.chips input:checked+span{background:#333D48;color:#fff;box-shadow:none}
+.chips input:checked+span::before{content:"";width:14px;height:10px;flex:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 10'%3E%3Cpath d='M1.5 5l3.5 3.5L12.5 1' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center/contain}
+textarea,input[type=tel]{box-shadow:inset 0 0 0 1px #D1D6DB}
+.hint{font-size:14px;line-height:21px;color:#6B7684}
+.toggle{padding:18px 16px;border-radius:16px;box-shadow:inset 0 0 0 1px #D1D6DB}
+.toggle small{font-size:14px;color:#6B7684}
 [hidden]{display:none!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
@@ -89,22 +108,22 @@ textarea:focus,input[type=tel]:focus{outline:0;box-shadow:inset 0 0 0 2px #333D4
     </section>
 
     <section class="sec" id="s-good" data-show="good">
-      <h2>어떤 점이 좋았나요? <small>여러 개 골라도 돼요</small></h2>
+      <h2>어떤 점이 좋았나요?<small>여러 개 골라도 돼요</small></h2>
       <div class="chips">{% for c in GOOD %}<label><input type="checkbox" name="chip" value="{{ c }}"><span>{{ c }}</span></label>{% endfor %}</div>
     </section>
 
     <section class="sec" id="s-bad" data-show="bad">
-      <h2>어떤 점이 아쉬웠나요? <small>여러 개 골라도 돼요</small></h2>
+      <h2>어떤 점이 아쉬웠나요?<small>여러 개 골라도 돼요</small></h2>
       <div class="chips">{% for c in BAD %}<label><input type="checkbox" name="chip" value="{{ c }}"><span>{{ c }}</span></label>{% endfor %}</div>
     </section>
 
     <section class="sec" data-show="any">
-      <h2>더 하고 싶은 말 <small>안 써도 돼요</small></h2>
+      <h2>더 하고 싶은 말<small>안 써도 돼요</small></h2>
       <textarea name="body" maxlength="500" placeholder="사장님께 전하고 싶은 말을 적어주세요"></textarea>
     </section>
 
     <section class="sec" data-show="bad">
-      <h2>답을 받을 번호 <small>안 써도 돼요</small></h2>
+      <h2>답을 받을 번호<small>안 써도 돼요</small></h2>
       <input type="tel" name="contact" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="010-0000-0000">
       <p class="hint">사장님만 볼 수 있어요. 답을 드릴 때만 써요.</p>
     </section>
