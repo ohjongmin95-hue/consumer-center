@@ -38,7 +38,7 @@
 <img class="cx-soda-mark rv-up" src="{{ url_for('static',filename='soda-mark.svg') }}" alt="SODA 심벌" width="88" height="88">
 <span class="tp-num rv-up">AI 상담원 SODA</span>
 <h2 class="rv-up">사장님 대신 문의에 답하는<br>AI 상담원, SODA예요</h2>
-<p class="tp-sub rv-up"><span class="snt">이름은 Shop Owner Decides에서 왔어요.</span> <span class="snt">답은 SODA가 하고, 결정은 늘 사장님이 해요.</span></p>
+<p class="tp-sub rv-up"><span class="snt">이름은 Shop Owner Decides, AI Answers에서 왔어요.</span> <span class="snt">답은 SODA가 하고, 결정은 늘 사장님이 해요.</span></p>
 <div class="cx-stats">{% for n,t,d in [('24시간','쉬지 않고 답해요','밤·주말 문의도|바로 답해요'),('0원','무료로 시작해요','SODA 답 한 달|50번까지 무료예요'),('3분','바로 일을 시작해요','쇼핑몰 주소만 넣으면|SODA가 읽어요'),('0번','멋대로 약속하지 않아요','환불·보상은|사장님 승인 뒤에만')] %}<div class="rv-up"><b>{{ n }}</b><strong>{{ t }}</strong><span>{% for x in d.split('|') %}<i class="snt">{{ x }}</i> {% endfor %}</span></div>{% endfor %}</div>
 </div></section>
 
