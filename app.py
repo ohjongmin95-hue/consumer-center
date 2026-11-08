@@ -886,7 +886,7 @@ def link_all_cases():
 def notify_later(case_id,event):
     # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 새 제보면 운영자에게도. 설정이 없으면 아무것도 안 함.
     link=url_for('lookup',_external=True)
-    admin_link=url_for('admin_report',case_id=case_id,_external=True) if event=='received' else None
+    admin_link=url_for('admin_report',case_id=case_id,_external=True) if event in ('received','status') else None  # 접수·단계 변경은 운영자에게도 (2026-11-08)
     def send(resp):
         with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if case:notify.dispatch(conn,case,event,link,admin_link);case_alert(case,event)  # 회원 제보면 알림함·푸시에도

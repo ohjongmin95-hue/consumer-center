@@ -53,6 +53,17 @@ KAKAO_TEMPLATE_ENV = {'received': 'KAKAO_TPL_RECEIVED', 'status': 'KAKAO_TPL_STA
                       'supplement': 'KAKAO_TPL_SUPPLEMENT', 'seen': 'KAKAO_TPL_SEEN'}
 
 
+# 알림톡을 못 쓸 때 제보자에게 보내는 문자 (접수·단계 변경만)
+SMS_TEXT = {
+    'received': "[{site}] {name}님, 제보가 접수됐어요.\n접수번호 {receipt}\n{subject}\n진행 상황: {link}",
+    'status': "[{site}] {name}님 제보가 '{status}' 단계가 됐어요.\n접수번호 {receipt}\n{subject}\n자세히 보기: {link}",
+}
+
+
+def sms_ready():
+    return bool(bizmsg.keys_ready() and bizmsg.sender())
+
+
 def env(key):
     return os.getenv(key, '').strip()
 
@@ -177,6 +188,10 @@ def plan(case, event, link):
     phone = digits(case['phone'])
     if phone.startswith('01') and kakao_ready(event):
         jobs.append(('kakao', phone, lambda: send_kakao(phone, event, values)))
+    elif phone.startswith('01') and event in SMS_TEXT and sms_ready():
+        # 운영자 2026-11-08: 접수·단계 변경은 꼭 알려야 함. 알림톡 템플릿 심사 전이면 같은 내용을 문자로 대신 보냄
+        text = SMS_TEXT[event].format(site=site_name(), **values)
+        jobs.append(('sms', phone, lambda: send_sms(phone, text)))
     email = (case['contact'] or '').strip()
     if email and email_ready():
         subject, body = EMAIL_TEXT[event]
@@ -185,9 +200,25 @@ def plan(case, event, link):
     return jobs
 
 
+def admin_status_plan(case, link):
+    """진행 단계가 바뀔 때 운영자 알림 (운영자 2026-11-08: 접수·단계 변경마다 관리자에게도). 메일·텔레그램·휴대폰."""
+    emails, phones, channel = admin_targets()
+    subject = f"[{site_name()}] 단계 변경: {case['status']} · " + short(case['subject'])
+    body = (f"제보 진행 단계가 '{case['status']}'(으)로 바뀌었습니다.\n\n■ 접수번호: {case['receipt']}\n■ 업체: {short(case['company'])}\n"
+            f"■ 제목: {short(case['subject'], 60)}\n\n{link}")
+    text = f"[{site_name()}] 단계 변경: {case['status']}\n{case['receipt']} · {short(case['company'], 15)}\n{short(case['subject'], 30)}"
+    jobs = [('admin_email', e, lambda e=e: send_email(e, subject, body)) for e in emails]
+    if env('TELEGRAM_BOT_TOKEN'):
+        jobs += [('admin_telegram', c, lambda c=c: send_telegram(c, body)) for c in env('TELEGRAM_CHAT_ID').replace(' ', '').split(',') if c]
+    if channel:  # 단계 변경용 알림톡 템플릿은 없어서 문자로
+        jobs += [('admin_sms', p, lambda p=p: send_sms(p, text)) for p in phones]
+    return jobs
+
+
 def dispatch(conn, case, event, link, admin_link=None):
     """알림을 뒤에서 보내고 결과를 기록. conn은 DB 연결을 여는 함수. admin_link가 있으면 운영자에게도 보냄."""
-    jobs = plan(case, event, link) + (admin_plan(case, admin_link) if admin_link else [])
+    admin = (admin_plan(case, admin_link) if event == 'received' else admin_status_plan(case, admin_link) if event == 'status' else []) if admin_link else []
+    jobs = plan(case, event, link) + admin
     return run_jobs(conn, case, event, jobs)
 
 

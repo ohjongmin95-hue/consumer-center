@@ -1789,6 +1789,10 @@ class SiteTest(unittest.TestCase):
         self.assertIn('새 제보: 운영자 알림 제보', mails[0][1])
         self.assertIn('/admin/reports/', mails[0][2])
         self.assertIn('김소비 (010-2222-3333)', mails[0][2])
+        # 알림톡 템플릿이 없으면 제보자에게도 접수 문자를 대신 보냄 (2026-11-08)
+        self.assertEqual(sms[0][1]['message']['to'], '01022223333')
+        self.assertIn('제보가 접수됐어요', sms[0][1]['message']['text'])
+        del sms[0]
         self.assertEqual(sms[0][0], 'https://api.telegram.org/bot123:abc/sendMessage')
         self.assertEqual(sms[0][1]['chat_id'], '-1001')
         self.assertIn('김소비 (010-2222-3333)', sms[0][1]['text'])
@@ -1822,11 +1826,17 @@ class SiteTest(unittest.TestCase):
         self.assertIn('id="ad-new-badge"', page)
         self.assertIn('브라우저 알림 켜기', page)
         self.assertIn('운영자 메일', admin.get('/admin/reports/%d' % case_id).get_data(as_text=True))
-        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {}), \
+        # 운영자 2026-11-08: 진행 단계가 바뀔 때도 운영자(메일·텔레그램·문자)와 제보자에게 알림
+        texts = []
+        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'ok': True}), \
+             patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: texts.append(a) or {'statusCode': '2000'}), \
              patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
+            mails.clear(); sms.clear()
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
-        self.assertEqual(len(mails), 2)
+        self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
+        self.assertIn('단계 변경', mails[0][1])
         self.assertEqual(len(sms), 1)
+        self.assertEqual(sorted(t[1]['message']['to'] for t in texts), ['01022223333', '01099998888'])
         # 로그인 안 했으면 확인 주소는 막힘
         self.assertEqual(self.site.app.test_client().get('/admin/new-cases').status_code, 401)
         notify.ASYNC = True
