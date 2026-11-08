@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#ffffff">
+<title>{{ s.name }} 방문 후기 | SOBORU</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+{# 매장 QR 한 장 화면 (storeqr.py). 토스 화면처럼: 흰 바탕, 왼쪽 큰 제목, 아래 귤색 버튼 하나. 운영자 기준: 회색 바탕 칸은 쓰지 않고 옅은 크림색으로 #}
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:#191F28;font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
+.wrap{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 24px calc(env(safe-area-inset-bottom,0px) + 112px)}
+.store{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:#CE6719;background:#FFF1DF;border-radius:11px;padding:5px 10px}
+.store i{width:6px;height:6px;border-radius:50%;background:#EF920E}
+h1{margin:16px 0 0;font-size:26px;line-height:35px;font-weight:700;letter-spacing:0}
+.sub{margin:8px 0 0;font-size:15px;line-height:22.5px;color:#6B7684}
+.sec{margin-top:36px}
+.sec h2{margin:0 0 12px;font-size:17px;line-height:25.5px;font-weight:700}
+.sec h2 small{font-weight:500;color:#8B95A1;font-size:15px;margin-left:4px}
+.stars{display:flex;gap:6px}
+.stars label{flex:1;max-width:56px;aspect-ratio:1;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.stars input{position:absolute;opacity:0;pointer-events:none}
+.stars svg{width:100%;height:100%;display:block;fill:#F6E6D2;transition:fill .15s,transform .15s}
+.stars label.on svg{fill:#EF920E}
+.stars label:active svg{transform:scale(.92)}
+.rate-word{margin-top:10px;font-size:15px;font-weight:600;color:#CE6719;min-height:22px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips label{cursor:pointer}
+.chips input{position:absolute;opacity:0;pointer-events:none}
+.chips span{display:inline-block;font-size:15px;line-height:22px;font-weight:600;padding:9px 14px;border-radius:999px;background:#fff;color:#4E5968;box-shadow:inset 0 0 0 1px #F0DCC4;transition:background .15s,color .15s}
+.chips input:checked+span{background:#FFF1DF;color:#CE6719;box-shadow:inset 0 0 0 1.5px #EF920E}
+.chips input:focus-visible+span{outline:2px solid #EF920E;outline-offset:2px}
+textarea,input[type=tel]{width:100%;border:0;border-radius:16px;background:#FFF8F0;box-shadow:inset 0 0 0 1px #F5E4CF;padding:16px;font:inherit;font-size:17px;line-height:25.5px;color:#191F28;resize:none}
+textarea{min-height:120px}
+textarea:focus,input[type=tel]:focus{outline:2px solid #EF920E;background:#fff}
+.hint{margin:8px 0 0;font-size:13px;line-height:19.5px;color:#8B95A1}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;cursor:pointer}
+.toggle b{display:block;font-size:17px;font-weight:600}
+.toggle small{display:block;margin-top:2px;font-size:13px;color:#8B95A1}
+.toggle input{appearance:none;-webkit-appearance:none;flex:none;width:51px;height:31px;border-radius:999px;background:#F3E3CF;position:relative;cursor:pointer;transition:background .2s}
+.toggle input::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.15);transition:transform .2s}
+.toggle input:checked{background:#EF920E}
+.toggle input:checked::after{transform:translateX(20px)}
+.cta{position:fixed;left:0;right:0;bottom:0;padding:36px 20px calc(env(safe-area-inset-bottom,0px) + 20px);background:linear-gradient(rgba(255,255,255,0),#fff 36px)}
+.cta button{display:block;width:100%;max-width:440px;margin:0 auto;height:56px;border:0;border-radius:16px;background:#EF920E;color:#fff;font:inherit;font-size:17px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.cta button:disabled{background:#FBD9A8;cursor:default}
+.cta button:active:not(:disabled){opacity:.85}
+.flash{margin-top:16px;padding:12px 14px;border-radius:12px;background:#FFF1DF;color:#CE6719;font-size:15px;font-weight:600}
+.foot{margin-top:48px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.foot img{width:92px;height:auto;display:block}
+.foot small{font-size:12px;color:#8B95A1}
+.done{min-height:calc(100vh - 160px);display:flex;flex-direction:column;justify-content:center}
+.done .ok{width:64px;height:64px;border-radius:50%;background:#FFF1DF;display:grid;place-items:center}
+.done .ok svg{width:30px;height:30px}
+.done h1{margin-top:24px}
+.done .more{margin-top:28px;font-size:15px;color:#6B7684}
+.done .more a{color:#4E5968;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<main class="wrap">
+{% if done %}
+  <section class="done">
+    <div class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#EF920E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h1>사장님께 전했어요</h1>
+    <p class="sub">남겨주신 이야기는 {{ s.name }} 사장님이 직접 읽어요.<br>다음 방문이 더 좋아지도록 쓸게요.</p>
+    <p class="more">따로 알리고 싶은 피해가 있나요? <a href="{{ url_for('report') }}">소비자제보센터에 제보하기</a></p>
+  </section>
+{% else %}
+  <span class="store"><i aria-hidden="true"></i>{{ s.name }}{% if s.area %} · {{ s.area }}{% endif %}</span>
+  <h1>오늘 방문은<br>어땠나요?</h1>
+  <p class="sub">별점만 눌러도 사장님께 전해져요.</p>
+  {% with msgs = get_flashed_messages() %}{% if msgs %}<p class="flash" role="alert">{{ msgs[0] }}</p>{% endif %}{% endwith %}
+
+  <form method="post" id="f" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <section class="sec" aria-labelledby="h-rate">
+      <h2 id="h-rate" class="sr">별점</h2>
+      <div class="stars" role="radiogroup" aria-label="별점">
+        {% for n in range(1, 6) %}<label><input type="radio" name="rating" value="{{ n }}" aria-label="{{ n }}점"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5L2.6 9.4l6.5-.9z" stroke-linejoin="round"/></svg></label>{% endfor %}
+      </div>
+      <p class="rate-word" id="word" aria-live="polite"></p>
+    </section>
+
+    <section class="sec" id="s-good" data-show="good">
+      <h2>어떤 점이 좋았나요? <small>여러 개 골라도 돼요</small></h2>
+      <div class="chips">{% for c in GOOD %}<label><input type="checkbox" name="chip" value="{{ c }}"><span>{{ c }}</span></label>{% endfor %}</div>
+    </section>
+
+    <section class="sec" id="s-bad" data-show="bad">
+      <h2>어떤 점이 아쉬웠나요? <small>여러 개 골라도 돼요</small></h2>
+      <div class="chips">{% for c in BAD %}<label><input type="checkbox" name="chip" value="{{ c }}"><span>{{ c }}</span></label>{% endfor %}</div>
+    </section>
+
+    <section class="sec" data-show="any">
+      <h2>더 하고 싶은 말 <small>안 써도 돼요</small></h2>
+      <textarea name="body" maxlength="500" placeholder="사장님께 전하고 싶은 말을 적어주세요"></textarea>
+    </section>
+
+    <section class="sec" data-show="bad">
+      <h2>답을 받을 번호 <small>안 써도 돼요</small></h2>
+      <input type="tel" name="contact" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="010-0000-0000">
+      <p class="hint">사장님만 볼 수 있어요. 답을 드릴 때만 써요.</p>
+    </section>
+
+    <section class="sec" data-show="good">
+      <label class="toggle"><span><b>가게 후기로 보여줘도 돼요</b><small>이름 없이 좋았던 점만 보여줘요</small></span><input type="checkbox" name="public_ok" value="1" role="switch"></label>
+    </section>
+
+    <div class="cta"><button type="submit" id="go" disabled>사장님께 보내기</button></div>
+  </form>
+{% endif %}
+  <footer class="foot"><img src="{{ url_for('static', filename='img/soboru-wordmark-orange-hi.png') }}" alt="SOBORU" width="92" height="17"><small>소비자 보호를 위한 루트</small></footer>
+</main>
+{% if not done %}
+<script>
+(function(){
+  var f=document.getElementById('f'),go=document.getElementById('go'),word=document.getElementById('word');
+  var words=['','많이 아쉬웠어요','조금 아쉬웠어요','보통이었어요','좋았어요','최고였어요'];
+  var secs=f.querySelectorAll('[data-show]'),stars=f.querySelectorAll('.stars label');
+  function show(r){
+    for(var i=0;i<secs.length;i++){var k=secs[i].getAttribute('data-show');
+      secs[i].hidden=!r||(k==='good'&&r<4)||(k==='bad'&&r>3);}
+    for(var j=0;j<stars.length;j++)stars[j].classList.toggle('on',j<r);
+    word.textContent=words[r]||'';go.disabled=!r;
+  }
+  f.addEventListener('change',function(e){if(e.target.name==='rating')show(+e.target.value)});
+  show(0);
+})();
+</script>
+{% endif %}
+</body>
+</html>

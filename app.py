@@ -3032,6 +3032,7 @@ import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충
 import aiusage;aiusage.install(types.SimpleNamespace(**globals()))  # 기능별 AI 호출 횟수·토큰 기록 (aiusage.py)
 import phoneauth;phoneauth.install(types.SimpleNamespace(**globals()))  # 휴대폰 번호로 시작하기 (phoneauth.py)
 import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·사장님 소식 (soboru_cm.py)
+import storeqr;storeqr.install(types.SimpleNamespace(**globals()))  # 매장 QR: 스티커 QR을 찍으면 /q/<번호>에서 별점·칩으로 사장님께 후기 (storeqr.py)
 import soboru_people;soboru_people.install(types.SimpleNamespace(**globals()))  # 소보루 이웃: 프로필·이웃 페이지·구독 (soboru_people.py)
 import soboru_tools;soboru_tools.install(types.SimpleNamespace(**globals()))  # 소비자 상담소: 계산기·사전·법령 찾기 (soboru_tools.py)
 import soboru_jobs;soboru_jobs.install(types.SimpleNamespace(**globals()))  # 동네일자리: 무료 구인·구직 + 공공 채용정보 (soboru_jobs.py)

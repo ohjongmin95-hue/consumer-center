@@ -1,0 +1,42 @@
+{% extends 'console.html' %}
+{% block title %}매장 QR | {{ site_name() }}{% endblock %}
+{% block content %}
+<main class="page"><div class="wrap">
+  <div class="page-intro"><h1 class="page-title">매장 QR</h1>
+    <p>가게를 넣으면 10001번부터 번호가 붙어요. 스티커 QR에는 아래 주소를 그대로 넣어요. 손님이 남긴 후기는 이 화면에 바로 쌓여요.</p>
+  </div>
+
+  <section class="form-panel">
+    <h2>가게 넣기</h2>
+    <form method="post" class="pt-add">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>가게 이름 <input name="name" maxlength="40" required placeholder="예: 소보루커피"></label>
+      <label>지점·동네 (없어도 돼요) <input name="area" maxlength="40" placeholder="예: 역삼점"></label>
+      <button class="primary" type="submit">번호 만들기</button>
+    </form>
+  </section>
+
+  <section class="form-panel">
+    <h2>가게 <small>{{ stores|length }}곳</small></h2>
+    {% if stores %}<div class="table-wrap"><table class="data">
+      <thead><tr><th>번호</th><th>가게</th><th>QR 주소</th><th>후기</th><th>평균 별점</th><th>아쉬운 후기</th></tr></thead>
+      <tbody>{% for s in stores %}<tr>
+        <td>{{ s.id }}</td><td>{{ s.name }}{% if s.area %} · {{ s.area }}{% endif %}</td>
+        <td><a href="{{ url_for('qr_store', sid=s.id) }}" target="_blank" rel="noopener">{{ base }}{{ s.id }}</a></td>
+        <td>{{ s.n }}</td><td>{{ s.avg or '-' }}</td><td>{{ s.low or 0 }}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>{% else %}<p class="meta">아직 넣은 가게가 없어요.</p>{% endif %}
+  </section>
+
+  <section class="form-panel">
+    <h2>최근 후기 <small>{{ recent|length }}개</small></h2>
+    {% if recent %}<div class="table-wrap"><table class="data">
+      <thead><tr><th>날짜</th><th>가게</th><th>별점</th><th>고른 것</th><th>남긴 말</th><th>번호</th><th>공개</th></tr></thead>
+      <tbody>{% for f in recent %}<tr>
+        <td>{{ f.created[5:16].replace('T', ' ') }}</td><td>{{ f.store }}</td><td>{{ '★' * f.rating }}</td>
+        <td>{{ f.chips|join(', ') }}</td><td>{{ f.body }}</td><td>{{ fmt_phone(f.contact) if fmt_phone is defined and f.contact else f.contact }}</td><td>{{ '공개 가능' if f.public_ok else '' }}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>{% else %}<p class="meta">아직 남긴 후기가 없어요.</p>{% endif %}
+  </section>
+</div></main>
+{% endblock %}
