@@ -12,9 +12,10 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:#fff;color:#191F28;font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
 .wrap{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 24px calc(env(safe-area-inset-bottom,0px) + 112px)}
-.store{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:#CE6719;background:#FFF1DF;border-radius:11px;padding:5px 10px}
-.store i{width:6px;height:6px;border-radius:50%;background:#EF920E}
-h1{margin:16px 0 0;font-size:26px;line-height:35px;font-weight:700;letter-spacing:0}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;line-height:19.5px;font-weight:700;color:#CE6719;background:#FFF1DF;border-radius:999px;padding:4px 10px}
+.badge .lr{width:9px;height:18px;flex:none;color:#EF920E}.badge .lr.r{transform:scaleX(-1)}
+.store{margin:20px 0 0;font-size:15px;line-height:22.5px;font-weight:600;color:#CE6719}
+h1{margin:4px 0 0;font-size:26px;line-height:35px;font-weight:700;letter-spacing:0}
 .sub{margin:8px 0 0;font-size:15px;line-height:22.5px;color:#6B7684}
 .sec{margin-top:36px}
 .sec h2{margin:0 0 12px;font-size:17px;line-height:25.5px;font-weight:700}
@@ -67,13 +68,14 @@ textarea:focus,input[type=tel]:focus{outline:2px solid #EF920E;background:#fff}
   <section class="done">
     <div class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#EF920E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
     <h1>사장님께 전했어요</h1>
-    <p class="sub">남겨주신 이야기는 {{ s.name }} 사장님이 직접 읽어요.<br>다음 방문이 더 좋아지도록 쓸게요.</p>
+    <p class="sub">{{ s.name }} 사장님이 직접 읽어요.<br>다음 방문이 더 좋아지도록 쓸게요.</p>
     <p class="more">따로 알리고 싶은 피해가 있나요? <a href="{{ url_for('report') }}">소비자제보센터에 제보하기</a></p>
   </section>
 {% else %}
-  <span class="store"><i aria-hidden="true"></i>{{ s.name }}{% if s.area %} · {{ s.area }}{% endif %}</span>
+  <span class="badge"><svg viewBox="0 0 24 48" class="lr" aria-hidden="true"><path d="M20 46C8 40 3 28 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><g fill="currentColor"><ellipse cx="4" cy="12" rx="2.2" ry="5" transform="rotate(-20 4 12)"/><ellipse cx="3.6" cy="21" rx="2.2" ry="5" transform="rotate(-35 3.6 21)"/><ellipse cx="5" cy="30" rx="2.2" ry="5" transform="rotate(-50 5 30)"/><ellipse cx="9" cy="38" rx="2.2" ry="5" transform="rotate(-62 9 38)"/><ellipse cx="11" cy="9" rx="2" ry="4.4" transform="rotate(25 11 9)"/><ellipse cx="12" cy="19" rx="2" ry="4.4" transform="rotate(35 12 19)"/><ellipse cx="14" cy="29" rx="2" ry="4.4" transform="rotate(45 14 29)"/></g></svg>소비자 후기 검증 매장<svg viewBox="0 0 24 48" class="lr r" aria-hidden="true"><path d="M20 46C8 40 3 28 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><g fill="currentColor"><ellipse cx="4" cy="12" rx="2.2" ry="5" transform="rotate(-20 4 12)"/><ellipse cx="3.6" cy="21" rx="2.2" ry="5" transform="rotate(-35 3.6 21)"/><ellipse cx="5" cy="30" rx="2.2" ry="5" transform="rotate(-50 5 30)"/><ellipse cx="9" cy="38" rx="2.2" ry="5" transform="rotate(-62 9 38)"/><ellipse cx="11" cy="9" rx="2" ry="4.4" transform="rotate(25 11 9)"/><ellipse cx="12" cy="19" rx="2" ry="4.4" transform="rotate(35 12 19)"/><ellipse cx="14" cy="29" rx="2" ry="4.4" transform="rotate(45 14 29)"/></g></svg></span>
+  <p class="store">{{ s.name }}{% if s.area %} · {{ s.area }}{% endif %}</p>
   <h1>오늘 방문은<br>어땠나요?</h1>
-  <p class="sub">별점만 눌러도 사장님께 전해져요.</p>
+  <p class="sub">이름 없이 남겨요. 사장님이 직접 읽어요.</p>
   {% with msgs = get_flashed_messages() %}{% if msgs %}<p class="flash" role="alert">{{ msgs[0] }}</p>{% endif %}{% endwith %}
 
   <form method="post" id="f" novalidate>
