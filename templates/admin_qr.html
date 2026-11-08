@@ -1,64 +1,157 @@
 {% extends 'console.html' %}
 {% block title %}매장 QR | {{ site_name() }}{% endblock %}
 {% block content %}
-<main class="page"><div class="wrap">
-  <div class="page-intro"><h1 class="page-title">매장 QR</h1>
-    <p>가게를 넣으면 10001번부터 번호가 붙어요. 스티커 QR에는 아래 주소를 그대로 넣어요. 손님이 남긴 후기는 이 화면에 바로 쌓여요.</p>
+{# 매장 QR 관리 (storeqr.py). 토스 콘솔처럼: 위에 숫자 카드, 탭(가게·신청·후기), 줄마다 버튼 하나. 운영자 2026-11-08 '디자인 대충' → 다시 짬 #}
+<style>
+.qa .cs-title{margin:0}
+.qa-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
+.qa-head p{margin:6px 0 0;color:#6B7684;font-size:15px}
+.qa-head p a{color:#CE6719;font-weight:600}
+.qa .ads-kpis{margin-bottom:24px}
+.qa .ads-kpis>div{border:0;border-radius:20px;box-shadow:0 0 0 1px rgba(0,27,55,.06),0 2px 6px rgba(0,27,55,.04);padding:18px 20px}
+.qa .ads-kpis em.red{color:#E42939}
+.qa .cs-tabs{display:flex;margin-bottom:16px}
+.qa .cs-tabs b{margin-left:4px}
+.qa-list{list-style:none;margin:0;padding:0}
+.qa-list>li{list-style:none;margin:0}
+.qa-list>li::before,.qa-list>li::marker{content:none}
+.qa-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;padding:16px 0;border-bottom:1px solid #F2F4F6}
+.qa-row:last-child{border-bottom:0}
+.qa-no{flex:none;width:56px;height:56px;border-radius:16px;background:#FFF4E0;color:#CE6719;display:grid;place-items:center;font-size:14px;font-weight:800;letter-spacing:-.02em}
+.qa-main{flex:1 1 220px;min-width:0}
+.qa-main b{display:block;font-size:17px;color:#191F28}
+.qa-main small{display:block;margin-top:2px;font-size:14px;color:#6B7684;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qa-stat{flex:none;display:flex;gap:20px;text-align:right}
+.qa-stat span{display:flex;flex-direction:column;font-size:13px;color:#8B95A1}
+.qa-stat span b{font-size:17px;color:#191F28}
+.qa-stat span b.red{color:#E42939}
+.qa-act{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.qa-act .cs-btn{padding:8px 14px;font-size:14px;text-decoration:none;white-space:nowrap}
+.qa-act summary{list-style:none;cursor:pointer;font-size:13px;font-weight:600;color:#6B7684}
+.qa-act summary::-webkit-details-marker{display:none}
+.qa-set{flex-basis:100%;margin-top:-4px}
+.qa-form{display:grid;gap:14px;max-width:520px}
+.qa-form label{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:600;color:#4E5968}
+.qa-form label small{font-weight:500;color:#8B95A1}
+.qa-form input,.qa-form select{height:48px;border:0;border-radius:12px;box-shadow:inset 0 0 0 1px #D1D6DB;padding:0 14px;font:inherit;font-size:16px;color:#191F28;background:#fff;width:100%}
+.qa-form input:focus{outline:0;box-shadow:inset 0 0 0 2px #EF920E}
+.qa-form .cs-btn-main{height:48px;font-size:16px}
+.qa-edit{margin:4px 0 4px 72px;padding:20px;border-radius:16px;box-shadow:inset 0 0 0 1px #E5E8EB}
+.qa-add summary{list-style:none;cursor:pointer}
+.qa-add summary::-webkit-details-marker{display:none}
+.qa-add[open] summary{margin-bottom:20px}
+.qa-rv{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid #F2F4F6}
+.qa-rv:last-child{border-bottom:0}
+.qa-star{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:15px;background:#FFF8E1;color:#B7791F}
+.qa-star.low{background:#FFEEEE;color:#E42939}
+.qa-rv .qa-main b{font-size:16px}
+.qa-rv p{margin:4px 0 0;font-size:15px;line-height:1.55;color:#333D48}
+.qa-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.qa-chips span{font-size:13px;font-weight:600;color:#4E5968;padding:3px 9px;border-radius:999px;box-shadow:inset 0 0 0 1px #E5E8EB}
+.qa-pub{white-space:nowrap;font-size:12px;font-weight:700;color:#1B64DA;margin-left:6px}
+.qa-empty{padding:40px 0;text-align:center;color:#8B95A1;font-size:15px}
+@media(max-width:760px){.qa-stat{display:none}.qa-edit{margin-left:0}.qa-head{flex-direction:column;align-items:flex-start}}
+</style>
+<main class="cs-page qa">
+  <div class="qa-head"><div>
+    <h1 class="cs-title">매장 QR</h1>
+    <p>가게에 붙인 스티커로 들어온 후기예요. 사장님 신청 화면은 <a href="{{ url_for('qr_apply') }}" target="_blank" rel="noopener">consumerjebo.co.kr/qr</a>이에요.</p>
+  </div></div>
+
+  <div class="ads-kpis">
+    <div><small>가게</small><b>{{ kpi.stores }}곳</b><em>남은 번호 {{ kpi.free }}개</em></div>
+    <div><small>이번 주 후기</small><b>{{ kpi.week }}개</b>{% if kpi.avg %}<em>평균 별 {{ kpi.avg }}개</em>{% endif %}</div>
+    <div><small>이번 주 아쉬운 후기</small><b>{{ kpi.low }}개</b>{% if kpi.low %}<em class="red">별 1~2개</em>{% endif %}</div>
+    <div><small>새 신청</small><b>{{ kpi.waiting }}건</b>{% if kpi.waiting %}<em>가게를 넣어 주세요</em>{% endif %}</div>
   </div>
 
-  {% set waiting = applies|selectattr('store_id', 'none')|list %}
-  <section class="form-panel">
-    <h2>사장님 신청 <small>새 신청 {{ waiting|length }}건 · 신청 화면 <a href="{{ url_for('qr_apply') }}" target="_blank" rel="noopener">/qr</a></small></h2>
-    {% if applies %}<div class="table-wrap"><table class="data">
-      <thead><tr><th>날짜</th><th>가게</th><th>업종</th><th>연락처</th><th>받을 주소</th><th></th></tr></thead>
-      <tbody>{% for a in applies %}<tr>
-        <td>{{ a.created[5:16].replace('T', ' ') }}</td><td>{{ a.name }}{% if a.area %} · {{ a.area }}{% endif %}</td><td>{{ a.biz }}</td>
-        <td>{{ fmt_phone(a.phone) }}</td><td>{{ a.addr }}</td>
-        <td>{% if a.store_id %}{{ a.store_id }}번{% else %}<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="apply" value="{{ a.id }}"><button class="primary" type="submit">번호 만들기</button></form>{% endif %}</td>
-      </tr>{% endfor %}</tbody>
-    </table></div>{% else %}<p class="meta">아직 들어온 신청이 없어요.</p>{% endif %}
+  <nav class="cs-tabs" aria-label="매장 QR">
+    <a href="{{ url_for('admin_qr', tab='stores') }}"{% if tab == 'stores' %} class="on" aria-current="page"{% endif %}>가게<b>{{ stores|length }}</b></a>
+    <a href="{{ url_for('admin_qr', tab='apply') }}"{% if tab == 'apply' %} class="on" aria-current="page"{% endif %}>사장님 신청<b>{{ kpi.waiting }}</b></a>
+    <a href="{{ url_for('admin_qr', tab='reviews') }}"{% if tab == 'reviews' %} class="on" aria-current="page"{% endif %}>후기<b>{{ recent|length }}</b></a>
+    <a href="{{ url_for('admin_qr', tab='print') }}"{% if tab == 'print' %} class="on" aria-current="page"{% endif %}>스티커 번호<b>{{ kpi.free }}</b></a>
+  </nav>
+
+{% if tab == 'stores' %}
+  <section class="cs-panel">
+    <details class="qa-add"{% if not stores %} open{% endif %}>
+      <summary><span class="cs-btn cs-btn-main">가게 넣기</span></summary>
+      <form method="post" class="qa-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label>스티커 번호 <small>보낸 스티커에 적힌 번호예요. 비워 두면 {{ kpi.next or '다음' }}번을 써요</small><input name="no" type="number" inputmode="numeric" placeholder="{{ kpi.next or '' }}"></label>
+        <label>가게 이름<input name="name" maxlength="40" required placeholder="소보루커피"></label>
+        <label>지점·동네 <small>없어도 돼요</small><input name="area" maxlength="40" placeholder="역삼점"></label>
+        <label>사장님 휴대폰 <small>별 1~2개 후기와 월요일 요약이 문자로 가요</small><input name="owner_phone" type="tel" maxlength="13" placeholder="010-0000-0000"></label>
+        <label>네이버 지도 주소 <small>후기를 보낸 손님에게 '네이버 지도에 후기 남기기'로 보여요</small><input name="naver" type="url" maxlength="300" placeholder="https://m.place.naver.com/..."></label>
+        <label>카카오맵 주소 <small>'카카오맵에 후기 남기기'로 보여요</small><input name="kakao" type="url" maxlength="300" placeholder="https://place.map.kakao.com/..."></label>
+        <button class="cs-btn cs-btn-main" type="submit">가게 넣기</button>
+      </form>
+    </details>
   </section>
 
-  <section class="form-panel">
-    <h2>가게 넣기</h2>
-    <form method="post" class="pt-add">
+  <section class="cs-panel">
+    {% if stores %}<ul class="qa-list">{% for s in stores %}
+      <li class="qa-row">
+        <span class="qa-no">{{ s.id }}</span>
+        <div class="qa-main"><b>{{ s.name }}{% if s.area %} · {{ s.area }}{% endif %}</b>
+          <small>{{ base }}{{ s.id }}{% if not s.owner_phone %} · 알림 번호 없음{% endif %}{% if s.naver_url %} · 네이버{% endif %}{% if s.kakao_url %} · 카카오맵{% endif %}</small></div>
+        <div class="qa-stat"><span>후기<b>{{ s.n }}</b></span><span>평균<b>{{ s.avg or '-' }}</b></span><span>아쉬움<b{% if s.low %} class="red"{% endif %}>{{ s.low or 0 }}</b></span></div>
+        <div class="qa-act"><a class="cs-btn" href="{{ url_for('admin_qr_sticker', sid=s.id) }}" target="_blank" rel="noopener">스티커 받기</a></div>
+        <details class="qa-set"><summary class="cs-link" style="margin-left:72px;font-size:13px;font-weight:600;color:#6B7684;cursor:pointer">알림 번호·지도 주소 고치기</summary>
+          <form method="post" class="qa-form qa-edit">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="edit" value="{{ s.id }}">
+            <label>사장님 휴대폰<input name="owner_phone" type="tel" maxlength="13" value="{{ s.owner_phone }}" placeholder="010-0000-0000"></label>
+            <label>네이버 지도 주소<input name="naver" type="url" maxlength="300" value="{{ s.naver_url }}" placeholder="https://m.place.naver.com/..."></label>
+            <label>카카오맵 주소<input name="kakao" type="url" maxlength="300" value="{{ s.kakao_url }}" placeholder="https://place.map.kakao.com/..."></label>
+            <button class="cs-btn cs-btn-main" type="submit">저장하기</button>
+          </form></details>
+      </li>{% endfor %}</ul>
+    {% else %}<p class="qa-empty">아직 넣은 가게가 없어요.</p>{% endif %}
+  </section>
+
+{% elif tab == 'apply' %}
+  <section class="cs-panel">
+    {% if applies %}<ul class="qa-list">{% for a in applies %}
+      <li class="qa-row">
+        <span class="qa-no">{{ a.store_id or '신청' }}</span>
+        <div class="qa-main"><b>{{ a.name }}{% if a.area %} · {{ a.area }}{% endif %}</b>
+          <small>{{ a.biz }} · {{ fmt_phone(a.phone) }} · {{ a.addr }}</small>
+          <small>{{ a.created[5:16].replace('T', ' ').replace('-', '.') }} 신청</small></div>
+        <div class="qa-act">{% if a.store_id %}<a class="cs-btn" href="{{ url_for('admin_qr_sticker', sid=a.store_id) }}" target="_blank" rel="noopener">스티커 받기</a>
+          {% else %}<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="apply" value="{{ a.id }}"><button class="cs-btn cs-btn-main" type="submit">{{ kpi.next or '새' }}번으로 넣기</button></form>{% endif %}</div>
+      </li>{% endfor %}</ul>
+    {% else %}<p class="qa-empty">아직 들어온 신청이 없어요.</p>{% endif %}
+  </section>
+
+{% elif tab == 'print' %}
+  <section class="cs-panel">
+    <p style="margin:0 0 16px;color:#4E5968;font-size:15px;line-height:1.6">번호를 미리 발급해 두는 곳이에요. 묶음마다 인쇄 파일 하나(한 쪽에 한 장, 번호마다 QR만 달라요)를 받아 인쇄소에 '가변 인쇄'로 맡기면 돼요. 아직 가게가 안 붙은 스티커를 사장님이 찍으면 가게 등록 화면이 떠요.</p>
+    <ul class="qa-list">{% for b in batches %}
+      <li class="qa-row">
+        <span class="qa-no">{{ b.last - b.first + 1 }}장</span>
+        <div class="qa-main"><b>{{ b.first }}~{{ b.last }}번</b><small>가게 붙음 {{ b.used }} · 남음 {{ b.last - b.first + 1 - b.used }} · {{ b.created[:10].replace('-', '.') }} 발급</small></div>
+        <div class="qa-act"><a class="cs-btn" href="{{ url_for('admin_qr_batch', id=b.id) }}" target="_blank" rel="noopener">인쇄 파일 받기</a></div>
+      </li>{% else %}<li class="qa-empty">아직 발급한 번호가 없어요.</li>{% endfor %}</ul>
+  </section>
+  <section class="cs-panel">
+    <form method="post" action="{{ url_for('admin_qr_batch') }}" class="qa-form">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <label>가게 이름 <input name="name" maxlength="40" required placeholder="예: 소보루커피"></label>
-      <label>지점·동네 (없어도 돼요) <input name="area" maxlength="40" placeholder="예: 역삼점"></label>
-      <label>사장님 휴대폰 (별 1~2개 후기가 오면 바로 문자) <input name="owner_phone" type="tel" maxlength="13" placeholder="010-0000-0000"></label>
-      <label>네이버 플레이스 주소 (후기 보낸 뒤 '네이버 지도에 후기 남기기') <input name="naver" type="url" maxlength="300" placeholder="https://m.place.naver.com/..."></label>
-      <label>카카오맵 주소 (후기 보낸 뒤 '카카오맵에 후기 남기기') <input name="kakao" type="url" maxlength="300" placeholder="https://place.map.kakao.com/..."></label>
-      <button class="primary" type="submit">번호 만들기</button>
+      <label>번호 더 발급하기 <small>이어지는 번호로 만들어요</small><input name="count" type="number" min="1" max="1000" value="500"></label>
+      <button class="cs-btn cs-btn-main" type="submit">발급하기</button>
     </form>
   </section>
 
-  <section class="form-panel">
-    <h2>가게 <small>{{ stores|length }}곳</small></h2>
-    {% if stores %}<div class="table-wrap"><table class="data">
-      <thead><tr><th>번호</th><th>가게</th><th>QR 주소</th><th>후기</th><th>평균 별점</th><th>아쉬운 후기</th><th>알림 번호 · 네이버 · 카카오맵</th><th>스티커</th></tr></thead>
-      <tbody>{% for s in stores %}<tr>
-        <td>{{ s.id }}</td><td>{{ s.name }}{% if s.area %} · {{ s.area }}{% endif %}</td>
-        <td><a href="{{ url_for('qr_store', sid=s.id) }}" target="_blank" rel="noopener">{{ base }}{{ s.id }}</a></td>
-        <td>{{ s.n }}</td><td>{{ s.avg or '-' }}</td><td>{{ s.low or 0 }}</td>
-        <td><form method="post" class="pt-add"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="edit" value="{{ s.id }}">
-          <input name="owner_phone" type="tel" maxlength="13" value="{{ s.owner_phone }}" placeholder="휴대폰" aria-label="사장님 휴대폰">
-          <input name="naver" type="url" maxlength="300" value="{{ s.naver_url }}" placeholder="네이버 플레이스 주소" aria-label="네이버 플레이스 주소">
-          <input name="kakao" type="url" maxlength="300" value="{{ s.kakao_url }}" placeholder="카카오맵 주소" aria-label="카카오맵 주소">
-          <button type="submit">저장</button></form></td>
-        <td><a href="{{ url_for('admin_qr_sticker', sid=s.id) }}" target="_blank" rel="noopener">스티커 받기</a></td>
-      </tr>{% endfor %}</tbody>
-    </table></div>{% else %}<p class="meta">아직 넣은 가게가 없어요.</p>{% endif %}
+{% else %}
+  <section class="cs-panel">
+    {% if recent %}<ul class="qa-list">{% for f in recent %}
+      <li class="qa-rv">
+        <span class="qa-star{% if f.rating <= 2 %} low{% endif %}">★{{ f.rating }}</span>
+        <div class="qa-main"><b>{{ f.store }}<small style="display:inline;margin-left:8px">{{ f.created[5:16].replace('T', ' ').replace('-', '.') }}</small>{% if f.public_ok %}<span class="qa-pub">공개 가능</span>{% endif %}</b>
+          {% if f.chips %}<div class="qa-chips">{% for c in f.chips %}<span>{{ c }}</span>{% endfor %}</div>{% endif %}
+          {% if f.body %}<p>{{ f.body }}</p>{% endif %}</div>
+      </li>{% endfor %}</ul>
+    {% else %}<p class="qa-empty">아직 남긴 후기가 없어요.</p>{% endif %}
   </section>
-
-  <section class="form-panel">
-    <h2>최근 후기 <small>{{ recent|length }}개</small></h2>
-    {% if recent %}<div class="table-wrap"><table class="data">
-      <thead><tr><th>날짜</th><th>가게</th><th>별점</th><th>고른 것</th><th>남긴 말</th><th>공개</th></tr></thead>
-      <tbody>{% for f in recent %}<tr>
-        <td>{{ f.created[5:16].replace('T', ' ') }}</td><td>{{ f.store }}</td><td>{{ '★' * f.rating }}</td>
-        <td>{{ f.chips|join(', ') }}</td><td>{{ f.body }}</td><td>{{ '공개 가능' if f.public_ok else '' }}</td>
-      </tr>{% endfor %}</tbody>
-    </table></div>{% else %}<p class="meta">아직 남긴 후기가 없어요.</p>{% endif %}
-  </section>
-</div></main>
+{% endif %}
+</main>
 {% endblock %}
