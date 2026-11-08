@@ -89,6 +89,21 @@ def install(S):
             return redirect(url_for('qr_apply', done=1))
         return render_template('qr_apply.html', f={}, BIZ=BIZ, done=request.args.get('done') == '1')
 
+    @app.route('/admin/qr/<int:sid>/sticker')
+    @S.admin_only
+    def admin_qr_sticker(sid):
+        """가게 전용 QR이 찍힌 인쇄용 스티커 한 장. 브라우저 인쇄로 'PDF로 저장'하면 84×114mm(칼선 80×110) 파일이 된다."""
+        with conn() as db:
+            s = db.execute('SELECT * FROM qr_stores WHERE id=?', (sid,)).fetchone()
+        if not s: abort(404)
+        url = 'https://consumerjebo.co.kr/q/%d' % sid  # 스티커 QR은 늘 대표 주소로 고정
+        try:
+            import segno  # 서버에 없으면 업데이트 파일이 venv에 깔아 둔다
+        except ImportError:
+            return 'QR을 만드는 부품(segno)이 서버에 없어요. 업데이트 파일을 한 번 더 돌려 주세요.', 503
+        qr = segno.make(url, error='m').svg_inline(border=0, omitsize=True, svgclass='segno', lineclass='qrline')
+        return render_template('qr_sticker.html', s=s, url=url, qr=qr)
+
     @app.route('/admin/qr', methods=['GET', 'POST'])
     @S.admin_only
     def admin_qr():

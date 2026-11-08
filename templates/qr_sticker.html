@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="robots" content="noindex">
+<title>{{ s.name }} 매장 QR 스티커 ({{ s.id }})</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;800&display=swap">
+{# 가게마다 다른 QR이 찍힌 인쇄용 스티커 (storeqr.py /admin/qr/<번호>/sticker). 확정 디자인(귤색, 칼선 80×110 / 작업 84×114)을 그대로 씀.
+   화면에서는 안내 띠가 보이고, 인쇄(PDF로 저장)할 때는 스티커 한 장만 84×114mm로 나간다. #}
+<style>*{box-sizing:border-box}
+:root{--bg:#FFFFFF;--fg:#191F28;--sub:#6B7684;--stage:#FBF3EA}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17191C;--fg:#F2F4F6;--sub:#B0B8C1;--stage:#2A2420;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17191C;--fg:#F2F4F6;--sub:#B0B8C1;--stage:#2A2420;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans KR",-apple-system,sans-serif;word-break:keep-all}
+.w{max-width:480px;margin:0 auto;padding-block:40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:26px;margin:0 0 6px}.lead{margin:0 0 28px;color:var(--sub);font-size:15px;line-height:1.6}
+h3{font-size:19px;margin:36px 0 14px}
+.grid{display:grid;grid-template-columns:1fr;gap:28px 20px}
+figure{margin:0;display:flex;flex-direction:column;gap:12px;min-width:0}
+.stage{background:var(--stage);border-radius:20px;padding:32px 16px;display:grid;place-items:center}
+figcaption b{font-size:17px}
+.t{width:280px;max-width:100%;aspect-ratio:80/110;border-radius:18px;padding:26px 24px 24px;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(101,45,28,.16)}
+.t .lg{width:132px;display:block}
+.t h2{margin:0;font-size:32px;line-height:1.28;font-weight:800;letter-spacing:-.035em}
+.t.top h2{margin-top:18px}
+.box{margin-top:auto;align-self:center;width:180px;aspect-ratio:1;background:#fff;border-radius:18px;display:grid;place-items:center}
+.q{width:146px;color:#191F28}.q svg{display:block;width:100%}
+.t.bot .box{margin-top:auto}.ft{margin-top:18px;display:flex;justify-content:center}.ft .lg{width:120px}
+.or{background:#EF920E;color:#fff}
+.wh{background:#fff;color:#191F28;box-shadow:0 10px 30px rgba(101,45,28,.16),inset 0 0 0 1px #F5E4CF}.wh .box{background:#FFF1DF}
+.t{align-items:center;text-align:center}.t .lg{width:140px}.t.top h2{margin-top:16px;font-size:30px}.box{width:168px}.q{width:136px}.tg{display:block;margin-top:4px;font-size:10px;letter-spacing:-.01em;font-weight:700;opacity:.9}.wh .tg{color:#CE6719;opacity:1}.ask{margin:14px 0 0;font-size:15px;font-weight:700;opacity:.92}.wh .ask{color:#4E5968;opacity:1}
+.t.top h2{margin-top:2px!important;font-size:27px!important;line-height:1.25!important}.box{width:142px!important;margin-top:auto}.q{width:114px!important}.t{padding-top:20px!important}.t .lg{width:128px!important}.ask{margin-top:10px!important}
+.bd{margin-top:10px;display:flex;align-items:center;gap:4px}.bd b{font-size:13.5px;font-weight:800;white-space:nowrap}.bd .lr{width:12px;height:24px;flex:none;color:currentColor}.bd .lr.r{transform:scaleX(-1)}
+.wh .bd{color:#652D1C}.wh .bd .lr{color:#EF920E}.t{padding-bottom:16px}.t.top h2{margin-top:22px!important;font-size:30px!important}.box{width:156px!important}.q{width:126px!important}.t{height:385px;padding-bottom:14px!important}.rd{margin:6px 0 12px;font-size:14px;font-weight:700;opacity:.92}.wh .rd{color:#CE6719;opacity:1}.box{width:150px!important}.q{width:120px!important}html,body{margin:0;background:transparent!important}.t{width:280px;zoom:1.08;box-shadow:none!important;border-radius:16.8px}@page{size:84mm 114mm;margin:0}.t{justify-content:space-between;padding:22px 20px 22px!important}.t .bd{margin:0}.t .bd b{font-size:19px!important}.t .bd .lr{width:16px!important;height:32px!important}.t.top h2{margin:0!important;font-size:30px!important}.t .box{margin:0!important;width:156px!important}.t .q{width:126px!important}.t .lg{width:118px!important}.vr{margin:6px 0 0;font-size:15px;font-weight:700;opacity:.92}.t .lg{width:92px!important}.t .box{width:150px!important}.t .q{width:120px!important}.t .box{width:172px!important}.t .q{width:138px!important}.t h2.one{font-size:28px!important;white-space:nowrap;letter-spacing:-.04em}.t.v1 .bd{padding:7px 14px;border-radius:999px;gap:4px;background:#fff;color:#CE6719}.t.v1 .bd .lr{color:#EF920E!important;width:13px!important;height:26px!important}.t.v1 .bd b{font-size:17px!important}html,body{background:#EF920E!important;width:84mm;height:114mm}body{display:flex;align-items:center;justify-content:center}.t{border-radius:0!important}
+.t{font-family:"Noto Sans KR",-apple-system,sans-serif}
+.guide{display:none}
+@media screen{
+ html,body{width:auto!important;height:auto!important;background:#F9FAFB!important}
+ body{flex-direction:column;gap:20px;padding:32px 16px;font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif}
+ .guide{display:block;max-width:420px;background:#fff;border-radius:16px;padding:18px 20px;box-shadow:inset 0 0 0 1px #E5E8EB;color:#333D48;font-size:15px;line-height:1.6}
+ .guide b{display:block;font-size:17px;color:#191F28;margin-bottom:6px}
+ .guide button{margin-top:12px;width:100%;height:48px;border:0;border-radius:12px;background:#EF920E;color:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer}
+ .sheet{width:84mm;height:114mm;background:#EF920E;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+}
+@media print{.sheet{width:84mm;height:114mm;display:flex;align-items:center;justify-content:center}}
+</style></head><body>
+<div class="guide"><b>{{ s.name }}{% if s.area %} · {{ s.area }}{% endif %} ({{ s.id }}번)</b>QR 주소: {{ url }}<br>인쇄 창에서 '대상: PDF로 저장', '여백: 없음', '배경 그래픽' 켜기로 저장해 인쇄소에 보내세요. 칼선 80×110mm, 작업 84×114mm, 모서리 둥글게 R5mm예요.<button type="button" onclick="window.print()">PDF로 저장하기</button></div>
+<div class="sheet"><div class="t or top v1"><div class="bd"><svg viewBox="0 0 24 48" class="lr" aria-hidden="true"><path d="M20 46C8 40 3 28 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><g fill="currentColor"><ellipse cx="4" cy="12" rx="2.2" ry="5" transform="rotate(-20 4 12)"/><ellipse cx="3.6" cy="21" rx="2.2" ry="5" transform="rotate(-35 3.6 21)"/><ellipse cx="5" cy="30" rx="2.2" ry="5" transform="rotate(-50 5 30)"/><ellipse cx="9" cy="38" rx="2.2" ry="5" transform="rotate(-62 9 38)"/><ellipse cx="11" cy="9" rx="2" ry="4.4" transform="rotate(25 11 9)"/><ellipse cx="12" cy="19" rx="2" ry="4.4" transform="rotate(35 12 19)"/><ellipse cx="14" cy="29" rx="2" ry="4.4" transform="rotate(45 14 29)"/></g></svg><b>소비자 후기 검증 매장</b><svg viewBox="0 0 24 48" class="lr r" aria-hidden="true"><path d="M20 46C8 40 3 28 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><g fill="currentColor"><ellipse cx="4" cy="12" rx="2.2" ry="5" transform="rotate(-20 4 12)"/><ellipse cx="3.6" cy="21" rx="2.2" ry="5" transform="rotate(-35 3.6 21)"/><ellipse cx="5" cy="30" rx="2.2" ry="5" transform="rotate(-50 5 30)"/><ellipse cx="9" cy="38" rx="2.2" ry="5" transform="rotate(-62 9 38)"/><ellipse cx="11" cy="9" rx="2" ry="4.4" transform="rotate(25 11 9)"/><ellipse cx="12" cy="19" rx="2" ry="4.4" transform="rotate(35 12 19)"/><ellipse cx="14" cy="29" rx="2" ry="4.4" transform="rotate(45 14 29)"/></g></svg></div><div class="hb"><h2 class="one">QR로 후기 남기기</h2><p class="vr">바이럴 없는 진짜 후기</p></div><div class="box"><div class="q">{{ qr|safe }}</div></div><img class="lg" src="{{ url_for('static', filename='img/soboru-wordmark-white.png') }}" alt="SOBORU"></div></div>
+</body></html>

@@ -35,7 +35,7 @@
   <section class="form-panel">
     <h2>가게 <small>{{ stores|length }}곳</small></h2>
     {% if stores %}<div class="table-wrap"><table class="data">
-      <thead><tr><th>번호</th><th>가게</th><th>QR 주소</th><th>후기</th><th>평균 별점</th><th>아쉬운 후기</th><th>알림 번호 · 네이버 · 카카오맵</th></tr></thead>
+      <thead><tr><th>번호</th><th>가게</th><th>QR 주소</th><th>후기</th><th>평균 별점</th><th>아쉬운 후기</th><th>알림 번호 · 네이버 · 카카오맵</th><th>스티커</th></tr></thead>
       <tbody>{% for s in stores %}<tr>
         <td>{{ s.id }}</td><td>{{ s.name }}{% if s.area %} · {{ s.area }}{% endif %}</td>
         <td><a href="{{ url_for('qr_store', sid=s.id) }}" target="_blank" rel="noopener">{{ base }}{{ s.id }}</a></td>
@@ -45,6 +45,7 @@
           <input name="naver" type="url" maxlength="300" value="{{ s.naver_url }}" placeholder="네이버 플레이스 주소" aria-label="네이버 플레이스 주소">
           <input name="kakao" type="url" maxlength="300" value="{{ s.kakao_url }}" placeholder="카카오맵 주소" aria-label="카카오맵 주소">
           <button type="submit">저장</button></form></td>
+        <td><a href="{{ url_for('admin_qr_sticker', sid=s.id) }}" target="_blank" rel="noopener">스티커 받기</a></td>
       </tr>{% endfor %}</tbody>
     </table></div>{% else %}<p class="meta">아직 넣은 가게가 없어요.</p>{% endif %}
   </section>
