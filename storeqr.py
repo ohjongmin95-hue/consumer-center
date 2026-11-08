@@ -8,8 +8,8 @@ import datetime, hashlib, hmac, json
 
 from flask import abort, flash, redirect, render_template, request, url_for
 
-GOOD = ['친절해요', '맛있어요', '깨끗해요', '빨리 나와요', '가격이 좋아요', '분위기가 좋아요', '또 올래요']
-BAD = ['오래 기다렸어요', '불친절했어요', '주문이 틀렸어요', '청결이 아쉬워요', '가격이 비싸요', '안내가 부족해요', '시끄러웠어요']
+GOOD = ['맛있어요', '친절해요', '깨끗해요', '빨리 나와요', '양이 넉넉해요', '가격이 좋아요', '분위기가 좋아요', '또 올래요']
+BAD = ['맛이 아쉬워요', '불친절했어요', '오래 기다렸어요', '주문이 틀렸어요', '청결이 아쉬워요', '양이 적어요', '가격이 비싸요', '시끄러웠어요']
 FIRST_ID = 10001
 
 
@@ -38,7 +38,7 @@ def install(S):
             rating = request.form.get('rating', type=int) or 0
             if not 1 <= rating <= 5: flash('별점을 먼저 골라 주세요.'); return redirect(url_for('qr_store', sid=sid))
             allowed = set(GOOD + BAD)
-            chips = [c for c in request.form.getlist('chip') if c in allowed][:7]
+            chips = [c for c in request.form.getlist('chip') if c in allowed][:8]
             body = ' '.join((request.form.get('body') or '').split())[:500]
             contact = ''  # 답 받을 번호 기능은 뺐다 (OH 11/08)
             public_ok = 1 if rating >= 4 and request.form.get('public_ok') else 0
