@@ -10,7 +10,9 @@
 {# 매장 QR 한 장 화면 (storeqr.py). 토스 화면처럼: 흰 바탕, 왼쪽 큰 제목, 아래 귤색 버튼 하나. 운영자 기준: 회색 바탕 칸은 쓰지 않고 옅은 크림색으로 #}
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;background:#fff;color:#191F28;font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-qr.woff2?v=1) format('woff2');font-display:swap}
+.tf{font-family:Tossface,"Apple Color Emoji","Noto Color Emoji",sans-serif;font-style:normal}
+html,body{margin:0;background:#fff;color:#191F28;font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
 .wrap{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 24px calc(env(safe-area-inset-bottom,0px) + 112px)}
 .badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;line-height:19.5px;font-weight:700;color:#333D48;background:#fff;box-shadow:inset 0 0 0 1px #E5E8EB;border-radius:999px;padding:4px 10px}
 .badge .lr{width:9px;height:18px;flex:none;color:#FFB331}.badge .lr.r{transform:scaleX(-1)}
@@ -78,9 +80,9 @@ textarea,input[type=tel]{box-shadow:inset 0 0 0 1px #D1D6DB}
 .toggle{padding:18px 16px;border-radius:16px;box-shadow:inset 0 0 0 1px #D1D6DB}
 .toggle small{font-size:14px;color:#6B7684}
 .foot{margin-top:56px;flex-direction:column;align-items:center;gap:6px}.foot img{width:140px;height:auto}.foot small{font-size:12px;line-height:18px;color:#8B95A1}
-.chips em{font-style:normal;font-size:18px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.chips em{font-style:normal;font-size:18px;line-height:1;font-family:Tossface,"Apple Color Emoji","Noto Color Emoji",sans-serif}
 .chips input:checked+span::before{display:none}
-.done .ok{font-size:34px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.done .ok{font-size:34px;line-height:1;font-family:Tossface,"Apple Color Emoji","Noto Color Emoji",sans-serif}
 .done{align-items:center;text-align:center}
 .done .ok{width:auto;height:auto;background:none;font-size:72px}
 .done h1{margin-top:20px;font-size:26px;line-height:35px}
@@ -93,7 +95,7 @@ textarea,input[type=tel]{box-shadow:inset 0 0 0 1px #D1D6DB}
 </head>
 <body>
 <main class="wrap">
-{% set EMO = {'맛있어요':'😋','친절해요':'😊','깨끗해요':'✨','빨리 나와요':'⚡','양이 넉넉해요':'🍚','가격이 좋아요':'💰','분위기가 좋아요':'🕯️','또 올래요':'🔁','맛이 아쉬워요':'😕','불친절했어요':'😠','오래 기다렸어요':'⏰','주문이 틀렸어요':'🧾','청결이 아쉬워요':'🧹','양이 적어요':'🥄','가격이 비싸요':'💸','시끄러웠어요':'🔊'} %}
+{% set EMO = {'맛있어요':'😋','친절해요':'😊','깨끗해요':'✨','빨리 나와요':'⚡','양이 넉넉해요':'🍚','가격이 좋아요':'💰','분위기가 좋아요':'🎶','또 올래요':'🙌','맛이 아쉬워요':'😕','불친절했어요':'😠','오래 기다렸어요':'⏰','주문이 틀렸어요':'🧾','청결이 아쉬워요':'🧹','양이 적어요':'🥄','가격이 비싸요':'💸','시끄러웠어요':'🔊'} %}
 
 {% if done %}
   <section class="done">
