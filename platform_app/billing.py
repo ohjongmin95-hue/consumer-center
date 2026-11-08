@@ -41,7 +41,7 @@ def ready():return all(core.secret(k) for k in ('PORTONE_STORE_ID','PORTONE_CHAN
 # 상담 1건 = 그 기간에 첫 답장(사장님·직원·AI)이 나간 문의 (고르기아스의 '청구 티켓'). 답장 없이 닫힌 문의, 영업시간 외 자동 안내만 나간 문의, 데모는 세지 않는다.
 # 넘으면 막지 않고 다음 결제 때 추가 요금을 함께 결제한다 (over_n건마다 over_price원). 운영 화면에서 금액을 바꾸면 그 값을 쓴다.
 TIERS=(dict(key='starter',name='스타터',price=9900,tickets=50,over_n=1,over_price=200),
-       dict(key='basic',name='베이직',price=49000,tickets=300,over_n=100,over_price=19000),
+       dict(key='basic',name='베이직',price=49000,tickets=150,over_n=100,over_price=19000),
        dict(key='pro',name='프로',price=290000,tickets=2000,over_n=100,over_price=15000),
        dict(key='advanced',name='어드밴스드',price=690000,tickets=5000,over_n=100,over_price=15000))
 DEFAULT_TIER='basic'
