@@ -32,7 +32,7 @@ TERMS_SINCE='2026년 10월 13일'  # 소보루 CX 기업 회원 이용약관 시
 REFUND_SINCE='2026년 10월 18일'  # 환불 정책 시행일
 RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 요청은 purge_old()가 파기
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 요청, 운영 등)는 noindex
-INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup','terms','refund_policy','pricing','mk.tour','mk.shop_page','mk.industries','mk.industry','sl.consult','cms.blog','cms.blog_post','cms.help_home','cms.help_post','cms.stories','cms.story','gr.apply','sec.page'}}
+INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','signup','terms','refund_policy','pricing','mk.tour','mk.shop_page','sl.consult','cms.blog','cms.blog_post','cms.help_home','cms.help_post','cms.stories','cms.story','gr.apply','sec.page'}}
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
              'biz':BNAME+'는 1인·소규모 쇼핑몰을 위한 AI 상담원 서비스예요. AI 상담원 SODA가 카카오톡·네이버 톡톡·쇼핑몰 상담창 문의에 먼저 답하고, 환불 같은 결정만 사장님이 승인해요.'}
 class _Verify(dict):
@@ -331,7 +331,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,CAT_HINT=CAT_HINT,ASK=ASK,ORDER_CATS=ORDER_CATS,REASONS=REASONS,FIELDS=FIELDS,TEXT_CATS=TEXT_CATS,WANT_OF=WANT_OF,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,GOOGLE_VERIFY=GOOGLE_VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,CAT_HINT=CAT_HINT,ASK=ASK,ORDER_CATS=ORDER_CATS,REASONS=REASONS,FIELDS=FIELDS,TEXT_CATS=TEXT_CATS,WANT_OF=WANT_OF,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),canonical_url=lambda k:canonical_url(k),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,GOOGLE_VERIFY=GOOGLE_VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
@@ -771,6 +771,10 @@ def send_mail(to,subject,body):
         except Exception as e:status='failed: '+type(e).__name__
         with conn() as db:db.execute('INSERT INTO mail_log(target,subject,status,created) VALUES(?,?,?,?)',(to[:2]+'***@'+to.partition('@')[2],subject,status,iso()))
     threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
+def canonical_url(kind):
+    """검색엔진에 알릴 대표 주소. 서버 앞단(nginx)이 http로 넘겨도 https 고정 주소로 만든다."""
+    host=BUSINESS_HOST if kind=='biz' else CONSUMER_HOST
+    return 'https://'+host+request.path if host else request.base_url
 def site_url(kind,path):
     host=BUSINESS_HOST if kind=='biz' else CONSUMER_HOST
     if not host and not has_request_context():return path  # cron 등 요청 밖에서 주소 설정이 없을 때

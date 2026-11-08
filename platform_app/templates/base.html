@@ -11,11 +11,12 @@
 <meta property="og:site_name" content="{{ CNAME if site=='me' else BNAME }}">
 <meta property="og:title" content="{{ self.title()|trim }}">
 <meta property="og:description" content="{{ self.description()|trim }}">
-<meta property="og:url" content="{{ request.base_url }}">
-<link rel="canonical" href="{{ request.base_url }}">
+<meta property="og:url" content="{{ canonical_url(site) }}">
+<link rel="canonical" href="{{ canonical_url(site) }}">{% if site=='biz' %}
+<link rel="alternate" type="application/rss+xml" title="소보루 CX" href="{{ site_url('biz','/rss.xml') }}">{% endif %}
 {% if request.endpoint in ('home','login','decide') %}{% if VERIFY[site] %}<meta name="naver-site-verification" content="{{ VERIFY[site] }}">{% endif %}{% if GOOGLE_VERIFY[site] %}<meta name="google-site-verification" content="{{ GOOGLE_VERIFY[site] }}">{% endif %}{% endif %}
 <meta property="og:locale" content="ko_KR">
-{% block ogimage %}{% if site=='biz' %}<meta property="og:image" content="{{ url_for('static',filename='og-biz.png',_external=True) }}?v=4"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">{% endif %}{% endblock %}
+{% block ogimage %}{% if site=='biz' %}<meta property="og:image" content="{{ site_url('biz',url_for('static',filename='og-biz.png')) }}?v=5"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">{% endif %}{% endblock %}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="title" content="{{ self.title()|trim }}">
 {% block head %}{% endblock %}

@@ -133,7 +133,7 @@ def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/ca
 
 @app.route('/sitemap.xml')
 def sitemap():
-    ent=[(p,'') for p in ['/','/signup','/login','/pricing','/terms','/refund']+market.sitemap_paths()+sales.sitemap_paths()+growth.sitemap_paths()+['/security']]+cms.sitemap_entries()
+    ent=[(p,'') for p in ['/','/signup','/pricing','/terms','/refund']+market.sitemap_paths()+sales.sitemap_paths()+growth.sitemap_paths()+['/security']]+cms.sitemap_entries()
     body=''.join('<url><loc>%s</loc>%s</url>'%(core.site_url('biz',p),'<lastmod>%s</lastmod>'%m if m else '') for p,m in ent)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
