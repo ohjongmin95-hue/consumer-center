@@ -78,15 +78,26 @@ textarea,input[type=tel]{box-shadow:inset 0 0 0 1px #D1D6DB}
 .toggle{padding:18px 16px;border-radius:16px;box-shadow:inset 0 0 0 1px #D1D6DB}
 .toggle small{font-size:14px;color:#6B7684}
 .foot{margin-top:56px;flex-direction:column;align-items:center;gap:6px}.foot img{width:140px;height:auto}.foot small{font-size:12px;line-height:18px;color:#8B95A1}
+.chips em{font-style:normal;font-size:18px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.chips input:checked+span::before{display:none}
+.done .ok{font-size:34px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.done{align-items:center;text-align:center}
+.done .ok{width:auto;height:auto;background:none;font-size:72px}
+.done h1{margin-top:20px;font-size:26px;line-height:35px}
+.done .sub{margin-top:10px}
+.done .more{margin-top:36px;display:flex;flex-direction:column;gap:6px;align-items:center;font-size:15px;color:#6B7684}
+.done .more a{display:inline-block;padding:10px 18px;border-radius:999px;box-shadow:inset 0 0 0 1px #D1D6DB;text-decoration:none;color:#333D48;font-weight:600}
 [hidden]{display:none!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
 <main class="wrap">
+{% set EMO = {'맛있어요':'😋','친절해요':'😊','깨끗해요':'✨','빨리 나와요':'⚡','양이 넉넉해요':'🍚','가격이 좋아요':'💰','분위기가 좋아요':'🕯️','또 올래요':'🔁','맛이 아쉬워요':'😕','불친절했어요':'😠','오래 기다렸어요':'⏰','주문이 틀렸어요':'🧾','청결이 아쉬워요':'🧹','양이 적어요':'🥄','가격이 비싸요':'💸','시끄러웠어요':'🔊'} %}
+
 {% if done %}
   <section class="done">
-    <div class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#EF920E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <div class="ok" aria-hidden="true">💌</div>
     <h1>사장님께 전했어요</h1>
     <p class="sub">{{ s.name }} 사장님이 직접 읽어요.<br>다음 방문이 더 좋아지도록 쓸게요.</p>
     <p class="more">따로 알리고 싶은 피해가 있나요? <a href="{{ url_for('report') }}">소비자제보센터에 제보하기</a></p>
@@ -110,12 +121,12 @@ textarea,input[type=tel]{box-shadow:inset 0 0 0 1px #D1D6DB}
 
     <section class="sec" id="s-good" data-show="good">
       <h2>어떤 점이 좋았나요?<small>여러 개 골라도 돼요</small></h2>
-      <div class="chips">{% for c in GOOD %}<label><input type="checkbox" name="chip" value="{{ c }}"><span>{{ c }}</span></label>{% endfor %}</div>
+      <div class="chips">{% for c in GOOD %}<label><input type="checkbox" name="chip" value="{{ c }}"><span><em aria-hidden="true">{{ EMO.get(c, '') }}</em>{{ c }}</span></label>{% endfor %}</div>
     </section>
 
     <section class="sec" id="s-bad" data-show="bad">
       <h2>어떤 점이 아쉬웠나요?<small>여러 개 골라도 돼요</small></h2>
-      <div class="chips">{% for c in BAD %}<label><input type="checkbox" name="chip" value="{{ c }}"><span>{{ c }}</span></label>{% endfor %}</div>
+      <div class="chips">{% for c in BAD %}<label><input type="checkbox" name="chip" value="{{ c }}"><span><em aria-hidden="true">{{ EMO.get(c, '') }}</em>{{ c }}</span></label>{% endfor %}</div>
     </section>
 
     <section class="sec" data-show="any">
@@ -136,7 +147,7 @@ textarea,input[type=tel]{box-shadow:inset 0 0 0 1px #D1D6DB}
 <script>
 (function(){
   var f=document.getElementById('f'),go=document.getElementById('go'),word=document.getElementById('word');
-  var words=['','많이 아쉬웠어요','조금 아쉬웠어요','보통이었어요','좋았어요','최고였어요'];
+  var words=['','😞 많이 아쉬웠어요','😕 조금 아쉬웠어요','🙂 보통이었어요','😊 좋았어요','😍 최고였어요'];
   var secs=f.querySelectorAll('[data-show]'),stars=f.querySelectorAll('.stars label');
   function show(r){
     for(var i=0;i<secs.length;i++){var k=secs[i].getAttribute('data-show');
