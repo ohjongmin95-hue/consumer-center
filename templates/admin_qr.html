@@ -6,12 +6,28 @@
     <p>가게를 넣으면 10001번부터 번호가 붙어요. 스티커 QR에는 아래 주소를 그대로 넣어요. 손님이 남긴 후기는 이 화면에 바로 쌓여요.</p>
   </div>
 
+  {% set waiting = applies|selectattr('store_id', 'none')|list %}
+  <section class="form-panel">
+    <h2>사장님 신청 <small>새 신청 {{ waiting|length }}건 · 신청 화면 <a href="{{ url_for('qr_apply') }}" target="_blank" rel="noopener">/qr</a></small></h2>
+    {% if applies %}<div class="table-wrap"><table class="data">
+      <thead><tr><th>날짜</th><th>가게</th><th>업종</th><th>연락처</th><th>받을 주소</th><th></th></tr></thead>
+      <tbody>{% for a in applies %}<tr>
+        <td>{{ a.created[5:16].replace('T', ' ') }}</td><td>{{ a.name }}{% if a.area %} · {{ a.area }}{% endif %}</td><td>{{ a.biz }}</td>
+        <td>{{ fmt_phone(a.phone) }}</td><td>{{ a.addr }}</td>
+        <td>{% if a.store_id %}{{ a.store_id }}번{% else %}<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="apply" value="{{ a.id }}"><button class="primary" type="submit">번호 만들기</button></form>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>{% else %}<p class="meta">아직 들어온 신청이 없어요.</p>{% endif %}
+  </section>
+
   <section class="form-panel">
     <h2>가게 넣기</h2>
     <form method="post" class="pt-add">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <label>가게 이름 <input name="name" maxlength="40" required placeholder="예: 소보루커피"></label>
       <label>지점·동네 (없어도 돼요) <input name="area" maxlength="40" placeholder="예: 역삼점"></label>
+      <label>사장님 휴대폰 (별 1~2개 후기가 오면 바로 문자) <input name="owner_phone" type="tel" maxlength="13" placeholder="010-0000-0000"></label>
+      <label>네이버 플레이스 주소 (후기 보낸 뒤 '네이버에 후기 남기기') <input name="naver" type="url" maxlength="300" placeholder="https://m.place.naver.com/..."></label>
+      <label>카카오맵 주소 (후기 보낸 뒤 '카카오맵에 후기 남기기') <input name="kakao" type="url" maxlength="300" placeholder="https://place.map.kakao.com/..."></label>
       <button class="primary" type="submit">번호 만들기</button>
     </form>
   </section>
@@ -19,11 +35,16 @@
   <section class="form-panel">
     <h2>가게 <small>{{ stores|length }}곳</small></h2>
     {% if stores %}<div class="table-wrap"><table class="data">
-      <thead><tr><th>번호</th><th>가게</th><th>QR 주소</th><th>후기</th><th>평균 별점</th><th>아쉬운 후기</th></tr></thead>
+      <thead><tr><th>번호</th><th>가게</th><th>QR 주소</th><th>후기</th><th>평균 별점</th><th>아쉬운 후기</th><th>알림 번호 · 네이버 · 카카오맵</th></tr></thead>
       <tbody>{% for s in stores %}<tr>
         <td>{{ s.id }}</td><td>{{ s.name }}{% if s.area %} · {{ s.area }}{% endif %}</td>
         <td><a href="{{ url_for('qr_store', sid=s.id) }}" target="_blank" rel="noopener">{{ base }}{{ s.id }}</a></td>
         <td>{{ s.n }}</td><td>{{ s.avg or '-' }}</td><td>{{ s.low or 0 }}</td>
+        <td><form method="post" class="pt-add"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="edit" value="{{ s.id }}">
+          <input name="owner_phone" type="tel" maxlength="13" value="{{ s.owner_phone }}" placeholder="휴대폰" aria-label="사장님 휴대폰">
+          <input name="naver" type="url" maxlength="300" value="{{ s.naver_url }}" placeholder="네이버 플레이스 주소" aria-label="네이버 플레이스 주소">
+          <input name="kakao" type="url" maxlength="300" value="{{ s.kakao_url }}" placeholder="카카오맵 주소" aria-label="카카오맵 주소">
+          <button type="submit">저장</button></form></td>
       </tr>{% endfor %}</tbody>
     </table></div>{% else %}<p class="meta">아직 넣은 가게가 없어요.</p>{% endif %}
   </section>

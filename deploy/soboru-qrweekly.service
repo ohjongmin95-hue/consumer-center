@@ -1,0 +1,17 @@
+# 매장 QR 주간 요약: 매주 월요일 아침 사장님께 지난 7일 후기 요약 문자 (storeqr.py weekly). soboru-qrweekly.timer가 부름.
+[Unit]
+Description=소보루 매장 QR 주간 요약
+After=network-online.target soboru.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=soboru
+Group=soboru
+WorkingDirectory=/opt/soboru/app
+EnvironmentFile=/etc/soboru.env
+ExecStart=/opt/soboru/venv/bin/python storeqr.py weekly
+TimeoutStartSec=900
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/soboru

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>매장 QR 무료 신청 | SOBORU</title>
+<meta name="description" content="가게에 QR 스티커 하나 붙이면 손님 후기가 사장님께만 조용히 와요. 무료로 신청하세요.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+{# 사장님용 매장 QR 소개·신청 (storeqr.py /qr, OH 11/08). 토스 화면처럼: 흰 바탕, 왼쪽 큰 제목, 그림은 스티커 하나, 아래 귤색 버튼 하나. #}
+<style>
+*{box-sizing:border-box}
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-qr.woff2?v=2) format('woff2');font-display:swap}
+html,body{margin:0;background:#fff;color:#191F28;font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:inherit}
+.wrap{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 24px calc(env(safe-area-inset-bottom,0px) + 120px)}
+.top img{width:96px;height:auto;display:block}
+.eyebrow{margin:36px 0 0;font-size:15px;line-height:22.5px;font-weight:700;color:#CE6719}
+h1{margin:6px 0 0;font-size:28px;line-height:37px;font-weight:700}
+.sub{margin:10px 0 0;font-size:17px;line-height:25.5px;color:#4E5968}
+.hero{margin:32px auto 0;width:min(240px,64%);transform:rotate(-4deg);filter:drop-shadow(0 18px 28px rgba(239,146,14,.28))}
+.hero img{width:100%;height:auto;display:block}
+.free{margin:28px auto 0;display:flex;justify-content:center}
+.free span{font-size:14px;font-weight:700;color:#CE6719;background:#FFF4E0;border-radius:999px;padding:6px 12px}
+h2{margin:0;font-size:22px;line-height:31px;font-weight:700}
+.sec{margin-top:64px}
+.sec>p{margin:6px 0 0;font-size:16px;line-height:24px;color:#6B7684}
+.rows{margin:20px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:24px}
+.rows li{display:flex;gap:16px;align-items:flex-start}
+.ic{flex:none;width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-family:Tossface,"Apple Color Emoji","Noto Color Emoji",sans-serif;font-size:26px;line-height:1}
+.ic.o{background:#FFF4E0}.ic.g{background:#E8F8EE}.ic.b{background:#EAF2FE}.ic.p{background:#F2EEFE}.ic.r{background:#FFEEEE}
+.rows b{display:block;font-size:17px;line-height:25.5px;font-weight:700}
+.rows small{display:block;margin-top:2px;font-size:15px;line-height:22.5px;color:#6B7684}
+.alert{margin-top:20px;border-radius:20px;box-shadow:inset 0 0 0 1px #E5E8EB;padding:16px 18px;display:flex;gap:12px;align-items:flex-start}
+.alert .ic{width:40px;height:40px;border-radius:12px;font-size:22px}
+.alert p{margin:0;font-size:15px;line-height:22.5px;color:#333D48}
+.alert p em{display:block;font-style:normal;font-size:13px;color:#8B95A1;margin-bottom:2px}
+.steps{margin:20px 0 0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:18px}
+.steps li{counter-increment:s;display:flex;gap:14px;align-items:center;font-size:17px;line-height:25.5px;font-weight:600}
+.steps li::before{content:counter(s);flex:none;width:28px;height:28px;border-radius:50%;background:#333D48;color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center}
+.steps small{display:block;font-size:14px;line-height:21px;color:#6B7684;font-weight:500}
+.faq{margin:16px 0 0}
+.faq details{border-bottom:1px solid #F2F4F6}
+.faq summary{list-style:none;cursor:pointer;padding:18px 0;font-size:17px;line-height:25.5px;font-weight:600;display:flex;justify-content:space-between;gap:12px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"";flex:none;width:10px;height:10px;margin-top:6px;border-right:2px solid #B0B8C1;border-bottom:2px solid #B0B8C1;transform:rotate(45deg);transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(-135deg);margin-top:10px}
+.faq p{margin:0 0 18px;font-size:15px;line-height:22.5px;color:#4E5968}
+form{margin-top:20px;display:flex;flex-direction:column;gap:20px}
+.f label{display:block;font-size:14px;line-height:21px;font-weight:600;color:#4E5968;margin-bottom:8px}
+.f label small{font-weight:500;color:#8B95A1}
+.f input,.f select{width:100%;height:56px;border:0;border-radius:16px;background:#fff;box-shadow:inset 0 0 0 1px #D1D6DB;padding:0 16px;font:inherit;font-size:17px;color:#191F28;-webkit-appearance:none;appearance:none}
+.f select{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238B95A1' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 18px center/12px 8px}
+.f input:focus,.f select:focus{outline:0;box-shadow:inset 0 0 0 2px #333D48}
+.agree{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:15px;line-height:22.5px;color:#4E5968}
+.agree input{flex:none;appearance:none;-webkit-appearance:none;width:22px;height:22px;margin:0;border-radius:50%;box-shadow:inset 0 0 0 1.5px #D1D6DB;background:#fff;cursor:pointer}
+.agree input:checked{background:#EF920E url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 10'%3E%3Cpath d='M1.5 5l3.5 3.5L12.5 1' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center/11px 8px;box-shadow:none}
+.agree small{display:block;font-size:13px;color:#8B95A1}
+.flash{padding:12px 14px;border-radius:12px;background:#FFF1F0;color:#E42939;font-size:15px;font-weight:600;margin:0}
+.cta{position:fixed;left:0;right:0;bottom:0;padding:36px 20px calc(env(safe-area-inset-bottom,0px) + 20px);background:linear-gradient(rgba(255,255,255,0),#fff 36px)}
+.cta button,.cta a{display:flex;align-items:center;justify-content:center;width:100%;max-width:480px;margin:0 auto;height:56px;border:0;border-radius:16px;background:#EF920E;color:#fff;font:inherit;font-size:17px;font-weight:700;cursor:pointer;text-decoration:none}
+.cta button:active{opacity:.85}
+.done{min-height:calc(100vh - 200px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.done .ok{font-family:Tossface,"Apple Color Emoji","Noto Color Emoji",sans-serif;font-size:72px;line-height:1}
+.done h1{margin-top:20px;font-size:26px;line-height:35px}
+.foot{margin-top:72px;font-size:13px;line-height:19.5px;color:#8B95A1}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top"><a href="/" aria-label="소비자제보센터"><img src="{{ url_for('static', filename='img/soboru-wordmark.png') }}" alt="SOBORU" width="96" height="19"></a></header>
+
+{% if done %}
+  <section class="done">
+    <div class="ok" aria-hidden="true">📮</div>
+    <h1>신청했어요</h1>
+    <p class="sub">3일 안에 남겨 주신 번호로 연락드릴게요.<br>스티커는 무료로 보내 드려요.</p>
+  </section>
+  <div class="cta"><a href="/">소비자제보센터 둘러보기</a></div>
+{% else %}
+  <p class="eyebrow">사장님을 위한 매장 QR</p>
+  <h1>손님 속마음,<br>별점 되기 전에 먼저 들어요</h1>
+  <p class="sub">가게에 QR 스티커 하나만 붙이면 돼요. 손님 후기가 사장님께만 조용히 와요.</p>
+  <div class="hero"><img src="{{ url_for('static', filename='img/qr-sticker.png') }}" alt="소비자 후기 검증 매장 QR 스티커" width="520" height="714"></div>
+  <div class="free"><span>신청부터 스티커 배송까지 모두 무료</span></div>
+
+  <section class="sec" aria-labelledby="h1b">
+    <h2 id="h1b">붙이면 이런 게 좋아요</h2>
+    <ul class="rows">
+      <li><span class="ic g" aria-hidden="true">⭐</span><div><b>네이버·카카오맵 리뷰가 늘어요</b><small>후기를 남긴 손님에게 네이버와 카카오맵에도 남기는 길을 바로 보여 줘요.</small></div></li>
+      <li><span class="ic r" aria-hidden="true">🔔</span><div><b>아쉬운 후기는 바로 알려 드려요</b><small>별 1~2개가 오면 그 자리에서 문자로 와요. 손님이 나가기 전에 풀 수 있어요.</small></div></li>
+      <li><span class="ic o" aria-hidden="true">🔒</span><div><b>밖으로 공개되지 않아요</b><small>후기는 사장님과 소보루만 봐요. 별점 사이트에 남지 않아요.</small></div></li>
+      <li><span class="ic b" aria-hidden="true">📈</span><div><b>우리 동네 가게와 비교해 드려요</b><small>매주 한 번 요약해서 보내 드려요.</small></div></li>
+      <li><span class="ic p" aria-hidden="true">📣</span><div><b>소비자가 인정한 가게로 소개해요</b><small>후기가 좋은 가게는 소보루 매거진과 SNS에 무료로 소개해요.</small></div></li>
+    </ul>
+    <div class="alert" aria-label="주간 요약 예시"><span class="ic b" aria-hidden="true">💬</span><p><em>매주 월요일 이렇게 와요</em>이번 주 후기 12개, 평균 별 4.6개예요. 역삼동 카페 평균보다 친절 점수가 높아요. '오래 기다렸어요'가 3번 있었어요.</p></div>
+  </section>
+
+  <section class="sec" aria-labelledby="h2b">
+    <h2 id="h2b">이렇게 시작해요</h2>
+    <ol class="steps">
+      <li><span>아래에서 신청해요<small>1분이면 끝나요</small></span></li>
+      <li><span>스티커를 받아요<small>가게 전용 QR이 찍힌 스티커를 보내 드려요</small></span></li>
+      <li><span>계산대나 테이블에 붙여요<small>그다음부터 후기가 쌓여요</small></span></li>
+    </ol>
+  </section>
+
+  <section class="sec" aria-labelledby="h3b">
+    <h2 id="h3b">자주 묻는 질문</h2>
+    <div class="faq">
+      <details><summary>정말 돈이 안 드나요?</summary><p>네, 신청과 스티커, 후기 보기, 알림까지 모두 무료예요.</p></details>
+      <details><summary>나쁜 후기가 인터넷에 올라가나요?</summary><p>아니요. 매장 QR 후기는 사장님과 소보루만 봐요. 좋은 후기도 손님이 허락했을 때만 가게 소개에 써요.</p></details>
+      <details><summary>'소비자 후기 검증 매장'은 뭔가요?</summary><p>손님 목소리를 직접 듣는 가게라는 표시예요. QR 후기 창구를 열어 두고, 후기를 남긴 손님에게 불이익을 주지 않는 가게에 드려요.</p></details>
+      <details><summary>그만두고 싶으면요?</summary><p>스티커를 떼고 말씀해 주시면 QR을 바로 닫아요.</p></details>
+    </div>
+  </section>
+
+  <section class="sec" id="apply" aria-labelledby="h4b">
+    <h2 id="h4b">무료로 신청하기</h2>
+    <form method="post" id="f" novalidate>
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      {% with msgs = get_flashed_messages() %}{% if msgs %}<p class="flash" role="alert">{{ msgs[0] }}</p>{% endif %}{% endwith %}
+      <div class="f"><label for="name">가게 이름</label><input id="name" name="name" maxlength="40" required placeholder="소보루커피" value="{{ f.name or '' }}"></div>
+      <div class="f"><label for="area">지점·동네 <small>(없어도 돼요)</small></label><input id="area" name="area" maxlength="40" placeholder="역삼점" value="{{ f.area or '' }}"></div>
+      <div class="f"><label for="biz">업종</label><select id="biz" name="biz">{% for b in BIZ %}<option{% if f.biz == b %} selected{% endif %}>{{ b }}</option>{% endfor %}</select></div>
+      <div class="f"><label for="phone">사장님 휴대폰 번호 <small>(아쉬운 후기 알림이 여기로 가요)</small></label><input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" required placeholder="010-0000-0000" value="{{ f.phone or '' }}"></div>
+      <div class="f"><label for="addr">스티커 받을 주소</label><input id="addr" name="addr" maxlength="120" required autocomplete="street-address" placeholder="서울시 강남구 논현로 310-1" value="{{ f.addr or '' }}"></div>
+      <label class="agree"><input type="checkbox" name="agree" value="1" required><span>개인정보 수집에 동의해요<small>휴대폰 번호와 주소는 스티커 배송과 후기 알림에만 써요.</small></span></label>
+    </form>
+  </section>
+
+  <p class="foot">소비자제보센터 by SOBORU · 소비자를위한신문</p>
+  <div class="cta"><button type="submit" form="f" id="go">무료로 신청하기</button></div>
+{% endif %}
+</main>
+{% if not done %}
+<script>
+(function(){
+  var f=document.getElementById('f'),go=document.getElementById('go'),ap=document.getElementById('apply');
+  // 신청 칸이 보이기 전에 누르면 신청 칸으로 데려가고, 비어 있는 첫 칸에 커서를 둬요.
+  go.addEventListener('click',function(e){
+    var r=ap.getBoundingClientRect();
+    var miss=[].slice.call(f.querySelectorAll('[required]')).filter(function(el){return el.type==='checkbox'?!el.checked:!el.value.trim();})[0];
+    if(r.top>window.innerHeight*0.6||miss){
+      e.preventDefault();
+      (miss||ap).scrollIntoView({behavior:'smooth',block:'center'});
+      if(miss&&r.top<=window.innerHeight*0.6&&miss.type!=='checkbox')setTimeout(function(){miss.focus();},300);
+    }
+  });
+})();
+</script>
+{% endif %}
+</body>
+</html>
