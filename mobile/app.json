@@ -2,8 +2,8 @@
   "expo": {
     "name": "소보루 CX",
     "slug": "soboru",
-    "version": "1.5.0",
-    "orientation": "portrait",
+    "version": "1.5.1",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
@@ -85,6 +85,15 @@
                 ]
               }
             ]
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
           }
         }
       ]
