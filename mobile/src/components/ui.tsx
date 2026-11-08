@@ -42,19 +42,19 @@ export function TopBar() {
           <Image source={require('../../assets/logo-mark.png')} style={{ width: 28, height: 28 }} resizeMode="contain" />
           <Image source={require('../../assets/logo-wordmark.png')} style={{ width: 89, height: 17 }} resizeMode="contain" accessibilityLabel="SOBORU CX" />
         </Pressable>
-        <Pressable onPress={() => router.push('/alerts')} style={({ pressed }) => [s.bell, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]} hitSlop={6} accessibilityLabel={`알림 ${unread}건 안 읽음`}>
+        <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]}>
+          <Avatar kind="shop" size={26} />
+          <Text style={s.coName} numberOfLines={1}>
+            {name}
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/alerts')} style={({ pressed }) => [s.bell, pressed && { opacity: 0.7 }]} hitSlop={6} accessibilityLabel={`알림 ${unread}건 안 읽음`}>
           <Icon name="bell" size={24} />
           {unread ? (
             <View style={s.bellCnt}>
               <Text style={s.bellCntText}>{unread > 99 ? '99+' : unread}</Text>
             </View>
           ) : null}
-        </Pressable>
-        <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, pressed && { opacity: 0.7 }]}>
-          <Avatar kind="shop" size={26} />
-          <Text style={s.coName} numberOfLines={1}>
-            {name}
-          </Text>
         </Pressable>
       </View>
     </>
@@ -308,12 +308,12 @@ export const s = StyleSheet.create({
   guestText: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.accentInk },
   guestDot: { fontFamily: FONT, fontSize: 13, color: C.accentInk },
   guestJoin: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.accentInk, textDecorationLine: 'underline' },
-  top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingTop: 10, paddingBottom: 10 },
-  logo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 24, paddingTop: 10, paddingBottom: 10 },
+  logo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 10 },
   bell: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   bellCnt: { position: 'absolute', top: 0, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center' },
   bellCntText: { fontFamily: FONT, fontSize: 11, fontWeight: '700', color: '#fff' },
-  coChip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: 18, maxWidth: 140 },
+  coChip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: 18, maxWidth: 120 },
   coDot: { width: 26, height: 26, borderRadius: 13, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
   coDotText: { fontFamily: FONT, fontSize: 12, fontWeight: '700', color: C.fg2 },
   coName: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2, flexShrink: 1 },

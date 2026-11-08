@@ -1466,7 +1466,7 @@ body.v2:has(.bside) .dact .btn,body.v2:has(.bside) .cols .btn{min-height:var(--d
 body.v2:has(.bside) .linkbar .btn{flex:1}
 .crow{flex-wrap:wrap}
 }
-.gnb .chip .cnm{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gnb .chip .cnm{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:359.98px){.gnb .chip .cnm{max-width:84px}}
 .mbar details:not([open]) .sheet{display:none}
 @media (max-width:759.98px){body.v2:has(.bside) .acts2{grid-template-columns:1fr}body.v2:has(.bside) .acts2>*{min-width:0}}
@@ -1633,7 +1633,7 @@ pre.code{background:var(--fill);border-radius:var(--ds-r-ctl);padding:10px 12px;
 /* 입력+선택+버튼이 한 줄에 셋 이상이면 좁은 화면에서는 입력칸을 한 줄 전체로 */
 @media (max-width:520px){.addline:has(>.inp~.inp){flex-wrap:wrap}.addline:has(>.inp~.inp)>.inp:first-of-type{flex-basis:100%}.addline:has(>.inp~.inp)>select.inp{flex:1;max-width:none!important}}
 /* 좁은 휴대폰(400px 미만): 회사 이름이 길어도 상단 바가 두 줄로 늘지 않게 */
-@media (max-width:420px){.gnb .wrap:has(.chip){flex-wrap:nowrap}.gnb .chip{min-width:0}.gnb .chip .cnm{max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gnb .right{min-width:0}}
+@media (max-width:420px){.gnb .wrap:has(.chip){flex-wrap:nowrap}.gnb .chip{min-width:0}.gnb .chip .cnm{max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gnb .right{min-width:0}}
 /* 약관·개인정보: 자료실·보안 같은 하단 페이지와 같은 머리글과 폭 (글 상자는 읽기 좋은 폭) */
 .intro .doc-sec{padding-top:8px}
 main.intro .panel.privacy.doc{max-width:860px;padding:0;background:none;border:0;box-shadow:none}
