@@ -40,7 +40,7 @@ def install(S):
             allowed = set(GOOD + BAD)
             chips = [c for c in request.form.getlist('chip') if c in allowed][:7]
             body = ' '.join((request.form.get('body') or '').split())[:500]
-            contact = ''.join(ch for ch in (request.form.get('contact') or '') if ch.isdigit())[:11] if rating <= 3 else ''
+            contact = ''  # 답 받을 번호 기능은 뺐다 (OH 11/08)
             public_ok = 1 if rating >= 4 and request.form.get('public_ok') else 0
             iph = S.ip_hash()
             since = (datetime.datetime.now() - datetime.timedelta(minutes=10)).isoformat(timespec='seconds')

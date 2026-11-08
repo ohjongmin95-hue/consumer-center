@@ -31,10 +31,10 @@
   <section class="form-panel">
     <h2>최근 후기 <small>{{ recent|length }}개</small></h2>
     {% if recent %}<div class="table-wrap"><table class="data">
-      <thead><tr><th>날짜</th><th>가게</th><th>별점</th><th>고른 것</th><th>남긴 말</th><th>번호</th><th>공개</th></tr></thead>
+      <thead><tr><th>날짜</th><th>가게</th><th>별점</th><th>고른 것</th><th>남긴 말</th><th>공개</th></tr></thead>
       <tbody>{% for f in recent %}<tr>
         <td>{{ f.created[5:16].replace('T', ' ') }}</td><td>{{ f.store }}</td><td>{{ '★' * f.rating }}</td>
-        <td>{{ f.chips|join(', ') }}</td><td>{{ f.body }}</td><td>{{ fmt_phone(f.contact) if fmt_phone is defined and f.contact else f.contact }}</td><td>{{ '공개 가능' if f.public_ok else '' }}</td>
+        <td>{{ f.chips|join(', ') }}</td><td>{{ f.body }}</td><td>{{ '공개 가능' if f.public_ok else '' }}</td>
       </tr>{% endfor %}</tbody>
     </table></div>{% else %}<p class="meta">아직 남긴 후기가 없어요.</p>{% endif %}
   </section>
