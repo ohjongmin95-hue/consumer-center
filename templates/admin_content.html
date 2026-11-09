@@ -3,7 +3,7 @@
 {% block content %}
 {%- set preview = {'common': face_url('home'), 'home': face_url('home'), 'operator': face_url('home'), 'report': face_url('report'), 'policy': face_url('policy_page', page='privacy'), 'board': face_url('board'), 'status': face_url('lookup'), 'reports': face_url('reports'), 'seo': face_url('home')} -%}
 <main class="ad-page ctx">
-  <header class="ad-head"><div><h1>{% if current_face() == 'jebo' %}소비자제보센터 문구 고치기{% else %}문구 고치기{% endif %}</h1>
+  <header class="ad-head"><div><h1>{% if current_face() == 'jebo' %}소비자고발제보센터 문구 고치기{% else %}문구 고치기{% endif %}</h1>
     <p>왼쪽에서 화면을 고르거나 위에서 문구를 검색해 고쳐요. 칸을 비우고 저장하면 처음 문구로 돌아가요. 화면에 보이는 문장은 <a href="{{ url_for('admin_screens') if current_face() != 'jebo' else face_url('admin_site') }}">화면 편집</a>에서 보면서 고치는 게 더 쉬워요.</p></div></header>
 
   <div class="ctx-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>

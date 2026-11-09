@@ -1,4 +1,4 @@
-/* 소비자제보센터: 계산기·사전·법령 찾기 (운영자 2026-11-03 "토스처럼"). soboru.css를 안 쓰는 제보센터 전용, 토스 TDS 기준.
+/* 소비자고발제보센터: 계산기·사전·법령 찾기 (운영자 2026-11-03 "토스처럼"). soboru.css를 안 쓰는 제보센터 전용, 토스 TDS 기준.
    폭·여백은 둘러보기(.xs-in)와 같게: 최대 1168, 좌우 24 (휴대폰 20). 큰 제목·부제 없음, 목록은 TDS 리스트 줄. */
 body:not(.sb){--sb-orange:#EF920E;--sb-ease:cubic-bezier(.2,.8,.2,1)}
 body:not(.sb) main.tl{max-width:1168px;margin:0 auto;padding:40px 24px 96px;box-sizing:border-box;color:#191f28;word-break:keep-all;letter-spacing:0}

@@ -1,6 +1,6 @@
 """소보루 매거진 관리자 (운영자 2026-11-05).
 
-관리자 화면 하나 안에서 위쪽 전환 버튼으로 '소비자제보센터'와 '소보루 매거진'을 오가고, 두 쪽 메뉴는 겹치지 않는다.
+관리자 화면 하나 안에서 위쪽 전환 버튼으로 '소비자고발제보센터'와 '소보루 매거진'을 오가고, 두 쪽 메뉴는 겹치지 않는다.
 매거진 쪽에 있는 것:
 - 매거진 홈: 게시·초안·예약 글 수, 최근 글
 - 기사(CMS): 예전 생활정보 글 화면(admin_life)을 그대로 쓰되 대표 사진 올리기, 본문 사진 끼워 넣기, 예약 게시를 더함
@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from flask import abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 
-# 매거진 쪽 메뉴에 속하는 화면 (나머지는 모두 소비자제보센터 쪽)
+# 매거진 쪽 메뉴에 속하는 화면 (나머지는 모두 소비자고발제보센터 쪽)
 MAG_ENDPOINTS = {'admin_art'}  # 이름이 mag_·admin_life·admin_letter로 시작하는 화면도 매거진 쪽
 MAG_GROUPS = [
     ('', [('mag_home', 'home', '대시보드')]),
@@ -235,7 +235,7 @@ def install(S):
         return render_template('mag_admin_home.html', n=n, recent=recent, top=top, scheduled=scheduled,
                                today_en=now.strftime('%A, %B ') + str(now.day))
 
-    # ---- 어디를 관리할까요 (운영자 2026-11-05: 로그인하면 먼저 소비자제보센터·소보루 매거진 고르기) ----
+    # ---- 어디를 관리할까요 (운영자 2026-11-05: 로그인하면 먼저 소비자고발제보센터·소보루 매거진 고르기) ----
     @app.route('/admin/choose')
     @S.admin_only
     def admin_choose():

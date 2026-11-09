@@ -10,7 +10,7 @@
   <div class="vs-grid">
     <div class="cs-panel">
       <h2>날짜별 방문자</h2>
-      {% if not site %}<p class="vs-legend"><i class="s"></i>소보루 <i class="j"></i>소비자제보센터</p>{% endif %}
+      {% if not site %}<p class="vs-legend"><i class="s"></i>소보루 <i class="j"></i>소비자고발제보센터</p>{% endif %}
       <ol class="vs-days">{% for r in daily|reverse %}{% set n = r[site] if site else r['all'] %}
         <li><span>{{ r['day'][5:].replace('-', '.') }}</span>
           <span class="vs-bar">{% if site %}<i class="{{ 's' if site == 'soboru' else 'j' }}" style="width:{{ (100 * n / top)|round(1) }}%"></i>{% else %}<i class="s" style="width:{{ (100 * r['soboru'] / top)|round(1) }}%"></i><i class="j" style="width:{{ (100 * r['jebo'] / top)|round(1) }}%"></i>{% endif %}</span>
@@ -41,6 +41,6 @@
     <textarea name="ips" rows="3" placeholder="한 줄에 하나씩">{{ skip }}</textarea>
     <button class="primary" type="submit">저장</button>
   </form>
-  <p class="cs-lead ads-note">소비자제보센터 방문만 세요. 한 사람은 하루에 한 번만 세요. ‘들어온 곳’은 그날 처음 들어올 때 기준이에요: 광고 링크의 utm_source가 있으면 그 이름, 없으면 앞 화면(네이버·구글·카카오 등), 주소를 직접 쳤거나 즐겨찾기면 ‘직접·즐겨찾기’. 관리자 기기, 위에 적은 IP, 검색 봇은 세지 않고, IP·개인정보는 저장하지 않아요. 기록은 2026년 11월 1일부터 쌓여요.</p>
+  <p class="cs-lead ads-note">소비자고발제보센터 방문만 세요. 한 사람은 하루에 한 번만 세요. ‘들어온 곳’은 그날 처음 들어올 때 기준이에요: 광고 링크의 utm_source가 있으면 그 이름, 없으면 앞 화면(네이버·구글·카카오 등), 주소를 직접 쳤거나 즐겨찾기면 ‘직접·즐겨찾기’. 관리자 기기, 위에 적은 IP, 검색 봇은 세지 않고, IP·개인정보는 저장하지 않아요. 기록은 2026년 11월 1일부터 쌓여요.</p>
 </main>
 {% endblock %}

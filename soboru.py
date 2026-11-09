@@ -11,6 +11,7 @@ from flask import abort, flash, g, has_request_context, redirect, render_templat
 from markupsafe import Markup, escape
 
 OLD_NAME = '소비자제보센터'
+JEBO_NAME = '소비자고발제보센터'  # 운영자 2026-11-09: 제보센터 이름을 '소비자고발제보센터'로
 NEW_NAME = '소보루'
 # 소보루로 바꿀 때 덮어쓰는 문구 (관리자가 적어 둔 값보다 앞섬)
 # 예전 브랜드 시절 소보루로 덮어쓰던 문구. 소보루 하나만 쓰면서 기본값이 소보루 문구가 됐으니, 그때 저장해 둔 값(화면에 안 보이던 값)은 한 번 지움
@@ -192,12 +193,15 @@ def install(S):
         if request.host.split(':')[0].lower() in S.JEBO_HOSTS and S.main_host() not in S.JEBO_HOSTS and request.path.startswith(SOBORU_ONLY):
             return redirect('https://' + S.main_host() + request.full_path.rstrip('?'), 301)
         if jebo_face:
-            for key, jkey in JEBO_KEYS.items(): g.content[key] = g.content.get(jkey) or OLD_NAME
+            for key, jkey in JEBO_KEYS.items(): g.content[key] = g.content.get(jkey) or JEBO_NAME
+            for k, v in g.content.items():  # 예전 이름으로 저장해 둔 문구도 새 이름으로
+                if OLD_NAME in v: g.content[k] = v.replace(OLD_NAME, JEBO_NAME)
+            if g.content.get('site.logo_rest', '제보센터') == '제보센터': g.content['site.logo_rest'] = '고발제보센터'
             for key in ('seo.naver_verification', 'seo.google_verification', 'seo.facebook_verification'):  # 검색엔진 소유확인은 주소마다 따로
                 g.content[key] = g.content.get(key.replace('seo.', 'jebo.'), '')
             return
         for k, v in g.content.items():  # 예전에 저장해 둔 문구 속 옛 이름도 소보루로
-            if OLD_NAME in v: g.content[k] = v.replace(OLD_NAME, NEW_NAME)
+            if OLD_NAME in v or JEBO_NAME in v: g.content[k] = v.replace(JEBO_NAME, NEW_NAME).replace(OLD_NAME, NEW_NAME)
         # 소보루는 로그인해야 글을 씀 (운영자 2026-10-24: 제보·후기·수다·댓글 모두). 소비자제보센터 주소는 지금처럼 비회원도 제보
         if request.endpoint in LOGIN_TO_WRITE and not g.get('user') and os.getenv('SOBORU_GUEST_WRITE') != '1':
             flash(S.ui_text('sb.login_to_write', '소보루는 로그인하면 글을 쓸 수 있어요. 카카오로 3초 만에 시작해요.'))
@@ -214,7 +218,7 @@ def install(S):
 
     def branded(value):
         # 템플릿에 적힌 기본 문구 속 이름도 지금 브랜드로 (Markup은 Markup 그대로)
-        return value.replace(OLD_NAME, site_name()) if value and is_soboru() else value
+        return value.replace(JEBO_NAME, site_name()).replace(OLD_NAME, site_name()) if value and is_soboru() else value
     app.jinja_env.filters['branded'] = branded
 
     # 홈 구조화 데이터(AI 검색용): 매거진 글 목록 → Article ItemList, (질문, 답) → FAQPage 질문들

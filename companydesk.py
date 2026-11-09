@@ -19,8 +19,8 @@ ANSWER_FILE_TYPES={'.pdf':'pdf','.png':'png','.jpg':'jpg','.jpeg':'jpg','.webp':
 ANSWER_FILES_MAX=3
 NEED='확인 필요'
 CLOSING=('본 센터는 접수된 제보를 토대로 사실관계를 확인하고 있으며, 사안에 따라 향후 추가 취재 및 보도가 진행될 수 있음을 알려드립니다.\n'
-         '귀사의 공식 입장을 회신해 주시면 사실관계 확인 및 향후 취재·보도 과정에 반영하겠습니다.\n감사합니다.\n\n소비자제보센터 드림\nhttps://consumerjebo.co.kr')
-SYSTEM=('너는 소비자제보센터의 기업 입장 요청서 초안을 돕는다. 아래 제보 내용만 근거로 JSON을 만든다.\n'
+         '귀사의 공식 입장을 회신해 주시면 사실관계 확인 및 향후 취재·보도 과정에 반영하겠습니다.\n감사합니다.\n\n소비자고발제보센터 드림\nhttps://consumerjebo.co.kr')
+SYSTEM=('너는 소비자고발제보센터의 기업 입장 요청서 초안을 돕는다. 아래 제보 내용만 근거로 JSON을 만든다.\n'
         '원칙: 확인되지 않은 사실을 단정하지 않는다. "제보자에 따르면", "제보자는 ~라고 주장했습니다"처럼 중립적으로 쓴다. '
         '제보에 없는 사실·날짜·금액·이름을 지어내지 않는다. 없는 항목은 "확인 필요"로 쓴다. 개인정보(이름·연락처·주소·계좌·주문번호 등)는 쓰지 않는다. '
         '기업을 비난하거나 압박·위협하는 표현, 법 위반으로 단정하는 표현을 쓰지 않는다. 존댓말(합니다체)로 쓴다.\n'
@@ -131,15 +131,15 @@ def clean_facts(facts,case):
     return out
 
 def _branded(text):
-    # 기본 문구 속 '소비자제보센터'를 지금 사이트 이름(관리자 설정)으로 바꿈
+    # 기본 문구 속 '소비자고발제보센터'를 지금 사이트 이름(관리자 설정)으로 바꿈
     import notify
     return notify.branded(text)
 
 def compose(facts,case_company,public_url):
     """요청서 양식(운영자가 정한 문구)에 내용을 채워 (제목, 본문)."""
     name=facts.get('company') if facts.get('company') and facts.get('company')!=NEED else case_company
-    title=f'[소비자제보센터] {name} 관련 사실관계 확인 및 공식 입장 요청'
-    parts=['안녕하세요. 소비자제보센터입니다.',
+    title=f'[소비자고발제보센터] {name} 관련 사실관계 확인 및 공식 입장 요청'
+    parts=['안녕하세요. 소비자고발제보센터입니다.',
            '본 센터에 귀사와 관련한 소비자 피해 제보가 접수돼 사실관계 확인 및 공식 입장을 요청드립니다.','',
            '■ 주요 제보 내용','\n\n'.join(facts['paragraphs']),'',
            '■ 확인 요청 사항','\n'.join(f'{i}. {q}' for i,q in enumerate(facts['questions'],1))]

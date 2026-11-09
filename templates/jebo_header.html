@@ -1,4 +1,4 @@
-{# 소비자제보센터 머리글 (consumerjebo.co.kr로 들어왔을 때) #}
+{# 소비자고발제보센터 머리글 (consumerjebo.co.kr로 들어왔을 때) #}
 <header class="site-header">
   <div class="top">
     <a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% set by = txt('site.logo_by') %}{% if by %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a>

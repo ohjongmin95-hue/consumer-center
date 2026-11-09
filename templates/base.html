@@ -34,7 +34,7 @@
   {% if verification_code('seo.google_verification') %}<meta name="google-site-verification" content="{{ verification_code('seo.google_verification') }}">{% endif %}
   {% if verification_code('seo.facebook_verification') %}<meta name="facebook-domain-verification" content="{{ verification_code('seo.facebook_verification') }}">{% endif %}{% endif %}
   <link rel="alternate" type="application/rss+xml" title="{{ txt('site.name') }}" href="{{ canonical_url('/rss.xml') }}">
-  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "@id": canonical_url('/') ~ "#organization", "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else ["소비자제보센터 by SOBORU", "소보루", "SOBORU"]), "description": txt('seo.description'), "url": canonical_url('/'), "logo": canonical_url(url_for('static', filename='img/soboru-logo.png' if is_soboru() else 'jebo-touch-icon.png')), "sameAs": channel_links()}|tojson }}</script>
+  {% if request.path == '/' %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "Organization", "@id": canonical_url('/') ~ "#organization", "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else ["소비자고발제보센터 by SOBORU", "소보루", "SOBORU"]), "description": txt('seo.description'), "url": canonical_url('/'), "logo": canonical_url(url_for('static', filename='img/soboru-logo.png' if is_soboru() else 'jebo-touch-icon.png')), "sameAs": channel_links()}|tojson }}</script>
   <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebSite", "@id": canonical_url('/') ~ "#website", "publisher": {"@id": canonical_url('/') ~ "#organization"}, "name": txt('site.name'), "alternateName": (["SOBORU", "소보루(SOBORU)"] if is_soboru() else []), "url": canonical_url('/'), "inLanguage": "ko", "potentialAction": {"@type": "SearchAction", "target": canonical_url(url_for('site_search') if is_soboru() else url_for('reports')) ~ "?q={search_term_string}", "query-input": "required name=search_term_string"}}|tojson }}</script>{% endif %}{% endif %}
   {% block head %}{% endblock %}
   {% if not letter_alone() %}<link rel="icon" href="{{ url_for('favicon_ico', v=css_v) }}" sizes="48x48">{% endif %}
@@ -105,7 +105,7 @@
     {% for row in g.lists.get('custom_pages', []) if row.slug %}<option value="{{ url_for('custom_page', slug=row.slug) }}"{% if request.path == url_for('custom_page', slug=row.slug) %} selected{% endif %}>새 페이지: {{ row.title }}</option>{% endfor %}
   </select></label>
   {% if is_soboru() %}<a href="{{ url_for('admin_screens') }}">화면 편집</a><a href="{{ url_for('admin_content') }}">문구 고치기</a>
-  {% else %}<span class="ed-bar-title">소비자제보센터 고치는 중</span><a href="{{ face_url('admin_content') }}">제보센터 문구 고치기</a><a href="{{ request.path }}?face=off">소보루 화면으로</a>{% endif %}
+  {% else %}<span class="ed-bar-title">소비자고발제보센터 고치는 중</span><a href="{{ face_url('admin_content') }}">제보센터 문구 고치기</a><a href="{{ request.path }}?face=off">소보루 화면으로</a>{% endif %}
   <form method="post" action="{{ url_for('admin_edit_mode') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="on" value="0"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button type="submit">편집 끝내기</button></form>
   <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit" class="ed-bar-out">관리자 로그아웃</button></form>
 </div>{% endif %}
@@ -116,7 +116,7 @@
     var data = null;
     function load() { if (!data) data = JSON.parse((document.getElementById('ed-data') || {}).textContent || '{}'); return data; }
     var modal = document.querySelector('.ed-modal'), area = modal.querySelector('textarea'), label = modal.querySelector('.ed-label'), msg = modal.querySelector('.ed-msg');
-    var token = '{{ csrf_token() }}', current = null, face = '{{ current_face() }}';  {# 소비자제보센터 화면에서 고친 문구는 제보센터에만 저장 #}
+    var token = '{{ csrf_token() }}', current = null, face = '{{ current_face() }}';  {# 소비자고발제보센터 화면에서 고친 문구는 제보센터에만 저장 #}
     var follow = modal.querySelector('.ed-follow'), delBtn = modal.querySelector('.ed-delete');
     function open(key, link) {
       follow.hidden = !link; if (link) follow.href = link;

@@ -1,4 +1,4 @@
-/* AI 소비자 상담을 소비자제보센터 화면에서도 (운영자 2026-11-03). soboru.css의 상담 화면 규칙을 그대로 옮기고 아래에서 TDS로 다듬음. 자동 생성: soboru.css에서 sba/sbv 규칙 */
+/* AI 소비자 상담을 소비자고발제보센터 화면에서도 (운영자 2026-11-03). soboru.css의 상담 화면 규칙을 그대로 옮기고 아래에서 TDS로 다듬음. 자동 생성: soboru.css에서 sba/sbv 규칙 */
 body:not(.sb){--sb-ink:#191f28;--sb-sub:#6b7684;--sb-mute:#8b95a1;--sb-line:#e5e8eb;--sb-soft:#f2f4f6;--sb-orange:#ef920e;--sb-orange-soft:#fff3e0;--sb-gray:#f2f4f6;--sb-gray-ink:#4e5968;--sb-ease:cubic-bezier(.2,.8,.2,1)}
 body:not(.sb) main.sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;min-height:auto}
 .sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px}

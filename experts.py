@@ -281,7 +281,7 @@ def install(S):
         lines = [f"· {c['public_subject'] or c['subject']}" + (f" ({c['company']})" if c['company'] else '') + f"\n  {base}/reports/{c['id']}" for c in cases]
         sent = 0
         for p in people:
-            text = (f"{p['name']} 님, 소비자제보센터에 새 제보 {len(cases)}건이 올라왔어요.\n\n" + '\n'.join(lines) +
+            text = (f"{p['name']} 님, 소비자고발제보센터에 새 제보 {len(cases)}건이 올라왔어요.\n\n" + '\n'.join(lines) +
                     "\n\n제보에 의견을 남기면 이름 옆에 '자문단' 표시가 붙고, 제보가 기사로 나갈 때 함께 실릴 수 있어요."
                     f"\n\n이 메일을 그만 받으려면: {base}/expert/apply 에서 '새 제보 알림'을 꺼 주세요.")
             if dry: print(p['email'], text[:200]); sent += 1; continue
@@ -410,7 +410,7 @@ def install(S):
             if recent >= 5: flash('상담 신청은 하루에 5번까지 할 수 있어요.'); return redirect(url_for('expert_profile', eid=eid))
             db.execute('INSERT INTO expert_requests(expert_id,user_id,body,contact,created) VALUES(?,?,?,?,?)', (eid, g.user['id'], body, contact, now()))
         if e['email']:
-            text = f"{e['name']} 님, 소비자제보센터에서 상담 신청이 왔어요.\n\n신청한 분: {g.user['nickname']}\n연락처: {contact or '(적지 않음)'}\n\n{body}\n\n자문단 정보에서도 볼 수 있어요: {S.canonical_url(url_for('expert_apply'))}"
+            text = f"{e['name']} 님, 소비자고발제보센터에서 상담 신청이 왔어요.\n\n신청한 분: {g.user['nickname']}\n연락처: {contact or '(적지 않음)'}\n\n{body}\n\n자문단 정보에서도 볼 수 있어요: {S.canonical_url(url_for('expert_apply'))}"
             try: S.notify.send_email(e['email'], f'[{S.notify.site_name()}] 상담 신청이 왔어요', text)
             except Exception: pass
         return redirect(url_for('expert_profile', eid=eid, sent=1))

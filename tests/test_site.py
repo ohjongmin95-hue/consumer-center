@@ -510,7 +510,7 @@ class SiteTest(unittest.TestCase):
         page = c.get('/about', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('소비자 제보 플랫폼', page); self.assertIn('제보는 이렇게 흘러가요', page); self.assertNotIn('권익', page); self.assertIn('FAQPage', page); self.assertIn('AboutPage', page)
         txt = c.get('/llms.txt', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
-        self.assertIn('# 소비자제보센터', txt)
+        self.assertIn('# 소비자고발제보센터', txt)
         self.assertIn('/about', c.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
         adm = self.login_admin()
         self.assertIn('오늘 방문', adm.get('/admin').get_data(as_text=True))
@@ -914,7 +914,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<li>목록</li>', art)
         self.assertIn('택배 분실 보상 정리', visitor.get('/life?category=쇼핑').get_data(as_text=True))
         # 방문자 화면·메일 이름이 모두 소보루. 예전 '브랜드' 설정값이 남아 있어도(비워도) 그대로 소보루
-        for brand in ('', '소비자제보센터'):
+        for brand in ('', '소비자제보센터', '소비자고발제보센터'):
             with self.site.conn() as db:
                 db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand',?,'2026-10-16')", (brand,))
             home = visitor.get('/').get_data(as_text=True)
@@ -2261,11 +2261,11 @@ class SiteTest(unittest.TestCase):
             with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):  # 관리자는 소보루 주소 하나
                 r = self.client.get('/admin/content?face=jebo', base_url='https://consumerjebo.co.kr')
                 self.assertEqual((r.status_code, r.headers['Location']), (302, 'https://soboru.co.kr/admin/content?face=jebo'))
-            self.assertIn('jebo-favicon.png', jebo); self.assertIn('<meta property="og:site_name" content="소비자제보센터">', jebo)  # 검색·광고에 뜨는 이름·아이콘
+            self.assertIn('jebo-favicon.png', jebo); self.assertIn('<meta property="og:site_name" content="소비자고발제보센터">', jebo)  # 검색·광고에 뜨는 이름·아이콘
             self.assertNotEqual(self.client.get('/favicon.ico', base_url='https://consumerjebo.co.kr').data, self.client.get('/favicon.ico').data)
             self.assertIn('class="site-header"', jebo)
             self.assertNotIn('class="sb"', jebo)
-            self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', jebo)
+            self.assertIn('<title>소비자고발제보센터 - 소비자 피해 제보·고발</title>', jebo)
             self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', jebo)
             self.assertIn('여러분의 제보가', jebo)
             sob = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)

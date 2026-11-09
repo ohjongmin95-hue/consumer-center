@@ -68,7 +68,7 @@ form{margin-top:20px;display:flex;flex-direction:column;gap:20px}
 </head>
 <body>
 <main class="wrap">
-  <header class="top"><a href="/" aria-label="소비자제보센터"><img src="{{ url_for('static', filename='img/soboru-wordmark.png') }}" alt="SOBORU" width="96" height="19"></a></header>
+  <header class="top"><a href="/" aria-label="소비자고발제보센터"><img src="{{ url_for('static', filename='img/soboru-wordmark.png') }}" alt="SOBORU" width="96" height="19"></a></header>
 
 {% if done %}
   <section class="done">
@@ -76,7 +76,7 @@ form{margin-top:20px;display:flex;flex-direction:column;gap:20px}
     <h1>신청했어요</h1>
     <p class="sub">3일 안에 남겨 주신 번호로 연락드릴게요.<br>스티커는 무료로 보내 드려요.</p>
   </section>
-  <div class="cta"><a href="/">소비자제보센터 둘러보기</a></div>
+  <div class="cta"><a href="/">소비자고발제보센터 둘러보기</a></div>
 {% else %}
   <p class="eyebrow">사장님을 위한 매장 QR</p>
   <h1>손님 속마음,<br>별점 되기 전에 먼저 들어요</h1>
@@ -129,7 +129,7 @@ form{margin-top:20px;display:flex;flex-direction:column;gap:20px}
     </form>
   </section>
 
-  <p class="foot">소비자제보센터 by SOBORU · 소비자를위한신문</p>
+  <p class="foot">소비자고발제보센터 by SOBORU · 소비자를위한신문</p>
   <div class="cta"><button type="submit" form="f" id="go">무료로 신청하기</button></div>
 {% endif %}
 </main>

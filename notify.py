@@ -17,13 +17,13 @@ ASYNC = True  # 테스트에서는 False로 바꿔 바로 실행
 
 def site_name():
     """메일·알림에 쓰는 사이트 이름. app.py가 시작할 때 관리자 설정(사이트 이름·브랜드)을 읽는 함수로 바꿔 끼움 (soboru.py)."""
-    return '소비자제보센터'
+    return '소비자고발제보센터'
 
 
 def branded(text):
-    """기본 문구 속 '소비자제보센터'를 지금 사이트 이름으로 바꿈."""
+    """기본 문구 속 '소비자고발제보센터'를 지금 사이트 이름으로 바꿈."""
     name = site_name()
-    return text if name == '소비자제보센터' else text.replace('소비자제보센터', name)
+    return text.replace('소비자고발제보센터', name).replace('소비자제보센터', name)  # 예전 이름 '소비자제보센터'도
 EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변', 'company': '기업 답변', 'supplement': '보완 요청', 'seen': '기업 전달 확인',
           'admin_answer': '운영자: 기업 답변', 'admin_request': '운영자: 정정·삭제·이의', 'admin_risk': '운영자: 개인정보 위험',
           'company_notice': '기업 공식 안내', 'company_new': '기업: 새 제보', 'company_opinion': '기업: 제보자 추가 의견', 'company_files': '기업: 추가 자료', 'company_nudge': '기업: 제보자 독촉'}
