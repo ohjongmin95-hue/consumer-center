@@ -31,7 +31,7 @@ if os.getenv('TRUST_PROXY')=='1':app.wsgi_app=ProxyFix(app.wsgi_app,x_for=1,x_pr
 app.secret_key=os.getenv('SECRET_KEY',secrets.token_hex(32))
 if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not os.getenv('SECRET_KEY') or not os.getenv('ADMIN_PASSWORD_HASH')):
     raise RuntimeError('제보 접수나 게시판을 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
-app.config['MAX_CONTENT_LENGTH']=22*1024*1024  # 첨부 합계 20MB + 글 내용
+app.config['MAX_CONTENT_LENGTH']=205*1024*1024  # 첨부 합계 200MB + 글 내용 (운영자 2026-11-09: 폰 영상도 올라가게)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 STATUSES=site_content.STATUSES
 HOME_LATEST=20  # 최신 제보 수 기본값 (소비자고발제보센터 메인은 관리자 문구 home.latest_count로 3~20)
@@ -454,7 +454,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-127'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-128'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -779,14 +779,14 @@ SIDO=['서울','부산','대구','인천','광주','대전','울산','세종','�
 GENDERS=['남성','여성']
 AGE_GROUPS=['10대','20대','30대','40대','50대','60대','70대 이상']
 UPLOAD_TYPES={'.pdf':'pdf','.png':'png','.jpg':'jpg','.jpeg':'jpg','.webp':'webp','.mp4':'mp4','.mov':'mov'}
-MAX_FILES=5;MAX_UPLOAD_TOTAL=20*1024*1024
+MAX_FILES=10;MAX_UPLOAD_TOTAL=200*1024*1024
 PHONE_INPUT=re.compile(r'^[0-9+()\- ]{8,20}$')
 def file_ok(suffix,head):
     kind=UPLOAD_TYPES.get(suffix)
     return ((kind=='pdf' and head.startswith(b'%PDF-')) or (kind=='png' and head.startswith(b'\x89PNG')) or (kind=='jpg' and head.startswith(b'\xff\xd8'))
             or (kind=='webp' and head[8:12]==b'WEBP') or (kind in ('mp4','mov') and head[4:8]==b'ftyp'))
 def report_form(status=200):
-    return render_template('report.html',scan_on=bool(companydesk.ai_key_for('report_talk')),categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,today=datetime.date.today().isoformat()),status
+    return render_template('report.html',scan_on=bool(companydesk.ai_key_for('report_talk')),categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,max_total=MAX_UPLOAD_TOTAL,today=datetime.date.today().isoformat()),status
 def report_login_needed():
     """운영자 2026-11-04: 로그인 없이도 제보 (11-03 로그인 의무화 뒤 제보가 끊겨 되돌림). REPORT_LOGIN=1이면 다시 로그인해야 제보."""
     return os.getenv('REPORT_LOGIN','0')=='1' and not g.get('user')
@@ -820,7 +820,7 @@ def report():
     if data['age_group'] not in AGE_GROUPS:data['age_group']=''
     if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',data['occurred_on']) or data['occurred_on']>datetime.date.today().isoformat():data['occurred_on']=''
     files=[f for f in request.files.getlist('evidence') if f and f.filename]
-    if len(files)>MAX_FILES:flash(ui_text('msg.report_files','첨부파일은 5개까지 올릴 수 있어요.'));return report_form(400)
+    if len(files)>MAX_FILES:flash(ui_text('msg.report_files2','첨부파일은 10개까지 올릴 수 있어요.'));return report_form(400)
     total=0;checked=[]
     for f in files:
         suffix=Path(f.filename).suffix.lower()
@@ -830,7 +830,7 @@ def report():
         # 원래 파일 이름은 한글을 살리되 경로·제어 문자는 지움
         original=re.sub(r'[\x00-\x1f/\\]','',Path(f.filename.replace('\\','/')).name)[:180] or 'file'+suffix
         checked.append((f,suffix,original))
-    if total>MAX_UPLOAD_TOTAL:flash(ui_text('msg.report_size','첨부파일은 모두 합쳐 20MB까지 올릴 수 있어요.'));return report_form(400)
+    if total>MAX_UPLOAD_TOTAL:flash(ui_text('msg.report_size2','첨부파일은 모두 합쳐 200MB까지 올릴 수 있어요.'));return report_form(400)
     receipt='CJ-'+datetime.datetime.now().strftime('%y%m%d')+'-'+secrets.token_hex(3).upper()
     code=secrets.token_urlsafe(12)  # lookup_hash 칸(NOT NULL)을 채우는 값. 조회는 휴대폰 번호 + 조회 비밀번호로 함
     with conn() as db:

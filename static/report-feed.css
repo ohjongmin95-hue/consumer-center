@@ -2104,3 +2104,16 @@ body .rf-rows .vc-simple h3{min-height:0;-webkit-line-clamp:1}
 @media(max-width:430px){.site-header .brand{font-size:21px!important}}
 @media(max-width:374px){.site-header .brand{font-size:19px!important}}
 @media(max-width:340px){.site-header .brand .brand-by{display:none!important}}
+/* 운영자 2026-11-09: 제보 글쓰기 사진·영상 칸 — '(선택)' 빼고 크게 권함, 기본 파일 버튼 대신 토스식 올리기 칸 */
+.ev-field .ev-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.ev-field .ev-badge{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:7px;background:#FFF1DE;color:#CE6719;font-size:13px;font-weight:700;letter-spacing:-.2px}
+.ev-field .ev-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.ev-field label.ev-drop{display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:16px;background:#F2F4F6;cursor:pointer;transition:background .15s;font-weight:400}
+.ev-field label.ev-drop:hover{background:#EAEDF0}
+.ev-field .ev-input:focus-visible+.file-picked,.ev-field label.ev-drop:focus-within{outline:2px solid #EF920E}
+.ev-field .ev-ic{flex:none;display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#fff}
+.ev-field .ev-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ev-field .ev-txt b{font-size:16px;color:#191F28;font-weight:700}
+body:not(.sb) .ev-field .ev-txt small,.ev-field .ev-txt small{font-size:13.5px;color:#6B7684;font-weight:400}
+.ev-field .ev-head{margin-bottom:4px}
+.ev-field .file-picked{color:#191F28;font-weight:600;word-break:break-all}
