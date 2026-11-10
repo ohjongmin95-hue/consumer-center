@@ -1,3 +1,4 @@
 {% extends 'moa_base.html' %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block title %}{{ title }} | 모아밥{% endblock %}
 {% block body %}<main class="wrap"><div class="center"><div class="ic" aria-hidden="true">🍚</div><h1>{{ title }}</h1><p>{{ body }}</p></div><a class="cta" href="{{ url_for('home') }}">홈으로</a></main>{% endblock %}
