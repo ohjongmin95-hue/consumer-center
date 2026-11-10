@@ -128,6 +128,22 @@ def test_admin_menu_adds(moa):
     assert (r['lat'], r['lng']) == (37.288612, 127.05147)
     cl.get('/pick')
     assert 'id="loc"' in cl.get('/').get_data(as_text=True)
+    import io
+    from PIL import Image
+    buf = io.BytesIO(); Image.new('RGB', (1600, 1200), (240, 120, 40)).save(buf, 'PNG'); buf.seek(0)
+    cl.post('/admin/menu', data={'_csrf': t, 'kind': 'set', 'id': '1', 'shop_id': '1', 'name': '제육 도시락', 'price': '5900', 'orig': '9500', 'cat': '한식', 'photo': (buf, 'a.png')}, content_type='multipart/form-data')
+    with moa.conn() as db:
+        ph = db.execute('SELECT photo FROM sets WHERE id=1').fetchone()['photo']
+    assert ph.endswith('.jpg') and ph in cl.get('/').get_data(as_text=True)
+    im = cl.get('/img/' + ph)
+    assert im.status_code == 200 and Image.open(io.BytesIO(im.data)).size == (1200, 900)
+    assert cl.get('/img/../x').status_code == 404
+    cl.post('/admin/menu', data={'_csrf': t, 'kind': 'seo', 'naver': '<meta name="naver-site-verification" content="abc123def" />', 'google': 'g-XYZ_9'})
+    h = cl.get('/').get_data(as_text=True)
+    assert 'name="naver-site-verification" content="abc123def"' in h and 'content="g-XYZ_9"' in h and 'og:image' in h
+    assert 'Disallow: /admin' in cl.get('/robots.txt').get_data(as_text=True)
+    sm = cl.get('/sitemap.xml').get_data(as_text=True)
+    assert '/set/1</loc>' in sm and '/about</loc>' in sm
     page = cl.get('/admin/menu').get_data(as_text=True)
     assert '힐스테이트 정문' in page and '김치찌개' in page
 

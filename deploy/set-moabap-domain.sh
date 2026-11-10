@@ -28,7 +28,7 @@ cat > "$NGX" <<NGINX
 server {
     listen 80;
     server_name $H www.$H;
-    client_max_body_size 2m;
+    client_max_body_size 15m;
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;

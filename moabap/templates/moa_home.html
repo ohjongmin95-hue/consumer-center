@@ -22,7 +22,7 @@
     {% if prices|length > 1 %}<div class="ptabs"><a href="{{ url_for('home', cat=cat or None) }}"{% if not price %} class="on"{% endif %}>전체</a>{% for p in prices %}<a href="{{ url_for('home', cat=cat or None, p=p) }}"{% if price == p %} class="on"{% endif %}>{{ won(p) }}</a>{% endfor %}</div>{% endif %}
     <div class="grid">
     {% for s in sets %}<a class="item" href="{{ url_for('set_page', sid=s.id) }}">
-      <div class="ph c{{ s.id % 6 }}"><span aria-hidden="true">{{ s.emoji }}</span>{% if s.hygiene %}<span class="safe">위생 인증</span>{% endif %}{% if joined.get(s.id) %}<span class="n">{{ joined[s.id] }}명 모였어요</span>{% endif %}</div>
+      <div class="ph c{{ s.id % 6 }}{{ ' pic' if s.photo }}">{% if s.photo %}<img src="{{ url_for('img', name=s.photo) }}" alt="{{ s.name }}" loading="lazy">{% else %}<span aria-hidden="true">{{ s.emoji }}</span>{% endif %}{% if s.hygiene %}<span class="safe">위생 인증</span>{% endif %}{% if joined.get(s.id) %}<span class="n">{{ joined[s.id] }}명 모였어요</span>{% endif %}</div>
       <b>{{ s.name }}</b><span class="shop">{{ s.shop }}</span>
       <div class="pr"><strong>{{ won(s.price) }}</strong>{% if s.orig > s.price %}<s>{{ won(s.orig) }}</s>{% endif %}</div>
       <div class="meta">{% if again.get(s.id) %}<span class="re">재주문 {{ again[s.id] }}%</span>{% endif %}<span>배달비 0원</span></div>

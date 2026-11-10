@@ -1,8 +1,9 @@
 {% extends 'moa_base.html' %}
 {% block title %}{{ s.name }} {{ won(s.price) }} | 모아밥{% endblock %}
+{% block desc %}{{ s.name }} {{ won(s.price) }}{% if s.note %} · {{ s.note }}{% endif %} · {{ s.shop }}. 같은 건물 사람들과 모아 시키면 배달비 0원, 모아밥.{% endblock %}
 {% block body %}
 <a class="back" href="{{ url_for('home') }}">‹ 뒤로</a>
-<div class="dgrid"><div class="dph c{{ s.id % 6 }}" aria-hidden="true">{{ s.emoji }}</div>
+<div class="dgrid">{% if s.photo %}<div class="dph pic"><img src="{{ url_for('img', name=s.photo) }}" alt="{{ s.name }}"></div>{% else %}<div class="dph c{{ s.id % 6 }}" aria-hidden="true">{{ s.emoji }}</div>{% endif %}
 <form class="wrap" style="margin-top:16px" method="post" action="{{ url_for('order') }}" id="f">
   <input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="set_id" value="{{ s.id }}">
   <section class="sec dt">
