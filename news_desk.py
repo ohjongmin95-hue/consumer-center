@@ -1,6 +1,6 @@
 """소비자를위한신문 아침 데스크 (운영자 요청 2026-11-10): 매일 아침 경제·소비자 이슈를 골라 기사 초안까지 메일로 보낸다.
 
-python -m news_desk            오늘 이슈 정리(뉴스레터 모양, 원문 링크·더할 방향)를 메일로 보냄 (soboru-newsdesk.timer가 아침 6시 30분에 부름)
+python -m news_desk            오늘 이슈 정리(뉴스레터 모양, 원문 링크·더할 방향)를 메일로 보냄 (soboru-newsdesk.timer가 오전 9시·오후 2시에 부름)
 python -m news_desk --dry      AI·메일 없이 모은 뉴스 제목만 보여 줌 (연결 확인용)
 python -m news_desk --n 2      초안 수를 바꿈
 
@@ -241,7 +241,8 @@ def render(today, issues, items, drafts):
 
 def run(n_drafts=DRAFTS, dry=False, today=None, send=None):
     today = today or datetime.date.today()
-    items = gather()
+    # 운영자 2026-11-10: 오전 9시·오후 2시 두 번. 오전엔 어제 오후 2시 뒤 뉴스, 오후엔 오늘 오전 뉴스
+    items = gather(20 if datetime.datetime.now().hour < 12 else 6)
     if dry:
         for n, it in enumerate(items, 1): print(n, it['when'].strftime('%m-%d %H:%M'), it['source'], it['title'])
         return {'items': len(items)}

@@ -1,5 +1,5 @@
 #!/bin/bash
-# 소비자를위한신문 아침 데스크 메일 (매일 6시 30분) 켜기·끄기 (운영자 2026-11-10)
+# 소비자를위한신문 아침 데스크 메일 (매일 오전 9시·오후 2시) 켜기·끄기 (운영자 2026-11-10)
 # 사용법: sudo bash /opt/soboru/app/deploy/set-newsdesk.sh [받는 메일]   켜고 지금 한 번 보냄
 #         sudo bash /opt/soboru/app/deploy/set-newsdesk.sh off           끄기
 set -euo pipefail
@@ -13,6 +13,6 @@ install -m 644 $APP/deploy/soboru-newsdesk.service /etc/systemd/system/soboru-ne
 install -m 644 $APP/deploy/soboru-newsdesk.timer /etc/systemd/system/soboru-newsdesk.timer
 systemctl daemon-reload
 systemctl enable --now soboru-newsdesk.timer
-echo "켰어요. 매일 아침 6시 30분에 메일이 가요. 지금 한 번 보내 볼게요 (2~3분)..."
+echo "켰어요. 매일 오전 9시·오후 2시에 메일이 가요. 지금 한 번 보내 볼게요 (2~3분)..."
 systemctl start soboru-newsdesk.service || true
 journalctl -u soboru-newsdesk -n 8 --no-pager -o cat | grep -v -i -E 'key|token|password|secret' || true

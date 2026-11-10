@@ -1,9 +1,9 @@
-# 매일 아침 6시 30분(한국 시각) 아침 데스크 메일. 서버가 꺼져 있었으면 켜진 뒤 한 번
+# 매일 오전 9시·오후 2시(한국 시각) 아침 데스크 메일. 서버가 꺼져 있었으면 켜진 뒤 한 번
 [Unit]
 Description=소비자를위한신문 아침 데스크 메일
 
 [Timer]
-OnCalendar=*-*-* 06:30:00 Asia/Seoul
+OnCalendar=*-*-* 09,14:00:00 Asia/Seoul
 Persistent=true
 
 [Install]
