@@ -21,7 +21,7 @@
       </a>{% endfor %}
     </section>{% endfor %}
   </div>
-  <p class="ap-how">{% if tab == 'fast' %}{{ ui('app.rank_fast', '오른쪽은 기업이 고발에 처음 답하기까지 걸린 보통 시간이에요.') }}{% else %}{{ ui('app.rank_rate', '오른쪽은 전달된 고발에 기업이 답한 비율이에요.') }}{% endif %} {{ ui('app.rank_min', '전달된 고발이 %d건 이상인 기업만 올라요.')|format(min_n) }}</p>
-  {% else %}<div class="ap-card ap-none"><i class="tf" aria-hidden="true">📊</i><p>{{ ui('rank.empty', '아직 순위를 매길 만큼 제보가 쌓인 기업이 없어요.') }}</p></div>{% endif %}
+  <p class="ap-how">{% if tab == 'fast' %}{{ ui('app.rank_fast', '오른쪽은 기업이 고발에 처음 답하기까지 걸린 보통 시간이에요.') }}{% else %}{{ ui('app.rank_rate', '오른쪽은 전달된 고발에 기업이 답한 비율이에요.') }}{% endif %}</p>
+  {% else %}<div class="ap-card ap-none"><i class="tf" aria-hidden="true">📊</i><p>{{ ui('rank.empty', '아직 기업에 전달된 고발이 없어요.') }}</p></div>{% endif %}
 </main>
 {% endblock %}

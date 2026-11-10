@@ -1,7 +1,7 @@
 /* 소보루고발 앱 화면 (app_screens.py, 운영자 2026-11-11): 헤이마오터우쑤 배치 + 토스 TDS 세부. 앱으로 열었을 때만 불러옴.
    이모지: 토스페이스 (© Viva Republica, https://toss.im/tossface/copyright), 앱 바닥글에 출처 표시. 버튼 #EF920E. */
 @font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2?v=6) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270D,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F333,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F369,U+1F36A,U+1F36F,U+1F370,U+1F371,U+1F373,U+1F381,U+1F382,U+1F389,U+1F393,U+1F3AE,U+1F3AF,U+1F3C6,U+1F3D8,U+1F3DB,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F3EA,U+1F3F7,U+1F431,U+1F436,U+1F437,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F457,U+1F45F,U+1F484,U+1F48A,U+1F490,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4BC,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CA,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DC,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4EE,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CD,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F914,U+1F916,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F95E,U+1F96F,U+1F9C1,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EE,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
-html:has(.ap-body),body.ap-body{background:#F2F4F6!important}
+html:has(.ap-body),body.ap-body{font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;letter-spacing:0;background:#F2F4F6!important}
 .ap-body{color:#191F28;word-break:keep-all;-webkit-font-smoothing:antialiased}
 .ap-body .site-footer{background:#F2F4F6;border-top:0;padding:28px 20px 32px}
 .ap-tf{margin-top:8px}
@@ -18,8 +18,8 @@ html:has(.ap-body),body.ap-body{background:#F2F4F6!important}
 .ap{max-width:640px;margin:0 auto;padding:4px 16px 24px;display:flex;flex-direction:column;gap:12px}
 .ap a{color:inherit;text-decoration:none}
 .ap-card{background:#fff;border-radius:24px;padding:20px 20px 12px}
-.ap-h{display:flex;align-items:center;gap:6px;font-size:20px;line-height:29px;font-weight:700;margin-bottom:6px}
-.ap-h .tf{font-size:22px}
+.ap-h{display:flex;align-items:center;gap:8px;font-size:20px;line-height:29px;font-weight:700;margin-bottom:4px}
+.ap-h .tf{font-size:24px;line-height:1}
 .ap-more{margin-left:auto;color:#B0B8C1;font-weight:500}
 .ap-row{display:flex;align-items:center;gap:12px;padding:10px 0;font-size:16px;line-height:24px;color:#333D48}
 .ap-t{flex:1;min-width:0}
@@ -36,11 +36,14 @@ html:has(.ap-body),body.ap-body{background:#F2F4F6!important}
 .ap-num small{font-size:13px;color:#8B95A1}
 .ap-num b{font-size:22px;line-height:31px;font-weight:700;font-variant-numeric:tabular-nums}
 .ap-go{flex:none;display:flex;align-items:center;justify-content:center;width:104px;height:56px;border-radius:16px;background:#EF920E;color:#fff!important;font-size:17px;font-weight:700}
-.ap-go:active,.ap-join:active{background:#E07B00}
+.ap-go,.ap-join{background:linear-gradient(135deg,#FFAE45 0%,#EF920E 100%)!important;box-shadow:0 6px 14px rgba(239,146,14,.28)}
+.ap-go:active,.ap-join:active{background:linear-gradient(135deg,#F7A23A,#E58A0C)!important}
+/* 운영자 2026-11-11: 헤이마오 띠처럼 '어딘가에는' 귤색 그라데이션 → 고발하기 버튼·기업 순위 띠 (맨 위 바탕은 토스 회색 그대로) */
 /* 홈: 최근 소식 한 줄 (천천히 흘러감) */
 .ap-tick{overflow:hidden;margin:0 -16px;padding:0 16px;-webkit-mask:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 16px),transparent)}
 .ap-tick-in{display:flex;gap:8px;width:max-content;animation:ap-tick 40s linear infinite}
-.ap-tick a{display:flex;align-items:center;gap:6px;white-space:nowrap;background:#fff;border-radius:18px;padding:8px 12px;font-size:13px;color:#4E5968}
+.ap-tick a{display:flex;align-items:center;gap:6px;white-space:nowrap;background:#fff;border-radius:18px;padding:8px 14px 8px 10px;font-size:14px;font-weight:600;color:#4E5968}
+.ap-tick a.k-ans{background:#E8F3FF;color:#1B64DA}.ap-tick a.k-done{background:#E5F8EE;color:#029359}  /* 운영자 2026-11-11: 소식 줄에 색 (답변=파랑, 해결=초록) */
 .ap-tick .tf{font-size:15px}
 @keyframes ap-tick{to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.ap-tick-in{animation:none}}
@@ -57,11 +60,11 @@ html:has(.ap-body),body.ap-body{background:#F2F4F6!important}
 .ap-st.s2{background:#E8F3FF;color:#1B64DA}.ap-st.s3{background:#E5F8EE;color:#029359}
 .ap-empty{padding:24px 0;text-align:center;color:#8B95A1;font-size:15px}
 /* 기업 순위 */
-.ap-ban{display:flex;align-items:center;gap:12px;background:#fff;border-radius:20px;padding:16px 18px}
+.ap-ban{display:flex;align-items:center;gap:12px;background:linear-gradient(120deg,#FFE3B8 0%,#FFF4E3 100%);border-radius:20px;padding:16px 18px}
 .ap-ban div{flex:1;display:flex;flex-direction:column;gap:2px}
 .ap-ban b{font-size:17px;font-weight:700}
-.ap-ban small{font-size:13px;color:#6B7684}
-.ap-ban a{flex:none;font-size:13px;font-weight:600;background:#F2F4F6;color:#4E5968;border-radius:8px;padding:6px 10px}
+.ap-ban small{font-size:13px;color:#8A5A1E}
+.ap-ban a{flex:none;font-size:13px;font-weight:600;background:rgba(255,255,255,.75);color:#B05F00;border-radius:8px;padding:6px 10px}
 .ap-cats{padding:6px 2px 0}
 .ap-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
 .ap-chips a{flex:none;font-size:14px;font-weight:600;padding:8px 14px;border-radius:18px;background:#fff;color:#4E5968}
@@ -90,9 +93,20 @@ span.ap-lg.c0{background:#3182F6}span.ap-lg.c1{background:#F04452}span.ap-lg.c2{
 .ap-co .ap-lg{width:32px;height:32px;border-radius:10px;font-size:14px}
 .ap-co .ap-badge{margin-left:auto}
 .ap-nums{display:flex;background:#F9FAFB;border-radius:14px;padding:12px 16px}
-.ap-nums span{flex:1;display:flex;flex-direction:column;gap:2px;font-size:13px;color:#8B95A1}
+.ap-nums span{flex:1;display:flex;flex-direction:column;gap:2px;font-size:13px;color:#6B7684}
 .ap-nums b{font-size:17px;font-weight:700;color:#191F28}
-.ap-gc h2{font-size:17px;line-height:25.5px;font-weight:700;margin:0}
-.ap-gc p{font-size:15px;line-height:22.5px;color:#6B7684;margin:0}
+.ap-gc h2{font-size:18px;line-height:27px;font-weight:700;color:#191F28;margin:0}
+.ap-gc p{font-size:16px;line-height:25px;color:#333D48;margin:0;letter-spacing:0}  /* 운영자 2026-11-11: 글이라 더 잘 읽히게 (Grey800, 16/25) */
 .ap-join{display:flex;align-items:center;justify-content:center;height:52px;border-radius:16px;background:#EF920E;color:#fff!important;font-size:16px;font-weight:700}
 .ap-link{font-size:15px;font-weight:600;color:#4E5968!important}
+/* 바닥글 사업자 정보: 접어 두고 눌러서 펼침 (소보루CX처럼, 운영자 2026-11-11) */
+.ap-ftd{margin-top:14px}
+.ap-ftd summary{list-style:none;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:#6B7684;cursor:pointer;padding:6px 0}
+.ap-ftd summary::-webkit-details-marker{display:none}
+.ap-ftd summary:after{content:'';width:7px;height:7px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg) translate(-2px,-2px);margin-left:4px;transition:transform .2s}
+.ap-ftd[open] summary:after{transform:rotate(-135deg) translate(-2px,-2px)}
+.ap-ftd .ft-info{margin-top:8px}
+/* 줄바꿈·글 간격 (운영자 2026-11-11): 낱말 단위로 끊고, 제목은 줄 길이를 고르게, 본문은 마지막 줄이 한 글자로 남지 않게 */
+.ap-body .ap,.ap-body .site-footer{word-break:keep-all;overflow-wrap:anywhere}
+.ap-h,.ap-case b,.ap-gc h2,.ap-ban b,.ap-t{text-wrap:balance}
+.ap-gc p,.ap-case p,.ap-how,.ap-none p{text-wrap:pretty}
