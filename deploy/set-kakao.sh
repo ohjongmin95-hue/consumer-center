@@ -44,13 +44,15 @@ else
   [[ -n ${NEW[SOLAPI_API_KEY]} && -n ${NEW[SOLAPI_API_SECRET]} && -n ${NEW[SOLAPI_PFID]} ]] || { echo "API Key·Secret·pfId는 꼭 있어야 해요."; exit 1; }
   echo "심사를 통과한 알림톡 템플릿 ID (아직 없으면 엔터)"
 fi
-TPLS="KAKAO_TPL_RECEIVED KAKAO_TPL_STATUS KAKAO_TPL_MESSAGE KAKAO_TPL_COMPANY KAKAO_TPL_SUPPLEMENT KAKAO_TPL_SEEN KAKAO_TPL_ADMIN"
+TPLS="KAKAO_TPL_RECEIVED KAKAO_TPL_STATUS KAKAO_TPL_MESSAGE KAKAO_TPL_COMPANY KAKAO_TPL_SUPPLEMENT KAKAO_TPL_SEEN KAKAO_TPL_ARTICLE KAKAO_TPL_COMPANY_NOTICE KAKAO_TPL_ADMIN"
 ask ${P}KAKAO_TPL_RECEIVED "① 제보 접수"
 ask ${P}KAKAO_TPL_STATUS "② 진행 단계 변경"
 ask ${P}KAKAO_TPL_MESSAGE "③ 센터 답변"
 ask ${P}KAKAO_TPL_COMPANY "④ 기업 답변"
 ask ${P}KAKAO_TPL_SUPPLEMENT "⑤ 보완 요청"
 ask ${P}KAKAO_TPL_SEEN "⑥ 기업 확인"
+ask ${P}KAKAO_TPL_ARTICLE "⑧ 기사 보도 (제보자에게)"
+ask ${P}KAKAO_TPL_COMPANY_NOTICE "⑨ 기업 안내 (기업 휴대폰으로)"
 ask ${P}KAKAO_TPL_ADMIN "⑦ 운영자 새 제보 알림 (받는 번호는 set-alert.sh)"
 if [[ $VENDOR == solapi ]]; then
   echo "문자로 대신 보낼 발신번호 (솔라피에 등록한 번호, 없으면 엔터)"
