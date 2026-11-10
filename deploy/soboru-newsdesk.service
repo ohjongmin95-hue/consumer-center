@@ -1,4 +1,4 @@
-# 소비자를위한신문 아침 데스크: 경제·소비자 이슈 10개 + 기사 초안 4편을 메일로 (soboru-newsdesk.timer가 아침 6시 30분에 부름)
+# 소비자를위한신문 아침 데스크: 경제·소비자 이슈 정리를 메일로 (soboru-newsdesk.timer가 아침 6시 30분에 부름)
 # 켜기·끄기: sudo bash /opt/soboru/app/deploy/set-newsdesk.sh [off]
 [Unit]
 Description=소비자를위한신문 아침 데스크 메일

@@ -1,12 +1,12 @@
 """소비자를위한신문 아침 데스크 (운영자 요청 2026-11-10): 매일 아침 경제·소비자 이슈를 골라 기사 초안까지 메일로 보낸다.
 
-python -m news_desk            오늘 이슈 정리 + 기사 초안 4편을 메일로 보냄 (soboru-newsdesk.timer가 아침 6시 30분에 부름)
+python -m news_desk            오늘 이슈 정리(뉴스레터 모양, 원문 링크·더할 방향)를 메일로 보냄 (soboru-newsdesk.timer가 아침 6시 30분에 부름)
 python -m news_desk --dry      AI·메일 없이 모은 뉴스 제목만 보여 줌 (연결 확인용)
 python -m news_desk --n 2      초안 수를 바꿈
 
 - 뉴스: 네이버 API HUB 뉴스 검색(키가 있으면) → 없거나 모자라면 구글 뉴스 RSS. 최근 하루치 제목·요약.
 - 고르기: AI가 기사로 다시 쓸 만한 이슈 10개를 고름 (소비자 피해·물가·금융·통신·유통·공정위·소비자원 등).
-- 초안: 고른 이슈 위 4개를 원문(제목·요약·본문 앞부분)만 보고 경기일보 오민주 기자 문체로 1300자 안팎 새로 씀.
+- 초안(--n 4로 켤 때만): 고른 이슈 위 4개를 원문(제목·요약·본문 앞부분)만 보고 경기일보 오민주 기자 문체로 1300자 안팎 새로 씀.
   문장은 처음부터 새로 쓰고, 지어낸 인터뷰는 【가안】 표시 (운영자가 실제로 바꿈). 숫자는 원문에 있는 것만.
 - 원문과 문장이 너무 비슷하면(네이버 자체기사 기준: 90% 비슷한 문장) 메일에 표시.
 - 받는 사람: 서버 설정 NEWS_DESK_TO (쉼표로 여럿), 없으면 OPS_EMAIL.
@@ -24,7 +24,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 MODEL = 'gpt-6-luna'
-DRAFTS = 4
+DRAFTS = 0  # 운영자 2026-11-10: 초안 말고 이슈 정리만 (--n 4로 초안도 붙일 수 있음)
 PICKS = 10
 QUERIES = ['소비자 피해', '소비자원', '공정위', '리콜', '환불', '가격 인상', '물가', '소비자물가', '금리', '대출',
            '카드사', '보험료', '통신요금', '배달앱', '쿠팡', '플랫폼 수수료', '프랜차이즈', '식품 이물', '전세 사기',
@@ -126,15 +126,16 @@ def chat(system, user, max_tokens):
     return json.loads(res['choices'][0]['message']['content'])
 
 
-PICK_SYSTEM = ('너는 소비자 전문 일간지 「소비자를위한신문」의 편집국장이다. 지난 하루 뉴스 목록에서 우리 신문이 오늘 다시 취재해 기사로 낼 만한 '
+PICK_SYSTEM = ('너는 소비자 전문 일간지 「소비자를위한신문」의 편집국장이다. 지난 하루 뉴스 목록에서 우리 신문이 오늘 받아 쓸(우라까이) 만한 '
                '경제·소비자 이슈를 ' + str(PICKS) + '개 고른다.\n'
                '- 기준: 소비자 지갑·피해·권리에 직접 닿는 것, 숫자(통계·금액·건수)가 있는 것, 공정위·소비자원·금융당국 등 행정 비판거리, 기업 실명이 나오는 것.\n'
                '- 연예·정치 공방·사건사고 단신·주가 시황·해외 단순 소식은 뺀다. 같은 일을 다룬 뉴스는 하나로 묶는다.\n'
-               '- 분야가 한쪽에 몰리지 않게 한다. category는 ' + ', '.join(CATS) + ' 가운데 하나.\n'
-               '- 중요한 순서대로. ids는 그 이슈를 다룬 뉴스 번호들(1~4개).\n'
-               '- angle: 우리 신문이 원문과 다르게 잡을 각도 한 문장 (소비자 입장, 반복되는 문제, 행정 허점 등). '
-               'more: 기사를 키우려면 더 찾아볼 공개 자료(국감 자료, 통계, 보도자료) 한 줄.\n'
-               'JSON으로만: {"issues": [{"ids": [..], "issue": "이슈 한 줄", "category": "..", "why": "왜 지금 쓸 만한지 한 줄", "angle": "..", "more": ".."}]}')
+               '- 분야가 한쪽에 몰리지 않게 한다. category는 ' + ', '.join(CATS) + ' 가운데 하나. 가장 중요한 것부터.\n'
+               '- ids: 그 이슈를 다룬 뉴스 번호들(1~4개). title: 뉴스레터 제목처럼 짧고 구체적으로(숫자 있으면 넣기).\n'
+               '- fact: 목록에 있는 내용만으로 핵심 사실 2~3문장(~다 체). 목록에 없는 숫자는 쓰지 않는다.\n'
+               '- angle: 받아 쓰는 기사에 우리가 더할 수 있는 방향 한 문장 (소비자 입장, 직접 비교·계산, 국내 영향, 행정 허점 등).\n'
+               '- more: 더 찾아볼 공개 자료 한 줄 (국감 자료, 통계, 공시, 보도자료). people: 인터뷰할 사람 한 줄.\n'
+               'JSON으로만: {"issues": [{"ids": [..], "title": "..", "category": "..", "fact": "..", "angle": "..", "more": "..", "people": ".."}]}')
 
 WRITE_SYSTEM = ('너는 「소비자를위한신문」 기자다. 아래 원문 뉴스를 바탕으로 우리 신문 기사를 새로 쓴다. 경기일보 오민주 기자 문체를 따른다.\n'
                 '[형식]\n'
@@ -189,33 +190,36 @@ def e(s): return htmlmod.escape(str(s or ''))
 
 def render(today, issues, items, drafts):
     d = f'{today.month}월 {today.day}일({KO_WEEK[today.weekday()]})'
-    css = ('font-family:Pretendard,Apple SD Gothic Neo,Malgun Gothic,sans-serif;color:#191f28;line-height:1.7;max-width:720px;margin:0 auto;padding:24px 16px')
-    h = [f'<div style="{css}"><p style="color:#EF920E;font-weight:700;margin:0">소비자를위한신문 아침 데스크</p>',
-         f'<h1 style="font-size:24px;margin:4px 0 20px">{d} 쓸 만한 경제·소비자 이슈 {len(issues)}개</h1>',
-         '<ol style="padding-left:20px">']
+    wrap = 'font-family:Pretendard,Apple SD Gothic Neo,Malgun Gothic,sans-serif;color:#191f28;line-height:1.7;word-break:keep-all;max-width:680px;margin:0 auto;padding:24px 16px;background:#F6F2EC'
+    card = 'background:#fff;border-radius:16px;padding:20px;margin:0 0 14px'
+    h = [f'<div style="{wrap}"><div style="border-bottom:3px solid #191f28;padding-bottom:12px">'
+         f'<div style="color:#EF920E;font-weight:800;font-size:13px">소비자를위한신문 · 아침 데스크</div>'
+         f'<div style="font-size:26px;font-weight:800;margin:4px 0 2px">{d} 경제·소비자 이슈 {len(issues)}</div>'
+         '<div style="color:#4e5968">어제와 오늘 나온 뉴스 가운데 우리가 받아 쓸 만한 것만 골랐어요.</div></div>',
+         f'<div style="{card};margin-top:18px"><b>오늘 목차</b><ol style="margin:6px 0 0;padding-left:20px;color:#4e5968">'
+         + ''.join(f'<li>{e(i.get("title") or i.get("issue"))}</li>' for i in issues) + '</ol></div>']
     for n, i in enumerate(issues, 1):
-        links = ' · '.join(f'<a href="{e(items[k - 1]["url"])}" style="color:#CE6719">{e(items[k - 1]["source"] or "원문")}</a>' for k in i.get('ids', []) if 0 < k <= len(items))
-        h.append(f'<li style="margin-bottom:14px"><b>[{e(i.get("category"))}] {e(i.get("issue"))}</b>{" · 초안 아래" if n <= len(drafts) else ""}<br>'
-                 f'<span style="color:#4e5968">왜 지금: {e(i.get("why"))}<br>우리 각도: {e(i.get("angle"))}<br>더 찾을 자료: {e(i.get("more"))}</span><br>'
-                 f'<small>{links}</small></li>')
-    h.append('</ol>')
+        links = ''.join(f'<a href="{e(items[k - 1]["url"])}" style="color:#8b95a1;margin-right:12px">{e(items[k - 1]["source"] or "원문")}</a>'
+                        for k in i.get('ids', []) if isinstance(k, int) and 0 < k <= len(items))
+        row = lambda lab, v: f'<tr><td style="color:#CE6719;font-weight:700;white-space:nowrap;width:1%;vertical-align:top;padding:3px 14px 3px 0">{lab}</td><td style="color:#4e5968;padding:3px 0">{e(v)}</td></tr>' if v else ''
+        h.append(f'<div style="{card}"><div style="font-size:13px"><b style="color:#EF920E">{n:02d}</b> '
+                 f'<span style="background:#FFF4E6;color:#CE6719;font-weight:700;padding:2px 9px;border-radius:999px">{e(i.get("category"))}</span></div>'
+                 f'<div style="font-size:19px;font-weight:800;line-height:1.4;margin:8px 0">{e(i.get("title") or i.get("issue"))}</div>'
+                 f'<div style="margin:0 0 10px">{e(i.get("fact") or i.get("why"))}</div>'
+                 '<table style="border-top:1px solid #E8E1D7;width:100%;font-size:15px;padding-top:6px;border-collapse:collapse">'
+                 + row('더할 방향', i.get('angle')) + row('더 찾을 것', i.get('more')) + row('인터뷰', i.get('people')) +
+                 f'</table><div style="font-size:13px;margin-top:10px">{links}</div></div>')
     for n, dr in enumerate(drafts, 1):
         if not dr: continue
-        warn = f' · <b style="color:#d22">원문과 비슷한 문장 {dr["similar"]:.0%}, 더 고쳐 주세요</b>' if dr['similar'] >= .3 else ''
         body = ''.join(f'<p style="margin:0 0 12px">{e(p)}</p>' for p in dr.get('body', '').split('\n') if p.strip())
-        body = body.replace('【가안】', '<b style="background:#FFF4E6;color:#CE6719">【가안】</b>')
-        h.append(f'<hr style="border:0;border-top:2px solid #191f28;margin:36px 0 20px">'
-                 f'<p style="color:#EF920E;font-weight:700;margin:0">초안 {n} · {e(dr.get("category"))} · {dr["chars"]:,}자{warn}</p>'
-                 f'<h2 style="font-size:22px;margin:6px 0">{e(dr.get("title"))}</h2>'
-                 + ''.join(f'<p style="margin:0;color:#4e5968;font-weight:600">{e(x)}</p>' for x in dr.get('deck') or [])
-                 + f'<div style="margin-top:16px">{body}</div>'
-                 + '<p style="margin:16px 0 4px;font-weight:700">채울 것</p><ul>' + ''.join(f'<li>{e(x)}</li>' for x in dr.get('needs') or []) + '</ul>'
-                 + '<p style="color:#8b95a1;font-size:13px">원문: ' + ' · '.join(f'<a href="{e(s["url"])}" style="color:#8b95a1">{e(s["title"][:40])}</a>' for s in dr['sources']) + '</p>')
-    h.append('<p style="color:#8b95a1;font-size:13px;margin-top:32px">매일 아침 6시 30분에 자동으로 와요. 【가안】은 지어낸 말이라 실제 취재로 바꿔야 해요.</p></div>')
-    text = f'{d} 쓸 만한 이슈\n' + '\n'.join(f'{n}. [{i.get("category")}] {i.get("issue")}' for n, i in enumerate(issues, 1))
-    for dr in drafts:
-        if dr: text += f'\n\n=== {dr.get("title")}\n' + '\n'.join(dr.get('deck') or []) + '\n\n' + dr.get('body', '')
-    return f'[아침 데스크] {d} 이슈 {len(issues)}개 · 기사 초안 {len([x for x in drafts if x])}편', text, ''.join(h)
+        h.append(f'<div style="{card}"><div style="color:#EF920E;font-weight:700">초안 {n} · {e(dr.get("category"))} · {dr["chars"]:,}자</div>'
+                 f'<div style="font-size:19px;font-weight:800;margin:6px 0">{e(dr.get("title"))}</div>'
+                 + ''.join(f'<div style="color:#4e5968;font-weight:600">{e(x)}</div>' for x in dr.get('deck') or []) + f'<div style="margin-top:14px">{body}</div></div>')
+    h.append('<div style="color:#8b95a1;font-size:13px;margin-top:20px">매일 아침 6시 30분에 와요. 고른 기준: 소비자 지갑·피해에 닿고 숫자나 기업 실명이 있는 것.</div></div>')
+    text = f'{d} 경제·소비자 이슈\n\n' + '\n\n'.join(
+        f'{n}. [{i.get("category")}] {i.get("title") or i.get("issue")}\n{i.get("fact", "")}\n- 더할 방향: {i.get("angle", "")}\n- 더 찾을 것: {i.get("more", "")}\n- 인터뷰: {i.get("people", "")}\n'
+        + '\n'.join('  ' + items[k - 1]['url'] for k in i.get('ids', []) if isinstance(k, int) and 0 < k <= len(items)) for n, i in enumerate(issues, 1))
+    return f'[아침 데스크] {d} 경제·소비자 이슈 {len(issues)}', text, ''.join(h)
 
 
 def run(n_drafts=DRAFTS, dry=False, today=None, send=None):
