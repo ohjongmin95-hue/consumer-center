@@ -1,4 +1,5 @@
 {% extends 'moa_base.html' %}
+{% block ld %}<script type="application/ld+json">{{ {"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"모아밥","url":url_for('home',_external=True),"inLanguage":"ko"},{"@type":"Organization","name":"모아밥","url":url_for('home',_external=True),"logo":url_for('static',filename='icon.png',_external=True),"areaServed":area}]}|tojson }}</script>{% endblock %}
 {% block body %}
 <header class="top"><div class="loc"><a class="logo" href="{{ url_for('home') }}" aria-label="모아밥 홈">{{ mark(28) }}모아밥</a><a class="where-pill" href="{{ url_for('pick') }}">{% if b %}🏢 {{ b.name }}{% else %}📍 {{ area }}{% endif %} ▾</a></div></header>
 <main class="wrap">

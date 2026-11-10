@@ -1,6 +1,6 @@
 {% extends 'moa_base.html' %}
 {% block title %}주문 상태 | 모아밥{% endblock %}
-{% block head %}{% if o.status not in ('done', 'cancel') %}<meta http-equiv="refresh" content="60">{% endif %}{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% if o.status not in ('done', 'cancel') %}<meta http-equiv="refresh" content="60">{% endif %}{% endblock %}
 {% block body %}
 <header class="top"><div class="loc">주문 상태</div></header>
 <main class="wrap">

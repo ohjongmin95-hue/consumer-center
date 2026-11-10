@@ -63,6 +63,7 @@ def create_app(db_path=None):
     DB = Path(db_path or os.getenv('MOABAP_DB', str(BASE.parent / 'moabap.sqlite3')))
     IMG = DB.parent / 'moabap-img'  # 세트 사진 (DB 옆 폴더)
     moa.config['MAX_CONTENT_LENGTH'] = 12 * 1024 * 1024
+    moa.config['SEND_FILE_MAX_AGE_DEFAULT'] = 7 * 86400  # moa.css 는 ?v=수정시각 이라 바뀌면 바로 새로 받음
     FIRST_COUPON = int(os.getenv('MOABAP_FIRST_COUPON', '2000'))
     AREA = os.getenv('MOABAP_AREA', '광교중앙역 주변')
     # 같은 건물·같은 시간에 모인 사람 수별 할인 (다음 주문에서 빼 줌). '5:1000,10:2000' = 5명 넘으면 1,000원, 10명 넘으면 2,000원
@@ -120,6 +121,22 @@ def create_app(db_path=None):
             saved = {r['k'][3:]: r['v'] for r in db.execute("SELECT k,v FROM conf WHERE k LIKE 'co_%'")}
         return {k: saved.get(k) or os.getenv('MOABAP_CO_' + k.upper(), '') for k in CO_KEYS}
 
+    @moa.after_request
+    def squeeze(resp):
+        """글자 응답(HTML·CSS·JS·XML)은 gzip으로 줄여 보낸다 (nginx 설정 없이도 빠르게)."""
+        mt = resp.mimetype or ''
+        if (resp.status_code != 200 or 'gzip' not in request.headers.get('Accept-Encoding', '') or resp.headers.get('Content-Encoding')
+                or not (mt.startswith('text/') or mt in ('application/javascript', 'application/xml', 'application/json'))):
+            return resp
+        resp.direct_passthrough = False
+        data = resp.get_data()
+        if len(data) > 1024:
+            import gzip
+            resp.set_data(gzip.compress(data, 6))
+            resp.headers['Content-Encoding'] = 'gzip'
+            resp.headers['Vary'] = 'Accept-Encoding'
+        return resp
+
     def conf_get(k):
         with conn() as db:
             r = db.execute('SELECT v FROM conf WHERE k=?', (k,)).fetchone()
@@ -139,10 +156,8 @@ def create_app(db_path=None):
     def sitemap():
         with conn() as db:
             sets = db.execute('SELECT s.id FROM sets s JOIN shops h ON h.id=s.shop_id WHERE s.active=1 AND h.active=1').fetchall()
-            places = db.execute('SELECT id,slug FROM places WHERE active=1').fetchall()
         urls = [url_for(e, _external=True) for e in ('home', 'about', 'join', 'refund', 'privacy')]
         urls += [url_for('set_page', sid=r['id'], _external=True) for r in sets]
-        urls += [url_for('building_page', key=r['slug'] or r['id'], _external=True) for r in places]
         xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + ''.join(f'<url><loc>{u}</loc></url>\n' for u in urls) + '</urlset>\n'
         return moa.response_class(xml, mimetype='application/xml')
 
