@@ -64,7 +64,8 @@ with conn() as db:
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
     if 'rating' not in cols: db.execute('ALTER TABLE cases ADD COLUMN rating INTEGER')  # 제보자가 처리 결과를 확인하며 남긴 만족도 1~5
-    if 'title_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN title_hidden INTEGER NOT NULL DEFAULT 0')  # 비밀글 제목·업체명을 목록에서 숨김(운영자)
+    if 'title_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN title_hidden INTEGER NOT NULL DEFAULT 0')
+    if 'company_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN company_hidden INTEGER NOT NULL DEFAULT 0')  # 운영자가 업체명을 공개 화면에서 가림 (2026-11-10)  # 비밀글 제목·업체명을 목록에서 숨김(운영자)
     for col in ('article_url','article_title','article_sent_at'):  # 제보가 기사로 나가면 기사 주소·제목 (운영자 2026-11-10: 제보자에게 알림톡으로 기사 보내기)
         if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,channel TEXT NOT NULL,event TEXT NOT NULL,target TEXT NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT \'\',created TEXT NOT NULL)')
@@ -547,14 +548,14 @@ def report_rows(where='1=1',args=(),limit=20,offset=0,order='id DESC'):
     # 모든 제보를 번호·분류·단계·접수일로 보여 줌. 제목·업체명은 공개 제보(운영자가 내리지 않음)와
     # 비밀글(운영자가 숨기지 않음)에 보이고, 비밀글은 눌러도 본문 대신 비밀번호 창이 열림.
     with conn() as db:
-        rows=db.execute('SELECT id,category,industry,company,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE ('+where+') AND '+PUBLIC_VALID+' ORDER BY '+order+' LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
+        rows=db.execute('SELECT id,category,industry,company,company_hidden,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE ('+where+') AND '+PUBLIC_VALID+' ORDER BY '+order+' LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
     today=datetime.date.today().isoformat()
     def when(created):
         # 오늘 들어온 제보는 시각(15:48), 그 전은 날짜(10.08)로 짧게 표시.
         return created[11:16] if created[:10]==today and len(created)>=16 else created[5:10].replace('-','.')
     def shown(r):return list_title_shown(r)
     return [dict(no=r['id'],cat=jebo.cat_label(r['category']),secret=not r['public_consent'],pending=is_pending(r),held=bool(is_pending(r) and (r['reviewed_at'] or r['review'])),title=(r['public_subject'] or mask_personal(r['subject'])) if shown(r) else None,
-                 company=mask_personal(r['company']) if shown(r) else None,
+                 company=pub_company(r) if shown(r) else None,
                  status=r['status'],step=jebo.pub_step(jebo.my_step(r)),created=r['created'][:10],when=when(r['created']),industry=r['industry'] or '') for r in rows]
 # 운영자 2026-11-03: 검은고양이처럼 제보 목록을 단계별로 (공개 3단계 + 기업 답변). 값: (탭 이름, SQL 조건)
 _DONE="(status='종결' OR COALESCE(confirmed_at,'')<>'')"
@@ -637,6 +638,11 @@ def mask_personal(text):
     # 공개 화면에서만 전화번호·이메일로 보이는 부분을 가림 (원문은 그대로 보관).
     return EMAIL_RE.sub('[이메일 비공개]',PHONE_RE.sub('[전화번호 비공개]',text or ''))
 
+ANON_COMPANY='업체명 비공개'
+def company_hidden(r):return bool('company_hidden' in r.keys() and r['company_hidden'])
+def pub_company(r):
+    # 공개 화면(목록·상세·검색·RSS)에 보일 업체명. 운영자가 '업체명 숨기기'를 켰으면 '업체명 비공개' (운영자 2026-11-10)
+    return ANON_COMPANY if company_hidden(r) else mask_personal(r['company'])
 @app.route('/reports/<int:case_id>')
 def public_case(case_id):
     with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=? AND public_consent=1 AND published=1',(case_id,)).fetchone()
@@ -653,7 +659,8 @@ def public_case(case_id):
         co=jebo.visible_company(db,case['company_id']) if case['company_id'] else None
         author=db.execute("SELECT id,nickname FROM users WHERE id=? AND status='active'",(case['user_id'],)).fetchone() if case['user_id'] else None  # 작성자 닉네임 (목록 카드와 같게)
     text=jebo.pub(case,mask_personal)
-    return render_template('public_case.html',case=case,answers=answers,grp=grp,group_statuses=GROUP_STATUSES,company=co['name'] if co else mask_personal(case['company']),co=co,
+    if company_hidden(case):co=None
+    return render_template('public_case.html',case=case,answers=answers,grp=grp,group_statuses=GROUP_STATUSES,company=ANON_COMPANY if company_hidden(case) else co['name'] if co else mask_personal(case['company']),co=co,
                            subject=text['subject'],description=text['body'],request_text=text['request'],events=events,step=step,has_answer=has_answer,category=jebo.cat_label(case['category']),author=author)
 
 CUSTOM_SLUG=re.compile(r'^[a-z0-9][a-z0-9-]{0,39}$')
@@ -743,7 +750,7 @@ def rss_xml():
     with conn() as db:
         for r in db.execute('SELECT * FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 30'):
             text=jebo.pub(r,mask_personal)
-            co_name=mask_personal(r['company']);items.append((r['created'],text['subject']+(f' - {co_name} 소비자 제보' if co_name and co_name not in text['subject'] else ''),url_for('public_case',case_id=r['id'],_external=True),text['body']))
+            co_name='' if company_hidden(r) else mask_personal(r['company']);items.append((r['created'],text['subject']+(f' - {co_name} 소비자 제보' if co_name and co_name not in text['subject'] else ''),url_for('public_case',case_id=r['id'],_external=True),text['body']))
         for r in db.execute('SELECT id,title,body,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 30'):
             items.append((r['created'],r['title'],url_for('board_post',post_id=r['id'],_external=True),r['body']))
         if 'life_article' in app.view_functions:  # 소보루 생활정보 기사도 본문까지
@@ -2156,6 +2163,8 @@ def report_detail(case_id):
                 published=int(bool(request.form.get('published'))) if case['public_consent'] and case['review'] not in jebo.NOT_VALID else 0
                 title_hidden=0  # 목록 제목·업체명은 늘 보임 (예전 '숨김' 설정은 쓰지 않음)
                 db.execute('UPDATE cases SET status=?,assignee=?,published=?,title_hidden=? WHERE id=?',(status,assignee,published,title_hidden,case_id))
+                co_hidden=int(bool(request.form.get('company_hidden')))
+                if co_hidden!=case['company_hidden']:db.execute('UPDATE cases SET company_hidden=? WHERE id=?',(co_hidden,case_id));log_case(db,case_id,'공개 화면에서 업체명 숨김' if co_hidden else '공개 화면에 업체명 표시')
                 if published:art_later(case_id)
                 if not published and title_hidden!=case['title_hidden']:log_case(db,case_id,'목록에서 제목·업체명 숨김' if title_hidden else '목록에 제목·업체명 표시')
                 if status!=case['status']:

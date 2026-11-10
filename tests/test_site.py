@@ -1778,6 +1778,25 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(sent[0][1]['keyLocation'], 'https://consumerjebo.co.kr/%s.txt' % k)
         self.assertEqual(len(out), 2)
 
+    def test_company_hidden(self):
+        # 운영자 2026-11-10: 관리자가 '업체명 숨기기'를 켜면 공개 목록·상세에 업체명 대신 '업체명 비공개'
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '숨김테스트몰', 'subject': '업체명 숨김 제보', 'description': '본문', 'reporter_name': '김소비',
+                'phone': '010-2222-5555', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db:
+            case_id = db.execute("SELECT id FROM cases WHERE subject='업체명 숨김 제보'").fetchone()['id']
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'publish_review', 'decision': 'approve'})
+        self.assertIn('숨김테스트몰', self.client.get('/reports/%d' % case_id).get_data(as_text=True))
+        self.assertIn('업체명 숨기기', admin.get('/admin/reports/%d' % case_id).get_data(as_text=True))
+        self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '접수', 'assignee': '', 'published': 'on', 'company_hidden': 'on'})
+        page = self.client.get('/reports/%d' % case_id).get_data(as_text=True)
+        self.assertNotIn('숨김테스트몰', page)
+        self.assertIn('업체명 비공개', page)
+        self.assertNotIn('숨김테스트몰', self.client.get('/reports').get_data(as_text=True))
+        self.assertNotIn('숨김테스트몰', self.client.get('/rss.xml').get_data(as_text=True))
+
     def test_aligo_vendor(self):
         # MSG_VENDOR=aligo: 알리고에서 승인된 템플릿 문구를 받아 변수를 채워 보냄. 솔라피 값은 그대로 둬도 안 씀
         notify, bizmsg = self.site.notify, self.site.notify.bizmsg

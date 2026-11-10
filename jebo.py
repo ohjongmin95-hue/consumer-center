@@ -269,7 +269,7 @@ def install(S):
             if not co:abort(404)
             st=company_stats(db,company_id);gr=company_grade(db,company_id)
             # 비밀글·공개 전 제보도 목록에 (운영자 요청 2026-10-30): 제목·분류·단계만 보이고 내용은 잠금. 반려·중복만 뺌
-            where="company_id=? AND review NOT IN ('rejected','duplicate')";args=[company_id]
+            where="company_id=? AND review NOT IN ('rejected','duplicate') AND COALESCE(company_hidden,0)=0";args=[company_id]  # 업체명 숨긴 제보는 기업 화면에 안 보임
             if cat in S.report_categories():
                 where+=f" AND category IN ({','.join('?'*len(cat_names(cat)))})";args+=cat_names(cat)
             else:cat=''

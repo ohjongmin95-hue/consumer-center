@@ -104,9 +104,9 @@ def install(S):
         with conn() as db:
             if only in ('', 'report'):
                 for r in db.execute("""SELECT * FROM cases WHERE public_consent=1 AND published=1 AND (public_subject LIKE ? ESCAPE '\\' OR (public_subject='' AND subject LIKE ? ESCAPE '\\')
-                        OR company LIKE ? ESCAPE '\\') ORDER BY id DESC LIMIT ?""", (lk, lk, lk, per)):
+                        OR (company LIKE ? ESCAPE '\\' AND COALESCE(company_hidden,0)=0)) ORDER BY id DESC LIMIT ?""", (lk, lk, lk, per)):
                     t = jebo.pub(r, S.mask_personal)
-                    out['report'].append({'href': f'/reports/{r["id"]}', 'title': t['subject'], 'sub': S.mask_personal(r['company']), 'text': snippet(t['body'], q), 'tag': jebo.cat_label(r['category'])})
+                    out['report'].append({'href': f'/reports/{r["id"]}', 'title': t['subject'], 'sub': S.pub_company(r) if hasattr(S, 'pub_company') else S.mask_personal(r['company']), 'text': snippet(t['body'], q), 'tag': jebo.cat_label(r['category'])})
             if only in ('', 'company'):
                 for c in db.execute("""SELECT co.*,(SELECT COUNT(*) FROM cases c WHERE c.company_id=co.id AND c.public_consent=1 AND c.published=1) AS n_public FROM companies co
                         WHERE co.status IN ('active','listed') AND (co.name LIKE ? ESCAPE '\\' OR co.brand LIKE ? ESCAPE '\\' OR co.biz_name LIKE ? ESCAPE '\\' OR co.aliases LIKE ? ESCAPE '\\')
