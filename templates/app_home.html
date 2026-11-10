@@ -25,15 +25,7 @@
 
   <section class="ap-card ap-list">
     <nav class="ap-tabs" aria-label="{{ ui('app.list', '고발 목록') }}">{% for k, label in tabs.items() %}<a href="{{ url_for('home', t=k) }}"{% if k == tab %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</nav>
-    {% set tc = talk_counts(cases|map(attribute='no')|list) %}
-    {% for c in cases %}{% set open = c.title and not c.secret %}{% set pic = og_photo(c.no) if open else '' %}{% set src = avatar_url(c.uid) if c.uid and avatar_url is defined else '' %}
-    {% if open %}<a class="ap-case" href="{{ url_for('public_case', case_id=c.no) }}">{% else %}<div class="ap-case">{% endif %}
-      <div class="ap-who">{% if src %}<img class="ap-av" src="{{ src }}" alt="">{% else %}<span class="ap-av c{{ c.no % 6 }}" aria-hidden="true">{{ (c.nick or '익명')[:1] }}</span>{% endif %}<span><b>{{ c.nick or ui('home.card_anon', '익명 소비자') }}</b><small>{{ c.when }}</small></span><em class="ap-st s{{ c.step }}">{{ c.status }}</em></div>
-      <div class="ap-cb"><div class="ap-ct"><b>{% if c.title %}{% if c.company %}<span class="ap-co-t">[{{ c.company }}]</span> {% endif %}{{ c.title }}{% else %}{{ ui('app.secret', '비공개 고발이에요') }}{% endif %}</b>
-        <p>{{ c.cat }}{% set t = tc.get(c.no) %}{% if t %} · {{ ui('app.metoo', '공감') }} {{ t[0] }} · {{ ui('app.talk', '댓글') }} {{ t[1] }}{% endif %}</p></div>
-        {% if pic %}<img class="ap-pic" src="{{ pic }}" alt="" loading="lazy">{% endif %}</div>
-    {% if open %}</a>{% else %}</div>{% endif %}
-    {% else %}<p class="ap-empty">{{ ui('app.list_empty', '아직 여기에 올라온 고발이 없어요.') }}</p>{% endfor %}
+    {% with cases = cases %}{% include 'app_feed.html' %}{% endwith %}
     <a class="ap-all" href="{{ url_for('reports', sort='hot' if tab == 'hot' else None, st=tab if tab in ('answer', 'done') else None) }}">{{ ui('app.all', '전체 고발 보기') }}</a>
   </section>
 </main>

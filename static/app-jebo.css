@@ -156,3 +156,11 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-info dd.hl,.ap-info dd.hl a{color:#E07B00}
 .ap-info dd.st{color:#1B64DA}
 .ap-body .pf .pf-co{display:none}  /* 고발 대상은 위 고발 정보 표에 있음 */
+/* 운영자 2026-11-11: 커뮤니티라 본문이 잘 보이게. 목록 미리보기 = 공동 대응 카드 글과 같은 크기, 상세 본문 = 제목 바로 아래 크게 */
+.ap-ct p.ap-cx{font-size:16px;line-height:25px;color:#333D48;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:keep-all;text-wrap:pretty}
+.ap-body .pf .ap-body-t{margin:20px 0 4px;font-size:18px;line-height:30px;color:#191F28;white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere;text-wrap:pretty}
+.ap-body .pf .ap-want-only .pc-want{margin-top:0}
+.ap-feed{background:#fff;border-radius:24px;padding:4px 20px}
+.ap-feed .ap-case:first-child{border-top:0}
+.ap-body .ap-case .ap-ct p:not(.ap-cx){color:#8B95A1;font-size:13px}
+.ap-body .ap-feed{border-radius:24px;overflow:hidden}

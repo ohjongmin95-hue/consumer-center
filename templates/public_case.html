@@ -19,7 +19,8 @@
       <span class="pc-who-t"><b>{{ author['nickname'] if author else ui('home.card_anon', '익명 소비자') }}</b><time datetime="{{ case['created'] }}">{{ case['created'][:10]|replace('-', '.') }}{% if case['occurred_on'] %} · {{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on']|replace('-', '.') }}{% endif %}<span class="pc-views"> · {{ ui('case.views', '조회') }} {{ '{:,}'.format(case['views'] or 0) }}</span></time></span>
     </div>
   </header>
-  {% if app_jebo() %}{# 운영자 2026-11-11: 앱에서는 헤이마오 고발 상세처럼 고발 정보를 큰 표로 먼저 (app-jebo.css) #}
+  {% if app_jebo() %}{# 운영자 2026-11-11: 커뮤니티라 앱에서는 본문을 제목 바로 아래 크게, 그다음 헤이마오식 고발 정보 표 (app-jebo.css) #}
+  <p class="ap-body-t">{{ description }}</p>
   <dl class="ap-info">
     <div><dt>{{ ui('app.i_no', '고발 번호') }}</dt><dd>{{ case['id'] }}</dd></div>
     <div><dt>{{ ui('app.i_co', '고발 대상') }}</dt><dd class="hl">{% if co %}<a href="{{ url_for('company_page', company_id=co['id']) }}">{{ company }}</a>{% else %}{{ company }}{% endif %}</dd></div>
@@ -40,8 +41,8 @@
   </section>
 
   <div class="pc-main">
-    <section class="pc-sec">
-      <p class="pc-body">{{ description }}</p>
+    <section class="pc-sec{{ ' ap-want-only' if app_jebo() }}">
+      {% if not app_jebo() %}<p class="pc-body">{{ description }}</p>{% endif %}
       <div class="pc-want pf-want"><b>{{ ui('report.f_request', '원하는 해결 방법') }}</b><p class="pc-body">{{ request_text }}</p></div>
     </section>
 

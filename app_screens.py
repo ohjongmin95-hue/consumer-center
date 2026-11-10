@@ -57,17 +57,25 @@ def install(S):
         return db.execute("""SELECT g.id,g.title,g.company,(SELECT COUNT(*) FROM group_members m WHERE m.group_id=g.id) AS n
             FROM damage_groups g WHERE g.status IN ('open','active') ORDER BY n DESC,g.id DESC LIMIT ?""", (limit,)).fetchall()
 
+    def feed(rows):
+        """헤이마오 목록처럼 글쓴이(닉네임·얼굴)와 본문 미리보기를 붙임 (홈·고발 목록 app_feed.html). 사진은 템플릿에서 og_photo로 (가린 사본만)"""
+        rows = [dict(r) for r in rows]
+        ids = [r['no'] for r in rows]
+        if not ids: return rows
+        with S.conn() as db:
+            who = {r['id']: r for r in db.execute("SELECT c.*,u.id AS uid,u.nickname FROM cases c LEFT JOIN users u ON u.id=c.user_id AND u.status='active' WHERE c.id IN (%s)" % ','.join('?' * len(ids)), ids)}
+        for r in rows:
+            w = who.get(r['no']); r['uid'] = w['uid'] if w else None; r['nick'] = (w['nickname'] if w else '') or ''
+            # 운영자 2026-11-11: 커뮤니티라 목록에서도 본문이 보여야 함 (공개 글만, 개인정보 가린 본문)
+            r['body'] = S.jebo.pub(w, S.mask_personal)['body'] if w and r.get('title') and not r.get('secret') and not r.get('pending') else ''
+        return rows
+
+    app.jinja_env.globals['app_feed'] = feed
+
     def home_list(tab):
         if tab == 'hot': rows = S.report_rows(order=S.HOT_ORDER, limit=6)
         elif tab in ('answer', 'done'): rows = S.report_rows(S.REPORT_STAGES[tab][1], (), 6)
         else: rows = S.report_rows(limit=6)
-        # 헤이마오 목록처럼 글쓴이(닉네임·얼굴)와 공감·댓글 수를 붙임. 사진은 템플릿에서 og_photo로 (가린 사본만)
-        ids = [r['no'] for r in rows]
-        if ids:
-            with S.conn() as db:
-                who = {r['id']: r for r in db.execute("SELECT c.id,u.id AS uid,u.nickname FROM cases c LEFT JOIN users u ON u.id=c.user_id AND u.status='active' WHERE c.id IN (%s)" % ','.join('?' * len(ids)), ids)}
-            for r in rows:
-                w = who.get(r['no']); r['uid'] = w['uid'] if w else None; r['nick'] = (w['nickname'] if w else '') or ''
         return rows
 
     def app_home():
