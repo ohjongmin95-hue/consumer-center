@@ -17,7 +17,7 @@ from flask import Response, flash, redirect, render_template, request, url_for
 
 DEFAULTS = {
     'title': 'SOBORU 소보루 매거진',
-    'description': '소비를 보는 새로운 루트, 소보루 매거진. 쇼핑, 통신, 여행, 음식, 금융까지 사고, 쓰고, 고르는 매일의 소비를 소비자의 눈으로 보는 소비자 라이프스타일 매거진이에요.',
+    'description': '소비를 보는 새로운 루트, 소보루 매거진. 쇼핑·통신·여행·음식·금융까지 매일의 소비를 소비자의 눈으로 봐요.',
     'naver': '',
     'google': '',
 }
