@@ -1728,6 +1728,43 @@ class SiteTest(unittest.TestCase):
                                                    ('kakao', 'message', 'sent'), ('email', 'message', 'sent'), ('kakao', 'message', 'failed'), ('email', 'message', 'sent')])
         notify.ASYNC = True
 
+    def test_company_notice_phone(self):
+        # 운영자 2026-11-10: 기업에 휴대폰 번호를 넣어 두면 기업 안내가 카카오톡 채널(템플릿 없으면 문자)로도 감
+        notify = self.site.notify
+        notify.ASYNC = False
+        sent = []
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '폰안내몰', 'subject': '휴대폰 안내 제보', 'description': 'C', 'reporter_name': '김소비',
+                'phone': '010-2222-7777', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
+        keys = {'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_PFID': 'pf', 'SOLAPI_SENDER': '0212345678'}
+        try:
+            with patch.dict(os.environ, keys), patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: sent.append(a) or {'statusCode': '2000'}), \
+                 patch.object(self.site.company_mail, 'find', return_value=('', '')):
+                self.post_form(self.client, '/report', base)
+                with self.site.conn() as db:
+                    case_id = db.execute("SELECT id FROM cases WHERE subject='휴대폰 안내 제보'").fetchone()['id']
+                    db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES('폰안내몰','','listed','','','','2026-11-10')")
+                    co = db.execute("SELECT id FROM companies WHERE name='폰안내몰'").fetchone()['id']
+                    db.execute('UPDATE cases SET company_id=? WHERE id=?', (co, case_id))
+                admin = self.login_admin()
+                self.post_form(admin, '/admin/companies', {'action': 'profile', 'id': co, 'name': '폰안내몰', 'official_email': '', 'notice_phone': '02-123-4567'})
+                with self.site.conn() as db:
+                    self.assertEqual(db.execute('SELECT notice_phone FROM companies WHERE id=?', (co,)).fetchone()[0], '')
+                self.post_form(admin, '/admin/companies', {'action': 'profile', 'id': co, 'name': '폰안내몰', 'official_email': '', 'notice_phone': '010-3333-4444'})
+                self.assertIn('카카오톡(010****4444)', admin.get('/admin/reports/%d' % case_id).get_data(as_text=True))
+                sent.clear()
+                self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'notice'})
+            body = json.dumps([a[1] for a in sent], ensure_ascii=False)
+            self.assertIn('01033334444', body)
+            self.assertIn('안녕하세요. 소비자고발제보센터(소비자를위한신문)입니다.', body)
+            self.assertIn('/company/%d/' % case_id, body)
+            with self.site.conn() as db:
+                n = db.execute("SELECT status,target FROM company_notices WHERE case_id=?", (case_id,)).fetchone()
+                fw = db.execute('SELECT forwarded_at FROM cases WHERE id=?', (case_id,)).fetchone()[0]
+            self.assertEqual(n['status'], '보냄'); self.assertIn('4444', n['target']); self.assertTrue(fw)
+        finally:
+            notify.ASYNC = True
+
     def test_article_notice(self):
         # 운영자 2026-11-10: 제보가 기사로 나가면 기사 주소를 넣고 제보자에게 알림톡(템플릿 없으면 문자)으로 기사 링크를 보냄
         notify = self.site.notify
