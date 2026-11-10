@@ -80,9 +80,17 @@ def google_news(q):
     return out
 
 
+WIRES = ('yna.co.kr', 'news1.kr', 'newsis.com', '연합뉴스', '뉴스1', '뉴시스')  # 통신사 기사는 한 곳만 써도 받음
+
+
+def is_wire(it): return any(w in (it.get('source') or '') or w in (it.get('url') or '') for w in WIRES)
+
+
 def gather(hours=30):
+    """최근 뉴스를 같은 일끼리 묶음. 운영자 2026-11-10: 한 언론만 낸 기사(단독·자체 취재)는 받지 않음 →
+    두 곳 넘는 언론이 같이 썼거나 연합뉴스·뉴스1·뉴시스가 쓴 것만 남김."""
     since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours)
-    items, seen = [], []
+    groups = []
     use_naver = bool(env('NAVER_HUB_CLIENT_ID'))
     for q in QUERIES:
         got = naver_news(q) if use_naver else []
@@ -90,10 +98,19 @@ def gather(hours=30):
         for it in got:
             if it['when'] < since or not it['title']: continue
             key = re.sub(r'\W', '', it['title'])
-            if any(difflib.SequenceMatcher(None, key, k).ratio() > .7 for k in seen): continue
-            seen.append(key); it['q'] = q; items.append(it)
-    items.sort(key=lambda i: i['when'], reverse=True)
-    return items[:150]
+            g = next((g for g in groups if difflib.SequenceMatcher(None, key, g['key']).ratio() > .55
+                      or len(set(it['title'].split()) & set(g['first']['title'].split())) >= 4), None)
+            if g is None: groups.append({'key': key, 'first': it, 'all': [it]})
+            elif it['url'] not in {x['url'] for x in g['all']}: g['all'].append(it)
+    items = []
+    for g in groups:
+        outlets = {x['source'] for x in g['all'] if x['source']}
+        wires = [x for x in g['all'] if is_wire(x)]
+        if len(outlets) < 2 and not wires: continue
+        lead = (wires or g['all'])[0]
+        items.append(dict(lead, outlets=len(outlets), also=[x for x in g['all'] if x is not lead][:4], wire=bool(wires)))
+    items.sort(key=lambda i: (i['outlets'], i['when']), reverse=True)
+    return items[:120]
 
 
 def page_text(url, limit=3500):
@@ -199,8 +216,8 @@ def render(today, issues, items, drafts):
          f'<div style="{card};margin-top:18px"><b>오늘 목차</b><ol style="margin:6px 0 0;padding-left:20px;color:#4e5968">'
          + ''.join(f'<li>{e(i.get("title") or i.get("issue"))}</li>' for i in issues) + '</ol></div>']
     for n, i in enumerate(issues, 1):
-        links = ''.join(f'<a href="{e(items[k - 1]["url"])}" style="color:#8b95a1;margin-right:12px">{e(items[k - 1]["source"] or "원문")}</a>'
-                        for k in i.get('ids', []) if isinstance(k, int) and 0 < k <= len(items))
+        arts = [a for k in i.get('ids', []) if isinstance(k, int) and 0 < k <= len(items) for a in [items[k - 1]] + items[k - 1].get('also', [])][:5]
+        links = ''.join(f'<a href="{e(a["url"])}" style="color:#8b95a1;margin-right:12px">{e(a["source"] or "원문")}</a>' for a in arts)
         row = lambda lab, v: f'<tr><td style="color:#CE6719;font-weight:700;white-space:nowrap;width:1%;vertical-align:top;padding:3px 14px 3px 0">{lab}</td><td style="color:#4e5968;padding:3px 0">{e(v)}</td></tr>' if v else ''
         h.append(f'<div style="{card}"><div style="font-size:13px"><b style="color:#EF920E">{n:02d}</b> '
                  f'<span style="background:#FFF4E6;color:#CE6719;font-weight:700;padding:2px 9px;border-radius:999px">{e(i.get("category"))}</span></div>'
@@ -229,7 +246,7 @@ def run(n_drafts=DRAFTS, dry=False, today=None, send=None):
         for n, it in enumerate(items, 1): print(n, it['when'].strftime('%m-%d %H:%M'), it['source'], it['title'])
         return {'items': len(items)}
     if len(items) < 5: raise RuntimeError(f'모은 뉴스가 {len(items)}개뿐이에요')
-    listing = '\n'.join(f'{n}. {it["title"]} — {it["summary"][:120]}' for n, it in enumerate(items, 1))
+    listing = '\n'.join(f'{n}. {it["title"]} ({it["outlets"]}개 언론{", 통신사" if it.get("wire") else ""}) — {it["summary"][:120]}' for n, it in enumerate(items, 1))
     issues = [i for i in (chat(PICK_SYSTEM, '[지난 하루 뉴스]\n' + listing, 3000).get('issues') or []) if isinstance(i, dict)][:PICKS]
     drafts = []
     for i in issues[:n_drafts]:
