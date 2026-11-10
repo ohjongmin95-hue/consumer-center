@@ -12,10 +12,10 @@ function parts(url: string): [string, string] {
   return m ? [m[1].toLowerCase().replace(/^www\./, ''), m[2] || '/'] : ['', ''];
 }
 
-/** 모아밥 화면인지: moabap.co.kr·moabap.kr, 또는 임시 주소 consumerjebo.co.kr/moabap */
+/** 모아밥 화면인지: moabap.com(운영자 11/11 구매)·moabap.co.kr·moabap.kr, 또는 임시 주소 consumerjebo.co.kr/moabap */
 export function isOwn(url: string): boolean {
   const [h, p] = parts(url);
-  if (h === 'moabap.co.kr' || h === 'moabap.kr' || h.endsWith('.moabap.co.kr')) return true;
+  if (['moabap.com', 'moabap.co.kr', 'moabap.kr'].includes(h)) return true;
   return h === 'consumerjebo.co.kr' && (p === '/moabap' || p.startsWith('/moabap/'));
 }
 

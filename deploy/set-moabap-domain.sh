@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 모아밥 도메인(예: moabap.co.kr)을 이 서버에 연결합니다. (운영자 2026-11-11)
+# 모아밥 도메인(moabap.com, 운영자 2026-11-11 구매)을 이 서버에 연결합니다. (운영자 2026-11-11)
 # 기존 nginx 파일·인증서는 건드리지 않고, 새 파일 하나와 새 인증서 하나만 만듭니다.
 #   1) 도메인 산 곳 DNS: 호스트 @ 와 www, 타입 A, 값 = 이 서버 IP
-#   2) sudo bash /opt/soboru/app/deploy/set-moabap-domain.sh moabap.co.kr 이메일
+#   2) sudo bash /opt/soboru/app/deploy/set-moabap-domain.sh moabap.com 이메일
 # 연결하면 consumerjebo.co.kr/moabap 주소(앱 첫 화면 포함)는 새 도메인으로 넘어가요. 앱은 다시 빌드할 필요 없어요.
 # 끄기: sudo bash /opt/soboru/app/deploy/set-moabap-domain.sh --undo
 set -euo pipefail
@@ -12,7 +12,7 @@ NGX=/etc/nginx/sites-available/moabap; LINK=/etc/nginx/sites-enabled/moabap
 set_kv() { local TMP; TMP=$(mktemp); grep -vE "^$1=" "$ENV_FILE" > "$TMP" || true; if [[ -n $2 ]]; then printf '%s=%s\n' "$1" "$2" >> "$TMP"; fi; cat "$TMP" > "$ENV_FILE"; rm -f "$TMP"; }
 if [[ ${1:-} == --undo ]]; then rm -f "$LINK"; set_kv MOABAP_HOST ''; nginx -t -q && systemctl reload nginx; systemctl restart soboru; echo "모아밥 도메인 연결을 껐어요."; exit 0; fi
 H=${1:-}; EMAIL=${2:-}
-[[ $H =~ ^[a-z0-9.-]+\.[a-z]+$ && -n $EMAIL ]] || { echo "사용법: sudo bash $0 moabap.co.kr 이메일 | --undo"; exit 1; }
+[[ $H =~ ^[a-z0-9.-]+\.[a-z]+$ && -n $EMAIL ]] || { echo "사용법: sudo bash $0 moabap.com 이메일 | --undo"; exit 1; }
 
 echo "== 1/4 DNS 확인"
 MYIP=$(curl -fsS https://checkip.amazonaws.com || true)

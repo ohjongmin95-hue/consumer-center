@@ -131,8 +131,8 @@ def test_mount_host_and_preview(monkeypatch, tmp_path):
     c = Client(moabap.mount(main))
     assert c.get('/').get_data() == b'MAIN'
     assert '모아밥' in c.get('/moabap/').get_data(as_text=True)
-    monkeypatch.setenv('MOABAP_HOST', 'moabap.co.kr')
+    monkeypatch.setenv('MOABAP_HOST', 'moabap.com')
     c = Client(moabap.mount(main))
-    assert '모아밥' in c.get('/', headers={'Host': 'www.moabap.co.kr'}).get_data(as_text=True)
+    assert '모아밥' in c.get('/', headers={'Host': 'www.moabap.com'}).get_data(as_text=True)
     r = c.get('/moabap/set/1?src=app')
-    assert r.status_code == 302 and r.headers['Location'] == 'https://moabap.co.kr/set/1?src=app'
+    assert r.status_code == 302 and r.headers['Location'] == 'https://moabap.com/set/1?src=app'
