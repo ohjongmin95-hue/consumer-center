@@ -117,6 +117,18 @@
       </form>
       {% endif %}
 
+      {% if ep.list == 'admin_reports' %}
+      {# 운영자 2026-11-10: 제보가 기사로 나가면 기사 주소를 넣고 제보자에게 알림톡(심사 전이면 문자)·메일로 기사 링크를 보냄 #}
+      <form class="cs-panel" method="post" id="article"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="article">
+        <h2>기사로 나감 {% if case['article_url'] %}<span class="pub-chip is-on">기사 등록됨</span>{% endif %}</h2>
+        <p class="cs-hint">이 제보로 쓴 기사 주소를 넣으면 제보자 화면에 기사 링크가 보이고, 제보자에게 카카오 알림톡으로 기사를 보내요. 알림톡 템플릿 심사 전이면 문자로 가요.{% if case['article_sent_at'] %} 마지막으로 알린 때: {{ case['article_sent_at'][:16]|replace('T', ' ') }}{% endif %}</p>
+        <div class="field"><label for="a-url">기사 주소</label><input id="a-url" name="article_url" type="url" maxlength="500" required value="{{ case['article_url'] }}" placeholder="https://www.consumernews.kr/news/articleView.html?idxno=…"></div>
+        <div class="field"><label for="a-title">기사 제목 (알림에 들어가요)</label><input id="a-title" name="article_title" maxlength="120" value="{{ case['article_title'] }}" placeholder="비워 두면 제보 제목이 들어가요"></div>
+        <label class="cs-check"><input type="checkbox" name="send" value="1" {{ '' if case['article_sent_at'] else 'checked' }}> 제보자에게 기사 알림 보내기{% if not case['phone'] and not case['contact'] %} <span class="cs-muted">(연락처가 없어 보낼 곳이 없어요)</span>{% endif %}</label>
+        <div class="cs-row cs-actions"><button class="cs-btn cs-btn-main">저장</button></div>
+      </form>
+      {% endif %}
+
       <section class="cs-panel" id="message">
         <h2>제보자와 주고받은 메시지</h2>
         {% for m in msgs %}

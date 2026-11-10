@@ -40,8 +40,8 @@ def ready():return all(core.secret(k) for k in ('PORTONE_STORE_ID','PORTONE_CHAN
 # 운영자 결정 2026-10-21: 고르기아스처럼 '상담 건수' 구간으로 나누고 금액만 더 싸게 (부가세 포함). 기능은 모든 구간이 같다.
 # 상담 1건 = 그 기간에 첫 답장(사장님·직원·AI)이 나간 문의 (고르기아스의 '청구 티켓'). 답장 없이 닫힌 문의, 영업시간 외 자동 안내만 나간 문의, 데모는 세지 않는다.
 # 넘으면 막지 않고 다음 결제 때 추가 요금을 함께 결제한다 (over_n건마다 over_price원). 운영 화면에서 금액을 바꾸면 그 값을 쓴다.
-TIERS=(dict(key='starter',name='스타터',price=14900,tickets=50,over_n=1,over_price=200),
-       dict(key='basic',name='베이직',price=49000,tickets=300,over_n=100,over_price=19000),
+TIERS=(dict(key='starter',name='스타터',price=9900,tickets=50,over_n=1,over_price=200),
+       dict(key='basic',name='베이직',price=49000,tickets=150,over_n=100,over_price=19000),
        dict(key='pro',name='프로',price=290000,tickets=2000,over_n=100,over_price=15000),
        dict(key='advanced',name='어드밴스드',price=690000,tickets=5000,over_n=100,over_price=15000))
 DEFAULT_TIER='basic'
@@ -471,3 +471,47 @@ def fail():
     current_app.logger.info('카드 등록 취소·실패: %s',clean(request.args.get('code'),60))
     flash('카드 등록을 취소했거나 하지 못했어요. '+clean(request.args.get('message'),150),'error')
     return redirect(url_for('pay.page'))
+
+# ---------- 무료 플랜 SODA 횟수 + 오픈 특가 (OH 11/07) ----------
+# 무료(결제 안 한 가게)는 SODA가 고객에게 답하는 횟수를 한 달 FREE_SODA번까지. 넘으면 SODA는 쉬고 문의는 사장님께 그대로 넘어간다.
+# 오픈 특가: OPEN_SINCE 이후 가입한 앞 OPEN_SEATS곳은 가입하고 OPEN_DAYS일 동안 SODA 답 OPEN_CAP번.
+FREE_SODA=50
+OPEN_SINCE='2026-11-01'
+OPEN_SEATS=100
+OPEN_DAYS=30
+OPEN_CAP=500  # 오픈 특가: 가입 첫 달 SODA 답 500번 (평소 무료 50번의 10배, OH 11/07)
+SODA_PURPOSES=('chat','auto')
+def _open_init():
+    with conn() as db:
+        if 'open_join' not in {r[1] for r in db.execute('PRAGMA table_info(companies)')}:db.execute("ALTER TABLE companies ADD COLUMN open_join INTEGER NOT NULL DEFAULT 0")  # 오픈 특가 참여 (후기·이용 사례 공개 동의)
+_open_init()
+def open_left(db=None):
+    """오픈 특가 남은 자리 수."""
+    def q(db):return max(0,OPEN_SEATS-db.execute('SELECT COUNT(*) FROM companies WHERE created>=? AND open_join=1',(OPEN_SINCE,)).fetchone()[0])
+    if db is not None:return q(db)
+    with conn() as db:return q(db)
+def open_promo(db,co):
+    """이 가게가 오픈 특가 중이면 끝나는 날(문자열), 아니면 ''."""
+    created=(co['created'] or '')[:19]
+    if not created or created<OPEN_SINCE or not co['open_join']:return ''
+    rank=db.execute('SELECT COUNT(*) FROM companies WHERE created>=? AND created<=? AND open_join=1',(OPEN_SINCE,co['created'])).fetchone()[0]
+    if rank>OPEN_SEATS:return ''
+    try:end=datetime.datetime.fromisoformat(created)+datetime.timedelta(days=OPEN_DAYS)
+    except ValueError:return ''
+    return end.strftime('%Y-%m-%d') if datetime.datetime.now()<end else ''
+def join_open(db,cid):
+    """가입할 때 오픈 특가에 참여(후기·이용 사례 공개 동의). 자리가 남아 있을 때만."""
+    if open_left(db)>0:db.execute('UPDATE companies SET open_join=1 WHERE id=?',(cid,))
+def soda_quota(db,co):
+    """{'limit': 숫자 또는 None(유료: 제한 없음), 'used', 'open': 특가 끝나는 날 또는 ''(특가 중이면 limit=OPEN_CAP)}"""
+    month=datetime.datetime.now().strftime('%Y-%m')
+    used=db.execute(f"SELECT COUNT(DISTINCT req) FROM ai_calls WHERE company_id=? AND ok=1 AND created LIKE ? AND purpose IN ({','.join('?'*len(SODA_PURPOSES))})",(co['id'],month+'%',*SODA_PURPOSES)).fetchone()[0]
+    if co['plan'] in ('paid','trial','free'):return dict(limit=None,used=used,open='')
+    end=open_promo(db,co)
+    return dict(limit=OPEN_CAP if end else FREE_SODA,used=used,open=end)
+def soda_ok(co,db=None):
+    """SODA가 이 가게 고객에게 답해도 되는지 (무료 횟수 안인지)."""
+    if db is not None:q=soda_quota(db,co)
+    else:
+        with conn() as db:q=soda_quota(db,co)
+    return q['limit'] is None or q['used']<q['limit']

@@ -65,6 +65,6 @@
     <div class="cm-feed">{% for p in rv.rows %}{{ feed_item(p) }}{% else %}<p class="co-empty">{{ ui('company.no_reviews', '아직 리뷰가 없어요. 이용해 봤다면 첫 리뷰를 남겨 주세요.') }}</p>{% endfor %}</div>
     {% if rv.n > rv.rows|length %}<a class="co-rv-more" href="{{ url_for('board', type='review', q=co['name']) }}">{{ ui('company.reviews_more', '리뷰 모두 보기') }} ›</a>{% endif %}
   </section>
-  <p class="public-case-notice">{{ ui('company.disclaimer', '제보는 제보자가 직접 작성한 주장이에요. 기업의 답변 여부만으로 위법 행위나 책임이 확인되는 것은 아니에요. 소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요.')|branded }} <a href="{{ url_for('takedown') }}">{{ ui('company.correction', '정정·게시중단 요청 →') }}</a></p>
+  <p class="public-case-notice">{{ ui('company.disclaimer', '제보는 제보자가 직접 작성한 주장이에요. 기업의 답변 여부만으로 위법 행위나 책임이 확인되는 것은 아니에요. 소비자고발제보센터는 공공기관이 아닌 민간 플랫폼이에요.')|branded }} <a href="{{ url_for('takedown') }}">{{ ui('company.correction', '정정·게시중단 요청 →') }}</a></p>
 </div></main>
 {% endblock %}

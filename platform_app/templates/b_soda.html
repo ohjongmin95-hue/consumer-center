@@ -19,7 +19,7 @@
 <form class="panel stack" method="post" enctype="multipart/form-data" id="teach"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="act" value="teach">
 <div class="ph" style="margin:0">한 번에 알려 주기</div>
 <p class="sub" style="margin:0">셋 중 하나만 넣어도 돼요. SODA가 읽고 배송·교환 안내와 자주 묻는 질문을 정리해요. 주소·사진·파일에서 읽은 건 확인한 뒤에 써요.</p>
-<label class="fld"><span>쇼핑몰 주소</span><input class="inp" name="url" type="url" inputmode="url" maxlength="500" placeholder="예: smartstore.naver.com/우리가게" value="{{ co.soda_url or '' }}"></label>
+<label class="fld"><span>쇼핑몰 주소</span><input class="inp" name="url" type="url" inputmode="url" maxlength="2000" placeholder="예: smartstore.naver.com/우리가게" value="{{ co.soda_url or '' }}"></label>
 <label class="fld"><span>안내문 사진이나 파일 (사진, PDF, 엑셀)</span><input class="file-in" type="file" name="files" multiple accept="image/*,.pdf,.xlsx,.csv"></label>
 <label class="fld"><span>말로 알려 주기</span><textarea class="inp" name="text" rows="3" maxlength="5000" placeholder="예: 평일 오후 2시 전 주문은 당일 보내요. 주말엔 쉬어요. 교환은 받은 날부터 7일 안에 돼요."></textarea></label>
 <p class="cap" style="margin:0">휴대폰 키보드의 마이크를 누르면 말로 적을 수 있어요. 직접 적은 말은 바로 배워요.</p>

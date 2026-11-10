@@ -4,7 +4,7 @@ soboru.co.kr 주소로 들어온 검색 로봇에게 매거진만의 정보를 �
 - 첫 화면 제목·설명: 관리자 > 소보루 매거진 > 검색 노출에서 고침 (기본 'SOBORU 소보루 매거진')
 - 사이트맵 soboru.co.kr/sitemap.xml: 첫 화면, 전체 기사, 분야별 목록, 기사, 지난 레터 (기사 사진 포함)
 - RSS soboru.co.kr/rss.xml: 최신 기사 30개 (네이버 서치어드바이저 RSS 제출용)
-- 네이버·구글 소유확인 코드: 소비자제보센터와 따로 (주소가 달라서 확인도 따로 받음)
+- 네이버·구글 소유확인 코드: 소비자고발제보센터와 따로 (주소가 달라서 확인도 따로 받음)
 구조화 데이터(Organization·WebSite·분야 메뉴)는 templates/mag_seo_head.html.
 """
 import datetime

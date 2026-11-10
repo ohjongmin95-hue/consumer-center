@@ -32,9 +32,9 @@ TERMS_SINCE='2026년 10월 13일'  # 소보루 CX 기업 회원 이용약관 시
 REFUND_SINCE='2026년 10월 18일'  # 환불 정책 시행일
 RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 요청은 purge_old()가 파기
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 요청, 운영 등)는 noindex
-INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','login','signup','terms','refund_policy','pricing','mk.tour','mk.shop_page','mk.industries','mk.industry','sl.consult','cms.blog','cms.blog_post','cms.help_home','cms.help_post','cms.stories','cms.story','gr.apply','sec.page'}}
+INDEXABLE={'me':{'home','guide','privacy','company_page'},'biz':{'decide','signup','terms','refund_policy','pricing','mk.tour','mk.shop_page','sl.consult','cms.blog','cms.blog_post','cms.help_home','cms.help_post','cms.stories','cms.story','gr.apply','sec.page'}}
 DESCRIPTION={'me':CNAME+'에 한 번만 접수하면 기업 답변과 처리 과정까지 한곳에서 확인해요. 배송·교환·환불·제품 불량 등 소비자 불편 접수.',
-             'biz':BNAME+'는 고객 요청을 한 화면에서 승인하고 반복 요청은 자동으로 처리하는 기업용 CS 운영 도구예요.'}
+             'biz':BNAME+'는 1인·소규모 쇼핑몰을 위한 AI 상담원 서비스예요. AI 상담원 SODA가 카카오톡·네이버 톡톡·쇼핑몰 상담창 문의에 먼저 답하고, 환불 같은 결정만 사장님이 승인해요.'}
 class _Verify(dict):
     """검색엔진 소유 확인 코드: 운영 화면 서비스 키(또는 서버 설정)에서 그때그때 읽는다. 직접 넣은 값이 있으면 그것을."""
     def __init__(self,me,biz):super().__init__();self.keys={'me':me,'biz':biz}
@@ -192,7 +192,7 @@ def init():
         # 나중에 더한 칸: 이미 있는 DB에도 붙인다
         cols={r[1] for r in db.execute('PRAGMA table_info(cases)')}
         if 'late_sent' not in cols:db.execute("ALTER TABLE cases ADD COLUMN late_sent TEXT NOT NULL DEFAULT ''")
-        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status','ai_tried','order_by','ai_draft','ai_why','ai_hold'):  # order_by 'shop': 판매처가 붙여 준 주문 (회원 본인 주문). '': 고객이 적은 번호. ai_draft·ai_why: AI가 넘길 때 남긴 답변 초안과 넘긴 이유 (승인 카드에 보인다). ai_hold '1': AI는 초안만 (연결 전에 받은 메일)
+        for col in ('received_on','product','channel','ret_status','ret_courier','ret_tracking','refund_bank','refund_account','refund_holder','refund_status','out_courier','out_tracking','comp','comp_status','ai_tried','order_by','ai_draft','ai_why','ai_hold','page_url','page_title','page_image'):  # order_by 'shop': 판매처가 붙여 준 주문 (회원 본인 주문). '': 고객이 적은 번호. ai_draft·ai_why: AI가 넘길 때 남긴 답변 초안과 넘긴 이유 (승인 카드에 보인다). ai_hold '1': AI는 초안만 (연결 전에 받은 메일)
             if col not in cols:db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         cols={r[1] for r in db.execute('PRAGMA table_info(companies)')}
         for col,kind in (('industry',"TEXT NOT NULL DEFAULT ''"),('tone',"TEXT NOT NULL DEFAULT 'polite'"),('return_address',"TEXT NOT NULL DEFAULT ''"),
@@ -331,7 +331,7 @@ def fmt_phone(p):
     d=digits(p);return f'{d[:3]}-{d[3:-4]}-{d[-4:]}' if len(d) in (10,11) else (p or '')
 def nl2br(s):return Markup(str(escape(s or '')).replace('\n','<br>'))
 TEMPLATE_GLOBALS=dict(csrf_token=csrf_token,status_label=status_label,status_tone=status_tone,step_index=step_index,overdue=overdue,fmt=fmt,fmt_day=fmt_day,
-    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,CAT_HINT=CAT_HINT,ASK=ASK,ORDER_CATS=ORDER_CATS,REASONS=REASONS,FIELDS=FIELDS,TEXT_CATS=TEXT_CATS,WANT_OF=WANT_OF,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,GOOGLE_VERIFY=GOOGLE_VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
+    STEPS=STEPS,FINAL=FINAL,CATS=CATS,CHANNELS=CHANNELS,COURIERS=COURIERS,RET_STATUS=RET_STATUS,BANKS=BANKS,refund_case=lambda c:refund_case(c),mask_account=mask_account,INDUSTRIES=INDUSTRIES,TONES=TONES,COND=COND,COPY_SITES=COPY_SITES,CAT_HINT=CAT_HINT,ASK=ASK,ORDER_CATS=ORDER_CATS,REASONS=REASONS,FIELDS=FIELDS,TEXT_CATS=TEXT_CATS,WANT_OF=WANT_OF,WANTS=WANTS,PLAYBOOK=PLAYBOOK,DECISION=DECISION,PILOT=PILOT,OPERATOR=OPERATOR,site_url=lambda k,p:site_url(k,p),canonical_url=lambda k:canonical_url(k),CNAME=CNAME,BNAME=BNAME,INDEXABLE=INDEXABLE,DESCRIPTION=DESCRIPTION,VERIFY=VERIFY,GOOGLE_VERIFY=GOOGLE_VERIFY,mask_phone=mask_phone,fmt_phone=fmt_phone)
 
 # ---------- 기업 ----------
 def company(db,cid):return db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
@@ -419,7 +419,7 @@ def run_playbook(db,c,how,send=None):
         else:orders.sync_case(db,c,'cancel')  # 이어진 주문도 '취소'로
     return bool(reply)
 
-VIA={'email':'메일로','instagram':'인스타그램 DM으로','kakao':'카카오톡으로'}
+VIA={'email':'메일로','instagram':'인스타그램 DM으로','kakao':'카카오톡으로','naver_talk':'네이버 톡톡으로'}
 HELD={'kakao':'카카오톡 답변 전송 대기 중이에요. 카톡 챗봇은 고객이 말을 걸어야 답할 수 있어서, 고객이 다음 말을 보내면 그때 함께 전해져요'}  # 챗봇은 고객이 말을 걸 때만 답할 수 있다 (kakao.py)
 def deliver_reply(db,c,text):
     """답변 하나를 요청이 들어온 곳(판매처·메일·인스타그램)으로 보낸다. 그런 곳이 없으면 ("",""). -> (안내, ok|error)"""
@@ -771,6 +771,10 @@ def send_mail(to,subject,body):
         except Exception as e:status='failed: '+type(e).__name__
         with conn() as db:db.execute('INSERT INTO mail_log(target,subject,status,created) VALUES(?,?,?,?)',(to[:2]+'***@'+to.partition('@')[2],subject,status,iso()))
     threading.Thread(target=job,daemon=True).start() if MAIL_ASYNC else job()
+def canonical_url(kind):
+    """검색엔진에 알릴 대표 주소. 서버 앞단(nginx)이 http로 넘겨도 https 고정 주소로 만든다."""
+    host=BUSINESS_HOST if kind=='biz' else CONSUMER_HOST
+    return 'https://'+host+request.path if host else request.base_url
 def site_url(kind,path):
     host=BUSINESS_HOST if kind=='biz' else CONSUMER_HOST
     if not host and not has_request_context():return path  # cron 등 요청 밖에서 주소 설정이 없을 때

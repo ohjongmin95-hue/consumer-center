@@ -1,4 +1,5 @@
 // 토스처럼 납작하고 둥근 기본 부품. 색은 소보루 주황.
+import { Avatar } from './Avatar';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Switch, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
@@ -41,21 +42,19 @@ export function TopBar() {
           <Image source={require('../../assets/logo-mark.png')} style={{ width: 28, height: 28 }} resizeMode="contain" />
           <Image source={require('../../assets/logo-wordmark.png')} style={{ width: 89, height: 17 }} resizeMode="contain" accessibilityLabel="SOBORU CX" />
         </Pressable>
-        <Pressable onPress={() => router.push('/alerts')} style={({ pressed }) => [s.bell, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]} hitSlop={6} accessibilityLabel={`알림 ${unread}건 안 읽음`}>
-          <Icon name="bell" size={26} />
+        <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, { marginLeft: 'auto' }, pressed && { opacity: 0.7 }]}>
+          <Avatar kind="shop" size={26} />
+          <Text style={s.coName} numberOfLines={1}>
+            {name}
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/alerts')} style={({ pressed }) => [s.bell, pressed && { opacity: 0.7 }]} hitSlop={6} accessibilityLabel={`알림 ${unread}건 안 읽음`}>
+          <Icon name="bell" size={24} />
           {unread ? (
             <View style={s.bellCnt}>
               <Text style={s.bellCntText}>{unread > 99 ? '99+' : unread}</Text>
             </View>
           ) : null}
-        </Pressable>
-        <Pressable onPress={() => router.push('/settings')} style={({ pressed }) => [s.coChip, pressed && { opacity: 0.7 }]}>
-          <View style={s.coDot}>
-            <Text style={s.coDotText}>{name.slice(0, 1)}</Text>
-          </View>
-          <Text style={s.coName} numberOfLines={1}>
-            {name}
-          </Text>
         </Pressable>
       </View>
     </>
@@ -90,7 +89,7 @@ export function SmallBtn({ title, onPress, kind = 'primary', busy }: { title: st
 export function Tile({ icon, label, value, tone, onPress }: { icon: TfName; label: string; value: number; tone?: 'acc' | 'red'; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [s.tile, pressed && { opacity: 0.7 }]}>
-      <Tf name={icon} size={32} />
+      <Tf name={icon} size={28} />
       <Text style={s.tileLabel}>{label}</Text>
       <Text style={[s.tileValue, tone === 'acc' && value ? { color: C.accent } : null, tone === 'red' && value ? { color: C.red } : null]}>{value}</Text>
     </Pressable>
@@ -309,40 +308,40 @@ export const s = StyleSheet.create({
   guestText: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.accentInk },
   guestDot: { fontFamily: FONT, fontSize: 13, color: C.accentInk },
   guestJoin: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: C.accentInk, textDecorationLine: 'underline' },
-  top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
-  logo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 24, paddingTop: 10, paddingBottom: 10 },
+  logo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 10 },
   bell: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   bellCnt: { position: 'absolute', top: 0, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: C.red, alignItems: 'center', justifyContent: 'center' },
   bellCntText: { fontFamily: FONT, fontSize: 11, fontWeight: '700', color: '#fff' },
-  coChip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: 18, backgroundColor: C.card, maxWidth: 150 },
-  coDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
-  coDotText: { fontFamily: FONT, fontSize: 13, fontWeight: '700', color: '#fff' },
+  coChip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: 18, maxWidth: 120 },
+  coDot: { width: 26, height: 26, borderRadius: 13, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
+  coDotText: { fontFamily: FONT, fontSize: 12, fontWeight: '700', color: C.fg2 },
   coName: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2, flexShrink: 1 },
   phead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 24, paddingTop: 10, paddingBottom: 14 },
-  pheadText: { flex: 1, fontFamily: FONT, fontSize: 24, lineHeight: 33, fontWeight: '700', color: C.fg, letterSpacing: 0 },
-  small: { height: 36, minWidth: 56, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  smallText: { fontFamily: FONT, fontSize: 14, fontWeight: '700' },
-  tile: { flexBasis: '47%', flexGrow: 1, backgroundColor: C.card, borderRadius: R.lg, padding: 18, gap: 6 },
-  tileLabel: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2, marginTop: 6 },
-  tileValue: { fontFamily: FONT, fontSize: 26, fontWeight: '700', color: C.fg, letterSpacing: 0, fontVariant: ['tabular-nums'] },
-  card: { backgroundColor: C.card, borderRadius: R.lg, padding: 20, marginHorizontal: 20, marginBottom: 12 },
+  pheadText: { flex: 1, fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  small: { height: 32, minWidth: 52, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  smallText: { fontFamily: FONT, fontSize: 13, fontWeight: '600' },
+  tile: { flexBasis: '47%', flexGrow: 1, backgroundColor: C.card, borderRadius: 20, padding: 16, gap: 4 },
+  tileLabel: { fontFamily: FONT, fontSize: 13, fontWeight: '500', color: C.fg3, marginTop: 6 },
+  tileValue: { fontFamily: FONT, fontSize: 22, fontWeight: '700', color: C.fg, letterSpacing: 0, fontVariant: ['tabular-nums'] },
+  card: { backgroundColor: C.card, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 18, marginHorizontal: 12, marginBottom: 10 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12 },
   statIc: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
-  statValue: { fontFamily: FONT, fontSize: 21, fontWeight: '700', color: C.fg, letterSpacing: 0, fontVariant: ['tabular-nums'] },
-  statSub: { fontFamily: FONT, fontSize: 15, color: C.fg3, letterSpacing: 0 },
+  statValue: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.fg, letterSpacing: 0, fontVariant: ['tabular-nums'] },
+  statSub: { fontFamily: FONT, fontSize: 13, color: C.fg3, letterSpacing: 0 },
   pillBtn: { height: 38, paddingHorizontal: 16, borderRadius: 12, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
   pillBtnText: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
   linkBar: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10, marginHorizontal: -22, paddingHorizontal: 22, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
   linkSep: { width: 1, height: 14, backgroundColor: C.line, marginRight: 14 },
   linkText: { fontFamily: FONT, fontSize: 15, fontWeight: '500', color: C.fg2 },
-  h1: { fontFamily: FONT, fontSize: 26, lineHeight: 36, fontWeight: '700', color: C.fg, letterSpacing: 0 },
-  h2: { fontFamily: FONT, fontSize: 20, fontWeight: '700', color: C.fg, letterSpacing: 0, marginBottom: 14 },
-  sub: { fontFamily: FONT, fontSize: 15, lineHeight: 22, color: C.fg3 },
-  btn: { height: 54, borderRadius: R.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  btnText: { fontFamily: FONT, fontSize: 17, fontWeight: '700', letterSpacing: 0 },
-  label: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
+  h1: { fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  h2: { fontFamily: FONT, fontSize: 17, lineHeight: 25.5, fontWeight: '700', color: C.fg, letterSpacing: 0, marginBottom: 10 },
+  sub: { fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.fg3 },
+  btn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  btnText: { fontFamily: FONT, fontSize: 16, fontWeight: '700', letterSpacing: 0 },
+  label: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2 },
   hint: { fontFamily: FONT, fontSize: 13, color: C.fg3 },
-  input: { height: 54, borderRadius: R.md, backgroundColor: C.fill, paddingHorizontal: 16, fontFamily: FONT, fontSize: 16, color: C.fg },
+  input: { height: 50, borderRadius: 12, backgroundColor: C.fill, paddingHorizontal: 16, fontFamily: FONT, fontSize: 15, color: C.fg },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { height: 40, paddingHorizontal: 16, borderRadius: 20, backgroundColor: C.fill, justifyContent: 'center' },
   chipText: { fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg2 },
@@ -350,10 +349,10 @@ export const s = StyleSheet.create({
   pillText: { fontFamily: FONT, fontSize: 13, fontWeight: '700' },
   eye: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
   rowLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  rowTitle: { fontFamily: FONT, fontSize: 17, fontWeight: '600', color: C.fg, letterSpacing: 0 },
-  rowSub: { fontFamily: FONT, fontSize: 14, lineHeight: 20, color: C.fg3 },
+  rowTitle: { fontFamily: FONT, fontSize: 15, lineHeight: 22.5, fontWeight: '600', color: C.fg, letterSpacing: 0 },
+  rowSub: { fontFamily: FONT, fontSize: 13, lineHeight: 19.5, color: C.fg3 },
   chev: { fontFamily: FONT, fontSize: 24, color: C.fg4 },
   notice: { borderRadius: R.sm, padding: 14, marginHorizontal: 20, marginBottom: 12 },
 });

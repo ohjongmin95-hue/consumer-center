@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChannelIcon } from '../../components/ChannelIcon';
+import { SodaMark } from '../../components/SodaMark';
 import { Loading, Notice, SmallBtn } from '../../components/ui';
 import { api, ApiError, ChatMsg, ChatRoom } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -180,7 +181,10 @@ function Bubble({ m }: { m: ChatMsg }) {
   const fg = m.who === 'co' ? '#fff' : C.fg;
   return (
     <View style={{ alignItems: mine ? 'flex-end' : 'flex-start', gap: 3, opacity: m.tmp ? 0.7 : 1 }}>
-      <Text style={st.by}>{m.who === 'note' ? `${m.by} · 메모 (고객에게 안 보임)` : m.by}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: mine ? 'flex-end' : 'flex-start' }}>
+        {m.who === 'ai' ? <SodaMark size={16} /> : null}
+        <Text style={st.by}>{m.who === 'note' ? `${m.by === 'owner' ? '사장님' : m.by} · 메모 (고객에게 안 보임)` : m.by === 'owner' ? '사장님' : m.by === 'AI' ? 'SODA' : m.by}</Text>
+      </View>
       <View style={[st.bub, { backgroundColor: bg }, mine ? { borderTopRightRadius: 6 } : { borderTopLeftRadius: 6 }]}>
         <Text style={[st.bubText, { color: fg }]}>{m.text}</Text>
       </View>

@@ -510,7 +510,7 @@ class SiteTest(unittest.TestCase):
         page = c.get('/about', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('소비자 제보 플랫폼', page); self.assertIn('제보는 이렇게 흘러가요', page); self.assertNotIn('권익', page); self.assertIn('FAQPage', page); self.assertIn('AboutPage', page)
         txt = c.get('/llms.txt', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
-        self.assertIn('# 소비자제보센터', txt)
+        self.assertIn('# 소비자고발제보센터', txt)
         self.assertIn('/about', c.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
         adm = self.login_admin()
         self.assertIn('오늘 방문', adm.get('/admin').get_data(as_text=True))
@@ -914,7 +914,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<li>목록</li>', art)
         self.assertIn('택배 분실 보상 정리', visitor.get('/life?category=쇼핑').get_data(as_text=True))
         # 방문자 화면·메일 이름이 모두 소보루. 예전 '브랜드' 설정값이 남아 있어도(비워도) 그대로 소보루
-        for brand in ('', '소비자제보센터'):
+        for brand in ('', '소비자제보센터', '소비자고발제보센터'):
             with self.site.conn() as db:
                 db.execute("INSERT OR REPLACE INTO site_content(key,value,updated) VALUES('site.brand',?,'2026-10-16')", (brand,))
             home = visitor.get('/').get_data(as_text=True)
@@ -1728,6 +1728,41 @@ class SiteTest(unittest.TestCase):
                                                    ('kakao', 'message', 'sent'), ('email', 'message', 'sent'), ('kakao', 'message', 'failed'), ('email', 'message', 'sent')])
         notify.ASYNC = True
 
+    def test_article_notice(self):
+        # 운영자 2026-11-10: 제보가 기사로 나가면 기사 주소를 넣고 제보자에게 알림톡(템플릿 없으면 문자)으로 기사 링크를 보냄
+        notify = self.site.notify
+        notify.ASYNC = False
+        sent, mails = [], []
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'A', 'subject': '기사화 알림 제보', 'description': 'C', 'reporter_name': '김소비',
+                'phone': '010-2222-4444', 'contact': 'me@example.com', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
+        keys = {'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_PFID': 'pf', 'SOLAPI_SENDER': '0212345678', 'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}
+        try:
+            with patch.dict(os.environ, keys), patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: sent.append(a) or {'statusCode': '2000'}), \
+                 patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)):
+                self.post_form(self.client, '/report', base)
+                with self.site.conn() as db:
+                    case_id = db.execute("SELECT id FROM cases WHERE subject='기사화 알림 제보'").fetchone()['id']
+                admin = self.login_admin()
+                self.assertIn('제보자에게 기사 알림 보내기', admin.get('/admin/reports/%d' % case_id).get_data(as_text=True))
+                bad = self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'article', 'article_url': 'javascript:alert(1)', 'send': '1'})
+                self.assertEqual(bad.status_code, 302)
+                sent.clear(); mails.clear()
+                self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'article', 'article_url': 'https://www.soboru.co.kr/news/123', 'article_title': '쿠팡 환불 지연', 'send': '1'})
+            self.assertTrue(sent)
+            body = json.dumps(sent[-1][1], ensure_ascii=False)
+            self.assertIn('https://www.soboru.co.kr/news/123', body)
+            self.assertIn('쿠팡 환불 지연', body)
+            self.assertIn('기사로 보도', mails[-1][1] if len(mails[-1]) > 1 else '')
+            with self.site.conn() as db:
+                row = db.execute('SELECT article_url,article_sent_at FROM cases WHERE id=?', (case_id,)).fetchone()
+                ev = [r['event'] for r in db.execute('SELECT event FROM notifications WHERE case_id=?', (case_id,))]
+            self.assertEqual(row['article_url'], 'https://www.soboru.co.kr/news/123')
+            self.assertTrue(row['article_sent_at'])
+            self.assertIn('article', ev)
+        finally:
+            notify.ASYNC = True
+
     def test_aligo_vendor(self):
         # MSG_VENDOR=aligo: 알리고에서 승인된 템플릿 문구를 받아 변수를 채워 보냄. 솔라피 값은 그대로 둬도 안 씀
         notify, bizmsg = self.site.notify, self.site.notify.bizmsg
@@ -1789,6 +1824,10 @@ class SiteTest(unittest.TestCase):
         self.assertIn('새 제보: 운영자 알림 제보', mails[0][1])
         self.assertIn('/admin/reports/', mails[0][2])
         self.assertIn('김소비 (010-2222-3333)', mails[0][2])
+        # 알림톡 템플릿이 없으면 제보자에게도 접수 문자를 대신 보냄 (2026-11-08)
+        self.assertEqual(sms[0][1]['message']['to'], '01022223333')
+        self.assertIn('제보가 접수됐어요', sms[0][1]['message']['text'])
+        del sms[0]
         self.assertEqual(sms[0][0], 'https://api.telegram.org/bot123:abc/sendMessage')
         self.assertEqual(sms[0][1]['chat_id'], '-1001')
         self.assertIn('김소비 (010-2222-3333)', sms[0][1]['text'])
@@ -1822,11 +1861,17 @@ class SiteTest(unittest.TestCase):
         self.assertIn('id="ad-new-badge"', page)
         self.assertIn('브라우저 알림 켜기', page)
         self.assertIn('운영자 메일', admin.get('/admin/reports/%d' % case_id).get_data(as_text=True))
-        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {}), \
+        # 운영자 2026-11-08: 진행 단계가 바뀔 때도 운영자(메일·텔레그램·문자)와 제보자에게 알림
+        texts = []
+        with patch.dict(os.environ, keys), patch.object(notify, 'http_post', side_effect=lambda *a: sms.append(a) or {'ok': True}), \
+             patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: texts.append(a) or {'statusCode': '2000'}), \
              patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
+            mails.clear(); sms.clear()
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
-        self.assertEqual(len(mails), 2)
+        self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
+        self.assertIn('단계 변경', mails[0][1])
         self.assertEqual(len(sms), 1)
+        self.assertEqual(sorted(t[1]['message']['to'] for t in texts), ['01022223333', '01099998888'])
         # 로그인 안 했으면 확인 주소는 막힘
         self.assertEqual(self.site.app.test_client().get('/admin/new-cases').status_code, 401)
         notify.ASYNC = True
@@ -2251,11 +2296,11 @@ class SiteTest(unittest.TestCase):
             with patch.object(self.site, 'CANONICAL_HOST', 'soboru.co.kr'):  # 관리자는 소보루 주소 하나
                 r = self.client.get('/admin/content?face=jebo', base_url='https://consumerjebo.co.kr')
                 self.assertEqual((r.status_code, r.headers['Location']), (302, 'https://soboru.co.kr/admin/content?face=jebo'))
-            self.assertIn('jebo-favicon.png', jebo); self.assertIn('<meta property="og:site_name" content="소비자제보센터">', jebo)  # 검색·광고에 뜨는 이름·아이콘
+            self.assertIn('jebo-favicon.png', jebo); self.assertIn('<meta property="og:site_name" content="소비자고발제보센터">', jebo)  # 검색·광고에 뜨는 이름·아이콘
             self.assertNotEqual(self.client.get('/favicon.ico', base_url='https://consumerjebo.co.kr').data, self.client.get('/favicon.ico').data)
             self.assertIn('class="site-header"', jebo)
             self.assertNotIn('class="sb"', jebo)
-            self.assertIn('<title>소비자제보센터 - 소비자 피해 제보·고발</title>', jebo)
+            self.assertIn('<title>소비자고발제보센터 - 소비자 피해 제보·고발</title>', jebo)
             self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', jebo)
             self.assertIn('여러분의 제보가', jebo)
             sob = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)

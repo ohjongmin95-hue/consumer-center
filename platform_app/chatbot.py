@@ -290,6 +290,8 @@ def auto_reply(case_id):
         if not db.execute("UPDATE cases SET ai_tried=? WHERE id=? AND ai_tried='' AND decision='ai'",(token,case_id)).rowcount:return None  # 다른 작업이 이미 맡음
         c=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone();co=core.company(db,c['company_id'])
         if not auto_on(co):_to_owner(db,c,'결제가 되지 않아 AI 자동 답변을 멈췄어요. 결제하시면 다시 답해요.');return 'handoff'  # 체험이 끝난 뒤 남은 'AI 확인 중' 문의
+        import billing
+        if not billing.soda_ok(co,db):_to_owner(db,c,f'이번 달 무료 SODA 답 {billing.FREE_SODA}번을 다 썼어요. 요금제를 올리면 바로 다시 답해요.');return 'handoff'
         facts=company_facts(db,co,c['product'])
         o=db.execute('SELECT * FROM orders WHERE company_id=? AND order_no=?',(co['id'],c['order_no'])).fetchone() if c['order_no'] else None
         talk=turns(db,c)

@@ -1,0 +1,11 @@
+# 매주 월요일 오전 9시(한국 시각)
+[Unit]
+Description=소보루 매장 QR 주간 요약 (월요일 9시)
+
+[Timer]
+OnCalendar=Mon *-*-* 09:00:00 Asia/Seoul
+RandomizedDelaySec=120
+Persistent=true
+
+[Install]
+WantedBy=timers.target

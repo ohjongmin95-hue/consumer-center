@@ -1,4 +1,4 @@
-"""방문 통계 (운영자 요청 2026-11-01): 소보루(soboru.co.kr)와 소비자제보센터(consumerjebo.co.kr)를 나눠, 날마다 방문자 · 들어온 곳 · 많이 본 화면.
+"""방문 통계 (운영자 요청 2026-11-01): 소보루(soboru.co.kr)와 소비자고발제보센터(consumerjebo.co.kr)를 나눠, 날마다 방문자 · 들어온 곳 · 많이 본 화면.
 
 app.py 맨 끝에서 install(사이트 모듈의 이름공간)을 불러 붙인다.
 - 방문자: 광고 효과(ad_events)와 같은 무작위 쿠키 번호의 해시로만 구분(IP·개인정보 없음). 한 사람은 사이트마다 하루에 한 번.
@@ -10,7 +10,7 @@ import datetime, re, secrets, urllib.parse
 from flask import flash, g, redirect, render_template, request, session, url_for
 
 KEEP_DAYS = 400
-SITES = {'soboru': '소보루', 'jebo': '소비자제보센터'}
+SITES = {'soboru': '소보루', 'jebo': '소비자고발제보센터'}
 BOT = re.compile(r'bot|crawl|spider|slurp|yeti|daum(?!apps)|preview|externalhit|headless|python|curl|wget|lighthouse', re.I)
 # (Referer 도메인에 들어 있으면, 이름) — 위에서부터 먼저 맞는 것
 REFERRERS = [
@@ -113,7 +113,7 @@ def install(S):
             ips = ' '.join(x for x in (request.form.get('ips') or '').replace(',', ' ').split() if re.fullmatch(r'[0-9a-fA-F:.]{3,45}', x))
             with conn() as db: db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('visit_skip_ips',?)", (ips,))
             flash('저장했어요.'); return redirect(url_for('admin_visits'))
-        site = 'jebo'  # 운영자 2026-11-03: '소보루는 이제 없다' → 소비자제보센터만 셈
+        site = 'jebo'  # 운영자 2026-11-03: '소보루는 이제 없다' → 소비자고발제보센터만 셈
         today = datetime.date.today()
         d = lambda n: (today - datetime.timedelta(days=n)).isoformat()
         where, args = ('AND site=?', (site,)) if site else ('', ())

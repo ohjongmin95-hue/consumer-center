@@ -31,10 +31,10 @@ if os.getenv('TRUST_PROXY')=='1':app.wsgi_app=ProxyFix(app.wsgi_app,x_for=1,x_pr
 app.secret_key=os.getenv('SECRET_KEY',secrets.token_hex(32))
 if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not os.getenv('SECRET_KEY') or not os.getenv('ADMIN_PASSWORD_HASH')):
     raise RuntimeError('제보 접수나 게시판을 활성화하려면 SECRET_KEY와 ADMIN_PASSWORD_HASH가 필요합니다.')
-app.config['MAX_CONTENT_LENGTH']=22*1024*1024  # 첨부 합계 20MB + 글 내용
+app.config['MAX_CONTENT_LENGTH']=205*1024*1024  # 첨부 합계 200MB + 글 내용 (운영자 2026-11-09: 폰 영상도 올라가게)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 STATUSES=site_content.STATUSES
-HOME_LATEST=20  # 최신 제보 수 기본값 (소비자제보센터 메인은 관리자 문구 home.latest_count로 3~20)
+HOME_LATEST=20  # 최신 제보 수 기본값 (소비자고발제보센터 메인은 관리자 문구 home.latest_count로 3~20)
 REPORTS_PAGE_SIZE=20
 def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
 
@@ -64,6 +64,8 @@ with conn() as db:
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
     if 'rating' not in cols: db.execute('ALTER TABLE cases ADD COLUMN rating INTEGER')  # 제보자가 처리 결과를 확인하며 남긴 만족도 1~5
     if 'title_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN title_hidden INTEGER NOT NULL DEFAULT 0')  # 비밀글 제목·업체명을 목록에서 숨김(운영자)
+    for col in ('article_url','article_title','article_sent_at'):  # 제보가 기사로 나가면 기사 주소·제목 (운영자 2026-11-10: 제보자에게 알림톡으로 기사 보내기)
+        if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,channel TEXT NOT NULL,event TEXT NOT NULL,target TEXT NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT \'\',created TEXT NOT NULL)')
     for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash','industry','pw_hash'):
         if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
@@ -87,7 +89,7 @@ TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','
 def load_content():
     # 빈 값으로 저장된 문구는 '지운 문장' (편집 모드의 지우기). 관리자 문구 화면에서 비우면 행이 지워져 기본값으로 돌아감.
     with conn() as db:saved={r['key']:r['value'] for r in db.execute('SELECT key,value FROM site_content')}
-    if current_face()=='jebo':saved={k:saved[db_key(k)] for k in site_content.FIELDS if db_key(k) in saved}  # 소비자제보센터: 제보센터용으로 고친 문구만
+    if current_face()=='jebo':saved={k:saved[db_key(k)] for k in site_content.FIELDS if db_key(k) in saved}  # 소비자고발제보센터: 제보센터용으로 고친 문구만
     else:saved={k:v for k,v in saved.items() if not k.startswith(JEBO_PREFIX)}
     if has_request_context():g.deleted={k for k,v in saved.items() if v==''}
     return {k:saved[k] if k in saved else f['default'] for k,f in site_content.FIELDS.items()}
@@ -150,7 +152,7 @@ def _load_lists():
 def retired_host():
     host=request.host.split(':')[0].lower()
     if letter_host(host):
-        # 운영자 2026-11-04: soboru.co.kr(+letter.soboru.co.kr)은 소보루 레터 구독 페이지만. 나머지 주소는 소비자제보센터로
+        # 운영자 2026-11-04: soboru.co.kr(+letter.soboru.co.kr)은 소보루 레터 구독 페이지만. 나머지 주소는 소비자고발제보센터로
         # 운영자 2026-11-05: 매거진 검색 노출 — 첫 화면은 soboru.co.kr/ 주소 그대로(검색 결과 대표 주소), 매거진 사이트맵·RSS도 이 주소에서
         if request.path=='/':return None  # mag_seo.py가 매거진 첫 화면을 그려 줌 (화면 글귀를 읽은 뒤)
         if request.path=='/letter' and not request.query_string:return redirect('/',301)
@@ -161,7 +163,7 @@ def retired_host():
         return redirect('https://consumerjebo.co.kr'+request.full_path.rstrip('?'),301)
 @app.before_request
 def magazine_off_jebo():
-    # 운영자 2026-11-05: '소비자제보센터엔 매거진 칸 없어야 해' — 제보센터 주소의 매거진 글·목록은 소보루 매거진(soboru.co.kr)으로
+    # 운영자 2026-11-05: '소비자고발제보센터엔 매거진 칸 없어야 해' — 제보센터 주소의 매거진 글·목록은 소보루 매거진(soboru.co.kr)으로
     host=request.host.split(':')[0].lower()
     # 운영자 2026-11-05: 매거진 관리자 > 화면 편집 — 관리자 로그인이 있는 이 주소에서 매거진 화면을 편집 모드로 띄움 (mag_admin.py mag_screen)
     if session.get('mag_studio') and request.method=='GET' and (request.path=='/letter' or request.path.startswith(('/letter/','/life'))) and admin_active():
@@ -180,8 +182,8 @@ def no_www():
         return redirect(new,301)
 @app.before_request
 def admin_on_main_host():
-    # 관리자는 소보루 주소(soboru.co.kr/admin) 하나. 소비자제보센터 주소로 들어온 관리자 화면은 그쪽으로 보냄
-    # (제보센터 문구는 그 관리자 안의 '소비자제보센터' 칸에서 고침)
+    # 관리자는 소보루 주소(soboru.co.kr/admin) 하나. 소비자고발제보센터 주소로 들어온 관리자 화면은 그쪽으로 보냄
+    # (제보센터 문구는 그 관리자 안의 '소비자고발제보센터' 칸에서 고침)
     if request.path.startswith('/admin') and request.host.split(':')[0].lower() in JEBO_HOSTS and main_host() not in JEBO_HOSTS:
         return redirect('https://'+main_host()+request.full_path.rstrip('?'),302)
 @app.before_request
@@ -200,7 +202,7 @@ def report_industries():return [i['name'] for i in items('report_industries')]
 def board_categories():return [i['name'] for i in items('board_categories')]
 app.jinja_env.globals['items']=items
 SAFE_LINK=re.compile(r'^(https?://[^\s<>"]+|/[^\s<>"]*)$')
-# 소비자제보센터 화면(consumerjebo.co.kr)의 상단 메뉴
+# 소비자고발제보센터 화면(consumerjebo.co.kr)의 상단 메뉴
 def menu_href(item):
     page=item.get('page','')
     if page=='custom':return item.get('url','') if SAFE_LINK.match(item.get('url','')) else '#'
@@ -262,16 +264,16 @@ def letter_alone():return has_request_context() and (request.path.startswith('/l
 app.jinja_env.globals['letter_alone']=letter_alone
 if CANONICAL_HOST in RETIRED_HOSTS:CANONICAL_HOST='consumerjebo.co.kr'
 LIVE_HOSTS={h for d in (CANONICAL_HOST,'consumerjebo.co.kr','soboru.co.kr') for h in (d,'www.'+d)}
-# 소비자제보센터 화면으로 보여 줄 주소 (soboru.py가 화면을 바꿈). 대표 주소도 그 주소 그대로
+# 소비자고발제보센터 화면으로 보여 줄 주소 (soboru.py가 화면을 바꿈). 대표 주소도 그 주소 그대로
 def main_host():return CANONICAL_HOST  # 로그인·가입을 받는 대표 주소 (crosslogin.py)
 JEBO_HOSTS={x for h in os.getenv('JEBO_HOST','').split(',') if h.strip() for x in (h.strip().lower(),'www.'+h.strip().lower())}
-# 관리자는 하나, 문구는 사이트별: 소비자제보센터 화면에서 고친 문구·목록은 'jebo:'를 붙여 따로 저장(소보루 문구와 섞이지 않게).
+# 관리자는 하나, 문구는 사이트별: 소비자고발제보센터 화면에서 고친 문구·목록은 'jebo:'를 붙여 따로 저장(소보루 문구와 섞이지 않게).
 # 사업자 정보·약관(operator, policy), 사이트별 검색 설정(seo, jebo), 제보 분류처럼 두 사이트가 같은 데이터를 쓰는 목록만 같이 씀.
 JEBO_PREFIX='jebo:'
 SHARED_SECTIONS={'operator','policy','seo','jebo'}
 SHARED_LISTS={'menu','home_blocks','sample_reports','report_categories','report_industries','board_categories','report_consents','custom_pages'}
 def current_face():
-    # 'jebo'(소비자제보센터) 또는 'soboru'. 관리자 화면은 주소의 face=jebo로만 정해서, 다른 탭에서 미리보기를 바꿔도 엉뚱한 사이트에 저장되지 않게 함.
+    # 'jebo'(소비자고발제보센터) 또는 'soboru'. 관리자 화면은 주소의 face=jebo로만 정해서, 다른 탭에서 미리보기를 바꿔도 엉뚱한 사이트에 저장되지 않게 함.
     if not has_request_context():return 'soboru'
     if 'face' in g:return g.face
     host=request.host.split(':')[0].lower()
@@ -280,7 +282,7 @@ def current_face():
     elif not admin_active():face='soboru'
     else:
         pick=request.values.get('face')
-        if request.path.startswith('/admin'):face=pick if pick in ('jebo','soboru') else app.config.get('ADMIN_FACE','jebo')  # 운영자 2026-11-03: 관리자는 소비자제보센터 하나만
+        if request.path.startswith('/admin'):face=pick if pick in ('jebo','soboru') else app.config.get('ADMIN_FACE','jebo')  # 운영자 2026-11-03: 관리자는 소비자고발제보센터 하나만
         else:
             if pick=='jebo':session['face_preview']='jebo'
             elif pick=='off':session.pop('face_preview',None)
@@ -297,11 +299,11 @@ def saved_keys(table):
     if current_face()!='jebo':return {k for k in keys if not k.startswith(JEBO_PREFIX)}
     return {k[len(JEBO_PREFIX):] for k in keys if k.startswith(JEBO_PREFIX)}|{k for k in keys if shared_key(k,lst)}
 def face_url(endpoint,**kw):
-    # 관리자 화면 링크: 소비자제보센터를 고치는 중이면 face=jebo를 이어 붙임
+    # 관리자 화면 링크: 소비자고발제보센터를 고치는 중이면 face=jebo를 이어 붙임
     if current_face()=='jebo':kw['face']='jebo'
     return url_for(endpoint,**kw)
 def jebo_site_url():
-    # 관리자 '사이트 보기 > 소비자제보센터': 실제 주소가 정해져 있으면 그 주소, 아니면 이 주소에서 제보센터 화면 미리보기
+    # 관리자 '사이트 보기 > 소비자고발제보센터': 실제 주소가 정해져 있으면 그 주소, 아니면 이 주소에서 제보센터 화면 미리보기
     real=sorted(h for h in JEBO_HOSTS if not h.startswith('www.'))
     return 'https://'+real[0]+'/' if real and request.host.split(':')[0].lower() not in JEBO_HOSTS else url_for('home',face='jebo')
 def main_site_url():
@@ -319,8 +321,8 @@ def canonical_url(path=None):
     if host in JEBO_HOSTS:base='https://'+host.removeprefix('www.')
     else:base='https://'+CANONICAL_HOST if host in LIVE_HOSTS else request.host_url.rstrip('/')
     return base+path
-# 두 사이트에 같이 뜨는 화면은 검색엔진에 한 주소만 대표로 알림: 제보 화면은 소비자제보센터, 소보루 화면(생활정보·소보루 픽 등)은 소보루.
-# 홈·약관처럼 양쪽에 따로 있는 화면은 각자 자기 주소. 소비자제보센터 화면을 켜지 않았으면(JEBO_HOST 없음) 나누지 않음
+# 두 사이트에 같이 뜨는 화면은 검색엔진에 한 주소만 대표로 알림: 제보 화면은 소비자고발제보센터, 소보루 화면(생활정보·소보루 픽 등)은 소보루.
+# 홈·약관처럼 양쪽에 따로 있는 화면은 각자 자기 주소. 소비자고발제보센터 화면을 켜지 않았으면(JEBO_HOST 없음) 나누지 않음
 JEBO_OWN=('/reports','/report','/companies','/guide','/process','/types','/faq','/lookup')
 SOBORU_OWN=('/life','/letter','/pick','/ask','/board','/tools','/jobs','/search','/town')
 def owner_site(path):
@@ -454,7 +456,7 @@ def footer_rows():
     rows=[[(key,footer_label(key),g.content.get(key)) for key in row if g.content.get(key)] for row in FOOTER_ROWS]
     return [row for row in rows if row]
 app.jinja_env.globals['footer_rows']=footer_rows
-app.jinja_env.globals['css_v']='jebo-126'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
+app.jinja_env.globals['css_v']='jebo-128'  # style.css 캐시 갱신용. 디자인을 고치면 숫자를 올림
 def asset(filename):
     # 정적 파일이 바뀌면 주소도 바뀌게(수정 시각을 v로) 해서 브라우저가 예전 그림을 캐시에서 보여 주지 않게 함
     try:version=int((BASE/'static'/filename).stat().st_mtime)
@@ -595,7 +597,7 @@ app.jinja_env.globals.update(report_rows=report_rows,report_summary=report_summa
 
 @app.route('/')
 def home():
-    return render_template('index.html')  # 소비자제보센터 메인. 소보루 주소로 들어오면 soboru.py가 소보루 홈으로 바꿔 끼움
+    return render_template('index.html')  # 소비자고발제보센터 메인. 소보루 주소로 들어오면 soboru.py가 소보루 홈으로 바꿔 끼움
 
 @app.route('/reports/latest')
 def latest_reports():
@@ -682,7 +684,7 @@ app.jinja_env.globals['verification_code']=verification_code
 @app.route('/favicon.ico')
 def favicon_ico():
     # 브라우저·검색엔진이 주소 맨 앞에서 바로 찾는 탭 아이콘
-    # 소비자제보센터 주소에서는 제보센터 아이콘(확성기): 네이버 검색·광고가 이 파일을 아이콘으로 씀
+    # 소비자고발제보센터 주소에서는 제보센터 아이콘(확성기): 네이버 검색·광고가 이 파일을 아이콘으로 씀
     if letter_host(request.host.split(':')[0].lower()):return app.send_static_file('mag-favicon.ico')  # 소보루 매거진
     return app.send_static_file('jebo-favicon.ico' if request.host.split(':')[0].lower() in JEBO_HOSTS else 'favicon.ico')
 
@@ -779,14 +781,14 @@ SIDO=['서울','부산','대구','인천','광주','대전','울산','세종','�
 GENDERS=['남성','여성']
 AGE_GROUPS=['10대','20대','30대','40대','50대','60대','70대 이상']
 UPLOAD_TYPES={'.pdf':'pdf','.png':'png','.jpg':'jpg','.jpeg':'jpg','.webp':'webp','.mp4':'mp4','.mov':'mov'}
-MAX_FILES=5;MAX_UPLOAD_TOTAL=20*1024*1024
+MAX_FILES=10;MAX_UPLOAD_TOTAL=200*1024*1024
 PHONE_INPUT=re.compile(r'^[0-9+()\- ]{8,20}$')
 def file_ok(suffix,head):
     kind=UPLOAD_TYPES.get(suffix)
     return ((kind=='pdf' and head.startswith(b'%PDF-')) or (kind=='png' and head.startswith(b'\x89PNG')) or (kind=='jpg' and head.startswith(b'\xff\xd8'))
             or (kind=='webp' and head[8:12]==b'WEBP') or (kind in ('mp4','mov') and head[4:8]==b'ftyp'))
 def report_form(status=200):
-    return render_template('report.html',scan_on=bool(companydesk.ai_key_for('report_talk')),categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,today=datetime.date.today().isoformat()),status
+    return render_template('report.html',scan_on=bool(companydesk.ai_key_for('report_talk')),categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,max_total=MAX_UPLOAD_TOTAL,today=datetime.date.today().isoformat()),status
 def report_login_needed():
     """운영자 2026-11-04: 로그인 없이도 제보 (11-03 로그인 의무화 뒤 제보가 끊겨 되돌림). REPORT_LOGIN=1이면 다시 로그인해야 제보."""
     return os.getenv('REPORT_LOGIN','0')=='1' and not g.get('user')
@@ -820,7 +822,7 @@ def report():
     if data['age_group'] not in AGE_GROUPS:data['age_group']=''
     if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',data['occurred_on']) or data['occurred_on']>datetime.date.today().isoformat():data['occurred_on']=''
     files=[f for f in request.files.getlist('evidence') if f and f.filename]
-    if len(files)>MAX_FILES:flash(ui_text('msg.report_files','첨부파일은 5개까지 올릴 수 있어요.'));return report_form(400)
+    if len(files)>MAX_FILES:flash(ui_text('msg.report_files2','첨부파일은 10개까지 올릴 수 있어요.'));return report_form(400)
     total=0;checked=[]
     for f in files:
         suffix=Path(f.filename).suffix.lower()
@@ -830,7 +832,7 @@ def report():
         # 원래 파일 이름은 한글을 살리되 경로·제어 문자는 지움
         original=re.sub(r'[\x00-\x1f/\\]','',Path(f.filename.replace('\\','/')).name)[:180] or 'file'+suffix
         checked.append((f,suffix,original))
-    if total>MAX_UPLOAD_TOTAL:flash(ui_text('msg.report_size','첨부파일은 모두 합쳐 20MB까지 올릴 수 있어요.'));return report_form(400)
+    if total>MAX_UPLOAD_TOTAL:flash(ui_text('msg.report_size2','첨부파일은 모두 합쳐 200MB까지 올릴 수 있어요.'));return report_form(400)
     receipt='CJ-'+datetime.datetime.now().strftime('%y%m%d')+'-'+secrets.token_hex(3).upper()
     code=secrets.token_urlsafe(12)  # lookup_hash 칸(NOT NULL)을 채우는 값. 조회는 휴대폰 번호 + 조회 비밀번호로 함
     with conn() as db:
@@ -878,7 +880,7 @@ def link_company(db,case_id,typed,company_id=None):
     db.execute('UPDATE cases SET company_id=? WHERE id=?',(match['id'],case_id))
     return match
 def link_all_cases():
-    # 예전에 들어와 기업에 안 묶인 제보도 한 번에 정리 (배포할 때마다 남은 것만, 소비자제보센터 제보 포함)
+    # 예전에 들어와 기업에 안 묶인 제보도 한 번에 정리 (배포할 때마다 남은 것만, 소비자고발제보센터 제보 포함)
     try:
         with conn() as db:
             for r in db.execute("SELECT id,company FROM cases WHERE company_id IS NULL AND company!='' ORDER BY id").fetchall():link_company(db,r['id'],r['company'])
@@ -886,7 +888,7 @@ def link_all_cases():
 def notify_later(case_id,event):
     # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 새 제보면 운영자에게도. 설정이 없으면 아무것도 안 함.
     link=url_for('lookup',_external=True)
-    admin_link=url_for('admin_report',case_id=case_id,_external=True) if event=='received' else None
+    admin_link=url_for('admin_report',case_id=case_id,_external=True) if event in ('received','status') else None  # 접수·단계 변경은 운영자에게도 (2026-11-08)
     def send(resp):
         with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if case:notify.dispatch(conn,case,event,link,admin_link);case_alert(case,event)  # 회원 제보면 알림함·푸시에도
@@ -1092,9 +1094,9 @@ def admin_content():
                 else:db.execute('INSERT INTO site_content(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(db_key(key),value,now))
         flash('기본값으로 되돌렸어요.' if reset else '문구를 저장했어요.')
         return redirect(face_url('admin_content',_anchor='section-'+(reset or request.form.get('section',''))))
-    # 소비자제보센터 칸에서는 소보루 검색 설정을, 소보루 칸에서는 소비자제보센터 이름·검색 설정을 빼고 보여 줌
+    # 소비자고발제보센터 칸에서는 소보루 검색 설정을, 소보루 칸에서는 소비자고발제보센터 이름·검색 설정을 빼고 보여 줌
     hide='seo' if current_face()=='jebo' else 'jebo'
-    # 소비자제보센터에서는 사이트 이름·검색 제목처럼 '소비자제보센터 화면' 칸에서 따로 정하는 문구도 뺌 (soboru.JEBO_KEYS)
+    # 소비자고발제보센터에서는 사이트 이름·검색 제목처럼 '소비자고발제보센터 화면' 칸에서 따로 정하는 문구도 뺌 (soboru.JEBO_KEYS)
     skip=set(soboru.JEBO_KEYS) if current_face()=='jebo' else set()
     sections=[(sid,title,[it for it in rows if it[0] not in skip]) for sid,title,rows in site_content.SECTIONS if sid!=hide]
     # 왼쪽 목록: 섹션을 묶음(기본 설정·제보·커뮤니티…)으로 나눔
@@ -1826,7 +1828,7 @@ def sign_in(user,remember):
     keep={k:session[k] for k in ('voter','utm','ad_day') if k in session}  # 광고 효과용 첫 방문 경로는 이어 감
     session.clear();session.update(keep)
     session['uid']=user['id'];session['uv']=user['session_ver'];session.permanent=bool(remember)
-    g.signed_in=True  # 다른 사이트(소보루↔소비자제보센터)도 같이 로그인 (crosslogin.py)
+    g.signed_in=True  # 다른 사이트(소보루↔소비자고발제보센터)도 같이 로그인 (crosslogin.py)
 
 def nickname_error(db,nick):
     # 닉네임 규칙 (아이디 가입·카카오 가입 공통). 문제가 없으면 ''
@@ -2235,6 +2237,17 @@ def report_detail(case_id):
                 log_case(db,case_id,f'이메일로 받은 기업 답변 등록 (보낸 사람 {sender}, 받은 날 {got})')
                 answer_arrived(db,case);notify_later(case_id,'company')
                 flash('이메일 답변을 등록했어요. 제보자에게 보여요. 사이트 공개는 아래에서 따로 정해요.')
+            elif form=='article':
+                # 운영자 2026-11-10: 제보가 기사로 나가면 기사 주소를 넣고 제보자에게 알림톡(없으면 문자)·메일로 기사 링크를 보냄
+                url=request.form.get('article_url','').strip()[:500];title=' '.join(request.form.get('article_title','').split())[:120]
+                if not re.fullmatch(r'https?://[^\s<>"]+\.[^\s<>"]+',url):
+                    flash('기사 주소를 https:// 로 시작하게 넣어 주세요.');return redirect(url_for(ep['case'],case_id=case_id)+'#article')
+                db.execute('UPDATE cases SET article_url=?,article_title=? WHERE id=?',(url,title,case_id))
+                log_case(db,case_id,f"기사 주소 등록: {title or url}")
+                if request.form.get('send')=='1':
+                    db.execute('UPDATE cases SET article_sent_at=? WHERE id=?',(now(),case_id));notify_later(case_id,'article')
+                    log_case(db,case_id,'제보자에게 기사 알림 보냄');flash('기사 주소를 저장하고 제보자에게 알렸어요. 아래 알림 기록에서 결과를 볼 수 있어요.')
+                else:flash('기사 주소를 저장했어요. 제보자 화면에 기사 링크가 보여요.')
             elif form=='lookup_pw':
                 pw=request.form.get('lookup_pw','')
                 if not LOOKUP_PW_MIN<=len(pw)<=30:flash('조회 비밀번호는 4~30자로 정해 주세요.');return redirect(url_for(ep['case'],case_id=case_id))
@@ -3025,13 +3038,14 @@ import experts;experts.install(types.SimpleNamespace(**globals()))  # 전문가 
 import expert_mail;expert_mail.install(types.SimpleNamespace(**globals()))  # 자문단 섭외 메일: 로펌 이름 넣고 하이웍스용 HTML 복사 (expert_mail.py)
 import partners;partners.install(types.SimpleNamespace(**globals()))  # 협력 기관 로고 띠·배너 (partners.py)
 import buycheck;buycheck.install(types.SimpleNamespace(**globals()))  # 사기 전에 확인: 업종별 피해 주의 글 (buycheck.py)
-import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자제보센터·소보루 로그인 하나로 (crosslogin.py)
+import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소비자고발제보센터·소보루 로그인 하나로 (crosslogin.py)
 
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
 import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
 import aiusage;aiusage.install(types.SimpleNamespace(**globals()))  # 기능별 AI 호출 횟수·토큰 기록 (aiusage.py)
 import phoneauth;phoneauth.install(types.SimpleNamespace(**globals()))  # 휴대폰 번호로 시작하기 (phoneauth.py)
 import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·사장님 소식 (soboru_cm.py)
+import storeqr;storeqr.install(types.SimpleNamespace(**globals()))  # 매장 QR: 스티커 QR을 찍으면 /q/<번호>에서 별점·칩으로 사장님께 후기 (storeqr.py)
 import soboru_people;soboru_people.install(types.SimpleNamespace(**globals()))  # 소보루 이웃: 프로필·이웃 페이지·구독 (soboru_people.py)
 import soboru_tools;soboru_tools.install(types.SimpleNamespace(**globals()))  # 소비자 상담소: 계산기·사전·법령 찾기 (soboru_tools.py)
 import soboru_jobs;soboru_jobs.install(types.SimpleNamespace(**globals()))  # 동네일자리: 무료 구인·구직 + 공공 채용정보 (soboru_jobs.py)

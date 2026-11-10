@@ -14,7 +14,7 @@ DEFAULTS = {  # 운영자 2026-11-04: 토스식 합니다체. 매체 영향력 �
     'kick': '소보루 자문단 창립 자문위원 모집',
     'title': FIRM + ' 귀중\n소속 변호사님께 전해 주십시오',
     'intro': '안녕하십니까. 소비자 전문 미디어 소비자를위한신문(소보루) 발행인 오종민입니다.\n\n'
-             '저희는 2026년 11월 1일 소비자 피해 제보 플랫폼 **‘소비자제보센터’**를 열었습니다. '
+             '저희는 2026년 11월 1일 소비자 피해 제보 플랫폼 **‘소비자고발제보센터’**를 열었습니다. '
              '소비자가 겪은 피해를 공개로 모으고, 기업에 답변을 요청하고, 널리 알려야 할 일은 기사로 씁니다.\n\n'
              '이제 막 시작한 플랫폼입니다. 그래서 처음부터 함께 키워 갈 변호사님을 찾고 있습니다.',
     'flow_title': '제보는 이렇게 처리됩니다',
@@ -34,7 +34,7 @@ DEFAULTS = {  # 운영자 2026-11-04: 토스식 합니다체. 매체 영향력 �
     'note': '참여는 변호사님 개인별로 받습니다. 비용은 없고, 원하실 때 언제든 그만두실 수 있습니다.',
     'cta': '자문단 등록하기',
     'cta_sub': '소속·분야·프로필 사진만 넣으시면 됩니다. 3분이면 끝납니다.',
-    'sign': '번거로우시면 이 메일에 사진과 분야만 답장으로 보내 주십시오. 프로필은 저희가 만들어 드리겠습니다.\n감사합니다.\n\n**오종민 드림**\n소비자를위한신문 발행인 · 소비자제보센터 대표',
+    'sign': '번거로우시면 이 메일에 사진과 분야만 답장으로 보내 주십시오. 프로필은 저희가 만들어 드리겠습니다.\n감사합니다.\n\n**오종민 드림**\n소비자를위한신문 발행인 · 소비자고발제보센터 대표',
 }
 _LABELS = [('subject', '메일 제목', 1), ('kick', '맨 위 작은 글씨', 1), ('title', '큰 제목 (○○ 법무법인 자리에 이름이 들어가요)', 2),
           ('intro', '인사·소개 (빈 줄로 문단을 나눠요)', 8), ('flow_title', '해결 과정 제목', 1), ('flow', '해결 과정 (한 줄에 하나, 제목 | 설명)', 4),
@@ -106,7 +106,7 @@ def build(c, firm='', key=''):
 <p style="margin:0;text-align:center;font-size:13px;color:#8b95a1;{F}">{_t(c.get('cta_sub'))}</p>
 <p style="margin:32px 0 0;font-size:15px;line-height:24px;color:#4e5968;{F}">{_t(sub(c.get('sign')))}</p>
 </td></tr>
-<tr><td style="padding:24px 32px 28px;background:#f9fafb;border-radius:0 0 24px 24px;font-size:12px;line-height:19px;color:#8b95a1;{F}">소비자제보센터 by SOBORU · <a href="{BASE}" target="_blank" style="color:#4e5968">consumerjebo.co.kr</a><br>contact@consumerjebo.co.kr · 서울시 강남구 논현로 310-1 4층 401호<br>이 메일은 자문단 참여를 제안드리기 위해 한 번 보내 드렸습니다.</td></tr>
+<tr><td style="padding:24px 32px 28px;background:#f9fafb;border-radius:0 0 24px 24px;font-size:12px;line-height:19px;color:#8b95a1;{F}">소비자고발제보센터 by SOBORU · <a href="{BASE}" target="_blank" style="color:#4e5968">consumerjebo.co.kr</a><br>contact@consumerjebo.co.kr · 서울시 강남구 논현로 310-1 4층 401호<br>이 메일은 자문단 참여를 제안드리기 위해 한 번 보내 드렸습니다.</td></tr>
 </table></td></tr></table>'''
 
 

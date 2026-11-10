@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChannelIcon } from '../../components/ChannelIcon';
+import { Avatar } from '../../components/Avatar';
 import { Card, Loading, Notice, TopBar } from '../../components/ui';
 import { api, ApiError, ChatRow } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -106,9 +107,9 @@ function Room({ r }: { r: ChatRow }) {
   return (
     <Pressable onPress={() => router.push(`/chat/${r.id}`)} style={({ pressed }) => [st.row, pressed && { backgroundColor: C.band }]}>
       <View style={st.av}>
-        <Text style={st.avText}>{r.name.slice(0, 1)}</Text>
+        <Avatar id={r.id} size={40} />
         <View style={st.mk} accessibilityLabel={r.channel}>
-          <ChannelIcon mark={r.mark[1]} />
+          <ChannelIcon mark={r.mark[1]} size={16} />
         </View>
       </View>
       <View style={{ flex: 1, gap: 3 }}>
@@ -132,8 +133,8 @@ function Room({ r }: { r: ChatRow }) {
 }
 
 function Badge({ label, tone }: { label: string; tone?: 'need' | 'ai' }) {
-  const bg = tone === 'need' ? C.accent : tone === 'ai' ? C.accentSoft : C.fill;
-  const fg = tone === 'need' ? '#fff' : tone === 'ai' ? C.accentInk : C.fg3;
+  const bg = tone === 'need' ? C.accentSoft : tone === 'ai' ? '#E8F3FF' : C.fill;
+  const fg = tone === 'need' ? C.accentInk : tone === 'ai' ? '#1B64DA' : C.fg3;
   return (
     <View style={[st.bdg, { backgroundColor: bg }]}>
       <Text style={[st.bdgText, { color: fg }]}>{label}</Text>
@@ -142,21 +143,21 @@ function Badge({ label, tone }: { label: string; tone?: 'need' | 'ai' }) {
 }
 
 const st = StyleSheet.create({
-  add: { height: 36, paddingHorizontal: 14, borderRadius: 12, backgroundColor: C.card, justifyContent: 'center' },
+  add: { height: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: C.card, justifyContent: 'center' },
   head: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 12 },
-  h1: { fontFamily: FONT, fontSize: 24, fontWeight: '700', color: C.fg, letterSpacing: 0, paddingHorizontal: 8 },
-  search: { height: 48, borderRadius: R.md, backgroundColor: C.card, paddingHorizontal: 16, fontFamily: FONT, fontSize: 15, color: C.fg },
-  chip: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: C.card, justifyContent: 'center' },
-  chipText: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg2 },
+  h1: { fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: 0, paddingHorizontal: 4 },
+  search: { height: 44, borderRadius: 12, backgroundColor: C.card, paddingHorizontal: 16, fontFamily: FONT, fontSize: 15, color: C.fg },
+  chip: { height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: C.card, justifyContent: 'center' },
+  chipText: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.fg2 },
   empty: { fontFamily: FONT, fontSize: 15, color: C.fg3, paddingVertical: 14 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12, marginHorizontal: -12, borderRadius: R.md },
-  av: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },
-  avText: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: C.accentInk },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 12, marginHorizontal: -12, borderRadius: 12 },
+  av: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  avText: { fontFamily: FONT, fontSize: 15, fontWeight: '700', color: '#1B64DA' },
   mk: { position: 'absolute', right: -4, bottom: -4, borderRadius: 13, borderWidth: 2, borderColor: C.card, backgroundColor: C.card },
-  name: { flexShrink: 1, fontFamily: FONT, fontSize: 16, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  name: { flexShrink: 1, fontFamily: FONT, fontSize: 15, fontWeight: '600', color: C.fg, letterSpacing: 0 },
   when: { marginLeft: 'auto', fontFamily: FONT, fontSize: 12, color: C.fg4 },
-  text: { fontFamily: FONT, fontSize: 14, color: C.fg3 },
-  bdg: { height: 22, paddingHorizontal: 8, borderRadius: 11, justifyContent: 'center' },
-  bdgText: { fontFamily: FONT, fontSize: 12, fontWeight: '700' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent },
+  text: { fontFamily: FONT, fontSize: 13, lineHeight: 19.5, color: C.fg3 },
+  bdg: { height: 20, paddingHorizontal: 6, borderRadius: 6, justifyContent: 'center' },
+  bdgText: { fontFamily: FONT, fontSize: 11, fontWeight: '700' },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.red },
 });

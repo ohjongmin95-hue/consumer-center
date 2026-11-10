@@ -12,7 +12,7 @@
   <h3 class="talk-count">{{ ui('case.comments', '댓글') }} <b>{{ talk.comments|length }}</b></h3>
   <div class="talk-list">
   {% set rows = [] %}{% for c in talk.comments %}{% set _ = rows.append({'t': c.created, 'c': c}) %}{% endfor %}
-  {% if talk_events is defined and talk_events %}{% for who, label, at, text in talk_events if at %}{% set _ = rows.append({'t': at, 'e': (label, at, text)}) %}{% endfor %}{% endif %}{# 소비자제보센터: 진행 단계를 댓글 사이에 #}
+  {% if talk_events is defined and talk_events %}{% for who, label, at, text in talk_events if at %}{% set _ = rows.append({'t': at, 'e': (label, at, text)}) %}{% endfor %}{% endif %}{# 소비자고발제보센터: 진행 단계를 댓글 사이에 #}
   {% for r in rows|sort(attribute='t') %}{% if r.e %}
     <div class="talk-ev"><span><b>{{ r.e[0] }}</b>{% if r.e[1] %}<time datetime="{{ r.e[1] }}">{{ r.e[1][5:16]|replace('T', ' ')|replace('-', '.') }}</time>{% endif %}</span>{% if r.e[2] %}<small>{{ r.e[2] }}</small>{% endif %}</div>
   {% else %}{% set c = r.c %}

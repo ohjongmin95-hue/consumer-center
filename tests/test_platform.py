@@ -162,8 +162,8 @@ class PlatformTest(unittest.TestCase):
         self.assertIn('환불 정책',page);self.assertIn('7일 이내',page);self.assertNotIn('noindex',page)
         pr=c.get('/biz/pricing');self.assertEqual(pr.status_code,200);ph=pr.get_data(as_text=True)  # 공개 요금 안내 (요금제를 정하면 금액이 보인다)
         self.assertIn('정기결제',ph);self.assertIn('/biz/refund',ph);self.assertIn('/biz/pricing',c.get('/biz/').get_data(as_text=True))
-        self.assertIn('한 달 14,900원부터',ph);self.assertIn('상담 <b>300건</b>까지',ph);self.assertIn('월 <strong>690,000</strong>원',ph)  # 고르기아스처럼 상담 건수 구간 4개
-        self.assertIn('한 달 14,900원부터',c.get('/biz/').get_data(as_text=True))  # 소개 페이지에도 같은 구간
+        self.assertIn('한 달 9,900원부터',ph);self.assertIn('상담 <b>300건</b>까지',ph);self.assertIn('월 <strong>690,000</strong>원',ph)  # 고르기아스처럼 상담 건수 구간 4개
+        self.assertIn('한 달 9,900원부터',c.get('/biz/').get_data(as_text=True))  # 소개 페이지에도 같은 구간
         with self.core.conn() as db:db.execute("INSERT OR REPLACE INTO settings(key,value,updated) VALUES('billing_tiers','{\"starter\":{\"price\":29000}}','x')")
         try:self.assertIn('한 달 29,000원부터',c.get('/biz/pricing').get_data(as_text=True))
         finally:

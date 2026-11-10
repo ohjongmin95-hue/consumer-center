@@ -1,131 +1,167 @@
-// SODA 가르치기: 웹 'SODA 가르치기'와 같다. 모르는 질문에 한 줄 답, 말·주소로 한 번에 알려 주기, 자료에서 읽은 답 확인, 배운 답 끄기.
-// 사진·PDF·엑셀은 웹에서 올린다 (앱에는 아직 사진 고르기가 없다).
+// SODA 가르치기 (토스 앱 목록 화면처럼: 흰 바탕, 24 여백, 줄 목록, 구역 사이 16 회색 띠).
+// 줄을 누르면 soda-edit 화면에서 한 가지만 한다 (답하기·알려 주기·고치기). 사진·PDF·엑셀은 PC에서 올린다.
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Btn, Card, Field, H2, Loading, Notice, Screen, Toggle } from '../components/ui';
-import { api, Soda } from '../lib/api';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Loading, Notice } from '../components/ui';
+import { Glyph } from '../components/Glyph';
+import { SodaMark } from '../components/SodaMark';
+import { api, Soda, SodaItem } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { C, FONT } from '../lib/theme';
 import { errText, useLoad } from '../lib/useLoad';
 
-type Act = Parameters<typeof api.sodaAct>[1];
-
 export default function SodaScreen() {
   const { logout } = useAuth();
-  const { data, setData, err, token, reload } = useLoad(api.soda);
-  const [ans, setAns] = useState<Record<number, string>>({});
-  const [text, setText] = useState('');
-  const [url, setUrl] = useState<string | null>(null);
-  const [edit, setEdit] = useState<{ id: number; q: string; a: string } | null>(null);
+  const { data, setData, err, token } = useLoad(api.soda);
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
   const [bad, setBad] = useState('');
-  if (!data) return <Screen>{err ? <Notice text={err} /> : <Loading />}</Screen>;
+  if (!data)
+    return (
+      <SafeAreaView style={st.page} edges={[]}>
+        {err ? <Notice text={err} /> : <Loading />}
+      </SafeAreaView>
+    );
 
-  const go = async (key: string, f: Act, after?: () => void) => {
+  const go = async (key: string, f: Parameters<typeof api.sodaAct>[1]) => {
     setBusy(key);
     setBad('');
-    setMsg('');
     try {
       const d: Soda = await api.sodaAct(token, f);
       setData(d);
       setMsg(d.message ?? '');
-      after?.();
     } catch (e) {
       setBad(errText(e, logout));
     } finally {
       setBusy('');
     }
   };
-  const u = url ?? data.url;
+  const open = (p: Record<string, string>) => router.push({ pathname: '/soda-edit', params: p });
+  const edit = (r: SodaItem) => open({ mode: 'edit', id: String(r.id), q: r.q, a: r.a });
 
   return (
-    <Screen onRefresh={reload}>
-      <Notice text={msg} tone="ok" />
-      <Notice text={bad} />
-      {data.check.length ? (
-        <>
-          <Card>
-            <H2>맞는지 확인해 주세요</H2>
-            <View style={{ gap: 14 }}>
-              <Text style={st.meta}>자료에서 읽은 답이에요. 틀린 건 눌러서 고치거나 지우고, 나머지는 한 번에 켜 주세요.</Text>
-              {data.check.map((r) => (
-                <Pressable key={r.id} onPress={() => setEdit({ id: r.id, q: r.q, a: r.a })}>
-                  <Text style={st.q}>{r.q}</Text>
-                  <Text style={st.a}>{r.a}</Text>
-                </Pressable>
-              ))}
-              <Btn title="모두 맞아요, 켜기" busy={busy === 'c'} onPress={() => go('c', { act: 'check' })} />
-            </View>
-          </Card>
-        </>
-      ) : null}
-
-      <Card>
-        <H2>SODA가 몰라서 물어봐요</H2>
-        {data.gaps.length ? (
-          data.gaps.map((g, i) => (
-            <View key={g.id} style={[{ gap: 10 }, i > 0 && st.sep]}>
-              <Text style={st.q}>{g.q}</Text>
-              {g.n > 1 ? <Text style={st.meta}>{g.n}번 물어봤어요</Text> : null}
-              <Field value={ans[g.id] ?? ''} onChangeText={(v) => setAns({ ...ans, [g.id]: v })} placeholder="한 줄로 답해 주세요" maxLength={1000} />
-              <Btn title="알려 주기" busy={busy === 'g' + g.id} disabled={!(ans[g.id] ?? '').trim()} onPress={() => go('g' + g.id, { act: 'gap', id: g.id, a: ans[g.id] })} />
-              <Pressable onPress={() => go('s' + g.id, { act: 'skip', id: g.id })} hitSlop={8}>
-                <Text style={st.link}>이건 넘어갈게요</Text>
-              </Pressable>
-            </View>
-          ))
-        ) : (
-          <Text style={st.meta}>{data.ai ? '지금은 물어볼 게 없어요. SODA가 모르는 질문을 받으면 여기에 모아 둘게요.' : 'SODA가 켜지면 모르는 질문을 여기에 모아 둘게요.'}</Text>
-        )}
-      </Card>
-
-      <Card>
-        <H2>한 번에 알려 주기</H2>
-        <View style={{ gap: 12 }}>
-          <Field label="말로 알려 주기" value={text} onChangeText={setText} multiline maxLength={5000} placeholder="예: 평일 오후 2시 전 주문은 당일 보내요. 주말엔 쉬어요." hint="키보드의 마이크를 누르면 말로 적을 수 있어요. 직접 적은 말은 바로 배워요." />
-          <Field label="쇼핑몰 주소" value={u} onChangeText={setUrl} autoCapitalize="none" keyboardType="url" maxLength={500} placeholder="예: smartstore.naver.com/우리가게" hint="주소에서 읽은 답은 확인한 뒤에 써요. 사진·PDF·엑셀은 웹에서 올릴 수 있어요." />
-          <Btn title="SODA에게 알려 주기" busy={busy === 't'} disabled={!text.trim() && !u.trim()} onPress={() => go('t', { act: 'teach', text, url: text.trim() ? '' : u }, () => setText(''))} />
+    <SafeAreaView style={st.page} edges={[]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={st.titleRow}>
+          <SodaMark size={26} />
+          <Text style={st.title}>SODA 가르치기</Text>
         </View>
-      </Card>
+        {msg ? <Text style={st.msg}>{msg}</Text> : null}
+        {bad ? <Text style={[st.msg, { color: C.red }]}>{bad}</Text> : null}
 
-      {edit ? (
-        <Card>
-          <View style={{ gap: 12 }}>
-            <Field label="질문" value={edit.q} onChangeText={(v) => setEdit({ ...edit, q: v })} maxLength={200} />
-            <Field label="답" value={edit.a} onChangeText={(v) => setEdit({ ...edit, a: v })} multiline maxLength={1000} />
-            <Btn title="저장" busy={busy === 'e'} onPress={() => go('e', { act: 'edit', id: edit.id, q: edit.q, a: edit.a }, () => setEdit(null))} />
-            <Pressable onPress={() => go('d', { act: 'del', id: edit.id }, () => setEdit(null))} hitSlop={8}>
-              <Text style={[st.link, { color: C.red }]}>이 답 지우기</Text>
+        {data.check.length ? (
+          <View style={st.card}>
+            <Head title="맞는지 확인해 주세요" n={data.check.length} />
+            {data.check.map((r) => (
+              <Row key={r.id} title={r.q} sub={r.a} onPress={() => edit(r)} pill="고치기" />
+            ))}
+            <Pressable onPress={() => go('check', { act: 'check' })} disabled={!!busy} style={({ pressed }) => [st.cta, pressed && { backgroundColor: C.accentPress }]}>
+              <Text style={st.ctaText}>{busy === 'check' ? '켜는 중…' : '모두 맞아요, 켜기'}</Text>
             </Pressable>
           </View>
-        </Card>
-      ) : null}
+        ) : null}
 
-      <Card>
-        <H2>SODA가 배운 답</H2>
-        {data.kb.length ? (
-          data.kb.map((r, i) => (
-            <View key={r.id} style={[st.row, i > 0 && st.line]}>
-              <Pressable style={{ flex: 1 }} onPress={() => setEdit({ id: r.id, q: r.q, a: r.a })}>
-                <Toggle title={r.q} sub={r.a} value={!!r.on} onChange={(v) => go('k' + r.id, { act: 'toggle', id: r.id, on: v })} />
+        <View style={st.card}>
+          <Head title="SODA가 물어봐요" n={data.gaps.length} />
+          {data.gaps.length ? (
+            data.gaps.map((g) => <Row key={g.id} icon="chat" title={g.q} sub={g.n > 1 ? `${g.n}번 물어봤어요` : '고객이 물었어요'} subTone={g.n > 1} onPress={() => open({ mode: 'gap', id: String(g.id), q: g.q })} pill="답하기" />)
+          ) : (
+            <Text style={st.empty}>{data.ai ? '지금은 물어볼 게 없어요' : 'SODA가 켜지면 모르는 질문을 여기에 모아요'}</Text>
+          )}
+        </View>
+
+        <View style={st.card}>
+          <Head title="한 번에 알려 주기" />
+          <Row icon="template" title="말로 알려 주기" sub="적은 말은 바로 배워요" onPress={() => open({ mode: 'text' })} chevron />
+          <Row icon="link" title="쇼핑몰 주소로 알려 주기" sub="읽은 답은 확인한 뒤에 써요" onPress={() => open({ mode: 'url', url: data.url })} chevron />
+          <Text style={st.foot}>사진 · PDF · 엑셀은 PC에서 올릴 수 있어요</Text>
+        </View>
+
+        <View style={st.card}>
+          <Head title="SODA가 배운 답" n={data.kb.length} />
+          {data.kb.length ? (
+            data.kb.map((r) => (
+              <Pressable key={r.id} onPress={() => edit(r)} style={({ pressed }) => [st.row, pressed && st.pressed]}>
+                <View style={{ flex: 1, gap: 1 }}>
+                  <Text style={[st.rowTitle, !r.on && st.off]} numberOfLines={1}>
+                    {r.q}
+                  </Text>
+                  <Text style={[st.rowSub, !r.on && st.off]} numberOfLines={1}>
+                    {r.a}
+                  </Text>
+                </View>
+                <Switch value={!!r.on} onValueChange={(v) => go('k' + r.id, { act: 'toggle', id: r.id, on: v })} trackColor={{ true: C.accent, false: C.line }} thumbColor="#fff" {...({ activeThumbColor: '#fff' } as object)} />
               </Pressable>
-            </View>
-          ))
-        ) : (
-          <Text style={st.meta}>아직 배운 답이 없어요. 고객에게 직접 답을 보내면 '다음에도 이렇게 답하기'가 떠요.</Text>
-        )}
-      </Card>
-    </Screen>
+            ))
+          ) : (
+            <Text style={st.empty}>고객에게 직접 답을 보내면 여기에 쌓여요</Text>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
+function Head({ title, n }: { title: string; n?: number }) {
+  return (
+    <View style={st.head}>
+      <Text style={st.headText}>{title}</Text>
+      {n ? <Text style={st.headN}>{n}</Text> : null}
+    </View>
+  );
+}
+
+function Row({ icon, title, sub, subTone, onPress, chevron, pill }: { icon?: string; title: string; sub?: string; subTone?: boolean; onPress: () => void; chevron?: boolean; pill?: string }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [st.row, pressed && st.pressed]}>
+      {icon ? (
+        <View style={st.ic}>
+          <Glyph name={icon} size={22} />
+        </View>
+      ) : null}
+      <View style={{ flex: 1, gap: 1 }}>
+        <Text style={st.rowTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        {sub ? (
+          <Text style={[st.rowSub, subTone && { color: C.accentInk }]} numberOfLines={1}>
+            {sub}
+          </Text>
+        ) : null}
+      </View>
+      {pill ? (
+        <View style={st.pill}>
+          <Text style={st.pillT}>{pill}</Text>
+        </View>
+      ) : null}
+      {chevron ? <Text style={st.chev}>›</Text> : null}
+    </Pressable>
+  );
+}
+
+// 토스 홈처럼: 연회색 바탕 위 흰 카드(둥글기 20, 옆 12), 카드 안 줄은 15/13, 오른쪽 작은 회색 버튼
 const st = StyleSheet.create({
-  q: { fontFamily: FONT, fontSize: 16, fontWeight: '700', color: C.fg },
-  a: { fontFamily: FONT, fontSize: 15, lineHeight: 22, color: C.fg2, marginTop: 4 },
-  meta: { fontFamily: FONT, fontSize: 14, lineHeight: 20, color: C.fg3 },
-  link: { fontFamily: FONT, fontSize: 14, fontWeight: '600', color: C.fg3 },
-  row: { paddingVertical: 4 },
-  sep: { marginTop: 18, paddingTop: 18, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
-  line: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
+  page: { flex: 1, backgroundColor: C.band },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14 },
+  title: { fontFamily: FONT, fontSize: 22, lineHeight: 31, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  msg: { fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.green, paddingHorizontal: 24, paddingBottom: 10 },
+  card: { backgroundColor: C.card, borderRadius: 20, marginHorizontal: 12, marginBottom: 10, paddingVertical: 8 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+  headText: { fontFamily: FONT, fontSize: 15, lineHeight: 22.5, fontWeight: '700', color: C.fg, letterSpacing: 0 },
+  headN: { fontFamily: FONT, fontSize: 15, lineHeight: 22.5, fontWeight: '700', color: C.accent, letterSpacing: 0 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 11 },
+  pressed: { backgroundColor: '#F9FAFB' },
+  rowTitle: { fontFamily: FONT, fontSize: 15, lineHeight: 22.5, fontWeight: '600', color: C.fg, letterSpacing: 0 },
+  rowSub: { fontFamily: FONT, fontSize: 13, lineHeight: 19.5, color: C.fg3, letterSpacing: 0 },
+  off: { color: C.fg4 },
+  ic: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F2F4F6', alignItems: 'center', justifyContent: 'center' },
+  pill: { height: 30, paddingHorizontal: 11, borderRadius: 8, backgroundColor: C.fill, alignItems: 'center', justifyContent: 'center' },
+  pillT: { fontFamily: FONT, fontSize: 13, fontWeight: '600', color: C.fg2 },
+  chev: { fontFamily: FONT, fontSize: 18, color: C.fg4 },
+  empty: { fontFamily: FONT, fontSize: 14, lineHeight: 21, color: C.fg3, paddingHorizontal: 20, paddingVertical: 10 },
+  foot: { fontFamily: FONT, fontSize: 12, lineHeight: 18, color: C.fg3, textAlign: 'center', paddingTop: 6, paddingBottom: 6 },
+  cta: { height: 48, borderRadius: 12, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginHorizontal: 20, marginTop: 8, marginBottom: 8 },
+  ctaText: { fontFamily: FONT, fontSize: 15, fontWeight: '700', color: '#fff', letterSpacing: 0 },
 });

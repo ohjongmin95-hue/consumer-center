@@ -1,4 +1,4 @@
-/* 제보 카드·목록 피드: 소보루와 소비자제보센터(consumerjebo.co.kr)가 같이 씀 (운영자 2026-11-03: 검은고양이처럼 공개 제보 + 공감·댓글, 토스처럼 깔끔하게) */
+/* 제보 카드·목록 피드: 소보루와 소비자고발제보센터(consumerjebo.co.kr)가 같이 씀 (운영자 2026-11-03: 검은고양이처럼 공개 제보 + 공감·댓글, 토스처럼 깔끔하게) */
 body:not(.sb){--sb-orange:#e8890c;--sb-mute:#8b95a1;--sb-sub:#4e5968;--sb-line:#f2f4f6;--sb-ink:#191f28}
 .nn-emo{display:flex;align-items:center;justify-content:center;font-family:Tossface,sans-serif}
 .nn-emo.t1{background:#fff1e3}.nn-emo.t2{background:#e8f1fb}.nn-emo.t3{background:#e7f5ea}.nn-emo.t4{background:#fdeef2}.nn-emo.t5{background:#f1ecfb}.nn-emo.t6{background:#fbf5dc}
@@ -87,7 +87,7 @@ body:not(.sb){--sb-orange:#e8890c;--sb-mute:#8b95a1;--sb-sub:#4e5968;--sb-line:#
 body:not(.sb) .site-footer{padding-left:0;padding-right:0}
 body:not(.sb) .ft-inner{width:100%;max-width:1160px;padding-left:24px;padding-right:24px;box-sizing:border-box}
 @media(max-width:680px){body:not(.sb) .ft-inner{padding-left:16px;padding-right:16px}}
-/* 2026-11-03 공개 제보 화면 (소비자제보센터): 토스처럼. 흰 바탕, 큰 글씨, 굵은 구분선, PC는 넓게 2단 (public_case.html) */
+/* 2026-11-03 공개 제보 화면 (소비자고발제보센터): 토스처럼. 흰 바탕, 큰 글씨, 굵은 구분선, PC는 넓게 2단 (public_case.html) */
 body:has(.pc-page){background:#fff}
 .pc-page{padding-top:24px;padding-bottom:64px;background:#fff}
 .pc-wrap{max-width:1120px!important;display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-areas:"back back" "head side" "main side";column-gap:56px;align-items:start}
@@ -157,7 +157,7 @@ a.pc-co-row[href]:hover{background:#f2f4f6}
   .pc-side{margin-bottom:20px}
   .pc-sec,.pc-page .case-talk{margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px}
 }
-/* 2026-11-03 운영자: 큰 제목 밑 회색 부연 설명은 빼기 (소비자제보센터 전체). 문구 자체는 관리자에 남아 있음 */
+/* 2026-11-03 운영자: 큰 제목 밑 회색 부연 설명은 빼기 (소비자고발제보센터 전체). 문구 자체는 관리자에 남아 있음 */
 body:not(.sb) .page-intro>.page-title+p:not(.co-tags):not(.public-case-meta),
 body:not(.sb) .info-intro,body:not(.sb) .guide-intro>p,body:not(.sb) .gd-lead,body:not(.sb) .co-verified-note{display:none}
 /* 전문가 표시 (experts.py) */
@@ -856,7 +856,7 @@ body:has(.hero-banner){overflow-x:clip}
 .ui-k-from{font-size:12px;font-weight:700;color:#7a6200}
 .ui-k-btn{display:block;margin-top:4px;padding:9px;border-radius:10px;background:#fff;border:1px solid #eadf9c;text-align:center;font-weight:600;font-size:14px;color:#333d4b}
 .ui-kakao.is-mini{margin-top:10px;padding:10px 14px;font-size:13.5px}
-/* 운영자 2026-11-03: 익명 제보는 이름 앞에 소비자제보센터 파비콘(귤색 확성기) */
+/* 운영자 2026-11-03: 익명 제보는 이름 앞에 소비자고발제보센터 파비콘(귤색 확성기) */
 .vc-who-av.is-anon{flex:none;object-fit:contain;border-radius:0}
 /* 운영자 2026-11-03: 06 기사화 그림 = 소비자를 위한 신문 SOBORU 제호 */
 .ui-paper{display:grid;justify-items:center;gap:2px;padding-bottom:12px;margin-bottom:4px;border-bottom:1px solid #e5e8eb}
@@ -1926,7 +1926,7 @@ body:has(main.xf.is-split) .auth-top .brand{color:#191f28}
 .xf-free{display:flex;align-items:center;gap:8px;margin:24px 0 0;font-size:15px;line-height:22.5px;font-weight:600;color:#CE6719}
 .xf-free svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 @media(max-width:860px){.xf-roles,.xf-free{display:none}}
-/* 운영자 2026-11-03 (밤): 둘러보기 휴대폰 화면 = 소비자제보센터 앱 화면, AI 상담 카드는 말풍선을 가운데로 */
+/* 운영자 2026-11-03 (밤): 둘러보기 휴대폰 화면 = 소비자고발제보센터 앱 화면, AI 상담 카드는 말풍선을 가운데로 */
 .ip-logo-bar{display:flex;align-items:baseline;gap:0;margin:14px 0 0;font-size:15px;font-weight:800;letter-spacing:-.3px;color:#191f28}
 .ip-logo-bar span{color:#EF920E}.ip-logo-bar small{margin-left:4px;font-size:9px;font-weight:700;color:#4e5968;letter-spacing:0}.ip-logo-bar em{font-style:normal;color:#652D1C}
 .ip-app{margin-top:12px!important}
@@ -2100,3 +2100,20 @@ body .rf-rows .vc-simple h3{min-height:0;-webkit-line-clamp:1}
 /* 운영자 2026-11-04: 휴대폰에서 글·진행 단계·뒤로 가기·카드 글자의 왼쪽 줄을 맨 위 로고와 같은 선에 맞춤 (비뚤배뚤 X) */
 @media(max-width:560px){.pf .pf-wrap{padding-left:0;padding-right:0}.pf .pc-back{margin-left:0}}
 @media(max-width:700px){.rf-home .vc-simple,.rf-home .vc-simple.is-sample{padding-left:16px!important;padding-right:16px!important}}
+/* 운영자 2026-11-09: 이름이 '소비자고발제보센터'로 길어져 폰에서 로그인 글자와 겹치지 않게 */
+@media(max-width:430px){.site-header .brand{font-size:21px!important}}
+@media(max-width:374px){.site-header .brand{font-size:19px!important}}
+@media(max-width:340px){.site-header .brand .brand-by{display:none!important}}
+/* 운영자 2026-11-09: 제보 글쓰기 사진·영상 칸 — '(선택)' 빼고 크게 권함, 기본 파일 버튼 대신 토스식 올리기 칸 */
+.ev-field .ev-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.ev-field .ev-badge{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:7px;background:#FFF1DE;color:#CE6719;font-size:13px;font-weight:700;letter-spacing:-.2px}
+.ev-field .ev-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.ev-field label.ev-drop{display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:16px;background:#F2F4F6;cursor:pointer;transition:background .15s;font-weight:400}
+.ev-field label.ev-drop:hover{background:#EAEDF0}
+.ev-field .ev-input:focus-visible+.file-picked,.ev-field label.ev-drop:focus-within{outline:2px solid #EF920E}
+.ev-field .ev-ic{flex:none;display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#fff}
+.ev-field .ev-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ev-field .ev-txt b{font-size:16px;color:#191F28;font-weight:700}
+body:not(.sb) .ev-field .ev-txt small,.ev-field .ev-txt small{font-size:13.5px;color:#6B7684;font-weight:400}
+.ev-field .ev-head{margin-bottom:4px}
+.ev-field .file-picked{color:#191F28;font-weight:600;word-break:break-all}

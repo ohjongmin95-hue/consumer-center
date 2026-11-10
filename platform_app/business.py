@@ -13,7 +13,7 @@ import tracking as tracking_mod
 import orders as orders_mod
 import shops, mailin
 import product_pdf
-import team, inbox, workflow, automations, livechat, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats, instagram, kakao, billing
+import team, inbox, workflow, automations, livechat, onboard, demo, funnel, market, sales, cms, csimport, growth, security, cafe24, openapi, aistats, instagram, kakao, naver_talk, try_soda, billing
 from core import conn, clean, digits, BIG
 
 app=Flask(__name__,static_folder='static',template_folder='templates')
@@ -23,7 +23,10 @@ OPS_HASH=os.getenv('OPS_PASSWORD_HASH','')
 APP_LINKS={'android':os.getenv('BIZ_APP_ANDROID_URL',''),'ios':os.getenv('BIZ_APP_IOS_URL','')}
 EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
-app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp);app.register_blueprint(cafe24.bp);app.register_blueprint(openapi.bp);app.register_blueprint(aistats.bp);app.register_blueprint(instagram.bp);app.register_blueprint(kakao.bp);app.register_blueprint(billing.bp)
+app.register_blueprint(market.bp);app.register_blueprint(sales.bp);app.register_blueprint(cms.bp);app.register_blueprint(csimport.bp);app.register_blueprint(growth.bp);app.register_blueprint(security.bp);app.register_blueprint(cafe24.bp);app.register_blueprint(openapi.bp);app.register_blueprint(aistats.bp);app.register_blueprint(instagram.bp);app.register_blueprint(kakao.bp);app.register_blueprint(naver_talk.bp);app.register_blueprint(try_soda.bp);app.register_blueprint(billing.bp)
+import shop_profile;shop_profile.register(app)
+import seo;seo.register(app)
+app.jinja_env.globals.update(cms_has=cms.has_posts,open_left=billing.open_left,OPEN_SEATS=billing.OPEN_SEATS,OPEN_DAYS=billing.OPEN_DAYS,OPEN_CAP=billing.OPEN_CAP)
 app.jinja_env.globals.update(has_ep=lambda name:name in app.view_functions)
 
 @app.before_request
@@ -54,11 +57,11 @@ def who():
     """지금 로그인한 사람 (대표 또는 직원). 로그인 전이면 None."""
     me();return getattr(g,'who',None)
 # 역할별로 못 들어가는 화면 (team.can 참고). 앱 API는 대표 로그인만 받는다.
-MANAGE_EPS={'ai_reply','macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','connect_email','ig.page','ig.callback','kk.page','team_page','soda_page','soda_learn'}
+MANAGE_EPS={'ai_reply','macros','automations_page','connect_widget','c24.page','c24.callback','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','rules','ai_profile','products','products_pdf','product_import','settings','connect','connect_shop','connect_email','ig.page','ig.callback','kk.page','nt.page','team_page','soda_page','soda_learn'}
 DECIDE_EPS={'approve_many'}
 DECIDE_ACTS={'approve','comp','comp_skip','refund_done'}
 # 데모에서 막는 화면: 진짜 키·직원·계정·외부 연결을 건드리는 곳
-DEMO_BLOCKED={'c24.page','c24.callback','ig.page','ig.callback','kk.page','connect_email','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','connect','connect_shop','team_page','settings','start','products_pdf','product_import','hook_trace'}
+DEMO_BLOCKED={'c24.page','c24.callback','ig.page','ig.callback','kk.page','nt.page','connect_email','api.manage','gr.co_partner','imp.page','imp.batch','imp.undo','connect','connect_shop','team_page','settings','start','products_pdf','product_import','hook_trace'}
 @app.before_request
 def role_guard():
     a=who() if not request.path.startswith(('/api/','/hook/','/ops')) else None
@@ -130,7 +133,7 @@ def robots():return app.response_class(core.robots_txt('biz',['/api','/ops','/ca
 
 @app.route('/sitemap.xml')
 def sitemap():
-    ent=[(p,'') for p in ['/','/signup','/login','/pricing','/terms','/refund']+market.sitemap_paths()+sales.sitemap_paths()+growth.sitemap_paths()+['/security']]+cms.sitemap_entries()
+    ent=[(p,'') for p in ['/','/signup','/pricing','/terms','/refund']+market.sitemap_paths()+sales.sitemap_paths()+growth.sitemap_paths()+['/security']]+cms.sitemap_entries()
     body=''.join('<url><loc>%s</loc>%s</url>'%(core.site_url('biz',p),'<lastmod>%s</lastmod>'%m if m else '') for p,m in ent)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
@@ -165,7 +168,9 @@ def signup_apply(f,via='email',google_sub=''):
     elif core.throttled('signup',limit=5,minutes=60):err='잠시 후 다시 시도해 주세요.'
     cid=None
     if not err:
-        with conn() as db:cid,err=onboard.signup(db,d,generate_password_hash(pw if via!='google' else secrets.token_hex(24)),via,google_sub)
+        with conn() as db:
+            cid,err=onboard.signup(db,d,generate_password_hash(pw if via!='google' else secrets.token_hex(24)),via,google_sub)
+            if cid and not err and str(f.get('open_join')) in ('1','True','true'):billing.join_open(db,cid)
     return d,err,cid
 def start_session(co,staff_id=None):
     """로그인 상태로 만든다 (가입·로그인·구글·직원 초대 공용). 다른 탭의 화면과 운영 로그인은 그대로 둔다."""
@@ -467,7 +472,7 @@ def connect():
     """서비스 연동: 지금 실제로 이어진 것과 준비 중인 것을 그대로 보여 준다."""
     with conn() as db:
         n=db.execute('SELECT channel,COUNT(*) n FROM orders WHERE company_id=? GROUP BY channel',(me()['id'],)).fetchall();by={r['channel']:r['n'] for r in n}
-        lk=shops.links(db,me()['id']);c24=cafe24.link(db,me()['id']);ml=mailin.link(db,me()['id']);ig=instagram.link(db,me()['id']);kk=kakao.link(db,me()['id'])
+        lk=shops.links(db,me()['id']);c24=cafe24.link(db,me()['id']);ml=mailin.link(db,me()['id']);ig=instagram.link(db,me()['id']);kk=kakao.link(db,me()['id']);nt=naver_talk.link(db,me()['id'])
     track_on=bool(core.secret('SWEETTRACKER_T_KEY'))
     rows=[]
     if c24:rows.append(dict(group='판매처',name='카페24',desc=(f"문의 {c24['n_inq']}건 · 주문 {c24['n_ord']}건 · 상품 {c24['n_prod']}개 가져옴"+(f" · {core.fmt(c24['synced'])}" if c24['synced'] else '')) if c24['status']=='ok' else c24['note'],state='on' if c24['status']=='ok' else 'err',href=url_for('c24.page')))
@@ -489,6 +494,8 @@ def connect():
                 state=('on' if ig['status']=='ok' else 'err') if ig else ('link' if instagram.ready() else 'wait'),href=url_for('ig.page')),
            dict(group='상담',name='카카오톡 채널',desc=((f"문의 {kk['n_inq']}건 받음"+(f" · {core.fmt(kk['last_at'])}" if kk['last_at'] else ' · 챗봇 설정을 마치면 들어와요')) if kk['status']=='ok' else kk['note']) if kk else '카카오톡 채널 챗봇에 소보루 주소를 넣으면 카톡 문의가 상담으로 들어와요',
                 state=('on' if kk['status']=='ok' else 'err') if kk else 'link',href=url_for('kk.page')),
+           dict(group='상담',name='네이버 톡톡',desc=((f"문의 {nt['n_inq']}건 받음"+(f" · {core.fmt(nt['last_at'])}" if nt['last_at'] else ' · 파트너센터 설정을 마치면 들어와요')) if nt['status']=='ok' else nt['note']) if nt else '네이버 톡톡 파트너센터에 소보루 주소를 넣으면 톡톡 문의가 상담으로 들어와요',
+                state=('on' if nt['status']=='ok' else 'err') if nt else 'link',href=url_for('nt.page')),
            dict(group='상담',name='쇼핑몰 문의 버튼',desc=(f"{real()['widget_host']}에 붙어 있어요 · {core.fmt(real()['widget_seen'])} 확인" if real()['widget_seen'] else '쇼핑몰에 한 줄만 붙이면 문의하기 버튼이 생겨요'),state='on' if real()['widget_seen'] else 'link',href=url_for('connect_widget')),
            dict(group='상담',name='SODA 상담',desc='고객 채팅에 SODA가 먼저 답해요' if chatbot.ready() else '소보루가 연결을 준비하고 있어요',state='on' if chatbot.ready() else 'soon',href=url_for('rules')+'#ai' if chatbot.ready() else '')]
     return render_template('b_connect.html',rows=rows,tab='connect')
@@ -689,12 +696,13 @@ def stats_data(db,co):
     return dict(k=kpis(rows),cats=by_cat(rows),how=how,weeks=weeks,cmp=cmp,reply_h=reply_h,sla=workflow.report(db,co,rows),conv=insights.conversion(db,co),csat=cx.stats(db,co['id']),CSAT_LABELS=cx.CSAT_LABELS,CSAT_EMOJI=cx.CSAT_EMOJI)
 
 notify_consumer=core.notify_consumer
-SEND_VIA={mailin.CHANNEL:'메일로',instagram.CHANNEL:'인스타그램 DM으로',kakao.CHANNEL:'카카오톡으로'}  # 사람이 눌러야 그 채널로 답이 나가는 곳
+SEND_VIA={mailin.CHANNEL:'메일로',instagram.CHANNEL:'인스타그램 DM으로',kakao.CHANNEL:'카카오톡으로',naver_talk.CHANNEL:'네이버 톡톡으로'}  # 사람이 눌러야 그 채널로 답이 나가는 곳
 def send_via(db,c):
     """연결된 곳에서 가져온 요청이면 '답변하기'가 그곳으로 바로 보낸다. 화면에 쓸 안내('누르면 ...')를 돌려준다, 아니면 ''."""
     r=db.execute('SELECT shop FROM shop_seen WHERE company_id=? AND case_id=? LIMIT 1',(c['company_id'],c['id'])).fetchone()
     if not r:return ''
     if r['shop']=='kakao':return '고객이 카톡으로 다시 말을 걸면 전해져요'  # 챗봇은 고객이 말을 걸 때만 답할 수 있다
+    if r['shop']=='naver_talk':return '누르면 고객 톡톡으로 바로 가요'
     if r['shop'] in ('email','instagram'):return f"누르면 고객에게 {SEND_VIA.get(c['channel']) or ('메일로' if r['shop']=='email' else '인스타그램 DM으로')} 바로 가요"
     return f"누르면 {c['channel']}에 바로 올라가요"
 OUT_ACTS=('ask','ship_track','comp')  # 답변하기 말고도 고객에게 말이 나가는 일
@@ -867,7 +875,7 @@ def case(case_id):
 # 요청 하나 = 대화방 하나. 고객 말·AI 답·사장님 답이 말풍선으로 이어지고, 처리할 일(환불·취소 등)은 대화 안의 '결정' 카드로 뜬다.
 # 자세한 처리(교환·환불 완료·보상·태그 등)는 지금처럼 요청 상세 화면에서 한다.
 CHAT_TABS=(('open','진행 중'),('hold','보류'),('done','종료'))
-CH_MARK={'카페24':('C','c24'),instagram.CHANNEL:('IG','ig'),'인스타그램':('IG','ig'),kakao.CHANNEL:('K','kk'),'이메일':('M','mail'),'스마트스토어':('N','nv'),'쿠팡':('CP','cp')}
+CH_MARK={'카페24':('C','c24'),instagram.CHANNEL:('IG','ig'),'인스타그램':('IG','ig'),kakao.CHANNEL:('K','kk'),naver_talk.CHANNEL:('N톡','nt'),'이메일':('M','mail'),'스마트스토어':('N','nv'),'쿠팡':('CP','cp')}
 def first_text(c):
     t,b=(c['title'] or '').rstrip('…. '),(c['body'] or '').strip()
     return b if b.startswith(t) else (f"{c['title']}\n{b}".strip() if b else c['title'])
@@ -902,7 +910,7 @@ def chat_msgs(db,c,after=0):
         if e['kind']=='me':out.append(dict(id=e['id'],who='me',by=c['name'] or '고객',text=e['text'],at=core.fmt(e['created']),ts=e['created']))
         elif e['kind']=='co' and e['reply']:
             ai=e['text'].startswith('AI')
-            out.append(dict(id=e['id'],who='ai' if ai else 'co',by='AI' if ai else (e['actor'] or '사장님'),text=e['reply'],at=core.fmt(e['created']),ts=e['created']))
+            out.append(dict(id=e['id'],who='ai' if ai else 'co',by='SODA' if ai else ('사장님' if (e['actor'] or 'owner')=='owner' else e['actor']),text=e['reply'],at=core.fmt(e['created']),ts=e['created']))
         elif e['kind'] in ('co','sys'):out.append(dict(id=e['id'],who='sys',by='',text=e['text'],at=core.fmt(e['created']),ts=e['created']))
     if not after:
         for n in team.notes(db,c['id']):out.append(dict(id=-n['id'],who='note',by=n['author'],text=n['text'],at=core.fmt(n['created']),ts=n['created']))
@@ -1373,12 +1381,12 @@ def join(tok):
 def settings():
     co=me()
     if request.method=='POST':
-        with conn() as db:flash(*save_settings(db,co,request.form))
-        return redirect(url_for('settings'))
-    with conn() as db:use=onboard.usage(db,co['id']);refs=growth.company_page_data(db,real())
-    return render_template('b_settings.html',tab='settings',DAYS=workflow.DAYS,SLA_CHOICES=workflow.SLA_CHOICES,AWAY_DEFAULT=workflow.AWAY_DEFAULT,hours_text=workflow.hours_text(co),link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use,refs=refs,btns=cx.buttons(co),qs=cx.questions(co),MAX_BTNS=cx.MAX_BTNS,MAX_QS=cx.MAX_QS)
+        with conn() as db:flash(*save_settings(db,co,request.form,request.files))
+        return redirect(url_for('settings')+('#profile' if request.form.get('act')=='profile' else ''))
+    with conn() as db:use=onboard.usage(db,co['id']);refs=growth.company_page_data(db,real());sq=billing.soda_quota(db,co)
+    return render_template('b_settings.html',sq=sq,tab='settings',DAYS=workflow.DAYS,SLA_CHOICES=workflow.SLA_CHOICES,AWAY_DEFAULT=workflow.AWAY_DEFAULT,hours_text=workflow.hours_text(co),link=core.site_url('me','/to/%d'%co['id']),kakao_ready=core.kakao_ready(),guide_preview=core.return_guide(co),use=use,refs=refs,btns=cx.buttons(co),qs=cx.questions(co),MAX_BTNS=cx.MAX_BTNS,MAX_QS=cx.MAX_QS)
 
-def save_settings(db,co,f):
+def save_settings(db,co,f,files=None):
     """설정 저장(웹·앱 공용). act: password·return·notify, 없으면 회사 정보. (문구, 'ok'|'error')를 돌려준다."""
     on=lambda k:str(f.get(k)) in ('1','True','true')
     if f.get('act')=='password':
@@ -1390,6 +1398,7 @@ def save_settings(db,co,f):
         db.execute('UPDATE companies SET return_address=?,return_courier=?,return_memo=? WHERE id=?',(clean(f.get('return_address'),200),courier,clean(f.get('return_memo'),300),co['id']));return '반품 안내를 저장했습니다','ok'
     if f.get('act')=='ops':return workflow.save(db,co,f)
     if f.get('act')=='away':return cx.set_away(db,co,'owner',on('on')),'ok'  # 앱: 대표 자리 비움
+    if f.get('act')=='profile':return shop_profile.save(db,co,f,files)
     if f.get('act')=='cxbot':return cx.save_buttons(db,co,f)
     if f.get('act')=='cxform':return cx.save_questions(db,co,f)
     if f.get('act')=='notify':

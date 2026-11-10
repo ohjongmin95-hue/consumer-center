@@ -52,9 +52,9 @@
   ('회원', [('admin_members', 'users', '회원'), ('admin_experts', 'id', '소보루 자문단'), ('admin_expert_mail', 'mail', '자문단 섭외 메일'), ('admin_takedowns', 'flag', '게시중단 요청')]),
   ('콘텐츠', [('admin_ask', 'chat', 'AI 상담'), ('admin_ai_usage', 'chart', 'AI 사용량'), ('admin_laws', 'book', '법령 학습')]),
   ('사이트 화면 편집', [('admin_site', 'edit', '화면에서 바로 고치기'), ('admin_hero_photos', 'image', '첫 화면 사진'), ('admin_lists', 'layers', '메뉴·구성'), ('admin_content', 'text', '문구·사업자 정보·검색')]),
-  ('계정', [('admin_staff', 'id', '기자 계정'), ('admin_password', 'key', '비밀번호 변경')]),
+  ('계정', [('admin_staff', 'id', '기자 계정'), ('admin_password', 'key', '비밀번호 변경'), ('admin_qr', 'flag', '매장 QR')]),
 ] %}
-{# 운영자 2026-11-05: 관리자 하나에서 위쪽 전환 버튼으로 '소비자제보센터'·'소보루 매거진'을 오감. 메뉴는 서로 겹치지 않음 (mag_admin.py) #}
+{# 운영자 2026-11-05: 관리자 하나에서 위쪽 전환 버튼으로 '소비자고발제보센터'·'소보루 매거진'을 오감. 메뉴는 서로 겹치지 않음 (mag_admin.py) #}
 {% set space = admin_space() if admin_space is defined else 'jebo' %}
 {% if space == 'mag' %}{% set groups = mag_groups %}{% endif %}
 {% set nc = new_case_info() %}
@@ -122,7 +122,7 @@
   <nav class="ad-side" aria-label="관리 메뉴">
     {% for group, links in groups %}
     <div class="ad-group">{% if group %}<p class="ad-group-title">{{ group }}</p>{% endif %}
-      {# 사이트 꾸미기: 지금 고치는 사이트(소보루/소비자제보센터)를 그대로 따라감. '사업자 정보'·'검색 노출'은 문구 고치기 화면의 한 칸으로 바로 감 #}
+      {# 사이트 꾸미기: 지금 고치는 사이트(소보루/소비자고발제보센터)를 그대로 따라감. '사업자 정보'·'검색 노출'은 문구 고치기 화면의 한 칸으로 바로 감 #}
 
       {% for e, ico, label in links %}{% set ep, _, sec = e.partition('#') %}
       {%- if group == '사이트 화면 편집' %}{% set href = face_url(ep) ~ ('#section-' ~ sec if sec else '') %}{% set on = active == ep and not sec %}

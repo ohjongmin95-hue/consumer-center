@@ -1,4 +1,4 @@
-// 아래 탭: 홈·제보 목록·제보하기·알림·내 제보 (소보루제보 앱). 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
+// 아래 탭: 홈·제보 목록·제보하기·알림·내 제보 (소보루고발제보 앱). 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

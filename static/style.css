@@ -2029,7 +2029,7 @@ body:has(.auth-page) .flash-wrap .alert{margin:0;border:0;border-radius:14px;bac
 .cm-n svg,.cm-foot svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px}
 .cm-ex,.cm-pc p{margin:4px 0 0;font-size:14px;color:#5b6068}.cm-pc em{font-style:normal;font-weight:700;margin-right:6px}
 
-/* 소비자제보센터 화면 배경: 회색 대신 흰색 (운영자 요청 2026-10-17) */
+/* 소비자고발제보센터 화면 배경: 회색 대신 흰색 (운영자 요청 2026-10-17) */
 html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.console):not(.newsroom){background:#fff}
 /* 관리자만 보이는 '관리자 삭제' */
 .admin-del{display:inline-block;margin:0}.admin-del-btn{color:#d93a2b!important;font-weight:700}

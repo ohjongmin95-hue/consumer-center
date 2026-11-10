@@ -1,7 +1,7 @@
 // 상담이 들어온 곳 아이콘 (웹 platform_app/static/ch/*.svg와 같은 그림): 카페24 · 인스타그램 · 카카오톡 · 메일 · 네이버 · 쿠팡 · 상담창
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 
-const BG: Record<string, string> = { c24: '#2F6BFF', mail: '#5F6B7A', nv: '#03C75A', cp: '#E52528', kk: '#FEE500', web: '#F89B00' };
+const BG: Record<string, string> = { c24: '#2F6BFF', mail: '#5F6B7A', nv: '#03C75A', cp: '#E52528', kk: '#FEE500', web: '#EF920E' };
 
 export function ChannelIcon({ mark, size = 22 }: { mark: string; size?: number }) {
   const w = { stroke: '#fff', fill: 'none', strokeWidth: 1.8 };

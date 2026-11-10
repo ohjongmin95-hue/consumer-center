@@ -20,6 +20,6 @@
   </div>
   {% else %}<div class="rk-empty"><span class="ck-tile tf" aria-hidden="true">📊</span><p>{{ ui('rank.empty', '아직 순위를 매길 만큼 제보가 쌓인 기업이 없어요.') }}</p></div>{% endif %}
   <p class="rk-how">{{ ui('rank.how', '기업에 전달된 제보가 %d건 이상인 기업만 올라요. 점수는 답변 비율, 해결 비율, 답변 속도로 매기고, 전달하고 %d일이 안 된 제보는 빼고 셈해요.')|format(min_n, days) }} <a href="{{ url_for('company_grade_guide') }}">{{ ui('rank.grade_link', '등급 기준 보기') }}</a></p>
-  <p class="public-case-notice">{{ ui('companies.notice', '소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요. 제보는 제보자의 주장이며, 기업 답변을 보장하지 않아요.')|branded }}</p>
+  <p class="public-case-notice">{{ ui('companies.notice', '소비자고발제보센터는 공공기관이 아닌 민간 플랫폼이에요. 제보는 제보자의 주장이며, 기업 답변을 보장하지 않아요.')|branded }}</p>
 </div></main>
 {% endblock %}

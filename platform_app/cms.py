@@ -199,9 +199,34 @@ def media(name):
     r=send_file(p,mimetype=IMG_EXT[p.suffix],max_age=86400*30);return r
 
 def nav():return [('cms.help_home','도움말')]  # 자료실·고객 사례는 아래쪽 링크에 (위 메뉴가 넘치지 않게)
+def has_posts(kind):
+    """공개된 글이 하나라도 있는지. 비어 있는 자료실·고객 사례는 링크를 숨긴다."""
+    with conn() as db:return bool(db.execute('SELECT 1 FROM posts WHERE kind=? AND published=1 LIMIT 1',(kind,)).fetchone())
+@bp.route('/rss.xml')
+def rss():
+    """자료실·도움말·고객 사례 새 글 (네이버 서치어드바이저 RSS 제출용)."""
+    from email.utils import format_datetime
+    def when(s):
+        try:return format_datetime(datetime.datetime.fromisoformat((s or '')[:19]).replace(tzinfo=datetime.timezone(datetime.timedelta(hours=9))))
+        except ValueError:return ''
+    esc=lambda s:html.escape(s or '',quote=True)
+    with conn() as db:
+        rows=[r for r in db.execute("SELECT * FROM posts WHERE published=1 ORDER BY COALESCE(NULLIF(published_at,''),updated) DESC,id DESC LIMIT 50").fetchall() if (r['kind'],r['slug']) not in PAUSED]
+    items=''
+    for p in rows:
+        u=core.site_url('biz',{'blog':'/blog/','help':'/help/','story':'/customers/'}[p['kind']]+p['slug'])
+        d=when(p['published_at'] or p['updated'])
+        items+=(f"<item><title>{esc(p['title'])}</title><link>{esc(u)}</link><guid>{esc(u)}</guid>"
+                f"<description>{esc(p['seo_desc'] or p['summary'])}</description><category>{esc(KINDS[p['kind']])}</category>"+(f'<pubDate>{d}</pubDate>' if d else '')+'</item>')
+    home=core.site_url('biz','/')
+    body=(f'<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>{esc(core.BNAME)}</title><link>{esc(home)}</link>'
+          f'<description>{esc(core.BNAME)} 자료실·도움말·고객 사례</description><language>ko</language>{items}</channel></rss>')
+    from flask import current_app
+    return current_app.response_class(body,mimetype='application/rss+xml')
+
 def sitemap_entries():
     """(경로, 마지막 수정일)"""
-    out=[('/blog',''),('/help',''),('/customers','')]
+    out=[('/help','')]+[(u,'') for k,u in (('blog','/blog'),('story','/customers')) if has_posts(k)]
     with conn() as db:
         for p in db.execute('SELECT kind,slug,updated FROM posts WHERE published=1').fetchall():
             if (p['kind'],p['slug']) in PAUSED:continue

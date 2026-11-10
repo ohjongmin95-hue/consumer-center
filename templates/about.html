@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {# 운영자 2026-11-03 (밤): 서비스 소개. 네이버 AI 브리핑·AI 검색이 그대로 옮겨 갈 수 있게 정의 한 문장 → 주요 특징 → 자주 묻는 질문 #}
-{% block title %}소비자제보센터 소개 - 소비자 피해 제보 플랫폼{% endblock %}
+{% block title %}소비자고발제보센터 소개 - 소비자 피해 제보 플랫폼{% endblock %}
 {% block description %}{{ a.lead }}{% endblock %}
 {% block head %}<script type="application/ld+json">{{ [
-  {"@context": "https://schema.org", "@type": "AboutPage", "@id": canonical_url() ~ "#about", "url": canonical_url(), "name": "소비자제보센터 소개", "description": a.lead, "inLanguage": "ko",
+  {"@context": "https://schema.org", "@type": "AboutPage", "@id": canonical_url() ~ "#about", "url": canonical_url(), "name": "소비자고발제보센터 소개", "description": a.lead, "inLanguage": "ko",
    "about": {"@id": canonical_url('/') ~ "#organization"}, "isPartOf": {"@id": canonical_url('/') ~ "#website"}},
-  {"@context": "https://schema.org", "@type": "Organization", "@id": canonical_url('/') ~ "#organization", "name": "소비자제보센터", "alternateName": ["소비자제보센터 by SOBORU", "소보루", "SOBORU"],
+  {"@context": "https://schema.org", "@type": "Organization", "@id": canonical_url('/') ~ "#organization", "name": "소비자고발제보센터", "alternateName": ["소비자고발제보센터 by SOBORU", "소보루", "SOBORU"],
    "url": canonical_url('/'), "description": a.lead ~ " " ~ a.more, "foundingDate": "2026", "slogan": "여러분의 제보가 불공정을 알리는 목소리가 됩니다",
    "email": "contact@consumerjebo.co.kr", "logo": canonical_url(url_for('static', filename='jebo-touch-icon.png')),
    "address": {"@type": "PostalAddress", "addressCountry": "KR", "addressRegion": "서울특별시", "addressLocality": "강남구", "streetAddress": "논현로 310-1 4층 401호"},
@@ -29,6 +29,6 @@
   <div class="ab-faq">{% for q, ans in a.faq %}<details{% if loop.first %} open{% endif %}><summary>{{ q }}</summary><p>{{ ans }}</p></details>{% endfor %}</div>
 
   <a class="ab-cta" href="{{ url_for('report') }}">제보하기</a>
-  <p class="ab-note">{{ ui('companies.notice', '소비자제보센터는 공공기관이 아닌 민간 플랫폼이에요. 제보는 제보자의 주장이며, 기업 답변을 보장하지 않아요.')|branded }}</p>
+  <p class="ab-note">{{ ui('companies.notice', '소비자고발제보센터는 공공기관이 아닌 민간 플랫폼이에요. 제보는 제보자의 주장이며, 기업 답변을 보장하지 않아요.')|branded }}</p>
 </div></main>
 {% endblock %}

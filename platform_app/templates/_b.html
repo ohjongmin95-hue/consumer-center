@@ -1,14 +1,20 @@
 {# 기업 서비스 공용: 상단 메뉴, 지표, 승인 카드 #}
 {% import '_i.html' as i %}
-{% macro soboru_logo() -%}<img class="ch" src="{{ url_for('static',filename='soboru-char.png') }}?v=3" alt="" width="125" height="96"><span class="wm">소보루 CX</span>{%- endmacro %}
+{% macro soboru_logo() -%}<img class="cxlogo" src="{{ url_for('static',filename='cx-logo.png') }}?v=1" alt="소보루 CX" width="485" height="96">{%- endmacro %}
 {% macro bar(tab) -%}
 <header class="gnb"><div class="wrap">
 <a class="logo biz" href="{{ url_for('decide') }}">{{ soboru_logo() }}</a>
 {% if co and tab!='login' %}<nav>{{ menu(tab) }}</nav>
-<div class="right"><a class="bell{{ ' on' if tab=='alerts' }}" href="{{ url_for('alerts') }}" aria-label="알림 {{ n_alerts or 0 }}건 안 읽음"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>{% if n_alerts %}<span class="cnt">{{ n_alerts if n_alerts<100 else '99+' }}</span>{% endif %}</a><a class="chip{{ ' on' if tab=='settings' }}" href="{{ url_for('settings') if can('manage') else url_for('decide') }}" title="{{ co.name }} · {{ actor.short }} ({{ ROLES[actor.role] }})"><span class="dot">{{ co.name[:1] }}</span><span class="cnm">{{ co.name }}{% if actor.role!='owner' %} · {{ actor.short }}{% endif %}</span></a>
+<div class="right"><a class="chip{{ ' on' if tab=='settings' }}" href="{{ url_for('settings') if can('manage') else url_for('decide') }}" title="{{ co.name }} · {{ actor.short }} ({{ ROLES[actor.role] }})"><span class="dot">{{ co.name[:1] }}</span><span class="cnm">{{ co.name }}{% if actor.role!='owner' %} · {{ actor.short }}{% endif %}</span></a><a class="bell{{ ' on' if tab=='alerts' }}" href="{{ url_for('alerts') }}" aria-label="알림 {{ n_alerts or 0 }}건 안 읽음"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>{% if n_alerts %}<span class="cnt">{{ n_alerts if n_alerts<100 else '99+' }}</span>{% endif %}</a>
 <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="tbtn hide-m">로그아웃</button></form></div>
 {% else %}{% if tab not in ('login','signup') %}<nav class="in-nav" aria-label="소개 메뉴">
-{% for ep,label in PUB_NAV %}<a href="{{ url_for(ep) }}" class="{{ 'on' if tab==ep }}">{{ label }}</a>{% endfor %}
+{% for ep,label in PUB_NAV %}{% if ep=='mk.tour' %}{% set home=url_for('decide') %}<details class="nav-dd"><summary>기능<span class="chev"></span></summary><div class="dd"><div class="wrap">
+{% for head,items in [('SODA',[('ai','SODA 자동 답변','배송·교환 같은 문의는 SODA가 먼저 답해요'),('approve','사장님 승인','돈이 걸린 일만 사장님이 한 번 눌러 정해요'),('teach','SODA 가르치기','모르는 질문만 한 줄로 알려 주면 돼요'),('try','SODA 써 보기','우리 쇼핑몰 주소를 넣고 바로 물어보세요')]),('상담',[('channels','문의 한곳에 모으기','카톡·네이버 톡톡·카페24·인스타 DM을 한 화면에'),('shop','쇼핑몰 상담창','쇼핑몰 화면 안에서 우리 가게 이름으로 열려요'),('','화면 둘러보기','사장님 앱과 PC 화면을 한 장씩 봐요')])] %}<div class="dd-col"><small>{{ head }}</small>{% for k,t,d in items %}<a href="{{ (home+'#'+k) if k else url_for(ep) }}"><b>{{ t }}</b><span>{{ d }}</span></a>{% endfor %}</div>{% endfor %}
+</div></div></details>{% else %}<a href="{{ url_for(ep) }}" class="{{ 'on' if tab==ep }}">{{ label }}</a>{% endif %}{% endfor %}
+<script>(function(){var d=document.currentScript.parentNode.querySelector('.nav-dd');if(!d)return;var t;
+if(matchMedia('(hover:hover)').matches){d.addEventListener('mouseenter',function(){clearTimeout(t);d.open=true});d.addEventListener('mouseleave',function(){t=setTimeout(function(){d.open=false},150)});}
+d.querySelectorAll('.dd a').forEach(function(a){a.addEventListener('click',function(){d.open=false})});
+document.addEventListener('click',function(e){if(!d.contains(e.target))d.open=false});})();</script>
 </nav>{% endif %}<div class="right">{% if tab!='login' %}<a class="tbtn" href="{{ url_for('login') }}">로그인</a>{% endif %}{% if tab!='signup' %}<a class="btn sm" href="{{ url_for('signup') }}">무료로 시작하기</a>{% endif %}</div>{% endif %}
 </div></header>
 {% if co and tab not in ('login','intro','signup') %}<nav class="bside" aria-label="사장님 메뉴">{{ menu(tab,True) }}</nav>{{ notices(tab) }}{% endif %}

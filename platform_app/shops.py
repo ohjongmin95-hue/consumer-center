@@ -213,6 +213,9 @@ def post_reply(db,co,c,text):
     if seen['shop']=='kakao':
         import kakao
         return kakao.post_reply(db,co,c,text)
+    if seen['shop']=='naver_talk':
+        import naver_talk
+        return naver_talk.post_reply(db,co,c,text)
     text=(text or '').strip()[:1000]
     if seen['shop']=='cafe24':
         import cafe24

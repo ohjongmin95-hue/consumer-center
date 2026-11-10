@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#ffffff">
+<title>매장 QR 등록 | SOBORU</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+{# 묶음으로 찍은 스티커 중 아직 가게가 안 붙은 번호를 처음 찍었을 때 (storeqr.py qr_claim). 사장님이 가게 이름·휴대폰을 넣으면 이 번호가 그 가게 QR이 된다. #}
+<style>
+*{box-sizing:border-box}
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-qr.woff2?v=2) format('woff2');font-display:swap}
+html,body{margin:0;background:#fff;color:#191F28;font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
+.wrap{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 24px calc(env(safe-area-inset-bottom,0px) + 120px)}
+.no{display:inline-block;font-size:13px;font-weight:700;color:#CE6719;background:#FFF4E0;border-radius:999px;padding:4px 10px}
+h1{margin:16px 0 0;font-size:26px;line-height:35px;font-weight:700}
+.sub{margin:8px 0 0;font-size:16px;line-height:24px;color:#4E5968}
+form{margin-top:32px;display:flex;flex-direction:column;gap:20px}
+.f label{display:block;font-size:14px;line-height:21px;font-weight:600;color:#4E5968;margin-bottom:8px}
+.f label small{font-weight:500;color:#8B95A1}
+.f input,.f select{width:100%;height:56px;border:0;border-radius:16px;background:#fff;box-shadow:inset 0 0 0 1px #D1D6DB;padding:0 16px;font:inherit;font-size:17px;color:#191F28;-webkit-appearance:none;appearance:none}
+.f select{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238B95A1' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 18px center/12px 8px}
+.f input:focus,.f select:focus{outline:0;box-shadow:inset 0 0 0 2px #EF920E}
+.agree{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:15px;line-height:22.5px;color:#4E5968}
+.agree input{flex:none;appearance:none;-webkit-appearance:none;width:22px;height:22px;margin:0;border-radius:50%;box-shadow:inset 0 0 0 1.5px #D1D6DB;background:#fff;cursor:pointer}
+.agree input:checked{background:#EF920E url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 10'%3E%3Cpath d='M1.5 5l3.5 3.5L12.5 1' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center/11px 8px;box-shadow:none}
+.agree small{display:block;font-size:13px;color:#8B95A1}
+.flash{margin:0;padding:12px 14px;border-radius:12px;background:#FFF1F0;color:#E42939;font-size:15px;font-weight:600}
+.cta{position:fixed;left:0;right:0;bottom:0;padding:36px 20px calc(env(safe-area-inset-bottom,0px) + 20px);background:linear-gradient(rgba(255,255,255,0),#fff 36px)}
+.cta button,.cta a{display:flex;align-items:center;justify-content:center;width:100%;max-width:440px;margin:0 auto;height:56px;border:0;border-radius:16px;background:#EF920E;color:#fff;font:inherit;font-size:17px;font-weight:700;cursor:pointer;text-decoration:none}
+.done{padding-top:80px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.done .ok{font-family:Tossface,"Apple Color Emoji","Noto Color Emoji",sans-serif;font-size:72px;line-height:1}
+.done h1{margin-top:20px}
+.tips{margin:40px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px;text-align:left;width:100%}
+.tips li{display:flex;gap:12px;font-size:15px;line-height:22.5px;color:#333D48}
+.tips li::before{content:"";flex:none;width:6px;height:6px;margin-top:8px;border-radius:50%;background:#EF920E}
+</style>
+</head>
+<body>
+<main class="wrap">
+{% if done %}
+  <section class="done">
+    <div class="ok" aria-hidden="true">🎉</div>
+    <h1>{{ f.name }} QR이 됐어요</h1>
+    <p class="sub">이제 손님이 이 스티커를 찍으면<br>{{ f.name }} 후기 화면이 열려요.</p>
+    <ul class="tips">
+      <li>계산대나 테이블처럼 손님 눈에 잘 띄는 곳에 붙여 주세요.</li>
+      <li>별 1~2개 후기가 오면 바로 문자로 알려 드려요.</li>
+      <li>매주 월요일 아침, 지난주 후기를 요약해서 보내 드려요.</li>
+    </ul>
+  </section>
+  <div class="cta"><a href="{{ url_for('qr_store', sid=sid) }}">손님 화면 미리 보기</a></div>
+{% else %}
+  <span class="no">스티커 {{ sid }}번</span>
+  <h1>이 스티커를<br>우리 가게로 등록할게요</h1>
+  <p class="sub">사장님만 한 번 하면 돼요. 그다음부터 손님이 찍으면 우리 가게 후기 화면이 열려요.</p>
+  <form method="post" id="f" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {% with msgs = get_flashed_messages() %}{% if msgs %}<p class="flash" role="alert">{{ msgs[0] }}</p>{% endif %}{% endwith %}
+    <div class="f"><label for="name">가게 이름</label><input id="name" name="name" maxlength="40" required placeholder="소보루커피" value="{{ f.name or '' }}"></div>
+    <div class="f"><label for="area">지점·동네 <small>(없어도 돼요)</small></label><input id="area" name="area" maxlength="40" placeholder="역삼점" value="{{ f.area or '' }}"></div>
+    <div class="f"><label for="biz">업종</label><select id="biz" name="biz">{% for b in BIZ %}<option{% if f.biz == b %} selected{% endif %}>{{ b }}</option>{% endfor %}</select></div>
+    <div class="f"><label for="phone">사장님 휴대폰 번호 <small>(후기 알림이 여기로 가요)</small></label><input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" required placeholder="010-0000-0000" value="{{ f.phone or '' }}"></div>
+    <label class="agree"><input type="checkbox" name="agree" value="1" required><span>개인정보 수집에 동의해요<small>휴대폰 번호는 후기 알림에만 써요.</small></span></label>
+  </form>
+  <div class="cta"><button type="submit" form="f">등록하기</button></div>
+{% endif %}
+</main>
+</body>
+</html>
