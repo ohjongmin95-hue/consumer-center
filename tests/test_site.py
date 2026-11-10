@@ -278,6 +278,20 @@ class SiteTest(unittest.TestCase):
         home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('hero-photo', home); self.assertIn('img/hero-city.jpg', home); self.assertNotIn('실제 제보 영상', home)
 
+    def test_app_screens_jebo(self):
+        # 운영자 2026-11-11: 소보루고발 앱으로 열면 헤이마오식 홈·기업 순위 (토스 TDS), 브라우저는 그대로
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        jebo, ua = 'https://consumerjebo.co.kr', {'User-Agent': 'Mozilla/5.0 SoboruApp/1.2.0 (android)'}
+        home = self.client.get('/', base_url=jebo, headers=ua).get_data(as_text=True)
+        for text in ('ap-stat', 'ap-search', 'app-jebo.css', '토스페이스가 사용되었습니다'):
+            self.assertIn(text, home)
+        self.assertNotIn('section-nav', home)  # 사이트 위 메뉴는 앱에서 숨김
+        for tab in ('good', 'bad', 'fast'):
+            self.assertIn('ap-ban', self.client.get('/companies/rank?tab=' + tab, base_url=jebo, headers=ua).get_data(as_text=True))
+        web = self.client.get('/', base_url=jebo).get_data(as_text=True)
+        self.assertNotIn('ap-stat', web); self.assertNotIn('토스페이스가 사용되었습니다', web)
+        self.assertNotIn('ap-stat', self.client.get('/', headers=ua).get_data(as_text=True))  # 소보루 주소는 그대로
+
     def test_guide_toss_jebo(self):
         # 운영자 2026-11-03: 제보센터 이용 안내 = 토스식 + '대화로 제보하기' 화면 영상 + 업종 칩
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')

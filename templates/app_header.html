@@ -1,0 +1,8 @@
+{# 소보루고발 앱 머리글 (앱으로 consumerjebo.co.kr을 열었을 때, app_screens.py). 로고 + 업체 검색. 메뉴는 앱 아래 탭이 맡음 #}
+<header class="ap-top">
+  <a class="ap-logo" href="{{ url_for('home') }}" aria-label="소보루고발 홈"><img src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="SOBORU" width="82" height="16"><b>고발</b></a>
+  <form class="ap-search" action="{{ url_for('companies') }}" method="get" role="search">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    <input type="search" name="q" value="{{ request.args.get('q', '') if request.endpoint == 'companies' else '' }}" placeholder="{{ ui('app.search', '업체 이름으로 찾아보기') }}" aria-label="{{ ui('app.search', '업체 이름으로 찾아보기') }}" enterkeyhint="search">
+  </form>
+</header>
