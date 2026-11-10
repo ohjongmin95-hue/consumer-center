@@ -1,4 +1,6 @@
 {% extends 'moa_base.html' %}
+{% block gnb %}{% endblock %}
 {% block title %}운영자 로그인 | 모아밥{% endblock %}
 {% block body %}<main class="wrap"><div class="center" style="padding-top:96px"><span class="logo" style="justify-content:center;font-size:28px">{{ mark(40) }}모아밥</span><p style="margin-top:8px">운영자 화면</p></div>
 <form method="post" class="sec"><input type="hidden" name="_csrf" value="{{ csrf() }}"><label class="fld" style="margin-top:0"><span>비밀번호</span><input type="password" name="pw" autocomplete="current-password" autofocus required></label><button class="cta" style="margin-top:16px">들어가기</button></form></main>{% endblock %}
+{% block foot %}{% endblock %}

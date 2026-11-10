@@ -1,0 +1,25 @@
+{% extends 'moa_base.html' %}
+{% block title %}모아밥 소개 · 우리 건물 점심, 모일수록 싸져요{% endblock %}
+{% block body %}
+<main class="about">
+  <section class="ab-hero"><div class="ab-txt">
+    <span class="logo big">{{ mark(56) }}모아밥</span>
+    <h1>우리 건물 점심,<br><em>모일수록 싸져요</em></h1>
+    <p>같은 건물, 같은 시간에 시키는 점심을 모아 한 번에 가져가요.<br>배달비는 0원, 사람이 모일수록 모두 할인돼요.</p>
+    <a class="cta" href="{{ url_for('home') }}">오늘의 세트 보기</a>
+  </div><div class="ab-art" aria-hidden="true">🍱</div></section>
+  <section class="ab-grid">
+    <div><i>🏢</i><b>같은 건물끼리 모아 시키기</b><p>건물 1층 로비로 한 번에 가져가요. 그래서 배달비가 없어요.</p></div>
+    <div><i>🔗</i><b>사내 단톡에 링크 공유</b><p>링크로 동료를 모으면 5명부터 1,000원, 10명부터 2,000원 돌려받아요.</p></div>
+    <div><i>⏰</i><b>점심시간 맞춰 도착</b><p>12시, 12시 30분처럼 도착 시간을 고르면 그 시간에 맞춰 와요.</p></div>
+    <div><i>🍚</i><b>동네 가게 전용 세트</b><p>가게가 한꺼번에 만들어서 매장보다 싸요. 위생 인증 가게는 표시해요.</p></div>
+  </section>
+  <section class="ab-steps"><h2>이렇게 모아요</h2><ol>
+    <li><b>건물 고르기</b>우리 건물 전용 주소로 들어와요</li>
+    <li><b>세트·시간 고르기</b>도착 40분 전까지 주문해요</li>
+    <li><b>링크 공유</b>동료가 모일수록 다 같이 싸져요</li>
+    <li><b>로비에서 받기</b>정한 시간에 1층으로 와요</li></ol></section>
+  <section class="ab-biz"><div><h2>사장님, 미리 확정된 주문을 받아 보세요</h2><p>마감 뒤 확정된 개수만 만들어서 남는 재료가 없어요. 입점비와 광고비도 없어요.</p></div><a class="cta soft" href="{{ url_for('join') }}">우리 가게도 함께하기</a></section>
+</main>
+{% endblock %}
+{% block bar %}{% with tab='about' %}{% include 'moa_tabs.html' %}{% endwith %}{% endblock %}

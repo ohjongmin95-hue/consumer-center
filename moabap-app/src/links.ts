@@ -4,8 +4,8 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
-// 첫 화면. 도메인을 연결하기 전엔 consumerjebo.co.kr/moabap, 연결한 뒤엔 서버가 새 주소로 넘김 (moabap/__init__.py mount)
-export const SITE: string = (Constants.expoConfig?.extra?.site as string) || 'https://consumerjebo.co.kr/moabap';
+// 첫 화면 = moabap.com (운영자 11/11). 예전 임시 주소 consumerjebo.co.kr/moabap 도 안에서 열고 서버가 moabap.com으로 넘김
+export const SITE: string = (Constants.expoConfig?.extra?.site as string) || 'https://moabap.com';
 
 function parts(url: string): [string, string] {
   const m = /^https?:\/\/([^/:?#]+)(?::\d+)?([^?#]*)/i.exec(url);

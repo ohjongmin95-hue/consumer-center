@@ -1,15 +1,22 @@
 {% extends 'moa_base.html' %}
 {% block body %}
-<header class="top"><div class="loc"><a class="logo" href="{{ url_for('home') }}" aria-label="모아밥 홈">{{ mark(28) }}모아밥</a><small>📍 {{ area }}</small></div></header>
+<header class="top"><div class="loc"><a class="logo" href="{{ url_for('home') }}" aria-label="모아밥 홈">{{ mark(28) }}모아밥</a><a class="where-pill" href="{{ url_for('pick') }}">{% if b %}🏢 {{ b.name }}{% else %}📍 {{ area }}{% endif %} ▾</a></div></header>
 <main class="wrap">
-  <div class="hero"><div><b>근처 사람들과 모아 시키면<br>한 끼 {{ won(sets|map(attribute='price')|min if sets else 5900) }}부터</b><p>배달비 0원, 대신 정해진 시간에 한 번에 와요</p></div><span class="big" aria-hidden="true">🛵</span></div>
+  <div class="hero"><div>{% if b %}<b>{{ b.name }}<br>오늘 점심 같이 시켜요</b>{% elif sets %}<b>우리 건물 사람들과 모아 시키면<br>한 끼 {{ won(sets|map(attribute='price')|min) }}부터</b>{% else %}<b>이웃과 모아 시키면<br>배달비 0원</b>{% endif %}<p>{% if b %}같은 시간에 모일수록 더 싸져요{% else %}같은 시간, 같은 곳 주문을 한 번에 가져가요{% endif %}</p></div><span class="big" aria-hidden="true">🛵</span></div>
   {% if first_coupon %}<div class="cou"><span class="amt">{{ won(first_coupon) }}</span><p><b>첫 주문은 바로 할인돼요</b>쿠폰을 받을 필요 없이 자동으로 빠져요</p></div>{% endif %}
+  {% if b and bn %}<section class="sec grp"><h2>🏢 {{ b.name }} 지금 모인 사람</h2>
+    {% for at, n in (bn.items()|list)[:3] %}{% set nt = next_tier(n) %}<div class="gl"><div class="gt"><b>{{ at }} 도착</b><span>{{ n }}명 모였어요</span></div>
+      <div class="prog"><i style="width:{{ [100, (100 * n / (nt[0] if nt else n or 1))|round|int]|min }}%"></i></div>
+      <small>{% if nt %}{{ nt[0] - n }}명 더 모이면 모두 {{ won(nt[1]) }} 돌려받아요{% else %}최대 할인 달성! 모두 {{ won(tier(n)) }} 돌려받아요{% endif %}</small></div>{% endfor %}
+    <p class="note">모인 사람 수만큼 할인돼요. 마감 뒤 다음 주문에서 바로 빠져요. 아래 세트를 고르고 주문하면 '사내 단톡에 공유하기' 링크가 생겨요.</p>
+  </section>{% elif not b and places %}<section class="sec" id="pick"><h2>우리 건물 고르기</h2><p class="lead">건물을 고르면 같은 건물 사람들과 모아서 더 싸게 시켜요.</p>
+    <div class="bchips">{% for p in places %}<a href="{{ url_for('building_page', key=p.slug or p.id) }}">{{ '🏢' if p.kind == '오피스' else '🏠' }} {{ p.name }}</a>{% endfor %}</div></section>{% endif %}
   {% if cats_on|length > 1 %}<nav class="cats" aria-label="종류">
     <a href="{{ url_for('home', p=price or None) }}"{% if not cat %} class="on"{% endif %}><i>🍽️</i>전체</a>
     {% for k, ic in cats_on %}<a href="{{ url_for('home', cat=k, p=price or None) }}"{% if cat == k %} class="on"{% endif %}><i>{{ ic }}</i>{{ k }}</a>{% endfor %}
   </nav>{% endif %}
   <section class="sec">
-    <h2>오늘의 모아 세트 {% if next_slot %}<span class="timer" data-close="{{ next_slot.close.isoformat() }}">{{ next_slot.at }} 도착분 {{ next_slot.close.strftime('%H:%M') }} 마감</span>{% endif %}</h2>
+    <h2>오늘의 모아 세트 {% if next_slot and sets %}<span class="timer" data-close="{{ next_slot.close.isoformat() }}">{{ next_slot.at }} 도착분 {{ next_slot.close.strftime('%H:%M') }} 마감</span>{% endif %}</h2>
     <p class="lead">같은 시간에 같은 곳으로 시킨 주문을 모아 한 번에 배달해요.</p>
     {% if prices|length > 1 %}<div class="ptabs"><a href="{{ url_for('home', cat=cat or None) }}"{% if not price %} class="on"{% endif %}>전체</a>{% for p in prices %}<a href="{{ url_for('home', cat=cat or None, p=p) }}"{% if price == p %} class="on"{% endif %}>{{ won(p) }}</a>{% endfor %}</div>{% endif %}
     <div class="grid">
@@ -18,14 +25,13 @@
       <b>{{ s.name }}</b><span class="shop">{{ s.shop }}</span>
       <div class="pr"><strong>{{ won(s.price) }}</strong>{% if s.orig > s.price %}<s>{{ won(s.orig) }}</s>{% endif %}</div>
       <div class="meta">{% if again.get(s.id) %}<span class="re">재주문 {{ again[s.id] }}%</span>{% endif %}<span>배달비 0원</span></div>
-    </a>{% else %}<p class="empty">{% if cat or price %}이 조건의 세트가 아직 없어요.{% else %}곧 첫 세트가 올라와요. 조금만 기다려 주세요.{% endif %}</p>{% endfor %}
+    </a>{% else %}{% if cat or price %}<p class="empty">이 조건의 세트가 아직 없어요.</p>{% else %}<div class="soon"><span aria-hidden="true">🍚</span><b>첫 세트를 준비하고 있어요</b><p>{{ area }} 가게들과 전용 세트를 만들고 있어요.<br>문을 열면 이 화면에 바로 올라와요.</p><a href="{{ url_for('join') }}">사장님이세요? 우리 가게도 함께하기 ›</a></div>{% endif %}{% endfor %}
     </div>
   </section>
   <section class="sec"><h2>이렇게 모아요</h2>
     <dl class="rows"><div><dt>① 고르기</dt><dd>세트와 도착 시간, 받는 곳을 골라요</dd></div><div><dt>② 마감</dt><dd>도착 40분 전에 주문을 모아 가게에 넘겨요</dd></div><div><dt>③ 한 번에</dt><dd>라이더 한 명이 같은 곳 주문을 한 번에 가져가요</dd></div></dl>
     <p class="note">⏰ 약속한 시간보다 15분 넘게 늦으면 다음 주문에 쓰는 2,000원 할인을 드려요.</p>
   </section>
-  <p class="foot">모아밥{% if biz %} · {{ biz }}{% endif %}{% if contact %} · {{ contact }}{% endif %} · <a href="{{ url_for('privacy') }}" style="text-decoration:underline">개인정보처리방침</a> · <a href="{{ url_for('refund') }}" style="text-decoration:underline">취소·환불 정책</a><br>모아밥은 통신판매중개자이며 통신판매의 당사자가 아니에요. 세트의 정보와 품질은 판매자인 각 가게가 책임져요.</p>
 </main>
 {% endblock %}
 {% block bar %}{% with tab='home' %}{% include 'moa_tabs.html' %}{% endwith %}{% endblock %}

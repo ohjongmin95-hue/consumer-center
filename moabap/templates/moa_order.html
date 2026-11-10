@@ -19,7 +19,11 @@
       ('도착', o.slot ~ ' 전후로 ' ~ o.place ~ '에 도착해요')] %}
     {% set pos = 0 if cur == 0 else (1 if cur == 1 and not closed else (2 if cur == 1 else cur + 1)) %}
     <div class="steps">{% for b, sm in st %}<div class="st{{ ' done' if loop.index0 < pos or (o.status == 'done') }}{{ ' now' if loop.index0 == pos and o.status != 'done' }}"><i>{{ '✓' if loop.index0 < pos or o.status == 'done' else loop.index }}</i><div><b>{{ b }}</b><small>{{ sm }}</small></div></div>{% endfor %}</div>
-    {% if together > 1 %}<p class="note">이 시간에 같은 곳으로 {{ together }}건이 함께 시켜서 배달비가 0원이 됐어요.</p>{% endif %}
+    {% set nt = next_tier(together) %}<div class="grp" style="margin-top:12px"><div class="gl"><div class="gt"><b>{{ o.place }} {{ o.slot }}</b><span>{{ together }}명 모였어요</span></div>
+      <div class="prog"><i style="width:{{ [100, (100 * together / (nt[0] if nt else together or 1))|round|int]|min }}%"></i></div>
+      <small>{% if nt %}{{ nt[0] - together }}명 더 모이면 모두 {{ won(nt[1]) }} 돌려받아요 (다음 주문에서 빠져요){% else %}최대 할인! 모두 {{ won(tier(together)) }} 돌려받아요{% endif %}</small></div></div>
+    {% if not closed %}<button type="button" class="cta" style="margin-top:14px" data-share="{{ share }}" data-text="{{ o.place }} {{ o.slot }} 점심 같이 시켜요! 모일수록 다 같이 싸져요 🍱">🔗 사내 단톡에 같이 시키기 링크 보내기</button>
+    <p class="lead" style="text-align:center;margin-top:8px;font-size:13px">링크로 들어온 동료가 처음 시키면 {{ won(ref_bonus) }}을 더 드려요</p>{% endif %}
     {% endif %}
   </section>
   {% if o.status == 'wait' %}<section class="sec"><h2>입금해 주세요</h2>
@@ -28,6 +32,7 @@
   <section class="sec"><h2>결제 금액</h2>
     <div class="sum"><span>{{ o.set_name }} × {{ o.qty }}</span><b>{{ won(o.unit * o.qty) }}</b></div>
     {% if o.discount %}<div class="sum"><span>첫 주문 할인</span><b>-{{ won(o.discount) }}</b></div>{% endif %}
+    {% if o.credit %}<div class="sum"><span>모아 할인 적립금</span><b>-{{ won(o.credit) }}</b></div>{% endif %}
     <div class="sum"><span>배달비</span><b>0원</b></div>
     <div class="sum tot"><span>합계</span><b>{{ won(o.amount) }}</b></div>
   </section>
@@ -36,6 +41,9 @@
 {% endblock %}
 {% block bar %}{% with tab='orders' %}{% include 'moa_tabs.html' %}{% endwith %}{% endblock %}
 {% block script %}<script>
-document.addEventListener('click',function(e){var b=e.target.closest('[data-copy]');if(!b)return;var t=b.dataset.copy;
+document.addEventListener('click',function(e){var s=e.target.closest('[data-share]');if(s){var u=s.dataset.share,t=s.dataset.text;
+if(navigator.share){navigator.share({title:'모아밥',text:t,url:u}).catch(function(){});return}
+(navigator.clipboard?navigator.clipboard.writeText(t+' '+u):Promise.reject()).then(function(){s.textContent='링크를 복사했어요. 단톡에 붙여 넣어 주세요'},function(){prompt('링크',u)});return}
+var b=e.target.closest('[data-copy]');if(!b)return;var t=b.dataset.copy;
 (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='복사했어요'},function(){prompt('계좌',t)})});
 </script>{% endblock %}

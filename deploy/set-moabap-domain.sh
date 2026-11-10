@@ -49,6 +49,9 @@ nginx -t -q && systemctl reload nginx
 
 echo "== 4/4 모아밥에 주소 알려 주기"
 set_kv MOABAP_HOST "$H"
-systemctl restart soboru; sleep 2
-echo "  https://$H → $(curl -sk -o /dev/null -w '%{http_code}' --resolve "$H:443:127.0.0.1" "https://$H/")"
+grep -qE '^MOABAP_PREVIEW=1' "$ENV_FILE" || bash "$APP_DIR/deploy/set-moabap.sh" >/dev/null || true  # 켜기를 안 했으면 같이 (DB·비밀번호)
+systemctl restart soboru
+for i in 1 2 3 4 5 6 7 8 9 10; do CODE=$(curl -sk -o /dev/null -w '%{http_code}' --resolve "$H:443:127.0.0.1" "https://$H/" || true); [[ $CODE == 200 ]] && break; sleep 1; done
+echo "  https://$H → $CODE"
+[[ $CODE == 200 ]] || { echo "아직 안 열려요. 아래 기록을 보내 주세요."; journalctl -u soboru -n 30 --no-pager | grep -i -A3 'moabap\|error\|Traceback' | tail -20; exit 1; }
 echo "다됨: https://$H 에서 모아밥이 열려요. 운영자 화면은 https://$H/admin"

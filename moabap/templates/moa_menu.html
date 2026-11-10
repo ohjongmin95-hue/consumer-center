@@ -1,4 +1,5 @@
 {% extends 'moa_base.html' %}
+{% block gnb %}{% endblock %}
 {% block title %}가게·세트 | 모아밥{% endblock %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block appclass %}adm{% endblock %}
@@ -6,6 +7,11 @@
 {% block body %}
 <header class="top"><span class="logo">{{ mark(26) }}모아밥</span><nav><a href="{{ url_for('admin') }}">주문 묶음</a><a class="on" href="{{ url_for('admin_menu') }}">가게·세트</a><a href="{{ url_for('admin_logout') }}">나가기</a></nav></header>
 <main class="wrap">
+  {% if applies %}<section class="sec" id="applied"><h2>가게 신청 <span class="badge">{{ applies|rejectattr('done')|list|length }}곳 연락 전</span></h2>
+    <div class="tscroll"><table class="tbl"><tr><th>가게</th><th>연락처</th><th>위치·메뉴</th><th>받은 때</th><th></th></tr>
+    {% for a in applies %}<tr class="{{ 'off' if a.done }}"><td><b>{{ a.shop }}</b><br>{{ a.name }}</td><td class="mono">{{ a.phone }}</td><td>{{ a.addr }}<br><small style="color:var(--mute)">{{ a.menu }}</small></td><td>{{ a.created[5:16].replace('T', ' ') }}</td>
+      <td><form method="post"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="applied"><input type="hidden" name="id" value="{{ a.id }}"><button class="mini">{{ '되돌리기' if a.done else '연락함' }}</button></form></td></tr>{% endfor %}</table></div>
+  </section>{% endif %}
   <section class="sec" id="set"><h2>세트</h2>
     <div class="tscroll"><table class="tbl"><tr><th>세트</th><th>가게</th><th>판매가</th><th>공급가</th><th>시간당</th><th></th></tr>
     {% for r in sets %}<tr class="{{ 'off' if not r.active }}"><td>{{ r.emoji }} {{ r.name }}<br><small style="color:var(--mute)">{{ r.cat }}</small></td><td>{{ r.shop }}</td><td>{{ won(r.price) }}{% if r.orig %}<br><s style="color:var(--mute)">{{ won(r.orig) }}</s>{% endif %}</td><td>{{ won(r.supply) }}</td><td>{{ r.cap }}개</td>
@@ -24,6 +30,15 @@
       <label class="fld full"><span>한 줄 설명 (선택)</span><input name="note" value="{{ e.note if e }}" placeholder="예: 밥 양 많이, 계란말이 2조각"></label>
       <button class="cta full" style="margin-top:14px">{{ '고친 내용 저장' if e else '세트 넣기' }}</button></form>{% endif %}
   </section>
+  <section class="sec" id="company"><h2>사업자 정보 (사이트 하단)</h2>
+    <p class="note" style="margin:0 0 8px">사업자등록증과 똑같이 넣어 주세요. 저장하면 손님 화면 맨 아래에 바로 보여요.</p>
+    <form method="post" class="form2"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="company">
+      <label class="fld"><span>상호</span><input name="name" value="{{ co.name }}"></label><label class="fld"><span>대표자</span><input name="owner" value="{{ co.owner }}"></label>
+      <label class="fld"><span>사업자등록번호</span><input name="bizno" placeholder="000-00-00000" value="{{ co.bizno }}"></label><label class="fld"><span>통신판매업 신고번호</span><input name="mailorder" placeholder="제2026-서울강남-0000호" value="{{ co.mailorder }}"></label>
+      <label class="fld full"><span>사업장 주소</span><input name="addr" value="{{ co.addr }}"></label>
+      <label class="fld full"><span>대표전화</span><input name="tel" value="{{ co.tel }}"></label>
+      <button class="cta full" style="margin-top:14px">사업자 정보 저장</button></form>
+  </section>
   <section class="sec" id="shop"><h2>가게</h2>
     <div class="tscroll"><table class="tbl"><tr><th>가게</th><th>위생</th><th>가게 화면 주소</th><th></th></tr>
     {% for h in shops %}<tr class="{{ 'off' if not h.active }}"><td>{{ h.name }}<br><span class="mono">{{ h.phone }}</span></td><td>{{ h.hygiene }}</td><td class="mono">{{ url_for('shop_page', token=h.token, _external=True) }}</td><td><a class="mini" href="{{ url_for('admin_menu', eshop=h.id) }}#shop">고치기</a> {{ tg('shops', h) }}</td></tr>{% endfor %}</table></div>
@@ -36,10 +51,10 @@
       <button class="cta full" style="margin-top:14px">{{ '가게 고치기' if es else '가게 넣기' }}</button></form>
   </section>
   <section class="sec" id="place"><h2>받는 곳</h2>
-    <div class="tscroll"><table class="tbl">{% for p in places %}<tr class="{{ 'off' if not p.active }}"><td>{{ p.name }}</td><td>{{ p.kind }}</td><td>{{ p.note }}</td><td>{{ tg('places', p) }}</td></tr>{% else %}<tr><td style="color:var(--mute)">예: 광교 ○○타워 1층 로비, ○○아파트 정문</td></tr>{% endfor %}</table></div>
+    <div class="tscroll"><table class="tbl">{% for p in places %}<tr class="{{ 'off' if not p.active }}"><td>{{ p.name }}</td><td>{{ p.kind }}</td><td>{{ p.note }}<br><span class="mono">{{ url_for('building_page', key=p.slug or p.id, _external=True) }}</span></td><td>{{ tg('places', p) }}</td></tr>{% else %}<tr><td style="color:var(--mute)">예: 광교 ○○타워 1층 로비, ○○아파트 정문</td></tr>{% endfor %}</table></div>
     <form method="post" class="form2" style="margin-top:8px"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="place">
       <label class="fld"><span>이름</span><input name="name" required></label><label class="fld"><span>종류</span><select name="pkind"><option>오피스</option><option>아파트</option><option>학교</option></select></label>
-      <label class="fld full"><span>안내 (선택)</span><input name="note" placeholder="예: 1층 로비 안내데스크 앞"></label>
+      <label class="fld"><span>안내 (선택)</span><input name="note" placeholder="예: 1층 로비 안내데스크 앞"></label><label class="fld"><span>건물 주소 이름 (영문·한글)</span><input name="slug" placeholder="예: jungang-tower"></label>
       <button class="cta full" style="margin-top:14px">받는 곳 넣기</button></form>
   </section>
   <section class="sec" id="slot"><h2>도착 시간</h2>
@@ -50,3 +65,4 @@
   </section>
 </main>
 {% endblock %}
+{% block foot %}{% endblock %}

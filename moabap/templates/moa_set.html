@@ -2,7 +2,7 @@
 {% block title %}{{ s.name }} {{ won(s.price) }} | 모아밥{% endblock %}
 {% block body %}
 <a class="back" href="{{ url_for('home') }}">‹ 뒤로</a>
-<div class="dph c{{ s.id % 6 }}" aria-hidden="true">{{ s.emoji }}</div>
+<div class="dgrid"><div class="dph c{{ s.id % 6 }}" aria-hidden="true">{{ s.emoji }}</div>
 <form class="wrap" style="margin-top:16px" method="post" action="{{ url_for('order') }}" id="f">
   <input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="set_id" value="{{ s.id }}">
   <section class="sec dt">
@@ -14,13 +14,13 @@
   </section>
   <section class="sec"><h2>도착 시간</h2><p class="lead">같은 시간에 시킨 주문을 모아 한 번에 배달해요.</p>
     {% if slots %}<div class="slots">
-    {% for x in slots %}{% set l = left.get(x.at, s.cap) %}<label class="slot"><input type="radio" name="slot" value="{{ x.at }}" required{% if l <= 0 %} disabled{% endif %}><b>{{ x.at }} 도착</b><small>{% if l <= 0 %}다 팔렸어요{% else %}{{ x.close.strftime('%H:%M') }} 마감{% if counts.get(x.at) %} · {{ counts[x.at] }}명 모임{% endif %}{% endif %}</small></label>{% endfor %}
+    {% for x in slots %}{% set l = left.get(x.at, s.cap) %}<label class="slot"><input type="radio" name="slot" value="{{ x.at }}" required{% if l <= 0 %} disabled{% endif %}><b>{{ x.at }} 도착</b><small>{% if l <= 0 %}다 팔렸어요{% else %}{{ x.close.strftime('%H:%M') }} 마감{% if counts.get(x.at) %} · {{ '우리 건물 ' if b }}{{ counts[x.at] }}명{% endif %}{% endif %}</small></label>{% endfor %}
     </div>
     {% if tomorrow %}<p class="note">오늘 주문은 끝났어요. 내일 도착분을 미리 받고 있어요.</p>{% endif %}
     {% else %}<p class="note">지금은 주문을 받는 시간이 없어요.</p>{% endif %}
   </section>
   <section class="sec"><h2>받는 곳</h2><p class="lead">건물 로비나 단지 정문으로 모아서 가져다드려요.</p>
-    <label class="fld"><span>받는 곳</span><select name="place_id" required>{% for p in places %}<option value="{{ p.id }}">{{ p.name }}{% if p.note %} ({{ p.note }}){% endif %}</option>{% else %}<option value="">아직 받는 곳이 없어요</option>{% endfor %}</select></label>
+    <label class="fld"><span>받는 곳</span><select name="place_id" required>{% for p in places %}<option value="{{ p.id }}"{% if b and b.id == p.id %} selected{% endif %}>{{ p.name }}{% if p.note %} ({{ p.note }}){% endif %}</option>{% else %}<option value="">아직 받는 곳이 없어요</option>{% endfor %}</select></label>
     <label class="fld"><span>몇 동·몇 층 (선택)</span><input name="detail" maxlength="60" placeholder="예: 3층 디자인팀"></label>
     <div class="fld"><span>수량</span><div class="qty">{% for q in (1, 2, 3) %}<label><input type="radio" name="qty" value="{{ q }}"{% if q == 1 %} checked{% endif %}>{{ q }}개</label>{% endfor %}</div></div>
   </section>
@@ -34,11 +34,12 @@
     <h3 style="font-size:15px;margin:18px 0 6px">판매자 정보</h3><dl class="rows"><div><dt>상호</dt><dd>{{ s.shop }}</dd></div>{% if s.owner %}<div><dt>대표자</dt><dd>{{ s.owner }}</dd></div>{% endif %}{% if s.biz_no %}<div><dt>사업자번호</dt><dd>{{ s.biz_no }}</dd></div>{% endif %}{% if s.address %}<div><dt>주소</dt><dd>{{ s.address }}</dd></div>{% endif %}</dl>
     <p class="note" style="margin-top:10px">모아밥은 통신판매중개자이며 통신판매의 당사자가 아니에요. 세트의 정보와 품질은 판매자인 가게가 책임져요.</p>
     <p class="note">⏰ 약속한 시간보다 15분 넘게 늦으면 다음 주문에서 2,000원을 빼 드려요.</p></section>
-</form>
+  <button class="cta desk" type="submit"{% if not slots or not places %} disabled{% endif %}>{{ won(s.price) }} 주문하기</button>
+</form></div>
 {% endblock %}
 {% block bar %}<div class="bar"><div class="bar-in"><button class="cta" form="f" type="submit"{% if not slots or not places %} disabled{% endif %}>{{ won(s.price) }} 주문하기</button></div></div>{% endblock %}
 {% block script %}<script>
-(function(){var f=document.getElementById('f'),b=document.querySelector('.cta'),p={{ s.price }};
-function upd(){var q=+(f.querySelector('[name=qty]:checked')||{}).value||1;b.textContent=(p*q).toLocaleString('ko-KR')+'원 주문하기'}
-f.addEventListener('change',upd);f.addEventListener('submit',function(){b.disabled=true;b.textContent='주문 넣는 중…'})})();
+(function(){var f=document.getElementById('f'),bs=document.querySelectorAll('.cta'),p={{ s.price }};
+function upd(){var q=+(f.querySelector('[name=qty]:checked')||{}).value||1;bs.forEach(function(b){b.textContent=(p*q).toLocaleString('ko-KR')+'원 주문하기'})}
+f.addEventListener('change',upd);f.addEventListener('submit',function(){bs.forEach(function(b){b.disabled=true;b.textContent='주문 넣는 중…'})})})();
 </script>{% endblock %}
