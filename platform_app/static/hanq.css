@@ -2746,3 +2746,17 @@ p,li,dd,figcaption{text-wrap:pretty}
  -webkit-mask:none}
 .intro.tp .cx-hero .cx-chs{margin-top:72px}
 @media (max-width:767.98px){.cx-stage{padding-top:28px;padding-bottom:28px}.cx-stage::before{left:-16px;right:-16px;top:0;bottom:0;border-radius:28px}.intro.tp .cx-hero .cx-chs{margin-top:40px}}
+
+/* 가입 화면: 소개 페이지와 같은 흰 바탕·카드 (OH 11/11) */
+body:has(.su-cx){background:#fff}
+.su-cx .pitch .cx-pill{margin-bottom:20px}
+.su-cx .pitch h1{font-size:44px;line-height:1.25;letter-spacing:-.045em;font-weight:800;color:#191F28;text-wrap:balance}
+.su-cx .pitch>p{font-size:18px;line-height:1.65;color:#4E5968;word-break:keep-all;max-width:520px}
+.su-stats{display:flex;flex-direction:column;gap:12px;margin-top:36px;max-width:520px}
+.su-stats>div{display:flex;align-items:center;gap:20px;padding:20px 24px;border-radius:24px;background:#fff;box-shadow:inset 0 0 0 1px #E5E8EB}
+.su-stats b{flex:0 0 96px;font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-.03em;color:#191F28}
+.su-stats span{font-size:14.5px;color:#6B7684;word-break:keep-all;min-width:0}
+.su-stats strong{display:block;font-size:16.5px;color:#191F28;margin-bottom:2px}
+.su-cx .su-chs{justify-content:flex-start;margin:28px 0 0;padding:0;max-width:520px}
+.su-cx form.panel{background:#fff;box-shadow:inset 0 0 0 1px #E5E8EB,0 12px 32px -18px rgba(25,31,40,.18);border-radius:28px}
+@media (max-width:760px){.su-cx .pitch h1{font-size:32px}.su-cx .pitch>p{font-size:16px}.su-stats{margin-top:28px}.su-stats>div{padding:16px 18px;gap:14px}.su-stats b{flex-basis:76px;font-size:24px}}
