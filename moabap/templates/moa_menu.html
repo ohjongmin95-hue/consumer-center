@@ -1,88 +1,161 @@
-{% extends 'moa_base.html' %}
-{% block gnb %}{% endblock %}
-{% block title %}가게·세트 | 모아밥{% endblock %}
-{% block head %}<meta name="robots" content="noindex">{% endblock %}
-{% block appclass %}adm{% endblock %}
-{% macro tg(table, r) %}<form method="post" style="display:inline"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="toggle"><input type="hidden" name="table" value="{{ table }}"><input type="hidden" name="id" value="{{ r.id }}"><button class="mini">{{ '끄기' if r.active else '켜기' }}</button></form>{% endmacro %}
-{% block body %}
-<header class="top"><span class="logo">{{ mark(26) }}모아밥</span><nav><a href="{{ url_for('admin') }}">주문 묶음</a><a class="on" href="{{ url_for('admin_menu') }}">가게·세트</a><a href="{{ url_for('admin_logout') }}">나가기</a></nav></header>
-<main class="wrap">
-  {% if applies %}<section class="sec" id="applied"><h2>가게 신청 <span class="badge">{{ applies|rejectattr('done')|list|length }}곳 연락 전</span></h2>
-    <div class="tscroll"><table class="tbl"><tr><th>가게</th><th>연락처</th><th>위치·메뉴</th><th>받은 때</th><th></th></tr>
-    {% for a in applies %}<tr class="{{ 'off' if a.done }}"><td><b>{{ a.shop }}</b><br>{{ a.name }}</td><td class="mono">{{ a.phone }}</td><td>{{ a.addr }}<br><small style="color:var(--mute)">{{ a.menu }}</small></td><td>{{ a.created[5:16].replace('T', ' ') }}</td>
-      <td><form method="post"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="applied"><input type="hidden" name="id" value="{{ a.id }}"><button class="mini">{{ '되돌리기' if a.done else '연락함' }}</button></form></td></tr>{% endfor %}</table></div>
-  </section>{% endif %}
-  <section class="sec" id="set"><h2>세트</h2>
-    <div class="tscroll"><table class="tbl"><tr><th>세트</th><th>가게</th><th>판매가</th><th>공급가</th><th>시간당</th><th></th></tr>
-    {% for r in sets %}<tr class="{{ 'off' if not r.active }}"><td>{% if r.photo %}<img src="{{ url_for('img', name=r.photo) }}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:8px;vertical-align:middle">{% else %}{{ r.emoji }}{% endif %} {{ r.name }}<br><small style="color:var(--mute)">{{ r.cat }}</small></td><td>{{ r.shop }}</td><td>{{ won(r.price) }}{% if r.orig %}<br><s style="color:var(--mute)">{{ won(r.orig) }}</s>{% endif %}</td><td>{{ won(r.supply) }}</td><td>{{ r.cap }}개</td>
-      <td><a class="mini" href="{{ url_for('admin_menu', edit=r.id) }}#set">고치기</a> {{ tg('sets', r) }}</td></tr>{% else %}<tr><td colspan="6" style="color:var(--mute)">아직 세트가 없어요. 가게를 먼저 넣고 세트를 넣어 주세요.</td></tr>{% endfor %}</table></div>
-    {% set e = (sets|selectattr('id', 'equalto', edit)|first) if edit else none %}
-    {% if shops %}<form method="post" class="form2" style="margin-top:8px" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="set">{% if e %}<input type="hidden" name="id" value="{{ e.id }}">{% endif %}
-      <label class="fld full"><span>{{ '세트 고치기' if e else '새 세트' }} 이름</span><input name="name" required value="{{ e.name if e }}" placeholder="예: 제육볶음 도시락 + 계란말이"></label>
-      <label class="fld"><span>가게</span><select name="shop_id">{% for h in shops %}<option value="{{ h.id }}"{% if e and e.shop_id == h.id %} selected{% endif %}>{{ h.name }}</option>{% endfor %}</select></label>
-      <label class="fld"><span>종류</span><select name="cat">{% for k, ic in cats %}<option{% if e and e.cat == k %} selected{% endif %}>{{ k }}</option>{% endfor %}</select></label>
-      <label class="fld"><span>판매가 (손님이 내는 돈)</span><input name="price" type="number" step="100" required value="{{ e.price if e else 5900 }}"></label>
-      <label class="fld"><span>원래 가격 (매장가, 줄 긋기)</span><input name="orig" type="number" step="100" value="{{ e.orig if e }}"></label>
-      <label class="fld"><span>공급가 (가게에 주는 돈)</span><input name="supply" type="number" step="100" value="{{ e.supply if e }}"></label>
-      <label class="fld"><span>시간당 최대 개수</span><input name="cap" type="number" value="{{ e.cap if e else 50 }}"></label>
-      <label class="fld"><span>조리 시간 (분)</span><input name="cook_min" type="number" value="{{ e.cook_min if e else 15 }}"></label>
-      <label class="fld full"><span>세트 사진 (선택, 손님 화면에 크게 보여요)</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
-      {% if e and e.photo %}<div class="fld full" style="display:flex;align-items:center;gap:12px"><img src="{{ url_for('img', name=e.photo) }}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:12px"><label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" name="photo_del" value="1"> 사진 빼기</label></div>{% endif %}
-      <label class="fld"><span>그림 (사진 없을 때 이모지)</span><input name="emoji" maxlength="4" value="{{ e.emoji if e else '🍱' }}"></label>
-      <label class="fld full"><span>한 줄 설명 (선택)</span><input name="note" value="{{ e.note if e }}" placeholder="예: 밥 양 많이, 계란말이 2조각"></label>
-      <button class="cta full" style="margin-top:14px">{{ '고친 내용 저장' if e else '세트 넣기' }}</button></form>{% endif %}
-  </section>
-  <section class="sec" id="seo"><h2>검색 등록 (네이버·구글)</h2>
-    <p class="note" style="margin:0 0 8px">네이버 서치어드바이저나 구글 서치 콘솔에서 'HTML 태그' 확인을 고르면 나오는 줄을 통째로 붙여 넣으세요. 저장하면 바로 반영돼요.</p>
-    <form method="post" class="form2"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="seo">
-      <label class="fld full"><span>네이버 확인 코드</span><input name="naver" value="{{ naver_code }}" placeholder='&lt;meta name="naver-site-verification" content="..." /&gt;'></label>
-      <label class="fld full"><span>구글 확인 코드</span><input name="google" value="{{ google_code }}" placeholder='&lt;meta name="google-site-verification" content="..." /&gt;'></label>
-      <p class="note full" style="margin:6px 0 0">사이트맵 주소: <b>{{ url_for('sitemap', _external=True) }}</b></p>
-      <button class="cta full" style="margin-top:14px">검색 등록 코드 저장</button></form>
-  </section>
-  <section class="sec" id="company"><h2>사업자 정보 (사이트 하단)</h2>
-    <p class="note" style="margin:0 0 8px">사업자등록증과 똑같이 넣어 주세요. 저장하면 손님 화면 맨 아래에 바로 보여요.</p>
-    <form method="post" class="form2"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="company">
-      <label class="fld"><span>상호</span><input name="name" value="{{ co.name }}"></label><label class="fld"><span>대표자</span><input name="owner" value="{{ co.owner }}"></label>
-      <label class="fld"><span>사업자등록번호</span><input name="bizno" placeholder="000-00-00000" value="{{ co.bizno }}"></label><label class="fld"><span>통신판매업 신고번호</span><input name="mailorder" placeholder="제2026-서울강남-0000호" value="{{ co.mailorder }}"></label>
-      <label class="fld full"><span>사업장 주소</span><input name="addr" value="{{ co.addr }}"></label>
-      <label class="fld full"><span>대표전화</span><input name="tel" value="{{ co.tel }}"></label>
-      <button class="cta full" style="margin-top:14px">사업자 정보 저장</button></form>
-  </section>
-  <section class="sec" id="shop"><h2>가게</h2>
-    <div class="tscroll"><table class="tbl"><tr><th>가게</th><th>위생</th><th>가게 화면 주소</th><th></th></tr>
-    {% for h in shops %}<tr class="{{ 'off' if not h.active }}"><td>{{ h.name }}<br><span class="mono">{{ h.phone }}</span></td><td>{{ h.hygiene }}</td><td class="mono">{{ url_for('shop_page', token=h.token, _external=True) }}</td><td><a class="mini" href="{{ url_for('admin_menu', eshop=h.id) }}#shop">고치기</a> {{ tg('shops', h) }}</td></tr>{% endfor %}</table></div>
-    <form method="post" class="form2" style="margin-top:8px"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="shop">{% set es = shops|selectattr('id','equalto',eshop)|first if eshop else none %}{% if es %}<input type="hidden" name="id" value="{{ es.id }}">{% endif %}
-      <label class="fld"><span>가게 이름 (상호)</span><input name="name" required value="{{ es.name if es else '' }}"></label><label class="fld"><span>전화</span><input name="phone" value="{{ es.phone if es else '' }}"></label>
-      <label class="fld"><span>대표자</span><input name="owner" value="{{ es.owner if es else '' }}"></label><label class="fld"><span>사업자등록번호</span><input name="biz_no" placeholder="000-00-00000" value="{{ es.biz_no if es else '' }}"></label>
-      <label class="fld full"><span>사업장 주소</span><input name="address" value="{{ es.address if es else '' }}"></label>
-      <label class="fld full"><span>위생 (선택, 손님 화면에 보여요)</span><input name="hygiene" placeholder="예: 식약처 위생등급 매우 우수" value="{{ es.hygiene if es else '' }}"></label>
-      <p class="note full" style="margin:6px 0 0">상호·대표자·사업자번호·주소는 손님 세트 화면에 '판매자 정보'로 보여요. 중개 플랫폼은 꼭 보여야 해요.</p>
-      <button class="cta full" style="margin-top:14px">{{ '가게 고치기' if es else '가게 넣기' }}</button></form>
-  </section>
-  <section class="sec" id="place"><h2>받는 곳</h2>
-    <div class="tscroll"><table class="tbl">{% for p in places %}<tr class="{{ 'off' if not p.active }}"><td>{{ p.name }}</td><td>{{ p.kind }}</td><td>{{ p.note }}<br><span class="mono">{{ url_for('building_page', key=p.slug or p.id, _external=True) }}</span></td><td><form method="post" class="coordf"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="coord"><input type="hidden" name="id" value="{{ p.id }}"><input name="coord" placeholder="지도 좌표" value="{{ '%.6f, %.6f'|format(p.lat, p.lng) if p.lat else '' }}" aria-label="{{ p.name }} 지도 좌표"><button class="mini">저장</button></form></td><td>{{ tg('places', p) }}</td></tr>{% else %}<tr><td style="color:var(--mute)">예: 광교 ○○타워 1층 로비, ○○아파트 정문</td></tr>{% endfor %}</table></div>
-    <form method="post" class="form2" style="margin-top:8px"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="place">
-      <label class="fld"><span>이름</span><input name="name" required></label><label class="fld"><span>종류</span><select name="pkind"><option>오피스</option><option>아파트</option><option>학교</option></select></label>
-      <label class="fld"><span>안내 (선택)</span><input name="note" placeholder="예: 1층 로비 안내데스크 앞"></label><label class="fld"><span>건물 주소 이름 (영문·한글)</span><input name="slug" placeholder="예: jungang-tower"></label>
-      <label class="fld full"><span>지도 좌표 (내 위치로 찾기에 써요)</span><input name="coord" placeholder="예: 37.288612, 127.051470"></label>
-      <p class="note full" style="margin:6px 0 0">구글 지도에서 건물 입구를 마우스 오른쪽 버튼으로 누르면 맨 위에 숫자 두 개가 나와요. 누르면 복사되니 그대로 붙여 넣으세요.</p>
-      <button class="cta full" style="margin-top:14px">받는 곳 넣기</button></form>
-  </section>
-  <section class="sec" id="slot"><h2>도착 시간</h2>
-    <div class="tscroll"><table class="tbl">{% for t in slots %}<tr class="{{ 'off' if not t.active }}"><td><b>{{ t.at }}</b> 도착</td><td>{{ t.cutoff }}분 전 마감</td><td>{{ tg('slots', t) }}</td></tr>{% endfor %}</table></div>
-    <form method="post" class="form2" style="margin-top:8px"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="slot">
-      <label class="fld"><span>도착 시간</span><input name="at" type="time" required></label><label class="fld"><span>몇 분 전 마감</span><input name="cutoff" type="number" value="40"></label>
-      <button class="cta full" style="margin-top:14px">시간 넣기</button></form>
-  </section>
-</main>
+{% extends 'moa_adm.html' %}
+{% set titles = {'set': '세트', 'shop': '가게', 'place': '받는 곳', 'slot': '도착 시간', 'applied': '사장님 신청', 'company': '사업자 정보', 'seo': '검색 등록'} %}
+{% block title %}{{ titles[tab] }} | 모아밥 운영{% endblock %}
+{% macro sw(table, r, label) %}<form method="post" class="ad-sw-f"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="toggle"><input type="hidden" name="table" value="{{ table }}"><input type="hidden" name="id" value="{{ r.id }}"><button class="ad-sw{{ ' on' if r.active }}" role="switch" aria-checked="{{ 'true' if r.active else 'false' }}" aria-label="{{ label }} {{ '끄기' if r.active else '켜기' }}" title="{{ '켜져 있어요. 누르면 꺼져요' if r.active else '꺼져 있어요. 누르면 켜져요' }}"><i></i></button></form>{% endmacro %}
+{% macro hid(kind) %}<input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="{{ kind }}">{% endmacro %}
+{% block main %}
+
+{% if tab == 'set' %}
+{% set e = (sets|selectattr('id', 'equalto', edit)|first) if edit else none %}
+<div class="ad-head"><div><h1>세트</h1><p>손님 화면에 나오는 세트예요. 끄면 바로 숨겨져요.</p></div></div>
+{% if not shops %}<div class="ad-card ad-empty"><p class="ic">🏪</p><h3>가게를 먼저 넣어 주세요</h3><p>세트는 가게에 딸려 있어요.</p><a class="ad-link" href="{{ url_for('admin_menu', tab='shop') }}">가게 넣으러 가기 ›</a></div>
+{% else %}
+<details class="ad-card ad-form"{% if e or not sets %} open{% endif %} id="setform">
+  <summary><b>{{ '세트 고치기 · ' ~ e.name if e else '＋ 새 세트 넣기' }}</b></summary>
+  <form method="post" class="ad-grid" enctype="multipart/form-data">{{ hid('set') }}{% if e %}<input type="hidden" name="id" value="{{ e.id }}">{% endif %}
+    <label class="fld full"><span>세트 이름</span><input name="name" required value="{{ e.name if e }}" placeholder="예: 제육볶음 도시락 + 계란말이"></label>
+    <label class="fld"><span>가게</span><select name="shop_id">{% for h in shops %}<option value="{{ h.id }}"{% if e and e.shop_id == h.id %} selected{% endif %}>{{ h.name }}</option>{% endfor %}</select></label>
+    <label class="fld"><span>종류</span><select name="cat">{% for k, ic in cats %}<option{% if e and e.cat == k %} selected{% endif %}>{{ k }}</option>{% endfor %}</select></label>
+    <label class="fld"><span>판매가 · 손님이 내는 돈</span><input name="price" type="number" step="100" inputmode="numeric" required value="{{ e.price if e else 5900 }}"></label>
+    <label class="fld"><span>공급가 · 가게에 드리는 돈</span><input name="supply" type="number" step="100" inputmode="numeric" value="{{ e.supply if e }}"></label>
+    <p class="ad-margin full" aria-live="polite"></p>
+    <label class="fld"><span>매장 가격 (선택, 줄 그어 보여요)</span><input name="orig" type="number" step="100" inputmode="numeric" value="{{ e.orig if e }}"></label>
+    <label class="fld"><span>한 시간에 최대 몇 개</span><input name="cap" type="number" inputmode="numeric" value="{{ e.cap if e else 50 }}"></label>
+    <label class="fld"><span>조리 시간 (분)</span><input name="cook_min" type="number" inputmode="numeric" value="{{ e.cook_min if e else 15 }}"></label>
+    <label class="fld"><span>사진 없을 때 그림</span><input name="emoji" maxlength="4" value="{{ e.emoji if e else '🍱' }}"></label>
+    <label class="fld full"><span>한 줄 설명 (선택)</span><input name="note" value="{{ e.note if e }}" placeholder="예: 밥 양 많이, 계란말이 2조각"></label>
+    <div class="fld full"><span>세트 사진 (선택, 손님 화면에 크게 보여요)</span>
+      <label class="ad-file">{% if e and e.photo %}<img src="{{ url_for('img', name=e.photo) }}" alt="">{% else %}<i>📷</i>{% endif %}<b>{{ '사진 바꾸기' if e and e.photo else '사진 고르기' }}</b><input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
+      {% if e and e.photo %}<label class="ad-chk"><input type="checkbox" name="photo_del" value="1"> 사진 빼기</label>{% endif %}</div>
+    <button class="ad-btn full">{{ '고친 내용 저장' if e else '세트 넣기' }}</button>
+    {% if e %}<a class="ad-link full ad-center" href="{{ url_for('admin_menu', tab='set') }}">고치지 않고 닫기</a>{% endif %}
+  </form>
+</details>
+<div class="ad-sets">
+  {% for r in sets %}<article class="ad-set{{ ' off' if not r.active }}">
+    <a class="ad-set-ph" href="{{ url_for('admin_menu', edit=r.id) }}" aria-label="{{ r.name }} 고치기">{% if r.photo %}<img src="{{ url_for('img', name=r.photo) }}" alt="">{% else %}<span>{{ r.emoji }}</span>{% endif %}</a>
+    <div class="ad-set-b">
+      <p class="ad-set-shop">{{ r.shop }} · {{ r.cat }}</p>
+      <h3><a href="{{ url_for('admin_menu', edit=r.id) }}">{{ r.name }}</a></h3>
+      <dl class="ad-money"><div><dt>판매가</dt><dd>{{ won(r.price) }}</dd></div><div><dt>공급가</dt><dd>{{ won(r.supply) if r.supply else '—' }}</dd></div><div><dt>남는 돈</dt><dd class="{{ 'neg' if r.supply and r.price - r.supply < 0 }}">{{ won(r.price - r.supply) if r.supply else '—' }}</dd></div></dl>
+    </div>
+    <div class="ad-set-f"><span>{{ '판매 중' if r.active else '숨김' }} · 시간당 {{ r.cap }}개</span>{{ sw('sets', r, r.name) }}</div>
+  </article>{% else %}<p class="ad-muted">아직 세트가 없어요. 위에서 첫 세트를 넣어 주세요.</p>{% endfor %}
+</div>
+{% endif %}
+
+{% elif tab == 'shop' %}
+{% set es = (shops|selectattr('id', 'equalto', eshop)|first) if eshop else none %}
+<div class="ad-head"><div><h1>가게</h1><p>가게마다 전용 화면 주소가 있어요. 사장님께 보내 주면 오늘 만들 개수를 볼 수 있어요.</p></div></div>
+<details class="ad-card ad-form"{% if es or not shops %} open{% endif %}>
+  <summary><b>{{ '가게 고치기 · ' ~ es.name if es else '＋ 새 가게 넣기' }}</b></summary>
+  <form method="post" class="ad-grid">{{ hid('shop') }}{% if es %}<input type="hidden" name="id" value="{{ es.id }}">{% endif %}
+    <label class="fld"><span>가게 이름 (상호)</span><input name="name" required value="{{ es.name if es else '' }}"></label>
+    <label class="fld"><span>전화</span><input name="phone" inputmode="tel" value="{{ es.phone if es else '' }}"></label>
+    <label class="fld"><span>대표자</span><input name="owner" value="{{ es.owner if es else '' }}"></label>
+    <label class="fld"><span>사업자등록번호</span><input name="biz_no" placeholder="000-00-00000" value="{{ es.biz_no if es else '' }}"></label>
+    <label class="fld full"><span>사업장 주소</span><input name="address" value="{{ es.address if es else '' }}"></label>
+    <label class="fld full"><span>위생 (선택, 손님 화면에 보여요)</span><input name="hygiene" placeholder="예: 식약처 위생등급 매우 우수" value="{{ es.hygiene if es else '' }}"></label>
+    <p class="ad-hint full">상호·대표자·사업자번호·주소는 손님 세트 화면에 '판매자 정보'로 나와요. 중개 플랫폼이라 꼭 보여야 해요.</p>
+    <button class="ad-btn full">{{ '고친 내용 저장' if es else '가게 넣기' }}</button>
+    {% if es %}<a class="ad-link full ad-center" href="{{ url_for('admin_menu', tab='shop') }}">고치지 않고 닫기</a>{% endif %}
+  </form>
+</details>
+<div class="ad-list">
+  {% for h in shops %}<div class="ad-row{{ ' off' if not h.active }}">
+    <div class="ad-row-b"><h3><a href="{{ url_for('admin_menu', eshop=h.id) }}">{{ h.name }}</a></h3>
+      <p>{{ h.owner or '대표자 없음' }} · <span class="mono">{{ h.phone or '전화 없음' }}</span>{% if h.hygiene %} · {{ h.hygiene }}{% endif %}</p>
+      <p class="ad-url"><span class="mono">{{ url_for('shop_page', token=h.token, _external=True) }}</span></p></div>
+    {{ sw('shops', h, h.name) }}
+  </div>{% else %}<p class="ad-muted">아직 가게가 없어요.</p>{% endfor %}
+</div>
+
+{% elif tab == 'place' %}
+<div class="ad-head"><div><h1>받는 곳</h1><p>건물마다 주소가 생겨요. 사내 단톡방에 이 주소를 보내면 그 건물로 바로 주문해요.</p></div></div>
+<details class="ad-card ad-form"{% if not places %} open{% endif %}>
+  <summary><b>＋ 새 받는 곳 넣기</b></summary>
+  <form method="post" class="ad-grid">{{ hid('place') }}
+    <label class="fld"><span>이름</span><input name="name" required placeholder="예: 광교 중앙타워 1층 로비"></label>
+    <label class="fld"><span>종류</span><select name="pkind"><option>오피스</option><option>아파트</option><option>학교</option></select></label>
+    <label class="fld"><span>안내 (선택)</span><input name="note" placeholder="예: 1층 로비 안내데스크 앞"></label>
+    <label class="fld"><span>주소에 쓸 이름 (영문·한글)</span><input name="slug" placeholder="예: jungang-tower"></label>
+    <label class="fld full"><span>지도 좌표 (내 위치로 찾기에 써요)</span><input name="coord" placeholder="예: 37.288612, 127.051470"></label>
+    <p class="ad-hint full">구글 지도에서 건물 입구를 마우스 오른쪽 버튼으로 누르면 맨 위에 숫자 두 개가 나와요. 누르면 복사되니 그대로 붙여 넣으세요.</p>
+    <button class="ad-btn full">받는 곳 넣기</button>
+  </form>
+</details>
+<div class="ad-list">
+  {% for p in places %}{% set link = url_for('building_page', key=p.slug or p.id, _external=True) %}<div class="ad-row{{ ' off' if not p.active }}">
+    <div class="ad-row-b"><h3>{{ p.name }} <span class="ad-pill">{{ p.kind }}</span></h3>
+      {% if p.note %}<p>{{ p.note }}</p>{% endif %}
+      <p class="ad-url"><span class="mono">{{ link }}</span> <button type="button" class="ad-copy" data-copy="{{ link }}">복사</button></p>
+      <form method="post" class="ad-coord">{{ hid('coord') }}<input type="hidden" name="id" value="{{ p.id }}"><input name="coord" placeholder="지도 좌표" value="{{ '%.6f, %.6f'|format(p.lat, p.lng) if p.lat else '' }}" aria-label="{{ p.name }} 지도 좌표"><button class="ad-btn sm">좌표 저장</button></form></div>
+    {{ sw('places', p, p.name) }}
+  </div>{% else %}<p class="ad-muted">예: 광교 ○○타워 1층 로비, ○○아파트 정문</p>{% endfor %}
+</div>
+
+{% elif tab == 'slot' %}
+<div class="ad-head"><div><h1>도착 시간</h1><p>손님은 이 시간 중에서 골라요. 마감 시간이 지나면 그 시간 주문은 닫혀요.</p></div></div>
+<div class="ad-list">
+  {% for t in slots %}<div class="ad-row{{ ' off' if not t.active }}"><div class="ad-row-b"><h3><span class="ad-time">{{ t.at }}</span> 도착</h3><p>{{ t.cutoff }}분 전에 주문 마감</p></div>{{ sw('slots', t, t.at ~ ' 도착') }}</div>{% else %}<p class="ad-muted">아직 도착 시간이 없어요.</p>{% endfor %}
+</div>
+<div class="ad-card ad-form-plain"><h2>＋ 새 도착 시간</h2>
+  <form method="post" class="ad-grid">{{ hid('slot') }}
+    <label class="fld"><span>도착 시간</span><input name="at" type="time" required></label>
+    <label class="fld"><span>몇 분 전에 마감할까요</span><input name="cutoff" type="number" inputmode="numeric" value="40"></label>
+    <button class="ad-btn full">시간 넣기</button>
+  </form>
+</div>
+
+{% elif tab == 'applied' %}
+<div class="ad-head"><div><h1>사장님 신청</h1><p>사장님 함께하기에서 들어온 신청이에요. 전화하고 나면 '연락함'으로 바꿔 두세요.</p></div></div>
+<div class="ad-list">
+  {% for a in applies %}<div class="ad-row{{ ' off' if a.done }}">
+    <div class="ad-row-b"><h3>{{ a.shop }}{% if not a.done %} <span class="ad-pill new">새 신청</span>{% endif %}</h3>
+      <p>{{ a.name or '성함 없음' }} · <span class="mono">{{ a.phone }}</span> · {{ a.created[5:16].replace('T', ' ') }}</p>
+      {% if a.addr %}<p>📍 {{ a.addr }}</p>{% endif %}{% if a.menu %}<p class="ad-quote">{{ a.menu }}</p>{% endif %}</div>
+    <form method="post">{{ hid('applied') }}<input type="hidden" name="id" value="{{ a.id }}"><button class="ad-btn sm{{ ' ghost' if a.done }}">{{ '되돌리기' if a.done else '연락함' }}</button></form>
+  </div>{% else %}<div class="ad-card ad-empty"><p class="ic">🙋</p><h3>아직 신청이 없어요</h3><p>사장님께 아래 주소를 보내 보세요.</p><p class="mono">{{ url_for('join', _external=True) }}</p></div>{% endfor %}
+</div>
+
+{% elif tab == 'company' %}
+<div class="ad-head"><div><h1>사업자 정보</h1><p>사이트 맨 아래에 나와요. 사업자등록증과 똑같이 넣어 주세요.</p></div></div>
+<div class="ad-card ad-form-plain">
+  <form method="post" class="ad-grid">{{ hid('company') }}
+    <label class="fld"><span>상호</span><input name="name" value="{{ co.name }}"></label><label class="fld"><span>대표자</span><input name="owner" value="{{ co.owner }}"></label>
+    <label class="fld"><span>사업자등록번호</span><input name="bizno" placeholder="000-00-00000" value="{{ co.bizno }}"></label><label class="fld"><span>통신판매업 신고번호</span><input name="mailorder" placeholder="제2026-서울강남-0000호" value="{{ co.mailorder }}"></label>
+    <label class="fld full"><span>사업장 주소</span><input name="addr" value="{{ co.addr }}"></label>
+    <label class="fld full"><span>대표전화</span><input name="tel" value="{{ co.tel }}"></label>
+    <button class="ad-btn full">사업자 정보 저장</button>
+  </form>
+</div>
+
+{% elif tab == 'seo' %}
+<div class="ad-head"><div><h1>검색 등록</h1><p>네이버 서치어드바이저나 구글 서치 콘솔에서 'HTML 태그'를 고르면 나오는 줄을 통째로 붙여 넣으세요.</p></div></div>
+<div class="ad-card ad-form-plain">
+  <form method="post" class="ad-grid">{{ hid('seo') }}
+    <label class="fld full"><span>네이버 확인 코드</span><input name="naver" value="{{ naver_code }}" placeholder='&lt;meta name="naver-site-verification" content="..." /&gt;'></label>
+    <label class="fld full"><span>구글 확인 코드</span><input name="google" value="{{ google_code }}" placeholder='&lt;meta name="google-site-verification" content="..." /&gt;'></label>
+    <p class="ad-hint full">사이트맵 주소 <b class="mono">{{ url_for('sitemap', _external=True) }}</b> <button type="button" class="ad-copy" data-copy="{{ url_for('sitemap', _external=True) }}">복사</button></p>
+    <button class="ad-btn full">검색 등록 코드 저장</button>
+  </form>
+</div>
+{% endif %}
 {% endblock %}
-{% block foot %}{% endblock %}
 {% block script %}<script>
 /* 큰 휴대폰 사진은 올리기 전에 가로 1600px JPG로 줄여요 (서버 업로드 한도 2MB) */
 document.querySelectorAll('input[type=file][name=photo]').forEach(function(inp){inp.addEventListener('change',function(){
-  var f=inp.files&&inp.files[0];if(!f||!window.DataTransfer||f.size<1500000)return;
-  var img=new Image(),u=URL.createObjectURL(f);img.onload=function(){var k=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement('canvas');
-    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);
+  var f=inp.files&&inp.files[0];if(!f)return;var box=inp.closest('.ad-file'),u=URL.createObjectURL(f),pv=box.querySelector('img')||box.insertBefore(document.createElement('img'),box.firstChild);
+  pv.src=u;var ic=box.querySelector('i');if(ic)ic.remove();box.querySelector('b').textContent='다른 사진 고르기';
+  if(!window.DataTransfer||f.size<1500000)return;
+  var img=new Image();img.onload=function(){var k=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement('canvas');
+    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
     c.toBlob(function(b){if(!b)return;var d=new DataTransfer();d.items.add(new File([b],'photo.jpg',{type:'image/jpeg'}));inp.files=d.files},'image/jpeg',.85)};img.src=u})});
+/* 판매가 − 공급가 = 모아밥에 남는 돈 */
+document.querySelectorAll('.ad-margin').forEach(function(m){var f=m.closest('form'),p=f.price,s=f.supply;function t(){var a=+p.value||0,b=+s.value||0;
+  if(!b){m.textContent='공급가를 넣으면 한 개에 남는 돈을 계산해 드려요.';m.className='ad-margin full';return}var d=a-b;
+  m.textContent='한 개 팔면 모아밥에 '+d.toLocaleString('ko-KR')+'원 남아요 ('+(a?Math.round(d/a*100):0)+'%)';m.className='ad-margin full'+(d<0?' neg':'')}
+  p.addEventListener('input',t);s.addEventListener('input',t);t()});
+document.querySelectorAll('.ad-copy').forEach(function(b){b.addEventListener('click',function(){var v=b.dataset.copy;
+  (navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(function(){b.textContent='복사됨';setTimeout(function(){b.textContent='복사'},1500)}).catch(function(){prompt('복사해 주세요',v)})})});
 </script>{% endblock %}

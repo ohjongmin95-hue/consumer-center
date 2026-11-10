@@ -1,0 +1,32 @@
+{% extends 'moa_base.html' %}
+{% block gnb %}{% endblock %}
+{% block head %}<meta name="robots" content="noindex"><link rel="stylesheet" href="{{ url_for('static', filename='moa-adm.css') }}?v={{ css_v }}">{% endblock %}
+{% block appclass %}adm2{% endblock %}
+{% block body %}
+{% set cur = 'orders' if request.endpoint == 'admin' else tab %}
+<div class="ad">
+  <aside class="ad-side">
+    <a class="logo ad-logo" href="{{ url_for('admin') }}">{{ mark(26) }}모아밥<small>운영</small></a>
+    <nav class="ad-nav" aria-label="운영 메뉴">
+      <p class="ad-cap">주문</p>
+      <a href="{{ url_for('admin') }}"{% if cur == 'orders' %} class="on" aria-current="page"{% endif %}><i>📦</i>오늘 주문</a>
+      <p class="ad-cap">메뉴</p>
+      <a href="{{ url_for('admin_menu', tab='set') }}"{% if cur == 'set' %} class="on" aria-current="page"{% endif %}><i>🍱</i>세트</a>
+      <a href="{{ url_for('admin_menu', tab='shop') }}"{% if cur == 'shop' %} class="on" aria-current="page"{% endif %}><i>🏪</i>가게</a>
+      <a href="{{ url_for('admin_menu', tab='applied') }}"{% if cur == 'applied' %} class="on" aria-current="page"{% endif %}><i>🙋</i>사장님 신청{% if napply %}<em>{{ napply }}</em>{% endif %}</a>
+      <p class="ad-cap">배달</p>
+      <a href="{{ url_for('admin_menu', tab='place') }}"{% if cur == 'place' %} class="on" aria-current="page"{% endif %}><i>🏢</i>받는 곳</a>
+      <a href="{{ url_for('admin_menu', tab='slot') }}"{% if cur == 'slot' %} class="on" aria-current="page"{% endif %}><i>⏰</i>도착 시간</a>
+      <p class="ad-cap">사이트</p>
+      <a href="{{ url_for('admin_menu', tab='company') }}"{% if cur == 'company' %} class="on" aria-current="page"{% endif %}><i>🧾</i>사업자 정보</a>
+      <a href="{{ url_for('admin_menu', tab='seo') }}"{% if cur == 'seo' %} class="on" aria-current="page"{% endif %}><i>🔎</i>검색 등록</a>
+    </nav>
+    <div class="ad-foot"><a href="{{ url_for('home') }}" target="_blank" rel="noopener">사이트 보기 ↗</a><a href="{{ url_for('admin_logout') }}">나가기</a></div>
+  </aside>
+  <main class="ad-main">
+    {% with msgs = get_flashed_messages() %}{% for m in msgs %}<div class="flash" role="status">{{ m }}</div>{% endfor %}{% endwith %}
+    {% block main %}{% endblock %}
+  </main>
+</div>
+{% endblock %}
+{% block foot %}{% endblock %}

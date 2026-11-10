@@ -245,3 +245,73 @@ article.sec h3{font-size:16px;margin:18px 0 4px}article.sec p{margin:0;color:var
 .ph.pic>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .dph.pic{display:block}.dph.pic>img{display:block;width:100%;height:100%;object-fit:cover}
 .ph.pic .safe,.ph.pic .n{z-index:1}
+
+/* 사장님 함께하기 (입점 신청) */
+.jn{display:flex;flex-direction:column;gap:12px;padding:12px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+.jn-hero{position:relative;overflow:hidden;border-radius:28px;padding:28px 22px 22px;background:linear-gradient(135deg,#FFE3EF 0%,#F1E4FF 55%,#E6E6FF 100%)}
+.jn-ticket{display:none}
+.jn-eyebrow{position:relative;z-index:1;margin:0 0 10px;font-size:14px;font-weight:700;color:#6B3FD4}
+.jn-hero h1{position:relative;z-index:1;margin:0;font-size:28px;line-height:38px;letter-spacing:-.8px;text-wrap:balance}
+.jn-hero h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.jn-facts{position:relative;z-index:1;list-style:none;margin:20px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.jn-facts li{background:rgba(255,255,255,.75);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:2px}
+.jn-facts b{font-size:19px;letter-spacing:-.4px}.jn-facts span{font-size:13px;color:var(--sub);font-weight:600}
+.jn-go{position:relative;z-index:1;margin-top:16px}
+.jn-cols{display:flex;flex-direction:column;gap:12px}
+.jn-left{display:flex;flex-direction:column;gap:12px;min-width:0}
+.jn-sec{background:#fff;border-radius:24px;padding:22px 18px}
+.jn-sec h2{margin:0 0 14px;font-size:20px;line-height:28px;letter-spacing:-.3px}
+.jn-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.jn-cards div{display:grid;grid-template-columns:44px minmax(0,1fr);gap:2px 12px;align-items:start;background:#F9F7FC;border-radius:18px;padding:14px}
+.jn-cards i{grid-row:1/3;font-style:normal;font-size:24px;width:44px;height:44px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center}
+.jn-cards b{font-size:16px;line-height:24px}.jn-cards p{margin:0;font-size:14px;line-height:21px;color:var(--sub)}
+.jn-steps{list-style:none;margin:0;padding:0;counter-reset:j;display:flex;flex-direction:column}
+.jn-steps li{counter-increment:j;position:relative;padding:0 0 18px 44px}
+.jn-steps li:last-child{padding-bottom:0}
+.jn-steps li::before{content:counter(j);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--grad);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+.jn-steps li:not(:last-child)::after{content:"";position:absolute;left:13px;top:32px;bottom:4px;width:2px;background:#EEE6FA}
+.jn-steps b{font-size:16px;line-height:28px}.jn-steps p{margin:2px 0 0;font-size:14px;line-height:21px;color:var(--sub)}
+.jn-calc{background:#2B1B3D;color:#fff}
+.jn-calc h2{color:#fff}
+.jn-calc-q{margin:0;font-size:15px;line-height:23px;color:#E9DDFF}.jn-calc-q b{color:#fff}
+.jn-calc-a{margin:10px 0 0;font-size:17px;font-weight:700}.jn-calc-a b{font-size:26px;color:var(--butter);letter-spacing:-.5px;margin-left:4px}
+.jn-calc-n{margin:10px 0 0;font-size:13px;color:#B9A8D6}
+.jn-faq details{border-top:1px solid var(--line)}
+.jn-faq details:first-child{border-top:0}
+.jn-faq summary{list-style:none;cursor:pointer;padding:14px 28px 14px 0;font-size:16px;font-weight:700;position:relative}
+.jn-faq summary::-webkit-details-marker{display:none}
+.jn-faq summary::after{content:"";position:absolute;right:4px;top:50%;width:8px;height:8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:translateY(-70%) rotate(45deg);transition:transform .15s}
+.jn-faq details[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
+.jn-faq details p{margin:0 0 14px;font-size:15px;line-height:23px;color:var(--sub)}
+.jn-form{background:#fff;border-radius:24px;padding:22px 18px;scroll-margin-top:80px}
+.jn-form h2{margin:0;font-size:20px}.jn-form-sub{margin:4px 0 0;color:var(--sub);font-size:14px}
+.jn-form .cta{margin-top:18px}
+@media (min-width:960px){
+  .jn{max-width:1120px;margin:0 auto;padding:0;gap:24px}
+  .jn-hero{padding:56px 56px 48px;border-radius:36px}
+  .jn-hero{display:grid;grid-template-columns:minmax(0,1fr) 340px;column-gap:40px;align-items:center}
+  .jn-hero>*:not(.jn-ticket){grid-column:1}
+  .jn-ticket{display:block;grid-column:2;grid-row:1/5;background:#fff;border-radius:24px;padding:24px;box-shadow:0 20px 50px rgba(155,140,255,.22);transform:rotate(2deg)}
+  .jt-h{margin:0 0 14px;font-size:13px;font-weight:700;color:var(--mute)}
+  .jt-row{display:flex;align-items:center;gap:8px;font-size:17px}
+  .jt-row .ad-t{font-size:12px;font-weight:700;color:#C2185B;background:#FFF0F5;border-radius:6px;padding:3px 6px}
+  .jt-n{margin:14px 0 0;font-size:16px;color:var(--sub)}.jt-n b{display:block;font-size:44px;line-height:52px;letter-spacing:-1.5px;color:var(--fg);background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .jt-s{margin:12px 0 0;padding-top:12px;border-top:1px dashed #E5E8EB;font-size:13px;color:var(--mute)}
+  .jn-sec,.jn-form{border:1px solid #EFEAF6}
+  .jn-hero h1{font-size:48px;line-height:62px;letter-spacing:-1.6px}
+  .jn-facts{max-width:520px;gap:12px}.jn-facts li{padding:16px 18px}.jn-facts b{font-size:24px}
+  .jn-go{display:none}
+  .jn-cols{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:24px;align-items:start}
+  .jn-left{gap:24px}
+  .jn-sec{padding:32px}.jn-sec h2{font-size:24px;margin-bottom:18px}
+  .jn-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.jn-cards div{padding:18px}
+  .jn-form{position:sticky;top:96px;padding:28px;box-shadow:0 12px 40px rgba(155,140,255,.14)}
+}
+/* 세트 화면: 판매자 정보 접기 */
+.seller{margin-top:12px;border-top:1px solid var(--line)}
+.seller summary{list-style:none;cursor:pointer;padding:14px 0 4px;font-size:14px;font-weight:700;color:var(--sub);display:flex;align-items:center;gap:6px}
+.seller summary::-webkit-details-marker{display:none}
+.seller summary::after{content:"";width:6px;height:6px;border-right:1.5px solid var(--mute);border-bottom:1.5px solid var(--mute);transform:rotate(45deg);margin-top:-3px}
+.seller[open] summary::after{transform:rotate(-135deg);margin-top:3px}
+.seller .rows div{font-size:14px;padding:9px 0}.seller .rows dd{font-weight:500}
+.seller-n{margin:6px 0 0;font-size:13px;line-height:20px;color:var(--mute)}
