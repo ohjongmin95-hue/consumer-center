@@ -10,7 +10,7 @@
   </section>
 
   {% if tick %}<div class="ap-tick" aria-label="{{ ui('app.tick', '최근 소식') }}"><div class="ap-tick-in">
-    {% for dup in (0, 1) %}{% for at, emo, text, cid in tick %}<a href="{{ url_for('public_case', case_id=cid) }}"{% if dup %} aria-hidden="true" tabindex="-1"{% endif %}><i class="tf">{{ emo }}</i>{{ text }}</a>{% endfor %}{% endfor %}
+    {% for dup in (0, 1) %}{% for at, emo, text, cid, kind in tick %}<a class="k-{{ kind }}" href="{{ url_for('public_case', case_id=cid) }}"{% if dup %} aria-hidden="true" tabindex="-1"{% endif %}><i class="tf">{{ emo }}</i>{{ text }}</a>{% endfor %}{% endfor %}
   </div></div>{% endif %}
 
   {% if guides %}<section class="ap-card">

@@ -44,7 +44,9 @@
   <meta name="apple-mobile-web-app-title" content="소보루"><meta name="mobile-web-app-capable" content="yes">{% endif %}
   <link rel="stylesheet" href="{{ asset('style.css') }}">
   <link rel="stylesheet" href="{{ asset('report-feed.css') }}">
-  {% if app_jebo() %}<link rel="stylesheet" href="{{ asset('app-jebo.css') }}">{% endif %}{# 소보루고발 앱 화면: 토스 TDS (운영자 2026-11-11) #}
+  {% if app_jebo() %}<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">{# 앱 글꼴 Pretendard (소보루와 같은 파일) #}
+  <link rel="stylesheet" href="{{ asset('app-jebo.css') }}">{% endif %}{# 소보루고발 앱 화면: 토스 TDS (운영자 2026-11-11) #}
   {% if not is_soboru() and request.path.startswith('/tools') %}<link rel="stylesheet" href="{{ asset('tools-jebo.css') }}">{% endif %}{# 계산기·사전·법령 찾기 토스 TDS (운영자 2026-11-03) #}
   {% if not is_soboru() and request.path.startswith('/ask') %}<link rel="stylesheet" href="{{ asset('ask-jebo.css') }}">{% endif %}{# AI 소비자 상담을 제보센터에서도 (운영자 2026-11-03) #}
   {% if is_soboru() %}<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -73,14 +75,15 @@
         {% if biz_on() %}<a href="{{ url_for('biz_login') }}">{{ ui('common.ft_biz', '기업 회원') }}</a>{% endif %}{% endif %}{# 레터 따로 페이지는 약관·개인정보만 #}
       </nav>
     </div>
+    {% if app_jebo() %}<details class="ap-ftd"><summary>{{ ui('app.ft_info', '사업자 정보') }}</summary>{% endif %}{# 운영자 2026-11-11: 앱 바닥글은 소보루CX처럼 접어 두고 눌러서 펼침 #}
     {% set rows = footer_rows() %}
     {% if rows %}<div class="ft-info">{% for row in rows %}<ul class="ft-row">{% for key, label, value in row %}<li{{ ed_attr(key) }}>{{ label }}. {% if key == 'operator.manager' %}{# 관리자 이름 첫 글자: 관리자 로그인으로 가는 숨은 링크 #}<a class="ft-quiet" href="{{ url_for('admin_login') }}" rel="nofollow">{{ value[:1] }}</a>{{ value[1:] }}{% else %}{{ value }}{% endif %}</li>{% endfor %}</ul>{% endfor %}</div>{% endif %}
     <div class="ft-bottom">
       {% if txt('operator.notice') %}<p class="ft-notice">{{ txt('operator.notice') }}</p>{% endif %}
       {% if txt('footer.nocopy') %}<p class="ft-notice">{{ txt('footer.nocopy') }}</p>{% endif %}
       <p class="ft-copy">{{ txt('footer.text') }}</p>
-      {% if app_jebo() %}<p class="ft-notice ap-tf">{{ ui('app.tossface', '이 서비스에는 토스페이스가 사용되었습니다.') }}</p>{% endif %}{# 토스페이스 출처 표시 (https://toss.im/tossface/copyright) #}
     </div>
+    {% if app_jebo() %}</details><p class="ft-notice ap-tf">{{ ui('app.tossface', '이 서비스에는 토스페이스가 사용되었습니다.') }}</p>{% endif %}{# 토스페이스 출처는 접지 않고 늘 보이게 (https://toss.im/tossface/copyright) #}
   </div>
   <button type="button" class="to-top" aria-label="맨 위로" hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 14.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <script>

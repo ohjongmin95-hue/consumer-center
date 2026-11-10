@@ -34,10 +34,10 @@ def install(S):
         out = []
         for r in db.execute("""SELECT c.id,c.company,c.company_hidden,MAX(m.created) AS at FROM messages m JOIN cases c ON c.id=m.case_id
                 WHERE m.author='기업 답변' AND m.public=1 AND c.public_consent=1 AND c.published=1 GROUP BY c.id ORDER BY at DESC LIMIT 6"""):
-            out.append((r['at'], '💬', f"{S.pub_company(r)}이(가) 고발에 답했어요", r['id']))
+            out.append((r['at'], '📨', f"{S.pub_company(r)}이(가) 고발에 답했어요", r['id'], 'ans'))
         for r in db.execute("""SELECT id,company,company_hidden,confirmed_at AS at FROM cases WHERE outcome='resolved' AND public_consent=1 AND published=1
                 AND COALESCE(confirmed_at,'')<>'' ORDER BY confirmed_at DESC LIMIT 6"""):
-            out.append((r['at'], '✅', f"{S.pub_company(r)} 고발이 해결됐어요", r['id']))
+            out.append((r['at'], '🎉', f"{S.pub_company(r)} 고발이 해결됐어요", r['id'], 'done'))
         out.sort(key=lambda x: x[0] or '', reverse=True)
         return out[:6]
 
@@ -71,9 +71,11 @@ def install(S):
         rows = db.execute("""SELECT co.*,(SELECT c.industry FROM cases c WHERE c.company_id=co.id AND c.industry!='' GROUP BY c.industry ORDER BY COUNT(*) DESC LIMIT 1) AS top_ind
             FROM companies co WHERE co.status IN ('active','listed') AND EXISTS(SELECT 1 FROM cases c WHERE c.company_id=co.id AND c.forwarded_at!='')""").fetchall()
         out = []
-        for co in rows:
-            gr = jebo.company_grade(db, co['id'])
-            if gr['grade']: out.append((co, gr))
+        for co in rows:  # 운영자 2026-11-11: 앱 순위는 '5건 이상' 조건 없이 첫 고발부터. 등급 점수가 없으면 답변 비율로 줄 세움
+            gr = dict(jebo.company_grade(db, co['id']))
+            if not gr['scored']: continue  # 아직 답할 기한 안이고 답도 없는 기업은 셀 것이 없음
+            if gr['score'] is None: gr['score'] = round(100 * gr['answered'] / gr['scored'])
+            out.append((co, gr))
         return out
 
     def rank_pick(items, tab):

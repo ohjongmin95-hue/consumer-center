@@ -137,14 +137,14 @@ def company_grade(db,company_id,today=None):
     told=[r for r in answered if r['outcome'] in ('resolved','unresolved')]
     resolved=[r for r in told if r['outcome']=='resolved']
     waits=sorted(h for h in (hours(r['forwarded_at'],first[r['id']]) for r in answered) if h is not None and h>=0)
+    med=statistics.median(waits) if waits else None
     out={'n':len(rows),'scored':len(scored),'silent':len(silent),'answered':len(answered),'told':len(told),'resolved':len(resolved),
          'resolved_year':sum(1 for r in rows if r['outcome']=='resolved' and r['created']>=year),'n_year':sum(1 for r in rows if r['created']>=year),
-         'grade':'','score':None,'med':None,'parts':[],'word':'','tone':'none','min_n':MIN_N,'days':ANSWER_DAYS,'years':GRADE_YEARS}
+         'grade':'','score':None,'med':med,'parts':[],'word':'','tone':'none','min_n':MIN_N,'days':ANSWER_DAYS,'years':GRADE_YEARS}
     if len(scored)<MIN_N:return out
     a=len(answered)/len(scored)
     # 해결 비율은 결과를 알려 준 제보자가 MIN_N명보다 적으면 알 수 없어 중간값(절반)으로 둠
     r=len(resolved)/len(told) if len(told)>=MIN_N else None
-    med=statistics.median(waits) if waits else None
     sp=next((p for h,p in GRADE_SPEED if med is not None and med<=h),0)
     pa=round(GRADE_PTS['answer']*a);pr=round(GRADE_PTS['resolve']*(r if r is not None else .5));score=pa+pr+sp
     g=grade_of(score)
